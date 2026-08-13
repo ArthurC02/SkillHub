@@ -1,0 +1,24 @@
+PDM-003 prerequisite 2 - Agent Skill loading path - results
+Tests 1-6 = loading mechanism (asserted). NOTE rows = model behaviour /
+SDK observations, recorded but not graded; the backend is gpt-4o-mini via
+LiteLLM, not an Anthropic model.
+claude-agent-sdk=0.2.137 python=3.14.0
+
+[PASS] 1. <workdir>/.claude/skills/ discovered, <workdir>/skills/ not
+       init.skills=['spike-dot-claude', 'deep-research', 'design-sync', 'dataviz', 'update-config', 'verify', 'debug', 'code-review', 'simplify', 'batch', 'fewer-permission-prompts', 'doctor', 'loop', 'claude-api', 'run', 'run-skill-generator']
+[PASS] 2. <workdir>/skills/ (PDM-003 assumption) never discovered
+       <workdir>/skills/ not discovered under ['project'] nor ['user','project']
+[PASS] 3. setting_sources=[] suppresses discovery
+       setting_sources=[] -> init.skills=['deep-research', 'design-sync', 'dataviz', 'update-config', 'verify', 'debug', 'code-review', 'simplify', 'batch', 'fewer-permission-prompts', 'doctor', 'loop', 'claude-api', 'run', 'run-skill-generator']
+[PASS] 4. setting_sources omitted still loads project skills
+       omitted setting_sources -> project skill visible (total 22 skills)
+[PASS] 5. Skill tool present in the session tool list
+       Skill tool present; skills=['spike-dot-claude'] keeps it listed
+[PASS] 6. Skill tool resolves the skill and delivers SKILL.md content
+       tools=['tool:Skill'] marker_present
+[NOTE] a. skills=[] filter is not reflected in init.skills (SDK 0.2.137)
+       skills=[] still lists 'spike-dot-claude' in init.skills: True (filter effect not observable via init; not verified behaviourally)
+[NOTE] b. autonomous invocation from description alone (model behaviour)
+       tools=[] marker_present=False
+
+6/6 passed

@@ -37,6 +37,7 @@
 2. [規格與允收準則](./02-specifications-and-acceptance-criteria.md)
 3. [工作項目列表](./03-work-items.md)
 4. [架構決策紀錄](../../adr/README.md)
+5. [M0 執行計畫與產出](./m0/README.md)（決策提案、成本試算、威脅模型、PDM-011 Spike 報告）
 
 ## 文件維護規則
 

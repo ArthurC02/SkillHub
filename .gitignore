@@ -1,0 +1,10 @@
+# Secrets — never commit
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Spike embedding cache (~1.2MB of float arrays, regenerable, no secrets)
+spikes/**/embeddings_cache.json
