@@ -20,9 +20,9 @@
 
 ## 1. 待完成的產品決策（M0）
 
-- [ ] PDM-001 選定 MVP 首批三個 Skill 類別。
-- [ ] PDM-002 確認首批 Skill 來源與精選標準。
-- [ ] PDM-003 選定主要 Agent Runtime 與模型。
+- [x] PDM-001 選定 MVP 首批三個 Skill 類別。
+- [x] PDM-002 確認首批 Skill 來源與精選標準。
+- [x] PDM-003 選定主要 Agent Runtime 與模型。
 - [ ] PDM-004 決定 SelfHostedProvider 首批支援的 Runtime 語言與版本。
 - [ ] PDM-005 決定 Dataset 大小、檔案類型與單次 Run 資源上限。
 - [ ] PDM-006 決定 Run、Dataset、Trace 與 Artifact 的保存期限。
@@ -30,7 +30,7 @@
 - [ ] PDM-008 決定首批目標 Agent 打包 Profile。
 - [ ] PDM-009 決定封閉測試人數、招募方式與成功門檻。
 - [ ] PDM-010 決定免費 Run 額度及是否支援使用者自備模型 API Key。
-- [ ] PDM-011 完成意圖搜尋品質 Spike：以首批精選 Skill 驗證意圖比對與符合原因生成的可行性，結果回寫 M1 搜尋作法。
+- [x] PDM-011 完成意圖搜尋品質 Spike：以首批精選 Skill 驗證意圖比對與符合原因生成的可行性，結果回寫 M1 搜尋作法。
 
 ## 2. 使用者研究與產品驗證（M0–M4 跨階段）
 

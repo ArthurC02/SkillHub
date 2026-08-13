@@ -1,6 +1,8 @@
 # ADR-014：核心基礎設施採以 PostgreSQL 為中心的最小受管組合
 
-- 狀態：Proposed（定案條件：部署平台確認與成本試算）
+> **Superseded by [ADR-018](./ADR-018-containerized-core-infrastructure.md)（2026-08-14，方向改為容器化自架）。** 以下內容保留原樣作為決策歷史，不再是現行決策。
+
+- 狀態：**Superseded**（原：Proposed，定案條件為部署平台確認與成本試算）
 - 日期：2026-08-13
 - 決策者：產品負責人、架構規劃
 

@@ -1,7 +1,7 @@
 # ADR-015：SelfHostedProvider 採 gVisor 作為隔離基線
 
-- 狀態：Proposed（定案條件：PDM-003／004 Runtime 確認、部署平台支援驗證、逃逸測試通過）
-- 日期：2026-08-13
+- 狀態：**Accepted**（2026-08-14 定案；定案條件逐項狀態見文末「定案紀錄」）
+- 日期：2026-08-13（提出）／2026-08-14（定案）
 - 決策者：產品負責人、架構規劃
 
 ## 背景
@@ -67,8 +67,31 @@ ADR-005 已定義最低安全基線（非 root、唯讀檔案系統、資源限�
 - gVisor 版本需跟隨上游更新，安全修補是持續責任。
 - syscall 相容性問題可能在新 Runtime 加入時重現，每次擴充 Runtime 都需重跑相容性驗證。
 
+## 定案紀錄（2026-08-14）
+
+負責人於 2026-08-14 批准 M0 全部產出並指示開工。**選項 B（gVisor 為隔離基線）與「執行節點為獨立 VM 池、不與應用工作負載混排」的邊界維持不變，狀態由 Proposed 轉 Accepted。** [ADR-018](./ADR-018-containerized-core-infrastructure.md) 把控制平面改為容器化自架，**明確把 Sandbox 執行平面排除在容器編排之外**，本 ADR 的平面隔離邊界未被動到。
+
+定案條件逐項狀態：
+
+| 原定案條件 | 狀態 | 依據 |
+| --- | --- | --- |
+| PDM-003 Runtime 確認 | **已滿足** | Claude Agent SDK（TypeScript）／Node.js 22 LTS；LiteLLM 閘道相容性 **7/7 PASS**、Agent SDK 的 Skill 載入路徑 **6/6 PASS**（正確路徑為 `.claude/skills/`，原假設已證偽）。見 [pdm-003-litellm-spike-report.md](../plans/mvp/m0/pdm-003-litellm-spike-report.md) §4、§10、§11 |
+| 成本試算（部署平台的成本面） | **已滿足** | [cost-estimation.md](../plans/mvp/m0/cost-estimation.md) v2（含 §6.2.3 v3 模型成本重估）。Sandbox 節點供應商與型號隨 ADR-018 的 Hetzner 主推／DO 退路 |
+| PDM-004 Runtime 語言與版本 | **未定案**（提案完整，負責人未逐項批示） | 影響的是 Runtime Image 內容（SBX-002），不是隔離技術選擇；不阻擋本 ADR 定案，但**每次擴充 Runtime 都需重跑 gVisor syscall 相容性驗證**（上方「成本與限制」既有要求） |
+| 部署平台支援驗證（在選定平台上實跑 runsc） | **未執行 → 轉為實作期驗收前提** | 平台已由 ADR-018 選定（Hetzner Cloud 主推，DO 退路）；實跑驗證併入 M2 Sandbox 工作 |
+| 逃逸測試通過（SEC-009、SBX-010） | **未執行 → 轉為實作期驗收關卡** | 這兩項本來就是需求 ID 承接的實作工作，不是文件階段可完成的項目 |
+
+> ⚠️ **定案的語意界線**：本 ADR 轉 Accepted 表示「採用 gVisor 這個方向、後續實作應遵循」，**不表示隔離強度已被驗證**。上方最後兩列是**上線前的硬性關卡**——SEC-009／SBX-010 未通過不得開放外部使用者提交 Skill 執行。
+
+**Hetzner 濫用政策的連帶工作**（隨 ADR-018 選定 Hetzner 而生效）：Sandbox 執行不受信任程式碼，若被用於挖礦、掃描或濫用流量，Hetzner 處置偏向直接停機。除本 ADR 既有的 default-deny Egress Proxy 外，另需**事前與供應商溝通用途**、建立濫用偵測與自動封停 Run 的流程（對應 SEC 需求）。見 [cost-estimation.md](../plans/mvp/m0/cost-estimation.md) §7.1。
+
 ## 待決策
 
-- 節點編排：Kubernetes（RuntimeClass=runsc）或純 VM＋輕量 Agent。
-- Egress Proxy 具體實作與允許清單管理流程。
-- 容量池大小、預熱策略與單 Run 成本目標（PDM 相關決策後校準）。
+- ~~節點編排：Kubernetes（RuntimeClass=runsc）或純 VM＋輕量 Agent。~~ → **已回填（2026-08-14）**：採**純 VM 池＋輕量 Agent，Sandbox 節點不進 Kubernetes**。理由是把 Sandbox 放進與應用共用的編排層，會讓 ADR-001 的平面隔離退化為命名空間隔離。此為 [ADR-018](./ADR-018-containerized-core-infrastructure.md) 明列的容器化例外項；見 [cost-estimation.md](../plans/mvp/m0/cost-estimation.md) §5.1、§7.3。
+- Egress Proxy 具體實作與允許清單管理流程。→ **部分回填（2026-08-14）**：MVP 允許清單維持三項目的地——LiteLLM 閘道、物件儲存短效授權端點、Trace ingestion 端點；首批三個 Skill 類別（`documents`／`writing`／`data`）皆為「上傳檔案進、產出檔案出」，**不需為任何類別開放額外目的地**。見 [pdm-proposals.md](../plans/mvp/m0/pdm-proposals.md) §1、§5.2。**具體實作與清單變更流程仍未決，移交 M2（SBX-007）。**
+- ~~容量池大小、預熱策略與單 Run 成本目標（PDM 相關決策後校準）。~~ → **第一版數字已回填（2026-08-14，依 [cost-estimation.md](../plans/mvp/m0/cost-estimation.md) v2 §2.1／§2.2／§4）**：
+  - slot 規格 **2 vCPU / 4 GiB**（4 GiB/slot 使記憶體成為約束，淘汰所有 2 GiB/vCPU 的運算最佳化機型）；單 Run 佔用 **6 分鐘**＝4 分執行＋1 分 provisioning 與 gVisor 冷啟＋1 分清理（gVisor 相對 runc 約 +20% wall time 已內含）。
+  - 容量池：尖峰併發 slot ＝ `每日 Run × 6min ÷ 8h × 2`，節點冗餘一律 **N+1**。封測情境（50 Run/日）＝ 2 slot → **2 台 4 vCPU/16 GiB**；早期成長（500 Run/日）＝ 13 slot → **5 台 8 vCPU/32 GiB**。
+  - 單 Run 平台成本目標：**$0.19（封測）／$0.064（早期成長）**，以 E1 Hetzner 計。**Sandbox 池佔平台總成本 83%**，是唯一值得優化的一項；優化手段是縮短單 Run 佔用時間與控制 Run 量，不是換編排技術。
+  - **預熱策略仍未決**，移交 M2。
+  - ⚠️ **這些是假設值不是量測值**。單 Run 佔用時間是敏感度最高的單一變數——翻倍即 Sandbox 池 +60%（早期成長 5 → 8 台）。NFR-004 已要求量測 Sandbox 建立時間，首次真實 Run 後須回頭校準。

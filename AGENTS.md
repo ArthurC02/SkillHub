@@ -4,22 +4,17 @@
 
 Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然語言描述任務 → 探索候選 Skill → 用自己的 Prompt 與測試資料在隔離 Sandbox 試跑 → 依 Trace 與評估報告改善 → 下載符合 Agent Skills 規格的可攜套件。
 
-## 目前狀態（2026-08-13）
+## 目前狀態（2026-08-14）
 
-**規劃階段，尚無程式碼。** repo 只有兩個文件目錄：
+**M0 基線完結，進入 M1。** 開工前的三個阻塞項已全部解除（PDM-001~003 定案、成本試算完成、PDM-011 Spike 完成；見 [plans/mvp/m0/README.md](plans/mvp/m0/README.md)）。
 
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
-| `plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單 | [plans/mvp/README.md](plans/mvp/README.md) |
-| `adr/` | 18 份架構決策紀錄（ADR-000～017） | [adr/README.md](adr/README.md)（含索引與架構總圖） |
+| `plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單；`m0/` 為 M0 產出（決策提案 v5、成本試算、威脅模型、Spike 報告） | [plans/mvp/README.md](plans/mvp/README.md) |
+| `adr/` | 20 份架構決策紀錄（ADR-000～019；014 已 Superseded by 018） | [adr/README.md](adr/README.md)（含索引與架構總圖） |
+| `spikes/` | M0 驗證用 spike code（可重跑，非產品程式碼，不進 CI） | 各目錄 README |
 
-開工前的三個阻塞項（未完成前不要動手寫產品程式碼）：
-
-1. PDM-001~003：首批 Skill 類別、來源標準、主要 Agent Runtime 與模型（產品決策，只有負責人能定）。
-2. 部署平台成本試算（ADR-014/015 定案條件）。
-3. PDM-011 意圖搜尋品質 Spike（ADR-013 定案條件）。
-
-Monorepo 目錄結構與 CI/CD **尚未決策**——不要自行發明結構開始鋪程式碼，先提案。
+Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**——鋪程式碼依其結構進行，結構性偏離需先更新 ADR。
 
 ## 已定案的技術棧速覽
 
@@ -27,9 +22,10 @@ Monorepo 目錄結構與 CI/CD **尚未決策**——不要自行發明結構開
 | --- | --- | --- |
 | 前端 | React + TS（Vite、TanStack Router/Query），SPA 起步 | ADR-016 |
 | 平台後端 | Go：chi/echo 薄層、pgx + sqlc、River（Postgres 佇列） | ADR-016、014 |
-| LLM 工作負載 | Python：FastAPI + LangGraph + Anthropic SDK（uv 管理），內部服務 | ADR-016 |
-| 資料 | PostgreSQL 中心（交易、FTS + pgvector、佇列、Trace 分割表）＋ S3 相容物件儲存 | ADR-014 |
-| 搜尋 | 混合檢索（pgvector + FTS + RRF）＋索引時 LLM 增強，不用獨立搜尋引擎 | ADR-013 |
+| LLM 工作負載 | Python：FastAPI + LangGraph（uv 管理），內部服務 | ADR-016 |
+| 模型供應商 | OpenAI API（試跑預設 mini 級；Embedding `text-embedding-3-small`），一律經 LiteLLM 閘道 | PDM-003、ADR-017 |
+| 資料 | PostgreSQL 中心（交易、FTS + pgvector、佇列、Trace 分割表）＋受管 S3 相容物件儲存；核心元件容器化自架（E1） | ADR-018 |
+| 搜尋 | 混合檢索（向量腿承載跨語言召回，FTS＋RRF 為召回覆蓋）＋索引時 LLM 增強（摘要與任務範例句為必要項） | ADR-013 |
 | Sandbox 隔離 | gVisor 基線，獨立 VM 池，Egress 全走 default-deny Proxy | ADR-015、005 |
 | 模型出口 | LiteLLM Proxy（唯一模型閘道，每 Run 短效 Virtual Key） | ADR-017 |
 | LLM 觀測 | Langfuse Cloud（工程調優專用，非事實來源） | ADR-017 |
@@ -57,7 +53,7 @@ Monorepo 目錄結構與 CI/CD **尚未決策**——不要自行發明結構開
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容。
-- 新 ADR 從 **ADR-018** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
+- 新 ADR 從 **ADR-020** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
 - ADR 的待決策被後續 ADR 回答時，回填 `→ [ADR-xxx](...)` 引用（現有文件已有此慣例）。
 - 新 ADR 記得更新 [adr/README.md](adr/README.md) 的決策索引。
 
@@ -76,7 +72,8 @@ Monorepo 目錄結構與 CI/CD **尚未決策**——不要自行發明結構開
 | 查某功能的允收準則 | `plans/mvp/02-specifications-and-acceptance-criteria.md`（按需求 ID） |
 | 找下一個工作項目 | `plans/mvp/03-work-items.md`（章節已標里程碑） |
 | 理解系統邊界與平面 | ADR-001、002 |
-| 資料模型與儲存 | ADR-003、014 |
+| 資料模型與儲存 | ADR-003、018 |
+| Monorepo 結構與 CI/CD | ADR-019 |
 | Run 生命週期與 Provider 契約 | ADR-004、008 |
 | 安全與信任 | ADR-005、007、015 |
 | 語言分工與跨語言守則 | ADR-016 |
