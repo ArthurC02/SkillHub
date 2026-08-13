@@ -1,0 +1,28 @@
+# Local development stack (E1 deployment shape, cost-estimation §7.2).
+# Only Postgres runs today; the service images land with the first feature that
+# needs them (plans/mvp/03-work-items.md CORE-001) together with infra/images/.
+name: skillhub
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: skillhub
+      POSTGRES_PASSWORD: skillhub
+      POSTGRES_DB: skillhub
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skillhub -d skillhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # TODO(CORE-001): add api / worker / llm / web services once infra/images/
+  # holds their Dockerfiles. Build contexts are the repo root, since the Go
+  # build needs services/platform and the generated packages/ output.
+
+volumes:
+  postgres-data:

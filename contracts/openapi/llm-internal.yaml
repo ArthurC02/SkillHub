@@ -1,0 +1,31 @@
+openapi: 3.1.0
+info:
+  title: Skill Hub LLM Internal API
+  version: 0.1.0
+  description: |
+    Go control plane to Python LLM service (ADR-016 rule 3). Internal only, never
+    exposed publicly. The Python server stub under packages/ is generated from
+    this file and must never be hand-edited.
+servers:
+  - url: http://llm:8000
+paths:
+  /healthz:
+    get:
+      operationId: getHealth
+      summary: Process liveness probe
+      responses:
+        "200":
+          description: The process is up.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]

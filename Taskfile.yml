@@ -1,0 +1,61 @@
+# Thin command index only (ADR-019 §2). Every task wraps one native command.
+# Do not grow this into a dependency graph or a cache layer.
+version: "3"
+
+tasks:
+  dev:
+    desc: Start local infrastructure
+    cmd: docker compose -f infra/compose/docker-compose.yml up -d
+
+  down:
+    desc: Stop local infrastructure
+    cmd: docker compose -f infra/compose/docker-compose.yml down
+
+  test:
+    desc: Run all test suites
+    deps: [test:platform, test:llm, test:web]
+
+  test:platform:
+    dir: services/platform
+    cmd: go test ./...
+
+  test:llm:
+    dir: services/llm
+    cmd: uv run pytest
+
+  test:web:
+    dir: apps/web
+    cmd: npm test
+
+  lint:
+    desc: Lint all services
+    deps: [lint:platform, lint:llm, lint:web]
+
+  lint:platform:
+    dir: services/platform
+    cmd: golangci-lint run ./...
+
+  lint:llm:
+    dir: services/llm
+    cmd: uv run ruff check .
+
+  lint:web:
+    dir: apps/web
+    cmd: npm run lint
+
+  build:
+    desc: Build all services
+    deps: [build:platform, build:web]
+
+  build:platform:
+    dir: services/platform
+    cmd: go build ./...
+
+  build:web:
+    dir: apps/web
+    cmd: npm run build
+
+  gen:
+    desc: Regenerate code from contracts and SQL (CI job contracts-drift checks this)
+    cmds:
+      - echo "codegen not wired yet - see .github/workflows/ci.yml contracts-drift"
