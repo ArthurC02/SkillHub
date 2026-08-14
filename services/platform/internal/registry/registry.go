@@ -44,9 +44,17 @@ func (s *Service) Fork(ctx context.Context, ws gen.Workspace, skillID pgtype.UUI
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
-	// Readable scope today is the caller's own workspace; widens to curated
-	// public content with the CONTENT milestone.
+	// Readable scope is the caller's own workspace plus the public catalog:
+	// forking a catalog entry into your own workspace is the whole point of
+	// DISC/WS-001, and looking only at the caller's workspace made every catalog
+	// fork a 404. Order matters — own workspace first, so a caller's private
+	// skill is never shadowed by a catalog skill sharing an id (it cannot, but
+	// the cheap read is also the correct one). Anything outside both scopes
+	// still answers ErrNotFound, so another user's private skill is unchanged.
 	src, err := q.GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		src, err = q.GetCatalogSkill(ctx, skillID)
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return gen.Skill{}, gen.SkillVersion{}, ErrNotFound
 	}

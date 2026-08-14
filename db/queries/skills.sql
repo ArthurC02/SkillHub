@@ -10,6 +10,16 @@ RETURNING *;
 SELECT * FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL;
 
+-- name: GetCatalogSkill :one
+-- The only read that reaches outside the caller's own workspace (WS-001 fork of
+-- public content). The scope is baked into the statement — catalog workspaces
+-- only (0010) — and deliberately takes no workspace argument: a widened scope
+-- that a caller could name is exactly what iron rule 3 forbids. Private skills
+-- of other workspaces do not match, so they stay "not found" (WS-006).
+SELECT sk.* FROM skills sk
+JOIN workspaces w ON w.id = sk.workspace_id AND w.is_catalog
+WHERE sk.id = $1 AND sk.deleted_at IS NULL;
+
 -- name: SoftDeleteSkill :one
 -- WS-005/CORE-007: soft delete now, background purge after the 30-day grace
 -- period. Version rows stay (0005 trigger); the search document is removed by

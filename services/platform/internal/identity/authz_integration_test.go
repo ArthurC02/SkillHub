@@ -1,8 +1,11 @@
-// Package identity_test holds the database-backed authorization tests for
-// CORE-005 (login, logout, workspace access control) and CORE-006 (private
-// content authorization). They live in an external test package so they can
-// wire the real HTTP surface — identity + registry + catalog — the way cmd/api
-// does, without an import cycle.
+// Package identity_test holds the database-backed tests that need the real HTTP
+// surface — identity + registry + catalog wired the way cmd/api wires it. It is
+// an external test package so it can do that without an import cycle, which is
+// also why the DISC-001/002 search and WS-001 fork tests live here (see
+// disc_integration_test.go) rather than beside the packages they exercise.
+//
+// This file covers CORE-005 (login, logout, workspace access control) and
+// CORE-006 (private content authorization).
 //
 // These tests need a throwaway PostgreSQL with the pgvector extension
 // available. Point SKILLHUB_TEST_DATABASE_URL at one and they run; leave it
@@ -31,6 +34,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
+	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
 )
@@ -107,6 +111,14 @@ type api struct {
 
 func newAPI(t *testing.T, pool *pgxpool.Pool) *api {
 	t.Helper()
+	return newAPIWithLLM(t, pool, "")
+}
+
+// newAPIWithLLM is newAPI with the internal LLM service pointed somewhere. An
+// empty base URL leaves the client nil, which is the "embedding service not
+// configured" branch of the DISC-001 degradation path.
+func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
+	t.Helper()
 	auth := &identity.Handler{
 		Service:  &identity.Service{Pool: pool},
 		Secure:   false, // httptest speaks plain http
@@ -114,6 +126,9 @@ func newAPI(t *testing.T, pool *pgxpool.Pool) *api {
 	}
 	reg := &registry.Handler{Svc: &registry.Service{Pool: pool}, Identity: auth.Service}
 	search := &catalog.Handler{Pool: pool, Identity: auth.Service}
+	if llmBaseURL != "" {
+		search.LLMClient = &llmclient.Client{BaseURL: llmBaseURL}
+	}
 
 	mux := http.NewServeMux()
 	auth.Mount(mux)

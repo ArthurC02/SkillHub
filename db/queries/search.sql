@@ -43,14 +43,25 @@ LIMIT $1;
 
 -- name: PublicHybridSearchSkills :many
 -- ADR-013 hybrid retrieval: FTS + vector similarity fused with RRF.
--- Both legs run as CTEs; RRF combines their rankings. A leg with no hits
--- contributes nothing (ADR-013 adjustment 3: zero-hit legs excluded).
+-- Both legs run as CTEs; RRF combines their rankings.
+--
+-- Zero-hit legs are excluded structurally (ADR-013 定案調整 3: feeding a leg
+-- that matched nothing into the fusion only dilutes the other leg). Each leg
+-- filters before it ranks, so a leg that matched nothing produces no rows at
+-- all; the FULL OUTER JOIN then leaves its reciprocal term COALESCEd to 0 for
+-- every candidate, which is the same ordering as if the leg were absent. This
+-- is why the join is FULL OUTER and not a UNION of both legs' documents.
+--
+-- The per-leg ORDER BY repeats the window's ordering on purpose: LIMIT without
+-- ORDER BY is not defined to keep the top rows of a window function, so without
+-- it the truncation to 50 could drop the best-ranked rows.
 WITH fts AS (
     SELECT s.skill_id, s.name, s.summary,
            ROW_NUMBER() OVER (ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC) AS rn
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
     WHERE s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
+    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
     LIMIT 50
 ),
 vec AS (
@@ -59,6 +70,7 @@ vec AS (
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
     WHERE s.embedding IS NOT NULL
+    ORDER BY s.embedding <=> sqlc.arg(query_embedding)::vector ASC
     LIMIT 50
 ),
 rrf AS (

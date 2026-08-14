@@ -6,11 +6,13 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -29,19 +31,35 @@ type Handler struct {
 	LLMClient *llmclient.Client // nil = embedding unavailable, FTS-only fallback
 }
 
+// Match reason provenance (DISC-002). ADR-013 requires model-generated content
+// to be labelled as such, so the caller can tell an explanation the model wrote
+// from one the platform assembled from the hit itself.
+const (
+	reasonSourceModel    = "model"
+	reasonSourceTemplate = "template"
+)
+
 // searchResult is the public JSON shape for each search hit (DISC-002).
 type searchResult struct {
-	SkillID     string  `json:"skill_id"`
-	Name        string  `json:"name"`
-	Summary     string  `json:"summary"`
-	Rank        float64 `json:"rank"`
-	MatchReason string  `json:"match_reason,omitempty"`
+	SkillID           string  `json:"skill_id"`
+	Name              string  `json:"name"`
+	Summary           string  `json:"summary"`
+	Rank              float64 `json:"rank"`
+	MatchReason       string  `json:"match_reason,omitempty"`
+	MatchReasonSource string  `json:"match_reason_source,omitempty"`
 }
 
 // searchResponse is the top-level JSON envelope.
 type searchResponse struct {
 	Query   string         `json:"query"`
 	Results []searchResult `json:"results"`
+	// Degraded says the vector leg did not run, so this answer came from
+	// lexical matching alone (ADR-013 定案調整 1/2: the vector leg is what
+	// carries cross-language recall, FTS-only is the availability floor).
+	// Callers should treat a degraded answer as lower recall, not as "no such
+	// skill exists".
+	Degraded       bool   `json:"degraded"`
+	DegradedReason string `json:"degraded_reason,omitempty"`
 }
 
 // PublicSearch handles GET /api/skills/search?q=...&limit=N.
@@ -69,19 +87,27 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	queries := gen.New(h.Pool)
 
-	// Try hybrid search with embeddings; fall back to FTS-only if LLM service
-	// is unavailable or embedding call fails (ADR-013 degradation path).
-	var hits []searchResult
+	// Hybrid retrieval is the intended path. Degrading to FTS-only is an
+	// availability floor, not an equivalent alternative: ADR-013 定案調整 1
+	// measured the vector leg carrying cross-language recall that the lexical
+	// leg misses entirely, so a degraded answer is flagged rather than passed
+	// off as a normal one. The reverse degradation (vector-only when FTS is
+	// down) is not a case that exists: both legs live in the same database.
+	var (
+		hits           []searchResult
+		degradedReason string
+	)
 
-	if h.LLMClient != nil {
-		hybridHits, err := h.hybridSearch(ctx, queries, q, limit)
-		if err != nil {
-			slog.Warn("hybrid search failed, falling back to FTS", "error", err)
-			hits, _ = h.ftsOnlySearch(ctx, queries, q, limit)
-		} else {
-			hits = hybridHits
-		}
+	if h.LLMClient == nil {
+		degradedReason = "embedding service not configured; lexical search only"
+	} else if hybridHits, err := h.hybridSearch(ctx, queries, q, limit); err != nil {
+		slog.Warn("hybrid search failed, falling back to FTS", "error", err)
+		degradedReason = "embedding unavailable; lexical search only"
 	} else {
+		hits = hybridHits
+	}
+
+	if degradedReason != "" {
 		hits, _ = h.ftsOnlySearch(ctx, queries, q, limit)
 	}
 
@@ -89,7 +115,7 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		hits = []searchResult{}
 	}
 
-	// DISC-002: generate match reasons for top results.
+	// DISC-002: one batched call for the whole result page, never one per hit.
 	if len(hits) > 0 && h.LLMClient != nil {
 		h.enrichMatchReasons(ctx, q, hits)
 	}
@@ -98,18 +124,29 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 	for i := range hits {
 		if hits[i].MatchReason == "" {
 			hits[i].MatchReason = templateMatchReason(hits[i].Name, hits[i].Summary, q)
+			hits[i].MatchReasonSource = reasonSourceTemplate
 		}
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, searchResponse{
-		Query:   q,
-		Results: hits,
+		Query:          q,
+		Results:        hits,
+		Degraded:       degradedReason != "",
+		DegradedReason: degradedReason,
 	})
 }
 
 // hybridSearch runs the ADR-013 hybrid retrieval pipeline:
 // 1. Get query embedding from the LLM service
 // 2. Run hybrid SQL (FTS + vector + RRF)
+//
+// ponytail: the raw query is embedded as typed. ADR-013 定案調整 2 puts LLM
+// query rewriting ahead of the embedding call as a Top-1 precision gain (80% ->
+// 100% in the spike), not as a recall requirement — its whole degradation path
+// is "embed the original sentence", which is what this does unconditionally.
+// Add the rewrite step once the end-to-end p95 budget (NFR-004) has been
+// measured with a real gateway; adding it before that measurement would be
+// spending the latency budget blind.
 func (h *Handler) hybridSearch(ctx context.Context, queries *gen.Queries, query string, limit int32) ([]searchResult, error) {
 	// Step 1: get query embedding.
 	embedCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -120,7 +157,10 @@ func (h *Handler) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		return nil, err
 	}
 	if len(embedResp.Embeddings) == 0 {
-		return nil, err
+		// An empty vector list is a failed embed, not an empty result set. It
+		// has to surface as an error or the caller reports full-quality zero
+		// hits for a query the vector leg never actually ran.
+		return nil, errors.New("catalog: embed returned no vectors")
 	}
 
 	embedding := pgvector.NewVector(embedResp.Embeddings[0])
@@ -172,9 +212,11 @@ func (h *Handler) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 	return hits, nil
 }
 
-// enrichMatchReasons calls the LLM service to generate match reasons for up
-// to the top 10 hits. Timeout/failure is non-fatal: template reasons are used
-// as fallback (ADR-013 section 3).
+// enrichMatchReasons calls the LLM service once for the top 10 hits — one
+// batched request, never one per candidate, because the reason step sits in the
+// user-visible latency budget (NFR-004) and N calls would multiply it by N.
+// Timeout/failure is non-fatal: template reasons are used as fallback
+// (ADR-013 section 3).
 func (h *Handler) enrichMatchReasons(ctx context.Context, query string, hits []searchResult) {
 	n := len(hits)
 	if n > 10 {
@@ -208,22 +250,124 @@ func (h *Handler) enrichMatchReasons(ctx context.Context, query string, hits []s
 	for i := 0; i < n; i++ {
 		if reason, ok := reasonMap[hits[i].SkillID]; ok && reason != "" {
 			hits[i].MatchReason = reason
+			hits[i].MatchReasonSource = reasonSourceModel
 		}
 	}
 }
 
-// templateMatchReason generates a simple template-based match reason when
-// LLM polishing is unavailable or timed out (ADR-013 section 3 fallback).
+// templateMatchReason is the zero-latency fallback reason (ADR-013 section 3):
+// it states the actual lexical overlap between the query and the skill's own
+// text, so the explanation is derived from the hit rather than invented.
+//
+// When there is no overlap it says so. ADR-013 定案調整 4 found that
+// no-lexical-overlap hits are the *main* case in this product — the vector leg
+// recalls Chinese task descriptions against English SKILL.md files — and that a
+// template has nothing truthful to say about them. Stitching the summary onto
+// the query anyway (what this used to do) produced a sentence that looked like
+// a reason and contained none, which is worse than admitting the ranking came
+// from semantic similarity.
 func templateMatchReason(name, summary, query string) string {
-	if summary != "" {
-		// Truncate summary for the reason if too long.
-		s := summary
-		if len(s) > 120 {
-			s = s[:120] + "..."
-		}
-		return name + " — " + s
+	if terms := overlapTerms(query, name+" "+summary); len(terms) > 0 {
+		return "Matches your query on: " + strings.Join(terms, ", ") + "."
 	}
-	return name + " may be relevant to your task."
+	return "No shared keywords — ranked by semantic similarity to your task description."
+}
+
+// overlapTerms returns the tokens the query and the document share, in query
+// order, capped so the reason stays one readable line.
+func overlapTerms(query, doc string) []string {
+	inDoc := make(map[string]bool)
+	for _, t := range tokenize(doc) {
+		inDoc[t] = true
+	}
+	var out []string
+	seen := make(map[string]bool)
+	for _, t := range tokenize(query) {
+		if !inDoc[t] || seen[t] || stopwords[t] {
+			continue
+		}
+		seen[t] = true
+		// Rejoin CJK bigrams the tokenizer split out of one phrase, so a match
+		// on 資料分析 reads as that and not as "資料, 料分, 分析".
+		if n := len(out); n > 0 && overlapsByOneRune(out[n-1], t) {
+			out[n-1] += lastRune(t)
+			continue
+		}
+		out = append(out, t)
+		if len(out) == 5 {
+			break
+		}
+	}
+	return out
+}
+
+// stopwords are the words whose presence in both texts says nothing. Kept to
+// the handful that actually show up in task descriptions; tokenize already
+// drops every latin token shorter than three runes.
+var stopwords = map[string]bool{
+	"the": true, "and": true, "for": true, "with": true, "that": true,
+	"this": true, "from": true, "into": true, "you": true, "your": true,
+	"can": true, "are": true, "use": true, "using": true, "how": true,
+}
+
+// tokenize splits text into comparable tokens. Latin runs become whole words;
+// CJK runs become character bigrams, because Chinese queries carry no spaces
+// and single characters collide far too often to evidence anything.
+func tokenize(s string) []string {
+	var out []string
+	var latin, cjk []rune
+	flushLatin := func() {
+		if len(latin) >= 3 {
+			out = append(out, string(latin))
+		}
+		latin = latin[:0]
+	}
+	flushCJK := func() {
+		switch {
+		case len(cjk) == 1:
+			out = append(out, string(cjk))
+		default:
+			for i := 0; i+1 < len(cjk); i++ {
+				out = append(out, string(cjk[i:i+2]))
+			}
+		}
+		cjk = cjk[:0]
+	}
+	for _, r := range strings.ToLower(s) {
+		switch {
+		case isCJK(r):
+			flushLatin()
+			cjk = append(cjk, r)
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			flushCJK()
+			latin = append(latin, r)
+		default:
+			flushLatin()
+			flushCJK()
+		}
+	}
+	flushLatin()
+	flushCJK()
+	return out
+}
+
+// isCJK covers the ranges a zh-Hant task description actually lands in: the
+// unified ideographs plus the extension A block.
+func isCJK(r rune) bool {
+	return (r >= 0x3400 && r <= 0x4DBF) || (r >= 0x4E00 && r <= 0x9FFF)
+}
+
+func overlapsByOneRune(a, b string) bool {
+	ar, br := []rune(a), []rune(b)
+	if len(ar) < 2 || len(br) != 2 || !isCJK(br[0]) {
+		return false
+	}
+	return ar[len(ar)-1] == br[0]
+}
+
+func lastRune(s string) string {
+	r := []rune(s)
+	return string(r[len(r)-1])
 }
 
 // isComprehensible does a minimal check that the query contains at least one

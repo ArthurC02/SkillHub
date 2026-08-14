@@ -63,6 +63,34 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 	return i, err
 }
 
+const getCatalogSkill = `-- name: GetCatalogSkill :one
+SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at FROM skills sk
+JOIN workspaces w ON w.id = sk.workspace_id AND w.is_catalog
+WHERE sk.id = $1 AND sk.deleted_at IS NULL
+`
+
+// The only read that reaches outside the caller's own workspace (WS-001 fork of
+// public content). The scope is baked into the statement — catalog workspaces
+// only (0010) — and deliberately takes no workspace argument: a widened scope
+// that a caller could name is exactly what iron rule 3 forbids. Private skills
+// of other workspaces do not match, so they stay "not found" (WS-006).
+func (q *Queries) GetCatalogSkill(ctx context.Context, id pgtype.UUID) (Skill, error) {
+	row := q.db.QueryRow(ctx, getCatalogSkill, id)
+	var i Skill
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Summary,
+		&i.ForkedFromSkillID,
+		&i.ForkedFromVersionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const getSkill = `-- name: GetSkill :one
 SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL

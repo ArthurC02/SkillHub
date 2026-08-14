@@ -535,7 +535,7 @@ components:
           format: uuid
     PublicSearchResponse:
       type: object
-      required: [query, results]
+      required: [query, results, degraded]
       properties:
         query:
           type: string
@@ -544,6 +544,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PublicSearchResult"
+        degraded:
+          type: boolean
+          description: |
+            True when the vector leg did not run and the answer came from
+            lexical matching alone. ADR-013 定案調整 1/2: the vector leg is what
+            carries cross-language recall, so a degraded answer has materially
+            lower recall and must not be presented as "nothing matches".
+        degraded_reason:
+          type: string
+          description: Why the vector leg was skipped. Absent when degraded is false.
     PublicSearchResult:
       type: object
       required: [skill_id, name, summary, rank]
@@ -564,6 +574,14 @@ components:
           description: |
             Human-readable explanation of why this skill matches the query
             (DISC-002). Template-based fallback when LLM polish times out.
+        match_reason_source:
+          type: string
+          enum: [model, template]
+          description: |
+            Provenance of match_reason. ADR-013 requires model-generated content
+            to be labelled, so the UI can mark it as such. `template` reasons are
+            assembled from the query/document lexical overlap, or state plainly
+            that the hit came from semantic similarity with no shared keywords.
     SearchHit:
       type: object
       required: [skill_id, name, summary, rank]
