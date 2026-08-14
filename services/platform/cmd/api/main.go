@@ -37,8 +37,9 @@ func main() {
 				RedirectURL:  os.Getenv("OAUTH_REDIRECT_URL"),
 			},
 		},
-		Secure: os.Getenv("COOKIE_INSECURE") != "1", // 1 only for plain-http local dev
-		AppURL: os.Getenv("APP_URL"),
+		Secure:   os.Getenv("COOKIE_INSECURE") != "1", // 1 only for plain-http local dev
+		AppURL:   os.Getenv("APP_URL"),
+		DevLogin: os.Getenv("DEV_LOGIN") == "1", // offline dev provider; never in production
 	}
 
 	mux := http.NewServeMux()

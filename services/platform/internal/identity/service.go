@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -28,19 +27,28 @@ type Service struct {
 
 func (s *Service) queries() *gen.Queries { return gen.New(s.Pool) }
 
-// LoginOrSignup resolves the GitHub identity to a user — creating user,
+// ExternalIdentity is an identity a provider has already verified (GitHub
+// OAuth, the dev provider, later LDAP). LoginOrSignup trusts it; verifying
+// credentials against the provider is the caller's job.
+type ExternalIdentity struct {
+	Provider       string
+	ProviderUserID string
+	Email          string
+	Name           string
+	Login          string // workspace name on first login
+}
+
+// LoginOrSignup resolves an external identity to a user — creating user,
 // personal workspace, and identity in one transaction on first login
 // (ADR-011 1:1 workspace, ADR-020) — and mints a session. It returns the raw
 // session token; only its SHA-256 is stored.
-func (s *Service) LoginOrSignup(ctx context.Context, gu GitHubUser) (string, error) {
-	providerUserID := strconv.FormatInt(gu.ID, 10)
-
+func (s *Service) LoginOrSignup(ctx context.Context, id ExternalIdentity) (string, error) {
 	user, err := s.queries().GetUserByIdentity(ctx, gen.GetUserByIdentityParams{
-		Provider:       providerGitHub,
-		ProviderUserID: providerUserID,
+		Provider:       id.Provider,
+		ProviderUserID: id.ProviderUserID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		user, err = s.signup(ctx, gu, providerUserID)
+		user, err = s.signup(ctx, id)
 	}
 	if err != nil {
 		return "", err
@@ -48,7 +56,7 @@ func (s *Service) LoginOrSignup(ctx context.Context, gu GitHubUser) (string, err
 	return s.mintSession(ctx, user)
 }
 
-func (s *Service) signup(ctx context.Context, gu GitHubUser, providerUserID string) (gen.User, error) {
+func (s *Service) signup(ctx context.Context, id ExternalIdentity) (gen.User, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return gen.User{}, err
@@ -57,22 +65,22 @@ func (s *Service) signup(ctx context.Context, gu GitHubUser, providerUserID stri
 
 	q := s.queries().WithTx(tx)
 	user, err := q.CreateUser(ctx, gen.CreateUserParams{
-		Email:       gu.Email,
-		DisplayName: gu.Name,
+		Email:       id.Email,
+		DisplayName: id.Name,
 	})
 	if err != nil {
 		return gen.User{}, err
 	}
 	if _, err := q.CreateWorkspace(ctx, gen.CreateWorkspaceParams{
 		OwnerUserID: user.ID,
-		Name:        gu.Login,
+		Name:        id.Login,
 	}); err != nil {
 		return gen.User{}, err
 	}
 	if err := q.CreateIdentity(ctx, gen.CreateIdentityParams{
 		UserID:         user.ID,
-		Provider:       providerGitHub,
-		ProviderUserID: providerUserID,
+		Provider:       id.Provider,
+		ProviderUserID: id.ProviderUserID,
 	}); err != nil {
 		return gen.User{}, err
 	}

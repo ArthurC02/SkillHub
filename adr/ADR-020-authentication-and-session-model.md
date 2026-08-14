@@ -53,6 +53,12 @@ CORE-005(基本登入、登出與工作區存取控制)是 M1 私有功能(Fork�
 - 請求的 `user_id` 與個人 `workspace_id` 一律由 Session 在伺服器端解析(ADR-011:不信任 UI 傳入值)。
 - 公開讀取(搜尋、Skill 詳情)不要求 Session(DISC-010);私有路徑一律經 Session middleware。
 
+### 部署形態:Auth 不獨立成服務
+
+- 身分解析是每個私有請求的熱路徑,留在控制平面單體內(ADR-010 拆分準則逐項檢驗均不成立:拆出後 secret 仍在同一信任區、熱路徑多一個網路 hop、`users`/`sessions` 資料所有權被切開)。`internal/identity` 的套件邊界即未來拆分接縫。
+- **離線 Demo 由 Provider 抽換承載,不由服務拆分承載**:拆出去的 Auth 服務跑 GitHub OAuth 一樣要連外網。伺服器以 `DEV_LOGIN=1` 啟動時開啟 `POST /auth/dev/login`(`dev` Provider),不出外網即可登入;生產環境不設此變數,路由不存在。此即 ADR-010 Local Development「Fake Provider」的落地。
+- 多 Provider 路徑:LDAP/AD 直連＝新增 provider 值與一個憑證驗證入口,同套件、同資料模型;企業聯邦需求(對接客戶 IdP 的 SAML/OIDC、SCIM、群組同步)出現時,評估自架 Zitadel/Ory 類,不自寫。
+
 ### 服務身分(非人類主體)
 
 - Go→Python 內部呼叫:僅限私網,附靜態 Bearer Token(環境變數注入),Python 側驗證。E1 單機 compose 網路下這已是信任邊界的全部;拆分部署時再升級 mTLS/服務網格。

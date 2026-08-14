@@ -49,6 +49,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /auth/dev/login:
+    post:
+      operationId: devLogin
+      summary: Offline dev-provider login (ADR-020)
+      description: |
+        Exists only when the server runs with DEV_LOGIN=1 (local demo and E2E);
+        in production the route is absent and returns 404.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user:
+                  type: string
+                  maxLength: 64
+                  description: Dev user handle; defaults to "dev".
+      responses:
+        "204":
+          description: Logged in; session cookie set.
   /auth/logout:
     post:
       operationId: logout

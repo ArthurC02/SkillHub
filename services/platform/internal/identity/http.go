@@ -26,6 +26,9 @@ type Handler struct {
 	Secure bool
 	// AppURL is where the callback redirects after login (default "/").
 	AppURL string
+	// DevLogin mounts the offline dev provider (ADR-020). Local demo and E2E
+	// only; must never be set in production.
+	DevLogin bool
 }
 
 // Mount registers the auth routes on mux.
@@ -34,6 +37,39 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/github/callback", h.finishLogin)
 	mux.HandleFunc("POST /auth/logout", h.logout)
 	mux.HandleFunc("GET /me", h.RequireSession(h.me))
+	if h.DevLogin {
+		mux.HandleFunc("POST /auth/dev/login", h.devLogin)
+	}
+}
+
+// devLogin signs in as a named dev user without any external network — the
+// offline demo path (ADR-020). Reachable only when DevLogin is true.
+func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		User string `json:"user"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body) // empty body → default user
+	name := body.User
+	if name == "" {
+		name = "dev"
+	}
+	if len(name) > 64 {
+		httpError(w, http.StatusBadRequest, "user name too long")
+		return
+	}
+	token, err := h.Service.LoginOrSignup(r.Context(), ExternalIdentity{
+		Provider:       "dev",
+		ProviderUserID: name,
+		Email:          name + "@dev.local",
+		Name:           name,
+		Login:          name,
+	})
+	if err != nil {
+		httpError(w, http.StatusInternalServerError, "login failed")
+		return
+	}
+	h.setSessionCookie(w, token)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) startLogin(w http.ResponseWriter, r *http.Request) {
@@ -75,22 +111,26 @@ func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusUnauthorized, "user fetch failed")
 		return
 	}
-	token, err := h.Service.LoginOrSignup(ctx, ghUser)
+	token, err := h.Service.LoginOrSignup(ctx, ghUser.External())
 	if err != nil {
 		slog.Error("login failed", "error", err)
 		httpError(w, http.StatusInternalServerError, "login failed")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name: sessionCookie, Value: token, Path: "/",
-		MaxAge: int(SessionTTL / time.Second),
-		HttpOnly: true, Secure: h.Secure, SameSite: http.SameSiteLaxMode,
-	})
+	h.setSessionCookie(w, token)
 	appURL := h.AppURL
 	if appURL == "" {
 		appURL = "/"
 	}
 	http.Redirect(w, r, appURL, http.StatusFound)
+}
+
+func (h *Handler) setSessionCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookie, Value: token, Path: "/",
+		MaxAge: int(SessionTTL / time.Second),
+		HttpOnly: true, Secure: h.Secure, SameSite: http.SameSiteLaxMode,
+	})
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {

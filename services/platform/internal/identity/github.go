@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -94,6 +95,17 @@ type GitHubUser struct {
 	Login string
 	Name  string
 	Email string
+}
+
+// External converts the GitHub profile to the provider-neutral identity.
+func (u GitHubUser) External() ExternalIdentity {
+	return ExternalIdentity{
+		Provider:       providerGitHub,
+		ProviderUserID: strconv.FormatInt(u.ID, 10),
+		Email:          u.Email,
+		Name:           u.Name,
+		Login:          u.Login,
+	}
 }
 
 // FetchUser loads the authenticated user, falling back to /user/emails when the

@@ -104,6 +104,33 @@ func TestCallbackRejectsStateMismatch(t *testing.T) {
 	}
 }
 
+func TestDevLoginNotMountedByDefault(t *testing.T) {
+	// The offline dev provider must not exist unless explicitly enabled;
+	// a mounted-by-accident dev login in production is an auth bypass.
+	h := &Handler{Service: &Service{}}
+	mux := http.NewServeMux()
+	h.Mount(mux)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/auth/dev/login", nil))
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("dev login reachable without DevLogin: got %d", w.Code)
+	}
+
+	h.DevLogin = true
+	mux = http.NewServeMux()
+	h.Mount(mux)
+	w = httptest.NewRecorder()
+	// With no database wired the handler fails, but the route must exist —
+	// anything but 404 proves the gate opened.
+	func() {
+		defer func() { _ = recover() }() // nil pool panics; only routing matters here
+		mux.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/auth/dev/login", nil))
+	}()
+	if w.Code == http.StatusNotFound {
+		t.Fatal("dev login not mounted with DevLogin=true")
+	}
+}
+
 func TestRequireSessionWithoutCookie(t *testing.T) {
 	h := &Handler{Service: &Service{}}
 	called := false
