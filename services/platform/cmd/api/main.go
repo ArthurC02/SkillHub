@@ -86,6 +86,7 @@ func main() {
 	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(reg.Fork))
 	mux.HandleFunc("POST /skills/{id}/versions", auth.RequireSession(importer.SaveVersion))
 	mux.HandleFunc("GET /skills/{id}/diff", auth.RequireSession(reg.Diff))
+	mux.HandleFunc("DELETE /skills/{id}", auth.RequireSession(reg.Delete))
 
 	srv := &http.Server{
 		Addr:              addrFromEnv("API_ADDR", ":8080"),

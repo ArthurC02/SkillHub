@@ -21,6 +21,17 @@ LIMIT $2;
 INSERT INTO search_documents (skill_id, workspace_id, name, summary, updated_at)
 SELECT sk.id, sk.workspace_id, sk.name, coalesce(sk.summary, ''), now()
 FROM skills sk
+WHERE sk.deleted_at IS NULL
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id, name = EXCLUDED.name,
     summary = EXCLUDED.summary, updated_at = now();
+
+-- name: DeleteSearchDocument :exec
+DELETE FROM search_documents WHERE skill_id = $1;
+
+-- name: PruneDeletedSearchDocuments :execrows
+-- Rebuild hygiene: ReindexAll only upserts live skills, so stale documents of
+-- soft-deleted skills are removed here first.
+DELETE FROM search_documents sd
+USING skills sk
+WHERE sd.skill_id = sk.id AND sk.deleted_at IS NOT NULL;

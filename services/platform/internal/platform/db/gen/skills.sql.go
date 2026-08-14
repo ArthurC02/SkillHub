@@ -11,11 +11,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countSkillVersions = `-- name: CountSkillVersions :one
+SELECT count(*) FROM skill_versions
+WHERE skill_id = $1
+`
+
+func (q *Queries) CountSkillVersions(ctx context.Context, skillID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countSkillVersions, skillID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createSkill = `-- name: CreateSkill :one
 
 INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at
 `
 
 type CreateSkillParams struct {
@@ -46,13 +58,14 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 		&i.ForkedFromVersionID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const getSkill = `-- name: GetSkill :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at FROM skills
-WHERE id = $1 AND workspace_id = $2
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at FROM skills
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 `
 
 type GetSkillParams struct {
@@ -72,13 +85,14 @@ func (q *Queries) GetSkill(ctx context.Context, arg GetSkillParams) (Skill, erro
 		&i.ForkedFromVersionID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeletedAt,
 	)
 	return i, err
 }
 
 const listSkills = `-- name: ListSkills :many
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at FROM skills
-WHERE workspace_id = $1
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at FROM skills
+WHERE workspace_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
 `
@@ -107,6 +121,7 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]Skill
 			&i.ForkedFromVersionID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -116,6 +131,37 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]Skill
 		return nil, err
 	}
 	return items, nil
+}
+
+const softDeleteSkill = `-- name: SoftDeleteSkill :one
+UPDATE skills SET deleted_at = now(), updated_at = now()
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at
+`
+
+type SoftDeleteSkillParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+// WS-005/CORE-007: soft delete now, background purge after the 30-day grace
+// period. Version rows stay (0005 trigger); the search document is removed by
+// the caller in the same transaction.
+func (q *Queries) SoftDeleteSkill(ctx context.Context, arg SoftDeleteSkillParams) (Skill, error) {
+	row := q.db.QueryRow(ctx, softDeleteSkill, arg.ID, arg.WorkspaceID)
+	var i Skill
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Name,
+		&i.Summary,
+		&i.ForkedFromSkillID,
+		&i.ForkedFromVersionID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
 }
 
 const updateSkillSummary = `-- name: UpdateSkillSummary :exec

@@ -22,10 +22,16 @@ func main() {
 	}
 	defer pool.Close()
 
-	n, err := gen.New(pool).ReindexAll(ctx)
+	q := gen.New(pool)
+	pruned, err := q.PruneDeletedSearchDocuments(ctx)
+	if err != nil {
+		slog.Error("prune deleted", "error", err)
+		os.Exit(1)
+	}
+	n, err := q.ReindexAll(ctx)
 	if err != nil {
 		slog.Error("reindex", "error", err)
 		os.Exit(1)
 	}
-	slog.Info("search projection rebuilt", "documents", n)
+	slog.Info("search projection rebuilt", "documents", n, "pruned", pruned)
 }

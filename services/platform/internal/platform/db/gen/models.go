@@ -205,6 +205,7 @@ type Skill struct {
 	ForkedFromVersionID pgtype.UUID
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
+	DeletedAt           pgtype.Timestamptz
 }
 
 type SkillSource struct {

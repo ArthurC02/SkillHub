@@ -5,7 +5,7 @@ RETURNING *;
 
 -- name: GetSkillByName :one
 SELECT * FROM skills
-WHERE workspace_id = $1 AND name = $2;
+WHERE workspace_id = $1 AND name = $2 AND deleted_at IS NULL;
 
 -- name: GetVersionBySkillAndHash :one
 -- Duplicate-content detection (SKILL-001, INGEST-005): same content on the

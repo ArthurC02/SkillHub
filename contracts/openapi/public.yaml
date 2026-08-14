@@ -260,6 +260,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /skills/{id}:
+    delete:
+      operationId: deleteSkill
+      summary: Delete a private skill (WS-005)
+      description: |
+        Soft delete: the skill leaves lists, reads, and search immediately.
+        Version snapshots stay frozen for the 30-day grace period before the
+        background purge; shared package objects are unaffected.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted, with the exact deletion scope.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted, versions_retained, note]
+                properties:
+                  deleted: { type: boolean }
+                  versions_retained: { type: integer }
+                  note: { type: string }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Skill not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/fork:
     post:
       operationId: forkSkill

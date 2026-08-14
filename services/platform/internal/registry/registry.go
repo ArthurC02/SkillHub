@@ -106,6 +106,41 @@ func (s *Service) Fork(ctx context.Context, ws gen.Workspace, skillID pgtype.UUI
 	return fork, ver, tx.Commit(ctx)
 }
 
+// DeleteResult tells the user what the deletion covered (WS-005 狀態回饋).
+type DeleteResult struct {
+	VersionsRetained int64
+}
+
+// Delete soft-deletes a skill: it vanishes from lists, reads, and search now;
+// version snapshots stay frozen (0005 trigger) until the 30-day grace purge
+// (PDM-006). The content-addressed package objects are shared with forks, so
+// they are never removed here.
+// ponytail: the hard-purge background job lands with the retention work.
+func (s *Service) Delete(ctx context.Context, ws gen.Workspace, skillID pgtype.UUID) (DeleteResult, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return DeleteResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := gen.New(tx)
+
+	skill, err := q.SoftDeleteSkill(ctx, gen.SoftDeleteSkillParams{ID: skillID, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return DeleteResult{}, ErrNotFound
+	}
+	if err != nil {
+		return DeleteResult{}, err
+	}
+	if err := q.DeleteSearchDocument(ctx, skill.ID); err != nil {
+		return DeleteResult{}, err
+	}
+	n, err := q.CountSkillVersions(ctx, skill.ID)
+	if err != nil {
+		return DeleteResult{}, err
+	}
+	return DeleteResult{VersionsRetained: n}, tx.Commit(ctx)
+}
+
 func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"

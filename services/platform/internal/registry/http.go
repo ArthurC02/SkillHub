@@ -89,6 +89,37 @@ func (h *Handler) Fork(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, resp)
 }
 
+// Delete handles DELETE /skills/{id} (WS-005).
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	var skillID pgtype.UUID
+	if err := skillID.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		return
+	}
+
+	res, err := h.Svc.Delete(r.Context(), ws, skillID)
+	if errors.Is(err, ErrNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "delete failed")
+		return
+	}
+	// 狀態回饋 (WS-005): say exactly what the deletion covers.
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"deleted":           true,
+		"versions_retained": res.VersionsRetained,
+		"note": "skill removed from your workspace, lists, and search; " +
+			"version snapshots are retained for the 30-day grace period, then purged; " +
+			"shared package objects referenced by forks are unaffected",
+	})
+}
+
 // Diff handles GET /skills/{id}/diff?from=&to= (WS-003).
 func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
