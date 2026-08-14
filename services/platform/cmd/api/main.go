@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -61,7 +62,11 @@ func main() {
 	}
 
 	importer := &ingest.Handler{
-		Svc:      &ingest.Service{Pool: pool, Store: store},
+		Svc: &ingest.Service{
+			Pool:  pool,
+			Store: store,
+			Fetcher: importFetcherFromEnv(),
+		},
 		Identity: auth.Service,
 	}
 
@@ -69,6 +74,7 @@ func main() {
 	mux.HandleFunc("GET /healthz", httpx.Health)
 	auth.Mount(mux)
 	mux.HandleFunc("POST /skills/import/upload", auth.RequireSession(importer.Upload))
+	mux.HandleFunc("POST /skills/import/url", auth.RequireSession(importer.ImportURL))
 
 	srv := &http.Server{
 		Addr:              addrFromEnv("API_ADDR", ":8080"),
@@ -91,6 +97,22 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("api shutdown", "error", err)
 	}
+}
+
+// importFetcherFromEnv builds the URL-import fetcher: GitHub by default,
+// extra hosts via IMPORT_EXTRA_HOSTS (comma-separated), plain http only when
+// IMPORT_ALLOW_INSECURE=1 (local stubs and E2E, never production).
+func importFetcherFromEnv() *ingest.URLFetcher {
+	f := &ingest.URLFetcher{
+		Allowed:       ingest.DefaultAllowedHosts(),
+		AllowInsecure: os.Getenv("IMPORT_ALLOW_INSECURE") == "1",
+	}
+	for _, h := range strings.Split(os.Getenv("IMPORT_EXTRA_HOSTS"), ",") {
+		if h = strings.TrimSpace(strings.ToLower(h)); h != "" {
+			f.Allowed[h] = true
+		}
+	}
+	return f
 }
 
 func addrFromEnv(key, fallback string) string {

@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -54,7 +55,36 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.Svc.UploadZip(r.Context(), ws, data)
-	if errors.Is(err, ErrBadArchive) {
+	h.respond(w, res, err)
+}
+
+// ImportURL handles POST /skills/import/url. Wrap with RequireSession.
+func (h *Handler) ImportURL(w http.ResponseWriter, r *http.Request) {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
+		return
+	}
+
+	var body struct {
+		URL string `json:"url"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil || body.URL == "" {
+		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a non-empty url")
+		return
+	}
+
+	res, err := h.Svc.ImportURL(r.Context(), ws, body.URL)
+	h.respond(w, res, err)
+}
+
+func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
+	if errors.Is(err, ErrBadArchive) || errors.Is(err, ErrFetch) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}

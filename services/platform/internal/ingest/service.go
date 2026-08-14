@@ -42,8 +42,9 @@ type ObjectStore interface {
 }
 
 type Service struct {
-	Pool  *pgxpool.Pool
-	Store ObjectStore
+	Pool    *pgxpool.Pool
+	Store   ObjectStore
+	Fetcher *URLFetcher // nil disables URL import
 }
 
 // Result reports one upload. When Report.Blocked is true nothing was stored
@@ -55,9 +56,37 @@ type Result struct {
 	Duplicate bool // same content already existed as a version of this skill
 }
 
+// sourceMeta records where a package came from (INGEST-004).
+type sourceMeta struct {
+	Type string  // 'upload' or 'git'
+	URL  *string // original URL for git imports
+	Ref  *string // branch, tag, or commit when known
+}
+
 // UploadZip validates data as an Agent Skills package and, if it passes,
 // stores the archive and records source + version for ws.
 func (s *Service) UploadZip(ctx context.Context, ws gen.Workspace, data []byte) (Result, error) {
+	return s.importZip(ctx, ws, data, sourceMeta{Type: "upload"})
+}
+
+// ImportURL fetches a package from an allow-listed URL (INGEST-001) and runs
+// it through the same import pipeline as uploads.
+func (s *Service) ImportURL(ctx context.Context, ws gen.Workspace, rawURL string) (Result, error) {
+	if s.Fetcher == nil {
+		return Result{}, fmt.Errorf("%w: url import not configured", ErrFetch)
+	}
+	data, ref, err := s.Fetcher.Fetch(ctx, rawURL)
+	if err != nil {
+		return Result{}, err
+	}
+	meta := sourceMeta{Type: "git", URL: &rawURL}
+	if ref != "" {
+		meta.Ref = &ref
+	}
+	return s.importZip(ctx, ws, data, meta)
+}
+
+func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, src sourceMeta) (Result, error) {
 	fsys, err := packageFS(data)
 	if err != nil {
 		return Result{}, err
@@ -86,7 +115,7 @@ func (s *Service) UploadZip(ctx context.Context, ws gen.Workspace, data []byte) 
 	if err != nil {
 		return Result{}, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
 	skill, err := q.GetSkillByName(ctx, gen.GetSkillByNameParams{
@@ -116,7 +145,9 @@ func (s *Service) UploadZip(ctx context.Context, ws gen.Workspace, data []byte) 
 
 	source, err := q.CreateSkillSource(ctx, gen.CreateSkillSourceParams{
 		WorkspaceID: ws.ID,
-		SourceType:  "upload",
+		SourceType:  src.Type,
+		SourceUrl:   src.URL,
+		SourceRef:   src.Ref,
 		ContentHash: contentHash,
 		FetchedAt:   pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	})

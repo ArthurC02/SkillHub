@@ -84,10 +84,10 @@
 
 ## 6. Skill 匯入、驗證與索引（M1）
 
-- [ ] INGEST-001 支援從允許的 URL 匯入 Skill。
+- [x] INGEST-001 支援從允許的 URL 匯入 Skill。
 - [x] INGEST-002 支援上傳 Skill 套件。
 - [x] INGEST-003 解析 `SKILL.md` 與套件檔案樹。
-- [ ] INGEST-004 保存來源 URL、版本／Commit、擷取時間與內容雜湊。
+- [x] INGEST-004 保存來源 URL、版本／Commit、擷取時間與內容雜湊。
 - [x] INGEST-005 偵測重複內容並避免覆蓋既有版本。
 - [x] INGEST-006 實作 Agent Skills 規格驗證。
 - [x] INGEST-007 實作檔案引用、依賴、Script、外部 URL 與疑似 Secret 靜態檢查。

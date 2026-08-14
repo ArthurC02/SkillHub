@@ -146,6 +146,56 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Finding"
+  /skills/import/url:
+    post:
+      operationId: importSkillFromURL
+      summary: Import a skill package from an allow-listed URL (SKILL-001)
+      description: |
+        Requires a session. GitHub repo URLs are normalized to their zip
+        archives; other allow-listed URLs must point directly at a zip. The
+        package goes through the same static validation as uploads.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+      responses:
+        "201":
+          description: Package imported (or already present as this version).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+        "400":
+          description: Disallowed or unreachable URL, or content is not a valid archive.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Package failed spec or static validation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [findings]
+                properties:
+                  findings:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Finding"
 components:
   schemas:
     Health:
