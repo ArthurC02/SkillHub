@@ -160,7 +160,7 @@ func (g *GitHubOAuth) doJSON(req *http.Request, out any) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		return fmt.Errorf("github %s: status %d: %s", req.URL.Path, resp.StatusCode, b)

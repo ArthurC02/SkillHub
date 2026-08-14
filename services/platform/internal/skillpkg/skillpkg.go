@@ -232,11 +232,11 @@ var (
 	// secretPatterns are deliberately few and high-confidence: a false block
 	// costs an appeal (ADR-007 誤報), so fuzzy entropy checks stay out.
 	secretPatterns = []*regexp.Regexp{
-		regexp.MustCompile(`AKIA[0-9A-Z]{16}`),                      // AWS access key id
-		regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{36,}`),            // GitHub tokens
-		regexp.MustCompile(`sk-[A-Za-z0-9_-]{32,}`),                 // OpenAI-style API keys
-		regexp.MustCompile(`xox[baprs]-[A-Za-z0-9-]{10,}`),          // Slack tokens
-		regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),    // key material
+		regexp.MustCompile(`AKIA[0-9A-Z]{16}`),                       // AWS access key id
+		regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{36,}`),             // GitHub tokens
+		regexp.MustCompile(`sk-[A-Za-z0-9_-]{32,}`),                  // OpenAI-style API keys
+		regexp.MustCompile(`xox[baprs]-[A-Za-z0-9-]{10,}`),           // Slack tokens
+		regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),     // key material
 		regexp.MustCompile(`(?i)aws_secret_access_key\s*=\s*\S{20}`), // AWS secret assignment
 	}
 )

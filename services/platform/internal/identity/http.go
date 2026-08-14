@@ -129,7 +129,7 @@ func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) setSessionCookie(w http.ResponseWriter, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name: sessionCookie, Value: token, Path: "/",
-		MaxAge: int(SessionTTL / time.Second),
+		MaxAge:   int(SessionTTL / time.Second),
 		HttpOnly: true, Secure: h.Secure, SameSite: http.SameSiteLaxMode,
 	})
 }

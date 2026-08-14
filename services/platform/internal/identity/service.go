@@ -61,7 +61,7 @@ func (s *Service) signup(ctx context.Context, id ExternalIdentity) (gen.User, er
 	if err != nil {
 		return gen.User{}, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := s.queries().WithTx(tx)
 	user, err := q.CreateUser(ctx, gen.CreateUserParams{

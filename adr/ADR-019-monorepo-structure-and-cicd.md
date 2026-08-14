@@ -108,14 +108,14 @@ skillhub/
 
 ### 2. 工具鏈
 
-| 範圍 | 工具 | 說明 |
-| --- | --- | --- |
-| Go | `go build` / `go test` / `golangci-lint` | 不引入額外建置層 |
-| TS | Vite ＋ `tsc` ＋ ESLint ＋ Vitest | 前端原生 |
-| Python | `uv` ＋ `ruff` ＋ `pytest` | 依 ADR-016 用 uv 管理 |
-| 資料庫 | Migration 工具 ＋ `sqlc generate` | 產物入 repo |
-| 契約 | OpenAPI codegen（Go 為來源，產 TS client 與 Python stub） | 產物入 repo |
-| 共同入口 | **Taskfile**（`Taskfile.yml`） | 見下 |
+| 範圍     | 工具                                                      | 說明                  |
+| -------- | --------------------------------------------------------- | --------------------- |
+| Go       | `go build` / `go test` / `golangci-lint`                  | 不引入額外建置層      |
+| TS       | Vite ＋ `tsc` ＋ Oxlint ＋ Prettier ＋ Vitest             | 前端原生              |
+| Python   | `uv` ＋ `ruff` ＋ `pytest`                                | 依 ADR-016 用 uv 管理 |
+| 資料庫   | Migration 工具 ＋ `sqlc generate`                         | 產物入 repo           |
+| 契約     | OpenAPI codegen（Go 為來源，產 TS client 與 Python stub） | 產物入 repo           |
+| 共同入口 | **Taskfile**（`Taskfile.yml`）                            | 見下                  |
 
 共同入口選 **Taskfile 而非 Makefile**：目前開發環境為 Windows，`make` 需要額外安裝 MSYS/GNU make 才能用，而 Taskfile 是單一跨平台執行檔（與 Go 工具鏈同生態）。它的職責只有「把常用指令記在一個地方」，**不得**演變成依賴圖或快取層——需要那個能力時，走上方「重評條件」重開評估。
 
@@ -125,13 +125,13 @@ skillhub/
 
 觸發：對 `main` 的 PR，以及 push 到 `main`。所有 job 在 PR 上都必須綠燈。
 
-| # | Job | Path filter | 內容 |
-| --- | --- | --- | --- |
-| 1 | `web` | `apps/web/**`、`packages/api-client-ts/**` | install → lint → typecheck → test → `vite build` |
-| 2 | `platform` | `services/platform/**`、`db/**`、`contracts/**` | `golangci-lint` → `go test ./...` → `go build ./...` |
-| 3 | `llm` | `services/llm/**`、`packages/api-stub-py/**`、`contracts/**` | `uv sync --frozen` → `ruff check` → `pytest` |
-| 4 | `contracts-drift` | **無 filter，每次都跑** | 重跑 codegen 與 `sqlc generate`，接著 `git diff --exit-code`；有 diff 即失敗（鐵律 12） |
-| 5 | `images` | 同 1～3，但**只在 push 到 `main`** | build `apps/web`、`services/platform`、`services/llm` 的容器 Image，tag 為 commit SHA，推 registry |
+| #   | Job               | Path filter                                                  | 內容                                                                                               |
+| --- | ----------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| 1   | `web`             | `apps/web/**`、`packages/api-client-ts/**`                   | install → lint → typecheck → test → `vite build`                                                   |
+| 2   | `platform`        | `services/platform/**`、`db/**`、`contracts/**`              | `golangci-lint` → `go test ./...` → `go build ./...`                                               |
+| 3   | `llm`             | `services/llm/**`、`packages/api-stub-py/**`、`contracts/**` | `uv sync --frozen` → `ruff check` → `pytest`                                                       |
+| 4   | `contracts-drift` | **無 filter，每次都跑**                                      | 重跑 codegen 與 `sqlc generate`，接著 `git diff --exit-code`；有 diff 即失敗（鐵律 12）            |
+| 5   | `images`          | 同 1～3，但**只在 push 到 `main`**                           | build `apps/web`、`services/platform`、`services/llm` 的容器 Image，tag 為 commit SHA，推 registry |
 
 設計說明：
 

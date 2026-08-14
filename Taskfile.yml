@@ -43,6 +43,46 @@ tasks:
     dir: apps/web
     cmd: npm run lint
 
+  vet:platform:
+    dir: services/platform
+    cmd: go vet ./...
+
+  format:
+    desc: Format all services
+    deps: [format:platform, format:llm, format:web]
+
+  format:platform:
+    dir: services/platform
+    cmd: golangci-lint fmt
+
+  format:llm:
+    dir: services/llm
+    cmd: uv run ruff format .
+
+  format:web:
+    dir: apps/web
+    cmd: npm run format
+
+  format:check:
+    desc: Check formatting in all services
+    deps: [format:check:platform, format:check:llm, format:check:web]
+
+  format:check:platform:
+    dir: services/platform
+    cmd: golangci-lint fmt --diff
+
+  format:check:llm:
+    dir: services/llm
+    cmd: uv run ruff format --check .
+
+  format:check:web:
+    dir: apps/web
+    cmd: npm run format:check
+
+  check:
+    desc: Run lint, formatting, and Go static analysis
+    deps: [lint, format:check, vet:platform]
+
   build:
     desc: Build all services
     deps: [build:platform, build:web]

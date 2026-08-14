@@ -58,6 +58,7 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
+      - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
@@ -80,6 +81,8 @@ jobs:
       - uses: golangci/golangci-lint-action@v6
         with:
           working-directory: services/platform
+      - run: golangci-lint fmt --diff
+      - run: go vet ./...
       - run: go test ./...
       - run: go build ./...
 
@@ -96,6 +99,7 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --frozen
+      - run: uv run ruff format --check .
       - run: uv run ruff check .
       - run: uv run pytest
 
