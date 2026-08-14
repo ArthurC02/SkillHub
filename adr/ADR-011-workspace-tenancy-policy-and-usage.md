@@ -95,7 +95,7 @@ MVP 可先使用共享資料庫與共享 Schema 的邏輯隔離，但必須：
 ## 待決策
 
 - Workspace ID 的生成與服務間傳遞規範。
-- 身分供應商與服務身分模式。
+- 身分供應商與服務身分模式。→ [ADR-020](./ADR-020-authentication-and-session-model.md)
 - 免費額度、自備 Key 與成本顯示方式。
 - 企業資料隔離 Profile 的觸發條件。
 

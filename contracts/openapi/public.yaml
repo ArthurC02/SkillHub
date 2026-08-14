@@ -20,6 +20,59 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+  /auth/github/login:
+    get:
+      operationId: startGithubLogin
+      summary: Begin GitHub OAuth login (ADR-020)
+      responses:
+        "302":
+          description: Redirect to GitHub authorization, with a one-shot state cookie.
+  /auth/github/callback:
+    get:
+      operationId: finishGithubLogin
+      summary: GitHub OAuth callback; creates user and workspace on first login
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema: { type: string }
+        - name: state
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "302":
+          description: Login succeeded; session cookie set, redirect to the app.
+        "401":
+          description: State mismatch or code exchange failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /auth/logout:
+    post:
+      operationId: logout
+      summary: Revoke the current session
+      responses:
+        "204":
+          description: Session revoked (idempotent; also returned when no session).
+  /me:
+    get:
+      operationId: getMe
+      summary: Current user and personal workspace, resolved from the session
+      responses:
+        "200":
+          description: The authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Me"
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Health:
@@ -29,3 +82,23 @@ components:
         status:
           type: string
           enum: [ok]
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    Me:
+      type: object
+      required: [user_id, email, display_name, workspace_id]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        display_name:
+          type: string
+        workspace_id:
+          type: string
+          format: uuid

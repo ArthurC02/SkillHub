@@ -73,10 +73,10 @@
 
 ## 5. 核心領域與帳號（M1）
 
-- [ ] CORE-001 建立 User 與個人工作區資料模型。
-- [ ] CORE-002 建立 Skill、Skill Source、Skill Version 與 Fork 資料模型。
-- [ ] CORE-003 建立 Test Case、Run、Trace、Evaluation 與 Artifact 資料模型。
-- [ ] CORE-004 定義不可變 Skill Version 與歷史 Run 快照規則。
+- [x] CORE-001 建立 User 與個人工作區資料模型。
+- [x] CORE-002 建立 Skill、Skill Source、Skill Version 與 Fork 資料模型。
+- [x] CORE-003 建立 Test Case、Run、Trace、Evaluation 與 Artifact 資料模型。
+- [x] CORE-004 定義不可變 Skill Version 與歷史 Run 快照規則。
 - [ ] CORE-005 建立基本登入、登出與工作區存取控制。
 - [ ] CORE-006 建立使用者私有內容的授權檢查。
 - [ ] CORE-007 建立使用者資料與 Artifact 的刪除流程。

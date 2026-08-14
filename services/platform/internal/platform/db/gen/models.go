@@ -177,6 +177,14 @@ type RunStatusTransition struct {
 	OccurredAt  pgtype.Timestamptz
 }
 
+type Session struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	TokenHash []byte
+	CreatedAt pgtype.Timestamptz
+	ExpiresAt pgtype.Timestamptz
+}
+
 type Skill struct {
 	ID                  pgtype.UUID
 	WorkspaceID         pgtype.UUID
@@ -267,6 +275,13 @@ type User struct {
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 	DeletedAt   pgtype.Timestamptz
+}
+
+type UserIdentity struct {
+	UserID         pgtype.UUID
+	Provider       string
+	ProviderUserID string
+	CreatedAt      pgtype.Timestamptz
 }
 
 type Workspace struct {
