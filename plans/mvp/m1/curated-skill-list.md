@@ -1,0 +1,276 @@
+# CONTENT-003／004：首批 Skill 正式候選清單與 License 合規總表
+
+- 狀態：**正式交付（CONTENT-003 候選清單、CONTENT-004 來源與 License 檢查）**。工作項目勾選留待負責人。
+- 查核日：**2026-08-15**（本文件所有 URL、commit SHA、License 判定均以此日觀測為準）
+- 查核方法：實地存取 GitHub REST API、`github.com` 頁面與 `raw.githubusercontent.com` 原始檔。**License 一律以實查 `LICENSE`／`LICENSE.txt` 檔案內容判定，不採信 README 或 repo metadata 的宣稱**——本次即因此揪出兩個「宣稱 MIT、實為 Anthropic source-available 衍生物」的 repo（見 §4.1）。
+- 依據：
+  - [PDM-001](../m0/pdm-proposals.md#1-pdm-001mvp-首批三個-skill-類別)（三類別 `documents`／`writing`／`data`，2026-08-14 定案）
+  - [PDM-002](../m0/pdm-proposals.md#2-pdm-002首批-skill-來源清單與精選標準)（白名單制、回溯准入流程、九項精選檢查表、數量目標，2026-08-14 定案）
+  - [PDM-004 §4](../m0/pdm-proposals.md)（Runtime 預裝套件白名單；`lxml` 必要、`matplotlib` 建議，**兩者已隨 PDM-002 於 2026-08-14 一併採納**）
+  - [data-category-sourcing.md](../m0/data-category-sourcing.md)（`data` 類 25 候選與否決紀錄，2026-08-14）
+- 前身文件：[content-candidates.md](./content-candidates.md)（M1 起步的候選盤點初稿）。**本文件為其正式版**，沿用其類別邊界原則與 `data` 類歸屬說明；初稿保留不刪，作為歸屬判斷的推導過程。
+
+> **類別邊界原則（承自 content-candidates.md，PDM-002 定案時的建議切法）**
+> 去重／篩選／驗證／合併／拆分／取代屬**整理** → `data`；**建立與格式化**屬**產出** → `documents`。
+> 本次依此原則將 `YuYY2004/excel-skills` 新發現的 `excel-insert`（插入列欄＝建立）、`excel-format`、`excel-freeze`（格式化）歸入 `documents`——這是 `documents` 首次取得 **OSI 授權**的候選，直接緩解 PDM-001 風險表「`documents` 高品質 Skill 全部 source-available」的缺口。
+
+---
+
+## 1. 達標總覽
+
+| 類別 | 精選目標 4–6 | 實際精選候選 | 判定 | 已索引目標 8–12 | 實際已索引 | 判定 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `documents` | 4–6 | **3** | ❌ 短少 1 | 8–12 | **10** | ✅ |
+| `writing` | 4–6 | **5** | ✅ | 8–12 | **10** | ✅ |
+| `data` | 4–6 | **6** | ✅ | 8–12 | **25** | ✅ 超額 |
+| **合計** | 12–18 | **14** | ✅ 落在區間內 | 24–36 | **45** | ✅ |
+
+**一句話結論：三類的「已索引」全部達標，`writing` 與 `data` 的「精選」也達標；唯一缺口是 `documents` 精選短少 1 個**，成因與緩解見 §7。
+
+來源多樣性（PDM-011 golden query set 的跨 repo 抽樣前提）：**9 個獨立來源 repo**，較 M0 的 7 個增加 2 個，且 `documents`／`writing` 首次各自擁有 2 個以上獨立來源，不再單押 `anthropics/skills`。
+
+---
+
+## 2. 精選（curated）候選清單
+
+### 2.1 `documents`
+
+| # | Skill | 來源 repo | pin commit | SKILL.md 路徑 | License | 依賴 | 外網 | Script 規模 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| D-1 | `excel-insert` | [YuYY2004/excel-skills](https://github.com/YuYY2004/excel-skills) | `c15e51e20424284f98359e8d3512f8aaa771c62f` | `claude/skills/excel-insert/SKILL.md` | MIT（實查 `LICENSE`） | `openpyxl` ✅ | 不需 | 全文約 280–300 行，內嵌 Python 約 180 行 ✅ ≤300 |
+| D-2 | `excel-freeze` | YuYY2004/excel-skills | 同上 | `claude/skills/excel-freeze/SKILL.md` | MIT | `openpyxl` ✅ | 不需 | 全文約 120 行，內嵌 Python 約 45 行 ✅ |
+| D-3 | `handoff` | [ToolMonsters/handoff-skill](https://github.com/ToolMonsters/handoff-skill) | `fa70c91e44a5f36b374f3600ddca3c98814e6451` | `SKILL.md`（repo 根） | MIT（實查 `LICENSE`） | 無（prompt-only） | 不需 | **0 行** ✅ |
+
+### 2.2 `writing`
+
+| # | Skill | 來源 repo | pin commit | SKILL.md 路徑 | License | 依賴 | 外網 | Script 規模 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| W-1 | `brand-guidelines` | [anthropics/skills](https://github.com/anthropics/skills) | `f6656c1256d5a8adfa37db9110046ef20bac644c` | `skills/brand-guidelines/SKILL.md` | **Apache-2.0**（實查 `skills/brand-guidelines/LICENSE.txt` 首行為 Apache License 2.0） | 無 | 不需 | 0 行 |
+| W-2 | `internal-comms` | anthropics/skills | 同上 | `skills/internal-comms/SKILL.md` | Apache-2.0 | 無 | 不需 | 0 行 |
+| W-3 | `humanizer` | [blader/humanizer](https://github.com/blader/humanizer) | `523374dee72d67c7b2b5f858ea0094ffda49c3ac` | `SKILL.md`（repo 根） | MIT（實查 `LICENSE`；frontmatter 亦自帶 `license: MIT`） | 無 | 不需 | 1 個 `scripts/validate-package.py`，1,952 bytes，**打包驗證用、非執行路徑** |
+| W-4 | `line-edit` | [cabbagecachekid/neon-jetpack](https://github.com/cabbagecachekid/neon-jetpack) | `4c0f62e17c00681705c481d9be600f5d4d1a660a` | `skills/line-edit/SKILL.md` | MIT（實查 `LICENSE`） | 無 | 不需 | 0 行 |
+| W-5 | `ai-written-check` | cabbagecachekid/neon-jetpack | 同上 | `skills/ai-written-check/SKILL.md` | MIT | 無 | 不需 | 0 行 |
+
+> `humanizer` 是三類精選中唯一的高星等來源（35,674★，2026-08-15 觀測），對沖了 PDM-001 風險表「社群 repo 上游消失風險」的一部分。
+
+### 2.3 `data`
+
+沿用 [data-category-sourcing.md §5](../m0/data-category-sourcing.md) 的排序（依賴零缺口 → 作者可辨識 → 驗收確定性），本次逐條複核仍有效：
+
+| # | Skill | 來源 repo | pin commit | SKILL.md 路徑 | License | 依賴 | 外網 | Script 規模 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A-1 | `data-analyst` | [nqumich/data-analyst-skill](https://github.com/nqumich/data-analyst-skill) | `0ba9d17ed275b341df713db6a10b44eb32bf6eb1` | `SKILL.md`（repo 根） | MIT（實查 `LICENSE`） | `pandas`、`openpyxl` ✅ | 不需 | `scripts/data_ops.py` 203 行 ✅ |
+| A-2 | `data-cleanliness-scan` | [danielrosehill/Claude-Data-Wrangler-plugin](https://github.com/danielrosehill/Claude-Data-Wrangler-plugin) | `b12805a62307021e024626616119b505e015f5a9` | `skills/data-cleanliness-scan/SKILL.md` | MIT | prompt-only（`pandas`／`numpy`）✅ | 不需 | 0 行 |
+| A-3 | `csv-to-json` | danielrosehill/Claude-Data-Wrangler-plugin | 同上 | `skills/csv-to-json/SKILL.md` | MIT | prompt-only ✅ | 不需 | 0 行 |
+| A-4 | `text-to-numeric` | danielrosehill/Claude-Data-Wrangler-plugin | 同上 | `skills/text-to-numeric/SKILL.md` | MIT | prompt-only ✅ | 不需 | 0 行 |
+| A-5 | `excel-deduplicate` | YuYY2004/excel-skills | `c15e51e2...` | `claude/skills/excel-deduplicate/SKILL.md` | MIT | `pandas`、`openpyxl`、`lxml` ✅（`lxml` **已於 2026-08-14 隨 PDM-002 納入白名單**） | 不需 | 全文約 180–190 行，內嵌 Python 約 130–140 行 ✅ |
+| A-6 | `excel-find-duplicates` | YuYY2004/excel-skills | 同上 | `claude/skills/excel-find-duplicates/SKILL.md` | MIT | 同上 ✅ | 不需 | 單檔 ≤253 行 ✅ |
+
+> **`lxml` 條件已解除。** content-candidates.md §3.1 把 A-5／A-6 標為「待 PDM-004 定案 `lxml` 後才可入選」；[pdm-proposals.md 定案紀錄](../m0/pdm-proposals.md)（2026-08-14）已載明「§4 的 `lxml`（必要）與 `matplotlib`（建議）白名單增補隨 PDM-002 一併採納」。**兩者為無條件精選候選，該註記作廢。**
+
+---
+
+## 3. 九項精選檢查矩陣
+
+判定值：`pass`／`fail`／`pending`（需平台或後續工作項才能判定，標明承接的工作項）。
+
+檢查項編號依 PDM-002：①License 明確且允許再散布 ②來源可追溯 ③規格驗證無阻擋錯誤 ④Script 可審閱（≤300 行、人工逐行、無 `eval`／動態下載／外連 `subprocess`）⑤無疑似 Secret ⑥不需外網／MCP、依賴在 Runtime Image 內 ⑦白話摘要 ⑧平台基準試跑通過 ⑨作者可辨識
+
+| Skill | ① | ② | ③ | ④ | ⑤ | ⑥ | ⑦ | ⑧ | ⑨ |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| D-1 `excel-insert` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
+| D-2 `excel-freeze` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
+| D-3 `handoff` | pass | pass | pass | **pass**（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
+| W-1 `brand-guidelines` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
+| W-2 `internal-comms` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
+| W-3 `humanizer` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
+| W-4 `line-edit` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
+| W-5 `ai-written-check` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
+| A-1 `data-analyst` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
+| A-2 `data-cleanliness-scan` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
+| A-3 `csv-to-json` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
+| A-4 `text-to-numeric` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
+| A-5 `excel-deduplicate` | pass | pass | pass | **pending**¹⁺⁵ | pending² | pass | pending³ | pending⁴ | pass |
+| A-6 `excel-find-duplicates` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
+
+腳註：
+
+1. **④ 的行數已機械量測且全部落在 300 行上限內**，但**「人工逐行審過」一項尚未執行**（沿用 M0 的既有限制）。承接工作項：**CONTENT-006**。
+2. **⑤ 靜態掃描與人工 Secret 確認尚未執行。** 承接工作項：**CONTENT-006**。
+3. **⑦ 白話摘要尚未撰寫。** 承接工作項：**CONTENT-005**。⚠️ `data-analyst`（簡體中文）與 YuYY2004 系列（簡體中文）需重寫為繁體中文；`anthropics/skills` 的 README 免責條款（"provided for demonstration and educational purposes only"）需納入措辭考量。
+4. **⑧ 平台基準試跑需要平台存在。** 承接工作項：**CONTENT-007（範例資料／Prompt／驗收條件）→ CONTENT-008（基準試跑）**。此項在隔離 Sandbox 內執行，符合鐵律 1。
+5. **`excel-deduplicate` 的 SKILL.md 於依賴段落出現 `pip install` 字樣。** 三個套件（`pandas`／`lxml`／`openpyxl`）全部在 PDM-004 白名單內，該分支在 Runtime Image 中不會觸發；但**「SKILL.md 文字教模型執行被禁止的動作」與 M0 否決 `cabbage2000-lab/data-analysis-skills` 的理由同型**。CONTENT-006 需人工確認措辭是否可接受，或於匯入時標註。
+
+> **九項全過者目前為 0**——這是預期狀態，不是缺陷：⑤⑦⑧ 三項在平台建成前對**所有**候選（含官方來源）一律無法判定。**在 CONTENT-005／006／007／008 全數完成前，`03-work-items.md` 的 CONTENT-003 不得勾選為完成**。
+
+---
+
+## 4. 已索引（indexed）清單
+
+已索引層**不要求九項全過**（PDM-002），只要求 License 狀態可判定、來源可追溯、不含明確阻擋項。精選候選同時計入已索引。
+
+### 4.1 `documents`（10）
+
+| # | Skill | 來源 repo | pin commit | License | Tier | 備註 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `excel-insert` | YuYY2004/excel-skills | `c15e51e2` | MIT | **curated** | 見 §2.1 |
+| 2 | `excel-freeze` | YuYY2004/excel-skills | `c15e51e2` | MIT | **curated** | 見 §2.1 |
+| 3 | `handoff` | ToolMonsters/handoff-skill | `fa70c91e` | MIT | **curated** | 見 §2.1 |
+| 4 | `excel-format` | YuYY2004/excel-skills | `c15e51e2` | MIT | indexed | ❌ ④不過：SKILL.md 全文約 **1,600–1,800 行**、內嵌大量可執行 Python，遠超 300 行上限。可索引、可試跑，**不列精選** |
+| 5 | `document-format-skills` | [KaguraNanaga/document-format-skills](https://github.com/KaguraNanaga/document-format-skills) | `cbdd11249b6d8925a2ca6ff83f3a82201023962c` | MIT（實查 `LICENSE`） | indexed | ❌ ④不過：`scripts/` 下 9 個 Python 檔，僅 `process.py` 即約 290 行，合計遠超上限。⚠️ 選用依賴 `pywin32`（Windows-only，`.doc`／`.wps` 轉檔）不在白名單，該路徑在 Runtime Image 內不可用；核心 `.docx` 路徑只需 `python-docx` ✅。中國國標 GB/T 9704-2012 導向 |
+| 6 | `course-quiz-builder` | [the3ma/course-quiz-builder](https://github.com/the3ma/course-quiz-builder) | `e2ac75e52a9a8214b656d9da1a505a2c74116225` | MIT（實查 `LICENSE`） | indexed | Node.js、**零 npm 依賴**（僅 `node:` 內建），Node ≥18 ✅（Image 為 Node 22）。⚠️ `publish-pages.mjs` 需 GitHub Pages 外網、`browser-check.mjs` 需 Chromium——**匯入時須確認這兩條路徑可被排除**，否則 ⑥ 不過。④ 的 `.mjs` 行數未量測 |
+| 7 | `docx` | anthropics/skills | `f6656c12` | **Source-available**（Anthropic 服務條款） | indexed | ❌ ①不過，見 §5.2 的升級告警 |
+| 8 | `pdf` | anthropics/skills | `f6656c12` | Source-available | indexed | 同上 |
+| 9 | `pptx` | anthropics/skills | `f6656c12` | Source-available | indexed | 同上 |
+| 10 | `xlsx` | anthropics/skills | `f6656c12` | Source-available | indexed | 同上；依類別邊界原則歸 `documents`（建立／格式化），非 `data` |
+
+### 4.2 `writing`（10）
+
+| # | Skill | 來源 repo | pin commit | License | Tier |
+| --- | --- | --- | --- | --- | --- |
+| 1–2 | `brand-guidelines`、`internal-comms` | anthropics/skills | `f6656c12` | Apache-2.0 | **curated** |
+| 3 | `humanizer` | blader/humanizer | `523374de` | MIT | **curated** |
+| 4–5 | `line-edit`、`ai-written-check` | cabbagecachekid/neon-jetpack | `4c0f62e1` | MIT | **curated** |
+| 6 | `cringe-check` | cabbagecachekid/neon-jetpack | `4c0f62e1` | MIT | indexed |
+| 7 | `full-review` | cabbagecachekid/neon-jetpack | `4c0f62e1` | MIT | indexed |
+| 8 | `copyright-creative-work` | cabbagecachekid/neon-jetpack | `4c0f62e1` | MIT | indexed；主題為著作權常識，**非法律意見**，UI 需比照 NFR-001 措辭紀律標註 |
+| 9 | `sokrati` | [iamursky/sokrati](https://github.com/iamursky/sokrati) | `6255b82d5f25de5e8ef8ebd4bbe1fbeded0a1865` | MIT（實查根目錄 `license` 小寫檔，`Copyright (c) 2026 Ilya Evseev`） | indexed |
+| 10 | `shorten` | iamursky/sokrati | `6255b82d` | MIT | indexed |
+
+> **`sokrati` 的語意叢集警告**：該 repo 的 7 個 skill 中有 6 個（`abbrevia`／`abrege`／`abrevia`／`escurca`／`kuerzen`／`shorten`）是同一個「精簡文字」能力的多語版本。**本清單只納入 `sokrati` 與 `shorten` 兩個**，其餘 5 個刻意不索引——否則 PDM-011 的 golden query set 會因語意重複而失去 recall@5 鑑別力（PDM-001 風險表「`data` 候選語意過度集中」的同型風險，在 `writing` 也存在）。
+>
+> `neon-jetpack` 的 `ux-web-design-review` 與 `journey-map` 屬設計評審，不屬 `writing`，未納入；`using-neon-jetpack` 為 meta 說明，未納入。
+
+### 4.3 `data`（25）
+
+沿用 [data-category-sourcing.md §4.1](../m0/data-category-sourcing.md) 的 25 個合格候選，**本次逐條複核：3 個來源 repo 全部存在、未封存、License 未變更**（見 §5.1）。
+
+| 群組 | Skill | 來源 repo | pin commit | License | Tier |
+| --- | --- | --- | --- | --- | --- |
+| 1–10 | `excel-deduplicate`※、`excel-find-duplicates`※、`excel-filter`、`excel-validate`、`excel-merge`、`excel-split`、`excel-sort`、`excel-regex-clean`、`excel-scout`、`excel-delete` | YuYY2004/excel-skills | `c15e51e2` | MIT | ※為 curated，其餘 indexed |
+| 11–12 | `excel-mapping-replace`、`excel-date-to-text` | YuYY2004/excel-skills | `c15e51e2` | MIT | indexed |
+| 13–24 | `data-cleanliness-scan`※、`csv-to-json`※、`text-to-numeric`※、`standardise-country-names`、`unicode-consistency`、`date-wrangling`、`json-restructure`、`data-shape`、`data-comparability`、`add-data-dictionary`、`pii-flag`、`add-iso3166` | danielrosehill/Claude-Data-Wrangler-plugin | `b12805a6` | MIT | ※為 curated，其餘 indexed |
+| 25 | `data-analyst`※ | nqumich/data-analyst-skill | `0ba9d17e` | MIT | curated |
+
+**同 repo 必須逐一排除、不可整包匯入者（danielrosehill，7 個需外網）**：`hf-dataset-push`、`vector-upsert`、`sql-load`、`api-loader`、`graph-database`、`database-guide`、`enrich-with-currency`。
+
+---
+
+## 5. License 合規總表（CONTENT-004）
+
+### 5.1 入選 repo 的 License 判定
+
+「可否再散布」＝ 是否允許 Skill Hub 產出 Download Artifact（`02:PACK-001`）。「衍生關係」欄依 `02:DISC-003`「任何 Skill Hub 修改後的版本都能追溯到原始來源及 Fork 關係」與 CONTENT-002 的呈現規則填寫。
+
+| # | 來源 repo | pin commit | License（實查檔案） | 判定依據 | 可否再散布 | source-available 標記 | 衍生關係 | 涵蓋類別 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | [anthropics/skills](https://github.com/anthropics/skills) — `brand-guidelines`、`internal-comms` | `f6656c1256d5a8adfa37db9110046ef20bac644c` | **Apache-2.0** | `skills/<name>/LICENSE.txt` 首行 `Apache License Version 2.0` | ✅ 可 | 否 | 原創（Anthropic, PBC） | `writing` |
+| 2 | anthropics/skills — `docx`／`pdf`／`pptx`／`xlsx` | 同上 | **Source-available（Anthropic 服務條款）** | `skills/docx/LICENSE.txt`：「© 2025 Anthropic, PBC. All rights reserved.」＋ 使用受 Consumer／Commercial Terms 管轄 | ❌ **不可** | ✅ **是** | 原創（Anthropic, PBC） | `documents` |
+| 3 | [YuYY2004/excel-skills](https://github.com/YuYY2004/excel-skills) | `c15e51e20424284f98359e8d3512f8aaa771c62f` | **MIT** | 根目錄 `LICENSE`；repo metadata `spdx_id: MIT` 一致 | ✅ 可 | 否 | 原創（單一作者） | `data`、`documents` |
+| 4 | [danielrosehill/Claude-Data-Wrangler-plugin](https://github.com/danielrosehill/Claude-Data-Wrangler-plugin) | `b12805a62307021e024626616119b505e015f5a9` | **MIT** | 根目錄 `LICENSE`；metadata 一致 | ✅ 可 | 否 | 原創（Daniel Rosehill） | `data` |
+| 5 | [nqumich/data-analyst-skill](https://github.com/nqumich/data-analyst-skill) | `0ba9d17ed275b341df713db6a10b44eb32bf6eb1` | **MIT** | 根目錄 `LICENSE`；metadata 一致 | ✅ 可 | 否 | 原創 | `data` |
+| 6 | [blader/humanizer](https://github.com/blader/humanizer) | `523374dee72d67c7b2b5f858ea0094ffda49c3ac` | **MIT** | 根目錄 `LICENSE`；`SKILL.md` frontmatter 亦宣告 `license: MIT` | ✅ 可 | 否 | 內容方法論引用 Wikipedia〈Signs of AI writing〉（CC BY-SA 4.0 條目）作為**參考來源**，非程式碼衍生；**CONTENT-005 摘要應標註此引用** | `writing` |
+| 7 | [cabbagecachekid/neon-jetpack](https://github.com/cabbagecachekid/neon-jetpack) | `4c0f62e17c00681705c481d9be600f5d4d1a660a` | **MIT** | 根目錄 `LICENSE`；metadata 一致 | ✅ 可 | 否 | 原創 | `writing` |
+| 8 | [iamursky/sokrati](https://github.com/iamursky/sokrati) | `6255b82d5f25de5e8ef8ebd4bbe1fbeded0a1865` | **MIT** | 根目錄 **小寫 `license`** 檔，`Copyright (c) 2026 Ilya Evseev`。⚠️ 檔名非標準大寫，匯入腳本的 License 偵測需容忍大小寫 | ✅ 可 | 否 | 原創 | `writing` |
+| 9 | [ToolMonsters/handoff-skill](https://github.com/ToolMonsters/handoff-skill) | `fa70c91e44a5f36b374f3600ddca3c98814e6451` | **MIT** | 根目錄 `LICENSE` | ✅ 可 | 否 | 原創 | `documents` |
+| 10 | [KaguraNanaga/document-format-skills](https://github.com/KaguraNanaga/document-format-skills) | `cbdd11249b6d8925a2ca6ff83f3a82201023962c` | **MIT** | 根目錄 `LICENSE` | ✅ 可 | 否 | 原創 | `documents` |
+| 11 | [the3ma/course-quiz-builder](https://github.com/the3ma/course-quiz-builder) | `e2ac75e52a9a8214b656d9da1a505a2c74116225` | **MIT** | 根目錄 `LICENSE`；`marketplace.json` 一致 | ✅ 可 | 否 | repo 內含 `docs/superpowers/`，疑似參考 [obra/superpowers](https://github.com/obra/superpowers)（MIT，授權相容）；**CONTENT-006 需確認歸屬標註是否完整** | `documents` |
+
+**統計：9 個 repo 可再散布（MIT 8、Apache-2.0 1），1 個 repo 的 4 個 Skill 為 source-available、不可再散布。**
+
+### 5.2 ⚠️ 升級告警：`anthropics/skills` 的 source-available 條款比 PDM-002 假設的更嚴格
+
+PDM-002 風險表的統一政策為「**索引與平台內試跑照常（在平台上執行不等於再散布），但一律不產出任何 Download Artifact**」。
+
+本次實查 `skills/docx/LICENSE.txt` 的**完整條款**後發現，該授權除禁止「distributing, sublicensing, or transferring these materials to any third party」外，**同時禁止「extracting, copying, creating derivative works, or reproducing the materials outside the Services」**。
+
+**「reproducing … outside the Services」的字面範圍可能涵蓋「Skill Hub 在自己的資料庫與物件儲存中保存一份內容快照」**——而 INGEST-004／精選標準第 2 項（保存內容雜湊與快照）正是平台匯入的必要動作。若此解讀成立，**這 4 個 Skill 連「已索引」都不成立，只能停在「外部結果」層（僅存 URL 與 metadata，不存內容）**。
+
+- **這是法律解釋問題，不是架構問題，本文件不作判定。**
+- **建議動作**：負責人與法務就以下兩點確認後回填 PDM-002 風險表：(a) 平台保存內容快照是否構成 "reproducing outside the Services"；(b) 若構成，`documents` 類別的 4 個官方 Skill 應降級為第三層「外部結果」（僅索引 metadata 與連結）。
+- **對數量目標的影響**：若降級，`documents` 的已索引從 10 掉到 **6**，**低於 8–12 下限**，必須另補 2–6 個 OSI 候選。§7 的補足路徑因此不是「有餘裕再做」，而是**這個法務判定的對沖**。
+
+### 5.3 衍生關係的頭號地雷：**「宣稱 MIT 的 Anthropic source-available 衍生物」**
+
+本次查核最重要的單一發現。詳見 §6.1 的兩個 repo。**匯入腳本不可只讀 repo 根目錄的 `LICENSE` 就判定授權**——這兩個 repo 的根 `LICENSE` 都是合法的 MIT 檔案，錯的是「被 MIT 涵蓋的內容並非該作者所有」。
+
+**可執行的偵測啟發式（供 CONTENT-006／INGEST 實作參考）**：README 或 INDEX 出現 "based on Anthropic's official skills"／"Anthropic Official"／"Anthropic ... Plugins" 等來源字樣，且 skill 目錄名與 `anthropics/skills` 的 `docx`／`pdf`／`pptx`／`xlsx` 重合時，**一律標為 License 狀態「未知」並轉人工**，不得因 repo 有 MIT 檔而自動升級。
+
+---
+
+## 6. 淘汰／否決清單
+
+依 PDM-002 回溯准入流程第 4 步「記錄否決原因，不重複評估」。M0 已記錄的 14 組見 [data-category-sourcing.md §4.3](../m0/data-category-sourcing.md)，**不在此重複**；以下為本次（2026-08-15）新增。
+
+### 6.1 授權衍生關係不成立（最高嚴重度）
+
+| 候選 | 星等 | 宣稱 License | 實際問題 | 不過的檢查項 |
+| --- | --- | --- | --- | --- |
+| [appautomaton/document-SKILLs](https://github.com/appautomaton/document-SKILLs) | 145★ | 根目錄 `LICENSE` 為 MIT | README 明文：「MIT license, **based on Anthropic's official skills**」。其 `docx`／`pdf`／`pptx`／`xlsx` 四個目錄即 `anthropics/skills` 的 source-available 內容，**該授權明文禁止建立衍生作品與再散布**，作者無權以 MIT 轉授。**另**：系統依賴 `pandoc`／`poppler-utils`／`tesseract-ocr`／`qpdf`／`libreoffice`，且以 `uv` + PEP 723 在執行期解析依賴 | **①**（授權來源不成立）、**⑥**（系統依賴全不在 PDM-004 Image 內，且執行期安裝被禁止） |
+| [w95/awesome-claude-corporate-skills](https://github.com/w95/awesome-claude-corporate-skills)（`78dbc7c7...`） | 156★ | 根目錄 `LICENSE` 為 MIT | `INDEX.md` 自述 166 個 skill 來自五個來源：Anthropic Financial Services Plugins 51、Anthropic Knowledge Work Plugins 41、自製 39、社群 27、**Anthropic Official 8**。其 `13-document-processing` 的 `docx`／`pdf`／`pptx`／`xlsx` 明確標為 "Anthropic Official"。**100/166 為 Anthropic 來源，整包以 MIT 再授權的基礎不成立** | **①** |
+
+> **對 `w95` 的保留意見**：其中 39 個「自製」skill 的 MIT 宣稱本身可能成立，`07-Operations`（`sop-builder`、`project-status-report`、`incident-postmortem`）與 `03-HR`（`job-description-writer`、`employee-handbook-builder`）等與 `documents`／`writing` 高度相關。**但每一個都需逐一確認來源歸屬**，成本高且結果不確定。列為**條件候選，不計入本次數量**；若 §5.2 的法務判定導致 `documents` 供給塌陷，這是第一個應回頭挖掘的池子。
+
+### 6.2 依賴或外網不過
+
+| 候選 | 星等 | License | 否決原因 | 不過的檢查項 |
+| --- | --- | --- | --- | --- |
+| [inhouseseo/superseo-skills](https://github.com/inhouseseo/superseo-skills)（11 個 skill） | 254★ | Apache-2.0 ✅ | 實查 `write-content` 與 `improve-content` 的 `SKILL.md`：兩者的工作流第一步即「Google 主關鍵字並讀取前 5 名 SERP 結果」、`improve-content` 另需抓取目標 URL。**11 個 skill 全部建立在即時 SERP 研究之上**，與 ADR-005 egress default-deny 正面衝突 | **⑥** |
+| [umarmsharif/ai-presentation-builder](https://github.com/umarmsharif/ai-presentation-builder) | 1★ | MIT ✅ | 依賴 npm 套件 `pptxgenjs`；PDM-004 白名單只涵蓋 Python 套件，Runtime Image 未預裝任何第三方 npm 套件，且執行期禁止 `npm install`。選用依賴另含 LibreOffice 與 8 種商業字型 | **⑥**（若負責人決定為 Node 建立套件白名單，可回頭複審——**這是本清單唯一因「白名單語言缺口」而非品質問題出局的候選**） |
+| `data-to-document`（danielrosehill 同 repo，M0 未涵蓋） | — | MIT ✅ | 實查 `SKILL.md`：需 **Typst CLI** 在 PATH 上，另需 `pyyaml` ✅、選用 `babel` ✗ | **⑥** |
+| [nexu-io/html-anything](https://github.com/nexu-io/html-anything) | 8,291★ | Apache-2.0 ✅ | 實查根目錄：pnpm monorepo（`cli`／`next`／`e2e`），**無 `SKILL.md`、無 `skills/` 目錄**，不是 Agent Skills 套件而是一套本機應用程式 | **③**（非 Agent Skills 規格產物） |
+
+### 6.3 License 缺失
+
+| 候選 | 星等 | 否決原因 | 不過的檢查項 |
+| --- | --- | --- | --- |
+| `doc-coauthoring`（anthropics/skills） | — | 實查 `skills/doc-coauthoring/` 目錄**只有 `SKILL.md`，無 `LICENSE.txt`**；repo 根目錄亦無可繼承的 License 檔（metadata `license: null`）。**2026-08-15 複查結果與 M0 一致，狀況未改善** | **①**——不可精選、不可打包；僅可標為「外部」供發現用 | 
+| [PaodingAI/skills](https://github.com/PaodingAI/skills) | 16★ | repo metadata `license: null` | ① |
+| [0x-man/mindmap-skill](https://github.com/0x-man/mindmap-skill) | 10★ | `license: null` | ① |
+| [7abushahla/ieee-paper-skills](https://github.com/7abushahla/ieee-paper-skills) | 0★ | License 為 `NOASSERTION`（非標準授權，需人工判讀）；另需 LaTeX 工具鏈 | ①、⑥ |
+
+### 6.4 僅作發現，不直接匯入
+
+[karanb192/awesome-claude-skills](https://github.com/karanb192/awesome-claude-skills)（MIT，487★）本次作為**發現管道**使用，符合 PDM-002 對 awesome 清單的定位。**其 `documents` 分區的 4 個條目全部指回 `anthropics/skills`，`writing` 分區只有 `brand-guidelines`／`internal-comms`／一個 0★ 條目與一個「社群待補」佔位**——這獨立驗證了「`documents`／`writing` 的公開 OSI 供給確實稀薄」，不是本次搜尋不力。
+
+---
+
+## 7. 缺口與建議
+
+### 缺口 1：`documents` 精選短少 1 個（3 / 4–6）
+
+**成因不是搜尋不足，是結構性的**：`documents` 的高品質供給集中在 `anthropics/skills`，而其 4 個核心 Skill 為 source-available（①不過）；市面上最像替代品的兩個高星等 repo（`appautomaton/document-SKILLs` 145★、`w95/...` 156★）**恰好都是那 4 個 Skill 的非法 MIT 再授權**（§6.1）。真正原創且 OSI 授權的文件產出 Skill 極少。
+
+**三條補足路徑，依成本排序：**
+
+1. **（最低成本）複審 `YuYY2004/excel-skills` 剩餘的格式化類 Skill。** 本次已從該 repo 取得 3 個 `documents` 候選中的 2 個，`excel-format` 僅因 SKILL.md 過長出局。**建議：向上游提 issue／PR 將 `excel-format` 的內嵌腳本外移到 `scripts/`**，即可讓 ④ 通過——這同時是與白名單來源建立維護關係的機會（CONTENT-009 的變更通知管道）。
+2. **量測 `the3ma/course-quiz-builder` 的 `.mjs` 行數，並確認 `publish-pages.mjs`／`browser-check.mjs` 可被排除。** 若兩項成立，直接補上第 4 個精選。
+3. **（最高成本）挖掘 `w95/...` 的 39 個自製 skill**，逐一確認來源歸屬（§6.1 保留意見）。
+
+### 缺口 2：§5.2 的法務判定未完成，`documents` 的已索引數有塌陷風險
+
+若 `anthropics/skills` 的 4 個 source-available Skill 因「reproducing outside the Services」條款被判定連索引都不可，`documents` 已索引由 10 → **6**，跌破下限。**這是本文件最高優先的未決事項**，且是缺口 1 的三條補足路徑同時也是這個風險的對沖。
+
+### 建議 3：PDM-004 是否為 Node 建立第三方套件白名單
+
+目前白名單只有 Python 套件。Runtime 本身是 Node（Claude Agent SDK TS），但沒有任何第三方 npm 套件可用。`ai-presentation-builder`（§6.2）是第一個因此出局的候選，且 `documents` 類的 Node 生態（`pptxgenjs`、`docx`、`pdf-lib`）相當成熟。**建議把「是否開 npm 白名單」列為 PDM-004 的後續議題**——但注意這會擴大 SBX-002 的 SBOM 與供應鏈審查面，不是零成本。
+
+### 建議 4：golden query set 的跨 repo 抽樣配額（PDM-011）
+
+45 個已索引項目分布極不平均：`YuYY2004/excel-skills` 貢獻 14 個、`danielrosehill` 12 個，兩者合計 58%。**PDM-001 風險表「語意過度集中」的緩解（每 repo 至多 20% 題目）在本清單下仍然必要**。本次已對 `writing` 主動執行同型緩解（`sokrati` 的 6 個多語變體只取 1 個，見 §4.2）。
+
+### 建議 5：INGEST-010／CONTENT-009 的失效演練對象
+
+`nqumich/data-analyst-skill`（1★，最後推送 2026-03-02）與 `cabbagecachekid/neon-jetpack`（1★）是全清單上游消失風險最高的兩個，且各自承載 1 個與 2 個精選候選。**建議以其中之一作為 CONTENT-009 失效流程的實際演練對象**（PDM-001 風險表要求「對 `data` 需實際演練一次」，本建議把對象擴及 `writing`）。
+
+---
+
+## 8. 本次查核未涵蓋
+
+- **精選標準 ④ 的人工逐行審查**：僅機械量測行數與 import，未逐行閱讀任何 Script（同 M0 限制）。承接 CONTENT-006。
+- **精選標準 ⑤ 靜態 Secret 掃描**：未執行。承接 CONTENT-006。
+- **`02:SKILL-002` 的完整規格驗證**：僅確認 `SKILL.md` 存在且 frontmatter 具備 `name`／`description`，**未驗證所有檔案引用可解析**。承接 CONTENT-006。
+- **內容雜湊**：本文件只 pin 到 commit SHA，未計算內容雜湊（INGEST-004 要求，匯入時產生）。
+- **`danielrosehill` repo 於 2026-08-15 觀測到 32 個 skill 目錄**（M0 記錄的是 12 合格 ＋ 7 需外網 ＝ 19）。新出現的 13 個（`add-changelog`、`data-dictionary-export`、`data-enrichment`、`data-to-document`、`divergent-data-pipe`、`geodata-formatter`、`header-standardisation`、`iso-review`、`localization-headers`、`numeric-rounding`、`parquet-jsonl-package`、`synthetic-data-overlay`、`update-data-dictionary`）**本次只抽查了 `data-to-document`（已否決）**，其餘未逐一複查，未計入數量。`data` 已超額達標，補查非急件。
+- **`YuYY2004/excel-skills` 於 2026-08-15 觀測到 18 個 skill**（M0 記錄 12），路徑為 `claude/skills/<name>/SKILL.md`（另有 `codex/` 版本整併為單一 `CODEX.md`）。新增 6 個中，`excel-insert`／`excel-format`／`excel-freeze` 已完成複查並歸入 `documents`，`excel-replace`／`excel-orchestrate` 未複查、未計入；`excel-safe-workflow` 已複查（約 420 行全文／約 85 行 Python，`openpyxl`，不需外網）但屬流程性 meta skill，未計入數量。
+- **GitHub API 於查核後段觸發未認證速率上限**，部分項目改以 `github.com` 頁面與 `raw.githubusercontent.com` 取得；所有已記錄的 SHA 與 License 判定均取自實際回應，無推測值。

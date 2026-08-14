@@ -63,8 +63,8 @@
 
 - [x] CONTENT-001 定義精選、已索引與外部結果的收錄政策。
 - [x] CONTENT-002 定義來源可信度、License 與衍生關係的呈現規則。
-- [ ] CONTENT-003 建立首批 Skill 候選清單。（`data` 已達標；`documents`／`writing` 候選數未達 8–12 已索引目標，見 [plans/mvp/m1/content-candidates.md](m1/content-candidates.md) §4）
-- [ ] CONTENT-004 對首批 Skill 完成來源及 License 檢查。
+- [ ] CONTENT-003 建立首批 Skill 候選清單。（正式清單見 [plans/mvp/m1/curated-skill-list.md](m1/curated-skill-list.md)、匯入資料 `tools/content/seed-skills.json`。三類已索引全部達標；`documents` 精選 3／4–6 短少 1，且 §5.2 的 source-available 法務判定未完成前有塌陷風險。⑤⑦⑧ 三項檢查需 CONTENT-005／006／007／008 才能判定）
+- [ ] CONTENT-004 對首批 Skill 完成來源及 License 檢查。（License 合規總表見 [curated-skill-list.md §5](m1/curated-skill-list.md)；11 個入選 repo 已逐一實查 LICENSE 檔。未結案項：§5.2 `anthropics/skills` source-available 條款是否允許平台保存內容快照，待負責人與法務判定）
 - [ ] CONTENT-005 對首批 Skill 產生一般使用者可理解的摘要。
 - [ ] CONTENT-006 對首批 Skill 完成規格及靜態掃描。
 - [ ] CONTENT-007 對精選 Skill 建立範例資料、Prompt 與驗收條件。

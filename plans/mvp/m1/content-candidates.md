@@ -1,5 +1,11 @@
 # CONTENT-003：首批 Skill 候選清單
 
+> **本文件已由 [curated-skill-list.md](./curated-skill-list.md)（2026-08-15）升級為正式清單。**
+> 本文件保留為推導過程（類別邊界原則、`data` 類歸屬說明、缺口盤點的原始論證），**不再更新數量與 Tier**。三處已被正式清單推翻的內容：
+> 1. §2「`writing` 只有 2 個確認候選」——正式清單已補到 10 個已索引／5 個精選。
+> 2. §3.1 註記「A-5／A-6 待 PDM-004 定案 `lxml`」——`lxml` 已於 2026-08-14 隨 PDM-002 一併採納，條件解除。
+> 3. §4「`documents` 可達成精選數 0」——正式清單依類別邊界原則自 `YuYY2004/excel-skills` 取得 2 個 OSI 授權精選候選，另加 1 個，合計 3（仍短少 1）。
+
 - 狀態：候選盤點（M1 起步產出）。**尚未執行** CONTENT-004（來源／License 逐一人工確認）、CONTENT-006（規格與靜態掃描）、CONTENT-007／008（範例資料、Prompt 與基準試跑）——依 AGENTS.md 文件維護規則，下表的 Tier 欄一律是**建議值**，`03-work-items.md` 的 CONTENT-003 只在對應 `plans/mvp/m0` 三個來源文件的候選數量與 PDM-002 目標核對一致後才可勾選。
 - 依據：[PDM-001](../m0/pdm-proposals.md#1-pdm-001mvp-首批三個-skill-類別)（首批類別 `documents`／`writing`／`data`）、[PDM-002](../m0/pdm-proposals.md#2-pdm-002首批-skill-來源清單與精選標準)（白名單來源、九項精選檢查表、回溯准入流程）、[data-category-sourcing.md](../m0/data-category-sourcing.md)（`data` 類別實查結果，25 候選／7 來源 repo）。
 - 目標數量（PDM-002）：每類別 4–6 精選（curated）、8–12 已索引（indexed，含精選）。
