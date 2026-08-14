@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 type RunCleanupStatus string
@@ -175,6 +176,16 @@ type RunStatusTransition struct {
 	ToStatus    RunStatus
 	Reason      *string
 	OccurredAt  pgtype.Timestamptz
+}
+
+type SearchDocument struct {
+	SkillID     pgtype.UUID
+	WorkspaceID pgtype.UUID
+	Name        string
+	Summary     string
+	Tsv         interface{}
+	Embedding   *pgvector.Vector
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type Session struct {

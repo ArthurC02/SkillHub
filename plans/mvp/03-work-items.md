@@ -92,7 +92,7 @@
 - [x] INGEST-006 實作 Agent Skills 規格驗證。
 - [x] INGEST-007 實作檔案引用、依賴、Script、外部 URL 與疑似 Secret 靜態檢查。
 - [ ] INGEST-008 分開呈現錯誤、警告與資訊訊息。
-- [ ] INGEST-009 建立可搜尋索引與重新索引流程。
+- [x] INGEST-009 建立可搜尋索引與重新索引流程。
 - [ ] INGEST-010 建立外部內容失效、來源更新及人工下架流程。
 
 ## 7. Skill Explorer（M1，結束時通過驗證閘門才進 M2）

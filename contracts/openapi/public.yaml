@@ -196,6 +196,47 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Finding"
+  /skills/search:
+    get:
+      operationId: searchSkills
+      summary: Full-text search over the caller's skills (INGEST-009)
+      description: |
+        FTS leg of hybrid retrieval (ADR-013); vector recall and match reasons
+        arrive with the Explorer milestone. Scoped to the session workspace.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: Ranked matches; empty list when nothing matches.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SearchHit"
+        "400":
+          description: Missing query.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Health:
@@ -238,6 +279,19 @@ components:
           type: string
         message:
           type: string
+    SearchHit:
+      type: object
+      required: [skill_id, name, summary, rank]
+      properties:
+        skill_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        summary:
+          type: string
+        rank:
+          type: number
     UploadResult:
       type: object
       required: [skill_id, version_id, version_number, content_hash, duplicate, findings]

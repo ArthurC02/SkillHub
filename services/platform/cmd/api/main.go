@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
@@ -75,6 +76,9 @@ func main() {
 	auth.Mount(mux)
 	mux.HandleFunc("POST /skills/import/upload", auth.RequireSession(importer.Upload))
 	mux.HandleFunc("POST /skills/import/url", auth.RequireSession(importer.ImportURL))
+
+	search := &catalog.Handler{Pool: pool, Identity: auth.Service}
+	mux.HandleFunc("GET /skills/search", auth.RequireSession(search.Search))
 
 	srv := &http.Server{
 		Addr:              addrFromEnv("API_ADDR", ":8080"),

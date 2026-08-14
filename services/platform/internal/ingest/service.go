@@ -171,6 +171,17 @@ func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, 
 	if err != nil {
 		return Result{}, err
 	}
+
+	// Search projection updates in the same transaction (INGEST-009): same
+	// database, so consistency is free; full rebuilds go through cmd/reindex.
+	if err := q.UpsertSearchDocument(ctx, gen.UpsertSearchDocumentParams{
+		SkillID:     skill.ID,
+		WorkspaceID: ws.ID,
+		Name:        res.Report.Manifest.Name,
+		Summary:     res.Report.Manifest.Description,
+	}); err != nil {
+		return Result{}, err
+	}
 	return res, tx.Commit(ctx)
 }
 
