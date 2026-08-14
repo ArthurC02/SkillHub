@@ -302,4 +302,5 @@ type Workspace struct {
 	Name        string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+	IsCatalog   bool
 }

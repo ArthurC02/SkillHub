@@ -114,6 +114,14 @@ func (s *Service) Logout(ctx context.Context, token string) error {
 	return s.queries().DeleteSession(ctx, hashToken(token))
 }
 
+// CleanupExpiredSessions batch-deletes sessions past their absolute expiry.
+// Idempotent: an empty result on repeated calls is expected, not an error
+// (ADR-020, matches the ADR-008 cleanup convention). The caller is
+// responsible for scheduling; no cron/queue is wired here.
+func (s *Service) CleanupExpiredSessions(ctx context.Context) (int64, error) {
+	return s.queries().DeleteExpiredSessions(ctx)
+}
+
 // PersonalWorkspace returns the user's single personal workspace (ADR-011).
 func (s *Service) PersonalWorkspace(ctx context.Context, user gen.User) (gen.Workspace, error) {
 	ws, err := s.queries().ListWorkspacesByOwner(ctx, user.ID)

@@ -17,6 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
+	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/objstore"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
@@ -78,7 +79,20 @@ func main() {
 	mux.HandleFunc("POST /skills/import/upload", auth.RequireSession(importer.Upload))
 	mux.HandleFunc("POST /skills/import/url", auth.RequireSession(importer.ImportURL))
 
-	search := &catalog.Handler{Pool: pool, Identity: auth.Service}
+	// LLM service client (ADR-016: Python is capability provider).
+	// LLM_SERVICE_URL empty = embedding unavailable, FTS-only fallback.
+	var llm *llmclient.Client
+	if llmURL := os.Getenv("LLM_SERVICE_URL"); llmURL != "" {
+		llm = &llmclient.Client{BaseURL: llmURL}
+		slog.Info("llm service configured", "url", llmURL)
+	} else {
+		slog.Warn("LLM_SERVICE_URL not set; search will use FTS-only fallback")
+	}
+
+	search := &catalog.Handler{Pool: pool, Identity: auth.Service, LLMClient: llm}
+	// DISC-001: public search works without login.
+	mux.HandleFunc("GET /api/skills/search", search.PublicSearch)
+	// Workspace-scoped search (existing, requires session).
 	mux.HandleFunc("GET /skills/search", auth.RequireSession(search.Search))
 
 	reg := &registry.Handler{Svc: &registry.Service{Pool: pool, Store: store}, Identity: auth.Service}

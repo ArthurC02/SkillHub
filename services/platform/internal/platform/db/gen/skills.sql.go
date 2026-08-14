@@ -165,17 +165,21 @@ func (q *Queries) SoftDeleteSkill(ctx context.Context, arg SoftDeleteSkillParams
 }
 
 const updateSkillSummary = `-- name: UpdateSkillSummary :exec
-UPDATE skills SET summary = $2, updated_at = now()
-WHERE id = $1
+UPDATE skills SET summary = $3, updated_at = now()
+WHERE id = $1 AND workspace_id = $2
 `
 
 type UpdateSkillSummaryParams struct {
-	ID      pgtype.UUID
-	Summary *string
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	Summary     *string
 }
 
 // Mutable skill metadata only; versions themselves are immutable (iron rule 4).
+// Workspace scoped like every other statement here, even though the only caller
+// already re-read the skill through GetSkill: an unscoped UPDATE sitting in the
+// query file is a cross-tenant write waiting for its second caller.
 func (q *Queries) UpdateSkillSummary(ctx context.Context, arg UpdateSkillSummaryParams) error {
-	_, err := q.db.Exec(ctx, updateSkillSummary, arg.ID, arg.Summary)
+	_, err := q.db.Exec(ctx, updateSkillSummary, arg.ID, arg.WorkspaceID, arg.Summary)
 	return err
 }

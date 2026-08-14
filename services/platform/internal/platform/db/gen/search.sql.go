@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 const deleteSearchDocument = `-- name: DeleteSearchDocument :exec
@@ -34,6 +35,134 @@ func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context) (int64, error
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const publicHybridSearchSkills = `-- name: PublicHybridSearchSkills :many
+WITH fts AS (
+    SELECT s.skill_id, s.name, s.summary,
+           ROW_NUMBER() OVER (ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $2::text)) DESC) AS rn
+    FROM search_documents s
+    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
+    WHERE s.tsv @@ websearch_to_tsquery('english', $2::text)
+    LIMIT 50
+),
+vec AS (
+    SELECT s.skill_id, s.name, s.summary,
+           ROW_NUMBER() OVER (ORDER BY s.embedding <=> $3::vector ASC) AS rn
+    FROM search_documents s
+    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
+    WHERE s.embedding IS NOT NULL
+    LIMIT 50
+),
+rrf AS (
+    SELECT COALESCE(f.skill_id, v.skill_id) AS skill_id,
+           COALESCE(f.name, v.name) AS name,
+           COALESCE(f.summary, v.summary) AS summary,
+           COALESCE(1.0 / (60 + f.rn), 0) + COALESCE(1.0 / (60 + v.rn), 0) AS score
+    FROM fts f
+    FULL OUTER JOIN vec v ON f.skill_id = v.skill_id
+)
+SELECT skill_id, name, summary, score::float8 AS rank
+FROM rrf
+ORDER BY score DESC
+LIMIT $1
+`
+
+type PublicHybridSearchSkillsParams struct {
+	ResultLimit    int32
+	Query          string
+	QueryEmbedding *pgvector.Vector
+}
+
+type PublicHybridSearchSkillsRow struct {
+	SkillID pgtype.UUID
+	Name    string
+	Summary string
+	Rank    float64
+}
+
+// ADR-013 hybrid retrieval: FTS + vector similarity fused with RRF.
+// Both legs run as CTEs; RRF combines their rankings. A leg with no hits
+// contributes nothing (ADR-013 adjustment 3: zero-hit legs excluded).
+func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybridSearchSkillsParams) ([]PublicHybridSearchSkillsRow, error) {
+	rows, err := q.db.Query(ctx, publicHybridSearchSkills, arg.ResultLimit, arg.Query, arg.QueryEmbedding)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PublicHybridSearchSkillsRow
+	for rows.Next() {
+		var i PublicHybridSearchSkillsRow
+		if err := rows.Scan(
+			&i.SkillID,
+			&i.Name,
+			&i.Summary,
+			&i.Rank,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const publicSearchSkills = `-- name: PublicSearchSkills :many
+
+SELECT s.skill_id, s.name, s.summary,
+       ts_rank_cd(s.tsv, websearch_to_tsquery('english', $2::text))::float8 AS rank
+FROM search_documents s
+JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
+WHERE s.tsv @@ websearch_to_tsquery('english', $2::text)
+ORDER BY rank DESC
+LIMIT $1
+`
+
+type PublicSearchSkillsParams struct {
+	Limit int32
+	Query string
+}
+
+type PublicSearchSkillsRow struct {
+	SkillID pgtype.UUID
+	Name    string
+	Summary string
+	Rank    float64
+}
+
+// The two queries below serve unauthenticated callers (DISC-001), so their
+// scope cannot come from a session. They are restricted to catalog workspaces
+// (0010) instead of taking a workspace argument: a public query that accepts a
+// caller-supplied scope is exactly the shape iron rule 3 forbids, and a public
+// query with no scope at all leaks every private fork. "Public" is spelled out
+// in the name so no future caller reaches for one of these on a private path.
+// FTS-only public search — the degradation path when the embedding service is
+// unavailable (ADR-013 fallback).
+func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkillsParams) ([]PublicSearchSkillsRow, error) {
+	rows, err := q.db.Query(ctx, publicSearchSkills, arg.Limit, arg.Query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PublicSearchSkillsRow
+	for rows.Next() {
+		var i PublicSearchSkillsRow
+		if err := rows.Scan(
+			&i.SkillID,
+			&i.Name,
+			&i.Summary,
+			&i.Rank,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const reindexAll = `-- name: ReindexAll :execrows
@@ -128,6 +257,34 @@ func (q *Queries) UpsertSearchDocument(ctx context.Context, arg UpsertSearchDocu
 		arg.WorkspaceID,
 		arg.Name,
 		arg.Summary,
+	)
+	return err
+}
+
+const upsertSearchDocumentWithEmbedding = `-- name: UpsertSearchDocumentWithEmbedding :exec
+INSERT INTO search_documents (skill_id, workspace_id, name, summary, embedding, updated_at)
+VALUES ($1, $2, $3, $4, $5, now())
+ON CONFLICT (skill_id) DO UPDATE
+SET name = EXCLUDED.name, summary = EXCLUDED.summary,
+    embedding = EXCLUDED.embedding, updated_at = now()
+`
+
+type UpsertSearchDocumentWithEmbeddingParams struct {
+	SkillID     pgtype.UUID
+	WorkspaceID pgtype.UUID
+	Name        string
+	Summary     string
+	Embedding   *pgvector.Vector
+}
+
+// Full upsert including the embedding vector (ADR-013 index-time enhancement).
+func (q *Queries) UpsertSearchDocumentWithEmbedding(ctx context.Context, arg UpsertSearchDocumentWithEmbeddingParams) error {
+	_, err := q.db.Exec(ctx, upsertSearchDocumentWithEmbedding,
+		arg.SkillID,
+		arg.WorkspaceID,
+		arg.Name,
+		arg.Summary,
+		arg.Embedding,
 	)
 	return err
 }

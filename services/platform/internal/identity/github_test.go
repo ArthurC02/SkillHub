@@ -144,3 +144,23 @@ func TestRequireSessionWithoutCookie(t *testing.T) {
 		t.Fatalf("unexpected body: %s", w.Body.String())
 	}
 }
+
+func TestOptionalSessionWithoutCookiePassesThrough(t *testing.T) {
+	// Public routes (search, skill detail) must stay reachable with no session
+	// at all — OptionalSession must never reject (ADR-020, DISC-010).
+	h := &Handler{Service: &Service{}}
+	called := false
+	var gotUser bool
+	next := h.OptionalSession(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		_, gotUser = SessionUser(r.Context())
+	})
+	w := httptest.NewRecorder()
+	next(w, httptest.NewRequest(http.MethodGet, "/skills/search", nil))
+	if w.Code != http.StatusOK || !called {
+		t.Fatalf("want handler called with 200, got %d (called=%v)", w.Code, called)
+	}
+	if gotUser {
+		t.Fatal("want no user in context without a session cookie")
+	}
+}

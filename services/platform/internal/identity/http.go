@@ -169,10 +169,32 @@ func (h *Handler) RequireSession(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// SessionUser returns the user placed in the context by RequireSession.
+// SessionUser returns the user placed in the context by RequireSession or
+// OptionalSession.
 func SessionUser(ctx context.Context) (gen.User, bool) {
 	u, ok := ctx.Value(ctxKey{}).(gen.User)
 	return u, ok
+}
+
+// OptionalSession resolves the session cookie when present and valid, storing
+// the user in the request context, but never rejects the request — missing or
+// invalid sessions just mean SessionUser returns ok=false downstream. For
+// public reads (search, skill detail) that personalize when logged in
+// (DISC-010, ADR-020).
+func (h *Handler) OptionalSession(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		c, err := r.Cookie(sessionCookie)
+		if err != nil || c.Value == "" {
+			next(w, r)
+			return
+		}
+		user, err := h.Service.UserForToken(r.Context(), c.Value)
+		if err != nil {
+			next(w, r)
+			return
+		}
+		next(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, user)))
+	}
 }
 
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) {

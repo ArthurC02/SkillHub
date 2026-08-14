@@ -139,13 +139,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: [findings]
-                properties:
-                  findings:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Finding"
+                $ref: "#/components/schemas/CategorizedFindings"
   /skills/import/url:
     post:
       operationId: importSkillFromURL
@@ -189,13 +183,37 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: [findings]
-                properties:
-                  findings:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Finding"
+                $ref: "#/components/schemas/CategorizedFindings"
+  /api/skills/search:
+    get:
+      operationId: publicSearchSkills
+      summary: Public intent search for skills (DISC-001, DISC-002)
+      description: |
+        Natural language search over the public skill catalog. Uses hybrid
+        retrieval: pgvector embedding similarity + Postgres FTS, fused with
+        RRF (ADR-013). Does not require authentication.
+        Scope is the public catalog only: private workspace content is never
+        returned, and no request parameter can widen the scope (CORE-006,
+        ADR-011). Use GET /skills/search for the caller's own workspace.
+        Blank or incomprehensible queries return an empty result set with
+        a prompt to refine.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+          description: Natural language task description.
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        "200":
+          description: Ranked matches with match reasons, or empty list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicSearchResponse"
   /skills/search:
     get:
       operationId: searchSkills
@@ -390,13 +408,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: [findings]
-                properties:
-                  findings:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Finding"
+                $ref: "#/components/schemas/CategorizedFindings"
   /skills/{id}/diff:
     get:
       operationId: diffSkillVersions
@@ -484,6 +496,26 @@ components:
           type: string
         message:
           type: string
+    CategorizedFindings:
+      description: |
+        Validation findings grouped by severity (INGEST-008/SKILL-002):
+        blocking errors, non-blocking warnings, and informational notes are
+        separate lists rather than one undifferentiated feed.
+      type: object
+      required: [errors, warnings, infos]
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Finding"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Finding"
+        infos:
+          type: array
+          items:
+            $ref: "#/components/schemas/Finding"
     Skill:
       type: object
       required: [skill_id, name, summary]
@@ -501,6 +533,37 @@ components:
         forked_from_version_id:
           type: string
           format: uuid
+    PublicSearchResponse:
+      type: object
+      required: [query, results]
+      properties:
+        query:
+          type: string
+          description: The original query, echoed back (DISC-001).
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicSearchResult"
+    PublicSearchResult:
+      type: object
+      required: [skill_id, name, summary, rank]
+      properties:
+        skill_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        summary:
+          type: string
+          description: Plain summary (DISC-002).
+        rank:
+          type: number
+          description: Hybrid retrieval score (not purely stars; DISC-002).
+        match_reason:
+          type: string
+          description: |
+            Human-readable explanation of why this skill matches the query
+            (DISC-002). Template-based fallback when LLM polish times out.
     SearchHit:
       type: object
       required: [skill_id, name, summary, rank]
@@ -544,6 +607,4 @@ components:
           type: boolean
           description: True when identical content already existed as a version of this skill.
         findings:
-          type: array
-          items:
-            $ref: "#/components/schemas/Finding"
+          $ref: "#/components/schemas/CategorizedFindings"

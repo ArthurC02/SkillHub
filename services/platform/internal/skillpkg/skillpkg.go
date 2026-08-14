@@ -59,6 +59,31 @@ func (r *Report) add(sev Severity, code, path, msg string) {
 	}
 }
 
+// CategorizedFindings groups a Report's findings by severity so callers can
+// present blocking errors, non-blocking warnings, and informational notes as
+// separate lists instead of one undifferentiated feed (INGEST-008).
+type CategorizedFindings struct {
+	Errors   []Finding `json:"errors"`
+	Warnings []Finding `json:"warnings"`
+	Infos    []Finding `json:"infos"`
+}
+
+// Categorize splits r.Findings by severity.
+func (r Report) Categorize() CategorizedFindings {
+	c := CategorizedFindings{Errors: []Finding{}, Warnings: []Finding{}, Infos: []Finding{}}
+	for _, f := range r.Findings {
+		switch f.Severity {
+		case SeverityError:
+			c.Errors = append(c.Errors, f)
+		case SeverityWarning:
+			c.Warnings = append(c.Warnings, f)
+		default:
+			c.Infos = append(c.Infos, f)
+		}
+	}
+	return c
+}
+
 // nameRule is the Agent Skills name constraint: lowercase alphanumerics
 // separated by single hyphens.
 var nameRule = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)

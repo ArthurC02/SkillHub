@@ -20,12 +20,12 @@ type Handler struct {
 }
 
 type uploadResponse struct {
-	SkillID       string             `json:"skill_id"`
-	VersionID     string             `json:"version_id"`
-	VersionNumber int32              `json:"version_number"`
-	ContentHash   string             `json:"content_hash"`
-	Duplicate     bool               `json:"duplicate"`
-	Findings      []skillpkg.Finding `json:"findings"`
+	SkillID       string                       `json:"skill_id"`
+	VersionID     string                       `json:"version_id"`
+	VersionNumber int32                        `json:"version_number"`
+	ContentHash   string                       `json:"content_hash"`
+	Duplicate     bool                         `json:"duplicate"`
+	Findings      skillpkg.CategorizedFindings `json:"findings"`
 }
 
 // Upload handles POST /skills/import/upload. Wrap with RequireSession; the
@@ -133,13 +133,11 @@ func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
 		return
 	}
 
-	findings := res.Report.Findings
-	if findings == nil {
-		findings = []skillpkg.Finding{}
-	}
+	findings := res.Report.Categorize()
 	if res.Report.Blocked {
-		// SKILL-001/INGEST-008: failure result carries the reasons.
-		httpx.WriteJSON(w, http.StatusUnprocessableEntity, map[string]any{"findings": findings})
+		// SKILL-001/INGEST-008: failure result carries error/warning/info
+		// findings as separate lists, not one undifferentiated feed.
+		httpx.WriteJSON(w, http.StatusUnprocessableEntity, findings)
 		return
 	}
 

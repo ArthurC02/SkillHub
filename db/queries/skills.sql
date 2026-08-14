@@ -20,8 +20,11 @@ RETURNING *;
 
 -- name: UpdateSkillSummary :exec
 -- Mutable skill metadata only; versions themselves are immutable (iron rule 4).
-UPDATE skills SET summary = $2, updated_at = now()
-WHERE id = $1;
+-- Workspace scoped like every other statement here, even though the only caller
+-- already re-read the skill through GetSkill: an unscoped UPDATE sitting in the
+-- query file is a cross-tenant write waiting for its second caller.
+UPDATE skills SET summary = $3, updated_at = now()
+WHERE id = $1 AND workspace_id = $2;
 
 -- name: ListSkills :many
 SELECT * FROM skills

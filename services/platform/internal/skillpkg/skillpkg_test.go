@@ -167,6 +167,56 @@ func TestAllowedToolsBothShapes(t *testing.T) {
 	}
 }
 
+func TestCategorizeSeparatesBySeverity(t *testing.T) {
+	// One finding of each severity: missing license (warning), a disclosed
+	// script (info), and a secret inside that same script (error).
+	secret := "AKIA" + strings.Repeat("A", 16)
+	md := "---\nname: x\ndescription: d\n---\n"
+	r := Validate(pkg(md, map[string]string{"run.py": "key = '" + secret + "'"}))
+	if !r.Blocked {
+		t.Fatalf("expected the secret to block: %+v", r.Findings)
+	}
+
+	c := r.Categorize()
+	for _, f := range c.Errors {
+		if f.Severity != SeverityError {
+			t.Fatalf("errors bucket has non-error finding: %+v", f)
+		}
+	}
+	for _, f := range c.Warnings {
+		if f.Severity != SeverityWarning {
+			t.Fatalf("warnings bucket has non-warning finding: %+v", f)
+		}
+	}
+	for _, f := range c.Infos {
+		if f.Severity != SeverityInfo {
+			t.Fatalf("infos bucket has non-info finding: %+v", f)
+		}
+	}
+	if len(c.Errors) != 1 || c.Errors[0].Code != "possible-secret" {
+		t.Fatalf("want exactly one possible-secret error, got %+v", c.Errors)
+	}
+	if len(c.Warnings) != 1 || c.Warnings[0].Code != "license-unknown" {
+		t.Fatalf("want exactly one license-unknown warning, got %+v", c.Warnings)
+	}
+	if len(c.Infos) != 1 || c.Infos[0].Code != "script-file" {
+		t.Fatalf("want exactly one script-file info, got %+v", c.Infos)
+	}
+	if total := len(c.Errors) + len(c.Warnings) + len(c.Infos); total != len(r.Findings) {
+		t.Fatalf("categorize dropped or duplicated findings: got %d buckets, %d raw findings", total, len(r.Findings))
+	}
+}
+
+func TestCategorizeNeverNil(t *testing.T) {
+	// A clean package (TestValidPackage's fixture) has zero findings; the
+	// buckets must still be empty slices, not nil, so JSON encodes `[]`
+	// instead of `null` for API consumers.
+	c := Validate(pkg(goodMD, nil)).Categorize()
+	if c.Errors == nil || c.Warnings == nil || c.Infos == nil {
+		t.Fatalf("categorize buckets must be non-nil empty slices: %+v", c)
+	}
+}
+
 func TestOversizedFileSkipped(t *testing.T) {
 	big := strings.Repeat("x", maxScanBytes+1)
 	r := Validate(pkg(goodMD, map[string]string{"big.txt": big}))

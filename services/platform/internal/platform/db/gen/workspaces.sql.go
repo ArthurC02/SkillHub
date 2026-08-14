@@ -14,7 +14,7 @@ import (
 const createWorkspace = `-- name: CreateWorkspace :one
 INSERT INTO workspaces (owner_user_id, name)
 VALUES ($1, $2)
-RETURNING id, owner_user_id, name, created_at, updated_at
+RETURNING id, owner_user_id, name, created_at, updated_at, is_catalog
 `
 
 type CreateWorkspaceParams struct {
@@ -31,12 +31,13 @@ func (q *Queries) CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsCatalog,
 	)
 	return i, err
 }
 
 const getWorkspace = `-- name: GetWorkspace :one
-SELECT id, owner_user_id, name, created_at, updated_at FROM workspaces
+SELECT id, owner_user_id, name, created_at, updated_at, is_catalog FROM workspaces
 WHERE id = $1 AND owner_user_id = $2
 `
 
@@ -56,12 +57,13 @@ func (q *Queries) GetWorkspace(ctx context.Context, arg GetWorkspaceParams) (Wor
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsCatalog,
 	)
 	return i, err
 }
 
 const listWorkspacesByOwner = `-- name: ListWorkspacesByOwner :many
-SELECT id, owner_user_id, name, created_at, updated_at FROM workspaces
+SELECT id, owner_user_id, name, created_at, updated_at, is_catalog FROM workspaces
 WHERE owner_user_id = $1
 ORDER BY created_at
 `
@@ -81,6 +83,7 @@ func (q *Queries) ListWorkspacesByOwner(ctx context.Context, ownerUserID pgtype.
 			&i.Name,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.IsCatalog,
 		); err != nil {
 			return nil, err
 		}

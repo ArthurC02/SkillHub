@@ -20,6 +20,106 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+  /embed:
+    post:
+      operationId: embed
+      summary: Generate embeddings for texts (ADR-013, PDM-003)
+      description: |
+        Generates text-embedding-3-small embeddings (1536 dims) via LiteLLM
+        gateway (Iron Rule 8). Used by Go to build query embeddings for hybrid
+        search and by the index-time enrichment pipeline.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmbedRequest"
+      responses:
+        "200":
+          description: Embedding vectors, one per input text.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbedResponse"
+        "502":
+          description: Embedding provider error (LiteLLM or upstream).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /v1/enrich-skill:
+    post:
+      operationId: enrichSkill
+      summary: Index-time LLM enrichment of a Skill Version (ADR-013 section 1)
+      description: |
+        Runs once per Skill Version. Reads SKILL.md plus a package file-tree
+        summary and returns the ADR-013 enrichment whitelist: a plain-language
+        summary, example task sentences, and input/output/tool/dependency tags.
+        Feeds INGEST-009 / DISC-001 search documents.
+
+        The response carries `model` and `prompt_version` so the caller can mark
+        the fields as model-generated. It deliberately contains no trust, risk,
+        safety or quality judgement - those are never model-derived (ADR-013).
+
+        No retry here: retry and timeout policy belong to Go (ADR-016 rule 6).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrichSkillRequest"
+      responses:
+        "200":
+          description: Enrichment fields for the Skill Version.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrichSkillResponse"
+        "422":
+          description: Request failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: Gateway error, or the model returned unusable output.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: LiteLLM gateway is not configured for this process.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /match-reasons:
+    post:
+      operationId: matchReasons
+      summary: Generate match reasons for search results (ADR-013 section 3)
+      description: |
+        Given a user query and candidate skills, produces human-readable match
+        reasons. Called by Go for the top-N search results; timeout/failure
+        degrades to template reasons on the Go side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchReasonsRequest"
+      responses:
+        "200":
+          description: Match reasons for each candidate.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchReasonsResponse"
+        "502":
+          description: LLM provider error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Health:
@@ -29,3 +129,147 @@ components:
         status:
           type: string
           enum: [ok]
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+    EmbedRequest:
+      type: object
+      required: [texts]
+      properties:
+        texts:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 64
+    EmbedResponse:
+      type: object
+      required: [embeddings, model, dimensions]
+      properties:
+        embeddings:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+        model:
+          type: string
+        dimensions:
+          type: integer
+    EnrichSkillRequest:
+      type: object
+      required: [skill_name, skill_md]
+      properties:
+        skill_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        skill_md:
+          type: string
+          description: Raw SKILL.md content. Untrusted data, never treated as instructions.
+          minLength: 1
+          maxLength: 200000
+        file_tree:
+          type: array
+          description: Package file paths, already summarised/truncated by the caller.
+          items:
+            type: string
+          maxItems: 500
+          default: []
+        language:
+          type: string
+          description: Language for `summary`. `task_examples` are always bilingual.
+          maxLength: 32
+          default: zh-Hant
+    TaskExample:
+      type: object
+      required: [zh_hant, en]
+      properties:
+        zh_hant:
+          type: string
+        en:
+          type: string
+    SkillTags:
+      type: object
+      required: [inputs, outputs, tools, dependencies]
+      properties:
+        inputs:
+          type: array
+          items:
+            type: string
+        outputs:
+          type: array
+          items:
+            type: string
+        tools:
+          type: array
+          items:
+            type: string
+        dependencies:
+          type: array
+          items:
+            type: string
+    EnrichSkillResponse:
+      type: object
+      description: |
+        ADR-013 enrichment whitelist only. No trust, risk, safety or quality
+        field may be added here.
+      required: [summary, task_examples, tags, model, prompt_version]
+      properties:
+        summary:
+          type: string
+          description: Plain-language, task-oriented summary covering the document body.
+        task_examples:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskExample"
+        tags:
+          $ref: "#/components/schemas/SkillTags"
+        model:
+          type: string
+          description: Model that generated the fields above.
+        prompt_version:
+          type: string
+          description: Prompt revision, so stale enrichments can be rebuilt.
+    SkillCandidate:
+      type: object
+      required: [skill_id, name, summary]
+      properties:
+        skill_id:
+          type: string
+        name:
+          type: string
+        summary:
+          type: string
+    MatchReasonsRequest:
+      type: object
+      required: [query, candidates]
+      properties:
+        query:
+          type: string
+          minLength: 1
+        candidates:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillCandidate"
+          minItems: 1
+          maxItems: 20
+    MatchReason:
+      type: object
+      required: [skill_id, reason]
+      properties:
+        skill_id:
+          type: string
+        reason:
+          type: string
+    MatchReasonsResponse:
+      type: object
+      required: [reasons]
+      properties:
+        reasons:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchReason"

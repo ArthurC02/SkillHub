@@ -61,9 +61,9 @@
 
 ## 4. Skill 內容與供應（M1）
 
-- [ ] CONTENT-001 定義精選、已索引與外部結果的收錄政策。
-- [ ] CONTENT-002 定義來源可信度、License 與衍生關係的呈現規則。
-- [ ] CONTENT-003 建立首批 Skill 候選清單。
+- [x] CONTENT-001 定義精選、已索引與外部結果的收錄政策。
+- [x] CONTENT-002 定義來源可信度、License 與衍生關係的呈現規則。
+- [ ] CONTENT-003 建立首批 Skill 候選清單。（`data` 已達標；`documents`／`writing` 候選數未達 8–12 已索引目標，見 [plans/mvp/m1/content-candidates.md](m1/content-candidates.md) §4）
 - [ ] CONTENT-004 對首批 Skill 完成來源及 License 檢查。
 - [ ] CONTENT-005 對首批 Skill 產生一般使用者可理解的摘要。
 - [ ] CONTENT-006 對首批 Skill 完成規格及靜態掃描。
@@ -91,7 +91,7 @@
 - [x] INGEST-005 偵測重複內容並避免覆蓋既有版本。
 - [x] INGEST-006 實作 Agent Skills 規格驗證。
 - [x] INGEST-007 實作檔案引用、依賴、Script、外部 URL 與疑似 Secret 靜態檢查。
-- [ ] INGEST-008 分開呈現錯誤、警告與資訊訊息。
+- [x] INGEST-008 分開呈現錯誤、警告與資訊訊息。
 - [x] INGEST-009 建立可搜尋索引與重新索引流程。
 - [ ] INGEST-010 建立外部內容失效、來源更新及人工下架流程。
 

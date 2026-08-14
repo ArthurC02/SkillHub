@@ -191,7 +191,7 @@ func (s *Service) SaveVersion(ctx context.Context, ws gen.Workspace, skillID pgt
 	}
 	if !res.Duplicate {
 		if err := q.UpdateSkillSummary(ctx, gen.UpdateSkillSummaryParams{
-			ID: skill.ID, Summary: &p.report.Manifest.Description,
+			ID: skill.ID, WorkspaceID: ws.ID, Summary: &p.report.Manifest.Description,
 		}); err != nil {
 			return Result{}, err
 		}
