@@ -86,30 +86,46 @@ func (s *Service) ImportURL(ctx context.Context, ws gen.Workspace, rawURL string
 	return s.importZip(ctx, ws, data, meta)
 }
 
-func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, src sourceMeta) (Result, error) {
+// preparedPackage is a validated, stored package awaiting database rows.
+type preparedPackage struct {
+	report      skillpkg.Report
+	contentHash string
+	objectKey   string
+	manifest    []byte
+}
+
+// prepare validates data and stores the archive. A blocked report comes back
+// with a nil error; the caller returns it to the client as findings.
+func (s *Service) prepare(ctx context.Context, data []byte) (preparedPackage, error) {
 	fsys, err := packageFS(data)
 	if err != nil {
-		return Result{}, err
+		return preparedPackage{}, err
 	}
-
-	res := Result{Report: skillpkg.Validate(fsys)}
-	if res.Report.Blocked {
-		return res, nil
+	p := preparedPackage{report: skillpkg.Validate(fsys)}
+	if p.report.Blocked {
+		return p, nil
 	}
 
 	sum := sha256.Sum256(data)
-	contentHash := hex.EncodeToString(sum[:])
-	objectKey := "packages/" + contentHash + ".zip"
-	manifestJSON, err := json.Marshal(res.Report.Manifest)
-	if err != nil {
-		return Result{}, err
+	p.contentHash = hex.EncodeToString(sum[:])
+	p.objectKey = "packages/" + p.contentHash + ".zip"
+	if p.manifest, err = json.Marshal(p.report.Manifest); err != nil {
+		return preparedPackage{}, err
 	}
-
 	// Content-addressed put is idempotent, so storing before the DB commit
 	// means a failed transaction leaves only a harmless orphan object.
-	if err := s.Store.Put(ctx, objectKey, data); err != nil {
-		return Result{}, err
+	if err := s.Store.Put(ctx, p.objectKey, data); err != nil {
+		return preparedPackage{}, err
 	}
+	return p, nil
+}
+
+func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, src sourceMeta) (Result, error) {
+	p, err := s.prepare(ctx, data)
+	if err != nil || p.report.Blocked {
+		return Result{Report: p.report}, err
+	}
+	res := Result{Report: p.report}
 
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -119,13 +135,13 @@ func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, 
 	q := gen.New(tx)
 
 	skill, err := q.GetSkillByName(ctx, gen.GetSkillByNameParams{
-		WorkspaceID: ws.ID, Name: res.Report.Manifest.Name,
+		WorkspaceID: ws.ID, Name: p.report.Manifest.Name,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		skill, err = q.CreateSkill(ctx, gen.CreateSkillParams{
 			WorkspaceID: ws.ID,
-			Name:        res.Report.Manifest.Name,
-			Summary:     &res.Report.Manifest.Description,
+			Name:        p.report.Manifest.Name,
+			Summary:     &p.report.Manifest.Description,
 		})
 	}
 	if err != nil {
@@ -133,14 +149,66 @@ func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, 
 	}
 	res.Skill = skill
 
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, q, ws, skill, p, src)
+	if err != nil {
+		return Result{}, err
+	}
+	return res, tx.Commit(ctx)
+}
+
+// ErrSkillNotFound: target skill is not visible in the caller's workspace.
+var ErrSkillNotFound = errors.New("skill not found")
+
+// SaveVersion stores data as the next immutable version of an existing skill
+// (WS-002). The skills row keeps its name; the manifest inside the version is
+// the snapshot's truth. Existing versions are never touched (iron rule 4).
+func (s *Service) SaveVersion(ctx context.Context, ws gen.Workspace, skillID pgtype.UUID, data []byte) (Result, error) {
+	p, err := s.prepare(ctx, data)
+	if err != nil || p.report.Blocked {
+		return Result{Report: p.report}, err
+	}
+	res := Result{Report: p.report}
+
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return Result{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := gen.New(tx)
+
+	skill, err := q.GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Result{}, ErrSkillNotFound
+	}
+	if err != nil {
+		return Result{}, err
+	}
+	res.Skill = skill
+
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, q, ws, skill, p, sourceMeta{Type: "upload"})
+	if err != nil {
+		return Result{}, err
+	}
+	if !res.Duplicate {
+		if err := q.UpdateSkillSummary(ctx, gen.UpdateSkillSummaryParams{
+			ID: skill.ID, Summary: &p.report.Manifest.Description,
+		}); err != nil {
+			return Result{}, err
+		}
+	}
+	return res, tx.Commit(ctx)
+}
+
+// persistVersion writes the dedupe-checked version row, its source row, and
+// the search projection inside the caller's transaction.
+func (s *Service) persistVersion(ctx context.Context, q *gen.Queries, ws gen.Workspace, skill gen.Skill, p preparedPackage, src sourceMeta) (gen.SkillVersion, bool, error) {
 	if existing, err := q.GetVersionBySkillAndHash(ctx, gen.GetVersionBySkillAndHashParams{
-		SkillID: skill.ID, ContentHash: contentHash,
+		SkillID: skill.ID, ContentHash: p.contentHash,
 	}); err == nil {
 		// INGEST-005: identical content never overwrites or duplicates.
-		res.Version, res.Duplicate = existing, true
-		return res, tx.Commit(ctx)
+		return existing, true, nil
 	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return Result{}, err
+		return gen.SkillVersion{}, false, err
 	}
 
 	source, err := q.CreateSkillSource(ctx, gen.CreateSkillSourceParams{
@@ -148,41 +216,43 @@ func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, 
 		SourceType:  src.Type,
 		SourceUrl:   src.URL,
 		SourceRef:   src.Ref,
-		ContentHash: contentHash,
+		ContentHash: p.contentHash,
 		FetchedAt:   pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
-		return Result{}, err
+		return gen.SkillVersion{}, false, err
 	}
 
 	var license *string
-	if l := res.Report.Manifest.License; l != "" {
+	if l := p.report.Manifest.License; l != "" {
 		license = &l
 	}
-	res.Version, err = q.CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
+	version, err := q.CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
 		WorkspaceID:       ws.ID,
 		SkillID:           skill.ID,
 		SourceID:          source.ID,
-		ContentHash:       contentHash,
-		PackageObjectKey:  objectKey,
-		Manifest:          manifestJSON,
+		ContentHash:       p.contentHash,
+		PackageObjectKey:  p.objectKey,
+		Manifest:          p.manifest,
 		LicenseExpression: license,
 	})
 	if err != nil {
-		return Result{}, err
+		return gen.SkillVersion{}, false, err
 	}
 
 	// Search projection updates in the same transaction (INGEST-009): same
 	// database, so consistency is free; full rebuilds go through cmd/reindex.
+	// The document keeps the skills row's name (fork names differ from their
+	// manifest) but takes the newest description.
 	if err := q.UpsertSearchDocument(ctx, gen.UpsertSearchDocumentParams{
 		SkillID:     skill.ID,
 		WorkspaceID: ws.ID,
-		Name:        res.Report.Manifest.Name,
-		Summary:     res.Report.Manifest.Description,
+		Name:        skill.Name,
+		Summary:     p.report.Manifest.Description,
 	}); err != nil {
-		return Result{}, err
+		return gen.SkillVersion{}, false, err
 	}
-	return res, tx.Commit(ctx)
+	return version, false, nil
 }
 
 // packageFS opens the zip as a read-only fs.FS, rejecting bombs and locating

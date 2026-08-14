@@ -117,3 +117,19 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]Skill
 	}
 	return items, nil
 }
+
+const updateSkillSummary = `-- name: UpdateSkillSummary :exec
+UPDATE skills SET summary = $2, updated_at = now()
+WHERE id = $1
+`
+
+type UpdateSkillSummaryParams struct {
+	ID      pgtype.UUID
+	Summary *string
+}
+
+// Mutable skill metadata only; versions themselves are immutable (iron rule 4).
+func (q *Queries) UpdateSkillSummary(ctx context.Context, arg UpdateSkillSummaryParams) error {
+	_, err := q.db.Exec(ctx, updateSkillSummary, arg.ID, arg.Summary)
+	return err
+}

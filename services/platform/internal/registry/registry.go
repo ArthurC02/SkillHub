@@ -23,8 +23,14 @@ var (
 	ErrNameTaken = errors.New("a skill with this name already exists in your workspace")
 )
 
+// ObjectStore is the slice of object storage the registry needs (diff reads).
+type ObjectStore interface {
+	Get(ctx context.Context, key string) ([]byte, error)
+}
+
 type Service struct {
-	Pool *pgxpool.Pool
+	Pool  *pgxpool.Pool
+	Store ObjectStore
 }
 
 // Fork clones the latest version of a readable skill into ws. Provenance

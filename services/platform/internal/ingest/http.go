@@ -58,6 +58,46 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	h.respond(w, res, err)
 }
 
+// SaveVersion handles POST /skills/{id}/versions (WS-002). Wrap with
+// RequireSession.
+func (h *Handler) SaveVersion(w http.ResponseWriter, r *http.Request) {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
+		return
+	}
+
+	var skillID pgtype.UUID
+	if err := skillID.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, ErrSkillNotFound.Error())
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, MaxZipBytes)
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			httpx.WriteError(w, http.StatusRequestEntityTooLarge, "package exceeds the upload size limit")
+			return
+		}
+		httpx.WriteError(w, http.StatusBadRequest, "could not read request body")
+		return
+	}
+
+	res, err := h.Svc.SaveVersion(r.Context(), ws, skillID, data)
+	if errors.Is(err, ErrSkillNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	h.respond(w, res, err)
+}
+
 // ImportURL handles POST /skills/import/url. Wrap with RequireSession.
 func (h *Handler) ImportURL(w http.ResponseWriter, r *http.Request) {
 	user, ok := identity.SessionUser(r.Context())

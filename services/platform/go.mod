@@ -6,6 +6,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/minio/minio-go/v7 v7.2.1
 	github.com/pgvector/pgvector-go v0.4.1
+	github.com/pmezard/go-difflib v1.0.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

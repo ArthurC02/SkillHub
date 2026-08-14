@@ -81,9 +81,11 @@ func main() {
 	search := &catalog.Handler{Pool: pool, Identity: auth.Service}
 	mux.HandleFunc("GET /skills/search", auth.RequireSession(search.Search))
 
-	reg := &registry.Handler{Svc: &registry.Service{Pool: pool}, Identity: auth.Service}
+	reg := &registry.Handler{Svc: &registry.Service{Pool: pool, Store: store}, Identity: auth.Service}
 	mux.HandleFunc("GET /skills", auth.RequireSession(reg.List))
 	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(reg.Fork))
+	mux.HandleFunc("POST /skills/{id}/versions", auth.RequireSession(importer.SaveVersion))
+	mux.HandleFunc("GET /skills/{id}/diff", auth.RequireSession(reg.Diff))
 
 	srv := &http.Server{
 		Addr:              addrFromEnv("API_ADDR", ":8080"),

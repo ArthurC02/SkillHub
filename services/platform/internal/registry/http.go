@@ -89,6 +89,32 @@ func (h *Handler) Fork(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, resp)
 }
 
+// Diff handles GET /skills/{id}/diff?from=&to= (WS-003).
+func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	var skillID, fromID, toID pgtype.UUID
+	if skillID.Scan(r.PathValue("id")) != nil ||
+		fromID.Scan(r.URL.Query().Get("from")) != nil ||
+		toID.Scan(r.URL.Query().Get("to")) != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "id, from, and to must be version UUIDs")
+		return
+	}
+
+	diffs, err := h.Svc.DiffVersions(r.Context(), ws, skillID, fromID, toID)
+	if errors.Is(err, ErrNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "diff failed")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"files": diffs})
+}
+
 // List handles GET /skills — the caller's own skills (WS-004).
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)

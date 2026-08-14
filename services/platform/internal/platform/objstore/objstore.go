@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -42,6 +43,19 @@ func (c *Client) EnsureBucket(ctx context.Context) error {
 		return fmt.Errorf("objstore make bucket: %w", err)
 	}
 	return nil
+}
+
+func (c *Client) Get(ctx context.Context, key string) ([]byte, error) {
+	obj, err := c.mc.GetObject(ctx, c.bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("objstore get %s: %w", key, err)
+	}
+	defer func() { _ = obj.Close() }()
+	data, err := io.ReadAll(obj)
+	if err != nil {
+		return nil, fmt.Errorf("objstore get %s: %w", key, err)
+	}
+	return data, nil
 }
 
 func (c *Client) Put(ctx context.Context, key string, data []byte) error {

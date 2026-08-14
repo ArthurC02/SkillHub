@@ -303,6 +303,110 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /skills/{id}/versions:
+    post:
+      operationId: saveSkillVersion
+      summary: Save a zip as the next immutable version of a skill (WS-002)
+      description: |
+        Same static validation as import. The skills row keeps its name; the
+        manifest inside the version is the snapshot's truth. Identical content
+        returns the existing version with duplicate=true.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/zip:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: Version saved (or already present).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+        "400":
+          description: Not a valid zip archive.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Skill not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413":
+          description: Archive exceeds the upload size limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: Package failed spec or static validation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [findings]
+                properties:
+                  findings:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Finding"
+  /skills/{id}/diff:
+    get:
+      operationId: diffSkillVersions
+      summary: Compare any two versions of a skill (WS-003)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: from
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: to
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Added, removed, and modified files; unified diffs for text.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [files]
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FileDiff"
+        "400":
+          description: Malformed ids.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Skill or versions not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 components:
   schemas:
     Health:
@@ -375,6 +479,18 @@ components:
           type: string
         rank:
           type: number
+    FileDiff:
+      type: object
+      required: [path, status]
+      properties:
+        path:
+          type: string
+        status:
+          type: string
+          enum: [added, removed, modified]
+        diff:
+          type: string
+          description: Unified diff; absent for binary or oversized files.
     UploadResult:
       type: object
       required: [skill_id, version_id, version_number, content_hash, duplicate, findings]
