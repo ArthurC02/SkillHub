@@ -19,6 +19,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/objstore"
+	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
 )
 
 func main() {
@@ -79,6 +80,10 @@ func main() {
 
 	search := &catalog.Handler{Pool: pool, Identity: auth.Service}
 	mux.HandleFunc("GET /skills/search", auth.RequireSession(search.Search))
+
+	reg := &registry.Handler{Svc: &registry.Service{Pool: pool}, Identity: auth.Service}
+	mux.HandleFunc("GET /skills", auth.RequireSession(reg.List))
+	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(reg.Fork))
 
 	srv := &http.Server{
 		Addr:              addrFromEnv("API_ADDR", ":8080"),

@@ -237,6 +237,72 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /skills:
+    get:
+      operationId: listSkills
+      summary: List the caller's skills (WS-004)
+      responses:
+        "200":
+          description: The caller's skills, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [skills]
+                properties:
+                  skills:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Skill"
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /skills/{id}/fork:
+    post:
+      operationId: forkSkill
+      summary: Fork a readable skill's latest version into the caller's workspace (WS-001)
+      description: |
+        The package object is shared (content-addressed), not copied. Lineage
+        to the original skill and version is preserved on the fork.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Fork created.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Skill"
+                  - type: object
+                    required: [version_id, version_number]
+                    properties:
+                      version_id: { type: string, format: uuid }
+                      version_number: { type: integer }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Skill not visible to the caller.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A skill with the fork's name already exists in the workspace.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Health:
@@ -279,6 +345,23 @@ components:
           type: string
         message:
           type: string
+    Skill:
+      type: object
+      required: [skill_id, name, summary]
+      properties:
+        skill_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        summary:
+          type: string
+        forked_from_skill_id:
+          type: string
+          format: uuid
+        forked_from_version_id:
+          type: string
+          format: uuid
     SearchHit:
       type: object
       required: [skill_id, name, summary, rank]

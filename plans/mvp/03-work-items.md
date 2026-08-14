@@ -110,7 +110,7 @@
 
 ## 8. Fork、版本與工作區（M1）
 
-- [ ] WS-001 實作 Fork 並保留來源與 License 關係。
+- [x] WS-001 實作 Fork 並保留來源與 License 關係。
 - [ ] WS-002 實作不可變版本保存。
 - [ ] WS-003 實作任兩版本差異比較。
 - [ ] WS-004 實作個人 Skill、Test Case、Run 與下載紀錄列表。
