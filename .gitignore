@@ -17,5 +17,6 @@ dist/
 *.exe
 *.test
 
-# Spike embedding cache (~1.2MB of float arrays, regenerable, no secrets)
+# Embedding caches (float arrays keyed by text hash; regenerable, no secrets)
 spikes/**/embeddings_cache.json
+tools/**/embeddings_cache.json

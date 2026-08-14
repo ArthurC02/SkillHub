@@ -1,0 +1,414 @@
+{
+  "fetched_at": "2026-08-15",
+  "note": "Retrieval-evaluation corpus only. Presence here is NOT a CONTENT-003/004 curation decision.",
+  "repos": {
+    "anthropics/skills": {
+      "branch": "main",
+      "commit": "f6656c1256d5",
+      "license_spdx": null
+    },
+    "dashaworks/report-skills": {
+      "branch": "main",
+      "commit": "d18aca81aaab",
+      "license_spdx": "MIT"
+    },
+    "zjp1997720/html-express": {
+      "branch": "main",
+      "commit": "0791f60180fd",
+      "license_spdx": "MIT"
+    },
+    "jamditis/claude-skills-journalism": {
+      "branch": "master",
+      "commit": "f61f81788362",
+      "license_spdx": "MIT"
+    },
+    "moshuying/pitchcraft": {
+      "branch": "main",
+      "commit": "e27ca8a39be3",
+      "license_spdx": "Apache-2.0"
+    },
+    "MiniMax-AI/skills": {
+      "branch": "main",
+      "commit": "60aaae52bb2a",
+      "license_spdx": "MIT"
+    },
+    "TAJD/economist-style-guide-plugin": {
+      "branch": "main",
+      "commit": "cfb132d62447",
+      "license_spdx": "MIT"
+    },
+    "harshaneel/humanize": {
+      "branch": "main",
+      "commit": "4ec797314537",
+      "license_spdx": "MIT"
+    },
+    "Gabberflast/prose-revision-skill-ht-anthony-lee-zhang": {
+      "branch": "main",
+      "commit": "4e8d5cd20370",
+      "license_spdx": "MIT"
+    },
+    "nqumich/data-analyst-skill": {
+      "branch": "main",
+      "commit": "0ba9d17ed275",
+      "license_spdx": "MIT"
+    },
+    "danielrosehill/Claude-Data-Wrangler-plugin": {
+      "branch": "master",
+      "commit": "b12805a62307",
+      "license_spdx": "MIT"
+    },
+    "YuYY2004/excel-skills": {
+      "branch": "main",
+      "commit": "c15e51e20424",
+      "license_spdx": "MIT"
+    },
+    "limingrui679-design/high-stakes-analytics-decision-lab": {
+      "branch": "main",
+      "commit": "876019b091b1",
+      "license_spdx": "MIT"
+    }
+  },
+  "documents": [
+    {
+      "id": "docx",
+      "category": "documents",
+      "repo": "anthropics/skills",
+      "path": "skills/docx/SKILL.md",
+      "commit": "f6656c1256d5",
+      "license_spdx": null,
+      "source_url": "https://raw.githubusercontent.com/anthropics/skills/f6656c1256d5/skills/docx/SKILL.md",
+      "bytes": 6911,
+      "sha256": "8017469ea95fb7d28225c62daf8e2f3492a7b516fc64c18c28977cbf8980b7fe"
+    },
+    {
+      "id": "pdf",
+      "category": "documents",
+      "repo": "anthropics/skills",
+      "path": "skills/pdf/SKILL.md",
+      "commit": "f6656c1256d5",
+      "license_spdx": null,
+      "source_url": "https://raw.githubusercontent.com/anthropics/skills/f6656c1256d5/skills/pdf/SKILL.md",
+      "bytes": 8072,
+      "sha256": "9f78b8359fbd4943ad260a7a1e436e5a96503406d6c34e99f69223d647d85b9c"
+    },
+    {
+      "id": "pptx",
+      "category": "documents",
+      "repo": "anthropics/skills",
+      "path": "skills/pptx/SKILL.md",
+      "commit": "f6656c1256d5",
+      "license_spdx": null,
+      "source_url": "https://raw.githubusercontent.com/anthropics/skills/f6656c1256d5/skills/pptx/SKILL.md",
+      "bytes": 20796,
+      "sha256": "a7ff03e2c85b636f55232a6b1555f5dd90216b7a1a359ab289d8364e6acbc6a0"
+    },
+    {
+      "id": "xlsx",
+      "category": "documents",
+      "repo": "anthropics/skills",
+      "path": "skills/xlsx/SKILL.md",
+      "commit": "f6656c1256d5",
+      "license_spdx": null,
+      "source_url": "https://raw.githubusercontent.com/anthropics/skills/f6656c1256d5/skills/xlsx/SKILL.md",
+      "bytes": 8598,
+      "sha256": "6712b39718fe815054abca9c3ee72f989613e6f771c8a5c58f30a65a6c905622"
+    },
+    {
+      "id": "report-designer",
+      "category": "documents",
+      "repo": "dashaworks/report-skills",
+      "path": "skills/report-designer/SKILL.md",
+      "commit": "d18aca81aaab",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/dashaworks/report-skills/d18aca81aaab/skills/report-designer/SKILL.md",
+      "bytes": 2796,
+      "sha256": "7ec034bb62eef9627e4baf5ad14369d851c84a672c45e037b1ae86a9950d42eb"
+    },
+    {
+      "id": "deck-publisher",
+      "category": "documents",
+      "repo": "dashaworks/report-skills",
+      "path": "skills/deck-publisher/SKILL.md",
+      "commit": "d18aca81aaab",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/dashaworks/report-skills/d18aca81aaab/skills/deck-publisher/SKILL.md",
+      "bytes": 2247,
+      "sha256": "3e662061b498a25582b1ae2db262008898fc077c27f292a4554dee71e2fb5c02"
+    },
+    {
+      "id": "html-express",
+      "category": "documents",
+      "repo": "zjp1997720/html-express",
+      "path": "skills/html-express/SKILL.md",
+      "commit": "0791f60180fd",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/zjp1997720/html-express/0791f60180fd/skills/html-express/SKILL.md",
+      "bytes": 4111,
+      "sha256": "dbd9889900a43af656b3026a3f55a8012e587172ceda2cfe5ccd5f7e36e40017"
+    },
+    {
+      "id": "document-design",
+      "category": "documents",
+      "repo": "jamditis/claude-skills-journalism",
+      "path": "pdf-playground/skills/document-design/SKILL.md",
+      "commit": "f61f81788362",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/jamditis/claude-skills-journalism/f61f81788362/pdf-playground/skills/document-design/SKILL.md",
+      "bytes": 6681,
+      "sha256": "608952fd7a01bf7ecf1df97ea0771cfa184203cca346ea66d16d9ea2daf36fd4"
+    },
+    {
+      "id": "pitchcraft",
+      "category": "documents",
+      "repo": "moshuying/pitchcraft",
+      "path": ".claude/skills/pitchcraft/SKILL.md",
+      "commit": "e27ca8a39be3",
+      "license_spdx": "Apache-2.0",
+      "source_url": "https://raw.githubusercontent.com/moshuying/pitchcraft/e27ca8a39be3/.claude/skills/pitchcraft/SKILL.md",
+      "bytes": 9885,
+      "sha256": "58a5ff5f679c2f2d9cb06e10c0251768d8ca2a39460543e0fa350126da7e7efc"
+    },
+    {
+      "id": "minimax-docx",
+      "category": "documents",
+      "repo": "MiniMax-AI/skills",
+      "path": "skills/minimax-docx/SKILL.md",
+      "commit": "60aaae52bb2a",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/MiniMax-AI/skills/60aaae52bb2a/skills/minimax-docx/SKILL.md",
+      "bytes": 15818,
+      "sha256": "45c169630f30b8f034bc7d53edf73d592fbd82e82188beec7da3ca1996a97fb5"
+    },
+    {
+      "id": "brand-guidelines",
+      "category": "writing",
+      "repo": "anthropics/skills",
+      "path": "skills/brand-guidelines/SKILL.md",
+      "commit": "f6656c1256d5",
+      "license_spdx": null,
+      "source_url": "https://raw.githubusercontent.com/anthropics/skills/f6656c1256d5/skills/brand-guidelines/SKILL.md",
+      "bytes": 2235,
+      "sha256": "1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe"
+    },
+    {
+      "id": "internal-comms",
+      "category": "writing",
+      "repo": "anthropics/skills",
+      "path": "skills/internal-comms/SKILL.md",
+      "commit": "f6656c1256d5",
+      "license_spdx": null,
+      "source_url": "https://raw.githubusercontent.com/anthropics/skills/f6656c1256d5/skills/internal-comms/SKILL.md",
+      "bytes": 1511,
+      "sha256": "067b7587a344a928fc6534ef66b1bcd591fc7c26d207ea7ca3334aeb678d6475"
+    },
+    {
+      "id": "doc-coauthoring",
+      "category": "writing",
+      "repo": "anthropics/skills",
+      "path": "skills/doc-coauthoring/SKILL.md",
+      "commit": "f6656c1256d5",
+      "license_spdx": null,
+      "source_url": "https://raw.githubusercontent.com/anthropics/skills/f6656c1256d5/skills/doc-coauthoring/SKILL.md",
+      "bytes": 15815,
+      "sha256": "2e47d78846faeea4a56e9809c52700087a15a2155a3f293a3efbaded81398ef4"
+    },
+    {
+      "id": "economist-style",
+      "category": "writing",
+      "repo": "TAJD/economist-style-guide-plugin",
+      "path": "economist-style/skills/economist-style/SKILL.md",
+      "commit": "cfb132d62447",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/TAJD/economist-style-guide-plugin/cfb132d62447/economist-style/skills/economist-style/SKILL.md",
+      "bytes": 6262,
+      "sha256": "6eba0e0b767fc5f6988ba7223c377a8b7e8e51f5b679de4842cb86d43ae3228e"
+    },
+    {
+      "id": "humanize",
+      "category": "writing",
+      "repo": "harshaneel/humanize",
+      "path": "humanize/SKILL.md",
+      "commit": "4ec797314537",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/harshaneel/humanize/4ec797314537/humanize/SKILL.md",
+      "bytes": 36405,
+      "sha256": "bfb3c5fb90c837f44b5732b33f13e9e1dd61885cc77d0cfe99ce8a3e6ef541aa"
+    },
+    {
+      "id": "ai-check",
+      "category": "writing",
+      "repo": "harshaneel/humanize",
+      "path": "ai-check/SKILL.md",
+      "commit": "4ec797314537",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/harshaneel/humanize/4ec797314537/ai-check/SKILL.md",
+      "bytes": 27235,
+      "sha256": "675276638c8faa9567611ae2acec1fef1af6b7f29fbc33e572b0a3489d2d923d"
+    },
+    {
+      "id": "prose-revision",
+      "category": "writing",
+      "repo": "Gabberflast/prose-revision-skill-ht-anthony-lee-zhang",
+      "path": "SKILL.md",
+      "commit": "4e8d5cd20370",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/Gabberflast/prose-revision-skill-ht-anthony-lee-zhang/4e8d5cd20370/SKILL.md",
+      "bytes": 7154,
+      "sha256": "45b2bcb61ec2a650154e8f548be03cb64a8a1f91c516134082ffd2bd7db06747"
+    },
+    {
+      "id": "newsroom-style",
+      "category": "writing",
+      "repo": "jamditis/claude-skills-journalism",
+      "path": "journalism-core/skills/newsroom-style/SKILL.md",
+      "commit": "f61f81788362",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/jamditis/claude-skills-journalism/f61f81788362/journalism-core/skills/newsroom-style/SKILL.md",
+      "bytes": 7378,
+      "sha256": "9a01f99737ec9dab5d1c3a71627e014c79587dd2c44f4ecca7ebfb9529c7e042"
+    },
+    {
+      "id": "academic-writing",
+      "category": "writing",
+      "repo": "jamditis/claude-skills-journalism",
+      "path": "research-toolkit/skills/academic-writing/SKILL.md",
+      "commit": "f61f81788362",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/jamditis/claude-skills-journalism/f61f81788362/research-toolkit/skills/academic-writing/SKILL.md",
+      "bytes": 28684,
+      "sha256": "423eba83177e9b3bc47b2605962d51e8e64c64ab1b79797d7ca277ab40b8cb93"
+    },
+    {
+      "id": "data-analyst",
+      "category": "data",
+      "repo": "nqumich/data-analyst-skill",
+      "path": "SKILL.md",
+      "commit": "0ba9d17ed275",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/nqumich/data-analyst-skill/0ba9d17ed275/SKILL.md",
+      "bytes": 17000,
+      "sha256": "895d8f638d37bfe2f4f9c548f082319b1107e7d31e9e8bdc28a05010b92ec55a"
+    },
+    {
+      "id": "data-cleanliness-scan",
+      "category": "data",
+      "repo": "danielrosehill/Claude-Data-Wrangler-plugin",
+      "path": "skills/data-cleanliness-scan/SKILL.md",
+      "commit": "b12805a62307",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/danielrosehill/Claude-Data-Wrangler-plugin/b12805a62307/skills/data-cleanliness-scan/SKILL.md",
+      "bytes": 4448,
+      "sha256": "a6ed7848e3aaccc10655917a44802828bbb2dfc6ac1bf992517269cae7f1a782"
+    },
+    {
+      "id": "csv-to-json",
+      "category": "data",
+      "repo": "danielrosehill/Claude-Data-Wrangler-plugin",
+      "path": "skills/csv-to-json/SKILL.md",
+      "commit": "b12805a62307",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/danielrosehill/Claude-Data-Wrangler-plugin/b12805a62307/skills/csv-to-json/SKILL.md",
+      "bytes": 2747,
+      "sha256": "2a532b46eb110607de690afb3d1f4edc10c89c5648a304e6885385514f735126"
+    },
+    {
+      "id": "text-to-numeric",
+      "category": "data",
+      "repo": "danielrosehill/Claude-Data-Wrangler-plugin",
+      "path": "skills/text-to-numeric/SKILL.md",
+      "commit": "b12805a62307",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/danielrosehill/Claude-Data-Wrangler-plugin/b12805a62307/skills/text-to-numeric/SKILL.md",
+      "bytes": 3288,
+      "sha256": "5c4e88115548faa13de7ef23f348c09ae7aba152b4b31d10c373b661d9c70647"
+    },
+    {
+      "id": "pii-flag",
+      "category": "data",
+      "repo": "danielrosehill/Claude-Data-Wrangler-plugin",
+      "path": "skills/pii-flag/SKILL.md",
+      "commit": "b12805a62307",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/danielrosehill/Claude-Data-Wrangler-plugin/b12805a62307/skills/pii-flag/SKILL.md",
+      "bytes": 3854,
+      "sha256": "a984dbb9a7011a3c5adcf715dbc347ab8c459d95235f84c245fb5c5ea5f365f5"
+    },
+    {
+      "id": "date-wrangling",
+      "category": "data",
+      "repo": "danielrosehill/Claude-Data-Wrangler-plugin",
+      "path": "skills/date-wrangling/SKILL.md",
+      "commit": "b12805a62307",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/danielrosehill/Claude-Data-Wrangler-plugin/b12805a62307/skills/date-wrangling/SKILL.md",
+      "bytes": 4697,
+      "sha256": "1b330b9d45fdc278deab59d6852148f23c6428648397cdd2cc8801b195bd242f"
+    },
+    {
+      "id": "excel-deduplicate",
+      "category": "data",
+      "repo": "YuYY2004/excel-skills",
+      "path": "claude/skills/excel-deduplicate/SKILL.md",
+      "commit": "c15e51e20424",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/YuYY2004/excel-skills/c15e51e20424/claude/skills/excel-deduplicate/SKILL.md",
+      "bytes": 6875,
+      "sha256": "aa14ca06611511d81b1aa832fbe4f2d7dfc2b355f33f723df02fbcdbc12780fd"
+    },
+    {
+      "id": "excel-filter",
+      "category": "data",
+      "repo": "YuYY2004/excel-skills",
+      "path": "claude/skills/excel-filter/SKILL.md",
+      "commit": "c15e51e20424",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/YuYY2004/excel-skills/c15e51e20424/claude/skills/excel-filter/SKILL.md",
+      "bytes": 11884,
+      "sha256": "906b806c26c6d02e233d8b62964b7ae90cd7ecb719682b26267348504e5eb32d"
+    },
+    {
+      "id": "excel-merge",
+      "category": "data",
+      "repo": "YuYY2004/excel-skills",
+      "path": "claude/skills/excel-merge/SKILL.md",
+      "commit": "c15e51e20424",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/YuYY2004/excel-skills/c15e51e20424/claude/skills/excel-merge/SKILL.md",
+      "bytes": 10712,
+      "sha256": "9f175c87510626cb55445d5084689d922ebb4672e0c36d97c87bc638ffa45cac"
+    },
+    {
+      "id": "high-stakes-analytics",
+      "category": "data",
+      "repo": "limingrui679-design/high-stakes-analytics-decision-lab",
+      "path": "SKILL.md",
+      "commit": "876019b091b1",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/limingrui679-design/high-stakes-analytics-decision-lab/876019b091b1/SKILL.md",
+      "bytes": 21261,
+      "sha256": "4809a0623506b6278b080167d6702bc03e1e1213e7cb586c5d67ae8e11b3b1ce"
+    },
+    {
+      "id": "data-journalism",
+      "category": "data",
+      "repo": "jamditis/claude-skills-journalism",
+      "path": "journalism-core/skills/data-journalism/SKILL.md",
+      "commit": "f61f81788362",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/jamditis/claude-skills-journalism/f61f81788362/journalism-core/skills/data-journalism/SKILL.md",
+      "bytes": 41432,
+      "sha256": "e2bf504fcf5cc451d0fe6ee66ba73d95f8cc9f728be504c13554f9ce6a0f9cd0"
+    },
+    {
+      "id": "minimax-xlsx",
+      "category": "data",
+      "repo": "MiniMax-AI/skills",
+      "path": "skills/minimax-xlsx/SKILL.md",
+      "commit": "60aaae52bb2a",
+      "license_spdx": "MIT",
+      "source_url": "https://raw.githubusercontent.com/MiniMax-AI/skills/60aaae52bb2a/skills/minimax-xlsx/SKILL.md",
+      "bytes": 8398,
+      "sha256": "4ffb70af6ccd00e90c3b14516d50a850ae0f2f1807a01d326aa1393e0067dd41"
+    }
+  ]
+}
