@@ -103,9 +103,7 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
     import litellm
 
     # Build the prompt: ask the model to explain why each skill matches the query.
-    candidates_text = "\n".join(
-        f"- [{c.skill_id}] {c.name}: {c.summary}" for c in req.candidates
-    )
+    candidates_text = "\n".join(f"- [{c.skill_id}] {c.name}: {c.summary}" for c in req.candidates)
 
     system_prompt = (
         "You are a search result explainer for a Skill marketplace. "
@@ -138,9 +136,7 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         )
     except Exception as e:
         logger.exception("match-reasons LLM call failed")
-        raise HTTPException(
-            status_code=502, detail=f"match-reasons provider error: {e}"
-        ) from e
+        raise HTTPException(status_code=502, detail=f"match-reasons provider error: {e}") from e
 
     # Parse the LLM response.
     import json

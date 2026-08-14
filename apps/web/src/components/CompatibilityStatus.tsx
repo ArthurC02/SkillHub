@@ -14,7 +14,10 @@ export function CompatibilityStatus({ entries }: { entries: CompatibilityEntry[]
   return (
     <ul className="compat-list">
       {entries.map((entry) => (
-        <li key={`${entry.agent}-${entry.runtime ?? ""}`} className={`badge badge-compat-${entry.status}`}>
+        <li
+          key={`${entry.agent}-${entry.runtime ?? ""}`}
+          className={`badge badge-compat-${entry.status}`}
+        >
           {entry.agent}
           {entry.runtime ? `（${entry.runtime}）` : ""}：{LABELS[entry.status]}
         </li>

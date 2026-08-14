@@ -30,8 +30,8 @@ type URLFetcher struct {
 // first-batch skill source is GitHub).
 func DefaultAllowedHosts() map[string]bool {
 	return map[string]bool{
-		"github.com":          true,
-		"codeload.github.com": true,
+		"github.com":                    true,
+		"codeload.github.com":           true,
 		"objects.githubusercontent.com": true,
 	}
 }
@@ -44,7 +44,7 @@ func (f *URLFetcher) client() *http.Client {
 }
 
 func (f *URLFetcher) checkURL(u *url.URL) error {
-	if u.Scheme != "https" && !(f.AllowInsecure && u.Scheme == "http") {
+	if u.Scheme != "https" && (!f.AllowInsecure || u.Scheme != "http") {
 		return fmt.Errorf("%w: only https URLs are supported", ErrFetch)
 	}
 	if !f.Allowed[strings.ToLower(u.Host)] {

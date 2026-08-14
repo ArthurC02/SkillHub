@@ -94,7 +94,8 @@ export function SkillDetail() {
       <section>
         <h2>來源與 License</h2>
         <p>
-          信任層級：<TrustBadge level={skill.source.trust_level} />
+          信任層級：
+          <TrustBadge level={skill.source.trust_level} />
         </p>
         {skill.source.url && (
           <p>
@@ -109,7 +110,8 @@ export function SkillDetail() {
           </p>
         )}
         <p>
-          License：<LicenseBadge status={skill.license.status} name={skill.license.name} />
+          License：
+          <LicenseBadge status={skill.license.status} name={skill.license.name} />
         </p>
       </section>
 

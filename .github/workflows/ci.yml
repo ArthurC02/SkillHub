@@ -94,10 +94,13 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: services/platform/go.mod
-          # No third-party dependencies yet, so there is no go.sum to key a cache on.
-          cache: false
-      - uses: golangci/golangci-lint-action@v6
+          cache-dependency-path: services/platform/go.sum
+      # v8 is the action line that speaks golangci-lint v2, which is what the
+      # `fmt` subcommand below needs. Both are pinned: an unpinned linter turns
+      # every upstream release into a red build on an untouched tree.
+      - uses: golangci/golangci-lint-action@v8
         with:
+          version: v2.12.2
           working-directory: services/platform
       - run: golangci-lint fmt --diff
       - run: go vet ./...
@@ -127,14 +130,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Regenerate and check for drift
+      # Pinned to the version stamped into the committed output (see the header
+      # of any db/gen/*.sql.go). Floating the tag would make an sqlc release red
+      # a tree nobody touched, which is the opposite of a useful gate.
+      - name: sqlc generate
+        run: docker run --rm -v "$PWD:/src" -w /src/db sqlc/sqlc:1.31.1 generate
+
+      # `git add` first so a query whose generated file was never committed
+      # shows up: an untracked file is invisible to a plain `git diff`.
+      - name: Fail if generated code is out of sync with db/queries
         run: |
-          echo "Codegen is not wired yet: contracts/ has no generated consumers."
-          echo "Enable this job when packages/api-client-ts, packages/api-stub-py"
-          echo "or db/queries/*.sql gain their first real content. The check is:"
-          echo "  task gen && git diff --exit-code"
-          test -z "$(find db/queries -name '*.sql' -print -quit)" \
-            || { echo 'db/queries has content: wire sqlc generate into this job'; exit 1; }
+          git add -A -- db services/platform/internal/platform/db/gen
+          git diff --cached --exit-code -- db services/platform/internal/platform/db/gen
+
+      - name: OpenAPI codegen (placeholder, deliberately not failing)
+        run: |
+          echo "contracts/openapi/*.yaml has no codegen wired yet: packages/"
+          echo "api-client-ts and api-stub-py do not exist, so there is nothing"
+          echo "to regenerate and no drift to detect. Add the generator here and"
+          echo "extend the git diff paths above when those packages land."
 
   # Registry is still open (ADR-019 open question 1) and infra/images/ has no
   # Dockerfiles yet, so this job only records the intended shape.

@@ -8,16 +8,16 @@ import (
 
 func TestDiffFS(t *testing.T) {
 	from := fstest.MapFS{
-		"SKILL.md":   &fstest.MapFile{Data: []byte("---\nname: x\n---\nold line\n")},
-		"gone.txt":   &fstest.MapFile{Data: []byte("bye\n")},
-		"same.txt":   &fstest.MapFile{Data: []byte("unchanged\n")},
-		"blob.bin":   &fstest.MapFile{Data: []byte{0x00, 0x01}},
+		"SKILL.md": &fstest.MapFile{Data: []byte("---\nname: x\n---\nold line\n")},
+		"gone.txt": &fstest.MapFile{Data: []byte("bye\n")},
+		"same.txt": &fstest.MapFile{Data: []byte("unchanged\n")},
+		"blob.bin": &fstest.MapFile{Data: []byte{0x00, 0x01}},
 	}
 	to := fstest.MapFS{
-		"SKILL.md":   &fstest.MapFile{Data: []byte("---\nname: x\n---\nnew line\n")},
-		"added.txt":  &fstest.MapFile{Data: []byte("hi\n")},
-		"same.txt":   &fstest.MapFile{Data: []byte("unchanged\n")},
-		"blob.bin":   &fstest.MapFile{Data: []byte{0x00, 0x02}},
+		"SKILL.md":  &fstest.MapFile{Data: []byte("---\nname: x\n---\nnew line\n")},
+		"added.txt": &fstest.MapFile{Data: []byte("hi\n")},
+		"same.txt":  &fstest.MapFile{Data: []byte("unchanged\n")},
+		"blob.bin":  &fstest.MapFile{Data: []byte{0x00, 0x02}},
 	}
 
 	diffs, err := diffFS(from, to)

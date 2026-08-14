@@ -22,7 +22,11 @@ export function SkillFiles() {
         <button type="button" aria-pressed={mode === "general"} onClick={() => setMode("general")}>
           一般模式
         </button>
-        <button type="button" aria-pressed={mode === "advanced"} onClick={() => setMode("advanced")}>
+        <button
+          type="button"
+          aria-pressed={mode === "advanced"}
+          onClick={() => setMode("advanced")}
+        >
           進階模式
         </button>
       </div>

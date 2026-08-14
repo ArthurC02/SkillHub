@@ -66,8 +66,8 @@ func main() {
 
 	importer := &ingest.Handler{
 		Svc: &ingest.Service{
-			Pool:  pool,
-			Store: store,
+			Pool:    pool,
+			Store:   store,
 			Fetcher: importFetcherFromEnv(),
 		},
 		Identity: auth.Service,

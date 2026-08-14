@@ -1,0 +1,10 @@
+# golangci-lint v2. Default linter set (errcheck, govet, ineffassign,
+# staticcheck, unused) plus the exclusions v1 applied by default and v2 makes
+# opt-in: a deferred Close/Flush has no caller left to return an error to, so
+# flagging it only teaches people to write `_ =` noise.
+version: "2"
+
+linters:
+  exclusions:
+    presets:
+      - std-error-handling
