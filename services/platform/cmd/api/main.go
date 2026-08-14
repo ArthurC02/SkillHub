@@ -14,7 +14,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
+	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/objstore"
 )
 
 func main() {
@@ -42,9 +44,31 @@ func main() {
 		DevLogin: os.Getenv("DEV_LOGIN") == "1", // offline dev provider; never in production
 	}
 
+	store, err := objstore.New(
+		addrFromEnv("OBJSTORE_ENDPOINT", "localhost:8333"),
+		os.Getenv("OBJSTORE_ACCESS_KEY"), // empty = anonymous, local dev only
+		os.Getenv("OBJSTORE_SECRET_KEY"),
+		addrFromEnv("OBJSTORE_BUCKET", "skillhub"),
+		os.Getenv("OBJSTORE_SSL") == "1",
+	)
+	if err != nil {
+		slog.Error("object store", "error", err)
+		os.Exit(1)
+	}
+	if err := store.EnsureBucket(ctx); err != nil {
+		slog.Error("object store bucket", "error", err)
+		os.Exit(1)
+	}
+
+	importer := &ingest.Handler{
+		Svc:      &ingest.Service{Pool: pool, Store: store},
+		Identity: auth.Service,
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", httpx.Health)
 	auth.Mount(mux)
+	mux.HandleFunc("POST /skills/import/upload", auth.RequireSession(importer.Upload))
 
 	srv := &http.Server{
 		Addr:              addrFromEnv("API_ADDR", ":8080"),

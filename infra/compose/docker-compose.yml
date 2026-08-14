@@ -20,9 +20,26 @@ services:
       timeout: 5s
       retries: 10
 
+  # S3-compatible object storage for local dev (ADR-018: production uses a
+  # managed S3 service; SeaweedFS is the licensed-clean self-host option).
+  # Anonymous access — local dev only, never a production shape.
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.80
+    command: server -s3 -dir=/data
+    ports:
+      - "8333:8333"
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8333 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # TODO(CORE-001): add api / worker / llm / web services once infra/images/
   # holds their Dockerfiles. Build contexts are the repo root, since the Go
   # build needs services/platform and the generated packages/ output.
 
 volumes:
   postgres-data:
+  seaweedfs-data:

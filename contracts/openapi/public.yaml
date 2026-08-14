@@ -94,6 +94,58 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /skills/import/upload:
+    post:
+      operationId: uploadSkillPackage
+      summary: Import a skill package by uploading a zip archive (SKILL-001)
+      description: |
+        Requires a session. The archive is statically validated only; nothing
+        inside it is executed. Blocking findings reject the import; identical
+        content re-uploaded to the same skill returns the existing version.
+      requestBody:
+        required: true
+        content:
+          application/zip:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: Package imported (or already present as this version).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+        "400":
+          description: Not a valid zip archive, or uncompressed content too large.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: Archive exceeds the upload size limit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Package failed spec or static validation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [findings]
+                properties:
+                  findings:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Finding"
 components:
   schemas:
     Health:
@@ -123,3 +175,37 @@ components:
         workspace_id:
           type: string
           format: uuid
+    Finding:
+      type: object
+      required: [severity, code, message]
+      properties:
+        severity:
+          type: string
+          enum: [error, warning, info]
+        code:
+          type: string
+        path:
+          type: string
+        message:
+          type: string
+    UploadResult:
+      type: object
+      required: [skill_id, version_id, version_number, content_hash, duplicate, findings]
+      properties:
+        skill_id:
+          type: string
+          format: uuid
+        version_id:
+          type: string
+          format: uuid
+        version_number:
+          type: integer
+        content_hash:
+          type: string
+        duplicate:
+          type: boolean
+          description: True when identical content already existed as a version of this skill.
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Finding"
