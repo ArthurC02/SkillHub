@@ -190,13 +190,17 @@ paths:
       summary: Public intent search for skills (DISC-001, DISC-002)
       description: |
         Natural language search over the public skill catalog. Uses hybrid
-        retrieval: pgvector embedding similarity + Postgres FTS, fused with
-        RRF (ADR-013). Does not require authentication.
+        retrieval (ADR-013): pgvector embedding similarity ranks the results and
+        Postgres FTS only widens the candidate set, so a lexical hit the vector
+        leg missed is still ordered by its own vector distance. Does not require
+        authentication.
         Scope is the public catalog only: private workspace content is never
         returned, and no request parameter can widen the scope (CORE-006,
         ADR-011). Use GET /skills/search for the caller's own workspace.
-        Blank or incomprehensible queries return an empty result set with
-        a prompt to refine.
+        Candidates further than the cosine distance cut-off are not returned at
+        all; when nothing survives it, the response carries no_results and a
+        query_suggestion rather than a page of weak matches. Blank or
+        incomprehensible queries take the same no_results path.
       parameters:
         - name: q
           in: query
@@ -535,7 +539,7 @@ components:
           format: uuid
     PublicSearchResponse:
       type: object
-      required: [query, results, degraded]
+      required: [query, results, degraded, no_results]
       properties:
         query:
           type: string
@@ -554,6 +558,22 @@ components:
         degraded_reason:
           type: string
           description: Why the vector leg was skipped. Absent when degraded is false.
+        no_results:
+          type: boolean
+          description: |
+            True when the search produced nothing to show (DISC-001
+            清楚的無結果狀態). Two situations reach it: every candidate fell
+            outside the cosine distance cut-off, or the query was never searched
+            because it was blank or incomprehensible. Read it together with
+            `degraded`: no_results with degraded false means nothing in the
+            catalog is close enough, while no_results with degraded true only
+            means the lexical floor found nothing and recall was already reduced.
+        query_suggestion:
+          type: string
+          description: |
+            Copy to show with a no-results answer, prompting the user to add the
+            task, the input they have and the output they want (DISC-001).
+            Absent when there are results.
     PublicSearchResult:
       type: object
       required: [skill_id, name, summary, rank]
@@ -565,10 +585,17 @@ components:
           type: string
         summary:
           type: string
-          description: Plain summary (DISC-002).
+          description: |
+            Plain summary (DISC-002). The index-time LLM summary when the skill
+            has been enriched (ADR-013 §1, model-generated), otherwise the
+            package's own frontmatter description.
         rank:
           type: number
-          description: Hybrid retrieval score (not purely stars; DISC-002).
+          description: |
+            Cosine similarity to the query, 0..1, higher is better (DISC-002 —
+            never star count). Results are ordered by this. A skill matched only
+            lexically while its enrichment is still pending has no vector and
+            reports 0.
         match_reason:
           type: string
           description: |

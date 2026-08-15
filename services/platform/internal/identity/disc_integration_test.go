@@ -5,6 +5,7 @@ package identity_test
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -83,6 +84,26 @@ func unitVector(axis int) []float32 {
 	return v
 }
 
+// seedBlendedEmbedding places a document at a chosen cosine similarity to the
+// query axis. Needed because a document on a different unit axis sits at cosine
+// distance 1.0, which is past catalog.MaxCosineDistance — that is a document the
+// cut-off is supposed to drop, so it cannot stand in for a merely-weaker match.
+func seedBlendedEmbedding(t *testing.T, pool *pgxpool.Pool, skillID string, axis, other int, cos float64) {
+	t.Helper()
+	var sk pgtype.UUID
+	if err := sk.Scan(skillID); err != nil {
+		t.Fatal(err)
+	}
+	v := make([]float32, embedDims)
+	v[axis] = float32(cos)
+	v[other] = float32(math.Sqrt(1 - cos*cos))
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE search_documents SET embedding = $2 WHERE skill_id = $1", sk, pgvector.NewVector(v),
+	); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // stubLLM stands in for the internal Python service. embedAxis < 0 makes /embed
 // fail, which is the degradation trigger the tests care about.
 func stubLLM(t *testing.T, embedAxis int, reason string) string {
@@ -132,12 +153,15 @@ func writeJSON(w http.ResponseWriter, v any) {
 type searchBody struct {
 	Query   string `json:"query"`
 	Results []struct {
-		SkillID           string `json:"skill_id"`
-		MatchReason       string `json:"match_reason"`
-		MatchReasonSource string `json:"match_reason_source"`
+		SkillID           string  `json:"skill_id"`
+		Rank              float64 `json:"rank"`
+		MatchReason       string  `json:"match_reason"`
+		MatchReasonSource string  `json:"match_reason_source"`
 	} `json:"results"`
-	Degraded       bool   `json:"degraded"`
-	DegradedReason string `json:"degraded_reason"`
+	Degraded        bool   `json:"degraded"`
+	DegradedReason  string `json:"degraded_reason"`
+	NoResults       bool   `json:"no_results"`
+	QuerySuggestion string `json:"query_suggestion"`
 }
 
 func (c *client) search(t *testing.T, path string) searchBody {
@@ -262,7 +286,9 @@ func TestZeroHitLegDoesNotParticipateInFusion(t *testing.T) {
 	near := seedSkill(t, pool, curator.workspaceID, "quenchable ledger reconciler")
 	far := seedSkill(t, pool, curator.workspaceID, "quenchable image rotator")
 	seedEmbedding(t, pool, near, 7)
-	seedEmbedding(t, pool, far, 900)
+	// Weaker but still inside the DISC-005 cut-off, so this test keeps measuring
+	// fusion behaviour rather than accidentally measuring the threshold.
+	seedBlendedEmbedding(t, pool, far, 7, 900, 0.5)
 
 	// A fresh API whose stub embeds every query onto the same axis as `near`.
 	a := newAPIWithLLM(t, pool, stubLLM(t, 7, "because it fits"))
@@ -283,6 +309,102 @@ func TestZeroHitLegDoesNotParticipateInFusion(t *testing.T) {
 	}
 	if !contains(ids, far) {
 		t.Fatalf("vector leg dropped a candidate: %v", ids)
+	}
+}
+
+// golden-query-set.md §3.7: the BM25 leg widens the candidate set and nothing
+// more. Here the lexical leg's best hit is the vector leg's worst, so if the FTS
+// rank still carried any ordering weight — as it did under equal-weight RRF —
+// the wrong document would come first. That fusion cost 11 of 48 measured
+// queries their Top-1, which is what this guards against.
+func TestFTSWidensCandidatesWithoutTakingOverRanking(t *testing.T) {
+	pool := requireDB(t)
+
+	curator := newAPI(t, pool).login(t, "curator-ranking")
+	markCatalog(t, pool, curator.workspaceID)
+	// "borogove" is the query term. Only the lexical document contains it, so
+	// the FTS leg ranks that one first and returns nothing else.
+	lexical := seedSkill(t, pool, curator.workspaceID, "borogove ledger reconciler")
+	semantic := seedSkill(t, pool, curator.workspaceID, "mome rath invoice matcher")
+	seedBlendedEmbedding(t, pool, lexical, 21, 900, 0.4) // in range, but further
+	seedEmbedding(t, pool, semantic, 21)                 // exactly on the query axis
+
+	a := newAPIWithLLM(t, pool, stubLLM(t, 21, "because it fits"))
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+
+	body := anon.search(t, "/api/skills/search?q=borogove")
+	ids := body.ids()
+	if len(ids) != 2 {
+		t.Fatalf("want both documents in the candidate set, got %v", ids)
+	}
+	if ids[0] != semantic {
+		t.Fatalf("lexical rank overrode vector ranking: got %v, want %s first", ids, semantic)
+	}
+	// The FTS-only match is still present — candidate expansion is the whole
+	// reason the lexical leg is still wired in.
+	if ids[1] != lexical {
+		t.Fatalf("FTS candidate expansion dropped its own hit: %v", ids)
+	}
+	// rank is now cosine similarity, so it has to fall along with the ordering.
+	if body.Results[0].Rank <= body.Results[1].Rank {
+		t.Fatalf("rank does not follow the ordering: %v", body.Results)
+	}
+}
+
+// DISC-005 / golden-query-set.md §4.3: an off-topic query gets an explicit
+// no-results state, not the catalogue's nearest-but-irrelevant document. Before
+// the cut-off, every off-topic query in that measurement returned a confident
+// wrong answer — coffee grinding matched a pitch-deck skill.
+func TestOffTopicQueryIsRefusedWithASuggestion(t *testing.T) {
+	pool := requireDB(t)
+
+	curator := newAPI(t, pool).login(t, "curator-threshold")
+	markCatalog(t, pool, curator.workspaceID)
+	published := seedSkill(t, pool, curator.workspaceID, "jubjub ledger reconciler")
+	seedEmbedding(t, pool, published, 33)
+
+	// The query embeds onto an unrelated axis: cosine distance 1.0, well past
+	// the 0.79 cut-off, and sharing no token with the document either.
+	a := newAPIWithLLM(t, pool, stubLLM(t, 700, "because it fits"))
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+
+	body := anon.search(t, "/api/skills/search?q=%E6%89%8B%E6%B2%96%E5%92%96%E5%95%A1%E7%A3%A8%E8%B1%86%E7%B2%97%E7%B4%B0")
+	if len(body.Results) != 0 {
+		t.Fatalf("off-topic query returned %d results: %v", len(body.Results), body.ids())
+	}
+	if !body.NoResults {
+		t.Fatal("empty result set was not reported as no_results")
+	}
+	if body.QuerySuggestion == "" {
+		t.Fatal("no-results answer carries no suggestion to refine the query")
+	}
+	// It is a real answer, not a broken one: the vector leg ran fine.
+	if body.Degraded {
+		t.Fatalf("a refusal was reported as a degradation: %q", body.DegradedReason)
+	}
+}
+
+// The other side of the cut-off: a genuine match sits comfortably inside it.
+// A threshold that refuses real queries is worse than no threshold, and
+// golden-query-set.md §4.3 chose 0.79 precisely for 0% recall loss.
+func TestRelevantQueryIsNotRefusedByTheCutOff(t *testing.T) {
+	pool := requireDB(t)
+
+	curator := newAPI(t, pool).login(t, "curator-threshold-ok")
+	markCatalog(t, pool, curator.workspaceID)
+	published := seedSkill(t, pool, curator.workspaceID, "slithy ledger reconciler")
+	// 0.3 cosine similarity: a weak-but-real match, above the 0.21 floor.
+	seedBlendedEmbedding(t, pool, published, 44, 900, 0.3)
+
+	a := newAPIWithLLM(t, pool, stubLLM(t, 44, "because it fits"))
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+
+	body := anon.search(t, "/api/skills/search?q=%E5%B8%B3%E5%8B%99%E5%B0%8D%E5%B8%B3")
+	if !contains(body.ids(), published) {
+		t.Fatalf("the cut-off refused a genuine match: %v", body.ids())
+	}
+	if body.NoResults {
+		t.Fatal("a search with results reported no_results")
 	}
 }
 
@@ -394,6 +516,11 @@ func TestBlankQueryReturnsNoResults(t *testing.T) {
 		body := anon.search(t, "/api/skills/search?q="+q)
 		if len(body.Results) != 0 {
 			t.Errorf("q=%q produced %d results, want none", q, len(body.Results))
+		}
+		// DISC-001 asks for a prompt to add the task, input and expected output —
+		// an unexplained empty list is not that.
+		if !body.NoResults || body.QuerySuggestion == "" {
+			t.Errorf("q=%q returned an empty list with no explanation", q)
 		}
 	}
 }

@@ -14,12 +14,15 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/skillpkg"
 )
@@ -36,15 +39,18 @@ var maxUnpackedBytes = uint64(256 << 20) // 256 MiB
 // to a well-formed package that fails validation).
 var ErrBadArchive = errors.New("bad archive")
 
-// ObjectStore is the slice of object storage ingest needs.
+// ObjectStore is the slice of object storage ingest needs. Get serves the
+// enrichment backfill, which recomputes from the stored package.
 type ObjectStore interface {
 	Put(ctx context.Context, key string, data []byte) error
+	Get(ctx context.Context, key string) ([]byte, error)
 }
 
 type Service struct {
 	Pool    *pgxpool.Pool
 	Store   ObjectStore
-	Fetcher *URLFetcher // nil disables URL import
+	Fetcher *URLFetcher       // nil disables URL import
+	LLM     *llmclient.Client // nil disables index-time enrichment (documents land pending)
 }
 
 // Result reports one upload. When Report.Blocked is true nothing was stored
@@ -92,11 +98,24 @@ type preparedPackage struct {
 	contentHash string
 	objectKey   string
 	manifest    []byte
+	// skillMD and fileTree are the enrichment inputs (ADR-013 §1). They are
+	// read here, not re-read later, because this is the only point that already
+	// has the archive open. Both are untrusted package content and are only ever
+	// passed to the LLM service as data (iron rule 1).
+	skillMD  string
+	fileTree []string
 }
 
-// prepare validates data and stores the archive. A blocked report comes back
-// with a nil error; the caller returns it to the client as findings.
-func (s *Service) prepare(ctx context.Context, data []byte) (preparedPackage, error) {
+// Caps on what the enrichment call carries, matching llm-internal.yaml.
+const (
+	maxEnrichMDBytes = 200_000
+	maxEnrichFiles   = 500
+)
+
+// readPackage validates data and collects the enrichment inputs. Shared by
+// import (which then stores the archive) and by the backfill (which read the
+// archive back out of storage).
+func readPackage(data []byte) (preparedPackage, error) {
 	fsys, err := packageFS(data)
 	if err != nil {
 		return preparedPackage{}, err
@@ -104,6 +123,30 @@ func (s *Service) prepare(ctx context.Context, data []byte) (preparedPackage, er
 	p := preparedPackage{report: skillpkg.Validate(fsys)}
 	if p.report.Blocked {
 		return p, nil
+	}
+	if md, err := fs.ReadFile(fsys, "SKILL.md"); err == nil {
+		if len(md) > maxEnrichMDBytes {
+			md = md[:maxEnrichMDBytes]
+		}
+		// Truncation can land mid-rune, and invalid UTF-8 does not survive JSON.
+		p.skillMD = strings.ToValidUTF8(string(md), "")
+	}
+	_ = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || len(p.fileTree) >= maxEnrichFiles {
+			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
+		}
+		p.fileTree = append(p.fileTree, path)
+		return nil
+	})
+	return p, nil
+}
+
+// prepare validates data and stores the archive. A blocked report comes back
+// with a nil error; the caller returns it to the client as findings.
+func (s *Service) prepare(ctx context.Context, data []byte) (preparedPackage, error) {
+	p, err := readPackage(data)
+	if err != nil || p.report.Blocked {
+		return p, err
 	}
 
 	sum := sha256.Sum256(data)
@@ -127,6 +170,12 @@ func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, 
 	}
 	res := Result{Report: p.report}
 
+	// Index-time enrichment runs before the transaction opens (ADR-013 §1).
+	// ponytail: re-importing byte-identical content pays for one enrichment call
+	// that persistVersion then discards as a duplicate. Add a pre-transaction
+	// content-hash lookup if duplicate imports ever show up in the model bill.
+	e := s.enrichPackage(ctx, p)
+
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return Result{}, err
@@ -149,7 +198,7 @@ func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, 
 	}
 	res.Skill = skill
 
-	res.Version, res.Duplicate, err = s.persistVersion(ctx, q, ws, skill, p, src)
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, q, ws, skill, p, src, e)
 	if err != nil {
 		return Result{}, err
 	}
@@ -169,6 +218,8 @@ func (s *Service) SaveVersion(ctx context.Context, ws gen.Workspace, skillID pgt
 	}
 	res := Result{Report: p.report}
 
+	e := s.enrichPackage(ctx, p) // outside the transaction; see importZip
+
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return Result{}, err
@@ -185,7 +236,7 @@ func (s *Service) SaveVersion(ctx context.Context, ws gen.Workspace, skillID pgt
 	}
 	res.Skill = skill
 
-	res.Version, res.Duplicate, err = s.persistVersion(ctx, q, ws, skill, p, sourceMeta{Type: "upload"})
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, q, ws, skill, p, sourceMeta{Type: "upload"}, e)
 	if err != nil {
 		return Result{}, err
 	}
@@ -201,7 +252,7 @@ func (s *Service) SaveVersion(ctx context.Context, ws gen.Workspace, skillID pgt
 
 // persistVersion writes the dedupe-checked version row, its source row, and
 // the search projection inside the caller's transaction.
-func (s *Service) persistVersion(ctx context.Context, q *gen.Queries, ws gen.Workspace, skill gen.Skill, p preparedPackage, src sourceMeta) (gen.SkillVersion, bool, error) {
+func (s *Service) persistVersion(ctx context.Context, q *gen.Queries, ws gen.Workspace, skill gen.Skill, p preparedPackage, src sourceMeta, e enrichment) (gen.SkillVersion, bool, error) {
 	if existing, err := q.GetVersionBySkillAndHash(ctx, gen.GetVersionBySkillAndHashParams{
 		SkillID: skill.ID, ContentHash: p.contentHash,
 	}); err == nil {
@@ -243,16 +294,72 @@ func (s *Service) persistVersion(ctx context.Context, q *gen.Queries, ws gen.Wor
 	// Search projection updates in the same transaction (INGEST-009): same
 	// database, so consistency is free; full rebuilds go through cmd/reindex.
 	// The document keeps the skills row's name (fork names differ from their
-	// manifest) but takes the newest description.
-	if err := q.UpsertSearchDocument(ctx, gen.UpsertSearchDocumentParams{
-		SkillID:     skill.ID,
-		WorkspaceID: ws.ID,
-		Name:        skill.Name,
-		Summary:     p.report.Manifest.Description,
-	}); err != nil {
+	// manifest) but takes the newest description and enrichment.
+	if err := upsertProjection(ctx, q, skill.ID, ws.ID, skill.Name, e); err != nil {
 		return gen.SkillVersion{}, false, err
 	}
 	return version, false, nil
+}
+
+// upsertProjection writes one search document. Shared by import and by the
+// enrichment backfill so both produce identical rows.
+func upsertProjection(ctx context.Context, q *gen.Queries, skillID, workspaceID pgtype.UUID, name string, e enrichment) error {
+	return q.UpsertSearchDocumentEnriched(ctx, gen.UpsertSearchDocumentEnrichedParams{
+		SkillID:                 skillID,
+		WorkspaceID:             workspaceID,
+		Name:                    name,
+		Summary:                 e.summary,
+		EnrichedSummary:         e.enrichedSummary,
+		TaskExamples:            e.taskExamples,
+		Tags:                    e.tags,
+		Embedding:               e.embedding,
+		EnrichmentStatus:        e.status,
+		EnrichmentModel:         e.model,
+		EnrichmentPromptVersion: e.promptVersion,
+	})
+}
+
+// ReindexPending re-runs index-time enrichment for documents the import path
+// left pending (INGEST-009 重新索引, ADR-013 §1). Manual and bounded: this is
+// the operator's catch-up tool, not a retry scheduler. Iron rule 6 puts the
+// retry decision in Go, and for this batch that decision is "when someone runs
+// reindex".
+//
+// Idempotent — a document that enriches successfully leaves the worklist, and
+// one that fails again stays exactly as it was.
+func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed int, err error) {
+	if s.LLM == nil {
+		return 0, 0, errors.New("ingest: enrichment backfill needs an LLM service")
+	}
+	q := gen.New(s.Pool)
+	rows, err := q.ListPendingEnrichment(ctx, limit)
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, row := range rows {
+		data, err := s.Store.Get(ctx, row.PackageObjectKey)
+		if err != nil {
+			slog.Warn("backfill: package unreadable", "skill", row.Name, "error", err)
+			failed++
+			continue
+		}
+		p, err := readPackage(data)
+		if err != nil || p.report.Blocked {
+			slog.Warn("backfill: stored package no longer parses", "skill", row.Name, "error", err)
+			failed++
+			continue
+		}
+		e := s.enrichPackage(ctx, p)
+		if e.status != enrichmentEnriched {
+			failed++ // enrichPackage already logged why; the row stays pending
+			continue
+		}
+		if err := upsertProjection(ctx, q, row.SkillID, row.WorkspaceID, row.Name, e); err != nil {
+			return done, failed, err
+		}
+		done++
+	}
+	return done, failed, nil
 }
 
 // packageFS opens the zip as a read-only fs.FS, rejecting bombs and locating

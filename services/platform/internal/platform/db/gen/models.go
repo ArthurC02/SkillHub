@@ -179,13 +179,19 @@ type RunStatusTransition struct {
 }
 
 type SearchDocument struct {
-	SkillID     pgtype.UUID
-	WorkspaceID pgtype.UUID
-	Name        string
-	Summary     string
-	Tsv         interface{}
-	Embedding   *pgvector.Vector
-	UpdatedAt   pgtype.Timestamptz
+	SkillID                 pgtype.UUID
+	WorkspaceID             pgtype.UUID
+	Name                    string
+	Summary                 string
+	Tsv                     interface{}
+	Embedding               *pgvector.Vector
+	UpdatedAt               pgtype.Timestamptz
+	EnrichedSummary         string
+	TaskExamples            string
+	Tags                    string
+	EnrichmentStatus        string
+	EnrichmentModel         *string
+	EnrichmentPromptVersion *string
 }
 
 type Session struct {

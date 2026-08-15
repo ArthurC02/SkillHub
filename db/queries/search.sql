@@ -4,13 +4,52 @@ VALUES ($1, $2, $3, $4, now())
 ON CONFLICT (skill_id) DO UPDATE
 SET name = EXCLUDED.name, summary = EXCLUDED.summary, updated_at = now();
 
--- name: UpsertSearchDocumentWithEmbedding :exec
--- Full upsert including the embedding vector (ADR-013 index-time enhancement).
-INSERT INTO search_documents (skill_id, workspace_id, name, summary, embedding, updated_at)
-VALUES ($1, $2, $3, $4, $5, now())
+-- name: UpsertSearchDocumentEnriched :exec
+-- Full upsert including the ADR-013 index-time enhancement fields and the
+-- embedding computed from them.
+--
+-- A failed enrichment overwrites a previous good one with empty text and
+-- 'pending' on purpose. The old enrichment described the old content; keeping it
+-- against new content would index the document as something it no longer is,
+-- which is worse than indexing it as pending until the backfill catches up.
+INSERT INTO search_documents (
+    skill_id, workspace_id, name, summary,
+    enriched_summary, task_examples, tags, embedding,
+    enrichment_status, enrichment_model, enrichment_prompt_version, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
 ON CONFLICT (skill_id) DO UPDATE
-SET name = EXCLUDED.name, summary = EXCLUDED.summary,
-    embedding = EXCLUDED.embedding, updated_at = now();
+SET workspace_id = EXCLUDED.workspace_id,
+    name = EXCLUDED.name,
+    summary = EXCLUDED.summary,
+    enriched_summary = EXCLUDED.enriched_summary,
+    task_examples = EXCLUDED.task_examples,
+    tags = EXCLUDED.tags,
+    embedding = EXCLUDED.embedding,
+    enrichment_status = EXCLUDED.enrichment_status,
+    enrichment_model = EXCLUDED.enrichment_model,
+    enrichment_prompt_version = EXCLUDED.enrichment_prompt_version,
+    updated_at = now();
+
+-- name: ListPendingEnrichment :many
+-- Backfill worklist for cmd/reindex: documents whose enrichment never landed,
+-- oldest first, with the package object the enrichment is recomputed from.
+--
+-- The lateral join is an inner join on purpose: a skill with no version yet
+-- (a fork created ahead of its content) has nothing to enrich from, so it drops
+-- out of the worklist here rather than becoming a null the caller has to skip.
+SELECT sd.skill_id, sd.workspace_id, sd.name, sv.package_object_key
+FROM search_documents sd
+JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL
+JOIN LATERAL (
+    SELECT v.package_object_key
+    FROM skill_versions v
+    WHERE v.skill_id = sd.skill_id
+    ORDER BY v.version_number DESC
+    LIMIT 1
+) sv ON true
+WHERE sd.enrichment_status = 'pending'
+ORDER BY sd.updated_at
+LIMIT $1;
 
 -- name: SearchSkills :many
 -- FTS leg only for now (ADR-013); vector + RRF join here when the embedding
@@ -42,48 +81,64 @@ ORDER BY rank DESC
 LIMIT $1;
 
 -- name: PublicHybridSearchSkills :many
--- ADR-013 hybrid retrieval: FTS + vector similarity fused with RRF.
--- Both legs run as CTEs; RRF combines their rankings.
+-- ADR-013 hybrid retrieval, ranked by vector distance alone.
 --
--- Zero-hit legs are excluded structurally (ADR-013 定案調整 3: feeding a leg
--- that matched nothing into the fusion only dilutes the other leg). Each leg
--- filters before it ranks, so a leg that matched nothing produces no rows at
--- all; the FULL OUTER JOIN then leaves its reciprocal term COALESCEd to 0 for
--- every candidate, which is the same ordering as if the leg were absent. This
--- is why the join is FULL OUTER and not a UNION of both legs' documents.
+-- This used to fuse both legs with equal-weight RRF. golden-query-set.md §3.7
+-- measured that fusion costing 11 of 48 queries their Top-1 and 5 their
+-- recall@5 against the vector leg on its own, because the BM25 leg answers only
+-- 20% of Traditional Chinese queries correctly and equal-weight RRF averages
+-- that near-dead leg's ranks into the strong one. ADR-013 定案調整 3 already
+-- says RRF is a recall-coverage device and not a source of ranking quality, so
+-- the legs now do exactly that and no more:
 --
--- The per-leg ORDER BY repeats the window's ordering on purpose: LIMIT without
--- ORDER BY is not defined to keep the top rows of a window function, so without
--- it the truncation to 50 could drop the best-ranked rows.
-WITH fts AS (
-    SELECT s.skill_id, s.name, s.summary,
-           ROW_NUMBER() OVER (ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC) AS rn
-    FROM search_documents s
-    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
-    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
-    LIMIT 50
-),
-vec AS (
-    SELECT s.skill_id, s.name, s.summary,
-           ROW_NUMBER() OVER (ORDER BY s.embedding <=> sqlc.arg(query_embedding)::vector ASC) AS rn
+--   * vec  — nearest neighbours, and the ranking authority.
+--   * fts  — candidate expansion only. It pulls in documents the vector leg
+--            missed; those documents are then ranked by their own vector
+--            distance like everyone else, never by their lexical rank.
+--
+-- A zero-hit leg contributes no rows, so it cannot dilute the other one
+-- (ADR-013 定案調整 3) — that property survives the switch from FULL OUTER JOIN
+-- to UNION, and UNION is now enough because there is no per-leg rank to merge.
+--
+-- Documents with no embedding yet (enrichment_status = 'pending') have a NULL
+-- distance. They can only arrive through the FTS leg, they sort last, and the
+-- distance cut-off cannot judge them, so they are kept: dropping them would
+-- silently hide every not-yet-enriched skill from search instead of ranking it
+-- low.
+--
+-- The per-leg ORDER BY before LIMIT is load-bearing: LIMIT without ORDER BY is
+-- not defined to keep the best rows.
+WITH vec AS (
+    SELECT s.skill_id, s.name,
+           COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
+           s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
     WHERE s.embedding IS NOT NULL
     ORDER BY s.embedding <=> sqlc.arg(query_embedding)::vector ASC
     LIMIT 50
 ),
-rrf AS (
-    SELECT COALESCE(f.skill_id, v.skill_id) AS skill_id,
-           COALESCE(f.name, v.name) AS name,
-           COALESCE(f.summary, v.summary) AS summary,
-           COALESCE(1.0 / (60 + f.rn), 0) + COALESCE(1.0 / (60 + v.rn), 0) AS score
-    FROM fts f
-    FULL OUTER JOIN vec v ON f.skill_id = v.skill_id
+fts AS (
+    SELECT s.skill_id, s.name,
+           COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
+           s.embedding <=> sqlc.arg(query_embedding)::vector AS distance
+    FROM search_documents s
+    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
+    WHERE s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
+    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
+    LIMIT 50
+),
+candidates AS (
+    SELECT skill_id, name, summary, distance FROM vec
+    UNION
+    SELECT skill_id, name, summary, distance FROM fts
 )
-SELECT skill_id, name, summary, score::float8 AS rank
-FROM rrf
-ORDER BY score DESC
+-- max_distance is the DISC-005 cut-off; see catalog.MaxCosineDistance for the
+-- value's derivation and its expiry conditions.
+SELECT skill_id, name, summary, (1 - COALESCE(distance, 1))::float8 AS rank
+FROM candidates
+WHERE distance IS NULL OR distance <= sqlc.arg(max_distance)::float8
+ORDER BY distance ASC NULLS LAST
 LIMIT sqlc.arg(result_limit);
 
 -- name: ReindexAll :execrows

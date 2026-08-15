@@ -21,6 +21,60 @@ func (q *Queries) DeleteSearchDocument(ctx context.Context, skillID pgtype.UUID)
 	return err
 }
 
+const listPendingEnrichment = `-- name: ListPendingEnrichment :many
+SELECT sd.skill_id, sd.workspace_id, sd.name, sv.package_object_key
+FROM search_documents sd
+JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL
+JOIN LATERAL (
+    SELECT v.package_object_key
+    FROM skill_versions v
+    WHERE v.skill_id = sd.skill_id
+    ORDER BY v.version_number DESC
+    LIMIT 1
+) sv ON true
+WHERE sd.enrichment_status = 'pending'
+ORDER BY sd.updated_at
+LIMIT $1
+`
+
+type ListPendingEnrichmentRow struct {
+	SkillID          pgtype.UUID
+	WorkspaceID      pgtype.UUID
+	Name             string
+	PackageObjectKey string
+}
+
+// Backfill worklist for cmd/reindex: documents whose enrichment never landed,
+// oldest first, with the package object the enrichment is recomputed from.
+//
+// The lateral join is an inner join on purpose: a skill with no version yet
+// (a fork created ahead of its content) has nothing to enrich from, so it drops
+// out of the worklist here rather than becoming a null the caller has to skip.
+func (q *Queries) ListPendingEnrichment(ctx context.Context, limit int32) ([]ListPendingEnrichmentRow, error) {
+	rows, err := q.db.Query(ctx, listPendingEnrichment, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPendingEnrichmentRow
+	for rows.Next() {
+		var i ListPendingEnrichmentRow
+		if err := rows.Scan(
+			&i.SkillID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.PackageObjectKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const pruneDeletedSearchDocuments = `-- name: PruneDeletedSearchDocuments :execrows
 DELETE FROM search_documents sd
 USING skills sk
@@ -38,42 +92,43 @@ func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context) (int64, error
 }
 
 const publicHybridSearchSkills = `-- name: PublicHybridSearchSkills :many
-WITH fts AS (
-    SELECT s.skill_id, s.name, s.summary,
-           ROW_NUMBER() OVER (ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $2::text)) DESC) AS rn
-    FROM search_documents s
-    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE s.tsv @@ websearch_to_tsquery('english', $2::text)
-    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $2::text)) DESC
-    LIMIT 50
-),
-vec AS (
-    SELECT s.skill_id, s.name, s.summary,
-           ROW_NUMBER() OVER (ORDER BY s.embedding <=> $3::vector ASC) AS rn
+WITH vec AS (
+    SELECT s.skill_id, s.name,
+           COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
+           s.embedding <=> $3::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
     WHERE s.embedding IS NOT NULL
     ORDER BY s.embedding <=> $3::vector ASC
     LIMIT 50
 ),
-rrf AS (
-    SELECT COALESCE(f.skill_id, v.skill_id) AS skill_id,
-           COALESCE(f.name, v.name) AS name,
-           COALESCE(f.summary, v.summary) AS summary,
-           COALESCE(1.0 / (60 + f.rn), 0) + COALESCE(1.0 / (60 + v.rn), 0) AS score
-    FROM fts f
-    FULL OUTER JOIN vec v ON f.skill_id = v.skill_id
+fts AS (
+    SELECT s.skill_id, s.name,
+           COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
+           s.embedding <=> $3::vector AS distance
+    FROM search_documents s
+    JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
+    WHERE s.tsv @@ websearch_to_tsquery('english', $4::text)
+    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $4::text)) DESC
+    LIMIT 50
+),
+candidates AS (
+    SELECT skill_id, name, summary, distance FROM vec
+    UNION
+    SELECT skill_id, name, summary, distance FROM fts
 )
-SELECT skill_id, name, summary, score::float8 AS rank
-FROM rrf
-ORDER BY score DESC
-LIMIT $1
+SELECT skill_id, name, summary, (1 - COALESCE(distance, 1))::float8 AS rank
+FROM candidates
+WHERE distance IS NULL OR distance <= $1::float8
+ORDER BY distance ASC NULLS LAST
+LIMIT $2
 `
 
 type PublicHybridSearchSkillsParams struct {
+	MaxDistance    float64
 	ResultLimit    int32
-	Query          string
 	QueryEmbedding *pgvector.Vector
+	Query          string
 }
 
 type PublicHybridSearchSkillsRow struct {
@@ -83,21 +138,42 @@ type PublicHybridSearchSkillsRow struct {
 	Rank    float64
 }
 
-// ADR-013 hybrid retrieval: FTS + vector similarity fused with RRF.
-// Both legs run as CTEs; RRF combines their rankings.
+// ADR-013 hybrid retrieval, ranked by vector distance alone.
 //
-// Zero-hit legs are excluded structurally (ADR-013 定案調整 3: feeding a leg
-// that matched nothing into the fusion only dilutes the other leg). Each leg
-// filters before it ranks, so a leg that matched nothing produces no rows at
-// all; the FULL OUTER JOIN then leaves its reciprocal term COALESCEd to 0 for
-// every candidate, which is the same ordering as if the leg were absent. This
-// is why the join is FULL OUTER and not a UNION of both legs' documents.
+// This used to fuse both legs with equal-weight RRF. golden-query-set.md §3.7
+// measured that fusion costing 11 of 48 queries their Top-1 and 5 their
+// recall@5 against the vector leg on its own, because the BM25 leg answers only
+// 20% of Traditional Chinese queries correctly and equal-weight RRF averages
+// that near-dead leg's ranks into the strong one. ADR-013 定案調整 3 already
+// says RRF is a recall-coverage device and not a source of ranking quality, so
+// the legs now do exactly that and no more:
 //
-// The per-leg ORDER BY repeats the window's ordering on purpose: LIMIT without
-// ORDER BY is not defined to keep the top rows of a window function, so without
-// it the truncation to 50 could drop the best-ranked rows.
+//   - vec  — nearest neighbours, and the ranking authority.
+//   - fts  — candidate expansion only. It pulls in documents the vector leg
+//     missed; those documents are then ranked by their own vector
+//     distance like everyone else, never by their lexical rank.
+//
+// A zero-hit leg contributes no rows, so it cannot dilute the other one
+// (ADR-013 定案調整 3) — that property survives the switch from FULL OUTER JOIN
+// to UNION, and UNION is now enough because there is no per-leg rank to merge.
+//
+// Documents with no embedding yet (enrichment_status = 'pending') have a NULL
+// distance. They can only arrive through the FTS leg, they sort last, and the
+// distance cut-off cannot judge them, so they are kept: dropping them would
+// silently hide every not-yet-enriched skill from search instead of ranking it
+// low.
+//
+// The per-leg ORDER BY before LIMIT is load-bearing: LIMIT without ORDER BY is
+// not defined to keep the best rows.
+// max_distance is the DISC-005 cut-off; see catalog.MaxCosineDistance for the
+// value's derivation and its expiry conditions.
 func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybridSearchSkillsParams) ([]PublicHybridSearchSkillsRow, error) {
-	rows, err := q.db.Query(ctx, publicHybridSearchSkills, arg.ResultLimit, arg.Query, arg.QueryEmbedding)
+	rows, err := q.db.Query(ctx, publicHybridSearchSkills,
+		arg.MaxDistance,
+		arg.ResultLimit,
+		arg.QueryEmbedding,
+		arg.Query,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -273,30 +349,60 @@ func (q *Queries) UpsertSearchDocument(ctx context.Context, arg UpsertSearchDocu
 	return err
 }
 
-const upsertSearchDocumentWithEmbedding = `-- name: UpsertSearchDocumentWithEmbedding :exec
-INSERT INTO search_documents (skill_id, workspace_id, name, summary, embedding, updated_at)
-VALUES ($1, $2, $3, $4, $5, now())
+const upsertSearchDocumentEnriched = `-- name: UpsertSearchDocumentEnriched :exec
+INSERT INTO search_documents (
+    skill_id, workspace_id, name, summary,
+    enriched_summary, task_examples, tags, embedding,
+    enrichment_status, enrichment_model, enrichment_prompt_version, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
 ON CONFLICT (skill_id) DO UPDATE
-SET name = EXCLUDED.name, summary = EXCLUDED.summary,
-    embedding = EXCLUDED.embedding, updated_at = now()
+SET workspace_id = EXCLUDED.workspace_id,
+    name = EXCLUDED.name,
+    summary = EXCLUDED.summary,
+    enriched_summary = EXCLUDED.enriched_summary,
+    task_examples = EXCLUDED.task_examples,
+    tags = EXCLUDED.tags,
+    embedding = EXCLUDED.embedding,
+    enrichment_status = EXCLUDED.enrichment_status,
+    enrichment_model = EXCLUDED.enrichment_model,
+    enrichment_prompt_version = EXCLUDED.enrichment_prompt_version,
+    updated_at = now()
 `
 
-type UpsertSearchDocumentWithEmbeddingParams struct {
-	SkillID     pgtype.UUID
-	WorkspaceID pgtype.UUID
-	Name        string
-	Summary     string
-	Embedding   *pgvector.Vector
+type UpsertSearchDocumentEnrichedParams struct {
+	SkillID                 pgtype.UUID
+	WorkspaceID             pgtype.UUID
+	Name                    string
+	Summary                 string
+	EnrichedSummary         string
+	TaskExamples            string
+	Tags                    string
+	Embedding               *pgvector.Vector
+	EnrichmentStatus        string
+	EnrichmentModel         *string
+	EnrichmentPromptVersion *string
 }
 
-// Full upsert including the embedding vector (ADR-013 index-time enhancement).
-func (q *Queries) UpsertSearchDocumentWithEmbedding(ctx context.Context, arg UpsertSearchDocumentWithEmbeddingParams) error {
-	_, err := q.db.Exec(ctx, upsertSearchDocumentWithEmbedding,
+// Full upsert including the ADR-013 index-time enhancement fields and the
+// embedding computed from them.
+//
+// A failed enrichment overwrites a previous good one with empty text and
+// 'pending' on purpose. The old enrichment described the old content; keeping it
+// against new content would index the document as something it no longer is,
+// which is worse than indexing it as pending until the backfill catches up.
+func (q *Queries) UpsertSearchDocumentEnriched(ctx context.Context, arg UpsertSearchDocumentEnrichedParams) error {
+	_, err := q.db.Exec(ctx, upsertSearchDocumentEnriched,
 		arg.SkillID,
 		arg.WorkspaceID,
 		arg.Name,
 		arg.Summary,
+		arg.EnrichedSummary,
+		arg.TaskExamples,
+		arg.Tags,
 		arg.Embedding,
+		arg.EnrichmentStatus,
+		arg.EnrichmentModel,
+		arg.EnrichmentPromptVersion,
 	)
 	return err
 }

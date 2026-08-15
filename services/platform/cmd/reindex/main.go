@@ -1,16 +1,34 @@
 // Command reindex rebuilds the search projection from skills (INGEST-009).
 // The projection is never a source of truth (ADR-010), so this is safe to run
 // at any time and is the recovery path if the projection drifts or is lost.
+//
+// Two phases:
+//
+//  1. SQL rebuild — every live skill gets a document, stale ones are pruned.
+//     Needs only DATABASE_URL.
+//  2. Enrichment backfill — documents left pending by a failed or skipped
+//     index-time enrichment are recomputed from their stored package
+//     (ADR-013 §1). Needs LLM_SERVICE_URL and object storage; skipped with a
+//     warning when LLM_SERVICE_URL is unset, so phase 1 still works alone.
+//
+// The backfill is manual on purpose: iron rule 6 puts retry decisions in Go,
+// and for now that decision is an operator running this command. Re-running is
+// harmless — enriched documents leave the worklist, failures stay pending.
+// REINDEX_BATCH caps one run (default 200).
 package main
 
 import (
 	"context"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
+	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/objstore"
 )
 
 func main() {
@@ -34,4 +52,43 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("search projection rebuilt", "documents", n, "pruned", pruned)
+
+	llmURL := os.Getenv("LLM_SERVICE_URL")
+	if llmURL == "" {
+		slog.Warn("LLM_SERVICE_URL not set; skipping enrichment backfill, documents stay pending")
+		return
+	}
+	store, err := objstore.New(
+		envOr("OBJSTORE_ENDPOINT", "localhost:8333"),
+		os.Getenv("OBJSTORE_ACCESS_KEY"),
+		os.Getenv("OBJSTORE_SECRET_KEY"),
+		envOr("OBJSTORE_BUCKET", "skillhub"),
+		os.Getenv("OBJSTORE_SSL") == "1",
+	)
+	if err != nil {
+		slog.Error("object store", "error", err)
+		os.Exit(1)
+	}
+
+	svc := &ingest.Service{Pool: pool, Store: store, LLM: &llmclient.Client{BaseURL: llmURL}}
+	done, failed, err := svc.ReindexPending(ctx, batchSize())
+	if err != nil {
+		slog.Error("enrichment backfill", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("enrichment backfill complete", "enriched", done, "still_pending", failed)
+}
+
+func batchSize() int32 {
+	if n, err := strconv.Atoi(os.Getenv("REINDEX_BATCH")); err == nil && n > 0 {
+		return int32(n)
+	}
+	return 200
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }

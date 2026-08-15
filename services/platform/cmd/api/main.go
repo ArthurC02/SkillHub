@@ -64,11 +64,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	// LLM service client (ADR-016: Python is capability provider).
+	// LLM_SERVICE_URL empty = no embeddings: search degrades to FTS-only and
+	// imported skills land with enrichment_status = 'pending'.
+	var llm *llmclient.Client
+	if llmURL := os.Getenv("LLM_SERVICE_URL"); llmURL != "" {
+		llm = &llmclient.Client{BaseURL: llmURL}
+		slog.Info("llm service configured", "url", llmURL)
+	} else {
+		slog.Warn("LLM_SERVICE_URL not set; search will use FTS-only fallback and imports will not be enriched")
+	}
+
 	importer := &ingest.Handler{
 		Svc: &ingest.Service{
 			Pool:    pool,
 			Store:   store,
 			Fetcher: importFetcherFromEnv(),
+			LLM:     llm,
 		},
 		Identity: auth.Service,
 	}
@@ -78,16 +90,6 @@ func main() {
 	auth.Mount(mux)
 	mux.HandleFunc("POST /skills/import/upload", auth.RequireSession(importer.Upload))
 	mux.HandleFunc("POST /skills/import/url", auth.RequireSession(importer.ImportURL))
-
-	// LLM service client (ADR-016: Python is capability provider).
-	// LLM_SERVICE_URL empty = embedding unavailable, FTS-only fallback.
-	var llm *llmclient.Client
-	if llmURL := os.Getenv("LLM_SERVICE_URL"); llmURL != "" {
-		llm = &llmclient.Client{BaseURL: llmURL}
-		slog.Info("llm service configured", "url", llmURL)
-	} else {
-		slog.Warn("LLM_SERVICE_URL not set; search will use FTS-only fallback")
-	}
 
 	search := &catalog.Handler{Pool: pool, Identity: auth.Service, LLMClient: llm}
 	// DISC-001: public search works without login.

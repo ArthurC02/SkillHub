@@ -1,5 +1,6 @@
 // Package catalog owns skill discovery (ADR-002 Catalog & Discovery).
-// Hybrid retrieval: FTS + pgvector vector similarity fused with RRF (ADR-013).
+// Hybrid retrieval: pgvector similarity ranks, Postgres FTS only widens the
+// candidate set (ADR-013 定案調整 3, measured in golden-query-set.md §3.7).
 // The Python LLM service provides embeddings and match-reason generation;
 // Go owns policy, auth, state, and retry (ADR-016 Iron Rule 6).
 package catalog
@@ -39,6 +40,44 @@ const (
 	reasonSourceTemplate = "template"
 )
 
+// MaxCosineDistance is the DISC-001/DISC-005 "no results" cut-off: a candidate
+// further than this from the query is not returned at all, and a query where
+// everything is further returns the no-results state instead of a page of
+// nearest-but-irrelevant skills.
+//
+// 0.79 cosine distance is 0.21 cosine similarity, from
+// plans/mvp/m1/golden-query-set.md §4.3 option B. Over that corpus the two
+// distributions do not overlap — the best hit for an off-topic query peaked at
+// 0.188 similarity, the worst genuine answer sat at 0.231 — so this sits in the
+// middle of a clean gap and scored 12/12 off-topic queries correctly refused
+// with 0/46 real answers lost.
+//
+// This number expires. §4.4 names three changes that each invalidate it and
+// require re-running tools/goldenset/evaluate.py before this constant is
+// trusted again:
+//
+//  1. Corpus growth. The off-topic ceiling is a maximum over the corpus, so it
+//     drifts up as the catalogue grows while the genuine-answer floor does not.
+//     Re-measure every time the indexed document count grows by an order of
+//     magnitude.
+//  2. Index content. The measurement indexed bare frontmatter. Real LLM
+//     enrichment — which is what this pipeline now writes — raises both
+//     distributions, so the gap this value sits in has moved and the number
+//     must be re-derived rather than carried over.
+//  3. Query rewriting. The measurement embedded the user's raw sentence, which
+//     is the degraded path. A rewritten query has a different distribution, so
+//     turning rewriting on needs either two cut-offs or one union of both.
+//
+// It is also bound to text-embedding-3-small at 1536 dimensions; a different
+// embedding model invalidates it outright (ADR-013).
+const MaxCosineDistance = 0.79
+
+// noResultsSuggestion is the DISC-001 prompt to refine. It asks for the three
+// things the golden set found missing from the queries that failed: the format,
+// the input in hand, and the wanted output.
+const noResultsSuggestion = "No skill in the catalog is close enough to this task. " +
+	"Try naming the file format you have, the input you are starting from, and the output you want."
+
 // searchResult is the public JSON shape for each search hit (DISC-002).
 type searchResult struct {
 	SkillID           string  `json:"skill_id"`
@@ -60,6 +99,14 @@ type searchResponse struct {
 	// skill exists".
 	Degraded       bool   `json:"degraded"`
 	DegradedReason string `json:"degraded_reason,omitempty"`
+	// NoResults distinguishes "we searched and nothing was close enough" from
+	// an empty list the caller has to interpret (DISC-001 清楚的無結果狀態).
+	// Also true for a query that was never searched at all — blank or
+	// incomprehensible — because the answer the user needs is the same one.
+	NoResults bool `json:"no_results"`
+	// QuerySuggestion is the copy to show alongside NoResults (DISC-001
+	// 提示使用者補充任務、輸入或預期輸出). Empty when there are results.
+	QuerySuggestion string `json:"query_suggestion,omitempty"`
 }
 
 // PublicSearch handles GET /api/skills/search?q=...&limit=N.
@@ -71,8 +118,10 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 	// DISC-001: blank/incomprehensible queries don't create search.
 	if q == "" || !isComprehensible(q) {
 		httpx.WriteJSON(w, http.StatusOK, searchResponse{
-			Query:   q,
-			Results: []searchResult{},
+			Query:           q,
+			Results:         []searchResult{},
+			NoResults:       true,
+			QuerySuggestion: noResultsSuggestion,
 		})
 		return
 	}
@@ -128,17 +177,27 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	httpx.WriteJSON(w, http.StatusOK, searchResponse{
+	resp := searchResponse{
 		Query:          q,
 		Results:        hits,
 		Degraded:       degradedReason != "",
 		DegradedReason: degradedReason,
-	})
+	}
+	// Everything fell outside MaxCosineDistance (or the lexical floor matched
+	// nothing). Saying so explicitly is the point: a degraded empty answer still
+	// carries its degraded flag, so the caller can tell "nothing is close
+	// enough" from "we could not look properly".
+	if len(hits) == 0 {
+		resp.NoResults = true
+		resp.QuerySuggestion = noResultsSuggestion
+	}
+	httpx.WriteJSON(w, http.StatusOK, resp)
 }
 
 // hybridSearch runs the ADR-013 hybrid retrieval pipeline:
-// 1. Get query embedding from the LLM service
-// 2. Run hybrid SQL (FTS + vector + RRF)
+//  1. Get query embedding from the LLM service
+//  2. Run the hybrid SQL: vector distance ranks, FTS widens candidates, and
+//     anything past MaxCosineDistance is dropped rather than shown
 //
 // ponytail: the raw query is embedded as typed. ADR-013 定案調整 2 puts LLM
 // query rewriting ahead of the embedding call as a Top-1 precision gain (80% ->
@@ -171,6 +230,7 @@ func (h *Handler) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 	rows, err := queries.PublicHybridSearchSkills(ctx, gen.PublicHybridSearchSkillsParams{
 		Query:          query,
 		QueryEmbedding: &embedding,
+		MaxDistance:    MaxCosineDistance,
 		ResultLimit:    limit,
 	})
 	if err != nil {
