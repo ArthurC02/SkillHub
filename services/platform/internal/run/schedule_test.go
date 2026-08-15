@@ -71,8 +71,8 @@ func TestMatchRefusesIncompatibleProviders(t *testing.T) {
 		{"bare process isolation", func(c *ProviderCapability) { c.Isolation.Level = "process" }, "isolate"},
 		{"undeclared isolation", func(c *ProviderCapability) { c.Isolation.Level = "" }, "isolate"},
 		{"runs as root", func(c *ProviderCapability) { c.Isolation.Rootless = false }, "unprivileged"},
-		{"no default-deny egress", func(c *ProviderCapability) {
-			c.Network.EgressModes = []string{"none"}
+		{"no egress mode the request can use", func(c *ProviderCapability) {
+			c.Network.EgressModes = []string{"something_else"}
 		}, "egress"},
 		{"different runtime", func(c *ProviderCapability) {
 			c.Runtimes[0].Runtime = "some_other_sdk"
@@ -106,6 +106,46 @@ func TestMatchRefusesIncompatibleProviders(t *testing.T) {
 				t.Errorf("reason = %q, want it to name the provider", err)
 			}
 		})
+	}
+}
+
+// The two egress modes are ordered, not alternatives. A provider with no route
+// out at all is strictly stronger than one that denies by default and permits a
+// list — so it can carry a run allowed to reach nothing, and only that run. This
+// is the dev DockerProvider's declaration (`--network none`), so getting the
+// direction wrong would refuse every run on a developer machine, and getting it
+// backwards would run a network-needing skill somewhere it cannot reach anything.
+func TestMatchAcceptsAStrongerEgressModeButNeverAWeakerOne(t *testing.T) {
+	noEgress := compatible()
+	noEgress.Network.EgressModes = []string{"none"}
+
+	req := defaultRequirements()
+	if req.EgressAllowed != 0 {
+		t.Fatalf("the default policy allows %d destinations, want none", req.EgressAllowed)
+	}
+	if _, err := Match(noEgress, req); err != nil {
+		t.Errorf("a provider with no egress at all was refused a run allowed to reach nothing: %v", err)
+	}
+
+	// The moment the run needs to reach something, that provider cannot serve it.
+	needsEgress := req
+	needsEgress.EgressAllowed = 1
+	_, err := Match(noEgress, needsEgress)
+	if err == nil {
+		t.Fatal("a run with an allow list was sent to a provider with no route out")
+	}
+	if !strings.Contains(err.Error(), "allow list") {
+		t.Errorf("reason = %q, want it to name the allow list as the thing that did not fit", err)
+	}
+
+	// And the substitution never runs the other way: default_deny is not a
+	// stand-in for a request that asked for none.
+	proxied := compatible()
+	proxied.Network.EgressModes = []string{"default_deny"}
+	strict := req
+	strict.EgressMode = "none"
+	if _, err := Match(proxied, strict); err == nil {
+		t.Error("a default_deny provider was accepted for a run that asked for no egress at all")
 	}
 }
 

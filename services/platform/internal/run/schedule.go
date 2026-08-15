@@ -39,6 +39,10 @@ type Requirements struct {
 	AgentIntegration string
 	Limits           ResourceLimits
 	EgressMode       string
+	// EgressAllowed is how many destinations the run is permitted. It is part of
+	// the requirement, not decoration: a request that allows nothing can be met by
+	// a provider with no egress route at all, and one that allows something cannot.
+	EgressAllowed int
 }
 
 // requirementsFor reads the run's frozen policy back out.
@@ -50,12 +54,24 @@ func requirementsFor(run gen.Run) (Requirements, policySnapshot, error) {
 	return requirementsFromPolicy(policy), policy, nil
 }
 
+// DefaultRequirements is what a run created today asks of a provider. Exported so
+// the contract suite can put a real provider's capability through the real matcher
+// — a provider whose endpoints all pass and that the scheduler still refuses is
+// not usable, and that gap is invisible from either side alone.
+func DefaultRequirements() Requirements {
+	return requirementsFromPolicy(policySnapshot{
+		ResourceLimits: DefaultResourceLimits(),
+		Egress:         EgressPolicy{Mode: "default_deny", Allow: []egressAllow{}},
+	})
+}
+
 func requirementsFromPolicy(policy policySnapshot) Requirements {
 	return Requirements{
 		Runtime:          defaultRuntime,
 		AgentIntegration: defaultAgentIntegration,
 		Limits:           policy.ResourceLimits,
 		EgressMode:       policy.Egress.Mode,
+		EgressAllowed:    len(policy.Egress.Allow),
 	}
 }
 
@@ -97,7 +113,11 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	if !c.Isolation.Rootless {
 		return RuntimeProfile{}, fmt.Errorf("%s does not run workloads unprivileged", name)
 	}
-	if req.EgressMode != "" && len(c.Network.EgressModes) > 0 && !contains(c.Network.EgressModes, req.EgressMode) {
+	if !egressSatisfied(c.Network.EgressModes, req) {
+		if req.EgressAllowed > 0 {
+			return RuntimeProfile{}, fmt.Errorf(
+				"%s cannot enforce %s network egress with an allow list", name, req.EgressMode)
+		}
 		return RuntimeProfile{}, fmt.Errorf("%s cannot enforce %s network egress", name, req.EgressMode)
 	}
 
@@ -267,6 +287,30 @@ func (s *Service) pinProvider(
 		return run, err
 	}
 	return updated, nil
+}
+
+// egressSatisfied reads the two egress modes as ordered rather than as
+// alternatives: `none` (no route out at all) is strictly stronger than
+// `default_deny` with an empty allow list.
+//
+// So a provider that offers only `none` — the dev DockerProvider on
+// `--network none`, and any node without an egress proxy — can carry a run that
+// is allowed to reach nothing, and cannot carry one that names a destination,
+// because it has no route to offer. The substitution only ever runs in this
+// direction: a weaker mode is never accepted for a stronger request, whatever
+// the request said.
+//
+// A provider that declares no egress modes at all has not answered the question,
+// which is treated the same way as an undeclared resource ceiling.
+func egressSatisfied(offered []string, req Requirements) bool {
+	switch {
+	case req.EgressMode == "" || len(offered) == 0:
+		return true
+	case contains(offered, req.EgressMode):
+		return true
+	default:
+		return req.EgressMode == "default_deny" && req.EgressAllowed == 0 && contains(offered, "none")
+	}
 }
 
 func contains(values []string, want string) bool {

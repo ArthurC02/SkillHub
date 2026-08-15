@@ -44,21 +44,48 @@ type target struct {
 	provider *run.Provider
 	baseURL  string
 	token    string
-	// live is true when the target is a real service, which changes what the suite
-	// may assume: a real provider has other runs on it and its own clock.
-	live bool
+	// profile is the runtime this target actually declares. Negotiated rather than
+	// hardcoded: a provider refuses a version it does not have (422), so a suite
+	// that assumed one would only ever pass against the fake it was written next
+	// to. This is the same resolution the scheduler does (run.Match).
+	profile run.RuntimeProfile
 }
 
 func newTarget(t *testing.T) target {
 	t.Helper()
+	tg := target{provider: providertest.New("contract_fake", "test-token").Provider()}
 	if url := os.Getenv(contractURLEnv); url != "" {
 		token := os.Getenv(contractTokenEnv)
 		t.Logf("running the contract suite against %s", url)
-		return target{provider: run.NewProvider("contract_target", url, token), baseURL: url, token: token, live: true}
+		tg = target{provider: run.NewProvider("contract_target", url, token), baseURL: url, token: token}
+	} else {
+		fake := providertest.New("contract_fake", "test-token")
+		t.Cleanup(fake.Close)
+		tg = target{provider: fake.Provider(), baseURL: fake.URL, token: fake.Token}
 	}
-	fake := providertest.New("contract_fake", "test-token")
-	t.Cleanup(fake.Close)
-	return target{provider: fake.Provider(), baseURL: fake.URL, token: fake.Token}
+	tg.profile = negotiate(t, tg.provider)
+	return tg
+}
+
+// negotiate reads the target's capability and picks a runtime it will accept.
+func negotiate(t *testing.T, p *run.Provider) run.RuntimeProfile {
+	t.Helper()
+	capability, err := p.Capability(context.Background())
+	if err != nil {
+		t.Fatalf("GET /capability: %v", err)
+	}
+	if len(capability.Runtimes) == 0 || len(capability.Runtimes[0].Versions) == 0 {
+		t.Fatal("the target declares no runtime, so nothing can be dispatched to it")
+	}
+	rt := capability.Runtimes[0]
+	profile := run.RuntimeProfile{
+		Runtime:        rt.Runtime,
+		RuntimeVersion: rt.Versions[len(rt.Versions)-1],
+	}
+	if len(rt.AgentIntegration) > 0 {
+		profile.AgentIntegration = rt.AgentIntegration[0]
+	}
+	return profile
 }
 
 // request builds a minimal valid RunRequest for a fresh (run_id, attempt) pair.
@@ -76,7 +103,7 @@ func (tg target) request(prompt string) run.RunRequest {
 			ContentHash:        "sha256:" + strings.Repeat("1", 64),
 			UserPrompt:         prompt,
 		},
-		Runtime:        run.RuntimeProfile{Runtime: "claude_agent_sdk", RuntimeVersion: "0.1.0", AgentIntegration: "in_sandbox_sdk"},
+		Runtime:        tg.profile,
 		ResourceLimits: run.DefaultResourceLimits(),
 		Egress:         run.EgressPolicy{Mode: "default_deny"},
 		Trace:          run.TracePolicy{Level: "standard"},
@@ -249,6 +276,26 @@ func TestProviderContract(t *testing.T) {
 	})
 }
 
+// The other half of "does this provider work with this platform": the endpoints
+// can be perfect and the scheduler still refuse to dispatch to it. This runs the
+// real capability answer through the real matcher with the platform's own default
+// policy, which is precisely the check that caught services/sandbox declaring
+// `egress_modes: ["none"]` — every endpoint green, and not one run dispatchable.
+func TestSchedulerAcceptsTheTargetsRealCapability(t *testing.T) {
+	tg := newTarget(t)
+	capability, err := tg.provider.Capability(context.Background())
+	if err != nil {
+		t.Fatalf("GET /capability: %v", err)
+	}
+	profile, err := run.Match(capability, run.DefaultRequirements())
+	if err != nil {
+		t.Fatalf("the scheduler will not dispatch to this provider: %v", err)
+	}
+	if profile.RuntimeVersion == "" {
+		t.Error("matching resolved no runtime version to pin onto the run")
+	}
+}
+
 // A 422 is the provider refusing the request itself, and the platform must be able
 // to tell it from a transient failure without reading message strings. Only the
 // fake can be made to produce one on demand.
@@ -258,9 +305,10 @@ func TestProviderRefusalIsClassifiedAndNotRetried(t *testing.T) {
 	}
 	fake := providertest.New("refusing_fake", "test-token")
 	defer fake.Close()
-	fake.DispatchStatuses = []int{http.StatusUnprocessableEntity}
 
 	tg := target{provider: fake.Provider(), baseURL: fake.URL, token: fake.Token}
+	tg.profile = negotiate(t, tg.provider)
+	fake.DispatchStatuses = []int{http.StatusUnprocessableEntity}
 	_, err := tg.provider.CreateRun(context.Background(), tg.request("refuse me"))
 	if err == nil {
 		t.Fatal("a 422 was reported as a successful dispatch")
