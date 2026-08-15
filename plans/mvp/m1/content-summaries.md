@@ -1509,7 +1509,7 @@
 | 2 | 7 筆精選以 `enrich-skill/v2` 重跑，補齊 `limitations` | ✅ **已完成**（§2.5，7/7） | — | — |
 | 3 | **`excel-format` 的字型在地化判定** | ✅ **已解決**——`enrich-skill/v3` 加入「簡中專有名詞附繁中對應」規則，線上現為 `微软雅黑（繁中：微軟雅黑）`：**加註而非替換**，事實不動（`微軟正黑體` 是另一套字型，替換等於改事實）。該筆仍因另一條忠實性理由列為建議下架，與字型無關 | — | — |
 | 4 | **`anthropics/skills` 免責條款的承接層確認**（§3 註） | ⏳ 待確認 | 6 筆的審核判定 | 負責人 |
-| 5 | 重新匯入 45 筆並 reindex | ✅ **已完成**（45/45 匯入、45/45 `enriched` v2），見 [`catalog-rebuild-report.md`](catalog-rebuild-report.md) | — | — |
+| 5 | 重新匯入 45 筆並 reindex | ✅ **已完成**（45/45 匯入、45/45 `enriched`），見 [`catalog-rebuild-report.md`](catalog-rebuild-report.md)。**2026-08-16 後線上為 v2 × 35 ＋ v3 × 10**（審校重跑，未重新匯入） | — | — |
 | 6 | `sokrati/sokrati` 匯入失敗（`description-too-long`） | ✅ **已解決**——`skillpkg` 改以 `utf8.RuneCountInString` 計長後通過，**線上目錄為 45 筆，不再是 44** | — | — |
 | 7 | **審核對象改為線上文字**：`02` §4.7 CONTENT-005 的非決定性上限要求審核判定只對已入庫的該版文字生效 | ✅ **已落實**——本次審校 6 項 KPI 全部讀 `GET /api/skills/{id}`；KPI6 另量測線上與本文件引文的餘弦（45 筆中 12 筆 <0.90，量化了這條上限） | — | — |
 | 8 | **3 筆建議下架待修**（`excel-format`、`internal-comms`、`pptx`；含 2 筆精選） | ⏳ **待負責人裁定**——審校報告 §7 建議改採 `enrich-skill/v4` 修正生成偏差後重跑，而非下架（下架會讓 `documents` 類精選跌破 4 筆下限） | CONTENT-005 勾選、`curated-skill-list.md` 檢查 ⑦、閘門測試 D 日 | 負責人 |
