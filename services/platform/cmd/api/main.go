@@ -21,7 +21,9 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/objstore"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
+	"github.com/ArthurC02/skillhub/services/platform/internal/run"
 )
 
 func main() {
@@ -86,6 +88,15 @@ func main() {
 		Identity: auth.Service,
 	}
 
+	// Insert-only queue client: the API enqueues run jobs in the same transaction
+	// as the run row, and never works one (iron rule 7). Schema migration belongs
+	// to cmd/worker, so an API rollout does not touch the queue's tables.
+	jobs, err := queue.New(pool, nil)
+	if err != nil {
+		slog.Error("queue client", "error", err)
+		os.Exit(1)
+	}
+
 	// Routes live in internal/apiserver so the integration tests serve this exact
 	// table instead of a hand-copied one.
 	mux := apiserver.NewRouter(apiserver.Deps{
@@ -93,6 +104,7 @@ func main() {
 		Importer: importer,
 		Search:   &catalog.Handler{Pool: pool, Identity: auth.Service, LLMClient: llm, Store: store},
 		Registry: &registry.Handler{Svc: &registry.Service{Pool: pool, Store: store}, Identity: auth.Service},
+		Runs:     &run.Handler{Svc: &run.Service{Pool: pool, Queue: jobs}, Identity: auth.Service},
 	})
 
 	// DEV_CORS_ORIGIN is the local Vite dev server (http://localhost:5173) and

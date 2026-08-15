@@ -139,10 +139,10 @@
 
 ## 10. Run Orchestrator 與 Provider 契約（M2）
 
-- [ ] RUN-001 定義 Provider-neutral Run Request 與 Run Result。
-- [ ] RUN-002 定義 Provider Capability 描述格式。
-- [ ] RUN-003 定義平台 `run_id` 與 `provider_run_id` 映射。
-- [ ] RUN-004 實作 queued 到 cleaning_up 的標準狀態機。
+- [x] RUN-001 定義 Provider-neutral Run Request 與 Run Result。（`contracts/openapi/sandbox-provider.yaml`）
+- [x] RUN-002 定義 Provider Capability 描述格式。（同上檔案 `ProviderCapability`；能力相容檢查屬 RUN-005）
+- [x] RUN-003 定義平台 `run_id` 與 `provider_run_id` 映射。（0016 `run_attempts`；解掉 0004「重試覆寫 `provider_run_id`」的已知債）
+- [ ] RUN-004 實作 queued 到 cleaning_up 的標準狀態機。**部分完成**：queued→終態的狀態機、轉移歷史與 Outbox 已落地（`internal/run`、0016）；`cleaning_up` 未實作，冪等清理屬 RUN-007，故不勾。
 - [ ] RUN-005 實作 Run 排程、Provider 選擇與能力相容檢查。
 - [ ] RUN-006 實作取消、逾時、有限重試與失敗分類。
 - [ ] RUN-007 實作冪等清理與遺留 Sandbox 掃描。

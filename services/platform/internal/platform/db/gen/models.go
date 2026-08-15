@@ -160,6 +160,20 @@ type Evaluation struct {
 	UpdatedAt        pgtype.Timestamptz
 }
 
+type OutboxEvent struct {
+	EventID       pgtype.UUID
+	EventType     string
+	EventVersion  int32
+	OccurredAt    pgtype.Timestamptz
+	CorrelationID pgtype.UUID
+	CausationID   pgtype.UUID
+	WorkspaceID   pgtype.UUID
+	AggregateType string
+	AggregateID   pgtype.UUID
+	Payload       []byte
+	PublishedAt   pgtype.Timestamptz
+}
+
 type Run struct {
 	ID                 pgtype.UUID
 	WorkspaceID        pgtype.UUID
@@ -167,9 +181,7 @@ type Run struct {
 	TestCaseSnapshotID pgtype.UUID
 	Status             RunStatus
 	StatusReason       *string
-	Attempt            int32
 	Provider           string
-	ProviderRunID      *string
 	RuntimeSnapshot    []byte
 	PolicySnapshot     []byte
 	CleanupStatus      RunCleanupStatus
@@ -177,16 +189,32 @@ type Run struct {
 	CreatedAt          pgtype.Timestamptz
 	StartedAt          pgtype.Timestamptz
 	FinishedAt         pgtype.Timestamptz
+	CancelRequestedAt  pgtype.Timestamptz
+}
+
+type RunAttempt struct {
+	ID            pgtype.UUID
+	RunID         pgtype.UUID
+	WorkspaceID   pgtype.UUID
+	AttemptNumber int32
+	Provider      string
+	ProviderRunID *string
+	ErrorClass    *string
+	ErrorMessage  *string
+	CreatedAt     pgtype.Timestamptz
+	StartedAt     pgtype.Timestamptz
+	FinishedAt    pgtype.Timestamptz
 }
 
 type RunStatusTransition struct {
-	ID          int64
-	RunID       pgtype.UUID
-	WorkspaceID pgtype.UUID
-	FromStatus  *RunStatus
-	ToStatus    RunStatus
-	Reason      *string
-	OccurredAt  pgtype.Timestamptz
+	ID           int64
+	RunID        pgtype.UUID
+	WorkspaceID  pgtype.UUID
+	FromStatus   *RunStatus
+	ToStatus     RunStatus
+	Reason       *string
+	OccurredAt   pgtype.Timestamptz
+	RunAttemptID pgtype.UUID
 }
 
 type SearchDocument struct {

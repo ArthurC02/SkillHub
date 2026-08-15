@@ -34,6 +34,12 @@ const (
 	ActionAccountDeleteAsk   = "account.deletion_requested"
 	ActionAccountDeleteStop  = "account.deletion_cancelled"
 	ActionAccountPurge       = "account.purged"
+	// NFR-001 requires an audit trail for execution. A run's state history lives
+	// in run_status_transitions; these rows answer the different question of who
+	// asked for it (transitions the worker makes carry no actor).
+	ActionRunCreate     = "run.create"
+	ActionRunTransition = "run.transition"
+	ActionRunCancelAsk  = "run.cancel_requested"
 )
 
 // Resource types the actions above refer to.
@@ -42,6 +48,7 @@ const (
 	ResourceSkill   = "skill"
 	ResourceVersion = "skill_version"
 	ResourceAccount = "account"
+	ResourceRun     = "run"
 )
 
 // Event is one audited operation.

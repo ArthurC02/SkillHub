@@ -15,6 +15,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
+	"github.com/ArthurC02/skillhub/services/platform/internal/run"
 )
 
 // Deps are the wired handlers the routes dispatch to. Constructing them
@@ -26,6 +27,7 @@ type Deps struct {
 	Importer *ingest.Handler
 	Search   *catalog.Handler
 	Registry *registry.Handler
+	Runs     *run.Handler
 }
 
 // NewRouter returns the API route table. Callers wrap it as needed — cmd/api
@@ -60,6 +62,12 @@ func NewRouter(d Deps) *http.ServeMux {
 	// INGEST-010: manual takedown of content in the caller's own workspace,
 	// which for curated catalog entries is the operator's workspace.
 	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(d.Registry.Takedown))
+
+	// Run orchestration (RUN-001/002/004). Runs are addressed by the platform
+	// run_id and nothing else (iron rule 10): no route here takes a provider id.
+	mux.HandleFunc("POST /skills/{id}/runs", auth.RequireSession(d.Runs.Create))
+	mux.HandleFunc("GET /runs/{id}", auth.RequireSession(d.Runs.Get))
+	mux.HandleFunc("POST /runs/{id}/cancel", auth.RequireSession(d.Runs.Cancel))
 
 	return mux
 }

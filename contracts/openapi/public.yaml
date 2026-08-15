@@ -698,6 +698,139 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/runs:
+    post:
+      operationId: startRun
+      summary: Start a run of one skill version against one test case (RUN-001)
+      description: |
+        Creates the run in `queued` and enqueues its execution job in the same
+        transaction, so a run that exists is always a run something will pick up.
+
+        The test case is snapshotted here, not referenced: a run points at frozen
+        content (iron rule 4), and later edits to the test case cannot rewrite
+        what a past run was asked to do.
+
+        The response is immediate — execution is asynchronous (ADR-008). Poll
+        `GET /runs/{run_id}` for progress.
+
+        No provider is selected yet: `provider` comes back as `unassigned` and
+        selection with capability matching is RUN-005. Until a sandbox provider
+        exists (RUN-003 / SBX-001) every run reaches `failed` with a reason
+        saying so, rather than reporting a success nobody executed.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Skill id. The version must belong to this skill.
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version_id, test_case_id]
+              properties:
+                version_id: { type: string, format: uuid }
+                test_case_id: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Run queued.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "400":
+          description: Malformed body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            Skill, version or test case not in the caller's workspace, or the
+            version does not belong to this skill. Existence is private, so this
+            is a 404 rather than a 403 (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}:
+    get:
+      operationId: getRun
+      summary: Current run status and how it got there (RUN-002)
+      description: |
+        `id` is the platform `run_id` and always will be: a provider's ephemeral
+        id is never part of a URL (iron rule 10). It appears in the response only
+        as an attribute of the attempt that owns it.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The run, its full status history and its attempts.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Run" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's run.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/cancel:
+    post:
+      operationId: cancelRun
+      summary: Request cancellation of a run (RUN-004)
+      description: |
+        Records the request and returns 202. The run keeps its current status:
+        the workload is still up until something stops it, and reporting
+        `cancelled` before that would misdescribe a live sandbox.
+
+        A queued run has no workload yet, so it does move to `cancelled` shortly
+        after. Propagating the request to a run already at a provider — and the
+        wall-clock timeout that shares the same machinery — is RUN-006.
+
+        Idempotent: asking twice keeps the first request time.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "202":
+          description: Cancellation requested.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Run"
+                  - type: object
+                    properties:
+                      note: { type: string }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's run.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The run already finished; there is nothing left to cancel.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 components:
   schemas:
     Health:
@@ -1361,3 +1494,87 @@ components:
           description: True when identical content already existed as a version of this skill.
         findings:
           $ref: "#/components/schemas/CategorizedFindings"
+    Run:
+      description: |
+        One run as the Web surface sees it. The provider-facing shapes are a
+        separate contract (contracts/openapi/sandbox-provider.yaml) and nothing
+        provider-specific leaks into this one (RUN-001).
+      type: object
+      required:
+        [run_id, status, skill_version_id, test_case_snapshot_id, provider, cleanup_status, created_at]
+      properties:
+        run_id:
+          type: string
+          format: uuid
+          description: The permanent platform identifier (iron rule 10).
+        status:
+          type: string
+          enum:
+            [queued, provisioning, preparing, running, evaluating, succeeded, failed, cancelled, timed_out]
+          description: |
+            The standard lifecycle of ADR-004 / RUN-002. `cleaning_up` is not in
+            here: cleanup happens after a terminal state and is reported
+            separately in `cleanup_status`, so "the run failed" and "its sandbox
+            was torn down" stay two distinct facts.
+        status_reason:
+          type: string
+          description: Why the run entered this status. Masked and safe to display.
+        skill_version_id: { type: string, format: uuid }
+        test_case_snapshot_id:
+          type: string
+          format: uuid
+          description: |
+            The frozen copy taken when the run was created, not the editable test
+            case (iron rule 4).
+        provider:
+          type: string
+          description: '`unassigned` until provider selection lands (RUN-005).'
+        cleanup_status:
+          type: string
+          enum: [pending, cleaning_up, cleaned, failed]
+          description: |
+            Tracked apart from the run outcome, and still writable after a
+            terminal state. Idempotent cleanup is RUN-007.
+        cancel_requested_at:
+          type: string
+          format: date-time
+          description: Set by POST /runs/{id}/cancel. Intent, not the outcome.
+        created_at: { type: string, format: date-time }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+        transitions:
+          type: array
+          description: |
+            Every state change with its time and reason (RUN-002). Append-only
+            and oldest first; the first entry has no `from_status` because it is
+            the run's creation.
+          items:
+            type: object
+            required: [to_status, occurred_at]
+            properties:
+              from_status: { type: string }
+              to_status: { type: string }
+              reason: { type: string }
+              occurred_at: { type: string, format: date-time }
+        attempts:
+          type: array
+          description: |
+            One entry per execution attempt (RUN-003). The provider's ephemeral
+            id hangs off the attempt that owns it, so a retry adds a mapping
+            instead of overwriting the previous one.
+          items:
+            type: object
+            required: [run_attempt_id, attempt_number, provider]
+            properties:
+              run_attempt_id: { type: string, format: uuid }
+              attempt_number: { type: integer }
+              provider: { type: string }
+              provider_run_id:
+                type: string
+                description: Never a key and never part of a URL (iron rule 10).
+              error_class:
+                type: string
+                description: RunError.class from the provider contract.
+              error_message: { type: string }
+              started_at: { type: string, format: date-time }
+              finished_at: { type: string, format: date-time }

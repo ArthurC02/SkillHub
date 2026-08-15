@@ -1,0 +1,478 @@
+openapi: 3.1.0
+info:
+  title: Skill Hub Sandbox Provider Port
+  version: 0.1.0
+  description: |
+    The provider-neutral Run contract (ADR-004, RUN-001/002/003). Every sandbox
+    implementation - SelfHostedProvider, a dev DockerProvider, a future
+    third-party one - speaks exactly these shapes. The orchestrator depends on
+    this file and never on a provider's own API, so swapping providers leaves
+    Skill, Test Case, Trace and Evaluation data untouched.
+
+    Two boundaries make this a separate file rather than part of public.yaml:
+
+    - services/sandbox is its own Go module (ADR-019, iron rule 2). It must be
+      able to generate from this contract without reaching into the control
+      plane's schemas.
+    - Nothing here is reachable by a browser. public.yaml is the Web surface;
+      this is the control plane to execution plane surface.
+
+    `paths` is deliberately empty. RUN-001/002 fix the *data* contract; the
+    lifecycle endpoints that carry it (provision / prepare / execute /
+    streamEvents / cancel / collectArtifacts / destroy - ADR-004) land with
+    SBX-001 when there is a provider to serve them. Publishing endpoint shapes
+    before an implementation exists would be guessing, and the schemas below are
+    what RUN-003's provider adapter and RUN-009's contract test suite need.
+
+    Numeric limits come from PDM-005 5.2 and are repeated here as schema
+    defaults so a provider can validate a request without reading a plan
+    document. Changing one means changing both.
+paths: {}
+
+components:
+  schemas:
+    RunRequest:
+      type: object
+      description: |
+        One execution attempt handed to a provider. Contains no field that only
+        a particular provider could interpret (RUN-001). Provider-specific
+        tuning, if it ever exists, goes in `provider_extensions` and must never
+        be required for a correct run.
+      required:
+        - run_id
+        - run_attempt_id
+        - attempt
+        - workspace_id
+        - skill_version
+        - test_case_snapshot
+        - runtime
+        - resource_limits
+        - egress
+        - trace
+      properties:
+        run_id:
+          $ref: "#/components/schemas/RunID"
+        run_attempt_id:
+          type: string
+          format: uuid
+          description: |
+            This attempt. Permanent, platform-owned, one row in run_attempts.
+            The provider echoes it back on every event and result so a late
+            message from a superseded attempt can be recognised and dropped.
+        attempt:
+          type: integer
+          minimum: 1
+          description: 1-based attempt number within the run.
+        workspace_id:
+          type: string
+          format: uuid
+          description: |
+            Tenancy label for trace and artifact routing only. The provider has
+            no database access (iron rule 2) and cannot widen its own scope with
+            it; scope is enforced in the control plane before this is built.
+        idempotency_key:
+          type: string
+          description: |
+            Stable for one run_attempt_id. When the control plane cannot tell
+            whether a dispatch was received, it re-sends with the same key
+            rather than creating a second sandbox (ADR-004 "失敗與重試").
+        skill_version:
+          $ref: "#/components/schemas/PackageRef"
+        test_case_snapshot:
+          $ref: "#/components/schemas/TestCaseSnapshotRef"
+        runtime:
+          $ref: "#/components/schemas/RuntimeProfile"
+        resource_limits:
+          $ref: "#/components/schemas/ResourceLimits"
+        egress:
+          $ref: "#/components/schemas/EgressPolicy"
+        object_grants:
+          type: array
+          description: |
+            Short-lived, per-path object storage authorizations - the only way
+            the execution plane moves bytes (iron rule 2).
+          items:
+            $ref: "#/components/schemas/ObjectGrant"
+        model_gateway:
+          $ref: "#/components/schemas/ModelGatewayGrant"
+        trace:
+          $ref: "#/components/schemas/TracePolicy"
+        provider_extensions:
+          type: object
+          additionalProperties: true
+          description: |
+            Escape hatch for capability a provider declares and the orchestrator
+            opted into. A run whose success depends on a key in here is a
+            RUN-001 violation.
+
+    RunID:
+      type: string
+      format: uuid
+      description: |
+        The platform's permanent run identifier (iron rule 10). Used for
+        correlation, history and URLs. A provider's own id never substitutes
+        for it - see ProviderRunRef.
+
+    ProviderRunRef:
+      type: object
+      description: |
+        The mapping RUN-003 asks for, in the direction that is safe: platform id
+        is the key, the provider's id hangs off it. Recorded per attempt, so a
+        retry adds a row instead of overwriting the previous provider id.
+      required: [run_id, run_attempt_id, provider, provider_run_id]
+      properties:
+        run_id:
+          $ref: "#/components/schemas/RunID"
+        run_attempt_id: { type: string, format: uuid }
+        provider: { type: string, description: Provider name, e.g. self_hosted. }
+        provider_run_id:
+          type: string
+          description: |
+            The provider's ephemeral handle. Never a primary key, never part of
+            a permanent URL, and only unique within one provider.
+
+    PackageRef:
+      type: object
+      description: A content-addressed package the provider fetches with a grant.
+      required: [skill_version_id, content_hash]
+      properties:
+        skill_version_id: { type: string, format: uuid }
+        content_hash:
+          type: string
+          description: sha256 of the package archive; the provider verifies before unpacking.
+        object_key:
+          type: string
+          description: Object storage key, readable only through the matching ObjectGrant.
+
+    TestCaseSnapshotRef:
+      type: object
+      description: |
+        The frozen test case (TEST-001, iron rule 4). The prompt travels inline
+        because the provider needs it to run; dataset bytes do not, and arrive
+        through grants.
+      required: [test_case_snapshot_id, content_hash, user_prompt]
+      properties:
+        test_case_snapshot_id: { type: string, format: uuid }
+        content_hash: { type: string }
+        user_prompt: { type: string }
+        dataset_refs:
+          type: array
+          items:
+            type: object
+            required: [dataset_id, file_name, content_hash]
+            properties:
+              dataset_id: { type: string, format: uuid }
+              file_name: { type: string }
+              content_hash: { type: string }
+              object_key: { type: string }
+
+    RuntimeProfile:
+      type: object
+      description: |
+        What the workload runs as, in terms every provider understands. Matched
+        against ProviderCapability before dispatch (RUN-001).
+      required: [runtime, runtime_version]
+      properties:
+        runtime:
+          type: string
+          description: Agent runtime family, e.g. claude_agent_sdk.
+        runtime_version: { type: string }
+        model:
+          type: string
+          description: |
+            Logical model name resolved by the gateway, not a provider SKU
+            (ADR-017). Default tier is the mini class (PDM-003).
+        agent_integration:
+          type: string
+          enum: [in_sandbox_sdk, provider_hosted_agent]
+          description: |
+            in_sandbox_sdk - the sandbox runs the agent loop and calls out
+            through the gateway. provider_hosted_agent - the provider owns the
+            loop. Declared so capability matching can reject the mismatch.
+
+    ResourceLimits:
+      type: object
+      description: |
+        Per-run ceilings (PDM-005 5.2). A provider that cannot enforce one of
+        these must not declare support for it in ProviderCapability; the
+        orchestrator refuses to dispatch rather than run unbounded.
+      required:
+        - vcpu
+        - memory_bytes
+        - disk_bytes
+        - max_pids
+        - max_open_files
+        - wall_clock_soft_seconds
+        - wall_clock_hard_seconds
+      properties:
+        vcpu: { type: number, default: 2 }
+        memory_bytes: { type: integer, default: 4294967296, description: 4 GiB. }
+        disk_bytes:
+          type: integer
+          default: 8589934592
+          description: 8 GiB total; PDM-005 splits it /work 6 GiB + /out 2 GiB.
+        max_pids: { type: integer, default: 256 }
+        max_open_files: { type: integer, default: 1024 }
+        wall_clock_soft_seconds:
+          type: integer
+          default: 600
+          description: Reaching this marks the run timed_out (RUN-004).
+        wall_clock_hard_seconds:
+          type: integer
+          default: 900
+          description: |
+            Forced destroy. Strictly greater than the soft limit: the gap is the
+            window in which a cooperative stop can still collect artifacts.
+        artifact_total_bytes: { type: integer, default: 104857600, description: 100 MB. }
+        artifact_file_bytes: { type: integer, default: 26214400, description: 25 MB. }
+        token_budget:
+          $ref: "#/components/schemas/TokenBudget"
+
+    TokenBudget:
+      type: object
+      description: |
+        PDM-005 5.2a. The hard stop is the Go worker accumulating input_tokens
+        reported by the gateway - not max_budget, which prompt caching decoupled
+        from token count by 7-8x. The Virtual Key's max_budget and tpm_limit are
+        a spend brake and a rate brake, not this limit.
+
+        300K input is roughly 15 turns with no tool calls, 7.7 with one per
+        turn, 5 with two (measured, PDM-003 spike 11.5). Quoting the number
+        without the turn conversion is meaningless.
+      properties:
+        max_input_tokens: { type: integer, default: 300000 }
+        max_output_tokens: { type: integer, default: 60000 }
+
+    EgressPolicy:
+      type: object
+      description: |
+        Default-deny with exactly three permitted destinations (PDM-005 5.2,
+        ADR-005). All three go through the controlled proxy; there is no bypass
+        route, and "general internet" is not a value this schema can express.
+      required: [mode, allow]
+      properties:
+        mode:
+          type: string
+          enum: [default_deny]
+          description: Single-valued on purpose - a second mode would need its own ADR.
+        allow:
+          type: array
+          items:
+            type: object
+            required: [purpose, url]
+            properties:
+              purpose:
+                type: string
+                enum: [model_gateway, object_storage, trace_ingestion]
+              url: { type: string, format: uri }
+
+    ObjectGrant:
+      type: object
+      description: |
+        A short-lived authorization for one object path in one direction.
+        Placeholder in this batch: RUN-001 fixes the shape, the issuing side
+        lands with SBX-005. `url` stays empty until then.
+      required: [purpose, object_key, access, expires_at]
+      properties:
+        purpose:
+          type: string
+          enum: [skill_package, dataset, artifact_upload]
+        object_key: { type: string }
+        access: { type: string, enum: [read, write] }
+        url:
+          type: string
+          format: uri
+          description: Pre-signed URL. Secret material - never logged or traced (iron rule 11).
+        expires_at: { type: string, format: date-time }
+
+    ModelGatewayGrant:
+      type: object
+      description: |
+        A per-run LiteLLM Virtual Key (ADR-017, iron rule 8). Placeholder in this
+        batch: the shape is fixed, minting lands with SBX-006. Provider keys never
+        appear here - only the gateway holds those.
+      required: [base_url, expires_at]
+      properties:
+        base_url: { type: string, format: uri }
+        virtual_key:
+          type: string
+          description: |
+            Secret. Masked before any log, trace or analytics write (iron rule
+            11, TRACE-001), and its pattern is on the trace masking list.
+        max_budget_usd:
+          type: number
+          description: Spend brake, budgeted at cold-cache prices (PDM-005 5.2a-5).
+        tpm_limit: { type: integer, description: Rate brake, independent of spend flush. }
+        expires_at: { type: string, format: date-time }
+
+    TracePolicy:
+      type: object
+      required: [level]
+      properties:
+        level:
+          type: string
+          enum: [standard, verbose]
+          description: |
+            TRACE-001's two modes. Both are masked before storage; verbose adds
+            the safety-processed raw events, it does not lift masking.
+        ingestion_url: { type: string, format: uri }
+
+    RunResult:
+      type: object
+      description: |
+        Terminal report for one attempt. Provider diagnostics may be attached,
+        but nothing in core evaluation may depend on them (ADR-004).
+      required: [run_id, run_attempt_id, status]
+      properties:
+        run_id:
+          $ref: "#/components/schemas/RunID"
+        run_attempt_id: { type: string, format: uuid }
+        provider_run_id: { type: string }
+        status:
+          type: string
+          enum: [succeeded, failed, cancelled, timed_out]
+          description: |
+            Terminal states only. The non-terminal states of RunStatus are the
+            control plane's, driven by dispatch and by streamed events; a
+            provider never reports one in a result.
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+        agent_output:
+          type: string
+          description: The agent's final output, masked (iron rule 11).
+        artifacts:
+          type: array
+          description: Manifest only. The bytes went to object storage under a write grant.
+          items:
+            type: object
+            required: [file_name, content_hash, size_bytes]
+            properties:
+              file_name: { type: string }
+              content_type: { type: string }
+              size_bytes: { type: integer }
+              content_hash: { type: string }
+              object_key: { type: string }
+              truncated:
+                type: boolean
+                description: Set when the artifact limits of PDM-005 5.2 cut the output short.
+        usage:
+          $ref: "#/components/schemas/RunUsage"
+        error:
+          $ref: "#/components/schemas/RunError"
+        provider_diagnostics:
+          type: object
+          additionalProperties: true
+
+    RunUsage:
+      type: object
+      description: Metering, in units every provider can report (ADR-004 標準輸出).
+      properties:
+        input_tokens:
+          type: integer
+          description: |
+            Includes cache-hit tokens: caching reduces cost, not token count
+            (PDM-005 5.2a-3). This is the number the worker's budget check adds up.
+        output_tokens: { type: integer }
+        model_cost_usd: { type: number }
+        wall_clock_seconds: { type: number }
+        peak_memory_bytes: { type: integer }
+
+    RunError:
+      type: object
+      description: |
+        Classified failure. The class decides whether a retry is even
+        considerable; `retryable` is the provider's opinion and the control
+        plane's policy still decides (ADR-004 - no unbounded retries).
+      required: [class, message]
+      properties:
+        class:
+          type: string
+          enum:
+            - provision
+            - execution
+            - event_delivery
+            - artifact_upload
+            - evaluation
+            - cleanup
+            - capability_mismatch
+            - budget_exhausted
+            - cancelled
+            - timeout
+          description: |
+            ADR-004's failure categories, plus three the platform must be able
+            to tell apart without parsing message strings:
+            capability_mismatch (rejected before dispatch),
+            budget_exhausted (gateway 429, distinct from a model 403 - PDM-003
+            spike 6.1) and the two terminal intents.
+        message:
+          type: string
+          description: Human-readable, masked, safe to show the user (RUN-004).
+        retryable: { type: boolean }
+
+    ProviderCapability:
+      type: object
+      description: |
+        What a provider declares it can do (RUN-002). The orchestrator matches
+        RunRequest against this and refuses incompatible work *before* queueing,
+        with a reason a user can understand (ADR-004, threat model gate B).
+        Matching itself lands with RUN-005.
+      required: [provider, runtimes, max_resources, isolation]
+      properties:
+        provider: { type: string }
+        runtimes:
+          type: array
+          items:
+            type: object
+            required: [runtime, versions]
+            properties:
+              runtime: { type: string }
+              versions: { type: array, items: { type: string } }
+              agent_integration:
+                type: array
+                items: { type: string, enum: [in_sandbox_sdk, provider_hosted_agent] }
+        max_resources:
+          $ref: "#/components/schemas/ResourceLimits"
+        isolation:
+          type: object
+          required: [level]
+          properties:
+            level:
+              type: string
+              enum: [gvisor, container, vm, process]
+              description: |
+                gvisor is the production baseline (ADR-015). `container` exists
+                for the local dev provider only - gVisor needs Linux, and this
+                is the honest name for what a developer machine actually runs.
+                `process` is not acceptable for untrusted skills (iron rule 1).
+            rootless:
+              type: boolean
+              description: Workload runs unprivileged and non-root (RUN-003).
+            dedicated_workspace_per_run: { type: boolean }
+        network:
+          type: object
+          properties:
+            egress_modes: { type: array, items: { type: string, enum: [default_deny, none] } }
+            private_network: { type: boolean }
+        features:
+          type: object
+          properties:
+            mcp: { type: boolean }
+            tool_calls: { type: boolean }
+            scripts: { type: boolean }
+            artifacts: { type: boolean }
+            event_streaming: { type: boolean }
+            gpu: { type: boolean }
+        regions:
+          type: array
+          items: { type: string }
+          description: For data residency matching.
+        availability:
+          type: object
+          properties:
+            concurrent_run_slots: { type: integer }
+            healthy: { type: boolean }
+        cost_model:
+          type: object
+          properties:
+            currency: { type: string }
+            per_run_seconds_usd: { type: number }

@@ -38,7 +38,9 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
+	"github.com/ArthurC02/skillhub/services/platform/internal/run"
 )
 
 const dbURLEnv = "SKILLHUB_TEST_DATABASE_URL"
@@ -93,7 +95,9 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 			return err
 		}
 	}
-	return nil
+	// River owns its own tables and applies them itself (see the header of
+	// db/migrations/0016), so the schema is only complete once this has run too.
+	return queue.EnsureSchema(ctx, pool)
 }
 
 func requireDB(t *testing.T) *pgxpool.Pool {
@@ -153,8 +157,17 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 		Identity: auth.Service,
 	}
 
+	// Insert-only queue client, exactly as cmd/api builds one: a run created
+	// through the API enqueues its job in the same transaction as the run row.
+	// Nothing works those jobs unless a test starts a worker (see startWorker).
+	jobs, err := queue.New(pool, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runs := &run.Handler{Svc: &run.Service{Pool: pool, Queue: jobs}, Identity: auth.Service}
+
 	srv := httptest.NewServer(apiserver.NewRouter(apiserver.Deps{
-		Auth: auth, Importer: importer, Search: search, Registry: reg,
+		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs,
 	}))
 	t.Cleanup(srv.Close)
 	return &api{Server: srv, auth: auth, packages: packages}
@@ -338,6 +351,9 @@ func TestAnonymousCallersGetThePublicSurfaceAndNothingElse(t *testing.T) {
 		{http.MethodPost, "/skills/" + id + "/takedown", http.StatusUnauthorized},
 		{http.MethodGet, "/skills/" + id + "/diff", http.StatusUnauthorized},
 		{http.MethodDelete, "/skills/" + id, http.StatusUnauthorized},
+		{http.MethodPost, "/skills/" + id + "/runs", http.StatusUnauthorized},
+		{http.MethodGet, "/runs/" + id, http.StatusUnauthorized},
+		{http.MethodPost, "/runs/" + id + "/cancel", http.StatusUnauthorized},
 	} {
 		if got := anon.status(t, tc.method, tc.path); got != tc.want {
 			t.Errorf("%s %s: got %d, want %d", tc.method, tc.path, got, tc.want)
