@@ -23,7 +23,7 @@
 | §8 WS | 6 | **1** | 4 | 0 | 0 | 1 |
 | **合計** | **46** | **12** | **22** | **3** | **0** | **9** |
 
-**§7 DISC 第二次對帳新勾九項：`DISC-001`、`002`、`004`、`005`、`006`、`007`、`008`、`009`、`010`；`DISC-003` 維持不勾**（六個篩選維度只有兩個有逐筆資料，見 §5.3）。第一次對帳把整節判為「後端做得比帳面深，缺的是接線」，這次驗證的正是接線是否真的完成——順帶補上了三處第一次對帳沒有查到的實際缺口：搜尋結果列沒有渲染七欄、詳情頁沒有渲染「限制」、比較表把 `tier` 標成「類別」。
+**§7 DISC 第二次對帳新勾九項：`DISC-001`、`002`、`004`、`005`、`006`、`007`、`008`、`009`、`010`；`DISC-003` 維持不勾**（六個篩選維度只有兩個有逐筆資料，見 §5.3）。**→ 2026-08-15 後續：`02:DISC-002` 的篩選維度已依 §5.3 建議改為分階段允收，`DISC-003` 據此勾選，`§7 DISC` 十項全數完成；見 [§5.3.1](#531-建議已採納2026-08-15-規格修訂與-disc-003-勾選)。上表數字為修訂前的對帳快照，不追改。**第一次對帳把整節判為「後端做得比帳面深，缺的是接線」，這次驗證的正是接線是否真的完成——順帶補上了三處第一次對帳沒有查到的實際缺口：搜尋結果列沒有渲染七欄、詳情頁沒有渲染「限制」、比較表把 `tier` 標成「類別」。
 
 **第一次對帳新勾三項：`CORE-005`、`CORE-006`、`WS-006`。** 三項的共同特徵是——允收準則本身就是一條可測的行為斷言，而該斷言有具名測試，且該測試在 CI 裡**確實會執行**（見 §3.1 的 CI 佐證）。其餘所有「看起來已完成」的項目，卡點都不在後端程式，而在**UI 未接線**或**允收準則涵蓋的範圍比已落地的部分更寬**。
 
@@ -129,7 +129,7 @@ INGEST-001～009 **先前已勾，本次逐項複核維持有效**，並確認 [
 | --- | --- | --- |
 | **DISC-001** 自然語言意圖搜尋 | **✅ 勾選** | `02:DISC-001` 四條全滿足。①候選或清楚無結果狀態：`catalog/http.go` `PublicSearch` ＋ `Home.tsx` 的 `no_results` 區塊。②保留原始查詢：`searchResponse.Query` 回傳並由 `Home.tsx` 的 `.echoed-query` 原樣顯示；符合原因逐筆顯示並標示來源，測試 `DISC-002: each candidate shows its match reason, labelled by provenance`、Go `TestMatchReasonsAreLabelledByProvenance`。③空白／不可理解不建立搜尋並提示：`isComprehensible`，Go `TestBlankQueryReturnsNoResults`、web `DISC-005: no_results shows the server's query_suggestion, not hardcoded copy`。④未登入可搜尋與看公開 Skill：`main.go:96` 裸掛載搜尋、`:102-103` 以 `OptionalSession` 掛詳情與檔案樹，Go `TestAnonymousReadsCatalogSkillDetail`（無 cookie jar 的 client）、`TestPublicSearchSeesOnlyCatalogWorkspaces` |
 | **DISC-002** 候選 Skill 與符合原因 | **✅ 勾選** | `02:DISC-002` 第 1、4 條。七欄（名稱、白話摘要、來源層級、Agent 相容狀態、依賴、風險提示、最近驗證時間）API 側 Go `TestSearchResultsCarryTheDISC002Columns`，**UI 側本次補上** `Home.tsx` `ResultFacets`，測試 `DISC-002: a result row carries all seven columns, and infers none of them`。「尚未試跑」標記：`badge-untested`，同一測試斷言。不推定：未掃描列顯示「尚無掃描紀錄」、空依賴顯示「未擷取到依賴資訊」，同一測試反向斷言 |
-| **DISC-003** 六維度篩選 | **❌ 不勾（部分完成）** | 見 5.3 |
+| **DISC-003** 六維度篩選 | **❌ 不勾（部分完成）**<br>→ **2026-08-15 允收準則修訂後改為 ✅ 勾選**，見 [§5.3.1](#531-建議已採納2026-08-15-規格修訂與-disc-003-勾選) | 見 5.3 |
 | **DISC-004** 可解釋的排序規則 | **✅ 勾選** | `02:DISC-002` 第 3 條。「不得只使用 Star」：排序管線**完全不含**人氣或時間訊號，唯一排序權威是餘弦距離（`search.sql` `PublicHybridSearchSkills`，Go `TestFTSWidensCandidatesWithoutTakingOverRanking`、`TestZeroHitLegDoesNotParticipateInFusion`）。「排序依據需可被簡要說明」：`Home.tsx` `RankingExplainer` 以繁中列出六條規則含兩個例外，且**當下生效的例外會被標出**；測試 `DISC-004: the ranking rule is explained on demand and matches the pipeline`、`DISC-004: a degraded answer marks the exception that is actually in force`。本次另補「篩選條件不影響名次」一條，並由 Go `TestFiltersOnTheHybridPathRemoveRowsWithoutReranking` 實測（篩選後存活列的 rank 與篩選前逐位元相同） |
 | **DISC-005** 無結果、低信心及查詢補充流程 | **✅ 勾選** | `02:DISC-001` 第 3 條與門檻行為。門檻 `MaxCosineDistance = 0.75`，**已依 golden-query-set.md §10.5 以真實增強語料重新推導**（12/12 離題拒答、0/48 召回損失），第一次對帳指出的「0.79 由裸 frontmatter 推導、已逾期」缺口因此關閉。四個空狀態旗標分離（`no_results`／`degraded`／`partial_index`／本次新增的 `filtered_out`），UI 四者各有不同文案且不共用。測試：Go `TestOffTopicQueryIsRefusedWithASuggestion`、`TestRelevantQueryIsNotRefusedByTheCutOff`、`TestPartialIndexIsReportedSeparatelyFromDegradation`、`TestFilteredToEmptyIsNotTheNoResultsRefusal`；web `DISC-005: degraded and partial_index are separate, non-blocking notices`、`DISC-003: filtered-to-empty and the no-results refusal never share copy` |
 | **DISC-006** Skill 一般詳情頁 | **✅ 勾選** | `02:DISC-003` 第 1 條要求九項：功能、限制、輸入、輸出、依賴、權限、來源、License、相容性摘要。API 九項齊備（`catalog/detail.go` `skillDetail`）。**UI 本次前為 8／9——`limitations` 有回傳但 `SkillDetail.tsx` 從未渲染**；本次補上 `Limitations` 元件（模型與掃描兩種來源分別標示，ADR-013），並把 `enrichment` pending／空 bucket 的輸入／輸出／依賴由「整列消失」改為顯示「未知」（消失會被讀成「沒有依賴」）。測試 `DISC-006: the general detail view answers all nine required facts`、`DISC-006: an unenriched skill reads as unknown, never as 'needs nothing'` |
@@ -163,6 +163,21 @@ INGEST-001～009 **先前已勾，本次逐項複核維持有效**，並確認 [
 4. MCP 維度：需先定義訊號來源（掃描 manifest？SKILL.md？），且遠端 MCP 已移出 MVP 首發。
 
 > **建議**：第 3、4 項在 M1 內不可能收斂。若要讓 DISC-003 有機會在 M1 結束前勾選，應**先修改 `02:DISC-002` 的允收準則**，把 Agent 與 MCP 兩個維度標成 M2／後 MVP，再由該修改驅動本項——而不是靠降低證據標準勾選。依 AGENTS.md 文件維護規則，改允收準則要三文件同步。
+
+### 5.3.1 建議已採納：2026-08-15 規格修訂與 DISC-003 勾選
+
+負責人授權採納 §5.3 與 §8 第三梯的兩項建議，規格修訂已於 **2026-08-15** 落地（只改 `plans/`，未動任何程式碼、ADR 或 CI）：
+
+| 修訂 | 落點 | 內容 |
+| --- | --- | --- |
+| 篩選維度分階段允收 | `02:DISC-002` | 新增「篩選維度的允收階段」表：Script／驗證狀態＝**M1**；類別／來源層級＝**依 CONTENT-003 策展資料啟用**；Agent 相容＝**M2（依 Sandbox 實測）**；是否需要 MCP＝**後 MVP（隨 MCP 啟動）**。原「六維度」準則原文保留未刪 |
+| 未達階段維度的處置入規格 | `02:DISC-002` | 新增一條允收準則：未達允收階段的維度不得隱藏或默默忽略，UI 停用＋理由、API 回 400 附理由（把 §5.3 已落地且已測的行為寫成準則，非新要求） |
+| CONTENT-007／008 改列 M2 | `03` §4、`01` M1／M2 里程碑 | 依賴 M2 的 Test Case 與 Sandbox，M1 內結構性不可能完成 |
+| CONTENT-003 勾選條件解綁 | `03` CONTENT-003、[curated-skill-list.md](curated-skill-list.md) §3 | ⑧ 不再是勾選前提，改為引用 CONTENT-007／008 並須記為「待 M2」；⑤⑦ 對 CONTENT-006／005 的綁定不變 |
+
+**勾選變化：`DISC-003` → `[x]`。** 依修訂後的 `02:DISC-002` 逐條對照，M1 階段的兩個維度與新增的處置準則全部有 §5.3 已列的落地證據（Go `TestFiltersNarrowOnRealEvidenceIncludingTheDegradedPath`、`TestFiltersOnTheHybridPathRemoveRowsWithoutReranking`、`TestFilteredToEmptyIsNotTheNoResultsRefusal`、`TestFilterDimensionsWithoutDataAreRejectedNotIgnored`；web `DISC-003: a chosen filter reaches the request and the shareable URL`、`DISC-003: the filters the platform has no data for are disabled and say why`、`DISC-003: filtered-to-empty and the no-results refusal never share copy`），且測試在 CI 帶 Postgres service 實際執行。**證據標準未降低，改變的是允收範圍。** §5.2 表中 DISC-003 的原判定「❌ 不勾（部分完成）」是 2026-08-15 修訂前的判定，保留供回溯。
+
+**未連動勾選：`CONTENT-003` 維持 `[ ]`。** 解綁 ⑧ 之後，⑤（CONTENT-006 未動）與 ⑦（CONTENT-005 未動）兩項檢查對全部 45 筆仍為 `pending`，另 §5.2 的 source-available 法務判定仍獨立存在。**CONTENT-004** 亦維持 `[ ]`（法務判定未完成），本次修訂未觸及其允收準則。
 
 ### 5.4 殘餘風險（不影響勾選，但應記錄）
 
@@ -245,7 +260,7 @@ golden-query-set.md §5 已經給過一條前提：**使用者測試應排在 CO
 
 | 順序 | 項目 | 備註 |
 | --- | --- | --- |
-| **2** | **DISC-003 的四個無資料維度** | 篩選骨架、SQL 述詞與 UI 都已落地，兩個有資料的維度（Script／驗證狀態）可用。剩下的**不是程式問題**：類別與來源層級等 CONTENT-003 策展產出，Agent 相容等 M2 Sandbox，MCP 連訊號來源都未定義。詳見 §5.3，含「先改允收準則再勾」的建議 |
+| ~~2~~ | ~~DISC-003 的四個無資料維度~~ | ✅ **已依 §5.3.1 處置（2026-08-15）**：`02:DISC-002` 改為分階段允收，DISC-003 已勾選。四個維度本身仍未啟用，解除條件改由 CONTENT-003（類別／來源層級）、M2 Sandbox（Agent 相容）、後 MVP（MCP）承接，不再掛在 DISC-003 底下 |
 | ~~6~~ | ~~DISC-004 的排序說明~~ | ✅ **已完成**：`Home.tsx` `RankingExplainer`，兩個具名 web 測試 |
 | ~~7~~ | ~~DISC-009 兩個 Skill 的靜態比較~~ | ✅ **已完成**：`Compare.tsx`（比較在前端組合三次詳情查詢，未新增端點，因此 `registry/diff.go` 確實沒有被沿用） |
 | 8 | **WS-004 補齊 Test Case／Run／下載紀錄列表** | ⚠️ 這三者的**寫入端屬 M2**。M1 內合理的收斂是「列表為空時的正確空狀態」，或**明確把本項改列 M2** |
@@ -256,8 +271,8 @@ golden-query-set.md §5 已經給過一條前提：**使用者測試應排在 CO
 
 | 項目 | 理由 | 建議 |
 | --- | --- | --- |
-| **CONTENT-007／008**（範例資料、驗收條件、基準試跑） | 依賴 M2 的 Test Case 與 Sandbox | **建議在 `03-work-items.md` 標註里程碑為 M2**，否則 CONTENT-003 的「九項全過」在 M1 內永遠無法收斂 |
-| **CONTENT-003／004 的最終勾選** | 分別卡在 CONTENT-005/006/007/008 與 §5.2 法務判定 | 法務判定是**唯一不需寫任何程式就能推進的阻塞項**，建議獨立追蹤、儘早發動 |
+| ~~**CONTENT-007／008**（範例資料、驗收條件、基準試跑）~~ | 依賴 M2 的 Test Case 與 Sandbox | ✅ **已處置（2026-08-15）**：`03` 兩項已附註 M2、`01` 里程碑已同步、CONTENT-003 的 ⑧ 綁定已解除，見 §5.3.1 |
+| **CONTENT-003／004 的最終勾選** | 分別卡在 CONTENT-005／006（⑧ 已於 2026-08-15 解綁）與 §5.2 法務判定 | 法務判定是**唯一不需寫任何程式就能推進的阻塞項**，建議獨立追蹤、儘早發動 |
 
 ### 一句話總結
 

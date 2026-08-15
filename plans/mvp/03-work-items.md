@@ -61,14 +61,16 @@
 
 ## 4. Skill 內容與供應（M1）
 
+> **2026-08-15 依 [m1/m1-work-items-audit.md §8 第三梯](m1/m1-work-items-audit.md) 調整**：本節的 **CONTENT-007／008 里程碑改為 M2**（依賴 M2 的 Test Case 與 Sandbox，M1 內結構性不可能完成），其餘項目維持 M1。
+
 - [x] CONTENT-001 定義精選、已索引與外部結果的收錄政策。
 - [x] CONTENT-002 定義來源可信度、License 與衍生關係的呈現規則。
-- [ ] CONTENT-003 建立首批 Skill 候選清單。（正式清單見 [plans/mvp/m1/curated-skill-list.md](m1/curated-skill-list.md)、匯入資料 `tools/content/seed-skills.json`。**2026-08-15 起三類的已索引與精選數量目標全部達標**——`documents` 精選由 3 補足為 4（`excel-format`，見該文件 §9）。仍不勾的原因有二：§5.2 的 source-available 法務判定未完成前，`documents` 已索引有 10→6 的塌陷風險；⑤⑦⑧ 三項檢查需 CONTENT-005／006／007／008 才能判定）
+- [ ] CONTENT-003 建立首批 Skill 候選清單。（正式清單見 [plans/mvp/m1/curated-skill-list.md](m1/curated-skill-list.md)、匯入資料 `tools/content/seed-skills.json`。**2026-08-15 起三類的已索引與精選數量目標全部達標**——`documents` 精選由 3 補足為 4（`excel-format`，見該文件 §9）。仍不勾的原因有二：§5.2 的 source-available 法務判定未完成前，`documents` 已索引有 10→6 的塌陷風險；九項精選檢查的 ⑤⑦ 需 CONTENT-006／005 才能判定。**2026-08-15 修訂**：⑧「平台基準試跑」由已改列 M2 的 CONTENT-007／008 承接，**不再是 CONTENT-003 的勾選前提**，改以引用方式處理——CONTENT-003 勾選時須在清單中把 ⑧ 明確記為「待 M2 基準試跑，見 CONTENT-007／008」，不得記為已通過。依據 [m1/m1-work-items-audit.md §8 第三梯](m1/m1-work-items-audit.md)）
 - [ ] CONTENT-004 對首批 Skill 完成來源及 License 檢查。（License 合規總表見 [curated-skill-list.md §5](m1/curated-skill-list.md)；11 個入選 repo 已逐一實查 LICENSE 檔。未結案項：§5.2 `anthropics/skills` source-available 條款是否允許平台保存內容快照，待負責人與法務判定）
 - [ ] CONTENT-005 對首批 Skill 產生一般使用者可理解的摘要。
 - [ ] CONTENT-006 對首批 Skill 完成規格及靜態掃描。
-- [ ] CONTENT-007 對精選 Skill 建立範例資料、Prompt 與驗收條件。
-- [ ] CONTENT-008 對精選 Skill 完成至少一次基準試跑。
+- [ ] CONTENT-007 對精選 Skill 建立範例資料、Prompt 與驗收條件。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**
+- [ ] CONTENT-008 對精選 Skill 完成至少一次基準試跑。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**
 - [ ] CONTENT-009 建立內容更新、失效、下架與來源變更流程。
 
 ## 5. 核心領域與帳號（M1）
@@ -102,7 +104,7 @@
 
 - [x] DISC-001 實作自然語言意圖搜尋。
 - [x] DISC-002 產生候選 Skill 與符合原因。
-- [ ] DISC-003 實作類別、來源、Agent、Script、MCP 與驗證狀態篩選。**六個維度中只有「是否包含 Script」與「驗證狀態」有逐筆資料並已實作；類別、來源層級、Agent 相容、是否需要 MCP 四項平台沒有資料，以停用控制項與理由呈現，並在 API 以 400 拒絕。缺口與解除條件見 [m1/m1-work-items-audit.md §5](m1/m1-work-items-audit.md)。**
+- [x] DISC-003 實作類別、來源、Agent、Script、MCP 與驗證狀態篩選。**（2026-08-15 依修訂後的 `02:DISC-002`「篩選維度的允收階段」勾選：M1 階段的兩個維度「是否包含 Script」與「驗證狀態」已實作並有逐筆資料；其餘四個維度未達允收階段，依同節新增準則以停用控制項＋理由呈現，API 回 400 並附理由，皆有具名測試。類別／來源層級待 CONTENT-003 策展資料、Agent 相容待 M2 Sandbox、MCP 待後 MVP。證據與解除條件見 [m1/m1-work-items-audit.md §5.3](m1/m1-work-items-audit.md)。）**
 - [x] DISC-004 實作可解釋的排序規則。
 - [x] DISC-005 實作無結果、低信心及查詢補充流程。
 - [x] DISC-006 實作 Skill 一般詳情頁。

@@ -182,13 +182,15 @@ MVP 先提供：
 
 - 建立內容匯入、來源追蹤、規格驗證與搜尋。
 - 完成首頁、結果列表、詳情與 Fork 流程。
-- 建立第一批精選 Skill。
+- 建立第一批精選 Skill。（**2026-08-15 範圍調整，依 [m1/m1-work-items-audit.md §8](m1/m1-work-items-audit.md)**：精選 Skill 的**範例資料／Prompt／驗收條件與基準試跑改列 M2**——`03:CONTENT-007／008`，兩者依賴 M2 的 Test Case 與 Sandbox。M1 的內容範圍是收錄、來源與 License 檢查、白話摘要與靜態掃描。）
 - **驗證閘門**：測試使用者以自然語言能找到相關 Skill 並理解符合原因，否則先修正搜尋與內容，不進入 M2。
 
 ### M2：Skill Lab
 
 - 完成 Cloud Sandbox、Dataset、Prompt 與 Run Trace。
 - 完成權限確認、逾時、取消及清理。
+- 完成精選 Skill 的範例資料、Prompt、驗收條件與基準試跑（`03:CONTENT-007／008`，2026-08-15 由 M1 移入）。
+- 依 Sandbox 實測結果啟用搜尋的 Agent 相容篩選維度（`02:DISC-002`，2026-08-15 標定）。
 
 ### M3：評估與改善
 

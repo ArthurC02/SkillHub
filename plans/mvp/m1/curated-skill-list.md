@@ -108,7 +108,9 @@
 5. **`excel-deduplicate` 的 SKILL.md 於依賴段落出現 `pip install` 字樣。** 三個套件（`pandas`／`lxml`／`openpyxl`）全部在 PDM-004 白名單內，該分支在 Runtime Image 中不會觸發；但**「SKILL.md 文字教模型執行被禁止的動作」與 M0 否決 `cabbage2000-lab/data-analysis-skills` 的理由同型**。CONTENT-006 需人工確認措辭是否可接受，或於匯入時標註。
 6. **D-4 `excel-format` 的 ④ 機械項於 2026-08-15 全部通過**：262 行全文／168 行內嵌 Python（≤300）、無 `eval`／`exec`、無動態下載、無 `subprocess`、無 `pip install` 字樣（不同於腳註 5 的 A-5）。**與 D-1／D-2 同樣只差「人工逐行審過」**，故仍記 pending 而非 pass。另 SKILL.md 以 `[[excel-safe-workflow]]` wiki-link 引用同 repo 的另一個 Skill，該檔不在套件內；匯入實測未觸發阻擋錯誤（③ pass），但 CONTENT-006 應決定此類跨 Skill 引用的呈現方式。
 
-> **九項全過者目前為 0**——這是預期狀態，不是缺陷：⑤⑦⑧ 三項在平台建成前對**所有**候選（含官方來源）一律無法判定。**在 CONTENT-005／006／007／008 全數完成前，`03-work-items.md` 的 CONTENT-003 不得勾選為完成**。
+> **九項全過者目前為 0**——這是預期狀態，不是缺陷：⑤⑦⑧ 三項在平台建成前對**所有**候選（含官方來源）一律無法判定。~~**在 CONTENT-005／006／007／008 全數完成前，`03-work-items.md` 的 CONTENT-003 不得勾選為完成**。~~
+>
+> **2026-08-15 修訂**（依據 [m1-work-items-audit.md §8 第三梯](m1-work-items-audit.md)，CONTENT-007／008 已改列 M2）：勾選條件改為 **CONTENT-005／006 全數完成**。⑧「平台基準試跑」不再是 CONTENT-003 的勾選前提，改以引用處理——勾選當下 ⑧ 須明確記為「待 M2 基準試跑，見 CONTENT-007／008」，**不得記為 pass**。⑤⑦ 的綁定不變（原文保留於刪除線，供回溯）。
 
 ---
 
