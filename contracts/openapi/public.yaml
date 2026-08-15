@@ -698,6 +698,138 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/runs/preflight:
+    get:
+      operationId: getRunPreflight
+      summary: What the run will be allowed to touch, before it starts (TEST-008)
+      description: |
+        Eight disclosures for one (version, test case) pair: the datasets it can
+        read, whether the package carries runnable code, the tools and MCP
+        servers it gets, its egress policy, the names of the secrets injected
+        into it, who will run it, and the resource ceilings it is held to.
+
+        Nothing here is a claim that the skill is safe (NFR-001) and nothing in
+        the package is executed to produce it (iron rule 1) — `scripts` comes
+        from re-scanning the stored bytes, which is why an unreadable package
+        reports `unavailable` and never `none`.
+
+        `summary_hash` is a hash over exactly those facts and is what
+        `POST .../preflight/confirm` and `POST /skills/{id}/runs` agree to. It
+        changes whenever any of them does, so a dataset added after a
+        confirmation invalidates that confirmation by construction — nothing
+        sweeps for stale agreements. `notes` sits outside the hash: rewording an
+        explanation must not invalidate every outstanding confirmation.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Skill id. The version must belong to this skill.
+          schema: { type: string, format: uuid }
+        - name: version_id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: test_case_id
+          in: query
+          required: true
+          description: |
+            The editable draft, not a snapshot. The summary describes a run that
+            has not started, and a snapshot only exists once one has.
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The current permission summary and its hash.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunPermissionSummary" }
+        "400":
+          description: '`version_id` or `test_case_id` missing or not a UUID.'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            Skill, version or test case not in the caller's workspace, or the
+            version does not belong to this skill (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/runs/preflight/confirm:
+    post:
+      operationId: confirmRunPreflight
+      summary: Record agreement to a permission summary (TEST-009)
+      description: |
+        The user's explicit agreement to the summary they were shown. Declining
+        is not an operation: a user who declines simply does not call this, and
+        without a record here the run cannot start.
+
+        The hash is checked against a freshly built summary rather than taken on
+        trust, so a client cannot confirm a hash it invented or one that has
+        already gone stale.
+
+        Confirmations accumulate by hash, and re-confirming an already-agreed
+        summary is harmless. Nothing expires them: a summary that no longer
+        describes the run hashes differently and its old agreement is simply
+        never looked up again.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version_id, test_case_id, summary_hash]
+              properties:
+                version_id: { type: string, format: uuid }
+                test_case_id: { type: string, format: uuid }
+                summary_hash:
+                  type: string
+                  description: The `summary_hash` from GET .../preflight, verbatim.
+      responses:
+        "201":
+          description: Agreement recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [confirmed, summary_hash, confirmed_at]
+                properties:
+                  confirmed: { type: boolean }
+                  summary_hash: { type: string }
+                  confirmed_at: { type: string, format: date-time }
+        "400":
+          description: Body is not JSON, or the ids are not UUIDs.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Skill, version or test case not visible to the caller (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: |
+            `summary_hash` is not the current summary's. 422 rather than 409: the
+            request is well formed and nothing conflicts, the agreement is simply
+            to something that is no longer true. Read the summary again and
+            confirm that one.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/runs:
     post:
       operationId: startRun
@@ -713,10 +845,13 @@ paths:
         The response is immediate — execution is asynchronous (ADR-008). Poll
         `GET /runs/{run_id}` for progress.
 
-        No provider is selected yet: `provider` comes back as `unassigned` and
-        selection with capability matching is RUN-005. Until a sandbox provider
-        exists (RUN-003 / SBX-001) every run reaches `failed` with a reason
-        saying so, rather than reporting a success nobody executed.
+        Two things are checked before anything is written. Whether the configured
+        fleet can carry the work at all (RUN-005), and whether the caller has
+        agreed to the current permission summary (TEST-005); both refuse with 422
+        and neither leaves a run behind. `provider` still comes back as
+        `unassigned` — the fleet was checked here, but the individual provider is
+        picked when the job is dispatched, and naming one now would name one the
+        scheduler may not use.
       parameters:
         - name: id
           in: path
@@ -729,10 +864,21 @@ paths:
           application/json:
             schema:
               type: object
-              required: [version_id, test_case_id]
+              required: [version_id, test_case_id, confirmed_summary_hash]
               properties:
                 version_id: { type: string, format: uuid }
                 test_case_id: { type: string, format: uuid }
+                confirmed_summary_hash:
+                  type: string
+                  description: |
+                    The permission summary the user agreed to (TEST-005). Required,
+                    and never inferred from a previous run of the same pair - an
+                    agreement is to one summary, not to a skill.
+
+                    It is not an authorization by itself: the server rebuilds the
+                    summary from what is true now, requires this to equal that
+                    hash, and requires a recorded confirmation of it. Sending a
+                    hash nobody confirmed fails the second check.
       responses:
         "201":
           description: Run queued.
@@ -754,6 +900,22 @@ paths:
             Skill, version or test case not in the caller's workspace, or the
             version does not belong to this skill. Existence is private, so this
             is a 404 rather than a 403 (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: |
+            Well formed, the platform is working, and the run still may not
+            start. Two causes, and the message says which:
+
+            - No configured provider can satisfy the run's requirements
+              (RUN-005); the message names the requirement each one failed.
+            - `confirmed_summary_hash` is absent, is not the current summary's,
+              or names a summary nobody confirmed (TEST-005). The fix is the same
+              in all three cases: GET the preflight summary again, confirm the
+              hash it returns, and retry with that. A permission that changed
+              since the agreement lands here rather than riding an agreement
+              nobody gave.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1181,6 +1343,61 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "413":
           description: The test case already holds the maximum number of criteria.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /test-cases/{id}/criteria/suggest:
+    post:
+      operationId: suggestAcceptanceCriteria
+      summary: Ask the model to propose acceptance criteria (TEST-002)
+      description: |
+        Appends model-proposed criteria to the draft with `source: suggested` and
+        no confirmation. They are a starting point, not an answer: keeping one
+        means confirming it, and editing one re-labels it as the user's own
+        (TEST-003). A proposal that breaks an input rule, or repeats a criterion
+        already on the draft, is dropped rather than reported — the rest of the
+        batch is still useful. The response is the whole updated draft.
+
+        What reaches the model is the skill's name and summary, the user's own
+        prompt, and for each attached file its name, its type and its *column
+        names* with a type inferred from the first data row. Never a cell value,
+        never a row, never the file: the row that led to "number" or "text" is
+        read in this process and dropped, and the request has no field it could
+        travel in (iron rule 11, NFR-002).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: |
+            The updated draft, suggestions included. 200 rather than 201 because
+            the addressed resource is the test case and it already existed;
+            nothing here creates one.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestCase" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Test case not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: |
+            No suggestion could be produced, and the draft is unchanged. Covers
+            every reason alike: the LLM service is not configured for this
+            process, it answered an error, or it did not answer inside the
+            timeout. TEST-002 is an enhancement on top of TEST-003, so its
+            absence is an unavailable feature and not a failed request, and the
+            message names the manual path. The cause stays in the platform's log
+            — a client cannot tell a misconfiguration from a gateway error here,
+            and does not need to.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -2280,6 +2497,187 @@ components:
           type: array
           items: { type: string }
         note: { type: string }
+    RunPermissionSummary:
+      description: |
+        Everything a run will be able to touch, shown before it starts
+        (TEST-005/008). Built for a (skill version, test case draft) pair and
+        never stored: it is recomputed on every read, so it always describes the
+        run as it would start right now.
+      type: object
+      required: [summary, summary_hash, notes]
+      properties:
+        summary:
+          $ref: "#/components/schemas/RunPermissionSummaryContent"
+        summary_hash:
+          type: string
+          description: |
+            SHA-256 over a canonical encoding of `summary` and nothing else. Both
+            the confirmation and the run request quote it back, and the server
+            recomputes it rather than trusting either, so it is an integrity
+            check on what the user saw and not a token.
+        notes:
+          type: array
+          items: { type: string }
+          description: |
+            Plain-language explanation of the summary, deliberately outside the
+            hash. Rewording a sentence must not invalidate every outstanding
+            confirmation, and the facts are in `summary` where the hash covers
+            them.
+    RunPermissionSummaryContent:
+      description: |
+        The hashed body: the eight TEST-008 disclosures plus what they belong to.
+        Field order is fixed by the server's type rather than by an encoder,
+        because the hash depends on it.
+
+        Deliberately absent: the user prompt and the acceptance criteria. Editing
+        either changes what the run is *asked* to do, not what it is *allowed* to
+        touch, and invalidating a permission agreement over a typo fix would
+        train users to click through the one screen that must not be reflexive.
+      type: object
+      required:
+        [skill_version_id, skill_content_hash, test_case_id, datasets,
+         dataset_total_bytes, scripts, tools, mcp_servers, network,
+         injected_secrets, provider, resource_limits]
+      properties:
+        skill_version_id: { type: string, format: uuid }
+        skill_content_hash:
+          type: string
+          description: |
+            The exact package bytes this run would execute. In the hash because
+            "which code runs" is a permission fact.
+        test_case_id: { type: string, format: uuid }
+        datasets:
+          type: array
+          description: Every file the run will be able to read, oldest upload first.
+          items:
+            type: object
+            required: [dataset_id, file_name, content_type, size_bytes, content_hash]
+            properties:
+              dataset_id: { type: string, format: uuid }
+              file_name: { type: string }
+              content_type:
+                type: string
+                description: From the content's magic bytes, not its name (PDM-005 §5.1).
+              size_bytes: { type: integer, format: int64 }
+              content_hash: { type: string }
+        dataset_total_bytes: { type: integer, format: int64 }
+        scripts:
+          type: object
+          description: |
+            Whether the package carries runnable code, answered by re-scanning
+            the stored package rather than by reading a projected flag - the
+            scan covers the exact bytes that would be executed. Nothing is
+            executed to produce it (iron rule 1).
+          required: [status, findings]
+          properties:
+            status:
+              type: string
+              enum: [none, present, unavailable]
+              description: |
+                `none` - scanned, no script file and no code embedded in
+                SKILL.md. `present` - scanned, and `findings` names what was
+                found. `unavailable` - the package could not be read, so nothing
+                is claimed either way. `unavailable` is never rendered as `none`:
+                an unreadable package is not a clean one (DISC-004
+                不得自行推定為通過).
+            findings:
+              type: array
+              items: { type: string }
+              description: '`<code>: <path>` per finding, sorted. Empty unless `present`.'
+        tools:
+          type: array
+          items: { type: string }
+          description: |
+            The agent's own tools, inside the sandbox and nowhere else. There is
+            no per-tool grant to disclose because there is none to make: the
+            isolation boundary is the container, not a tool list.
+        mcp_servers:
+          type: array
+          items: { type: string }
+          description: |
+            Always empty in the MVP, and shown as empty rather than omitted. A
+            missing row reads as a question nobody asked; an empty one states
+            that the answer is none (remote MCP is out of first release).
+        network:
+          type: object
+          required: [mode, allow]
+          properties:
+            mode:
+              type: string
+              description: |
+                Egress policy the sandbox is held to (ADR-005). `default_deny`
+                with an empty `allow` means it can reach nothing at all.
+            allow:
+              type: array
+              items: { type: string }
+        injected_secrets:
+          type: array
+          items: { type: string }
+          description: |
+            Names only, never values (iron rule 11, NFR-002). The values are
+            per-run short-lived credentials minted at dispatch, and they appear
+            in no screen, log or trace.
+        provider:
+          type: object
+          description: |
+            Who would run the workload and how strongly it is isolated. Best
+            effort: an empty or unreachable fleet reports `unassigned` rather
+            than failing the summary - refusing incompatible work is
+            POST /skills/{id}/runs' job, not this one's.
+          required: [name, rootless]
+          properties:
+            name:
+              type: string
+              description: '`unassigned` when no provider could be resolved right now.'
+            isolation_level:
+              type: string
+              description: gvisor | container | vm | process (ADR-015). Absent when unassigned.
+            rootless: { type: boolean }
+            runtime: { type: string }
+            runtime_version: { type: string }
+        resource_limits:
+          $ref: "#/components/schemas/RunResourceLimits"
+    RunResourceLimits:
+      description: |
+        The ceilings this run is held to (PDM-005 §5.2). A deliberate copy of
+        ResourceLimits in contracts/openapi/sandbox-provider.yaml, not a
+        reference to it: that file is the control-plane-to-execution-plane
+        surface and services/sandbox generates from it alone, so the two stay
+        separate modules. Changing a value means changing both.
+      type: object
+      required:
+        [vcpu, memory_bytes, disk_bytes, max_pids, max_open_files,
+         wall_clock_soft_seconds, wall_clock_hard_seconds, artifact_total_bytes,
+         artifact_file_bytes, token_budget]
+      properties:
+        vcpu: { type: number }
+        memory_bytes: { type: integer, format: int64 }
+        disk_bytes:
+          type: integer
+          format: int64
+          description: Total; PDM-005 splits it /work 6 GiB + /out 2 GiB.
+        max_pids: { type: integer }
+        max_open_files: { type: integer }
+        wall_clock_soft_seconds:
+          type: integer
+          description: Reaching this marks the run `timed_out`.
+        wall_clock_hard_seconds:
+          type: integer
+          description: |
+            Forced destroy. The gap above the soft limit is the window in which a
+            cooperative stop can still collect artifacts.
+        artifact_total_bytes: { type: integer, format: int64 }
+        artifact_file_bytes: { type: integer, format: int64 }
+        token_budget:
+          type: object
+          required: [max_input_tokens, max_output_tokens]
+          properties:
+            max_input_tokens:
+              type: integer
+              description: |
+                Counts cache-hit tokens: caching cuts cost, not token count
+                (PDM-005 §5.2a-3).
+            max_output_tokens: { type: integer }
     Run:
       description: |
         One run as the Web surface sees it. The provider-facing shapes are a
