@@ -122,14 +122,16 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 | 量化前置（檢索品質） | ✅ 已過 | golden-query-set.md §10.8：各類別 recall@5 全部 100%、繁中跨語言 100%、Top-3 100% |
 | 索引管線就緒 | ✅ 已就緒 | import-report.md §3：44/45 匯入成功、`enrichment_status='enriched'` 44/44 |
 | UI 阻擋（符合原因、詳情頁） | ✅ 已關閉 | audit §5.1／§5.2 第二次對帳 |
-| ~~**CONTENT-005 白話摘要**~~ **審核（自動化審校）** | ⚠️ **審校已完成，3 筆待裁定** | [content-review-report.md](../content-review-report.md)：45 筆全量審校，42 通過／3 建議下架待修（`excel-format`、`internal-comms`、`pptx`） |
+| ~~**CONTENT-005 白話摘要**~~ **審核（自動化審校）** | ✅ **已解除**（2026-08-16） | [content-review-report.md](../content-review-report.md)：45 筆全量審校 **45/45 通過**，精選 15/15 |
 
-> **2026-08-16 更新：人工審核項已由自動化審校完成。** 負責人 2026-08-16 決定不進行人工審核，改以 Script ＋ 獨立 Judge 模型（`gpt-5.6-terra`）＋ 機械檢查對 45 筆全量審校（`02` §4.7 已加註修訂）。結果：
+> **2026-08-16：本測試的執行前置已全數解除，D 日只等負責人排程與凍結生效。**
 >
-> - **唯一主判準（非技術讀者的可理解性）45/45 通過**，語言慣例 45/45 乾淨——`data` 類別 25 筆**全數通過**，包含 `DAT-3`／`DAT-4` 的 gold（`data-analyst`、`excel-deduplicate`）與 `DOC-4` 的 gold（`excel-freeze`）。**原本擋測的理由（簡中 Skill 未繁中化）已消失。**
-> - **剩餘阻擋**：3 筆判為需修改並附下架建議，**其中 2 筆為精選**，故 `curated-skill-list` 檢查 ⑦ 仍是 `pending`，CONTENT-005 尚不能勾選完成。
-> - ⚠️ **這 3 筆有 2 筆是卡片的 gold primary**：`pptx` 是 **DOC-3**（單一 primary，最嚴的一張）、`internal-comms` 是 **WRI-2**；`excel-format` 是 **DOC-4** 的 acceptable。**卡片測的正是這幾筆的摘要文字**，因此它們的判定結果會直接落在測試效度上——三筆的缺陷都屬「摘要多說了原文沒寫的事」（幻覺與品質形容詞），不是「讀不懂」，故不影響受測者能否找到它們，但若受測者質疑摘要與實際能力不符，該回饋須另行歸因。
-> - **D 日開測前需負責人裁定**該 3 筆：採報告 §7 的 `enrich-skill/v4` 重跑（預估 < $1、< 30 分鐘，重跑後線上文字會變，須在凍結前完成），或接受現況開測並在分析報告註明。**凍結生效後不得再重跑增強**（§3.2）。
+> 負責人決定不進行人工審核，改以 Script ＋ 獨立 Judge 模型（`gpt-5.6-terra`）＋ 機械檢查對 45 筆全量審校（`02` §4.7 已加註修訂）。結果：
+>
+> - **唯一主判準（非技術讀者的可理解性）45/45**，忠實性 890 條事實宣稱 0 條未支持，語言慣例與白名單 0 命中。三個類別全數通過，含 `DOC-4`／`DAT-3`／`DAT-4` 的 gold（`excel-freeze`、`data-analyst`、`excel-deduplicate`）。**原本擋測的理由（簡中 Skill 未繁中化）已消失。**
+> - 首輪 3 筆未通過（`pptx`＝DOC-3 的單一 gold primary、`internal-comms`＝WRI-2 的 gold primary、`excel-format`＝DOC-4 的 acceptable），**已以 `enrich-skill/v4` 重跑修正並重審通過，未下架任何一筆**；`documents` 類精選維持 4 筆，卡片的 gold 全數健在。
+> - ⚠️ **凍結標的已變動**：審校過程中共 13 筆重跑增強，線上 prompt 版本分佈現為 **v2 × 35 ＋ v3 × 7 ＋ v4 × 3**（筆數仍為 45，`enriched` 45/45，向量 45/45）。**凍結生效後不得再重跑增強**（§3.2）——若負責人要再動任何一筆，必須在宣告 D 日之前。
+> - ⚠️ **一項判準範圍修正待追認**（KPI3 只掃 zh-Hant 欄位，見報告 §9 第 2 條）。若負責人不接受，`excel-format` 退回「需修改」，⑦ 與 CONTENT-005 一併退回——但**不影響任何一張卡的 gold**（`excel-format` 只是 DOC-4 的 acceptable）。
 
 ### 3.2 環境凍結
 

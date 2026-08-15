@@ -18,15 +18,15 @@
   ]
  },
  "usage": {
-  "in": 4793,
-  "out": 4102,
-  "embed": 18109,
-  "calls": 2,
-  "cost_usd": 0.0592
+  "in": 29008,
+  "out": 18686,
+  "embed": 37807,
+  "calls": 12,
+  "cost_usd": 0.283
  },
  "counts": {
-  "pass": 42,
-  "needs-fix": 3,
+  "pass": 45,
+  "needs-fix": 0,
   "error": 0
  },
  "results": [
@@ -117,7 +117,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9206,
+   "kpi6_online_cosine": 0.9203,
    "kpi6_flagged": false
   },
   {
@@ -177,7 +177,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9607,
+   "kpi6_online_cosine": 0.9608,
    "kpi6_flagged": false
   },
   {
@@ -292,99 +292,99 @@
    "category": "documents",
    "skill_id": "d41161c2-3406-4d31-b5c5-f41b5e6cc6ad",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v3",
-   "kpi2_term_density": 0.0,
+   "online_prompt_version": "enrich-skill/v4",
+   "kpi2_term_density": 0.54,
    "kpi3": {
     "simplified_chars": [],
     "locale_hits": [],
     "reserved_translated": [],
     "locale_glosses": [
-     "微软雅黑（繁中：微軟雅黑）",
      "微软雅黑（繁中：微軟雅黑）"
+    ],
+    "cjk_in_en_examples": [
+     "微软雅黑",
+     "软"
     ]
    },
    "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 28,
-    "unsupported": [
-     {
-      "claim": "The user must provide both the style to modify and the application scope.",
-      "evidence": "The source provides defaults, including “不改变” for unspecified formatting and “`all`（整表）” for unspecified scope, and it documents a beautify-only request. It therefore does not state that both must be supplied by the user.",
-      "verdict": "unsupported"
-     }
-    ]
+    "claims_total": 20,
+    "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "它會統一調整 Excel 工作表的格式，包括字體、字號、粗體、斜體、顏色、水平與垂直對齊、欄寬及列高；可針對整張工作表、表頭、資料區、指定欄列或符合條件的儲存格套用。它也會先勘察現有格式、備份後修改，並驗證字體、對齊與欄寬。",
+      "answer": "它可調整 Excel 工作表的字型、字級、粗體、斜體、顏色、水平與垂直對齊、欄寬和列高；可套用到整張表、表頭、資料區、指定列或欄，以及符合條件的儲存格。若只要求「美化」，會套用內建的表頭、資料區與自動欄寬設定。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能會統一調整 Excel 工作表的字體、字號、粗體、斜體、顏色、水平與垂直對齊、欄寬及列高，並可套用到整張工作表、表頭、資料區、指定欄列或符合條件的儲存格。流程會先解析需求並勘察現有格式，備份後執行修改，最後驗證字體、對齊與欄寬。"
+      "quote": "此 Skill 會調整 Excel 工作表的字型、字級、粗體、斜體、顏色、水平與垂直對齊、欄寬及列高，並可套用至整張表、表頭、資料區、指定列或欄，以及符合條件的儲存格。若使用者只要求「美化」，則套用內建的表頭、資料區與自動欄寬設定"
      },
      {
-      "answer": "當你需要整理或統一 Excel 的外觀格式時可使用，例如設定表頭樣式、調整整張表的字體與特定欄位對齊、只自動調整欄寬而保留現有字體和顏色，或想直接以預設方案美化 Excel 檔案時。",
+      "answer": "當你要統一或修改 Excel 的外觀格式時，例如設定表頭粗體置中、調整資料區字型與對齊、修改特定欄列的格式或列高欄寬，或想直接用預設方案美化整份 Excel 檔案時，可以使用它。",
       "answerable": true,
       "question": "Q2",
-      "quote": "- 請將表頭設為粗體並水平、垂直置中，字體改成 微软雅黑（繁中：微軟雅黑）12 點。\n- 請將整張工作表改成 Arial 10 點，並把金額欄靠右對齊。\n- 請自動調整所有欄寬，但不要更動現有字體與顏色。\n- 請使用預設美化方案整理這份 Excel 檔案。"
+      "quote": "- 請將表頭列設為粗體並置中，資料區使用 Arial 10pt，並自動調整所有欄寬。\n- 請將 E、F 欄靠右對齊，讓第 2 至 100 列垂直置中，並將這些列的列高設為 20。\n- 請使用預設美化方案美化這個 Excel 檔案。"
      },
      {
-      "answer": "你需要準備 Excel 檔案，並說明要修改的樣式及套用範圍，例如字體、字號、對齊方式、欄寬或列高，以及要套用到表頭、資料區、整張表或指定欄列。若只想「美化」，則只需提出美化需求，技能會採用預設的表頭、資料區與自適應欄寬設定。",
+      "answer": "你需要準備一個 .xlsx 檔案，並說明想變更的格式和套用範圍。若不指定格式，未指定的格式會維持不變；若不指定範圍，預設會套用到整張表。",
       "answerable": true,
       "question": "Q3",
-      "quote": "使用者需提供 Excel 檔案，以及要修改的樣式和套用範圍；若只要求「美化」，則會使用預設的表頭、資料區及自適應欄寬設定。"
+      "quote": "使用者需提供 .xlsx 檔案及想變更的格式與範圍；未指定的格式維持不變，範圍未指定時預設為整張表。"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "「美化」／「預設美化方案」",
-     "reason": "This is a quality-oriented presentation term, but the source itself documents “美化” as a trigger and defines a “默认美化方案.”",
+     "quote": "若使用者只要求「美化」，則套用內建的表頭、資料區與自動欄寬設定",
+     "reason": "This is a quality-oriented beautification feature description, not an appraisal of the Skill; the source explicitly defines a default beautification preset.",
      "verdict": "restatement"
     },
     {
-     "quote": "「備份後執行修改，最後驗證字體、對齊與欄寬」",
-     "reason": "Backup and verification are safety/assurance measures stated in the source workflow and verification code.",
+     "quote": "並依需求解析、勘察、執行及驗證流程處理",
+     "reason": "Verification is a quality-control/process statement. The source requires scouting before execution and verification afterward.",
      "verdict": "restatement"
     },
     {
-     "quote": "「timestamped backups」",
-     "reason": "The source explicitly states that backups are automatically timestamp-named before operation.",
+     "quote": "formatted excel .xlsx file",
+     "reason": "“formatted” describes the output transformation rather than judging the Skill's quality. The source documents formatting and saving the workbook.",
      "verdict": "restatement"
     },
     {
-     "quote": "「format verification」",
-     "reason": "The source contains a dedicated verification step that checks formatting properties.",
+     "quote": "timestamped backups",
+     "reason": "Backups are a safety/recovery measure explicitly required by the source.",
      "verdict": "restatement"
     },
     {
-     "quote": "「執行前必須完成需求解析與格式勘察，修改後必須進行驗證。」",
-     "reason": "This is the source's stated required workflow.",
+     "quote": "format verification results",
+     "reason": "Verification is a quality-control output documented in the source verification step.",
      "verdict": "restatement"
     },
     {
-     "quote": "「操作前必須建立時間戳備份；成功後保留最新 3 份，失誤時須刪除損壞檔案並從備份還原。」",
-     "reason": "This is a restatement of the source's backup, retention, damaged-file deletion, and recovery instruction.",
+     "quote": "執行前必須完成需求解析與勘察，執行後必須驗證。",
+     "reason": "This is a safety/quality process requirement directly stated in the source.",
      "verdict": "restatement"
     },
     {
-     "quote": "「合併儲存格的格式需另外處理。」",
-     "reason": "This identifies a handling caveat already stated under the source's notes.",
+     "quote": "操作前必須建立時間戳備份；成功後保留最新 3 份，發生失誤時刪除損壞檔案並從備份還原。",
+     "reason": "This is a risk-mitigation and recovery requirement directly stated in the source.",
      "verdict": "restatement"
     },
     {
-     "quote": "「字體是否可用取決於開啟 Excel 時的系統；Arial 與 微软雅黑（繁中：微軟雅黑）通常可用。」",
-     "reason": "This is a reliability/availability caveat stated in the source, including that these fonts generally exist.",
+     "quote": "合併儲存格的格式需要另外處理。",
+     "reason": "This identifies a handling limitation/risk that the source explicitly notes for merged cells.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "字型是否可用取決於開啟 Excel 檔案之系統所安裝的字型。",
+     "reason": "This is a quality/compatibility limitation directly stated in the source.",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
-   "verdict": "needs-fix",
-   "reasons": [
-    "KPI1 忠實性：The user must provide both the style to modify and the application scope.（The source provides defaults, including “不改变” for unspecified formatting and “`all`（整表）” for unspecified scope, and it documents a beautify-only request. It therefore does not state that both must be supplied by the user.）"
-   ],
-   "kpi6_online_cosine": 0.9671,
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9109,
    "kpi6_flagged": false
   },
   {
@@ -702,7 +702,7 @@
    "category": "documents",
    "skill_id": "4919387f-bef5-43cc-8bce-a2a2b08b8267",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v3",
+   "online_prompt_version": "enrich-skill/v4",
    "kpi2_term_density": 0.0,
    "kpi3": {
     "simplified_chars": [],
@@ -712,103 +712,74 @@
    },
    "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 17,
-    "unsupported": [
-     {
-      "claim": "The Skill can extract speaker notes from a presentation and summarize each slide.",
-      "evidence": "The source documents creating speaker notes (`slide.addNotes(\"...\")`) but does not document extracting speaker notes or summarizing slides.",
-      "verdict": "unsupported"
-     },
-     {
-      "claim": "The Skill can remove duplicate slides when combining decks.",
-      "evidence": "The source documents deleting and reordering slides, but does not document detecting duplicate slides or removing them as duplicates.",
-      "verdict": "unsupported"
-     }
-    ]
+    "claims_total": 20,
+    "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "可建立、讀取、擷取、編輯、合併或拆分 PowerPoint 的 .pptx 與 .potx 檔案；也可處理範本、版面配置、圖表、講者備註與留言，並能產生縮圖或投影片圖像，以及檢查內容、結構和視覺問題。",
+      "answer": "可建立、讀取、解析、編輯、合併或拆分 `.pptx` 與 `.potx` 簡報；也可處理範本、版面配置、講者備註、註解與原生圖表，並能擷取逐頁文字、產生縮圖和投影片影像，以及檢查與修正簡報的結構、內容或視覺問題。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能可建立、讀取、擷取、編輯、合併或拆分 PowerPoint `.pptx` 與 `.potx` 檔案，也能處理範本、版面配置、圖表、講者備註及留言。它也會產生縮圖或投影片圖像，並執行內容、結構與視覺驗證，以找出遺漏、溢位、重疊及檔案結構問題。"
+      "quote": "此 Skill 可建立、讀取、解析、編輯、合併或拆分 `.pptx` 與 `.potx` 簡報，並處理範本、版面配置、講者備註、註解及原生圖表。它也能擷取逐頁文字、產生縮圖與投影片影像，並執行結構、內容及視覺檢查。"
      },
      {
-      "answer": "當你需要製作簡報、依既有範本更新內容、擷取投影片文字或講者備註、合併多份簡報並去除重複投影片，或檢查文字溢位、物件重疊、殘留預留文字及圖表問題時，可以使用它。",
+      "answer": "當你需要製作新的 PowerPoint 簡報、從簡報逐頁取出文字、依範本填入內容、合併與重排多份簡報、刪除頁面，或把投影片轉成影像並檢查和修正文字溢出、元素重疊時，可以使用它。",
       "answerable": true,
       "question": "Q2",
-      "quote": "- 請根據這份大綱製作一份 10 頁的投資人簡報，並匯出為 PPTX 檔。\n- 請將本季業績更新至這份 PowerPoint 範本，並保留原有版面配置與格式。\n- 請擷取這份簡報的文字與講者備註，並逐頁摘要。\n- 請合併這兩份 PPTX 簡報、移除重複投影片，並驗證最終檔案。\n- 請檢查這份簡報是否有文字溢位、物件重疊、殘留的預留位置文字或損壞的圖表。"
+      "quote": "- 請根據這份大綱建立 `.pptx` 銷售簡報，並為每張投影片加入講者備註。\n- 請逐頁擷取這份簡報的文字，並保留投影片順序。\n- 請把專案內容填入這個 `.potx` 範本、移除未使用的預留位置群組，並保留範本版面配置。\n- 請將這些 `.pptx` 檔合併成一份簡報、重新排列投影片，並刪除指定頁面。\n- 請驗證這份由範本製作的簡報，將每張投影片轉成影像，並修正文字溢出或元素重疊。"
      },
      {
-      "answer": "你需要準備簡報檔、範本，或想製作的內容與設計需求；具體要準備哪一種，取決於你的工作類型。",
+      "answer": "你可準備既有的 `.pptx` 簡報或 `.potx` 範本；若要新建或修改簡報，則準備要做成投影片的內容與修改要求。若手上是舊式 `.ppt`，需要先轉檔。",
       "answerable": true,
       "question": "Q3",
-      "quote": "使用者需提供簡報檔、範本或要製作的內容與設計需求。"
+      "quote": "使用者可提供既有簡報或範本，也可提供要製作成投影片的內容與修改要求；舊式 `.ppt` 則需先轉檔。"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "執行內容、結構與視覺驗證，以找出遺漏、溢位、重疊及檔案結構問題",
-     "reason": "This describes the Skill's documented QA procedures and the defects they check for; it does not appraise the Skill as trustworthy or high quality.",
+     "quote": "並執行結構、內容及視覺檢查",
+     "reason": "這是在描述文件明定的 QA 類型，而非對 Skill 的外部品質背書。",
      "verdict": "restatement"
     },
     {
-     "quote": "並保留原有版面配置與格式。",
-     "reason": "This is a capability/quality-preservation claim about template editing, which the source discusses in its template-editing guidance.",
+     "quote": "並保留範本版面配置",
+     "reason": "這是在描述範本處理時的版面保留要求；來源要求先選擇版面並將內容對應至範本投影片。",
      "verdict": "restatement"
     },
     {
-     "quote": "while preserving its layouts and formatting.",
-     "reason": "This is the English duplicate of the template-preservation capability claim and is grounded in the source's template/layout and formatting-preservation guidance.",
+     "quote": "驗證這份由範本製作的簡報",
+     "reason": "來源明定由範本衍生的簡報應以 `--original` 執行驗證。",
      "verdict": "restatement"
     },
     {
-     "quote": "並驗證最終檔案。",
-     "reason": "The source explicitly requires file validation using `validate.py`.",
+     "quote": "修正文字溢出或元素重疊",
+     "reason": "來源將 overflow 與 overlapping elements 列為視覺 QA 缺陷，並要求找出及修正。",
      "verdict": "restatement"
     },
     {
-     "quote": "and validate the final file.",
-     "reason": "The source explicitly requires file validation using `validate.py`.",
+     "quote": "建立或修改簡報後必須進行內容、檔案與視覺 QA",
+     "reason": "來源有「QA (Required)」章節，並分列 Content QA、File QA 與 Visual QA。",
      "verdict": "restatement"
     },
     {
-     "quote": "請檢查這份簡報是否有文字溢位、物件重疊、殘留的預留位置文字或損壞的圖表。",
-     "reason": "These are documented QA targets: overflow, overlap, leftover placeholders, and chart checks.",
+     "quote": "驗證時必須傳入 `--original`",
+     "reason": "來源明確規定範本衍生簡報「always pass `--original`」。",
      "verdict": "restatement"
     },
     {
-     "quote": "Check this deck for text overflow, overlapping objects, placeholder text, and broken charts.",
-     "reason": "These are documented QA targets: overflow, overlap, leftover placeholders, and chart checks.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "使用 pptxgenjs 時不支援漸層填色，必須改用漸層圖片作為背景。",
-     "reason": "This is a documented technical limitation: “Gradient fills aren't supported — use a gradient image as the background instead.”",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "python-pptx 無法直接複製投影片、無法讀取多數範本使用的 SVG／EMF 圖像，且以 `text_frame.text` 替換文字時不會保留原有格式。",
-     "reason": "This restates the source's documented python-pptx limitations and formatting risk.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "建立或修改完成後必須執行內容檢查、檔案驗證及逐頁視覺檢查；從範本衍生的簡報驗證時必須提供原始檔。",
-     "reason": "This restates the source's required Content QA, File QA, Visual QA, and `--original` guidance for template-derived decks.",
+     "quote": "validation reports",
+     "reason": "這是對 `validate.py` 所進行檢查及回報失敗結果的描述，不是對 Skill 品質的評價。",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
-   "verdict": "needs-fix",
-   "reasons": [
-    "KPI1 忠實性：The Skill can extract speaker notes from a presentation and summarize each slide.（The source documents creating speaker notes (`slide.addNotes(\"...\")`) but does not document extracting speaker notes or summarizing slides.）",
-    "KPI1 忠實性：The Skill can remove duplicate slides when combining decks.（The source documents deleting and reordering slides, but does not document detecting duplicate slides or removing them as duplicates.）"
-   ],
-   "kpi6_online_cosine": 0.8317,
-   "kpi6_flagged": true
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9019,
+   "kpi6_flagged": false
   },
   {
    "id": "anthropic-sa/xlsx",
@@ -938,7 +909,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.912,
+   "kpi6_online_cosine": 0.9118,
    "kpi6_flagged": false
   },
   {
@@ -1040,7 +1011,7 @@
    "category": "writing",
    "skill_id": "38c40ff0-a645-426a-a9f1-44451d55fe1f",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v3",
+   "online_prompt_version": "enrich-skill/v4",
    "kpi2_term_density": 0.0,
    "kpi3": {
     "simplified_chars": [],
@@ -1048,78 +1019,45 @@
     "reserved_translated": [],
     "locale_glosses": []
    },
-   "kpi4_mechanical": [
-    "風險"
-   ],
+   "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 20,
-    "unsupported": [
-     {
-      "claim": "技能可產出清楚的 FAQ 回覆。",
-      "evidence": "The source identifies FAQ responses but does not state that the responses will be clear.",
-      "verdict": "unsupported"
-     },
-     {
-      "claim": "技能可產出精簡的主管更新。",
-      "evidence": "The source identifies leadership updates but does not state that they will be concise.",
-      "verdict": "unsupported"
-     }
-    ]
+    "claims_total": 18,
+    "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "可協助你撰寫符合公司慣用格式的內部溝通內容，例如 3P 進度、公司電子報、FAQ、狀態報告、主管更新、專案更新及事故報告；它會依對應指南採用格式、語氣與資料蒐集要求。",
+      "answer": "它會依照公司慣用格式，協助你撰寫內部溝通內容，例如 3P（進度、計畫、問題）更新、公司電子報、FAQ 回覆、狀態報告、主管或專案更新，以及事件報告；並會依對應指南的格式、語氣與內容蒐集指示來撰寫。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能協助撰寫符合公司慣用格式的內部溝通內容，包括 3P 進度、公司電子報、FAQ、狀態報告、主管更新、專案更新與事故報告。使用者需說明溝通類型並提供相關內容；技能會選用對應的範例指南，遵循其中的格式、語氣與資料蒐集要求。"
+      "quote": "此技能依照公司慣用格式撰寫內部溝通內容，包括 3P（進度、計畫、問題）更新、公司電子報、FAQ 回覆、狀態報告、主管更新、專案更新與事件報告。使用者需提供要撰寫的溝通類型與相關內容；技能會載入對應的範例指南，並依其格式、語氣及內容蒐集指示撰寫。"
      },
      {
-      "answer": "當你需要把手上的進度、公告、政策內容、專案狀態或事故資訊，整理成公司內部使用的正式溝通文件時，可以使用它。例如要做團隊 3P 更新、全公司電子報、遠距政策 FAQ、主管更新或內部事故報告。",
+      "answer": "當你需要把團隊或公司的資訊整理成正式的內部溝通文件時會使用，例如要報告本週進度、發布公司電子報、回答新政策常見問題、向主管更新專案狀態與阻礙，或摘要內部事件時。",
       "answerable": true,
       "question": "Q2",
-      "quote": "可以這樣說：- 請根據這些進度、後續計畫與阻礙事項，為我的團隊撰寫一份 3P 更新。- 請將這些公告與近期活動整理成一份全公司電子報。- 請針對新的遠距工作政策，為員工擬寫清楚的 FAQ 回覆。- 請撰寫一份精簡的主管更新，涵蓋專案狀態、風險及下一個里程碑。- 請根據這份時間軸與影響摘要撰寫內部事故報告。"
+      "quote": "可以這樣說：\n- 請撰寫一份涵蓋團隊本週進度、計畫與問題的 3P 更新。\n- 請起草一份介紹產品發布與近期活動的全公司電子報。\n- 請針對員工對新政策的常見問題撰寫 FAQ 回覆。\n- 請準備一份專案目前狀態、後續步驟與阻礙事項的主管更新。\n- 請建立一份內部事件報告，摘要事件經過與相關更新。"
      },
      {
-      "answer": "你需要先說明要做的溝通類型，並提供相關內容，例如進度、後續計畫、阻礙事項、公告、活動、政策、專案狀態、風險、里程碑，或事故的時間軸與影響摘要。若沒有相符指南，還需要說明你期待的格式或背景。",
+      "answer": "你需要先準備想撰寫的溝通類型，以及相關內容。如果沒有適用的範例指南，還需要提供你期望的格式或更多背景資料。",
       "answerable": true,
       "question": "Q3",
-      "quote": "使用者需說明溝通類型並提供相關內容；技能會選用對應的範例指南，遵循其中的格式、語氣與資料蒐集要求。若沒有相符的指南，會要求進一步說明期望格式或背景。"
+      "quote": "使用者需提供要撰寫的溝通類型與相關內容；技能會載入對應的範例指南，並依其格式、語氣及內容蒐集指示撰寫。若沒有相符的指南，技能會詢問期望格式或更多背景。"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "符合公司慣用格式",
-     "reason": "這是在描述輸出採用公司偏好的格式，與來源描述直接一致。",
+     "quote": "依照公司慣用格式",
+     "reason": "這是在描述技能遵循公司偏好的格式；來源文件本身明確表示其使用「the formats that my company likes to use」。",
      "verdict": "restatement"
-    },
-    {
-     "quote": "遵循其中的格式、語氣與資料蒐集要求",
-     "reason": "來源明確要求遵循指南中的 formatting、tone 與 content gathering 指示。",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "清楚的 FAQ 回覆 / clear FAQ responses",
-     "reason": "這是對 FAQ 輸出品質的評價；來源雖列出 FAQ responses，未聲稱回覆會「清楚」。",
-     "verdict": "judgement"
-    },
-    {
-     "quote": "精簡的主管更新 / concise leadership update",
-     "reason": "這是對主管更新篇幅或品質的評價；來源雖列出 leadership updates，未聲稱其會「精簡」。",
-     "verdict": "judgement"
     }
    ],
    "kpi5_contradictions": [],
-   "verdict": "needs-fix",
-   "reasons": [
-    "KPI1 忠實性：技能可產出清楚的 FAQ 回覆。（The source identifies FAQ responses but does not state that the responses will be clear.）",
-    "KPI1 忠實性：技能可產出精簡的主管更新。（The source identifies leadership updates but does not state that they will be concise.）",
-    "KPI4 白名單：「清楚的 FAQ 回覆 / clear FAQ responses」屬對 Skill 的評價（這是對 FAQ 輸出品質的評價；來源雖列出 FAQ responses，未聲稱回覆會「清楚」。）",
-    "KPI4 白名單：「精簡的主管更新 / concise leadership update」屬對 Skill 的評價（這是對主管更新篇幅或品質的評價；來源雖列出 leadership updates，未聲稱其會「精簡」。）"
-   ],
-   "kpi6_online_cosine": 0.9475,
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9521,
    "kpi6_flagged": false
   },
   {
@@ -1244,7 +1182,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9212,
+   "kpi6_online_cosine": 0.9217,
    "kpi6_flagged": false
   },
   {
@@ -1339,11 +1277,12 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8922,
+   "kpi6_online_cosine": 0.8932,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8932 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8922 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8922 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8932 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -1418,7 +1357,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9393,
+   "kpi6_online_cosine": 0.9394,
    "kpi6_flagged": false
   },
   {
@@ -1543,11 +1482,12 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8882,
+   "kpi6_online_cosine": 0.8892,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8892 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8882 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8882 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8892 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -1662,11 +1602,12 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8862,
+   "kpi6_online_cosine": 0.8866,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8855 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8862 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8862 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8866 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -1740,6 +1681,7 @@
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8631 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8632 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8632 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
@@ -1835,11 +1777,12 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8919,
+   "kpi6_online_cosine": 0.8918,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8916 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8919 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8919 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8918 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -1946,6 +1889,7 @@
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8274 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8273 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8273 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
@@ -2023,7 +1967,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9363,
+   "kpi6_online_cosine": 0.9364,
    "kpi6_flagged": false
   },
   {
@@ -2133,7 +2077,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9054,
+   "kpi6_online_cosine": 0.9053,
    "kpi6_flagged": false
   },
   {
@@ -2218,11 +2162,12 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8997,
+   "kpi6_online_cosine": 0.8996,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8997 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8997 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8997 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8996 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -2393,6 +2338,7 @@
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8848 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8849 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8849 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
@@ -2473,7 +2419,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9479,
+   "kpi6_online_cosine": 0.948,
    "kpi6_flagged": false
   },
   {
@@ -2553,7 +2499,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.964,
+   "kpi6_online_cosine": 0.9641,
    "kpi6_flagged": false
   },
   {
@@ -2745,11 +2691,12 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8667,
+   "kpi6_online_cosine": 0.8668,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8667 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8667 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8667 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8668 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -2844,7 +2791,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.964,
+   "kpi6_online_cosine": 0.9641,
    "kpi6_flagged": false
   },
   {
@@ -2959,11 +2906,12 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8958,
+   "kpi6_online_cosine": 0.896,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8958 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8958 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8958 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.896 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -3098,7 +3046,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9372,
+   "kpi6_online_cosine": 0.9374,
    "kpi6_flagged": false
   },
   {
@@ -3222,6 +3170,7 @@
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8518 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8517 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8517 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
@@ -3353,7 +3302,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.931,
+   "kpi6_online_cosine": 0.9311,
    "kpi6_flagged": false
   },
   {
@@ -3438,7 +3387,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9485,
+   "kpi6_online_cosine": 0.9486,
    "kpi6_flagged": false
   },
   {
@@ -3979,7 +3928,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9226,
+   "kpi6_online_cosine": 0.9227,
    "kpi6_flagged": false
   },
   {
@@ -4077,7 +4026,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9028,
+   "kpi6_online_cosine": 0.9026,
    "kpi6_flagged": false
   },
   {

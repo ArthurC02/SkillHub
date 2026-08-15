@@ -176,6 +176,24 @@ def strip_annotations(text: str) -> tuple[str, list[str]]:
     return ANNOTATION.sub(" ", text), found
 
 
+# A task example is stored as a flat list alternating zh_hant and en. Split by
+# script mix, not by "contains CJK": the v3/v4 gloss can put a Chinese proper noun
+# inside the English sentence too.
+CJK = re.compile(r"[一-鿿]")
+
+
+def _is_zh(s: str) -> bool:
+    return len(CJK.findall(s)) > sum(1 for c in s if c.isascii() and c.isalpha())
+
+
+def _zh(examples: list[str]) -> list[str]:
+    return [t for t in examples if _is_zh(t)]
+
+
+def _en(examples: list[str]) -> list[str]:
+    return [t for t in examples if not _is_zh(t)]
+
+
 def scan_simplified(text: str) -> list[str]:
     return sorted({c for c in text if c in SIMPLIFIED_ONLY})
 
@@ -432,7 +450,7 @@ def audit_user_message(skill_md: str, enr: dict, limitations: list[str]) -> str:
 
 
 def reader_user_message(enr: dict) -> str:
-    zh = [t for t in enr["task_examples"] if re.search(r"[一-鿿]", t)]
+    zh = _zh(enr["task_examples"])
     body = enr["summary"] + "\n\n可以這樣說：\n" + "\n".join(f"- {t}" for t in zh)
     return _wrap("catalogue text", body)
 
@@ -485,12 +503,23 @@ def review_one(row: dict, online: dict, key: str, mechanical_only: bool) -> dict
     text = "\n".join([enr["summary"], *enr["task_examples"], *online["limitations"]])
     tag_text = " ".join(v for vals in enr["tags"].values() for v in vals)
 
-    scanned, glossed = strip_annotations(text + tag_text)
+    # KPI3 asks whether the zh-Hant presentation layer follows zh-Hant convention,
+    # so it scans the zh-Hant fields: summary, the zh_hant half of each task
+    # example, and limitations. The `en` halves exist for cross-lingual retrieval
+    # and their language convention is English - a Simplified proper noun quoted
+    # inside an English sentence is a transliteration choice, not a failure to
+    # localise Traditional Chinese. Those are recorded below, never scored.
+    zh_text = "\n".join([enr["summary"], *_zh(enr["task_examples"]), *online["limitations"]])
+    scanned, glossed = strip_annotations(zh_text + tag_text)
+    en_cjk, _ = strip_annotations("\n".join(_en(enr["task_examples"])))
     kpi3 = {
         "simplified_chars": scan_simplified(scanned),
         "locale_hits": scan_locale(scanned),
         "reserved_translated": scan_reserved(text),
-        "locale_glosses": glossed,  # v3 annotations, recorded not scored
+        "locale_glosses": glossed,  # v3/v4 annotations, recorded not scored
+        "cjk_in_en_examples": sorted(
+            {t["term"] for t in scan_locale(en_cjk)} | set(scan_simplified(en_cjk))
+        ),
     }
     kpi4_mech = scan_evaluative(text)
     kpi2_density = term_density(enr["summary"])
@@ -707,6 +736,12 @@ def selftest() -> int:
     assert scan_simplified("裡面干淨的台灣只有云端") == []
 
     assert [h["term"] for h in scan_locale("字型改成微軟雅黑 12 號")] == ["微軟雅黑"]
+    # the en half of an example stays English even when it quotes a CJK proper noun
+    ex = [
+        "請將整張工作表改成 微软雅黑（繁中：微軟雅黑）11pt。",
+        "Change the entire worksheet to 微软雅黑 11 pt.",
+    ]
+    assert _zh(ex) == [ex[0]] and _en(ex) == [ex[1]]
     # the v3 gloss is the sanctioned form, so neither scan may fire inside it
     glossed, found = strip_annotations("整張工作表改成 微软雅黑（繁中：微軟雅黑）11pt")
     assert found == ["微软雅黑（繁中：微軟雅黑）"], found

@@ -23,10 +23,13 @@ logger = logging.getLogger("skillhub_llm.enrich")
 # PDM-003 model tier: index-time enrichment runs once per Skill Version and its
 # output becomes a primary retrieval field, so quality outweighs cost.
 ENRICH_MODEL = os.getenv("ENRICH_MODEL", "gpt-5.6-sol")
-# v2 adds `limitations`; v3 adds the locale gloss rule. Bumped rather than edited
-# in place: the version is what tells a stored enrichment written under the old
-# prompt from one written under this, and reindex uses it to find the stale rows.
-PROMPT_VERSION = "enrich-skill/v3"
+# v2 adds `limitations`; v3 adds the locale gloss rule; v4 adds the three
+# restatement rules the CONTENT-005 audit found the model breaking (defaults
+# written as requirements, quality adjectives on outputs, capabilities
+# extrapolated to neighbouring actions). Bumped rather than edited in place: the
+# version is what tells a stored enrichment written under the old prompt from one
+# written under this, and reindex uses it to find the stale rows.
+PROMPT_VERSION = "enrich-skill/v4"
 
 # Ceiling on a single gateway call. Client disconnect cancels the request at the
 # HTTP layer, which is how Go's cancellation propagates (ADR-016 rule 7).
@@ -46,6 +49,21 @@ you are describing.
 
 Describe only what the content states. Do not invent capabilities. Do not judge \
 whether the Skill is safe, trustworthy or high quality - that is not yours to decide.
+
+Three ways of overstating a document, all forbidden. They apply to every field, \
+including the task example sentences:
+
+1. Keep a parameter's modality. If the content gives a default, a fallback, or marks \
+something optional, describe it as optional and say what happens when it is left out. \
+Something is required of the user only where the content says it is required. Listing a \
+knob is not the same as demanding the user turn it.
+2. No quality adjectives on what the Skill produces. Words like clear, concise, polished, \
+accurate, professional or well-structured are appraisals; write them only when the \
+content itself claims that property of its own output, and then as a restatement.
+3. No neighbouring capabilities. Describe the actions the content documents, not the ones \
+that usually come with them. Creating is not reading, writing is not extracting, deleting \
+is not deduplicating, supporting one format is not supporting its relatives. If the \
+document does not do it, it is not in the metadata.
 
 Produce:
 - summary: 2-4 plain sentences a non-technical reader understands, covering what the \

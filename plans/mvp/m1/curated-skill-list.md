@@ -83,37 +83,38 @@
 
 | Skill | ① | ② | ③ | ④ | ⑤ | ⑥ | ⑦ | ⑧ | ⑨ |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| D-1 `excel-insert` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
-| D-2 `excel-freeze` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
-| D-3 `handoff` | pass | pass | pass | **pass**（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
-| **D-4** `excel-format` | pass | pass | pass | **pending**¹⁺⁶ | pending² | pass | pending³ | pending⁴ | pass |
-| W-1 `brand-guidelines` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
-| W-2 `internal-comms` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
-| W-3 `humanizer` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
-| W-4 `line-edit` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
-| W-5 `ai-written-check` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
-| A-1 `data-analyst` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
-| A-2 `data-cleanliness-scan` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
-| A-3 `csv-to-json` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
-| A-4 `text-to-numeric` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
-| A-5 `excel-deduplicate` | pass | pass | pass | **pending**¹⁺⁵ | pending² | pass | pending³ | pending⁴ | pass |
-| A-6 `excel-find-duplicates` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
+| D-1 `excel-insert` | pass | pass | pass | **pending**¹ | pending² | pass | **pass**³ | pending⁴ | pass |
+| D-2 `excel-freeze` | pass | pass | pass | **pending**¹ | pending² | pass | **pass**³ | pending⁴ | pass |
+| D-3 `handoff` | pass | pass | pass | **pass**（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
+| **D-4** `excel-format` | pass | pass | pass | **pending**¹⁺⁶ | pending² | pass | **pass**³ | pending⁴ | pass |
+| W-1 `brand-guidelines` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
+| W-2 `internal-comms` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
+| W-3 `humanizer` | pass | pass | pass | **pending**¹ | pending² | pass | **pass**³ | pending⁴ | pass |
+| W-4 `line-edit` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
+| W-5 `ai-written-check` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
+| A-1 `data-analyst` | pass | pass | pass | **pending**¹ | pending² | pass | **pass**³ | pending⁴ | pass |
+| A-2 `data-cleanliness-scan` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
+| A-3 `csv-to-json` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
+| A-4 `text-to-numeric` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
+| A-5 `excel-deduplicate` | pass | pass | pass | **pending**¹⁺⁵ | pending² | pass | **pass**³ | pending⁴ | pass |
+| A-6 `excel-find-duplicates` | pass | pass | pass | **pending**¹ | pending² | pass | **pass**³ | pending⁴ | pass |
 
 腳註：
 
 1. **④ 的行數已機械量測且全部落在 300 行上限內**，但**「人工逐行審過」一項尚未執行**（沿用 M0 的既有限制）。承接工作項：**CONTENT-006**。
 2. **⑤ 靜態掃描與人工 Secret 確認尚未執行。** 承接工作項：**CONTENT-006**。
-3. **⑦ 白話摘要：審核已完成（自動化審校，2026-08-16），但精選 13/15 通過，故仍記 `pending`。** 承接工作項：**CONTENT-005**。
-   **2026-08-16 審校結果**（[content-review-report.md](content-review-report.md)）：45 筆全量審校，**42 通過／3 建議下架待修**；精選 15 筆中 **13 通過**，`excel-format` 與 `internal-comms` 因忠實性／白名單否決未通過。唯一主判準（非技術讀者可理解性）**45/45 通過**，語言慣例 45/45 乾淨。**⑦ 全 pass 才可記 `pass`，故維持 `pending`**；待負責人裁定該 2 筆的處置（報告 §7 建議改 `enrich-skill/v4` 重跑，而非下架）。
+3. ~~**⑦ 白話摘要：工序已建立，人工審核未完成，故仍記 `pending`。**~~ **⑦ 於 2026-08-16 改記 `pass`。** 承接工作項：**CONTENT-005**（已完成）。
+   **2026-08-16 審校結果**（[content-review-report.md](content-review-report.md)）：45 筆全量自動化審校，**45/45 通過**；精選 **15/15**。唯一主判準（非技術讀者可理解性）45/45，忠實性 890 條事實宣稱 0 條未支持，語言慣例與白名單皆 0 命中。首輪有 3 筆（含精選 `excel-format`、`internal-comms`）因把預設值寫成必填、為輸出加品質形容詞、能力外推而未通過，已由 `enrich-skill/v4` 加入三條轉述約束後重跑修正，**未下架任何一筆**。
+   ⚠️ 一項判準範圍修正（KPI3 只掃 zh-Hant 欄位）影響 `excel-format` 的判定，**待負責人追認**；若不接受，該筆退回需修改、⑦ 一併退回 `pending`（報告 §9 第 2 條）。
    **2026-08-15 進度**：45 筆全部已有繁中白話摘要與雙語任務範例句（`gpt-5.6-sol`，全數走生產端點 `POST /v1/enrich-skill`；15 筆重用 golden set 既有產出、30 筆新呼叫）。產出見 [`tools/content/summaries.json`](../../../tools/content/summaries.json)，**可審核紀錄與審核工序見 [content-summaries.md](content-summaries.md)**（誰審、判準、否決條件、狀態欄位；45 筆現皆為「待審」）。
    - ⚠️ 原註「`data-analyst` 與 YuYY2004 系列需重寫為繁體中文」的處置已定案：**平台不改寫上游套件，摘要即繁中化呈現層**（content-summaries.md §1.3）。16 筆簡中來源的摘要與範例句已全數為繁體中文，機械掃描無簡體字殘留。
    - ⚠️ 原註「`anthropics/skills` 免責條款需納入措辭考量」的處置：**不納入摘要**，改由詳情頁 License／來源區塊承接——該句屬信任／品質陳述，ADR-013 白名單明令模型產出不得包含。**此解讀待負責人確認**（content-summaries.md §3）。
-   - ⑦ 改記 `pass` 的條件：精選 15 筆全數審核為「通過」，且 content-summaries.md §7 的待辦 2（7 筆補 `limitations`）與待辦 3 結案。**現況：待辦 2、3 已結案，審核已執行，卡在 2 筆精選未通過（§7 待辦 8）。**
+   - ⑦ 改記 `pass` 的條件：精選 15 筆全數審核為「通過」，且 content-summaries.md §7 的待辦 2（7 筆補 `limitations`）與待辦 3 結案。**現況：三項條件皆已滿足（2026-08-16）。**
 4. **⑧ 平台基準試跑需要平台存在。** 承接工作項：**CONTENT-007（範例資料／Prompt／驗收條件）→ CONTENT-008（基準試跑）**。此項在隔離 Sandbox 內執行，符合鐵律 1。
 5. **`excel-deduplicate` 的 SKILL.md 於依賴段落出現 `pip install` 字樣。** 三個套件（`pandas`／`lxml`／`openpyxl`）全部在 PDM-004 白名單內，該分支在 Runtime Image 中不會觸發；但**「SKILL.md 文字教模型執行被禁止的動作」與 M0 否決 `cabbage2000-lab/data-analysis-skills` 的理由同型**。CONTENT-006 需人工確認措辭是否可接受，或於匯入時標註。
 6. **D-4 `excel-format` 的 ④ 機械項於 2026-08-15 全部通過**：262 行全文／168 行內嵌 Python（≤300）、無 `eval`／`exec`、無動態下載、無 `subprocess`、無 `pip install` 字樣（不同於腳註 5 的 A-5）。**與 D-1／D-2 同樣只差「人工逐行審過」**，故仍記 pending 而非 pass。另 SKILL.md 以 `[[excel-safe-workflow]]` wiki-link 引用同 repo 的另一個 Skill，該檔不在套件內；匯入實測未觸發阻擋錯誤（③ pass），但 CONTENT-006 應決定此類跨 Skill 引用的呈現方式。
 
-> **九項全過者目前為 0**——這是預期狀態，不是缺陷：⑤⑦⑧ 三項在平台建成前對**所有**候選（含官方來源）一律無法判定。~~**在 CONTENT-005／006／007／008 全數完成前，`03-work-items.md` 的 CONTENT-003 不得勾選為完成**。~~
+> **九項全過者目前為 0**——這是預期狀態，不是缺陷：~~⑤⑦⑧~~ **⑤⑧** 兩項在平台建成前對**所有**候選（含官方來源）一律無法判定。**⑦ 已於 2026-08-16 由自動化審校判為 `pass`（15/15）**，故 CONTENT-003 的勾選現在只等 ⑤（CONTENT-006 的靜態掃描與人工 Secret 確認）。~~**在 CONTENT-005／006／007／008 全數完成前，`03-work-items.md` 的 CONTENT-003 不得勾選為完成**。~~
 >
 > **2026-08-15 修訂**（依據 [m1-work-items-audit.md §8 第三梯](m1-work-items-audit.md)，CONTENT-007／008 已改列 M2）：勾選條件改為 **CONTENT-005／006 全數完成**。⑧「平台基準試跑」不再是 CONTENT-003 的勾選前提，改以引用處理——勾選當下 ⑧ 須明確記為「待 M2 基準試跑，見 CONTENT-007／008」，**不得記為 pass**。⑤⑦ 的綁定不變（原文保留於刪除線，供回溯）。
 

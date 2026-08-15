@@ -274,13 +274,13 @@ DB 落地：`skills = 45`、`skill_versions = 45`、`search_documents = 45`。
 | 量化前置（檢索品質） | ✅ 已過 | `golden-query-set.md` §10.8 |
 | 索引管線就緒 | ✅ **本次重建完成**：45／45 匯入、45／45 `enriched` | 本報告 §3、§5 |
 | UI 阻擋（符合原因、詳情頁） | ✅ 已關閉 | `m1-work-items-audit.md` §5.1／§5.2 |
-| ~~**CONTENT-005 人工審核**~~ **CONTENT-005 審核** | ⚠️ **已執行（自動化審校），3 筆待裁定** | [`content-review-report.md`](content-review-report.md) |
+| ~~**CONTENT-005 人工審核**~~ **CONTENT-005 審核** | ✅ **已完成**（自動化審校 45/45 通過） | [`content-review-report.md`](content-review-report.md) |
 
 ~~**CONTENT-005 的白話摘要已全數產生且線上可見，但 45 筆的審核狀態全部仍是「待審」。**~~
 
-> **2026-08-16 更新。** 負責人授權以自動化審校取代人工審核，45 筆已全量審完（42 通過／3 建議下架待修），審校確實是**對著線上詳情頁**做的（`GET /api/skills/{id}`），符合本報告 §5.2 的要求。
+> **2026-08-16 更新。** 負責人授權以自動化審校取代人工審核，45 筆已全量審完（**45/45 通過**），審校確實是**對著線上詳情頁**做的（`GET /api/skills/{id}`），符合本報告 §5.2 的要求。
 >
-> **本基線的一項變動**：審校過程中有 10 筆依處置規則重跑增強（`enrich-skill/v3`，改以 `search_documents.enrichment_status='pending'` ＋ `cmd/reindex` 完成，**未重新匯入、未動 Skill Version 與 `skill_id`**）。因此線上 45 筆的 prompt 版本現為 **v2 × 35 ＋ v3 × 10**，不再是本報告 §1 所記的「45/45 v2」。筆數、`enriched` 比例、向量覆蓋不變（45／45／45）。重跑清單見 [`content-review-report.md` §4](content-review-report.md)。
+> **本基線的一項變動**：審校過程中共 13 筆依處置規則重跑增強（10 筆 `enrich-skill/v3`，其中 3 筆再以 **v4** 重跑；一律改以 `search_documents.enrichment_status='pending'` ＋ `cmd/reindex` 完成，**未重新匯入、未動 Skill Version 與 `skill_id`**）。因此線上 45 筆的 prompt 版本現為 **v2 × 35 ＋ v3 × 7 ＋ v4 × 3**，不再是本報告 §1 所記的「45/45 v2」。筆數、`enriched` 比例、向量覆蓋不變（45／45／45）。重跑清單見 [`content-review-report.md` §4](content-review-report.md)。
 
 ### 7.4 凍結期間的回歸把關
 
