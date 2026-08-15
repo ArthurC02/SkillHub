@@ -7,8 +7,11 @@ package skillpkg
 import (
 	"fmt"
 	"io/fs"
+	"net/url"
 	"regexp"
+	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
@@ -31,6 +34,9 @@ type Finding struct {
 	Code     string   `json:"code"`
 	Path     string   `json:"path,omitempty"`
 	Message  string   `json:"message"`
+	// Details carries the full list behind an aggregated finding, so summarising
+	// for readability never costs the underlying facts (INGEST-008).
+	Details []string `json:"details,omitempty"`
 }
 
 // Manifest is the parsed SKILL.md frontmatter. Extra keeps unknown fields
@@ -48,8 +54,14 @@ type Manifest struct {
 // A passing report means "format valid", never "safe" or "effective" (ADR-007).
 type Report struct {
 	Manifest *Manifest `json:"manifest"`
-	Findings []Finding `json:"findings"`
-	Blocked  bool      `json:"blocked"`
+	// LicenseExpression is the license the package actually evidences, and
+	// LicenseSource says which artefact it came from (licenseSourceManifest or
+	// licenseSourcePackageFile). Empty means unknown, which is the only case
+	// that may be treated as unknown (DISC-003).
+	LicenseExpression string    `json:"license_expression,omitempty"`
+	LicenseSource     string    `json:"license_source,omitempty"`
+	Findings          []Finding `json:"findings"`
+	Blocked           bool      `json:"blocked"`
 }
 
 func (r *Report) add(sev Severity, code, path, msg string) {
@@ -89,6 +101,10 @@ func (r Report) Categorize() CategorizedFindings {
 var nameRule = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 const (
+	// Name and description caps are counted in runes, which is what the Agent
+	// Skills spec and these error messages both say. Counting bytes made the
+	// real limit depend on the author's language — a zh-Hant description hit
+	// "1024 characters" at 341 of them (import-report.md §6.1 bug 1).
 	maxNameLen        = 64
 	maxDescriptionLen = 1024
 	// maxScanBytes bounds content scanning per file.
@@ -110,7 +126,9 @@ func Validate(fsys fs.FS) Report {
 	body := r.parseFrontmatter(raw)
 	if r.Manifest != nil {
 		r.checkManifest()
+		r.resolveLicense(fsys)
 		r.checkFileReferences(fsys, body)
+		r.checkEmbeddedCode(body)
 	}
 	r.scanTree(fsys)
 	return r
@@ -197,7 +215,7 @@ func (r *Report) checkManifest() {
 	switch {
 	case m.Name == "":
 		r.add(SeverityError, "name-missing", "SKILL.md", "frontmatter field name is required")
-	case len(m.Name) > maxNameLen:
+	case utf8.RuneCountInString(m.Name) > maxNameLen:
 		r.add(SeverityError, "name-too-long", "SKILL.md", fmt.Sprintf("name exceeds %d characters", maxNameLen))
 	case !nameRule.MatchString(m.Name):
 		r.add(SeverityError, "name-invalid", "SKILL.md", "name must be lowercase letters, digits, and single hyphens")
@@ -205,13 +223,99 @@ func (r *Report) checkManifest() {
 	switch {
 	case m.Description == "":
 		r.add(SeverityError, "description-missing", "SKILL.md", "frontmatter field description is required")
-	case len(m.Description) > maxDescriptionLen:
+	case utf8.RuneCountInString(m.Description) > maxDescriptionLen:
 		r.add(SeverityError, "description-too-long", "SKILL.md", fmt.Sprintf("description exceeds %d characters", maxDescriptionLen))
 	}
-	if m.License == "" {
-		// DISC-003: unknown license must be surfaced, never assumed permissive.
-		r.add(SeverityWarning, "license-unknown", "SKILL.md", "no license declared; treated as unknown")
+}
+
+// licenseFiles are the package-root names checked when the manifest declares no
+// license, in lookup order.
+var licenseFiles = []string{
+	"LICENSE", "LICENSE.txt", "LICENSE.md", "LICENCE", "LICENCE.txt", "LICENCE.md",
+	"COPYING", "COPYING.txt",
+}
+
+const (
+	licenseSourceManifest    = "manifest"
+	licenseSourcePackageFile = "package-license-file"
+)
+
+// licenseSignatures map a distinctive line of licence text to its SPDX id.
+// Substring matching over the file's first few KiB, no dependency: these texts
+// are fixed boilerplate and the ones below do not overlap. An unrecognised file
+// stays unknown rather than being guessed at (DISC-003).
+var licenseSignatures = []struct{ marker, spdx string }{
+	{"apache license", "Apache-2.0"}, // "Version 2.0" is checked below
+	{"permission to use, copy, modify, and/or distribute this software", "ISC"},
+	{"permission is hereby granted, free of charge", "MIT"},
+	{"gnu affero general public license", "AGPL-3.0"},
+	{"gnu lesser general public license", "LGPL-3.0"},
+	{"gnu general public license", "GPL-3.0"}, // version checked below
+	{"mozilla public license version 2.0", "MPL-2.0"},
+	{"this is free and unencumbered software released into the public domain", "Unlicense"},
+	{"redistribution and use in source and binary forms", "BSD-3-Clause"}, // clause count checked below
+}
+
+// resolveLicense records the license the package evidences and where it came
+// from. The manifest field wins; a LICENSE file at the package root is the
+// fallback, because a repository's real licence is very often only there
+// (37 of 45 seed packages, import-report.md §4 Top-1) and dropping it left the
+// catalogue claiming "unknown" for licences that were plainly stated.
+//
+// The distinction is kept in LicenseSource: file-derived is still only
+// LicenseStatusDeclared, never confirmed.
+func (r *Report) resolveLicense(fsys fs.FS) {
+	if r.Manifest.License != "" {
+		r.LicenseExpression, r.LicenseSource = r.Manifest.License, licenseSourceManifest
+		return
 	}
+	for _, name := range licenseFiles {
+		data, err := fs.ReadFile(fsys, name)
+		if err != nil {
+			continue
+		}
+		if spdx := detectLicense(data); spdx != "" {
+			r.LicenseExpression, r.LicenseSource = spdx, licenseSourcePackageFile
+			r.add(SeverityInfo, "license-from-package-file", name,
+				fmt.Sprintf("no license in frontmatter; %s identifies the package as %s", name, spdx))
+			return
+		}
+		// DISC-003: unknown license must be surfaced, never assumed permissive.
+		r.add(SeverityWarning, "license-unknown", "SKILL.md",
+			fmt.Sprintf("no license declared in frontmatter, and %s is not a recognised license text; treated as unknown", name))
+		return
+	}
+	r.add(SeverityWarning, "license-unknown", "SKILL.md", "no license declared; treated as unknown")
+}
+
+// detectLicense returns the SPDX id of a well-known license text, or "".
+func detectLicense(data []byte) string {
+	head := strings.ToLower(string(data[:min(len(data), 4096)]))
+	norm := strings.Join(strings.Fields(head), " ") // collapse the wrapping
+	for _, sig := range licenseSignatures {
+		if !strings.Contains(norm, sig.marker) {
+			continue
+		}
+		switch sig.spdx {
+		case "Apache-2.0":
+			if !strings.Contains(norm, "version 2.0") {
+				return ""
+			}
+		case "GPL-3.0":
+			if strings.Contains(norm, "version 2") {
+				return "GPL-2.0"
+			}
+			if !strings.Contains(norm, "version 3") {
+				return ""
+			}
+		case "BSD-3-Clause":
+			if !strings.Contains(norm, "neither the name of") {
+				return "BSD-2-Clause"
+			}
+		}
+		return sig.spdx
+	}
+	return ""
 }
 
 // mdRef matches markdown links and images: [text](target) / ![alt](target).
@@ -235,6 +339,92 @@ func (r *Report) checkFileReferences(fsys fs.FS, body string) {
 			r.add(SeverityWarning, "file-ref-missing", clean, fmt.Sprintf("SKILL.md references %q which is not in the package", target))
 		}
 	}
+}
+
+// Embedded-code thresholds. A few lines in a fenced block illustrate usage; a
+// couple of hundred are a program that happens to live inside a document, and
+// the seed import found 5 packages shipping ~180 lines of Python that way while
+// the file-extension scan reported no scripts at all (import-report.md §4
+// Top-2). Above either threshold the package is disclosed as carrying code.
+//
+// ponytail: two flat line counts, chosen to sit well above a usage snippet and
+// well below those 180-line blocks. Tune from real appeal traffic, not from
+// theory.
+const (
+	maxEmbeddedBlockLines = 20 // one block this long is not an example
+	maxEmbeddedTotalLines = 50 // or many smaller ones adding up
+)
+
+// runnableFences are the fence languages whose content would run somewhere if
+// copied out. Prose-ish tags (json, yaml, text, markdown, diff, output) are
+// deliberately absent: disclosing those as code would train users to ignore
+// this finding.
+var runnableFences = map[string]string{
+	"python": "python", "py": "python", "python3": "python",
+	"bash": "bash", "sh": "bash", "shell": "bash", "zsh": "bash", "console": "bash",
+	"javascript": "javascript", "js": "javascript", "node": "javascript",
+	"typescript": "typescript", "ts": "typescript",
+	"ruby": "ruby", "rb": "ruby", "perl": "perl", "php": "php",
+	"powershell": "powershell", "ps1": "powershell", "bat": "batch", "cmd": "batch",
+	"go": "go", "rust": "rust", "r": "r", "sql": "sql",
+}
+
+// checkEmbeddedCode discloses runnable code written into SKILL.md itself
+// (CONTENT-006). scanTree only sees files, so a Skill whose whole implementation
+// is a fenced Python block was being presented as containing no scripts.
+func (r *Report) checkEmbeddedCode(body string) {
+	var (
+		lang    string // non-empty while inside a runnable fence
+		fence   string // the delimiter that opened the current block
+		lines   int
+		blocks  int
+		longest int
+		total   int
+		byLang  = map[string]int{}
+	)
+	for _, line := range strings.Split(body, "\n") {
+		trimmed := strings.TrimSpace(strings.TrimRight(line, "\r"))
+		open := fenceDelimiter(trimmed)
+		switch {
+		case fence == "" && open != "":
+			fence = open
+			lang = runnableFences[strings.ToLower(strings.Fields(strings.TrimLeft(trimmed, "`~"))[0])]
+			lines = 0
+		case fence != "" && strings.HasPrefix(trimmed, fence) && strings.Trim(trimmed, string(fence[0])) == "":
+			if lang != "" && lines > 0 {
+				blocks++
+				total += lines
+				longest = max(longest, lines)
+				byLang[lang] += lines
+			}
+			fence, lang = "", ""
+		case fence != "":
+			lines++
+		}
+	}
+	if longest <= maxEmbeddedBlockLines && total <= maxEmbeddedTotalLines {
+		return
+	}
+
+	langs := make([]string, 0, len(byLang))
+	for l, n := range byLang {
+		langs = append(langs, fmt.Sprintf("%s: %d", l, n))
+	}
+	sort.Strings(langs)
+	r.add(SeverityWarning, "embedded-script", "SKILL.md", fmt.Sprintf(
+		"SKILL.md embeds %d lines of runnable code in %d code block(s) (%s); longest block %d lines. "+
+			"This code is never executed during import or scan, but the package's file list does not show it.",
+		total, blocks, strings.Join(langs, ", "), longest))
+}
+
+// fenceDelimiter returns the opening fence marker of line, or "".
+func fenceDelimiter(line string) string {
+	for _, f := range []string{"```", "~~~"} {
+		if strings.HasPrefix(line, f) && len(strings.Fields(strings.TrimLeft(line, "`~"))) > 0 {
+			return f
+		}
+	}
+	return ""
 }
 
 var (
@@ -269,6 +459,7 @@ var (
 // scanTree walks every file: discloses scripts, executables, dependency
 // manifests, and external URLs (info), and blocks on likely secrets (error).
 func (r *Report) scanTree(fsys fs.FS) {
+	urlsByHost := map[string][]string{}
 	_ = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
@@ -306,8 +497,9 @@ func (r *Report) scanTree(fsys fs.FS) {
 		}
 		content := string(data)
 
-		for _, url := range dedupe(urlPattern.FindAllString(content, -1)) {
-			r.add(SeverityInfo, "external-url", path, "references external URL "+url)
+		for _, u := range dedupe(urlPattern.FindAllString(content, -1)) {
+			h := urlHost(u)
+			urlsByHost[h] = append(urlsByHost[h], path+": "+u)
 		}
 		for _, pat := range secretPatterns {
 			if loc := pat.FindString(content); loc != "" {
@@ -319,6 +511,61 @@ func (r *Report) scanTree(fsys fs.FS) {
 		}
 		return nil
 	})
+	r.addURLDisclosures(urlsByHost)
+}
+
+// urlExamplesPerHost is how many URLs the summary line names before it stops;
+// the rest stay in Finding.Details.
+const urlExamplesPerHost = 3
+
+// addURLDisclosures emits one info finding per external host instead of one per
+// URL. A single seed package produced 321 URL findings — mostly OOXML schema
+// namespaces — which is a list nobody reads and which buried the handful of
+// findings that mattered (import-report.md §4 Top-3). The host is the answer to
+// "where would this Skill connect to"; every original URL is still carried in
+// Details, so nothing is lost, only folded.
+func (r *Report) addURLDisclosures(byHost map[string][]string) {
+	hosts := make([]string, 0, len(byHost))
+	for h := range byHost {
+		hosts = append(hosts, h)
+	}
+	sort.Strings(hosts)
+	for _, h := range hosts {
+		refs := byHost[h]
+		sort.Strings(refs)
+		// Distinct URLs: the same schema URI cited from ten files makes for ten
+		// identical examples, which is exactly the noise being folded away.
+		examples := make([]string, 0, urlExamplesPerHost)
+		seen := map[string]bool{}
+		shown := 0
+		for _, ref := range refs {
+			_, u, _ := strings.Cut(ref, ": ")
+			if seen[u] {
+				continue
+			}
+			seen[u] = true
+			shown++
+			if len(examples) < urlExamplesPerHost {
+				examples = append(examples, u)
+			}
+		}
+		msg := fmt.Sprintf("references %d external URL(s) on %s: %s", len(refs), h, strings.Join(examples, ", "))
+		if shown > len(examples) {
+			msg += fmt.Sprintf(", and %d more distinct URL(s)", shown-len(examples))
+		}
+		r.Findings = append(r.Findings, Finding{
+			Severity: SeverityInfo, Code: "external-url", Message: msg, Details: refs,
+		})
+	}
+}
+
+// urlHost extracts the host for grouping; unparseable URLs group under their
+// own raw text rather than being dropped.
+func urlHost(raw string) string {
+	if u, err := url.Parse(raw); err == nil && u.Host != "" {
+		return strings.ToLower(u.Host)
+	}
+	return raw
 }
 
 func isBinary(data []byte) bool {

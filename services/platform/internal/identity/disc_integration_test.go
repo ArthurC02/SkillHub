@@ -160,6 +160,7 @@ type searchBody struct {
 	} `json:"results"`
 	Degraded        bool   `json:"degraded"`
 	DegradedReason  string `json:"degraded_reason"`
+	PartialIndex    bool   `json:"partial_index"`
 	NoResults       bool   `json:"no_results"`
 	QuerySuggestion string `json:"query_suggestion"`
 }
@@ -457,6 +458,42 @@ func TestSearchWithoutLLMServiceIsDegradedButAnswers(t *testing.T) {
 	}
 	if !contains(body.ids(), published) {
 		t.Fatalf("degraded search returned nothing: %v", body.ids())
+	}
+}
+
+// import-report.md §6.1 bug 2: a document whose enrichment has not landed has no
+// embedding, so the ranking leg cannot see it and the cut-off cannot judge it.
+// That is index coverage, and it gets its own flag — folding it into `degraded`
+// would make a normal catalogue state indistinguishable from an embed outage.
+func TestPartialIndexIsReportedSeparatelyFromDegradation(t *testing.T) {
+	pool := requireDB(t)
+
+	curator := newAPI(t, pool).login(t, "curator-partial")
+	markCatalog(t, pool, curator.workspaceID)
+	enriched := seedSkill(t, pool, curator.workspaceID, "mimsy ledger reconciler")
+	seedEmbedding(t, pool, enriched, 55)
+	// Left as seedSkill created it: enrichment_status 'pending', embedding NULL.
+	// It can only reach the page through the lexical leg.
+	pending := seedSkill(t, pool, curator.workspaceID, "mimsy invoice matcher")
+
+	a := newAPIWithLLM(t, pool, stubLLM(t, 55, "because it fits"))
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+
+	body := anon.search(t, "/api/skills/search?q=mimsy")
+	if body.Degraded {
+		t.Fatalf("index coverage was reported as an outage: %q", body.DegradedReason)
+	}
+	if !contains(body.ids(), pending) {
+		t.Fatalf("a pending document was hidden from search entirely: %v", body.ids())
+	}
+	if !body.PartialIndex {
+		t.Fatal("a page containing a not-yet-enriched document did not report partial_index")
+	}
+
+	// Control: the same query against a fully enriched page says so.
+	seedEmbedding(t, pool, pending, 55)
+	if body := anon.search(t, "/api/skills/search?q=mimsy"); body.PartialIndex {
+		t.Fatalf("fully ranked page reported partial_index: %v", body.ids())
 	}
 }
 

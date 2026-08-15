@@ -12,7 +12,7 @@ import logging
 import os
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from skillhub_llm.enrich import router as enrich_router
 
@@ -85,11 +85,19 @@ class MatchReasonsRequest(BaseModel):
 
 
 class MatchReason(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     skill_id: str
     reason: str
 
 
 class MatchReasonsResponse(BaseModel):
+    """Also the JSON schema handed to the model, so the wire shape and the shape
+    the prompt asks for cannot drift apart again (import-report.md §6.1 bug 3).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
     reasons: list[MatchReason]
 
 
@@ -97,8 +105,11 @@ class MatchReasonsResponse(BaseModel):
 async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
     """Generate human-readable match reasons for search result candidates.
 
-    ADR-013 section 3: Top-N results get LLM-polished reasons; timeout or failure
-    degrades to template version on the Go side.
+    ADR-013 section 3: Top-N results get LLM-polished reasons. Anything this
+    endpoint cannot get from the model is simply absent from the answer — Go
+    fills those candidates with its own template reason and labels them
+    `template` (DISC-002 provenance). This service must never invent a filler
+    sentence, because Go would then label the filler as model-generated.
     """
     import litellm
 
@@ -111,14 +122,14 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         "produce a brief (1-2 sentence) match reason for each candidate "
         "explaining why it is relevant to the user's task. "
         "Be specific about which capabilities match which needs. "
-        "Respond as a JSON array of objects with keys 'skill_id' and 'reason'. "
-        "Output only the JSON array, no markdown fences."
+        'Respond with a JSON object {"reasons": [...]}, where each entry has '
+        "the keys 'skill_id' and 'reason'. Use the skill_id exactly as given."
     )
 
     user_prompt = (
         f"User's task:\n{req.query}\n\n"
         f"Candidate Skills:\n{candidates_text}\n\n"
-        "Produce a JSON array of match reasons."
+        "Produce the match reasons."
     )
 
     try:
@@ -132,43 +143,32 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
             api_key=LITELLM_API_KEY,
             temperature=0.3,
             max_tokens=1024,
-            response_format={"type": "json_object"},
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "match_reasons",
+                    "strict": True,
+                    "schema": MatchReasonsResponse.model_json_schema(),
+                },
+            },
         )
     except Exception as e:
         logger.exception("match-reasons LLM call failed")
         raise HTTPException(status_code=502, detail=f"match-reasons provider error: {e}") from e
 
-    # Parse the LLM response.
-    import json
-
-    raw = response.choices[0].message.content.strip()
+    raw = (response.choices[0].message.content or "").strip()
     try:
-        parsed = json.loads(raw)
-        # Handle both {"reasons": [...]} wrapper and bare array.
-        if isinstance(parsed, dict):
-            items = parsed.get("reasons", parsed.get("results", []))
-        elif isinstance(parsed, list):
-            items = parsed
-        else:
-            items = []
-    except json.JSONDecodeError:
-        logger.warning("match-reasons: unparseable LLM response, returning empty")
-        items = []
+        parsed = MatchReasonsResponse.model_validate_json(raw)
+    except ValidationError:
+        # A gateway that ignores the schema can still hand back another shape
+        # (the observed one was {"skills": [...]}). Returning nothing is the
+        # honest answer: Go then shows template reasons, labelled as template.
+        logger.warning("match-reasons: model output did not match the schema")
+        return MatchReasonsResponse(reasons=[])
 
-    reasons = []
-    for item in items:
-        if isinstance(item, dict) and "skill_id" in item and "reason" in item:
-            reasons.append(MatchReason(skill_id=item["skill_id"], reason=item["reason"]))
-
-    # Fill in template fallbacks for any candidates not covered by the LLM response.
-    covered = {r.skill_id for r in reasons}
-    for c in req.candidates:
-        if c.skill_id not in covered:
-            reasons.append(
-                MatchReason(
-                    skill_id=c.skill_id,
-                    reason=f"{c.name} may be relevant to your task.",
-                )
-            )
-
-    return MatchReasonsResponse(reasons=reasons)
+    # Only answer for what was asked about: a hallucinated skill_id would be
+    # dropped by Go anyway, and dropping it here keeps the response auditable.
+    wanted = {c.skill_id for c in req.candidates}
+    return MatchReasonsResponse(
+        reasons=[r for r in parsed.reasons if r.skill_id in wanted and r.reason]
+    )

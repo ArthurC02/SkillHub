@@ -86,6 +86,11 @@ type searchResult struct {
 	Rank              float64 `json:"rank"`
 	MatchReason       string  `json:"match_reason,omitempty"`
 	MatchReasonSource string  `json:"match_reason_source,omitempty"`
+	// unranked: this document has no embedding yet (enrichment_status
+	// 'pending'), so it reached the page through the lexical leg and the
+	// distance cut-off never judged it. Internal — it is reported once at the
+	// envelope level as PartialIndex.
+	unranked bool
 }
 
 // searchResponse is the top-level JSON envelope.
@@ -99,6 +104,16 @@ type searchResponse struct {
 	// skill exists".
 	Degraded       bool   `json:"degraded"`
 	DegradedReason string `json:"degraded_reason,omitempty"`
+	// PartialIndex says at least one result on this page has no embedding yet
+	// and therefore could not be ranked or judged by the distance cut-off — it
+	// arrived through the lexical leg and sits at the bottom.
+	//
+	// Deliberately not folded into Degraded: enrichment failing for a package is
+	// a normal, permanent-until-backfilled state of the catalogue (import never
+	// fails on a model outage), whereas Degraded is a transient outage of the
+	// query-side embedding call. One boolean covering both would tell the caller
+	// neither (import-report.md §6.1 bug 2).
+	PartialIndex bool `json:"partial_index"`
 	// NoResults distinguishes "we searched and nothing was close enough" from
 	// an empty list the caller has to interpret (DISC-001 清楚的無結果狀態).
 	// Also true for a query that was never searched at all — blank or
@@ -165,23 +180,18 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// DISC-002: one batched call for the whole result page, never one per hit.
+	var reasons []llmclient.MatchReason
 	if len(hits) > 0 && h.LLMClient != nil {
-		h.enrichMatchReasons(ctx, q, hits)
+		reasons = h.matchReasons(ctx, q, hits)
 	}
-
-	// DISC-002: fill template fallback for any hit still without a reason.
-	for i := range hits {
-		if hits[i].MatchReason == "" {
-			hits[i].MatchReason = templateMatchReason(hits[i].Name, hits[i].Summary, q)
-			hits[i].MatchReasonSource = reasonSourceTemplate
-		}
-	}
+	applyMatchReasons(hits, q, reasons)
 
 	resp := searchResponse{
 		Query:          q,
 		Results:        hits,
 		Degraded:       degradedReason != "",
 		DegradedReason: degradedReason,
+		PartialIndex:   anyUnranked(hits),
 	}
 	// Everything fell outside MaxCosineDistance (or the lexical floor matched
 	// nothing). Saying so explicitly is the point: a degraded empty answer still
@@ -240,13 +250,26 @@ func (h *Handler) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 	hits := make([]searchResult, 0, len(rows))
 	for _, row := range rows {
 		hits = append(hits, searchResult{
-			SkillID: uuidString(row.SkillID),
-			Name:    row.Name,
-			Summary: row.Summary,
-			Rank:    row.Rank,
+			SkillID:  uuidString(row.SkillID),
+			Name:     row.Name,
+			Summary:  row.Summary,
+			Rank:     row.Rank,
+			unranked: row.Unranked,
 		})
 	}
 	return hits, nil
+}
+
+// anyUnranked reports whether the page carries a not-yet-enriched document.
+// Only the hybrid path can tell: on the FTS-only path nothing was ranked at all
+// and Degraded already says so.
+func anyUnranked(hits []searchResult) bool {
+	for _, h := range hits {
+		if h.unranked {
+			return true
+		}
+	}
+	return false
 }
 
 // ftsOnlySearch is the degradation path when the LLM service is unavailable.
@@ -272,17 +295,13 @@ func (h *Handler) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 	return hits, nil
 }
 
-// enrichMatchReasons calls the LLM service once for the top 10 hits — one
-// batched request, never one per candidate, because the reason step sits in the
+// matchReasons calls the LLM service once for the top 10 hits — one batched
+// request, never one per candidate, because the reason step sits in the
 // user-visible latency budget (NFR-004) and N calls would multiply it by N.
-// Timeout/failure is non-fatal: template reasons are used as fallback
-// (ADR-013 section 3).
-func (h *Handler) enrichMatchReasons(ctx context.Context, query string, hits []searchResult) {
-	n := len(hits)
-	if n > 10 {
-		n = 10
-	}
-
+// Timeout/failure is non-fatal and returns nothing; applyMatchReasons then
+// covers every hit with a template reason (ADR-013 section 3).
+func (h *Handler) matchReasons(ctx context.Context, query string, hits []searchResult) []llmclient.MatchReason {
+	n := min(len(hits), 10)
 	candidates := make([]llmclient.SkillCandidate, n)
 	for i := 0; i < n; i++ {
 		candidates[i] = llmclient.SkillCandidate{
@@ -298,20 +317,35 @@ func (h *Handler) enrichMatchReasons(ctx context.Context, query string, hits []s
 	resp, err := h.LLMClient.MatchReasons(reasonCtx, query, candidates)
 	if err != nil {
 		slog.Warn("match-reasons call failed, using template fallback", "error", err)
-		return
+		return nil
 	}
+	return resp.Reasons
+}
 
-	// Build a lookup map from skill_id to reason.
-	reasonMap := make(map[string]string, len(resp.Reasons))
-	for _, r := range resp.Reasons {
-		reasonMap[r.SkillID] = r.Reason
+// applyMatchReasons gives every hit a reason and the provenance label that
+// actually matches where that sentence came from (DISC-002, ADR-013: model
+// output must be marked as model output).
+//
+// The labelling is per candidate, never per batch. A batch that fails, times
+// out, or covers only some of the page leaves the rest on templateMatchReason,
+// and those must not inherit the `model` label from their neighbours — that is
+// exactly how the LLM service's own filler sentences ended up presented as
+// model-written explanations (import-report.md §6.1 bug 3).
+func applyMatchReasons(hits []searchResult, query string, reasons []llmclient.MatchReason) {
+	fromModel := make(map[string]string, len(reasons))
+	for _, r := range reasons {
+		if r.Reason != "" {
+			fromModel[r.SkillID] = r.Reason
+		}
 	}
-
-	for i := 0; i < n; i++ {
-		if reason, ok := reasonMap[hits[i].SkillID]; ok && reason != "" {
+	for i := range hits {
+		if reason, ok := fromModel[hits[i].SkillID]; ok {
 			hits[i].MatchReason = reason
 			hits[i].MatchReasonSource = reasonSourceModel
+			continue
 		}
+		hits[i].MatchReason = templateMatchReason(hits[i].Name, hits[i].Summary, query)
+		hits[i].MatchReasonSource = reasonSourceTemplate
 	}
 }
 

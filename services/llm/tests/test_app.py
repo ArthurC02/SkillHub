@@ -82,17 +82,45 @@ def test_match_reasons_returns_one_reason_per_candidate():
     assert reasons == {"s1": "it parses invoices", "s2": "it cleans csv"}
 
 
-def test_match_reasons_fills_candidates_the_model_skipped():
-    """A partial answer must not silently drop candidates from the page."""
-    body = '[{"skill_id": "s1", "reason": "it parses invoices"}]'
+def test_match_reasons_asks_the_gateway_for_the_shape_it_parses():
+    """import-report.md §6.1 bug 3: the prompt asked for an array while the call
+    forced a bare json_object, so every real answer arrived under a key this
+    endpoint did not read. Schema and parser now come from the same model."""
+    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices"}]}'
+    stub = _match_reasons_litellm(body)
+    with patch.dict("sys.modules", {"litellm": stub}):
+        client.post("/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES})
+
+    fmt = stub.acompletion.await_args.kwargs["response_format"]
+    assert fmt["type"] == "json_schema"
+    assert fmt["json_schema"]["strict"] is True
+    assert "reasons" in fmt["json_schema"]["schema"]["properties"]
+
+
+def test_match_reasons_returns_a_partial_answer_as_partial():
+    """A skipped candidate comes back absent, not filled with a stock sentence:
+    Go labels what it gets here as model-generated (DISC-002)."""
+    body = '{"reasons": [{"skill_id": "s1", "reason": "it parses invoices"}]}'
     with patch.dict("sys.modules", {"litellm": _match_reasons_litellm(body)}):
         response = client.post(
             "/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES}
         )
 
     assert response.status_code == 200
-    reasons = {r["skill_id"] for r in response.json()["reasons"]}
-    assert reasons == {"s1", "s2"}
+    assert [r["skill_id"] for r in response.json()["reasons"]] == ["s1"]
+
+
+def test_match_reasons_rejects_an_off_schema_wrapper():
+    """The shape a real gpt-4o-mini produced under json_object. It must not be
+    replaced by a template sentence that Go would then label `model`."""
+    body = '{"skills": [{"skill_id": "s1", "reason": "it parses invoices"}]}'
+    with patch.dict("sys.modules", {"litellm": _match_reasons_litellm(body)}):
+        response = client.post(
+            "/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES}
+        )
+
+    assert response.status_code == 200
+    assert response.json()["reasons"] == []
 
 
 def test_match_reasons_survives_unparseable_model_output():
@@ -103,7 +131,17 @@ def test_match_reasons_survives_unparseable_model_output():
         )
 
     assert response.status_code == 200
-    assert {r["skill_id"] for r in response.json()["reasons"]} == {"s1", "s2"}
+    assert response.json()["reasons"] == []
+
+
+def test_match_reasons_drops_ids_that_were_not_asked_about():
+    body = '{"reasons": [{"skill_id": "made-up", "reason": "nope"}]}'
+    with patch.dict("sys.modules", {"litellm": _match_reasons_litellm(body)}):
+        response = client.post(
+            "/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES}
+        )
+
+    assert response.json()["reasons"] == []
 
 
 def test_match_reasons_reports_provider_failure_as_502():

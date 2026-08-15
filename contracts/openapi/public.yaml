@@ -500,6 +500,16 @@ components:
           type: string
         message:
           type: string
+        details:
+          type: array
+          items:
+            type: string
+          description: |
+            The full list behind an aggregated finding, when the message
+            summarises rather than enumerates. `external-url` findings are
+            grouped per host and carry every "<file>: <url>" reference here, so
+            a package citing hundreds of schema URIs stays readable without the
+            individual references being lost.
     CategorizedFindings:
       description: |
         Validation findings grouped by severity (INGEST-008/SKILL-002):
@@ -539,7 +549,7 @@ components:
           format: uuid
     PublicSearchResponse:
       type: object
-      required: [query, results, degraded, no_results]
+      required: [query, results, degraded, no_results, partial_index]
       properties:
         query:
           type: string
@@ -558,6 +568,19 @@ components:
         degraded_reason:
           type: string
           description: Why the vector leg was skipped. Absent when degraded is false.
+        partial_index:
+          type: boolean
+          description: |
+            True when at least one result on this page has no embedding yet
+            (enrichment_status 'pending'): it reached the page through the
+            lexical leg, the distance cut-off could not judge it, and it reports
+            rank 0 at the bottom of the list.
+
+            Separate from `degraded` on purpose. `degraded` is a transient
+            outage of the query-side embedding call; `partial_index` is index
+            coverage, which stays as it is until a reindex backfill runs —
+            import is designed not to fail when enrichment does. One flag for
+            both would let a normal state mask an outage and vice versa.
         no_results:
           type: boolean
           description: |

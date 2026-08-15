@@ -117,7 +117,8 @@ candidates AS (
     UNION
     SELECT skill_id, name, summary, distance FROM fts
 )
-SELECT skill_id, name, summary, (1 - COALESCE(distance, 1))::float8 AS rank
+SELECT skill_id, name, summary, (1 - COALESCE(distance, 1))::float8 AS rank,
+       (distance IS NULL)::bool AS unranked
 FROM candidates
 WHERE distance IS NULL OR distance <= $1::float8
 ORDER BY distance ASC NULLS LAST
@@ -132,10 +133,11 @@ type PublicHybridSearchSkillsParams struct {
 }
 
 type PublicHybridSearchSkillsRow struct {
-	SkillID pgtype.UUID
-	Name    string
-	Summary string
-	Rank    float64
+	SkillID  pgtype.UUID
+	Name     string
+	Summary  string
+	Rank     float64
+	Unranked bool
 }
 
 // ADR-013 hybrid retrieval, ranked by vector distance alone.
@@ -167,6 +169,9 @@ type PublicHybridSearchSkillsRow struct {
 // not defined to keep the best rows.
 // max_distance is the DISC-005 cut-off; see catalog.MaxCosineDistance for the
 // value's derivation and its expiry conditions.
+//
+// unranked marks those NULL-distance rows so the response can say the page is
+// only partly ranked instead of leaving the caller to infer it from rank = 0.
 func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybridSearchSkillsParams) ([]PublicHybridSearchSkillsRow, error) {
 	rows, err := q.db.Query(ctx, publicHybridSearchSkills,
 		arg.MaxDistance,
@@ -186,6 +191,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 			&i.Name,
 			&i.Summary,
 			&i.Rank,
+			&i.Unranked,
 		); err != nil {
 			return nil, err
 		}

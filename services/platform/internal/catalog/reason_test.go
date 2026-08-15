@@ -3,7 +3,56 @@ package catalog
 import (
 	"strings"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 )
+
+// DISC-002/ADR-013: the `model` label means the model wrote that sentence. A
+// batch that answers for some candidates and not others must not relabel the
+// platform's own template sentences — the LLM service used to pad its answer
+// with filler that arrived here labelled as model output
+// (import-report.md §6.1 bug 3).
+func TestApplyMatchReasonsLabelsEachCandidateSeparately(t *testing.T) {
+	hits := []searchResult{
+		{SkillID: "s1", Name: "pdf-extractor", Summary: "Extracts tables from PDF invoices"},
+		{SkillID: "s2", Name: "csv-cleaner", Summary: "Normalises tabular files"},
+	}
+	applyMatchReasons(hits, "extract tables from an invoice pdf", []llmclient.MatchReason{
+		{SkillID: "s1", Reason: "It reads invoice PDFs and returns the tables."},
+		{SkillID: "s2", Reason: ""}, // covered by the batch, but with nothing in it
+	})
+
+	if hits[0].MatchReasonSource != reasonSourceModel {
+		t.Fatalf("model-written reason must be labelled model, got %q", hits[0].MatchReasonSource)
+	}
+	if hits[1].MatchReasonSource != reasonSourceTemplate {
+		t.Fatalf("empty model reason must fall back to template, got %q", hits[1].MatchReasonSource)
+	}
+	if hits[1].MatchReason != templateMatchReason(hits[1].Name, hits[1].Summary, "extract tables from an invoice pdf") {
+		t.Fatalf("fallback must be the platform template, got %q", hits[1].MatchReason)
+	}
+}
+
+// A failed batch is the whole-page case of the same rule.
+func TestApplyMatchReasonsWithNoModelAnswer(t *testing.T) {
+	hits := []searchResult{{SkillID: "s1", Name: "n", Summary: "s"}}
+	applyMatchReasons(hits, "some task", nil)
+	if hits[0].MatchReasonSource != reasonSourceTemplate || hits[0].MatchReason == "" {
+		t.Fatalf("want a labelled template reason, got %+v", hits[0])
+	}
+}
+
+// import-report.md §6.1 bug 2: a not-yet-enriched document has no embedding, so
+// it is invisible to the ranking leg. That is index coverage, reported on its
+// own field, not folded into the embed-call outage flag.
+func TestAnyUnranked(t *testing.T) {
+	if anyUnranked([]searchResult{{SkillID: "a"}, {SkillID: "b"}}) {
+		t.Fatal("a fully ranked page is not partially indexed")
+	}
+	if !anyUnranked([]searchResult{{SkillID: "a"}, {SkillID: "b", unranked: true}}) {
+		t.Fatal("one pending document makes the page partially indexed")
+	}
+}
 
 // DISC-002: the template reason is the fallback that must never lie. Either it
 // names the words the query and the document actually share, or it says the

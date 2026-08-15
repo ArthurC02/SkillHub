@@ -266,6 +266,13 @@ components:
         reason:
           type: string
     MatchReasonsResponse:
+      description: |
+        Reasons the model actually produced, for requested skill_ids only. It
+        may cover fewer candidates than were sent, including none at all when
+        the model's output does not match the schema. The service never
+        substitutes a filler sentence: Go supplies a template reason for every
+        uncovered candidate and labels it `template`, and a filler returned from
+        here would be labelled `model` instead (DISC-002 provenance).
       type: object
       required: [reasons]
       properties:

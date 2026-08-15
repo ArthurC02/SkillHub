@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -82,6 +83,11 @@ func (f *URLFetcher) Fetch(ctx context.Context, rawURL string) (data []byte, ref
 
 type candidate struct{ url, ref string }
 
+// commitSHA is a full 40-hex git object name. Only the full form is accepted:
+// an abbreviated SHA is not a stable identifier, and INGEST-004 records this
+// value as the source ref that a later audit is expected to resolve.
+var commitSHA = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
+
 // candidates expands a GitHub repo URL into archive URLs to try in order;
 // non-repo URLs pass through unchanged.
 // ponytail: main-then-master probing instead of a GitHub API call for the
@@ -91,8 +97,11 @@ func (f *URLFetcher) candidates(u *url.URL) ([]candidate, string) {
 		return []candidate{{url: u.String()}}, ""
 	}
 	parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+	zipAt := func(owner, repo, ref string) string {
+		return fmt.Sprintf("https://codeload.github.com/%s/%s/zip/%s", owner, repo, ref)
+	}
 	archive := func(owner, repo, kind, ref string) string {
-		return fmt.Sprintf("https://codeload.github.com/%s/%s/zip/refs/%s/%s", owner, repo, kind, ref)
+		return zipAt(owner, repo, "refs/"+kind+"/"+ref)
 	}
 	switch {
 	case len(parts) == 2: // github.com/owner/repo
@@ -100,8 +109,16 @@ func (f *URLFetcher) candidates(u *url.URL) ([]candidate, string) {
 			{archive(parts[0], parts[1], "heads", "main"), "main"},
 			{archive(parts[0], parts[1], "heads", "master"), "master"},
 		}, ""
-	case len(parts) >= 4 && parts[2] == "tree": // github.com/owner/repo/tree/<ref>
+	// github.com/owner/repo/tree|commit/<ref>. A 40-hex ref is a commit, and
+	// codeload serves an archive at a bare SHA — that is the only input shape
+	// that can pin an import to an immutable point in history, so source_ref
+	// records the SHA rather than a branch name that moves under it
+	// (INGEST-004, import-report.md §6.1 bug 4).
+	case len(parts) >= 4 && (parts[2] == "tree" || parts[2] == "commit"):
 		ref := strings.Join(parts[3:], "/")
+		if commitSHA.MatchString(ref) {
+			return []candidate{{zipAt(parts[0], parts[1], ref), ref}}, ""
+		}
 		return []candidate{{archive(parts[0], parts[1], "heads", ref), ref}}, ""
 	default: // e.g. github.com/owner/repo/archive/... — direct file URL
 		return []candidate{{url: u.String()}}, ""

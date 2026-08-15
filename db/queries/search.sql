@@ -135,7 +135,11 @@ candidates AS (
 )
 -- max_distance is the DISC-005 cut-off; see catalog.MaxCosineDistance for the
 -- value's derivation and its expiry conditions.
-SELECT skill_id, name, summary, (1 - COALESCE(distance, 1))::float8 AS rank
+--
+-- unranked marks those NULL-distance rows so the response can say the page is
+-- only partly ranked instead of leaving the caller to infer it from rank = 0.
+SELECT skill_id, name, summary, (1 - COALESCE(distance, 1))::float8 AS rank,
+       (distance IS NULL)::bool AS unranked
 FROM candidates
 WHERE distance IS NULL OR distance <= sqlc.arg(max_distance)::float8
 ORDER BY distance ASC NULLS LAST

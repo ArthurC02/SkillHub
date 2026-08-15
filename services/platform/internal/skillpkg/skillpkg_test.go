@@ -1,6 +1,7 @@
 package skillpkg
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -126,18 +127,175 @@ func TestTreeDisclosures(t *testing.T) {
 	if c["dependency-file"] != SeverityInfo {
 		t.Fatalf("want dependency disclosure: %+v", r.Findings)
 	}
-	urls := 0
-	for _, f := range r.Findings {
-		if f.Code == "external-url" && f.Path == "notes.md" {
-			urls++
-		}
-	}
-	if urls != 1 {
-		t.Fatalf("want 1 deduped url finding for notes.md, got %d: %+v", urls, r.Findings)
+	urls := urlFindings(r)
+	if len(urls) != 1 || len(urls[0].Details) != 1 || !strings.Contains(urls[0].Details[0], "notes.md") {
+		t.Fatalf("want 1 deduped url finding referencing notes.md, got %+v", urls)
 	}
 	if r.Blocked {
 		t.Fatal("disclosures must not block")
 	}
+}
+
+func urlFindings(r Report) []Finding {
+	var out []Finding
+	for _, f := range r.Findings {
+		if f.Code == "external-url" {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+// import-report.md §4 Top-3: one seed package emitted 321 external-url findings,
+// which made the whole info layer unreadable. One line per host, full list kept.
+func TestURLDisclosuresAggregateByHost(t *testing.T) {
+	var refs strings.Builder
+	for i := 0; i < 40; i++ {
+		fmt.Fprintf(&refs, "see https://schemas.example.com/ns/%d\n", i)
+	}
+	refs.WriteString("and https://other.example.org/a\n")
+	r := Validate(pkg(goodMD, map[string]string{"reference.md": refs.String()}))
+
+	urls := urlFindings(r)
+	if len(urls) != 2 {
+		t.Fatalf("want one finding per host, got %d: %+v", len(urls), urls)
+	}
+	// Sorted by host: other.example.org before schemas.example.com.
+	big := urls[1]
+	if !strings.Contains(big.Message, "40 external URL(s) on schemas.example.com") {
+		t.Fatalf("summary must name host and count, got %q", big.Message)
+	}
+	if strings.Count(big.Message, "https://") > urlExamplesPerHost {
+		t.Fatalf("summary must name at most %d examples, got %q", urlExamplesPerHost, big.Message)
+	}
+	if len(big.Details) != 40 {
+		t.Fatalf("aggregation must keep every reference, got %d", len(big.Details))
+	}
+	if !strings.HasPrefix(big.Details[0], "reference.md: ") {
+		t.Fatalf("details must keep the referencing file, got %q", big.Details[0])
+	}
+}
+
+// import-report.md §6.1 bug 1: len() is bytes, so a Traditional Chinese
+// description hit the "1024 characters" limit at 341 characters.
+func TestManifestLimitsCountRunesNotBytes(t *testing.T) {
+	desc := strings.Repeat("繁", 777) // 777 runes, 2331 bytes
+	r := Validate(pkg("---\nname: x\ndescription: "+desc+"\nlicense: MIT\n---\n", nil))
+	if r.Blocked {
+		t.Fatalf("a 777-character description is within the 1024-character limit: %+v", r.Findings)
+	}
+
+	r = Validate(pkg("---\nname: x\ndescription: "+strings.Repeat("繁", 1025)+"\n---\n", nil))
+	if codes(r)["description-too-long"] != SeverityError {
+		t.Fatalf("1025 characters must still be rejected: %+v", r.Findings)
+	}
+
+	r = Validate(pkg("---\nname: "+strings.Repeat("繁", 65)+"\ndescription: d\n---\n", nil))
+	if codes(r)["name-too-long"] != SeverityError {
+		t.Fatalf("65-character name must be rejected: %+v", r.Findings)
+	}
+}
+
+// import-report.md §4 Top-1: 37 of 45 seed packages declared no license in
+// frontmatter while their repository plainly stated one.
+func TestLicenseFallsBackToPackageLicenseFile(t *testing.T) {
+	const mit = "MIT License\n\nCopyright (c) 2026 Someone\n\n" +
+		"Permission is hereby granted, free of charge, to any person obtaining a copy\n"
+	noLicenseMD := "---\nname: x\ndescription: d\n---\n"
+
+	r := Validate(pkg(noLicenseMD, map[string]string{"LICENSE": mit}))
+	if r.LicenseExpression != "MIT" || r.LicenseSource != licenseSourcePackageFile {
+		t.Fatalf("want MIT from the package file, got %q/%q", r.LicenseExpression, r.LicenseSource)
+	}
+	c := codes(r)
+	if _, unknown := c["license-unknown"]; unknown {
+		t.Fatalf("a recognised LICENSE file is not an unknown license: %+v", r.Findings)
+	}
+	if c["license-from-package-file"] != SeverityInfo {
+		t.Fatalf("file-derived license must be disclosed as such: %+v", r.Findings)
+	}
+
+	// The manifest still wins, and is labelled as the manifest.
+	r = Validate(pkg(goodMD, map[string]string{"LICENSE": "Apache License\nVersion 2.0\n"}))
+	if r.LicenseExpression != "MIT" || r.LicenseSource != licenseSourceManifest {
+		t.Fatalf("manifest declaration must win, got %q/%q", r.LicenseExpression, r.LicenseSource)
+	}
+
+	// Neither, or an unrecognised text, stays unknown — never guessed.
+	for name, files := range map[string]map[string]string{
+		"no license file":   nil,
+		"unrecognised text": {"LICENSE": "All rights reserved. Ask us nicely."},
+	} {
+		r = Validate(pkg(noLicenseMD, files))
+		if r.LicenseExpression != "" || codes(r)["license-unknown"] != SeverityWarning {
+			t.Fatalf("%s: want unknown license warning, got %q %+v", name, r.LicenseExpression, r.Findings)
+		}
+	}
+}
+
+func TestDetectLicense(t *testing.T) {
+	cases := map[string]string{
+		"Apache License\nVersion 2.0, January 2004\n":                                      "Apache-2.0",
+		"Permission is hereby granted, free of charge, to any person":                      "MIT",
+		"Permission to use, copy, modify, and/or distribute this software for any purpose": "ISC",
+		"GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007":                              "GPL-3.0",
+		"GNU GENERAL PUBLIC LICENSE\nVersion 2, June 1991":                                 "GPL-2.0",
+		"Redistribution and use in source and binary forms, with or without\n" +
+			"modification, are permitted\n3. Neither the name of the copyright holder": "BSD-3-Clause",
+		"This is free and unencumbered software released into the public domain.": "Unlicense",
+		"Copyright a company. Do what you want, we guess.":                        "",
+	}
+	for text, want := range cases {
+		if got := detectLicense([]byte(text)); got != want {
+			t.Errorf("detectLicense(%.40q) = %q, want %q", text, got, want)
+		}
+	}
+}
+
+// import-report.md §4 Top-2: five seed packages carried ~180 lines of Python
+// inside SKILL.md and the extension-based scan reported no scripts at all.
+func TestEmbeddedCodeIsDisclosed(t *testing.T) {
+	block := func(lang string, n int) string {
+		return "```" + lang + "\n" + strings.Repeat("print(1)\n", n) + "```\n"
+	}
+
+	r := Validate(pkg(goodMD+block("python", 180), nil))
+	f := findingByCode(r, "embedded-script")
+	if f == nil || f.Severity != SeverityWarning {
+		t.Fatalf("a 180-line python block must be disclosed: %+v", r.Findings)
+	}
+	if !strings.Contains(f.Message, "python: 180") || f.Path != "SKILL.md" {
+		t.Fatalf("message must name the language and line count, got %+v", f)
+	}
+	if r.Blocked {
+		t.Fatal("disclosure must not block")
+	}
+
+	// Many small blocks add up past the total threshold even though no single
+	// block crosses the per-block one.
+	many := goodMD
+	for i := 0; i < 6; i++ {
+		many += block("bash", 10)
+	}
+	if findingByCode(Validate(pkg(many, nil)), "embedded-script") == nil {
+		t.Fatalf("60 lines across 6 blocks must be disclosed")
+	}
+
+	// A usage snippet, and a long block of something that does not run, stay
+	// quiet: a finding on every SKILL.md is a finding nobody reads.
+	quiet := goodMD + block("python", 8) + "```json\n" + strings.Repeat("{}\n", 100) + "```\n"
+	if f := findingByCode(Validate(pkg(quiet, nil)), "embedded-script"); f != nil {
+		t.Fatalf("short snippets and non-runnable fences must not warn: %+v", f)
+	}
+}
+
+func findingByCode(r Report, code string) *Finding {
+	for i, f := range r.Findings {
+		if f.Code == code {
+			return &r.Findings[i]
+		}
+	}
+	return nil
 }
 
 func TestSecretsBlockWithoutEchoingValue(t *testing.T) {

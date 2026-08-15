@@ -274,8 +274,12 @@ func (s *Service) persistVersion(ctx context.Context, q *gen.Queries, ws gen.Wor
 		return gen.SkillVersion{}, false, err
 	}
 
+	// The resolved license, not the manifest field: skillpkg falls back to a
+	// LICENSE file in the package when the frontmatter declares nothing, and
+	// that fallback is the only thing 37 of the 45 seed packages had
+	// (import-report.md §4 Top-1). Provenance stays in the import findings.
 	var license *string
-	if l := p.report.Manifest.License; l != "" {
+	if l := p.report.LicenseExpression; l != "" {
 		license = &l
 	}
 	version, err := q.CreateSkillVersion(ctx, gen.CreateSkillVersionParams{

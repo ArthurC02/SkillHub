@@ -91,6 +91,25 @@ func TestGitHubURLNormalization(t *testing.T) {
 		t.Fatalf("tree URL candidate wrong: %+v", cands)
 	}
 
+	// INGEST-004 / import-report.md §6.1 bug 4: a 40-hex ref is a commit, and
+	// codeload serves the archive at a bare SHA. This is the only URL shape that
+	// pins an import to immutable content, so source_ref must record the SHA.
+	sha := "0123456789abcdef0123456789abcdef01234567"
+	for _, path := range []string{"tree", "commit"} {
+		cands, _ = f.candidates(parse("https://github.com/anthropics/skills/" + path + "/" + sha))
+		if len(cands) != 1 ||
+			cands[0].url != "https://codeload.github.com/anthropics/skills/zip/"+sha ||
+			cands[0].ref != sha {
+			t.Fatalf("%s/<sha> must fetch and record the commit: %+v", path, cands)
+		}
+	}
+
+	// A short SHA is not a stable identifier and must not be treated as one.
+	cands, _ = f.candidates(parse("https://github.com/anthropics/skills/tree/0123456"))
+	if len(cands) != 1 || cands[0].url != "https://codeload.github.com/anthropics/skills/zip/refs/heads/0123456" {
+		t.Fatalf("abbreviated sha must stay on the branch path: %+v", cands)
+	}
+
 	cands, _ = f.candidates(parse("https://codeload.github.com/o/r/zip/refs/heads/main"))
 	if len(cands) != 1 || cands[0].url != "https://codeload.github.com/o/r/zip/refs/heads/main" {
 		t.Fatalf("non-repo URL must pass through: %+v", cands)
