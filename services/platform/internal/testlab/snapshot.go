@@ -54,15 +54,10 @@ type snapshotContent struct {
 //     including this package.
 //
 // The returned ContentHash covers prompt, criteria and dataset references
-// together, so two runs that hash the same executed the same input.
-//
-// TODO(M2 第一批合併): db/queries/runs.sql grew a second freezer,
-// CreateTestCaseSnapshotFromTestCase, in parallel with this one, and internal/run
-// calls that instead. Two implementations of one snapshot is one too many, and
-// worse, they hash different bytes — the same test case would get a different
-// content_hash depending on which path froze it, which is exactly the comparison
-// the hash exists to support. One must go before the batch merges. The SQL one
-// also predates 0017 and does not exclude a soft-deleted test case.
+// together, so two runs that hash the same executed the same input. This is the
+// only place a snapshot is written, which is what makes that comparison mean
+// anything: a second freezer hashing different bytes would give the same test
+// case two hashes depending on which path froze it.
 func CreateSnapshot(ctx context.Context, q *gen.Queries, workspaceID, testCaseID pgtype.UUID) (gen.TestCaseSnapshot, error) {
 	tc, err := q.GetTestCase(ctx, gen.GetTestCaseParams{ID: testCaseID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {

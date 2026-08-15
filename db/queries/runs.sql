@@ -2,33 +2,8 @@
 -- (iron rule 3), including the ones the worker runs: a job payload is not a wider
 -- authority than a request, and the worker carries the workspace it was queued with.
 
--- name: CreateTestCaseSnapshotFromTestCase :one
--- Freezes the editable test case at the moment a run is created (TEST-001, iron rule 4).
--- Snapshotting here rather than in a separate endpoint is deliberate: the snapshot exists
--- because a run needs it, and 0004's comment already places it "when a run starts".
--- The hash covers prompt, criteria and dataset references, so a run stays traceable after
--- the dataset files themselves are deleted (ADR-003).
-INSERT INTO test_case_snapshots (
-    workspace_id, test_case_id, user_prompt, acceptance_criteria, dataset_refs, content_hash
-)
-SELECT
-    tc.workspace_id, tc.id, tc.user_prompt, tc.acceptance_criteria, refs.dataset_refs,
-    encode(sha256(convert_to(
-        tc.user_prompt || tc.acceptance_criteria::text || refs.dataset_refs::text, 'UTF8'
-    )), 'hex')
-FROM test_cases tc
-CROSS JOIN LATERAL (
-    SELECT coalesce(
-        jsonb_agg(jsonb_build_object(
-            'dataset_id', d.id, 'file_name', d.file_name, 'content_hash', d.content_hash
-        ) ORDER BY d.file_name, d.id),
-        '[]'::jsonb
-    ) AS dataset_refs
-    FROM datasets d
-    WHERE d.test_case_id = tc.id AND d.deleted_at IS NULL
-) refs
-WHERE tc.id = $1 AND tc.workspace_id = $2
-RETURNING *;
+-- Test case snapshots are created by testlab.CreateSnapshot, called inside the run
+-- creation transaction: one implementation, one hash. See internal/testlab/snapshot.go.
 
 -- name: CreateRun :one
 INSERT INTO runs (

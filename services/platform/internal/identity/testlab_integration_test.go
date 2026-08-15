@@ -677,6 +677,34 @@ func TestSnapshotIsWorkspaceScoped(t *testing.T) {
 	}
 }
 
+// A deleted draft is not runnable. The guard is testlab's scoped read — the same
+// one every other test-lab route uses — rather than a check bolted onto the run
+// path, so it holds for any future caller of CreateSnapshot too.
+func TestRunCannotStartFromADeletedTestCase(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-deleted-testcase")
+
+	// A run started while the draft was live is unaffected by the deletion: it
+	// already holds its own frozen snapshot (ADR-003).
+	before := f.start(t)
+
+	if code, _ := f.doJSON(t, http.MethodDelete, "/test-cases/"+f.testCaseID, ""); code != http.StatusOK {
+		t.Fatalf("DELETE test case: got %d", code)
+	}
+	code, view := f.postJSON(t, "/skills/"+f.skillID+"/runs",
+		`{"version_id":"`+f.versionID+`","test_case_id":"`+f.testCaseID+`"}`)
+	if code != http.StatusNotFound {
+		t.Fatalf("run from a deleted test case: got %d, want 404", code)
+	}
+	if view.Error == "" {
+		t.Error("refusal carried no reason")
+	}
+	if code, _ := f.getRun(t, before.RunID); code != http.StatusOK {
+		t.Errorf("deleting the draft broke an existing run: got %d", code)
+	}
+}
+
 // takeSnapshot calls CreateSnapshot the way the run domain must: inside a
 // transaction, which here commits on its own because there is no run row to
 // commit with it.

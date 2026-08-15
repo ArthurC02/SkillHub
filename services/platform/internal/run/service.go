@@ -13,6 +13,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/services/platform/internal/testlab"
 )
 
 var (
@@ -149,10 +150,12 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
 
-	snapshot, err := q.CreateTestCaseSnapshotFromTestCase(ctx, gen.CreateTestCaseSnapshotFromTestCaseParams{
-		ID: p.TestCaseID, WorkspaceID: p.WorkspaceID,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
+	// The test lab owns the snapshot's shape and its hash; this passes it the
+	// transaction handle so the snapshot and the run below commit together
+	// (iron rule 9). A test case that is missing, in another workspace, or
+	// soft-deleted comes back as not found — a deleted draft is not runnable.
+	snapshot, err := testlab.CreateSnapshot(ctx, q, p.WorkspaceID, p.TestCaseID)
+	if errors.Is(err, testlab.ErrNotFound) {
 		return gen.Run{}, ErrNotFound
 	}
 	if err != nil {

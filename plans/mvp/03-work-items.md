@@ -135,7 +135,7 @@
 - [ ] TEST-007 實作 Local Runner 連線狀態與本機絕對路徑選擇。（後 MVP）
 - [ ] TEST-008 實作執行前 Dataset、Script、MCP、工具、網路與 Secrets 摘要。
 - [ ] TEST-009 實作權限異動後重新確認。
-- [ ] TEST-010 保存實際執行使用的 Test Case 快照。
+- [x] TEST-010 保存實際執行使用的 Test Case 快照。（`testlab.CreateSnapshot` 為唯一實作，由 `internal/run` 於建立 Run 的同一交易呼叫；快照涵蓋 Prompt、驗收條件與 Dataset 參照並以單一 content hash 固定，不可變由 0005 trigger 保證；已刪除的 Test Case 不可起 Run）
 
 ## 10. Run Orchestrator 與 Provider 契約（M2）
 
