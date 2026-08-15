@@ -41,6 +41,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
+	"github.com/ArthurC02/skillhub/services/platform/internal/testlab"
 )
 
 const dbURLEnv = "SKILLHUB_TEST_DATABASE_URL"
@@ -166,8 +167,10 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	}
 	runs := &run.Handler{Svc: &run.Service{Pool: pool, Queue: jobs}, Identity: auth.Service}
 
+	lab := &testlab.Handler{Svc: &testlab.Service{Pool: pool, Store: packages}, Identity: auth.Service}
+
 	srv := httptest.NewServer(apiserver.NewRouter(apiserver.Deps{
-		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs,
+		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs, TestLab: lab,
 	}))
 	t.Cleanup(srv.Close)
 	return &api{Server: srv, auth: auth, packages: packages}

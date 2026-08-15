@@ -831,6 +831,423 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /test-cases:
+    post:
+      operationId: createTestCase
+      summary: Create a test case draft (TEST-001)
+      description: |
+        A test case is an editable draft bound to a skill in the caller's
+        workspace. The prompt and criteria a run actually executed are frozen
+        separately in a snapshot (TEST-010), so editing a draft never rewrites
+        what a past run did.
+
+        The skill is chosen here; the skill *version* is chosen when the run
+        starts, so improving a skill does not orphan its test cases (iron rule 4).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [skill_id, name, user_prompt]
+              properties:
+                skill_id: { type: string, format: uuid }
+                name: { type: string, maxLength: 200 }
+                user_prompt:
+                  type: string
+                  maxLength: 32768
+                  description: Must not be blank (TEST-001).
+      responses:
+        "201":
+          description: Draft created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestCase" }
+        "400":
+          description: Blank or over-long name or prompt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Skill not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    get:
+      operationId: listTestCases
+      summary: List the caller's test cases (WS-004)
+      responses:
+        "200":
+          description: The caller's test cases, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [test_cases]
+                properties:
+                  test_cases:
+                    type: array
+                    items: { $ref: "#/components/schemas/TestCase" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /test-cases/limits:
+    get:
+      operationId: getDatasetLimits
+      summary: Upload limits and storage policy (TEST-002 上傳前顯示)
+      description: |
+        02:TEST-002 requires the size limit, the retention policy and the data
+        usage scope to be shown *before* an upload, not discovered by being
+        refused. The values are PDM-005 §5.1 and are served from the same
+        constants the upload path enforces, so the two can never drift.
+      responses:
+        "200":
+          description: The limits in force.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DatasetLimits" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /test-cases/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getTestCase
+      summary: Read one test case draft
+      responses:
+        "200":
+          description: The draft.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestCase" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    patch:
+      operationId: updateTestCase
+      summary: Edit a test case's name or prompt (TEST-001)
+      description: Omitted fields keep their stored value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 200 }
+                user_prompt: { type: string, maxLength: 32768 }
+      responses:
+        "200":
+          description: Updated draft.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestCase" }
+        "400":
+          description: Blank or over-long name or prompt.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: deleteTestCase
+      summary: Delete a test case and its uploaded files (WS-002)
+      description: |
+        Soft delete. The draft and its live datasets leave every read now and the
+        stored objects are removed. Snapshots of past runs are retained and keep
+        the prompt, the criteria and each file's name and content hash, so those
+        runs stay traceable although they are no longer reproducible (ADR-003).
+      responses:
+        "200":
+          description: Deleted, with the exact deletion scope.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted, datasets_deleted, note]
+                properties:
+                  deleted: { type: boolean }
+                  datasets_deleted: { type: integer }
+                  note: { type: string }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /test-cases/{id}/criteria:
+    post:
+      operationId: addAcceptanceCriterion
+      summary: Add an acceptance criterion (TEST-003)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 2000 }
+      responses:
+        "201":
+          description: The updated draft, criteria included.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestCase" }
+        "400":
+          description: Blank or over-long text.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413":
+          description: The test case already holds the maximum number of criteria.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /test-cases/{id}/criteria/{criterionId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: criterionId
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      operationId: updateAcceptanceCriterion
+      summary: Edit and/or confirm an acceptance criterion (TEST-003)
+      description: |
+        Edit and confirmation are one statement because they are one decision:
+        confirming means agreeing to the text as it stands. Changing the text of
+        a confirmed criterion therefore clears the confirmation — the agreement
+        applied to the old words.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                text: { type: string, maxLength: 2000 }
+                confirmed:
+                  type: boolean
+                  description: True records the user's explicit agreement; false withdraws it.
+      responses:
+        "200":
+          description: The updated draft.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestCase" }
+        "400":
+          description: Empty body, or blank or over-long text.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Test case or criterion not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: deleteAcceptanceCriterion
+      summary: Remove an acceptance criterion (TEST-003)
+      responses:
+        "200":
+          description: The updated draft.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestCase" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Test case or criterion not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /test-cases/{id}/datasets:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: uploadDataset
+      summary: Upload one dataset file to a test case (TEST-004)
+      description: |
+        PDM-005 §5.1 limits are enforced here: at most 25 MB per file, 100 MB and
+        20 files per test case, and an allow-list of kinds judged by magic bytes
+        — the file extension is never consulted, so an executable renamed to
+        `.csv` is refused. Rejections name the limit that was hit and nothing
+        about the system behind it (02:TEST-002 不洩漏系統資訊).
+
+        The stored file is reachable only by runs of this test case, and
+        `expires_at` is 90 days from upload.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Stored.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dataset" }
+        "400":
+          description: Missing file part, empty file, or unreadable upload.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Test case not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413":
+          description: |
+            A size or count limit was exceeded: the file is over 25 MB, or the
+            test case would exceed 100 MB or 20 files.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "415":
+          description: The content is not an allowed kind, judged by magic bytes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    get:
+      operationId: listDatasets
+      summary: List a test case's uploaded files (TEST-004)
+      responses:
+        "200":
+          description: The live files and their total size.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [datasets, total_bytes]
+                properties:
+                  datasets:
+                    type: array
+                    items: { $ref: "#/components/schemas/Dataset" }
+                  total_bytes: { type: integer, format: int64 }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Test case not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /test-cases/{id}/datasets/{datasetId}:
+    delete:
+      operationId: deleteDataset
+      summary: Delete an uploaded file (TEST-004)
+      description: |
+        Usable before a run to withdraw a file and after a run to remove it. The
+        stored object is deleted; snapshots keep the file's name and content
+        hash so past runs stay traceable (ADR-003).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: datasetId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted, with the exact deletion scope.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted, dataset_id, note]
+                properties:
+                  deleted: { type: boolean }
+                  dataset_id: { type: string, format: uuid }
+                  note: { type: string }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 components:
   schemas:
     Health:
@@ -1494,6 +1911,84 @@ components:
           description: True when identical content already existed as a version of this skill.
         findings:
           $ref: "#/components/schemas/CategorizedFindings"
+    AcceptanceCriterion:
+      description: |
+        One acceptance condition (TEST-003). Stored inside the test case rather
+        than as its own resource, because the run snapshot and the evaluation
+        result already carry this exact shape as JSON.
+      type: object
+      required: [id, text, source, confirmed_at]
+      properties:
+        id:
+          type: string
+          description: Unique within one test case; stable across edits.
+        text:
+          type: string
+          maxLength: 2000
+        source:
+          type: string
+          enum: [user, suggested]
+          description: |
+            Who proposed the condition. `suggested` is reserved for TEST-002's
+            automatic suggestion so EVAL-001 can keep a model's proposal from
+            being presented as the user's own (not written yet).
+        confirmed_at:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            When the user explicitly agreed to this wording. Null means proposed
+            but not confirmed. Editing the text clears it.
+    TestCase:
+      type: object
+      required:
+        [test_case_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at]
+      properties:
+        test_case_id: { type: string, format: uuid }
+        skill_id: { type: string, format: uuid }
+        name: { type: string }
+        user_prompt: { type: string }
+        acceptance_criteria:
+          type: array
+          items: { $ref: "#/components/schemas/AcceptanceCriterion" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Dataset:
+      type: object
+      required: [dataset_id, file_name, content_type, size_bytes, content_hash, expires_at]
+      properties:
+        dataset_id: { type: string, format: uuid }
+        file_name:
+          type: string
+          description: Display name only; it is never used as a storage path.
+        content_type:
+          type: string
+          description: |
+            Decided from the content's magic bytes, not from the file name
+            (PDM-005 §5.1). It may disagree with the uploaded extension.
+        size_bytes: { type: integer, format: int64 }
+        content_hash:
+          type: string
+          description: |
+            SHA-256 of the stored bytes. Copied into the run snapshot, where it
+            outlives the file itself (ADR-003).
+        expires_at:
+          type: string
+          format: date-time
+          description: 90 days from upload; deleting earlier is always allowed.
+    DatasetLimits:
+      description: PDM-005 §5.1, served from the constants the upload path enforces.
+      type: object
+      required:
+        [max_file_bytes, max_test_case_bytes, max_files_per_test_case, retention_days, allowed_kinds, note]
+      properties:
+        max_file_bytes: { type: integer, format: int64 }
+        max_test_case_bytes: { type: integer, format: int64 }
+        max_files_per_test_case: { type: integer }
+        retention_days: { type: integer }
+        allowed_kinds:
+          type: array
+          items: { type: string }
+        note: { type: string }
     Run:
       description: |
         One run as the Web surface sees it. The provider-facing shapes are a

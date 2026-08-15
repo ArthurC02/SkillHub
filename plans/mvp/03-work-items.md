@@ -126,10 +126,10 @@
 
 ## 9. Test Case 與執行設定（M2）
 
-- [ ] TEST-001 實作 User Prompt 輸入與驗證。
-- [ ] TEST-002 實作驗收條件自動建議。
-- [ ] TEST-003 實作驗收條件新增、修改、刪除與確認。
-- [ ] TEST-004 實作 Dataset 上傳、限制、關聯與刪除。
+- [x] TEST-001 實作 User Prompt 輸入與驗證。（Test Case CRUD 綁 Workspace 內 Skill；非空白與長度驗證在 Service 與 0004／0017 的 CHECK 雙重把關）
+- [ ] TEST-002 實作驗收條件自動建議。（`source` 欄位已預留 `suggested`，實作待 LLM 批）
+- [x] TEST-003 實作驗收條件新增、修改、刪除與確認。（確認為明示同意欄位；改寫文字即撤銷既有確認）
+- [x] TEST-004 實作 Dataset 上傳、限制、關聯與刪除。（PDM-005 §5.1 全數強制：單檔 25 MB、單 Test Case 100 MB／20 檔、magic bytes 判型不信副檔名、`expires_at` 90 天；刪除連同物件）
 - [ ] TEST-005 實作遠端 MCP 位址及短效憑證設定。（後 MVP）
 - [ ] TEST-006 實作 MCP 工具發現與權限選擇。（後 MVP）
 - [ ] TEST-007 實作 Local Runner 連線狀態與本機絕對路徑選擇。（後 MVP）

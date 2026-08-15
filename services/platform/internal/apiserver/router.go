@@ -16,6 +16,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
+	"github.com/ArthurC02/skillhub/services/platform/internal/testlab"
 )
 
 // Deps are the wired handlers the routes dispatch to. Constructing them
@@ -27,6 +28,7 @@ type Deps struct {
 	Importer *ingest.Handler
 	Search   *catalog.Handler
 	Registry *registry.Handler
+	TestLab  *testlab.Handler
 	Runs     *run.Handler
 }
 
@@ -62,6 +64,23 @@ func NewRouter(d Deps) *http.ServeMux {
 	// INGEST-010: manual takedown of content in the caller's own workspace,
 	// which for curated catalog entries is the operator's workspace.
 	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(d.Registry.Takedown))
+
+	// Test Lab (TEST-001/003/004). Everything is workspace scoped from the
+	// session; there is no anonymous read here. The literal "limits" segment is
+	// more specific than {id}, so it still wins.
+	lab := d.TestLab
+	mux.HandleFunc("GET /test-cases/limits", auth.RequireSession(lab.Limits))
+	mux.HandleFunc("POST /test-cases", auth.RequireSession(lab.Create))
+	mux.HandleFunc("GET /test-cases", auth.RequireSession(lab.List))
+	mux.HandleFunc("GET /test-cases/{id}", auth.RequireSession(lab.Get))
+	mux.HandleFunc("PATCH /test-cases/{id}", auth.RequireSession(lab.Update))
+	mux.HandleFunc("DELETE /test-cases/{id}", auth.RequireSession(lab.Delete))
+	mux.HandleFunc("POST /test-cases/{id}/criteria", auth.RequireSession(lab.AddCriterion))
+	mux.HandleFunc("PATCH /test-cases/{id}/criteria/{criterionId}", auth.RequireSession(lab.UpdateCriterion))
+	mux.HandleFunc("DELETE /test-cases/{id}/criteria/{criterionId}", auth.RequireSession(lab.DeleteCriterion))
+	mux.HandleFunc("POST /test-cases/{id}/datasets", auth.RequireSession(lab.UploadDataset))
+	mux.HandleFunc("GET /test-cases/{id}/datasets", auth.RequireSession(lab.ListDatasets))
+	mux.HandleFunc("DELETE /test-cases/{id}/datasets/{datasetId}", auth.RequireSession(lab.DeleteDataset))
 
 	// Run orchestration (RUN-001/002/004). Runs are addressed by the platform
 	// run_id and nothing else (iron rule 10): no route here takes a provider id.

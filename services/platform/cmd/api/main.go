@@ -24,6 +24,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
+	"github.com/ArthurC02/skillhub/services/platform/internal/testlab"
 )
 
 func main() {
@@ -104,6 +105,7 @@ func main() {
 		Importer: importer,
 		Search:   &catalog.Handler{Pool: pool, Identity: auth.Service, LLMClient: llm, Store: store},
 		Registry: &registry.Handler{Svc: &registry.Service{Pool: pool, Store: store}, Identity: auth.Service},
+		TestLab:  &testlab.Handler{Svc: &testlab.Service{Pool: pool, Store: store}, Identity: auth.Service},
 		Runs:     &run.Handler{Svc: &run.Service{Pool: pool, Queue: jobs}, Identity: auth.Service},
 	})
 

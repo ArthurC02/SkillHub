@@ -1,0 +1,365 @@
+// Package testlab owns test cases, their acceptance criteria, their uploaded
+// datasets, and the immutable snapshot a run executes (TEST-001/003/004/010,
+// ADR-002 Test Lab).
+//
+// The split that matters here: a test case is an editable draft, a
+// test_case_snapshots row is the frozen fact of what one run actually used
+// (ADR-003, iron rule 4). Editing a draft never rewrites what a past run did.
+//
+// Nothing in this package executes uploaded content. Datasets are stored as
+// opaque bytes and only ever unpacked inside the sandbox (iron rule 1).
+package testlab
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ArthurC02/skillhub/services/platform/internal/audit"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
+)
+
+// PDM-005 §5.1. These are the only enforcement point for the dataset limits;
+// there is no second copy in the handler or the UI.
+const (
+	// MaxFileBytes caps one uploaded file.
+	MaxFileBytes = 25 << 20 // 25 MiB
+	// MaxTestCaseBytes caps the live total across one test case's files.
+	MaxTestCaseBytes = 100 << 20 // 100 MiB
+	// MaxFilesPerTestCase caps the live file count of one test case.
+	MaxFilesPerTestCase = 20
+	// DatasetRetention is the storage window shown before upload (PDM-005 §5.1,
+	// PDM-006 §6). Users may delete earlier; nothing extends it.
+	DatasetRetention = 90 * 24 * time.Hour
+)
+
+// Prompt and criteria caps. 02:TEST-001 fixes only "non-blank"; these bounds
+// exist because an unbounded text column reachable from an unauthenticated-shaped
+// request is a denial-of-service surface, not because a product rule asked.
+//
+// ponytail: flat byte caps. If a real prompt ever hits the ceiling, the number to
+// revisit is MaxPromptBytes against the PDM-005 300K input-token budget, which is
+// roughly an order of magnitude above this.
+const (
+	MaxNameBytes      = 200
+	MaxPromptBytes    = 32 << 10 // 32 KiB
+	MaxCriterionBytes = 2000
+	MaxCriteria       = 50
+)
+
+var (
+	// ErrNotFound: not visible in the caller's workspace. Deliberately the same
+	// answer for "does not exist" and "belongs to someone else" (WS-006).
+	ErrNotFound = errors.New("test case not found")
+	// ErrInvalid: the request violates a documented input rule.
+	ErrInvalid = errors.New("invalid request")
+	// ErrLimitExceeded: a PDM-005 quota would be broken. Messages name the limit
+	// that was hit and nothing about the system behind it (02:TEST-002).
+	ErrLimitExceeded = errors.New("limit exceeded")
+)
+
+// ObjectStore is the slice of object storage the test lab needs. Remove is
+// idempotent, which is what makes dataset deletion safe to retry (iron rule 9).
+type ObjectStore interface {
+	Put(ctx context.Context, key string, data []byte) error
+	Remove(ctx context.Context, key string) error
+}
+
+type Service struct {
+	Pool  *pgxpool.Pool
+	Store ObjectStore
+}
+
+// Criterion is one acceptance condition (TEST-003). Stored as an element of the
+// test_cases.acceptance_criteria JSON array rather than in its own table: the
+// snapshot column and evaluations.criterion_results already carry the same shape
+// as JSON, so a table here would only add a join and a second representation.
+type Criterion struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+	// Source is who proposed the condition. "user" is all this batch writes;
+	// TEST-002's automatic suggestion writes "suggested" into the same field so
+	// EVAL-001 can keep a model's proposal from being presented as the user's.
+	Source string `json:"source"`
+	// ConfirmedAt is the user's explicit agreement (TEST-003 確認). Nil means
+	// proposed but not agreed to. Editing the text clears it: a confirmation
+	// applies to the words that were confirmed, not to the criterion's identity.
+	ConfirmedAt *time.Time `json:"confirmed_at"`
+}
+
+const (
+	SourceUser      = "user"
+	SourceSuggested = "suggested"
+)
+
+// CreateTestCase records a new draft against a skill in the caller's workspace
+// (TEST-001). The skill is re-read under the workspace scope first: skill_id
+// arrives from the client, and the foreign key alone would happily accept
+// another workspace's skill (iron rule 3).
+func (s *Service) CreateTestCase(ctx context.Context, ws gen.Workspace, skillID pgtype.UUID, name, prompt string) (gen.TestCase, error) {
+	name, prompt, err := validateDraft(name, prompt)
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	q := gen.New(s.Pool)
+	if _, err := q.GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: ws.ID}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return gen.TestCase{}, ErrNotFound
+		}
+		return gen.TestCase{}, err
+	}
+	return q.CreateTestCase(ctx, gen.CreateTestCaseParams{
+		WorkspaceID:        ws.ID,
+		SkillID:            skillID,
+		Name:               name,
+		UserPrompt:         prompt,
+		AcceptanceCriteria: []byte("[]"),
+	})
+}
+
+// GetTestCase reads one draft in the caller's workspace.
+func (s *Service) GetTestCase(ctx context.Context, ws gen.Workspace, id pgtype.UUID) (gen.TestCase, error) {
+	tc, err := gen.New(s.Pool).GetTestCase(ctx, gen.GetTestCaseParams{ID: id, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.TestCase{}, ErrNotFound
+	}
+	return tc, err
+}
+
+// ListTestCases returns the caller's drafts, newest first.
+func (s *Service) ListTestCases(ctx context.Context, ws gen.Workspace) ([]gen.TestCase, error) {
+	return gen.New(s.Pool).ListTestCases(ctx, gen.ListTestCasesParams{
+		WorkspaceID: ws.ID, Limit: 100, Offset: 0,
+	})
+}
+
+// UpdateTestCase edits the draft's name and prompt (TEST-001).
+func (s *Service) UpdateTestCase(ctx context.Context, ws gen.Workspace, id pgtype.UUID, name, prompt string) (gen.TestCase, error) {
+	name, prompt, err := validateDraft(name, prompt)
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	tc, err := gen.New(s.Pool).UpdateTestCase(ctx, gen.UpdateTestCaseParams{
+		ID: id, WorkspaceID: ws.ID, Name: name, UserPrompt: prompt,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.TestCase{}, ErrNotFound
+	}
+	return tc, err
+}
+
+func validateDraft(name, prompt string) (string, string, error) {
+	name = strings.TrimSpace(name)
+	prompt = strings.TrimSpace(prompt)
+	switch {
+	case name == "":
+		return "", "", fmt.Errorf("%w: name must not be blank", ErrInvalid)
+	case len(name) > MaxNameBytes:
+		return "", "", fmt.Errorf("%w: name must be at most %d bytes", ErrInvalid, MaxNameBytes)
+	// 02:TEST-001 "每個 Run 必須包含非空白 User Prompt" — enforced at the draft, so
+	// a run can never be started from a test case that has no prompt.
+	case prompt == "":
+		return "", "", fmt.Errorf("%w: user_prompt must not be blank", ErrInvalid)
+	case len(prompt) > MaxPromptBytes:
+		return "", "", fmt.Errorf("%w: user_prompt must be at most %d bytes", ErrInvalid, MaxPromptBytes)
+	}
+	return name, prompt, nil
+}
+
+// DeleteResult states what the deletion covered (WS-002 "系統應說明刪除範圍").
+type DeleteResult struct {
+	DatasetsDeleted int
+	// SnapshotsRetained is not a number here on purpose: snapshots are frozen by
+	// the 0005 trigger and stay whatever they were. See the note in the handler.
+}
+
+// DeleteTestCase soft-deletes the draft and takes its live datasets with it,
+// objects included (WS-002, CORE-007). Snapshots taken by past runs are
+// untouched — they are the record of what those runs executed (ADR-003), and
+// the dataset content hash inside them outlives the file itself.
+//
+// Objects are removed after the commit, not inside it: object storage is not
+// transactional, and a failed removal leaves an orphan the retention sweep
+// collects rather than a row that claims a file exists when it does not.
+func (s *Service) DeleteTestCase(ctx context.Context, ws gen.Workspace, id pgtype.UUID) (DeleteResult, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return DeleteResult{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := gen.New(tx)
+
+	tc, err := q.SoftDeleteTestCase(ctx, gen.SoftDeleteTestCaseParams{ID: id, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return DeleteResult{}, ErrNotFound
+	}
+	if err != nil {
+		return DeleteResult{}, err
+	}
+	removed, err := q.SoftDeleteDatasetsByTestCase(ctx, gen.SoftDeleteDatasetsByTestCaseParams{
+		TestCaseID: tc.ID, WorkspaceID: ws.ID,
+	})
+	if err != nil {
+		return DeleteResult{}, err
+	}
+	if err := audit.Log(ctx, q, audit.Event{
+		Actor:        ws.OwnerUserID,
+		Workspace:    ws.ID,
+		Action:       audit.ActionTestCaseDelete,
+		ResourceType: audit.ResourceTestCase,
+		ResourceID:   tc.ID,
+		Metadata:     map[string]any{"datasets_deleted": len(removed)},
+	}); err != nil {
+		return DeleteResult{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return DeleteResult{}, err
+	}
+
+	for _, d := range removed {
+		s.removeObject(ctx, d.ObjectKey)
+	}
+	return DeleteResult{DatasetsDeleted: len(removed)}, nil
+}
+
+// AddCriterion appends a user-authored acceptance condition (TEST-003).
+func (s *Service) AddCriterion(ctx context.Context, ws gen.Workspace, id pgtype.UUID, text string) (gen.TestCase, error) {
+	text, err := validateCriterion(text)
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	return s.mutateCriteria(ctx, ws, id, func(list []Criterion) ([]Criterion, error) {
+		if len(list) >= MaxCriteria {
+			return nil, fmt.Errorf("%w: at most %d acceptance criteria per test case", ErrLimitExceeded, MaxCriteria)
+		}
+		return append(list, Criterion{ID: newCriterionID(), Text: text, Source: SourceUser}), nil
+	})
+}
+
+// UpdateCriterion edits and/or confirms one criterion (TEST-003). Both are the
+// same statement because they are the same write: confirming is agreeing to the
+// text as it stands, so a caller that changes the text and confirms in one
+// request has confirmed the new text, and a caller that only changes the text
+// has withdrawn the old confirmation.
+func (s *Service) UpdateCriterion(ctx context.Context, ws gen.Workspace, id pgtype.UUID, criterionID string, text *string, confirmed *bool) (gen.TestCase, error) {
+	var newText string
+	if text != nil {
+		var err error
+		if newText, err = validateCriterion(*text); err != nil {
+			return gen.TestCase{}, err
+		}
+	}
+	return s.mutateCriteria(ctx, ws, id, func(list []Criterion) ([]Criterion, error) {
+		i := indexOfCriterion(list, criterionID)
+		if i < 0 {
+			return nil, fmt.Errorf("%w: acceptance criterion not found", ErrNotFound)
+		}
+		if text != nil && newText != list[i].Text {
+			list[i].Text = newText
+			list[i].ConfirmedAt = nil
+		}
+		if confirmed != nil {
+			if *confirmed {
+				now := time.Now().UTC()
+				list[i].ConfirmedAt = &now
+			} else {
+				list[i].ConfirmedAt = nil
+			}
+		}
+		return list, nil
+	})
+}
+
+// DeleteCriterion removes one criterion from the draft (TEST-003).
+func (s *Service) DeleteCriterion(ctx context.Context, ws gen.Workspace, id pgtype.UUID, criterionID string) (gen.TestCase, error) {
+	return s.mutateCriteria(ctx, ws, id, func(list []Criterion) ([]Criterion, error) {
+		i := indexOfCriterion(list, criterionID)
+		if i < 0 {
+			return nil, fmt.Errorf("%w: acceptance criterion not found", ErrNotFound)
+		}
+		return append(list[:i], list[i+1:]...), nil
+	})
+}
+
+// mutateCriteria applies fn to the stored criteria list under a row lock, so two
+// concurrent edits to the same JSON array cannot silently drop one of them.
+func (s *Service) mutateCriteria(ctx context.Context, ws gen.Workspace, id pgtype.UUID, fn func([]Criterion) ([]Criterion, error)) (gen.TestCase, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := gen.New(tx)
+
+	tc, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: id, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.TestCase{}, ErrNotFound
+	}
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	list, err := DecodeCriteria(tc.AcceptanceCriteria)
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	if list, err = fn(list); err != nil {
+		return gen.TestCase{}, err
+	}
+	encoded, err := json.Marshal(list)
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	updated, err := q.UpdateTestCaseCriteria(ctx, gen.UpdateTestCaseCriteriaParams{
+		ID: tc.ID, WorkspaceID: ws.ID, AcceptanceCriteria: encoded,
+	})
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	return updated, tx.Commit(ctx)
+}
+
+// DecodeCriteria reads the stored JSON array. Exported so the run and evaluation
+// domains read the criteria the same way this package writes them.
+func DecodeCriteria(raw []byte) ([]Criterion, error) {
+	list := []Criterion{}
+	if len(raw) == 0 {
+		return list, nil
+	}
+	if err := json.Unmarshal(raw, &list); err != nil {
+		return nil, fmt.Errorf("decode acceptance criteria: %w", err)
+	}
+	return list, nil
+}
+
+func validateCriterion(text string) (string, error) {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("%w: criterion text must not be blank", ErrInvalid)
+	}
+	if len(text) > MaxCriterionBytes {
+		return "", fmt.Errorf("%w: criterion text must be at most %d bytes", ErrInvalid, MaxCriterionBytes)
+	}
+	return text, nil
+}
+
+func indexOfCriterion(list []Criterion, id string) int {
+	for i := range list {
+		if list[i].ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+func newCriterionID() string { return uuidString(newUUID()) }
+
+// humanMB renders a byte cap the way the user-facing limit is written, so an
+// error message says "25 MB" and not "26214400".
+func humanMB(n int64) string { return fmt.Sprintf("%d MB", n>>20) }

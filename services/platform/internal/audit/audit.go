@@ -40,15 +40,21 @@ const (
 	ActionRunCreate     = "run.create"
 	ActionRunTransition = "run.transition"
 	ActionRunCancelAsk  = "run.cancel_requested"
+	// NFR-001 requires an audit trail for deletion (CORE-007). Uploads are not
+	// audited: the dataset row itself already records what was uploaded and when.
+	ActionTestCaseDelete = "test_case.delete"
+	ActionDatasetDelete  = "dataset.delete"
 )
 
 // Resource types the actions above refer to.
 const (
-	ResourceSession = "session"
-	ResourceSkill   = "skill"
-	ResourceVersion = "skill_version"
-	ResourceAccount = "account"
-	ResourceRun     = "run"
+	ResourceSession  = "session"
+	ResourceSkill    = "skill"
+	ResourceVersion  = "skill_version"
+	ResourceAccount  = "account"
+	ResourceRun      = "run"
+	ResourceTestCase = "test_case"
+	ResourceDataset  = "dataset"
 )
 
 // Event is one audited operation.

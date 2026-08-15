@@ -294,6 +294,7 @@ type TestCase struct {
 	AcceptanceCriteria []byte
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
+	DeletedAt          pgtype.Timestamptz
 }
 
 type TestCaseSnapshot struct {
