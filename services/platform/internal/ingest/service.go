@@ -116,7 +116,7 @@ const (
 // import (which then stores the archive) and by the backfill (which read the
 // archive back out of storage).
 func readPackage(data []byte) (preparedPackage, error) {
-	fsys, err := packageFS(data)
+	fsys, err := PackageFS(data)
 	if err != nil {
 		return preparedPackage{}, err
 	}
@@ -372,10 +372,16 @@ func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed
 	return done, failed, nil
 }
 
-// packageFS opens the zip as a read-only fs.FS, rejecting bombs and locating
+// PackageFS opens the zip as a read-only fs.FS, rejecting bombs and locating
 // the package root: SKILL.md at top level, or inside a single top-level
 // directory (the shape GitHub archive downloads have).
-func packageFS(data []byte) (fs.FS, error) {
+//
+// Exported because the read side has to resolve the package root exactly the
+// way import did: catalog's detail and file views re-open the stored archive,
+// and a second root-finding rule would show a different package than the one
+// that was validated. Opening is still pure analysis — nothing inside is ever
+// executed (iron rule 1).
+func PackageFS(data []byte) (fs.FS, error) {
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
 		return nil, fmt.Errorf("%w: not a zip archive", ErrBadArchive)

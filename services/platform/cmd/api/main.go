@@ -91,9 +91,16 @@ func main() {
 	mux.HandleFunc("POST /skills/import/upload", auth.RequireSession(importer.Upload))
 	mux.HandleFunc("POST /skills/import/url", auth.RequireSession(importer.ImportURL))
 
-	search := &catalog.Handler{Pool: pool, Identity: auth.Service, LLMClient: llm}
+	search := &catalog.Handler{Pool: pool, Identity: auth.Service, LLMClient: llm, Store: store}
 	// DISC-001: public search works without login.
 	mux.HandleFunc("GET /api/skills/search", search.PublicSearch)
+	// DISC-006/007/008/010: public detail and file views, no login required.
+	// OptionalSession, not RequireSession: anonymous callers get the catalog and
+	// a signed-in caller additionally gets their own private skills through the
+	// same handler (see catalog/detail.go). The literal "search" segment above is
+	// the more specific pattern, so it still wins over {id}.
+	mux.HandleFunc("GET /api/skills/{id}", auth.OptionalSession(search.SkillDetail))
+	mux.HandleFunc("GET /api/skills/{id}/files", auth.OptionalSession(search.SkillFiles))
 	// Workspace-scoped search (existing, requires session).
 	mux.HandleFunc("GET /skills/search", auth.RequireSession(search.Search))
 

@@ -45,3 +45,22 @@ LIMIT $2 OFFSET $3;
 -- name: CountSkillVersions :one
 SELECT count(*) FROM skill_versions
 WHERE skill_id = $1;
+
+-- name: GetSkillSource :one
+-- Import provenance for one version (DISC-003: source URL, ref/commit, fetch
+-- time, content hash). Workspace scoped like every other read in this file even
+-- though the only caller reaches it through an already-scoped version row: an
+-- unscoped read sitting in the query file is a cross-tenant read waiting for its
+-- second caller.
+SELECT * FROM skill_sources
+WHERE id = $1 AND workspace_id = $2;
+
+-- name: GetSkillEnrichment :one
+-- The index-time model output for one skill (ADR-013 §1), so the detail view can
+-- show the enriched summary and task examples *labelled as model-generated*
+-- rather than as the package's own words. `summary` comes back too because it is
+-- the frontmatter description and the fallback when enrichment is still pending.
+SELECT summary, enriched_summary, task_examples, tags,
+       enrichment_status, enrichment_model, enrichment_prompt_version
+FROM search_documents
+WHERE skill_id = $1 AND workspace_id = $2;

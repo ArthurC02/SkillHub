@@ -30,6 +30,9 @@ type Handler struct {
 	Pool      *pgxpool.Pool
 	Identity  *identity.Service
 	LLMClient *llmclient.Client // nil = embedding unavailable, FTS-only fallback
+	// Store reads stored packages for the detail and file views (detail.go).
+	// nil = those views report the package scan as unavailable rather than clean.
+	Store ObjectStore
 }
 
 // Match reason provenance (DISC-002). ADR-013 requires model-generated content

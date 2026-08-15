@@ -33,13 +33,13 @@ func zipBytes(t *testing.T, files map[string]string) []byte {
 const skillMD = "---\nname: pdf-tools\ndescription: Work with PDFs.\nlicense: MIT\n---\n# PDF\n"
 
 func TestPackageFSNotAZip(t *testing.T) {
-	if _, err := packageFS([]byte("plain text")); !errors.Is(err, ErrBadArchive) {
+	if _, err := PackageFS([]byte("plain text")); !errors.Is(err, ErrBadArchive) {
 		t.Fatalf("want ErrBadArchive, got %v", err)
 	}
 }
 
 func TestPackageFSRootSkillMD(t *testing.T) {
-	fsys, err := packageFS(zipBytes(t, map[string]string{"SKILL.md": skillMD}))
+	fsys, err := PackageFS(zipBytes(t, map[string]string{"SKILL.md": skillMD}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestPackageFSRootSkillMD(t *testing.T) {
 
 func TestPackageFSSingleDirRoot(t *testing.T) {
 	// GitHub archive shape: everything under one top-level directory.
-	fsys, err := packageFS(zipBytes(t, map[string]string{
+	fsys, err := PackageFS(zipBytes(t, map[string]string{
 		"pdf-tools-main/SKILL.md":  skillMD,
 		"pdf-tools-main/notes.txt": "hi",
 	}))
@@ -68,7 +68,7 @@ func TestPackageFSZipBomb(t *testing.T) {
 	defer func() { maxUnpackedBytes = old }()
 
 	data := zipBytes(t, map[string]string{"SKILL.md": skillMD, "big.txt": strings.Repeat("x", 4096)})
-	if _, err := packageFS(data); !errors.Is(err, ErrBadArchive) {
+	if _, err := PackageFS(data); !errors.Is(err, ErrBadArchive) {
 		t.Fatalf("want ErrBadArchive for bomb, got %v", err)
 	}
 }

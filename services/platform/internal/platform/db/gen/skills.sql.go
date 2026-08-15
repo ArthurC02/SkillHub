@@ -118,6 +118,78 @@ func (q *Queries) GetSkill(ctx context.Context, arg GetSkillParams) (Skill, erro
 	return i, err
 }
 
+const getSkillEnrichment = `-- name: GetSkillEnrichment :one
+SELECT summary, enriched_summary, task_examples, tags,
+       enrichment_status, enrichment_model, enrichment_prompt_version
+FROM search_documents
+WHERE skill_id = $1 AND workspace_id = $2
+`
+
+type GetSkillEnrichmentParams struct {
+	SkillID     pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+type GetSkillEnrichmentRow struct {
+	Summary                 string
+	EnrichedSummary         string
+	TaskExamples            string
+	Tags                    string
+	EnrichmentStatus        string
+	EnrichmentModel         *string
+	EnrichmentPromptVersion *string
+}
+
+// The index-time model output for one skill (ADR-013 §1), so the detail view can
+// show the enriched summary and task examples *labelled as model-generated*
+// rather than as the package's own words. `summary` comes back too because it is
+// the frontmatter description and the fallback when enrichment is still pending.
+func (q *Queries) GetSkillEnrichment(ctx context.Context, arg GetSkillEnrichmentParams) (GetSkillEnrichmentRow, error) {
+	row := q.db.QueryRow(ctx, getSkillEnrichment, arg.SkillID, arg.WorkspaceID)
+	var i GetSkillEnrichmentRow
+	err := row.Scan(
+		&i.Summary,
+		&i.EnrichedSummary,
+		&i.TaskExamples,
+		&i.Tags,
+		&i.EnrichmentStatus,
+		&i.EnrichmentModel,
+		&i.EnrichmentPromptVersion,
+	)
+	return i, err
+}
+
+const getSkillSource = `-- name: GetSkillSource :one
+SELECT id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at FROM skill_sources
+WHERE id = $1 AND workspace_id = $2
+`
+
+type GetSkillSourceParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+// Import provenance for one version (DISC-003: source URL, ref/commit, fetch
+// time, content hash). Workspace scoped like every other read in this file even
+// though the only caller reaches it through an already-scoped version row: an
+// unscoped read sitting in the query file is a cross-tenant read waiting for its
+// second caller.
+func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) (SkillSource, error) {
+	row := q.db.QueryRow(ctx, getSkillSource, arg.ID, arg.WorkspaceID)
+	var i SkillSource
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.SourceType,
+		&i.SourceUrl,
+		&i.SourceRef,
+		&i.ContentHash,
+		&i.FetchedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listSkills = `-- name: ListSkills :many
 SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at FROM skills
 WHERE workspace_id = $1 AND deleted_at IS NULL

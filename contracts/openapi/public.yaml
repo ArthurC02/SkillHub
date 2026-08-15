@@ -218,6 +218,78 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicSearchResponse"
+  /api/skills/{id}:
+    get:
+      operationId: getSkillDetail
+      summary: Skill detail, source, license, risk and compatibility (DISC-006, DISC-008)
+      description: |
+        Does not require authentication. Scope is resolved by the server and never
+        by the request (CORE-006, ADR-011): the public catalog answers for every
+        caller, and a caller with a session additionally sees skills in their own
+        workspace. Anything outside both scopes answers 404, identical to a skill
+        that does not exist, so the status code is not an existence oracle for
+        someone else's private content (WS-006).
+
+        `summary` is always the package's own frontmatter description.
+        Model-generated text lives under `enrichment` and is labelled there
+        (ADR-013). `license` carries the ADR-021 two-axis answer — the expression
+        and the provenance tier it was established at — and its status is
+        `declared` at best: confirmation is a reviewer's act and nothing records
+        one yet. `risk` reports a static scan of the stored package; the scan
+        never executes anything (iron rule 1) and passing it is not a safety
+        claim (NFR-001). `compatibility` keeps the three axes apart and states
+        the two that need a sandbox as `unverified` rather than omitting them.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The skill as visible in the caller's widest scope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillDetail"
+        "404":
+          description: Skill not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /api/skills/{id}/files:
+    get:
+      operationId: getSkillFiles
+      summary: SKILL.md and the package file tree (DISC-007)
+      description: |
+        Advanced view of the latest version. Same scope rules as
+        GET /api/skills/{id}, so it needs no authentication for catalog content.
+        Scripts are marked with the same rule the import scan used, and the
+        SKILL.md embedded-code disclosure is repeated here because the file tree
+        is exactly what cannot show code living inside the document (SKILL-003).
+        Package files other than SKILL.md are listed with their metadata; an
+        endpoint serving their content is later DISC-007 work.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: SKILL.md text and the file tree of the latest version.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillFiles"
+        "404":
+          description: Skill not visible to the caller, or it has no saved version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: The stored package could not be read.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/search:
     get:
       operationId: searchSkills
@@ -632,6 +704,256 @@ components:
             to be labelled, so the UI can mark it as such. `template` reasons are
             assembled from the query/document lexical overlap, or state plainly
             that the hit came from semantic similarity with no shared keywords.
+    Labelled:
+      description: |
+        An enum value together with the copy shown for it. The label and note
+        live server-side so that every surface explains a trust state the same
+        way, and so the wording stays factual about what was checked (NFR-001).
+      type: object
+      required: [value, label, note]
+      properties:
+        value: { type: string }
+        label: { type: string }
+        note: { type: string }
+    SkillSource:
+      description: |
+        Import provenance (DISC-003). Fields the import never recorded are absent
+        rather than filled in with a plausible value.
+      type: object
+      required: [type, trust]
+      properties:
+        type:
+          type: string
+          enum: [git, upload]
+        url:
+          type: string
+          description: Source URL for a git import.
+        source_version:
+          type: string
+          description: Commit SHA, tag, or branch, when the fetch resolved one.
+        fetched_at:
+          type: string
+          format: date-time
+        content_hash:
+          type: string
+          description: Hash of the package as fetched.
+        trust:
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+          description: |
+            unknown | traceable | manually_confirmed. `traceable` requires a git
+            import that recorded a URL; an upload has no verifiable origin.
+            `manually_confirmed` needs a reviewer and has no store yet, so this
+            endpoint never returns it.
+    SkillLicense:
+      description: |
+        ADR-021 two axes. The expression alone cannot distinguish "the author
+        declared MIT in frontmatter" from "the monorepo root had an MIT file",
+        and DISC-003 forbids presenting the second as the first.
+      type: object
+      required: [status]
+      properties:
+        expression:
+          type: string
+          description: SPDX id. Absent means unknown, which must never be shown as permissive.
+        source:
+          type: string
+          enum: [manifest, package-license-file, repo-license-file]
+          description: |
+            Provenance tier, strongest first. Absent on versions imported before
+            ADR-021, whose tier was never recorded and must not be invented.
+        source_note:
+          type: string
+          description: What that tier does and does not claim about this package.
+        status:
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+          description: |
+            unknown | declared. `confirmed` requires a reviewer's check and
+            nothing records one, so it is never returned here.
+    SkillRisk:
+      description: |
+        Static scan of the stored package, recomputed on read. Nothing in the
+        package is executed (iron rule 1) and there is deliberately no single
+        "safe" verdict (NFR-001).
+      type: object
+      required: [scan_status, counts, highlights, info_counts, note]
+      properties:
+        scan_status:
+          type: string
+          enum: [scanned, unavailable]
+          description: |
+            `unavailable` means the stored package could not be read. It is
+            reported as unknown, never as a clean scan (DISC-004
+            不得自行推定為通過).
+        counts:
+          type: object
+          required: [errors, warnings, infos]
+          properties:
+            errors: { type: integer }
+            warnings: { type: integer }
+            infos: { type: integer }
+        highlights:
+          type: array
+          items:
+            $ref: "#/components/schemas/Finding"
+          description: Every error- and warning-level finding, verbatim.
+        info_counts:
+          type: object
+          additionalProperties: { type: integer }
+          description: |
+            Info-level disclosures folded to a count per finding code. One seed
+            package produced 321 URL findings; a list nobody reads hides the
+            findings that matter.
+        has_scripts: { type: boolean }
+        has_embedded_script:
+          type: boolean
+          description: |
+            Runnable code inside SKILL.md itself (SKILL-003). Separate from
+            has_scripts because the package file list cannot show it.
+        has_external_urls: { type: boolean }
+        has_possible_secrets: { type: boolean }
+        has_binaries: { type: boolean }
+        note: { type: string }
+    SkillCompatibility:
+      description: |
+        The three DISC-008 axes, kept apart. Only spec validation has an answer
+        before M2; the other two say `unverified` rather than being omitted,
+        because a missing field reads as "fine" and an explicit 未驗證 does not.
+      type: object
+      required: [spec_validation, capability, runtime, note]
+      properties:
+        spec_validation:
+          type: string
+          enum: [passed, failed, unverified]
+          description: |
+            Format and static validation only. Passing is never a claim that the
+            skill is safe to run or effective (SKILL-002).
+        capability:
+          type: string
+          enum: [unverified, passed, failed]
+        runtime:
+          type: string
+          enum: [unverified, passed, failed]
+        note: { type: string }
+    SkillEnrichment:
+      description: |
+        Index-time model output (ADR-013 §1), labelled as model-written so a
+        reader can always tell it from the author's own text.
+      type: object
+      required: [status, note]
+      properties:
+        status:
+          type: string
+          enum: [pending, enriched]
+        summary:
+          type: string
+          description: Plain-language summary written by the model.
+        task_examples:
+          type: array
+          items: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        model: { type: string }
+        prompt_version: { type: string }
+        note: { type: string }
+    SkillDetail:
+      type: object
+      required: [skill_id, name, summary, scope, tier, enrichment, license, derivation, risk, compatibility]
+      properties:
+        skill_id: { type: string, format: uuid }
+        name: { type: string }
+        summary:
+          type: string
+          description: The package's own frontmatter description, never the model's rewrite.
+        scope:
+          type: string
+          enum: [catalog, private]
+          description: Which read answered — the public catalog, or the caller's own workspace.
+        tier:
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+          description: |
+            curated | indexed | external. Always `indexed` today: curation is a
+            recorded human review (PDM-002) and CONTENT-003's promotion workflow
+            is what would record one. Catalog membership is not that review, and
+            labelling it 精選 would be the endorsement PDM-002 warns against.
+        enrichment:
+          $ref: "#/components/schemas/SkillEnrichment"
+        version:
+          type: object
+          description: The latest version. Absent for a skill with no saved content yet.
+          required: [version_id, version_number, content_hash, created_at]
+          properties:
+            version_id: { type: string, format: uuid }
+            version_number: { type: integer }
+            content_hash: { type: string }
+            created_at: { type: string, format: date-time }
+        source:
+          $ref: "#/components/schemas/SkillSource"
+        license:
+          $ref: "#/components/schemas/SkillLicense"
+        derivation:
+          type: object
+          description: |
+            Fork lineage (DISC-003, WS-001). A fork resolves to both the parent
+            skill and the parent *version* it diverged from: versions are
+            immutable, so the parent's current version can have moved on.
+          required: [is_fork, label, note]
+          properties:
+            is_fork: { type: boolean }
+            forked_from_skill_id: { type: string, format: uuid }
+            forked_from_version_id: { type: string, format: uuid }
+            label: { type: string }
+            note: { type: string }
+        allowed_tools:
+          type: array
+          items: { type: string }
+          description: The manifest's allowed-tools, as declared by the package.
+        risk:
+          $ref: "#/components/schemas/SkillRisk"
+        compatibility:
+          $ref: "#/components/schemas/SkillCompatibility"
+    SkillFiles:
+      type: object
+      required: [skill_id, version_id, version_number, skill_md, skill_md_truncated, tree, note]
+      properties:
+        skill_id: { type: string, format: uuid }
+        version_id: { type: string, format: uuid }
+        version_number: { type: integer }
+        skill_md:
+          type: string
+          description: Full SKILL.md text of that version, capped at 1 MiB.
+        skill_md_truncated:
+          type: boolean
+        tree:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillFileEntry"
+          description: |
+            Every file in the package, sorted by path. Directories are omitted:
+            the paths carry the structure.
+        embedded_script_note:
+          type: string
+          description: |
+            The SKILL-003 disclosure, repeated on the view where its absence
+            would mislead: this tree cannot show code that lives inside SKILL.md.
+        note: { type: string }
+    SkillFileEntry:
+      type: object
+      required: [path, size, is_script]
+      properties:
+        path: { type: string }
+        size:
+          type: integer
+          description: Uncompressed size in bytes.
+        is_script:
+          type: boolean
+          description: |
+            Marked with the same extension rule the import scan used, so the tree
+            and the risk block never disagree about what counts as a script
+            (DISC-003 Script 必須有明確標示).
     SearchHit:
       type: object
       required: [skill_id, name, summary, rank]

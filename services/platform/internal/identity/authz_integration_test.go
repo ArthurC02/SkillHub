@@ -107,6 +107,9 @@ func requireDB(t *testing.T) *pgxpool.Pool {
 type api struct {
 	*httptest.Server
 	auth *identity.Handler
+	// packages is the object store behind the detail and file views; a test
+	// seeds a real zip into it under the version's package_object_key.
+	packages packageStore
 }
 
 func newAPI(t *testing.T, pool *pgxpool.Pool) *api {
@@ -125,7 +128,11 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 		DevLogin: true,
 	}
 	reg := &registry.Handler{Svc: &registry.Service{Pool: pool}, Identity: auth.Service}
-	search := &catalog.Handler{Pool: pool, Identity: auth.Service}
+	// packageStore is the per-test object store: empty unless a test seeds a
+	// package into it, which is also the "stored package unreadable" path the
+	// detail view has to survive without claiming a clean scan.
+	packages := packageStore{}
+	search := &catalog.Handler{Pool: pool, Identity: auth.Service, Store: packages}
 	if llmBaseURL != "" {
 		search.LLMClient = &llmclient.Client{BaseURL: llmBaseURL}
 	}
@@ -133,6 +140,8 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	mux := http.NewServeMux()
 	auth.Mount(mux)
 	mux.HandleFunc("GET /api/skills/search", search.PublicSearch)
+	mux.HandleFunc("GET /api/skills/{id}", auth.OptionalSession(search.SkillDetail))
+	mux.HandleFunc("GET /api/skills/{id}/files", auth.OptionalSession(search.SkillFiles))
 	mux.HandleFunc("GET /skills/search", auth.RequireSession(search.Search))
 	mux.HandleFunc("GET /skills", auth.RequireSession(reg.List))
 	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(reg.Fork))
@@ -141,7 +150,7 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return &api{Server: srv, auth: auth}
+	return &api{Server: srv, auth: auth, packages: packages}
 }
 
 // client is one logged-in browser: its jar carries exactly one user's session.

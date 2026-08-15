@@ -544,6 +544,17 @@ var (
 	}
 )
 
+// IsScriptPath reports whether path is one of the script types scanTree
+// discloses. Exported so the DISC-003 file-tree view marks exactly the files the
+// scan called scripts: a second extension list in the presentation layer would
+// eventually disagree with this one, and the tree is where a user decides
+// whether to trust the package.
+func IsScriptPath(path string) bool {
+	lower := strings.ToLower(path)
+	i := strings.LastIndex(lower, ".")
+	return i >= 0 && scriptExts[lower[i:]]
+}
+
 // scanTree walks every file: discloses scripts, executables, dependency
 // manifests, and external URLs (info), and blocks on likely secrets (error).
 func (r *Report) scanTree(fsys fs.FS) {
