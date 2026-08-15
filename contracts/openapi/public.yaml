@@ -789,14 +789,17 @@ components:
             lower recall and must not be presented as "nothing matches".
         degraded_reason:
           type: string
-          description: Why the vector leg was skipped. Absent when degraded is false.
+          description: |
+            Why the vector leg was skipped. Absent when degraded is false. Every
+            result on a degraded answer carries a null `rank`: the page is
+            ordered by lexical score, which is not a similarity.
         partial_index:
           type: boolean
           description: |
             True when at least one result on this page has no embedding yet
             (enrichment_status 'pending'): it reached the page through the
-            lexical leg, the distance cut-off could not judge it, and it reports
-            rank 0 at the bottom of the list.
+            lexical leg, the distance cut-off could not judge it, and it sits at
+            the bottom of the list with a null `rank`.
 
             Separate from `degraded` on purpose. `degraded` is a transient
             outage of the query-side embedding call; `partial_index` is index
@@ -819,9 +822,48 @@ components:
             Copy to show with a no-results answer, prompting the user to add the
             task, the input they have and the output they want (DISC-001).
             Absent when there are results.
+    SearchResultRisk:
+      description: |
+        Compact risk hint for a result row (DISC-002 風險提示). Unlike
+        `SkillRisk` on the detail view this is read from the search projection,
+        not from a fresh scan of the package, so it carries counts and flags but
+        no verbatim findings — open the skill for those. There is deliberately
+        no "safe" level (NFR-001).
+      type: object
+      required: [scan_status, level, warnings, note]
+      properties:
+        scan_status:
+          type: string
+          enum: [scanned, unavailable]
+          description: |
+            `unavailable` means the projection holds no scan for this row (it
+            predates the facet columns, or was rebuilt by the SQL-only reindex
+            phase). Reported as unknown, never as a clean scan (DISC-004
+            不得自行推定為通過); every flag below is then absent.
+        level:
+          type: string
+          enum: [none, disclosed, warning]
+          description: |
+            Highest severity the scan recorded. `warning` = at least one
+            warning-level finding. `disclosed` = no warnings, but the package
+            declares something the reader should know about (scripts, external
+            URLs, binaries, dependency manifests). `none` = neither. Error-level
+            findings never appear: they block the import, so nothing carrying one
+            is in the index at all.
+        warnings:
+          type: integer
+          description: Warning-level finding count.
+        has_scripts: { type: boolean }
+        has_embedded_script: { type: boolean }
+        has_external_urls: { type: boolean }
+        has_possible_secrets: { type: boolean }
+        has_binaries: { type: boolean }
+        has_dependency_manifest: { type: boolean }
+        note: { type: string }
     PublicSearchResult:
       type: object
-      required: [skill_id, name, summary, rank]
+      required:
+        [skill_id, name, summary, rank, tier, risk, dependencies, compatibility]
       properties:
         skill_id:
           type: string
@@ -835,12 +877,62 @@ components:
             has been enriched (ADR-013 §1, model-generated), otherwise the
             package's own frontmatter description.
         rank:
-          type: number
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
           description: |
             Cosine similarity to the query, 0..1, higher is better (DISC-002 —
-            never star count). Results are ordered by this. A skill matched only
-            lexically while its enrichment is still pending has no vector and
-            reports 0.
+            never star count). Results are ordered by it.
+
+            Null when this page was not ranked by similarity, and the ordering
+            is then something else entirely — see `rank_note`. Two cases reach
+            it: the whole answer came from the lexical leg (`degraded`), or this
+            one row has no embedding yet (`partial_index`). The lexical score is
+            not returned in its place: `ts_rank_cd` is unbounded (a local answer
+            measured 1.4) and is not the same quantity as a cosine similarity,
+            so squeezing it into 0..1 would be false precision.
+        rank_note:
+          type: string
+          description: |
+            Why `rank` is null and what ordered the page instead. Present only
+            when `rank` is null.
+        tier:
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+          description: |
+            Collection tier (DISC-002 來源層級). Always `indexed` here for the
+            same reason as on the detail view: curation is a recorded human
+            review and nothing records one yet.
+        risk:
+          $ref: "#/components/schemas/SearchResultRisk"
+        dependencies:
+          type: array
+          items: { type: string }
+          description: |
+            Dependency tags from the index-time enrichment (DISC-002 依賴).
+            Model-extracted from what the package's own documentation states —
+            not a resolved dependency graph, and empty while enrichment is
+            pending.
+        compatibility:
+          allOf:
+            - $ref: "#/components/schemas/SkillCompatibility"
+          description: |
+            Same three axes as the detail view (DISC-002 Agent 相容狀態).
+            `spec_validation` is `passed` for any row with a saved version:
+            static validation is what admits a package to the index, so being
+            listed here is the evidence. It is `unverified` only for a skill
+            with no version yet. `capability` and `runtime` stay `unverified`
+            until sandbox runs exist (M2) — that is the 「尚未試跑」 state
+            DISC-002 requires to be explicit.
+        verified_at:
+          type: string
+          format: date-time
+          description: |
+            When the listed content was last validated (DISC-002
+            最近驗證時間): the creation time of the latest saved version, which
+            is the import that scanned it. Versions are immutable, so this
+            cannot drift from the content it describes. Absent for a skill with
+            no saved version.
         match_reason:
           type: string
           description: |
@@ -1020,14 +1112,52 @@ components:
           type: array
           items: { type: string }
         tags:
-          type: array
-          items: { type: string }
+          description: |
+            Input/output/tool/dependency tags, kept in their buckets. DISC-003
+            一般模式 asks for 輸入、輸出、依賴 as separate answers, and a flat
+            list cannot say which is which. Absent while enrichment is pending.
+          type: object
+          required: [inputs, outputs, tools, dependencies]
+          properties:
+            inputs:
+              type: array
+              items: { type: string }
+            outputs:
+              type: array
+              items: { type: string }
+            tools:
+              type: array
+              items: { type: string }
+            dependencies:
+              type: array
+              items: { type: string }
         model: { type: string }
         prompt_version: { type: string }
         note: { type: string }
+    SkillLimitation:
+      description: |
+        One stated limitation of the skill (DISC-003 一般模式「限制」), with
+        where it came from. The two sources answer different questions and are
+        never merged into one anonymous sentence.
+      type: object
+      required: [text, source]
+      properties:
+        text: { type: string }
+        source:
+          type: string
+          enum: [model, scan]
+          description: |
+            `model` — extracted by the index-time enrichment from what the
+            package's own documentation states about its limits (ADR-013 §1
+            whitelist: a factual restatement, never a safety or quality
+            judgement). `scan` — derived from the static package scan, e.g. the
+            package cites external URLs so it needs network access. ADR-013
+            requires the model-written half to be labelled as such.
     SkillDetail:
       type: object
-      required: [skill_id, name, summary, scope, tier, enrichment, license, derivation, risk, compatibility]
+      required:
+        [skill_id, name, summary, scope, tier, enrichment, limitations, license,
+         derivation, risk, compatibility]
       properties:
         skill_id: { type: string, format: uuid }
         name: { type: string }
@@ -1074,6 +1204,16 @@ components:
             forked_from_version_id: { type: string, format: uuid }
             label: { type: string }
             note: { type: string }
+        limitations:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillLimitation"
+          description: |
+            What the skill does not do or needs in order to work (DISC-003
+            一般模式「限制」). Assembled from both sources — the enrichment's
+            reading of the document and the static scan of the package — each
+            labelled. An empty list means neither source found anything to
+            state, never that the skill is unconstrained.
         allowed_tools:
           type: array
           items: { type: string }
@@ -1122,8 +1262,14 @@ components:
             and the risk block never disagree about what counts as a script
             (DISC-003 Script 必須有明確標示).
     SearchHit:
+      description: |
+        One workspace-scoped lexical hit, best first. No score is returned: this
+        endpoint has only the FTS leg, `ts_rank_cd` is unbounded and is not a
+        similarity, and the ordering it produces is already in the array order.
+        Publishing the raw number as a 0..1 rank would be false precision — see
+        PublicSearchResult.rank.
       type: object
-      required: [skill_id, name, summary, rank]
+      required: [skill_id, name, summary]
       properties:
         skill_id:
           type: string
@@ -1132,8 +1278,6 @@ components:
           type: string
         summary:
           type: string
-        rank:
-          type: number
     FileDiff:
       type: object
       required: [path, status]

@@ -217,7 +217,7 @@ components:
       description: |
         ADR-013 enrichment whitelist only. No trust, risk, safety or quality
         field may be added here.
-      required: [summary, task_examples, tags, model, prompt_version]
+      required: [summary, task_examples, tags, limitations, model, prompt_version]
       properties:
         summary:
           type: string
@@ -228,6 +228,18 @@ components:
             $ref: "#/components/schemas/TaskExample"
         tags:
           $ref: "#/components/schemas/SkillTags"
+        limitations:
+          type: array
+          description: |
+            What the document itself states the Skill does not do, or requires
+            in order to work (DISC-003 一般模式「限制」). Restatement only: it
+            stays inside the ADR-013 whitelist because it reports what the
+            content says, exactly like `summary` does. A limitation the model
+            infers, and any judgement of risk, safety or quality, is out of
+            scope and belongs to the static scan or to a human reviewer. Empty
+            when the document states none.
+          items:
+            type: string
         model:
           type: string
           description: Model that generated the fields above.

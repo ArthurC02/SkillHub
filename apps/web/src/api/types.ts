@@ -46,19 +46,51 @@ export interface Finding {
 
 export type MatchReasonSource = "model" | "template";
 
+/**
+ * `SearchResultRisk`: compact risk hint for a result row (DISC-002 風險提示).
+ * Read from the search projection rather than a fresh scan, so there are no
+ * verbatim findings here — the detail view has those. No "safe" level exists
+ * (NFR-001).
+ */
+export interface SearchResultRisk {
+  /** `unavailable` = the projection holds no scan; never a clean scan. */
+  scan_status: "scanned" | "unavailable";
+  /** Highest severity recorded. Errors block import, so they never appear. */
+  level: "none" | "disclosed" | "warning";
+  warnings: number;
+  has_scripts?: boolean;
+  has_embedded_script?: boolean;
+  has_external_urls?: boolean;
+  has_possible_secrets?: boolean;
+  has_binaries?: boolean;
+  has_dependency_manifest?: boolean;
+  note: string;
+}
+
 export interface PublicSearchResult {
   skill_id: string;
   name: string;
   summary: string;
   /**
-   * Cosine similarity 0..1 per the schema, higher is better; 0 = a lexical-only
-   * hit the cut-off never judged.
+   * Cosine similarity 0..1, higher is better; the array order follows it.
    *
-   * Observed divergence: on the degraded (FTS-only) path the server returns the
-   * lexical score instead, which is unbounded — a live local answer came back
-   * with 1.4. Read together with `degraded` before showing it as a similarity.
+   * Null when the page was not ranked by similarity — the whole answer came
+   * from the lexical leg (`degraded`), or this row has no embedding yet
+   * (`partial_index`). The unbounded lexical score is not returned in its
+   * place; `rank_note` says what ordered the page instead.
    */
-  rank: number;
+  rank: number | null;
+  /** Why `rank` is null. Present only when it is. */
+  rank_note?: string;
+  /** 來源層級. Always `indexed` today (PDM-002). */
+  tier: Labelled;
+  risk: SearchResultRisk;
+  /** Dependency tags from enrichment; empty while it is pending. */
+  dependencies: string[];
+  /** Same three axes as the detail view; capability/runtime are 尚未試跑. */
+  compatibility: SkillCompatibility;
+  /** Latest version's creation time — the import that scanned it. */
+  verified_at?: string;
   match_reason?: string;
   /** ADR-013: model-generated copy must be labelled as such in the UI. */
   match_reason_source?: MatchReasonSource;
@@ -145,15 +177,37 @@ export interface SkillCompatibility {
   note: string;
 }
 
+/**
+ * Input/output/tool/dependency tags in their buckets. DISC-003 一般模式 asks
+ * for 輸入、輸出、依賴 separately and a flat list cannot say which is which.
+ */
+export interface SkillTags {
+  inputs: string[];
+  outputs: string[];
+  tools: string[];
+  dependencies: string[];
+}
+
 /** Index-time model output (ADR-013 §1), labelled as model-written. */
 export interface SkillEnrichment {
   status: "pending" | "enriched";
   summary?: string;
   task_examples?: string[];
-  tags?: string[];
+  tags?: SkillTags;
   model?: string;
   prompt_version?: string;
   note: string;
+}
+
+/**
+ * One stated limitation (DISC-003「限制」) with its provenance. `model` is the
+ * enrichment restating what the document says about its own limits; `scan` is
+ * derived from the static package scan. ADR-013 requires the model half to be
+ * labelled, so the two are never merged into one anonymous sentence.
+ */
+export interface SkillLimitation {
+  text: string;
+  source: "model" | "scan";
 }
 
 /** The inline `version` object on SkillDetail. */
@@ -182,6 +236,11 @@ export interface SkillDetail {
   /** curated | indexed | external. Always `indexed` today (PDM-002). */
   tier: Labelled;
   enrichment: SkillEnrichment;
+  /**
+   * 限制 (DISC-003), from both the enrichment and the scan, each labelled.
+   * Empty means neither source stated one — never that the skill has no limits.
+   */
+  limitations: SkillLimitation[];
   /** Absent for a skill with no saved content yet. */
   version?: SkillVersionSummary;
   source?: SkillSource;
