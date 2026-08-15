@@ -227,6 +227,59 @@ summary {
   overflow-x: auto;
 }
 
+.compare-bar {
+  margin: 12px 0;
+}
+
+.compare-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  margin-right: 12px;
+}
+
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.compare-table th,
+.compare-table td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.compare-table th[scope="row"] {
+  width: 220px;
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+/* The difference highlight: a tinted row plus the 有差異 badge, so it does not
+   rely on colour alone. */
+.compare-differs td,
+.compare-differs th {
+  background: var(--accent-bg);
+}
+
+.badge-differs {
+  margin-left: 8px;
+  border-color: var(--accent-border);
+}
+
+.compare-unknown {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.ranking-explainer li {
+  margin-bottom: 8px;
+}
+
 .file-script .script-tag {
   margin-left: 8px;
   font-size: 12px;

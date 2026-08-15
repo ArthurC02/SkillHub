@@ -6,7 +6,7 @@ import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
 import { RiskIndicator } from "../components/RiskIndicator";
-import type { SkillEnrichment, SkillSource } from "../api/types";
+import type { SkillEnrichment, SkillSource, SkillTags } from "../api/types";
 
 /**
  * DISC-006/008: general-mode skill detail, reading GET /api/skills/{id}.
@@ -127,6 +127,13 @@ export function SkillDetail() {
   );
 }
 
+const TAG_BUCKETS: Array<{ key: keyof SkillTags; label: string }> = [
+  { key: "inputs", label: "輸入" },
+  { key: "outputs", label: "輸出" },
+  { key: "tools", label: "會用到的工具" },
+  { key: "dependencies", label: "依賴" },
+];
+
 /**
  * ADR-013: index-time model output, always labelled as model-written so a
  * reader can tell it from the author's own text above.
@@ -162,15 +169,27 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
         </>
       )}
 
-      {enrichment.tags && enrichment.tags.length > 0 && (
-        <ul className="tag-list">
-          {enrichment.tags.map((tag) => (
-            <li key={tag} className="badge">
-              {tag}
-            </li>
-          ))}
-        </ul>
-      )}
+      {/*
+        DISC-003 asks for 輸入、輸出、依賴 as separate facts, and the contract
+        keeps them in separate buckets, so they are not flattened back into one
+        anonymous tag cloud here. An empty bucket is dropped rather than shown
+        as an empty list — the note below already says the enrichment's scope.
+      */}
+      {enrichment.tags &&
+        TAG_BUCKETS.map(({ key, label }) =>
+          enrichment.tags![key].length > 0 ? (
+            <p key={key}>
+              {label}：
+              <span className="tag-list">
+                {enrichment.tags![key].map((tag) => (
+                  <span key={tag} className="badge">
+                    {tag}
+                  </span>
+                ))}
+              </span>
+            </p>
+          ) : null,
+        )}
 
       <p className="note">{enrichment.note}</p>
       {(enrichment.model || enrichment.prompt_version) && (

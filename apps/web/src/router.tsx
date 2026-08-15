@@ -1,4 +1,5 @@
 import { Link, Outlet, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import { Compare } from "./pages/Compare";
 import { Home } from "./pages/Home";
 import { SkillDetail } from "./pages/SkillDetail";
 import { SkillFiles } from "./pages/SkillFiles";
@@ -38,7 +39,23 @@ const skillFilesRoute = createRoute({
   component: SkillFiles,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, skillDetailRoute, skillFilesRoute]);
+// DISC-009: the selection lives in the URL so a comparison is linkable and
+// survives a reload. Anything past MAX_COMPARE ids is trimmed by the page.
+const compareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/compare",
+  component: Compare,
+  validateSearch: (search: Record<string, unknown>) => ({
+    ids: typeof search.ids === "string" ? search.ids : "",
+  }),
+});
+
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  compareRoute,
+  skillDetailRoute,
+  skillFilesRoute,
+]);
 
 export const router = createRouter({ routeTree });
 
