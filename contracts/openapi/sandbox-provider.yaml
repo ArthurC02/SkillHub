@@ -17,20 +17,389 @@ info:
     - Nothing here is reachable by a browser. public.yaml is the Web surface;
       this is the control plane to execution plane surface.
 
-    `paths` is deliberately empty. RUN-001/002 fix the *data* contract; the
-    lifecycle endpoints that carry it (provision / prepare / execute /
-    streamEvents / cancel / collectArtifacts / destroy - ADR-004) land with
-    SBX-001 when there is a provider to serve them. Publishing endpoint shapes
-    before an implementation exists would be guessing, and the schemas below are
-    what RUN-003's provider adapter and RUN-009's contract test suite need.
+    Interaction model: the provider serves this API and the Go control plane is
+    its only client, by polling. There is no provider-to-platform callback and
+    no provider access to the platform's database (iron rule 2) - the execution
+    plane answers questions, it never reaches into the control plane. A worker
+    dispatches with POST /runs, follows the attempt with
+    GET /runs/{provider_run_id}, and tears it down with DELETE.
+
+    ADR-004's lifecycle verbs are not one endpoint each. provision, prepare and
+    execute are the provider's own business once a run exists and are visible to
+    the caller only as `state`; collectArtifacts happens before the attempt goes
+    terminal and its output is the artifact manifest inside RunResult.
+    streamEvents is deliberately absent: trace events travel the Outbox path of
+    contracts/events/trace-event.schema.json, not this API.
+
+    Idempotency: (run_id, attempt) from the request body is the key of a created
+    run. Re-sending that pair returns the run that already exists and starts no
+    second sandbox, which is what makes a dispatch safe to retry when the worker
+    cannot tell whether the first one arrived (ADR-004 "失敗與重試"). cancel and
+    destroy are idempotent for the same reason (iron rule 9).
+
+    States: `state` is the *provider's* lifecycle, not a mirror of the platform's
+    run status machine. The platform owns its states and maps into them from
+    here (iron rule 5); a provider answering `evaluating` or `queued` would be
+    claiming authority it does not have. See ProviderRunState.
 
     Numeric limits come from PDM-005 5.2 and are repeated here as schema
     defaults so a provider can validate a request without reading a plan
     document. Changing one means changing both.
-paths: {}
+servers:
+  - url: http://sandbox:9000
+
+security:
+  - providerToken: []
+
+paths:
+  /capability:
+    get:
+      operationId: getProviderCapability
+      summary: What this provider can run (RUN-002)
+      description: |
+        Read before dispatch. RUN-005 matches a RunRequest against this answer
+        and refuses incompatible work before queueing, with a reason a user can
+        read (ADR-004). `availability` is a current reading rather than a static
+        manifest, so a scheduler re-reads it instead of caching it forever.
+      responses:
+        "200":
+          description: The provider's declared capability.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderCapability"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /runs:
+    post:
+      operationId: createProviderRun
+      summary: Dispatch one execution attempt (RUN-001, RUN-005)
+      description: |
+        Creates the sandbox for one attempt and answers as soon as it is
+        accepted. Execution is asynchronous; progress is read by polling
+        GET /runs/{provider_run_id}.
+
+        Idempotent on (run_id, attempt) from the body. The first call creates and
+        answers 201; a repeat of the same pair answers 200 with the run that
+        already exists, in whatever state it has reached, and starts nothing. A
+        repeat carrying a *different* RunRequest for that pair answers 409 rather
+        than silently serving the first body's run - that combination is a caller
+        bug and hiding it would make a superseded attempt look dispatched.
+
+        `idempotency_key`, when the platform sends one, is its own stable label
+        for the same pair. It is not a second, independent key: a provider must
+        not create two runs for one (run_id, attempt) because the labels differ.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunRequest"
+      responses:
+        "201":
+          description: Sandbox created for this attempt.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderRun"
+        "200":
+          description: |
+            This (run_id, attempt) was already dispatched; the existing run is
+            returned unchanged and nothing was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderRun"
+        "400":
+          description: Malformed body.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: |
+            The same (run_id, attempt) was dispatched before with different
+            content.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: |
+            Refused before anything was created: the request asks for capability
+            this provider does not have, or a limit it cannot enforce. Answered
+            as a classified RunError so the platform can tell a capability
+            mismatch from a transient failure without parsing message strings
+            (ADR-004). No sandbox exists, so there is nothing to destroy.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunError" }
+        "429":
+          description: |
+            No free run slot right now. Distinct from 422: the request is
+            acceptable and retrying later or choosing another provider is the
+            correct response, whereas a 422 will fail identically forever.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    get:
+      operationId: listProviderRuns
+      summary: List the runs still alive on this provider (RUN-007)
+      description: |
+        The comparison side of orphan scanning: anything listed here that the
+        platform holds no live attempt for is a leaked sandbox and is destroyed.
+
+        Only live runs are served. Finished runs are the platform's history and a
+        provider's recollection of them is not a source of truth (iron rule 10).
+        `result` is omitted from the entries - read a single run to get it.
+      parameters:
+        - name: active
+          in: query
+          required: false
+          schema: { type: boolean, default: true }
+          description: |
+            Only `true` is served, and it is the default. `false` answers 400
+            rather than an empty list, because an empty list would read as "no
+            finished runs" from an endpoint that never had any to give.
+      responses:
+        "200":
+          description: Every run this provider currently holds resources for.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderRunList"
+        "400":
+          description: '`active=false` requested.'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /runs/{provider_run_id}:
+    parameters:
+      - name: provider_run_id
+        in: path
+        required: true
+        schema: { type: string }
+        description: |
+          The provider's ephemeral handle, as returned by POST /runs. It
+          addresses a run on this provider only; it is never a platform key and
+          never part of a platform URL (iron rule 10) - the public API's
+          GET /runs/{id} takes the permanent platform run_id instead.
+    get:
+      operationId: getProviderRun
+      summary: Current provider-side state of one attempt (RUN-002)
+      description: |
+        The polling read. `state` is the provider's own lifecycle (see
+        ProviderRunState) and the platform maps it into its own status machine;
+        `result` is present exactly when `state` is terminal.
+      responses:
+        "200":
+          description: The run as this provider currently sees it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderRun"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/RunNotFound"
+    delete:
+      operationId: destroyProviderRun
+      summary: Release everything this attempt holds (RUN-007, SBX-009)
+      description: |
+        Idempotent, and deliberately without a 404: a handle the provider has no
+        record of is already in the state the caller asked for, so it answers 204
+        like any other successful destroy. ADR-004 requires destroy to be safely
+        repeatable (iron rule 9), and a cleanup path that fails on the second
+        call cannot be retried by a worker that crashed mid-cleanup.
+
+        Destroying discards the run's state, `result` included. A caller that
+        still needs the result reads it first; the platform stores it, the
+        provider does not keep one.
+      responses:
+        "204":
+          description: |
+            Nothing is held for this handle any more. Also the answer when
+            nothing was held to begin with.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: |
+            Resources could not be released and are still held. The platform
+            records the cleanup failure separately from the run outcome
+            (Run.cleanup_status) and retries; repeating this call is safe.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /runs/{provider_run_id}/cancel:
+    parameters:
+      - name: provider_run_id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: cancelProviderRun
+      summary: Ask the provider to stop an attempt (RUN-006)
+      description: |
+        Records the intent and answers 202; stopping is not instant. The run
+        stays readable and reaches `cancelled` when the workload is actually
+        down, so the caller polls for the outcome rather than assuming it.
+
+        Idempotent, including on an attempt that has already reached a terminal
+        state - that answers 202 with the run as it stands rather than 409. The
+        caller polls on an interval and the run can finish between the read and
+        the cancel; making that race an error would turn an ordinary timing
+        window into a failure the worker has to special-case.
+
+        Cancelling does not release resources. The caller still sends DELETE:
+        the result and the artifact manifest survive until it does.
+      responses:
+        "202":
+          description: Cancellation requested, or the attempt was already terminal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProviderRun"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/RunNotFound"
 
 components:
+  securitySchemes:
+    providerToken:
+      type: http
+      scheme: bearer
+      description: |
+        A static token configured on both sides at deployment. It authenticates
+        the control plane to the provider and nothing else: it carries no
+        workspace, no user and no run scope, so it can never widen what a request
+        may reach (iron rule 3 - scope is settled in the control plane before a
+        RunRequest is built).
+
+        Not to be confused with the per-run credentials inside a RunRequest.
+        ModelGatewayGrant and ObjectGrant are short-lived and minted per run
+        (ADR-017, SBX-005/006); this one is long-lived infrastructure
+        configuration and never travels into a sandbox.
+  responses:
+    Unauthorized:
+      description: Missing or invalid provider token.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RunNotFound:
+      description: |
+        No run with this handle. Either it never existed on this provider, or it
+        was destroyed - the provider keeps no record of destroyed runs, so the
+        two are the same answer here.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
   schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: |
+            Masked and safe to log (iron rule 11). Machine-readable failure
+            classification is RunError.class, not this string.
+
+    ProviderRunState:
+      type: string
+      enum: [creating, running, completed, failed, cancelled]
+      description: |
+        The provider's own lifecycle. It is *not* the platform's run status
+        (queued / provisioning / preparing / running / evaluating / ...): the
+        control plane owns that machine and maps into it from here (iron rule 5),
+        which is why `evaluating` has no value here at all - evaluation happens in
+        the control plane after this contract is done.
+
+        - `creating` - provisioning and preparing; the workload has not started.
+          Covers ADR-004's provision and prepare.
+        - `running` - the workload is executing.
+        - `completed` - the workload ran to its own end. Terminal. `result` says
+          whether that end was a success; a workload that ran correctly and
+          reported failure is `completed` here with RunResult.status `failed`.
+        - `failed` - the provider could not carry the attempt through: provision
+          failed, the sandbox died, or a limit was enforced against it. Terminal.
+          A wall-clock stop lands here with RunResult.status `timed_out`.
+        - `cancelled` - stopped because of POST /cancel. Terminal.
+
+        The last three are terminal and always carry a `result`. Cleanup is not a
+        state: it is DELETE, tracked separately by the platform, because "the run
+        failed" and "its sandbox was torn down" are two different facts (ADR-004).
+      $comment: |
+        Provider lifecycle only. Do not add platform status values here, and do
+        not assume a value maps 1:1 onto one platform status - the mapping is the
+        control plane's and may be many-to-one.
+
+    ProviderRun:
+      description: |
+        One attempt as this provider currently sees it: the ProviderRunRef
+        mapping plus where it has got to. The platform identifiers are echoed
+        back so a scan of GET /runs can be reconciled against the platform's own
+        attempts without the provider's handle ever becoming a key (iron rule 10).
+      allOf:
+        - $ref: "#/components/schemas/ProviderRunRef"
+        - type: object
+          required: [state, observed_at]
+          properties:
+            state:
+              $ref: "#/components/schemas/ProviderRunState"
+            state_reason:
+              type: string
+              description: Why it is in this state. Masked, human-readable (iron rule 11).
+            cancel_requested_at:
+              type: string
+              format: date-time
+              description: |
+                When a cancel was accepted. Intent, not outcome - the state is
+                still `running` until the workload is actually down.
+            created_at: { type: string, format: date-time }
+            started_at:
+              type: string
+              format: date-time
+              description: When the workload began, not when the sandbox was created.
+            finished_at: { type: string, format: date-time }
+            observed_at:
+              type: string
+              format: date-time
+              description: |
+                Provider clock reading for this answer. Polling means every read
+                is already stale by the time it arrives; this is what lets the
+                caller order two answers rather than guess.
+            result:
+              allOf:
+                - $ref: "#/components/schemas/RunResult"
+              description: |
+                Present exactly when `state` is terminal, and absent otherwise.
+                Omitted from GET /runs listings even for terminal runs - fetch
+                the single run to read it.
+
+    ProviderRunList:
+      type: object
+      description: |
+        Live runs on this provider (RUN-007). Not paginated: the list is bounded
+        by ProviderCapability.availability.concurrent_run_slots, so there is no
+        page for a page token to point at.
+      required: [provider, runs, observed_at]
+      properties:
+        provider: { type: string }
+        runs:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProviderRun"
+        observed_at:
+          type: string
+          format: date-time
+          description: |
+            When this snapshot was taken. An orphan scan compares it against the
+            platform's own state, and a run created after this instant must not
+            be judged leaked because it was missing from an older list.
+
     RunRequest:
       type: object
       description: |
@@ -124,7 +493,7 @@ components:
         run_id:
           $ref: "#/components/schemas/RunID"
         run_attempt_id: { type: string, format: uuid }
-        provider: { type: string, description: Provider name, e.g. self_hosted. }
+        provider: { type: string, description: "Provider name, e.g. self_hosted." }
         provider_run_id:
           type: string
           description: |
@@ -302,7 +671,7 @@ components:
         max_budget_usd:
           type: number
           description: Spend brake, budgeted at cold-cache prices (PDM-005 5.2a-5).
-        tpm_limit: { type: integer, description: Rate brake, independent of spend flush. }
+        tpm_limit: { type: integer, description: "Rate brake, independent of spend flush." }
         expires_at: { type: string, format: date-time }
 
     TracePolicy:
