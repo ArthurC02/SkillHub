@@ -60,10 +60,7 @@ func requirementsFor(run gen.Run) (Requirements, policySnapshot, error) {
 // — a provider whose endpoints all pass and that the scheduler still refuses is
 // not usable, and that gap is invisible from either side alone.
 func DefaultRequirements() Requirements {
-	return requirementsFromPolicy(policySnapshot{
-		ResourceLimits: DefaultResourceLimits(),
-		Egress:         EgressPolicy{Mode: "default_deny", Allow: []egressAllow{}},
-	})
+	return requirementsFromPolicy(defaultPolicy())
 }
 
 func requirementsFromPolicy(policy policySnapshot) Requirements {

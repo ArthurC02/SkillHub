@@ -7,6 +7,7 @@
 package identity_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -183,6 +184,50 @@ func TestPreflightSummaryReportsScriptsInThePackage(t *testing.T) {
 	}
 	if len(view.Summary.Scripts.Findings) == 0 {
 		t.Error("a package with a script disclosed no finding to look at")
+	}
+}
+
+// The summary is only worth confirming if it describes the policy the run is
+// actually held to. This reads back runs.policy_snapshot — the frozen copy the
+// scheduler matches providers against — and compares it with what the user was
+// shown, so a second definition of the default policy on either side fails here
+// rather than silently letting a stale screen keep passing the hash check.
+func TestPreflightShowsThePolicyTheRunIsActuallyHeldTo(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-preflight-policy")
+
+	_, shown := f.preflight(t)
+	created := f.start(t)
+
+	var raw []byte
+	if err := pool.QueryRow(context.Background(),
+		"SELECT policy_snapshot FROM runs WHERE id = $1", mustUUID(t, created.RunID),
+	).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	var frozen struct {
+		ResourceLimits run.ResourceLimits `json:"resource_limits"`
+		Egress         struct {
+			Mode  string           `json:"mode"`
+			Allow []map[string]any `json:"allow"`
+		} `json:"egress"`
+	}
+	if err := json.Unmarshal(raw, &frozen); err != nil {
+		t.Fatal(err)
+	}
+
+	if shown.Summary.ResourceLimits != frozen.ResourceLimits {
+		t.Errorf("the summary showed %+v but the run is held to %+v",
+			shown.Summary.ResourceLimits, frozen.ResourceLimits)
+	}
+	if shown.Summary.Network.Mode != frozen.Egress.Mode {
+		t.Errorf("the summary showed egress %q but the run is held to %q",
+			shown.Summary.Network.Mode, frozen.Egress.Mode)
+	}
+	if len(shown.Summary.Network.Allow) != len(frozen.Egress.Allow) {
+		t.Errorf("the summary showed %d permitted destinations but the run has %d",
+			len(shown.Summary.Network.Allow), len(frozen.Egress.Allow))
 	}
 }
 

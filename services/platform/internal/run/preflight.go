@@ -94,10 +94,23 @@ type ScriptSummary struct {
 	Findings []string `json:"findings"`
 }
 
-// NetworkSummary is the egress policy the sandbox will be held to.
+// NetworkSummary is the egress policy the sandbox will be held to. Allow is one
+// "purpose: url" line per permitted destination (see egressAllowLines).
 type NetworkSummary struct {
 	Mode  string   `json:"mode"`
 	Allow []string `json:"allow"`
+}
+
+// egressAllowLines renders the allow list as text a user can read, and that the
+// hash can depend on. `%v` on the struct was the earlier version: invisible while
+// the list is empty, and the moment SBX-005/006 mints a grant it would have put
+// `{model_gateway http://...}` on the screen and into the confirmed hash.
+func egressAllowLines(allow []egressAllow) []string {
+	lines := make([]string, 0, len(allow))
+	for _, a := range allow {
+		lines = append(lines, a.Purpose+": "+a.URL)
+	}
+	return lines
 }
 
 // ProviderSummary is who will run the workload and how strongly it is isolated.
@@ -169,13 +182,11 @@ func (s *Service) PermissionSummaryFor(
 		total += d.SizeBytes
 	}
 
-	policy := policySnapshot{ResourceLimits: DefaultResourceLimits(), Egress: EgressPolicy{
-		Mode: "default_deny", Allow: []egressAllow{},
-	}}
-	allow := make([]string, 0, len(policy.Egress.Allow))
-	for _, a := range policy.Egress.Allow {
-		allow = append(allow, fmt.Sprintf("%v", a))
-	}
+	// The same policy Create freezes onto the run and the scheduler matches
+	// against, read from its one definition. Rebuilding the literal here is what
+	// would let a user confirm a summary of yesterday's policy and still pass the
+	// hash check, which is the one failure this whole screen exists to prevent.
+	policy := defaultPolicy()
 
 	content := PermissionSummaryContent{
 		SkillVersionID:    uuidString(version.ID),
@@ -192,7 +203,7 @@ func (s *Service) PermissionSummaryFor(
 		// list shown as empty is the honest disclosure; omitting the row would let
 		// a user assume the question was never asked.
 		MCPServers:      []string{},
-		Network:         NetworkSummary{Mode: policy.Egress.Mode, Allow: allow},
+		Network:         NetworkSummary{Mode: policy.Egress.Mode, Allow: egressAllowLines(policy.Egress.Allow)},
 		InjectedSecrets: injectedSecretNames,
 		Provider:        s.providerSummary(ctx, policy),
 		ResourceLimits:  policy.ResourceLimits,

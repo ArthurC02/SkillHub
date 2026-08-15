@@ -159,17 +159,25 @@ type policySnapshot struct {
 	Egress         EgressPolicy   `json:"egress"`
 }
 
-// defaultPolicySnapshot is the policy a new run gets. Egress is default-deny with
-// an empty allow list: the three permitted destinations of PDM-005 5.2 are
-// URL-bearing grants, and minting them is SBX-005/006. An empty list is the safe
-// end of that gap - no egress at all - rather than a placeholder URL that would
-// look like an authorization somebody already granted.
-func defaultPolicySnapshot() ([]byte, error) {
-	return json.Marshal(policySnapshot{
+// defaultPolicy is the policy a new run gets, and the ONLY place it is written.
+// Egress is default-deny with an empty allow list: the three permitted
+// destinations of PDM-005 5.2 are URL-bearing grants, and minting them is
+// SBX-005/006. An empty list is the safe end of that gap - no egress at all -
+// rather than a placeholder URL that would look like an authorization somebody
+// already granted.
+//
+// Every reader goes through here: Create freezes it onto the run, the scheduler
+// matches providers against it, and the pre-run summary shows it. A second copy
+// would let the screen the user confirms drift away from what the run is
+// actually held to, and the hash would keep saying they agreed (02:TEST-005).
+func defaultPolicy() policySnapshot {
+	return policySnapshot{
 		ResourceLimits: DefaultResourceLimits(),
 		Egress:         EgressPolicy{Mode: "default_deny", Allow: []egressAllow{}},
-	})
+	}
 }
+
+func defaultPolicySnapshot() ([]byte, error) { return json.Marshal(defaultPolicy()) }
 
 // CreateParams is one run request. The workspace comes from the session, never
 // from the request body (iron rule 3).
