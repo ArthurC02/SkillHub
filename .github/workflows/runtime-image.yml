@@ -1,0 +1,101 @@
+# Runtime Image review pipeline (SBX-002 / SEC-002 I-02~I-04).
+#
+# "經審核的 Runtime Image" is three gates, not a build: pinned by digest (I-02),
+# an SBOM kept alongside the image (I-03), and a vulnerability scan that actually
+# ran (I-04). This workflow is the automation of gate D §5.4 — it does not block a
+# Run, it blocks the image from being considered publishable.
+#
+# Own workflow rather than a job in ci.yml so the path filter is the trigger:
+# rebuilding a Debian base and pulling a fresh vulnerability database on every
+# commit to the repo would be minutes of runner time to re-learn nothing.
+name: Runtime Image
+
+on:
+  pull_request:
+    paths:
+      - 'infra/images/**'
+      - '.github/workflows/runtime-image.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/images/**'
+      - '.github/workflows/runtime-image.yml'
+
+concurrency:
+  group: runtime-image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: skillhub/runtime-agent-sdk:ci
+  # Pinned like sqlc and golangci-lint elsewhere: an unpinned scanner turns an
+  # upstream release into a red build on a tree nobody touched. The vulnerability
+  # database is deliberately NOT pinned — grype pulls the current one, which is
+  # the whole point of re-running the scan (I-04's "in date" requirement).
+  SYFT: anchore/syft:v1.51.0
+  GRYPE: anchore/grype:v0.117.0
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # I-02. Cheapest gate first: a FROM that resolves through a tag means the
+      # bytes this job scanned are not the bytes a later build would get, so
+      # everything below it would be describing an image that no longer exists.
+      - name: Fail if the base image is not pinned by digest (I-02)
+        run: |
+          grep -qE '^FROM .+@sha256:[0-9a-f]{64}$' infra/images/runtime-agent-sdk/Dockerfile \
+            || { echo "::error file=infra/images/runtime-agent-sdk/Dockerfile::FROM must pin a digest (SEC-002 I-02). See infra/images/README.md."; exit 1; }
+
+      - name: Build
+        run: docker build -t "$IMAGE" infra/images/runtime-agent-sdk
+
+      # I-03. SPDX JSON because it is the format an outside reviewer can read
+      # without Anchore tooling; the scan below consumes this same file, so the
+      # artifact people keep and the artifact the gate judged are one file.
+      - name: SBOM (I-03)
+        run: |
+          mkdir -p scan
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/scan:/scan" "$SYFT" "$IMAGE" -o spdx-json=/scan/sbom.spdx.json
+
+      - name: Vulnerability report (I-04)
+        run: |
+          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+            -o table --file /scan/vulnerabilities.txt
+          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+            -o json --file /scan/vulnerabilities.json
+          {
+            echo '### Runtime image scan'
+            echo '```'
+            head -40 scan/vulnerabilities.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Upload before the gate, so a failing scan still leaves the evidence
+      # behind. A gate whose output is only visible when it passes is useless
+      # for the review it is supposed to support.
+      - name: Keep the SBOM and the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-agent-sdk-scan-${{ github.sha }}
+          path: scan/
+          retention-days: 90
+
+      # I-06 threshold. PROVISIONAL — SEC-002 Q18 has no signed-off value yet;
+      # infra/images/README.md carries the proposal and this job implements it so
+      # the shape is testable before the number is final.
+      #
+      # --only-fixed is the load-bearing flag: Debian marks most base-OS CVEs
+      # "won't fix", and a gate that blocks on those blocks forever with no action
+      # available to anyone. Those findings are not dropped — they are in the
+      # artifact above and in the README's reviewed exemption list.
+      - name: Fail on fixable Critical/High (I-06, provisional threshold)
+        run: |
+          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+            --only-fixed --fail-on high -o table

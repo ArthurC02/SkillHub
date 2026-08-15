@@ -9,17 +9,18 @@
 # Baseline notes (SEC-002 §4.5):
 #   I-01  Pre-built and versioned. The provider names the image; a RunRequest
 #         cannot choose one.
-#   I-02  Pin by digest at deploy time. The FROM tag below is resolved to a
-#         digest by the publishing pipeline, and SKILLHUB_SANDBOX_IMAGE should
-#         be a digest reference, never a tag — a tag is a moving target and the
-#         run record would stop saying what actually ran.
-#   I-03/I-04  SBOM and vulnerability scanning are publish-time gates and are
-#         not wired yet; until they are, this image is not publishable and
-#         SBX-002 stays unchecked.
+#   I-02  Pin by digest. The FROM below carries both tag and digest: the tag is
+#         for a human reading the file, the digest is what actually resolves.
+#         SKILLHUB_SANDBOX_IMAGE should likewise be a digest reference, never a
+#         tag — a tag is a moving target and the run record would stop saying
+#         what actually ran. Digest update procedure: infra/images/README.md.
+#   I-03/I-04  SBOM and vulnerability scanning run in the `runtime-image` CI job
+#         (.github/workflows/runtime-image.yml). Thresholds are still a proposal
+#         awaiting sign-off (SEC-002 Q18), so SBX-002 stays unchecked.
 #
 # Build:
 #   docker build -t skillhub/runtime-agent-sdk:2026.08-1 infra/images/runtime-agent-sdk
-FROM node:22-bookworm-slim
+FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
 
 # The SDK version is pinned, not floated: it is the runtime_version the
 # provider declares in ProviderCapability and the one recorded against every
@@ -34,7 +35,16 @@ RUN groupadd --gid 65532 sandbox \
 WORKDIR /opt/skillhub
 RUN npm install --omit=dev --no-audit --no-fund \
     "@anthropic-ai/claude-agent-sdk@${CLAUDE_AGENT_SDK_VERSION}" \
-    && npm cache clean --force
+    && npm cache clean --force \
+    # npm and corepack are build-time only: the entrypoint is `node run.mjs` and
+    # the sandbox has no network, so nothing here can install a package anyway.
+    # They are dropped because every fixable Critical/High the scan finds in this
+    # image comes from npm's own bundled node_modules (tar, brace-expansion,
+    # picomatch, sigstore) — packages nothing at run time loads. A package
+    # manager sitting inside a sandbox that runs untrusted code is a liability
+    # even when its dependencies happen to be clean.
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+       /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 COPY run.mjs /opt/skillhub/run.mjs
 
 # Recorded so a Run's own report can state what it ran under without asking the
