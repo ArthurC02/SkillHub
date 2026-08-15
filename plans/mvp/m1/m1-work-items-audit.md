@@ -181,7 +181,7 @@ INGEST-001～009 **先前已勾，本次逐項複核維持有效**，並確認 [
 
 ### 5.4 殘餘風險（不影響勾選，但應記錄）
 
-1. ~~**整合測試的路由是抄的，不是 `main.go` 的。**~~ **已修復（commit `ROUTER_COMMIT`）。** 路由表抽成 `internal/apiserver.NewRouter(Deps)`；`cmd/api/main.go` 只組 deps 呼叫它，整合測試（`newAPI`）也呼叫同一個函式，`newGovernanceAPI` 這份重抄的 mux 已刪除。抽取前後方法＋路徑＋middleware 逐條相同（20 條，含 `auth.Mount` 的 7 條）。新增 `TestAnonymousCallersGetThePublicSurfaceAndNothingElse` 逐條走完整張表斷言匿名者的結果，補上先前零覆蓋的 `POST /skills/import/url`、`POST /skills/import/upload`、`POST /skills/{id}/versions`、`GET /healthz`、`GET /auth/github/*`、`POST /auth/logout`。
+1. ~~**整合測試的路由是抄的，不是 `main.go` 的。**~~ **已修復（commit `9cb1371`）。** 路由表抽成 `internal/apiserver.NewRouter(Deps)`；`cmd/api/main.go` 只組 deps 呼叫它，整合測試（`newAPI`）也呼叫同一個函式，`newGovernanceAPI` 這份重抄的 mux 已刪除。抽取前後方法＋路徑＋middleware 逐條相同（20 條，含 `auth.Mount` 的 7 條）。新增 `TestAnonymousCallersGetThePublicSurfaceAndNothingElse` 逐條走完整張表斷言匿名者的結果，補上先前零覆蓋的 `POST /skills/import/url`、`POST /skills/import/upload`、`POST /skills/{id}/versions`、`GET /healthz`、`GET /auth/github/*`、`POST /auth/logout`。
    附帶查明：原本擔心的「掉一條 `RequireSession` 測試不會紅」其實部分被 handler 自身接住——每個私有 handler 都會再驗一次 `SessionUser` 並同樣回 401（實測把 `import/url` 的 `RequireSession` 拿掉，邊界仍成立）。這是刻意的縱深防禦；測試斷言的是邊界結果，不是實施它的機制。
 2. **Fork 血緣的詳情頁渲染沒有測試。** `detail.go` 回傳 `derivation`、`SkillDetail.tsx` 也渲染了原始 Skill 連結與分岔版本 ID，但沒有任何測試斷言**詳情回應**帶 derivation；`TestForkCatalogSkillIntoCallerWorkspace` 驗的是 fork 端點的回應。這是 `02:DISC-003` 第 5 條，行為正確但無回歸保護。
 3. **篩選述詞跑在候選視窗之後。** 混合檢索兩腿各取 50 筆候選後才套篩選，目錄 45 筆時無人不可達；目錄長大後需把述詞下推到兩個 CTE（`search.sql` 已留 `ponytail:` 註記）。
