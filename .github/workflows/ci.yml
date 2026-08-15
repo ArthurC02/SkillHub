@@ -22,6 +22,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       platform: ${{ steps.filter.outputs.platform }}
       llm: ${{ steps.filter.outputs.llm }}
+      sandbox: ${{ steps.filter.outputs.sandbox }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -41,6 +42,11 @@ jobs:
               - 'services/llm/**'
               - 'packages/api-stub-py/**'
               - 'contracts/**'
+              - '!spikes/**'
+            sandbox:
+              - 'services/sandbox/**'
+              - 'contracts/**'
+              - 'infra/images/**'
               - '!spikes/**'
 
   web:
@@ -107,6 +113,38 @@ jobs:
       - run: go test ./...
       - run: go build ./...
 
+  # services/sandbox is its own Go module (ADR-019, iron rule 2), so it needs
+  # its own job: the platform job's working-directory would never see it.
+  #
+  # GitHub-hosted runners have a Docker daemon, so the dockerdrv integration
+  # tests run here for real rather than skipping. What they cannot cover is
+  # gVisor: runsc needs nested virtualization, which is ADR-019 open question 3
+  # and stays a deployment-time check (SEC-009, SBX-010).
+  sandbox:
+    needs: changes
+    if: needs.changes.outputs.sandbox == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/sandbox
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/sandbox/go.mod
+          cache-dependency-path: services/sandbox/go.sum
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
+          working-directory: services/sandbox
+      - run: golangci-lint fmt --diff
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go build ./...
+      - name: Build the runtime image (SBX-002)
+        run: docker build -t skillhub/runtime-agent-sdk:ci infra/images/runtime-agent-sdk
+        working-directory: .
+
   llm:
     needs: changes
     if: needs.changes.outputs.llm == 'true'
@@ -155,7 +193,7 @@ jobs:
   images:
     # Filtered-out upstream jobs are skipped, not failed, so gate on !failure().
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !failure() && !cancelled()
-    needs: [web, platform, llm, contracts-drift]
+    needs: [web, platform, llm, sandbox, contracts-drift]
     runs-on: ubuntu-latest
     steps:
       - name: Build and push service images

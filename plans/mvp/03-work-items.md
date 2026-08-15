@@ -151,16 +151,18 @@
 
 ## 11. SelfHostedProvider（M2）
 
-- [ ] SBX-001 決定自建 Sandbox 的隔離技術與執行節點拓撲。
-- [ ] SBX-002 建立經審核的 Runtime Image。
-- [ ] SBX-003 實作每個 Run 的獨立環境與暫存空間。
-- [ ] SBX-004 實作非 root、非特權及唯讀基礎檔案系統政策。
-- [ ] SBX-005 阻擋容器管理 Socket、主機敏感路徑與內部服務存取。
-- [ ] SBX-006 實作 CPU、記憶體、磁碟、程序數與時間限制。
-- [ ] SBX-007 實作預設封鎖的網路出口政策及允許清單。
-- [ ] SBX-008 實作 Dataset、Skill、Secrets 與 Artifact 的短效傳遞。
-- [ ] SBX-009 實作完成、失敗、取消與逾時後清理。
-- [ ] SBX-010 進行隔離、資源耗盡、網路與清理失敗測試。
+實作位於 `services/sandbox/`（獨立 Go module，ADR-019、鐵律 2），部署與 dev／prod 差異見 [services/sandbox/README.md](../../services/sandbox/README.md)。允收準則來源為 `02:RUN-003` 與威脅模型 SEC-002 的 45 項基線（本節以 `C-xx`／`N-xx`／`D-xx`／`I-xx`／`X-xx` 引用）。
+
+- [x] SBX-001 決定自建 Sandbox 的隔離技術與執行節點拓撲。（[ADR-015](../../adr/ADR-015-sandbox-isolation-technology.md) 已 Accepted：gVisor 基線＋專用 VM 池、不進 Kubernetes；DockerProvider 以 `SKILLHUB_SANDBOX_RUNTIME=runsc` 落實該選擇，宣告的 `isolation.level` 跟著實際設定走，跑 runc 的機器只會宣告 `container`。**在部署平台上實跑 `runsc` 屬部署期驗收**，ADR-015 定案紀錄已將其列為實作期前提，不影響本項的「決定」性質）
+- [ ] SBX-002 建立經審核的 Runtime Image。**部分完成**：`infra/images/runtime-agent-sdk/` 可建置並被 DockerProvider 引用（Node.js 22 LTS ＋ pinned `@anthropic-ai/claude-agent-sdk@0.3.233`，非 root uid 65532，`.claude/skills/` 載入路徑與四個啟用條件已寫入 entrypoint）。**「經審核」未成立**：SBOM（I-03）與漏洞掃描（I-04）是發佈時閘門、流水線尚未接上，digest pin（I-02）亦待發佈流程；未通過前此 Image 不得視為可發佈。
+- [x] SBX-003 實作每個 Run 的獨立環境與暫存空間。（每個 attempt 一個專屬容器，`/work`＋`/out` 為該容器獨有的 tmpfs，不與任何其他 Run 共用可寫路徑；C-01）
+- [x] SBX-004 實作非 root、非特權及唯讀基礎檔案系統政策。（`User=65532:65532`、`no-new-privileges:true`、`CapDrop=ALL`、`Privileged=false`、`ReadonlyRootfs=true`；C-02／C-03／C-06／C-08。以真實容器驗證，非僅設定斷言）
+- [ ] SBX-005 阻擋容器管理 Socket、主機敏感路徑與內部服務存取。**部分完成**：容器管理 Socket 與主機路徑已擋——`Binds`／`Mounts` 恆空，沙箱內 `/var/run/docker.sock` 不存在，namespace 全為 private（C-04／C-05／C-07，具名整合測試）。**「內部服務存取」未成立**：dev 以 `--network none` 使其不可達，但生產的網路政策隔離與 P-02「Sandbox → 核心資料庫連線嘗試被實際阻擋」的常駐探針屬部署期，未實作。
+- [x] SBX-006 實作 CPU、記憶體、磁碟、程序數與時間限制。（`NanoCPUs`／`Memory`＋`MemorySwap`（不給 swap）／tmpfs size 依 PDM-005 5.2 切 `/work` 3:1 `/out`／`PidsLimit`／`nofile` ulimit／soft 與 hard wall clock；C-10～C-15。逾時強停與 pids 上限以真實容器驗證）
+- [ ] SBX-007 實作預設封鎖的網路出口政策及允許清單。**未完成（依 RUN-004 前例誠實加註）**：dev 基線為 `--network none`（無出口，嚴於 default-deny），Capability 僅宣告 `egress_modes: ["none"]`，配置面已預留 Proxy 網路開關。**Egress Proxy 本體、三項允許清單、DNS 固定解析與目的地記錄（N-01～N-07）皆未實作**，允許清單管理流程仍是 ADR-015 待決策。
+- [ ] SBX-008 實作 Dataset、Skill、Secrets 與 Artifact 的短效傳遞。**部分完成**：傳遞方向已落地——Skill 套件、Dataset 與 Artifact 上傳授權以路徑與短效 URL 經環境變數交付，Provider 不解析內容（鐵律 1）；Virtual Key 依 PDM-003 以 `ANTHROPIC_BASE_URL`／`ANTHROPIC_AUTH_TOKEN` 注入；注入的 Secrets 在寫入 `RunResult` 前遮罩（鐵律 11，具名測試）。**未完成**：Artifact 收集與上傳（`RunResult.artifacts` 恆空）、授權簽發與撤銷（D-03／D-06）屬控制平面側。
+- [x] SBX-009 實作完成、失敗、取消與逾時後清理。（四條終態路徑都會走到 `DELETE`；`DELETE` 冪等、無 404、不存在也回 204，釋放失敗回 500 供平台記錄 `cleanup_status` 並重試；X-01。以真實容器驗證重複 destroy 與容器確實消失）
+- [ ] SBX-010 進行隔離、資源耗盡、網路與清理失敗測試。**屬部署期驗收，不在本批**：逃逸測試與 gVisor 相容性需要 Linux 與巢狀虛擬化（ADR-019 待決策 3）。本批已有的是 ADR-005 基線的真實容器驗證（非 root、唯讀 rootfs、無主機掛載、pids 上限、逾時強停、清理冪等），不等於逃逸測試通過。**SEC-009／SBX-010 未通過不得開放外部使用者提交 Skill 執行**（ADR-015 定案紀錄）。
 
 ## 12. Local Runner Beta（後 MVP，依 M2 後需求訊號啟動）
 

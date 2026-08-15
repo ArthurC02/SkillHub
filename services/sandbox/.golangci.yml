@@ -1,0 +1,8 @@
+# Same configuration as services/platform: golangci-lint v2, the default linter
+# set, plus the exclusions v1 applied by default and v2 makes opt-in.
+version: "2"
+
+linters:
+  exclusions:
+    presets:
+      - std-error-handling
