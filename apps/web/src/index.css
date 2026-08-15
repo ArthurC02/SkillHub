@@ -146,25 +146,77 @@ main {
 .badge-license-unknown,
 .badge-trust-unknown,
 .badge-compat-unverified,
-.badge-verify-not_run {
+.badge-source-model {
   border-color: var(--accent-border);
 }
 
 .badge-compat-failed,
-.badge-verify-failure,
-.badge-risk {
+.badge-risk,
+.badge-risk-flag {
   border-color: #d33;
   color: #d33;
 }
 
 .risk-list,
 .compat-list,
-.file-tree {
+.file-tree,
+.search-results,
+.tag-list {
   list-style: none;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.tag-list {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.search-results {
+  gap: 20px;
+}
+
+.search-result p {
+  margin: 2px 0;
+}
+
+.license-badge,
+.match-reason {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.note,
+.rank,
+.risk-counts,
+.file-size {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.notice {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-bg);
+  padding: 8px 12px;
+  margin: 8px 0;
+}
+
+.risk-code {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+details {
+  margin: 8px 0;
+}
+
+summary {
+  cursor: pointer;
+  color: var(--text-h);
 }
 
 .skill-md {

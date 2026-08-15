@@ -1,138 +1,226 @@
 import { Link, useParams } from "@tanstack/react-router";
+import { ApiError } from "../api/client";
 import { useForkSkill, useSkillDetail } from "../api/skills";
 import { useMe } from "../api/me";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
-import { LicenseBadge } from "../components/LicenseBadge";
+import { LabelledBadge } from "../components/LabelledBadge";
+import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
 import { RiskIndicator } from "../components/RiskIndicator";
-import { TrustBadge } from "../components/TrustBadge";
-import { VerificationStatus } from "../components/VerificationStatus";
+import type { SkillEnrichment, SkillSource } from "../api/types";
 
-// DISC-006: Skill general detail page.
+/**
+ * DISC-006/008: general-mode skill detail, reading GET /api/skills/{id}.
+ * Anonymous callers get the public catalog (DISC-010).
+ *
+ * Progressive disclosure: the plain-language answer is on the page, and the
+ * identifiers that only matter when you are checking someone's work (hashes,
+ * version ids, which model wrote the summary) sit behind <details>.
+ */
 export function SkillDetail() {
   const { skillId } = useParams({ from: "/skills/$skillId" });
-  const { data: skill, isLoading, isError } = useSkillDetail(skillId);
+  const { data: skill, isLoading, error } = useSkillDetail(skillId);
   const { data: me } = useMe();
 
   if (isLoading) return <p>載入中…</p>;
-  if (isError || !skill) return <p role="alert">找不到這個 Skill，或載入失敗。</p>;
+  // 410 is a different fact from 404: this skill existed and was withdrawn.
+  if (error instanceof ApiError && error.status === 410) {
+    return <p role="alert">這個 Skill 已從目錄下架，內容不再提供。</p>;
+  }
+  if (error || !skill) return <p role="alert">找不到這個 Skill，或載入失敗。</p>;
 
   return (
     <article>
       <header>
         <h1>{skill.name}</h1>
+        {/* The package author's own frontmatter description, never the model's. */}
         <p>{skill.summary}</p>
         <div className="badge-row">
-          <TrustBadge level={skill.source.trust_level} />
-          <LicenseBadge status={skill.license.status} name={skill.license.name} />
-          <VerificationStatus verification={skill.verification} />
+          <LabelledBadge kind="tier" value={skill.tier} />
+          {skill.source && <LabelledBadge kind="trust" value={skill.source.trust} />}
+          <LicenseBadge license={skill.license} />
         </div>
+        <p className="note">{skill.tier.note}</p>
       </header>
 
-      {skill.forked_from_skill_id && (
-        <p>
-          Fork 自{" "}
-          <Link to="/skills/$skillId" params={{ skillId: skill.forked_from_skill_id }}>
-            原始 Skill
-          </Link>
-        </p>
-      )}
+      <Enrichment enrichment={skill.enrichment} />
 
       <section>
-        <h2>功能</h2>
-        <ul>
-          {skill.capabilities.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+        <h2>來源</h2>
+        {skill.source ? <SourceBlock source={skill.source} /> : <p>沒有保存任何來源紀錄。</p>}
       </section>
 
       <section>
-        <h2>限制</h2>
-        <ul>
-          {skill.limitations.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
+        <h2>License</h2>
+        <LicenseBadge license={skill.license} />
+        <LicenseNotes license={skill.license} />
       </section>
 
       <section>
-        <h2>輸入</h2>
-        <ul>
-          {skill.inputs.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h2>輸出</h2>
-        <ul>
-          {skill.outputs.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h2>依賴</h2>
-        <ul>
-          {skill.dependencies.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h2>所需權限</h2>
-        <ul>
-          {skill.required_permissions.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h2>來源與 License</h2>
-        <p>
-          信任層級：
-          <TrustBadge level={skill.source.trust_level} />
-        </p>
-        {skill.source.url && (
-          <p>
-            來源網址：<a href={skill.source.url}>{skill.source.url}</a>
-          </p>
-        )}
-        {skill.source.source_version && <p>來源版本／Commit：{skill.source.source_version}</p>}
-        {skill.source.fetched_at && <p>擷取時間：{skill.source.fetched_at}</p>}
-        {skill.source.content_hash && (
-          <p>
-            內容雜湊：<code>{skill.source.content_hash}</code>
-          </p>
-        )}
-        <p>
-          License：
-          <LicenseBadge status={skill.license.status} name={skill.license.name} />
-        </p>
+        <h2>風險揭露</h2>
+        <RiskIndicator risk={skill.risk} />
       </section>
 
       <section>
         <h2>相容性</h2>
-        <CompatibilityStatus entries={skill.compatibility} />
+        <CompatibilityStatus compatibility={skill.compatibility} />
       </section>
+
+      {skill.allowed_tools && skill.allowed_tools.length > 0 && (
+        <section>
+          <h2>套件宣告可用的工具</h2>
+          <ul>
+            {skill.allowed_tools.map((tool) => (
+              <li key={tool}>
+                <code>{tool}</code>
+              </li>
+            ))}
+          </ul>
+          <p className="note">以上為套件自行宣告的 allowed-tools，未經驗證。</p>
+        </section>
+      )}
 
       <section>
-        <h2>風險提示</h2>
-        <RiskIndicator risk={skill.risk} />
+        <h2>{skill.derivation.label}</h2>
+        <p className="note">{skill.derivation.note}</p>
+        {skill.derivation.is_fork && skill.derivation.forked_from_skill_id && (
+          <p>
+            <Link to="/skills/$skillId" params={{ skillId: skill.derivation.forked_from_skill_id }}>
+              查看原始 Skill
+            </Link>
+          </p>
+        )}
       </section>
 
-      <nav>
-        <Link to="/skills/$skillId/files" params={{ skillId }}>
-          查看 SKILL.md 與檔案樹（進階模式）
-        </Link>
-      </nav>
+      <details>
+        <summary>進階資訊（版本與識別碼）</summary>
+        {skill.version ? (
+          <ul>
+            <li>版本編號：v{skill.version.version_number}</li>
+            <li>
+              版本 ID：<code>{skill.version.version_id}</code>
+            </li>
+            <li>
+              內容雜湊：<code>{skill.version.content_hash}</code>
+            </li>
+            <li>建立時間：{skill.version.created_at}</li>
+          </ul>
+        ) : (
+          <p>這個 Skill 還沒有已保存的版本內容。</p>
+        )}
+        {skill.derivation.forked_from_version_id && (
+          <p>
+            分岔自版本：<code>{skill.derivation.forked_from_version_id}</code>
+          </p>
+        )}
+      </details>
+
+      {skill.version && (
+        <nav>
+          <Link to="/skills/$skillId/files" params={{ skillId }}>
+            查看 SKILL.md 與檔案樹（進階模式）
+          </Link>
+        </nav>
+      )}
 
       <ForkAction skillId={skillId} isLoggedIn={!!me} />
     </article>
+  );
+}
+
+/**
+ * ADR-013: index-time model output, always labelled as model-written so a
+ * reader can tell it from the author's own text above.
+ */
+function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
+  if (enrichment.status !== "enriched") {
+    return (
+      <section>
+        <h2>白話摘要</h2>
+        <p className="note">{enrichment.note}</p>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <h2>
+        白話摘要
+        <span className="badge badge-source-model" title="由模型產生，未經人工核對">
+          AI 產生
+        </span>
+      </h2>
+      {enrichment.summary && <p>{enrichment.summary}</p>}
+
+      {enrichment.task_examples && enrichment.task_examples.length > 0 && (
+        <>
+          <h3>可以用來做什麼（AI 產生的任務範例）</h3>
+          <ul>
+            {enrichment.task_examples.map((example) => (
+              <li key={example}>{example}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {enrichment.tags && enrichment.tags.length > 0 && (
+        <ul className="tag-list">
+          {enrichment.tags.map((tag) => (
+            <li key={tag} className="badge">
+              {tag}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="note">{enrichment.note}</p>
+      {(enrichment.model || enrichment.prompt_version) && (
+        <details>
+          <summary>產生這段摘要的模型</summary>
+          <ul>
+            {enrichment.model && (
+              <li>
+                模型：<code>{enrichment.model}</code>
+              </li>
+            )}
+            {enrichment.prompt_version && (
+              <li>
+                Prompt 版本：<code>{enrichment.prompt_version}</code>
+              </li>
+            )}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
+}
+
+/** DISC-003: URL, version/commit, fetch time and content hash of what arrived. */
+function SourceBlock({ source }: { source: SkillSource }) {
+  return (
+    <>
+      <p>匯入方式：{source.type === "git" ? "從 Git 來源擷取" : "使用者上傳"}</p>
+      {source.url && (
+        <p>
+          來源網址：{" "}
+          <a href={source.url} rel="noreferrer noopener">
+            {source.url}
+          </a>
+        </p>
+      )}
+      {source.source_version && (
+        <p>
+          來源版本／Commit：<code>{source.source_version}</code>
+        </p>
+      )}
+      {source.fetched_at && <p>擷取時間：{source.fetched_at}</p>}
+      <p className="note">{source.trust.note}</p>
+      {source.content_hash && (
+        <details>
+          <summary>內容雜湊</summary>
+          <code>{source.content_hash}</code>
+        </details>
+      )}
+    </>
   );
 }
 
