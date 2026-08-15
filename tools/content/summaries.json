@@ -4,8 +4,8 @@
   "endpoint": "POST /v1/enrich-skill (services/llm)",
   "counts": {
     "total": 45,
-    "reused": 15,
-    "new_calls": 30
+    "reused": 8,
+    "new_calls": 8
   },
   "summaries": [
     {
@@ -206,23 +206,23 @@
       "source_commit": "c15e51e20424284f98359e8d3512f8aaa771c62f",
       "skill_md_path": "claude/skills/excel-format/SKILL.md",
       "origin": "new",
-      "summary": "此技能可統一調整 Excel 工作表的字體、字號、粗體、斜體、顏色、水平與垂直對齊、欄寬及列高。使用者需要提供 Excel 檔案、想套用的格式，以及整張工作表、表頭、資料區、指定欄列或條件相符儲存格等套用範圍；若只要求美化，則使用內建的表頭、資料區與自動欄寬預設。流程會先檢查目前格式，再修改檔案並驗證表頭、資料區與欄寬等結果。",
+      "summary": "此技能可統一調整 Excel 工作表的字型、字號、粗體、斜體、顏色、對齊方式、欄寬與列高，並可套用至整張表、表頭、資料區、指定欄列、範圍或符合條件的儲存格。使用者需要提供 Excel 檔案、想修改的格式參數及套用範圍；若只要求「美化」，則會使用內建的表頭與資料區格式預設。流程包含解析需求、檢查目前格式、執行修改、儲存備份及驗證結果。",
       "task_examples": [
         {
-          "zh_hant": "請把表頭設為粗體並置中，字體改成微軟雅黑 12 點。",
+          "zh_hant": "請把表頭設為粗體並置中，字型改成微軟雅黑 12 號。",
           "en": "Make the header row bold and centered, using Microsoft YaHei at 12 pt."
         },
         {
-          "zh_hant": "請將整張工作表改成 Arial 10 點，並把金額欄靠右對齊。",
+          "zh_hant": "請將整張工作表改成 Arial 10 號，並把金額欄靠右對齊。",
           "en": "Change the entire worksheet to Arial 10 pt and right-align the amount column."
         },
         {
-          "zh_hant": "請自動調整所有欄寬，並將資料區垂直置中。",
-          "en": "Auto-fit all column widths and vertically center the data area."
+          "zh_hant": "請自動調整所有欄寬，並讓資料區垂直置中。",
+          "en": "Automatically adjust all column widths and vertically center the data area."
         },
         {
-          "zh_hant": "請只將符合我指定條件的儲存格設為紅色斜體文字。",
-          "en": "Apply red italic text only to the cells matching my specified condition."
+          "zh_hant": "請將 B 欄與 E 欄的文字改成藍色斜體，其他格式保持不變。",
+          "en": "Set columns B and E to blue italic text without changing their other formatting."
         },
         {
           "zh_hant": "請使用預設格式方案美化這個 Excel 檔案。",
@@ -231,39 +231,38 @@
       ],
       "tags": {
         "inputs": [
-          "xlsx workbook",
-          "format specification",
-          "scope selection",
-          "font settings",
-          "alignment settings",
-          "column width",
-          "row height"
+          "excel workbook",
+          "format specifications",
+          "worksheet scope",
+          "row and column ranges",
+          "cell conditions"
         ],
         "outputs": [
-          "formatted xlsx workbook",
-          "format verification",
+          "formatted excel workbook",
+          "format verification results",
           "timestamped backups"
         ],
         "tools": [
           "python",
           "openpyxl",
-          "pandas"
+          "pandas",
+          "numpy"
         ],
         "dependencies": [
-          "python",
+          "excel-safe-workflow",
           "openpyxl",
           "pandas",
           "numpy",
-          "excel-safe-workflow",
           "system fonts"
         ]
       },
       "limitations": [
-        "執行前必須完成需求解析與格式勘察，執行後必須驗證結果。",
-        "操作前必須建立時間戳備份，成功後保留最新 3 份；若操作失誤，需刪除損壞檔案並從備份恢復。",
-        "字體是否可用取決於開啟 Excel 檔案的系統。",
+        "執行前必須完成需求解析與工作表勘察，執行後必須驗證結果。",
+        "操作前必須建立時間戳備份，成功後保留最新 3 份；若操作失誤，需刪除損壞檔案並由備份還原。",
+        "字型是否可用取決於開啟 Excel 檔案的系統。",
         "合併儲存格的格式需要另外處理。",
-        "未指定的格式參數不會變更，會保留原有格式。"
+        "自動調整欄寬時，中文字符按 2 個寬度計算，且內容所述上限為 40 個字符。",
+        "使用自動欄寬功能時需要 pandas 與 numpy。"
       ],
       "model": "gpt-5.6-sol",
       "prompt_version": "enrich-skill/v2",
@@ -753,27 +752,43 @@
       "source_url": "https://github.com/anthropics/skills",
       "source_commit": "f6656c1256d5a8adfa37db9110046ef20bac644c",
       "skill_md_path": "skills/brand-guidelines/SKILL.md",
-      "origin": "reused:goldenset",
-      "summary": "此技能會將 Anthropic 的官方品牌視覺套用到簡報等適合進行視覺格式化的成品，包括品牌色彩、字體、文字層級與圖形強調色。使用者需要提供要套用樣式的成品或其內容；標題會優先使用 Poppins、內文使用 Lora，若系統沒有這些字型，則分別改用 Arial 與 Georgia。非文字圖形會輪替使用橙、藍、綠色，並依背景選擇易讀的文字顏色。",
+      "origin": "new",
+      "summary": "此技能會將 Anthropic 的官方品牌色彩與字體風格套用到需要品牌視覺、版面格式或公司設計規範的成品。它需要一份待調整的視覺成品，並依背景智慧選色、保留文字層級與格式，將 Poppins 用於 24pt 以上標題、Lora 用於內文，也會以橙、藍、綠色循環處理非文字圖形。若指定字型不可用，則自動改用 Arial 與 Georgia。",
       "task_examples": [
         {
-          "en": "Apply Anthropic’s official colors and typography to this presentation.",
-          "zh_hant": "請將 Anthropic 的官方色彩與字體套用到這份簡報。"
+          "zh_hant": "請將 Anthropic 的官方色彩與字體套用到這份簡報。",
+          "en": "Apply Anthropic’s official colors and typography to this presentation."
         },
         {
-          "en": "Restyle these slides with Poppins headings, Lora body text, and suitable fallback fonts.",
-          "zh_hant": "請用 Poppins 標題、Lora 內文及適當的備用字型重新設計這些投影片。"
+          "zh_hant": "請用 Poppins 標題、Lora 內文及 Anthropic 品牌色重新設計這份成品。",
+          "en": "Restyle this artifact with Poppins headings, Lora body text, and Anthropic brand colors."
         },
         {
-          "en": "Format this artifact using Anthropic’s dark, light, gray, and accent color palette.",
-          "zh_hant": "請使用 Anthropic 的深色、淺色、灰色與強調色調色盤來格式化這份成品。"
+          "zh_hant": "請將所有 24pt 以上的標題套用品牌標題字體，並保留現有文字層級。",
+          "en": "Format all headings of 24pt or larger with the brand heading font while preserving the existing text hierarchy."
         },
         {
-          "en": "Update the non-text shapes to cycle through Anthropic’s orange, blue, and green accent colors.",
-          "zh_hant": "請將非文字圖形依序套用 Anthropic 的橙色、藍色與綠色強調色。"
+          "zh_hant": "請將橙色、藍色和綠色的品牌強調色套用到這份簡報的非文字圖形。",
+          "en": "Apply orange, blue, and green accent colors to the non-text shapes in this deck."
         }
       ],
       "tags": {
+        "inputs": [
+          "visual artifacts",
+          "text headings",
+          "body text",
+          "background colors",
+          "non-text shapes"
+        ],
+        "outputs": [
+          "anthropic-branded artifacts",
+          "styled typography",
+          "brand color formatting",
+          "accent-colored shapes"
+        ],
+        "tools": [
+          "python-pptx rgbcolor"
+        ],
         "dependencies": [
           "python-pptx",
           "system-installed fonts",
@@ -781,26 +796,14 @@
           "lora",
           "arial",
           "georgia"
-        ],
-        "inputs": [
-          "presentation artifact",
-          "text hierarchy",
-          "background colors",
-          "shapes"
-        ],
-        "outputs": [
-          "brand-styled artifact",
-          "formatted typography",
-          "brand color palette",
-          "styled shapes"
-        ],
-        "tools": [
-          "python-pptx rgbcolor"
         ]
       },
-      "limitations": null,
+      "limitations": [
+        "若要獲得最佳效果，環境中需預先安裝 Poppins 與 Lora 字型；若無法使用，標題與內文會分別改用 Arial 與 Georgia。",
+        "色彩是透過 python-pptx 的 RGBColor 類別套用。"
+      ],
       "model": "gpt-5.6-sol",
-      "prompt_version": "enrich-skill/v1",
+      "prompt_version": "enrich-skill/v2",
       "generated_at": "2026-08-15"
     },
     {
@@ -811,41 +814,40 @@
       "source_url": "https://github.com/anthropics/skills",
       "source_commit": "f6656c1256d5a8adfa37db9110046ef20bac644c",
       "skill_md_path": "skills/internal-comms/SKILL.md",
-      "origin": "reused:goldenset",
-      "summary": "此技能協助撰寫符合公司慣用格式的內部溝通內容，包括 3P（進度、計畫、問題）更新、公司電子報、FAQ、狀態報告、主管簡報、專案更新與事件報告。使用者需提供溝通類型、相關內容，以及期望的格式或背景；技能會依類型套用 examples 目錄中的格式、語氣與內容蒐集指引，若無相符指引則要求進一步說明。",
+      "origin": "new",
+      "summary": "此技能協助撰寫公司內部溝通內容，包括 3P 進度更新、公司電子報、FAQ 回覆、狀態報告、主管更新、專案更新與事件報告。使用者需提供要撰寫的溝通類型及相關內容或背景；技能會套用對應範例指南所指定的格式、語氣與內容蒐集方式。若沒有相符指南，會要求使用者補充期望格式或更多資訊。",
       "task_examples": [
         {
-          "en": "Write a weekly 3P update covering our progress, plans, and current problems.",
-          "zh_hant": "請撰寫一份每週 3P 更新，說明我們的進度、計畫與目前問題。"
+          "zh_hant": "請根據這些進度、後續計畫與阻礙，撰寫本週的 3P 更新。",
+          "en": "Write a 3P update for this week using these progress items, next steps, and blockers."
         },
         {
-          "en": "Turn these company announcements into an internal newsletter for all employees.",
-          "zh_hant": "請將這些公司公告整理成一份提供給全體員工的內部電子報。"
+          "zh_hant": "請將這些公司公告整理成一份給全體員工的內部電子報。",
+          "en": "Turn these company announcements into an internal newsletter for all employees."
         },
         {
-          "en": "Draft clear FAQ answers about the new remote-work policy.",
-          "zh_hant": "請針對新的遠距工作政策草擬清楚的 FAQ 回覆。"
+          "zh_hant": "請針對新的遠距工作政策，草擬清楚的員工 FAQ 回覆。",
+          "en": "Draft clear FAQ answers for employees about the new remote-work policy."
         },
         {
-          "en": "Create a concise leadership update from these project notes and milestones.",
-          "zh_hant": "請根據這些專案筆記與里程碑，整理一份精簡的主管更新。"
+          "zh_hant": "請整理專案目前狀態、里程碑與問題，撰寫一份主管更新。",
+          "en": "Create a leadership update summarizing the project's current status, milestones, and issues."
         },
         {
-          "en": "Write an internal incident report describing what happened, the impact, and the follow-up actions.",
-          "zh_hant": "請撰寫一份內部事件報告，說明事件經過、影響與後續行動。"
+          "zh_hant": "請根據這份時間線、影響摘要與處理結果，撰寫內部事件報告。",
+          "en": "Write an internal incident report from this timeline, impact summary, and resolution information."
         }
       ],
       "tags": {
-        "dependencies": [
-          "examples/3p-updates.md",
-          "examples/company-newsletter.md",
-          "examples/faq-answers.md",
-          "examples/general-comms.md"
-        ],
         "inputs": [
           "溝通類型",
-          "內部溝通內容",
-          "格式需求",
+          "進度、計畫與問題",
+          "公司消息",
+          "常見問題",
+          "狀態資訊",
+          "專案更新",
+          "事件資訊",
+          "期望格式",
           "背景資訊"
         ],
         "outputs": [
@@ -855,13 +857,20 @@
           "狀態報告",
           "主管更新",
           "專案更新",
-          "事件報告"
+          "事件報告",
+          "內部溝通稿"
         ],
-        "tools": []
+        "tools": [],
+        "dependencies": [
+          "對應的範例指南檔案"
+        ]
       },
-      "limitations": null,
+      "limitations": [
+        "若溝通類型不符合現有指南，需先取得對期望格式的澄清或更多背景資訊。",
+        "需要存取 `examples/` 目錄中與溝通類型相符的指南檔案，才能依其格式、語氣及內容蒐集要求撰寫。"
+      ],
       "model": "gpt-5.6-sol",
-      "prompt_version": "enrich-skill/v1",
+      "prompt_version": "enrich-skill/v2",
       "generated_at": "2026-08-15"
     },
     {
@@ -1436,69 +1445,74 @@
       "source_url": "https://github.com/nqumich/data-analyst-skill",
       "source_commit": "0ba9d17ed275b341df713db6a10b44eb32bf6eb1",
       "skill_md_path": "SKILL.md",
-      "origin": "reused:goldenset",
-      "summary": "此技能可處理 CSV、TSV、XLSX、JSON 與 JSONL 資料，執行讀取、清理、篩選、彙總、連接、驗證及基本統計分析。它特別支援整理複雜 Excel 活頁簿，包括合併儲存格、多層表頭、空白列欄、格式化數字、混合日期及多工作表，也能以分塊方式處理大型 CSV。使用者需提供資料檔案、分析問題，以及視需要指定欄位、篩選條件、驗證結構、工作表或輸出路徑；結果可輸出為整理後的資料、品質檢查、錯誤清單、彙總結果或分析報告。",
+      "origin": "new",
+      "summary": "此技能可讀取、清理、驗證、篩選、彙總及連接 CSV、TSV、XLSX、JSON 與 JSON Lines 資料，並提供資料品質檢查和分析報告架構。它可將含合併儲存格、多層表頭、空白列欄、格式化數字或混合日期格式的 XLSX 標準化，也能合併多個工作表及分塊處理大型 CSV。使用者需提供資料檔案，以及所需的工作表、欄位、篩選條件、彙總方式、驗證規則或輸出路徑等設定。",
       "task_examples": [
         {
-          "en": "Clean this Excel workbook by flattening its two-row header, filling merged cells, converting currency and percentage fields to numbers, and saving the result as CSV.",
-          "zh_hant": "請清理這份 Excel 活頁簿：合併兩層表頭、填補合併儲存格、將貨幣與百分比欄位轉成數值，並另存為 CSV。"
+          "zh_hant": "請將這份格式混亂的 Excel 活頁簿標準化，填入合併儲存格、合併兩列表頭、清理貨幣數值，並另存為 CSV。",
+          "en": "Standardize this messy Excel workbook by filling merged cells, combining its two header rows, cleaning currency values, and saving the result as CSV."
         },
         {
-          "en": "Filter sales.csv to rows where amount is greater than 1,000, then summarize the total amount by category.",
-          "zh_hant": "請篩選 sales.csv 中金額大於 1,000 的資料，再依類別彙總金額總和。"
+          "zh_hant": "請篩選 sales.csv，只保留 amount 大於 1,000 的資料列，並將結果寫入 filtered.csv。",
+          "en": "Filter sales.csv to rows where amount is greater than 1,000 and write the result to filtered.csv."
         },
         {
-          "en": "Join orders.csv and customers.csv on customer_id using a left join, and save the merged data to merged.csv.",
-          "zh_hant": "請用 customer_id 對 orders.csv 與 customers.csv 執行左連接，並將合併結果儲存為 merged.csv。"
+          "zh_hant": "請依 category 分組，計算 amount 的總和，並匯出彙總檔案。",
+          "en": "Group the data by category, calculate the sum of amount, and export a summary file."
         },
         {
-          "en": "Check this dataset for duplicate rows, missing values, data types, and numeric summary statistics.",
-          "zh_hant": "請檢查這份資料集的重複列、空值、資料型別與數值欄位摘要統計。"
+          "zh_hant": "請使用 customer_id 對 orders.csv 與 customers.csv 執行左連接。",
+          "en": "Join orders.csv and customers.csv on customer_id using a left join."
         },
         {
-          "en": "Process this large CSV in chunks, keep records with amount above 100, add an amount_usd column, and write the results to a new file.",
-          "zh_hant": "請分塊處理這個大型 CSV，保留金額高於 100 的紀錄、新增 amount_usd 欄位，並將結果寫入新檔案。"
+          "zh_hant": "請驗證 amount、email 與 date 欄位，列出無效資料列，並產生資料品質報告。",
+          "en": "Validate the amount, email, and date columns, then list invalid rows and produce a data quality report."
         }
       ],
       "tags": {
+        "inputs": [
+          "csv files",
+          "tsv files",
+          "xlsx files",
+          "json files",
+          "jsonl files",
+          "sheet names",
+          "column names",
+          "filter expressions",
+          "aggregation rules",
+          "validation schemas",
+          "output paths",
+          "transform functions"
+        ],
+        "outputs": [
+          "pandas dataframes",
+          "cleaned datasets",
+          "csv files",
+          "xlsx files",
+          "quality reports",
+          "validation errors",
+          "aggregated summaries",
+          "joined datasets",
+          "analysis reports"
+        ],
+        "tools": [
+          "data_ops.py",
+          "python api",
+          "command line"
+        ],
         "dependencies": [
           "python",
           "pandas",
           "openpyxl"
-        ],
-        "inputs": [
-          "csv files",
-          "tsv files",
-          "xlsx workbooks",
-          "json files",
-          "jsonl files",
-          "filter expressions",
-          "column names",
-          "validation schemas",
-          "sheet names",
-          "analysis questions",
-          "output paths"
-        ],
-        "outputs": [
-          "pandas dataframes",
-          "cleaned csv files",
-          "cleaned xlsx files",
-          "aggregated data",
-          "joined data",
-          "data quality reports",
-          "validation errors",
-          "descriptive statistics",
-          "analysis reports"
-        ],
-        "tools": [
-          "python scripts",
-          "data_ops.py",
-          "command line"
         ]
       },
-      "limitations": null,
+      "limitations": [
+        "僅列明支援 CSV、TSV、XLSX、JSON 與 JSON Lines 格式。",
+        "需要安裝 python3 或 python；相關程式碼亦使用 pandas 與 openpyxl。",
+        "大型檔案的串流處理範例使用 CSV 輸入與輸出。"
+      ],
       "model": "gpt-5.6-sol",
-      "prompt_version": "enrich-skill/v1",
+      "prompt_version": "enrich-skill/v2",
       "generated_at": "2026-08-15"
     },
     {
@@ -1509,45 +1523,38 @@
       "source_url": "https://github.com/danielrosehill/Claude-Data-Wrangler-plugin",
       "source_commit": "b12805a62307021e024626616119b505e015f5a9",
       "skill_md_path": "skills/data-cleanliness-scan/SKILL.md",
-      "origin": "reused:goldenset",
-      "summary": "掃描一個或多個 CSV、Parquet、JSON、JSONL 或 Excel 檔案，評估資料整潔度及找出可能導致 SQL 匯入失敗或分析錯誤的問題。它會檢查欄位型別、日期、空值、重複鍵、編碼、分隔符、列結構、值域及跨欄邏輯等，並按嚴重程度排序。使用者需提供資料檔案、確認格式及目標系統；輸出為含問題範例與修正建議的 Markdown 報告，亦可選擇產生 JSON 版本。",
+      "origin": "new",
+      "summary": "此技能會掃描一個或多個 CSV、Parquet、JSON、JSONL 或 Excel 平面資料檔，找出可能阻礙 SQL 匯入或造成分析錯誤的資料問題。它需要使用者提供檔案、確認格式與目標，並會檢查欄位型別、日期、空值、重複鍵、編碼、範圍、檔案結構及跨欄位邏輯一致性。輸出是按嚴重程度排序的 Markdown 報告，也可選擇產生 JSON 版本，包含受影響筆數、遮蔽個資後的樣本值與具體修復建議。",
       "task_examples": [
         {
-          "en": "Scan these CSV files for data quality issues before I load them into PostgreSQL.",
-          "zh_hant": "在我把這些 CSV 檔案匯入 PostgreSQL 前，請先掃描資料品質問題。"
+          "zh_hant": "請掃描這些 CSV 檔案，告訴我它們是否乾淨到足以匯入 PostgreSQL。",
+          "en": "Scan these CSV files and tell me whether they are clean enough to load into PostgreSQL."
         },
         {
-          "en": "Check this Excel workbook for mixed data types, malformed dates, disguised nulls, and duplicate keys.",
-          "zh_hant": "請檢查這份 Excel 活頁簿是否有混合資料型別、錯誤日期、偽裝空值及重複鍵。"
+          "zh_hant": "請檢查這份 Excel 活頁簿是否有混合資料型別、格式錯誤的日期、偽裝空值及重複鍵。",
+          "en": "Check this Excel workbook for mixed data types, malformed dates, disguised nulls, and duplicate keys."
         },
         {
-          "en": "Will this JSONL data load cleanly into SQL? Give me a severity-ranked report with remediation suggestions.",
-          "zh_hant": "這份 JSONL 資料能順利匯入 SQL 嗎？請提供按嚴重程度排序的報告及修正建議。"
+          "zh_hant": "請稽核這些 JSONL 檔案，並產生按嚴重程度排序的 Markdown 與 JSON 資料潔淨度報告。",
+          "en": "Audit these JSONL files and produce a severity-ranked cleanliness report in Markdown and JSON."
         },
         {
-          "en": "Audit these large Parquet files using strategic sampling and note the sample size in the report.",
-          "zh_hant": "請用策略性抽樣稽核這些大型 Parquet 檔案，並在報告中註明樣本大小。"
+          "zh_hant": "請找出這份 CSV 資料傾印中的分隔符漂移、欄位數不一致、編碼異常及混合換行格式。",
+          "en": "Find delimiter drift, ragged rows, encoding artefacts, and mixed line endings in this CSV data dump."
         },
         {
-          "en": "Find delimiter drift, ragged rows, encoding artefacts, and mixed line endings in this data dump.",
-          "zh_hant": "請找出這批資料中的分隔符漂移、欄數不齊、編碼異常及混合換行格式。"
+          "zh_hant": "請分析這個大型 Parquet 檔案是否有 SQL 匯入問題，並在報告中註明抽樣策略。",
+          "en": "Profile this large Parquet file for SQL ingestion issues and note the sampling strategy in the report."
         }
       ],
       "tags": {
-        "dependencies": [
-          "pandas",
-          "pyarrow",
-          "openpyxl",
-          "chardet",
-          "python-dateutil"
-        ],
         "inputs": [
           "csv files",
           "parquet files",
           "json files",
           "jsonl files",
           "excel files",
-          "target sql system"
+          "target database"
         ],
         "outputs": [
           "cleanliness_report.md",
@@ -1559,11 +1566,24 @@
           "pandas",
           "chardet",
           "dateutil"
+        ],
+        "dependencies": [
+          "pandas",
+          "pyarrow",
+          "openpyxl",
+          "chardet",
+          "python-dateutil"
         ]
       },
-      "limitations": null,
+      "limitations": [
+        "對非常大的檔案會採策略性抽樣，並在報告中註明樣本大小。",
+        "對高度巢狀的 JSON，主要只檢查記錄間的結構與結構描述一致性；深入分析前建議先用 `json-restructure` 攤平。",
+        "離群值只會列為觀察結果，不會視為缺陷或建議移除。",
+        "修復技能只會依建議順序提供，不會自動執行。",
+        "需要安裝 pandas、pyarrow、openpyxl、chardet 與 python-dateutil。"
+      ],
       "model": "gpt-5.6-sol",
-      "prompt_version": "enrich-skill/v1",
+      "prompt_version": "enrich-skill/v2",
       "generated_at": "2026-08-15"
     },
     {
@@ -1574,45 +1594,41 @@
       "source_url": "https://github.com/danielrosehill/Claude-Data-Wrangler-plugin",
       "source_commit": "b12805a62307021e024626616119b505e015f5a9",
       "skill_md_path": "skills/csv-to-json/SKILL.md",
-      "origin": "reused:goldenset",
-      "summary": "此技能可在 CSV、JSON 陣列與 JSONL 格式之間進行雙向轉換，並處理分隔符、引號、標頭、文字編碼、空值及資料型別。使用者需提供來源檔案、目標格式與輸出位置，並可選擇是否推斷型別，以及如何處理巢狀物件或陣列。它也會驗證輸出筆數，並針對大型檔案採用串流或分塊方式。",
+      "origin": "new",
+      "summary": "此 Skill 可在 CSV、JSON 陣列與 JSONL 之間雙向轉換，並處理欄位對應、CSV 方言與編碼、空值、型別推斷及巢狀資料攤平。使用者需要提供來源與目標檔案路徑、轉換方向，並視需要確認型別推斷、空值標記及巢狀欄位的處理方式。它也會驗證輸出能否重新載入，並比對來源與輸出的資料筆數。",
       "task_examples": [
         {
-          "en": "Convert customers.csv to a JSON array while preserving every value as a string.",
-          "zh_hant": "請將 customers.csv 轉成 JSON 陣列，並把所有值保留為字串。"
+          "zh_hant": "請將 customers.csv 轉成 JSON 陣列，並將所有欄位保留為字串。",
+          "en": "Convert customers.csv into a JSON array while keeping every field as a string."
         },
         {
-          "en": "Convert this semicolon-delimited CSV file to JSONL, infer numeric and Boolean types, and treat NA and empty fields as null.",
-          "zh_hant": "請將這個以分號分隔的 CSV 轉成 JSONL，推斷數字與布林型別，並將 NA 和空白欄位視為 null。"
+          "zh_hant": "請把這個以分號分隔的 CSV 轉成 JSONL，並推斷數字、布林值與空值。",
+          "en": "Convert this semicolon-delimited CSV file to JSONL and infer numbers, booleans, and null values."
         },
         {
-          "en": "Flatten the nested objects in orders.json using dotted keys and export them as CSV.",
-          "zh_hant": "請用點號鍵名攤平 orders.json 中的巢狀物件，並匯出成 CSV。"
+          "zh_hant": "請將 orders.json 的巢狀物件用點號鍵名攤平，然後匯出為 CSV。",
+          "en": "Flatten the nested objects in orders.json with dotted keys and export the result as CSV."
         },
         {
-          "en": "Convert events.jsonl to CSV line by line and verify that the output record count matches the source.",
-          "zh_hant": "請逐行將 events.jsonl 轉成 CSV，並確認輸出筆數與來源一致。"
+          "zh_hant": "請逐行將 events.jsonl 轉成 CSV，並確認輸出筆數與來源一致。",
+          "en": "Convert events.jsonl to CSV line by line and verify that the output record count matches the source."
         },
         {
-          "en": "Convert this large CSV file to JSONL in chunks and report which text encoding was detected.",
-          "zh_hant": "請分塊將這個大型 CSV 檔案轉成 JSONL，並回報偵測到的文字編碼。"
+          "zh_hant": "請分塊將這個大型 CSV 檔案轉成 JSONL，並回報實際使用的編碼。",
+          "en": "Convert this large CSV file to JSONL in chunks and report which encoding was used."
         }
       ],
       "tags": {
-        "dependencies": [
-          "python standard library",
-          "pandas"
-        ],
         "inputs": [
           "csv files",
           "json arrays",
           "jsonl files",
           "file paths",
-          "csv dialect",
-          "text encoding",
+          "csv dialect settings",
+          "encoding settings",
           "type inference options",
           "null sentinels",
-          "nested data handling"
+          "nested field options"
         ],
         "outputs": [
           "csv files",
@@ -1620,19 +1636,30 @@
           "jsonl files",
           "row counts",
           "object counts",
-          "encoding reports",
-          "validation reports"
+          "encoding reports"
         ],
         "tools": [
-          "csv.Sniffer",
           "csv",
           "json",
+          "csv.sniffer",
+          "pandas",
           "pd.read_csv"
+        ],
+        "dependencies": [
+          "pandas",
+          "python standard library"
         ]
       },
-      "limitations": null,
+      "limitations": [
+        "必須提供來源與目標檔案路徑，以及要執行的轉換方向。",
+        "CSV 方言若無法明確偵測，需要使用者指定分隔符、引號字元或標頭設定。",
+        "CSV 型別推斷與空值標記清單需要使用者確認；預設會將值保留為字串。",
+        "若要使用 pandas 進行型別推斷或大型檔案分塊處理，需要先安裝 pandas。",
+        "JSON 沒有原生日期時間型別，因此日期與時間會輸出為 ISO 8601 字串。",
+        "輸入超過 1 GB 時會提出警告，並建議使用 JSONL 而非 JSON 陣列。"
+      ],
       "model": "gpt-5.6-sol",
-      "prompt_version": "enrich-skill/v1",
+      "prompt_version": "enrich-skill/v2",
       "generated_at": "2026-08-15"
     },
     {
@@ -1643,57 +1670,70 @@
       "source_url": "https://github.com/danielrosehill/Claude-Data-Wrangler-plugin",
       "source_commit": "b12805a62307021e024626616119b505e015f5a9",
       "skill_md_path": "skills/text-to-numeric/SKILL.md",
-      "origin": "reused:goldenset",
-      "summary": "將含貨幣符號、千位分隔符、百分比、縮寫倍率或會計負號等格式的文字數值，轉換成可分析的整數或浮點數欄位。它需要資料集與目標欄位；若未指定，也可找出大多數內容看似數字的文字欄位，並在小數點、千位格式或百分比處理不明確時請使用者確認。原始格式、幣別、倍率與百分比決策會記錄到資料字典，無法解析的值則保留為空值並列出列索引。",
+      "origin": "new",
+      "summary": "此技能會把含貨幣符號、千位分隔符、百分比、縮寫倍率或會計負號的文字欄位轉成可分析的數值欄位。它需要一份資料集及目標欄位；若未指定欄位，會找出大多數內容看似數字的文字欄位，並請使用者確認格式與百分比處理方式。它會保留或另存原始值、記錄格式至資料字典，並列出無法解析的值及其列索引。",
       "task_examples": [
         {
-          "en": "Convert the revenue column containing values like \"$4.27\", \"$1.2M\", and \"(500)\" into a numeric column while preserving the original values.",
-          "zh_hant": "請將營收欄位中像「$4.27」、「$1.2M」和「(500)」的值轉成數值欄位，並保留原始值。"
+          "zh_hant": "請把價格欄中像「$4.27」和「$1,234.56」的值轉成數字，並保留原始值。",
+          "en": "Convert the price column containing values such as \"$4.27\" and \"$1,234.56\" into numbers while preserving the original values."
         },
         {
-          "en": "Find text columns in this dataset that are mostly numeric and suggest how to parse their separators and decimal markers.",
-          "zh_hant": "請找出這份資料集中內容大多可視為數字的文字欄位，並建議如何解析其千位分隔符與小數點。"
+          "zh_hant": "請找出這份資料集中大部分內容看似數字的文字欄位，並將它們轉成數值欄位。",
+          "en": "Find text columns in this dataset that are mostly numeric and convert them into numeric columns."
         },
         {
-          "en": "Parse the percentage column as decimal fractions, so \"3.5%\" becomes 0.035, and record that decision in the data dictionary.",
-          "zh_hant": "請將百分比欄位解析為小數比例，讓「3.5%」變成 0.035，並把這項處理方式記錄在資料字典中。"
+          "zh_hant": "請解析「€1.2M」、「2.5K」和「3.5%」等值，並在資料字典中記錄套用的倍率與百分比規則。",
+          "en": "Parse values such as \"€1.2M\", \"2.5K\", and \"3.5%\", and record the applied scale and percentage rules in the data dictionary."
         },
         {
-          "en": "Extract mixed currency symbols into a separate currency column and convert the remaining amounts to numbers without performing exchange-rate conversion.",
-          "zh_hant": "請將混合幣別符號擷取到獨立的幣別欄位，並把其餘金額轉成數字，但不要進行匯率換算。"
+          "zh_hant": "請轉換像「(500)」這類會計負數，並回報所有無法解析的列，但不要刪除它們。",
+          "en": "Convert accounting negatives such as \"(500)\" and report any rows that cannot be parsed without dropping them."
         },
         {
-          "en": "Convert approximations such as \"~500\" and \">1M\" into numeric values, preserve their qualifiers, and report any rows that cannot be parsed.",
-          "zh_hant": "請將「~500」和「>1M」等近似或界限值轉成數字、保留其限定符，並回報所有無法解析的資料列。"
+          "zh_hant": "這個欄位混合了美元、歐元與英鎊，請逐列提取貨幣並只轉換數值部分，不要進行匯率換算。",
+          "en": "This column mixes dollars, euros, and pounds; extract the currency for each row and convert only the numeric portion without FX conversion."
         }
       ],
       "tags": {
-        "dependencies": [
-          "pandas",
-          "babel"
-        ],
         "inputs": [
           "dataset",
           "text-formatted numeric columns",
-          "format preferences",
-          "percentage handling"
+          "currency symbols",
+          "thousands separators",
+          "decimal markers",
+          "scale suffixes",
+          "percentages",
+          "accounting negatives",
+          "format decisions"
         ],
         "outputs": [
           "numeric columns",
           "raw value columns",
-          "data dictionary metadata",
           "currency column",
           "qualifier column",
+          "data dictionary metadata",
           "unparseable row report",
           "numeric output dataset"
         ],
         "tools": [
-          "add-data-dictionary"
+          "pandas",
+          "babel.numbers.parse_decimal"
+        ],
+        "dependencies": [
+          "pandas",
+          "babel",
+          "add-data-dictionary skill"
         ]
       },
-      "limitations": null,
+      "limitations": [
+        "需要安裝 pandas 才能處理資料。",
+        "如要進行地區設定感知的解析，可選擇使用 babel.numbers.parse_decimal。",
+        "套用轉換前需要使用者確認偵測到的格式，尤其是小數點、千位分隔符與百分比處理方式。",
+        "不會對同一欄中的混合貨幣進行匯率換算，只會逐列提取貨幣並轉換數值部分。",
+        "遇到範圍值時，需要使用者決定拆成最小值與最大值、取中點或保留文字。"
+      ],
       "model": "gpt-5.6-sol",
-      "prompt_version": "enrich-skill/v1",
+      "prompt_version": "enrich-skill/v2",
       "generated_at": "2026-08-15"
     },
     {
@@ -1704,57 +1744,66 @@
       "source_url": "https://github.com/YuYY2004/excel-skills",
       "source_commit": "c15e51e20424284f98359e8d3512f8aaa771c62f",
       "skill_md_path": "claude/skills/excel-deduplicate/SKILL.md",
-      "origin": "reused:goldenset",
-      "summary": "此技能依指定關鍵欄位為 Excel 資料去重，可選擇保留首次或末次出現的資料列，並刪除其餘重複列。它需要提供 .xlsx 檔案、關鍵欄位名稱及保留規則；流程會先唯讀掃描並列出重複情況，再備份檔案、直接修改工作表 XML、重新封裝，最後驗證殘留重複與公式中的 #REF! 錯誤。此方式只移除資料列，保留其餘內容與格式不變。",
+      "origin": "new",
+      "summary": "此技能依指定的關鍵欄位為 Excel 資料去重，可選擇保留首次或末次出現的資料，並刪除其餘重複列。它先以唯讀方式掃描重複列並確認刪除範圍，再備份檔案、直接修改 .xlsx 內的 XML，以保留未刪除列的格式。完成後會重新讀取檔案，檢查殘留重複資料及部分公式中的 `#REF!` 錯誤。使用時需提供 Excel 檔案、關鍵欄位名稱及保留模式。",
       "task_examples": [
         {
-          "en": "Remove duplicate rows from this Excel file by the customer ID column, keeping the first occurrence.",
-          "zh_hant": "請依「客戶編號」欄位移除這份 Excel 的重複資料列，保留第一次出現的資料。"
+          "zh_hant": "請依客戶 ID 欄位替這個 Excel 檔案去重，每個 ID 保留首次出現的資料。",
+          "en": "Deduplicate this Excel file by the customer ID column, keeping the first occurrence of each ID."
         },
         {
-          "en": "Deduplicate the spreadsheet by email address and keep the last record for each address.",
-          "zh_hant": "請按電子郵件地址為試算表去重，每個地址保留最後一筆紀錄。"
+          "zh_hant": "請依電子郵件欄刪除重複列，但保留最後一次出現的資料。",
+          "en": "Remove duplicate rows based on the email column, but keep the last occurrence."
         },
         {
-          "en": "Scan this workbook for duplicate order numbers, show me how many rows will be removed, and then deduplicate it.",
-          "zh_hant": "請掃描這份活頁簿中的重複訂單編號，顯示預計刪除的列數，然後執行去重。"
+          "zh_hant": "請掃描這份活頁簿中的重複訂單編號，顯示將刪除的列數，再執行去重。",
+          "en": "Scan this workbook for duplicate order numbers, show me how many rows will be removed, and then deduplicate it."
         },
         {
-          "en": "Clean duplicate product codes from this XLSX file, create a backup, and verify that no duplicates or #REF! errors remain.",
-          "zh_hant": "請清理這份 XLSX 檔案中的重複產品代碼、建立備份，並確認沒有殘留重複資料或 #REF! 錯誤。"
+          "zh_hant": "請清理產品代碼欄中的重複值，建立備份，並驗證處理後沒有殘留重複資料。",
+          "en": "Clean duplicate values from the product code column, create a backup, and verify that no duplicates remain."
+        },
+        {
+          "zh_hant": "請依帳號欄為這份試算表去重，並保留所有未刪除列的原有格式。",
+          "en": "Deduplicate this spreadsheet by the account column and preserve the formatting of all retained rows."
         }
       ],
       "tags": {
-        "dependencies": [
-          "python",
-          "pandas",
-          "lxml",
-          "openpyxl",
-          "excel-find-duplicates",
-          "excel-delete",
-          "excel-safe-workflow"
-        ],
         "inputs": [
-          "xlsx file",
-          "key column",
-          "keep rule"
+          "xlsx workbook",
+          "key column name",
+          "keep mode",
+          "deletion confirmation"
         ],
         "outputs": [
-          "deduplicated xlsx file",
-          "backup xlsx file",
+          "deduplicated xlsx workbook",
+          "backup workbook",
           "duplicate scan report",
           "validation report"
         ],
         "tools": [
-          "pandas read_excel",
-          "xml row deletion",
+          "pandas",
+          "lxml",
+          "openpyxl",
           "zipfile",
-          "formula health check"
+          "xml row deletion"
+        ],
+        "dependencies": [
+          "python",
+          "excel-find-duplicates",
+          "excel-delete",
+          "excel-safe-workflow"
         ]
       },
-      "limitations": null,
+      "limitations": [
+        "僅處理以關鍵欄位判定的重複資料，關鍵欄位名稱必須是 pandas 讀取後的欄名。",
+        "需要安裝 Python、pandas、lxml 與 openpyxl；lxml 可透過 `pip install lxml` 安裝。",
+        "流程使用 .xlsx 的 XML 結構，並要求在操作前建立備份。",
+        "關鍵欄位中的多個空值只會保留第一筆。",
+        "公式健康檢查僅掃描活頁簿作用中工作表前 49 列、前 9 欄中的 `#REF!`。"
+      ],
       "model": "gpt-5.6-sol",
-      "prompt_version": "enrich-skill/v1",
+      "prompt_version": "enrich-skill/v2",
       "generated_at": "2026-08-15"
     },
     {

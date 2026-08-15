@@ -28,6 +28,7 @@ Usage
   # start the LLM service first (services/llm README), then:
   python generate_summaries.py                 # fill in whatever is missing
   python generate_summaries.py --url http://127.0.0.1:8099
+  python generate_summaries.py --only a,b      # re-call just these ids (v1 -> v2 rebuild)
   python generate_summaries.py --dry-run       # report reuse/new split, no calls
   python generate_summaries.py --selftest      # offline checks
 """
@@ -147,7 +148,17 @@ def run(args) -> int:
     if OUT.exists() and not args.refresh:
         existing = {r["id"]: r for r in json.loads(OUT.read_text(encoding="utf-8"))["summaries"]}
 
-    todo = [s for s in seed["skills"] if s["id"] not in existing and s["id"] not in reuse]
+    # --only forces a fresh call for the named ids even when a row already exists
+    # or an exact-content reuse is available: that is how a v1 row gets rebuilt
+    # under v2 without re-billing the other 37.
+    picked = args.only.split(",") if args.only else []
+    refetch = lambda sid: any(p and p in sid for p in picked)  # noqa: E731
+
+    todo = [
+        s
+        for s in seed["skills"]
+        if refetch(s["id"]) or (s["id"] not in existing and s["id"] not in reuse)
+    ]
     print(
         f"45 seed skills: {len(reuse)} reusable from corpus_enriched, "
         f"{len(existing)} already in summaries.json, {len(todo)} need a new call",
@@ -162,10 +173,10 @@ def run(args) -> int:
     rows, failed, calls = [], 0, 0
     for i, skill in enumerate(seed["skills"], 1):
         source = seed["sources"][skill["source_id"]]
-        if skill["id"] in existing:
+        if skill["id"] in existing and not refetch(skill["id"]):
             rows.append(existing[skill["id"]])
             continue
-        if skill["id"] in reuse:
+        if skill["id"] in reuse and not refetch(skill["id"]):
             payload = json.loads(reuse[skill["id"]].read_text(encoding="utf-8"))
             rows.append(
                 record(skill, source, payload, "reused:goldenset", manifest["fetched_at"][:10])
@@ -263,6 +274,10 @@ def main() -> int:
         "--dry-run", action="store_true", help="report the reuse/new split, call nothing"
     )
     p.add_argument("--refresh", action="store_true", help="ignore existing summaries.json rows")
+    p.add_argument(
+        "--only",
+        help="comma-separated substrings of skill ids to re-call, ignoring any existing row or reuse",
+    )
     p.add_argument("--selftest", action="store_true", help="offline checks")
     args = p.parse_args()
     args.url = args.url.rstrip("/")

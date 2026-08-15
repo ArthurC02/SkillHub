@@ -1,7 +1,8 @@
 # CONTENT-005：首批 Skill 白話摘要與人工審核紀錄
 
 - 狀態：**工序已建立，人工審核未完成。** 本文件 45 筆的審核狀態全部為「待審」。
-- 產出日：**2026-08-15**
+- 產出日：**2026-08-15**（第一輪）；**第二輪 8 筆重跑：2026-08-15**，見 §2.5
+- 版本基線：**精選 15 筆全部為 `enrich-skill/v2`**；已索引 30 筆中 8 筆仍為 v1（§2.2）
 - 機器可讀產出：[`tools/content/summaries.json`](../../../tools/content/summaries.json)（45 筆，含 `model`、`prompt_version`、生成時間）
 - 產生工具：[`tools/content/generate_summaries.py`](../../../tools/content/generate_summaries.py)（`--selftest` 為離線自我檢查）
 - 承接工作項：[`03-work-items.md` CONTENT-005](../03-work-items.md)；[`curated-skill-list.md` §3 檢查 ⑦](curated-skill-list.md)
@@ -57,14 +58,24 @@
 
 45 筆全部是 `POST /v1/enrich-skill`（[`services/llm`](../../../services/llm/src/skillhub_llm/enrich.py)）的輸出，模型一律 **`gpt-5.6-sol`**。套件內容以 `import_seed.repack_skill` 在 pin 的 commit 上重組，`skill_md` 與 `file_tree` 與匯入時送出的完全一致。工具本身不含任何 prompt、schema 或模型參數。
 
-### 2.2 計費：15 筆重用、30 筆新呼叫
+### 2.2 計費：兩輪合計 38 次呼叫、8 筆重用
 
-| 來源 | 筆數 | prompt 版本 | 說明 |
+| 輪次／來源 | 筆數 | prompt 版本 | 說明 |
 | --- | --- | --- | --- |
-| 重用 [`tools/goldenset/corpus_enriched/`](../../../tools/goldenset/corpus_enriched/) | **15** | `enrich-skill/v1` | 僅在 **repo、路徑、pin commit 三者全等**時重用，也就是被增強的是同一份位元組。同時保證這 15 筆的文字與 golden set 推導 `MaxCosineDistance = 0.75` 時所用的完全相同 |
-| 本次新呼叫 | **30** | `enrich-skill/v2` | golden set 語料未涵蓋者。0 筆失敗 |
+| 第一輪：重用 [`tools/goldenset/corpus_enriched/`](../../../tools/goldenset/corpus_enriched/) | 15 → **剩 8** | `enrich-skill/v1` | 僅在 **repo、路徑、pin commit 三者全等**時重用，也就是被增強的是同一份位元組。原 15 筆中的 7 筆已於第二輪改為新呼叫 |
+| 第一輪：新呼叫 | **30** | `enrich-skill/v2` | golden set 語料未涵蓋者。0 筆失敗 |
+| **第二輪：重跑**（§2.5） | **8** | `enrich-skill/v2` | 7 筆補 `limitations`（原 v1 重用）＋ `excel-format` 1 筆的字型在地化複驗。0 筆失敗 |
 
-> ⚠️ **prompt 版本分歧，且是實質差異。** `enrich-skill/v2` 相對 v1 新增 `limitations` 欄位。**重用的 15 筆沒有 `limitations`**（在 `summaries.json` 中記為 `null`＝欄位不存在，與 `[]`＝模型未讀到限制不同），其中 **7 筆是精選**。02 §DISC-003 的允收準則要求一般模式顯示「限制」，**這 7 筆目前無法滿足**（見 §4 與 §7）。
+`summaries.json` 現行 `counts`：`total=45`、`reused=8`、`new_calls=8`（`new_calls` 只計最近一次執行的呼叫數）。
+
+> ⚠️ **prompt 版本分歧仍存在，但已不影響精選。** `enrich-skill/v2` 相對 v1 新增 `limitations` 欄位（`summaries.json` 中 `null`＝欄位不存在，與 `[]`＝模型未讀到限制不同）。
+>
+> - **精選 15 筆：15/15 為 v2，`limitations` 全數存在。** 02 §DISC-003 的「限制」允收在精選層已滿足。
+> - **已索引 30 筆：8 筆仍為 v1、`limitations` 為 `null`** — `anthropic-sa/docx`、`pdf`、`pptx`、`xlsx`、`yuyy-excel/excel-filter`、`excel-merge`、`wrangler/date-wrangling`、`pii-flag`。
+>
+> **這 8 筆為什麼不重跑。** 它們是 `indexed` 層，不在必審範圍；而**線上目錄不受這裡影響**——重新匯入時 45 筆一律由現行 `services/llm` 以 v2 重新生成，包含這 8 筆（見 [`catalog-rebuild-report.md`](catalog-rebuild-report.md)）。也就是說 02 §DISC-003 的「限制」允收在**線上**是全數滿足的；這 8 筆的 `null` 只是**審核紀錄本身**的版本落差，重跑它們對閘門沒有任何影響，只會多花 8 次呼叫。保留 v1 反而有一個好處：它們的文字與 `tools/goldenset/corpus_enriched/` 逐字相同，是 `MaxCosineDistance = 0.75` 推導語料的可讀對照。
+>
+> **本節講的是 `summaries.json` 的版本分佈，不是線上目錄的。** 兩者的關係見 §2.4。
 
 ### 2.3 金鑰處理
 
@@ -77,21 +88,51 @@
 增強是**每次匯入重新生成**的，LLM 輸出非決定性。因此：
 
 - 人工審核實際批准的是**「某個模型＋某個 prompt 版本在某份套件上的產出品質」**，而不是一串固定字串。這是 CONTENT-005 這個工作項的結構性上限，不是本次工序的疏漏。
-- **`import-report.md` 記錄的 44 筆線上目錄目前不存在。** 實查 `skillhub-postgres-1`：`skills` 2 筆（整合測試殘留）、`skill_versions` 0 筆、`search_documents` 2 筆且皆 `pending`。閘門測試的「環境凍結（44 筆索引）」必須先重新匯入才談得上。
-- 重新匯入時若 `services/llm` 為現行版本，增強會以 **v2** 產出，與 `import-report.md` 記錄的 v1 不同。**建議：人工審核完成後再重新匯入，並核對線上 `enriched_summary` 與本文件的落差；落差大到改變「非技術使用者讀不讀得懂」的判定時，重審該筆。**
+- **第二輪重跑替這條上限提供了實測值**：8 筆在同模型、同 prompt 版本下重跑，8/8 的語意涵蓋一致、可理解性一致，漂移落在措辭與 `tags` 粒度（§2.5）。**同版本重跑的品質可複現，逐字內容不可複現**——這正是本節主張的形狀。
+- **線上目錄已依 §7 第 5 項重建完成**，基線與統計見 [`catalog-rebuild-report.md`](catalog-rebuild-report.md)。線上 45 筆一律為 `enrich-skill/v2`，而本文件的 8 筆已索引項仍為 v1（§2.2）——**兩者不同是預期的**。
+- **判定衝突時以線上為準。** 本文件是審核紀錄，閘門測試打的是線上目錄。審核人若對某筆的線上文字與本文件落差有疑慮，處置是實查該筆詳情頁後重審，而不是改本文件的字。
+
+### 2.5 第二輪重跑（8 筆）
+
+- 執行：2026-08-15，`python tools/content/generate_summaries.py --url http://127.0.0.1:8000 --only "<8 個 id>"`
+- 結果：**8 次呼叫、8 筆成功、0 筆失敗**，模型 `gpt-5.6-sol`、prompt `enrich-skill/v2`
+- 工具變更：`generate_summaries.py` 新增 `--only`（逗號分隔的 id 子字串），對指定筆強制重新呼叫、忽略既有列與重用；其餘 37 筆逐位元保持不動
+
+| 重跑對象 | 筆數 | 理由 | 結果 |
+| --- | --- | --- | --- |
+| C-5、C-6、C-10、C-11、C-12、C-13、C-14 | 7 | 原為 v1 重用，缺 `limitations`（§4.2） | **7/7 補齊**，預判全數由「需修改」改為「預判通過」 |
+| C-4 `excel-format` | 1 | 字型在地化複驗（§4.2） | 用語改善但**字型名稱仍為「微軟雅黑」**，改列為**審核裁定事項**，非生成錯誤（見 C-4） |
+
+**同版本重跑的漂移形狀**（對 §2.4 的實測補充）：
+
+| 觀察 | 例 |
+| --- | --- |
+| 語意涵蓋一致 | 8/8 的「做什麼、要給什麼」與第一輪相同 |
+| 措辭改善 | C-11、C-13 第一輪的「缺主詞」問題自行消失；C-4 `字體`→`字型` |
+| 新增具體上限 | C-14 多出「僅掃描前 49 列、前 9 欄」（已回查原文，屬轉述） |
+| `tags` 粒度漂移 | C-6 的 `dependencies` 由四個檔名縮為一句概括 |
+| 體例小幅不一致 | C-12 用「此 Skill」，其餘用「此技能」 |
+
+**沒有出現的**：幻覺、簡體殘留、超出 ADR-013 白名單的判斷（§4.1 已就 45 筆重掃）。
 
 ---
 
 ## 3. CONTENT-005 允收對照
 
-**先講結論：`02-specifications-and-acceptance-criteria.md` 沒有 CONTENT-005 的需求 ID，也沒有任何 CONTENT 系列的允收準則。** 該檔只在 DISC-002 的欄位表中兩次提及 CONTENT-003。CONTENT-005 的文字只存在於 `03-work-items.md` 的一行工作項。因此逐條對照的對象取三份現有依據。
+> **更新（2026-08-16）：`02` 已補上 CONTENT-005 的需求 ID 與允收準則**（commit `b2a7690`，§4.7）。本節原本記錄的是「02 完全沒有 CONTENT 系列允收準則」這個缺口，該缺口已關閉。下表保留原有的三份依據對照，並在最前面加上 `02` 的正式允收。
+>
+> **`02` 的兩條新準則對本工序有直接影響**：
+>
+> 1. 「一般模式顯示所需的『限制』欄位須有值；缺值者不得判定為通過」——第二輪重跑（§2.5）正是為此，精選 15/15 已有值。
+> 2. 「**非決定性上限**：審核判定只對**已入庫的該版文字**生效；任何重跑增強後，須重新確認入庫文字與審核過的版本一致，否則該筆退回 `待審`」——**這條決定了審核要對著什麼看**，見 §2.4 與 [`catalog-rebuild-report.md` §5](catalog-rebuild-report.md)。目前 45 筆皆為 `待審`，故無退回問題。
 
 | 依據 | 要求 | 本工序的對應 | 判定 |
 | --- | --- | --- | --- |
+| **`02` §4.7 CONTENT-005** | 見上（生產路徑產生、白名單、限制有值、審核人分離、主判準、否決條件、可追溯、非決定性上限） | 全部欄位與工序均已備齊；`limitations` 精選 15/15 有值 | ⏳ **僅剩人工審核本身未執行** |
 | `03-work-items.md` CONTENT-005 | 對首批 Skill 產生一般使用者可理解的摘要 | 45/45 筆皆有繁中白話摘要與 3–5 則雙語任務範例句 | ✅ 已產生（**品質待人工判定**） |
 | PDM-002 檢查 ⑦ | 非技術使用者讀得懂它做什麼、需要什麼輸入 | 判準已定為唯一主判準（§1.2），欄位已備妥 | ⏳ **待人工審核**，⑦ 仍為 `pending` |
 | ADR-013「需要人工抽查機制」 | 建立抽查機制 | 本文件即該機制：判定欄位、判準、否決條件、改法（重跑增強而非就地改字） | ✅ 已建立 |
-| 02 §DISC-003 | 一般模式顯示功能、限制、輸入、輸出、依賴、權限、來源、License、相容性 | 「功能」＝`summary`；「輸入／輸出／依賴」＝`tags`；「限制」＝`limitations` | ⚠️ **7 筆精選缺 `limitations`**（§2.2） |
+| 02 §DISC-003 | 一般模式顯示功能、限制、輸入、輸出、依賴、權限、來源、License、相容性 | 「功能」＝`summary`；「輸入／輸出／依賴」＝`tags`；「限制」＝`limitations` | ✅ **精選 15/15 已有 `limitations`**（第二輪重跑補齊，§2.5）。線上目錄 45/45 為 v2，同樣全數有 `limitations` |
 | 「呈現於平台」 | — | 已由 `ingest/enrich.go` 於匯入時自動產生（commit `b144bea`），由 `catalog/detail.go` 的 `enrichmentFrom` 供給 `enrichment` 區塊（commit `ebc4036`），契約見 `contracts/openapi/public.yaml`（`summary` 恆為套件自身 frontmatter，模型產出一律落在 `enrichment` 之下並標示）。測試：`services/platform/internal/ingest/enrich_test.go`、`services/llm/tests/test_enrich.py` | ✅ 已呈現；本工序補的是**人工審核紀錄** |
 
 > **`anthropics/skills` 的免責條款怎麼處理。** `curated-skill-list.md` §3 腳註 3 要求把 README 的 "provided for demonstration and educational purposes only" 納入摘要措辭考量。**本工序的判定是：不納入摘要。** 該句是使用免責，屬於信任／品質陳述，而 ADR-013 白名單明令模型產出不得包含這一類判斷（`enrich.py` 的 system prompt 亦明文禁止）。它應由詳情頁的 License／來源區塊承接（ADR-021 的兩軸答案，`license.status` 目前最高只到 `declared`）。**此解讀需負責人確認**；若負責人要求摘要承載免責，則需改的是 ADR-013 白名單，不是這批摘要。涉及 6 筆（`brand-guidelines`、`internal-comms`、`docx`、`pdf`、`pptx`、`xlsx`）。
@@ -106,20 +147,30 @@
 
 | 項目 | 結果 |
 | --- | --- |
-| 簡體字殘留（掃 45 筆的 `summary` ＋ `task_examples.zh_hant` ＋ `limitations`） | **0 筆**。無任何簡體字元 |
-| 超出 ADR-013 白名單的宣稱（信任／風險／安全／品質） | **0 筆** |
-| 幻覺抽驗（對可疑數據回查 pin commit 的 `SKILL.md` 原文） | **0 筆**。`excel-find-duplicates` 的「168MB／33 萬列約 150 秒」實查原文第 3 條為 "pandas reading 168MB/330K rows takes ~150s"，屬轉述 |
+**第二輪後已就 45 筆重掃**，結果與第一輪相同：
+
+| 項目 | 結果 |
+| --- | --- |
+| 簡體字殘留（掃 45 筆的 `summary` ＋ `task_examples.zh_hant` ＋ `limitations`） | **0 筆**。無任何簡體字元（含重跑的 8 筆） |
+| 超出 ADR-013 白名單的宣稱（信任／風險／安全／品質） | **0 筆**。關鍵詞掃描命中 3 筆（`course-quiz-builder`「不具安全性」、`standardise-country-names`「低可信度」、`pii-flag`「高風險資訊」），逐筆回查後**皆為原文自述的轉述**（答案金鑰只做混淆、模糊比對的信心分數、個資類別分級），不是對 Skill 本身的信任／品質判斷，因此不計為違反。三筆均為第一輪產出，本輪未動 |
+| 幻覺抽驗（對可疑數據回查 pin commit 的 `SKILL.md` 原文） | **0 筆**。`excel-find-duplicates` 的「168MB／33 萬列約 150 秒」實查原文第 3 條為 "pandas reading 168MB/330K rows takes ~150s"；第二輪 `excel-deduplicate` 新增的「前 49 列、前 9 欄」實查原文為 `range(1, min(50, ...))` × `range(1, min(10, ...))`。兩者皆屬轉述 |
 
 ### 4.2 目檢預判
 
+**下表已依第二輪重跑（§2.5）更新。**
+
 | 筆 | 預判 | 原因 |
 | --- | --- | --- |
-| C-4 `excel-format` | **需修改** | 範例句「字體改成微軟雅黑 12 點」忠實轉述簡中原文（原文 `"微软雅黑"`），**不是幻覺**；但「微軟雅黑」是簡中在地字型，繁中環境的對應是「微軟正黑體」。對繁中使用者不自然，且該字型不必然存在。屬 §1.2 否決條件 (b) 的邊界情形 |
-| C-5 `brand-guidelines`、C-6 `internal-comms`、C-10 `data-analyst`、C-11 `data-cleanliness-scan`、C-12 `csv-to-json`、C-13 `text-to-numeric`、C-14 `excel-deduplicate` | **需修改**（共 **7 筆**） | **缺 `limitations` 欄位**（`enrich-skill/v1` 產出）。02 §DISC-003 允收要求一般模式顯示「限制」。摘要文字本身無問題。處置＝以 v2 重跑這 7 筆（7 次呼叫），非改寫文字 |
-| C-11 `data-cleanliness-scan`、C-13 `text-to-numeric` | 附註（不單獨計為需修改） | 摘要句缺主詞（「掃描一個或多個 CSV……」「將含貨幣符號……」），與其餘 13 筆的「此技能……」體例不一致。不影響可理解性 |
-| 其餘 7 筆 | **預判通過** | `excel-insert`、`excel-freeze`、`handoff`、`humanizer`、`line-edit`、`ai-written-check`、`excel-find-duplicates` |
+| C-4 `excel-format` | **審核裁定**（原「需修改」） | v2 重跑後用語改善（`字體`→`字型`、`12 點`→`12 號`），但字型名稱仍為「微軟雅黑」。這是 prompt「只轉述、不改寫」的必然結果，**不是生成錯誤**。請審核人在「轉述忠實性 vs 在地化」之間裁定；選擇在地化＝改 prompt 至 v3 並全量重跑，不是編輯本文件。判定依據見 C-4 |
+| C-5 `brand-guidelines`、C-6 `internal-comms`、C-10 `data-analyst`、C-11 `data-cleanliness-scan`、C-12 `csv-to-json`、C-13 `text-to-numeric`、C-14 `excel-deduplicate` | **預判通過**（原「需修改」，共 7 筆） | `limitations` 已於第二輪以 v2 補齊（7/7），02 §DISC-003 的「限制」允收已可滿足。摘要文字第一輪即無問題，重跑後語意涵蓋一致 |
+| C-11 `data-cleanliness-scan`、C-13 `text-to-numeric` | **已解決**（原附註） | 第一輪的「摘要句缺主詞」在重跑後自行消失，兩筆均已回到「此技能……」體例 |
+| C-12 `csv-to-json` | 附註（不計為需修改） | 主詞用「此 Skill」而非其餘筆的「此技能」。體例小不一致，不影響可理解性 |
+| C-6 `internal-comms` | 附註（不計為需修改） | `dependencies` 由第一輪的四個具體檔名縮為一句「對應的範例指南檔案」。兩者都不算錯，是 §2.4 所述非決定性的具體表現 |
+| 其餘 7 筆 | **預判通過**（未重跑） | `excel-insert`、`excel-freeze`、`handoff`、`humanizer`、`line-edit`、`ai-written-check`、`excel-find-duplicates` |
 
-> **一個正面發現：近義群已自行差異化。** `line-edit` 與 `ai-written-check` 的 `limitations` 明確寫出「這件事屬於 `cringe-check`／`full-review`」，正是 [`gate-test/analysis.md` §3 修正項 C3](gate-test/analysis.md) 要求的「什麼時候該用我」。這是 v2 新增 `limitations` 的副產品——**也就是說，把 v1 的 7 筆補成 v2 對 WRI-3 這張近義群卡有直接好處**。
+**精選 15 筆的預判合計：14 筆預判通過、1 筆待審核人裁定（C-4）、0 筆需修改。**
+
+> **一個正面發現：近義群已自行差異化。** `line-edit` 與 `ai-written-check` 的 `limitations` 明確寫出「這件事屬於 `cringe-check`／`full-review`」，正是 [`gate-test/analysis.md` §3 修正項 C3](gate-test/analysis.md) 要求的「什麼時候該用我」。這是 v2 新增 `limitations` 的副產品——**第二輪把 7 筆補成 v2 後，這個效果已再現於 C-11**（其限制主動指向 `json-restructure`），對 WRI-3 這張近義群卡有直接好處。
 
 ---
 
@@ -217,30 +268,46 @@
 ### C-4. `excel-format`（documents／精選）
 
 - 來源：[https://github.com/YuYY2004/excel-skills](https://github.com/YuYY2004/excel-skills) @ `c15e51e20424`，`claude/skills/excel-format/SKILL.md`
-- 生成：本次新呼叫｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v2`｜2026-08-15
+- 生成：**第二輪重跑**｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v2`｜2026-08-15（§2.5）
 - ⚠️ **來源 SKILL.md 為簡體中文**；下列摘要與範例句即繁中化呈現層（見 §1.3）。
 
-> 此技能可統一調整 Excel 工作表的字體、字號、粗體、斜體、顏色、水平與垂直對齊、欄寬及列高。使用者需要提供 Excel 檔案、想套用的格式，以及整張工作表、表頭、資料區、指定欄列或條件相符儲存格等套用範圍；若只要求美化，則使用內建的表頭、資料區與自動欄寬預設。流程會先檢查目前格式，再修改檔案並驗證表頭、資料區與欄寬等結果。
+> 此技能可統一調整 Excel 工作表的字型、字號、粗體、斜體、顏色、對齊方式、欄寬與列高，並可套用至整張表、表頭、資料區、指定欄列、範圍或符合條件的儲存格。使用者需要提供 Excel 檔案、想修改的格式參數及套用範圍；若只要求「美化」，則會使用內建的表頭與資料區格式預設。流程包含解析需求、檢查目前格式、執行修改、儲存備份及驗證結果。
 
 任務範例句：
 
-- 請把表頭設為粗體並置中，字體改成微軟雅黑 12 點。　／　*Make the header row bold and centered, using Microsoft YaHei at 12 pt.*
-- 請將整張工作表改成 Arial 10 點，並把金額欄靠右對齊。　／　*Change the entire worksheet to Arial 10 pt and right-align the amount column.*
-- 請自動調整所有欄寬，並將資料區垂直置中。　／　*Auto-fit all column widths and vertically center the data area.*
-- 請只將符合我指定條件的儲存格設為紅色斜體文字。　／　*Apply red italic text only to the cells matching my specified condition.*
+- 請把表頭設為粗體並置中，字型改成微軟雅黑 12 號。　／　*Make the header row bold and centered, using Microsoft YaHei at 12 pt.*
+- 請將整張工作表改成 Arial 10 號，並把金額欄靠右對齊。　／　*Change the entire worksheet to Arial 10 pt and right-align the amount column.*
+- 請自動調整所有欄寬，並讓資料區垂直置中。　／　*Automatically adjust all column widths and vertically center the data area.*
+- 請將 B 欄與 E 欄的文字改成藍色斜體，其他格式保持不變。　／　*Set columns B and E to blue italic text without changing their other formatting.*
 - 請使用預設格式方案美化這個 Excel 檔案。　／　*Beautify this Excel file using the default formatting preset.*
 
-標籤 — 輸入：`xlsx workbook`、`format specification`、`scope selection`、`font settings`、`alignment settings`、`column width`、`row height`；輸出：`formatted xlsx workbook`、`format verification`、`timestamped backups`；工具：`python`、`openpyxl`、`pandas`；依賴：`python`、`openpyxl`、`pandas`、`numpy`、`excel-safe-workflow`、`system fonts`
+標籤 — 輸入：`excel workbook`、`format specifications`、`worksheet scope`、`row and column ranges`、`cell conditions`；輸出：`formatted excel workbook`、`format verification results`、`timestamped backups`；工具：`python`、`openpyxl`、`pandas`、`numpy`；依賴：`excel-safe-workflow`、`openpyxl`、`pandas`、`numpy`、`system fonts`
 
 限制：
 
-- 執行前必須完成需求解析與格式勘察，執行後必須驗證結果。
-- 操作前必須建立時間戳備份，成功後保留最新 3 份；若操作失誤，需刪除損壞檔案並從備份恢復。
-- 字體是否可用取決於開啟 Excel 檔案的系統。
+- 執行前必須完成需求解析與工作表勘察，執行後必須驗證結果。
+- 操作前必須建立時間戳備份，成功後保留最新 3 份；若操作失誤，需刪除損壞檔案並由備份還原。
+- 字型是否可用取決於開啟 Excel 檔案的系統。
 - 合併儲存格的格式需要另外處理。
-- 未指定的格式參數不會變更，會保留原有格式。
+- 自動調整欄寬時，中文字符按 2 個寬度計算，且內容所述上限為 40 個字符。
+- 使用自動欄寬功能時需要 pandas 與 numpy。
 
-> **抽查預判：需修改** — 範例句「字體改成微軟雅黑 12 點」忠實轉述簡中原文，非幻覺；但「微軟雅黑」是簡中在地字型，繁中對應為「微軟正黑體」（§4.2）。
+> **抽查預判：建議審核人裁定——轉述忠實性 vs 在地化。**
+>
+> 第二輪以 v2 重跑後，用語確有改善：`字體`→`字型`、`12 點`→`12 號`，是更自然的繁中習慣；但**字型名稱仍為「微軟雅黑」**，與第一輪一致。
+>
+> 這不是生成錯誤。來源 `SKILL.md` 原文寫的就是 `"微软雅黑"`，`enrich-skill` 的 system prompt 明令「Describe only what the content states. Do not invent capabilities.」——把它改寫成「微軟正黑體」等於讓模型**改動它所轉述的事實**，那才是違反 prompt 的行為。兩輪都照抄，是 prompt 設計的必然結果，不是抽樣波動。
+>
+> **`02` §4.7 CONTENT-005 的否決條件 (b) 讓這題更尖銳**：該條寫的是「未依文件語言慣例在地化」。字面上，「微軟雅黑」確實是簡中在地慣例的字型名；但它同時是**原文的事實**。允收準則沒有規定「轉述專有名詞時該不該在地化」，這個邊界只能由審核人裁定，本工序無權代行。
+>
+> 因此這一題不是「生成要不要重跑」，而是**審核人要在兩個都成立的價值之間裁定**：
+>
+> | 選項 | 主張 | 代價 |
+> | --- | --- | --- |
+> | **A. 維持忠實轉述**（現況） | 摘要是文件的轉述層，原文寫什麼就寫什麼；使用者看到的與套件實際會做的一致 | 繁中使用者讀到不熟悉、且在繁中系統上不必然存在的字型名 |
+> | **B. 要求在地化** | 範例句是「使用者會怎麼打字」的示範，寫繁中使用者不會打的字型名，示範價值降低 | 需改 `enrich.py` 的 prompt（加入在地化指示），影響全部 45 筆的重跑；且模型改寫專有名詞的邊界難以界定 |
+>
+> **本工序不代行裁定，也不就地改字。** 若採 B，處置是改 prompt 版本（v3）後全量重跑，不是編輯本文件。
 
 | 審核狀態 | 審核人 | 審核日期 | 備註 |
 | --- | --- | --- | --- |
@@ -249,22 +316,25 @@
 ### C-5. `brand-guidelines`（writing／精選）
 
 - 來源：[https://github.com/anthropics/skills](https://github.com/anthropics/skills) @ `f6656c1256d5`，`skills/brand-guidelines/SKILL.md`
-- 生成：重用 golden set 既有增強產出｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v1`｜2026-08-15
+- 生成：**第二輪重跑**｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v2`｜2026-08-15（原為 v1 重用，§2.5）
 
-> 此技能會將 Anthropic 的官方品牌視覺套用到簡報等適合進行視覺格式化的成品，包括品牌色彩、字體、文字層級與圖形強調色。使用者需要提供要套用樣式的成品或其內容；標題會優先使用 Poppins、內文使用 Lora，若系統沒有這些字型，則分別改用 Arial 與 Georgia。非文字圖形會輪替使用橙、藍、綠色，並依背景選擇易讀的文字顏色。
+> 此技能會將 Anthropic 的官方品牌色彩與字體風格套用到需要品牌視覺、版面格式或公司設計規範的成品。它需要一份待調整的視覺成品，並依背景智慧選色、保留文字層級與格式，將 Poppins 用於 24pt 以上標題、Lora 用於內文，也會以橙、藍、綠色循環處理非文字圖形。若指定字型不可用，則自動改用 Arial 與 Georgia。
 
 任務範例句：
 
 - 請將 Anthropic 的官方色彩與字體套用到這份簡報。　／　*Apply Anthropic’s official colors and typography to this presentation.*
-- 請用 Poppins 標題、Lora 內文及適當的備用字型重新設計這些投影片。　／　*Restyle these slides with Poppins headings, Lora body text, and suitable fallback fonts.*
-- 請使用 Anthropic 的深色、淺色、灰色與強調色調色盤來格式化這份成品。　／　*Format this artifact using Anthropic’s dark, light, gray, and accent color palette.*
-- 請將非文字圖形依序套用 Anthropic 的橙色、藍色與綠色強調色。　／　*Update the non-text shapes to cycle through Anthropic’s orange, blue, and green accent colors.*
+- 請用 Poppins 標題、Lora 內文及 Anthropic 品牌色重新設計這份成品。　／　*Restyle this artifact with Poppins headings, Lora body text, and Anthropic brand colors.*
+- 請將所有 24pt 以上的標題套用品牌標題字體，並保留現有文字層級。　／　*Format all headings of 24pt or larger with the brand heading font while preserving the existing text hierarchy.*
+- 請將橙色、藍色和綠色的品牌強調色套用到這份簡報的非文字圖形。　／　*Apply orange, blue, and green accent colors to the non-text shapes in this deck.*
 
-標籤 — 輸入：`presentation artifact`、`text hierarchy`、`background colors`、`shapes`；輸出：`brand-styled artifact`、`formatted typography`、`brand color palette`、`styled shapes`；工具：`python-pptx rgbcolor`；依賴：`python-pptx`、`system-installed fonts`、`poppins`、`lora`、`arial`、`georgia`
+標籤 — 輸入：`visual artifacts`、`text headings`、`body text`、`background colors`、`non-text shapes`；輸出：`anthropic-branded artifacts`、`styled typography`、`brand color formatting`、`accent-colored shapes`；工具：`python-pptx rgbcolor`；依賴：`python-pptx`、`system-installed fonts`、`poppins`、`lora`、`arial`、`georgia`
 
-限制：**欄位不存在**（本筆為 `enrich-skill/v1` 產出，該版本尚無 `limitations`；見 §2.2）
+限制：
 
-> **抽查預判：需修改** — 缺 `limitations` 欄位（`enrich-skill/v1` 產出），不滿足 02 §DISC-003 的「限制」允收。摘要文字本身未見問題。處置＝以 v2 重跑本筆（§4.2）。
+- 若要獲得最佳效果，環境中需預先安裝 Poppins 與 Lora 字型；若無法使用，標題與內文會分別改用 Arial 與 Georgia。
+- 色彩是透過 python-pptx 的 RGBColor 類別套用。
+
+> **抽查預判：預判通過** — `limitations` 已補齊（v2 重跑），02 §DISC-003 的「限制」允收已可滿足。摘要文字與第一輪同義，敘述更精確（補上「24pt 以上」的標題門檻）。
 
 | 審核狀態 | 審核人 | 審核日期 | 備註 |
 | --- | --- | --- | --- |
@@ -273,23 +343,28 @@
 ### C-6. `internal-comms`（writing／精選）
 
 - 來源：[https://github.com/anthropics/skills](https://github.com/anthropics/skills) @ `f6656c1256d5`，`skills/internal-comms/SKILL.md`
-- 生成：重用 golden set 既有增強產出｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v1`｜2026-08-15
+- 生成：**第二輪重跑**｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v2`｜2026-08-15（原為 v1 重用，§2.5）
 
-> 此技能協助撰寫符合公司慣用格式的內部溝通內容，包括 3P（進度、計畫、問題）更新、公司電子報、FAQ、狀態報告、主管簡報、專案更新與事件報告。使用者需提供溝通類型、相關內容，以及期望的格式或背景；技能會依類型套用 examples 目錄中的格式、語氣與內容蒐集指引，若無相符指引則要求進一步說明。
+> 此技能協助撰寫公司內部溝通內容，包括 3P 進度更新、公司電子報、FAQ 回覆、狀態報告、主管更新、專案更新與事件報告。使用者需提供要撰寫的溝通類型及相關內容或背景；技能會套用對應範例指南所指定的格式、語氣與內容蒐集方式。若沒有相符指南，會要求使用者補充期望格式或更多資訊。
 
 任務範例句：
 
-- 請撰寫一份每週 3P 更新，說明我們的進度、計畫與目前問題。　／　*Write a weekly 3P update covering our progress, plans, and current problems.*
-- 請將這些公司公告整理成一份提供給全體員工的內部電子報。　／　*Turn these company announcements into an internal newsletter for all employees.*
-- 請針對新的遠距工作政策草擬清楚的 FAQ 回覆。　／　*Draft clear FAQ answers about the new remote-work policy.*
-- 請根據這些專案筆記與里程碑，整理一份精簡的主管更新。　／　*Create a concise leadership update from these project notes and milestones.*
-- 請撰寫一份內部事件報告，說明事件經過、影響與後續行動。　／　*Write an internal incident report describing what happened, the impact, and the follow-up actions.*
+- 請根據這些進度、後續計畫與阻礙，撰寫本週的 3P 更新。　／　*Write a 3P update for this week using these progress items, next steps, and blockers.*
+- 請將這些公司公告整理成一份給全體員工的內部電子報。　／　*Turn these company announcements into an internal newsletter for all employees.*
+- 請針對新的遠距工作政策，草擬清楚的員工 FAQ 回覆。　／　*Draft clear FAQ answers for employees about the new remote-work policy.*
+- 請整理專案目前狀態、里程碑與問題，撰寫一份主管更新。　／　*Create a leadership update summarizing the project's current status, milestones, and issues.*
+- 請根據這份時間線、影響摘要與處理結果，撰寫內部事件報告。　／　*Write an internal incident report from this timeline, impact summary, and resolution information.*
 
-標籤 — 輸入：`溝通類型`、`內部溝通內容`、`格式需求`、`背景資訊`；輸出：`3p 更新`、`公司電子報`、`faq 回覆`、`狀態報告`、`主管更新`、`專案更新`、`事件報告`；工具：（無）；依賴：`examples/3p-updates.md`、`examples/company-newsletter.md`、`examples/faq-answers.md`、`examples/general-comms.md`
+標籤 — 輸入：`溝通類型`、`進度、計畫與問題`、`公司消息`、`常見問題`、`狀態資訊`、`專案更新`、`事件資訊`、`期望格式`、`背景資訊`；輸出：`3p 更新`、`公司電子報`、`faq 回覆`、`狀態報告`、`主管更新`、`專案更新`、`事件報告`、`內部溝通稿`；工具：（無）；依賴：`對應的範例指南檔案`
 
-限制：**欄位不存在**（本筆為 `enrich-skill/v1` 產出，該版本尚無 `limitations`；見 §2.2）
+限制：
 
-> **抽查預判：需修改** — 缺 `limitations` 欄位（`enrich-skill/v1` 產出），不滿足 02 §DISC-003 的「限制」允收。摘要文字本身未見問題。處置＝以 v2 重跑本筆（§4.2）。
+- 若溝通類型不符合現有指南，需先取得對期望格式的澄清或更多背景資訊。
+- 需要存取 `examples/` 目錄中與溝通類型相符的指南檔案，才能依其格式、語氣及內容蒐集要求撰寫。
+
+> **抽查預判：預判通過** — `limitations` 已補齊（v2 重跑）。摘要文字與第一輪同義。
+>
+> 附註：本輪的 `dependencies` 從第一輪的四個具體檔名（`examples/3p-updates.md` 等）縮成一句中文「對應的範例指南檔案」。**兩者都不算錯**——DISC-003 的「依賴」欄要顯示的是使用者要準備什麼，具體檔名對非技術使用者資訊量較低。但這說明 `tags` 的粒度在兩次呼叫之間會漂移，與 §2.4 的結構性上限同源。
 
 | 審核狀態 | 審核人 | 審核日期 | 備註 |
 | --- | --- | --- | --- |
@@ -384,26 +459,30 @@
 ### C-10. `data-analyst`（data／精選）
 
 - 來源：[https://github.com/nqumich/data-analyst-skill](https://github.com/nqumich/data-analyst-skill) @ `0ba9d17ed275`，`SKILL.md`
-- 生成：重用 golden set 既有增強產出｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v1`｜2026-08-15
+- 生成：**第二輪重跑**｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v2`｜2026-08-15（原為 v1 重用，§2.5）
 - ⚠️ **來源 SKILL.md 為簡體中文**；下列摘要與範例句即繁中化呈現層（見 §1.3）。
 
-> 此技能可處理 CSV、TSV、XLSX、JSON 與 JSONL 資料，執行讀取、清理、篩選、彙總、連接、驗證及基本統計分析。它特別支援整理複雜 Excel 活頁簿，包括合併儲存格、多層表頭、空白列欄、格式化數字、混合日期及多工作表，也能以分塊方式處理大型 CSV。使用者需提供資料檔案、分析問題，以及視需要指定欄位、篩選條件、驗證結構、工作表或輸出路徑；結果可輸出為整理後的資料、品質檢查、錯誤清單、彙總結果或分析報告。
+> 此技能可讀取、清理、驗證、篩選、彙總及連接 CSV、TSV、XLSX、JSON 與 JSON Lines 資料，並提供資料品質檢查和分析報告架構。它可將含合併儲存格、多層表頭、空白列欄、格式化數字或混合日期格式的 XLSX 標準化，也能合併多個工作表及分塊處理大型 CSV。使用者需提供資料檔案，以及所需的工作表、欄位、篩選條件、彙總方式、驗證規則或輸出路徑等設定。
 
 任務範例句：
 
-- 請清理這份 Excel 活頁簿：合併兩層表頭、填補合併儲存格、將貨幣與百分比欄位轉成數值，並另存為 CSV。　／　*Clean this Excel workbook by flattening its two-row header, filling merged cells, converting currency and percentage fields to numbers, and saving the result as CSV.*
-- 請篩選 sales.csv 中金額大於 1,000 的資料，再依類別彙總金額總和。　／　*Filter sales.csv to rows where amount is greater than 1,000, then summarize the total amount by category.*
-- 請用 customer_id 對 orders.csv 與 customers.csv 執行左連接，並將合併結果儲存為 merged.csv。　／　*Join orders.csv and customers.csv on customer_id using a left join, and save the merged data to merged.csv.*
-- 請檢查這份資料集的重複列、空值、資料型別與數值欄位摘要統計。　／　*Check this dataset for duplicate rows, missing values, data types, and numeric summary statistics.*
-- 請分塊處理這個大型 CSV，保留金額高於 100 的紀錄、新增 amount_usd 欄位，並將結果寫入新檔案。　／　*Process this large CSV in chunks, keep records with amount above 100, add an amount_usd column, and write the results to a new file.*
+- 請將這份格式混亂的 Excel 活頁簿標準化，填入合併儲存格、合併兩列表頭、清理貨幣數值，並另存為 CSV。　／　*Standardize this messy Excel workbook by filling merged cells, combining its two header rows, cleaning currency values, and saving the result as CSV.*
+- 請篩選 sales.csv，只保留 amount 大於 1,000 的資料列，並將結果寫入 filtered.csv。　／　*Filter sales.csv to rows where amount is greater than 1,000 and write the result to filtered.csv.*
+- 請依 category 分組，計算 amount 的總和，並匯出彙總檔案。　／　*Group the data by category, calculate the sum of amount, and export a summary file.*
+- 請使用 customer_id 對 orders.csv 與 customers.csv 執行左連接。　／　*Join orders.csv and customers.csv on customer_id using a left join.*
+- 請驗證 amount、email 與 date 欄位，列出無效資料列，並產生資料品質報告。　／　*Validate the amount, email, and date columns, then list invalid rows and produce a data quality report.*
 
-標籤 — 輸入：`csv files`、`tsv files`、`xlsx workbooks`、`json files`、`jsonl files`、`filter expressions`、`column names`、`validation schemas`、`sheet names`、`analysis questions`、`output paths`；輸出：`pandas dataframes`、`cleaned csv files`、`cleaned xlsx files`、`aggregated data`、`joined data`、`data quality reports`、`validation errors`、`descriptive statistics`、`analysis reports`；工具：`python scripts`、`data_ops.py`、`command line`；依賴：`python`、`pandas`、`openpyxl`
+標籤 — 輸入：`csv files`、`tsv files`、`xlsx files`、`json files`、`jsonl files`、`sheet names`、`column names`、`filter expressions`、`aggregation rules`、`validation schemas`、`output paths`、`transform functions`；輸出：`pandas dataframes`、`cleaned datasets`、`csv files`、`xlsx files`、`quality reports`、`validation errors`、`aggregated summaries`、`joined datasets`、`analysis reports`；工具：`data_ops.py`、`python api`、`command line`；依賴：`python`、`pandas`、`openpyxl`
 
-限制：**欄位不存在**（本筆為 `enrich-skill/v1` 產出，該版本尚無 `limitations`；見 §2.2）
+限制：
+
+- 僅列明支援 CSV、TSV、XLSX、JSON 與 JSON Lines 格式。
+- 需要安裝 python3 或 python；相關程式碼亦使用 pandas 與 openpyxl。
+- 大型檔案的串流處理範例使用 CSV 輸入與輸出。
 
 > 🎯 **閘門卡 `DAT-3` 的 gold primary**（`gate-test/task-cards.md` §3）。本筆的摘要品質會被閘門直接檢驗。
 
-> **抽查預判：需修改** — 缺 `limitations` 欄位（`enrich-skill/v1` 產出），不滿足 02 §DISC-003 的「限制」允收。摘要文字本身未見問題。處置＝以 v2 重跑本筆（§4.2）。
+> **抽查預判：預判通過** — `limitations` 已補齊（v2 重跑）。摘要文字與第一輪同義，涵蓋範圍一致。
 
 | 審核狀態 | 審核人 | 審核日期 | 備註 |
 | --- | --- | --- | --- |
@@ -412,23 +491,29 @@
 ### C-11. `data-cleanliness-scan`（data／精選）
 
 - 來源：[https://github.com/danielrosehill/Claude-Data-Wrangler-plugin](https://github.com/danielrosehill/Claude-Data-Wrangler-plugin) @ `b12805a62307`，`skills/data-cleanliness-scan/SKILL.md`
-- 生成：重用 golden set 既有增強產出｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v1`｜2026-08-15
+- 生成：**第二輪重跑**｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v2`｜2026-08-15（原為 v1 重用，§2.5）
 
-> 掃描一個或多個 CSV、Parquet、JSON、JSONL 或 Excel 檔案，評估資料整潔度及找出可能導致 SQL 匯入失敗或分析錯誤的問題。它會檢查欄位型別、日期、空值、重複鍵、編碼、分隔符、列結構、值域及跨欄邏輯等，並按嚴重程度排序。使用者需提供資料檔案、確認格式及目標系統；輸出為含問題範例與修正建議的 Markdown 報告，亦可選擇產生 JSON 版本。
+> 此技能會掃描一個或多個 CSV、Parquet、JSON、JSONL 或 Excel 平面資料檔，找出可能阻礙 SQL 匯入或造成分析錯誤的資料問題。它需要使用者提供檔案、確認格式與目標，並會檢查欄位型別、日期、空值、重複鍵、編碼、範圍、檔案結構及跨欄位邏輯一致性。輸出是按嚴重程度排序的 Markdown 報告，也可選擇產生 JSON 版本，包含受影響筆數、遮蔽個資後的樣本值與具體修復建議。
 
 任務範例句：
 
-- 在我把這些 CSV 檔案匯入 PostgreSQL 前，請先掃描資料品質問題。　／　*Scan these CSV files for data quality issues before I load them into PostgreSQL.*
-- 請檢查這份 Excel 活頁簿是否有混合資料型別、錯誤日期、偽裝空值及重複鍵。　／　*Check this Excel workbook for mixed data types, malformed dates, disguised nulls, and duplicate keys.*
-- 這份 JSONL 資料能順利匯入 SQL 嗎？請提供按嚴重程度排序的報告及修正建議。　／　*Will this JSONL data load cleanly into SQL? Give me a severity-ranked report with remediation suggestions.*
-- 請用策略性抽樣稽核這些大型 Parquet 檔案，並在報告中註明樣本大小。　／　*Audit these large Parquet files using strategic sampling and note the sample size in the report.*
-- 請找出這批資料中的分隔符漂移、欄數不齊、編碼異常及混合換行格式。　／　*Find delimiter drift, ragged rows, encoding artefacts, and mixed line endings in this data dump.*
+- 請掃描這些 CSV 檔案，告訴我它們是否乾淨到足以匯入 PostgreSQL。　／　*Scan these CSV files and tell me whether they are clean enough to load into PostgreSQL.*
+- 請檢查這份 Excel 活頁簿是否有混合資料型別、格式錯誤的日期、偽裝空值及重複鍵。　／　*Check this Excel workbook for mixed data types, malformed dates, disguised nulls, and duplicate keys.*
+- 請稽核這些 JSONL 檔案，並產生按嚴重程度排序的 Markdown 與 JSON 資料潔淨度報告。　／　*Audit these JSONL files and produce a severity-ranked cleanliness report in Markdown and JSON.*
+- 請找出這份 CSV 資料傾印中的分隔符漂移、欄位數不一致、編碼異常及混合換行格式。　／　*Find delimiter drift, ragged rows, encoding artefacts, and mixed line endings in this CSV data dump.*
+- 請分析這個大型 Parquet 檔案是否有 SQL 匯入問題，並在報告中註明抽樣策略。　／　*Profile this large Parquet file for SQL ingestion issues and note the sampling strategy in the report.*
 
-標籤 — 輸入：`csv files`、`parquet files`、`json files`、`jsonl files`、`excel files`、`target sql system`；輸出：`cleanliness_report.md`、`cleanliness_report.json`、`ranked issue report`、`remediation suggestions`；工具：`pandas`、`chardet`、`dateutil`；依賴：`pandas`、`pyarrow`、`openpyxl`、`chardet`、`python-dateutil`
+標籤 — 輸入：`csv files`、`parquet files`、`json files`、`jsonl files`、`excel files`、`target database`；輸出：`cleanliness_report.md`、`cleanliness_report.json`、`ranked issue report`、`remediation suggestions`；工具：`pandas`、`chardet`、`dateutil`；依賴：`pandas`、`pyarrow`、`openpyxl`、`chardet`、`python-dateutil`
 
-限制：**欄位不存在**（本筆為 `enrich-skill/v1` 產出，該版本尚無 `limitations`；見 §2.2）
+限制：
 
-> **抽查預判：需修改** — 缺 `limitations` 欄位（`enrich-skill/v1` 產出），不滿足 02 §DISC-003 的「限制」允收。摘要文字本身未見問題。處置＝以 v2 重跑本筆（§4.2）。
+- 對非常大的檔案會採策略性抽樣，並在報告中註明樣本大小。
+- 對高度巢狀的 JSON，主要只檢查記錄間的結構與結構描述一致性；深入分析前建議先用 `json-restructure` 攤平。
+- 離群值只會列為觀察結果，不會視為缺陷或建議移除。
+- 修復技能只會依建議順序提供，不會自動執行。
+- 需要安裝 pandas、pyarrow、openpyxl、chardet 與 python-dateutil。
+
+> **抽查預判：預判通過** — `limitations` 已補齊（v2 重跑），且第一輪指出的「摘要句缺主詞」問題**一併消失**：本輪開頭已是「此技能會掃描……」，與其餘筆體例一致。第二條限制主動指向 `json-restructure`，是 §4.2 註記的近義群差異化效果再現。
 
 | 審核狀態 | 審核人 | 審核日期 | 備註 |
 | --- | --- | --- | --- |
@@ -437,23 +522,32 @@
 ### C-12. `csv-to-json`（data／精選）
 
 - 來源：[https://github.com/danielrosehill/Claude-Data-Wrangler-plugin](https://github.com/danielrosehill/Claude-Data-Wrangler-plugin) @ `b12805a62307`，`skills/csv-to-json/SKILL.md`
-- 生成：重用 golden set 既有增強產出｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v1`｜2026-08-15
+- 生成：**第二輪重跑**｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v2`｜2026-08-15（原為 v1 重用，§2.5）
 
-> 此技能可在 CSV、JSON 陣列與 JSONL 格式之間進行雙向轉換，並處理分隔符、引號、標頭、文字編碼、空值及資料型別。使用者需提供來源檔案、目標格式與輸出位置，並可選擇是否推斷型別，以及如何處理巢狀物件或陣列。它也會驗證輸出筆數，並針對大型檔案採用串流或分塊方式。
+> 此 Skill 可在 CSV、JSON 陣列與 JSONL 之間雙向轉換，並處理欄位對應、CSV 方言與編碼、空值、型別推斷及巢狀資料攤平。使用者需要提供來源與目標檔案路徑、轉換方向，並視需要確認型別推斷、空值標記及巢狀欄位的處理方式。它也會驗證輸出能否重新載入，並比對來源與輸出的資料筆數。
 
 任務範例句：
 
-- 請將 customers.csv 轉成 JSON 陣列，並把所有值保留為字串。　／　*Convert customers.csv to a JSON array while preserving every value as a string.*
-- 請將這個以分號分隔的 CSV 轉成 JSONL，推斷數字與布林型別，並將 NA 和空白欄位視為 null。　／　*Convert this semicolon-delimited CSV file to JSONL, infer numeric and Boolean types, and treat NA and empty fields as null.*
-- 請用點號鍵名攤平 orders.json 中的巢狀物件，並匯出成 CSV。　／　*Flatten the nested objects in orders.json using dotted keys and export them as CSV.*
+- 請將 customers.csv 轉成 JSON 陣列，並將所有欄位保留為字串。　／　*Convert customers.csv into a JSON array while keeping every field as a string.*
+- 請把這個以分號分隔的 CSV 轉成 JSONL，並推斷數字、布林值與空值。　／　*Convert this semicolon-delimited CSV file to JSONL and infer numbers, booleans, and null values.*
+- 請將 orders.json 的巢狀物件用點號鍵名攤平，然後匯出為 CSV。　／　*Flatten the nested objects in orders.json with dotted keys and export the result as CSV.*
 - 請逐行將 events.jsonl 轉成 CSV，並確認輸出筆數與來源一致。　／　*Convert events.jsonl to CSV line by line and verify that the output record count matches the source.*
-- 請分塊將這個大型 CSV 檔案轉成 JSONL，並回報偵測到的文字編碼。　／　*Convert this large CSV file to JSONL in chunks and report which text encoding was detected.*
+- 請分塊將這個大型 CSV 檔案轉成 JSONL，並回報實際使用的編碼。　／　*Convert this large CSV file to JSONL in chunks and report which encoding was used.*
 
-標籤 — 輸入：`csv files`、`json arrays`、`jsonl files`、`file paths`、`csv dialect`、`text encoding`、`type inference options`、`null sentinels`、`nested data handling`；輸出：`csv files`、`json arrays`、`jsonl files`、`row counts`、`object counts`、`encoding reports`、`validation reports`；工具：`csv.Sniffer`、`csv`、`json`、`pd.read_csv`；依賴：`python standard library`、`pandas`
+標籤 — 輸入：`csv files`、`json arrays`、`jsonl files`、`file paths`、`csv dialect settings`、`encoding settings`、`type inference options`、`null sentinels`、`nested field options`；輸出：`csv files`、`json arrays`、`jsonl files`、`row counts`、`object counts`、`encoding reports`；工具：`csv`、`json`、`csv.sniffer`、`pandas`、`pd.read_csv`；依賴：`pandas`、`python standard library`
 
-限制：**欄位不存在**（本筆為 `enrich-skill/v1` 產出，該版本尚無 `limitations`；見 §2.2）
+限制：
 
-> **抽查預判：需修改** — 缺 `limitations` 欄位（`enrich-skill/v1` 產出），不滿足 02 §DISC-003 的「限制」允收。摘要文字本身未見問題。處置＝以 v2 重跑本筆（§4.2）。
+- 必須提供來源與目標檔案路徑，以及要執行的轉換方向。
+- CSV 方言若無法明確偵測，需要使用者指定分隔符、引號字元或標頭設定。
+- CSV 型別推斷與空值標記清單需要使用者確認；預設會將值保留為字串。
+- 若要使用 pandas 進行型別推斷或大型檔案分塊處理，需要先安裝 pandas。
+- JSON 沒有原生日期時間型別，因此日期與時間會輸出為 ISO 8601 字串。
+- 輸入超過 1 GB 時會提出警告，並建議使用 JSONL 而非 JSON 陣列。
+
+> **抽查預判：預判通過** — `limitations` 已補齊（v2 重跑），且六條全部是可操作的前置條件（要準備什麼、什麼情況要人工確認），正是 PDM-002 檢查 ⑦「需要什麼輸入」要的資訊。
+>
+> 附註：本輪主詞改用「此 Skill」而非其餘筆的「此技能」，是體例上的小不一致，不影響可理解性。
 
 | 審核狀態 | 審核人 | 審核日期 | 備註 |
 | --- | --- | --- | --- |
@@ -462,23 +556,29 @@
 ### C-13. `text-to-numeric`（data／精選）
 
 - 來源：[https://github.com/danielrosehill/Claude-Data-Wrangler-plugin](https://github.com/danielrosehill/Claude-Data-Wrangler-plugin) @ `b12805a62307`，`skills/text-to-numeric/SKILL.md`
-- 生成：重用 golden set 既有增強產出｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v1`｜2026-08-15
+- 生成：**第二輪重跑**｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v2`｜2026-08-15（原為 v1 重用，§2.5）
 
-> 將含貨幣符號、千位分隔符、百分比、縮寫倍率或會計負號等格式的文字數值，轉換成可分析的整數或浮點數欄位。它需要資料集與目標欄位；若未指定，也可找出大多數內容看似數字的文字欄位，並在小數點、千位格式或百分比處理不明確時請使用者確認。原始格式、幣別、倍率與百分比決策會記錄到資料字典，無法解析的值則保留為空值並列出列索引。
+> 此技能會把含貨幣符號、千位分隔符、百分比、縮寫倍率或會計負號的文字欄位轉成可分析的數值欄位。它需要一份資料集及目標欄位；若未指定欄位，會找出大多數內容看似數字的文字欄位，並請使用者確認格式與百分比處理方式。它會保留或另存原始值、記錄格式至資料字典，並列出無法解析的值及其列索引。
 
 任務範例句：
 
-- 請將營收欄位中像「$4.27」、「$1.2M」和「(500)」的值轉成數值欄位，並保留原始值。　／　*Convert the revenue column containing values like "$4.27", "$1.2M", and "(500)" into a numeric column while preserving the original values.*
-- 請找出這份資料集中內容大多可視為數字的文字欄位，並建議如何解析其千位分隔符與小數點。　／　*Find text columns in this dataset that are mostly numeric and suggest how to parse their separators and decimal markers.*
-- 請將百分比欄位解析為小數比例，讓「3.5%」變成 0.035，並把這項處理方式記錄在資料字典中。　／　*Parse the percentage column as decimal fractions, so "3.5%" becomes 0.035, and record that decision in the data dictionary.*
-- 請將混合幣別符號擷取到獨立的幣別欄位，並把其餘金額轉成數字，但不要進行匯率換算。　／　*Extract mixed currency symbols into a separate currency column and convert the remaining amounts to numbers without performing exchange-rate conversion.*
-- 請將「~500」和「>1M」等近似或界限值轉成數字、保留其限定符，並回報所有無法解析的資料列。　／　*Convert approximations such as "~500" and ">1M" into numeric values, preserve their qualifiers, and report any rows that cannot be parsed.*
+- 請把價格欄中像「$4.27」和「$1,234.56」的值轉成數字，並保留原始值。　／　*Convert the price column containing values such as "$4.27" and "$1,234.56" into numbers while preserving the original values.*
+- 請找出這份資料集中大部分內容看似數字的文字欄位，並將它們轉成數值欄位。　／　*Find text columns in this dataset that are mostly numeric and convert them into numeric columns.*
+- 請解析「€1.2M」、「2.5K」和「3.5%」等值，並在資料字典中記錄套用的倍率與百分比規則。　／　*Parse values such as "€1.2M", "2.5K", and "3.5%", and record the applied scale and percentage rules in the data dictionary.*
+- 請轉換像「(500)」這類會計負數，並回報所有無法解析的列，但不要刪除它們。　／　*Convert accounting negatives such as "(500)" and report any rows that cannot be parsed without dropping them.*
+- 這個欄位混合了美元、歐元與英鎊，請逐列提取貨幣並只轉換數值部分，不要進行匯率換算。　／　*This column mixes dollars, euros, and pounds; extract the currency for each row and convert only the numeric portion without FX conversion.*
 
-標籤 — 輸入：`dataset`、`text-formatted numeric columns`、`format preferences`、`percentage handling`；輸出：`numeric columns`、`raw value columns`、`data dictionary metadata`、`currency column`、`qualifier column`、`unparseable row report`、`numeric output dataset`；工具：`add-data-dictionary`；依賴：`pandas`、`babel`
+標籤 — 輸入：`dataset`、`text-formatted numeric columns`、`currency symbols`、`thousands separators`、`decimal markers`、`scale suffixes`、`percentages`、`accounting negatives`、`format decisions`；輸出：`numeric columns`、`raw value columns`、`currency column`、`qualifier column`、`data dictionary metadata`、`unparseable row report`、`numeric output dataset`；工具：`pandas`、`babel.numbers.parse_decimal`；依賴：`pandas`、`babel`、`add-data-dictionary skill`
 
-限制：**欄位不存在**（本筆為 `enrich-skill/v1` 產出，該版本尚無 `limitations`；見 §2.2）
+限制：
 
-> **抽查預判：需修改** — 缺 `limitations` 欄位（`enrich-skill/v1` 產出），不滿足 02 §DISC-003 的「限制」允收。摘要文字本身未見問題。處置＝以 v2 重跑本筆（§4.2）。
+- 需要安裝 pandas 才能處理資料。
+- 如要進行地區設定感知的解析，可選擇使用 babel.numbers.parse_decimal。
+- 套用轉換前需要使用者確認偵測到的格式，尤其是小數點、千位分隔符與百分比處理方式。
+- 不會對同一欄中的混合貨幣進行匯率換算，只會逐列提取貨幣並轉換數值部分。
+- 遇到範圍值時，需要使用者決定拆成最小值與最大值、取中點或保留文字。
+
+> **抽查預判：預判通過** — `limitations` 已補齊（v2 重跑），且第一輪指出的「摘要句缺主詞」問題**一併消失**：本輪開頭已是「此技能會把……」。
 
 | 審核狀態 | 審核人 | 審核日期 | 備註 |
 | --- | --- | --- | --- |
@@ -487,25 +587,32 @@
 ### C-14. `excel-deduplicate`（data／精選）
 
 - 來源：[https://github.com/YuYY2004/excel-skills](https://github.com/YuYY2004/excel-skills) @ `c15e51e20424`，`claude/skills/excel-deduplicate/SKILL.md`
-- 生成：重用 golden set 既有增強產出｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v1`｜2026-08-15
+- 生成：**第二輪重跑**｜模型 `gpt-5.6-sol`｜prompt `enrich-skill/v2`｜2026-08-15（原為 v1 重用，§2.5）
 - ⚠️ **來源 SKILL.md 為簡體中文**；下列摘要與範例句即繁中化呈現層（見 §1.3）。
 
-> 此技能依指定關鍵欄位為 Excel 資料去重，可選擇保留首次或末次出現的資料列，並刪除其餘重複列。它需要提供 .xlsx 檔案、關鍵欄位名稱及保留規則；流程會先唯讀掃描並列出重複情況，再備份檔案、直接修改工作表 XML、重新封裝，最後驗證殘留重複與公式中的 #REF! 錯誤。此方式只移除資料列，保留其餘內容與格式不變。
+> 此技能依指定的關鍵欄位為 Excel 資料去重，可選擇保留首次或末次出現的資料，並刪除其餘重複列。它先以唯讀方式掃描重複列並確認刪除範圍，再備份檔案、直接修改 .xlsx 內的 XML，以保留未刪除列的格式。完成後會重新讀取檔案，檢查殘留重複資料及部分公式中的 `#REF!` 錯誤。使用時需提供 Excel 檔案、關鍵欄位名稱及保留模式。
 
 任務範例句：
 
-- 請依「客戶編號」欄位移除這份 Excel 的重複資料列，保留第一次出現的資料。　／　*Remove duplicate rows from this Excel file by the customer ID column, keeping the first occurrence.*
-- 請按電子郵件地址為試算表去重，每個地址保留最後一筆紀錄。　／　*Deduplicate the spreadsheet by email address and keep the last record for each address.*
-- 請掃描這份活頁簿中的重複訂單編號，顯示預計刪除的列數，然後執行去重。　／　*Scan this workbook for duplicate order numbers, show me how many rows will be removed, and then deduplicate it.*
-- 請清理這份 XLSX 檔案中的重複產品代碼、建立備份，並確認沒有殘留重複資料或 #REF! 錯誤。　／　*Clean duplicate product codes from this XLSX file, create a backup, and verify that no duplicates or #REF! errors remain.*
+- 請依客戶 ID 欄位替這個 Excel 檔案去重，每個 ID 保留首次出現的資料。　／　*Deduplicate this Excel file by the customer ID column, keeping the first occurrence of each ID.*
+- 請依電子郵件欄刪除重複列，但保留最後一次出現的資料。　／　*Remove duplicate rows based on the email column, but keep the last occurrence.*
+- 請掃描這份活頁簿中的重複訂單編號，顯示將刪除的列數，再執行去重。　／　*Scan this workbook for duplicate order numbers, show me how many rows will be removed, and then deduplicate it.*
+- 請清理產品代碼欄中的重複值，建立備份，並驗證處理後沒有殘留重複資料。　／　*Clean duplicate values from the product code column, create a backup, and verify that no duplicates remain.*
+- 請依帳號欄為這份試算表去重，並保留所有未刪除列的原有格式。　／　*Deduplicate this spreadsheet by the account column and preserve the formatting of all retained rows.*
 
-標籤 — 輸入：`xlsx file`、`key column`、`keep rule`；輸出：`deduplicated xlsx file`、`backup xlsx file`、`duplicate scan report`、`validation report`；工具：`pandas read_excel`、`xml row deletion`、`zipfile`、`formula health check`；依賴：`python`、`pandas`、`lxml`、`openpyxl`、`excel-find-duplicates`、`excel-delete`、`excel-safe-workflow`
+標籤 — 輸入：`xlsx workbook`、`key column name`、`keep mode`、`deletion confirmation`；輸出：`deduplicated xlsx workbook`、`backup workbook`、`duplicate scan report`、`validation report`；工具：`pandas`、`lxml`、`openpyxl`、`zipfile`、`xml row deletion`；依賴：`python`、`excel-find-duplicates`、`excel-delete`、`excel-safe-workflow`
 
-限制：**欄位不存在**（本筆為 `enrich-skill/v1` 產出，該版本尚無 `limitations`；見 §2.2）
+限制：
+
+- 僅處理以關鍵欄位判定的重複資料，關鍵欄位名稱必須是 pandas 讀取後的欄名。
+- 需要安裝 Python、pandas、lxml 與 openpyxl；lxml 可透過 `pip install lxml` 安裝。
+- 流程使用 .xlsx 的 XML 結構，並要求在操作前建立備份。
+- 關鍵欄位中的多個空值只會保留第一筆。
+- 公式健康檢查僅掃描活頁簿作用中工作表前 49 列、前 9 欄中的 `#REF!`。
 
 > 🎯 **閘門卡 `DAT-4` 的 gold primary**（`gate-test/task-cards.md` §3）。本筆的摘要品質會被閘門直接檢驗。
 
-> **抽查預判：需修改** — 缺 `limitations` 欄位（`enrich-skill/v1` 產出），不滿足 02 §DISC-003 的「限制」允收。摘要文字本身未見問題。處置＝以 v2 重跑本筆（§4.2）。
+> **抽查預判：預判通過** — `limitations` 已補齊（v2 重跑）。最後一條「僅掃描前 49 列、前 9 欄」是第一輪完全沒有的具體上限，實查 pin commit 原文的公式健康檢查迴圈確為 `range(1, min(50, ws.max_row + 1))` × `range(1, min(10, ws.max_column + 1))`，即第 1～49 列、第 1～9 欄，屬轉述而非幻覺；對 `DAT-4` 這張卡而言是有價值的「這個工具不會替你做什麼」資訊。
 
 | 審核狀態 | 審核人 | 審核日期 | 備註 |
 | --- | --- | --- | --- |
@@ -1391,13 +1498,16 @@
 
 ## 7. 未完成事項
 
-| # | 事項 | 阻擋誰 | 負責 |
-| --- | --- | --- | --- |
-| 1 | **45 筆的人工審核**（精選 15 必審、已索引 30 抽審 ≥1/3） | CONTENT-005 勾選、`curated-skill-list.md` 檢查 ⑦、閘門測試 D 日 | 內容負責人 |
-| 2 | **7 筆精選以 `enrich-skill/v2` 重跑**，補齊 `limitations`（§4.2） | 02 §DISC-003 的「限制」允收 | 內容工序 |
-| 3 | **`excel-format` 的字型範例句在地化判定**（§4.2 C-4） | 審核判定 | 內容負責人 |
-| 4 | **`anthropics/skills` 免責條款的承接層確認**（§3 註） | 6 筆的審核判定 | 負責人 |
-| 5 | **重新匯入 45 筆並 reindex**，讓線上索引文字與審核過的版本對齊（§2.4） | 閘門測試「環境凍結（44 筆索引）」 | 平台工序 |
-| 6 | `sokrati/sokrati` 匯入失敗（`description-too-long`，[`import-report.md` §3.4](import-report.md)）。本文件仍為其保留摘要紀錄，但**它沒有線上對應**，目錄實數為 44 | 目錄筆數對帳 | — |
+| # | 事項 | 狀態 | 阻擋誰 | 負責 |
+| --- | --- | --- | --- | --- |
+| 1 | **45 筆的人工審核**（精選 15 必審、已索引 30 抽審 ≥1/3） | ❌ **未執行——現為唯一實質阻塞項** | CONTENT-005 勾選、`curated-skill-list.md` 檢查 ⑦、閘門測試 D 日 | 內容負責人 |
+| 2 | 7 筆精選以 `enrich-skill/v2` 重跑，補齊 `limitations` | ✅ **已完成**（§2.5，7/7） | — | — |
+| 3 | **`excel-format` 的字型在地化判定** | ⏳ **待裁定**（v2 重跑後仍為「微軟雅黑」，已確認非生成錯誤；見 C-4） | 該筆的審核判定 | 內容負責人 |
+| 4 | **`anthropics/skills` 免責條款的承接層確認**（§3 註） | ⏳ 待確認 | 6 筆的審核判定 | 負責人 |
+| 5 | 重新匯入 45 筆並 reindex | ✅ **已完成**（45/45 匯入、45/45 `enriched` v2），見 [`catalog-rebuild-report.md`](catalog-rebuild-report.md) | — | — |
+| 6 | `sokrati/sokrati` 匯入失敗（`description-too-long`） | ✅ **已解決**——`skillpkg` 改以 `utf8.RuneCountInString` 計長後通過，**線上目錄為 45 筆，不再是 44** | — | — |
+| 7 | **審核對象改為線上文字**：`02` §4.7 CONTENT-005 的非決定性上限要求審核判定只對已入庫的該版文字生效 | ⚠️ **新增**——線上文字與本文件不逐字相同（§2.4） | 審核工序的執行方式 | 內容負責人 |
 
-> **02 沒有 CONTENT-005 的需求 ID。** 依 AGENTS.md 文件維護規則「規格新功能先補需求 ID 與允收準則」，CONTENT 系列在 `02` 中完全缺席是既有缺口。本文件不代行補寫規格；**建議補一組 `CONTENT-xxx` 允收準則到 `02`，否則此工作項的勾選永遠只能對照工作項的一句話**。
+> **§7 第 6 項對閘門文件的連帶影響。** [`gate-test/README.md`](gate-test/README.md) §3.2 與 §4.2 多處以「44 筆索引」描述凍結標的，[`import-report.md`](import-report.md) §3 同。**實際線上為 45 筆**。本文件不代改閘門套件；請負責人在凍結生效（D 日）時一併更新該處數字，或於分析報告註明。
+>
+> ~~**02 沒有 CONTENT-005 的需求 ID。**~~ **已於 commit `b2a7690` 補上**（`02` §4.7，CONTENT-001～009 與 SEC 系列）。本文件 §3 已改為對照該節。
