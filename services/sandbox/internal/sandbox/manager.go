@@ -31,6 +31,11 @@ type Driver interface {
 	// Remove releases everything the handle holds. Idempotent: removing what is
 	// not there is success (SBX-009, iron rule 9).
 	Remove(ctx context.Context, providerRunID string) error
+	// ReadTrace returns the raw JSONL the workload has written to
+	// <out>/trace/events.jsonl so far (TRACE-002). An absent file is not an
+	// error: it means the workload has not emitted anything yet. The bytes are
+	// untrusted workload output and are never parsed by the driver.
+	ReadTrace(ctx context.Context, providerRunID string) ([]byte, error)
 	// Adopt reports the sandboxes this driver still holds, for rebuilding state
 	// after a restart.
 	Adopt(ctx context.Context) ([]Adopted, error)
@@ -91,6 +96,13 @@ type entry struct {
 	secrets   []string
 	timedOut  bool
 	cancelled bool
+	// traceURL is this attempt's ingestion destination, credential included
+	// (TRACE-002). Empty means nothing is collecting and no draining happens.
+	traceURL string
+	// traceSent is how many whole events of the file have been accepted. It is
+	// a low-water mark only: a batch that failed leaves it where it was, so the
+	// events go again and the platform dedupes them by event_id.
+	traceSent int
 }
 
 // Manager owns the run bookkeeping for one provider process.
@@ -105,6 +117,11 @@ type Manager struct {
 	cfg Config
 	now func() time.Time
 	log *slog.Logger
+	// sink pushes collected trace batches to the control plane. Nil disables
+	// collection entirely, which is what a manager test wants and what a
+	// deployment with no ingestion URL gets anyway.
+	sink    TraceSink
+	metrics *Metrics
 
 	mu    sync.Mutex
 	runs  map[string]*entry // provider_run_id -> entry
@@ -124,6 +141,14 @@ func NewManager(drv Driver, cfg Config, log *slog.Logger) *Manager {
 		runs:  map[string]*entry{},
 		byKey: map[string]string{},
 	}
+}
+
+// WithTrace turns on trace collection (TRACE-002) and observation. Both are
+// optional and set after construction, so the contract behaviour a Manager test
+// exercises is identical with and without them.
+func (m *Manager) WithTrace(sink TraceSink, mx *Metrics) *Manager {
+	m.sink, m.metrics = sink, mx
+	return m
 }
 
 // Capability answers GET /capability.
@@ -149,9 +174,10 @@ func (m *Manager) Capability(ctx context.Context) ProviderCapability {
 			ToolCalls: true,
 			Scripts:   true,
 			Artifacts: true,
-			// TRACE-002..004 land with the trace batch; declaring event
-			// streaming now would be a claim this provider cannot keep.
-			EventStreaming: false,
+			// TRACE-002: true only when a sink is actually wired. The claim is
+			// "this provider will push trace events if you give it an ingestion
+			// URL", and a build with no sink cannot keep it.
+			EventStreaming: m.sink != nil,
 		},
 		Availability: &Availability{ConcurrentRunSlots: free, Healthy: m.drv.Healthy(ctx)},
 	}
@@ -189,8 +215,9 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	id := newHandle()
 	now := m.now()
 	e := &entry{
-		hash:    hash,
-		secrets: secretsOf(req),
+		hash:     hash,
+		secrets:  secretsOf(req),
+		traceURL: req.Trace.IngestionURL,
 		run: ProviderRun{
 			RunID:         req.RunID,
 			RunAttemptID:  req.RunAttemptID,
@@ -202,11 +229,14 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	}
 	m.runs[id] = e
 	m.byKey[key] = id
+	live := len(m.runs)
 	m.mu.Unlock()
 
 	// Log identifiers only: a RunRequest carries a Virtual Key and pre-signed
 	// URLs, and none of it belongs in a log line (iron rule 11).
 	m.log.Info("run dispatched", "run_id", req.RunID, "attempt", req.Attempt, "provider_run_id", id)
+	m.metrics.dispatched()
+	m.metrics.active(live)
 
 	if err := m.drv.Start(ctx, id, req); err != nil {
 		m.finish(id, Outcome{}, &RunError{
@@ -261,7 +291,12 @@ func (m *Manager) watch(id string, soft, hard time.Duration) {
 	go func() {
 		defer m.wg.Done()
 		defer cancel()
+		// TRACE-002: drain while the workload is alive, and once more after it
+		// exits. The container is still there at that point - DELETE is what
+		// removes it - so the final pass is the last chance to read /out.
+		stopTrace := m.startTraceCollector(id)
 		out, err := m.drv.Wait(ctx, id)
+		stopTrace()
 		timer.Stop()
 		var re *RunError
 		if err != nil && ctx.Err() == nil {
@@ -322,6 +357,7 @@ func (m *Manager) finish(id string, out Outcome, re *RunError) {
 		res.Usage = &RunUsage{WallClockSeconds: now.Sub(e.run.StartedAt).Seconds()}
 	}
 	e.run.Result = res
+	m.metrics.finished(res.Status)
 	m.log.Info("run finished", "provider_run_id", id, "state", e.run.State, "status", res.Status)
 }
 
@@ -392,7 +428,9 @@ func (m *Manager) Destroy(ctx context.Context, id string) error {
 			}
 		}
 	}
+	live := len(m.runs)
 	m.mu.Unlock()
+	m.metrics.active(live)
 
 	if err := m.drv.Remove(ctx, id); err != nil {
 		// Resources are still held; the platform records the cleanup failure

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // maxRequestBytes bounds a RunRequest. The prompt travels inline and dataset
@@ -20,6 +22,9 @@ type Server struct {
 	// authenticates the control plane and carries no workspace, user or run
 	// scope, so it can never widen what a request may reach (iron rule 3).
 	Token string
+	// Metrics is this node's Prometheus registry (O11Y-001/003). Nil leaves
+	// /metrics off the route table entirely rather than serving an empty page.
+	Metrics *prometheus.Registry
 }
 
 // Routes returns the route table. It is one reviewable list on purpose: every
@@ -32,6 +37,13 @@ func (s *Server) Routes() *http.ServeMux {
 	mux.HandleFunc("GET /runs/{provider_run_id}", s.auth(s.getRun))
 	mux.HandleFunc("DELETE /runs/{provider_run_id}", s.auth(s.destroyRun))
 	mux.HandleFunc("POST /runs/{provider_run_id}/cancel", s.auth(s.cancelRun))
+	// Behind the same bearer check as everything else: this table has no
+	// unauthenticated path, and an exposition endpoint is not where to make the
+	// first exception (NFR-005).
+	if s.Metrics != nil {
+		metrics := MetricsHandler(s.Metrics)
+		mux.HandleFunc("GET /metrics", s.auth(metrics.ServeHTTP))
+	}
 	return mux
 }
 

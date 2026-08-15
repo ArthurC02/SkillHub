@@ -2,6 +2,7 @@ import { Link, Outlet, createRootRoute, createRoute, createRouter } from "@tanst
 import { Compare } from "./pages/Compare";
 import { Home } from "./pages/Home";
 import { RunPreflight } from "./pages/RunPreflight";
+import { RunTrace } from "./pages/RunTrace";
 import { SkillDetail } from "./pages/SkillDetail";
 import { SkillFiles } from "./pages/SkillFiles";
 
@@ -98,9 +99,22 @@ const runPreflightRoute = createRoute({
   }),
 });
 
+/**
+ * 03:TRACE-006/007. Addressed by the platform run_id and nothing else: a
+ * provider's ephemeral id never appears in a URL (iron rule 10). The general and
+ * advanced modes are component state rather than a search param — the toggle is
+ * a reading preference, not something worth a distinct shareable address.
+ */
+const runTraceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/runs/$runId",
+  component: RunTrace,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   compareRoute,
+  runTraceRoute,
   skillDetailRoute,
   skillFilesRoute,
   runPreflightRoute,

@@ -25,6 +25,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
 )
 
 // orphanGrace is how old an unrecognised sandbox must be, measured against the
@@ -93,6 +94,7 @@ func (w *CleanupWorker) Work(ctx context.Context, job *river.Job[CleanupArgs]) e
 // Cleanup destroys every sandbox this run's attempts still name, and records the
 // outcome. Exported so the supervisor and tests drive the same path.
 func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
+	defer metrics.ObserveSince(metrics.CleanupDuration, time.Now())
 	if _, err := s.queries().SetRunCleanupStatus(ctx, gen.SetRunCleanupStatusParams{
 		RunID: run.ID, WorkspaceID: run.WorkspaceID, CleanupStatus: gen.RunCleanupStatusCleaningUp,
 	}); err != nil {
@@ -129,6 +131,7 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 	if len(failures) > 0 {
 		status = gen.RunCleanupStatusFailed
 	}
+	metrics.Cleanup.WithLabelValues(string(status)).Inc()
 	if err := s.recordCleanup(ctx, run, status, failures); err != nil {
 		return err
 	}
@@ -198,8 +201,11 @@ func (w *OrphanScanWorker) Work(ctx context.Context, _ *river.Job[OrphanScanArgs
 	var failures []string
 	for _, provider := range w.Svc.providers().Providers {
 		if err := w.Svc.scanProvider(ctx, provider); err != nil {
+			metrics.OrphanScan.WithLabelValues(provider.Name, "error").Inc()
 			failures = append(failures, fmt.Sprintf("%s: %v", provider.Name, err))
+			continue
 		}
+		metrics.OrphanScan.WithLabelValues(provider.Name, "ok").Inc()
 	}
 	if len(failures) > 0 {
 		return errors.New("orphan scan incomplete: " + strings.Join(failures, "; "))
@@ -228,9 +234,14 @@ func (s *Service) scanProvider(ctx context.Context, provider *Provider) error {
 			// The platform run_id, never the provider handle, is what identifies this
 			// in logs and metrics (iron rule 10).
 			"run_id", entry.RunID)
+		// O11Y-003: a `destroyed` above zero is a leak that happened and was
+		// contained; a `failed` is a leak that is still burning a slot. The alert
+		// rules distinguish the two because only the second needs a human.
 		if err := provider.Destroy(ctx, entry.ProviderRunID); err != nil {
+			metrics.OrphanSandbox.WithLabelValues(provider.Name, "failed").Inc()
 			return err
 		}
+		metrics.OrphanSandbox.WithLabelValues(provider.Name, "destroyed").Inc()
 	}
 	return nil
 }

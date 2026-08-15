@@ -17,6 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
 	"github.com/ArthurC02/skillhub/services/platform/internal/testlab"
+	"github.com/ArthurC02/skillhub/services/platform/internal/trace"
 )
 
 // Deps are the wired handlers the routes dispatch to. Constructing them
@@ -30,6 +31,7 @@ type Deps struct {
 	Registry *registry.Handler
 	TestLab  *testlab.Handler
 	Runs     *run.Handler
+	Trace    *trace.Handler
 }
 
 // NewRouter returns the API route table. Callers wrap it as needed — cmd/api
@@ -95,6 +97,16 @@ func NewRouter(d Deps) *http.ServeMux {
 	mux.HandleFunc("POST /skills/{id}/runs", auth.RequireSession(d.Runs.Create))
 	mux.HandleFunc("GET /runs/{id}", auth.RequireSession(d.Runs.Get))
 	mux.HandleFunc("POST /runs/{id}/cancel", auth.RequireSession(d.Runs.Cancel))
+	// TRACE-006/007: one route, two modes. Session-scoped like every other run
+	// route - a trace is user data.
+	mux.HandleFunc("GET /runs/{id}/trace", auth.RequireSession(d.Trace.Get))
+
+	// TRACE-002: the execution plane pushes collected events here. Deliberately
+	// the only route in this table with no session and no RequireSession wrapper:
+	// its caller is a sandbox provider, and it authenticates with the per-attempt
+	// signed token in its own path. It grants append-only access to one run's
+	// trace and can read nothing (see internal/trace/token.go).
+	mux.HandleFunc("POST "+trace.IngestPath+"{token}", d.Trace.Ingest)
 
 	return mux
 }

@@ -21,6 +21,7 @@
 | `POST /runs/{provider_run_id}/cancel` | 記錄意圖回 202；**已終態也回 202**，不回 409 |
 | `DELETE /runs/{provider_run_id}` | 釋放資源，冪等，**無 404**；不存在也回 204。釋放失敗回 500 讓平台記錄 `cleanup_status` 並重試 |
 | `GET /runs?active=true` | 目前仍持有資源的 Run 快照（含 `observed_at`），供遺留 Sandbox 掃描；`active=false` 回 400 |
+| `GET /metrics` | Prometheus 文字格式（O11Y-001/003）。**不在契約內**，是本節點的維運面；同樣要 provider token——這張路由表沒有未認證路徑，不從 scrape 端點開先例 |
 
 驗證：所有端點一律要 `Authorization: Bearer <token>`，靜態 token 由環境變數注入，比較採常數時間。此 token 只證明「呼叫方是控制平面」，不帶 Workspace／使用者／Run 範圍（鐵律 3）。
 
@@ -77,6 +78,16 @@
 
 dev 基線是 `--network none`：完全沒有出口，比 default-deny 更嚴格，因此 Capability 只宣告 `egress_modes: ["none"]`。生產的 default-deny 允許清單**由 Egress Proxy 執行，不在本服務**——沙箱只被放進 Proxy 的網路，允許清單三項目的地（LiteLLM 閘道、物件儲存短效授權端點、Trace ingestion）與 DNS 固定解析、目的地記錄都是 Proxy 的職責。**Proxy 本身尚未實作**，允許清單管理流程亦未定（ADR-015 待決策），所以 SBX-007 不勾。
 
+## Trace 收集（TRACE-002）
+
+沙箱跑在 `--network none` 上，**它不能自己送事件**。所以流程是：容器內的 harness 把事件寫成 JSONL（`/out/trace/events.jsonl`，一行一個 JSON）→ sandboxd 讀出來 → sandboxd POST 到 `RunRequest.trace.ingestion_url`。目的地與其憑證都在該 URL 裡，由平台每個 attempt 簽發；沒給 URL 就不收集，也不推送。
+
+讀檔的方式是**在容器內執行 `/bin/cat`**，不是 `docker cp`：`/out` 是 tmpfs，而 Docker 的 copy API 對照容器 rootfs 層解析路徑，對掛載點下的檔案一律回「找不到」（已對 daemon 實測）。bind mount 會把主機路徑放進沙箱（C-05 禁止），走 stdout 會讓 trace 與工作負載自己的輸出混在一起。exec 的風險界線寫在 `dockerdrv.ReadTrace` 的註解：唯讀 rootfs 上的映像檔自帶二進位、絕對路徑、無 shell、無呼叫端參數、與工作負載同一個非特權 uid、讀取有上限。
+
+推送是**邊跑邊送**（2 秒一次）而非結束後一次送，因為 NFR-004 要求事件產生後 3 秒內出現在畫面；容器結束後還有一次收尾推送（含重試），因為那時容器還在（`DELETE` 才移除它），而那批正是失敗 Run 最需要的尾巴。推送失敗不推進水位，下一輪整批重送——平台以 `event_id` 去重，重送是安全的（TRACE-008）。
+
+事件本身一律帶 `masked: false`：遮罩是控制平面的事，沙箱替自己背書正是信任邊界禁止的（鐵律 11）。
+
 ## Skill 載入路徑
 
 沙箱內的展開點是 `<workdir>/.claude/skills/<name>/`，不是 `skills/`——這是 PDM-003 Spike §10 的實測結果，原提案的假設已被證偽。`.claude` 是隱藏目錄，展開與清理都必須涵蓋它。四個啟用條件（`cwd`、`settingSources` 含 `project`、skill 啟用、工具清單含 `Skill`）全部寫在 [`infra/images/runtime-agent-sdk/run.mjs`](../../infra/images/runtime-agent-sdk/run.mjs)，缺一則 Skill 靜默不載入。
@@ -109,6 +120,6 @@ docker build -t skillhub/runtime-agent-sdk:2026.08-1 infra/images/runtime-agent-
 
 - **Run 狀態存記憶體，重啟靠容器 label 重建**（`Adopt`）。label 只夠回答 `GET /runs`、銷毀沙箱、以雜湊認出重送的派工，**不足以重建 RunRequest**——那裡面有 Secrets，而 label 在節點上是公開可讀的（D-05）。「建立容器」與「記錄 entry」之間崩潰仍會漏一個沙箱，由平台的遺留掃描（RUN-007）收拾。要更強就在執行節點放本地持久化，**不是**去連核心資料庫。
 - **Artifact 清單尚未產生**：`RunResult.artifacts` 目前恆空。收集與上傳需要物件儲存寫入授權路徑打通（SBX-008 的另一半）。
-- **Usage 只有 wall clock**：token 與成本數字要等 Trace／閘道回報接上（TRACE-004）。
+- **Usage 只有 wall clock**：`RunResult.usage` 的 token 與成本仍為空。Trace 的 `usage` 事件已由 harness 產出並收集（TRACE-004），但 `cost_usd` 恆為 `null`——模型閘道授權尚未簽發（SBX-008），Agent SDK 連不到 LiteLLM，沒有數字可回報，不以本地估算填補。
 - **`agent_output` 只取工作負載輸出尾端 32 KB**，完整內容屬 Trace。
 - **Runtime Image 尚未可發佈**：SBOM（I-03）與漏洞掃描（I-04）是發佈時閘門，尚未接上流水線。

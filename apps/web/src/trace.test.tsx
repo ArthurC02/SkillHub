@@ -1,0 +1,162 @@
+import { StrictMode, act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { queryClient } from "./api/queryClient";
+import { RunTrace } from "./pages/RunTrace";
+import type { TraceAdvanced, TraceSummary } from "./api/trace";
+
+// TRACE-006/007. Three assertions, one per rule the view exists to keep:
+// incompleteness is stated, an unreported cost is not zero, and a sandbox
+// payload is rendered as inert text.
+//
+// Same hand-rolled DOM plumbing as disc.test.tsx: @testing-library is not a
+// dependency and these assertions do not justify adding one.
+
+let container: HTMLDivElement;
+let root: Root;
+
+beforeEach(() => {
+  queryClient.clear();
+  container = document.createElement("div");
+  document.body.appendChild(container);
+});
+
+afterEach(async () => {
+  await act(async () => root?.unmount());
+  container.remove();
+  vi.unstubAllGlobals();
+});
+
+// The page reads its run id from the router, which is not mounted here, so the
+// param hook is stubbed rather than driving a full navigation for one id.
+vi.mock("@tanstack/react-router", () => ({
+  useParams: () => ({ runId: "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20" }),
+}));
+
+function stubTrace(general: TraceSummary, advanced: TraceAdvanced) {
+  vi.stubGlobal("fetch", (input: string) => {
+    const body = String(input).includes("mode=advanced") ? advanced : general;
+    return Promise.resolve(
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  });
+}
+
+async function render() {
+  await act(async () => {
+    root = createRoot(container);
+    root.render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <RunTrace />
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+  });
+  await waitFor(() => !(container.textContent ?? "").includes("載入中"));
+}
+
+/** Polls until the query has settled and React has flushed the result. */
+async function waitFor(done: () => boolean, timeoutMs = 2000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (done()) return;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    });
+  }
+  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+}
+
+const summary: TraceSummary = {
+  run_id: "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+  status: "failed",
+  status_reason: "the provider could not carry the attempt",
+  complete: false,
+  skills: [{ name: "excel-deduplicate", decision: "activated" }],
+  resources_read: 1,
+  tool_calls: {
+    total: 2,
+    succeeded: 1,
+    failed: 1,
+    total_duration_ms: 3532,
+    slowest_duration_ms: 3412,
+    slowest_tool: "bash",
+  },
+  errors: [{ category: "provision", code: "provider_error", message: "no slot" }],
+  final_output: "Removed 17 duplicate rows.",
+  usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_usd: null },
+  steps: ["queued: run requested", "failed: the provider could not carry the attempt"],
+};
+
+const advanced: TraceAdvanced = {
+  run_id: summary.run_id,
+  complete: false,
+  streams: [
+    {
+      attempt: 1,
+      emitted_by: "sandbox",
+      received: 2,
+      highest_seq: 3,
+      missing_seq: [2],
+      late_events: 1,
+    },
+  ],
+  events: [
+    {
+      event_id: "0f0a1e6c-1c9a-4f8e-9a2b-1d5a2c7b3e01",
+      attempt: 1,
+      seq: 1,
+      occurred_at: "2026-08-16T09:12:04.002Z",
+      emitted_by: "sandbox",
+      type: "script_log",
+      status: "error",
+      late: true,
+      masked_fields: ["/message"],
+      // A workload that tries to inject markup into the timeline.
+      payload: { stream: "stderr", message: "<img src=x onerror=alert(1)>", truncated: false },
+    },
+  ],
+};
+
+test("the general mode says the trace is incomplete and never shows an unreported cost as zero", async () => {
+  stubTrace(summary, advanced);
+  await render();
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("部分事件未送達");
+  // The gateway reported no cost. Rendering 0 would tell the user it was free.
+  expect(text).toContain("未回報");
+  expect(text).not.toContain("US$0.0000");
+  // Status is whatever the runs table said, reason included (iron rule 5).
+  expect(text).toContain("failed");
+});
+
+test("the advanced mode names the missing sequence numbers and renders payloads inert", async () => {
+  stubTrace(summary, advanced);
+  await render();
+
+  const advancedButton = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "進階模式",
+  );
+  expect(advancedButton).toBeDefined();
+  await act(async () => {
+    advancedButton?.click();
+  });
+  await waitFor(() => container.querySelector("table") !== null);
+
+  const text = container.textContent ?? "";
+  // A hole in a producer's gapless sequence is a lost event, and the view has to
+  // name it rather than present a shorter timeline as the whole one.
+  expect(text).toContain("遲到");
+  expect(container.querySelector("table")?.textContent).toContain("2");
+
+  // The injected tag must exist as text and not as an element: everything under
+  // emitted_by=sandbox crossed the trust boundary (ADR-001, ADR-009).
+  expect(container.querySelector("img")).toBeNull();
+  expect(container.querySelector("pre")?.textContent).toContain("<img src=x onerror=alert(1)>");
+});

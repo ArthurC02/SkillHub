@@ -51,6 +51,16 @@ const (
 	// logTailBytes bounds what a workload can push into the result. The full
 	// output belongs in Trace (TRACE-004), not in a provider answer.
 	logTailBytes = 32 << 10
+
+	// TracePath is where the runtime image's harness appends its trace events,
+	// one JSON object per line (TRACE-002). It is under /out because that tmpfs
+	// is the one place the workload is allowed to write that the driver can
+	// still read after the process has exited.
+	TracePath = OutDir + "/trace/events.jsonl"
+	// traceReadLimit bounds one read out of a sandbox. The tmpfs is already
+	// sized from the run's disk ceiling; this is the second bound, applied to
+	// bytes that are about to enter this process (iron rule 1).
+	traceReadLimit = 8 << 20
 )
 
 // Config is deployment policy for the driver.
@@ -283,6 +293,56 @@ func (d *Driver) Adopt(ctx context.Context) ([]sandbox.Adopted, error) {
 	return out, nil
 }
 
+// ReadTrace reads the workload's trace file out of the sandbox.
+//
+// It runs `cat` inside the container rather than copying the path out, and that
+// is not a preference: /out is a tmpfs, and the Docker copy API resolves paths
+// against the container's rootfs layer, so it answers "no such file" for
+// anything under a mount. Verified against the daemon, not assumed.
+//
+// The alternatives were worse. A bind mount would put a host path inside the
+// sandbox, which baseline C-05 forbids outright. Routing events through stdout
+// would merge them with the workload's own output and give up the separation
+// between script_log and the rest of the trace.
+//
+// What this does cost is an exec into an untrusted container. It is bounded to
+// what that buys an attacker: an absolute path to the image's own binary on a
+// read-only rootfs (so the workload cannot substitute it), no shell, no
+// caller-supplied arguments, the same unprivileged uid the workload already
+// runs as, and a bounded read of the result. The workload can make `cat` print
+// whatever it likes - which is exactly what it could already do, since the file
+// is its own output and is untrusted input to the platform either way.
+//
+// A missing file, a stopped container and an unreadable stream are all "nothing
+// collected yet" rather than errors: the collector polls from the moment the
+// sandbox starts and most early passes legitimately find nothing.
+func (d *Driver) ReadTrace(ctx context.Context, id string) ([]byte, error) {
+	exec, err := d.cli.ContainerExecCreate(ctx, name(id), container.ExecOptions{
+		Cmd:          []string{"/bin/cat", TracePath},
+		AttachStdout: true,
+		User:         fmt.Sprintf("%d:%d", d.cfg.UID, d.cfg.GID),
+	})
+	if err != nil {
+		if cerrdefs.IsNotFound(err) || cerrdefs.IsConflict(err) {
+			return nil, nil // gone, or not running yet
+		}
+		return nil, err
+	}
+	attached, err := d.cli.ContainerExecAttach(ctx, exec.ID, container.ExecAttachOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer attached.Close()
+
+	// Demultiplexed: stderr (the "No such file" of an empty run) is discarded, so
+	// a missing file reads as no events rather than as a corrupt line.
+	var out bytes.Buffer
+	if _, err := stdcopy.StdCopy(&out, io.Discard, io.LimitReader(attached.Reader, traceReadLimit)); err != nil {
+		return out.Bytes(), nil //nolint:nilerr // a truncated stream still carries whole lines, and the rest arrives next pass
+	}
+	return out.Bytes(), nil
+}
+
 func (d *Driver) Healthy(ctx context.Context) bool {
 	_, err := d.cli.Ping(ctx)
 	return err == nil
@@ -330,6 +390,11 @@ func env(req sandbox.RunRequest) []string {
 		"SKILLHUB_SKILL_DIR=" + WorkDir + "/.claude/skills",
 		"SKILLHUB_USER_PROMPT=" + req.TestCase.UserPrompt,
 		"SKILLHUB_SKILL_CONTENT_HASH=" + req.SkillVersion.ContentHash,
+		// The harness stamps this onto skill_activation events: the sandbox can
+		// see a directory name but not which immutable version it came from, and
+		// a trace that cannot name the version is not much use for improving it
+		// (TRACE-002, iron rule 4).
+		"SKILLHUB_SKILL_VERSION_ID=" + req.SkillVersion.SkillVersionID,
 		"SKILLHUB_TRACE_LEVEL=" + req.Trace.Level,
 		"SKILLHUB_ARTIFACT_MAX_BYTES=" + strconv.FormatInt(req.ResourceLimits.ArtifactFileBytes, 10),
 		"HOME=" + WorkDir,

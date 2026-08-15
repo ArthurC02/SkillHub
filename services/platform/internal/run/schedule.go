@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/testlab"
@@ -260,7 +261,19 @@ func (s *Service) buildRunRequest(
 		Runtime:        profile,
 		ResourceLimits: policy.ResourceLimits,
 		Egress:         policy.Egress,
-		Trace:          TracePolicy{Level: "standard"},
+		// TRACE-002: the collection destination, with a signed credential scoped
+		// to this one (run, attempt) embedded in the URL. A new attempt gets a new
+		// token, so a re-dispatched run cannot post events under the old one.
+		//
+		// `standard` is the only level in use. The contract's `verbose` adds the
+		// safety-processed raw events on top; the raw events are already what the
+		// advanced view (TRACE-007) shows, so nothing yet distinguishes the two and
+		// claiming otherwise would be a setting that does nothing.
+		Trace: TracePolicy{
+			Level: "standard",
+			IngestionURL: s.TraceSigner.IngestionURL(
+				s.TraceIngestBaseURL, run.ID, int(attempt.AttemptNumber), time.Now()),
+		},
 	}, nil
 }
 

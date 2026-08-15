@@ -177,17 +177,19 @@
 
 ## 13. Trace 與平台 O11y（M2）
 
-- [ ] TRACE-001 定義標準 Trace Event Schema。
-- [ ] TRACE-002 收集 Skill 啟用與資源讀取事件。
-- [ ] TRACE-003 收集 Tool Call、MCP Call 與 Script Log。
-- [ ] TRACE-004 收集 Agent 輸出、錯誤、延遲、Token 與成本。
-- [ ] TRACE-005 實作 Secrets 與敏感欄位遮罩。
-- [ ] TRACE-006 實作一般模式進度摘要。
-- [ ] TRACE-007 實作進階模式 Trace 檢視。
-- [ ] TRACE-008 處理事件排序、重送、缺失與延遲。
-- [ ] O11Y-001 量測搜尋、Run 排隊、建立、成功、逾時與清理指標。
-- [ ] O11Y-002 建立 Provider 健康度與錯誤監控。
-- [ ] O11Y-003 建立遺留 Sandbox、資源異常及安全事件告警。
+> **2026-08-16 第三批（Trace 收集管線與 O11y）交付摘要**：事件流向為「容器內 harness 寫 JSONL 到 `/out` → sandboxd 讀出並 POST 到平台 ingestion → 平台遮罩後入庫」。沙箱無網路（`--network none`），執行平面不碰核心 DB（鐵律 2），ingestion 憑證是嵌在 `TracePolicy.ingestion_url` 內的每 attempt 短效簽章 token，未新增契約欄位。migration `0019_trace_ingestion.sql` 補齊 TRACE-001 §8 的四個缺口並加上 `late` 與 default partition。詳見 [m2/README.md 第三批交付摘要](m2/README.md)。
+
+- [x] TRACE-001 定義標準 Trace Event Schema。（`contracts/openapi` 外的第一份事件契約：[contracts/events/trace-event.schema.json](../../contracts/events/trace-event.schema.json) ＋ 同目錄 README；9 種事件、`seq` 範圍為 `(run_id, attempt, emitted_by)`、`run_lifecycle` 非事實來源、遮罩規約與版本演進規則。**2026-08-16 由第三批勾選**：schema 本身在第一批完成，但當時記錄的四個 `trace_events` 欄位缺口（`event_id`／`attempt`／`schema_version`／遮罩狀態）使契約無法落地，`0019` 全數關閉後才符合「Trace 至少包含時間、事件類型、來源、狀態與關聯 Run」與「順序可被重建、能識別缺失」的允收）
+- [x] TRACE-002 收集 Skill 啟用與資源讀取事件。（`infra/images/runtime-agent-sdk/run.mjs` 由 Agent SDK 訊息流產生 `skill_activation`（`Skill` 工具呼叫）與 `resource_read`（讀取路徑落在 `SKILLHUB_SKILL_DIR` 下者，路徑相對化不外洩沙箱絕對路徑）；收集端見 `services/sandbox/internal/sandbox/trace.go`。**限制註記**：`decision: skipped`「可用但未啟用」在 SDK 訊息流中不可觀測（沒被叫到就沒有事件），本批不臆造，留給 EVAL-002）
+- [x] TRACE-003 收集 Tool Call、MCP Call 與 Script Log。（`tool_call` 為單事件自帶 `duration_ms`，以 `tool_use`／`tool_result` 配對計時；`Bash` 的結果另產 `script_log`。**MCP 不實作**——遠端 MCP 已移出 MVP 首發，契約只保留型別佔位，與 TEST-005/006 同步）
+- [ ] TRACE-004 收集 Agent 輸出、錯誤、延遲、Token 與成本。**部分完成**：`agent_output`（final／intermediate）、`error`（含控制平面自身的失敗，見下）、延遲（`tool_call.duration_ms`、`usage.duration_ms`）、Token（SDK 回報的 `input_tokens`／`output_tokens`）皆已收集；orchestrator 側在 `failed`／`timed_out` 轉移的同一交易內寫 `error` 事件，因此未進到沙箱就失敗的 Run 也有可看的時間軸（RUN-004）。**成本欄位未接**：`model_gateway` 授權尚未簽發（SBX-008 未完成），Agent SDK 連不到 LiteLLM 閘道，`cost_usd` 誠實留 `null` 並由 UI 顯示「未回報」，不以本地估算填補。閘道接上前不勾。
+- [x] TRACE-005 實作 Secrets 與敏感欄位遮罩。（遮罩在平台 ingestion **入庫前**執行，明文不落 DB；`0019` 的 `CHECK (masked)` 讓「跳過遮罩」在資料庫層不可能。已知值（本 Run 的 ingestion token）＋ pattern（`sk-*`、`Authorization` 標頭、`ANTHROPIC_AUTH_TOKEN=`／`OPENAI_API_KEY=`、預簽 URL 的簽章參數、私鑰區塊）一律替換為字面量 `[REDACTED]`，不保留長度、不做部分遮罩；`masked_fields` 以 JSON Pointer 記錄實際被替換的位置。有具名單元測試與整合測試，後者直接查 `trace_events.payload` 確認明文不存在）
+- [x] TRACE-006 實作一般模式進度摘要。（`GET /runs/{id}/trace`：Skill 啟用、資源讀取次數、工具呼叫統計與最慢者、錯誤、最終輸出、Token 與成本。**Run 狀態取自 `runs` 表、進度步驟取自 `run_status_transitions`**，不重播 `run_lifecycle` 事件重建狀態（鐵律 5）；`cost_usd` 為 `null` 時顯示「未回報」不顯示 0）
+- [x] TRACE-007 實作進階模式 Trace 檢視。（`?mode=advanced`：經遮罩的原始事件依 `(occurred_at, emitted_by, seq)` 重建順序，並逐串流列出 `missing_seq` 與遲到計數；`complete: false` 時 UI 明示「部分事件未送達」。payload 一律以 inert text 呈現，不解讀 HTML／ANSI／SVG，有具名測試以注入 `<img onerror>` 驗證。UI 為 `apps/web` 的 `/runs/$runId`，一般／進階切換）
+- [x] TRACE-008 處理事件排序、重送、缺失與延遲。（去重鍵為 producer 產生的 `event_id`，`ON CONFLICT DO NOTHING`，重送回報為 `duplicate` 而非錯誤；順序以 per-producer 的 `seq` 重建，斷號＝該事件遺失且被逐一列出；終態後仍接受遲到事件並標記 `late`，因為沙箱關機時推送的最後一批正是失敗 Run 最需要的部分。sandboxd 側推送失敗不推進水位，下一輪重送）
+- [x] O11Y-001 量測搜尋、Run 排隊、建立、成功、逾時與清理指標。（Prometheus 文字格式，`services/platform` 與 `sandboxd` 各自曝露 `/metrics`；平台側走獨立 listener `METRICS_ADDR`，不掛在對外 API port 上。指標清單見 [infra/observability/README.md](../../infra/observability/README.md)）
+- [x] O11Y-002 建立 Provider 健康度與錯誤監控。（`skillhub_provider_capability_total{provider,result}` 區分 ok／unhealthy／error；`skillhub_provider_request_total{provider,operation,class}` 以狀態碼分級記 429 與 5xx；另有每操作延遲 histogram。告警規則四條見 `alerts.yml`）
+- [x] O11Y-003 建立遺留 Sandbox、資源異常及安全事件告警。（`skillhub_run_cleanup_backlog` gauge、`skillhub_orphan_scan_total`、`skillhub_orphan_sandbox_total{action}` 區分「殺掉的漏網 Sandbox」與「殺不掉的」，加上遮罩器靜默失效偵測（`TraceMaskingStopped`——NFR-002 沒有其他偵測器）。告警為 `infra/observability/alerts.yml` 的 rules 檔＋文件，**Alertmanager 部署、通知路由與 Grafana dashboard 屬部署期，明確未做**；門檻值為首發預設非實測校準值，已在文件標明需上線後回填）
 
 ## 14. 評估與改善（M3）
 

@@ -14,6 +14,20 @@ BEGIN
 END;
 $$;
 
+-- Separate from must_fail on purpose: a CHECK raises check_violation, and folding
+-- it into must_fail would let a constraint failure pass as proof of an
+-- immutability trigger that never fired.
+CREATE FUNCTION must_violate_check(stmt text) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+    BEGIN
+        EXECUTE stmt;
+    EXCEPTION WHEN check_violation THEN
+        RETURN;
+    END;
+    RAISE EXCEPTION 'expected a check constraint rejection but statement succeeded: %', stmt;
+END;
+$$;
+
 -- Fixtures.
 INSERT INTO users (id, email, display_name)
 VALUES ('11111111-1111-1111-1111-111111111111', 'a@example.test', 'A');
@@ -54,9 +68,11 @@ SELECT must_fail($$UPDATE run_status_transitions SET reason = 'rewritten' WHERE 
 SELECT must_fail($$DELETE FROM run_status_transitions WHERE to_status = 'running'$$);
 
 -- 5. Trace events are append only, and land in the monthly partition.
-INSERT INTO trace_events (workspace_id, run_id, seq, occurred_at, event_type, source)
-VALUES ('22222222-2222-2222-2222-222222222222', '77777777-7777-7777-7777-777777777777',
-        1, '2026-08-14 10:00:00+00', 'skill_activated', 'agent');
+INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at,
+                          event_type, source, masked)
+VALUES ('88888888-8888-4888-8888-888888888888',
+        '22222222-2222-2222-2222-222222222222', '77777777-7777-7777-7777-777777777777',
+        1, 1, '2026-08-14 10:00:00+00', 'skill_activation', 'sandbox', true);
 DO $$
 BEGIN
     IF (SELECT count(*) FROM trace_events_2026_08) <> 1 THEN
@@ -66,6 +82,48 @@ END;
 $$;
 SELECT must_fail($$UPDATE trace_events SET event_type = 'rewritten' WHERE seq = 1$$);
 SELECT must_fail($$DELETE FROM trace_events WHERE seq = 1$$);
+
+-- 5a. Iron rule 11 at the storage layer (0019): an unmasked event cannot be written
+-- at all, so no code path can skip the masker (TRACE-005).
+SELECT must_violate_check($$
+    INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at,
+                              event_type, source, masked)
+    VALUES ('99999999-9999-4999-8999-999999999999',
+            '22222222-2222-2222-2222-222222222222', '77777777-7777-7777-7777-777777777777',
+            1, 2, '2026-08-14 10:00:01+00', 'agent_output', 'sandbox', false)
+$$);
+
+-- 5b. Redelivery is a no-op, not a second row (TRACE-008): the producer's event_id
+-- is the idempotency key and at-least-once delivery makes repeats routine.
+INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at,
+                          event_type, source, masked)
+VALUES ('88888888-8888-4888-8888-888888888888',
+        '22222222-2222-2222-2222-222222222222', '77777777-7777-7777-7777-777777777777',
+        1, 1, '2026-08-14 10:00:00+00', 'skill_activation', 'sandbox', true)
+ON CONFLICT (event_id, occurred_at) DO NOTHING;
+DO $$
+BEGIN
+    IF (SELECT count(*) FROM trace_events) <> 1 THEN
+        RAISE EXCEPTION 'a redelivered trace event was stored twice';
+    END IF;
+END;
+$$;
+
+-- 5c. An event outside the pre-created month still lands, in the default partition.
+-- Without it the first run in a month nobody created a partition for would lose its
+-- whole trace (0019 partitioning note).
+INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at,
+                          event_type, source, masked)
+VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        '22222222-2222-2222-2222-222222222222', '77777777-7777-7777-7777-777777777777',
+        1, 1, '2027-03-14 10:00:00+00', 'agent_output', 'sandbox', true);
+DO $$
+BEGIN
+    IF (SELECT count(*) FROM trace_events_default) <> 1 THEN
+        RAISE EXCEPTION 'an out-of-range trace event did not reach the default partition';
+    END IF;
+END;
+$$;
 
 -- 6. A terminal run freezes, except for the cleanup columns (ADR-004).
 UPDATE runs SET status = 'succeeded', finished_at = now()

@@ -1,0 +1,236 @@
+# Skill Hub 平台告警規則（O11Y-001～003 / NFR-005）
+#
+# 這是 Prometheus 的 alerting rules 檔，不是部署。Alertmanager 的部署、路由與
+# 通知管道屬部署期，本批只定義「什麼情況算異常、依據哪個指標、要人做什麼」。
+# 掛上去的方式：Prometheus 的 rule_files 指向本檔。
+#
+# 兩條硬性邊界（ADR-009、contracts/events/README.md §1）：
+#
+# 1. 這裡的每一條規則只讀 services/platform 與 services/sandbox 自己曝露的
+#    /metrics。**不得**讀 trace_events：Trace payload 大量來自 Sandbox，是使用者
+#    可操控的輸入，讓告警依賴它等於把告警的觸發權交給不受信任的來源。
+# 2. 指標標籤不含 run_id、workspace_id、user_id 或任何使用者內容。要定位到個別
+#    Run 一律走 log（以 run_id 關聯），不是靠展開一個高基數的 label。
+#
+# 門檻值註記：以下數字是**首發預設**，不是實測校準值。NFR-004 自陳效能目標
+# 「需在確認基礎設施後校準」，SEC-002 的六項門檻（威脅模型 Q18）也未定值。
+# 上線後第一個月應以實際分佈回填，並在此註明校準日期。
+
+groups:
+  # --- O11Y-001：搜尋與 Run 漏斗 ---------------------------------------------
+  - name: skillhub-run-funnel
+    rules:
+      - alert: SearchLatencyAboveTarget
+        # NFR-004：已索引內容的搜尋 p95 目標 < 2 秒。用 histogram_quantile 而非
+        # 平均值——平均值會被大量快查詢壓下去，正好蓋住使用者實際感受到的尾巴。
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, mode) (rate(skillhub_search_duration_seconds_bucket[10m]))
+          ) > 2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "搜尋 p95 延遲超過 NFR-004 的 2 秒目標（mode={{ $labels.mode }})"
+          description: >-
+            mode=fts 代表向量腿不可用、已降級為純詞彙檢索（跨語言召回會掉），
+            先查 LLM 服務與 embedding 供應狀態；mode=hybrid 則查資料庫負載與
+            pgvector 索引。
+
+      - alert: RunQueueWaitTooLong
+        # 排隊時間長 = 沒有 worker，或所有 provider 的 slot 都滿了。使用者看到的
+        # 是「按了開始但什麼都沒發生」，這是最早能發現的訊號。
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(skillhub_run_queue_duration_seconds_bucket[15m]))
+          ) > 120
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Run 從建立到開始佈建的 p95 等待超過 2 分鐘"
+          description: >-
+            先確認 worker 是否存活（skillhub_run_created_total 仍在增加但
+            skillhub_run_queue_duration_seconds_count 沒動 = worker 沒在消化），
+            再看 provider 的 concurrent_run_slots。
+
+      - alert: RunFailureRateHigh
+        # 只算平台自己的錯：workload_error 是 Skill 自己跑失敗，那是產品訊號不是
+        # 事故，把它算進來會讓這條告警在使用者測試爛 Skill 時整天響。
+        expr: |
+          sum(rate(skillhub_run_terminal_total{failure_class=~"provider_error|platform_error|capability_mismatch"}[30m]))
+          /
+          clamp_min(sum(rate(skillhub_run_terminal_total[30m])), 0.001)
+          > 0.2
+        for: 20m
+        labels:
+          severity: critical
+        annotations:
+          summary: "超過 20% 的 Run 因平台或 Provider 因素失敗"
+          description: >-
+            依 failure_class 拆解：provider_error 查 Provider 健康度告警；
+            capability_mismatch 表示排程要求與 Provider 宣告不相容（可能是剛換了
+            Runtime 版本）；platform_error 查控制平面的錯誤 log。
+
+      - alert: RunTimeoutRateHigh
+        expr: |
+          sum(rate(skillhub_run_terminal_total{status="timed_out"}[30m]))
+          /
+          clamp_min(sum(rate(skillhub_run_terminal_total[30m])), 0.001)
+          > 0.1
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: "超過 10% 的 Run 逾時"
+          description: >-
+            PDM-005 的 wall clock 是 soft 600s / hard 900s。若逾時集中在特定時段，
+            先看節點資源；若普遍發生，可能是模型閘道變慢，查 Langfuse。
+
+  # --- O11Y-002：Provider 健康度 ---------------------------------------------
+  - name: skillhub-provider-health
+    rules:
+      - alert: ProviderCapabilityUnreachable
+        # RUN-005 用 capability 決定派送。抓不到 = 那台 Provider 事實上退出輪替，
+        # 而且使用者只會看到「no configured sandbox provider can run this request」。
+        expr: |
+          sum by (provider) (rate(skillhub_provider_capability_total{result="error"}[10m])) > 0
+          and
+          sum by (provider) (rate(skillhub_provider_capability_total{result="ok"}[10m])) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Provider {{ $labels.provider }} 的 capability 完全抓不到"
+          description: "確認 sandboxd 是否存活、SKILLHUB_SANDBOX_TOKEN_* 是否輪替過。"
+
+      - alert: ProviderSelfReportsUnhealthy
+        expr: sum by (provider) (rate(skillhub_provider_capability_total{result="unhealthy"}[10m])) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Provider {{ $labels.provider }} 自陳不健康"
+          description: "通常是該節點的容器 runtime（Docker／runsc）不可用。"
+
+      - alert: ProviderServerErrorRateHigh
+        expr: |
+          sum by (provider) (rate(skillhub_provider_request_total{class="server_error"}[15m]))
+          /
+          clamp_min(sum by (provider) (rate(skillhub_provider_request_total[15m])), 0.001)
+          > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Provider {{ $labels.provider }} 的 5xx 比例超過 10%"
+
+      - alert: ProviderThrottling
+        # 429 = slot 用完。不是錯誤，是容量訊號：持續出現代表要加節點或調 slot。
+        expr: sum by (provider) (rate(skillhub_provider_request_total{class="throttled"}[15m])) > 0.05
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: "Provider {{ $labels.provider }} 持續回 429（slot 不足）"
+
+  # --- O11Y-003：遺留 Sandbox、清理積壓、遮罩 ---------------------------------
+  - name: skillhub-cleanup-and-leaks
+    rules:
+      - alert: CleanupBacklogGrowing
+        # 終態但未確認釋放的 Run。這是唯一能發現「Sandbox 在燒錢而沒人回收」的
+        # 指標，因為 Run 本身看起來完全正常。
+        expr: skillhub_run_cleanup_backlog > 5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "清理積壓 {{ $value }} 個 Run 未確認釋放"
+          description: >-
+            RUN-007 的清理是冪等的、失敗會由 supervisor 重排；積壓仍上升代表
+            Provider 的 DELETE 一直失敗，或該 Provider 已從設定中移除但仍持有
+            Sandbox。後者平台無法自行釋放，必須人工處理。
+
+      - alert: CleanupFailing
+        expr: sum(rate(skillhub_run_cleanup_total{result="failed"}[30m])) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Run 清理持續失敗"
+
+      - alert: LeakedSandboxesDestroyed
+        # 孤兒掃描真的殺掉了東西 = 之前有東西漏掉了。不是事故，是要去看為什麼的
+        # 訊號（RUN-007 的掃描是最後一道防線，不該是常態路徑）。
+        expr: increase(skillhub_orphan_sandbox_total{action="destroyed"}[1h]) > 0
+        labels:
+          severity: info
+        annotations:
+          summary: "孤兒掃描在 {{ $labels.provider }} 上清掉了 {{ $value }} 個遺留 Sandbox"
+          description: "查該時段的 cleanup 失敗與 worker 重啟紀錄。"
+
+      - alert: LeakedSandboxDestroyFailed
+        # 這條才是真的要人：掃描找到了、也試著殺了、殺不掉，資源還在。
+        expr: increase(skillhub_orphan_sandbox_total{action="failed"}[1h]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.provider }} 上有無法銷毀的遺留 Sandbox"
+
+      - alert: OrphanScanNotRunning
+        # 掃描本身停了是靜默失效：沒有告警會響，但保護也沒了。
+        expr: sum(increase(skillhub_orphan_scan_total[30m])) == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "孤兒掃描超過 30 分鐘沒有執行"
+          description: "掃描是 River 的 leader-only periodic job（5 分鐘一次），先查 worker 的 leader 選舉。"
+
+  # --- Trace 管線本身 ---------------------------------------------------------
+  - name: skillhub-trace-pipeline
+    rules:
+      - alert: TraceMaskingStopped
+        # NFR-002 沒有其他偵測器：遮罩器壞掉時一切照常運作，只是 Secrets 開始
+        # 落庫。有事件進來、卻一個欄位都沒遮，就是它壞了的樣子。
+        expr: |
+          sum(rate(skillhub_trace_events_total{result="stored"}[1h])) > 0
+          and
+          sum(rate(skillhub_trace_masked_fields_total[1h])) == 0
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Trace 遮罩器連續一小時沒有遮掉任何欄位"
+          description: >-
+            正常流量下 tool_call 的 arguments 與 script_log 的 message 幾乎必然
+            有東西被遮。歸零代表遮罩規則或呼叫路徑被改壞了——這是鐵律 11 的
+            靜默失效，優先於一切其他告警處理。
+
+      - alert: TraceIngestionRejecting
+        expr: sum(rate(skillhub_trace_ingest_rejected_total[15m])) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Trace 收集端持續拒絕請求（reason={{ $labels.reason }}）"
+          description: >-
+            reason=expired 代表 Run 活得比自己的 token 久（見 trace/token.go 的
+            DefaultTTL）；reason=bad_token 代表簽章密鑰不一致，通常是 api 與
+            worker 的 SKILLHUB_TRACE_INGEST_SECRET 不同步。
+
+      - alert: TraceIngestLagAboveTarget
+        # NFR-004：事件產生後目標 3 秒內出現在執行畫面。
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(skillhub_trace_ingest_lag_seconds_bucket[15m]))
+          ) > 3
+        for: 20m
+        labels:
+          severity: info
+        annotations:
+          summary: "Trace 事件從產生到入庫的 p95 超過 3 秒"
+          description: "sandboxd 的收集 ticker 是 2 秒；超標通常是批次過大或平台端寫入變慢。"

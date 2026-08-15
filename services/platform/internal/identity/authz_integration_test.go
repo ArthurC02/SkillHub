@@ -42,6 +42,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
 	"github.com/ArthurC02/skillhub/services/platform/internal/testlab"
+	"github.com/ArthurC02/skillhub/services/platform/internal/trace"
 )
 
 const dbURLEnv = "SKILLHUB_TEST_DATABASE_URL"
@@ -122,6 +123,9 @@ type api struct {
 	// sandbox provider (RUN-005 refuses incompatible work before queueing, and
 	// that refusal happens on this side).
 	runs *run.Service
+	// traceSigner mints ingestion tokens, so a trace test can post as the
+	// execution plane would (TRACE-002).
+	traceSigner *trace.Signer
 }
 
 func newAPI(t *testing.T, pool *pgxpool.Pool) *api {
@@ -178,11 +182,20 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 		lab.Svc.LLM = &llmclient.Client{BaseURL: llmBaseURL}
 	}
 
+	// A fixed secret: the tests mint their own ingestion tokens against it, which
+	// is exactly what the worker does when it builds a RunRequest.
+	traceSigner := &trace.Signer{Secret: []byte("integration-test-trace-secret")}
+	traceHandler := &trace.Handler{
+		Svc:      &trace.Service{Pool: pool, Signer: traceSigner},
+		Identity: auth.Service,
+	}
+
 	srv := httptest.NewServer(apiserver.NewRouter(apiserver.Deps{
-		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs, TestLab: lab,
+		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs,
+		TestLab: lab, Trace: traceHandler,
 	}))
 	t.Cleanup(srv.Close)
-	return &api{Server: srv, auth: auth, packages: packages, runs: runSvc}
+	return &api{Server: srv, auth: auth, packages: packages, runs: runSvc, traceSigner: traceSigner}
 }
 
 // client is one logged-in browser: its jar carries exactly one user's session.

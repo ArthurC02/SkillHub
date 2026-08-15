@@ -831,6 +831,139 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/trace:
+    get:
+      operationId: getRunTrace
+      summary: Run trace, in either the general or the advanced mode (TRACE-006, TRACE-007)
+      description: |
+        One endpoint, two modes, because both are the same stored events read two
+        ways and a client toggling between them should not have to know two URLs.
+
+        `general` is a human-readable progress summary aggregated from the
+        events: which skills were used, how many resources were read, how the
+        tool calls went, the final answer, token usage. `advanced` is the raw
+        events in reconstructed order plus an explicit statement of which ones
+        are missing.
+
+        There is no unmasked mode. Masking runs before storage (TRACE-005, iron
+        rule 11), so the plaintext an unmasked mode would show does not exist
+        anywhere to be served.
+
+        `complete: false` means a producer's gapless sequence has a hole, which
+        means an event was lost. The UI must say so rather than present the
+        remainder as the whole story (ADR-009).
+
+        Every payload here is untrusted content that crossed the trust boundary
+        (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG
+        interpretation.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The platform run_id. A provider's ephemeral id never appears in a URL (iron rule 10).
+          schema: { type: string, format: uuid }
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [general, advanced]
+            default: general
+      responses:
+        "200":
+          description: The trace in the requested mode.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/TraceSummary"
+                  - $ref: "#/components/schemas/TraceAdvanced"
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's run. Existence is private (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /internal/trace/{token}:
+    post:
+      operationId: ingestTraceEvents
+      summary: Accept one batch of trace events from the execution plane (TRACE-002)
+      description: |
+        Machine to machine, not a user endpoint. The caller is a sandbox
+        provider pushing what the workload wrote; the sandbox itself has no
+        network and cannot reach this.
+
+        **Authentication is the token in the path and nothing else.** Not a
+        session: there is no user. Not the provider's bearer token: that
+        credential is deployment-wide, and a credential covering every run must
+        not be able to append to one run's timeline. The token is HMAC-signed by
+        the control plane, scoped to one (run_id, attempt), short-lived, and
+        grants append only - it can read nothing. It travels inside
+        `TracePolicy.ingestion_url` of the sandbox provider contract, which has
+        no separate token field.
+
+        Everything in the body is untrusted input (ADR-001). The order on this
+        side is fixed: verify the token, resolve workspace_id from run_id under
+        the platform's own authority (iron rule 3), validate each envelope, mask
+        (TRACE-005), then store. Nothing reaches the database unmasked.
+
+        Rejection is per event, not per batch: one malformed event must not
+        discard the well-formed ones beside it. An event naming a different run
+        or attempt than the token covers is rejected, never re-homed.
+
+        Delivery is at-least-once, so a redelivered `event_id` is counted as a
+        duplicate and stored once. Events arriving after the run reached a
+        terminal state are accepted and flagged late rather than dropped: a
+        sandbox pushes its last batch as it shuts down, and that tail is the
+        part a failed run most needs (RUN-004, TRACE-008).
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: The signed per-attempt ingestion credential. Secret material; never logged.
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              maxItems: 1000
+              items: { $ref: "#/components/schemas/TraceEvent" }
+      responses:
+        "202":
+          description: |
+            Batch accepted. 202 rather than 201 on purpose: the producer must not
+            read this as "all of them were new" - the report says how many were
+            stored, how many were duplicates and how many were refused.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TraceIngestReport" }
+        "400":
+          description: Body is not a JSON array of trace events.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: Missing, malformed, wrongly signed or expired token.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The token names a run that does not exist.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "413":
+          description: Batch too large, or too many events in one request.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /test-cases:
     post:
       operationId: createTestCase
@@ -1263,6 +1396,164 @@ components:
       properties:
         error:
           type: string
+    TraceEvent:
+      type: object
+      description: |
+        One Run Trace event on the wire. The authority on this shape is
+        contracts/events/trace-event.schema.json - including the per-type payload
+        schemas, which are not repeated here. This entry exists so the HTTP
+        contract is self-describing; when the two disagree, the JSON Schema wins.
+      required: [schema_version, event_id, run_id, attempt, seq, occurred_at, emitted_by, type, masked, payload]
+      properties:
+        schema_version: { type: string, example: "1.0" }
+        event_id:
+          type: string
+          format: uuid
+          description: Producer-assigned. This is the consumer idempotency key (TRACE-008).
+        run_id: { type: string, format: uuid }
+        attempt: { type: integer, minimum: 1 }
+        seq:
+          type: integer
+          minimum: 1
+          description: |
+            Gapless from 1, scoped to (run_id, attempt, emitted_by). A hole is how
+            a lost event is detected; it is not a run-wide ordinal.
+        occurred_at: { type: string, format: date-time }
+        emitted_by: { type: string, enum: [sandbox, orchestrator, llm_service] }
+        type:
+          type: string
+          enum: [skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle]
+        status: { type: string, nullable: true, enum: [ok, error, skipped, cancelled, timed_out] }
+        masked:
+          type: boolean
+          description: |
+            What the producer claims. The control plane does not believe it: the
+            masker runs on every event regardless, and a sandbox vouching for
+            itself is exactly what the trust boundary forbids.
+        masked_fields:
+          type: array
+          items: { type: string }
+          description: JSON Pointers, relative to payload, of values actually redacted.
+        payload: { type: object }
+    TraceIngestReport:
+      type: object
+      required: [received, stored, duplicate, rejected]
+      properties:
+        received: { type: integer }
+        stored: { type: integer }
+        duplicate:
+          type: integer
+          description: Already had this event_id. Expected under at-least-once delivery, not an error.
+        rejected: { type: integer }
+        reasons:
+          type: array
+          items: { type: string }
+          description: One line per rejected event, so a producer can fix its output.
+    TraceStream:
+      type: object
+      description: One (attempt, emitted_by) stream's completeness.
+      required: [attempt, emitted_by, received, highest_seq, late_events]
+      properties:
+        attempt: { type: integer }
+        emitted_by: { type: string }
+        received: { type: integer }
+        highest_seq: { type: integer }
+        missing_seq:
+          type: array
+          items: { type: integer }
+          description: Sequence numbers that never arrived. Each one is a lost event.
+        late_events:
+          type: integer
+          description: Events that arrived after the run had already reached a terminal state.
+    TraceAdvanced:
+      type: object
+      required: [run_id, complete, streams, events]
+      properties:
+        run_id: { type: string, format: uuid }
+        complete:
+          type: boolean
+          description: |
+            False when any stream has a hole. Not "the run finished": a finished
+            run with a gap is incomplete, and a running one with no gap yet is
+            complete so far.
+        streams:
+          type: array
+          items: { $ref: "#/components/schemas/TraceStream" }
+        events:
+          type: array
+          description: Masked events in cross-producer order (occurred_at, emitted_by, seq).
+          items:
+            allOf:
+              - $ref: "#/components/schemas/TraceEvent"
+              - type: object
+                properties:
+                  late: { type: boolean }
+    TraceSummary:
+      type: object
+      description: |
+        TRACE-006's general mode: what happened, in language a non-technical user
+        reads, without opening a single raw event.
+      required: [run_id, status, complete, skills, resources_read, tool_calls, errors, steps]
+      properties:
+        run_id: { type: string, format: uuid }
+        status:
+          type: string
+          enum:
+            [queued, provisioning, preparing, running, evaluating, succeeded, failed, cancelled, timed_out]
+          description: |
+            Read from the runs table, which is the only authority on run state
+            (iron rule 5). Never reconstructed by replaying run_lifecycle trace
+            events, and never allowed to disagree with `Run.status`.
+        status_reason: { type: string }
+        complete: { type: boolean }
+        skills:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              decision: { type: string, enum: [activated, skipped] }
+              reason: { type: string }
+        resources_read: { type: integer }
+        tool_calls:
+          type: object
+          properties:
+            total: { type: integer }
+            succeeded: { type: integer }
+            failed: { type: integer }
+            total_duration_ms: { type: integer }
+            slowest_duration_ms: { type: integer }
+            slowest_tool: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              category: { type: string }
+              code: { type: string }
+              message: { type: string }
+        final_output: { type: string }
+        usage:
+          type: object
+          properties:
+            model: { type: string }
+            input_tokens: { type: integer }
+            output_tokens: { type: integer }
+            cost_usd:
+              type: number
+              nullable: true
+              description: |
+                NULL means the gateway did not report a cost. Consumers MUST render
+                that as "unreported" and never as 0 - showing 0 tells the user the
+                run was free.
+            cost_source: { type: string, enum: [gateway, estimated] }
+        steps:
+          type: array
+          items: { type: string }
+          description: |
+            Progress, taken from run_status_transitions - the authoritative
+            history - and never reconstructed by replaying run_lifecycle events
+            (iron rule 5).
     Me:
       type: object
       required: [user_id, email, display_name, workspace_id]

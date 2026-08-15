@@ -330,6 +330,12 @@ type TraceEvent struct {
 	Status           *string
 	Payload          []byte
 	PayloadObjectKey *string
+	EventID          pgtype.UUID
+	Attempt          int32
+	SchemaVersion    string
+	Masked           bool
+	MaskedFields     []byte
+	Late             bool
 }
 
 type TraceEvents202608 struct {
@@ -343,6 +349,25 @@ type TraceEvents202608 struct {
 	Status           *string
 	Payload          []byte
 	PayloadObjectKey *string
+}
+
+type TraceEventsDefault struct {
+	ID               pgtype.UUID
+	WorkspaceID      pgtype.UUID
+	RunID            pgtype.UUID
+	Seq              int64
+	OccurredAt       pgtype.Timestamptz
+	EventType        string
+	Source           string
+	Status           *string
+	Payload          []byte
+	PayloadObjectKey *string
+	EventID          pgtype.UUID
+	Attempt          int32
+	SchemaVersion    string
+	Masked           bool
+	MaskedFields     []byte
+	Late             bool
 }
 
 type User struct {

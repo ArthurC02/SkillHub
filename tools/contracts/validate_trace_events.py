@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """TRACE-001 contract check: every example in trace-event.schema.json validates,
-and a deliberately broken event does not.
+a deliberately broken event does not, and every recorded sample of real pipeline
+output still conforms.
+
+The samples are the part the examples cannot catch: they are written by the
+producer and by the storage layer themselves (contracts/events/samples/README.md
+says how each is generated), so a change to the harness or to the masker that
+stops matching the contract fails here rather than in a user's timeline.
 
 Run: python tools/contracts/validate_trace_events.py
 """
@@ -13,7 +19,9 @@ import sys
 
 from jsonschema import Draft202012Validator
 
-SCHEMA_PATH = pathlib.Path(__file__).resolve().parents[2] / "contracts" / "events" / "trace-event.schema.json"
+EVENTS_DIR = pathlib.Path(__file__).resolve().parents[2] / "contracts" / "events"
+SCHEMA_PATH = EVENTS_DIR / "trace-event.schema.json"
+SAMPLES_DIR = EVENTS_DIR / "samples"
 
 # One counterexample per failure mode that actually matters. Each must be rejected.
 NEGATIVE_CASES: list[tuple[str, dict]] = [
@@ -93,6 +101,25 @@ def main() -> int:
         else:
             print(f"ok    example {example['type']}")
 
+    samples = sorted(SAMPLES_DIR.glob("*.jsonl")) if SAMPLES_DIR.is_dir() else []
+    for path in samples:
+        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        if not lines:
+            print(f"FAIL  sample {path.name} is empty")
+            failures += 1
+            continue
+        bad = 0
+        for number, line in enumerate(lines, start=1):
+            instance = json.loads(line)
+            for err in sorted(validator.iter_errors(instance), key=lambda e: e.path):
+                bad += 1
+                pointer = "/".join(map(str, err.path))
+                print(f"FAIL  {path.name}:{number} /{pointer}: {err.message}")
+        if bad:
+            failures += 1
+        else:
+            print(f"ok    sample {path.name} ({len(lines)} events)")
+
     for label, case in NEGATIVE_CASES:
         if validator.is_valid(case):
             failures += 1
@@ -101,7 +128,8 @@ def main() -> int:
             print(f"ok    counterexample rejected: {label}")
 
     print(
-        f"\n{len(examples)} examples, {len(NEGATIVE_CASES)} counterexamples, "
+        f"\n{len(examples)} examples, {len(samples)} sample file(s), "
+        f"{len(NEGATIVE_CASES)} counterexamples, "
         f"{failures} failure(s)"
     )
     return 1 if failures else 0

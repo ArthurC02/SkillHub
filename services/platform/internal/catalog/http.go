@@ -25,6 +25,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
 )
 
 type Handler struct {
@@ -400,6 +401,17 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		embedding *pgvector.Vector
 	)
 
+	// O11Y-001 / NFR-004: search latency, from here rather than from the top of
+	// the handler, so a blank or incomprehensible query - which never reaches
+	// retrieval - does not flatter the percentile with a zero. The two legs are
+	// separate series because a degraded FTS-only answer is a different product
+	// from a hybrid one and averaging them hides exactly that.
+	searchStart := time.Now()
+	searchMode := "hybrid"
+	defer func() {
+		metrics.ObserveSince(metrics.SearchDuration.WithLabelValues(searchMode), searchStart)
+	}()
+
 	if h.LLMClient == nil {
 		degradedReason = "embedding service not configured; lexical search only"
 	} else if vec, err := h.embedQuery(ctx, q); err != nil {
@@ -414,6 +426,7 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if degradedReason != "" {
+		searchMode = "fts"
 		hits, _ = h.ftsOnlySearch(ctx, queries, q, limit, filters)
 	}
 

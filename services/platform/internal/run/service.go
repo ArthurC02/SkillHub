@@ -14,7 +14,9 @@ import (
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/testlab"
+	"github.com/ArthurC02/skillhub/services/platform/internal/trace"
 )
 
 var (
@@ -74,6 +76,15 @@ type Service struct {
 	// PollInterval is how often a dispatched attempt is read back from the
 	// provider. Zero means defaultPollInterval.
 	PollInterval time.Duration
+	// TraceSigner mints the per-attempt trace ingestion credential (TRACE-002).
+	// Nil, or one with no secret, means no ingestion URL is handed to the
+	// provider and no events are collected - which is honest for a deployment
+	// that has not configured the secret, and better than an open endpoint.
+	TraceSigner *trace.Signer
+	// TraceIngestBaseURL is the origin an execution node reaches the control
+	// plane on (SKILLHUB_TRACE_INGEST_URL). Empty has the same effect as a
+	// disabled signer.
+	TraceIngestBaseURL string
 }
 
 func (s *Service) maxAttempts() int {
@@ -266,7 +277,11 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 			return gen.Run{}, err
 		}
 	}
-	return run, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return gen.Run{}, err
+	}
+	metrics.RunCreated.Inc()
+	return run, nil
 }
 
 // TransitionParams is one state change.
@@ -327,6 +342,16 @@ func (s *Service) Transition(ctx context.Context, p TransitionParams) (gen.Run, 
 		return gen.Run{}, err
 	}
 
+	// TRACE-004: a failure the control plane decided is one the user has to be
+	// able to see in the trace. Without this, a run that never reached a sandbox
+	// - no provider, provisioning failed, timed out in the queue - would have an
+	// empty timeline, which is exactly the case RUN-004 says must still show
+	// diagnostics. Written in this transaction, so the event and the state change
+	// commit together (iron rule 9).
+	if err := s.recordFailureEvent(ctx, q, run, p); err != nil {
+		return gen.Run{}, err
+	}
+
 	// RUN-002 requires cleanup after a run ends, however it ended: a run that reached a
 	// terminal state owes a cleanup, and the job that does it is enqueued in the
 	// same transaction as the state change. Nobody has to remember to call it, and
@@ -338,7 +363,82 @@ func (s *Service) Transition(ctx context.Context, p TransitionParams) (gen.Run, 
 			return gen.Run{}, err
 		}
 	}
-	return run, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return gen.Run{}, err
+	}
+	observeTransition(run, p)
+	return run, nil
+}
+
+// recordFailureEvent writes the orchestrator's own `error` trace event for a run
+// that ended badly. Cancellation is excluded: a user stopping their own run is
+// not a failure, and putting it in the error list would make the general summary
+// (TRACE-006) read as if something went wrong.
+func (s *Service) recordFailureEvent(ctx context.Context, q *gen.Queries, run gen.Run, p TransitionParams) error {
+	if p.To != gen.RunStatusFailed && p.To != gen.RunStatusTimedOut {
+		return nil
+	}
+	code := p.FailureClass
+	if code == "" {
+		code = "unclassified"
+	}
+	return trace.RecordOrchestratorEvent(ctx, q, run.WorkspaceID, run.ID,
+		attemptNumber(ctx, q, run), trace.TypeError, "error", map[string]any{
+			// ADR-004's taxonomy, as the schema's errorPayload requires it. The
+			// platform's own failure_class is the stable diagnostic code (NFR-003).
+			"category": failureCategory(p.FailureClass),
+			"code":     code,
+			"message":  p.Reason,
+			// Recording the decision the retry policy took, not making it here.
+			"retryable": p.FailureClass == failureProvider,
+		})
+}
+
+// failureCategory maps runs.failure_class onto the schema's error categories.
+// The two vocabularies are not the same list on purpose: failure_class answers
+// "what killed the run" for the retry policy, the category answers "which stage"
+// for the user reading a timeline.
+func failureCategory(failureClass string) string {
+	switch failureClass {
+	case failureProvider, failureNoProvider:
+		return "provision"
+	default:
+		return "execution"
+	}
+}
+
+// attemptNumber is the attempt an orchestrator-side event belongs to. A run with
+// no attempt yet (refused before dispatch) still needs a stream to write into,
+// and attempt 1 is the honest answer: that is the attempt that was being set up.
+func attemptNumber(ctx context.Context, q *gen.Queries, run gen.Run) int {
+	attempts, err := q.ListRunAttempts(ctx, gen.ListRunAttemptsParams{
+		RunID: run.ID, WorkspaceID: run.WorkspaceID,
+	})
+	if err != nil || len(attempts) == 0 {
+		return 1
+	}
+	return int(attempts[len(attempts)-1].AttemptNumber)
+}
+
+// observeTransition publishes the run funnel numbers of O11Y-001. It runs after
+// the commit: a metric for a transition that rolled back would be a lie, and one
+// that is lost because the process died a microsecond later is not.
+func observeTransition(run gen.Run, p TransitionParams) {
+	if p.To == gen.RunStatusProvisioning && run.CreatedAt.Valid {
+		metrics.RunQueueDuration.Observe(time.Since(run.CreatedAt.Time).Seconds())
+	}
+	if !IsTerminal(p.To) {
+		return
+	}
+	failureClass := p.FailureClass
+	if failureClass == "" {
+		failureClass = "none"
+	}
+	metrics.RunTerminal.WithLabelValues(string(p.To), failureClass).Inc()
+	if run.CreatedAt.Valid && run.FinishedAt.Valid {
+		metrics.RunDuration.WithLabelValues(string(p.To)).
+			Observe(run.FinishedAt.Time.Sub(run.CreatedAt.Time).Seconds())
+	}
 }
 
 // record writes the three things every state change owes: the append-only status

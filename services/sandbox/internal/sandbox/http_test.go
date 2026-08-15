@@ -28,6 +28,9 @@ type fakeDriver struct {
 	release   map[string]chan sandbox.Outcome
 	startErr  error
 	removeErr error
+	// trace is what the workload has written to its trace file so far, keyed by
+	// provider_run_id. Set by a test to drive the collector (TRACE-002).
+	trace map[string][]byte
 }
 
 func newFakeDriver() *fakeDriver {
@@ -36,6 +39,7 @@ func newFakeDriver() *fakeDriver {
 		stops:   map[string]time.Duration{},
 		removes: map[string]int{},
 		release: map[string]chan sandbox.Outcome{},
+		trace:   map[string][]byte{},
 	}
 }
 
@@ -81,6 +85,29 @@ func (f *fakeDriver) Remove(_ context.Context, id string) error {
 	defer f.mu.Unlock()
 	f.removes[id]++
 	return f.removeErr
+}
+
+func (f *fakeDriver) ReadTrace(_ context.Context, id string) ([]byte, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.trace[id], nil
+}
+
+// writeTrace is the workload appending to its own trace file.
+func (f *fakeDriver) writeTrace(id string, lines ...string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, line := range lines {
+		f.trace[id] = append(f.trace[id], []byte(line+"\n")...)
+	}
+}
+
+// appendRawTrace writes bytes with no line terminator, which is what a partly
+// flushed append looks like to a collector reading the file mid-write.
+func (f *fakeDriver) appendRawTrace(id, raw string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.trace[id] = append(f.trace[id], raw...)
 }
 
 func (f *fakeDriver) Adopt(context.Context) ([]sandbox.Adopted, error) { return nil, nil }

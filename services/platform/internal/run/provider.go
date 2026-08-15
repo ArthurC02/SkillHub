@@ -23,6 +23,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
 )
 
 // ProviderRunState is the provider's own lifecycle, not the platform's run status.
@@ -245,7 +247,19 @@ func (p *Provider) client() *http.Client {
 
 // do performs one contract call. want lists the status codes that are a success
 // for this operation; anything else becomes a providerError.
-func (p *Provider) do(ctx context.Context, method, path string, body, out any, want ...int) (int, error) {
+//
+// operation is the contract operation name, used only as a metric label: it is a
+// fixed string from the call sites below, never anything derived from a URL, so
+// provider metrics cannot grow a series per run (O11Y-002).
+func (p *Provider) do(ctx context.Context, method, operation, path string, body, out any, want ...int) (int, error) {
+	start := time.Now()
+	status, err := p.call(ctx, method, path, body, out, want...)
+	metrics.ProviderRequest.WithLabelValues(p.Name, operation, metrics.StatusClass(status)).Inc()
+	metrics.ObserveSince(metrics.ProviderRequestDuration.WithLabelValues(p.Name, operation), start)
+	return status, err
+}
+
+func (p *Provider) call(ctx context.Context, method, path string, body, out any, want ...int) (int, error) {
 	var payload io.Reader
 	if body != nil {
 		encoded, err := json.Marshal(body)
@@ -306,7 +320,7 @@ func (p *Provider) do(ctx context.Context, method, path string, body, out any, w
 // Capability reads GET /capability.
 func (p *Provider) Capability(ctx context.Context) (ProviderCapability, error) {
 	var c ProviderCapability
-	_, err := p.do(ctx, http.MethodGet, "/capability", nil, &c, http.StatusOK)
+	_, err := p.do(ctx, http.MethodGet, "capability", "/capability", nil, &c, http.StatusOK)
 	return c, err
 }
 
@@ -316,14 +330,14 @@ func (p *Provider) Capability(ctx context.Context) (ProviderCapability, error) {
 // call landed.
 func (p *Provider) CreateRun(ctx context.Context, req RunRequest) (ProviderRun, error) {
 	var pr ProviderRun
-	_, err := p.do(ctx, http.MethodPost, "/runs", req, &pr, http.StatusCreated, http.StatusOK)
+	_, err := p.do(ctx, http.MethodPost, "create_run", "/runs", req, &pr, http.StatusCreated, http.StatusOK)
 	return pr, err
 }
 
 // GetRun is the polling read.
 func (p *Provider) GetRun(ctx context.Context, providerRunID string) (ProviderRun, error) {
 	var pr ProviderRun
-	_, err := p.do(ctx, http.MethodGet, "/runs/"+url.PathEscape(providerRunID), nil, &pr, http.StatusOK)
+	_, err := p.do(ctx, http.MethodGet, "get_run", "/runs/"+url.PathEscape(providerRunID), nil, &pr, http.StatusOK)
 	return pr, err
 }
 
@@ -331,7 +345,7 @@ func (p *Provider) GetRun(ctx context.Context, providerRunID string) (ProviderRu
 // so a cancel that races the run finishing is not an error to special-case.
 func (p *Provider) Cancel(ctx context.Context, providerRunID string) (ProviderRun, error) {
 	var pr ProviderRun
-	_, err := p.do(ctx, http.MethodPost, "/runs/"+url.PathEscape(providerRunID)+"/cancel", nil, &pr, http.StatusAccepted)
+	_, err := p.do(ctx, http.MethodPost, "cancel_run", "/runs/"+url.PathEscape(providerRunID)+"/cancel", nil, &pr, http.StatusAccepted)
 	return pr, err
 }
 
@@ -339,14 +353,14 @@ func (p *Provider) Cancel(ctx context.Context, providerRunID string) (ProviderRu
 // contract, so a worker that crashed mid-cleanup can simply call it again
 // (iron rule 9).
 func (p *Provider) Destroy(ctx context.Context, providerRunID string) error {
-	_, err := p.do(ctx, http.MethodDelete, "/runs/"+url.PathEscape(providerRunID), nil, nil, http.StatusNoContent)
+	_, err := p.do(ctx, http.MethodDelete, "destroy_run", "/runs/"+url.PathEscape(providerRunID), nil, nil, http.StatusNoContent)
 	return err
 }
 
 // ListActive reads the runs the provider still holds resources for (RUN-007).
 func (p *Provider) ListActive(ctx context.Context) (ProviderRunList, error) {
 	var list ProviderRunList
-	_, err := p.do(ctx, http.MethodGet, "/runs?active=true", nil, &list, http.StatusOK)
+	_, err := p.do(ctx, http.MethodGet, "list_active", "/runs?active=true", nil, &list, http.StatusOK)
 	return list, err
 }
 
@@ -447,6 +461,18 @@ func (r *Registry) Capability(ctx context.Context, p *Provider) (ProviderCapabil
 		return entry.capability, entry.err
 	}
 	capability, err := p.Capability(ctx)
+	// O11Y-002: capability fetch health. Counted on the miss path only, so the
+	// number is "how often we actually asked", not "how often we used the answer".
+	// `unhealthy` is the provider answering and declaring itself out of rotation,
+	// which is a different operational fact from being unreachable.
+	switch {
+	case err != nil:
+		metrics.ProviderCapability.WithLabelValues(p.Name, "error").Inc()
+	case capability.Availability.Healthy != nil && !*capability.Availability.Healthy:
+		metrics.ProviderCapability.WithLabelValues(p.Name, "unhealthy").Inc()
+	default:
+		metrics.ProviderCapability.WithLabelValues(p.Name, "ok").Inc()
+	}
 	if r.cached == nil {
 		r.cached = map[string]cachedCapability{}
 	}

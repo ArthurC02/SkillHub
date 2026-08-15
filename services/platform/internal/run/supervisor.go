@@ -21,6 +21,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
 )
 
 const (
@@ -61,6 +62,13 @@ func (s *Service) Supervise(ctx context.Context) error {
 		if err := s.superviseRun(ctx, run); err != nil {
 			return err
 		}
+	}
+
+	// O11Y-003: the cleanup backlog gauge is published from here rather than from
+	// the cleanup job, because a backlog is a thing that persists between passes -
+	// counting it where the sweep happens is the only place it is ever true.
+	if backlog, err := s.queries().CountRunsNeedingCleanup(ctx); err == nil {
+		metrics.CleanupBacklog.Set(float64(backlog))
 	}
 
 	stale, err := s.queries().ListRunsNeedingCleanup(ctx, superviseBatch)

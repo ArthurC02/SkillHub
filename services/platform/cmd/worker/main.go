@@ -15,8 +15,10 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/outbox"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
+	"github.com/ArthurC02/skillhub/services/platform/internal/trace"
 )
 
 func main() {
@@ -47,7 +49,20 @@ func main() {
 	} else {
 		slog.Info("sandbox providers configured", "providers", names)
 	}
-	runs := &run.Service{Pool: pool, Providers: providers}
+	// TRACE-002: the worker is what builds a RunRequest, so it is the process
+	// that has to be able to mint an ingestion URL. Both halves must be set for
+	// collection to happen: the secret this signs with, and the origin an
+	// execution node can actually reach the control plane on.
+	traceSigner := &trace.Signer{Secret: []byte(os.Getenv("SKILLHUB_TRACE_INGEST_SECRET"))}
+	traceBase := os.Getenv("SKILLHUB_TRACE_INGEST_URL")
+	if !traceSigner.Enabled() || traceBase == "" {
+		slog.Warn("trace ingestion not configured; sandboxes will be dispatched with no trace destination",
+			"has_secret", traceSigner.Enabled(), "has_url", traceBase != "")
+	}
+	runs := &run.Service{
+		Pool: pool, Providers: providers,
+		TraceSigner: traceSigner, TraceIngestBaseURL: traceBase,
+	}
 
 	workers := river.NewWorkers()
 	// Every job kind the platform knows about is registered here. A kind with no
@@ -91,6 +106,7 @@ func main() {
 		slog.Error("queue start", "error", err)
 		os.Exit(1)
 	}
+	go metrics.Serve(os.Getenv("METRICS_ADDR"))
 	slog.Info("worker started")
 
 	<-ctx.Done()

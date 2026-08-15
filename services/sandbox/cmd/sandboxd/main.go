@@ -18,6 +18,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+
 	"github.com/ArthurC02/skillhub/services/sandbox/internal/dockerdrv"
 	"github.com/ArthurC02/skillhub/services/sandbox/internal/sandbox"
 )
@@ -69,6 +72,13 @@ func main() {
 		Slots:          envInt("SKILLHUB_SANDBOX_SLOTS", 2),
 	}, log)
 
+	// TRACE-002: the sandbox has no network, so this process is what carries its
+	// trace events to the control plane. The destination is per run and arrives
+	// in the RunRequest; all that is configured here is the ability to push.
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	m = m.WithTrace(&sandbox.HTTPTraceSink{}, sandbox.NewMetrics(registry))
+
 	// Sandboxes outlive this process. Rebuilding from labels before serving
 	// keeps a restarted provider from answering 404 for live attempts and from
 	// reporting an empty GET /runs, which an orphan scan reads as "nothing
@@ -80,7 +90,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              envOr("SKILLHUB_SANDBOX_ADDR", ":9000"),
-		Handler:           (&sandbox.Server{M: m, Token: token}).Routes(),
+		Handler:           (&sandbox.Server{M: m, Token: token, Metrics: registry}).Routes(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

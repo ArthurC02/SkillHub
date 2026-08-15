@@ -20,11 +20,13 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/objstore"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
 	"github.com/ArthurC02/skillhub/services/platform/internal/testlab"
+	"github.com/ArthurC02/skillhub/services/platform/internal/trace"
 )
 
 func main() {
@@ -98,6 +100,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// TRACE-002: the ingestion credential. Without a secret no ingestion URL is
+	// minted, the provider is handed no destination and no events are collected -
+	// the honest state for a deployment that has not configured one, and safer
+	// than an endpoint anybody could post to.
+	traceSigner := &trace.Signer{Secret: []byte(os.Getenv("SKILLHUB_TRACE_INGEST_SECRET"))}
+	if !traceSigner.Enabled() {
+		slog.Warn("SKILLHUB_TRACE_INGEST_SECRET not set; run traces will not be collected")
+	}
+	traceSvc := &trace.Service{Pool: pool, Signer: traceSigner}
+
 	// Routes live in internal/apiserver so the integration tests serve this exact
 	// table instead of a hand-copied one.
 	mux := apiserver.NewRouter(apiserver.Deps{
@@ -120,6 +132,7 @@ func main() {
 			Svc:      &run.Service{Pool: pool, Queue: jobs, Providers: run.NewRegistryFromEnv(), Store: store},
 			Identity: auth.Service,
 		},
+		Trace: &trace.Handler{Svc: traceSvc, Identity: auth.Service},
 	})
 
 	// DEV_CORS_ORIGIN is the local Vite dev server (http://localhost:5173) and
@@ -132,6 +145,10 @@ func main() {
 		Handler:           httpx.DevCORS(mux, os.Getenv("DEV_CORS_ORIGIN")),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
+
+	// O11Y-001~003 on its own listener, never on the public mux: /metrics is an
+	// operator surface and the public port is internet-reachable (NFR-005).
+	go metrics.Serve(os.Getenv("METRICS_ADDR"))
 
 	go func() {
 		slog.Info("api listening", "addr", srv.Addr)
