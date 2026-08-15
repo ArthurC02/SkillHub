@@ -41,6 +41,7 @@ func newGovernanceAPI(t *testing.T, pool *pgxpool.Pool) *api {
 	mux.HandleFunc("GET /skills", auth.RequireSession(reg.List))
 	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(reg.Fork))
 	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(reg.Takedown))
+	mux.HandleFunc("DELETE /skills/{id}", auth.RequireSession(reg.Delete))
 
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -377,6 +378,10 @@ func TestKeyOperationsLeaveAuditEvents(t *testing.T) {
 	if s, _ := postJSON(t, owner, "/skills/"+skillID+"/takedown", `{"reason":"license unclear"}`); s != http.StatusOK {
 		t.Fatalf("takedown: got %d", s)
 	}
+	deletable := seedSkill(t, pool, owner.workspaceID, "deletable-skill")
+	if s, _ := deleteJSON(t, owner, "/skills/"+deletable); s != http.StatusOK {
+		t.Fatalf("skill delete: got %d", s)
+	}
 	if s, _ := deleteJSON(t, owner, "/me"); s != http.StatusOK {
 		t.Fatalf("deletion request: got %d", s)
 	}
@@ -388,7 +393,7 @@ func TestKeyOperationsLeaveAuditEvents(t *testing.T) {
 	}
 
 	for _, action := range []string{
-		"auth.login", "auth.logout", "skill.fork", "skill.takedown",
+		"auth.login", "auth.logout", "skill.fork", "skill.takedown", "skill.delete",
 		"account.deletion_requested", "account.deletion_cancelled",
 	} {
 		actor := owner.userID
