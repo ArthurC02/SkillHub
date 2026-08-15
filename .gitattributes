@@ -1,0 +1,48 @@
+# Line endings are owned by this file, not by each developer's core.autocrlf.
+#
+# `eol=lf` overrides core.autocrlf, so a Windows clone gets LF in the WORKING
+# TREE too -- not just in the index. That is the point: gofmt, prettier and
+# golangci-lint read the working tree directly, so a CRLF checkout makes them
+# report format errors on files nobody touched, while CI on Linux sees clean.
+
+# Baseline: git auto-detects text vs binary; every text file, including
+# extensionless ones and dotfiles, is stored and checked out with LF.
+# Binary-detected files are not touched by eol=lf.
+* text=auto eol=lf
+
+# Explicit for the languages we actually build. Redundant with the baseline,
+# kept because it documents intent and is immune to auto-detection surprises.
+*.go   text eol=lf
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.py   text eol=lf
+*.sql  text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.toml text eol=lf
+*.html text eol=lf
+*.css  text eol=lf
+*.sh   text eol=lf
+
+# --- Windows-only: these genuinely need CRLF --------------------------------
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# --- Binary: never convert, never diff as text ------------------------------
+# The repo has no binaries today; these guard the `* text=auto` baseline
+# against misdetecting one later and corrupting it on checkout.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
