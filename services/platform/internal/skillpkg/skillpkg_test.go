@@ -311,6 +311,87 @@ func TestLicenseProvenancePrecedence(t *testing.T) {
 	}
 }
 
+// ADR-021 待決策 #1: a frontmatter `license` that names a file is a pointer, not
+// a declaration. `anthropics/skills` ships `Complete terms in LICENSE.txt` on
+// brand-guidelines and internal-comms, and recording that verbatim lost the
+// Apache-2.0 sitting in the file right beside it.
+func TestLicenseManifestPointerResolvesReferencedFile(t *testing.T) {
+	// The exact string the two seed packages carry.
+	const seedPointer = "Complete terms in LICENSE.txt"
+
+	for _, name := range []string{"brand-guidelines", "internal-comms"} {
+		t.Run(name, func(t *testing.T) {
+			r := Validate(pkg(
+				"---\nname: "+name+"\ndescription: d\nlicense: "+seedPointer+"\n---\n",
+				map[string]string{"LICENSE.txt": apacheText},
+			))
+			if r.LicenseExpression != "Apache-2.0" || r.LicenseSource != licenseSourceManifestRef {
+				t.Fatalf("got %q/%q, want Apache-2.0/%s",
+					r.LicenseExpression, r.LicenseSource, licenseSourceManifestRef)
+			}
+			if codes(r)["license-from-manifest-reference"] != SeverityInfo {
+				t.Fatalf("resolving a pointer must be disclosed: %+v", r.Findings)
+			}
+		})
+	}
+
+	// npm's own spelling resolves identically.
+	r := Validate(pkg(
+		"---\nname: x\ndescription: d\nlicense: SEE LICENSE IN LICENSE.txt\n---\n",
+		map[string]string{"LICENSE.txt": apacheText},
+	))
+	if r.LicenseExpression != "Apache-2.0" || r.LicenseSource != licenseSourceManifestRef {
+		t.Fatalf("npm spelling: got %q/%q", r.LicenseExpression, r.LicenseSource)
+	}
+
+	// Every way of failing to resolve keeps the old behaviour: the author's
+	// string, recorded verbatim under the manifest tier. Never a guess, and never
+	// answered by some other file that happens to be present.
+	for _, tc := range []struct {
+		name  string
+		files map[string]string
+	}{
+		{"target missing", nil},
+		{"target unrecognised", map[string]string{"LICENSE.txt": "All rights reserved."}},
+		{"a different license file is not the named one", map[string]string{"LICENSE": mitText}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := Validate(pkg("---\nname: x\ndescription: d\nlicense: "+seedPointer+"\n---\n", tc.files))
+			if r.LicenseExpression != seedPointer || r.LicenseSource != licenseSourceManifest {
+				t.Fatalf("got %q/%q, want the string verbatim under %s",
+					r.LicenseExpression, r.LicenseSource, licenseSourceManifest)
+			}
+		})
+	}
+}
+
+func TestLicensePointerTarget(t *testing.T) {
+	for in, want := range map[string]string{
+		"SEE LICENSE IN LICENSE.txt":     "LICENSE.txt",
+		"see licence in COPYING":         "COPYING",
+		"Complete terms in LICENSE.txt":  "LICENSE.txt",
+		"Complete terms in LICENSE.txt.": "LICENSE.txt",
+		"Full license text in LICENSE":   "LICENSE",
+		"See the license in LICENSE.md":  "LICENSE.md",
+		// Real declarations must never be mistaken for pointers, and a pointer
+		// that leaves the package root is not evidence about the package.
+		"MIT":                    "",
+		"Apache-2.0":             "",
+		"Proprietary, ask Bob":   "",
+		"SEE LICENSE IN ../LICE": "",
+		"see license in a/b.txt": "",
+		"licensed in spirit":     "",
+	} {
+		got, ok := licensePointerTarget(in)
+		if !ok {
+			got = ""
+		}
+		if got != want {
+			t.Errorf("licensePointerTarget(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestNormalizeSPDX(t *testing.T) {
 	for in, want := range map[string]string{
 		"MIT":            "MIT",

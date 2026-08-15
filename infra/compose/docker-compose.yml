@@ -30,8 +30,13 @@ services:
       - "8333:8333"
     volumes:
       - seaweedfs-data:/data
+    # Probe 127.0.0.1, not `localhost`: SeaweedFS listens on IPv4 only, while
+    # `localhost` resolves to ::1 first inside the container, so the old probe
+    # got ECONNREFUSED forever and the service never went healthy. `/status` is
+    # the S3 gateway's own health endpoint (200, empty body) — the bucket root
+    # only answers while anonymous ListBuckets stays enabled.
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8333 || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/status || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 10

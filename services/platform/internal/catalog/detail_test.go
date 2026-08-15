@@ -3,6 +3,9 @@ package catalog
 import (
 	"testing"
 	"testing/fstest"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/skillpkg"
@@ -109,6 +112,44 @@ func TestLicenseKeepsProvenanceTierAndNeverConfirms(t *testing.T) {
 	unknown := licenseFrom(gen.SkillVersion{})
 	if unknown.Status.Value != string(LicenseStatusUnknown) || unknown.Expression != "" {
 		t.Errorf("missing license = %+v, want unknown with no expression", unknown)
+	}
+}
+
+// The availability probe (0013_governance) writes two separate facts and the
+// detail view has to show both: DISC-003 provenance is not traceable if the
+// reader cannot tell "checked, still there" from "checked, gone for two weeks".
+func TestSourceSurfacesAvailabilityProbe(t *testing.T) {
+	url := "https://github.com/example/skills"
+	checked := time.Date(2026, 8, 14, 9, 30, 0, 0, time.UTC)
+	gone := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+
+	got := sourceFrom(gen.SkillSource{
+		SourceType:       "git",
+		SourceUrl:        &url,
+		ContentHash:      "sha256:abc",
+		LastCheckedAt:    pgtype.Timestamptz{Time: checked, Valid: true},
+		UnavailableSince: pgtype.Timestamptz{Time: gone, Valid: true},
+	})
+	if got.LastCheckedAt != "2026-08-14T09:30:00Z" {
+		t.Errorf("last_checked_at = %q", got.LastCheckedAt)
+	}
+	if got.UnavailableSince != "2026-08-01T12:00:00Z" {
+		t.Errorf("unavailable_since = %q", got.UnavailableSince)
+	}
+
+	// A source that answered on its last probe reports the check but no outage;
+	// a never-probed source reports neither, rather than an implied "available".
+	available := sourceFrom(gen.SkillSource{
+		SourceType:    "git",
+		SourceUrl:     &url,
+		LastCheckedAt: pgtype.Timestamptz{Time: checked, Valid: true},
+	})
+	if available.LastCheckedAt == "" || available.UnavailableSince != "" {
+		t.Errorf("available source = %+v, want a check time and no outage", available)
+	}
+	never := sourceFrom(gen.SkillSource{SourceType: "upload", ContentHash: "sha256:abc"})
+	if never.LastCheckedAt != "" || never.UnavailableSince != "" {
+		t.Errorf("never-probed source = %+v, want both absent", never)
 	}
 }
 

@@ -56,9 +56,9 @@ type Report struct {
 	Manifest *Manifest `json:"manifest"`
 	// LicenseExpression is the license the package actually evidences, and
 	// LicenseSource says which artefact it came from — one of the ADR-021
-	// provenance tiers (licenseSourceManifest, licenseSourcePackageFile,
-	// licenseSourceRepoFile). Empty means unknown, which is the only case that
-	// may be treated as unknown (DISC-003).
+	// provenance tiers (licenseSourceManifest, licenseSourceManifestRef,
+	// licenseSourcePackageFile, licenseSourceRepoFile). Empty means unknown,
+	// which is the only case that may be treated as unknown (DISC-003).
 	LicenseExpression string    `json:"license_expression,omitempty"`
 	LicenseSource     string    `json:"license_source,omitempty"`
 	Findings          []Finding `json:"findings"`
@@ -250,9 +250,40 @@ const (
 // License provenance tiers, in the precedence order fixed by ADR-021.
 const (
 	licenseSourceManifest    = "manifest"
+	licenseSourceManifestRef = "manifest-referenced-file"
 	licenseSourcePackageFile = "package-license-file"
 	licenseSourceRepoFile    = "repo-license-file"
 )
+
+// licensePointer matches a frontmatter `license` value that names a file instead
+// of declaring a license. npm has the established convention for this
+// (`"SEE LICENSE IN <filename>"`, the file required at package top level), and
+// `anthropics/skills` writes the same idea as `Complete terms in LICENSE.txt`.
+// Recording either verbatim as an SPDX expression loses the fact the package
+// plainly states (ADR-021 待決策 #1).
+//
+// Deliberately a closed set of phrasings rather than a heuristic: a false match
+// hands the license question to some *other* file's text, so the cost of being
+// wrong is a misattributed license. Anything not matched keeps the old
+// behaviour and is recorded verbatim.
+var licensePointer = regexp.MustCompile(
+	`(?i)^(?:see|complete|full)\s+(?:the\s+)?(?:licen[sc]e|terms)(?:\s+text)?\s+in\s+(\S+?)[.,]?$`)
+
+// licensePointerTarget returns the package-root file a pointer-style license
+// value names. The target must be a bare filename at the package root, per the
+// npm convention: a pointer that walks out of the package is not evidence about
+// the package.
+func licensePointerTarget(license string) (string, bool) {
+	m := licensePointer.FindStringSubmatch(strings.Join(strings.Fields(license), " "))
+	if m == nil {
+		return "", false
+	}
+	name := strings.Trim(m[1], `"'`)
+	if name == "" || strings.ContainsAny(name, `/\`) || !fs.ValidPath(name) {
+		return "", false
+	}
+	return name, true
+}
 
 // licenseSignatures map a distinctive line of licence text to its SPDX id.
 // Substring matching over the file's first few KiB, no dependency: these texts
@@ -287,6 +318,20 @@ var licenseSignatures = []struct{ marker, spdx string }{
 // author's to license (curated-skill-list.md §5.3).
 func (r *Report) resolveLicense(fsys fs.FS) {
 	if r.Manifest.License != "" {
+		// A pointer ("SEE LICENSE IN LICENSE.txt") is not a declaration. Resolve
+		// the file it names; if that fails for any reason, fall through to
+		// recording the author's string verbatim, exactly as before.
+		if name, ok := licensePointerTarget(r.Manifest.License); ok {
+			if data, err := fs.ReadFile(fsys, name); err == nil {
+				if spdx := detectLicense(data); spdx != "" {
+					r.LicenseExpression, r.LicenseSource = spdx, licenseSourceManifestRef
+					r.add(SeverityInfo, "license-from-manifest-reference", name, fmt.Sprintf(
+						"frontmatter license points at %s rather than declaring one; that file identifies %s",
+						name, spdx))
+					return
+				}
+			}
+		}
 		r.LicenseExpression, r.LicenseSource = normalizeSPDX(r.Manifest.License), licenseSourceManifest
 		return
 	}

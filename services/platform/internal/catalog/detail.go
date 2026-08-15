@@ -67,12 +67,20 @@ type labelled struct {
 // when, and the hash of what arrived. Fields absent from the record stay absent
 // rather than being filled with a plausible value (DISC-004 缺少資料顯示未知).
 type sourceInfo struct {
-	Type          string   `json:"type"` // git | upload
-	URL           string   `json:"url,omitempty"`
-	SourceVersion string   `json:"source_version,omitempty"` // commit sha, tag, or branch
-	FetchedAt     string   `json:"fetched_at,omitempty"`
-	ContentHash   string   `json:"content_hash,omitempty"`
-	Trust         labelled `json:"trust"`
+	Type          string `json:"type"` // git | upload
+	URL           string `json:"url,omitempty"`
+	SourceVersion string `json:"source_version,omitempty"` // commit sha, tag, or branch
+	FetchedAt     string `json:"fetched_at,omitempty"`
+	ContentHash   string `json:"content_hash,omitempty"`
+	// LastCheckedAt and UnavailableSince are the upstream-availability probe's
+	// two separate facts (0013_governance): when the source was last looked at,
+	// and since when it has been failing. They are reported apart because
+	// "checked a minute ago, still there" and "checked a minute ago, gone for two
+	// weeks" are different provenance stories (DISC-003/008). Absent means never
+	// probed / currently available — never rendered as a reassurance.
+	LastCheckedAt    string   `json:"last_checked_at,omitempty"`
+	UnavailableSince string   `json:"unavailable_since,omitempty"`
+	Trust            labelled `json:"trust"`
 }
 
 // licenseInfo carries the ADR-021 two-axis answer: which license the package
@@ -91,8 +99,9 @@ type licenseInfo struct {
 
 // licenseSourceNotes says what each provenance tier does and does not claim.
 var licenseSourceNotes = map[string]string{
-	"manifest":             "作者在 SKILL.md frontmatter 自行宣告。",
-	"package-license-file": "套件內附 LICENSE 檔案,涵蓋此套件本身。",
+	"manifest":                 "作者在 SKILL.md frontmatter 自行宣告。",
+	"manifest-referenced-file": "frontmatter 未直接宣告授權,而是指向套件內的檔案(如 `SEE LICENSE IN LICENSE.txt`);此結果讀自該檔案的文字。",
+	"package-license-file":     "套件內附 LICENSE 檔案,涵蓋此套件本身。",
 	"repo-license-file":    "來自 repo 根目錄的 LICENSE,涵蓋整個 repo,不必然涵蓋此子目錄的內容。",
 }
 
@@ -508,7 +517,13 @@ func licenseFrom(v gen.SkillVersion) licenseInfo {
 // Traceable only for a git import that actually recorded a URL; an upload has no
 // verifiable origin, and manual confirmation has no store yet.
 func sourceFrom(s gen.SkillSource) *sourceInfo {
-	out := &sourceInfo{Type: s.SourceType, ContentHash: s.ContentHash, FetchedAt: timeString(s.FetchedAt)}
+	out := &sourceInfo{
+		Type:             s.SourceType,
+		ContentHash:      s.ContentHash,
+		FetchedAt:        timeString(s.FetchedAt),
+		LastCheckedAt:    timeString(s.LastCheckedAt),
+		UnavailableSince: timeString(s.UnavailableSince),
+	}
 	if s.SourceUrl != nil {
 		out.URL = *s.SourceUrl
 	}

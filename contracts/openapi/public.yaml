@@ -887,6 +887,19 @@ components:
         content_hash:
           type: string
           description: Hash of the package as fetched.
+        last_checked_at:
+          type: string
+          format: date-time
+          description: |
+            When the upstream-availability probe last looked at this source.
+            Absent means never probed — which is not the same as "available".
+        unavailable_since:
+          type: string
+          format: date-time
+          description: |
+            When the source *started* failing, not the latest failure, so a
+            two-week outage stays distinguishable from a blip. Absent means the
+            source answered on its last probe.
         trust:
           allOf:
             - $ref: "#/components/schemas/Labelled"
@@ -908,10 +921,14 @@ components:
           description: SPDX id. Absent means unknown, which must never be shown as permissive.
         source:
           type: string
-          enum: [manifest, package-license-file, repo-license-file]
+          enum: [manifest, manifest-referenced-file, package-license-file, repo-license-file]
           description: |
-            Provenance tier, strongest first. Absent on versions imported before
-            ADR-021, whose tier was never recorded and must not be invented.
+            Provenance tier, strongest first. `manifest-referenced-file` means the
+            frontmatter named a file instead of declaring a license (npm's
+            `SEE LICENSE IN <filename>` convention) and that file's text was
+            recognised — the author chose the file, but the expression was read,
+            not declared. Absent on versions imported before ADR-021, whose tier
+            was never recorded and must not be invented.
         source_note:
           type: string
           description: What that tier does and does not claim about this package.
