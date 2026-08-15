@@ -149,3 +149,45 @@ func (c *Client) MatchReasons(ctx context.Context, query string, candidates []Sk
 	return post[MatchReasonsRequest, MatchReasonsResponse](ctx, c, "/match-reasons",
 		MatchReasonsRequest{Query: query, Candidates: candidates})
 }
+
+// DatasetField is one column of an uploaded file, as the suggestion request
+// describes it. Name and inferred type only — there is deliberately no field for
+// a cell value, so a caller cannot ship a user's rows to a model by accident
+// (iron rule 11; the same shape is re-stated in the service's own schema).
+type DatasetField struct {
+	Name         string `json:"name"`
+	InferredType string `json:"inferred_type"`
+}
+
+// DatasetOutline is one attached file, described by its shape.
+type DatasetOutline struct {
+	FileName    string         `json:"file_name"`
+	ContentType string         `json:"content_type,omitempty"`
+	Fields      []DatasetField `json:"fields,omitempty"`
+}
+
+// SuggestCriteriaRequest is the request body for POST /suggest-criteria.
+type SuggestCriteriaRequest struct {
+	SkillName    string           `json:"skill_name,omitempty"`
+	SkillSummary string           `json:"skill_summary,omitempty"`
+	UserPrompt   string           `json:"user_prompt"`
+	Datasets     []DatasetOutline `json:"datasets,omitempty"`
+}
+
+// SuggestedCriterion is one proposed acceptance condition.
+type SuggestedCriterion struct {
+	Text string `json:"text"`
+}
+
+// SuggestCriteriaResponse is the response body from POST /suggest-criteria.
+type SuggestCriteriaResponse struct {
+	Criteria []SuggestedCriterion `json:"criteria"`
+}
+
+// SuggestCriteria asks the LLM service to propose acceptance criteria (TEST-002).
+// A proposal only: what is done with it — stored as `suggested`, edited, deleted —
+// is Go's decision (iron rule 6), and ctx carries the caller's timeout and
+// cancellation into the internal call (iron rule 7).
+func (c *Client) SuggestCriteria(ctx context.Context, req SuggestCriteriaRequest) (*SuggestCriteriaResponse, error) {
+	return post[SuggestCriteriaRequest, SuggestCriteriaResponse](ctx, c, "/suggest-criteria", req)
+}

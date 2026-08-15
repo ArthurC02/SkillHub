@@ -1,9 +1,10 @@
 """Internal LLM service. Only Go calls this; it is never exposed publicly (ADR-016).
 
 Endpoints:
-  POST /embed            - generate embeddings via text-embedding-3-small (ADR-013, PDM-003)
-  POST /match-reasons    - generate match reason sentences for search results (ADR-013 section 3)
-  POST /v1/enrich-skill  - index-time enrichment of a Skill Version (ADR-013 section 1)
+  POST /embed             - generate embeddings via text-embedding-3-small (ADR-013, PDM-003)
+  POST /match-reasons     - generate match reason sentences for search results (ADR-013 section 3)
+  POST /v1/enrich-skill   - index-time enrichment of a Skill Version (ADR-013 section 1)
+  POST /suggest-criteria  - propose acceptance criteria for a test case (TEST-002)
 """
 
 from __future__ import annotations
@@ -26,6 +27,9 @@ LITELLM_API_KEY = os.getenv("LITELLM_API_KEY", "sk-1234")
 
 EMBED_MODEL = "text-embedding-3-small"
 MATCH_REASON_MODEL = os.getenv("MATCH_REASON_MODEL", "gpt-4o-mini")
+# Suggestion-class work runs on the mini tier (PDM-003 §11.6: the flagship buys
+# nothing measurable here and costs 6.7x).
+SUGGEST_CRITERIA_MODEL = os.getenv("SUGGEST_CRITERIA_MODEL", "gpt-5.4-mini")
 
 
 @app.get("/healthz")
@@ -172,3 +176,145 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
     return MatchReasonsResponse(
         reasons=[r for r in parsed.reasons if r.skill_id in wanted and r.reason]
     )
+
+
+# --- Suggest-criteria endpoint (TEST-002) ---
+
+MAX_SUGGESTED_CRITERIA = 8
+
+
+class DatasetField(BaseModel):
+    """One column of an uploaded dataset, described by its shape only.
+
+    Iron rule 11 and 02:TEST-002 資料使用範圍: Go sends the field NAME and an
+    inferred type, never a value from a row. A user's uploaded rows are their
+    private data; they do not need to reach a model for the model to propose
+    "the output covers every row of `amount`". Go is the enforcement point (see
+    internal/testlab/suggest.go) — this schema is the second statement of the
+    same rule, so a future caller cannot quietly start sending cell contents.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    inferred_type: str
+
+
+class DatasetOutline(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    file_name: str
+    content_type: str = ""
+    fields: list[DatasetField] = Field(default_factory=list)
+
+
+class SuggestCriteriaRequest(BaseModel):
+    skill_name: str = ""
+    # The Skill's summary or an excerpt of SKILL.md — whichever the caller has.
+    skill_summary: str = ""
+    user_prompt: str = Field(..., min_length=1)
+    datasets: list[DatasetOutline] = Field(default_factory=list, max_length=20)
+
+
+class SuggestedCriterion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: str
+
+
+class SuggestCriteriaResponse(BaseModel):
+    """Also the JSON schema handed to the model, so the wire shape and the shape
+    the prompt asks for cannot drift apart (same rule as MatchReasonsResponse).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    criteria: list[SuggestedCriterion]
+
+
+@app.post("/suggest-criteria", response_model=SuggestCriteriaResponse)
+async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaResponse:
+    """Propose acceptance criteria for one test case (02:TEST-001 自動建議).
+
+    A proposal, not a decision: Go stores whatever comes back with
+    `source = "suggested"` and the user edits, confirms or deletes it. Nothing
+    here decides what is acceptable, and no criterion is confirmed on the user's
+    behalf (ADR-016 iron rule 6).
+
+    An unusable answer comes back as an empty list rather than as invented text —
+    the user then writes their own criteria, which is the documented manual path.
+    """
+    import litellm
+
+    dataset_text = (
+        "\n".join(
+            f"- {d.file_name} ({d.content_type or 'unknown type'}): "
+            + (
+                ", ".join(f"{f.name}:{f.inferred_type}" for f in d.fields)
+                if d.fields
+                else "no field names available"
+            )
+            for d in req.datasets
+        )
+        or "(no files attached)"
+    )
+
+    system_prompt = (
+        "You help a creator write acceptance criteria for a test run of an Agent Skill. "
+        "Each criterion must be one short sentence that a reviewer can judge as met or "
+        "not met by looking at the run's output. Prefer observable, checkable statements "
+        "over vague quality words. Do not invent data values; you are given column names "
+        "and types only. Write the criteria in the language of the user's task description. "
+        f"Return at most {MAX_SUGGESTED_CRITERIA} criteria as "
+        '{"criteria": [{"text": "..."}]}.'
+    )
+    user_prompt = (
+        f"Skill: {req.skill_name}\n"
+        f"What the Skill does: {req.skill_summary}\n\n"
+        f"User's task:\n{req.user_prompt}\n\n"
+        f"Attached data (field names and inferred types only, no rows):\n{dataset_text}\n\n"
+        "Propose the acceptance criteria."
+    )
+
+    try:
+        response = await litellm.acompletion(
+            model=SUGGEST_CRITERIA_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            api_base=LITELLM_BASE_URL,
+            api_key=LITELLM_API_KEY,
+            temperature=0.3,
+            max_tokens=1024,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "suggested_criteria",
+                    "strict": True,
+                    "schema": SuggestCriteriaResponse.model_json_schema(),
+                },
+            },
+        )
+    except Exception as e:
+        logger.exception("suggest-criteria LLM call failed")
+        raise HTTPException(status_code=502, detail=f"suggest-criteria provider error: {e}") from e
+
+    raw = (response.choices[0].message.content or "").strip()
+    try:
+        parsed = SuggestCriteriaResponse.model_validate_json(raw)
+    except ValidationError:
+        logger.warning("suggest-criteria: model output did not match the schema")
+        return SuggestCriteriaResponse(criteria=[])
+
+    seen: set[str] = set()
+    kept: list[SuggestedCriterion] = []
+    for c in parsed.criteria:
+        text = c.text.strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        kept.append(SuggestedCriterion(text=text))
+        if len(kept) == MAX_SUGGESTED_CRITERIA:
+            break
+    return SuggestCriteriaResponse(criteria=kept)

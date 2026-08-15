@@ -263,6 +263,7 @@ func TestTestLabRoutesRejectAnonymousCallers(t *testing.T) {
 		{http.MethodPatch, "/test-cases/" + id},
 		{http.MethodDelete, "/test-cases/" + id},
 		{http.MethodPost, "/test-cases/" + id + "/criteria"},
+		{http.MethodPost, "/test-cases/" + id + "/criteria/suggest"},
 		{http.MethodPatch, "/test-cases/" + id + "/criteria/abc"},
 		{http.MethodDelete, "/test-cases/" + id + "/criteria/abc"},
 		{http.MethodPost, "/test-cases/" + id + "/datasets"},

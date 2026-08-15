@@ -40,6 +40,9 @@ const (
 	ActionRunCreate     = "run.create"
 	ActionRunTransition = "run.transition"
 	ActionRunCancelAsk  = "run.cancel_requested"
+	// SEC-002 gate B: who agreed to which pre-run permission summary, and when
+	// (02:TEST-005). The confirmation row itself is the gate; this is the trail.
+	ActionRunPermissionsConfirm = "run.permissions_confirmed"
 	// NFR-001 requires an audit trail for deletion (CORE-007). Uploads are not
 	// audited: the dataset row itself already records what was uploaded and when.
 	ActionTestCaseDelete = "test_case.delete"

@@ -63,6 +63,11 @@ type Service struct {
 	// deployment with no sandbox: runs are still accepted and then fail saying so,
 	// rather than being rejected as if the user had asked for something impossible.
 	Providers *Registry
+	// Store reads the stored skill package, for the one question the pre-run
+	// permission summary cannot answer from the database: does this version carry
+	// a script (02:TEST-005). Nil means the scan reports itself unavailable rather
+	// than reporting a clean package.
+	Store ObjectStore
 	// MaxAttempts bounds automatic retries of one run (ADR-004: no unbounded
 	// retries). Zero means defaultMaxAttempts.
 	MaxAttempts int
@@ -163,6 +168,10 @@ type CreateParams struct {
 	SkillID     pgtype.UUID
 	VersionID   pgtype.UUID
 	TestCaseID  pgtype.UUID
+	// ConfirmedSummaryHash is the pre-run permission summary the user agreed to
+	// (02:TEST-005). It is not trusted as an authorization by itself — the summary
+	// is rebuilt and the agreement looked up in requirePermissionConfirmation.
+	ConfirmedSummaryHash string
 }
 
 // Create records a queued run and enqueues its execution job, in one transaction.
@@ -199,6 +208,15 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		return gen.Run{}, err
 	}
 	if err := s.checkSchedulable(ctx, decoded); err != nil {
+		return gen.Run{}, err
+	}
+	// SEC-002 gate B: no run starts on permissions the user has not seen and
+	// agreed to, and an agreement to a summary that has since changed does not
+	// carry over (02:TEST-005). Checked here rather than in the handler so every
+	// caller of Create passes through it. Ordered after checkSchedulable so a
+	// fleet that cannot carry the work still answers with the capability reason,
+	// which is the more actionable of the two.
+	if err := s.requirePermissionConfirmation(ctx, p); err != nil {
 		return gen.Run{}, err
 	}
 

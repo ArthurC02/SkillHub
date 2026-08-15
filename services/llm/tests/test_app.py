@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
+from skillhub_llm import app as app_module
 from skillhub_llm.app import app
 
 client = TestClient(app)
@@ -154,6 +155,128 @@ def test_match_reasons_reports_provider_failure_as_502():
         response = client.post(
             "/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES}
         )
+
+    assert response.status_code == 502
+
+
+# --- TEST-002: acceptance criteria suggestions -------------------------------
+
+SUGGEST_BODY = {
+    "skill_name": "invoice-parser",
+    "skill_summary": "reads invoices and totals them",
+    "user_prompt": "整理這批發票並列出每個月的總額",
+    "datasets": [
+        {
+            "file_name": "invoices.csv",
+            "content_type": "text/plain",
+            "fields": [
+                {"name": "amount", "inferred_type": "number"},
+                {"name": "issued_at", "inferred_type": "text"},
+            ],
+        }
+    ],
+}
+
+
+def test_suggest_criteria_rejects_blank_prompt():
+    body = dict(SUGGEST_BODY, user_prompt="")
+    assert client.post("/suggest-criteria", json=body).status_code == 422
+
+
+def test_suggest_criteria_returns_the_proposed_list():
+    body = (
+        '{"criteria": [{"text": "輸出包含每個月的總額"}, {"text": "金額加總與 amount 欄位一致"}]}'
+    )
+    with patch.dict("sys.modules", {"litellm": _match_reasons_litellm(body)}):
+        response = client.post("/suggest-criteria", json=SUGGEST_BODY)
+
+    assert response.status_code == 200
+    assert [c["text"] for c in response.json()["criteria"]] == [
+        "輸出包含每個月的總額",
+        "金額加總與 amount 欄位一致",
+    ]
+
+
+def test_suggest_criteria_asks_the_gateway_for_the_shape_it_parses():
+    """Same rule as match-reasons: the schema sent and the model parsed are one
+    object, so a prompt/parser drift cannot silently return nothing."""
+    body = '{"criteria": [{"text": "輸出包含每個月的總額"}]}'
+    stub = _match_reasons_litellm(body)
+    with patch.dict("sys.modules", {"litellm": stub}):
+        client.post("/suggest-criteria", json=SUGGEST_BODY)
+
+    kwargs = stub.acompletion.await_args.kwargs
+    fmt = kwargs["response_format"]
+    assert fmt["type"] == "json_schema"
+    assert fmt["json_schema"]["strict"] is True
+    assert "criteria" in fmt["json_schema"]["schema"]["properties"]
+    # Iron rule 8: the call goes to the LiteLLM gateway, on the mini tier.
+    assert kwargs["api_base"] == app_module.LITELLM_BASE_URL
+    assert kwargs["model"] == app_module.SUGGEST_CRITERIA_MODEL
+
+
+def test_suggest_criteria_never_sees_dataset_rows():
+    """Iron rule 11 / 02:TEST-002 資料使用範圍: the request schema carries field
+    names and inferred types, so a cell value has no field to travel in. A caller
+    that tries anyway is rejected, not silently accepted and forwarded."""
+    body = dict(SUGGEST_BODY)
+    body["datasets"] = [
+        {
+            "file_name": "invoices.csv",
+            "fields": [{"name": "amount", "inferred_type": "number", "sample": "1999.00"}],
+        }
+    ]
+    assert client.post("/suggest-criteria", json=body).status_code == 422
+
+
+def test_suggest_criteria_drops_blank_and_duplicate_suggestions():
+    body = (
+        '{"criteria": [{"text": "輸出包含每個月的總額"}, {"text": "  "}, '
+        '{"text": "輸出包含每個月的總額"}]}'
+    )
+    with patch.dict("sys.modules", {"litellm": _match_reasons_litellm(body)}):
+        response = client.post("/suggest-criteria", json=SUGGEST_BODY)
+
+    assert [c["text"] for c in response.json()["criteria"]] == ["輸出包含每個月的總額"]
+
+
+def test_suggest_criteria_caps_the_number_of_suggestions():
+    many = ", ".join(f'{{"text": "criterion {i}"}}' for i in range(30))
+    with patch.dict(
+        "sys.modules", {"litellm": _match_reasons_litellm('{"criteria": [' + many + "]}")}
+    ):
+        response = client.post("/suggest-criteria", json=SUGGEST_BODY)
+
+    assert len(response.json()["criteria"]) == app_module.MAX_SUGGESTED_CRITERIA
+
+
+def test_suggest_criteria_survives_an_off_schema_answer():
+    """Nothing is invented: Go writes what it gets, so a filler sentence here
+    would reach the user labelled as a suggestion the model made."""
+    with patch.dict("sys.modules", {"litellm": _match_reasons_litellm('{"items": ["nope"]}')}):
+        response = client.post("/suggest-criteria", json=SUGGEST_BODY)
+
+    assert response.status_code == 200
+    assert response.json()["criteria"] == []
+
+
+def test_suggest_criteria_survives_unparseable_model_output():
+    with patch.dict("sys.modules", {"litellm": _match_reasons_litellm("not json at all")}):
+        response = client.post("/suggest-criteria", json=SUGGEST_BODY)
+
+    assert response.status_code == 200
+    assert response.json()["criteria"] == []
+
+
+def test_suggest_criteria_reports_provider_failure_as_502():
+    """Go keys its degradation path off the status code, as it does for
+    match-reasons: 502 means "ask again later", 200 means "this is the answer"."""
+    from unittest.mock import MagicMock
+
+    mock_litellm = MagicMock()
+    mock_litellm.acompletion = AsyncMock(side_effect=RuntimeError("gateway down"))
+    with patch.dict("sys.modules", {"litellm": mock_litellm}):
+        response = client.post("/suggest-criteria", json=SUGGEST_BODY)
 
     assert response.status_code == 502
 

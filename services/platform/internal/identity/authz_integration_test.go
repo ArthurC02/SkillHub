@@ -173,6 +173,10 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	runs := &run.Handler{Svc: runSvc, Identity: auth.Service}
 
 	lab := &testlab.Handler{Svc: &testlab.Service{Pool: pool, Store: packages}, Identity: auth.Service}
+	if llmBaseURL != "" {
+		// TEST-002 talks to the same internal service the search path does.
+		lab.Svc.LLM = &llmclient.Client{BaseURL: llmBaseURL}
+	}
 
 	srv := httptest.NewServer(apiserver.NewRouter(apiserver.Deps{
 		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs, TestLab: lab,
@@ -360,6 +364,8 @@ func TestAnonymousCallersGetThePublicSurfaceAndNothingElse(t *testing.T) {
 		{http.MethodGet, "/skills/" + id + "/diff", http.StatusUnauthorized},
 		{http.MethodDelete, "/skills/" + id, http.StatusUnauthorized},
 		{http.MethodPost, "/skills/" + id + "/runs", http.StatusUnauthorized},
+		{http.MethodGet, "/skills/" + id + "/runs/preflight", http.StatusUnauthorized},
+		{http.MethodPost, "/skills/" + id + "/runs/preflight/confirm", http.StatusUnauthorized},
 		{http.MethodGet, "/runs/" + id, http.StatusUnauthorized},
 		{http.MethodPost, "/runs/" + id + "/cancel", http.StatusUnauthorized},
 	} {

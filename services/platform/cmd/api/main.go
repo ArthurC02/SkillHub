@@ -105,12 +105,19 @@ func main() {
 		Importer: importer,
 		Search:   &catalog.Handler{Pool: pool, Identity: auth.Service, LLMClient: llm, Store: store},
 		Registry: &registry.Handler{Svc: &registry.Service{Pool: pool, Store: store}, Identity: auth.Service},
-		TestLab:  &testlab.Handler{Svc: &testlab.Service{Pool: pool, Store: store}, Identity: auth.Service},
+		// llm may be nil: TEST-002's suggestions are then unavailable and the test
+		// lab's manual paths carry on unaffected.
+		TestLab: &testlab.Handler{
+			Svc:      &testlab.Service{Pool: pool, Store: store, LLM: llmOrNil(llm)},
+			Identity: auth.Service,
+		},
 		// The API needs the provider registry for one thing only: refusing a run no
 		// configured provider can carry, before it is queued (RUN-005, ADR-004). It
 		// never dispatches — that is the worker's job (iron rule 7).
 		Runs: &run.Handler{
-			Svc:      &run.Service{Pool: pool, Queue: jobs, Providers: run.NewRegistryFromEnv()},
+			// Store is read-only here: the pre-run permission summary scans the
+			// stored package to answer "does this carry a script" (02:TEST-005).
+			Svc:      &run.Service{Pool: pool, Queue: jobs, Providers: run.NewRegistryFromEnv(), Store: store},
 			Identity: auth.Service,
 		},
 	})
@@ -157,6 +164,17 @@ func importFetcherFromEnv() *ingest.URLFetcher {
 		}
 	}
 	return f
+}
+
+// llmOrNil keeps a nil *llmclient.Client from becoming a non-nil interface value.
+// Without it, "LLM_SERVICE_URL is unset" would reach the test lab as a configured
+// suggester and every suggestion would fail with a nil-pointer panic instead of
+// the honest "unavailable".
+func llmOrNil(c *llmclient.Client) testlab.CriteriaSuggester {
+	if c == nil {
+		return nil
+	}
+	return c
 }
 
 func addrFromEnv(key, fallback string) string {

@@ -1,0 +1,421 @@
+package run
+
+// 02:TEST-005 / 03:TEST-008,009: what a Run is allowed to touch, shown before it
+// starts, agreed to by the user, and re-agreed to whenever it changes.
+//
+// The summary is built here rather than in internal/testlab because half of what
+// it discloses is run policy — provider, egress, resource ceilings, injected
+// secrets — and internal/run already owns those. testlab owns the test case and
+// its datasets, which this reads through the same scoped queries testlab writes.
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"sort"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/ArthurC02/skillhub/services/platform/internal/audit"
+	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/services/platform/internal/skillpkg"
+)
+
+// ErrPermissionsNotConfirmed is SEC-002 gate B: the run request carries no
+// agreement to the permission summary, or carries one for a summary that has
+// since changed. Both block, and both are answered the same way — the fix in
+// either case is to read the current summary and confirm it.
+var ErrPermissionsNotConfirmed = errors.New(
+	"the pre-run permission summary must be confirmed before the run can start")
+
+// ObjectStore is the slice of object storage the summary needs: the stored
+// package, so "does this skill carry a script" is answered by scanning the exact
+// bytes that will be executed rather than by a projected flag. Nothing here
+// executes any of it (iron rule 1).
+type ObjectStore interface {
+	Get(ctx context.Context, key string) ([]byte, error)
+}
+
+// Secrets the platform injects into every sandbox (SBX-008, PDM-003). Names only:
+// the value is a per-run Virtual Key minted at dispatch and never leaves the
+// gateway boundary, and iron rule 11 keeps it out of anything a user can read.
+var injectedSecretNames = []string{"ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"}
+
+// PermissionSummaryContent is the hashed body. A struct, not a map, so field
+// order — and therefore the hash — is fixed by the type and not by the encoder
+// (same reason as snapshotContent in internal/testlab).
+//
+// What is deliberately *not* in here: the user prompt and the acceptance
+// criteria. Editing either changes what the run is asked to do, not what it is
+// allowed to touch, and invalidating a permission confirmation over a typo fix
+// would train users to click through the one screen that must not be reflexive.
+type PermissionSummaryContent struct {
+	SkillVersionID    string           `json:"skill_version_id"`
+	SkillContentHash  string           `json:"skill_content_hash"`
+	TestCaseID        string           `json:"test_case_id"`
+	Datasets          []DatasetSummary `json:"datasets"`
+	DatasetTotalBytes int64            `json:"dataset_total_bytes"`
+	Scripts           ScriptSummary    `json:"scripts"`
+	Tools             []string         `json:"tools"`
+	MCPServers        []string         `json:"mcp_servers"`
+	Network           NetworkSummary   `json:"network"`
+	InjectedSecrets   []string         `json:"injected_secrets"`
+	Provider          ProviderSummary  `json:"provider"`
+	ResourceLimits    ResourceLimits   `json:"resource_limits"`
+}
+
+// DatasetSummary is one file the run will be able to read.
+type DatasetSummary struct {
+	DatasetID   string `json:"dataset_id"`
+	FileName    string `json:"file_name"`
+	ContentType string `json:"content_type"`
+	SizeBytes   int64  `json:"size_bytes"`
+	ContentHash string `json:"content_hash"`
+}
+
+// ScriptSummary answers "does the package carry runnable code" from the stored
+// package itself. Status is one of:
+//
+//	none        — scanned, no script file and no embedded code
+//	present     — scanned, and Findings names what was found
+//	unavailable — the package could not be read, so nothing is claimed either way
+//
+// `unavailable` is never rendered as `none`: an unreadable package is not a clean
+// one (DISC-004 不得自行推定為通過).
+type ScriptSummary struct {
+	Status   string   `json:"status"`
+	Findings []string `json:"findings"`
+}
+
+// NetworkSummary is the egress policy the sandbox will be held to.
+type NetworkSummary struct {
+	Mode  string   `json:"mode"`
+	Allow []string `json:"allow"`
+}
+
+// ProviderSummary is who will run the workload and how strongly it is isolated.
+type ProviderSummary struct {
+	Name           string `json:"name"`
+	IsolationLevel string `json:"isolation_level,omitempty"`
+	Rootless       bool   `json:"rootless"`
+	Runtime        string `json:"runtime,omitempty"`
+	RuntimeVersion string `json:"runtime_version,omitempty"`
+}
+
+// PermissionSummary is the whole answer: the hashed body, its hash, and the notes
+// that explain it. Notes are outside the hash on purpose — rewording a sentence
+// must not invalidate every outstanding confirmation.
+type PermissionSummary struct {
+	Content PermissionSummaryContent `json:"summary"`
+	Hash    string                   `json:"summary_hash"`
+	Notes   []string                 `json:"notes"`
+}
+
+func (s *Service) store() ObjectStore { return s.Store }
+
+// PermissionSummaryFor builds the pre-run summary for one (version, test case)
+// pair. Every read is workspace scoped from the session's workspace (iron rule 3);
+// a version or draft outside it is ErrNotFound, the same answer as one that does
+// not exist.
+func (s *Service) PermissionSummaryFor(
+	ctx context.Context, workspaceID, skillID, versionID, testCaseID pgtype.UUID,
+) (PermissionSummary, error) {
+	q := s.queries()
+	version, err := q.GetSkillVersion(ctx, gen.GetSkillVersionParams{ID: versionID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return PermissionSummary{}, ErrNotFound
+	}
+	if err != nil {
+		return PermissionSummary{}, err
+	}
+	// Same guard as Create: the version must belong to the skill in the URL, or a
+	// summary could be produced for a pairing the run itself would refuse.
+	if skillID.Valid && version.SkillID != skillID {
+		return PermissionSummary{}, ErrNotFound
+	}
+	// Reads the draft rather than a snapshot: the summary describes the run the
+	// user is about to start, and the snapshot only exists once it has started.
+	testCase, err := q.GetTestCase(ctx, gen.GetTestCaseParams{ID: testCaseID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return PermissionSummary{}, ErrNotFound
+	}
+	if err != nil {
+		return PermissionSummary{}, err
+	}
+	rows, err := q.ListDatasets(ctx, gen.ListDatasetsParams{TestCaseID: testCase.ID, WorkspaceID: workspaceID})
+	if err != nil {
+		return PermissionSummary{}, err
+	}
+
+	// ListDatasets orders by created_at, so the list — and the hash over it — does
+	// not depend on how the rows happened to come back.
+	datasets := make([]DatasetSummary, 0, len(rows))
+	var total int64
+	for _, d := range rows {
+		datasets = append(datasets, DatasetSummary{
+			DatasetID:   uuidString(d.ID),
+			FileName:    d.FileName,
+			ContentType: d.ContentType,
+			SizeBytes:   d.SizeBytes,
+			ContentHash: d.ContentHash,
+		})
+		total += d.SizeBytes
+	}
+
+	policy := policySnapshot{ResourceLimits: DefaultResourceLimits(), Egress: EgressPolicy{
+		Mode: "default_deny", Allow: []egressAllow{},
+	}}
+	allow := make([]string, 0, len(policy.Egress.Allow))
+	for _, a := range policy.Egress.Allow {
+		allow = append(allow, fmt.Sprintf("%v", a))
+	}
+
+	content := PermissionSummaryContent{
+		SkillVersionID:    uuidString(version.ID),
+		SkillContentHash:  version.ContentHash,
+		TestCaseID:        uuidString(testCase.ID),
+		Datasets:          datasets,
+		DatasetTotalBytes: total,
+		Scripts:           s.scriptSummary(ctx, version.PackageObjectKey),
+		// The agent's own file and shell tools, inside the sandbox and nowhere
+		// else. There is no per-tool grant to show because there is no per-tool
+		// grant to make: the isolation boundary is the container, not a tool list.
+		Tools: []string{"sandbox filesystem (/work, /out)", "sandbox shell"},
+		// MVP has no MCP at all (AGENTS.md 範圍注意, 02:TEST-003 後 MVP). An empty
+		// list shown as empty is the honest disclosure; omitting the row would let
+		// a user assume the question was never asked.
+		MCPServers:      []string{},
+		Network:         NetworkSummary{Mode: policy.Egress.Mode, Allow: allow},
+		InjectedSecrets: injectedSecretNames,
+		Provider:        s.providerSummary(ctx, policy),
+		ResourceLimits:  policy.ResourceLimits,
+	}
+
+	body, err := json.Marshal(content)
+	if err != nil {
+		return PermissionSummary{}, err
+	}
+	sum := sha256.Sum256(body)
+	return PermissionSummary{
+		Content: content,
+		Hash:    hex.EncodeToString(sum[:]),
+		Notes: []string{
+			"MVP 不支援 MCP Server,因此工具清單只有 Sandbox 內建的檔案與 Shell 存取。",
+			"Secrets 只顯示注入項目的名稱;實際值是每個 Run 專屬的短效憑證,不會出現在任何畫面、Log 或 Trace。",
+			"網路為預設封鎖,允許清單為空表示 Sandbox 不能連出任何位址。",
+			"以上任何一項變更(例如換一份 Dataset)都會產生新的摘要,必須重新確認才能開始 Run。",
+		},
+	}, nil
+}
+
+// scriptSummary re-scans the stored package. A package that cannot be read does
+// not fail the request: the summary says the scan is unavailable, which is a
+// different statement from "no scripts" and must stay one.
+func (s *Service) scriptSummary(ctx context.Context, objectKey string) ScriptSummary {
+	unavailable := ScriptSummary{Status: "unavailable", Findings: []string{}}
+	if s.store() == nil {
+		return unavailable
+	}
+	data, err := s.store().Get(ctx, objectKey)
+	if err != nil {
+		return unavailable
+	}
+	fsys, err := ingest.PackageFS(data)
+	if err != nil {
+		return unavailable
+	}
+	findings := []string{}
+	for _, f := range skillpkg.Validate(fsys).Findings {
+		if f.Code == "script-file" || f.Code == "embedded-script" {
+			findings = append(findings, f.Code+": "+f.Path)
+		}
+	}
+	// Findings arrive in walk order, which is stable for a given package, but
+	// sorting costs nothing and removes the question entirely.
+	sort.Strings(findings)
+	if len(findings) == 0 {
+		return ScriptSummary{Status: "none", Findings: findings}
+	}
+	return ScriptSummary{Status: "present", Findings: findings}
+}
+
+// providerSummary names the provider this run would go to. Best effort: an empty
+// fleet, or one that is unreachable right now, reports `unassigned` rather than
+// failing the summary — refusing incompatible work is checkSchedulable's job, on
+// the run request itself.
+//
+// ponytail: the provider identity is inside the hash, so a provider flapping in
+// and out of reachability between the summary and the run costs the user one
+// re-confirmation. That is the safe direction (who runs your code is a permission
+// fact) and rare with a single-provider fleet; revisit if multi-provider fleets
+// make it noisy.
+func (s *Service) providerSummary(ctx context.Context, policy policySnapshot) ProviderSummary {
+	registry := s.providers()
+	if len(registry.Providers) == 0 {
+		return ProviderSummary{Name: providerUnassigned}
+	}
+	p, capability, profile, err := registry.Select(ctx, requirementsFromPolicy(policy))
+	if err != nil {
+		return ProviderSummary{Name: providerUnassigned}
+	}
+	return ProviderSummary{
+		Name:           p.Name,
+		IsolationLevel: capability.Isolation.Level,
+		Rootless:       capability.Isolation.Rootless,
+		Runtime:        profile.Runtime,
+		RuntimeVersion: profile.RuntimeVersion,
+	}
+}
+
+// ConfirmPermissions records the user's agreement to the summary they were shown.
+// The hash they send is checked against a freshly built summary, so a client
+// cannot confirm a hash it invented or one that has already gone stale.
+func (s *Service) ConfirmPermissions(
+	ctx context.Context, workspaceID, actor, skillID, versionID, testCaseID pgtype.UUID, hash string,
+) (gen.RunPermissionConfirmation, error) {
+	summary, err := s.PermissionSummaryFor(ctx, workspaceID, skillID, versionID, testCaseID)
+	if err != nil {
+		return gen.RunPermissionConfirmation{}, err
+	}
+	if hash != summary.Hash {
+		return gen.RunPermissionConfirmation{}, ErrPermissionsNotConfirmed
+	}
+
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return gen.RunPermissionConfirmation{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.queries().WithTx(tx)
+
+	row, err := q.ConfirmRunPermissions(ctx, gen.ConfirmRunPermissionsParams{
+		WorkspaceID: workspaceID, SkillVersionID: versionID, TestCaseID: testCaseID,
+		SummaryHash: hash, ConfirmedBy: actor,
+	})
+	if err != nil {
+		return gen.RunPermissionConfirmation{}, err
+	}
+	if err := audit.Log(ctx, q, audit.Event{
+		Actor: actor, Workspace: workspaceID, Action: audit.ActionRunPermissionsConfirm,
+		ResourceType: audit.ResourceTestCase, ResourceID: testCaseID,
+		Metadata: map[string]any{"summary_hash": hash, "skill_version_id": uuidString(versionID)},
+	}); err != nil {
+		return gen.RunPermissionConfirmation{}, err
+	}
+	return row, tx.Commit(ctx)
+}
+
+// requirePermissionConfirmation is SEC-002 gate B, called from Create before a run
+// row exists. It rebuilds the summary from what is true *now* and requires both
+// that the caller echoed that exact hash and that an agreement to it is on record.
+//
+// Rebuilding rather than trusting the request is the whole mechanism: a dataset
+// added after the confirmation changes the hash here, the old agreement no longer
+// matches, and the run is refused until the user has seen the new summary.
+func (s *Service) requirePermissionConfirmation(ctx context.Context, p CreateParams) error {
+	summary, err := s.PermissionSummaryFor(ctx, p.WorkspaceID, p.SkillID, p.VersionID, p.TestCaseID)
+	if err != nil {
+		return err
+	}
+	if p.ConfirmedSummaryHash != summary.Hash {
+		return fmt.Errorf("%w: the permissions changed since it was confirmed", ErrPermissionsNotConfirmed)
+	}
+	_, err = s.queries().GetRunPermissionConfirmation(ctx, gen.GetRunPermissionConfirmationParams{
+		WorkspaceID: p.WorkspaceID, SkillVersionID: p.VersionID, TestCaseID: p.TestCaseID,
+		SummaryHash: summary.Hash,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrPermissionsNotConfirmed
+	}
+	return err
+}
+
+// --- HTTP ------------------------------------------------------------------
+
+// Preflight handles GET /skills/{id}/runs/preflight?version_id=&test_case_id=
+// (03:TEST-008).
+func (h *Handler) Preflight(w http.ResponseWriter, r *http.Request) {
+	ws, _, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	skillID, versionID, testCaseID, ok := preflightIDs(w, r, r.URL.Query().Get("version_id"), r.URL.Query().Get("test_case_id"))
+	if !ok {
+		return
+	}
+	summary, err := h.Svc.PermissionSummaryFor(r.Context(), ws.ID, skillID, versionID, testCaseID)
+	if errors.Is(err, ErrNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "permission summary failed")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, summary)
+}
+
+// ConfirmPreflight handles POST /skills/{id}/runs/preflight/confirm (03:TEST-009).
+// A user who declines simply does not call it, and without a record here the run
+// cannot start.
+func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
+	ws, user, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		VersionID   string `json:"version_id"`
+		TestCaseID  string `json:"test_case_id"`
+		SummaryHash string `json:"summary_hash"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest,
+			"body must be JSON with version_id, test_case_id and summary_hash")
+		return
+	}
+	skillID, versionID, testCaseID, ok := preflightIDs(w, r, body.VersionID, body.TestCaseID)
+	if !ok {
+		return
+	}
+	row, err := h.Svc.ConfirmPermissions(r.Context(), ws.ID, user.ID, skillID, versionID, testCaseID, body.SummaryHash)
+	switch {
+	case errors.Is(err, ErrNotFound):
+		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	// 422 rather than 409: the request is well formed, but it agrees to a summary
+	// that is not the current one, so the client has to re-read and re-confirm.
+	case errors.Is(err, ErrPermissionsNotConfirmed):
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"summary_hash does not match the current permission summary; read it again and confirm that")
+		return
+	case err != nil:
+		httpx.WriteError(w, http.StatusInternalServerError, "confirmation failed")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, map[string]any{
+		"confirmed":    true,
+		"summary_hash": row.SummaryHash,
+		"confirmed_at": rfc3339(row.ConfirmedAt),
+	})
+}
+
+// preflightIDs parses the three ids these two routes share. A malformed id is
+// answered like one that belongs to someone else (WS-006).
+func preflightIDs(w http.ResponseWriter, r *http.Request, version, testCase string) (skillID, versionID, testCaseID pgtype.UUID, ok bool) {
+	if err := skillID.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		return skillID, versionID, testCaseID, false
+	}
+	if versionID.Scan(version) != nil || testCaseID.Scan(testCase) != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "version_id and test_case_id must be UUIDs")
+		return skillID, versionID, testCaseID, false
+	}
+	return skillID, versionID, testCaseID, true
+}

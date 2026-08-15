@@ -102,6 +102,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		VersionID  string `json:"version_id"`
 		TestCaseID string `json:"test_case_id"`
+		// The summary the user confirmed (02:TEST-005). Absent or stale is a 422
+		// below; it is never inferred from a previous run.
+		ConfirmedSummaryHash string `json:"confirmed_summary_hash"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with version_id and test_case_id")
@@ -116,9 +119,17 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	run, err := h.Svc.Create(r.Context(), CreateParams{
 		WorkspaceID: ws.ID, Actor: user.ID,
 		SkillID: skillID, VersionID: versionID, TestCaseID: testCaseID,
+		ConfirmedSummaryHash: body.ConfirmedSummaryHash,
 	})
 	if errors.Is(err, ErrNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	// SEC-002 gate B. 422, like the capability refusal: the request is well formed
+	// and the platform is working, it simply may not proceed until the user has
+	// agreed to the current permissions.
+	if errors.Is(err, ErrPermissionsNotConfirmed) {
+		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 	// RUN-005: no configured provider can run this, and the message says which

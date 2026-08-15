@@ -1,6 +1,7 @@
 import { Link, Outlet, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 import { Compare } from "./pages/Compare";
 import { Home } from "./pages/Home";
+import { RunPreflight } from "./pages/RunPreflight";
 import { SkillDetail } from "./pages/SkillDetail";
 import { SkillFiles } from "./pages/SkillFiles";
 
@@ -81,11 +82,28 @@ const compareRoute = createRoute({
   }),
 });
 
+/**
+ * 03:TEST-008/009. The three ids live in the URL because the Lab has no picker
+ * yet (see the scope note in RunPreflight.tsx); when DESIGN-007 lands, the page
+ * that owns the test case links here with them filled in.
+ */
+const runPreflightRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lab/run",
+  component: RunPreflight,
+  validateSearch: (search: Record<string, unknown>) => ({
+    skill: typeof search.skill === "string" ? search.skill : undefined,
+    version: typeof search.version === "string" ? search.version : undefined,
+    test_case: typeof search.test_case === "string" ? search.test_case : undefined,
+  }),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   compareRoute,
   skillDetailRoute,
   skillFilesRoute,
+  runPreflightRoute,
 ]);
 
 export const router = createRouter({ routeTree });

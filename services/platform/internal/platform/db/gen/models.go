@@ -207,6 +207,16 @@ type RunAttempt struct {
 	FinishedAt    pgtype.Timestamptz
 }
 
+type RunPermissionConfirmation struct {
+	ID             pgtype.UUID
+	WorkspaceID    pgtype.UUID
+	SkillVersionID pgtype.UUID
+	TestCaseID     pgtype.UUID
+	SummaryHash    string
+	ConfirmedBy    pgtype.UUID
+	ConfirmedAt    pgtype.Timestamptz
+}
+
 type RunStatusTransition struct {
 	ID           int64
 	RunID        pgtype.UUID

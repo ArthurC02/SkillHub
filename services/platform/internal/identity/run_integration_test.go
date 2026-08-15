@@ -166,10 +166,15 @@ func newFixture(t *testing.T, a *api, pool *pgxpool.Pool, user string) fixture {
 	}
 }
 
+// start reads the pre-run permission summary, confirms it, and only then creates
+// the run — because that is the only sequence SEC-002 gate B allows (02:TEST-005).
+// See preflight_integration_test.go for the assertions on the gate itself.
 func (f fixture) start(t *testing.T) runView {
 	t.Helper()
+	hash := f.confirmPermissions(t)
 	code, view := f.postJSON(t, "/skills/"+f.skillID+"/runs",
-		`{"version_id":"`+f.versionID+`","test_case_id":"`+f.testCaseID+`"}`)
+		`{"version_id":"`+f.versionID+`","test_case_id":"`+f.testCaseID+
+			`","confirmed_summary_hash":"`+hash+`"}`)
 	if code != http.StatusCreated {
 		t.Fatalf("POST run: got %d (%s)", code, view.Error)
 	}

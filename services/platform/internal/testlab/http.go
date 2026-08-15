@@ -64,6 +64,11 @@ func fail(w http.ResponseWriter, err error, generic string) {
 		httpx.WriteError(w, http.StatusUnsupportedMediaType, err.Error())
 	case errors.Is(err, ErrLimitExceeded):
 		httpx.WriteError(w, http.StatusRequestEntityTooLarge, err.Error())
+	// TEST-002 is an optional enhancement, so its absence is a 503 that names the
+	// manual path rather than a failure of the request. The wrapped cause stays in
+	// the log; the client is told only that it is unavailable.
+	case errors.Is(err, ErrSuggestUnavailable):
+		httpx.WriteError(w, http.StatusServiceUnavailable, ErrSuggestUnavailable.Error())
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, generic)
 	}
@@ -271,6 +276,26 @@ func (h *Handler) AddCriterion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, toTestCaseResponse(tc))
+}
+
+// SuggestCriteria handles POST /test-cases/{id}/criteria/suggest (TEST-002).
+// The suggestions are appended unconfirmed and labelled `suggested`; the user
+// keeps, edits or deletes them with the routes above.
+func (h *Handler) SuggestCriteria(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(w, r, "id")
+	if !ok {
+		return
+	}
+	tc, err := h.Svc.SuggestCriteria(r.Context(), ws, id)
+	if err != nil {
+		fail(w, err, "suggestion failed")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, toTestCaseResponse(tc))
 }
 
 // UpdateCriterion handles PATCH /test-cases/{id}/criteria/{criterionId}: edit

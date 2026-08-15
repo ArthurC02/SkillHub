@@ -291,11 +291,24 @@ func TestSupervisorRecoversARunThatHasNoJob(t *testing.T) {
 	// A service with no queue creates the run and enqueues nothing, which is
 	// exactly the state a crash between the two would leave behind.
 	orphanedSvc := &run.Service{Pool: pool, Providers: run.NewRegistry(fake.Provider())}
+	ws, actor := mustUUID(t, f.workspaceID), mustUUID(t, f.userID)
+	skill, version, testCase := mustUUID(t, f.skillID), mustUUID(t, f.versionID), mustUUID(t, f.testCaseID)
+	// Gate B applies to every caller of Create, this one included: confirm through
+	// the same service, because the summary names the provider it would dispatch to
+	// and this service has a different fleet from the API's.
+	summary, err := orphanedSvc.PermissionSummaryFor(context.Background(), ws, skill, version, testCase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := orphanedSvc.ConfirmPermissions(context.Background(), ws, actor, skill, version, testCase, summary.Hash); err != nil {
+		t.Fatal(err)
+	}
 	created, err := orphanedSvc.Create(context.Background(), run.CreateParams{
-		WorkspaceID: mustUUID(t, f.workspaceID), Actor: mustUUID(t, f.userID),
-		SkillID:    mustUUID(t, f.skillID),
-		VersionID:  mustUUID(t, f.versionID),
-		TestCaseID: mustUUID(t, f.testCaseID),
+		WorkspaceID: ws, Actor: actor,
+		SkillID:              skill,
+		VersionID:            version,
+		TestCaseID:           testCase,
+		ConfirmedSummaryHash: summary.Hash,
 	})
 	if err != nil {
 		t.Fatal(err)

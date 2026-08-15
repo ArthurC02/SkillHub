@@ -76,6 +76,8 @@ func NewRouter(d Deps) *http.ServeMux {
 	mux.HandleFunc("PATCH /test-cases/{id}", auth.RequireSession(lab.Update))
 	mux.HandleFunc("DELETE /test-cases/{id}", auth.RequireSession(lab.Delete))
 	mux.HandleFunc("POST /test-cases/{id}/criteria", auth.RequireSession(lab.AddCriterion))
+	// TEST-002: the literal "suggest" segment beats the {criterionId} patterns.
+	mux.HandleFunc("POST /test-cases/{id}/criteria/suggest", auth.RequireSession(lab.SuggestCriteria))
 	mux.HandleFunc("PATCH /test-cases/{id}/criteria/{criterionId}", auth.RequireSession(lab.UpdateCriterion))
 	mux.HandleFunc("DELETE /test-cases/{id}/criteria/{criterionId}", auth.RequireSession(lab.DeleteCriterion))
 	mux.HandleFunc("POST /test-cases/{id}/datasets", auth.RequireSession(lab.UploadDataset))
@@ -84,6 +86,12 @@ func NewRouter(d Deps) *http.ServeMux {
 
 	// Run orchestration (RUN-001/002/004). Runs are addressed by the platform
 	// run_id and nothing else (iron rule 10): no route here takes a provider id.
+	//
+	// The two preflight routes are the 02:TEST-005 gate: read what the run may
+	// touch, agree to it, and only then create the run. The literal "preflight"
+	// segment is more specific than the POST above, so both patterns coexist.
+	mux.HandleFunc("GET /skills/{id}/runs/preflight", auth.RequireSession(d.Runs.Preflight))
+	mux.HandleFunc("POST /skills/{id}/runs/preflight/confirm", auth.RequireSession(d.Runs.ConfirmPreflight))
 	mux.HandleFunc("POST /skills/{id}/runs", auth.RequireSession(d.Runs.Create))
 	mux.HandleFunc("GET /runs/{id}", auth.RequireSession(d.Runs.Get))
 	mux.HandleFunc("POST /runs/{id}/cancel", auth.RequireSession(d.Runs.Cancel))

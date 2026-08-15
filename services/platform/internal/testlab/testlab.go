@@ -23,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/audit"
+	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 )
 
@@ -69,12 +70,25 @@ var (
 // idempotent, which is what makes dataset deletion safe to retry (iron rule 9).
 type ObjectStore interface {
 	Put(ctx context.Context, key string, data []byte) error
+	// Get reads a stored dataset back. Used only to read a delimited file's header
+	// row for TEST-002; the bytes stay in this process (see suggest.go).
+	Get(ctx context.Context, key string) ([]byte, error)
 	Remove(ctx context.Context, key string) error
+}
+
+// CriteriaSuggester is the internal LLM service, as this package needs it
+// (TEST-002). An interface rather than the concrete client so the test lab can be
+// wired without one — a deployment with no LLM service answers "suggestions are
+// unavailable" and the manual path is unaffected.
+type CriteriaSuggester interface {
+	SuggestCriteria(ctx context.Context, req llmclient.SuggestCriteriaRequest) (*llmclient.SuggestCriteriaResponse, error)
 }
 
 type Service struct {
 	Pool  *pgxpool.Pool
 	Store ObjectStore
+	// LLM proposes acceptance criteria (TEST-002). Nil is a supported deployment.
+	LLM CriteriaSuggester
 }
 
 // Criterion is one acceptance condition (TEST-003). Stored as an element of the
@@ -84,9 +98,11 @@ type Service struct {
 type Criterion struct {
 	ID   string `json:"id"`
 	Text string `json:"text"`
-	// Source is who proposed the condition. "user" is all this batch writes;
-	// TEST-002's automatic suggestion writes "suggested" into the same field so
-	// EVAL-001 can keep a model's proposal from being presented as the user's.
+	// Source is who proposed the condition: "user" for one the user typed,
+	// "suggested" for one TEST-002 got from the model. EVAL-001 reads this to keep
+	// a model's proposal from being presented as the user's own judgement.
+	// Rewriting a suggested criterion's text turns it into the user's (see
+	// UpdateCriterion): the wording is then theirs, and only the idea was proposed.
 	Source string `json:"source"`
 	// ConfirmedAt is the user's explicit agreement (TEST-003 確認). Nil means
 	// proposed but not agreed to. Editing the text clears it: a confirmation
@@ -264,6 +280,10 @@ func (s *Service) UpdateCriterion(ctx context.Context, ws gen.Workspace, id pgty
 		if text != nil && newText != list[i].Text {
 			list[i].Text = newText
 			list[i].ConfirmedAt = nil
+			// The user rewrote it, so it is theirs now (TEST-002). Keeping
+			// `suggested` on text the model never wrote would misattribute it in
+			// the evaluation report.
+			list[i].Source = SourceUser
 		}
 		if confirmed != nil {
 			if *confirmed {
