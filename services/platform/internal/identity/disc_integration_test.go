@@ -3,6 +3,8 @@
 package identity_test
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"math"
@@ -14,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 )
 
@@ -150,19 +153,107 @@ func writeJSON(w http.ResponseWriter, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
+// importPackage runs a package through the real import pipeline — validation,
+// object store, version row, search projection — so the facets a result row
+// reads were written the way production writes them. No LLM: the scan-derived
+// facets must not depend on one.
+func importPackage(t *testing.T, pool *pgxpool.Pool, store packageStore, owner *client, name string) {
+	t.Helper()
+	ctx := context.Background()
+	var wsID, userID pgtype.UUID
+	if err := wsID.Scan(owner.workspaceID); err != nil {
+		t.Fatal(err)
+	}
+	if err := userID.Scan(owner.userID); err != nil {
+		t.Fatal(err)
+	}
+	ws, err := gen.New(pool).GetWorkspace(ctx, gen.GetWorkspaceParams{ID: wsID, OwnerUserID: userID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := &ingest.Service{Pool: pool, Store: store}
+	res, err := svc.UploadZip(ctx, ws, namedPackage(t, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Report.Blocked {
+		t.Fatalf("test package did not validate: %+v", res.Report.Findings)
+	}
+}
+
+// namedPackage is demoPackage under a caller-chosen skill name, so a search
+// query can single it out. It carries a script for the same reason demoPackage
+// does: a package with nothing to disclose cannot show that disclosures travel.
+func namedPackage(t *testing.T, name string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	files := map[string]string{
+		"SKILL.md": "---\nname: " + name + "\ndescription: Reports on " + name +
+			".\nlicense: MIT\n---\n\nUse it like this.\n",
+		"scripts/run.py": "print('hello')\n",
+	}
+	for path, body := range files {
+		w, err := zw.Create(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+// Put returns the packageStore's write half, which import needs and the
+// read-only detail view does not.
+func (s packageStore) Put(_ context.Context, key string, data []byte) error {
+	s[key] = data
+	return nil
+}
+
+type searchResult struct {
+	SkillID string `json:"skill_id"`
+	Name    string `json:"name"`
+	Summary string `json:"summary"`
+	// Pointer, not float64: null is a distinct answer from 0 here, and decoding
+	// it into a value type would silently turn "never measured" into "measured
+	// as far away as possible".
+	Rank     *float64 `json:"rank"`
+	RankNote string   `json:"rank_note"`
+	Tier     struct {
+		Value string `json:"value"`
+		Label string `json:"label"`
+	} `json:"tier"`
+	Risk struct {
+		ScanStatus      string `json:"scan_status"`
+		Level           string `json:"level"`
+		Warnings        int    `json:"warnings"`
+		HasScripts      bool   `json:"has_scripts"`
+		HasExternalURLs bool   `json:"has_external_urls"`
+	} `json:"risk"`
+	Dependencies  []string `json:"dependencies"`
+	Compatibility struct {
+		SpecValidation string `json:"spec_validation"`
+		Capability     string `json:"capability"`
+		Runtime        string `json:"runtime"`
+	} `json:"compatibility"`
+	VerifiedAt        string `json:"verified_at"`
+	MatchReason       string `json:"match_reason"`
+	MatchReasonSource string `json:"match_reason_source"`
+}
+
 type searchBody struct {
-	Query   string `json:"query"`
-	Results []struct {
-		SkillID           string  `json:"skill_id"`
-		Rank              float64 `json:"rank"`
-		MatchReason       string  `json:"match_reason"`
-		MatchReasonSource string  `json:"match_reason_source"`
-	} `json:"results"`
-	Degraded        bool   `json:"degraded"`
-	DegradedReason  string `json:"degraded_reason"`
-	PartialIndex    bool   `json:"partial_index"`
-	NoResults       bool   `json:"no_results"`
-	QuerySuggestion string `json:"query_suggestion"`
+	Query           string         `json:"query"`
+	Results         []searchResult `json:"results"`
+	Degraded        bool           `json:"degraded"`
+	DegradedReason  string         `json:"degraded_reason"`
+	PartialIndex    bool           `json:"partial_index"`
+	NoResults       bool           `json:"no_results"`
+	QuerySuggestion string         `json:"query_suggestion"`
 }
 
 func (c *client) search(t *testing.T, path string) searchBody {
@@ -347,8 +438,17 @@ func TestFTSWidensCandidatesWithoutTakingOverRanking(t *testing.T) {
 		t.Fatalf("FTS candidate expansion dropped its own hit: %v", ids)
 	}
 	// rank is now cosine similarity, so it has to fall along with the ordering.
-	if body.Results[0].Rank <= body.Results[1].Rank {
-		t.Fatalf("rank does not follow the ordering: %v", body.Results)
+	if body.Results[0].Rank == nil || body.Results[1].Rank == nil {
+		t.Fatalf("a fully ranked page reported a null rank: %+v", body.Results)
+	}
+	if *body.Results[0].Rank <= *body.Results[1].Rank {
+		t.Fatalf("rank does not follow the ordering: %+v", body.Results)
+	}
+	// DISC-002 promises 0..1; the vector leg is the only path that can keep it.
+	for _, r := range body.Results {
+		if *r.Rank < 0 || *r.Rank > 1 {
+			t.Fatalf("rank %v is outside the documented 0..1", *r.Rank)
+		}
 	}
 }
 
@@ -444,6 +544,110 @@ func TestSearchDegradesToFTSWhenEmbeddingFails(t *testing.T) {
 	// not reachable in this state either.
 	if got := body.Results[0].MatchReasonSource; got != "template" {
 		t.Fatalf("match_reason_source = %q, want template", got)
+	}
+	// The degraded page is ordered by ts_rank_cd, which is unbounded and is not
+	// a cosine similarity. It used to be returned in `rank` regardless, so a
+	// field the contract documents as 0..1 came back as 1.4. Null plus a note is
+	// the answer; a rescaled lexical score would be a similarity nobody computed.
+	for _, r := range body.Results {
+		if r.Rank != nil {
+			t.Fatalf("degraded answer reported a similarity it never computed: %v", *r.Rank)
+		}
+		if r.RankNote == "" {
+			t.Fatal("null rank with no explanation of what ordered the page")
+		}
+	}
+}
+
+// DISC-002: every result row carries the seven columns a user chooses between
+// candidates on — name, plain summary, source tier, agent compatibility,
+// dependencies, a risk hint and the last verification time. The four that are
+// not free are checked here against a real import, because three of them are
+// derived (tier, spec_validation, verified_at) and one is projected at import
+// time (risk), and each derivation has a different way of going wrong.
+func TestSearchResultsCarryTheDISC002Columns(t *testing.T) {
+	pool := requireDB(t)
+
+	a := newAPI(t, pool)
+	curator := a.login(t, "curator-facets")
+	markCatalog(t, pool, curator.workspaceID)
+
+	// A real import, not a seeded row: the risk facet is projected by the scan
+	// the import ran, and the seed helpers never run one.
+	importPackage(t, pool, a.packages, curator, "callooh-callay-reporter")
+
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+	body := anon.search(t, "/api/skills/search?q=callooh")
+	if len(body.Results) != 1 {
+		t.Fatalf("import did not become searchable: %+v", body.Results)
+	}
+	got := body.Results[0]
+
+	if got.Name == "" || got.Summary == "" {
+		t.Fatalf("result is missing name or summary: %+v", got)
+	}
+	// 來源層級: indexed, never curated — nothing records a human review yet, and
+	// catalog membership is not one (PDM-002).
+	if got.Tier.Value != "indexed" || got.Tier.Label == "" {
+		t.Fatalf("tier = %+v, want indexed with its copy", got.Tier)
+	}
+	// 風險提示: the package ships a script, so the scan has something to say and
+	// the row must say it without re-reading the package.
+	if got.Risk.ScanStatus != "scanned" {
+		t.Fatalf("risk scan_status = %q, want scanned", got.Risk.ScanStatus)
+	}
+	if !got.Risk.HasScripts {
+		t.Fatal("a package containing a script reported no script in its risk hint")
+	}
+	if got.Risk.Level == "none" {
+		t.Fatalf("risk level = none for a package with disclosures: %+v", got.Risk)
+	}
+	// 相容狀態: spec passed (the import would have been blocked otherwise), the
+	// two sandbox axes explicitly unverified — DISC-002's 尚未試跑.
+	if got.Compatibility.SpecValidation != "passed" {
+		t.Fatalf("spec_validation = %q for an accepted import", got.Compatibility.SpecValidation)
+	}
+	if got.Compatibility.Capability != "unverified" || got.Compatibility.Runtime != "unverified" {
+		t.Fatalf("sandbox axes claimed a verdict before M2: %+v", got.Compatibility)
+	}
+	// 最近驗證時間: the version's creation time, which is the import that scanned it.
+	if got.VerifiedAt == "" {
+		t.Fatal("no verification time on a result with a saved version")
+	}
+	// 依賴 is always present as a list, empty when enrichment extracted none —
+	// absent would read as "no dependencies" rather than "not extracted".
+	if got.Dependencies == nil {
+		t.Fatal("dependencies omitted; an absent list reads as 'none'")
+	}
+}
+
+// A skill with no saved version is a real state (a fork created ahead of its
+// content). Nothing was ever validated for it, so it must not inherit the
+// "passed" that being listed implies for everything else.
+func TestUnversionedSkillDoesNotClaimSpecValidation(t *testing.T) {
+	pool := requireDB(t)
+
+	a := newAPI(t, pool)
+	curator := a.login(t, "curator-noversion")
+	markCatalog(t, pool, curator.workspaceID)
+	seedSkill(t, pool, curator.workspaceID, "frumious bandersnatch tracker")
+
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+	body := anon.search(t, "/api/skills/search?q=frumious")
+	if len(body.Results) != 1 {
+		t.Fatalf("seeded skill not searchable: %v", body.ids())
+	}
+	got := body.Results[0]
+	if got.Compatibility.SpecValidation != "unverified" {
+		t.Fatalf("spec_validation = %q for a skill with nothing saved", got.Compatibility.SpecValidation)
+	}
+	if got.VerifiedAt != "" {
+		t.Fatalf("verified_at = %q for content that was never imported", got.VerifiedAt)
+	}
+	// Seeded rows predate the scan projection, which is exactly the shape a row
+	// written by the SQL-only reindex phase has: unknown, never clean.
+	if got.Risk.ScanStatus != "unavailable" {
+		t.Fatalf("risk scan_status = %q for a row with no scan", got.Risk.ScanStatus)
 	}
 }
 

@@ -17,6 +17,7 @@ const (
 	testEnrichedSummary = "Reads PDF files and pulls the tables out of them."
 	testExampleZh       = "幫我從掃描的檔案裡抽出表格資料"
 	testExampleEn       = "extract the tables from this scanned document"
+	testLimitation      = "無法處理加密的 PDF。"
 )
 
 // stubEnricher stands in for the Python LLM service. enrichStatus/embedStatus
@@ -41,11 +42,13 @@ func (s *stubEnricher) start(t *testing.T) *llmclient.Client {
 			Summary:      testEnrichedSummary,
 			TaskExamples: []llmclient.TaskExample{{ZhHant: testExampleZh, En: testExampleEn}},
 			Tags: llmclient.SkillTags{
-				Inputs:  []string{"pdf"},
-				Outputs: []string{"csv"},
+				Inputs:       []string{"pdf"},
+				Outputs:      []string{"csv"},
+				Dependencies: []string{"poppler"},
 			},
+			Limitations:   []string{testLimitation},
 			Model:         "gpt-5.6-sol",
-			PromptVersion: "enrich-skill/v1",
+			PromptVersion: "enrich-skill/v2",
 		})
 	})
 	mux.HandleFunc("POST /embed", func(w http.ResponseWriter, r *http.Request) {
@@ -113,14 +116,52 @@ func TestEnrichPackageStoresGeneratedFieldsAndEmbedding(t *testing.T) {
 	if e.model == nil || *e.model != "gpt-5.6-sol" {
 		t.Fatalf("model provenance = %v, want gpt-5.6-sol", e.model)
 	}
-	if e.promptVersion == nil || *e.promptVersion != "enrich-skill/v1" {
+	if e.promptVersion == nil || *e.promptVersion != "enrich-skill/v2" {
 		t.Fatalf("prompt_version provenance = %v", e.promptVersion)
 	}
 	if !strings.Contains(e.taskExamples, testExampleZh) || !strings.Contains(e.taskExamples, testExampleEn) {
 		t.Fatalf("task_examples dropped a language: %q", e.taskExamples)
 	}
-	if !strings.Contains(e.tags, "pdf") || !strings.Contains(e.tags, "csv") {
-		t.Fatalf("tags = %q, want the model's input/output tags", e.tags)
+	if e.limitations != testLimitation {
+		t.Fatalf("limitations = %q, want the model's line (DISC-003 限制)", e.limitations)
+	}
+	// The buckets have to survive storage: DISC-002 shows 依賴 on a result row
+	// and DISC-003 shows 輸入/輸出/依賴 apart, and a flattened list cannot say
+	// which token was which.
+	var tags llmclient.SkillTags
+	if err := json.Unmarshal(e.tags, &tags); err != nil {
+		t.Fatalf("tags are not valid json: %v (%q)", err, e.tags)
+	}
+	if len(tags.Inputs) != 1 || tags.Inputs[0] != "pdf" ||
+		len(tags.Dependencies) != 1 || tags.Dependencies[0] != "poppler" {
+		t.Fatalf("tag buckets = %+v, want them kept apart", tags)
+	}
+}
+
+// The scan facts are projected for every import, enriched or not: they come
+// from the package, not from the model, so an unreachable LLM service must not
+// cost a result row its risk hint (DISC-002 風險提示).
+func TestScanFactsProjectedWithoutLLM(t *testing.T) {
+	p := testPackage()
+	p.report.Findings = []skillpkg.Finding{
+		{Severity: skillpkg.SeverityWarning, Code: "embedded-script"},
+		{Severity: skillpkg.SeverityWarning, Code: "license-unknown"},
+		{Severity: skillpkg.SeverityInfo, Code: "script-file"},
+		{Severity: skillpkg.SeverityInfo, Code: "script-file"},
+	}
+	s := &Service{}
+
+	e := s.enrichPackage(context.Background(), p)
+
+	var got scanFacts
+	if err := json.Unmarshal(e.scan, &got); err != nil {
+		t.Fatalf("scan facts are not valid json: %v (%q)", err, e.scan)
+	}
+	if got.Warnings != 2 {
+		t.Fatalf("warnings = %d, want 2", got.Warnings)
+	}
+	if len(got.Codes) != 3 {
+		t.Fatalf("codes = %v, want each code once", got.Codes)
 	}
 }
 

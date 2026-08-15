@@ -25,6 +25,7 @@ GOOD_PAYLOAD = {
         "tools": ["python-docx"],
         "dependencies": [],
     },
+    "limitations": ["只支援文字逐字稿，無法直接處理音訊檔。"],
 }
 
 REQUEST = {
@@ -61,10 +62,32 @@ def test_enrich_returns_whitelist_fields(gateway_env, monkeypatch):
     assert body["summary"] == GOOD_PAYLOAD["summary"]
     assert body["task_examples"][0]["zh_hant"] and body["task_examples"][0]["en"]
     assert set(body["tags"]) == {"inputs", "outputs", "tools", "dependencies"}
+    assert body["limitations"] == GOOD_PAYLOAD["limitations"]
     assert body["model"] == enrich.ENRICH_MODEL
     assert body["prompt_version"] == enrich.PROMPT_VERSION
-    # ADR-013: enrichment must never carry trust/risk judgements.
-    assert set(body) == {"summary", "task_examples", "tags", "model", "prompt_version"}
+    # ADR-013: enrichment must never carry trust/risk judgements. `limitations`
+    # is inside the whitelist because it restates the document, exactly as
+    # `summary` does; the prompt forbids inferring one or judging risk.
+    assert set(body) == {
+        "summary",
+        "task_examples",
+        "tags",
+        "limitations",
+        "model",
+        "prompt_version",
+    }
+
+
+def test_limitations_prompt_forbids_inference_and_judgement(gateway_env, monkeypatch):
+    """The field only restates the document; a judged limitation is out of scope."""
+    capture: list = []
+    monkeypatch.setattr(enrich, "_client", lambda: _fake_client(json.dumps(GOOD_PAYLOAD), capture))
+
+    assert client.post("/v1/enrich-skill", json=REQUEST).status_code == 200
+
+    system = capture[0]["messages"][0]["content"]
+    assert "do not infer a limitation the content does not state" in system
+    assert "risk, safety, trustworthiness or quality" in system
 
 
 def test_untrusted_content_is_isolated_and_disclaimed(gateway_env, monkeypatch):

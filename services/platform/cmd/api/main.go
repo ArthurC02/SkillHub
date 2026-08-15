@@ -114,9 +114,14 @@ func main() {
 	// which for curated catalog entries is the operator's workspace.
 	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(reg.Takedown))
 
+	// DEV_CORS_ORIGIN is the local Vite dev server (http://localhost:5173) and
+	// nothing else. Unset in production, where the SPA is same-origin with the
+	// API (ADR-018 E1) and no CORS header is wanted at all. See httpx.DevCORS for
+	// why this is not a Vite proxy: the SPA's /skills/$skillId page route and the
+	// API's /skills/{id} routes collide, so no path-prefix rule separates them.
 	srv := &http.Server{
 		Addr:              addrFromEnv("API_ADDR", ":8080"),
-		Handler:           mux,
+		Handler:           httpx.DevCORS(mux, os.Getenv("DEV_CORS_ORIGIN")),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

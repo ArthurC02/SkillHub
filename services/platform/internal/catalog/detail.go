@@ -22,6 +22,7 @@ package catalog
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"net/http"
@@ -33,6 +34,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
+	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/services/platform/internal/skillpkg"
@@ -102,7 +104,7 @@ var licenseSourceNotes = map[string]string{
 	"manifest":                 "作者在 SKILL.md frontmatter 自行宣告。",
 	"manifest-referenced-file": "frontmatter 未直接宣告授權,而是指向套件內的檔案(如 `SEE LICENSE IN LICENSE.txt`);此結果讀自該檔案的文字。",
 	"package-license-file":     "套件內附 LICENSE 檔案,涵蓋此套件本身。",
-	"repo-license-file":    "來自 repo 根目錄的 LICENSE,涵蓋整個 repo,不必然涵蓋此子目錄的內容。",
+	"repo-license-file":        "來自 repo 根目錄的 LICENSE,涵蓋整個 repo,不必然涵蓋此子目錄的內容。",
 }
 
 type severityCounts struct {
@@ -146,14 +148,49 @@ type compatibility struct {
 }
 
 // enrichmentInfo labels the model-written fields as model-written (ADR-013).
+//
+// Tags keeps the buckets the enrichment produced. DISC-003 一般模式 asks for
+// 輸入、輸出、依賴 as separate answers and a flat list cannot say which token
+// was which — nothing recovers that once it has been joined.
 type enrichmentInfo struct {
-	Status        string   `json:"status"` // pending | enriched
-	Summary       string   `json:"summary,omitempty"`
-	TaskExamples  []string `json:"task_examples,omitempty"`
-	Tags          []string `json:"tags,omitempty"`
-	Model         string   `json:"model,omitempty"`
-	PromptVersion string   `json:"prompt_version,omitempty"`
-	Note          string   `json:"note"`
+	Status        string               `json:"status"` // pending | enriched
+	Summary       string               `json:"summary,omitempty"`
+	TaskExamples  []string             `json:"task_examples,omitempty"`
+	Tags          *llmclient.SkillTags `json:"tags,omitempty"`
+	Model         string               `json:"model,omitempty"`
+	PromptVersion string               `json:"prompt_version,omitempty"`
+	Note          string               `json:"note"`
+}
+
+// limitation is one entry of the DISC-003 一般模式「限制」 block, with where it
+// came from. The two sources answer different questions — what the author's own
+// document says the skill cannot do, and what the package's contents imply it
+// needs — so they are labelled rather than merged into one anonymous sentence
+// (ADR-013 also requires the model-written half to be marked as such).
+type limitation struct {
+	Text   string `json:"text"`
+	Source string `json:"source"` // model | scan
+}
+
+const (
+	limitSourceModel = "model"
+	limitSourceScan  = "scan"
+)
+
+// scanLimitations are the limitations derivable from the static scan: what the
+// package's own contents say it will need in order to work. Keyed by finding
+// code, so a code the scan stops emitting silently stops producing a line
+// rather than producing a stale one.
+//
+// Only findings that describe a *requirement* belong here. A warning about an
+// unknown license is a licensing fact, not a limitation on using the skill, and
+// it already has its own field.
+var scanLimitations = map[string]string{
+	"external-url":    "套件內含外部連結,執行時可能需要對外網路存取。",
+	"script-file":     "套件內含 Script,需可執行 Script 的環境,且應先自行檢視內容。",
+	"embedded-script": "SKILL.md 內嵌可執行程式碼,需可執行該語言的環境,且應先自行檢視內容。",
+	"dependency-file": "套件宣告外部套件相依,使用前需自行安裝。",
+	"binary-file":     "套件內含編譯後的二進位檔,內容無法以文字檢視,且可能綁定特定平台。",
 }
 
 type versionInfo struct {
@@ -180,9 +217,13 @@ type skillDetail struct {
 	// reader can always tell which text the author wrote.
 	Summary string `json:"summary"`
 	// Scope is catalog | private: which of the two reads answered.
-	Scope        string         `json:"scope"`
-	Tier         labelled       `json:"tier"`
-	Enrichment   enrichmentInfo `json:"enrichment"`
+	Scope      string         `json:"scope"`
+	Tier       labelled       `json:"tier"`
+	Enrichment enrichmentInfo `json:"enrichment"`
+	// Limitations is DISC-003 一般模式「限制」, from both sources, each labelled.
+	// Always present, empty when neither source stated one — which is not a
+	// claim that the skill is unconstrained.
+	Limitations  []limitation   `json:"limitations"`
 	Version      *versionInfo   `json:"version,omitempty"`
 	Source       *sourceInfo    `json:"source,omitempty"`
 	License      licenseInfo    `json:"license"`
@@ -224,14 +265,15 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 	q := gen.New(h.Pool)
 
 	out := skillDetail{
-		SkillID:    uuidString(skill.ID),
-		Name:       skill.Name,
-		Scope:      scope,
-		Tier:       tierLabel(),
-		Derivation: derivation(skill),
-		License:    licenseInfo{Status: statusLabel(LicenseStatusUnknown)},
-		Risk:       riskSummary{ScanStatus: "unavailable", InfoCounts: map[string]int{}, Highlights: []skillpkg.Finding{}, Note: riskNote},
-		Compat:     compatibility{SpecValidation: "unverified", Capability: "unverified", Runtime: "unverified", Note: compatNote},
+		SkillID:     uuidString(skill.ID),
+		Name:        skill.Name,
+		Scope:       scope,
+		Tier:        tierLabel(),
+		Limitations: []limitation{},
+		Derivation:  derivation(skill),
+		License:     licenseInfo{Status: statusLabel(LicenseStatusUnknown)},
+		Risk:        riskSummary{ScanStatus: "unavailable", InfoCounts: map[string]int{}, Highlights: []skillpkg.Finding{}, Note: riskNote},
+		Compat:      compatibility{SpecValidation: "unverified", Capability: "unverified", Runtime: "unverified", Note: compatNote},
 	}
 	if skill.Summary != nil {
 		out.Summary = *skill.Summary
@@ -241,6 +283,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 		SkillID: skill.ID, WorkspaceID: skill.WorkspaceID,
 	}); err == nil {
 		out.Enrichment = enrichmentFrom(e)
+		out.Limitations = modelLimitations(e.Limitations)
 		if out.Summary == "" {
 			out.Summary = e.Summary
 		}
@@ -283,6 +326,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 	if report, ok := h.scanPackage(ctx, ver.PackageObjectKey); ok {
 		out.Risk = summarizeRisk(report)
 		out.Compat.SpecValidation = specValidation(report)
+		out.Limitations = append(out.Limitations, scanDerivedLimitations(report)...)
 		if report.Manifest != nil {
 			out.AllowedTools = report.Manifest.AllowedTools
 		}
@@ -476,12 +520,45 @@ func enrichmentFrom(e gen.GetSkillEnrichmentRow) enrichmentInfo {
 	}
 	out.Summary = e.EnrichedSummary
 	out.TaskExamples = nonEmptyLines(e.TaskExamples)
-	out.Tags = strings.Fields(e.Tags)
+	// Unparseable or absent tags are reported as absent, not as empty buckets:
+	// "{}" would say the enrichment looked and found no inputs.
+	var tags llmclient.SkillTags
+	if len(e.Tags) > 0 && json.Unmarshal(e.Tags, &tags) == nil && tags.Inputs != nil {
+		out.Tags = &tags
+	}
 	if e.EnrichmentModel != nil {
 		out.Model = *e.EnrichmentModel
 	}
 	if e.EnrichmentPromptVersion != nil {
 		out.PromptVersion = *e.EnrichmentPromptVersion
+	}
+	return out
+}
+
+// modelLimitations is the enrichment's half of the 限制 block: what the
+// package's own documentation states about its limits, as the model read it.
+func modelLimitations(stored string) []limitation {
+	lines := nonEmptyLines(stored)
+	out := make([]limitation, 0, len(lines))
+	for _, l := range lines {
+		out = append(out, limitation{Text: l, Source: limitSourceModel})
+	}
+	return out
+}
+
+// scanDerivedLimitations is the scan's half: requirements the package's own
+// contents imply, regardless of what the document claims. Order follows
+// scanLimitations' iteration over findings, so it is stable per package.
+func scanDerivedLimitations(r skillpkg.Report) []limitation {
+	var out []limitation
+	seen := make(map[string]bool)
+	for _, f := range r.Findings {
+		text, ok := scanLimitations[f.Code]
+		if !ok || seen[f.Code] {
+			continue
+		}
+		seen[f.Code] = true
+		out = append(out, limitation{Text: text, Source: limitSourceScan})
 	}
 	return out
 }

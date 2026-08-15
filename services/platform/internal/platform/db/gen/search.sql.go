@@ -95,9 +95,7 @@ func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context) (int64, error
 
 const publicHybridSearchSkills = `-- name: PublicHybridSearchSkills :many
 WITH vec AS (
-    SELECT s.skill_id, s.name,
-           COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-           s.embedding <=> $3::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $3::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
     WHERE s.embedding IS NOT NULL
@@ -105,9 +103,7 @@ WITH vec AS (
     LIMIT 50
 ),
 fts AS (
-    SELECT s.skill_id, s.name,
-           COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-           s.embedding <=> $3::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $3::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
     WHERE s.tsv @@ websearch_to_tsquery('english', $4::text)
@@ -115,15 +111,26 @@ fts AS (
     LIMIT 50
 ),
 candidates AS (
-    SELECT skill_id, name, summary, distance FROM vec
+    SELECT skill_id, distance FROM vec
     UNION
-    SELECT skill_id, name, summary, distance FROM fts
+    SELECT skill_id, distance FROM fts
 )
-SELECT skill_id, name, summary, (1 - COALESCE(distance, 1))::float8 AS rank,
-       (distance IS NULL)::bool AS unranked
-FROM candidates
-WHERE distance IS NULL OR distance <= $1::float8
-ORDER BY distance ASC NULLS LAST
+SELECT c.skill_id, s.name,
+       COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
+       s.tags, s.scan, ver.created_at AS verified_at,
+       (1 - COALESCE(c.distance, 1))::float8 AS rank,
+       (c.distance IS NULL)::bool AS unranked
+FROM candidates c
+JOIN search_documents s ON s.skill_id = c.skill_id
+LEFT JOIN LATERAL (
+    SELECT v.created_at
+    FROM skill_versions v
+    WHERE v.skill_id = c.skill_id
+    ORDER BY v.version_number DESC
+    LIMIT 1
+) ver ON true
+WHERE c.distance IS NULL OR c.distance <= $1::float8
+ORDER BY c.distance ASC NULLS LAST
 LIMIT $2
 `
 
@@ -135,11 +142,14 @@ type PublicHybridSearchSkillsParams struct {
 }
 
 type PublicHybridSearchSkillsRow struct {
-	SkillID  pgtype.UUID
-	Name     string
-	Summary  string
-	Rank     float64
-	Unranked bool
+	SkillID    pgtype.UUID
+	Name       string
+	Summary    string
+	Tags       []byte
+	Scan       []byte
+	VerifiedAt pgtype.Timestamptz
+	Rank       float64
+	Unranked   bool
 }
 
 // ADR-013 hybrid retrieval, ranked by vector distance alone.
@@ -169,11 +179,22 @@ type PublicHybridSearchSkillsRow struct {
 //
 // The per-leg ORDER BY before LIMIT is load-bearing: LIMIT without ORDER BY is
 // not defined to keep the best rows.
+// The legs carry only the id and the distance: everything displayed is read
+// back from search_documents in the final SELECT, so the DISC-002 result
+// columns are written out once instead of three times.
 // max_distance is the DISC-005 cut-off; see catalog.MaxCosineDistance for the
 // value's derivation and its expiry conditions.
 //
-// unranked marks those NULL-distance rows so the response can say the page is
-// only partly ranked instead of leaving the caller to infer it from rank = 0.
+// unranked marks the NULL-distance rows. `rank` still comes back COALESCEd
+// because the caller drops it for exactly those rows and reports a null rank
+// (a lexical-only hit was never measured against the query, and 0 would read
+// as "measured, and terrible"). Keeping the COALESCE means one non-null float
+// column instead of a nullability inference that has to hold across a UNION.
+//
+// verified_at is the newest version's creation time: the import that scanned
+// the content. Immutable, so it cannot drift from what it describes. NULL for a
+// skill with no version yet, which is also what makes spec_validation
+// unverified for that row (a blocked package never gets a version).
 func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybridSearchSkillsParams) ([]PublicHybridSearchSkillsRow, error) {
 	rows, err := q.db.Query(ctx, publicHybridSearchSkills,
 		arg.MaxDistance,
@@ -192,6 +213,9 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 			&i.SkillID,
 			&i.Name,
 			&i.Summary,
+			&i.Tags,
+			&i.Scan,
+			&i.VerifiedAt,
 			&i.Rank,
 			&i.Unranked,
 		); err != nil {
@@ -207,12 +231,20 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 
 const publicSearchSkills = `-- name: PublicSearchSkills :many
 
-SELECT s.skill_id, s.name, s.summary,
-       ts_rank_cd(s.tsv, websearch_to_tsquery('english', $2::text))::float8 AS rank
+SELECT s.skill_id, s.name,
+       COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
+       s.tags, s.scan, ver.created_at AS verified_at
 FROM search_documents s
 JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
+LEFT JOIN LATERAL (
+    SELECT v.created_at
+    FROM skill_versions v
+    WHERE v.skill_id = s.skill_id
+    ORDER BY v.version_number DESC
+    LIMIT 1
+) ver ON true
 WHERE s.tsv @@ websearch_to_tsquery('english', $2::text)
-ORDER BY rank DESC
+ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $2::text)) DESC
 LIMIT $1
 `
 
@@ -222,10 +254,12 @@ type PublicSearchSkillsParams struct {
 }
 
 type PublicSearchSkillsRow struct {
-	SkillID pgtype.UUID
-	Name    string
-	Summary string
-	Rank    float64
+	SkillID    pgtype.UUID
+	Name       string
+	Summary    string
+	Tags       []byte
+	Scan       []byte
+	VerifiedAt pgtype.Timestamptz
 }
 
 // The two queries below serve unauthenticated callers (DISC-001), so their
@@ -236,6 +270,12 @@ type PublicSearchSkillsRow struct {
 // in the name so no future caller reaches for one of these on a private path.
 // FTS-only public search — the degradation path when the embedding service is
 // unavailable (ADR-013 fallback).
+//
+// ts_rank_cd orders the page but is not selected. It is an unbounded lexical
+// score, not a cosine similarity, and the two used to arrive at the caller
+// through the same `rank` field that the contract documents as 0..1 — a live
+// answer came back with 1.4. The ordering is what the score is good for, and
+// the array already carries that.
 func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkillsParams) ([]PublicSearchSkillsRow, error) {
 	rows, err := q.db.Query(ctx, publicSearchSkills, arg.Limit, arg.Query)
 	if err != nil {
@@ -249,7 +289,9 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 			&i.SkillID,
 			&i.Name,
 			&i.Summary,
-			&i.Rank,
+			&i.Tags,
+			&i.Scan,
+			&i.VerifiedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -282,12 +324,11 @@ func (q *Queries) ReindexAll(ctx context.Context) (int64, error) {
 }
 
 const searchSkills = `-- name: SearchSkills :many
-SELECT s.skill_id, s.workspace_id, s.name, s.summary,
-       ts_rank_cd(s.tsv, websearch_to_tsquery('english', $3::text))::float8 AS rank
+SELECT s.skill_id, s.workspace_id, s.name, s.summary
 FROM search_documents s
 WHERE s.workspace_id = $1
   AND s.tsv @@ websearch_to_tsquery('english', $3::text)
-ORDER BY rank DESC
+ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $3::text)) DESC
 LIMIT $2
 `
 
@@ -302,11 +343,13 @@ type SearchSkillsRow struct {
 	WorkspaceID pgtype.UUID
 	Name        string
 	Summary     string
-	Rank        float64
 }
 
 // FTS leg only for now (ADR-013); vector + RRF join here when the embedding
 // pipeline lands. websearch_to_tsquery tolerates raw user input.
+//
+// The lexical score orders the page and is not selected; see PublicSearchSkills
+// for why it must not be handed to a caller as a rank.
 func (q *Queries) SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]SearchSkillsRow, error) {
 	rows, err := q.db.Query(ctx, searchSkills, arg.WorkspaceID, arg.Limit, arg.Query)
 	if err != nil {
@@ -321,7 +364,6 @@ func (q *Queries) SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]S
 			&i.WorkspaceID,
 			&i.Name,
 			&i.Summary,
-			&i.Rank,
 		); err != nil {
 			return nil, err
 		}
@@ -360,9 +402,9 @@ func (q *Queries) UpsertSearchDocument(ctx context.Context, arg UpsertSearchDocu
 const upsertSearchDocumentEnriched = `-- name: UpsertSearchDocumentEnriched :exec
 INSERT INTO search_documents (
     skill_id, workspace_id, name, summary,
-    enriched_summary, task_examples, tags, embedding,
+    enriched_summary, task_examples, tags, limitations, scan, embedding,
     enrichment_status, enrichment_model, enrichment_prompt_version, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id,
     name = EXCLUDED.name,
@@ -370,6 +412,8 @@ SET workspace_id = EXCLUDED.workspace_id,
     enriched_summary = EXCLUDED.enriched_summary,
     task_examples = EXCLUDED.task_examples,
     tags = EXCLUDED.tags,
+    limitations = EXCLUDED.limitations,
+    scan = EXCLUDED.scan,
     embedding = EXCLUDED.embedding,
     enrichment_status = EXCLUDED.enrichment_status,
     enrichment_model = EXCLUDED.enrichment_model,
@@ -384,7 +428,9 @@ type UpsertSearchDocumentEnrichedParams struct {
 	Summary                 string
 	EnrichedSummary         string
 	TaskExamples            string
-	Tags                    string
+	Tags                    []byte
+	Limitations             string
+	Scan                    []byte
 	Embedding               *pgvector.Vector
 	EnrichmentStatus        string
 	EnrichmentModel         *string
@@ -407,6 +453,8 @@ func (q *Queries) UpsertSearchDocumentEnriched(ctx context.Context, arg UpsertSe
 		arg.EnrichedSummary,
 		arg.TaskExamples,
 		arg.Tags,
+		arg.Limitations,
+		arg.Scan,
 		arg.Embedding,
 		arg.EnrichmentStatus,
 		arg.EnrichmentModel,

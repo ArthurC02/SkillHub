@@ -352,6 +352,8 @@ func upsertProjection(ctx context.Context, q *gen.Queries, skillID, workspaceID 
 		EnrichedSummary:         e.enrichedSummary,
 		TaskExamples:            e.taskExamples,
 		Tags:                    e.tags,
+		Limitations:             e.limitations,
+		Scan:                    e.scan,
 		Embedding:               e.embedding,
 		EnrichmentStatus:        e.status,
 		EnrichmentModel:         e.model,

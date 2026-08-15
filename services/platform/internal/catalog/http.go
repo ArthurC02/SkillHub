@@ -7,6 +7,7 @@ package catalog
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -89,19 +90,147 @@ const MaxCosineDistance = 0.75
 const noResultsSuggestion = "No skill in the catalog is close enough to this task. " +
 	"Try naming the file format you have, the input you are starting from, and the output you want."
 
-// searchResult is the public JSON shape for each search hit (DISC-002).
+// searchResult is the public JSON shape for each search hit (DISC-002: name,
+// plain summary, source tier, agent compatibility, dependencies, risk hint and
+// last verification time).
 type searchResult struct {
-	SkillID           string  `json:"skill_id"`
-	Name              string  `json:"name"`
-	Summary           string  `json:"summary"`
-	Rank              float64 `json:"rank"`
-	MatchReason       string  `json:"match_reason,omitempty"`
-	MatchReasonSource string  `json:"match_reason_source,omitempty"`
+	SkillID string `json:"skill_id"`
+	Name    string `json:"name"`
+	Summary string `json:"summary"`
+	// Rank is cosine similarity in 0..1, or null when this page was not ranked
+	// by similarity at all. RankNote then says what ordered it instead.
+	//
+	// The lexical score is never substituted: ts_rank_cd is unbounded (a local
+	// answer measured 1.4) and is not the same quantity as a cosine distance, so
+	// normalising it into 0..1 would manufacture a similarity that was never
+	// computed. Withholding the number costs nothing the caller needs — the
+	// array order still carries the ranking.
+	Rank              *float64      `json:"rank"`
+	RankNote          string        `json:"rank_note,omitempty"`
+	Tier              labelled      `json:"tier"`
+	Risk              searchRisk    `json:"risk"`
+	Dependencies      []string      `json:"dependencies"`
+	Compat            compatibility `json:"compatibility"`
+	VerifiedAt        string        `json:"verified_at,omitempty"`
+	MatchReason       string        `json:"match_reason,omitempty"`
+	MatchReasonSource string        `json:"match_reason_source,omitempty"`
 	// unranked: this document has no embedding yet (enrichment_status
 	// 'pending'), so it reached the page through the lexical leg and the
 	// distance cut-off never judged it. Internal — it is reported once at the
-	// envelope level as PartialIndex.
+	// envelope level as PartialIndex, and per row as a null Rank.
 	unranked bool
+}
+
+// searchRisk is the DISC-002 risk hint: what the import scan recorded, folded
+// small enough for a list row. The detail view re-scans the package and reports
+// findings verbatim; this reads the projection, so it can be shown for a whole
+// page without one object-store fetch per hit.
+type searchRisk struct {
+	// ScanStatus is scanned | unavailable. Unavailable means the projection
+	// carries no scan for this row, which is reported as unknown and never as
+	// clean (DISC-004 不得自行推定為通過).
+	ScanStatus string `json:"scan_status"`
+	// Level is none | disclosed | warning. There is no "safe" level (NFR-001).
+	Level    string `json:"level"`
+	Warnings int    `json:"warnings"`
+
+	HasScripts            bool `json:"has_scripts"`
+	HasEmbeddedScript     bool `json:"has_embedded_script"`
+	HasExternalURLs       bool `json:"has_external_urls"`
+	HasPossibleSecrets    bool `json:"has_possible_secrets"`
+	HasBinaries           bool `json:"has_binaries"`
+	HasDependencyManifest bool `json:"has_dependency_manifest"`
+
+	Note string `json:"note"`
+}
+
+const (
+	riskLevelNone      = "none"
+	riskLevelDisclosed = "disclosed"
+	riskLevelWarning   = "warning"
+
+	searchRiskNote      = "來自匯入時的靜態掃描,不執行套件內任何程式碼;開啟 Skill 可看逐項結果。"
+	searchRiskUnknown   = "此結果尚無掃描紀錄,狀態未知——不代表已通過檢查。"
+	rankNoteDegraded    = "此次搜尋未使用語意向量,排序來自關鍵字比對分數,與相似度不同量綱,因此不提供分數。"
+	rankNotePendingItem = "此 Skill 尚未建立語意索引,是以關鍵字比對進入結果,未與查詢計算過相似度。"
+)
+
+// resultFacets fills the DISC-002 columns that are the same for every row of
+// every page, and the ones read straight out of the projection.
+//
+// Tier is TierIndexed unconditionally, for the reason tierLabel() gives: nothing
+// records a curation review yet, and index membership is not one.
+//
+// spec_validation is `passed` whenever the row has a saved version. That is not
+// an assumption — skillpkg.Validate blocks the import on any error-level
+// finding and a blocked package is never stored, so appearing in the index *is*
+// the evidence that static validation passed. A row with no version has nothing
+// that was ever validated, and says unverified. capability and runtime stay
+// unverified until sandbox runs exist (M2); that is DISC-002's 尚未試跑, and it
+// is stated rather than omitted because a missing field reads as "fine".
+func resultFacets(r *searchResult, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz) {
+	r.Tier = tierLabel()
+	r.Dependencies = dependencyTags(tagsJSON)
+	r.Risk = riskHint(scanJSON)
+	r.VerifiedAt = timeString(verifiedAt)
+	r.Compat = compatibility{
+		SpecValidation: "unverified",
+		Capability:     "unverified",
+		Runtime:        "unverified",
+		Note:           compatNote,
+	}
+	if verifiedAt.Valid {
+		r.Compat.SpecValidation = "passed"
+	}
+}
+
+// dependencyTags reads the dependency bucket out of the stored enrichment tags.
+// Absent, unparseable or pending enrichment all mean the same thing here: no
+// dependency was extracted, which is not a claim that there are none.
+func dependencyTags(tagsJSON []byte) []string {
+	var t llmclient.SkillTags
+	if len(tagsJSON) == 0 || json.Unmarshal(tagsJSON, &t) != nil || t.Dependencies == nil {
+		return []string{}
+	}
+	return t.Dependencies
+}
+
+// riskHint turns the projected scan facts into the row's risk block.
+func riskHint(scanJSON []byte) searchRisk {
+	var f struct {
+		Warnings int      `json:"warnings"`
+		Codes    []string `json:"codes"`
+	}
+	if len(scanJSON) == 0 || json.Unmarshal(scanJSON, &f) != nil {
+		return searchRisk{ScanStatus: "unavailable", Level: riskLevelNone, Note: searchRiskUnknown}
+	}
+	out := searchRisk{ScanStatus: "scanned", Warnings: f.Warnings, Note: searchRiskNote}
+	for _, code := range f.Codes {
+		switch code {
+		case "script-file":
+			out.HasScripts = true
+		case "embedded-script":
+			out.HasEmbeddedScript = true
+		case "external-url":
+			out.HasExternalURLs = true
+		case "possible-secret":
+			out.HasPossibleSecrets = true
+		case "binary-file":
+			out.HasBinaries = true
+		case "dependency-file":
+			out.HasDependencyManifest = true
+		}
+	}
+	switch {
+	case out.Warnings > 0:
+		out.Level = riskLevelWarning
+	case out.HasScripts || out.HasEmbeddedScript || out.HasExternalURLs ||
+		out.HasPossibleSecrets || out.HasBinaries || out.HasDependencyManifest:
+		out.Level = riskLevelDisclosed
+	default:
+		out.Level = riskLevelNone
+	}
+	return out
 }
 
 // searchResponse is the top-level JSON envelope.
@@ -260,13 +389,23 @@ func (h *Handler) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 
 	hits := make([]searchResult, 0, len(rows))
 	for _, row := range rows {
-		hits = append(hits, searchResult{
+		hit := searchResult{
 			SkillID:  uuidString(row.SkillID),
 			Name:     row.Name,
 			Summary:  row.Summary,
-			Rank:     row.Rank,
 			unranked: row.Unranked,
-		})
+		}
+		// A row that arrived through the lexical leg with no embedding was never
+		// measured against the query. Reporting 0 for it said "measured, and as
+		// far away as possible", which is a different and false statement.
+		if !row.Unranked {
+			rank := row.Rank
+			hit.Rank = &rank
+		} else {
+			hit.RankNote = rankNotePendingItem
+		}
+		resultFacets(&hit, row.Tags, row.Scan, row.VerifiedAt)
+		hits = append(hits, hit)
 	}
 	return hits, nil
 }
@@ -286,6 +425,10 @@ func anyUnranked(hits []searchResult) bool {
 // ftsOnlySearch is the degradation path when the LLM service is unavailable.
 // Same catalog-only scope as the hybrid path; the degraded path must not be
 // the one that leaks (CORE-006).
+//
+// Every row comes back with a null rank. The page is ordered by ts_rank_cd,
+// which the query no longer returns: it is an unbounded lexical score, and the
+// field it used to travel in is documented as a cosine similarity in 0..1.
 func (h *Handler) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query string, limit int32) ([]searchResult, error) {
 	rows, err := queries.PublicSearchSkills(ctx, gen.PublicSearchSkillsParams{
 		Query: query,
@@ -296,12 +439,14 @@ func (h *Handler) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 	}
 	hits := make([]searchResult, 0, len(rows))
 	for _, row := range rows {
-		hits = append(hits, searchResult{
-			SkillID: uuidString(row.SkillID),
-			Name:    row.Name,
-			Summary: row.Summary,
-			Rank:    row.Rank,
-		})
+		hit := searchResult{
+			SkillID:  uuidString(row.SkillID),
+			Name:     row.Name,
+			Summary:  row.Summary,
+			RankNote: rankNoteDegraded,
+		}
+		resultFacets(&hit, row.Tags, row.Scan, row.VerifiedAt)
+		hits = append(hits, hit)
 	}
 	return hits, nil
 }
@@ -528,11 +673,12 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// No score: this endpoint has only the lexical leg, and ts_rank_cd is not a
+	// similarity (see searchResult.Rank). Best first is already the array order.
 	type searchHit struct {
-		SkillID string  `json:"skill_id"`
-		Name    string  `json:"name"`
-		Summary string  `json:"summary"`
-		Rank    float64 `json:"rank"`
+		SkillID string `json:"skill_id"`
+		Name    string `json:"name"`
+		Summary string `json:"summary"`
 	}
 	hits := make([]searchHit, 0, len(rows))
 	for _, row := range rows {
@@ -540,7 +686,6 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 			SkillID: uuidString(row.SkillID),
 			Name:    row.Name,
 			Summary: row.Summary,
-			Rank:    row.Rank,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"results": hits})

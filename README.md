@@ -31,6 +31,11 @@ task lint                # lint every service
 Each service also works with its own native toolchain — `go test ./...`,
 `uv run pytest`, `npm test` — from its own directory.
 
+Running the SPA against a local API needs `DEV_CORS_ORIGIN=http://localhost:5173`
+on `cmd/api`: the two are separate origins in development and same-origin in
+production, so the allowance is opt-in per process and unset everywhere else.
+`httpx.DevCORS` explains why this is not a Vite dev-server proxy.
+
 ## Before you write code
 
 Read [AGENTS.md](AGENTS.md) for the implementation rules, and

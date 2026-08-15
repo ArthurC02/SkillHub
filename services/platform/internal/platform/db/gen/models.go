@@ -199,10 +199,12 @@ type SearchDocument struct {
 	UpdatedAt               pgtype.Timestamptz
 	EnrichedSummary         string
 	TaskExamples            string
-	Tags                    string
 	EnrichmentStatus        string
 	EnrichmentModel         *string
 	EnrichmentPromptVersion *string
+	Tags                    []byte
+	Limitations             string
+	Scan                    []byte
 }
 
 type Session struct {

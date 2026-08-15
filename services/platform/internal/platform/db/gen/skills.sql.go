@@ -125,7 +125,7 @@ func (q *Queries) GetSkill(ctx context.Context, arg GetSkillParams) (Skill, erro
 }
 
 const getSkillEnrichment = `-- name: GetSkillEnrichment :one
-SELECT summary, enriched_summary, task_examples, tags,
+SELECT summary, enriched_summary, task_examples, tags, limitations,
        enrichment_status, enrichment_model, enrichment_prompt_version
 FROM search_documents
 WHERE skill_id = $1 AND workspace_id = $2
@@ -140,7 +140,8 @@ type GetSkillEnrichmentRow struct {
 	Summary                 string
 	EnrichedSummary         string
 	TaskExamples            string
-	Tags                    string
+	Tags                    []byte
+	Limitations             string
 	EnrichmentStatus        string
 	EnrichmentModel         *string
 	EnrichmentPromptVersion *string
@@ -158,6 +159,7 @@ func (q *Queries) GetSkillEnrichment(ctx context.Context, arg GetSkillEnrichment
 		&i.EnrichedSummary,
 		&i.TaskExamples,
 		&i.Tags,
+		&i.Limitations,
 		&i.EnrichmentStatus,
 		&i.EnrichmentModel,
 		&i.EnrichmentPromptVersion,

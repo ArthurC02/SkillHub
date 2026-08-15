@@ -23,7 +23,10 @@ logger = logging.getLogger("skillhub_llm.enrich")
 # PDM-003 model tier: index-time enrichment runs once per Skill Version and its
 # output becomes a primary retrieval field, so quality outweighs cost.
 ENRICH_MODEL = os.getenv("ENRICH_MODEL", "gpt-5.6-sol")
-PROMPT_VERSION = "enrich-skill/v1"
+# v2 adds `limitations`. Bumped rather than edited in place: the version is what
+# tells a stored enrichment written under the old prompt from one written under
+# this, and reindex uses it to find the stale rows.
+PROMPT_VERSION = "enrich-skill/v2"
 
 # Ceiling on a single gateway call. Client disconnect cancels the request at the
 # HTTP layer, which is how Go's cancellation propagates (ADR-016 rule 7).
@@ -52,6 +55,12 @@ frontmatter. Write it in {language}.
 each given in both Traditional Chinese (zh_hant) and English (en).
 - tags: short lowercase noun phrases for the inputs, outputs, tools and dependencies \
 the content mentions. Use an empty list where it says nothing.
+- limitations: short sentences, in {language}, restating what the content itself says \
+the Skill does NOT do, or what it requires in order to work - unsupported formats, \
+stated scope limits, required accounts, credentials, network access or installed \
+software. Restate only; do not infer a limitation the content does not state, and do \
+not write anything about risk, safety, trustworthiness or quality. Use an empty list \
+where the content states none.
 """
 
 
@@ -86,6 +95,10 @@ class Enrichment(BaseModel):
     summary: str
     task_examples: list[TaskExample]
     tags: SkillTags
+    # Inside the ADR-013 whitelist because it restates what the document says,
+    # exactly as `summary` does. Inferred limits, and any risk/safety/quality
+    # judgement, stay out - those are never model-derived.
+    limitations: list[str]
 
 
 class EnrichSkillResponse(Enrichment):

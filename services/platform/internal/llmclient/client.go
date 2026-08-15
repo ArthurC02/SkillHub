@@ -101,11 +101,16 @@ type EnrichSkillRequest struct {
 // Model and PromptVersion are stored alongside the text so the projection can
 // label it as model-generated and find stale enrichments to rebuild.
 type EnrichSkillResponse struct {
-	Summary       string        `json:"summary"`
-	TaskExamples  []TaskExample `json:"task_examples"`
-	Tags          SkillTags     `json:"tags"`
-	Model         string        `json:"model"`
-	PromptVersion string        `json:"prompt_version"`
+	Summary      string        `json:"summary"`
+	TaskExamples []TaskExample `json:"task_examples"`
+	Tags         SkillTags     `json:"tags"`
+	// Limitations restate what the document says the skill does not do or needs
+	// (DISC-003 限制). A restatement, like Summary — the service does not judge
+	// risk, safety or quality, and the scan-derived half of the detail view's
+	// limitations list is assembled separately in catalog.
+	Limitations   []string `json:"limitations"`
+	Model         string   `json:"model"`
+	PromptVersion string   `json:"prompt_version"`
 }
 
 // EnrichSkill runs the ADR-013 index-time enhancement for one skill version.

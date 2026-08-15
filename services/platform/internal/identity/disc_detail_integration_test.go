@@ -115,6 +115,10 @@ type detail struct {
 		Capability     string `json:"capability"`
 		Runtime        string `json:"runtime"`
 	} `json:"compatibility"`
+	Limitations []struct {
+		Text   string `json:"text"`
+		Source string `json:"source"`
+	} `json:"limitations"`
 }
 
 func getJSON(t *testing.T, c *http.Client, url string, out any) int {
@@ -178,6 +182,21 @@ func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 	}
 	if got.Tier.Value != "indexed" || got.Tier.Label == "" {
 		t.Errorf("tier = %+v, want the indexed badge (curation is not recorded anywhere yet)", got.Tier)
+	}
+	// DISC-003 一般模式「限制」: the package ships a script, which is a
+	// requirement on whoever runs it, so the scan half of the block must produce
+	// a line for it even with no enrichment on the row at all. Labelled `scan`,
+	// because the author's document never said this.
+	if len(got.Limitations) == 0 {
+		t.Error("DISC-003: no limitations for a package that ships a script")
+	}
+	for _, l := range got.Limitations {
+		if l.Source != "scan" {
+			t.Errorf("limitation %q labelled %q; nothing enriched this row", l.Text, l.Source)
+		}
+		if l.Text == "" {
+			t.Error("limitation with no text")
+		}
 	}
 }
 

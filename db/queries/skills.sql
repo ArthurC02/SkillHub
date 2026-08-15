@@ -60,7 +60,7 @@ WHERE id = $1 AND workspace_id = $2;
 -- show the enriched summary and task examples *labelled as model-generated*
 -- rather than as the package's own words. `summary` comes back too because it is
 -- the frontmatter description and the fallback when enrichment is still pending.
-SELECT summary, enriched_summary, task_examples, tags,
+SELECT summary, enriched_summary, task_examples, tags, limitations,
        enrichment_status, enrichment_model, enrichment_prompt_version
 FROM search_documents
 WHERE skill_id = $1 AND workspace_id = $2;
