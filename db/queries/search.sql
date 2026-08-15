@@ -73,9 +73,43 @@ LIMIT $2;
 -- query with no scope at all leaks every private fork. "Public" is spelled out
 -- in the name so no future caller reaches for one of these on a private path.
 
+-- DISC-003 structured filters, shared by both public queries below.
+--
+-- Only two of the six dimensions 02:DISC-002 lists have per-row data in M1, so
+-- only those two are predicates here. The other four are not silently ignored:
+-- they are reported as unavailable by the API and disabled in the UI, because a
+-- filter that accepts a value and does not narrow anything is worse than one
+-- that says it cannot (see catalog/http.go filterAvailability).
+--
+--   * has_script   — evidence from the projected import scan. `script-file` is a
+--                    script in the package tree, `embedded-script` is runnable
+--                    code inside SKILL.md itself (SKILL-003); a user asking for
+--                    "contains a script" means either.
+--                    Rows with NULL scan match NEITHER true nor false: no scan
+--                    was ever projected for them, and answering "no script" for
+--                    an unscanned row is exactly the 不得自行推定為通過 that
+--                    02:DISC-004 forbids. They drop out of a filtered page and
+--                    reappear when the filter is cleared.
+--   * spec_validated — a saved version is the evidence, for the reason
+--                    0015_search_result_facets.sql gives: skillpkg.Validate
+--                    blocks the import on any error-level finding, so a stored
+--                    version means static validation passed. No version means
+--                    nothing was ever validated, which is unverified and never
+--                    "failed".
+--
+-- Both are sqlc.narg: NULL = dimension not filtered, which is the default.
+-- The predicates are written twice rather than factored into a SQL function —
+-- two copies of four lines beat a migration for a function that would then need
+-- its own drift check.
+
 -- name: PublicSearchSkills :many
 -- FTS-only public search — the degradation path when the embedding service is
 -- unavailable (ADR-013 fallback).
+--
+-- The DISC-003 filters apply here too. A degraded answer is already lower
+-- recall; letting it also ignore the user's filters would make the page lie
+-- about what it contains, and the filter dimensions are projection columns that
+-- do not depend on the embedding leg being up.
 --
 -- ts_rank_cd orders the page but is not selected. It is an unbounded lexical
 -- score, not a cosine similarity, and the two used to arrive at the caller
@@ -95,8 +129,18 @@ LEFT JOIN LATERAL (
     LIMIT 1
 ) ver ON true
 WHERE s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
+  AND (
+    sqlc.narg(has_script)::bool IS NULL
+    OR (s.scan IS NOT NULL
+        AND (s.scan->'codes' @> '["script-file"]'::jsonb
+             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = sqlc.narg(has_script)::bool)
+  )
+  AND (
+    sqlc.narg(spec_validated)::bool IS NULL
+    OR (ver.created_at IS NOT NULL) = sqlc.narg(spec_validated)::bool
+  )
 ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
-LIMIT $1;
+LIMIT sqlc.arg(result_limit);
 
 -- name: PublicHybridSearchSkills :many
 -- ADR-013 hybrid retrieval, ranked by vector distance alone.
@@ -177,7 +221,23 @@ LEFT JOIN LATERAL (
     ORDER BY v.version_number DESC
     LIMIT 1
 ) ver ON true
-WHERE c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::float8
+WHERE (c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::float8)
+  -- DISC-003 filters, applied after candidate generation.
+  --
+  -- ponytail: the two legs still take their own 50 rows before this runs, so a
+  -- filter that matches only rows 51+ of a leg cannot see them. The catalogue is
+  -- 45 documents, so no candidate is currently unreachable; push the predicates
+  -- into the two CTEs once the catalogue outgrows the candidate window.
+  AND (
+    sqlc.narg(has_script)::bool IS NULL
+    OR (s.scan IS NOT NULL
+        AND (s.scan->'codes' @> '["script-file"]'::jsonb
+             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = sqlc.narg(has_script)::bool)
+  )
+  AND (
+    sqlc.narg(spec_validated)::bool IS NULL
+    OR (ver.created_at IS NOT NULL) = sqlc.narg(spec_validated)::bool
+  )
 ORDER BY c.distance ASC NULLS LAST
 LIMIT sqlc.arg(result_limit);
 

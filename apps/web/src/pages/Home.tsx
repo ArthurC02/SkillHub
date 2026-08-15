@@ -1,35 +1,54 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useSkillSearch } from "../api/skills";
+import { LabelledBadge } from "../components/LabelledBadge";
 import { MAX_COMPARE } from "./Compare";
-import type { PublicSearchResult } from "../api/types";
+import type { PublicSearchResult, SearchFilters } from "../api/types";
 
 /**
- * DISC-001/002/004/005: public intent search. Anonymous — GET
+ * DISC-001/002/003/004/005: public intent search. Anonymous — GET
  * /api/skills/search is mounted without RequireSession, so nothing on this page
  * needs a session.
  *
- * The empty / low-confidence / degraded states come from the server's three
+ * The empty / low-confidence / degraded states come from the server's four
  * separate flags and are shown separately, because they mean different things:
- * `no_results` = nothing was close enough, `degraded` = we could not look
- * properly, `partial_index` = part of the catalog is not searchable yet.
+ * `no_results` = nothing was close enough, `filtered_out` = there were matches
+ * but the filters removed them, `degraded` = we could not look properly,
+ * `partial_index` = part of the catalog is not searchable yet.
+ *
+ * Query and filters live in the URL (see router.tsx), so a filtered result page
+ * can be shared and survives a reload.
  */
 export function Home() {
-  const [query, setQuery] = useState("");
-  // null = not searched yet. A blank submit is still sent: the server answers
-  // it with no_results plus the suggestion copy (DISC-005), and duplicating
-  // that copy here is exactly what the acceptance criteria stopped asking for.
-  const [submitted, setSubmitted] = useState<string | null>(null);
+  const search = useSearch({ from: "/" });
+  const navigate = useNavigate({ from: "/" });
+  const [draft, setDraft] = useState(search.q ?? "");
   const [selected, setSelected] = useState<string[]>([]);
-  const { data, isFetching, isError } = useSkillSearch(submitted ?? "", submitted !== null);
+
+  const filters: SearchFilters = { script: search.script, validation: search.validation };
+  // `undefined` = nothing submitted yet, so no request. `""` is a blank submit,
+  // which the server answers with no_results plus the suggestion copy (DISC-005);
+  // duplicating that copy here is exactly what the acceptance criteria stopped
+  // asking for.
+  const { data, isFetching, isError } = useSkillSearch(
+    search.q ?? "",
+    filters,
+    search.q !== undefined,
+  );
+
+  /**
+   * Any change to the question — new query or new filter — makes the old
+   * selection meaningless: the ids may not be on the page any more, and a
+   * hidden selection would compare skills the user can no longer see.
+   */
+  function submitSearch(next: Partial<typeof search>) {
+    setSelected([]);
+    void navigate({ search: (prev) => ({ ...prev, ...next }), replace: true });
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitted(query.trim());
-    // A new result set makes the old selection meaningless: the ids may not be
-    // on the page any more, and a hidden selection would compare skills the
-    // user can no longer see.
-    setSelected([]);
+    submitSearch({ q: draft.trim() });
   }
 
   function toggleSelected(skillId: string) {
@@ -48,13 +67,19 @@ export function Home() {
       <form onSubmit={handleSubmit}>
         <input
           type="text"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
           placeholder="例如：把這份 PDF 整理成摘要"
           aria-label="任務描述"
         />
         <button type="submit">搜尋</button>
       </form>
+
+      <FilterBar
+        filters={filters}
+        onChange={(next) => submitSearch(next)}
+        disabled={search.q === undefined}
+      />
 
       {isFetching && <p>搜尋中…</p>}
       {isError && <p role="alert">搜尋失敗，請稍後再試。</p>}
@@ -77,6 +102,25 @@ export function Home() {
             <p className="notice" role="status">
               部分 Skill 尚未建立語意索引，只能靠關鍵字命中，沒有相似度可顯示，並排在最後。
             </p>
+          )}
+
+          {/*
+            DISC-003: the two empty states are different problems with different
+            fixes, so they never share copy. Widening a filter and rewording a
+            task are opposite advice, and giving the wrong one sends the user
+            looking in a place where the answer is not.
+          */}
+          {data.filtered_out && (
+            <div className="no-results">
+              <p>有符合這個任務的 Skill，但全部被目前的篩選條件排除了。</p>
+              <p className="query-suggestion">放寬或清除下方的篩選條件即可看到它們。</p>
+              <button
+                type="button"
+                onClick={() => submitSearch({ script: undefined, validation: undefined })}
+              >
+                清除所有篩選
+              </button>
+            </div>
           )}
 
           {data.no_results && (
@@ -107,6 +151,112 @@ export function Home() {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * DISC-003 (spec 02:DISC-002「使用者可依類別、來源層級、Agent、是否包含 Script、
+ * 是否需要 MCP 與驗證狀態篩選」).
+ *
+ * Two of the six dimensions have per-row data in this build and are live
+ * controls. The other four are rendered as disabled controls carrying the
+ * reason, rather than being hidden or — far worse — offered as controls that
+ * accept a value and narrow nothing. The server rejects those four with 400 for
+ * the same reason, so a hand-edited URL cannot get an unfiltered page that looks
+ * filtered.
+ *
+ * The wording of each reason is the honest one, not a "coming soon": 相容狀態
+ * needs a sandbox that does not exist yet (M2), and MCP has no source of truth
+ * anywhere in the pipeline.
+ */
+const UNAVAILABLE_FILTERS: Array<{ key: string; label: string; reason: string }> = [
+  {
+    key: "category",
+    label: "類別",
+    reason: "類別目前只存在於策展清單，沒有存進平台，匯入流程也不收這個欄位，因此無法篩選。",
+  },
+  {
+    key: "tier",
+    label: "來源層級",
+    reason: "目前目錄內每一個 Skill 都是「已索引」層級，人工精選審查尚未開始，篩了也分不出東西。",
+  },
+  {
+    key: "agent",
+    label: "Agent 相容",
+    reason: "Agent 相容狀態要靠 Sandbox 試跑才會有結果，目前一律是「未驗證」，沒有可篩的值。",
+  },
+  {
+    key: "mcp",
+    label: "需要 MCP",
+    reason: "靜態掃描與 SKILL.md 都沒有記錄是否需要 MCP，平台沒有這項資料可以篩。",
+  },
+];
+
+function FilterBar({
+  filters,
+  onChange,
+  disabled,
+}: {
+  filters: SearchFilters;
+  onChange: (next: SearchFilters) => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="filter-bar" role="group" aria-label="篩選條件">
+      <label>
+        是否包含 Script
+        <select
+          value={filters.script ?? ""}
+          disabled={disabled}
+          onChange={(event) =>
+            onChange({ script: (event.target.value || undefined) as SearchFilters["script"] })
+          }
+        >
+          <option value="">不限</option>
+          <option value="yes">包含 Script</option>
+          <option value="no">不含 Script</option>
+        </select>
+      </label>
+
+      <label>
+        驗證狀態
+        <select
+          value={filters.validation ?? ""}
+          disabled={disabled}
+          onChange={(event) =>
+            onChange({
+              validation: (event.target.value || undefined) as SearchFilters["validation"],
+            })
+          }
+        >
+          <option value="">不限</option>
+          <option value="passed">規格驗證已通過</option>
+          <option value="unverified">尚未驗證</option>
+        </select>
+      </label>
+
+      {UNAVAILABLE_FILTERS.map(({ key, label, reason }) => (
+        <label key={key} className="filter-unavailable" title={reason}>
+          {label}
+          <select disabled aria-describedby={`filter-why-${key}`}>
+            <option>無法篩選</option>
+          </select>
+          <span id={`filter-why-${key}`} className="note">
+            {reason}
+          </span>
+        </label>
+      ))}
+
+      {/*
+        DISC-003 honesty note, sitting with the controls rather than in a help
+        page: a filter bar with four dead controls has to say why on the spot,
+        or it reads as a broken UI instead of an absent capability.
+      */}
+      <p className="note">
+        篩選條件只會用平台真的有的資料。上面標為「無法篩選」的四項，是因為平台目前沒有這些資料，
+        不是因為所有 Skill 都不符合。
+      </p>
+    </div>
   );
 }
 
@@ -158,9 +308,17 @@ function RankingExplainer({
           排序完全不使用人氣或新舊，只有相關度。
         </li>
         <li>
+          {/*
+            DISC-003: filtering is not ranking. Saying so here is what stops a
+            user reading a short filtered page as "the search got worse".
+          */}
+          <strong>篩選條件不影響名次。</strong>
+          篩選只是把不符合條件的結果整個拿掉，剩下的順序和沒篩之前完全一樣。
+        </li>
+        <li>
           <strong>例外一：只能用關鍵字比對時。</strong>
           語意服務不可用的話，整頁改用關鍵字分數排序。那個分數不是相似度、沒有固定範圍，上面的 0.25
-          門檻也不生效；這時不顯示相似度，改在每個結果旁註明原因。
+          門檻也不生效；這時不顯示相似度，改在每個結果旁註明原因。篩選條件在這個狀態下照樣生效。
           {degraded && <span className="badge">目前這次搜尋就是這個狀態</span>}
         </li>
         <li>
@@ -187,6 +345,88 @@ function CompareBar({ selected }: { selected: string[] }) {
         <p className="note">勾選 2 至 {MAX_COMPARE} 個 Skill，即可並排比較它們的靜態資料。</p>
       )}
     </div>
+  );
+}
+
+/**
+ * 02:DISC-002 requires every result row to show name, plain summary, source
+ * tier, agent compatibility, dependencies, a risk hint and the last
+ * verification time. The API carries all seven; this renders the five that are
+ * not the name and summary.
+ *
+ * Nothing here is inferred. An unscanned row says its scan status is unknown
+ * rather than showing no flags, an empty dependency list says "not extracted"
+ * rather than "none", and the two sandbox compatibility axes are marked
+ * 尚未試跑 rather than left out — an absent row reads as "fine" (NFR-001).
+ */
+const RISK_FLAGS: Array<{ key: keyof PublicSearchResult["risk"]; label: string }> = [
+  { key: "has_scripts", label: "含 Script 檔案" },
+  { key: "has_embedded_script", label: "SKILL.md 內含程式碼" },
+  { key: "has_external_urls", label: "含外部網址" },
+  { key: "has_possible_secrets", label: "疑似含 Secret" },
+  { key: "has_binaries", label: "含二進位檔案" },
+  { key: "has_dependency_manifest", label: "含依賴宣告檔" },
+];
+
+function ResultFacets({ hit }: { hit: PublicSearchResult }) {
+  const flags = RISK_FLAGS.filter(({ key }) => hit.risk[key] === true);
+  const untested =
+    hit.compatibility.capability === "unverified" && hit.compatibility.runtime === "unverified";
+
+  return (
+    <dl className="result-facets">
+      <dt>來源層級</dt>
+      <dd>
+        <LabelledBadge kind="tier" value={hit.tier} />
+      </dd>
+
+      <dt>相容狀態</dt>
+      <dd title={hit.compatibility.note}>
+        規格驗證：{hit.compatibility.spec_validation === "passed" ? "通過" : "未驗證"}
+        {/* DISC-002: 沒有驗證證據的 Skill 必須明確標記「尚未試跑」. */}
+        {untested && <span className="badge badge-untested">尚未試跑</span>}
+      </dd>
+
+      <dt>依賴</dt>
+      <dd>
+        {hit.dependencies.length > 0 ? (
+          hit.dependencies.join("、")
+        ) : (
+          <span className="note">未擷取到依賴資訊（不等於沒有依賴）</span>
+        )}
+      </dd>
+
+      <dt>風險提示</dt>
+      <dd title={hit.risk.note}>
+        {hit.risk.scan_status === "unavailable" ? (
+          <span className="note">尚無掃描紀錄，狀態未知——不代表已通過檢查。</span>
+        ) : (
+          <>
+            {hit.risk.warnings > 0 && (
+              <span className="badge badge-risk">警告 {hit.risk.warnings}</span>
+            )}
+            {flags.length > 0
+              ? flags.map(({ key, label }) => (
+                  <span key={key} className="badge badge-risk-flag">
+                    {label}
+                  </span>
+                ))
+              : hit.risk.warnings === 0 && (
+                  <span className="note">靜態掃描未發現警告；這不等於安全。</span>
+                )}
+          </>
+        )}
+      </dd>
+
+      <dt>最近驗證時間</dt>
+      <dd>
+        {hit.verified_at ? (
+          hit.verified_at.slice(0, 10)
+        ) : (
+          <span className="note">尚未匯入內容</span>
+        )}
+      </dd>
+    </dl>
   );
 }
 
@@ -237,6 +477,7 @@ function SearchResultRow({
           )}
         </p>
       )}
+      <ResultFacets hit={hit} />
       {/*
         DISC-004: every candidate shows the score the order was built from.
         `rank` is null exactly when there is no similarity to show — the whole

@@ -178,6 +178,65 @@ main {
   gap: 20px;
 }
 
+/* DISC-003 filter bar. The unavailable dimensions keep their reason visible
+   rather than hiding it in a tooltip: a disabled control with no stated cause
+   reads as a bug, and the cause is the honest part of the feature. */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 20px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.filter-bar label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  max-width: 220px;
+}
+
+.filter-bar > .note {
+  flex-basis: 100%;
+}
+
+.filter-unavailable {
+  opacity: 0.65;
+}
+
+.filter-unavailable .note {
+  font-size: 12px;
+}
+
+/* The 02:DISC-002 columns on a result row. */
+.result-facets {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+.result-facets dt {
+  opacity: 0.7;
+}
+
+.result-facets dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge-untested {
+  border-color: var(--accent-border);
+}
+
 .search-result p {
   margin: 2px 0;
 }

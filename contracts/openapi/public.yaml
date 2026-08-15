@@ -264,6 +264,30 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - name: script
+          in: query
+          required: false
+          schema: { type: string, enum: [yes, no] }
+          description: |
+            DISC-003 filter on whether the package carries runnable code, as
+            recorded by the import scan: a script file in the tree, or code
+            embedded in SKILL.md itself (SKILL-003). Absent = not filtered.
+
+            A row the projection holds no scan for matches neither value. It is
+            not known to have a script and it is not known to be free of one,
+            and answering `no` for it would be the 不得自行推定為通過 that
+            DISC-004 forbids. Such rows leave a filtered page and return when
+            the filter is cleared.
+        - name: validation
+          in: query
+          required: false
+          schema: { type: string, enum: [passed, unverified] }
+          description: |
+            DISC-003 filter on the spec-validation axis of `compatibility`.
+            `passed` is a skill with a saved version — static validation blocks
+            the import on any error-level finding, so a stored version is the
+            evidence. `unverified` is a skill with no saved content, which is
+            never reported as failed. Absent = not filtered.
       responses:
         "200":
           description: Ranked matches with match reasons, or empty list.
@@ -271,6 +295,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicSearchResponse"
+        "400":
+          description: |
+            An unusable filter. Either a `script`/`validation` value outside its
+            enum, or one of the four 02:DISC-002 dimensions this build has no
+            per-row data for — `category`, `tier`, `agent`, `mcp`. Those are
+            rejected rather than ignored: answering a filtered request with an
+            unfiltered page would present the whole catalog as the filtered
+            subset. The error message names the dimension and why it is
+            unavailable, and the UI shows the same reason on a disabled control
+            rather than offering a filter that does nothing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /api/skills/{id}:
     get:
       operationId: getSkillDetail
@@ -771,7 +808,8 @@ components:
           format: uuid
     PublicSearchResponse:
       type: object
-      required: [query, results, degraded, no_results, partial_index]
+      required:
+        [query, results, degraded, no_results, partial_index, filtered_out]
       properties:
         query:
           type: string
@@ -816,12 +854,26 @@ components:
             `degraded`: no_results with degraded false means nothing in the
             catalog is close enough, while no_results with degraded true only
             means the lexical floor found nothing and recall was already reduced.
+
+            Always false when `filtered_out` is true.
+        filtered_out:
+          type: boolean
+          description: |
+            True when the query did match skills and the active DISC-003 filters
+            removed every one of them (results is then empty).
+
+            Kept apart from `no_results` because the two call for opposite
+            actions: no_results means the catalog holds nothing close enough and
+            the query should be described differently, while filtered_out means
+            it does hold matches and the filters should be widened. The two must
+            not share copy, and `query_suggestion` is absent here — advice about
+            rewriting the query would be advice about the wrong thing.
         query_suggestion:
           type: string
           description: |
             Copy to show with a no-results answer, prompting the user to add the
             task, the input they have and the output they want (DISC-001).
-            Absent when there are results.
+            Absent when there are results, and absent when `filtered_out`.
     SearchResultRisk:
       description: |
         Compact risk hint for a result row (DISC-002 風險提示). Unlike

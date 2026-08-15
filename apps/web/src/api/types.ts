@@ -105,8 +105,29 @@ export interface PublicSearchResponse {
   /** At least one result has no embedding yet, so the cut-off never judged it. */
   partial_index: boolean;
   no_results: boolean;
+  /**
+   * The query matched skills and the active filters removed all of them.
+   * Never true at the same time as `no_results`: one asks the user to widen a
+   * filter, the other to describe the task differently, so the copy for the two
+   * empty states must not be shared.
+   */
+  filtered_out: boolean;
   /** Copy to show with a no-results answer. Absent when there are results. */
   query_suggestion?: string;
+}
+
+/**
+ * DISC-003 filter state, mirrored 1:1 by the URL search params so a filtered
+ * result page is linkable. `undefined` is "this dimension is not filtered",
+ * which is a third state distinct from `no`/`unverified`.
+ *
+ * Only the two dimensions with per-row data are here. 類別／來源層級／Agent
+ * 相容／MCP are rejected by the server with the reason why (see
+ * UNAVAILABLE_FILTERS in Home.tsx) and are rendered as disabled controls.
+ */
+export interface SearchFilters {
+  script?: "yes" | "no";
+  validation?: "passed" | "unverified";
 }
 
 // ---- GET /api/skills/{id} (DISC-006, DISC-008) ----

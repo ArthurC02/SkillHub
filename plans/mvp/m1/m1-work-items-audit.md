@@ -1,7 +1,8 @@
 # M1 工作項對帳（`03-work-items.md` 第 4～8 節）
 
-- 日期：**2026-08-15**
-- 基準 commit：**`9ab422b`**（`Fix the four M1 import-report platform bugs and widen CONTENT-006 scanning`）
+- 日期：**2026-08-15**（第一次對帳）／**2026-08-15 第二次對帳，範圍僅 §7 DISC**
+- 基準 commit：第一次 **`9ab422b`**（`Fix the four M1 import-report platform bugs and widen CONTENT-006 scanning`）；§7 DISC 的判定已於 **DISC-003 篩選器落地後重做**，見 §5 開頭的說明
+- 第二次對帳只重驗 §7 DISC。**§2／§3／§4／§6（CONTENT／CORE／INGEST／WS）維持第一次對帳的判定**，其基準仍是 `9ab422b`，其中提到的 DISC 現況已被 §5 取代
 - 範圍：`03-work-items.md` 的 **§4 CONTENT／§5 CORE／§6 INGEST／§7 DISC／§8 WS**，逐項對照 [`02-specifications-and-acceptance-criteria.md`](../02-specifications-and-acceptance-criteria.md) 的允收準則。
 - 方法：**只採信 repo 內可指名的落地證據**——migration 檔、Go 檔與匯出符號、具名測試函式、CI 設定、已交付報告。沒有證據的項目一律記「未動」，不以「應該有」補位。
 - 判定值：**完全符合**（勾 `[x]`）／**部分完成**（不勾，列缺口）／**進行中**（另一位協作者的未 commit 工作，不勾）／**未動**（不勾）。
@@ -18,11 +19,13 @@
 | §4 CONTENT | 9 | 0 | 2 | 2 | 0 | 5 |
 | §5 CORE | 8 | **2** | 4 | 0 | 0 | 2 |
 | §6 INGEST | 13 | 0 | 12 | 0 | 0 | 1 |
-| §7 DISC | 10 | 0 | 0 | 3 | 4 | 3 |
+| §7 DISC（第二次對帳後） | 10 | **9** | 0 | **1** | 0 | 0 |
 | §8 WS | 6 | **1** | 4 | 0 | 0 | 1 |
-| **合計** | **46** | **3** | **22** | **5** | **4** | **12** |
+| **合計** | **46** | **12** | **22** | **3** | **0** | **9** |
 
-**本次新勾三項：`CORE-005`、`CORE-006`、`WS-006`。** 三項的共同特徵是——允收準則本身就是一條可測的行為斷言，而該斷言有具名測試，且該測試在 CI 裡**確實會執行**（見 §3.1 的 CI 佐證）。其餘所有「看起來已完成」的項目，卡點都不在後端程式，而在**UI 未接線**或**允收準則涵蓋的範圍比已落地的部分更寬**。
+**§7 DISC 第二次對帳新勾九項：`DISC-001`、`002`、`004`、`005`、`006`、`007`、`008`、`009`、`010`；`DISC-003` 維持不勾**（六個篩選維度只有兩個有逐筆資料，見 §5.3）。第一次對帳把整節判為「後端做得比帳面深，缺的是接線」，這次驗證的正是接線是否真的完成——順帶補上了三處第一次對帳沒有查到的實際缺口：搜尋結果列沒有渲染七欄、詳情頁沒有渲染「限制」、比較表把 `tier` 標成「類別」。
+
+**第一次對帳新勾三項：`CORE-005`、`CORE-006`、`WS-006`。** 三項的共同特徵是——允收準則本身就是一條可測的行為斷言，而該斷言有具名測試，且該測試在 CI 裡**確實會執行**（見 §3.1 的 CI 佐證）。其餘所有「看起來已完成」的項目，卡點都不在後端程式，而在**UI 未接線**或**允收準則涵蓋的範圍比已落地的部分更寬**。
 
 ---
 
@@ -110,28 +113,63 @@ INGEST-001～009 **先前已勾，本次逐項複核維持有效**，並確認 [
 
 ## 5. §7 Skill Explorer（DISC）— M1 驗證閘門所在
 
-**本節 10 項全部不勾。** 這不是後端沒做，而是**允收準則寫在使用者可見的行為上**，而 UI 與後端之間有一道明確的接線缺口。
+> **本節為第二次對帳（2026-08-15，DISC-003 篩選器落地後）。** 第一次對帳時本節 10 項全部不勾，卡點不在後端而在 §5.1 列的三個結構性缺口。**三個缺口目前全部關閉**，本次逐項重驗後 **勾選 9 項，DISC-003 維持不勾**。判定標準與前次相同：允收準則逐條對照，且每條要有 repo 內可指名的落地證據（檔案＋符號／具名測試），測試須在 CI 真的會跑。
 
-### 5.1 全節共通的三個結構性缺口
+### 5.1 第一次對帳三個結構性缺口的現況
 
-1. **前端打錯路由。** `apps/web/src/pages/Home.tsx` 走 `useSkillSearch` → `GET /skills/search`（`cmd/api/main.go:98`，包 `RequireSession`），而公開搜尋是 `GET /api/skills/search`（第 96 行，**刻意不包 session**）。因此 **DISC-001 的「使用者可在未登入狀態完成搜尋」在 UI 上不成立**，儘管後端已備妥。
-2. **三個前端呼叫的後端路由不存在**：`GET /skills/{id}`（詳情）、`/skills/{id}/files`（檔案樹）、`/skills/{id}/versions`。`apps/web/src/api/skills.ts` 的檔頭註解自己寫明了這件事，`contracts/openapi/public.yaml` 的 `/skills/{id}` 也只有 DELETE。
-3. **結構化篩選完全不存在。** `PublicSearch` 沒有任何 filter 參數，SQL 沒有對應述詞。
+| 第一次對帳的缺口 | 現況 | 證據 |
+| --- | --- | --- |
+| 1. 前端打錯路由（走需登入的 `GET /skills/search`） | **已關閉** | `apps/web/src/api/skills.ts` `searchSkills` 打 `/api/skills/search`；測試 `DISC-001: search hits the public endpoint, which needs no session` **同時斷言不得打到不含 `/api/` 的那條** |
+| 2. 三個前端呼叫的後端路由不存在 | **已關閉（兩條）** | `cmd/api/main.go:102-103` 掛上 `GET /api/skills/{id}`、`GET /api/skills/{id}/files`（皆 `OptionalSession`）；`catalog/detail.go` 實作。`GET /skills/{id}/versions` 仍不存在，但無允收準則要求它 |
+| 3. 結構化篩選完全不存在 | **部分關閉** | `db/queries/search.sql` 兩個公開查詢都帶 `has_script`／`spec_validated` 述詞；`catalog/http.go` `searchFilters`／`parseFilters`；UI `FilterBar`。**六維度只做到兩個，見 5.3** |
 
-### 5.2 逐項
+### 5.2 逐項判定
 
-| 項目 | 判定 | 已落地的部分 | 未達允收準則之處 |
+| 項目 | 判定 | 允收準則對照與證據 |
+| --- | --- | --- |
+| **DISC-001** 自然語言意圖搜尋 | **✅ 勾選** | `02:DISC-001` 四條全滿足。①候選或清楚無結果狀態：`catalog/http.go` `PublicSearch` ＋ `Home.tsx` 的 `no_results` 區塊。②保留原始查詢：`searchResponse.Query` 回傳並由 `Home.tsx` 的 `.echoed-query` 原樣顯示；符合原因逐筆顯示並標示來源，測試 `DISC-002: each candidate shows its match reason, labelled by provenance`、Go `TestMatchReasonsAreLabelledByProvenance`。③空白／不可理解不建立搜尋並提示：`isComprehensible`，Go `TestBlankQueryReturnsNoResults`、web `DISC-005: no_results shows the server's query_suggestion, not hardcoded copy`。④未登入可搜尋與看公開 Skill：`main.go:96` 裸掛載搜尋、`:102-103` 以 `OptionalSession` 掛詳情與檔案樹，Go `TestAnonymousReadsCatalogSkillDetail`（無 cookie jar 的 client）、`TestPublicSearchSeesOnlyCatalogWorkspaces` |
+| **DISC-002** 候選 Skill 與符合原因 | **✅ 勾選** | `02:DISC-002` 第 1、4 條。七欄（名稱、白話摘要、來源層級、Agent 相容狀態、依賴、風險提示、最近驗證時間）API 側 Go `TestSearchResultsCarryTheDISC002Columns`，**UI 側本次補上** `Home.tsx` `ResultFacets`，測試 `DISC-002: a result row carries all seven columns, and infers none of them`。「尚未試跑」標記：`badge-untested`，同一測試斷言。不推定：未掃描列顯示「尚無掃描紀錄」、空依賴顯示「未擷取到依賴資訊」，同一測試反向斷言 |
+| **DISC-003** 六維度篩選 | **❌ 不勾（部分完成）** | 見 5.3 |
+| **DISC-004** 可解釋的排序規則 | **✅ 勾選** | `02:DISC-002` 第 3 條。「不得只使用 Star」：排序管線**完全不含**人氣或時間訊號，唯一排序權威是餘弦距離（`search.sql` `PublicHybridSearchSkills`，Go `TestFTSWidensCandidatesWithoutTakingOverRanking`、`TestZeroHitLegDoesNotParticipateInFusion`）。「排序依據需可被簡要說明」：`Home.tsx` `RankingExplainer` 以繁中列出六條規則含兩個例外，且**當下生效的例外會被標出**；測試 `DISC-004: the ranking rule is explained on demand and matches the pipeline`、`DISC-004: a degraded answer marks the exception that is actually in force`。本次另補「篩選條件不影響名次」一條，並由 Go `TestFiltersOnTheHybridPathRemoveRowsWithoutReranking` 實測（篩選後存活列的 rank 與篩選前逐位元相同） |
+| **DISC-005** 無結果、低信心及查詢補充流程 | **✅ 勾選** | `02:DISC-001` 第 3 條與門檻行為。門檻 `MaxCosineDistance = 0.75`，**已依 golden-query-set.md §10.5 以真實增強語料重新推導**（12/12 離題拒答、0/48 召回損失），第一次對帳指出的「0.79 由裸 frontmatter 推導、已逾期」缺口因此關閉。四個空狀態旗標分離（`no_results`／`degraded`／`partial_index`／本次新增的 `filtered_out`），UI 四者各有不同文案且不共用。測試：Go `TestOffTopicQueryIsRefusedWithASuggestion`、`TestRelevantQueryIsNotRefusedByTheCutOff`、`TestPartialIndexIsReportedSeparatelyFromDegradation`、`TestFilteredToEmptyIsNotTheNoResultsRefusal`；web `DISC-005: degraded and partial_index are separate, non-blocking notices`、`DISC-003: filtered-to-empty and the no-results refusal never share copy` |
+| **DISC-006** Skill 一般詳情頁 | **✅ 勾選** | `02:DISC-003` 第 1 條要求九項：功能、限制、輸入、輸出、依賴、權限、來源、License、相容性摘要。API 九項齊備（`catalog/detail.go` `skillDetail`）。**UI 本次前為 8／9——`limitations` 有回傳但 `SkillDetail.tsx` 從未渲染**；本次補上 `Limitations` 元件（模型與掃描兩種來源分別標示，ADR-013），並把 `enrichment` pending／空 bucket 的輸入／輸出／依賴由「整列消失」改為顯示「未知」（消失會被讀成「沒有依賴」）。測試 `DISC-006: the general detail view answers all nine required facts`、`DISC-006: an unenriched skill reads as unknown, never as 'needs nothing'` |
+| **DISC-007** `SKILL.md` 與檔案樹進階檢視 | **✅ 勾選** | `02:DISC-003` 第 2 條。`GET /api/skills/{id}/files` 回傳 `SKILL.md` 全文（含 `skill_md_truncated` 上限旗標）與含 `is_script` 的檔案樹；`SkillFiles.tsx` 渲染全文與樹，Script 以 `.script-tag` 明確標示，並重複揭露 SKILL.md 內嵌程式碼（`SKILL-003`，檔案樹本質上看不到它）。一般／進階為兩條路由並雙向可回。測試 Go `TestFileTreeMarksScriptsAndOmitsDirectories`、`TestSkillFilesServesSkillMDAndMarksScripts`；web **本次補上** `DISC-007: advanced mode shows SKILL.md in full and marks every script`（斷言標記只落在腳本那一列） |
+| **DISC-008** 來源／License／風險／相容狀態展示 | **✅ 勾選** | `02:DISC-003` 第 3、4 條與 `02:DISC-004` 第 3 條。①來源四項（URL、版本/Commit、擷取時間、內容雜湊）由 `ingest/service.go` `CreateSkillSource` 保存、`detail.go` `sourceFrom` 回傳、`SkillDetail.tsx` `SourceBlock` 顯示，Go `TestAnonymousReadsCatalogSkillDetail` 斷言內容雜湊。②License 未知時顯示「License 未知」並附「未宣告 License，依規則不可下載」，**不顯示任何 License 名稱、不暗示可自由修改或再散布**，測試 `DISC-008: unknown license never shows a name or implies permissiveness`、Go `TestLicenseKeepsProvenanceTierAndNeverConfirms`。③風險不給單一「安全」標章、警告在前提示彙總（`DISC-008: warnings are up front...`），無法讀取套件時報「未知」而非「乾淨」（`DISC-004: an unreadable package is reported as unknown, never as a clean scan`、Go `TestUnreadablePackageIsReportedAsUnknownNotClean`）。④相容三軸分開且沙箱兩軸明示未驗證（`TestSpecValidationIsSeparateFromRuntimeCompatibility`） |
+| **DISC-009** 至少兩個 Skill 的靜態比較 | **✅ 勾選** | `02:DISC-004` 三條。①可選 2～3 個候選：`Home.tsx` 勾選框＋`CompareBar`，`Compare.tsx` `MAX_COMPARE = 3`，測試 `DISC-009: comparison needs two candidates and accepts at most three`（含第四個勾選被拒而非默默頂掉前一個）。②比較內容涵蓋能力、輸入輸出、依賴、權限、相容性、來源、License、驗證證據八項（`Compare.tsx` `ROWS`，另含限制、來源層級、風險揭露、版本與時間）。③缺資料顯示未知且不推定為通過：`.compare-unknown`，且「未知」在差異比對中是獨立值，不會與「有值」比成相同，測試 `DISC-009: the table highlights differing rows and never invents a missing one`。**本次修正**：`ROWS` 中渲染 `tier` 的那一列原本標成「類別」，與平台實際沒有類別資料互相矛盾，已改回「來源層級」 |
+| **DISC-010** 公開不要求登入／私有要求登入 | **✅ 勾選** | 允收準則兩半皆成立。公開側：`main.go:96` 搜尋裸掛載、`:102-103` 詳情與檔案樹 `OptionalSession`（匿名得公開目錄，帶 session 者額外得自己的私有內容），Go `TestAnonymousReadsCatalogSkillDetail`、`TestSkillFilesServesSkillMDAndMarksScripts`（皆以無 cookie 的 client 請求）、web `DISC-001: search hits the public endpoint...`。私有側：`main.go` 的 import／list／fork／versions／diff／delete／takedown 全部包 `RequireSession`，Go `TestPrivateContentIsolatedAcrossWorkspaces`（匿名 `DELETE` 回 401）、`TestAnonymousCannotReadPrivateSkillDetail`（詳情與檔案樹對他人私有內容皆回 404，不是 403） |
+
+### 5.3 DISC-003 為何不勾：六維度只落地兩個
+
+`02:DISC-002` 的字面要求是「使用者可依**類別、來源層級、Agent、是否包含 Script、是否需要 MCP 與驗證狀態**篩選」。逐維度盤點平台實際有沒有逐筆資料：
+
+| 維度 | 有無資料 | 處置 | 解除條件 |
 | --- | --- | --- | --- |
-| DISC-001 自然語言意圖搜尋 | **部分完成** | 後端 `catalog/http.go` `PublicSearch` 完整：向量＋FTS、保留原始查詢（`searchResponse.Query`）、空白／不可理解查詢不建立搜尋（`isComprehensible`，測試 `TestBlankQueryReturnsNoResults`）。前端有搜尋框與結果列表 | AC「未登入可完成搜尋」**UI 未達成**（§5.1-1）。AC「顯示每個候選與需求相符的原因」未達成：`api/types.ts` 的 `SearchHit` **沒有 `match_reason` 欄位**，Home.tsx 也沒渲染 |
-| DISC-002 候選 Skill 與符合原因 | **部分完成** | `applyMatchReasons`、`templateMatchReason`、`overlapTerms`；供應來源**逐候選**標記 `model`／`template`（測試 `TestMatchReasonsAreLabelledByProvenance`，回應 import-report Bug 3） | `02:DISC-002` 要求每個結果至少顯示**名稱、白話摘要、來源層級、Agent 相容狀態、依賴、風險提示、最近驗證時間**七項；Home.tsx 只渲染名稱與摘要兩項。「尚未試跑」標記未出現在結果列 |
-| DISC-003 篩選（類別／來源／Agent／Script／MCP／驗證狀態） | **未動** | — | 六種篩選**一種都沒有**。`enrich.go` 的註解已載明結構化篩選將讀 manifest 而非索引投影，方向有了，程式沒有 |
-| DISC-004 可解釋的排序規則 | **部分完成** | 排序規則本身已定案並落地：向量餘弦距離為唯一排序權威，`rank = 1 - COALESCE(distance,1)`，FTS 腿只擴大候選集不搶排序（`db/queries/search.sql` 的註解引 golden-query-set.md §3.7；測試 `TestFTSWidensCandidatesWithoutTakingOverRanking`、`TestZeroHitLegDoesNotParticipateInFusion`）。**AC「不得只使用 Star」確定滿足** | AC「排序依據需**可被簡要說明**」是對使用者的說明義務；目前排序理由只存在於 SQL 註解與本 repo 文件，**API 回應與 UI 都沒有任何排序說明** |
-| DISC-005 無結果、低信心及查詢補充流程 | **部分完成** | **後端完整落地，且門檻確實來自 golden set**：`MaxCosineDistance = 0.79`（`catalog/http.go:73`）＝ golden-query-set.md §4.3 建議值 B「餘弦相似度 ≥ 0.21」的等價距離。`NoResults`／`QuerySuggestion`／`PartialIndex` 三個欄位分離；測試 `TestOffTopicQueryIsRefusedWithASuggestion`、`TestRelevantQueryIsNotRefusedByTheCutOff`、`TestPartialIndexIsReportedSeparatelyFromDegradation`、`TestBlankQueryReturnsNoResults` | **UI 未接線**：Home.tsx 第 31-33 行以 `results.length === 0` 自行判斷，渲染一句寫死的中文，**完全沒有讀 `no_results` 與 `query_suggestion`**。`SearchHit` 型別也沒有這些欄位。使用者因此看不到後端算出的補充建議，「低信心」與「查無結果」在畫面上無法區分 |
-| DISC-006 Skill 一般詳情頁 | **進行中，不勾** | `apps/web/src/pages/SkillDetail.tsx` 已寫（badges、fork 血緣、功能／限制／輸入／輸出／依賴／權限／來源＋License／相容性／風險各區塊） | 後端 `GET /skills/{id}` **不存在**，`api/types.ts` 分隔線以下的型別全是推測。且 `apps/web` 有另一位協作者的未 commit 變更 |
-| DISC-007 `SKILL.md` 與檔案樹進階檢視 | **進行中，不勾** | `apps/web/src/pages/SkillFiles.tsx` 已寫（一般／進階切換、`SKILL.md` 全文、檔案樹標示 `is_script`） | 後端 `GET /skills/{id}/files` **不存在**。同上 |
-| DISC-008 來源／License／風險／相容狀態展示 | **進行中，不勾** | 四個元件齊備：`TrustBadge`（來源未知／可追溯／已人工確認）、`LicenseBadge`（**未知時渲染「授權未知」並隱藏名稱**，正面回應 `02:DISC-003`）、`RiskIndicator`（腳本／外部 URL／疑似 Secret 三項分列，**刻意不給單一「安全」標章**）、`CompatibilityStatus` | 後端 `catalog/trust.go`、`catalog/tier.go` **沒有任何 handler 引用**，沒有 API 供應這些資料。元件目前無真實資料來源 |
-| DISC-009 至少兩個 Skill 的靜態比較 | **未動** | — | **確認未落地。** 唯一的比較設施是 `registry/diff.go`，而它 `diff.go:37` 明確拒絕跨 Skill：`v.SkillID != skillID` 即回 `ErrNotFound`——它比的是**同一個 Skill 的兩個版本**（WS-003），與 `02:DISC-004`「選擇至少兩個候選 Skill 進行靜態比較」是不同的東西。`02:DISC-004` 另要求缺資料欄位顯示未知、不得推定為通過，亦無實作 |
-| DISC-010 公開不要求登入／私有要求登入 | **部分完成** | 公開搜尋確實免登入（`cmd/api/main.go:96` 裸掛載），scope 純由 SQL 的 `is_catalog` 把關，測試 `TestPublicSearchSeesOnlyCatalogWorkspaces`；私有側全部包 `RequireSession`，測試 `TestPrivateContentIsolatedAcrossWorkspaces` 驗證匿名 401 | AC 是「公開搜尋**與詳情**不要求登入」。**公開詳情端點根本不存在**，無從驗證。另 `identity.OptionalSession` 已實作且有單元測試，卻**未掛到任何路由** |
+| **是否包含 Script** | ✅ 有 | **已實作**。述詞讀 `search_documents.scan` 的 `script-file`／`embedded-script` 兩個 code（後者是 `SKILL-003` 的 SKILL.md 內嵌程式碼，使用者問「有沒有腳本」時兩者都算）。**無掃描紀錄的列 `yes`／`no` 都不匹配**——沒人掃過就不是「沒有腳本」，這正是 `02:DISC-004`「不得自行推定為通過」 | — |
+| **驗證狀態** | ✅ 有 | **已實作**。`passed` ＝ 有已保存版本（`skillpkg.Validate` 遇 error 級發現即擋下匯入且不保存，所以「被索引」本身就是通過的證據）；無版本 ＝ `unverified`，永不報 `failed` | — |
+| **類別** | ❌ 無 | 停用＋說明；API 回 400 | 三個 PDM-001 類別目前**只存在於 `tools/content/seed-skills.json` 的策展判斷**，沒有任何欄位保存它，匯入端點收的是套件不是類別，使用者自行匯入的 Skill 根本不會有類別。落地它屬 **CONTENT-003 策展工作**（需 migration＋匯入契約欄位＋匯入器改動），不屬搜尋工作 |
+| **來源層級** | ⚠️ 有欄位但只有一個值 | 停用＋說明；API 回 400 | `resultFacets` 對每一列無條件給 `TierIndexed`，因為**沒有任何東西記錄人工精選審查**（`tier.go` 說明；被收錄不等於被審查）。全目錄同值時篩選分不出東西，且 tier 不在 SQL 裡，硬做只會是 `WHERE true`／`WHERE false`。待 CONTENT-003 的九項檢查表產出實際 curated 判定後重開 |
+| **Agent 相容** | ❌ 無 | 停用＋說明；API 回 400 | `capability`／`runtime` 兩軸在 M2 Sandbox 之前一律 `unverified`。提供篩選等於暗示有人做過判定 |
+| **是否需要 MCP** | ❌ 無 | 停用＋說明；API 回 400 | 靜態掃描與 manifest **都沒有捕捉任何 MCP 訊號**，遠端 MCP 也已移出 MVP 首發（AGENTS.md 範圍注意）。這是四項裡唯一連資料來源都還沒定義的 |
+
+**四個無資料維度的處置原則**：不隱藏、不假裝。UI 以停用的控制項＋逐項理由呈現（`Home.tsx` `UNAVAILABLE_FILTERS`），API 對這四個參數回 **400 並附理由**（`catalog/http.go` `unavailableFilters`）。理由是**默默忽略比拒絕更糟**——一個帶 `?category=documents` 的分享連結若回傳整個目錄，使用者會把整個目錄當成篩選後的子集。測試 `TestFilterDimensionsWithoutDataAreRejectedNotIgnored`（六個壞參數逐一斷言 400）、web `DISC-003: the filters the platform has no data for are disabled and say why`。
+
+**已落地部分的測試**：Go `TestFiltersNarrowOnRealEvidenceIncludingTheDegradedPath`（單維度、組合、無掃描列兩邊都不匹配，且**跑在降級 FTS 路徑上**——降級已經是低召回，再默默不套使用者的篩選就是對頁面內容說謊）、`TestFiltersOnTheHybridPathRemoveRowsWithoutReranking`、`TestFilteredToEmptyIsNotTheNoResultsRefusal`；web `DISC-003: a chosen filter reaches the request and the shareable URL`（含 URL 可分享與清除維度時參數消失）。
+
+**殘餘缺口（DISC-003 勾選前必須關閉）**：
+
+1. 類別維度：需先由 CONTENT-003 決定類別是否成為平台欄位，以及使用者自行匯入的 Skill 如何取得類別。
+2. 來源層級維度：需 CONTENT-003 的人工精選審查產出至少兩種 tier 值。
+3. Agent 相容維度：需 M2 Sandbox 試跑結果。**M1 內結構性不可能完成。**
+4. MCP 維度：需先定義訊號來源（掃描 manifest？SKILL.md？），且遠端 MCP 已移出 MVP 首發。
+
+> **建議**：第 3、4 項在 M1 內不可能收斂。若要讓 DISC-003 有機會在 M1 結束前勾選，應**先修改 `02:DISC-002` 的允收準則**，把 Agent 與 MCP 兩個維度標成 M2／後 MVP，再由該修改驅動本項——而不是靠降低證據標準勾選。依 AGENTS.md 文件維護規則，改允收準則要三文件同步。
+
+### 5.4 殘餘風險（不影響勾選，但應記錄）
+
+1. **整合測試的路由是抄的，不是 `main.go` 的。** `authz_integration_test.go` 與 `governance_integration_test.go` 各自重新宣告一份 mux。`main.go` 若掉了某條 `RequireSession`，現有測試不會紅；且 `POST /skills/import/url` 與 `POST /skills/{id}/versions` **不在任何測試 mux 裡**。DISC-010 的行為目前正確（已逐行核對 `main.go:88-115`），但這道保護是靠人讀出來的。建議把路由組裝抽成一個可被測試匯入的函式。
+2. **Fork 血緣的詳情頁渲染沒有測試。** `detail.go` 回傳 `derivation`、`SkillDetail.tsx` 也渲染了原始 Skill 連結與分岔版本 ID，但沒有任何測試斷言**詳情回應**帶 derivation；`TestForkCatalogSkillIntoCallerWorkspace` 驗的是 fork 端點的回應。這是 `02:DISC-003` 第 5 條，行為正確但無回歸保護。
+3. **篩選述詞跑在候選視窗之後。** 混合檢索兩腿各取 50 筆候選後才套篩選，目錄 45 筆時無人不可達；目錄長大後需把述詞下推到兩個 CTE（`search.sql` 已留 `ponytail:` 註記）。
+4. **`02:DISC-003` 的字面用詞是「授權未知」，程式顯示的是「License 未知」。** 語意等價且更精確（同一畫面另有 License 名稱與溯源層級兩軸），但字面不同。若要求逐字一致，改的是 `trust.go` 的一個字串。
 
 ---
 
@@ -160,16 +198,18 @@ M1 驗證閘門的敘述是「**使用者能以自然語言找到相關 Skill**�
 | --- | --- | --- |
 | **量化前置（檢索品質）** | ✅ **已過** | [golden-query-set.md §5](golden-query-set.md)：60 條查詢／31 份語料／13 repo，向量腿 Top-3 96%、recall@5 96%，繁中跨語言 recall@5 93%；干擾查詢與正解的相似度分布**完全不重疊**，門檻 B 可做到 100% 拒答／0% 召回損失 |
 | **索引管線就緒** | ✅ **已就緒** | [import-report.md §3](import-report.md)：44/45 匯入成功、`enrichment_status='enriched'` 44/44、embedding 44/44、`task_examples` 44/44；`cmd/reindex` backfill 冪等（`enriched=0 still_pending=0`）。§5.2 的 smoke 顯示中文文件類由「全滅」變 4/4 Top-1 |
-| **使用者測試** | ❌ **未執行，且目前不具備執行條件** | 需真人；且 §5 列出的 UI 接線缺口會讓測試量到「缺工序的中間態」 |
+| **使用者測試** | ❌ **未執行；UI 阻擋已解除，剩 CONTENT-005 一項前置** | 需真人。第一次對帳列的兩條 UI 阻擋（看不到符合原因與補充建議、點進詳情會壞掉）**已於第二次對帳確認關閉**，見 §5.1／§5.2；剩下的前置是 CONTENT-005 |
 
 ### 7.2 為什麼現在還不能開始使用者測試
 
 golden-query-set.md §5 已經給過一條前提：**使用者測試應排在 CONTENT-005（白話摘要）與索引時增強管線就緒之後**，否則 `documents` 類別的結論不具代表性。索引時增強已就緒（import-report §3），但**CONTENT-005 未動**——目前目錄裡有 5 個簡體中文 Skill（`data-analyst` 與 YuYY2004 系列）尚未改寫為繁體中文。
 
-在此之上，本次對帳新增兩條更硬的阻擋：
+第一次對帳在此之上列了兩條更硬的 UI 阻擋，**兩條在第二次對帳都已關閉**，此處保留紀錄：
 
-1. **受測者在 UI 上看不到符合原因、也看不到查詢補充建議**（§5.2 的 DISC-001／002／005）。閘門要驗的正是「找得到」，而使用者判斷「找到的對不對」靠的就是符合原因。
-2. **點進搜尋結果會壞掉**——詳情頁呼叫的後端路由不存在（§5.1-2）。受測者無法完成「搜尋→詳情」這段旅程。
+1. ~~受測者在 UI 上看不到符合原因、也看不到查詢補充建議~~ → 已關閉：符合原因逐筆顯示並標示模型／規則來源，查詢補充建議直接取用伺服器文案（§5.2 的 DISC-001／002／005）。
+2. ~~點進搜尋結果會壞掉——詳情頁呼叫的後端路由不存在~~ → 已關閉：`GET /api/skills/{id}` 與 `/files` 已掛載且免登入，「搜尋→詳情→進階檢視」整條旅程可走完（§5.1-2、DISC-006／007／010）。
+
+**因此使用者測試目前唯一的實質前置是 CONTENT-005。** 附帶提醒：受測者現在會看到一列有四個停用篩選器的篩選列（DISC-003，§5.3），這是刻意的誠實呈現，但**它本身值得在使用者測試裡量一下**——受測者是否把「無法篩選」讀成「壞掉了」。
 
 ### 7.3 建議的使用者測試流程（待前置解除後執行）
 
@@ -182,7 +222,9 @@ golden-query-set.md §5 已經給過一條前提：**使用者測試應排在 CO
 | **同時要量的** | 受測者是否需要看符合原因才敢點進去；排序理由是否需要解釋 | 直接回答 DISC-002／004 目前的兩個缺口 |
 | **回歸把關** | 每次動語料或索引管線就跑 `python tools/goldenset/evaluate.py --selfcheck`（零成本、零網路） | golden-query-set.md §8.1 的建議；目前**尚未接進 CI** |
 
-> ⚠️ **門檻會過期。** golden-query-set.md §4.4 明列三個必須重測的觸發條件，其中第 2 條「索引欄位換成真實的 LLM 增強產出」**已經發生**（import-report §3 證實 44/44 已 enriched）。目前線上的 `MaxCosineDistance = 0.79` 是在**裸 frontmatter** 語料上推導的，**嚴格說已經逾期，應在使用者測試前以增強後的語料重跑一次門檻推導**。這是本次對帳發現的、尚未被任何工作項承接的缺口。
+> ⚠️ **門檻會過期。** golden-query-set.md §4.4 明列三個必須重測的觸發條件。第一次對帳指出第 2 條「索引欄位換成真實的 LLM 增強產出」已經發生，而當時線上的 `MaxCosineDistance = 0.79` 是在裸 frontmatter 語料上推導的、嚴格說已逾期。
+>
+> **這個缺口已關閉**：目前線上值是 `0.75`，由 golden-query-set.md §10.5 在**真實增強語料**上重新推導（12/12 離題拒答、0/48 召回損失），`catalog/http.go` 的常數註解記載了推導過程與三個重測觸發條件。**其中第 1 條（語料成長一個數量級）與第 3 條（查詢改寫）仍然有效，仍需在觸發時重測。**
 
 ---
 
@@ -194,18 +236,18 @@ golden-query-set.md §5 已經給過一條前提：**使用者測試應排在 CO
 
 | 順序 | 項目 | 為什麼是這個順位 |
 | --- | --- | --- |
-| 1 | **補後端 `GET /skills/{id}` 與 `/skills/{id}/files`** | 一次解除 **DISC-006／007／008／010** 四項。前端三個頁面與四個元件都已寫好，卡的只是沒有端點。這是全 M1 投報比最高的一步 |
-| 2 | **前端改打 `/api/skills/search`，並在 `SearchHit` 補 `match_reason`／`no_results`／`query_suggestion`／`degraded`／`partial_index`** | 一次解除 **DISC-001／002／005** 的 UI 側。後端全部備妥，純接線 |
-| 3 | **CONTENT-005 白話摘要**（含 5 個簡體中文 Skill 的繁中改寫） | golden-query-set.md §5 指名的使用者測試前置 |
-| 4 | **以增強後語料重跑門檻推導** | §7.3 的逾期問題。做在使用者測試前，否則測到的門檻不是上線的門檻 |
+| ~~1~~ | ~~補後端 `GET /skills/{id}` 與 `/skills/{id}/files`~~ | ✅ **已完成**（`main.go:102-103`、`catalog/detail.go`）。解除了 DISC-006／007／008／010 |
+| ~~2~~ | ~~前端改打 `/api/skills/search` 並補齊回應欄位~~ | ✅ **已完成**（`api/skills.ts`、`api/types.ts`、`Home.tsx`）。解除了 DISC-001／002／005 的 UI 側 |
+| **1** | **CONTENT-005 白話摘要**（含 5 個簡體中文 Skill 的繁中改寫） | golden-query-set.md §5 指名的使用者測試前置。**現在是使用者測試唯一剩下的實質前置** |
+| ~~4~~ | ~~以增強後語料重跑門檻推導~~ | ✅ **已完成**：線上值 `MaxCosineDistance = 0.75`，由 golden-query-set.md §10.5 在真實增強語料上推導 |
 
 ### 第二梯：M1 節內仍缺的實作
 
 | 順序 | 項目 | 備註 |
 | --- | --- | --- |
-| 5 | **DISC-003 結構化篩選** | 六種篩選零實作。需先決定資料來源（manifest vs 索引投影），`enrich.go` 註解已指向前者 |
-| 6 | **DISC-004 的排序說明** | 規則已定案且已落地，缺的只是把理由送到 API 回應與 UI。可與第 2 項合併做 |
-| 7 | **DISC-009 兩個 Skill 的靜態比較** | 需新端點；`registry/diff.go` **不可沿用**（它按設計拒絕跨 Skill） |
+| **2** | **DISC-003 的四個無資料維度** | 篩選骨架、SQL 述詞與 UI 都已落地，兩個有資料的維度（Script／驗證狀態）可用。剩下的**不是程式問題**：類別與來源層級等 CONTENT-003 策展產出，Agent 相容等 M2 Sandbox，MCP 連訊號來源都未定義。詳見 §5.3，含「先改允收準則再勾」的建議 |
+| ~~6~~ | ~~DISC-004 的排序說明~~ | ✅ **已完成**：`Home.tsx` `RankingExplainer`，兩個具名 web 測試 |
+| ~~7~~ | ~~DISC-009 兩個 Skill 的靜態比較~~ | ✅ **已完成**：`Compare.tsx`（比較在前端組合三次詳情查詢，未新增端點，因此 `registry/diff.go` 確實沒有被沿用） |
 | 8 | **WS-004 補齊 Test Case／Run／下載紀錄列表** | ⚠️ 這三者的**寫入端屬 M2**。M1 內合理的收斂是「列表為空時的正確空狀態」，或**明確把本項改列 M2** |
 | 9 | **INGEST-010 ＋ CONTENT-009**（失效／來源更新／人工下架） | 同一件事的兩面，應一起做。curated-skill-list.md §7 建議 4 已指名 `nqumich/data-analyst-skill` 或 `cabbagecachekid/neon-jetpack` 作為實際演練對象 |
 | 10 | **CORE-007 刪除流程**、**CORE-008 Audit Event** | 兩者都零實作，且都是 **NFR-002／SEC-005／SEC-006 的前置**。`cmd/worker` 目前是 21 行空殼，沒有 River、沒有任何 job——刪除保留期、session 清理、增強重試三件事目前全靠手動 |
@@ -219,4 +261,6 @@ golden-query-set.md §5 已經給過一條前提：**使用者測試應排在 CO
 
 ### 一句話總結
 
-**M1 的後端做得比帳面深，前端與後端之間差一層接線；真正的硬缺口只有三處：結構化篩選（DISC-003）、跨 Skill 比較（DISC-009），以及完全沒動的稽核與刪除（CORE-007／008）。** 驗證閘門本身卡在「使用者測試不能在半接線的 UI 上做」，而非檢索品質不足——檢索的量化前置早已通過，且有大幅餘裕。
+第一次對帳的結論是「後端做得比帳面深，前端與後端之間差一層接線」。**那層接線已經接完**：§7 DISC 十項中九項通過逐條允收準則驗證並勾選。
+
+**M1 剩下的硬缺口只有三處，而且沒有一處是 Explorer 的程式問題：CONTENT-005 白話摘要（使用者測試的唯一實質前置）、DISC-003 四個無資料維度所依賴的 CONTENT-003 策展產出，以及完全沒動的稽核與刪除（CORE-007／008）。** 驗證閘門現在卡在「還沒找真人做使用者測試」，而不再是「UI 做不完整所以不能做測試」。

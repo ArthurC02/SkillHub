@@ -157,7 +157,11 @@ func writeJSON(w http.ResponseWriter, v any) {
 // object store, version row, search projection — so the facets a result row
 // reads were written the way production writes them. No LLM: the scan-derived
 // facets must not depend on one.
-func importPackage(t *testing.T, pool *pgxpool.Pool, store packageStore, owner *client, name string) {
+//
+// withScript decides whether the package carries one, which is the evidence the
+// DISC-003 script filter reads. Returns the new skill's id so a test can seed an
+// embedding for it and exercise the hybrid path against real imported rows.
+func importPackage(t *testing.T, pool *pgxpool.Pool, store packageStore, owner *client, name string, withScript bool) string {
 	t.Helper()
 	ctx := context.Background()
 	var wsID, userID pgtype.UUID
@@ -172,26 +176,34 @@ func importPackage(t *testing.T, pool *pgxpool.Pool, store packageStore, owner *
 		t.Fatal(err)
 	}
 	svc := &ingest.Service{Pool: pool, Store: store}
-	res, err := svc.UploadZip(ctx, ws, namedPackage(t, name))
+	res, err := svc.UploadZip(ctx, ws, namedPackage(t, name, withScript))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res.Report.Blocked {
 		t.Fatalf("test package did not validate: %+v", res.Report.Findings)
 	}
+	id, _ := res.Skill.ID.Value()
+	skillID, _ := id.(string)
+	return skillID
 }
 
 // namedPackage is demoPackage under a caller-chosen skill name, so a search
-// query can single it out. It carries a script for the same reason demoPackage
-// does: a package with nothing to disclose cannot show that disclosures travel.
-func namedPackage(t *testing.T, name string) []byte {
+// query can single it out. With withScript it carries one for the same reason
+// demoPackage does — a package with nothing to disclose cannot show that
+// disclosures travel — and without it, it is the other side of the DISC-003
+// script filter: a scanned package the scan found no script in, which is a
+// different answer from a package nobody scanned.
+func namedPackage(t *testing.T, name string, withScript bool) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	files := map[string]string{
 		"SKILL.md": "---\nname: " + name + "\ndescription: Reports on " + name +
 			".\nlicense: MIT\n---\n\nUse it like this.\n",
-		"scripts/run.py": "print('hello')\n",
+	}
+	if withScript {
+		files["scripts/run.py"] = "print('hello')\n"
 	}
 	for path, body := range files {
 		w, err := zw.Create(path)
@@ -254,6 +266,7 @@ type searchBody struct {
 	PartialIndex    bool           `json:"partial_index"`
 	NoResults       bool           `json:"no_results"`
 	QuerySuggestion string         `json:"query_suggestion"`
+	FilteredOut     bool           `json:"filtered_out"`
 }
 
 func (c *client) search(t *testing.T, path string) searchBody {
@@ -574,7 +587,7 @@ func TestSearchResultsCarryTheDISC002Columns(t *testing.T) {
 
 	// A real import, not a seeded row: the risk facet is projected by the scan
 	// the import ran, and the seed helpers never run one.
-	importPackage(t, pool, a.packages, curator, "callooh-callay-reporter")
+	importPackage(t, pool, a.packages, curator, "callooh-callay-reporter", true)
 
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 	body := anon.search(t, "/api/skills/search?q=callooh")
@@ -768,5 +781,197 @@ func TestBlankQueryReturnsNoResults(t *testing.T) {
 		if !body.NoResults || body.QuerySuggestion == "" {
 			t.Errorf("q=%q returned an empty list with no explanation", q)
 		}
+	}
+}
+
+// --- DISC-003: structured filters -------------------------------------------
+
+// Both live dimensions, each on its own and then together, on the degraded
+// FTS-only path (no LLM service configured).
+//
+// The degraded path is the one under test on purpose. It is the availability
+// floor, the filter columns are projection columns that owe nothing to the
+// embedding leg, and an answer that quietly stopped honouring the user's
+// filters because a model was down would be a page that lies about what it
+// contains — worse than the reduced recall the degradation already declares.
+func TestFiltersNarrowOnRealEvidenceIncludingTheDegradedPath(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	curator := a.login(t, "curator-filters")
+	markCatalog(t, pool, curator.workspaceID)
+
+	// Real imports: the scan facts the filter reads are projected by the import,
+	// and the seed helpers never run a scan.
+	scripted := importPackage(t, pool, a.packages, curator, "uffish-scripted-reporter", true)
+	plain := importPackage(t, pool, a.packages, curator, "uffish-plain-reporter", false)
+	// Never imported, so no scan was ever projected and no version was ever
+	// saved. It is the row both filters have to refuse to guess about.
+	unscanned := seedSkill(t, pool, curator.workspaceID, "uffish unscanned reporter")
+
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+
+	// Unfiltered control: all three are reachable, so anything missing below was
+	// removed by a filter and not by the query.
+	all := anon.search(t, "/api/skills/search?q=uffish")
+	if !all.Degraded {
+		t.Fatal("no LLM service configured but the answer was not marked degraded")
+	}
+	for _, want := range []string{scripted, plain, unscanned} {
+		if !contains(all.ids(), want) {
+			t.Fatalf("unfiltered search missed %s: %v", want, all.ids())
+		}
+	}
+
+	tests := []struct {
+		name  string
+		path  string
+		want  []string
+		notIn []string
+	}{
+		{"script=yes", "&script=yes", []string{scripted}, []string{plain, unscanned}},
+		// The unscanned row is excluded from `no` as well: nothing scanned it, so
+		// "has no script" is not a fact anyone established about it. Answering
+		// otherwise is the 不得自行推定為通過 that 02:DISC-004 forbids.
+		{"script=no", "&script=no", []string{plain}, []string{scripted, unscanned}},
+		{"validation=passed", "&validation=passed", []string{scripted, plain}, []string{unscanned}},
+		{"validation=unverified", "&validation=unverified", []string{unscanned}, []string{scripted, plain}},
+		// Combined: the two dimensions intersect rather than replacing each other.
+		{"combined", "&script=no&validation=passed", []string{plain}, []string{scripted, unscanned}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			body := anon.search(t, "/api/skills/search?q=uffish"+tc.path)
+			for _, want := range tc.want {
+				if !contains(body.ids(), want) {
+					t.Errorf("filter dropped a matching skill %s: %v", want, body.ids())
+				}
+			}
+			for _, unwanted := range tc.notIn {
+				if contains(body.ids(), unwanted) {
+					t.Errorf("filter kept a non-matching skill %s: %v", unwanted, body.ids())
+				}
+			}
+			// A filtered page is still a filtered page, not a refusal.
+			if body.NoResults || body.FilteredOut {
+				t.Errorf("a page with results reported an empty state: %+v", body)
+			}
+		})
+	}
+}
+
+// The same filters on the hybrid path, where ranking is real. Filtering must
+// remove rows and change nothing else: the survivors keep the order and the
+// similarity scores they had before the filter was applied.
+func TestFiltersOnTheHybridPathRemoveRowsWithoutReranking(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	curator := a.login(t, "curator-filters-hybrid")
+	markCatalog(t, pool, curator.workspaceID)
+
+	scripted := importPackage(t, pool, a.packages, curator, "outgrabe-scripted-reporter", true)
+	plain := importPackage(t, pool, a.packages, curator, "outgrabe-plain-reporter", false)
+	// The scripted one is the closer match, so it leads the unfiltered page and
+	// the scriptless one is what a script=no filter has to be able to promote.
+	seedEmbedding(t, pool, scripted, 61)
+	seedBlendedEmbedding(t, pool, plain, 61, 900, 0.5)
+
+	hybrid := newAPIWithLLM(t, pool, stubLLM(t, 61, "because it fits"))
+	anon := &client{Client: http.DefaultClient, base: hybrid.URL}
+
+	all := anon.search(t, "/api/skills/search?q=outgrabe")
+	if all.Degraded {
+		t.Fatalf("hybrid path reported degraded: %q", all.DegradedReason)
+	}
+	if len(all.Results) != 2 || all.Results[0].SkillID != scripted {
+		t.Fatalf("unexpected unfiltered page: %v", all.ids())
+	}
+	plainRank := all.Results[1].Rank
+	if plainRank == nil {
+		t.Fatal("hybrid page returned a null rank for an embedded document")
+	}
+
+	filtered := anon.search(t, "/api/skills/search?q=outgrabe&script=no")
+	if got := filtered.ids(); len(got) != 1 || got[0] != plain {
+		t.Fatalf("script=no on the hybrid path returned %v, want just %s", got, plain)
+	}
+	// Filtering is not ranking (the UI says so in the ranking explainer): the
+	// surviving row keeps the score it was given, rather than being rescored
+	// against a smaller field.
+	if got := filtered.Results[0].Rank; got == nil || *got != *plainRank {
+		t.Fatalf("rank changed under filtering: %v, want %v", got, *plainRank)
+	}
+}
+
+// The two empty pages a user can land on are different problems with opposite
+// fixes, so the response has to tell them apart. Getting this wrong tells
+// someone to reword a query that matched perfectly well.
+func TestFilteredToEmptyIsNotTheNoResultsRefusal(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	curator := a.login(t, "curator-filtered-empty")
+	markCatalog(t, pool, curator.workspaceID)
+	importPackage(t, pool, a.packages, curator, "galumph-scripted-reporter", true)
+
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+
+	// The query matched; the filter removed the only match.
+	filtered := anon.search(t, "/api/skills/search?q=galumph&script=no")
+	if len(filtered.Results) != 0 {
+		t.Fatalf("script=no kept a scripted package: %v", filtered.ids())
+	}
+	if !filtered.FilteredOut {
+		t.Fatal("a page emptied by its filters did not report filtered_out")
+	}
+	if filtered.NoResults {
+		t.Fatal("a page emptied by its filters was reported as no_results as well")
+	}
+	// The refine-your-query copy belongs to the other state. Offering it here
+	// would send the user to rewrite a query that was never the problem.
+	if filtered.QuerySuggestion != "" {
+		t.Fatalf("filtered-out answer carried the query suggestion: %q", filtered.QuerySuggestion)
+	}
+
+	// Same filter, a query nothing matches: now it really is no_results, and
+	// filtered_out must not be claimed — there was nothing for a filter to remove.
+	refused := anon.search(t, "/api/skills/search?q=whiffling&script=no")
+	if !refused.NoResults || refused.QuerySuggestion == "" {
+		t.Fatalf("an unmatched query was not refused with a suggestion: %+v", refused)
+	}
+	if refused.FilteredOut {
+		t.Fatal("a query that matched nothing blamed the filters for the empty page")
+	}
+}
+
+// 02:DISC-002 names six filter dimensions and this build has per-row data for
+// two. The other four are rejected rather than ignored: a shared or hand-edited
+// URL asking for one must not come back as the whole catalog looking like a
+// filtered subset. The UI shows the same four as disabled controls with the
+// reason, so nothing about them is hidden — only refused.
+func TestFilterDimensionsWithoutDataAreRejectedNotIgnored(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	curator := a.login(t, "curator-filter-reject")
+	markCatalog(t, pool, curator.workspaceID)
+	importPackage(t, pool, a.packages, curator, "beamish-scripted-reporter", true)
+
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+
+	for _, q := range []string{
+		"&category=documents", // curation-only, never persisted
+		"&tier=curated",       // one value across the whole catalog
+		"&agent=claude",       // needs sandbox runs (M2)
+		"&mcp=no",             // no signal exists anywhere
+		"&script=maybe",       // outside the enum
+		"&validation=failed",  // spec validation is never reported as failed
+	} {
+		if got := anon.status(t, http.MethodGet, "/api/skills/search?q=beamish"+q); got != http.StatusBadRequest {
+			t.Errorf("%s: got %d, want 400 — an unusable filter must not be silently dropped", q, got)
+		}
+	}
+
+	// A filter this build does support is still honoured, so the rejection above
+	// is about the dimension and not about filtering in general.
+	if body := anon.search(t, "/api/skills/search?q=beamish&script=yes"); len(body.Results) != 1 {
+		t.Fatalf("a supported filter was rejected too: %+v", body)
 	}
 }

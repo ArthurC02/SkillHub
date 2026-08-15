@@ -6,7 +6,7 @@ import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
 import { RiskIndicator } from "../components/RiskIndicator";
-import type { SkillEnrichment, SkillSource, SkillTags } from "../api/types";
+import type { SkillEnrichment, SkillLimitation, SkillSource, SkillTags } from "../api/types";
 
 /**
  * DISC-006/008: general-mode skill detail, reading GET /api/skills/{id}.
@@ -43,6 +43,8 @@ export function SkillDetail() {
       </header>
 
       <Enrichment enrichment={skill.enrichment} />
+
+      <Limitations limitations={skill.limitations} />
 
       <section>
         <h2>來源</h2>
@@ -127,6 +129,47 @@ export function SkillDetail() {
   );
 }
 
+/**
+ * 限制 (02:DISC-003 一般模式). The API assembles this list from two sources and
+ * labels each entry with the one it came from: `model` is the enrichment
+ * restating what the document says about its own limits, `scan` is derived from
+ * the static package scan. ADR-013 requires the model half to be visibly marked,
+ * so the two are never merged into one anonymous sentence.
+ *
+ * An empty list says so explicitly. Dropping the section would read as "this
+ * skill has no limits", which is the opposite of what an empty list means here:
+ * neither source stated one.
+ */
+function Limitations({ limitations }: { limitations: SkillLimitation[] }) {
+  return (
+    <section>
+      <h2>限制</h2>
+      {limitations.length === 0 ? (
+        <p className="note">
+          沒有任何來源指出限制——這代表沒有人說明過，不代表這個 Skill 沒有限制。
+        </p>
+      ) : (
+        <ul className="risk-list">
+          {limitations.map((limitation) => (
+            <li key={`${limitation.source}-${limitation.text}`}>
+              {limitation.text}
+              {limitation.source === "model" ? (
+                <span className="badge badge-source-model" title="由模型重述套件內容，未經人工核對">
+                  AI 產生
+                </span>
+              ) : (
+                <span className="badge badge-source-template" title="由匯入時的靜態掃描結果推得">
+                  掃描推得
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 const TAG_BUCKETS: Array<{ key: keyof SkillTags; label: string }> = [
   { key: "inputs", label: "輸入" },
   { key: "outputs", label: "輸出" },
@@ -144,6 +187,17 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
       <section>
         <h2>白話摘要</h2>
         <p className="note">{enrichment.note}</p>
+        {/*
+          The 輸入／輸出／依賴 rows stay on the page while enrichment is pending,
+          reading 未知. They come from the enrichment, so a pending row has none
+          — and omitting the rows entirely would present a skill with unknown
+          inputs as a skill that takes none.
+        */}
+        {TAG_BUCKETS.map(({ key, label }) => (
+          <p key={key}>
+            {label}：<span className="note">未知（尚未產生索引摘要）</span>
+          </p>
+        ))}
       </section>
     );
   }
@@ -172,8 +226,12 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
       {/*
         DISC-003 asks for 輸入、輸出、依賴 as separate facts, and the contract
         keeps them in separate buckets, so they are not flattened back into one
-        anonymous tag cloud here. An empty bucket is dropped rather than shown
-        as an empty list — the note below already says the enrichment's scope.
+        anonymous tag cloud here.
+
+        An empty bucket is stated as 未知 rather than dropped. A missing row
+        reads as "this skill needs no dependencies"; what it actually means is
+        that nothing extracted any, which is the 不得自行推定 case 02:DISC-004
+        names. The same reasoning as the search row's 依賴 column.
       */}
       {enrichment.tags &&
         TAG_BUCKETS.map(({ key, label }) =>
@@ -188,7 +246,11 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
                 ))}
               </span>
             </p>
-          ) : null,
+          ) : (
+            <p key={key}>
+              {label}：<span className="note">未知（沒有擷取到，不代表沒有）</span>
+            </p>
+          ),
         )}
 
       <p className="note">{enrichment.note}</p>

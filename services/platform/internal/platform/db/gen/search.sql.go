@@ -95,19 +95,19 @@ func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context) (int64, error
 
 const publicHybridSearchSkills = `-- name: PublicHybridSearchSkills :many
 WITH vec AS (
-    SELECT s.skill_id, s.embedding <=> $3::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $5::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
     WHERE s.embedding IS NOT NULL
-    ORDER BY s.embedding <=> $3::vector ASC
+    ORDER BY s.embedding <=> $5::vector ASC
     LIMIT 50
 ),
 fts AS (
-    SELECT s.skill_id, s.embedding <=> $3::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $5::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE s.tsv @@ websearch_to_tsquery('english', $4::text)
-    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $4::text)) DESC
+    WHERE s.tsv @@ websearch_to_tsquery('english', $6::text)
+    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $6::text)) DESC
     LIMIT 50
 ),
 candidates AS (
@@ -129,13 +129,31 @@ LEFT JOIN LATERAL (
     ORDER BY v.version_number DESC
     LIMIT 1
 ) ver ON true
-WHERE c.distance IS NULL OR c.distance <= $1::float8
+WHERE (c.distance IS NULL OR c.distance <= $1::float8)
+  -- DISC-003 filters, applied after candidate generation.
+  --
+  -- ponytail: the two legs still take their own 50 rows before this runs, so a
+  -- filter that matches only rows 51+ of a leg cannot see them. The catalogue is
+  -- 45 documents, so no candidate is currently unreachable; push the predicates
+  -- into the two CTEs once the catalogue outgrows the candidate window.
+  AND (
+    $2::bool IS NULL
+    OR (s.scan IS NOT NULL
+        AND (s.scan->'codes' @> '["script-file"]'::jsonb
+             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $2::bool)
+  )
+  AND (
+    $3::bool IS NULL
+    OR (ver.created_at IS NOT NULL) = $3::bool
+  )
 ORDER BY c.distance ASC NULLS LAST
-LIMIT $2
+LIMIT $4
 `
 
 type PublicHybridSearchSkillsParams struct {
 	MaxDistance    float64
+	HasScript      *bool
+	SpecValidated  *bool
 	ResultLimit    int32
 	QueryEmbedding *pgvector.Vector
 	Query          string
@@ -198,6 +216,8 @@ type PublicHybridSearchSkillsRow struct {
 func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybridSearchSkillsParams) ([]PublicHybridSearchSkillsRow, error) {
 	rows, err := q.db.Query(ctx, publicHybridSearchSkills,
 		arg.MaxDistance,
+		arg.HasScript,
+		arg.SpecValidated,
 		arg.ResultLimit,
 		arg.QueryEmbedding,
 		arg.Query,
@@ -231,6 +251,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 
 const publicSearchSkills = `-- name: PublicSearchSkills :many
 
+
 SELECT s.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
        s.tags, s.scan, ver.created_at AS verified_at
@@ -243,14 +264,26 @@ LEFT JOIN LATERAL (
     ORDER BY v.version_number DESC
     LIMIT 1
 ) ver ON true
-WHERE s.tsv @@ websearch_to_tsquery('english', $2::text)
-ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $2::text)) DESC
-LIMIT $1
+WHERE s.tsv @@ websearch_to_tsquery('english', $1::text)
+  AND (
+    $2::bool IS NULL
+    OR (s.scan IS NOT NULL
+        AND (s.scan->'codes' @> '["script-file"]'::jsonb
+             OR s.scan->'codes' @> '["embedded-script"]'::jsonb) = $2::bool)
+  )
+  AND (
+    $3::bool IS NULL
+    OR (ver.created_at IS NOT NULL) = $3::bool
+  )
+ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $1::text)) DESC
+LIMIT $4
 `
 
 type PublicSearchSkillsParams struct {
-	Limit int32
-	Query string
+	Query         string
+	HasScript     *bool
+	SpecValidated *bool
+	ResultLimit   int32
 }
 
 type PublicSearchSkillsRow struct {
@@ -268,8 +301,41 @@ type PublicSearchSkillsRow struct {
 // caller-supplied scope is exactly the shape iron rule 3 forbids, and a public
 // query with no scope at all leaks every private fork. "Public" is spelled out
 // in the name so no future caller reaches for one of these on a private path.
+// DISC-003 structured filters, shared by both public queries below.
+//
+// Only two of the six dimensions 02:DISC-002 lists have per-row data in M1, so
+// only those two are predicates here. The other four are not silently ignored:
+// they are reported as unavailable by the API and disabled in the UI, because a
+// filter that accepts a value and does not narrow anything is worse than one
+// that says it cannot (see catalog/http.go filterAvailability).
+//
+//   - has_script   — evidence from the projected import scan. `script-file` is a
+//     script in the package tree, `embedded-script` is runnable
+//     code inside SKILL.md itself (SKILL-003); a user asking for
+//     "contains a script" means either.
+//     Rows with NULL scan match NEITHER true nor false: no scan
+//     was ever projected for them, and answering "no script" for
+//     an unscanned row is exactly the 不得自行推定為通過 that
+//     02:DISC-004 forbids. They drop out of a filtered page and
+//     reappear when the filter is cleared.
+//   - spec_validated — a saved version is the evidence, for the reason
+//     0015_search_result_facets.sql gives: skillpkg.Validate
+//     blocks the import on any error-level finding, so a stored
+//     version means static validation passed. No version means
+//     nothing was ever validated, which is unverified and never
+//     "failed".
+//
+// Both are sqlc.narg: NULL = dimension not filtered, which is the default.
+// The predicates are written twice rather than factored into a SQL function —
+// two copies of four lines beat a migration for a function that would then need
+// its own drift check.
 // FTS-only public search — the degradation path when the embedding service is
 // unavailable (ADR-013 fallback).
+//
+// The DISC-003 filters apply here too. A degraded answer is already lower
+// recall; letting it also ignore the user's filters would make the page lie
+// about what it contains, and the filter dimensions are projection columns that
+// do not depend on the embedding leg being up.
 //
 // ts_rank_cd orders the page but is not selected. It is an unbounded lexical
 // score, not a cosine similarity, and the two used to arrive at the caller
@@ -277,7 +343,12 @@ type PublicSearchSkillsRow struct {
 // answer came back with 1.4. The ordering is what the score is good for, and
 // the array already carries that.
 func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkillsParams) ([]PublicSearchSkillsRow, error) {
-	rows, err := q.db.Query(ctx, publicSearchSkills, arg.Limit, arg.Query)
+	rows, err := q.db.Query(ctx, publicSearchSkills,
+		arg.Query,
+		arg.HasScript,
+		arg.SpecValidated,
+		arg.ResultLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

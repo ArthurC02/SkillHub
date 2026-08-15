@@ -233,6 +233,81 @@ func riskHint(scanJSON []byte) searchRisk {
 	return out
 }
 
+// --- DISC-003 structured filters --------------------------------------------
+
+// searchFilters is the filter set as it reaches SQL. A nil pointer is "this
+// dimension is not filtered", which is a third state and not the same as false:
+// `script=no` asks for rows the scan says carry no script, whereas no filter at
+// all also admits rows nothing is known about.
+type searchFilters struct {
+	HasScript     *bool
+	SpecValidated *bool
+}
+
+func (f searchFilters) active() bool { return f.HasScript != nil || f.SpecValidated != nil }
+
+// unavailableFilters are the four 02:DISC-002 dimensions the platform has no
+// per-row data for in M1. They are rejected rather than ignored: a shared URL
+// carrying ?category=data would otherwise come back as a full unfiltered page
+// that looks filtered, which is the one failure mode a filter must not have.
+//
+// The note is the honest reason, per dimension, and it is what the UI shows on
+// the disabled control:
+//
+//   - category — the three PDM-001 categories exist only as a curation judgement
+//     in tools/content/seed-skills.json. Nothing persists them: the import path
+//     takes a package, not a category, and a user-imported skill would have none
+//     at all. Storing them is CONTENT-003 curation work, not search work.
+//   - tier — every indexed row is TierIndexed and nothing records a curation
+//     review yet (see tierLabel), so the dimension has exactly one value and
+//     filtering on it cannot separate anything.
+//   - agent — capability/runtime compatibility stays `unverified` until sandbox
+//     runs exist (M2). Offering the filter would imply verdicts nobody produced.
+//   - mcp — no MCP signal is captured anywhere in the scan or the manifest;
+//     remote MCP is out of the MVP first release (AGENTS.md 範圍注意).
+var unavailableFilters = map[string]string{
+	"category": "類別尚未存入平台:目前只存在於策展清單,匯入流程不收此欄位(CONTENT-003)。",
+	"tier":     "來源層級目前全目錄同為「已索引」,沒有可區分的值(PDM-002 人工精選審查尚未開始)。",
+	"agent":    "Agent 相容狀態需要 Sandbox 試跑才有結果(M2),目前一律為未驗證。",
+	"mcp":      "是否需要 MCP 沒有任何來源資料:靜態掃描與 manifest 都沒有這項訊號,遠端 MCP 也不在 MVP 首發。",
+}
+
+// parseFilters reads the DISC-003 query parameters. An unrecognised value is an
+// error rather than a silent nil, for the same reason unavailableFilters is:
+// the caller has to be able to trust that a filtered page was filtered.
+func parseFilters(r *http.Request) (searchFilters, error) {
+	q := r.URL.Query()
+	for name, note := range unavailableFilters {
+		if q.Has(name) {
+			return searchFilters{}, errors.New("filter not available: " + name + " — " + note)
+		}
+	}
+	var out searchFilters
+	var err error
+	if out.HasScript, err = triState(q.Get("script"), "yes", "no"); err != nil {
+		return searchFilters{}, errors.New(`script must be "yes" or "no"`)
+	}
+	if out.SpecValidated, err = triState(q.Get("validation"), "passed", "unverified"); err != nil {
+		return searchFilters{}, errors.New(`validation must be "passed" or "unverified"`)
+	}
+	return out, nil
+}
+
+// triState maps an absent/yes/no query value onto nil/true/false.
+func triState(v, yes, no string) (*bool, error) {
+	switch v {
+	case "":
+		return nil, nil
+	case yes:
+		t := true
+		return &t, nil
+	case no:
+		f := false
+		return &f, nil
+	}
+	return nil, errors.New("unrecognised filter value")
+}
+
 // searchResponse is the top-level JSON envelope.
 type searchResponse struct {
 	Query   string         `json:"query"`
@@ -262,6 +337,17 @@ type searchResponse struct {
 	// QuerySuggestion is the copy to show alongside NoResults (DISC-001
 	// 提示使用者補充任務、輸入或預期輸出). Empty when there are results.
 	QuerySuggestion string `json:"query_suggestion,omitempty"`
+	// FilteredOut says the query did match skills and the active DISC-003
+	// filters removed all of them.
+	//
+	// Kept apart from NoResults because the two need opposite answers from the
+	// user. NoResults means the catalogue has nothing close enough, and the
+	// suggestion is to describe the task differently; FilteredOut means the
+	// catalogue does have matches and the suggestion is to widen the filters.
+	// Telling someone to rewrite their query when the real problem is a checkbox
+	// they set is worse than saying nothing, so the two never share copy and
+	// NoResults is false whenever this is true.
+	FilteredOut bool `json:"filtered_out"`
 }
 
 // PublicSearch handles GET /api/skills/search?q=...&limit=N.
@@ -269,6 +355,15 @@ type searchResponse struct {
 // Uses hybrid retrieval (ADR-013) when embeddings are available.
 func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	// DISC-003 filters are parsed before the query is even looked at: a request
+	// asking for a filter this build cannot honour is rejected whatever the
+	// query says, rather than being answered with an unfiltered page.
+	filters, err := parseFilters(r)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	// DISC-001: blank/incomprehensible queries don't create search.
 	if q == "" || !isComprehensible(q) {
@@ -300,23 +395,45 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 	var (
 		hits           []searchResult
 		degradedReason string
+		// Kept so the filtered-out probe below can re-run the same retrieval
+		// without paying for a second embedding call.
+		embedding *pgvector.Vector
 	)
 
 	if h.LLMClient == nil {
 		degradedReason = "embedding service not configured; lexical search only"
-	} else if hybridHits, err := h.hybridSearch(ctx, queries, q, limit); err != nil {
+	} else if vec, err := h.embedQuery(ctx, q); err != nil {
+		slog.Warn("query embedding failed, falling back to FTS", "error", err)
+		degradedReason = "embedding unavailable; lexical search only"
+	} else if hybridHits, err := h.hybridSearch(ctx, queries, q, vec, limit, filters); err != nil {
 		slog.Warn("hybrid search failed, falling back to FTS", "error", err)
 		degradedReason = "embedding unavailable; lexical search only"
 	} else {
+		embedding = vec
 		hits = hybridHits
 	}
 
 	if degradedReason != "" {
-		hits, _ = h.ftsOnlySearch(ctx, queries, q, limit)
+		hits, _ = h.ftsOnlySearch(ctx, queries, q, limit, filters)
 	}
 
 	if hits == nil {
 		hits = []searchResult{}
+	}
+
+	// An empty filtered page has two very different causes, and the same
+	// retrieval run without the filters is the only thing that tells them apart.
+	// It costs one more SQL round trip, only in the empty case, and no model
+	// call — the embedding is already in hand.
+	filteredOut := false
+	if len(hits) == 0 && filters.active() {
+		var unfiltered []searchResult
+		if embedding != nil {
+			unfiltered, _ = h.hybridSearch(ctx, queries, q, embedding, limit, searchFilters{})
+		} else {
+			unfiltered, _ = h.ftsOnlySearch(ctx, queries, q, limit, searchFilters{})
+		}
+		filteredOut = len(unfiltered) > 0
 	}
 
 	// DISC-002: one batched call for the whole result page, never one per hit.
@@ -332,22 +449,25 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		Degraded:       degradedReason != "",
 		DegradedReason: degradedReason,
 		PartialIndex:   anyUnranked(hits),
+		FilteredOut:    filteredOut,
 	}
 	// Everything fell outside MaxCosineDistance (or the lexical floor matched
 	// nothing). Saying so explicitly is the point: a degraded empty answer still
 	// carries its degraded flag, so the caller can tell "nothing is close
 	// enough" from "we could not look properly".
-	if len(hits) == 0 {
+	//
+	// Not when the filters emptied the page: the catalogue did have answers, and
+	// the refine-your-query suggestion would be advice about the wrong thing.
+	if len(hits) == 0 && !filteredOut {
 		resp.NoResults = true
 		resp.QuerySuggestion = noResultsSuggestion
 	}
 	httpx.WriteJSON(w, http.StatusOK, resp)
 }
 
-// hybridSearch runs the ADR-013 hybrid retrieval pipeline:
-//  1. Get query embedding from the LLM service
-//  2. Run the hybrid SQL: vector distance ranks, FTS widens candidates, and
-//     anything past MaxCosineDistance is dropped rather than shown
+// embedQuery gets the query vector from the LLM service. Split out of
+// hybridSearch so the retrieval SQL can be re-run (with different filters)
+// without paying for the model call twice.
 //
 // ponytail: the raw query is embedded as typed. ADR-013 定案調整 2 puts LLM
 // query rewriting ahead of the embedding call as a Top-1 precision gain (80% ->
@@ -356,8 +476,7 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 // Add the rewrite step once the end-to-end p95 budget (NFR-004) has been
 // measured with a real gateway; adding it before that measurement would be
 // spending the latency budget blind.
-func (h *Handler) hybridSearch(ctx context.Context, queries *gen.Queries, query string, limit int32) ([]searchResult, error) {
-	// Step 1: get query embedding.
+func (h *Handler) embedQuery(ctx context.Context, query string) (*pgvector.Vector, error) {
 	embedCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -371,17 +490,26 @@ func (h *Handler) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		// hits for a query the vector leg never actually ran.
 		return nil, errors.New("catalog: embed returned no vectors")
 	}
-
 	embedding := pgvector.NewVector(embedResp.Embeddings[0])
+	return &embedding, nil
+}
 
-	// Step 2: hybrid search with RRF. Scope is fixed to catalog workspaces
-	// inside the query itself (CORE-006) — an anonymous caller has no session
-	// to derive a scope from and must never supply one.
+// hybridSearch runs the ADR-013 hybrid retrieval SQL: vector distance ranks,
+// FTS widens candidates, anything past MaxCosineDistance is dropped rather than
+// shown, and the DISC-003 filters narrow what survives.
+//
+// Scope is fixed to catalog workspaces inside the query itself (CORE-006) — an
+// anonymous caller has no session to derive a scope from and must never supply
+// one. The filters are the only caller-supplied predicates, and they can only
+// ever narrow that scope.
+func (h *Handler) hybridSearch(ctx context.Context, queries *gen.Queries, query string, embedding *pgvector.Vector, limit int32, filters searchFilters) ([]searchResult, error) {
 	rows, err := queries.PublicHybridSearchSkills(ctx, gen.PublicHybridSearchSkillsParams{
 		Query:          query,
-		QueryEmbedding: &embedding,
+		QueryEmbedding: embedding,
 		MaxDistance:    MaxCosineDistance,
 		ResultLimit:    limit,
+		HasScript:      filters.HasScript,
+		SpecValidated:  filters.SpecValidated,
 	})
 	if err != nil {
 		return nil, err
@@ -429,10 +557,12 @@ func anyUnranked(hits []searchResult) bool {
 // Every row comes back with a null rank. The page is ordered by ts_rank_cd,
 // which the query no longer returns: it is an unbounded lexical score, and the
 // field it used to travel in is documented as a cosine similarity in 0..1.
-func (h *Handler) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query string, limit int32) ([]searchResult, error) {
+func (h *Handler) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query string, limit int32, filters searchFilters) ([]searchResult, error) {
 	rows, err := queries.PublicSearchSkills(ctx, gen.PublicSearchSkillsParams{
-		Query: query,
-		Limit: limit,
+		Query:         query,
+		ResultLimit:   limit,
+		HasScript:     filters.HasScript,
+		SpecValidated: filters.SpecValidated,
 	})
 	if err != nil {
 		return nil, err

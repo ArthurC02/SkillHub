@@ -133,7 +133,12 @@ const ROWS: CompareRow[] = [
     ),
   },
   {
-    label: "類別",
+    // 來源層級, not 類別: this renders `tier` (curated/indexed/external), which
+    // is how much review a skill has had. The 類別 the PDM-001 boundary rule
+    // defines (data / documents / writing) is a curation judgement the platform
+    // does not store at all — labelling the tier as it would put a value under a
+    // heading that means something else entirely.
+    label: "來源層級",
     signature: (skill) => skill.tier.value,
     render: (skill) => <LabelledBadge kind="tier" value={skill.tier} />,
   },

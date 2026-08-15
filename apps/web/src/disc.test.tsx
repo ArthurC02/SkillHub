@@ -3,12 +3,14 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
 import { queryClient } from "./api/queryClient";
+import { router } from "./router";
 import { LicenseBadge, LicenseNotes } from "./components/LicenseBadge";
 import { RiskIndicator } from "./components/RiskIndicator";
 import type {
   PublicSearchResponse,
   PublicSearchResult,
   SkillDetail,
+  SkillFiles,
   SkillLicense,
   SkillRisk,
 } from "./api/types";
@@ -22,9 +24,6 @@ let root: Root;
 
 beforeEach(() => {
   queryClient.clear();
-  // The router is a module singleton shared across tests, so a test that
-  // navigated has to be sent home before the next one mounts it. pushState is
-  // patched by @tanstack/history, so this moves the router's location too.
   window.history.pushState({}, "", "/");
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -41,6 +40,16 @@ async function render(node: React.ReactNode) {
     root = createRoot(container);
     root.render(<StrictMode>{node}</StrictMode>);
   });
+  // The router is a module singleton and only observes history while it is
+  // mounted, so a test that navigated leaves it pointing at that page even
+  // after beforeEach resets window.location — the address bar moves, the router
+  // does not. Send it home now that it is mounted again. Skipped when the tree
+  // under test is a bare component and no router is on screen.
+  if (container.querySelector(".app-shell") && router.state.location.pathname !== "/") {
+    await act(async () => {
+      await router.navigate({ to: "/", search: {} });
+    });
+  }
 }
 
 /** Answers only the search call; /me stays 401 so the page renders logged-out. */
@@ -112,6 +121,7 @@ const EMPTY: PublicSearchResponse = {
   degraded: false,
   partial_index: false,
   no_results: false,
+  filtered_out: false,
 };
 
 test("DISC-001: search hits the public endpoint, which needs no session", async () => {
@@ -194,6 +204,7 @@ test("DISC-005: degraded and partial_index are separate, non-blocking notices", 
     degraded_reason: "embedding unavailable; lexical search only",
     partial_index: true,
     no_results: false,
+    filtered_out: false,
   });
   await render(<App />);
   await submitSearch("pdf");
@@ -513,7 +524,7 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
   expect(container.textContent).toContain("右邊的 Skill");
 
   // Same value on both sides: no highlight, no noise.
-  const tier = compareRow("類別");
+  const tier = compareRow("來源層級");
   expect(tier.className).not.toContain("compare-differs");
   expect(tier.textContent).not.toContain("有差異");
 
@@ -561,4 +572,287 @@ test("DISC-004: an unreadable package is reported as unknown, never as a clean s
   const text = container.textContent ?? "";
   expect(text).toContain("未知");
   expect(text).not.toContain("未發現錯誤或警告");
+});
+
+// --- DISC-003: structured filters -------------------------------------------
+
+/** Picks the <select> inside the filter-bar label whose text starts with `label`. */
+function filterSelect(label: string): HTMLSelectElement {
+  const group = [...container.querySelectorAll(".filter-bar label")].find((l) =>
+    l.textContent?.startsWith(label),
+  );
+  if (!group) throw new Error(`no filter labelled ${label}; DOM: ${container.textContent}`);
+  return group.querySelector("select")!;
+}
+
+async function chooseFilter(label: string, value: string) {
+  const select = filterSelect(label);
+  const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(select, value);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await waitFor(() => !container.textContent?.includes("搜尋中…"));
+}
+
+test("DISC-003: a chosen filter reaches the request and the shareable URL", async () => {
+  const calls = stubSearch({ ...EMPTY, query: "pdf", no_results: true });
+  await render(<App />);
+  await submitSearch("pdf");
+  await chooseFilter("是否包含 Script", "yes");
+  await chooseFilter("驗證狀態", "passed");
+
+  // The request carries both dimensions...
+  const last = calls[calls.length - 1];
+  expect(last).toContain("script=yes");
+  expect(last).toContain("validation=passed");
+  // ...and so does the address bar, which is what makes the page shareable.
+  const url = new URLSearchParams(window.location.search);
+  expect(url.get("q")).toBe("pdf");
+  expect(url.get("script")).toBe("yes");
+  expect(url.get("validation")).toBe("passed");
+
+  // Clearing a dimension removes it rather than sending an empty value: an
+  // unset filter must be absent from a shared link, not present and blank.
+  await chooseFilter("是否包含 Script", "");
+  expect(new URLSearchParams(window.location.search).has("script")).toBe(false);
+  expect(calls[calls.length - 1]).not.toContain("script=");
+});
+
+test("DISC-003: the filters the platform has no data for are disabled and say why", async () => {
+  stubSearch({ ...EMPTY, query: "pdf", no_results: true });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  // The two dimensions with per-row data are usable.
+  expect(filterSelect("是否包含 Script").disabled).toBe(false);
+  expect(filterSelect("驗證狀態").disabled).toBe(false);
+
+  // The four without are present, disabled, and each states its own reason —
+  // not hidden, and never offered as a control that accepts a value and
+  // narrows nothing.
+  for (const label of ["類別", "來源層級", "Agent 相容", "需要 MCP"]) {
+    expect(filterSelect(label).disabled).toBe(true);
+  }
+  const text = container.querySelector(".filter-bar")!.textContent ?? "";
+  expect(text).toContain("只存在於策展清單");
+  expect(text).toContain("人工精選審查尚未開始");
+  expect(text).toContain("Sandbox 試跑");
+  expect(text).toContain("沒有記錄是否需要 MCP");
+  // The reason a dimension is dead must not read as "nothing matched".
+  expect(text).toContain("不是因為所有 Skill 都不符合");
+});
+
+test("DISC-003: filtered-to-empty and the no-results refusal never share copy", async () => {
+  // The catalog had matches; the filters removed them. The fix is the filter.
+  stubSearch({ ...EMPTY, query: "pdf", filtered_out: true });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  let text = container.textContent ?? "";
+  expect(text).toContain("全部被目前的篩選條件排除");
+  // The DISC-005 refusal copy must not appear: telling someone to reword a
+  // query that did match is advice about the wrong thing.
+  expect(text).not.toContain("沒有夠接近的 Skill");
+
+  // The other empty state, same page, entirely different copy.
+  await act(async () => root.unmount());
+  queryClient.clear();
+  window.history.pushState({}, "", "/");
+  stubSearch({
+    ...EMPTY,
+    query: "pdf",
+    no_results: true,
+    query_suggestion: "Try naming the file format you have.",
+  });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  text = container.textContent ?? "";
+  expect(text).toContain("沒有夠接近的 Skill");
+  expect(text).toContain("Try naming the file format you have.");
+  expect(text).not.toContain("全部被目前的篩選條件排除");
+});
+
+test("DISC-002: a result row carries all seven columns, and infers none of them", async () => {
+  stubSearch({
+    ...EMPTY,
+    query: "pdf",
+    results: [
+      {
+        ...HIT_FACETS,
+        skill_id: "55555555-5555-5555-5555-555555555555",
+        name: "PDF Summariser",
+        summary: "把 PDF 整理成摘要",
+        rank: 0.42,
+        risk: {
+          scan_status: "scanned",
+          level: "disclosed",
+          warnings: 0,
+          has_scripts: true,
+          note: "靜態掃描。",
+        },
+        dependencies: ["pypdf"],
+        verified_at: "2026-08-01T10:00:00Z",
+      },
+      {
+        ...HIT_FACETS,
+        skill_id: "66666666-6666-6666-6666-666666666666",
+        name: "Unscanned Skill",
+        summary: "沒有掃描紀錄",
+        rank: 0.3,
+        risk: { scan_status: "unavailable", level: "none", warnings: 0, note: "無掃描紀錄。" },
+        dependencies: [],
+        compatibility: {
+          spec_validation: "unverified",
+          capability: "unverified",
+          runtime: "unverified",
+          note: "尚未試跑。",
+        },
+      },
+    ],
+  });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  const rows = container.querySelectorAll(".search-result");
+  expect(rows).toHaveLength(2);
+
+  const scanned = rows[0].textContent ?? "";
+  expect(scanned).toContain("PDF Summariser"); // 名稱
+  expect(scanned).toContain("把 PDF 整理成摘要"); // 白話摘要
+  expect(scanned).toContain("已收錄"); // 來源層級 (server-owned copy)
+  expect(scanned).toContain("規格驗證：通過"); // 相容狀態
+  expect(scanned).toContain("含 Script 檔案"); // 風險提示
+  expect(scanned).toContain("pypdf"); // 依賴
+  expect(scanned).toContain("2026-08-01"); // 最近驗證時間
+  // 沒有驗證證據的 Skill 必須明確標記「尚未試跑」.
+  expect(scanned).toContain("尚未試跑");
+
+  // Nothing is inferred on the row that has no evidence: an unscanned package
+  // is unknown rather than clean, and an empty dependency list says it was not
+  // extracted rather than that there are none (02:DISC-004).
+  const unscanned = rows[1].textContent ?? "";
+  expect(unscanned).toContain("尚無掃描紀錄");
+  expect(unscanned).not.toContain("未發現警告");
+  expect(unscanned).toContain("未擷取到依賴資訊");
+  expect(unscanned).toContain("規格驗證：未驗證");
+});
+
+test("DISC-006: the general detail view answers all nine required facts", async () => {
+  const skill = detailFixture({
+    skill_id: "dddddddd-0000-0000-0000-000000000001",
+    name: "PDF Summariser",
+    summary: "把 PDF 整理成摘要",
+    enrichment: {
+      status: "enriched",
+      summary: "讀 PDF，輸出重點摘要。",
+      tags: { inputs: ["pdf"], outputs: ["markdown"], tools: [], dependencies: ["pypdf"] },
+      note: "本區塊由模型產生。",
+    },
+    limitations: [
+      { text: "不處理掃描件的手寫字。", source: "model" },
+      { text: "套件內含可執行 Script。", source: "scan" },
+    ],
+    allowed_tools: ["Bash"],
+    source: {
+      type: "git",
+      url: "https://github.com/example/pdf",
+      source_version: "abc123",
+      fetched_at: "2026-08-01T10:00:00Z",
+      content_hash: "sha256:beef",
+      trust: { value: "traceable", label: "來源可追溯", note: "已保存來源紀錄。" },
+    },
+  });
+  stubSearchAndDetails(EMPTY, { [skill.skill_id]: skill });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/skills/$skillId", params: { skillId: skill.skill_id } });
+  });
+  await waitFor(() => (container.textContent ?? "").includes("PDF Summariser"));
+
+  const text = container.textContent ?? "";
+  // 02:DISC-003 一般模式: 功能、限制、輸入、輸出、依賴、權限、來源、License、相容性.
+  expect(text).toContain("把 PDF 整理成摘要"); // 功能
+  expect(text).toContain("不處理掃描件的手寫字。"); // 限制 (model)
+  expect(text).toContain("套件內含可執行 Script。"); // 限制 (scan)
+  expect(text).toContain("輸入：");
+  expect(text).toContain("pdf");
+  expect(text).toContain("輸出：");
+  expect(text).toContain("markdown");
+  expect(text).toContain("依賴：");
+  expect(text).toContain("pypdf");
+  expect(text).toContain("套件宣告可用的工具"); // 權限
+  expect(text).toContain("https://github.com/example/pdf"); // 來源
+  expect(text).toContain("License 未知"); // License
+  expect(text).toContain("規格驗證"); // 相容性
+  // ADR-013: the model half of 限制 is marked as model-written, the scan half is
+  // not allowed to borrow that label.
+  expect(container.querySelectorAll(".badge-source-model").length).toBeGreaterThan(0);
+});
+
+test("DISC-006: an unenriched skill reads as unknown, never as 'needs nothing'", async () => {
+  const skill = detailFixture({
+    skill_id: "dddddddd-0000-0000-0000-000000000002",
+    name: "Bare Skill",
+    // Pending enrichment and an empty limitations list: the state a skill sits
+    // in between import and backfill, which is where an omitted row silently
+    // turns "not extracted" into "none".
+  });
+  stubSearchAndDetails(EMPTY, { [skill.skill_id]: skill });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/skills/$skillId", params: { skillId: skill.skill_id } });
+  });
+  await waitFor(() => (container.textContent ?? "").includes("Bare Skill"));
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("依賴：");
+  expect(text).toContain("未知");
+  expect(text).toContain("不代表這個 Skill 沒有限制");
+});
+
+test("DISC-007: advanced mode shows SKILL.md in full and marks every script", async () => {
+  const skillId = "eeeeeeee-0000-0000-0000-000000000001";
+  const files: SkillFiles = {
+    skill_id: skillId,
+    version_id: "v1",
+    version_number: 1,
+    skill_md: "---\nname: pdf\n---\n\n用法說明。",
+    skill_md_truncated: false,
+    tree: [
+      { path: "SKILL.md", size: 42, is_script: false },
+      { path: "scripts/run.py", size: 17, is_script: true },
+      { path: "reference/notes.md", size: 9, is_script: false },
+    ],
+    // SKILL-003: the tree is exactly what cannot show code living inside the
+    // document, so the disclosure travels beside it.
+    embedded_script_note: "SKILL.md 內含可執行程式碼。",
+    note: "tree 為套件內檔案清單與大小。",
+  };
+  vi.stubGlobal("fetch", (input: string) => {
+    if (String(input).includes(`/api/skills/${skillId}/files`)) {
+      return Promise.resolve(new Response(JSON.stringify(files), { status: 200 }));
+    }
+    return Promise.resolve(new Response(JSON.stringify({ error: "not found" }), { status: 404 }));
+  });
+
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/skills/$skillId/files", params: { skillId } });
+  });
+  await waitFor(() => (container.textContent ?? "").includes("scripts/run.py"));
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("用法說明。"); // SKILL.md 全文
+  expect(text).toContain("SKILL.md 內含可執行程式碼。"); // SKILL-003 disclosure
+
+  // 「Script 必須有明確標示」: the marker sits on the script entry and only on it.
+  const marked = [...container.querySelectorAll(".file-tree li")].filter((li) =>
+    li.querySelector(".script-tag"),
+  );
+  expect(marked).toHaveLength(1);
+  expect(marked[0].textContent).toContain("scripts/run.py");
+  // A way back to the general mode, so the two modes are navigable both ways.
+  expect(text).toContain("一般模式");
 });

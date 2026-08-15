@@ -21,10 +21,41 @@ function RootLayout() {
 
 const rootRoute = createRootRoute({ component: RootLayout });
 
+/**
+ * DISC-001/003: the query and the filters live in the URL so a filtered result
+ * page is linkable and survives a reload.
+ *
+ * `q` is optional on purpose and `undefined` is not the same as `""`:
+ * undefined means nothing has been submitted yet and no request is made, while
+ * an empty string is a blank submit, which the server answers with no_results
+ * plus the DISC-005 suggestion copy. Collapsing the two would delete that state.
+ *
+ * Filter values outside their enum are dropped rather than passed through: the
+ * server rejects them with 400, and a hand-edited URL should land on an
+ * unfiltered page, not an error page.
+ */
+/**
+ * Every key is optional, which is what keeps `<Link to="/">` from demanding a
+ * search object everywhere in the app.
+ */
+export type HomeSearch = {
+  q?: string;
+  script?: "yes" | "no";
+  validation?: "passed" | "unverified";
+};
+
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: Home,
+  validateSearch: (search: Record<string, unknown>): HomeSearch => ({
+    q: typeof search.q === "string" ? search.q : undefined,
+    script: search.script === "yes" || search.script === "no" ? search.script : undefined,
+    validation:
+      search.validation === "passed" || search.validation === "unverified"
+        ? search.validation
+        : undefined,
+  }),
 });
 
 const skillDetailRoute = createRoute({
