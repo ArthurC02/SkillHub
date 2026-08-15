@@ -1,0 +1,57 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能將資料集中的日期與時間欄位轉換成下游系統需要的格式，例如 ISO 8601、Unix epoch、時區日期時間、會計年度、ISO 週日期或儒略日。使用者需提供資料集、來源欄位、目標格式，並在日期順序、來源時區或會計年度起始月份不明時補充相關資訊。它預設保留原始欄位、建立具描述性的輸出欄位，並驗證精度及記錄格式、時區與有損轉換資訊。",
+  "tags": {
+    "dependencies": [
+      "pandas",
+      "python-dateutil",
+      "pytz",
+      "zoneinfo",
+      "data-enrichment skill",
+      "conventions.md"
+    ],
+    "inputs": [
+      "dataset",
+      "date columns",
+      "time columns",
+      "source format",
+      "target format",
+      "source timezone",
+      "fiscal start month"
+    ],
+    "outputs": [
+      "transformed dataset",
+      "iso 8601 timestamps",
+      "unix timestamps",
+      "timezone-aware datetimes",
+      "derived date columns",
+      "updated data dictionary"
+    ],
+    "tools": [
+      "pandas.to_datetime"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Convert the created_at column to ISO 8601 in UTC while preserving the original column.",
+      "zh_hant": "請將 created_at 欄位轉成 UTC 的 ISO 8601 格式，並保留原始欄位。"
+    },
+    {
+      "en": "Add an epoch-milliseconds column from event_time for use by a Java application.",
+      "zh_hant": "請從 event_time 新增 epoch 毫秒欄位，供 Java 應用程式使用。"
+    },
+    {
+      "en": "Combine the event_date and event_clock columns into one timezone-aware datetime column, assuming Asia/Taipei.",
+      "zh_hant": "請將 event_date 與 event_clock 合併為一個含時區的日期時間欄位，來源時區假設為 Asia/Taipei。"
+    },
+    {
+      "en": "Split order_timestamp into separate date and time columns and add ISO week and day-of-week fields.",
+      "zh_hant": "請將 order_timestamp 拆成日期與時間欄位，並新增 ISO 週次及星期欄位。"
+    },
+    {
+      "en": "Create fiscal year and quarter columns from invoice_date, with the fiscal year starting in April.",
+      "zh_hant": "請依 invoice_date 建立會計年度與季度欄位，會計年度從四月開始。"
+    }
+  ]
+}

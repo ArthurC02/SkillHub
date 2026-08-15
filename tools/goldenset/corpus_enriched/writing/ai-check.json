@@ -1,0 +1,51 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能會分析使用者提供的文字或草稿，檢查詞彙可預測性、句長變化、避險語氣、結構、具體程度、轉折、標點、語域及修辭框架等九類 AI 生成跡象。它會輸出結構化報告，包括判定、信心程度、27 分制評分、逐項引文證據，以及 AI 編修比例估計；分數高於 6 時也會提出具體修改建議。分析會依文字長度、文體、語言及可能經過改寫等情況調整信心。",
+  "tags": {
+    "dependencies": [
+      "ai detection literature",
+      "scoring thresholds",
+      "language-matched calibration"
+    ],
+    "inputs": [
+      "text",
+      "draft",
+      "document genre",
+      "source context",
+      "language"
+    ],
+    "outputs": [
+      "ai-check report",
+      "authorship verdict",
+      "confidence rating",
+      "signal scores",
+      "evidence log",
+      "ai-edited fraction",
+      "rewrite recommendations"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Check whether this article sounds AI-written and show me the exact phrases that give it away.",
+      "zh_hant": "請檢查這篇文章是否讀起來像 AI 寫的，並指出暴露跡象的確切語句。"
+    },
+    {
+      "en": "Run an AI-check on this draft before I publish it and suggest fixes for the strongest signals.",
+      "zh_hant": "請在我發布前對這份草稿進行 AI 檢查，並針對最明顯的跡象提出修改建議。"
+    },
+    {
+      "en": "Score this Slack update for AI-writing signals, especially whether its casual tone feels artificially polished.",
+      "zh_hant": "請評估這則 Slack 更新中的 AI 寫作跡象，尤其檢查它的隨意語氣是否顯得刻意潤飾。"
+    },
+    {
+      "en": "Estimate how much of this essay appears to have been AI-edited rather than written entirely by a human.",
+      "zh_hant": "請估計這篇文章有多少部分看起來經過 AI 編修，而非完全由人類撰寫。"
+    },
+    {
+      "en": "Give me a structured AI-check report for this non-English text and account for the limits of multilingual detection.",
+      "zh_hant": "請為這段非英文文字產出結構化 AI 檢查報告，並考量多語言偵測的限制。"
+    }
+  ]
+}

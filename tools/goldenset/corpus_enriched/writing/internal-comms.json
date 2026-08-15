@@ -1,0 +1,51 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能協助撰寫符合公司慣用格式的內部溝通內容，包括 3P（進度、計畫、問題）更新、公司電子報、FAQ、狀態報告、主管簡報、專案更新與事件報告。使用者需提供溝通類型、相關內容，以及期望的格式或背景；技能會依類型套用 examples 目錄中的格式、語氣與內容蒐集指引，若無相符指引則要求進一步說明。",
+  "tags": {
+    "dependencies": [
+      "examples/3p-updates.md",
+      "examples/company-newsletter.md",
+      "examples/faq-answers.md",
+      "examples/general-comms.md"
+    ],
+    "inputs": [
+      "溝通類型",
+      "內部溝通內容",
+      "格式需求",
+      "背景資訊"
+    ],
+    "outputs": [
+      "3p 更新",
+      "公司電子報",
+      "faq 回覆",
+      "狀態報告",
+      "主管更新",
+      "專案更新",
+      "事件報告"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Write a weekly 3P update covering our progress, plans, and current problems.",
+      "zh_hant": "請撰寫一份每週 3P 更新，說明我們的進度、計畫與目前問題。"
+    },
+    {
+      "en": "Turn these company announcements into an internal newsletter for all employees.",
+      "zh_hant": "請將這些公司公告整理成一份提供給全體員工的內部電子報。"
+    },
+    {
+      "en": "Draft clear FAQ answers about the new remote-work policy.",
+      "zh_hant": "請針對新的遠距工作政策草擬清楚的 FAQ 回覆。"
+    },
+    {
+      "en": "Create a concise leadership update from these project notes and milestones.",
+      "zh_hant": "請根據這些專案筆記與里程碑，整理一份精簡的主管更新。"
+    },
+    {
+      "en": "Write an internal incident report describing what happened, the impact, and the follow-up actions.",
+      "zh_hant": "請撰寫一份內部事件報告，說明事件經過、影響與後續行動。"
+    }
+  ]
+}

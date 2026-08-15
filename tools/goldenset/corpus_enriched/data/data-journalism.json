@@ -1,0 +1,121 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能協助記者、新聞編輯室與研究人員取得、清理、驗證及分析資料，並以統計、圖表、互動式地圖和敘事架構製作資料新聞。它涵蓋公開資料來源、資料請求策略、缺漏與重複值處理、通膨及人均調整、相關性解讀、地理編碼、空間分析、方法揭露與可重現性。使用時需提供資料集或資料來源、欄位與時間範圍、欲調查的問題，以及預期的圖表、地圖或報導成果。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "numpy",
+      "rapidfuzz",
+      "cpi",
+      "wbdata",
+      "plotly",
+      "datawrapper",
+      "censusgeocode",
+      "googlemaps",
+      "geopandas",
+      "shapely",
+      "folium",
+      "mapclassify",
+      "matplotlib",
+      "lonboard",
+      "datawrapper account",
+      "google maps api key",
+      "google cloud billing account",
+      "datawrapper access token"
+    ],
+    "inputs": [
+      "datasets",
+      "csv files",
+      "sql dumps",
+      "data schemas",
+      "data dictionaries",
+      "public records",
+      "addresses",
+      "latitude and longitude",
+      "geojson files",
+      "shapefiles",
+      "geoparquet files",
+      "research questions",
+      "time periods",
+      "source urls",
+      "methodology details"
+    ],
+    "outputs": [
+      "cleaned datasets",
+      "validated datasets",
+      "statistical findings",
+      "change metrics",
+      "per capita rates",
+      "inflation-adjusted values",
+      "charts",
+      "interactive visualizations",
+      "choropleth maps",
+      "geocoded data",
+      "geospatial analysis",
+      "data stories",
+      "methodology documentation",
+      "embed code",
+      "image exports"
+    ],
+    "tools": [
+      "data.gov",
+      "census bureau",
+      "bls",
+      "bea",
+      "fred",
+      "sec edgar",
+      "epa",
+      "openfda",
+      "cdc wonder",
+      "nhtsa fars",
+      "fec",
+      "usaspending.gov",
+      "courtlistener",
+      "pacer",
+      "openstreetmap",
+      "eurostat",
+      "oecd",
+      "world bank open data",
+      "un data",
+      "ipums",
+      "icpsr",
+      "data rescue project",
+      "end of term web archive",
+      "wayback machine",
+      "pandas",
+      "sql",
+      "r",
+      "plotly express",
+      "datawrapper",
+      "u.s. census geocoder",
+      "google maps geocoder",
+      "geopandas",
+      "lonboard",
+      "jupyter notebooks"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Clean this CSV of municipal salary records, flag likely duplicate names and outliers, and document every analysis step and limitation.",
+      "zh_hant": "請清理這份市政府薪資紀錄 CSV，標記可能重複的人名與離群值，並記錄每個分析步驟及限制。"
+    },
+    {
+      "en": "Compare crime trends across these cities using per-capita rates, explain whether the variables are merely correlated, and suggest an appropriate chart.",
+      "zh_hant": "請用人均比率比較這些城市的犯罪趨勢，說明變數是否僅有相關性，並建議合適的圖表。"
+    },
+    {
+      "en": "Geocode these U.S. addresses, add Census geography codes where available, and prepare the results for a county-level map.",
+      "zh_hant": "請為這些美國地址進行地理編碼，在可取得時加入人口普查地理代碼，並整理成可製作郡級地圖的資料。"
+    },
+    {
+      "en": "Turn this unemployment dataset into a publication-ready Datawrapper choropleth with source attribution and responsive embed code.",
+      "zh_hant": "請將這份失業率資料製作成可發布的 Datawrapper 分區著色地圖，加入資料來源標示與響應式嵌入碼。"
+    },
+    {
+      "en": "Help structure a data-driven story from these findings, including the hook, evidence, context, human impact, implications, and methodology box.",
+      "zh_hant": "請依據這些發現規劃資料新聞，包括引子、證據、背景、人物影響、後續意涵與方法說明欄。"
+    }
+  ]
+}

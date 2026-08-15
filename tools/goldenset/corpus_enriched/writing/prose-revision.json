@@ -1,0 +1,48 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能協助重整尚未成熟的文章草稿，先改善論點、句子、段落與章節的邏輯順序，再潤飾語言，使表達清楚、自然且流暢，同時盡量保留作者的觀點、語氣、術語與主張強度。使用者需提供目標文本及必要的上下文；若能補充受眾、寫作目的、期望語調，以及想要修訂建議、不同改寫版本或直接編輯原始檔，也有助於產出合適結果。短文通常會得到簡要診斷和一至三種不同重整幅度的版本，較長文件則可獲得依優先順序整理的結構修訂報告。",
+  "tags": {
+    "dependencies": [],
+    "inputs": [
+      "prose draft",
+      "surrounding context",
+      "intended audience",
+      "writing purpose",
+      "desired tone",
+      "source file"
+    ],
+    "outputs": [
+      "flow diagnosis",
+      "revised prose",
+      "revision alternatives",
+      "structured revision report",
+      "prioritized changes"
+    ],
+    "tools": [
+      "source file editing"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Please revise this draft so the main claim appears earlier and the ideas flow logically, while preserving my academic tone and level of certainty.",
+      "zh_hant": "請修訂這份草稿，讓主要論點更早出現、思路銜接更合理，同時保留我的學術語氣與原有的確定程度。"
+    },
+    {
+      "en": "Can you give me light, moderate, and full revisions of this paragraph and briefly explain the tradeoffs?",
+      "zh_hant": "可以為這個段落提供輕度、中度與全面重整三種版本，並簡要說明各自的取捨嗎？"
+    },
+    {
+      "en": "Review this five-page essay's overall structure first, then give me a prioritized revision report by section.",
+      "zh_hant": "請先檢視這篇五頁文章的整體結構，再按章節提供有優先順序的修訂報告。"
+    },
+    {
+      "en": "This sentence feels awkward; diagnose whether it is trying to do too many logical jobs and rewrite it without changing the substantive claim.",
+      "zh_hant": "這個句子讀起來不順；請判斷它是否承擔了太多邏輯功能，並在不改變實質主張的前提下重寫。"
+    },
+    {
+      "en": "Please edit the original source text for clarity and flow, preserving all citations, labels, technical terminology, and author notes.",
+      "zh_hant": "請直接編輯原始文本以改善清晰度與行文流暢度，並保留所有引文、標籤、技術術語及作者註記。"
+    }
+  ]
+}

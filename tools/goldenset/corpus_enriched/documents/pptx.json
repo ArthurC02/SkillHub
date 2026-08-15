@@ -1,0 +1,71 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能可建立、讀取、解析、編輯、合併、拆分及套用範本處理 PowerPoint 簡報，並支援投影片版面、圖表、講者備註與註解。它需要現有的 .pptx／.potx 檔案，或製作新簡報所需的內容、資料與設計要求。處理流程也涵蓋文字擷取、結構驗證、內容檢查，以及將投影片轉成圖片進行版面與溢位檢查。",
+  "tags": {
+    "dependencies": [
+      "pptxgenjs",
+      "markitdown[pptx]",
+      "pillow",
+      "defusedxml",
+      "lxml",
+      "libreoffice",
+      "poppler",
+      "react-icons",
+      "react",
+      "react-dom",
+      "sharp"
+    ],
+    "inputs": [
+      "pptx files",
+      "potx templates",
+      "ppt files",
+      "slide content",
+      "chart data",
+      "design requirements"
+    ],
+    "outputs": [
+      "pptx presentations",
+      "potx templates",
+      "extracted text",
+      "pdf files",
+      "slide images",
+      "validation reports",
+      "thumbnail grids"
+    ],
+    "tools": [
+      "node",
+      "python",
+      "shell",
+      "markitdown",
+      "thumbnail.py",
+      "add_slide.py",
+      "clean.py",
+      "validate.py",
+      "soffice.py",
+      "pdftoppm"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a polished PowerPoint pitch deck from this outline and sales data, including native charts and speaker notes.",
+      "zh_hant": "請根據這份大綱與銷售資料製作一份精緻的 PowerPoint 提案簡報，並加入原生圖表與講者備註。"
+    },
+    {
+      "en": "Update this PPTX with the new figures, preserve its formatting, and remove any unused slides and placeholder text.",
+      "zh_hant": "請以新數據更新這份 PPTX，保留原有格式，並移除未使用的投影片與範例佔位文字。"
+    },
+    {
+      "en": "Extract the text and speaker notes from this presentation and summarize each slide in order.",
+      "zh_hant": "請擷取這份簡報中的文字與講者備註，並依投影片順序逐頁摘要。"
+    },
+    {
+      "en": "Use this POTX template to build a presentation from my content, varying the layouts while keeping the template style.",
+      "zh_hant": "請使用這個 POTX 範本與我提供的內容製作簡報，在維持範本風格的同時變化各頁版面。"
+    },
+    {
+      "en": "Combine these PowerPoint files, validate the result, and check every slide for overflow, overlap, and leftover placeholders.",
+      "zh_hant": "請合併這些 PowerPoint 檔案、驗證合併結果，並檢查每張投影片是否有文字溢位、物件重疊或殘留佔位內容。"
+    }
+  ]
+}

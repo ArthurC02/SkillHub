@@ -1,0 +1,64 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能會掃描資料集的欄位與儲存格，偵測姓名、電子郵件、電話、地址、政府證件號碼、信用卡、IP 位址、出生日期、精確地理座標及健康資料等個人識別資訊，也可選擇使用機器學習檢查自由文字。使用者需提供要檢查的資料集，並決定是否啟用選用的文字模型；輸出包括遮罩後的逐格 JSONL 報告、欄位摘要、信心分數與刪除、雜湊、泛化或合成替換等修復建議。若發現健康資料、政府證件號碼或信用卡等高風險資訊，會要求在後續公開發布前取得明確確認。",
+  "tags": {
+    "dependencies": [
+      "pandas",
+      "phonenumbers",
+      "python-stdnum",
+      "presidio-analyzer",
+      "presidio-anonymizer",
+      "local ner model",
+      "synthetic-data-overlay"
+    ],
+    "inputs": [
+      "dataset",
+      "column names",
+      "column data types",
+      "cell values",
+      "free text",
+      "locale hints",
+      "ml detection preference"
+    ],
+    "outputs": [
+      "pii_report.jsonl",
+      "masked cell-level findings",
+      "column-level summary",
+      "confidence scores",
+      "remediation recommendations",
+      "high-risk pii warning",
+      ".gitignore entry"
+    ],
+    "tools": [
+      "regular expressions",
+      "luhn validation",
+      "header-name heuristics",
+      "value-pattern heuristics",
+      "presidio analyzer",
+      "named entity recognition"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Scan this dataset for PII before I publish it to Hugging Face.",
+      "zh_hant": "在我把這個資料集發布到 Hugging Face 前，請先掃描其中的個人識別資訊。"
+    },
+    {
+      "en": "Check whether the notes column contains names, email addresses, phone numbers, or medical information, and mask detected values in the report.",
+      "zh_hant": "請檢查 notes 欄位是否含有姓名、電子郵件、電話號碼或醫療資訊，並在報告中遮罩偵測到的值。"
+    },
+    {
+      "en": "Create a cell-level PII report and a per-column summary with confidence scores and remediation recommendations.",
+      "zh_hant": "請建立逐儲存格的個資偵測報告，以及包含信心分數與修復建議的逐欄摘要。"
+    },
+    {
+      "en": "Use the optional ML-based detector to find personal data embedded in free-text fields.",
+      "zh_hant": "請使用選用的機器學習偵測器，找出自由文字欄位中夾帶的個人資料。"
+    },
+    {
+      "en": "Identify high-risk fields such as government IDs, credit card numbers, or health data before this dataset is shared publicly.",
+      "zh_hant": "在公開分享這個資料集前，請辨識政府證件號碼、信用卡號或健康資料等高風險欄位。"
+    }
+  ]
+}

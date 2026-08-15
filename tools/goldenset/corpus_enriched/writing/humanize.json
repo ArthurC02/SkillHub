@@ -1,0 +1,58 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能會重寫平淡、制式或帶有 AI 腔調的文字，也能依指定語域從頭撰寫較自然的內容。它會調整用詞、句長節奏、標點、段落結構、語氣與具體細節，並在輸出前檢查常見的制式表達和修辭模式。使用者需提供原文或寫作主題，最好一併說明受眾、語域及長度；也可提供個人寫作樣本、名稱、日期、數字和實例，以便貼近原有聲音並保留事實。",
+  "tags": {
+    "dependencies": [
+      "references/research.md",
+      "optional second llm",
+      "optional ai detectors"
+    ],
+    "inputs": [
+      "source text",
+      "writing topic",
+      "audience",
+      "register",
+      "length target",
+      "writing samples",
+      "factual anchors"
+    ],
+    "outputs": [
+      "humanized text",
+      "style-matched prose",
+      "rewritten content",
+      "specificity note",
+      "length-reduction note"
+    ],
+    "tools": [
+      "gptzero",
+      "pangram",
+      "binoculars",
+      "grammarly",
+      "perplexity probe",
+      "banned-word scan"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Rewrite this product update so it sounds like a real person wrote it, while keeping every date, metric, and technical detail unchanged.",
+      "zh_hant": "請重寫這份產品更新，讓它像真人寫的，同時保留所有日期、指標與技術細節。"
+    },
+    {
+      "en": "Make this email less robotic and adapt it for a busy executive audience; keep it under 180 words.",
+      "zh_hant": "請讓這封電郵少一點機械感，並改成適合忙碌主管閱讀的語氣，控制在 180 字以內。"
+    },
+    {
+      "en": "Use these three writing samples to rewrite my blog draft in my own voice without changing its factual content.",
+      "zh_hant": "請參考這三篇寫作樣本，用我的語氣重寫部落格草稿，但不要更動事實內容。"
+    },
+    {
+      "en": "Turn these project notes into a natural Slack update for an engineering team, including the blockers and Friday deadline.",
+      "zh_hant": "請把這些專案筆記整理成自然的工程團隊 Slack 更新，並保留阻礙事項與週五期限。"
+    },
+    {
+      "en": "Write a conversational introduction for an article about database latency using the figures and tool names I provided.",
+      "zh_hant": "請使用我提供的數據與工具名稱，為一篇談資料庫延遲的文章撰寫口語自然的開場。"
+    }
+  ]
+}

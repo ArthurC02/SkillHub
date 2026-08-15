@@ -31,6 +31,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 CORPUS_DIR = ROOT / "corpus"
+ENRICHED_DIR = ROOT / "corpus_enriched"  # real /v1/enrich-skill output, one JSON per skill
 CACHE_PATH = ROOT / "embeddings_cache.json"  # gitignored: hashes + float arrays only
 ENV_PATH = ROOT.parents[1] / ".env"
 
@@ -100,13 +101,54 @@ def parse_skill(path: Path, doc_id: str) -> dict:
     }
 
 
-def load_corpus() -> tuple[list[dict], dict]:
+def enriched_index_text(name: str, payload: dict) -> str:
+    """The exact string the platform embeds for an enriched document.
+
+    Transcribed from services/platform/internal/ingest/enrich.go: embeddingText
+    joins "name: enriched_summary", the bilingual task examples one per line, and
+    the flattened tag buckets, with "\\n" between the three parts. Task examples
+    keep the zh_hant line before the en line; tags flatten inputs, outputs, tools
+    then dependencies into one space-separated string. If this drifts from the Go
+    side, the golden set stops measuring the production retrieval path — which is
+    the whole point of --index-mode enriched, so keep the two in step.
+    """
+    body = payload.get("summary", "")
+    parts = [f"{name}: {body}"]
+    lines = [
+        s.strip()
+        for ex in payload.get("task_examples", [])
+        for s in (ex.get("zh_hant", ""), ex.get("en", ""))
+        if s.strip()
+    ]
+    if lines:
+        parts.append("\n".join(lines))
+    tags = payload.get("tags", {})
+    flat = [
+        t.strip()
+        for bucket in ("inputs", "outputs", "tools", "dependencies")
+        for t in tags.get(bucket, [])
+        if t.strip()
+    ]
+    if flat:
+        parts.append(" ".join(flat))
+    return "\n".join(parts)
+
+
+def load_corpus(require_enriched: bool = False) -> tuple[list[dict], dict]:
     manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
     docs = []
     for entry in manifest["documents"]:
         path = CORPUS_DIR / entry["category"] / f"{entry['id']}.md"
         doc = parse_skill(path, entry["id"])
         doc["category"], doc["repo"] = entry["category"], entry["repo"]
+        enriched_path = ENRICHED_DIR / entry["category"] / f"{entry['id']}.json"
+        if enriched_path.exists():
+            payload = json.loads(enriched_path.read_text(encoding="utf-8"))
+            doc["enriched"] = enriched_index_text(doc["name"], payload)
+            doc["enrichment_model"] = payload.get("model", "")
+            doc["enrichment_prompt_version"] = payload.get("prompt_version", "")
+        elif require_enriched:
+            sys.exit(f"missing enrichment for {entry['id']}; run enrich_corpus.py first")
         docs.append(doc)
     return docs, manifest
 
@@ -361,6 +403,22 @@ def _selfcheck() -> None:
     best = recommend(sweep(fake))
     assert best["reject"] == 1.0 and best["loss"] == 0.0
 
+    # enriched_index_text must reproduce ingest/enrich.go embeddingText exactly:
+    # name and summary joined by ": ", then examples zh before en one per line,
+    # then tags in bucket order space-separated, the three parts joined by "\n".
+    sample = {
+        "summary": "轉檔",
+        "task_examples": [{"zh_hant": "把 CSV 轉成 JSONL", "en": "convert csv to jsonl"},
+                          {"zh_hant": "  ", "en": "flatten a table"}],
+        "tags": {"inputs": ["csv"], "outputs": ["jsonl"], "tools": [" python "], "dependencies": []},
+    }
+    assert enriched_index_text("csv-to-json", sample) == (
+        "csv-to-json: 轉檔\n"
+        "把 CSV 轉成 JSONL\nconvert csv to jsonl\nflatten a table\n"
+        "csv jsonl python"
+    ), enriched_index_text("csv-to-json", sample)
+    assert enriched_index_text("x", {"summary": "s", "task_examples": [], "tags": {}}) == "x: s"
+
     # queries.json is internally consistent with the corpus manifest
     docs_real, _ = load_corpus()
     known = {d["id"] for d in docs_real}
@@ -385,11 +443,13 @@ def _selfcheck() -> None:
 # --------------------------------------------------------------------------- main
 
 
-def main(allow_api: bool) -> None:
-    docs, manifest = load_corpus()
+def main(allow_api: bool, index_mode: str) -> None:
+    enriched_mode = index_mode == "enriched"
+    docs, manifest = load_corpus(require_enriched=enriched_mode)
     queries = json.loads((ROOT / "queries.json").read_text(encoding="utf-8"))["queries"]
 
-    texts = [d["summary"] for d in docs] + [d["fulltext"] for d in docs]
+    grains = ["summary", "fulltext"] + (["enriched"] if enriched_mode else [])
+    texts = [d[g] for g in grains for d in docs]
     texts += [q["query"] for q in queries]
     vectors = embed(texts, allow_api=allow_api)
 
@@ -398,11 +458,20 @@ def main(allow_api: bool) -> None:
         f"{len(queries)} queries, model {EMBED_MODEL} "
         f"({len(next(iter(vectors.values())))} dims)\n"
     )
+    if enriched_mode:
+        models = {d["enrichment_model"] for d in docs}
+        versions = {d["enrichment_prompt_version"] for d in docs}
+        print(
+            f"index mode: enriched — 索引文本 = enriched summary + task examples + tags"
+            f"（對齊 ingest/enrich.go embeddingText）\n"
+            f"enrichment model: {', '.join(sorted(models))} / prompt {', '.join(sorted(versions))}\n"
+        )
 
-    results = {g: run(docs, queries, vectors, g) for g in ("summary", "fulltext")}
-    rows = results["summary"]
+    results = {g: run(docs, queries, vectors, g) for g in grains}
+    rows = results[index_mode if enriched_mode else "summary"]
 
-    print("## 1. 命中率（索引欄位 = summary，即 ADR-013 §1 索引時增強產出的代理）\n")
+    label = "enriched（真實 LLM 增強產出）" if enriched_mode else "summary（裸 frontmatter）"
+    print(f"## 1. 命中率（索引欄位 = {label}）\n")
     print(table("全部 48 條有正解的查詢", rows))
     for cat in ("documents", "writing", "data"):
         print(table(f"類別 {cat}", [r for r in rows if r["category"] == cat]))
@@ -415,7 +484,7 @@ def main(allow_api: bool) -> None:
     print("### 索引粒度對照（向量腿）\n")
     print("| 索引欄位 | Top-1 | Top-3 | recall@5 |")
     print("| --- | --- | --- | --- |")
-    for g in ("summary", "fulltext"):
+    for g in grains:
         s = metrics(results[g], "emb")
         print(f"| {g} | {pct(s['top1'], s['n'])} | {pct(s['top3'], s['n'])} | {pct(s['r5'], s['n'])} |")
 
@@ -472,15 +541,38 @@ def main(allow_api: bool) -> None:
         print(line)
 
     print("\n## 5. 未命中的查詢（向量腿 recall@5 miss）\n")
-    misses = [r for r in rows if r["relevant"] and (r["emb"] is None or r["emb"] > 5)]
-    if not misses:
-        print("（無）")
-    for r in misses:
-        print(f"- {r['id']} ({r['category']}/{r['lang']}) 正解 {sorted(r['relevant'])}，向量腿名次 {r['emb']}")
+    for g in grains:
+        if g == "fulltext":
+            continue
+        misses = [r for r in results[g] if r["relevant"] and (r["emb"] is None or r["emb"] > 5)]
+        print(f"索引欄位 {g}：" + ("（無）" if not misses else ""))
+        for r in misses:
+            print(
+                f"- {r['id']} ({r['category']}/{r['lang']}) 正解 {sorted(r['relevant'])}，"
+                f"向量腿名次 {r['emb']}"
+            )
+
+    if enriched_mode:
+        # The two v1 misses are the stated prediction of ADR-013 section 1: task
+        # example sentences are what should close them. Report them by name so a
+        # rerun answers that question without re-reading the whole table.
+        print("\n### v1 兩條 miss 在增強索引下的名次\n")
+        by_id = {r["id"]: r for r in results["enriched"]}
+        base = {r["id"]: r for r in results["summary"]}
+        print("| 查詢 | 裸 frontmatter 名次 | 增強索引名次 |")
+        print("| --- | --- | --- |")
+        for qid in ("D02", "D09"):
+            if qid in by_id:
+                print(f"| {qid} | {base[qid]['emb']} | {by_id[qid]['emb']} |")
 
 
 if __name__ == "__main__":
     if "--selfcheck" in sys.argv:
         _selfcheck()
     else:
-        main(allow_api="--no-api" not in sys.argv)
+        mode = "frontmatter"
+        if "--index-mode" in sys.argv:
+            mode = sys.argv[sys.argv.index("--index-mode") + 1]
+            if mode not in ("frontmatter", "enriched"):
+                sys.exit("--index-mode takes 'frontmatter' or 'enriched'")
+        main(allow_api="--no-api" not in sys.argv, index_mode=mode)

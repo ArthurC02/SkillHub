@@ -1,0 +1,53 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能依照美聯社（AP）風格與新聞編輯慣例，撰寫或潤飾新聞稿件、標題、新聞社群貼文、新聞稿及媒體通知。它可將草稿、採訪筆記或事件資料整理成簡潔、可發布的內容，並規範導語、引述歸屬、數字、日期、時間、稱謂、縮寫、標點與段落格式。使用時需提供原始資料或待編修文字，並最好註明出版物自訂的編輯風格。",
+  "tags": {
+    "dependencies": [
+      "ap stylebook",
+      "publication house style"
+    ],
+    "inputs": [
+      "news drafts",
+      "interview notes",
+      "event details",
+      "press release drafts",
+      "media advisory drafts",
+      "news social media copy",
+      "house style requirements"
+    ],
+    "outputs": [
+      "news articles",
+      "news briefs",
+      "headlines",
+      "edited copy",
+      "press releases",
+      "media advisories",
+      "news social media posts",
+      "ap style copy"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Turn these interview notes into a concise news article with an AP-style lede and clear attribution.",
+      "zh_hant": "請將這些採訪筆記整理成簡潔的新聞報導，使用 AP 風格導語與清楚的引述歸屬。"
+    },
+    {
+      "en": "Edit this draft for AP Style, including its numbers, dates, titles, quotations and paragraph structure.",
+      "zh_hant": "請依 AP 風格編修這篇草稿，包括數字、日期、職稱、引文與段落結構。"
+    },
+    {
+      "en": "Write a sentence-case headline for this city council story using present tense.",
+      "zh_hant": "請為這篇市議會報導撰寫一個句首大寫、使用現在式的新聞標題。"
+    },
+    {
+      "en": "Convert these event details into a publishable media advisory with correctly formatted times and addresses.",
+      "zh_hant": "請將這些活動資料改寫成可發布的媒體通知，並正確格式化時間與地址。"
+    },
+    {
+      "en": "Rewrite this announcement as a short news social media post without editorializing or exclamation points.",
+      "zh_hant": "請將這則公告改寫成簡短的新聞社群貼文，避免主觀評論與驚嘆號。"
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能協助研究者規劃研究問題與方法、搜尋及整理文獻、管理引用，並依學術慣例撰寫與修訂論文、文獻回顧及研究計畫。它也涵蓋同儕審查回覆、期刊與開放取用路徑選擇、預印本、持久識別碼、研究倫理、預註冊、作者貢獻及生成式 AI 使用揭露。使用者需提供研究主題或問題、稿件或審查意見、目標期刊與資助方規定，以及適用的資料、文獻和引用資訊。",
+  "tags": {
+    "dependencies": [
+      "source literature",
+      "journal guidelines",
+      "funder policies",
+      "citation styles",
+      "research ethics requirements",
+      "open access mandates"
+    ],
+    "inputs": [
+      "research question",
+      "research topic",
+      "manuscript draft",
+      "literature records",
+      "citation metadata",
+      "reviewer comments",
+      "grant requirements",
+      "journal requirements",
+      "funder requirements",
+      "research data",
+      "analysis plan"
+    ],
+    "outputs": [
+      "research question",
+      "literature search strategy",
+      "paper outline",
+      "academic manuscript",
+      "literature review",
+      "citation list",
+      "reviewer response letter",
+      "grant proposal",
+      "budget justification",
+      "journal cover letter",
+      "open access plan",
+      "preprint plan",
+      "llm disclosure statement",
+      "preregistration plan",
+      "credit roles"
+    ],
+    "tools": [
+      "web of science",
+      "scopus",
+      "google scholar",
+      "jstor",
+      "proquest",
+      "ssrn",
+      "pubmed",
+      "medline",
+      "cinahl",
+      "eric",
+      "zotero",
+      "paperpile",
+      "endnote",
+      "citavi",
+      "bibtex",
+      "orcid",
+      "doi",
+      "ror",
+      "osf",
+      "aspredicted",
+      "arxiv",
+      "biorxiv",
+      "medrxiv",
+      "zenodo",
+      "github",
+      "gitlab",
+      "overleaf",
+      "scrivener",
+      "typst",
+      "r",
+      "python",
+      "spss",
+      "stata",
+      "nvivo",
+      "julia",
+      "ggplot2",
+      "matplotlib",
+      "plotly",
+      "tableau"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Help me refine this broad topic into a feasible and ethical research question using the FINER criteria.",
+      "zh_hant": "請依 FINER 準則，協助我把這個寬泛主題縮小成可行且符合倫理的研究問題。"
+    },
+    {
+      "en": "Create a systematic literature search strategy for my topic, including keywords, Boolean operators, and inclusion and exclusion criteria.",
+      "zh_hant": "請為我的研究主題制定系統性文獻搜尋策略，包括關鍵字、布林運算子及納入與排除標準。"
+    },
+    {
+      "en": "Restructure my manuscript into IMRaD format and revise the wording to avoid overclaiming and vague academic language.",
+      "zh_hant": "請將我的稿件重整為 IMRaD 格式，並修改措辭以避免過度推論及含糊的學術語言。"
+    },
+    {
+      "en": "Draft a point-by-point response letter using these reviewer comments and the revisions I made.",
+      "zh_hant": "請根據這些審稿意見與我完成的修改，草擬逐點回覆審查者的信件。"
+    },
+    {
+      "en": "Compare suitable open-access routes for my target journal and funder, then draft an LLM-use disclosure statement for submission.",
+      "zh_hant": "請依我的目標期刊與資助方規定比較合適的開放取用途徑，並草擬投稿用的 LLM 使用揭露聲明。"
+    }
+  ]
+}

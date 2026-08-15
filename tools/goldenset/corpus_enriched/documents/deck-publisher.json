@@ -1,0 +1,53 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能將使用者提供的內容整理成適合簡報情境的響應式網頁投影片，並透過 ReportRoom 發布為可在各種裝置開啟的即時網址。它需要來源內容，以及簡報是由講者現場呈現或供讀者自行瀏覽等使用情境；製作時會先提供每頁一個重點的投影片大綱，將資料轉為圖表、精簡文字，並保留數字的準確性。完成後會提供發布網址、鍵盤與捲動導覽方式，供預先傳閱的簡報也會附帶瀏覽分析。",
+  "tags": {
+    "dependencies": [
+      "reportroom",
+      "shared skill flow",
+      "design system"
+    ],
+    "inputs": [
+      "source content",
+      "presentation setting",
+      "live presentation",
+      "send-ahead deck",
+      "numeric data"
+    ],
+    "outputs": [
+      "responsive web slide deck",
+      "slide outline",
+      "charts",
+      "appendix slides",
+      "live url",
+      "view analytics"
+    ],
+    "tools": [
+      "reportroom",
+      "deck linter"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Turn this proposal into a live presentation deck for tomorrow’s client meeting.",
+      "zh_hant": "請把這份提案做成明天客戶會議使用的線上簡報。"
+    },
+    {
+      "en": "Create a send-ahead slide deck from this report that readers can click through on their own.",
+      "zh_hant": "請將這份報告製作成可預先傳送、讓讀者自行點閱的投影片。"
+    },
+    {
+      "en": "Make a persuasive pitch deck from this content, leading with our recommendation and preserving all financial figures exactly.",
+      "zh_hant": "請根據這些內容製作具說服力的提案簡報，先呈現我們的建議，並精確保留所有財務數字。"
+    },
+    {
+      "en": "Convert these tables and bullet-heavy notes into a responsive web deck with charts where appropriate.",
+      "zh_hant": "請把這些表格和充滿條列的筆記轉成響應式網頁簡報，並在適合之處使用圖表。"
+    },
+    {
+      "en": "Publish these demo slides at a live URL that I can present using keyboard or scroll navigation.",
+      "zh_hant": "請將這些示範內容發布成即時網址，讓我能用鍵盤或捲動方式進行簡報。"
+    }
+  ]
+}

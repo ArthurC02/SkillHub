@@ -1,0 +1,51 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "將含貨幣符號、千位分隔符、百分比、縮寫倍率或會計負號等格式的文字數值，轉換成可分析的整數或浮點數欄位。它需要資料集與目標欄位；若未指定，也可找出大多數內容看似數字的文字欄位，並在小數點、千位格式或百分比處理不明確時請使用者確認。原始格式、幣別、倍率與百分比決策會記錄到資料字典，無法解析的值則保留為空值並列出列索引。",
+  "tags": {
+    "dependencies": [
+      "pandas",
+      "babel"
+    ],
+    "inputs": [
+      "dataset",
+      "text-formatted numeric columns",
+      "format preferences",
+      "percentage handling"
+    ],
+    "outputs": [
+      "numeric columns",
+      "raw value columns",
+      "data dictionary metadata",
+      "currency column",
+      "qualifier column",
+      "unparseable row report",
+      "numeric output dataset"
+    ],
+    "tools": [
+      "add-data-dictionary"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Convert the revenue column containing values like \"$4.27\", \"$1.2M\", and \"(500)\" into a numeric column while preserving the original values.",
+      "zh_hant": "請將營收欄位中像「$4.27」、「$1.2M」和「(500)」的值轉成數值欄位，並保留原始值。"
+    },
+    {
+      "en": "Find text columns in this dataset that are mostly numeric and suggest how to parse their separators and decimal markers.",
+      "zh_hant": "請找出這份資料集中內容大多可視為數字的文字欄位，並建議如何解析其千位分隔符與小數點。"
+    },
+    {
+      "en": "Parse the percentage column as decimal fractions, so \"3.5%\" becomes 0.035, and record that decision in the data dictionary.",
+      "zh_hant": "請將百分比欄位解析為小數比例，讓「3.5%」變成 0.035，並把這項處理方式記錄在資料字典中。"
+    },
+    {
+      "en": "Extract mixed currency symbols into a separate currency column and convert the remaining amounts to numbers without performing exchange-rate conversion.",
+      "zh_hant": "請將混合幣別符號擷取到獨立的幣別欄位，並把其餘金額轉成數字，但不要進行匯率換算。"
+    },
+    {
+      "en": "Convert approximations such as \"~500\" and \">1M\" into numeric values, preserve their qualifiers, and report any rows that cannot be parsed.",
+      "zh_hant": "請將「~500」和「>1M」等近似或界限值轉成數字、保留其限定符，並回報所有無法解析的資料列。"
+    }
+  ]
+}

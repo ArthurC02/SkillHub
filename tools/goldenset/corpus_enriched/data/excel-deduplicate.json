@@ -1,0 +1,51 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能依指定關鍵欄位為 Excel 資料去重，可選擇保留首次或末次出現的資料列，並刪除其餘重複列。它需要提供 .xlsx 檔案、關鍵欄位名稱及保留規則；流程會先唯讀掃描並列出重複情況，再備份檔案、直接修改工作表 XML、重新封裝，最後驗證殘留重複與公式中的 #REF! 錯誤。此方式只移除資料列，保留其餘內容與格式不變。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "lxml",
+      "openpyxl",
+      "excel-find-duplicates",
+      "excel-delete",
+      "excel-safe-workflow"
+    ],
+    "inputs": [
+      "xlsx file",
+      "key column",
+      "keep rule"
+    ],
+    "outputs": [
+      "deduplicated xlsx file",
+      "backup xlsx file",
+      "duplicate scan report",
+      "validation report"
+    ],
+    "tools": [
+      "pandas read_excel",
+      "xml row deletion",
+      "zipfile",
+      "formula health check"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Remove duplicate rows from this Excel file by the customer ID column, keeping the first occurrence.",
+      "zh_hant": "請依「客戶編號」欄位移除這份 Excel 的重複資料列，保留第一次出現的資料。"
+    },
+    {
+      "en": "Deduplicate the spreadsheet by email address and keep the last record for each address.",
+      "zh_hant": "請按電子郵件地址為試算表去重，每個地址保留最後一筆紀錄。"
+    },
+    {
+      "en": "Scan this workbook for duplicate order numbers, show me how many rows will be removed, and then deduplicate it.",
+      "zh_hant": "請掃描這份活頁簿中的重複訂單編號，顯示預計刪除的列數，然後執行去重。"
+    },
+    {
+      "en": "Clean duplicate product codes from this XLSX file, create a backup, and verify that no duplicates or #REF! errors remain.",
+      "zh_hant": "請清理這份 XLSX 檔案中的重複產品代碼、建立備份，並確認沒有殘留重複資料或 #REF! 錯誤。"
+    }
+  ]
+}

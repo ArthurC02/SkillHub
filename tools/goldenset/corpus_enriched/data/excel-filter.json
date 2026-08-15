@@ -1,0 +1,55 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能依照指定條件篩選 Excel 資料列，可選擇只保留符合條件的列，或刪除符合條件的列；支援等於、包含、大小比較、日期範圍、空值及多條件組合。使用者需提供 Excel 檔案、篩選欄位與條件、表頭位置，以及保留或刪除模式。它會先以 pandas 找出目標列，再直接修改工作表 XML 以保留格式，並進行備份與結果驗證；刪除後還可在使用者確認後壓實不連續的空白列。",
+  "tags": {
+    "dependencies": [
+      "pandas",
+      "openpyxl",
+      "lxml",
+      "excel-safe-workflow",
+      "excel-delete"
+    ],
+    "inputs": [
+      "xlsx file",
+      "filter column",
+      "filter condition",
+      "filter mode",
+      "header row"
+    ],
+    "outputs": [
+      "filtered xlsx file",
+      "backup xlsx file",
+      "filter verification",
+      "row deletion report"
+    ],
+    "tools": [
+      "pandas",
+      "openpyxl",
+      "xlsx xml",
+      "zipfile"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Keep only the rows in this Excel file where the application date is on or after January 1, 2020.",
+      "zh_hant": "請只保留這份 Excel 中申請日在 2020 年 1 月 1 日之後（含當日）的資料列。"
+    },
+    {
+      "en": "Delete rows where the applicant field is blank, and keep all other data.",
+      "zh_hant": "請刪除申請人欄位為空白的資料列，保留其他資料。"
+    },
+    {
+      "en": "Extract rows where the title contains “graphene” and the legal status is “granted.”",
+      "zh_hant": "請提取標題包含「石墨烯」且法律狀態為「已授權」的資料列。"
+    },
+    {
+      "en": "Keep records with application dates between 2020 and 2023, then compact the blank rows left after deletion.",
+      "zh_hant": "請保留申請日在 2020 至 2023 年之間的紀錄，並在刪除後壓實留下的空白列。"
+    },
+    {
+      "en": "Remove every row where the applicant contains either Huawei or Tencent.",
+      "zh_hant": "請刪除申請人欄位包含「華為」或「騰訊」的所有資料列。"
+    }
+  ]
+}

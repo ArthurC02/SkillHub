@@ -1,0 +1,66 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能協助科技主管、產品經理、創辦人與售前團隊，把專案啟動、進度更新、結案／年度回顧、募資簡報或解決方案銷售內容整理成具說服力的簡報。它採用「吸引注意、交代背景、提出方案、提供證據、明確請求」五段式架構，並依受眾關切、數據、風險與決策需求套用不同範本。使用者需提供簡報情境、受眾背景及相關素材，例如目標、進度、指標、風險、市場資料、預算、案例或募資需求；若資訊不足，流程會先詢問缺漏內容，再產出草稿並進行提交前檢查。",
+  "tags": {
+    "dependencies": [
+      "leader context",
+      "business positioning",
+      "format preferences",
+      "prior context"
+    ],
+    "inputs": [
+      "briefing scenario",
+      "audience context",
+      "project materials",
+      "goals and kpis",
+      "metrics",
+      "risks and mitigations",
+      "market data",
+      "competitive landscape",
+      "timeline",
+      "resources and budget",
+      "financials and forecast",
+      "customer pain points",
+      "cases or poc plan",
+      "pricing or engagement model"
+    ],
+    "outputs": [
+      "project kickoff brief",
+      "status update",
+      "wrap-up review",
+      "annual review",
+      "investor pitch",
+      "solution proposal",
+      "pre-submit checklist"
+    ],
+    "tools": [
+      "claude code",
+      "cursor",
+      "codex",
+      "chat prompts"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a project kickoff brief for our CTO that explains the market opportunity, scope, milestones, required headcount, budget, and key risks.",
+      "zh_hant": "請為 CTO 製作一份專案啟動簡報，說明市場機會、範圍、里程碑、所需人力與預算，以及主要風險。"
+    },
+    {
+      "en": "Turn this period’s completed work, metrics, delays, and next steps into a persuasive status update for senior leadership.",
+      "zh_hant": "請將本期完成事項、指標、延誤與下一步，整理成一份面向高階主管、具說服力的進度更新。"
+    },
+    {
+      "en": "Draft an annual review that compares our original goals with actual results, highlights business impact, and proposes the next phase.",
+      "zh_hant": "請撰寫年度回顧，比較原定目標與實際成果、凸顯商業影響，並提出下一階段計畫。"
+    },
+    {
+      "en": "Build an investor pitch from our market data, MVP status, traction, team background, financial forecast, and funding ask.",
+      "zh_hant": "請根據市場資料、MVP 狀態、成長成果、團隊背景、財務預測與募資需求，製作投資人簡報。"
+    },
+    {
+      "en": "Write a solution-selling proposal for a customer executive using their pain points, our capabilities, case metrics, timeline, and engagement model.",
+      "zh_hant": "請運用客戶痛點、我方能力、案例指標、時程與合作模式，撰寫一份面向客戶高階主管的解決方案銷售提案。"
+    }
+  ]
+}

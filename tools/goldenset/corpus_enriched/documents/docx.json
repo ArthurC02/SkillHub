@@ -1,0 +1,69 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能用於建立、讀取、編輯及整理 Word 文件（.docx）與範本（.dotx），可處理標題、目錄、頁碼、表格、圖片、清單及版面格式。它也能從既有文件擷取或取代內容、加入註解與追蹤修訂、接受修訂，以及將舊式 .doc 轉換後再處理。使用時需提供要製作的內容與格式需求，或提供既有的 Word 文件及具體修改要求；完成後可驗證文件結構並轉成 PDF 與頁面圖片檢查外觀。",
+  "tags": {
+    "dependencies": [
+      "docx npm package",
+      "pandoc",
+      "libreoffice",
+      "poppler"
+    ],
+    "inputs": [
+      "docx files",
+      "dotx files",
+      "doc files",
+      "document content",
+      "formatting requirements",
+      "images",
+      "replacement text",
+      "comments",
+      "tracked changes"
+    ],
+    "outputs": [
+      "docx documents",
+      "edited word documents",
+      "word templates",
+      "markdown content",
+      "redlined documents",
+      "annotated documents",
+      "accepted-changes copies",
+      "pdf previews",
+      "jpeg page images"
+    ],
+    "tools": [
+      "docx-js",
+      "pandoc",
+      "soffice.py",
+      "pdftoppm",
+      "unzip",
+      "zip",
+      "merge_runs.py",
+      "validate.py",
+      "comment.py",
+      "accept_changes.py"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a polished Word report with a table of contents, numbered headings, page numbers, and formatted tables.",
+      "zh_hant": "請建立一份專業的 Word 報告，包含目錄、編號標題、頁碼及格式化表格。"
+    },
+    {
+      "en": "Replace the company name throughout this DOCX file and insert the new logo without changing the existing layout.",
+      "zh_hant": "請在這份 DOCX 文件中全面替換公司名稱並插入新標誌，但不要改變原有版面。"
+    },
+    {
+      "en": "Extract the content from this Word document into Markdown and reorganize it by heading.",
+      "zh_hant": "請將這份 Word 文件的內容擷取成 Markdown，並依標題重新整理。"
+    },
+    {
+      "en": "Redline this contract under my name, add comments to the fee clauses, and provide a clean copy with all changes accepted.",
+      "zh_hant": "請以我的姓名追蹤修訂這份合約，在費用條款加入註解，並另提供一份接受所有修訂的乾淨版本。"
+    },
+    {
+      "en": "Convert this legacy DOC file to DOCX, fix the formatting, and verify the final pages visually.",
+      "zh_hant": "請將這份舊式 DOC 文件轉成 DOCX、修正格式，並以頁面預覽檢查最終外觀。"
+    }
+  ]
+}

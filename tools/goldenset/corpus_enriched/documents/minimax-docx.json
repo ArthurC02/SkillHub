@@ -1,0 +1,63 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能用於建立、編輯、填寫及格式化 Word DOCX 文件，可從零製作報告、合約、論文或公文，也能修改既有文件及套用範本。使用者需提供文件內容與版面需求；若是編輯或重排，還需提供來源 DOCX，套用格式時則需另附範本 DOCX。它透過 .NET OpenXML SDK、命令列工具或 C# 腳本處理複雜結構，並可進行預覽、差異比較、結構與業務規則驗證。",
+  "tags": {
+    "dependencies": [
+      ".net",
+      "openxml sdk",
+      "documentformat.openxml",
+      "office open xml",
+      "xsd schemas"
+    ],
+    "inputs": [
+      "document content",
+      "formatting requirements",
+      "source docx",
+      "template docx",
+      "content json",
+      "placeholder data",
+      "table data",
+      "doc file"
+    ],
+    "outputs": [
+      "docx document",
+      "formatted document",
+      "validation results",
+      "document preview",
+      "document diff"
+    ],
+    "tools": [
+      "minimaxai docx cli",
+      "c# scripts",
+      "dotnet",
+      "setup scripts",
+      "environment check",
+      "doc-to-docx converter",
+      "docx preview",
+      "xsd validator"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a professionally formatted DOCX proposal from this text, with an A4 layout, table of contents, page numbers, and a corporate style.",
+      "zh_hant": "請把這段文字製作成專業排版的 DOCX 提案，使用 A4、目錄、頁碼與企業風格。"
+    },
+    {
+      "en": "Fill the name, address, and contract date placeholders in this Word template using the data I provide.",
+      "zh_hant": "請用我提供的資料填入這份 Word 範本中的姓名、地址與合約日期欄位。"
+    },
+    {
+      "en": "Reformat my thesis DOCX to match this university template while preserving all content, section breaks, headers, and page numbering.",
+      "zh_hant": "請將我的論文 DOCX 依照這份大學範本重新排版，並保留全部內容、分節、頁首頁尾及頁碼。"
+    },
+    {
+      "en": "Replace the old company name throughout this DOCX and show that no unrelated content was changed.",
+      "zh_hant": "請替換這份 DOCX 中所有舊公司名稱，並確認其他無關內容沒有被改動。"
+    },
+    {
+      "en": "Convert this legacy DOC file to DOCX, add a header and footer, and validate the finished document.",
+      "zh_hant": "請將這份舊版 DOC 轉成 DOCX，加入頁首與頁尾，並驗證完成後的文件。"
+    }
+  ]
+}

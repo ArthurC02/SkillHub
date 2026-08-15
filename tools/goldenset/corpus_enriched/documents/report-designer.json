@@ -1,0 +1,54 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能用於美化既有的報告、簡報、ReportRoom 頁面或已貼上的 HTML，在不改動文字、數字與論述順序的前提下，改善視覺層級、字體與留白、圖表和表格、配色、深色模式、響應式版面及社群連結預覽。使用者需提供現有文件，或指定已發布的頁面；技能會依設計系統檢查、提出修改清單、執行 lint，並在核准後以相同網址重新發布。",
+  "tags": {
+    "dependencies": [
+      "reportroom design system",
+      "root skill.md"
+    ],
+    "inputs": [
+      "existing report",
+      "existing deck",
+      "published reportroom page",
+      "pasted html",
+      "design feedback"
+    ],
+    "outputs": [
+      "polished document",
+      "design change list",
+      "before-and-after summary",
+      "republished page",
+      "og image",
+      "social link preview"
+    ],
+    "tools": [
+      "get_design_system",
+      "list_documents",
+      "lint_document",
+      "publish"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Make this existing report look more professional without changing any of its wording or data.",
+      "zh_hant": "請讓這份現有報告看起來更專業，但不要更動任何文字或數據。"
+    },
+    {
+      "en": "Improve the visual hierarchy, typography, and spacing of this pasted HTML page.",
+      "zh_hant": "請改善這個貼上來的 HTML 頁面的視覺層級、字體與間距。"
+    },
+    {
+      "en": "Give my published ReportRoom page a design pass and keep the same URL when republishing it.",
+      "zh_hant": "請替我已發布的 ReportRoom 頁面做一次設計優化，重新發布時保留相同網址。"
+    },
+    {
+      "en": "Check this deck’s charts, dark mode, and mobile layout, then list the proposed design changes before applying them.",
+      "zh_hant": "請檢查這份簡報的圖表、深色模式與行動版版面，並在套用前列出建議的設計修改。"
+    },
+    {
+      "en": "Polish this page’s title, description, and OG image so its link preview looks better on Slack and LinkedIn.",
+      "zh_hant": "請優化這個頁面的標題、描述與 OG 圖片，讓它在 Slack 和 LinkedIn 的連結預覽更好看。"
+    }
+  ]
+}

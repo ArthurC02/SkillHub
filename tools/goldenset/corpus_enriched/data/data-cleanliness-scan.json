@@ -1,0 +1,55 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "掃描一個或多個 CSV、Parquet、JSON、JSONL 或 Excel 檔案，評估資料整潔度及找出可能導致 SQL 匯入失敗或分析錯誤的問題。它會檢查欄位型別、日期、空值、重複鍵、編碼、分隔符、列結構、值域及跨欄邏輯等，並按嚴重程度排序。使用者需提供資料檔案、確認格式及目標系統；輸出為含問題範例與修正建議的 Markdown 報告，亦可選擇產生 JSON 版本。",
+  "tags": {
+    "dependencies": [
+      "pandas",
+      "pyarrow",
+      "openpyxl",
+      "chardet",
+      "python-dateutil"
+    ],
+    "inputs": [
+      "csv files",
+      "parquet files",
+      "json files",
+      "jsonl files",
+      "excel files",
+      "target sql system"
+    ],
+    "outputs": [
+      "cleanliness_report.md",
+      "cleanliness_report.json",
+      "ranked issue report",
+      "remediation suggestions"
+    ],
+    "tools": [
+      "pandas",
+      "chardet",
+      "dateutil"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Scan these CSV files for data quality issues before I load them into PostgreSQL.",
+      "zh_hant": "在我把這些 CSV 檔案匯入 PostgreSQL 前，請先掃描資料品質問題。"
+    },
+    {
+      "en": "Check this Excel workbook for mixed data types, malformed dates, disguised nulls, and duplicate keys.",
+      "zh_hant": "請檢查這份 Excel 活頁簿是否有混合資料型別、錯誤日期、偽裝空值及重複鍵。"
+    },
+    {
+      "en": "Will this JSONL data load cleanly into SQL? Give me a severity-ranked report with remediation suggestions.",
+      "zh_hant": "這份 JSONL 資料能順利匯入 SQL 嗎？請提供按嚴重程度排序的報告及修正建議。"
+    },
+    {
+      "en": "Audit these large Parquet files using strategic sampling and note the sample size in the report.",
+      "zh_hant": "請用策略性抽樣稽核這些大型 Parquet 檔案，並在報告中註明樣本大小。"
+    },
+    {
+      "en": "Find delimiter drift, ragged rows, encoding artefacts, and mixed line endings in this data dump.",
+      "zh_hant": "請找出這批資料中的分隔符漂移、欄數不齊、編碼異常及混合換行格式。"
+    }
+  ]
+}

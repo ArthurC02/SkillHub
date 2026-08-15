@@ -365,7 +365,7 @@ func TestOffTopicQueryIsRefusedWithASuggestion(t *testing.T) {
 	seedEmbedding(t, pool, published, 33)
 
 	// The query embeds onto an unrelated axis: cosine distance 1.0, well past
-	// the 0.79 cut-off, and sharing no token with the document either.
+	// the 0.75 cut-off, and sharing no token with the document either.
 	a := newAPIWithLLM(t, pool, stubLLM(t, 700, "because it fits"))
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 
@@ -387,14 +387,19 @@ func TestOffTopicQueryIsRefusedWithASuggestion(t *testing.T) {
 
 // The other side of the cut-off: a genuine match sits comfortably inside it.
 // A threshold that refuses real queries is worse than no threshold, and
-// golden-query-set.md §4.3 chose 0.79 precisely for 0% recall loss.
+// golden-query-set.md §10.5 chose 0.75 precisely for 0% recall loss.
 func TestRelevantQueryIsNotRefusedByTheCutOff(t *testing.T) {
 	pool := requireDB(t)
 
 	curator := newAPI(t, pool).login(t, "curator-threshold-ok")
 	markCatalog(t, pool, curator.workspaceID)
 	published := seedSkill(t, pool, curator.workspaceID, "slithy ledger reconciler")
-	// 0.3 cosine similarity: a weak-but-real match, above the 0.21 floor.
+	// 0.3 cosine similarity: a weak-but-real match, above the 0.25 floor. The
+	// seed stays at 0.3 after the v2 re-derivation raised that floor, because
+	// 0.3 is now what a genuinely weak answer actually scores — golden-query-set
+	// §10.5 measured the worst real answer in the corpus at 0.290. The margin is
+	// deliberately thin: this test is the boundary, so it should fail if the
+	// cut-off ever climbs past what real answers score.
 	seedBlendedEmbedding(t, pool, published, 44, 900, 0.3)
 
 	a := newAPIWithLLM(t, pool, stubLLM(t, 44, "because it fits"))

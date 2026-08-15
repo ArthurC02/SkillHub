@@ -1,0 +1,48 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能會將 Anthropic 的官方品牌視覺套用到簡報等適合進行視覺格式化的成品，包括品牌色彩、字體、文字層級與圖形強調色。使用者需要提供要套用樣式的成品或其內容；標題會優先使用 Poppins、內文使用 Lora，若系統沒有這些字型，則分別改用 Arial 與 Georgia。非文字圖形會輪替使用橙、藍、綠色，並依背景選擇易讀的文字顏色。",
+  "tags": {
+    "dependencies": [
+      "python-pptx",
+      "system-installed fonts",
+      "poppins",
+      "lora",
+      "arial",
+      "georgia"
+    ],
+    "inputs": [
+      "presentation artifact",
+      "text hierarchy",
+      "background colors",
+      "shapes"
+    ],
+    "outputs": [
+      "brand-styled artifact",
+      "formatted typography",
+      "brand color palette",
+      "styled shapes"
+    ],
+    "tools": [
+      "python-pptx rgbcolor"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Apply Anthropic’s official colors and typography to this presentation.",
+      "zh_hant": "請將 Anthropic 的官方色彩與字體套用到這份簡報。"
+    },
+    {
+      "en": "Restyle these slides with Poppins headings, Lora body text, and suitable fallback fonts.",
+      "zh_hant": "請用 Poppins 標題、Lora 內文及適當的備用字型重新設計這些投影片。"
+    },
+    {
+      "en": "Format this artifact using Anthropic’s dark, light, gray, and accent color palette.",
+      "zh_hant": "請使用 Anthropic 的深色、淺色、灰色與強調色調色盤來格式化這份成品。"
+    },
+    {
+      "en": "Update the non-text shapes to cycle through Anthropic’s orange, blue, and green accent colors.",
+      "zh_hant": "請將非文字圖形依序套用 Anthropic 的橙色、藍色與綠色強調色。"
+    }
+  ]
+}

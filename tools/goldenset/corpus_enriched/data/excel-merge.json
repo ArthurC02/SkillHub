@@ -1,0 +1,47 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能可將多個結構相同的 Excel 檔案按列合併為單一活頁簿，先檢查欄位標題是否一致，並只保留一次表頭。使用者需提供要合併的檔案清單或資料夾，亦可指定輸出檔名；輸出會繼承第一個檔案的格式。小型檔案透過 pandas 與 openpyxl 處理，大型檔案則以 XML 追加資料列，並處理共享字串、公式列號及結果驗證。",
+  "tags": {
+    "dependencies": [
+      "pandas",
+      "openpyxl",
+      "lxml"
+    ],
+    "inputs": [
+      "excel files",
+      "file list",
+      "input folder",
+      "output filename",
+      "header row"
+    ],
+    "outputs": [
+      "merged excel workbook",
+      "row count validation",
+      "header validation"
+    ],
+    "tools": [
+      "python",
+      "xml row append",
+      "zipfile"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Merge these three Excel files into merged.xlsx and keep the header only once.",
+      "zh_hant": "請把這三個 Excel 檔案合併成 merged.xlsx，表頭只保留一次。"
+    },
+    {
+      "en": "Combine all XLSX files in this folder and use the first workbook's formatting.",
+      "zh_hant": "請合併這個資料夾內所有 XLSX 檔案，並沿用第一個活頁簿的格式。"
+    },
+    {
+      "en": "Check whether these Excel files have matching headers before consolidating their rows.",
+      "zh_hant": "請先檢查這些 Excel 檔案的表頭是否一致，再彙總所有資料列。"
+    },
+    {
+      "en": "Merge these large Excel files and adjust formula row references for the appended rows.",
+      "zh_hant": "請合併這些大型 Excel 檔案，並調整新增資料列中的公式列號引用。"
+    }
+  ]
+}

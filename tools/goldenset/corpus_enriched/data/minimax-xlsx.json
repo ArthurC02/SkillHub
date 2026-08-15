@@ -1,0 +1,65 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能可建立、讀取、分析、編輯、修復及驗證 Excel 與表格檔案，包括公式、樞紐分析表、財務模型和格式設定。使用者需提供現有的 .xlsx、.xlsm、.csv 或 .tsv 檔案，或說明要建立的表格內容、公式與格式需求。它會透過直接編輯 Office Open XML 來保留既有活頁簿的工作表、資料與進階功能，並可檢查公式或執行重新計算。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "libreoffice",
+      "office open xml",
+      "ecma-376"
+    ],
+    "inputs": [
+      "xlsx files",
+      "xlsm files",
+      "csv files",
+      "tsv files",
+      "tabular data",
+      "formulas",
+      "formatting requirements",
+      "financial models",
+      "pivot tables"
+    ],
+    "outputs": [
+      "xlsx files",
+      "edited spreadsheets",
+      "data analysis",
+      "formula validation reports",
+      "repaired formulas",
+      "formatted financial models"
+    ],
+    "tools": [
+      "xlsx_reader.py",
+      "formula_check.py",
+      "libreoffice_recalc.py",
+      "xlsx_unpack.py",
+      "xlsx_pack.py",
+      "xlsx_shift_rows.py",
+      "xlsx_add_column.py",
+      "xlsx_insert_row.py"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Analyze this Excel sales file and report the total and average revenue with two decimal places.",
+      "zh_hant": "分析這份 Excel 銷售檔案，並以兩位小數列出營收總額與平均值。"
+    },
+    {
+      "en": "Create an XLSX budget model with formulas for quarterly totals and professional financial formatting.",
+      "zh_hant": "建立一份 XLSX 預算模型，以公式計算各季度總額，並套用專業財務格式。"
+    },
+    {
+      "en": "Add a percentage-of-total column to this workbook without changing its existing sheets, data, or formatting.",
+      "zh_hant": "在這份活頁簿新增占總額百分比欄，且不要變更現有的工作表、資料或格式。"
+    },
+    {
+      "en": "Repair the broken formulas in this spreadsheet and validate them before returning the corrected file.",
+      "zh_hant": "修復這份試算表中損壞的公式，驗證後回傳修正檔案。"
+    },
+    {
+      "en": "Insert a Utilities row after Office Rent, add quarterly values and a total formula, and preserve the workbook's original styles.",
+      "zh_hant": "在「辦公室租金」後插入「公用事業費」列，加入各季度數值與合計公式，並保留活頁簿原有樣式。"
+    }
+  ]
+}

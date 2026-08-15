@@ -1,0 +1,78 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能可將高風險研究或決策問題分流為描述、診斷、預測或處方分析，並建立可重現、具來源追溯與不確定性評估的研究流程。它會先保存及檢查上傳資料，再依需要進行基準分析、模型驗證、因果證據界定、資源配置或多方案決策比較，且不會在資料不足時虛構結果。使用者需提供研究問題，並視任務提供原始資料、資料契約、目標與期間；若要形成決策建議，還需提供決策者、可行方案、限制、評估準則、參數來源及核准資訊。",
+  "tags": {
+    "dependencies": [
+      "python 3",
+      "authoritative evidence sources",
+      "case schema 1.3",
+      "domain review"
+    ],
+    "inputs": [
+      "research question",
+      "row-level data",
+      "csv files",
+      "xlsx files",
+      "parquet files",
+      "database extracts",
+      "multi-table data",
+      "data contract",
+      "decision alternatives",
+      "evaluation criteria",
+      "hard constraints",
+      "uncertainty assumptions",
+      "parameter provenance",
+      "approval records"
+    ],
+    "outputs": [
+      "analysis blueprint",
+      "data readiness report",
+      "data quality report",
+      "cleaning plan",
+      "prepared dataset",
+      "evidence intelligence report",
+      "decision intelligence brief",
+      "validated prediction",
+      "decision recommendation",
+      "machine-readable results",
+      "svg figures",
+      "provenance records",
+      "reproducibility receipts"
+    ],
+    "tools": [
+      "route_question.py",
+      "init_case.py",
+      "profile_dataset.py",
+      "prepare_dataset.py",
+      "evidence_analysis.py",
+      "prediction_validation.py",
+      "allocation_optimizer.py",
+      "validate_case.py",
+      "run_case.py",
+      "migrate_case_v12_to_v13.py"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Profile this customer-level CSV, identify any blocking data-quality issues, and produce a cleaning plan without changing the source file.",
+      "zh_hant": "請檢查這份客戶層級 CSV，找出會阻礙分析的資料品質問題，並在不修改原始檔的情況下產生清理計畫。"
+    },
+    {
+      "en": "Build a validated model to predict which patients may need support next month, including calibration, subgroup errors, leakage checks, and uncertainty.",
+      "zh_hant": "請建立經驗證的模型，預測哪些病患下個月可能需要支援，並納入校準、子群體誤差、資料洩漏檢查與不確定性。"
+    },
+    {
+      "en": "Investigate why service delays increased last quarter, separate observed associations from causal claims, and list the most important hypotheses to test.",
+      "zh_hant": "請調查上季服務延誤增加的可能原因，區分觀察到的關聯與因果主張，並列出最值得驗證的假設。"
+    },
+    {
+      "en": "Compare these capacity-allocation options under budget constraints, correlated demand shocks, tail risk, and impacts on different groups.",
+      "zh_hant": "請在預算限制、需求衝擊相關性、尾端風險及不同群體影響下，比較這些產能配置方案。"
+    },
+    {
+      "en": "Review this proposed decision analysis, trace every weight and model parameter to its source and approval, and state whether a decision-ready recommendation is justified.",
+      "zh_hant": "請審查這份決策分析，追溯每項權重與模型參數的來源及核准紀錄，並判斷是否足以提出可供決策的建議。"
+    }
+  ]
+}

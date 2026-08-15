@@ -1,0 +1,63 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能可處理 CSV、TSV、XLSX、JSON 與 JSONL 資料，執行讀取、清理、篩選、彙總、連接、驗證及基本統計分析。它特別支援整理複雜 Excel 活頁簿，包括合併儲存格、多層表頭、空白列欄、格式化數字、混合日期及多工作表，也能以分塊方式處理大型 CSV。使用者需提供資料檔案、分析問題，以及視需要指定欄位、篩選條件、驗證結構、工作表或輸出路徑；結果可輸出為整理後的資料、品質檢查、錯誤清單、彙總結果或分析報告。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pandas",
+      "openpyxl"
+    ],
+    "inputs": [
+      "csv files",
+      "tsv files",
+      "xlsx workbooks",
+      "json files",
+      "jsonl files",
+      "filter expressions",
+      "column names",
+      "validation schemas",
+      "sheet names",
+      "analysis questions",
+      "output paths"
+    ],
+    "outputs": [
+      "pandas dataframes",
+      "cleaned csv files",
+      "cleaned xlsx files",
+      "aggregated data",
+      "joined data",
+      "data quality reports",
+      "validation errors",
+      "descriptive statistics",
+      "analysis reports"
+    ],
+    "tools": [
+      "python scripts",
+      "data_ops.py",
+      "command line"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Clean this Excel workbook by flattening its two-row header, filling merged cells, converting currency and percentage fields to numbers, and saving the result as CSV.",
+      "zh_hant": "請清理這份 Excel 活頁簿：合併兩層表頭、填補合併儲存格、將貨幣與百分比欄位轉成數值，並另存為 CSV。"
+    },
+    {
+      "en": "Filter sales.csv to rows where amount is greater than 1,000, then summarize the total amount by category.",
+      "zh_hant": "請篩選 sales.csv 中金額大於 1,000 的資料，再依類別彙總金額總和。"
+    },
+    {
+      "en": "Join orders.csv and customers.csv on customer_id using a left join, and save the merged data to merged.csv.",
+      "zh_hant": "請用 customer_id 對 orders.csv 與 customers.csv 執行左連接，並將合併結果儲存為 merged.csv。"
+    },
+    {
+      "en": "Check this dataset for duplicate rows, missing values, data types, and numeric summary statistics.",
+      "zh_hant": "請檢查這份資料集的重複列、空值、資料型別與數值欄位摘要統計。"
+    },
+    {
+      "en": "Process this large CSV in chunks, keep records with amount above 100, add an amount_usd column, and write the results to a new file.",
+      "zh_hant": "請分塊處理這個大型 CSV，保留金額高於 100 的紀錄、新增 amount_usd 欄位，並將結果寫入新檔案。"
+    }
+  ]
+}

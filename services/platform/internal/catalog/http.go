@@ -48,32 +48,40 @@ const (
 // everything is further returns the no-results state instead of a page of
 // nearest-but-irrelevant skills.
 //
-// 0.79 cosine distance is 0.21 cosine similarity, from
-// plans/mvp/m1/golden-query-set.md §4.3 option B. Over that corpus the two
-// distributions do not overlap — the best hit for an off-topic query peaked at
-// 0.188 similarity, the worst genuine answer sat at 0.231 — so this sits in the
-// middle of a clean gap and scored 12/12 off-topic queries correctly refused
-// with 0/46 real answers lost.
+// 0.75 cosine distance is 0.25 cosine similarity, from
+// plans/mvp/m1/golden-query-set.md §10.5 — the re-derivation against real
+// index-time LLM enrichment, which is what this pipeline writes. Over that
+// corpus the two distributions do not overlap: the best hit for an off-topic
+// query peaked at 0.219 similarity, the worst genuine answer sat at 0.290, and
+// this value is the midpoint of that clean gap. It refused 12/12 off-topic
+// queries with 0/48 real answers lost.
+//
+// It replaces the 0.79 derived in §4.3 from bare frontmatter. Enrichment lifted
+// both distributions but lifted genuine answers further (+0.059 against +0.031),
+// so the safe gap widened from 0.043 to 0.071 rather than closing. Carrying 0.79
+// over would have refused only 8/12 off-topic queries — under the 75% ADR-013
+// requires — which is exactly the decay §4.4 predicted.
 //
 // This number expires. §4.4 names three changes that each invalidate it and
 // require re-running tools/goldenset/evaluate.py before this constant is
-// trusted again:
+// trusted again. Two are still live:
 //
 //  1. Corpus growth. The off-topic ceiling is a maximum over the corpus, so it
 //     drifts up as the catalogue grows while the genuine-answer floor does not.
 //     Re-measure every time the indexed document count grows by an order of
 //     magnitude.
-//  2. Index content. The measurement indexed bare frontmatter. Real LLM
-//     enrichment — which is what this pipeline now writes — raises both
-//     distributions, so the gap this value sits in has moved and the number
-//     must be re-derived rather than carried over.
-//  3. Query rewriting. The measurement embedded the user's raw sentence, which
-//     is the degraded path. A rewritten query has a different distribution, so
-//     turning rewriting on needs either two cut-offs or one union of both.
+//  2. Index content. SETTLED for now: §10 measured the real enrichment output.
+//     It reopens if the enrichment prompt or its model changes, because the
+//     indexed text is then no longer what this value was derived against —
+//     rerun `enrich_corpus.py` then `evaluate.py --index-mode enriched`.
+//  3. Query rewriting. Still open. The measurement embedded the user's raw
+//     sentence, which is the degraded path. A rewritten query has a different
+//     distribution, so turning rewriting on needs either two cut-offs or one
+//     union of both.
 //
 // It is also bound to text-embedding-3-small at 1536 dimensions; a different
 // embedding model invalidates it outright (ADR-013).
-const MaxCosineDistance = 0.79
+const MaxCosineDistance = 0.75
 
 // noResultsSuggestion is the DISC-001 prompt to refine. It asks for the three
 // things the golden set found missing from the queries that failed: the format,

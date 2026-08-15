@@ -1,0 +1,63 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能用於建立、讀取、編輯、修復、清理、分析或轉換試算表，支援 Excel、CSV 與 TSV 等表格檔案，也能加入公式、格式與圖表。使用者需提供現有試算表或資料來源，並說明所需欄位、工作表名稱、計算公式、格式或轉換要求；最終交付成果必須是試算表檔案。它也會重新計算並檢查公式錯誤、保留既有檔案慣例，並可依指定規則製作財務模型。",
+  "tags": {
+    "dependencies": [
+      "openpyxl",
+      "pandas",
+      "markitdown",
+      "libreoffice",
+      "soffice"
+    ],
+    "inputs": [
+      "xlsx files",
+      "xlsm files",
+      "xltx files",
+      "csv files",
+      "tsv files",
+      "tabular data",
+      "spreadsheet specifications",
+      "formulas",
+      "formatting requirements"
+    ],
+    "outputs": [
+      "spreadsheet files",
+      "formatted workbooks",
+      "calculated formulas",
+      "charts",
+      "cleaned tabular data",
+      "financial models"
+    ],
+    "tools": [
+      "openpyxl",
+      "pandas read_excel",
+      "pandas to_excel",
+      "markitdown",
+      "recalc.py",
+      "libreoffice"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Please clean the malformed rows in this CSV, move the headers to the correct row, and deliver the result as an XLSX file.",
+      "zh_hant": "請清理這個 CSV 中格式錯亂的資料列，把欄位標題移到正確位置，並將結果交付為 XLSX 檔案。"
+    },
+    {
+      "en": "Add a Total column to the attached workbook using formulas, match the existing formatting, and keep all current formulas unchanged.",
+      "zh_hant": "請在附件活頁簿中以公式新增「總計」欄，沿用現有格式，並保留所有既有公式不變。"
+    },
+    {
+      "en": "Create a financial projection workbook from these assumptions, with separate input cells, percentage formatting, and formulas for each forecast year.",
+      "zh_hant": "請根據這些假設建立財務預測活頁簿，將各項輸入分別放在獨立儲存格，套用百分比格式，並為每個預測年度加入公式。"
+    },
+    {
+      "en": "Convert this TSV file to a professionally formatted Excel workbook and add a chart summarizing monthly sales.",
+      "zh_hant": "請將這個 TSV 檔轉換成具專業格式的 Excel 活頁簿，並新增一張彙總每月銷售額的圖表。"
+    },
+    {
+      "en": "Open the XLSM file in my downloads, update the designated input cells with these values, preserve its macros, and recalculate all formulas.",
+      "zh_hant": "請開啟我下載資料夾中的 XLSM 檔，將這些數值填入指定的輸入儲存格、保留巨集，並重新計算所有公式。"
+    }
+  ]
+}

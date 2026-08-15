@@ -1,0 +1,67 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能以三階段流程協助共同撰寫技術規格、提案、決策文件、PRD、RFC 等結構化文件：先蒐集背景與限制，再逐節腦力激盪、起草及修訂，最後從新讀者角度測試文件是否清楚。使用者需提供文件類型、目標讀者、期望影響、格式或範本、專案脈絡及相關資料，並在過程中回覆澄清問題與提出修改意見。技能可建立 Markdown 或文件成品、進行局部編輯，並在可用時讀取共享文件或通訊平台內容，以及使用獨立代理檢查歧義、假設與矛盾。",
+  "tags": {
+    "dependencies": [
+      "artifact access",
+      "sub-agent access",
+      "mcp servers",
+      "shared document connectors",
+      "messaging app connectors"
+    ],
+    "inputs": [
+      "document type",
+      "target audience",
+      "desired impact",
+      "document template",
+      "project context",
+      "technical architecture",
+      "constraints",
+      "stakeholder concerns",
+      "existing document",
+      "shared document links",
+      "user feedback"
+    ],
+    "outputs": [
+      "document outline",
+      "markdown document",
+      "drafted sections",
+      "revised document",
+      "reader questions",
+      "reader testing report",
+      "final review"
+    ],
+    "tools": [
+      "create_file",
+      "str_replace",
+      "slack",
+      "teams",
+      "google drive",
+      "sharepoint",
+      "claude.ai"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Help me co-author a technical specification for our new authentication service; the audience is backend engineers and security reviewers.",
+      "zh_hant": "請協助我共同撰寫新驗證服務的技術規格，主要讀者是後端工程師與資安審查人員。"
+    },
+    {
+      "en": "Turn my project notes and stakeholder concerns into a structured proposal, then refine it section by section.",
+      "zh_hant": "請把我的專案筆記與利害關係人疑慮整理成結構化提案，再逐節協助修訂。"
+    },
+    {
+      "en": "I have an existing decision document and a company template; help me identify missing context, revise the draft, and test whether readers can understand it.",
+      "zh_hant": "我有一份現有的決策文件和公司範本，請協助找出缺少的脈絡、修改草稿，並測試讀者是否能理解。"
+    },
+    {
+      "en": "Create an RFC outline from this background information, ask me clarifying questions, and draft the technical approach first.",
+      "zh_hant": "請根據這些背景資料建立 RFC 大綱、向我提出澄清問題，並先起草技術方案章節。"
+    },
+    {
+      "en": "Review my completed PRD for ambiguity, hidden assumptions, contradictions, and questions that new readers may have.",
+      "zh_hant": "請檢查我完成的 PRD，找出歧義、隱含假設、矛盾，以及新讀者可能提出的問題。"
+    }
+  ]
+}

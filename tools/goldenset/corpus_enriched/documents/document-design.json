@@ -1,0 +1,54 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能可依品牌設定製作專業、可列印並匯出為 PDF 的 HTML 文件，例如提案、報告、單頁文件、電子報、簡報、活動素材與傳單。使用者需提供文件內容與用途，並可提供品牌名稱、色彩、字型等設定；若專案中有品牌設定檔，技能會套用該設定，否則採用預設值或詢問品牌色彩。它也涵蓋美國 Letter 紙張版面、頁首頁尾、防止內容溢出、常用元件、範本套用及 Chrome PDF 匯出方式。",
+  "tags": {
+    "dependencies": [
+      "brand configuration",
+      "html templates",
+      "google fonts",
+      "chrome",
+      "playwright",
+      "css patterns"
+    ],
+    "inputs": [
+      "document content",
+      "document type",
+      "brand settings",
+      "brand colors",
+      "brand fonts",
+      "user requirements"
+    ],
+    "outputs": [
+      "print-ready html",
+      "pdf document",
+      "document preview"
+    ],
+    "tools": [
+      "chrome",
+      "playwright browser tools"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Create a branded, print-ready proposal in HTML that I can export to PDF.",
+      "zh_hant": "請製作一份符合品牌風格、可列印並能匯出為 PDF 的 HTML 提案。"
+    },
+    {
+      "en": "Turn this report content into a US Letter document with a cover page, fixed footer, and budget table.",
+      "zh_hant": "請把這份報告內容排成美國 Letter 尺寸的文件，加入封面、固定頁尾與預算表。"
+    },
+    {
+      "en": "Design a one-page event flyer using our brand colors and fonts.",
+      "zh_hant": "請使用我們的品牌色彩與字型，設計一份單頁活動傳單。"
+    },
+    {
+      "en": "Create a newsletter from this copy and make sure no content overlaps the footer when printed.",
+      "zh_hant": "請用這些文案製作電子報，並確保列印時內容不會與頁尾重疊。"
+    },
+    {
+      "en": "Build branded presentation slides in HTML and provide a browser preview before PDF export.",
+      "zh_hant": "請製作品牌化的 HTML 簡報投影片，並在匯出 PDF 前提供瀏覽器預覽。"
+    }
+  ]
+}

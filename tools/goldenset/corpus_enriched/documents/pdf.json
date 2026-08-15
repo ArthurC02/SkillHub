@@ -1,0 +1,72 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能可讀取、建立及處理 PDF，包括擷取文字、表格、圖片與中繼資料，以及合併、分割、旋轉、加浮水印、填寫表單和密碼保護。它也能以 OCR 將掃描式 PDF 轉成可搜尋文字，並可把擷取的表格匯出為 Excel。使用者需提供一個或多個 PDF，並視任務提供頁碼範圍、密碼、浮水印檔案、表單資料或要寫入新 PDF 的內容。",
+  "tags": {
+    "dependencies": [
+      "python",
+      "pypdf",
+      "pdfplumber",
+      "pandas",
+      "reportlab",
+      "pytesseract",
+      "pdf2image",
+      "poppler-utils",
+      "pdf-lib",
+      "pypdfium2"
+    ],
+    "inputs": [
+      "pdf files",
+      "scanned pdf",
+      "page ranges",
+      "passwords",
+      "watermark pdf",
+      "form data",
+      "document content"
+    ],
+    "outputs": [
+      "extracted text",
+      "extracted tables",
+      "excel workbook",
+      "pdf metadata",
+      "merged pdf",
+      "split pdfs",
+      "rotated pdf",
+      "watermarked pdf",
+      "encrypted pdf",
+      "decrypted pdf",
+      "searchable text",
+      "extracted images",
+      "filled pdf form",
+      "new pdf"
+    ],
+    "tools": [
+      "pdftotext",
+      "qpdf",
+      "pdftk",
+      "pdfimages"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Extract the text and tables from this PDF and save the tables as an Excel file.",
+      "zh_hant": "請從這份 PDF 擷取文字與表格，並將表格儲存為 Excel 檔案。"
+    },
+    {
+      "en": "Merge these three PDF files into one document in the order provided.",
+      "zh_hant": "請依照提供的順序，將這三個 PDF 合併成一份文件。"
+    },
+    {
+      "en": "Run OCR on this scanned PDF so its text can be searched and extracted.",
+      "zh_hant": "請對這份掃描式 PDF 執行 OCR，讓其中的文字可以搜尋及擷取。"
+    },
+    {
+      "en": "Rotate page 1 clockwise by 90 degrees and add this watermark to every page.",
+      "zh_hant": "請將第 1 頁順時針旋轉 90 度，並在每一頁加入這個浮水印。"
+    },
+    {
+      "en": "Password-protect this PDF using separate user and owner passwords.",
+      "zh_hant": "請使用不同的使用者密碼與擁有者密碼保護這份 PDF。"
+    }
+  ]
+}

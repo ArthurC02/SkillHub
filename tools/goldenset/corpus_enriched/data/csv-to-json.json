@@ -1,0 +1,59 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能可在 CSV、JSON 陣列與 JSONL 格式之間進行雙向轉換，並處理分隔符、引號、標頭、文字編碼、空值及資料型別。使用者需提供來源檔案、目標格式與輸出位置，並可選擇是否推斷型別，以及如何處理巢狀物件或陣列。它也會驗證輸出筆數，並針對大型檔案採用串流或分塊方式。",
+  "tags": {
+    "dependencies": [
+      "python standard library",
+      "pandas"
+    ],
+    "inputs": [
+      "csv files",
+      "json arrays",
+      "jsonl files",
+      "file paths",
+      "csv dialect",
+      "text encoding",
+      "type inference options",
+      "null sentinels",
+      "nested data handling"
+    ],
+    "outputs": [
+      "csv files",
+      "json arrays",
+      "jsonl files",
+      "row counts",
+      "object counts",
+      "encoding reports",
+      "validation reports"
+    ],
+    "tools": [
+      "csv.Sniffer",
+      "csv",
+      "json",
+      "pd.read_csv"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Convert customers.csv to a JSON array while preserving every value as a string.",
+      "zh_hant": "請將 customers.csv 轉成 JSON 陣列，並把所有值保留為字串。"
+    },
+    {
+      "en": "Convert this semicolon-delimited CSV file to JSONL, infer numeric and Boolean types, and treat NA and empty fields as null.",
+      "zh_hant": "請將這個以分號分隔的 CSV 轉成 JSONL，推斷數字與布林型別，並將 NA 和空白欄位視為 null。"
+    },
+    {
+      "en": "Flatten the nested objects in orders.json using dotted keys and export them as CSV.",
+      "zh_hant": "請用點號鍵名攤平 orders.json 中的巢狀物件，並匯出成 CSV。"
+    },
+    {
+      "en": "Convert events.jsonl to CSV line by line and verify that the output record count matches the source.",
+      "zh_hant": "請逐行將 events.jsonl 轉成 CSV，並確認輸出筆數與來源一致。"
+    },
+    {
+      "en": "Convert this large CSV file to JSONL in chunks and report which text encoding was detected.",
+      "zh_hant": "請分塊將這個大型 CSV 檔案轉成 JSONL，並回報偵測到的文字編碼。"
+    }
+  ]
+}

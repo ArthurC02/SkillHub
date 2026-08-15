@@ -1,0 +1,61 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "此技能依《經濟學人》風格指南審閱與編輯書面內容，包括 Markdown、HTML、文件、程式碼註解及技術文章。它需要使用者提供待審文字，並會先辨識原文的英式或美式慣例，再檢查結構、清晰度、精確度、語態、語氣、標點、數字格式及用詞。輸出會按問題類別列出段落或行號、原文、建議改寫及簡短理由，同時保留引文、專有名詞、必要術語與既有方言慣例。",
+  "tags": {
+    "dependencies": [
+      "economist signature rules",
+      "clarity rules",
+      "precision rules",
+      "dialect conventions",
+      "common errors rules",
+      "punctuation rules",
+      "number-formatting rules",
+      "structure rules",
+      "tone rules",
+      "abbreviation rules",
+      "capitalisation rules",
+      "special-context rules",
+      "word-usage rules"
+    ],
+    "inputs": [
+      "written text",
+      "markdown",
+      "html",
+      "documentation",
+      "technical writing",
+      "code comments"
+    ],
+    "outputs": [
+      "style review",
+      "categorised issues",
+      "line references",
+      "suggested revisions",
+      "editing rationale",
+      "dialect assessment"
+    ],
+    "tools": []
+  },
+  "task_examples": [
+    {
+      "en": "Edit this Markdown article for clarity, precision and brevity while preserving its existing British spelling.",
+      "zh_hant": "請依照原文既有的英式拼字，編輯這篇 Markdown 文章，使其更清楚、精確且簡潔。"
+    },
+    {
+      "en": "Review this HTML page and list passive voice, vague claims, filler phrases and punctuation problems by paragraph.",
+      "zh_hant": "請審閱這個 HTML 頁面，按段落列出被動語態、含糊陳述、贅詞及標點問題。"
+    },
+    {
+      "en": "Rewrite this technical documentation in a professional, direct style without changing necessary technical terms or code examples.",
+      "zh_hant": "請以專業、直接的風格改寫這份技術文件，但不要更動必要的技術術語或程式碼範例。"
+    },
+    {
+      "en": "Check this report for inconsistent American and British conventions, number formatting, dates and quotation marks.",
+      "zh_hant": "請檢查這份報告中的美式與英式慣例是否混用，並審查數字、日期及引號格式。"
+    },
+    {
+      "en": "For each issue in this draft, show the original wording, a concise replacement and a brief explanation.",
+      "zh_hant": "請針對這份草稿的每個問題，列出原文、較精簡的替代寫法及簡短理由。"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "model": "gpt-5.6-sol",
+  "prompt_version": "enrich-skill/v1",
+  "summary": "將資訊密集的內容整理成結構清楚、容易掃讀的單一自包含 HTML 檔案，適合調研報告、比較矩陣、清單、資料看板、時間線與決策頁。使用者需提供要呈現的文字、數據、方案、步驟或其他結構化資訊；此 Skill 會依資訊形態選用指標卡、表格、時間線、清單等元件，缺少的資料則明確標示待補。輸出可直接雙擊開啟，無須額外執行環境，但不涵蓋部署、PDF、簡歷、PPT、落地頁、影片或動畫製作。",
+  "tags": {
+    "dependencies": [
+      "assets/components",
+      "assets/skeleton.html",
+      "assets/tokens.css",
+      "智見ai design.md"
+    ],
+    "inputs": [
+      "密集文字內容",
+      "結構化資料",
+      "比較方案",
+      "關鍵指標",
+      "時間線",
+      "步驟與檢查項",
+      "程式碼與設定"
+    ],
+    "outputs": [
+      "自包含 html 檔案",
+      "視覺化報告",
+      "比較矩陣",
+      "資料看板",
+      "決策頁"
+    ],
+    "tools": [
+      "html",
+      "css",
+      "metric-card",
+      "comparison-table",
+      "data-table",
+      "timeline",
+      "checklist",
+      "quote-card",
+      "code-block",
+      "details",
+      "badge",
+      "columns"
+    ]
+  },
+  "task_examples": [
+    {
+      "en": "Turn this research report into a single self-contained HTML page with key metrics, findings, and a timeline.",
+      "zh_hant": "請把這份調研報告整理成單一自包含 HTML 頁面，呈現關鍵指標、主要發現與時間線。"
+    },
+    {
+      "en": "Create an easy-to-scan HTML comparison matrix for these four software options, including prices, features, and status labels.",
+      "zh_hant": "請將這四個軟體方案做成容易掃讀的 HTML 比較矩陣，包含價格、功能與狀態標籤。"
+    },
+    {
+      "en": "Convert this SOP into a standalone HTML checklist with collapsible details and code examples.",
+      "zh_hant": "請把這份 SOP 轉成可獨立開啟的 HTML 檢查清單，並加入可摺疊說明與程式碼範例。"
+    },
+    {
+      "en": "Build a one-page HTML decision brief from these figures, trade-offs, milestones, and stakeholder quotes.",
+      "zh_hant": "請根據這些數據、利弊、里程碑與利害關係人引言，製作一頁式 HTML 決策摘要。"
+    },
+    {
+      "en": "Organize this dataset into a self-contained HTML dashboard, and clearly mark any missing figures as data to be provided.",
+      "zh_hant": "請把這組資料整理成自包含 HTML 資料看板，並將缺少的數字清楚標示為待補資料。"
+    }
+  ]
+}
