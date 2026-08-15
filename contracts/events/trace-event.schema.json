@@ -1,0 +1,562 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillhub.local/contracts/events/trace-event.schema.json",
+  "title": "Skill Hub Run Trace Event",
+  "description": "One user-visible Run Trace event (TRACE-001). This is the Run Trace plane of ADR-009 only: platform observability and evaluation results use different models and are NOT carried here. Every instance is one row of the `trace_events` partitioned table (db/migrations/0004).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "run_id",
+    "attempt",
+    "seq",
+    "occurred_at",
+    "emitted_by",
+    "type",
+    "masked",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$",
+      "description": "Trace event contract version. Minor bumps are additive only; a breaking change bumps the major and gets a new $id.",
+      "examples": ["1.0"]
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Producer-assigned UUID. This is the consumer idempotency key: delivery is at-least-once, so a consumer that has already stored this event_id must treat a redelivery as a no-op."
+    },
+    "run_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Permanent platform run identifier (ADR-004, iron rule 10). Never a provider_run_id."
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Platform run attempt this event belongs to (ADR-004 run_attempt). Mirrors runs.attempt."
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Gapless monotonic ordinal, starting at 1, scoped to the (run_id, attempt, emitted_by) stream. A hole in a producer's sequence is how a lost event is detected (TRACE-001, TRACE-008). Cross-producer ordering is (occurred_at, emitted_by, seq), never seq alone.",
+      "$comment": "Scoped per producer, not per run: no single writer can hand out a run-wide counter without becoming a serialization point, and a run-wide counter assigned at ingest time would make loss undetectable by construction."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Producer clock, RFC 3339 with offset. Clocks across producers may skew; seq is authoritative within a stream, occurred_at only merges streams."
+    },
+    "emitted_by": {
+      "type": "string",
+      "enum": ["sandbox", "orchestrator", "llm_service"],
+      "description": "Producing plane. `sandbox` events cross the trust boundary (ADR-001) and are untrusted input to the control plane."
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "skill_activation",
+        "resource_read",
+        "tool_call",
+        "mcp_call",
+        "script_log",
+        "agent_output",
+        "error",
+        "usage",
+        "run_lifecycle"
+      ]
+    },
+    "status": {
+      "type": ["string", "null"],
+      "enum": ["ok", "error", "skipped", "cancelled", "timed_out", null],
+      "description": "Coarse outcome for list views and filtering (TRACE-001 requires a status). Detail lives in the payload."
+    },
+    "masked": {
+      "type": "boolean",
+      "description": "True when the masker (TRACE-005) has run over this event. Events with masked=false MUST NOT be persisted or displayed (iron rule 11, NFR-002)."
+    },
+    "masked_fields": {
+      "type": "array",
+      "description": "JSON Pointers, relative to `payload`, of values actually replaced by the redaction placeholder. Empty means the masker ran and found nothing.",
+      "items": {
+        "type": "string",
+        "pattern": "^(/[^/]*)*$"
+      },
+      "default": []
+    },
+    "payload_object_key": {
+      "type": ["string", "null"],
+      "description": "Object storage key holding the full payload when it exceeded the inline size budget. When set, `payload` holds the truncated form and the relevant `truncated` flag is true.",
+      "default": null
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "skill_activation" } }, "required": ["type"] },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/skillActivationPayload" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "resource_read" } }, "required": ["type"] },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/resourceReadPayload" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "tool_call" } }, "required": ["type"] },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/toolCallPayload" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "mcp_call" } }, "required": ["type"] },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/mcpCallPayload" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "script_log" } }, "required": ["type"] },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/scriptLogPayload" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "agent_output" } }, "required": ["type"] },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/agentOutputPayload" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "error" } }, "required": ["type"] },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/errorPayload" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "usage" } }, "required": ["type"] },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/usagePayload" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "run_lifecycle" } }, "required": ["type"] },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/runLifecyclePayload" } } }
+    }
+  ],
+  "$defs": {
+    "runStatus": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "provisioning",
+        "preparing",
+        "running",
+        "evaluating",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "timed_out"
+      ],
+      "$comment": "Mirrors the run_status enum in db/migrations/0004. Kept in lockstep by hand; the DB enum is the definition."
+    },
+
+    "skillActivationPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skill_version_id", "decision"],
+      "description": "TRACE-002. The agent decided to use, or not use, a skill that was made available to the run.",
+      "properties": {
+        "skill_id": { "type": "string", "format": "uuid" },
+        "skill_version_id": { "type": "string", "format": "uuid" },
+        "skill_name": { "type": "string", "maxLength": 200 },
+        "decision": { "type": "string", "enum": ["activated", "skipped"] },
+        "reason": {
+          "type": ["string", "null"],
+          "maxLength": 2000,
+          "$comment": "sensitivity: secret_bearing - model-authored free text.",
+          "default": null
+        }
+      }
+    },
+
+    "resourceReadPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resource_path", "outcome"],
+      "description": "TRACE-002. A file inside the skill package (or a mounted dataset) was read by the workload.",
+      "properties": {
+        "skill_version_id": { "type": "string", "format": "uuid" },
+        "resource_path": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "Path relative to the package or dataset mount root. Absolute sandbox paths are not exported."
+        },
+        "outcome": { "type": "string", "enum": ["read", "denied", "not_found"] },
+        "bytes_read": { "type": ["integer", "null"], "minimum": 0, "default": null },
+        "truncated": { "type": "boolean", "default": false }
+      }
+    },
+
+    "toolCallPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool_name", "outcome", "duration_ms"],
+      "description": "TRACE-003. One completed tool invocation, emitted once on completion and carrying its own duration.",
+      "$comment": "Single event rather than a start/end pair: a pair doubles the row count in a partitioned table, forces the UI to self-join to show a duration, and leaves a dangling start whenever the sandbox dies mid-call. Latency (TRACE-004) is satisfied by duration_ms. If the general-mode progress view (TRACE-006) later needs an in-flight indicator, add a `tool_call_started` type additively - do not retrofit a phase field here.",
+      "properties": {
+        "tool_name": { "type": "string", "maxLength": 200 },
+        "invocation_id": {
+          "type": ["string", "null"],
+          "maxLength": 200,
+          "description": "Agent-side call id, for correlating a tool_call with the agent_output that consumed it.",
+          "default": null
+        },
+        "arguments": {
+          "type": ["object", "null"],
+          "description": "Tool arguments after masking.",
+          "$comment": "sensitivity: secret_bearing - caller-controlled, routinely carries credentials and dataset contents.",
+          "default": null
+        },
+        "result_summary": {
+          "type": ["string", "null"],
+          "maxLength": 8000,
+          "$comment": "sensitivity: secret_bearing - tool output, untrusted and possibly secret-carrying.",
+          "default": null
+        },
+        "outcome": { "type": "string", "enum": ["succeeded", "failed", "denied", "timed_out"] },
+        "duration_ms": { "type": "integer", "minimum": 0 },
+        "truncated": { "type": "boolean", "default": false }
+      }
+    },
+
+    "mcpCallPayload": {
+      "type": "object",
+      "description": "PLACEHOLDER. Remote MCP is out of the MVP first release (see AGENTS.md scope note), so only the type is reserved here to keep event_type stable when MCP lands. Payload shape is deliberately unconstrained and MUST NOT be relied on until it is specified; the masking and ordering rules of this contract still apply.",
+      "$comment": "sensitivity: secret_bearing (whole object) - MCP arguments and results carry server credentials. Specify the shape in the batch that implements MCP collection (TRACE-003).",
+      "properties": {
+        "server": { "type": "string", "maxLength": 200 },
+        "tool_name": { "type": "string", "maxLength": 200 }
+      }
+    },
+
+    "scriptLogPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stream", "message", "truncated"],
+      "description": "TRACE-003. One chunk of script output from inside the sandbox.",
+      "properties": {
+        "script_path": { "type": ["string", "null"], "maxLength": 1024, "default": null },
+        "stream": { "type": "string", "enum": ["stdout", "stderr"] },
+        "message": {
+          "type": "string",
+          "maxLength": 16000,
+          "description": "Text after masking. Consumers must render this as inert text: no ANSI, HTML, SVG or executable interpretation (ADR-009).",
+          "$comment": "sensitivity: secret_bearing - arbitrary workload output."
+        },
+        "truncated": {
+          "type": "boolean",
+          "description": "True when this chunk was cut. The full text, if retained, is at the envelope's payload_object_key."
+        },
+        "dropped_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Bytes removed by truncation or by a per-run log budget. Null means unknown, which the UI must show as unknown rather than zero.",
+          "default": null
+        }
+      }
+    },
+
+    "agentOutputPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "text", "truncated"],
+      "description": "TRACE-004. Agent-produced text. The final answer of a run is kind=final.",
+      "properties": {
+        "kind": { "type": "string", "enum": ["final", "intermediate"] },
+        "text": {
+          "type": "string",
+          "maxLength": 64000,
+          "$comment": "sensitivity: secret_bearing - model output over user prompts and datasets; also untrusted content (prompt injection), render inert."
+        },
+        "truncated": { "type": "boolean" }
+      }
+    },
+
+    "errorPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "code", "message", "retryable"],
+      "description": "TRACE-004. A failure worth showing the user. Category follows the ADR-004 failure taxonomy so retry policy and diagnostics line up with the orchestrator.",
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "provision",
+            "execution",
+            "event_delivery",
+            "artifact_upload",
+            "evaluation",
+            "cleanup"
+          ],
+          "$comment": "ADR-004 'failure and retry': provision / execution / event delivery / artifact upload / evaluation / cleanup are classified separately."
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Stable diagnostic code (NFR-003). Not a provider code; provider detail goes in provider_diagnostics."
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 4000,
+          "$comment": "sensitivity: secret_bearing - error text frequently embeds URLs, tokens and argument values."
+        },
+        "retryable": {
+          "type": "boolean",
+          "description": "Whether the orchestrator considered this action safe to retry (ADR-004: only known-idempotent, policy-allowed actions). Recording the decision, not making it."
+        },
+        "provider_diagnostics": {
+          "type": ["object", "null"],
+          "description": "Provider-specific extension fields (ADR-004). May be stored and shown, but evaluation must not depend on them.",
+          "$comment": "sensitivity: secret_bearing - provider payloads are not vetted field by field.",
+          "default": null
+        }
+      }
+    },
+
+    "usagePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "input_tokens", "output_tokens"],
+      "description": "TRACE-004. Token and cost accounting for one model call or one run-level rollup. All model traffic goes through the LiteLLM gateway (iron rule 8), so these numbers come from the gateway response, never from a provider SDK.",
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": ["call", "run_total"],
+          "default": "call"
+        },
+        "model": { "type": "string", "maxLength": 200 },
+        "input_tokens": { "type": "integer", "minimum": 0 },
+        "output_tokens": { "type": "integer", "minimum": 0 },
+        "cache_read_input_tokens": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Cached input tokens billed at the reduced rate. NULL means the gateway did not report the field - which is the current state on LiteLLM's /v1/messages route.",
+          "$comment": "Known gap, not a bug in this contract: pdm-003-litellm-spike-report section 11.5.2 measured LiteLLM 1.96.2 omitting cache_read_input_tokens / cache_creation_input_tokens entirely on /v1/messages (absent, not zero), while /v1/chat/completions reports them correctly. Budgeting is unaffected; observability is. Consumers MUST render null as 'unreported', never as 0.",
+          "default": null
+        },
+        "cache_write_input_tokens": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "Input tokens written into the prompt cache. NULL has the same 'unreported' meaning as cache_read_input_tokens.",
+          "default": null
+        },
+        "cost_usd": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Cost as reported by the gateway. NULL when unavailable; the UI must not substitute a computed guess without flagging it.",
+          "default": null
+        },
+        "cost_source": {
+          "type": ["string", "null"],
+          "enum": ["gateway", "estimated", null],
+          "description": "`gateway` is LiteLLM's own figure (cache discount already applied). `estimated` is a platform-side calculation and must be labelled as an estimate in the UI.",
+          "default": null
+        },
+        "duration_ms": { "type": ["integer", "null"], "minimum": 0, "default": null }
+      }
+    },
+
+    "runLifecyclePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["to_status"],
+      "description": "A mirror of a run state transition, so the trace timeline reads as one story.",
+      "$comment": "NOT A SOURCE OF TRUTH (iron rule 5). The only authority on run state is the Go-owned Postgres state machine (runs.status / run_status_transitions). Never reconstruct run state by replaying these events, and never let a consumer's view of run state diverge from the runs table on the strength of this payload.",
+      "properties": {
+        "from_status": {
+          "oneOf": [{ "$ref": "#/$defs/runStatus" }, { "type": "null" }],
+          "default": null
+        },
+        "to_status": { "$ref": "#/$defs/runStatus" },
+        "reason": { "type": ["string", "null"], "maxLength": 2000, "default": null }
+      }
+    }
+  },
+
+  "examples": [
+    {
+      "schema_version": "1.0",
+      "event_id": "0f0a1e6c-1c9a-4f8e-9a2b-1d5a2c7b3e01",
+      "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+      "attempt": 1,
+      "seq": 1,
+      "occurred_at": "2026-08-16T09:12:03.140Z",
+      "emitted_by": "orchestrator",
+      "type": "run_lifecycle",
+      "status": "ok",
+      "masked": true,
+      "masked_fields": [],
+      "payload": {
+        "from_status": "preparing",
+        "to_status": "running",
+        "reason": "sandbox ready"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c02",
+      "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+      "attempt": 1,
+      "seq": 1,
+      "occurred_at": "2026-08-16T09:12:04.002Z",
+      "emitted_by": "sandbox",
+      "type": "skill_activation",
+      "status": "ok",
+      "masked": true,
+      "masked_fields": [],
+      "payload": {
+        "skill_id": "3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e70",
+        "skill_version_id": "4d5e6f7a-8b9c-4d1e-9f2a-3b4c5d6e7f81",
+        "skill_name": "excel-deduplicate",
+        "decision": "activated",
+        "reason": "task mentions removing duplicate rows from a spreadsheet"
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d03",
+      "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+      "attempt": 1,
+      "seq": 2,
+      "occurred_at": "2026-08-16T09:12:04.310Z",
+      "emitted_by": "sandbox",
+      "type": "resource_read",
+      "status": "ok",
+      "masked": true,
+      "masked_fields": [],
+      "payload": {
+        "skill_version_id": "4d5e6f7a-8b9c-4d1e-9f2a-3b4c5d6e7f81",
+        "resource_path": "references/dedupe-rules.md",
+        "outcome": "read",
+        "bytes_read": 4812,
+        "truncated": false
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "3c4d5e6f-7a8b-4c9d-8e0f-1a2b3c4d5e04",
+      "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+      "attempt": 1,
+      "seq": 3,
+      "occurred_at": "2026-08-16T09:12:07.880Z",
+      "emitted_by": "sandbox",
+      "type": "tool_call",
+      "status": "ok",
+      "masked": true,
+      "masked_fields": ["/arguments/connection_string"],
+      "payload": {
+        "tool_name": "bash",
+        "invocation_id": "call_7fd21",
+        "arguments": {
+          "command": "python scripts/dedupe.py input.xlsx",
+          "connection_string": "[REDACTED]"
+        },
+        "result_summary": "wrote output.xlsx, 1204 rows in, 1187 rows out",
+        "outcome": "succeeded",
+        "duration_ms": 3412,
+        "truncated": false
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f05",
+      "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+      "attempt": 1,
+      "seq": 4,
+      "occurred_at": "2026-08-16T09:12:05.001Z",
+      "emitted_by": "sandbox",
+      "type": "script_log",
+      "status": "ok",
+      "masked": true,
+      "masked_fields": ["/message"],
+      "payload": {
+        "script_path": "scripts/dedupe.py",
+        "stream": "stderr",
+        "message": "warning: falling back to key=[REDACTED]\n... 2 more lines",
+        "truncated": true,
+        "dropped_bytes": 1048576
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a06",
+      "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+      "attempt": 1,
+      "seq": 1,
+      "occurred_at": "2026-08-16T09:12:09.500Z",
+      "emitted_by": "llm_service",
+      "type": "agent_output",
+      "status": "ok",
+      "masked": true,
+      "masked_fields": [],
+      "payload": {
+        "kind": "final",
+        "text": "Removed 17 duplicate rows and saved the result to output.xlsx.",
+        "truncated": false
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b07",
+      "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+      "attempt": 1,
+      "seq": 2,
+      "occurred_at": "2026-08-16T09:12:09.510Z",
+      "emitted_by": "llm_service",
+      "type": "usage",
+      "status": "ok",
+      "masked": true,
+      "masked_fields": [],
+      "payload": {
+        "scope": "run_total",
+        "model": "gpt-5-mini",
+        "input_tokens": 27042,
+        "output_tokens": 1180,
+        "cache_read_input_tokens": null,
+        "cache_write_input_tokens": null,
+        "cost_usd": 0.0142,
+        "cost_source": "gateway",
+        "duration_ms": 4870
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c08",
+      "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+      "attempt": 2,
+      "seq": 5,
+      "occurred_at": "2026-08-16T09:13:31.020Z",
+      "emitted_by": "orchestrator",
+      "type": "error",
+      "status": "error",
+      "masked": true,
+      "masked_fields": ["/message"],
+      "payload": {
+        "category": "artifact_upload",
+        "code": "artifact_upload_timeout",
+        "message": "PUT https://objects.internal/[REDACTED] timed out after 30s",
+        "retryable": true,
+        "provider_diagnostics": { "http_status": 504 }
+      }
+    },
+    {
+      "schema_version": "1.0",
+      "event_id": "8b9c0d1e-2f3a-4b4c-9d5e-6f7a8b9c0d09",
+      "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+      "attempt": 2,
+      "seq": 6,
+      "occurred_at": "2026-08-16T09:13:35.400Z",
+      "emitted_by": "sandbox",
+      "type": "mcp_call",
+      "status": "skipped",
+      "masked": true,
+      "masked_fields": [],
+      "payload_object_key": null,
+      "payload": {
+        "server": "placeholder",
+        "tool_name": "placeholder"
+      }
+    }
+  ]
+}
