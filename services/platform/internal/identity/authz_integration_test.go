@@ -32,8 +32,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/apiserver"
 	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
+	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
@@ -102,8 +104,9 @@ func requireDB(t *testing.T) *pgxpool.Pool {
 	return testPool
 }
 
-// api mirrors the route wiring in cmd/api: every private route behind
-// RequireSession, public search in front of it.
+// api serves the route table cmd/api serves — apiserver.NewRouter, not a copy
+// of it — so a route that loses its RequireSession here loses it in production
+// too, and every route in the table is reachable from a test.
 type api struct {
 	*httptest.Server
 	auth *identity.Handler
@@ -123,7 +126,12 @@ func newAPI(t *testing.T, pool *pgxpool.Pool) *api {
 func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	t.Helper()
 	auth := &identity.Handler{
-		Service:  &identity.Service{Pool: pool},
+		Service: &identity.Service{
+			Pool: pool,
+			// Zero-value OAuth: no request in these tests reaches GitHub, but
+			// GET /auth/github/login builds an authorize URL from it.
+			OAuth: &identity.GitHubOAuth{},
+		},
 		Secure:   false, // httptest speaks plain http
 		DevLogin: true,
 	}
@@ -136,19 +144,18 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	if llmBaseURL != "" {
 		search.LLMClient = &llmclient.Client{BaseURL: llmBaseURL}
 	}
+	importer := &ingest.Handler{
+		Svc: &ingest.Service{
+			Pool:    pool,
+			Store:   packages,
+			Fetcher: &ingest.URLFetcher{Allowed: ingest.DefaultAllowedHosts()},
+		},
+		Identity: auth.Service,
+	}
 
-	mux := http.NewServeMux()
-	auth.Mount(mux)
-	mux.HandleFunc("GET /api/skills/search", search.PublicSearch)
-	mux.HandleFunc("GET /api/skills/{id}", auth.OptionalSession(search.SkillDetail))
-	mux.HandleFunc("GET /api/skills/{id}/files", auth.OptionalSession(search.SkillFiles))
-	mux.HandleFunc("GET /skills/search", auth.RequireSession(search.Search))
-	mux.HandleFunc("GET /skills", auth.RequireSession(reg.List))
-	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(reg.Fork))
-	mux.HandleFunc("GET /skills/{id}/diff", auth.RequireSession(reg.Diff))
-	mux.HandleFunc("DELETE /skills/{id}", auth.RequireSession(reg.Delete))
-
-	srv := httptest.NewServer(mux)
+	srv := httptest.NewServer(apiserver.NewRouter(apiserver.Deps{
+		Auth: auth, Importer: importer, Search: search, Registry: reg,
+	}))
 	t.Cleanup(srv.Close)
 	return &api{Server: srv, auth: auth, packages: packages}
 }
@@ -282,6 +289,60 @@ func contains(ids []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// CORE-005/CORE-006: every route in the real table, asserted against an
+// anonymous caller. Two things fail here that nothing else caught: a route
+// dropped from apiserver.NewRouter (the mux answers 404 where the table says
+// 401), and a private route that starts answering anonymous callers.
+//
+// It does not distinguish "wrapped in RequireSession" from "not wrapped": each
+// private handler re-checks SessionUser itself and returns the same 401, which
+// is deliberate defence in depth, not redundancy. The boundary is the assertion
+// here, not the mechanism that enforces it.
+func TestAnonymousCallersGetThePublicSurfaceAndNothingElse(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	anon := &client{Client: &http.Client{
+		// Follow no redirects: the login route's 302 is the assertion.
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}, base: a.URL}
+	// Any well-formed id: authorization is decided before the handler parses it.
+	const id = "00000000-0000-0000-0000-000000000001"
+
+	for _, tc := range []struct {
+		method, path string
+		want         int
+	}{
+		// Public surface (DISC-010): reachable without a session.
+		{http.MethodGet, "/healthz", http.StatusOK},
+		{http.MethodGet, "/auth/github/login", http.StatusFound},
+		{http.MethodGet, "/auth/github/callback", http.StatusUnauthorized}, // no state cookie
+		{http.MethodPost, "/auth/logout", http.StatusNoContent},
+		{http.MethodPost, "/auth/dev/login", http.StatusNoContent}, // DevLogin: true here only
+		{http.MethodGet, "/api/skills/search?q=anything", http.StatusOK},
+		{http.MethodGet, "/api/skills/" + id, http.StatusNotFound},
+		{http.MethodGet, "/api/skills/" + id + "/files", http.StatusNotFound},
+
+		// Everything that touches a workspace: 401, never a 404 that would mean
+		// the route is missing, and never a 200.
+		{http.MethodGet, "/me", http.StatusUnauthorized},
+		{http.MethodDelete, "/me", http.StatusUnauthorized},
+		{http.MethodPost, "/me/deletion/cancel", http.StatusUnauthorized},
+		{http.MethodPost, "/skills/import/upload", http.StatusUnauthorized},
+		{http.MethodPost, "/skills/import/url", http.StatusUnauthorized},
+		{http.MethodGet, "/skills/search?q=anything", http.StatusUnauthorized},
+		{http.MethodGet, "/skills", http.StatusUnauthorized},
+		{http.MethodPost, "/skills/" + id + "/fork", http.StatusUnauthorized},
+		{http.MethodPost, "/skills/" + id + "/versions", http.StatusUnauthorized},
+		{http.MethodPost, "/skills/" + id + "/takedown", http.StatusUnauthorized},
+		{http.MethodGet, "/skills/" + id + "/diff", http.StatusUnauthorized},
+		{http.MethodDelete, "/skills/" + id, http.StatusUnauthorized},
+	} {
+		if got := anon.status(t, tc.method, tc.path); got != tc.want {
+			t.Errorf("%s %s: got %d, want %d", tc.method, tc.path, got, tc.want)
+		}
+	}
 }
 
 // CORE-005: a session is what login hands out and logout takes away.

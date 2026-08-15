@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/apiserver"
 	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
@@ -85,34 +86,14 @@ func main() {
 		Identity: auth.Service,
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", httpx.Health)
-	auth.Mount(mux)
-	mux.HandleFunc("POST /skills/import/upload", auth.RequireSession(importer.Upload))
-	mux.HandleFunc("POST /skills/import/url", auth.RequireSession(importer.ImportURL))
-
-	search := &catalog.Handler{Pool: pool, Identity: auth.Service, LLMClient: llm, Store: store}
-	// DISC-001: public search works without login.
-	mux.HandleFunc("GET /api/skills/search", search.PublicSearch)
-	// DISC-006/007/008/010: public detail and file views, no login required.
-	// OptionalSession, not RequireSession: anonymous callers get the catalog and
-	// a signed-in caller additionally gets their own private skills through the
-	// same handler (see catalog/detail.go). The literal "search" segment above is
-	// the more specific pattern, so it still wins over {id}.
-	mux.HandleFunc("GET /api/skills/{id}", auth.OptionalSession(search.SkillDetail))
-	mux.HandleFunc("GET /api/skills/{id}/files", auth.OptionalSession(search.SkillFiles))
-	// Workspace-scoped search (existing, requires session).
-	mux.HandleFunc("GET /skills/search", auth.RequireSession(search.Search))
-
-	reg := &registry.Handler{Svc: &registry.Service{Pool: pool, Store: store}, Identity: auth.Service}
-	mux.HandleFunc("GET /skills", auth.RequireSession(reg.List))
-	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(reg.Fork))
-	mux.HandleFunc("POST /skills/{id}/versions", auth.RequireSession(importer.SaveVersion))
-	mux.HandleFunc("GET /skills/{id}/diff", auth.RequireSession(reg.Diff))
-	mux.HandleFunc("DELETE /skills/{id}", auth.RequireSession(reg.Delete))
-	// INGEST-010: manual takedown of content in the caller's own workspace,
-	// which for curated catalog entries is the operator's workspace.
-	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(reg.Takedown))
+	// Routes live in internal/apiserver so the integration tests serve this exact
+	// table instead of a hand-copied one.
+	mux := apiserver.NewRouter(apiserver.Deps{
+		Auth:     auth,
+		Importer: importer,
+		Search:   &catalog.Handler{Pool: pool, Identity: auth.Service, LLMClient: llm, Store: store},
+		Registry: &registry.Handler{Svc: &registry.Service{Pool: pool, Store: store}, Identity: auth.Service},
+	})
 
 	// DEV_CORS_ORIGIN is the local Vite dev server (http://localhost:5173) and
 	// nothing else. Unset in production, where the SPA is same-origin with the

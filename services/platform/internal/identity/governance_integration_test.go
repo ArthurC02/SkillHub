@@ -8,45 +8,15 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
-	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
 )
-
-// newGovernanceAPI mounts the routes these tests exercise. It is separate from
-// newAPI so the takedown and account-deletion routes can be added without
-// touching the wiring the CORE-005/006 tests depend on.
-func newGovernanceAPI(t *testing.T, pool *pgxpool.Pool) *api {
-	t.Helper()
-	auth := &identity.Handler{
-		Service:  &identity.Service{Pool: pool},
-		Secure:   false,
-		DevLogin: true,
-	}
-	reg := &registry.Handler{Svc: &registry.Service{Pool: pool}, Identity: auth.Service}
-	search := &catalog.Handler{Pool: pool, Identity: auth.Service}
-
-	mux := http.NewServeMux()
-	auth.Mount(mux) // GET /me, DELETE /me, POST /me/deletion/cancel
-	mux.HandleFunc("GET /api/skills/search", search.PublicSearch)
-	mux.HandleFunc("GET /api/skills/{id}", auth.OptionalSession(search.SkillDetail))
-	mux.HandleFunc("GET /skills", auth.RequireSession(reg.List))
-	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(reg.Fork))
-	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(reg.Takedown))
-	mux.HandleFunc("DELETE /skills/{id}", auth.RequireSession(reg.Delete))
-
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-	return &api{Server: srv, auth: auth}
-}
 
 // recordingStore stands in for object storage: the purge has to reach it, and
 // which keys it reached is the assertion.
@@ -133,7 +103,7 @@ func deleteJSON(t *testing.T, c *client, path string) (int, map[string]any) {
 // the user can still change their mind.
 func TestAccountDeletionGraceIsCancellable(t *testing.T) {
 	pool := requireDB(t)
-	a := newGovernanceAPI(t, pool)
+	a := newAPI(t, pool)
 	alice := a.login(t, "alice-grace")
 
 	status, body := deleteJSON(t, alice, "/me")
@@ -181,7 +151,7 @@ func TestAccountDeletionGraceIsCancellable(t *testing.T) {
 func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()
-	a := newGovernanceAPI(t, pool)
+	a := newAPI(t, pool)
 
 	alice := a.login(t, "alice-purge")
 	bob := a.login(t, "bob-purge")
@@ -295,7 +265,7 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 func TestTakedownRemovesSkillFromPublicSurface(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()
-	a := newGovernanceAPI(t, pool)
+	a := newAPI(t, pool)
 
 	operator := a.login(t, "operator-takedown")
 	makeCatalog(t, pool, operator.workspaceID)
@@ -363,7 +333,7 @@ func TestTakedownRemovesSkillFromPublicSurface(t *testing.T) {
 func TestKeyOperationsLeaveAuditEvents(t *testing.T) {
 	pool := requireDB(t)
 	ctx := context.Background()
-	a := newGovernanceAPI(t, pool)
+	a := newAPI(t, pool)
 
 	owner := a.login(t, "owner-audit") // auth.login
 	makeCatalog(t, pool, owner.workspaceID)
