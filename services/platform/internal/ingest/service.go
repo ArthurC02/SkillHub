@@ -275,12 +275,17 @@ func (s *Service) persistVersion(ctx context.Context, q *gen.Queries, ws gen.Wor
 	}
 
 	// The resolved license, not the manifest field: skillpkg falls back to a
-	// LICENSE file in the package when the frontmatter declares nothing, and
-	// that fallback is the only thing 37 of the 45 seed packages had
-	// (import-report.md §4 Top-1). Provenance stays in the import findings.
-	var license *string
+	// LICENSE file in the package, then to a repository-level one carried in by
+	// the packer, when the frontmatter declares nothing — and that fallback is
+	// the only thing 37 of the 45 seed packages had (import-report.md §4 Top-1).
+	// The tier travels with the expression (ADR-021): "MIT" from frontmatter and
+	// "MIT" off a repo-root file are not the same claim, and DISC-003 has to show
+	// the difference rather than flatten it into one string.
+	var license, licenseSource *string
 	if l := p.report.LicenseExpression; l != "" {
 		license = &l
+		s := p.report.LicenseSource
+		licenseSource = &s
 	}
 	version, err := q.CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
 		WorkspaceID:       ws.ID,
@@ -290,6 +295,7 @@ func (s *Service) persistVersion(ctx context.Context, q *gen.Queries, ws gen.Wor
 		PackageObjectKey:  p.objectKey,
 		Manifest:          p.manifest,
 		LicenseExpression: license,
+		LicenseSource:     licenseSource,
 	})
 	if err != nil {
 		return gen.SkillVersion{}, false, err

@@ -3,11 +3,11 @@
 -- and the caller retries. Existing versions are never overwritten (WS-001, iron rule 4).
 INSERT INTO skill_versions (
     workspace_id, skill_id, source_id, version_number,
-    content_hash, package_object_key, manifest, license_expression
+    content_hash, package_object_key, manifest, license_expression, license_source
 ) VALUES (
     $1, $2, $3,
     (SELECT coalesce(max(version_number), 0) + 1 FROM skill_versions WHERE skill_id = $2),
-    $4, $5, $6, $7
+    $4, $5, $6, $7, $8
 )
 RETURNING *;
 

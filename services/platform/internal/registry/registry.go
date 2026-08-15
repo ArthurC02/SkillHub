@@ -94,6 +94,11 @@ func (s *Service) Fork(ctx context.Context, ws gen.Workspace, skillID pgtype.UUI
 		PackageObjectKey:  srcVer.PackageObjectKey,
 		Manifest:          srcVer.Manifest,
 		LicenseExpression: srcVer.LicenseExpression,
+		// WS-001 requires a fork to keep the License relationship, which is the
+		// expression *and* the tier it was established at (ADR-021). Copying the
+		// expression alone would silently upgrade a repo-level license into one
+		// the fork appears to declare for itself.
+		LicenseSource: srcVer.LicenseSource,
 	})
 	if err != nil {
 		return gen.Skill{}, gen.SkillVersion{}, err

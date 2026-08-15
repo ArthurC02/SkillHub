@@ -85,11 +85,34 @@ def download_repo_zip(source: dict, cache: pathlib.Path) -> pathlib.Path:
     return dest
 
 
-def repack_skill(repo_zip: pathlib.Path, skill_md_path: str) -> bytes:
+# Package-root license filenames, matched case-insensitively. Mirrors
+# skillpkg.licenseFileNames — the packer must agree with the scanner about what
+# counts as "this directory already states its own license", or it would carry a
+# repo license into a package that has one.
+LICENSE_NAMES = {
+    "license", "license.txt", "license.md", "licence", "licence.txt", "licence.md",
+    "copying", "copying.txt",
+}
+# The carried repo-root license lands under this fixed name (ADR-021 tier 3).
+# The name is the provenance signal: the scanner ranks it below a license file
+# the skill directory states for itself, and never treats it as the skill's own.
+CARRIED_LICENSE = "LICENSE.repo"
+CARRIED_PROVENANCE = "LICENSE.repo.provenance.json"
+
+
+def repack_skill(repo_zip: pathlib.Path, skill_md_path: str, source: dict | None = None) -> bytes:
     """Re-root one skill directory of a repo archive into its own package zip.
 
     The repo archive has a single ``<repo>-<sha>/`` top directory; entries under
     the skill's directory are rewritten so SKILL.md lands at the package root.
+
+    Per-directory packing drops the repo-root LICENSE, which is where most seed
+    repos state their license (37 of 45 packages declared none in frontmatter,
+    import-report.md §4 Top-1). ADR-021: when — and only when — the skill
+    directory states no license of its own, the repo-root license file is
+    carried in verbatim as ``LICENSE.repo`` alongside a provenance note saying
+    where it came from. Verbatim because it is a legal document: annotating the
+    text itself would misrepresent it, so the note is a separate file.
 
     Entry timestamps are pinned to a constant so the same commit always produces
     the same bytes. INGEST-005 dedupes on the archive's sha256, so a wall-clock
@@ -104,12 +127,49 @@ def repack_skill(repo_zip: pathlib.Path, skill_md_path: str) -> bytes:
         members = [n for n in names if n.startswith(prefix) and not n.endswith("/")]
         if not members:
             raise FileNotFoundError(f"{skill_dir!r} not found in {repo_zip.name}")
+
+        carried = None
+        if not any(n[len(prefix) :].lower() in LICENSE_NAMES for n in members):
+            carried = next(
+                (
+                    n
+                    for n in sorted(names)
+                    if n.startswith(top) and n[len(top) :].lower() in LICENSE_NAMES
+                ),
+                None,
+            )
+
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as out:
-            for name in sorted(members):
-                info = zipfile.ZipInfo(name[len(prefix) :], date_time=fixed_time)
+
+            def write(name: str, data: bytes) -> None:
+                info = zipfile.ZipInfo(name, date_time=fixed_time)
                 info.compress_type = zipfile.ZIP_DEFLATED
-                out.writestr(info, src.read(name))
+                out.writestr(info, data)
+
+            for name in sorted(members):
+                write(name[len(prefix) :], src.read(name))
+            if carried:
+                write(CARRIED_LICENSE, src.read(carried))
+                write(
+                    CARRIED_PROVENANCE,
+                    json.dumps(
+                        {
+                            "carried_from": carried[len(top) :],
+                            "repo_url": (source or {}).get("url"),
+                            "commit": (source or {}).get("commit"),
+                            "skill_path": skill_md_path,
+                            "note": (
+                                "Repository-level license carried in because this skill "
+                                "directory states none of its own. It covers the repository, "
+                                "not necessarily this directory's content (ADR-021)."
+                            ),
+                        },
+                        ensure_ascii=False,
+                        indent=1,
+                        sort_keys=True,
+                    ).encode(),
+                )
     return buf.getvalue()
 
 
@@ -157,7 +217,7 @@ def run(args) -> int:
         row = {k: skill[k] for k in ("id", "name", "category", "tier", "source_id")}
         try:
             repo_zip = download_repo_zip(sources[skill["source_id"]], cache)
-            zip_bytes = repack_skill(repo_zip, skill["skill_md_path"])
+            zip_bytes = repack_skill(repo_zip, skill["skill_md_path"], sources[skill["source_id"]])
             row["package_bytes"] = len(zip_bytes)
             row["status"], payload = import_one(opener, args.api, zip_bytes)
             row["findings"] = findings_of(payload)
@@ -235,6 +295,54 @@ def selftest() -> int:
         for i in zipfile.ZipFile(io.BytesIO(repack_skill(tmp, "skills/demo/SKILL.md"))).infolist()
     }
     assert stamps == {(1980, 1, 1, 0, 0, 0)}, stamps
+
+    # ADR-021 tier 3: a skill directory with no license of its own gets the
+    # repo-root one carried in, with a provenance note naming where it came from.
+    with zipfile.ZipFile(tmp, "w") as z:
+        z.writestr("repo-abc123/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
+        z.writestr("repo-abc123/LICENSE", "MIT License")
+    packed = zipfile.ZipFile(io.BytesIO(
+        repack_skill(tmp, "skills/demo/SKILL.md", {"url": "https://x/y", "commit": "abc123"})
+    ))
+    assert set(packed.namelist()) == {
+        "SKILL.md", CARRIED_LICENSE, CARRIED_PROVENANCE
+    }, packed.namelist()
+    assert packed.read(CARRIED_LICENSE) == b"MIT License"
+    prov = json.loads(packed.read(CARRIED_PROVENANCE))
+    assert prov["carried_from"] == "LICENSE" and prov["commit"] == "abc123", prov
+
+    # Lowercase repo-root license file (seed repo `iamursky/sokrati`, curated-
+    # skill-list.md §5.1 row 8) must still be found.
+    with zipfile.ZipFile(tmp, "w") as z:
+        z.writestr("repo-abc123/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
+        z.writestr("repo-abc123/license", "MIT License")
+    assert CARRIED_LICENSE in zipfile.ZipFile(io.BytesIO(
+        repack_skill(tmp, "skills/demo/SKILL.md")
+    )).namelist()
+
+    # A skill directory that states its own license keeps it and carries nothing:
+    # the repo license must never displace or accompany the package's own.
+    with zipfile.ZipFile(tmp, "w") as z:
+        z.writestr("repo-abc123/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
+        z.writestr("repo-abc123/skills/demo/LICENSE.txt", "Apache License")
+        z.writestr("repo-abc123/LICENSE", "MIT License")
+    assert set(zipfile.ZipFile(io.BytesIO(
+        repack_skill(tmp, "skills/demo/SKILL.md")
+    )).namelist()) == {"SKILL.md", "LICENSE.txt"}
+
+    # No repo-root license: nothing invented.
+    with zipfile.ZipFile(tmp, "w") as z:
+        z.writestr("repo-abc123/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
+        z.writestr("repo-abc123/README.md", "readme")
+    assert set(zipfile.ZipFile(io.BytesIO(
+        repack_skill(tmp, "skills/demo/SKILL.md")
+    )).namelist()) == {"SKILL.md"}
+
+    # Carrying must stay deterministic (INGEST-005 dedupe).
+    with zipfile.ZipFile(tmp, "w") as z:
+        z.writestr("repo-abc123/skills/demo/SKILL.md", "---\nname: demo\n---\nbody")
+        z.writestr("repo-abc123/LICENSE", "MIT License")
+    assert repack_skill(tmp, "skills/demo/SKILL.md") == repack_skill(tmp, "skills/demo/SKILL.md")
 
     assert classify(201, {"duplicate": True}) == "duplicate"
     assert classify(422, {}) == "rejected_validation"

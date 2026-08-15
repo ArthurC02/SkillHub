@@ -92,6 +92,45 @@
 - 系統識別 Script、可執行檔、外部 URL、可能的 Secrets 與宣告依賴。
 - 規格通過不得自動標示為執行安全或效果有效。
 
+#### SKILL-003：SKILL.md 內嵌程式碼揭露
+
+背景：靜態檢查若只看副檔名，整份實作寫在 `SKILL.md` fenced code block 裡的 Skill 會被呈現為「不含腳本」。首批匯入實測有 5 個套件以此形式挾帶約 180 行 Python，而檔案掃描回報零腳本（`m1/import-report.md` §4 Top-2）。
+
+允收準則：
+
+- 靜態檢查涵蓋 `SKILL.md` 內的 fenced code block，並依語言標記判斷該內容是否為可執行程式碼。
+- 揭露內容至少包含：內嵌總行數、程式碼區塊數、語言別，以及最長單一區塊的行數。
+- 揭露訊息明確聲明該程式碼在匯入與掃描期間不會被執行，且不會出現在套件檔案清單上。
+- 純敘述性標記（如 `json`、`yaml`、`text`、`markdown`、`diff`）不得計為程式碼。
+- 篇幅明顯屬於用法示例的區塊不觸發揭露；門檻值可調整，調整不改變上述揭露欄位。
+
+#### SKILL-004：License 多層溯源
+
+背景與決策依據：[ADR-021](../../adr/ADR-021-skill-license-provenance.md)。精選來源多為 monorepo 子目錄，授權事實散落於 manifest、套件內 LICENSE 檔與 repo 根 LICENSE 三個層級；首批匯入有 37／45 個套件在 frontmatter 未宣告授權（`m1/import-report.md` §4 Top-1）。
+
+允收準則：
+
+- 系統記錄授權運算式時，一併記錄其來源層級（license source），兩者同時存在或同時不存在。
+- 來源層級依 ADR-021 的優先序解析：`manifest` > `package-license-file` > `repo-license-file`；較高層級存在時即停止搜尋，不因其內容無法辨識而回退至較低層級。
+- 套件根授權檔名的比對不區分大小寫。
+- 由打包器搬入的 repo 層授權檔以固定檔名承載，且附帶記錄其來源路徑、repo URL 與 commit 的 provenance 檔；授權全文本身逐位元組原樣保留，不得加註或改寫。
+- 使用套件內 LICENSE 檔或 repo 層授權檔解析出的授權，必須產生對應的資訊層級揭露；repo 層的揭露須說明該授權涵蓋 repository，不必然涵蓋本套件內容。
+- 以上任一層級解析出的授權，其 License 狀態一律為「已宣告」；任何自動層級都不得將 Skill 標示為「已人工確認」。
+- manifest 宣告的授權字串正規化為 SPDX 識別碼；無法對應或有歧義者原樣保留，不得推定。
+- 授權未知時 `license_expression` 為 NULL，不得以 `NOASSERTION` 等字串填入運算式欄位。
+- Fork 建立新版本時一併複製授權運算式與其來源層級（見 WS-001）。
+
+#### SKILL-005：外部 URL 聚合揭露
+
+背景：`SKILL.md` 與套件檔案內的外部 URL 若逐筆揭露，單一套件即產生 321 筆（多為 OOXML schema namespace），使真正重要的揭露被淹沒（`m1/import-report.md` §4 Top-3）。
+
+允收準則：
+
+- 外部 URL 揭露以主機（host）聚合，每個主機一筆訊息，而非每個 URL 一筆。
+- 每筆訊息至少顯示該主機的 URL 總數、數個代表性 URL，以及未列出的相異 URL 數量。
+- 聚合不得造成事實遺失：所有原始 URL 與其出處檔案路徑均保留於該筆揭露的明細中。
+- 揭露順序穩定：相同套件重複掃描產生相同順序的結果。
+
 #### WS-001：Fork 與版本
 
 允收準則：

@@ -233,6 +233,109 @@ func TestLicenseFallsBackToPackageLicenseFile(t *testing.T) {
 	}
 }
 
+const (
+	mitText    = "MIT License\n\nCopyright (c) 2026 Someone\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\n"
+	apacheText = "Apache License\nVersion 2.0, January 2004\n"
+	iscText    = "Permission to use, copy, modify, and/or distribute this software for any purpose\n"
+)
+
+// ADR-021: three provenance tiers, each weaker evidence about *this* package
+// than the one above it, and each one stops the search.
+func TestLicenseProvenancePrecedence(t *testing.T) {
+	noLicenseMD := "---\nname: x\ndescription: d\n---\n"
+
+	for _, tc := range []struct {
+		name       string
+		skillMD    string
+		files      map[string]string
+		wantSPDX   string
+		wantSource string
+	}{{
+		name:    "manifest beats both files",
+		skillMD: goodMD, // declares license: MIT
+		files: map[string]string{
+			"LICENSE":          apacheText,
+			CarriedLicenseFile: iscText,
+		},
+		wantSPDX: "MIT", wantSource: licenseSourceManifest,
+	}, {
+		name:    "package file beats the carried repo file",
+		skillMD: noLicenseMD,
+		files: map[string]string{
+			"LICENSE":          apacheText,
+			CarriedLicenseFile: mitText,
+		},
+		wantSPDX: "Apache-2.0", wantSource: licenseSourcePackageFile,
+	}, {
+		name:     "carried repo file is used when the package states nothing",
+		skillMD:  noLicenseMD,
+		files:    map[string]string{CarriedLicenseFile: mitText},
+		wantSPDX: "MIT", wantSource: licenseSourceRepoFile,
+	}, {
+		// curated-skill-list.md §5.1 row 8: iamursky/sokrati ships a lowercase
+		// `license`. The old exact-name lookup reported it as unknown.
+		name:     "license filename matching is case-insensitive",
+		skillMD:  noLicenseMD,
+		files:    map[string]string{"license": mitText},
+		wantSPDX: "MIT", wantSource: licenseSourcePackageFile,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := Validate(pkg(tc.skillMD, tc.files))
+			if r.LicenseExpression != tc.wantSPDX || r.LicenseSource != tc.wantSource {
+				t.Fatalf("got %q/%q, want %q/%q",
+					r.LicenseExpression, r.LicenseSource, tc.wantSPDX, tc.wantSource)
+			}
+			if _, unknown := codes(r)["license-unknown"]; unknown {
+				t.Fatalf("resolved license must not also warn unknown: %+v", r.Findings)
+			}
+		})
+	}
+
+	// A carried repo-level license is disclosed as covering the repository, not
+	// this package — the §5.3 trap is a repo-root MIT over content the repo
+	// author never owned.
+	r := Validate(pkg(noLicenseMD, map[string]string{CarriedLicenseFile: mitText}))
+	if codes(r)["license-from-repo-file"] != SeverityInfo {
+		t.Fatalf("carried repo license must be disclosed as such: %+v", r.Findings)
+	}
+
+	// No fall-through: an unreadable package-local license is not answered by the
+	// repository's, which would be the §5.3 misattribution.
+	r = Validate(pkg(noLicenseMD, map[string]string{
+		"LICENSE":          "All rights reserved. Ask us nicely.",
+		CarriedLicenseFile: mitText,
+	}))
+	if r.LicenseExpression != "" || codes(r)["license-unknown"] != SeverityWarning {
+		t.Fatalf("unrecognised package license must stay unknown, got %q/%q: %+v",
+			r.LicenseExpression, r.LicenseSource, r.Findings)
+	}
+}
+
+func TestNormalizeSPDX(t *testing.T) {
+	for in, want := range map[string]string{
+		"MIT":            "MIT",
+		"mit":            "MIT",
+		"  Apache 2.0  ": "Apache-2.0",
+		"apache-2.0":     "Apache-2.0",
+		"GPLv3":          "GPL-3.0",
+		"the unlicense":  "Unlicense",
+		// Ambiguous or unknown strings are reported as the author wrote them,
+		// never guessed into an SPDX id (DISC-003).
+		"BSD":                  "BSD",
+		"Proprietary, ask Bob": "Proprietary, ask Bob",
+	} {
+		if got := normalizeSPDX(in); got != want {
+			t.Errorf("normalizeSPDX(%q) = %q, want %q", in, got, want)
+		}
+	}
+
+	// Normalisation applies to the manifest tier, which is the only free text.
+	r := Validate(pkg("---\nname: x\ndescription: d\nlicense: apache 2.0\n---\n", nil))
+	if r.LicenseExpression != "Apache-2.0" || r.LicenseSource != licenseSourceManifest {
+		t.Fatalf("got %q/%q", r.LicenseExpression, r.LicenseSource)
+	}
+}
+
 func TestDetectLicense(t *testing.T) {
 	cases := map[string]string{
 		"Apache License\nVersion 2.0, January 2004\n":                                      "Apache-2.0",

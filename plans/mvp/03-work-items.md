@@ -94,6 +94,9 @@
 - [x] INGEST-008 分開呈現錯誤、警告與資訊訊息。
 - [x] INGEST-009 建立可搜尋索引與重新索引流程。
 - [ ] INGEST-010 建立外部內容失效、來源更新及人工下架流程。
+- [x] INGEST-011 靜態檢查涵蓋 `SKILL.md` 內嵌可執行程式碼並揭露規模（`02:SKILL-003`）。
+- [x] INGEST-012 實作 License 多層溯源：記錄來源層級、打包器搬運 repo 層授權、SPDX 正規化（`02:SKILL-004`、[ADR-021](../../adr/ADR-021-skill-license-provenance.md)）。
+- [x] INGEST-013 外部 URL 揭露依主機聚合並保留完整明細（`02:SKILL-005`）。
 
 ## 7. Skill Explorer（M1，結束時通過驗證閘門才進 M2）
 

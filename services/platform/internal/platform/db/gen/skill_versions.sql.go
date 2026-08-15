@@ -14,13 +14,13 @@ import (
 const createSkillVersion = `-- name: CreateSkillVersion :one
 INSERT INTO skill_versions (
     workspace_id, skill_id, source_id, version_number,
-    content_hash, package_object_key, manifest, license_expression
+    content_hash, package_object_key, manifest, license_expression, license_source
 ) VALUES (
     $1, $2, $3,
     (SELECT coalesce(max(version_number), 0) + 1 FROM skill_versions WHERE skill_id = $2),
-    $4, $5, $6, $7
+    $4, $5, $6, $7, $8
 )
-RETURNING id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at
+RETURNING id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source
 `
 
 type CreateSkillVersionParams struct {
@@ -31,6 +31,7 @@ type CreateSkillVersionParams struct {
 	PackageObjectKey  string
 	Manifest          []byte
 	LicenseExpression *string
+	LicenseSource     *string
 }
 
 // version_number is allocated inline; concurrent saves lose on skill_versions_number_key
@@ -44,6 +45,7 @@ func (q *Queries) CreateSkillVersion(ctx context.Context, arg CreateSkillVersion
 		arg.PackageObjectKey,
 		arg.Manifest,
 		arg.LicenseExpression,
+		arg.LicenseSource,
 	)
 	var i SkillVersion
 	err := row.Scan(
@@ -57,12 +59,13 @@ func (q *Queries) CreateSkillVersion(ctx context.Context, arg CreateSkillVersion
 		&i.Manifest,
 		&i.LicenseExpression,
 		&i.CreatedAt,
+		&i.LicenseSource,
 	)
 	return i, err
 }
 
 const getSkillVersion = `-- name: GetSkillVersion :one
-SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at FROM skill_versions
+SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source FROM skill_versions
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -85,12 +88,13 @@ func (q *Queries) GetSkillVersion(ctx context.Context, arg GetSkillVersionParams
 		&i.Manifest,
 		&i.LicenseExpression,
 		&i.CreatedAt,
+		&i.LicenseSource,
 	)
 	return i, err
 }
 
 const listSkillVersions = `-- name: ListSkillVersions :many
-SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at FROM skill_versions
+SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source FROM skill_versions
 WHERE workspace_id = $1 AND skill_id = $2
 ORDER BY version_number DESC
 `
@@ -120,6 +124,7 @@ func (q *Queries) ListSkillVersions(ctx context.Context, arg ListSkillVersionsPa
 			&i.Manifest,
 			&i.LicenseExpression,
 			&i.CreatedAt,
+			&i.LicenseSource,
 		); err != nil {
 			return nil, err
 		}

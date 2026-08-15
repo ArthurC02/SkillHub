@@ -55,9 +55,10 @@ type Manifest struct {
 type Report struct {
 	Manifest *Manifest `json:"manifest"`
 	// LicenseExpression is the license the package actually evidences, and
-	// LicenseSource says which artefact it came from (licenseSourceManifest or
-	// licenseSourcePackageFile). Empty means unknown, which is the only case
-	// that may be treated as unknown (DISC-003).
+	// LicenseSource says which artefact it came from — one of the ADR-021
+	// provenance tiers (licenseSourceManifest, licenseSourcePackageFile,
+	// licenseSourceRepoFile). Empty means unknown, which is the only case that
+	// may be treated as unknown (DISC-003).
 	LicenseExpression string    `json:"license_expression,omitempty"`
 	LicenseSource     string    `json:"license_source,omitempty"`
 	Findings          []Finding `json:"findings"`
@@ -228,16 +229,29 @@ func (r *Report) checkManifest() {
 	}
 }
 
-// licenseFiles are the package-root names checked when the manifest declares no
-// license, in lookup order.
-var licenseFiles = []string{
-	"LICENSE", "LICENSE.txt", "LICENSE.md", "LICENCE", "LICENCE.txt", "LICENCE.md",
-	"COPYING", "COPYING.txt",
+// licenseFileNames are the package-root filenames that state the package's own
+// license. Matched case-insensitively: a seed repo ships a lowercase `license`
+// (curated-skill-list.md §5.1 row 8) and the old exact-name list missed it.
+var licenseFileNames = map[string]bool{
+	"license": true, "license.txt": true, "license.md": true,
+	"licence": true, "licence.txt": true, "licence.md": true,
+	"copying": true, "copying.txt": true,
 }
 
+// CarriedLicenseFile is the repository-level license file a packer carries into
+// a package cut from a monorepo subdirectory (ADR-021 tier 3), next to
+// CarriedProvenanceFile which records where it came from. The name is matched
+// exactly, not case-insensitively: it is written by tooling, never by an author.
+const (
+	CarriedLicenseFile    = "LICENSE.repo"
+	CarriedProvenanceFile = "LICENSE.repo.provenance.json"
+)
+
+// License provenance tiers, in the precedence order fixed by ADR-021.
 const (
 	licenseSourceManifest    = "manifest"
 	licenseSourcePackageFile = "package-license-file"
+	licenseSourceRepoFile    = "repo-license-file"
 )
 
 // licenseSignatures map a distinctive line of licence text to its SPDX id.
@@ -256,36 +270,110 @@ var licenseSignatures = []struct{ marker, spdx string }{
 	{"redistribution and use in source and binary forms", "BSD-3-Clause"}, // clause count checked below
 }
 
-// resolveLicense records the license the package evidences and where it came
-// from. The manifest field wins; a LICENSE file at the package root is the
-// fallback, because a repository's real licence is very often only there
-// (37 of 45 seed packages, import-report.md §4 Top-1) and dropping it left the
-// catalogue claiming "unknown" for licences that were plainly stated.
+// resolveLicense records the license the package evidences and which artefact it
+// came from, following the ADR-021 precedence: the manifest field, then a
+// license file the package states for itself, then a repository-level license
+// carried in by the packer. Each tier is weaker evidence about *this* package
+// than the one above it, so LicenseSource is recorded alongside the expression
+// and never collapsed into it.
 //
-// The distinction is kept in LicenseSource: file-derived is still only
-// LicenseStatusDeclared, never confirmed.
+// The tiers below the manifest matter because a repository's real license is
+// very often only in a file (37 of 45 seed packages declared none in
+// frontmatter, import-report.md §4 Top-1), and dropping those left the catalogue
+// claiming "unknown" for licenses that were plainly stated.
+//
+// Every tier is still only LicenseStatusDeclared, never confirmed: a repo-level
+// MIT file says nothing about whether the subdirectory's content is the repo
+// author's to license (curated-skill-list.md §5.3).
 func (r *Report) resolveLicense(fsys fs.FS) {
 	if r.Manifest.License != "" {
-		r.LicenseExpression, r.LicenseSource = r.Manifest.License, licenseSourceManifest
+		r.LicenseExpression, r.LicenseSource = normalizeSPDX(r.Manifest.License), licenseSourceManifest
 		return
 	}
-	for _, name := range licenseFiles {
-		data, err := fs.ReadFile(fsys, name)
+	// The first tier present decides, even when its text is unrecognised. No
+	// falling through: a package that states its own license is not licensed by
+	// whatever the repository says, and letting a carried repo-level MIT answer
+	// for an unreadable package-local license is exactly the §5.3 failure.
+	for _, c := range licenseCandidates(fsys) {
+		data, err := fs.ReadFile(fsys, c.name)
 		if err != nil {
 			continue
 		}
-		if spdx := detectLicense(data); spdx != "" {
-			r.LicenseExpression, r.LicenseSource = spdx, licenseSourcePackageFile
-			r.add(SeverityInfo, "license-from-package-file", name,
-				fmt.Sprintf("no license in frontmatter; %s identifies the package as %s", name, spdx))
+		spdx := detectLicense(data)
+		if spdx == "" {
+			// DISC-003: unknown license must be surfaced, never assumed permissive.
+			r.add(SeverityWarning, "license-unknown", "SKILL.md",
+				fmt.Sprintf("no license declared in frontmatter, and %s is not a recognised license text; treated as unknown", c.name))
 			return
 		}
-		// DISC-003: unknown license must be surfaced, never assumed permissive.
-		r.add(SeverityWarning, "license-unknown", "SKILL.md",
-			fmt.Sprintf("no license declared in frontmatter, and %s is not a recognised license text; treated as unknown", name))
+		r.LicenseExpression, r.LicenseSource = spdx, c.source
+		if c.source == licenseSourceRepoFile {
+			r.add(SeverityInfo, "license-from-repo-file", c.name, fmt.Sprintf(
+				"no license in this package; the repository-level license carried in as %s identifies %s. "+
+					"It covers the repository, not necessarily this package's content.", c.name, spdx))
+		} else {
+			r.add(SeverityInfo, "license-from-package-file", c.name,
+				fmt.Sprintf("no license in frontmatter; %s identifies the package as %s", c.name, spdx))
+		}
 		return
 	}
 	r.add(SeverityWarning, "license-unknown", "SKILL.md", "no license declared; treated as unknown")
+}
+
+// licenseCandidates lists the package-root files that may evidence a license, in
+// ADR-021 precedence order. fs.ReadDir sorts by filename, so a package carrying
+// several license files always resolves the same way.
+func licenseCandidates(fsys fs.FS) []struct{ name, source string } {
+	var out []struct{ name, source string }
+	entries, _ := fs.ReadDir(fsys, ".")
+	for _, e := range entries {
+		if !e.IsDir() && licenseFileNames[strings.ToLower(e.Name())] {
+			out = append(out, struct{ name, source string }{e.Name(), licenseSourcePackageFile})
+		}
+	}
+	if info, err := fs.Stat(fsys, CarriedLicenseFile); err == nil && !info.IsDir() {
+		out = append(out, struct{ name, source string }{CarriedLicenseFile, licenseSourceRepoFile})
+	}
+	return out
+}
+
+// spdxIDs are the identifiers this scanner emits. detectLicense already returns
+// canonical ones; this list exists to canonicalise the *manifest* field, which
+// is free text an author typed.
+var spdxIDs = []string{
+	"Apache-2.0", "MIT", "ISC", "BSD-2-Clause", "BSD-3-Clause",
+	"GPL-2.0", "GPL-3.0", "LGPL-3.0", "AGPL-3.0", "MPL-2.0",
+	"Unlicense", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0",
+}
+
+// spdxAliases are non-SPDX spellings common in frontmatter. Only unambiguous
+// ones: a bare "BSD" or "GPL" does not say which variant, and guessing a license
+// is worse than reporting the author's own string (DISC-003).
+var spdxAliases = map[string]string{
+	"apache 2.0": "Apache-2.0", "apache-2": "Apache-2.0", "apache2": "Apache-2.0",
+	"apache license 2.0": "Apache-2.0", "mit license": "MIT",
+	"bsd-3": "BSD-3-Clause", "bsd 3-clause": "BSD-3-Clause",
+	"bsd-2": "BSD-2-Clause", "bsd 2-clause": "BSD-2-Clause",
+	"mpl 2.0": "MPL-2.0", "gpl-3": "GPL-3.0", "gplv3": "GPL-3.0",
+	"gpl-2": "GPL-2.0", "gplv2": "GPL-2.0", "agplv3": "AGPL-3.0",
+	"cc0": "CC0-1.0", "the unlicense": "Unlicense", "public domain": "Unlicense",
+}
+
+// normalizeSPDX canonicalises a declared license string so the same license
+// declared three ways compares equal (DISC-004 比較, ADR-021). An unrecognised
+// string is returned trimmed but otherwise verbatim — never mapped by guesswork.
+func normalizeSPDX(s string) string {
+	trimmed := strings.Join(strings.Fields(s), " ")
+	key := strings.ToLower(trimmed)
+	for _, id := range spdxIDs {
+		if strings.EqualFold(id, key) {
+			return id
+		}
+	}
+	if id, ok := spdxAliases[key]; ok {
+		return id
+	}
+	return trimmed
 }
 
 // detectLicense returns the SPDX id of a well-known license text, or "".
