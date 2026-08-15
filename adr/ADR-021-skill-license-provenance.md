@@ -129,6 +129,10 @@ SPDX 2.3 的運算式文法並未把 `NONE`／`NOASSERTION` 納入 `simple-expre
 ## 待決策
 
 - **manifest 寫的是「指標」而非授權時該如何處理。** 實測發現 `anthropics/skills` 的 `brand-guidelines`／`internal-comms` 在 frontmatter 寫 `license: Complete terms in LICENSE.txt`——那是指向檔案的指標，不是授權宣告。依本 ADR 的「上層存在即停止」，第 1 層勝出並原樣記下該字串，同目錄 `LICENSE.txt` 內真正的 Apache-2.0 因此未被採用。方向上是安全的（低估而非高估），但確實遺失了事實。npm 對此有既成慣例（`"SEE LICENSE IN <filename>"`，且該檔須位於套件頂層）。待決：是否辨識指標字串並回退至其所指的檔案，以及辨識範圍限於 npm 的字面形式或放寬到啟發式比對。
+  → **已決（2026-08-15，commit `4815c5e`）：辨識，並回退至其所指的檔案。** 指標所指的套件內檔案以既有 marker 比對解析，成功則記為新的來源層級 **`manifest-referenced-file`**；`brand-guidelines`／`internal-comms` 因此解出 Apache-2.0。解析失敗（檔案不存在、文字無法辨識）則**維持原樣逐字記錄於第 1 層**，不改變既有行為、不猜測。
+  - **另立層級而非併入第 1 層**：作者選定了該檔案（比「套件內剛好有 LICENSE」強），但運算式是從文字**讀出**而非**宣告**，兩者證據性質不同，依本 ADR §1「永不壓成單一字串」不得混同。優先序落在第 1 層與 `package-license-file` 之間。
+  - **辨識範圍取保守的封閉正則集，不放寬到啟發式比對**：涵蓋 npm 的 `SEE LICENSE IN <file>` 慣例與實測到的 `Complete terms in <file>` 變體，且要求目標為套件根層的單一檔名（同 npm 對頂層的要求）。誤判的代價是把授權問題交給**另一個檔案**的文字，即授權誤標——方向上不再是本節原本「低估而非高估」的安全側，故從嚴。
+  - 未涵蓋的措辭一律不視為指標，走原路徑逐字記錄；擴充觸發訊號同下一項，為誤判／漏判申訴量。
 - 授權辨識是否從 marker 比對升級為相似度比對（licensee 式），觸發訊號為誤判申訴量。
 - §5.3 的「宣稱 MIT 的 source-available 衍生物」偵測啟發式歸屬哪個需求 ID（`CONTENT-006` 或 `INGEST-010`），以及是否自動轉人工。
 - 第 4 層 `curated-declared` 的啟用時點，與策展事實的審核流程形態。
