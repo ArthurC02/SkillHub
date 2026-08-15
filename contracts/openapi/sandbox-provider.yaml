@@ -89,6 +89,13 @@ paths:
         `idempotency_key`, when the platform sends one, is its own stable label
         for the same pair. It is not a second, independent key: a provider must
         not create two runs for one (run_id, attempt) because the labels differ.
+
+        Two error bodies, and a client has to branch on status to parse them:
+        **422 carries a RunError**, every other failure carries an `Error`. The
+        refusal is the one failure the platform records against the run itself -
+        it becomes the attempt's `error_class` and decides whether a retry is
+        even considerable - so it needs the classification rather than a
+        sentence. This is the only operation in this file with the split.
       requestBody:
         required: true
         content:
@@ -149,9 +156,17 @@ paths:
         The comparison side of orphan scanning: anything listed here that the
         platform holds no live attempt for is a leaked sandbox and is destroyed.
 
-        Only live runs are served. Finished runs are the platform's history and a
-        provider's recollection of them is not a source of truth (iron rule 10).
-        `result` is omitted from the entries - read a single run to get it.
+        "Live" means still holding resources - **including a run that has reached
+        a terminal state but has not been destroyed yet**. Those are exactly the
+        sandboxes a scan needs to see: a run the worker finished reading and then
+        crashed before cleaning up is terminal, is still costing resources, and
+        is invisible to a listing that only reports unfinished work. A run leaves
+        this list when DELETE succeeds, not when it reaches a terminal state.
+
+        What is *not* served is history. Once destroyed, a run is gone from here
+        for good; the platform owns the record of what ran (iron rule 10) and a
+        provider's recollection is not a source of truth. `result` is omitted
+        from the entries - read a single run to get it.
       parameters:
         - name: active
           in: query
@@ -160,10 +175,12 @@ paths:
           description: |
             Only `true` is served, and it is the default. `false` answers 400
             rather than an empty list, because an empty list would read as "no
-            finished runs" from an endpoint that never had any to give.
+            destroyed runs" from an endpoint that never retained any to give.
       responses:
         "200":
-          description: Every run this provider currently holds resources for.
+          description: |
+            Every run this provider currently holds resources for, terminal ones
+            awaiting DELETE included.
           content:
             application/json:
               schema:
@@ -382,9 +399,12 @@ components:
     ProviderRunList:
       type: object
       description: |
-        Live runs on this provider (RUN-007). Not paginated: the list is bounded
-        by ProviderCapability.availability.concurrent_run_slots, so there is no
-        page for a page token to point at.
+        Runs still holding resources on this provider (RUN-007), terminal ones
+        not yet destroyed included - see GET /runs for why that boundary is
+        DELETE rather than the terminal state.
+
+        Not paginated: the list is bounded by the provider's own slot count, so
+        there is no page for a page token to point at.
       required: [provider, runs, observed_at]
       properties:
         provider: { type: string }
@@ -499,6 +519,14 @@ components:
           description: |
             The provider's ephemeral handle. Never a primary key, never part of
             a permanent URL, and only unique within one provider.
+
+            Ephemeral is about the platform's use of it, not about how long the
+            provider may recycle it: the value must never be reused for a second
+            run, across provider restarts included. UUID-grade uniqueness, not a
+            counter or a slot index. The platform's `run_attempts` holds a unique
+            `(provider, provider_run_id)`, so a reused id collides with the row
+            of a finished attempt and the dispatch fails - this is a collision
+            the contract tests have actually produced, not a hypothetical.
 
     PackageRef:
       type: object
@@ -622,8 +650,19 @@ components:
       properties:
         mode:
           type: string
-          enum: [default_deny]
-          description: Single-valued on purpose - a second mode would need its own ADR.
+          enum: [default_deny, none]
+          description: |
+            `default_deny` - nothing leaves except what `allow` names, through
+            the controlled proxy (PDM-005 5.2, ADR-005). `none` - no egress at
+            all, and `allow` must be empty.
+
+            The two are ordered, not alternatives: `none` is strictly stronger
+            than `default_deny` with an empty allow list. A provider declaring
+            only `none` can therefore satisfy a request for `default_deny` with
+            an empty `allow`, and cannot satisfy one with a non-empty `allow` -
+            it has no route to offer. Capability matching (RUN-005) reads the
+            order this way round and never the other; substituting a weaker
+            mode for a stronger one is never allowed, whatever the request said.
         allow:
           type: array
           items:
@@ -838,7 +877,13 @@ components:
         availability:
           type: object
           properties:
-            concurrent_run_slots: { type: integer }
+            concurrent_run_slots:
+              type: integer
+              description: |
+                Slots still free right now, not the configured total. RUN-005
+                asks this to decide whether to dispatch, and a total would have
+                to be paired with a live count to answer that at all. 0 means
+                full: dispatching anyway earns a 429.
             healthy: { type: boolean }
         cost_model:
           type: object
