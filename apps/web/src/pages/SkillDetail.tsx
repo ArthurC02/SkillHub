@@ -213,6 +213,22 @@ function SourceBlock({ source }: { source: SkillSource }) {
         </p>
       )}
       {source.fetched_at && <p>擷取時間：{source.fetched_at}</p>}
+
+      {/*
+        The probe's two facts stay apart: "gone since when" is the one that
+        matters, and "never probed" is rendered as unknown rather than quietly
+        omitted, because an absent line reads as reassurance.
+      */}
+      {source.unavailable_since ? (
+        <p className="badge badge-risk">
+          來源已失效，自 {source.unavailable_since} 起無法取得。目前顯示的是失效前保存的內容。
+        </p>
+      ) : source.last_checked_at ? (
+        <p className="note">最近一次來源可用性檢查：{source.last_checked_at}（當時可取得）。</p>
+      ) : (
+        <p className="note">尚未檢查過來源是否仍可取得。</p>
+      )}
+
       <p className="note">{source.trust.note}</p>
       {source.content_hash && (
         <details>

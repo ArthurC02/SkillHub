@@ -50,7 +50,14 @@ export interface PublicSearchResult {
   skill_id: string;
   name: string;
   summary: string;
-  /** Cosine similarity 0..1, higher is better. 0 = lexical-only hit, unranked. */
+  /**
+   * Cosine similarity 0..1 per the schema, higher is better; 0 = a lexical-only
+   * hit the cut-off never judged.
+   *
+   * Observed divergence: on the degraded (FTS-only) path the server returns the
+   * lexical score instead, which is unbounded — a live local answer came back
+   * with 1.4. Read together with `degraded` before showing it as a similarity.
+   */
   rank: number;
   match_reason?: string;
   /** ADR-013: model-generated copy must be labelled as such in the UI. */
@@ -78,12 +85,23 @@ export interface SkillSource {
   source_version?: string;
   fetched_at?: string;
   content_hash?: string;
+  /**
+   * When the upstream-availability probe last looked. Absent means never
+   * probed, which is not the same as "available" and must not be shown as one.
+   */
+  last_checked_at?: string;
+  /**
+   * When the source *started* failing, not the latest failure, so a two-week
+   * outage stays distinguishable from a blip. Absent means it answered last time.
+   */
+  unavailable_since?: string;
   /** unknown | traceable | manually_confirmed */
   trust: Labelled;
 }
 
 /** ADR-021 provenance tier, strongest first. */
-export type LicenseSource = "manifest" | "package-license-file" | "repo-license-file";
+export type LicenseSource =
+  "manifest" | "manifest-referenced-file" | "package-license-file" | "repo-license-file";
 
 export interface SkillLicense {
   /** SPDX id. Absent means unknown, which must never be shown as permissive. */
