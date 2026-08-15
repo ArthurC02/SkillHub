@@ -62,16 +62,18 @@
 ## 4. Skill 內容與供應（M1）
 
 > **2026-08-15 依 [m1/m1-work-items-audit.md §8 第三梯](m1/m1-work-items-audit.md) 調整**：本節的 **CONTENT-007／008 里程碑改為 M2**（依賴 M2 的 Test Case 與 Sandbox，M1 內結構性不可能完成），其餘項目維持 M1。
+>
+> **2026-08-15 補齊允收準則**：本節九項原本只有一行敘述、`02` 無對應需求 ID（[m1/content-summaries.md §3](m1/content-summaries.md) 交付時發現）。允收準則已補於 **`02` 第 4.7 節「內容供應與策展」**，各項行尾標註引用。準則內容取自已定案與已落地的實務（PDM-002 九項檢查與白名單制、ADR-021 授權兩軸、ADR-013 索引時增強與人工抽查），未新增要求。
 
-- [x] CONTENT-001 定義精選、已索引與外部結果的收錄政策。
-- [x] CONTENT-002 定義來源可信度、License 與衍生關係的呈現規則。
-- [ ] CONTENT-003 建立首批 Skill 候選清單。（正式清單見 [plans/mvp/m1/curated-skill-list.md](m1/curated-skill-list.md)、匯入資料 `tools/content/seed-skills.json`。**2026-08-15 起三類的已索引與精選數量目標全部達標**——`documents` 精選由 3 補足為 4（`excel-format`，見該文件 §9）。仍不勾的原因有二：§5.2 的 source-available 法務判定未完成前，`documents` 已索引有 10→6 的塌陷風險；九項精選檢查的 ⑤⑦ 需 CONTENT-006／005 才能判定。**2026-08-15 修訂**：⑧「平台基準試跑」由已改列 M2 的 CONTENT-007／008 承接，**不再是 CONTENT-003 的勾選前提**，改以引用方式處理——CONTENT-003 勾選時須在清單中把 ⑧ 明確記為「待 M2 基準試跑，見 CONTENT-007／008」，不得記為已通過。依據 [m1/m1-work-items-audit.md §8 第三梯](m1/m1-work-items-audit.md)）
-- [ ] CONTENT-004 對首批 Skill 完成來源及 License 檢查。（License 合規總表見 [curated-skill-list.md §5](m1/curated-skill-list.md)；11 個入選 repo 已逐一實查 LICENSE 檔。未結案項：§5.2 `anthropics/skills` source-available 條款是否允許平台保存內容快照，待負責人與法務判定）
-- [ ] CONTENT-005 對首批 Skill 產生一般使用者可理解的摘要。
-- [ ] CONTENT-006 對首批 Skill 完成規格及靜態掃描。
-- [ ] CONTENT-007 對精選 Skill 建立範例資料、Prompt 與驗收條件。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**
-- [ ] CONTENT-008 對精選 Skill 完成至少一次基準試跑。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**
-- [ ] CONTENT-009 建立內容更新、失效、下架與來源變更流程。
+- [x] CONTENT-001 定義精選、已索引與外部結果的收錄政策。（允收：`02` §4.7）
+- [x] CONTENT-002 定義來源可信度、License 與衍生關係的呈現規則。（允收：`02` §4.7）
+- [ ] CONTENT-003 建立首批 Skill 候選清單。（正式清單見 [plans/mvp/m1/curated-skill-list.md](m1/curated-skill-list.md)、匯入資料 `tools/content/seed-skills.json`。**2026-08-15 起三類的已索引與精選數量目標全部達標**——`documents` 精選由 3 補足為 4（`excel-format`，見該文件 §9）。仍不勾的原因有二：§5.2 的 source-available 法務判定未完成前，`documents` 已索引有 10→6 的塌陷風險；九項精選檢查的 ⑤⑦ 需 CONTENT-006／005 才能判定。**2026-08-15 修訂**：⑧「平台基準試跑」由已改列 M2 的 CONTENT-007／008 承接，**不再是 CONTENT-003 的勾選前提**，改以引用方式處理——CONTENT-003 勾選時須在清單中把 ⑧ 明確記為「待 M2 基準試跑，見 CONTENT-007／008」，不得記為已通過。依據 [m1/m1-work-items-audit.md §8 第三梯](m1/m1-work-items-audit.md)）（允收：`02` §4.7）
+- [ ] CONTENT-004 對首批 Skill 完成來源及 License 檢查。（License 合規總表見 [curated-skill-list.md §5](m1/curated-skill-list.md)；11 個入選 repo 已逐一實查 LICENSE 檔。未結案項：§5.2 `anthropics/skills` source-available 條款是否允許平台保存內容快照，待負責人與法務判定）（允收：`02` §4.7）
+- [ ] CONTENT-005 對首批 Skill 產生一般使用者可理解的摘要。（允收：`02` §4.7；工序與審核紀錄見 [m1/content-summaries.md](m1/content-summaries.md)，45 筆現皆為「待審」）
+- [ ] CONTENT-006 對首批 Skill 完成規格及靜態掃描。（允收：`02` §4.7）
+- [ ] CONTENT-007 對精選 Skill 建立範例資料、Prompt 與驗收條件。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**（允收：`02` §4.7）
+- [ ] CONTENT-008 對精選 Skill 完成至少一次基準試跑。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**（允收：`02` §4.7）
+- [ ] CONTENT-009 建立內容更新、失效、下架與來源變更流程。（允收：`02` §4.7）
 
 ## 5. 核心領域與帳號（M1）
 
@@ -214,16 +216,18 @@
 
 ## 16. 安全、隱私與合規（M0 起跨階段）
 
-- [ ] SEC-001 完成 Skill、Script、MCP、Dataset、Secrets 與 Local Runner 威脅模型。
-- [ ] SEC-002 定義 Sandbox 最低安全基線與阻擋條件。
-- [ ] SEC-003 建立 Skill 匯入與執行前靜態掃描政策。
-- [ ] SEC-004 建立遠端 MCP 的 SSRF、內部網路與資料外洩防護。（後 MVP，隨 MCP 啟動）
-- [ ] SEC-005 建立 Secrets 儲存、短效注入、遮罩與撤銷流程。
-- [ ] SEC-006 建立 Dataset、Trace 與 Artifact 保存及刪除政策。
-- [ ] SEC-007 建立來源、License 與下架處理政策。
-- [ ] SEC-008 驗證使用者與 Run 之間的資料隔離。
-- [ ] SEC-009 進行 Sandbox 逃逸、資源濫用與權限提升測試。
-- [ ] SEC-010 完成安全事件回應與緊急停用 Provider 流程。
+> **2026-08-15 補齊允收準則**：本節十項原本只有一行敘述、`02` 無 SEC-* 需求 ID（威脅模型開放問題 **Q19**）。允收準則已補於 **`02` 第 6 節「安全需求」**，取自 [m0/threat-model-and-sandbox-baseline.md](m0/threat-model-and-sandbox-baseline.md) v2 已落地的 32 條威脅與 45 項基線檢查，未新增安全要求；該文件未定的門檻值在 `02` 標為「未涵蓋（待決策）」。
+
+- [ ] SEC-001 完成 Skill、Script、MCP、Dataset、Secrets 與 Local Runner 威脅模型。（允收：`02` §6）
+- [ ] SEC-002 定義 Sandbox 最低安全基線與阻擋條件。（允收：`02` §6）
+- [ ] SEC-003 建立 Skill 匯入與執行前靜態掃描政策。（允收：`02` §6）
+- [ ] SEC-004 建立遠端 MCP 的 SSRF、內部網路與資料外洩防護。（後 MVP，隨 MCP 啟動）（允收：`02` §6）
+- [ ] SEC-005 建立 Secrets 儲存、短效注入、遮罩與撤銷流程。（允收：`02` §6）
+- [ ] SEC-006 建立 Dataset、Trace 與 Artifact 保存及刪除政策。（允收：`02` §6）
+- [ ] SEC-007 建立來源、License 與下架處理政策。（允收：`02` §6）
+- [ ] SEC-008 驗證使用者與 Run 之間的資料隔離。（允收：`02` §6）
+- [ ] SEC-009 進行 Sandbox 逃逸、資源濫用與權限提升測試。（允收：`02` §6）
+- [ ] SEC-010 完成安全事件回應與緊急停用 Provider 流程。（允收：`02` §6）
 
 ## 17. 品質保證與封閉測試（M4）
 
