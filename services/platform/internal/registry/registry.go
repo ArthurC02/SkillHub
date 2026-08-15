@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 )
 
@@ -60,6 +61,12 @@ func (s *Service) Fork(ctx context.Context, ws gen.Workspace, skillID pgtype.UUI
 	}
 	if err != nil {
 		return gen.Skill{}, gen.SkillVersion{}, err
+	}
+	// A taken-down skill is not a fork source (INGEST-010): the takedown exists
+	// because the content should stop spreading, and a fork is a new copy.
+	// Existing forks are untouched — theirs are already separate rows.
+	if src.TakedownAt.Valid {
+		return gen.Skill{}, gen.SkillVersion{}, ErrNotFound
 	}
 	srcVer, err := q.GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
 		SkillID: src.ID, WorkspaceID: src.WorkspaceID,
@@ -116,6 +123,19 @@ func (s *Service) Fork(ctx context.Context, ws gen.Workspace, skillID pgtype.UUI
 	}); err != nil {
 		return gen.Skill{}, gen.SkillVersion{}, err
 	}
+	if err := audit.Log(ctx, q, audit.Event{
+		Actor:        ws.OwnerUserID,
+		Workspace:    ws.ID,
+		Action:       audit.ActionSkillFork,
+		ResourceType: audit.ResourceSkill,
+		ResourceID:   fork.ID,
+		Metadata: map[string]any{
+			"source_skill_id":   uuidString(src.ID),
+			"source_version_id": uuidString(srcVer.ID),
+		},
+	}); err != nil {
+		return gen.Skill{}, gen.SkillVersion{}, err
+	}
 	return fork, ver, tx.Commit(ctx)
 }
 
@@ -151,7 +171,74 @@ func (s *Service) Delete(ctx context.Context, ws gen.Workspace, skillID pgtype.U
 	if err != nil {
 		return DeleteResult{}, err
 	}
+	if err := audit.Log(ctx, q, audit.Event{
+		Actor:        ws.OwnerUserID,
+		Workspace:    ws.ID,
+		Action:       audit.ActionSkillDelete,
+		ResourceType: audit.ResourceSkill,
+		ResourceID:   skill.ID,
+		Metadata:     map[string]any{"versions_retained": n},
+	}); err != nil {
+		return DeleteResult{}, err
+	}
 	return DeleteResult{VersionsRetained: n}, tx.Commit(ctx)
+}
+
+// ErrAlreadyTakenDown: the skill is already off the catalog.
+var ErrAlreadyTakenDown = errors.New("skill is already taken down")
+
+// Takedown removes a skill from search and from the fork path while keeping
+// every row it owns (INGEST-010 人工下架; PDM-006 §6 lists takedown as the only
+// removal path for skills and versions, and it marks invisible rather than
+// deletes). Existing forks, historical lineage and past runs are unaffected.
+//
+// Authorization is the ordinary workspace scope: the operator who curates the
+// catalog owns the catalog workspace, so taking curated content down is the
+// same statement as taking your own content down.
+//
+// ponytail: no operator role. A platform-wide takedown of content in *someone
+// else's* workspace — abuse reports, DMCA — has no path here and needs the
+// admin role SEC/CORE has not specified yet. Upgrade path is a second query
+// without the workspace predicate behind that role, not a change to this one.
+func (s *Service) Takedown(ctx context.Context, ws gen.Workspace, skillID pgtype.UUID, reason string) (gen.Skill, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return gen.Skill{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := gen.New(tx)
+
+	skill, err := q.TakedownSkill(ctx, gen.TakedownSkillParams{
+		ID: skillID, WorkspaceID: ws.ID, Reason: &reason,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Either it is not visible here, or it is already down. Tell the two
+		// apart with a scoped read; both answers are safe to give the owner.
+		if _, getErr := q.GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: ws.ID}); getErr == nil {
+			return gen.Skill{}, ErrAlreadyTakenDown
+		}
+		return gen.Skill{}, ErrNotFound
+	}
+	if err != nil {
+		return gen.Skill{}, err
+	}
+	// Same transaction as the flag, so the content can never be down in the
+	// registry but still listed in search.
+	if err := q.DeleteSearchDocument(ctx, skill.ID); err != nil {
+		return gen.Skill{}, err
+	}
+	if err := audit.Log(ctx, q, audit.Event{
+		Actor:        ws.OwnerUserID,
+		Workspace:    ws.ID,
+		Action:       audit.ActionSkillTakedown,
+		ResourceType: audit.ResourceSkill,
+		ResourceID:   skill.ID,
+		// The reason text lives on the skills row; the audit event stays
+		// identifiers-only (PDM-006 §6 "不含內容").
+	}); err != nil {
+		return gen.Skill{}, err
+	}
+	return skill, tx.Commit(ctx)
 }
 
 func isUniqueViolation(err error) bool {

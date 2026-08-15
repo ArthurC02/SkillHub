@@ -369,6 +369,13 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (gen.Skil
 
 	skill, err := q.GetCatalogSkill(ctx, id)
 	if err == nil {
+		// INGEST-010: a taken-down skill was public and its URL is still in
+		// circulation, so it answers 410 rather than 404 — the content existed
+		// and was withdrawn, which is a different fact from never existing.
+		if skill.TakedownAt.Valid {
+			httpx.WriteError(w, http.StatusGone, "this skill has been withdrawn from the catalog")
+			return gen.Skill{}, "", false
+		}
 		return skill, "catalog", true
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {

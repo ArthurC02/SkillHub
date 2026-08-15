@@ -1,8 +1,11 @@
 package registry
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -117,6 +120,54 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 		"note": "skill removed from your workspace, lists, and search; " +
 			"version snapshots are retained for the 30-day grace period, then purged; " +
 			"shared package objects referenced by forks are unaffected",
+	})
+}
+
+// Takedown handles POST /skills/{id}/takedown (INGEST-010). The caller must own
+// the workspace the skill lives in; see Service.Takedown for why that is the
+// whole authorization story in the MVP.
+func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	var skillID pgtype.UUID
+	if err := skillID.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		return
+	}
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a reason")
+		return
+	}
+	// A takedown nobody can explain later is not a moderation decision.
+	if strings.TrimSpace(body.Reason) == "" {
+		httpx.WriteError(w, http.StatusBadRequest, "reason is required")
+		return
+	}
+
+	skill, err := h.Svc.Takedown(r.Context(), ws, skillID, strings.TrimSpace(body.Reason))
+	switch {
+	case errors.Is(err, ErrNotFound):
+		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	case errors.Is(err, ErrAlreadyTakenDown):
+		httpx.WriteError(w, http.StatusConflict, err.Error())
+		return
+	case err != nil:
+		httpx.WriteError(w, http.StatusInternalServerError, "takedown failed")
+		return
+	}
+
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"skill_id":    uuidString(skill.ID),
+		"takedown_at": skill.TakedownAt.Time.UTC().Format(time.RFC3339),
+		"reason":      body.Reason,
+		"note": "removed from search and from the fork path; the skill, its versions " +
+			"and their sources are retained, and existing forks and past runs are unaffected",
 	})
 }
 

@@ -38,6 +38,8 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/github/callback", h.finishLogin)
 	mux.HandleFunc("POST /auth/logout", h.logout)
 	mux.HandleFunc("GET /me", h.RequireSession(h.me))
+	mux.HandleFunc("DELETE /me", h.RequireSession(h.requestDeletion))
+	mux.HandleFunc("POST /me/deletion/cancel", h.RequireSession(h.cancelDeletion))
 	if h.DevLogin {
 		mux.HandleFunc("POST /auth/dev/login", h.devLogin)
 	}
@@ -210,6 +212,40 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		"display_name": user.DisplayName,
 		"workspace_id": uuidString(ws.ID),
 	})
+}
+
+// deletionScope is the WS-002/PDM-006 §6.1 requirement that the deletion scope
+// is stated up front, not discovered afterwards: the user has to know that
+// content other people built on keeps existing without their name on it.
+const deletionScope = "Your account stays usable until the grace period ends. " +
+	"At that point your uploaded datasets, run artifacts, and every skill nobody " +
+	"else forked or ran are permanently deleted, files included. Skill versions " +
+	"that other users forked or that historical runs used are kept — their content " +
+	"is another user's provenance chain — but your identity is removed from them " +
+	"and they show as belonging to a deleted user."
+
+func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {
+	user, _ := SessionUser(r.Context())
+	updated, err := h.Service.RequestAccountDeletion(r.Context(), user)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "deletion request failed")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"deletion_requested_at": updated.DeletionRequestedAt.Time.UTC().Format(time.RFC3339),
+		"purge_after":           updated.DeletionRequestedAt.Time.Add(AccountDeletionGrace).UTC().Format(time.RFC3339),
+		"cancellable":           true,
+		"scope":                 deletionScope,
+	})
+}
+
+func (h *Handler) cancelDeletion(w http.ResponseWriter, r *http.Request) {
+	user, _ := SessionUser(r.Context())
+	if _, err := h.Service.CancelAccountDeletion(r.Context(), user); err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "deletion cancel failed")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"deletion_requested_at": nil})
 }
 
 func uuidString(u pgtype.UUID) string {

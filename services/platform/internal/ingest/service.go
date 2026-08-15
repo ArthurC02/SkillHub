@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/skillpkg"
@@ -202,7 +203,31 @@ func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, 
 	if err != nil {
 		return Result{}, err
 	}
+	if err := auditVersion(ctx, q, ws, audit.ActionSkillImport, res, map[string]any{
+		"source_type": src.Type,
+	}); err != nil {
+		return Result{}, err
+	}
 	return res, tx.Commit(ctx)
+}
+
+// auditVersion records one accepted package against the version it produced
+// (CORE-008, NFR-001 "匯入"). Written inside the import transaction, so the
+// trail and the version appear together or not at all (iron rule 9).
+// Duplicates are recorded too and marked as such: "someone uploaded this again"
+// is exactly the kind of thing an audit trail is asked about afterwards.
+func auditVersion(ctx context.Context, q *gen.Queries, ws gen.Workspace, action string, res Result, meta map[string]any) error {
+	meta["skill_id"] = uuidString(res.Skill.ID)
+	meta["duplicate"] = res.Duplicate
+	meta["content_hash"] = res.Version.ContentHash
+	return audit.Log(ctx, q, audit.Event{
+		Actor:        ws.OwnerUserID,
+		Workspace:    ws.ID,
+		Action:       action,
+		ResourceType: audit.ResourceVersion,
+		ResourceID:   res.Version.ID,
+		Metadata:     meta,
+	})
 }
 
 // ErrSkillNotFound: target skill is not visible in the caller's workspace.
@@ -246,6 +271,11 @@ func (s *Service) SaveVersion(ctx context.Context, ws gen.Workspace, skillID pgt
 		}); err != nil {
 			return Result{}, err
 		}
+	}
+	if err := auditVersion(ctx, q, ws, audit.ActionSkillVersionCreate, res, map[string]any{
+		"version_number": res.Version.VersionNumber,
+	}); err != nil {
+		return Result{}, err
 	}
 	return res, tx.Commit(ctx)
 }

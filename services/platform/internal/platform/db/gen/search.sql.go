@@ -24,7 +24,7 @@ func (q *Queries) DeleteSearchDocument(ctx context.Context, skillID pgtype.UUID)
 const listPendingEnrichment = `-- name: ListPendingEnrichment :many
 SELECT sd.skill_id, sd.workspace_id, sd.name, sv.package_object_key
 FROM search_documents sd
-JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL
+JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
 JOIN LATERAL (
     SELECT v.package_object_key
     FROM skill_versions v
@@ -78,11 +78,13 @@ func (q *Queries) ListPendingEnrichment(ctx context.Context, limit int32) ([]Lis
 const pruneDeletedSearchDocuments = `-- name: PruneDeletedSearchDocuments :execrows
 DELETE FROM search_documents sd
 USING skills sk
-WHERE sd.skill_id = sk.id AND sk.deleted_at IS NOT NULL
+WHERE sd.skill_id = sk.id
+  AND (sk.deleted_at IS NOT NULL OR sk.takedown_at IS NOT NULL)
 `
 
 // Rebuild hygiene: ReindexAll only upserts live skills, so stale documents of
-// soft-deleted skills are removed here first.
+// soft-deleted and manually taken-down skills (INGEST-010) are removed here
+// first. A rebuild that re-listed taken-down content would undo the takedown.
 func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context) (int64, error) {
 	result, err := q.db.Exec(ctx, pruneDeletedSearchDocuments)
 	if err != nil {
@@ -263,7 +265,7 @@ const reindexAll = `-- name: ReindexAll :execrows
 INSERT INTO search_documents (skill_id, workspace_id, name, summary, updated_at)
 SELECT sk.id, sk.workspace_id, sk.name, coalesce(sk.summary, ''), now()
 FROM skills sk
-WHERE sk.deleted_at IS NULL
+WHERE sk.deleted_at IS NULL AND sk.takedown_at IS NULL
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id, name = EXCLUDED.name,
     summary = EXCLUDED.summary, updated_at = now()

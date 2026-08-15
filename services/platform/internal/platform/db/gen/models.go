@@ -121,6 +121,17 @@ type Artifact struct {
 	DeletedAt   pgtype.Timestamptz
 }
 
+type AuditEvent struct {
+	ID           int64
+	ActorUserID  pgtype.UUID
+	WorkspaceID  pgtype.UUID
+	Action       string
+	ResourceType string
+	ResourceID   pgtype.UUID
+	Metadata     []byte
+	CreatedAt    pgtype.Timestamptz
+}
+
 type Dataset struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -212,17 +223,21 @@ type Skill struct {
 	CreatedAt           pgtype.Timestamptz
 	UpdatedAt           pgtype.Timestamptz
 	DeletedAt           pgtype.Timestamptz
+	TakedownAt          pgtype.Timestamptz
+	TakedownReason      *string
 }
 
 type SkillSource struct {
-	ID          pgtype.UUID
-	WorkspaceID pgtype.UUID
-	SourceType  string
-	SourceUrl   *string
-	SourceRef   *string
-	ContentHash string
-	FetchedAt   pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
+	ID               pgtype.UUID
+	WorkspaceID      pgtype.UUID
+	SourceType       string
+	SourceUrl        *string
+	SourceRef        *string
+	ContentHash      string
+	FetchedAt        pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
+	LastCheckedAt    pgtype.Timestamptz
+	UnavailableSince pgtype.Timestamptz
 }
 
 type SkillVersion struct {
@@ -289,12 +304,13 @@ type TraceEvents202608 struct {
 }
 
 type User struct {
-	ID          pgtype.UUID
-	Email       string
-	DisplayName string
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-	DeletedAt   pgtype.Timestamptz
+	ID                  pgtype.UUID
+	Email               string
+	DisplayName         string
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+	DeletedAt           pgtype.Timestamptz
+	DeletionRequestedAt pgtype.Timestamptz
 }
 
 type UserIdentity struct {

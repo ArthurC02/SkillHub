@@ -39,7 +39,7 @@ SET workspace_id = EXCLUDED.workspace_id,
 -- out of the worklist here rather than becoming a null the caller has to skip.
 SELECT sd.skill_id, sd.workspace_id, sd.name, sv.package_object_key
 FROM search_documents sd
-JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL
+JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
 JOIN LATERAL (
     SELECT v.package_object_key
     FROM skill_versions v
@@ -151,7 +151,7 @@ LIMIT sqlc.arg(result_limit);
 INSERT INTO search_documents (skill_id, workspace_id, name, summary, updated_at)
 SELECT sk.id, sk.workspace_id, sk.name, coalesce(sk.summary, ''), now()
 FROM skills sk
-WHERE sk.deleted_at IS NULL
+WHERE sk.deleted_at IS NULL AND sk.takedown_at IS NULL
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id, name = EXCLUDED.name,
     summary = EXCLUDED.summary, updated_at = now();
@@ -161,7 +161,9 @@ DELETE FROM search_documents WHERE skill_id = $1;
 
 -- name: PruneDeletedSearchDocuments :execrows
 -- Rebuild hygiene: ReindexAll only upserts live skills, so stale documents of
--- soft-deleted skills are removed here first.
+-- soft-deleted and manually taken-down skills (INGEST-010) are removed here
+-- first. A rebuild that re-listed taken-down content would undo the takedown.
 DELETE FROM search_documents sd
 USING skills sk
-WHERE sd.skill_id = sk.id AND sk.deleted_at IS NOT NULL;
+WHERE sd.skill_id = sk.id
+  AND (sk.deleted_at IS NOT NULL OR sk.takedown_at IS NOT NULL);

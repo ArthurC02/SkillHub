@@ -110,6 +110,9 @@ func main() {
 	mux.HandleFunc("POST /skills/{id}/versions", auth.RequireSession(importer.SaveVersion))
 	mux.HandleFunc("GET /skills/{id}/diff", auth.RequireSession(reg.Diff))
 	mux.HandleFunc("DELETE /skills/{id}", auth.RequireSession(reg.Delete))
+	// INGEST-010: manual takedown of content in the caller's own workspace,
+	// which for curated catalog entries is the operator's workspace.
+	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(reg.Takedown))
 
 	srv := &http.Server{
 		Addr:              addrFromEnv("API_ADDR", ":8080"),

@@ -76,6 +76,20 @@ SELECT must_fail($$DELETE FROM runs WHERE id = '77777777-7777-7777-7777-77777777
 UPDATE runs SET cleanup_status = 'cleaned', cleanup_at = now()
 WHERE id = '77777777-7777-7777-7777-777777777777';
 
+-- 6a. The retention purge escape hatch (0013_governance): DELETE opens only for
+-- a transaction that set the flag, UPDATE never does, and the flag is gone again
+-- as soon as it is reset. An audit event is used as the subject because it is the
+-- newest append-only table and covered by the same shared trigger.
+INSERT INTO audit_events (action, resource_type) VALUES ('test.event', 'test');
+SELECT must_fail($$UPDATE audit_events SET action = 'tampered' WHERE action = 'test.event'$$);
+SELECT must_fail($$DELETE FROM audit_events WHERE action = 'test.event'$$);
+SET LOCAL skillhub.purge = 'on';
+SELECT must_fail($$UPDATE audit_events SET action = 'tampered' WHERE action = 'test.event'$$);
+DELETE FROM audit_events WHERE action = 'test.event';
+SET LOCAL skillhub.purge = 'off';
+INSERT INTO audit_events (action, resource_type) VALUES ('test.event', 'test');
+SELECT must_fail($$DELETE FROM audit_events WHERE action = 'test.event'$$);
+
 -- 7. Duplicate content does not create a second version (SKILL-001).
 DO $$
 BEGIN

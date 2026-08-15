@@ -14,7 +14,7 @@ import (
 const createSkillSource = `-- name: CreateSkillSource :one
 INSERT INTO skill_sources (workspace_id, source_type, source_url, source_ref, content_hash, fetched_at)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at
+RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since
 `
 
 type CreateSkillSourceParams struct {
@@ -45,12 +45,14 @@ func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourcePa
 		&i.ContentHash,
 		&i.FetchedAt,
 		&i.CreatedAt,
+		&i.LastCheckedAt,
+		&i.UnavailableSince,
 	)
 	return i, err
 }
 
 const getSkillByName = `-- name: GetSkillByName :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason FROM skills
 WHERE workspace_id = $1 AND name = $2 AND deleted_at IS NULL
 `
 
@@ -72,6 +74,8 @@ func (q *Queries) GetSkillByName(ctx context.Context, arg GetSkillByNameParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.TakedownAt,
+		&i.TakedownReason,
 	)
 	return i, err
 }

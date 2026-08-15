@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 )
 
@@ -93,15 +94,33 @@ func (s *Service) mintSession(ctx context.Context, user gen.User) (string, error
 		return "", err
 	}
 	token := hex.EncodeToString(raw)
-	hash := hashToken(token)
-	if _, err := s.queries().CreateSession(ctx, gen.CreateSessionParams{
+
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.queries().WithTx(tx)
+
+	session, err := q.CreateSession(ctx, gen.CreateSessionParams{
 		UserID:    user.ID,
-		TokenHash: hash,
+		TokenHash: hashToken(token),
 		ExpiresAt: pgTime(time.Now().Add(SessionTTL)),
+	})
+	if err != nil {
+		return "", err
+	}
+	// CORE-008: the session row and its audit event commit together, so a
+	// session that exists always has a login on the trail.
+	if err := audit.Log(ctx, q, audit.Event{
+		Actor:        user.ID,
+		Action:       audit.ActionLogin,
+		ResourceType: audit.ResourceSession,
+		ResourceID:   session.ID,
 	}); err != nil {
 		return "", err
 	}
-	return token, nil
+	return token, tx.Commit(ctx)
 }
 
 // UserForToken resolves a cookie token to its user; expiry is checked in SQL.
@@ -110,8 +129,89 @@ func (s *Service) UserForToken(ctx context.Context, token string) (gen.User, err
 }
 
 // Logout revokes the session; deleting a missing row is a no-op (idempotent).
+// The audit event commits with the revocation (CORE-008). An unknown or already
+// expired token leaves no trail: there is no session to revoke and no verified
+// actor to attribute one to.
 func (s *Service) Logout(ctx context.Context, token string) error {
-	return s.queries().DeleteSession(ctx, hashToken(token))
+	hash := hashToken(token)
+	user, err := s.queries().GetSessionUser(ctx, hash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return s.queries().DeleteSession(ctx, hash)
+	}
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.queries().WithTx(tx)
+
+	if err := q.DeleteSession(ctx, hash); err != nil {
+		return err
+	}
+	if err := audit.Log(ctx, q, audit.Event{
+		Actor:        user.ID,
+		Action:       audit.ActionLogout,
+		ResourceType: audit.ResourceSession,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+// AccountDeletionGrace is how long a deletion request stays cancellable before
+// the purge runs and becomes irreversible (PDM-006 6.1).
+const AccountDeletionGrace = 30 * 24 * time.Hour
+
+// RequestAccountDeletion starts the grace period (CORE-007). The account stays
+// fully usable meanwhile — that is the point of a cancellable window — so this
+// deliberately does not touch users.deleted_at, which is what every read and
+// the login path treat as "gone" (see 0013).
+//
+// Idempotent: asking twice keeps the original start time.
+func (s *Service) RequestAccountDeletion(ctx context.Context, user gen.User) (gen.User, error) {
+	return s.setDeletionRequest(ctx, user, true)
+}
+
+// CancelAccountDeletion withdraws the request at any point in the grace period.
+func (s *Service) CancelAccountDeletion(ctx context.Context, user gen.User) (gen.User, error) {
+	return s.setDeletionRequest(ctx, user, false)
+}
+
+func (s *Service) setDeletionRequest(ctx context.Context, user gen.User, request bool) (gen.User, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return gen.User{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.queries().WithTx(tx)
+
+	var updated gen.User
+	action := audit.ActionAccountDeleteStop
+	if request {
+		updated, err = q.RequestAccountDeletion(ctx, user.ID)
+		action = audit.ActionAccountDeleteAsk
+	} else {
+		updated, err = q.CancelAccountDeletion(ctx, user.ID)
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.User{}, errors.New("account not found")
+	}
+	if err != nil {
+		return gen.User{}, err
+	}
+	if err := audit.Log(ctx, q, audit.Event{
+		Actor:        user.ID,
+		Action:       action,
+		ResourceType: audit.ResourceAccount,
+		ResourceID:   user.ID,
+	}); err != nil {
+		return gen.User{}, err
+	}
+	return updated, tx.Commit(ctx)
 }
 
 // CleanupExpiredSessions batch-deletes sessions past their absolute expiry.

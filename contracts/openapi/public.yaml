@@ -94,6 +94,59 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+    delete:
+      operationId: requestAccountDeletion
+      summary: Request deletion of the caller's account (CORE-007)
+      description: |
+        Starts a 30-day grace period; nothing is removed yet and the account
+        stays usable so the request can be cancelled. Idempotent — asking twice
+        keeps the original start time rather than extending the wait.
+
+        When the grace period ends, uploaded datasets, run and download
+        artifacts, and every skill nobody else forked or ran are permanently
+        deleted, files included. Skill versions other users forked or historical
+        runs used are retained with the owner's identity removed (PDM-006 §6.1):
+        deleting them would break a third party's provenance chain, which
+        DISC-003 requires to stay intact.
+      responses:
+        "200":
+          description: Grace period started, with the scope of what will be deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountDeletion"
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /me/deletion/cancel:
+    post:
+      operationId: cancelAccountDeletion
+      summary: Withdraw a pending account deletion (CORE-007)
+      description: |
+        Valid for the whole grace period. Idempotent: cancelling when nothing is
+        pending is a no-op.
+      responses:
+        "200":
+          description: No deletion is pending any more.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deletion_requested_at]
+                properties:
+                  deletion_requested_at:
+                    type: string
+                    nullable: true
+                    format: date-time
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /skills/import/upload:
     post:
       operationId: uploadSkillPackage
@@ -256,6 +309,15 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "410":
+          description: |
+            Withdrawn from the catalog (INGEST-010). The URL was public and is
+            still in circulation, so a withdrawal answers 410 rather than 404:
+            the content existed and was taken down, which is a different fact
+            from never having existed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /api/skills/{id}/files:
     get:
       operationId: getSkillFiles
@@ -282,6 +344,11 @@ paths:
                 $ref: "#/components/schemas/SkillFiles"
         "404":
           description: Skill not visible to the caller, or it has no saved version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "410":
+          description: Withdrawn from the catalog (INGEST-010); see GET /api/skills/{id}.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -530,6 +597,70 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/takedown:
+    post:
+      operationId: takedownSkill
+      summary: Withdraw a skill from the public surface (INGEST-010)
+      description: |
+        Not a delete. The skill, its versions and their import sources are
+        retained (PDM-006 §6 makes takedown the only removal path for them); the
+        skill leaves search, stops being a fork source, and its detail view
+        answers 410. Existing forks and historical runs are unaffected, and a
+        full reindex does not bring it back.
+
+        Authorization is the ordinary workspace scope, which for curated catalog
+        entries means the operator who owns the catalog workspace. Taking down
+        content in someone else's workspace needs an operator role the MVP does
+        not define yet.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  description: Why the content was withdrawn; required and reviewable later.
+      responses:
+        "200":
+          description: Withdrawn, with the exact scope of the withdrawal.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [skill_id, takedown_at, reason, note]
+                properties:
+                  skill_id: { type: string, format: uuid }
+                  takedown_at: { type: string, format: date-time }
+                  reason: { type: string }
+                  note: { type: string }
+        "400":
+          description: Missing or empty reason.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Skill not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Already taken down.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 components:
   schemas:
     Health:
@@ -559,6 +690,25 @@ components:
         workspace_id:
           type: string
           format: uuid
+    AccountDeletion:
+      type: object
+      required: [deletion_requested_at, purge_after, cancellable, scope]
+      properties:
+        deletion_requested_at:
+          type: string
+          format: date-time
+        purge_after:
+          type: string
+          format: date-time
+          description: When the purge becomes due; cancellable until then.
+        cancellable:
+          type: boolean
+        scope:
+          type: string
+          description: |
+            Plain-language statement of what is deleted and what is retained
+            de-identified. WS-002 requires the scope to be shown before the
+            deletion, not discovered after it.
     Finding:
       type: object
       required: [severity, code, message]

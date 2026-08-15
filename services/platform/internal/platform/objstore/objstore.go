@@ -58,6 +58,15 @@ func (c *Client) Get(ctx context.Context, key string) ([]byte, error) {
 	return data, nil
 }
 
+// Remove deletes one object. Deleting a key that is not there succeeds, which
+// is what makes the retention purge safe to re-run (CORE-007, iron rule 9).
+func (c *Client) Remove(ctx context.Context, key string) error {
+	if err := c.mc.RemoveObject(ctx, c.bucket, key, minio.RemoveObjectOptions{}); err != nil {
+		return fmt.Errorf("objstore remove %s: %w", key, err)
+	}
+	return nil
+}
+
 func (c *Client) Put(ctx context.Context, key string, data []byte) error {
 	_, err := c.mc.PutObject(ctx, c.bucket, key, bytes.NewReader(data), int64(len(data)),
 		minio.PutObjectOptions{})

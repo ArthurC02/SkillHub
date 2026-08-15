@@ -74,7 +74,7 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash []byte) error {
 }
 
 const getSessionUser = `-- name: GetSessionUser :one
-SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at FROM users u
+SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at FROM users u
 JOIN sessions s ON s.user_id = u.id
 WHERE s.token_hash = $1 AND s.expires_at > now() AND u.deleted_at IS NULL
 `
@@ -91,12 +91,13 @@ func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
 
 const getUserByIdentity = `-- name: GetUserByIdentity :one
-SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at FROM users u
+SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at FROM users u
 JOIN user_identities i ON i.user_id = u.id
 WHERE i.provider = $1 AND i.provider_user_id = $2 AND u.deleted_at IS NULL
 `
@@ -116,6 +117,7 @@ func (q *Queries) GetUserByIdentity(ctx context.Context, arg GetUserByIdentityPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.DeletionRequestedAt,
 	)
 	return i, err
 }
