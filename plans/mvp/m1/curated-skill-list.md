@@ -103,11 +103,12 @@
 
 1. **④ 的行數已機械量測且全部落在 300 行上限內**，但**「人工逐行審過」一項尚未執行**（沿用 M0 的既有限制）。承接工作項：**CONTENT-006**。
 2. **⑤ 靜態掃描與人工 Secret 確認尚未執行。** 承接工作項：**CONTENT-006**。
-3. **⑦ 白話摘要：工序已建立，人工審核未完成，故仍記 `pending`。** 承接工作項：**CONTENT-005**。
+3. **⑦ 白話摘要：審核已完成（自動化審校，2026-08-16），但精選 13/15 通過，故仍記 `pending`。** 承接工作項：**CONTENT-005**。
+   **2026-08-16 審校結果**（[content-review-report.md](content-review-report.md)）：45 筆全量審校，**42 通過／3 建議下架待修**；精選 15 筆中 **13 通過**，`excel-format` 與 `internal-comms` 因忠實性／白名單否決未通過。唯一主判準（非技術讀者可理解性）**45/45 通過**，語言慣例 45/45 乾淨。**⑦ 全 pass 才可記 `pass`，故維持 `pending`**；待負責人裁定該 2 筆的處置（報告 §7 建議改 `enrich-skill/v4` 重跑，而非下架）。
    **2026-08-15 進度**：45 筆全部已有繁中白話摘要與雙語任務範例句（`gpt-5.6-sol`，全數走生產端點 `POST /v1/enrich-skill`；15 筆重用 golden set 既有產出、30 筆新呼叫）。產出見 [`tools/content/summaries.json`](../../../tools/content/summaries.json)，**可審核紀錄與審核工序見 [content-summaries.md](content-summaries.md)**（誰審、判準、否決條件、狀態欄位；45 筆現皆為「待審」）。
    - ⚠️ 原註「`data-analyst` 與 YuYY2004 系列需重寫為繁體中文」的處置已定案：**平台不改寫上游套件，摘要即繁中化呈現層**（content-summaries.md §1.3）。16 筆簡中來源的摘要與範例句已全數為繁體中文，機械掃描無簡體字殘留。
    - ⚠️ 原註「`anthropics/skills` 免責條款需納入措辭考量」的處置：**不納入摘要**，改由詳情頁 License／來源區塊承接——該句屬信任／品質陳述，ADR-013 白名單明令模型產出不得包含。**此解讀待負責人確認**（content-summaries.md §3）。
-   - ⑦ 改記 `pass` 的條件：精選 15 筆全數審核為「通過」，且 content-summaries.md §7 的待辦 2（7 筆補 `limitations`）與待辦 3 結案。
+   - ⑦ 改記 `pass` 的條件：精選 15 筆全數審核為「通過」，且 content-summaries.md §7 的待辦 2（7 筆補 `limitations`）與待辦 3 結案。**現況：待辦 2、3 已結案，審核已執行，卡在 2 筆精選未通過（§7 待辦 8）。**
 4. **⑧ 平台基準試跑需要平台存在。** 承接工作項：**CONTENT-007（範例資料／Prompt／驗收條件）→ CONTENT-008（基準試跑）**。此項在隔離 Sandbox 內執行，符合鐵律 1。
 5. **`excel-deduplicate` 的 SKILL.md 於依賴段落出現 `pip install` 字樣。** 三個套件（`pandas`／`lxml`／`openpyxl`）全部在 PDM-004 白名單內，該分支在 Runtime Image 中不會觸發；但**「SKILL.md 文字教模型執行被禁止的動作」與 M0 否決 `cabbage2000-lab/data-analysis-skills` 的理由同型**。CONTENT-006 需人工確認措辭是否可接受，或於匯入時標註。
 6. **D-4 `excel-format` 的 ④ 機械項於 2026-08-15 全部通過**：262 行全文／168 行內嵌 Python（≤300）、無 `eval`／`exec`、無動態下載、無 `subprocess`、無 `pip install` 字樣（不同於腳註 5 的 A-5）。**與 D-1／D-2 同樣只差「人工逐行審過」**，故仍記 pending 而非 pass。另 SKILL.md 以 `[[excel-safe-workflow]]` wiki-link 引用同 repo 的另一個 Skill，該檔不在套件內；匯入實測未觸發阻擋錯誤（③ pass），但 CONTENT-006 應決定此類跨 Skill 引用的呈現方式。

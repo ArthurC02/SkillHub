@@ -69,7 +69,7 @@
 - [x] CONTENT-002 定義來源可信度、License 與衍生關係的呈現規則。（允收：`02` §4.7）
 - [ ] CONTENT-003 建立首批 Skill 候選清單。（正式清單見 [plans/mvp/m1/curated-skill-list.md](m1/curated-skill-list.md)、匯入資料 `tools/content/seed-skills.json`。**2026-08-15 起三類的已索引與精選數量目標全部達標**——`documents` 精選由 3 補足為 4（`excel-format`，見該文件 §9）。仍不勾的原因有二：§5.2 的 source-available 法務判定未完成前，`documents` 已索引有 10→6 的塌陷風險；九項精選檢查的 ⑤⑦ 需 CONTENT-006／005 才能判定。**2026-08-15 修訂**：⑧「平台基準試跑」由已改列 M2 的 CONTENT-007／008 承接，**不再是 CONTENT-003 的勾選前提**，改以引用方式處理——CONTENT-003 勾選時須在清單中把 ⑧ 明確記為「待 M2 基準試跑，見 CONTENT-007／008」，不得記為已通過。依據 [m1/m1-work-items-audit.md §8 第三梯](m1/m1-work-items-audit.md)）（允收：`02` §4.7）
 - [ ] CONTENT-004 對首批 Skill 完成來源及 License 檢查。（License 合規總表見 [curated-skill-list.md §5](m1/curated-skill-list.md)；11 個入選 repo 已逐一實查 LICENSE 檔。未結案項：§5.2 `anthropics/skills` source-available 條款是否允許平台保存內容快照，待負責人與法務判定）（允收：`02` §4.7）
-- [ ] CONTENT-005 對首批 Skill 產生一般使用者可理解的摘要。（允收：`02` §4.7；工序與審核紀錄見 [m1/content-summaries.md](m1/content-summaries.md)，45 筆現皆為「待審」）
+- [ ] CONTENT-005 對首批 Skill 產生一般使用者可理解的摘要。（允收：`02` §4.7；工序與審核紀錄見 [m1/content-summaries.md](m1/content-summaries.md)。**2026-08-16：45 筆已完成自動化審校**——42 通過／3 建議下架待修，主判準 45/45 通過；**維持未勾**，因精選 13/15 通過，見 [m1/content-review-report.md](m1/content-review-report.md) §8）
 - [ ] CONTENT-006 對首批 Skill 完成規格及靜態掃描。（允收：`02` §4.7）
 - [ ] CONTENT-007 對精選 Skill 建立範例資料、Prompt 與驗收條件。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**（允收：`02` §4.7）
 - [ ] CONTENT-008 對精選 Skill 完成至少一次基準試跑。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**（允收：`02` §4.7）

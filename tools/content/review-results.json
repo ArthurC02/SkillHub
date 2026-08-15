@@ -1,0 +1,4184 @@
+{
+ "$comment": "CONTENT-005 automated review results. Subject: the online catalogue (GET /api/skills/{id}), not summaries.json - see 02 section 4.7 non-determinism ceiling. Judge model is separate from the generating model.",
+ "reviewed_at": "2026-08-16",
+ "reviewer": "automated-review v1",
+ "api": "http://localhost:8080",
+ "judge_model": "gpt-5.6-terra",
+ "embed_model": "text-embedding-3-small",
+ "thresholds": {
+  "faithfulness_max_unsupported": 0,
+  "comprehension_required": 3,
+  "drift_min_cosine": 0.9
+ },
+ "drift_calibration": {
+  "max_cross_skill_cosine": 0.8338,
+  "pair": [
+   "sokrati",
+   "shorten"
+  ]
+ },
+ "usage": {
+  "in": 4793,
+  "out": 4102,
+  "embed": 18109,
+  "calls": 2,
+  "cost_usd": 0.0592
+ },
+ "counts": {
+  "pass": 42,
+  "needs-fix": 3,
+  "error": 0
+ },
+ "results": [
+  {
+   "id": "yuyy-excel/excel-insert",
+   "skill": "excel-insert",
+   "tier": "curated",
+   "category": "documents",
+   "skill_id": "4ceee684-44b2-4f4d-8f5e-0e38ebd0d9f9",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 22,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會在 Excel 檔案中，依指定位置在欄位左側或右側新增一欄或多欄，或在指定列上方或下方新增一列或多列；也可設定新增欄的表頭或新增行列的填充值，並在完成後驗證結果。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能可在 Excel 檔案的指定欄位左側或右側插入一欄或多欄，也可在指定列的上方或下方插入一列或多列。使用者需提供目標檔案及插入位置，並可選擇插入方向、數量、欄位表頭與填充值。它會先檢查工作表、表頭及附近公式，再規劃與執行插入，最後驗證新增行列、內容及總數。"
+     },
+     {
+      "answer": "當你需要修改 Excel 表格結構、在某個既有欄位或列的前後加入空白或有內容的新欄／列時，可以使用它。例如要在「申請日」旁加入「格式化日期」欄，或在特定列前後新增空白列。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "此技能可在 Excel 檔案的指定欄位左側或右側插入一欄或多欄，也可在指定列的上方或下方插入一列或多列。"
+     },
+     {
+      "answer": "你需要準備目標 Excel 檔案，以及要插入的位置；並視需要說明插入方向、要新增的數量、新欄位表頭與要填入的值。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供目標檔案及插入位置，並可選擇插入方向、數量、欄位表頭與填充值。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "先檢查工作表、表頭及附近公式",
+     "reason": "restatement: the source includes a scouting step and explicitly labels a formula scan as “检查附近是否有公式”.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "最後驗證新增行列、內容及總數",
+     "reason": "restatement: the source requires verification after execution and its verification code checks counts and sampled inserted-cell contents.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "formula",
+     "reason": "restatement: the source explicitly scans for formulas and documents formula-reference behavior.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "verification report",
+     "reason": "restatement: the source has a dedicated “第四步：验证” section that prints verification results.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "timestamped backups",
+     "reason": "restatement: the source requires an automatic pre-operation backup “（时间戳命名）”.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "excel-safe-workflow",
+     "reason": "restatement: the source states that the Skill follows “[[excel-safe-workflow]] 四步法”.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "openpyxl 插入操作不會更新 INDIRECT 或 OFFSET 公式引用。",
+     "reason": "restatement: the source states “openpyxl 的 insert 会自动更新直接引用，但 INDIRECT/OFFSET 不会”.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "執行前必須依 excel-safe-workflow 建立時間戳備份，並完成需求解析、勘察與規劃；執行後必須驗證。",
+     "reason": "restatement: the source mandates those workflow stages, post-execution verification, and timestamp-named backups.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9206,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "yuyy-excel/excel-freeze",
+   "skill": "excel-freeze",
+   "tier": "curated",
+   "category": "documents",
+   "skill_id": "86bd990f-d622-494e-bd25-036f13eb8c11",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.75,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 14,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它可以凍結或取消凍結 Excel 工作表的窗格，讓指定列或欄在捲動時持續可見，且不會變更資料。可固定首列、首欄、首列加首欄，或指定前幾列。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能可凍結或取消凍結 Excel 工作表窗格，讓指定的列或欄在捲動時保持可見，而且不會改變資料。它支援固定首列、首欄、首列加首欄，以及指定數量的前幾列；"
+     },
+     {
+      "answer": "當你在捲動 Excel 工作表時，想讓表頭、首欄或前幾列持續看得到，或想取消既有的凍結窗格設定時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "讓指定的列或欄在捲動時保持可見；... 請取消目前工作表的凍結窗格設定。"
+     },
+     {
+      "answer": "你需要準備目標 .xlsx 檔案，並說明希望凍結的位置，例如首列、首欄、首列加首欄或前幾列；若要取消凍結，需指明目前工作表。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供目標 .xlsx 檔案與想要的凍結位置。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "而且不會改變資料。",
+     "reason": "This is a safety-related statement about the effect of freezing panes, and the source explicitly states that it is a view-only effect that does not affect data.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "操作前必須依照 excel-safe-workflow 建立以時間戳命名的備份。",
+     "reason": "This is a safety precaution stated directly in the source, which requires an automatic timestamp-named backup before operation.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9607,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "handoff/handoff",
+   "skill": "handoff",
+   "tier": "curated",
+   "category": "documents",
+   "skill_id": "fea45f86-e7fd-4caf-a4b6-80cf01f2570e",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.57,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 18,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會依據目前的完整對話，產生一份可交給另一個大型語言模型的 Markdown 交接文件，讓對方能從中斷處接續工作；文件會包含目標、已定決策、工作狀態、進行中內容、已放棄方案、使用者偏好與下一步，並會逐字保留進行中的草稿或程式碼。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此 Skill 會根據目前的完整對話，產生一份可交給另一個大型語言模型的 Markdown 交接文件，讓對方從中斷處繼續工作。它需要目前對話中的目標、已定決策、工作狀態、進行中內容、已放棄方案、使用者偏好與下一步；其中進行中的草稿或程式碼會完整逐字收錄。"
+     },
+     {
+      "answer": "當你想要求交接（handoff）、對話容量快滿、接近使用限制，或想把目前工作移交到另一個 AI 繼續處理時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "適用於使用者要求「handoff」、對話容量將滿、接近使用限制，或想把工作移到另一個 AI 時。"
+     },
+     {
+      "answer": "你需要已有目前對話內容可供整理；若希望交接檔保留特定資料，對話中應已包含例如完整草稿或程式碼，以及可能的檔案路徑、網址、日期與下一步。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "它需要目前對話中的目標、已定決策、工作狀態、進行中內容、已放棄方案、使用者偏好與下一步；其中進行中的草稿或程式碼會完整逐字收錄。　我快達到上下文限制了。請產生交接檔案，完整保留目前的程式碼、檔案路徑、網址、日期與下一步。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "完整對話",
+     "reason": "This completeness-oriented wording is a restatement of the source description’s requirement to generate a “complete handoff document” for the current conversation.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "完整逐字收錄",
+     "reason": "The source explicitly requires in-progress material to be pasted “COMPLETE, word for word” and says “include the full exact text.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "include the complete current draft verbatim",
+     "reason": "The source explicitly requires the full current draft to be pasted complete and word for word.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不要漏掉我們的決定與已放棄的方案",
+     "reason": "The source requires every settled choice and requires a Rejected paths section covering what was tried and abandoned.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "without leaving out our decisions or rejected approaches",
+     "reason": "The source requires every settled choice and requires a Rejected paths section covering what was tried and abandoned.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "完整保留目前的程式碼、檔案路徑、網址、日期與下一步",
+     "reason": "The source requires full exact in-progress code and exact preservation of every file path, URL, and date, as well as an immediate next step.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "preserves the current code, file paths, URLs, dates, and next step exactly",
+     "reason": "The source requires full exact in-progress code and exact preservation of every file path, URL, and date, as well as an immediate next step.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "只能使用目前對話中明確出現的事實、決定與文字；不清楚之處須標示為「unclear」，不得猜測。",
+     "reason": "This is a direct restatement of the source’s “Zero invention” rule.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "進行中的草稿、提示詞、程式碼、清單或計畫必須完整逐字納入，不能只提供摘要。",
+     "reason": "This restates the source’s “Verbatim beats summary” rule.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "輸出必須是單一 Markdown 文件；若平台支援建立檔案或 artifact，檔名須為 `handoff-[topic].md`，否則須放在單一 Markdown 程式碼區塊中。",
+     "reason": "This restates the source Output instructions.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "交接文件必須包含指定的全部章節，且不得加入前言或結語。",
+     "reason": "This restates the source’s requirement that all sections are required and its “No preamble, no sign-off” rule.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9406,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "yuyy-excel/excel-format",
+   "skill": "excel-format",
+   "tier": "curated",
+   "category": "documents",
+   "skill_id": "d41161c2-3406-4d31-b5c5-f41b5e6cc6ad",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v3",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": [],
+    "locale_glosses": [
+     "微软雅黑（繁中：微軟雅黑）",
+     "微软雅黑（繁中：微軟雅黑）"
+    ]
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 28,
+    "unsupported": [
+     {
+      "claim": "The user must provide both the style to modify and the application scope.",
+      "evidence": "The source provides defaults, including “不改变” for unspecified formatting and “`all`（整表）” for unspecified scope, and it documents a beautify-only request. It therefore does not state that both must be supplied by the user.",
+      "verdict": "unsupported"
+     }
+    ]
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會統一調整 Excel 工作表的格式，包括字體、字號、粗體、斜體、顏色、水平與垂直對齊、欄寬及列高；可針對整張工作表、表頭、資料區、指定欄列或符合條件的儲存格套用。它也會先勘察現有格式、備份後修改，並驗證字體、對齊與欄寬。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會統一調整 Excel 工作表的字體、字號、粗體、斜體、顏色、水平與垂直對齊、欄寬及列高，並可套用到整張工作表、表頭、資料區、指定欄列或符合條件的儲存格。流程會先解析需求並勘察現有格式，備份後執行修改，最後驗證字體、對齊與欄寬。"
+     },
+     {
+      "answer": "當你需要整理或統一 Excel 的外觀格式時可使用，例如設定表頭樣式、調整整張表的字體與特定欄位對齊、只自動調整欄寬而保留現有字體和顏色，或想直接以預設方案美化 Excel 檔案時。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "- 請將表頭設為粗體並水平、垂直置中，字體改成 微软雅黑（繁中：微軟雅黑）12 點。\n- 請將整張工作表改成 Arial 10 點，並把金額欄靠右對齊。\n- 請自動調整所有欄寬，但不要更動現有字體與顏色。\n- 請使用預設美化方案整理這份 Excel 檔案。"
+     },
+     {
+      "answer": "你需要準備 Excel 檔案，並說明要修改的樣式及套用範圍，例如字體、字號、對齊方式、欄寬或列高，以及要套用到表頭、資料區、整張表或指定欄列。若只想「美化」，則只需提出美化需求，技能會採用預設的表頭、資料區與自適應欄寬設定。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供 Excel 檔案，以及要修改的樣式和套用範圍；若只要求「美化」，則會使用預設的表頭、資料區及自適應欄寬設定。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "「美化」／「預設美化方案」",
+     "reason": "This is a quality-oriented presentation term, but the source itself documents “美化” as a trigger and defines a “默认美化方案.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "「備份後執行修改，最後驗證字體、對齊與欄寬」",
+     "reason": "Backup and verification are safety/assurance measures stated in the source workflow and verification code.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "「timestamped backups」",
+     "reason": "The source explicitly states that backups are automatically timestamp-named before operation.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "「format verification」",
+     "reason": "The source contains a dedicated verification step that checks formatting properties.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "「執行前必須完成需求解析與格式勘察，修改後必須進行驗證。」",
+     "reason": "This is the source's stated required workflow.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "「操作前必須建立時間戳備份；成功後保留最新 3 份，失誤時須刪除損壞檔案並從備份還原。」",
+     "reason": "This is a restatement of the source's backup, retention, damaged-file deletion, and recovery instruction.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "「合併儲存格的格式需另外處理。」",
+     "reason": "This identifies a handling caveat already stated under the source's notes.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "「字體是否可用取決於開啟 Excel 時的系統；Arial 與 微软雅黑（繁中：微軟雅黑）通常可用。」",
+     "reason": "This is a reliability/availability caveat stated in the source, including that these fonts generally exist.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "needs-fix",
+   "reasons": [
+    "KPI1 忠實性：The user must provide both the style to modify and the application scope.（The source provides defaults, including “不改变” for unspecified formatting and “`all`（整表）” for unspecified scope, and it documents a beautify-only request. It therefore does not state that both must be supplied by the user.）"
+   ],
+   "kpi6_online_cosine": 0.9671,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "kagura-docfmt/document-format-skills",
+   "skill": "document-format-skills",
+   "tier": "indexed",
+   "category": "documents",
+   "skill_id": "691d649f-a501-422a-b4c5-842aa9186933",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 1.28,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 16,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "可診斷、清理及格式化中文 Word 文件：修正中英文標點與間距、套用公文／學術／法律／自訂樣式、整理表格與頁碼，以及處理修訂標記。也可把純文字或 Markdown 轉成格式化的 DOCX，並可批次處理。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能透過命令列診斷、清理及格式化中文 Word 文件，可修正中英文標點與間距、套用公文／學術／法律／自訂樣式、整理表格與頁碼，並處理修訂標記。它也能將純文字或 Markdown 轉成格式化的 DOCX，並支援批次或腳本化處理。"
+     },
+     {
+      "answer": "當你有中文 Word 文件需要找出格式問題、統一標點與間距、套用特定文件格式、整理表格或頁碼、處理修訂標記時會使用它。若要把純文字或 Markdown 製作成格式化 DOCX，或一次處理多份文件，也適合使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "此技能透過命令列診斷、清理及格式化中文 Word 文件，可修正中英文標點與間距、套用公文／學術／法律／自訂樣式、整理表格與頁碼，並處理修訂標記。它也能將純文字或 Markdown 轉成格式化的 DOCX，並支援批次或腳本化處理。"
+     },
+     {
+      "answer": "需要準備輸入文件，以及希望它執行的操作。若要格式化，還可準備要選用的預設樣式、間距模式，或自訂 JSON 設定。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用時需提供輸入文件與所需操作；格式化時可另選預設、間距模式或自訂 JSON 設定。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "並保留標題、清單、引言與程式碼區塊",
+     "reason": "這是對 Markdown 轉換內容保留／處理能力的描述；來源說明 Markdown 模式會偵測 headings、lists、quotes 與 fenced code blocks。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "智慧表格對齊不是預設行為，必須使用 `--smart-table-align` 啟用。",
+     "reason": "這是來源明示的預設行為與啟用條件，而非對技能整體品質的評價。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "macOS 字型替代只會在偵測到原字型未安裝時進行。",
+     "reason": "這是來源明示的字型替代條件，而非對技能安全性、可信度或品質的外部判斷。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9491,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "quiz-builder/course-quiz-builder",
+   "skill": "course-quiz-builder",
+   "tier": "indexed",
+   "category": "documents",
+   "skill_id": "5161cdc0-5ca9-46f2-b866-2e4d4384646d",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.66,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [
+    "安全"
+   ],
+   "kpi1": {
+    "claims_total": 17,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會依據課程名稱與 Markdown 課程內容編寫題目，建立並驗證可直接開啟的自包含互動測驗 HTML 頁面。測驗可包含題目與選項隨機排序、作答檢查、通過或失敗判定、逐題解析、主題分數、重試、計時與進度保存；也可選擇發佈到 GitHub Pages。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會根據課程名稱與 Markdown 課程內容編寫題目，產生並驗證一個可直接開啟的自包含互動測驗 HTML 頁面。測驗支援題目與選項隨機排序、作答檢查、通過或失敗判定、逐題解析、主題分數、重試、計時及進度保存。它也能選擇性地將測驗發佈到 GitHub Pages"
+     },
+     {
+      "answer": "當你已有課程內容，想把它轉成供學員作答的知識測驗或評量時使用；例如需要設定題數與及格標準、隨機出題、答案解析與主題得分，或希望讓學員在本機開啟測驗、或將完成的測驗上線。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請用這份新人訓練 Markdown 檔建立一份 20 題、及格標準為 80% 的知識測驗。／請把這五堂課轉成隨機出題的測驗，並加入答案解析與各主題得分。／請根據我的課程內容建立並驗證自包含的 quiz.html，讓學員可在本機直接開啟。／請將這份已完成的課程測驗發佈到 GitHub Pages，並提供上線網址。"
+     },
+     {
+      "answer": "你需要準備課程名稱與 Markdown 格式的課程內容。若要指定測驗設計，可另外準備題數、及格標準，以及是否需要計時、答案檢查、只重考錯題、解析或主題得分等要求。若要發佈，則需有一份已完成的課程測驗可供發佈。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "此技能會根據課程名稱與 Markdown 課程內容編寫題目。／請用這份新人訓練 Markdown 檔建立一份 20 題、及格標準為 80% 的知識測驗。／請為這份以 Markdown 課程建立的評量加入 30 分鐘計時、提交前答案檢查，以及只重考錯題的功能。／請將這份已完成的課程測驗發佈到 GitHub Pages"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "產生並驗證一個可直接開啟的自包含互動測驗 HTML 頁面",
+     "reason": "這是對建置與驗證流程及本機可開啟特性的描述；來源明確規定 selftest 必須通過，且說明頁面可直接開啟。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "Build and validate a self-contained quiz.html",
+     "reason": "這是對來源所列 build 與 mandatory selftest gate 的重述，不是在評價此技能本身的品質。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "輸出的 HTML 必須由 questions.json 建置，不應直接手寫或編輯。",
+     "reason": "這重述來源的硬性規則：不得手寫或手編輯輸出 HTML。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "交付前必須以 selftest.mjs 驗證並取得 PASS。",
+     "reason": "這重述來源的硬性驗證門檻與 PASS 要求。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "答案僅以 Base64 混淆，並非安全保護；任何人仍可從頁面讀取答案。",
+     "reason": "這是來源對答案混淆及其非安全性質的明確風險揭露，而非對技能安全性的獨立評鑑。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "若發佈到公開儲存庫，questions.json 會以明文公開。",
+     "reason": "這重述來源對公開儲存庫暴露明文題目與答案資料的風險說明。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "發佈至 GitHub Pages 需要有效且具適當權限的 GitHub 權杖；私人儲存庫的 Pages 需要 GitHub Pro。",
+     "reason": "這重述來源的權杖權限要求及私有儲存庫 Pages 方案限制。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "真實瀏覽器檢查需要可用的無頭 Chromium；沒有瀏覽器時會略過。",
+     "reason": "這重述來源關於 browser-check 可用性與無瀏覽器時跳過行為的限制。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9646,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "anthropic-sa/docx",
+   "skill": "docx",
+   "tier": "indexed",
+   "category": "documents",
+   "skill_id": "93529712-eceb-44f9-9cda-e24af9a1f1b6",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v3",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": [],
+    "locale_glosses": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 25,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它可建立、讀取、編輯與整理 Word 的 .docx 文件及 .dotx 範本；可處理標題、目錄、頁碼、表格、圖片、清單、信頭、尋找與取代、註解、追蹤及接受修訂、內容擷取、文件驗證，以及把舊版 .doc 轉為 .docx。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能可建立、讀取、編輯及整理 Word 的 .docx 文件與 .dotx 範本，包括格式化標題、目錄、頁碼、表格、圖片、清單及信頭。它也能處理尋找與取代、註解、追蹤修訂、接受修訂、內容擷取、文件驗證，以及將舊版 .doc 轉成 .docx。"
+     },
+     {
+      "answer": "當你需要製作或重新排版 Word 文件、更新文件中的文字、對文件加註解或保留修訂紀錄、擷取並重整既有 DOCX 內容，或把舊 .doc 檔轉成 .docx 時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請建立一份專業的 DOCX 報告，包含目錄、編號標題、頁碼及公司信頭。；請在這份 Word 文件中全面取代舊產品名稱，同時保留現有格式。；請以作者名稱「Alex Chen」修訂這份合約並保留追蹤修訂，然後另存一份接受所有修訂的乾淨版本。；請擷取這個 DOCX 檔案的內容、重新整理成不同章節，並輸出重新排版的 Word 文件。"
+     },
+     {
+      "answer": "你需要準備原始文件，或提供要寫入文件的內容；並說明你對版面、修改、註解或修訂的需求。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供原始文件或要寫入的內容，並說明版面、修改、註解或修訂需求。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "專業的 DOCX 報告",
+     "reason": "This is a restatement of the source's scope for “professional documents” with specified Word formatting.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "polished DOCX report",
+     "reason": "The source explicitly covers “converting content into a polished Word document.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "同時保留現有格式",
+     "reason": "The source instructs editors to modify the XML “in place” and “do NOT reformat or pretty-print.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "without changing its existing formatting",
+     "reason": "The source instructs editors to modify the XML “in place” and “do NOT reformat or pretty-print.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "乾淨版本",
+     "reason": "The source explicitly says it can “produce a clean copy with all tracked changes accepted.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "clean copy",
+     "reason": "The source explicitly says it can “produce a clean copy with all tracked changes accepted.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "文件驗證",
+     "reason": "The source documents `validate.py` and describes its “XSD checks.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "validated documents",
+     "reason": "The source documents `validate.py` and describes its “XSD checks.”",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9209,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "anthropic-sa/pdf",
+   "skill": "pdf",
+   "tier": "indexed",
+   "category": "documents",
+   "skill_id": "0ee44d6d-8342-4375-9073-0fee289442fa",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 28,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它可讀取、建立及處理 PDF：可擷取文字、表格、圖片與中繼資料，也可合併、分割、旋轉、加入浮水印、加密或解密、填寫表單；還能對掃描式 PDF 做 OCR，並將擷取出的表格匯出成 Excel。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能可讀取、建立及處理 PDF，包括擷取文字、表格、圖片與中繼資料，以及合併、分割、旋轉、加浮水印、加密、解密和填寫表單。它也能將掃描式 PDF 轉成圖片後進行 OCR，並可把擷取的表格匯出為 Excel。"
+     },
+     {
+      "answer": "當你需要整理、修改或從 PDF 取出資料時可使用，例如合併多份 PDF、將掃描檔變成可搜尋與複製文字的文件、擷取表格成 Excel、旋轉頁面及加浮水印，或依資料填寫 PDF 表單。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請依照提供的順序，將這三個 PDF 合併成一份文件。；請擷取這份 PDF 中的所有表格，並儲存成 Excel 檔案。；請對這份掃描 PDF 執行 OCR，讓我可以搜尋及複製其中的文字。；請將第 1 頁順時針旋轉 90 度，並在每一頁加入這個浮水印。；請使用我提供的資料填寫這份 PDF 表單，並回傳完成的 PDF。"
+     },
+     {
+      "answer": "通常要先準備一個或多個 PDF；視工作而定，還要提供頁碼範圍、密碼、表單資料、浮水印檔案，或要寫入的新內容。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用時通常需要提供一個或多個 PDF，並依任務補充頁碼範圍、密碼、表單資料、浮水印檔案或要寫入的新內容。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "ReportLab 內建字型不支援 Unicode 上標與下標字元；Paragraph 物件需改用 <super> 與 <sub> 標記，Canvas 文字則需手動調整字型大小與位置。",
+     "reason": "這是對輸出呈現品質的技術限制；來源明確說明內建字型缺少這些字形，會呈現為黑色方塊，並指定替代方式。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "移除加密 PDF 的密碼需要提供原密碼。",
+     "reason": "這觸及加密／安全限制；來源的解密指令明確要求以 `--password=mypassword` 提供密碼。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9739,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "anthropic-sa/pptx",
+   "skill": "pptx",
+   "tier": "indexed",
+   "category": "documents",
+   "skill_id": "4919387f-bef5-43cc-8bce-a2a2b08b8267",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v3",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": [],
+    "locale_glosses": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 17,
+    "unsupported": [
+     {
+      "claim": "The Skill can extract speaker notes from a presentation and summarize each slide.",
+      "evidence": "The source documents creating speaker notes (`slide.addNotes(\"...\")`) but does not document extracting speaker notes or summarizing slides.",
+      "verdict": "unsupported"
+     },
+     {
+      "claim": "The Skill can remove duplicate slides when combining decks.",
+      "evidence": "The source documents deleting and reordering slides, but does not document detecting duplicate slides or removing them as duplicates.",
+      "verdict": "unsupported"
+     }
+    ]
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "可建立、讀取、擷取、編輯、合併或拆分 PowerPoint 的 .pptx 與 .potx 檔案；也可處理範本、版面配置、圖表、講者備註與留言，並能產生縮圖或投影片圖像，以及檢查內容、結構和視覺問題。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能可建立、讀取、擷取、編輯、合併或拆分 PowerPoint `.pptx` 與 `.potx` 檔案，也能處理範本、版面配置、圖表、講者備註及留言。它也會產生縮圖或投影片圖像，並執行內容、結構與視覺驗證，以找出遺漏、溢位、重疊及檔案結構問題。"
+     },
+     {
+      "answer": "當你需要製作簡報、依既有範本更新內容、擷取投影片文字或講者備註、合併多份簡報並去除重複投影片，或檢查文字溢位、物件重疊、殘留預留文字及圖表問題時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "- 請根據這份大綱製作一份 10 頁的投資人簡報，並匯出為 PPTX 檔。\n- 請將本季業績更新至這份 PowerPoint 範本，並保留原有版面配置與格式。\n- 請擷取這份簡報的文字與講者備註，並逐頁摘要。\n- 請合併這兩份 PPTX 簡報、移除重複投影片，並驗證最終檔案。\n- 請檢查這份簡報是否有文字溢位、物件重疊、殘留的預留位置文字或損壞的圖表。"
+     },
+     {
+      "answer": "你需要準備簡報檔、範本，或想製作的內容與設計需求；具體要準備哪一種，取決於你的工作類型。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供簡報檔、範本或要製作的內容與設計需求。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "執行內容、結構與視覺驗證，以找出遺漏、溢位、重疊及檔案結構問題",
+     "reason": "This describes the Skill's documented QA procedures and the defects they check for; it does not appraise the Skill as trustworthy or high quality.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並保留原有版面配置與格式。",
+     "reason": "This is a capability/quality-preservation claim about template editing, which the source discusses in its template-editing guidance.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "while preserving its layouts and formatting.",
+     "reason": "This is the English duplicate of the template-preservation capability claim and is grounded in the source's template/layout and formatting-preservation guidance.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並驗證最終檔案。",
+     "reason": "The source explicitly requires file validation using `validate.py`.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "and validate the final file.",
+     "reason": "The source explicitly requires file validation using `validate.py`.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "請檢查這份簡報是否有文字溢位、物件重疊、殘留的預留位置文字或損壞的圖表。",
+     "reason": "These are documented QA targets: overflow, overlap, leftover placeholders, and chart checks.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "Check this deck for text overflow, overlapping objects, placeholder text, and broken charts.",
+     "reason": "These are documented QA targets: overflow, overlap, leftover placeholders, and chart checks.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "使用 pptxgenjs 時不支援漸層填色，必須改用漸層圖片作為背景。",
+     "reason": "This is a documented technical limitation: “Gradient fills aren't supported — use a gradient image as the background instead.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "python-pptx 無法直接複製投影片、無法讀取多數範本使用的 SVG／EMF 圖像，且以 `text_frame.text` 替換文字時不會保留原有格式。",
+     "reason": "This restates the source's documented python-pptx limitations and formatting risk.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "建立或修改完成後必須執行內容檢查、檔案驗證及逐頁視覺檢查；從範本衍生的簡報驗證時必須提供原始檔。",
+     "reason": "This restates the source's required Content QA, File QA, Visual QA, and `--original` guidance for template-derived decks.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "needs-fix",
+   "reasons": [
+    "KPI1 忠實性：The Skill can extract speaker notes from a presentation and summarize each slide.（The source documents creating speaker notes (`slide.addNotes(\"...\")`) but does not document extracting speaker notes or summarizing slides.）",
+    "KPI1 忠實性：The Skill can remove duplicate slides when combining decks.（The source documents deleting and reordering slides, but does not document detecting duplicate slides or removing them as duplicates.）"
+   ],
+   "kpi6_online_cosine": 0.8317,
+   "kpi6_flagged": true
+  },
+  {
+   "id": "anthropic-sa/xlsx",
+   "skill": "xlsx",
+   "tier": "indexed",
+   "category": "documents",
+   "skill_id": "20511163-85a0-49f7-87ae-1406a6483147",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v3",
+   "kpi2_term_density": 1.54,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": [],
+    "locale_glosses": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 20,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "可建立、讀取、分析、清理、轉換、編輯或修復多種試算表檔案，並能處理公式、格式、圖表及雜亂表格資料；成果會以試算表檔案交付。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能用於建立、讀取、分析、清理、轉換、編輯或修復 .xlsx、.xlsm、.xltx、.csv 與 .tsv 試算表，並可處理公式、格式、圖表及雜亂的表格資料。它會以試算表檔案作為交付成果"
+     },
+     {
+      "answer": "當你需要新增欄位與公式、清理格式混亂的資料、建立財務預測活頁簿、更新 XLSM 檔但保留巨集、檢查公式錯誤，或把多個 TSV 檔整合成同一份活頁簿時可使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請在我下載資料夾的 XLSX 檔案中新增利潤率欄與公式，並保留現有格式。\\n- 請清理這個格式混亂的 CSV，把放錯位置的標題移到頂端、刪除無用資料列，並交付為格式化的 XLSX 活頁簿。\\n- 請根據這些假設建立財務預測活頁簿，加入公式、百分比格式，並清楚標示輸入儲存格。\\n- 請更新這份 XLSM 活頁簿但不要移除巨集，然後重新計算並檢查所有公式錯誤。\\n- 請將這些 TSV 檔案轉換成同一份活頁簿，每個檔案各自放在名稱正確的工作表中。"
+     },
+     {
+      "answer": "你需要準備現有的試算表或其他表格資料來源，以及你希望使用的欄位、工作表名稱、公式、格式或轉換規格。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供現有試算表或其他表格資料來源，以及所需的欄位、工作表名稱、公式、格式或轉換規格。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "保留現有格式",
+     "reason": "This is a quality/preservation assertion about edit behavior. The source requires existing-file conventions to be matched exactly.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "格式混亂的 CSV",
+     "reason": "This characterizes input data quality. The source explicitly covers “messy tabular data files,” including malformed rows, misplaced headers, and junk data.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "格式化的 XLSX 活頁簿",
+     "reason": "This describes output formatting quality. The source documents formatting as a supported task and requires professional fonts for every output unless otherwise specified.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "preserving its existing formatting",
+     "reason": "This is a quality/preservation assertion about edit behavior. The source requires existing-file conventions to be matched exactly.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "formatted XLSX workbook",
+     "reason": "This describes output formatting quality. The source documents formatting as a supported task and requires professional fonts for every output unless otherwise specified.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "清楚標示輸入儲存格",
+     "reason": "This is an output clarity/quality assertion. The source requires a legend naming editable cells in workbooks created for someone to fill in.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "clearly marked input cells",
+     "reason": "This is an output clarity/quality assertion. The source requires a legend naming editable cells in workbooks created for someone to fill in.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "但不要移除巨集",
+     "reason": "This addresses the risk of macro loss. The source states that XLSM macros are lost unless `keep_vba=True` is passed.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "重新計算並檢查所有公式錯誤",
+     "reason": "This is a formula-correctness/quality requirement. The source mandates recalculation for formula-containing files and says not to ship while `recalc.py` reports errors.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "without removing its macros",
+     "reason": "This addresses the risk of macro loss. The source states that XLSM macros are lost unless `keep_vba=True` is passed.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "recalculate and check all formulas for errors",
+     "reason": "This is a formula-correctness/quality requirement. The source mandates recalculation for formula-containing files and says not to ship while `recalc.py` reports errors.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "名稱正確的工作表",
+     "reason": "This is a naming-quality assertion. The source requires exact tab names when specified by the user.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "correctly named worksheet",
+     "reason": "This is a naming-quality assertion. The source requires exact tab names when specified by the user.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並修正所有回報的公式錯誤後才能交付",
+     "reason": "This is a formula-correctness and delivery-quality requirement. The source says never to ship while `recalc.py` reports `errors_found`.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "否則巨集會遺失",
+     "reason": "This identifies a macro-loss risk. The source makes the same warning for `.xlsm` files loaded without `keep_vba=True`.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "可能使連結至其他檔案的外部參照失效；scripts/recalc.py 預設會拒絕在這種狀態下執行",
+     "reason": "This identifies external-reference loss and recalculation-refusal risks. The source explicitly describes both outcomes.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.912,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "anthropic/brand-guidelines",
+   "skill": "brand-guidelines",
+   "tier": "curated",
+   "category": "writing",
+   "skill_id": "5eea0f55-a37b-4bec-b3c5-af4a9510530b",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [
+    "最佳"
+   ],
+   "kpi1": {
+    "claims_total": 13,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會把 Anthropic 的官方品牌色彩、字體與視覺風格套用到你的成品；依文字層級配置標題與內文的字型和色彩，並讓非文字圖形輪替使用橙、藍、綠三種強調色。若沒有 Poppins 與 Lora，會改用 Arial 與 Georgia。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會將 Anthropic 的官方品牌色彩、字體與視覺風格套用到需要品牌化的成品。它會依文字層級為標題與內文配置字型及合適色彩，並讓非文字圖形輪替使用橙、藍、綠三種強調色。使用時需要提供要進行視覺格式化的成品或內容；若系統沒有 Poppins 與 Lora，則會自動使用 Arial 與 Georgia。"
+     },
+     {
+      "answer": "當你有簡報或其他成品需要改成符合 Anthropic 品牌規範，或需要重新安排標題、內文與圖形的品牌視覺格式時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請將 Anthropic 的官方色彩與字體套用到這份簡報。／請重新設計這份成品，讓標題、內文與圖形符合 Anthropic 的品牌規範。"
+     },
+     {
+      "answer": "你需要先準備好要進行視覺格式化的成品或內容，例如一份簡報。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用時需要提供要進行視覺格式化的成品或內容；／請將 Anthropic 的官方色彩與字體套用到這份簡報。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "Anthropic 的官方品牌色彩、字體與視覺風格",
+     "reason": "這是在描述品牌資源的官方性；來源將其稱為「Anthropic's official brand identity and style resources」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "Anthropic 的官方色彩與字體",
+     "reason": "來源描述為「Anthropic's official brand colors and typography」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "Anthropic’s official colors and typography",
+     "reason": "來源描述為「Anthropic's official brand colors and typography」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "核准的強調色",
+     "reason": "來源明確設有「Accent Colors」並列出橙、藍、綠三種色彩，這是在重述其品牌色彩分類。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "approved accent colors",
+     "reason": "來源明確設有「Accent Colors」並列出橙、藍、綠三種色彩，這是在重述其品牌色彩分類。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "清晰易讀的文字色彩",
+     "reason": "來源稱會依背景智慧選色，並「Preserves readability across all systems」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "readable text colors",
+     "reason": "來源稱會依背景智慧選色，並「Preserves readability across all systems」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "最佳結果",
+     "reason": "來源明確表示字型預先安裝是「for best results」。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9572,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "anthropic/internal-comms",
+   "skill": "internal-comms",
+   "tier": "curated",
+   "category": "writing",
+   "skill_id": "38c40ff0-a645-426a-a9f1-44451d55fe1f",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v3",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": [],
+    "locale_glosses": []
+   },
+   "kpi4_mechanical": [
+    "風險"
+   ],
+   "kpi1": {
+    "claims_total": 20,
+    "unsupported": [
+     {
+      "claim": "技能可產出清楚的 FAQ 回覆。",
+      "evidence": "The source identifies FAQ responses but does not state that the responses will be clear.",
+      "verdict": "unsupported"
+     },
+     {
+      "claim": "技能可產出精簡的主管更新。",
+      "evidence": "The source identifies leadership updates but does not state that they will be concise.",
+      "verdict": "unsupported"
+     }
+    ]
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "可協助你撰寫符合公司慣用格式的內部溝通內容，例如 3P 進度、公司電子報、FAQ、狀態報告、主管更新、專案更新及事故報告；它會依對應指南採用格式、語氣與資料蒐集要求。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能協助撰寫符合公司慣用格式的內部溝通內容，包括 3P 進度、公司電子報、FAQ、狀態報告、主管更新、專案更新與事故報告。使用者需說明溝通類型並提供相關內容；技能會選用對應的範例指南，遵循其中的格式、語氣與資料蒐集要求。"
+     },
+     {
+      "answer": "當你需要把手上的進度、公告、政策內容、專案狀態或事故資訊，整理成公司內部使用的正式溝通文件時，可以使用它。例如要做團隊 3P 更新、全公司電子報、遠距政策 FAQ、主管更新或內部事故報告。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "可以這樣說：- 請根據這些進度、後續計畫與阻礙事項，為我的團隊撰寫一份 3P 更新。- 請將這些公告與近期活動整理成一份全公司電子報。- 請針對新的遠距工作政策，為員工擬寫清楚的 FAQ 回覆。- 請撰寫一份精簡的主管更新，涵蓋專案狀態、風險及下一個里程碑。- 請根據這份時間軸與影響摘要撰寫內部事故報告。"
+     },
+     {
+      "answer": "你需要先說明要做的溝通類型，並提供相關內容，例如進度、後續計畫、阻礙事項、公告、活動、政策、專案狀態、風險、里程碑，或事故的時間軸與影響摘要。若沒有相符指南，還需要說明你期待的格式或背景。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需說明溝通類型並提供相關內容；技能會選用對應的範例指南，遵循其中的格式、語氣與資料蒐集要求。若沒有相符的指南，會要求進一步說明期望格式或背景。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "符合公司慣用格式",
+     "reason": "這是在描述輸出採用公司偏好的格式，與來源描述直接一致。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "遵循其中的格式、語氣與資料蒐集要求",
+     "reason": "來源明確要求遵循指南中的 formatting、tone 與 content gathering 指示。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "清楚的 FAQ 回覆 / clear FAQ responses",
+     "reason": "這是對 FAQ 輸出品質的評價；來源雖列出 FAQ responses，未聲稱回覆會「清楚」。",
+     "verdict": "judgement"
+    },
+    {
+     "quote": "精簡的主管更新 / concise leadership update",
+     "reason": "這是對主管更新篇幅或品質的評價；來源雖列出 leadership updates，未聲稱其會「精簡」。",
+     "verdict": "judgement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "needs-fix",
+   "reasons": [
+    "KPI1 忠實性：技能可產出清楚的 FAQ 回覆。（The source identifies FAQ responses but does not state that the responses will be clear.）",
+    "KPI1 忠實性：技能可產出精簡的主管更新。（The source identifies leadership updates but does not state that they will be concise.）",
+    "KPI4 白名單：「清楚的 FAQ 回覆 / clear FAQ responses」屬對 Skill 的評價（這是對 FAQ 輸出品質的評價；來源雖列出 FAQ responses，未聲稱回覆會「清楚」。）",
+    "KPI4 白名單：「精簡的主管更新 / concise leadership update」屬對 Skill 的評價（這是對主管更新篇幅或品質的評價；來源雖列出 leadership updates，未聲稱其會「精簡」。）"
+   ],
+   "kpi6_online_cosine": 0.9475,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "humanizer/humanizer",
+   "skill": "humanizer",
+   "tier": "curated",
+   "category": "writing",
+   "skill_id": "53fc37dd-ea56-435d-ae3a-49273cedba75",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 20,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會辨識並改寫文字中常見的 AI 寫作痕跡，例如浮誇語氣、空泛歸因、贅詞、過度被動語態、制式結構與標點習慣，同時保留原有資訊。也可以依你的寫作樣本與預期語氣，讓改寫更接近你的個人風格。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會辨識並改寫文字中的常見 AI 寫作痕跡，例如浮誇語氣、空泛歸因、贅詞、過度被動語態、制式結構與標點習慣，同時保留原有資訊。使用者可貼上文字、指定檔案，並可提供自己的寫作樣本與預期語氣，讓改寫更貼近個人風格。"
+     },
+     {
+      "answer": "當你覺得部落格文章、產品說明、技術文件或其他草稿讀起來太像 AI 寫的，想讓語氣更自然、減少宣傳腔與空泛內容，又不想改掉原本的事實、資料、連結或程式碼時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請改寫這篇部落格文章，讓語氣更自然，同時保留每一項事實主張。／請讓這份技術文件讀起來更像真人撰寫，但不要更動程式碼區塊、frontmatter、資料或連結目標。／請檢查這段產品說明中的宣傳語氣、空泛主張、贅詞及其他 AI 寫作模式，然後提供最終改寫。"
+     },
+     {
+      "answer": "你需要準備要處理的文字，或指定要直接改寫的檔案；若希望結果更像你的寫法，還可準備自己的寫作樣本與預期語氣。若有不能更動的內容，也可以事先說明，例如程式碼區塊、frontmatter、資料、連結目標或事實主張。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者可貼上文字、指定檔案，並可提供自己的寫作樣本與預期語氣，讓改寫更貼近個人風格。／同時保留原有資訊。／但不要更動程式碼區塊、frontmatter、資料或連結目標。／同時保留每一項事實主張。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "常見 AI 寫作痕跡",
+     "reason": "這是在描述技能所偵測的寫作模式；來源明確將其稱為「signs of AI-generated text」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "浮誇語氣、空泛歸因、贅詞、過度被動語態、制式結構與標點習慣",
+     "reason": "這些都是來源列出的內容、語言、風格與標點模式。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "同時保留原有資訊",
+     "reason": "來源要求原文的每一項主張都要在改寫中保留。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "讓改寫更貼近個人風格",
+     "reason": "來源要求在有寫作樣本時分析並匹配作者的寫作習慣。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "讓語氣更自然",
+     "reason": "來源將使文字更自然、更像人類寫作列為技能目的。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "保留每一項事實主張",
+     "reason": "來源要求原文每一項主張存留，且禁止加入未在來源或使用者資料中出現的事實。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不要更動程式碼區塊、frontmatter、資料或連結目標",
+     "reason": "來源在檔案模式中明定這些內容必須保持不變。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "更像真人撰寫",
+     "reason": "來源將使寫作聽起來更自然、像人類寫作列為目標。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "宣傳語氣、空泛主張、贅詞及其他 AI 寫作模式",
+     "reason": "來源明列宣傳語言、模糊歸因、填充語及大量其他 AI 模式。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "只保留自然化後的最終散文",
+     "reason": "來源規定檔案模式會以最終改寫覆寫檔案，且僅處理散文。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不得加入來源文字或使用者未提供的事實、姓名、數字、日期、引文或引用來源。",
+     "reason": "來源以「Never invent facts」明定禁止加入這些未提供的內容。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "改寫時必須保留原文中的每項主張",
+     "reason": "來源明定「Every claim in the original survives into the rewrite」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "檔案模式只改寫散文，程式碼區塊、frontmatter、資料與連結目標須保持不變。",
+     "reason": "這是來源檔案模式規則的直接重述。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "最終改寫不得包含 em dash 或 en dash；若使用者提供的寫作樣本使用 em dash，則依該樣本的頻率處理。",
+     "reason": "來源同時規定預設禁止這兩種破折號，以及寫作樣本可覆寫該規則。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "只有部落格、散文、評論或個人寫作等適合展現個性的內容才會加入立場或語氣；百科、技術、法律及參考文字維持中性。",
+     "reason": "來源將個性化限於內容與作者聲音適合的情況，並要求百科、技術、法律及參考文字保持中性。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9212,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "neon-jetpack/line-edit",
+   "skill": "line-edit",
+   "tier": "curated",
+   "category": "writing",
+   "skill_id": "18939a0a-e1b7-4631-8505-9fc7395b16da",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 16,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會對你已寫好的草稿做輕度、逐句的潤飾：修正文法、拼字、標點、冗詞、含糊或不順的表達，並盡量保留原意與個人語氣。它會提供可直接複製的完整修訂版，並說明涉及判斷或語意細微變化的修改。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "「此技能對作者已寫好的草稿進行輕度逐句潤飾，修正文法、拼字、標點、冗詞、含糊表達與不順的句子，同時盡量保留原意和個人聲音。」「輸出包含可直接複製的完整修訂版，以及只列出涉及判斷或語意細微變化的修改說明。」"
+     },
+     {
+      "answer": "當你已經寫好電子郵件、訊息或文件草稿，但想校對語文、刪除贅詞、讓文字更清楚易讀，且不希望它把內容整篇重寫或改掉你的語氣時，可以使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "「請潤飾這封商務電子郵件，並保留我的原意與個人語氣。」「請刪除這份草稿中的贅詞與重複內容，但不要把它整篇重寫。」「請讓這則 Slack 訊息更清楚易讀，同時維持輕鬆口吻。」"
+     },
+     {
+      "answer": "你需要先準備一份現有的電子郵件、訊息或文件草稿。如果草稿的用途不清楚，可能還需要說明收件對象。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "「使用者需提供現有的電子郵件、訊息或文件草稿；若用途不明，可能需要說明收件對象。」"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "輕度逐句潤飾",
+     "reason": "這是在描述來源所規定的輕度、逐句編輯範圍，而非評價此 Skill 本身是否可靠或優質。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不順的句子",
+     "reason": "這描述 Skill 要處理的寫作品質問題；來源明確涵蓋「Awkward or tangled phrasing」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "盡量保留原意和個人聲音",
+     "reason": "這重述來源對保留作者原意與聲音的要求，而非對 Skill 的品質背書。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "可直接複製的完整修訂版",
+     "reason": "這重述來源所說的「one-step copy-paste」輸出格式。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並保留我的原意與個人語氣",
+     "reason": "這是來源明定的保留意義與作者聲音的編輯要求。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不順的措辭",
+     "reason": "這描述來源涵蓋的「Awkward or tangled phrasing」問題。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不要把它整篇重寫",
+     "reason": "這重述來源將此 Skill 界定為非重寫的限制。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "更清楚易讀，同時維持輕鬆口吻",
+     "reason": "這重述來源對清晰度及休閒草稿須匹配既有語域的要求。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "若有意思不清楚的地方，請標示出來，不要自行猜測",
+     "reason": "這重述來源要求將不清楚的意思標示為問題，而非猜測。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8922,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8932 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8922 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "neon-jetpack/ai-written-check",
+   "skill": "ai-written-check",
+   "tier": "curated",
+   "category": "writing",
+   "skill_id": "a5d6e622-fc54-4eaf-a86a-781a8ecf1e05",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 13,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會檢查面向讀者的文字，找出容易顯得像 AI 生成的句法與用詞模式；會列出規則名稱、引用有問題的文字、提供具體改寫，並給出整體判定。它不處理語氣、定位或事實查核。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "「此技能檢查履歷、求職信、作品集、案例研究、提案、簡介等面向讀者的文字，找出容易顯得像 AI 生成的句法與用詞模式。使用者需要提供待檢查的文案；技能會列出規則名稱、引用問題文字、提供具體改寫，並以『乾淨、稍作修飾或需大幅處理』作一句總結。它著重於句子結構和措辭，而非語氣、定位或事實查核。」"
+     },
+     {
+      "answer": "當你要送出或發布履歷、求職信、作品集頁面、案例研究、提案或專業簡介前，想確認文字是否有機械化、範本化或像 AI 寫的痕跡，並希望取得逐項改寫建議時，可使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "「此技能檢查履歷、求職信、作品集、案例研究、提案、簡介等面向讀者的文字，找出容易顯得像 AI 生成的句法與用詞模式。」；「請檢查我的求職信是否有像 AI 生成的跡象，並為每個問題提出具體改寫。」"
+     },
+     {
+      "answer": "你需要先準備好想檢查的文案，例如履歷、求職信、作品集、案例研究、提案或簡介的文字。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "「使用者需要提供待檢查的文案」"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "容易顯得像 AI 生成的句法與用詞模式",
+     "reason": "This restates the source description that the skill detects mechanical patterns that signal machine authorship or make prose sound generated.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "是否有像 AI 生成的跡象",
+     "reason": "This is a request to assess the source-defined AI-written tells in copy, not an appraisal of the skill's own quality or safety.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "讀起來像 AI 生成的嗎？",
+     "reason": "This restates the source's intended use when copy “sounds like AI.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "乾淨、稍作修飾或需大幅處理",
+     "reason": "This is the catalogue's Traditional Chinese rendering of the source-required verdict: “clean, light touch-up, or heavy.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "問題",
+     "reason": "In context, this refers to detected prose issues for which the source requires a concrete rewrite; it is not a quality judgement about the skill itself.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9393,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "neon-jetpack/cringe-check",
+   "skill": "cringe-check",
+   "tier": "indexed",
+   "category": "writing",
+   "skill_id": "ce3822b2-06a1-4bdb-b45b-abc7f5000ef8",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 16,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會審查履歷、求職信、作品集、提案或推銷文案的語氣與定位，找出自大、過度逢迎、照抄職缺用語、忽略協作者、武斷替客戶下結論，以及誇大權責或規模等問題；並會引用問題原句，按檢查面向列出問題，再改寫成更像有能力且慷慨的協作者的說法。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "這項技能會審查履歷、求職信、作品集、提案或推銷文案中的語氣與定位，找出自大、逢迎、照抄職缺用語、貶低他人、抹去協作者、替客戶武斷下結論或誇大權責與規模等問題。使用者需要提供待審文案；它會依各項檢查維度列出問題名稱、引用原句，並改寫成更像「有能力且慷慨的協作者」的版本。"
+     },
+     {
+      "answer": "當你準備求職信、履歷、作品集案例、客戶提案或應徵／推銷文案，想確認文字不會顯得自大或過度討好、沒有把自己寫成孤膽英雄、沒有太明顯照抄職缺描述，也沒有在尚未探索前就替客戶判定需求，或誇大自己的職責與專案規模時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請幫這封求職信做 cringe check，改寫任何顯得自大或過度討好的句子。\\n- 請檢查我的履歷是否把自己寫成單打獨鬥的英雄，並確保協作者得到適當肯定。\\n- 請把這份應徵文案和職缺描述對照，標出任何照抄得太明顯的特色用語。\\n- 請審查這份客戶提案，找出任何在探索前就擅自判定客戶優先事項或診斷其業務的說法。\\n- 請檢查這篇作品集案例是否誇大我的權責，或錯把個人小專案與企業級工作寫成相同規模。"
+     },
+     {
+      "answer": "你需要準備要審查的文案；若要檢查是否照抄職缺用語，還需要準備職缺描述。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需要提供待審文案；它會依各項檢查維度列出問題名稱、引用原句，並改寫成更像「有能力且慷慨的協作者」的版本。\\n- 請把這份應徵文案和職缺描述對照，標出任何照抄得太明顯的特色用語。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "自大、逢迎、照抄職缺用語、貶低他人、抹去協作者、替客戶武斷下結論或誇大權責與規模等問題",
+     "reason": "This describes the source-defined problematic positioning moves in copy, including cockiness, parroting, instrumentalizing collaborators, client prescription, and overclaiming; it does not rate the skill itself.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "更像「有能力且慷慨的協作者」的版本",
+     "reason": "This restates the source's stated target frame of a “generous collaborator who is genuinely good.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "顯得自大或過度討好",
+     "reason": "This reflects the source's stated concerns that copy can sound arrogant, try-hard, or “like it is sucking up.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "sound arrogant or overly eager to please",
+     "reason": "This reflects the source's stated concerns that copy can sound arrogant, try-hard, or “like it is sucking up.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "協作者得到適當肯定",
+     "reason": "This restates the instruction to name collaborators with agency and to credit shared wins as shared.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "collaborators receive proper credit",
+     "reason": "This restates the instruction to name collaborators with agency and to credit shared wins as shared.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "照抄得太明顯的特色用語",
+     "reason": "This restates the JD-mirror check for distinctive job-description language lifted verbatim.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "distinctive phrases I copied too literally",
+     "reason": "This restates the JD-mirror check for distinctive job-description language lifted verbatim.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "擅自判定客戶優先事項或診斷其業務",
+     "reason": "This restates the proposal-specific instruction not to prescribe the client's reality or diagnose its business.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "presume the client's priorities or diagnose their business before discovery",
+     "reason": "This restates the proposal-specific instruction not to prescribe the client's reality and not to preview conclusions.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "誇大我的權責，或錯把個人小專案與企業級工作寫成相同規模",
+     "reason": "This restates the source's authority-overclaim and false-parallelism checks.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "overstated authority and false parallels between my side project and enterprise work",
+     "reason": "This restates the source's authority-overclaim and false-parallelism checks.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不檢查句子機制或 AI 寫作痕跡",
+     "reason": "This directly restates the source's stated scope limitation.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不驗證文案中的事實；事實查核屬於 `full-review`",
+     "reason": "This directly restates the source's fact-verification limitation.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不會為了放大成就而膨脹描述；若實際規模較小，會如實指出",
+     "reason": "This directly restates the source's instruction never to inflate and to surface scale issues instead.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8882,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8892 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8882 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "neon-jetpack/full-review",
+   "skill": "full-review",
+   "tier": "indexed",
+   "category": "writing",
+   "skill_id": "7ff9ddee-73ae-4828-a12f-aee4de76ab5e",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 19,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會對你的履歷、求職信、作品集、案例研究、提案或個人簡介做六輪結構化審查，檢查 AI 寫作痕跡、你的實作者定位、內容是否誠實或誇大、語氣與語域是否一致，以及事實是否有依據。它會用「修改前／修改後／原因」的差異表提出建議，也會列出刻意不納入或不更動的內容；在你明確核准前，不會修改正式檔案。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會依序對履歷、求職信、作品集、案例研究、提案或個人簡介進行六輪結構化審查，檢查 AI 寫作痕跡、實作者定位、誠實與誇大、語氣、語域一致性及事實依據。... 它會以修改前／修改後／原因的差異表提出建議，列出刻意未納入或未更動的內容，並在作者明確核准前不修改正式檔案。"
+     },
+     {
+      "answer": "當你準備求職或展示專業工作，想檢查履歷、求職信、作品集案例、提案或專業簡介是否看起來像 AI 寫的、是否誇大、是否需要事實佐證，或是否有清楚呈現你能推動決策落地的能力時，可以使用它。你也可以在想保留原本措辭、但需要逐項修改建議與理由時使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請完整審查我的履歷，並標出任何在 AI 編修後被擴大或強化的陳述。／請檢查這封求職信的 AI 寫作痕跡、語氣、語域一致性、誇大陳述，以及需要來源佐證的事實。／請檢查這份提案是否把我呈現為能推動決策落地的人，而不只是研究問題的人。／請審查我的專業簡介，保留我的原始措辭，並列出你刻意不修改或不納入的內容。"
+     },
+     {
+      "answer": "你需要先準備要審查的文案，例如履歷、求職信、作品集、案例研究、提案或個人簡介。必要時，還要準備原始說法、支持內容的事實來源，以及你對修改的意見。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需要提供待審文案，並在必要時補充原始說法、事實來源與修改意見。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "檢查 AI 寫作痕跡、實作者定位、誠實與誇大、語氣、語域一致性及事實依據",
+     "reason": "These are the review’s own stated quality, honesty, and verification criteria, corresponding to its six passes.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "原始說法、事實來源與修改意見",
+     "reason": "These concern preserving authorial accuracy and verifying facts; the source instructs use of the author's words and pushing for sources.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "在作者明確核准前不修改正式檔案",
+     "reason": "This restates the source’s explicit sign-off safeguard.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "被擴大或強化的陳述",
+     "reason": "This describes the source’s anti-inflation concern that AI editing can amplify claims beyond what was approved.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "誇大陳述",
+     "reason": "This is the source’s stated honesty/overclaim review pass.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "需要來源佐證的事實",
+     "reason": "This restates the fact-verification pass’s requirement to seek sources for verifiable facts.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "overclaiming",
+     "reason": "This is the English task-example rendering of the source’s honesty/overclaim pass.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "facts that need sources",
+     "reason": "This is the English task-example rendering of the source’s fact-verification requirement.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "保留我的原始措辭",
+     "reason": "This restates the instruction to use author-provided phrases verbatim rather than paraphrasing their voice.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "overclaim flags",
+     "reason": "This output tag reflects the source’s explicit overclaim-detection pass and anti-inflation rules.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "fact verification flags",
+     "reason": "This output tag reflects the source’s instruction to flag unsourced facts as \"verify before sending.\"",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "完整審查需要安裝 `ai-written-check` 與 `cringe-check`；若未安裝，僅能使用 `references/PASSES.md` 中的簡短替代檢查。",
+     "reason": "This describes the source’s stated dependency arrangement and fallback checks, rather than appraising the skill’s trustworthiness or quality.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "可驗證的日期、名稱、職稱、指標及技術術語需要來源；沒有來源的事實會標示為「傳送前驗證」。",
+     "reason": "This directly restates the source’s fact-verification risk control and its \"verify before sending\" flag.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8862,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8855 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8862 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "neon-jetpack/copyright-creative-work",
+   "skill": "copyright-creative-work",
+   "tier": "indexed",
+   "category": "writing",
+   "skill_id": "c17b8af9-d020-4d7f-aa76-cc57125142ba",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 26,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會協助你按照美國著作權制度，保護、記錄、登記及管理歌曲、文字、照片等原創作品；並可協助準備 eCO 申請、共同創作者分潤表及發表前檢查指引。它也會說明歌曲中作曲與錄音的著作權、AI 輔助作品的人類創作要求、團體登記、取樣與翻唱授權、合理使用，以及何時應尋求相關專業或機構協助。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能協助創作者依美國著作權制度保護、記錄、登記及管理自己的歌曲、文字、照片等原創作品，並提供 eCO 申請準備、共同創作者分潤表與發表前檢查指引。它也說明歌曲的作曲與錄音著作權、AI／Suno 輔助作品的人類創作要求、團體登記、取樣與翻唱授權、合理使用，以及何時尋求律師、PRO、MLC 或 CCB。"
+     },
+     {
+      "answer": "當你要為原創作品在美國進行著作權登記、準備發行作品、處理共同創作者分潤，或規劃授權與收取權利金時，可以使用它。若作品涉及 AI／Suno 生成內容、取樣他人錄音、翻唱，或想確認專輯能否團體登記，也適合使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "使用者需提供作品類型、創作與發表狀態、共同作者及分潤、AI 使用方式、是否含他人錄音或作品，以及希望登記、發行、授權或收取權利金的目標。\\n\\n- 請幫我準備在發行原創歌曲前，向美國著作權局辦理登記。\\n- 我想在新曲中取樣一段現有錄音，需要取得哪些許可與授權？\\n- 我的專輯歌曲包含不同共同作者及 AI 生成材料，可以用團體方式登記嗎？"
+     },
+     {
+      "answer": "你需要先準備：作品類型、目前的創作與發表狀態、共同作者及其分潤、AI 的使用方式、作品是否包含他人的錄音或作品，以及你希望達成的目標，例如登記、發行、授權或收取權利金。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供作品類型、創作與發表狀態、共同作者及分潤、AI 使用方式、是否含他人錄音或作品，以及希望登記、發行、授權或收取權利金的目標。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "發表前檢查指引",
+     "reason": "This is a risk-related feature description, not an appraisal of the Skill. The source itself provides a pre-publish risk check.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "僅提供一般資訊，不構成法律意見，也不建立律師與客戶關係。",
+     "reason": "This restates the Skill's own legal-advice and attorney-client limitation.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "內容以美國著作權制度為主；其他司法管轄區的規定與結果可能不同。",
+     "reason": "This restates the source's jurisdictional limitation.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "高商業價值、爭議、合理使用、難以清權的取樣、重要 AI 作品或方法保護問題，需要諮詢智慧財產權律師。",
+     "reason": "This restates the source's escalation guidance for high stakes, disputes, fair use, unclear samples, important Suno claims, and framework-method protection.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8632,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8631 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8632 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "sokrati/sokrati",
+   "skill": "sokrati",
+   "tier": "indexed",
+   "category": "writing",
+   "skill_id": "4cf4611c-9d1c-413d-a568-14f3203a688a",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 21,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會依照馬克西姆・伊利亞霍夫的資訊風格原則，編輯或評論俄文商業及專業文本；可檢查用詞、句子、官樣語言、結構與文類規則，並提供改寫、修改說明、補充建議，或只做問題分析與優先改善項目。若有明確要求，也可用同一方法處理英文文本。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能依照馬克西姆・伊利亞霍夫的資訊風格原則，編輯或評論俄文商業與專業文本，例如信件、履歷、新聞稿、報告、簡報、社群貼文與登陸頁。它會從用詞、句子、官樣語言、結構與文類規則檢查文本，提供改寫版本、修改說明及補充建議，或只提供問題分析與優先改善事項。……若明確要求，也可把同一方法用於英文文本。"
+     },
+     {
+      "answer": "當你有俄文的商業或專業文稿，想讓文字更清楚、去除官樣語言、陳腔濫調或模糊說法，重整結構，或只想知道最該優先修改哪些地方時，可以使用它。例如陌生開發信、履歷、公司介紹、新聞稿等；也可在你明確提出要求時，用於英文登陸頁文案。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "例如信件、履歷、新聞稿、報告、簡報、社群貼文與登陸頁。……提供改寫版本、修改說明及補充建議，或只提供問題分析與優先改善事項。……請刪除這段俄文公司介紹中的官樣語言、陳腔濫調與模糊說法。……請重整這篇俄文新聞稿，讓事件及其重要性在第一段就清楚呈現。"
+     },
+     {
+      "answer": "你需要準備要處理的原文。最好同時說明目標讀者、文本類型，以及希望讀者採取什麼行動；如果要處理英文，需明確提出要求。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供原文，並最好說明目標讀者、文本類型和希望讀者採取的行動；若明確要求，也可把同一方法用於英文文本。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "修改說明及補充建議",
+     "reason": "這是在描述完整編輯模式的輸出內容；來源明定會給出修改清單及作者應補充或研究的建議。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "問題分析與優先改善事項",
+     "reason": "這是在描述不重寫的評論模式；來源明定提供具體問題及優先行動。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "最有效的五項修改",
+     "reason": "來源規定列出 3–5 項「能帶來最大效果」的修改。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "the five changes that would have the greatest impact",
+     "reason": "來源規定列出 3–5 項「能帶來最大效果」的修改。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "讓事件及其重要性在第一段就清楚呈現",
+     "reason": "來源明定新聞稿第一段應交代發生了什麼、為何重要，以及何時何地。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "so the event and its importance are clear in the first paragraph",
+     "reason": "來源明定新聞稿第一段應交代發生了什麼、為何重要，以及何時何地。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "改善建議",
+     "reason": "這是來源所規定的「Рекомендации」輸出項目。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "優先改善事項",
+     "reason": "這是來源所規定的「Приоритетные действия」輸出項目。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "文字層級的修改不能單獨解決受眾不明、目標不清或研究不足等問題。",
+     "reason": "來源明確警告不要承諾詞語層級編輯能解決受眾、目標或研究不足等更高層問題。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8919,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8916 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8919 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "sokrati/shorten",
+   "skill": "shorten",
+   "tier": "indexed",
+   "category": "writing",
+   "skill_id": "0f966028-262c-4dd5-a7fe-e5989ae87a88",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v3",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": [],
+    "locale_glosses": []
+   },
+   "kpi4_mechanical": [
+    "品質"
+   ],
+   "kpi1": {
+    "claims_total": 16,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它可依照資訊風格原則，編輯、精簡或評論商務與專業文本；可產出修訂稿、變更說明與補充建議，或只提供評估及優先改善事項。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此 Skill 依照 Maxim Ilyahov 的資訊風格原則，編輯、精簡或評論英文商務與專業文本。它會從用字、句子、官僚語言、結構與文類規則逐層處理，輸出修訂稿、變更說明與補充建議，或在不改寫時提供評估與優先改善事項。"
+     },
+     {
+      "answer": "當你要讓商務或專業文本更精簡、清楚，改善結構、刪除陳腔濫調或官僚語言，或檢查是否清楚呈現讀者利益與下一步行動時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "例如電子郵件、履歷、報告、新聞稿、簡報、社群貼文與登陸頁面。請精簡這封客戶電子郵件，刪除贅詞，並讓下一步更清楚。請檢視我的登陸頁面文案是否清楚、有陳腔濫調、結構問題，以及是否呈現讀者利益，但不要直接改寫。"
+     },
+     {
+      "answer": "你需要準備要處理的原文；最好另外說明目標讀者、文本類型，以及希望讀者採取的行動。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "它需要使用者提供原文，並最好說明目標讀者、文本類型與希望讀者採取的行動。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "精簡",
+     "reason": "This is a quality-oriented editing action, not an appraisal of the Skill. The source explicitly frames the approach around removing unnecessary language and states “every word earns its place.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "刪除贅詞",
+     "reason": "The source explicitly defines filler phrases and directs the editor to cut them.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "讓下一步更清楚",
+     "reason": "The source requires a “simple next step” for cold emails and emphasizes clarity as a core writing quality.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "clarity, clichés, structure, and reader benefit",
+     "reason": "These are subject-matter review criteria stated in the source: clarity is a core quality, clichés are a named cleanup category, structure is reviewed, and the reader’s needs come first.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "淺白英文",
+     "reason": "The source says the Skill triggers on requests to rewrite in “plain language.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "改善我的履歷",
+     "reason": "This concerns improvement of the user’s resume, not a claim that the Skill itself is high quality; the source has dedicated resume and job-application rules.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "具體證據",
+     "reason": "The source directs the editor to address each requirement “point-by-point with proof.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "評估與優先改善事項",
+     "reason": "The source’s review-without-rewriting format explicitly requires an “Overall assessment” and “Priority actions.”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "文字層級的修改無法單獨解決受眾不明、目標不清或研究不足等問題。",
+     "reason": "This is a scope/quality limitation directly restating the source’s warning that word-level edits do not solve unclear audience, goal, or insufficient research.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "新聞稿的成效取決於新聞切入點，而不只取決於文字品質。",
+     "reason": "This directly restates the source’s press-release rule: “Success depends on the news hook, not the prose quality.”",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8273,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8274 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8273 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "nqumich/data-analyst",
+   "skill": "data-analyst",
+   "tier": "curated",
+   "category": "data",
+   "skill_id": "a120d11b-b1d1-45a0-8c9c-44aa1bdeec25",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 3.88,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [
+    "品質"
+   ],
+   "kpi1": {
+    "claims_total": 35,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它可處理 CSV、TSV、XLSX、JSON 與 JSON Lines 資料：讀取、清洗、驗證、篩選、彙整及連接資料；也能分塊處理大型 CSV。對 Excel 活頁簿，還可標準化合併儲存格、多層表頭、空白列欄、格式化數字、混合日期與多工作表。結果可輸出為清理後檔案、品質檢查結果、統計摘要或分析報告等。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能可讀取、清洗、驗證、篩選、聚合及連接 CSV、TSV、XLSX、JSON 與 JSON Lines 資料，並能以分塊方式處理大型 CSV。它特別提供 XLSX 標準化功能，可處理合併儲存格、多層表頭、空白行列、格式化數字、混合日期及多工作表。...結果可輸出為 DataFrame、清理後檔案、品質檢查結果、統計摘要或分析報告。"
+     },
+     {
+      "answer": "當你有資料檔需要整理或檢查時可使用，例如 Excel 格式混亂需要標準化、要依條件篩選資料、按類別加總交易、用共同欄位連接兩份 CSV，或檢查重複列、空值、欄位型別及不符合規則的資料。若 CSV 很大，也可考慮使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "可以這樣說：- 請標準化這份格式混亂的 Excel 活頁簿... - 請篩選 sales.csv 中金額大於 1,000 的資料列... - 請依類別彙整交易資料... - 請以 customer_id 連接 orders.csv 與 customers.csv... - 請檢查這份資料集的重複列、空值、欄位型別，以及不符合規則的金額、電子郵件與日期欄位。"
+     },
+     {
+      "answer": "你需要準備資料檔案；並依工作內容準備或說明要處理的工作表、欄位、篩選條件、驗證規則或輸出儲存位置。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供資料檔案，以及視任務需要提供工作表、欄位、篩選條件、驗證規則或輸出路徑；"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "格式混亂的 Excel 活頁簿／messy Excel workbook",
+     "reason": "這是在描述待處理資料的格式品質，而非評價技能；來源明示「xlsx 文件常包含复杂格式」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "清洗／clean",
+     "reason": "這是在陳述來源所列的資料清洗能力；來源 description 明示「数据处理、清洗、分析和统计」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "清理後檔案／cleaned datasets",
+     "reason": "這是在描述清理產物，而非宣稱技能本身安全或高品質；來源提供「一键标准化 xlsx 文件」及輸出檔案流程。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "品質檢查結果／quality reports",
+     "reason": "這是在描述資料品質檢查功能；來源函式文件字串為「数据质量检查报告」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不符合規則的金額、電子郵件與日期欄位／invalid amount, email, and date fields",
+     "reason": "這是在描述資料驗證，不是對技能的品質評價；來源的 schema 範例包含 amount、email 與 date。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9363,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "wrangler/data-cleanliness-scan",
+   "skill": "data-cleanliness-scan",
+   "tier": "curated",
+   "category": "data",
+   "skill_id": "dd8b1359-7b19-45c5-9b07-02f36de7e833",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 4.57,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 19,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會掃描一個或多個 CSV、Parquet、JSON、JSONL 或 Excel 資料檔，找出可能妨礙匯入 SQL 或導致分析錯誤的資料問題。它會檢查例如欄位型別、日期、空值、重複鍵、編碼、分隔符、列結構與跨欄邏輯，並產生依嚴重程度整理、包含範例與修正建議的資料潔淨度報告。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能掃描一個或多個 CSV、Parquet、JSON、JSONL 或 Excel 檔案，找出可能阻礙 SQL 匯入或造成分析錯誤的資料問題。它會檢查欄位型別、日期、空值、重複鍵、編碼、分隔符、列結構及跨欄邏輯等，並依嚴重程度產生附有範例與修正建議的報告。"
+     },
+     {
+      "answer": "當你準備把資料檔匯入 SQL 系統、但想先確認資料是否乾淨；或擔心資料中的型別混雜、日期格式錯誤、空值、重複鍵、欄位結構或編碼等問題會影響後續分析時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "找出可能阻礙 SQL 匯入或造成分析錯誤的資料問題。可以這樣說：掃描這些 CSV 檔案，告訴我它們是否足夠乾淨，可以匯入 PostgreSQL。檢查這份 Excel 活頁簿是否有混合資料型別、格式錯誤的日期、偽裝空值與重複鍵。"
+     },
+     {
+      "answer": "你需要準備要檢查的資料檔案，格式可為 CSV、Parquet、JSON、JSONL 或 Excel；並確認檔案格式及你要匯入的目標 SQL 系統。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供資料檔案，並確認其格式與目標 SQL 系統；"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "可能阻礙 SQL 匯入或造成分析錯誤",
+     "reason": "This describes the ingestion and analytical risks that the source says the scan is intended to flag; it does not appraise the skill itself.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "依嚴重程度產生",
+     "reason": "The source explicitly requires findings to be ranked by severity.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "是否足夠乾淨，可以匯入 PostgreSQL",
+     "reason": "This is a quality/ingestion-risk question that the source explicitly lists as an invocation case, including whether data will load into Postgres.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "whether they are clean enough to load into PostgreSQL",
+     "reason": "This is the English version of the source-supported cleanliness and Postgres-ingestion use case.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "格式錯誤的日期",
+     "reason": "The source explicitly checks date parsing and flags nonconforming or ambiguous date formats.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "malformed dates",
+     "reason": "The source description explicitly includes malformed dates among the identified issues.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "依嚴重程度排序",
+     "reason": "The source requires severity ranking for findings.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "severity-ranked",
+     "reason": "The source requires severity ranking for findings.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "阻礙 SQL 匯入的問題",
+     "reason": "The source says the skill flags issues that would block SQL ingestion.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "SQL ingestion blockers",
+     "reason": "The source defines Blocker findings as issues that will definitely fail SQL ingestion.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "編碼異常",
+     "reason": "The source explicitly checks encoding artefacts.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "encoding artefacts",
+     "reason": "The source explicitly checks encoding artefacts.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9054,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "wrangler/csv-to-json",
+   "skill": "csv-to-json",
+   "tier": "curated",
+   "category": "data",
+   "skill_id": "a4d3d041-3880-48fe-b6dd-45e69189e8af",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 3.47,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 24,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "可在 CSV、JSON 陣列與 JSONL 格式之間進行雙向轉換；也可處理分隔符、引號、標頭、編碼、空值與選用的型別推斷，並可驗證輸出記錄筆數是否和來源一致。大型檔案可用串流或分塊方式處理。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能可在 CSV、JSON 陣列與 JSONL 之間雙向轉換，並處理分隔符、引號、標頭、編碼、空值與選用的型別推斷。它也能以串流或分塊方式處理大型檔案，並驗證輸出筆數是否與來源一致。"
+     },
+     {
+      "answer": "當你需要把資料檔從 CSV 轉為 JSON 陣列或 JSONL，或從 JSON／JSONL 匯出成 CSV 時使用。若 CSV 使用特殊分隔符、需要偵測編碼、要推斷欄位型別或保留所有欄位為字串、要攤平巢狀 JSON，或要安全處理大型檔案並核對筆數，也適合使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請將 customers.csv 轉成 JSON 陣列，並把所有欄位保留為字串。；請將這個以分號分隔的 CSV 轉成 JSONL，並推斷整數、浮點數、布林值與空值。；請用點號鍵攤平 records.json 中的巢狀物件，然後匯出成 CSV。；請逐行將這個大型 JSONL 檔案轉成 CSV，並驗證轉換前後的記錄筆數一致。；請偵測這個 CSV 的分隔符與編碼，將它轉成 JSON，並回報實際使用的編碼。"
+     },
+     {
+      "answer": "需要準備來源檔案與目標檔案的路徑，以及要轉換的方向。必要時還要確認 CSV 格式、空值標記，以及巢狀資料要如何處理。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需要提供來源與目標檔案路徑、轉換方向，並在必要時確認 CSV 格式、空值標記及巢狀資料的處理方式。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "並驗證輸出筆數是否與來源一致",
+     "reason": "This is a verification/quality-related statement, and it restates the source's round-trip validation requirement.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並驗證轉換前後的記錄筆數一致",
+     "reason": "This is a verification/quality-related task-example statement, and it restates the source's requirement to report matching row/object counts.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "verify that the record counts match",
+     "reason": "This is a verification/quality-related task-example statement, and it restates the source's requirement to report matching row/object counts.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "超過 1 GB 的輸入應使用串流或分塊處理，並建議輸出為 JSONL 而非 JSON 陣列。",
+     "reason": "This is risk/quality guidance for large inputs and restates the source's warning and JSONL recommendation for inputs over 1 GB.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "CSV 欄位若包含換行，必須使用引號包住。",
+     "reason": "This is data-integrity guidance and restates the source's requirement that CSV fields containing newlines be quoted.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "JSON 沒有原生日期時間型別，因此日期與時間會輸出為 ISO 8601 字串。",
+     "reason": "This is a data-representation limitation affecting output quality and restates the source's date/datetime handling.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "將巢狀 JSON 轉成 CSV 時，必須選擇以點號鍵攤平、將巢狀欄位編碼成 JSON 字串，或拒絕轉換並改用 json-restructure。",
+     "reason": "This is a limitation/control on handling nested data and restates the source's three offered treatments.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8997,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8997 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8997 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "wrangler/text-to-numeric",
+   "skill": "text-to-numeric",
+   "tier": "curated",
+   "category": "data",
+   "skill_id": "035913a3-52c9-4ea5-82ee-15b1ee8f6682",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v3",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": [],
+    "locale_glosses": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 18,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會把帶有貨幣符號、千位分隔符、比例後綴、百分號或會計負號的文字數值，轉換成整數或浮點數欄位；結果欄位會加上 `_numeric` 後綴。它也能保留或重新命名原始欄位，並記錄格式資訊及無法解析的資料列。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會把含貨幣符號、千位分隔符、比例後綴、百分號或會計負號的文字值轉成整數或浮點數欄位。它會保留或重新命名原始欄位、記錄格式中繼資料與無法解析的資料列，並以 `_numeric` 後綴寫出結果。"
+     },
+     {
+      "answer": "當你的資料集中有看起來像數字、但其實以文字格式儲存的欄位，例如價格、營收、百分比，且其中含有貨幣符號、不同的小數或千位分隔格式、比例後綴或會計負號時，可使用它將這些內容轉成可用的數值欄位。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請把價格欄中像「$4.27」和「$1.2M」的值轉成數值欄，並保留原始文字。／請解析營收欄中的歐洲格式金額，以逗號作為小數標記、句點作為千位分隔符。／請將百分比字串轉成小數值，列出所有無法解析的資料列，並更新資料字典。"
+     },
+     {
+      "answer": "你需要準備一份資料集，以及要轉換的目標欄位。若尚未指定欄位，技能可找出大多數內容看似數字的文字欄，但會請你確認小數、千位分隔符和百分比等處理方式。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "它需要一份資料集及目標欄位；若未指定欄位，會找出大多數內容看似數字的文字欄，並請使用者確認小數、千位分隔及百分比等處理方式。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "套用前需要使用者確認偵測到的格式，尤其是小數點、千位分隔符與百分比的處理方式。",
+     "reason": "這是對操作前確認需求的限制說明，且來源明確要求在套用前確認偵測格式。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不會對同一欄中的不同貨幣進行外匯換算，只會逐列擷取幣別並解析數值。",
+     "reason": "這是對不進行 FX 換算的能力界限／風險範圍說明，來源明確作出相同限制。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "遇到範圍值時，需要使用者決定拆成最小值與最大值、取中點，或保留為文字。",
+     "reason": "這是對範圍值處理需使用者決策的限制說明，來源列出相同選項。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "無法解析的值會在數值欄中保留為空值，不會刪除相關資料列。",
+     "reason": "這涉及資料保留的安全性行為；來源規定無法解析時保留 null 且不刪除。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9302,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "yuyy-excel/excel-deduplicate",
+   "skill": "excel-deduplicate",
+   "tier": "curated",
+   "category": "data",
+   "skill_id": "59bd1974-6bfe-4f94-8d5d-ef0877e6d30a",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v3",
+   "kpi2_term_density": 0.7,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": [],
+    "locale_glosses": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 18,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會依指定的 Excel 欄位找出並移除重複列，可選擇保留第一次或最後一次出現的資料；會列出預計刪除的列，確認及備份後才修改檔案，並在完成後檢查是否仍有重複資料和公式的 `#REF!` 錯誤。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "它先以唯讀方式掃描重複值並列出要刪除的列，確認及備份後直接修改工作表 XML，移除重複列並保留其餘列的格式。完成後會重新讀取檔案，檢查是否仍有重複資料，並抽查公式中的 `#REF!` 錯誤。"
+     },
+     {
+      "answer": "當你的 Excel 檔案在某個關鍵欄位（例如客戶編號、SKU、電子郵件地址或訂單編號）有重複資料，且你要清理它們、決定保留首次或末次資料，或想先查看重複數量與列號後再刪除時，可以使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請將 sales.xlsx 依「客戶編號」欄去重，保留第一次出現的資料。；請移除 inventory.xlsx 中重複的 SKU，並保留每個 SKU 最後一次出現的資料。；請掃描 contacts.xlsx 中重複的電子郵件地址，顯示重複數量與列號範圍，並在刪除前先確認。"
+     },
+     {
+      "answer": "你需要準備一個 Excel `.xlsx` 檔案、用來判斷重複資料的關鍵欄名稱，以及要保留第一次或最後一次出現資料的選擇。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "此技能需要一個 Excel `.xlsx` 檔、去重關鍵欄名稱，以及保留首次或末次資料的選擇。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "並保留其餘列的格式",
+     "reason": "This is a quality/preservation statement about the output. The source itself states that formatting is fully preserved and retained rows are unchanged.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "檢查是否仍有重複資料",
+     "reason": "This describes a verification check, rather than independently judging the Skill's quality. The source performs and reports a remaining-duplicates check.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "抽查公式中的 `#REF!` 錯誤",
+     "reason": "This is a formula-health/risk check stated by the source itself.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並在刪除前先確認",
+     "reason": "This is a safeguard-oriented workflow statement. The source states that deletion follows confirmation.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "先建立備份",
+     "reason": "This is a safety measure stated in the source workflow.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "完成後驗證是否仍有重複資料",
+     "reason": "This is a quality-control verification step documented in the source.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並檢查結果檔案是否出現 `#REF!` 錯誤",
+     "reason": "This is a formula-integrity check that the source explicitly implements.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "操作前必須建立備份；文件要求成功後保留最新 3 份備份，操作失誤時從備份還原。",
+     "reason": "This is a safety and recovery statement that restates the source's backup guidance.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "公式健康檢查最多只掃描前 49 列與前 9 欄中的 `#REF!`。",
+     "reason": "This is a stated scope limit of a formula-health check, derived from the source code.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8849,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8848 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8849 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "yuyy-excel/excel-find-duplicates",
+   "skill": "excel-find-duplicates",
+   "tier": "curated",
+   "category": "data",
+   "skill_id": "072a172b-c28c-4a3a-b2d5-84118fb3a26f",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 15,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會以唯讀方式掃描 Excel 檔案，依你指定的一個欄位或多個欄位的組合找出重複資料列，並提供重複統計與 Excel 行號清單。你也可以指定保留第一次或最後一次出現的資料；結果可提供給 excel-delete 依由下往上的順序刪除重複列。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會唯讀掃描 Excel 檔案，依指定的單一欄位或多欄組合找出重複資料列，並提供重複統計與 Excel 行號清單。使用者需提供目標檔案及明確的關鍵欄位，也可指定保留首次或末次出現的資料，預設保留首次。輸出結果可交給 excel-delete，由下往上刪除重複列。"
+     },
+     {
+      "answer": "當你想檢查 Excel 或活頁簿中是否有重複資料，並想依特定欄位（例如專利號、電子郵件、E 欄）或欄位組合（例如客戶編號加訂單日期）判定重複時，可以使用它。尤其適合你需要知道重複列的行號、重複的總數或比例，或要準備一份供後續刪除重複列使用的行號清單時。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請依專利號掃描這個 Excel 檔案的重複資料列，保留第一筆並回傳 Excel 行號。\\n請用客戶編號與訂單日期的組合查重，並保留最後出現的一筆。\\n請找出 E 欄的重複值，並顯示總數、比例及前 20 個重複行號。\\n請依電子郵件欄位檢查這個活頁簿是否有重複列，不要修改原始檔案。\\n請產生可交給 excel-delete 由下往上刪除的重複行號清單。"
+     },
+     {
+      "answer": "你需要準備目標 Excel 檔案，以及明確用來判斷重複的關鍵欄位；可以是一個欄位，也可以是多個欄位的組合。若你對保留哪筆資料有要求，也要說明保留首次或末次出現的資料；未指定時，預設保留首次。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供目標檔案及明確的關鍵欄位，也可指定保留首次或末次出現的資料，預設保留首次。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "此技能會唯讀掃描 Excel 檔案",
+     "reason": "This is a safety-related characterization of the skill's non-writing behavior, and the source explicitly describes it as a read-only scan.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "輸出結果可交給 excel-delete，由下往上刪除重複列。",
+     "reason": "The source explicitly shows passing the result to excel-delete and specifies bottom-to-top deletion to avoid row-number shifting.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "此技能僅進行唯讀掃描，不會修改或刪除原始 Excel 檔案。",
+     "reason": "The source explicitly states that the skill is read-only and does not modify the original file.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "輸出的行號以第 1 行為標題列、第 2 行為第一筆資料為前提。",
+     "reason": "This is a correctness-related output caveat directly stated in the source's row-number note.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "關鍵欄位中有多個空值時，這些資料列會被視為重複；預設只保留第一筆。",
+     "reason": "This is a data-handling risk/caveat directly stated in the source's null-values note.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "大型檔案需要較長讀取時間；文件示例指出 168MB、33 萬列約需 150 秒。",
+     "reason": "This is a performance-quality caveat directly restating the source's large-file timing example.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9479,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "yuyy-excel/excel-filter",
+   "skill": "excel-filter",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "1a95f83e-b0e9-4068-ad70-4342d090ffe0",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.6,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 28,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會依照你指定的欄位與條件篩選 Excel 資料列；你可以選擇只保留符合條件的列，或刪除符合條件的列。它支援等值、包含、範圍、日期、空值及多條件篩選，並會建立備份與驗證結果。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能依指定欄位與條件篩選 Excel 資料列，可選擇只保留符合條件的列，或刪除符合條件的列。它需要 Excel 檔案、篩選欄位、條件、操作模式及表頭位置，支援等值、包含、範圍、日期、空值與多條件篩選。技能先以 pandas 找出目標列，再直接修改工作表 XML 以保留格式，並建立備份及驗證結果；刪除後會詢問是否壓實不連續的空白行。"
+     },
+     {
+      "answer": "當你需要依條件整理 Excel 資料列時使用，例如只留下某日期之後的申請資料、刪除欄位空白的列、找出標題含特定詞且符合某狀態的資料，或刪除指定日期範圍內的資料。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "- 請只保留這個 Excel 檔中申請日在 2020 年 1 月 1 日之後的資料列。\n- 請刪除申請人欄位為空白的資料列，第一列是表頭。\n- 請提取標題包含「石墨烯」且法律狀態為已授權的資料列。\n- 請刪除申請日在 2020 到 2023 年之間的所有資料列，完成後再詢問我是否要壓實空白行。"
+     },
+     {
+      "answer": "你需要準備 Excel 檔案、要篩選的欄位、篩選條件、要保留或刪除的操作模式，以及表頭所在位置。若是刪除資料列，也可能需要決定是否壓實不連續的空白行。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "它需要 Excel 檔案、篩選欄位、條件、操作模式及表頭位置，支援等值、包含、範圍、日期、空值與多條件篩選。技能先以 pandas 找出目標列，再直接修改工作表 XML 以保留格式，並建立備份及驗證結果；刪除後會詢問是否壓實不連續的空白行。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "再直接修改工作表 XML 以保留格式",
+     "reason": "這是在陳述 XML 直接操作對工作簿格式的效果，來源明確稱其為「格式无损」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並建立備份及驗證結果",
+     "reason": "備份與驗證是來源指定的操作與驗證步驟，並非目錄對技能可信度的獨立評價。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "刪除後會詢問是否壓實不連續的空白行",
+     "reason": "來源明定刪除完成後「必须询问用户」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "XML 刪除後不會自動讓行號連續，Excel 可能顯示空白行；必須取得使用者確認後，才能執行壓實步驟。",
+     "reason": "這是來源對 XML 刪除後果與使用者確認要求的直接說明。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "操作前需要建立備份。",
+     "reason": "來源的注意事項明定「操作前必备份」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並驗證結果中沒有不符合條件的資料",
+     "reason": "這要求對篩選結果進行正確性檢查；來源的驗證步驟會輸出「不符合条件残留」數量。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.964,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "yuyy-excel/excel-validate",
+   "skill": "excel-validate",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "31ad8ccf-2e32-401b-91e3-21f4eaeefe48",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.74,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [
+    "品質"
+   ],
+   "kpi1": {
+    "claims_total": 15,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會以唯讀方式掃描 Excel 檔案，檢查多種資料品質問題，包括空值率、唯一值、欄位型別是否一致、數值異常值、完全重複列、全空欄，以及疑似日期文字；並輸出含問題、嚴重程度與建議處理方式的報告，不會修改原始檔案。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能以唯讀方式掃描 Excel 檔案，檢查空值率、唯一值、欄位型別一致性、數值異常值、完全重複列、全空欄及疑似日期文字等資料品質問題。輸出會列出問題、嚴重程度與建議處理方式，且不會修改原始檔案。"
+     },
+     {
+      "answer": "當你想了解一份 Excel 或試算表是否有資料品質問題時使用，例如要找出哪些欄位有空值及其比率、是否有完全相同的重複資料列，或檢查混合資料型別、數值異常值和全空欄位。你也可以只針對空值或重複資料等特定範圍檢查。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "使用者也可指定只檢查空值或重複資料等範圍。／請檢查這份試算表哪些欄位含有空值，並顯示各欄的空值率。／請檢查這個 Excel 檔案是否有內容完全相同的重複資料列。／請檢查這份活頁簿是否有混合資料型別、數值異常值及全空欄位。"
+     },
+     {
+      "answer": "你需要準備一個目標 Excel 檔案；如果不想做完整掃描，也可以先決定要指定檢查的範圍，例如只檢查空值或重複資料。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "它需要一個目標 Excel 檔案，使用者也可指定只檢查空值或重複資料等範圍。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "資料品質問題",
+     "reason": "This describes the subject matter the Skill checks; the source describes checking data quality and producing a quality issue report.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "嚴重程度",
+     "reason": "The source assigns severity levels to checks and says to inform the user of severity when issues are found.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不會修改原始檔案",
+     "reason": "The source explicitly states that the Skill is read-only and does not modify the original file.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "data quality issues",
+     "reason": "This is the English task-example rendering of the source's data-quality checking capability.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "fully duplicate rows",
+     "reason": "The source explicitly checks and counts fully duplicate rows.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "numeric outliers",
+     "reason": "The source explicitly identifies extreme values in numeric columns.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "all-null columns",
+     "reason": "The source explicitly checks all-null columns.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "severity and suggested handling",
+     "reason": "The source says that, if issues are found, the user should be informed of severity and suggested handling.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "異常值檢查僅針對數值欄位",
+     "reason": "The source's outlier check is explicitly limited to numeric columns.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "處理大型檔案需要足夠記憶體",
+     "reason": "The source includes a large-file memory note and gives the same 330K-row by 48-column, approximately 150 MB estimate.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9694,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "yuyy-excel/excel-merge",
+   "skill": "excel-merge",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "596907d2-03b2-4711-a26a-8213c973a432",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 2.45,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 16,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "將多個結構相同的 Excel 檔案逐列合併為一個檔案；會先檢查表頭是否一致，完成後驗證表頭與總列數。合併結果的格式會沿用第一個檔案，且表頭只保留一次。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會把多個結構相同的 Excel 檔案逐列合併成一個檔案，先檢查表頭是否一致，並在完成後驗證表頭與總列數。... 輸出格式沿用第一個檔案。"
+     },
+     {
+      "answer": "當你有多個欄位結構相同的 .xlsx 檔案，想把它們彙整成單一檔案時使用；尤其適合你想先確認表頭一致，或需要在合併後核對總列數的情況。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "此技能會把多個結構相同的 Excel 檔案逐列合併成一個檔案，先檢查表頭是否一致，並在完成後驗證表頭與總列數。"
+     },
+     {
+      "answer": "你需要準備明確的 .xlsx 檔案清單；也可以先準備想要的輸出檔名。若不指定檔名，預設會輸出為「合併結果.xlsx」。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需要提供明確的 .xlsx 檔案清單，並可指定輸出檔名；若未指定，預設輸出為「合併結果.xlsx」。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "先檢查表頭是否一致，並在完成後驗證表頭與總列數。",
+     "reason": "This describes validation steps the source explicitly prescribes for header consistency and final row-count/header verification.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "header comparison",
+     "reason": "The source reads and compares headers before merging.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "row count validation",
+     "reason": "The source’s validation step says to verify the total row count.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "請先檢查這些 Excel 檔案的表頭是否一致，再進行合併。",
+     "reason": "The source explicitly makes header consistency checking the first operational step.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "Check whether these Excel files have matching headers before merging them.",
+     "reason": "The source explicitly makes header consistency checking the first operational step.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並驗證合併後的總列數。",
+     "reason": "The source validation step explicitly requires verification of the total row count.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "verify the final row count.",
+     "reason": "The source validation step explicitly requires verification of the total row count.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "合併前必須備份所有來源檔案。",
+     "reason": "The source states that merging is high-risk and instructs users to back up all source files before merging.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8667,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8667 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8667 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "yuyy-excel/excel-split",
+   "skill": "excel-split",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "1dc5f1ee-5515-4efa-8a59-d3ae5dd43ab4",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 1.36,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 18,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會依您指定欄位的值，把大型 Excel 表格拆成多個獨立的 XLSX 檔案，同時保留原有格式。它也會先統計分組，並檢查拆分後的總列數與欄位值是否正確。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能可依指定欄位的值，將大型 Excel 表格拆成多個獨立的 XLSX 檔案，並保留原有格式。它會先統計分組，再以串流方式分流資料，最後檢查輸出總列數與欄位值是否正確。"
+     },
+     {
+      "answer": "當您有一份大型 Excel 表格，想依某個欄位（例如申請人、年份、部門或客戶）分成多個檔案時，可以使用它。若只想讓前 N 個分組各自輸出，而把其餘資料合併為「其他.xlsx」，也適合使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請依「申請人」欄位拆分這個 Excel 檔案，並將結果放到 split 資料夾。；請按年份拆分這份活頁簿，只將前 10 個年份各自輸出成檔案，其餘合併到「其他」檔案。"
+     },
+     {
+      "answer": "您需要準備來源 Excel 檔案，以及用來拆分的欄位。您也可以事先決定 Top N 數量和輸出目錄。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需要提供來源檔案與拆分欄位，也可指定 Top N 數量及輸出目錄；超出 Top N 的資料會合併至「其他.xlsx」。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "並保留原有格式",
+     "reason": "This is a quality-related output claim, and the source explicitly states “格式完整保留。”.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "最後檢查輸出總列數與欄位值是否正確",
+     "reason": "This is a correctness-validation claim. The source’s verification step totals output rows and checks split-column mismatches.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "驗證輸出總列數與來源一致",
+     "reason": "This quality/correctness phrase is supported by the source verification output: “print(f'输出总行: {total_out} (期望 {total})')”.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "verify that the output row totals match the source",
+     "reason": "This quality/correctness phrase is supported by the source verification output: “print(f'输出总行: {total_out} (期望 {total})')”.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "row count validation",
+     "reason": "This quality-assurance tag restates the source’s fourth-step output-row-total check.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "若檔案曾經去重或篩選而留下列號空隙，拆分前必須先壓實資料。",
+     "reason": "This is a data-correctness precaution. The source states: “如果文件之前做过去重/筛选（有行号空隙），先压实再拆分，否则 pandas 扫描行数会偏高”.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "唯一值過多時建議限制 Top N",
+     "reason": "This is a risk/performance precaution directly reflected in the source: “大文件建议限制 Top N：默认 Top 20，避免生成数百个文件”.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "每個輸出檔都會繼承完整的 sharedStrings.xml，因此輸出檔越多，打包時間與總檔案大小越大。",
+     "reason": "This is a performance/size-risk statement. The source states that every output inherits complete sharedStrings and that more iterations make this stage slower.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "拆分前須以時間戳記檔名備份原始檔案，並在成功後保留最新 3 份備份。",
+     "reason": "This is a safety/backup precaution. The source explicitly says: “拆分前自动备份原文件（时间戳命名），成功后保留最新3份”.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.964,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "yuyy-excel/excel-sort",
+   "skill": "excel-sort",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "b446a69f-bdc3-41ce-969b-b40d1fffac16",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 25,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會依您指定的一個或多個欄位，為 Excel 資料排序。可處理升冪或降冪，以及數值、日期和文字；排序前會檢查表頭、資料型別與公式並備份，排序後會恢復適用的格式、欄寬和凍結窗格，並檢查結果。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能依指定欄位為 Excel 資料進行單欄或多欄排序，支援升冪、降冪，以及數值、日期與文字資料。執行前會勘察表頭、資料型別與公式，先行備份；排序後會恢復適用的格式、欄寬與凍結窗格，並檢查排序結果。"
+     },
+     {
+      "answer": "當您需要把 Excel 試算表或紀錄依日期、金額、類別、客戶名稱等欄位重新排列時使用；也適合需要先按一個欄位、再按另一欄位決定順序的情況。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請將這個 Excel 檔案依公開日期升冪排序。／請先依類別排序銷售紀錄，再依金額由大到小排列。／請依客戶名稱的文字順序排序試算表，並驗證排序是否正確。"
+     },
+     {
+      "answer": "您需要準備 Excel 檔案，並清楚指出要排序的欄位。您也可以事先指定排序方向、各欄位的優先順序，以及要處理的資料範圍。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供 Excel 檔案並明確指出排序欄，可另外指定方向、欄位優先順序與資料範圍。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "先行備份",
+     "reason": "這是對操作前備份這項安全措施的描述；來源明示會在操作前自動建立時間戳備份。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "恢復適用的格式、欄寬與凍結窗格，並檢查排序結果",
+     "reason": "這涉及輸出品質與結果驗證；來源明示恢復關鍵格式、欄寬及凍結窗格，並要求執行後驗證順序。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並驗證排序是否正確。",
+     "reason": "這是品質驗證要求；來源明示「执行后验证顺序正确」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "and verify that the order is correct.",
+     "reason": "這是品質驗證要求；來源明示「执行后验证顺序正确」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "若超過 5 萬列，保留格式前先詢問我。",
+     "reason": "這是針對大檔案格式保留成本的風險控制；來源要求超過 5 萬行時詢問使用者。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "ask me before preserving formatting if it has more than 50,000 rows.",
+     "reason": "這是針對大檔案格式保留成本的風險控制；來源要求超過 5 萬行時詢問使用者。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "時間戳備份",
+     "reason": "這是安全與可復原性措施；來源明示操作前自動備份並採時間戳命名。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "排序驗證結果",
+     "reason": "這是結果品質檢查的輸出；來源包含排序驗證步驟，並要求執行後驗證順序。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "還原格式",
+     "reason": "這是對輸出格式品質維持的描述；來源明示寫回後恢復關鍵格式，並在條件符合時恢復資料格式。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "公式欄排序可能造成引用錯亂；若排序欄含公式，需先轉換為值再排序。",
+     "reason": "這是公式排序的資料完整性風險及緩解方式；來源以相同內容說明此風險。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "超過 5 萬列時，保留格式前必須先詢問使用者是否接受所需時間。",
+     "reason": "這是大檔案格式保留的操作風險控制；來源要求超過 5 萬行時詢問使用者。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "資料格式會以首筆資料列為範本統一套用；同一欄內原有的格式差異可能遺失。",
+     "reason": "這是格式保留的品質限制與資料呈現風險；來源明示列內格式差異會在統一後遺失。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "操作前必須建立時間戳備份，並遵循 excel-safe-workflow 的勘察、確認與驗證流程。",
+     "reason": "這是安全流程與復原措施；來源要求操作前備份，且要求執行前勘察確認、執行後驗證。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8958,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8958 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8958 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "yuyy-excel/excel-regex-clean",
+   "skill": "excel-regex-clean",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "7b6ba9cd-b9ea-4149-8afc-8eb8fba53cd3",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 1.32,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 18,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會用正則表達式清理 Excel 中指定欄位的內容：可提取符合的內容、刪除符合的片段，或替換成其他文字。它會先預覽變更，之後在副本中執行並驗證結果。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此 Skill 使用正則表達式清理 Excel 指定欄位，可提取符合內容、刪除符合片段，或將其替換成其他文字。... 它會先預覽變更，再於副本中執行並驗證結果"
+     },
+     {
+      "answer": "當你需要針對 Excel 某一欄的文字進行規則化清理時使用，例如只保留某類文字、移除數字或連字號，或將空格統一替換為底線。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請從這個 Excel 檔案的「產業」欄中，只提取括號內的中文文字。／請刪除「產品名稱」欄中的所有數字與句點，並另存為新檔案。／請把「分類」欄中的所有空格替換成底線。／請讓「代碼說明」欄只保留英文字母，並在執行前先預覽變更。／請移除這個大型 Excel 活頁簿中「申請日」欄位的連字號。"
+     },
+     {
+      "answer": "你要準備 .xlsx 檔案、要處理的目標欄位，以及正則規則；如果不知道正則規則，也可以直接描述希望達成的清理效果。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需要提供 .xlsx 檔案、目標欄位，以及正則規則或直接描述想要的清理效果。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "它會先預覽變更，再於副本中執行並驗證結果",
+     "reason": "This describes previewing, copy-based execution, and validation practices stated in the source; it does not independently rate the Skill's safety or quality.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "正則表達式中的「.」、「(」、「)」與「\\」等特殊字元需要跳脫。",
+     "reason": "This is a source-stated operational caution about regex special characters, rather than a catalogue judgement.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "只處理指定的目標欄，不修改其他欄；操作前需依 excel-safe-workflow 備份。",
+     "reason": "This states scope containment and backup safety practices that the source explicitly describes.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9227,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "yuyy-excel/excel-scout",
+   "skill": "excel-scout",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "30cb96ee-0eda-4557-8c9e-3e4f8a1354a0",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 15,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會先以唯讀方式掃描 Excel 活頁簿，列出表頭、辨識日期或公式等欄位，並依你的業務需求找出可能要處理的欄位及其目前值。它會輸出一份結構化勘察報告，讓你確認後再交給其他技能實際修改檔案。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會在執行 Excel 操作前，以唯讀方式掃描活頁簿，列出表頭、辨識日期或公式等欄位，並依使用者的業務需求找出可能的目標欄位與目前值。輸出是一份結構化勘察報告，供使用者確認後交由其他技能執行實際修改。"
+     },
+     {
+      "answer": "當你想在修改 Excel 前，先確認該處理哪一欄、欄位目前內容是什麼時會使用它。例如，你要轉換日期格式或國別代碼、重排序號，或想先找出與需求相關的公式欄和日期欄時。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "它需要明確的 Excel 檔案路徑及操作意圖，例如日期格式轉換、國別代碼轉換或序號重排。"
+     },
+     {
+      "answer": "你需要準備明確的 Excel 檔案路徑，以及你打算進行的操作意圖，例如要轉換日期格式、轉換國別代碼或重排序號。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "它需要明確的 Excel 檔案路徑及操作意圖，例如日期格式轉換、國別代碼轉換或序號重排。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "以唯讀方式掃描活頁簿",
+     "reason": "This describes the Skill's read-only operating mode, which the source explicitly states.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "供使用者確認後交由其他技能執行實際修改",
+     "reason": "This describes the source-documented confirmation and handoff workflow rather than appraising the Skill's trustworthiness or quality.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "此技能只讀取與勘察檔案，不會修改任何內容。",
+     "reason": "This is a direct restatement of the source's read-only/no-modification limitation.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "執行後續操作前需要使用者確認勘察結果。",
+     "reason": "This restates the documented user-confirmation step before subsequent operation skills are used.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9372,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "yuyy-excel/excel-delete",
+   "skill": "excel-delete",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "beb1e4c2-d72e-4404-80b5-3288e659894c",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 1.28,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 20,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它可依行號、列號、欄位字母、欄位名稱或是否空白，從 Excel 活頁簿刪除指定的行或列；操作前會備份並檢查公式依賴，完成後會驗證刪除結果及是否出現 #REF! 錯誤。刪除行後，還會詢問是否要把行號壓實為連續編號。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能可依行號、列號、欄位字母、欄位名稱或空白狀態，從 Excel 活頁簿刪除指定的行或列。它需要使用者提供 .xlsx 檔案與刪除目標，並會在操作前備份檔案、檢查公式依賴，再以 XML 處理行或以 openpyxl 處理列。完成後會驗證刪除結果與 #REF! 錯誤，並在刪除行後詢問是否要將行號壓實為連續編號。"
+     },
+     {
+      "answer": "當你需要整理 Excel 活頁簿、移除特定範圍的行、指定欄位，或所有完全空白的行時，可以使用它。特別適合你希望刪除前先檢查公式依賴、刪除後確認沒有 #REF! 錯誤，或刪除行後要重新整理連續行號的情況。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請刪除這個 Excel 檔案的第 5 到第 10 行，並先檢查公式依賴。；請刪除名為「申請日」的欄位，並驗證是否產生 #REF! 錯誤。；請找出並刪除這個活頁簿中所有完全空白的行。；請刪除指定行，之後壓實剩餘行號並更新公式引用。"
+     },
+     {
+      "answer": "你需要準備一個 .xlsx Excel 檔案，以及明確的刪除目標，例如要刪除的行號或列號、欄位字母、欄位名稱，或指定要刪除完全空白的行。若有需要，也可說明是否要先檢查公式依賴、保留備份檔，以及刪除行後是否要壓實行號。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "它需要使用者提供 .xlsx 檔案與刪除目標。；此技能可依行號、列號、欄位字母、欄位名稱或空白狀態，從 Excel 活頁簿刪除指定的行或列。；請從右到左刪除 E 欄與 H 欄，並保留備份檔。；請刪除指定行，之後壓實剩餘行號並更新公式引用。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "檢查公式依賴",
+     "reason": "This describes the Skill's formula-dependency safety check, which the source explicitly requires before deletion.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "#REF! 錯誤",
+     "reason": "This refers to the spreadsheet error risk that the source explicitly checks for and seeks to prevent.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "備份檔案",
+     "reason": "This describes the source's required pre-deletion backup procedure.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "驗證刪除結果",
+     "reason": "This describes the source's required verification stage after execution.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並先檢查公式依賴。",
+     "reason": "This is a requested safety check explicitly required by the source before deletion.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並驗證是否產生 #REF! 錯誤。",
+     "reason": "This describes the source's post-deletion formula-health check.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "verify that no #REF! errors are introduced.",
+     "reason": "This describes the source's post-deletion #REF! checking procedure.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並保留備份檔。",
+     "reason": "This describes the source's backup and backup-retention instructions.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "更新公式引用。",
+     "reason": "This describes the source's formula-reference update during confirmed row compaction.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "大型檔案需要安裝 lxml，並使用 huge_tree=True。",
+     "reason": "This is a source-stated operational requirement for handling large files, not an appraisal of the Skill.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "INDIRECT 與 OFFSET 形成的間接引用不會被自動偵測。",
+     "reason": "This restates the source's explicit limitation on dependency detection.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "公式依賴與 #REF! 健康檢查只掃描前 50 行。",
+     "reason": "This describes a risk-relevant scan scope reflected in the source code's first-50-row loops.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "發現公式依賴時，需要先告知使用者並取得確認後才能刪除。",
+     "reason": "This restates the source planning instruction to inform the user and obtain confirmation when formula dependencies exist.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "以 XML 刪除行後，行號不會自動連續；必須取得使用者確認後才能壓實並重新編號。",
+     "reason": "This restates the source's warning and mandatory confirmation requirement for row-number compaction.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8517,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8518 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8517 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "yuyy-excel/excel-mapping-replace",
+   "skill": "excel-mapping-replace",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "07421c98-2a03-431d-bd64-e7e29414a0a7",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v3",
+   "kpi2_term_density": 2.04,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": [],
+    "locale_glosses": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 18,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會依照你提供的映射關係，批次替換 Excel 指定欄位中「完全相符」的值；映射表沒有列出的內容會保留不變。它也會先統計受影響及未匹配的值、備份檔案、完成後驗證替換結果。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能依照映射表，批次替換 Excel 目標欄中完全相符的值，並保留所有未出現在映射表中的內容。... 它會先統計受影響與未匹配的值，備份檔案後依檔案大小採用不同方式修改，最後驗證替換結果。"
+     },
+     {
+      "answer": "當你需要把 Excel 某一欄的既有值，依照一份對照表統一改成新值時使用。例如把國家名稱改為國碼、把產品代碼或狀態依映射清單轉換，同時希望先知道各項替換影響幾列，並確認未匹配值沒有被改動。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請將 sales.xlsx 的「國家」欄依照中國→CN、日本→JP、美國→US 批次替換，其他值保持不變。；請把我貼上的映射清單套用到「狀態」欄，但先列出每項替換會影響多少列。；請依照 mapping.csv 轉換 inventory.xlsx 中的產品代碼，並驗證未匹配的代碼沒有被修改。"
+     },
+     {
+      "answer": "你要準備：目標 xlsx 檔案、要修改的明確目標欄位，以及映射關係。映射關係可以在對話中說明、貼上清單，或提供 xlsx／csv 檔案；若使用映射檔，範例顯示可指定其中哪兩欄作為映射表。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供目標 xlsx 檔案、明確的目標欄，以及透過對話、貼上清單或 xlsx／csv 檔案提供的映射關係。；請使用 country_codes.xlsx 的 A 欄與 B 欄作為映射表"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "並保留所有未出現在映射表中的內容",
+     "reason": "This describes preservation of unmapped values, which the source expressly states as the skill's behavior.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "備份檔案後",
+     "reason": "This is a safety-related operational statement explicitly documented in the source's backup requirement.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "最後驗證替換結果",
+     "reason": "The source includes a dedicated verification step after execution.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "其他值保持不變",
+     "reason": "This is the documented behavior for values not present in the mapping table.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "while keeping all other values unchanged",
+     "reason": "This restates the source's documented preservation of unmapped values.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並驗證未匹配的代碼沒有被修改",
+     "reason": "The source explicitly checks that unmatched values still have their expected counts after replacement.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "then verify that unmatched codes were not changed",
+     "reason": "This restates the source's unmatched-value validation procedure.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "請先備份這份活頁簿",
+     "reason": "The source states that backup is required before operation.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "回報更新後的值分布",
+     "reason": "The source's verification code prints the post-replacement distribution for the target column.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "Back up this workbook",
+     "reason": "This restates the source's pre-operation backup requirement.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "report the value distribution after the update",
+     "reason": "This restates the source's post-update distribution report.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "只進行完全相符的精確匹配，不會進行包含匹配。",
+     "reason": "This is a quality/behavioral constraint stated directly in the source's exact-match note.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "匹配區分英文字母大小寫；如需忽略大小寫，必須先行預處理。",
+     "reason": "This is a matching-quality limitation explicitly stated in the source.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "映射表中沒有的值不會被修改。",
+     "reason": "This is a data-preservation behavior directly stated in the source.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "操作前必須備份目標檔案。",
+     "reason": "This is the source's stated safety requirement.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "若目標檔案正在 Excel 中開啟，儲存會失敗，必須關閉檔案後重試。",
+     "reason": "This is the source's stated file-lock failure condition and mitigation.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.931,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "yuyy-excel/excel-date-to-text",
+   "skill": "excel-date-to-text",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "7f07de91-2060-46a9-989a-648bd50a2445",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 0.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 19,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會掃描 Excel 作用中工作表中的日期欄位，將 datetime 值轉換為指定格式的文字；可新增文字欄或直接替換原欄，並會在修改前檢查日期欄與公式狀況、完成後抽樣驗證。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會掃描 Excel 作用中工作表的日期欄位，將 datetime 值轉成指定文字格式，例如 yyyymmdd、yyyy-mm-dd、中文日期或自訂年月日組合。使用者需要提供 Excel 檔案，並可指定日期格式、在原欄左側或右側新增文字欄，或直接取代原欄；若未指定，預設使用 yyyymmdd、左側新增欄位及「原欄名(文本)」表頭。它也會在修改前勘察日期欄與公式狀況，完成後抽樣驗證輸出。"
+     },
+     {
+      "answer": "當你需要把 Excel 內的日期欄改成可指定的文字日期格式，例如 yyyymmdd、yyyy/mm/dd、中文年月日或不補零格式，並希望選擇保留原欄另建新欄、或直接取代原欄時，可以使用它。若你想在修改前先列出會轉換哪些日期欄，也適合使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請把這個 Excel 檔案中的所有日期欄轉成 yyyymmdd 文字，並在左側插入新欄。；請將日期欄格式化為 yyyy/mm/dd，在右側新增欄位，並把新表頭命名為「格式化日期」。；請直接將原本的日期欄替換成 yyyy年mm月dd日 格式的文字。；請先掃描這個活頁簿的日期欄，並在修改前列出將要轉換的欄位。"
+     },
+     {
+      "answer": "你需要準備 Excel 檔案。你也可以事先決定想要的日期文字格式，以及要在原欄左側、右側新增欄位，或取代原欄；若不提供這些設定，會使用預設值。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需要提供 Excel 檔案，並可指定日期格式、在原欄左側或右側新增文字欄，或直接取代原欄；若未指定，預設使用 yyyymmdd、左側新增欄位及「原欄名(文本)」表頭。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "完成後抽樣驗證輸出",
+     "reason": "來源提供第四步驗證，並以固定的多個列號抽樣檢查。這是在陳述既有驗證流程，不是對技能品質的獨立背書。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "verification results",
+     "reason": "來源明定執行後必須驗證，且提供驗證腳本；此標籤描述該流程的產出。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "執行前必須完成需求解析、勘察與規劃，執行後必須驗證。",
+     "reason": "來源明確規定「执行前必须完成 需求解析→勘察→规划，执行后必须验证」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "操作前必須建立時間戳備份，成功後保留最新 3 份。",
+     "reason": "來源注意事項明定操作前自動備份、以時間戳命名，成功後保留最新 3 份。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "轉換僅適用於被 openpyxl 判定為 datetime 的值；空值維持空白，非日期值不轉換。",
+     "reason": "來源要求以 isinstance(val, datetime) 判定日期，並明定空值保持空白及非日期值保持不變。這是來源的資料保護限制。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "大型檔案（超過 100MB）載入與儲存可能各需數分鐘，必須預留足夠的逾時時間。",
+     "reason": "來源注意事項明定大於 100MB 的檔案載入與儲存各需數分鐘，並要求確認 timeout 足夠。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "多個日期欄位必須依欄號由右至左處理。",
+     "reason": "來源注意事項明定多個日期欄必須從右至左、按欄號降序處理，以避免插欄造成來源欄位位移。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9485,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "wrangler/standardise-country-names",
+   "skill": "standardise-country-names",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "e4944a93-f002-425b-8f3a-10d4f71a6cd5",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v3",
+   "kpi2_term_density": 0.55,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": [],
+    "locale_glosses": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 18,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會統一資料集中同一國家的不同拼法、別名與大小寫；可將結果輸出為 ISO 3166 官方短名、常用名稱、alpha-2 或 alpha-3 代碼。處理後會標記未解析項目，並以 `_standardised` 後綴寫出結果；若有資料字典，也會更新。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會統一資料集中同一國家的不同拼法、別名與大小寫，並可輸出 ISO 3166 官方短名、常用名稱、alpha-2 或 alpha-3 代碼。處理後會報告前後的唯一值數量、標記未解析項目、以 `_standardised` 後綴寫出結果，並在存在資料字典時更新它。"
+     },
+     {
+      "answer": "當你的資料裡同一國家有多種寫法、別名或大小寫不一致，或你需要把國家名稱改成特定標準名稱或 ISO 代碼時，可以使用它。若你想在處理前先查看所有不同國家值及其出現次數，或希望遇到歷史名稱、爭議領土、低信心比對時先徵詢你的意見，也適合使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "此技能會統一資料集中同一國家的不同拼法、別名與大小寫。可以這樣說：- 請將此檔案中的國家名稱轉換成 ISO alpha-2 代碼，並新增為一個欄位。- 在統一國家欄位之前，請先顯示所有唯一國家值及其出現次數。- 請統一國家名稱，但遇到歷史名稱、爭議領土或低信心比對時先詢問我。"
+     },
+     {
+      "answer": "你需要準備一份資料集，以及其中包含國家資料的欄位。使用時還需要選擇要採用的標準形式，並決定是否覆寫原本的欄位。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "它需要一份資料集及其中的國家欄位，會先列出唯一值與次數，再請使用者選擇標準形式及是否覆寫原欄位。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "ISO 3166 官方短名",
+     "reason": "這是對可選標準形式的來源／權威性的描述，而非對技能本身作出的品質或可信度評價；來源明確將其列為一種 canonical standard。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "低信心模糊比對須由使用者確認後才能套用。",
+     "reason": "此處涉及比對信心與品質控制，但只是重述來源要求低信心比對在套用前須經使用者確認。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "爭議領土不會自動解析，須詢問使用者。",
+     "reason": "此處涉及具敏感性的爭議領土處理方式，但只是重述來源的處理限制，並非評價技能安全性或可靠性。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9254,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "wrangler/unicode-consistency",
+   "skill": "unicode-consistency",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "d9ac35ce-6634-4061-8077-751c4da762b3",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 1.0,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 24,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會稽核資料集中的文字欄位是否有 Unicode 一致性問題，例如編碼與正規化形式不一致、混合文字系統、同形異字、不可見字元、空白或標點變體、亂碼、表情符號序列、大小寫折疊及雙向文字問題。它也可依指定規則處理，並產出問題報告、修復腳本、清理後的新欄位、複查結果與更新後的資料字典。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能稽核資料集文字欄位的 Unicode 一致性，包括編碼與正規化形式、混合文字系統、同形異字、不可見字元、空白與標點變體、亂碼、表情符號序列、大小寫折疊及雙向文字問題。它需要待檢查的資料集與文字欄位，並可依使用者指定的正規化形式、允許的文字系統組合及清理規則進行處理。輸出包含逐欄問題統計與樣本的 `unicode_report.md`、修復腳本、清理後的新欄位、複查結果，以及更新後的資料字典。"
+     },
+     {
+      "answer": "當你的資料集文字欄位出現看似相同但無法聯結、懷疑有不可見字元或亂碼、多語資料可能混入可疑同形異字，或你想先預覽再統一正規化與清理文字時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請找出 `customer_name` 欄位的值看起來相同，但聯結仍然失敗的原因。；請稽核這個 CSV 的文字欄位，找出混合的 Unicode 正規化形式、不可見字元與亂碼。；請檢查這份多語資料中的可疑拉丁字母與西里爾字母同形異字，但允許日文搭配拉丁字母產品代碼。；在套用變更前，請預覽 10 組修復重複編碼 UTF-8 與替換不換行空白的前後對照。"
+     },
+     {
+      "answer": "你需要準備要檢查的資料集及其文字欄位；如有特定要求，還可準備希望採用的正規化形式、允許混用的文字系統組合，以及清理規則。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "它需要待檢查的資料集與文字欄位，並可依使用者指定的正規化形式、允許的文字系統組合及清理規則進行處理。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "可疑拉丁字母與西里爾字母同形異字",
+     "reason": "restatement：來源將同形異字描述為可能遭偽裝或意外貼上的值，並明示 Latin + Cyrillic 混用的例子。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "severity ratings",
+     "reason": "restatement：來源要求報告逐欄的 severity，並提供 high、medium、low 的嚴重度 rubric。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "套用修正前必須先以 10 組前後對照樣本供使用者確認。",
+     "reason": "restatement：來源要求套用前顯示 10 組 before/after pairs 並向使用者確認。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "只有在使用者明確要求並遵循 `CONVENTIONS.md` 的備份政策時，才會覆寫原值。",
+     "reason": "restatement：來源明定僅在 explicit request 時覆寫，且要遵循 `CONVENTIONS.md` 的 backup policy。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "密碼雜湊、簽章及含百分比編碼的 URL 等需保持往返一致的欄位不會正規化，只會標示為「不可修改」。",
+     "reason": "restatement：來源的 round-trip-sensitive fields 邊界案例明定這些欄位永不正規化，並標記為 \"do not touch\"。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "選擇 NFC、NFD、NFKC 或 NFKD 前，需要確認下游系統的要求。",
+     "reason": "restatement：來源明定要在選擇正規化形式前詢問，並列出下游系統對 NFC 或 NFD 的不同需求。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "`ftfy.fix_text` 採啟發式修正，偶爾可能過度更正，因此大規模套用前必須預覽。",
+     "reason": "restatement：來源明示 `ftfy.fix_text` 是 heuristic、occasionally over-corrects，且要求規模化套用前預覽。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "多語資料中的刻意混合文字系統需要提供允許的文字系統組合；領域特定標點也不會在未確認時自動正規化。",
+     "reason": "restatement：來源要求對刻意混用採用 allowed-script-combination whitelist，並禁止未經確認自動正規化合法的非 ASCII 領域標點。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9693,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "wrangler/date-wrangling",
+   "skill": "date-wrangling",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "2e9992b2-86c0-444d-bd73-3f47efc95146",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 1.05,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 18,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會把資料集內的日期與時間欄位轉成下游系統或報表所需的格式，例如 ISO 8601、Unix 時間戳、帶或不帶時區的日期時間、財政季度、ISO 週日期與儒略日。它也可合併或拆分日期時間欄位、保留原始欄位、檢查轉換精度，並記錄時區與可能有損的轉換資訊。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能將資料集中的日期與時間欄位轉換成下游 API、SQL、機器學習流程或報表所需的格式，例如 ISO 8601、Unix 時間戳、含或不含時區的日期時間、財政季度、ISO 週日期及儒略日。它預設保留原欄位並建立具描述性的輸出欄位，也會以抽樣往返轉換檢查精度，並記錄格式、時區與有損轉換資訊。"
+     },
+     {
+      "answer": "當你需要讓資料集中的日期或時間符合 API、SQL、機器學習流程或報表的指定格式時會使用它；也適合在要合併日期與時間、拆開時間戳、依財政年度建立季度欄位，或處理混合日期格式與日光節約時間歧義時使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "此技能將資料集中的日期與時間欄位轉換成下游 API、SQL、機器學習流程或報表所需的格式。請合併 order_date 與 order_time 欄位，假定來源時區為 Asia/Taipei，並新增毫秒級 Unix 時間戳欄位。請將 event_timestamp 拆成日期與時間兩個欄位，並列出任何日光節約時間造成的歧義。請以四月作為財政年度起始月份，新增財政年度與財政季度欄位。請偵測這個混合格式欄位中的日期格式，並針對 01/02/2024 這類歧義值詢問我該如何處理。"
+     },
+     {
+      "answer": "你需要準備來源欄位及想要的目標格式。如果日期順序、來源時區或財政年度開始月份不清楚，也要提供這些設定；遇到像 01/02/2024 這類有歧義的日期值，可能需要先決定要如何解讀。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供來源欄位、目標格式，並在日期順序、來源時區或財政年度起始月份不明時補充設定。請偵測這個混合格式欄位中的日期格式，並針對 01/02/2024 這類歧義值詢問我該如何處理。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "它預設保留原欄位",
+     "reason": "This is a preservation/safety characteristic stated in the source procedure.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "也會以抽樣往返轉換檢查精度",
+     "reason": "This describes the source's stated validation against precision loss, rather than judging the skill's quality.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並記錄格式、時區與有損轉換資訊",
+     "reason": "This restates the source requirement to record lossy conversions.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "不能自行猜測",
+     "reason": "This is a risk-control instruction directly stated by the source for ambiguous date ordering.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "移除時區資訊可能造成資料損失",
+     "reason": "This restates the source warning that stripping a timezone is lossy.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "地區化日期格式僅供人員閱讀，不應作為儲存格式",
+     "reason": "This restates the source restriction that locale display formats are for human-facing output only and must never be stored.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "JavaScript Date 會遺失微秒精度",
+     "reason": "This restates the source precision-risk warning for JavaScript consumers.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "pandas datetime64[ns] 無法處理超過 2262-04-11 的日期",
+     "reason": "This restates the source's nanosecond-overflow limitation.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "覆寫原始欄位需要明確要求，並須依 CONVENTIONS.md 確認或建立備份",
+     "reason": "This restates the source overwrite and backup safety policy.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9418,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "wrangler/json-restructure",
+   "skill": "json-restructure",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "5e62dbd5-c600-49c6-935f-24a4362ce80f",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 1.55,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 27,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "可重新塑造 JSON 或 JSONL 的資料結構，例如展平或還原巢狀物件、依鍵分組或取消分組、移動欄位，以及展開或收合陣列；它會先以少量記錄示範，之後轉換完整資料、驗證結果並更新資料字典。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能可重新塑造 JSON 或 JSONL 的資料結構，包括展平與還原巢狀物件、依鍵分組或取消分組、移動欄位，以及展開或收合陣列。使用者需提供資料或樣本，並說明期望的頂層型別、鍵結構與巢狀層級；技能會先用少量記錄示範，再轉換完整資料、驗證結果並更新資料字典。"
+     },
+     {
+      "answer": "當你需要改變 JSON／JSONL 資料的組織方式時會使用它，例如按國家把城市放進陣列、把巢狀回應展平、把點號鍵還原為巢狀物件、把 tags 陣列拆成多筆記錄，或把交易依帳戶收合。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請依國家將這些 JSON 資料列分組，讓每個國家包含其城市陣列。\\n請把這個巢狀 API 回應展平成使用點號欄位名稱的記錄。\\n請將這些使用點號表示的 JSON 鍵還原成巢狀物件。\\n請將 tags 陣列展開成多筆記錄，並在每筆記錄中保留原始 ID。\\n請將這份交易清單轉成每個帳戶一個物件，並把交易放在巢狀陣列中。"
+     },
+     {
+      "answer": "你需要準備要處理的資料或資料樣本，並說明你想要的頂層型別、鍵的結構與巢狀層級。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供資料或樣本，並說明期望的頂層型別、鍵結構與巢狀層級"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "驗證結果",
+     "reason": "這是對轉換結果進行驗證的程序性品質主張，且來源明確要求驗證記錄數、鍵覆蓋率及可行時的往返檢查。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "data dictionary provenance entry",
+     "reason": "這涉及結構變更的資料譜系／品質文件；來源要求更新資料字典並加入 provenance entry。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "扁平化發生鍵名衝突時，需要使用者指定加後綴、報錯或保留第一個值等處理規則。",
+     "reason": "這是在陳述來源列出的鍵衝突風險及處理要求，而非評價技能本身。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "轉換後若有日期時間、NaN 或位元組等無法直接序列化為 JSON 的值，需轉成 ISO 字串、null 或 base64。",
+     "reason": "這是在陳述來源列出的非 JSON 可序列化值風險與轉換處理方式，而非對技能安全性或品質的評價。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9692,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "wrangler/data-shape",
+   "skill": "data-shape",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "c45a0b83-b4da-4766-84f2-ef6a2dbbbab4",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 1.08,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 20,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會分析尚未載入資料庫或需要重新儲存的平面檔、試算表與 API 匯出資料，找出資料結構問題，並提出資料表、主鍵與外鍵、關聯、索引、正規化層級或星型結構等設計建議。輸出也可包括結構提案、ER 圖、可調整的 SQL 建表語句，以及來源欄位至目標欄位的對應。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會分析尚未載入資料庫或需要重新儲存的平面檔、試算表與 API 匯出資料，找出重複欄組、封裝欄位、冗餘參照資料、混合粒度及其他結構問題。它需要來源欄位、型別、基數、空值率、範例資料列及預期查詢方式，並據此提出資料表、主外鍵、關聯、索引、正規化層級或星型結構。輸出可包括結構提案、Mermaid ER 圖、可調整執行的 SQL 建表語句，以及來源欄位到目標欄位的對應。"
+     },
+     {
+      "answer": "當你要在資料載入資料庫前整理 CSV、試算表或 API 匯出資料，或現有資料需要重新規劃儲存方式時，可以使用它。尤其適合處理重複欄位、逗號分隔標籤、巢狀 JSON、尚未正規化的表格，或要設計銷售資料的星型結構與客戶等級變更的時間點查詢時。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "在載入資料庫前，該如何把這份含有重複商品欄位的寬版 CSV 拆成有關聯的 SQL 資料表？／請檢視這份試算表的欄位與範例資料列，判斷是否已正規化，並建議主鍵、外鍵與資料表關聯。／請為這份銷售 API 匯出資料設計星型結構，包括事實表、維度表及來源到目標的欄位對應。／請將資料集中的逗號分隔標籤與巢狀 JSON 整理成合理的資料庫結構，並產生 CREATE TABLE 語句。／請針對客戶等級變更提出 SCD Type 2 設計，讓我能進行時間點查詢。"
+     },
+     {
+      "answer": "你需要準備來源欄位、各欄位型別、基數、空值率、範例資料列，以及預期如何查詢資料。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "它需要來源欄位、型別、基數、空值率、範例資料列及預期查詢方式"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "合理的資料庫結構",
+     "reason": "This describes the intended logical appropriateness of the proposed schema, rather than evaluating the Skill as trustworthy or recommending it. The source states that the Skill gives the dataset a “logical home” in a structured system.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "可調整執行的 SQL 建表語句",
+     "reason": "This is a capability/quality statement about generated SQL. The source explicitly says the `CREATE TABLE` statements are “ready to run (or adapt).”",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "為稽核保存 API 回應",
+     "reason": "This refers to retaining raw API payloads for audit. The source itself gives “raw API payloads kept for audit” as the corresponding edge case.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9752,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "wrangler/data-comparability",
+   "skill": "data-comparability",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "52af6b66-0880-4b50-b7c8-4f80b4eef8b4",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 1.35,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 17,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會分析兩個或以上的表格資料集之間是否可對齊，找出欄位名稱、資料型別、類別值、單位、資料粒度與連接鍵的差異，並提出在合併、聯集或交叉分析前的整理方案。它會把欄位更名、型別轉換、值映射、單位換算及無法調和資料列等建議，寫到輸入檔案旁的 comparability_plan.md；也會配對可執行各項操作的外掛技能，但不會自動執行。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會分析兩個或以上的表格資料集，找出欄位名稱、資料型別、類別值、單位、資料粒度及連接鍵之間的差異，並提出合併、聯集或交叉分析前的具體整理方案。……並將更名、型別轉換、值映射、單位換算及無法調和的資料列等建議寫入輸入檔案旁的 `comparability_plan.md`。它也會為各項操作配對可執行的外掛技能，但不會自動執行。"
+     },
+     {
+      "answer": "當你有兩個或以上的資料集，準備把它們合併、聯集或交叉分析，但需要先確認欄位是否對應、類別值與單位是否一致、連接鍵能否使用，或不同資料粒度的資料是否可比較時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "此技能會分析兩個或以上的表格資料集，找出欄位名稱、資料型別、類別值、單位、資料粒度及連接鍵之間的差異，並提出合併、聯集或交叉分析前的具體整理方案。"
+     },
+     {
+      "answer": "你需要先準備兩個或以上的資料集，格式可以是 CSV、Parquet、Excel 或 JSON。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供 CSV、Parquet、Excel 或 JSON 資料集；"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "檢查 customer_id 是否適合作為連接鍵",
+     "reason": "This assesses suitability of a candidate join key, which the source describes as validating candidate keys for uniqueness and overlap.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "whether customer_id is a valid join key",
+     "reason": "This assesses a data-field property rather than endorsing the Skill; the source instructs validation of candidate join keys.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "無法調和的資料列",
+     "reason": "This is a data-reconciliation classification reflected in the source instruction to identify rows to drop or flag as irreconcilable.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "irreconcilable rows",
+     "reason": "This is a data-reconciliation classification reflected in the source instruction to identify rows to drop or flag as irreconcilable.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "適合執行各項操作的技能",
+     "reason": "This refers to matching operations with skills that perform them, as instructed by the source; it does not appraise the audited Skill itself.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "suitable execution skills",
+     "reason": "This refers to matching operations with skills that perform them, as instructed by the source; it does not appraise the audited Skill itself.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9569,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "wrangler/add-data-dictionary",
+   "skill": "add-data-dictionary",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "5766e12e-4b27-4e1b-82ee-fb7a85534e50",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 3.72,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 25,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會為缺少文件的 CSV、JSON、JSONL、Parquet 或 Excel 資料集建立資料字典，記錄各欄位的名稱、型別、說明、單位、範例值、是否可為空值、來源及轉換歷程。預設產生 Markdown 檔，也可輸出 YAML、JSON 或 CSV。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "「此技能為缺少文件的 CSV、JSON、JSONL、Parquet 或 Excel 資料集建立資料字典，記錄每個欄位的名稱、型別、說明、單位、範例值、是否可為空值、來源與轉換歷程。」「預設會把 `data_dictionary.md` 寫入資料集所在資料夾，也可輸出 YAML、JSON 或 CSV。」"
+     },
+     {
+      "answer": "當你有一份尚未建立欄位文件的資料集，想整理每個欄位的意思與結構時會使用它。尤其適合欄位很多、需要先以 TODO 或佔位內容建立初稿，或想逐欄互動補充欄位含義的情況。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "「此技能為缺少文件的 CSV、JSON、JSONL、Parquet 或 Excel 資料集建立資料字典。」「並可選擇逐欄補充欄位含義，或先產生含待填說明的版本。」「請為這個欄位很多的資料集建立 CSV 格式的結構文件，欄位說明先使用佔位內容。」"
+     },
+     {
+      "answer": "你需要準備資料集的路徑與格式。若想讓欄位說明更完整，還可以準備每個欄位的含義，以便逐欄補充；並可事先決定是否要先產生待填說明的版本，以及輸出格式。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "「使用者需提供資料集路徑與格式，並可選擇逐欄補充欄位含義，或先產生含待填說明的版本。」「也可輸出 YAML、JSON 或 CSV。」"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "欄位的實際語意通常需要使用者提供；可選擇逐欄互動說明，或先以「<TODO: describe>」佔位。",
+     "reason": "This is a source-stated limitation: profiling does not normally establish what a column means, and the source specifies interactive and stub modes.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "處理巢狀 JSON 時只展平一層，並在描述中註明巢狀結構。",
+     "reason": "This restates the source's nested-JSON edge-case behavior and limit.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "超過 50 個欄位的資料集預設使用佔位模式。",
+     "reason": "This restates the source's stated default for very wide datasets.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "二進位或 blob 欄位只記錄為 bytes，且不進行內容剖析。",
+     "reason": "This restates the source's stated handling limit for binary/blob columns.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "需要安裝 pandas、pyarrow 與 openpyxl。",
+     "reason": "This restates the source dependency installation requirement.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9226,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "wrangler/pii-flag",
+   "skill": "pii-flag",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "a41024c6-3fb7-4b6f-bb34-ec292687c169",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 1.05,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [
+    "風險",
+    "高風險"
+   ],
+   "kpi1": {
+    "claims_total": 25,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會掃描資料集的欄位與儲存格，辨識多種類型的個人資料，包括姓名、電子郵件、電話、地址、證件號碼、信用卡、IP、出生日期、精確座標、健康資料，以及自由文字中的個人資料。它也會產出遮罩化的逐格 JSONL 報告、欄位摘要、信心分數，並建議刪除、雜湊、泛化或以合成資料替換等處理方式；若發現特殊類別或高風險個資，會要求在公開發布前明確確認。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此 Skill 會掃描資料集的欄位與儲存格，辨識姓名、電子郵件、電話、地址、證件號碼、信用卡、IP、出生日期、精確座標、健康資料及自由文字中的個人資料。... 它會輸出遮罩化的逐格 JSONL 報告、欄位摘要、信心分數與刪除、雜湊、泛化或合成替換等處理建議。若偵測到特殊類別或高風險個資，會在後續公開發布前要求明確確認。"
+     },
+     {
+      "answer": "當你準備公開發布資料集（例如發布到 Hugging Face）前，想先檢查其中是否含有個人資料時會使用它。也適合在你想特別檢查某個文字欄位，或需要找出證件號碼、信用卡號、IP 位址、出生日期與精確座標，並決定該如何處理含個資欄位時使用。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "- 在我把這個資料集發布到 Hugging Face 前，請先掃描其中的個人資料。\n- 請檢查 notes 欄位是否包含姓名、電子郵件、電話號碼或醫療資訊。\n- 請偵測這個檔案中的政府證件號碼、信用卡號、IP 位址、出生日期及精確座標。\n- 請針對每個含有個資的欄位，建議應刪除、雜湊、泛化，或以合成資料取代。"
+     },
+     {
+      "answer": "你需要先提供要檢查的資料集；此外，你可以選擇是否要對文字欄位使用機器學習偵測。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供要檢查的資料集，並可選擇是否對文字欄位使用機器學習偵測。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "若偵測到特殊類別或高風險個資",
+     "reason": "This conveys the source-defined classification of detected health, government-ID, and credit-card data as special-category or high-risk PII.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "會在後續公開發布前要求明確確認",
+     "reason": "This restates the source’s explicit-confirmation safeguard before downstream publication.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "在我把這個資料集發布到 Hugging Face 前",
+     "reason": "This is a publication-safety use context stated by the source.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "before I publish it on Hugging Face",
+     "reason": "This is a publication-safety use context stated by the source.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "醫療資訊",
+     "reason": "This corresponds to the source’s medical IDs / health-data category, which it classifies as special-category data.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "medical information",
+     "reason": "This corresponds to the source’s medical IDs / health-data category, which it classifies as special-category data.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "若發現健康資料、政府證件號碼或信用卡號等特殊類別或高風險個資，任何後續發布步驟都必須先取得使用者明確確認。",
+     "reason": "This directly restates the source’s warning and explicit-confirmation requirement for high-risk PII before publication.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "報告本身含敏感資訊，不應公開分享；預設應寫在資料集旁並加入 .gitignore。",
+     "reason": "This restates the source’s warning that the report is sensitive and should not be shared publicly, plus its default storage handling.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "疑似測試資料、短數字字串或虛構電子郵件只會被標為可能無害，不會自動修復。",
+     "reason": "This restates the source’s false-positive handling and prohibition on automatic remediation.",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9028,
+   "kpi6_flagged": false
+  },
+  {
+   "id": "wrangler/add-iso3166",
+   "skill": "add-iso3166",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "c94c35c8-9a75-4018-8def-3b71a5359dea",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v2",
+   "kpi2_term_density": 3.8,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 17,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "它會在以國家名稱表示的資料集中，新增 ISO 3166-1 的二字母、三字母與數字代碼欄位，並以原本檔案格式另存一份新檔。也會處理常見別名、回報無法對應或空值的資料；若有資料字典，還可更新新欄位的說明。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此技能會為以國家名稱表示的資料集新增 ISO 3166-1 二字母、三字母及數字代碼欄位，並以原格式另存新檔。它也會處理常見別名、回報無法對應及空值的資料，並可在存在資料字典時更新新增欄位的說明。"
+     },
+     {
+      "answer": "當你的資料集用國家名稱記錄資料，而你需要把這些名稱轉成 ISO 國家代碼、找出無法配對的國家名稱，或為資料字典補上新代碼欄位說明時，可以使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請將我的 Parquet 資料集中 nation 欄位映射為 ISO 3166 二字母代碼，並回報所有無法配對的值。；請為資料集新增國家代碼，並在現有資料字典中加入新欄位的說明。"
+     },
+     {
+      "answer": "你需要準備 CSV、JSON、JSONL、Parquet 或 XLSX 格式的資料檔；如果國家名稱所在欄位不明確，還需要告訴它是哪一個欄位。若希望更新資料字典，則需要有現有的資料字典。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需要提供 CSV、JSON、JSONL、Parquet 或 XLSX 檔案，並在欄位不明確時指出國家名稱所在欄位。；並可在存在資料字典時更新新增欄位的說明。"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "欄位不明確時",
+     "reason": "這描述國家欄位辨識不確定時的處理條件；來源要求欄位有歧義時詢問使用者。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "回報無法對應及空值的資料",
+     "reason": "這描述未映射值與空值的回報行為；來源明確要求列出未映射值並回報空值數量。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "report every unmatched value",
+     "reason": "這描述未映射值的完整回報要求；來源要求列出每個無法映射的國家值及列數。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "ask me how to handle rows containing multiple countries",
+     "reason": "這描述多國家列的風險處理；來源要求將此類列標記並詢問使用者如何處理。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "若國家欄位有多個候選或意義不明，需要使用者指定正確欄位。",
+     "reason": "這描述欄位歧義的限制與緩解方式；來源有相同要求。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "若已存在 ISO 欄位，需要使用者決定覆寫或略過。",
+     "reason": "這描述既有代碼欄位的覆寫風險；來源要求報告既有欄位並詢問覆寫或略過。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "次國家級地區需要使用者決定映射至母國或留空。",
+     "reason": "這描述次國家級地區的映射不確定性；來源有相同處理方式。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "歷史實體不屬於一般 ISO 3166-1 對應範圍，可選擇使用 ISO 3166-3。",
+     "reason": "這描述歷史實體的標準適用範圍；來源明確指出 ISO 3166-3 可涵蓋這些實體。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "一列包含多個國家時，需要使用者決定拆分、略過或只保留第一個。",
+     "reason": "這描述多國家列的處理限制；來源列出相同選項。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "空值或無法解析的國家名稱不會取得代碼，並會列入報告。",
+     "reason": "這描述空值及未解析名稱的處理結果；來源要求空值保留為 null 並回報，且要求回報未映射值。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.9325,
+   "kpi6_flagged": false
+  }
+ ]
+}

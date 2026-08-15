@@ -23,10 +23,10 @@ logger = logging.getLogger("skillhub_llm.enrich")
 # PDM-003 model tier: index-time enrichment runs once per Skill Version and its
 # output becomes a primary retrieval field, so quality outweighs cost.
 ENRICH_MODEL = os.getenv("ENRICH_MODEL", "gpt-5.6-sol")
-# v2 adds `limitations`. Bumped rather than edited in place: the version is what
-# tells a stored enrichment written under the old prompt from one written under
-# this, and reindex uses it to find the stale rows.
-PROMPT_VERSION = "enrich-skill/v2"
+# v2 adds `limitations`; v3 adds the locale gloss rule. Bumped rather than edited
+# in place: the version is what tells a stored enrichment written under the old
+# prompt from one written under this, and reindex uses it to find the stale rows.
+PROMPT_VERSION = "enrich-skill/v3"
 
 # Ceiling on a single gateway call. Client disconnect cancels the request at the
 # HTTP layer, which is how Go's cancellation propagates (ADR-016 rule 7).
@@ -61,6 +61,13 @@ stated scope limits, required accounts, credentials, network access or installed
 software. Restate only; do not infer a limitation the content does not state, and do \
 not write anything about risk, safety, trustworthiness or quality. Use an empty list \
 where the content states none.
+
+In the {language} fields, when the content names a proper noun belonging to another \
+Chinese locale - a typeface, product or term written for Simplified Chinese readers - \
+keep the original as the fact and append the {language} equivalent in parentheses, as \
+原文（繁中：對應）. Annotate only: never swap the original out, and never add a gloss \
+where the content names no such thing. The document's fact stays intact; the reader also \
+gets the name they know.
 """
 
 

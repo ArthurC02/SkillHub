@@ -122,9 +122,14 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 | 量化前置（檢索品質） | ✅ 已過 | golden-query-set.md §10.8：各類別 recall@5 全部 100%、繁中跨語言 100%、Top-3 100% |
 | 索引管線就緒 | ✅ 已就緒 | import-report.md §3：44/45 匯入成功、`enrichment_status='enriched'` 44/44 |
 | UI 阻擋（符合原因、詳情頁） | ✅ 已關閉 | audit §5.1／§5.2 第二次對帳 |
-| **CONTENT-005 白話摘要** | ❌ **未完成** | audit §8 第一梯第 1 項。目錄裡 5 個簡體中文 Skill（`data-analyst` 與 YuYY2004 系列）尚未改寫為繁中 |
+| ~~**CONTENT-005 白話摘要**~~ **審核（自動化審校）** | ⚠️ **審校已完成，3 筆待裁定** | [content-review-report.md](../content-review-report.md)：45 筆全量審校，42 通過／3 建議下架待修（`excel-format`、`internal-comms`、`pptx`） |
 
-> ⚠️ **CONTENT-005 未完成前不得執行本測試。** 這是 golden-query-set.md §5 指名的前置，audit §7.2 再次確認為「唯一剩下的實質前置」。提前測，`data` 類別的兩張卡（`DAT-3`、`DAT-4`）測到的是缺工序的中間態——而這兩張卡的 gold 恰好就是待改寫的那批簡中 Skill（見 §4.2）。
+> **2026-08-16 更新：人工審核項已由自動化審校完成。** 負責人 2026-08-16 決定不進行人工審核，改以 Script ＋ 獨立 Judge 模型（`gpt-5.6-terra`）＋ 機械檢查對 45 筆全量審校（`02` §4.7 已加註修訂）。結果：
+>
+> - **唯一主判準（非技術讀者的可理解性）45/45 通過**，語言慣例 45/45 乾淨——`data` 類別 25 筆**全數通過**，包含 `DAT-3`／`DAT-4` 的 gold（`data-analyst`、`excel-deduplicate`）與 `DOC-4` 的 gold（`excel-freeze`）。**原本擋測的理由（簡中 Skill 未繁中化）已消失。**
+> - **剩餘阻擋**：3 筆判為需修改並附下架建議，**其中 2 筆為精選**，故 `curated-skill-list` 檢查 ⑦ 仍是 `pending`，CONTENT-005 尚不能勾選完成。
+> - ⚠️ **這 3 筆有 2 筆是卡片的 gold primary**：`pptx` 是 **DOC-3**（單一 primary，最嚴的一張）、`internal-comms` 是 **WRI-2**；`excel-format` 是 **DOC-4** 的 acceptable。**卡片測的正是這幾筆的摘要文字**，因此它們的判定結果會直接落在測試效度上——三筆的缺陷都屬「摘要多說了原文沒寫的事」（幻覺與品質形容詞），不是「讀不懂」，故不影響受測者能否找到它們，但若受測者質疑摘要與實際能力不符，該回饋須另行歸因。
+> - **D 日開測前需負責人裁定**該 3 筆：採報告 §7 的 `enrich-skill/v4` 重跑（預估 < $1、< 30 分鐘，重跑後線上文字會變，須在凍結前完成），或接受現況開測並在分析報告註明。**凍結生效後不得再重跑增強**（§3.2）。
 
 ### 3.2 環境凍結
 
