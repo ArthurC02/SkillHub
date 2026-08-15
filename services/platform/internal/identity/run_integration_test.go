@@ -12,10 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/outbox"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
@@ -44,12 +46,14 @@ func seedTestCase(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string)
 // --- HTTP helpers ------------------------------------------------------------
 
 type runView struct {
-	RunID        string `json:"run_id"`
-	Status       string `json:"status"`
-	StatusReason string `json:"status_reason"`
-	Provider     string `json:"provider"`
-	Error        string `json:"error"`
-	Transitions  []struct {
+	RunID         string `json:"run_id"`
+	Status        string `json:"status"`
+	StatusReason  string `json:"status_reason"`
+	Provider      string `json:"provider"`
+	FailureClass  string `json:"failure_class"`
+	CleanupStatus string `json:"cleanup_status"`
+	Error         string `json:"error"`
+	Transitions   []struct {
 		From   string `json:"from_status"`
 		To     string `json:"to_status"`
 		Reason string `json:"reason"`
@@ -91,19 +95,38 @@ func (c *client) getRun(t *testing.T, runID string) (int, runView) {
 // same worker registration cmd/worker uses.
 func startWorker(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
+	startWorkerWith(t, &run.Service{Pool: pool})
+}
+
+// startWorkerWith is startWorker for a service that has been configured — with a
+// provider registry, a shorter poll interval, a lower retry ceiling. Every worker
+// cmd/worker registers is registered here too, so the cleanup, orphan-scan and
+// supervisor paths are exercised through River rather than called directly.
+func startWorkerWith(t *testing.T, svc *run.Service) *river.Client[pgx.Tx] {
+	t.Helper()
 	workers := river.NewWorkers()
-	river.AddWorker(workers, &run.Worker{Svc: &run.Service{Pool: pool}})
-	c, err := queue.New(pool, &river.Config{
+	river.AddWorker(workers, &run.Worker{Svc: svc})
+	river.AddWorker(workers, &run.CleanupWorker{Svc: svc})
+	river.AddWorker(workers, &run.OrphanScanWorker{Svc: svc})
+	river.AddWorker(workers, &run.SuperviseWorker{Svc: svc})
+	river.AddWorker(workers, &outbox.Worker{Pool: svc.Pool})
+	c, err := queue.New(svc.Pool, &river.Config{
 		Workers: workers,
-		Queues:  map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 1}},
+		Queues:  map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 2}},
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	// The worker needs its own insert-capable client so the jobs it enqueues (the
+	// cleanup a terminal transition owes) actually reach the queue.
+	if svc.Queue == nil {
+		svc.Queue = c
 	}
 	if err := c.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = c.Stop(context.Background()) })
+	return c
 }
 
 func waitForStatus(t *testing.T, c *client, runID, want string) runView {
@@ -155,15 +178,15 @@ func (f fixture) start(t *testing.T) runView {
 
 // --- tests -------------------------------------------------------------------
 
-// RUN-001/002: the whole chain, end to end. Create a run through the API, let the
-// real River worker pick it up, and watch it walk the state machine to a failure
-// that says what actually went wrong.
+// RUN-001/002/005: a deployment with no sandbox configured at all.
 //
-// The failure is the point. There is no sandbox provider yet, and the worker says
-// so rather than reporting a success nobody executed. When SelfHostedProvider
-// lands (RUN-003/SBX-001) this test's expected terminal state changes and nothing
-// else does.
-func TestRunGoesFromQueuedToFailedWithNoProvider(t *testing.T) {
+// The failure is the point, and so is its shape. Nothing is dispatched, so no
+// attempt row is created and there is nothing to clean up: the run goes straight
+// from queued to failed, classified as a capability mismatch, with a reason that
+// names the missing provider. Before RUN-005 this walked all the way to
+// `preparing` and invented an attempt to fail; refusing before dispatch is what
+// ADR-004 asks for.
+func TestRunFailsImmediatelyWhenNoProviderIsConfigured(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-run-chain")
@@ -185,6 +208,12 @@ func TestRunGoesFromQueuedToFailedWithNoProvider(t *testing.T) {
 		t.Errorf("failure reason = %q, want it to name the missing provider", final.StatusReason)
 	}
 
+	// RUN-006: classified, so the funnel can tell "we had nowhere to run it" from
+	// "the skill failed".
+	if final.FailureClass != "capability_mismatch" {
+		t.Errorf("failure_class = %q, want capability_mismatch", final.FailureClass)
+	}
+
 	// RUN-002: every state change recorded, in order, with its reason.
 	var path []string
 	for _, tr := range final.Transitions {
@@ -193,7 +222,7 @@ func TestRunGoesFromQueuedToFailedWithNoProvider(t *testing.T) {
 			t.Errorf("transition to %s recorded no reason", tr.To)
 		}
 	}
-	want := []string{"queued", "provisioning", "preparing", "failed"}
+	want := []string{"queued", "failed"}
 	if strings.Join(path, ",") != strings.Join(want, ",") {
 		t.Errorf("transition path = %v, want %v", path, want)
 	}
@@ -201,28 +230,27 @@ func TestRunGoesFromQueuedToFailedWithNoProvider(t *testing.T) {
 		t.Errorf("first transition came from %q, want the run's creation (empty)", from)
 	}
 
-	// RUN-003: exactly one attempt, classified.
-	if len(final.Attempts) != 1 {
-		t.Fatalf("attempts = %d, want 1", len(final.Attempts))
-	}
-	if final.Attempts[0].ErrorClass != "provision" {
-		t.Errorf("attempt error_class = %q, want provision", final.Attempts[0].ErrorClass)
+	// Nothing was dispatched, so no attempt was invented for a sandbox that never
+	// existed (RUN-003).
+	if len(final.Attempts) != 0 {
+		t.Errorf("attempts = %d, want 0: nothing was ever dispatched", len(final.Attempts))
 	}
 
-	// ADR-008: one outbox event per state entered, all still unpublished because
-	// no publisher exists yet (RUN-005).
+	// ADR-008: one outbox event per state entered, plus the cleanup that RUN-002
+	// requires after every terminal run. Waiting for cleanup first is what makes
+	// the event list below deterministic.
+	waitForCleanup(t, f.client, created.RunID)
 	events := outboxFor(t, pool, created.RunID)
 	var types []string
 	for _, e := range events {
 		types = append(types, e.EventType)
-		if e.PublishedAt.Valid {
-			t.Errorf("event %s is marked published, but nothing publishes yet", e.EventType)
-		}
 		if got := uuidText(e.CorrelationID); got != created.RunID {
 			t.Errorf("event %s correlates on %q, want the platform run_id %q", e.EventType, got, created.RunID)
 		}
 	}
-	wantTypes := []string{"run.queued", "run.provisioning", "run.preparing", "run.failed"}
+	// The cleanup event is there because RUN-002 requires a cleanup pass after
+	// every terminal run, even one that provisioned nothing.
+	wantTypes := []string{"run.queued", "run.failed", "run.cleanup_cleaned"}
 	if strings.Join(types, ",") != strings.Join(wantTypes, ",") {
 		t.Errorf("outbox event types = %v, want %v", types, wantTypes)
 	}

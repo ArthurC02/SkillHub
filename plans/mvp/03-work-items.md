@@ -142,12 +142,12 @@
 - [x] RUN-001 定義 Provider-neutral Run Request 與 Run Result。（`contracts/openapi/sandbox-provider.yaml`）
 - [x] RUN-002 定義 Provider Capability 描述格式。（同上檔案 `ProviderCapability`；能力相容檢查屬 RUN-005）
 - [x] RUN-003 定義平台 `run_id` 與 `provider_run_id` 映射。（0016 `run_attempts`；解掉 0004「重試覆寫 `provider_run_id`」的已知債）
-- [ ] RUN-004 實作 queued 到 cleaning_up 的標準狀態機。**部分完成**：queued→終態的狀態機、轉移歷史與 Outbox 已落地（`internal/run`、0016）；`cleaning_up` 未實作，冪等清理屬 RUN-007，故不勾。
-- [ ] RUN-005 實作 Run 排程、Provider 選擇與能力相容檢查。
-- [ ] RUN-006 實作取消、逾時、有限重試與失敗分類。
-- [ ] RUN-007 實作冪等清理與遺留 Sandbox 掃描。
-- [ ] RUN-008 實作服務重新啟動後的 Run 狀態恢復或安全終止。
-- [ ] RUN-009 建立 Provider 契約測試套件。
+- [x] RUN-004 實作 queued 到 cleaning_up 的標準狀態機。（**2026-08-16 由 RUN-007 一併結案**：終態轉移在同一交易內排入 cleanup job，清理結果寫 `runs.cleanup_status`／`cleanup_at`。`cleaning_up` 依 ADR-004「執行結果與清理結果分開記錄」不進 `run_status` enum，而是 0004 既有的 `run_cleanup_status` 欄位——「Run 結束後必須進入清理流程」與「重複清理不造成錯誤」兩條允收由 `internal/run/cleanup.go` 與整合測試覆蓋）
+- [x] RUN-005 實作 Run 排程、Provider 選擇與能力相容檢查。（Provider 註冊表為部署靜態設定 `SKILLHUB_SANDBOX_PROVIDERS`／`SKILLHUB_SANDBOX_TOKEN_<NAME>`，不做動態註冊；`GET /capability` 以 30 秒 TTL 快取，worker 啟動時清空重讀；相容檢查涵蓋隔離等級、rootless、egress 模式、Runtime 家族與整合模式、六項資源上限，不相容者**在排入佇列前**回 422 並附逐一理由；選定結果寫 `runs.provider` 與 `runtime_snapshot`，`provider_run_id` 只寫 `run_attempts`）
+- [x] RUN-006 實作取消、逾時、有限重試與失敗分類。（取消：`cancel_requested_at` → 輪詢時呼叫 provider cancel → 待 provider 回終態才轉移，符合「取消不得謊報已停止」；逾時：provider 回報 `timed_out` 為軟逾時，平台側以 `created_at + wall_clock_hard_seconds` 為硬逾時，driver 與 supervisor 雙重把關；重試：新增 `run_attempt` 且上限入設定（預設 3），**僅 provider 側失敗可重試，workload 自身失敗不重試**；分類寫入 0018 新增的 `runs.failure_class`。**限制註記**：重試窗僅涵蓋 run 仍在 `provisioning` 的派送階段——狀態機無回退邊，離開 `provisioning` 後的 provider 失敗只分類不重試，要放寬需新 ADR）
+- [x] RUN-007 實作冪等清理與遺留 Sandbox 掃描。（終態轉移於同交易排入 cleanup job（River unique，重複排入為 no-op）；`DELETE` 依契約冪等且無 404，重跑安全；孤兒掃描以 `GET /runs?active=true` 比對平台狀態，僅在「平台已終態」或「平台不認得且 `observed_at - created_at` 超過 5 分鐘寬限」時 destroy，避免誤殺派送中的新 Run；清理失敗記 `cleanup_status='failed'` 並由 supervisor 重排）
+- [x] RUN-008 實作服務重新啟動後的 Run 狀態恢復或安全終止。（supervisor 為 River periodic job（30 秒，`RunOnStart`，僅 leader 執行）：掃非終態 Run，逾期者判 `timed_out`＋清理，其餘以 unique job 重新入列——已有在途 job 時自動 no-op，故不需讀 river 表；有在途 attempt 者重新掛回輪詢，已離開派送階段卻無 attempt 可接者判 `platform_error` 安全終止）
+- [x] RUN-009 建立 Provider 契約測試套件。（`internal/run/provider_contract_test.go`：冪等重送同資源／同鍵不同內容 409／cancel 已終態仍 202／DELETE 重複與未知 handle 皆 204／`active=false` 回 400／終態必帶 result／無 token 401；預設跑 in-repo fake（`internal/run/providertest`），設 `SKILLHUB_PROVIDER_CONTRACT_URL`＋`SKILLHUB_PROVIDER_CONTRACT_TOKEN` 即對真實服務跑同一套。狀態映射另以 `schedule_test.go` 的決策表驗證）
 
 ## 11. SelfHostedProvider（M2）
 

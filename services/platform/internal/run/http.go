@@ -41,6 +41,7 @@ type runResponse struct {
 	SkillVersionID    string           `json:"skill_version_id"`
 	TestCaseSnapshot  string           `json:"test_case_snapshot_id"`
 	Provider          string           `json:"provider"`
+	FailureClass      string           `json:"failure_class,omitempty"`
 	CleanupStatus     string           `json:"cleanup_status"`
 	CancelRequestedAt string           `json:"cancel_requested_at,omitempty"`
 	CreatedAt         string           `json:"created_at"`
@@ -78,6 +79,7 @@ func toRunResponse(run gen.Run) runResponse {
 		SkillVersionID:    uuidString(run.SkillVersionID),
 		TestCaseSnapshot:  uuidString(run.TestCaseSnapshotID),
 		Provider:          run.Provider,
+		FailureClass:      deref(run.FailureClass),
 		CleanupStatus:     string(run.CleanupStatus),
 		CancelRequestedAt: rfc3339(run.CancelRequestedAt),
 		CreatedAt:         rfc3339(run.CreatedAt),
@@ -117,6 +119,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	})
 	if errors.Is(err, ErrNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	// RUN-005: no configured provider can run this, and the message says which
+	// requirement each one failed. 422, not 500: the request is well-formed and the
+	// platform is working, it simply cannot be satisfied.
+	if errors.Is(err, ErrNoCompatibleProvider) {
+		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
 	if err != nil {

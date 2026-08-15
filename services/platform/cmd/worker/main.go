@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/outbox"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
 )
@@ -34,19 +35,51 @@ func main() {
 		os.Exit(1)
 	}
 
+	// The sandbox fleet is deployment-static configuration (RUN-005); an empty one
+	// is a valid deployment, in which every run fails saying so.
+	providers := run.NewRegistryFromEnv()
+	names := make([]string, 0, len(providers.Providers))
+	for _, p := range providers.Providers {
+		names = append(names, p.Name) // names only: the bearer tokens never reach a log
+	}
+	if len(names) == 0 {
+		slog.Warn("no sandbox provider configured; runs will fail at dispatch")
+	} else {
+		slog.Info("sandbox providers configured", "providers", names)
+	}
+	runs := &run.Service{Pool: pool, Providers: providers}
+
 	workers := river.NewWorkers()
 	// Every job kind the platform knows about is registered here. A kind with no
 	// worker is not a silent no-op — River fails the job — which is the behaviour
 	// we want if a deploy ever drops one.
-	river.AddWorker(workers, &run.Worker{Svc: &run.Service{Pool: pool}})
+	river.AddWorker(workers, &run.Worker{Svc: runs})
+	river.AddWorker(workers, &run.CleanupWorker{Svc: runs})
+	river.AddWorker(workers, &run.OrphanScanWorker{Svc: runs})
+	river.AddWorker(workers, &run.SuperviseWorker{Svc: runs})
+	river.AddWorker(workers, &outbox.Worker{Pool: pool})
 
 	client, err := queue.New(pool, &river.Config{
 		Workers: workers,
 		Queues: map[string]river.QueueConfig{
 			// One queue until there is a measured reason for more. Concurrency is
 			// bounded well below the per-workspace limit of 2 concurrent runs
-			// (PDM-005 §5.2); real capacity planning lands with RUN-005.
+			// (PDM-005 §5.2); real capacity planning lands with the first load test.
 			river.QueueDefault: {MaxWorkers: min(runtime.NumCPU(), 4)},
+		},
+		// Periodic jobs run on the elected leader only, so several worker processes
+		// do not each sweep. RunOnStart is what makes the supervisor the restart
+		// recovery path (RUN-008) and not merely a watchdog.
+		PeriodicJobs: []*river.PeriodicJob{
+			river.NewPeriodicJob(river.PeriodicInterval(run.SuperviseInterval),
+				func() (river.JobArgs, *river.InsertOpts) { return run.SuperviseArgs{}, nil },
+				&river.PeriodicJobOpts{RunOnStart: true}),
+			river.NewPeriodicJob(river.PeriodicInterval(run.OrphanScanInterval),
+				func() (river.JobArgs, *river.InsertOpts) { return run.OrphanScanArgs{}, nil },
+				&river.PeriodicJobOpts{RunOnStart: true}),
+			river.NewPeriodicJob(river.PeriodicInterval(outbox.PublishInterval),
+				func() (river.JobArgs, *river.InsertOpts) { return outbox.PublishArgs{}, nil },
+				&river.PeriodicJobOpts{RunOnStart: true}),
 		},
 	})
 	if err != nil {

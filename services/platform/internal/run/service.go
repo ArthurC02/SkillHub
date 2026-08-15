@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -20,7 +21,7 @@ var (
 	// ErrNotFound covers "no such run" and "not yours" alike: existence is itself
 	// private (WS-006), so callers turn this into a 404 either way.
 	ErrNotFound = errors.New("run not found")
-	// ErrIllegalTransition is a bug in the caller — the pair is not in the state
+	// ErrIllegalTransition is a bug in the caller - the pair is not in the state
 	// machine at all. It never depends on what is in the database.
 	ErrIllegalTransition = errors.New("illegal run status transition")
 	// ErrConflict is a legal transition applied to a run that had already moved.
@@ -31,10 +32,22 @@ var (
 )
 
 // providerUnassigned is the provider of a run that has not been scheduled yet.
-// Provider selection and capability matching are RUN-005; runs.provider is NOT
-// NULL, and naming the gap is better than defaulting to whichever provider
+// The scheduler overwrites it the moment it picks one (RUN-005); runs.provider is
+// NOT NULL, and naming the gap is better than defaulting to whichever provider
 // happens to exist first.
 const providerUnassigned = "unassigned"
+
+// Failure classes written to runs.failure_class. The vocabulary is the platform's
+// own and is fixed by a CHECK constraint in 0018 - run_attempts.error_class carries
+// the provider's RunError.class separately, per attempt.
+const (
+	failureProvider   = "provider_error"
+	failureWorkload   = "workload_error"
+	failureTimeout    = "timeout"
+	failureCancelled  = "cancelled"
+	failureNoProvider = "capability_mismatch"
+	failurePlatform   = "platform_error"
+)
 
 // Service owns run state. Every method that changes a run does so in one
 // transaction that also writes the status history, the audit event and the outbox
@@ -46,16 +59,47 @@ type Service struct {
 	// allowed: the run is created and stays queued forever, which is what a
 	// deployment without a worker actually does.
 	Queue *river.Client[pgx.Tx]
+	// Providers is the configured sandbox fleet (RUN-005). Nil or empty is a
+	// deployment with no sandbox: runs are still accepted and then fail saying so,
+	// rather than being rejected as if the user had asked for something impossible.
+	Providers *Registry
+	// MaxAttempts bounds automatic retries of one run (ADR-004: no unbounded
+	// retries). Zero means defaultMaxAttempts.
+	MaxAttempts int
+	// PollInterval is how often a dispatched attempt is read back from the
+	// provider. Zero means defaultPollInterval.
+	PollInterval time.Duration
+}
+
+func (s *Service) maxAttempts() int {
+	if s.MaxAttempts > 0 {
+		return s.MaxAttempts
+	}
+	return defaultMaxAttempts
+}
+
+func (s *Service) pollInterval() time.Duration {
+	if s.PollInterval > 0 {
+		return s.PollInterval
+	}
+	return defaultPollInterval
+}
+
+func (s *Service) providers() *Registry {
+	if s.Providers == nil {
+		return &Registry{}
+	}
+	return s.Providers
 }
 
 func (s *Service) queries() *gen.Queries { return gen.New(s.Pool) }
 
-// resourceLimits mirrors ResourceLimits in contracts/openapi/sandbox-provider.yaml.
-// Values are PDM-005 §5.2. Changing one means changing both — the contract is the
+// ResourceLimits mirrors ResourceLimits in contracts/openapi/sandbox-provider.yaml.
+// Values are PDM-005 5.2. Changing one means changing both - the contract is the
 // spec, this is the snapshot written into policy_snapshot so TEST-005 can show the
 // user what their run will be held to, and so a past run stays explainable after
 // the defaults change.
-type resourceLimits struct {
+type ResourceLimits struct {
 	VCPU                 float64 `json:"vcpu"`
 	MemoryBytes          int64   `json:"memory_bytes"`
 	DiskBytes            int64   `json:"disk_bytes"`
@@ -71,8 +115,8 @@ type resourceLimits struct {
 	} `json:"token_budget"`
 }
 
-func defaultResourceLimits() resourceLimits {
-	l := resourceLimits{
+func DefaultResourceLimits() ResourceLimits {
+	l := ResourceLimits{
 		VCPU:                 2,
 		MemoryBytes:          4 << 30, // 4 GiB
 		DiskBytes:            8 << 30, // 8 GiB: /work 6 + /out 2
@@ -84,24 +128,30 @@ func defaultResourceLimits() resourceLimits {
 		ArtifactFileBytes:    25 << 20,
 	}
 	// Enforced by the worker counting gateway-reported input_tokens, not by the
-	// Virtual Key's max_budget — prompt caching decoupled spend from token count
-	// by 7-8x (PDM-005 §5.2a). Counting lands with the provider in RUN-005/SBX-006.
+	// Virtual Key's max_budget - prompt caching decoupled spend from token count
+	// by 7-8x (PDM-005 5.2a). Counting lands with the provider in RUN-005/SBX-006.
 	l.TokenBudget.MaxInputTokens = 300_000
 	l.TokenBudget.MaxOutputTokens = 60_000
 	return l
 }
 
-// defaultPolicySnapshot is what the run is held to, frozen at creation (ADR-003).
-// Egress is default-deny with the three destinations of PDM-005 §5.2; the concrete
-// URLs are filled in when a provider is selected (RUN-005), so only the shape and
-// the deny default are asserted here.
+// policySnapshot is runs.policy_snapshot: what the run is held to, frozen at
+// creation (ADR-003) and read back by the scheduler so capability matching happens
+// against what the user was shown, not against today's defaults.
+type policySnapshot struct {
+	ResourceLimits ResourceLimits `json:"resource_limits"`
+	Egress         EgressPolicy   `json:"egress"`
+}
+
+// defaultPolicySnapshot is the policy a new run gets. Egress is default-deny with
+// an empty allow list: the three permitted destinations of PDM-005 5.2 are
+// URL-bearing grants, and minting them is SBX-005/006. An empty list is the safe
+// end of that gap - no egress at all - rather than a placeholder URL that would
+// look like an authorization somebody already granted.
 func defaultPolicySnapshot() ([]byte, error) {
-	return json.Marshal(map[string]any{
-		"resource_limits": defaultResourceLimits(),
-		"egress": map[string]any{
-			"mode":  "default_deny",
-			"allow": []any{},
-		},
+	return json.Marshal(policySnapshot{
+		ResourceLimits: DefaultResourceLimits(),
+		Egress:         EgressPolicy{Mode: "default_deny", Allow: []egressAllow{}},
 	})
 }
 
@@ -142,6 +192,15 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	if err != nil {
 		return gen.Run{}, err
 	}
+	// RUN-005 / ADR-004: work no configured provider can run is refused here,
+	// before it is queued, rather than after a user has watched it sit in a queue.
+	var decoded policySnapshot
+	if err := json.Unmarshal(policy, &decoded); err != nil {
+		return gen.Run{}, err
+	}
+	if err := s.checkSchedulable(ctx, decoded); err != nil {
+		return gen.Run{}, err
+	}
 
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -153,7 +212,7 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	// The test lab owns the snapshot's shape and its hash; this passes it the
 	// transaction handle so the snapshot and the run below commit together
 	// (iron rule 9). A test case that is missing, in another workspace, or
-	// soft-deleted comes back as not found — a deleted draft is not runnable.
+	// soft-deleted comes back as not found - a deleted draft is not runnable.
 	snapshot, err := testlab.CreateSnapshot(ctx, q, p.WorkspaceID, p.TestCaseID)
 	if errors.Is(err, testlab.ErrNotFound) {
 		return gen.Run{}, ErrNotFound
@@ -180,10 +239,12 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	}
 
 	if s.Queue != nil {
+		// Same unique options the supervisor uses, so a re-enqueue after a restart
+		// lands on this job instead of starting a second driver (RUN-008).
 		if _, err := s.Queue.InsertTx(ctx, tx, JobArgs{
 			RunID:       uuidString(run.ID),
 			WorkspaceID: uuidString(run.WorkspaceID),
-		}, nil); err != nil {
+		}, executeInsertOpts()); err != nil {
 			return gen.Run{}, err
 		}
 	}
@@ -199,6 +260,10 @@ type TransitionParams struct {
 	AttemptID pgtype.UUID
 	From, To  gen.RunStatus
 	Reason    string
+	// FailureClass is why the run ended badly, in the platform's vocabulary
+	// (RUN-006). Empty leaves whatever is already there - it rides along with the
+	// status write because the 0005 trigger freezes the row on the way in.
+	FailureClass string
 	// Actor is the user who caused it; zero for worker-initiated changes.
 	Actor pgtype.UUID
 }
@@ -222,9 +287,13 @@ func (s *Service) Transition(ctx context.Context, p TransitionParams) (gen.Run, 
 	if p.Reason == "" {
 		reason = nil
 	}
+	failureClass := &p.FailureClass
+	if p.FailureClass == "" {
+		failureClass = nil
+	}
 	run, err := q.TransitionRun(ctx, gen.TransitionRunParams{
 		RunID: p.RunID, WorkspaceID: p.WorkspaceID,
-		FromStatus: p.From, ToStatus: p.To, Reason: reason,
+		FromStatus: p.From, ToStatus: p.To, Reason: reason, FailureClass: failureClass,
 	})
 	// Zero rows means the run moved under us, or does not belong to this
 	// workspace. Both are "do not apply this change", never "apply it anyway".
@@ -239,12 +308,24 @@ func (s *Service) Transition(ctx context.Context, p TransitionParams) (gen.Run, 
 	if err := s.record(ctx, q, run, &from, p.AttemptID, p.Reason, p.Actor, audit.ActionRunTransition); err != nil {
 		return gen.Run{}, err
 	}
+
+	// RUN-002 requires cleanup after a run ends, however it ended: a run that reached a
+	// terminal state owes a cleanup, and the job that does it is enqueued in the
+	// same transaction as the state change. Nobody has to remember to call it, and
+	// a rolled-back transition leaves no orphan cleanup behind (iron rule 9).
+	if IsTerminal(p.To) && s.Queue != nil {
+		if _, err := s.Queue.InsertTx(ctx, tx, CleanupArgs{
+			RunID: uuidString(run.ID), WorkspaceID: uuidString(run.WorkspaceID),
+		}, cleanupInsertOpts()); err != nil {
+			return gen.Run{}, err
+		}
+	}
 	return run, tx.Commit(ctx)
 }
 
 // record writes the three things every state change owes: the append-only status
 // history (RUN-002), the audit event (NFR-001) and the outbox event (ADR-008).
-// q must be the caller's transaction handle — that is the whole point.
+// q must be the caller's transaction handle - that is the whole point.
 func (s *Service) record(
 	ctx context.Context, q *gen.Queries, run gen.Run,
 	from *gen.RunStatus, attemptID pgtype.UUID, reason string, actor pgtype.UUID, action string,
@@ -276,10 +357,10 @@ func (s *Service) record(
 
 	// One event type per state entered, so a consumer routes on event_type rather
 	// than by parsing a payload. The ADR-008 workflow names (RunProvisioned,
-	// RunExecutionCompleted, ...) are a coarser view of the same stream and will
-	// be derived by the publisher in RUN-005, which is also when the schemas move
-	// to contracts/events/. Payload carries identifiers and outcome only
-	// (iron rule 11): no prompt, no output, no key.
+	// RunExecutionCompleted, ...) are a coarser view of the same stream; deriving
+	// them, and moving the schemas to contracts/events/, waits for a consumer that
+	// needs them - internal/outbox delivers what is here today. Payload carries
+	// identifiers and outcome only (iron rule 11): no prompt, no output, no key.
 	payload, err := json.Marshal(meta)
 	if err != nil {
 		return err
@@ -327,9 +408,9 @@ func (s *Service) Attempts(ctx context.Context, workspaceID, runID pgtype.UUID) 
 // the run's status: the workload is still running until something stops it, and
 // reporting `cancelled` before that would be a lie about a live sandbox.
 //
-// Propagating the intent — signalling the provider, transitioning to cancelled
+// Propagating the intent - signalling the provider, transitioning to cancelled
 // once the workload is actually down, and the wall-clock timeout that shares this
-// machinery — is RUN-006.
+// machinery - is RUN-006.
 func (s *Service) RequestCancel(ctx context.Context, workspaceID, runID, actor pgtype.UUID) (gen.Run, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -366,3 +447,5 @@ func uuidString(u pgtype.UUID) string {
 	s, _ := v.(string)
 	return s
 }
+
+func nowUTC() string { return time.Now().UTC().Format(time.RFC3339) }

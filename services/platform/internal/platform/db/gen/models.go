@@ -190,6 +190,7 @@ type Run struct {
 	StartedAt          pgtype.Timestamptz
 	FinishedAt         pgtype.Timestamptz
 	CancelRequestedAt  pgtype.Timestamptz
+	FailureClass       *string
 }
 
 type RunAttempt struct {

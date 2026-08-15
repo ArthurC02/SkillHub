@@ -118,6 +118,10 @@ type api struct {
 	// packages is the object store behind the detail and file views; a test
 	// seeds a real zip into it under the version's package_object_key.
 	packages packageStore
+	// runs is the API's run service, exposed so a test can point it at a fake
+	// sandbox provider (RUN-005 refuses incompatible work before queueing, and
+	// that refusal happens on this side).
+	runs *run.Service
 }
 
 func newAPI(t *testing.T, pool *pgxpool.Pool) *api {
@@ -165,7 +169,8 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runs := &run.Handler{Svc: &run.Service{Pool: pool, Queue: jobs}, Identity: auth.Service}
+	runSvc := &run.Service{Pool: pool, Queue: jobs}
+	runs := &run.Handler{Svc: runSvc, Identity: auth.Service}
 
 	lab := &testlab.Handler{Svc: &testlab.Service{Pool: pool, Store: packages}, Identity: auth.Service}
 
@@ -173,7 +178,7 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs, TestLab: lab,
 	}))
 	t.Cleanup(srv.Close)
-	return &api{Server: srv, auth: auth, packages: packages}
+	return &api{Server: srv, auth: auth, packages: packages, runs: runSvc}
 }
 
 // client is one logged-in browser: its jar carries exactly one user's session.

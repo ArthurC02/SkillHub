@@ -18,7 +18,7 @@ INSERT INTO runs (
     workspace_id, skill_version_id, test_case_snapshot_id, provider,
     runtime_snapshot, policy_snapshot
 ) VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class
 `
 
 type CreateRunParams struct {
@@ -61,6 +61,7 @@ func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) (Run, erro
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.CancelRequestedAt,
+		&i.FailureClass,
 	)
 	return i, err
 }
@@ -143,7 +144,7 @@ func (q *Queries) FinishRunAttempt(ctx context.Context, arg FinishRunAttemptPara
 }
 
 const getRun = `-- name: GetRun :one
-SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at FROM runs WHERE id = $1 AND workspace_id = $2
+SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class FROM runs WHERE id = $1 AND workspace_id = $2
 `
 
 type GetRunParams struct {
@@ -170,6 +171,50 @@ func (q *Queries) GetRun(ctx context.Context, arg GetRunParams) (Run, error) {
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.CancelRequestedAt,
+		&i.FailureClass,
+	)
+	return i, err
+}
+
+const getRunAttemptForReconcile = `-- name: GetRunAttemptForReconcile :one
+SELECT a.id, a.run_id, a.workspace_id, a.provider, a.provider_run_id, a.finished_at,
+       r.status, r.cleanup_status
+FROM run_attempts a
+JOIN runs r ON r.id = a.run_id
+WHERE a.id = $1
+`
+
+type GetRunAttemptForReconcileRow struct {
+	ID            pgtype.UUID
+	RunID         pgtype.UUID
+	WorkspaceID   pgtype.UUID
+	Provider      string
+	ProviderRunID *string
+	FinishedAt    pgtype.Timestamptz
+	Status        RunStatus
+	CleanupStatus RunCleanupStatus
+}
+
+// RUN-007 orphan scanning. GET /runs?active=true on a provider echoes back the platform
+// identifiers it was dispatched with, and this turns one of them back into "is that run
+// still ours to keep alive?".
+//
+// The only statement here that takes no workspace_id, because the caller has none: the
+// id arrives from a provider, not from a user, and the only action it can lead to is
+// DELETE on that same provider's own sandbox. Nothing about a run is returned that could
+// reach a user, and a bogus id simply finds no row.
+func (q *Queries) GetRunAttemptForReconcile(ctx context.Context, id pgtype.UUID) (GetRunAttemptForReconcileRow, error) {
+	row := q.db.QueryRow(ctx, getRunAttemptForReconcile, id)
+	var i GetRunAttemptForReconcileRow
+	err := row.Scan(
+		&i.ID,
+		&i.RunID,
+		&i.WorkspaceID,
+		&i.Provider,
+		&i.ProviderRunID,
+		&i.FinishedAt,
+		&i.Status,
+		&i.CleanupStatus,
 	)
 	return i, err
 }
@@ -249,6 +294,57 @@ func (q *Queries) InsertRunStatusTransition(ctx context.Context, arg InsertRunSt
 		arg.Reason,
 	)
 	return err
+}
+
+const listActiveRuns = `-- name: ListActiveRuns :many
+SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class FROM runs
+WHERE status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+ORDER BY created_at
+LIMIT $1
+`
+
+// RUN-008: every run that is still supposed to be moving, oldest first. Read by the
+// supervisor at worker start and on its interval, to re-drive runs whose job was lost
+// with the process and to time out runs that outlived their wall clock.
+//
+// Not workspace scoped, unlike everything above it, and that is not an iron-rule-3
+// exception: no user input reaches this statement and no user data leaves it. The
+// caller acts on runs it re-reads under their own workspace_id from the row itself.
+func (q *Queries) ListActiveRuns(ctx context.Context, limit int32) ([]Run, error) {
+	rows, err := q.db.Query(ctx, listActiveRuns, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Run
+	for rows.Next() {
+		var i Run
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.SkillVersionID,
+			&i.TestCaseSnapshotID,
+			&i.Status,
+			&i.StatusReason,
+			&i.Provider,
+			&i.RuntimeSnapshot,
+			&i.PolicySnapshot,
+			&i.CleanupStatus,
+			&i.CleanupAt,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.CancelRequestedAt,
+			&i.FailureClass,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listOutboxEventsByAggregate = `-- name: ListOutboxEventsByAggregate :many
@@ -378,6 +474,55 @@ func (q *Queries) ListRunStatusTransitions(ctx context.Context, arg ListRunStatu
 	return items, nil
 }
 
+const listRunsNeedingCleanup = `-- name: ListRunsNeedingCleanup :many
+SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class FROM runs
+WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+  AND cleanup_status <> 'cleaned'
+  AND finished_at < now() - interval '1 minute'
+ORDER BY finished_at
+LIMIT $1
+`
+
+// RUN-007: terminal runs whose sandbox has not been confirmed released. The one minute
+// floor keeps this from racing the cleanup job that the terminal transition just
+// enqueued; anything still here after that is a job that exhausted its retries.
+func (q *Queries) ListRunsNeedingCleanup(ctx context.Context, limit int32) ([]Run, error) {
+	rows, err := q.db.Query(ctx, listRunsNeedingCleanup, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Run
+	for rows.Next() {
+		var i Run
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.SkillVersionID,
+			&i.TestCaseSnapshotID,
+			&i.Status,
+			&i.StatusReason,
+			&i.Provider,
+			&i.RuntimeSnapshot,
+			&i.PolicySnapshot,
+			&i.CleanupStatus,
+			&i.CleanupAt,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.CancelRequestedAt,
+			&i.FailureClass,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnpublishedOutboxEvents = `-- name: ListUnpublishedOutboxEvents :many
 SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at FROM outbox_events
 WHERE published_at IS NULL
@@ -385,9 +530,8 @@ ORDER BY occurred_at, event_id
 LIMIT $1
 `
 
-// The publisher's scan (RUN-005). No consumer exists yet; this is here so the backlog is
-// inspectable and so the test that proves a rolled-back transaction leaks no event has
-// something to read.
+// The publisher's scan (internal/outbox). Oldest first, so the backlog drains in the
+// order the domain changes committed.
 func (q *Queries) ListUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error) {
 	rows, err := q.db.Query(ctx, listUnpublishedOutboxEvents, limit)
 	if err != nil {
@@ -420,12 +564,29 @@ func (q *Queries) ListUnpublishedOutboxEvents(ctx context.Context, limit int32) 
 	return items, nil
 }
 
+const markOutboxEventsPublished = `-- name: MarkOutboxEventsPublished :execrows
+UPDATE outbox_events SET published_at = now()
+WHERE event_id = ANY($1::uuid[]) AND published_at IS NULL
+`
+
+// The publisher hands events on *before* marking them, so a crash in between re-delivers
+// rather than drops (at-least-once, ADR-008). `published_at IS NULL` makes the marking
+// itself idempotent: a re-run of the same batch updates nothing and keeps the timestamp
+// of the delivery that actually happened first.
+func (q *Queries) MarkOutboxEventsPublished(ctx context.Context, eventIds []pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markOutboxEventsPublished, eventIds)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const requestRunCancel = `-- name: RequestRunCancel :one
 UPDATE runs
 SET cancel_requested_at = coalesce(cancel_requested_at, now())
 WHERE id = $1 AND workspace_id = $2
   AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class
 `
 
 type RequestRunCancelParams struct {
@@ -456,6 +617,7 @@ func (q *Queries) RequestRunCancel(ctx context.Context, arg RequestRunCancelPara
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.CancelRequestedAt,
+		&i.FailureClass,
 	)
 	return i, err
 }
@@ -493,26 +655,120 @@ func (q *Queries) SetAttemptProviderRunID(ctx context.Context, arg SetAttemptPro
 	return i, err
 }
 
+const setRunCleanupStatus = `-- name: SetRunCleanupStatus :one
+UPDATE runs SET
+    cleanup_status = $1,
+    cleanup_at = CASE
+        WHEN $1::run_cleanup_status IN ('cleaned', 'failed') THEN now()
+        ELSE cleanup_at END
+WHERE id = $2 AND workspace_id = $3
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class
+`
+
+type SetRunCleanupStatusParams struct {
+	CleanupStatus RunCleanupStatus
+	RunID         pgtype.UUID
+	WorkspaceID   pgtype.UUID
+}
+
+// RUN-002 "Run 結束後必須進入清理流程": cleanup outcome is recorded apart from the
+// execution outcome, and stays writable after the run froze (0005). Repeating a cleanup
+// is safe, so this has no expected-from guard — unlike TransitionRun, re-applying it is
+// the intended behaviour (iron rule 9).
+func (q *Queries) SetRunCleanupStatus(ctx context.Context, arg SetRunCleanupStatusParams) (Run, error) {
+	row := q.db.QueryRow(ctx, setRunCleanupStatus, arg.CleanupStatus, arg.RunID, arg.WorkspaceID)
+	var i Run
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.SkillVersionID,
+		&i.TestCaseSnapshotID,
+		&i.Status,
+		&i.StatusReason,
+		&i.Provider,
+		&i.RuntimeSnapshot,
+		&i.PolicySnapshot,
+		&i.CleanupStatus,
+		&i.CleanupAt,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.CancelRequestedAt,
+		&i.FailureClass,
+	)
+	return i, err
+}
+
+const setRunProvider = `-- name: SetRunProvider :one
+UPDATE runs SET provider = $3, runtime_snapshot = $4
+WHERE id = $1 AND workspace_id = $2
+  AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class
+`
+
+type SetRunProviderParams struct {
+	ID              pgtype.UUID
+	WorkspaceID     pgtype.UUID
+	Provider        string
+	RuntimeSnapshot []byte
+}
+
+// RUN-005: the scheduler's decision, written before the first dispatch. runtime_snapshot
+// freezes what was matched against (provider, isolation level, resolved runtime version)
+// so a past run stays explainable after the provider's capability changes (ADR-003).
+// Terminal runs are excluded: the 0005 trigger would reject the write anyway, and losing
+// that race means the run ended while we were dispatching.
+func (q *Queries) SetRunProvider(ctx context.Context, arg SetRunProviderParams) (Run, error) {
+	row := q.db.QueryRow(ctx, setRunProvider,
+		arg.ID,
+		arg.WorkspaceID,
+		arg.Provider,
+		arg.RuntimeSnapshot,
+	)
+	var i Run
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.SkillVersionID,
+		&i.TestCaseSnapshotID,
+		&i.Status,
+		&i.StatusReason,
+		&i.Provider,
+		&i.RuntimeSnapshot,
+		&i.PolicySnapshot,
+		&i.CleanupStatus,
+		&i.CleanupAt,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.CancelRequestedAt,
+		&i.FailureClass,
+	)
+	return i, err
+}
+
 const transitionRun = `-- name: TransitionRun :one
 UPDATE runs SET
     status = $1,
     status_reason = $2,
+    failure_class = coalesce($3, failure_class),
     started_at = CASE
         WHEN $1::run_status = 'running' AND started_at IS NULL THEN now()
         ELSE started_at END,
     finished_at = CASE
         WHEN $1::run_status IN ('succeeded', 'failed', 'cancelled', 'timed_out') THEN now()
         ELSE finished_at END
-WHERE id = $3 AND workspace_id = $4 AND status = $5
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at
+WHERE id = $4 AND workspace_id = $5 AND status = $6
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class
 `
 
 type TransitionRunParams struct {
-	ToStatus    RunStatus
-	Reason      *string
-	RunID       pgtype.UUID
-	WorkspaceID pgtype.UUID
-	FromStatus  RunStatus
+	ToStatus     RunStatus
+	Reason       *string
+	FailureClass *string
+	RunID        pgtype.UUID
+	WorkspaceID  pgtype.UUID
+	FromStatus   RunStatus
 }
 
 // The state machine's only write. `status = @from_status` is the guard ADR-008 asks for:
@@ -520,10 +776,16 @@ type TransitionRunParams struct {
 // zero rows and the caller sees pgx.ErrNoRows rather than silently rewinding the run.
 // Legality of the pair itself is checked in Go before this runs (internal/run/state.go);
 // this only enforces that the run was still where the caller thought it was.
+//
+// failure_class rides along instead of getting its own UPDATE because the 0005 trigger
+// freezes a run the moment it goes terminal: a second statement would arrive one row
+// version too late and be rejected (RUN-006). coalesce keeps it write-once-ish — a
+// transition that has nothing to classify leaves whatever is already there.
 func (q *Queries) TransitionRun(ctx context.Context, arg TransitionRunParams) (Run, error) {
 	row := q.db.QueryRow(ctx, transitionRun,
 		arg.ToStatus,
 		arg.Reason,
+		arg.FailureClass,
 		arg.RunID,
 		arg.WorkspaceID,
 		arg.FromStatus,
@@ -545,6 +807,7 @@ func (q *Queries) TransitionRun(ctx context.Context, arg TransitionRunParams) (R
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.CancelRequestedAt,
+		&i.FailureClass,
 	)
 	return i, err
 }

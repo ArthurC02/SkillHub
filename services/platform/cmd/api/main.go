@@ -106,7 +106,13 @@ func main() {
 		Search:   &catalog.Handler{Pool: pool, Identity: auth.Service, LLMClient: llm, Store: store},
 		Registry: &registry.Handler{Svc: &registry.Service{Pool: pool, Store: store}, Identity: auth.Service},
 		TestLab:  &testlab.Handler{Svc: &testlab.Service{Pool: pool, Store: store}, Identity: auth.Service},
-		Runs:     &run.Handler{Svc: &run.Service{Pool: pool, Queue: jobs}, Identity: auth.Service},
+		// The API needs the provider registry for one thing only: refusing a run no
+		// configured provider can carry, before it is queued (RUN-005, ADR-004). It
+		// never dispatches — that is the worker's job (iron rule 7).
+		Runs: &run.Handler{
+			Svc:      &run.Service{Pool: pool, Queue: jobs, Providers: run.NewRegistryFromEnv()},
+			Identity: auth.Service,
+		},
 	})
 
 	// DEV_CORS_ORIGIN is the local Vite dev server (http://localhost:5173) and
