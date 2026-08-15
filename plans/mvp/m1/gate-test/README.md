@@ -120,7 +120,7 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 | 前置 | 狀態 | 依據 |
 | --- | --- | --- |
 | 量化前置（檢索品質） | ✅ 已過 | golden-query-set.md §10.8：各類別 recall@5 全部 100%、繁中跨語言 100%、Top-3 100% |
-| 索引管線就緒 | ✅ 已就緒 | import-report.md §3：44/45 匯入成功、`enrichment_status='enriched'` 44/44 |
+| 索引管線就緒 | ✅ 已就緒 | catalog-rebuild-report.md：45/45 匯入成功（rune 修復後）、`enrichment_status='enriched'` 45/45 |
 | UI 阻擋（符合原因、詳情頁） | ✅ 已關閉 | audit §5.1／§5.2 第二次對帳 |
 | ~~**CONTENT-005 白話摘要**~~ **審核（自動化審校）** | ✅ **已解除**（2026-08-16） | [content-review-report.md](../content-review-report.md)：45 筆全量審校 **45/45 通過**，精選 15/15 |
 
@@ -135,7 +135,7 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 
 ### 3.2 環境凍結
 
-測試期間**不得**變更：目錄內容（44 筆索引）、`MaxCosineDistance`（現值 0.75）、增強產出、排序管線、DISC-002 七欄與 `match_reason` 文案。
+測試期間**不得**變更：目錄內容（45 筆索引；增強版本分布 v2×35＋v3×7＋v4×3，見 content-review-report.md）、`MaxCosineDistance`（現值 0.75）、增強產出、排序管線、DISC-002 七欄與 `match_reason` 文案。
 
 任何變更都會讓前後場次不可比。若不得不改（例如線上事故），**變更前後的場次分開統計**，並在分析報告中明列。
 
@@ -168,7 +168,7 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 
 ### 4.2 情境取自哪些 query family
 
-**重要落差：線上目錄（44 筆）≠ golden set 語料（31 份）。** 兩者只有 15 筆重疊。golden set 裡的 `report-designer`、`deck-publisher`、`html-express`、`document-design`、`pitchcraft`、`minimax-*`、`economist-style`、`newsroom-style`、`academic-writing`、`doc-coauthoring`、`high-stakes-analytics`、`data-journalism` **都不在線上目錄**；線上目錄另有 golden set 沒有的 `handoff`、`humanizer`、`line-edit`、`cringe-check`、`full-review` 等。
+**重要落差：線上目錄（45 筆）≠ golden set 語料（31 份）。** 兩者只有 15 筆重疊。golden set 裡的 `report-designer`、`deck-publisher`、`html-express`、`document-design`、`pitchcraft`、`minimax-*`、`economist-style`、`newsroom-style`、`academic-writing`、`doc-coauthoring`、`high-stakes-analytics`、`data-journalism` **都不在線上目錄**；線上目錄另有 golden set 沒有的 `handoff`、`humanizer`、`line-edit`、`cringe-check`、`full-review` 等。
 
 因此卡片的做法是：**取 golden query 的意圖家族，把 gold 重新對到線上目錄實際存在的 Skill**。對照如下（完整版在 `task-cards.md` §3）：
 
