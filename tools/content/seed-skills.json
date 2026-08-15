@@ -27,6 +27,8 @@
     "skills[].network": "true if the skill needs egress. Any true value fails curation check 6 under ADR-005 default-deny; such skills are not in this file.",
     "skills[].script_lines": "Measured or estimated executable script size, including code embedded in SKILL.md. null = not measured. Curation check 4 caps this at 300.",
     "skills[].checks": "Per-skill result of the nine PDM-002 curation checks, keyed '1'..'9': pass | fail | pending. 'pending' means it cannot be decided before a later work item runs; see checks_pending_owner.",
+    "skills[].excluded_files": "Optional. Package files proven NOT to sit on any SKILL.md-mandated path, so an importer may drop them without changing what the skill does. Present only where exclusion was actually adjudicated.",
+    "skills[].non_excludable_files": "Optional. Package files that SKILL.md mandates as pipeline steps or quality gates. If any of these fails a curation check the skill cannot be curated, because dropping them would rewrite the skill's semantics.",
     "skills[].notes": "Free text. Anything an importer or reviewer must not miss."
   },
   "targets": {
@@ -34,7 +36,7 @@
     "curated_per_category": [4, 6],
     "indexed_per_category": [8, 12],
     "actual": {
-      "documents": { "curated": 3, "indexed": 10, "meets_curated_target": false, "meets_indexed_target": true },
+      "documents": { "curated": 4, "indexed": 10, "meets_curated_target": true, "meets_indexed_target": true },
       "writing": { "curated": 5, "indexed": 10, "meets_curated_target": true, "meets_indexed_target": true },
       "data": { "curated": 6, "indexed": 25, "meets_curated_target": true, "meets_indexed_target": true }
     }
@@ -250,13 +252,13 @@
       "source_id": "yuyy-excel",
       "skill_md_path": "claude/skills/excel-format/SKILL.md",
       "category": "documents",
-      "tier": "indexed",
-      "deps": ["openpyxl", "pandas"],
+      "tier": "curated",
+      "deps": ["openpyxl", "pandas", "numpy"],
       "deps_runtime": "python",
       "network": false,
-      "script_lines": 1700,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "fail", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
-      "notes": "Check 4 fails: SKILL.md is ~1600-1800 lines with large embedded executable Python. Indexable and runnable on-platform, not curated. Moving the embedded script into scripts/ upstream would fix it - see curated-skill-list.md section 7 gap 1."
+      "script_lines": 168,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "notes": "Promoted to curated 2026-08-15 as the 4th documents pick. The earlier '~1600-1800 lines, check 4 fails' record was a MEASUREMENT ERROR: at the pinned commit SKILL.md is 262 lines / 9839 bytes / sha256 68dc7ce82d6b14bb967e691356c30fe148624cb011ecd7b7f67287c0f8ff85e0, with 168 lines of embedded Python - verified byte-identical via the codeload zip and raw.githubusercontent.com. No eval/exec, no dynamic download, no subprocess, no pip install text. pandas+numpy are used only on the COL_WIDTH='auto' branch; all three deps are in the PDM-004 whitelist. Check 4 stays pending only for the line-by-line human review (CONTENT-006), same convention as excel-insert/excel-freeze. SKILL.md wiki-links [[excel-safe-workflow]], a sibling skill not shipped inside the package; import raised no blocking error. Simplified Chinese - CONTENT-005 must rewrite the summary in zh-Hant. See curated-skill-list.md section 9.1."
     },
     {
       "id": "kagura-docfmt/document-format-skills",
@@ -282,9 +284,11 @@
       "deps": [],
       "deps_runtime": "node",
       "network": false,
-      "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pending", "7": "pending", "8": "pending", "9": "pass" },
-      "notes": "Check 6 is pending, not pass: the core build is offline but publish-pages.mjs and browser-check.mjs need egress and must be provably excludable. Clearing checks 4 and 6 would make this the missing 4th documents curated pick."
+      "script_lines": 1988,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "fail", "5": "pending", "6": "fail", "7": "pending", "8": "pending", "9": "pass" },
+      "excluded_files": ["skills/course-quiz-builder/scripts/browser-check.mjs"],
+      "non_excludable_files": ["skills/course-quiz-builder/scripts/selftest.mjs", "skills/course-quiz-builder/scripts/publish-pages.mjs", "skills/course-quiz-builder/scripts/publish-selftest.mjs"],
+      "notes": "Measured 2026-08-15; curated promotion REJECTED, stays indexed. Lines in skills/course-quiz-builder/scripts/: build-quiz.mjs 266, browser-check.mjs 257, selftest.mjs 341, publish-selftest.mjs 356, publish-pages.mjs 768 (1988 total). Check 4 FAILS: three files exceed the 300-line cap, and selftest.mjs uses new Function() to evaluate the template CORE region, which is eval-equivalent and explicitly barred. Check 6 FAILS: publish-pages.mjs is Pipeline step 7 in SKILL.md ('Skip only if the user asked for a local page') and needs GitHub API egress via fetch(), execFileSync of git and 'gh auth token', and a repo-write token - it is NOT excludable, and selftest.mjs is likewise mandatory under hard rule 2 ('Never ship without selftest.mjs printing PASS'). Only browser-check.mjs is excludable: SKILL.md marks it 'Optionally' and it skips cleanly when no browser is present. Its token resolution chain and exit-4 secret guard make it a SEC-005 / NFR-002 sample of interest. See curated-skill-list.md section 9.2."
     },
     {
       "id": "anthropic-sa/docx",

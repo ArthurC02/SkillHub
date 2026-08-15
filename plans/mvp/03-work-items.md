@@ -63,7 +63,7 @@
 
 - [x] CONTENT-001 定義精選、已索引與外部結果的收錄政策。
 - [x] CONTENT-002 定義來源可信度、License 與衍生關係的呈現規則。
-- [ ] CONTENT-003 建立首批 Skill 候選清單。（正式清單見 [plans/mvp/m1/curated-skill-list.md](m1/curated-skill-list.md)、匯入資料 `tools/content/seed-skills.json`。三類已索引全部達標；`documents` 精選 3／4–6 短少 1，且 §5.2 的 source-available 法務判定未完成前有塌陷風險。⑤⑦⑧ 三項檢查需 CONTENT-005／006／007／008 才能判定）
+- [ ] CONTENT-003 建立首批 Skill 候選清單。（正式清單見 [plans/mvp/m1/curated-skill-list.md](m1/curated-skill-list.md)、匯入資料 `tools/content/seed-skills.json`。**2026-08-15 起三類的已索引與精選數量目標全部達標**——`documents` 精選由 3 補足為 4（`excel-format`，見該文件 §9）。仍不勾的原因有二：§5.2 的 source-available 法務判定未完成前，`documents` 已索引有 10→6 的塌陷風險；⑤⑦⑧ 三項檢查需 CONTENT-005／006／007／008 才能判定）
 - [ ] CONTENT-004 對首批 Skill 完成來源及 License 檢查。（License 合規總表見 [curated-skill-list.md §5](m1/curated-skill-list.md)；11 個入選 repo 已逐一實查 LICENSE 檔。未結案項：§5.2 `anthropics/skills` source-available 條款是否允許平台保存內容快照，待負責人與法務判定）
 - [ ] CONTENT-005 對首批 Skill 產生一般使用者可理解的摘要。
 - [ ] CONTENT-006 對首批 Skill 完成規格及靜態掃描。
@@ -77,8 +77,8 @@
 - [x] CORE-002 建立 Skill、Skill Source、Skill Version 與 Fork 資料模型。
 - [x] CORE-003 建立 Test Case、Run、Trace、Evaluation 與 Artifact 資料模型。
 - [x] CORE-004 定義不可變 Skill Version 與歷史 Run 快照規則。
-- [ ] CORE-005 建立基本登入、登出與工作區存取控制。
-- [ ] CORE-006 建立使用者私有內容的授權檢查。
+- [x] CORE-005 建立基本登入、登出與工作區存取控制。（GitHub OAuth ＋ Postgres session ＋ `DEV_LOGIN` 離線 provider；登出為伺服器端撤銷。證據見 [m1-work-items-audit.md §3.1](m1/m1-work-items-audit.md)）
+- [x] CORE-006 建立使用者私有內容的授權檢查。（Workspace scope 一律取自 session，不信任 UI 傳入值；非擁有者一律 404。證據見 [m1-work-items-audit.md §3.1](m1/m1-work-items-audit.md)）
 - [ ] CORE-007 建立使用者資料與 Artifact 的刪除流程。
 - [ ] CORE-008 建立重要操作的 Audit Event。
 
@@ -115,7 +115,7 @@
 - [x] WS-003 實作任兩版本差異比較。
 - [ ] WS-004 實作個人 Skill、Test Case、Run 與下載紀錄列表。
 - [x] WS-005 實作私有內容刪除與狀態回饋。
-- [ ] WS-006 驗證不同使用者無法存取彼此私有內容。
+- [x] WS-006 驗證不同使用者無法存取彼此私有內容。（列表／刪除／Fork／Diff 四條路徑與公開搜尋皆有具名整合測試，CI 帶 Postgres service 實際執行。證據見 [m1-work-items-audit.md §6](m1/m1-work-items-audit.md)）
 
 ## 9. Test Case 與執行設定（M2）
 

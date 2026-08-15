@@ -2,6 +2,10 @@
 
 - 狀態：**正式交付（CONTENT-003 候選清單、CONTENT-004 來源與 License 檢查）**。工作項目勾選留待負責人。
 - 查核日：**2026-08-15**（本文件所有 URL、commit SHA、License 判定均以此日觀測為準）
+- **2026-08-15 修訂（`documents` 精選補足）**：依 §7 缺口 1 的補足路徑實地量測後
+  - **路徑 2（`the3ma/course-quiz-builder`）不通過**，④⑥ 兩項皆 fail，詳見 §6.2；
+  - **路徑 1（`YuYY2004/excel-skills` 的 `excel-format`）通過**，原記錄的「全文約 1,600–1,800 行」為**量測錯誤**，實測 262 行／168 行內嵌 Python，**升為精選 D-4**（§2.1、§9）。
+  - `documents` 精選由 3 補足為 **4**，達標。
 - 查核方法：實地存取 GitHub REST API、`github.com` 頁面與 `raw.githubusercontent.com` 原始檔。**License 一律以實查 `LICENSE`／`LICENSE.txt` 檔案內容判定，不採信 README 或 repo metadata 的宣稱**——本次即因此揪出兩個「宣稱 MIT、實為 Anthropic source-available 衍生物」的 repo（見 §4.1）。
 - 依據：
   - [PDM-001](../m0/pdm-proposals.md#1-pdm-001mvp-首批三個-skill-類別)（三類別 `documents`／`writing`／`data`，2026-08-14 定案）
@@ -20,12 +24,12 @@
 
 | 類別 | 精選目標 4–6 | 實際精選候選 | 判定 | 已索引目標 8–12 | 實際已索引 | 判定 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `documents` | 4–6 | **3** | ❌ 短少 1 | 8–12 | **10** | ✅ |
+| `documents` | 4–6 | **4** | ✅（2026-08-15 補足，見 §9） | 8–12 | **10** | ✅ |
 | `writing` | 4–6 | **5** | ✅ | 8–12 | **10** | ✅ |
 | `data` | 4–6 | **6** | ✅ | 8–12 | **25** | ✅ 超額 |
-| **合計** | 12–18 | **14** | ✅ 落在區間內 | 24–36 | **45** | ✅ |
+| **合計** | 12–18 | **15** | ✅ 落在區間內 | 24–36 | **45** | ✅ |
 
-**一句話結論：三類的「已索引」全部達標，`writing` 與 `data` 的「精選」也達標；唯一缺口是 `documents` 精選短少 1 個**，成因與緩解見 §7。
+**一句話結論：三類的「已索引」與「精選」數量目標全部達標。** `documents` 精選原短少 1 個，已由 `excel-format` 於 2026-08-15 補足（§9）；**剩下的實質風險不是數量而是 §5.2 的法務判定**——若 `anthropics/skills` 的 4 個 source-available Skill 連索引都不成立，`documents` 已索引由 10 掉到 6，跌破下限（§7 缺口 2）。
 
 來源多樣性（PDM-011 golden query set 的跨 repo 抽樣前提）：**9 個獨立來源 repo**，較 M0 的 7 個增加 2 個，且 `documents`／`writing` 首次各自擁有 2 個以上獨立來源，不再單押 `anthropics/skills`。
 
@@ -40,6 +44,7 @@
 | D-1 | `excel-insert` | [YuYY2004/excel-skills](https://github.com/YuYY2004/excel-skills) | `c15e51e20424284f98359e8d3512f8aaa771c62f` | `claude/skills/excel-insert/SKILL.md` | MIT（實查 `LICENSE`） | `openpyxl` ✅ | 不需 | 全文約 280–300 行，內嵌 Python 約 180 行 ✅ ≤300 |
 | D-2 | `excel-freeze` | YuYY2004/excel-skills | 同上 | `claude/skills/excel-freeze/SKILL.md` | MIT | `openpyxl` ✅ | 不需 | 全文約 120 行，內嵌 Python 約 45 行 ✅ |
 | D-3 | `handoff` | [ToolMonsters/handoff-skill](https://github.com/ToolMonsters/handoff-skill) | `fa70c91e44a5f36b374f3600ddca3c98814e6451` | `SKILL.md`（repo 根） | MIT（實查 `LICENSE`） | 無（prompt-only） | 不需 | **0 行** ✅ |
+| **D-4** | `excel-format` | YuYY2004/excel-skills | 同 D-1 | `claude/skills/excel-format/SKILL.md` | MIT | `openpyxl`、`pandas`、`numpy` ✅ | 不需 | **全文 262 行，內嵌 Python 168 行** ✅ ≤300（2026-08-15 精確量測，見 §9） |
 
 ### 2.2 `writing`
 
@@ -81,6 +86,7 @@
 | D-1 `excel-insert` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
 | D-2 `excel-freeze` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
 | D-3 `handoff` | pass | pass | pass | **pass**（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
+| **D-4** `excel-format` | pass | pass | pass | **pending**¹⁺⁶ | pending² | pass | pending³ | pending⁴ | pass |
 | W-1 `brand-guidelines` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
 | W-2 `internal-comms` | pass | pass | pass | pass（無 Script） | pending² | pass | pending³ | pending⁴ | pass |
 | W-3 `humanizer` | pass | pass | pass | **pending**¹ | pending² | pass | pending³ | pending⁴ | pass |
@@ -100,6 +106,7 @@
 3. **⑦ 白話摘要尚未撰寫。** 承接工作項：**CONTENT-005**。⚠️ `data-analyst`（簡體中文）與 YuYY2004 系列（簡體中文）需重寫為繁體中文；`anthropics/skills` 的 README 免責條款（"provided for demonstration and educational purposes only"）需納入措辭考量。
 4. **⑧ 平台基準試跑需要平台存在。** 承接工作項：**CONTENT-007（範例資料／Prompt／驗收條件）→ CONTENT-008（基準試跑）**。此項在隔離 Sandbox 內執行，符合鐵律 1。
 5. **`excel-deduplicate` 的 SKILL.md 於依賴段落出現 `pip install` 字樣。** 三個套件（`pandas`／`lxml`／`openpyxl`）全部在 PDM-004 白名單內，該分支在 Runtime Image 中不會觸發；但**「SKILL.md 文字教模型執行被禁止的動作」與 M0 否決 `cabbage2000-lab/data-analysis-skills` 的理由同型**。CONTENT-006 需人工確認措辭是否可接受，或於匯入時標註。
+6. **D-4 `excel-format` 的 ④ 機械項於 2026-08-15 全部通過**：262 行全文／168 行內嵌 Python（≤300）、無 `eval`／`exec`、無動態下載、無 `subprocess`、無 `pip install` 字樣（不同於腳註 5 的 A-5）。**與 D-1／D-2 同樣只差「人工逐行審過」**，故仍記 pending 而非 pass。另 SKILL.md 以 `[[excel-safe-workflow]]` wiki-link 引用同 repo 的另一個 Skill，該檔不在套件內；匯入實測未觸發阻擋錯誤（③ pass），但 CONTENT-006 應決定此類跨 Skill 引用的呈現方式。
 
 > **九項全過者目前為 0**——這是預期狀態，不是缺陷：⑤⑦⑧ 三項在平台建成前對**所有**候選（含官方來源）一律無法判定。**在 CONTENT-005／006／007／008 全數完成前，`03-work-items.md` 的 CONTENT-003 不得勾選為完成**。
 
@@ -116,9 +123,9 @@
 | 1 | `excel-insert` | YuYY2004/excel-skills | `c15e51e2` | MIT | **curated** | 見 §2.1 |
 | 2 | `excel-freeze` | YuYY2004/excel-skills | `c15e51e2` | MIT | **curated** | 見 §2.1 |
 | 3 | `handoff` | ToolMonsters/handoff-skill | `fa70c91e` | MIT | **curated** | 見 §2.1 |
-| 4 | `excel-format` | YuYY2004/excel-skills | `c15e51e2` | MIT | indexed | ❌ ④不過：SKILL.md 全文約 **1,600–1,800 行**、內嵌大量可執行 Python，遠超 300 行上限。可索引、可試跑，**不列精選** |
+| 4 | `excel-format` | YuYY2004/excel-skills | `c15e51e2` | MIT | **curated** | 見 §2.1 D-4。~~原記「全文約 1,600–1,800 行、④不過」~~ **該量測有誤，2026-08-15 實測 262 行／168 行內嵌 Python，④ 機械項通過**（§9） |
 | 5 | `document-format-skills` | [KaguraNanaga/document-format-skills](https://github.com/KaguraNanaga/document-format-skills) | `cbdd11249b6d8925a2ca6ff83f3a82201023962c` | MIT（實查 `LICENSE`） | indexed | ❌ ④不過：`scripts/` 下 9 個 Python 檔，僅 `process.py` 即約 290 行，合計遠超上限。⚠️ 選用依賴 `pywin32`（Windows-only，`.doc`／`.wps` 轉檔）不在白名單，該路徑在 Runtime Image 內不可用；核心 `.docx` 路徑只需 `python-docx` ✅。中國國標 GB/T 9704-2012 導向 |
-| 6 | `course-quiz-builder` | [the3ma/course-quiz-builder](https://github.com/the3ma/course-quiz-builder) | `e2ac75e52a9a8214b656d9da1a505a2c74116225` | MIT（實查 `LICENSE`） | indexed | Node.js、**零 npm 依賴**（僅 `node:` 內建），Node ≥18 ✅（Image 為 Node 22）。⚠️ `publish-pages.mjs` 需 GitHub Pages 外網、`browser-check.mjs` 需 Chromium——**匯入時須確認這兩條路徑可被排除**，否則 ⑥ 不過。④ 的 `.mjs` 行數未量測 |
+| 6 | `course-quiz-builder` | [the3ma/course-quiz-builder](https://github.com/the3ma/course-quiz-builder) | `e2ac75e52a9a8214b656d9da1a505a2c74116225` | MIT（實查 `LICENSE`） | indexed | Node.js、**零 npm 依賴**（僅 `node:` 內建），Node ≥18 ✅（Image 為 Node 22）。**2026-08-15 完成量測：④⑥ 兩項確定 fail，維持 indexed、不列精選**，詳見 §6.2 與 §9.2 |
 | 7 | `docx` | anthropics/skills | `f6656c12` | **Source-available**（Anthropic 服務條款） | indexed | ❌ ①不過，見 §5.2 的升級告警 |
 | 8 | `pdf` | anthropics/skills | `f6656c12` | Source-available | indexed | 同上 |
 | 9 | `pptx` | anthropics/skills | `f6656c12` | Source-available | indexed | 同上 |
@@ -188,7 +195,7 @@ PDM-002 風險表的統一政策為「**索引與平台內試跑照常（在平�
 
 - **這是法律解釋問題，不是架構問題，本文件不作判定。**
 - **建議動作**：負責人與法務就以下兩點確認後回填 PDM-002 風險表：(a) 平台保存內容快照是否構成 "reproducing outside the Services"；(b) 若構成，`documents` 類別的 4 個官方 Skill 應降級為第三層「外部結果」（僅索引 metadata 與連結）。
-- **對數量目標的影響**：若降級，`documents` 的已索引從 10 掉到 **6**，**低於 8–12 下限**，必須另補 2–6 個 OSI 候選。§7 的補足路徑因此不是「有餘裕再做」，而是**這個法務判定的對沖**。
+- **對數量目標的影響**：若降級，`documents` 的已索引從 10 掉到 **6**，**低於 8–12 下限**，必須另補 2–6 個 OSI 候選。**精選 4 個（D-1～D-4）全部是 MIT，不受此判定影響**——2026-08-15 補足缺口 1 後，這條風險只剩在「已索引」層。§7 的補足路徑 3（`w95` 的 39 個自製 skill）因此保留為此判定的備援池。
 
 ### 5.3 衍生關係的頭號地雷：**「宣稱 MIT 的 Anthropic source-available 衍生物」**
 
@@ -219,6 +226,7 @@ PDM-002 風險表的統一政策為「**索引與平台內試跑照常（在平�
 | [umarmsharif/ai-presentation-builder](https://github.com/umarmsharif/ai-presentation-builder) | 1★ | MIT ✅ | 依賴 npm 套件 `pptxgenjs`；PDM-004 白名單只涵蓋 Python 套件，Runtime Image 未預裝任何第三方 npm 套件，且執行期禁止 `npm install`。選用依賴另含 LibreOffice 與 8 種商業字型 | **⑥**（若負責人決定為 Node 建立套件白名單，可回頭複審——**這是本清單唯一因「白名單語言缺口」而非品質問題出局的候選**） |
 | `data-to-document`（danielrosehill 同 repo，M0 未涵蓋） | — | MIT ✅ | 實查 `SKILL.md`：需 **Typst CLI** 在 PATH 上，另需 `pyyaml` ✅、選用 `babel` ✗ | **⑥** |
 | [nexu-io/html-anything](https://github.com/nexu-io/html-anything) | 8,291★ | Apache-2.0 ✅ | 實查根目錄：pnpm monorepo（`cli`／`next`／`e2e`），**無 `SKILL.md`、無 `skills/` 目錄**，不是 Agent Skills 套件而是一套本機應用程式 | **③**（非 Agent Skills 規格產物） |
+| `course-quiz-builder`（the3ma，**精選否決；indexed 維持**） | — | MIT ✅ | **⑥**：`publish-pages.mjs` 不是可選附件而是 SKILL.md「Pipeline」的**第 7 步**（"Skip only if the user asked for a local page"），需 GitHub API／Pages 外網（`fetch()`）＋ `execFileSync` 呼叫 `git`／`gh auth token` 與一枚 repo 寫入 Token，與 ADR-005 egress default-deny 正面衝突，**不可被排除**。（`browser-check.mjs` 反倒可排除——SKILL.md 標為 "Optionally"、無瀏覽器時 skips cleanly。）**④**：`publish-pages.mjs` **768 行**、`publish-selftest.mjs` 356 行、`selftest.mjs` **341 行**，三檔皆超 300 行上限；且 `selftest.mjs` 用 `new Function()` 動態求值從 HTML 模板切下的 CORE 區段，等同 `eval`，為 ④ 明文禁止項。**`selftest.mjs` 又是 SKILL.md 硬規則 2 的強制品質閘門**（"Never ship without selftest.mjs printing PASS"），同樣不可排除 | **④**、**⑥** |
 
 ### 6.3 License 缺失
 
@@ -237,19 +245,19 @@ PDM-002 風險表的統一政策為「**索引與平台內試跑照常（在平�
 
 ## 7. 缺口與建議
 
-### 缺口 1：`documents` 精選短少 1 個（3 / 4–6）
+### ~~缺口 1：`documents` 精選短少 1 個（3 / 4–6）~~ → **已於 2026-08-15 關閉（4 / 4–6）**
 
 **成因不是搜尋不足，是結構性的**：`documents` 的高品質供給集中在 `anthropics/skills`，而其 4 個核心 Skill 為 source-available（①不過）；市面上最像替代品的兩個高星等 repo（`appautomaton/document-SKILLs` 145★、`w95/...` 156★）**恰好都是那 4 個 Skill 的非法 MIT 再授權**（§6.1）。真正原創且 OSI 授權的文件產出 Skill 極少。
 
-**三條補足路徑，依成本排序：**
+原列三條補足路徑，依成本排序，**執行結果如下（詳見 §9）**：
 
-1. **（最低成本）複審 `YuYY2004/excel-skills` 剩餘的格式化類 Skill。** 本次已從該 repo 取得 3 個 `documents` 候選中的 2 個，`excel-format` 僅因 SKILL.md 過長出局。**建議：向上游提 issue／PR 將 `excel-format` 的內嵌腳本外移到 `scripts/`**，即可讓 ④ 通過——這同時是與白名單來源建立維護關係的機會（CONTENT-009 的變更通知管道）。
-2. **量測 `the3ma/course-quiz-builder` 的 `.mjs` 行數，並確認 `publish-pages.mjs`／`browser-check.mjs` 可被排除。** 若兩項成立，直接補上第 4 個精選。
-3. **（最高成本）挖掘 `w95/...` 的 39 個自製 skill**，逐一確認來源歸屬（§6.1 保留意見）。
+1. **（最低成本）複審 `YuYY2004/excel-skills` 剩餘的格式化類 Skill。** → **✅ 缺口由此關閉，且不需要上游 PR。** 原記錄的「`excel-format` SKILL.md 全文約 1,600–1,800 行」是**量測錯誤**；在 pin 的 commit 上實測為 **262 行／9,839 bytes**，內嵌 Python 168 行，④ 的機械項全數通過。`excel-format` 直接升為精選 **D-4**。
+2. **量測 `the3ma/course-quiz-builder` 的 `.mjs` 行數，並確認 `publish-pages.mjs`／`browser-check.mjs` 可被排除。** → **❌ 不通過。** `browser-check.mjs` 確實可排除，但 `publish-pages.mjs`（768 行、需 GitHub API 外網與 Token）是 SKILL.md Pipeline 的第 7 步、`selftest.mjs`（341 行、用 `new Function()`）是硬規則 2 的強制閘門，**兩者都不可排除**，④⑥ 皆 fail。維持 indexed，記入 §6.2。
+3. **（最高成本）挖掘 `w95/...` 的 39 個自製 skill**，逐一確認來源歸屬（§6.1 保留意見）。→ **未執行，也不需要執行**（路徑 1 已達標）。**保留為 §5.2 法務判定的備援池**。
 
 ### 缺口 2：§5.2 的法務判定未完成，`documents` 的已索引數有塌陷風險
 
-若 `anthropics/skills` 的 4 個 source-available Skill 因「reproducing outside the Services」條款被判定連索引都不可，`documents` 已索引由 10 → **6**，跌破下限。**這是本文件最高優先的未決事項**，且是缺口 1 的三條補足路徑同時也是這個風險的對沖。
+若 `anthropics/skills` 的 4 個 source-available Skill 因「reproducing outside the Services」條款被判定連索引都不可，`documents` 已索引由 10 → **6**，跌破下限。**缺口 1 關閉後，這是本文件唯一剩下的高優先未決事項**；補足路徑 3（`w95` 的 39 個自製 skill）是其備援池，另一條低成本方向是複查 §8 列出的 `danielrosehill` 13 個與 `YuYY2004` 2 個未複查 Skill 中是否有可歸 `documents` 者。
 
 ### 建議 3：PDM-004 是否為 Node 建立第三方套件白名單
 
@@ -273,4 +281,57 @@ PDM-002 風險表的統一政策為「**索引與平台內試跑照常（在平�
 - **內容雜湊**：本文件只 pin 到 commit SHA，未計算內容雜湊（INGEST-004 要求，匯入時產生）。
 - **`danielrosehill` repo 於 2026-08-15 觀測到 32 個 skill 目錄**（M0 記錄的是 12 合格 ＋ 7 需外網 ＝ 19）。新出現的 13 個（`add-changelog`、`data-dictionary-export`、`data-enrichment`、`data-to-document`、`divergent-data-pipe`、`geodata-formatter`、`header-standardisation`、`iso-review`、`localization-headers`、`numeric-rounding`、`parquet-jsonl-package`、`synthetic-data-overlay`、`update-data-dictionary`）**本次只抽查了 `data-to-document`（已否決）**，其餘未逐一複查，未計入數量。`data` 已超額達標，補查非急件。
 - **`YuYY2004/excel-skills` 於 2026-08-15 觀測到 18 個 skill**（M0 記錄 12），路徑為 `claude/skills/<name>/SKILL.md`（另有 `codex/` 版本整併為單一 `CODEX.md`）。新增 6 個中，`excel-insert`／`excel-format`／`excel-freeze` 已完成複查並歸入 `documents`，`excel-replace`／`excel-orchestrate` 未複查、未計入；`excel-safe-workflow` 已複查（約 420 行全文／約 85 行 Python，`openpyxl`，不需外網）但屬流程性 meta skill，未計入數量。
-- **GitHub API 於查核後段觸發未認證速率上限**，部分項目改以 `github.com` 頁面與 `raw.githubusercontent.com` 取得；所有已記錄的 SHA 與 License 判定均取自實際回應，無推測值。
+- **GitHub API 於查核後段觸發未認證速率上限**，部分項目改以 `github.com` 頁面與 `raw.githubusercontent.com` 取得；所有已記錄的 SHA 與 License 判定均取自實際回應，無推測值。**注意：§9 已證實本次查核的行數量測至少有一筆嚴重錯誤（`excel-format` 記 1,600–1,800 行，實為 262 行），推測與此降級取徑有關。** §8 其餘「約 XXX 行」的估值同樣未經精確量測，CONTENT-006 應一併複驗。
+
+---
+
+## 9. 補選量測附錄（2026-08-15，`documents` 精選第 4 席）
+
+量測方法：以 `codeload.github.com/<owner>/<repo>/zip/<pinned commit>` 取得 pin 的完整快照，於本機解壓後逐檔計算實際行數與位元組數；`excel-format` 另以 `raw.githubusercontent.com` 的同 commit 路徑二次取得交叉驗證。**全程只讀取、不執行任何套件內 Script（鐵律 1）。**
+
+### 9.1 路徑 1：`YuYY2004/excel-skills` @ `c15e51e2...` — ✅ 通過
+
+`claude/skills/<name>/SKILL.md` 全 18 個 Skill 的精確量測（行數／內嵌 ```` ```python ```` 區塊行數）：
+
+| Skill | 全文行數 | 內嵌 Python | ④ ≤300 |
+| --- | --- | --- | --- |
+| **`excel-format`** | **262** | **168** | **✅** |
+| `excel-freeze`（D-2） | 83 | 34 | ✅ |
+| `excel-find-duplicates`（A-6） | 98 | 36 | ✅ |
+| `excel-orchestrate` | 136 | 0 | ✅（meta skill，未計入數量） |
+| `excel-validate` | 157 | 105 | ✅ |
+| `excel-scout` | 164 | 58 | ✅ |
+| `excel-deduplicate`（A-5） | 176 | 138 | ✅ |
+| `excel-sort` | 181 | 122 | ✅ |
+| `excel-split` | 200 | 123 | ✅ |
+| `excel-insert`（D-1） | 222 | 140 | ✅ |
+| `excel-safe-workflow` | 234 | 83 | ✅（meta skill，未計入數量） |
+| `excel-mapping-replace` | 257 | 166 | ✅ |
+| `excel-regex-clean` | 257 | 181 | ✅ |
+| `excel-merge` | 303 | 233 | ⚠️ 全文 303 超 3 行（Python 233 行仍在限內） |
+| `excel-filter` | 306 | 218 | ⚠️ 同上 |
+| `excel-replace` | 336 | 229 | ⚠️（未複查、未計入數量） |
+| `excel-delete` | 374 | 283 | ⚠️ |
+| `excel-date-to-text` | 395 | 267 | ⚠️ |
+
+**`excel-format` 的驗證憑據**：`sha256 = 68dc7ce82d6b14bb967e691356c30fe148624cb011ecd7b7f67287c0f8ff85e0`、9,839 bytes、262 行；zip 與 raw 兩條取徑**位元組完全相同**。原記錄的 1,600–1,800 行與此差 6 倍以上，判定為量測錯誤而非上游變更（pin 未變）。
+
+**④ 其餘機械項**：無 `eval`／`exec`／`compile`、無動態下載、無 `subprocess`、無 `pip install` 字樣。依賴為 `openpyxl`（主路徑）＋ `pandas`／`numpy`（僅 `COL_WIDTH='auto'` 分支），三者皆在 [PDM-004 §4 白名單](../m0/pdm-proposals.md)內。⑥ 不需外網。②⑨ 沿用 §5.1 第 3 列（MIT、單一可辨識作者）。
+
+> **順帶更正一筆既有記錄**：`excel-safe-workflow` 在 §8 記為「約 420 行／約 85 行 Python」，實測為 **234 行／83 行**。其 meta skill 定位與「不計入數量」的判斷不變。
+
+### 9.2 路徑 2：`the3ma/course-quiz-builder` @ `e2ac75e5...` — ❌ 不通過
+
+套件內 `skills/course-quiz-builder/scripts/` 全部 5 個 `.mjs` 的精確行數：
+
+| 檔案 | 行數 | 外網／子行程 | SKILL.md 引用位置 | 可排除？ |
+| --- | --- | --- | --- | --- |
+| `build-quiz.mjs` | 266 ✅ | 無（僅 `node:fs`／`path`／`url`） | Pipeline 第 4 步 | 核心，不需排除 |
+| `selftest.mjs` | **341 ❌** | 無網路，但用 **`new Function()`** 動態求值模板 CORE 區段 | Pipeline 第 6 步＋**硬規則 2「Never ship without selftest.mjs printing PASS」** | **否**（強制閘門） |
+| `publish-pages.mjs` | **768 ❌** | **`fetch()` 打 GitHub API ＋ `execFileSync` 呼叫 `git`／`gh auth token` ＋ repo 寫入 Token** | Pipeline 第 7 步（"Skip only if the user asked for a local page"） | **否**（主流程步驟） |
+| `publish-selftest.mjs` | **356 ❌** | `execFileSync`（無網路、無 Token） | 「Quick reference」與 publish 段落 | 隨 publish 路徑連帶 |
+| `browser-check.mjs` | 257 ✅ | `execFileSync` 啟動 headless Chromium（不在 Runtime Image 內） | 第 6 步標為 "Optionally"，無瀏覽器時 skips cleanly | **是** |
+
+**結論**：唯一可乾淨排除的是 `browser-check.mjs`；`publish-pages.mjs` 與 `selftest.mjs` 都被 SKILL.md 正文指定為必經步驟，排除等於改寫 Skill 語意。**④（3 檔超 300 行 ＋ `new Function()` 動態求值）與 ⑥（GitHub API egress ＋ Token）雙重不過**，維持 indexed。
+
+> 附帶觀察：`publish-pages.mjs` 的 Token 解析鏈（`$GITHUB_REPOSITORY_TOKEN` → `--env-file` → `$GH_TOKEN` → `~/.config/course-quiz/token.env` → `gh auth token`）與其 exit 4 的 secret guard，正是 **SEC-005／NFR-002 會關切的形態**。即使日後 ⑥ 政策放寬，此 Skill 也應被視為高風險樣本，不宜作為首批精選。
