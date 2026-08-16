@@ -1,10 +1,12 @@
 """Internal LLM service. Only Go calls this; it is never exposed publicly (ADR-016).
 
 Endpoints:
-  POST /embed             - generate embeddings via text-embedding-3-small (ADR-013, PDM-003)
-  POST /match-reasons     - generate match reason sentences for search results (ADR-013 section 3)
-  POST /v1/enrich-skill   - index-time enrichment of a Skill Version (ADR-013 section 1)
-  POST /suggest-criteria  - propose acceptance criteria for a test case (TEST-002)
+  POST /embed                 - generate embeddings via text-embedding-3-small (ADR-013, PDM-003)
+  POST /match-reasons         - generate match reason sentences for search results (ADR-013 §3)
+  POST /v1/enrich-skill       - index-time enrichment of a Skill Version (ADR-013 section 1)
+  POST /suggest-criteria      - propose acceptance criteria for a test case (TEST-002)
+  POST /judge-run             - judge one Run against its acceptance criteria (EVAL-001)
+  POST /suggest-improvements  - propose package changes from one evaluation (EVAL-002)
 """
 
 from __future__ import annotations
@@ -16,9 +18,11 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from skillhub_llm.enrich import router as enrich_router
+from skillhub_llm.evaluate import router as evaluate_router
 
 app = FastAPI(title="Skill Hub LLM Service", version="0.1.0")
 app.include_router(enrich_router)
+app.include_router(evaluate_router)
 logger = logging.getLogger("skillhub_llm")
 
 # LiteLLM gateway base URL (Iron Rule 8: all model calls via LiteLLM, never direct).
