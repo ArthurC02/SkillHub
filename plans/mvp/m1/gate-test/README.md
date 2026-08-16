@@ -122,7 +122,7 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 | 量化前置（檢索品質） | ✅ 已過 | golden-query-set.md §10.8：各類別 recall@5 全部 100%、繁中跨語言 100%、Top-3 100% |
 | 索引管線就緒 | ✅ 已就緒 | catalog-rebuild-report.md：45/45 匯入成功（rune 修復後）、`enrichment_status='enriched'` 45/45 |
 | UI 阻擋（符合原因、詳情頁） | ✅ 已關閉 | audit §5.1／§5.2 第二次對帳 |
-| ~~**CONTENT-005 白話摘要**~~ **審核（自動化審校）** | ✅ **已解除**（2026-08-16） | [content-review-report.md](../content-review-report.md)：45 筆全量審校 **45/45 通過**，精選 15/15 |
+| ~~**CONTENT-005 白話摘要**~~ **審核（自動化審校）** | ⚠️ **已解除，但數字已變**（2026-08-16 修正輪） | [content-review-report.md](../content-review-report.md)：45 筆全量審校 ~~**45/45 通過**~~ → **44/45 通過、1 筆 `需修改`（`docx`，已索引層）**，精選 **15/15 不變**。見下方第 5 點 |
 
 > **2026-08-16：本測試的執行前置已全數解除，D 日只等負責人排程與凍結生效。**
 >
@@ -130,12 +130,17 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 >
 > - **唯一主判準（非技術讀者的可理解性）45/45**，忠實性 890 條事實宣稱 0 條未支持，語言慣例與白名單 0 命中。三個類別全數通過，含 `DOC-4`／`DAT-3`／`DAT-4` 的 gold（`excel-freeze`、`data-analyst`、`excel-deduplicate`）。**原本擋測的理由（簡中 Skill 未繁中化）已消失。**
 > - 首輪 3 筆未通過（`pptx`＝DOC-3 的單一 gold primary、`internal-comms`＝WRI-2 的 gold primary、`excel-format`＝DOC-4 的 acceptable），**已以 `enrich-skill/v4` 重跑修正並重審通過，未下架任何一筆**；`documents` 類精選維持 4 筆，卡片的 gold 全數健在。
-> - ⚠️ **凍結標的已變動**：審校過程中共 13 筆重跑增強，線上 prompt 版本分佈現為 **v2 × 35 ＋ v3 × 7 ＋ v4 × 3**（筆數仍為 45，`enriched` 45/45，向量 45/45）。**凍結生效後不得再重跑增強**（§3.2）——若負責人要再動任何一筆，必須在宣告 D 日之前。
+> - ⚠️ **凍結標的已變動**：審校過程中共 13 筆重跑增強，線上 prompt 版本分佈 ~~現為 **v2 × 35 ＋ v3 × 7 ＋ v4 × 3**~~（筆數仍為 45，`enriched` 45/45，向量 45/45）。**凍結生效後不得再重跑增強**（§3.2）——若負責人要再動任何一筆，必須在宣告 D 日之前。
+> - ⚠️ **2026-08-16 修正輪（CONTENT-005 `需修改` 處置，commit `afb5767`）**：CONTENT-007／008 基準試跑查出 11 筆的「限制」欄漏掉套件宣告的 Python 執行依賴，依 `02` §4.7 升 `enrich-skill/v5` 重跑增強與重新索引。**本次動的是凍結標的第 2、3 項，於 D 日宣告前執行，合法**。現況：
+>   - prompt 版本分佈 **v2 × 26 ＋ v3 × 5 ＋ v4 × 3 ＋ v5 × 11**（筆數仍為 45，`enriched` 45/45，向量 45/45）
+>   - 審校 **44/45 通過、1 筆 `需修改`**：`docx` 兩輪重跑後仍有 1 條忠實性未支持（與 Python 揭露無關），依規則不硬修，**留給負責人裁定**（三條可選路徑見報告 §11.3）
+>   - **對卡片的影響**：`docx` 是 `documents` 類**已索引**筆，不影響任何精選下限；但它是 golden query **D01 的 gold primary 且為現行 Top-1**，若負責人選擇下架，該題將失去判定基準
+>   - 逐筆結果、費用與入庫文字指紋見 [content-review-report.md §11](../content-review-report.md)
 > - ⚠️ **一項判準範圍修正待追認**（KPI3 只掃 zh-Hant 欄位，見報告 §9 第 2 條）。若負責人不接受，`excel-format` 退回「需修改」，⑦ 與 CONTENT-005 一併退回——但**不影響任何一張卡的 gold**（`excel-format` 只是 DOC-4 的 acceptable）。
 
 ### 3.2 環境凍結
 
-測試期間**不得**變更：目錄內容（45 筆索引；增強版本分布 v2×35＋v3×7＋v4×3，見 content-review-report.md）、`MaxCosineDistance`（現值 0.75）、增強產出、排序管線、DISC-002 七欄與 `match_reason` 文案。
+測試期間**不得**變更：目錄內容（45 筆索引；增強版本分布 ~~v2×35＋v3×7＋v4×3~~ **v2×26＋v3×5＋v4×3＋v5×11**，2026-08-16 CONTENT-005 修正輪更新，見 content-review-report.md §11）、`MaxCosineDistance`（現值 0.75）、增強產出、排序管線、DISC-002 七欄與 `match_reason` 文案。
 
 任何變更都會讓前後場次不可比。若不得不改（例如線上事故），**變更前後的場次分開統計**，並在分析報告中明列。
 

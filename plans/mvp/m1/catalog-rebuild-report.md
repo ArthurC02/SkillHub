@@ -249,8 +249,8 @@ DB 落地：`skills = 45`、`skill_versions = 45`、`search_documents = 45`。
 | # | 標的 | 現值／基線 |
 | --- | --- | --- |
 | 1 | **目錄內容** | **45 筆**（非 `import-report.md` 與 `gate-test/README.md` 所寫的 44 筆） |
-| 2 | **增強版本基線** | `enrich-skill/v2`、模型 `gpt-5.6-sol`、45／45 `enriched` |
-| 3 | **入庫的增強文字** | 本次匯入所生成的該版文字。**不得重新匯入、不得重跑增強、不得 reindex** |
+| 2 | **增強版本基線** | ~~`enrich-skill/v2`~~ **`enrich-skill/v2` × 26 ＋ `v3` × 5 ＋ `v4` × 3 ＋ `v5` × 11**、模型 `gpt-5.6-sol`、45／45 `enriched`（2026-08-16 兩次重跑後的現值，見 §7.3） |
+| 3 | **入庫的增強文字** | ~~本次匯入所生成的該版文字~~ **現行線上文字**：本次匯入的 v2 文字，加上 2026-08-16 兩次重跑（審校輪 10 筆、CONTENT-005 修正輪 11 筆，其中 2 筆重疊）改寫過的 **19 筆**。**不得重新匯入、不得重跑增強、不得 reindex** |
 | 4 | `MaxCosineDistance` 門檻 | **0.75** |
 | 5 | 排序管線 | 現行混合檢索與 RRF 設定 |
 | 6 | DISC-002 七欄與逐筆 `match_reason` 文案 | 現行 |
@@ -274,13 +274,19 @@ DB 落地：`skills = 45`、`skill_versions = 45`、`search_documents = 45`。
 | 量化前置（檢索品質） | ✅ 已過 | `golden-query-set.md` §10.8 |
 | 索引管線就緒 | ✅ **本次重建完成**：45／45 匯入、45／45 `enriched` | 本報告 §3、§5 |
 | UI 阻擋（符合原因、詳情頁） | ✅ 已關閉 | `m1-work-items-audit.md` §5.1／§5.2 |
-| ~~**CONTENT-005 人工審核**~~ **CONTENT-005 審核** | ✅ **已完成**（自動化審校 45/45 通過） | [`content-review-report.md`](content-review-report.md) |
+| ~~**CONTENT-005 人工審核**~~ **CONTENT-005 審核** | ⚠️ **已完成，數字已變**（~~45/45 通過~~ → **44/45 通過、1 筆 `需修改`**） | [`content-review-report.md`](content-review-report.md)（§11） |
 
 ~~**CONTENT-005 的白話摘要已全數產生且線上可見，但 45 筆的審核狀態全部仍是「待審」。**~~
 
 > **2026-08-16 更新。** 負責人授權以自動化審校取代人工審核，45 筆已全量審完（**45/45 通過**），審校確實是**對著線上詳情頁**做的（`GET /api/skills/{id}`），符合本報告 §5.2 的要求。
 >
-> **本基線的一項變動**：審校過程中共 13 筆依處置規則重跑增強（10 筆 `enrich-skill/v3`，其中 3 筆再以 **v4** 重跑；一律改以 `search_documents.enrichment_status='pending'` ＋ `cmd/reindex` 完成，**未重新匯入、未動 Skill Version 與 `skill_id`**）。因此線上 45 筆的 prompt 版本現為 **v2 × 35 ＋ v3 × 7 ＋ v4 × 3**，不再是本報告 §1 所記的「45/45 v2」。筆數、`enriched` 比例、向量覆蓋不變（45／45／45）。重跑清單見 [`content-review-report.md` §4](content-review-report.md)。
+> **本基線的一項變動**：審校過程中共 13 筆依處置規則重跑增強（10 筆 `enrich-skill/v3`，其中 3 筆再以 **v4** 重跑；一律改以 `search_documents.enrichment_status='pending'` ＋ `cmd/reindex` 完成，**未重新匯入、未動 Skill Version 與 `skill_id`**）。因此線上 45 筆的 prompt 版本 ~~現為 **v2 × 35 ＋ v3 × 7 ＋ v4 × 3**~~，不再是本報告 §1 所記的「45/45 v2」。筆數、`enriched` 比例、向量覆蓋不變（45／45／45）。重跑清單見 [`content-review-report.md` §4](content-review-report.md)。
+>
+> **2026-08-16 第二項變動（CONTENT-005 修正輪，commit `afb5767`）**：CONTENT-007／008 基準試跑查出 11 筆的「限制」欄漏掉套件宣告的 Python 執行依賴，依 `02` §4.7 `需修改` 的處置升 `enrich-skill/v5` 重跑增強與重新索引（同一 `pending` ＋ `cmd/reindex` 路徑，**未重新匯入、未動 Skill Version 與 `skill_id`**）。因此：
+>
+> - 線上 prompt 版本現為 **v2 × 26 ＋ v3 × 5 ＋ v4 × 3 ＋ v5 × 11**；筆數、`enriched` 比例、向量覆蓋仍為 45／45／45。
+> - 審校結果由 45/45 通過變為 **44/45 通過、1 筆 `需修改`**（`docx`，理由與 Python 揭露無關，兩輪重跑未收斂，留給負責人裁定）。
+> - 本次動的是 §7.1 凍結標的第 2、3 項；**執行時 D 日尚未宣告（§7.2 仍成立），故合法**。逐筆結果與入庫文字指紋見 [`content-review-report.md` §11](content-review-report.md)。
 
 ### 7.4 凍結期間的回歸把關
 
@@ -291,13 +297,17 @@ DB 落地：`skills = 45`、`skill_versions = 45`、`search_documents = 45`。
 
 額外一項（本次新增，因為目錄實數改變）：
 
-3. 隨時可用下列一行複查目錄基線是否仍是 45 筆 v2：
+3. 隨時可用下列一行複查目錄基線是否仍是 ~~45 筆 v2~~ **45 筆、版本分布如下**（期望值 2026-08-16 隨修正輪更新）：
 
 ```bash
 docker exec skillhub-postgres-1 psql -U skillhub -d skillhub \
-  -c "select enrichment_status, enrichment_prompt_version, count(*), count(embedding) from search_documents group by 1,2;"
-# 期望：enriched | enrich-skill/v2 | 45 | 45
+  -c "select enrichment_status, enrichment_prompt_version, count(*), count(embedding)
+      from search_documents sd join workspaces w on w.id = sd.workspace_id
+      where w.is_catalog group by 1,2;"
+# 期望：enriched | v2 26|26、v3 5|5、v4 3|3、v5 11|11（合計 45|45）
 ```
+
+> 查詢加了 `is_catalog` 條件：M2 基準試跑在臨時 Workspace 留下 45 筆 fork 的 `search_documents`（`pending`、無向量），不加條件會把它們一起算進來。目錄本身仍是 45 筆。
 
 ---
 
