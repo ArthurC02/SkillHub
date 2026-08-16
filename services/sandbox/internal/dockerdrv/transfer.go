@@ -30,6 +30,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"path"
 	"strings"
@@ -99,16 +100,27 @@ var errGone = errors.New("sandbox is no longer running")
 // pushInputs fetches the run's inputs and writes them into the sandbox, then
 // drops the ready marker. Order matters: the marker is last, so a workload that
 // sees it sees everything.
+//
+// What is fatal here is narrow on purpose: **a granted object that could not be
+// placed**, because that is the case where the run would go on to execute
+// without something it was given. The scaffolding around it - the directories
+// and the ready marker - is best effort, because a workload that does not take
+// part in the handshake is a workload that has nothing to be withheld from. The
+// isolation probes are exactly that: they replace the image's entrypoint, carry
+// no grants, and are frequently gone before the first exec can run.
 func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunRequest) error {
 	if err := d.exec(ctx, id, []string{"/bin/mkdir", "-p", InputDir, DatasetDir, ArtifactDir}, nil); err != nil {
-		if errors.Is(err, errGone) {
+		// Nothing can be placed, so nothing further will succeed either. A run
+		// that was granted something says so; one that was not simply has no
+		// inputs and no marker, which is the state it would have had anyway.
+		if errors.Is(err, errGone) || len(readGrants(req)) == 0 {
 			return nil
 		}
 		return fmt.Errorf("prepare sandbox input directories: %w", err)
 	}
 
 	names := datasetNames(req)
-	for _, g := range req.ObjectGrants {
+	for _, g := range readGrants(req) {
 		var target string
 		switch g.Purpose {
 		case "skill_package":
@@ -123,9 +135,6 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 			}
 			target = DatasetDir + "/" + name
 		default:
-			continue // artifact_upload is a write grant; it goes the other way
-		}
-		if g.URL == "" || g.Access != "read" {
 			continue
 		}
 		body, err := fetch(ctx, g.URL)
@@ -142,13 +151,30 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 			return fmt.Errorf("place %s in the sandbox: %w", g.Purpose, err)
 		}
 	}
+	// Best effort, and last: a workload that never sees this reports the missing
+	// inputs itself, in its own trace, which is a better diagnosis than this
+	// process guessing why the write did not land.
 	if err := d.exec(ctx, id, []string{"/bin/tee", ReadyPath}, []byte("ready\n")); err != nil {
-		if errors.Is(err, errGone) {
-			return nil
-		}
-		return fmt.Errorf("signal the sandbox that its inputs are ready: %w", err)
+		// Identifiers and the failure only: a RunRequest carries grant URLs and a
+		// Virtual Key, and none of it belongs in a log line (iron rule 11).
+		slog.Warn("could not signal the sandbox that its inputs are ready",
+			"provider_run_id", id, "err", err)
 	}
 	return nil
+}
+
+// readGrants are the authorizations that move bytes *into* the sandbox: the ones
+// with a URL to fetch and read access to use it. artifact_upload is a write
+// grant and goes the other way.
+func readGrants(req sandbox.RunRequest) []sandbox.ObjectGrant {
+	out := make([]sandbox.ObjectGrant, 0, len(req.ObjectGrants))
+	for _, g := range req.ObjectGrants {
+		if g.Access == "read" && g.URL != "" &&
+			(g.Purpose == "skill_package" || g.Purpose == "dataset") {
+			out = append(out, g)
+		}
+	}
+	return out
 }
 
 // datasetNames maps each granted object onto the file name the frozen test case
@@ -238,7 +264,38 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 // exec runs one image-owned binary in the sandbox, optionally feeding it stdin,
 // and reports whether it succeeded. Output is discarded: the callers here place
 // files, they do not read them.
+//
+// A failure is re-judged against the container itself, because "the workload
+// exited while this exec was in flight" reaches the caller in a different shape
+// depending on how far it got, and all three are the same fact:
+//
+//	ContainerExecCreate   409 "container ... is not running"
+//	ContainerExecAttach   "unable to upgrade to tcp, received 404"
+//	ContainerExecInspect  ExitCode 128, with no process ever started
+//
+// All three were reproduced against a real daemon. Matching on their shapes
+// would be matching on daemon prose; asking whether the container is still
+// running answers the actual question and does not go stale.
 func (d *Driver) exec(ctx context.Context, id string, cmd []string, stdin []byte) error {
+	err := d.execOnce(ctx, id, cmd, stdin)
+	if err != nil && !d.isRunning(ctx, id) {
+		return errGone
+	}
+	return err
+}
+
+// isRunning answers whether the sandbox is still there to be written to. An
+// unreachable daemon answers "yes", so a lost connection is reported as the
+// error it is rather than disguised as a finished workload.
+func (d *Driver) isRunning(ctx context.Context, id string) bool {
+	insp, err := d.cli.ContainerInspect(context.WithoutCancel(ctx), name(id))
+	if err != nil {
+		return !cerrdefs.IsNotFound(err)
+	}
+	return insp.State != nil && insp.State.Running
+}
+
+func (d *Driver) execOnce(ctx context.Context, id string, cmd []string, stdin []byte) error {
 	created, err := d.cli.ContainerExecCreate(ctx, name(id), container.ExecOptions{
 		Cmd:          cmd,
 		AttachStdin:  stdin != nil,
@@ -247,10 +304,6 @@ func (d *Driver) exec(ctx context.Context, id string, cmd []string, stdin []byte
 		User:         fmt.Sprintf("%d:%d", d.cfg.UID, d.cfg.GID),
 	})
 	if err != nil {
-		// 409 for a container that has stopped, 404 for one already removed.
-		if cerrdefs.IsConflict(err) || cerrdefs.IsNotFound(err) {
-			return errGone
-		}
 		return err
 	}
 	attached, err := d.cli.ContainerExecAttach(ctx, created.ID, container.ExecAttachOptions{})
