@@ -531,6 +531,8 @@ Key=skillhub-attempt-03d6493d-… Current cost: 0.50056965, Max budget: 0.5
 
 **四筆全部仍然通過**——Agent 撞到 `ModuleNotFoundError` 後改用可用的手段。但這正是要記錄的事：**「安裝目錄宣告依賴的聯集」這條規則，其輸入是 CONTENT-003 的策展判斷，而實測證明該判斷少算了。** 這不是映像的 bug，是依賴清單的覆蓋率問題，處置有二：擴充 `seed-skills.json` 的 `deps` 後重建映像，或接受這個落差並在目錄上標示。兩者都需要決策，不在本批範圍。
 
+> **2026-08-16 已裁定並執行（本節不改寫，下為後續）**：兩條處置**都採**。逐套件靜態掃描 45 個 pin commit 套件樹後，**實際短少的是 13 個 Skill、8 個套件**——本表只列出 4 個，因為只有那 4 個在本批 Dataset 上真的走到 `ModuleNotFoundError`；其餘的沒被這組資料觸發，不代表沒有缺。`deps` 已依掃描重新推導，映像升 `2026.08-3` 納入 8 個純 Python 套件並以**准入門檻**擋下重渲染／OCR／Arrow 堆疊（逐項具名於 [infra/images/README.md](../../../infra/images/README.md)「依賴集」節）；CONTENT-003／006 補上可機械驗證的準則與掃描 finding。詳見 `03` 的 SBX-002、CONTENT-003、CONTENT-006 與新增的 CONTENT-010～012。
+
 沙箱**沒有網路**（SBX-007），`pip` 也已隨 npm 一起移除，所以執行期補裝不存在——這是刻意的，也代表依賴集只能在建映像時決定。
 
 ### 13.5 相容軸回填

@@ -5,14 +5,14 @@
 `@anthropic-ai/claude-agent-sdk` ＋ python3 與目錄宣告的 Python 依賴），由
 `services/sandbox` 的 DockerProvider 以 `SKILLHUB_SANDBOX_IMAGE` 引用。
 
-## 映像內容與理由（版本 `2026.08-2`）
+## 映像內容與理由（版本 `2026.08-3`）
 
 | 內容 | 為什麼在裡面 |
 | --- | --- |
 | `node:22-bookworm-slim`（digest pin） | PDM-003／ADR-015 選定的 Agent SDK 執行環境 |
 | `@anthropic-ai/claude-agent-sdk`（版本 pin） | 工作負載本體；版本即 `runtime_version`（I-05） |
 | `unzip` | Skill 套件是 zip，解壓縮只能發生在沙箱內（鐵律 1） |
-| **`python3` ＋ 下表 9 個套件** | 見下節 |
+| **`python3` ＋ 下表 17 個套件** | 見下節 |
 | **不在裡面**：`npm`／`npx`／`corepack`／`pip` | 執行期不載入、沙箱無網路，套件管理器留在沙箱裡只是負債 |
 
 ### 為什麼加 python3（`2026.08-2`，2026-08-16）
@@ -26,34 +26,121 @@ Skill 在裝了 Python 的環境與這裡是兩種行為。
 **沙箱沒有網路**（SBX-007：唯一到得了的位址是模型閘道），所以「使用者自己 `pip install`」
 這條路不存在：**預裝是唯一途徑**。
 
-預裝清單＝**45 個目錄 Skill 宣告的依賴集合，一個不多**。這條規則可以從資料重新推導，
-「看起來有用」不行，後者會讓映像無止境長大。
-
-| 套件 | 版本 pin | 幾個 Skill 宣告 |
-| --- | --- | --- |
-| `pandas` | 3.0.5 | 26 |
-| `openpyxl` | 3.1.5 | 17 |
-| `lxml` | 6.1.1 | 12 |
-| `python-docx` | 1.2.0 | 2 |
-| `numpy` | 2.4.6 | 1（另為 pandas 依賴） |
-| `python-dateutil` | 2.9.0.post0 | 1（另為 pandas 依賴） |
-| `pypdf` | 6.16.1 | 1 |
-| `pdfplumber` | 0.11.10 | 1 |
-| `python-pptx` | 1.0.2 | 1 |
+預裝清單＝**45 個目錄 Skill 宣告的依賴集合，減去過不了准入門檻的**。前半是可以從資料
+重新推導的規則，「看起來有用」不行，後者會讓映像無止境長大；後半見下一節，它是
+`2026.08-3` 才補上的，而補上的原因是前半在 `2026.08-2` 就已經失效了。
 
 **版本 pin 的取法**：每個直接依賴釘在**通得過 I-06 閘門的最新版**。第一次嘗試釘了一組
 保守的舊版本，grype 在 `lxml`／`pypdf`／`pdfminer.six` 上抓到**可修的 High**——依 ADR-022
 那沒有豁免路徑，所以往上釘而不是往下豁免。**間接依賴不釘**：可重現性的錨是 image digest
 與隨它發佈的 SBOM（SBX-011），手寫 lock 檔會是第二份會漂移的答案。
 
-**代價，明說**：映像由 806 MB 長到 **1.24 GB**（Python site-packages 238 MB ＋ 直譯器與
-其函式庫）。以及 **`pandas` 是 3.x**，而目錄裡的 Skill 多半寫於 2.x 年代——本批**沒有實測**
-兩者的行為差異，那要靠 CONTENT-008 的重跑基準（換映像本來就必須重跑，見下）。
+**代價，明說**：映像由 806 MB 長到 1.24 GB（`2026.08-2`）再到 **1.35 GB**（`2026.08-3`）。
+以及 **`pandas` 是 3.x**，而目錄裡的 Skill 多半寫於 2.x 年代——**已由 §13 全量重測回答**：
+45 筆只觸發一則 `select_dtypes(include='object')` 的相容性告警（`data-analyst`），非錯誤。
+
+## 依賴集：宣告、准入與拒收（`2026.08-3`，2026-08-16）
+
+### 為什麼要有這一節
+
+`2026.08-2` 的規則是一句話：**裝目錄 `deps` 欄位的聯集**。規則沒錯，錯的是它的輸入。
+
+M2 全量基準（[content-baseline-report.md §13.4](../../plans/mvp/m2/content-baseline-report.md)）
+發現 4 個 Skill 的腳本 import 了 `deps` 沒宣告的套件。**逐套件靜態掃描 45 個 pin commit
+套件樹後，實際短少的是 13 個 Skill、8 個套件**——§13.4 只看到 4 個，因為只有那 4 個在該批
+Dataset 上真的走到了 `ModuleNotFoundError`；其餘的沒被那組資料觸發，不代表沒有缺。
+
+根因不是映像，是 **`deps` 欄位當初是人工逐份讀 SKILL.md 抄出來的，而抄漏了**；映像忠實地
+裝了那份漏抄的聯集。沒有任何機制會發現這件事：沙箱裡 `pip` 已刻意移除、又沒有網路，
+唯一的顯現方式是一個 Run 撞到 `ModuleNotFoundError` 然後 **Agent 繞路成功**——四筆全部
+判定「符合」，缺依賴這件事完全沒有進入任何判定。
+
+處置分三段，三段缺一不可：
+
+1. **修資料**：`tools/content/seed-skills.json` 的 `deps` 依靜態掃描重新推導（13 筆修正）。
+2. **修規則**：聯集不再無條件全裝，加**准入門檻**；擋下的逐項具名在下方，不靜默丟棄。
+3. **修流程**：CONTENT-003 策展檢查表加一條可機械驗證的準則，掃描器補
+   `package-dependencies`／`undeclared-dependency` 兩個 finding（`services/platform/internal/skillpkg/deps.go`），
+   使同一個錯誤下次由匯入時的掃描指出，而不是由半年後的一次基準試跑。
+
+### 准入門檻
+
+> **純 Python wheel；無編譯擴充；不需系統二進位檔。**
+
+理由只有一個，但它壓過其他所有考量：**沙箱存在的目的就是解析不受信任的資料**，而 native
+parser 正是隔離層在補償的那個記憶體不安全面。為了滿足一個 `deps` 條目而把渲染／OCR 堆疊
+搬進來，等於用掉沙箱本身的價值去換一個 Skill 的一條支路。門檻是**套件的性質**，不是逐案
+的判斷，所以它跟「裝目錄宣告的聯集」一樣可以被別人重新推導出同一個答案。
+
+體積是次要理由，但不是不存在：被擋下的 4 個套件合計約 570 MB，是整個映像的 4 成。
+
+### 納入（`2026.08-3` 新增 8 個，全部純 Python）
+
+| 套件 | 版本 pin | 大小 | 哪些 Skill 宣告 | 原本的下場 |
+| --- | --- | --- | --- | --- |
+| `pycountry` | 26.2.16 | 23 MB | `add-iso3166`、`standardise-country-names` | §13.4 實測 `ModuleNotFoundError`，改用內嵌對照表 |
+| `chardet` | 7.6.0 | 5 MB | `data-cleanliness-scan` | §13.4 實測 `ModuleNotFoundError`，改用內建編碼偵測 |
+| `defusedxml` | 0.7.1 | 1 MB | `docx`、`pptx`、`xlsx` | **靜態掃描才發現**：三者的 `office/validate.py` 在模組載入時就 import 它，缺了整個驗證器 import 不起來 |
+| `ftfy` | 6.3.1 | 5 MB | `unicode-consistency` | 靜態掃描發現 |
+| `confusable-homoglyphs` | 3.3.1 | 2 MB | `unicode-consistency` | 靜態掃描發現 |
+| `pytz` | 2026.3.post1 | 3 MB | `date-wrangling`（SKILL.md 標為選用） | 靜態掃描發現；選用也是宣告 |
+| `phonenumbers` | 9.0.37 | 48 MB | `pii-flag` | 靜態掃描發現 |
+| `python-stdnum` | 2.2 | 7 MB | `pii-flag` | 靜態掃描發現 |
+
+`defusedxml` 這一列值得單獨看：它是**強化用**的 XML 解析器（擋 billion-laughs 那類），
+拒收它會讓沙箱**更不安全**而不是更安全。它在 `2026.08-2` 缺席了整整一個版本，而三個
+Skill 的基準都判「符合」——因為 Agent 繞過了那條驗證路徑。
+
+既有 9 個（`2026.08-2` 起，版本不變）：`pandas` 3.0.5、`numpy` 2.4.6、`openpyxl` 3.1.5、
+`lxml` 6.1.1、`python-dateutil` 2.9.0.post0、`python-docx` 1.2.0、`python-pptx` 1.0.2、
+`pypdf` 6.16.1、`pdfplumber` 0.11.10。另有兩個**傳遞依賴**恰好滿足宣告：`pillow` 12.3.0
+（`pptx`、`pdf` 宣告）與 `charset-normalizer` 3.5.1（`unicode-consistency` 宣告），
+依「間接依賴不釘」原則不另行釘版，其存在由 SBOM 佐證。
+
+### 拒收（逐項具名，含理由與後果）
+
+| 套件 | 宣告者 | 擋在哪一條 | 後果（誠實敘述） |
+| --- | --- | --- | --- |
+| `pyarrow` | `add-iso3166`、`add-data-dictionary`、`data-comparability`、`data-cleanliness-scan` | 編譯擴充（Arrow C++），157 MB | **Parquet 讀寫不可用。** 四個 Skill 都把 Parquet 列為多種輸入格式之一，CSV／JSON／XLSX 路徑不受影響。這是 4 個 Skill、也是本次拒收清單中影響面最大的一項 |
+| `reportlab` | `pdf` | C 擴充（`_rl_accel`）＋需字型資源，31 MB | PDF **生成**不可用；讀取／抽取／合併（`pypdf`＋`pdfplumber`＋`pillow`）可用 |
+| `pypdfium2` | `pdf` | 綁 PDFium native，9 MB | 頁面點陣化不可用 |
+| `pdf2image` | `pdf` | 需 `poppler-utils` 系統二進位檔 | 同上 |
+| `pytesseract` | `pdf` | 需 `tesseract-ocr` 二進位檔＋語言資料 | **掃描件 OCR 不可用** |
+| `presidio-analyzer`／`presidio-anonymizer` | `pii-flag` | 拉進 spaCy（native）＋**首次使用時才下載語言模型**，357 MB | PII **偵測引擎**不可用；可用的是模型自身判讀 ＋ `phonenumbers`／`python-stdnum` 格式驗證。沙箱無網路，模型下載這條路在執行期必然失敗，**裝了也不會動** |
+| `pywin32`（`win32com`／`pythoncom`） | `document-format-skills` | Windows-only，且需要 Microsoft Office COM | **在 Linux 沙箱上永久不可能。** 該 Skill 的 `.doc`／`.wps` 轉檔支路不存在；核心 `.docx` 路徑只需 `python-docx`，可用 |
+| npm 套件（`pdf-lib`、`pdfjs-dist`；`pptx`／`docx` 文字提及的 `pptxgenjs`、`react`、`sharp` 等） | `pdf`、`pptx`、`docx` | 映像不預裝任何第三方 npm 套件，且 `npm` 本身已移除 | 這些 SKILL.md 的 Node 支路一律不可用。**注意 `anthropics/skills` 的 SKILL.md 明文寫「已預裝，不要 `npm install`」**——那是對它原生環境的敘述，在這裡不成立 |
+
+**拒收 ≠ 目錄說謊。** `seed-skills.json` 的 `deps` 現在**如實記錄套件宣告的全部**，包含被
+擋下的；schema 已寫明該欄位是「套件說它要什麼」而非「映像有什麼」，被擋下的逐項在本表。
+`pdf`／`pii-flag`／`document-format-skills` 三筆另在各自的 `notes` 寫了失去哪條路徑。
+
+**尚未做的一件事，明說**：目錄面向使用者的「限制」欄位是 CONTENT-005 的索引時 LLM 增強
+產物，**不得就地改寫**（`02:CONTENT-005`：`需修改` 的處置是重跑增強與重新索引）。因此
+本批**只記錄建議、不執行**：`pdf`（渲染／OCR 支路）、`pii-flag`（偵測引擎）、
+`document-format-skills`（`.doc`／`.wps` 支路）三筆的「限制」文字應在下一次 CONTENT-005
+重跑時涵蓋上表後果欄。已列入 `03` 工作項。
+
+### 為什麼不是「把門檻放寬、全部裝進來」
+
+`presidio` 那一列自己回答了：它需要在執行期下載模型，而沙箱沒有網路——**裝進來也是壞的**，
+只是壞在更晚、更難查的地方。`pytesseract`／`pdf2image` 同理，缺的是二進位檔不是 wheel。
+剩下的 `pyarrow`／`reportlab`／`pypdfium2` 是真正的取捨：570 MB 與一組 native parser，
+換 4 個 Skill 的部分格式支援。門檻選擇不換。**若之後有需求訊號，正確的做法是為特定
+Skill 族群開第二個 Runtime Image，而不是把這一個養胖**——`skill_runtime_compatibility`
+的鍵本來就是 (Skill Version × Runtime Image)，多一個映像是這個資料模型早就預期的事。
 
 > ⚠️ **換映像＝ Agent 相容軸失效。** `skill_runtime_compatibility`（migration 0022）以
-> **(Skill Version × Runtime Image)** 為鍵，目前 45 筆實測值全部掛在 `2026.08-1`。部署改用
-> `2026.08-2` 之後，目錄對這 45 筆會回到「未驗證」，直到有人在新映像上重跑基準。這是刻意的：
-> 沿用舊映像的結論正是本節要修的那個問題。
+> **(Skill Version × Runtime Image)** 為鍵。`2026.08-1` 有 45 筆、`2026.08-2` 有 45 筆
+> （全量重測，見 §12／§13），**`2026.08-3` 目前 0 筆**。部署改用 `2026.08-3` 之後，目錄對
+> 這 45 筆會回到「未驗證」，直到有人在新映像上重跑基準。這是刻意的：沿用舊映像的結論
+> 正是本節要修的那個問題。
+>
+> 本次升版的**依賴集只增不減**（8 個新增、0 個移除、既有 9 個版本不變），所以 `2026.08-2`
+> 的 45 筆結論在 `2026.08-3` 上**幾乎確定仍成立**——但「幾乎確定」不是量測，0022 的鍵不
+> 接受推論。升版證據走的是 [ADR-023](../../adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md)
+> 的四項重驗（見 [`runtime-agent-sdk/UPGRADES.md`](runtime-agent-sdk/UPGRADES.md)），
+> 那是**行為回歸**的關卡；相容軸回填是**目錄事實**，兩者不互相取代。全量重跑
+> 45 筆約 $2.2（§13.6 實測），列為 `03` 工作項而非本批動作。
 
 「**經審核**」不是「建得起來」。SEC-002 §4.5 對執行映像列了六項檢查，其中三項是
 發佈時閘門（威脅模型 §5.4 閘門 D）：
@@ -202,14 +289,27 @@ CI artifact `runtime-agent-sdk-scan-<sha>`（保留 90 天，含 `sbom.spdx.json
 
 ### 已發佈的 digest 與孤兒清單
 
-**現行 digest ＝ `ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-2` 當下解析到的那個。**
+**現行 digest ＝ `ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-3` 當下解析到的那個。**
 這裡不抄它——build 不是位元可重現的，所以每一次跑到發佈步驟都會產生**新的 digest** 並把版本
 tag 移過去，一份寫在文件裡的「現行 digest」保證會過期，而過期的那份看起來跟正確的一模一樣。
 要拿當下的值：
 
 ```bash
-docker buildx imagetools inspect ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-2
+docker buildx imagetools inspect ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-3
 ```
+
+**升版不會製造孤兒，同版重建才會。** workflow 的發佈步驟從 Dockerfile 的 `ARG IMAGE_VERSION`
+讀 tag（[runtime-image.yml](../../.github/workflows/runtime-image.yml) 第 175 行），所以
+`2026.08-2` → `2026.08-3` 這種**版本一起改**的發佈，是把新 digest 掛到一個**新 tag** 上，
+舊 digest 的 `2026.08-2` tag 原地不動、仍指得到、attestation 仍對應——它是**被取代的版本**，
+不是孤兒。下表因此**沒有新增列**。孤兒只在「版本沒改而重跑發佈」時產生（tag 被移到新
+digest，舊 digest 失去指向），第三列就是那個情況的唯一實例。
+
+> ⚠️ 但**被取代的版本會在 30 天後停止可用**：`rescan` job 同樣從 Dockerfile 讀版本
+> （同檔第 246 行），只重掃**當前**版本，所以 `2026.08-2` 的 `scanned_at` 不再更新，
+> 30 天後依 I-04 判為過期 → 閘門 D 拒絕它被新 Run 引用。這是設計上正確的（不該有人
+> 長期釘在舊映像），但要知道它是**靜默**發生的：想留一個可回滾的舊版本，就得把它加進
+> rescan 的對象清單，那目前不存在。回滾窗口 ＝ **30 天**。
 
 **孤兒 digest 清單**（曾被推上去、tag 已移走、**不得被任何部署引用**）。孤兒不是靜默的風險：
 沒有掃描 attestation 的那些，閘門 D 依 I-04 判過期本來就會拒絕；有 attestation 的那些則是
@@ -223,7 +323,11 @@ docker buildx imagetools inspect ghcr.io/arthurc02/skillhub-runtime-agent-sdk:20
 
 **清單為什麼不會再長**：path filter 已排除 `infra/images/**/*.md`。第三列是這個缺口的唯一實例
 ——改一行文件就重推一個 image、順手孤立前一個 digest。（第一、二列是同一個 exit 126 事故的
-前後兩半，與此無關。）
+前後兩半，與此無關。）**`2026.08-3` 發佈後複核：仍是 3 筆**，理由見上一段——本次是升版
+不是同版重建。
+
+**這三筆仍待負責人刪除**（本機 token 無 `delete:packages`，見下）。它們不是新問題，而是
+每次讀到這裡都應該順手處理掉的舊帳。
 
 **刪除方式**（本機 git credential 的 token scope 是 `gist, repo, workflow`，**沒有
 `delete:packages` 也沒有 `read:packages`**，因此連 version id 都查不到，留給負責人）：
@@ -233,25 +337,31 @@ Package settings／Manage versions** → 依上表的 tag 找到該 version → 
 `DELETE /user/packages/container/skillhub-runtime-agent-sdk/versions/{version_id}`
 （version id 先以 `GET …/versions` 查，該端點要 `read:packages`）。
 
-## 當前掃描結果（`runtime-agent-sdk:2026.08-2`，2026-08-16）
+## 當前掃描結果（`runtime-agent-sdk:2026.08-3`，2026-08-16）
 
-syft v1.51.0 ＋ grype v0.117.0（漏洞庫 build `2026-08-16T06:14:30Z`），base digest
+syft v1.51.0 ＋ grype v0.117.0（漏洞庫 build `2026-08-16T06:14:30Z`，與 `2026.08-2` 那次
+**同一個 build**，所以下表是同條件比較），base digest
 `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`。
 
-| 等級 | 件數（`2026.08-1`） | 件數（`2026.08-2`，含 python3） |
-| --- | --- | --- |
-| Critical | 7 | **8** |
-| High | 17 | **48** |
-| Medium | 57 | 118 |
-| Low | 8 | 13 |
-| Negligible | 58 | 94 |
-| Unknown | 16 | 16 |
-| **有修復版本者** | 0 | **0** |
+| 等級 | `2026.08-1` | `2026.08-2`（含 python3） | `2026.08-3`（＋8 個純 Python 套件） |
+| --- | --- | --- | --- |
+| Critical | 7 | 8 | **8** |
+| High | 17 | 48 | **48** |
+| Medium | 57 | 118 | **118** |
+| Low | 8 | 13 | **13** |
+| Negligible | 58 | 94 | **94** |
+| Unknown | 16 | 16 | **16** |
+| **有修復版本者（I-06 閘門）** | 0 | 0 | **0（閘門通過）** |
 
-增加的 1 Critical ＋ 31 High **全部來自 python3 帶進來的 Debian 套件**（`python3.11`
-系列 6 件 ×4 個套件、`libexpat1` 4 件、`libsqlite3-0` 3 件、`libncursesw6` 1 件），
-全數無上游修復，逐項列入下方豁免清單。**pip 安裝的 9 個套件在其釘選版本上 0 件
-Critical／High**——這正是「釘最新版而不是豁免」換來的結果。
+**`2026.08-3` 逐格與 `2026.08-2` 相同**，Critical／High 的來源套件清單也一字未變（16 個
+Debian 套件，全在下方豁免清單內）。8 個新套件**帶進 0 件新發現**——這不是巧合，是准入
+門檻的直接結果：純 Python wheel 沒有 native CVE 面，而**上一節擋下的那些正好相反**
+（mupdf／poppler／cairo／Arrow C++ 都有 CVE 史）。豁免清單因此**沒有新增列**。
+
+`2026.08-2` 相對 `2026.08-1` 增加的 1 Critical ＋ 31 High 全部來自 python3 帶進來的
+Debian 套件（`python3.11` 系列 6 件 ×4 個套件、`libexpat1` 4 件、`libsqlite3-0` 3 件、
+`libncursesw6` 1 件），全數無上游修復，逐項列入下方豁免清單。**pip 安裝的 17 個套件在
+其釘選版本上 0 件 Critical／High**——這正是「釘最新版而不是豁免」換來的結果。
 
 ### 已處理：移除 npm 與 corepack
 
@@ -285,6 +395,9 @@ High 歸零，`import` SDK 的煙霧測試通過。
 | **`libexpat1`** | 2.5.0-1+deb12u2 | — | CVE-2025-59375、CVE-2026-25210、CVE-2026-41080、CVE-2026-45186 |
 | **`libsqlite3-0`** | 3.40.1-2+deb12u2 | CVE-2025-7458 | CVE-2026-11822、CVE-2026-11824 |
 
+> `2026.08-3` **未新增任何列**，亦未移除任何列；`first_exempted_at` 與複審日不因本次
+> 升版變動（重掃不推遲複審日，見上）。
+
 粗體四列是 `2026.08-2` 加 python3 帶進來的（`libexpat1`／`libsqlite3-0` 是 CPython 的依賴，
 `libncursesw6` 併入既有的 ncurses 列）。**它們的 `first_exempted_at` 同為 2026-08-16**——
 與既有各列同一天，純粹因為兩件事發生在同一天，不是沿用舊日期：這幾個 CVE 是今天第一次
@@ -304,6 +417,10 @@ High 歸零，`import` SDK 的煙霧測試通過。
 digest 更新一併評估。
 
 ## 本機重跑
+
+升版時另見 [`runtime-agent-sdk/UPGRADES.md`](runtime-agent-sdk/UPGRADES.md)：ADR-023 要求
+每次改變 digest 的變更都附四項行為重驗的實測輸出，而本節的掃描只回答供應鏈風險，
+兩者不覆蓋對方。
 
 ```bash
 docker build -t skillhub/runtime-agent-sdk:scan infra/images/runtime-agent-sdk

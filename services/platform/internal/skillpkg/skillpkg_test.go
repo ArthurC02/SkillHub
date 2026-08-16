@@ -566,3 +566,136 @@ func TestOversizedFileSkipped(t *testing.T) {
 		t.Fatalf("want file-not-scanned info: %+v", r.Findings)
 	}
 }
+
+// details returns the Details list of the first finding with the given code,
+// and whether such a finding exists at all.
+func details(r Report, code string) ([]string, bool) {
+	for _, f := range r.Findings {
+		if f.Code == code {
+			return f.Details, true
+		}
+	}
+	return nil, false
+}
+
+func contains(ss []string, want string) bool {
+	for _, s := range ss {
+		if s == want {
+			return true
+		}
+	}
+	return false
+}
+
+// The three cases the M2 baseline actually produced (content-baseline-report.md
+// §13.4), plus the false positives that would make the warning useless.
+func TestDependencyExtraction(t *testing.T) {
+	tests := []struct {
+		name        string
+		files       map[string]string
+		md          string
+		wantListed  []string // must appear in the package-dependencies info
+		wantNot     []string // must appear in neither finding
+		wantWarning []string // must appear in undeclared-dependency
+		noWarning   bool
+	}{{
+		// wrangler/add-iso3166: no scripts at all, everything declared on an
+		// install line in SKILL.md. The catalog recorded only pandas.
+		name:       "install line in SKILL.md",
+		md:         goodMD + "\n## Dependencies\n\n```bash\npip install pandas pycountry openpyxl\n```\n",
+		wantListed: []string{"pandas", "pycountry", "openpyxl"},
+		noWarning:  true, // the package does declare them; the transcription was short
+	}, {
+		// anthropic-sa/xlsx: scripts import defusedxml and lxml and the package
+		// declares neither, anywhere.
+		name: "scripts import what nothing declares",
+		files: map[string]string{
+			"scripts/validate.py": "import defusedxml.ElementTree as ET\nimport lxml.etree\nimport os, sys\n",
+		},
+		wantListed:  []string{"defusedxml", "lxml"},
+		wantNot:     []string{"os", "sys"},
+		wantWarning: []string{"defusedxml", "lxml"},
+	}, {
+		name: "sibling and stdlib imports are not dependencies",
+		files: map[string]string{
+			"scripts/main.py":     "import helpers\nfrom office import validate\nimport json\nimport pandas\n",
+			"scripts/helpers.py":  "import re\n",
+			"scripts/office/v.py": "import io\n",
+		},
+		wantListed:  []string{"pandas"},
+		wantNot:     []string{"helpers", "office", "json", "re", "io"},
+		wantWarning: []string{"pandas"},
+	}, {
+		name: "import name is compared as its distribution name",
+		files: map[string]string{
+			"scripts/w.py": "from docx import Document\nimport dateutil.parser\n",
+		},
+		md:         goodMD + "\n```bash\npip install python-docx python-dateutil\n```\n",
+		wantListed: []string{"python-docx", "python-dateutil"},
+		wantNot:    []string{"docx", "dateutil"},
+		noWarning:  true,
+	}, {
+		name: "a manifest is where undeclared imports belong, so no warning",
+		files: map[string]string{
+			"requirements.txt": "pandas>=2.0.0\nlxml==6.1.1\n",
+			"scripts/a.py":     "import pandas\nimport chardet\n",
+		},
+		wantListed: []string{"pandas", "lxml", "chardet"},
+		noWarning:  true,
+	}, {
+		name: "node builtins and relative specifiers are not dependencies",
+		files: map[string]string{
+			"build.mjs": `import fs from "node:fs";
+import path from "path";
+import { load } from "./local.mjs";
+import pptx from "pptxgenjs";
+import { x } from "@scope/pkg/sub";
+`,
+		},
+		wantListed:  []string{"pptxgenjs", "@scope/pkg"},
+		wantNot:     []string{"node:fs", "path", "./local.mjs"},
+		wantWarning: []string{"pptxgenjs"},
+	}, {
+		name:      "a prompt-only package with no dependencies says nothing",
+		md:        goodMD,
+		noWarning: true,
+	}}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			md := tc.md
+			if md == "" {
+				md = goodMD
+			}
+			r := Validate(pkg(md, tc.files))
+			info, hasInfo := details(r, "package-dependencies")
+			warn, hasWarn := details(r, "undeclared-dependency")
+
+			if len(tc.wantListed) == 0 && hasInfo {
+				t.Fatalf("want no dependency finding, got %v", info)
+			}
+			for _, want := range tc.wantListed {
+				if !contains(info, want) {
+					t.Errorf("package-dependencies missing %q: %v", want, info)
+				}
+			}
+			for _, bad := range tc.wantNot {
+				if contains(info, bad) || contains(warn, bad) {
+					t.Errorf("%q must not be reported as a dependency: %v / %v", bad, info, warn)
+				}
+			}
+			if tc.noWarning && hasWarn {
+				t.Fatalf("want no undeclared-dependency warning, got %v", warn)
+			}
+			for _, want := range tc.wantWarning {
+				if !contains(warn, want) {
+					t.Errorf("undeclared-dependency missing %q: %v", want, warn)
+				}
+			}
+			// Advisory only: a package that under-declares still imports.
+			if r.Blocked {
+				t.Errorf("dependency findings must never block: %+v", r.Findings)
+			}
+		})
+	}
+}

@@ -507,34 +507,21 @@ var runnableFences = map[string]string{
 // is a fenced Python block was being presented as containing no scripts.
 func (r *Report) checkEmbeddedCode(body string) {
 	var (
-		lang    string // non-empty while inside a runnable fence
-		fence   string // the delimiter that opened the current block
-		lines   int
 		blocks  int
 		longest int
 		total   int
 		byLang  = map[string]int{}
 	)
-	for _, line := range strings.Split(body, "\n") {
-		trimmed := strings.TrimSpace(strings.TrimRight(line, "\r"))
-		open := fenceDelimiter(trimmed)
-		switch {
-		case fence == "" && open != "":
-			fence = open
-			lang = runnableFences[strings.ToLower(strings.Fields(strings.TrimLeft(trimmed, "`~"))[0])]
-			lines = 0
-		case fence != "" && strings.HasPrefix(trimmed, fence) && strings.Trim(trimmed, string(fence[0])) == "":
-			if lang != "" && lines > 0 {
-				blocks++
-				total += lines
-				longest = max(longest, lines)
-				byLang[lang] += lines
-			}
-			fence, lang = "", ""
-		case fence != "":
-			lines++
+	forEachRunnableFence(body, func(lang, code string) {
+		lines := strings.Count(code, "\n")
+		if lines == 0 {
+			return
 		}
-	}
+		blocks++
+		total += lines
+		longest = max(longest, lines)
+		byLang[lang] += lines
+	})
 	if longest <= maxEmbeddedBlockLines && total <= maxEmbeddedTotalLines {
 		return
 	}
@@ -548,6 +535,40 @@ func (r *Report) checkEmbeddedCode(body string) {
 		"SKILL.md embeds %d lines of runnable code in %d code block(s) (%s); longest block %d lines. "+
 			"This code is never executed during import or scan, but the package's file list does not show it.",
 		total, blocks, strings.Join(langs, ", "), longest))
+}
+
+// forEachRunnableFence calls fn once per fenced code block whose language tag
+// names something runnable, with the canonical language and the block's body.
+// Blocks with no language, or one that is not runnable, are skipped.
+//
+// Shared by the embedded-code size check and dependency extraction: two walks
+// would eventually disagree about what counts as a code block, and then the size
+// warning and the dependency list would be describing different packages.
+func forEachRunnableFence(body string, fn func(lang, code string)) {
+	var (
+		lang  string // non-empty while inside a runnable fence
+		fence string // the delimiter that opened the current block
+		code  strings.Builder
+		open  bool
+	)
+	for _, line := range strings.Split(body, "\n") {
+		trimmed := strings.TrimSpace(strings.TrimRight(line, "\r"))
+		switch {
+		case !open && fenceDelimiter(trimmed) != "":
+			fence = fenceDelimiter(trimmed)
+			lang = runnableFences[strings.ToLower(strings.Fields(strings.TrimLeft(trimmed, "`~"))[0])]
+			code.Reset()
+			open = true
+		case open && strings.HasPrefix(trimmed, fence) && strings.Trim(trimmed, string(fence[0])) == "":
+			if lang != "" {
+				fn(lang, code.String())
+			}
+			open, fence, lang = false, "", ""
+		case open:
+			code.WriteString(line)
+			code.WriteByte('\n')
+		}
+	}
 }
 
 // fenceDelimiter returns the opening fence marker of line, or "".
@@ -604,10 +625,12 @@ func IsScriptPath(path string) bool {
 // manifests, and external URLs (info), and blocks on likely secrets (error).
 func (r *Report) scanTree(fsys fs.FS) {
 	urlsByHost := map[string][]string{}
+	deps := newDepScan()
 	_ = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
 		}
+		deps.note(path)
 		lower := strings.ToLower(path)
 		ext := ""
 		if i := strings.LastIndex(lower, "."); i >= 0 {
@@ -640,6 +663,7 @@ func (r *Report) scanTree(fsys fs.FS) {
 			return nil
 		}
 		content := string(data)
+		deps.observe(path, content)
 
 		for _, u := range dedupe(urlPattern.FindAllString(content, -1)) {
 			h := urlHost(u)
@@ -655,6 +679,7 @@ func (r *Report) scanTree(fsys fs.FS) {
 		}
 		return nil
 	})
+	deps.report(r)
 	r.addURLDisclosures(urlsByHost)
 }
 

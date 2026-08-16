@@ -20,7 +20,7 @@
 #         (SBX-011). Thresholds are settled in ADR-022 §2.
 #
 # Build:
-#   docker build -t skillhub/runtime-agent-sdk:2026.08-2 infra/images/runtime-agent-sdk
+#   docker build -t skillhub/runtime-agent-sdk:2026.08-3 infra/images/runtime-agent-sdk
 FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
 
 # The SDK version is pinned, not floated: it is the runtime_version the
@@ -32,8 +32,9 @@ ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 # an in-place edit of an existing one (I-05, README "Digest 更新程序"). The
 # runtime-image workflow reads it straight out of this file so the tag it pushes
 # to GHCR and the tag written here cannot drift apart.
-# 2026.08-2 adds python3 and the catalog's declared Python dependency set.
-ARG IMAGE_VERSION=2026.08-2
+# 2026.08-3 closes the gap between the catalog's `deps` field and what the
+# packages actually import (content-baseline-report.md §13.4).
+ARG IMAGE_VERSION=2026.08-3
 
 # Non-root from the image on up (C-02). The provider also passes --user, but an
 # image whose only account is root is one bad flag away from running as root.
@@ -63,11 +64,27 @@ RUN apt-get update \
 # gateway), so a dependency that is not baked in here cannot be installed at run
 # time — pre-installing is the only path that exists.
 #
-# The set is exactly the union of `deps` declared by the 45 catalog skills in
-# tools/content/seed-skills.json, nothing beyond it: pandas 26, openpyxl 17,
-# lxml 12, python-docx 2, and one each of numpy, pypdf, pdfplumber, python-pptx,
-# python-dateutil. "The catalog declared it" is a rule that can be re-derived
-# from data; "it seemed useful" is not, and would grow this image forever.
+# The set is the union of `deps` declared by the 45 catalog skills in
+# tools/content/seed-skills.json, minus what cannot go in. "The catalog declared
+# it" is a rule that can be re-derived from data; "it seemed useful" is not, and
+# would grow this image forever.
+#
+# 2026.08-2 read that union off a `deps` field that had been transcribed from an
+# incomplete read of each SKILL.md: 13 of the 45 skills under-declared, and the
+# image inherited every gap. The field is now corrected against a static scan of
+# the pinned package trees, which added 8 installable packages to the union and
+# also — this is what forced the second half of the rule — a set of things that
+# must not be installed at all:
+#
+#   ADMISSION BAR: pure-Python wheel, no compiled extension, no system binary.
+#
+# A sandbox exists to parse untrusted data. Native parsers are the memory-unsafe
+# surface that isolation is compensating for, so pulling a rendering or OCR stack
+# in to satisfy a `deps` entry trades away the thing the sandbox is for. The bar
+# is a property of the package, not a judgement call per package, and every
+# rejection it produces is named with its reason in infra/images/README.md —
+# a rejected dependency is a disclosed limitation, never a silent one.
+#
 # Each direct dependency is pinned to the newest release the I-06 gate accepts:
 # the first pass pinned a conservative older set and grype found fixable High
 # findings in lxml, pypdf and pdfminer.six, which have no waiver path (ADR-022).
@@ -88,6 +105,14 @@ RUN pip3 install --break-system-packages --no-cache-dir \
       python-pptx==1.0.2 \
       pypdf==6.16.1 \
       pdfplumber==0.11.10 \
+      pycountry==26.2.16 \
+      chardet==7.6.0 \
+      defusedxml==0.7.1 \
+      ftfy==6.3.1 \
+      confusable-homoglyphs==3.3.1 \
+      pytz==2026.3.post1 \
+      phonenumbers==9.0.37 \
+      python-stdnum==2.2 \
     && apt-get purge -y python3-pip \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* /root/.cache
