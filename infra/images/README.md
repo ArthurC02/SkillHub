@@ -72,7 +72,9 @@ parser 正是隔離層在補償的那個記憶體不安全面。為了滿足一�
 搬進來，等於用掉沙箱本身的價值去換一個 Skill 的一條支路。門檻是**套件的性質**，不是逐案
 的判斷，所以它跟「裝目錄宣告的聯集」一樣可以被別人重新推導出同一個答案。
 
-體積是次要理由，但不是不存在：被擋下的 4 個套件合計約 570 MB，是整個映像的 4 成。
+體積是次要理由，但不是不存在：被擋下的套件中最大的四個（`presidio-analyzer` 357 MB、
+`pyarrow` 157 MB、`reportlab` 31 MB、`pypdfium2` 9 MB）合計約 **554 MB**，相當於現行映像
+1.35 GB 的四成。相對地，納入的 8 個純 Python 套件合計約 94 MB。
 
 ### 納入（`2026.08-3` 新增 8 個，全部純 Python）
 
@@ -124,10 +126,12 @@ Skill 的基準都判「符合」——因為 Agent 繞過了那條驗證路徑�
 
 `presidio` 那一列自己回答了：它需要在執行期下載模型，而沙箱沒有網路——**裝進來也是壞的**，
 只是壞在更晚、更難查的地方。`pytesseract`／`pdf2image` 同理，缺的是二進位檔不是 wheel。
-剩下的 `pyarrow`／`reportlab`／`pypdfium2` 是真正的取捨：570 MB 與一組 native parser，
-換 4 個 Skill 的部分格式支援。門檻選擇不換。**若之後有需求訊號，正確的做法是為特定
-Skill 族群開第二個 Runtime Image，而不是把這一個養胖**——`skill_runtime_compatibility`
-的鍵本來就是 (Skill Version × Runtime Image)，多一個映像是這個資料模型早就預期的事。
+剩下的 `pyarrow`／`reportlab`／`pypdfium2` 才是真正的取捨：**197 MB 與三組 native parser**，
+換 `pyarrow` 的 4 個 Skill 的 Parquet 支援、加上 `pdf` 的生成與點陣化支路。門檻選擇不換。
+
+**若之後有需求訊號，正確的做法是為特定 Skill 族群開第二個 Runtime Image，而不是把這一個
+養胖**——`skill_runtime_compatibility` 的鍵本來就是 (Skill Version × Runtime Image)，
+多一個映像是這個資料模型早就預期的事。
 
 > ⚠️ **換映像＝ Agent 相容軸失效。** `skill_runtime_compatibility`（migration 0022）以
 > **(Skill Version × Runtime Image)** 為鍵。`2026.08-1` 有 45 筆、`2026.08-2` 有 45 筆

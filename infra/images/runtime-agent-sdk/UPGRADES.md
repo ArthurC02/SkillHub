@@ -37,6 +37,7 @@
 | SDK 版本 | `0.3.233`（未變） |
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（未變） |
 | 映像 digest | 見 `../README.md`「已發佈的 digest」；GHCR tag `2026.08-2` |
+| commit | `b0c270b`（映像變更本體）；閘道預算根因修復 `3906fe5` 為其前置 |
 | 證據來源 | [content-baseline-report.md §12／§13](../../../plans/mvp/m2/content-baseline-report.md) |
 | 實測規模 | **45 個 Skill 全量**（§12 的 9 筆 ＋ §13 的 36 筆），閘道實付 $0.86 ＋ $1.85 |
 
@@ -61,6 +62,7 @@ token −50%、成本 −28%（§13.3）；`pandas` 3.x 只觸發一則相容性
 | --- | --- |
 | 變更 | **依賴集**：新增 8 個純 Python 套件（`pycountry` 26.2.16、`chardet` 7.6.0、`defusedxml` 0.7.1、`ftfy` 6.3.1、`confusable-homoglyphs` 3.3.1、`pytz` 2026.3.post1、`phonenumbers` 9.0.37、`python-stdnum` 2.2）。既有 9 個版本未變，**0 移除** |
 | 起因 | 目錄 `deps` 欄位漏抄，映像照抄了漏的那份（`../README.md`「依賴集」節） |
+| commit | `b2180b2` |
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
 | 映像大小 | 1.24 GB → **1.35 GB** |
