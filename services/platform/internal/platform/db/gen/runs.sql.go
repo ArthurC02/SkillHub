@@ -320,6 +320,56 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 	return i, err
 }
 
+const insertRunArtifact = `-- name: InsertRunArtifact :execrows
+INSERT INTO artifacts (
+    workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash,
+    object_key, expires_at
+)
+SELECT $1, $2, 'run_output', $3, $4, $5,
+       $6, $7, now() + interval '30 days'
+WHERE NOT EXISTS (
+    SELECT 1 FROM artifacts
+    WHERE run_id = $2 AND kind = 'run_output' AND file_name = $3
+)
+`
+
+type InsertRunArtifactParams struct {
+	WorkspaceID pgtype.UUID
+	RunID       pgtype.UUID
+	FileName    string
+	ContentType string
+	SizeBytes   int64
+	ContentHash string
+	ObjectKey   string
+}
+
+// The artifact manifest one attempt reported (sandbox-provider.yaml RunResult.artifacts),
+// recorded when the run settles. Only the manifest: file name, size and content hash.
+// The bytes stay inside the single archive at object_key and are never opened by the
+// control plane (iron rule 1) - evaluation reads this row, not the file.
+//
+// Without it "the run reported success and produced no files" - the case EVAL-001
+// exists to catch (handoff 丙-5) - is indistinguishable from "the platform never
+// wrote the manifest down", and an evaluator cannot honestly report either.
+//
+// WHERE NOT EXISTS rather than ON CONFLICT: there is no unique key to conflict on,
+// and a redelivered settle must not double the manifest (iron rule 9).
+func (q *Queries) InsertRunArtifact(ctx context.Context, arg InsertRunArtifactParams) (int64, error) {
+	result, err := q.db.Exec(ctx, insertRunArtifact,
+		arg.WorkspaceID,
+		arg.RunID,
+		arg.FileName,
+		arg.ContentType,
+		arg.SizeBytes,
+		arg.ContentHash,
+		arg.ObjectKey,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const insertRunStatusTransition = `-- name: InsertRunStatusTransition :exec
 INSERT INTO run_status_transitions (run_id, workspace_id, run_attempt_id, from_status, to_status, reason)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -431,6 +481,53 @@ func (q *Queries) ListOutboxEventsByAggregate(ctx context.Context, arg ListOutbo
 			&i.AggregateID,
 			&i.Payload,
 			&i.PublishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRunArtifacts = `-- name: ListRunArtifacts :many
+SELECT id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at FROM artifacts
+WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output' AND deleted_at IS NULL
+ORDER BY file_name
+`
+
+type ListRunArtifactsParams struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+// The run's output manifest, workspace scoped. Deleted rows are excluded: a purged
+// artifact is gone, and listing it would promise a file that cannot be fetched.
+func (q *Queries) ListRunArtifacts(ctx context.Context, arg ListRunArtifactsParams) ([]Artifact, error) {
+	rows, err := q.db.Query(ctx, listRunArtifacts, arg.RunID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Artifact
+	for rows.Next() {
+		var i Artifact
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.RunID,
+			&i.Kind,
+			&i.FileName,
+			&i.ContentType,
+			&i.SizeBytes,
+			&i.ContentHash,
+			&i.ObjectKey,
+			&i.ScanStatus,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}

@@ -388,6 +388,7 @@ func (d *driver) mapState(ctx context.Context, attempt gen.RunAttempt, pr Provid
 // settle records the attempt's outcome and takes the run to its terminal state.
 func (d *driver) settle(ctx context.Context, attempt gen.RunAttempt, pr ProviderRun) error {
 	status, failureClass, errClass, message := classifyResult(pr)
+	d.recordArtifacts(ctx, attempt, pr)
 	d.failAttempt(ctx, attempt, errClass, message)
 
 	if status != gen.RunStatusSucceeded {
@@ -405,8 +406,14 @@ func (d *driver) settle(ctx context.Context, attempt gen.RunAttempt, pr Provider
 	return nil
 }
 
-// successReason explains each step of the happy path. The last one is the honest
-// part: nothing has evaluated this run.
+// successReason explains each step of the happy path.
+//
+// The last one used to carry a TODO saying evaluation would run here and decide
+// `succeeded` versus `failed`. ADR-025 overturned that: `runs.status` answers
+// "what happened while this executed" and `evaluations.overall` answers "was the
+// task achieved", and an evaluation never writes back to the run. So the terminal
+// reason is execution language and nothing more - the task verdict is a separate
+// resource, enqueued by Transition and read at GET /runs/{id}/evaluation.
 func successReason(to gen.RunStatus) string {
 	switch to {
 	case gen.RunStatusPreparing:
@@ -416,10 +423,8 @@ func successReason(to gen.RunStatus) string {
 	case gen.RunStatusEvaluating:
 		return "workload completed; collecting the result"
 	default:
-		// TODO(EVAL-001): evaluation runs here and decides succeeded vs failed.
-		// Until it exists, `succeeded` means the workload ran to its own end and
-		// said so - not that anything checked the acceptance criteria.
-		return "workload reported success; no evaluator is configured yet (EVAL-001)"
+		return "workload ran to its own end and reported success; " +
+			"whether the task was achieved is a separate judgement (see this run's evaluation)"
 	}
 }
 
@@ -505,6 +510,44 @@ func (d *driver) transition(ctx context.Context, attemptID pgtype.UUID, to gen.R
 	}
 	d.cur = run
 	return nil
+}
+
+// recordArtifacts stores the manifest the attempt reported (RUN-002's collected
+// output, EVAL-001's evidence). Manifest only: names, sizes and hashes, with the
+// bytes left in the archive the attempt's write grant addressed.
+//
+// Best effort, like failAttempt: the run's terminal state is the fact that
+// matters, and a manifest that could not be written must not stop it. What it
+// costs is an evaluation that reports no output files for a run that had some -
+// which is why the failure is logged rather than swallowed.
+func (d *driver) recordArtifacts(ctx context.Context, attempt gen.RunAttempt, pr ProviderRun) {
+	if pr.Result == nil || len(pr.Result.Artifacts) == 0 {
+		return
+	}
+	archiveKey := artifactObjectKey(uuidString(d.cur.ID), uuidString(attempt.ID))
+	for _, a := range pr.Result.Artifacts {
+		if a.FileName == "" {
+			continue
+		}
+		key := a.ObjectKey
+		if key == "" {
+			key = archiveKey
+		}
+		contentType := a.ContentType
+		if contentType == "" {
+			// From the manifest's own magic-byte sniff, not from the file name.
+			// Unknown is a real answer and is stored as one.
+			contentType = "application/octet-stream"
+		}
+		if _, err := d.svc.queries().InsertRunArtifact(ctx, gen.InsertRunArtifactParams{
+			WorkspaceID: d.cur.WorkspaceID, RunID: d.cur.ID,
+			FileName: a.FileName, ContentType: contentType, SizeBytes: a.SizeBytes,
+			ContentHash: a.ContentHash, ObjectKey: key,
+		}); err != nil {
+			slog.Warn("could not record an artifact manifest row",
+				"run_id", uuidString(d.cur.ID), "file_name", a.FileName, "error", err)
+		}
+	}
 }
 
 // failAttempt records the attempt's own outcome. Best effort by design: the run's

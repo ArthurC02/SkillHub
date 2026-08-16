@@ -207,6 +207,36 @@ SELECT count(*) FROM runs
 WHERE workspace_id = @workspace_id
   AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out');
 
+-- name: InsertRunArtifact :execrows
+-- The artifact manifest one attempt reported (sandbox-provider.yaml RunResult.artifacts),
+-- recorded when the run settles. Only the manifest: file name, size and content hash.
+-- The bytes stay inside the single archive at object_key and are never opened by the
+-- control plane (iron rule 1) - evaluation reads this row, not the file.
+--
+-- Without it "the run reported success and produced no files" - the case EVAL-001
+-- exists to catch (handoff 丙-5) - is indistinguishable from "the platform never
+-- wrote the manifest down", and an evaluator cannot honestly report either.
+--
+-- WHERE NOT EXISTS rather than ON CONFLICT: there is no unique key to conflict on,
+-- and a redelivered settle must not double the manifest (iron rule 9).
+INSERT INTO artifacts (
+    workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash,
+    object_key, expires_at
+)
+SELECT @workspace_id, @run_id, 'run_output', @file_name, @content_type, @size_bytes,
+       @content_hash, @object_key, now() + interval '30 days'
+WHERE NOT EXISTS (
+    SELECT 1 FROM artifacts
+    WHERE run_id = @run_id AND kind = 'run_output' AND file_name = @file_name
+);
+
+-- name: ListRunArtifacts :many
+-- The run's output manifest, workspace scoped. Deleted rows are excluded: a purged
+-- artifact is gone, and listing it would promise a file that cannot be fetched.
+SELECT * FROM artifacts
+WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output' AND deleted_at IS NULL
+ORDER BY file_name;
+
 -- name: RecordOrphanSighting :one
 -- SBX-012 / ADR-022 X-03. One row per provider-side resource this round judged
 -- leaked; the returned count is how many consecutive rounds it has survived.

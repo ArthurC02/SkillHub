@@ -189,13 +189,31 @@ type RunUsage struct {
 	WallClockSeconds float64 `json:"wall_clock_seconds"`
 }
 
+// RunArtifact is one row of the manifest an attempt reported: the name, size and
+// hash of a file the workload wrote. The bytes are not here - they are inside the
+// single archive the attempt's write grant authorized (see grantsFor) - and the
+// control plane never opens it (iron rule 1).
+type RunArtifact struct {
+	FileName    string `json:"file_name"`
+	ContentType string `json:"content_type,omitempty"`
+	SizeBytes   int64  `json:"size_bytes"`
+	ContentHash string `json:"content_hash"`
+	ObjectKey   string `json:"object_key,omitempty"`
+	Truncated   bool   `json:"truncated,omitempty"`
+}
+
 type RunResult struct {
-	RunID        string    `json:"run_id"`
-	RunAttemptID string    `json:"run_attempt_id"`
-	Status       string    `json:"status"` // succeeded | failed | cancelled | timed_out
-	AgentOutput  string    `json:"agent_output,omitempty"`
-	Usage        *RunUsage `json:"usage,omitempty"`
-	Error        *RunError `json:"error,omitempty"`
+	RunID        string `json:"run_id"`
+	RunAttemptID string `json:"run_attempt_id"`
+	Status       string `json:"status"` // succeeded | failed | cancelled | timed_out
+	AgentOutput  string `json:"agent_output,omitempty"`
+	// Artifacts is the manifest, decoded because EVAL-001 needs it: without a
+	// stored manifest, "the run reported success and produced no files" - handoff
+	// 丙-5's concrete case - cannot be told apart from "nobody wrote the manifest
+	// down", and an evaluator cannot honestly report either.
+	Artifacts []RunArtifact `json:"artifacts,omitempty"`
+	Usage     *RunUsage     `json:"usage,omitempty"`
+	Error     *RunError     `json:"error,omitempty"`
 }
 
 type ProviderRun struct {
