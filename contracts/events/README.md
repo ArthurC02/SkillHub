@@ -13,7 +13,7 @@ ADR-009 把三種能力切開，共用 Correlation ID 但**資料模型與存取
 | --- | --- | --- |
 | Platform Observability | 服務健康、延遲、錯誤率、Provider 可用性、Egress 阻擋統計 | ❌ 不涵蓋。走 O11Y-001~003，另有模型與保存政策 |
 | **Run Trace** | 單次 Run 的使用者可見標準事件 | ✅ **就是這份** |
-| Evaluation | 依 Skill／Test Case／Trace／輸出產生的判斷與建議 | ❌ 不涵蓋。落在 `evaluations` 表 |
+| Evaluation | 依 Skill／Test Case／Trace／輸出產生的判斷與建議 | ❌ 不涵蓋。落在 `evaluations` 表。1.2 的 `evaluation_started`／`evaluation_completed` 是**時間軸標記**（起訖、整體結果、計數），判定本身仍不在這裡，見 §4.1 |
 
 兩條由此而來的硬性規則：
 
