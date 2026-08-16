@@ -95,19 +95,19 @@ func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context) (int64, error
 
 const publicHybridSearchSkills = `-- name: PublicHybridSearchSkills :many
 WITH vec AS (
-    SELECT s.skill_id, s.embedding <=> $5::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $6::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
     WHERE s.embedding IS NOT NULL
-    ORDER BY s.embedding <=> $5::vector ASC
+    ORDER BY s.embedding <=> $6::vector ASC
     LIMIT 50
 ),
 fts AS (
-    SELECT s.skill_id, s.embedding <=> $5::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $6::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE s.tsv @@ websearch_to_tsquery('english', $6::text)
-    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $6::text)) DESC
+    WHERE s.tsv @@ websearch_to_tsquery('english', $7::text)
+    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $7::text)) DESC
     LIMIT 50
 ),
 candidates AS (
@@ -118,17 +118,28 @@ candidates AS (
 SELECT c.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
        s.tags, s.scan, ver.created_at AS verified_at,
+       COALESCE(cmp.capability, 'unverified') AS agent_capability,
+       COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
+       COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
+       cmp.measured_at AS agent_measured_at,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
        (c.distance IS NULL)::bool AS unranked
 FROM candidates c
 JOIN search_documents s ON s.skill_id = c.skill_id
 LEFT JOIN LATERAL (
-    SELECT v.created_at
+    SELECT v.id, v.created_at
     FROM skill_versions v
     WHERE v.skill_id = c.skill_id
     ORDER BY v.version_number DESC
     LIMIT 1
 ) ver ON true
+LEFT JOIN LATERAL (
+    SELECT sc.capability, sc.runtime, sc.runtime_image, sc.measured_at
+    FROM skill_runtime_compatibility sc
+    WHERE sc.skill_version_id = ver.id
+    ORDER BY sc.measured_at DESC
+    LIMIT 1
+) cmp ON true
 WHERE (c.distance IS NULL OR c.distance <= $1::float8)
   -- DISC-003 filters, applied after candidate generation.
   --
@@ -146,28 +157,37 @@ WHERE (c.distance IS NULL OR c.distance <= $1::float8)
     $3::bool IS NULL
     OR (ver.created_at IS NOT NULL) = $3::bool
   )
+  AND (
+    $4::text IS NULL
+    OR COALESCE(cmp.runtime, 'unverified') = $4::text
+  )
 ORDER BY c.distance ASC NULLS LAST
-LIMIT $4
+LIMIT $5
 `
 
 type PublicHybridSearchSkillsParams struct {
 	MaxDistance    float64
 	HasScript      *bool
 	SpecValidated  *bool
+	AgentRuntime   *string
 	ResultLimit    int32
 	QueryEmbedding *pgvector.Vector
 	Query          string
 }
 
 type PublicHybridSearchSkillsRow struct {
-	SkillID    pgtype.UUID
-	Name       string
-	Summary    string
-	Tags       []byte
-	Scan       []byte
-	VerifiedAt pgtype.Timestamptz
-	Rank       float64
-	Unranked   bool
+	SkillID           pgtype.UUID
+	Name              string
+	Summary           string
+	Tags              []byte
+	Scan              []byte
+	VerifiedAt        pgtype.Timestamptz
+	AgentCapability   string
+	AgentRuntime      string
+	AgentRuntimeImage string
+	AgentMeasuredAt   pgtype.Timestamptz
+	Rank              float64
+	Unranked          bool
 }
 
 // ADR-013 hybrid retrieval, ranked by vector distance alone.
@@ -218,6 +238,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 		arg.MaxDistance,
 		arg.HasScript,
 		arg.SpecValidated,
+		arg.AgentRuntime,
 		arg.ResultLimit,
 		arg.QueryEmbedding,
 		arg.Query,
@@ -236,6 +257,10 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 			&i.Tags,
 			&i.Scan,
 			&i.VerifiedAt,
+			&i.AgentCapability,
+			&i.AgentRuntime,
+			&i.AgentRuntimeImage,
+			&i.AgentMeasuredAt,
 			&i.Rank,
 			&i.Unranked,
 		); err != nil {
@@ -254,16 +279,32 @@ const publicSearchSkills = `-- name: PublicSearchSkills :many
 
 SELECT s.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-       s.tags, s.scan, ver.created_at AS verified_at
+       s.tags, s.scan, ver.created_at AS verified_at,
+       -- COALESCEd here rather than in Go: a row with no measurement is
+       -- unverified on both axes, which is the same answer the handler used to
+       -- hard-code, and sqlc cannot see that an outer-joined column is nullable
+       -- (it reads the table's NOT NULL and would generate a scan that panics on
+       -- the first unmeasured skill).
+       COALESCE(cmp.capability, 'unverified') AS agent_capability,
+       COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
+       COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
+       cmp.measured_at AS agent_measured_at
 FROM search_documents s
 JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
 LEFT JOIN LATERAL (
-    SELECT v.created_at
+    SELECT v.id, v.created_at
     FROM skill_versions v
     WHERE v.skill_id = s.skill_id
     ORDER BY v.version_number DESC
     LIMIT 1
 ) ver ON true
+LEFT JOIN LATERAL (
+    SELECT c.capability, c.runtime, c.runtime_image, c.measured_at
+    FROM skill_runtime_compatibility c
+    WHERE c.skill_version_id = ver.id
+    ORDER BY c.measured_at DESC
+    LIMIT 1
+) cmp ON true
 WHERE s.tsv @@ websearch_to_tsquery('english', $1::text)
   AND (
     $2::bool IS NULL
@@ -275,24 +316,33 @@ WHERE s.tsv @@ websearch_to_tsquery('english', $1::text)
     $3::bool IS NULL
     OR (ver.created_at IS NOT NULL) = $3::bool
   )
+  AND (
+    $4::text IS NULL
+    OR COALESCE(cmp.runtime, 'unverified') = $4::text
+  )
 ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $1::text)) DESC
-LIMIT $4
+LIMIT $5
 `
 
 type PublicSearchSkillsParams struct {
 	Query         string
 	HasScript     *bool
 	SpecValidated *bool
+	AgentRuntime  *string
 	ResultLimit   int32
 }
 
 type PublicSearchSkillsRow struct {
-	SkillID    pgtype.UUID
-	Name       string
-	Summary    string
-	Tags       []byte
-	Scan       []byte
-	VerifiedAt pgtype.Timestamptz
+	SkillID           pgtype.UUID
+	Name              string
+	Summary           string
+	Tags              []byte
+	Scan              []byte
+	VerifiedAt        pgtype.Timestamptz
+	AgentCapability   string
+	AgentRuntime      string
+	AgentRuntimeImage string
+	AgentMeasuredAt   pgtype.Timestamptz
 }
 
 // The two queries below serve unauthenticated callers (DISC-001), so their
@@ -324,11 +374,23 @@ type PublicSearchSkillsRow struct {
 //     version means static validation passed. No version means
 //     nothing was ever validated, which is unverified and never
 //     "failed".
+//   - agent_runtime — 0022's measured verdict for the newest version, matched
+//     exactly rather than as a boolean. `native`/`transpiled`/
+//     `failed` are three answers, not two, and a row with no
+//     measurement is `unverified` — a fourth. A *bool would have
+//     made "not native" quietly include the unmeasured rows,
+//     which is the same 推定 the has_script note refuses.
 //
-// Both are sqlc.narg: NULL = dimension not filtered, which is the default.
+// All three are sqlc.narg: NULL = dimension not filtered, which is the default.
 // The predicates are written twice rather than factored into a SQL function —
 // two copies of four lines beat a migration for a function that would then need
 // its own drift check.
+//
+// The compatibility lateral takes the newest row for the version whatever image
+// it was measured on, and hands the image back with it. The alternative — filter
+// to a configured "current" image — needs a deployment setting to decide which
+// verdict the public catalogue shows, and a wrong setting there would be silent.
+// Labelling the answer with the image it came from cannot be silently wrong.
 // FTS-only public search — the degradation path when the embedding service is
 // unavailable (ADR-013 fallback).
 //
@@ -347,6 +409,7 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 		arg.Query,
 		arg.HasScript,
 		arg.SpecValidated,
+		arg.AgentRuntime,
 		arg.ResultLimit,
 	)
 	if err != nil {
@@ -363,6 +426,10 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 			&i.Tags,
 			&i.Scan,
 			&i.VerifiedAt,
+			&i.AgentCapability,
+			&i.AgentRuntime,
+			&i.AgentRuntimeImage,
+			&i.AgentMeasuredAt,
 		); err != nil {
 			return nil, err
 		}

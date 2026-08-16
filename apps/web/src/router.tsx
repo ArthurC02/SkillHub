@@ -6,6 +6,7 @@ import { RunPreflight } from "./pages/RunPreflight";
 import { RunTrace } from "./pages/RunTrace";
 import { SkillDetail } from "./pages/SkillDetail";
 import { SkillFiles } from "./pages/SkillFiles";
+import type { AgentRuntime } from "./api/types";
 
 function RootLayout() {
   return (
@@ -45,7 +46,10 @@ export type HomeSearch = {
   q?: string;
   script?: "yes" | "no";
   validation?: "passed" | "unverified";
+  agent?: AgentRuntime;
 };
+
+const AGENT_RUNTIMES: AgentRuntime[] = ["native", "transpiled", "failed", "unverified"];
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -58,6 +62,9 @@ const indexRoute = createRoute({
       search.validation === "passed" || search.validation === "unverified"
         ? search.validation
         : undefined,
+    agent: AGENT_RUNTIMES.includes(search.agent as AgentRuntime)
+      ? (search.agent as AgentRuntime)
+      : undefined,
   }),
 });
 

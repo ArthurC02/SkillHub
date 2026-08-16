@@ -2,6 +2,8 @@ package catalog
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -94,11 +96,14 @@ func TestDependencyTagsReadOnlyTheDependencyBucket(t *testing.T) {
 }
 
 // spec_validation is derived from "does a version exist", because a package that
-// fails static validation is never stored. capability and runtime must stay
-// unverified regardless — that is DISC-002's 尚未試跑.
+// fails static validation is never stored. The two sandbox axes must stay
+// unverified when nothing measured them — that is DISC-002's 尚未試跑, and an
+// empty runtime image is how "no measurement" arrives from SQL.
 func TestResultFacetsDeriveCompatibilityFromVersionPresence(t *testing.T) {
+	unmeasured := measuredCompat("unverified", "unverified", "", pgtype.Timestamptz{})
+
 	var withVersion searchResult
-	resultFacets(&withVersion, nil, nil, pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true})
+	resultFacets(&withVersion, nil, nil, pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true}, unmeasured)
 	if withVersion.Compat.SpecValidation != "passed" {
 		t.Fatalf("spec_validation = %q for an indexed version", withVersion.Compat.SpecValidation)
 	}
@@ -107,7 +112,7 @@ func TestResultFacetsDeriveCompatibilityFromVersionPresence(t *testing.T) {
 	}
 
 	var noVersion searchResult
-	resultFacets(&noVersion, nil, nil, pgtype.Timestamptz{})
+	resultFacets(&noVersion, nil, nil, pgtype.Timestamptz{}, unmeasured)
 	if noVersion.Compat.SpecValidation != "unverified" {
 		t.Fatalf("spec_validation = %q for a skill with no version", noVersion.Compat.SpecValidation)
 	}
@@ -117,7 +122,10 @@ func TestResultFacetsDeriveCompatibilityFromVersionPresence(t *testing.T) {
 
 	for _, r := range []searchResult{withVersion, noVersion} {
 		if r.Compat.Capability != "unverified" || r.Compat.Runtime != "unverified" {
-			t.Fatalf("sandbox axes claimed a verdict before M2: %+v", r.Compat)
+			t.Fatalf("sandbox axes claimed a verdict nothing measured: %+v", r.Compat)
+		}
+		if r.Compat.Note != compatUnverifiedNote {
+			t.Fatalf("unmeasured row carried the measured note: %q", r.Compat.Note)
 		}
 		if r.Tier.Value != string(TierIndexed) {
 			t.Fatalf("tier = %q, want indexed", r.Tier.Value)
@@ -171,5 +179,55 @@ func TestModelLimitationsAreLabelledAndSplitPerLine(t *testing.T) {
 	}
 	if n := len(modelLimitations("")); n != 0 {
 		t.Fatalf("empty enrichment produced %d limitations", n)
+	}
+}
+
+// The measured half of the DISC-002 Agent axis. Two things must survive from the
+// projection to the response, and both have been wrong in the same way before:
+// the verdict must not be reported without the image it was measured on, and the
+// note must switch, because the unverified note tells a reader the axis has no
+// answer while this row has one.
+func TestResultFacetsCarryTheMeasuredAgentAxis(t *testing.T) {
+	var r searchResult
+	measured := measuredCompat("activated", "transpiled", "skillhub/runtime-agent-sdk:2026.08-1",
+		pgtype.Timestamptz{Time: time.Unix(1_755_000_000, 0), Valid: true})
+	resultFacets(&r, nil, nil, pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true}, measured)
+
+	if r.Compat.Capability != "activated" || r.Compat.Runtime != "transpiled" {
+		t.Fatalf("measured verdict lost on the way to the row: %+v", r.Compat)
+	}
+	if r.Compat.RuntimeImage == "" || r.Compat.MeasuredAt == "" {
+		t.Fatalf("verdict reported without the image or the time it was measured: %+v", r.Compat)
+	}
+	if r.Compat.Note != compatMeasuredNote {
+		t.Fatalf("measured row carried the unverified note: %q", r.Compat.Note)
+	}
+	// spec_validation is a different axis with a different source and must not be
+	// overwritten by the measurement block.
+	if r.Compat.SpecValidation != "passed" {
+		t.Fatalf("spec_validation = %q, want passed", r.Compat.SpecValidation)
+	}
+}
+
+// ?agent= is the DISC-002 Agent dimension, live since 0022. An unknown value has
+// to be a 400 rather than a silently ignored filter, for the same reason the
+// unavailable dimensions are: a shared URL must never come back as a full page
+// that looks filtered.
+func TestParseFiltersAgentRuntime(t *testing.T) {
+	for _, v := range []string{"native", "transpiled", "failed", "unverified"} {
+		f, err := parseFilters(httptest.NewRequest(http.MethodGet, "/?q=x&agent="+v, nil))
+		if err != nil {
+			t.Fatalf("agent=%s rejected: %v", v, err)
+		}
+		if f.AgentRuntime == nil || *f.AgentRuntime != v || !f.active() {
+			t.Fatalf("agent=%s did not reach the filter set: %+v", v, f)
+		}
+	}
+	if _, err := parseFilters(httptest.NewRequest(http.MethodGet, "/?q=x&agent=claude", nil)); err == nil {
+		t.Fatal("agent=claude accepted; an unknown value must not be silently dropped")
+	}
+	f, err := parseFilters(httptest.NewRequest(http.MethodGet, "/?q=x", nil))
+	if err != nil || f.AgentRuntime != nil || f.active() {
+		t.Fatalf("absent agent filter did not stay absent: %+v (%v)", f, err)
 	}
 }

@@ -19,3 +19,18 @@ WHERE id = $1 AND workspace_id = $2;
 SELECT * FROM skill_versions
 WHERE workspace_id = $1 AND skill_id = $2
 ORDER BY version_number DESC;
+
+-- name: GetSkillRuntimeCompatibility :one
+-- The newest measurement for this version, on whatever runtime image it was made
+-- (0022). No workspace scope: the row hangs off a version the caller has already
+-- been authorised to read, and the measurement itself carries no user content.
+--
+-- Newest-wins rather than newest-per-image: the detail view has one compatibility
+-- block, and a list of "on this image X, on that image Y" is a question nobody
+-- asked at this stage. The image the answer came from travels with it, so the
+-- reader can tell what was actually measured.
+SELECT capability, runtime, runtime_image, measured_at
+FROM skill_runtime_compatibility
+WHERE skill_version_id = $1
+ORDER BY measured_at DESC
+LIMIT 1;

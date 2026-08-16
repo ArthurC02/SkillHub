@@ -11,22 +11,22 @@
   "drift_min_cosine": 0.9
  },
  "drift_calibration": {
-  "max_cross_skill_cosine": 0.8337,
+  "max_cross_skill_cosine": 0.0,
   "pair": [
-   "sokrati",
-   "shorten"
+   "",
+   ""
   ]
  },
  "usage": {
-  "in": 89185,
-  "out": 65113,
-  "embed": 61022,
-  "calls": 40,
-  "cost_usd": 0.9609
+  "in": 96916,
+  "out": 72295,
+  "embed": 61821,
+  "calls": 44,
+  "cost_usd": 1.0626
  },
  "counts": {
-  "pass": 44,
-  "needs-fix": 1,
+  "pass": 45,
+  "needs-fix": 0,
   "error": 0
  },
  "results": [
@@ -551,7 +551,7 @@
    "category": "documents",
    "skill_id": "93529712-eceb-44f9-9cda-e24af9a1f1b6",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v5",
+   "online_prompt_version": "enrich-skill/v6",
    "kpi2_term_density": 0.0,
    "kpi3": {
     "simplified_chars": [],
@@ -562,82 +562,82 @@
    },
    "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 24,
-    "unsupported": [
-     {
-      "claim": "此 Skill 可將 DOTX 範本內容擷取為 Markdown，並依標題重新組織。",
-      "evidence": "Missing an explicit statement or example that `.dotx` files can be converted to Markdown, or that their content can be reorganized specifically by heading. The document separately states `.dotx` extraction/reorganization and gives `pandoc -t markdown file.docx` for `.docx`.",
-      "verdict": "unsupported"
-     }
-    ]
+    "claims_total": 28,
+    "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "可建立、讀取、編輯及處理 Word 的 .docx 文件與 .dotx 範本；可進行格式設定、內容擷取與重組、尋找取代、圖片處理、註解及追蹤修訂，也可驗證 XML、接受修訂，以及轉成 PDF 和頁面影像供檢視。",
+      "answer": "可建立、讀取、編輯及處理 Word 的 .docx 文件與 .dotx 範本；可做格式設定、內容擷取與重組、圖片替換、尋找與取代、修訂追蹤與註解，也能接受修訂並產生乾淨副本。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此 Skill 可建立、讀取、編輯及處理 Word 的 .docx 文件與 .dotx 範本，包括格式設定、內容擷取與重組、尋找取代、圖片處理、註解及追蹤修訂。... 它也提供文件 XML 驗證、接受修訂，以及將文件轉成 PDF 和頁面影像以檢視輸出的流程。"
+      "quote": "此 Skill 可建立、讀取、編輯及處理 Word 的 .docx 文件與 .dotx 範本，包括格式設定、內容擷取與重組、圖片替換、尋找與取代、修訂追蹤及註解。"
      },
      {
-      "answer": "當你要新建 Word 文件，或需要修改、分析、重整既有 DOCX／DOTX 時可使用。例如替換公司名稱、插入標誌、從範本擷取成 Markdown、以追蹤修訂修訂合約、加入註解，或建立接受全部修訂的副本。",
+      "answer": "當你需要製作有特定版面元素（如標題、目錄、頁碼、表格）的 Word 報告，重整既有 Word 文件內容，保留格式地替換文字，在合約文字加註解，或接受全部追蹤修訂時，可以使用它。",
       "answerable": true,
       "question": "Q2",
-      "quote": "建立新文件時需提供內容與版面需求；處理既有文件時需提供檔案及要執行的修改或分析要求。它也提供文件 XML 驗證、接受修訂，以及將文件轉成 PDF 和頁面影像以檢視輸出的流程。"
+      "quote": "可以這樣說：\n- 請建立一份含標題、目錄、頁碼與數個表格的 .docx 報告。\n- 請擷取這份 Word 文件的內容，並依章節重新編排。\n- 請在這個既有 .docx 檔中全面取代這段文字，且不要變更其他格式。\n- 請在這份合約的指定文字上加入註解，並另存一份含註解的 .docx。\n- 請接受這份 Word 文件中的所有追蹤修訂，並產生一份乾淨副本。"
      },
      {
-      "answer": "若要建立新文件，需準備文件內容與版面需求；若要處理既有文件，需準備檔案，以及希望它執行的修改或分析要求。",
+      "answer": "你需要準備要製作的文件內容與格式需求；若要處理既有檔案，則提供 .docx、.dotx，或待轉換的舊式 .doc 檔。",
       "answerable": true,
       "question": "Q3",
-      "quote": "建立新文件時需提供內容與版面需求；處理既有文件時需提供檔案及要執行的修改或分析要求。"
+      "quote": "使用者可提供要製作的文件內容與格式需求，或提供既有的 .docx、.dotx 或待轉換的舊式 .doc 檔。"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "驗證每項文字變更都有修訂標記",
-     "reason": "這是對追蹤修訂驗證能力的描述；來源明確說明該檢查會報告未被 `<w:ins>` 或 `<w:del>` 包住的已修改文字。",
+     "quote": "驗證輸出",
+     "reason": "這是在描述 Skill 文件所列的輸出驗證流程；來源明確列出 `validate.py` 的 XSD 檢查與自動修復選項，並非對 Skill 整體品質的獨立評價。",
      "verdict": "restatement"
     },
     {
-     "quote": "驗證",
-     "reason": "摘要所述的文件 XML 驗證對應來源的 `validate.py` 指令及其「XSD checks」說明。",
+     "quote": "validated documents",
+     "reason": "這是對來源中 `validate.py` 驗證流程及其「XSD checks」的輸出描述，不是目錄對 Skill 的品質背書。",
      "verdict": "restatement"
     },
     {
-     "quote": "將文件轉成 PDF 和頁面影像以檢視輸出的流程",
-     "reason": "來源的「Verify the output」段落明確要求將 `.docx` 轉成 PDF、產生 JPEG 頁面影像並閱讀影像。",
+     "quote": "且不要變更其他格式。",
+     "reason": "這是任務範例對格式保留的要求；來源指示就地編輯 XML 時「do NOT reformat or pretty-print」。",
      "verdict": "restatement"
     },
     {
-     "quote": "pdf previews",
-     "reason": "此輸出標籤對應來源將 `.docx` 轉換為 PDF 以進行輸出檢視的流程。",
+     "quote": "without changing its other formatting.",
+     "reason": "這是任務範例對格式保留的要求；來源指示就地編輯 XML 時「do NOT reformat or pretty-print」。",
      "verdict": "restatement"
     },
     {
-     "quote": "validation reports",
-     "reason": "此輸出標籤對應來源的 `validate.py` 與其 XSD 檢查說明。",
+     "quote": "乾淨副本",
+     "reason": "來源明確將接受所有追蹤修訂後的輸出稱為「a clean copy」，因此是來源功能描述的重述。",
      "verdict": "restatement"
     },
     {
-     "quote": "PDF 僅用於輸出驗證流程中的轉檔預覽。",
-     "reason": "來源將 PDF 轉檔置於「Verify the output」流程中，而非列為 PDF 任務用途。",
+     "quote": "clean copy",
+     "reason": "來源明確將接受所有追蹤修訂後的輸出稱為「a clean copy」，因此是來源功能描述的重述。",
      "verdict": "restatement"
     },
     {
-     "quote": "可能在特定段落刪除情況留下空白段落或空白項目符號；文件指出應檢查 XML 中的段落刪除。",
-     "reason": "來源明確說明 `accept_changes.py` 與 `pandoc --track-changes=accept` 在此情況可能留下空段落或空白項目符號，並指示檢查 XML 的段落刪除。",
+     "quote": "修訂追蹤驗證的 --author 選項需要同時提供 --original。",
+     "reason": "這是在陳述來源所述驗證工具參數限制，而不是評價 Skill 是否可靠或安全。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "pandoc --track-changes=accept 不會合併具有已刪除段落標記的段落；accept_changes.py 在已刪除段落後接空白間隔段落時也可能無法正確合併。",
+     "reason": "這是來源對兩個接受修訂工具之已知行為與失敗情境的直接重述，屬於主題功能限制而非目錄的品質判斷。",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
-   "verdict": "needs-fix",
-   "reasons": [
-    "KPI1 忠實性：此 Skill 可將 DOTX 範本內容擷取為 Markdown，並依標題重新組織。（Missing an explicit statement or example that `.dotx` files can be converted to Markdown, or that their content can be reorganized specifically by heading. The document separately states `.dotx` extraction/reorganization and gives `pandoc -t markdown file.docx` for `.docx`.）"
-   ],
-   "kpi6_online_cosine": 0.8541,
-   "kpi6_flagged": true
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.7704,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.7704 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
   },
   {
    "id": "anthropic-sa/pdf",

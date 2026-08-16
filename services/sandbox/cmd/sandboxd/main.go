@@ -38,7 +38,7 @@ func main() {
 
 	runtime := os.Getenv("SKILLHUB_SANDBOX_RUNTIME") // "runsc" in production
 	drv, err := dockerdrv.New(dockerdrv.Config{
-		Image:        envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-1"),
+		Image:        envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-2"),
 		Runtime:      runtime,
 		Network:      envOr("SKILLHUB_SANDBOX_NETWORK", "none"),
 		UID:          envInt("SKILLHUB_SANDBOX_UID", 65532),

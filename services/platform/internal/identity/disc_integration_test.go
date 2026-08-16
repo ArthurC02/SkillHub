@@ -959,7 +959,7 @@ func TestFilterDimensionsWithoutDataAreRejectedNotIgnored(t *testing.T) {
 	for _, q := range []string{
 		"&category=documents", // curation-only, never persisted
 		"&tier=curated",       // one value across the whole catalog
-		"&agent=claude",       // needs sandbox runs (M2)
+		"&agent=claude",       // the dimension is live (0022), this value is not
 		"&mcp=no",             // no signal exists anywhere
 		"&script=maybe",       // outside the enum
 		"&validation=failed",  // spec validation is never reported as failed

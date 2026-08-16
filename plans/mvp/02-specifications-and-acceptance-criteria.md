@@ -63,7 +63,7 @@
 | 驗證狀態 | **M1** | — |
 | 類別 | **依 CONTENT-003 策展資料啟用** | 類別目前只存在於策展判斷，無任何欄位保存；需 CONTENT-003 先決定類別是否成為平台欄位，以及使用者自行匯入的 Skill 如何取得類別 |
 | 來源層級 | **依 CONTENT-003 策展資料啟用** | 需 CONTENT-003 的人工精選審查產出至少兩種 tier 值；全目錄同值時篩選無法區分 |
-| Agent 相容 | **M2（依 Sandbox 實測）** | capability／runtime 兩軸在 M2 Sandbox 試跑前一律 `unverified`；提前提供篩選等於暗示有人做過判定 |
+| Agent 相容 | ~~**M2（依 Sandbox 實測）**~~ → **已啟用（2026-08-16）** | ~~capability／runtime 兩軸在 M2 Sandbox 試跑前一律 `unverified`；提前提供篩選等於暗示有人做過判定~~ **啟用條件已達成**：45 個目錄 Skill 各一次 Sandbox 基準試跑的結果已入庫（migration `0022`，逐筆帶來源 `run_id`）。**篩選只開 runtime 一軸**——capability 45/45 皆為 `activated`，全目錄同值，與「來源層級」同一個理由不可篩。**值域為四態**：`native`／`transpiled`／`failed`／`unverified`；第三態 `transpiled`（腳本不會被執行、由模型轉譯）是實測出來的真實類別，不是 passed 也不是 failed。**結論綁 Runtime Image**：欄位以 (Skill Version × Runtime Image) 為鍵，回應一併帶 `runtime_image` 與 `measured_at`，換映像即回到未驗證直到重測 |
 | 是否需要 MCP | **後 MVP（隨 MCP 啟動）** | 靜態掃描與 manifest 皆未捕捉任何 MCP 訊號，訊號來源尚未定義；遠端 MCP 已移出 MVP 首發（見 `TEST-003`） |
 
 #### DISC-003：Skill 詳情與來源追蹤

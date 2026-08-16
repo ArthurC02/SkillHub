@@ -25,7 +25,11 @@ export function Home() {
   const [draft, setDraft] = useState(search.q ?? "");
   const [selected, setSelected] = useState<string[]>([]);
 
-  const filters: SearchFilters = { script: search.script, validation: search.validation };
+  const filters: SearchFilters = {
+    script: search.script,
+    validation: search.validation,
+    agent: search.agent,
+  };
   // `undefined` = nothing submitted yet, so no request. `""` is a blank submit,
   // which the server answers with no_results plus the suggestion copy (DISC-005);
   // duplicating that copy here is exactly what the acceptance criteria stopped
@@ -158,16 +162,21 @@ export function Home() {
  * DISC-003 (spec 02:DISC-002「使用者可依類別、來源層級、Agent、是否包含 Script、
  * 是否需要 MCP 與驗證狀態篩選」).
  *
- * Two of the six dimensions have per-row data in this build and are live
- * controls. The other four are rendered as disabled controls carrying the
+ * Three of the six dimensions have per-row data in this build and are live
+ * controls. The other three are rendered as disabled controls carrying the
  * reason, rather than being hidden or — far worse — offered as controls that
- * accept a value and narrow nothing. The server rejects those four with 400 for
+ * accept a value and narrow nothing. The server rejects those three with 400 for
  * the same reason, so a hand-edited URL cannot get an unfiltered page that looks
  * filtered.
  *
- * The wording of each reason is the honest one, not a "coming soon": 相容狀態
- * needs a sandbox that does not exist yet (M2), and MCP has no source of truth
- * anywhere in the pipeline.
+ * The wording of each reason is the honest one, not a "coming soon": MCP has no
+ * source of truth anywhere in the pipeline, and 類別/來源層級 are curation data
+ * the platform never stored.
+ *
+ * Agent 相容 became live with the M2 baseline measurements (0022): 45 skills,
+ * one sandbox Run each. Only its runtime axis is a filter — every measured skill
+ * came back `activated`, so a capability filter would separate nothing, which is
+ * exactly why 來源層級 is still disabled.
  */
 const UNAVAILABLE_FILTERS: Array<{ key: string; label: string; reason: string }> = [
   {
@@ -179,11 +188,6 @@ const UNAVAILABLE_FILTERS: Array<{ key: string; label: string; reason: string }>
     key: "tier",
     label: "來源層級",
     reason: "目前目錄內每一個 Skill 都是「已索引」層級，人工精選審查尚未開始，篩了也分不出東西。",
-  },
-  {
-    key: "agent",
-    label: "Agent 相容",
-    reason: "Agent 相容狀態要靠 Sandbox 試跑才會有結果，目前一律是「未驗證」，沒有可篩的值。",
   },
   {
     key: "mcp",
@@ -235,6 +239,29 @@ function FilterBar({
         </select>
       </label>
 
+      {/*
+        The runtime axis of DISC-002's Agent dimension. The wording says what the
+        value means rather than repeating the value: 「模型轉譯」 is the one a
+        reader cannot guess, and it is the one that decides whether the Skill's
+        own script is what runs.
+      */}
+      <label>
+        Agent 相容（實測）
+        <select
+          value={filters.agent ?? ""}
+          disabled={disabled}
+          onChange={(event) =>
+            onChange({ agent: (event.target.value || undefined) as SearchFilters["agent"] })
+          }
+        >
+          <option value="">不限</option>
+          <option value="native">腳本可直接執行</option>
+          <option value="transpiled">腳本不會執行，由模型轉譯</option>
+          <option value="failed">腳本無法執行且試跑失敗</option>
+          <option value="unverified">尚未試跑</option>
+        </select>
+      </label>
+
       {UNAVAILABLE_FILTERS.map(({ key, label, reason }) => (
         <label key={key} className="filter-unavailable" title={reason}>
           {label}
@@ -253,7 +280,7 @@ function FilterBar({
         or it reads as a broken UI instead of an absent capability.
       */}
       <p className="note">
-        篩選條件只會用平台真的有的資料。上面標為「無法篩選」的四項，是因為平台目前沒有這些資料，
+        篩選條件只會用平台真的有的資料。上面標為「無法篩選」的三項，是因為平台目前沒有這些資料，
         不是因為所有 Skill 都不符合。
       </p>
     </div>

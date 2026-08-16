@@ -434,3 +434,100 @@ pdf                    fa820905ee07004192ea1dfe01132891
 - 就 KPI3 這一條而言，`excel-format` 的**通過維持**，`curated-skill-list` 檢查 ⑦ 的 15/15 維持，`03` 的 CONTENT-005 勾選**不因本項退回**。
 - CONTENT-005 現為 **44/45**，唯一未收斂的是 `docx`（§11.3），**與本追認無關**，仍待負責人裁定（[m2/README 乙-11](../m2/README.md)）。
 - [gate-test/README §3.1](gate-test/README.md) 的「一項判準範圍修正待追認」已可改記為已追認。
+
+---
+
+## 13. 2026-08-16 `docx` 裁定：路徑 ②（升 v6）
+
+本節是**追加紀錄**，不改寫 §1～§11 的任何判定。§11.3 把 `docx` 的處置留給負責人並列出三條
+路徑，本節記的是**路徑 ② 被採用之後發生的事**。
+
+- 日期：**2026-08-16**（§11 同日稍晚；本節與 §12 的 KPI3 追認是**同日平行的兩批**，§12.5 第 2 點記的「CONTENT-005 現為 44/45、`docx` 待裁定」由本節接續回答，該點不予改寫）
+- 裁定：**路徑 ②——比照 §7 的 v4 先例，為「格式近親外推」再加一條更強的通用約束並升 v6**，
+  只對 `docx` 一筆重跑。未採路徑 ③（下架）的理由見 §11.3：`docx` 是 `catalog-rebuild-report.md`
+  §6.1 golden query **D01 的 gold primary 且為現行 Top-1**，下架會使該題失去判定基準，而
+  問題是一句話的外推，不是內容不堪用。
+- 成本上限：$0.5（實際 **$0.194**，見 §13.4）
+
+### 13.1 v6 加了什麼，以及為什麼不是改 v4 第 3 條
+
+§11.3 記的 B 輪失敗理由是：「可將 DOTX 範本內容擷取為 Markdown 並依標題重新組織」——原文
+**分別**有 `.dotx` 的擷取與重組、**也分別**有 `.docx → markdown` 的 pandoc 範例，但沒有把兩者
+接起來的陳述。
+
+§11.3 把它歸類為 v4 第 3 條「支援一種格式不等於支援其近親」的同型外推。**再看一次，它不是
+同一型**：第 3 條管的是**橫向**外推（做得到 A，於是宣稱做得到 A 的鄰居），而這裡是**縱向**
+串接（做得到 A、也做得到 B，於是宣稱做得到 A 接 B）。把第 3 條改寫得更強無法涵蓋它，因為
+這句話的**兩半在原文裡各自都成立**——正是這一點讓它讀起來像有依據，也正是 Judge 逐句查證時
+仍然判它 unsupported 的原因。
+
+因此 v6 **新增第 4 條**（`services/llm/src/skillhub_llm/enrich.py`，通用條款，不 hardcode 任何
+個案），與既有三條並列：
+
+> 4. No composing. Two facts the content states separately stay two facts. If it says it does A
+> to one input and B to another, it does not follow that it does A then B, or that it does either
+> one to the other's input. Each half being true in the document is not the document stating the
+> whole; only a passage describing that combination is.
+
+`enrich.py` 的欄位集合、schema、模型分層一律未動（同 §7.1、§11.1 的紀律）。
+
+> **與 §12.4 條件 (b) 的關係，講明白**：§12 要求「下次升 prompt 時一併加一條通用約束（英文
+> 範例句引用專有名詞使用其英文原名）」。v6 與 §12 是同日平行的兩批，**v6 沒有帶上那條**——
+> 而且現在補進 v6 是錯的：`docx` 的線上文字已經在 v6 之下產生並審過，事後改動 v6 會讓版本
+> 字串不再說得出那段文字是由哪個 prompt 寫的（§11.1 升版而不就地改的同一個理由）。
+> **該義務原封不動地順延到 v7**，並已寫進 `enrich.py` 的 `PROMPT_VERSION` 註解，讓下一個要
+> 升版的人在動手的位置就看到它。
+
+### 13.2 兩輪結果
+
+管線同 §11.2（把該筆 `enrichment_status` 置回 `pending` → `cmd/reindex` 增強補跑 → 重新
+embedding → `review_summaries.py --only docx` 全套 KPI 重審），模型出口一樣走 LiteLLM 閘道。
+
+| 輪 | 動作 | 結果 |
+| --- | --- | --- |
+| A | `enrich-skill/v6` 重跑增強＋重審 | **需修改**，但**理由第三次不同**：KPI1 由 24 條 1 條未支持變成 **18 條 0 條未支持**（v6 要修的那句消失了），改為 **KPI5 一致性**——limitations 說「不處理 PDF」，`tags.outputs` 卻列了 PDF 預覽 |
+| B | 同路徑第 2 次重跑，**不再動 prompt**（KPI5 屬 §11.3 已認定的非決定性自癒類，與 `excel-sort` 的 B 輪同型） | **通過**。KPI1 **28 條 0 條未支持**、KPI2 3/3、KPI3 簡體與在地詞 0、KPI5 無衝突 |
+
+**v6 要解決的問題在 A 輪就解決了**：`.dotx → Markdown` 的串接句在 A、B 兩輪都沒有再出現。
+A 輪的 KPI5 是另一件事——v6 的 limitations 把 v5 那句「PDF 僅用於輸出驗證流程中的轉檔預覽」
+壓縮掉了，於是與 tags 對不上；B 輪的文字把 PDF 的角色寫回去，衝突即消失。
+
+### 13.3 現行線上文字與指紋
+
+`enrichment_prompt_version = enrich-skill/v6`、`enrichment_model = gpt-5.6-sol`、有向量。
+
+```
+docx  4df1c13f96c987781f110b7d2232f9fe
+```
+
+（指紋規則同 §11.6：`md5(enriched_summary‖task_examples‖limitations)`。§11.6 記的
+`fd2b1541…` 是被本節取代的 v5 文字，兩者不衝突也不可互換；舊文字未留存，`UpsertSearchDocumentEnriched`
+是就地覆寫。）
+
+**§11.4 的揭露結論仍然成立**：現行 limitations 仍明寫「相關指令稿需要 Python；讀取內容需要
+pandoc，轉換與接受修訂需要 LibreOffice，輸出頁面預覽需要 Poppler 的 pdftoppm」，11/11 的執行
+環境揭露沒有因為換版而回退。
+
+### 13.4 費用
+
+| 項目 | 用量 | 費用 |
+| --- | --- | --- |
+| 增強重跑（`gpt-5.6-sol`，經閘道）＋ embedding | 2 次增強＋2 次 embedding | **$0.0919** |
+| Judge 重審（`gpt-5.6-terra`，直連，M1 慣例） | 2 輪 | **$0.1017** |
+| **合計** | — | **$0.194**（上限 $0.5 未觸及） |
+
+閘道帳為權威來源：`LiteLLM_SpendLogs` 由 **$5.039602 → $5.131511**，增量 **$0.091909**。
+Judge 費用取自 `review-results.json` 的 `usage` 增量（$1.0626 − $0.9609）。
+
+### 13.5 CONTENT-005 回到 45/45
+
+`review-results.json` 的計數為 **`{'pass': 45, 'needs-fix': 0, 'error': 0}`**。§11.5 的線上分布
+隨之更新為 **v2 × 26 ＋ v3 × 5 ＋ v4 × 3 ＋ v5 × 10 ＋ v6 × 1**（`docx` 由 v5 移至 v6），目錄
+筆數／`enriched`／有向量仍為 45／45／45。
+
+**`03-work-items.md` 的 CONTENT-005 勾選維持**，行內註記已補指本節；`m2/README.md` 殘項
+**乙-11 關閉**。連帶 CONTENT-003 的檢查 ⑦ 維持 `pass`（15/15，精選未受影響——`docx` 是已索引筆）。
+
+> **對 [`gate-test/README.md`](gate-test/README.md) §3.1 的影響（本節未代改）**：凍結標的的
+> prompt 版本分布需再更新一次為 §13.5 的數字。**動的仍是凍結標的第 2、3 項，合法性條件同
+> §11.8——只有在 D 日尚未宣告時才成立**，查核當下 D 日仍未宣告。

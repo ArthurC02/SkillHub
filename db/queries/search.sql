@@ -96,11 +96,23 @@ LIMIT $2;
 --                    version means static validation passed. No version means
 --                    nothing was ever validated, which is unverified and never
 --                    "failed".
+--   * agent_runtime — 0022's measured verdict for the newest version, matched
+--                    exactly rather than as a boolean. `native`/`transpiled`/
+--                    `failed` are three answers, not two, and a row with no
+--                    measurement is `unverified` — a fourth. A *bool would have
+--                    made "not native" quietly include the unmeasured rows,
+--                    which is the same 推定 the has_script note refuses.
 --
--- Both are sqlc.narg: NULL = dimension not filtered, which is the default.
+-- All three are sqlc.narg: NULL = dimension not filtered, which is the default.
 -- The predicates are written twice rather than factored into a SQL function —
 -- two copies of four lines beat a migration for a function that would then need
 -- its own drift check.
+--
+-- The compatibility lateral takes the newest row for the version whatever image
+-- it was measured on, and hands the image back with it. The alternative — filter
+-- to a configured "current" image — needs a deployment setting to decide which
+-- verdict the public catalogue shows, and a wrong setting there would be silent.
+-- Labelling the answer with the image it came from cannot be silently wrong.
 
 -- name: PublicSearchSkills :many
 -- FTS-only public search — the degradation path when the embedding service is
@@ -118,16 +130,32 @@ LIMIT $2;
 -- the array already carries that.
 SELECT s.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
-       s.tags, s.scan, ver.created_at AS verified_at
+       s.tags, s.scan, ver.created_at AS verified_at,
+       -- COALESCEd here rather than in Go: a row with no measurement is
+       -- unverified on both axes, which is the same answer the handler used to
+       -- hard-code, and sqlc cannot see that an outer-joined column is nullable
+       -- (it reads the table's NOT NULL and would generate a scan that panics on
+       -- the first unmeasured skill).
+       COALESCE(cmp.capability, 'unverified') AS agent_capability,
+       COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
+       COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
+       cmp.measured_at AS agent_measured_at
 FROM search_documents s
 JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
 LEFT JOIN LATERAL (
-    SELECT v.created_at
+    SELECT v.id, v.created_at
     FROM skill_versions v
     WHERE v.skill_id = s.skill_id
     ORDER BY v.version_number DESC
     LIMIT 1
 ) ver ON true
+LEFT JOIN LATERAL (
+    SELECT c.capability, c.runtime, c.runtime_image, c.measured_at
+    FROM skill_runtime_compatibility c
+    WHERE c.skill_version_id = ver.id
+    ORDER BY c.measured_at DESC
+    LIMIT 1
+) cmp ON true
 WHERE s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
   AND (
     sqlc.narg(has_script)::bool IS NULL
@@ -138,6 +166,10 @@ WHERE s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
   AND (
     sqlc.narg(spec_validated)::bool IS NULL
     OR (ver.created_at IS NOT NULL) = sqlc.narg(spec_validated)::bool
+  )
+  AND (
+    sqlc.narg(agent_runtime)::text IS NULL
+    OR COALESCE(cmp.runtime, 'unverified') = sqlc.narg(agent_runtime)::text
   )
 ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
 LIMIT sqlc.arg(result_limit);
@@ -210,17 +242,28 @@ candidates AS (
 SELECT c.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
        s.tags, s.scan, ver.created_at AS verified_at,
+       COALESCE(cmp.capability, 'unverified') AS agent_capability,
+       COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
+       COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
+       cmp.measured_at AS agent_measured_at,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
        (c.distance IS NULL)::bool AS unranked
 FROM candidates c
 JOIN search_documents s ON s.skill_id = c.skill_id
 LEFT JOIN LATERAL (
-    SELECT v.created_at
+    SELECT v.id, v.created_at
     FROM skill_versions v
     WHERE v.skill_id = c.skill_id
     ORDER BY v.version_number DESC
     LIMIT 1
 ) ver ON true
+LEFT JOIN LATERAL (
+    SELECT sc.capability, sc.runtime, sc.runtime_image, sc.measured_at
+    FROM skill_runtime_compatibility sc
+    WHERE sc.skill_version_id = ver.id
+    ORDER BY sc.measured_at DESC
+    LIMIT 1
+) cmp ON true
 WHERE (c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::float8)
   -- DISC-003 filters, applied after candidate generation.
   --
@@ -237,6 +280,10 @@ WHERE (c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::float8)
   AND (
     sqlc.narg(spec_validated)::bool IS NULL
     OR (ver.created_at IS NOT NULL) = sqlc.narg(spec_validated)::bool
+  )
+  AND (
+    sqlc.narg(agent_runtime)::text IS NULL
+    OR COALESCE(cmp.runtime, 'unverified') = sqlc.narg(agent_runtime)::text
   )
 ORDER BY c.distance ASC NULLS LAST
 LIMIT sqlc.arg(result_limit);

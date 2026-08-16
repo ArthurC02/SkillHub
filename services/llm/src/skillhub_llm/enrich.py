@@ -30,10 +30,24 @@ ENRICH_MODEL = os.getenv("ENRICH_MODEL", "gpt-5.6-sol")
 # scripts are written for a stated requirement, after the CONTENT-007/008
 # baseline found 11 of 33 Python-dependent Skills naming the dependency in
 # `tags` but not in `limitations` - the reader sees the limitations block.
+# v6 forbids composing two separately stated facts into one, after `docx` failed
+# CONTENT-005 twice under v5 for joining "extracts .dotx template content" and
+# "converts .docx to markdown with pandoc" into a single .dotx-to-markdown
+# pipeline the document never describes. Rule 3 already covered extrapolating
+# *sideways* to a neighbouring format; this is extrapolating *along* a chain, and
+# it needs saying separately because each half of the sentence is individually
+# true, which is exactly what makes it read as supported.
 # Bumped rather than edited in place: the version is what tells a stored
 # enrichment written under the old prompt from one written under this, and
 # reindex uses it to find the stale rows.
-PROMPT_VERSION = "enrich-skill/v5"
+#
+# OWED TO v7, do not lose: content-review-report.md 12.4 condition (b) asks the
+# next bump to also carry a general rule that an English example sentence naming
+# a proper noun uses its English name (the audit found a Simplified-Chinese
+# typeface name inside an English example). It is not in v6 because v6 landed in
+# a parallel batch and its text is already generated and reviewed - editing v6
+# now would make the version string stop identifying which prompt wrote what.
+PROMPT_VERSION = "enrich-skill/v6"
 
 # Ceiling on a single gateway call. Client disconnect cancels the request at the
 # HTTP layer, which is how Go's cancellation propagates (ADR-016 rule 7).
@@ -54,7 +68,7 @@ you are describing.
 Describe only what the content states. Do not invent capabilities. Do not judge \
 whether the Skill is safe, trustworthy or high quality - that is not yours to decide.
 
-Three ways of overstating a document, all forbidden. They apply to every field, \
+Four ways of overstating a document, all forbidden. They apply to every field, \
 including the task example sentences:
 
 1. Keep a parameter's modality. If the content gives a default, a fallback, or marks \
@@ -68,6 +82,10 @@ content itself claims that property of its own output, and then as a restatement
 that usually come with them. Creating is not reading, writing is not extracting, deleting \
 is not deduplicating, supporting one format is not supporting its relatives. If the \
 document does not do it, it is not in the metadata.
+4. No composing. Two facts the content states separately stay two facts. If it says it \
+does A to one input and B to another, it does not follow that it does A then B, or that \
+it does either one to the other's input. Each half being true in the document is not the \
+document stating the whole; only a passage describing that combination is.
 
 Produce:
 - summary: 2-4 plain sentences a non-technical reader understands, covering what the \

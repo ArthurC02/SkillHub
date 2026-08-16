@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | `SKILLHUB_SANDBOX_TOKEN` | 無（**必填**） | Provider token；未設定則拒絕啟動（fail closed） |
 | `SKILLHUB_SANDBOX_ADDR` | `:9000` | 監聽位址 |
-| `SKILLHUB_SANDBOX_IMAGE` | `skillhub/runtime-agent-sdk:2026.08-1` | Runtime Image。**生產須填 digest**（I-02），tag 是移動標的 |
+| `SKILLHUB_SANDBOX_IMAGE` | `skillhub/runtime-agent-sdk:2026.08-2` | Runtime Image。**生產須填 digest**（I-02），tag 是移動標的。`2026.08-2` 起含 python3 與目錄宣告的 Python 依賴（[infra/images/README.md](../../infra/images/README.md)）——**目錄的 Agent 相容欄是在 `2026.08-1` 上實測的**，換到 `2026.08-2` 後那 45 筆結論不再適用，需重跑 CONTENT-008 基準才會有新的一組 |
 | `SKILLHUB_SANDBOX_RUNTIME` | 空（＝主機預設 runtime） | 生產填 `runsc`（gVisor，ADR-015） |
 | `SKILLHUB_SANDBOX_NETWORK` | `none` | **出口網路**的名稱。`none`／空＝本節點無出口，所有沙箱一律 `--network none`。設了名字，沙箱**仍只在 `RunRequest.egress.allow` 含 `model_gateway` 時**才接上去；dev 填 `skillhub_egress`（`internal: true`，上面只有 LiteLLM 閘道），生產填 Egress Proxy 的網路名 |
 | `SKILLHUB_SANDBOX_SLOTS` | `2` | 併發上限；滿了回 429 |
@@ -143,7 +143,7 @@ docker run --rm -v "$PWD:/src" -w /src/services/sandbox \
   golangci/golangci-lint:v2.12.2 sh -c "golangci-lint fmt --diff && golangci-lint run ./..."
 
 # Runtime Image
-docker build -t skillhub/runtime-agent-sdk:2026.08-1 infra/images/runtime-agent-sdk
+docker build -t skillhub/runtime-agent-sdk:2026.08-2 infra/images/runtime-agent-sdk
 ```
 
 整合測試偵測不到 Docker daemon 就 skip 而非 fail，並且每個測試容器都帶 `skillhub.sandbox.test=1` label、用完即刪。

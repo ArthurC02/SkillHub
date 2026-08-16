@@ -26,6 +26,7 @@ export function searchSkills(query: string, filters: SearchFilters = {}, limit =
   // shared URL free of parameters the user never chose.
   if (filters.script) params.set("script", filters.script);
   if (filters.validation) params.set("validation", filters.validation);
+  if (filters.agent) params.set("agent", filters.agent);
   return apiFetch<PublicSearchResponse>(`/api/skills/search?${params.toString()}`);
 }
 
@@ -41,7 +42,14 @@ export function searchSkills(query: string, filters: SearchFilters = {}, limit =
  */
 export function useSkillSearch(query: string, filters: SearchFilters, enabled: boolean) {
   return useQuery({
-    queryKey: ["skills", "search", query, filters.script ?? "", filters.validation ?? ""],
+    queryKey: [
+      "skills",
+      "search",
+      query,
+      filters.script ?? "",
+      filters.validation ?? "",
+      filters.agent ?? "",
+    ],
     queryFn: () => searchSkills(query, filters),
     enabled,
   });

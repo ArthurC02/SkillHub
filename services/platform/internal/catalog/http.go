@@ -166,22 +166,39 @@ const (
 // an assumption — skillpkg.Validate blocks the import on any error-level
 // finding and a blocked package is never stored, so appearing in the index *is*
 // the evidence that static validation passed. A row with no version has nothing
-// that was ever validated, and says unverified. capability and runtime stay
-// unverified until sandbox runs exist (M2); that is DISC-002's 尚未試跑, and it
-// is stated rather than omitted because a missing field reads as "fine".
-func resultFacets(r *searchResult, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz) {
+// that was ever validated, and says unverified.
+//
+// capability and runtime are the 0022 measurement for the row's newest version,
+// COALESCEd to `unverified` in SQL for rows nothing has measured — that is
+// DISC-002's 尚未試跑, and it is stated rather than omitted because a missing
+// field reads as "fine". The runtime image travels with them: the verdict is
+// about a (version, image) pair, and the same package answers differently on an
+// image with a different set of interpreters.
+func resultFacets(r *searchResult, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz, compat compatibility) {
 	r.Tier = tierLabel()
 	r.Dependencies = dependencyTags(tagsJSON)
 	r.Risk = riskHint(scanJSON)
 	r.VerifiedAt = timeString(verifiedAt)
-	r.Compat = compatibility{
-		SpecValidation: "unverified",
-		Capability:     "unverified",
-		Runtime:        "unverified",
-		Note:           compatNote,
-	}
+	r.Compat = compat
+	r.Compat.SpecValidation = "unverified"
 	if verifiedAt.Valid {
 		r.Compat.SpecValidation = "passed"
+	}
+	r.Compat.Note = compatUnverifiedNote
+	if r.Compat.RuntimeImage != "" {
+		r.Compat.Note = compatMeasuredNote
+	}
+}
+
+// measuredCompat builds the sandbox half of the compatibility block from the
+// projected measurement columns. Empty RuntimeImage is how "no row" arrives (the
+// SQL COALESCEs it), and it is what tells resultFacets which note to attach.
+func measuredCompat(capability, runtime, image string, measuredAt pgtype.Timestamptz) compatibility {
+	return compatibility{
+		Capability:   capability,
+		Runtime:      runtime,
+		RuntimeImage: image,
+		MeasuredAt:   timeString(measuredAt),
 	}
 }
 
@@ -243,14 +260,33 @@ func riskHint(scanJSON []byte) searchRisk {
 type searchFilters struct {
 	HasScript     *bool
 	SpecValidated *bool
+	// AgentRuntime is matched against the measured runtime verdict exactly, not
+	// as a boolean: `unverified` is a real value a caller can ask for, and
+	// "not native" would otherwise silently mean "transpiled, failed, or never
+	// measured", which are three different things to a reader choosing a skill.
+	AgentRuntime *string
 }
 
-func (f searchFilters) active() bool { return f.HasScript != nil || f.SpecValidated != nil }
+func (f searchFilters) active() bool {
+	return f.HasScript != nil || f.SpecValidated != nil || f.AgentRuntime != nil
+}
 
-// unavailableFilters are the four 02:DISC-002 dimensions the platform has no
-// per-row data for in M1. They are rejected rather than ignored: a shared URL
-// carrying ?category=data would otherwise come back as a full unfiltered page
-// that looks filtered, which is the one failure mode a filter must not have.
+// agentRuntimeValues are the values ?agent= accepts — the runtime axis of
+// DISC-002's Agent dimension, and only that axis.
+//
+// The capability axis is displayed but not filterable, for the reason `tier` is
+// not: every measured skill in the catalogue came back `activated` (45/45 in the
+// M2 baseline), so a filter on it separates nothing. It becomes a filter when a
+// `not_activated` row exists, and not before — offering a control that cannot
+// change the page is the same lie as a control that silently does nothing.
+var agentRuntimeValues = map[string]bool{
+	"native": true, "transpiled": true, "failed": true, "unverified": true,
+}
+
+// unavailableFilters are the 02:DISC-002 dimensions the platform still has no
+// per-row data for. They are rejected rather than ignored: a shared URL carrying
+// ?category=data would otherwise come back as a full unfiltered page that looks
+// filtered, which is the one failure mode a filter must not have.
 //
 // The note is the honest reason, per dimension, and it is what the UI shows on
 // the disabled control:
@@ -262,14 +298,14 @@ func (f searchFilters) active() bool { return f.HasScript != nil || f.SpecValida
 //   - tier — every indexed row is TierIndexed and nothing records a curation
 //     review yet (see tierLabel), so the dimension has exactly one value and
 //     filtering on it cannot separate anything.
-//   - agent — capability/runtime compatibility stays `unverified` until sandbox
-//     runs exist (M2). Offering the filter would imply verdicts nobody produced.
 //   - mcp — no MCP signal is captured anywhere in the scan or the manifest;
 //     remote MCP is out of the MVP first release (AGENTS.md 範圍注意).
+//
+// `agent` left this map when 0022 gave it per-row data (02:DISC-002 篩選維度的
+// 允收階段 lists it as M2, 依 Sandbox 實測).
 var unavailableFilters = map[string]string{
 	"category": "類別尚未存入平台:目前只存在於策展清單,匯入流程不收此欄位(CONTENT-003)。",
 	"tier":     "來源層級目前全目錄同為「已索引」,沒有可區分的值(PDM-002 人工精選審查尚未開始)。",
-	"agent":    "Agent 相容狀態需要 Sandbox 試跑才有結果(M2),目前一律為未驗證。",
 	"mcp":      "是否需要 MCP 沒有任何來源資料:靜態掃描與 manifest 都沒有這項訊號,遠端 MCP 也不在 MVP 首發。",
 }
 
@@ -290,6 +326,12 @@ func parseFilters(r *http.Request) (searchFilters, error) {
 	}
 	if out.SpecValidated, err = triState(q.Get("validation"), "passed", "unverified"); err != nil {
 		return searchFilters{}, errors.New(`validation must be "passed" or "unverified"`)
+	}
+	if v := q.Get("agent"); v != "" {
+		if !agentRuntimeValues[v] {
+			return searchFilters{}, errors.New(`agent must be "native", "transpiled", "failed" or "unverified"`)
+		}
+		out.AgentRuntime = &v
 	}
 	return out, nil
 }
@@ -523,6 +565,7 @@ func (h *Handler) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		ResultLimit:    limit,
 		HasScript:      filters.HasScript,
 		SpecValidated:  filters.SpecValidated,
+		AgentRuntime:   filters.AgentRuntime,
 	})
 	if err != nil {
 		return nil, err
@@ -545,7 +588,8 @@ func (h *Handler) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		} else {
 			hit.RankNote = rankNotePendingItem
 		}
-		resultFacets(&hit, row.Tags, row.Scan, row.VerifiedAt)
+		resultFacets(&hit, row.Tags, row.Scan, row.VerifiedAt,
+			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}
 	return hits, nil
@@ -576,6 +620,7 @@ func (h *Handler) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 		ResultLimit:   limit,
 		HasScript:     filters.HasScript,
 		SpecValidated: filters.SpecValidated,
+		AgentRuntime:  filters.AgentRuntime,
 	})
 	if err != nil {
 		return nil, err
@@ -588,7 +633,8 @@ func (h *Handler) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 			Summary:  row.Summary,
 			RankNote: rankNoteDegraded,
 		}
-		resultFacets(&hit, row.Tags, row.Scan, row.VerifiedAt)
+		resultFacets(&hit, row.Tags, row.Scan, row.VerifiedAt,
+			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}
 	return hits, nil

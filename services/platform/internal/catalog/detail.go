@@ -137,14 +137,34 @@ type riskSummary struct {
 	Note string `json:"note"`
 }
 
-// compatibility keeps the three DISC-008 axes apart. Only the first has an
-// answer before M2, and the other two say "unverified" rather than being
-// omitted: a missing field reads as "fine", an explicit 未驗證 does not.
+// compatibility keeps the three DISC-008 axes apart. An axis with no answer says
+// "unverified" rather than being omitted: a missing field reads as "fine", an
+// explicit 未驗證 does not.
+//
+// Capability and Runtime come from a measurement (0022), and RuntimeImage says
+// which runtime image it was measured on. That pairing is not decoration: the
+// same package on the same version gets a different Runtime answer on an image
+// that provides python3 than on one that does not, so a verdict without its
+// image is a claim nobody made. Empty RuntimeImage means unverified — nothing
+// was measured, so there is no image to name.
 type compatibility struct {
 	SpecValidation string `json:"spec_validation"` // passed | failed | unverified
-	Capability     string `json:"capability"`      // unverified until M2
-	Runtime        string `json:"runtime"`         // unverified until M2
+	Capability     string `json:"capability"`      // activated | not_activated | unverified
+	Runtime        string `json:"runtime"`         // native | transpiled | failed | unverified
+	RuntimeImage   string `json:"runtime_image,omitempty"`
+	MeasuredAt     string `json:"measured_at,omitempty"`
 	Note           string `json:"note"`
+}
+
+// unverifiedCompat is the pre-measurement state of the two sandbox axes, and the
+// zero value every caller starts from.
+func unverifiedCompat() compatibility {
+	return compatibility{
+		SpecValidation: "unverified",
+		Capability:     "unverified",
+		Runtime:        "unverified",
+		Note:           compatUnverifiedNote,
+	}
 }
 
 // enrichmentInfo labels the model-written fields as model-written (ADR-013).
@@ -273,7 +293,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 		Derivation:  derivation(skill),
 		License:     licenseInfo{Status: statusLabel(LicenseStatusUnknown)},
 		Risk:        riskSummary{ScanStatus: "unavailable", InfoCounts: map[string]int{}, Highlights: []skillpkg.Finding{}, Note: riskNote},
-		Compat:      compatibility{SpecValidation: "unverified", Capability: "unverified", Runtime: "unverified", Note: compatNote},
+		Compat:      unverifiedCompat(),
 	}
 	if skill.Summary != nil {
 		out.Summary = *skill.Summary
@@ -312,6 +332,20 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:     timeString(ver.CreatedAt),
 	}
 	out.License = licenseFrom(ver)
+
+	// DISC-002「Agent 相容」. Absent is the normal state for anything nobody has
+	// run yet, and it leaves the two axes on unverified rather than failing the
+	// request — a skill with no measurement is still a skill worth showing.
+	if c, err := q.GetSkillRuntimeCompatibility(ctx, ver.ID); err == nil {
+		out.Compat.Capability = c.Capability
+		out.Compat.Runtime = c.Runtime
+		out.Compat.RuntimeImage = c.RuntimeImage
+		out.Compat.MeasuredAt = timeString(c.MeasuredAt)
+		out.Compat.Note = compatMeasuredNote
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusInternalServerError, "skill detail failed")
+		return
+	}
 
 	if ver.SourceID.Valid {
 		src, err := q.GetSkillSource(ctx, gen.GetSkillSourceParams{ID: ver.SourceID, WorkspaceID: ver.WorkspaceID})
@@ -396,8 +430,14 @@ func (h *Handler) SkillFiles(w http.ResponseWriter, r *http.Request) {
 const (
 	riskNote = "以上為靜態掃描結果:匯入與掃描期間不執行套件內任何程式碼。" +
 		"通過掃描不等於安全或有效,請自行檢視。"
-	compatNote = "規格驗證只檢查套件格式。能力相容與實測相容需要 Sandbox 試跑(M2)," +
-		"在此之前一律標示為未驗證,不代表相容。"
+	compatUnverifiedNote = "規格驗證只檢查套件格式。能力相容與實測相容需要 Sandbox 實測才有結果," +
+		"未實測一律標示為未驗證,不代表相容。"
+	// The measured note names the image because the verdict is only about that
+	// image. 「模型轉譯」 is spelled out rather than left as a value name: it is
+	// the case a reader will not guess, and it is the one that decides whether
+	// the Skill's own script is what actually ran.
+	compatMeasuredNote = "能力相容與實測相容為 Sandbox 實測結果,只對下方 runtime_image 成立," +
+		"換一個執行映像需要重新實測。實測相容為「模型轉譯」時,執行的是模型對套件腳本的改寫,不是腳本本身。"
 	filesNote = "tree 為套件內檔案清單與大小;目前僅回傳 SKILL.md 全文。" +
 		"其他單檔內容的讀取端點屬 DISC-007 後續工作項,尚未實作。"
 	enrichPendingNote = "尚未產生模型摘要;顯示的是套件自身的 frontmatter description。"

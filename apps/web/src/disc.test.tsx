@@ -619,25 +619,46 @@ test("DISC-003: a chosen filter reaches the request and the shareable URL", asyn
   expect(calls[calls.length - 1]).not.toContain("script=");
 });
 
+// DISC-002 lists Agent 相容 as an M2 dimension「依 Sandbox 實測」. It is the same
+// contract as the two above — reaches the request, reaches the URL, clears to
+// absent — and it is asserted separately because the value it carries is not a
+// yes/no: `transpiled` is a third answer, and a filter that folded it into "not
+// native" would quietly also return everything nobody has measured.
+test("DISC-003: the Agent 相容 filter reaches the request and the shareable URL", async () => {
+  const calls = stubSearch({ ...EMPTY, query: "pdf", no_results: true });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  await chooseFilter("Agent 相容", "transpiled");
+  expect(calls[calls.length - 1]).toContain("agent=transpiled");
+  expect(new URLSearchParams(window.location.search).get("agent")).toBe("transpiled");
+
+  await chooseFilter("Agent 相容", "");
+  expect(new URLSearchParams(window.location.search).has("agent")).toBe(false);
+  expect(calls[calls.length - 1]).not.toContain("agent=");
+});
+
 test("DISC-003: the filters the platform has no data for are disabled and say why", async () => {
   stubSearch({ ...EMPTY, query: "pdf", no_results: true });
   await render(<App />);
   await submitSearch("pdf");
 
-  // The two dimensions with per-row data are usable.
+  // The three dimensions with per-row data are usable. Agent 相容 joined them
+  // with the M2 baseline measurements (0022); the assertion below is what would
+  // catch it silently reverting to a dead control.
   expect(filterSelect("是否包含 Script").disabled).toBe(false);
   expect(filterSelect("驗證狀態").disabled).toBe(false);
+  expect(filterSelect("Agent 相容").disabled).toBe(false);
 
-  // The four without are present, disabled, and each states its own reason —
+  // The three without are present, disabled, and each states its own reason —
   // not hidden, and never offered as a control that accepts a value and
   // narrows nothing.
-  for (const label of ["類別", "來源層級", "Agent 相容", "需要 MCP"]) {
+  for (const label of ["類別", "來源層級", "需要 MCP"]) {
     expect(filterSelect(label).disabled).toBe(true);
   }
   const text = container.querySelector(".filter-bar")!.textContent ?? "";
   expect(text).toContain("只存在於策展清單");
   expect(text).toContain("人工精選審查尚未開始");
-  expect(text).toContain("Sandbox 試跑");
   expect(text).toContain("沒有記錄是否需要 MCP");
   // The reason a dimension is dead must not read as "nothing matched".
   expect(text).toContain("不是因為所有 Skill 都不符合");

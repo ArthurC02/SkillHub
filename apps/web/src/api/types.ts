@@ -128,6 +128,8 @@ export interface PublicSearchResponse {
 export interface SearchFilters {
   script?: "yes" | "no";
   validation?: "passed" | "unverified";
+  /** DISC-002 Agent dimension, runtime axis (02:DISC-002 篩選維度的允收階段: M2). */
+  agent?: AgentRuntime;
 }
 
 // ---- GET /api/skills/{id} (DISC-006, DISC-008) ----
@@ -191,10 +193,29 @@ export interface SkillRisk {
 
 export type CompatibilityResult = "unverified" | "passed" | "failed";
 
+/** Did the agent pick the skill up when it was mounted (0022). */
+export type AgentCapability = "activated" | "not_activated" | "unverified";
+
+/**
+ * Could the package's own scripts run in the runtime image it was measured on
+ * (0022). `transpiled` is the answer the M2 baseline actually produced for 33 of
+ * 45 skills: the Run worked, but what ran was the model's re-implementation of
+ * the script rather than the script, because the image had no interpreter for it.
+ */
+export type AgentRuntime = "native" | "transpiled" | "failed" | "unverified";
+
 export interface SkillCompatibility {
   spec_validation: CompatibilityResult;
-  capability: CompatibilityResult;
-  runtime: CompatibilityResult;
+  capability: AgentCapability;
+  runtime: AgentRuntime;
+  /**
+   * The runtime image the two axes above were measured on. Absent = never
+   * measured, which is also when both axes read `unverified`. It is not a
+   * detail: the same skill answers differently on an image with a different set
+   * of interpreters, so a verdict shown without it is a claim nobody made.
+   */
+  runtime_image?: string;
+  measured_at?: string;
   note: string;
 }
 

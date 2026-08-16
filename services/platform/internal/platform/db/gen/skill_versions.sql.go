@@ -64,6 +64,41 @@ func (q *Queries) CreateSkillVersion(ctx context.Context, arg CreateSkillVersion
 	return i, err
 }
 
+const getSkillRuntimeCompatibility = `-- name: GetSkillRuntimeCompatibility :one
+SELECT capability, runtime, runtime_image, measured_at
+FROM skill_runtime_compatibility
+WHERE skill_version_id = $1
+ORDER BY measured_at DESC
+LIMIT 1
+`
+
+type GetSkillRuntimeCompatibilityRow struct {
+	Capability   string
+	Runtime      string
+	RuntimeImage string
+	MeasuredAt   pgtype.Timestamptz
+}
+
+// The newest measurement for this version, on whatever runtime image it was made
+// (0022). No workspace scope: the row hangs off a version the caller has already
+// been authorised to read, and the measurement itself carries no user content.
+//
+// Newest-wins rather than newest-per-image: the detail view has one compatibility
+// block, and a list of "on this image X, on that image Y" is a question nobody
+// asked at this stage. The image the answer came from travels with it, so the
+// reader can tell what was actually measured.
+func (q *Queries) GetSkillRuntimeCompatibility(ctx context.Context, skillVersionID pgtype.UUID) (GetSkillRuntimeCompatibilityRow, error) {
+	row := q.db.QueryRow(ctx, getSkillRuntimeCompatibility, skillVersionID)
+	var i GetSkillRuntimeCompatibilityRow
+	err := row.Scan(
+		&i.Capability,
+		&i.Runtime,
+		&i.RuntimeImage,
+		&i.MeasuredAt,
+	)
+	return i, err
+}
+
 const getSkillVersion = `-- name: GetSkillVersion :one
 SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source FROM skill_versions
 WHERE id = $1 AND workspace_id = $2
