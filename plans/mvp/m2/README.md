@@ -31,7 +31,7 @@ M2 範圍 **41 個工作項**,**33 項維持勾選、1 項對帳退回、7 項�
 | Trace 收集與 O11y | TRACE-002~008、O11Y-001~003 | 第三批 **✅ 2026-08-16 完成**（TRACE-001 一併勾選；TRACE-004 的成本欄位由第四批補上並勾選） |
 | 模型閘道出口與短效授權 | SBX-007（dev 網路面）、SBX-008、TRACE-004 成本 | 第四批 **2026-08-16**（SBX-008 完成、TRACE-004 勾選；SBX-007 仍不勾——Proxy 本體屬部署期） |
 | 內容基準試跑 | CONTENT-007/008(自 M1 移入) | 第五批 **✅ 2026-08-16**(CONTENT-008 完成、精選 15/15 符合;CONTENT-007 部分完成不勾——writing rubric 缺消費端。見 [content-baseline-report.md](content-baseline-report.md)) |
-| 安全驗收 | SEC-002 六項門檻定值(Q18)、SEC-009 逃逸測試——ADR-015 的實作期驗收關卡 | 部署驗證批 |
+| 安全驗收 | SEC-002 六項門檻定值(Q18)、SEC-009 逃逸測試——ADR-015 的實作期驗收關卡 | 部署驗證批。**門檻定值與 Q1～Q3 已於 2026-08-16 由 [ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 定案**;SEC-002／SEC-009 仍不勾(45 項未經驗證、閘門 B 兩項阻擋未落地) |
 
 ## 架構鐵律在 M2 的落點(開工前必讀)
 
@@ -227,16 +227,16 @@ docker run -d --name sandboxd --network skillhub_default --network-alias sandbox
 
 | # | 項目 | 內容 | 解除條件 |
 | --- | --- | --- | --- |
-| 甲-1 | **SEC-009** | 逃逸測試、資源耗盡測試、Runtime 相容性測試、網路外洩測試(DNS tunneling／內網掃描／Metadata Service)、憑證範圍測試、清理失敗測試、設定與供應鏈稽核——覆蓋基線 45 項全部。`02:SEC-009` 明文「M2 的 SelfHostedProvider 驗收必須全數通過」,**M2 結束時未達成** | Linux 節點＋巢狀虛擬化;ADR-019 待決策 3(CI runner)先答 |
+| 甲-1 | **SEC-009** | 逃逸測試、資源耗盡測試、Runtime 相容性測試、網路外洩測試(DNS tunneling／內網掃描／Metadata Service)、憑證範圍測試、清理失敗測試、設定與供應鏈稽核——覆蓋基線 45 項全部。`02:SEC-009` 明文「M2 的 SelfHostedProvider 驗收必須全數通過」,**M2 結束時未達成**。**可執行的測項清單、通過判準與證據要求已由 [ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第三部分給出**(9 個測項、45 項覆蓋核對、全數 pass 且 0 unknown 才放行、證據存 `plans/mvp/m2/sec-009-acceptance/`) | Linux 節點。**⚠️ ADR-022 修正一個前提:gVisor 的 `systrap` 平台不需巢狀虛擬化**(只有 `--platform=kvm` 才需要),因此多數測項在一般 Linux runner 即可跑,ADR-019 待決策 3 的範圍縮小;**此點須由部署批的第一台節點實測確認** |
 | 甲-2 | **SBX-010** | 同上的工作項側。現有的真實容器驗證(非 root、唯讀 rootfs、無主機掛載、pids 上限、逾時強停、清理冪等)**不等於**逃逸測試通過 | 同甲-1 |
-| 甲-3 | **SBX-005／007 的生產網路面** | SBX-005 缺 P-02「Sandbox → 核心資料庫連線嘗試被實際阻擋」的**常駐探針**;SBX-007 缺生產級 Egress Proxy 本體、域名允許清單、DNS 固定解析與目的地記錄(N-01～N-07)。dev 已有的是網路面隔離(`internal: true` 網路上只有閘道),**不是 Proxy** | 生產網路＋威脅模型 Q3(允許清單管理流程)定案 |
-| 甲-4 | **SBX-002 的門檻定值** | 流水線已接上(digest 斷言→build→syft SBOM→grype→門檻),但 I-06 漏洞等級門檻與 I-04 掃描結果有效期仍是 SEC-002 六項無值語句之二。程式以提案值(可修的 Critical／High 阻擋、有效期 30 天)實作**並在三處標暫定**。另 I-03 的 SBOM 現落在 90 天 CI artifact,須待 container registry(ADR-019 待決策 1)定案後搬家 | 見乙-1 |
+| 甲-3 | **SBX-005／007 的生產網路面** | SBX-005 缺 P-02「Sandbox → 核心資料庫連線嘗試被實際阻擋」的**常駐探針**;SBX-007 缺生產級出口強制、允許清單、DNS 固定解析與目的地記錄(N-01～N-07)。dev 已有的是網路面隔離(`internal: true` 網路上只有閘道),**不是強制層**。**⚠️ ADR-022 另指出 dev 的一個既有缺口**:同一張 `skillhub_egress` 上的 sandbox 目前可互相連通,是**不需逃逸**的跨 Run 橫向路徑;生產形態必須關掉(每 Run netns ＋ `--icc=false`),並列為 SEC-009 測項 T5-4 | 生產網路。**Q3 已於 [ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 定案**(nftables default-deny ＋固定 DNS,不部署 Squid／Envoy;允許清單存 `infra/egress/allowlist.yaml`,含變更、複審與記錄流程),剩下的是實作不是決策 |
+| 甲-4 | **SBX-002 的門檻定值** ~~待定~~ **已定值** | 流水線已接上(digest 斷言→build→syft SBOM→grype→門檻)。**I-06 與 I-04 的提案值已由 [ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分採納定案**(可修的 Critical／High 阻擋且**無豁免路徑**、不可修者具名豁免 90 天複審;掃描有效期 **30 天**、到期前 7 天告警),`infra/images/README.md` 的三處「暫定」可改為定案。**SBX-002 仍不勾的唯一原因**:I-03 要求 SBOM 隨 Image 保存以供閘門 A 查詢、I-04 的 `scanned_at` 同理,兩者現落在 90 天 CI artifact 與人工維護的日期,須待 container registry(ADR-019 待決策 1)定案後搬家 | container registry 定案 |
 
 ## 乙、待負責人決策(**寫程式之前先要有人拍板**)
 
 | # | 項目 | 待決內容 | 阻擋什麼 |
 | --- | --- | --- | --- |
-| **乙-1** | **SEC-002 六項門檻值(威脅模型 Q18)** | P-03 節點重建週期、P-04 gVisor 安全基準版本由誰維護及 CVE 應變 SLA、I-04 掃描結果有效期、I-06 漏洞等級門檻與例外放行流程、X-02 Reconciler 掃描頻率、X-03／X-04 遺留資源告警與暫停門檻。**目前全部是無值語句,等於檢查存在但不可驗收**;I-04／I-06 已有 SBX-002 的提案值,其餘四項連提案都沒有。另 Q1～Q3(節點編排方案、節點是否單租戶、Egress Proxy 與允許清單管理流程)是 `02:SEC-002` 的勾選前提 | SEC-002 勾選、SBX-002 勾選、甲-3／甲-4 |
+| ~~**乙-1**~~ **已解決(2026-08-16)** | ~~**SEC-002 六項門檻值(威脅模型 Q18)**~~ | → **[ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md)**:六項門檻全部定值(P-03 節點 7 天滾動重建;P-04 gVisor 基準 ＝ 上游 N/N−1 且 ≤ 90 天、逃逸類 CVE 24 h 換版或停用、High 7 天;I-04 掃描有效期 30 天;I-06 可修的 Critical／High 阻擋且無豁免路徑、不可修者具名豁免 90 天複審;X-02 每 5 分鐘;X-03 連續 2 輪告警、X-04 單節點 ≥50% slot drain／全池 ≥25%(下限 2 筆)暫停),Q1～Q3 亦已定案(compose-per-VM／執行平面單租戶且同節點多 Run／nftables default-deny ＋固定 DNS,允許清單存 `infra/egress/allowlist.yaml`)。<br>**但 SEC-002 仍不勾**——見甲-1／甲-2(45 項未經驗證)與乙-8(閘門 B 兩項阻擋未落地);**SBX-002 仍不勾**——I-04 的 `scanned_at` 在 container registry(ADR-019 待決策 1)定案前無法隨 image 保存,見甲-4 | ~~SEC-002 勾選、SBX-002 勾選、甲-3／甲-4~~ 剩餘阻擋見右列說明 |
 | **乙-2** | ⚠️ **PDM-005 token 硬上限:二選一** | `300_000`／`60_000` 被寫進 `policy_snapshot`、**顯示在執行前權限摘要上要求使用者確認**,而平台與沙箱**都不強制**(`TokenBudget` 零消費端,無累加器)。實際煞車只有 `max_budget`／`tpm_limit`／牆鐘,而 PDM-005 §5.2a-4 明文說過這三個都不是 token 上限。<br>**(a)** 新增實作工作項「依閘道回報 `input_tokens` 累計並於超限時終止 Run」,並把 §5.2a 的輪數換算表(15／7.7／5 輪)回寫 `02:RUN-003`;或 **(b)** 正式承認 MVP 不做,**把 `TokenBudget` 從權限摘要移除**。<br>**現狀(顯示但不強制)是兩者中最壞的一種**——讓使用者確認一個平台不會執行的上限,直接踩 NFR-001「UI 不得誤導」 | 無工作項承接;PDM-003 v5 的定案條件之一(「三層併用」)因此未完整成立 |
 | **乙-3** | **閘道 $0.50 預算計數 50 倍誤差的處置** | LiteLLM 以「Current cost ≈ 0.50」拒絕請求,而同一把金鑰的 `LiteLLM_SpendLogs` 只有 $0.009–$0.24;兩個對照實驗排除「單次呼叫預估扣款」;上限提到 $2.00 後 7 個受影響精選全數一次通過。**在查清之前 per-Run `max_budget` 不是可信的成本閘門**,PDM-003 v5 的 $0.50 預設需重新檢視。連帶:9 個已索引 Skill 尚無有效基準(補跑預估 $1.0–1.5) | 乙-2 的三個煞車裡最重要的那個本身不可信;CONTENT-008 已索引層的補跑 |
 | **乙-4** | **Agent 相容軸 schema 的四個待決** | ①欄位歸屬:Skill Version 層級,還是 (Skill Version × Runtime Image) 層級?**後者才誠實**——33 個 Python 結論只對 `skillhub/runtime-agent-sdk:2026.08-1` 成立。②兩軸判準:`capability` 可直接供給(45/45 有 `skill_activation`),`runtime` 需要「腳本宣告環境 ⊆ 映像提供環境」的判定,而映像的能力清單目前不以資料形式存在。③樣本量:一次 Run 不足以宣告 `passed`,幾次、失敗一次是否降級未定。④值域:需要 `unverified` 以外的第三態表達「腳本不會被執行、由模型轉譯」,它既不是 passed 也不是 failed。<br>**資料已備妥**:`capability = activated` 45/45;`runtime` 為 11 原生／1 node／33 模型轉譯 | **`01` 的 M2 里程碑第 4 項**、`02:DISC-002` 的 Agent 維度 |

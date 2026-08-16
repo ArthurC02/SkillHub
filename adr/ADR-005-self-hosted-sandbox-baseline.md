@@ -97,6 +97,7 @@ flowchart LR
 ## 待決策
 
 - Container、強化 Container、MicroVM 或其他隔離技術。→ [ADR-015](./ADR-015-sandbox-isolation-technology.md)（gVisor 基線）
-- 執行節點的雲端、區域與容量模式。→ [ADR-015](./ADR-015-sandbox-isolation-technology.md) 待決策，隨部署平台確認
-- Egress Proxy、DNS Policy 與 Artifact 掃描的具體實作。→ Egress 原則見 [ADR-015](./ADR-015-sandbox-isolation-technology.md)；實作細節待定
+- 執行節點的雲端、區域與容量模式。→ [ADR-015](./ADR-015-sandbox-isolation-technology.md) 待決策，隨部署平台確認；平台由 [ADR-018](./ADR-018-containerized-core-infrastructure.md) 選定（Hetzner Cloud），節點編排形式與租戶模型見 [ADR-022](./ADR-022-sandbox-deployment-topology-and-security-thresholds.md) Q1、Q2
+- Egress Proxy、DNS Policy 與 Artifact 掃描的具體實作。→ Egress 原則見 [ADR-015](./ADR-015-sandbox-isolation-technology.md)；**Egress 與 DNS 的具體實作、允許清單管理流程與目的地記錄見 [ADR-022](./ADR-022-sandbox-deployment-topology-and-security-thresholds.md) Q3**（2026-08-16）。**Artifact 掃描仍待定**（威脅模型 Q8，ADR-007 待決策）
+- 本節「清理與遺留資源」的門檻值（Reconciler 掃描頻率、遺留資源告警與暫停門檻）與「執行映像」的掃描有效期、漏洞等級門檻。→ [ADR-022](./ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分（2026-08-16 定值）
 
