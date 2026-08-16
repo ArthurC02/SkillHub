@@ -582,6 +582,22 @@ func (s *Service) Get(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.
 	return run, err
 }
 
+// Linkage returns the skill the run's version belongs to and the editable test
+// case its snapshot was frozen from — the two ids the runs row does not carry and
+// the read surface has to serve (RUN-002).
+//
+// Neither is an authorization. Whether the run may be repeated is preflight's
+// answer, and whether its inputs still exist is a separate question again.
+func (s *Service) Linkage(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.GetRunLinkageRow, error) {
+	row, err := s.queries().GetRunLinkage(ctx, gen.GetRunLinkageParams{
+		RunID: runID, WorkspaceID: workspaceID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.GetRunLinkageRow{}, ErrNotFound
+	}
+	return row, err
+}
+
 // History returns the status transitions of one run, oldest first (RUN-002: the
 // user can see the current status and when it last changed).
 func (s *Service) History(ctx context.Context, workspaceID, runID pgtype.UUID) ([]gen.RunStatusTransition, error) {

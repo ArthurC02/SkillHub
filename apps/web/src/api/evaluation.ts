@@ -141,7 +141,14 @@ export type VersionFromSuggestions = {
 
 export type ComparisonSide = {
   run_id: string;
+  /** Per side: two runs of different skills may be compared. */
+  skill_id: string;
   skill_version_id: string;
+  /**
+   * The editable test case this side's snapshot was frozen from — what a re-run
+   * would address, and not permission to start one. Read with `inputs_available`.
+   */
+  test_case_id?: string;
   status: string;
   evaluation?: {
     evaluation_id: string;

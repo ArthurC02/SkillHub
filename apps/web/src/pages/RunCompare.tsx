@@ -20,9 +20,11 @@ import { RUN_STATUS_LABEL } from "./RunEvaluation";
  *    were deleted or expired, so a screen offering to run them again would be
  *    offering something the platform cannot do (ADR-003).
  *
- * There is no re-run button even when the inputs are there: re-running is
- * POST /skills/{id}/runs behind the preflight confirmation, and a one-click
- * shortcut would route around the TEST-009 gate.
+ * There is no re-run button even when the inputs are there. What the side's
+ * `skill_id` / `skill_version_id` / `test_case_id` buy is a link to the preflight
+ * screen with those three filled in — the user still reads the permission summary
+ * and confirms its hash there, which is the whole of TEST-009. A button that
+ * started the run from here would be the shortcut around it.
  */
 
 const OVERALL_LABEL: Record<string, string> = {
@@ -51,10 +53,7 @@ function usd(value: number | null): string {
 
 export function RunCompare() {
   const { runId } = useParams({ from: "/runs/$runId/compare" });
-  const { against = "", skill } = useSearch({ strict: false }) as {
-    against?: string;
-    skill?: string;
-  };
+  const { against = "" } = useSearch({ strict: false }) as { against?: string };
   const [draft, setDraft] = useState(against);
   const navigate = useNavigate();
   const comparison = useRunComparison(runId, against);
@@ -74,7 +73,7 @@ export function RunCompare() {
           void navigate({
             to: "/runs/$runId/compare",
             params: { runId },
-            search: { against: draft, skill },
+            search: { against: draft },
           });
         }}
       >
@@ -95,7 +94,7 @@ export function RunCompare() {
       {comparison.data && <ComparisonTables data={comparison.data} />}
 
       <p className="note">
-        <Link to="/runs/$runId" params={{ runId }} search={{ skill }}>
+        <Link to="/runs/$runId" params={{ runId }}>
           回到這個 Run 的詳情
         </Link>
       </p>
@@ -203,9 +202,7 @@ function ComparisonTables({ data }: { data: RunComparison }) {
             <th scope="row">輸入是否仍在</th>
             {sides.map((s) => (
               <td key={s.run_id}>
-                {s.inputs_available
-                  ? "仍在。可用同一個 Test Case 重新試跑，仍須通過執行前權限確認。"
-                  : "已刪除或已過期，無法以相同輸入重跑；比較內容本身不受影響。"}
+                <RerunCell side={s} />
               </td>
             ))}
           </tr>
@@ -255,6 +252,40 @@ function ComparisonTables({ data }: { data: RunComparison }) {
       ) : (
         <p>兩次 Run 使用同一個版本，或分屬不同 Skill，沒有版本差異可看。</p>
       )}
+    </>
+  );
+}
+
+/**
+ * Whether these inputs could be supplied again, and where to go if they can.
+ *
+ * The link lands on the preflight screen with the three ids filled in — it does
+ * not start anything. `inputs_available: false` drops the link entirely rather
+ * than showing a disabled one: the destination would 404 on a deleted test case,
+ * and offering a route to it would be offering a re-run the platform cannot do
+ * (ADR-003).
+ */
+function RerunCell({ side }: { side: ComparisonSide }) {
+  if (!side.inputs_available) {
+    return <>已刪除或已過期，無法以相同輸入重跑；比較內容本身不受影響。</>;
+  }
+  if (!side.test_case_id) {
+    return <>仍在。可用同一個 Test Case 重新試跑，仍須通過執行前權限確認。</>;
+  }
+  return (
+    <>
+      仍在。{" "}
+      <Link
+        to="/lab/run"
+        search={{
+          skill: side.skill_id,
+          version: side.skill_version_id,
+          test_case: side.test_case_id,
+        }}
+      >
+        以相同的 Test Case 與版本重新試跑
+      </Link>
+      ：連過去的是執行前權限確認畫面，仍須在那裡確認一次才會開始 Run。
     </>
   );
 }

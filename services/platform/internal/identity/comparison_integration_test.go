@@ -23,7 +23,9 @@ import (
 type comparisonBody struct {
 	Runs []struct {
 		RunID          string `json:"run_id"`
+		SkillID        string `json:"skill_id"`
 		SkillVersionID string `json:"skill_version_id"`
+		TestCaseID     string `json:"test_case_id"`
 		Status         string `json:"status"`
 		Evaluation     *struct {
 			EvaluationID string `json:"evaluation_id"`
@@ -157,6 +159,21 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 	}
 	if body.Runs[0].SkillVersionID != beforeVersion || body.Runs[1].SkillVersionID != afterVersion {
 		t.Error("each side reports the version it actually ran")
+	}
+	// What a re-run would be started from, per side: the skill the version belongs
+	// to and the editable test case the snapshot was frozen from. Each side seeded
+	// its own test case, so equal ids here would mean one side is reporting the
+	// other's inputs.
+	for i, side := range body.Runs {
+		if side.SkillID != skillID {
+			t.Errorf("side %d skill_id = %q, want %q", i, side.SkillID, skillID)
+		}
+		if side.TestCaseID == "" {
+			t.Errorf("side %d carries no test_case_id, so no re-run could be addressed", i)
+		}
+	}
+	if body.Runs[0].TestCaseID == body.Runs[1].TestCaseID {
+		t.Error("each side reports its own test case, not the other's")
 	}
 
 	// ADR-025: execution and judgement are separate fields on each side, and both
@@ -394,9 +411,16 @@ func TestComparisonReportsInputsThatCanNoLongerBeSupplied(t *testing.T) {
 		mustUUID(t, withData)); err != nil {
 		t.Fatal(err)
 	}
-	if _, body := c.compare(t, withData, other); body.Runs[0].InputsAvailable == nil ||
-		*body.Runs[0].InputsAvailable {
+	_, body = c.compare(t, withData, other)
+	if body.Runs[0].InputsAvailable == nil || *body.Runs[0].InputsAvailable {
 		t.Error("a deleted test case cannot be re-run either")
+	}
+	// The id is still served while the re-run is refused, and that is the point of
+	// having both fields: `test_case_id` says what a re-run would address,
+	// `inputs_available` says whether it may be offered. A screen that reads the id
+	// as permission is the failure this pair exists to prevent.
+	if body.Runs[0].TestCaseID == "" {
+		t.Error("the snapshot still names the test case it was frozen from")
 	}
 }
 

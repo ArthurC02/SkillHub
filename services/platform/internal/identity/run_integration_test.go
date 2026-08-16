@@ -52,6 +52,8 @@ type runView struct {
 	RunID         string `json:"run_id"`
 	Status        string `json:"status"`
 	StatusReason  string `json:"status_reason"`
+	SkillID       string `json:"skill_id"`
+	TestCaseID    string `json:"test_case_id"`
 	Provider      string `json:"provider"`
 	FailureClass  string `json:"failure_class"`
 	CleanupStatus string `json:"cleanup_status"`
@@ -248,6 +250,19 @@ func TestRunFailsImmediatelyWhenNoProviderIsConfigured(t *testing.T) {
 	// one it did not choose.
 	if created.Provider != "unassigned" {
 		t.Errorf("new run provider = %q, want unassigned", created.Provider)
+	}
+	// The two ids the runs row does not carry, on the create response and on the
+	// read alike — a field present on one and absent on the other is one no client
+	// can use. `skill_id` is what the EVAL-002 apply call needs; `test_case_id` is
+	// the editable draft a re-run would be started from, never the snapshot.
+	if created.SkillID != f.skillID || created.TestCaseID != f.testCaseID {
+		t.Errorf("created run linkage = (%s, %s), want (%s, %s)",
+			created.SkillID, created.TestCaseID, f.skillID, f.testCaseID)
+	}
+	if _, read := f.getRun(t, created.RunID); read.SkillID != f.skillID ||
+		read.TestCaseID != f.testCaseID {
+		t.Errorf("read run linkage = (%s, %s), want (%s, %s)",
+			read.SkillID, read.TestCaseID, f.skillID, f.testCaseID)
 	}
 
 	startWorker(t, pool)

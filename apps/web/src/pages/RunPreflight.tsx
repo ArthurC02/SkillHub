@@ -192,9 +192,7 @@ export function RunPreflight() {
       {runId ? (
         <p>
           已開始 Run:{" "}
-          {/* `skill` rides along so the run page can offer the EVAL-002 apply
-              action; the run read endpoint does not carry a skill id. */}
-          <Link to="/runs/$runId" params={{ runId }} search={{ skill }}>
+          <Link to="/runs/$runId" params={{ runId }}>
             {runId}
           </Link>
         </p>

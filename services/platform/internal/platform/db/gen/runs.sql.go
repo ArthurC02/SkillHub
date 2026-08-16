@@ -271,6 +271,43 @@ func (q *Queries) GetRunAttemptForReconcile(ctx context.Context, id pgtype.UUID)
 	return i, err
 }
 
+const getRunLinkage = `-- name: GetRunLinkage :one
+SELECT v.skill_id, s.test_case_id
+FROM runs r
+JOIN skill_versions v ON v.id = r.skill_version_id
+JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
+WHERE r.id = $1 AND r.workspace_id = $2
+`
+
+type GetRunLinkageParams struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+type GetRunLinkageRow struct {
+	SkillID    pgtype.UUID
+	TestCaseID pgtype.UUID
+}
+
+// The two ids the runs row does not carry itself, for the read surface (RUN-002).
+//
+// `skill_id` because applying improvement suggestions posts to
+// /skills/{id}/versions/from-suggestions, and a run page that had to be reached with
+// that id already in its URL could only offer the action to callers who arrived the
+// one right way. `test_case_id` because a re-run takes the editable test case and
+// snapshots it again - the frozen snapshot id cannot be handed back to
+// POST /skills/{id}/runs.
+//
+// Neither is a permission: what may be re-run is preflight's answer (TEST-009), and
+// whether the inputs still exist is RunInputsStillAvailable's. Workspace scoped
+// through the run, like every other read here.
+func (q *Queries) GetRunLinkage(ctx context.Context, arg GetRunLinkageParams) (GetRunLinkageRow, error) {
+	row := q.db.QueryRow(ctx, getRunLinkage, arg.RunID, arg.WorkspaceID)
+	var i GetRunLinkageRow
+	err := row.Scan(&i.SkillID, &i.TestCaseID)
+	return i, err
+}
+
 const insertOutboxEvent = `-- name: InsertOutboxEvent :one
 INSERT INTO outbox_events (
     event_type, event_version, correlation_id, causation_id,

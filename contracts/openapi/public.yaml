@@ -737,7 +737,17 @@ paths:
                         type: array
                         items: { $ref: "#/components/schemas/RejectedSuggestion" }
         "400":
-          description: Body is not JSON, or the ids are not UUIDs.
+          description: |
+            Body is not JSON, the ids are not UUIDs, or at least one named
+            suggestion has not been accepted (its `decision` is still `pending`,
+            or it is `rejected`).
+
+            Nothing is built from a suggestion nobody accepted, and the whole
+            call is refused rather than partly honoured: a 201 listing fewer ids
+            than were asked for reads as "these applied, those were blocked",
+            which is a different thing from "you asked for one you never agreed
+            to". The message names the ids. Decide them first with
+            PUT /suggestions/{id}/decision, then send the call again.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1616,7 +1626,10 @@ paths:
 
         Repeatable: a later call replaces the decision. It does not undo
         anything already applied — a version that was built is history, and the
-        way back from it is another version (iron rule 4).
+        way back from it is another version (iron rule 4). Withdrawing the
+        acceptance of a suggestion that has already been built into a version is
+        therefore refused with 409 rather than recorded: the record would say the
+        user never agreed to a change that is sitting in a stored package.
       parameters:
         - name: id
           in: path
@@ -1654,6 +1667,16 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Suggestion not visible to the caller (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: |
+            `rejected` on a suggestion whose `applied_skill_version_id` is set.
+            The version exists and cannot be unbuilt, so the decision behind it
+            is not rewritable; the way to change the package again is another
+            version (iron rule 4). Re-sending `accepted` on the same suggestion
+            is not a conflict and stays a 200.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3480,7 +3503,8 @@ components:
         provider-specific leaks into this one (RUN-001).
       type: object
       required:
-        [run_id, status, skill_version_id, test_case_snapshot_id, provider, cleanup_status, created_at]
+        [run_id, status, skill_id, skill_version_id, test_case_snapshot_id, provider,
+         cleanup_status, created_at]
       properties:
         run_id:
           type: string
@@ -3505,6 +3529,18 @@ components:
         status_reason:
           type: string
           description: Why the run entered this status. Masked and safe to display.
+        skill_id:
+          type: string
+          format: uuid
+          description: |
+            The skill the version belongs to. Served rather than left to the
+            client to work out: applying improvement suggestions posts to
+            POST /skills/{id}/versions/from-suggestions, and a run page that had
+            to be reached with the id already in its URL could only offer that
+            action to callers who arrived the one right way.
+
+            It is a fact about the version, not about the run: a run never moves
+            between skills, and this changes for no reason at all.
         skill_version_id: { type: string, format: uuid }
         test_case_snapshot_id:
           type: string
@@ -3512,6 +3548,22 @@ components:
           description: |
             The frozen copy taken when the run was created, not the editable test
             case (iron rule 4).
+        test_case_id:
+          type: string
+          format: uuid
+          description: |
+            The editable test case the snapshot was frozen from, which is what a
+            re-run needs: POST /skills/{id}/runs takes a test case and snapshots
+            it again, and the snapshot id cannot be handed back to it.
+
+            Optional, so that a reader which no longer resolves is an absent
+            field rather than an id pointing at nothing. Absent rather than null,
+            like every other optional id in this contract.
+
+            **Present is not permission to re-run.** The draft may have been
+            deleted or its datasets may be gone — `inputs_available` on
+            GET /runs/{id}/comparison is what answers that — and a re-run goes
+            through preflight and `confirmed_summary_hash` either way (TEST-009).
         provider:
           type: string
           description: '`unassigned` until provider selection lands (RUN-005).'
@@ -3980,10 +4032,28 @@ components:
           description: The run named in the path first, the `against` run second.
           items:
             type: object
-            required: [run_id, skill_version_id, status, cost, inputs_available]
+            required: [run_id, skill_id, skill_version_id, status, cost, inputs_available]
             properties:
               run_id: { type: string, format: uuid }
+              skill_id:
+                type: string
+                format: uuid
+                description: |
+                  The skill this side's version belongs to. Per side rather than
+                  once for the comparison: two runs of different skills may be
+                  compared, and one shared field would have to be wrong for one
+                  of them.
               skill_version_id: { type: string, format: uuid }
+              test_case_id:
+                type: string
+                format: uuid
+                description: |
+                  The editable test case this side's snapshot was frozen from,
+                  the same field as on `Run` and with the same caveat: it is what
+                  a re-run would be started from, and it is not permission to
+                  start one. Read it together with `inputs_available`, and note
+                  that re-running is still POST /skills/{id}/runs behind
+                  preflight — there is no re-run endpoint here.
               status:
                 type: string
                 enum:

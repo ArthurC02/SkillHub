@@ -35,11 +35,19 @@ func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (gen.Workspa
 }
 
 type runResponse struct {
-	RunID             string           `json:"run_id"`
-	Status            string           `json:"status"`
-	StatusReason      string           `json:"status_reason,omitempty"`
+	RunID        string `json:"run_id"`
+	Status       string `json:"status"`
+	StatusReason string `json:"status_reason,omitempty"`
+	// SkillID and TestCaseID are not columns of `runs`; they are filled by
+	// fillLinkage. They are served because their consumers cannot derive them and
+	// should not have to be told them out of band: applying suggestions posts to
+	// /skills/{id}/versions/from-suggestions, and a re-run needs the editable test
+	// case rather than the snapshot it was frozen into. Neither is permission to do
+	// either thing (TEST-009 still stands).
+	SkillID           string           `json:"skill_id"`
 	SkillVersionID    string           `json:"skill_version_id"`
 	TestCaseSnapshot  string           `json:"test_case_snapshot_id"`
+	TestCaseID        string           `json:"test_case_id,omitempty"`
 	Provider          string           `json:"provider"`
 	FailureClass      string           `json:"failure_class,omitempty"`
 	CleanupStatus     string           `json:"cleanup_status"`
@@ -86,6 +94,23 @@ func toRunResponse(run gen.Run) runResponse {
 		StartedAt:         rfc3339(run.StartedAt),
 		FinishedAt:        rfc3339(run.FinishedAt),
 	}
+}
+
+// fillLinkage adds the two ids the runs row does not carry. One lookup for all
+// three run responses rather than each handler assembling its own from whatever it
+// happens to have in scope — a `skill_id` that is present on one response and
+// absent on another is a field no client can rely on.
+func (h *Handler) fillLinkage(
+	w http.ResponseWriter, r *http.Request, ws, runID pgtype.UUID, resp *runResponse,
+) bool {
+	link, err := h.Svc.Linkage(r.Context(), ws, runID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "run lookup failed")
+		return false
+	}
+	resp.SkillID = uuidString(link.SkillID)
+	resp.TestCaseID = uuidString(link.TestCaseID)
+	return true
 }
 
 // Create handles POST /skills/{id}/runs (RUN-001).
@@ -155,7 +180,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "run creation failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, toRunResponse(run))
+	resp := toRunResponse(run)
+	if !h.fillLinkage(w, r, ws.ID, run.ID, &resp) {
+		return
+	}
+	httpx.WriteJSON(w, http.StatusCreated, resp)
 }
 
 // Get handles GET /runs/{id} (RUN-002: current status and how it got there).
@@ -181,6 +210,9 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := toRunResponse(run)
+	if !h.fillLinkage(w, r, ws.ID, runID, &resp) {
+		return
+	}
 	transitions, err := h.Svc.History(r.Context(), ws.ID, runID)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "run history lookup failed")
@@ -239,10 +271,14 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body := toRunResponse(run)
+	if !h.fillLinkage(w, r, ws.ID, runID, &body) {
+		return
+	}
 	resp := struct {
 		runResponse
 		Note string `json:"note"`
-	}{toRunResponse(run), "cancellation requested; the run keeps its current status " +
+	}{body, "cancellation requested; the run keeps its current status " +
 		"until the workload has actually stopped"}
 	httpx.WriteJSON(w, http.StatusAccepted, resp)
 }

@@ -11,6 +11,7 @@ import {
   useRunSuggestions,
   useSuggestionDiff,
 } from "../api/evaluation";
+import { useRun } from "../api/runs";
 import type {
   CriterionResult,
   DeterministicFinding,
@@ -117,15 +118,7 @@ function usd(value: number | null): string {
  * statements. `runStatus` is passed in rather than fetched again: the trace
  * query already holds it and the runs table is its only authority (iron rule 5).
  */
-export function EvaluationPanel({
-  runId,
-  runStatus,
-  skillId,
-}: {
-  runId: string;
-  runStatus?: string;
-  skillId?: string;
-}) {
+export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus?: string }) {
   const [revision, setRevision] = useState<string | undefined>(undefined);
   const evaluation = useEvaluation(runId, revision);
   const revisions = useEvaluationRevisions(runId);
@@ -181,7 +174,7 @@ export function EvaluationPanel({
       )}
 
       {evaluation.data && evaluation.data.status === "completed" && (
-        <SuggestionsPanel runId={runId} skillId={skillId} />
+        <SuggestionsPanel runId={runId} />
       )}
     </section>
   );
@@ -373,10 +366,17 @@ function FeedbackForm({
   );
 }
 
-/** 02:EVAL-002 — the suggestions, their diffs, the per-item decision, and apply. */
-function SuggestionsPanel({ runId, skillId }: { runId: string; skillId?: string }) {
+/**
+ * 02:EVAL-002 — the suggestions, their diffs, the per-item decision, and apply.
+ *
+ * The skill the new version goes under comes from GET /runs/{id}, not from the
+ * page's URL: the apply call needs it, and a run page reachable without it could
+ * only offer the action to readers who arrived by one particular link.
+ */
+function SuggestionsPanel({ runId }: { runId: string }) {
   const client = useQueryClient();
   const suggestions = useRunSuggestions(runId);
+  const skillId = useRun(runId).data?.skill_id;
   const [applied, setApplied] = useState<VersionFromSuggestions | null>(null);
   const [message, setMessage] = useState("");
 
@@ -419,20 +419,14 @@ function SuggestionsPanel({ runId, skillId }: { runId: string; skillId?: string 
             採納建議會建立一個<strong>新的 Skill Version</strong>
             ，不會覆寫已經跑過的版本；新版本的套件內容不同，開始 Run 前必須重新確認權限摘要。
           </p>
-          {skillId ? (
-            <button
-              type="button"
-              disabled={accepted.length === 0 || apply.isPending}
-              onClick={() => apply.mutate(accepted.map((s) => s.suggestion_id))}
-            >
-              以已接受的 {accepted.length} 項建議建立新版本
-            </button>
-          ) : (
-            <p role="alert">
-              這個頁面需要 <code>?skill=</code> 才能建立新版本：Run 的讀取端點目前不回傳 skill
-              id，無從得知要把新版本建在哪個 Skill 底下。
-            </p>
-          )}
+          <button
+            type="button"
+            disabled={!skillId || accepted.length === 0 || apply.isPending}
+            onClick={() => apply.mutate(accepted.map((s) => s.suggestion_id))}
+          >
+            以已接受的 {accepted.length} 項建議建立新版本
+          </button>
+          {!skillId && <p className="note">正在讀取這個 Run 屬於哪個 Skill…</p>}
         </div>
       )}
 

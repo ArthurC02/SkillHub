@@ -131,19 +131,16 @@ const datasetUploadRoute = createRoute({
  * a search param — the toggle is a reading preference, not something worth a
  * distinct shareable address.
  *
- * `skill` is optional and exists for one reason: applying improvement
- * suggestions posts to /skills/{id}/versions/from-suggestions, and neither
- * GET /runs/{id} nor the suggestions response carries a skill id. Pages that
- * know it (the preflight screen) pass it along; without it the page still
- * renders and says why the apply action is unavailable rather than guessing.
+ * No search params at all. There used to be a `skill` one, because applying
+ * improvement suggestions posts to /skills/{id}/versions/from-suggestions and
+ * the run read carried no skill id; GET /runs/{id} answers `skill_id` now, so
+ * the page works however it was reached rather than only via the one link that
+ * remembered to pass it.
  */
 const runTraceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/runs/$runId",
   component: RunTrace,
-  validateSearch: (search: Record<string, unknown>) => ({
-    skill: typeof search.skill === "string" ? search.skill : undefined,
-  }),
 });
 
 /** 02:EVAL-003. The other run lives in the URL so a comparison is linkable. */
@@ -153,7 +150,6 @@ const runCompareRoute = createRoute({
   component: RunCompare,
   validateSearch: (search: Record<string, unknown>) => ({
     against: typeof search.against === "string" ? search.against : "",
-    skill: typeof search.skill === "string" ? search.skill : undefined,
   }),
 });
 

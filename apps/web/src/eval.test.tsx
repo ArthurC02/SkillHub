@@ -114,6 +114,17 @@ function stubPlatform(options: { evaluated: boolean }) {
 
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
+    // The run read, which is where the apply action gets the skill to build the
+    // new version under — the page no longer takes it from its own URL.
+    if (url.endsWith("/runs/" + RUN)) {
+      return json({
+        run_id: RUN,
+        skill_id: SKILL,
+        skill_version_id: "22222222-2222-2222-2222-222222222222",
+        test_case_snapshot_id: "33333333-3333-3333-3333-333333333333",
+        test_case_id: "44444444-4444-4444-4444-444444444444",
+      });
+    }
     if (!options.evaluated) return json({ error: "not found" }, 404);
     if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
     if (url.includes("/evaluation")) return json(evaluation);
@@ -130,7 +141,7 @@ async function render(runStatus: string) {
     root.render(
       <StrictMode>
         <QueryClientProvider client={queryClient}>
-          <EvaluationPanel runId={RUN} runStatus={runStatus} skillId={SKILL} />
+          <EvaluationPanel runId={RUN} runStatus={runStatus} />
         </QueryClientProvider>
       </StrictMode>,
     );
@@ -190,6 +201,20 @@ test("ADR-026 expired evidence shows the excerpt kept at judgement time and says
   // Neither blanked out nor presented as though the trace event were still there.
   expect(container.querySelector("pre")?.textContent).toContain("header: name,phone");
   expect(text).toContain("摘要已截斷");
+});
+
+test("EVAL-002 the apply action is offered on a run reached without a skill in its URL", async () => {
+  stubPlatform({ evaluated: true });
+  await render("succeeded");
+  await waitFor(() => (container.textContent ?? "").includes("建立新版本"));
+
+  // The skill came from GET /runs/{id}, so the action does not depend on how the
+  // page was reached. The old `?skill=` stopgap and its explanation are gone.
+  const apply = Array.from(container.querySelectorAll("button")).find((b) =>
+    (b.textContent ?? "").includes("建立新版本"),
+  );
+  expect(apply).toBeDefined();
+  expect(container.textContent).not.toContain("?skill=");
 });
 
 test("EVAL-002 a suggestion that cannot be applied names the rule that blocked it", async () => {

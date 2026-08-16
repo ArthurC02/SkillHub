@@ -15,6 +15,25 @@ RETURNING *;
 -- name: GetRun :one
 SELECT * FROM runs WHERE id = $1 AND workspace_id = $2;
 
+-- name: GetRunLinkage :one
+-- The two ids the runs row does not carry itself, for the read surface (RUN-002).
+--
+-- `skill_id` because applying improvement suggestions posts to
+-- /skills/{id}/versions/from-suggestions, and a run page that had to be reached with
+-- that id already in its URL could only offer the action to callers who arrived the
+-- one right way. `test_case_id` because a re-run takes the editable test case and
+-- snapshots it again - the frozen snapshot id cannot be handed back to
+-- POST /skills/{id}/runs.
+--
+-- Neither is a permission: what may be re-run is preflight's answer (TEST-009), and
+-- whether the inputs still exist is RunInputsStillAvailable's. Workspace scoped
+-- through the run, like every other read here.
+SELECT v.skill_id, s.test_case_id
+FROM runs r
+JOIN skill_versions v ON v.id = r.skill_version_id
+JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
+WHERE r.id = @run_id AND r.workspace_id = @workspace_id;
+
 -- name: TransitionRun :one
 -- The state machine's only write. `status = @from_status` is the guard ADR-008 asks for:
 -- a transition applied twice, or applied to a run something else already moved, updates

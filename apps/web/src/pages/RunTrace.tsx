@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { useTrace } from "../api/trace";
 import type { TraceAdvanced, TraceEvent, TraceSummary } from "../api/trace";
 import { EvaluationPanel, RUN_STATUS_LABEL } from "./RunEvaluation";
@@ -23,7 +23,6 @@ import { EvaluationPanel, RUN_STATUS_LABEL } from "./RunEvaluation";
 
 export function RunTrace() {
   const { runId } = useParams({ from: "/runs/$runId" });
-  const { skill } = useSearch({ strict: false }) as { skill?: string };
   const [mode, setMode] = useState<"general" | "advanced">("general");
   // Same query key as the general mode below, so this is one request, not two.
   // The runs table is the only authority on run state (iron rule 5).
@@ -35,11 +34,11 @@ export function RunTrace() {
 
       {/* EVAL-001 / design §4.3: the first thing on the page is the task
           judgement, not the run's terminal state. */}
-      <EvaluationPanel runId={runId} runStatus={general.data?.status} skillId={skill} />
+      <EvaluationPanel runId={runId} runStatus={general.data?.status} />
 
       <h2>執行紀錄</h2>
       <p className="note">
-        <Link to="/runs/$runId/compare" params={{ runId }} search={{ against: "", skill }}>
+        <Link to="/runs/$runId/compare" params={{ runId }} search={{ against: "" }}>
           與另一個 Run 比較
         </Link>
       </p>

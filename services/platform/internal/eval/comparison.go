@@ -43,8 +43,14 @@ type comparisonView struct {
 }
 
 type comparisonSide struct {
-	RunID          string `json:"run_id"`
+	RunID string `json:"run_id"`
+	// SkillID and TestCaseID are what a re-run would be started from, per side
+	// because two runs of different skills may be compared. They are ids and not
+	// permission: re-running is still POST /skills/{id}/runs behind preflight, and
+	// InputsAvailable below is what says whether these inputs exist at all.
+	SkillID        string `json:"skill_id"`
 	SkillVersionID string `json:"skill_version_id"`
+	TestCaseID     string `json:"test_case_id,omitempty"`
 	Status         string `json:"status"`
 	// Evaluation is absent when this run was never evaluated. Absent and not a
 	// zero value: a rendered empty verdict is what a screen shows as a pass.
@@ -197,6 +203,7 @@ func (s *Service) comparisonSide(
 		return comparisonSide{}, sideDetail{}, err
 	}
 	detail.skillID = version.SkillID
+	side.SkillID = uuidString(version.SkillID)
 
 	snapshot, err := q.GetTestCaseSnapshot(ctx, gen.GetTestCaseSnapshotParams{
 		ID: run.TestCaseSnapshotID, WorkspaceID: workspaceID,
@@ -204,6 +211,7 @@ func (s *Service) comparisonSide(
 	if err != nil {
 		return comparisonSide{}, sideDetail{}, err
 	}
+	side.TestCaseID = uuidString(snapshot.TestCaseID)
 	if detail.criteria, err = testlab.DecodeCriteria(snapshot.AcceptanceCriteria); err != nil {
 		return comparisonSide{}, sideDetail{}, err
 	}
