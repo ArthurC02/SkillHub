@@ -310,6 +310,22 @@ paths:
             the import on any error-level finding, so a stored version is the
             evidence. `unverified` is a skill with no saved content, which is
             never reported as failed. Absent = not filtered.
+        - name: agent
+          in: query
+          required: false
+          schema: { type: string, enum: [native, transpiled, failed, unverified] }
+          description: |
+            DISC-002's Agent dimension, live since migration 0022. It filters the
+            `runtime` axis of `compatibility` and only that axis, matching the
+            measured verdict **exactly** rather than as a boolean: `unverified`
+            is a value a caller can ask for, and a "not native" filter would
+            silently mean transpiled-or-failed-or-never-measured, which are three
+            different things to someone choosing a skill. Absent = not filtered.
+
+            The `capability` axis is shown but not filterable. Every measured
+            skill in the catalogue came back `activated` (45/45 in the M2
+            baseline), so a control on it separates nothing; it becomes a filter
+            when a `not_activated` row exists and not before.
       responses:
         "200":
           description: Ranked matches with match reasons, or empty list.
@@ -319,9 +335,10 @@ paths:
                 $ref: "#/components/schemas/PublicSearchResponse"
         "400":
           description: |
-            An unusable filter. Either a `script`/`validation` value outside its
-            enum, or one of the four 02:DISC-002 dimensions this build has no
-            per-row data for — `category`, `tier`, `agent`, `mcp`. Those are
+            An unusable filter. Either a `script`/`validation`/`agent` value
+            outside its enum, or one of the three 02:DISC-002 dimensions this
+            build has no per-row data for — `category`, `tier`, `mcp`. (`agent`
+            left that list when 0022 gave it per-row data.) Those are
             rejected rather than ignored: answering a filtered request with an
             unfiltered page would present the whole catalog as the filtered
             subset. The error message names the dimension and why it is
@@ -349,8 +366,10 @@ paths:
         `declared` at best: confirmation is a reviewer's act and nothing records
         one yet. `risk` reports a static scan of the stored package; the scan
         never executes anything (iron rule 1) and passing it is not a safety
-        claim (NFR-001). `compatibility` keeps the three axes apart and states
-        the two that need a sandbox as `unverified` rather than omitting them.
+        claim (NFR-001). `compatibility` keeps the three axes apart; the two that
+        need a sandbox carry a measured verdict together with the
+        `runtime_image` it holds for, and say `unverified` rather than being
+        omitted when this (version, image) pair was never measured.
       # OptionalSession, not RequireSession: the request is served without a
       # session and a session only widens the scope, so both requirements are
       # listed rather than one of them.
@@ -2082,9 +2101,10 @@ components:
             `spec_validation` is `passed` for any row with a saved version:
             static validation is what admits a package to the index, so being
             listed here is the evidence. It is `unverified` only for a skill
-            with no version yet. `capability` and `runtime` stay `unverified`
-            until sandbox runs exist (M2) — that is the 「尚未試跑」 state
-            DISC-002 requires to be explicit.
+            with no version yet. `capability` and `runtime` carry the measured
+            verdict when the projection holds one, and stay `unverified` when it
+            does not — that is the 「尚未試跑」 state DISC-002 requires to be
+            explicit, and it is what `runtime_image` being absent means.
         verified_at:
           type: string
           format: date-time
@@ -2237,9 +2257,20 @@ components:
         note: { type: string }
     SkillCompatibility:
       description: |
-        The three DISC-008 axes, kept apart. Only spec validation has an answer
-        before M2; the other two say `unverified` rather than being omitted,
-        because a missing field reads as "fine" and an explicit 未驗證 does not.
+        The three DISC-008 axes, kept apart, and the same shape on the search
+        result and the detail view. An axis with no answer says `unverified`
+        rather than being omitted: a missing field reads as "fine" and an
+        explicit 未驗證 does not.
+
+        `spec_validation` is derived from the stored package. The other two are
+        *measurements* (migration 0022) and are only true of the
+        `runtime_image` beside them — the same package on the same version gets
+        a different `runtime` answer on an image that provides python3 than on
+        one that does not, so a verdict without its image is a claim nobody
+        made. Bumping the runtime image therefore drops a skill back to
+        `unverified` until a baseline re-run measures the new pair; a verdict
+        carried across an image change is what would make the axis worse than
+        not having one.
       type: object
       required: [spec_validation, capability, runtime, note]
       properties:
@@ -2251,11 +2282,58 @@ components:
             skill is safe to run or effective (SKILL-002).
         capability:
           type: string
-          enum: [unverified, passed, failed]
+          enum: [activated, not_activated, unverified]
+          description: |
+            Does the agent actually pick this skill up when it is mounted, read
+            from the run trace.
+
+            - `activated` — a `skill_activation` event for this skill in the run.
+            - `not_activated` — the run completed and the trace shows the skill
+              was offered and something else was used instead.
+            - `unverified` — no run, or a run that ended before the question
+              could be answered.
+
+            `not_activated` is **never inferred from silence**. The SDK message
+            stream cannot express "available but not called" at all (TRACE-002
+            限制註記), so a missing activation event on a truncated run is not
+            evidence of non-activation, and it is reported as `unverified`.
         runtime:
           type: string
-          enum: [unverified, passed, failed]
-        note: { type: string }
+          enum: [native, transpiled, failed, unverified]
+          description: |
+            Can the package's own scripts execute in this image.
+
+            - `native` — every runtime the package declares is provided here.
+            - `transpiled` — they are not, and the observed run got its result
+              from **the model re-implementing the script rather than running
+              it**. A working run whose work was not the Skill's own code. It is
+              its own state because collapsing it into `native` would claim an
+              execution that did not happen, and collapsing it into `failed`
+              would contradict the artifacts the run produced. Surface the
+              distinction to the reader; it is the one a user will not guess and
+              the one that decides whether the Skill's own script is what ran.
+            - `failed` — they are not, and the run failed because of it.
+            - `unverified` — this (version, image) pair was never measured.
+        runtime_image:
+          type: string
+          description: |
+            The image `capability` and `runtime` were measured on, e.g.
+            `skillhub/runtime-agent-sdk:2026.08-1`. A digest reference is the
+            preferred form; the M2 baseline predates the publishing pipeline and
+            its rows record the tag they genuinely ran under rather than a digest
+            invented to fit. Absent exactly when nothing was measured, so there is
+            no image to name.
+        measured_at:
+          type: string
+          format: date-time
+          description: When the measurement ran. Absent when unmeasured.
+        note:
+          type: string
+          description: |
+            Copy explaining what was and was not checked, server-side so every
+            surface says it the same way (NFR-001). It differs between the
+            measured and unmeasured cases, and the measured one spells out the
+            `transpiled` meaning in words rather than leaving it as a value name.
     SkillEnrichment:
       description: |
         Index-time model output (ADR-013 §1), labelled as model-written so a
