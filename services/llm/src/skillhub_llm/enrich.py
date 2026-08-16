@@ -26,10 +26,14 @@ ENRICH_MODEL = os.getenv("ENRICH_MODEL", "gpt-5.6-sol")
 # v2 adds `limitations`; v3 adds the locale gloss rule; v4 adds the three
 # restatement rules the CONTENT-005 audit found the model breaking (defaults
 # written as requirements, quality adjectives on outputs, capabilities
-# extrapolated to neighbouring actions). Bumped rather than edited in place: the
-# version is what tells a stored enrichment written under the old prompt from one
-# written under this, and reindex uses it to find the stale rows.
-PROMPT_VERSION = "enrich-skill/v4"
+# extrapolated to neighbouring actions); v5 makes the runtime a package's own
+# scripts are written for a stated requirement, after the CONTENT-007/008
+# baseline found 11 of 33 Python-dependent Skills naming the dependency in
+# `tags` but not in `limitations` - the reader sees the limitations block.
+# Bumped rather than edited in place: the version is what tells a stored
+# enrichment written under the old prompt from one written under this, and
+# reindex uses it to find the stale rows.
+PROMPT_VERSION = "enrich-skill/v5"
 
 # Ceiling on a single gateway call. Client disconnect cancels the request at the
 # HTTP layer, which is how Go's cancellation propagates (ADR-016 rule 7).
@@ -76,7 +80,12 @@ the content mentions. Use an empty list where it says nothing.
 - limitations: short sentences, in {language}, restating what the content itself says \
 the Skill does NOT do, or what it requires in order to work - unsupported formats, \
 stated scope limits, required accounts, credentials, network access or installed \
-software. Restate only; do not infer a limitation the content does not state, and do \
+software. A runtime the content's own scripts and worked examples are written for is \
+required software: where the content works through a language runtime, interpreter or \
+library, that belongs here too. What the content shows is what the content states - an \
+import line, a command, a script's file extension or a dependency named in the \
+frontmatter is the document saying the Skill needs it, no less than a sentence would \
+be. Restate only; do not infer a limitation the content does not state, and do \
 not write anything about risk, safety, trustworthiness or quality. Use an empty list \
 where the content states none.
 

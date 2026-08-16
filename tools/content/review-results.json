@@ -11,22 +11,22 @@
   "drift_min_cosine": 0.9
  },
  "drift_calibration": {
-  "max_cross_skill_cosine": 0.8338,
+  "max_cross_skill_cosine": 0.8337,
   "pair": [
    "sokrati",
    "shorten"
   ]
  },
  "usage": {
-  "in": 29008,
-  "out": 18686,
-  "embed": 37807,
-  "calls": 12,
-  "cost_usd": 0.283
+  "in": 89185,
+  "out": 65113,
+  "embed": 61022,
+  "calls": 40,
+  "cost_usd": 0.9609
  },
  "counts": {
-  "pass": 45,
-  "needs-fix": 0,
+  "pass": 44,
+  "needs-fix": 1,
   "error": 0
  },
  "results": [
@@ -117,7 +117,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9203,
+   "kpi6_online_cosine": 0.9204,
    "kpi6_flagged": false
   },
   {
@@ -177,7 +177,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9608,
+   "kpi6_online_cosine": 0.9606,
    "kpi6_flagged": false
   },
   {
@@ -449,7 +449,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9491,
+   "kpi6_online_cosine": 0.9492,
    "kpi6_flagged": false
   },
   {
@@ -551,89 +551,93 @@
    "category": "documents",
    "skill_id": "93529712-eceb-44f9-9cda-e24af9a1f1b6",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v3",
+   "online_prompt_version": "enrich-skill/v5",
    "kpi2_term_density": 0.0,
    "kpi3": {
     "simplified_chars": [],
     "locale_hits": [],
     "reserved_translated": [],
-    "locale_glosses": []
+    "locale_glosses": [],
+    "cjk_in_en_examples": []
    },
    "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 25,
-    "unsupported": []
+    "claims_total": 24,
+    "unsupported": [
+     {
+      "claim": "此 Skill 可將 DOTX 範本內容擷取為 Markdown，並依標題重新組織。",
+      "evidence": "Missing an explicit statement or example that `.dotx` files can be converted to Markdown, or that their content can be reorganized specifically by heading. The document separately states `.dotx` extraction/reorganization and gives `pandoc -t markdown file.docx` for `.docx`.",
+      "verdict": "unsupported"
+     }
+    ]
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "它可建立、讀取、編輯與整理 Word 的 .docx 文件及 .dotx 範本；可處理標題、目錄、頁碼、表格、圖片、清單、信頭、尋找與取代、註解、追蹤及接受修訂、內容擷取、文件驗證，以及把舊版 .doc 轉為 .docx。",
+      "answer": "可建立、讀取、編輯及處理 Word 的 .docx 文件與 .dotx 範本；可進行格式設定、內容擷取與重組、尋找取代、圖片處理、註解及追蹤修訂，也可驗證 XML、接受修訂，以及轉成 PDF 和頁面影像供檢視。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能可建立、讀取、編輯及整理 Word 的 .docx 文件與 .dotx 範本，包括格式化標題、目錄、頁碼、表格、圖片、清單及信頭。它也能處理尋找與取代、註解、追蹤修訂、接受修訂、內容擷取、文件驗證，以及將舊版 .doc 轉成 .docx。"
+      "quote": "此 Skill 可建立、讀取、編輯及處理 Word 的 .docx 文件與 .dotx 範本，包括格式設定、內容擷取與重組、尋找取代、圖片處理、註解及追蹤修訂。... 它也提供文件 XML 驗證、接受修訂，以及將文件轉成 PDF 和頁面影像以檢視輸出的流程。"
      },
      {
-      "answer": "當你需要製作或重新排版 Word 文件、更新文件中的文字、對文件加註解或保留修訂紀錄、擷取並重整既有 DOCX 內容，或把舊 .doc 檔轉成 .docx 時，可以使用它。",
+      "answer": "當你要新建 Word 文件，或需要修改、分析、重整既有 DOCX／DOTX 時可使用。例如替換公司名稱、插入標誌、從範本擷取成 Markdown、以追蹤修訂修訂合約、加入註解，或建立接受全部修訂的副本。",
       "answerable": true,
       "question": "Q2",
-      "quote": "請建立一份專業的 DOCX 報告，包含目錄、編號標題、頁碼及公司信頭。；請在這份 Word 文件中全面取代舊產品名稱，同時保留現有格式。；請以作者名稱「Alex Chen」修訂這份合約並保留追蹤修訂，然後另存一份接受所有修訂的乾淨版本。；請擷取這個 DOCX 檔案的內容、重新整理成不同章節，並輸出重新排版的 Word 文件。"
+      "quote": "建立新文件時需提供內容與版面需求；處理既有文件時需提供檔案及要執行的修改或分析要求。它也提供文件 XML 驗證、接受修訂，以及將文件轉成 PDF 和頁面影像以檢視輸出的流程。"
      },
      {
-      "answer": "你需要準備原始文件，或提供要寫入文件的內容；並說明你對版面、修改、註解或修訂的需求。",
+      "answer": "若要建立新文件，需準備文件內容與版面需求；若要處理既有文件，需準備檔案，以及希望它執行的修改或分析要求。",
       "answerable": true,
       "question": "Q3",
-      "quote": "使用者需提供原始文件或要寫入的內容，並說明版面、修改、註解或修訂需求。"
+      "quote": "建立新文件時需提供內容與版面需求；處理既有文件時需提供檔案及要執行的修改或分析要求。"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "專業的 DOCX 報告",
-     "reason": "This is a restatement of the source's scope for “professional documents” with specified Word formatting.",
+     "quote": "驗證每項文字變更都有修訂標記",
+     "reason": "這是對追蹤修訂驗證能力的描述；來源明確說明該檢查會報告未被 `<w:ins>` 或 `<w:del>` 包住的已修改文字。",
      "verdict": "restatement"
     },
     {
-     "quote": "polished DOCX report",
-     "reason": "The source explicitly covers “converting content into a polished Word document.”",
+     "quote": "驗證",
+     "reason": "摘要所述的文件 XML 驗證對應來源的 `validate.py` 指令及其「XSD checks」說明。",
      "verdict": "restatement"
     },
     {
-     "quote": "同時保留現有格式",
-     "reason": "The source instructs editors to modify the XML “in place” and “do NOT reformat or pretty-print.”",
+     "quote": "將文件轉成 PDF 和頁面影像以檢視輸出的流程",
+     "reason": "來源的「Verify the output」段落明確要求將 `.docx` 轉成 PDF、產生 JPEG 頁面影像並閱讀影像。",
      "verdict": "restatement"
     },
     {
-     "quote": "without changing its existing formatting",
-     "reason": "The source instructs editors to modify the XML “in place” and “do NOT reformat or pretty-print.”",
+     "quote": "pdf previews",
+     "reason": "此輸出標籤對應來源將 `.docx` 轉換為 PDF 以進行輸出檢視的流程。",
      "verdict": "restatement"
     },
     {
-     "quote": "乾淨版本",
-     "reason": "The source explicitly says it can “produce a clean copy with all tracked changes accepted.”",
+     "quote": "validation reports",
+     "reason": "此輸出標籤對應來源的 `validate.py` 與其 XSD 檢查說明。",
      "verdict": "restatement"
     },
     {
-     "quote": "clean copy",
-     "reason": "The source explicitly says it can “produce a clean copy with all tracked changes accepted.”",
+     "quote": "PDF 僅用於輸出驗證流程中的轉檔預覽。",
+     "reason": "來源將 PDF 轉檔置於「Verify the output」流程中，而非列為 PDF 任務用途。",
      "verdict": "restatement"
     },
     {
-     "quote": "文件驗證",
-     "reason": "The source documents `validate.py` and describes its “XSD checks.”",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "validated documents",
-     "reason": "The source documents `validate.py` and describes its “XSD checks.”",
+     "quote": "可能在特定段落刪除情況留下空白段落或空白項目符號；文件指出應檢查 XML 中的段落刪除。",
+     "reason": "來源明確說明 `accept_changes.py` 與 `pandoc --track-changes=accept` 在此情況可能留下空段落或空白項目符號，並指示檢查 XML 的段落刪除。",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
-   "verdict": "pass",
-   "reasons": [],
-   "kpi6_online_cosine": 0.9209,
-   "kpi6_flagged": false
+   "verdict": "needs-fix",
+   "reasons": [
+    "KPI1 忠實性：此 Skill 可將 DOTX 範本內容擷取為 Markdown，並依標題重新組織。（Missing an explicit statement or example that `.dotx` files can be converted to Markdown, or that their content can be reorganized specifically by heading. The document separately states `.dotx` extraction/reorganization and gives `pandoc -t markdown file.docx` for `.docx`.）"
+   ],
+   "kpi6_online_cosine": 0.8541,
+   "kpi6_flagged": true
   },
   {
    "id": "anthropic-sa/pdf",
@@ -642,57 +646,59 @@
    "category": "documents",
    "skill_id": "0ee44d6d-8342-4375-9073-0fee289442fa",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v2",
+   "online_prompt_version": "enrich-skill/v5",
    "kpi2_term_density": 0.0,
    "kpi3": {
     "simplified_chars": [],
     "locale_hits": [],
-    "reserved_translated": []
+    "reserved_translated": [],
+    "locale_glosses": [],
+    "cjk_in_en_examples": []
    },
    "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 28,
+    "claims_total": 22,
     "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "它可讀取、建立及處理 PDF：可擷取文字、表格、圖片與中繼資料，也可合併、分割、旋轉、加入浮水印、加密或解密、填寫表單；還能對掃描式 PDF 做 OCR，並將擷取出的表格匯出成 Excel。",
+      "answer": "可處理 PDF：讀取並擷取文字、表格、影像與中繼資料；也可合併、分割、旋轉頁面、加浮水印、建立 PDF、填寫表單、加密或解密。它還可對掃描 PDF 做 OCR 擷取文字，並把擷取出的表格合併輸出成 Excel。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能可讀取、建立及處理 PDF，包括擷取文字、表格、圖片與中繼資料，以及合併、分割、旋轉、加浮水印、加密、解密和填寫表單。它也能將掃描式 PDF 轉成圖片後進行 OCR，並可把擷取的表格匯出為 Excel。"
+      "quote": "此 Skill 可讀取 PDF、擷取文字、表格、影像與中繼資料，也能合併、分割、旋轉頁面、加入浮水印、建立 PDF、填寫表單及加密或解密。它也能先把掃描 PDF 轉成影像，再以 OCR 擷取文字，並可將擷取的表格合併輸出為 Excel。"
      },
      {
-      "answer": "當你需要整理、修改或從 PDF 取出資料時可使用，例如合併多份 PDF、將掃描檔變成可搜尋與複製文字的文件、擷取表格成 Excel、旋轉頁面及加浮水印，或依資料填寫 PDF 表單。",
+      "answer": "當你需要整理、修改或從 PDF 取出資料時使用，例如把多份 PDF 合成一份、將 PDF 內的表格轉為 Excel、替掃描文件做 OCR 取得文字，或為 PDF 加密。",
       "answerable": true,
       "question": "Q2",
-      "quote": "請依照提供的順序，將這三個 PDF 合併成一份文件。；請擷取這份 PDF 中的所有表格，並儲存成 Excel 檔案。；請對這份掃描 PDF 執行 OCR，讓我可以搜尋及複製其中的文字。；請將第 1 頁順時針旋轉 90 度，並在每一頁加入這個浮水印。；請使用我提供的資料填寫這份 PDF 表單，並回傳完成的 PDF。"
+      "quote": "- 請依照提供的順序，將這三個 PDF 檔合併成一份文件。\n- 請擷取這份 PDF 中的所有表格，合併後儲存為 Excel 檔案。\n- 請對這份掃描 PDF 執行 OCR，並傳回每一頁的文字。\n- 請使用我提供的使用者密碼與擁有者密碼加密這份 PDF。"
      },
      {
-      "answer": "通常要先準備一個或多個 PDF；視工作而定，還要提供頁碼範圍、密碼、表單資料、浮水印檔案，或要寫入的新內容。",
+      "answer": "你需要準備一個或多個 PDF 檔案，以及希望它執行的操作。若要建立 PDF，還要準備要放入的內容；若要解密，則要提供密碼。",
       "answerable": true,
       "question": "Q3",
-      "quote": "使用時通常需要提供一個或多個 PDF，並依任務補充頁碼範圍、密碼、表單資料、浮水印檔案或要寫入的新內容。"
+      "quote": "使用者需提供一個或多個 PDF 檔案及要執行的操作；建立 PDF 時則需提供要放入的內容，解密時需提供密碼。"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "ReportLab 內建字型不支援 Unicode 上標與下標字元；Paragraph 物件需改用 <super> 與 <sub> 標記，Canvas 文字則需手動調整字型大小與位置。",
-     "reason": "這是對輸出呈現品質的技術限制；來源明確說明內建字型缺少這些字形，會呈現為黑色方塊，並指定替代方式。",
+     "quote": "ReportLab 內建字型不包含 Unicode 上標與下標字元；Paragraph 必須改用 <super>、<sub> 標記，canvas 文字則需手動調整字型大小與位置。",
+     "reason": "這是對 ReportLab 字型字形支援與避免渲染問題的限制重述；來源明確說明內建字型缺少這些 glyphs，會顯示為黑框，並指定替代作法。",
      "verdict": "restatement"
     },
     {
-     "quote": "移除加密 PDF 的密碼需要提供原密碼。",
-     "reason": "這觸及加密／安全限制；來源的解密指令明確要求以 `--password=mypassword` 提供密碼。",
+     "quote": "進階 pypdfium2、JavaScript pdf-lib、表單填寫與疑難排解的細節需參閱套件中的 REFERENCE.md 或 FORMS.md。",
+     "reason": "這是來源對文件覆蓋範圍及應參閱文件的重述，包括「For troubleshooting guides, see REFERENCE.md」。",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9739,
+   "kpi6_online_cosine": 0.9115,
    "kpi6_flagged": false
   },
   {
@@ -1001,7 +1007,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9572,
+   "kpi6_online_cosine": 0.957,
    "kpi6_flagged": false
   },
   {
@@ -1057,7 +1063,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9521,
+   "kpi6_online_cosine": 0.9522,
    "kpi6_flagged": false
   },
   {
@@ -1182,7 +1188,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9217,
+   "kpi6_online_cosine": 0.9215,
    "kpi6_flagged": false
   },
   {
@@ -1277,12 +1283,13 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8932,
+   "kpi6_online_cosine": 0.8927,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8932 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8922 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8932 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8932 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8927 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -1487,6 +1494,7 @@
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8892 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8882 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8892 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8892 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
@@ -1602,12 +1610,13 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8866,
+   "kpi6_online_cosine": 0.886,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8855 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8862 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8866 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8866 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.886 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -1677,12 +1686,13 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8632,
+   "kpi6_online_cosine": 0.8633,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8631 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8632 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8632 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8632 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8633 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -1777,12 +1787,13 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8918,
+   "kpi6_online_cosine": 0.8915,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8916 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8919 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8918 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8918 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8915 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -1885,12 +1896,13 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8273,
+   "kpi6_online_cosine": 0.8272,
    "kpi6_flagged": true,
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8274 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8273 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8273 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8273 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8272 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -2167,6 +2179,7 @@
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8997 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8997 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8996 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8996 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
@@ -2339,6 +2352,7 @@
    "notes": [
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8848 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8849 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8849 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
     "KPI6 線上一致性：與 summaries.json 餘弦 0.8849 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
@@ -2349,77 +2363,64 @@
    "category": "data",
    "skill_id": "072a172b-c28c-4a3a-b2d5-84118fb3a26f",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v2",
+   "online_prompt_version": "enrich-skill/v5",
    "kpi2_term_density": 0.0,
    "kpi3": {
     "simplified_chars": [],
     "locale_hits": [],
-    "reserved_translated": []
+    "reserved_translated": [],
+    "locale_glosses": [],
+    "cjk_in_en_examples": []
    },
    "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 15,
+    "claims_total": 14,
     "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "它會以唯讀方式掃描 Excel 檔案，依你指定的一個欄位或多個欄位的組合找出重複資料列，並提供重複統計與 Excel 行號清單。你也可以指定保留第一次或最後一次出現的資料；結果可提供給 excel-delete 依由下往上的順序刪除重複列。",
+      "answer": "它會以唯讀方式掃描 Excel 檔案，依你指定的一個欄位或多個欄位的組合找出重複列。你可指定保留第一次或最後一次出現的資料；它會提供重複統計與 Excel 列號清單。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能會唯讀掃描 Excel 檔案，依指定的單一欄位或多欄組合找出重複資料列，並提供重複統計與 Excel 行號清單。使用者需提供目標檔案及明確的關鍵欄位，也可指定保留首次或末次出現的資料，預設保留首次。輸出結果可交給 excel-delete，由下往上刪除重複列。"
+      "quote": "此技能以唯讀方式掃描 Excel 檔案，依指定的單一欄位或多欄組合找出重複列。使用者必須提供 Excel 檔案並明確指定關鍵欄位；保留策略可選擇保留首次或末次出現，未指定時保留首次。它會輸出重複統計與 Excel 列號清單"
      },
      {
-      "answer": "當你想檢查 Excel 或活頁簿中是否有重複資料，並想依特定欄位（例如專利號、電子郵件、E 欄）或欄位組合（例如客戶編號加訂單日期）判定重複時，可以使用它。尤其適合你需要知道重複列的行號、重複的總數或比例，或要準備一份供後續刪除重複列使用的行號清單時。",
+      "answer": "當你想檢查 Excel 中是否有重複資料，並依特定欄位（例如專利號、E 欄）或欄位組合（例如客戶編號加訂單日期）辨識重複列時，就會使用它。若你還需要列號清單，以便後續交給 excel-delete 刪除重複列，也適合使用。",
       "answerable": true,
       "question": "Q2",
-      "quote": "請依專利號掃描這個 Excel 檔案的重複資料列，保留第一筆並回傳 Excel 行號。\\n請用客戶編號與訂單日期的組合查重，並保留最後出現的一筆。\\n請找出 E 欄的重複值，並顯示總數、比例及前 20 個重複行號。\\n請依電子郵件欄位檢查這個活頁簿是否有重複列，不要修改原始檔案。\\n請產生可交給 excel-delete 由下往上刪除的重複行號清單。"
+      "quote": "依指定的單一欄位或多欄組合找出重複列。... 該清單可再交給 excel-delete 由下往上刪除。"
      },
      {
-      "answer": "你需要準備目標 Excel 檔案，以及明確用來判斷重複的關鍵欄位；可以是一個欄位，也可以是多個欄位的組合。若你對保留哪筆資料有要求，也要說明保留首次或末次出現的資料；未指定時，預設保留首次。",
+      "answer": "你需要先準備 Excel 檔案，並明確指定要作為查重依據的關鍵欄位，可以是一個欄位或多個欄位的組合。若你不想採用預設的保留首次出現策略，還要說明要保留首次還是末次出現的資料。",
       "answerable": true,
       "question": "Q3",
-      "quote": "使用者需提供目標檔案及明確的關鍵欄位，也可指定保留首次或末次出現的資料，預設保留首次。"
+      "quote": "使用者必須提供 Excel 檔案並明確指定關鍵欄位；保留策略可選擇保留首次或末次出現，未指定時保留首次。"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "此技能會唯讀掃描 Excel 檔案",
-     "reason": "This is a safety-related characterization of the skill's non-writing behavior, and the source explicitly describes it as a read-only scan.",
+     "quote": "此技能以唯讀方式掃描 Excel 檔案",
+     "reason": "這是在陳述技能的讀取模式，而非評價技能本身的可信度或品質；來源明確稱其為 read-only scan。",
      "verdict": "restatement"
     },
     {
-     "quote": "輸出結果可交給 excel-delete，由下往上刪除重複列。",
-     "reason": "The source explicitly shows passing the result to excel-delete and specifies bottom-to-top deletion to avoid row-number shifting.",
+     "quote": "該清單可再交給 excel-delete 由下往上刪除。",
+     "reason": "這是來源所述的刪除端操作方式；來源示例明示 excel-delete 應 bottom-to-top 刪除，以避免列號偏移。",
      "verdict": "restatement"
     },
     {
-     "quote": "此技能僅進行唯讀掃描，不會修改或刪除原始 Excel 檔案。",
-     "reason": "The source explicitly states that the skill is read-only and does not modify the original file.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "輸出的行號以第 1 行為標題列、第 2 行為第一筆資料為前提。",
-     "reason": "This is a correctness-related output caveat directly stated in the source's row-number note.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "關鍵欄位中有多個空值時，這些資料列會被視為重複；預設只保留第一筆。",
-     "reason": "This is a data-handling risk/caveat directly stated in the source's null-values note.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "大型檔案需要較長讀取時間；文件示例指出 168MB、33 萬列約需 150 秒。",
-     "reason": "This is a performance-quality caveat directly restating the source's large-file timing example.",
+     "quote": "此技能僅讀取及掃描資料，不修改原始檔案，也不自行刪除重複列。",
+     "reason": "這是在陳述讀寫限制與副作用，而非對技能安全性作額外評價；來源明確說明不修改原始檔案，且刪除由 excel-delete 執行。",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.948,
+   "kpi6_online_cosine": 0.9622,
    "kpi6_flagged": false
   },
   {
@@ -2429,77 +2430,79 @@
    "category": "data",
    "skill_id": "1a95f83e-b0e9-4068-ad70-4342d090ffe0",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v2",
-   "kpi2_term_density": 0.6,
+   "online_prompt_version": "enrich-skill/v5",
+   "kpi2_term_density": 2.06,
    "kpi3": {
     "simplified_chars": [],
     "locale_hits": [],
-    "reserved_translated": []
+    "reserved_translated": [],
+    "locale_glosses": [],
+    "cjk_in_en_examples": []
    },
    "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 28,
+    "claims_total": 17,
     "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "它會依照你指定的欄位與條件篩選 Excel 資料列；你可以選擇只保留符合條件的列，或刪除符合條件的列。它支援等值、包含、範圍、日期、空值及多條件篩選，並會建立備份與驗證結果。",
+      "answer": "它會依照你指定的條件篩選 Excel `.xlsx` 檔中的資料列：你可以選擇保留符合條件的列，或刪除符合條件的列；沒有指定模式時，會預設保留符合條件的列。可用的條件包括等值、包含、比較、範圍、日期、空值，以及多個條件的組合。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能依指定欄位與條件篩選 Excel 資料列，可選擇只保留符合條件的列，或刪除符合條件的列。它需要 Excel 檔案、篩選欄位、條件、操作模式及表頭位置，支援等值、包含、範圍、日期、空值與多條件篩選。技能先以 pandas 找出目標列，再直接修改工作表 XML 以保留格式，並建立備份及驗證結果；刪除後會詢問是否壓實不連續的空白行。"
+      "quote": "此技能依指定條件篩選 .xlsx 資料列，可保留符合條件的列，或刪除符合條件的列；若未指定模式，預設採用保留模式。...條件可包含等值、包含、比較、範圍、日期、空值及多條件組合。"
      },
      {
-      "answer": "當你需要依條件整理 Excel 資料列時使用，例如只留下某日期之後的申請資料、刪除欄位空白的列、找出標題含特定詞且符合某狀態的資料，或刪除指定日期範圍內的資料。",
+      "answer": "當你有一份 Excel 活頁簿，想依欄位內容挑出需要的資料，或移除不需要的資料列時，就會使用它。例如只留下某日期以後的資料、刪除某欄空白的資料，或同時符合關鍵字與狀態的資料。若刪除資料列後，你還需要決定是否把留下的空白行壓實，也適合使用。",
       "answerable": true,
       "question": "Q2",
-      "quote": "- 請只保留這個 Excel 檔中申請日在 2020 年 1 月 1 日之後的資料列。\n- 請刪除申請人欄位為空白的資料列，第一列是表頭。\n- 請提取標題包含「石墨烯」且法律狀態為已授權的資料列。\n- 請刪除申請日在 2020 到 2023 年之間的所有資料列，完成後再詢問我是否要壓實空白行。"
+      "quote": "- 只保留申請日在 2020 年 1 月 1 日或之後的資料列。\\n- 刪除「申請人」欄位為空值的資料列。\\n- 保留標題包含「石墨烯」且法律狀態等於「授權」的資料列。\\n...\\n刪除後會詢問是否壓實空白行。"
      },
      {
-      "answer": "你需要準備 Excel 檔案、要篩選的欄位、篩選條件、要保留或刪除的操作模式，以及表頭所在位置。若是刪除資料列，也可能需要決定是否壓實不連續的空白行。",
+      "answer": "你需要準備 Excel 檔案、要篩選的欄位，以及篩選條件；如果檔案有多列表頭，還需要確認表頭設定。另外，若你要刪除符合條件的列，完成後需決定是否壓實空白行。",
       "answerable": true,
       "question": "Q3",
-      "quote": "它需要 Excel 檔案、篩選欄位、條件、操作模式及表頭位置，支援等值、包含、範圍、日期、空值與多條件篩選。技能先以 pandas 找出目標列，再直接修改工作表 XML 以保留格式，並建立備份及驗證結果；刪除後會詢問是否壓實不連續的空白行。"
+      "quote": "使用者需提供 Excel 檔案、篩選欄與條件，並在多列表頭時確認表頭設定；...刪除後會詢問是否壓實空白行。"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "再直接修改工作表 XML 以保留格式",
-     "reason": "這是在陳述 XML 直接操作對工作簿格式的效果，來源明確稱其為「格式无损」。",
+     "quote": "建立備份",
+     "reason": "This is a safety-related backup measure, and the source documents creating a backup before XML deletion.",
      "verdict": "restatement"
     },
     {
-     "quote": "並建立備份及驗證結果",
-     "reason": "備份與驗證是來源指定的操作與驗證步驟，並非目錄對技能可信度的獨立評價。",
+     "quote": "用 openpyxl 與 pandas 驗證結果",
+     "reason": "This is a quality/verification statement, and the source explicitly provides openpyxl validation and pandas result validation steps.",
      "verdict": "restatement"
     },
     {
-     "quote": "刪除後會詢問是否壓實不連續的空白行",
-     "reason": "來源明定刪除完成後「必须询问用户」。",
+     "quote": "刪除後會詢問是否壓實空白行",
+     "reason": "This concerns a post-deletion safeguard and user decision; the source says the user must be asked after filtering/deletion.",
      "verdict": "restatement"
     },
     {
-     "quote": "XML 刪除後不會自動讓行號連續，Excel 可能顯示空白行；必須取得使用者確認後，才能執行壓實步驟。",
-     "reason": "這是來源對 XML 刪除後果與使用者確認要求的直接說明。",
+     "quote": "需要確認篩選欄、條件及表頭列設定",
+     "reason": "This concerns operational confirmation, and the source explicitly says to confirm the filter column, condition, mode, and header-row count.",
      "verdict": "restatement"
     },
     {
-     "quote": "操作前需要建立備份。",
-     "reason": "來源的注意事項明定「操作前必备份」。",
+     "quote": "且必須先取得使用者確認",
+     "reason": "This is a user-consent safeguard, and the source states that compaction is performed after user confirmation.",
      "verdict": "restatement"
     },
     {
-     "quote": "並驗證結果中沒有不符合條件的資料",
-     "reason": "這要求對篩選結果進行正確性檢查；來源的驗證步驟會輸出「不符合条件残留」數量。",
+     "quote": "所示公式健康檢查",
+     "reason": "This is a quality-check phrase, and the source labels the verification section as a formula health check.",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9641,
+   "kpi6_online_cosine": 0.9224,
    "kpi6_flagged": false
   },
   {
@@ -2509,99 +2512,121 @@
    "category": "data",
    "skill_id": "31ad8ccf-2e32-401b-91e3-21f4eaeefe48",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v2",
-   "kpi2_term_density": 0.74,
+   "online_prompt_version": "enrich-skill/v5",
+   "kpi2_term_density": 0.0,
    "kpi3": {
     "simplified_chars": [],
     "locale_hits": [],
-    "reserved_translated": []
+    "reserved_translated": [],
+    "locale_glosses": [],
+    "cjk_in_en_examples": []
    },
    "kpi4_mechanical": [
     "品質"
    ],
    "kpi1": {
-    "claims_total": 15,
+    "claims_total": 17,
     "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "它會以唯讀方式掃描 Excel 檔案，檢查多種資料品質問題，包括空值率、唯一值、欄位型別是否一致、數值異常值、完全重複列、全空欄，以及疑似日期文字；並輸出含問題、嚴重程度與建議處理方式的報告，不會修改原始檔案。",
+      "answer": "它會以唯讀方式掃描 Excel 檔案，檢查空值率、唯一值、混合型別、數值異常值、完全重複列、公式欄及其他潛在資料問題，並輸出包含問題嚴重程度與處理建議的資料品質報告。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能以唯讀方式掃描 Excel 檔案，檢查空值率、唯一值、欄位型別一致性、數值異常值、完全重複列、全空欄及疑似日期文字等資料品質問題。輸出會列出問題、嚴重程度與建議處理方式，且不會修改原始檔案。"
+      "quote": "此技能以唯讀方式掃描 Excel 檔案，檢查各欄空值率、唯一值、混合型別、數值異常值、完全重複列、公式欄及其他潛在問題，並輸出資料品質問題報告。報告會包含檔案大小、列欄數、問題嚴重程度，以及發現問題時的處理建議。"
      },
      {
-      "answer": "當你想了解一份 Excel 或試算表是否有資料品質問題時使用，例如要找出哪些欄位有空值及其比率、是否有完全相同的重複資料列，或檢查混合資料型別、數值異常值和全空欄位。你也可以只針對空值或重複資料等特定範圍檢查。",
+      "answer": "當你想確認 Excel 資料是否有品質問題，又不想修改原始檔時可使用；也適合只想查空值、完全重複列，或想做完整資料品質檢查時使用。",
       "answerable": true,
       "question": "Q2",
-      "quote": "使用者也可指定只檢查空值或重複資料等範圍。／請檢查這份試算表哪些欄位含有空值，並顯示各欄的空值率。／請檢查這個 Excel 檔案是否有內容完全相同的重複資料列。／請檢查這份活頁簿是否有混合資料型別、數值異常值及全空欄位。"
+      "quote": "可指定只檢查空值或重複列，若要求整體資料品質檢查或詢問是否有問題，則執行全部檢查項目。"
      },
      {
-      "answer": "你需要準備一個目標 Excel 檔案；如果不想做完整掃描，也可以先決定要指定檢查的範圍，例如只檢查空值或重複資料。",
+      "answer": "你需要先準備要檢查的 Excel 檔案；也可以先決定要只檢查空值或重複列，或是進行全部檢查。",
       "answerable": true,
       "question": "Q3",
-      "quote": "它需要一個目標 Excel 檔案，使用者也可指定只檢查空值或重複資料等範圍。"
+      "quote": "使用者需提供 Excel 檔案；可指定只檢查空值或重複列"
      }
     ]
    },
    "kpi4_judge": [
     {
      "quote": "資料品質問題",
-     "reason": "This describes the subject matter the Skill checks; the source describes checking data quality and producing a quality issue report.",
+     "reason": "這是在描述技能所檢查的資料品質問題；來源明示其用途是檢查資料品質。",
      "verdict": "restatement"
     },
     {
-     "quote": "嚴重程度",
-     "reason": "The source assigns severity levels to checks and says to inform the user of severity when issues are found.",
+     "quote": "資料品質問題報告",
+     "reason": "來源明示會輸出 quality issue report／問題報告。",
      "verdict": "restatement"
     },
     {
-     "quote": "不會修改原始檔案",
-     "reason": "The source explicitly states that the Skill is read-only and does not modify the original file.",
+     "quote": "問題嚴重程度",
+     "reason": "來源的檢查項目表列有 High、Medium、Low、Info 嚴重程度，且要求發現問題時告知嚴重程度。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "處理建議",
+     "reason": "來源明示發現問題時應提供「suggested handling／建议的处理方式」。",
      "verdict": "restatement"
     },
     {
      "quote": "data quality issues",
-     "reason": "This is the English task-example rendering of the source's data-quality checking capability.",
+     "reason": "這是對來源所述 data quality 檢查用途的英文重述。",
      "verdict": "restatement"
     },
     {
-     "quote": "fully duplicate rows",
-     "reason": "The source explicitly checks and counts fully duplicate rows.",
+     "quote": "完全重複的資料列",
+     "reason": "來源明示檢查 fully duplicate rows／完全重複行。",
      "verdict": "restatement"
     },
     {
-     "quote": "numeric outliers",
-     "reason": "The source explicitly identifies extreme values in numeric columns.",
+     "quote": "不修改檔案的情況下",
+     "reason": "來源多次明示技能為 read-only，且不修改原始檔案。",
      "verdict": "restatement"
     },
     {
-     "quote": "all-null columns",
-     "reason": "The source explicitly checks all-null columns.",
+     "quote": "混合型別、數值異常值及全空欄",
+     "reason": "來源的型別一致性、數值異常值及全空欄檢查程式碼明示這些資料品質問題。",
      "verdict": "restatement"
     },
     {
-     "quote": "severity and suggested handling",
-     "reason": "The source says that, if issues are found, the user should be informed of severity and suggested handling.",
+     "quote": "issue severity",
+     "reason": "來源明示問題具有嚴重程度，並要求在發現問題時告知使用者。",
      "verdict": "restatement"
     },
     {
-     "quote": "異常值檢查僅針對數值欄位",
-     "reason": "The source's outlier check is explicitly limited to numeric columns.",
+     "quote": "suggested handling",
+     "reason": "來源明示「If issues are found, inform the user of severity and suggested handling.」。",
      "verdict": "restatement"
     },
     {
-     "quote": "處理大型檔案需要足夠記憶體",
-     "reason": "The source includes a large-file memory note and gives the same 330K-row by 48-column, approximately 150 MB estimate.",
+     "quote": "data quality issue reports",
+     "reason": "來源明示會輸出 quality issue report。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "severity levels",
+     "reason": "來源的檢查項目表明示各項的 Severity／嚴重程度。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "handling suggestions",
+     "reason": "來源明示發現問題時提供 suggested handling／建議的處理方式。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "僅以唯讀方式掃描並輸出報告，不會修改原始 Excel 檔案。",
+     "reason": "這是來源「read-only, no side effects」及「Absolutely no modification to original file」的重述，而非對技能整體可信度或品質的外部評價。",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9694,
+   "kpi6_online_cosine": 0.9298,
    "kpi6_flagged": false
   },
   {
@@ -2611,92 +2636,110 @@
    "category": "data",
    "skill_id": "596907d2-03b2-4711-a26a-8213c973a432",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v2",
-   "kpi2_term_density": 2.45,
+   "online_prompt_version": "enrich-skill/v5",
+   "kpi2_term_density": 3.41,
    "kpi3": {
     "simplified_chars": [],
     "locale_hits": [],
-    "reserved_translated": []
+    "reserved_translated": [],
+    "locale_glosses": [
+     "`合并结果.xlsx`（繁中：`合併結果.xlsx`）"
+    ],
+    "cjk_in_en_examples": []
    },
    "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 16,
+    "claims_total": 15,
     "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "將多個結構相同的 Excel 檔案逐列合併為一個檔案；會先檢查表頭是否一致，完成後驗證表頭與總列數。合併結果的格式會沿用第一個檔案，且表頭只保留一次。",
+      "answer": "把多個結構相同的 .xlsx Excel 檔合併為一個檔案：會先核對表頭，再逐列加入資料，並保留第一個檔案的格式；完成後還會驗證總列數和表頭。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能會把多個結構相同的 Excel 檔案逐列合併成一個檔案，先檢查表頭是否一致，並在完成後驗證表頭與總列數。... 輸出格式沿用第一個檔案。"
+      "quote": "「此技能將多個結構相同的 .xlsx 檔案合併成一個檔案，先驗證表頭，再逐列追加資料，並沿用第一個檔案的格式。」「並在完成後驗證總列數與表頭。」"
      },
      {
-      "answer": "當你有多個欄位結構相同的 .xlsx 檔案，想把它們彙整成單一檔案時使用；尤其適合你想先確認表頭一致，或需要在合併後核對總列數的情況。",
+      "answer": "當你有多個欄位結構相同的 Excel xlsx 檔，需要彙整成單一檔案時使用。比如要合併某個資料夾內所有 xlsx，或合併指定的幾個檔案；若檔案合計超過 10MB，文字也指出可使用 XML 流程逐列追加並只保留一份表頭。",
       "answerable": true,
       "question": "Q2",
-      "quote": "此技能會把多個結構相同的 Excel 檔案逐列合併成一個檔案，先檢查表頭是否一致，並在完成後驗證表頭與總列數。"
+      "quote": "「請合併這個資料夾內的所有 xlsx 檔案，並使用預設輸出檔名。」「請合併這些結構相同的 Excel 檔案，並沿用第一個檔案的格式。」「這些 xlsx 檔案合計超過 10MB，請使用 XML 流程追加各列，並只保留一次表頭。」"
      },
      {
-      "answer": "你需要準備明確的 .xlsx 檔案清單；也可以先準備想要的輸出檔名。若不指定檔名，預設會輸出為「合併結果.xlsx」。",
+      "answer": "你需要準備多個結構相同的 .xlsx 檔案，並明確指定要合併的檔案清單，或指定要處理資料夾中的全部 xlsx。輸出檔名可以另外指定；若不指定，會使用預設名稱「合併結果.xlsx」。",
       "answerable": true,
       "question": "Q3",
-      "quote": "使用者需要提供明確的 .xlsx 檔案清單，並可指定輸出檔名；若未指定，預設輸出為「合併結果.xlsx」。"
+      "quote": "「使用者必須明確指定檔案清單或資料夾內所有 xlsx；輸出檔名可省略，省略時使用 `合并结果.xlsx`（繁中：`合併結果.xlsx`）。」"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "先檢查表頭是否一致，並在完成後驗證表頭與總列數。",
-     "reason": "This describes validation steps the source explicitly prescribes for header consistency and final row-count/header verification.",
+     "quote": "先驗證表頭",
+     "reason": "This is a quality-control step stated by the source: it labels the first operational step as header-consistency validation.",
      "verdict": "restatement"
     },
     {
-     "quote": "header comparison",
-     "reason": "The source reads and compares headers before merging.",
+     "quote": "並在完成後驗證總列數與表頭",
+     "reason": "The source's validation step explicitly checks total row count and header correctness.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "請先檢查表頭是否一致",
+     "reason": "The source directs header-consistency verification before merging.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "after checking that their headers match",
+     "reason": "The source documents comparing headers and identifying mismatches before merging.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並驗證合併後的列數",
+     "reason": "The source's final validation checks the total row count.",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "Check the headers of January.xlsx and February.xlsx, merge them into quarterly.xlsx, and verify the resulting row count.",
+     "reason": "Checking headers and verifying resulting row count are both explicitly documented source validation actions; the workbook names are illustrative task parameters.",
      "verdict": "restatement"
     },
     {
      "quote": "row count validation",
-     "reason": "The source’s validation step says to verify the total row count.",
+     "reason": "The source says to verify the total row count in its validation step.",
      "verdict": "restatement"
     },
     {
-     "quote": "請先檢查這些 Excel 檔案的表頭是否一致，再進行合併。",
-     "reason": "The source explicitly makes header consistency checking the first operational step.",
+     "quote": "header validation",
+     "reason": "The source explicitly validates header consistency and later verifies header correctness.",
      "verdict": "restatement"
     },
     {
-     "quote": "Check whether these Excel files have matching headers before merging them.",
-     "reason": "The source explicitly makes header consistency checking the first operational step.",
+     "quote": "來源檔案必須具有一致的表頭；若表頭不一致，流程會先詢問是否強制合併，缺失欄位填空。注意事項另要求先統一表頭再合併。",
+     "reason": "The source states both the header-consistency requirement and the conditional prompt about forced merging, and its notes say headers must be unified before merging.",
      "verdict": "restatement"
     },
     {
-     "quote": "並驗證合併後的總列數。",
-     "reason": "The source validation step explicitly requires verification of the total row count.",
+     "quote": "流程遵循 `excel-safe-workflow`。",
+     "reason": "The source explicitly states: \"This skill follows [[excel-safe-workflow]].\"",
      "verdict": "restatement"
     },
     {
-     "quote": "verify the final row count.",
-     "reason": "The source validation step explicitly requires verification of the total row count.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "合併前必須備份所有來源檔案。",
-     "reason": "The source states that merging is high-risk and instructs users to back up all source files before merging.",
+     "quote": "文件要求在合併前備份所有來源檔案。",
+     "reason": "The source describes merging as high risk and says to back up all source files before merging.",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8668,
+   "kpi6_online_cosine": 0.829,
    "kpi6_flagged": true,
    "notes": [
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8667 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8667 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8668 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8289 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.829 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
   },
   {
@@ -2706,93 +2749,94 @@
    "category": "data",
    "skill_id": "1dc5f1ee-5515-4efa-8a59-d3ae5dd43ab4",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v2",
-   "kpi2_term_density": 1.36,
+   "online_prompt_version": "enrich-skill/v5",
+   "kpi2_term_density": 0.99,
    "kpi3": {
     "simplified_chars": [],
     "locale_hits": [],
-    "reserved_translated": []
+    "reserved_translated": [],
+    "locale_glosses": [],
+    "cjk_in_en_examples": []
    },
    "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 18,
+    "claims_total": 17,
     "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "它會依您指定欄位的值，把大型 Excel 表格拆成多個獨立的 XLSX 檔案，同時保留原有格式。它也會先統計分組，並檢查拆分後的總列數與欄位值是否正確。",
+      "answer": "它會依你指定欄位中的不同值，將大型 Excel XLSX 活頁簿拆分成多個檔案，並保留活頁簿格式。它也會驗證拆分後所有檔案的總列數，以及欄位值是否有錯配。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能可依指定欄位的值，將大型 Excel 表格拆成多個獨立的 XLSX 檔案，並保留原有格式。它會先統計分組，再以串流方式分流資料，最後檢查輸出總列數與欄位值是否正確。"
+      "quote": "「此 Skill 按指定欄位的不同值，將大型 Excel .xlsx 表格拆成多個檔案，並保留活頁簿格式。」；「最後驗證輸出總列數及欄值是否錯配。」"
      },
      {
-      "answer": "當您有一份大型 Excel 表格，想依某個欄位（例如申請人、年份、部門或客戶）分成多個檔案時，可以使用它。若只想讓前 N 個分組各自輸出，而把其餘資料合併為「其他.xlsx」，也適合使用。",
+      "answer": "當你有一個大型 XLSX 表格，想按照某一欄（例如申請人、年份、部門或客戶名稱）分成多個檔案時，可以使用它。若只想讓最常見的前 N 個欄位值各自成檔，並把其餘資料集中到「其他」檔案，也適合使用。",
       "answerable": true,
       "question": "Q2",
-      "quote": "請依「申請人」欄位拆分這個 Excel 檔案，並將結果放到 split 資料夾。；請按年份拆分這份活頁簿，只將前 10 個年份各自輸出成檔案，其餘合併到「其他」檔案。"
+      "quote": "「請按『申請人』欄，將這個 XLSX 活頁簿拆成多個檔案。」；「請按年份拆分這張表，只保留前 10 個值各自成檔，其餘列合併到『其他』檔案。」"
      },
      {
-      "answer": "您需要準備來源 Excel 檔案，以及用來拆分的欄位。您也可以事先決定 Top N 數量和輸出目錄。",
+      "answer": "你需要準備來源 XLSX 檔案，以及要用來拆分的欄位。你可選擇指定 Top N 數量和輸出目錄；Top N 未指定時預設為 20，輸出目錄未指定時會用原檔名與拆分欄組成目錄名稱。",
       "answerable": true,
       "question": "Q3",
-      "quote": "使用者需要提供來源檔案與拆分欄位，也可指定 Top N 數量及輸出目錄；超出 Top N 的資料會合併至「其他.xlsx」。"
+      "quote": "「使用者必須提供來源檔案與拆分欄；Top N 可省略，預設為 20」；「輸出目錄可指定；未指定時採用以原檔名與拆分欄組成的目錄名稱。」"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "並保留原有格式",
-     "reason": "This is a quality-related output claim, and the source explicitly states “格式完整保留。”.",
+     "quote": "並保留活頁簿格式",
+     "reason": "這是對格式保留能力的品質描述；來源明示「格式完整保留」。",
      "verdict": "restatement"
     },
     {
-     "quote": "最後檢查輸出總列數與欄位值是否正確",
-     "reason": "This is a correctness-validation claim. The source’s verification step totals output rows and checks split-column mismatches.",
+     "quote": "最後驗證輸出總列數及欄值是否錯配",
+     "reason": "這是對驗證措施的品質／可靠性描述；來源的第四步會比較輸出總行數，並檢查欄值錯配。",
      "verdict": "restatement"
     },
     {
-     "quote": "驗證輸出總列數與來源一致",
-     "reason": "This quality/correctness phrase is supported by the source verification output: “print(f'输出总行: {total_out} (期望 {total})')”.",
+     "quote": "並驗證輸出總列數",
+     "reason": "這是任務範例中的驗證描述；來源包含輸出總行數與期望總數的比較。",
      "verdict": "restatement"
     },
     {
-     "quote": "verify that the output row totals match the source",
-     "reason": "This quality/correctness phrase is supported by the source verification output: “print(f'输出总行: {total_out} (期望 {total})')”.",
+     "quote": "then verify the output row count",
+     "reason": "這是任務範例中的驗證描述；來源包含輸出總行數與期望總數的比較。",
      "verdict": "restatement"
     },
     {
-     "quote": "row count validation",
-     "reason": "This quality-assurance tag restates the source’s fourth-step output-row-total check.",
+     "quote": "timestamped backup",
+     "reason": "這是安全措施描述；來源要求拆分前自動以時間戳命名備份原檔。",
      "verdict": "restatement"
     },
     {
-     "quote": "若檔案曾經去重或篩選而留下列號空隙，拆分前必須先壓實資料。",
-     "reason": "This is a data-correctness precaution. The source states: “如果文件之前做过去重/筛选（有行号空隙），先压实再拆分，否则 pandas 扫描行数会偏高”.",
+     "quote": "row-count verification",
+     "reason": "這是輸出驗證／品質控制描述；來源的第四步會輸出並比較總行數。",
      "verdict": "restatement"
     },
     {
-     "quote": "唯一值過多時建議限制 Top N",
-     "reason": "This is a risk/performance precaution directly reflected in the source: “大文件建议限制 Top N：默认 Top 20，避免生成数百个文件”.",
+     "quote": "每個輸出檔都會繼承完整的 sharedStrings.xml，因此輸出數量增加時，總檔案大小與封裝時間也會增加。",
+     "reason": "這是對輸出規模與效能風險的描述；來源的注意事項及效能說明均明示 sharedStrings 膨脹和打包變慢。",
      "verdict": "restatement"
     },
     {
-     "quote": "每個輸出檔都會繼承完整的 sharedStrings.xml，因此輸出檔越多，打包時間與總檔案大小越大。",
-     "reason": "This is a performance/size-risk statement. The source states that every output inherits complete sharedStrings and that more iterations make this stage slower.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "拆分前須以時間戳記檔名備份原始檔案，並在成功後保留最新 3 份備份。",
-     "reason": "This is a safety/backup precaution. The source explicitly says: “拆分前自动备份原文件（时间戳命名），成功后保留最新3份”.",
+     "quote": "文件要求遵循 excel-safe-workflow，在拆分前以時間戳命名方式備份原檔，成功後保留最新 3 份。",
+     "reason": "這是安全與備份保留措施描述；來源的注意事項第 5 點作出相同要求。",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9641,
-   "kpi6_flagged": false
+   "kpi6_online_cosine": 0.8828,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.883 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8828 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
   },
   {
    "id": "yuyy-excel/excel-sort",
@@ -2801,118 +2845,110 @@
    "category": "data",
    "skill_id": "b446a69f-bdc3-41ce-969b-b40d1fffac16",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v2",
-   "kpi2_term_density": 0.0,
+   "online_prompt_version": "enrich-skill/v5",
+   "kpi2_term_density": 1.14,
    "kpi3": {
     "simplified_chars": [],
     "locale_hits": [],
-    "reserved_translated": []
+    "reserved_translated": [],
+    "locale_glosses": [],
+    "cjk_in_en_examples": []
    },
    "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 25,
+    "claims_total": 23,
     "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "它會依您指定的一個或多個欄位，為 Excel 資料排序。可處理升冪或降冪，以及數值、日期和文字；排序前會檢查表頭、資料型別與公式並備份，排序後會恢復適用的格式、欄寬和凍結窗格，並檢查結果。",
+      "answer": "可依你指定的一個或多個 Excel 欄位排序，支援升冪或降冪，以及數值、日期和文字資料；完成後會檢查排序結果，並恢復指定格式。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能依指定欄位為 Excel 資料進行單欄或多欄排序，支援升冪、降冪，以及數值、日期與文字資料。執行前會勘察表頭、資料型別與公式，先行備份；排序後會恢復適用的格式、欄寬與凍結窗格，並檢查排序結果。"
+      "quote": "「此 Skill 依指定欄位為 Excel 資料進行單欄或多欄排序，支援升冪、降冪，以及數值、日期和文字資料。」「最後檢查排序結果。」「透過 openpyxl 恢復指定格式」"
      },
      {
-      "answer": "當您需要把 Excel 試算表或紀錄依日期、金額、類別、客戶名稱等欄位重新排列時使用；也適合需要先按一個欄位、再按另一欄位決定順序的情況。",
+      "answer": "當你需要把 Excel 資料按某欄位或多個欄位重新排列時使用，例如按公開日由早到晚、金額由大到小，或先按類別再按日期排序。",
       "answerable": true,
       "question": "Q2",
-      "quote": "請將這個 Excel 檔案依公開日期升冪排序。／請先依類別排序銷售紀錄，再依金額由大到小排列。／請依客戶名稱的文字順序排序試算表，並驗證排序是否正確。"
+      "quote": "「請將這份 Excel 活頁簿依『公開日』欄升冪排序。」「請將『金額』欄由大到小排序。」「請先依『類別』欄排序，再依『日期』欄排序」"
      },
      {
-      "answer": "您需要準備 Excel 檔案，並清楚指出要排序的欄位。您也可以事先指定排序方向、各欄位的優先順序，以及要處理的資料範圍。",
+      "answer": "你需要準備 Excel 活頁簿，並清楚指出要排序的欄位。排序方向可不提供，因為預設是升冪；資料區也可不特別說明，因為預設包含第 1 列表頭並會自動辨識。",
       "answerable": true,
       "question": "Q3",
-      "quote": "使用者需提供 Excel 檔案並明確指出排序欄，可另外指定方向、欄位優先順序與資料範圍。"
+      "quote": "「使用者必須提供 Excel 活頁簿並明確指出排序欄；方向可省略，預設為升冪，資料區則預設含第 1 列表頭並自動辨識。」"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "先行備份",
-     "reason": "這是對操作前備份這項安全措施的描述；來源明示會在操作前自動建立時間戳備份。",
+     "quote": "建立備份",
+     "reason": "This is a data-safety measure stated by the source, which requires an automatic timestamped backup before operation.",
      "verdict": "restatement"
     },
     {
-     "quote": "恢復適用的格式、欄寬與凍結窗格，並檢查排序結果",
-     "reason": "這涉及輸出品質與結果驗證；來源明示恢復關鍵格式、欄寬及凍結窗格，並要求執行後驗證順序。",
+     "quote": "最後檢查排序結果",
+     "reason": "The source explicitly requires verification after execution.",
      "verdict": "restatement"
     },
     {
-     "quote": "並驗證排序是否正確。",
-     "reason": "這是品質驗證要求；來源明示「执行后验证顺序正确」。",
+     "quote": "keep the header in place / 讓表頭留在原位",
+     "reason": "This is an output-integrity property directly stated in the source: the header does not participate in sorting and remains fixed.",
      "verdict": "restatement"
     },
     {
-     "quote": "and verify that the order is correct.",
-     "reason": "這是品質驗證要求；來源明示「执行后验证顺序正确」。",
+     "quote": "verify the resulting order / 在完成後驗證順序",
+     "reason": "The source includes a dedicated verification step and requires verifying the correct order after execution.",
      "verdict": "restatement"
     },
     {
-     "quote": "若超過 5 萬列，保留格式前先詢問我。",
-     "reason": "這是針對大檔案格式保留成本的風險控制；來源要求超過 5 萬行時詢問使用者。",
+     "quote": "ask me whether to preserve formatting if it has more than 50,000 rows / 超過 5 萬列，先詢問我是否要保留原格式",
+     "reason": "The source explicitly requires asking the user about format preservation for files above 50,000 rows.",
      "verdict": "restatement"
     },
     {
-     "quote": "ask me before preserving formatting if it has more than 50,000 rows.",
-     "reason": "這是針對大檔案格式保留成本的風險控制；來源要求超過 5 萬行時詢問使用者。",
+     "quote": "建立時間戳備份，排序後驗證順序",
+     "reason": "Both backup creation and post-sort verification are requirements stated in the source document.",
      "verdict": "restatement"
     },
     {
-     "quote": "時間戳備份",
-     "reason": "這是安全與可復原性措施；來源明示操作前自動備份並採時間戳命名。",
+     "quote": "公式欄排序可能造成參照錯亂",
+     "reason": "The source itself warns that sorting formula columns can cause reference errors.",
      "verdict": "restatement"
     },
     {
-     "quote": "排序驗證結果",
-     "reason": "這是結果品質檢查的輸出；來源包含排序驗證步驟，並要求執行後驗證順序。",
+     "quote": "先將公式轉為值再排序",
+     "reason": "The source directs conversion to values before sorting when the sort column contains formulas.",
      "verdict": "restatement"
     },
     {
-     "quote": "還原格式",
-     "reason": "這是對輸出格式品質維持的描述；來源明示寫回後恢復關鍵格式，並在條件符合時恢復資料格式。",
+     "quote": "欄內原有的格式差異可能遺失",
+     "reason": "The source states that applying the first data row's format uniformly can lose within-column formatting differences.",
      "verdict": "restatement"
     },
     {
-     "quote": "公式欄排序可能造成引用錯亂；若排序欄含公式，需先轉換為值再排序。",
-     "reason": "這是公式排序的資料完整性風險及緩解方式；來源以相同內容說明此風險。",
+     "quote": "僅在不超過 1 萬列時逐格恢復資料格式",
+     "reason": "This is a source-documented format-preservation behavior and threshold.",
      "verdict": "restatement"
     },
     {
-     "quote": "超過 5 萬列時，保留格式前必須先詢問使用者是否接受所需時間。",
-     "reason": "這是大檔案格式保留的操作風險控制；來源要求超過 5 萬行時詢問使用者。",
+     "quote": "1 萬至 5 萬列保留格式約需 1 分鐘",
+     "reason": "The source provides this performance estimate for preserving formatting.",
      "verdict": "restatement"
     },
     {
-     "quote": "資料格式會以首筆資料列為範本統一套用；同一欄內原有的格式差異可能遺失。",
-     "reason": "這是格式保留的品質限制與資料呈現風險；來源明示列內格式差異會在統一後遺失。",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "操作前必須建立時間戳備份，並遵循 excel-safe-workflow 的勘察、確認與驗證流程。",
-     "reason": "這是安全流程與復原措施；來源要求操作前備份，且要求執行前勘察確認、執行後驗證。",
+     "quote": "超過 5 萬列時須詢問使用者是否保留原格式",
+     "reason": "The source explicitly requires this confirmation for large files.",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.896,
-   "kpi6_flagged": true,
-   "notes": [
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8958 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8958 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.896 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
-   ]
+   "kpi6_online_cosine": 0.9099,
+   "kpi6_flagged": false
   },
   {
    "id": "yuyy-excel/excel-regex-clean",
@@ -2976,7 +3012,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9227,
+   "kpi6_online_cosine": 0.9228,
    "kpi6_flagged": false
   },
   {
@@ -3046,7 +3082,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9374,
+   "kpi6_online_cosine": 0.9373,
    "kpi6_flagged": false
   },
   {
@@ -3056,12 +3092,150 @@
    "category": "data",
    "skill_id": "beb1e4c2-d72e-4404-80b5-3288e659894c",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v2",
-   "kpi2_term_density": 1.28,
+   "online_prompt_version": "enrich-skill/v5",
+   "kpi2_term_density": 1.16,
    "kpi3": {
     "simplified_chars": [],
     "locale_hits": [],
-    "reserved_translated": []
+    "reserved_translated": [],
+    "locale_glosses": [],
+    "cjk_in_en_examples": []
+   },
+   "kpi4_mechanical": [],
+   "kpi1": {
+    "claims_total": 14,
+    "unsupported": []
+   },
+   "kpi2": {
+    "answered": 3,
+    "answers": [
+     {
+      "answer": "可從 Excel .xlsx 檔案刪除指定的行或列，也可掃描並刪除全空行或全空列；會先備份、檢查公式依賴，完成後檢查是否有 #REF! 錯誤。刪除行後還會詢問你是否要壓實不連續的行號，並更新相關公式與合併儲存格。",
+      "answerable": true,
+      "question": "Q1",
+      "quote": "此 Skill 可從 Excel .xlsx 檔案刪除指定的行或列，也能掃描並刪除全空行或全空列；它會先備份檔案並檢查公式依賴；刪除後會檢查 #REF! 錯誤；XML 刪行完成後，還會詢問是否壓實不連續的行號並更新相關公式與合併儲存格。"
+     },
+     {
+      "answer": "當你需要整理 Excel .xlsx 活頁簿，例如移除特定欄、特定連續行、依欄名找出並移除某欄，或清除所有完全空白的行／列，而你也希望在變更前後檢查公式引用與錯誤時，就會使用它。",
+      "answerable": true,
+      "question": "Q2",
+      "quote": "請刪除這個 Excel 檔案的 E 欄與 H 欄，並在變更前檢查公式依賴。；請刪除活頁簿中的第 5 行到第 10 行，完成後詢問我是否要壓實行號。；請找出欄名為「申請日」的欄位，檢查是否有公式引用後再刪除。；請掃描這個 .xlsx 檔案中的全空行並刪除。"
+     },
+     {
+      "answer": "你需要準備要處理的 Excel .xlsx 檔案，以及明確的刪除目標。目標可用行或列的序號、欄名或範圍表示；若是要刪除全空行或全空列，則需說明要進行該掃描與刪除。",
+      "answerable": true,
+      "question": "Q3",
+      "quote": "使用者需提供檔案及按序號、欄名或範圍表示的刪除目標。；請掃描這個 .xlsx 檔案中的全空行並刪除。；請刪除所有全空列"
+     }
+    ]
+   },
+   "kpi4_judge": [
+    {
+     "quote": "先備份檔案並檢查公式依賴",
+     "reason": "這是對文件所述的刪除前備份與公式依賴檢查流程的轉述，而非對 Skill 安全性的外部評價。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "刪除後會檢查 #REF! 錯誤",
+     "reason": "來源的「公式健康检查」程式碼明確檢查「#REF!」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "並在變更前檢查公式依賴",
+     "reason": "來源明定「Must check formula dependencies before deletion.」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "check formula dependencies before making the change",
+     "reason": "這是來源刪除前公式依賴檢查要求的英文轉述。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "檢查是否有公式引用後再刪除",
+     "reason": "來源將公式依賴列為勘察與風險評估項目，且要求有依賴時告知使用者確認後再刪除。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "after checking for formulas that reference it",
+     "reason": "這是來源公式依賴檢查的英文轉述。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "先建立備份，並在完成後驗證是否出現 #REF! 錯誤",
+     "reason": "來源要求操作前備份，並在第四步進行 #REF! 公式健康檢查。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "create a backup first, and verify that no #REF! errors appear afterward",
+     "reason": "這是來源備份及刪除後公式健康檢查流程的英文轉述。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "備份 xlsx 檔案",
+     "reason": "來源明定「删除前自动备份」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "公式依賴警示",
+     "reason": "來源在發現風險時輸出「⚠️ 发现公式依赖，删除后可能产生 #REF! 错误。」",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "刪除驗證結果",
+     "reason": "來源有獨立的「第四步：验证」，包括公式健康檢查與抽查被刪行。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "流程依賴 excel-safe-workflow，並要求刪除前完成需求解析、勘察、規劃與公式依賴檢查，刪除後執行驗證。",
+     "reason": "來源頂端明示四步法及執行前後的要求。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "公式依賴檢查不會自動偵測 INDIRECT 與 OFFSET 造成的間接引用。",
+     "reason": "來源注意事項明確寫道「INDIRECT、OFFSET 不会被自动检测到」。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "範例中的公式依賴檢查與 #REF! 驗證只掃描前 49 行。",
+     "reason": "來源兩段檢查程式碼均以 `range(1, min(50, ws.max_row + 1))` 限制掃描範圍。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "使用 XML 刪除行後，行號不會自動連續，Excel 中可能顯示空白行；必須詢問使用者，經確認後才壓實並重新編排行號。",
+     "reason": "來源明確說明 XML 刪行後行號不連續、可能顯示空白行，並要求必須詢問使用者。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "發現公式依賴時，必須先告知使用者並取得確認才可刪除。",
+     "reason": "來源規劃步驟寫明「有公式依赖 → 告知用户确认后再删」。",
+     "verdict": "restatement"
+    }
+   ],
+   "kpi5_contradictions": [],
+   "verdict": "pass",
+   "reasons": [],
+   "kpi6_online_cosine": 0.8726,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8726 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8726 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
+  },
+  {
+   "id": "yuyy-excel/excel-mapping-replace",
+   "skill": "excel-mapping-replace",
+   "tier": "indexed",
+   "category": "data",
+   "skill_id": "07421c98-2a03-431d-bd64-e7e29414a0a7",
+   "online_model": "gpt-5.6-sol",
+   "online_prompt_version": "enrich-skill/v5",
+   "kpi2_term_density": 1.91,
+   "kpi3": {
+    "simplified_chars": [],
+    "locale_hits": [],
+    "reserved_translated": [],
+    "locale_glosses": [],
+    "cjk_in_en_examples": []
    },
    "kpi4_mechanical": [],
    "kpi1": {
@@ -3072,238 +3246,96 @@
     "answered": 3,
     "answers": [
      {
-      "answer": "它可依行號、列號、欄位字母、欄位名稱或是否空白，從 Excel 活頁簿刪除指定的行或列；操作前會備份並檢查公式依賴，完成後會驗證刪除結果及是否出現 #REF! 錯誤。刪除行後，還會詢問是否要把行號壓實為連續編號。",
+      "answer": "它會依照舊值與新值的映射表，批次替換 Excel 指定欄位中完全相符的值；沒有對應到的值會維持原樣。它也會統計受影響及未匹配的資料、先備份，再檢查替換結果。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能可依行號、列號、欄位字母、欄位名稱或空白狀態，從 Excel 活頁簿刪除指定的行或列。它需要使用者提供 .xlsx 檔案與刪除目標，並會在操作前備份檔案、檢查公式依賴，再以 XML 處理行或以 openpyxl 處理列。完成後會驗證刪除結果與 #REF! 錯誤，並在刪除行後詢問是否要將行號壓實為連續編號。"
+      "quote": "「此 Skill 依照映射表，批次替換 Excel 目標欄中完全匹配的值，未匹配的值維持不變。」「它會勘察欄位值、統計受影響與未匹配的資料，備份後依檔案大小使用 openpyxl 或工作表 XML 執行替換，最後檢查替換結果。」"
      },
      {
-      "answer": "當你需要整理 Excel 活頁簿、移除特定範圍的行、指定欄位，或所有完全空白的行時，可以使用它。特別適合你希望刪除前先檢查公式依賴、刪除後確認沒有 #REF! 錯誤，或刪除行後要重新整理連續行號的情況。",
+      "answer": "當你要把 Excel 某一欄內的固定舊值，依照一份對照關係統一改成新值時使用。例如把國家名稱改成代碼、把狀態或類別欄中的值批次更新，同時希望沒有列在映射表中的資料不要被改動。",
       "answerable": true,
       "question": "Q2",
-      "quote": "請刪除這個 Excel 檔案的第 5 到第 10 行，並先檢查公式依賴。；請刪除名為「申請日」的欄位，並驗證是否產生 #REF! 錯誤。；請找出並刪除這個活頁簿中所有完全空白的行。；請刪除指定行，之後壓實剩餘行號並更新公式引用。"
+      "quote": "「請在這個 XLSX 的『國家』欄中，依照『中國→CN、日本→JP、美國→US』批次替換。」「請將我貼上的映射列表套用到『代碼』欄，未列在映射表中的值請保留原樣。」"
      },
      {
-      "answer": "你需要準備一個 .xlsx Excel 檔案，以及明確的刪除目標，例如要刪除的行號或列號、欄位字母、欄位名稱，或指定要刪除完全空白的行。若有需要，也可說明是否要先檢查公式依賴、保留備份檔，以及刪除行後是否要壓實行號。",
+      "answer": "你需要準備要處理的 Excel 活頁簿、要替換的目標欄位，以及舊值對新值的對照關係。對照關係可以透過對話說明、貼上列表，或提供 XLSX／CSV 映射檔；若使用映射活頁簿，可指定 A 欄與 B 欄，或使用映射檔的前兩欄。",
       "answerable": true,
       "question": "Q3",
-      "quote": "它需要使用者提供 .xlsx 檔案與刪除目標。；此技能可依行號、列號、欄位字母、欄位名稱或空白狀態，從 Excel 活頁簿刪除指定的行或列。；請從右到左刪除 E 欄與 H 欄，並保留備份檔。；請刪除指定行，之後壓實剩餘行號並更新公式引用。"
+      "quote": "「使用者需要指定目標欄，並以對話、貼上列表或 XLSX／CSV 映射檔提供舊值與新值的對應關係。」「請使用映射活頁簿的 A 欄與 B 欄作為對照，替換目標活頁簿『狀態』欄中匹配的值。」"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "檢查公式依賴",
-     "reason": "This describes the Skill's formula-dependency safety check, which the source explicitly requires before deletion.",
+     "quote": "未匹配的值維持不變",
+     "reason": "This describes the documented preservation behavior for unmapped values rather than appraising the Skill.",
      "verdict": "restatement"
     },
     {
-     "quote": "#REF! 錯誤",
-     "reason": "This refers to the spreadsheet error risk that the source explicitly checks for and seeks to prevent.",
+     "quote": "備份後依檔案大小使用 openpyxl 或工作表 XML 執行替換，最後檢查替換結果",
+     "reason": "Backup and post-operation checking are documented workflow safeguards, not a claim that the Skill is generally trustworthy or high quality.",
      "verdict": "restatement"
     },
     {
-     "quote": "備份檔案",
-     "reason": "This describes the source's required pre-deletion backup procedure.",
+     "quote": "未列在映射表中的值請保留原樣",
+     "reason": "This is a task-example statement of the documented unmapped-value preservation behavior.",
      "verdict": "restatement"
     },
     {
-     "quote": "驗證刪除結果",
-     "reason": "This describes the source's required verification stage after execution.",
+     "quote": "preserve every value that is not listed",
+     "reason": "This is a task-example statement of the documented unmapped-value preservation behavior.",
      "verdict": "restatement"
     },
     {
-     "quote": "並先檢查公式依賴。",
-     "reason": "This is a requested safety check explicitly required by the source before deletion.",
+     "quote": "完成後確認未匹配的值沒有被修改",
+     "reason": "This requests the documented verification of unmatched values after replacement.",
      "verdict": "restatement"
     },
     {
-     "quote": "並驗證是否產生 #REF! 錯誤。",
-     "reason": "This describes the source's post-deletion formula-health check.",
+     "quote": "then verify that unmatched values were not changed",
+     "reason": "This requests the documented verification of unmatched values after replacement.",
      "verdict": "restatement"
     },
     {
-     "quote": "verify that no #REF! errors are introduced.",
-     "reason": "This describes the source's post-deletion #REF! checking procedure.",
+     "quote": "backup xlsx file",
+     "reason": "This output tag refers to the documented backup safeguard; it does not rate the Skill's quality or safety.",
      "verdict": "restatement"
     },
     {
-     "quote": "並保留備份檔。",
-     "reason": "This describes the source's backup and backup-retention instructions.",
+     "quote": "verification results",
+     "reason": "This output tag refers to the documented verification stage; it does not appraise the Skill.",
      "verdict": "restatement"
     },
     {
-     "quote": "更新公式引用。",
-     "reason": "This describes the source's formula-reference update during confirmed row compaction.",
+     "quote": "未出現在映射表中的值會保留原樣",
+     "reason": "This limitation restates the documented preservation behavior.",
      "verdict": "restatement"
     },
     {
-     "quote": "大型檔案需要安裝 lxml，並使用 huge_tree=True。",
-     "reason": "This is a source-stated operational requirement for handling large files, not an appraisal of the Skill.",
+     "quote": "目標檔案若正在 Excel 中開啟，儲存會失敗，必須關閉檔案後重試。",
+     "reason": "This is a documented operational risk and mitigation.",
      "verdict": "restatement"
     },
     {
-     "quote": "INDIRECT 與 OFFSET 形成的間接引用不會被自動偵測。",
-     "reason": "This restates the source's explicit limitation on dependency detection.",
+     "quote": "大型檔案的 XML 方案不得在 sharedStrings 層進行全域替換，只能在工作表層限定目標欄修改。",
+     "reason": "This restates the source's safety restriction against global sharedStrings replacement.",
      "verdict": "restatement"
     },
     {
-     "quote": "公式依賴與 #REF! 健康檢查只掃描前 50 行。",
-     "reason": "This describes a risk-relevant scan scope reflected in the source code's first-50-row loops.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "發現公式依賴時，需要先告知使用者並取得確認後才能刪除。",
-     "reason": "This restates the source planning instruction to inform the user and obtain confirmation when formula dependencies exist.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "以 XML 刪除行後，行號不會自動連續；必須取得使用者確認後才能壓實並重新編號。",
-     "reason": "This restates the source's warning and mandatory confirmation requirement for row-number compaction.",
+     "quote": "操作前必須備份；文件要求以時間戳命名備份、成功後保留最新三份，並在操作失誤後從備份還原。",
+     "reason": "This restates the source's stated backup and recovery safeguard.",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.8517,
+   "kpi6_online_cosine": 0.8911,
    "kpi6_flagged": true,
    "notes": [
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8518 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8517 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
-    "KPI6 線上一致性：與 summaries.json 餘弦 0.8517 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8911 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8911 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
    ]
-  },
-  {
-   "id": "yuyy-excel/excel-mapping-replace",
-   "skill": "excel-mapping-replace",
-   "tier": "indexed",
-   "category": "data",
-   "skill_id": "07421c98-2a03-431d-bd64-e7e29414a0a7",
-   "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v3",
-   "kpi2_term_density": 2.04,
-   "kpi3": {
-    "simplified_chars": [],
-    "locale_hits": [],
-    "reserved_translated": [],
-    "locale_glosses": []
-   },
-   "kpi4_mechanical": [],
-   "kpi1": {
-    "claims_total": 18,
-    "unsupported": []
-   },
-   "kpi2": {
-    "answered": 3,
-    "answers": [
-     {
-      "answer": "它會依照你提供的映射關係，批次替換 Excel 指定欄位中「完全相符」的值；映射表沒有列出的內容會保留不變。它也會先統計受影響及未匹配的值、備份檔案、完成後驗證替換結果。",
-      "answerable": true,
-      "question": "Q1",
-      "quote": "此技能依照映射表，批次替換 Excel 目標欄中完全相符的值，並保留所有未出現在映射表中的內容。... 它會先統計受影響與未匹配的值，備份檔案後依檔案大小採用不同方式修改，最後驗證替換結果。"
-     },
-     {
-      "answer": "當你需要把 Excel 某一欄的既有值，依照一份對照表統一改成新值時使用。例如把國家名稱改為國碼、把產品代碼或狀態依映射清單轉換，同時希望先知道各項替換影響幾列，並確認未匹配值沒有被改動。",
-      "answerable": true,
-      "question": "Q2",
-      "quote": "請將 sales.xlsx 的「國家」欄依照中國→CN、日本→JP、美國→US 批次替換，其他值保持不變。；請把我貼上的映射清單套用到「狀態」欄，但先列出每項替換會影響多少列。；請依照 mapping.csv 轉換 inventory.xlsx 中的產品代碼，並驗證未匹配的代碼沒有被修改。"
-     },
-     {
-      "answer": "你要準備：目標 xlsx 檔案、要修改的明確目標欄位，以及映射關係。映射關係可以在對話中說明、貼上清單，或提供 xlsx／csv 檔案；若使用映射檔，範例顯示可指定其中哪兩欄作為映射表。",
-      "answerable": true,
-      "question": "Q3",
-      "quote": "使用者需提供目標 xlsx 檔案、明確的目標欄，以及透過對話、貼上清單或 xlsx／csv 檔案提供的映射關係。；請使用 country_codes.xlsx 的 A 欄與 B 欄作為映射表"
-     }
-    ]
-   },
-   "kpi4_judge": [
-    {
-     "quote": "並保留所有未出現在映射表中的內容",
-     "reason": "This describes preservation of unmapped values, which the source expressly states as the skill's behavior.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "備份檔案後",
-     "reason": "This is a safety-related operational statement explicitly documented in the source's backup requirement.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "最後驗證替換結果",
-     "reason": "The source includes a dedicated verification step after execution.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "其他值保持不變",
-     "reason": "This is the documented behavior for values not present in the mapping table.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "while keeping all other values unchanged",
-     "reason": "This restates the source's documented preservation of unmapped values.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "並驗證未匹配的代碼沒有被修改",
-     "reason": "The source explicitly checks that unmatched values still have their expected counts after replacement.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "then verify that unmatched codes were not changed",
-     "reason": "This restates the source's unmatched-value validation procedure.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "請先備份這份活頁簿",
-     "reason": "The source states that backup is required before operation.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "回報更新後的值分布",
-     "reason": "The source's verification code prints the post-replacement distribution for the target column.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "Back up this workbook",
-     "reason": "This restates the source's pre-operation backup requirement.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "report the value distribution after the update",
-     "reason": "This restates the source's post-update distribution report.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "只進行完全相符的精確匹配，不會進行包含匹配。",
-     "reason": "This is a quality/behavioral constraint stated directly in the source's exact-match note.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "匹配區分英文字母大小寫；如需忽略大小寫，必須先行預處理。",
-     "reason": "This is a matching-quality limitation explicitly stated in the source.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "映射表中沒有的值不會被修改。",
-     "reason": "This is a data-preservation behavior directly stated in the source.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "操作前必須備份目標檔案。",
-     "reason": "This is the source's stated safety requirement.",
-     "verdict": "restatement"
-    },
-    {
-     "quote": "若目標檔案正在 Excel 中開啟，儲存會失敗，必須關閉檔案後重試。",
-     "reason": "This is the source's stated file-lock failure condition and mitigation.",
-     "verdict": "restatement"
-    }
-   ],
-   "kpi5_contradictions": [],
-   "verdict": "pass",
-   "reasons": [],
-   "kpi6_online_cosine": 0.9311,
-   "kpi6_flagged": false
   },
   {
    "id": "yuyy-excel/excel-date-to-text",
@@ -3718,63 +3750,79 @@
    "category": "data",
    "skill_id": "c45a0b83-b4da-4766-84f2-ef6a2dbbbab4",
    "online_model": "gpt-5.6-sol",
-   "online_prompt_version": "enrich-skill/v2",
-   "kpi2_term_density": 1.08,
+   "online_prompt_version": "enrich-skill/v5",
+   "kpi2_term_density": 1.04,
    "kpi3": {
     "simplified_chars": [],
     "locale_hits": [],
-    "reserved_translated": []
+    "reserved_translated": [],
+    "locale_glosses": [],
+    "cjk_in_en_examples": []
    },
    "kpi4_mechanical": [],
    "kpi1": {
-    "claims_total": 20,
+    "claims_total": 25,
     "unsupported": []
    },
    "kpi2": {
     "answered": 3,
     "answers": [
      {
-      "answer": "它會分析尚未載入資料庫或需要重新儲存的平面檔、試算表與 API 匯出資料，找出資料結構問題，並提出資料表、主鍵與外鍵、關聯、索引、正規化層級或星型結構等設計建議。輸出也可包括結構提案、ER 圖、可調整的 SQL 建表語句，以及來源欄位至目標欄位的對應。",
+      "answer": "它會檢視準備載入或重新儲存的資料結構，找出重複欄位、巢狀／封裝欄位、冗餘參照資料、混合粒度與複合鍵等問題，並建議正規化、星型或雪花型的資料庫結構。它也能根據欄位資訊與預期使用方式，提出資料表、主外鍵、關聯及索引；輸出可能包含結構提案文件、ER 圖草圖、schema.sql 和欄位對應。",
       "answerable": true,
       "question": "Q1",
-      "quote": "此技能會分析尚未載入資料庫或需要重新儲存的平面檔、試算表與 API 匯出資料，找出重複欄組、封裝欄位、冗餘參照資料、混合粒度及其他結構問題。它需要來源欄位、型別、基數、空值率、範例資料列及預期查詢方式，並據此提出資料表、主外鍵、關聯、索引、正規化層級或星型結構。輸出可包括結構提案、Mermaid ER 圖、可調整執行的 SQL 建表語句，以及來源欄位到目標欄位的對應。"
+      "quote": "此 Skill 會分析尚未入庫或準備重新儲存的資料形狀，辨識重複欄位、封裝欄位、冗餘參照資料、混合粒度與複合鍵等問題，並建議正規化、星型或雪花型結構。它可依來源欄位、型別、基數、空值率、範例列，以及預期工作負載與存取模式，提出資料表、主外鍵、關聯與索引。輸出可包括 schema_proposal.md、Mermaid ER 圖草圖、schema.sql，以及來源欄位到目標欄位的對應。"
      },
      {
-      "answer": "當你要在資料載入資料庫前整理 CSV、試算表或 API 匯出資料，或現有資料需要重新規劃儲存方式時，可以使用它。尤其適合處理重複欄位、逗號分隔標籤、巢狀 JSON、尚未正規化的表格，或要設計銷售資料的星型結構與客戶等級變更的時間點查詢時。",
+      "answer": "當你有一份尚未載入資料庫、或想重新整理儲存方式的資料時可使用它，例如寬表試算表、事件資料、API 傾印，或含有逗號分隔標籤與單欄巢狀 JSON 的資料。特別適合你需要決定如何拆表、確認是否已正規化，或設計星型結構與資料表關聯時。",
       "answerable": true,
       "question": "Q2",
-      "quote": "在載入資料庫前，該如何把這份含有重複商品欄位的寬版 CSV 拆成有關聯的 SQL 資料表？／請檢視這份試算表的欄位與範例資料列，判斷是否已正規化，並建議主鍵、外鍵與資料表關聯。／請為這份銷售 API 匯出資料設計星型結構，包括事實表、維度表及來源到目標的欄位對應。／請將資料集中的逗號分隔標籤與巢狀 JSON 整理成合理的資料庫結構，並產生 CREATE TABLE 語句。／請針對客戶等級變更提出 SCD Type 2 設計，讓我能進行時間點查詢。"
+      "quote": "在載入前，我應該如何把這份包含客戶與訂單資料的寬表試算表拆成彼此關聯的 SQL 資料表？\n請檢視這些欄位與範例列，判斷資料集是否已正規化，並建議資料表、鍵與關聯。\n請為這份事件資料設計星型結構，包括事實表、維度表，以及來源欄位到目標欄位的對應。\n我的 API 傾印把標籤存成逗號分隔值，並把巢狀 JSON 放在單一欄位中；請建議合適的資料庫結構。"
      },
      {
-      "answer": "你需要準備來源欄位、各欄位型別、基數、空值率、範例資料列，以及預期如何查詢資料。",
+      "answer": "你需要準備來源資料的欄位資訊；若有的話，也應提供欄位型別、基數、空值率、範例列，以及預期的工作負載與存取模式。",
       "answerable": true,
       "question": "Q3",
-      "quote": "它需要來源欄位、型別、基數、空值率、範例資料列及預期查詢方式"
+      "quote": "它可依來源欄位、型別、基數、空值率、範例列，以及預期工作負載與存取模式，提出資料表、主外鍵、關聯與索引。"
      }
     ]
    },
    "kpi4_judge": [
     {
-     "quote": "合理的資料庫結構",
-     "reason": "This describes the intended logical appropriateness of the proposed schema, rather than evaluating the Skill as trustworthy or recommending it. The source states that the Skill gives the dataset a “logical home” in a structured system.",
+     "quote": "建議正規化、星型或雪花型結構",
+     "reason": "這是在描述 Skill 所提供的結構設計選項；來源明示通常以 3NF 為目標，並可為分析工作負載提出星型／雪花型配置。",
      "verdict": "restatement"
     },
     {
-     "quote": "可調整執行的 SQL 建表語句",
-     "reason": "This is a capability/quality statement about generated SQL. The source explicitly says the `CREATE TABLE` statements are “ready to run (or adapt).”",
+     "quote": "判斷資料集是否已正規化",
+     "reason": "來源的「When to invoke」明示使用者可詢問 \"is this normalised?\"。",
      "verdict": "restatement"
     },
     {
-     "quote": "為稽核保存 API 回應",
-     "reason": "This refers to retaining raw API payloads for audit. The source itself gives “raw API payloads kept for audit” as the corresponding edge case.",
+     "quote": "建議合適的資料庫結構",
+     "reason": "來源將其功能定義為提出讓資料在 SQL 或其他結構化系統中有合理歸宿的 schema，並處理 packed fields。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "建議各資料表應使用自然鍵還是代理鍵",
+     "reason": "來源明示會逐表建議 surrogate 與 natural keys，並提供理由。",
+     "verdict": "restatement"
+    },
+    {
+     "quote": "若資料是刻意反正規化的分析寬表，必須先了解工作負載，再決定是否建議正規化。",
+     "reason": "此為來源 Edge cases 中相同的工作負載確認要求，而非對 Skill 安全性或品質的外部評價。",
      "verdict": "restatement"
     }
    ],
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9752,
-   "kpi6_flagged": false
+   "kpi6_online_cosine": 0.8718,
+   "kpi6_flagged": true,
+   "notes": [
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8718 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）",
+    "KPI6 線上一致性：與 summaries.json 餘弦 0.8718 < 0.9，審核對象為線上文字（本筆判定即對線上版本生效）"
+   ]
   },
   {
    "id": "wrangler/data-comparability",
@@ -3928,7 +3976,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9227,
+   "kpi6_online_cosine": 0.9226,
    "kpi6_flagged": false
   },
   {
@@ -4026,7 +4074,7 @@
    "kpi5_contradictions": [],
    "verdict": "pass",
    "reasons": [],
-   "kpi6_online_cosine": 0.9026,
+   "kpi6_online_cosine": 0.9027,
    "kpi6_flagged": false
   },
   {

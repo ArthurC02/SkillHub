@@ -8,6 +8,8 @@
 - 依據：`02` §4.7 CONTENT-005（2026-08-16 修訂版）、ADR-013 §1 白名單、PDM-003 模型分層
 - 相關：[`content-summaries.md`](content-summaries.md)（審核紀錄本體）、[`catalog-rebuild-report.md`](catalog-rebuild-report.md)（線上基線）、[`gate-test/README.md`](gate-test/README.md) §3.1
 
+> **2026-08-16 追記（§11，追加不改寫）**：CONTENT-007／008 基準試跑（[`m2/content-baseline-report.md` §7.2 #1](../m2/content-baseline-report.md)）查出 11 筆的「限制」欄漏掉套件宣告的 Python 執行依賴。已依 `02` §4.7 `需修改` 流程升 prompt 至 **`enrich-skill/v5`** 並重跑增強、重新索引與重審，結果、線上分布變化與 **1 筆未收斂（`docx`）** 記於 [§11](#11-2026-08-16-修正輪次content-007008-的揭露缺口)。**§1～§10 是當時的紀錄，一字未改；線上現況以 §11 為準。**
+
 ---
 
 ## 1. 一句話結論
@@ -255,3 +257,135 @@ v4 的措辭是**通用規則，不含這三筆的任何個案字眼**（審校�
 | `curated-skill-list.md` | 檢查 ⑦ **改記 `pass`**（精選 15/15 通過） |
 | `gate-test/README.md` §3.1 | CONTENT-005 前置**改記已解除**；D 日前置歸零，只剩負責人排程與凍結生效 |
 | `03-work-items.md` | CONTENT-005 **已勾選完成**，行內註記指向本報告 |
+
+---
+
+## 11. 2026-08-16 修正輪次：CONTENT-007／008 的揭露缺口
+
+本節是**追加紀錄**，不改寫 §1～§10 的任何判定。§1～§10 記的是 v4 閉環當下（45/45 通過）的事實；本節記的是那之後的一次 `需修改` 處置與其結果。
+
+- 日期：**2026-08-16**（v4 閉環同日稍晚）
+- 觸發：[`m2/content-baseline-report.md` §7.2 #1](../m2/content-baseline-report.md)——45 個 Skill 的平台基準試跑對照已入庫摘要，發現 **11 筆的「限制」欄沒有提到套件宣告的 Python 執行依賴**，同類另外 22 筆有提。使用者從詳情頁看不出這 11 個需要一個平台目前給不了的執行環境。
+- 範圍：`data-shape`、`docx`、`excel-delete`、`excel-filter`、`excel-find-duplicates`、`excel-mapping-replace`、`excel-merge`、`excel-sort`、`excel-split`、`excel-validate`、`pdf`
+- 處置依據：`02` §4.7「`需修改` 的處置是調整 prompt 或標記人工覆寫後**重跑增強與重新索引**，不得就地改寫審核紀錄的文字，也不得改寫上游套件內容」
+
+### 11.1 判定：是 prompt 缺約束，不是生成波動 → 升 v5
+
+三項證據指向 prompt，而不是個別生成的隨機性：
+
+1. **模型抽到了事實，只是沒放進「限制」欄。** 11 筆全部在 `tags.dependencies` 裡列了 `python`／`pandas`／`openpyxl`／`lxml`（例：`excel-sort` 的 tags 有 `["python","pandas","openpyxl","excel-safe-workflow"]`，限制欄一個字都沒有）。抽取不是問題，**欄位歸屬**才是。
+2. **命中率是系統性的，不是雜訊。** 33 筆 Python 依賴中 24 筆有提、9 筆完全沒提任何 Python 生態的名字（另 2 筆——`excel-delete` 只提 `lxml`、`pdf` 只提 OCR 選用的 `pytesseract`／`pdf2image`——沒提核心執行環境，故基準報告計為 11）。**同一條指示下三成落空，是指示不夠明確，不是擲骰子。**
+3. **v4 的措辭把它留在灰帶。** v4 的 `limitations` 只列到「required accounts, credentials, network access or **installed software**」——套件腳本跑在什麼執行環境上，算不算「installed software」，全靠模型自己判斷；而這件事**通常只寫在程式碼區塊、`import` 行或檔名裡，不會有一句散文說「你需要 Python」**。有趣的是，同一個問題在 Judge 端早就處理過：§4 第 1 輪的儀器校準已經確立「frontmatter、標題、表格、程式碼都是文件本身」，但這條認定**只寫在審校 prompt，沒有寫進生成 prompt**。
+
+**因此升 `enrich-skill/v5`，只加一條通用約束（不 hardcode 任何個案）**，接在 `limitations` 欄位說明之後：
+
+> A runtime the content's own scripts and worked examples are written for is required software: where the content works through a language runtime, interpreter or library, that belongs here too. What the content shows is what the content states — an import line, a command, a script's file extension or a dependency named in the frontmatter is the document saying the Skill needs it, no less than a sentence would be.
+
+兩個設計選擇說明白：**(a)** 這條放在 `limitations` 的欄位說明裡，不放在 v4 的「三條轉述禁令」清單——v4 三條管的是**加碼**（不得多說），這條管的是**漏報**（該說要說），兩者是相反方向的錯誤，混在一起會讓 prompt 自我矛盾。**(b)** 「Restate only; do not infer a limitation the content does not state」原文保留在其後未動，所以這條不會變成「幫套件想像它需要什麼」的授權。`enrich.py` 的欄位集合、schema、模型分層一律未動（同 §7.1 的紀律）。
+
+### 11.2 執行管線（與 §4 同一條路徑，兩點不同）
+
+沿用 §4 的重跑機制：把該筆 `search_documents.enrichment_status` 置回 `pending`，再跑 `cmd/reindex` 的增強補跑（`POST /v1/enrich-skill` → 重新 embedding → upsert）。**未重新匯入、未 `compose down`、未動其餘 34 筆，Skill Version 與 `skill_id` 全部不變（鐵律 4）。** 兩點不同，都要記：
+
+1. **本次的模型出口走 LiteLLM 閘道**（`LITELLM_BASE_URL=http://localhost:4000`，模型 `gpt-5.6-sol`、embedding `text-embedding-3-small` 皆由 `infra/compose/litellm-config.yaml` 解析），**不是 §9 第 8 條的直連例外**。增強端因此已符合鐵律 8；仍走直連的只剩審校工具 `review_summaries.py`（M1 慣例，離線工序）。
+2. **必須先把 M2 基準試跑留下的 45 筆 fork 文件移出補跑工作清單。** `content-baseline` 臨時 Workspace（`91b951b3…`）的 45 個 fork 各有一筆 `enrichment_status='pending'` 的 `search_documents`，而 `ListPendingEnrichment` 是「全庫 pending、oldest first」，`cmd/reindex` 的第一階段 `ReindexAll` 又會把所有文件的 `updated_at` 一起推成 `now()`，**時間戳與 `REINDEX_BATCH` 都擋不住它們**——照跑會多花約 45 次旗艦增強呼叫（約 $2）。處置是把這 45 筆暫時標為 `enriched`，跑完立刻還原成 `pending`（`enriched_summary=''`、`embedding IS NULL` 為還原條件，實測還原 45/45 與原狀態逐欄相同）。**`search_documents` 是投影不是事實來源（ADR-010），此操作不觸及任何 Skill 或 Skill Version。**
+
+> **順帶記錄一個平台缺陷（不在本次修範圍）**：`llmclient` 的 `http.Client{Timeout: 30s}` 比 `ingest` 自己的 `enrichTimeout = 75s` 更早到期，因此增強實際只有 30 秒。本批 14 次成功增強中有 3 次因此逾時（`docx` 是 `/embed` 逾時、`excel-split`／`excel-delete` 是增強逾時），重跑即過，但**每次逾時都已在閘道產生費用**。建議把 HTTP client 的逾時交給 ctx 控制。
+
+### 11.3 兩輪結果（規則上限即兩輪）
+
+| 輪 | 對象 | 動作 | 結果 |
+| --- | --- | --- | --- |
+| A | 11 筆 | `enrich-skill/v5` 重跑增強＋重新索引，`review_summaries.py --only` 全套 KPI 重審 | **8 通過／3 需修改**（`docx`、`excel-sort`、`excel-mapping-replace`） |
+| B | 3 筆 | 同路徑第 2 次重跑（KPI1／KPI4／KPI5 屬非決定性自癒類，不再動 prompt） | **2 通過／1 需修改**（`docx`） |
+
+A 輪三筆的命中，**沒有一筆與 Python 揭露有關**，全是 v4 既有三條約束下的生成波動：
+
+- `docx`：KPI1＋KPI4——「取代文字與圖片時可保證其他內容保持不變」（原文沒有這項一般性保證，且「保持不變」是對產出的品質承諾）。
+- `excel-sort`：KPI5——摘要說排序方向可省略、預設升冪，`tags.inputs` 卻把「排序方向」列為輸入，讀成必填即互相矛盾。
+- `excel-mapping-replace`：KPI1——「`mapping.csv` 的新舊值一定讀自前兩欄」（原文的 csv 範例是以欄名取值，只有 xlsx 範例用 `iloc[:, 0:2]`）。
+
+B 輪後 `docx` 仍未過，且**理由與 A 輪不同**（新的一條：「可將 DOTX 範本內容擷取為 Markdown 並依標題重新組織」——原文 frontmatter 確有 `.dotx` 的擷取與重組、也確有 `.docx → markdown` 的 pandoc 範例，但沒有把兩者接起來的陳述；這正是 v4 第 3 條「支援一種格式不等於支援其近親」的同一種外推）。已排除量測假象：`docx` 的 `SKILL.md` 為 6,868 字元，遠低於 Judge 的 40,000 字元截斷門檻，判定看的是完整原文。
+
+> **依處置規則，兩輪用盡即停，不硬修、不就地改寫。`docx` 目前線上文字的審核狀態為 `需修改`，理由如上，留給負責人裁定。** 可選路徑有三條，本報告不代為決定：①再給一次非決定性重跑（超出既定上限，需負責人授權）；②比照 §7 的 v4 先例，為「格式近親外推」再加一條更強的通用約束並升 v6；③依字面規則列「建議自目錄下架待修」。**選 ③ 的代價要先看清楚**：`docx` 是 `documents` 類**已索引**筆（下架不影響 CONTENT-001 每類 4–6 的精選下限），但它是 [`catalog-rebuild-report.md` §6.1](catalog-rebuild-report.md) golden query **D01 的 gold primary 且為現行 Top-1**，下架會使該題失去判定基準。
+
+### 11.4 這 11 筆的最終逐筆判定
+
+「限制欄揭露執行環境」欄是本次修正的直接標的，逐筆以線上文字確認。
+
+| # | Skill | 層 | 線上 prompt | 判定 | KPI1 宣稱／未支持 | KPI2 | 術語密度 | KPI6 餘弦 | 限制欄揭露執行環境 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | `data-shape` | 已索引 | v5 | **通過** | 25／0 | 3/3 | 1.04 | 0.8718 ⚑ | ✅「需要安裝 pandas。」 |
+| 2 | `docx` | 已索引 | v5 | **需修改** | 24／**1** | 3/3 | 0.0 | 0.8541 ⚑ | ✅「建立文件需要 Node.js 與 docx npm 套件……相關腳本需要 Python；讀取內容、轉檔及頁面影像驗證另需 pandoc、LibreOffice、Poppler 的 pdftoppm……」 |
+| 3 | `excel-delete` | 已索引 | v5 | **通過** | 14／0 | 3/3 | 1.16 | 0.8726 ⚑ | ✅「需要 Python 執行環境，以及 openpyxl 與 lxml；大檔案處理明確要求安裝 lxml。」 |
+| 4 | `excel-filter` | 已索引 | v5 | **通過** | 17／0 | 3/3 | 2.06 | 0.9224 | ✅「需要 Python 執行環境，以及 pandas、openpyxl 與 lxml 套件……」 |
+| 5 | `excel-find-duplicates` | 精選 | v5 | **通過** | 14／0 | 3/3 | 0.0 | 0.9622 | ✅「執行文件所示流程需要 Python 與 pandas。」 |
+| 6 | `excel-mapping-replace` | 已索引 | v5 | **通過**（B 輪） | 20／0 | 3/3 | 1.91 | 0.8911 ⚑ | ✅「執行所示流程需要 Python、pandas、openpyxl 與 lxml……」 |
+| 7 | `excel-merge` | 已索引 | v5 | **通過** | 15／0 | 3/3 | 3.41 | 0.8290 ⚑ | ✅「小型檔案流程需要 Python、pandas 與 openpyxl；大型檔案流程還需要 lxml。」 |
+| 8 | `excel-sort` | 已索引 | v5 | **通過**（B 輪） | 23／0 | 3/3 | 1.14 | 0.9099 | ✅「需要 Python 執行環境，以及 pandas 與 openpyxl 函式庫。」 |
+| 9 | `excel-split` | 已索引 | v5 | **通過** | 17／0 | 3/3 | 0.99 | 0.8828 ⚑ | ✅「此流程處理 .xlsx 檔案，並需要 Python、pandas 與 lxml。」 |
+| 10 | `excel-validate` | 已索引 | v5 | **通過** | 17／0 | 3/3 | 0.0 | 0.9298 | ✅「需要 Python 執行環境，以及 pandas 與 NumPy 函式庫。」 |
+| 11 | `pdf` | 已索引 | v5 | **通過** | 22／0 | 3/3 | 0.0 | 0.9115 | ✅「需使用 Python，以及所選操作對應的函式庫；文件範例提到 pypdf、pdfplumber、pandas、reportlab、pytesseract 與 pdf2image。」 |
+
+⚑ = KPI6 標記（餘弦 < 0.90，不否決，見 §3）。
+
+**11/11 的揭露缺口已關閉**，包含尚未通過 KPI1 的 `docx`——它的「需修改」與 Python 揭露無關。另兩項機械檢查全乾淨：KPI3 簡體殘留 0、在地詞表命中 0；KPI4 Judge 判定評價 0 筆。
+
+### 11.5 線上分布變化
+
+| 項目 | 修正前（§4 v4 閉環後） | 修正後（本節） |
+| --- | --- | --- |
+| prompt 版本分布 | v2 × 35 ＋ v3 × 7 ＋ v4 × 3 | **v2 × 26 ＋ v3 × 5 ＋ v4 × 3 ＋ v5 × 11** |
+| 目錄筆數／`enriched`／有向量 | 45／45／45 | **45／45／45**（不變） |
+| 審校判定 | 45 通過／0 需修改 | **44 通過／1 需修改**（`docx`） |
+| KPI6 標記筆數 | 11 | **14**（新增 `docx`、`excel-split`、`excel-mapping-replace`、`data-shape`；`excel-sort` 由 0.896 升至 0.9099 脫離標記） |
+| 跨 Skill 可混淆地板 | 0.8338（`sokrati` vs `shorten`） | **0.8337**（同一對，重測值） |
+
+KPI6 標記增加是**預期的**，不是缺陷：`summaries.json` 是 08-15 的紀錄本，本次重跑過的筆線上本來就換了一版文字，餘弦下降正是 §6.3 那條「非決定性上限」的同一現象。**判定一律對線上文字生效。**
+
+> 被 v5 取代的 11 筆 v2／v3 舊文字**沒有留存**（`UpsertSearchDocumentEnriched` 是就地覆寫，投影不保存歷史）。§5 表格記的是那批舊文字的判定，本節表格記的是現行文字的判定，兩者不衝突也不可互換。
+
+### 11.6 非決定性上限的確認（`02` §4.7 最後一條）
+
+「審核判定只對已入庫的該版文字生效；任何重跑增強後，須重新確認入庫文字與審核過的版本一致。」逐項確認：
+
+1. **審校對象即線上文字**：`review_summaries.py` 六項 KPI 全部讀 `GET /api/skills/{id}`，沒有任何一項讀 `summaries.json` 的文字（KPI6 只拿它當漂移基準）。
+2. **審校之後沒有再動過**：目錄 Workspace 45 筆的 `max(updated_at)` 為 **2026-08-16 08:02:32Z**（B 輪最後一次寫入），兩次重審都在其後；目錄 `enrichment_status='pending'` 為 **0 筆**，沒有半途而廢的列。
+3. **入庫文字指紋**（`md5(enriched_summary‖task_examples‖limitations)`，供日後覆核判定是否仍對應同一份文字）：
+
+```
+data-shape             d38bc910ee5cafd58addbc488c691116
+docx                   fd2b1541b4a74a025ebc9b9a61440167
+excel-delete           063ac495ad829983e35c7a456dfa5f47
+excel-filter           2d30f2788fafb6e37bb5aa79f6b1bb31
+excel-find-duplicates  1af259325242b719684d075614ab6610
+excel-mapping-replace  1390e13e44019b6595ecab3089bbb9ab
+excel-merge            cae69974e3051ccbeba61e6073f77476
+excel-sort             90733f8a95874f65864116df5a9a880f
+excel-split            225615931ee86dfad270fd3ef0e6b6ba
+excel-validate         152bd1236246ccceaadc99430db3254d
+pdf                    fa820905ee07004192ea1dfe01132891
+```
+
+**其餘 34 筆未重跑，其 §5 的判定與入庫文字仍然對應。**
+
+### 11.7 費用
+
+| 項目 | 用量 | 費用 |
+| --- | --- | --- |
+| 增強重跑（`gpt-5.6-sol`，**經閘道**） | 19 次呼叫（14 次成功增強＋3 次逾時＋2 次管線 smoke） | **$1.0868** |
+| Embedding（`text-embedding-3-small`，經閘道） | 15 次呼叫 | **$0.0002** |
+| Judge 重審（`gpt-5.6-terra`，直連，M1 慣例） | 28 次呼叫（11×2 ＋ 3×2）＋ KPI6 全量 embedding | **$0.6779** |
+| **合計** | — | **$1.765** |
+
+閘道帳為權威來源：`LiteLLM_SpendLogs` 於本批前後由 **$3.852890 → $4.939802**，增量 **$1.086912**，與上表前兩列逐分相符。Judge 費用取自 `review-results.json` 的 `usage` 增量（$0.9609 − $0.2830）。**上限 $3 未觸及**；逾時重跑（§11.2）是本批唯一的無效支出，約 $0.15。
+
+### 11.8 對其他文件的影響（本節未代改）
+
+| 文件 | 需要的更新 |
+| --- | --- |
+| [`gate-test/README.md`](gate-test/README.md) §3.1 | 記載的凍結標的仍寫 **v2 × 35 ＋ v3 × 7 ＋ v4 × 3**，需改為 §11.5 的新分布。**本次動的是凍結標的第 2、3 項，只有在 D 日尚未宣告時才合法——查核當下 D 日確實未宣告（該節仍寫「只等負責人排程與凍結生效」）。此後若再要動任何一筆，同樣必須在 D 日之前。** |
+| [`catalog-rebuild-report.md`](catalog-rebuild-report.md) §7.1／§7.3 | 同上，分布數字需更新 |
+| [`content-summaries.md`](content-summaries.md) | 這 11 筆的線上文字已換版；§2.4 的非決定性上限再添一批實例。**審核紀錄本體不得就地改寫**（`02` §4.7），故本節不動它 |
+| [`m2/content-baseline-report.md`](../m2/content-baseline-report.md) §7.2 #1／§11 第 4 項 | 該項揭露缺口已處置完畢，可回填指向本節 |
+| `02` §4.7 CONTENT-005／`03-work-items.md` | **CONTENT-005 目前是 44/45。** 勾選是否維持取決於 `docx` 的裁定（§11.3），由負責人決定；本節不代改勾選狀態 |
