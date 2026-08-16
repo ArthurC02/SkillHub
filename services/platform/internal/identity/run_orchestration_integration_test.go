@@ -112,10 +112,15 @@ func TestRunWalksTheStateMachineAndIsCleanedUp(t *testing.T) {
 	if final.FailureClass != "" {
 		t.Errorf("a successful run carries failure_class %q", final.FailureClass)
 	}
-	// The honest part: nothing evaluated this run, and the reason says so until
-	// EVAL-001 lands.
-	if !strings.Contains(final.StatusReason, "no evaluator") {
-		t.Errorf("success reason = %q, want it to admit that nothing evaluated the run", final.StatusReason)
+	// ADR-025: the terminal reason is execution language and nothing more. It used
+	// to promise an evaluator that would come back and decide `succeeded` versus
+	// `failed`; that TODO was overturned, and `succeeded` must not read as a task
+	// verdict on any surface.
+	if !strings.Contains(final.StatusReason, "separate judgement") {
+		t.Errorf("success reason = %q, want it to keep execution and task verdict apart", final.StatusReason)
+	}
+	if strings.Contains(final.StatusReason, "EVAL-001") {
+		t.Errorf("the overturned TODO's wording is still here: %q", final.StatusReason)
 	}
 
 	// RUN-005: the chosen provider is on the run, and the mapping is on the attempt.

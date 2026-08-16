@@ -206,3 +206,138 @@ type SuggestCriteriaResponse struct {
 func (c *Client) SuggestCriteria(ctx context.Context, req SuggestCriteriaRequest) (*SuggestCriteriaResponse, error) {
 	return post[SuggestCriteriaRequest, SuggestCriteriaResponse](ctx, c, "/suggest-criteria", req)
 }
+
+// --- /judge-run (EVAL-001, the task-effect leg) -------------------------------
+//
+// Wire types for contracts/openapi/llm-internal.yaml. Five of EVAL-001's six
+// problem classes never reach here: they are decided in Go from the platform's own
+// records (evaluation-design §2.5). What crosses this boundary is one question —
+// were the acceptance criteria met — and one answer, which internal/eval then
+// re-verifies reference by reference before storing any of it (ADR-026 defence 3).
+
+// JudgeCriterion is one acceptance criterion from the run's frozen snapshot.
+type JudgeCriterion struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+	// EvidenceExcerpt is material Go already located for this criterion, masked
+	// and cut at the §6.3 budget. Absent means Go found nothing specific — not
+	// that nothing happened, and never grounds for `failed` on its own.
+	EvidenceExcerpt string `json:"evidence_excerpt,omitempty"`
+}
+
+// JudgeArtifact is one row of the artifact manifest. Manifest only: the bytes stay
+// in the archive and nothing is unpacked or parsed by extension (iron rule 1).
+type JudgeArtifact struct {
+	Path        string `json:"path"`
+	SizeBytes   int64  `json:"size_bytes"`
+	ContentType string `json:"content_type,omitempty"`
+	TextExcerpt string `json:"text_excerpt,omitempty"`
+}
+
+// TraceDigestEntry is one already-masked trace entry the judge may cite. The
+// (id, occurred_at) pair is the address: trace_events is partitioned by time, so
+// the timestamp is part of it rather than decoration.
+type TraceDigestEntry struct {
+	TraceEventID string `json:"trace_event_id"`
+	OccurredAt   string `json:"occurred_at"`
+	Type         string `json:"type"`
+	Excerpt      string `json:"excerpt"`
+}
+
+// TraceDigest is an aggregate, never the event stream: the LLM service has no way
+// to ask for a full trace (ADR-009 low-privilege read). Entries are also the
+// citation set — a trace_event reference may only name an id that appeared here.
+type TraceDigest struct {
+	Complete bool               `json:"complete"`
+	Entries  []TraceDigestEntry `json:"entries"`
+}
+
+// RubricItem is one CONTENT-007 rubric line. Weight lives here and nowhere else.
+type RubricItem struct {
+	ID               string   `json:"id"`
+	Text             string   `json:"text"`
+	Weight           *float64 `json:"weight,omitempty"`
+	EvidenceRequired bool     `json:"evidence_required"`
+}
+
+// Rubric strengthens the acceptance criteria; it is not a second mechanism.
+type Rubric struct {
+	Items []RubricItem `json:"items"`
+}
+
+// JudgeSkill is the skill under test, for context only. Untrusted package text.
+type JudgeSkill struct {
+	Name    string `json:"name"`
+	Summary string `json:"summary"`
+}
+
+// JudgeRunRequest is everything the judge sees, and the boundary of it.
+type JudgeRunRequest struct {
+	RunID        string           `json:"run_id"`
+	EvaluationID string           `json:"evaluation_id"`
+	Skill        *JudgeSkill      `json:"skill,omitempty"`
+	UserPrompt   string           `json:"user_prompt"`
+	Criteria     []JudgeCriterion `json:"criteria"`
+	Rubric       *Rubric          `json:"rubric,omitempty"`
+	FinalOutput  string           `json:"final_output"`
+	Artifacts    []JudgeArtifact  `json:"artifacts"`
+	TraceDigest  TraceDigest      `json:"trace_digest"`
+	// Truncation names the fields that were cut. Non-empty means a criterion that
+	// depends on a cut field may only be answered `undetermined`.
+	Truncation []string `json:"truncation"`
+}
+
+// JudgeEvidenceRef is a claim about where an answer came from. It is a claim and
+// not a fact: this type carries no byte or character ranges because the model does
+// not compute them — Go locates `Quote` in the source it names, which is both the
+// lookup and the verification (evaluation-design §2.4 defence 3).
+type JudgeEvidenceRef struct {
+	Kind         string  `json:"kind"`
+	TraceEventID *string `json:"trace_event_id"`
+	ArtifactPath *string `json:"artifact_path"`
+	Quote        string  `json:"quote"`
+}
+
+// CriterionVerdict is one criterion, one answer. There is deliberately no `source`
+// field: Go labels everything from this endpoint `source: model` (02:EVAL-001
+// clause 5), and letting a model call its own output a rule check is not a power
+// worth handing out.
+type CriterionVerdict struct {
+	CriterionID  string             `json:"criterion_id"`
+	Result       string             `json:"result"`
+	Reason       string             `json:"reason"`
+	EvidenceRefs []JudgeEvidenceRef `json:"evidence_refs"`
+}
+
+// JudgeVerdict is the model-authored part of the answer, and only that.
+type JudgeVerdict struct {
+	CriterionResults []CriterionVerdict `json:"criterion_results"`
+	Overall          string             `json:"overall"`
+	Summary          string             `json:"summary"`
+}
+
+// JudgeUsage is what the call cost at the gateway, when the service reports it.
+// Additive and optional: the contract's JudgeRunResponse does not require it, and
+// a nil here means unreported — which the caller must not render as zero
+// (same rule as the trace usage event's cost_usd).
+type JudgeUsage struct {
+	CostUSD    *float64 `json:"cost_usd"`
+	CostSource string   `json:"cost_source"`
+}
+
+// JudgeRunResponse separates what the model wrote (`Verdict`) from what the
+// service knows and the model cannot influence (`Model`, `PromptVersion`).
+type JudgeRunResponse struct {
+	Verdict       JudgeVerdict `json:"verdict"`
+	Model         string       `json:"model"`
+	PromptVersion string       `json:"prompt_version"`
+	Usage         *JudgeUsage  `json:"usage,omitempty"`
+}
+
+// JudgeRun asks the LLM service to judge one run against its acceptance criteria.
+// A verdict, never a decision: retry, timeout and the fallback on failure are all
+// Go's (iron rule 6/7), and ctx carries the deadline and cancellation into the
+// internal call. A failure here is an evaluation failure, never a guessed pass.
+func (c *Client) JudgeRun(ctx context.Context, req JudgeRunRequest) (*JudgeRunResponse, error) {
+	return post[JudgeRunRequest, JudgeRunResponse](ctx, c, "/judge-run", req)
+}

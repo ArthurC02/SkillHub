@@ -14,6 +14,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/eval"
+	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/outbox"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/objstore"
@@ -90,6 +92,19 @@ func main() {
 		TraceSigner: traceSigner, TraceIngestBaseURL: traceBase,
 	}
 
+	// EVAL-001's task-effect leg lives in services/llm and is reached over internal
+	// HTTP by this worker (iron rule 7). Without LLM_SERVICE_URL there is no judge:
+	// runs still get an evaluation row, the deterministic findings are still
+	// written, and the row is recorded as `failed` saying the judgement could not
+	// be produced - which is a visible state, not a lenient verdict.
+	evaluations := &eval.Service{Pool: pool, Store: store}
+	if llmURL := os.Getenv("LLM_SERVICE_URL"); llmURL != "" {
+		evaluations.Judge = &llmclient.Client{BaseURL: llmURL}
+		slog.Info("judge service configured", "url", llmURL)
+	} else {
+		slog.Warn("LLM_SERVICE_URL not set; evaluations will be recorded as failed with no task verdict")
+	}
+
 	workers := river.NewWorkers()
 	// Every job kind the platform knows about is registered here. A kind with no
 	// worker is not a silent no-op — River fails the job — which is the behaviour
@@ -98,6 +113,7 @@ func main() {
 	river.AddWorker(workers, &run.CleanupWorker{Svc: runs})
 	river.AddWorker(workers, &run.OrphanScanWorker{Svc: runs})
 	river.AddWorker(workers, &run.SuperviseWorker{Svc: runs})
+	river.AddWorker(workers, &eval.Worker{Svc: evaluations})
 	river.AddWorker(workers, &outbox.Worker{Pool: pool})
 
 	client, err := queue.New(pool, &river.Config{

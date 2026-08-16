@@ -16,6 +16,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/apiserver"
 	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
+	"github.com/ArthurC02/skillhub/services/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
@@ -146,6 +147,10 @@ func main() {
 			Identity: auth.Service,
 		},
 		Trace: &trace.Handler{Svc: traceSvc, Identity: auth.Service},
+		// Read-only here: producing an evaluation is the worker's job (iron rule 7),
+		// so this service has no judge client and no object store — the API only
+		// serves what is already stored.
+		Eval: &eval.Handler{Svc: &eval.Service{Pool: pool}, Identity: auth.Service},
 	})
 
 	// DEV_CORS_ORIGIN is the local Vite dev server (http://localhost:5173) and

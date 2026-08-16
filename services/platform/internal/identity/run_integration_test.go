@@ -19,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/services/platform/internal/outbox"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/queue"
@@ -111,6 +112,12 @@ func startWorkerWith(t *testing.T, svc *run.Service) *river.Client[pgx.Tx] {
 	river.AddWorker(workers, &run.CleanupWorker{Svc: svc})
 	river.AddWorker(workers, &run.OrphanScanWorker{Svc: svc})
 	river.AddWorker(workers, &run.SuperviseWorker{Svc: svc})
+	// EVAL-001: a terminal transition enqueues an evaluation as well as a cleanup,
+	// and River refuses to insert a kind its own Workers bundle does not know. A
+	// process that registers some workers but not this one cannot finish a run at
+	// all - which is why every registration list has to stay in step with
+	// cmd/worker, and why this line is not optional test scaffolding.
+	river.AddWorker(workers, &eval.Worker{Svc: &eval.Service{Pool: svc.Pool}})
 	river.AddWorker(workers, &outbox.Worker{Pool: svc.Pool})
 	c, err := queue.New(svc.Pool, &river.Config{
 		Workers: workers,

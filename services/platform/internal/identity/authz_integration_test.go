@@ -34,6 +34,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/apiserver"
 	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
+	"github.com/ArthurC02/skillhub/services/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
@@ -126,6 +127,9 @@ type api struct {
 	// traceSigner mints ingestion tokens, so a trace test can post as the
 	// execution plane would (TRACE-002).
 	traceSigner *trace.Signer
+	// evaluations is the API's read-only evaluation service, exposed so an
+	// EVAL-001 test can produce a verdict with a fake judge (the API never does).
+	evaluations *eval.Service
 	// handler is the same route table the server above serves. Kept so a test
 	// that needs the API reachable from *another container* — the real end to
 	// end run, whose sandbox provider pushes trace events back — can serve it on
@@ -198,15 +202,21 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 		Identity: auth.Service,
 	}
 
+	// EVAL-001's read surface. No judge and no store here, exactly as cmd/api
+	// wires it: producing a verdict is the worker's job, and this side only
+	// serves what is already stored.
+	evalSvc := &eval.Service{Pool: pool}
+
 	handler := apiserver.NewRouter(apiserver.Deps{
 		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs,
 		TestLab: lab, Trace: traceHandler,
+		Eval: &eval.Handler{Svc: evalSvc, Identity: auth.Service},
 	})
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return &api{
 		Server: srv, auth: auth, packages: packages, runs: runSvc,
-		traceSigner: traceSigner, handler: handler,
+		traceSigner: traceSigner, handler: handler, evaluations: evalSvc,
 	}
 }
 

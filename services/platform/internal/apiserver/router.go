@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
+	"github.com/ArthurC02/skillhub/services/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
@@ -32,6 +33,7 @@ type Deps struct {
 	TestLab  *testlab.Handler
 	Runs     *run.Handler
 	Trace    *trace.Handler
+	Eval     *eval.Handler
 }
 
 // NewRouter returns the API route table. Callers wrap it as needed — cmd/api
@@ -112,6 +114,14 @@ func NewRouter(d Deps) *http.ServeMux {
 	// TRACE-006/007: one route, two modes. Session-scoped like every other run
 	// route - a trace is user data.
 	mux.HandleFunc("GET /runs/{id}/trace", auth.RequireSession(d.Trace.Get))
+
+	// EVAL-001. A separate resource from the run on purpose: "what happened while
+	// this executed" and "was the task achieved" are two facts, and no route here
+	// lets one be read as the other (ADR-025). Session scoped like the run routes -
+	// a verdict about a user's run is that user's data.
+	mux.HandleFunc("GET /runs/{id}/evaluation", auth.RequireSession(d.Eval.Get))
+	mux.HandleFunc("GET /runs/{id}/evaluation/revisions", auth.RequireSession(d.Eval.Revisions))
+	mux.HandleFunc("PUT /runs/{id}/evaluation/feedback", auth.RequireSession(d.Eval.SetFeedback))
 
 	// TRACE-002: the execution plane pushes collected events here. Deliberately
 	// the only route in this table with no session and no RequireSession wrapper:
