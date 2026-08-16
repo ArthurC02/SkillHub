@@ -115,6 +115,153 @@ const (
 	SourceSuggested = "suggested"
 )
 
+// Rubric is CONTENT-007's editable strengthening of the acceptance criteria
+// (llm-internal.yaml Rubric, plus the version string). It is not a second
+// mechanism and not a score sheet: its items map onto the same
+// `criterion_results` entries the criteria produce, and nothing in the platform
+// does arithmetic on `Weight` (evaluation-design §6.4, writing-rubrics.md §2.4).
+//
+// Version is stored with the items rather than beside them because it is a fact
+// about this exact wording: changing any item's text, weight or evidence flag is
+// a new rubric version and therefore another judge regression (02:EVAL-013
+// clause 3). It is not sent to the judge — llm-internal's Rubric is
+// additionalProperties:false and has no version field — it is what
+// `evaluations.rubric_version` records.
+type Rubric struct {
+	Version string       `json:"version"`
+	Items   []RubricItem `json:"items"`
+}
+
+// RubricItem strengthens exactly one acceptance criterion.
+//
+// ID is the criterion's id and not an id of its own. That is the whole data
+// semantics of the feature: /judge-run answers one verdict per *criterion*, and
+// Go drops any id it did not send, so an item whose id names no criterion has
+// nowhere for its verdict to be stored and "per-item quoted evidence" would not
+// exist in the data (writing-rubrics.md §2.1).
+type RubricItem struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+	// Weight is the author's relative-importance signal for the model. Optional,
+	// and a pointer so "no weight given" stays distinct from "weight 0".
+	Weight *float64 `json:"weight,omitempty"`
+	// EvidenceRequired is per item rather than a global switch: a rubric may
+	// reasonably demand a quote for "cites its sources" and not for a criterion
+	// about something being absent, which a quote cannot show (§2.3).
+	EvidenceRequired bool `json:"evidence_required"`
+}
+
+// MaxRubricItems mirrors llm-internal.yaml Rubric.items maxItems.
+const MaxRubricItems = 50
+
+// MaxRubricVersionBytes bounds the version label. Same reasoning as the other
+// caps here: a text column reachable from a request needs a ceiling.
+const MaxRubricVersionBytes = 200
+
+// SetRubric replaces the draft's rubric, or clears it when r is nil (TEST-012,
+// CONTENT-007). Editing it never touches a past run: what a run was judged
+// against is the copy frozen in its snapshot (iron rule 4).
+func (s *Service) SetRubric(ctx context.Context, ws gen.Workspace, id pgtype.UUID, r *Rubric) (gen.TestCase, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := gen.New(tx)
+
+	// Locked and re-read rather than validated against whatever the client last
+	// saw: the ids an item may name are this test case's criteria *now*, and a
+	// concurrent criterion deletion would otherwise let a dangling item through.
+	tc, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: id, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.TestCase{}, ErrNotFound
+	}
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	criteria, err := DecodeCriteria(tc.AcceptanceCriteria)
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+
+	var encoded []byte
+	if r != nil {
+		clean, err := validateRubric(*r, criteria)
+		if err != nil {
+			return gen.TestCase{}, err
+		}
+		if encoded, err = json.Marshal(clean); err != nil {
+			return gen.TestCase{}, err
+		}
+	}
+	updated, err := q.UpdateTestCaseRubric(ctx, gen.UpdateTestCaseRubricParams{
+		ID: tc.ID, WorkspaceID: ws.ID, Rubric: encoded,
+	})
+	if err != nil {
+		return gen.TestCase{}, err
+	}
+	return updated, tx.Commit(ctx)
+}
+
+// validateRubric enforces the contract's bounds and the one rule the database
+// cannot check: every item names a criterion of this same test case.
+func validateRubric(r Rubric, criteria []Criterion) (Rubric, error) {
+	r.Version = strings.TrimSpace(r.Version)
+	switch {
+	case r.Version == "":
+		return Rubric{}, fmt.Errorf("%w: rubric version must not be blank", ErrInvalid)
+	case len(r.Version) > MaxRubricVersionBytes:
+		return Rubric{}, fmt.Errorf("%w: rubric version must be at most %d bytes", ErrInvalid, MaxRubricVersionBytes)
+	case len(r.Items) == 0:
+		// An empty rubric is not a rubric. Clearing one is done by sending null,
+		// which is a statement the reader can tell apart from "there are items but
+		// they all went missing".
+		return Rubric{}, fmt.Errorf("%w: a rubric must have at least one item; send null to remove it", ErrInvalid)
+	case len(r.Items) > MaxRubricItems:
+		return Rubric{}, fmt.Errorf("%w: at most %d rubric items per test case", ErrLimitExceeded, MaxRubricItems)
+	}
+
+	known := make(map[string]bool, len(criteria))
+	for _, c := range criteria {
+		known[c.ID] = true
+	}
+	seen := make(map[string]bool, len(r.Items))
+	items := make([]RubricItem, 0, len(r.Items))
+	for _, it := range r.Items {
+		it.Text = strings.TrimSpace(it.Text)
+		switch {
+		case !known[it.ID]:
+			return Rubric{}, fmt.Errorf(
+				"%w: rubric item %q does not name an acceptance criterion of this test case; "+
+					"an item's id is the criterion it strengthens", ErrInvalid, it.ID)
+		case seen[it.ID]:
+			return Rubric{}, fmt.Errorf("%w: two rubric items for criterion %q", ErrInvalid, it.ID)
+		case it.Text == "":
+			return Rubric{}, fmt.Errorf("%w: rubric item text must not be blank", ErrInvalid)
+		case len(it.Text) > MaxCriterionBytes:
+			return Rubric{}, fmt.Errorf("%w: rubric item text must be at most %d bytes", ErrInvalid, MaxCriterionBytes)
+		}
+		seen[it.ID] = true
+		items = append(items, it)
+	}
+	r.Items = items
+	return r, nil
+}
+
+// DecodeRubric reads the stored column. Exported so the run and evaluation
+// domains read a rubric the same way this package writes one. A NULL column is
+// no rubric, which is not the same as an empty one.
+func DecodeRubric(raw []byte) (*Rubric, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	r := &Rubric{}
+	if err := json.Unmarshal(raw, r); err != nil {
+		return nil, fmt.Errorf("decode rubric: %w", err)
+	}
+	return r, nil
+}
+
 // CreateTestCase records a new draft against a skill in the caller's workspace
 // (TEST-001). The skill is re-read under the workspace scope first: skill_id
 // arrives from the client, and the foreign key alone would happily accept
@@ -342,7 +489,46 @@ func (s *Service) mutateCriteria(ctx context.Context, ws gen.Workspace, id pgtyp
 	if err != nil {
 		return gen.TestCase{}, err
 	}
+	// A rubric item is addressed by the criterion it strengthens, so deleting a
+	// criterion can orphan one. Pruned here, in the same transaction, rather than
+	// left for the judge to drop: an item nothing will ever answer is not a rubric
+	// the user can see and edit, and every criterion mutation routes through here.
+	if updated, err = pruneRubric(ctx, q, ws, updated, list); err != nil {
+		return gen.TestCase{}, err
+	}
 	return updated, tx.Commit(ctx)
+}
+
+// pruneRubric drops rubric items whose criterion no longer exists. A rubric left
+// with nothing at all becomes NULL: an empty item list is not a rubric.
+func pruneRubric(ctx context.Context, q *gen.Queries, ws gen.Workspace, tc gen.TestCase, criteria []Criterion) (gen.TestCase, error) {
+	rubric, err := DecodeRubric(tc.Rubric)
+	if err != nil || rubric == nil {
+		return tc, err
+	}
+	known := make(map[string]bool, len(criteria))
+	for _, c := range criteria {
+		known[c.ID] = true
+	}
+	kept := make([]RubricItem, 0, len(rubric.Items))
+	for _, it := range rubric.Items {
+		if known[it.ID] {
+			kept = append(kept, it)
+		}
+	}
+	if len(kept) == len(rubric.Items) {
+		return tc, nil
+	}
+	var encoded []byte
+	if len(kept) > 0 {
+		rubric.Items = kept
+		if encoded, err = json.Marshal(rubric); err != nil {
+			return tc, err
+		}
+	}
+	return q.UpdateTestCaseRubric(ctx, gen.UpdateTestCaseRubricParams{
+		ID: tc.ID, WorkspaceID: ws.ID, Rubric: encoded,
+	})
 }
 
 // DecodeCriteria reads the stored JSON array. Exported so the run and evaluation

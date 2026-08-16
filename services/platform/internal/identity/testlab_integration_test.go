@@ -334,6 +334,82 @@ func TestAcceptanceCriteriaLifecycle(t *testing.T) {
 	}
 }
 
+// --- CONTENT-007: the editable rubric ---------------------------------------
+
+// The rubric is edited through the draft, and an item's id is the criterion it
+// strengthens. That is not a naming convention: /judge-run answers one verdict
+// per criterion id and Go drops any id it did not send, so an item pointing
+// elsewhere could never produce a stored verdict (writing-rubrics.md §2.1).
+func TestRubricIsEditableAndBoundToTheCriteriaItStrengthens(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, "alice-rubric")
+	_, id := newTestCase(t, pool, a, alice, "rubric")
+
+	_, body := alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria",
+		`{"text":"The rewrite keeps every claim of the draft."}`)
+	cid := criteriaOf(t, body)[0]["id"].(string)
+	if body["rubric"] != nil {
+		t.Fatalf("a new test case has no rubric, got %v", body["rubric"])
+	}
+
+	// An item naming no criterion of this test case is refused at the boundary
+	// rather than accepted and quietly ignored later.
+	code, _ := alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
+		`{"rubric":{"version":"content-007/writing/v1","items":[{"id":"not-a-criterion","text":"x","evidence_required":true}]}}`)
+	if code != http.StatusBadRequest {
+		t.Errorf("rubric item with an unknown criterion id: got %d, want 400", code)
+	}
+	// So is a rubric with no items: clearing one is done with null, which reads
+	// differently from "there are items and they all went missing".
+	code, _ = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
+		`{"rubric":{"version":"v1","items":[]}}`)
+	if code != http.StatusBadRequest {
+		t.Errorf("empty rubric: got %d, want 400", code)
+	}
+	code, _ = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id,
+		fmt.Sprintf(`{"rubric":{"version":"  ","items":[{"id":%q,"text":"x","evidence_required":true}]}}`, cid))
+	if code != http.StatusBadRequest {
+		t.Errorf("blank rubric version: got %d, want 400", code)
+	}
+
+	code, body = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id, fmt.Sprintf(
+		`{"rubric":{"version":"content-007/writing/v1","items":[
+		   {"id":%q,"text":"Quote the sentence carrying the claim.","weight":3,"evidence_required":true}]}}`, cid))
+	if code != http.StatusOK {
+		t.Fatalf("PATCH rubric: got %d, body %v", code, body)
+	}
+	rubric, ok := body["rubric"].(map[string]any)
+	if !ok {
+		t.Fatalf("rubric was not returned: %v", body)
+	}
+	if rubric["version"] != "content-007/writing/v1" {
+		t.Errorf("rubric version not stored: %v", rubric["version"])
+	}
+	items, _ := rubric["items"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("rubric items: %v", rubric["items"])
+	}
+	item := items[0].(map[string]any)
+	if item["id"] != cid || item["evidence_required"] != true || item["weight"] != float64(3) {
+		t.Errorf("rubric item round-trip: %v", item)
+	}
+
+	// A rubric edit is an edit of the draft alone, so it does not touch the name
+	// or the prompt, and an omitted rubric on a later PATCH keeps it.
+	_, body = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id, `{"name":"rubric renamed"}`)
+	if body["rubric"] == nil {
+		t.Error("an omitted rubric field must keep the stored rubric")
+	}
+
+	// Deleting the criterion takes its rubric item with it: an item nothing will
+	// ever answer is not something the user can see or edit.
+	_, body = alice.doJSON(t, http.MethodDelete, "/test-cases/"+id+"/criteria/"+cid, "")
+	if body["rubric"] != nil {
+		t.Errorf("rubric outlived the only criterion it addressed: %v", body["rubric"])
+	}
+}
+
 // --- TEST-004 --------------------------------------------------------------
 
 func TestDatasetUploadStoresAndAssociates(t *testing.T) {
@@ -647,6 +723,71 @@ func TestSnapshotFreezesTheTestCase(t *testing.T) {
 	}
 	if len(refs) != 1 || refs[0].ContentHash != fileHash || refs[0].FileName != "rows.csv" {
 		t.Fatalf("snapshot lost the deleted file's identity: %+v", refs)
+	}
+}
+
+// The rubric is frozen with the criteria it strengthens (CONTENT-007, iron rule
+// 4). Editing it afterwards is a standard for the *next* run; the one that
+// already happened keeps the standard it was judged against.
+func TestSnapshotFreezesTheRubric(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, "alice-snapshot-rubric")
+	_, id := newTestCase(t, pool, a, alice, "snapshot-rubric")
+
+	_, body := alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria", `{"text":"Every claim is kept."}`)
+	cid := criteriaOf(t, body)[0]["id"].(string)
+
+	var wsID, tcID pgtype.UUID
+	if err := wsID.Scan(alice.workspaceID); err != nil {
+		t.Fatal(err)
+	}
+	if err := tcID.Scan(id); err != nil {
+		t.Fatal(err)
+	}
+
+	// Before any rubric exists the snapshot hash is what it always was: adding a
+	// nullable column must not make every rubric-less test case look different.
+	noRubric := takeSnapshot(t, pool, wsID, tcID)
+	if noRubric.Rubric != nil {
+		t.Fatalf("a test case with no rubric freezes none, got %s", noRubric.Rubric)
+	}
+
+	if code, _ := alice.doJSON(t, http.MethodPatch, "/test-cases/"+id, fmt.Sprintf(
+		`{"rubric":{"version":"content-007/writing/v1","items":[
+		   {"id":%q,"text":"Quote the sentence carrying the claim.","weight":3,"evidence_required":true}]}}`,
+		cid)); code != http.StatusOK {
+		t.Fatal("setting the rubric failed")
+	}
+
+	snap := takeSnapshot(t, pool, wsID, tcID)
+	frozen, err := testlab.DecodeRubric(snap.Rubric)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if frozen == nil || frozen.Version != "content-007/writing/v1" || len(frozen.Items) != 1 {
+		t.Fatalf("snapshot did not freeze the rubric: %+v", frozen)
+	}
+	if frozen.Items[0].ID != cid || !frozen.Items[0].EvidenceRequired {
+		t.Fatalf("frozen rubric item: %+v", frozen.Items[0])
+	}
+	if snap.ContentHash == noRubric.ContentHash {
+		t.Fatal("two runs judged against different rubrics did not execute the same input")
+	}
+
+	// Editing the rubric leaves the frozen copy alone.
+	if code, _ := alice.doJSON(t, http.MethodPatch, "/test-cases/"+id, `{"rubric":null}`); code != http.StatusOK {
+		t.Fatal("clearing the rubric failed")
+	}
+	reread, err := testlab.DecodeRubric(readSnapshot(t, pool, snap.ID, wsID).Rubric)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reread == nil || len(reread.Items) != 1 {
+		t.Fatalf("clearing the draft's rubric rewrote a frozen one: %+v", reread)
+	}
+	if after := takeSnapshot(t, pool, wsID, tcID); after.ContentHash != noRubric.ContentHash {
+		t.Error("removing the rubric returns the snapshot to the shape it had without one")
 	}
 }
 

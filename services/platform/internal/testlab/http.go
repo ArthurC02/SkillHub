@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -80,8 +81,11 @@ type testCaseResponse struct {
 	Name               string      `json:"name"`
 	UserPrompt         string      `json:"user_prompt"`
 	AcceptanceCriteria []Criterion `json:"acceptance_criteria"`
-	CreatedAt          string      `json:"created_at"`
-	UpdatedAt          string      `json:"updated_at"`
+	// Absent means this test case has no rubric — not that it uses a default one
+	// (CONTENT-007). Same distinction the evaluation report already makes.
+	Rubric    *Rubric `json:"rubric,omitempty"`
+	CreatedAt string  `json:"created_at"`
+	UpdatedAt string  `json:"updated_at"`
 }
 
 func toTestCaseResponse(tc gen.TestCase) testCaseResponse {
@@ -89,12 +93,17 @@ func toTestCaseResponse(tc gen.TestCase) testCaseResponse {
 	if err != nil {
 		criteria = []Criterion{}
 	}
+	rubric, err := DecodeRubric(tc.Rubric)
+	if err != nil {
+		rubric = nil
+	}
 	return testCaseResponse{
 		TestCaseID:         uuidString(tc.ID),
 		SkillID:            uuidString(tc.SkillID),
 		Name:               tc.Name,
 		UserPrompt:         tc.UserPrompt,
 		AcceptanceCriteria: criteria,
+		Rubric:             rubric,
 		CreatedAt:          tc.CreatedAt.Time.UTC().Format(time.RFC3339),
 		UpdatedAt:          tc.UpdatedAt.Time.UTC().Format(time.RFC3339),
 	}
@@ -207,10 +216,15 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Absent fields keep their stored value, so a client editing only the prompt
-	// cannot blank the name by omission.
+	// cannot blank the name by omission. `rubric` is three-valued for the same
+	// reason: absent keeps it, an object replaces it, and an explicit null removes
+	// it. A json.RawMessage and not a *Rubric because those are three states and a
+	// decoded struct only carries two — and not a *json.RawMessage either, which
+	// encoding/json collapses back to nil on an explicit null.
 	body := struct {
-		Name       *string `json:"name"`
-		UserPrompt *string `json:"user_prompt"`
+		Name       *string         `json:"name"`
+		UserPrompt *string         `json:"user_prompt"`
+		Rubric     json.RawMessage `json:"rubric"`
 	}{}
 	if !decodeJSON(w, r, &body) {
 		return
@@ -226,6 +240,20 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fail(w, err, "update failed")
 		return
+	}
+	if len(body.Rubric) > 0 {
+		var rubric *Rubric
+		if raw := strings.TrimSpace(string(body.Rubric)); raw != "null" {
+			rubric = &Rubric{}
+			if err := json.Unmarshal(body.Rubric, rubric); err != nil {
+				httpx.WriteError(w, http.StatusBadRequest, "rubric must be an object with a version and items")
+				return
+			}
+		}
+		if tc, err = h.Svc.SetRubric(r.Context(), ws, id, rubric); err != nil {
+			fail(w, err, "rubric update failed")
+			return
+		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, toTestCaseResponse(tc))
 }

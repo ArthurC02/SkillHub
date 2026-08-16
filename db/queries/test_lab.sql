@@ -37,6 +37,15 @@ UPDATE test_cases SET acceptance_criteria = $3, updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 RETURNING *;
 
+-- name: UpdateTestCaseRubric :one
+-- CONTENT-007's editable rubric. Its own statement rather than a field on
+-- UpdateTestCase for the same reason UpdateTestCaseCriteria is: the three are
+-- edited from different screens and a shared statement would make each of them
+-- able to blank the others by omission.
+UPDATE test_cases SET rubric = $3, updated_at = now()
+WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
+RETURNING *;
+
 -- name: SoftDeleteTestCase :one
 UPDATE test_cases SET deleted_at = now(), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
@@ -83,8 +92,8 @@ RETURNING *;
 -- name: CreateTestCaseSnapshot :one
 -- TEST-010: the frozen copy a run executes. Immutable once written (0005 trigger).
 INSERT INTO test_case_snapshots (
-    workspace_id, test_case_id, user_prompt, acceptance_criteria, dataset_refs, content_hash
-) VALUES ($1, $2, $3, $4, $5, $6)
+    workspace_id, test_case_id, user_prompt, acceptance_criteria, dataset_refs, content_hash, rubric
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetTestCaseSnapshot :one

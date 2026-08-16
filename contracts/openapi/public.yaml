@@ -1905,8 +1905,19 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
     patch:
       operationId: updateTestCase
-      summary: Edit a test case's name or prompt (TEST-001)
-      description: Omitted fields keep their stored value.
+      summary: Edit a test case's name, prompt or rubric (TEST-001, CONTENT-007)
+      description: |
+        Omitted fields keep their stored value.
+
+        `rubric` is three-valued and each value is a different statement: absent
+        keeps the stored rubric, an object replaces it, and an explicit `null`
+        removes it. There is no "empty rubric" — a rubric with no items is
+        refused, because "this test case has no rubric" and "this test case has a
+        rubric that says nothing" would otherwise be the same bytes.
+
+        Editing here never rewrites a past run: a run freezes the rubric along
+        with the prompt and the criteria, so an edit is the standard for the
+        *next* run (iron rule 4, ADR-003).
       requestBody:
         required: true
         content:
@@ -1916,6 +1927,10 @@ paths:
               properties:
                 name: { type: string, maxLength: 200 }
                 user_prompt: { type: string, maxLength: 32768 }
+                rubric:
+                  oneOf:
+                    - $ref: "#/components/schemas/Rubric"
+                    - type: "null"
       responses:
         "200":
           description: Updated draft.
@@ -3222,6 +3237,59 @@ components:
           description: |
             When the user explicitly agreed to this wording. Null means proposed
             but not confirmed. Editing the text clears it.
+    RubricItem:
+      description: |
+        One rubric line, strengthening exactly one acceptance criterion
+        (CONTENT-007). Same shape as llm-internal.yaml's RubricItem, because it
+        is the same object: what is stored here is what /judge-run is sent.
+      type: object
+      required: [id, text, evidence_required]
+      properties:
+        id:
+          type: string
+          description: |
+            The id of the acceptance criterion this item strengthens, not an id
+            of its own. /judge-run answers one verdict per criterion id and the
+            platform drops any id it did not send, so an item naming something
+            else could never produce a stored verdict. An item whose criterion is
+            deleted is removed with it.
+        text: { type: string, maxLength: 2000 }
+        weight:
+          type: number
+          description: |
+            The author's relative-importance signal, passed to the model as
+            written. Nothing in the platform does arithmetic on it: the overall
+            verdict is recomputed from the per-criterion results, so this is not
+            a score. Absent means the author gave none.
+        evidence_required:
+          type: boolean
+          description: |
+            Whether this item's verdict must come back with a quotation. Per item
+            rather than a global switch, because a quote can show that something
+            is present and cannot show that something is absent.
+    Rubric:
+      description: |
+        A user-editable strengthening of the acceptance criteria (CONTENT-007) —
+        not a second mechanism. Its items map onto the same `criterion_results`
+        entries the criteria produce; a rubric only adds what a judgement must
+        show its work for.
+      type: object
+      required: [version, items]
+      properties:
+        version:
+          type: string
+          maxLength: 200
+          description: |
+            Which wording is in force. Changing any item's text, weight or
+            evidence flag is a new version and therefore another judge regression
+            (EVAL-013), so this is recorded on every evaluation it produced
+            (`Evaluation.rubric_version`). Not sent to the judge: the internal
+            contract's Rubric carries only the items.
+        items:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: "#/components/schemas/RubricItem" }
     TestCase:
       type: object
       required:
@@ -3234,6 +3302,13 @@ components:
         acceptance_criteria:
           type: array
           items: { $ref: "#/components/schemas/AcceptanceCriterion" }
+        rubric:
+          allOf:
+            - $ref: "#/components/schemas/Rubric"
+          description: |
+            Absent means this test case has no rubric — never that it uses a
+            default one. The copy a run was judged against is the one frozen in
+            its snapshot, which is what `Evaluation.rubric_version` names.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     Dataset:

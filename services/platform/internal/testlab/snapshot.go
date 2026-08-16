@@ -32,6 +32,11 @@ type snapshotContent struct {
 	UserPrompt         string       `json:"user_prompt"`
 	AcceptanceCriteria []Criterion  `json:"acceptance_criteria"`
 	DatasetRefs        []DatasetRef `json:"dataset_refs"`
+	// Part of the hashed body: two runs judged against different rubrics did not
+	// execute the same input, whatever else matched. `omitempty` on purpose — a
+	// test case with no rubric hashes exactly as it did before 0026, so the
+	// column's arrival does not make every M2 snapshot look like a different one.
+	Rubric *Rubric `json:"rubric,omitempty"`
 }
 
 // CreateSnapshot freezes a test case into the row a run executes (TEST-010).
@@ -89,10 +94,19 @@ func CreateSnapshot(ctx context.Context, q *gen.Queries, workspaceID, testCaseID
 		})
 	}
 
+	// The rubric is frozen with the criteria it strengthens (CONTENT-007, iron
+	// rule 4). Editing the draft's rubric afterwards changes the *next* run and
+	// nothing about the standard this one was judged against.
+	rubric, err := DecodeRubric(tc.Rubric)
+	if err != nil {
+		return gen.TestCaseSnapshot{}, err
+	}
+
 	content := snapshotContent{
 		UserPrompt:         tc.UserPrompt,
 		AcceptanceCriteria: criteria,
 		DatasetRefs:        refs,
+		Rubric:             rubric,
 	}
 	body, err := json.Marshal(content)
 	if err != nil {
@@ -115,6 +129,8 @@ func CreateSnapshot(ctx context.Context, q *gen.Queries, workspaceID, testCaseID
 		AcceptanceCriteria: encodedCriteria,
 		DatasetRefs:        encodedRefs,
 		ContentHash:        hex.EncodeToString(sum[:]),
+		// Copied, not re-encoded: the frozen bytes are the ones that were stored.
+		Rubric: tc.Rubric,
 	})
 }
 

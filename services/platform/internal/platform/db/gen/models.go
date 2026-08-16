@@ -351,6 +351,7 @@ type TestCase struct {
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
 	DeletedAt          pgtype.Timestamptz
+	Rubric             []byte
 }
 
 type TestCaseSnapshot struct {
@@ -362,6 +363,7 @@ type TestCaseSnapshot struct {
 	DatasetRefs        []byte
 	ContentHash        string
 	CreatedAt          pgtype.Timestamptz
+	Rubric             []byte
 }
 
 type TraceEvent struct {
