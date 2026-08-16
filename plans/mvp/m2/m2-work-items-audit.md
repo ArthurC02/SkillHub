@@ -7,7 +7,14 @@
 - 判定值：**完全符合**（勾 `[x]`）／**部分完成**（不勾，列缺口）／**未動**（不勾）。
 - 依 AGENTS.md 文件維護規則：**部分完成一律保持 `[ ]`**。
 
-> **對帳當下的工作樹狀態**：乾淨，`HEAD == origin/main == 512add1`。另一位協作者正在處理 CONTENT-005 的 11 筆摘要補揭露（[content-baseline-report.md §7.2 #1](content-baseline-report.md)），對帳結束時**尚未有 commit 進來**，故本文件記為 in-flight，不列為證據也不影響任何勾選（見 §9.7）。
+> **對帳當下的工作樹狀態**：乾淨，`HEAD == origin/main == 512add1`。
+>
+> **2026-08-16 完結後回填（追加不改寫）**：對帳期間 in-flight 的兩件事都已落地，本文件據此更新 §9.7 與新增 §9.8，**§1～§8 的判定與勾選一字未改**。
+>
+> | commit | 內容 | 對本對帳的影響 |
+> | --- | --- | --- |
+> | `afb5767` | CONTENT-005 的 11 筆 Python 揭露缺口（prompt 升 `enrich-skill/v5`） | **11/11 關閉**；但 `docx` 兩輪重審未過，**CONTENT-005 現為 44/45**。CONTENT-007／008 的判定不受影響（見 §7 註） |
+> | `ddc3e54` | `services/sandbox/README.md` 的 SDK 載入條件 | **§9.7 已關閉**，見該節 |
 
 ---
 
@@ -177,6 +184,8 @@ TEST-004 只是第一個撞到「顯示」這個動詞的項目。實際狀況�
 | **CONTENT-007** 範例資料、Prompt 與驗收條件 | **維持不勾（部分完成）** | `02` §4.7 五條：①每個精選一組 Dataset／Prompt／驗收條件且可散布 ✅（15/15，合成資料）；②Prompt 明確點名該 Skill ✅（模板首句即點名，未提供不點名變體）；③**`writing` 類精選附可編輯 rubric 供 LLM Judge 逐項回傳證據引文 ❌**——本批給的是三條通用驗收條件，EVAL-001／002 的 Judge 介面尚未實作，rubric 沒有消費端；④範例資料無 Secrets／個資 ✅（1112 事件全數通過遮罩）；⑤實際使用的 Prompt 與驗收條件以快照保存 ✅（`test_case_snapshots` 73 列，不可變）。**四條達成、一條未達成，不勾正確** |
 | **CONTENT-008** 平台基準試跑 | **✅ 維持勾選** | `02` §4.7 五條全數達成：①精選 15/15「符合」（`succeeded` ＋ trace 有 `skill_activation` ＋ artifact 確有檔案）；②在隔離 Sandbox 內執行，不在匯入或掃描階段 ✅（全部經 sandboxd 派送至獨立容器）；③可追溯 Skill Version／Test Case 快照／Provider／Runtime／Trace ✅（[報告 §9](content-baseline-report.md)，且**本次已回資料庫重查通過**，見 §2.3）；④未通過者不得標記精選 ✅（無精選未通過）；⑤source-available 照常試跑不產 Download Artifact ✅。九項精選檢查的 ⑧ 由 `pending` 改記 `pass` 成立 |
 
+> **2026-08-16 回填：CONTENT-005 的 44/45 不影響本節兩項判定。** `afb5767` 關閉了基準試跑查出的 11 筆 Python 揭露缺口，`docx` 兩輪未過而使 CONTENT-005 由 45/45 退為 44/45（裁定見 [README 乙-11](README.md)）。**`docx` 是「已索引」層不是精選**，而 CONTENT-007／008 的允收對象是**精選 15 筆**——15 筆全數不在該清單內，故 CONTENT-008 維持勾選、CONTENT-007 的不勾理由仍只有 rubric 一項。受牽動的是 CONTENT-005 自己與 CONTENT-003 的檢查 ⑦（皆屬 M1 節，不在本對帳範圍）。
+
 > **判定的誠實度值得記一筆**：報告把「Run `succeeded` 但 `/out/artifacts/` 是空的」（`date-wrangling`）記為「未產出」而非四捨五入成符合，並指出 `run.mjs` 的 `finish("succeeded")` 只代表「agent 這一輪沒有拋錯」、與任務是否完成無關。**這正是 EVAL-001 存在的理由**，見 §10。
 
 ---
@@ -294,7 +303,13 @@ PDM-005 §5.3 明文列出「`02:TEST-005` 權限摘要的具體欄位」，其�
 
 報告已備妥可直接回填的實測值：`capability = activated` 45/45；`runtime` 為 11 個原生可執行、1 個 node 可執行、33 個「腳本不可執行、由模型轉譯」。**資料在，欄位不在。**
 
-### 9.7 `services/sandbox/README.md:112` 記載的是被推翻前的 SDK 行為（**會誤導**）
+### 9.7 ~~`services/sandbox/README.md:112` 記載的是被推翻前的 SDK 行為~~ → **已關閉（`ddc3e54`）**
+
+> **2026-08-16 回填**：該行已改為一張條件表（`cwd` 指向持有 `.claude/skills/` 的目錄／`settingSources` **省略**／`skills: "all"`／`allowedTools` 傳 `'Skill'` 已 deprecated），並補上 `<name>/` 那層不能省的理由（SDK 以「一個目錄一個 skill」發現，倒進 skills 根目錄會被發現為零個）、反轉的實測依據，以及與 `run.mjs` 檔頭相同的警語：**每一條都是靜默失效，這一條已經反轉過一次，SDK 升級必須重新實測而非推理**。
+>
+> **仍未處理的那半**：SDK 版本只釘在 `Dockerfile` 的 `ARG CLAUDE_AGENT_SDK_VERSION=0.3.233`，**沒有任何 ADR 記錄這次行為反轉**。下方原文保留供回溯。
+
+
 
 第四批以實測推翻了 PDM-003 Spike（claude-agent-sdk 0.2.137）的假設：**Agent SDK 0.3.233 上 `settingSources: ["project"]` 完全發現不到專案 skill，必須省略 `settingSources`**；且 skill 啟用已從 `allowedTools` 移到獨立的 `skills` 選項。這件事在三個地方寫對了：
 
@@ -314,6 +329,27 @@ PDM-005 §5.3 明文列出「`02:TEST-005` 權限摘要的具體欄位」，其�
 
 **建議**：修 `services/sandbox/README.md:112`（一行，屬程式碼側檔案，本次對帳未動），並考慮把「SDK 行為只能實測不能推理」這件事留一個更持久的落點——它已經在一個里程碑內被推翻過一次。
 
+### 9.8 兩個增強管線的平台缺陷（**2026-08-16 回填，由 `afb5767` 的修正輪查出**）
+
+兩者都與 M2 的工作項無關，但**都是 M2 基準試跑的副產物直接暴露出來的**，且**都沒有工作項承接**——承接它們的 `INGEST-009` 已勾選並隨 M1 結案。歸類為乙（待決策）而非丙（移交 M3）：M3 是評估里程碑，這兩件事不碰評估路徑；要修得先有人裁定「重開 `INGEST-009` 還是新增工作項」。
+
+**(a) 增強實際只有 30 秒，而且逾時仍在閘道產生費用。**
+
+| 位置 | 值 |
+| --- | --- |
+| `services/platform/internal/llmclient/client.go:25` | `return &http.Client{Timeout: 30 * time.Second}`（`httpClient()` 的預設，`HTTPClient` 為 nil 時生效） |
+| `services/platform/internal/ingest/enrich.go:32` | `enrichTimeout = 75 * time.Second`，於 `:107` `context.WithTimeout` |
+
+`http.Client.Timeout` 是**整個請求（含 body 讀取）的硬期限**，30 秒先到，那個 75 秒的 ctx 預算因此從來沒被用到。實測後果記於 [content-review-report.md §11](../m1/content-review-report.md)：修正輪 14 次成功增強中有 **3 次逾時**（`docx` 是 `/embed` 逾時，`excel-split`／`excel-delete` 是增強逾時），重跑即過。
+
+**真正的代價不是重跑而是錢**：client 端放棄不會取消上游的模型呼叫，**每一次逾時都已在閘道計費**。建議把逾時交給 ctx 單一控制，不要在 client 上另設一個更短的硬期限——**兩個逾時裡較短的那個才是真的，而較長的那個是寫在程式裡的一個誤解**。
+
+**(b) `ReindexAll` 把全庫 `updated_at` 推成 `now()`，補跑清單因此無法用時間戳篩選。**
+
+`db/queries/search.sql:244-253` 對每一筆存活 skill 無條件 `updated_at = now()`（INSERT 的 SELECT 與 `ON CONFLICT DO UPDATE` 兩邊都是）。而 `ListPendingEnrichment` 的語意是「全庫 pending、oldest first」，所以 **`updated_at` 與 `REINDEX_BATCH` 都擋不住** M2 基準試跑在 `content-baseline` 臨時 Workspace（`91b951b3…`）留下的 **45 筆 fork 文件**——它們各有一筆 `enrichment_status='pending'` 的 `search_documents`，照跑會多花約 45 次旗艦增強呼叫（**約 $2**）。
+
+修正輪的處置是把那 45 筆暫標 `enriched`、跑完立刻還原（以 `enriched_summary=''` ＋ `embedding IS NULL` 為還原條件，實測還原 45/45 逐欄相同）。**這是每次補跑都要重做一次的人工步驟，不是修好了。** 這件事在 M2 之前不會發作——是基準試跑第一次在庫裡放進大量 fork 文件才讓它可見。
+
 ---
 
 ## 10. 收斂建議與順序
@@ -326,7 +362,8 @@ PDM-005 §5.3 明文列出「`02:TEST-005` 權限摘要的具體欄位」，其�
 | --- | --- | --- |
 | **1** | **§9.1 token 硬上限二選一裁定** | 這是唯一一個「使用者被要求確認一個平台不會執行的限制」的地方，直接踩 NFR-001。且 §9.2 洞二讓金額煞車也不可信，三個煞車實剩兩個 |
 | **2** | **§9.2 洞二：定位閘道預算計數的 50 倍誤差** | 9 個已索引 Skill 沒有有效基準卡在這裡；PDM-003 v5 的 $0.50 預設值在查清前不可信；補跑預估 $1.0–1.5 |
-| **3** | **§9.7 修 `services/sandbox/README.md:112`** | 一行的修改，防止下一個人照著反的指示走進靜默失效 |
+| ~~3~~ | ~~§9.7 修 `services/sandbox/README.md:112`~~ | ✅ **已完成（`ddc3e54`）**。剩下的半件是「這次行為反轉沒有 ADR 記錄」 |
+| **3** | **§9.8(a) 增強的 30 秒硬期限** | 一行的修改（逾時交給 ctx），但每次逾時都在閘道花錢；而任何 CONTENT-005 的後續修正輪都會再踩一次 |
 | **4** | **§9.6 Agent 相容軸的四個待決先答** | 資料已備妥（45/45 activated、33 個模型轉譯），只缺欄位設計決策。答完才談 migration |
 
 ### 第二梯：M2 內仍缺的實作
@@ -337,6 +374,8 @@ PDM-005 §5.3 明文列出「`02:TEST-005` 權限摘要的具體欄位」，其�
 | 6 | **§9.4 Workspace 並行上限（＝2）** | PDM-005 已定值，SEC-002 閘門 B 已列為阻擋條件，缺的只是實作。是四項裡唯一不依賴任何未決策的 |
 | 7 | **§9.3 預估成本區間進權限摘要**＋**§9.1 的輪數表回寫 `02:RUN-003`** | 兩者都是「PDM 指定要回寫 `02` 而沒回寫」，一起做 |
 | 8 | **§9.2 洞一：`run.mjs` 的 usage 事件移出 `result` 分支** | 或在 `finish()` 的所有路徑上補一次 spend 讀取。影響 EVAL-012 的成本比較準確度 |
+| 9 | **§9.8(b) `ReindexAll` 的 `updated_at = now()`** | 不修就是每次補跑都要人工圈掉 45 筆 fork 文件，漏一次多花 $2 |
+| 10 | **`docx` 的裁定（CONTENT-005 44/45）** | 三條路徑見 [README 乙-11](README.md)。**選「下架」前要先看清楚代價**——它是 golden query D01 的 gold primary 且為現行 Top-1 |
 
 ### 第三梯：M2 內結構性不可能完成（→ 部署期／待決策，見 [README.md](README.md) 的殘項三類清單）
 
