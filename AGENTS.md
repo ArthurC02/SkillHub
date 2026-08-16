@@ -11,7 +11,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
 | `plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單；`m0/` 為 M0 產出（決策提案 v5、成本試算、威脅模型、Spike 報告） | [plans/mvp/README.md](plans/mvp/README.md) |
-| `adr/` | 20 份架構決策紀錄（ADR-000～019；014 已 Superseded by 018） | [adr/README.md](adr/README.md)（含索引與架構總圖） |
+| `adr/` | 24 份架構決策紀錄（ADR-000～023；014 已 Superseded by 018） | [adr/README.md](adr/README.md)（含索引與架構總圖） |
 | `spikes/` | M0 驗證用 spike code（可重跑，非產品程式碼，不進 CI） | 各目錄 README |
 
 Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**——鋪程式碼依其結構進行，結構性偏離需先更新 ADR。
@@ -60,6 +60,7 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**——鋪�
 ## 慣例
 
 - 文件語言：繁體中文（保留 Run、Workspace、Provider 等英文術語不硬翻）。
+- 多人／多 agent 共用同一工作樹平行作業時：只以明確 pathspec stage 自己的檔案、push 前 `git pull --rebase`；**禁止 `git stash`**（stash 會連他人未提交與未追蹤的工作一起收走，本專案已三度因此出事）；暫存產物放 scratchpad，不放 repo 根目錄。
 - 程式碼、識別字、commit message：英文。
 - 里程碑：M0 基線 → M1 Explorer（結尾有驗證閘門，不通過不進 M2）→ M2 Lab → M3 評估 → M4 打包與封測。
 - 需求 ID 前綴：DISC／SKILL／WS／TEST／RUN／SBX／TRACE／EVAL／PACK／NFR／PDM／SEC 等，見 `plans/mvp/02`、`03`。

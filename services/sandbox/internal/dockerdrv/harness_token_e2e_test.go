@@ -15,13 +15,13 @@ package dockerdrv_test
 //	                           (on the dev egress network, http://litellm:4000)
 //	SKILLHUB_E2E_GATEWAY_KEY   a key that may call it
 //	SKILLHUB_E2E_EGRESS_NETWORK  the docker network both are on (skillhub_egress)
-//	SKILLHUB_E2E_RUNTIME_IMAGE   defaults to skillhub/runtime-agent-sdk:2026.08-1
+//	SKILLHUB_E2E_RUNTIME_IMAGE   defaults to skillhub/runtime-agent-sdk:2026.08-2
 //
 // The image must be built from the working tree, not pulled: what is under test
 // is run.mjs, and a tag left over from an earlier build fails these assertions
 // while looking like a product bug.
 //
-//	docker build -t skillhub/runtime-agent-sdk:2026.08-1 infra/images/runtime-agent-sdk
+//	docker build -t skillhub/runtime-agent-sdk:2026.08-2 infra/images/runtime-agent-sdk
 //
 // Two turns of a trivial prompt: a few cents at the mini tier.
 
@@ -67,7 +67,7 @@ func gatewayHarness(t *testing.T) (*sandbox.Manager, sandbox.RunRequest, *collec
 	}
 	image := os.Getenv("SKILLHUB_E2E_RUNTIME_IMAGE")
 	if image == "" {
-		image = "skillhub/runtime-agent-sdk:2026.08-1"
+		image = "skillhub/runtime-agent-sdk:2026.08-2"
 	}
 
 	d, err := dockerdrv.New(dockerdrv.Config{
