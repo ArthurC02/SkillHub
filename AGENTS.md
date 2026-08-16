@@ -4,13 +4,18 @@
 
 Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然語言描述任務 → 探索候選 Skill → 用自己的 Prompt 與測試資料在隔離 Sandbox 試跑 → 依 Trace 與評估報告改善 → 下載符合 Agent Skills 規格的可攜套件。
 
-## 目前狀態（2026-08-14）
+## 目前狀態（2026-08-16）
 
-**M0 基線完結，進入 M1。** 開工前的三個阻塞項已全部解除（PDM-001~003 定案、成本試算完成、PDM-011 Spike 完成；見 [plans/mvp/m0/README.md](plans/mvp/m0/README.md)）。
+**M2 Skill Lab 完結，M0／M1 程式碼面已收斂。** 對帳見 [plans/mvp/m2/m2-work-items-audit.md](plans/mvp/m2/m2-work-items-audit.md)（41 項：33 維持勾選、1 退回後補回、7 誠實不勾）。
+
+- **M1 驗證閘門尚未正式通過**：使用者測試材料已備妥（[plans/mvp/m1/gate-test/](plans/mvp/m1/gate-test/)），**D 日待負責人宣告**；閘門與 M2 開發並行，通過與否以測試結果為準。
+- **ADR-020～023 已入列**（身分／Session、License 溯源、Sandbox 部署拓撲與安全定值、Agent SDK 版本釘選）。
+- **殘項三類清單**（甲＝部署期驗收、乙＝待負責人決策、丙＝移交 M3 的接點）見 [plans/mvp/m2/README.md](plans/mvp/m2/README.md) 末節——**開工前先看那份，它記的是「已定值但沒有強制」與「已量到但沒查根因」那一類洞**。
+- 下一個里程碑是 **M3 評估**；M3 的接點（`trace.Service` 讀寫面、成本合計是下界、`succeeded` ≠ 任務完成）已在丙類逐項寫明。
 
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
-| `plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單；`m0/` 為 M0 產出（決策提案 v5、成本試算、威脅模型、Spike 報告） | [plans/mvp/README.md](plans/mvp/README.md) |
+| `plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單；`m0/`／`m1/`／`m2/` 為各里程碑產出（決策提案 v5、成本試算、威脅模型、Spike 報告、內容審校與基準試跑報告、工作項對帳） | [plans/mvp/README.md](plans/mvp/README.md) |
 | `adr/` | 24 份架構決策紀錄（ADR-000～023；014 已 Superseded by 018） | [adr/README.md](adr/README.md)（含索引與架構總圖） |
 | `spikes/` | M0 驗證用 spike code（可重跑，非產品程式碼，不進 CI） | 各目錄 README |
 
@@ -26,7 +31,10 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**——鋪�
 | 模型供應商 | OpenAI API（試跑預設 mini 級；Embedding `text-embedding-3-small`），一律經 LiteLLM 閘道 | PDM-003、ADR-017 |
 | 資料 | PostgreSQL 中心（交易、FTS + pgvector、佇列、Trace 分割表）＋受管 S3 相容物件儲存；核心元件容器化自架（E1） | ADR-018 |
 | 搜尋 | 混合檢索（向量腿承載跨語言召回，FTS＋RRF 為召回覆蓋）＋索引時 LLM 增強（摘要與任務範例句為必要項） | ADR-013 |
-| Sandbox 隔離 | gVisor 基線，獨立 VM 池，Egress 全走 default-deny Proxy | ADR-015、005 |
+| Agent Runtime | Claude Agent SDK **0.3.233**，以 digest ＋ lockfile 釘選；升級必須重跑四項實測，靜默失效不得以推理帶過 | ADR-023 |
+| 身分與 Session | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | ADR-020 |
+| Sandbox 隔離 | gVisor 基線（`systrap` 平台，不需巢狀虛擬化），獨立 VM 池，沙箱層 nftables default-deny ＋固定 DNS（不部署 L7 Proxy） | ADR-015、005、022 |
+| Runtime Image | 自建映像發佈至 **GHCR**，SBOM 與漏洞掃描以 attestation 隨 digest 保存；過不了門檻的映像到不了 registry | ADR-022、`03` SBX-011 |
 | 模型出口 | LiteLLM Proxy（唯一模型閘道，每 Run 短效 Virtual Key） | ADR-017 |
 | LLM 觀測 | Langfuse Cloud（工程調優專用，非事實來源） | ADR-017 |
 | 契約 | OpenAPI-first，Go 為 spec 來源，codegen 產 TS/Python stub | ADR-016 |
@@ -53,7 +61,7 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**——鋪�
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容。
-- 新 ADR 從 **ADR-020** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
+- 新 ADR 從 **ADR-024** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
 - ADR 的待決策被後續 ADR 回答時，回填 `→ [ADR-xxx](...)` 引用（現有文件已有此慣例）。
 - 新 ADR 記得更新 [adr/README.md](adr/README.md) 的決策索引。
 
@@ -76,7 +84,8 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**——鋪�
 | 資料模型與儲存 | ADR-003、018 |
 | Monorepo 結構與 CI/CD | ADR-019 |
 | Run 生命週期與 Provider 契約 | ADR-004、008 |
-| 安全與信任 | ADR-005、007、015 |
+| 安全與信任 | ADR-005、007、015；部署拓撲與安全門檻定值見 ADR-022 |
+| 目前還缺什麼、誰在等誰 | `plans/mvp/m2/README.md` 末節的殘項三類清單 |
 | 語言分工與跨語言守則 | ADR-016 |
 | 模型呼叫與成本 | ADR-017 |
 | 目前所有未決議題 | 各 ADR 的「待決策」章節＋ `plans/mvp/03` 第 1 節 |
