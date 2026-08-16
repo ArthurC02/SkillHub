@@ -287,3 +287,87 @@ python tools/eval-regression/judge_regression.py --dry-run
 ```
 
 結果**追加**到 `tools/eval-regression/results.jsonl`，一列一個 Run。**不要覆寫該檔**：`regression_id` 是區分兩輪的唯一依據，覆寫等於讓「尺變了」變成看不見的事（ADR-026 決策 1）。
+
+帶 rubric 的那一輪多一個參數（第 11 節）：
+
+```bash
+python tools/eval-regression/judge_regression.py \
+  --judge-url http://127.0.0.1:8010/judge-run \
+  --rubric tools/eval-regression/rubric-content-007-writing-v1.json --note "..."
+```
+
+---
+
+## 11. A 輪：`CONTENT-007` 的 writing rubric 套上既有基準 Run（2026-08-17）
+
+- `regression_id`：**`2026-08-16T191019Z`**（`results.jsonl` 內第 4 段，前三段不動）
+- 參數：`judge_model = gpt-5.6-terra`、`judge_prompt_version = judge-run/v2`、**`rubric_version = content-007/writing/v1`**、截斷預算與前三輪相同
+- 對象：[`content/writing-rubrics.md`](../content/writing-rubrics.md) §4 的 5 個 `writing` 精選，各取其**既有**基準 Run（`ai-written-check`／`brand-guidelines`／`humanizer`／`internal-comms`／`line-edit`）
+- 送出的條件 ＝ 快照原本的 3 條 ＋ rubric 的 4～5 條（`writing-rubrics.md` §4「M2 三條基準條件照舊保留」）；rubric 本身以 `items` 帶上
+- **這是 [`writing-rubrics.md` §5.1](../content/writing-rubrics.md) 兩輪計畫的 A 輪。B 輪（改 Prompt 後重跑 5 筆 Run 再評）不在本批**，見 §11.5
+
+### 11.1 結果：預測錯了，而且錯得有內容
+
+`writing-rubrics.md` §5.1 預測 A 輪「**絕大多數條目應為 `undetermined`**」，理由是那 5 筆 Run 的 Prompt 沒有 §3 第 4 條、最終回覆只有一行檔名說明，因此文字品質類條目沒有可引用的證據。**實測不是這樣**：
+
+| 判定 | 條目數（共 22） | 佔比 |
+| --- | --- | --- |
+| `failed` | 10 | 45.5% |
+| `passed` | 9 | 40.9% |
+| `undetermined` | **3** | **13.6%** |
+
+平台降級 **0 筆**（沒有任何引用回驗不過）。同時送出的兩條可計分基準條件仍然 **10／10 一致**——加了 rubric 與 5 條新條件之後，既有回歸的答案沒有被擾動。
+
+**預測錯在哪裡**：§2.2 把 Judge 看得到的東西列為「最終回覆」與「artifact manifest 列」兩者，漏了第三條——**trace digest 裡的 `tool_call` payload 帶著寫檔當下的內容**。
+
+前半的事實描述完全正確：這 5 筆的最終回覆實測長度是 **33～49 字元**，五筆都是一行檔名（`已產出檔案：/out/artifacts/q2_update_humanized.md` 這個形狀），沒有一筆貼了正文。錯的是從它推出的結論——agent 寫檔的工具呼叫連同正文一起進了 trace，而 `trace_event` 型證據**是逐字回驗的**（`verify()` 檢查引文是該事件 payload 的子字串）。所以「產出沒有出現在最終回覆」並不等於「沒有可引用的證據」。
+
+反向也成立：10 筆 `failed` 裡有 7 筆的證據就是那一行檔名回覆（`agent_output` 型，逐字回驗通過）——**要證明「回覆沒有貼出正文」，那一行本身就是證據**，這一類判定不需要看到正文，也確實判對了。
+
+這對 `writing-rubrics.md` §3 的取捨有直接影響：那句「最終回覆必須完整貼出正文」的 Prompt 修改，其**必要性**比原本論述的弱（代價是輕度投其所好，收益則部分已由 trace 提供）。**但不建議因此撤掉它**——trace 這條路徑取決於 agent 恰好用了寫檔工具、且該事件恰好落在 digest 的尾 100 筆內，兩者都不是契約保證的；B 輪才是在保證的證據路徑上量的。
+
+`humanizer` 是唯一一筆符合原本預測的（3/4 條 `undetermined`，且全部是 `evidence_required: true` 卻拿不出引用）——它的寫檔內容沒有以可引用的形式進入 digest。**這一筆說明「該說不知道時會說不知道」在證據真的缺席時是成立的**，那正是 A 輪要測的東西；只是它只在 5 筆裡出現 1 筆。
+
+### 11.2 A 輪查出的新缺口：`artifact` 型引用的引文從來沒有被回驗
+
+**9 筆 `passed` 裡有 6 筆，其證據只有 `artifact` 型引用。** 而 `artifact` 型引用的回驗只檢查「路徑在 manifest 上」，**引文不比對**（`internal/eval/judge.go` 的 `verify()`，理由是請求裡根本沒送 artifact 位元組）。於是：
+
+- 條目標了 `evidence_required: true`，模型回了一段看似逐字的引文，平台**照單全收**；
+- 存進報告的 `excerpt` 是**平台自己的 manifest 行**（檔名與大小），不是那段引文；
+- 讀報告的人看到的是「這條要求引文 → 通過 → 證據是 `report.md, 4096 bytes`」。
+
+逐筆追查後可以確定**模型沒有捏造**：抽查 `ai-written-check-r1`／`r5` 的引文，兩段都逐字存在於該 Run 的 `trace_events` payload 裡（各命中 1 筆事件）。**模型看到的是 trace，貼標籤時寫成了 `artifact`。** 問題不在模型誠不誠實，而在**平台分不出這兩種情況**：同一個回應形狀，一種是「引文出自它讀得到的 trace、只是歸錯類」，另一種是「引文是編的」，而 `verify()` 對兩者一律放行。
+
+這是 `writing-rubrics.md` §6.2 **G5／G6 的延伸，但不是同一件事**——G5／G6 說的是「Judge 讀不到 artifact 內容」，這裡說的是「**在讀不到的前提下，平台仍會接受一段宣稱來自 artifact 的引文**」。記為 **G7**，處置建議兩選一，**本批不改，因為它動的是 ADR-026 defence 3 的判準**：
+
+- (a) `artifact` 型引用**不得**滿足 `evidence_required`：要求引文的條目只接受 `agent_output` 與 `trace_event`（兩者都逐字回驗）。最小改動，且與「引文用來證明存在」的原意一致。
+- (b) 保留 `artifact` 型引用，但存進報告時**明確標示其引文未經回驗**，並讓 UI 照樣顯示。誠實但不阻擋。
+
+### 11.3 逐 Skill
+
+| Skill | rubric 條目 | `passed` | `failed` | `undetermined` | 一句話 |
+| --- | --- | --- | --- | --- | --- |
+| `ai-written-check` | 5 | 4 | 1 | 0 | 產出報告的正文經由 trace 可見；4 筆 `passed` 中 3 筆只靠 `artifact` 引用（§11.2） |
+| `line-edit` | 5 | 3 | 2 | 0 | 同上，3 筆 `passed` 全部只靠 `artifact` 引用 |
+| `internal-comms` | 4 | 1 | 3 | 0 | 唯一的 `passed`（3P 三區塊）靠 `trace_event` 引用，逐字回驗通過 |
+| `brand-guidelines` | 4 | 1 | 3 | 0 | 三條「自述」條目判 `failed`，引用的都是那句只講檔名的最終回覆——**符合 §4.5 的設計本意** |
+| `humanizer` | 4 | 0 | 1 | **3** | 唯一符合原本預測的一筆：要求引文而拿不到，如實回 `undetermined` |
+
+### 11.4 成本
+
+| 項目 | 數字 |
+| --- | --- |
+| 閘道實付（`/global/spend` 前後差） | **$0.14363**（11.364993 → 11.508623） |
+| 服務層回報合計 | $0.1436（5 次呼叫，與閘道差 < $0.0001） |
+| 單筆最高 | $0.0357（`ai-written-check`），未觸發 harness 的 $0.10 警戒 |
+| 單筆中位數 | **$0.0275** |
+| 同 5 個 Skill、無 rubric 時的中位數 | $0.0121（前兩輪 10 筆） |
+| 事前估計（`writing-rubrics.md` §5.1） | ~$0.07 |
+
+**實付是估計的 2 倍，原因已知且不是異常**：估計沿用「只多 5 次 Judge 呼叫」的算法，用的是全量 45 筆的中位數 $0.0136；但這 5 筆同時多送了 5 條驗收條件與整份 rubric 文字，單筆成本因此漲到 2.3 倍。**估法要修的是「加 rubric 的呼叫不能用不加 rubric 的中位數估」**，evaluation-design §6.3 的 $0.01–0.05 區間本身仍然涵蓋實測值（$0.0238～$0.0357）。
+
+### 11.5 B 輪仍未跑（誠實記為待辦）
+
+B 輪＝依 `writing-rubrics.md` §3 修訂 Prompt（加第 4 條「最終回覆必須完整貼出正文」）後**重跑那 5 筆 Run**，再以同一份 rubric 評估。它測的是 A 輪測不到的東西：**證據完整時，逐項引文的實判定**。
+
+不在本批的原因是它需要發 5 次真實 Run（沙箱、映像、閘道費用，非只多 5 次 Judge 呼叫），且會產生新的 Test Case 快照——屬 Run 批而非本次的接線批。**A 輪已足以關閉 `CONTENT-007` 的 G4（harness 吃得下 rubric）與驗證接線後的形狀，但不足以宣稱「rubric 判得準」**，`02:EVAL-013` 的「沒測到」第一格因此**仍然開著**。

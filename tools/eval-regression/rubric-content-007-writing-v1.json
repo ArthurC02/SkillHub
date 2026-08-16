@@ -1,0 +1,113 @@
+{
+  "rubric_version": "content-007/writing/v1",
+  "source": "docs/plans/mvp/content/writing-rubrics.md §4",
+  "note": "Curated default rubrics for the five writing curated Skills. Every item's id is the id of the criterion it strengthens; the harness refuses a file where that is not true. Changing any text, weight or evidence flag here is a new rubric_version and therefore another regression (02:EVAL-013 clause 3).",
+  "skills": {
+    "humanizer": {
+      "criteria": [
+        {"id": "humanizer-r1", "text": "最終回覆含改寫後的完整正文。"},
+        {"id": "humanizer-r2", "text": "改寫保留原草稿的每一項主張，且未加入草稿沒有的事實、姓名、數字、日期或引用。"},
+        {"id": "humanizer-r3", "text": "改寫移除或重寫了草稿中的贅詞、空泛歸因或公式化結尾。"},
+        {"id": "humanizer-r4", "text": "最終改寫不使用 em dash（—）或 en dash（–）。"}
+      ],
+      "rubric": {
+        "items": [
+          {"id": "humanizer-r1", "weight": 3, "evidence_required": true,
+           "text": "最終回覆必須含改寫後的完整正文，而不只是「已完成改寫並存檔」這類說明。引文請取改寫正文的開頭一句。只給檔名或摘要視為未達成——本條不成立時，其餘三條沒有可判的對象。"},
+          {"id": "humanizer-r2", "weight": 3, "evidence_required": true,
+           "text": "改寫必須保留原草稿的每一項主張，且不得加入草稿裡沒有的事實、姓名、數字、日期、引文或引用資料。判 passed 時，引文請取改寫中承載原草稿主張的一句；判 failed 時，引文請取那句新增的內容。語氣與措辭的改變不算新增事實，新的數字、機構名或因果宣稱算。"},
+          {"id": "humanizer-r3", "weight": 2, "evidence_required": true,
+           "text": "改寫必須實際處理掉草稿裡的 AI 寫作痕跡，至少涵蓋贅詞、空泛歸因（沒有主體的「業界普遍認為」類說法）或公式化結尾其中一類。引文請取改寫後對應的那一句，並在 reason 裡點出它取代了原草稿的哪一處。整篇只換同義詞而句構與套語照舊者判 failed。"},
+          {"id": "humanizer-r4", "weight": 2, "evidence_required": false,
+           "text": "最終改寫的正文不得使用 em dash（—）或 en dash（–）。套件文件的樣本頻率例外在本測試不適用，因為本次沒有提供寫作樣本。判 failed 時引文請取含破折號的那一句；判 passed 時不需引文——缺席無法引用。"}
+        ]
+      }
+    },
+    "line-edit": {
+      "criteria": [
+        {"id": "line-edit-r1", "text": "最終回覆先給一份可直接複製的完整修訂全文。"},
+        {"id": "line-edit-r2", "text": "修訂版保留原作者的原意與語氣，未替作者新增內容或改變立場。"},
+        {"id": "line-edit-r3", "text": "修訂版消除了草稿中的贅詞或彆扭句子，且可逐處對回原句。"},
+        {"id": "line-edit-r4", "text": "全文之後另列出涉及語意取捨的修改與其原因。"},
+        {"id": "line-edit-r5", "text": "無法從草稿確認原意之處以問題形式標出，而非逕自猜寫。"}
+      ],
+      "rubric": {
+        "items": [
+          {"id": "line-edit-r1", "weight": 3, "evidence_required": true,
+           "text": "最終回覆的第一個區塊必須是可直接複製貼上的完整修訂全文，而不是修改清單或說明。引文請取該全文的開頭一句。先列清單後補全文者仍可 passed，但全文缺席判 failed。"},
+          {"id": "line-edit-r2", "weight": 3, "evidence_required": true,
+           "text": "修訂必須保留原作者的原意與個人語氣，且不得替作者新增草稿沒有的內容、承諾或立場——本 Skill 的文件明載它不代筆、只處理已寫好的草稿。判 passed 時，引文請取一句保留了原作者措辭的修訂句；判 failed 時，引文請取那句被改掉立場或憑空補上的內容。"},
+          {"id": "line-edit-r3", "weight": 2, "evidence_required": true,
+           "text": "修訂版必須實際處理掉草稿中的贅詞、彆扭句子或不清楚的表達，且每一處都對得回原句。引文請取修訂後的那一句，reason 裡寫出它對應原草稿的哪一句。與原文逐字相同者判 failed。"},
+          {"id": "line-edit-r4", "weight": 2, "evidence_required": true,
+           "text": "全文之後必須另有一份清單，列出涉及語意取捨的修改及其原因——不是逐字修改的完整 diff，而是「改了意思、所以要交代」的那幾處。引文請取清單中的一項。清單缺席或只寫「已修正文法」這類無指涉的句子，判 failed。"},
+          {"id": "line-edit-r5", "weight": 1, "evidence_required": false,
+           "text": "遇到無法從草稿確認原意的地方，回覆必須以問題形式標出，而不是自行猜測後直接改寫。若本次草稿沒有這類地方，回覆未憑空製造問題亦視為 passed。判 failed 的情形是：修訂中出現了草稿無從支持的具體內容，而回覆沒有把它標為待確認；此時引文請取該處。"}
+        ]
+      }
+    },
+    "ai-written-check": {
+      "criteria": [
+        {"id": "ai-written-check-r1", "text": "回覆逐項列出發現，每項含規則名稱、問題原文與具體改寫建議。"},
+        {"id": "ai-written-check-r2", "text": "每一處「問題原文」逐字取自草稿，而非轉述。"},
+        {"id": "ai-written-check-r3", "text": "回覆最後給出「乾淨／輕微修整／需大幅調整」三者之一的整體結論。"},
+        {"id": "ai-written-check-r4", "text": "結論的理由連結到模式的出現次數或門檻，而非只給形容詞。"},
+        {"id": "ai-written-check-r5", "text": "回覆未越界重寫整篇草稿，也未對語氣、自大感或事實正確性下判斷。"}
+      ],
+      "rubric": {
+        "items": [
+          {"id": "ai-written-check-r1", "weight": 3, "evidence_required": true,
+           "text": "回覆必須逐項列出發現，每一項都齊備三個部分：規則或模式的名稱、引自草稿的問題原文、針對該處的具體改寫。引文請取其中結構最完整的一項。只有名稱沒有改寫、或只有改寫沒有指出原文者，該項不算數；一項都不齊備判 failed。"},
+          {"id": "ai-written-check-r2", "weight": 3, "evidence_required": true,
+           "text": "每一處被標為「問題原文」的文字，必須是草稿裡逐字存在的句子，不能是轉述或已經改寫過的版本——這個 Skill 的價值全在「指得出是哪一句」。引文請取一處問題原文。發現有任何一處是模型自行改寫後才引用的，判 failed 並以該處為引文。"},
+          {"id": "ai-written-check-r3", "weight": 2, "evidence_required": true,
+           "text": "回覆結尾必須給出整體結論，且落在套件文件定義的三個值之一：乾淨、輕微修整、需大幅調整（同義的中英措辭可接受）。引文請取該結論句。沒有結論、或給出三值以外的自創等第，判 failed。"},
+          {"id": "ai-written-check-r4", "weight": 1, "evidence_required": true,
+           "text": "結論必須說得出依據——引用某個模式的出現次數，或點名跨過了哪一條門檻。引文請取交代依據的那一句。只寫「整體看起來不錯」這類沒有指涉的評語判 failed。"},
+          {"id": "ai-written-check-r5", "weight": 2, "evidence_required": false,
+           "text": "本 Skill 的文件明載它只標記問題並提出改寫、由作者決定是否採用，且不判斷語氣、自大感或事實正確性。因此回覆不得直接交出一份重寫好的全文，也不得對草稿的語氣或事實真偽下判斷。判 failed 時，引文請取那段越界的整篇重寫或語氣／事實判斷；判 passed 時不需引文。"}
+        ]
+      }
+    },
+    "internal-comms": {
+      "criteria": [
+        {"id": "internal-comms-r1", "text": "最終回覆含完整的 3P 更新成品全文。"},
+        {"id": "internal-comms-r2", "text": "成品具備 3P 的三個區塊：進度、後續計畫、阻礙，且每塊都有內容。"},
+        {"id": "internal-comms-r3", "text": "成品的事實全部來自草稿，沒有虛構的日期、數字、人名或專案。"},
+        {"id": "internal-comms-r4", "text": "草稿資訊不足以填滿某一區塊時，回覆明說缺什麼，而非自行編造。"}
+      ],
+      "rubric": {
+        "items": [
+          {"id": "internal-comms-r1", "weight": 3, "evidence_required": true,
+           "text": "最終回覆必須含 3P 更新的完整成品全文，而不是產出說明或檔名。引文請取成品的開頭一句。"},
+          {"id": "internal-comms-r2", "weight": 3, "evidence_required": true,
+           "text": "成品必須具備 3P 的三個區塊——進度（Progress）、後續計畫（Plans）、阻礙（Problems）——且三塊都有實際內容，不是留白的標題。標題用詞可在地化。引文請取其中一個區塊的標題與其第一項內容。缺任一區塊判 failed。"},
+          {"id": "internal-comms-r3", "weight": 2, "evidence_required": true,
+           "text": "成品裡的事實必須來自草稿：日期、數字、人名、專案名一律不得是模型補的。措辭與分段的改寫不算新增事實。判 passed 時，引文請取一句可回溯到草稿的內容；判 failed 時，引文請取那句虛構的內容。"},
+          {"id": "internal-comms-r4", "weight": 1, "evidence_required": false,
+           "text": "草稿的資訊不足以填滿某一區塊時，回覆必須說明缺的是什麼並要求補充——套件文件明載沒有相符指南或資訊時要回頭問，而不是自行補齊。若草稿資訊足夠、三區塊都填得出來，本條視為 passed。判 failed 的情形是資訊明顯不足卻沉默地編出內容，此時引文請取該處。"}
+        ]
+      }
+    },
+    "brand-guidelines": {
+      "criteria": [
+        {"id": "brand-guidelines-r1", "text": "最終回覆逐項說明套用了哪些品牌設定：標題字體、內文字體與色彩。"},
+        {"id": "brand-guidelines-r2", "text": "回覆點名的字體與套件文件一致，或說明字型不可用而改用替代字體。"},
+        {"id": "brand-guidelines-r3", "text": "回覆說明非文字圖形的強調色處理，或說明本次輸入沒有非文字圖形。"},
+        {"id": "brand-guidelines-r4", "text": "回覆宣稱產出的每個檔案，都出現在本次 Run 的 artifact 清單上。"}
+      ],
+      "rubric": {
+        "items": [
+          {"id": "brand-guidelines-r1", "weight": 3, "evidence_required": true,
+           "text": "最終回覆必須逐項說明這次套用了哪些品牌設定：標題字體、內文字體、以及套到哪些元素的色彩。引文請取說明這些設定的那一段。只寫「已套用品牌樣式」而不說套了什麼，判 failed。注意本條判的是回覆的陳述，不是產出檔案的位元組——後者不在本評估的可見範圍內。"},
+          {"id": "brand-guidelines-r2", "weight": 3, "evidence_required": true,
+           "text": "回覆點名的字體必須與套件文件一致：24pt 以上標題用 Poppins、內文用 Lora；若環境沒有這兩個字型，回覆必須說明已改用 Arial 與 Georgia。引文請取點名字體的那一句。換成文件沒有指定的第三種字體且未說明理由，判 failed。"},
+          {"id": "brand-guidelines-r3", "weight": 2, "evidence_required": true,
+           "text": "回覆必須說明非文字圖形如何以橙、藍、綠強調色循環處理；若本次輸入沒有非文字圖形，明說這件事同樣算符合。引文請取相關的那一句。兩者都沒有交代，判 failed。"},
+          {"id": "brand-guidelines-r4", "weight": 2, "evidence_required": true,
+           "text": "回覆宣稱產出的每一個檔案，都必須出現在本次 Run 的 artifact 清單上。請以 kind = artifact 的證據引用逐一指名路徑（平台會逐條回驗路徑是否在清單內）。宣稱了清單上沒有的檔案，判 failed。這是本份 rubric 中唯一由平台機械回驗的條目。"}
+        ]
+      }
+    }
+  }
+}

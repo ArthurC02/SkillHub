@@ -3,6 +3,7 @@
     python judge_regression.py            # the whole set, one gateway call per run
     python judge_regression.py --limit 3  # a cheap smoke pass
     python judge_regression.py --dry-run  # build the requests, call nothing
+    python judge_regression.py --rubric rubric-content-007-writing-v1.json
 
 Not product code, does not run in CI, and re-running it spends real money
 (same standing as tools/goldenset). The authoritative data is the platform's
@@ -23,6 +24,13 @@ mirrors the Go side's defence 3 (every evidence reference re-resolved, a
 criterion whose references do not resolve downgraded to `undetermined`) and its
 truncation rule, because that is what a user would have seen. Downgrades are
 counted apart from wrong answers - a safe default is not an error.
+
+--rubric adds CONTENT-007's rubric to the run (writing-rubrics.md §5.1). The file
+names, per Skill, the extra acceptance criteria to judge and the rubric that
+strengthens them; the set is narrowed to the Skills the file covers, the
+snapshot's own criteria are kept alongside, and `rubric_version` stops being
+null. A different rubric_version is a different regression, same rule as the
+judge model and prompt version.
 
 Output is one JSON object per Run appended to results.jsonl, stamped with
 judge_model / judge_prompt_version / rubric_version / the truncation budget.
@@ -217,7 +225,27 @@ def clip(text: str, limit: int):
     return (text, False) if len(text) <= limit else (text[:limit], True)
 
 
-def build_request(row, events, artifacts, evaluation_id: str):
+def load_rubrics(path: Path) -> dict:
+    """Read a --rubric file: {rubric_version, skills: {name: {criteria, rubric}}}.
+
+    The criteria travel with the rubric because they are one thing: a rubric item
+    is addressed by the id of the criterion it strengthens, and /judge-run answers
+    one verdict per *criterion* - Go drops any id it did not send, so an item
+    whose id was never sent as a criterion produces nothing at all
+    (writing-rubrics.md §2.1). Sending one without the other would look like it
+    worked and quietly measure nothing.
+    """
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    version, skills = doc["rubric_version"], doc["skills"]
+    for name, entry in skills.items():
+        ids = {c["id"] for c in entry["criteria"]}
+        orphans = [i["id"] for i in entry["rubric"]["items"] if i["id"] not in ids]
+        if orphans:
+            raise SystemExit(f"{path}: {name} has rubric items with no criterion: {orphans}")
+    return {"version": version, "skills": skills}
+
+
+def build_request(row, events, artifacts, evaluation_id: str, rubric_entry=None):
     """The JudgeRunRequest, plus the digest map that verification checks against."""
     truncation = []
 
@@ -229,11 +257,17 @@ def build_request(row, events, artifacts, evaluation_id: str):
     if cut_output:
         truncation.append("final_output")
 
+    # The snapshot's own criteria stay: they are what the run was asked to do, and
+    # they carry the only two answers this harness can score. The rubric's are
+    # additional (writing-rubrics.md §4 keeps the three baseline conditions).
+    wanted = list(row["acceptance_criteria"])
+    if rubric_entry:
+        wanted += rubric_entry["criteria"]
     criteria = [
         {"id": c["id"], "text": c["text"], "evidence_excerpt": None}
-        for c in row["acceptance_criteria"][:MAX_CRITERIA]
+        for c in wanted[:MAX_CRITERIA]
     ]
-    if len(row["acceptance_criteria"]) > MAX_CRITERIA:
+    if len(wanted) > MAX_CRITERIA:
         truncation.append("criteria")
 
     if len(artifacts) > MAX_ARTIFACT_ROWS:
@@ -268,6 +302,11 @@ def build_request(row, events, artifacts, evaluation_id: str):
         "trace_digest": {"complete": trace_complete(events), "entries": entries},
         "truncation": truncation,
     }
+    if rubric_entry:
+        # Only `items`: llm-internal.yaml's Rubric is additionalProperties:false
+        # and carries no version. The version is what the *record* is stamped
+        # with, which is where a reader needs it.
+        request["rubric"] = {"items": rubric_entry["rubric"]["items"]}
     return request, digest, final
 
 
@@ -408,21 +447,35 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true", help="build requests, call nothing")
     ap.add_argument("--note", default="", help="free text stored with every row")
     ap.add_argument("--judge-url", default=JUDGE_URL, help=f"default {JUDGE_URL}")
+    ap.add_argument("--rubric", type=Path,
+                    help="CONTENT-007 rubric file; narrows the set to the Skills it covers")
     args = ap.parse_args()
 
+    rubrics = load_rubrics(args.rubric) if args.rubric else None
     started = datetime.datetime.now(datetime.UTC).isoformat()
     regression_id = f"{started[:19].replace(':', '')}Z"
     rows = regression_set()
+    if rubrics:
+        rows = [r for r in rows if r["skill_name"] in rubrics["skills"]]
+        missing = set(rubrics["skills"]) - {r["skill_name"] for r in rows}
+        if missing:
+            # Said out loud rather than skipped: a rubric whose Skill is not in
+            # the baseline set was not measured, and a smaller run would
+            # otherwise read as a complete one.
+            print(f"! no baseline run for: {', '.join(sorted(missing))}")
     if args.limit:
         rows = rows[: args.limit]
-    print(f"regression {regression_id}: {len(rows)} runs")
+    version = rubrics["version"] if rubrics else None
+    print(f"regression {regression_id}: {len(rows)} runs, rubric_version={version}")
 
     total_cost, unreported, lines = 0.0, 0, []
     for i, row in enumerate(rows, 1):
         events = trace_events(row["run_id"])
         artifacts = artifact_manifest(row["run_id"])
         evaluation_id = str(uuid.uuid4())
-        request, digest, final_output = build_request(row, events, artifacts, evaluation_id)
+        entry = rubrics["skills"][row["skill_name"]] if rubrics else None
+        request, digest, final_output = build_request(
+            row, events, artifacts, evaluation_id, entry)
         want = expected(row, events, artifacts)
 
         print(f"[{i}/{len(rows)}] {row['skill_name']}: "
@@ -442,11 +495,11 @@ def main() -> None:
             if cost > COST_ALARM_USD:
                 print(f"    !! ${cost:.4f} for one call, over the ${COST_ALARM_USD} alarm - stopping")
                 lines.append(record(regression_id, started, args.note, row, request, want,
-                                    results, response, usage))
+                                    results, response, usage, version))
                 break
 
         line = record(regression_id, started, args.note, row, request, want, results, response,
-                      usage)
+                      usage, version)
         lines.append(line)
         for r in line["criteria"]:
             mark = {"match": "ok", "mismatch": "MISMATCH", "unscored": "--",
@@ -456,18 +509,26 @@ def main() -> None:
               f"running total ${total_cost:.4f}")
 
     if lines:
-        with OUT.open("a", encoding="utf-8") as f:
+        # newline="\n" because the repo stores this file with LF (.gitattributes)
+        # and text mode on Windows would append CRLF rows into an LF file.
+        with OUT.open("a", encoding="utf-8", newline="\n") as f:
             for line in lines:
                 f.write(json.dumps(line, ensure_ascii=False) + "\n")
         print(f"\nappended {len(lines)} rows to {OUT}")
     summarise(lines, total_cost, unreported)
 
 
-def record(regression_id, started, note, row, request, want, results, response, usage):
+def record(regression_id, started, note, row, request, want, results, response, usage,
+           rubric_version=None):
     by_id = {r["criterion_id"]: r for r in results}
+    rubric_ids = {i["id"] for i in (request.get("rubric") or {}).get("items", [])}
     criteria = []
     for c in request["criteria"]:
-        kind = CRITERION_KINDS.get(c["text"], "unknown")
+        # A rubric criterion is labelled as one and never scored: there is no
+        # per-criterion human labelling for it, and inventing an expected answer
+        # would be manufacturing ground truth rather than using it. What it is
+        # here to show is the *distribution* of its answers.
+        kind = "rubric" if c["id"] in rubric_ids else CRITERION_KINDS.get(c["text"], "unknown")
         got = by_id[c["id"]]
         exp = want.get(kind)
         if exp is None:
@@ -488,7 +549,7 @@ def record(regression_id, started, note, row, request, want, results, response, 
         # clause 3). Stored per row so a mixed file is still readable.
         "judge_model": response["model"],
         "judge_prompt_version": response["prompt_version"],
-        "rubric_version": None,
+        "rubric_version": rubric_version,
         "truncation_budget": {
             "final_output": MAX_FINAL_OUTPUT, "criteria": MAX_CRITERIA,
             "digest_entry": MAX_DIGEST_ENTRY, "digest_count": MAX_DIGEST_COUNT,
@@ -510,6 +571,22 @@ def record(regression_id, started, note, row, request, want, results, response, 
 
 
 def summarise(lines, total_cost, unreported) -> None:
+    rubric = [c for line in lines for c in line["criteria"] if c["kind"] == "rubric"]
+    if rubric:
+        # Not an accuracy figure. On the A run of writing-rubrics.md §5.1 the
+        # answer being looked for IS a high `undetermined` share: those runs were
+        # produced under a prompt that never asked for the text in the final
+        # reply, so the evidence a rubric item needs is structurally absent. A
+        # sheet of `passed` here would be the bad outcome.
+        by_result: dict[str, int] = {}
+        for c in rubric:
+            by_result[c["result"]] = by_result.get(c["result"], 0) + 1
+        downgraded = sum(1 for c in rubric if c["downgrade"])
+        print(f"\nrubric criteria {len(rubric)} (unscored by design)")
+        for result, n in sorted(by_result.items()):
+            print(f"  {result:<14} {n} = {n / len(rubric):.1%}")
+        print(f"  of which downgraded by the platform: {downgraded}")
+
     scored = [c for line in lines for c in line["criteria"] if c["outcome"] != "unscored"]
     if not scored:
         return
