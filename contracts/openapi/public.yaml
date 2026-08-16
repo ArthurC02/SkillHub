@@ -749,6 +749,143 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/skills/{id}/restriction:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      operationId: setSkillRestriction
+      summary: Put the licensing hold on a skill (SEC-011)
+      description: |
+        Operator only. Sets the 0023 access restriction on one skill, or changes
+        the reason of a hold already in place, and records who did it and why.
+
+        Idempotent: applying the same code twice writes a second audit event and
+        leaves the row as it was. An operator repeating an action is not an
+        error, and answering 409 here would only invite retry loops.
+
+        The column and the audit event are written in one transaction (iron rule
+        9), so a hold can never be in force without the event that explains it,
+        nor explained without being in force.
+
+        This is the only cross-workspace write in the API. A licensing question
+        is about a *source*, so a hold has to reach the catalogue entry and every
+        fork of it alike; being an operator is still not a widened workspace
+        scope, and nothing here reads workspace-private data on the strength of
+        it (SEC-011 最小權力原則).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason, note]
+              properties:
+                reason:
+                  type: string
+                  description: |
+                    A known reason code, e.g. `license-review`. Unknown codes are
+                    refused here even though every *read* treats an unknown code
+                    as restricted. The two rules face opposite ways on purpose: a
+                    code arriving from anywhere else must never unlock content,
+                    and a code typed in here must never leave the reader with the
+                    generic sentence when a specific one was meant. The 400 names
+                    the codes that exist.
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: |
+                    Why, in the operator's own words. Required and not
+                    satisfiable with whitespace: an operator action nobody can
+                    explain later is not a decision (02:SEC-011 理由必填). It goes
+                    into the audit event rather than onto the row - unlike a
+                    takedown, whose reason the row itself carries.
+      responses:
+        "200":
+          description: |
+            The hold is in force. The body echoes the sentence the public detail
+            view will now show, so the operator sees what the user sees without
+            fetching the skill.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [skill_id, access_restriction, previous_reason]
+                properties:
+                  skill_id: { type: string, format: uuid }
+                  access_restriction:
+                    $ref: "#/components/schemas/SkillAccessRestriction"
+                  previous_reason:
+                    type: [string, "null"]
+                    description: |
+                      The code that was in force before this call, or null when
+                      there was no hold. Null rather than an empty string: a hold
+                      with a blank reason is a state 0023's CHECK constraint
+                      makes impossible, and "" would read as one.
+        "400":
+          description: |
+            Body is not JSON, `reason` is blank or not a known code, or `note` is
+            blank or over 1000 bytes. The unknown-code message lists the codes
+            that do exist.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            The caller is not an operator, **or** no such skill. The two are one
+            answer on purpose.
+
+            Not 401 and not 403: 401 would tell an anonymous caller the route
+            exists and that logging in is the next step, and 403 would tell a
+            signed-in member there is a privilege they lack. SEC-011 asks for
+            neither to be knowable (不揭露資源與端點存在, the rule WS-006 applies
+            to other people's content), so this is the answer the router gives
+            for a path nobody ever wrote. Anyone off the deployment's operator
+            list cannot distinguish these endpoints from a typo.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: clearSkillRestriction
+      summary: Lift the licensing hold on a skill (SEC-011)
+      description: |
+        Operator only; the 終判允許 half of 0023, setting the column back to
+        null. Takes a `note` but no `reason`: there is no code to name when the
+        answer is "no hold at all", and the operator still has to say why.
+
+        Idempotent by construction - lifting a hold that was never there writes
+        the same audit event with a null before-state and answers 204, because
+        the caller's intent (this skill must not be held) is satisfied either
+        way. Same single transaction as the PUT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why the hold was lifted. Required, same rule as on PUT.
+      responses:
+        "204":
+          description: |
+            No hold is in force. Also the answer when there was none to lift, so
+            there is no body to return either way.
+        "400":
+          description: Body is not JSON, or `note` is blank or over 1000 bytes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not an operator, or no such skill. See PUT for why these are one answer.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/runs/preflight:
     get:
       operationId: getRunPreflight
@@ -2255,6 +2392,25 @@ components:
         has_possible_secrets: { type: boolean }
         has_binaries: { type: boolean }
         note: { type: string }
+    SkillAccessRestriction:
+      description: |
+        The 0023 licensing hold on a skill, rendered so a reader is told what is
+        withheld and why rather than shown a gap.
+      type: object
+      required: [reason, note]
+      properties:
+        reason:
+          type: string
+          description: |
+            The reason code, e.g. `license-review`. Not an enum here: an unknown
+            code still restricts, because failing open on a code nobody
+            recognises would make a typo in a review the way to unlock content.
+        note:
+          type: string
+          description: |
+            The user-facing sentence for that code, served rather than stored, so
+            the decision does not change when the wording does. An unrecognised
+            code falls back to a generic sentence rather than to no sentence.
     SkillCompatibility:
       description: |
         The three DISC-008 axes, kept apart, and the same shape on the search
