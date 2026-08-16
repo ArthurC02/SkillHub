@@ -178,7 +178,7 @@ type EvaluationSuggestion struct {
 	Problem               string
 	Evidence              []byte
 	TargetPath            string
-	ProposedChange        string
+	ProposedContent       string
 	ExpectedImpact        string
 	Decision              string
 	DecidedAt             pgtype.Timestamptz

@@ -226,7 +226,7 @@ $$);
 
 -- 8d. A suggestion's content is frozen; only the human decision on it moves.
 INSERT INTO evaluation_suggestions (id, workspace_id, evaluation_id, category, problem,
-                                    target_path, proposed_change, expected_impact)
+                                    target_path, proposed_content, expected_impact)
 VALUES ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', '22222222-2222-2222-2222-222222222222',
         'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'skill', 'SKILL.md never mentions CSV',
         'SKILL.md', 'add a CSV section', 'the skill activates on CSV prompts');
@@ -240,7 +240,7 @@ WHERE id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 -- 8e. A path that escapes the package cannot even be stored (design §5.2 floor).
 SELECT must_violate_check($$
     INSERT INTO evaluation_suggestions (workspace_id, evaluation_id, category, problem,
-                                        target_path, proposed_change, expected_impact)
+                                        target_path, proposed_content, expected_impact)
     VALUES ('22222222-2222-2222-2222-222222222222', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
             'skill', 'p', '../../etc/passwd', 'c', 'i')
 $$);

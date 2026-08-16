@@ -1,0 +1,14 @@
+-- 0025_suggestion_proposed_content: one name for one field.
+-- Applied migrations are immutable: fix forward with a new file, never edit this one.
+--
+-- 0024 named this column `proposed_change`, following evaluation-design.md
+-- §3.2d. The same field is `proposed_content` in that document's own §5.1, in
+-- contract-deltas.md §3, and in the SuggestImprovementsResponse schema that
+-- landed in contracts/openapi/llm-internal.yaml. The contract name wins: it is
+-- the one crossing the Go/Python boundary, where iron rule 12 makes the schema
+-- the source of truth, and a field carrying two names is exactly the drift
+-- codegen cannot see.
+--
+-- Nothing has ever written this column - evaluation_suggestions is a day old and
+-- has no writer yet - so the rename moves no data.
+ALTER TABLE evaluation_suggestions RENAME COLUMN proposed_change TO proposed_content;
