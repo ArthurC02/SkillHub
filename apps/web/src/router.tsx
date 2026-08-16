@@ -2,10 +2,12 @@ import { Link, Outlet, createRootRoute, createRoute, createRouter } from "@tanst
 import { Compare } from "./pages/Compare";
 import { DatasetUpload } from "./pages/DatasetUpload";
 import { Home } from "./pages/Home";
+import { RunCompare } from "./pages/RunCompare";
 import { RunPreflight } from "./pages/RunPreflight";
 import { RunTrace } from "./pages/RunTrace";
 import { SkillDetail } from "./pages/SkillDetail";
 import { SkillFiles } from "./pages/SkillFiles";
+import { TestCaseDetail, TestCaseList } from "./pages/TestCases";
 import type { AgentRuntime } from "./api/types";
 
 function RootLayout() {
@@ -14,7 +16,8 @@ function RootLayout() {
       <header className="app-header">
         <Link to="/" className="app-title">
           Skill Hub
-        </Link>
+        </Link>{" "}
+        <Link to="/lab/test-cases">Test Case</Link>
       </header>
       <main>
         <Outlet />
@@ -122,25 +125,66 @@ const datasetUploadRoute = createRoute({
 });
 
 /**
- * 03:TRACE-006/007. Addressed by the platform run_id and nothing else: a
- * provider's ephemeral id never appears in a URL (iron rule 10). The general and
- * advanced modes are component state rather than a search param — the toggle is
- * a reading preference, not something worth a distinct shareable address.
+ * 03:TRACE-006/007 plus the EVAL-001/002 report. Addressed by the platform
+ * run_id and nothing else: a provider's ephemeral id never appears in a URL
+ * (iron rule 10). The general and advanced modes are component state rather than
+ * a search param — the toggle is a reading preference, not something worth a
+ * distinct shareable address.
+ *
+ * `skill` is optional and exists for one reason: applying improvement
+ * suggestions posts to /skills/{id}/versions/from-suggestions, and neither
+ * GET /runs/{id} nor the suggestions response carries a skill id. Pages that
+ * know it (the preflight screen) pass it along; without it the page still
+ * renders and says why the apply action is unavailable rather than guessing.
  */
 const runTraceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/runs/$runId",
   component: RunTrace,
+  validateSearch: (search: Record<string, unknown>) => ({
+    skill: typeof search.skill === "string" ? search.skill : undefined,
+  }),
+});
+
+/** 02:EVAL-003. The other run lives in the URL so a comparison is linkable. */
+const runCompareRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/runs/$runId/compare",
+  component: RunCompare,
+  validateSearch: (search: Record<string, unknown>) => ({
+    against: typeof search.against === "string" ? search.against : "",
+    skill: typeof search.skill === "string" ? search.skill : undefined,
+  }),
+});
+
+/**
+ * 03:TEST-012. The Test Case screens, which are also the picker the Lab never
+ * had: /lab/run and /lab/datasets take their ids from here instead of from a
+ * user who had to know them.
+ */
+const testCaseListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lab/test-cases",
+  component: TestCaseList,
+});
+
+const testCaseDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lab/test-cases/$testCaseId",
+  component: TestCaseDetail,
 });
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
   compareRoute,
   runTraceRoute,
+  runCompareRoute,
   skillDetailRoute,
   skillFilesRoute,
   runPreflightRoute,
   datasetUploadRoute,
+  testCaseListRoute,
+  testCaseDetailRoute,
 ]);
 
 export const router = createRouter({ routeTree });

@@ -339,6 +339,70 @@ summary {
   margin-bottom: 8px;
 }
 
+/* EVAL-001. The verdict states are told apart by their words first — the label
+   is always on screen — and the tint is only a second channel (NFR-007 風險、
+   相容與評估狀態必須同時提供文字,不只依賴顏色). */
+.criterion-list,
+.finding-list,
+.suggestion-list,
+.evidence-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.evidence-list {
+  gap: 6px;
+  margin: 6px 0 0;
+}
+
+.criterion,
+.suggestion {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.criterion-failed {
+  border-color: #d33;
+}
+
+.criterion-undetermined {
+  border-color: var(--accent-border);
+}
+
+.badge-criterion-failed,
+.badge-severity-error {
+  border-color: #d33;
+  color: #d33;
+}
+
+.badge-criterion-undetermined,
+.badge-severity-warning {
+  border-color: var(--accent-border);
+}
+
+.verdict {
+  font-size: 20px;
+  color: var(--text-h);
+  margin: 8px 0;
+}
+
+.evaluation-feedback textarea,
+.diff {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.diff {
+  background: var(--code-bg);
+  padding: 12px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
 .file-script .script-tag {
   margin-left: 8px;
   font-size: 12px;

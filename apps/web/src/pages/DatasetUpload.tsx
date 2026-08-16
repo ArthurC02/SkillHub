@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useSearch } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { getDatasetLimits, uploadDataset, type Dataset } from "../api/lab";
 
@@ -16,10 +16,9 @@ import { getDatasetLimits, uploadDataset, type Dataset } from "../api/lab";
  * the UI is how a published limit and an enforced limit drift apart, and the
  * server-side test already asserts the two are the same.
  *
- * SCOPE, stated honestly: this is the upload step and nothing else. Creating a
- * test case, editing the prompt and acceptance criteria, and listing or deleting
- * files are still API-only (DESIGN-007). Hence the test case id comes from the
- * URL, as on the preflight screen.
+ * SCOPE: this is the upload step and nothing else. Creating a test case, editing
+ * the prompt and the acceptance criteria, and listing or deleting files live on
+ * the Test Case screens (TEST-012), which link here with the id filled in.
  */
 
 type UploadSearch = { test_case?: string };
@@ -99,8 +98,8 @@ export function DatasetUpload() {
 
           {testCase === "" ? (
             <p>
-              這個頁面需要 <code>?test_case=</code>。Test Case 的建立介面尚未實作(DESIGN-007),
-              目前請由 API 建立後帶入 ID。
+              這個頁面需要 <code>?test_case=</code>。請到{" "}
+              <Link to="/lab/test-cases">Test Case 頁</Link> 建立或選一個 Test Case,再從那裡連過來。
             </p>
           ) : (
             <>

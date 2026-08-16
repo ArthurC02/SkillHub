@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
+import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { useTrace } from "../api/trace";
 import type { TraceAdvanced, TraceEvent, TraceSummary } from "../api/trace";
+import { EvaluationPanel, RUN_STATUS_LABEL } from "./RunEvaluation";
 
 /**
  * TRACE-006 and TRACE-007: the two modes of the run trace.
@@ -22,11 +23,26 @@ import type { TraceAdvanced, TraceEvent, TraceSummary } from "../api/trace";
 
 export function RunTrace() {
   const { runId } = useParams({ from: "/runs/$runId" });
+  const { skill } = useSearch({ strict: false }) as { skill?: string };
   const [mode, setMode] = useState<"general" | "advanced">("general");
+  // Same query key as the general mode below, so this is one request, not two.
+  // The runs table is the only authority on run state (iron rule 5).
+  const general = useTrace(runId, "general");
 
   return (
     <section className="run-trace">
-      <h1>Run 執行紀錄</h1>
+      <h1>Run 詳情</h1>
+
+      {/* EVAL-001 / design §4.3: the first thing on the page is the task
+          judgement, not the run's terminal state. */}
+      <EvaluationPanel runId={runId} runStatus={general.data?.status} skillId={skill} />
+
+      <h2>執行紀錄</h2>
+      <p className="note">
+        <Link to="/runs/$runId/compare" params={{ runId }} search={{ against: "", skill }}>
+          與另一個 Run 比較
+        </Link>
+      </p>
       <div role="group" aria-label="檢視模式">
         <button type="button" aria-pressed={mode === "general"} onClick={() => setMode("general")}>
           一般模式
@@ -63,10 +79,12 @@ function GeneralMode({ runId }: { runId: string }) {
   return (
     <div>
       <IncompleteNotice complete={trace.complete} />
-      {/* Status comes from the runs table, not from replayed events (iron rule 5). */}
+      {/* Status comes from the runs table, not from replayed events (iron rule 5),
+          and is worded as execution: `succeeded` says the workload finished, not
+          that the task was done (ADR-025). The task verdict is above. */}
       <p>
-        狀態：<strong>{trace.status}</strong>
-        {trace.status_reason ? `（${trace.status_reason}）` : null}
+        執行狀態：<strong>{RUN_STATUS_LABEL[trace.status] ?? trace.status}</strong>（
+        <code>{trace.status}</code>）{trace.status_reason ? `（${trace.status_reason}）` : null}
       </p>
 
       <h2>進度</h2>
@@ -134,6 +152,13 @@ function GeneralMode({ runId }: { runId: string }) {
               : `US$${trace.usage.cost_usd.toFixed(4)}${
                   trace.usage.cost_source === "estimated" ? "（估算值）" : ""
                 }`}
+          </li>
+          {/* 丙-3: the sum over usage events is structurally a floor — a
+              response still in flight when the stream ends is not counted. The
+              settling figure is the gateway's per-key spend (ADR-017). */}
+          <li className="note">
+            這是<strong>下界</strong>，不是總額：合計自 Trace 的用量事件， 權威來源是模型閘道對這個
+            Run 的 per-key 實付。
           </li>
         </ul>
       ) : (

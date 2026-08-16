@@ -29,14 +29,29 @@ afterEach(async () => {
 });
 
 // The page reads its run id from the router, which is not mounted here, so the
-// param hook is stubbed rather than driving a full navigation for one id.
+// router surface it touches is stubbed rather than driving a full navigation for
+// one id. `Link` renders its children so the page's cross-links stay inspectable.
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ runId: "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20" }),
+  useSearch: () => ({}),
+  useNavigate: () => () => Promise.resolve(),
+  Link: ({ children }: { children?: unknown }) => children,
 }));
 
 function stubTrace(general: TraceSummary, advanced: TraceAdvanced) {
   vi.stubGlobal("fetch", (input: string) => {
-    const body = String(input).includes("mode=advanced") ? advanced : general;
+    const url = String(input);
+    // This run was never evaluated: the server answers 404, which the page
+    // renders as 未評估 rather than as a pass (ADR-025).
+    if (url.includes("/evaluation") || url.includes("/suggestions")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: "not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    const body = url.includes("mode=advanced") ? advanced : general;
     return Promise.resolve(
       new Response(JSON.stringify(body), {
         status: 200,

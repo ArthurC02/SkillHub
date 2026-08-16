@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useSearch } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { ApiError } from "../api/client";
 import { confirmPreflight, getPreflight, startRun, type PreflightSummary } from "../api/lab";
@@ -7,10 +7,10 @@ import { confirmPreflight, getPreflight, startRun, type PreflightSummary } from 
 /**
  * 03:TEST-008/009 — the pre-run permission summary and its confirmation.
  *
- * SCOPE, stated honestly: the Test Lab has no UI yet for creating a test case,
- * uploading a dataset or picking a version, so this page takes those three ids
- * from the URL rather than from a picker. It is the gate screen and nothing
- * else. The rest of the Lab UI is DESIGN-007/008 work and is not built here.
+ * SCOPE, stated honestly: the test case and its files come from the Test Case
+ * screens (TEST-012), which link here with `skill` and `test_case` filled in.
+ * There is still no version picker, so `version` is the one id a user has to
+ * supply. This page is the gate screen and nothing else.
  *
  * The one rule this screen exists to enforce: the button that starts a run is
  * only ever wired to the hash of the summary currently on the reader's screen.
@@ -83,7 +83,8 @@ export function RunPreflight() {
         <h1>執行前權限確認</h1>
         <p>
           這個頁面需要 <code>?skill=&amp;version=&amp;test_case=</code> 三個 ID。Test Case 與
-          Dataset 的建立介面尚未實作(DESIGN-007),目前請由 API 建立後帶入 ID。
+          Dataset 請在 <Link to="/lab/test-cases">Test Case 頁</Link> 建立,再從那裡連過來;Skill
+          Version id 目前仍需自行填入。
         </p>
       </section>
     );
@@ -189,7 +190,14 @@ export function RunPreflight() {
       {message && <p role="alert">{message}</p>}
 
       {runId ? (
-        <p>已開始 Run:{runId}</p>
+        <p>
+          已開始 Run:{" "}
+          {/* `skill` rides along so the run page can offer the EVAL-002 apply
+              action; the run read endpoint does not carry a skill id. */}
+          <Link to="/runs/$runId" params={{ runId }} search={{ skill }}>
+            {runId}
+          </Link>
+        </p>
       ) : (
         <button
           type="button"
