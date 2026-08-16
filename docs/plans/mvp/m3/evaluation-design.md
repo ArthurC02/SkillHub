@@ -1,7 +1,7 @@
 # M3 評估管線設計
 
-- 日期：2026-08-16
-- 狀態：**設計提案**，未實作。與 [README.md](README.md) 的批次分解配套。
+- 日期：2026-08-16（**2026-08-17 修訂**：§3.2d 欄位名更正、§5.3 溯源方向更正、§6.3 成本回填實測）
+- 狀態：**已實作**。設計與落地的差異全部就地標為「更正」而非改寫原文；逐工作項對帳見 [audit.md](audit.md)。
 - 對應需求：`02:EVAL-001`／`002`／`003`、`02:TRACE-001`（讀取面）、`02:CONTENT-007`（rubric）
 - 對應 ADR：ADR-009（O11y／Trace／Evaluation 三分）、ADR-003（不可變快照）、ADR-004（Run 生命週期）、ADR-008（狀態機與 Outbox）、ADR-016（語言分工）、ADR-017（模型閘道與成本）
 
@@ -161,7 +161,7 @@ CREATE TRIGGER evaluations_immutable
 | --- | --- |
 | `id`／`workspace_id`／`evaluation_id` | 鐵律 3；建議掛在**某一份**評估上，不是掛在 Run 上——換 rubric 重評會產生不同建議 |
 | `category` CHECK `skill／runtime／mcp／tool／dataset` | `02:EVAL-002` 第 2 條的四類問題（`mcp` 在 MVP 恆不產生，型別佔位，同 TRACE-003 前例） |
-| `problem`／`evidence`／`target_path`／`proposed_change`／`expected_impact` | 第 1 條的五個必要欄位。`target_path` 是**套件內相對路徑**，越界即拒（§5） |
+| `problem`／`evidence`／`target_path`／`proposed_content`／`expected_impact` | 第 1 條的五個必要欄位。`target_path` 是**套件內相對路徑**，越界即拒（§5）。**2026-08-17 更正**：本欄原寫 `proposed_change`，而同一個欄位在本文件 §5.1、[contract-deltas.md](contract-deltas.md) §3 與已落地的 `llm-internal.yaml` `SuggestImprovementsResponse` 都叫 `proposed_content`。**以契約名為準**（鐵律 12：跨語言介面的事實來源是 schema），資料庫側由 `db/migrations/0025_suggestion_proposed_content.sql` 改名對齊——當時該欄尚無任何寫入者，改名不搬資料 |
 | `decision` CHECK `pending／accepted／rejected`、`decided_at` | 第 3 條逐項接受或拒絕 |
 | `applied_skill_version_id` | 第 4 條：採納後指向**新**版本；為 NULL 表示尚未套用 |
 
@@ -252,7 +252,7 @@ Go      逐項驗證 → 使用者逐項決定 → 套用 → 建新 Skill Versi
 
 走**既有**路徑（`WS-001`／`POST /skills/{id}/versions`），不新開寫入路徑：
 
-- 新版本記 `derived_from_evaluation_id` 與 `applied_suggestion_ids`，讓「這個版本改了什麼、為什麼」可回答。
+- 「這個版本改了什麼、為什麼」必須可回答。**2026-08-17 更正落地形式**：本節原寫「新版本記 `derived_from_evaluation_id` 與 `applied_suggestion_ids`」，實作把溯源記在**建議那一側**——`evaluation_suggestions.applied_skill_version_id`（`0024`）指向新版本，而建議本身掛在某一份 `evaluation` 上，所以由新版本反查「哪些建議造出它、出自哪一份評估」是一個 `WHERE applied_skill_version_id = ?` 的查詢。**`skill_versions` 因此不加 `derived_from_evaluation_id`**：兩個方向存同一件事會有兩份真相，而反向那份還多帶了「是哪幾條建議」——正向的單一欄位答不出來。`applied_suggestion_ids` 仍存在，但它是 `POST /skills/{id}/versions/from-suggestions` 的**回應欄位**（本次套用了哪些），不是資料表欄位。
 - **舊版本一個位元組都不動**；歷史 Run 仍指向舊版本。
 - 套用多條建議＝一個新版本（一次 commit 的語意），不是每條一個版本——否則五條建議會產生五個沒人跑過的版本。
 
@@ -302,7 +302,19 @@ Judge 的成本幾乎全在 input。上界由截斷決定，不由祈禱決定�
 
 截斷一律留標記，Judge 的 prompt 要明說「以下內容已截斷」——**看不到全文卻判 `passed` 是不誠實的**，所以截斷發生時該條的判定要能降為 `undetermined`。
 
-粗估：單次評估 input 約 5–20K token，`gpt-5.6-terra` 輸入 $2／M → **每次評估約 $0.01–0.05**。以 M2 的 45 筆基準推算全量重評約 **$0.5–2**。**這是首發預設值不是實測校準值**，第 3 批跑完 45 筆回歸後回填實測（同 O11Y-003 門檻值的處置方式）。
+**原估（保留，不刪）**：單次評估 input 約 5–20K token，`gpt-5.6-terra` 輸入 $2／M → 每次評估約 $0.01–0.05；以 M2 的 45 筆基準推算全量重評約 $0.5–2。原文註明「這是首發預設值不是實測校準值，第 3 批跑完 45 筆回歸後回填實測」。
+
+**2026-08-17 實測回填**（來源：[report-judge-regression.md](report-judge-regression.md) §7、§11.4，閘道實付；同 O11Y-003 門檻值的處置方式）：
+
+| 情境 | 實測 | 對照原估 |
+| --- | --- | --- |
+| 單筆評估（無 rubric，45 筆 v2） | **中位數 $0.0139**（最低 $0.0057、最高 $0.0404） | 落在 $0.01–0.05 區間內，偏區間下緣 |
+| 單筆評估（**帶 rubric**，A 輪 5 筆 writing） | **中位數 $0.0275**（$0.0238～$0.0357） | 約為無 rubric 的 **2 倍**；仍在原估區間內 |
+| 45 筆全量一輪 | **約 $0.72**（v1 $0.7119／v2 $0.7246） | 落在 $0.5–2 區間內 |
+| A 輪 5 筆（帶 rubric） | **$0.14363** | 事前估 ~$0.07，**實付是估計的 2 倍** |
+| 輸入 token（v2 45 筆） | 中位數 **4,624**／筆（最大 15,563） | 低於「5–20K token」的中段——只有任務效果一類上模型，且 artifact 只送 manifest 不送內容 |
+
+**兩件要跟著讀的事**：①**加 rubric 的呼叫不能用不加 rubric 的中位數估**——A 輪的 2 倍差額全部來自多送的 5 條驗收條件與整份 rubric 文字，這是估法的錯不是異常；②實付與服務層回報差 $0.0001（浮點捨入），**權威來源仍是閘道 per-key spend**（ADR-017、丙-3）。
 
 ### 6.4 rubric（`CONTENT-007`／乙-5）
 

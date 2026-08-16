@@ -1,8 +1,9 @@
 # M3：評估與改善 — 執行計畫
 
-- 日期：2026-08-16
-- 狀態：**規劃完成、未開工**（本批只產出計畫與設計，不寫產品程式碼）。**2026-08-17 補**：§7 的四個未決點已由 [ADR-025](../../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)／[ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策，§5 的三處差異已在 `02`／`03` 對齊；程式碼與契約仍未開工
-- 前提：M2 已完結（[../m2/README.md](../m2/README.md)）；**M1 驗證閘門 D 日仍待負責人宣告**，比照 M2 前例，M3 與閘門並行，閘門結果不改變本計畫的技術內容，但可能改變開工順序（見 §6 風險 R1）。
+- 日期：2026-08-16（計畫）／**2026-08-17（程式面收斂）**
+- 狀態：**七批全部完成，程式面已收斂。** 逐工作項對帳見 [audit.md](audit.md)——**16 項：13 勾選、1 誠實不勾（`EVAL-011`）、2 已勾覆核後維持（`EVAL-013`／`CONTENT-007`）**。§7 的四個未決點已由 [ADR-025](../../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)／[ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策，§5 的三處差異已在 `02`／`03` 對齊。
+- 前提：M2 已完結（[../m2/README.md](../m2/README.md)）；**M1 驗證閘門 D 日仍待負責人宣告**，比照 M2 前例，M3 與閘門並行——**閘門結果沒有改變本計畫的任何技術內容**，R1 的對策（第 1～3 批不碰搜尋與內容、碰內容的 `CONTENT-007` 排最後）照計畫執行完畢。
+- 下一個里程碑是 **M4（打包與封測）**；M3 留下的殘項與 M4 接點見 [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md)（**活文件**）。
 - 上游輸入：[`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) 的**丙類七項接點**（逐項對應見 §3）、[`../m2/m2-work-items-audit.md`](../m2/m2-work-items-audit.md) 的七項誠實不勾（§4）。
 
 ## 1. 一句話範圍
@@ -20,7 +21,7 @@ M3 讓每一次 Run 得到一份**逐條驗收條件、附可驗證證據、標�
 | `02:EVAL-003` 重新試跑與比較 | `03` EVAL-011／012 | 同一 Test Case 對新版本重跑；比較不得改動歷史 Run |
 | `02:TRACE-001` 讀取面 | 無新工作項 | **沿用 `trace.Service`**，不新增 TRACE 工作項（丙-1） |
 | `02:CONTENT-007` writing rubric | `03` CONTENT-007（**2026-08-17 已勾**） | rubric 的消費端在 M3 才存在（乙-5，已關閉）；接線與 A 輪回歸見 [report-judge-regression.md §11](report-judge-regression.md)。新缺口 G7 記於 `04` 乙-13 |
-| `02:TEST-001` 第 2 條前半、第 3 條 | `03` TEST-012（掛在 §9／M2 章節） | **借調到 M3**，理由見 §5 差異表 |
+| `02:TEST-001` 第 2 條前半、第 3 條 | `03` TEST-012（掛在 §9／M2 章節，**2026-08-17 已勾**） | **借調到 M3**，理由見 §5 差異表。落地後 **`TEST-003` 依同一把尺補回勾選**（`m2` 那份對帳維持凍結不改，兩次變動都記在 `03` §9 就地） |
 | — | `03` DESIGN-010／011 | 評估報告、改善建議、重跑與比較的介面設計 |
 
 ### 2.2 不進 M3（附理由）
@@ -82,15 +83,15 @@ M3 讓每一次 Run 得到一份**逐條驗收條件、附可驗證證據、標�
                                                           第 6 批 UI（第 2 批後可開工，第 5 批後收尾）──┘
 ```
 
-| 批 | 內容 | 平行 agent | 依賴 |
-| --- | --- | --- | --- |
-| **1 契約** | ①`contracts/openapi/public.yaml`：evaluation 讀取面、建議面、比較面、＋補上 `estimated_cost` 與 `/admin/.../restriction` 兩筆欠帳；②`db/migrations/0024_evaluation.sql` 的 DDL 草案＋`db/queries/`；③`contracts/openapi/llm-internal.yaml` 的 `/judge-run`／`/suggest-improvements`＋rubric schema；④`contracts/events/trace-event.schema.json` 升版（評估事件） | **4**（四個檔案互不重疊） | — |
-| **2 確定性腿** | Go `internal/eval`：migration 落地、規則檢查器（artifact 有無、`skill_activation` 對照、`error` 事件、exit 狀態、格式檢查、延遲與成本門檻）、River job 與狀態機接線（`job.go` 的 `evaluating` 掛鉤與 TODO 改寫）、workspace scope 與整合測試 | **3**（migration＋queries／檢查器／job 與狀態機） | 1 |
-| **3 Judge 腿** | Python `services/llm`：`POST /judge-run`（strict `json_schema`、截斷政策、rubric 消費、經 LiteLLM）；Go 呼叫端（ctx deadline、失敗回 `undetermined` 不猜、成本歸因標籤）；用 M2 的 45 筆做第一次回歸 | **2**（Python／Go 呼叫端） | 1（可與 2 並行） |
-| **4 建議與新版本** | `EVAL-002／007／008／009／010`：Python 產建議與 diff、Go 驗證與套用（套用後重跑 `skillpkg.Validate`，阻擋級即拒）、`evaluation_suggestions` 端點、建新 Skill Version 並記溯源 | **3** | 2、3 |
-| **5 重跑與比較** | `EVAL-011／012`：同一 Test Case 對新版本重跑（**仍走 preflight 重新確認**，不繞過 TEST-009）、比較讀取面、成本下界標註（丙-3） | **2** | 4 |
-| **6 UI** | `apps/web`：評估報告一般／進階、逐項接受／拒絕與 diff 預覽、比較畫面；**＋`TEST-012`**（Test Case 與驗收條件介面）；`DESIGN-010／011` | **3** | 2（骨架）、5（收尾） |
-| **7 收斂＋audit** | `CONTENT-007` 的 writing rubric 補完並重評；殘項回填 `04`；`m3/audit.md` 逐項對帳；`03` 勾選 | **2** | 全部 |
+| 批 | 內容 | 平行 agent | 依賴 | 狀態與裁定（2026-08-17） |
+| --- | --- | --- | --- | --- |
+| **1 契約** | ①`contracts/openapi/public.yaml`：evaluation 讀取面、建議面、比較面、＋補上 `estimated_cost` 與 `/admin/.../restriction` 兩筆欠帳；②`db/migrations/0024_evaluation.sql` 的 DDL 草案＋`db/queries/`；③`contracts/openapi/llm-internal.yaml` 的 `/judge-run`／`/suggest-improvements`＋rubric schema；④`contracts/events/trace-event.schema.json` 升版（評估事件） | **4**（四個檔案互不重疊） | — | **完成**。四份契約全數落地，兩筆鐵律 12 欠帳歸零。一項出入：`0024` 的欄位名與契約不一致，由 `0025` 改名對齊、設計文件就地更正（[audit §4.1](audit.md)） |
+| **2 確定性腿** | Go `internal/eval`：migration 落地、規則檢查器（artifact 有無、`skill_activation` 對照、`error` 事件、exit 狀態、格式檢查、延遲與成本門檻）、River job 與狀態機接線（`job.go` 的 `evaluating` 掛鉤與 TODO 改寫）、workspace scope 與整合測試 | **3**（migration＋queries／檢查器／job 與狀態機） | 1 | **完成**。ADR-025 推翻的那條 TODO 已從程式碼消失而非加註解。裁定兩項：只評估 `succeeded`／`failed`；無 Judge 的部署記 `status = failed` 而非不留列（[audit §4.2](audit.md)） |
+| **3 Judge 腿** | Python `services/llm`：`POST /judge-run`（strict `json_schema`、截斷政策、rubric 消費、經 LiteLLM）；Go 呼叫端（ctx deadline、失敗回 `undetermined` 不猜、成本歸因標籤）；用 M2 的 45 筆做第一次回歸 | **2**（Python／Go 呼叫端） | 1（可與 2 並行） | **完成**，且第一次回歸就抓到一個真缺陷（v1 的 45 筆全數誤降級）並修掉。另補上契約與 Python 端都缺、而 Go 早就在讀的 `JudgeRunResponse.usage`——一個靜默失效 |
+| **4 建議與新版本** | `EVAL-002／007／008／009／010`：Python 產建議與 diff、Go 驗證與套用（套用後重跑 `skillpkg.Validate`，阻擋級即拒）、`evaluation_suggestions` 端點、建新 Skill Version 並記溯源 | **3** | 2、3 | **完成**。溯源方向與設計不同（記在建議側而非版本側），**裁定改設計文字不補欄位**；409／422 兩處回應碼由批 7a 文字化並已核對（[audit §4.3](audit.md)） |
+| **5 重跑與比較** | `EVAL-011／012`：同一 Test Case 對新版本重跑（**仍走 preflight 重新確認**，不繞過 TEST-009）、比較讀取面、成本下界標註（丙-3） | **2** | 4 | **完成（讀取面）**。新增契約沒寫的 `inputs_available` 並補進 `public.yaml`；它不探測物件儲存＝樂觀上界，入殘項（`04` 丙-9）。`EVAL-011` 的勾選被批 6 的缺口擋住，見下 |
+| **6 UI** | `apps/web`：評估報告一般／進階、逐項接受／拒絕與 diff 預覽、比較畫面；**＋`TEST-012`**（Test Case 與驗收條件介面）；`DESIGN-010／011` | **3** | 2（骨架）、5（收尾） | **部分完成**。評估報告、建議、比較、`TEST-012` 全數落地（`TEST-003` 因此補回勾選）。**兩項未完**：①無 Skill Version 選擇器 → `EVAL-011` 不勾（`04` 丙-11）；②`DESIGN-010／011` 未勾——§3 全 13 項自 M0 起皆未勾，本專案至今沒有設計交付物，這不是 M3 的缺口（[audit §4.5](audit.md)） |
+| **7 收斂＋audit** | `CONTENT-007` 的 writing rubric 補完並重評；殘項回填 `04`；`m3/audit.md` 逐項對帳；`03` 勾選 | **2** | 全部 | **完成**。`CONTENT-007` 已勾（兩項保留意見，覆核維持）；A 輪回歸已跑並查出新缺口 G7（`04` 乙-13）；**B 輪未跑**，誠實記為 `EVAL-013` 的待辦（`04` 丙-8） |
 
 **第 1 批必須先行的理由是鐵律 12**，不是流程偏好：`/judge-run` 是 Go↔Python 介面，`0024` 的 `criterion_results` 形狀同時被 Go、Python 與前端消費，先寫 schema 才不會三邊各自長出一套。
 
@@ -120,14 +121,23 @@ M3 讓每一次 Run 得到一份**逐條驗收條件、附可驗證證據、標�
 
 ## 9. 檔案地圖
 
+本目錄依 `AGENTS.md`「里程碑目錄固定骨架」（M3 起適用）：`README.md`＋`audit.md`＋`report-*`，檔名不重複 `m3` 前綴。
+
 | 檔案 | 類型 | 一句話用途 | 狀態 |
 | --- | --- | --- | --- |
-| [`README.md`](README.md)（本檔） | 計畫 | M3 的範圍、丙類對應、批次分解、未決點與風險 | **活文件**——批次交付摘要會回填（追加不改寫） |
-| [`evaluation-design.md`](evaluation-design.md) | 設計 | 評估管線：跑在哪個平面、資料模型、Judge 與成本、`succeeded` ≠ 任務完成、建議如何變成新版本 | 隨批次修訂 |
-| [`contract-deltas.md`](contract-deltas.md) | 設計 | 第 1 批要先寫的 OpenAPI／JSON Schema 增量清單（只列形狀，不寫 YAML 實體） | 第 1 批完成後凍結 |
-| `audit.md` | 審計 | M3 全工作項逐項對帳 | **尚未建立**，第 7 批產出 |
+| [`README.md`](README.md)（本檔） | 計畫 | M3 的範圍、丙類對應、批次分解與裁定、未決點與風險 | **已收斂並凍結** |
+| [`audit.md`](audit.md) | 審計 | 16 項逐項對帳、`EVAL-011` 退回的完整理由、兩項已勾項目的覆核、各批出入裁定、鐵律落點 | **已產出**（第 7 批），凍結 |
+| [`evaluation-design.md`](evaluation-design.md) | 設計 | 評估管線：跑在哪個平面、資料模型、Judge 與成本、`succeeded` ≠ 任務完成、建議如何變成新版本 | 已實作；2026-08-17 三處就地更正（§3.2d 欄位名、§5.3 溯源方向、§6.3 成本實測回填），**原文保留不改寫** |
+| [`contract-deltas.md`](contract-deltas.md) | 設計 | 第 1 批要先寫的 OpenAPI／JSON Schema 增量清單（只列形狀，不寫 YAML 實體） | 第 1 批完成後凍結；實體以 `contracts/` 下的四份檔案為準 |
+| [`report-judge-regression.md`](report-judge-regression.md) | 報告 | `EVAL-013` 的 Judge 判準回歸：v1／v2 兩輪 45 筆逐筆結果與差異歸因、成本實付、以及 §11 的 `CONTENT-007` rubric A 輪 | 凍結；重跑指令見該檔 §10 |
 
-殘項不在本目錄，見 [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md)（活文件）。
+本目錄外、M3 期間產出或修訂而**不屬於本目錄**的東西（依「一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`」）：
+
+| 位置 | 內容 |
+| --- | --- |
+| [`../content/writing-rubrics.md`](../content/writing-rubrics.md) | `CONTENT-007` 的 5 份 writing 預設 rubric（`content-007/writing/v1`）；A 輪之後就地更正 §2.2 的證據路徑遺漏並新增缺口 G7 |
+| `tools/eval-regression/` | 回歸 harness `judge_regression.py`、append-only 的 `results.jsonl`、機器可讀的 `rubric-content-007-writing-v1.json` |
+| [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) | **殘項的唯一入口，活文件不凍結。** M3 的新殘項與 M4 接點都在那裡 |
 
 ## 10. 架構鐵律在 M3 的落點（開工前必讀）
 

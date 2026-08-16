@@ -41,7 +41,11 @@
 6. [M0 執行計畫與產出](m0/README.md)（決策提案、成本試算、威脅模型、Spike 報告）
 7. [M1 執行計畫與產出](m1/README.md)（內容策展、目錄重建、審校報告、閘門測試材料）
 8. [M2 執行計畫與產出](m2/README.md)（Skill Lab 交付摘要、基準試跑、工作項對帳）
-9. [M3 執行計畫與設計](m3/README.md)（評估與改善：範圍、批次分解、評估管線設計、契約增量清單）
+9. [M3 執行計畫與產出](m3/README.md)（評估與改善：範圍、批次分解與裁定、評估管線設計、契約增量清單、[逐項對帳](m3/audit.md)、[Judge 判準回歸報告](m3/report-judge-regression.md)）
+
+跨里程碑仍在被引用的主題目錄（依 [ADR-024](../../adr/ADR-024-top-level-repository-layout.md)，不屬於任何 `mX/`）：[`content/`](content/)（策展資料與 writing rubric）、[`governance/`](governance/)（授權備忘）、[`gate-test/`](gate-test/)（M1 驗證閘門材料）。
+
+**目錄骨架（M3 起適用，既有檔名不回溯改）**：每個 `mX/` 固定為 `README.md`（計畫＋狀態＋檔案地圖）、`audit.md`（逐項對帳）、`report-*`（報告）；目錄內檔名不重複 `mX` 前綴。
 
 ## 文件維護規則
 

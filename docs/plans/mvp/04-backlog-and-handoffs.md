@@ -20,9 +20,19 @@
 | --- | --- | --- | --- |
 | ~~檔-1~~ | ~~**m1 的策展資料與閘門治理文件歸位**~~ | **已解決（2026-08-16，本次搬移 commit，依 [ADR-024](../../adr/ADR-024-top-level-repository-layout.md) §4）。** ①策展資料 → [`content/`](content/)（[`curated-skill-list.md`](content/curated-skill-list.md)、[`content-summaries.md`](content/content-summaries.md)、[`content-candidates.md`](content/content-candidates.md)）；②閘門治理文件 → [`gate-test/`](gate-test/)；同批另有 `m2` 的授權備忘 → [`governance/`](governance/)。**只搬路徑，六份閘門材料與三份策展資料內容一字未動，D 日仍未宣告**——原本「D 日之後才能搬」的顧慮是怕動到凍結標的，路徑遷移不是凍結標的的變更，已依慣例記於 [`gate-test/README.md` §3.1](gate-test/README.md)。`m1`／`m2` 的檔案地圖已標「已移至」，`01`／`02`／`03`／`AGENTS.md` 與本文件的引用同批重指。 | ~~閘門測試結束後~~ **已完成** |
 
-# M2 殘項清單(三類)
+# 殘項清單(三類)
 
-分類原則:**甲**只能在真實部署環境驗收,本機結構性做不到;**乙**缺的是一個決策不是一段程式,寫程式之前得先有人拍板;**丙**是 M3(EVAL)接手的接點,不是缺口。逐項證據見 [m2-work-items-audit.md](m2/m2-work-items-audit.md)。
+**2026-08-17 更新:M3 完結,其殘項已依維護規則併入本清單,不另開一份。** 本節原題「M2 殘項清單」,現同時承載 M2 與 M3 的殘項。
+
+分類原則:**甲**只能在真實部署環境驗收,本機結構性做不到;**乙**缺的是一個決策不是一段程式,寫程式之前得先有人拍板;**丙**是移交下一個里程碑的接點與已知限制,不是等人拍板的東西。逐項證據見 [m2-work-items-audit.md](m2/m2-work-items-audit.md) 與 [m3/audit.md](m3/audit.md)。
+
+**現況一覽(2026-08-17)**:
+
+| 類 | 未結案 | 內容 |
+| --- | --- | --- |
+| 甲 | **4** | 甲-1～甲-4,全數為部署期驗收,**不因 M3 完成而放寬一分** |
+| 乙 | **3** | 乙-9(`02`／PDM-005 一致性,實作已落地待契約與文件收尾)、乙-10(anthropic-sa 法務終判＋閘門 D 日)、**乙-13(新:G7,`artifact` 型引用的引文從未回驗——動的是 ADR-026 defence 3 的判準,故需拍板)** |
+| 丙 | **6** | 原七項**全數結案**(M3 逐項處理完畢);新增丙-8～丙-13,全部是「有承接者就做得完」的實作或資料工作,**沒有一項在等決策** |
 
 ## 甲、部署期驗收(**依 ADR-015:未通過不得開放外部使用者提交 Skill 執行**)
 
@@ -63,16 +73,44 @@
 
 > **已關閉(`ddc3e54`)**:`services/sandbox/README.md:112` 原記載被推翻**前**的 SDK 行為(「`settingSources` 含 `project`」),0.3.233 上照做會得到零個 skill。已改為條件表(`cwd`／`settingSources` **省略**／`skills: "all"`／`allowedTools` 傳 `'Skill'` 已 deprecated),並寫明反轉的實測依據與「SDK 升級必須重新實測、不得推理帶過」。~~**仍無 ADR 記錄此次行為反轉**,版本只釘在 `Dockerfile` 的 `ARG CLAUDE_AGENT_SDK_VERSION=0.3.233`。~~ → **2026-08-16 已關閉**:[ADR-023](../../adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md) 記錄此次反轉,並定下版本釘選(digest ＋ lockfile,不用語意版本範圍)、升級必須重跑的四項實測(skill 載入條件／閘道相容/401／prompt caching 計費欄位與 token 對帳／`usage` 事件的發出條件)、「靜默失效不得用推理帶過」原則,以及證據落檔位置 `infra/images/runtime-agent-sdk/UPGRADES.md`。
 
-## 丙、移交 M3(EVAL)的接點
+## 丙、里程碑接點
 
-**M3 是評估里程碑,以下只列接點與已知限制,不代為開工。**
+**2026-08-17 M3 完結後重整。** 本節原標題為「移交 M3(EVAL)的接點」,七項接點**全部已由 M3 處理完畢**——逐項結案理由見下表右欄與 [m3/audit.md](m3/audit.md)。M3 自己產生的新殘項與 M4 接點另列於 [丙(續)](#丙續m3-完結後新增移交-m4打包與封測)。依維護規則,舊列**就地標結案、不刪除**。
+
+### 丙(原七項):移交 M3 的接點,**七項全數結案**
+
+| # | 接點 | 內容 | M3 結案 |
+| --- | --- | --- | --- |
+| 丙-1 | **讀取面:直接用 `trace.Service`** | `Advanced` 已回傳依序重建、標明缺失(`missing_seq`／`late`／`complete`)的完整事件流,`General` 已是聚合摘要。**EVAL-001 引用證據時直接用這兩者,不要自行查 `trace_events`。** 對應的 rubric 缺口見乙-5 | **✅ 照辦**。`internal/eval` 全 package **沒有任何直接查 `trace_events` 的路徑**——證據來源只有 `trace.Service.Advanced`／`General`,`comparison.go` 亦然。`complete: false` 時逐條判定的 `passed` 一律降 `undetermined`(`judge.go` 的 `merge()`),且 `evidence_complete` 隨判定一起存進 `evaluations`,不靠讀報告的人自己注意 |
+| 丙-2 | **寫入面:沿用 `trace.RecordOrchestratorEvent`** | 控制平面已會在 `failed`／`timed_out` 轉移的同交易內寫 `error` 事件,`seq` 由 `NextTraceSeq` 在交易內配號。EVAL 要加自己的事件(評估開始／結束)沿用它,**不要另開寫入路徑** | **✅ 照辦**。`evaluation_started`／`evaluation_completed` 兩個事件沿用它,與它們所描述的資料列**同一交易**提交(鐵律 9);事件 schema 升 **1.2**(additive,1.0／1.1 事件仍合法)。評估失敗時 envelope 為 `error` 且帶 `failure_reason`——「評估壞了」與「Judge 看了說不出來」不會被畫成同一件事 |
+| 丙-3 | **成本合計仍是下界,但不再有整筆消失的 Run**(2026-08-16 已修) | ~~`run.mjs` 的 `usage` 事件**只在 SDK `result` 分支內發出**~~ → **已修,見 `03` TRACE-009**。harness 現在逐則訊息累計每次模型回應的 token,run 結束時一律發一筆 run 級 `usage`:有 `result` 以其為準(`token_source: result`),沒有(崩潰、牆鐘、token 上限中止、或 SDK 就是沒給)則發累計值(`token_source: accumulated`);兩條路徑的 `cost_usd` 都照舊向閘道要,`cost_source` 維持 `gateway`。事件 schema 因此升 **1.1**(additive)。實例 `add-iso3166` 那類「Run 成功但成本不存在」的情形不會再發生。<br>**留給 M3 的仍然是下界,但下界的成因換了**:①累計值不含「串流結束時仍在途中的回應」;②`cost_usd` 是對閘道的一次讀取,最後一次 flush 若落在讀取之後就少算。**權威對帳來源仍是閘道 per-key spend(ADR-017)**,EVAL-012 引用 Trace 合計時必須標明它是下界。<br>另一個原有結論不變:`complete: true` 只保證「發出的事件沒遺失」,不保證某類事件存在。UI 誠實——無 usage 事件時顯示「沒有記錄到用量事件。」而非 0 | **✅ 照辦,且升級為契約義務**。`RunComparison.cost.is_lower_bound` 在 `public.yaml` 裡是 **required 且恆 true 的欄位**,不是旗標也不是呈現慣例——把誠實義務放進契約,就不可能在某個畫面被忘記;權威來源字串由回應自己帶著走。**Run 成本與評估成本分兩列且明文不相加**(比較畫面、`Evaluation.cost` 的 note、`costFindings` 三處都寫著)。無 usage 時說「未知而非零」 |
+| 丙-4 | **`skill_activation` 的 `skipped` 不可觀測** | SDK 訊息流看不到「可用但沒被叫」,M2 不臆造。判斷「Skill 沒被啟用」屬 EVAL-002,材料是「Run 掛了哪些 Skill」對照「trace 裡出現了哪些 activation」 | **✅ 照辦,措辭上限是程式碼常數不是風格建議**。`deterministic.go` 的 `activationFindings()` 在沒有 activation 事件時只說「沒有出現啟用事件」並附一句「模型看到卻選擇不用在訊息流裡不可觀測(TRACE-002)」;具名測試 `TestActivationNeverClaimsTheModelChoseNotToUseTheSkill` 直接反證那句話不會出現 |
+| 丙-5 | ⚠️ **`succeeded` ≠ 任務完成**<br>**2026-08-17 已由 ADR 回答** | `run.mjs` 的 `finish("succeeded")` 只代表「agent 這一輪沒有拋錯」,**與任務是否完成無關**。實例 `date-wrangling`:終態 `succeeded`、Skill 有啟用、Trace 完整,而 `/out/artifacts/` 是空的——最終回覆是反問使用者。**UI 若把 succeeded 呈現為「可用」會誤導;判定任務是否達成正是 EVAL-001 的工作**<br>→ **[ADR-025](../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)（2026-08-17 Accepted）**:`runs.status` 與 `evaluations.overall` 是兩個問題兩個欄位,**評估不回寫 `runs.status`／`failure_class`**;`internal/run/job.go:419` 那條寫著「evaluation 決定 succeeded vs failed」的 TODO 已被明文推翻,**程式碼改寫排在 M3 第 2 批**(尚未執行)。UI 的「未評估」／「評估未完成」／四態任務判定三種呈現要求同記於該 ADR。重評、證據壽命與 Judge 信任邊界另見 [ADR-026](../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) | **✅ 已關閉**。①`internal/run/job.go` 那條 TODO **已從程式碼裡消失**(不是加註解),`successReason` 改為執行語意;②評估**不 UPDATE `runs` 任何欄位**,具名測試 `TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun`;③UI 三種呈現齊備:「未評估(不是通過)」／「評估未完成」／四態任務判定**另起一列**且排在執行狀態之前,`eval.test.tsx` 兩個具名測試鎖住。**丙-5 的實例本身也變成一條規則**:`artifactFindings()` 會對「回報成功而沒有任何產出檔案」的 Run 產生 finding |
+| 丙-6 | **可比較的基準已在庫** | 45 個 Skill 各一次完整平台 Run 的結果、Trace(1112 事件全數 `masked`)、Artifact manifest 與 Test Case 快照都可重查(對帳 §2.3 已實查驗證)。EVAL-011／012 的「重新試跑與比較」有現成的第一組對照 | **✅ 已使用,但用法與預期不同,要記下來**。這 45 筆確實成為 `EVAL-013` 回歸集的第一組標註資料(集合由 `skill_runtime_compatibility.source_run_id` **查出來**而非抄出來,可稽核)。**但它們沒有成為 `EVAL-011／012` 的第一組對照**——比較需要兩個可比的 Run,而這 45 筆各自只有一次。另:manifest 其實**不在資料庫裡**(`artifacts` 全表 0 列),harness 是直接讀封存索引拿到的,見丙-13 |
+| 丙-7 | **`RunResult.usage` 只有牆鐘** | token 與成本走 Trace,沒有回填到 provider 的 result。契約已於 `eab9d26` 改為誠實敘述(「a consumer must not treat an absent token count here as zero usage」)。EVAL 需要 provider 側 usage 時要走 additive 契約變更 | **✅ 維持原判,M3 沒有動它**。比較畫面的成本取自 trace 的 `usage` 事件即足夠,`sandbox-provider.yaml` 一個位元組未改(contract-deltas §6 明列不動)。**這一條不是關閉而是確認**:要 provider 側 usage 仍然是 additive 契約變更,屆時另議 |
+
+### 丙(續):M3 完結後新增,移交 M4(打包與封測)
+
+**六項全部是「有承接者就做得完」的實作或資料工作,沒有一項在等決策**(等決策的在乙,新增的一項是乙-13)。逐項證據見 [m3/audit.md](m3/audit.md)。
+
+| # | 殘項 | 內容 | 觸發／解除條件 |
+| --- | --- | --- | --- |
+| 丙-8 | **`EVAL-013` 的 B 輪回歸未跑** | B 輪 ＝ 依 [content/writing-rubrics.md](content/writing-rubrics.md) §3 修訂 Prompt(加第 4 條「最終回覆必須完整貼出正文」)後**重跑那 5 筆 Run**,再以同一份 rubric 評估。它測的是 A 輪測不到的東西:**證據完整時,逐項引文的實判定**。<br>不在 M3 第 7 批的理由是它要發 5 次真實 Run(沙箱、映像、閘道費用,非只多 5 次 Judge 呼叫)並產生新的 Test Case 快照,屬 Run 批而非接線批。<br>**A 輪足以關閉 `CONTENT-007` 的 G4 與驗證接線後的形狀,不足以宣稱「rubric 判得準」**——`02:EVAL-013` 報告 §2 的「沒測到」第一格(主觀的任務效果判定)因此**仍然開著**。另兩格(注入抵抗、證據殘缺下的保守性)亦零覆蓋,樣本可合成、不需真 Run,見回歸報告 §8.2 建議 2／3 | `CONTENT-007` 的 Prompt 修訂與 5 筆重跑;**不擋任何工作項的勾選**,`EVAL-013` 的範圍註記已誠實寫明它不涵蓋這三格 |
+| 丙-9 | **`inputs_available` 是樂觀上界,缺物件存在性對帳器** | `RunInputsStillAvailable` 只讀平台自己的刪除與到期欄位(`test_cases.deleted_at`、`datasets` 的存在與 `expires_at`),**不探測物件儲存**。欄位還在而物件已被清掉時它仍回 `true`,比較畫面就會提供一條重跑連結,而重跑會在取檔時才失敗。<br>**接受它是上界的理由成立**:那些欄位正是清理流程動作的依據,而每次比較每個 dataset 打一次 HEAD 是為一個已經在手邊的答案買一次來回。**但「通常一致」不等於「一致」**——需要的是一個週期性對帳器(比對 `datasets` 列與物件實際存在),不是在讀取路徑上加探測。<br>同型前例:`SBX-012` 的 orphan 對帳器也是用資料表而非行程內狀態,理由相同(洩漏活得比行程久) | 沒有工作項承接。與 `CORE-007`(使用者資料與 Artifact 刪除流程)重疊,可一併承接 |
+| 丙-10 | **UI 分不出「引用回驗失敗」與「模型自己說不知道」** | 兩者在畫面上都是「無法判斷」。而 `EVAL-013` v1 抓到的那個缺陷**正是這個形態**:45 筆判定正確、理由正確、引用的 id 正確,只有引文多了一個前綴,整條被防線 3 丟掉——呈現出來與「Judge 沒把握」無法區分。<br>資料層已經分得出來(`reason` 以 `evidence_unverifiable: ` 開頭),缺的只是呈現面把它標出來。**不標的代價是那一類缺陷在線上是隱形的**,而它已經真的發生過一次 | 沒有工作項承接;回歸報告 §8.2 建議 4。屬 `EVAL-001` 的呈現面,補上不需新決策 |
+| 丙-11 | ⚠️ **沒有 Skill Version 選擇器,`EVAL-011` 因此不勾** | `RunPreflight.tsx` 的 `version` 只能從 URL query 進來,頁面上沒有這個欄位(該檔 scope 註解已誠實寫明)。而 M3 的主路徑是「評估 → 採納建議 → 建出新版本 → 用同一個 Test Case 重跑新版本」,走到第四步時 `AppliedResult` 只顯示版本序號與內容雜湊並連到 Skill 頁——使用者得自己去 Skill 頁抄版本 ID 再手改網址列。<br>**比較畫面那條把三個 id 都填好的連結解不了這一步**:它要求兩個 Run 都已存在,而這裡正是要產生第二個。這是循環,不是替代路徑。<br>**補法很小**:preflight 頁加一個版本選單(讀既有的版本清單),或 `AppliedResult` 直接連到帶著新 `version` 的 preflight。任一都不需新端點、不需新決策。<br>**這是同一種退回的第三次**:`TEST-004`(缺顯示面)→ 補 `/lab/datasets` 後重勾;`TEST-003`(缺操作面)→ 補 `TEST-012` 後重勾;`EVAL-011`(缺交接面)→ 待補 | **`03` EVAL-011 的勾選**。補上即依允收重新勾選,理由見 [m3/audit.md §2](m3/audit.md) |
+| 丙-12 | **策展內容沒有「種進全新部署」的路徑** | `CONTENT-007` 的 5 份 writing rubric 以**策展預設**的形式存在([content/writing-rubrics.md](content/writing-rubrics.md) §4 ＋ `tools/eval-regression/rubric-content-007-writing-v1.json`),**平台裡沒有任何一筆 Test Case 帶著它們**。<br>**這不是 rubric 的缺口,是一個更早就存在而沒人記下來的缺口**:允收第 1、5 條的範例 Dataset／Prompt／驗收條件當初也是在 M2 的臨時 Workspace 裡現做的,平台從來沒有「把策展 Test Case 種進部署」的路徑。要求 rubric 必須可種進全新部署,就等於回頭要求那三項也必須可以。<br>因此 `CONTENT-007` **以與第 1 條相同的標準判定達成並勾選**,而這件事記在這裡。它跨 `CONTENT`(策展資料要有可種入的形式)與 `PACK`(可散布 Test Case 與範例資料是 `02:PACK-001` 第 5 條的既有承諾),兩邊都碰得到 | 沒有工作項承接。**M4 的 `PACK-005`(選擇是否包含可散布 Test Case 與範例資料)是最自然的落點**——那條準則已經預設了「Test Case 可以被搬運」這件事 |
+| 丙-13 | ⚠️ **歷史 M2 Run 的 `artifacts` 表全空;補評前必須先回填** | `artifacts` **全表 0 列**:M2 的管線沒有寫這些列,封存本身還在物件儲存(`run-artifacts/<run_id>/<attempt_id>/artifacts.tar`)。M3 的 `recordArtifacts` 從此會寫,**新的 Run 沒有這個問題**。<br>**危險在補評**:`artifactFindings()` 在 artifact 列為空且 Run 為 `succeeded` 時會產出「這個 Run 回報成功而沒有記錄到任何產出檔案」——對 M2 那 43 筆確實有產出的 Run,這句話是**錯的**;送給 Judge 的 `artifacts[]` 也會是空陣列。而評估是 append-only,錯的那一份會永遠留在 revision 清單裡。<br>**今天不會發生**:評估只由終態轉移排入,M2 的 73 筆早已終態,沒有路徑會自動評估它們(ADR-025 已定為「永久停在未評估,除非有人另行決定補評」)。<br>**修法是資料回填不是程式修改**:從封存的 tar 索引回填,`EVAL-013` 的 harness 已證明讀得到(不解壓、不依副檔名解析,evaluation-design §2.2 允許的那條路) | **順序是硬的:先回填 `artifacts`,再評估。** 反過來會得到 43 份帶著一句錯誤指控的不可變評估 |
+
+## 移交 M4(打包與封測)
+
+M4 的範圍見 `01` 與 `03` §15／§17／§18。以下只列**M3 已經可以看見的接點**,不代為開工。
 
 | # | 接點 | 內容 |
 | --- | --- | --- |
-| 丙-1 | **讀取面:直接用 `trace.Service`** | `Advanced` 已回傳依序重建、標明缺失(`missing_seq`／`late`／`complete`)的完整事件流,`General` 已是聚合摘要。**EVAL-001 引用證據時直接用這兩者,不要自行查 `trace_events`。** 對應的 rubric 缺口見乙-5 |
-| 丙-2 | **寫入面:沿用 `trace.RecordOrchestratorEvent`** | 控制平面已會在 `failed`／`timed_out` 轉移的同交易內寫 `error` 事件,`seq` 由 `NextTraceSeq` 在交易內配號。EVAL 要加自己的事件(評估開始／結束)沿用它,**不要另開寫入路徑** |
-| 丙-3 | **成本合計仍是下界,但不再有整筆消失的 Run**(2026-08-16 已修) | ~~`run.mjs` 的 `usage` 事件**只在 SDK `result` 分支內發出**~~ → **已修,見 `03` TRACE-009**。harness 現在逐則訊息累計每次模型回應的 token,run 結束時一律發一筆 run 級 `usage`:有 `result` 以其為準(`token_source: result`),沒有(崩潰、牆鐘、token 上限中止、或 SDK 就是沒給)則發累計值(`token_source: accumulated`);兩條路徑的 `cost_usd` 都照舊向閘道要,`cost_source` 維持 `gateway`。事件 schema 因此升 **1.1**(additive)。實例 `add-iso3166` 那類「Run 成功但成本不存在」的情形不會再發生。<br>**留給 M3 的仍然是下界,但下界的成因換了**:①累計值不含「串流結束時仍在途中的回應」;②`cost_usd` 是對閘道的一次讀取,最後一次 flush 若落在讀取之後就少算。**權威對帳來源仍是閘道 per-key spend(ADR-017)**,EVAL-012 引用 Trace 合計時必須標明它是下界。<br>另一個原有結論不變:`complete: true` 只保證「發出的事件沒遺失」,不保證某類事件存在。UI 誠實——無 usage 事件時顯示「沒有記錄到用量事件。」而非 0 |
-| 丙-4 | **`skill_activation` 的 `skipped` 不可觀測** | SDK 訊息流看不到「可用但沒被叫」,M2 不臆造。判斷「Skill 沒被啟用」屬 EVAL-002,材料是「Run 掛了哪些 Skill」對照「trace 裡出現了哪些 activation」 |
-| 丙-5 | ⚠️ **`succeeded` ≠ 任務完成**<br>**2026-08-17 已由 ADR 回答** | `run.mjs` 的 `finish("succeeded")` 只代表「agent 這一輪沒有拋錯」,**與任務是否完成無關**。實例 `date-wrangling`:終態 `succeeded`、Skill 有啟用、Trace 完整,而 `/out/artifacts/` 是空的——最終回覆是反問使用者。**UI 若把 succeeded 呈現為「可用」會誤導;判定任務是否達成正是 EVAL-001 的工作**<br>→ **[ADR-025](../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)（2026-08-17 Accepted）**:`runs.status` 與 `evaluations.overall` 是兩個問題兩個欄位,**評估不回寫 `runs.status`／`failure_class`**;`internal/run/job.go:419` 那條寫著「evaluation 決定 succeeded vs failed」的 TODO 已被明文推翻,**程式碼改寫排在 M3 第 2 批**(尚未執行)。UI 的「未評估」／「評估未完成」／四態任務判定三種呈現要求同記於該 ADR。重評、證據壽命與 Judge 信任邊界另見 [ADR-026](../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) |
-| 丙-6 | **可比較的基準已在庫** | 45 個 Skill 各一次完整平台 Run 的結果、Trace(1112 事件全數 `masked`)、Artifact manifest 與 Test Case 快照都可重查(對帳 §2.3 已實查驗證)。EVAL-011／012 的「重新試跑與比較」有現成的第一組對照 |
-| 丙-7 | **`RunResult.usage` 只有牆鐘** | token 與成本走 Trace,沒有回填到 provider 的 result。契約已於 `eab9d26` 改為誠實敘述(「a consumer must not treat an absent token count here as zero usage」)。EVAL 需要 provider 側 usage 時要走 additive 契約變更 |
+| M4-1 | **`PACK-002`「打包前重新執行規格驗證」的做法已經有前例** | `EVAL-010` 套用建議時對修補後的位元組重跑 `skillpkg.Validate`,任一阻擋級 finding 即整批拒絕且不建版本(`apply.go` 的 `validatePatched()`)——那正是 `PACK-002` 的精神,只是提前發生。M4 應**重用同一條路徑**而不是另寫一套判準:兩套會在「什麼算阻擋級」上漂移 |
+| M4-2 | **`PACK-003`「保留衍生關係」對建議生成的版本已有答案** | 由建議建出的版本,其溯源是 `evaluation_suggestions.applied_skill_version_id` 的反向查詢(「哪幾條建議造出它、出自哪一份評估」)。打包時要保留的是**這個關係**,不是一個 `derived_from_evaluation_id` 欄位——後者不存在,理由見 [m3/evaluation-design.md §5.3](m3/evaluation-design.md) 的 2026-08-17 更正 |
+| M4-3 | **`PACK-005` 與丙-12 是同一件事的兩半** | 「可散布的 Test Case 與範例資料」這條準則已經預設 Test Case 可以被搬運;丙-12 說的是策展側目前沒有可種入的形式。兩者一起處理才划算 |
+| M4-4 | **`PACK-004`「排除 Secrets 與 Run 資料」要涵蓋評估產物** | 建議的 `problem`／`expected_impact`／證據 `excerpt` 全部是模型寫的或從 trace 抄的文字,而 rubric 是使用者寫的。打包時這些**都不該進套件**——它們是 Run 資料不是 Skill 內容。目前沒有任何規則說這件事 |
+| M4-5 | **封測(`03` §17)會第一次讓非團隊成員讀到評估報告** | ADR-025 的待決策(兩列狀態的實際文案與版面,由 `DESIGN-010`／`011` 承接)在那之前應該有答案,否則「執行完成 ＋ 未符合」這個組合會由每個使用者自己解讀。另:`EVAL-013` 報告 §2 的三個空格(主觀判定、注入抵抗、證據殘缺)在封測前補上一格算一格——**注入抵抗那一格的樣本可以合成,不需要真 Run**,是三格裡最便宜的 |
+| M4-6 | **甲類四項仍是外部使用者開放的硬前提** | 依 ADR-015 定案紀錄,**`SEC-009`／`SBX-010` 未通過不得開放外部使用者提交 Skill 執行**。封測若涉及外部人員實際跑 Run,甲-1～甲-4 就從「部署期驗收」變成封測的阻擋項,不再是平行工作 |
