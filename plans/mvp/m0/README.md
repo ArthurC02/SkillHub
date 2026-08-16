@@ -40,6 +40,20 @@ M0 的產出是**文件、決策提案與 Spike**,不含產品程式碼。目標
 3. ~~負責人依 spike 報告將 ADR-013 定案,結果回寫 M1 搜尋作法。~~ **已完成(2026-08-14)**:四項實證調整已補記於 ADR-013「定案紀錄」,待決策三項全部回填或移交
 4. **待辦**:提案 Monorepo 目錄結構與 CI/CD(新 ADR),才進入 M1 實作。
 
+## 檔案地圖
+
+> **2026-08-16 加註**:本節是導覽加法,**不修訂任何結論**——上文各節的定案內容未動。
+
+| 檔案 | 類型 | 一句話用途 | 狀態 |
+| --- | --- | --- | --- |
+| [`README.md`](README.md)(本檔) | 計畫 | M0 的計畫、定案紀錄與本目錄導覽 | 凍結 |
+| [`pdm-proposals.md`](pdm-proposals.md) | 治理 | PDM-001~011 產品決策提案 v5,PDM-001／002／003 依此定案;§9 為回寫 `02` 的對照表 | 凍結 |
+| [`data-category-sourcing.md`](data-category-sourcing.md) | 報告 | PDM-001／002 定案前置:`data` 類別的供給查核(來源、授權、九項精選檢查表逐一比對) | 凍結 |
+| [`cost-estimation.md`](cost-estimation.md) | 報告 | ADR-014／015 定案前置:兩情境的部署平台月費試算(v2 ＋ §6.2.3 模型成本 v3 重估) | 凍結 |
+| [`pdm-003-litellm-spike-report.md`](pdm-003-litellm-spike-report.md) | 報告 | PDM-003 定案前置:LiteLLM 閘道相容性與 Skill 載入路徑實測(spike code 在 `spikes/pdm-003-litellm-gateway/`) | 凍結 |
+| [`pdm-011-spike-report.md`](pdm-011-spike-report.md) | 報告 | ADR-013 定案前置:混合檢索與「符合原因」生成的可行性實測(spike code 在 `spikes/pdm-011-intent-search/`) | 凍結 |
+| [`threat-model-and-sandbox-baseline.md`](threat-model-and-sandbox-baseline.md) | 治理 | SEC-001 威脅模型(32 條)與 SEC-002 Sandbox 最低安全基線(45 項可驗收阻擋條件) | 凍結(結論)。**唯一例外**:§3 的出口目的地依 ADR-022 Q3 的 CI 斷言([`.github/workflows/egress-allowlist.yml`](../../../.github/workflows/egress-allowlist.yml))必須隨 `infra/egress/` 變更於同一個 PR 更新 |
+
 ## 備註
 
 - 本目錄文件為 M0 工作產出;`plans/mvp/03-work-items.md` 的勾選僅在完全符合允收準則且決策定案後更新。

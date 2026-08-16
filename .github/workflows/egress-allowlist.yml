@@ -13,6 +13,10 @@ on:
     paths:
       - 'infra/egress/**'
       - '.github/workflows/egress-allowlist.yml'
+      # The checker moved to tools/ci/ and is now named in the filter: a change to
+      # the assertion that nothing re-runs is a change nobody has tested. Free to
+      # add here, unlike runtime-image.yml, because this workflow publishes nothing.
+      - 'tools/ci/check_egress_allowlist.py'
 
 permissions:
   contents: read
@@ -28,7 +32,7 @@ jobs:
       - name: Allow-list invariants (ADR-022 Q3)
         run: |
           pip install --quiet pyyaml
-          python3 .github/workflows/check_egress_allowlist.py
+          python3 tools/ci/check_egress_allowlist.py
 
       # ADR-022 Q3 change process, step 3. The threat model's own §3 says opening a
       # new egress destination requires updating it; this is that sentence with a

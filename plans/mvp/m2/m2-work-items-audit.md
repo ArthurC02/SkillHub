@@ -379,7 +379,7 @@ PDM-005 §5.3 明文列出「`02:TEST-005` 權限摘要的具體欄位」，其�
 | 9 | **§9.8(b) `ReindexAll` 的 `updated_at = now()`** | 不修就是每次補跑都要人工圈掉 45 筆 fork 文件，漏一次多花 $2 |
 | 10 | **`docx` 的裁定（CONTENT-005 44/45）** | 三條路徑見 [README 乙-11](README.md)。**選「下架」前要先看清楚代價**——它是 golden query D01 的 gold primary 且為現行 Top-1 |
 
-### 第三梯：M2 內結構性不可能完成（→ 部署期／待決策，見 [README.md](README.md) 的殘項三類清單）
+### 第三梯：M2 內結構性不可能完成（→ 部署期／待決策，見 [../04-backlog-and-handoffs.md](../04-backlog-and-handoffs.md) 的殘項三類清單）
 
 SEC-009、SBX-010、SBX-005／007 的生產網路面、SBX-002 的門檻定值、SEC-002 的六項門檻與 Q1～Q3。**這些不是拖延，是它們需要 Linux＋巢狀虛擬化與生產網路，本機 Windows 開發環境結構性做不到**（`README.md`「開發環境限制」已誠實記錄）。
 

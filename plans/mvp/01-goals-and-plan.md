@@ -177,8 +177,8 @@ MVP 先提供：
 | --- | --- |
 | M0 產品與安全基線 | **已完結**（2026-08-14）——見 [m0/README.md](m0/README.md) |
 | M1 Skill Explorer | **程式碼面已收斂**（對帳見 [m1/m1-work-items-audit.md](m1/m1-work-items-audit.md)）；**驗證閘門尚未正式通過**——使用者測試材料已備妥（[m1/gate-test/](m1/gate-test/)），**D 日待負責人宣告** |
-| M2 Skill Lab | **已完結**（2026-08-16）——對帳見 [m2/m2-work-items-audit.md](m2/m2-work-items-audit.md)，殘項三類清單見 [m2/README.md](m2/README.md) 末節 |
-| M3 評估與改善 | 未開工；接點與已知限制見 m2 殘項清單「丙」類 |
+| M2 Skill Lab | **已完結**（2026-08-16）——對帳見 [m2/m2-work-items-audit.md](m2/m2-work-items-audit.md)，殘項三類清單見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md) |
+| M3 評估與改善 | 未開工；接點與已知限制見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md) 殘項清單「丙」類 |
 | M4 打包與封閉測試 | 未開工；SEC-009 驗收證據落檔位置已預留 `m4/sec-009-acceptance/` |
 
 **閘門與並行的關係（誠實記錄）**：M1 的驗證閘門與 M2 開發並行進行，因此「M2 完結」不代表 M1 閘門已通過；閘門未過時的處置仍依 M1 節的規定——先修正搜尋與內容。
@@ -206,7 +206,7 @@ MVP 先提供：
 - 完成精選 Skill 的範例資料、Prompt、驗收條件與基準試跑（`03:CONTENT-007／008`，2026-08-15 由 M1 移入）。→ ✅ CONTENT-008（精選 15/15 符合）；**CONTENT-007 差 `writing` rubric 一項**（Judge 介面未實作，rubric 沒有消費端）。
 - 依 Sandbox 實測結果啟用搜尋的 Agent 相容篩選維度（`02:DISC-002`，2026-08-15 標定）。→ ✅ migration `0022` 建表、45 筆實測值回填、`?agent=` 篩選與 UI 控制項上線。
 
-殘項（部署期驗收／待負責人決策／移交 M3）見 [m2/README.md](m2/README.md) 末節。
+殘項（部署期驗收／待負責人決策／移交 M3）見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md)。
 
 ### M3：評估與改善
 

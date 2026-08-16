@@ -35,7 +35,7 @@ Agent SDK 是沙箱內唯一執行 Skill 的元件，平台對「Skill 有沒有
 | 1 | **Skill 載入條件** | 掛一個已知 Skill 的 Run，`init` 訊息的 skills 清單含該專案 skill，且 Trace 出現對應的 `skill_activation` 事件 | 這是已經反轉過一次的那一條。`cwd`／`settingSources` 省略／`skills: "all"`／工具清單，四者缺一則零個 skill |
 | 2 | **閘道相容** | 模型呼叫全數經 LiteLLM（`ANTHROPIC_BASE_URL`＋短效 Virtual Key），閘道 spend log 有對應紀錄；金鑰撤銷後 `/v1/messages` 回 **401** | 鐵律 8。SDK 換了 HTTP 客戶端或改用新路由時，「直連供應商」是不會有人通知你的失敗 |
 | 3 | **Prompt caching 計費欄位** | 記錄該版本在 `/v1/messages` 路由上是否輸出 `cache_read_input_tokens`／`cache_creation_input_tokens`；`usage` 事件的 `input_tokens`／`output_tokens` 與閘道 per-key spend 對帳一致 | PDM-005 §5.2a-7 記載這兩個欄位目前是**缺欄不是 0**；token 上限的強制點依賴 `input_tokens`（`02:RUN-003`），欄位語意變動會直接改變強制行為 |
-| 4 | **`usage` 事件的發出條件** | 確認 `usage` 是否仍只在 SDK 的 `result` 分支發出（崩潰／被殺／abort 時不發） | 這是 EVAL-012 成本合計系統性低估的來源（[m2/README](../plans/mvp/m2/README.md) 丙-3）。行為若改變，下游的補償邏輯要跟著改 |
+| 4 | **`usage` 事件的發出條件** | 確認 `usage` 是否仍只在 SDK 的 `result` 分支發出（崩潰／被殺／abort 時不發） | 這是 EVAL-012 成本合計系統性低估的來源（[`04-backlog-and-handoffs`](../plans/mvp/04-backlog-and-handoffs.md) 丙-3）。行為若改變，下游的補償邏輯要跟著改 |
 
 可執行形式已存在：`services/platform/internal/identity/e2e_gateway_integration_test.go`（以 `SKILLHUB_E2E_SANDBOX_URL` 開關，會花錢故 CI 不跑）。單次 Run 成本約 $0.006–0.017，這是升級的**已知固定成本**，不是可省的一項。
 

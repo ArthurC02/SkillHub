@@ -20,22 +20,29 @@ name: Runtime Image
 #     registry. Republishing over a README edit meant one orphan per docs commit —
 #     and an orphan is a digest that gate D can never accept, because the tag its
 #     attestations describe has moved on.
-#   * scan_predicate.sh is included. It produces the I-04 attestation; a change to
-#     it that nothing re-runs is a change nobody has tested.
+#   * tools/ci/scan_predicate.sh is included. It produces the I-04 attestation; a
+#     change to it that nothing re-runs is a change nobody has tested.
+#   * This workflow file stays in its own filter, and that was re-examined when the
+#     helper moved: editing it republishes and therefore orphans a digest, even for
+#     a filter-only edit. Dropping it from the push filter would remove that cost,
+#     but ADR-019 leaves single-developer direct-to-main open and this repo uses it,
+#     so a change to the build or the gates would then be validated by nothing at
+#     all — the same hole the line above exists to close. One bounded orphan with a
+#     documented cleanup path (infra/images/README.md) is the cheaper side.
 on:
   pull_request:
     paths:
       - 'infra/images/**'
       - '!infra/images/**/*.md'
       - '.github/workflows/runtime-image.yml'
-      - '.github/workflows/scan_predicate.sh'
+      - 'tools/ci/scan_predicate.sh'
   push:
     branches: [main]
     paths:
       - 'infra/images/**'
       - '!infra/images/**/*.md'
       - '.github/workflows/runtime-image.yml'
-      - '.github/workflows/scan_predicate.sh'
+      - 'tools/ci/scan_predicate.sh'
   # I-04 requires the scan result of the *published* image to be in date, and
   # 30 days is the value ADR-022 set. Nothing re-scans a digest that nobody
   # rebuilds, so a published image would silently expire and, per gate D, stop
@@ -206,7 +213,7 @@ jobs:
       # undone by a re-add from the wrong OS.
       - name: Attest the scan result to the pushed digest (I-04)
         if: github.event_name == 'push'
-        run: bash .github/workflows/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
+        run: bash tools/ci/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
       - name: Record the scan attestation
         if: github.event_name == 'push'
         uses: actions/attest@v2
@@ -279,7 +286,7 @@ jobs:
       # set is acceptable. Withholding it on a red scan would leave the digest
       # looking un-scanned, which I-04 treats identically to expired.
       - name: Re-attest the scan result (I-04 scanned_at)
-        run: bash .github/workflows/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
+        run: bash tools/ci/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
       - uses: actions/attest@v2
         with:
           subject-name: ${{ env.REGISTRY_IMAGE }}

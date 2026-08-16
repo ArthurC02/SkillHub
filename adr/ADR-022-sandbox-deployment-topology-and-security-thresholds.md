@@ -185,7 +185,7 @@ M2 的實作把三個原本預期的目的地收斂成一個：
 
 ### 兩個把重評條件與允許清單變成閘門的 CI 斷言（A1-c）
 
-紀律會安靜地停止發生，所以 Q3 的兩項保證各配一個斷言（[`.github/workflows/egress-allowlist.yml`](../.github/workflows/egress-allowlist.yml) ＋ [`check_egress_allowlist.py`](../.github/workflows/check_egress_allowlist.py)）：
+紀律會安靜地停止發生，所以 Q3 的兩項保證各配一個斷言（[`.github/workflows/egress-allowlist.yml`](../.github/workflows/egress-allowlist.yml) ＋ [`check_egress_allowlist.py`](../tools/ci/check_egress_allowlist.py)）：
 
 | 斷言 | 行為 |
 | --- | --- |
@@ -475,4 +475,4 @@ M2 README 與 `03:SBX-010` 的註記都寫「逃逸測試需要 **Linux ＋ 巢�
 | **限制收緊** | **B-1** 豁免複審日錨定改 `first_exempted_at`＋90 天（原以掃描日錨定會被每次重掃無限後推）。<br>**B-5** 任一節點 drain 期間暫停 P-03 例行滾動重建。<br>**C-2** Q1 標明有效範圍為封測 2 節點，早期成長 5 節點即越線必須重開評估。<br>**6b** 物件短效授權移出「撤銷失敗」類，改述為窗口上界 ＝ 簽發 TTL 的明示殘餘風險 |
 | **驗收覆蓋補洞** | **C-3／D-1** P-02 獨立為 **T10 常駐探針**；新增 **T5-7**（閘道 `pinned_ip` 的非允許 port）與 **T5-8**（自外部掃節點 port）；T7 增「人工注入假遺留資源」子項——**否則 X-04 的 drain 與暫停路徑沒有任何測項會執行到**；I-05 改由 T9 契約測試承接（跨時間行為，宣告式探針看不到）；45 項覆蓋核對表重算 |
 | **措辭** | **A1-d** 強制點改述為「主機側 `forward`／`DOCKER-USER` 鏈或 Run netns 內」，避免部署批照 `output` 字面實作成容器內規則（那能被逃逸後改掉）。**D-3** 證據路徑改 `plans/mvp/m4/sec-009-acceptance/`，判定表與 `versions.txt` 進 repo、原始輸出留 CI artifact 並附連結 |
-| **隨本次建立的檔案** | [`infra/egress/allowlist.yaml`](../infra/egress/allowlist.yaml)、[`infra/nodes/gvisor-baseline.txt`](../infra/nodes/gvisor-baseline.txt)、[`.github/workflows/gvisor-baseline.yml`](../.github/workflows/gvisor-baseline.yml)、[`.github/workflows/egress-allowlist.yml`](../.github/workflows/egress-allowlist.yml) ＋ [`check_egress_allowlist.py`](../.github/workflows/check_egress_allowlist.py) |
+| **隨本次建立的檔案** | [`infra/egress/allowlist.yaml`](../infra/egress/allowlist.yaml)、[`infra/nodes/gvisor-baseline.txt`](../infra/nodes/gvisor-baseline.txt)、[`.github/workflows/gvisor-baseline.yml`](../.github/workflows/gvisor-baseline.yml)、[`.github/workflows/egress-allowlist.yml`](../.github/workflows/egress-allowlist.yml) ＋ [`check_egress_allowlist.py`](../tools/ci/check_egress_allowlist.py) |

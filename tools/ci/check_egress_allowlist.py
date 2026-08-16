@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assert ADR-022 Q3's invariants on infra/egress/allowlist.yaml.
 
-Run it anywhere: `python3 .github/workflows/check_egress_allowlist.py`.
+Run it anywhere: `python3 tools/ci/check_egress_allowlist.py`.
 Exit 0 = the allow-list still matches the decision; exit 1 = it does not, and the
 message says which part of ADR-022 to go read.
 """

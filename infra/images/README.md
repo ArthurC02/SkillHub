@@ -285,7 +285,7 @@ docker inspect --format '{{index .RepoDigests 0}}' node:22-bookworm-slim
 
 `summary.fixable_critical_high` 是刻意冗餘的一個數字：它正是 I-06 擋人的那個量，讓准入探針
 可以斷言它是 0，而不必自己重寫一遍 grype 的等級與修復狀態邏輯。predicate 的產生器是
-[`.github/workflows/scan_predicate.sh`](../../.github/workflows/scan_predicate.sh)。
+[`tools/ci/scan_predicate.sh`](../../tools/ci/scan_predicate.sh)。
 
 CI artifact `runtime-agent-sdk-scan-<sha>`（保留 90 天，含 `sbom.spdx.json`、
 `vulnerabilities.txt`、`vulnerabilities.json`）**保留為人讀用途**，但它不再是 I-03／I-04

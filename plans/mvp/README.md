@@ -36,8 +36,11 @@
 1. [目標與計畫內容](./01-goals-and-plan.md)
 2. [規格與允收準則](./02-specifications-and-acceptance-criteria.md)
 3. [工作項目列表](./03-work-items.md)
-4. [架構決策紀錄](../../adr/README.md)
-5. [M0 執行計畫與產出](./m0/README.md)（決策提案、成本試算、威脅模型、PDM-011 Spike 報告）
+4. [待辦與移交：目前還缺什麼、誰在等誰](./04-backlog-and-handoffs.md)（**活文件**；殘項三類清單＋跨里程碑待辦）
+5. [架構決策紀錄](../../adr/README.md)
+6. [M0 執行計畫與產出](./m0/README.md)（決策提案、成本試算、威脅模型、Spike 報告）
+7. [M1 執行計畫與產出](./m1/README.md)（內容策展、目錄重建、審校報告、閘門測試材料）
+8. [M2 執行計畫與產出](./m2/README.md)（Skill Lab 交付摘要、基準試跑、工作項對帳）
 
 ## 文件維護規則
 

@@ -432,7 +432,7 @@ pdf                    fa820905ee07004192ea1dfe01132891
 ### 12.5 連帶狀態
 
 - 就 KPI3 這一條而言，`excel-format` 的**通過維持**，`curated-skill-list` 檢查 ⑦ 的 15/15 維持，`03` 的 CONTENT-005 勾選**不因本項退回**。
-- CONTENT-005 現為 **44/45**，唯一未收斂的是 `docx`（§11.3），**與本追認無關**，仍待負責人裁定（[m2/README 乙-11](../m2/README.md)）。
+- CONTENT-005 現為 **44/45**，唯一未收斂的是 `docx`（§11.3），**與本追認無關**，仍待負責人裁定（[`04` 殘項乙-11](../04-backlog-and-handoffs.md)）。
 - [gate-test/README §3.1](gate-test/README.md) 的「一項判準範圍修正待追認」已可改記為已追認。
 
 ---
@@ -525,7 +525,7 @@ Judge 費用取自 `review-results.json` 的 `usage` 增量（$1.0626 − $0.960
 隨之更新為 **v2 × 26 ＋ v3 × 5 ＋ v4 × 3 ＋ v5 × 10 ＋ v6 × 1**（`docx` 由 v5 移至 v6），目錄
 筆數／`enriched`／有向量仍為 45／45／45。
 
-**`03-work-items.md` 的 CONTENT-005 勾選維持**，行內註記已補指本節；`m2/README.md` 殘項
+**`03-work-items.md` 的 CONTENT-005 勾選維持**，行內註記已補指本節；`04-backlog-and-handoffs.md` 殘項
 **乙-11 關閉**。連帶 CONTENT-003 的檢查 ⑦ 維持 `pass`（15/15，精選未受影響——`docx` 是已索引筆）。
 
 > **對 [`gate-test/README.md`](gate-test/README.md) §3.1 的影響（本節未代改）**：凍結標的的
