@@ -408,6 +408,7 @@ Skill 套件的威脅隨生命週期階段不同，分「匯入 → 掃描 → �
 - 新增資產、新增 Provider、開放新的 egress 目的地、或啟動 Local Runner／遠端 MCP 時，本文件必須更新。
 - 任何威脅的「現有緩解」若引用的 ADR 被 `Superseded`，此處需同步改引用新 ADR（依 AGENTS.md 文件維護規則，不改寫 ADR 本身）。
 - 第 2.9 節優先序在每個里程碑結束時複審一次；遠端 MCP 或 Local Runner 啟動時，須把對應的 `【後 MVP】` 威脅併入排序。
+- **egress 目的地的機讀來源是 [`infra/egress/allowlist.yaml`](../../../../infra/egress/allowlist.yaml)，與本節由 CI 強制配對**（ADR-022 Q3，[`.github/workflows/egress-allowlist.yml`](../../../../.github/workflows/egress-allowlist.yml)）。配對是**依路徑、非依語意**：只要該目錄有任何變更就要求本檔同一次變更一併更新，**註解修正也不例外**（2026-08-16 已有一次註解修正觸發紅燈）。上一條「開放新的 egress 目的地」講的是需要負責人核可的實質變更；純編輯性變更仍須配對，但應在 commit message 註明其為編輯性，不假借核可。
 
 ---
 

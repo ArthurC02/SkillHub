@@ -24,6 +24,12 @@
 # Changing this file: its own PR, product owner approval in the commit message,
 # and the same PR must update docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md
 # (its §3 maintenance rule). CI enforces the pairing.
+#
+# "Changing this file" means any byte of it, comments included. The CI assertion
+# pairs the two by path, not by semantics, so an edit that opens no destination
+# still needs the threat-model side — a comment-only fix already tripped it once.
+# The owner-approval half applies to destination changes; say so in the message
+# when a change is editorial, rather than claiming an approval nobody gave.
 
 destinations:
   - name: model_gateway
