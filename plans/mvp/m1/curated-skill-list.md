@@ -65,9 +65,9 @@
 | # | Skill | 來源 repo | pin commit | SKILL.md 路徑 | License | 依賴 | 外網 | Script 規模 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | A-1 | `data-analyst` | [nqumich/data-analyst-skill](https://github.com/nqumich/data-analyst-skill) | `0ba9d17ed275b341df713db6a10b44eb32bf6eb1` | `SKILL.md`（repo 根） | MIT（實查 `LICENSE`） | `pandas`、`openpyxl` ✅ | 不需 | `scripts/data_ops.py` 203 行 ✅ |
-| A-2 | `data-cleanliness-scan` | [danielrosehill/Claude-Data-Wrangler-plugin](https://github.com/danielrosehill/Claude-Data-Wrangler-plugin) | `b12805a62307021e024626616119b505e015f5a9` | `skills/data-cleanliness-scan/SKILL.md` | MIT | prompt-only（`pandas`／`numpy`）✅ | 不需 | 0 行 |
-| A-3 | `csv-to-json` | danielrosehill/Claude-Data-Wrangler-plugin | 同上 | `skills/csv-to-json/SKILL.md` | MIT | prompt-only ✅ | 不需 | 0 行 |
-| A-4 | `text-to-numeric` | danielrosehill/Claude-Data-Wrangler-plugin | 同上 | `skills/text-to-numeric/SKILL.md` | MIT | prompt-only ✅ | 不需 | 0 行 |
+| A-2 | `data-cleanliness-scan` | [danielrosehill/Claude-Data-Wrangler-plugin](https://github.com/danielrosehill/Claude-Data-Wrangler-plugin) | `b12805a62307021e024626616119b505e015f5a9` | `skills/data-cleanliness-scan/SKILL.md` | MIT | ~~prompt-only（`pandas`／`numpy`）✅~~ → **更正⁷**：`pandas`、`openpyxl`、`chardet`、`python-dateutil` ✅、`pyarrow` ⛔（拒收） | 不需 | 0 行（無 Script ≠ 無依賴，見⁷） |
+| A-3 | `csv-to-json` | danielrosehill/Claude-Data-Wrangler-plugin | 同上 | `skills/csv-to-json/SKILL.md` | MIT | ~~prompt-only ✅~~ → **更正⁷**：`pandas` ✅ | 不需 | 0 行（無 Script） |
+| A-4 | `text-to-numeric` | danielrosehill/Claude-Data-Wrangler-plugin | 同上 | `skills/text-to-numeric/SKILL.md` | MIT | ~~prompt-only ✅~~ → **更正⁷**：`pandas` ✅ | 不需 | 0 行（無 Script） |
 | A-5 | `excel-deduplicate` | YuYY2004/excel-skills | `c15e51e2...` | `claude/skills/excel-deduplicate/SKILL.md` | MIT | `pandas`、`openpyxl`、`lxml` ✅（`lxml` **已於 2026-08-14 隨 PDM-002 納入白名單**） | 不需 | 全文約 180–190 行，內嵌 Python 約 130–140 行 ✅ |
 | A-6 | `excel-find-duplicates` | YuYY2004/excel-skills | 同上 | `claude/skills/excel-find-duplicates/SKILL.md` | MIT | 同上 ✅ | 不需 | 單檔 ≤253 行 ✅ |
 
@@ -93,7 +93,7 @@
 | W-4 `line-edit` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
 | W-5 `ai-written-check` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
 | A-1 `data-analyst` | pass | pass | pass | **pending**¹ | pending² | pass | **pass**³ | pending⁴ | pass |
-| A-2 `data-cleanliness-scan` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
+| A-2 `data-cleanliness-scan` | pass | pass | pass | pass（無 Script） | pending² | **pass**⁷ | **pass**³ | pending⁴ | pass |
 | A-3 `csv-to-json` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
 | A-4 `text-to-numeric` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
 | A-5 `excel-deduplicate` | pass | pass | pass | **pending**¹⁺⁵ | pending² | pass | **pass**³ | pending⁴ | pass |
@@ -113,6 +113,20 @@
 4. **⑧ 平台基準試跑需要平台存在。** 承接工作項：**CONTENT-007（範例資料／Prompt／驗收條件）→ CONTENT-008（基準試跑）**。此項在隔離 Sandbox 內執行，符合鐵律 1。
 5. **`excel-deduplicate` 的 SKILL.md 於依賴段落出現 `pip install` 字樣。** 三個套件（`pandas`／`lxml`／`openpyxl`）全部在 PDM-004 白名單內，該分支在 Runtime Image 中不會觸發；但**「SKILL.md 文字教模型執行被禁止的動作」與 M0 否決 `cabbage2000-lab/data-analysis-skills` 的理由同型**。CONTENT-006 需人工確認措辭是否可接受，或於匯入時標註。
 6. **D-4 `excel-format` 的 ④ 機械項於 2026-08-15 全部通過**：262 行全文／168 行內嵌 Python（≤300）、無 `eval`／`exec`、無動態下載、無 `subprocess`、無 `pip install` 字樣（不同於腳註 5 的 A-5）。**與 D-1／D-2 同樣只差「人工逐行審過」**，故仍記 pending 而非 pass。另 SKILL.md 以 `[[excel-safe-workflow]]` wiki-link 引用同 repo 的另一個 Skill，該檔不在套件內；匯入實測未觸發阻擋錯誤（③ pass），但 CONTENT-006 應決定此類跨 Skill 引用的呈現方式。
+7. **⑥ 的更正紀錄（2026-08-16，CONTENT-012）。** 判定值**不變**（`pass`），但原判定**在記錄當時沒有依據**，故補記更正而非改寫歷史。
+
+   **原記 `pass` 憑什麼？** 憑一份抄漏的依賴清單。`seed-skills.json` 的 `deps` 當初是人工逐份讀 SKILL.md 抄出來的，而 **45 個 Skill 中有 13 個抄漏、合計漏 8 個套件**（`plans/mvp/m2/content-baseline-report.md` §13.4 與其後續）。⑥ 問的是「依賴在 Runtime Image 內」，拿一份漏抄的清單去比對，答案必然是 pass——**它不是錯的判斷，是沒有輸入的判斷**。
+
+   **依當時的正確資料應為 `fail`。** 以靜態掃描重新推導的 `deps` 比對當時的映像 `2026.08-2`（9 個 Python 套件），13 筆全部落差，其中精選僅 A-2 一筆（漏 `chardet`、`pyarrow`）。其餘 12 筆屬已索引層，§4 各表無「依賴」欄，故本次不改表，更正一併記於此。
+
+   **現況記 `pass`，依據可重新推導。** 判準本身也一併明確化，因為原措辭「依賴在 Image 內」無法回答「刻意不裝」這種情形：
+
+   > **⑥ pass ⟺ 不需外網／MCP，且每個宣告依賴要麼在 Runtime Image 內，要麼在映像准入門檻的具名拒收清單內。**
+   > 亦即：**落差已揭露即通過，落差未知才不通過。**
+
+   兩個輸入都是機器產出、可重跑：依賴集取 `services/platform/internal/skillpkg/deps.go` 的 `package-dependencies` finding，映像側取 `infra/images/README.md` 的納入／拒收表（`2026.08-3`，digest `sha256:5bcbca88…`）。**A-2 現況 pass**：`pandas`／`openpyxl`／`chardet`／`python-dateutil` 已在 `2026.08-3` 內（`chardet` 即本次為它補上的），`pyarrow` 為具名拒收（native Arrow C++，失去 Parquet 一種輸入格式，CSV／JSON／XLSX 路徑不受影響，且該筆在 `2026.08-2` 基準上判「符合」）。
+
+   **精選數維持 6**（`data` 類 4–6 區間內），因為現況判定成立。若日後改採「宣告依賴須全數在映像內」的嚴格判準，A-2 將降為 `fail`、`data` 精選 6 → 5，**仍不跌破下限**——這個後果先寫在這裡，免得下次有人以為那是意外。
 
 > **九項全過者目前為 0**——這是預期狀態，不是缺陷：~~⑤⑦⑧~~ **⑤⑧** 兩項在平台建成前對**所有**候選（含官方來源）一律無法判定。**⑦ 已於 2026-08-16 由自動化審校判為 `pass`（15/15）**，故 CONTENT-003 的勾選現在只等 ⑤（CONTENT-006 的靜態掃描與人工 Secret 確認）。~~**在 CONTENT-005／006／007／008 全數完成前，`03-work-items.md` 的 CONTENT-003 不得勾選為完成**。~~
 >
