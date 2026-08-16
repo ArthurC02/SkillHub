@@ -341,3 +341,64 @@ type JudgeRunResponse struct {
 func (c *Client) JudgeRun(ctx context.Context, req JudgeRunRequest) (*JudgeRunResponse, error) {
 	return post[JudgeRunRequest, JudgeRunResponse](ctx, c, "/judge-run", req)
 }
+
+// --- /suggest-improvements (EVAL-002) -----------------------------------------
+//
+// Proposals, not changes. Nothing that comes back from here reaches a package
+// until internal/eval has re-checked it and a user has accepted it, and even then
+// it becomes a new Skill Version rather than an edit (iron rule 4).
+
+// TargetFile is one package file the caller is willing to have replaced. Sent as
+// content because a proposal has to be written against what is actually there;
+// capped by the contract at 60,000 characters per file.
+type TargetFile struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+// SuggestImprovementsRequest is the evaluation's findings plus the files that
+// might need changing. EvaluationDigest is Go's own rendering of the verdict, not
+// the stored row — the same low-privilege reading rule the trace digest follows.
+type SuggestImprovementsRequest struct {
+	EvaluationID     string       `json:"evaluation_id"`
+	EvaluationDigest string       `json:"evaluation_digest"`
+	FileTree         []string     `json:"file_tree,omitempty"`
+	TargetFiles      []TargetFile `json:"target_files,omitempty"`
+}
+
+// ImprovementProposal is one proposed change: 02:EVAL-002 clause 1's five fields
+// and nothing decision-shaped. There is deliberately no `decision` and no
+// `applied_skill_version_id` — whether a proposal is taken, and what version it
+// becomes, are the user's and Go's (iron rule 6).
+type ImprovementProposal struct {
+	Category string `json:"category"`
+	Problem  string `json:"problem"`
+	// Evidence is prose the model quotes from the digest. A claim, not a citation:
+	// the stored EvidenceRefs are minted by Go from the evaluation's own verified
+	// references (see eval/suggest.go).
+	Evidence        string `json:"evidence"`
+	TargetPath      string `json:"target_path"`
+	ProposedContent string `json:"proposed_content"`
+	ExpectedImpact  string `json:"expected_impact"`
+}
+
+// SuggestImprovementsResponse separates model output (`Suggestions`) from what the
+// service knows and the model cannot influence (`Model`, `PromptVersion`).
+type SuggestImprovementsResponse struct {
+	Suggestions   []ImprovementProposal `json:"suggestions"`
+	Model         string                `json:"model"`
+	PromptVersion string                `json:"prompt_version"`
+}
+
+// SuggestImprovements asks the LLM service to propose improvements from one
+// evaluation (EVAL-002). Same shape of contract as JudgeRun: ctx carries the
+// deadline and cancellation (iron rule 7), and a 502 comes back as an error the
+// caller decides about — the caller does not retry it, because a gateway that
+// refused this input will refuse it again and an evaluation without suggestions is
+// a complete evaluation.
+func (c *Client) SuggestImprovements(
+	ctx context.Context, req SuggestImprovementsRequest,
+) (*SuggestImprovementsResponse, error) {
+	return post[SuggestImprovementsRequest, SuggestImprovementsResponse](
+		ctx, c, "/suggest-improvements", req)
+}

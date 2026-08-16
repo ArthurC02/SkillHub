@@ -143,6 +143,101 @@ func (q *Queries) CreateEvaluation(ctx context.Context, arg CreateEvaluationPara
 	return i, err
 }
 
+const createEvaluationSuggestion = `-- name: CreateEvaluationSuggestion :one
+INSERT INTO evaluation_suggestions (
+    workspace_id, evaluation_id, category, problem, evidence,
+    target_path, proposed_content, expected_impact
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at
+`
+
+type CreateEvaluationSuggestionParams struct {
+	WorkspaceID     pgtype.UUID
+	EvaluationID    pgtype.UUID
+	Category        string
+	Problem         string
+	Evidence        []byte
+	TargetPath      string
+	ProposedContent string
+	ExpectedImpact  string
+}
+
+// EVAL-002 clause 1. Written by the evaluation job once the verdict is stored:
+// a suggestion hangs off the evaluation that produced it, so re-evaluating under a
+// new rubric produces its own set instead of appending to somebody else's.
+// `decision` is left at its default `pending` - proposing is not deciding.
+func (q *Queries) CreateEvaluationSuggestion(ctx context.Context, arg CreateEvaluationSuggestionParams) (EvaluationSuggestion, error) {
+	row := q.db.QueryRow(ctx, createEvaluationSuggestion,
+		arg.WorkspaceID,
+		arg.EvaluationID,
+		arg.Category,
+		arg.Problem,
+		arg.Evidence,
+		arg.TargetPath,
+		arg.ProposedContent,
+		arg.ExpectedImpact,
+	)
+	var i EvaluationSuggestion
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.EvaluationID,
+		&i.Category,
+		&i.Problem,
+		&i.Evidence,
+		&i.TargetPath,
+		&i.ProposedContent,
+		&i.ExpectedImpact,
+		&i.Decision,
+		&i.DecidedAt,
+		&i.AppliedSkillVersionID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const decideSuggestion = `-- name: DecideSuggestion :one
+UPDATE evaluation_suggestions SET
+    decision = $1,
+    decided_at = now()
+WHERE id = $2 AND workspace_id = $3
+RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at
+`
+
+type DecideSuggestionParams struct {
+	Decision    string
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+// EVAL-002 clause 3. Repeatable: a later call replaces the decision, so this is an
+// UPDATE and not an append. `decided_at` moves with it because 0024 refuses a
+// decision with no timestamp - the two are one fact.
+//
+// It applies nothing. Turning accepted suggestions into a version is
+// POST /skills/{id}/versions/from-suggestions, and keeping the two apart is what
+// makes five accepted suggestions one new version rather than five.
+func (q *Queries) DecideSuggestion(ctx context.Context, arg DecideSuggestionParams) (EvaluationSuggestion, error) {
+	row := q.db.QueryRow(ctx, decideSuggestion, arg.Decision, arg.ID, arg.WorkspaceID)
+	var i EvaluationSuggestion
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.EvaluationID,
+		&i.Category,
+		&i.Problem,
+		&i.Evidence,
+		&i.TargetPath,
+		&i.ProposedContent,
+		&i.ExpectedImpact,
+		&i.Decision,
+		&i.DecidedAt,
+		&i.AppliedSkillVersionID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const failEvaluation = `-- name: FailEvaluation :one
 UPDATE evaluations SET
     status = 'failed',
@@ -280,6 +375,48 @@ func (q *Queries) GetCurrentEvaluation(ctx context.Context, arg GetCurrentEvalua
 	return i, err
 }
 
+const getEvaluation = `-- name: GetEvaluation :one
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
+WHERE id = $1 AND workspace_id = $2
+`
+
+type GetEvaluationParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+// One evaluation by id, current or superseded. Used by the suggestion surface,
+// which reaches an evaluation through a suggestion or a request body rather than
+// through a run's URL - workspace scope is what makes that safe (iron rule 3).
+func (q *Queries) GetEvaluation(ctx context.Context, arg GetEvaluationParams) (Evaluation, error) {
+	row := q.db.QueryRow(ctx, getEvaluation, arg.ID, arg.WorkspaceID)
+	var i Evaluation
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.RunID,
+		&i.Overall,
+		&i.Summary,
+		&i.CriterionResults,
+		&i.JudgeModel,
+		&i.FeedbackHelpful,
+		&i.FeedbackComment,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Status,
+		&i.JudgePromptVersion,
+		&i.RubricVersion,
+		&i.EvidenceComplete,
+		&i.DeterministicFindings,
+		&i.CostUsd,
+		&i.CostSource,
+		&i.CostIsLowerBound,
+		&i.EvaluatedAt,
+		&i.SupersededAt,
+	)
+	return i, err
+}
+
 const getEvaluationRevision = `-- name: GetEvaluationRevision :one
 SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
 WHERE id = $1 AND run_id = $2 AND workspace_id = $3
@@ -318,6 +455,39 @@ func (q *Queries) GetEvaluationRevision(ctx context.Context, arg GetEvaluationRe
 		&i.CostIsLowerBound,
 		&i.EvaluatedAt,
 		&i.SupersededAt,
+	)
+	return i, err
+}
+
+const getEvaluationSuggestion = `-- name: GetEvaluationSuggestion :one
+SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at FROM evaluation_suggestions
+WHERE id = $1 AND workspace_id = $2
+`
+
+type GetEvaluationSuggestionParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+// One suggestion in the caller's workspace. Existence is private (WS-006), so a
+// row belonging to somebody else is the same answer as no row.
+func (q *Queries) GetEvaluationSuggestion(ctx context.Context, arg GetEvaluationSuggestionParams) (EvaluationSuggestion, error) {
+	row := q.db.QueryRow(ctx, getEvaluationSuggestion, arg.ID, arg.WorkspaceID)
+	var i EvaluationSuggestion
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.EvaluationID,
+		&i.Category,
+		&i.Problem,
+		&i.Evidence,
+		&i.TargetPath,
+		&i.ProposedContent,
+		&i.ExpectedImpact,
+		&i.Decision,
+		&i.DecidedAt,
+		&i.AppliedSkillVersionID,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -374,6 +544,79 @@ func (q *Queries) ListEvaluationRevisions(ctx context.Context, arg ListEvaluatio
 		return nil, err
 	}
 	return items, nil
+}
+
+const listEvaluationSuggestions = `-- name: ListEvaluationSuggestions :many
+SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at FROM evaluation_suggestions
+WHERE evaluation_id = $1 AND workspace_id = $2
+ORDER BY created_at, id
+`
+
+type ListEvaluationSuggestionsParams struct {
+	EvaluationID pgtype.UUID
+	WorkspaceID  pgtype.UUID
+}
+
+// GET /runs/{id}/suggestions, after the caller's current evaluation has been
+// resolved. Oldest first, which is the order they were proposed in.
+func (q *Queries) ListEvaluationSuggestions(ctx context.Context, arg ListEvaluationSuggestionsParams) ([]EvaluationSuggestion, error) {
+	rows, err := q.db.Query(ctx, listEvaluationSuggestions, arg.EvaluationID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EvaluationSuggestion
+	for rows.Next() {
+		var i EvaluationSuggestion
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.EvaluationID,
+			&i.Category,
+			&i.Problem,
+			&i.Evidence,
+			&i.TargetPath,
+			&i.ProposedContent,
+			&i.ExpectedImpact,
+			&i.Decision,
+			&i.DecidedAt,
+			&i.AppliedSkillVersionID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markSuggestionsApplied = `-- name: MarkSuggestionsApplied :execrows
+UPDATE evaluation_suggestions SET
+    applied_skill_version_id = $1
+WHERE id = ANY($2::uuid[])
+  AND workspace_id = $3
+  AND decision = 'accepted'
+`
+
+type MarkSuggestionsAppliedParams struct {
+	SkillVersionID pgtype.UUID
+	Ids            []pgtype.UUID
+	WorkspaceID    pgtype.UUID
+}
+
+// EVAL-002 clause 4: the suggestion now points at the **new** version. The
+// `decision = 'accepted'` predicate repeats 0024's CHECK rather than trusting the
+// caller to have filtered - nothing gets applied that was not accepted, and the
+// statement that enforces it is the one doing the write.
+func (q *Queries) MarkSuggestionsApplied(ctx context.Context, arg MarkSuggestionsAppliedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markSuggestionsApplied, arg.SkillVersionID, arg.Ids, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setEvaluationFeedback = `-- name: SetEvaluationFeedback :one

@@ -19,13 +19,29 @@ type Handler struct {
 	Identity *identity.Service
 }
 
-type uploadResponse struct {
+// UploadResult is public.yaml's UploadResult. Exported because
+// POST /skills/{id}/versions/from-suggestions answers with this shape plus two
+// fields (contract: `allOf`), and a second copy of it in internal/eval is exactly
+// how two endpoints start describing the same version differently.
+type UploadResult struct {
 	SkillID       string                       `json:"skill_id"`
 	VersionID     string                       `json:"version_id"`
 	VersionNumber int32                        `json:"version_number"`
 	ContentHash   string                       `json:"content_hash"`
 	Duplicate     bool                         `json:"duplicate"`
 	Findings      skillpkg.CategorizedFindings `json:"findings"`
+}
+
+// NewUploadResult renders one stored version the way every creation path does.
+func NewUploadResult(res Result) UploadResult {
+	return UploadResult{
+		SkillID:       uuidString(res.Skill.ID),
+		VersionID:     uuidString(res.Version.ID),
+		VersionNumber: res.Version.VersionNumber,
+		ContentHash:   res.Version.ContentHash,
+		Duplicate:     res.Duplicate,
+		Findings:      res.Report.Categorize(),
+	}
 }
 
 // Upload handles POST /skills/import/upload. Wrap with RequireSession; the
@@ -133,22 +149,14 @@ func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
 		return
 	}
 
-	findings := res.Report.Categorize()
 	if res.Report.Blocked {
 		// SKILL-001/INGEST-008: failure result carries error/warning/info
 		// findings as separate lists, not one undifferentiated feed.
-		httpx.WriteJSON(w, http.StatusUnprocessableEntity, findings)
+		httpx.WriteJSON(w, http.StatusUnprocessableEntity, res.Report.Categorize())
 		return
 	}
 
-	httpx.WriteJSON(w, http.StatusCreated, uploadResponse{
-		SkillID:       uuidString(res.Skill.ID),
-		VersionID:     uuidString(res.Version.ID),
-		VersionNumber: res.Version.VersionNumber,
-		ContentHash:   res.Version.ContentHash,
-		Duplicate:     res.Duplicate,
-		Findings:      findings,
-	})
+	httpx.WriteJSON(w, http.StatusCreated, NewUploadResult(res))
 }
 
 func uuidString(u pgtype.UUID) string {

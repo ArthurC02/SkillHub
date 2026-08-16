@@ -171,9 +171,20 @@ type Service struct {
 	// runs that have acceptance criteria are recorded as `failed` saying so,
 	// rather than as a verdict nothing produced (evaluation-design §6.2).
 	Judge Judge
-	// Store reads the stored package for the `spec` check. Nil means that one
-	// check reports itself unavailable — never that the package is clean.
+	// Suggester is services/llm's improvement-proposal endpoint (EVAL-002). Nil is
+	// a deployment that produces verdicts and no advice; an evaluation is complete
+	// either way, so its absence is never an evaluation failure.
+	Suggester Suggester
+	// Store reads the stored package for the `spec` check, for the files a
+	// suggestion is written against, and for the archive a new version is patched
+	// from. Nil means those report themselves unavailable — never that the package
+	// is clean.
 	Store ObjectStore
+	// Versions is the ordinary version-creation path (POST /skills/{id}/versions).
+	// Applying accepted suggestions writes through it rather than around it, so a
+	// suggestion-built version goes through the same validation, storage, license
+	// provenance and audit trail as an uploaded one (EVAL-002 clause 4).
+	Versions *ingest.Service
 	// JudgeModel and JudgePromptVersion are what the platform intends to use, and
 	// are what the `evaluation_started` event declares. What actually ran comes
 	// back in the response and is what the evaluations row records; when they
@@ -255,7 +266,7 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		// Nothing was asked of this run, so there is nothing to have met. That is
 		// `undetermined` and a completed evaluation, not a failed one: the
 		// deterministic findings still say what is wrong with the run.
-		return s.complete(ctx, m, ev, verdict{
+		return s.completeAndSuggest(ctx, m, ev, verdict{
 			overall: OverallUndetermined,
 			summary: "this run's test case snapshot carries no acceptance criteria, " +
 				"so no task verdict could be reached; the checks below still apply",
@@ -276,7 +287,22 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	}
 	v.findings = append(findings, v.findings...)
 	v.evidenceComplete = evidenceComplete && v.evidenceComplete
-	return s.complete(ctx, m, ev, v)
+	return s.completeAndSuggest(ctx, m, ev, v)
+}
+
+// completeAndSuggest stores the verdict and then asks for improvement suggestions
+// (EVAL-002). In that order and not the other way round: the verdict is what this
+// job owes, and suggestions are advice about a verdict that already exists. If the
+// suggestion call fails, the evaluation is still complete and nothing is retried —
+// paying for a second judgement to recover advice would be the more expensive half.
+func (s *Service) completeAndSuggest(
+	ctx context.Context, m material, ev gen.Evaluation, v verdict,
+) error {
+	if err := s.complete(ctx, m, ev, v); err != nil {
+		return err
+	}
+	s.suggest(ctx, m, ev, v)
+	return nil
 }
 
 // verdict is the merged answer on its way to the database.

@@ -123,6 +123,18 @@ func NewRouter(d Deps) *http.ServeMux {
 	mux.HandleFunc("GET /runs/{id}/evaluation/revisions", auth.RequireSession(d.Eval.Revisions))
 	mux.HandleFunc("PUT /runs/{id}/evaluation/feedback", auth.RequireSession(d.Eval.SetFeedback))
 
+	// EVAL-002. Deciding and applying are separate routes because accepting five
+	// suggestions has to produce one new version, not five. The apply route is a
+	// skill route rather than a suggestion one for the same reason
+	// POST /skills/{id}/versions is: what it creates is a version of that skill,
+	// and the literal "from-suggestions" segment is more specific than the pattern
+	// above it, so both coexist.
+	mux.HandleFunc("GET /runs/{id}/suggestions", auth.RequireSession(d.Eval.Suggestions))
+	mux.HandleFunc("PUT /suggestions/{id}/decision", auth.RequireSession(d.Eval.Decide))
+	mux.HandleFunc("GET /suggestions/{id}/diff", auth.RequireSession(d.Eval.Diff))
+	mux.HandleFunc("POST /skills/{id}/versions/from-suggestions",
+		auth.RequireSession(d.Eval.ApplySuggestions))
+
 	// TRACE-002: the execution plane pushes collected events here. Deliberately
 	// the only route in this table with no session and no RequireSession wrapper:
 	// its caller is a sandbox provider, and it authenticates with the per-attempt

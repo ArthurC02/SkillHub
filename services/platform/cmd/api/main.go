@@ -95,15 +95,13 @@ func main() {
 		slog.Warn("LLM_SERVICE_URL not set; search will use FTS-only fallback and imports will not be enriched")
 	}
 
-	importer := &ingest.Handler{
-		Svc: &ingest.Service{
-			Pool:    pool,
-			Store:   store,
-			Fetcher: importFetcherFromEnv(),
-			LLM:     llm,
-		},
-		Identity: auth.Service,
+	versions := &ingest.Service{
+		Pool:    pool,
+		Store:   store,
+		Fetcher: importFetcherFromEnv(),
+		LLM:     llm,
 	}
+	importer := &ingest.Handler{Svc: versions, Identity: auth.Service}
 
 	// Insert-only queue client: the API enqueues run jobs in the same transaction
 	// as the run row, and never works one (iron rule 7). Schema migration belongs
@@ -147,10 +145,15 @@ func main() {
 			Identity: auth.Service,
 		},
 		Trace: &trace.Handler{Svc: traceSvc, Identity: auth.Service},
-		// Read-only here: producing an evaluation is the worker's job (iron rule 7),
-		// so this service has no judge client and no object store — the API only
-		// serves what is already stored.
-		Eval: &eval.Handler{Svc: &eval.Service{Pool: pool}, Identity: auth.Service},
+		// No judge and no suggester here: producing a verdict and asking for advice
+		// are the worker's jobs (iron rule 7). The store and the version writer are
+		// wired, because EVAL-002's diff and apply are user actions and both need
+		// package bytes — and applying goes through the ordinary version-creation
+		// path rather than around it.
+		Eval: &eval.Handler{
+			Svc:      &eval.Service{Pool: pool, Store: store, Versions: versions},
+			Identity: auth.Service,
+		},
 	})
 
 	// DEV_CORS_ORIGIN is the local Vite dev server (http://localhost:5173) and

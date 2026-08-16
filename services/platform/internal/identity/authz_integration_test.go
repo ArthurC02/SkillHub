@@ -166,14 +166,12 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	if llmBaseURL != "" {
 		search.LLMClient = &llmclient.Client{BaseURL: llmBaseURL}
 	}
-	importer := &ingest.Handler{
-		Svc: &ingest.Service{
-			Pool:    pool,
-			Store:   packages,
-			Fetcher: &ingest.URLFetcher{Allowed: ingest.DefaultAllowedHosts()},
-		},
-		Identity: auth.Service,
+	versions := &ingest.Service{
+		Pool:    pool,
+		Store:   packages,
+		Fetcher: &ingest.URLFetcher{Allowed: ingest.DefaultAllowedHosts()},
 	}
+	importer := &ingest.Handler{Svc: versions, Identity: auth.Service}
 
 	// Insert-only queue client, exactly as cmd/api builds one: a run created
 	// through the API enqueues its job in the same transaction as the run row.
@@ -202,10 +200,12 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 		Identity: auth.Service,
 	}
 
-	// EVAL-001's read surface. No judge and no store here, exactly as cmd/api
-	// wires it: producing a verdict is the worker's job, and this side only
-	// serves what is already stored.
-	evalSvc := &eval.Service{Pool: pool}
+	// EVAL-001's read surface and EVAL-002's decide/diff/apply surface, wired the
+	// way cmd/api wires it: no judge and no suggester (producing those is the
+	// worker's job), but the object store and the ordinary version writer, because
+	// previewing and applying a suggestion both need package bytes and applying
+	// goes through POST /skills/{id}/versions' own path.
+	evalSvc := &eval.Service{Pool: pool, Store: packages, Versions: versions}
 
 	handler := apiserver.NewRouter(apiserver.Deps{
 		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs,
@@ -403,6 +403,12 @@ func TestAnonymousCallersGetThePublicSurfaceAndNothingElse(t *testing.T) {
 		{http.MethodPost, "/skills/" + id + "/runs/preflight/confirm", http.StatusUnauthorized},
 		{http.MethodGet, "/runs/" + id, http.StatusUnauthorized},
 		{http.MethodPost, "/runs/" + id + "/cancel", http.StatusUnauthorized},
+		// EVAL-002: a suggestion is a statement about a user's own run, and the
+		// version it can build is a write.
+		{http.MethodGet, "/runs/" + id + "/suggestions", http.StatusUnauthorized},
+		{http.MethodPut, "/suggestions/" + id + "/decision", http.StatusUnauthorized},
+		{http.MethodGet, "/suggestions/" + id + "/diff", http.StatusUnauthorized},
+		{http.MethodPost, "/skills/" + id + "/versions/from-suggestions", http.StatusUnauthorized},
 
 		// The operator surface (02:SEC-011) is the one exception to the 401 rule
 		// above: it answers 404 to everybody not on the deployment's operator

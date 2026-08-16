@@ -425,13 +425,28 @@ func PackageFS(data []byte) (fs.FS, error) {
 			return nil, fmt.Errorf("%w: uncompressed content exceeds %d bytes", ErrBadArchive, maxUnpackedBytes)
 		}
 	}
-	if _, err := fs.Stat(zr, "SKILL.md"); err == nil {
-		return zr, nil
-	}
-	if dirs, err := fs.ReadDir(zr, "."); err == nil && len(dirs) == 1 && dirs[0].IsDir() {
-		if sub, err := fs.Sub(zr, dirs[0].Name()); err == nil {
+	if root := PackageRoot(zr); root != "" {
+		if sub, err := fs.Sub(zr, strings.TrimSuffix(root, "/")); err == nil {
 			return sub, nil
 		}
 	}
 	return zr, nil // let Validate report skill-md-missing
+}
+
+// PackageRoot is the prefix inside the archive that PackageFS strips: empty when
+// SKILL.md is at the top level, "dir/" when the package sits in a single
+// top-level directory (the shape GitHub archive downloads have).
+//
+// Exported and shared with PackageFS because a writer needs the same answer a
+// reader got: internal/eval rebuilds an archive with one file replaced, and a
+// second root-finding rule there would write the new file next to the package
+// instead of into it.
+func PackageRoot(zr *zip.Reader) string {
+	if _, err := fs.Stat(zr, "SKILL.md"); err == nil {
+		return ""
+	}
+	if dirs, err := fs.ReadDir(zr, "."); err == nil && len(dirs) == 1 && dirs[0].IsDir() {
+		return dirs[0].Name() + "/"
+	}
+	return ""
 }

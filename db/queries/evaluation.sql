@@ -76,6 +76,13 @@ WHERE run_id = $1 AND workspace_id = $2 AND superseded_at IS NULL;
 SELECT * FROM evaluations
 WHERE id = $1 AND run_id = $2 AND workspace_id = $3;
 
+-- name: GetEvaluation :one
+-- One evaluation by id, current or superseded. Used by the suggestion surface,
+-- which reaches an evaluation through a suggestion or a request body rather than
+-- through a run's URL - workspace scope is what makes that safe (iron rule 3).
+SELECT * FROM evaluations
+WHERE id = $1 AND workspace_id = $2;
+
 -- name: ListEvaluationRevisions :many
 -- Newest first (GET /runs/{id}/evaluation/revisions). Uses evaluations_run_id_idx.
 SELECT * FROM evaluations
@@ -92,6 +99,55 @@ UPDATE evaluations SET
     updated_at = now()
 WHERE id = @id AND workspace_id = @workspace_id
 RETURNING *;
+
+-- name: CreateEvaluationSuggestion :one
+-- EVAL-002 clause 1. Written by the evaluation job once the verdict is stored:
+-- a suggestion hangs off the evaluation that produced it, so re-evaluating under a
+-- new rubric produces its own set instead of appending to somebody else's.
+-- `decision` is left at its default `pending` - proposing is not deciding.
+INSERT INTO evaluation_suggestions (
+    workspace_id, evaluation_id, category, problem, evidence,
+    target_path, proposed_content, expected_impact
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *;
+
+-- name: ListEvaluationSuggestions :many
+-- GET /runs/{id}/suggestions, after the caller's current evaluation has been
+-- resolved. Oldest first, which is the order they were proposed in.
+SELECT * FROM evaluation_suggestions
+WHERE evaluation_id = $1 AND workspace_id = $2
+ORDER BY created_at, id;
+
+-- name: GetEvaluationSuggestion :one
+-- One suggestion in the caller's workspace. Existence is private (WS-006), so a
+-- row belonging to somebody else is the same answer as no row.
+SELECT * FROM evaluation_suggestions
+WHERE id = $1 AND workspace_id = $2;
+
+-- name: DecideSuggestion :one
+-- EVAL-002 clause 3. Repeatable: a later call replaces the decision, so this is an
+-- UPDATE and not an append. `decided_at` moves with it because 0024 refuses a
+-- decision with no timestamp - the two are one fact.
+--
+-- It applies nothing. Turning accepted suggestions into a version is
+-- POST /skills/{id}/versions/from-suggestions, and keeping the two apart is what
+-- makes five accepted suggestions one new version rather than five.
+UPDATE evaluation_suggestions SET
+    decision = @decision,
+    decided_at = now()
+WHERE id = @id AND workspace_id = @workspace_id
+RETURNING *;
+
+-- name: MarkSuggestionsApplied :execrows
+-- EVAL-002 clause 4: the suggestion now points at the **new** version. The
+-- `decision = 'accepted'` predicate repeats 0024's CHECK rather than trusting the
+-- caller to have filtered - nothing gets applied that was not accepted, and the
+-- statement that enforces it is the one doing the write.
+UPDATE evaluation_suggestions SET
+    applied_skill_version_id = @skill_version_id
+WHERE id = ANY(@ids::uuid[])
+  AND workspace_id = @workspace_id
+  AND decision = 'accepted';
 
 -- name: FindLiveTraceEvents :many
 -- ADR-026 decision 2: an evidence reference outlives the evidence, so `available`

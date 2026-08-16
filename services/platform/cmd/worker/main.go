@@ -99,7 +99,12 @@ func main() {
 	// be produced - which is a visible state, not a lenient verdict.
 	evaluations := &eval.Service{Pool: pool, Store: store}
 	if llmURL := os.Getenv("LLM_SERVICE_URL"); llmURL != "" {
-		evaluations.Judge = &llmclient.Client{BaseURL: llmURL}
+		client := &llmclient.Client{BaseURL: llmURL}
+		evaluations.Judge = client
+		// EVAL-002's proposal leg, same service and same gateway. Without it a run
+		// still gets a verdict; it simply gets no advice, which is a complete
+		// evaluation and not a failed one.
+		evaluations.Suggester = client
 		slog.Info("judge service configured", "url", llmURL)
 	} else {
 		slog.Warn("LLM_SERVICE_URL not set; evaluations will be recorded as failed with no task verdict")
