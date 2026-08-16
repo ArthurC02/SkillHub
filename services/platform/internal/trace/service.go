@@ -214,7 +214,7 @@ func RecordOrchestratorEvent(
 		EventType:     eventType,
 		Source:        SourceOrchestr,
 		Status:        statusPtr,
-		SchemaVersion: SchemaVersion,
+		SchemaVersion: schemaVersionFor(eventType),
 		Masked:        true,
 		MaskedFields:  fields,
 		Payload:       masked.Payload,

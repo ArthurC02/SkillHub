@@ -13,10 +13,34 @@ import (
 	"time"
 )
 
-// SchemaVersion is the contract version this code writes and understands. Minor
-// bumps are additive, so an event arriving with a higher 1.x is accepted; a
-// different major is refused rather than guessed at.
+// SchemaVersion is the version a control-plane event declares when it uses only
+// 1.0 fields, which `error` and `run_lifecycle` do. Minor bumps are additive, so
+// an event arriving with a higher 1.x is accepted; a different major is refused
+// rather than guessed at.
+//
+// It is deliberately not the highest version this code knows: what a producer
+// declares is which contract revision it wrote to, and the two evaluation types
+// below did not exist in 1.0 (contracts/events/README.md §9). Declaring 1.2 on an
+// `error` event would claim a revision that event was never written against.
 const SchemaVersion = "1.0"
+
+// SchemaVersionEvaluation is the revision that introduced evaluation_started and
+// evaluation_completed. An event of either type declares this and nothing lower -
+// the type does not exist in earlier revisions, so a lower declaration would be
+// unreadable against the contract it names.
+const SchemaVersionEvaluation = "1.2"
+
+// schemaVersionFor is the version an orchestrator-written event declares. The
+// declaration follows the event type rather than a single global constant,
+// which is what contracts/events/README.md §9 requires of this batch.
+func schemaVersionFor(eventType string) string {
+	switch eventType {
+	case TypeEvaluationStarted, TypeEvaluationCompleted:
+		return SchemaVersionEvaluation
+	default:
+		return SchemaVersion
+	}
+}
 
 // Producers (schema `emitted_by`).
 const (
@@ -36,12 +60,18 @@ const (
 	TypeError           = "error"
 	TypeUsage           = "usage"
 	TypeRunLifecycle    = "run_lifecycle"
+	// The two 1.2 types. Like run_lifecycle they exist so the timeline does not
+	// stop mid-story; the verdict itself lives in `evaluations` and not here
+	// (ADR-009's Evaluation plane, iron rule 5).
+	TypeEvaluationStarted   = "evaluation_started"
+	TypeEvaluationCompleted = "evaluation_completed"
 )
 
 var eventTypes = map[string]bool{
 	TypeSkillActivation: true, TypeResourceRead: true, TypeToolCall: true,
 	TypeMCPCall: true, TypeScriptLog: true, TypeAgentOutput: true,
 	TypeError: true, TypeUsage: true, TypeRunLifecycle: true,
+	TypeEvaluationStarted: true, TypeEvaluationCompleted: true,
 }
 
 var sources = map[string]bool{SourceSandbox: true, SourceOrchestr: true, SourceLLMService: true}
@@ -107,6 +137,11 @@ func (e *Event) Validate() error {
 		// that a consumer ignores types it does not know (README §9), and storing
 		// one would put an unrenderable row in a user-visible timeline.
 		return fmt.Errorf("%w: type %q is not in this schema version", ErrInvalid, e.Type)
+	case (e.Type == TypeEvaluationStarted || e.Type == TypeEvaluationCompleted) && e.EmittedBy != SourceOrchestr:
+		// The schema pins these two types to `orchestrator`. Evaluation runs in the
+		// control plane long after the sandbox is gone, so one arriving from any
+		// other producer is a forged verdict, not a late event (README §4.1).
+		return fmt.Errorf("%w: %s may only be emitted by the orchestrator", ErrInvalid, e.Type)
 	case e.Status != nil && !statuses[*e.Status]:
 		return fmt.Errorf("%w: status %q is not a known outcome", ErrInvalid, *e.Status)
 	case len(e.Payload) == 0:
