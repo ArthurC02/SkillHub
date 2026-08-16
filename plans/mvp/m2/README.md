@@ -30,7 +30,7 @@ M2 範圍 **41 個工作項**,**33 項維持勾選、1 項對帳退回、7 項�
 | SelfHostedProvider | SBX-001~010(gVisor 基線) | 第二~四批 **六項完成**(001/003/004/006/008/009);**002/005/007/010 維持不勾**——門檻待定值＋生產網路與逃逸測試屬部署期 |
 | Trace 收集與 O11y | TRACE-002~008、O11Y-001~003 | 第三批 **✅ 2026-08-16 完成**（TRACE-001 一併勾選；TRACE-004 的成本欄位由第四批補上並勾選） |
 | 模型閘道出口與短效授權 | SBX-007（dev 網路面）、SBX-008、TRACE-004 成本 | 第四批 **2026-08-16**（SBX-008 完成、TRACE-004 勾選；SBX-007 仍不勾——Proxy 本體屬部署期） |
-| 內容基準試跑 | CONTENT-007/008(自 M1 移入) | 第五批 **✅ 2026-08-16**(CONTENT-008 完成、精選 15/15 符合;CONTENT-007 部分完成不勾——writing rubric 缺消費端。見 [content-baseline-report.md](content-baseline-report.md)) |
+| 內容基準試跑 | CONTENT-007/008(自 M1 移入) | 第五批 **✅ 2026-08-16**(CONTENT-008 完成、精選 15/15 符合;CONTENT-007 部分完成不勾——writing rubric 缺消費端。**同日補跑**:預算保留根因修復後,9 筆於 `2026.08-2` 重測,8/9 符合、幽靈 429 歸零,相容軸 9 列入庫。見 [content-baseline-report.md](content-baseline-report.md) §12) |
 | 安全驗收 | SEC-002 六項門檻定值(Q18)、SEC-009 逃逸測試——ADR-015 的實作期驗收關卡 | 部署驗證批。**門檻定值與 Q1～Q3 已於 2026-08-16 由 [ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 定案**;SEC-002／SEC-009 仍不勾——**閘門 B 的四項阻擋已於 2026-08-16 全數落地(乙-8)**,剩下的唯一原因是 45 項基線未經 SEC-009 驗證 |
 
 ## 架構鐵律在 M2 的落點(開工前必讀)

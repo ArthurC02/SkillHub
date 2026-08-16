@@ -1,7 +1,8 @@
 # CONTENT-007／008 內容基準試跑報告
 
-- 日期：**2026-08-16**
+- 日期：**2026-08-16**（§12 為同日稍晚的補跑，條件不同，獨立成節）
 - 範圍：目錄內全部 **45 個 Skill**（精選 15、已索引 30），每個 Skill 一次平台基準 Run
+- **Runtime Image：§1～§11 全部量測於 `skillhub/runtime-agent-sdk:2026.08-1`（無 python3）；§12 的 9 筆量測於 `2026.08-2`（含 python3）**
 - 路徑：完整平台路徑（fork → Test Case → Dataset → Preflight → 確認 → Run → Worker 派送 → Sandbox → Trace → Artifact → Cleanup），無任何一段是假的
 - 依據：[`02` §4.7 CONTENT-007／008](../02-specifications-and-acceptance-criteria.md)、[m2/README.md 第四批交付摘要](README.md)
 - 機器可讀原始資料：`results.json`／`rows.json`（scratchpad，未入庫；本報告的每個數字都可由下列 Run ID 在資料庫重查）
@@ -15,7 +16,7 @@
 **最重要的發現不是哪個 Skill 不行，而是三件平台自己的事**：
 
 1. `cmd/worker` 從未把 River client 掛回 `run.Service.Queue`，導致**每一個 Run 結束後都不會排 cleanup**——沙箱與 Virtual Key 全部存活至今（RUN-007 在真實部署裡等於沒有生效）。已修，見 §6.1。
-2. LiteLLM 以「Current cost ≈ 0.50」拒絕請求，而**同一把金鑰自己的 spend log 只有 $0.009–$0.24**，兩者相差最多 50 倍。16 個 Run 因此被中止；把 per-Run 上限改成 $2.00 重跑，**7 個精選全數一次通過**。這不是 Skill 的失敗，是計數的失敗（§6.2）。
+2. LiteLLM 以「Current cost ≈ 0.50」拒絕請求，而**同一把金鑰自己的 spend log 只有 $0.009–$0.24**，兩者相差最多 50 倍。16 個 Run 因此被中止；把 per-Run 上限改成 $2.00 重跑，**7 個精選全數一次通過**。這不是 Skill 的失敗，是計數的失敗（§6.2）。**根因已於同日破案並修復**（LiteLLM 的樂觀預算保留，commit `3906fe5`）——驗證、9 筆補跑與合併後數字見 **§12**。
 3. 開發用資料庫落後 migration 集 **0016～0020 共 5 份**，`test_cases.deleted_at`、`run_attempts`、`outbox_events`、`run_permission_confirmations` 全部不存在，任何 Run 都跑不起來（§2.2）。
 
 ---
@@ -280,7 +281,9 @@ Key=skillhub-attempt-03d6493d-… Current cost: 0.50056965, Max budget: 0.5
 - **值是寫死在 Go 裡的常數**：`internal/catalog/http.go` 的 `resultFacets()` 與 `detail.go` 的 `compatibility{}` 一律回 `Capability: "unverified"`、`Runtime: "unverified"`；`search_documents` 沒有對應欄位可讀。
 - **API 端目前正確地拒絕該篩選**：`unavailableFilters["agent"]` 回 400 並附理由「Agent 相容狀態需要 Sandbox 試跑才有結果（M2），目前一律為未驗證」。
 
-**因此本批不新增 migration、不發明 schema**（依交辦）。缺口與所需決策記錄如下，供接手者開工：
+**因此本批不新增 migration、不發明 schema**（依交辦）。缺口與所需決策記錄如下，供接手者開工。
+
+> **2026-08-16 後續**：下列四個待決已由 **migration 0022（`skill_runtime_compatibility`，鍵為 (Skill Version × Runtime Image)）** 逐條回答並實作，本節的 45 筆實測值已用 `tools/content/backfill-agent-compatibility.sql` 入庫（12 `native` ＋ 33 `transpiled`，全部掛在 `2026.08-1`）；`2026.08-2` 上的 9 筆見 §12.4。原文保留供回溯。
 
 | 待決 | 說明 |
 | --- | --- |
@@ -353,6 +356,70 @@ Key=skillhub-attempt-03d6493d-… Current cost: 0.50056965, Max budget: 0.5
 3. **m2/README 環境變數表補兩列**：api 也需要 `SKILLHUB_MODEL_GATEWAY_URL`／`_KEY`（否則 egress 允許清單是空的）與 `SKILLHUB_SANDBOX_PROVIDERS`／token（否則 Preflight 的 Provider 摘要是 `unassigned`）。
 4. **11 個 Skill 的「限制」欄缺 Python 揭露**（§7.2 #1）——走 CONTENT-005 的 `需修改` 流程重跑增強。
 5. **`run.mjs` 的 usage 事件只掛在 `result` 分支**（§7.2 #4）——沒有 result 訊息時成本無聲缺席，TRACE-004 有洞。
-6. **9 個已索引 Skill 尚未取得有效基準**（`copyright-creative-work`、`document-format-skills`、`docx`、`excel-delete`、`excel-sort`、`excel-split`、`json-restructure`、`pptx`、`xlsx`）——第一輪被閘道中止，未重跑；修好 §6.2 後補跑，預估 $1.0–1.5。
-7. **DISC-002「Agent 相容」欄位設計**（§8）——四個待決先答，再談 migration。
-8. **Runtime Image 要不要含 Python**——這是產品決策不是工程細節：含 Python 讓 33 個 Skill 執行自己的腳本（也擴大沙箱攻擊面），不含則平台永遠是「模型轉譯」語意，目錄必須誠實標示。
+6. ~~**9 個已索引 Skill 尚未取得有效基準**（`copyright-creative-work`、`document-format-skills`、`docx`、`excel-delete`、`excel-sort`、`excel-split`、`json-restructure`、`pptx`、`xlsx`）——第一輪被閘道中止，未重跑；修好 §6.2 後補跑，預估 $1.0–1.5。~~ → **2026-08-16 補跑完成，見 §12。**
+7. ~~**DISC-002「Agent 相容」欄位設計**（§8）——四個待決先答，再談 migration。~~ → **已由 migration 0022 回答並實作**（`skill_runtime_compatibility`，鍵為 (Skill Version × Runtime Image)）；本報告的實測值已全數入庫，見 §12.4。
+8. ~~**Runtime Image 要不要含 Python**~~ → **已定案**：`2026.08-2` 加入 python3 與目錄宣告的依賴集（見 [infra/images/README.md](../../../infra/images/README.md)）。實測效果見 §12。
+
+---
+
+## 12. 補跑：9 個 Skill 於 `2026.08-2`（2026-08-16）
+
+§1～§11 的 45 筆量測**全部在 `skillhub/runtime-agent-sdk:2026.08-1`（無 python3）上取得，上面的表格與統計不改寫**。本節是之後另外一批量測，條件與上面不同，因此獨立成節。
+
+### 12.1 前置：根因修復與驗證
+
+§6.2 記錄的「幽靈 429」根因已由 commit `3906fe5` 破案並修復：**LiteLLM 自 v1.84 起對每個進行中的請求做樂觀預算保留**——把「所有輸入 token 以未快取全價 ＋ `max_tokens` 以輸出價」的理論最大成本先扣進計數器。對 gpt-5.4-mini 而言，光是 `max_tokens=64000` 的輸出就是 $0.288，而實付只有幾分錢；兩個重疊請求就把計數器頂到整個 $0.50。修法是 `infra/compose/litellm-config.yaml` 的 `disable_budget_reservation: true`，恢復以**已記錄花費**做讀取時判定。
+
+重建 litellm 容器（`docker compose up -d --force-recreate litellm`，只此一服務）後實測：
+
+| 驗證 | 結果 |
+| --- | --- |
+| 一把 `max_budget=$0.50` 金鑰，4 個併發請求（`max_tokens=64000`） | **4/4 皆 200，0 次預算拒絕**（修復前同條件重現 `Current cost: 0.78845825`，實際花費 $0.00096） |
+| 該金鑰記錄花費 | $0.000126 |
+| 反向驗證：`max_budget=1e-06` 的金鑰 | 第一次呼叫 200，第二次**正確拒絕**：`Current cost: 5.925e-05, Max budget: 1e-06`——拒絕依據是真實花費 |
+
+**預算閘門仍然有效，只是現在拒絕的理由是真的。**
+
+### 12.2 補跑條件
+
+與 §3 完全相同的 Prompt 模板、Dataset、驗收條件、per-Run `max_budget=$0.50`、併發 2。**唯一的差別是 Runtime Image：`skillhub/runtime-agent-sdk:2026.08-2`**（含 python3 3.11.2、openpyxl 3.1.5、pandas 3.0.5）。同時本批也吃到了 trace 批的修正（usage 事件不再只掛在 `result` 分支、輸入 token 上限開始生效，事件 schema 1.1）。
+
+### 12.3 逐筆結果（image `2026.08-2`，2026-08-16）
+
+| Skill | 類別 | Run 終態 | failure_class | Artifact | in/out tokens | 成本 USD | Trace 事件 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `copyright-creative-work` | writing | succeeded | — | song-split-sheet-template.md, us-copyright-song-registration-prep.md | 124813/6675 | 0.0513 | 15 |
+| `document-format-skills` | documents | succeeded | — | **cleaned_official.docx** | 164395/5390 | 0.0548 | 19 |
+| `docx` | documents | succeeded | — | **q2_business_update_report.docx** | 118599/4553 | 0.1476 | 35 |
+| `excel-delete` | data | succeeded | — | data_rows_5_to_10_deleted_report.txt, **data_rows_5_to_10_deleted.xlsx** | 63533/573 | 0.0634 | 21 |
+| `excel-sort` | data | succeeded | — | **data_sorted_by_public_date.xlsx**, data_sorted_by_public_date.csv | 111867/4004 | 0.0309 | 13 |
+| `excel-split` | data | succeeded | — | split/ 下 6 個 CSV（逐 customer 一檔） | 113227/1809 | 0.0293 | 15 |
+| `json-restructure` | data | succeeded | — | data_grouped_by_country.json, data_grouped_by_country.provenance.md | 92799/1666 | 0.0540 | 18 |
+| `pptx` | documents | **failed** | workload_error | q2_sales_update.pptx | 333606/38702 | 0.3019 | 55 |
+| `xlsx` | documents | succeeded | — | **data_with_profit_margin.xlsx** | 177382/2594 | 0.1143 | 30 |
+
+**8/9 符合**（succeeded ＋ `skill_activation` ＋ artifact 有檔案）。
+
+**唯一失敗的 `pptx` 換了一個誠實的失敗理由**：不是預算，而是 **PDM-005 5.2a 的輸入 token 上限**——`run stopped at its input token ceiling: 333606 of 300000 tokens`，trace 內有對應的 `token_budget_exceeded` 事件，且該上限本來就顯示在 Run 前的權限摘要裡。這是設計中的硬限制正常作動，`pptx` 在此模板下確實吃不下（它在 `2026.08-1` 那輪也是全批最貴的一個）。要取得它的基準需要縮小任務或提高該 Skill 的 token 配額，屬後續。
+
+### 12.4 幽靈 429 是否絕跡、成本、相容軸回填
+
+| 項目 | 數值 |
+| --- | --- |
+| **9 個 Run 中的預算拒絕次數** | **0**（§6.2 的失敗模式完全消失） |
+| trace `script_log` 中的 `python3: command not found` | **0 / 36 條**（`2026.08-1` 那輪是這個發現的來源） |
+| 9 筆 trace 回報成本合計 | $0.8474 |
+| 閘道實際增量（含 §12.1 的三次探針） | **$0.8606**（總上限 $2 未觸及） |
+| 相容軸回填 | `tools/content/backfill-agent-compatibility.sql` 以 `-v image=…2026.08-2 -v python_runtime=native -v since='2026-08-16 10:00:00+00'` 執行，**寫入 9 列** `(Skill Version × 2026.08-2)`，全部 `capability=activated`／`runtime=native`；`2026.08-1` 的 45 列（12 native ＋ 33 transpiled）**逐位元不變**（回填前後全表 md5 相同） |
+
+腳本因此改為**一次呼叫對應一個 (image, Run 時間窗)**：Run 的映像不在控制平面任何欄位裡（映像是執行節點的設定，`RunResult` 也不回傳），所以由呼叫端指明，時間窗負責把兩批分開。不加這個窗直接重跑，會把這 9 筆新量測貼上 `2026.08-1` 的標籤——因為那 9 個版本的「最新 Run」現在在新映像上——並靜靜污染它本該原封不動的 36 列。
+
+### 12.5 誠實註記：其餘 36 筆仍是舊映像上的數字
+
+**本節只重測了 9 筆。**§4 表格中的其餘 36 筆量測於 `2026.08-1`（無 python3），其中 **33 筆屬「Python 依賴」類、相容軸記為 `transpiled`**（腳本沒被執行，結果來自模型重寫）。在 `2026.08-2` 上這些很可能會轉為 `native`——本批 9 筆中的 `docx`、`xlsx`、`excel-*` 都從只產出文字檔變成真的產出 `.docx`／`.xlsx`，就是同一個機制。
+
+**全量重測不在本批範圍**，屬後續選項；在它完成前，目錄對那 36 筆顯示的仍是 `2026.08-1` 上的結論，且 0022 的讀取路徑會把映像標籤一起顯示，不會假裝那是新映像的答案。§5、§7 的統計與不符清單同理，全部是 `2026.08-1` 條件下的量測。
+
+### 12.6 對 §5 彙總的影響（合併後）
+
+45 筆取「每個 Skill 最新一次量測」合併後：**符合 43（95.6%）、失敗 1（`pptx`，token 上限）、Run 成功但未產出 1（`date-wrangling`）**；「平台中止」類**歸零**。精選 15/15 不變（全部於 `2026.08-1` 量測，CONTENT-008 的允收結論不受本節影響）。兩批合計閘道實付 **$4.25**。
