@@ -158,7 +158,7 @@
 - [x] TEST-008 實作執行前 Dataset、Script、MCP、工具、網路與 Secrets 摘要。（`GET /skills/{id}/runs/preflight`，八項全數揭露：Dataset 名稱／型別／大小與合計、Script 由 `skillpkg.Validate` 重掃實際會執行的套件位元組（讀不到時標 `unavailable`，**不得呈現為 `none`**）、工具為 Sandbox 內建檔案與 Shell、**MCP 在 MVP 恆為空清單並明確顯示為「無」而非略過**、網路取 `policy_snapshot` 的 `default_deny` ＋空允許清單、Secrets 只列注入項名稱、Provider 取排程實際會選中的那一個、資源上限直接取 `DefaultResourceLimits()`／PDM-005 §5.2。摘要以 canonical JSON（固定欄位順序的 struct）取 sha256，慣例同 `testlab/snapshot.go`）
 - [x] TEST-009 實作權限異動後重新確認。（migration **0020** `run_permission_confirmations` 記錄「誰、在何時、同意了哪個摘要 hash」；`POST /skills/{id}/runs/preflight/confirm` 寫入，`internal/run/service.go` 的 `Create` 入口重算當下摘要 hash 並要求兩件事同時成立：請求帶的 hash 等於重算值、且該 hash 有確認紀錄。任一不成立回 **422 且不建 Run**——這是 **SEC-002 閘門 B**「使用者未確認或未重新確認執行前權限摘要」那一項。舊確認因 hash 為查詢鍵而自然失效，不需另作撤銷掃描；換／刪 Dataset 皆有具名整合測試。使用者拒絕＝不呼叫確認端點，沒有紀錄就起不了 Run）
 - [x] TEST-011 在執行前權限摘要加上**預估成本區間**（區間非單值）。（**2026-08-16 新增並實作**：PDM-005 §5.3 指定要回寫 `02:TEST-005` 的欄位清單當時沒有回寫，[m2 對帳 §9.3](m2/m2-work-items-audit.md) 查出 `PermissionSummaryContent` 完全沒有此欄位。實作為 `PermissionSummary.EstimatedCost`（`internal/run/preflight.go`）與前端 `RunPreflight` 的「預估成本（估計值）」列，值為 $0.01／常見 $0.06／$0.30，來源是 M2 基準試跑 45 個 Skill 的閘道實付分布（中位數 $0.0566、平均 $0.0702、最大 $0.2367），`basis` 欄把來源與「非報價」寫在畫面上。**必須是區間**——首次與後續 Run 因 prompt caching 差約 8 倍（PDM-005 §5.2a-6），單值必然對其中一種情境是錯的。**刻意不進 `summary_hash`**：hash 涵蓋的是「這個 Run 能碰什麼」，成本是預測不是權限，拿更大的樣本重新校準估計值不該把使用者手上每一份確認一起作廢——與 User Prompt 不入 hash 同一條規則。整合測試 `TestCostEstimateIsOutsideTheConfirmedHash` 直接對回應位元組重算 sha256 反證這件事。此欄位不在 TEST-008 的字面範圍內，故不退回 TEST-008。**契約缺口（記錄，未改 spec）**：`contracts/openapi/public.yaml` 的 `RunPermissionSummary` 尚未宣告 `estimated_cost`，屬 additive 變更，待契約批補上）（允收：`02:TEST-005`）
-- [ ] TEST-012 實作 Test Lab 的 Test Case 與驗收條件介面：建立 Test Case、輸入與編輯 User Prompt、驗收條件的新增／編輯／刪除／確認、Dataset 列表與刪除。（**2026-08-16 新增**，承接本節開頭裁定退回的 **TEST-003**，並補齊 `02:TEST-001` 第 2 條前半「使用者可純手動建立驗收條件」。**範圍界線**：本項只做已存在端點的消費端，不新增 API、不改契約——五支端點（Test Case CRUD、criteria 增改刪確認、`POST /test-cases/{id}/criteria/suggest`、`/datasets`、`/test-cases/limits`）全部已落地且有整合測試。設計由 `DESIGN-007` 承接；兩者拆開是因為 `DESIGN-007` 涵蓋的流程比本項寬（含 MCP 與工具設定，兩者皆為後 MVP）。<br>**做完之後才能勾 TEST-003**：判準是「一個沒有 API 知識的使用者能不能新增、改、刪、確認一條驗收條件」，不是「畫面上有沒有這些欄位」。<br>**順帶收掉的既有權宜**：`/lab/run` 與 `/lab/datasets` 目前用 URL query 帶 `test_case` id（`router.tsx` 兩處註解都指名「沒有 picker，等 DESIGN-007」）——本項落地後應改由本頁連過去，把 id 從使用者要自己知道的東西變回內部識別）（允收：`02:TEST-001` 第 2 條前半、第 3 條）
+- [ ] TEST-012 實作 Test Lab 的 Test Case 與驗收條件介面：建立 Test Case、輸入與編輯 User Prompt、驗收條件的新增／編輯／刪除／確認、Dataset 列表與刪除。（**2026-08-16 新增**，承接本節開頭裁定退回的 **TEST-003**，並補齊 `02:TEST-001` 第 2 條前半「使用者可純手動建立驗收條件」。**範圍界線**：本項只做已存在端點的消費端，不新增 API、不改契約——五支端點（Test Case CRUD、criteria 增改刪確認、`POST /test-cases/{id}/criteria/suggest`、`/datasets`、`/test-cases/limits`）全部已落地且有整合測試。設計由 `DESIGN-007` 承接；兩者拆開是因為 `DESIGN-007` 涵蓋的流程比本項寬（含 MCP 與工具設定，兩者皆為後 MVP）。<br>**做完之後才能勾 TEST-003**：判準是「一個沒有 API 知識的使用者能不能新增、改、刪、確認一條驗收條件」，不是「畫面上有沒有這些欄位」。<br>**順帶收掉的既有權宜**：`/lab/run` 與 `/lab/datasets` 目前用 URL query 帶 `test_case` id（`router.tsx` 兩處註解都指名「沒有 picker，等 DESIGN-007」）——本項落地後應改由本頁連過去，把 id 從使用者要自己知道的東西變回內部識別）<br>**2026-08-17 註記：實作排入 M3 第 6 批**（[m3/README.md §6](m3/README.md)）。**本項不搬章節**——它是 M2 完結後新增的承接項，搬到 §14 會讓 M2 那份「某一時點的帳」變動；但它是 `EVAL-001` 的硬前置（驗收條件沒有輸入端，逐條判定就沒有輸入），所以排期歸 M3。依據見 [m3/README.md §5 差-1](m3/README.md)。（允收：`02:TEST-001` 第 2 條前半、第 3 條）
 - [x] TEST-010 保存實際執行使用的 Test Case 快照。（`testlab.CreateSnapshot` 為唯一實作，由 `internal/run` 於建立 Run 的同一交易呼叫；快照涵蓋 Prompt、驗收條件與 Dataset 參照並以單一 content hash 固定，不可變由 0005 trigger 保證；已刪除的 Test Case 不可起 Run）
 
 ## 10. Run Orchestrator 與 Provider 契約（M2）
@@ -221,7 +221,7 @@
 
 ## 14. 評估與改善（M3）
 
-- [ ] EVAL-001 將驗收條件轉換為可執行或可判斷的檢查。
+- [ ] EVAL-001 將驗收條件轉換為可執行或可判斷的檢查。（**「可執行」的界線見 `02:EVAL-001` 2026-08-17 新增的那條準則**：平台內建的確定性檢查，**不執行使用者提供的檢查腳本**）
 - [ ] EVAL-002 實作規格、啟用、執行、效果、相容與成本分類。
 - [ ] EVAL-003 對每項驗收條件產生通過、未通過或無法判斷及證據。
 - [ ] EVAL-004 產生符合、部分符合、未符合或無法判斷的整體結果。
@@ -233,6 +233,7 @@
 - [ ] EVAL-010 套用改善時建立新 Skill Version。
 - [ ] EVAL-011 實作使用相同 Test Case 重新試跑。
 - [ ] EVAL-012 實作版本、驗收、輸出、錯誤、延遲與成本比較。
+- [ ] EVAL-013 建立 Judge 判準的回歸集與驗證流程：以 M2 的 45 筆基準 Run 為第一組標註資料，逐筆比對 Judge 判定與已記錄的「符合／未產出」答案，產出含符合率與逐筆差異歸因的報告；Judge prompt 或 rubric 升版即重跑。（**2026-08-17 新增**，承接 [m3/README.md §5 差-3](m3/README.md) 與風險 R2——`02:EVAL-001` 要求標示模型判斷，但此前沒有任何工作項驗證它判得準不準。重評的 append-only 語意見 [ADR-026](../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md)；第一次回歸排在 M3 第 3 批，rubric 補完後於第 7 批重跑）（允收：`02:EVAL-013`）
 
 ## 15. 打包與下載（M4）
 

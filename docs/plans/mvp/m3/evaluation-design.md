@@ -76,7 +76,7 @@ ADR-016 的分工表已經寫了：LLM Judge 與改善建議生成屬 Python。M
 
 ### 2.4 Judge 的信任邊界（四條防線）
 
-被評估的內容——agent 最終輸出、tool 結果、artifact 文字——**全部是不受信任內容**，且它們有動機說服 Judge 給高分。ADR-009 只寫了「讀取的內容仍視為可能包含 Prompt Injection」，沒有給防線。本設計提四條（建議由 ADR-026／027 追認，見 README U-3）：
+被評估的內容——agent 最終輸出、tool 結果、artifact 文字——**全部是不受信任內容**，且它們有動機說服 Judge 給高分。ADR-009 只寫了「讀取的內容仍視為可能包含 Prompt Injection」，沒有給防線。本設計提四條，→ **已由 [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 3 追認為要求**（原規劃的 ADR-027 併入 026）：
 
 1. **輸出結構固定**：`json_schema` strict（既有 `/suggest-criteria` 前例），模型只能填格子，不能改變流程或增加欄位。判定值域固定為 `passed`／`failed`／`undetermined`；**值域外一律降為 `undetermined`**。
 2. **Judge 沒有能力**：無工具、無網路（只經 LiteLLM）、無檔案系統、無寫入。就算注入成功，它能做的最壞的事是**對這一次判定說謊**——而那被第 3 條擋住一半。
@@ -186,7 +186,7 @@ Trace 的保存期限（PDM-006）尚未定值，但機制已經是 `DROP PARTIT
 - `criterion_results[].evidence` 除了引用之外，**同時存一份當下的可讀摘要**（已遮罩、有長度上限與截斷標記）。
 - 讀取時若引用的分割區已不存在，UI 顯示可讀摘要並標明「原始事件已超過保存期，以下為評估當時保存的摘要」。**不是空白，也不假裝原始事件還在**（ADR-009「Trace 缺失時明確標示，不假裝完整」）。
 
-這條是 README U-2 ② 的具體形狀；PDM-006 定值後可能改變摘要長度，但不改變「兩份都存」的結構。
+這條是 README U-2 ② 的具體形狀，→ **已由 [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 2 定案**（append-only 見決策 1）；PDM-006 定值後可能改變摘要長度，但不改變「兩份都存」的結構。
 
 ---
 
@@ -215,7 +215,7 @@ Trace 的保存期限（PDM-006）尚未定值，但機制已經是 `DROP PARTIT
 
 | 面向 | 要求 |
 | --- | --- |
-| 狀態機 | `evaluating → succeeded` 的路徑不變；`successReason` 的 TODO 與文字**改寫**為「執行完成，任務判定另見 evaluation」。**這是推翻既有實作意圖，需 ADR-025**（README U-1） |
+| 狀態機 | `evaluating → succeeded` 的路徑不變；`successReason` 的 TODO 與文字**改寫**為「執行完成，任務判定另見 evaluation」。這是推翻既有實作意圖，→ **已由 [ADR-025](../../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md) 記錄**（2026-08-17 Accepted），程式碼改寫在第 2 批 |
 | 沒有評估的 Run | UI 顯示「**未評估**」，**不是**通過。M2 的 73 筆與所有未來的失敗 Run 都落在這裡 |
 | 評估失敗的 Run | `evaluations.status = failed` → UI 顯示「**評估未完成**」，與「未評估」分開（§3.2a 的 `status` 就是為此存在） |
 | UI 文案 | Run 終態改用執行語意（「執行完成」／「執行失敗」），任務判定**另起一列**顯示四態。判準是 NFR-001「UI 不得誤導」——與乙-2 的 `TokenBudget`「顯示但不強制」是同一種錯誤的兩個面向 |
@@ -279,7 +279,7 @@ Go      逐項驗證 → 使用者逐項決定 → 套用 → 建新 Skill Versi
 | 試跑預設（沙箱工作負載） | `gpt-5.4-mini` | — |
 | 改善建議生成 | 沿用 Judge 層 `gpt-5.6-terra` | 同上 |
 
-**Judge 不是 mini 級，這是刻意的。** PDM-003 v5 的理由有兩條：①「Judge 品質直接決定 M3 可信度，不宜用最便宜的」；②**與試跑預設不同型號可降低自我偏袒**。若要改用 mini 級省成本，那是推翻 PDM-003 的一項定案，需要負責人拍板（README U-4）。
+**Judge 不是 mini 級，這是刻意的。** PDM-003 v5 的理由有兩條：①「Judge 品質直接決定 M3 可信度，不宜用最便宜的」；②**與試跑預設不同型號可降低自我偏袒**。若要改用 mini 級省成本，那是推翻 PDM-003 的一項定案。→ **已由 [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 4 追認**（README U-4 結案）。
 
 **殘留限制照抄不淡化**：Judge 與試跑仍是同一供應商的同一模型家族，家族層級的共同偏誤無法由分層排除。PDM-003 風險表已記為已知限制，跨家族 A／B 不列入 MVP 必要範圍。
 

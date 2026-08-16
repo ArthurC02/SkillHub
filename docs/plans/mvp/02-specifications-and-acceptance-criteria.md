@@ -318,6 +318,7 @@ queued → provisioning → preparing → running → evaluating
 - 整體結果使用「符合、部分符合、未符合、無法判斷」，不得只提供無法解釋的分數。
 - 使用者可對結果提供有幫助／無幫助及文字回饋。
 - LLM Judge 的判斷必須標示為模型評估，不得冒充確定事實。
+- **「可執行的檢查」界定為平台內建的確定性檢查**（讀平台自己的事實：`skillpkg.Validate` 結果、trace 的 `skill_activation`／`error`／`usage` 事件、`runs.status`／`failure_class`、artifact manifest、格式與門檻比對）。**明文排除執行使用者提供的檢查腳本**——那是不受信任內容，執行它必須回到 Sandbox（鐵律 1／2），屬後 MVP，需求訊號出現時另立需求 ID。評估管線本身跑在控制平面且不執行任何不受信任的東西。（2026-08-17 新增，依 [m3/README.md §5 差-2](m3/README.md)）
 
 #### EVAL-002：改善建議
 
@@ -335,6 +336,21 @@ queued → provisioning → preparing → running → evaluating
 - 使用者可使用同一 Test Case 對新 Skill Version 重新執行。
 - 比較畫面至少顯示驗收結果、最終輸出、錯誤、延遲、成本及 Skill 版本差異。
 - 比較結果不得因後續版本修改而改變歷史 Run 資料。
+
+#### EVAL-013：Judge 判準驗證（M3）
+
+本節於 **2026-08-17 新增**，補的是 `EVAL-001` 第 5 條的缺口：規格要求 LLM Judge 的判斷標示為模型評估，但**沒有任何準則要求驗證它判得準不準**（[m3/README.md §5 差-3](m3/README.md)、風險 R2）。編號刻意與 `03` 的新工作項 `EVAL-013` 對齊。
+
+允收準則：
+
+- 存在一組**固定的回歸集**：M2 的 45 筆基準 Run（[m2/content-baseline-report.md](m2/content-baseline-report.md) 已逐筆判定「符合／未產出」，Trace、Artifact manifest 與 Test Case 快照皆可重查），作為第一組標註資料。回歸集的期望答案與其出處必須可追溯。
+- Judge 在回歸集上的判定與標註答案**逐筆可比對**，並產出一份含**符合率、逐筆差異清單、以及每筆差異屬「Judge 判錯」或「標註本身可議」**的報告；差異不得只以總分呈現。
+- 報告記錄該次回歸使用的 `judge_model`、`judge_prompt_version`、`rubric_version` 與截斷設定——**換其中任何一項就是另一次回歸**，不得沿用舊結論（同 ADR-023「靜默失效不得以推理帶過」）。
+- Judge prompt 或 rubric 升版後**必須重跑回歸集**，且重評依 [ADR-026](../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 為 append-only，前後兩次結論並存可比。
+- `undetermined` 與判錯**分開計數**：因證據不完整、引用回驗失敗或輸入截斷而降為 `undetermined` 的條目不計入判錯，但必須逐筆列出——它們是安全的預設，不是準確度。
+- 回歸成本可估並記錄實付（走閘道，帶 `evaluation_id` metadata）。
+
+**不在本需求範圍**：跨模型家族的 Judge A／B（PDM-003 v5 已記為 MVP 後）、以及為回歸集另建一套標註工具。
 
 ### 4.6 打包與下載
 

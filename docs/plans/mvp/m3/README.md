@@ -1,7 +1,7 @@
 # M3：評估與改善 — 執行計畫
 
 - 日期：2026-08-16
-- 狀態：**規劃完成、未開工**（本批只產出計畫與設計，不寫產品程式碼）
+- 狀態：**規劃完成、未開工**（本批只產出計畫與設計，不寫產品程式碼）。**2026-08-17 補**：§7 的四個未決點已由 [ADR-025](../../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)／[ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策，§5 的三處差異已在 `02`／`03` 對齊；程式碼與契約仍未開工
 - 前提：M2 已完結（[../m2/README.md](../m2/README.md)）；**M1 驗證閘門 D 日仍待負責人宣告**，比照 M2 前例，M3 與閘門並行，閘門結果不改變本計畫的技術內容，但可能改變開工順序（見 §6 風險 R1）。
 - 上游輸入：[`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) 的**丙類七項接點**（逐項對應見 §3）、[`../m2/m2-work-items-audit.md`](../m2/m2-work-items-audit.md) 的七項誠實不勾（§4）。
 
@@ -46,7 +46,7 @@ M3 讓每一次 Run 得到一份**逐條驗收條件、附可驗證證據、標�
 | **丙-2** 寫入面沿用 `RecordOrchestratorEvent` | 評估開始／結束事件沿用它，`seq` 由 `NextTraceSeq` 在同一交易內配號。**不另開寫入路徑**。新增兩個事件型別需同步升 `contracts/events/trace-event.schema.json`（見 [contract-deltas.md](contract-deltas.md) §3） | 第 2 批 |
 | **丙-3** 成本合計是下界 | `EVAL-012` 呈現成本時**必須標明是下界**並指出權威來源是閘道 per-key spend（ADR-017）。另：**評估自身的成本與 Run 成本分開兩欄**，不相加為單一數字——一個是使用者工作負載花的，一個是平台判定花的 | 第 5 批 |
 | **丙-4** `skill_activation` 的 `skipped` 不可觀測 | `EVAL-002` 判定「Skill 未被啟用」的材料只有「Run 掛了哪些 Skill」對照「trace 出現了哪些 activation」。**不得產出「模型看到了但選擇不用」這類敘述**——那在 SDK 訊息流裡沒有事實依據。措辭上限寫進 Judge 的 prompt 與規則檢查器的文案常數 | 第 2、4 批 |
-| **丙-5** `succeeded` ≠ 任務完成 | 本計畫的核心設計決策，見 [evaluation-design.md](evaluation-design.md) §4：`runs.status` 與 `evaluations.overall` 是兩個欄位、兩個表，**評估結果不回寫 `runs.status`**。連帶要改 `internal/run/job.go:419` 那個寫著「evaluation 決定 succeeded vs failed」的 TODO——它與這個決策相反。建議立 **ADR-025**（§7） | 第 2 批 |
+| **丙-5** `succeeded` ≠ 任務完成 | 本計畫的核心設計決策，見 [evaluation-design.md](evaluation-design.md) §4：`runs.status` 與 `evaluations.overall` 是兩個欄位、兩個表，**評估結果不回寫 `runs.status`**。連帶要改 `internal/run/job.go:419` 那個寫著「evaluation 決定 succeeded vs failed」的 TODO——它與這個決策相反。→ **已立 [ADR-025](../../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)（2026-08-17 Accepted）**，程式碼改寫仍在第 2 批 | 第 2 批 |
 | **丙-6** 可比較的基準已在庫 | M2 的 45 筆基準 Run（Trace 1112 事件全數 `masked`、Artifact manifest、Test Case 快照皆可重查）作為 **Judge 回歸集的第一組標註資料**——`content-baseline-report.md` 已逐筆判定「符合／未產出」，那正是 Judge 該重現的答案。`EVAL-011／012` 的第一組對照也用它 | 第 3、5 批 |
 | **丙-7** `RunResult.usage` 只有牆鐘 | M3 **不改** provider 契約去要 token：成本與 token 走 Trace 已足夠（`TRACE-009` 後每個 Run 都有 `usage` 事件）。若比較畫面後來需要 provider 側 usage，那是 additive 契約變更，屆時另議。本批只在設計文件記錄此界線 | 不動（記錄） |
 
@@ -62,15 +62,15 @@ M3 讓每一次 Run 得到一份**逐條驗收條件、附可驗證證據、標�
 - **`TEST-003` 已退回、由 `TEST-012` 承接**（乙-7）：驗收條件的新增／編輯／刪除／確認**沒有任何介面**。EVAL 的整條使用者路徑建立在「使用者定得出驗收條件」之上，所以 `TEST-012` 是 M3 的硬前置（§5）。
 - **`TEST-011` 與 `SEC-011` 的契約缺口**：`RunPermissionSummary.estimated_cost` 與 `/admin/skills/{id}/restriction` 尚未進 `public.yaml`。M3 第 1 批既然要動這個檔，**順手補上**（additive，鐵律 12 已欠帳兩筆，見 [contract-deltas.md](contract-deltas.md) §4）。
 
-## 5. 與 `03-work-items.md` 的差異（**不改 `03`，在此記錄待對齊**）
+## 5. 與 `03-work-items.md` 的差異（**2026-08-17：三項全部已對齊**）
 
-依 AGENTS.md，本批不動 `03`。以下三處與 `03` 現況有出入，需負責人或下一批對齊：
+原記錄為「本批不動 `03`，三處待負責人或下一批對齊」。**三項已於 2026-08-17 依建議落地**，`02`／`03` 已同步：
 
-| # | 差異 | 說明 |
-| --- | --- | --- |
-| 差-1 | **`TEST-012` 掛在 `03` §9（M2 章節），但實際必須在 M3 做完** | `03` §9 標題是「Test Case 與執行設定（M2）」。M2 已完結，而 `TEST-012` 是 M2 完結後新增的承接項。它不做完，`EVAL-001` 的「每個驗收條件回傳通過／未通過」在使用者面上沒有輸入端。**建議**：不搬章節（搬了會讓 M2 的帳變動），改在 `03` §9 的 `TEST-012` 行尾補一句「實作排入 M3 第 6 批」 |
-| 差-2 | **`03:EVAL-001`「可執行或可判斷的檢查」的解讀** | 本計畫把「可執行」界定為**平台內建的確定性檢查**，明文排除執行使用者提供的檢查腳本（§2.2）。`03` 的一行敘述沒有這個界線，`02:EVAL-001` 的允收準則也沒有要求執行使用者程式碼。**建議**：`02:EVAL-001` 補一條界線準則，`03:EVAL-001` 行尾引用它 |
-| 差-3 | **`03` §14 沒有承接「評估的重評」與「Judge 回歸集」** | `02:EVAL-001` 要求 LLM Judge 標示為模型評估，但沒有任何工作項要求驗證 Judge 判得準不準。M3 用 M2 的 45 筆基準當回歸集（丙-6），這件事目前**沒有工作項**。**建議**：新增 `03` EVAL-013（Judge 回歸集與判準）。本批不代為新增 |
+| # | 差異 | 說明 | 狀態 |
+| --- | --- | --- | --- |
+| 差-1 | **`TEST-012` 掛在 `03` §9（M2 章節），但實際必須在 M3 做完** | `03` §9 標題是「Test Case 與執行設定（M2）」。M2 已完結，而 `TEST-012` 是 M2 完結後新增的承接項。它不做完，`EVAL-001` 的「每個驗收條件回傳通過／未通過」在使用者面上沒有輸入端。**建議**：不搬章節（搬了會讓 M2 的帳變動），改在 `03` §9 的 `TEST-012` 行尾補一句「實作排入 M3 第 6 批」 | **已對齊**：`03` §9 `TEST-012` 行尾已加註記，章節未搬 |
+| 差-2 | **`03:EVAL-001`「可執行或可判斷的檢查」的解讀** | 本計畫把「可執行」界定為**平台內建的確定性檢查**，明文排除執行使用者提供的檢查腳本（§2.2）。`03` 的一行敘述沒有這個界線，`02:EVAL-001` 的允收準則也沒有要求執行使用者程式碼。**建議**：`02:EVAL-001` 補一條界線準則，`03:EVAL-001` 行尾引用它 | **已對齊**：`02:EVAL-001` 已補界線準則，`03:EVAL-001` 行尾已引用 |
+| 差-3 | **`03` §14 沒有承接「評估的重評」與「Judge 回歸集」** | `02:EVAL-001` 要求 LLM Judge 標示為模型評估，但沒有任何工作項要求驗證 Judge 判得準不準。M3 用 M2 的 45 筆基準當回歸集（丙-6），這件事目前**沒有工作項**。**建議**：新增 `03` EVAL-013（Judge 回歸集與判準） | **已對齊**：`02` 新增需求 `EVAL-013`（含允收準則），`03` §14 新增工作項 `EVAL-013`（未勾）。重評語意見 [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) |
 
 ## 6. 批次分解
 
@@ -94,25 +94,25 @@ M3 讓每一次 Run 得到一份**逐條驗收條件、附可驗證證據、標�
 
 **第 1 批必須先行的理由是鐵律 12**，不是流程偏好：`/judge-run` 是 Go↔Python 介面，`0024` 的 `criterion_results` 形狀同時被 Go、Python 與前端消費，先寫 schema 才不會三邊各自長出一套。
 
-## 7. 未決點與建議新增的 ADR
+## 7. 未決點與新增的 ADR
 
-**本批不寫 ADR**，決策留給負責人或下一批。
+原記錄為「本批不寫 ADR，決策留給負責人或下一批」。**2026-08-17 負責人授權依最佳實務決策，[ADR-025](../../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md) 與 [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 已寫入並 Accepted**（原規劃的 ADR-027 依 U-3 的第一選項併入 026，不另立編號）。
 
-| # | 未決點 | 建議 |
+| # | 未決點 | 現況 |
 | --- | --- | --- |
-| U-1 | 評估結果要不要決定 Run 終態 | **建議立 ADR-025：Run 終態與 Evaluation 判定的分離。** 現有程式碼的 TODO（`internal/run/job.go:419`）寫的是「evaluation 決定 succeeded vs failed」，而丙-5 與 ADR-009 的邊界劃分指向相反答案。這是**推翻一個既有的實作意圖**，必須有決策紀錄，不能靠一份設計文件帶過。理由詳見 [evaluation-design.md](evaluation-design.md) §4 |
-| U-2 | 評估可不可以被重做，重做後舊判定去哪 | **建議立 ADR-026：Evaluation 的重評與證據壽命（可用精簡格式）。** 兩個子問題：①rubric 或 Judge prompt 升版後重評，舊判定覆寫還是留存（本計畫傾向 append-only，理由見設計 §3.3）；②Trace 分割表按月清掉之後，evaluation 引用的 `event_id` 會失效——證據要不要在判定當下就複製一份可讀摘要。②會被 PDM-006 的保存期限定值影響 |
-| U-3 | Judge 讀不受信任內容的防線 | 可併入 ADR-026 或另立 **ADR-027：LLM Judge 的信任邊界**。ADR-009 只寫了「讀取的內容仍視為可能包含 Prompt Injection」，沒有給任何具體防線。設計 §2.4 提了四條，需要被追認為決策而不是實作細節 |
-| U-4 | Judge 模型層 | **不需新 ADR，但需負責人確認一次**：PDM-003 v5 §3 指定 Judge 為 `gpt-5.6-terra`（中階，$2／$12／$0.20），**不是**試跑預設的 mini 級——理由是「Judge 品質直接決定 M3 可信度」且刻意與試跑不同型號以降自我偏袒。M3 照此執行；若要改用 mini 級省成本，那是推翻 PDM-003 的一項定案 |
-| U-5 | `03` 的三處差異（§5） | 待對齊，本批不改 `03` |
-| U-6 | 保存期限（PDM-006，乙類） | M3 會踩到（U-2 ②）。M3 不代為定值，但會在設計上讓「證據過期」成為一個**顯示得出來的狀態**而不是空白 |
+| U-1 | 評估結果要不要決定 Run 終態 | **已決策** → [ADR-025](../../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)：不決定。`runs.status` 是執行事實、`evaluations.overall` 是任務判定，評估不回寫 `runs.status` 與 `failure_class`。`internal/run/job.go:419` 的 TODO 已被該 ADR 明文推翻，**程式碼改寫在第 2 批** |
+| U-2 | 評估可不可以被重做，重做後舊判定去哪 | **已決策** → [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 1／2：①append-only ＋ partial unique index（當前判定恰好一份，歷史全留）；②證據雙存（引用 ＋ 判定當下的可讀摘要），過期時 `available: false` 並顯示摘要 |
+| U-3 | Judge 讀不受信任內容的防線 | **已決策** → [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 3：四條防線全部為要求（strict `json_schema`／Judge 無能力／Go 逐條回驗證據引用，驗不過降 `undetermined`／內容與指示分隔）。**併入 026，不另立 ADR-027** |
+| U-4 | Judge 模型層 | **已決策** → [ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 4：追認 PDM-003 v5 §3 的 `gpt-5.6-terra`（中階），三條理由（mini 是試跑預設非 Judge 預設／Judge 品質決定 M3 可信度／與試跑不同型號降自我偏袒）已記入決策；同家族偏誤照抄為已知限制 |
+| U-5 | `03` 的三處差異（§5） | **已對齊**（2026-08-17）：`02` 補 `EVAL-001` 界線準則、新增需求 `EVAL-013`；`03` 補 `TEST-012` 排期註記、`EVAL-001` 行尾引用、新增工作項 `EVAL-013` |
+| U-6 | 保存期限（PDM-006，乙類） | **仍未定值**（乙類，待負責人）。ADR-026 已讓「證據過期」成為顯示得出來的狀態而不是空白，定值後可能只調整 `excerpt` 長度上限 |
 
 ## 8. 風險
 
 | # | 風險 | 對策 |
 | --- | --- | --- |
 | R1 | **M1 閘門 D 日未宣告**，若閘門不過需先修搜尋與內容 | 比照 M2 前例並行。第 1～3 批不碰搜尋與內容，閘門結果不影響；第 7 批的 `CONTENT-007` 補完會碰內容，排在最後 |
-| R2 | **Judge 判得準不準沒有基準** | 用 M2 的 45 筆基準當第一組回歸集（丙-6）。差-3 已記：目前沒有工作項承接這件事 |
+| R2 | **Judge 判得準不準沒有基準** | 用 M2 的 45 筆基準當第一組回歸集（丙-6）。~~目前沒有工作項承接~~ **2026-08-17 已有承接者**：`02:EVAL-013` 需求與 `03` EVAL-013 工作項（差-3 已對齊） |
 | R3 | **Prompt Injection**：被評估的 agent 輸出與 artifact 會試圖操縱 Judge | 設計 §2.4 的四條防線；`undetermined` 是安全的預設，不是失敗 |
 | R4 | **證據會過期**：Trace 90 天分割表 vs 評估報告要長期可讀 | U-2 ②；設計 §3.4 給了降級呈現的形狀 |
 | R5 | **成本**：每次評估都是一次中階模型呼叫 | 截斷政策 ＋ 每次評估的 token 上界；成本與 Run 成本分開列（丙-3）。首發門檻值為預設非實測校準值，須上線後回填（同 O11Y-003 前例） |

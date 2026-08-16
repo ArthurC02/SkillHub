@@ -100,5 +100,6 @@ event_id      單一領域或 Run Trace 事件
 
 - Trace 的保存格式、即時傳輸與查詢技術。
 - 一般模式摘要由規則、模型或混合方式產生。
-- 每個方案允許的 Trace 詳細度與保存期限。
+- 每個方案允許的 Trace 詳細度與保存期限。→ 保存期限本身仍未定值（PDM-006）；**Trace 被清掉後評估證據怎麼辦**已由 [ADR-026](./ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 2 回答（引用 ＋ 判定當下的可讀摘要雙存，過期時誠實標明）。
+- 本節「Evaluation 邊界」只寫了「讀取的內容仍視為可能包含 Prompt Injection」，未給防線。→ [ADR-026](./ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 3（四條防線）。Evaluation 的判定與 Run 終態的關係另見 [ADR-025](./ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)。
 
