@@ -725,6 +725,16 @@ queued → provisioning → preparing → running → evaluating
 - operator 端點與一般端點分離；`member` 呼叫 operator 端點時回 **404**（不揭露資源與端點存在，同 `SEC-008` 的不揭露原則）。
 - 下架、失效與來源變更共用 `CONTENT-009`／`INGEST-010` 的同一流程與同一組狀態，不得為 operator 另開第二套。
 
+**2026-08-16 追加：授權受限展示（licensing hold）**——負責人裁定對 `anthropics/skills` 的 4 筆 source-available Skill 執行 [anthropic-sa-license-memo](m2/anthropic-sa-license-memo.md) 的方案 C，實作已落地（migration `0023` 的 `skills.access_restriction`）。它是 operator 動作 ① 的一個**更輕的等級**，因此其允收準則寫在此處而非另立需求：
+
+- **受限 ≠ 下架。** 受限的 Skill **仍列於搜尋結果、仍保有摘要／限制／依賴／來源／License／風險區塊**；只有「逐字重現套件內容」與「把套件複製進沙箱」兩條路徑關閉。以下架（`INGEST-010`，410 Gone ＋ 移出索引）處理，會移除這個裁定明確要保留的東西。
+- **關閉的範圍必須恰好是**：`GET /api/skills/{id}/files`（`SKILL.md` 全文與檔案樹）與 `POST /skills/{id}/runs`。下載本來就已由 `CONTENT-004`／ADR-012 封鎖，不在此重複上鎖。
+- **拒絕必須帶理由，且不得偽裝成不存在**：`/files` 回 **403** 並附繁中說明（不是 404——搜尋才剛列出它，404 會被同一個 API 立刻打臉）；Run 建立回 **422** 並說明是授權審查。理由文字須說明「這不代表安全或品質問題」。
+- **受限狀態隨 Fork 傳播**：Fork 是同一批素材的另一份副本，旗標於 Fork 當下複製（`WS-001` 已要求 Fork 保留 License 關係，這是同一條理由）。未傳播即等於「Fork 一次就解除」。
+- **未知的原因碼一律視為受限**（fail-closed）：若原因碼不在已知清單內，仍受限並顯示通用說明——否則審查紀錄裡的一個錯字就是解鎖手段。
+- **旗標可解除**：終判允許後，把該欄位設回 NULL 即恢復；因此它不放在不可變的 `skill_versions` 上（鐵律 4）。
+- **現況限制（誠實記錄）**：設定與解除目前**只能由審查者直接執行 SQL**（`tools/content/restrict-anthropic-sa-display.sql`），沒有端點、沒有 audit event——因為 operator 角色（本需求）與 `CORE-008` 都尚未實作。這正是備忘 §3 指出「可一鍵下架目前做不到」的同一個缺口，本次未一併解決。
+
 ## 7. MVP 整體 Definition of Done
 
 MVP 只有在以下條件全部成立時，才能視為完成：

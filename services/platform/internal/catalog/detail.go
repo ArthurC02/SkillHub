@@ -228,6 +228,15 @@ type derivationInfo struct {
 	Note                string `json:"note"`
 }
 
+// accessRestriction is the 0023 licensing hold, rendered so a reader is told
+// what is missing and why rather than being shown a detail page that quietly has
+// no "view files" on it. Absent for everything not on hold, which is nearly
+// everything — hence the pointer.
+type accessRestriction struct {
+	Reason string `json:"reason"` // reason code, e.g. license-review
+	Note   string `json:"note"`
+}
+
 // skillDetail is the GET /api/skills/{id} body (DISC-006/008).
 type skillDetail struct {
 	SkillID string `json:"skill_id"`
@@ -251,6 +260,10 @@ type skillDetail struct {
 	AllowedTools []string       `json:"allowed_tools,omitempty"`
 	Risk         riskSummary    `json:"risk"`
 	Compat       compatibility  `json:"compatibility"`
+	// Restriction is present only while a licensing question about the package
+	// is open (0023). Everything above it still answers: the hold is on the
+	// materials, not on the platform's own description of them.
+	Restriction *accessRestriction `json:"access_restriction,omitempty"`
 }
 
 type fileEntry struct {
@@ -298,6 +311,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 	if skill.Summary != nil {
 		out.Summary = *skill.Summary
 	}
+	out.Restriction = restrictionOf(skill)
 
 	if e, err := q.GetSkillEnrichment(ctx, gen.GetSkillEnrichmentParams{
 		SkillID: skill.ID, WorkspaceID: skill.WorkspaceID,
@@ -376,6 +390,15 @@ func (h *Handler) SkillFiles(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// 0023: this endpoint is the one that reproduces the package's own bytes —
+	// SKILL.md verbatim and the file tree — so it is the one a licensing hold
+	// closes. 403 and not 404: search still lists the skill and the detail page
+	// still describes it, so "no such thing" would be a lie the rest of the API
+	// immediately contradicts. The reason travels with the refusal.
+	if rest := restrictionOf(skill); rest != nil {
+		httpx.WriteError(w, http.StatusForbidden, rest.Note)
+		return
+	}
 	ctx := r.Context()
 	ver, err := gen.New(h.Pool).GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
 		SkillID: skill.ID, WorkspaceID: skill.WorkspaceID,
@@ -426,6 +449,34 @@ func (h *Handler) SkillFiles(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
+
+// restrictionOf turns the stored reason code into the block the API returns.
+// One place, because the detail view, the files view and the run gate must not
+// be able to disagree about whether a skill is on hold.
+func restrictionOf(s gen.Skill) *accessRestriction {
+	if s.AccessRestriction == nil || strings.TrimSpace(*s.AccessRestriction) == "" {
+		return nil
+	}
+	note, ok := restrictionNotes[*s.AccessRestriction]
+	if !ok {
+		// An unknown code still restricts. Failing open on a reason nobody
+		// recognises would make a typo in a review the way to unlock content.
+		note = restrictionNoteDefault
+	}
+	return &accessRestriction{Reason: *s.AccessRestriction, Note: note}
+}
+
+// restrictionNotes is the user-facing text per reason code. Kept in Go rather
+// than in the row: the row records the decision, and the decision does not
+// change when the wording does.
+var restrictionNotes = map[string]string{
+	"license-review": "此 Skill 的來源授權正在審查中:在審查結論出來前,平台不提供 " +
+		"SKILL.md 全文與套件檔案樹,也不接受在平台上試跑。摘要、限制、依賴、來源與授權資訊照常顯示," +
+		"原文請至上方來源連結所指的位置檢視。這是對授權條款的保守處置,不代表此 Skill 有安全或品質問題。",
+}
+
+const restrictionNoteDefault = "此 Skill 目前因授權因素受限:不提供 SKILL.md 全文與套件檔案樹," +
+	"也不接受在平台上試跑。摘要與來源資訊照常顯示。"
 
 const (
 	riskNote = "以上為靜態掃描結果:匯入與掃描期間不執行套件內任何程式碼。" +

@@ -291,6 +291,20 @@ export interface SkillDetail {
   allowed_tools?: string[];
   risk: SkillRisk;
   compatibility: SkillCompatibility;
+  /**
+   * A licensing hold on the package's own materials (migration 0023). Present
+   * only while a review is open; the skill stays listed, keeps its summary and
+   * its provenance, and only the full text, the file tree and running it are
+   * closed. Absent is the normal case.
+   */
+  access_restriction?: SkillAccessRestriction;
+}
+
+export interface SkillAccessRestriction {
+  /** Reason code, e.g. `license-review`. */
+  reason: string;
+  /** The reader-facing explanation, written by the API. */
+  note: string;
 }
 
 // ---- GET /api/skills/{id}/files (DISC-007) ----

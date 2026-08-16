@@ -25,9 +25,9 @@ func (q *Queries) CountSkillVersions(ctx context.Context, skillID pgtype.UUID) (
 
 const createSkill = `-- name: CreateSkill :one
 
-INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason
+INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, access_restriction)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction
 `
 
 type CreateSkillParams struct {
@@ -36,10 +36,15 @@ type CreateSkillParams struct {
 	Summary             *string
 	ForkedFromSkillID   pgtype.UUID
 	ForkedFromVersionID pgtype.UUID
+	AccessRestriction   *string
 }
 
 // Every read here is workspace scoped (iron rule 3). The caller resolves workspace_id
 // from the session, never from request input.
+// access_restriction is a parameter rather than a default because a fork has to
+// carry the licensing hold of what it was forked from (0023): a fork is another
+// copy of the same materials, so the hold travels with it the way the license
+// expression and its provenance tier already do. Import passes NULL.
 func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill, error) {
 	row := q.db.QueryRow(ctx, createSkill,
 		arg.WorkspaceID,
@@ -47,6 +52,7 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 		arg.Summary,
 		arg.ForkedFromSkillID,
 		arg.ForkedFromVersionID,
+		arg.AccessRestriction,
 	)
 	var i Skill
 	err := row.Scan(
@@ -61,12 +67,13 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 		&i.DeletedAt,
 		&i.TakedownAt,
 		&i.TakedownReason,
+		&i.AccessRestriction,
 	)
 	return i, err
 }
 
 const getCatalogSkill = `-- name: GetCatalogSkill :one
-SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason FROM skills sk
+SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction FROM skills sk
 JOIN workspaces w ON w.id = sk.workspace_id AND w.is_catalog
 WHERE sk.id = $1 AND sk.deleted_at IS NULL
 `
@@ -91,12 +98,13 @@ func (q *Queries) GetCatalogSkill(ctx context.Context, id pgtype.UUID) (Skill, e
 		&i.DeletedAt,
 		&i.TakedownAt,
 		&i.TakedownReason,
+		&i.AccessRestriction,
 	)
 	return i, err
 }
 
 const getSkill = `-- name: GetSkill :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 `
 
@@ -120,6 +128,7 @@ func (q *Queries) GetSkill(ctx context.Context, arg GetSkillParams) (Skill, erro
 		&i.DeletedAt,
 		&i.TakedownAt,
 		&i.TakedownReason,
+		&i.AccessRestriction,
 	)
 	return i, err
 }
@@ -201,7 +210,7 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 }
 
 const listSkills = `-- name: ListSkills :many
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction FROM skills
 WHERE workspace_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -234,6 +243,7 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]Skill
 			&i.DeletedAt,
 			&i.TakedownAt,
 			&i.TakedownReason,
+			&i.AccessRestriction,
 		); err != nil {
 			return nil, err
 		}
@@ -248,7 +258,7 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]Skill
 const softDeleteSkill = `-- name: SoftDeleteSkill :one
 UPDATE skills SET deleted_at = now(), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction
 `
 
 type SoftDeleteSkillParams struct {
@@ -274,6 +284,7 @@ func (q *Queries) SoftDeleteSkill(ctx context.Context, arg SoftDeleteSkillParams
 		&i.DeletedAt,
 		&i.TakedownAt,
 		&i.TakedownReason,
+		&i.AccessRestriction,
 	)
 	return i, err
 }

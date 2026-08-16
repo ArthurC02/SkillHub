@@ -25,7 +25,13 @@ export function SkillFiles() {
       {error instanceof ApiError && error.status === 410 && (
         <p role="alert">這個 Skill 已從目錄下架，內容不再提供。</p>
       )}
-      {error && !(error instanceof ApiError && error.status === 410) && (
+      {/*
+        0023: the API's own sentence is shown rather than a local paraphrase.
+        There is one place that decides what a hold means, and a second wording
+        here is a second thing to keep in step.
+      */}
+      {error instanceof ApiError && error.status === 403 && <p role="status">{error.message}</p>}
+      {error && !(error instanceof ApiError && (error.status === 410 || error.status === 403)) && (
         <p role="alert">載入檔案失敗。</p>
       )}
 

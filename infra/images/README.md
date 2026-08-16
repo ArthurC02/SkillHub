@@ -200,6 +200,26 @@ CI artifact `runtime-agent-sdk-scan-<sha>`（保留 90 天，含 `sbom.spdx.json
 `vulnerabilities.txt`、`vulnerabilities.json`）**保留為人讀用途**，但它不再是 I-03／I-04
 的證據來源——閘門 A 查的是 attestation。
 
+### 已發佈的 digest（2026-08-16 首發）
+
+| digest | tag | attestation | 狀態 |
+| --- | --- | --- | --- |
+| `sha256:33e9e4bd…f71c45` | `2026.08-2`、`sha-0a4272c37ca1` | SBOM ＋ 掃描（`scanned_at` `2026-08-16T11:14:35Z`、`fixable_critical_high` 0） | **現行** |
+| `sha256:5d3c5615…4c19a909` | `sha-b0c270b6e890` | **只有 SBOM** | **孤兒，不得引用** |
+
+孤兒那一列是首跑的產物：image 推上去、SBOM 掛好之後，掃描 attestation 那一步以 exit 126 失敗
+（`scan_predicate.sh` 的執行位元沒進 git index），修好重跑時 build 不是位元可重現的，於是產生了
+第二個 digest，`2026.08-2` 這個 tag 也跟著移了過去。
+
+**它是安全的死路而不是陷阱**：沒有掃描 attestation ＝ I-04 判定過期 ＝ 閘門 D 不得引用，方向
+是 fail-closed。**唯一的風險是有人手動 pin 到它**。清掉它需要 `delete:packages` scope，本機
+git credential 的 token 沒有（只有 `gist, repo, workflow`），因此留給負責人：
+**GitHub → 頭像 → Your profile → Packages → `skillhub-runtime-agent-sdk` → 右側
+Package settings／Manage versions → 找到 tag 為 `sha-b0c270b6e890` 的那個 version → Delete。**
+或以帶 `delete:packages` 的 token 呼叫
+`DELETE /user/packages/container/skillhub-runtime-agent-sdk/versions/{version_id}`（version id
+需先以 `GET …/versions` 查，該端點要 `read:packages`）。
+
 ## 當前掃描結果（`runtime-agent-sdk:2026.08-2`，2026-08-16）
 
 syft v1.51.0 ＋ grype v0.117.0（漏洞庫 build `2026-08-16T06:14:30Z`），base digest

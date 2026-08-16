@@ -234,6 +234,21 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	if version.SkillID != p.SkillID {
 		return gen.Run{}, ErrNotFound
 	}
+	// 0023: materials under a licensing hold are not copied into a sandbox.
+	// Checked from the skill row before anything else is read, because it is the
+	// one refusal that no amount of the caller fixing their request can clear.
+	skill, err := s.queries().GetSkill(ctx, gen.GetSkillParams{
+		ID: p.SkillID, WorkspaceID: p.WorkspaceID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.Run{}, ErrNotFound
+	}
+	if err != nil {
+		return gen.Run{}, err
+	}
+	if err := s.requireNotAccessRestricted(skill); err != nil {
+		return gen.Run{}, err
+	}
 
 	policy, err := defaultPolicySnapshot()
 	if err != nil {

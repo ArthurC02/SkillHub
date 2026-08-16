@@ -2,8 +2,12 @@
 -- from the session, never from request input.
 
 -- name: CreateSkill :one
-INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id)
-VALUES ($1, $2, $3, $4, $5)
+-- access_restriction is a parameter rather than a default because a fork has to
+-- carry the licensing hold of what it was forked from (0023): a fork is another
+-- copy of the same materials, so the hold travels with it the way the license
+-- expression and its provenance tier already do. Import passes NULL.
+INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, access_restriction)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetSkill :one

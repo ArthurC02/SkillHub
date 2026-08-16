@@ -143,7 +143,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// blocking or unperformable static scan, and the workspace concurrency ceiling.
 	// Same 422 as the two above, for the same reason - nothing about the request is
 	// malformed, it simply may not proceed. The messages say which, and what to do.
-	if errors.Is(err, ErrScanBlocked) || errors.Is(err, ErrRunLimitReached) {
+	// Same 422 for the 0023 licensing hold: the request is fine, the platform is
+	// fine, and this content may not be copied into a sandbox until the review
+	// concludes.
+	if errors.Is(err, ErrScanBlocked) || errors.Is(err, ErrRunLimitReached) ||
+		errors.Is(err, ErrAccessRestricted) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}

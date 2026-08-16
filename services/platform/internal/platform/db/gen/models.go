@@ -274,6 +274,8 @@ type Skill struct {
 	DeletedAt           pgtype.Timestamptz
 	TakedownAt          pgtype.Timestamptz
 	TakedownReason      *string
+	// Reason code for a licensing hold on the package materials; NULL = none. Set by review, copied onto forks at fork time. See 0023.
+	AccessRestriction *string
 }
 
 type SkillRuntimeCompatibility struct {

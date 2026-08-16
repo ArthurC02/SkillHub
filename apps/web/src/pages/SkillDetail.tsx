@@ -42,6 +42,19 @@ export function SkillDetail() {
         <p className="note">{skill.tier.note}</p>
       </header>
 
+      {/*
+        0023 licensing hold. Above everything else on the page, because it
+        changes what the rest of the page can be used for: no full text, no file
+        tree, no run. role="status" rather than "alert" — it is a standing
+        condition of this listing, not something that just went wrong.
+      */}
+      {skill.access_restriction && (
+        <section className="notice" role="status">
+          <h2>授權審查中,部分功能已關閉</h2>
+          <p>{skill.access_restriction.note}</p>
+        </section>
+      )}
+
       <Enrichment enrichment={skill.enrichment} />
 
       <Limitations limitations={skill.limitations} />
@@ -116,7 +129,13 @@ export function SkillDetail() {
         )}
       </details>
 
-      {skill.version && (
+      {/*
+        0023: with a licensing hold open, the advanced view is closed and the
+        link goes with it — a link that leads to a 403 is worse than no link.
+        The reason is stated where the link used to be, so the absence reads as
+        a decision rather than as a missing feature.
+      */}
+      {skill.version && !skill.access_restriction && (
         <nav>
           <Link to="/skills/$skillId/files" params={{ skillId }}>
             查看 SKILL.md 與檔案樹（進階模式）

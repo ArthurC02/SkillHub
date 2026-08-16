@@ -10,6 +10,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -973,5 +974,108 @@ func TestFilterDimensionsWithoutDataAreRejectedNotIgnored(t *testing.T) {
 	// is about the dimension and not about filtering in general.
 	if body := anon.search(t, "/api/skills/search?q=beamish&script=yes"); len(body.Results) != 1 {
 		t.Fatalf("a supported filter was rejected too: %+v", body)
+	}
+}
+
+// restrict puts a licensing hold on a skill the way the review does (0023,
+// tools/content/restrict-anthropic-sa-display.sql). Direct SQL because the hold
+// is applied by a reviewer running that script, not by an endpoint — SEC-011's
+// operator surface does not exist yet.
+func restrict(t *testing.T, pool *pgxpool.Pool, skillID string) {
+	t.Helper()
+	var id pgtype.UUID
+	if err := id.Scan(skillID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE skills SET access_restriction = 'license-review' WHERE id = $1", id,
+	); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// The 方案 C shape (m2/anthropic-sa-license-memo.md, owner's decision 2026-08-16):
+// a licensing hold closes the paths that hand over the package's own bytes and
+// leaves everything the platform wrote about it open. Both halves are asserted,
+// because either one alone is a different product: closing the listing too would
+// be方案 A, and closing nothing would be 方案 B.
+func TestLicensingHoldClosesTheMaterialsAndKeepsTheListing(t *testing.T) {
+	pool := requireDB(t)
+
+	a := newAPI(t, pool)
+	curator := a.login(t, "curator-hold")
+	markCatalog(t, pool, curator.workspaceID)
+
+	held := importPackage(t, pool, a.packages, curator, "brillig-restricted-writer", true)
+	free := importPackage(t, pool, a.packages, curator, "brillig-open-writer", true)
+	restrict(t, pool, held)
+
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+
+	// Still listed and still ranked: the hold is not a takedown.
+	body := anon.search(t, "/api/skills/search?q=brillig")
+	names := map[string]bool{}
+	for _, r := range body.Results {
+		names[r.Name] = true
+	}
+	if !names["brillig-restricted-writer"] || !names["brillig-open-writer"] {
+		t.Fatalf("search dropped a skill it should still list: %+v", body.Results)
+	}
+
+	// Detail answers, says why, and still carries the platform's own description.
+	code, detail := anon.doJSON(t, http.MethodGet, "/api/skills/"+held, "")
+	if code != http.StatusOK {
+		t.Fatalf("detail of a held skill answered %d; the listing must stay usable", code)
+	}
+	rest, _ := detail["access_restriction"].(map[string]any)
+	if rest == nil || rest["reason"] != "license-review" {
+		t.Fatalf("detail did not disclose the hold: %+v", detail["access_restriction"])
+	}
+	if rest["note"] == "" || detail["summary"] == "" {
+		t.Fatalf("hold left the reader with nothing: note=%v summary=%v", rest["note"], detail["summary"])
+	}
+
+	// The one endpoint that reproduces the package verbatim is closed — with the
+	// reason, and as 403 rather than 404, because search just listed it.
+	code, files := anon.doJSON(t, http.MethodGet, "/api/skills/"+held+"/files", "")
+	if code != http.StatusForbidden {
+		t.Fatalf("GET /files on a held skill answered %d, want 403", code)
+	}
+	if msg, _ := files["error"].(string); msg == "" {
+		t.Fatal("the refusal carried no reason; a bare 403 is indistinguishable from a bug")
+	}
+
+	// Nothing else moved.
+	code, open := anon.doJSON(t, http.MethodGet, "/api/skills/"+free, "")
+	if code != http.StatusOK || open["access_restriction"] != nil {
+		t.Fatalf("the hold reached a skill it was not applied to: code=%d %+v", code, open["access_restriction"])
+	}
+	if code := anon.status(t, http.MethodGet, "/api/skills/"+free+"/files"); code != http.StatusOK {
+		t.Fatalf("GET /files on an unrestricted skill answered %d, want 200", code)
+	}
+}
+
+// The third enforcement point of the same decision: a held skill is not copied
+// into a sandbox either (0023, gate B). It lives beside the two above rather
+// than with the other run tests because the hold is one decision with three
+// places that honour it, and the failure mode worth guarding against is somebody
+// changing one of the three.
+//
+// The refusal must arrive before anything else can refuse first — no permission
+// confirmation, no provider, no scan verdict is set up here, and the answer is
+// still the licensing one.
+func TestARunOnHeldMaterialsIsRefused(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-held")
+	restrict(t, pool, f.skillID)
+
+	code, view := f.postJSON(t, "/skills/"+f.skillID+"/runs",
+		`{"version_id":"`+f.versionID+`","test_case_id":"`+f.testCaseID+`"}`)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("run on held materials: got %d, want 422", code)
+	}
+	if !strings.Contains(view.Error, "license") {
+		t.Errorf("refusal = %q, want it to say the licence review is why", view.Error)
 	}
 }

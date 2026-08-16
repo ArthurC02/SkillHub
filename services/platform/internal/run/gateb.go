@@ -46,7 +46,30 @@ var (
 	ErrScanBlocked = errors.New("the skill version's static scan blocks it from running")
 	// ErrRunLimitReached is the workspace concurrency ceiling.
 	ErrRunLimitReached = errors.New("this workspace already has the maximum number of runs in progress")
+	// ErrAccessRestricted is a skill whose materials are held back while a
+	// licensing question about them is open (0023).
+	ErrAccessRestricted = errors.New("this skill cannot be run while its source license is under review")
 )
+
+// requireNotAccessRestricted refuses a Run on materials under a licensing hold
+// (0023, m2/anthropic-sa-license-memo.md 方案 C).
+//
+// Running is not display, but it is another copy: the package is unpacked into a
+// sandbox and read there. The hold is on making copies, so it covers this too —
+// and unlike display, a Run also produces output derived from the materials.
+//
+// Read from the run's own skill row rather than walked back through the fork
+// lineage: the hold is copied onto a fork at fork time (registry.Fork), so the
+// row in front of us already carries it, and a fork of a fork cannot shed it.
+// A lineage walk would have to be written to terminate, and the version that
+// forgot to would be the way around the gate.
+func (s *Service) requireNotAccessRestricted(skill gen.Skill) error {
+	if skill.AccessRestriction == nil || strings.TrimSpace(*skill.AccessRestriction) == "" {
+		return nil
+	}
+	metrics.RunRefused.WithLabelValues("access_restricted").Inc()
+	return fmt.Errorf("%w (%s)", ErrAccessRestricted, *skill.AccessRestriction)
+}
 
 // packageReport reads the stored package and validates it, without executing any
 // of it (iron rule 1). ok is false when the scan could not be performed - no

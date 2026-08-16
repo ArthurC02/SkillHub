@@ -84,6 +84,10 @@ func (s *Service) Fork(ctx context.Context, ws gen.Workspace, skillID pgtype.UUI
 		Summary:             src.Summary,
 		ForkedFromSkillID:   src.ID,
 		ForkedFromVersionID: srcVer.ID,
+		// A licensing hold travels with the copy (0023). Forking is how the
+		// materials reach a workspace where they could be read in full or run, so
+		// a fork that dropped the hold would be the way around it.
+		AccessRestriction: src.AccessRestriction,
 	})
 	if isUniqueViolation(err) {
 		return gen.Skill{}, gen.SkillVersion{}, ErrNameTaken

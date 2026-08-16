@@ -877,3 +877,38 @@ test("DISC-007: advanced mode shows SKILL.md in full and marks every script", as
   // A way back to the general mode, so the two modes are navigable both ways.
   expect(text).toContain("一般模式");
 });
+
+// The owner's 方案 C decision (m2/anthropic-sa-license-memo.md) as the reader
+// meets it: the page still describes the skill, says why the materials are not
+// shown, and does not offer a link into the view that would refuse.
+test("a licensing hold explains itself and takes the advanced link with it", async () => {
+  const held = detailFixture({
+    skill_id: "dddddddd-0000-0000-0000-00000000beef",
+    name: "Docx Editor",
+    summary: "編輯 Word 文件",
+    version: {
+      version_id: "v1",
+      version_number: 1,
+      content_hash: "sha256:cafe",
+      created_at: "2026-08-01T00:00:00Z",
+    },
+    access_restriction: {
+      reason: "license-review",
+      note: "此 Skill 的來源授權正在審查中:不提供 SKILL.md 全文與檔案樹。",
+    },
+  });
+  stubSearchAndDetails(EMPTY, { [held.skill_id]: held });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/skills/$skillId", params: { skillId: held.skill_id } });
+  });
+  await waitFor(() => (container.textContent ?? "").includes("Docx Editor"));
+
+  const text = container.textContent ?? "";
+  // The listing survives — that is the half of 方案 C that is not a removal.
+  expect(text).toContain("編輯 Word 文件");
+  expect(text).toContain("授權審查中");
+  expect(text).toContain("來源授權正在審查中");
+  // …and the door that would 403 is not shown as a door.
+  expect(text).not.toContain("查看 SKILL.md 與檔案樹");
+});
