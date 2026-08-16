@@ -664,6 +664,111 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CategorizedFindings"
+  /skills/{id}/versions/from-suggestions:
+    post:
+      operationId: createSkillVersionFromSuggestions
+      summary: Apply accepted improvement suggestions as one new version (EVAL-002)
+      description: |
+        Turns accepted suggestions into exactly **one** new immutable version
+        (iron rule 4). The version they were written against is not touched and
+        historical runs keep pointing at it. Several suggestions land in one
+        version on purpose: one version per suggestion would leave a chain of
+        intermediate versions nobody ever ran.
+
+        Every suggestion is re-checked here rather than trusted from when it was
+        proposed. `target_path` must resolve inside the package, the target file
+        must still hash as it did then, the package must still pass the same
+        static validation an import goes through, and a skill under a 0023
+        licensing hold is refused. Anything that fails comes back by id with its
+        reason instead of being applied quietly.
+
+        Creating a version is not permission to run it. The new content hashes
+        differently, so the preflight summary changes and TEST-009 requires a
+        fresh confirmation before POST /skills/{id}/runs will start anything —
+        the same reason EVAL-003 has no re-run endpoint of its own.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Skill id. The evaluation's run must belong to a version of this skill.
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [evaluation_id, suggestion_ids]
+              properties:
+                evaluation_id:
+                  type: string
+                  format: uuid
+                  description: |
+                    The evaluation the suggestions belong to. Named explicitly
+                    rather than derived, so applying a set produced under one
+                    rubric cannot pick up a suggestion from a re-evaluation.
+                suggestion_ids:
+                  type: array
+                  minItems: 1
+                  items: { type: string, format: uuid }
+                  description: |
+                    The suggestions to apply, all of which must belong to
+                    `evaluation_id`. Order does not matter; two suggestions
+                    touching the same file are applied in path order.
+      responses:
+        "201":
+          description: |
+            The new version. `applied_suggestion_ids` is what actually went in;
+            anything the caller asked for that did not is in
+            `rejected_suggestions` with its reason, so a partial application is
+            never reported as a complete one.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/UploadResult"
+                  - type: object
+                    required: [applied_suggestion_ids, rejected_suggestions]
+                    properties:
+                      applied_suggestion_ids:
+                        type: array
+                        items: { type: string, format: uuid }
+                      rejected_suggestions:
+                        type: array
+                        items: { $ref: "#/components/schemas/RejectedSuggestion" }
+        "400":
+          description: Body is not JSON, or the ids are not UUIDs.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            Skill, evaluation or a suggestion not visible to the caller, or a
+            suggestion that does not belong to this evaluation (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: |
+            Not one suggestion could be applied, so no version was created. The
+            body names the reason per suggestion; the fix depends on which one,
+            and re-reading GET /suggestions/{id}/diff shows the same verdict.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Error"
+                  - type: object
+                    required: [rejected_suggestions]
+                    properties:
+                      rejected_suggestions:
+                        type: array
+                        items: { $ref: "#/components/schemas/RejectedSuggestion" }
   /skills/{id}/diff:
     get:
       operationId: diffSkillVersions
@@ -1259,6 +1364,323 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Not the caller's run. Existence is private (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/evaluation:
+    get:
+      operationId: getRunEvaluation
+      summary: The task judgement for one run (EVAL-001)
+      description: |
+        Answers "was the task achieved". That is a different question from
+        `Run.status`, which answers "what happened while this executed", and the
+        two are separate resources because they are separate facts: a run at
+        `succeeded` whose evaluation is `not_met` is an ordinary consistent
+        state — the workload finished and did not do what was asked. No surface
+        may collapse them into one verdict (ADR-025, NFR-001).
+
+        A run with no evaluation answers **404, not an empty evaluation**.
+        「未評估」 is a state of its own, and a blank body is exactly what a UI
+        would render as a pass. An evaluation that ran and broke is a third
+        state again, and it does have a body: `status: failed`.
+
+        `revision` reads one particular judgement by id; omitted, the answer is
+        the current one. Re-evaluation is append-only (a new rubric or judge
+        prompt writes a new row and supersedes the old), so a verdict quoted in
+        a report never changes underneath it.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: revision
+          in: query
+          required: false
+          description: An `evaluation_id` from GET /runs/{id}/evaluation/revisions.
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The judgement.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Evaluation" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            Not the caller's run, the run has never been evaluated, or no such
+            revision. One answer for all three: existence is private (WS-006),
+            and 「還沒評」 is not an error condition the client can fix.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/evaluation/revisions:
+    get:
+      operationId: listRunEvaluationRevisions
+      summary: Every judgement ever recorded for one run (EVAL-001)
+      description: |
+        Newest first. Re-evaluating writes a new revision and stamps
+        `superseded_at` on the previous one; nothing is overwritten, so a reader
+        can always tell which rubric and judge prompt a verdict was reached
+        under. Exactly one revision has a null `superseded_at` — that is the one
+        GET /runs/{id}/evaluation returns without `revision`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The run's judgement history.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revisions]
+                properties:
+                  revisions:
+                    type: array
+                    items: { $ref: "#/components/schemas/EvaluationRevision" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's run, or it has never been evaluated (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/evaluation/feedback:
+    put:
+      operationId: setEvaluationFeedback
+      summary: Say whether the judgement was helpful (EVAL-001)
+      description: |
+        PUT and not POST: this is a mutable field of an evaluation that already
+        exists, and a user is allowed to change their mind. Sending it again
+        replaces the previous answer instead of recording a second one.
+
+        It attaches to the current revision. A later re-evaluation starts
+        without feedback — carrying an opinion about one verdict onto another
+        one would be attributing something nobody said.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [helpful]
+              properties:
+                helpful: { type: boolean }
+                comment:
+                  type: string
+                  maxLength: 2000
+                  description: Optional; sending it empty clears a previous comment.
+      responses:
+        "200":
+          description: The evaluation, with the feedback as it now stands.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Evaluation" }
+        "400":
+          description: Body is not JSON, `helpful` is missing, or the comment is too long.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's run, or it has no evaluation to answer about (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/suggestions:
+    get:
+      operationId: listRunSuggestions
+      summary: Improvement suggestions from the current evaluation (EVAL-002)
+      description: |
+        Suggestions belong to an evaluation, not to a run: re-evaluating under a
+        different rubric produces its own set, and this returns the current
+        evaluation's. An empty list means that evaluation produced none; a run
+        with no evaluation answers 404, for the same reason
+        GET /runs/{id}/evaluation does.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The current evaluation's suggestions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [evaluation_id, suggestions]
+                properties:
+                  evaluation_id:
+                    type: string
+                    format: uuid
+                    description: |
+                      Which evaluation these came from. Quote it back to
+                      POST /skills/{id}/versions/from-suggestions.
+                  suggestions:
+                    type: array
+                    items: { $ref: "#/components/schemas/ImprovementSuggestion" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's run, or it has never been evaluated (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/comparison:
+    get:
+      operationId: compareRuns
+      summary: Compare this run with another one (EVAL-003)
+      description: |
+        Read-only. Both sides are frozen snapshots, so comparing cannot rewrite
+        either run (iron rule 4).
+
+        **There is no re-run endpoint.** Re-running is POST /skills/{id}/runs
+        with the new `skill_version_id` and the same `test_case_id`, which keeps
+        preflight and `confirmed_summary_hash` on the path. A one-click shortcut
+        would be a way around the single screen TEST-009 exists to force, and
+        the package contents genuinely did change.
+
+        Each side reports its execution status and its task judgement
+        separately, and a side with no judgement says so rather than reading as
+        a pass (ADR-025).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: against
+          in: query
+          required: true
+          description: The other run. Must be in the caller's workspace.
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The two runs side by side.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunComparison" }
+        "400":
+          description: '`against` is missing, is not a UUID, or names this same run.'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Either run is not the caller's. Existence is private (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /suggestions/{id}/decision:
+    put:
+      operationId: decideSuggestion
+      summary: Accept or reject one suggestion (EVAL-002)
+      description: |
+        Records the decision and changes no package. Applying is
+        POST /skills/{id}/versions/from-suggestions, and the two are separate so
+        that accepting five suggestions produces one new version rather than
+        five.
+
+        Repeatable: a later call replaces the decision. It does not undo
+        anything already applied — a version that was built is history, and the
+        way back from it is another version (iron rule 4).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  enum: [accepted, rejected]
+                  description: |
+                    `pending` is not settable: it is the state a suggestion
+                    starts in, and there is no request that means "un-decide".
+      responses:
+        "200":
+          description: The suggestion, with its decision as it now stands.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImprovementSuggestion" }
+        "400":
+          description: Body is not JSON, or `decision` is missing or outside the enum.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Suggestion not visible to the caller (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /suggestions/{id}/diff:
+    get:
+      operationId: getSuggestionDiff
+      summary: What applying this suggestion would change (EVAL-002)
+      description: |
+        EVAL-002 第 3 條 requires the change to be viewable before it is
+        applied, so the diff is served rather than assembled in the client:
+        computing it needs the stored package bytes, which the client does not
+        have, and a client-side guess could disagree with what apply actually
+        does.
+
+        It runs the same checks the apply call runs, so `applicable: false` here
+        and a rejection there give the same `blocked_reason`. A suggestion that
+        cannot be applied still shows why.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The unified diff, or the reason there is none to show.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuggestionDiff" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Suggestion not visible to the caller (WS-006).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3065,6 +3487,13 @@ components:
             here: cleanup happens after a terminal state and is reported
             separately in `cleanup_status`, so "the run failed" and "its sandbox
             was torn down" stay two distinct facts.
+
+            `succeeded` says the workload finished, not that the task was done.
+            Whether it was is `Evaluation.overall` from
+            GET /runs/{id}/evaluation, which is a separate resource an
+            evaluation never writes back into (ADR-025). A surface showing this
+            value alone must word it as execution (執行完成 / 執行失敗) and must
+            not present it as a pass.
         status_reason:
           type: string
           description: Why the run entered this status. Masked and safe to display.
@@ -3127,3 +3556,541 @@ components:
               error_message: { type: string }
               started_at: { type: string, format: date-time }
               finished_at: { type: string, format: date-time }
+    Evaluation:
+      description: |
+        One judgement of one run (EVAL-001), and a resource of its own because
+        it answers a question `Run` does not. `Run.status` records what happened
+        during execution; `Evaluation.overall` records whether the task was
+        achieved. `succeeded` is an execution outcome and never a task verdict,
+        an evaluation never writes back to the run, and the two are not to be
+        merged into a single pass/fail on any screen (ADR-025, NFR-001).
+
+        `status` and `overall` are likewise two fields on purpose. `status` is
+        about the judgement (did it run at all), `overall` is about the task
+        (what did it conclude). With only one of them, "the evaluator broke" and
+        "the evidence does not settle it" would be indistinguishable.
+      type: object
+      required:
+        [evaluation_id, run_id, status, overall, criterion_results,
+         deterministic_findings, judge_model, judge_prompt_version,
+         evidence_complete, cost, evaluated_at]
+      properties:
+        evaluation_id: { type: string, format: uuid }
+        run_id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [pending, completed, failed]
+          description: |
+            Whether the judgement itself ran. `failed` means it could not be
+            produced — the model gateway was unavailable, the evidence could not
+            be read — and is shown as 評估未完成, never quietly turned into a
+            lenient verdict. It is a different thing from having no evaluation
+            at all, which is a 404 rather than a row.
+        overall:
+          type: string
+          enum: [met, partially_met, not_met, undetermined]
+          description: |
+            Whether the task was achieved. Never derived from the run's terminal
+            state. `undetermined` is the safe default: it is the answer whenever
+            the evidence does not settle the question, and it is what a
+            `pending` or `failed` evaluation reports.
+        summary:
+          type: string
+          description: |
+            Human-readable verdict, for display above the per-criterion detail.
+            On `status: failed` it states what stopped the judgement instead.
+        criterion_results:
+          type: array
+          items: { $ref: "#/components/schemas/CriterionResult" }
+          description: |
+            One entry per acceptance criterion in the run's *snapshot*, not the
+            editable test case (iron rule 4).
+        deterministic_findings:
+          type: array
+          items: { $ref: "#/components/schemas/DeterministicFinding" }
+          description: |
+            Kept apart from `criterion_results` because the two answer different
+            questions: "what is wrong with this run" versus "did this criterion
+            pass". An empty list is not a clean bill of health.
+        judge_model:
+          type: string
+          description: |
+            The model that produced the `model`-sourced verdicts (EVAL-001
+            第 5 條). Recorded even when every verdict came from a rule, so a
+            report says what was available to it.
+        judge_prompt_version:
+          type: string
+          description: |
+            The judge prompt this verdict was reached under (ADR-017). Together
+            with `rubric_version` it is what makes two revisions comparable.
+        rubric_version:
+          type: string
+          description: |
+            The CONTENT-007 rubric in force. Absent when the skill's category
+            has none — absent means "no rubric", not "the default rubric".
+        evidence_complete:
+          type: boolean
+          description: |
+            False when the material judged was incomplete: the run trace has a
+            hole (`complete: false` on GET /runs/{id}/trace), an artifact could
+            not be read, or an input had to be truncated. A criterion judged on
+            incomplete evidence must not come back `passed`; `undetermined` is
+            the honest outcome and the UI has to keep saying so (ADR-009).
+        cost:
+          $ref: "#/components/schemas/EvaluationCost"
+        feedback:
+          type: object
+          description: |
+            The user's own answer about this judgement (EVAL-001 第 4 條). Absent
+            means nobody answered, which is not the same as "not helpful".
+          required: [helpful, submitted_at]
+          properties:
+            helpful: { type: boolean }
+            comment: { type: string, maxLength: 2000 }
+            submitted_at: { type: string, format: date-time }
+        evaluated_at: { type: string, format: date-time }
+        superseded_at:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            Set when a later re-evaluation replaced this one; null on the
+            current revision. Returned so that reading an old revision through
+            `?revision=` cannot be mistaken for reading the standing verdict.
+    CriterionResult:
+      description: |
+        One acceptance criterion's verdict. `criterion_id` refers to the run's
+        frozen test case snapshot, so editing the draft afterwards cannot
+        rewrite what was judged (iron rule 4).
+      type: object
+      required: [criterion_id, text, result, source, evidence, reason]
+      properties:
+        criterion_id: { type: string }
+        text:
+          type: string
+          description: |
+            The wording as it stood in the snapshot, carried here so an
+            evaluation report stays readable without resolving the snapshot —
+            and so it keeps showing the words that were actually judged.
+        result:
+          type: string
+          enum: [passed, failed, undetermined]
+          description: |
+            `undetermined` whenever the evidence does not settle it: input was
+            truncated, an evidence reference did not resolve, or the trace was
+            incomplete. It is one of EVAL-001's required states, not a missing
+            answer, and it is what the pipeline falls back to on any doubt.
+        source:
+          type: string
+          enum: [rule, model, user]
+          description: |
+            Who decided, and required rather than optional: EVAL-001 第 5 條
+            requires a model's judgement to be labelled as a model's, and an
+            omitted field would read as a platform fact.
+
+            The control plane sets this from where the verdict actually came,
+            never from what the model reports about itself — the judge service's
+            response has no such field to fill in. `rule` is a deterministic
+            check over the platform's own records, `user` is a person's verdict
+            recorded over the automated one.
+        evidence:
+          type: array
+          items: { $ref: "#/components/schemas/EvidenceRef" }
+          description: |
+            What the verdict rests on. Every reference a model returns is
+            re-checked server-side before it is stored; one that does not
+            resolve drops the verdict to `undetermined` instead of being passed
+            through as given.
+        reason:
+          type: string
+          description: |
+            Why, in the user's language. Untrusted text when `source` is
+            `model`: render it as inert text like any other model output.
+    EvidenceRef:
+      description: |
+        A pointer to the material a verdict rests on, together with a copy of
+        it. Both, because they expire differently: trace events live in monthly
+        partitions that the retention policy drops, while an evaluation report
+        is read long after. Only the pointer would turn old reports into empty
+        citations; only the excerpt would make fresh ones unverifiable.
+      type: object
+      required: [kind, excerpt, excerpt_truncated, available]
+      properties:
+        kind:
+          type: string
+          enum: [trace_event, artifact, agent_output]
+        trace_event_id:
+          type: string
+          format: uuid
+          description: Present for `trace_event`.
+        occurred_at:
+          type: string
+          format: date-time
+          description: |
+            Present for `trace_event`, and not optional in practice: trace_events
+            is partitioned by time and keyed on (id, occurred_at), so an id on
+            its own does not locate the row.
+        artifact_path:
+          type: string
+          description: |
+            Run-output-relative path for `artifact`. Never absolute and never
+            escaping the run's own output.
+        byte_range:
+          type: object
+          description: Half-open [start, end) byte offsets into the artifact.
+          required: [start, end]
+          properties:
+            start: { type: integer, format: int64 }
+            end: { type: integer, format: int64 }
+        char_range:
+          type: object
+          description: Half-open [start, end) character offsets into the agent output.
+          required: [start, end]
+          properties:
+            start: { type: integer }
+            end: { type: integer }
+        excerpt:
+          type: string
+          description: |
+            The cited material as it was when the judgement was made: masked
+            before storage (iron rule 11) and length-capped. It is untrusted
+            content that crossed the trust boundary (ADR-001) — render it as
+            inert text, never interpreting HTML, ANSI or SVG.
+        excerpt_truncated:
+          type: boolean
+          description: True when the excerpt is a cut of a longer passage.
+        available:
+          type: boolean
+          description: |
+            Whether the original can still be read. False means the trace
+            partition was dropped or the artifact is gone; the excerpt is still
+            shown and must be labelled as the copy kept at evaluation time.
+            Never presented as though the original were still there, and never
+            blanked out either (ADR-009).
+    DeterministicFinding:
+      description: |
+        One problem found about the run itself — EVAL-001 第 1 條's six
+        categories — reported apart from the criterion verdicts. Everything here
+        except `effect` is decided by rules over the platform's own records, so
+        five of the six categories cannot be argued with by anything inside the
+        sandbox.
+      type: object
+      required: [category, severity, message, evidence]
+      properties:
+        category:
+          type: string
+          enum: [spec, activation, execution, effect, compatibility, cost]
+          description: |
+            `spec` — static validation of the version. `activation` — whether
+            the mounted skills show up in the trace; it never claims a skill was
+            "offered and ignored", because the SDK stream cannot express that
+            (TRACE-002 限制註記) and the only honest statement is that no
+            activation event appeared. `execution` — the run's own status,
+            failure class and error events. `effect` — the one category a model
+            produces. `compatibility` — the measured (version, runtime image)
+            pair. `cost` — the run's usage totals, which are a lower bound.
+        severity:
+          type: string
+          enum: [error, warning, info]
+          description: Same three levels as `Finding`, so one severity vocabulary covers the product.
+        message: { type: string }
+        evidence:
+          type: array
+          items: { $ref: "#/components/schemas/EvidenceRef" }
+    EvaluationCost:
+      description: |
+        What this judgement cost: the platform's own model call, and nothing
+        else. It is never added to the run's cost — they are spent by different
+        workloads under different keys, and the run's figure is a lower bound
+        (see RunComparison) while this one is not. One combined number would
+        inherit the weaker guarantee without saying so.
+      type: object
+      required: [evaluation_usd, source, note]
+      properties:
+        evaluation_usd:
+          type: [number, "null"]
+          description: |
+            NULL means the gateway reported no cost. Render that as
+            "unreported" and never as 0 — 0 tells the user the judgement was
+            free.
+        source:
+          type: string
+          enum: [gateway, estimated]
+          description: |
+            `gateway` is the LiteLLM per-key spend for this evaluation, which is
+            the authoritative figure (ADR-017). `estimated` is a computed one
+            and must be labelled as such wherever it is shown.
+        note: { type: string }
+    EvaluationRevision:
+      description: |
+        One entry in a run's judgement history. It carries just enough to tell
+        which rubric and judge prompt a verdict was reached under, because a
+        verdict only means something together with what it was measured against.
+      type: object
+      required: [evaluation_id, judge_prompt_version, overall, evaluated_at, superseded_at]
+      properties:
+        evaluation_id:
+          type: string
+          format: uuid
+          description: Pass as `?revision=` to GET /runs/{id}/evaluation to read it in full.
+        judge_prompt_version: { type: string }
+        rubric_version:
+          type: string
+          description: Absent when the skill's category has no rubric.
+        overall:
+          type: string
+          enum: [met, partially_met, not_met, undetermined]
+        evaluated_at: { type: string, format: date-time }
+        superseded_at:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            When a later re-evaluation replaced this one. Null on the current
+            revision, and exactly one revision has it null.
+    ImprovementSuggestion:
+      description: |
+        One proposed improvement (EVAL-002). It belongs to the evaluation that
+        produced it rather than to the run: re-evaluating under another rubric
+        produces its own set, and merging them would present suggestions about
+        different verdicts as one list.
+
+        The descriptive fields are frozen once written — what a model proposed
+        is a fact about what was proposed. Only the decision fields move.
+      type: object
+      required:
+        [suggestion_id, category, problem, evidence, target_path,
+         expected_impact, decision]
+      properties:
+        suggestion_id: { type: string, format: uuid }
+        category:
+          type: string
+          enum: [skill, runtime, mcp, tool, dataset]
+          description: |
+            Which layer the problem is in (EVAL-002 第 2 條). `mcp` is never
+            produced in the MVP — remote MCP is out of first release — and
+            exists so the value does not have to be added to a live enum later,
+            the same placement TRACE-003 already uses.
+        problem:
+          type: string
+          description: What went wrong. Model-written; render as inert text.
+        evidence:
+          type: array
+          items: { $ref: "#/components/schemas/EvidenceRef" }
+          description: |
+            Why the model believes it, in verifiable form. Same server-side
+            re-check as on a criterion verdict.
+        target_path:
+          type: string
+          description: |
+            Package-relative path the change applies to. Normalised and checked
+            again when it is applied; anything resolving outside the package is
+            refused there as `path_out_of_bounds`.
+        expected_impact:
+          type: string
+          description: What the model expects to improve. A prediction, not a measurement.
+        decision:
+          type: string
+          enum: [pending, accepted, rejected]
+          description: |
+            The user's per-suggestion decision (EVAL-002 第 3 條). `pending` is
+            the starting state. Accepting records agreement only — nothing is
+            written to any package until
+            POST /skills/{id}/versions/from-suggestions is called.
+        decided_at: { type: string, format: date-time }
+        applied_skill_version_id:
+          type: string
+          format: uuid
+          description: |
+            The **new** version this suggestion went into, once one was built.
+            Absent means it has not been applied. The version it was written
+            against is untouched either way (iron rule 4).
+    SuggestionBlockedReason:
+      description: |
+        Why a suggestion cannot be applied. One vocabulary, served from one
+        place, so the preview and the apply call can never disagree about what
+        stops a change.
+
+        `path_out_of_bounds` — `target_path` resolves outside the package.
+        `target_changed` — the target file no longer hashes as it did when the
+        suggestion was written, so the change was reasoned about other bytes.
+        `validation_blocked` — the package would no longer pass static
+        validation with the change applied; the same rule that blocks an import
+        blocks this, only earlier (PACK-002 的精神).
+        `access_restricted` — the skill is under a 0023 licensing hold, so its
+        contents are not reproduced (SEC-011).
+        `diff_unavailable` — no diff could be computed, and EVAL-002 第 3 條
+        does not allow applying a change the user could not see.
+      type: string
+      enum:
+        [path_out_of_bounds, target_changed, validation_blocked,
+         access_restricted, diff_unavailable]
+    SuggestionDiff:
+      type: object
+      required: [target_path, applicable]
+      properties:
+        target_path: { type: string }
+        unified_diff:
+          type: string
+          description: |
+            The exact change, against the version the suggestion was written
+            for. Absent when none could be computed, which is also
+            `applicable: false` with `diff_unavailable`.
+        applicable:
+          type: boolean
+          description: |
+            Whether applying it would be allowed right now. It is evaluated at
+            read time against the current package, so it can go from true to
+            false when another version is saved in between — the apply call
+            checks again and is the one that decides.
+        blocked_reason:
+          $ref: "#/components/schemas/SuggestionBlockedReason"
+    RejectedSuggestion:
+      description: One suggestion the apply call refused, and why.
+      type: object
+      required: [suggestion_id, blocked_reason, message]
+      properties:
+        suggestion_id: { type: string, format: uuid }
+        blocked_reason:
+          $ref: "#/components/schemas/SuggestionBlockedReason"
+        message:
+          type: string
+          description: The reason in the user's language, safe to display as-is.
+    RunComparison:
+      description: |
+        Two runs of the same test case, side by side (EVAL-003). A read: neither
+        run is written to, and both sides are immutable snapshots (iron rule 4).
+
+        Each side reports execution and task judgement in separate fields, and
+        an unevaluated side says so rather than leaving the reader to infer a
+        pass from `succeeded` (ADR-025).
+      type: object
+      required: [runs, criterion_matrix]
+      properties:
+        runs:
+          type: array
+          minItems: 2
+          maxItems: 2
+          description: The run named in the path first, the `against` run second.
+          items:
+            type: object
+            required: [run_id, skill_version_id, status, cost]
+            properties:
+              run_id: { type: string, format: uuid }
+              skill_version_id: { type: string, format: uuid }
+              status:
+                type: string
+                enum:
+                  [queued, provisioning, preparing, running, evaluating, succeeded, failed, cancelled, timed_out]
+                description: |
+                  How the execution ended, and only that. `succeeded` means the
+                  workload finished; whether it did what was asked is
+                  `evaluation.overall` beside it. Label this column with
+                  execution wording (執行完成 / 執行失敗) and the judgement on
+                  its own row.
+              evaluation:
+                type: object
+                description: |
+                  The task judgement for this run. **Absent means the run was
+                  never evaluated** — show 未評估, never a pass. An evaluation
+                  that broke is present with `status: failed`.
+                required: [evaluation_id, status, overall, cost]
+                properties:
+                  evaluation_id: { type: string, format: uuid }
+                  status:
+                    type: string
+                    enum: [pending, completed, failed]
+                  overall:
+                    type: string
+                    enum: [met, partially_met, not_met, undetermined]
+                  cost:
+                    $ref: "#/components/schemas/EvaluationCost"
+              final_output:
+                type: string
+                description: |
+                  The run's final answer, masked. Untrusted content — render as
+                  inert text (ADR-001).
+              errors:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    category: { type: string }
+                    code: { type: string }
+                    message: { type: string }
+              duration_ms:
+                type: integer
+                description: Wall clock from start to terminal state. Absent for a run that never started.
+              cost:
+                type: object
+                description: |
+                  What the *run* spent, kept in its own field beside the
+                  evaluation's own cost. Two columns, never one total (design
+                  §5.4).
+                required: [usd, is_lower_bound, authoritative_source]
+                properties:
+                  usd:
+                    type: [number, "null"]
+                    description: |
+                      NULL means no usage event carried a cost. Render as
+                      "unreported", never as 0.
+                  is_lower_bound:
+                    type: boolean
+                    const: true
+                    description: |
+                      Always true, and required so it cannot be dropped on the
+                      way to a screen. The figure is summed from trace `usage`
+                      events and that sum is structurally incomplete: a response
+                      still in flight when the stream ends is not counted, and a
+                      producer's last flush can land after this was read. It is
+                      a floor, not a total, and every surface showing the number
+                      shows that too. Making it a constant field puts the
+                      obligation in the contract instead of in everyone's memory.
+                  authoritative_source:
+                    type: string
+                    description: |
+                      Where the settling figure lives — the gateway's per-key
+                      spend for this run (ADR-017). Named rather than implied,
+                      so a reader knows what a disagreement would be resolved
+                      against.
+        criterion_matrix:
+          type: array
+          description: |
+            One row per acceptance criterion with both runs' verdicts, so a
+            regression shows up per criterion instead of only in the overall.
+            Criteria are matched by `criterion_id`, which the two snapshots
+            share when the same test case was re-run (equal `content_hash`); one
+            present on only a single side carries a null verdict for the other
+            rather than being dropped.
+          items:
+            type: object
+            required: [criterion_id, text, results]
+            properties:
+              criterion_id: { type: string }
+              text: { type: string }
+              results:
+                type: array
+                minItems: 2
+                maxItems: 2
+                description: Same order as `runs`.
+                items:
+                  type: object
+                  required: [run_id, result]
+                  properties:
+                    run_id: { type: string, format: uuid }
+                    result:
+                      type: [string, "null"]
+                      enum: [passed, failed, undetermined, null]
+                      description: |
+                        Null when this side has no verdict for the criterion —
+                        it was not evaluated, or the criterion does not exist in
+                        that snapshot. Not the same as `undetermined`, which is
+                        a verdict that was reached.
+                    source:
+                      type: string
+                      enum: [rule, model, user]
+        version_diff_url:
+          type: string
+          description: |
+            Where to see what changed between the two skill versions: the
+            existing GET /skills/{id}/diff with `from` and `to` filled in
+            (WS-003), not a second diff implementation. Absent when both runs
+            used the same version.
