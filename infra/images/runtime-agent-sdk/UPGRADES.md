@@ -1,6 +1,6 @@
 # Runtime Image 升級紀錄（ADR-023 §4）
 
-本檔是 [ADR-023](../../../adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md)
+本檔是 [ADR-023](../../../docs/adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md)
 要求的**行為重驗證據落點**，**append-only**：每次升級加一節，既有節不改寫。
 
 **「升級」的定義是任何會改變 image digest 的變更**（ADR-023 §1）：SDK 版本、基底映像、
@@ -38,7 +38,7 @@
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（未變） |
 | 映像 digest | `sha256:61ef902ffed4e1a66dcc3bc61684f4253721e96b6ea2dfa370bbe43d7da5f7fe`（GHCR tag `2026.08-2`，2026-08-16 觀測；升 `-3` 後仍指向它，未被孤立） |
 | commit | `b0c270b`（映像變更本體）；閘道預算根因修復 `3906fe5` 為其前置 |
-| 證據來源 | [content-baseline-report.md §12／§13](../../../plans/mvp/m2/content-baseline-report.md) |
+| 證據來源 | [content-baseline-report.md §12／§13](../../../docs/plans/mvp/m2/content-baseline-report.md) |
 | 實測規模 | **45 個 Skill 全量**（§12 的 9 筆 ＋ §13 的 36 筆），閘道實付 $0.86 ＋ $1.85 |
 
 | # | 結果 | 關鍵輸出 |

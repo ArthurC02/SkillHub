@@ -92,7 +92,7 @@ MVP 用 Prometheus 文字格式，各服務自己曝露，沒有 push gateway、
 
 **門檻值多數是首發預設，不是實測校準值**。NFR-004 自陳效能目標「需在確認基礎設施後校準」，上線後第一個月應以實際分佈回填並註明校準日期。
 
-**例外：`skillhub-cleanup-and-leaks` 群組的門檻已定值**——SEC-002 的六項門檻（威脅模型 Q18）於 2026-08-16 由 [ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分定案（X-02 每 5 分鐘、X-03 同一筆連 2 輪、X-04 單節點 50%／全池 25% 下限 2 筆、6b 連 3 輪撤銷失敗）。**該群組的規則已全部是正式形式（2026-08-16，SBX-012 落地後）**：`LeakedSandboxStillPresent` 改讀 `skillhub_orphan_sandbox_persistent`、`CredentialRevokeFailing` 改讀 `skillhub_gateway_revoke_failed_total`，原本以累加計數器近似「同一筆連續 N 輪」與「哪一種資源撤不掉」的兩條過渡規則已移除近似。**ADR-022 定的動作（drain 節點、暫停整池派送、暫停 P-03 例行重建）屬平台實作，不是 Alertmanager 的職責。**
+**例外：`skillhub-cleanup-and-leaks` 群組的門檻已定值**——SEC-002 的六項門檻（威脅模型 Q18）於 2026-08-16 由 [ADR-022](../../docs/adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分定案（X-02 每 5 分鐘、X-03 同一筆連 2 輪、X-04 單節點 50%／全池 25% 下限 2 筆、6b 連 3 輪撤銷失敗）。**該群組的規則已全部是正式形式（2026-08-16，SBX-012 落地後）**：`LeakedSandboxStillPresent` 改讀 `skillhub_orphan_sandbox_persistent`、`CredentialRevokeFailing` 改讀 `skillhub_gateway_revoke_failed_total`，原本以累加計數器近似「同一筆連續 N 輪」與「哪一種資源撤不掉」的兩條過渡規則已移除近似。**ADR-022 定的動作（drain 節點、暫停整池派送、暫停 P-03 例行重建）屬平台實作，不是 Alertmanager 的職責。**
 
 `CleanupBacklogGrowing` 的門檻不在 ADR-022 的六項之內，但已於 **2026-08-16 依封測容量校準**：`> 5` → `> 2`。舊值大於整池 4 個 slot，代表整池沙箱全數洩漏都還低於門檻；新值取封測 4 slot 的 50%，與 X-04 單節點 drain 用同一個比例。池容量改變時要重推。
 

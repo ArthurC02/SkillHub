@@ -14,8 +14,10 @@ package.
 | `contracts/openapi/` | OpenAPI specs — the single source of truth for cross-language interfaces |
 | `db/` | PostgreSQL migrations, sqlc queries and config |
 | `infra/compose/` | Local and single-host deployment stack |
-| `plans/`, `adr/` | Product plan and architecture decision records (Traditional Chinese) |
-| `spikes/` | M0 exploration code; never imported by product code, never built in CI |
+| `tools/` | Repo-side scripts: CI assertions, content import, golden-set evaluation |
+| `docs/` | Everything that is read rather than run (ADR-024) |
+| `docs/plans/`, `docs/adr/` | Product plan and architecture decision records (Traditional Chinese) |
+| `docs/spikes/` | M0 exploration code; never imported by product code, never built in CI |
 
 ## Development
 
@@ -49,5 +51,6 @@ production, so the allowance is opt-in per process and unset everywhere else.
 ## Before you write code
 
 Read [AGENTS.md](AGENTS.md) for the implementation rules, and
-[ADR-019](adr/ADR-019-monorepo-structure-and-cicd.md) for why the repository is
-laid out this way and what CI enforces.
+[ADR-019](docs/adr/ADR-019-monorepo-structure-and-cicd.md) plus
+[ADR-024](docs/adr/ADR-024-top-level-repository-layout.md) for why the repository
+is laid out this way and what CI enforces.

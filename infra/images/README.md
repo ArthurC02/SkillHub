@@ -19,7 +19,7 @@
 
 M2 基準試跑的 trace 原文是 `/bin/bash: line 75: python3: command not found`，而
 `tools/content/seed-skills.json` 記錄 45 個目錄 Skill 中 **33 個 `deps_runtime = python`**
-（[content-baseline-report.md §6.3](../../plans/mvp/m2/content-baseline-report.md)）。那 33 個
+（[content-baseline-report.md §6.3](../../docs/plans/mvp/m2/content-baseline-report.md)）。那 33 個
 Run 多數仍然「成功」，但**執行的不是 Skill 帶的腳本，而是模型對腳本的轉譯**——同一個
 Skill 在裝了 Python 的環境與這裡是兩種行為。
 
@@ -45,7 +45,7 @@ Skill 在裝了 Python 的環境與這裡是兩種行為。
 
 `2026.08-2` 的規則是一句話：**裝目錄 `deps` 欄位的聯集**。規則沒錯，錯的是它的輸入。
 
-M2 全量基準（[content-baseline-report.md §13.4](../../plans/mvp/m2/content-baseline-report.md)）
+M2 全量基準（[content-baseline-report.md §13.4](../../docs/plans/mvp/m2/content-baseline-report.md)）
 發現 4 個 Skill 的腳本 import 了 `deps` 沒宣告的套件。**逐套件靜態掃描 45 個 pin commit
 套件樹後，實際短少的是 13 個 Skill、8 個套件**——§13.4 只看到 4 個，因為只有那 4 個在該批
 Dataset 上真的走到了 `ModuleNotFoundError`；其餘的沒被那組資料觸發，不代表沒有缺。
@@ -141,7 +141,7 @@ Skill 的基準都判「符合」——因為 Agent 繞過了那條驗證路徑�
 >
 > 本次升版的**依賴集只增不減**（8 個新增、0 個移除、既有 9 個版本不變），所以 `2026.08-2`
 > 的 45 筆結論在 `2026.08-3` 上**幾乎確定仍成立**——但「幾乎確定」不是量測，0022 的鍵不
-> 接受推論。升版證據走的是 [ADR-023](../../adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md)
+> 接受推論。升版證據走的是 [ADR-023](../../docs/adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md)
 > 的四項重驗（見 [`runtime-agent-sdk/UPGRADES.md`](runtime-agent-sdk/UPGRADES.md)），
 > 那是**行為回歸**的關卡；相容軸回填是**目錄事實**，兩者不互相取代。全量重跑
 > 45 筆約 $2.2（§13.6 實測），列為 `03` 工作項而非本批動作。
@@ -201,7 +201,7 @@ image 裡有什麼」可以不一致——而 I-03 與 I-04 正是要求兩者�
 次要理由：SPDX JSON 是外部審閱者不裝 Anchore 工具也讀得懂的格式；I-03 要的是可交付
 的依賴清單，不是掃描器的內部表示。
 
-## 門檻值（**已定案：[ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分，2026-08-16**）
+## 門檻值（**已定案：[ADR-022](../../docs/adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分，2026-08-16**）
 
 SEC-002 的六項無值語句（威脅模型 Q18）已全部定值。屬本流水線的兩項是下面這兩個，
 ADR-022 **採納了本檔原本的提案值**並補上批准者與時效；程式無需改動。

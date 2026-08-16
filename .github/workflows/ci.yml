@@ -32,22 +32,22 @@ jobs:
             web:
               - 'apps/web/**'
               - 'packages/api-client-ts/**'
-              - '!spikes/**'
+              - '!docs/**'
             platform:
               - 'services/platform/**'
               - 'db/**'
               - 'contracts/**'
-              - '!spikes/**'
+              - '!docs/**'
             llm:
               - 'services/llm/**'
               - 'packages/api-stub-py/**'
               - 'contracts/**'
-              - '!spikes/**'
+              - '!docs/**'
             sandbox:
               - 'services/sandbox/**'
               - 'contracts/**'
               - 'infra/images/**'
-              - '!spikes/**'
+              - '!docs/**'
 
   web:
     needs: changes

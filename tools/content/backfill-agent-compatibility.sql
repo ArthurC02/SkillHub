@@ -1,6 +1,6 @@
 -- Backfill: the M2 baseline's Agent-compatibility measurements (0022).
 --
--- Source of the numbers: plans/mvp/m2/content-baseline-report.md §4, §8 and §12.
+-- Source of the numbers: docs/plans/mvp/m2/content-baseline-report.md §4, §8 and §12.
 --
 -- One invocation backfills one (image, run window) pair, because 0022 keys a
 -- measurement by (skill version, runtime image) and a Run's image is not

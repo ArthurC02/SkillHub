@@ -1,7 +1,7 @@
 -- Apply the owner's 方案 C decision of 2026-08-16 to the four `anthropics/skills`
 -- source-available Skills: hold the materials, keep the listing.
 --
--- Decision and its reasoning: plans/mvp/m2/anthropic-sa-license-memo.md §3 方案 C
+-- Decision and its reasoning: docs/plans/mvp/governance/anthropic-sa-license-memo.md §3 方案 C
 -- (＋ its 2026-08-16 追記). Mechanism: skills.access_restriction (migration 0023).
 --
 -- Data, not schema, so it is not in the migration — a fresh database has no

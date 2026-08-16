@@ -42,7 +42,7 @@
 
 ## dev 與 prod 的差異
 
-本機是 Windows，`runsc` 需要 Linux（見 [plans/mvp/m2/README.md](../../plans/mvp/m2/README.md)），所以開發用 DockerProvider、生產用 gVisor。兩者**走同一段程式碼**，差的只有下面三格：
+本機是 Windows，`runsc` 需要 Linux（見 [docs/plans/mvp/m2/README.md](../../docs/plans/mvp/m2/README.md)），所以開發用 DockerProvider、生產用 gVisor。兩者**走同一段程式碼**，差的只有下面三格：
 
 | 項目 | dev（本機） | prod（執行節點池） |
 | --- | --- | --- |

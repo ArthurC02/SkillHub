@@ -1,6 +1,6 @@
 # tools/goldenset
 
-**權威資料在 DB／物件儲存，此處為種子、管線與證據快照。** 這裡是 **M1 的評測材料**：DISC-001 檢索品質的 golden query set 與它的語料、腳本、量測輸出。報告本體是 [`plans/mvp/m1/golden-query-set.md`](../../plans/mvp/m1/golden-query-set.md)。
+**權威資料在 DB／物件儲存，此處為種子、管線與證據快照。** 這裡是 **M1 的評測材料**：DISC-001 檢索品質的 golden query set 與它的語料、腳本、量測輸出。報告本體是 [`docs/plans/mvp/m1/golden-query-set.md`](../../docs/plans/mvp/m1/golden-query-set.md)。
 
 以下逐檔歸類。同一列是一條管線。
 
@@ -11,7 +11,7 @@
 
 ## 與 M1 驗證閘門的關係
 
-`results_v2_enriched.txt` 的數字就是 [`gate-test/README.md` §3.1](../../plans/mvp/m1/gate-test/README.md) 「量化前置（檢索品質）」那一列判定為 ✅ 的依據。因此：
+`results_v2_enriched.txt` 的數字就是 [`docs/plans/mvp/gate-test/README.md` §3.1](../../docs/plans/mvp/gate-test/README.md) 「量化前置（檢索品質）」那一列判定為 ✅ 的依據。因此：
 
 - **`corpus/`、`queries.json`、`manifest.json` 屬閘門凍結標的的上游**——改動它們會讓 §3.1 記錄的 recall 數字與現況不符，D 日之後動了就必須依 §3.2 分開統計並在分析報告中明列。
 - 閘門測試本身**不量 recall**（它量的是真人會怎麼打字、看到結果敢不敢往下走）。兩者測的不是同一件事，這裡的數字取代不了那場測試，反之亦然。

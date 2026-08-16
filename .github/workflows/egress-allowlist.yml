@@ -53,5 +53,5 @@ jobs:
           fi
           CHANGED=$(git diff --name-only "$RANGE")
           echo "$CHANGED" | grep -q '^infra/egress/' || exit 0
-          echo "$CHANGED" | grep -q '^plans/mvp/m0/threat-model-and-sandbox-baseline.md$' \
-            || { echo "::error::changing infra/egress/ requires updating plans/mvp/m0/threat-model-and-sandbox-baseline.md in the same change (ADR-022 Q3 change process; threat model §3)"; exit 1; }
+          echo "$CHANGED" | grep -q '^docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md$' \
+            || { echo "::error::changing infra/egress/ requires updating docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md in the same change (ADR-022 Q3 change process; threat model §3)"; exit 1; }

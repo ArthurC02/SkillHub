@@ -201,7 +201,7 @@ def run(args) -> int:
                     "CONTENT-005 plain-language summaries for the seed catalogue. Every row is "
                     "output of the production POST /v1/enrich-skill; origin says whether it was "
                     "called here or loaded from tools/goldenset/corpus_enriched. Human review "
-                    "state lives in plans/mvp/m1/content-summaries.md, not here."
+                    "state lives in docs/plans/mvp/content/content-summaries.md, not here."
                 ),
                 "generated_at": dt.date.today().isoformat(),
                 "endpoint": "POST /v1/enrich-skill (services/llm)",
