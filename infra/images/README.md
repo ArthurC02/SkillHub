@@ -200,25 +200,38 @@ CI artifact `runtime-agent-sdk-scan-<sha>`（保留 90 天，含 `sbom.spdx.json
 `vulnerabilities.txt`、`vulnerabilities.json`）**保留為人讀用途**，但它不再是 I-03／I-04
 的證據來源——閘門 A 查的是 attestation。
 
-### 已發佈的 digest（2026-08-16 首發）
+### 已發佈的 digest 與孤兒清單
 
-| digest | tag | attestation | 狀態 |
+**現行 digest ＝ `ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-2` 當下解析到的那個。**
+這裡不抄它——build 不是位元可重現的，所以每一次跑到發佈步驟都會產生**新的 digest** 並把版本
+tag 移過去，一份寫在文件裡的「現行 digest」保證會過期，而過期的那份看起來跟正確的一模一樣。
+要拿當下的值：
+
+```bash
+docker buildx imagetools inspect ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-2
+```
+
+**孤兒 digest 清單**（曾被推上去、tag 已移走、**不得被任何部署引用**）。孤兒不是靜默的風險：
+沒有掃描 attestation 的那些，閘門 D 依 I-04 判過期本來就會拒絕；有 attestation 的那些則是
+「內容正確但沒人再指向它」。唯一的實際風險是有人**手動 pin** 到其中一個。
+
+| digest | 曾有的 tag | attestation | 產生原因 |
 | --- | --- | --- | --- |
-| `sha256:33e9e4bd…f71c45` | `2026.08-2`、`sha-0a4272c37ca1` | SBOM ＋ 掃描（`scanned_at` `2026-08-16T11:14:35Z`、`fixable_critical_high` 0） | **現行** |
-| `sha256:5d3c5615…4c19a909` | `sha-b0c270b6e890` | **只有 SBOM** | **孤兒，不得引用** |
+| `sha256:5d3c5615345c32e9c4e9dab3b1a474e384292343327876f6eeba42d84c19a909` | `sha-b0c270b6e890` | **只有 SBOM** | 首跑：掃描 attestation 那步以 exit 126 失敗（`scan_predicate.sh` 執行位元沒進 git index） |
+| `sha256:33e9e4bdf95346d97b0ce37703cf4d0bec3b0cdd2b721bb57a3f31fe17f71c45` | `sha-0a4272c37ca1` | SBOM ＋ 掃描 | 修好後的重跑；被下一次發佈取代 |
+| `sha256:7b79380c94b90621d0fb23f052ed883bbaaa0f53f6d65e2cd91328270c2c5d75` | `sha-27cbbe707359` | SBOM ＋ 掃描 | **一次純 README 編輯觸發的重建** ——已修，見下 |
 
-孤兒那一列是首跑的產物：image 推上去、SBOM 掛好之後，掃描 attestation 那一步以 exit 126 失敗
-（`scan_predicate.sh` 的執行位元沒進 git index），修好重跑時 build 不是位元可重現的，於是產生了
-第二個 digest，`2026.08-2` 這個 tag 也跟著移了過去。
+**清單為什麼不會再長**：path filter 已排除 `infra/images/**/*.md`。第三列是這個缺口的唯一實例
+——改一行文件就重推一個 image、順手孤立前一個 digest。（第一、二列是同一個 exit 126 事故的
+前後兩半，與此無關。）
 
-**它是安全的死路而不是陷阱**：沒有掃描 attestation ＝ I-04 判定過期 ＝ 閘門 D 不得引用，方向
-是 fail-closed。**唯一的風險是有人手動 pin 到它**。清掉它需要 `delete:packages` scope，本機
-git credential 的 token 沒有（只有 `gist, repo, workflow`），因此留給負責人：
-**GitHub → 頭像 → Your profile → Packages → `skillhub-runtime-agent-sdk` → 右側
-Package settings／Manage versions → 找到 tag 為 `sha-b0c270b6e890` 的那個 version → Delete。**
+**刪除方式**（本機 git credential 的 token scope 是 `gist, repo, workflow`，**沒有
+`delete:packages` 也沒有 `read:packages`**，因此連 version id 都查不到，留給負責人）：
+GitHub → 頭像 → **Your profile → Packages → `skillhub-runtime-agent-sdk` →
+Package settings／Manage versions** → 依上表的 tag 找到該 version → **Delete**。
 或以帶 `delete:packages` 的 token 呼叫
-`DELETE /user/packages/container/skillhub-runtime-agent-sdk/versions/{version_id}`（version id
-需先以 `GET …/versions` 查，該端點要 `read:packages`）。
+`DELETE /user/packages/container/skillhub-runtime-agent-sdk/versions/{version_id}`
+（version id 先以 `GET …/versions` 查，該端點要 `read:packages`）。
 
 ## 當前掃描結果（`runtime-agent-sdk:2026.08-2`，2026-08-16）
 

@@ -10,16 +10,32 @@
 # commit to the repo would be minutes of runner time to re-learn nothing.
 name: Runtime Image
 
+# The filter is what decides whether an image is rebuilt and republished, so it
+# has to match "the image could have changed" and nothing wider. Two corrections
+# to the obvious version, both learned the expensive way:
+#
+#   * Markdown under infra/images/ is excluded. A build is not reproducible bit
+#     for bit, so every run that reaches the publish step mints a *new* digest and
+#     moves the version tag onto it, leaving the previous digest orphaned in the
+#     registry. Republishing over a README edit meant one orphan per docs commit —
+#     and an orphan is a digest that gate D can never accept, because the tag its
+#     attestations describe has moved on.
+#   * scan_predicate.sh is included. It produces the I-04 attestation; a change to
+#     it that nothing re-runs is a change nobody has tested.
 on:
   pull_request:
     paths:
       - 'infra/images/**'
+      - '!infra/images/**/*.md'
       - '.github/workflows/runtime-image.yml'
+      - '.github/workflows/scan_predicate.sh'
   push:
     branches: [main]
     paths:
       - 'infra/images/**'
+      - '!infra/images/**/*.md'
       - '.github/workflows/runtime-image.yml'
+      - '.github/workflows/scan_predicate.sh'
   # I-04 requires the scan result of the *published* image to be in date, and
   # 30 days is the value ADR-022 set. Nothing re-scans a digest that nobody
   # rebuilds, so a published image would silently expire and, per gate D, stop
