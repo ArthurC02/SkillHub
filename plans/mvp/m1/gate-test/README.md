@@ -136,7 +136,7 @@ golden set v2 在門檻 `MaxCosineDistance = 0.75` 下，12 條干擾查詢**全
 >   - 審校 **44/45 通過、1 筆 `需修改`**：`docx` 兩輪重跑後仍有 1 條忠實性未支持（與 Python 揭露無關），依規則不硬修，**留給負責人裁定**（三條可選路徑見報告 §11.3）
 >   - **對卡片的影響**：`docx` 是 `documents` 類**已索引**筆，不影響任何精選下限；但它是 golden query **D01 的 gold primary 且為現行 Top-1**，若負責人選擇下架，該題將失去判定基準
 >   - 逐筆結果、費用與入庫文字指紋見 [content-review-report.md §11](../content-review-report.md)
-> - ⚠️ **一項判準範圍修正待追認**（KPI3 只掃 zh-Hant 欄位，見報告 §9 第 2 條）。若負責人不接受，`excel-format` 退回「需修改」，⑦ 與 CONTENT-005 一併退回——但**不影響任何一張卡的 gold**（`excel-format` 只是 DOC-4 的 acceptable）。
+> - ~~⚠️ **一項判準範圍修正待追認**（KPI3 只掃 zh-Hant 欄位，見報告 §9 第 2 條）。若負責人不接受，`excel-format` 退回「需修改」，⑦ 與 CONTENT-005 一併退回——但**不影響任何一張卡的 gold**（`excel-format` 只是 DOC-4 的 acceptable）。~~ → **2026-08-16 已追認**（依負責人概括授權，經獨立覆核）：修正在方法上獨立成立（以簡體字元集掃英文句量的不是那句話的語言慣例），且「不修判準就得下架」是**套錯規則**——KPI3 屬在地化類，該類沒有兩輪上限也沒有下架終點。附三項條件（保留觀察值、不為此重跑、事後修判準的通則）見 [content-review-report.md §12](../content-review-report.md)。`excel-format` 通過維持，⑦ 15/15 維持。
 
 ### 3.2 環境凍結
 

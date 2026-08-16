@@ -68,7 +68,7 @@
 - [x] CONTENT-001 定義精選、已索引與外部結果的收錄政策。（允收：`02` §4.7）
 - [x] CONTENT-002 定義來源可信度、License 與衍生關係的呈現規則。（允收：`02` §4.7）
 - [ ] CONTENT-003 建立首批 Skill 候選清單。（正式清單見 [plans/mvp/m1/curated-skill-list.md](m1/curated-skill-list.md)、匯入資料 `tools/content/seed-skills.json`。**2026-08-15 起三類的已索引與精選數量目標全部達標**——`documents` 精選由 3 補足為 4（`excel-format`，見該文件 §9）。仍不勾的原因有二：§5.2 的 source-available 法務判定未完成前，`documents` 已索引有 10→6 的塌陷風險；九項精選檢查的 ⑤ 需 CONTENT-006 才能判定（**⑦ 已於 2026-08-16 由自動化審校判為 `pass`，15/15**）。**2026-08-15 修訂**：⑧「平台基準試跑」由已改列 M2 的 CONTENT-007／008 承接，**不再是 CONTENT-003 的勾選前提**，改以引用方式處理——CONTENT-003 勾選時須在清單中把 ⑧ 明確記為「待 M2 基準試跑，見 CONTENT-007／008」，不得記為已通過。依據 [m1/m1-work-items-audit.md §8 第三梯](m1/m1-work-items-audit.md)）（允收：`02` §4.7）
-- [ ] CONTENT-004 對首批 Skill 完成來源及 License 檢查。（License 合規總表見 [curated-skill-list.md §5](m1/curated-skill-list.md)；11 個入選 repo 已逐一實查 LICENSE 檔。未結案項：§5.2 `anthropics/skills` source-available 條款是否允許平台保存內容快照，待負責人與法務判定）（允收：`02` §4.7）
+- [ ] CONTENT-004 對首批 Skill 完成來源及 License 檢查。（License 合規總表見 [curated-skill-list.md §5](m1/curated-skill-list.md)；11 個入選 repo 已逐一實查 LICENSE 檔。未結案項：§5.2 `anthropics/skills` source-available 條款是否允許平台保存內容快照，待負責人與法務判定——**2026-08-16 已備妥分析與處置提案** [m2/anthropic-sa-license-memo.md](m2/anthropic-sa-license-memo.md)（索引／展示／沙箱試跑／打包下載四種行為逐項評估，另補 LLM 增強產出一項；建議方案 C：先關閉這 4 筆的全文展示、維持索引與下載封鎖、終判前不對外開放試跑，並與上游詢問書面澄清並行。**非法律意見，終判仍在負責人與法務**）（允收：`02` §4.7）
 - [x] CONTENT-005 對首批 Skill 產生一般使用者可理解的摘要。（允收：`02` §4.7 修訂版逐條達成，見 [m1/content-review-report.md](m1/content-review-report.md) §8：45 筆全量自動化審校 **45/45 通過**、精選 15/15、主判準 45/45、忠實性 890 條宣稱 0 條未支持；審核紀錄見 [m1/content-summaries.md](m1/content-summaries.md)）
 - [ ] CONTENT-006 對首批 Skill 完成規格及靜態掃描。（允收：`02` §4.7）
 - [ ] CONTENT-007 對精選 Skill 建立範例資料、Prompt 與驗收條件。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**（**2026-08-16 部分完成**，見 [m2/content-baseline-report.md §10](m2/content-baseline-report.md)：15 個精選各有一組範例 Dataset、點名該 Skill 的 User Prompt 與三條驗收條件，並以 `test_case_snapshots` 不可變保存；範例資料為合成內容、無 Secrets 與個資。**不勾的唯一原因**：`writing` 類精選的「可編輯 rubric，供 LLM Judge 逐項回傳證據引文」未做——EVAL-001／002 的 Judge 介面尚未實作，rubric 沒有消費端）（允收：`02` §4.7）
@@ -101,6 +101,7 @@
 - [x] INGEST-011 靜態檢查涵蓋 `SKILL.md` 內嵌可執行程式碼並揭露規模（`02:SKILL-003`）。
 - [x] INGEST-012 實作 License 多層溯源：記錄來源層級、打包器搬運 repo 層授權、SPDX 正規化（`02:SKILL-004`、[ADR-021](../../adr/ADR-021-skill-license-provenance.md)）。
 - [x] INGEST-013 外部 URL 揭露依主機聚合並保留完整明細（`02:SKILL-005`）。
+- [ ] INGEST-014 實作匯入抓取器的 SSRF 與內部網路防護：scheme 白名單、解析後逐一比對位址封鎖清單、DNS Rebinding 防護（解析與連線綁同一位址、每跳重驗）、redirect 上限 3 跳且跨主機不帶憑證、回應體 10 MB 邊讀邊中止、連線 10 秒／整體 60 秒逾時、fail-closed、錯誤訊息不洩漏內部位址。（**2026-08-16 新增**：威脅模型 **Q15** 已裁定歸屬為擴充 `02:SEC-003` 而非另立需求 ID，理由見該節；封鎖清單與實作須與後 MVP 的 `02:SEC-004` 共用同一份。**未實作**）（允收：`02:SEC-003`）
 
 ## 7. Skill Explorer（M1，結束時通過驗證閘門才進 M2）
 
@@ -135,6 +136,7 @@
 - [ ] TEST-007 實作 Local Runner 連線狀態與本機絕對路徑選擇。（後 MVP）
 - [x] TEST-008 實作執行前 Dataset、Script、MCP、工具、網路與 Secrets 摘要。（`GET /skills/{id}/runs/preflight`，八項全數揭露：Dataset 名稱／型別／大小與合計、Script 由 `skillpkg.Validate` 重掃實際會執行的套件位元組（讀不到時標 `unavailable`，**不得呈現為 `none`**）、工具為 Sandbox 內建檔案與 Shell、**MCP 在 MVP 恆為空清單並明確顯示為「無」而非略過**、網路取 `policy_snapshot` 的 `default_deny` ＋空允許清單、Secrets 只列注入項名稱、Provider 取排程實際會選中的那一個、資源上限直接取 `DefaultResourceLimits()`／PDM-005 §5.2。摘要以 canonical JSON（固定欄位順序的 struct）取 sha256，慣例同 `testlab/snapshot.go`）
 - [x] TEST-009 實作權限異動後重新確認。（migration **0020** `run_permission_confirmations` 記錄「誰、在何時、同意了哪個摘要 hash」；`POST /skills/{id}/runs/preflight/confirm` 寫入，`internal/run/service.go` 的 `Create` 入口重算當下摘要 hash 並要求兩件事同時成立：請求帶的 hash 等於重算值、且該 hash 有確認紀錄。任一不成立回 **422 且不建 Run**——這是 **SEC-002 閘門 B**「使用者未確認或未重新確認執行前權限摘要」那一項。舊確認因 hash 為查詢鍵而自然失效，不需另作撤銷掃描；換／刪 Dataset 皆有具名整合測試。使用者拒絕＝不呼叫確認端點，沒有紀錄就起不了 Run）
+- [ ] TEST-011 在執行前權限摘要加上**預估成本區間**（區間非單值）。（**2026-08-16 新增**：PDM-005 §5.3 指定要回寫 `02:TEST-005` 的欄位清單當時沒有回寫，[m2 對帳 §9.3](m2/m2-work-items-audit.md) 查出 `PermissionSummaryContent` 完全沒有此欄位；`02:TEST-005` 已於同日補上該清單，本項承接實作。**必須是區間**——首次與後續 Run 因 prompt caching 差約 8 倍（PDM-005 §5.2a-6），單值必然對其中一種情境是錯的。此欄位不在 TEST-008 的字面範圍內，故不退回 TEST-008。**未實作**）（允收：`02:TEST-005`）
 - [x] TEST-010 保存實際執行使用的 Test Case 快照。（`testlab.CreateSnapshot` 為唯一實作，由 `internal/run` 於建立 Run 的同一交易呼叫；快照涵蓋 Prompt、驗收條件與 Dataset 參照並以單一 content hash 固定，不可變由 0005 trigger 保證；已刪除的 Test Case 不可起 Run）
 
 ## 10. Run Orchestrator 與 Provider 契約（M2）
@@ -227,14 +229,15 @@
 - [ ] SEC-001 完成 Skill、Script、MCP、Dataset、Secrets 與 Local Runner 威脅模型。（允收：`02` §6）
 - [ ] SEC-002 定義 Sandbox 最低安全基線與阻擋條件。（允收：`02` §6）**部分完成**：45 項基線、四閘門與 fail-closed 語意已定（威脅模型 v2 §4～§5）；**六項無值語句已於 2026-08-16 由 [ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分定值**（P-03 7 天／P-04 N·N−1 且 ≤90 天＋逃逸類 CVE 24 h／I-04 30 天／I-06 可修的 Critical·High 阻擋無豁免／X-02 每 5 分鐘／X-03 連 2 輪告警、X-04 單節點 ≥50% drain 與全池 ≥25% 下限 2 筆暫停），**勾選前提 Q1～Q3 亦已定案**（同 ADR 第一部分）。**仍不勾的兩個原因**：①閘門 B 的四項額外阻擋只落地兩項——靜態掃描等級判斷缺（根因威脅模型 Q7，見乙-8）、Workspace 並行上限強制缺（PDM-005 已定值 ＝ 2，只缺實作）；②45 項尚未經 SEC-009 全數驗證。
 
-- [ ] SEC-003 建立 Skill 匯入與執行前靜態掃描政策。（允收：`02` §6）
+- [ ] SEC-003 建立 Skill 匯入與執行前靜態掃描政策。（允收：`02` §6）**2026-08-16**：威脅模型 **Q15**（匯入 SSRF 的歸屬）已裁定為**擴充本需求**，`02:SEC-003` 已補上抓取器防護的允收準則；實作由 `INGEST-014` 承接。**本項仍不勾的原因不變**：每類掃描發現對應的等級（阻擋／警告／資訊）尚未定案（威脅模型 **Q7**），`SEC-002` 閘門 B 的「靜態掃描結果為阻擋」因此仍不可判定。
 - [ ] SEC-004 建立遠端 MCP 的 SSRF、內部網路與資料外洩防護。（後 MVP，隨 MCP 啟動）（允收：`02` §6）
 - [ ] SEC-005 建立 Secrets 儲存、短效注入、遮罩與撤銷流程。（允收：`02` §6）
 - [ ] SEC-006 建立 Dataset、Trace 與 Artifact 保存及刪除政策。（允收：`02` §6）
 - [ ] SEC-007 建立來源、License 與下架處理政策。（允收：`02` §6）
 - [ ] SEC-008 驗證使用者與 Run 之間的資料隔離。（允收：`02` §6）
 - [ ] SEC-009 進行 Sandbox 逃逸、資源濫用與權限提升測試。（允收：`02` §6）**驗收程序已定案、測試未執行**：[ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第三部分是部署批實際照著跑的那份清單，內容為 **10 個測項**——T1 逃逸 PoC 集／T2 syscall 煙霧 fuzz／T3 資源耗盡／T4 Runtime 相容性（45 個精選 Skill 在 `runsc` 上重跑，約 $3.4）／**T5 網路外洩八子項**（DNS tunneling、內網掃描、Metadata Service、**東西向**、**節點面**、N-07 供應商網域、**T5-7 閘道 `pinned_ip` 的非允許 port**、**T5-8 自外部掃節點 port**）／T6 憑證範圍／**T7 清理失敗與遺留門檻（含人工注入假遺留資源——否則 X-04 的 drain 與暫停路徑沒有任何測項會執行到）**／T8 宣告式供應鏈稽核／**T9 Provider 契約（加 I-05 與 `egress.allow` 不符須回 `capability_mismatch` 兩項斷言）**／**T10 P-02 常駐探針**（入池前一次＋入池後常駐）。<br>**分兩個 suite**：Suite 1 可在一般 Linux runner 跑（**gVisor 的 `systrap` 平台不需巢狀虛擬化**，只有 `--platform=kvm` 才需要——ADR-019 待決策 3 的範圍因此縮小，**待部署批第一台節點實測確認**）；Suite 2 需生產同規格節點。<br>**前置條件三條（缺一即判 `unknown` ＝ fail）**：①受測 Runtime Image 已發佈至 **GHCR 且附 SBOM 與掃描 attestation**（SBX-011）；②`infra/nodes/gvisor-baseline.txt` 已填實際版本（非 `unset`）；③`infra/egress/allowlist.yaml` 的 `tier: sandbox` 條目已填實際 `pinned_ip`，且該位址**不是控制平面節點**（Q2 強制條件 6）。<br>**通過判準**：45 項全數 pass、**0 項 unknown**，任一 fail 或 unknown 即不得開放外部使用者提交 Skill 執行，**無例外流程**。<br>**證據**：`plans/mvp/m4/sec-009-acceptance/<日期>-<節點>/`（判定表與 `versions.txt` 進 repo，原始輸出留 CI artifact 並附連結），保存 ≥ 1 年。
-- [ ] SEC-010 完成安全事件回應與緊急停用 Provider 流程。（允收：`02` §6）
+- [ ] SEC-010 完成安全事件回應與緊急停用 Provider 流程。（允收：`02` §6）**2026-08-16**：未定的三項（嚴重度分級、誰接最高級告警、遮罩失敗補救程序）已寫成**提案**置於 `02:SEC-010` 的待決策區——P1／P2／P3 分級表（P1 的第一動作為自動停止派送，不等人）、GitHub issue ＋ email 的通知路徑（承認單人團隊、不採購值班輪替系統）、遮罩失敗 runbook（撤銷 → 清除 → 通知 → 事後，含必補回歸測試）。**待負責人核可**；核可前不得據以判定本需求通過，一鍵停用流程與 runbook 本體亦尚未產出。
+- [ ] SEC-011 實作平台 operator 角色與跨 Workspace 下架權限。（**2026-08-16 新增**，允收：`02:SEC-011`）動作窮舉為三項——變更目錄項可見性、停用 Skill Version、白名單異動；**operator 不得讀取任何 Workspace 私有資料、不得代表使用者發起 Run、不得改寫既有 Skill Version 與歷史 Run**（最小權力原則）。每個動作與角色授予本身都寫 audit event（依賴 `CORE-008`，未完成），理由為必填；`member` 呼叫 operator 端點回 404。下架流程與 `CONTENT-009`／`INGEST-010` 共用同一組狀態，不另開第二套。**未實作**
 
 ## 17. 品質保證與封閉測試（M4）
 
