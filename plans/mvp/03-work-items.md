@@ -129,7 +129,7 @@
 - [x] TEST-001 實作 User Prompt 輸入與驗證。（Test Case CRUD 綁 Workspace 內 Skill；非空白與長度驗證在 Service 與 0004／0017 的 CHECK 雙重把關）
 - [x] TEST-002 實作驗收條件自動建議。（`POST /test-cases/{id}/criteria/suggest`：Go 讀 Skill 名稱／摘要、User Prompt 與 Dataset **欄位名＋推斷型別**，經內部 HTTP 呼叫 `services/llm` 的 `POST /suggest-criteria`（mini 級 `gpt-5.4-mini`、`json_schema` strict、經 LiteLLM 閘道）。**Dataset 的資料列不出境**：請求 schema 只有欄位名與型別兩個欄位，型別由第一列在 Go 程序內推斷後即丟棄（鐵律 11，具名整合測試以真實列值反證）。寫入時標 `source='suggested'` 且未確認；使用者改寫文字即轉為 `source='user'`。LLM 未設定或失敗回 503 並保留手動路徑，`02:TEST-001` 的「可選強化」語意成立）
 - [x] TEST-003 實作驗收條件新增、修改、刪除與確認。（確認為明示同意欄位；改寫文字即撤銷既有確認）
-- [x] TEST-004 實作 Dataset 上傳、限制、關聯與刪除。（PDM-005 §5.1 全數強制：單檔 25 MB、單 Test Case 100 MB／20 檔、magic bytes 判型不信副檔名、`expires_at` 90 天；刪除連同物件）
+- [ ] TEST-004 實作 Dataset 上傳、限制、關聯與刪除。（PDM-005 §5.1 全數強制：單檔 25 MB、單 Test Case 100 MB／20 檔、magic bytes 判型不信副檔名、`expires_at` 90 天；刪除連同物件，皆有具名整合測試。**2026-08-16 對帳退回 `[x]` → `[ ]`**：`02:TEST-002` 第 2 條「上傳前**顯示**大小限制、保存政策及資料使用範圍」未達成——資料來源存在（`GET /test-cases/limits`，`contracts/openapi/public.yaml`）且已斷言「公布上限＝實際強制上限」，但 `apps/web` **沒有任何 Test Lab／Dataset 頁面**消費它，沒有顯示的地方。判例同 M1 對 DISC 的處理。見 [m2/m2-work-items-audit.md §3.1](m2/m2-work-items-audit.md)；§9 其餘六項同屬 API-only，是否含 UI 待負責人裁定，見該文件 §3.2）
 - [ ] TEST-005 實作遠端 MCP 位址及短效憑證設定。（後 MVP）
 - [ ] TEST-006 實作 MCP 工具發現與權限選擇。（後 MVP）
 - [ ] TEST-007 實作 Local Runner 連線狀態與本機絕對路徑選擇。（後 MVP）

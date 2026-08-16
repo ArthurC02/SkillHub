@@ -1,18 +1,33 @@
 # M2:Skill Lab — 執行計畫
 
 - 日期:2026-08-16
-- 狀態:進行中
+- 狀態:**已完結**(工作項對帳見 [m2-work-items-audit.md](m2-work-items-audit.md),基準 commit `512add1`;殘項三類清單見本文件末節)
 - 前提:M1 程式碼面收斂(工作項對帳見 [../m1/m1-work-items-audit.md](../m1/m1-work-items-audit.md));M1 驗證閘門的使用者測試與 M2 開發並行,正式通過與否以測試結果為準(材料:[../m1/gate-test/](../m1/gate-test/))。
+
+## 完結摘要(2026-08-16)
+
+M2 範圍 **41 個工作項**,**33 項維持勾選、1 項對帳退回、7 項維持不勾**(全部為誠實記錄的部分完成或部署期項目),**0 項新勾**。18 個 commit(`3bfd8db..512add1`)、5 份 migration(0016～0020)、2 個新 Go 服務邊界(`services/sandbox` 獨立 module、`internal/trace`)。
+
+**M2 里程碑目標(`01` §M2)的達成狀況**:
+
+| `01` 的 M2 目標 | 狀況 |
+| --- | --- |
+| 完成 Cloud Sandbox、Dataset、Prompt 與 Run Trace | ✅ 後端完成並經 45 個真實 Skill 端到端驗證;**Test Lab 無 UI**(見殘項乙-7) |
+| 完成權限確認、逾時、取消及清理 | ✅ TEST-008/009、RUN-006/007、SBX-009;73/73 Run 全部 `cleaned` |
+| 完成精選 Skill 的範例資料、Prompt、驗收條件與基準試跑 | ✅ CONTENT-008(15/15 符合);**CONTENT-007 差 writing rubric 一項**(見殘項乙-5) |
+| **依 Sandbox 實測結果啟用搜尋的 Agent 相容篩選維度** | ❌ **未達成**。資料已備妥(45/45 `activated`、33 個「模型轉譯」),但 schema 無欄位可回寫,四個設計問題待決(見殘項乙-4) |
+
+**單一最重要的發現**:PDM-005 的 300K/60K token 硬上限被寫進 `policy_snapshot`、**顯示在執行前權限摘要上並要求使用者確認**,而平台沒有任何一行程式會因為超過它而停止一個 Run。它不違反任何一條已勾項的字面允收準則(`02:RUN-003` 與 SBX-006 的清單裡都沒有 token),因此在 18 個 commit 裡一路沒被發現——**它是孤兒殘項**。詳見對帳 §9.1。
 
 ## 範圍(對應 03-work-items)
 
 | 工作群 | 項目 | 里程碑內順序 |
 | --- | --- | --- |
-| Run 契約與狀態機 | RUN-001~004(Provider-neutral 契約、Capability、run_id 映射、狀態機) | 第一批 |
-| Test Case 與執行設定 | TEST-001/002/003/004/008/009/010(005/006/007 後 MVP) | 第一批起 |
-| Trace Schema | TRACE-001(事件 schema 先行,收集屬後續批) | 第一批 |
+| Run 契約與狀態機 | RUN-001~004(Provider-neutral 契約、Capability、run_id 映射、狀態機) | 第一批 **✅ 完成**(RUN-004 由第二批一併結案) |
+| Test Case 與執行設定 | TEST-001/002/003/004/008/009/010(005/006/007 後 MVP) | 第一批起 **六項完成**(TEST-002/008/009 於權限摘要批;**TEST-004 對帳退回**——缺上傳前的顯示面) |
+| Trace Schema | TRACE-001(事件 schema 先行,收集屬後續批) | 第一批 **✅ 完成**(由第三批勾選,`0019` 補齊四個欄位缺口後才成立) |
 | Run 排程與韌性 | RUN-005~009(排程、取消逾時、冪等清理、重啟恢復、契約測試) | 第二批 **✅ 2026-08-16 完成**(含 Outbox publisher;RUN-004 一併結案) |
-| SelfHostedProvider | SBX-001~010(gVisor 基線) | 第二~三批 |
+| SelfHostedProvider | SBX-001~010(gVisor 基線) | 第二~四批 **六項完成**(001/003/004/006/008/009);**002/005/007/010 維持不勾**——門檻待定值＋生產網路與逃逸測試屬部署期 |
 | Trace 收集與 O11y | TRACE-002~008、O11Y-001~003 | 第三批 **✅ 2026-08-16 完成**（TRACE-001 一併勾選；TRACE-004 的成本欄位由第四批補上並勾選） |
 | 模型閘道出口與短效授權 | SBX-007（dev 網路面）、SBX-008、TRACE-004 成本 | 第四批 **2026-08-16**（SBX-008 完成、TRACE-004 勾選；SBX-007 仍不勾——Proxy 本體屬部署期） |
 | 內容基準試跑 | CONTENT-007/008(自 M1 移入) | 第五批 **✅ 2026-08-16**(CONTENT-008 完成、精選 15/15 符合;CONTENT-007 部分完成不勾——writing rubric 缺消費端。見 [content-baseline-report.md](content-baseline-report.md)) |
@@ -200,6 +215,52 @@ docker run -d --name sandboxd --network skillhub_default --network-alias sandbox
 1. **Prompt 必須點名 Skill**(PDM-011 實測自主觸發率為 0),而且**要告訴 Agent 把產物寫到 `/out/artifacts/`**——沒有系統提示會自動說這件事,沒寫到那裡就沒有 artifact 被收。Dataset 掛在 `/work/data/<file_name>`。
 2. **SeaweedFS 必須帶 S3 金鑰**。匿名 bucket 沒有可簽章的金鑰,`PresignGet` 會直接失敗、Run 以 fail-closed 結束。`infra/compose/seaweedfs-s3.json` 已加,但**既有 stack 需重建 seaweedfs 容器才會生效**。
 
-## 待負責人(承 M1)
+---
 
-- 宣告閘門 D 日;追認 KPI3 判準修正;Q15(匯入 SSRF 歸屬)裁定;anthropic-sa 法務判定。
+# M2 殘項清單(三類)
+
+分類原則:**甲**只能在真實部署環境驗收,本機結構性做不到;**乙**缺的是一個決策不是一段程式,寫程式之前得先有人拍板;**丙**是 M3(EVAL)接手的接點,不是缺口。逐項證據見 [m2-work-items-audit.md](m2-work-items-audit.md)。
+
+## 甲、部署期驗收(**依 ADR-015:未通過不得開放外部使用者提交 Skill 執行**)
+
+本機 Windows 無法跑 gVisor(runsc 需 Linux),巢狀虛擬化亦為 ADR-019 待決策 3。以下四項不是被延後,是**在這台機器上結構性不可能完成**。
+
+| # | 項目 | 內容 | 解除條件 |
+| --- | --- | --- | --- |
+| 甲-1 | **SEC-009** | 逃逸測試、資源耗盡測試、Runtime 相容性測試、網路外洩測試(DNS tunneling／內網掃描／Metadata Service)、憑證範圍測試、清理失敗測試、設定與供應鏈稽核——覆蓋基線 45 項全部。`02:SEC-009` 明文「M2 的 SelfHostedProvider 驗收必須全數通過」,**M2 結束時未達成** | Linux 節點＋巢狀虛擬化;ADR-019 待決策 3(CI runner)先答 |
+| 甲-2 | **SBX-010** | 同上的工作項側。現有的真實容器驗證(非 root、唯讀 rootfs、無主機掛載、pids 上限、逾時強停、清理冪等)**不等於**逃逸測試通過 | 同甲-1 |
+| 甲-3 | **SBX-005／007 的生產網路面** | SBX-005 缺 P-02「Sandbox → 核心資料庫連線嘗試被實際阻擋」的**常駐探針**;SBX-007 缺生產級 Egress Proxy 本體、域名允許清單、DNS 固定解析與目的地記錄(N-01～N-07)。dev 已有的是網路面隔離(`internal: true` 網路上只有閘道),**不是 Proxy** | 生產網路＋威脅模型 Q3(允許清單管理流程)定案 |
+| 甲-4 | **SBX-002 的門檻定值** | 流水線已接上(digest 斷言→build→syft SBOM→grype→門檻),但 I-06 漏洞等級門檻與 I-04 掃描結果有效期仍是 SEC-002 六項無值語句之二。程式以提案值(可修的 Critical／High 阻擋、有效期 30 天)實作**並在三處標暫定**。另 I-03 的 SBOM 現落在 90 天 CI artifact,須待 container registry(ADR-019 待決策 1)定案後搬家 | 見乙-1 |
+
+## 乙、待負責人決策(**寫程式之前先要有人拍板**)
+
+| # | 項目 | 待決內容 | 阻擋什麼 |
+| --- | --- | --- | --- |
+| **乙-1** | **SEC-002 六項門檻值(威脅模型 Q18)** | P-03 節點重建週期、P-04 gVisor 安全基準版本由誰維護及 CVE 應變 SLA、I-04 掃描結果有效期、I-06 漏洞等級門檻與例外放行流程、X-02 Reconciler 掃描頻率、X-03／X-04 遺留資源告警與暫停門檻。**目前全部是無值語句,等於檢查存在但不可驗收**;I-04／I-06 已有 SBX-002 的提案值,其餘四項連提案都沒有。另 Q1～Q3(節點編排方案、節點是否單租戶、Egress Proxy 與允許清單管理流程)是 `02:SEC-002` 的勾選前提 | SEC-002 勾選、SBX-002 勾選、甲-3／甲-4 |
+| **乙-2** | ⚠️ **PDM-005 token 硬上限:二選一** | `300_000`／`60_000` 被寫進 `policy_snapshot`、**顯示在執行前權限摘要上要求使用者確認**,而平台與沙箱**都不強制**(`TokenBudget` 零消費端,無累加器)。實際煞車只有 `max_budget`／`tpm_limit`／牆鐘,而 PDM-005 §5.2a-4 明文說過這三個都不是 token 上限。<br>**(a)** 新增實作工作項「依閘道回報 `input_tokens` 累計並於超限時終止 Run」,並把 §5.2a 的輪數換算表(15／7.7／5 輪)回寫 `02:RUN-003`;或 **(b)** 正式承認 MVP 不做,**把 `TokenBudget` 從權限摘要移除**。<br>**現狀(顯示但不強制)是兩者中最壞的一種**——讓使用者確認一個平台不會執行的上限,直接踩 NFR-001「UI 不得誤導」 | 無工作項承接;PDM-003 v5 的定案條件之一(「三層併用」)因此未完整成立 |
+| **乙-3** | **閘道 $0.50 預算計數 50 倍誤差的處置** | LiteLLM 以「Current cost ≈ 0.50」拒絕請求,而同一把金鑰的 `LiteLLM_SpendLogs` 只有 $0.009–$0.24;兩個對照實驗排除「單次呼叫預估扣款」;上限提到 $2.00 後 7 個受影響精選全數一次通過。**在查清之前 per-Run `max_budget` 不是可信的成本閘門**,PDM-003 v5 的 $0.50 預設需重新檢視。連帶:9 個已索引 Skill 尚無有效基準(補跑預估 $1.0–1.5) | 乙-2 的三個煞車裡最重要的那個本身不可信;CONTENT-008 已索引層的補跑 |
+| **乙-4** | **Agent 相容軸 schema 的四個待決** | ①欄位歸屬:Skill Version 層級,還是 (Skill Version × Runtime Image) 層級?**後者才誠實**——33 個 Python 結論只對 `skillhub/runtime-agent-sdk:2026.08-1` 成立。②兩軸判準:`capability` 可直接供給(45/45 有 `skill_activation`),`runtime` 需要「腳本宣告環境 ⊆ 映像提供環境」的判定,而映像的能力清單目前不以資料形式存在。③樣本量:一次 Run 不足以宣告 `passed`,幾次、失敗一次是否降級未定。④值域:需要 `unverified` 以外的第三態表達「腳本不會被執行、由模型轉譯」,它既不是 passed 也不是 failed。<br>**資料已備妥**:`capability = activated` 45/45;`runtime` 為 11 原生／1 node／33 模型轉譯 | **`01` 的 M2 里程碑第 4 項**、`02:DISC-002` 的 Agent 維度 |
+| **乙-5** | **CONTENT-007 的 writing rubric** | `02` §4.7 第 3 條要求 `writing` 類每個精選附一份可編輯 rubric,供 LLM Judge 逐項回傳證據引文。**未做,因為 rubric 沒有消費端**——EVAL-001／002 的 Judge 介面尚未實作。其餘四條允收皆達成 | CONTENT-007 勾選;實質上是 M3 的前置(見丙-1) |
+| **乙-6** | **Runtime Image 要不要含 python3** | 45 個 Skill 中 33 個 `deps_runtime = python`,映像基底 `node:22-bookworm-slim` 只加 `unzip`。含 Python 讓 33 個 Skill 執行自己的腳本(**也擴大沙箱攻擊面**),不含則平台永遠是「模型轉譯」語意,**目錄必須誠實標示**(＝乙-4)。這是產品決策不是工程細節 | 乙-4 的值域設計;CONTENT-005 揭露完整度 |
+| **乙-7** | **`03` §9 的允收是否含 UI** | `apps/web` 有 `RunPreflight`／`RunTrace`,**沒有任何 Test Lab／Dataset 頁面**。TEST-004 已因 `02:TEST-002`「上傳前**顯示**…」退回;TEST-001／002／003 的準則以「使用者可…」起頭,若同尺解讀亦應退回。**(a)** 承認含 UI,一併退回並新增實作工作項;或 **(b)** 明文把 §9 界定在 API＋契約層,UI 由 `DESIGN-007`(未勾)與一個新工作項承接。任一都要三文件同步 | TEST-001/002/003 的勾選正確性 |
+| **乙-8** | **SEC-002 閘門 B 的兩項未落地阻擋** | ①「Skill Version 靜態掃描結果為阻擋級」——`internal/run` 內無 severity 判斷,根因是威脅模型 **Q7**(阻擋 vs 警告的具體 Policy)未決,`02:SEC-003` 自陳政策未定案前該條件不可判定。②「超出 Workspace 並行或額度上限」——**PDM-005 §5.2 已定值(每 Workspace 並行 Run 上限=2),強制不存在**;`ConcurrentRunSlots` 是 Provider 側容量不是 Workspace 配額。**②是四項阻擋裡唯一不依賴任何未決策的,可直接實作** | SEC-002 |
+| **乙-9** | **PDM-005 §5.3 未回寫 `02:TEST-005`** | §5.3 指定的權限摘要欄位裡,**「預估成本區間」完全不存在**於 `PermissionSummaryContent`。§5.2a-6 特別強調必須是**區間**不是單值(首次與後續 Run 因 prompt caching 差約 8 倍)。根因是 PDM 指定要回寫 `02` 的內容沒有回寫,所以 `02` 的字面準則已被 TEST-008 滿足,缺的部分不可判定(同型於乙-2 的輪數表) | `02`／PDM-005 的一致性 |
+| **乙-10(承 M1)** | 宣告閘門 D 日;追認 KPI3 判準修正;**Q15**(匯入 SSRF 在 MVP 期間的歸屬)裁定;**anthropic-sa 法務判定**(未決前 `documents` 已索引有 10→6 的塌陷風險,阻擋 CONTENT-003／004 勾選) | — | M1 驗證閘門正式結案、CONTENT-003／004 |
+
+> **對帳當下 in-flight,不列為殘項**:[content-baseline-report.md §7.2 #1](content-baseline-report.md) 指出 11 個 Skill(`data-shape`、`docx`、`excel-delete`、`excel-filter`、`excel-find-duplicates`、`excel-mapping-replace`、`excel-merge`、`excel-sort`、`excel-split`、`excel-validate`、`pdf`)的「限制」欄漏了 Python 依賴揭露,處置屬 CONTENT-005 的 `需修改`(調 prompt 後重跑增強,**不得就地改寫審核紀錄**,`02` §4.7)。另一位協作者正在處理,**截至完結時 `services/llm/` 的變更尚未 commit**,故本文件不引用其結果;完成後須依 `02` §4.7 的「非決定性上限」重新確認入庫文字與審核版本一致。
+
+> **另有一項不需決策、只需一行修改**:`services/sandbox/README.md:112` 記載的是被推翻**前**的 SDK 行為(「`settingSources` 含 `project`」)。Agent SDK 0.3.233 上照做會得到零個 skill,而該行還把讀者指向寫著相反內容的 `run.mjs`。`services/sandbox/README.md` 是沙箱服務的自然入口,先讀到它的人會拿到倒過來的指示。SDK 版本目前只釘在 `Dockerfile` 的 `ARG CLAUDE_AGENT_SDK_VERSION=0.3.233`,**沒有任何 ADR 記錄這次行為反轉**。
+
+## 丙、移交 M3(EVAL)的接點
+
+**M3 是評估里程碑,以下只列接點與已知限制,不代為開工。**
+
+| # | 接點 | 內容 |
+| --- | --- | --- |
+| 丙-1 | **讀取面:直接用 `trace.Service`** | `Advanced` 已回傳依序重建、標明缺失(`missing_seq`／`late`／`complete`)的完整事件流,`General` 已是聚合摘要。**EVAL-001 引用證據時直接用這兩者,不要自行查 `trace_events`。** 對應的 rubric 缺口見乙-5 |
+| 丙-2 | **寫入面:沿用 `trace.RecordOrchestratorEvent`** | 控制平面已會在 `failed`／`timed_out` 轉移的同交易內寫 `error` 事件,`seq` 由 `NextTraceSeq` 在交易內配號。EVAL 要加自己的事件(評估開始／結束)沿用它,**不要另開寫入路徑** |
+| 丙-3 | ⚠️ **成本合計必然是下界** | `run.mjs` 的 `usage` 事件**只在 SDK `result` 分支內發出**(`run.mjs:354-380`)。串流在沒有 `result` 的情況下結束(崩潰、被牆鐘殺、SDK abort)就**完全不發** `usage`——不是發 0,是不發。實例 `add-iso3166`:Run 成功、13 個事件、無斷號、`complete: true`,而 token 與成本在平台端不存在。<br>**兩個後果**:①`complete: true` 不代表 usage 存在(斷號只看得到「發出後遺失」,看不到「從未發出」);②**EVAL-012 若直接加總 Trace 的 `cost_usd` 會系統性低估**,低估幅度隨失敗率上升(實測:Trace $3.0879 vs 閘道實付 $3.3932)。**權威來源是閘道 per-key spend(ADR-017)**。UI 目前誠實——無 usage 事件時顯示「沒有記錄到用量事件。」而非 0 |
+| 丙-4 | **`skill_activation` 的 `skipped` 不可觀測** | SDK 訊息流看不到「可用但沒被叫」,M2 不臆造。判斷「Skill 沒被啟用」屬 EVAL-002,材料是「Run 掛了哪些 Skill」對照「trace 裡出現了哪些 activation」 |
+| 丙-5 | ⚠️ **`succeeded` ≠ 任務完成** | `run.mjs` 的 `finish("succeeded")` 只代表「agent 這一輪沒有拋錯」,**與任務是否完成無關**。實例 `date-wrangling`:終態 `succeeded`、Skill 有啟用、Trace 完整,而 `/out/artifacts/` 是空的——最終回覆是反問使用者。**UI 若把 succeeded 呈現為「可用」會誤導;判定任務是否達成正是 EVAL-001 的工作** |
+| 丙-6 | **可比較的基準已在庫** | 45 個 Skill 各一次完整平台 Run 的結果、Trace(1112 事件全數 `masked`)、Artifact manifest 與 Test Case 快照都可重查(對帳 §2.3 已實查驗證)。EVAL-011／012 的「重新試跑與比較」有現成的第一組對照 |
+| 丙-7 | **`RunResult.usage` 只有牆鐘** | token 與成本走 Trace,沒有回填到 provider 的 result。契約已於 `eab9d26` 改為誠實敘述(「a consumer must not treat an absent token count here as zero usage」)。EVAL 需要 provider 側 usage 時要走 additive 契約變更 |
