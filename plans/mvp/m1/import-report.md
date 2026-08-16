@@ -1,7 +1,7 @@
 # CONTENT-003／004 種子清單本機端到端匯入報告（M1）
 
 - 日期：**2026-08-15**
-- 對應：CONTENT-003／004／006、INGEST-001～009、SKILL-001／002、DISC-001／002、[ADR-013](../../../adr/ADR-013-intent-search-architecture.md)、[ADR-020](../../../adr/ADR-020-auth-and-session.md)
+- 對應：CONTENT-003／004／006、INGEST-001～009、SKILL-001／002、DISC-001／002、[ADR-013](../../../adr/ADR-013-intent-search-architecture.md)、[ADR-020](../../../adr/ADR-020-authentication-and-session-model.md)
 - 輸入：[`tools/content/seed-skills.json`](../../../tools/content/seed-skills.json)（45 筆、11 個 pin commit 的來源 repo）
 - 工具：[`tools/content/import_seed.py`](../../../tools/content/import_seed.py)（本次新增，驗證用）
 - 對照：[curated-skill-list.md](curated-skill-list.md)、[golden-query-set.md](golden-query-set.md)

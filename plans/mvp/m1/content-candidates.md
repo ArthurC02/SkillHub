@@ -85,4 +85,4 @@
 
 1. 對 `documents`／`writing` 執行 PDM-002 回溯准入流程，補足 8–12 已索引目標（目前分別短少至少 4／6 個）。
 2. 負責人在 `pdm-proposals.md` 正式定案 PDM-004 白名單加入 `lxml`（必要）與 `matplotlib`（建議），否則 §3.1 的 #5、#6 無法真正匯入。
-3. 交給 CONTENT-004（來源／License 人工確認）與 CONTENT-006（規格／靜態掃描）逐一過檢查表，通過後才能把本文件的「建議 Tier」轉為 [`catalog.Tier`](../../services/platform/internal/catalog/tier.go) 的實際值。
+3. 交給 CONTENT-004（來源／License 人工確認）與 CONTENT-006（規格／靜態掃描）逐一過檢查表，通過後才能把本文件的「建議 Tier」轉為 [`catalog.Tier`](../../../services/platform/internal/catalog/tier.go) 的實際值。
