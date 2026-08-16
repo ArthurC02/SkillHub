@@ -82,7 +82,9 @@ MVP 用 Prometheus 文字格式，各服務自己曝露，沒有 push gateway、
 
 **未做的部分，明說**：沒有 Alertmanager 部署、沒有通知路由、沒有 silence 政策、沒有 Grafana dashboard。那些是部署期的事，本批交付的是「什麼算異常、依據哪個指標、要人做什麼」。掛法：Prometheus 的 `rule_files` 指向本檔。
 
-**門檻值全部是首發預設，不是實測校準值**。NFR-004 自陳效能目標「需在確認基礎設施後校準」，SEC-002 的六項門檻（威脅模型 Q18）也未定值。上線後第一個月應以實際分佈回填並註明校準日期。
+**門檻值多數是首發預設，不是實測校準值**。NFR-004 自陳效能目標「需在確認基礎設施後校準」，上線後第一個月應以實際分佈回填並註明校準日期。
+
+**例外：`skillhub-cleanup-and-leaks` 群組的門檻已定值**——SEC-002 的六項門檻（威脅模型 Q18）於 2026-08-16 由 [ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分定案（X-02 每 5 分鐘、X-03 同一筆連 2 輪、X-04 單節點 50%／全池 25% 下限 2 筆、6b 連 3 輪撤銷失敗）。該群組的規則已依定值改寫，但 `LeakedSandboxStillPresent` 與 `CredentialRevokeFailing` **目前是過渡形式**：現有累加計數器表達不了「同一筆連續 N 輪」，也區分不出「金鑰撤不掉」與「沙箱殺不掉」，需要 `03` 的 **SBX-012**（in-flight orphan 表 ＋ `gateway_revoke_failed`／`sandbox_destroy_failed` 分項計數器）。規則註解已逐條標明。**ADR-022 定的動作（drain 節點、暫停整池派送、暫停 P-03 例行重建）屬平台實作，不是 Alertmanager 的職責。**
 
 ## 最該先看的一條
 

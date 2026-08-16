@@ -1,0 +1,42 @@
+# ADR-022 Q3 / A1-c: the allow-list's rules made mechanical.
+#
+# Two of Q3's guarantees were prose a reviewer had to remember — "the sandbox tier
+# has exactly one platform-owned destination" (the re-evaluation condition for
+# bringing in an L7 proxy) and "opening a destination updates the threat model".
+# Prose that nobody diffs stops being true quietly, so both are asserted here.
+name: Egress allow-list
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/egress/**'
+      - '.github/workflows/egress-allowlist.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  assert:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Allow-list invariants (ADR-022 Q3)
+        run: python3 .github/workflows/check_egress_allowlist.py
+
+      # ADR-022 Q3 change process, step 3. The threat model's own §3 says opening a
+      # new egress destination requires updating it; this is that sentence with a
+      # red light attached.
+      - name: A destination change must carry a threat-model update
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin "${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          echo "$CHANGED" | grep -q '^infra/egress/' || exit 0
+          echo "$CHANGED" | grep -q '^plans/mvp/m0/threat-model-and-sandbox-baseline.md$' \
+            || { echo "::error::changing infra/egress/ requires updating plans/mvp/m0/threat-model-and-sandbox-baseline.md in the same PR (ADR-022 Q3 change process; threat model §3)"; exit 1; }

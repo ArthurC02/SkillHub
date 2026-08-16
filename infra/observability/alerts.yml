@@ -13,8 +13,16 @@
 #    Run 一律走 log（以 run_id 關聯），不是靠展開一個高基數的 label。
 #
 # 門檻值註記：以下數字是**首發預設**，不是實測校準值。NFR-004 自陳效能目標
-# 「需在確認基礎設施後校準」，SEC-002 的六項門檻（威脅模型 Q18）也未定值。
-# 上線後第一個月應以實際分佈回填，並在此註明校準日期。
+# 「需在確認基礎設施後校準」。上線後第一個月應以實際分佈回填，並在此註明校準日期。
+#
+# 例外：skillhub-cleanup-and-leaks 群組的門檻**不是**首發預設——SEC-002 的六項門檻
+# 已於 2026-08-16 由 ADR-022 第二部分定值（X-02 每 5 分鐘、X-03 連 2 輪、X-04 單節點
+# 50%／全池 25% 下限 2 筆）。該群組的規則依定值改寫，但其中兩條**目前只能是過渡
+# 形式**：現有 metrics 表達不了「同一筆連續 N 輪」與分項失敗原因，需要 SBX-012 的
+# in-flight orphan 表與分項計數器，逐條註解已標明。
+#
+# 本檔只定義「什麼情況算異常」；ADR-022 定的動作（drain 節點、暫停整池派送、暫停
+# P-03 例行重建）屬平台實作，不是 Alertmanager 的職責。
 
 groups:
   # --- O11Y-001：搜尋與 Run 漏斗 ---------------------------------------------
@@ -171,6 +179,25 @@ groups:
           summary: "孤兒掃描在 {{ $labels.provider }} 上清掉了 {{ $value }} 個遺留 Sandbox"
           description: "查該時段的 cleanup 失敗與 worker 重啟紀錄。"
 
+      - alert: LeakedSandboxStillPresent
+        # X-03（ADR-022）：同一 provider_run_id 連續 2 輪掃描（10 分鐘）仍存在即告警。
+        #
+        # 【過渡形式】現有 skillhub_orphan_sandbox_total 是累加計數器，只說得出
+        # 「這段時間內銷毀失敗過」，說不出「同一筆還在」——連 2 輪需要 SBX-012 的
+        # in-flight orphan 表（provider_run_id → first_seen_round）與對應指標。
+        # 在那之前用「連兩個掃描週期都有銷毀失敗」近似：同一筆卡住會持續計數，
+        # 但兩筆不同資源各失敗一次也會觸發。誤報方向，可接受。
+        expr: sum by (provider) (increase(skillhub_orphan_sandbox_total{action="failed"}[10m])) >= 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.provider }} 上有遺留 Sandbox 連續兩輪掃描仍未清除（X-03）"
+          description: >-
+            ADR-022 X-04 的下一級是節點 drain（遺留 ≥ 該節點 slot 的 50%，封測規模下
+            即 1 筆）與全池暫停派送（≥ 總 slot 的 25%，下限 2 筆）。**那兩個動作是
+            平台實作，不是本告警的職責**；本條只負責讓人知道它正在往那裡走。
+
       - alert: LeakedSandboxDestroyFailed
         # 這條才是真的要人：掃描找到了、也試著殺了、殺不掉，資源還在。
         expr: increase(skillhub_orphan_sandbox_total{action="failed"}[1h]) > 0
@@ -179,15 +206,39 @@ groups:
         annotations:
           summary: "{{ $labels.provider }} 上有無法銷毀的遺留 Sandbox"
 
+      - alert: CredentialRevokeFailing
+        # X-03/X-04 的 6b（ADR-022）：不佔 slot 的遺留資源（Virtual Key、Network Rule）
+        # 連續 3 輪（15 分鐘）撤銷失敗 → 最高嚴重度，**但不暫停派送**——暫停新 Run
+        # 不會讓已經外洩的憑證消失，正確動作是人介入（閘道側強制刪除或 SEC-010 停用）。
+        #
+        # 【過渡形式】ADR-022 要求的事實來源是分項計數器 gateway_revoke_failed /
+        # sandbox_destroy_failed（SBX-012）；現在只有整體的 cleanup result="failed"，
+        # 它區分不出「金鑰撤不掉」與「沙箱殺不掉」，而兩者的正確動作相反。
+        # 在 SBX-012 之前這條與 CleanupFailing 重疊，差別只在門檻與嚴重度。
+        expr: sum(increase(skillhub_run_cleanup_total{result="failed"}[15m])) >= 3
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "短效憑證撤銷連續失敗（ADR-022 X-03/X-04 6b）"
+          description: >-
+            物件短效授權**不在**本條範圍：預簽 URL 沒有撤銷手段，其窗口上界就是簽發
+            時的 TTL（SBX-008：硬牆鐘 + 5 分鐘），那是明示的殘餘風險而非可監控門檻。
+
       - alert: OrphanScanNotRunning
         # 掃描本身停了是靜默失效：沒有告警會響，但保護也沒了。
-        expr: sum(increase(skillhub_orphan_scan_total[30m])) == 0
-        for: 30m
+        # ADR-022 X-02：掃描每 5 分鐘一輪，停擺超過 2 輪（10 分鐘）即最高嚴重度，
+        # 並暫停新 Run 排入受影響節點池（暫停的動作屬平台實作，見檔頭）。
+        expr: sum(increase(skillhub_orphan_scan_total[10m])) == 0
+        for: 10m
         labels:
-          severity: warning
+          severity: critical
         annotations:
-          summary: "孤兒掃描超過 30 分鐘沒有執行"
-          description: "掃描是 River 的 leader-only periodic job（5 分鐘一次），先查 worker 的 leader 選舉。"
+          summary: "孤兒掃描超過 10 分鐘（2 個掃描週期）沒有執行"
+          description: >-
+            掃描是 River 的 leader-only periodic job（5 分鐘一次），先查 worker 的
+            leader 選舉。**沒有 Reconciler 在跑，就沒有人知道洩漏了多少**——ADR-022
+            把這一項列為阻擋級，不是 warning。
 
   # --- Trace 管線本身 ---------------------------------------------------------
   - name: skillhub-trace-pipeline

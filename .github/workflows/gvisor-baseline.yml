@@ -1,0 +1,74 @@
+# SEC-002 P-04's second measurement point (ADR-022 A2-a).
+#
+# Gate A's probe answers "is this node at the baseline". Nothing answered "is the
+# baseline still current" — that was a human remembering to read upstream's
+# release feed, which is the part of a CVE SLA that silently stops happening.
+# This job is that part. The 24h escape-class SLA starts from the issue it opens.
+name: gVisor baseline
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Baseline is N or N-1 and not older than 90 days
+        run: |
+          set -euo pipefail
+          BASELINE=$(grep -v '^#' infra/nodes/gvisor-baseline.txt | tr -d '[:space:]' | grep . | head -1)
+          if [ "$BASELINE" = unset ]; then
+            echo "::notice::baseline is unset — no sandbox node provisioned yet, nothing to compare"
+            exit 0
+          fi
+          gh api repos/google/gvisor/releases --jq '.[].tag_name' | head -2 > recent.txt
+          AGE_DAYS=$(gh api repos/google/gvisor/releases --jq \
+            '.[0].published_at | (now - fromdateiso8601) / 86400 | floor')
+          FAIL=""
+          grep -qx "$BASELINE" recent.txt || FAIL="baseline $BASELINE is not upstream N or N-1 ($(tr '\n' ' ' < recent.txt))"
+          [ "$AGE_DAYS" -le 90 ] || FAIL="${FAIL:+$FAIL; }latest upstream release is ${AGE_DAYS}d old"
+          [ -z "$FAIL" ] || { echo "FAIL=$FAIL" >> "$GITHUB_ENV"; echo "::error::$FAIL"; }
+
+      - name: New escape-class advisory in the last 24h
+        run: |
+          set -euo pipefail
+          gh api repos/google/gvisor/security-advisories --jq \
+            '.[] | select(.published_at != null)
+                 | select((now - (.published_at | fromdateiso8601)) < 86400)
+                 | select(.severity == "critical" or (.summary | ascii_downcase | test("escape")))
+                 | "\(.ghsa_id) [\(.severity)] \(.summary)"' > escape.txt || true
+          [ -s escape.txt ] && echo "ESCAPE=1" >> "$GITHUB_ENV" || true
+          cat escape.txt
+
+      # One issue per condition, reopened rather than duplicated: a daily job that
+      # files a fresh issue every morning trains people to close them unread.
+      - name: File or update the issue
+        if: ${{ env.FAIL != '' || env.ESCAPE == '1' }}
+        run: |
+          set -euo pipefail
+          if [ "${ESCAPE:-}" = 1 ]; then
+            TITLE="gVisor escape-class advisory — 24h SLA started (SEC-002 P-04)"
+            BODY=$(printf 'ADR-022 P-04: patch the whole pool within 24h of this issue, or disable SelfHostedProvider per SEC-010.\n\n```\n%s\n```\n' "$(cat escape.txt)")
+          else
+            TITLE="gVisor baseline has drifted (SEC-002 P-04)"
+            BODY="ADR-022 P-04: $FAIL. Update infra/nodes/gvisor-baseline.txt and rebuild the pool (P-03)."
+          fi
+          if gh issue list --state open --search "in:title \"$TITLE\"" --json title --jq '.[].title' | grep -qxF "$TITLE"; then
+            echo "::notice::issue already open, not duplicating"
+          else
+            gh issue create --title "$TITLE" --body "$BODY"
+          fi
+
+      - name: Fail the run if the baseline drifted
+        if: ${{ env.FAIL != '' || env.ESCAPE == '1' }}
+        run: exit 1

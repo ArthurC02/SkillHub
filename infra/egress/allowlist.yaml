@@ -1,0 +1,50 @@
+# Egress allow-list — the single source for the sandbox nodes' nftables rules and
+# the node's pinned DNS records (ADR-022 Q3). Rendered by IaC at node build time;
+# the ruleset on a node is a product, editing it by hand is drift and the next
+# rebuild (<= 7 days, P-03) wipes it.
+#
+# Two tiers, different trust levels and different enforcement (ADR-022 Q3):
+#
+#   tier: sandbox  The T0 run container. Destinations are platform-owned, so the
+#                  rule is "accept to this pinned IP:port, drop everything else"
+#                  and `pinned_ip` is REQUIRED. MVP has exactly one entry — if a
+#                  second one appears, ADR-022 Q3's re-evaluation condition has
+#                  fired and an L7 proxy (Squid) has to be reconsidered before
+#                  the entry lands. CI asserts this; see egress-allowlist.yml.
+#
+#   tier: node     The T2 platform services on the node (sandboxd, dockerd).
+#                  Destinations are third parties with rotating IPs, so IP
+#                  pinning does not apply: default-deny plus FQDN matching, with
+#                  the node's resolver doing normal recursion for these names
+#                  only. `pinned_ip` MUST NOT be set here.
+#
+# N-07 has no exception path: no model provider domain may appear at any tier.
+# A new provider is added inside the LiteLLM gateway, never here (iron rule 8).
+#
+# Changing this file: its own PR, product owner approval in the commit message,
+# and the same PR must update plans/mvp/m0/threat-model-and-sandbox-baseline.md
+# (its §3 maintenance rule). CI enforces the pairing.
+
+destinations:
+  - name: model_gateway
+    tier: sandbox
+    fqdn: litellm.internal
+    # unset until the first node is provisioned. IaC rendering with `unset`
+    # produces no accept rule, which is the fail-closed direction: a sandbox on
+    # a node built from an unset allow-list reaches nothing at all.
+    # ADR-022 A1-b: this address must NOT be a control-plane node — the gateway
+    # gets its own sandbox-facing node/IP (the CX33 already budgeted as "Egress
+    # Proxy" in cost-estimation §4.1 covers it at no extra cost).
+    pinned_ip: unset
+    port: 4000
+    protocol: tcp
+    justification: >-
+      The only destination a run's workload may reach. Every model call must go
+      through the gateway (iron rule 8) and it is the sole holder of provider
+      keys; per-run virtual keys bound the blast radius.
+    owner: platform
+    review_by: 2026-11-14
+
+  # tier: node entries are added when the deployment batch knows the real object
+  # storage and trace ingestion endpoints. They are deliberately absent rather
+  # than guessed: a placeholder FQDN in an allow-list is a rule nobody can audit.

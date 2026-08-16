@@ -87,15 +87,16 @@ jobs:
           path: scan/
           retention-days: 90
 
-      # I-06 threshold. PROVISIONAL — SEC-002 Q18 has no signed-off value yet;
-      # infra/images/README.md carries the proposal and this job implements it so
-      # the shape is testable before the number is final.
+      # I-06 threshold. Settled in ADR-022 §2 (2026-08-16), which adopted the
+      # proposal this job already implemented: fixable Critical/High block with no
+      # waiver path, unfixable ones go on the named exemption list in
+      # infra/images/README.md with a review date of first_exempted_at + 90 days.
       #
       # --only-fixed is the load-bearing flag: Debian marks most base-OS CVEs
       # "won't fix", and a gate that blocks on those blocks forever with no action
       # available to anyone. Those findings are not dropped — they are in the
       # artifact above and in the README's reviewed exemption list.
-      - name: Fail on fixable Critical/High (I-06, provisional threshold)
+      - name: Fail on fixable Critical/High (I-06, ADR-022)
         run: |
           docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             --only-fixed --fail-on high -o table

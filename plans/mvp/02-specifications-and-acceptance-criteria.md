@@ -535,13 +535,13 @@ queued → provisioning → preparing → running → evaluating
   | 檢查 | 值 | 量測點 | 違反時 |
   | --- | --- | --- | --- |
   | P-03 節點重建週期 | **7 天**滾動重建，另有事件觸發（gVisor 基準版本變更、逃逸疑慮、清理連續失敗） | 閘門 A 探針比對 `node_created_at` | 告警並排入重建；> 14 天由值班手動 drain |
-  | P-04 gVisor 安全基準版本與更新 SLA | 基準 ＝ 上游 **N 或 N−1 且發佈 ≤ 90 天**；例行每月更新（隨節點重建）；CVE 應變：逃逸類 **24 h**（做不到即依 SEC-010 停用）、High **7 天**、Medium 以下隨例行。維護者：平台維運負責人；來源檔 `infra/nodes/gvisor-baseline.txt` | 閘門 A 探針比對 `runsc --version` | **阻擋**該節點加入池；已在池者 drain |
-  | I-04 掃描結果有效期 | **30 天**，到期前 7 天告警 | 發佈記錄的 `scanned_at` | 閘門 D：該 Image 不得發佈、不得被新 Run 引用 |
-  | I-06 漏洞等級門檻與例外流程 | **可修的 Critical／High 一律阻擋且無豁免路徑**；無上游修復者逐項具名豁免（CVE ＋ 理由 ＋ 緩解層 ＋ 複審日），複審日 ＝ 掃描日 ＋ **90 天**，逾期即該次掃描結論失效並依 I-04 判為過期。批准者：產品負責人，形式為獨立的豁免清單變更 commit | `runtime-image` CI job | CI fail，Image 不得發佈 |
-  | X-02 Reconciler 掃描頻率 | **每 5 分鐘**；判定遺留的年齡門檻 ＝ 該 attempt 硬牆鐘 ＋ 5 分鐘 | River periodic job 指標 | 停擺 > 10 分鐘 → 最高嚴重度告警並暫停新 Run 排入受影響節點池 |
-  | X-03／X-04 遺留資源告警與暫停 | **告警**：同一筆連續 2 輪（10 分鐘）仍存在。**暫停**：單節點遺留 ≥ 該節點 slot 的 50%（下限 1 筆）→ drain 該節點；全池遺留 ≥ 總 slot 的 25%（**下限 2 筆**）→ 暫停整池派送。非 slot 類（Virtual Key、物件授權、Network Rule）連續 3 輪撤銷失敗 → 最高嚴重度告警，**不暫停派送** | Reconciler 每輪的逐節點與全池比例指標 | drain／暫停派送／SEC-010 |
+  | P-04 gVisor 安全基準版本與更新 SLA | 基準 ＝ 上游 **N 或 N−1 且發佈 ≤ 90 天**；例行每月更新（隨節點重建）；CVE 應變：逃逸類 **24 h**（做不到即依 SEC-010 停用）、High **7 天**、Medium 以下隨例行。**24 h 自下述 cron 開出 issue 起算。** 維護者：平台維運負責人；來源檔 `infra/nodes/gvisor-baseline.txt` | **兩點**：①閘門 A 探針比對 `runsc --version`；②`.github/workflows/gvisor-baseline.yml` 每日比對上游 releases 與 security advisories，基準漂移或出現逃逸類 advisory 即開 issue | **阻擋**該節點加入池；已在池者 drain |
+  | I-04 掃描結果有效期 | **30 天**，到期前 7 天告警 | GHCR 上隨 image digest 保存的掃描 attestation 的 `scanned_at` | 閘門 D：該 Image 不得發佈、不得被新 Run 引用 |
+  | I-06 漏洞等級門檻與例外流程 | **可修的 Critical／High 一律阻擋且無豁免路徑**；無上游修復者逐項具名豁免（CVE ＋ 理由 ＋ 緩解層 ＋ 複審日），複審日 ＝ **`first_exempted_at`（該 CVE 首次被豁免的日期）** ＋ **90 天**，逾期即該次掃描結論失效並依 I-04 判為過期。批准者：產品負責人，形式為獨立的豁免清單變更 commit | `runtime-image` CI job | CI fail，Image 不得發佈 |
+  | X-02 Reconciler 掃描頻率 | **每 5 分鐘**；年齡寬限**只適用於平台不認得的 sandbox**（5 分鐘，＝派工在途窗口），已辨識且已終態者**立即清除無寬限** | River periodic job 指標 | 停擺 > 10 分鐘 → 最高嚴重度告警並暫停新 Run 排入受影響節點池 |
+  | X-03／X-04 遺留資源告警與暫停 | **告警**：同一 `provider_run_id` 連續 2 輪（10 分鐘）仍存在。**暫停**：單節點遺留 ≥ 該節點 slot 的 50%（下限 1 筆）→ drain 該節點（drain 期間暫停 P-03 例行滾動重建）；全池遺留 ≥ 總 slot 的 25%（**下限 2 筆**）→ 暫停整池派送。非 slot 類（Virtual Key、Network Rule）連續 3 輪撤銷失敗 → 最高嚴重度告警，**不暫停派送**；**物件短效授權不在此類**（預簽 URL 無撤銷手段，窗口上界＝簽發 TTL，屬明示殘餘風險） | Reconciler 的 in-flight orphan 表（`provider_run_id → first_seen_round`）＋ 分項失敗計數器 `gateway_revoke_failed`／`sandbox_destroy_failed`（**需新指標，`03` SBX-012**） | drain／暫停派送／SEC-010 |
 
-  **仍不可自動化判定的一項**：I-04 的 `scanned_at` 在 container registry 定案（ADR-019 待決策 1）前只存在於 CI artifact 與 `infra/images/README.md`，是人工維護的日期，閘門 A 查不到。此項在 registry 定案前不得記為自動通過。
+  **量測落地狀態**：I-03／I-04 的落點已由 **GHCR** 定案（ADR-019 待決策 1 已回填）解決，但**發佈流水線接 GHCR push ＋ attestation（`03` SBX-011）尚未實作**；X-03／X-04 的「連續 2 輪」與分項計數器**需新指標（`03` SBX-012）**。兩者完成前該三項不得記為自動通過。
 - ~~**勾選前提**：節點編排方案、節點是否單租戶、Egress Proxy 實作與允許清單管理流程（Q1～Q3）已有答案。~~ → **已成立（2026-08-16）**：Q1 節點編排採 compose-per-VM（一節點一個 `sandboxd`，不裝叢集排程器）；Q2 節點為**執行平面單租戶**（節點只承載不受信任工作負載，不與應用混排；同節點多 Run 併存，橫向風險為明示的殘餘風險）；Q3 沙箱層 egress 採 nftables default-deny ＋節點固定 DNS 解析器，允許清單存於 `infra/egress/allowlist.yaml` 並有變更、複審與記錄流程。三者見 [ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第一部分。
 - **定值與有答案 ≠ 45 項全過。** 本需求仍未完全符合：閘門 B 的四項額外阻擋只落地兩項（靜態掃描等級判斷缺，根因為威脅模型 Q7；Workspace 並行上限強制缺），且 45 項基線尚未經 SEC-009 全數驗證。
 
@@ -615,7 +615,8 @@ queued → provisioning → preparing → running → evaluating
 - 設定與供應鏈項目以**宣告式稽核**（節點准入探針、映像發佈流水線斷言）驗證，不以滲透測試代替。
 - 每次擴充 Runtime 時重跑 Runtime 相容性測試。
 - **M1 結束前不要求全數通過；M2 的 SelfHostedProvider 驗收必須全數通過。** 隔離技術 ADR 由 `Proposed` 轉 `Accepted` 的條件包含逃逸測試通過與 Runtime 相容性驗證通過。
-- **可執行的驗收程序見 [ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第三部分（2026-08-16 定案）**：測試環境需求（Suite 1 一般 Linux runner／Suite 2 生產同規格節點；**gVisor 的 `systrap` 平台不需巢狀虛擬化**，待部署批第一台節點實測確認）、9 個測項與 45 項基線的覆蓋核對、通過判準（**45 項全數 pass、0 項 unknown**，任一 fail 或 unknown 即不得開放外部使用者提交 Skill 執行，無例外流程）、執行者與時機、證據存放於 `plans/mvp/m2/sec-009-acceptance/<日期>-<節點>/` 並保存 ≥ 1 年。
+- **可執行的驗收程序見 [ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第三部分（2026-08-16 定案）**：測試環境需求（Suite 1 一般 Linux runner／Suite 2 生產同規格節點；**gVisor 的 `systrap` 平台不需巢狀虛擬化**，待部署批第一台節點實測確認）、**10 個測項**與 45 項基線的覆蓋核對、通過判準（**45 項全數 pass、0 項 unknown**，任一 fail 或 unknown 即不得開放外部使用者提交 Skill 執行，無例外流程）、執行者與時機、證據存放於 `plans/mvp/m4/sec-009-acceptance/<日期>-<節點>/`（判定表與 `versions.txt` 進 repo，原始輸出留 CI artifact 並附連結）並保存 ≥ 1 年。
+- **前置條件（缺一即判 `unknown` ＝ fail）**：受測 Runtime Image 已發佈至 **GHCR 且附 SBOM 與掃描 attestation**；`infra/nodes/gvisor-baseline.txt` 已填實際版本；`infra/egress/allowlist.yaml` 的 `tier: sandbox` 條目已填實際 `pinned_ip`，且該位址**不是控制平面節點**。
 - **程序定案不等於測試通過**：本項於 M2 結束時仍未達成，維持未勾。
 
 ### SEC-010：安全事件回應與緊急停用 Provider
@@ -625,7 +626,8 @@ queued → provisioning → preparing → running → evaluating
 - 存在一鍵停用 `SelfHostedProvider` 的流程：停止派送新 Run、排空節點池、保留現場供調查。
 - 觸發條件至少包含：逃逸疑慮、隔離技術的高風險 CVE 揭露、遺留資源持續超標、清理長期失敗。
 - 流程以 runbook 形式產出，可被值班人員直接執行。
-- **未涵蓋（待決策）**：安全事件的嚴重度分級與值班責任歸屬（誰接最高等級告警）尚未定案；隔離技術「安全基準版本」的維護者與 CVE 應變 SLA 未定；遮罩失敗的補救流程建議併入本項但尚未撰寫。
+- 隔離技術「安全基準版本」的維護者與 CVE 應變 SLA **已定（[ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分 P-04，2026-08-16）**：維護者為平台維運負責人，基準檔 `infra/nodes/gvisor-baseline.txt`；逃逸類 CVE **24 h 內全池換版，做不到即依本需求停用 Provider**（此即本需求「觸發條件含隔離技術高風險 CVE 揭露」的具體判準），High 7 天，Medium 以下隨每月例行更新；24 h 自 `.github/workflows/gvisor-baseline.yml` 開出 issue 起算。
+- **未涵蓋（待決策）**：安全事件的嚴重度分級與值班責任歸屬（誰接最高等級告警）尚未定案——ADR-022 已把「非 slot 類遺留資源連 3 輪撤銷失敗」與「P-02 探針偵測到連線」標為最高嚴重度作為輸入，但分級表本身仍缺；遮罩失敗的補救流程建議併入本項但尚未撰寫。
 
 ## 7. MVP 整體 Definition of Done
 

@@ -1,0 +1,15 @@
+# gVisor security baseline version (SEC-002 P-04, ADR-022).
+#
+# The first non-comment line is the baseline. Node admission (gate A) compares
+# `runsc --version` against it; a node below the baseline does not join the pool
+# and one already in the pool is drained.
+#
+# The baseline must be upstream's latest release or the one before it (N or N-1)
+# and must not have been published more than 90 days ago. .github/workflows/
+# gvisor-baseline.yml checks that daily and opens an issue when it drifts; the
+# 24h escape-CVE SLA in ADR-022 starts from that issue being opened.
+#
+# `unset` = no sandbox node has been provisioned yet. The daily check skips
+# instead of failing, and IaC rendering an unset baseline is fail-closed: the
+# admission probe has nothing to compare against, so no node is admitted.
+unset
