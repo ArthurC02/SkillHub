@@ -133,6 +133,36 @@ SET takedown_at = now(), takedown_reason = sqlc.arg(reason), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL AND takedown_at IS NULL
 RETURNING *;
 
+-- name: LockSkillForRestriction :one
+-- The read half of an operator's licensing-hold change (02:SEC-011 追加小節,
+-- 0023). FOR UPDATE because the value it returns becomes the "before" side of an
+-- audit event: without the lock, two operators acting at once would both record
+-- the same before-state and one of the two events would be a lie.
+--
+-- Deliberately *not* workspace scoped, which makes it one of only two statements
+-- in this tree that are not. That is the whole point of the operator role: a
+-- catalogue entry lives in the curator's workspace and a fork of it lives in
+-- somebody else's, and a licensing hold has to reach both. Iron rule 3 is not
+-- weakened by it — the statement returns three identifiers and one reason code,
+-- no package content, no name, nothing about the workspace's private contents,
+-- and it is reachable only from the operator routes (02:SEC-011「operator 不得
+-- 讀取任何 Workspace 私有資料」).
+SELECT id, workspace_id, access_restriction FROM skills
+WHERE id = $1 AND deleted_at IS NULL
+FOR UPDATE;
+
+-- name: SetSkillAccessRestriction :exec
+-- The write half. One statement for both directions: a reason code holds the
+-- materials, NULL lifts the hold (0023 「旗標可解除」). Two statements would be
+-- two places to forget updated_at, and the CHECK on the column already refuses
+-- the one value that must not be written (the empty string).
+--
+-- Unscoped for the same reason as the read above, and narrower than it looks:
+-- one column of one row addressed by primary key. Nothing else about the skill
+-- is touched — a hold is not a takedown and not an edit of anybody's content.
+UPDATE skills SET access_restriction = $2, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL;
+
 -- name: ListSourcesToCheck :many
 -- Least-recently-probed first, so repeated bounded runs sweep the whole table.
 SELECT id, source_url FROM skill_sources

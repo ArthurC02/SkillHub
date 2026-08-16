@@ -67,6 +67,18 @@ func NewRouter(d Deps) *http.ServeMux {
 	// which for curated catalog entries is the operator's workspace.
 	mux.HandleFunc("POST /skills/{id}/takedown", auth.RequireSession(d.Registry.Takedown))
 
+	// 02:SEC-011 operator surface: the licensing hold of 0023, set and lifted.
+	// Its own prefix and its own middleware — RequireOperator answers 404 to
+	// everybody not on the deployment's operator list, so these two lines are the
+	// only place in this table where "not allowed" and "no such route" are the
+	// same answer. That is deliberate (SEC-011 不揭露端點存在).
+	//
+	// It is the only cross-workspace write in the table. Everything above scopes
+	// to the session's workspace; a licensing question is about a source, so a
+	// hold has to reach the catalogue entry and every fork of it alike.
+	mux.HandleFunc("PUT /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.SetRestriction))
+	mux.HandleFunc("DELETE /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.ClearRestriction))
+
 	// Test Lab (TEST-001/003/004). Everything is workspace scoped from the
 	// session; there is no anonymous read here. The literal "limits" segment is
 	// more specific than {id}, so it still wins.

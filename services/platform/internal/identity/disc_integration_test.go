@@ -977,10 +977,12 @@ func TestFilterDimensionsWithoutDataAreRejectedNotIgnored(t *testing.T) {
 	}
 }
 
-// restrict puts a licensing hold on a skill the way the review does (0023,
-// tools/content/restrict-anthropic-sa-display.sql). Direct SQL because the hold
-// is applied by a reviewer running that script, not by an endpoint — SEC-011's
-// operator surface does not exist yet.
+// restrict puts a licensing hold on a skill the way the bulk script does (0023,
+// tools/content/restrict-anthropic-sa-display.sql). Direct SQL on purpose: these
+// tests are about what a hold *does* to the read and run paths, and going
+// through the operator endpoint (02:SEC-011, PUT /admin/skills/{id}/restriction,
+// covered in operator_integration_test.go) would make them fail for reasons that
+// have nothing to do with the hold.
 func restrict(t *testing.T, pool *pgxpool.Pool, skillID string) {
 	t.Helper()
 	var id pgtype.UUID

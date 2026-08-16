@@ -717,11 +717,11 @@ queued → provisioning → preparing → running → evaluating
 允收準則：
 
 - 角色只有兩種：**`member`**（預設，權限完全由 Workspace Scope 決定）與 **`operator`**（平台管理員）。角色是平台層屬性，不是 Workspace 成員屬性。
-- **operator 可以做的事，窮舉如下**：①變更目錄項的可見性（下架／恢復）；②停用某個 Skill Version，使其不得被新的 Run 引用；③白名單的新增、否決與下架異動（`CONTENT-001`）。清單以外的動作一律不因 operator 身分而被允許。
+- **operator 可以做的事，窮舉如下**：①變更目錄項的可見性（下架／恢復）；②停用某個 Skill Version，使其不得被新的 Run 引用；③白名單的新增、否決與下架異動（`CONTENT-001`）。清單以外的動作一律不因 operator 身分而被允許。（**實作狀態 2026-08-16**：**只有 ① 的較輕等級「授權受限展示」落地**——見下方追加小節與 `03` `SEC-011`；完整下架／恢復仍只走 `INGEST-010` 的 Workspace 擁有者路徑，②③ **未實作**。窮舉清單本身不因未實作而縮減：它界定的是「即使實作了也不得超出」的上界。）
 - **operator 不得讀取任何 Workspace 私有資料**（最小權力原則，NFR-001）：Fork 內容、Test Case、Dataset、Run、Trace、Artifact 與下載紀錄一律不可讀；operator 身分**不擴充 Workspace Scope**，不得作為繞過鐵律 3 的路徑。需要私有資料才能判斷的案件（例如濫用檢舉），必須另立需求與另一套授權，不在本需求範圍。
 - **operator 不得代表使用者發起、取消或修改 Run**，亦不得建立、修改或刪除 Skill Version 與歷史 Run——下架只改變可見性與可下載性（`CONTENT-009`）。既有 Run 仍可追溯其使用的版本。
 - 每一個 operator 動作寫入 audit event（`CORE-008`），至少含：動作者、時間、對象（skill／skill_version／白名單條目 id）、動作、**理由（必填，空字串不成立）**、變更前後的可見性狀態。稽核事件不可由 operator 自行刪改。
-- **授予或撤銷 operator 角色本身也是 audit event**；角色只能由部署設定或既有 operator 授予，不得由使用者自助取得。
+- **授予或撤銷 operator 角色本身也是 audit event**；角色只能由部署設定或既有 operator 授予，不得由使用者自助取得。（**實作狀態 2026-08-16**：角色來源為部署設定 `OPERATOR_USER_IDS`（逗號分隔 user id），授予＝改設定並重啟，**使用者無自助路徑**，此半條完全成立。稽核半條以**最小形式**滿足：`cmd/api` 每次啟動寫一筆 `operator.roster` audit event，內容為當下生效的清單與筆數。**它記的是「誰現在是 operator」，不是「誰在何時授予」**——後者的事實在部署設定的變更歷史裡，不在平台內；要讓平台自己回答，需要 SEC-011 描述的角色表與授予端點，屬後續工作。另：寫不成這筆事件時，該次啟動**不承認任何 operator**（fail-closed，未稽核的角色等於沒有角色）。）
 - operator 端點與一般端點分離；`member` 呼叫 operator 端點時回 **404**（不揭露資源與端點存在，同 `SEC-008` 的不揭露原則）。
 - 下架、失效與來源變更共用 `CONTENT-009`／`INGEST-010` 的同一流程與同一組狀態，不得為 operator 另開第二套。
 
@@ -733,7 +733,25 @@ queued → provisioning → preparing → running → evaluating
 - **受限狀態隨 Fork 傳播**：Fork 是同一批素材的另一份副本，旗標於 Fork 當下複製（`WS-001` 已要求 Fork 保留 License 關係，這是同一條理由）。未傳播即等於「Fork 一次就解除」。
 - **未知的原因碼一律視為受限**（fail-closed）：若原因碼不在已知清單內，仍受限並顯示通用說明——否則審查紀錄裡的一個錯字就是解鎖手段。
 - **旗標可解除**：終判允許後，把該欄位設回 NULL 即恢復；因此它不放在不可變的 `skill_versions` 上（鐵律 4）。
-- **現況限制（誠實記錄）**：設定與解除目前**只能由審查者直接執行 SQL**（`tools/content/restrict-anthropic-sa-display.sql`），沒有端點、沒有 audit event——因為 operator 角色（本需求）與 `CORE-008` 都尚未實作。這正是備忘 §3 指出「可一鍵下架目前做不到」的同一個缺口，本次未一併解決。
+- ~~**現況限制（誠實記錄）**：設定與解除目前**只能由審查者直接執行 SQL**（`tools/content/restrict-anthropic-sa-display.sql`），沒有端點、沒有 audit event——因為 operator 角色（本需求）與 `CORE-008` 都尚未實作。這正是備忘 §3 指出「可一鍵下架目前做不到」的同一個缺口，本次未一併解決。~~
+  > **2026-08-16 已解除**：受限的設定與解除已有 operator 端點與 audit event（實作見 `03` `SEC-011`）。旗標語意、Fork 傳播與 fail-closed 規則皆不變，改變的只是「誰能動它、動了留不留紀錄」。
+  >
+  > **操作方式（單人團隊以 curl 直接操作，不做管理 UI）**：先在部署設定 `OPERATOR_USER_IDS` 填入自己的 user id 並重啟；`member` 呼叫這兩個端點一律 404。
+  >
+  > ```bash
+  > # 設定受限（reason 必須是平台認得的原因碼，目前只有 license-review；note 必填）
+  > curl -X PUT -b "$COOKIE" -H 'Content-Type: application/json' \
+  >   -d '{"reason":"license-review","note":"anthropics/skills 條款待法務終判"}' \
+  >   https://<host>/admin/skills/<skill_id>/restriction
+  >
+  > # 解除（note 必填：解除同樣是需要交代的 operator 動作）
+  > curl -X DELETE -b "$COOKIE" -H 'Content-Type: application/json' \
+  >   -d '{"note":"法務判定允許，恢復全文與試跑"}' \
+  >   https://<host>/admin/skills/<skill_id>/restriction
+  > ```
+  >
+  > **兩者皆冪等**：重設同一原因碼回 200（並回報前一個狀態）、解除本來就沒有的限制回 204；兩種情況都照樣寫 audit event，因為「操作者做了這個動作」本身就是要留的事實。
+  > `tools/content/restrict-anthropic-sa-display.sql` **保留不刪**：它做的是端點不做的事——一次套用到目錄項與其**既有**的所有 fork（含 fork 的 fork）。端點是逐筆的，Fork 傳播只對 Fork 當下之後成立。
 
 ## 7. MVP 整體 Definition of Done
 

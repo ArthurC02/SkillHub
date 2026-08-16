@@ -49,9 +49,22 @@ func main() {
 				RedirectURL:  os.Getenv("OAUTH_REDIRECT_URL"),
 			},
 		},
-		Secure:   os.Getenv("COOKIE_INSECURE") != "1", // 1 only for plain-http local dev
-		AppURL:   os.Getenv("APP_URL"),
-		DevLogin: os.Getenv("DEV_LOGIN") == "1", // offline dev provider; never in production
+		Secure:    os.Getenv("COOKIE_INSECURE") != "1", // 1 only for plain-http local dev
+		AppURL:    os.Getenv("APP_URL"),
+		DevLogin:  os.Getenv("DEV_LOGIN") == "1", // offline dev provider; never in production
+		Operators: operatorIDs(os.Getenv("OPERATOR_USER_IDS")),
+	}
+	// 02:SEC-011 「授予或撤銷 operator 角色本身也是 audit event」. The roster is
+	// deployment configuration, so the grant happens outside the application and
+	// this row at start-up is the only durable record that it happened.
+	//
+	// Failing to write it revokes the roster rather than stopping the process:
+	// an unaudited operator is exactly what the requirement forbids, while an API
+	// that will not boot because of a database hiccup takes the whole platform
+	// with it. Nobody is an operator until a start-up manages to record who is.
+	if err := auth.LogOperatorRoster(ctx); err != nil {
+		slog.Error("operator roster not audited; no operator will be recognised", "error", err)
+		auth.Operators = nil
 	}
 
 	store, err := objstore.New(
@@ -165,6 +178,21 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("api shutdown", "error", err)
 	}
+}
+
+// operatorIDs parses OPERATOR_USER_IDS, a comma-separated list of user ids
+// (02:SEC-011). Unset — the shipped default — means nobody is an operator and
+// every operator route answers 404. Nothing is validated as a UUID here: an id
+// that is not one simply never matches a session user, which is the same
+// outcome as leaving it out.
+func operatorIDs(raw string) map[string]bool {
+	out := map[string]bool{}
+	for _, id := range strings.Split(raw, ",") {
+		if id = strings.TrimSpace(id); id != "" {
+			out[id] = true
+		}
+	}
+	return out
 }
 
 // importFetcherFromEnv builds the URL-import fetcher: GitHub by default,

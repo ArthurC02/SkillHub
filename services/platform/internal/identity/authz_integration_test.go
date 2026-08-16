@@ -393,6 +393,13 @@ func TestAnonymousCallersGetThePublicSurfaceAndNothingElse(t *testing.T) {
 		{http.MethodPost, "/skills/" + id + "/runs/preflight/confirm", http.StatusUnauthorized},
 		{http.MethodGet, "/runs/" + id, http.StatusUnauthorized},
 		{http.MethodPost, "/runs/" + id + "/cancel", http.StatusUnauthorized},
+
+		// The operator surface (02:SEC-011) is the one exception to the 401 rule
+		// above: it answers 404 to everybody not on the deployment's operator
+		// list, so that a caller cannot learn the route exists. Anonymous callers
+		// are never on that list.
+		{http.MethodPut, "/admin/skills/" + id + "/restriction", http.StatusNotFound},
+		{http.MethodDelete, "/admin/skills/" + id + "/restriction", http.StatusNotFound},
 	} {
 		if got := anon.status(t, tc.method, tc.path); got != tc.want {
 			t.Errorf("%s %s: got %d, want %d", tc.method, tc.path, got, tc.want)

@@ -31,9 +31,23 @@ const (
 	ActionSkillFork          = "skill.fork"
 	ActionSkillDelete        = "skill.delete"
 	ActionSkillTakedown      = "skill.takedown"
-	ActionAccountDeleteAsk   = "account.deletion_requested"
-	ActionAccountDeleteStop  = "account.deletion_cancelled"
-	ActionAccountPurge       = "account.purged"
+	// 02:SEC-011: the platform operator's two licensing-hold actions and the
+	// roster that decides who may perform them. Split into set and clear because
+	// "somebody lifted a hold" is the event a review actually looks for, and a
+	// single action name would make it a metadata field to filter on.
+	ActionSkillRestrict   = "skill.access_restrict"
+	ActionSkillUnrestrict = "skill.access_unrestrict"
+	// ActionOperatorRoster is written once per API start with the operator list
+	// the process came up with. It is the minimum satisfaction of 02:SEC-011
+	// 「授予或撤銷 operator 角色本身也是 audit event」 for a roster that lives in
+	// deployment configuration: the grant is a config change plus a restart, and
+	// this row is the only place that fact is durably recorded. What it cannot
+	// give is who made the change or when they made it — that needs the role
+	// table SEC-011 describes, and this is deliberately not it.
+	ActionOperatorRoster    = "operator.roster"
+	ActionAccountDeleteAsk  = "account.deletion_requested"
+	ActionAccountDeleteStop = "account.deletion_cancelled"
+	ActionAccountPurge      = "account.purged"
 	// NFR-001 requires an audit trail for execution. A run's state history lives
 	// in run_status_transitions; these rows answer the different question of who
 	// asked for it (transitions the worker makes carry no actor).
@@ -58,6 +72,9 @@ const (
 	ResourceRun      = "run"
 	ResourceTestCase = "test_case"
 	ResourceDataset  = "dataset"
+	// ResourceOperatorRoster has no resource_id: the roster is the deployment's
+	// configuration, not a row anything can point at.
+	ResourceOperatorRoster = "operator_roster"
 )
 
 // Event is one audited operation.
