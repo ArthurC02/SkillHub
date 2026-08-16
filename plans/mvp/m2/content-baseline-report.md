@@ -2,7 +2,7 @@
 
 - 日期：**2026-08-16**（§12 為同日稍晚的補跑，條件不同，獨立成節）
 - 範圍：目錄內全部 **45 個 Skill**（精選 15、已索引 30），每個 Skill 一次平台基準 Run
-- **Runtime Image：§1～§11 全部量測於 `skillhub/runtime-agent-sdk:2026.08-1`（無 python3）；§12（9 筆）與 §13（其餘 36 筆）量測於 `2026.08-2`（含 python3）。全 45 筆現已在兩個映像上各有一組量測，最新一組為 `2026.08-2`。**
+- **Runtime Image：§1～§11 量測於 `2026.08-1`（無 python3）；§12（9 筆）＋§13（36 筆）於 `2026.08-2`（含 python3）；§14（41 筆，另 4 筆授權受限跳過）於 `2026.08-3`（deps 修正後）。最新一組量測為 `2026.08-3`，`docx`／`pdf`／`pptx`／`xlsx` 四筆停在 `2026.08-2`。**
 - 路徑：完整平台路徑（fork → Test Case → Dataset → Preflight → 確認 → Run → Worker 派送 → Sandbox → Trace → Artifact → Cleanup），無任何一段是假的
 - 依據：[`02` §4.7 CONTENT-007／008](../02-specifications-and-acceptance-criteria.md)、[m2/README.md 第四批交付摘要](README.md)
 - 機器可讀原始資料：`results.json`／`rows.json`（scratchpad，未入庫；本報告的每個數字都可由下列 Run ID 在資料庫重查）
@@ -573,3 +573,172 @@ psql -v image=skillhub/runtime-agent-sdk:2026.08-2 -v python_runtime=native \
 | 失敗 | 0 | 1（`pptx`，PDM-005 5.2a 輸入 token 上限，§12.3） | 1 |
 
 **「平台中止」類在新映像上維持歸零**，且精選 15/15 在**兩個映像上都是「符合」**——CONTENT-008 的允收結論不因換映像而改變，這次是有量測支撐的說法，不是推論。
+
+> **2026-08-16 後續**：§13.4 指出的依賴集缺口已由 `b2180b2` 修正（14 個 Skill 的 `deps` 重新推導、映像升 `2026.08-3`），而修正本身**追溯推翻了本節的 `native` 判定**——當時的「宣告 ⊆ 提供」是拿抄漏的宣告算出來的。第四批重測見 **§14**。
+
+---
+
+## 14. CONTENT-010：deps 修正後於 `2026.08-3` 全量重測（2026-08-16）
+
+### 14.1 為什麼要再測一次
+
+§13.3 把 45 筆判為 `native`，依據是 0022 的規則「套件宣告的 runtime 都由映像提供」。`b2180b2` 之後這個依據不成立了：靜態掃描 45 個 pin 住的套件樹，發現 **`deps` 欄位手抄漏了 8 個套件、涉及 14 個 Skill**（§13.4 只看到 4 個，因為只有那 4 個在該批資料集上真的撞到 `ModuleNotFoundError`）。宣告變大了，「宣告 ⊆ 提供」就得重算——**§13 的 `native` 是拿錯的宣告算出來的，必須以新映像上的新量測取代**。
+
+`2026.08-3` 補進 8 個套件：`pycountry`、`chardet`、`defusedxml`、`ftfy`、`confusable-homoglyphs`、`pytz`、`phonenumbers`、`python-stdnum`。條件其餘與 §3 相同（同模板、同 Dataset、per-Run `max_budget=$0.50`、併發 2），總上限 $4。
+
+### 14.2 授權受限：4 筆如實跳過，未繞過
+
+`0023_access_restriction` 的 licensing hold 已生效，4 個 anthropic-sa Skill（`docx`、`pdf`、`pptx`、`xlsx`）的 `access_restriction = 'license-review'`。實測封鎖確實擋在 Run 建立這一步：
+
+```
+POST /skills/{id}/runs → 422
+this skill cannot be run while its source license is under review (license-review)
+```
+
+Fork、Test Case、Dataset 上傳、Preflight 都照常成立（0023 只關 `GET /files` 與 `POST /runs`），**只有 Run 被拒**。四筆一律記為 **`restricted`，未重測**，沒有任何繞過嘗試；它們在 `2026.08-3` 上**沒有相容列**，目錄對這四筆顯示的仍是 `2026.08-2` 的量測（§14.5）。
+
+**代價要講明**：`defusedxml` 只有 `docx`／`pptx`／`xlsx` 三個 Skill 宣告，而這三個正好全在封鎖名單內——**「office 三件套的 validator 在 defusedxml 到位後是否真的執行」這個問題，在授權判定解除前無法用 Run 回答。** 能回答的只有映像層，見 §14.4。
+
+### 14.3 逐筆結果（image `2026.08-3`，41 筆量測 ＋ 4 筆 restricted）
+
+「deps 修正」欄標示該筆是否屬 `b2180b2` 更動的 14 個 Skill。最後一欄是同一 Skill 在 `2026.08-2` 的成本。
+
+| Skill | deps 修正 | 層級 | 判定 | Artifact | 08-3 成本 | （08-2 成本） |
+| --- | --- | --- | --- | --- | --- | --- |
+| `data-cleanliness-scan` | **是** | 精選 | 符合 | cleanliness_report.json, cleanliness_report.md | 0.0573 | 0.0592 |
+| `add-data-dictionary` | **是** | 已索引 | 符合 | data_dictionary.md | 0.0360 | 0.0341 |
+| `add-iso3166` | **是** | 已索引 | 符合 | data_iso3166.csv | 0.0326 | 0.0413 |
+| `data-comparability` | **是** | 已索引 | 符合 | comparability_plan.md | 0.0752 | 0.0975 |
+| `date-wrangling` | **是** | 已索引 | **未產出** | （無） | 0.0081 | 0.0160 |
+| `document-format-skills` | **是** | 已索引 | 符合 | **q2_update_official.docx** | 0.0775 | 0.0548 |
+| `docx` | **是** | 已索引 | **restricted** | （未跑） | — | 0.1476 |
+| `excel-validate` | **是** | 已索引 | 符合 | data_quality_report.md | 0.0352 | 0.0519 |
+| `pdf` | **是** | 已索引 | **restricted** | （未跑） | — | 0.1951 |
+| `pii-flag` | **是** | 已索引 | 符合 | pii_summary.md, pii_summary.json, pii_report.jsonl | 0.0774 | 0.0219 |
+| `pptx` | **是** | 已索引 | **restricted** | （未跑） | — | 0.3019 |
+| `standardise-country-names` | **是** | 已索引 | 符合 | data_standardised_report.md, data_standardised.csv | 0.0447 | 0.0509 |
+| `unicode-consistency` | **是** | 已索引 | 符合 | unicode_report.md | 0.0327 | 0.0474 |
+| `xlsx` | **是** | 已索引 | **restricted** | （未跑） | — | 0.1143 |
+| `ai-written-check` | — | 精選 | 符合 | ai_written_check_report.md | 0.0347 | 0.0199 |
+| `brand-guidelines` | — | 精選 | 符合 | anthropic_brand_update.pptx | 0.1034 | 0.1576 |
+| `csv-to-json` | — | 精選 | 符合 | data.json | 0.0244 | 0.0275 |
+| `data-analyst` | — | 精選 | 符合 | standardized_data.csv | 0.0409 | 0.0397 |
+| `excel-deduplicate` | — | 精選 | 符合 | data_deduplicated.xlsx, data_deduplicated.csv | 0.0223 | 0.0246 |
+| `excel-find-duplicates` | — | 精選 | 符合 | duplicate_rows_report.json | 0.0612 | 0.0466 |
+| `excel-format` | — | 精選 | 符合 | data_formatted.xlsx | 0.0351 | 0.0570 |
+| `excel-freeze` | — | 精選 | 符合 | frozen_header.xlsx | 0.0187 | 0.0249 |
+| `excel-insert` | — | 精選 | 符合 | data_with_formatted_date.xlsx | 0.0417 | 0.0386 |
+| `handoff` | — | 精選 | 符合 | handoff-q2-update.md | 0.0341 | 0.0209 |
+| `humanizer` | — | 精選 | 符合 | q2_update_humanized.md | 0.0525 | 0.0274 |
+| `internal-comms` | — | 精選 | 符合 | 3p-update.md | 0.0298 | 0.0280 |
+| `line-edit` | — | 精選 | 符合 | polished_email.md | 0.0248 | 0.0251 |
+| `text-to-numeric` | — | 精選 | 符合 | data_numeric_report.md, data_numeric.csv | 0.0455 | 0.0461 |
+| `copyright-creative-work` | — | 已索引 | 符合 | song-registration-intake-template.md, song-registration-prep.md | 0.0540 | 0.0513 |
+| `course-quiz-builder` | — | 已索引 | 符合 | questions.json, quiz.html | 0.1758 | 0.1648 |
+| `cringe-check` | — | 已索引 | 符合 | cringe_check_report.md | 0.0258 | 0.0468 |
+| `data-shape` | — | 已索引 | 符合 | column_mapping.md, schema.sql, schema_proposal.md | 0.0959 | 0.0591 |
+| `excel-date-to-text` | — | 已索引 | 符合 | data_date_text.csv | 0.0432 | 0.0389 |
+| `excel-delete` | — | 已索引 | 符合 | data_rows_5_to_10_deleted.csv | 0.0356 | 0.0634 |
+| `excel-filter` | — | 已索引 | 符合 | filtered_data.xlsx, filtered_data.csv | 0.0468 | 0.0228 |
+| `excel-mapping-replace` | — | 已索引 | 符合 | sales_country_mapped.csv | 0.0424 | 0.0317 |
+| `excel-merge` | — | 已索引 | 符合 | merged.xlsx | 0.0220 | 0.0337 |
+| `excel-regex-clean` | — | 已索引 | 符合 | notice.txt | 0.0450 | 0.0441 |
+| `excel-scout` | — | 已索引 | **未產出** | （無） | 0.0249 | 0.0408 |
+| `excel-sort` | — | 已索引 | 符合 | sorted_data.csv | 0.0567 | 0.0309 |
+| `excel-split` | — | 已索引 | 符合 | split/ 下 6 個 **.xlsx**（逐 customer 一檔） | 0.0263 | 0.0293 |
+| `full-review` | — | 已索引 | 符合 | full_review_report.md | 0.0619 | 0.0704 |
+| `json-restructure` | — | 已索引 | 符合 | orders_by_country.json, orders_by_country_data_dictionary.md | 0.0287 | 0.0540 |
+| `shorten` | — | 已索引 | 符合 | shortened_email.md | 0.0235 | 0.0239 |
+| `sokrati` | — | 已索引 | 符合 | rewrite_ru.md, changes_ru.md | 0.0722 | 0.0402 |
+
+**41 筆量測：符合 39、未產出 2（`date-wrangling`、`excel-scout`，與 §13 同兩筆、同一種「先回問／先勘察」行為）。零失敗、零預算拒絕、零 token 上限中止。**
+
+### 14.4 defusedxml 與 validator：能證到哪裡，證不到哪裡
+
+**Run 層面：證不到。** `defusedxml` 在整個目錄裡只有 `docx`／`pptx`／`xlsx` 宣告，三者全部 `restricted`；41 筆量測的 trace 中 `defusedxml` 出現 **0 次**。**office 三件套的 validator 在本批完全沒有被執行過**，這不是它壞了，是那三個 Skill 根本不允許起 Run。
+
+**映像層面：證得到，而且是有效的。** 直接對映像做探針（不涉及任何受限 Skill 的內容）：
+
+| 探針 | 結果 |
+| --- | --- |
+| `import defusedxml` | **0.7.1** |
+| `import docx / pptx / openpyxl` | python-docx 1.2.0、python-pptx 1.0.2、openpyxl 3.1.5 |
+| 對 `defusedxml.ElementTree` 餵一顆實體展開炸彈（`<!ENTITY a 'x'><!ENTITY b '&a;&a;'>`） | **`EntitiesForbidden`**——擋下 |
+
+所以能說的是：**`2026.08-3` 確實提供了一個會動、且真的會拒絕實體展開的 defusedxml；validator 一旦可以跑，它所依賴的東西是就緒的。** 不能說的是「validator 跑起來會通過」——那要等授權判定解除後補一次 Run 才知道。這一條列為後續。
+
+**間接旁證**：`document-format-skills`（宣告 `python-docx`，未受限）本批產出真正的 `q2_update_official.docx`，`excel-split` 產出 6 個真正的 `.xlsx`——OOXML 寫入路徑在這個映像上是通的。
+
+### 14.5 deps 修正的實測效果
+
+**`ModuleNotFoundError` 從 4 筆歸零。** §13.4 記錄的四個缺件（`pycountry`、`chardet`、`reportlab` 等）在本批**一次都沒有出現**——全批 script_log 中 `ModuleNotFoundError` 出現 **0 次**（`2026.08-2` 那批是 4 個 Skill）。
+
+新裝套件確實被用上了（trace 內出現該模組名的 Run）：
+
+| 新裝套件 | 實際使用的 Skill |
+| --- | --- |
+| `pycountry` | `add-iso3166`、`standardise-country-names` |
+| `chardet` | `data-cleanliness-scan`、`unicode-consistency` |
+| `phonenumbers`、`python-stdnum` | `pii-flag` |
+| `defusedxml`、`ftfy`、`confusable-homoglyphs`、`pytz` | **未被使用**（宣告者受限，或該路徑未被本模板觸發） |
+
+**刻意不裝的那些，本批沒有被觸發，因此也沒有推翻 [infra/images/README.md](../../../infra/images/README.md) 的預測**：`pyarrow`（Parquet）、`presidio-analyzer`／`presidio-anonymizer`（PII 引擎）、`pywin32`（Windows COM）、`pytesseract`／`pdf2image`／`reportlab` 仍不在映像內，實測確認 `import` 全部失敗。`pii-flag` 的 trace 裡 `presidio` 只出現在它讀自己 `SKILL.md` 的內容中，**沒有嘗試載入**——它改用有裝的 `phonenumbers`／`python-stdnum` 完成，正是 README 預測的降級路徑。**本批的 Dataset 是 CSV／Markdown，不含 Parquet、掃描件 PDF 或 `.doc`，所以那些缺口本來就不會被碰到——「沒出事」不等於「沒問題」，這點必須明說。**
+
+### 14.6 與 `2026.08-2` 的對照
+
+41 筆可比量測（排除 4 筆 restricted）：
+
+| | `2026.08-2` | `2026.08-3` | 變化 |
+| --- | --- | --- | --- |
+| 判定改變的筆數 | — | **0** | 41 筆判定與上一批**完全一致** |
+| Trace 成本合計 | $1.9051 | $1.9264 | +1% |
+| 輸入 token 合計 | 3,415,183 | 2,880,314 | **−16%** |
+| `ModuleNotFoundError` 筆數 | 4 | **0** | 歸零 |
+
+**判定沒有一筆改變，token 少了 16%，成本持平。** 這是合理的：補進來的套件消除的是「撞牆後繞路」的來回，而繞路本來就繞得成功——所以省的是 token，不是把失敗變成成功。**deps 修正的價值在於讓 `native` 這個判定重新為真，而不是讓更多 Skill 通過。**
+
+產物型別也更貼近 Skill 的本業：`excel-deduplicate`、`excel-filter`、`excel-insert`、`excel-split` 這一輪都產出了 `.xlsx`（上一輪部分只給 `.csv`）。
+
+### 14.7 相容軸回填
+
+```
+psql -v image=skillhub/runtime-agent-sdk:2026.08-3 -v python_runtime=native \
+     -v since='2026-08-16 13:00:00+00' -f tools/content/backfill-agent-compatibility.sql
+```
+
+**寫入 41 列**，全部 `capability=activated`／`runtime=native`。`2026.08-1` 與 `2026.08-2` 的既有 90 列回填前後**全表 md5 相同**（`3e7e4010…`），未被觸碰。
+
+| Runtime Image | capability | runtime | 列數 |
+| --- | --- | --- | --- |
+| `2026.08-1` | activated | native | 12 |
+| `2026.08-1` | activated | transpiled | 33 |
+| `2026.08-2` | activated | native | 45 |
+| **`2026.08-3`** | **activated** | **native** | **41** |
+
+**`docx`／`pdf`／`pptx`／`xlsx` 在 `2026.08-3` 上沒有列**（restricted，無 Run 可依據）。0022 的讀取路徑取「最新一次量測」，所以目錄對這四筆顯示的仍是 **`2026.08-2` 的舊值**，且會連映像標籤一起顯示——讀者看得出那是舊映像上的結論。這四筆的 `native` 同樣是拿修正前的宣告算出來的，**在授權判定解除、補跑一次之前，它們是本報告唯一仍帶著已知過時依據的相容列**。
+
+### 14.8 花費與合併統計
+
+| 項目 | 數值 |
+| --- | --- |
+| 本批 trace 回報成本 | $1.9264 |
+| **本批閘道實付** | **$2.0038**（總上限 $4 未觸及） |
+| 四批累計閘道實付 | **$8.10** |
+| 預算拒絕次數 | 0 |
+| 授權受限 422 筆數 | **4**（`docx`、`pdf`、`pptx`、`xlsx`） |
+
+**全 45 筆「最新量測」合併**（41 筆在 `2026.08-3`、4 筆停在 `2026.08-2`）：
+
+| 判定 | 精選（15） | 已索引（30） | 合計（45） |
+| --- | --- | --- | --- |
+| **符合** | **15（100%）** | 27 | **42（93.3%）** |
+| Run 成功但未產出 | 0 | 2（`date-wrangling`、`excel-scout`） | 2 |
+| 失敗 | 0 | 1（`pptx`，停在 `2026.08-2` 的 token 上限結果） | 1 |
+
+精選 15/15 在**三個映像上都是「符合」**；CONTENT-008 的允收結論連續三次量測都成立。
+
+### 14.9 留給後續
+
+1. **office 三件套的 validator 仍未被執行過**——`docx`／`pptx`／`xlsx` 的授權判定解除後，需補一次 Run 才能回答「defusedxml 到位後 validator 是否通過」。映像側已就緒（§14.4）。
+2. **四筆 restricted 的相容列帶著過時依據**（§14.7）——解除後應以 `2026.08-3`（或當時映像）重測並回填。
+3. **刻意不裝的套件所對應的降級路徑未被本模板觸發**（§14.5）——Parquet、掃描件 OCR、`.doc` 轉檔要有結論，需要對應型別的 Dataset，而那超出「同一模板套全部」的基準設計。
