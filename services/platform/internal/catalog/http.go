@@ -51,7 +51,7 @@ const (
 // nearest-but-irrelevant skills.
 //
 // 0.75 cosine distance is 0.25 cosine similarity, from
-// plans/mvp/m1/golden-query-set.md §10.5 — the re-derivation against real
+// docs/plans/mvp/m1/golden-query-set.md §10.5 — the re-derivation against real
 // index-time LLM enrichment, which is what this pipeline writes. Over that
 // corpus the two distributions do not overlap: the best hit for an off-topic
 // query peaked at 0.219 similarity, the worst genuine answer sat at 0.290, and

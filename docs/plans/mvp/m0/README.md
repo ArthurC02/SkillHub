@@ -15,10 +15,10 @@ M0 的產出是**文件、決策提案與 Spike**,不含產品程式碼。目標
 | 阻塞項 | 交付物 | 定案者 |
 | --- | --- | --- |
 | PDM-001~003 產品決策 | [pdm-proposals.md](pdm-proposals.md)(提案 v5) | 負責人 |
-| PDM-003 定案前置:LiteLLM 閘道相容性 ＋ Skill 載入路徑 ＋ **§11 補測** | [pdm-003-litellm-spike-report.md](pdm-003-litellm-spike-report.md)＋`spikes/pdm-003-litellm-gateway/` | 負責人(依結果定案 PDM-003) |
+| PDM-003 定案前置:LiteLLM 閘道相容性 ＋ Skill 載入路徑 ＋ **§11 補測** | [pdm-003-litellm-spike-report.md](pdm-003-litellm-spike-report.md)＋`docs/spikes/pdm-003-litellm-gateway/`(spike code 已刪除,見[墓碑](../../../spikes/README.md)) | 負責人(依結果定案 PDM-003) |
 | **PDM-001/002 定案前置:`data` 類別供給查核** | [data-category-sourcing.md](data-category-sourcing.md) | 負責人(依結果定案 PDM-001／002 與 PDM-004 白名單增補) |
 | 部署平台成本試算(ADR-014/015 定案條件) | [cost-estimation.md](cost-estimation.md)(v2 ＋ §6.2.3 v3 模型成本重估) | 負責人(依試算定案 ADR) |
-| PDM-011 意圖搜尋品質 Spike(ADR-013 定案條件) | [pdm-011-spike-report.md](pdm-011-spike-report.md)＋`spikes/pdm-011-intent-search/` | 負責人(依結果定案 ADR-013) |
+| PDM-011 意圖搜尋品質 Spike(ADR-013 定案條件) | [pdm-011-spike-report.md](pdm-011-spike-report.md)＋`docs/spikes/pdm-011-intent-search/`(spike code 已刪除,見[墓碑](../../../spikes/README.md)) | 負責人(依結果定案 ADR-013) |
 
 另含 M0 安全基線:
 
@@ -50,8 +50,8 @@ M0 的產出是**文件、決策提案與 Spike**,不含產品程式碼。目標
 | [`pdm-proposals.md`](pdm-proposals.md) | 治理 | PDM-001~011 產品決策提案 v5,PDM-001／002／003 依此定案;§9 為回寫 `02` 的對照表 | 凍結 |
 | [`data-category-sourcing.md`](data-category-sourcing.md) | 報告 | PDM-001／002 定案前置:`data` 類別的供給查核(來源、授權、九項精選檢查表逐一比對) | 凍結 |
 | [`cost-estimation.md`](cost-estimation.md) | 報告 | ADR-014／015 定案前置:兩情境的部署平台月費試算(v2 ＋ §6.2.3 模型成本 v3 重估) | 凍結 |
-| [`pdm-003-litellm-spike-report.md`](pdm-003-litellm-spike-report.md) | 報告 | PDM-003 定案前置:LiteLLM 閘道相容性與 Skill 載入路徑實測(spike code 在 `spikes/pdm-003-litellm-gateway/`) | 凍結 |
-| [`pdm-011-spike-report.md`](pdm-011-spike-report.md) | 報告 | ADR-013 定案前置:混合檢索與「符合原因」生成的可行性實測(spike code 在 `spikes/pdm-011-intent-search/`) | 凍結 |
+| [`pdm-003-litellm-spike-report.md`](pdm-003-litellm-spike-report.md) | 報告 | PDM-003 定案前置:LiteLLM 閘道相容性與 Skill 載入路徑實測(spike code 原在 `docs/spikes/pdm-003-litellm-gateway/`,已刪除,見[墓碑](../../../spikes/README.md)) | 凍結 |
+| [`pdm-011-spike-report.md`](pdm-011-spike-report.md) | 報告 | ADR-013 定案前置:混合檢索與「符合原因」生成的可行性實測(spike code 原在 `docs/spikes/pdm-011-intent-search/`,已刪除,見[墓碑](../../../spikes/README.md)) | 凍結 |
 | [`threat-model-and-sandbox-baseline.md`](threat-model-and-sandbox-baseline.md) | 治理 | SEC-001 威脅模型(32 條)與 SEC-002 Sandbox 最低安全基線(45 項可驗收阻擋條件) | 凍結(結論)。**唯一例外**:§3 的出口目的地依 ADR-022 Q3 的 CI 斷言([`.github/workflows/egress-allowlist.yml`](../../../../.github/workflows/egress-allowlist.yml))必須隨 `infra/egress/` 變更於同一個 PR 更新 |
 
 ## 備註

@@ -17,7 +17,7 @@ package.
 | `tools/` | Repo-side scripts: CI assertions, content import, golden-set evaluation |
 | `docs/` | Everything that is read rather than run (ADR-024) |
 | `docs/plans/`, `docs/adr/` | Product plan and architecture decision records (Traditional Chinese) |
-| `docs/spikes/` | M0 exploration code; never imported by product code, never built in CI |
+| `docs/spikes/` | Tombstone only — the M0 exploration code was deleted once its conclusions landed in the M0 reports, ADR-013/023 and `tools/goldenset/` ([details](docs/spikes/README.md)) |
 
 ## Development
 

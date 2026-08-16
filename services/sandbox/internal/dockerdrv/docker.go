@@ -3,7 +3,7 @@
 // them.
 //
 // It is the dev implementation of what production runs as gVisor. gVisor needs
-// Linux and the development machine is Windows (plans/mvp/m2/README.md), so the
+// Linux and the development machine is Windows (docs/plans/mvp/m2/README.md), so the
 // same code path sets HostConfig.Runtime to "runsc" from configuration and the
 // isolation level this provider declares follows that setting. Everything else
 // — non-root, read-only rootfs, dropped capabilities, no management socket, no

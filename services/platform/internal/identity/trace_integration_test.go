@@ -3,7 +3,7 @@
 // ingestion URL it was handed - because the pipeline being tested here is the
 // platform's half: token, scope, masking, idempotency, ordering and the two
 // read modes. The real container half is exercised by
-// services/sandbox and by the docker end-to-end run in plans/mvp/m2.
+// services/sandbox and by the docker end-to-end run in docs/plans/mvp/m2.
 package identity_test
 
 import (

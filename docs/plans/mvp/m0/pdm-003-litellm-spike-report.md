@@ -2,7 +2,7 @@
 
 - 日期：2026-08-14
 - 對應：[pdm-proposals.md §3（PDM-003）](pdm-proposals.md)「必須先做的前置 Spike」第 1 項、[ADR-017 模型閘道與 LLM 可觀測性](../../../adr/ADR-017-model-gateway-and-llm-observability.md)
-- Spike 程式碼：[`spikes/pdm-003-litellm-gateway/`](../../../spikes/pdm-003-litellm-gateway/)
+- Spike 程式碼：`docs/spikes/pdm-003-litellm-gateway/`（**已刪除，見[墓碑與還原指令](../../../spikes/README.md)**；本報告即其結論落點）
 - 狀態：**已執行，7/7 測項通過。結論為「協定層可行，PDM-003 的閘道假設成立」**，但範圍有明確界定（見第 3 節）與三個必須處理的相容性坑（見第 6 節）。
 - **2026-08-14 追加**：前置 Spike 第 2 項（Agent SDK 的 Skill 載入路徑）已補測，**6/6 PASS，見第 10 節**。載入機制成立，但**提案假設的 `<workdir>/skills/<name>/` 路徑被證偽**，正確路徑為 `<workdir>/.claude/skills/<name>/`。
 - **2026-08-14 再追加（第 11 節）**：模型供應商已定案為 **OpenAI API（經 LiteLLM 閘道，ADR-017 架構不變）**，原「需 Anthropic 憑證」的補測項改於正式後端完成。三項結果：(i) **Skill 自主觸發率 0/9**，旗艦與 mini 級同為 0，不可作為試跑成功判準；(ii) **`skills` 白名單的行為性過濾成立**，對 15 個內建 CLI Skill 同樣有效；(iii) **prompt caching 不會增加 300K token 上限能買的輪數**（省的是錢不是 token），300K 實測夠 **15 輪（無工具）／7.7 輪（每輪 1 次工具呼叫）**，且 `/v1/messages` 路由**不透傳 cache 用量欄位**（計費正確、可觀測性受損）。
@@ -61,7 +61,7 @@ PDM-003 §3 把「LiteLLM Proxy 的 Anthropic 相容端點在 Claude Agent SDK �
 
 ## 4. 逐項結果
 
-全部測項見 [`spikes/pdm-003-litellm-gateway/results.txt`](../../../spikes/pdm-003-litellm-gateway/results.txt)。
+全部測項見 `results.txt`（**已隨 spike 刪除，見[墓碑](../../../spikes/README.md)**；下表即其內容）。
 
 | # | 測項 | 結果 | 觀測值 |
 | --- | --- | --- | --- |
@@ -201,14 +201,14 @@ LiteLLM Proxy 的 Anthropic 相容端點在 tool use ＋ streaming ＋ 每 Run �
 
 ## 9. 重現方式
 
-見 [`spikes/pdm-003-litellm-gateway/README.md`](../../../spikes/pdm-003-litellm-gateway/README.md)。
+原記於 `docs/spikes/pdm-003-litellm-gateway/README.md`，**該目錄已刪除**——重跑步驟與程式碼可依[墓碑](../../../spikes/README.md)的還原指令自 Git 歷史取回。需要持續回歸的測項已升格為 [ADR-023](../../../adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md) §2 的四項清單，實測輸出見 [`infra/images/runtime-agent-sdk/UPGRADES.md`](../../../../infra/images/runtime-agent-sdk/UPGRADES.md)。
 
 ---
 
 ## 10. 前置項 2：Skill 載入路徑實測（2026-08-14 追加）
 
-- Spike 程式碼：[`spikes/pdm-003-litellm-gateway/test_skill_loading.py`](../../../spikes/pdm-003-litellm-gateway/test_skill_loading.py)
-- 結果檔：[`results-skill-loading.txt`](../../../spikes/pdm-003-litellm-gateway/results-skill-loading.txt)
+- Spike 程式碼：`docs/spikes/pdm-003-litellm-gateway/test_skill_loading.py`（**已刪除，見[墓碑](../../../spikes/README.md)**）
+- 結果檔：`results-skill-loading.txt`（同上；本節即其結論）
 - 環境：`claude-agent-sdk` **0.2.137**（Python）、Python 3.14.0，模型呼叫沿用第 2 節的 LiteLLM 官方 image（`sonnet-test` → `openai/gpt-4o-mini`）
 - 結果：**6/6 測項 PASS**
 
@@ -282,8 +282,8 @@ LiteLLM Proxy 的 Anthropic 相容端點在 tool use ＋ streaming ＋ 每 Run �
 
 ## 11. 補測：模型自主觸發 Skill、`skills` 白名單行為性過濾、Prompt Caching（2026-08-14 追加）
 
-- Spike 程式碼：[`spikes/pdm-003-litellm-gateway/test_supplemental.py`](../../../spikes/pdm-003-litellm-gateway/test_supplemental.py)
-- 結果檔：[`results-supplemental.txt`](../../../spikes/pdm-003-litellm-gateway/results-supplemental.txt)
+- Spike 程式碼：`docs/spikes/pdm-003-litellm-gateway/test_supplemental.py`（**已刪除，見[墓碑](../../../spikes/README.md)**）
+- 結果檔：`results-supplemental.txt`（同上；本節即其結論）
 - 環境：`claude-agent-sdk` 0.2.137、Python 3.14.0、LiteLLM 1.96.2 官方 image、Postgres 17
 - 總計 189 次模型呼叫，實際計費 **$0.93**
 

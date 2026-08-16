@@ -40,7 +40,7 @@ API_ADDR=:8080                          LLM_SERVICE_URL=http://host.docker.inter
 
 ### 1.1 模型出口：本次刻意違反鐵律 8，僅限本機
 
-llm 服務的 `/embed` 走 `litellm.aembedding(api_base=LITELLM_BASE_URL)`。本次**未**架設 LiteLLM 閘道（`spikes/pdm-003-litellm-gateway/`），而是把 `LITELLM_BASE_URL` 指向 `https://api.openai.com/v1`、`LITELLM_API_KEY` 帶入 `.env` 的 `OPENAI_API_KEY`，直連供應商。
+llm 服務的 `/embed` 走 `litellm.aembedding(api_base=LITELLM_BASE_URL)`。本次**未**架設 LiteLLM 閘道（作法原見 `docs/spikes/pdm-003-litellm-gateway/`，該 spike 已刪除，結論見 [`m0/pdm-003-litellm-spike-report.md`](../m0/pdm-003-litellm-spike-report.md)），而是把 `LITELLM_BASE_URL` 指向 `https://api.openai.com/v1`、`LITELLM_API_KEY` 帶入 `.env` 的 `OPENAI_API_KEY`，直連供應商。
 
 > **這不是可接受的部署形態。** 鐵律 8（ADR-017）要求所有模型呼叫走 LiteLLM 閘道、供應商金鑰只存在閘道。本次是為了在單機取得真 Embedding 做的臨時取徑，金鑰只以環境變數進入 uvicorn 程序、未寫入任何檔案，驗證結束即隨程序消滅。正式環境必須以閘道 + 每 Run 短效 Virtual Key 取代。
 

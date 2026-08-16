@@ -9,7 +9,7 @@
 // otherwise — CI never runs it. The budget on the key it mints is the backstop:
 // even a runaway agent cannot spend past ModelGatewayGrant.max_budget_usd.
 //
-// Running it: plans/mvp/m2/README.md, the fourth-batch section.
+// Running it: docs/plans/mvp/m2/README.md, the fourth-batch section.
 package identity_test
 
 import (

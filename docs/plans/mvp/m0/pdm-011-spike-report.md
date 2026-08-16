@@ -2,7 +2,7 @@
 
 - 日期：2026-08-13
 - 對應：[ADR-013 意圖搜尋混合檢索](../../../adr/ADR-013-intent-search-architecture.md)（定案條件）、DISC-001／DISC-002
-- Spike 程式碼：[`spikes/pdm-011-intent-search/`](../../../spikes/pdm-011-intent-search/)
+- Spike 程式碼：`docs/spikes/pdm-011-intent-search/`（**已刪除，見[墓碑與還原指令](../../../spikes/README.md)**；本報告即其結論落點）
 - 狀態：**已執行，結論為「方向可行，但需調整優先順序」**（詳見第 6 節）
 - 更新（v2，2026-08-13）：第 6.3 節列的前兩項「真 Embedding 跨語言召回」與「RRF 真實增益」**已補跑驗證**，結果與修訂建議見 **第 9 節**。第 1～8 節保留 v1 原貌不改寫，以便對照。
 
@@ -16,7 +16,7 @@
 
 | 項目 | 作法 |
 | --- | --- |
-| 語料 | 12 份真實公開 `SKILL.md`，取自 `github.com/anthropics/skills`（原始檔存於 `spikes/.../samples/`） |
+| 語料 | 12 份真實公開 `SKILL.md`，取自 `github.com/anthropics/skills`（原始檔曾存於 `docs/spikes/pdm-011-intent-search/samples/`，**已隨 spike 刪除**，見[墓碑](../../../spikes/README.md)；正式評估語料改用 [`tools/goldenset/`](../../../../tools/goldenset/)） |
 | Lexical | 自寫 BM25（k1=1.5、b=0.75） |
 | 向量 | **TF-IDF 餘弦（代用品）**——環境無 `ANTHROPIC_API_KEY` 與 `OPENAI_API_KEY`，真 Embedding 未驗證 |
 | 融合 | RRF（k=60） |
@@ -151,8 +151,10 @@
 
 ## 8. 重跑方式
 
+> **2026-08-16 加註**：`docs/spikes/pdm-011-intent-search/` 已刪除，下列指令需先依[墓碑](../../../spikes/README.md)的還原指令自 Git 歷史取回程式碼才成立。結論不變。
+
 ```bash
-cd spikes/pdm-011-intent-search
+cd docs/spikes/pdm-011-intent-search
 python run_spike.py --selfcheck   # 檢查檢索邏輯未壞
 python run_spike.py               # v1：輸出完整結果表
 python run_spike.py --embedding   # v2：以真 Embedding 取代 TF-IDF 腿
@@ -162,7 +164,7 @@ v1 無需 venv 與任何第三方套件；v2 亦然（以標準函式庫 `urllib
 repo 根目錄 `.env` 內的 `OPENAI_API_KEY`（該檔已被 `.gitignore` 排除；金鑰不進入程式碼、
 log、快取或本報告）。無金鑰時 `--embedding` 會明確報錯並提示改用預設模式。
 
-向量快取於 `spikes/pdm-011-intent-search/embeddings_cache.json`（已 gitignore，內容只有
+向量快取於 `docs/spikes/pdm-011-intent-search/embeddings_cache.json`（已 gitignore，內容只有
 文字雜湊與浮點陣列），重跑不重複計費。最後一次執行輸出保存於 `results.txt`（v1）與
 `results-embedding.txt`（v2）。
 

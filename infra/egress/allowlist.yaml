@@ -22,7 +22,7 @@
 # A new provider is added inside the LiteLLM gateway, never here (iron rule 8).
 #
 # Changing this file: its own PR, product owner approval in the commit message,
-# and the same PR must update plans/mvp/m0/threat-model-and-sandbox-baseline.md
+# and the same PR must update docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md
 # (its §3 maintenance rule). CI enforces the pairing.
 
 destinations:

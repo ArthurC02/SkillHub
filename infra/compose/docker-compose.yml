@@ -1,6 +1,6 @@
 # Local development stack (E1 deployment shape, cost-estimation §7.2).
 # Only Postgres runs today; the service images land with the first feature that
-# needs them (plans/mvp/03-work-items.md CORE-001) together with infra/images/.
+# needs them (docs/plans/mvp/03-work-items.md CORE-001) together with infra/images/.
 name: skillhub
 
 services:

@@ -17,7 +17,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 | --- | --- | --- |
 | `docs/plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單；`m0/`／`m1/`／`m2/` 為各里程碑凍結產出；`content/`／`governance/`／`gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-024） | [docs/plans/mvp/README.md](docs/plans/mvp/README.md) |
 | `docs/adr/` | 25 份架構決策紀錄（ADR-000～024；014 已 Superseded by 018，019 §1 已 Amended by 024） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
-| `docs/spikes/` | M0 驗證用 spike code（可重跑，非產品程式碼，不進 CI） | 各目錄 README |
+| `docs/spikes/` | **已刪除，只留墓碑**：M0 驗證用 spike code，結論已沉澱到 m0 報告／ADR-013／ADR-023／`UPGRADES.md`／`tools/goldenset/` | [docs/spikes/README.md](docs/spikes/README.md)（含還原指令與結論落點對照） |
 
 Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1 節已由 **ADR-024** 修訂為「跑的」（`apps/`、`services/`、`contracts/`、`db/`、`infra/`、`tools/`）與「讀的」（`docs/`）兩類——鋪程式碼依其結構進行，結構性偏離需先更新 ADR。
 

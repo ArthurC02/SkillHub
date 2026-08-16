@@ -164,7 +164,7 @@ type CostEstimate struct {
 // Measured, not modelled: the M2 baseline ran all 45 catalogue skills once each
 // through this exact path (mini tier, real sandbox, real gateway) and the gateway's
 // own per-key spend gave the distribution — median $0.0566, mean $0.0702, max
-// $0.2367 (plans/mvp/m2/content-baseline-report.md §5.2).
+// $0.2367 (docs/plans/mvp/m2/content-baseline-report.md §5.2).
 //
 // The published range is deliberately wider than that sample on both ends. The low
 // end is where a cache-warm repeat of a small skill lands; the high end is rounded
