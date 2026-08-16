@@ -109,7 +109,20 @@ dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒
 
 ## Skill 載入路徑
 
-沙箱內的展開點是 `<workdir>/.claude/skills/<name>/`，不是 `skills/`——這是 PDM-003 Spike §10 的實測結果，原提案的假設已被證偽。`.claude` 是隱藏目錄，展開與清理都必須涵蓋它。四個啟用條件（`cwd`、`settingSources` 含 `project`、skill 啟用、工具清單含 `Skill`）全部寫在 [`infra/images/runtime-agent-sdk/run.mjs`](../../infra/images/runtime-agent-sdk/run.mjs)，缺一則 Skill 靜默不載入。
+沙箱內的展開點是 `<workdir>/.claude/skills/<name>/`，不是 `skills/`——這是 PDM-003 Spike §10 的實測結果，原提案的假設已被證偽。`.claude` 是隱藏目錄，展開與清理都必須涵蓋它。SDK 以「一個目錄一個 skill」發現，所以 `<name>/` 那層不能省：套件直接倒進 skills 根目錄會被發現為零個 skill。
+
+啟用條件全部寫在 [`infra/images/runtime-agent-sdk/run.mjs`](../../infra/images/runtime-agent-sdk/run.mjs)，缺一則 Skill **靜默**不載入（不報錯、不警告，只是一個都沒有）：
+
+| 條件 | 值 | 註 |
+| --- | --- | --- |
+| `cwd` | 指向持有 `.claude/skills/` 的目錄 | 即 `/work` |
+| `settingSources` | **省略** | 見下 |
+| `skills` | `"all"` | 0.3.x 起 skill 啟用的唯一開關 |
+| `allowedTools` | 工作負載可用的工具清單 | 傳 `'Skill'` 已 **deprecated**，改由 `skills` 負責 |
+
+> **`settingSources` 的行為在 SDK 0.3.233 上與 PDM-003 Spike（claude-agent-sdk 0.2.137）相反。** 2026-08-16 實測：`settingSources: ["project"]` 在 0.3.233 **完全發現不到**專案 skill（`init.skills` 只剩內建 plugin），**省略**該選項才發現得到。Spike 當初列出 `["project"]` 是為了排除 `user` 以免映像裡的 `~/.claude` 滲進 Run；`HOME` 指向每個 Run 專屬的 `/work` tmpfs，沒有別的家目錄可滲，所以省略它不損失什麼。
+>
+> **SDK 版本升級時，以上每一條都必須重新實測，不得用推理帶過**——它們全是靜默失效，而這一條已經反轉過一次（`run.mjs` 檔頭有同樣的警語）。
 
 ## 開發與驗證
 
