@@ -2,7 +2,7 @@
 
 - 日期：**2026-08-16**（§12 為同日稍晚的補跑，條件不同，獨立成節）
 - 範圍：目錄內全部 **45 個 Skill**（精選 15、已索引 30），每個 Skill 一次平台基準 Run
-- **Runtime Image：§1～§11 全部量測於 `skillhub/runtime-agent-sdk:2026.08-1`（無 python3）；§12 的 9 筆量測於 `2026.08-2`（含 python3）**
+- **Runtime Image：§1～§11 全部量測於 `skillhub/runtime-agent-sdk:2026.08-1`（無 python3）；§12（9 筆）與 §13（其餘 36 筆）量測於 `2026.08-2`（含 python3）。全 45 筆現已在兩個映像上各有一組量測，最新一組為 `2026.08-2`。**
 - 路徑：完整平台路徑（fork → Test Case → Dataset → Preflight → 確認 → Run → Worker 派送 → Sandbox → Trace → Artifact → Cleanup），無任何一段是假的
 - 依據：[`02` §4.7 CONTENT-007／008](../02-specifications-and-acceptance-criteria.md)、[m2/README.md 第四批交付摘要](README.md)
 - 機器可讀原始資料：`results.json`／`rows.json`（scratchpad，未入庫；本報告的每個數字都可由下列 Run ID 在資料庫重查）
@@ -416,6 +416,8 @@ Key=skillhub-attempt-03d6493d-… Current cost: 0.50056965, Max budget: 0.5
 
 ### 12.5 誠實註記：其餘 36 筆仍是舊映像上的數字
 
+> **2026-08-16 已解除**：本節的保留條件由 §13 的全量重測解決；下文保留為當時的誠實狀態。
+
 **本節只重測了 9 筆。**§4 表格中的其餘 36 筆量測於 `2026.08-1`（無 python3），其中 **33 筆屬「Python 依賴」類、相容軸記為 `transpiled`**（腳本沒被執行，結果來自模型重寫）。在 `2026.08-2` 上這些很可能會轉為 `native`——本批 9 筆中的 `docx`、`xlsx`、`excel-*` 都從只產出文字檔變成真的產出 `.docx`／`.xlsx`，就是同一個機制。
 
 **全量重測不在本批範圍**，屬後續選項；在它完成前，目錄對那 36 筆顯示的仍是 `2026.08-1` 上的結論，且 0022 的讀取路徑會把映像標籤一起顯示，不會假裝那是新映像的答案。§5、§7 的統計與不符清單同理，全部是 `2026.08-1` 條件下的量測。
@@ -423,3 +425,149 @@ Key=skillhub-attempt-03d6493d-… Current cost: 0.50056965, Max budget: 0.5
 ### 12.6 對 §5 彙總的影響（合併後）
 
 45 筆取「每個 Skill 最新一次量測」合併後：**符合 43（95.6%）、失敗 1（`pptx`，token 上限）、Run 成功但未產出 1（`date-wrangling`）**；「平台中止」類**歸零**。精選 15/15 不變（全部於 `2026.08-1` 量測，CONTENT-008 的允收結論不受本節影響）。兩批合計閘道實付 **$4.25**。
+
+> **2026-08-16 後續**：§12.5 標為「後續選項」的全量重測已由負責人裁定執行，其餘 36 筆已在 `2026.08-2` 上重跑完畢——見 **§13**。本節（§12）的 9 筆量測不變。
+
+---
+
+## 13. 全量重測：其餘 36 個 Skill 於 `2026.08-2`（2026-08-16，負責人裁定）
+
+§12.5 記為「後續選項」的全量重測經負責人裁定執行。**§1～§11 的 45 筆（`2026.08-1`）與 §12 的 9 筆（`2026.08-2`）表格與統計一律不改寫**，本節是第三批量測。
+
+### 13.1 條件
+
+與 §3 完全相同的 Prompt 模板、Dataset、驗收條件、per-Run `max_budget=$0.50`、併發 2，Runtime Image `skillhub/runtime-agent-sdk:2026.08-2`。總上限 $6。對象是 §12 未涵蓋的 **36 個 Skill**（45 − §12 的 9）。
+
+**授權受限（422）**：本批預期可能撞到平行進行中的 anthropic-sa 試跑封鎖。四個 anthropic-sa Skill 中 `docx`／`pptx`／`xlsx` 已在 §12 量測，本批只剩 **`pdf`** 會受影響。實際執行時封鎖尚未合併，**`pdf` 正常跑完、沒有任何一筆收到 422**；若封鎖先落地，該筆應記為 `restricted，未重測`。
+
+### 13.2 逐筆結果（image `2026.08-2`）
+
+最後一欄是同一個 Skill 在 `2026.08-1` 的成本，供對照。
+
+| Skill | 層級 | 宣告 Runtime | 判定 | Artifact | in/out tokens | 08-2 成本 | （08-1 成本） |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `ai-written-check` | 精選 | none | 符合 | ai_written_check_report.md | 70282/2661 | 0.0199 | 0.0424 |
+| `brand-guidelines` | 精選 | none | 符合 | **anthropic_brand_q2_update.pptx** | 81869/12962 | 0.1576 | 0.1687 |
+| `csv-to-json` | 精選 | python | 符合 | data.json | 0/0 | 0.0275 | 0.0233 |
+| `data-analyst` | 精選 | python | 符合 | standardized_data.csv | 62338/495 | 0.0397 | 0.0784 |
+| `data-cleanliness-scan` | 精選 | python | 符合 | cleanliness_report.json, cleanliness_report.md | 38971/4390 | 0.0592 | 0.1013 |
+| `excel-deduplicate` | 精選 | python | 符合 | data_deduplicated.csv | 73206/1047 | 0.0246 | 0.1118 |
+| `excel-find-duplicates` | 精選 | python | 符合 | excel_find_duplicates_report.md | 37273/3135 | 0.0466 | 0.0552 |
+| `excel-format` | 精選 | python | 符合 | **data_formatted.xlsx** | 77338/354 | 0.0570 | 0.1208 |
+| `excel-freeze` | 精選 | python | 符合 | **frozen_header.xlsx** | 35813/1053 | 0.0249 | 0.1015 |
+| `excel-insert` | 精選 | python | 符合 | data.csv, data_backup_20260816115730.csv | 74839/1354 | 0.0386 | 0.0792 |
+| `handoff` | 精選 | none | 符合 | handoff-current-conversation.md | 51506/3320 | 0.0209 | 0.0345 |
+| `humanizer` | 精選 | none | 符合 | q2_update_humanized.md | 62729/631 | 0.0274 | 0.0366 |
+| `internal-comms` | 精選 | none | 符合 | 3p-update.md | 35749/110 | 0.0280 | 0.0243 |
+| `line-edit` | 精選 | none | 符合 | polished_email.md | 34964/764 | 0.0251 | 0.0177 |
+| `text-to-numeric` | 精選 | python | 符合 | text_to_numeric_report.md, data_numeric.csv | 143238/4529 | 0.0461 | 0.0545 |
+| `add-data-dictionary` | 已索引 | python | 符合 | data_dictionary.md | 107214/2662 | 0.0341 | 0.0355 |
+| `add-iso3166` | 已索引 | python | 符合 | data_iso3166.csv | 142793/3540 | 0.0413 | **—** |
+| `course-quiz-builder` | 已索引 | node | 符合 | quiz.html, questions.json | 251573/20062 | 0.1648 | 0.1183 |
+| `cringe-check` | 已索引 | none | 符合 | revised-draft.md, cringe-check-notes.md | 53688/1901 | 0.0468 | 0.0426 |
+| `data-comparability` | 已索引 | python | 符合 | comparability_plan.md | 76672/10933 | 0.0975 | 0.0855 |
+| `data-shape` | 已索引 | python | 符合 | mapping.csv, schema.sql, schema_proposal.md | 99341/7880 | 0.0591 | 0.0786 |
+| `date-wrangling` | 已索引 | python | **未產出** | （無） | 70377/1769 | 0.0160 | 0.0186 |
+| `excel-date-to-text` | 已索引 | python | 符合 | data_date_text.csv, data_backup.csv | 101254/4975 | 0.0389 | 0.0914 |
+| `excel-filter` | 已索引 | python | 符合 | filtered_data.csv | 37336/92 | 0.0228 | 0.0317 |
+| `excel-mapping-replace` | 已索引 | python | 符合 | data.csv | 37156/748 | 0.0317 | 0.0580 |
+| `excel-merge` | 已索引 | python | 符合 | **merged.xlsx** | 20435/394 | 0.0337 | 0.1348 |
+| `excel-regex-clean` | 已索引 | python | 符合 | processing_report.txt, data_cleaned.csv | 35751/414 | 0.0441 | 0.0661 |
+| `excel-scout` | 已索引 | python | **未產出** | （無） | 18904/424 | 0.0408 | 0.0416 |
+| `excel-validate` | 已索引 | python | 符合 | data_quality_report.md | 93988/1648 | 0.0519 | 0.1106 |
+| `full-review` | 已索引 | none | 符合 | full_review_report.md | 80084/10469 | 0.0704 | 0.0878 |
+| `pdf` | 已索引 | python | 符合 | **merged.pdf** | 216081/25273 | 0.1951 | 0.1378 |
+| `pii-flag` | 已索引 | python | 符合 | pii_summary.json, pii_report.jsonl | 89505/3634 | 0.0219 | 0.0901 |
+| `shorten` | 已索引 | none | 符合 | shortened_email.md | 94626/3332 | 0.0239 | 0.0224 |
+| `sokrati` | 已索引 | none | 符合 | edit_summary_ru.md, rewritten_email_ru.md | 159438/5000 | 0.0402 | 0.0478 |
+| `standardise-country-names` | 已索引 | python | 符合 | country_standardisation_report.md, data_standardised.csv | 143339/8764 | 0.0509 | 0.0708 |
+| `unicode-consistency` | 已索引 | python | 符合 | unicode_report.md | 150960/5290 | 0.0474 | 0.0925 |
+
+**36/36 Run 全部 `succeeded`，符合 34、未產出 2。** 沒有任何 Run 失敗，沒有任何預算拒絕，沒有任何 token 上限中止。
+
+`add-iso3166` 的 `2026.08-1` 成本欄是「—」，因為那一輪它沒有產生 `usage` 事件（§7.2 #4 記錄的 TRACE-004 缺口）。本輪有值——trace 批的修正生效了。
+
+兩筆「未產出」都是**同一種行為，不是壞掉**：Agent 判斷任務有歧義而先回問或先回報勘察結果，沒有寫檔。`date-wrangling` 兩輪都如此（問 `05/02/2024` 是 DD/MM 還是 MM/DD）；`excel-scout` 本輪明說「本次僅完成勘察，未寫入 `/out/artifacts/`」，上一輪則有寫。這是單輪基準模板遇上刻意含糊的 Dataset 的必然結果，判定它「做到了沒有」屬 EVAL-001。
+
+### 13.3 transpiled → native：33 筆全數轉換，但要分清「規則」與「證據」
+
+| | `2026.08-1` | `2026.08-2` |
+| --- | --- | --- |
+| `runtime = native` | 12 | **45** |
+| `runtime = transpiled` | 33 | **0** |
+
+**33 筆全部由 `transpiled` 轉為 `native`。** 但 `native` 是 0022 的規則判定（「套件宣告的 runtime 都由這個映像提供」），本批同時取得了行為證據，兩者要分開講：
+
+- **證據面**：本批 25 個 Python 依賴 Skill 中，**23 個在 trace 裡有實際的 `script_log`**（即容器內真的執行了腳本），且**全批 36 條 `script_log` 中 `python3: command not found` 出現 0 次**（`2026.08-1` 那輪正是靠這行字發現問題的）。
+- **沒有 script_log 的 2 筆**：`date-wrangling`（先回問，什麼都沒跑）與 `excel-find-duplicates`（用 Read／Grep 直接完成，沒動到腳本）。它們的 `native` 是規則判定成立、行為未觀察到——**規則說得對，但這兩筆沒有自己的證據**。
+
+產物層面的轉換最直觀：`brand-guidelines` 從 `.html` 變成真的 `.pptx`，`excel-format`／`excel-freeze`／`excel-merge` 產出真的 `.xlsx`，`pdf` 產出真的 `.pdf`。
+
+**成本與 token 一起掉下來**（同樣 36 個 Skill，同樣模板）：
+
+| | `2026.08-1` | `2026.08-2` | 變化 |
+| --- | --- | --- | --- |
+| Trace 成本合計 | $2.5126 | **$1.8166** | **−28%** |
+| 輸入 token 合計 | 5,942,513 | **2,960,630** | **−50%** |
+
+跑腳本比讓模型重寫一份等效邏輯便宜——輸入 token 直接砍半。這是「裝 Python」這個決定最實際的回報，也修正了 §5.2「45 個 Skill 一輪基準成本 $3–4」的估計：在新映像上是 **$2.2 左右**（本批 36 筆 $1.85 ＋ §12 的 9 筆 $0.86 之中屬新映像的部分）。
+
+### 13.4 pandas 3.x 與依賴集：目錄批標注「未實測」的那一項，實測結果
+
+**pandas 3.0.5 本身幾乎沒有造成問題。** 全批只觸發一則 pandas 3 的行為變更告警，且是告警不是錯誤：
+
+| Skill | 訊息 | 判讀 |
+| --- | --- | --- |
+| `data-analyst` | `Pandas4Warning: For backward compatibility, 'str' dtypes are included by select_dtypes when 'object' dtype is specified. This behavior is deprecated and will be removed in a future version.` | pandas 3 的**字串型別遷移**：`str` 已是獨立 dtype，而舊腳本用 `select_dtypes(include='object')` 當作「選出所有字串欄」。目前靠向後相容仍可運作，**下一個大版本會失效**。Run 未受影響 |
+
+**真正的摩擦不是 pandas，是映像的依賴集少了腳本實際會 import 的套件。** 映像的安裝集是「目錄 `deps` 欄位的聯集」（`lxml`、`numpy`、`openpyxl`、`pandas`、`pdfplumber`、`pypdf`、`python-dateutil`、`python-docx`、`python-pptx`），而腳本 import 的比這份策展判斷多：
+
+| Skill | 缺少的模組 | 目錄 `deps` 宣告的是 | 結果 |
+| --- | --- | --- | --- |
+| `add-iso3166` | `pycountry`（且 `pip` 已依設計移除，無法補裝：`No module named pip`） | `pandas` | 改用內嵌對照表完成，**符合** |
+| `standardise-country-names` | `pycountry` | `pandas` | 同上，**符合** |
+| `data-cleanliness-scan` | `chardet` | `pandas` | 改用內建編碼偵測，**符合** |
+| `pdf` | `reportlab`、`fitz`(PyMuPDF)、`pikepdf`、`svglib`、`cairosvg`、`fpdf`、`weasyprint`、`matplotlib`（可用者：`PIL 12.3.0`、`pypdf 6.16.1`、`pdfplumber 0.11.10`） | `pypdf`、`pdfplumber` | 用可用的子集完成合併，**符合** |
+
+**四筆全部仍然通過**——Agent 撞到 `ModuleNotFoundError` 後改用可用的手段。但這正是要記錄的事：**「安裝目錄宣告依賴的聯集」這條規則，其輸入是 CONTENT-003 的策展判斷，而實測證明該判斷少算了。** 這不是映像的 bug，是依賴清單的覆蓋率問題，處置有二：擴充 `seed-skills.json` 的 `deps` 後重建映像，或接受這個落差並在目錄上標示。兩者都需要決策，不在本批範圍。
+
+沙箱**沒有網路**（SBX-007），`pip` 也已隨 npm 一起移除，所以執行期補裝不存在——這是刻意的，也代表依賴集只能在建映像時決定。
+
+### 13.5 相容軸回填
+
+```
+psql -v image=skillhub/runtime-agent-sdk:2026.08-2 -v python_runtime=native \
+     -v since='2026-08-16 10:00:00+00' -f tools/content/backfill-agent-compatibility.sql
+```
+
+**寫入 45 列**（本批 36 ＋ §12 的 9，同一個映像故同一個時間窗即可涵蓋），全部 `capability=activated`／`runtime=native`。`2026.08-1` 的 45 列回填前後**全表 md5 相同**（`c97409ae…`），未被觸碰。
+
+現況：
+
+| Runtime Image | capability | runtime | 列數 |
+| --- | --- | --- | --- |
+| `2026.08-1` | activated | native | 12 |
+| `2026.08-1` | activated | transpiled | 33 |
+| **`2026.08-2`** | **activated** | **native** | **45** |
+
+0022 的讀取路徑取「該版本最新一次量測」，因此目錄現在對全部 45 筆顯示 `2026.08-2` 的結論，並附上映像標籤。
+
+### 13.6 花費與合併統計
+
+| 項目 | 數值 |
+| --- | --- |
+| 本批 trace 回報成本 | $1.8166 |
+| **本批閘道實付** | **$1.8519**（總上限 $6 未觸及） |
+| 三批累計閘道實付 | **$6.10** |
+| 預算拒絕次數 | **0** |
+| 收到授權受限 422 的筆數 | **0**（封鎖尚未合併；`pdf` 正常量測） |
+
+**全 45 筆「最新量測」（全部在 `2026.08-2` 上）合併統計**：
+
+| 判定 | 精選（15） | 已索引（30） | 合計（45） |
+| --- | --- | --- | --- |
+| **符合** | **15（100%）** | 27 | **42（93.3%）** |
+| Run 成功但未產出 | 0 | 2（`date-wrangling`、`excel-scout`） | 2 |
+| 失敗 | 0 | 1（`pptx`，PDM-005 5.2a 輸入 token 上限，§12.3） | 1 |
+
+**「平台中止」類在新映像上維持歸零**，且精選 15/15 在**兩個映像上都是「符合」**——CONTENT-008 的允收結論不因換映像而改變，這次是有量測支撐的說法，不是推論。
