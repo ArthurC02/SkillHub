@@ -244,13 +244,27 @@ LIMIT sqlc.arg(result_limit);
 -- name: ReindexAll :execrows
 -- Rebuilds the whole projection from the source of truth (INGEST-009 重新索引).
 -- Idempotent; safe to run any time.
+--
+-- `updated_at` is set on insert and left alone on conflict, on purpose. Its only
+-- reader is ListPendingEnrichment's "oldest first" ordering, so it means "how
+-- long has this document been waiting", and a rebuild does not make a document
+-- newer - it re-derives the same two columns from the same source row.
+--
+-- Stamping now() on every row cost the timestamp its only job: after a rebuild
+-- the whole projection shared one instant, ListPendingEnrichment's order became
+-- arbitrary, and neither it nor REINDEX_BATCH could keep a backfill away from
+-- the 45 fork documents the M2 baseline run left pending in a scratch workspace
+-- (~$2 of flagship enrichment per re-run). The workaround was to hand-mark those
+-- rows `enriched` before every backfill and restore them after. With the
+-- timestamp preserved, the freshly forked documents sort last and a bounded
+-- REINDEX_BATCH reaches the genuinely old pending rows first, with no hand step.
 INSERT INTO search_documents (skill_id, workspace_id, name, summary, updated_at)
 SELECT sk.id, sk.workspace_id, sk.name, coalesce(sk.summary, ''), now()
 FROM skills sk
 WHERE sk.deleted_at IS NULL AND sk.takedown_at IS NULL
 ON CONFLICT (skill_id) DO UPDATE
 SET workspace_id = EXCLUDED.workspace_id, name = EXCLUDED.name,
-    summary = EXCLUDED.summary, updated_at = now();
+    summary = EXCLUDED.summary;
 
 -- name: DeleteSearchDocument :exec
 DELETE FROM search_documents WHERE skill_id = $1;

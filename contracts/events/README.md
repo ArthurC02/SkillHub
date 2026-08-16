@@ -137,7 +137,18 @@ Run 狀態的唯一事實來源是 Go 擁有的 Postgres 狀態機（`runs.statu
 
 ## 9. 版本演進規則
 
-`schema_version` 形如 `MAJOR.MINOR`，目前 `1.0`。
+`schema_version` 形如 `MAJOR.MINOR`，目前 `1.1`。
+
+**版本紀錄**
+
+| 版本 | 日期 | 變更 |
+| --- | --- | --- |
+| `1.0` | 2026-08-16 | 首版（TRACE-001）。 |
+| `1.1` | 2026-08-16 | additive：`usagePayload.token_source`（`result`／`accumulated`／null）。成因見下段。 |
+
+`token_source` 之所以需要：`usage` 事件原本只在 Agent SDK 的 `result` 分支發出，串流以任何其他方式結束（崩潰、牆鐘、token 上限中止，或實測到的「Run 成功但 SDK 沒給 result」）就**完全不發**——不是發 0，是不發，EVAL-012 的成本合計因此系統性低估（實測 45 個 Run：Trace $3.0879 vs 閘道實付 $3.3932）。harness 改為逐則訊息累計、結束時一律發一筆 run 級 usage，`token_source` 說明這筆的數字是 SDK 的 `result` 總計還是 harness 自己累計的。**`cost_source` 不承載這件事**：成本一律來自閘道，與 SDK 有沒有給 result 無關，把兩種來源塞進同一個欄位會讓「錢的來源」跟著「token 的來源」一起說謊。
+
+**版本宣告的規則**：producer 宣告的是它「照哪一版契約寫」。只用 1.0 欄位的 producer（控制平面的 `error`／`run_lifecycle`）繼續宣告 `1.0` 是正確的，而 1.0 事件必然是合法的 1.1 事件；沙箱 harness 因為會寫 `token_source`，宣告 `1.1`。消費端一律接受任何 `1.x`（`internal/trace.compatibleVersion`）。
 
 **Minor bump（additive，消費者不需改）——允許：**
 

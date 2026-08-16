@@ -148,9 +148,12 @@ func DefaultResourceLimits() ResourceLimits {
 		ArtifactTotalBytes:   100 << 20,
 		ArtifactFileBytes:    25 << 20,
 	}
-	// Enforced by the worker counting gateway-reported input_tokens, not by the
-	// Virtual Key's max_budget - prompt caching decoupled spend from token count
-	// by 7-8x (PDM-005 5.2a). Counting lands with the provider in RUN-005/SBX-006.
+	// Enforced, and not by the Virtual Key's max_budget - prompt caching decoupled
+	// spend from token count by 7-8x (PDM-005 5.2a). The counting happens in the
+	// sandbox harness, which is the only party that sees a per-response token
+	// count: RunUsage carries none back here. These numbers travel to it inside
+	// this same snapshot, so the ceiling that stops a run is the one the pre-run
+	// permission summary showed the user and they confirmed (02:TEST-005).
 	l.TokenBudget.MaxInputTokens = 300_000
 	l.TokenBudget.MaxOutputTokens = 60_000
 	return l

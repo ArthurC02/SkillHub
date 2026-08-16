@@ -376,6 +376,16 @@ func (m *Manager) finish(id string, out Outcome, re *RunError) {
 	case out.ExitCode == 0:
 		// The workload ran to its own end and said it succeeded.
 		e.run.State, res.Status = StateCompleted, ResultSucceeded
+	case out.ExitCode == exitTokenBudget:
+		// Completed, like any other workload that stopped itself: the harness
+		// enforced the run's own token ceiling and shut the turn down cleanly,
+		// so its artifacts and the tail of its trace are collected as usual.
+		// Only the message differs, and it has to: "workload exited with code 9"
+		// in a run's failure detail would be the platform declining to say what
+		// its own limit did (NFR-001).
+		e.run.State, res.Status = StateCompleted, ResultFailed
+		res.Error = &RunError{Class: ClassExecution, Message: "the workload reached the run's token ceiling (PDM-005 5.2a); see the trace's token_budget_exceeded event for the count"}
+		e.run.StateReason = res.Error.Message
 	default:
 		// Ran to its own end and reported failure: completed, not failed.
 		e.run.State, res.Status = StateCompleted, ResultFailed
@@ -612,6 +622,16 @@ func (c Config) accept(req RunRequest) *RunError {
 		return mismatch("max_pids %d exceeds the %d this provider can enforce", l.MaxPIDs, max.MaxPIDs)
 	case l.WallClockHardSeconds > max.WallClockHardSeconds:
 		return mismatch("wall_clock_hard_seconds %d exceeds the %d this provider allows", l.WallClockHardSeconds, max.WallClockHardSeconds)
+	// A token ceiling above what this provider counts to would be a limit shown
+	// to a user and then not applied, which is the state PDM-005 5.2a was closed
+	// to end. A request with no token_budget at all is still accepted: the run is
+	// then bounded by spend, rate and wall clock, and nobody was told otherwise.
+	case l.TokenBudget != nil && max.TokenBudget != nil &&
+		(l.TokenBudget.MaxInputTokens > max.TokenBudget.MaxInputTokens ||
+			l.TokenBudget.MaxOutputTokens > max.TokenBudget.MaxOutputTokens):
+		return mismatch("token_budget %d/%d exceeds the %d/%d this provider can enforce",
+			l.TokenBudget.MaxInputTokens, l.TokenBudget.MaxOutputTokens,
+			max.TokenBudget.MaxInputTokens, max.TokenBudget.MaxOutputTokens)
 	case req.Egress.Mode != "default_deny" && req.Egress.Mode != "none":
 		return mismatch("egress mode %q is not supported", req.Egress.Mode)
 	case req.Egress.Mode == "none" && len(req.Egress.Allow) > 0:

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 // Client calls the internal LLM service endpoints.
@@ -18,11 +17,27 @@ type Client struct {
 	HTTPClient *http.Client // uses http.DefaultClient if nil
 }
 
+// httpClient deliberately returns a client with no Timeout of its own: the
+// deadline is the caller's ctx and nothing else (iron rule 7 - Go owns timeout
+// policy, and it owns it in one place).
+//
+// It used to be `&http.Client{Timeout: 30 * time.Second}`, which was shorter
+// than every caller's ctx budget - ingest/enrich.go allows 75s so the LLM
+// service's own 60s ceiling surfaces as its error rather than as our deadline.
+// The 30s fired first, so that budget was never reachable and three of fourteen
+// enrichment calls in the M1 fix round died at 30s and succeeded on a re-run.
+// Worse, giving up client-side does not cancel the call upstream: every one of
+// those timeouts was still billed at the gateway. A second, shorter, invisible
+// deadline is not a safety net, it is a bill for work that gets thrown away.
+//
+// Every caller carries a deadline today (enrich 75s, embed 20s, catalog embed
+// 10s / match reasons 8s, testlab suggest); a future one that forgets will hang
+// on its own ctx, which is the failure the caller can see and fix.
 func (c *Client) httpClient() *http.Client {
 	if c.HTTPClient != nil {
 		return c.HTTPClient
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return http.DefaultClient
 }
 
 // post sends req as JSON to path and decodes the response into Resp. The error

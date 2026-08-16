@@ -21,8 +21,8 @@
     "schema_version": {
       "type": "string",
       "pattern": "^1\\.[0-9]+$",
-      "description": "Trace event contract version. Minor bumps are additive only; a breaking change bumps the major and gets a new $id.",
-      "examples": ["1.0"]
+      "description": "Trace event contract version. Minor bumps are additive only; a breaking change bumps the major and gets a new $id. 1.1 added usagePayload.token_source; a producer writing only 1.0 fields may keep declaring 1.0, and a 1.0 event is a valid 1.1 event.",
+      "examples": ["1.1", "1.0"]
     },
     "event_id": {
       "type": "string",
@@ -318,7 +318,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["model", "input_tokens", "output_tokens"],
-      "description": "TRACE-004. Token and cost accounting for one model call or one run-level rollup. All model traffic goes through the LiteLLM gateway (iron rule 8), so these numbers come from the gateway response, never from a provider SDK.",
+      "description": "TRACE-004. Token and cost accounting for one model call or one run-level rollup. All model traffic goes through the LiteLLM gateway (iron rule 8), so these numbers come from the gateway response, never from a provider SDK.\n\nA run-total rollup is emitted once per run whether or not the agent turn reached a clean end - see token_source. An absent usage event means the producer never got to report at all, and a consumer must render that as unreported, never as zero (EVAL-012 sums these and would otherwise undercount every abnormal run).",
       "properties": {
         "scope": {
           "type": "string",
@@ -351,6 +351,14 @@
           "type": ["string", "null"],
           "enum": ["gateway", "estimated", null],
           "description": "`gateway` is LiteLLM's own figure (cache discount already applied). `estimated` is a platform-side calculation and must be labelled as an estimate in the UI.",
+          "$comment": "Describes where cost_usd came from, and only that. It is deliberately not overloaded to describe the token counts, which have their own provenance in token_source: the gateway answers for the money whether or not the agent SDK produced an end-of-turn total.",
+          "default": null
+        },
+        "token_source": {
+          "type": ["string", "null"],
+          "enum": ["result", "accumulated", null],
+          "description": "Where input_tokens / output_tokens came from. `result` is the agent SDK's own end-of-turn total. `accumulated` is the producer summing each model response's usage as it streamed, which is what a run reports when the turn ended without a result message - a crash, an abort at the run's token ceiling, a wall-clock stop, or (measured, add-iso3166) an SDK that simply produced no result for a turn that otherwise succeeded. The two are the same quantity from different vantage points, not different quantities; `accumulated` is a floor, because a response still in flight when the stream ended is not in it. NULL means a producer predating 1.1 did not say.",
+          "$comment": "Added in 1.1. Before it, usage was emitted only on the SDK's result branch, so every run that ended any other way reported no usage at all and EVAL-012's cost roll-up undercounted by exactly the abnormal runs (measured: trace $3.0879 vs gateway $3.3932 over 45 runs).",
           "default": null
         },
         "duration_ms": { "type": ["integer", "null"], "minimum": 0, "default": null }
@@ -497,7 +505,7 @@
       }
     },
     {
-      "schema_version": "1.0",
+      "schema_version": "1.1",
       "event_id": "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b07",
       "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
       "attempt": 1,
@@ -517,6 +525,7 @@
         "cache_write_input_tokens": null,
         "cost_usd": 0.0142,
         "cost_source": "gateway",
+        "token_source": "result",
         "duration_ms": 4870
       }
     },

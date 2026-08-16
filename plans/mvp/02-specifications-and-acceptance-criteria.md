@@ -271,7 +271,7 @@ queued → provisioning → preparing → running → evaluating
 | Wall clock | 軟上限 **10 分鐘**（進入 `timed_out`）／硬上限 **15 分鐘**（強制銷毀） | 已強制（`03` SBX-006、RUN-006） |
 | Artifact 輸出總量 | ≤ 100 MB，單檔 ≤ 25 MB，超過即截斷並在 Trace 標記 | 已強制（`03` SBX-008） |
 | 同一 Workspace 並行 Run | **2** | **未強制**——`ConcurrentRunSlots` 是 Provider 側容量，不是 Workspace 配額；`SEC-002` 閘門 B 已把它列為阻擋條件 |
-| 模型 Token | 每 Run ≤ **300K input ／ 60K output** | **強制實作中，見 `03`**（強制點為 Go Worker 依閘道回報的 `input_tokens` 累計） |
+| 模型 Token | 每 Run ≤ **300K input ／ 60K output** | 已強制（`03` SBX-013）——強制點為沙箱 harness 的逐回應累計 |
 
 - **Token 上限必須連同輪數換算表一起呈現，不得只寫「300K」**（PDM-005 §5.2a-2）。harness 固定開銷實測約 **19.4K input tokens／次 API 呼叫**，而每一次工具結果回填都要重送整個前綴，因此每輪 input ≈ 19.4K ×（1 ＋ 該輪工具呼叫次數）：
 
@@ -282,8 +282,11 @@ queued → provisioning → preparing → running → evaluating
   | 每輪 2 次工具呼叫 | ~58.5K（外推） | **約 5 輪** |
 
   單一輪數在此沒有意義：同一個 300K，工具密集的 Run 只夠 5 輪，純對話夠 15 輪。凡是對使用者呈現這個上限的地方（權限摘要、錯誤訊息、文件），都必須讓讀者看得出這件事依賴每輪工具呼叫次數。
-- **Token 上限的強制點只有一個：Go Worker 依閘道回報的 `input_tokens` 累計。** `max_budget`（金額）與 `tpm_limit`（速率）**都不是 token 上限的代理**——prompt caching 命中的 token 一樣計入 `input_tokens`，快取省的是錢不是 token，兩者因此脫鉤約 7～8 倍（PDM-005 §5.2a-3／-4）。三者職責不同、須併用：token 累計管上限、`max_budget` 管花費、`tpm_limit` 管速率。
-- **在強制成立之前，`TokenBudget` 不得以「平台會執行的上限」形式呈現給使用者**（NFR-001「UI 不得誤導」）。目前它被寫進 `policy_snapshot` 並顯示於執行前權限摘要且要求使用者確認，而平台沒有任何一處會因超過它而停止 Run——這是本需求未完全符合的部分，狀態為**強制實作中，見 `03`**。
+- **Token 上限的強制點只有一個：沙箱 harness 逐則模型回應累計，跨越上限即中止該 Run。** `max_budget`（金額）與 `tpm_limit`（速率）**都不是 token 上限的代理**——prompt caching 命中的 token 一樣計入 `input_tokens`，快取省的是錢不是 token，兩者因此脫鉤約 7～8 倍（PDM-005 §5.2a-3／-4）。三者職責不同、須併用：token 累計管上限、`max_budget` 管花費、`tpm_limit` 管速率。
+  - **2026-08-16 強制點修正**：PDM-005 §5.2a 原本指定 Go Worker 依閘道回報的 `input_tokens` 累計。**按字面做不出來**——`RunResult.usage` 不回傳 token 數（`contracts/openapi/sandbox-provider.yaml` 的 `RunUsage` 已誠實記載此缺口），而從 Trace 事後重建發生在錢已經花完之後。看得到「每一次模型回應用了多少 token」的地方只有沙箱內的 harness，強制點因此改在那裡；PDM-005 的**上限值、語意與三層併用的結論全部不變**，改的只是誰數數。實作與證據見 `03` SBX-013。
+  - 強制的性質要講清楚：這是**合作式**停止，與 `wall_clock_soft_seconds` 同一類，擋的是失控的 agent 迴圈。非合作式的煞車仍在沙箱之外（Virtual Key 的 `max_budget`／`tpm_limit`、硬牆鐘的強制銷毀）。跨越上限的那一次回應已經付過錢，中止擋的是下一次呼叫。
+  - Provider 若無法強制此上限，**不得**在 `ProviderCapability.max_resources` 宣告 `token_budget`；宣告了才會被派到需要它的工作。這是「顯示但不強制」在 Provider 層的同一個禁令。
+- **`TokenBudget` 呈現給使用者的前提是它真的會被執行**（NFR-001「UI 不得誤導」）。它被寫進 `policy_snapshot`、顯示於執行前權限摘要並要求使用者確認；**中止時所用的上限與摘要顯示的是同一份 `policy_snapshot`**（`internal/run.defaultPolicy` 是唯一寫入處，harness 的上限由 `RunRequest.resource_limits.token_budget` 傳入），所以確認畫面上的數字就是會停住 Run 的數字。
 
 #### RUN-004：取消、逾時與失敗處理
 

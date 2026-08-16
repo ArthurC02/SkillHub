@@ -442,6 +442,20 @@ func env(req sandbox.RunRequest) []string {
 	if req.Trace.IngestionURL != "" {
 		e = append(e, "SKILLHUB_TRACE_URL="+req.Trace.IngestionURL)
 	}
+	// PDM-005 5.2a. The harness counts tokens and stops itself, because it is the
+	// only party that sees a per-response count - RunUsage carries none back here
+	// and the gateway's brakes are spend and rate, not tokens. These are the same
+	// numbers the pre-run permission summary showed the user: they come off the
+	// run's frozen policy_snapshot, which is the single object the summary, the
+	// scheduler and this request are all read from (internal/run defaultPolicy).
+	if tb := req.ResourceLimits.TokenBudget; tb != nil {
+		if tb.MaxInputTokens > 0 {
+			e = append(e, "SKILLHUB_MAX_INPUT_TOKENS="+strconv.FormatInt(tb.MaxInputTokens, 10))
+		}
+		if tb.MaxOutputTokens > 0 {
+			e = append(e, "SKILLHUB_MAX_OUTPUT_TOKENS="+strconv.FormatInt(tb.MaxOutputTokens, 10))
+		}
+	}
 	if req.Runtime.Model != "" {
 		e = append(e, "SKILLHUB_MODEL="+req.Runtime.Model)
 	}

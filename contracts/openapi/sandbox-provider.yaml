@@ -637,19 +637,37 @@ components:
     TokenBudget:
       type: object
       description: |
-        PDM-005 5.2a. The hard stop is the Go worker accumulating input_tokens
-        reported by the gateway - not max_budget, which prompt caching decoupled
-        from token count by 7-8x. The Virtual Key's max_budget and tpm_limit are
-        a spend brake and a rate brake, not this limit.
+        PDM-005 5.2a. A token ceiling, and not max_budget, which prompt caching
+        decoupled from token count by 7-8x. The Virtual Key's max_budget and
+        tpm_limit are a spend brake and a rate brake, not this limit.
 
         300K input is roughly 15 turns with no tool calls, 7.7 with one per
         turn, 5 with two (measured, PDM-003 spike 11.5). Quoting the number
         without the turn conversion is meaningless.
 
-        Not enforced yet. The limits travel in the RunRequest and the two
-        gateway brakes are live, but nothing accumulates reported input_tokens
-        against this ceiling - RunUsage carries no token count to accumulate.
-        A run today is stopped by spend, rate and wall clock, not by tokens.
+        Enforced by the runtime harness inside the sandbox, which counts each
+        model response's tokens as they stream and stops the turn on the
+        response that crosses the ceiling. PDM-005 5.2a proposed the Go worker
+        as the counter; that was not buildable as written, because RunUsage
+        carries no token count back for a worker to accumulate and a count
+        reconstructed from the trace arrives after the spending. The harness is
+        where the numbers are.
+
+        Cache-hit tokens count: caching reduces cost, not context.
+
+        What a provider is promising by declaring this in ProviderCapability:
+        that it stops the run at the ceiling, emits a terminal `usage` trace
+        event and an `error` event with code `token_budget_exceeded`, and
+        reports the attempt as completed-with-failure so artifacts and trace are
+        still collected. A provider that does not enforce it MUST leave
+        max_resources.token_budget unset rather than accept a ceiling it will
+        not apply - a limit shown in the pre-run permission summary and then not
+        applied is the misleading UI NFR-001 forbids.
+
+        The stop is cooperative, in the same class as wall_clock_soft_seconds:
+        it bounds a runaway agent loop, not a workload attacking its own
+        harness. The non-cooperative brakes are still the Virtual Key and the
+        wall-clock kill, both outside the sandbox.
       properties:
         max_input_tokens: { type: integer, default: 300000 }
         max_output_tokens: { type: integer, default: 60000 }
@@ -819,8 +837,9 @@ components:
         only `wall_clock_seconds`. Token counts and cost travel the trace path
         instead - the workload emits `usage` events and the platform reads spend
         from the gateway's own per-key log - so a consumer must not treat an
-        absent token count here as zero usage. Consequently the ResourceLimits
-        token ceiling is not enforced from this field; see TokenBudget.
+        absent token count here as zero usage. The ResourceLimits token ceiling
+        is therefore not enforced from this field: it is enforced inside the
+        sandbox, where the counts exist. See TokenBudget.
       properties:
         input_tokens:
           type: integer

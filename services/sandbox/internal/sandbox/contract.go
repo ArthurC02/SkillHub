@@ -41,6 +41,13 @@ const (
 	ResultTimedOut  ResultStatus = "timed_out"
 )
 
+// exitTokenBudget is the exit code the runtime harness uses to say it stopped
+// itself at the run's token ceiling rather than failing at its own task. Kept in
+// step with EXIT_TOKEN_BUDGET in infra/images/runtime-agent-sdk/run.mjs; the two
+// are a pair, and the exit code is the only channel there is - RunError.class is
+// a frozen contract enum and the harness's result.json is never read.
+const exitTokenBudget = 9
+
 // Error classes (RunError.class).
 const (
 	ClassProvision          = "provision"
@@ -124,6 +131,12 @@ var DefaultLimits = ResourceLimits{
 	WallClockHardSeconds: 900,
 	ArtifactTotalBytes:   100 << 20,
 	ArtifactFileBytes:    25 << 20,
+	// Declared because it is enforced: the harness counts each model response's
+	// tokens and stops the turn at the ceiling. A provider that cannot do that
+	// must leave this nil rather than accept a limit it will not apply - which is
+	// what this provider itself did until the harness gained the counter, and is
+	// why a run could be shown a ceiling nothing would hold it to.
+	TokenBudget: &TokenBudget{MaxInputTokens: 300_000, MaxOutputTokens: 60_000},
 }
 
 type TokenBudget struct {

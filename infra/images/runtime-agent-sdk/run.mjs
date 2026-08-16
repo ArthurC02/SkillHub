@@ -18,9 +18,18 @@
 //   3. skills: "all" — 0.3.x moved skill enablement out of allowedTools, where
 //      passing "Skill" is now deprecated, into this option
 //   4. the tool list still names the tools the workload may use
+//   5. includePartialMessages: true — the only place a per-response token count
+//      appears (see the token accounting section). Its absence fails silently
+//      too: every count reads zero.
 //
 // A change to any of these must be re-measured against the pinned SDK, not
 // reasoned about: every one of them fails silently.
+//
+// It is also the only place that sees a per-response token count, which makes it
+// two other things: the Run Trace's usage reporter (TRACE-004) and the point
+// where the PDM-005 token ceiling is enforced. Both are structured around the
+// same fact - the SDK's `result` message is not guaranteed to arrive, so nothing
+// that must happen once per run may hang off it.
 //
 // It is also the Run Trace producer (TRACE-002~004). Events are appended, one
 // JSON object per line, to $SKILLHUB_OUTDIR/trace/events.jsonl. They are not
@@ -74,7 +83,8 @@ function emit(type, payload, status = "ok") {
   }
   seq += 1;
   const event = {
-    schema_version: "1.0",
+    // 1.1 adds usage.token_source, which this producer writes.
+    schema_version: "1.1",
     event_id: randomUUID(),
     run_id: runId,
     attempt,
@@ -101,12 +111,19 @@ function emit(type, payload, status = "ok") {
   }
 }
 
-function finish(status, extra = {}) {
+// EXIT_TOKEN_BUDGET is how this process tells the node *why* it stopped, since
+// the provider reads the exit code and not result.json. It must stay in step
+// with exitTokenBudget in services/sandbox/internal/sandbox/manager.go, which
+// turns it into a RunError message a user can read; any other non-zero code is
+// an ordinary workload failure.
+const EXIT_TOKEN_BUDGET = 9;
+
+function finish(status, extra = {}, exitCode = status === "succeeded" ? 0 : 1) {
   // The provider reads state from the container, not from this file; the file
   // is for the artifact manifest and the agent's own output.
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ status, ...extra }, null, 2));
   waitToBeCollected();
-  process.exit(status === "succeeded" ? 0 : 1);
+  process.exit(exitCode);
 }
 
 // waitToBeCollected is the second half of the collection handshake, and the run
@@ -323,8 +340,139 @@ async function gatewaySpend() {
   return last !== null && last > 0 ? last : null;
 }
 
+// --- token accounting and the PDM-005 ceiling --------------------------------
+//
+// Two jobs, one accumulator.
+//
+// 1. TRACE-004. usage used to be emitted only on the SDK's `result` message, so
+//    a turn that ended any other way reported no usage at all - not zero, no
+//    event. Measured on the 45-skill baseline: `add-iso3166` succeeded, produced
+//    its artifact, traced 13 events with no gap, and cost the platform nothing
+//    it could see, because that turn produced no result message. Summed over the
+//    batch the trace said $3.0879 against the gateway's $3.3932. So every model
+//    response is counted here as it streams, and a run-total usage event is
+//    emitted exactly once however the turn ends (§token_source in the contract).
+//
+// 2. PDM-005 5.2a. The 300K/60K ceiling is shown to the user in the pre-run
+//    permission summary and they confirm it, so something has to enforce it.
+//    The counting has to happen where the numbers are, and the only place that
+//    sees a per-response token count is right here: RunUsage carries none back
+//    to the platform, and the gateway's brakes are a spend brake and a rate
+//    brake, which prompt caching decoupled from token count by 7-8x.
+//
+// Honest about what kind of brake this is: it is a cooperative stop inside the
+// sandbox, the same class as the wall-clock soft limit, and the hard brakes
+// remain the Virtual Key's max_budget and the wall-clock kill outside. It stops
+// a runaway agent loop, which is what the limit is for; it is not a defence
+// against a workload attacking its own harness, which already holds the key.
+// Where the numbers come from, measured on the pinned SDK against the gateway
+// rather than assumed, because the obvious place is empty:
+//
+//   assistant message  msg.message.usage  -> all four fields ZERO, every time,
+//                      and the same message.id arrives more than once, so summing
+//                      it would be summing zeros twice.
+//   result message     msg.usage          -> the real end-of-turn total, but only
+//                      if a result arrives at all, which is the whole problem.
+//   stream_event       event.message.usage on message_start, event.usage on
+//                      message_delta -> the real per-response figures. Here the
+//                      gateway puts everything on message_delta and zeros on
+//                      message_start; the Anthropic API splits input at start and
+//                      output at delta. Taking the per-field maximum over one
+//                      response is right for both and needs no knowledge of which.
+//
+// That is why `includePartialMessages: true` is on the query: without it there is
+// no per-response token count anywhere in the stream. Like the other options in
+// the header, this was measured on the pinned SDK and must be re-measured, not
+// reasoned about, on an upgrade - it fails by reporting zeros, silently.
+const tokenCeiling = {
+  input: Number(process.env.SKILLHUB_MAX_INPUT_TOKENS ?? "") || 0,
+  output: Number(process.env.SKILLHUB_MAX_OUTPUT_TOKENS ?? "") || 0,
+};
+
+const zeroUsage = () => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
+// committed is every response that has finished streaming; current is the one in
+// flight, replaced rather than added to, because its usage is restated in full at
+// each step rather than sent as an increment.
+let committed = zeroUsage();
+let current = null;
+let responses = 0;
+
+function beginResponse() {
+  if (current) {
+    for (const k of Object.keys(committed)) committed[k] += current[k];
+    responses += 1;
+  }
+  current = zeroUsage();
+}
+
+function observeUsage(u) {
+  if (!u) return;
+  if (!current) current = zeroUsage();
+  current.input = Math.max(current.input, u.input_tokens ?? 0);
+  current.output = Math.max(current.output, u.output_tokens ?? 0);
+  current.cacheRead = Math.max(current.cacheRead, u.cache_read_input_tokens ?? 0);
+  current.cacheWrite = Math.max(current.cacheWrite, u.cache_creation_input_tokens ?? 0);
+}
+
+// totals is what has been counted so far, including the response still streaming:
+// tokens already sent are already spent, so a ceiling check must see them.
+function totals() {
+  const t = { ...committed, responses };
+  if (current) {
+    for (const k of Object.keys(committed)) t[k] += current[k];
+    t.responses += 1;
+  }
+  return t;
+}
+
+// Cache-hit tokens count against the ceiling: caching reduces cost, not context
+// (PDM-005 5.2a-3). LiteLLM's /v1/messages route reports neither cache field, so
+// today this is just input_tokens - which is also exactly the figure the run
+// summaries already show, so the ceiling means what the summary said it meant.
+function ceilingBreach() {
+  const t = totals();
+  const input = t.input + t.cacheRead + t.cacheWrite;
+  if (tokenCeiling.input && input > tokenCeiling.input) {
+    return { field: "input", used: input, limit: tokenCeiling.input };
+  }
+  if (tokenCeiling.output && t.output > tokenCeiling.output) {
+    return { field: "output", used: t.output, limit: tokenCeiling.output };
+  }
+  return null;
+}
+
+// emitUsage sends the one run-total usage event, at most once. Cost is asked of
+// the gateway either way: the gateway knows what was charged whether or not the
+// SDK produced an end-of-turn total (iron rule 8), so cost_source stays
+// `gateway` and token_source carries the separate question of where the token
+// counts came from.
+//
+// The SDK's total_cost_usd is still deliberately unused: it is computed from a
+// local price table for a model name the gateway resolves, so it would be an
+// estimate wearing the gateway's name. `cost_usd: null` means the gateway did
+// not answer, and the UI must render that as unreported rather than as zero.
+let usageEmitted = false;
+async function emitUsage(counts, tokenSource) {
+  if (usageEmitted) return;
+  usageEmitted = true;
+  const cost = await gatewaySpend();
+  emit("usage", {
+    scope: "run_total",
+    model: process.env.SKILLHUB_MODEL ?? "",
+    input_tokens: counts.input,
+    output_tokens: counts.output,
+    cache_read_input_tokens: counts.cacheRead || null,
+    cache_write_input_tokens: counts.cacheWrite || null,
+    cost_usd: cost,
+    cost_source: cost === null ? null : "gateway",
+    token_source: tokenSource,
+    duration_ms: Date.now() - startedAt,
+  });
+}
+
 const messages = [];
 let output = "";
+let breach = null;
 const startedAt = Date.now();
 try {
   for await (const msg of query({
@@ -336,8 +484,32 @@ try {
       allowedTools: ["Skill", "Read", "Write", "Edit", "Glob", "Grep", "Bash"],
       model: process.env.SKILLHUB_MODEL,
       permissionMode: "bypassPermissions",
+      // The only source of per-response token counts — see the accounting
+      // section. Without it a turn that produces no result reports nothing.
+      includePartialMessages: true,
     },
   })) {
+    // Token counting first: a stream_event carries nothing else this loop wants,
+    // and it is the only message type that carries a usage figure that is not
+    // zero. It is also not recorded in message_types, which would otherwise be
+    // hundreds of identical entries in result.json.
+    if (msg.type === "stream_event") {
+      if (msg.event?.type === "message_start") {
+        beginResponse();
+        observeUsage(msg.event.message?.usage);
+      } else if (msg.event?.type === "message_delta") {
+        observeUsage(msg.event.usage);
+      }
+      // PDM-005 5.2a, checked here because this is the only point at which the
+      // count can move. Breaking rather than killing the process closes the
+      // SDK's iterator the ordinary way: no further model call is made, the
+      // events already emitted stay in the timeline, and the collection
+      // handshake below still runs, so artifacts and trace are not lost.
+      breach = ceilingBreach();
+      if (breach) break;
+      continue;
+    }
+
     messages.push(msg.type);
     const blocks = Array.isArray(msg.message?.content) ? msg.message.content : [];
     for (const block of blocks) {
@@ -357,30 +529,38 @@ try {
       emit("agent_output", { kind: "final", text: text.value, truncated: text.truncated },
         msg.is_error ? "error" : "ok");
 
-      // TRACE-004: tokens and cost. Tokens come from the SDK's own accounting;
-      // cost is asked of the gateway, which is the only party that knows what
-      // this run was actually charged (iron rule 8). The SDK's total_cost_usd is
-      // deliberately not used: it is computed from a local price table for a
-      // model name the gateway resolves, so it would be an estimate wearing the
-      // gateway's name. `cost_usd: null` means the gateway did not answer, and
-      // the UI must render that as unreported rather than as zero.
+      // TRACE-004. The SDK's end-of-turn total wins over the running sum when it
+      // exists: it is the same quantity from a vantage point that also sees any
+      // response still in flight when the stream closed.
       const usage = msg.usage ?? {};
-      const cost = await gatewaySpend();
-      emit("usage", {
-        scope: "run_total",
-        model: process.env.SKILLHUB_MODEL ?? "",
-        input_tokens: usage.input_tokens ?? 0,
-        output_tokens: usage.output_tokens ?? 0,
-        cache_read_input_tokens: usage.cache_read_input_tokens ?? null,
-        cache_write_input_tokens: usage.cache_creation_input_tokens ?? null,
-        cost_usd: cost,
-        cost_source: cost === null ? null : "gateway",
-        duration_ms: Date.now() - startedAt,
-      });
+      await emitUsage({
+        input: usage.input_tokens ?? 0,
+        output: usage.output_tokens ?? 0,
+        cacheRead: usage.cache_read_input_tokens ?? null,
+        cacheWrite: usage.cache_creation_input_tokens ?? null,
+      }, "result");
     }
   }
 } catch (err) {
+  // A crashed turn is still a turn that spent money. Report what was counted
+  // before the failure, then fail - in that order, because fail() exits.
+  await emitUsage(totals(), "accumulated");
   fail("execution", "agent_turn_failed", String(err?.message ?? err));
 }
+
+if (breach) {
+  const message =
+    `run stopped at its ${breach.field} token ceiling: ${breach.used} of ${breach.limit} tokens ` +
+    `(PDM-005 5.2a; the limit shown in the pre-run permission summary)`;
+  emit("error", { category: "execution", code: "token_budget_exceeded", message, retryable: false }, "error");
+  await emitUsage(totals(), "accumulated");
+  finish("failed", { error: message, agent_output: output, message_types: messages }, EXIT_TOKEN_BUDGET);
+}
+
+// The turn ended without a result message: no crash, no ceiling, just an SDK
+// that produced none (measured on add-iso3166, which succeeded and produced its
+// artifact). Reporting the running sum is what keeps that run's cost from
+// vanishing; emitUsage is a no-op if the result branch already reported.
+await emitUsage(totals(), "accumulated");
 
 finish("succeeded", { agent_output: output, message_types: messages });
