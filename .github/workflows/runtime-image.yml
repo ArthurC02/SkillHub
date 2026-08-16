@@ -181,9 +181,16 @@ jobs:
       # I-04: `scanned_at` becomes a machine-readable field on an attestation
       # rather than a date somebody types into infra/images/README.md, which is
       # what made the 30-day validity impossible to judge automatically.
+      #
+      # Invoked through `bash` for the same reason check_egress_allowlist.py is
+      # invoked through `python3`: this repo is developed on Windows, where the
+      # executable bit does not survive a plain `git add`, and a bare script path
+      # then dies on the runner with exit 126. The +x bit is set in the index as
+      # well — belt and braces, because only one of the two can be silently
+      # undone by a re-add from the wrong OS.
       - name: Attest the scan result to the pushed digest (I-04)
         if: github.event_name == 'push'
-        run: .github/workflows/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
+        run: bash .github/workflows/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
       - name: Record the scan attestation
         if: github.event_name == 'push'
         uses: actions/attest@v2
@@ -256,7 +263,7 @@ jobs:
       # set is acceptable. Withholding it on a red scan would leave the digest
       # looking un-scanned, which I-04 treats identically to expired.
       - name: Re-attest the scan result (I-04 scanned_at)
-        run: .github/workflows/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
+        run: bash .github/workflows/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
       - uses: actions/attest@v2
         with:
           subject-name: ${{ env.REGISTRY_IMAGE }}
