@@ -16,6 +16,18 @@ permissions:
 jobs:
   # Path filters are hand-written (ADR-019 accepted cost of option D).
   # Adding a top-level directory means updating the filters below.
+  #
+  # Every filter used to carry a `!docs/**` rule, which does not mean what it
+  # reads like. Rules are OR-ed and a negated rule matches every file the glob
+  # does NOT match, so `!docs/**` matched any changed file outside docs/ and
+  # turned all four filters on. One touched AGENTS.md ran the whole matrix; the
+  # four filters were really one "is this push docs-only" question. Removed, and
+  # the one thing that genuinely must run everything is now stated positively.
+  #
+  # Not the cause, checked and ruled out before touching this: `fetch-depth: 1`.
+  # paths-filter fetches the push's before-commit itself (`git fetch --depth=1
+  # --no-tags origin <sha>`) when it is missing, and the run logs show it doing
+  # so and diffing correctly. Deepening the checkout here would fix nothing.
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -28,26 +40,29 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          # This file is repeated in every filter on purpose: a change to the
+          # filters cannot be scoped by the filters it is changing, so editing
+          # CI runs the whole matrix and the change is seen doing its job.
           filters: |
             web:
               - 'apps/web/**'
               - 'packages/api-client-ts/**'
-              - '!docs/**'
+              - '.github/workflows/ci.yml'
             platform:
               - 'services/platform/**'
               - 'db/**'
               - 'contracts/**'
-              - '!docs/**'
+              - '.github/workflows/ci.yml'
             llm:
               - 'services/llm/**'
               - 'packages/api-stub-py/**'
               - 'contracts/**'
-              - '!docs/**'
+              - '.github/workflows/ci.yml'
             sandbox:
               - 'services/sandbox/**'
               - 'contracts/**'
               - 'infra/images/**'
-              - '!docs/**'
+              - '.github/workflows/ci.yml'
 
   web:
     needs: changes
