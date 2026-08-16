@@ -42,7 +42,15 @@ JUDGE_MODEL = os.getenv("JUDGE_MODEL", "gpt-5.6-terra")
 # to a prompt revision, which it can only do if the revision that produced a
 # stored verdict is still identifiable - so an in-place edit under an unchanged
 # version is what breaks it, not a missing version.
-JUDGE_PROMPT_VERSION = "judge-run/v1"
+#
+# v2 separates a trace digest entry's header from its body and says which half a
+# quote may come from. Under v1 the two were one line, `id @ time type: payload`,
+# and the model copied the whole line - correctly, by the only reading the text
+# supported. Go verifies a trace_event quote against the payload alone, so all 45
+# runs of the first regression had a right answer thrown away by defence 3
+# (docs/plans/mvp/m3/report-judge-regression.md). Bumped rather than edited in
+# place: the two regressions have to stay comparable.
+JUDGE_PROMPT_VERSION = "judge-run/v2"
 SUGGEST_IMPROVEMENTS_PROMPT_VERSION = "suggest-improvements/v1"
 
 # Socket ceiling only. The deadline that matters is Go's: it owns timeout and
@@ -103,16 +111,19 @@ is not in the artifact manifest is a real `failed`.
 Every `passed` and every `failed` carries evidence_refs. Each reference says where you \
 read it:
 - kind `trace_event`: `trace_event_id` MUST be an id listed in the trace digest, and \
-`artifact_path` is null.
+`artifact_path` is null. The quote must come from that event's own body - the indented \
+line beneath its header - and from nothing else. The `[id @ timestamp] type` header is \
+the platform's label for the event, not part of it: a quote that includes any of it \
+matches nothing and throws your verdict away.
 - kind `artifact`: `artifact_path` MUST be a path listed in the artifact manifest, and \
 `trace_event_id` is null.
 - kind `agent_output`: both are null; the quote comes from the final agent output.
-`quote` is text copied verbatim from that source. Never invent an id, a path or a \
-quote: every reference is re-checked against the platform's own records, and one that \
-does not resolve turns your verdict into `undetermined`. An empty list is more useful \
-than a fabricated reference. When the manifest is empty there is no artifact to cite - \
-the sentence saying it is empty is not a file - so cite the final output or cite \
-nothing; the same goes for a trace digest with no events.
+`quote` is text copied verbatim from that source, and only from that source. Never \
+invent an id, a path or a quote: every reference is re-checked against the platform's \
+own records, and one that does not resolve turns your verdict into `undetermined`. An \
+empty list is more useful than a fabricated reference. When the manifest is empty there \
+is no artifact to cite - the sentence saying it is empty is not a file - so cite the \
+final output or cite nothing; the same goes for a trace digest with no events.
 
 Do not say why a Skill was or was not used. Whether the agent considered a Skill and \
 chose not to use it is not observable in this evidence; you may report only that no \
@@ -442,9 +453,15 @@ def _judge_user_message(req: JudgeRunRequest) -> str:
         artifacts = "(empty: the run wrote no files, so there is no artifact path to cite)"
     sections.append("# Artifact manifest - the complete list of files the run wrote\n" + artifacts)
 
+    # Header and body on separate lines, never glued with a `type: ` prefix. Go
+    # verifies a trace_event quote by looking for it inside the event payload
+    # alone, so anything printed on the same line as the payload is something the
+    # model can copy verbatim and still fail verification - which is exactly what
+    # the first EVAL-013 regression measured, on all 45 runs, with the model's
+    # own answer correct every time (report-judge-regression.md).
     entries = "\n".join(
-        f"- [{e.trace_event_id} @ {e.occurred_at.isoformat()}] {_scrub(e.type)}: "
-        f"{_scrub(e.excerpt)}"
+        f"- [{e.trace_event_id} @ {e.occurred_at.isoformat()}] {_scrub(e.type)}\n"
+        f"      {_scrub(e.excerpt)}"
         for e in req.trace_digest.entries
     )
     sections.append(

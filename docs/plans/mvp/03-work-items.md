@@ -233,7 +233,7 @@
 - [ ] EVAL-010 套用改善時建立新 Skill Version。
 - [ ] EVAL-011 實作使用相同 Test Case 重新試跑。
 - [ ] EVAL-012 實作版本、驗收、輸出、錯誤、延遲與成本比較。
-- [ ] EVAL-013 建立 Judge 判準的回歸集與驗證流程：以 M2 的 45 筆基準 Run 為第一組標註資料，逐筆比對 Judge 判定與已記錄的「符合／未產出」答案，產出含符合率與逐筆差異歸因的報告；Judge prompt 或 rubric 升版即重跑。（**2026-08-17 新增**，承接 [m3/README.md §5 差-3](m3/README.md) 與風險 R2——`02:EVAL-001` 要求標示模型判斷，但此前沒有任何工作項驗證它判得準不準。重評的 append-only 語意見 [ADR-026](../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md)；第一次回歸排在 M3 第 3 批，rubric 補完後於第 7 批重跑）（允收：`02:EVAL-013`）
+- [x] EVAL-013 建立 Judge 判準的回歸集與驗證流程：以 M2 的 45 筆基準 Run 為第一組標註資料，逐筆比對 Judge 判定與已記錄的「符合／未產出」答案，產出含符合率與逐筆差異歸因的報告；Judge prompt 或 rubric 升版即重跑。（**2026-08-17 新增**，承接 [m3/README.md §5 差-3](m3/README.md) 與風險 R2——`02:EVAL-001` 要求標示模型判斷，但此前沒有任何工作項驗證它判得準不準。重評的 append-only 語意見 [ADR-026](../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md)；第一次回歸排在 M3 第 3 批，rubric 補完後於第 7 批重跑）（允收：`02:EVAL-013`）<br>**2026-08-17 完成**：harness 在 [`tools/eval-regression/judge_regression.py`](../../../tools/eval-regression/judge_regression.py)（可重跑，逐筆 append-only 落在 `results.jsonl`），報告見 [m3/report-judge-regression.md](m3/report-judge-regression.md)。跑了兩輪：`judge-run/v1` 符合率 45／90，全部 45 筆差異來自平台自己的引文回驗缺陷而非 Judge 判錯（模型原始判定 90／90 正確）；修好後的 `judge-run/v2` 為 90／90、0 判錯、0 降級。閘道實付 $1.4906。**勾選的範圍是「回歸集與驗證流程建立且跑過」**，不含主觀判定、注入抵抗與證據殘缺三類的覆蓋——那三格在報告 §2 誠實留白，後續工作記在報告 §8.2。rubric 補完後（`CONTENT-007`）必須再跑一輪。
 
 ## 15. 打包與下載（M4）
 

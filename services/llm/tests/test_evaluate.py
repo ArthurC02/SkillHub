@@ -195,6 +195,25 @@ def test_untrusted_content_is_fenced_off_from_the_instructions(capture):
     )
 
 
+def test_digest_entry_keeps_its_header_off_the_payload_line(capture):
+    """A quotable line must contain nothing but the event's own body.
+
+    Go verifies a trace_event quote by looking for it inside the payload alone.
+    Under v1 the id, timestamp and type shared the payload's line, and the first
+    EVAL-013 regression had all 45 correct verdicts downgraded because the model
+    copied the whole line verbatim - which is what the text asked for.
+    """
+    calls = capture(json.dumps(GOOD_VERDICT))
+
+    assert client.post("/judge-run", json=JUDGE_REQUEST).status_code == 200
+
+    user = calls[0]["messages"][1]["content"]
+    payload = "activated docx"
+    body = next(ln for ln in user.splitlines() if payload in ln)
+    assert body.strip() == payload
+    assert "evt_9" not in body and "skill_activation" not in body
+
+
 def test_incomplete_trace_demands_undetermined(capture):
     calls = capture(json.dumps(GOOD_VERDICT))
     request = {**JUDGE_REQUEST, "trace_digest": {"complete": False, "entries": []}}
