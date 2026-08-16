@@ -26,12 +26,30 @@ export type AcceptanceCriterion = {
   confirmed_at: string | null;
 };
 
+/**
+ * CONTENT-007's rubric. `id` is the acceptance criterion this item strengthens,
+ * not an id of its own: the judge answers one verdict per criterion id and the
+ * platform drops any id it did not send, so an item pointing anywhere else could
+ * never produce a stored verdict.
+ */
+export type RubricItem = {
+  id: string;
+  text: string;
+  /** The author's relative-importance signal for the model. Not a score: nothing computes with it. */
+  weight?: number;
+  evidence_required: boolean;
+};
+
+export type Rubric = { version: string; items: RubricItem[] };
+
 export type TestCase = {
   test_case_id: string;
   skill_id: string;
   name: string;
   user_prompt: string;
   acceptance_criteria: AcceptanceCriterion[];
+  /** Absent means no rubric — never "the default rubric". */
+  rubric?: Rubric;
   created_at: string;
   updated_at: string;
 };
@@ -71,7 +89,15 @@ export function createTestCase(skillId: string, name: string, userPrompt: string
   });
 }
 
-export function updateTestCase(testCaseId: string, patch: { name?: string; user_prompt?: string }) {
+/**
+ * `rubric` is three-valued and each value says something different: leaving the
+ * key out keeps the stored rubric, an object replaces it, and an explicit `null`
+ * removes it. There is no empty rubric.
+ */
+export function updateTestCase(
+  testCaseId: string,
+  patch: { name?: string; user_prompt?: string; rubric?: Rubric | null },
+) {
   return apiFetch<TestCase>(`/test-cases/${testCaseId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

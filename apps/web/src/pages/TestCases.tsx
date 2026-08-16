@@ -15,7 +15,7 @@ import {
   useTestCaseDatasets,
   useTestCases,
 } from "../api/testcases";
-import type { AcceptanceCriterion, TestCase } from "../api/testcases";
+import type { AcceptanceCriterion, RubricItem, TestCase } from "../api/testcases";
 
 /**
  * 03:TEST-012 — the Test Case and acceptance-criteria screens.
@@ -156,6 +156,7 @@ export function TestCaseDetail() {
       </p>
       <PromptForm testCase={testCase.data} />
       <CriteriaSection testCase={testCase.data} />
+      <RubricSection testCase={testCase.data} />
       <DatasetSection testCaseId={testCaseId} />
       <h2>開始試跑</h2>
       <p className="note">
@@ -366,6 +367,145 @@ function CriterionRow({
       </p>
       {message && <p role="alert">{message}</p>}
     </li>
+  );
+}
+
+/**
+ * CONTENT-007's rubric editor.
+ *
+ * One row per acceptance criterion, and not a free-standing list of items,
+ * because a rubric item is addressed by the criterion it strengthens: the judge
+ * answers one verdict per criterion id and the platform drops any id it did not
+ * send, so an item that names anything else is an item whose answer has nowhere
+ * to be stored. Laying the editor out this way makes that impossible to get
+ * wrong instead of explaining it afterwards in an error message.
+ */
+function RubricSection({ testCase }: { testCase: TestCase }) {
+  const client = useQueryClient();
+  const stored = testCase.rubric;
+  const [version, setVersion] = useState(stored?.version ?? "");
+  const [items, setItems] = useState<Record<string, RubricItem>>(
+    Object.fromEntries((stored?.items ?? []).map((i) => [i.id, i])),
+  );
+  const [message, setMessage] = useState("");
+
+  const save = useMutation({
+    mutationFn: () => {
+      const list = testCase.acceptance_criteria
+        .map((c) => items[c.id])
+        .filter((i): i is RubricItem => i !== undefined && i.text.trim() !== "");
+      // No items is not an empty rubric, it is no rubric. Sending null says so;
+      // sending `{items: []}` would be a rubric that says nothing.
+      return updateTestCase(testCase.test_case_id, {
+        rubric: list.length === 0 ? null : { version: version.trim(), items: list },
+      });
+    },
+    onSuccess: async () => {
+      setMessage("已儲存。");
+      await client.invalidateQueries({ queryKey: ["test-cases"] });
+    },
+    onError: (err) => setMessage(err instanceof Error ? err.message : "儲存失敗。"),
+  });
+
+  const update = (id: string, patch: Partial<RubricItem>) =>
+    setItems((prev) => ({
+      ...prev,
+      [id]: { ...(prev[id] ?? { id, text: "", evidence_required: false }), ...patch },
+    }));
+
+  const used = testCase.acceptance_criteria.filter((c) => items[c.id]?.text.trim()).length;
+
+  return (
+    <>
+      <h2>Rubric（選用）</h2>
+      <p className="note">
+        Rubric 是驗收條件的<strong>加強說法</strong>，不是另一套判定：每一條都掛在上面某一條驗收
+        條件上，只是額外說明「做到什麼程度算過」以及「要不要引原文」。權重只是給模型看的相對
+        重要性，平台不拿它算分。開始 Run 時 rubric 會跟驗收條件一起凍結成快照，之後修改只影響
+        <strong>下一次</strong> Run。
+      </p>
+      {testCase.acceptance_criteria.length === 0 ? (
+        <p>要先有驗收條件才能寫 rubric——rubric 的每一條都是掛在某一條驗收條件上的。</p>
+      ) : (
+        <>
+          <p>
+            <label htmlFor="rubric-version">Rubric 版本</label>{" "}
+            <input
+              id="rubric-version"
+              value={version}
+              onChange={(e) => setVersion(e.target.value)}
+              size={40}
+              maxLength={200}
+              placeholder="例如 content-007/writing/v1"
+            />
+            <br />
+            <span className="note">
+              改任何一條的文字、權重或引文要求就是新版本；評估報告會記下這次判定是在哪個版本下做的。
+            </span>
+          </p>
+          <ul className="criterion-list">
+            {testCase.acceptance_criteria.map((c) => {
+              const item = items[c.id];
+              return (
+                <li key={c.id} className="criterion">
+                  <p className="note">驗收條件：{c.text}</p>
+                  <label htmlFor={`rubric-${c.id}`} className="note">
+                    這一條的 rubric 說明（留空＝這條沒有 rubric）
+                  </label>
+                  <br />
+                  <textarea
+                    id={`rubric-${c.id}`}
+                    rows={3}
+                    cols={60}
+                    maxLength={2000}
+                    value={item?.text ?? ""}
+                    onChange={(e) => update(c.id, { text: e.target.value })}
+                  />
+                  <p>
+                    <label htmlFor={`rubric-weight-${c.id}`}>權重</label>{" "}
+                    <input
+                      id={`rubric-weight-${c.id}`}
+                      type="number"
+                      min={0}
+                      step={1}
+                      size={4}
+                      value={item?.weight ?? ""}
+                      onChange={(e) =>
+                        update(c.id, {
+                          weight: e.target.value === "" ? undefined : Number(e.target.value),
+                        })
+                      }
+                    />{" "}
+                    <label htmlFor={`rubric-evidence-${c.id}`}>
+                      <input
+                        id={`rubric-evidence-${c.id}`}
+                        type="checkbox"
+                        checked={item?.evidence_required ?? false}
+                        onChange={(e) => update(c.id, { evidence_required: e.target.checked })}
+                      />{" "}
+                      要求引出原文
+                    </label>
+                  </p>
+                </li>
+              );
+            })}
+          </ul>
+          <button
+            type="button"
+            disabled={save.isPending || (used > 0 && version.trim() === "")}
+            onClick={() => save.mutate()}
+          >
+            儲存 Rubric
+          </button>{" "}
+          <span className="note">
+            {used === 0
+              ? "目前沒有任何一條有內容，儲存等於移除這個 Test Case 的 rubric。"
+              : `目前 ${used} 條有內容。`}
+          </span>
+          {message && <p role="status">{message}</p>}
+        </>
+      )}
+    </>
   );
 }
 

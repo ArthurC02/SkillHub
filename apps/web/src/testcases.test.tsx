@@ -137,6 +137,40 @@ test("02:TEST-001 第 3 條 a user can add, delete and withdraw the confirmation
   expect(calls.some((c) => c.method === "DELETE" && c.url.includes("/criteria/c1"))).toBe(true);
 });
 
+test("CONTENT-007 a rubric line is written against a criterion and saved with its version", async () => {
+  const calls = stubPlatform();
+  await render();
+
+  // The editor offers one box per acceptance criterion, so the item's id is the
+  // criterion's by construction — the id correspondence is not something the
+  // user can get wrong.
+  const box = container.querySelector<HTMLTextAreaElement>("#rubric-c1");
+  expect(box).not.toBeNull();
+  await act(async () => setValue(box as HTMLTextAreaElement, "引出顯示列數變少的那一句。"));
+  const version = container.querySelector<HTMLInputElement>("#rubric-version");
+  await act(async () => setValue(version as HTMLInputElement, "content-007/writing/v1"));
+  const evidence = container.querySelector<HTMLInputElement>("#rubric-evidence-c1");
+  await act(async () => (evidence as HTMLInputElement).click());
+
+  await act(async () => button("儲存 Rubric").click());
+  const saved = calls.find((c) => c.method === "PATCH" && c.body?.includes("rubric"));
+  expect(saved?.body).toContain('"version":"content-007/writing/v1"');
+  expect(saved?.body).toContain('"id":"c1"');
+  expect(saved?.body).toContain('"evidence_required":true');
+});
+
+test("CONTENT-007 clearing every line removes the rubric rather than storing an empty one", async () => {
+  const calls = stubPlatform();
+  await render();
+
+  // Nothing was typed, so there is no rubric — and "no rubric" is null, not an
+  // empty item list, because the two are different statements to a reader.
+  expect(container.textContent).toContain("儲存等於移除這個 Test Case 的 rubric");
+  await act(async () => button("儲存 Rubric").click());
+  const saved = calls.find((c) => c.method === "PATCH" && c.body?.includes("rubric"));
+  expect(saved?.body).toContain('"rubric":null');
+});
+
 test("iron rule 4 the screen says a run freezes a snapshot and that editing clears a confirmation", async () => {
   stubPlatform();
   await render();
