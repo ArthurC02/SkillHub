@@ -147,17 +147,43 @@ type Dataset struct {
 }
 
 type Evaluation struct {
-	ID               pgtype.UUID
-	WorkspaceID      pgtype.UUID
-	RunID            pgtype.UUID
-	Overall          string
-	Summary          *string
-	CriterionResults []byte
-	JudgeModel       *string
-	FeedbackHelpful  *bool
-	FeedbackComment  *string
-	CreatedAt        pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
+	ID                    pgtype.UUID
+	WorkspaceID           pgtype.UUID
+	RunID                 pgtype.UUID
+	Overall               string
+	Summary               *string
+	CriterionResults      []byte
+	JudgeModel            *string
+	FeedbackHelpful       *bool
+	FeedbackComment       *string
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
+	Status                string
+	JudgePromptVersion    *string
+	RubricVersion         *string
+	EvidenceComplete      bool
+	DeterministicFindings []byte
+	CostUsd               pgtype.Numeric
+	CostSource            *string
+	CostIsLowerBound      bool
+	EvaluatedAt           pgtype.Timestamptz
+	SupersededAt          pgtype.Timestamptz
+}
+
+type EvaluationSuggestion struct {
+	ID                    pgtype.UUID
+	WorkspaceID           pgtype.UUID
+	EvaluationID          pgtype.UUID
+	Category              string
+	Problem               string
+	Evidence              []byte
+	TargetPath            string
+	ProposedChange        string
+	ExpectedImpact        string
+	Decision              string
+	DecidedAt             pgtype.Timestamptz
+	AppliedSkillVersionID pgtype.UUID
+	CreatedAt             pgtype.Timestamptz
 }
 
 type OutboxEvent struct {

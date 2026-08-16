@@ -162,5 +162,88 @@ BEGIN
 END;
 $$;
 
+-- 8. Evaluations (0024): re-evaluation is append-only, one current verdict per
+-- run, and a completed verdict freezes except for the user's feedback.
+INSERT INTO evaluations (id, workspace_id, run_id, status, overall, evidence_complete)
+VALUES ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-222222222222',
+        '77777777-7777-7777-7777-777777777777', 'pending', 'undetermined', false);
+
+-- Still writable while the evaluation job is running.
+UPDATE evaluations SET status = 'completed', overall = 'met', evidence_complete = true,
+       evaluated_at = now(), judge_model = 'gpt-5.6-terra', judge_prompt_version = 'judge-1'
+WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
+SELECT must_fail($$UPDATE evaluations SET overall = 'not_met' WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'$$);
+SELECT must_fail($$DELETE FROM evaluations WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'$$);
+-- The user may change their mind about a verdict without changing the verdict.
+UPDATE evaluations SET feedback_helpful = true, feedback_comment = 'useful', updated_at = now()
+WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
+-- 8a. A second *current* evaluation for the same run is refused.
+DO $$
+BEGIN
+    BEGIN
+        INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete)
+        VALUES ('22222222-2222-2222-2222-222222222222',
+                '77777777-7777-7777-7777-777777777777', 'completed', 'not_met', true);
+    EXCEPTION WHEN unique_violation THEN
+        RETURN;
+    END;
+    RAISE EXCEPTION 'expected a second current evaluation to be rejected';
+END;
+$$;
+
+-- 8b. Superseding the previous verdict makes room for the re-evaluation, and
+-- any number of superseded ones coexist - the history is what is being kept.
+UPDATE evaluations SET superseded_at = now() WHERE id = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+INSERT INTO evaluations (id, workspace_id, run_id, status, overall, evidence_complete, superseded_at)
+VALUES ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', '22222222-2222-2222-2222-222222222222',
+        '77777777-7777-7777-7777-777777777777', 'completed', 'partially_met', true, now());
+INSERT INTO evaluations (id, workspace_id, run_id, status, overall, evidence_complete)
+VALUES ('dddddddd-dddd-4ddd-8ddd-dddddddddddd', '22222222-2222-2222-2222-222222222222',
+        '77777777-7777-7777-7777-777777777777', 'completed', 'met', true);
+DO $$
+BEGIN
+    IF (SELECT count(*) FROM evaluations WHERE run_id = '77777777-7777-7777-7777-777777777777') <> 3 THEN
+        RAISE EXCEPTION 're-evaluation did not keep the superseded verdicts';
+    END IF;
+    IF (SELECT count(*) FROM evaluations
+        WHERE run_id = '77777777-7777-7777-7777-777777777777' AND superseded_at IS NULL) <> 1 THEN
+        RAISE EXCEPTION 'expected exactly one current evaluation';
+    END IF;
+END;
+$$;
+
+-- 8c. An evidence ref without its excerpt/availability would be unresolvable once
+-- the trace partition is dropped, and these rows can never be repaired (0024).
+SELECT must_violate_check($$
+    INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete, criterion_results)
+    VALUES ('22222222-2222-2222-2222-222222222222', '77777777-7777-7777-7777-777777777777',
+            'completed', 'met', true,
+            '[{"criterion_id":"c1","result":"passed","source":"model",
+               "evidence":[{"kind":"trace_event","trace_event_id":"88888888-8888-4888-8888-888888888888"}]}]'::jsonb)
+$$);
+
+-- 8d. A suggestion's content is frozen; only the human decision on it moves.
+INSERT INTO evaluation_suggestions (id, workspace_id, evaluation_id, category, problem,
+                                    target_path, proposed_change, expected_impact)
+VALUES ('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', '22222222-2222-2222-2222-222222222222',
+        'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 'skill', 'SKILL.md never mentions CSV',
+        'SKILL.md', 'add a CSV section', 'the skill activates on CSV prompts');
+SELECT must_fail($$UPDATE evaluation_suggestions SET problem = 'rewritten' WHERE id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'$$);
+SELECT must_fail($$DELETE FROM evaluation_suggestions WHERE id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'$$);
+UPDATE evaluation_suggestions
+SET decision = 'accepted', decided_at = now(),
+    applied_skill_version_id = '44444444-4444-4444-4444-444444444444'
+WHERE id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+
+-- 8e. A path that escapes the package cannot even be stored (design §5.2 floor).
+SELECT must_violate_check($$
+    INSERT INTO evaluation_suggestions (workspace_id, evaluation_id, category, problem,
+                                        target_path, proposed_change, expected_impact)
+    VALUES ('22222222-2222-2222-2222-222222222222', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+            'skill', 'p', '../../etc/passwd', 'c', 'i')
+$$);
+
 \echo 'immutability_test: OK'
 ROLLBACK;
