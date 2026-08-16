@@ -203,7 +203,7 @@ MVP 先提供：
 
 - 完成 Cloud Sandbox、Dataset、Prompt 與 Run Trace。→ ✅ 後端完成並經 45 個真實 Skill 端到端驗證；**Test Lab 的介面只有 `/lab/run` 與 `/lab/datasets` 兩個畫面**（建立 Test Case、編輯 Prompt 與驗收條件仍無 UI，由 `03:DESIGN-007`／`TEST-012` 承接）。
 - 完成權限確認、逾時、取消及清理。→ ✅（`03:TEST-008/009`、`RUN-006/007`、`SBX-009`；73/73 Run 全部 `cleaned`）
-- 完成精選 Skill 的範例資料、Prompt、驗收條件與基準試跑（`03:CONTENT-007／008`，2026-08-15 由 M1 移入）。→ ✅ CONTENT-008（精選 15/15 符合）；**CONTENT-007 差 `writing` rubric 一項**（Judge 介面未實作，rubric 沒有消費端）。
+- 完成精選 Skill 的範例資料、Prompt、驗收條件與基準試跑（`03:CONTENT-007／008`，2026-08-15 由 M1 移入）。→ ✅ CONTENT-008（精選 15/15 符合）；~~**CONTENT-007 差 `writing` rubric 一項**（Judge 介面未實作，rubric 沒有消費端）~~ **CONTENT-007 於 2026-08-17 於 M3 內補完並勾選**——rubric 內容、資料層（`0026`）、產品路徑、編輯介面與回歸 harness 全數落地，A 輪回歸見 [m3/report-judge-regression.md §11](m3/report-judge-regression.md)。**M2 完結當時的判定不變**（當時確實沒有消費端），此處只記後續結果。
 - 依 Sandbox 實測結果啟用搜尋的 Agent 相容篩選維度（`02:DISC-002`，2026-08-15 標定）。→ ✅ migration `0022` 建表、45 筆實測值回填、`?agent=` 篩選與 UI 控制項上線。
 
 殘項（部署期驗收／待負責人決策／移交 M3）見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md)。

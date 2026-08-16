@@ -5,7 +5,8 @@
 - `rubric_version`：**`content-007/writing/v1`**（本文件即該版本的內容。任一條目的文字、`weight` 或 `evidence_required` 變更＝**升版**，並依 [`02:EVAL-013`](../02-specifications-and-acceptance-criteria.md) 第 3、4 條重跑 Judge 回歸）
 - 對象：`curated-skill-list.md` §2.2 的 **5 個 `writing` 精選**——`brand-guidelines`、`internal-comms`、`humanizer`、`line-edit`、`ai-written-check`
 - 消費端：[`contracts/openapi/llm-internal.yaml`](../../../../contracts/openapi/llm-internal.yaml) 的 `Rubric`／`RubricItem`、`POST /judge-run`
-- **CONTENT-007 仍不勾**，缺口逐項見 §6。本文件關掉的是「rubric 的內容不存在」，**沒有**關掉「rubric 存不進平台、使用者改不到、產品路徑上送不出去」。
+- ~~**CONTENT-007 仍不勾**，缺口逐項見 §6。本文件關掉的是「rubric 的內容不存在」，**沒有**關掉「rubric 存不進平台、使用者改不到、產品路徑上送不出去」。~~
+- **2026-08-17 更新：接線已完成，`CONTENT-007` 已勾。** G1～G4 全部關閉（§6.2），rubric 現在存得進 Test Case、跟得上快照、送得到 Judge、回歸 harness 吃得下。A 輪回歸（[report-judge-regression.md §11](../m3/report-judge-regression.md)）另外查出一個**新缺口 G7**，以及 §2.2 的一處事實錯誤——**Judge 看得到的證據不只最終回覆與 manifest，trace 的 `tool_call` payload 是第三條路徑**，見 §2.2 的更正註記。
 
 ---
 
@@ -41,9 +42,11 @@ Go 對三種證據的回驗方式不同（`internal/eval/judge.go` 的 `verify()
 | `artifact` | 只驗**路徑在 manifest 上**；引文不比對 | 只能證明「檔案存在」，證明不了檔案裡寫了什麼 |
 | `trace_event` | id 必須在本次 digest 內，且引文是該事件 payload 的子字串 | 適合啟用／工具類，**那些是規則腿的事** |
 
-關鍵事實：`buildRequest` **只送 artifact 的 manifest 列，不送任何位元組**（註解寫明理由：讀檔內容等於在控制平面解開封存）。所以**產出只寫進 `/out/artifacts/` 而沒有出現在最終回覆時，文字品質類條目沒有任何可引用的證據**，四條防線的第 3 條會把它降成 `undetermined`。
+關鍵事實：`buildRequest` **只送 artifact 的 manifest 列，不送任何位元組**（註解寫明理由：讀檔內容等於在控制平面解開封存）。所以~~**產出只寫進 `/out/artifacts/` 而沒有出現在最終回覆時，文字品質類條目沒有任何可引用的證據**，四條防線的第 3 條會把它降成 `undetermined`~~。
 
 這直接決定 §3 的 Prompt 必須改一句。
+
+> **2026-08-17 更正（A 輪實測，[report-judge-regression.md §11.1](../m3/report-judge-regression.md)）**：上一段刪除線內的推論**是錯的**。上表漏了第三條證據路徑——**agent 寫檔的 `tool_call` 事件，其 payload 帶著寫入當下的正文，而 `trace_event` 型證據是逐字回驗的**。實測 5 筆基準 Run 的最終回覆確實都只有一行檔名（33～49 字元），但 22 個 rubric 條目只有 3 條回 `undetermined`，其餘都引得到證據。<br>**§3 的 Prompt 第 4 條仍然保留**：trace 這條路徑取決於 agent 恰好用了寫檔工具、且該事件恰好落在 digest 尾 100 筆內，兩者都不是契約保證的。但它的「非加不可」要降級為「加了比較穩」，代價（輕度投其所好）的論述不變。
 
 ### 2.3 「沒有 X」型條目不要求引文
 
@@ -257,6 +260,8 @@ Go 對三種證據的回驗方式不同（`internal/eval/judge.go` 的 `verify()
 
 **harness 側需要的最小改動**（`tools/eval-regression/judge_regression.py`，**不在本文件的改動範圍**，屬 M3 第 7 批）：目前 `rubric_version` 寫死 `None`、`criteria` 一律取自快照的三條。需要一個 `--rubric <file>` 之類的入口，讀進 §4 的 JSON，把 `criteria` 併入請求、把 `rubric` 帶上、把 `rubric_version` 記成 `content-007/writing/v1`。**換 `rubric_version` 就是另一次回歸**（`02:EVAL-013` 第 3 條），結果照舊 append 進 `results.jsonl`，不覆寫。
 
+> **2026-08-17 更新**：上述 harness 入口已實作（`--rubric`，輸入檔為 `tools/eval-regression/rubric-content-007-writing-v1.json`，內容逐字取自 §4），**A 輪已跑完**——結果與上表的預期**不一致**，`undetermined` 只有 13.6% 而非「絕大多數」。原因、代價與由此查出的 G7，見 [report-judge-regression.md §11](../m3/report-judge-regression.md) 與本文件 §2.2 的更正註記。**B 輪仍未跑**：它要重發 5 次真實 Run（沙箱＋映像＋閘道費用），屬 Run 批而非接線批。
+
 ---
 
 ## 6. 允收對照與缺口
@@ -267,21 +272,20 @@ Go 對三種證據的回驗方式不同（`internal/eval/judge.go` 的 `verify()
 | --- | --- |
 | 每個精選 Skill 至少一組範例 Dataset、User Prompt 與驗收條件，且內容可散布 | ✅ 15/15，M2 已達成（[content-baseline-report.md §10](../m2/content-baseline-report.md)）。本文件為 `writing` 5 筆再加一組任務效果條件 |
 | 範例 Prompt 必須明確點名該 Skill | ✅ 模板首句即點名；§3 新增的第 4 條不影響點名 |
-| **`writing` 類的每個精選附一份可編輯 rubric，供 LLM Judge 逐項回傳證據引文** | **⚠️ 部分達成**。5/5 有預設 rubric（§4），條目形狀對齊 `Rubric`／`RubricItem` 契約、每條標明是否要求引文。**但「可編輯」與「送得到 Judge」都不成立**，見 §6.2 |
+| **`writing` 類的每個精選附一份可編輯 rubric，供 LLM Judge 逐項回傳證據引文** | ~~⚠️ 部分達成~~ **✅ 2026-08-17 達成**。5/5 有預設 rubric（§4，另以機器可讀形式落在 [`tools/eval-regression/rubric-content-007-writing-v1.json`](../../../../tools/eval-regression/rubric-content-007-writing-v1.json)）；「可編輯」由 `0026` ＋ `PATCH /test-cases/{id}` ＋ TestCases 詳情頁成立；「供 Judge 逐項回傳證據引文」由 `buildRequest` 送出 rubric 成立，並經 A 輪實測 22 個條目逐項回判定與引用（[report §11](../m3/report-judge-regression.md)）。**尚有 G7，見 §6.2** |
 | 範例資料不得包含 Secrets、憑證或個資 | ✅ 沿用 M2 的合成 Dataset，未新增任何資料 |
-| 實際執行時使用的 Prompt 與驗收條件以快照保存 | ✅ 既有機制（`test_case_snapshots` 不可變）。**但 rubric 進不了快照**，見 G1 |
+| 實際執行時使用的 Prompt 與驗收條件以快照保存 | ✅ 既有機制（`test_case_snapshots` 不可變）。~~**但 rubric 進不了快照**，見 G1~~ **rubric 已一併凍結**（`0026`，並計入 `content_hash`；無 rubric 的快照雜湊與 `0026` 之前逐位元相同） |
 
-### 6.2 六個缺口（**這就是不勾的理由**）
+### 6.2 缺口現況
 
-| # | 缺口 | 證據 | 誰接 |
+| # | 缺口 | 狀態 | 誰接 |
 | --- | --- | --- | --- |
-| **G1** | **rubric 沒有儲存位置。** `test_cases` 與 `test_case_snapshots` 只有 `acceptance_criteria`，沒有 rubric 欄位（`0004`、`0024` 皆無）。因此 rubric 存不進 Test Case、跟不上快照，「可編輯」在資料層上不成立 | `db/migrations/0004_test_lab_and_runs.sql`、`0024_evaluation.sql` | M3 契約／DB（additive migration） |
-| **G2** | **產品路徑上 rubric 到不了 Judge。** `internal/eval/judge.go` 的 `buildRequest` 從不設 `req.Rubric`（型別有欄位，來源沒有）；`evaluation_started` 事件的 `rubric_version` 寫死 `nil`；`verdict.rubricVersion` 永遠是空字串 | `services/platform/internal/eval/judge.go`、`eval.go` | M3 第 2／7 批 |
-| **G3** | **沒有編輯介面。** `TEST-012`（Test Case 與驗收條件的增改刪確認）未實作，rubric 的編輯面同理不存在 | `03` TEST-012（排入 M3 第 6 批）、`04` 乙-7 | M3 第 6 批 |
-| **G4** | **回歸 harness 不吃 rubric。** `rubric_version` 寫死 `None`、`criteria` 一律取自快照三條 | `tools/eval-regression/judge_regression.py` | M3 第 7 批（§5.1） |
-| **G5** | **Judge 讀不到 artifact 內容**，只有 manifest 列。本文件用 Prompt 第 4 條繞過（§3），代價是告訴受評 agent 評估看得到什麼 | `internal/eval/judge.go` `buildRequest` 註解 | 後 MVP：規則腿讀 artifact 文字，另立需求 ID |
-| **G6** | **`brand-guidelines` 的四條判的是自述不是位元組。** 字體與色彩是否真的寫進 `.pptx`，結構上不在 Judge 的可見範圍；`artifact` 型證據只驗得了路徑 | §4.5、`verify()` 的 `KindArtifact` 分支 | 同 G5 |
+| **G1** | **rubric 沒有儲存位置。** `test_cases` 與 `test_case_snapshots` 只有 `acceptance_criteria`，沒有 rubric 欄位 | **✅ 已關閉（2026-08-17）**：`db/migrations/0026_test_case_rubric.sql` 為兩表各加一個可為 NULL 的 `rubric jsonb`（形狀 `{version, items[]}`，CHECK 擋掉讀不回來的形狀）。不另建表——rubric 是驗收條件的加強形式，不是第二套機制（evaluation-design §6.4）。**刪掉某條驗收條件會連帶清掉指向它的 rubric 條目**，在同一交易內完成 | — |
+| **G2** | **產品路徑上 rubric 到不了 Judge。** `buildRequest` 從不設 `req.Rubric`；`evaluation_started` 的 `rubric_version` 寫死 `nil` | **✅ 已關閉**：`buildRequest` 由快照讀 rubric 並只送出「id 對得上本次送出條件」的條目，對不上的丟棄並記 `warning` finding；`evaluation_started` 填快照的真值；`evaluations.rubric_version` 記**實際生效**的版本（全部條目都被丟棄＝沒有 rubric 生效，不記版本） | — |
+| **G3** | **沒有編輯介面。** | **✅ 已關閉**：`apps/web` 的 Test Case 詳情頁新增 rubric 區塊。**版面是「一條驗收條件一格」而不是自由條目清單**——item 的 id 因此由結構決定，使用者不可能填錯 | — |
+| **G4** | **回歸 harness 不吃 rubric。** | **✅ 已關閉**：`judge_regression.py --rubric <file>`，`rubric_version` 記真值；已用它跑完 A 輪（[report §11](../m3/report-judge-regression.md)） | — |
+| **G5** | **Judge 讀不到 artifact 內容**，只有 manifest 列 | 仍開著（**但 §2.2 的更正註記縮小了它的影響**：trace 的 `tool_call` payload 是第三條可引用路徑） | 後 MVP：規則腿讀 artifact 文字，另立需求 ID |
+| **G6** | **`brand-guidelines` 的四條判的是自述不是位元組。** | 仍開著。A 輪實測那四條有 3 條判 `failed`、引用的是那句只講檔名的最終回覆，**與本文件 §4.5 的設計本意相符** | 同 G5 |
+| **G7** | **`artifact` 型引用的引文從來沒有被回驗。** `verify()` 只檢查路徑在 manifest 上，引文不比對（因為請求沒送位元組）。於是 `evidence_required: true` 的條目可以用一段**沒人驗過**的引文通過，而存進報告的 `excerpt` 是平台自己的 manifest 行 | **新開（A 輪查出）**。A 輪 9 筆 `passed` 有 6 筆只靠這種引用；逐筆追查確認**模型沒有捏造**（引文逐字存在於該 Run 的 trace），但**平台分不出「歸錯類」與「編的」**。處置兩選一見 [report §11.2](../m3/report-judge-regression.md)，**動的是 ADR-026 defence 3 的判準，需要拍板** | `04` 乙-13 |
 
-**判斷**：允收準則第 3 條的三個要件是「每個精選都有」「可編輯」「供 Judge 逐項回傳證據引文」。本文件關掉第一個；第二個被 G1／G3 擋住，第三個被 G2 擋住（契約與 Python 側已就緒，Go 側沒有來源）。依 AGENTS.md「部分完成保持未勾」，**`03` 的 CONTENT-007 維持 `- [ ]`**。
-
-G1～G4 全部落在 M3 第 6／7 批的既有範圍內，**沒有一項需要新的決策**——只是還沒做。
+**判斷（2026-08-17）**：允收準則第 3 條的三個要件——「每個精選都有」「可編輯」「供 Judge 逐項回傳證據引文」——**三個都成立**，五條允收全數符合，**`03` 的 CONTENT-007 改勾**。判斷理由與保留意見寫在 `03` 該項的註記裡，其中最需要被下一個人看見的是：**G7 不是 CONTENT-007 的缺口而是 EVAL-001／ADR-026 的**（它對任何有 `evidence_required` 的 rubric 一視同仁，與 rubric 內容無關），因此記在 `04` 而不是留著擋這一項。
