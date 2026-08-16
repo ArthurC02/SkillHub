@@ -2555,7 +2555,7 @@ components:
         never stored: it is recomputed on every read, so it always describes the
         run as it would start right now.
       type: object
-      required: [summary, summary_hash, notes]
+      required: [summary, summary_hash, estimated_cost, notes]
       properties:
         summary:
           $ref: "#/components/schemas/RunPermissionSummaryContent"
@@ -2566,6 +2566,15 @@ components:
             the confirmation and the run request quote it back, and the server
             recomputes it rather than trusting either, so it is an integrity
             check on what the user saw and not a token.
+        estimated_cost:
+          allOf:
+            - $ref: "#/components/schemas/RunCostEstimate"
+          description: |
+            What the run is predicted to cost. Outside the hash, like `notes` and
+            for the same reason: the hash covers what the run is *allowed to
+            touch*, and a prediction is not a permission. Recalibrating the
+            numbers against a larger sample must not silently revoke every
+            confirmation a user has outstanding.
         notes:
           type: array
           items: { type: string }
@@ -2574,6 +2583,39 @@ components:
             hash. Rewording a sentence must not invalidate every outstanding
             confirmation, and the facts are in `summary` where the hash covers
             them.
+    RunCostEstimate:
+      description: |
+        PDM-005 §5.3's 預估成本區間. A range rather than a number because §5.2a-6
+        makes one wrong every time: prompt caching puts a first run and a repeat
+        run of the same skill about 8x apart, so any single figure misdescribes
+        one of them.
+
+        An estimate, never a quote and never a commitment. The actual charge is
+        the gateway's own per-key spend. It is also not the per-run budget
+        ceiling - that is `resource_limits` and the gateway's max_budget, and
+        showing the ceiling here would tell every user their run costs half a
+        dollar when the median is six cents.
+      type: object
+      required: [currency, low, typical, high, basis]
+      properties:
+        currency:
+          type: string
+          description: |
+            Fixed at USD - the gateway prices in it and the baseline was measured
+            in it. A converted number would present an exchange rate the platform
+            does not own as a fact about a run.
+        low: { type: number }
+        typical: { type: number }
+        high:
+          type: number
+          description: |
+            Rounded up past the observed maximum, not a bound: the baseline is 45
+            runs and a sample that size does not establish one.
+        basis:
+          type: string
+          description: |
+            Where the numbers came from, in the user's language, so nobody reads
+            them as a quote. Display it with them rather than beside them.
     RunPermissionSummaryContent:
       description: |
         The hashed body: the eight TEST-008 disclosures plus what they belong to.

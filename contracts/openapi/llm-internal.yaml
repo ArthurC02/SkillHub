@@ -129,6 +129,51 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /suggest-criteria:
+    post:
+      operationId: suggestCriteria
+      summary: Propose acceptance criteria for one test case (TEST-002)
+      description: |
+        A proposal, never a decision. Go stores whatever comes back with
+        `source: suggested` and the user edits, confirms or deletes it; nothing
+        here confirms a criterion on the user's behalf (ADR-016 rule 6). An
+        answer the service cannot use comes back as an empty `criteria` list
+        rather than as invented text - the user then writes their own, which is
+        the documented manual path.
+
+        What may travel here is bounded by the schema, not only by the caller:
+        see DatasetField. No retry and no timeout policy - both are Go's
+        (ADR-016 rule 6), and Go degrades a failure here to its own 503.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuggestCriteriaRequest"
+      responses:
+        "200":
+          description: |
+            The proposed criteria, de-duplicated and capped. An empty list is a
+            valid answer and means no usable proposal was produced.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuggestCriteriaResponse"
+        "422":
+          description: Request failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: |
+            Gateway error. Unlike /v1/enrich-skill there is no 503 here: this
+            endpoint has no configuration it can be missing, so an unconfigured
+            gateway surfaces as a failed call rather than as a distinct state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Health:
@@ -286,6 +331,100 @@ components:
           type: string
         reason:
           type: string
+    DatasetField:
+      type: object
+      description: |
+        One column of an uploaded dataset, described by its shape and by nothing
+        else: the field's name and a type inferred from the first data row.
+
+        `additionalProperties: false` is the point of this schema, not a
+        formality. Iron rule 11 and 02:TEST-002 資料使用範圍 say a user's
+        uploaded rows never reach a model, and until now that rule lived only in
+        Go's enforcement (internal/testlab/suggest.go) and in the service's own
+        pydantic `extra="forbid"`. Stated here, the contract itself refuses a
+        request that carries a cell value, a sample row or an example, so a
+        future caller cannot quietly widen what leaves the platform and have it
+        accepted. The row that produced `inferred_type` is read in Go's process
+        and dropped there; there is deliberately no field it could travel in.
+      additionalProperties: false
+      required: [name, inferred_type]
+      properties:
+        name:
+          type: string
+          description: The column's name, as it appears in the uploaded file.
+        inferred_type:
+          type: string
+          description: |
+            Coarse type inferred from the first data row, e.g. number or text.
+            The value that led to it is not sent and has no field here.
+    DatasetOutline:
+      type: object
+      description: One attached file, described by its shape. Never its contents.
+      additionalProperties: false
+      required: [file_name]
+      properties:
+        file_name:
+          type: string
+        content_type:
+          type: string
+          description: |
+            From the content's magic bytes, not the file name (PDM-005 §5.1).
+            Empty when the caller has none.
+          default: ""
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/DatasetField"
+          default: []
+    SuggestCriteriaRequest:
+      type: object
+      description: |
+        What the model is given: the skill's name and summary, the user's own
+        prompt, and the *shape* of each attached file. Untrusted content
+        throughout - the prompt and the summary are user and package text, never
+        treated as instructions.
+      required: [user_prompt]
+      properties:
+        skill_name:
+          type: string
+          default: ""
+        skill_summary:
+          type: string
+          description: The skill's summary, or an excerpt of SKILL.md - whichever the caller has.
+          default: ""
+        user_prompt:
+          type: string
+          minLength: 1
+        datasets:
+          type: array
+          items:
+            $ref: "#/components/schemas/DatasetOutline"
+          maxItems: 20
+          default: []
+    SuggestedCriterion:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        text:
+          type: string
+    SuggestCriteriaResponse:
+      type: object
+      description: |
+        Also the JSON schema handed to the model, so the wire shape and the shape
+        the prompt asks for cannot drift apart (same rule as MatchReasonsResponse).
+      additionalProperties: false
+      required: [criteria]
+      properties:
+        criteria:
+          type: array
+          items:
+            $ref: "#/components/schemas/SuggestedCriterion"
+          maxItems: 8
+          description: |
+            Blank and duplicate texts are dropped by the service, and the list is
+            cut at 8. Empty means no usable proposal - not that the task needs no
+            criteria.
     MatchReasonsResponse:
       description: |
         Reasons the model actually produced, for requested skill_ids only. It
