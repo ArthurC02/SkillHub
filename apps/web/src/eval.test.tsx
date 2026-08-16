@@ -29,12 +29,30 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
+type LinkProps = {
+  to: string;
+  params?: Record<string, string>;
+  search?: Record<string, string | undefined>;
+  children?: unknown;
+};
+
+// Resolves the destination into an href so a test can assert where a link goes,
+// not merely that some link text rendered. EVAL-011 is entirely about the ids in
+// that destination, so a mock that dropped them would assert nothing.
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children?: unknown }) => children,
+  Link: ({ to, params, search, children }: LinkProps) => {
+    const path = Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to);
+    const query = new URLSearchParams(
+      Object.entries(search ?? {}).filter((e): e is [string, string] => e[1] !== undefined),
+    ).toString();
+    return <a href={query ? `${path}?${query}` : path}>{children as never}</a>;
+  },
 }));
 
 const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
 const SKILL = "11111111-1111-1111-1111-111111111111";
+const TEST_CASE = "44444444-4444-4444-4444-444444444444";
+const NEW_VERSION = "55555555-5555-5555-5555-555555555555";
 
 const evaluation: Evaluation = {
   evaluation_id: "eval-1",
@@ -103,7 +121,13 @@ const blockedDiff: SuggestionDiff = {
   blocked_reason: "target_changed",
 };
 
-function stubPlatform(options: { evaluated: boolean }) {
+function stubPlatform(options: {
+  evaluated: boolean;
+  /** The suggestion arrives already accepted, so the apply button is enabled. */
+  accepted?: boolean;
+  /** False: the editable test case this run was frozen from no longer resolves. */
+  testCase?: boolean;
+}) {
   const json = (body: unknown, status = 200) =>
     Promise.resolve(
       new Response(JSON.stringify(body), {
@@ -122,17 +146,52 @@ function stubPlatform(options: { evaluated: boolean }) {
         skill_id: SKILL,
         skill_version_id: "22222222-2222-2222-2222-222222222222",
         test_case_snapshot_id: "33333333-3333-3333-3333-333333333333",
-        test_case_id: "44444444-4444-4444-4444-444444444444",
+        ...(options.testCase === false ? {} : { test_case_id: TEST_CASE }),
       });
     }
     if (!options.evaluated) return json({ error: "not found" }, 404);
+    if (url.includes("/versions/from-suggestions")) {
+      return json(
+        {
+          skill_id: SKILL,
+          version_id: NEW_VERSION,
+          version_number: 3,
+          content_hash: "sha256:aaaa",
+          duplicate: false,
+          applied_suggestion_ids: ["s1"],
+          rejected_suggestions: [],
+        },
+        201,
+      );
+    }
     if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
     if (url.includes("/evaluation")) return json(evaluation);
     if (url.includes("/suggestions/s1/diff")) return json(blockedDiff);
     if (url.includes("/suggestions"))
-      return json({ evaluation_id: "eval-1", suggestions: [suggestion] });
+      return json({
+        evaluation_id: "eval-1",
+        suggestions: [options.accepted ? { ...suggestion, decision: "accepted" } : suggestion],
+      });
     return json({ error: "not found" }, 404);
   });
+}
+
+/** Renders, presses 建立新版本, and waits for the result block. */
+async function applyAccepted() {
+  await render("succeeded");
+  await waitFor(() => (container.textContent ?? "").includes("建立新版本"));
+  const apply = Array.from(container.querySelectorAll("button")).find((b) =>
+    (b.textContent ?? "").includes("建立新版本"),
+  );
+  expect(apply?.disabled).toBe(false);
+  await act(async () => apply?.click());
+  await waitFor(() => (container.textContent ?? "").includes("已建立新版本"));
+}
+
+function rerunLink(): HTMLAnchorElement | undefined {
+  return Array.from(container.querySelectorAll("a")).find((a) =>
+    a.getAttribute("href")?.startsWith("/lab/run"),
+  );
 }
 
 async function render(runStatus: string) {
@@ -215,6 +274,35 @@ test("EVAL-002 the apply action is offered on a run reached without a skill in i
   );
   expect(apply).toBeDefined();
   expect(container.textContent).not.toContain("?skill=");
+});
+
+test("EVAL-011 the new version's id is handed to the preflight screen, not to the address bar", async () => {
+  stubPlatform({ evaluated: true, accepted: true });
+  await applyAccepted();
+
+  // The whole of the gap this test exists for: after a version is built, the
+  // three ids a re-run needs are in a link on the screen.
+  const href = rerunLink()?.getAttribute("href") ?? "";
+  const params = new URLSearchParams(href.slice(href.indexOf("?")));
+  expect(params.get("skill")).toBe(SKILL);
+  expect(params.get("version")).toBe(NEW_VERSION);
+  expect(params.get("test_case")).toBe(TEST_CASE);
+
+  // A link to the permission screen, never a re-run started from here (TEST-009).
+  const text = container.textContent ?? "";
+  expect(text).toContain("以新版本重跑這個 Test Case");
+  expect(text).toContain("執行前權限確認畫面");
+});
+
+test("EVAL-011 a run whose test case no longer resolves says so instead of inventing an id", async () => {
+  stubPlatform({ evaluated: true, accepted: true, testCase: false });
+  await applyAccepted();
+
+  // ADR-003: no link at all rather than one pointing at something that is gone.
+  expect(rerunLink()).toBeUndefined();
+  expect(container.textContent).toContain("無法從這裡以相同輸入重跑新版本");
+  // The version was still built, and the page still says where it lives.
+  expect(container.textContent).toContain("已建立新版本");
 });
 
 test("EVAL-002 a suggestion that cannot be applied names the rule that blocked it", async () => {

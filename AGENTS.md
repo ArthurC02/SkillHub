@@ -6,9 +6,9 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 
 ## 目前狀態（2026-08-17）
 
-**M3 評估與改善完結，程式面已收斂；M0／M1／M2 亦已收斂。** 對帳見 [docs/plans/mvp/m3/audit.md](docs/plans/mvp/m3/audit.md)（16 項：13 勾選、1 誠實不勾、2 已勾覆核後維持）與 [docs/plans/mvp/m2/m2-work-items-audit.md](docs/plans/mvp/m2/m2-work-items-audit.md)（41 項：33 維持勾選、1 退回後補回、7 誠實不勾）。
+**M3 評估與改善完結，程式面已收斂；M0／M1／M2 亦已收斂。** 對帳見 [docs/plans/mvp/m3/audit.md](docs/plans/mvp/m3/audit.md)（16 項：13 勾選、1 退回後同日補回、2 已勾覆核後維持）與 [docs/plans/mvp/m2/m2-work-items-audit.md](docs/plans/mvp/m2/m2-work-items-audit.md)（41 項：33 維持勾選、1 退回後補回、7 誠實不勾）。
 
-- **M3 唯一不勾的是 `EVAL-011`**：後端、契約、preflight 強制與比較畫面的重跑連結全部到位，缺的是「採納建議建出新版本之後，沒有任何畫面把那個版本的 id 交到執行前確認畫面」。補法很小（preflight 頁加版本選單），見 `04` 丙-11。
+- **M3 對帳唯一退回的 `EVAL-011` 已於 2026-08-17 補上並勾選**：採納建議建出新版本後，`AppliedResult` 直接把三個 id 連到執行前權限確認畫面（`04` 丙-11 已結案，見 [m3/audit.md §2.1](docs/plans/mvp/m3/audit.md)）。**preflight 頁仍然沒有版本選單**，那屬 `DESIGN-007`。
 - **M1 驗證閘門仍未正式通過**：使用者測試材料已備妥（[docs/plans/mvp/gate-test/](docs/plans/mvp/gate-test/)），**D 日仍待負責人宣告**；閘門與 M2／M3 並行至今，通過與否以測試結果為準。
 - **ADR-020～026 已入列**（身分／Session、License 溯源、Sandbox 部署拓撲與安全定值、Agent SDK 版本釘選、頂層目錄分「跑的」與「讀的」；Run 終態與 Evaluation 判定分離、重評 append-only 與 LLM Judge 四條防線）。
 - **殘項三類清單**（甲＝部署期驗收、乙＝待負責人決策、丙＝移交下一里程碑的接點）見 [docs/plans/mvp/04-backlog-and-handoffs.md](docs/plans/mvp/04-backlog-and-handoffs.md)（**活文件**，隨時更新）——**開工前先看那份，它記的是「已定值但沒有強制」與「已量到但沒查根因」那一類洞**。目前甲 4 項、乙 3 項、丙 6 項；原移交 M3 的丙類七項已全數結案。

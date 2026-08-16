@@ -376,7 +376,8 @@ function FeedbackForm({
 function SuggestionsPanel({ runId }: { runId: string }) {
   const client = useQueryClient();
   const suggestions = useRunSuggestions(runId);
-  const skillId = useRun(runId).data?.skill_id;
+  const run = useRun(runId).data;
+  const skillId = run?.skill_id;
   const [applied, setApplied] = useState<VersionFromSuggestions | null>(null);
   const [message, setMessage] = useState("");
 
@@ -431,7 +432,7 @@ function SuggestionsPanel({ runId }: { runId: string }) {
       )}
 
       {message && <p role="alert">{message}</p>}
-      {applied && <AppliedResult result={applied} skillId={skillId} />}
+      {applied && <AppliedResult result={applied} testCaseId={run?.test_case_id} />}
     </section>
   );
 }
@@ -528,7 +529,29 @@ function SuggestionDiffView({ suggestionId }: { suggestionId: string }) {
   );
 }
 
-function AppliedResult({ result, skillId }: { result: VersionFromSuggestions; skillId?: string }) {
+/**
+ * 02:EVAL-003 第 1 條. The step that used to be missing: the new version's id
+ * handed to the preflight screen, instead of the user copying it off the skill
+ * page and editing the address bar.
+ *
+ * The ids come from the apply response (`skill_id`/`version_id`, both required
+ * by contract) and from GET /runs/{id} — never invented here. `duplicate: true`
+ * still links: the id points at the existing version with the same content,
+ * which is as runnable as a freshly built one. No `test_case_id` means the
+ * draft this run was frozen from no longer resolves, so the link is dropped
+ * rather than pointed at something that would 404 (ADR-003, same rule as
+ * `RerunCell`).
+ *
+ * It is a link, not a run: the destination is the permission screen and the
+ * user still confirms the summary hash there (TEST-009).
+ */
+function AppliedResult({
+  result,
+  testCaseId,
+}: {
+  result: VersionFromSuggestions;
+  testCaseId?: string;
+}) {
   return (
     <div className="notice">
       <p>
@@ -551,13 +574,30 @@ function AppliedResult({ result, skillId }: { result: VersionFromSuggestions; sk
           </ul>
         </>
       )}
-      {skillId && (
+      {testCaseId ? (
         <p>
-          <Link to="/skills/$skillId" params={{ skillId }}>
-            前往新版本所在的 Skill
+          <Link
+            to="/lab/run"
+            search={{
+              skill: result.skill_id,
+              version: result.version_id,
+              test_case: testCaseId,
+            }}
+          >
+            以新版本重跑這個 Test Case
           </Link>
+          ：連過去的是執行前權限確認畫面，仍須在那裡確認一次才會開始 Run。
+        </p>
+      ) : (
+        <p className="note">
+          這個 Run 的 Test Case 草稿已不存在，無法從這裡以相同輸入重跑新版本；新版本本身不受影響。
         </p>
       )}
+      <p>
+        <Link to="/skills/$skillId" params={{ skillId: result.skill_id }}>
+          前往新版本所在的 Skill
+        </Link>
+      </p>
     </div>
   );
 }
