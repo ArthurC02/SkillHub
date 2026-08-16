@@ -893,12 +893,53 @@ components:
         summary:
           type: string
           maxLength: 4000
+    GatewayUsage:
+      type: object
+      description: |
+        What the gateway charged for this one call, as the gateway reported it.
+
+        Service-layer only, and deliberately outside every model-facing schema: a
+        judged run must not be able to write its own bill. The numbers come from
+        the LiteLLM response - token counts from the response body's `usage`, cost
+        from the `x-litellm-response-cost` header - never from the model's answer.
+
+        Optional as a whole. Absent means the gateway reported nothing usable, and
+        a consumer must render that as unreported rather than as zero (the same
+        rule the trace usage event's `cost_usd` carries). The authoritative ledger
+        is still the gateway's own per-key spend; this is the per-call reading of
+        it (ADR-017).
+      additionalProperties: false
+      required: [prompt_tokens, completion_tokens]
+      properties:
+        prompt_tokens:
+          type: integer
+          minimum: 0
+        completion_tokens:
+          type: integer
+          minimum: 0
+        cost_usd:
+          type: ["number", "null"]
+          minimum: 0
+          description: |
+            Cost of this call as reported by the gateway. Null when the gateway
+            did not report it; a computed guess must not be substituted here.
+          default: null
+        cost_source:
+          type: ["string", "null"]
+          enum: [gateway, null]
+          description: |
+            Where `cost_usd` came from. Only `gateway` is ever produced: this
+            service does not price calls itself, so there is no `estimated` value
+            to report (unlike the trace usage event, which has a producer that
+            can estimate).
+          default: null
     JudgeRunResponse:
       type: object
       description: |
-        `verdict` is what the model wrote; `model` and `prompt_version` are what
-        this service knows and the model cannot influence. They are separated so
-        the boundary is visible in the type rather than remembered by the reader.
+        `verdict` is what the model wrote; `model`, `prompt_version` and `usage`
+        are what this service knows and the model cannot influence. They are
+        separated so the boundary is visible in the type rather than remembered by
+        the reader.
       required: [verdict, model, prompt_version]
       properties:
         verdict:
@@ -915,6 +956,15 @@ components:
             Judge prompt revision, stored as `evaluations.judge_prompt_version`.
             A re-evaluation under a newer prompt is a new row, so this is what
             says which prompt produced which verdict (evaluation-design §3.2).
+        usage:
+          $ref: "#/components/schemas/GatewayUsage"
+          description: |
+            What this judgement cost at the gateway. Omitted when the gateway
+            reported nothing usable - which is why it is optional rather than
+            zero-filled. Go stores it as `evaluations.cost_usd` /
+            `cost_source`, kept in its own column apart from the Run's own cost:
+            one is what the user's workload spent, the other what the platform's
+            verdict spent, and they are never added into one number (丙-3).
 
     # --- /suggest-improvements (EVAL-002) ---
 
@@ -1014,8 +1064,8 @@ components:
     SuggestImprovementsResponse:
       type: object
       description: |
-        `suggestions` is model output; `model` and `prompt_version` are this
-        service's own. The strict `json_schema` handed to the model is
+        `suggestions` is model output; `model`, `prompt_version` and `usage` are
+        this service's own. The strict `json_schema` handed to the model is
         `{"suggestions": [ImprovementProposal, ...]}`.
       required: [suggestions, model, prompt_version]
       properties:
@@ -1031,3 +1081,10 @@ components:
           type: string
         prompt_version:
           type: string
+        usage:
+          $ref: "#/components/schemas/GatewayUsage"
+          description: |
+            What producing these proposals cost at the gateway. Same shape and
+            same optionality as JudgeRunResponse.usage: generating suggestions is
+            a second charged call on the judge tier, so it is reported rather than
+            silently folded into the judgement's cost.

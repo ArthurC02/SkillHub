@@ -212,6 +212,46 @@ def _metadata(**pairs: str) -> dict:
     return {"metadata": {k: v for k, v in pairs.items() if v}}
 
 
+class GatewayUsage(BaseModel):
+    """What the gateway charged for one call, as the gateway reported it.
+
+    Outside every model-facing schema on purpose: a judged run must not get to
+    write its own bill. Token counts come from the response body, cost from
+    LiteLLM's `x-litellm-response-cost` header - the body carries no cost field.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt_tokens: int = Field(..., ge=0)
+    completion_tokens: int = Field(..., ge=0)
+    cost_usd: float | None = Field(None, ge=0)
+    # Only ever `gateway`: this service does not price calls itself, so it has no
+    # `estimated` to report.
+    cost_source: Literal["gateway"] | None = None
+
+
+def _usage(completion, headers) -> GatewayUsage | None:
+    """The call's cost, or None when the gateway reported nothing usable.
+
+    Omitted rather than zero-filled: an absent reading means unreported, and a
+    zero here would be read downstream as a free call (same rule as the trace
+    usage event's `cost_usd`).
+    """
+    reported = getattr(completion, "usage", None)
+    if reported is None:
+        return None
+    try:
+        cost = float(headers["x-litellm-response-cost"])
+    except (KeyError, TypeError, ValueError):
+        cost = None
+    return GatewayUsage(
+        prompt_tokens=reported.prompt_tokens or 0,
+        completion_tokens=reported.completion_tokens or 0,
+        cost_usd=cost,
+        cost_source="gateway" if cost is not None else None,
+    )
+
+
 # --- /judge-run (EVAL-001 task-effect leg) -----------------------------------
 
 
@@ -344,11 +384,12 @@ class JudgeVerdict(BaseModel):
 
 
 class JudgeRunResponse(BaseModel):
-    """`verdict` is what the model wrote; the other two are what this service knows."""
+    """`verdict` is what the model wrote; the rest is what this service knows."""
 
     verdict: JudgeVerdict
     model: str
     prompt_version: str
+    usage: GatewayUsage | None = None
 
 
 def _judge_user_message(req: JudgeRunRequest) -> str:
@@ -442,7 +483,9 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
         system += EVIDENCE_INCOMPLETE_NOTICE
 
     try:
-        completion = await _client().chat.completions.create(
+        # Raw response, because the cost of the call is in a header
+        # (`x-litellm-response-cost`) and never in the body.
+        raw = await _client().chat.completions.with_raw_response.create(
             model=JUDGE_MODEL,
             messages=[
                 {"role": "system", "content": system},
@@ -458,6 +501,7 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
             },
             extra_body=_metadata(run_id=req.run_id, evaluation_id=req.evaluation_id),
         )
+        completion = raw.parse()
     except OpenAIError as e:
         logger.exception("judge-run: gateway call failed")
         raise HTTPException(status_code=502, detail=f"judge gateway error: {e}") from e
@@ -480,7 +524,12 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
             ref.quote = _clip(ref.quote, MAX_QUOTE)
     verdict.summary = _clip(verdict.summary, MAX_SUMMARY)
 
-    return JudgeRunResponse(verdict=verdict, model=JUDGE_MODEL, prompt_version=JUDGE_PROMPT_VERSION)
+    return JudgeRunResponse(
+        verdict=verdict,
+        model=JUDGE_MODEL,
+        prompt_version=JUDGE_PROMPT_VERSION,
+        usage=_usage(completion, raw.headers),
+    )
 
 
 # --- /suggest-improvements (EVAL-002) ----------------------------------------
@@ -528,6 +577,7 @@ class ImprovementProposals(BaseModel):
 class SuggestImprovementsResponse(ImprovementProposals):
     model: str
     prompt_version: str
+    usage: GatewayUsage | None = None
 
 
 def _improvements_user_message(req: SuggestImprovementsRequest) -> str:
@@ -561,7 +611,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
     (evaluation-design §5).
     """
     try:
-        completion = await _client().chat.completions.create(
+        raw = await _client().chat.completions.with_raw_response.create(
             model=JUDGE_MODEL,
             messages=[
                 {"role": "system", "content": SUGGEST_IMPROVEMENTS_SYSTEM_PROMPT},
@@ -577,6 +627,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
             },
             extra_body=_metadata(evaluation_id=req.evaluation_id),
         )
+        completion = raw.parse()
     except OpenAIError as e:
         logger.exception("suggest-improvements: gateway call failed")
         raise HTTPException(status_code=502, detail=f"suggestion gateway error: {e}") from e
@@ -616,4 +667,5 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
         suggestions=kept,
         model=JUDGE_MODEL,
         prompt_version=SUGGEST_IMPROVEMENTS_PROMPT_VERSION,
+        usage=_usage(completion, raw.headers),
     )

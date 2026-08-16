@@ -89,22 +89,39 @@ GOOD_PROPOSALS = {
 }
 
 
-def _fake_client(content: str, capture: list | None = None):
-    """Stand-in for AsyncOpenAI whose completion returns `content`."""
+def _fake_client(content: str, capture: list | None = None, usage=..., headers: dict | None = None):
+    """Stand-in for AsyncOpenAI whose completion returns `content`.
+
+    Both endpoints read the raw response - the cost of a call is in a LiteLLM
+    header and never in the body - so the stub answers `with_raw_response`.
+    """
+    if usage is ...:
+        usage = SimpleNamespace(prompt_tokens=1200, completion_tokens=340)
+    if headers is None:
+        headers = {"x-litellm-response-cost": "0.0123"}
 
     async def create(**kwargs):
         if capture is not None:
             capture.append(kwargs)
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
+        completion = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=content))], usage=usage
+        )
+        return SimpleNamespace(parse=lambda: completion, headers=headers)
 
-    return SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    return SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
 
 
 def _fake_gateway_failure():
     return SimpleNamespace(
         chat=SimpleNamespace(
             completions=SimpleNamespace(
-                create=AsyncMock(side_effect=APIConnectionError(request=None))
+                with_raw_response=SimpleNamespace(
+                    create=AsyncMock(side_effect=APIConnectionError(request=None))
+                )
             )
         )
     )
@@ -115,8 +132,8 @@ def capture(monkeypatch):
     """Route both endpoints at a stub and record the gateway call arguments."""
     calls: list = []
 
-    def use(content: str):
-        monkeypatch.setattr(evaluate, "_client", lambda: _fake_client(content, calls))
+    def use(content: str, **stub):
+        monkeypatch.setattr(evaluate, "_client", lambda: _fake_client(content, calls, **stub))
         return calls
 
     return use
@@ -132,7 +149,7 @@ def test_judge_returns_verdict_with_model_and_prompt_version(capture):
 
     assert response.status_code == 200
     body = response.json()
-    assert set(body) == {"verdict", "model", "prompt_version"}
+    assert set(body) == {"verdict", "model", "prompt_version", "usage"}
     assert body["model"] == evaluate.JUDGE_MODEL
     assert body["prompt_version"] == evaluate.JUDGE_PROMPT_VERSION
     assert [c["criterion_id"] for c in body["verdict"]["criterion_results"]] == ["c1", "c2"]
@@ -237,6 +254,45 @@ def test_judge_call_is_strict_json_schema_and_carries_cost_metadata(capture):
     # Single-shot: no tools, no second call.
     assert "tools" not in call
     assert len(calls) == 1
+
+
+def test_usage_reports_tokens_from_the_body_and_cost_from_the_header(capture):
+    """The gateway prices the call; the model never gets to write its own bill."""
+    capture(json.dumps(GOOD_VERDICT))
+
+    usage = client.post("/judge-run", json=JUDGE_REQUEST).json()["usage"]
+
+    assert usage == {
+        "prompt_tokens": 1200,
+        "completion_tokens": 340,
+        "cost_usd": 0.0123,
+        "cost_source": "gateway",
+    }
+    # And it is not something the model could have produced: nothing in the
+    # strict schema the model answers has a token or a cost field in it.
+    assert not {"prompt_tokens", "cost_usd"} & _keys(evaluate.JudgeVerdict.model_json_schema())
+
+
+@pytest.mark.parametrize(
+    "stub, expected",
+    [
+        ({"headers": {}}, {"prompt_tokens": 1200, "completion_tokens": 340}),
+        ({"headers": {"x-litellm-response-cost": "not-a-number"}}, {"prompt_tokens": 1200}),
+        ({"usage": None}, None),
+    ],
+    ids=["no-cost-header", "unparseable-cost", "no-usage-at-all"],
+)
+def test_unreported_usage_is_omitted_never_zero(capture, stub, expected):
+    """An unreported cost must not arrive downstream looking like a free call."""
+    capture(json.dumps(GOOD_VERDICT), **stub)
+
+    usage = client.post("/judge-run", json=JUDGE_REQUEST).json()["usage"]
+
+    if expected is None:
+        assert usage is None
+    else:
+        assert usage["cost_usd"] is None and usage["cost_source"] is None
+        assert expected.items() <= usage.items()
 
 
 def _keys(node) -> set:
@@ -395,6 +451,9 @@ def test_suggest_improvements_returns_proposals(capture):
     assert "decision" not in proposal
     assert calls[0]["extra_body"]["metadata"] == {"evaluation_id": "eval_01"}
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
+    # A second charged call on the judge tier, reported rather than folded into
+    # the judgement's cost.
+    assert body["usage"]["cost_usd"] == 0.0123
 
 
 def test_improvement_input_is_fenced_off_from_the_instructions(capture):
