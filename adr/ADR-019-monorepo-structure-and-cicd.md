@@ -63,6 +63,8 @@
 
 ### 1. 目錄結構
 
+> **Amended by [ADR-024](./ADR-024-top-level-repository-layout.md)（2026-08-16）**：頂層改分「跑的」（`apps/`、`services/`、`contracts/`、`db/`、`infra/`、`tools/`）與「讀的」（`docs/`）。下方樹狀圖中的 `spikes/`、`plans/`、`adr/` 三行已純前綴搬移為 `docs/spikes/`、`docs/plans/`、`docs/adr/`（目錄名不變），CI 的 `!spikes/**` 排除項改為 `docs/**`。本節其餘內容不受影響。
+
 單一 monorepo，頂層依「部署產物」而非「技術層」分組：
 
 ```text

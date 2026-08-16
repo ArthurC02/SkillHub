@@ -16,7 +16,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
 | `plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單；`m0/`／`m1/`／`m2/` 為各里程碑產出（決策提案 v5、成本試算、威脅模型、Spike 報告、內容審校與基準試跑報告、工作項對帳） | [plans/mvp/README.md](plans/mvp/README.md) |
-| `adr/` | 24 份架構決策紀錄（ADR-000～023；014 已 Superseded by 018） | [adr/README.md](adr/README.md)（含索引與架構總圖） |
+| `adr/` | 25 份架構決策紀錄（ADR-000～024；014 已 Superseded by 018，019 §1 已 Amended by 024） | [adr/README.md](adr/README.md)（含索引與架構總圖） |
 | `spikes/` | M0 驗證用 spike code（可重跑，非產品程式碼，不進 CI） | 各目錄 README |
 
 Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**——鋪程式碼依其結構進行，結構性偏離需先更新 ADR。
@@ -61,7 +61,7 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**——鋪�
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容。
-- 新 ADR 從 **ADR-024** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
+- 新 ADR 從 **ADR-025** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
 - ADR 的待決策被後續 ADR 回答時，回填 `→ [ADR-xxx](...)` 引用（現有文件已有此慣例）。
 - 新 ADR 記得更新 [adr/README.md](adr/README.md) 的決策索引。
 - **檔案放哪裡**：活文件放 `plans/mvp/` 根層（編號 `01~`）；里程碑的歷史產出放 `mX/`，里程碑完結即凍結。一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`。
