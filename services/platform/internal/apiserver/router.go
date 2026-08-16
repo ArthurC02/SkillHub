@@ -135,6 +135,13 @@ func NewRouter(d Deps) *http.ServeMux {
 	mux.HandleFunc("POST /skills/{id}/versions/from-suggestions",
 		auth.RequireSession(d.Eval.ApplySuggestions))
 
+	// EVAL-003's read half, and the whole of it. There is deliberately no re-run
+	// route beside it: re-running is POST /skills/{id}/runs above with the new
+	// version_id and the same test_case_id, which keeps preflight and
+	// confirmed_summary_hash on the path (TEST-009). A "re-run" route here could
+	// differ from that one in exactly one way — by skipping the permission screen.
+	mux.HandleFunc("GET /runs/{id}/comparison", auth.RequireSession(d.Eval.Comparison))
+
 	// TRACE-002: the execution plane pushes collected events here. Deliberately
 	// the only route in this table with no session and no RequireSession wrapper:
 	// its caller is a sandbox provider, and it authenticates with the per-attempt

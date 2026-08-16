@@ -619,6 +619,51 @@ func (q *Queries) MarkSuggestionsApplied(ctx context.Context, arg MarkSuggestion
 	return result.RowsAffected(), nil
 }
 
+const runInputsStillAvailable = `-- name: RunInputsStillAvailable :one
+SELECT (
+    tc.deleted_at IS NULL
+    AND NOT EXISTS (
+        SELECT 1 FROM jsonb_array_elements(s.dataset_refs) AS ref
+        WHERE NOT EXISTS (
+            SELECT 1 FROM datasets d
+            WHERE d.id = (ref->>'dataset_id')::uuid
+              AND d.workspace_id = s.workspace_id
+              AND d.deleted_at IS NULL
+              AND d.expires_at > now()
+        )
+    )
+)::boolean AS available
+FROM test_case_snapshots s
+JOIN test_cases tc ON tc.id = s.test_case_id
+WHERE s.id = $1 AND s.workspace_id = $2
+`
+
+type RunInputsStillAvailableParams struct {
+	SnapshotID  pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+// EVAL-012 / design §5.4: could this run's inputs be supplied again?
+//
+// The snapshot itself is immutable and never goes away, which is what keeps a
+// comparison readable forever. What does go away is the material behind it: the
+// draft test case (soft deleted) and the dataset files (deleted by the user, or
+// past their retention). When any of that is gone, a re-run of *these* inputs is
+// impossible, and a comparison screen still offering one would be promising
+// something the platform cannot do (ADR-003 刪除與可追溯性).
+//
+// Answered from the platform's own deletion and expiry columns rather than by
+// probing object storage: those columns are what the storage sweep acts on, and
+// one HEAD per dataset per comparison would be a round trip bought for an answer
+// already sitting here. A snapshot with no datasets is available on the strength
+// of its test case alone - there are no files to have lost.
+func (q *Queries) RunInputsStillAvailable(ctx context.Context, arg RunInputsStillAvailableParams) (bool, error) {
+	row := q.db.QueryRow(ctx, runInputsStillAvailable, arg.SnapshotID, arg.WorkspaceID)
+	var available bool
+	err := row.Scan(&available)
+	return available, err
+}
+
 const setEvaluationFeedback = `-- name: SetEvaluationFeedback :one
 UPDATE evaluations SET
     feedback_helpful = $1,

@@ -1565,6 +1565,14 @@ paths:
         Each side reports its execution status and its task judgement
         separately, and a side with no judgement says so rather than reading as
         a pass (ADR-025).
+
+        Any two runs in the caller's workspace may be compared. Two runs of
+        different test cases, or of different skills, are not refused: the
+        criterion matrix carries a null verdict where a criterion exists on one
+        side only, and `version_diff_url` is absent when there is no diff to
+        link. Refusing them would need a rule the acceptance criteria do not
+        state, and would hide the case a user most wants to see — the same test
+        case re-run after the package changed — behind a guess about intent.
       parameters:
         - name: id
           in: path
@@ -3972,7 +3980,7 @@ components:
           description: The run named in the path first, the `against` run second.
           items:
             type: object
-            required: [run_id, skill_version_id, status, cost]
+            required: [run_id, skill_version_id, status, cost, inputs_available]
             properties:
               run_id: { type: string, format: uuid }
               skill_version_id: { type: string, format: uuid }
@@ -4051,6 +4059,23 @@ components:
                       spend for this run (ADR-017). Named rather than implied,
                       so a reader knows what a disagreement would be resolved
                       against.
+              inputs_available:
+                type: boolean
+                description: |
+                  Whether this run's inputs could still be supplied again: the
+                  test case it was frozen from has not been deleted, and every
+                  dataset the snapshot referenced is still stored and unexpired.
+
+                  False means a re-run of *these* inputs is no longer possible,
+                  and the screen must not offer one (ADR-003 刪除與可追溯性).
+                  The comparison itself stays fully readable either way — the
+                  snapshot's hash and both verdicts are history and do not
+                  depend on the files still existing — so this disables a
+                  re-run affordance and nothing else.
+
+                  Answered from the platform's own deletion and expiry records,
+                  which is what the storage sweep acts on, rather than by
+                  probing object storage per dataset on every read.
         criterion_matrix:
           type: array
           description: |
@@ -4093,4 +4118,7 @@ components:
             Where to see what changed between the two skill versions: the
             existing GET /skills/{id}/diff with `from` and `to` filled in
             (WS-003), not a second diff implementation. Absent when both runs
-            used the same version.
+            used the same version, and absent when they used versions of
+            different skills — that diff does not exist, and inventing a
+            cross-skill one would be a second diff implementation for a
+            comparison nobody asked for.

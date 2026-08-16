@@ -149,6 +149,38 @@ WHERE id = ANY(@ids::uuid[])
   AND workspace_id = @workspace_id
   AND decision = 'accepted';
 
+-- name: RunInputsStillAvailable :one
+-- EVAL-012 / design §5.4: could this run's inputs be supplied again?
+--
+-- The snapshot itself is immutable and never goes away, which is what keeps a
+-- comparison readable forever. What does go away is the material behind it: the
+-- draft test case (soft deleted) and the dataset files (deleted by the user, or
+-- past their retention). When any of that is gone, a re-run of *these* inputs is
+-- impossible, and a comparison screen still offering one would be promising
+-- something the platform cannot do (ADR-003 刪除與可追溯性).
+--
+-- Answered from the platform's own deletion and expiry columns rather than by
+-- probing object storage: those columns are what the storage sweep acts on, and
+-- one HEAD per dataset per comparison would be a round trip bought for an answer
+-- already sitting here. A snapshot with no datasets is available on the strength
+-- of its test case alone - there are no files to have lost.
+SELECT (
+    tc.deleted_at IS NULL
+    AND NOT EXISTS (
+        SELECT 1 FROM jsonb_array_elements(s.dataset_refs) AS ref
+        WHERE NOT EXISTS (
+            SELECT 1 FROM datasets d
+            WHERE d.id = (ref->>'dataset_id')::uuid
+              AND d.workspace_id = s.workspace_id
+              AND d.deleted_at IS NULL
+              AND d.expires_at > now()
+        )
+    )
+)::boolean AS available
+FROM test_case_snapshots s
+JOIN test_cases tc ON tc.id = s.test_case_id
+WHERE s.id = @snapshot_id AND s.workspace_id = @workspace_id;
+
 -- name: FindLiveTraceEvents :many
 -- ADR-026 decision 2: an evidence reference outlives the evidence, so `available`
 -- is answered at read time rather than trusted from write time - trace_events is
