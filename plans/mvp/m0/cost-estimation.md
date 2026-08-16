@@ -240,6 +240,16 @@ Langfuse 計費：(a) 45,000 units → Core **$29**；(b) 450,000 units → $29 
 - **A. AWS**：控制平面 3 × c7g.xlarge（4 vCPU/8 GiB，對齊 §2.2 規格）$317.55 + EBS ≈ $325（v1 誤用 2 vCPU 的 m7g.large）。
 - **B. GCP**：控制平面 3 × e2-standard-4 $293.52 + PD ≈ $302（v1 同樣誤用 2 vCPU 的 e2-standard-2）。
 
+> **配置修訂註記（2026-08-16，[ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 強制條件 6）——總額不變，原文不改寫。**
+>
+> 本目錄文件自 2026-08-14 起視為已定案依據、不再修訂結論（[README.md](./README.md)），故上方計算註記維持原文；以下為後續 ADR 對**節點配置**（非金額）的修訂，適用於 §4.1 與 §4.2 的 **E1 Hetzner** 兩列。
+>
+> - **原配置**：資料節點跑「Postgres + pgvector 容器與 LiteLLM」；另編列「Egress Proxy 1 台 CX33 $10.38」（(b) 為 2 台 HA $21）。
+> - **修訂後**：**LiteLLM 移出資料節點，改跑在沙箱面專屬節點上**——即原本編列給 Egress Proxy 的那台 CX33（(b) 為 2 台）。ADR-022 Q3 決定不部署 Squid／Envoy（沙箱層允許清單收斂為一項平台自有目的地），該預算行因此空出來，正好承接這個需求。
+> - **為什麼必須移出**：ADR-022 Q2 強制條件 6——沙箱層允許清單的目的地**不得是控制平面／資料節點的位址**。LiteLLM 若留在資料節點上，沙箱「唯一到得了的位址」就是那台跑著 PostgreSQL 的機器，ADR-001 的平面隔離會被一條防火牆規則抵銷（威脅模型 TM-CTL-01）。
+> - **金額影響**：**$0**。兩情境的月費合計、單 Run 平台成本與所有比較結論皆不變；改變的只是同一筆錢買到的東西從「Egress Proxy」變成「沙箱面 LiteLLM 節點」。
+> - 驗證：ADR-022 SEC-009 測項 **T5-7**（對允許清單 `pinned_ip` 的 5432／平台 API／9000 必須 DROP）是這項配置被違反時唯一會叫的檢查。
+
 ### 4.2 情境 (b)：早期成長（200 使用者，500 Run/日，15,000 Run/月）
 
 | 分項 | **E1 Hetzner** | **E2 Hetzner（自管 k8s）** | **E1 DO** | **E2 DOKS** | D. Hetzner+Neon | C. DO 受管 | A. AWS | B. GCP |

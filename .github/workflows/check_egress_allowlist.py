@@ -49,8 +49,17 @@ if len(sandbox) != 1 or sandbox[0].get("name") != "model_gateway":
     )
 
 for e in sandbox:
-    if not str(e.get("pinned_ip", "")).strip():
+    pin = str(e.get("pinned_ip", "")).strip()
+    if not pin:
         errors.append(f"{e.get('name')}: tier:sandbox requires pinned_ip (ADR-022 Q3)")
+    elif pin == "unset":
+        # Not an error — unset renders no accept rule, which is the fail-closed
+        # direction. But it means no node built from this file can reach anything,
+        # so it has to be visible on every run rather than discovered at deploy time.
+        warnings.append(
+            f"{e.get('name')}: pinned_ip is 'unset' — fail-closed, no sandbox node "
+            f"built from this file can reach any destination (ADR-022 Q3)"
+        )
 
 # Node tier talks to third parties whose IPs rotate; a pin there is a rule that
 # breaks silently on the vendor's next deploy.

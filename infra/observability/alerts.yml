@@ -150,6 +150,10 @@ groups:
       - alert: CleanupBacklogGrowing
         # 終態但未確認釋放的 Run。這是唯一能發現「Sandbox 在燒錢而沒人回收」的
         # 指標，因為 Run 本身看起來完全正常。
+        #
+        # 門檻 5 是**未校準的首發預設**，不是 ADR-022 定的值——SEC-002 的六項門檻
+        # 不含它。封測規模只有 4 個 slot，5 個未確認釋放已經超過整池容量，所以這個
+        # 值偏鬆；上線後第一個月應以實際分佈收窄並在此註明校準日期。
         expr: skillhub_run_cleanup_backlog > 5
         for: 15m
         labels:
@@ -187,6 +191,11 @@ groups:
         # in-flight orphan 表（provider_run_id → first_seen_round）與對應指標。
         # 在那之前用「連兩個掃描週期都有銷毀失敗」近似：同一筆卡住會持續計數，
         # 但兩筆不同資源各失敗一次也會觸發。誤報方向，可接受。
+        #
+        # 【漏報方向】掃描**找不到**的遺留資源不會計入——action="failed" 只涵蓋
+        # 「找到了、殺不掉」。節點上存在但 GET /runs?active=true 沒回報的沙箱
+        # （provider 記憶體狀態與實際容器不同步）對本條完全隱形，只有 SEC-009
+        # 測項 T7 的注入子項驗得到。
         expr: sum by (provider) (increase(skillhub_orphan_sandbox_total{action="failed"}[10m])) >= 2
         for: 10m
         labels:
@@ -215,6 +224,11 @@ groups:
         # sandbox_destroy_failed（SBX-012）；現在只有整體的 cleanup result="failed"，
         # 它區分不出「金鑰撤不掉」與「沙箱殺不掉」，而兩者的正確動作相反。
         # 在 SBX-012 之前這條與 CleanupFailing 重疊，差別只在門檻與嚴重度。
+        #
+        # 【漏報方向】撤銷**沒被嘗試**就不會計入：撤銷失敗要先有人呼叫 /key/delete。
+        # cleanup job 本身沒被排入（worker 停擺、River leader 選舉卡住）時，金鑰會
+        # 安靜地活到 TTL，本條一聲不響——那條路徑由 CleanupBacklogGrowing 與
+        # OrphanScanNotRunning 覆蓋，兩者要一起看。
         expr: sum(increase(skillhub_run_cleanup_total{result="failed"}[15m])) >= 3
         for: 15m
         labels:

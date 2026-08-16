@@ -26,29 +26,57 @@ jobs:
       - name: Baseline is N or N-1 and not older than 90 days
         run: |
           set -euo pipefail
-          BASELINE=$(grep -v '^#' infra/nodes/gvisor-baseline.txt | tr -d '[:space:]' | grep . | head -1)
+          BASELINE=$(awk '!/^#/ && NF {print $1; exit}' infra/nodes/gvisor-baseline.txt)
           if [ "$BASELINE" = unset ]; then
             echo "::notice::baseline is unset — no sandbox node provisioned yet, nothing to compare"
+            echo "SKIP=1" >> "$GITHUB_ENV"
             exit 0
           fi
-          gh api repos/google/gvisor/releases --jq '.[].tag_name' | head -2 > recent.txt
+          # Pre-releases are not candidates for a production baseline, so they must
+          # not occupy one of the two N/N-1 slots either.
+          gh api repos/google/gvisor/releases --jq \
+            '[.[] | select(.prerelease == false)] | .[0,1].tag_name' > recent.txt
           AGE_DAYS=$(gh api repos/google/gvisor/releases --jq \
-            '.[0].published_at | (now - fromdateiso8601) / 86400 | floor')
+            '[.[] | select(.prerelease == false)][0].published_at | (now - fromdateiso8601) / 86400 | floor')
           FAIL=""
           grep -qx "$BASELINE" recent.txt || FAIL="baseline $BASELINE is not upstream N or N-1 ($(tr '\n' ' ' < recent.txt))"
           [ "$AGE_DAYS" -le 90 ] || FAIL="${FAIL:+$FAIL; }latest upstream release is ${AGE_DAYS}d old"
           [ -z "$FAIL" ] || { echo "FAIL=$FAIL" >> "$GITHUB_ENV"; echo "::error::$FAIL"; }
 
+      # Two sources, and neither may fail quietly. "No new advisory" and "the feed
+      # 404'd" must not be the same green tick — this job's whole job is to be the
+      # thing that notices, so an unreachable source is a failure, not an absence.
       - name: New escape-class advisory in the last 24h
+        # Skipped while the baseline is unset: the SLA this feeds is "patch the pool
+        # within 24h", and there is no pool. Filing that issue against nothing would
+        # be the noise this job exists to avoid.
+        if: ${{ env.SKIP != '1' }}
         run: |
           set -euo pipefail
           gh api repos/google/gvisor/security-advisories --jq \
             '.[] | select(.published_at != null)
                  | select((now - (.published_at | fromdateiso8601)) < 86400)
                  | select(.severity == "critical" or (.summary | ascii_downcase | test("escape")))
-                 | "\(.ghsa_id) [\(.severity)] \(.summary)"' > escape.txt || true
-          [ -s escape.txt ] && echo "ESCAPE=1" >> "$GITHUB_ENV" || true
-          cat escape.txt
+                 | "GHSA \(.ghsa_id) [\(.severity)] \(.summary)"' > advisories.txt \
+            || { echo "::error::gVisor security-advisories feed unreachable — cannot conclude 'no new advisory'"; exit 1; }
+          # Upstream does not always file a GHSA; the release notes do carry CVE ids
+          # and the word "escape". Releases are already being fetched, so this is one
+          # more jq selector rather than a new dependency.
+          gh api repos/google/gvisor/releases --jq \
+            '[.[] | select(.prerelease == false)][0]
+             | select(.body != null and (.body | test("escape|CVE-"; "i")))
+             | select((now - (.published_at | fromdateiso8601)) < 86400)
+             | "RELEASE \(.tag_name) notes mention escape/CVE"' > relnotes.txt \
+            || { echo "::error::gVisor releases feed unreachable — cannot conclude 'no new advisory'"; exit 1; }
+          cat advisories.txt relnotes.txt > escape.txt
+          if [ -s escape.txt ]; then
+            echo "ESCAPE=1" >> "$GITHUB_ENV"
+            cat escape.txt
+          else
+            # Printed on every clean run so a run history of these is evidence the
+            # sources were reachable — an empty file alone proves nothing.
+            echo "::notice::both sources reachable, 0 escape-class matches ($(date -u +%F))"
+          fi
 
       # One issue per condition, reopened rather than duplicated: a daily job that
       # files a fresh issue every morning trains people to close them unread.

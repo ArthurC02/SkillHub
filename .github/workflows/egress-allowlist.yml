@@ -26,17 +26,28 @@ jobs:
           fetch-depth: 0
 
       - name: Allow-list invariants (ADR-022 Q3)
-        run: python3 .github/workflows/check_egress_allowlist.py
+        run: |
+          pip install --quiet pyyaml
+          python3 .github/workflows/check_egress_allowlist.py
 
       # ADR-022 Q3 change process, step 3. The threat model's own §3 says opening a
       # new egress destination requires updating it; this is that sentence with a
       # red light attached.
+      #
+      # Runs on direct pushes too, not just PRs: ADR-019 leaves single-developer
+      # direct-to-main open, and the one path this check exists for is exactly the
+      # one where nobody else is reading the diff. Squash-merge/linear history
+      # (ADR-019 §4) is what makes HEAD~1..HEAD the right range there.
       - name: A destination change must carry a threat-model update
-        if: github.event_name == 'pull_request'
         run: |
           set -euo pipefail
-          git fetch --quiet origin "${{ github.base_ref }}"
-          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            git fetch --quiet origin "${{ github.base_ref }}"
+            RANGE="origin/${{ github.base_ref }}...HEAD"
+          else
+            RANGE="HEAD~1..HEAD"
+          fi
+          CHANGED=$(git diff --name-only "$RANGE")
           echo "$CHANGED" | grep -q '^infra/egress/' || exit 0
           echo "$CHANGED" | grep -q '^plans/mvp/m0/threat-model-and-sandbox-baseline.md$' \
-            || { echo "::error::changing infra/egress/ requires updating plans/mvp/m0/threat-model-and-sandbox-baseline.md in the same PR (ADR-022 Q3 change process; threat model §3)"; exit 1; }
+            || { echo "::error::changing infra/egress/ requires updating plans/mvp/m0/threat-model-and-sandbox-baseline.md in the same change (ADR-022 Q3 change process; threat model §3)"; exit 1; }
