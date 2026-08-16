@@ -414,6 +414,11 @@ paths:
         is exactly what cannot show code living inside the document (SKILL-003).
         Package files other than SKILL.md are listed with their metadata; an
         endpoint serving their content is later DISC-007 work.
+
+        This is the endpoint that reproduces the package's own bytes, so it is
+        the one a 0023 licensing hold closes: a skill carrying
+        `access_restriction` answers 403 here while everything else about it
+        still answers.
       # OptionalSession; see GET /api/skills/{id}.
       security:
         - {}
@@ -430,6 +435,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SkillFiles"
+        "403":
+          description: |
+            A licensing hold is in force (SEC-011, 0023): the full text and the
+            file tree are withheld until the review concludes.
+
+            403 and not 404 on purpose. Search still lists the skill and
+            GET /api/skills/{id} still describes it, so "no such thing" would be
+            a lie the rest of the API immediately contradicts - the opposite call
+            from the operator endpoints, where hiding existence is the point.
+
+            `error` carries the reason sentence itself, in 繁體中文 and ready to
+            show: what is withheld, what is still available, and that the hold is
+            a conservative reading of the licence rather than a safety or quality
+            finding. Display it rather than substituting a generic refusal - it is
+            the same text `access_restriction.note` carries on the detail view,
+            served from one place so every surface says it identically.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Skill not visible to the caller, or it has no saved version.
           content:
@@ -2617,6 +2641,20 @@ components:
           $ref: "#/components/schemas/SkillRisk"
         compatibility:
           $ref: "#/components/schemas/SkillCompatibility"
+        access_restriction:
+          allOf:
+            - $ref: "#/components/schemas/SkillAccessRestriction"
+          description: |
+            The 0023 licensing hold, present only while a licensing question
+            about the package is open. Absent is the normal state and means no
+            hold - it is omitted rather than nulled, so a client must treat
+            "field missing" as unrestricted.
+
+            Every other field still answers when it is present: the hold is on
+            the *materials*, not on the platform's own description of them. What
+            it does close is GET /api/skills/{id}/files, which answers 403 while
+            this is set. A client that sees it should say so before offering the
+            advanced view rather than letting the user walk into the refusal.
     SkillFiles:
       type: object
       required: [skill_id, version_id, version_number, skill_md, skill_md_truncated, tree, note]
