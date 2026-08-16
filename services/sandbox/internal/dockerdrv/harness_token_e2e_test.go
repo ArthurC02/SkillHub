@@ -17,6 +17,12 @@ package dockerdrv_test
 //	SKILLHUB_E2E_EGRESS_NETWORK  the docker network both are on (skillhub_egress)
 //	SKILLHUB_E2E_RUNTIME_IMAGE   defaults to skillhub/runtime-agent-sdk:2026.08-1
 //
+// The image must be built from the working tree, not pulled: what is under test
+// is run.mjs, and a tag left over from an earlier build fails these assertions
+// while looking like a product bug.
+//
+//	docker build -t skillhub/runtime-agent-sdk:2026.08-1 infra/images/runtime-agent-sdk
+//
 // Two turns of a trivial prompt: a few cents at the mini tier.
 
 import (
