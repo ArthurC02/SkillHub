@@ -15,7 +15,7 @@
 | SelfHostedProvider | SBX-001~010(gVisor 基線) | 第二~三批 |
 | Trace 收集與 O11y | TRACE-002~008、O11Y-001~003 | 第三批 **✅ 2026-08-16 完成**（TRACE-001 一併勾選；TRACE-004 的成本欄位由第四批補上並勾選） |
 | 模型閘道出口與短效授權 | SBX-007（dev 網路面）、SBX-008、TRACE-004 成本 | 第四批 **2026-08-16**（SBX-008 完成、TRACE-004 勾選；SBX-007 仍不勾——Proxy 本體屬部署期） |
-| 內容基準試跑 | CONTENT-007/008(自 M1 移入) | Sandbox 就緒後 |
+| 內容基準試跑 | CONTENT-007/008(自 M1 移入) | 第五批 **✅ 2026-08-16**(CONTENT-008 完成、精選 15/15 符合;CONTENT-007 部分完成不勾——writing rubric 缺消費端。見 [content-baseline-report.md](content-baseline-report.md)) |
 | 安全驗收 | SEC-002 六項門檻定值(Q18)、SEC-009 逃逸測試——ADR-015 的實作期驗收關卡 | 部署驗證批 |
 
 ## 架構鐵律在 M2 的落點(開工前必讀)
@@ -190,6 +190,8 @@ docker run -d --name sandboxd --network skillhub_default --network-alias sandbox
 | `SKILLHUB_RUN_MODEL` | `gpt-5.4-mini` | 試跑預設層(PDM-003 v5) |
 | `SKILLHUB_RUN_MAX_BUDGET_USD` / `SKILLHUB_RUN_TPM_LIMIT` | 預設 `0.50` / `200000` | 每 Run 雙限 |
 | `SKILLHUB_TRACE_INGEST_SECRET` / `_URL` | — | 沒設就不收 trace,也就沒有成本數字 |
+
+**api 程序也要其中兩組**(2026-08-16 第五批實測補上,原表只列了 worker):`defaultPolicy()` 在 **API 程序**裡讀 `SKILLHUB_MODEL_GATEWAY_URL`/`_KEY` 組出 `policy_snapshot.egress.allow`——api 沒有它,允許清單就是空的,沙箱被派到 `--network none`,Agent SDK 對閘道空等到 `Request timed out`(實測 188 秒)。同理 api 需要 `SKILLHUB_SANDBOX_PROVIDERS` 與對應 token,否則 Preflight 的 Provider 摘要只寫 `unassigned`。
 
 程式路徑就是既有的:`GET /skills/{id}/runs/preflight` → `POST /skills/{id}/runs/preflight/confirm` → `POST /skills/{id}/runs`(帶 `confirmed_summary_hash`)→ worker 自動驅動 → `GET /runs/{id}/trace`。整段的可執行樣板見 `e2e_gateway_integration_test.go`,照抄即可批量跑。
 

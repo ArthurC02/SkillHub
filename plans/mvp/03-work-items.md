@@ -71,8 +71,8 @@
 - [ ] CONTENT-004 對首批 Skill 完成來源及 License 檢查。（License 合規總表見 [curated-skill-list.md §5](m1/curated-skill-list.md)；11 個入選 repo 已逐一實查 LICENSE 檔。未結案項：§5.2 `anthropics/skills` source-available 條款是否允許平台保存內容快照，待負責人與法務判定）（允收：`02` §4.7）
 - [x] CONTENT-005 對首批 Skill 產生一般使用者可理解的摘要。（允收：`02` §4.7 修訂版逐條達成，見 [m1/content-review-report.md](m1/content-review-report.md) §8：45 筆全量自動化審校 **45/45 通過**、精選 15/15、主判準 45/45、忠實性 890 條宣稱 0 條未支持；審核紀錄見 [m1/content-summaries.md](m1/content-summaries.md)）
 - [ ] CONTENT-006 對首批 Skill 完成規格及靜態掃描。（允收：`02` §4.7）
-- [ ] CONTENT-007 對精選 Skill 建立範例資料、Prompt 與驗收條件。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**（允收：`02` §4.7）
-- [ ] CONTENT-008 對精選 Skill 完成至少一次基準試跑。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**（允收：`02` §4.7）
+- [ ] CONTENT-007 對精選 Skill 建立範例資料、Prompt 與驗收條件。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**（**2026-08-16 部分完成**，見 [m2/content-baseline-report.md §10](m2/content-baseline-report.md)：15 個精選各有一組範例 Dataset、點名該 Skill 的 User Prompt 與三條驗收條件，並以 `test_case_snapshots` 不可變保存；範例資料為合成內容、無 Secrets 與個資。**不勾的唯一原因**：`writing` 類精選的「可編輯 rubric，供 LLM Judge 逐項回傳證據引文」未做——EVAL-001／002 的 Judge 介面尚未實作，rubric 沒有消費端）（允收：`02` §4.7）
+- [x] CONTENT-008 對精選 Skill 完成至少一次基準試跑。**（M2：依賴 Test Case 與 Sandbox；2026-08-15 依審計調整）**（**2026-08-16 完成**：45 個 Skill 全數經完整平台路徑在隔離 Sandbox 實跑，**精選 15/15 結果為「符合」**（Run `succeeded` ＋ trace 有 `skill_activation` ＋ artifact 確有檔案），逐 Skill 結果、可追溯性與允收對照見 [m2/content-baseline-report.md](m2/content-baseline-report.md)。九項精選檢查的 ⑧ 可由 `pending` 改記 `pass`。已索引 30 個中 20 個符合、9 個被閘道預算計數缺陷中止（非 Skill 問題，§6.2）、1 個 Run 成功但未產出——已索引層不在本項允收範圍，補跑列為後續）（允收：`02` §4.7）
 - [ ] CONTENT-009 建立內容更新、失效、下架與來源變更流程。（允收：`02` §4.7）
 
 ## 5. 核心領域與帳號（M1）

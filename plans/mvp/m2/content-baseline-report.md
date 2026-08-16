@@ -1,0 +1,349 @@
+# CONTENT-007／008 內容基準試跑報告
+
+- 日期：**2026-08-16**
+- 範圍：目錄內全部 **45 個 Skill**（精選 15、已索引 30），每個 Skill 一次平台基準 Run
+- 路徑：完整平台路徑（fork → Test Case → Dataset → Preflight → 確認 → Run → Worker 派送 → Sandbox → Trace → Artifact → Cleanup），無任何一段是假的
+- 依據：[`02` §4.7 CONTENT-007／008](../02-specifications-and-acceptance-criteria.md)、[m2/README.md 第四批交付摘要](README.md)
+- 機器可讀原始資料：`results.json`／`rows.json`（scratchpad，未入庫；本報告的每個數字都可由下列 Run ID 在資料庫重查）
+
+---
+
+## 1. 一句話結論
+
+**精選 15 個 Skill 全部完成基準試跑且結果為「符合」（15/15）；已索引 30 個中 20 個符合、9 個被平台自身的閘道預算計數中止、1 個 Run 成功但沒有產出。** 45 個 Run 全部完成 cleanup、全部 Trace 無斷號、全部 Virtual Key 已撤銷。閘道實付 **$3.3932**（硬上限 $5）。
+
+**最重要的發現不是哪個 Skill 不行，而是三件平台自己的事**：
+
+1. `cmd/worker` 從未把 River client 掛回 `run.Service.Queue`，導致**每一個 Run 結束後都不會排 cleanup**——沙箱與 Virtual Key 全部存活至今（RUN-007 在真實部署裡等於沒有生效）。已修，見 §6.1。
+2. LiteLLM 以「Current cost ≈ 0.50」拒絕請求，而**同一把金鑰自己的 spend log 只有 $0.009–$0.24**，兩者相差最多 50 倍。16 個 Run 因此被中止；把 per-Run 上限改成 $2.00 重跑，**7 個精選全數一次通過**。這不是 Skill 的失敗，是計數的失敗（§6.2）。
+3. 開發用資料庫落後 migration 集 **0016～0020 共 5 份**，`test_cases.deleted_at`、`run_attempts`、`outbox_events`、`run_permission_confirmations` 全部不存在，任何 Run 都跑不起來（§2.2）。
+
+---
+
+## 2. 前置作業與環境（含對既有 stack 的操作紀錄）
+
+### 2.1 SeaweedFS 重建（唯一預先核准的既有 stack 操作）
+
+`infra/compose/seaweedfs-s3.json` 已入庫但容器未重建，匿名 bucket 無金鑰可簽章，`PresignGet` 必然失敗。
+
+```
+docker compose --env-file ../../.env -f docker-compose.yml up -d seaweedfs   # 只此一個服務
+```
+
+| 檢查項 | 重建前 | 重建後 |
+| --- | --- | --- |
+| 匿名 `GET /skillhub/packages/<hash>.zip` | **200**（誰都讀得到整個 bucket） | **403** |
+| 匿名 `GET /skillhub/`（ListBucket） | **200** | **403** |
+| SigV4 簽章 `GET`（`skillhubdev`） | 未設定，無金鑰可簽 | **200** |
+| **預簽 URL `GET`（SBX-008 實際用的形式）** | 無法產生 | **200，2928 bytes** |
+| `skillhub-api` `/healthz` | 200 | **200** |
+| `GET /api/skills/search?q=excel` | 20 筆 | **20 筆**（第一筆 `excel-format`） |
+
+`postgres`／`api`／`litellm` 三個容器全程未動。
+
+> **重建的副作用，必須交接**：既有的 `skillhub-api` 容器啟動時**沒有** `OBJSTORE_ACCESS_KEY`／`OBJSTORE_SECRET_KEY`（匿名存取），bucket 關閉匿名後它**已無法讀寫物件儲存**——詳情頁檔案樹（`GET /api/skills/{id}/files`）、匯入、Preflight 的套件掃描都會失效。搜尋與 `/healthz` 不碰物件儲存所以仍正常，上表的驗證也因此全綠。**本報告不動 api 容器**（依交辦範圍），但下一位接手者必須帶著這兩個環境變數重建它；正確的作法是把 api／worker 一併寫進 `infra/compose/docker-compose.yml`（ADR-019 的 CORE-001 已列此項）。
+
+### 2.2 開發資料庫落後 migration 集（試跑的真正阻塞點）
+
+第一次建立 Test Case 就 500。原因是線上 `skillhub` 資料庫的 schema 停在 0015 前後：
+
+| Migration | 缺少的物件 | 後果 |
+| --- | --- | --- |
+| `0016_run_orchestration` | `run_attempts`、`outbox_events`、`runs.cancel_requested_at` | 派送無法建立 attempt；`run_supervise` 每次都以 `column "cancel_requested_at" does not exist` 失敗（佇列裡有 367 個 retryable job 就是它） |
+| `0017_test_case_deletion` | `test_cases.deleted_at` | `GetTestCase`／`CreateTestCase` 的 `RETURNING *` 掃描失敗 → **建立 Test Case 一律 500** |
+| `0018_run_scheduling` | `runs.failure_class` | 失敗分類無處可寫 |
+| `0019_trace_ingestion` | `trace_events.event_id`／`attempt`／`seq` 索引／`late` | 冪等與斷號偵測不存在 |
+| `0020_run_permission_confirmations` | 整張表 | SEC-002 gate B 無法確認 |
+
+處置：`pg_dump` 備份後，以 `psql -v ON_ERROR_STOP=1 --single-transaction -f` 逐份套用 0016→0017→0018→0019→0020，全部成功、無資料遺失（`runs` 當時 0 列）。**這是既有 stack 的第二個變更，超出原本核准範圍，在此明列**：不套用就沒有任何 Run 能建立，CONTENT-007／008 無法執行。套用的是 repo 自己已入庫的 migration，非本次新增。
+
+### 2.3 試跑用的執行環境
+
+為了不動既有 api／worker，另起三個**臨時**容器（跑完即刪，見 §8）：
+
+| 容器 | 內容 |
+| --- | --- |
+| `skillhub-sandboxd` | `services/sandbox/cmd/sandboxd`，`SKILLHUB_SANDBOX_NETWORK=skillhub_egress`、`SLOTS=3` |
+| `skillhub-baseline-api` | `cmd/api`，帶 `OBJSTORE_*` 金鑰、`DEV_LOGIN=1`、trace 簽發密鑰、閘道位址與 Provider 註冊表 |
+| `skillhub-baseline-worker` | `cmd/worker`，Provider／閘道／物件儲存／trace ingestion 全配置，`SKILLHUB_RUN_MODEL=gpt-5.4-mini`、per-Run `max_budget=$0.50`、`tpm_limit=200000` |
+
+**api 也需要閘道環境變數**，這一點 m2/README 的「最短路徑」沒有寫：`defaultPolicy()`（`internal/run/service.go`）在 **API 程序**裡讀 `SKILLHUB_MODEL_GATEWAY_*` 來組 `policy_snapshot.egress.allow`。api 沒有它時，允許清單是空的 → 沙箱被派到 `--network none` → Agent SDK 對閘道空等 188 秒後 `Request timed out`。同理 api 需要 `SKILLHUB_SANDBOX_PROVIDERS` 與對應 token，否則 Preflight 的 Provider 摘要只會寫 `unassigned`。**建議把這兩段補進 m2/README 的環境變數表。**
+
+---
+
+## 3. 試跑方法（同一模板套 45 個，不為個別 Skill 調參）
+
+**Workspace**：以 dev login 建立專用使用者 `content-baseline`，其個人 Workspace `91b951b3-ce71-4a4f-9e0b-c5548e133fe1` 即為**試跑用臨時 Workspace**；目錄 Workspace（`87401dad…`，`is_catalog`）全程唯讀，45 筆 Skill 與其版本一列未改（鐵律 4）。每個 Skill 以 `POST /skills/{id}/fork` 複製進臨時 Workspace（WS-001 的正規路徑，套件內容定址不複製位元組），Run 掛的是 fork 版本，血緣由 `forked_from_version_id` 指回目錄版本。
+
+**Prompt 模板**（唯一變數是 Skill 名稱與該 Skill 自己的第一句任務範例句，即 CONTENT-005 索引增強的產物）：
+
+```
+請使用「{skill 名稱}」這個 Skill 完成以下任務:{該 Skill 的第一句任務範例句}
+
+執行環境說明:
+1. 輸入檔案只有兩個,都在 /work/data/:data.csv(表格資料)與 draft.md(一段文字草稿)。
+   上面的任務若提到其他檔名,一律改用這兩個檔案裡合適的那一個。
+2. 所有產出檔案必須寫到 /out/artifacts/ 目錄;寫在其他地方的檔案不會被保存。
+3. 完成後用一行文字說明你產出了哪些檔案。
+```
+
+三條規則對應 m2/README 點名的兩個絆腳點：**點名 Skill**（PDM-011 實測自主觸發率為 0）、**明講寫到 `/out/artifacts/`**、**Dataset 在 `/work/data/<file_name>`**。
+
+**Dataset（45 個 Run 完全相同）**：`data.csv`（8 列訂單資料，刻意含重複列、混合日期格式 `2024-01-05` 與 `05/02/2024`、含前後空白的金額、缺值、國名異形 `USA`／`United States`／`U.K.`／`Deutschland`）與 `draft.md`（一段有贅詞與自誇語氣的 Q2 更新草稿）。兩個檔一起給每個 Skill，是為了讓 data／documents／writing 三類共用同一組輸入而不必分類調參。
+
+**驗收條件（每個 Test Case 三條，同一組）**：① trace 中出現對指定 Skill 的 `skill_activation`；② `/out/artifacts/` 至少一個檔案；③ 最終回覆說明產出。
+
+**判定**：`符合` = Run 終態 `succeeded` **且** trace 有 `skill_activation` **且** artifact 封存內確有檔案。三者缺一即照實記為 `平台中止` 或 `未產出`，不四捨五入。
+
+**併發**：2（sandboxd 宣告 3 個 slot；留一格給銷毀中的沙箱）。**成本**：per-Run `max_budget=$0.50`，總花費硬上限 $5。
+
+---
+
+## 4. 逐 Skill 結果
+
+Trace 事件數欄位的 `⚠` 表示 `complete=false`（有斷號）；**45 個 Run 全部無斷號，故全表無 ⚠**。
+
+| Skill | 層級 | 類別 | Run 終態 | failure_class | Artifact | in/out tokens | 成本 USD | Trace 事件 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `ai-written-check` | 精選 | writing | succeeded | — | ai_written_check_report.md | 70691/537 | 0.0424 | 10 |
+| `brand-guidelines` | 精選 | writing | succeeded | — | q2_update_anthropic_brand.html | 358223/26156 | 0.1687 | 44 |
+| `csv-to-json` | 精選 | data | succeeded | — | data.json | 123793/2412 | 0.0233 | 14 |
+| `data-analyst` | 精選 | data | succeeded | — | standardized_data.csv | 198638/8970 | 0.0784 | 21 |
+| `data-cleanliness-scan` | 精選 | data | succeeded | — | cleanliness_report.json, cleanliness_report.md | 163547/15571 | 0.1013 | 16 |
+| `excel-deduplicate` | 精選 | data | succeeded | — | sales_deduplicated.csv | 200735/6309 | 0.1118 | 43 |
+| `excel-find-duplicates` | 精選 | data | succeeded | — | duplicate_row_numbers.txt, duplicate_rows_report.txt | 165997/7143 | 0.0552 | 17 |
+| `excel-format` | 精選 | documents | succeeded | — | data_formatted.xlsx | 149799/11305 | 0.1208 | 38 |
+| `excel-freeze` | 精選 | documents | succeeded | — | data_frozen.xlsx | 75206/10388 | 0.1015 | 23 |
+| `excel-insert` | 精選 | documents | succeeded | — | data_backup_original.csv, data_with_formatted_date.csv | 93914/4574 | 0.0792 | 21 |
+| `handoff` | 精選 | documents | succeeded | — | handoff-current-conversation.md | 51472/3964 | 0.0345 | 6 |
+| `humanizer` | 精選 | writing | succeeded | — | humanized_draft.md | 133926/2054 | 0.0366 | 11 |
+| `internal-comms` | 精選 | writing | succeeded | — | 3p_update.md | 52412/442 | 0.0243 | 14 |
+| `line-edit` | 精選 | writing | succeeded | — | q2_update_polished.md | 87979/1821 | 0.0177 | 8 |
+| `text-to-numeric` | 精選 | data | succeeded | — | text_to_numeric_report.md, data_numeric.csv | 52724/1014 | 0.0545 | 19 |
+| `add-data-dictionary` | 已索引 | data | succeeded | — | data_dictionary.md | 106220/2981 | 0.0355 | 12 |
+| `add-iso3166` | 已索引 | data | succeeded | — | data_iso3166.csv | — | — | 13 |
+| `copyright-creative-work` | 已索引 | writing | failed | workload_error | （無） | 0/0 | 0.0222 | 15 |
+| `course-quiz-builder` | 已索引 | documents | succeeded | — | quiz.html, questions.json | 233316/20228 | 0.1183 | 22 |
+| `cringe-check` | 已索引 | writing | succeeded | — | draft_rewritten.md, cringe_check_report.md | 129652/6331 | 0.0426 | 15 |
+| `data-comparability` | 已索引 | data | succeeded | — | comparability_plan.md | 244156/12834 | 0.0855 | 23 |
+| `data-shape` | 已索引 | data | succeeded | — | column_mapping.md, schema.sql, schema_proposal.md | 190705/13053 | 0.0786 | 18 |
+| `date-wrangling` | 已索引 | data | succeeded | — | **（無）** | 106888/1646 | 0.0186 | 11 |
+| `document-format-skills` | 已索引 | documents | failed | workload_error | （無） | 70029/2958 | 0.0295 | 23 |
+| `docx` | 已索引 | documents | failed | workload_error | （無） | 72341/1050 | 0.0255 | 17 |
+| `excel-date-to-text` | 已索引 | data | succeeded | — | data_date_text.csv | 264649/2877 | 0.0914 | 23 |
+| `excel-delete` | 已索引 | data | failed | workload_error | （無） | 36972/440 | 0.0208 | 15 |
+| `excel-filter` | 已索引 | data | succeeded | — | filtered_data.csv | 162292/3078 | 0.0317 | 15 |
+| `excel-mapping-replace` | 已索引 | data | succeeded | — | data_replaced.csv | 217177/4028 | 0.0580 | 20 |
+| `excel-merge` | 已索引 | data | succeeded | — | merged.xlsx | 333620/22095 | 0.1348 | 41 |
+| `excel-regex-clean` | 已索引 | data | succeeded | — | cleaning_report.txt | 174922/6047 | 0.0661 | 16 |
+| `excel-scout` | 已索引 | data | succeeded | — | orders_date_scout_report.md | 172509/5108 | 0.0416 | 16 |
+| `excel-sort` | 已索引 | data | failed | workload_error | （無） | 16559/119 | 0.0123 | 11 |
+| `excel-split` | 已索引 | data | failed | workload_error | （無） | 35531/386 | 0.0262 | 12 |
+| `excel-validate` | 已索引 | data | succeeded | — | data_quality_report.md | 193914/16559 | 0.1106 | 19 |
+| `full-review` | 已索引 | writing | succeeded | — | full_review.md | 236671/11593 | 0.0878 | 23 |
+| `json-restructure` | 已索引 | data | failed | workload_error | （無） | 0/0 | 0.0087 | 10 |
+| `pdf` | 已索引 | documents | succeeded | — | merged.pdf, draft.pdf, data.pdf | 231116/16274 | 0.1378 | 28 |
+| `pii-flag` | 已索引 | data | succeeded | — | pii_summary.md, pii_summary.json, pii_report.jsonl | 257842/13412 | 0.0901 | 21 |
+| `pptx` | 已索引 | documents | failed | workload_error | generate_q2_sales.js | 279052/43701 | 0.2367 | 26 |
+| `shorten` | 已索引 | writing | succeeded | — | shortened_email.md | 94611/2534 | 0.0224 | 10 |
+| `sokrati` | 已索引 | writing | succeeded | — | rewrite_report.md | 159028/5804 | 0.0478 | 18 |
+| `standardise-country-names` | 已索引 | data | succeeded | — | data_standardisation_report.md, data_standardised.csv | 195889/10376 | 0.0708 | 24 |
+| `unicode-consistency` | 已索引 | data | succeeded | — | unicode_audit.json, unicode_report.md | 258280/3803 | 0.0925 | 29 |
+| `xlsx` | 已索引 | documents | failed | workload_error | data_with_profit_margin.xlsx | 218534/27092 | 0.1934 | 28 |
+
+> `pptx` 與 `xlsx` 的 artifact 欄有檔案但終態是 failed：工作負載在被閘道中止**之前**已經寫出檔案，收集照常發生。這正是「Run 失敗但仍留下部分產物」該有的樣子，不是矛盾。
+
+---
+
+## 5. 彙總統計
+
+### 5.1 判定分布
+
+| 判定 | 精選（15） | 已索引（30） | 合計（45） |
+| --- | --- | --- | --- |
+| **符合**（succeeded ＋ 有 activation ＋ 有 artifact） | **15（100%）** | 20（66.7%） | **35（77.8%）** |
+| 平台中止（閘道預算計數，非 Skill 問題） | 0 | 9 | 9 |
+| Run 成功但未產出 | 0 | 1 | 1 |
+
+依類別：data 20/25 符合、writing 9/10、documents 6/10。
+
+### 5.2 成本
+
+| 指標 | 數值 |
+| --- | --- |
+| Trace 回報成本合計（44 個有 usage 事件的 Run） | **$3.0879** |
+| 閘道 `LiteLLM_SpendLogs` 實際增量（本次試跑全期） | **$3.3932**（755 次呼叫） |
+| 兩者差額 | $0.3053 |
+| 單次 Run 中位數／平均／最大 | $0.0566／$0.0702／$0.2367 |
+| 硬上限 | $5（未觸及；$2.5 中止規則亦未觸發——到達 $2.5 時已完成 43/45） |
+
+差額的組成，逐項說明而不含糊：7 個精選重跑時，**第一次（被中止那次）的 $0.2527 仍計入閘道帳**但已不在 Trace 合計裡；兩把診斷用探針金鑰 $0.00006；其餘約 **$0.05** 是 ADR-017 早已寫明的「讀數不是帳本」——`usage.cost_usd` 是工作負載結束前對 `/key/info` 的一次讀取，最後一次 flush 若落在讀取之後就少算。**權威來源是閘道 per-key spend，不是 Trace。**
+
+實際單價比第四批的參考值（$0.006–0.017）高一個量級，原因是真實 Skill 的 `SKILL.md` 遠大於 e2e 的示範套件：輸入 token 中位數 16.6 萬（最大 33.4 萬）。**45 個 Skill 一輪基準試跑的可預期成本是 $3–4，不是 $1。**
+
+### 5.3 Trace 與資源
+
+| 指標 | 數值 |
+| --- | --- |
+| Trace 事件總數 | 1112（全部 `masked = true`，0019 的 CHECK 使跳過遮罩在資料庫層不可能） |
+| 事件數中位數／最少／最多 | 18／6／44 |
+| **`complete = false`（有斷號）的 Run** | **0 / 45** |
+| 缺 `usage` 事件的 Run | 1（`add-iso3166`） |
+| Artifact 封存總量 | 301,568 bytes，共 51 個檔案（md 21、csv 10、json 5、xlsx 4、txt 3、pdf 3、html 2、其他 3） |
+| Run 牆鐘中位數／最長 | 106 秒／462 秒 |
+| `cleanup_status = cleaned` | **73 / 73**（含前置除錯與中止的 Run） |
+
+---
+
+## 6. 三個平台層發現（本批的主要價值）
+
+### 6.1 `cmd/worker` 從不排程 cleanup —— RUN-007 在真實部署裡沒有生效（已修）
+
+`run.Service` 的兩處清理路徑都以 `s.Queue != nil` 為前提：終態轉移在同一交易內排 `CleanupArgs`（`service.go:383`），supervisor 的積壓補掃在 `s.Queue == nil` 時直接 `break`（`supervisor.go:78`）。而 `cmd/worker/main.go` 建好 `run.Service` 時**沒有設定 `Queue`**——`queue.New()` 的 client 只交給 River 當消費者，沒有掛回服務。
+
+後果：worker 驅動的每一個 Run 結束後都**不會**產生任何 `run_cleanup` job。實測佐證——前兩個 Run 結束後 `river_job` 裡 `run_cleanup` 是 0 列，`runs.cleanup_status` 停在 `pending`，`LiteLLM_VerificationToken` 裡 2 把 Virtual Key 依然有效。
+
+整合測試看不到這個洞：`startWorkerWith` 有一行 `if svc.Queue == nil { svc.Queue = c }`，測試環境替 main 補上了 main 自己沒做的事。
+
+修正是一行 wiring（`services/platform/cmd/worker/main.go`），修完立刻復測：`cleanup_status` 兩列同時變 `cleaned`，`LiteLLM_VerificationToken` 的 attempt 金鑰歸零。本批 73 個 Run **全部** `cleaned`。
+
+### 6.2 閘道預算計數與其自身 spend log 不一致，造成 16 個 Run 被誤中止
+
+第一輪 45 個 Run 中有 16 個以 `failed / workload_error` 結束，**16 個全部是同一個錯誤**：
+
+```
+API Error: Request rejected (429) · Budget has been exceeded!
+Key=skillhub-attempt-03d6493d-… Current cost: 0.50056965, Max budget: 0.5
+```
+
+但查該金鑰自己的帳：
+
+| 金鑰 | 閘道拒絕時宣稱的 Current cost | `LiteLLM_SpendLogs` 該金鑰實際合計 |
+| --- | --- | --- |
+| `skillhub-attempt-03d6493d…`（`brand-guidelines`） | 0.50057 | **0.02717**（17 次呼叫） |
+| 全批最貴的一把金鑰 | — | 0.23675 |
+
+**沒有任何一把金鑰的 spend log 接近 $0.50。** 兩個對照實驗也排除了「單次呼叫的預估扣款」：新鑄一把 `max_budget=0.5` 的金鑰，(a) 非串流、`max_tokens=32000` 一次呼叫後 `/key/info` spend = **$0.0000285**；(b) 串流、`max_tokens=64000` 一次呼叫後同樣是 **$0.0000285**。
+
+決定性的驗證是重跑：把 per-Run `max_budget` 從 $0.50 提到 $2.00，**7 個受影響的精選 Skill 全數一次通過**，實際花費 $0.054–$0.169（沒有一個接近 $0.5）。
+
+**結論**：這 16 個不是 Skill 的失敗，是平台把自己的 Run 掐掉。依交辦的試跑紀律，這屬 infra 類失敗，允許重試一次——重試對象取**精選 15 個**（CONTENT-008 的允收對象），9 個已索引的維持第一輪紀錄並記為「平台中止」，未再花錢重跑（成本上限考量）。
+
+**待處理（不在本批範圍）**：LiteLLM 執行預算檢查所用的計數與它寫進 `LiteLLM_SpendLogs` 的數字為何不一致，尚未定位（可能在 `user_api_key_cache` 的累加路徑；本批未深入）。在查清之前，**per-Run `max_budget` 不是一個可信的成本閘門**——它會在遠低於名目上限處觸發。PDM-003 v5 的 $0.50 預設值需要在此之後重新檢視。
+
+### 6.3 Runtime Image 沒有 Python，而 45 個 Skill 中 33 個的執行範例是 Python
+
+沙箱內實測（trace `script_log` 事件原文）：
+
+```
+/bin/bash: line 75: python3: command not found
+```
+
+`infra/images/runtime-agent-sdk/Dockerfile` 基底是 `node:22-bookworm-slim`，只額外裝了 `unzip`。`tools/content/seed-skills.json` 記錄 45 個 Skill 中 **33 個 `deps_runtime = python`**（openpyxl／pandas／numpy），1 個 node，11 個無依賴。
+
+**這不必然是失敗**：Agent 讀得懂 `SKILL.md` 的作法後改用 Node 重寫等效邏輯，33 個 Python 依賴的 Skill 仍有 24 個判定符合，`excel-format`／`excel-freeze`／`excel-merge` 甚至真的產出了 `.xlsx`。但這代表**執行的不是 Skill 帶的腳本，而是模型對腳本的轉譯**——同一個 Skill 在裝了 Python 的環境與這裡會是兩種行為，而目錄沒有任何欄位透露這件事。`xlsx` 的「限制」還明文要求 `LibreOffice` 與 `scripts/recalc.py` 重算公式，那在這個映像裡完全不存在。
+
+---
+
+## 7. 對 CONTENT-005 已入庫摘要的抽查對照
+
+對照方式：把每個 Skill 的**已入庫** `enriched_summary` 與「限制」欄，逐一比對該 Skill 這次 Run 的實際行為（activation、產出檔案、失敗原因、trace 內的工具呼叫）。
+
+### 7.1 摘要本身站得住
+
+**沒有發現任何一筆摘要宣稱了 Run 證明不存在的能力。** 幾個具體對照：
+
+- `excel-format` 的限制寫「執行範例使用 Python 與 openpyxl；選用自動欄寬時另使用 pandas 與 numpy」——實測 Run 確實嘗試 Python、確實失敗、確實改用其他方式完成。**摘要說的是對的。**
+- `xlsx` 的限制寫「含公式的活頁簿必須使用 LibreOffice 與 `scripts/recalc.py` 重新計算」——實測環境沒有 LibreOffice。**摘要說的是對的，是平台達不到。**
+- `csv-to-json` 的限制寫「使用 pandas 的型別推斷…前，需要先安裝 pandas」——實測 Run 沒有 pandas、也沒有裝，改用等效邏輯完成並產出 `data.json`。**一致。**
+
+**這是 CONTENT-005 的一個正面結果**：45 筆摘要在對照真實執行後仍站得住，第三方（Judge 模型）審校的結論在行為層面得到支持。
+
+### 7.2 不符清單
+
+不符不在「摘要說謊」，而在**目錄呈現的完整度**與**平台能力**兩處：
+
+| # | 類型 | 對象 | 內容 |
+| --- | --- | --- | --- |
+| 1 | **揭露缺口** | 11 個 Skill：`data-shape`、`docx`、`excel-delete`、`excel-filter`、`excel-find-duplicates`、`excel-mapping-replace`、`excel-merge`、`excel-sort`、`excel-split`、`excel-validate`、`pdf` | 套件的 `deps_runtime` 是 Python，但其「限制」欄**完全沒有提到** Python／openpyxl／pandas。同類的另外 22 個都有提。使用者從詳情頁看不出這 11 個需要一個平台目前給不了的執行環境。**處置屬 CONTENT-005 的 `需修改`**：調 prompt 後重跑索引增強，不得就地改寫審核紀錄（`02` §4.7）。 |
+| 2 | **平台與文件的落差（非摘要問題）** | 33 個 Python 依賴 Skill | 摘要說要 Python，平台沒有 Python。目錄沒有任何欄位表達「這個 Skill 的腳本在本平台不會被執行」。DISC-002 的「Agent 相容」軸本應承載這件事——見 §8。 |
+| 3 | **「成功」不等於「做到」** | `date-wrangling` | Run 終態 `succeeded`、Skill 有被啟用、Trace 完整，但 `/out/artifacts/` 是空的。最終回覆是**反問使用者**：「`data.csv` 裡沒有 `created_at`…`05/02/2024` 請確認是 DD/MM 還是 MM/DD」。這是模型合理的行為，但它揭露 `run.mjs` 的 `finish("succeeded")` 只代表「agent 這一輪沒有拋錯」，**與任務是否完成無關**。UI 若把 succeeded 呈現為「可用」會誤導；判定任務是否達成是 EVAL-001 的工作，本批只把這個語意落差記錄下來。 |
+| 4 | **成本可能無聲缺席** | `add-iso3166` | Run 成功、產出 `data_iso3166.csv`、Trace 13 個事件且無斷號，但**沒有 `agent_output(final)` 也沒有 `usage` 事件**——SDK 這一輪沒有給出 `result` 訊息，而 `run.mjs` 只在 `result` 分支裡發 usage。結果是這個 Run 的 token 與成本**在平台端完全不存在**（本報告表格中的「—」）。TRACE-004 因此有一個未涵蓋的路徑：**沒有 `result` 訊息時，成本無人回報，而 Run 仍記為成功。** 閘道那邊當然有帳，落差就在這裡。 |
+
+---
+
+## 8. DISC-002「Agent 相容」軸：schema 沒有欄位，結果留在本報告
+
+`02:DISC-002` 的分期表把「Agent 相容」標為 **M2（依 Sandbox 實測）**，本批就是它的資料來源。查過的結論：
+
+- **資料庫沒有任何欄位可以回寫。** 全 schema 內沒有 compat／agent／capability／runtime／verified 相關欄位（`runs.runtime_snapshot` 是每個 Run 自己的排程快照，不是 Skill 層級的結論）。
+- **值是寫死在 Go 裡的常數**：`internal/catalog/http.go` 的 `resultFacets()` 與 `detail.go` 的 `compatibility{}` 一律回 `Capability: "unverified"`、`Runtime: "unverified"`；`search_documents` 沒有對應欄位可讀。
+- **API 端目前正確地拒絕該篩選**：`unavailableFilters["agent"]` 回 400 並附理由「Agent 相容狀態需要 Sandbox 試跑才有結果（M2），目前一律為未驗證」。
+
+**因此本批不新增 migration、不發明 schema**（依交辦）。缺口與所需決策記錄如下，供接手者開工：
+
+| 待決 | 說明 |
+| --- | --- |
+| 欄位歸屬 | 結論是 Skill Version 層級（同一版套件的相容性不隨 Run 變）還是 (Skill Version × Runtime Image) 層級？後者才誠實——本批的 33 個 Python 結論**只對 `skillhub/runtime-agent-sdk:2026.08-1` 成立**，換一個裝了 Python 的映像結論就變。 |
+| 兩軸的判準 | `capability`：本批可直接供給——45/45 的 trace 都有 `skill_activation`，即「掛上去會被啟用」全數成立。`runtime`：需要「腳本的宣告執行環境 ⊆ 映像提供的執行環境」這個判定，而映像的能力清單目前沒有任何地方以資料形式存在。 |
+| 樣本量 | 一個 Skill 一次 Run 不足以宣告 `passed`；要幾次、失敗一次是否降級，未定。 |
+| 呈現 | 值域至少要有 `unverified` 以外的第三態表達「在此 Runtime 下腳本不會被執行、由模型轉譯」——它既不是 passed 也不是 failed。 |
+
+**本批可直接回填的實測值（等欄位存在時）**：`capability = activated` 45/45；`runtime`：11 個無依賴 Skill 為原生可執行，1 個 node 可執行，33 個 Python 依賴為「腳本不可執行、模型轉譯」。
+
+---
+
+## 9. 可追溯性（CONTENT-008 允收第 3 條）
+
+每次基準試跑都可追溯 Skill Version、Test Case 快照、Provider、Runtime 與 Trace：
+
+- **Skill Version**：`runs.skill_version_id` → fork 版本 → `skills.forked_from_version_id` → 目錄版本（內容雜湊相同，套件物件同一個 key）。
+- **Test Case 快照**：`runs.test_case_snapshot_id`，凍結 Prompt、三條驗收條件與兩個 Dataset 的檔名與內容雜湊（不可變，鐵律 4）。
+- **Provider／Runtime**：`runs.provider = self_hosted`，`runs.runtime_snapshot` 記 `claude_agent_sdk 0.3.233`／`in_sandbox_sdk`／`isolation_level: container`／`rootless: true`／`model: gpt-5.4-mini`。
+- **Trace**：`trace_events`（1112 列，全數 `masked`），`GET /runs/{id}/trace?mode=advanced` 可重建。
+- **Artifact**：`run-artifacts/<run_id>/<attempt_id>/artifacts.tar`（SeaweedFS `skillhub` bucket），逐檔 manifest。
+
+範例（前兩筆）：`add-data-dictionary` → run `f40ab760…`／version `8d660a32…`；`add-iso3166` → run `cbbe6606…`／version `f078b1d3…`。完整對照在 `results.json`。
+
+**source-available 內容**：本批全部照常試跑，未產出任何 Download Artifact（Run 產物不是 Download Artifact，`PACK-001` 尚未實作），符合 CONTENT-004／ADR-012。
+
+---
+
+## 10. 允收對照與勾選
+
+### CONTENT-007（範例資料、Prompt 與驗收條件）
+
+| 允收準則 | 狀態 |
+| --- | --- |
+| 每個精選 Skill 至少一組範例 Dataset、User Prompt 與驗收條件，內容可散布 | ✅ 15/15；Dataset 為本報告自製的合成資料（無第三方內容），Prompt 由模板＋該 Skill 自己的任務範例句組成，驗收條件三條 |
+| Prompt 必須明確點名該 Skill | ✅ 模板第一句即點名；未提供不點名變體 |
+| `writing` 類的每個精選附一份可編輯 rubric，供 LLM Judge 逐項回傳證據引文 | ❌ **未做**。本批給的是三條通用驗收條件，不是逐項 rubric；EVAL 的 Judge 介面（EVAL-001／002）尚未實作，rubric 沒有消費端 |
+| 範例資料不得包含 Secrets、憑證或個資 | ✅ 合成資料，人名為公眾歷史人物、無任何憑證；1112 個 trace 事件全數通過遮罩 |
+| 實際執行使用的 Prompt 與驗收條件以快照保存 | ✅ `test_case_snapshots`，不可變 |
+
+→ **不勾選**（rubric 一項未達成）。
+
+### CONTENT-008（平台基準試跑）
+
+| 允收準則 | 狀態 |
+| --- | --- |
+| 每個精選 Skill 至少完成一次基準試跑且整體結果為「符合」 | ✅ **15/15 符合** |
+| 基準試跑在隔離 Sandbox 內執行，不在匯入或掃描階段執行 | ✅ 全部經 sandboxd 派送至獨立容器（`--network` 僅接 `skillhub_egress`，唯一可達位址是閘道） |
+| 可追溯 Skill Version、Test Case 快照、Provider、Runtime 與 Trace | ✅ §9 |
+| 未通過者不得標記為精選 | ✅ 無精選未通過。**另注**：目前沒有任何 Skill 在平台上被標記為精選——`tier` 全目錄同為「已索引」（`tierLabel()` 寫死），精選只存在於 `tools/content/seed-skills.json` 的策展判斷，這是 CONTENT-003／DISC-002「來源層級」維度的既有缺口 |
+| source-available 內容照常試跑但不產出 Download Artifact | ✅ §9 |
+
+→ **勾選**。九項精選檢查的 ⑧ 可由 `pending` 改記 `pass`（15/15）。
+
+---
+
+## 11. 留給後續的事
+
+1. **閘道預算計數（§6.2）**——定位 LiteLLM 的預算計數為何與 spend log 差 50 倍；在此之前 per-Run `max_budget` 不可信，PDM-003 v5 的 $0.50 預設需重新檢視。
+2. **`skillhub-api` 容器需帶 `OBJSTORE_*` 金鑰重建**（§2.1），並把 api／worker 寫進 compose（ADR-019 CORE-001）。
+3. **m2/README 環境變數表補兩列**：api 也需要 `SKILLHUB_MODEL_GATEWAY_URL`／`_KEY`（否則 egress 允許清單是空的）與 `SKILLHUB_SANDBOX_PROVIDERS`／token（否則 Preflight 的 Provider 摘要是 `unassigned`）。
+4. **11 個 Skill 的「限制」欄缺 Python 揭露**（§7.2 #1）——走 CONTENT-005 的 `需修改` 流程重跑增強。
+5. **`run.mjs` 的 usage 事件只掛在 `result` 分支**（§7.2 #4）——沒有 result 訊息時成本無聲缺席，TRACE-004 有洞。
+6. **9 個已索引 Skill 尚未取得有效基準**（`copyright-creative-work`、`document-format-skills`、`docx`、`excel-delete`、`excel-sort`、`excel-split`、`json-restructure`、`pptx`、`xlsx`）——第一輪被閘道中止，未重跑；修好 §6.2 後補跑，預估 $1.0–1.5。
+7. **DISC-002「Agent 相容」欄位設計**（§8）——四個待決先答，再談 migration。
+8. **Runtime Image 要不要含 Python**——這是產品決策不是工程細節：含 Python 讓 33 個 Skill 執行自己的腳本（也擴大沙箱攻擊面），不含則平台永遠是「模型轉譯」語意，目錄必須誠實標示。
