@@ -32,6 +32,13 @@ const LAB_URL = `/lab/run?skill=${SKILL}&version=${VERSION}&test_case=${TEST_CAS
 function summary(hash: string, files: string[]): PreflightResponse {
   return {
     summary_hash: hash,
+    estimated_cost: {
+      currency: "USD",
+      low: 0.01,
+      typical: 0.06,
+      high: 0.3,
+      basis: "估計值,非報價。來源:M2 基準試跑 45 個 Skill 的閘道實付分布。",
+    },
     notes: ["以上任何一項變更都會產生新的摘要,必須重新確認。"],
     summary: {
       skill_version_id: VERSION,
@@ -160,6 +167,20 @@ test("02:TEST-005 the summary discloses every required item before the run start
   // A secret is named, never valued.
   expect(text).toContain("ANTHROPIC_AUTH_TOKEN");
   expect(text).not.toContain("sk-");
+});
+
+// PDM-005 §5.3/§5.2a-6. Both ends of the range have to be on screen, and the word
+// "估計" has to be too — it sits outside summary_hash, so it must not read like
+// one of the facts the user is agreeing to.
+test("PDM-005 §5.3 the pre-run screen shows an estimated cost range, labelled as an estimate", async () => {
+  stubPlatform();
+  await renderLab();
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("預估成本");
+  expect(text).toContain("估計值");
+  expect(text).toContain("$0.01");
+  expect(text).toContain("$0.30");
 });
 
 test("02:TEST-005 confirming sends the hash that was shown, then starts the run", async () => {

@@ -1,5 +1,6 @@
 import { Link, Outlet, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 import { Compare } from "./pages/Compare";
+import { DatasetUpload } from "./pages/DatasetUpload";
 import { Home } from "./pages/Home";
 import { RunPreflight } from "./pages/RunPreflight";
 import { RunTrace } from "./pages/RunTrace";
@@ -100,6 +101,20 @@ const runPreflightRoute = createRoute({
 });
 
 /**
+ * 02:TEST-002 / 03:TEST-004. The upload rules are displayed before the file
+ * input, which is what "上傳前顯示" asks for. The test case id is in the URL for
+ * the same reason as on the preflight route: no picker exists yet (DESIGN-007).
+ */
+const datasetUploadRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lab/datasets",
+  component: DatasetUpload,
+  validateSearch: (search: Record<string, unknown>) => ({
+    test_case: typeof search.test_case === "string" ? search.test_case : undefined,
+  }),
+});
+
+/**
  * 03:TRACE-006/007. Addressed by the platform run_id and nothing else: a
  * provider's ephemeral id never appears in a URL (iron rule 10). The general and
  * advanced modes are component state rather than a search param — the toggle is
@@ -118,6 +133,7 @@ const routeTree = rootRoute.addChildren([
   skillDetailRoute,
   skillFilesRoute,
   runPreflightRoute,
+  datasetUploadRoute,
 ]);
 
 export const router = createRouter({ routeTree });

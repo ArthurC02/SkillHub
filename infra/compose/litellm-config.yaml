@@ -42,6 +42,32 @@ general_settings:
   # written on the default batched interval is a budget that cannot stop a run,
   # and TRACE-004's cost is read back from this same record.
   proxy_batch_write_at: 1
+  # Root cause of the M2 baseline's 16 phantom-cancelled Runs (m2/README 乙-3).
+  #
+  # Since v1.84 LiteLLM reserves each in-flight request's *theoretical maximum*
+  # cost against the key's budget counter: every input token at the full
+  # (non-cached) input rate plus `max_tokens` at the output rate. For a
+  # gpt-5.4-mini Agent SDK request that is `64000 * 4.5e-6 = $0.288` of output
+  # alone, against an actual cost of a few tenths of a cent - the model emits a
+  # few hundred tokens and most of the input is a cache read at 1/10 the rate.
+  # Two overlapping requests therefore pin the counter at the whole $0.50 budget
+  # and every further request is rejected with a "Current cost" that is pure
+  # estimate. Measured here on 1.96.2: 4 concurrent requests reported
+  # `Current cost: 0.78845825` while the key's recorded spend was $0.00096.
+  #
+  # The reservation is built for coarse team/org budgets where max_tokens is
+  # close to what gets emitted. A per-Run budget priced against *actual* spend
+  # (PDM-003 v5) cannot survive it: the reservation alone exceeds the budget.
+  # Turning it off restores read-time enforcement against recorded spend, which
+  # is what the permission summary promises the user and what ADR-017 calls the
+  # authoritative number.
+  #
+  # The cost of this, stated: enforcement is read-time only, so requests already
+  # in flight when the budget is crossed still complete, and a key can overshoot
+  # by their actual cost. A sandbox runs one agent, `proxy_batch_write_at` is 1s,
+  # and `tpm_limit` still caps the rate - so the overshoot is bounded and small,
+  # unlike the false rejections it replaces.
+  disable_budget_reservation: true
 
 litellm_settings:
   drop_params: true

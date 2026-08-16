@@ -404,6 +404,71 @@ func TestOrphanScanDestroysLeakedSandboxesButSparesFreshOnes(t *testing.T) {
 	}
 }
 
+// SBX-012 / ADR-022 X-03: the in-flight orphan table, which is what makes
+// "同一筆連續 2 輪仍存在" a thing the platform can actually say.
+//
+// The distinction the old accumulating counter could not draw, and this can: two
+// different resources each failing once is not the same event as one resource
+// stuck for two rounds, and only the second is the alert.
+func TestOrphanSightingsCountConsecutiveRoundsNotTotalFailures(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	newFixture(t, a, pool, "alice-orphan-rounds")
+	fake, svc := withProvider(t, a, pool, providertest.Plan{})
+	ctx := context.Background()
+
+	// A leak the provider refuses to destroy: it is still there next round.
+	fake.DestroyStatus = http.StatusInternalServerError
+	stuck := fake.Seed("00000000-0000-4000-8000-000000000011",
+		"00000000-0000-4000-8000-000000000012", time.Now().Add(-time.Hour))
+
+	scan := func() { _ = (&run.OrphanScanWorker{Svc: svc}).Work(ctx, nil) }
+
+	scan()
+	if got := persistentOrphans(t, pool, fake.Name); got != 0 {
+		t.Fatalf("after one round the count is %d, want 0 — one sighting is not two", got)
+	}
+	scan()
+	if got := persistentOrphans(t, pool, fake.Name); got != 1 {
+		t.Fatalf("after two consecutive rounds on the same handle the count is %d, want 1", got)
+	}
+	if _, err := fake.Provider().GetRun(ctx, stuck); err != nil {
+		t.Fatalf("the fixture stopped holding the stuck sandbox: %v", err)
+	}
+
+	// A *different* handle failing once must not add to it: the threshold is about
+	// one resource surviving, not about how much failed in the window.
+	fake.Seed("00000000-0000-4000-8000-000000000013",
+		"00000000-0000-4000-8000-000000000014", time.Now().Add(-time.Hour))
+	scan()
+	if got := persistentOrphans(t, pool, fake.Name); got != 1 {
+		t.Errorf("a second, freshly-seen leak raised the count to %d, want 1", got)
+	}
+
+	// Once the provider can tear it down again, the next round destroys everything
+	// and the round after that finds nothing to carry — the count clears itself.
+	fake.DestroyStatus = 0
+	scan()
+	scan()
+	if got := persistentOrphans(t, pool, fake.Name); got != 0 {
+		t.Errorf("count after the leaks were cleared = %d, want 0", got)
+	}
+	if fake.Live() != 0 {
+		t.Errorf("%d sandboxes still held after the scan could destroy again", fake.Live())
+	}
+}
+
+func persistentOrphans(t *testing.T, pool *pgxpool.Pool, provider string) int {
+	t.Helper()
+	var n int
+	if err := pool.QueryRow(context.Background(),
+		"SELECT count(*) FROM reconciler_orphan_sightings WHERE provider = $1 AND rounds >= 2",
+		provider).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
 // ADR-008 / iron rule 9: events are handed on at least once, marking is idempotent,
 // and a delivery that fails leaves the backlog where it was.
 func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {

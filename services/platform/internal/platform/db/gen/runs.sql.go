@@ -11,6 +11,38 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countActiveRuns = `-- name: CountActiveRuns :one
+SELECT count(*) FROM runs
+WHERE workspace_id = $1
+  AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+`
+
+// PDM-005 §5.2 / SEC-002 gate B: how many runs this workspace already has in
+// flight. "In flight" is the complement of the terminal states, the same list
+// ListActiveRuns uses — a run waiting in the queue holds a slot just as much as
+// one executing, because the thing being bounded is what the workspace may have
+// outstanding, not what a provider is currently busy with.
+func (q *Queries) CountActiveRuns(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveRuns, workspaceID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countPersistentOrphans = `-- name: CountPersistentOrphans :one
+SELECT count(*) FROM reconciler_orphan_sightings
+WHERE provider = $1 AND rounds >= 2
+`
+
+// X-03's alert condition as a number: resources still present two consecutive
+// rounds (10 minutes at the X-02 scan interval).
+func (q *Queries) CountPersistentOrphans(ctx context.Context, provider string) (int64, error) {
+	row := q.db.QueryRow(ctx, countPersistentOrphans, provider)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createRun = `-- name: CreateRun :one
 
 
@@ -141,6 +173,26 @@ func (q *Queries) FinishRunAttempt(ctx context.Context, arg FinishRunAttemptPara
 		&i.FinishedAt,
 	)
 	return i, err
+}
+
+const forgetClearedOrphans = `-- name: ForgetClearedOrphans :exec
+DELETE FROM reconciler_orphan_sightings
+WHERE provider = $1
+  AND NOT (provider_run_id = ANY($2::text[]))
+`
+
+type ForgetClearedOrphansParams struct {
+	Provider     string
+	StillPresent []string
+}
+
+// Everything this provider was holding last round and is not holding now. Run at
+// the end of every pass, including passes that found nothing (empty array), so a
+// resource that was destroyed does not keep its round count for the next leak that
+// happens to reuse the handle.
+func (q *Queries) ForgetClearedOrphans(ctx context.Context, arg ForgetClearedOrphansParams) error {
+	_, err := q.db.Exec(ctx, forgetClearedOrphans, arg.Provider, arg.StillPresent)
+	return err
 }
 
 const getRun = `-- name: GetRun :one
@@ -564,6 +616,23 @@ func (q *Queries) ListUnpublishedOutboxEvents(ctx context.Context, limit int32) 
 	return items, nil
 }
 
+const lockWorkspaceRunSlots = `-- name: LockWorkspaceRunSlots :exec
+SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
+`
+
+// Serialises the concurrency check below against other run creations in the same
+// workspace. The lock is transaction scoped, so it releases with the commit that
+// inserts the run; without it two simultaneous requests both read "1 active" and
+// both insert, and the PDM-005 §5.2 limit of 2 becomes 3.
+//
+// Advisory rather than a row lock because there is no row to lock: the limit is
+// over a count, and locking the workspace row would serialise everything else
+// that workspace does.
+func (q *Queries) LockWorkspaceRunSlots(ctx context.Context, workspaceID string) error {
+	_, err := q.db.Exec(ctx, lockWorkspaceRunSlots, workspaceID)
+	return err
+}
+
 const markOutboxEventsPublished = `-- name: MarkOutboxEventsPublished :execrows
 UPDATE outbox_events SET published_at = now()
 WHERE event_id = ANY($1::uuid[]) AND published_at IS NULL
@@ -579,6 +648,28 @@ func (q *Queries) MarkOutboxEventsPublished(ctx context.Context, eventIds []pgty
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const recordOrphanSighting = `-- name: RecordOrphanSighting :one
+INSERT INTO reconciler_orphan_sightings (provider, provider_run_id)
+VALUES ($1, $2)
+ON CONFLICT (provider, provider_run_id) DO UPDATE
+SET rounds = reconciler_orphan_sightings.rounds + 1, last_seen_at = now()
+RETURNING rounds
+`
+
+type RecordOrphanSightingParams struct {
+	Provider      string
+	ProviderRunID string
+}
+
+// SBX-012 / ADR-022 X-03. One row per provider-side resource this round judged
+// leaked; the returned count is how many consecutive rounds it has survived.
+func (q *Queries) RecordOrphanSighting(ctx context.Context, arg RecordOrphanSightingParams) (int32, error) {
+	row := q.db.QueryRow(ctx, recordOrphanSighting, arg.Provider, arg.ProviderRunID)
+	var rounds int32
+	err := row.Scan(&rounds)
+	return rounds, err
 }
 
 const requestRunCancel = `-- name: RequestRunCancel :one

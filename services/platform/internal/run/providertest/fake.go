@@ -72,6 +72,10 @@ type Fake struct {
 	DispatchStatuses []int
 	// Plan governs every run this provider creates.
 	Plan Plan
+	// DestroyStatus, when >= 400, makes DELETE fail with that status and keep the
+	// sandbox. A provider that cannot tear one down is the only way to observe a
+	// leak that survives a scan round (SBX-012).
+	DestroyStatus int
 }
 
 type fakeRun struct {
@@ -300,6 +304,13 @@ func (f *Fake) destroyRun(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.destroys++
+	// DestroyStatus lets a test hold a sandbox that will not die - the leak the
+	// reconciler's consecutive-round threshold exists for (ADR-022 X-03, SBX-012).
+	// The sandbox stays in f.runs, so the next scan sees the same handle again.
+	if f.DestroyStatus >= 400 {
+		w.WriteHeader(f.DestroyStatus)
+		return
+	}
 	id := r.PathValue("id")
 	if fr, ok := f.runs[id]; ok {
 		delete(f.runs, id)

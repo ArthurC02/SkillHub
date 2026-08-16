@@ -23,10 +23,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/audit"
-	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
-	"github.com/ArthurC02/skillhub/services/platform/internal/skillpkg"
 )
 
 // ErrPermissionsNotConfirmed is SEC-002 gate B: the run request carries no
@@ -130,13 +128,72 @@ type ProviderSummary struct {
 	RuntimeVersion string `json:"runtime_version,omitempty"`
 }
 
-// PermissionSummary is the whole answer: the hashed body, its hash, and the notes
-// that explain it. Notes are outside the hash on purpose — rewording a sentence
-// must not invalidate every outstanding confirmation.
+// PermissionSummary is the whole answer: the hashed body, its hash, and the
+// display-only material that explains it. Notes and the cost estimate are outside
+// the hash on purpose — rewording a sentence, or recalibrating an estimate against
+// a newer sample, must not invalidate every outstanding confirmation.
 type PermissionSummary struct {
-	Content PermissionSummaryContent `json:"summary"`
-	Hash    string                   `json:"summary_hash"`
-	Notes   []string                 `json:"notes"`
+	Content       PermissionSummaryContent `json:"summary"`
+	Hash          string                   `json:"summary_hash"`
+	EstimatedCost CostEstimate             `json:"estimated_cost"`
+	Notes         []string                 `json:"notes"`
+}
+
+// CostEstimate is PDM-005 §5.3's "預估成本區間", and §5.2a-6 is why it is a range
+// and not a number: prompt caching makes a first run and a repeat run of the same
+// skill differ by roughly 8x, so a single figure would be wrong for one of them
+// every time.
+//
+// It is NOT part of the hashed content, by the same rule that keeps the user
+// prompt out: the hash covers what the run is *allowed to touch*, and this is a
+// prediction about what it will cost. Recalibrating it against a larger sample
+// must not silently revoke every confirmation a user has outstanding, and a
+// prediction changing is not a permission changing.
+type CostEstimate struct {
+	// Currency is fixed at USD: the gateway prices in it and the baseline was
+	// measured in it. A converted number would be an exchange rate the platform
+	// does not own, presented as a fact about a run.
+	Currency   string  `json:"currency"`
+	LowUSD     float64 `json:"low"`
+	TypicalUSD float64 `json:"typical"`
+	HighUSD    float64 `json:"high"`
+	// Basis says where the numbers came from, so nobody reads them as a quote.
+	Basis string `json:"basis"`
+}
+
+// Measured, not modelled: the M2 baseline ran all 45 catalogue skills once each
+// through this exact path (mini tier, real sandbox, real gateway) and the gateway's
+// own per-key spend gave the distribution — median $0.0566, mean $0.0702, max
+// $0.2367 (plans/mvp/m2/content-baseline-report.md §5.2).
+//
+// The published range is deliberately wider than that sample on both ends. The low
+// end is where a cache-warm repeat of a small skill lands; the high end is rounded
+// up from the observed maximum, because a sample of 45 is not a bound. What it is
+// not is the per-Run budget ceiling: that is ResourceLimits' territory and the
+// gateway's max_budget, and quoting the ceiling as the estimate would tell every
+// user their run costs half a dollar when the median is six cents.
+//
+// ponytail: three constants, not a query over historical runs. A live percentile
+// per skill is a real improvement and needs EVAL-012's cost comparison to exist
+// first; until then a stated, sourced, honestly-labelled estimate beats a
+// statistic computed from too little data and presented as if it were more.
+const (
+	estimatedCostLowUSD     = 0.01
+	estimatedCostTypicalUSD = 0.06
+	estimatedCostHighUSD    = 0.30
+)
+
+func defaultCostEstimate() CostEstimate {
+	return CostEstimate{
+		Currency:   "USD",
+		LowUSD:     estimatedCostLowUSD,
+		TypicalUSD: estimatedCostTypicalUSD,
+		HighUSD:    estimatedCostHighUSD,
+		Basis: "估計值,非報價。來源:M2 基準試跑 45 個 Skill 各一次的閘道實付分布" +
+			"(中位數 $0.0566、平均 $0.0702、最大 $0.2367,mini 級模型)。" +
+			"首次執行與重複執行因 prompt caching 可差約 8 倍,故為區間;" +
+			"實際費用以閘道每把金鑰的 spend 為準。",
+	}
 }
 
 func (s *Service) store() ObjectStore { return s.Store }
@@ -223,9 +280,11 @@ func (s *Service) PermissionSummaryFor(
 	}
 	sum := sha256.Sum256(body)
 	return PermissionSummary{
-		Content: content,
-		Hash:    hex.EncodeToString(sum[:]),
+		Content:       content,
+		Hash:          hex.EncodeToString(sum[:]),
+		EstimatedCost: defaultCostEstimate(),
 		Notes: []string{
+			"預估成本是區間估計值,不是報價;實際費用以模型閘道記錄的實付金額為準。",
 			"MVP 不支援 MCP Server,因此工具清單只有 Sandbox 內建的檔案與 Shell 存取。",
 			"Secrets 只顯示注入項目的名稱;實際值是每個 Run 專屬的短效憑證,不會出現在任何畫面、Log 或 Trace。",
 			"網路為預設封鎖,允許清單為空表示 Sandbox 不能連出任何位址。",
@@ -238,20 +297,12 @@ func (s *Service) PermissionSummaryFor(
 // not fail the request: the summary says the scan is unavailable, which is a
 // different statement from "no scripts" and must stay one.
 func (s *Service) scriptSummary(ctx context.Context, objectKey string) ScriptSummary {
-	unavailable := ScriptSummary{Status: "unavailable", Findings: []string{}}
-	if s.store() == nil {
-		return unavailable
-	}
-	data, err := s.store().Get(ctx, objectKey)
-	if err != nil {
-		return unavailable
-	}
-	fsys, err := ingest.PackageFS(data)
-	if err != nil {
-		return unavailable
+	report, ok := s.packageReport(ctx, objectKey)
+	if !ok {
+		return ScriptSummary{Status: "unavailable", Findings: []string{}}
 	}
 	findings := []string{}
-	for _, f := range skillpkg.Validate(fsys).Findings {
+	for _, f := range report.Findings {
 		if f.Code == "script-file" || f.Code == "embedded-script" {
 			findings = append(findings, f.Code+": "+f.Path)
 		}

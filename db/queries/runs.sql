@@ -185,3 +185,48 @@ WHERE event_id = ANY(@event_ids::uuid[]) AND published_at IS NULL;
 SELECT * FROM outbox_events
 WHERE aggregate_type = $1 AND aggregate_id = $2
 ORDER BY occurred_at, event_id;
+
+-- name: LockWorkspaceRunSlots :exec
+-- Serialises the concurrency check below against other run creations in the same
+-- workspace. The lock is transaction scoped, so it releases with the commit that
+-- inserts the run; without it two simultaneous requests both read "1 active" and
+-- both insert, and the PDM-005 §5.2 limit of 2 becomes 3.
+--
+-- Advisory rather than a row lock because there is no row to lock: the limit is
+-- over a count, and locking the workspace row would serialise everything else
+-- that workspace does.
+SELECT pg_advisory_xact_lock(hashtextextended(@workspace_id::text, 0));
+
+-- name: CountActiveRuns :one
+-- PDM-005 §5.2 / SEC-002 gate B: how many runs this workspace already has in
+-- flight. "In flight" is the complement of the terminal states, the same list
+-- ListActiveRuns uses — a run waiting in the queue holds a slot just as much as
+-- one executing, because the thing being bounded is what the workspace may have
+-- outstanding, not what a provider is currently busy with.
+SELECT count(*) FROM runs
+WHERE workspace_id = @workspace_id
+  AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out');
+
+-- name: RecordOrphanSighting :one
+-- SBX-012 / ADR-022 X-03. One row per provider-side resource this round judged
+-- leaked; the returned count is how many consecutive rounds it has survived.
+INSERT INTO reconciler_orphan_sightings (provider, provider_run_id)
+VALUES (@provider, @provider_run_id)
+ON CONFLICT (provider, provider_run_id) DO UPDATE
+SET rounds = reconciler_orphan_sightings.rounds + 1, last_seen_at = now()
+RETURNING rounds;
+
+-- name: ForgetClearedOrphans :exec
+-- Everything this provider was holding last round and is not holding now. Run at
+-- the end of every pass, including passes that found nothing (empty array), so a
+-- resource that was destroyed does not keep its round count for the next leak that
+-- happens to reuse the handle.
+DELETE FROM reconciler_orphan_sightings
+WHERE provider = @provider
+  AND NOT (provider_run_id = ANY(@still_present::text[]));
+
+-- name: CountPersistentOrphans :one
+-- X-03's alert condition as a number: resources still present two consecutive
+-- rounds (10 minutes at the X-02 scan interval).
+SELECT count(*) FROM reconciler_orphan_sightings
+WHERE provider = @provider AND rounds >= 2;

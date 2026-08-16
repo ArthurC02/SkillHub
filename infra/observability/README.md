@@ -57,6 +57,14 @@ MVP 用 Prometheus 文字格式，各服務自己曝露，沒有 push gateway、
 | `skillhub_run_cleanup_backlog` | gauge | — |
 | `skillhub_orphan_scan_total` | counter | `provider`、`result` |
 | `skillhub_orphan_sandbox_total` | counter | `provider`、`action`（destroyed／failed） |
+| `skillhub_orphan_sandbox_persistent` | gauge | `provider` |
+| `skillhub_gateway_revoke_failed_total` | counter | — |
+| `skillhub_sandbox_destroy_failed_total` | counter | `provider` |
+
+後三個是 **SBX-012**（ADR-022 X-03／X-04 的量測前提）：
+
+- `skillhub_orphan_sandbox_persistent` 是「同一筆連續 ≥2 輪仍在」的當下筆數，事實來源是 Reconciler 的 in-flight orphan 表（`reconciler_orphan_sightings`，migration 0021）。**連續性由該表保證**：某一輪沒看到就刪列，重新出現從第 1 輪起算。累加計數器做不到這件事——`increase(...) > 0` 只說得出「這段時間內動過手」，兩筆不同資源各失敗一次也會滿足。
+- `gateway_revoke_failed` 與 `sandbox_destroy_failed` 分開計，因為**正確動作相反**：沙箱殺不掉要 drain 節點，金鑰撤不掉 drain 一點用都沒有（要人到閘道側處理）。合併在 `skillhub_run_cleanup_total{result="failed"}` 裡的告警指不出該做哪一件。
 
 ### Trace 管線
 
@@ -84,7 +92,9 @@ MVP 用 Prometheus 文字格式，各服務自己曝露，沒有 push gateway、
 
 **門檻值多數是首發預設，不是實測校準值**。NFR-004 自陳效能目標「需在確認基礎設施後校準」，上線後第一個月應以實際分佈回填並註明校準日期。
 
-**例外：`skillhub-cleanup-and-leaks` 群組的門檻已定值**——SEC-002 的六項門檻（威脅模型 Q18）於 2026-08-16 由 [ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分定案（X-02 每 5 分鐘、X-03 同一筆連 2 輪、X-04 單節點 50%／全池 25% 下限 2 筆、6b 連 3 輪撤銷失敗）。該群組的規則已依定值改寫，但 `LeakedSandboxStillPresent` 與 `CredentialRevokeFailing` **目前是過渡形式**：現有累加計數器表達不了「同一筆連續 N 輪」，也區分不出「金鑰撤不掉」與「沙箱殺不掉」，需要 `03` 的 **SBX-012**（in-flight orphan 表 ＋ `gateway_revoke_failed`／`sandbox_destroy_failed` 分項計數器）。規則註解已逐條標明。**ADR-022 定的動作（drain 節點、暫停整池派送、暫停 P-03 例行重建）屬平台實作，不是 Alertmanager 的職責。**
+**例外：`skillhub-cleanup-and-leaks` 群組的門檻已定值**——SEC-002 的六項門檻（威脅模型 Q18）於 2026-08-16 由 [ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分定案（X-02 每 5 分鐘、X-03 同一筆連 2 輪、X-04 單節點 50%／全池 25% 下限 2 筆、6b 連 3 輪撤銷失敗）。**該群組的規則已全部是正式形式（2026-08-16，SBX-012 落地後）**：`LeakedSandboxStillPresent` 改讀 `skillhub_orphan_sandbox_persistent`、`CredentialRevokeFailing` 改讀 `skillhub_gateway_revoke_failed_total`，原本以累加計數器近似「同一筆連續 N 輪」與「哪一種資源撤不掉」的兩條過渡規則已移除近似。**ADR-022 定的動作（drain 節點、暫停整池派送、暫停 P-03 例行重建）屬平台實作，不是 Alertmanager 的職責。**
+
+`CleanupBacklogGrowing` 的門檻不在 ADR-022 的六項之內，但已於 **2026-08-16 依封測容量校準**：`> 5` → `> 2`。舊值大於整池 4 個 slot，代表整池沙箱全數洩漏都還低於門檻；新值取封測 4 slot 的 50%，與 X-04 單節點 drain 用同一個比例。池容量改變時要重推。
 
 ## 最該先看的一條
 

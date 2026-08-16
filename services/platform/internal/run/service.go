@@ -248,6 +248,13 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	if err := s.checkSchedulable(ctx, decoded); err != nil {
 		return gen.Run{}, err
 	}
+	// SEC-002 gate B: a version whose static scan is blocking, or that cannot be
+	// scanned at all, does not start (02:SEC-003). Before the permission summary,
+	// because a run that may not start at all should not ask the user to agree to
+	// its permissions first.
+	if err := s.requireScanNotBlocking(ctx, version.PackageObjectKey); err != nil {
+		return gen.Run{}, err
+	}
 	// SEC-002 gate B: no run starts on permissions the user has not seen and
 	// agreed to, and an agreement to a summary that has since changed does not
 	// carry over (02:TEST-005). Checked here rather than in the handler so every
@@ -264,6 +271,14 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
+
+	// SEC-002 gate B: the workspace concurrency ceiling (PDM-005 §5.2). Inside the
+	// transaction, unlike the three checks above, because it is the only one whose
+	// answer another request can invalidate while this one is deciding - it takes a
+	// per-workspace lock that is released by this commit.
+	if err := s.requireRunSlot(ctx, q, p.WorkspaceID); err != nil {
+		return gen.Run{}, err
+	}
 
 	// The test lab owns the snapshot's shape and its hash; this passes it the
 	// transaction handle so the snapshot and the run below commit together

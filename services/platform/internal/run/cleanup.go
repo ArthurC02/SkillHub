@@ -121,6 +121,11 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 		// own hard wall clock plus slack.
 		if s.Gateway != nil {
 			if err := s.Gateway.Revoke(ctx, uuidString(attempt.ID)); err != nil {
+				// SBX-012: counted apart from the sandbox teardown below. A key that
+				// will not revoke needs a human at the gateway; draining the fleet,
+				// which is what the sandbox counter escalates to, would do nothing
+				// about it (ADR-022 X-03/X-04 6b).
+				metrics.GatewayRevokeFailed.Inc()
 				failures = append(failures, fmt.Sprintf("model gateway key for attempt %d: %v", attempt.AttemptNumber, err))
 			}
 		}
@@ -133,10 +138,12 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 			// was outstanding. The platform cannot release it and must not pretend
 			// otherwise: this is exactly the "cleanup failed" the operator has to see
 			// (O11Y-003).
+			metrics.SandboxDestroyFailed.WithLabelValues(attempt.Provider).Inc()
 			failures = append(failures, "provider "+attempt.Provider+" is no longer configured")
 			continue
 		}
 		if err := provider.Destroy(ctx, *attempt.ProviderRunID); err != nil {
+			metrics.SandboxDestroyFailed.WithLabelValues(attempt.Provider).Inc()
 			failures = append(failures, fmt.Sprintf("%s: %v", attempt.Provider, err))
 		}
 	}
@@ -228,7 +235,20 @@ func (w *OrphanScanWorker) Work(ctx context.Context, _ *river.Job[OrphanScanArgs
 }
 
 // scanProvider destroys the sandboxes one provider is holding for runs the
-// platform has already finished, plus anything it does not recognise at all.
+// platform has already finished, plus anything it does not recognise at all, and
+// records what it saw in the in-flight orphan table (SBX-012, ADR-022 X-03).
+//
+// The sighting is recorded *before* the destroy is attempted, and a successful
+// destroy does not erase it. That is the threshold's semantics, not sloppiness:
+// X-03 asks whether the same resource was still present two rounds running, and a
+// resource that survived a full scan interval did exactly that, whichever round
+// finally killed it. What clears a sighting is the resource being gone when the
+// next round looks.
+//
+// One failed destroy no longer aborts the pass. It used to, and that made the
+// round count wrong in precisely the situation it exists for: with two leaks, the
+// first one failing meant the second was never even seen, so it could sit there
+// for rounds without ever reaching two.
 func (s *Service) scanProvider(ctx context.Context, provider *Provider) error {
 	list, err := provider.ListActive(ctx)
 	if err != nil {
@@ -239,12 +259,26 @@ func (s *Service) scanProvider(ctx context.Context, provider *Provider) error {
 		observed = time.Now()
 	}
 
+	// Empty, not nil: it is passed to ForgetClearedOrphans below even when nothing
+	// leaked, and "nothing leaked" is exactly when last round's rows must go.
+	stillPresent := []string{}
+	var failures []string
 	for _, entry := range list.Runs {
 		leaked, why := s.isOrphan(ctx, entry, observed)
 		if !leaked {
 			continue
 		}
+		stillPresent = append(stillPresent, entry.ProviderRunID)
+		rounds, err := s.queries().RecordOrphanSighting(ctx, gen.RecordOrphanSightingParams{
+			Provider: provider.Name, ProviderRunID: entry.ProviderRunID,
+		})
+		if err != nil {
+			// Bookkeeping failing must not stop the teardown: the sighting table is
+			// how the leak gets reported, the destroy below is how it stops costing.
+			slog.Error("recording orphan sighting failed", "provider", provider.Name, "error", err)
+		}
 		slog.Warn("destroying leaked sandbox", "provider", provider.Name, "reason", why,
+			"consecutive_rounds", rounds,
 			// The platform run_id, never the provider handle, is what identifies this
 			// in logs and metrics (iron rule 10).
 			"run_id", entry.RunID)
@@ -253,9 +287,29 @@ func (s *Service) scanProvider(ctx context.Context, provider *Provider) error {
 		// rules distinguish the two because only the second needs a human.
 		if err := provider.Destroy(ctx, entry.ProviderRunID); err != nil {
 			metrics.OrphanSandbox.WithLabelValues(provider.Name, "failed").Inc()
-			return err
+			failures = append(failures, fmt.Sprintf("destroy %s: %v", entry.RunID, err))
+			continue
 		}
 		metrics.OrphanSandbox.WithLabelValues(provider.Name, "destroyed").Inc()
+	}
+
+	// Anything this provider held last round and does not hold now. Runs on every
+	// pass including the empty one, so a handle that was cleared cannot carry its
+	// round count into some future leak.
+	if err := s.queries().ForgetClearedOrphans(ctx, gen.ForgetClearedOrphansParams{
+		Provider: provider.Name, StillPresent: stillPresent,
+	}); err != nil {
+		slog.Error("pruning orphan sightings failed", "provider", provider.Name, "error", err)
+	}
+	persistent, err := s.queries().CountPersistentOrphans(ctx, provider.Name)
+	if err != nil {
+		slog.Error("counting persistent orphans failed", "provider", provider.Name, "error", err)
+	} else {
+		metrics.OrphanPersistent.WithLabelValues(provider.Name).Set(float64(persistent))
+	}
+
+	if len(failures) > 0 {
+		return errors.New(strings.Join(failures, "; "))
 	}
 	return nil
 }

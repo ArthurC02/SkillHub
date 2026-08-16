@@ -94,7 +94,7 @@ export function RunPreflight() {
     return <p role="alert">無法讀取權限摘要:{preflight.error.message}</p>;
   }
 
-  const { summary, summary_hash: hash, notes } = preflight.data;
+  const { summary, summary_hash: hash, estimated_cost: cost, notes } = preflight.data;
 
   return (
     <section className="page">
@@ -165,6 +165,19 @@ export function RunPreflight() {
           {summary.resource_limits.token_budget.max_input_tokens} 進 /{" "}
           {summary.resource_limits.token_budget.max_output_tokens} 出
         </dd>
+        {/* PDM-005 §5.3. A range, and labelled an estimate in the term itself —
+            it is outside summary_hash, so it must not read like something the
+            user is agreeing to. Absent on an older server: rendered as nothing
+            rather than as a zero. */}
+        {cost && (
+          <>
+            <dt>預估成本（估計值）</dt>
+            <dd>
+              {cost.currency} ${cost.low.toFixed(2)} – ${cost.high.toFixed(2)}（常見約 $
+              {cost.typical.toFixed(2)}）<p>{cost.basis}</p>
+            </dd>
+          </>
+        )}
       </dl>
 
       <ul className="preflight-notes">

@@ -17,9 +17,11 @@
 #
 # 例外：skillhub-cleanup-and-leaks 群組的門檻**不是**首發預設——SEC-002 的六項門檻
 # 已於 2026-08-16 由 ADR-022 第二部分定值（X-02 每 5 分鐘、X-03 連 2 輪、X-04 單節點
-# 50%／全池 25% 下限 2 筆）。該群組的規則依定值改寫，但其中兩條**目前只能是過渡
-# 形式**：現有 metrics 表達不了「同一筆連續 N 輪」與分項失敗原因，需要 SBX-012 的
-# in-flight orphan 表與分項計數器，逐條註解已標明。
+# 50%／全池 25% 下限 2 筆）。**該群組的規則已全部改為正式形式**：SBX-012 已落地
+# （Reconciler 的 in-flight orphan 表 `reconciler_orphan_sightings`、gauge
+# `skillhub_orphan_sandbox_persistent`、分項計數器 `skillhub_gateway_revoke_failed_total`
+# 與 `skillhub_sandbox_destroy_failed_total`），原本兩條以累加計數器近似的過渡規則
+# 已改讀這些指標，不再有「兩筆各失敗一次也會觸發」的誤報路徑。
 #
 # 本檔只定義「什麼情況算異常」；ADR-022 定的動作（drain 節點、暫停整池派送、暫停
 # P-03 例行重建）屬平台實作，不是 Alertmanager 的職責。
@@ -151,10 +153,18 @@ groups:
         # 終態但未確認釋放的 Run。這是唯一能發現「Sandbox 在燒錢而沒人回收」的
         # 指標，因為 Run 本身看起來完全正常。
         #
-        # 門檻 5 是**未校準的首發預設**，不是 ADR-022 定的值——SEC-002 的六項門檻
-        # 不含它。封測規模只有 4 個 slot，5 個未確認釋放已經超過整池容量，所以這個
-        # 值偏鬆；上線後第一個月應以實際分佈收窄並在此註明校準日期。
-        expr: skillhub_run_cleanup_backlog > 5
+        # 門檻仍不是 ADR-022 定的值（SEC-002 的六項門檻不含它），但**已依封測容量
+        # 校準（2026-08-16）**：舊值 5 大於整池的 4 個 slot，意思是整池的沙箱全部
+        # 洩漏都還低於門檻——一條在容量耗盡之前不可能響的告警等於沒有。
+        #
+        # 新值 2 ＝ 封測 4 slot 的 50%，與 ADR-022 X-04 的單節點 drain 門檻同一個比例
+        # （該處是「遺留 ≥ 節點 slot 的 50%」）；用同一個比例，是因為兩者測的是同一
+        # 件事的兩端——這裡是平台側「該釋放而未確認釋放」，那裡是節點側「已經留在
+        # 那裡」。for: 15m 不變，正常清理的短暫積壓仍然不會觸發（清理是冪等的、
+        # 失敗會被 supervisor 重排，15 分鐘還在就不是暫態）。
+        #
+        # 校準義務不變：這是依封測 4 slot 推的比例值，池容量改變時要重推。
+        expr: skillhub_run_cleanup_backlog > 2
         for: 15m
         labels:
           severity: warning
@@ -186,18 +196,15 @@ groups:
       - alert: LeakedSandboxStillPresent
         # X-03（ADR-022）：同一 provider_run_id 連續 2 輪掃描（10 分鐘）仍存在即告警。
         #
-        # 【過渡形式】現有 skillhub_orphan_sandbox_total 是累加計數器，只說得出
-        # 「這段時間內銷毀失敗過」，說不出「同一筆還在」——連 2 輪需要 SBX-012 的
-        # in-flight orphan 表（provider_run_id → first_seen_round）與對應指標。
-        # 在那之前用「連兩個掃描週期都有銷毀失敗」近似：同一筆卡住會持續計數，
-        # 但兩筆不同資源各失敗一次也會觸發。誤報方向，可接受。
+        # SBX-012 之後這是**正式形式**：gauge 直接就是「本輪還在、且已連續 ≥2 輪」的
+        # 筆數，事實來源是 Reconciler 的 in-flight orphan 表（migration 0021）。連續性
+        # 由該表保證——某一輪沒看到就刪列，重新出現從第 1 輪起算，所以這裡的 >0 不會
+        # 被「兩筆不同資源各出現一次」湊出來。gauge 已是當下狀態，不需要 for:。
         #
-        # 【漏報方向】掃描**找不到**的遺留資源不會計入——action="failed" 只涵蓋
-        # 「找到了、殺不掉」。節點上存在但 GET /runs?active=true 沒回報的沙箱
-        # （provider 記憶體狀態與實際容器不同步）對本條完全隱形，只有 SEC-009
-        # 測項 T7 的注入子項驗得到。
-        expr: sum by (provider) (increase(skillhub_orphan_sandbox_total{action="failed"}[10m])) >= 2
-        for: 10m
+        # 【漏報方向不變】掃描**找不到**的遺留資源仍然計不到：本 gauge 的來源是
+        # GET /runs?active=true 回報的清單，節點上存在但 provider 記憶體狀態沒回報的
+        # 沙箱對本條完全隱形，只有 SEC-009 測項 T7 的注入子項驗得到。
+        expr: max by (provider) (skillhub_orphan_sandbox_persistent) > 0
         labels:
           severity: warning
         annotations:
@@ -209,7 +216,15 @@ groups:
 
       - alert: LeakedSandboxDestroyFailed
         # 這條才是真的要人：掃描找到了、也試著殺了、殺不掉，資源還在。
-        expr: increase(skillhub_orphan_sandbox_total{action="failed"}[1h]) > 0
+        #
+        # 兩個來源都算：孤兒掃描（orphan_sandbox_total{action="failed"}）與 Run 結束
+        # 時的正規清理（sandbox_destroy_failed_total，SBX-012）。分開計是因為它們是
+        # 不同的失效——清理失敗是常態路徑壞了，掃描失敗是最後一道防線也壞了——但
+        # 「有沙箱殺不掉」這個結論兩邊一樣，要人做的事也一樣（drain 該節點）。
+        expr: |
+          increase(skillhub_orphan_sandbox_total{action="failed"}[1h]) > 0
+          or
+          increase(skillhub_sandbox_destroy_failed_total[1h]) > 0
         labels:
           severity: critical
         annotations:
@@ -220,16 +235,17 @@ groups:
         # 連續 3 輪（15 分鐘）撤銷失敗 → 最高嚴重度，**但不暫停派送**——暫停新 Run
         # 不會讓已經外洩的憑證消失，正確動作是人介入（閘道側強制刪除或 SEC-010 停用）。
         #
-        # 【過渡形式】ADR-022 要求的事實來源是分項計數器 gateway_revoke_failed /
-        # sandbox_destroy_failed（SBX-012）；現在只有整體的 cleanup result="failed"，
-        # 它區分不出「金鑰撤不掉」與「沙箱殺不掉」，而兩者的正確動作相反。
-        # 在 SBX-012 之前這條與 CleanupFailing 重疊，差別只在門檻與嚴重度。
+        # SBX-012 之後這是**正式形式**：讀的是分項計數器 gateway_revoke_failed，
+        # 不再是整體的 cleanup result="failed"。差別是實質的——沙箱殺不掉要 drain
+        # 節點，金鑰撤不掉 drain 一點用都沒有，混在一個計數器裡的告警指不出該做哪件。
+        # 沙箱側的對應計數器是 skillhub_sandbox_destroy_failed_total，由上一條
+        # LeakedSandboxDestroyFailed 承接。
         #
         # 【漏報方向】撤銷**沒被嘗試**就不會計入：撤銷失敗要先有人呼叫 /key/delete。
         # cleanup job 本身沒被排入（worker 停擺、River leader 選舉卡住）時，金鑰會
         # 安靜地活到 TTL，本條一聲不響——那條路徑由 CleanupBacklogGrowing 與
         # OrphanScanNotRunning 覆蓋，兩者要一起看。
-        expr: sum(increase(skillhub_run_cleanup_total{result="failed"}[15m])) >= 3
+        expr: sum(increase(skillhub_gateway_revoke_failed_total[15m])) >= 3
         for: 15m
         labels:
           severity: critical

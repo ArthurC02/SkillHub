@@ -53,10 +53,52 @@ export interface PreflightSummary {
   };
 }
 
+/**
+ * PDM-005 §5.3/§5.2a-6. A range, not a number: prompt caching makes a first run
+ * and a repeat differ ~8x. Deliberately outside `summary`, so it is outside the
+ * hash — recalibrating an estimate is not a permission change (see the Go type).
+ */
+export interface CostEstimate {
+  currency: string;
+  low: number;
+  typical: number;
+  high: number;
+  basis: string;
+}
+
 export interface PreflightResponse {
   summary: PreflightSummary;
   summary_hash: string;
+  estimated_cost: CostEstimate;
   notes: string[];
+}
+
+/** 02:TEST-002 — the upload rules, shown before an upload rather than on refusal. */
+export interface DatasetLimits {
+  max_file_bytes: number;
+  max_test_case_bytes: number;
+  max_files_per_test_case: number;
+  retention_days: number;
+  allowed_kinds: string[];
+  note: string;
+}
+
+export function getDatasetLimits() {
+  return apiFetch<DatasetLimits>("/test-cases/limits");
+}
+
+export interface Dataset {
+  dataset_id: string;
+  file_name: string;
+  content_type: string;
+  size_bytes: number;
+}
+
+export function uploadDataset(testCaseId: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  // No Content-Type header: the browser has to set the multipart boundary.
+  return apiFetch<Dataset>(`/test-cases/${testCaseId}/datasets`, { method: "POST", body: form });
 }
 
 export interface RunCreated {

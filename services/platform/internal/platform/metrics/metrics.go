@@ -98,6 +98,20 @@ var (
 		Name: "skillhub_run_cleanup_backlog",
 		Help: "Terminal runs whose cleanup has not completed (O11Y-003).",
 	})
+	// The two counters ADR-022 X-03/X-04 names, kept apart because the correct
+	// response to each is the opposite of the other. A sandbox that will not die
+	// holds a slot, so the fleet drains; a Virtual Key that will not revoke holds
+	// no slot at all, and suspending dispatch would not un-leak it - that one needs
+	// a human at the gateway. The aggregate Cleanup{result="failed"} above cannot
+	// tell them apart, which is why alerting on it could only ever be provisional.
+	GatewayRevokeFailed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "skillhub_gateway_revoke_failed_total",
+		Help: "Virtual Key revocations that failed during cleanup (SBX-012, ADR-022 X-03/X-04 6b).",
+	})
+	SandboxDestroyFailed = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "skillhub_sandbox_destroy_failed_total",
+		Help: "Sandbox teardowns that failed during cleanup (SBX-012, ADR-022 X-03/X-04).",
+	}, []string{"provider"})
 )
 
 // O11Y-002: provider health. `provider` comes from SKILLHUB_SANDBOX_PROVIDERS,
@@ -134,6 +148,18 @@ var (
 		Name: "skillhub_orphan_sandbox_total",
 		Help: "Sandboxes the orphan scan acted on, by outcome (O11Y-003).",
 	}, []string{"provider", "action"})
+	// OrphanPersistent is ADR-022 X-03 as a number a rule can read: leaked
+	// resources the reconciler has now seen in two or more *consecutive* rounds.
+	//
+	// A gauge and not a counter, because the question is "is it still there", and
+	// counters cannot answer that - increase(orphan_sandbox_total) rising only says
+	// something was acted on during the window, which two different resources
+	// failing once each satisfies just as well as one resource stuck for an hour.
+	// The consecutive-round bookkeeping is db/migrations/0021's sightings table.
+	OrphanPersistent = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_orphan_sandbox_persistent",
+		Help: "Leaked sandboxes present for two or more consecutive reconciler rounds (SBX-012, ADR-022 X-03).",
+	}, []string{"provider"})
 )
 
 // Trace ingestion (TRACE-005, TRACE-008). Health of the pipeline itself, not of

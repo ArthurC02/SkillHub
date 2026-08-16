@@ -12,7 +12,7 @@ M2 範圍 **41 個工作項**,**33 項維持勾選、1 項對帳退回、7 項�
 
 | `01` 的 M2 目標 | 狀況 |
 | --- | --- |
-| 完成 Cloud Sandbox、Dataset、Prompt 與 Run Trace | ✅ 後端完成並經 45 個真實 Skill 端到端驗證;**Test Lab 無 UI**(見殘項乙-7) |
+| 完成 Cloud Sandbox、Dataset、Prompt 與 Run Trace | ✅ 後端完成並經 45 個真實 Skill 端到端驗證;**Test Lab 只有上傳與 preflight 兩個畫面**(2026-08-16 補 `/lab/datasets`;建立 Test Case、編輯 Prompt 與驗收條件仍無 UI,見殘項乙-7) |
 | 完成權限確認、逾時、取消及清理 | ✅ TEST-008/009、RUN-006/007、SBX-009;73/73 Run 全部 `cleaned` |
 | 完成精選 Skill 的範例資料、Prompt、驗收條件與基準試跑 | ✅ CONTENT-008(15/15 符合);**CONTENT-007 差 writing rubric 一項**(見殘項乙-5) |
 | **依 Sandbox 實測結果啟用搜尋的 Agent 相容篩選維度** | ❌ **未達成**。資料已備妥(45/45 `activated`、33 個「模型轉譯」),但 schema 無欄位可回寫,四個設計問題待決(見殘項乙-4) |
@@ -24,14 +24,14 @@ M2 範圍 **41 個工作項**,**33 項維持勾選、1 項對帳退回、7 項�
 | 工作群 | 項目 | 里程碑內順序 |
 | --- | --- | --- |
 | Run 契約與狀態機 | RUN-001~004(Provider-neutral 契約、Capability、run_id 映射、狀態機) | 第一批 **✅ 完成**(RUN-004 由第二批一併結案) |
-| Test Case 與執行設定 | TEST-001/002/003/004/008/009/010(005/006/007 後 MVP) | 第一批起 **六項完成**(TEST-002/008/009 於權限摘要批;**TEST-004 對帳退回**——缺上傳前的顯示面) |
+| Test Case 與執行設定 | TEST-001/002/003/004/008/009/010/011(005/006/007 後 MVP) | 第一批起 **六項完成**(TEST-002/008/009 於權限摘要批);**TEST-004 對帳退回後於 2026-08-16 補上顯示面重新勾選**;**TEST-011(預估成本區間)為 2026-08-16 新增並完成** |
 | Trace Schema | TRACE-001(事件 schema 先行,收集屬後續批) | 第一批 **✅ 完成**(由第三批勾選,`0019` 補齊四個欄位缺口後才成立) |
 | Run 排程與韌性 | RUN-005~009(排程、取消逾時、冪等清理、重啟恢復、契約測試) | 第二批 **✅ 2026-08-16 完成**(含 Outbox publisher;RUN-004 一併結案) |
 | SelfHostedProvider | SBX-001~010(gVisor 基線) | 第二~四批 **六項完成**(001/003/004/006/008/009);**002/005/007/010 維持不勾**——門檻待定值＋生產網路與逃逸測試屬部署期 |
 | Trace 收集與 O11y | TRACE-002~008、O11Y-001~003 | 第三批 **✅ 2026-08-16 完成**（TRACE-001 一併勾選；TRACE-004 的成本欄位由第四批補上並勾選） |
 | 模型閘道出口與短效授權 | SBX-007（dev 網路面）、SBX-008、TRACE-004 成本 | 第四批 **2026-08-16**（SBX-008 完成、TRACE-004 勾選；SBX-007 仍不勾——Proxy 本體屬部署期） |
 | 內容基準試跑 | CONTENT-007/008(自 M1 移入) | 第五批 **✅ 2026-08-16**(CONTENT-008 完成、精選 15/15 符合;CONTENT-007 部分完成不勾——writing rubric 缺消費端。見 [content-baseline-report.md](content-baseline-report.md)) |
-| 安全驗收 | SEC-002 六項門檻定值(Q18)、SEC-009 逃逸測試——ADR-015 的實作期驗收關卡 | 部署驗證批。**門檻定值與 Q1～Q3 已於 2026-08-16 由 [ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 定案**;SEC-002／SEC-009 仍不勾(45 項未經驗證、閘門 B 兩項阻擋未落地) |
+| 安全驗收 | SEC-002 六項門檻定值(Q18)、SEC-009 逃逸測試——ADR-015 的實作期驗收關卡 | 部署驗證批。**門檻定值與 Q1～Q3 已於 2026-08-16 由 [ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 定案**;SEC-002／SEC-009 仍不勾——**閘門 B 的四項阻擋已於 2026-08-16 全數落地(乙-8)**,剩下的唯一原因是 45 項基線未經 SEC-009 驗證 |
 
 ## 架構鐵律在 M2 的落點(開工前必讀)
 
@@ -215,6 +215,70 @@ docker run -d --name sandboxd --network skillhub_default --network-alias sandbox
 1. **Prompt 必須點名 Skill**(PDM-011 實測自主觸發率為 0),而且**要告訴 Agent 把產物寫到 `/out/artifacts/`**——沒有系統提示會自動說這件事,沒寫到那裡就沒有 artifact 被收。Dataset 掛在 `/work/data/<file_name>`。
 2. **SeaweedFS 必須帶 S3 金鑰**。匿名 bucket 沒有可簽章的金鑰,`PresignGet` 會直接失敗、Run 以 fail-closed 結束。`infra/compose/seaweedfs-s3.json` 已加,但**既有 stack 需重建 seaweedfs 容器才會生效**。
 
+## 殘項收斂批:平台限制與成本正確性(2026-08-16)
+
+M2 完結後的補件批,處理殘項清單裡「已定值但沒有強制」與「已量到但沒查根因」那幾項。migration `0021`,無契約變更。
+
+### 閘道預算 50 倍誤差:根因是保留而不是計數(乙-3)
+
+LiteLLM 自 v1.84 起對每個在途請求做**樂觀預算保留**:先把該請求的**理論最大成本**加到金鑰的預算計數器上,請求結束再換成實付。理論最大 ＝ 全部 input token 以**未快取**單價 ＋ `max_tokens` 以 output 單價。
+
+對試跑預設層 `gpt-5.4-mini` 而言,output 單價 `4.5e-6`/token,光 `max_tokens=64000` 就保留 **$0.288**——而實際輸出常是數百 token、input 大半是 1/10 價的 cache read。**保留值與整個 $0.50 的 per-Run 預算同量級**,所以兩個重疊的請求就能把計數器頂到上限,之後每個請求都收到 429。`LiteLLM_SpendLogs` 記的是實付,兩邊自然差 50 倍。這也解釋了基準試跑報告 §6.2 的兩個對照實驗為什麼排除不掉它:**單一序列請求永遠不會觸發**,保留在下一個請求之前就釋放了。
+
+本機實驗(1.96.2,同一把 `max_budget=0.5` 金鑰):
+
+| 情境 | 結果 |
+| --- | --- |
+| 序列 3 次(`max_tokens=64000`) | 全部 200 |
+| 併發 4 次 | 第 3、4 次 **429 `Current cost: 0.78845825`** |
+| 同一把金鑰全程實付(`/key/info`) | **$0.00096**(相差 821 倍) |
+
+處置是配置修正:`infra/compose/litellm-config.yaml` 加 `general_settings.disable_budget_reservation: true`——LiteLLM 為這個情境提供的開關,其欄位說明明列「phantom BudgetExceededError caused by leaked reservations」。改後複驗:
+
+| 驗證 | 結果 |
+| --- | --- |
+| 同一組併發 4 次 | **無任何預算 429**(第 4 次撞到 `tpm_limit`,那是另一個煞車,行為正確) |
+| 反證強制仍在:`max_budget=1e-06` | 第 2 次起 429,且 `Current cost: 0.00048` **等於該金鑰實付** |
+
+**PDM-003 v5 的 $0.50 不改**:錯的是語意不是數值,修好後 $0.50 就是 $0.50(基準試跑中位數 $0.0566、最大 $0.2367,餘裕 2 倍以上)。代價寫在配置註解裡:改為讀取時強制,已在途的請求會跑完,超額上界是它們的實付金額;沙箱只跑一個 agent、spend flush 為 1 秒、`tpm_limit` 仍在,超額有界且遠小於它取代的誤擋。
+
+**仍未做**:9 個已索引 Skill 的基準補跑(`copyright-creative-work`、`document-format-skills`、`docx`、`excel-delete`、`excel-sort`、`excel-split`、`json-restructure`、`pptx`、`xlsx`,預估 $1.0–1.5)。阻擋它的原因已經沒有了。
+
+### SEC-002 閘門 B 的四項阻擋全數落地(乙-8)
+
+`internal/run/gateb.go`,兩項新檢查都在 `Create` 內、建立 run 之前,超出即 422:
+
+- **靜態掃描等級**:不等威脅模型 Q7。政策其實已經以逐項可判定的形式存在——`skillpkg` 給每個 finding code 指定了 severity,`error` 級就是 `SKILL-002` 定義的阻擋級。閘門 B 重新掃描該版本的套件位元組並套用同一套政策。**不讀 `search_documents.scan`**:那是目錄 UI 的可為 NULL 的警告計數投影,讓閘門讀它等於讀一份決策的快取而不是決策。掃不成(讀不到、解不開、沒有物件儲存)即拒——順帶補上一個既有的洞:先前套件不可讀時 preflight 只顯示 `unavailable`,Run 照跑。
+- **Workspace 並行上限 ＝ 2**(PDM-005 §5.2):計非終態 Run,workspace 取自 session(鐵律 3)。在交易內先取 `pg_advisory_xact_lock(workspace)`,否則兩個同時進來的請求會各讀到「目前 1 筆」而都放行。
+
+**SEC-002 仍不勾**:剩下的唯一原因是 45 項基線未經 SEC-009 驗證。
+
+### 權限摘要的預估成本區間(乙-9 / TEST-011)
+
+`PermissionSummary.EstimatedCost`:$0.01 / 常見 $0.06 / $0.30,`basis` 欄把來源(基準試跑 45 筆的閘道實付分布)與「估計值非報價」寫在畫面上。**寫死一組保守區間**而不做動態統計:每個 Skill 的實時百分位要等 EVAL-012 才有足夠樣本,在那之前一個標明來源的估計值好過一個用太少資料算出來、卻長得像統計的數字。
+
+**不進 `summary_hash`**,理由與 User Prompt 不入 hash 同一條:hash 涵蓋的是「這個 Run 能碰什麼」,成本是預測不是權限;拿更大的樣本重新校準,不該把使用者手上每一份確認一起作廢。`TestCostEstimateIsOutsideTheConfirmedHash` 直接對回應位元組重算 sha256 反證。
+
+### TEST-004 的顯示面(乙-7 的一半)
+
+`apps/web` 新增 `/lab/datasets`(`src/pages/DatasetUpload.tsx`):大小限制、支援格式、保存政策、資料使用範圍四項**在檔案選擇控制項之前**渲染,數字全部來自 `GET /test-cases/limits`,UI 內不另寫一份。讀不到規則時**不提供上傳控制項**——規則沒顯示,「上傳前顯示」就沒發生。TEST-004 依允收重新勾選;**TEST-001／002／003 是否同尺退回仍待裁定**(乙-7)。
+
+### SBX-012:in-flight orphan 表與分項計數器
+
+migration `0021_reconciler_orphan_sightings`。每輪掃描 upsert 本輪判定為洩漏的 `(provider, provider_run_id)` 並遞增 `rounds`,輪末刪除本輪沒看到的列——**這個刪除就是「連續」的定義**,重新出現從第 1 輪起算。用資料表不用行程內 map,是因為 Reconciler 是 River 的 leader-only periodic job:leader 會換行程、行程會重啟,而「洩漏活得比 worker 久」正是這個門檻要抓的情況。
+
+sighting 記在 destroy **之前**,而且 destroy 成功不會抹掉它:X-03 問的是「同一筆有沒有撐過兩輪掃描」,撐過了就是撐過了,哪一輪殺掉的不影響這個事實。清掉它的是下一輪看不到它。
+
+另修一個既有行為:`scanProvider` 原本一筆 destroy 失敗就 `return err` 中止整輪,於是第二筆洩漏連被看見都沒有——正好是這個門檻存在的情境下最容易漏的一筆。現在逐筆記錄、掃完再合併錯誤回傳。
+
+三個新指標(`skillhub_orphan_sandbox_persistent{provider}` gauge、`skillhub_gateway_revoke_failed_total`、`skillhub_sandbox_destroy_failed_total{provider}`)。金鑰與沙箱分開計,因為**正確動作相反**:沙箱殺不掉要 drain 節點,金鑰撤不掉 drain 一點用都沒有。`alerts.yml` 的兩條過渡規則已升為正式形式並移除過渡註解,`promtool check rules` 通過(18 條)。
+
+`CleanupBacklogGrowing` 順帶校準:`> 5` → `> 2`。舊值大於封測整池的 4 個 slot,意思是整池沙箱全部洩漏都還低於門檻——一條在容量耗盡前不可能響的告警等於沒有。新值取 4 slot 的 50%,與 ADR-022 X-04 單節點 drain 同一個比例;`for: 15m` 不變,所以正常清理的暫態積壓仍不觸發。**校準義務不變**:池容量改變時要重推。
+
+### 契約缺口(記錄,未改 spec)
+
+`contracts/openapi/public.yaml` 的 `RunPermissionSummary` 尚未宣告 `estimated_cost`。屬 additive(該 schema 沒有 `additionalProperties: false`,現有 client 不受影響),但鐵律 12 要求 schema 先行,**待契約批補上**。
+
 ---
 
 # M2 殘項清單(三類)
@@ -238,13 +302,13 @@ docker run -d --name sandboxd --network skillhub_default --network-alias sandbox
 | --- | --- | --- | --- |
 | ~~**乙-1**~~ **已解決(2026-08-16)** | ~~**SEC-002 六項門檻值(威脅模型 Q18)**~~ | → **[ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md)**:六項門檻全部定值(P-03 節點 7 天滾動重建;P-04 gVisor 基準 ＝ 上游 N/N−1 且 ≤ 90 天、逃逸類 CVE 24 h 換版或停用、High 7 天;I-04 掃描有效期 30 天;I-06 可修的 Critical／High 阻擋且無豁免路徑、不可修者具名豁免 90 天複審;X-02 每 5 分鐘;X-03 連續 2 輪告警、X-04 單節點 ≥50% slot drain／全池 ≥25%(下限 2 筆)暫停),Q1～Q3 亦已定案(compose-per-VM／執行平面單租戶且同節點多 Run／nftables default-deny ＋固定 DNS,允許清單存 `infra/egress/allowlist.yaml`)。<br>**但 SEC-002 仍不勾**——見甲-1／甲-2(45 項未經驗證)與乙-8(閘門 B 兩項阻擋未落地);**SBX-002 仍不勾**——I-04 的 `scanned_at` 在 container registry(ADR-019 待決策 1)定案前無法隨 image 保存,見甲-4 | ~~SEC-002 勾選、SBX-002 勾選、甲-3／甲-4~~ 剩餘阻擋見右列說明 |
 | **乙-2** | ⚠️ **PDM-005 token 硬上限:二選一** | `300_000`／`60_000` 被寫進 `policy_snapshot`、**顯示在執行前權限摘要上要求使用者確認**,而平台與沙箱**都不強制**(`TokenBudget` 零消費端,無累加器)。實際煞車只有 `max_budget`／`tpm_limit`／牆鐘,而 PDM-005 §5.2a-4 明文說過這三個都不是 token 上限。<br>**(a)** 新增實作工作項「依閘道回報 `input_tokens` 累計並於超限時終止 Run」,並把 §5.2a 的輪數換算表(15／7.7／5 輪)回寫 `02:RUN-003`;或 **(b)** 正式承認 MVP 不做,**把 `TokenBudget` 從權限摘要移除**。<br>**現狀(顯示但不強制)是兩者中最壞的一種**——讓使用者確認一個平台不會執行的上限,直接踩 NFR-001「UI 不得誤導」<br>**2026-08-16:規格面(a)已完成**——§5.2a 的輪數換算表(15／7.7／5 輪)與 §5.2 的上限表已回寫 `02:RUN-003`,並寫明「token 上限的強制點只有一個、`max_budget`／`tpm_limit` 不得代理」與「呈現的前提是它真的會被執行」。<br>**2026-08-16 已解決:取 (a),強制已落地**——見新工作項 **`03` SBX-013**(已完成)。<br>**強制點與 PDM-005 §5.2a 的字面指定不同,理由寫在 `02:RUN-003`**:原本指定 Go Worker 依閘道回報的 `input_tokens` 累計,但 `RunResult.usage` 不回傳 token(契約已誠實記載),從 Trace 事後重建又發生在錢花完之後——**唯一看得到每次回應 token 數的是沙箱內的 harness**,強制點因此在那裡。上限值、語意與三層併用的結論全部不變。<br>機制:逐則訊息累計 → 跨越即 `break` 出 SDK 迴圈(不再有下一次呼叫)→ 發 `error`(`code: token_budget_exceeded`)與終態 `usage` → exit code 9;sandboxd 回 `completed`＋`status: failed` 並附可讀訊息,artifact 與 trace 尾巴照常收集。上限值來自該 Run 凍結的 `policy_snapshot`,與權限摘要同源。<br>**failure_class 裁定:不擴充 `0018` 的 CHECK、不新增 migration**——理由見 `03` SBX-013(retry 語意與 `workload_error` 相同;要讓平台分辨它需先在 `contracts/openapi` 加 `RunError.class` 新值,那是契約批範圍;精確原因已在 trace 的 `error.code` 與終態 `usage`)。<br>**誠實界線**:合作式停止,與軟牆鐘同類;跨越上限的那次回應已經付過錢。 | ~~無工作項承接~~ **已由 SBX-013 承接並完成**;PDM-003 v5「三層併用」的第三層現已成立 |
-| **乙-3** | **閘道 $0.50 預算計數 50 倍誤差的處置** | LiteLLM 以「Current cost ≈ 0.50」拒絕請求,而同一把金鑰的 `LiteLLM_SpendLogs` 只有 $0.009–$0.24;兩個對照實驗排除「單次呼叫預估扣款」;上限提到 $2.00 後 7 個受影響精選全數一次通過。**在查清之前 per-Run `max_budget` 不是可信的成本閘門**,PDM-003 v5 的 $0.50 預設需重新檢視。連帶:9 個已索引 Skill 尚無有效基準(補跑預估 $1.0–1.5) | 乙-2 的三個煞車裡最重要的那個本身不可信;CONTENT-008 已索引層的補跑 |
+| ~~**乙-3**~~ **已解決(2026-08-16)** | ~~**閘道 $0.50 預算計數 50 倍誤差的處置**~~ | **根因:LiteLLM 的樂觀預算保留(optimistic budget reservation,v1.84 起預設開啟)。** 每一個在途請求會先把**理論最大成本**扣在金鑰的預算計數器上:全部 input token 以**未快取**單價計、加上 `max_tokens` 以 output 單價計。對 `gpt-5.4-mini`(output `4.5e-6`/token)而言,光是 `max_tokens=64000` 就是 **$0.288**,而實際輸出常只有數百 token、input 多半是 1/10 價的 cache read——保留值本身就跟整個 $0.50 預算同量級,兩個請求重疊就把計數器頂到上限,之後每一個請求都被回絕。`LiteLLM_SpendLogs` 記的是實付,所以兩邊差 50 倍。<br>**實驗複現(本機 1.96.2,同一把 `max_budget=0.5` 金鑰)**:序列 3 次全 200;併發 4 次時第 3、4 次回 **429 `Current cost: 0.78845825`**,而該金鑰全程**實付 $0.00096**(821 倍)。錯誤字樣與基準試跑紀錄同型。<br>**處置:配置修正,不動 $0.50。** `infra/compose/litellm-config.yaml` 加 `general_settings.disable_budget_reservation: true`(LiteLLM 官方為此情境提供的開關,其說明明列「phantom BudgetExceededError caused by leaked reservations」)。改後同一實驗:併發 4 次**無任何預算 429**;另以 `max_budget=1e-06` 反證強制仍在——第 2 次起回 429 且 `Current cost: 0.00048` **等於實付**。<br>**代價已寫在配置註解**:改為讀取時強制,已在途的請求仍會跑完,金鑰可超出上限它們的實付金額;沙箱只跑一個 agent、`proxy_batch_write_at` 為 1 秒、`tpm_limit` 仍在,超額有界且遠小於它取代的誤擋。<br>**PDM-003 v5 的 $0.50 維持不變**:誤差不在數值而在語意,修好之後 $0.50 就是 $0.50(基準試跑實測中位數 $0.0566、最大 $0.2367,仍有 2 倍以上餘裕)。<br>**仍未做**:9 個已索引 Skill 的補跑(預估 $1.0–1.5),見下方註 | ~~乙-2 的三個煞車裡最重要的那個本身不可信~~ 金額煞車已可信;**CONTENT-008 已索引層的補跑仍未執行** |
 | **乙-4** | **Agent 相容軸 schema 的四個待決** | ①欄位歸屬:Skill Version 層級,還是 (Skill Version × Runtime Image) 層級?**後者才誠實**——33 個 Python 結論只對 `skillhub/runtime-agent-sdk:2026.08-1` 成立。②兩軸判準:`capability` 可直接供給(45/45 有 `skill_activation`),`runtime` 需要「腳本宣告環境 ⊆ 映像提供環境」的判定,而映像的能力清單目前不以資料形式存在。③樣本量:一次 Run 不足以宣告 `passed`,幾次、失敗一次是否降級未定。④值域:需要 `unverified` 以外的第三態表達「腳本不會被執行、由模型轉譯」,它既不是 passed 也不是 failed。<br>**資料已備妥**:`capability = activated` 45/45;`runtime` 為 11 原生／1 node／33 模型轉譯 | **`01` 的 M2 里程碑第 4 項**、`02:DISC-002` 的 Agent 維度 |
 | **乙-5** | **CONTENT-007 的 writing rubric** | `02` §4.7 第 3 條要求 `writing` 類每個精選附一份可編輯 rubric,供 LLM Judge 逐項回傳證據引文。**未做,因為 rubric 沒有消費端**——EVAL-001／002 的 Judge 介面尚未實作。其餘四條允收皆達成 | CONTENT-007 勾選;實質上是 M3 的前置(見丙-1) |
 | **乙-6** | **Runtime Image 要不要含 python3** | 45 個 Skill 中 33 個 `deps_runtime = python`,映像基底 `node:22-bookworm-slim` 只加 `unzip`。含 Python 讓 33 個 Skill 執行自己的腳本(**也擴大沙箱攻擊面**),不含則平台永遠是「模型轉譯」語意,**目錄必須誠實標示**(＝乙-4)。這是產品決策不是工程細節 | 乙-4 的值域設計;CONTENT-005 揭露完整度 |
-| **乙-7** | **`03` §9 的允收是否含 UI** | `apps/web` 有 `RunPreflight`／`RunTrace`,**沒有任何 Test Lab／Dataset 頁面**。TEST-004 已因 `02:TEST-002`「上傳前**顯示**…」退回;TEST-001／002／003 的準則以「使用者可…」起頭,若同尺解讀亦應退回。**(a)** 承認含 UI,一併退回並新增實作工作項;或 **(b)** 明文把 §9 界定在 API＋契約層,UI 由 `DESIGN-007`(未勾)與一個新工作項承接。任一都要三文件同步 | TEST-001/002/003 的勾選正確性 |
-| **乙-8** | **SEC-002 閘門 B 的兩項未落地阻擋** | ①「Skill Version 靜態掃描結果為阻擋級」——`internal/run` 內無 severity 判斷,根因是威脅模型 **Q7**(阻擋 vs 警告的具體 Policy)未決,`02:SEC-003` 自陳政策未定案前該條件不可判定。②「超出 Workspace 並行或額度上限」——**PDM-005 §5.2 已定值(每 Workspace 並行 Run 上限=2),強制不存在**;`ConcurrentRunSlots` 是 Provider 側容量不是 Workspace 配額。**②是四項阻擋裡唯一不依賴任何未決策的,可直接實作** | SEC-002 |
-| **乙-9** | **PDM-005 §5.3 未回寫 `02:TEST-005`** | §5.3 指定的權限摘要欄位裡,**「預估成本區間」完全不存在**於 `PermissionSummaryContent`。§5.2a-6 特別強調必須是**區間**不是單值(首次與後續 Run 因 prompt caching 差約 8 倍)。根因是 PDM 指定要回寫 `02` 的內容沒有回寫,所以 `02` 的字面準則已被 TEST-008 滿足,缺的部分不可判定(同型於乙-2 的輪數表)<br>**2026-08-16 已回寫**:`02:TEST-005` 補上 §5.3 的完整欄位清單與「預估成本區間必須是區間」的理由(首次／後續差約 8 倍),並記明該欄位現況為**完全不存在**;不在 TEST-008 字面範圍內,故不退回 TEST-008,改由新增工作項 `03` **TEST-011** 承接(未實作) | `02`／PDM-005 的一致性 |
+| **乙-7** | **`03` §9 的允收是否含 UI** | `apps/web` 有 `RunPreflight`／`RunTrace`,**2026-08-16 新增 `/lab/datasets` 上傳頁**(`DatasetUpload.tsx`),TEST-004 因此依允收重新勾選——它退回的理由是**單一一條可判定的準則**(`02:TEST-002`「上傳前**顯示**大小限制、保存政策及資料使用範圍」),補上顯示面即成立,不需要先有裁定。**待裁定的仍是 TEST-001／002／003**:它們的準則以「使用者可…」起頭,若同尺解讀亦應退回,而那不是一個顯示面就能補的範圍。**(a)** 承認含 UI,一併退回並新增實作工作項;或 **(b)** 明文把 §9 界定在 API＋契約層,UI 由 `DESIGN-007`(未勾)與一個新工作項承接。任一都要三文件同步。**注意 Test Lab 仍沒有建立 Test Case／編輯 Prompt／列出與刪除檔案的介面**,新頁只做上傳這一步 | TEST-001/002/003 的勾選正確性 |
+| ~~**乙-8**~~ **已解決(2026-08-16)** | ~~**SEC-002 閘門 B 的兩項未落地阻擋**~~ | 兩項都已在 `internal/run/gateb.go` 落地,`Create` 內、建立 run 之前,超出即 **422**(與既有兩項同一形式)。<br>**①靜態掃描等級**:不等威脅模型 Q7,因為政策其實已經以**可逐項判定**的形式存在於程式裡——`skillpkg` 對每一個 finding code 都指定了 severity,而 `error` 級正是 `SKILL-002` 定義的阻擋級。閘門 B 現在**重新掃描**該版本的套件位元組並套用同一套政策。為什麼不是重覆匯入的檢查:①套件位元組在匯入後可能改變或讀不到;②舊版本可能早於某個今天才是 error 級的 code;③匯入以外的路徑也會產生版本。**刻意不讀 `search_documents.scan`**——那是目錄 UI 用的可為 NULL 的警告計數投影,不是通行證,讓閘門讀它等於讀一份決策的快取而不是決策本身。<br>**fail-closed**:套件讀不到／解不開＝掃描沒做成,一律拒絕(SEC-002「檢查無法執行視同未通過」、DISC-004「不得自行推定為通過」)。這也補上一個既有的洞:先前套件不可讀時 preflight 只顯示 `unavailable`,Run 照跑。<br>**②Workspace 並行上限**:`MaxConcurrentRunsPerWorkspace = 2`(PDM-005 §5.2),計非終態 Run,workspace 一律取自 session(鐵律 3)。在**交易內**檢查並先取 `pg_advisory_xact_lock(workspace)`——否則兩個同時進來的請求會各自讀到「目前 1 筆」而都放行,上限 2 就變成 3。<br>**測試**:`TestRunIsRefusedWhenThePackageCannotBeScanned`／`TestRunIsRefusedWhenTheStaticScanIsBlocking`／`TestWorkspaceConcurrencyLimitBlocksTheThirdRun`(含「另一個 Workspace 不受影響」與「結束一個就放行」)。<br>**SEC-002 仍不勾**:閘門 B 四項阻擋現已全數落地,但 45 項基線尚未經 SEC-009 驗證(甲-1／甲-2) | ~~SEC-002~~ 僅剩 45 項驗證 |
+| **乙-9** | **PDM-005 §5.3 未回寫 `02:TEST-005`** | §5.3 指定的權限摘要欄位裡,**「預估成本區間」完全不存在**於 `PermissionSummaryContent`。§5.2a-6 特別強調必須是**區間**不是單值(首次與後續 Run 因 prompt caching 差約 8 倍)。根因是 PDM 指定要回寫 `02` 的內容沒有回寫,所以 `02` 的字面準則已被 TEST-008 滿足,缺的部分不可判定(同型於乙-2 的輪數表)<br>**2026-08-16 已回寫**:`02:TEST-005` 補上 §5.3 的完整欄位清單與「預估成本區間必須是區間」的理由(首次／後續差約 8 倍),並記明該欄位現況為**完全不存在**;不在 TEST-008 字面範圍內,故不退回 TEST-008,改由新增工作項 `03` **TEST-011** 承接。**2026-08-16 已實作並勾選**:`PermissionSummary.EstimatedCost`($0.01／常見 $0.06／$0.30,來源為基準試跑 45 筆的閘道實付分布)＋ `RunPreflight` 的「預估成本(估計值)」列,**刻意在 `summary_hash` 之外**(理由同 User Prompt 不入 hash:成本是預測不是權限,重新校準不該作廢既有確認),`TestCostEstimateIsOutsideTheConfirmedHash` 對回應位元組重算 sha256 反證。**契約缺口(記錄,未改 spec)**:`contracts/openapi/public.yaml` 的 `RunPermissionSummary` 尚未宣告 `estimated_cost`,屬 additive,待契約批補 | `02`／PDM-005 的一致性 |
 | **乙-10(承 M1)** | ~~宣告閘門 D 日;追認 KPI3 判準修正;**Q15**(匯入 SSRF 在 MVP 期間的歸屬)裁定;~~**anthropic-sa 法務判定**(未決前 `documents` 已索引有 10→6 的塌陷風險,阻擋 CONTENT-003／004 勾選)<br>**2026-08-16 進度**:①**Q15 已裁定**——擴充 `02:SEC-003` 納入匯入抓取器防護(不另立需求 ID),允收準則已寫入,承接工作項 `03` **INGEST-014**(未實作);②**KPI3 判準修正已追認**(附三項條件,經獨立覆核;見 [content-review-report §12](../m1/content-review-report.md))——關鍵發現是「不修判準就得下架」**套錯規則**,KPI3 屬在地化類,該類無兩輪上限亦無下架終點;③**anthropic-sa 已有分析備忘**([anthropic-sa-license-memo.md](anthropic-sa-license-memo.md),四種平台行為逐項評估＋方案 A/B/C),**終判仍在負責人與法務**;④**D 日仍待負責人宣告** | — | M1 驗證閘門正式結案、CONTENT-003／004 |
 | **乙-11** | **`docx` 的裁定(CONTENT-005 44/45)** | 兩輪重審用盡仍未過 KPI1,**兩輪理由不同**(A 輪:「可保證其他內容保持不變」為原文沒有的一般性保證;B 輪:「DOTX 擷取為 Markdown 並依標題重組」把 `.dotx` 擷取與 `.docx→markdown` 兩個獨立事實接起來,屬 v4 第 3 條「支援一種格式不等於支援其近親」的同型外推)。已排除量測假象(`SKILL.md` 6,868 字元,遠低於 Judge 的 40,000 截斷門檻)。**三條路徑,報告不代為決定**:①再給一次非決定性重跑(超出既定兩輪上限,需授權);②比照 v4 先例為「格式近親外推」加更強通用約束並升 v6;③依字面規則列「建議自目錄下架待修」。**選 ③ 的代價要先看清楚**——`docx` 是 `documents` **已索引**筆(下架不影響 CONTENT-001 每類 4–6 的精選下限),但它是 [`catalog-rebuild-report.md` §6.1](../m1/catalog-rebuild-report.md) golden query **D01 的 gold primary 且為現行 Top-1**,下架會使該題失去判定基準。紀錄見 [content-review-report.md §11.3](../m1/content-review-report.md) | **CONTENT-005 的勾選是否維持**;連帶 CONTENT-003 的檢查 ⑦ |
 | ~~**乙-12**~~ **已解決(2026-08-16)** | ~~**兩個平台缺陷,無工作項承接**~~ | **裁定:不重開 INGEST-009,以新工作項 `03` INGEST-015 承接(已完成)。** 理由:INGEST-009 的允收準則在當時完全成立且有證據,兩個缺陷都是 **M2 才出現的新資料形態**誘發的(基準試跑在臨時 Workspace 留下 45 筆 fork 文件;修正輪首次做大批量增強),把一個已結案的工作項改回未完成會讓「某一時點的帳」失去意義,而缺陷本身仍必須被修、被記錄——所以記在新項而不是舊項。兩項修法與誠實界線見 `03` INGEST-015。<br>以下為當時的技術定位,保留原文:<br>**(a) 增強實際只有 30 秒,且逾時仍付錢。** `services/platform/internal/llmclient/client.go:25` 的預設 `http.Client{Timeout: 30 * time.Second}` 比 `services/platform/internal/ingest/enrich.go:32` 的 `enrichTimeout = 75s` **更早到期**,所以那個 75 秒的 ctx 預算從來沒被用到。修正輪 14 次成功增強中有 **3 次因此逾時**(`docx` 是 `/embed` 逾時,`excel-split`／`excel-delete` 是增強逾時),重跑即過——但 **client 端放棄不會取消上游,每一次逾時都已在閘道產生費用**。建議把逾時交給 ctx 控制,不要在 client 上另設一個更短的硬期限。<br>**(b) `ReindexAll` 讓補跑清單無法用時間戳篩選。** `db/queries/search.sql:244-253` 對每一筆存活 skill 無條件 `updated_at = now()`,而 `ListPendingEnrichment` 是「全庫 pending、oldest first」——**時間戳與 `REINDEX_BATCH` 都擋不住** M2 基準試跑在 `content-baseline` 臨時 Workspace 留下的 45 筆 fork 文件,照跑會多花約 45 次旗艦增強呼叫(**約 $2**)。修正輪的處置是手動把那 45 筆暫標 `enriched`、跑完還原(實測還原 45/45 逐欄相同),**這是每次補跑都要重做一次的人工步驟**,不是修好了 | ~~任何未來的增強補跑~~ 兩者皆已修;人工暫標步驟不再需要 |

@@ -5,6 +5,8 @@
 package identity_test
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -158,12 +160,47 @@ func newFixture(t *testing.T, a *api, pool *pgxpool.Pool, user string) fixture {
 	t.Helper()
 	c := a.login(t, user)
 	skillID := seedSkill(t, pool, c.workspaceID, user+"-runnable-skill")
+	version := seedVersion(t, pool, c.workspaceID, skillID, "hash-"+user)
+	// A runnable version has package bytes, and they have to be scannable: SEC-002
+	// gate B refuses a version whose static scan cannot be performed at all, so a
+	// fixture with an empty object store would be testing that refusal and nothing
+	// else. Clean by default; the tests that want a script or a blocking finding
+	// overwrite this key with their own package.
+	a.packages[version.PackageObjectKey] = cleanPackage(t)
 	return fixture{
 		client:     c,
 		skillID:    skillID,
-		versionID:  uuidText(seedVersion(t, pool, c.workspaceID, skillID, "hash-"+user).ID),
+		versionID:  uuidText(version.ID),
 		testCaseID: seedTestCase(t, pool, c.workspaceID, skillID),
 	}
+}
+
+// cleanPackage is a valid Agent Skills zip with no script and no error-level
+// finding — the shape a version that passed import has.
+func cleanPackage(t *testing.T) []byte {
+	t.Helper()
+	return zipOf(t, map[string]string{
+		"SKILL.md": "---\nname: clean-skill\ndescription: A skill with no script.\nlicense: MIT\n---\n\nJust prose.\n",
+	})
+}
+
+func zipOf(t *testing.T, files map[string]string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, body := range files {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
 }
 
 // start reads the pre-run permission summary, confirms it, and only then creates

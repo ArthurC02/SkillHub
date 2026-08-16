@@ -8,6 +8,8 @@ package identity_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -46,9 +48,16 @@ type preflightView struct {
 		} `json:"provider"`
 		ResourceLimits run.ResourceLimits `json:"resource_limits"`
 	} `json:"summary"`
-	Hash  string   `json:"summary_hash"`
-	Notes []string `json:"notes"`
-	Error string   `json:"error"`
+	Hash          string   `json:"summary_hash"`
+	Notes         []string `json:"notes"`
+	EstimatedCost struct {
+		Currency string  `json:"currency"`
+		Low      float64 `json:"low"`
+		Typical  float64 `json:"typical"`
+		High     float64 `json:"high"`
+		Basis    string  `json:"basis"`
+	} `json:"estimated_cost"`
+	Error string `json:"error"`
 }
 
 func (f fixture) preflight(t *testing.T) (int, preflightView) {
@@ -117,10 +126,11 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	if s.DatasetTotalBytes != 512 {
 		t.Errorf("dataset_total_bytes = %d, want 512", s.DatasetTotalBytes)
 	}
-	// No package was seeded into the store, so the scan cannot run. It must say
-	// so rather than reporting a clean package (DISC-004 不得自行推定為通過).
-	if s.Scripts.Status != "unavailable" {
-		t.Errorf("script status with no readable package = %q, want unavailable", s.Scripts.Status)
+	// newFixture seeds a clean package, so the scan ran and found nothing. The
+	// `unavailable` answer — scanned nothing, claimed nothing — has its own test
+	// below, together with the gate that refuses to run on it.
+	if s.Scripts.Status != "none" {
+		t.Errorf("script status for a clean package = %q, want none", s.Scripts.Status)
 	}
 	if len(s.Tools) == 0 {
 		t.Error("no tool disclosure at all")
@@ -164,6 +174,161 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	}
 	if view.Hash == "" {
 		t.Error("the summary has no hash to confirm")
+	}
+	// PDM-005 §5.3: the estimated cost, and §5.2a-6: as a range, because prompt
+	// caching makes a first run and a repeat differ by roughly 8x.
+	if view.EstimatedCost.Currency == "" || view.EstimatedCost.High <= view.EstimatedCost.Low {
+		t.Errorf("estimated cost = %+v, want a currency and a non-degenerate range", view.EstimatedCost)
+	}
+	if view.EstimatedCost.Basis == "" {
+		t.Error("the cost estimate does not say where its numbers came from")
+	}
+}
+
+// The estimate is display material, not a permission. It sits beside the hash and
+// not inside it, so recalibrating it against a bigger sample cannot silently
+// revoke every confirmation a user has outstanding — the same rule that keeps the
+// user prompt out (02:TEST-005).
+//
+// Asserted over the wire rather than over the Go type: the thing that must not
+// change is the hash the client quotes back, and this reproduces it from the
+// bytes the client actually received.
+func TestCostEstimateIsOutsideTheConfirmedHash(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-preflight-cost")
+
+	resp, err := f.Get(f.base + "/skills/" + f.skillID + "/runs/preflight" +
+		"?version_id=" + f.versionID + "&test_case_id=" + f.testCaseID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var body struct {
+		Summary json.RawMessage `json:"summary"`
+		Hash    string          `json:"summary_hash"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(body.Summary), "estimated_cost") ||
+		strings.Contains(string(body.Summary), "\"basis\"") {
+		t.Fatalf("the cost estimate leaked into the hashed body: %s", body.Summary)
+	}
+	sum := sha256.Sum256(body.Summary)
+	if got := hex.EncodeToString(sum[:]); got != body.Hash {
+		t.Fatalf("summary_hash %s is not sha256 over `summary` alone (%s)", body.Hash, got)
+	}
+}
+
+// --- SEC-002 gate B: the static scan condition (02:SEC-003) -------------------
+
+// Fail-closed. A version whose package cannot be read has not been scanned, and
+// SEC-002 says a check that cannot be performed counts as not passed. The summary
+// says `unavailable` — never `none` (DISC-004 不得自行推定為通過) — and the run is
+// refused rather than dispatched to fail inside a sandbox.
+func TestRunIsRefusedWhenThePackageCannotBeScanned(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-gate-b-unscannable")
+	// The package disappears from storage after the version was created.
+	delete(a.packages, "packages/hash-alice-gate-b-unscannable.zip")
+
+	_, view := f.preflight(t)
+	if view.Summary.Scripts.Status != "unavailable" {
+		t.Errorf("script status with no readable package = %q, want unavailable",
+			view.Summary.Scripts.Status)
+	}
+	if code, body := f.confirm(t, view.Hash); code != http.StatusCreated {
+		t.Fatalf("confirm: got %d, body %v", code, body)
+	}
+	code, refused := f.startWithHash(t, view.Hash)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("run on an unscannable package: got %d, want 422", code)
+	}
+	if !strings.Contains(refused.Error, "scan") {
+		t.Errorf("refusal = %q, want it to name the scan", refused.Error)
+	}
+	if refused.RunID != "" {
+		t.Error("a refused run still created a run row")
+	}
+}
+
+// An error-level finding is blocking (SKILL-002's severity policy, applied at
+// gate B rather than only at import). The refusal names the finding codes so the
+// author can act on it, and nothing from inside the package — a message can quote
+// package content and this string reaches an HTTP response.
+func TestRunIsRefusedWhenTheStaticScanIsBlocking(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-gate-b-blocked")
+	// No SKILL.md at all: skillpkg's `skill-md-missing`, an error-level finding.
+	a.packages["packages/hash-alice-gate-b-blocked.zip"] = zipOf(t, map[string]string{
+		"notes.txt": "not a skill package\n",
+	})
+
+	_, view := f.preflight(t)
+	if code, body := f.confirm(t, view.Hash); code != http.StatusCreated {
+		t.Fatalf("confirm: got %d, body %v", code, body)
+	}
+	code, refused := f.startWithHash(t, view.Hash)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("run on a blocking scan: got %d, want 422", code)
+	}
+	if !strings.Contains(refused.Error, "skill-md-missing") {
+		t.Errorf("refusal = %q, want it to name the blocking finding code", refused.Error)
+	}
+}
+
+// --- SEC-002 gate B: the workspace concurrency ceiling (PDM-005 §5.2) ---------
+
+// Two in flight is the limit, and the third is refused before a row exists. The
+// runs stay queued because nothing works them here, which is the point: what the
+// limit bounds is what a workspace has outstanding, not what a provider is busy
+// with.
+func TestWorkspaceConcurrencyLimitBlocksTheThirdRun(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-gate-b-concurrency")
+
+	hash := f.confirmPermissions(t)
+	for i := 1; i <= run.MaxConcurrentRunsPerWorkspace; i++ {
+		if code, view := f.startWithHash(t, hash); code != http.StatusCreated {
+			t.Fatalf("run %d of %d: got %d (%s)", i, run.MaxConcurrentRunsPerWorkspace, code, view.Error)
+		}
+	}
+
+	code, refused := f.startWithHash(t, hash)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("run past the limit: got %d, want 422", code)
+	}
+	if refused.RunID != "" {
+		t.Error("a refused run still created a run row")
+	}
+	if !strings.Contains(refused.Error, "in progress") {
+		t.Errorf("refusal = %q, want it to say why and what to do", refused.Error)
+	}
+
+	// Iron rule 3: the ceiling is per workspace, so another user is unaffected by
+	// this one filling theirs.
+	other := newFixture(t, a, pool, "bob-gate-b-concurrency")
+	otherHash := other.confirmPermissions(t)
+	if code, view := other.startWithHash(t, otherHash); code != http.StatusCreated {
+		t.Fatalf("another workspace's run: got %d (%s), want 201", code, view.Error)
+	}
+
+	// Finishing one frees the slot. Retired straight through the state machine's
+	// terminal transition, which is what a real run does.
+	var id string
+	if err := pool.QueryRow(context.Background(), `
+		UPDATE runs SET status = 'failed', finished_at = now(), cleanup_status = 'cleaned'
+		WHERE workspace_id = $1 AND status = 'queued'
+		  AND id = (SELECT id FROM runs WHERE workspace_id = $1 AND status = 'queued' LIMIT 1)
+		RETURNING id::text`, mustUUID(t, f.workspaceID)).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	if code, view := f.startWithHash(t, hash); code != http.StatusCreated {
+		t.Fatalf("run after a slot freed up: got %d (%s)", code, view.Error)
 	}
 }
 

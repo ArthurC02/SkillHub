@@ -174,6 +174,14 @@ type OutboxEvent struct {
 	PublishedAt   pgtype.Timestamptz
 }
 
+type ReconcilerOrphanSighting struct {
+	Provider      string
+	ProviderRunID string
+	FirstSeenAt   pgtype.Timestamptz
+	LastSeenAt    pgtype.Timestamptz
+	Rounds        int32
+}
+
 type Run struct {
 	ID                 pgtype.UUID
 	WorkspaceID        pgtype.UUID
@@ -266,6 +274,15 @@ type Skill struct {
 	DeletedAt           pgtype.Timestamptz
 	TakedownAt          pgtype.Timestamptz
 	TakedownReason      *string
+}
+
+type SkillRuntimeCompatibility struct {
+	SkillVersionID pgtype.UUID
+	RuntimeImage   string
+	Capability     string
+	Runtime        string
+	SourceRunID    pgtype.UUID
+	MeasuredAt     pgtype.Timestamptz
 }
 
 type SkillSource struct {

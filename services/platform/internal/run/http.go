@@ -139,6 +139,14 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
+	// SEC-002 gate B's other two blocking conditions (internal/run/gateb.go): a
+	// blocking or unperformable static scan, and the workspace concurrency ceiling.
+	// Same 422 as the two above, for the same reason - nothing about the request is
+	// malformed, it simply may not proceed. The messages say which, and what to do.
+	if errors.Is(err, ErrScanBlocked) || errors.Is(err, ErrRunLimitReached) {
+		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "run creation failed")
 		return
