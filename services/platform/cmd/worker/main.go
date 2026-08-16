@@ -127,6 +127,12 @@ func main() {
 		slog.Error("queue client", "error", err)
 		os.Exit(1)
 	}
+	// The worker enqueues jobs as well as working them: a terminal transition owes
+	// a cleanup, and the supervisor's backlog sweep re-enqueues the ones that were
+	// missed (RUN-007). Both are guarded by `s.Queue != nil`, so leaving this unset
+	// meant every run finished un-cleaned — its sandbox and its Virtual Key
+	// surviving the run — with nothing in the log to say so.
+	runs.Queue = client
 
 	if err := client.Start(ctx); err != nil {
 		slog.Error("queue start", "error", err)
