@@ -324,16 +324,24 @@ digest，舊 digest 失去指向），第三列就是那個情況的唯一實例
 | `sha256:5d3c5615345c32e9c4e9dab3b1a474e384292343327876f6eeba42d84c19a909` | `sha-b0c270b6e890` | **只有 SBOM** | 首跑：掃描 attestation 那步以 exit 126 失敗（`scan_predicate.sh` 執行位元沒進 git index） |
 | `sha256:33e9e4bdf95346d97b0ce37703cf4d0bec3b0cdd2b721bb57a3f31fe17f71c45` | `sha-0a4272c37ca1` | SBOM ＋ 掃描 | 修好後的重跑；被下一次發佈取代 |
 | `sha256:7b79380c94b90621d0fb23f052ed883bbaaa0f53f6d65e2cd91328270c2c5d75` | `sha-27cbbe707359` | SBOM ＋ 掃描 | **一次純 README 編輯觸發的重建** ——已修，見下 |
+| `sha256:5bcbca884feaccb4bf1cfb437644f87627898216fde7ba428228712635c9b23d` | `sha-b2180b28e458` | SBOM ＋ 掃描 | **一次 workflow 檔自身的編輯觸發的重建**（`8b16f56`：CI 腳本搬到 `tools/ci/`，`runtime-image.yml` 的呼叫路徑與 path filter 同步改）。內容與被它取代的 `sha256:774ec87b…` 是同一份 Dockerfile 的兩次 build |
 
-**清單為什麼不會再長**：path filter 已排除 `infra/images/**/*.md`。第三列是這個缺口的唯一實例
-——改一行文件就重推一個 image、順手孤立前一個 digest。（第一、二列是同一個 exit 126 事故的
-前後兩半，與此無關。）
+**第三列的成因已修，第四列的成因是刻意留著的**：path filter 已排除
+`infra/images/**/*.md`，所以純文件編輯不會再重推（第三列是那個缺口的唯一實例；第一、二列
+是同一個 exit 126 事故的前後兩半，與此無關）。但 `runtime-image.yml` **自己仍在自己的 path
+filter 裡**，所以連「只改 filter」這種編輯也會重建一次、把前一個 digest 孤立掉——第四列就是。
 
-**`2026.08-3` 發佈後實測複核：仍是 3 筆。** 兩件事都驗過了：①發佈後 `2026.08-2` 仍解析到
+這在 `8b16f56` 重新評估過，結論是維持現狀：拿掉它可以省下這種孤兒，但 ADR-019 允許
+單人直推 main 而本專案確實這樣用，拿掉之後**一個改動 build 或閘門的 commit 會沒有任何東西
+驗它**——正是那一行 filter 存在的理由。一個有清理路徑的孤兒比一個沒被驗過的閘門便宜。
+理由同時寫在 `runtime-image.yml` 檔頭，改動前先讀那段。
+
+**`2026.08-3` 首次發佈後的實測複核（當時 3 筆）**：①發佈後 `2026.08-2` 仍解析到
 `sha256:61ef902f…`（tag 未被移走，故未成孤兒）；②同批的純 `.md` commit（`68abae5`）**沒有
-觸發任何 workflow run**，path filter 如文件所述生效。
+觸發任何 workflow run**，path filter 如文件所述生效。**`8b16f56` 後複核：4 筆**——
+`2026.08-3` 現解析到 `sha256:774ec87b…`（＝`sha-8b16f56ee138`），前一個 digest 依上表入列。
 
-**這三筆仍待負責人刪除**（本機 token 無 `delete:packages`，見下）。它們不是新問題，而是
+**這四筆仍待負責人刪除**（本機 token 無 `delete:packages`，見下）。它們不是新問題，而是
 每次讀到這裡都應該順手處理掉的舊帳。
 
 **刪除方式**（本機 git credential 的 token scope 是 `gist, repo, workflow`，**沒有
