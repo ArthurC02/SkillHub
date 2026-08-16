@@ -8,6 +8,15 @@ info:
     this file and must never be hand-edited.
 servers:
   - url: http://llm:8000
+
+# No authentication, stated rather than left blank. services/llm's FastAPI app
+# has no auth dependency on any route: the only thing standing between it and a
+# caller is that it is not routable from outside the deployment. That is a
+# network boundary and there is no security scheme to describe it with, so the
+# honest declaration is an empty requirement rather than an invented apiKey.
+# Publishing this port is what would make it wrong, not a missing scheme here.
+security: []
+
 paths:
   /healthz:
     get:

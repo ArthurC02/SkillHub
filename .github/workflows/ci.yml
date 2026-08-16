@@ -181,12 +181,25 @@ jobs:
           git add -A -- db services/platform/internal/platform/db/gen
           git diff --cached --exit-code -- db services/platform/internal/platform/db/gen
 
+      # Iron rule 12's first half: the schema has to be valid before anything can
+      # be generated from it. Pinned like sqlc above: a floating linter turns an
+      # upstream release into a red build on an untouched tree.
+      #
+      # Errors fail, warnings do not. The tree carries 13 warnings on purpose:
+      # info-license on all three files (nothing is published under a license
+      # yet), no-server-example.com on public.yaml's localhost server, and the
+      # 2xx/4xx-response rules on the OAuth redirect and 204 routes, which have
+      # no other status to document. Promoting those to errors would mean
+      # inventing responses the implementation does not return.
+      - name: redocly lint (contracts/openapi)
+        run: npx --yes @redocly/cli@2.46.1 lint contracts/openapi/*.yaml
+
       - name: OpenAPI codegen (placeholder, deliberately not failing)
         run: |
-          echo "contracts/openapi/*.yaml has no codegen wired yet: packages/"
-          echo "api-client-ts and api-stub-py do not exist, so there is nothing"
-          echo "to regenerate and no drift to detect. Add the generator here and"
-          echo "extend the git diff paths above when those packages land."
+          echo "The specs are linted above, but no codegen is wired yet:"
+          echo "packages/api-client-ts and api-stub-py do not exist, so there is"
+          echo "nothing to regenerate and no drift to detect. Add the generator"
+          echo "here and extend the git diff paths above when those packages land."
 
   # Registry is still open (ADR-019 open question 1) and infra/images/ has no
   # Dockerfiles yet, so this job only records the intended shape.

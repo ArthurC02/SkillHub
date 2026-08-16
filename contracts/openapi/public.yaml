@@ -8,11 +8,21 @@ info:
     from it and must never be hand-edited.
 servers:
   - url: http://localhost:8080
+
+# Every route in internal/apiserver/router.go is wrapped in RequireSession
+# unless it is listed below with its own `security`. Inheriting the requirement
+# here rather than repeating it per operation keeps the two in step: a new
+# operation is authenticated by default, which is the direction a mistake should
+# fall in.
+security:
+  - sessionCookie: []
+
 paths:
   /healthz:
     get:
       operationId: getHealth
       summary: Process liveness probe
+      security: []
       responses:
         "200":
           description: The process is up.
@@ -24,6 +34,7 @@ paths:
     get:
       operationId: startGithubLogin
       summary: Begin GitHub OAuth login (ADR-020)
+      security: []
       responses:
         "302":
           description: Redirect to GitHub authorization, with a one-shot state cookie.
@@ -31,6 +42,7 @@ paths:
     get:
       operationId: finishGithubLogin
       summary: GitHub OAuth callback; creates user and workspace on first login
+      security: []
       parameters:
         - name: code
           in: query
@@ -56,6 +68,7 @@ paths:
       description: |
         Exists only when the server runs with DEV_LOGIN=1 (local demo and E2E);
         in production the route is absent and returns 404.
+      security: []
       requestBody:
         required: false
         content:
@@ -74,6 +87,11 @@ paths:
     post:
       operationId: logout
       summary: Revoke the current session
+      description: |
+        No session is required to call it. The handler revokes whatever session
+        cookie arrives and clears the cookie either way, so a caller holding an
+        already-invalid cookie can still get rid of it.
+      security: []
       responses:
         "204":
           description: Session revoked (idempotent; also returned when no session).
@@ -138,9 +156,12 @@ paths:
                 required: [deletion_requested_at]
                 properties:
                   deletion_requested_at:
-                    type: string
-                    nullable: true
+                    type: [string, "null"]
                     format: date-time
+                    description: |
+                      Always null here - the field exists so a client can read
+                      the post-cancel state from the same shape it reads
+                      elsewhere, rather than inferring it from a bare 200.
         "401":
           description: No valid session.
           content:
@@ -254,6 +275,7 @@ paths:
         all; when nothing survives it, the response carries no_results and a
         query_suggestion rather than a page of weak matches. Blank or
         incomprehensible queries take the same no_results path.
+      security: []
       parameters:
         - name: q
           in: query
@@ -329,6 +351,12 @@ paths:
         never executes anything (iron rule 1) and passing it is not a safety
         claim (NFR-001). `compatibility` keeps the three axes apart and states
         the two that need a sandbox as `unverified` rather than omitting them.
+      # OptionalSession, not RequireSession: the request is served without a
+      # session and a session only widens the scope, so both requirements are
+      # listed rather than one of them.
+      security:
+        - {}
+        - sessionCookie: []
       parameters:
         - name: id
           in: path
@@ -367,6 +395,10 @@ paths:
         is exactly what cannot show code living inside the document (SKILL-003).
         Package files other than SKILL.md are listed with their metadata; an
         endpoint serving their content is later DISC-007 work.
+      # OptionalSession; see GET /api/skills/{id}.
+      security:
+        - {}
+        - sessionCookie: []
       parameters:
         - name: id
           in: path
@@ -1599,6 +1631,21 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sh_session
+      description: |
+        The opaque session token set by the auth routes and resolved by
+        RequireSession (services/platform/internal/identity/http.go). HttpOnly,
+        SameSite=Lax, Secure outside plain-http local dev, so a browser sends it
+        on its own and no client code reads or sets it - the generated TS client
+        only has to send credentials with the request.
+
+        It identifies the user and nothing more. The workspace scope every query
+        runs under is resolved from it server-side and is never taken from a
+        request parameter (iron rule 3, ADR-011).
   schemas:
     Health:
       type: object
@@ -1640,7 +1687,12 @@ components:
         type:
           type: string
           enum: [skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle]
-        status: { type: string, nullable: true, enum: [ok, error, skipped, cancelled, timed_out] }
+        # Mirrors trace-event.schema.json exactly, null in the enum included: the
+        # JSON Schema is the authority and a producer may send either an absent
+        # status or an explicit null for an event that has no outcome.
+        status:
+          type: [string, "null"]
+          enum: [ok, error, skipped, cancelled, timed_out, null]
         masked:
           type: boolean
           description: |
@@ -1757,8 +1809,7 @@ components:
             input_tokens: { type: integer }
             output_tokens: { type: integer }
             cost_usd:
-              type: number
-              nullable: true
+              type: [number, "null"]
               description: |
                 NULL means the gateway did not report a cost. Consumers MUST render
                 that as "unreported" and never as 0 - showing 0 tells the user the
