@@ -530,7 +530,16 @@ components:
 
     PackageRef:
       type: object
-      description: A content-addressed package the provider fetches with a grant.
+      description: |
+        A content-addressed package the provider fetches with a grant.
+
+        Deliberately carries no skill *name*. The runtime unpacks into one
+        directory per skill and takes that directory's name from the package's
+        own SKILL.md frontmatter, inside the sandbox - reading untrusted content
+        is exactly what the sandbox is for, and a name in this frozen request
+        would be a second copy of a fact the package already states. A package
+        with no readable, spec-shaped name is simply not discovered, and the
+        trace shows no activation rather than a run under a guessed name.
       required: [skill_version_id, content_hash]
       properties:
         skill_version_id: { type: string, format: uuid }
@@ -636,6 +645,11 @@ components:
         300K input is roughly 15 turns with no tool calls, 7.7 with one per
         turn, 5 with two (measured, PDM-003 spike 11.5). Quoting the number
         without the turn conversion is meaningless.
+
+        Not enforced yet. The limits travel in the RunRequest and the two
+        gateway brakes are live, but nothing accumulates reported input_tokens
+        against this ceiling - RunUsage carries no token count to accumulate.
+        A run today is stopped by spend, rate and wall clock, not by tokens.
       properties:
         max_input_tokens: { type: integer, default: 300000 }
         max_output_tokens: { type: integer, default: 60000 }
@@ -646,6 +660,16 @@ components:
         Default-deny with exactly three permitted destinations (PDM-005 5.2,
         ADR-005). All three go through the controlled proxy; there is no bypass
         route, and "general internet" is not a value this schema can express.
+
+        How that is enforced today: a run whose `allow` names `model_gateway`
+        joins an internal network on which the LiteLLM gateway is the only
+        reachable address - an allow list of one, enforced by what is on the
+        wire rather than by a proxy. A run that allows nothing gets no network
+        at all. Object storage is deliberately never on that wire: a sandbox
+        that could reach the bucket would make a pre-signed URL meaningless, so
+        the execution node moves those bytes itself. Production names an egress
+        proxy's network instead, and the proxy enforces the destination list,
+        DNS pinning and destination logging.
       required: [mode, allow]
       properties:
         mode:
@@ -677,9 +701,18 @@ components:
     ObjectGrant:
       type: object
       description: |
-        A short-lived authorization for one object path in one direction.
-        Placeholder in this batch: RUN-001 fixes the shape, the issuing side
-        lands with SBX-005. `url` stays empty until then.
+        A short-lived authorization for one object path in one direction. Minted
+        per attempt by the worker at dispatch (SBX-008) as a pre-signed URL, and
+        fail-closed: a dispatch that cannot authorize its inputs never reaches a
+        sandbox, because a run that silently executed without its skill package
+        would be reported as executed-and-failed and blame the skill.
+
+        One object, never a prefix. There is no grant shape that says "this
+        directory", so the write side has exactly one key to aim at and the
+        artifacts are collected into a single archive uploaded to it - the
+        platform cannot know the output file names before the workload has
+        produced them, and a per-file grant would have to. RunResult.artifacts
+        stays the per-file manifest; it describes what is inside that archive.
       required: [purpose, object_key, access, expires_at]
       properties:
         purpose:
@@ -696,9 +729,15 @@ components:
     ModelGatewayGrant:
       type: object
       description: |
-        A per-run LiteLLM Virtual Key (ADR-017, iron rule 8). Placeholder in this
-        batch: the shape is fixed, minting lands with SBX-006. Provider keys never
-        appear here - only the gateway holds those.
+        A per-run LiteLLM Virtual Key (ADR-017, iron rule 8). Minted per attempt
+        against the gateway's management API, scoped to the run's logical model
+        so a workload cannot spend the budget on a bigger tier, and revoked at
+        cleanup by an alias derived from the attempt id - nothing has to be
+        stored for a restarted process to still revoke it.
+
+        Provider keys never appear here; only the gateway holds those, and the
+        management credential that mints this one stays in the control plane and
+        never travels in a RunRequest.
       required: [base_url, expires_at]
       properties:
         base_url: { type: string, format: uri }
@@ -773,13 +812,21 @@ components:
 
     RunUsage:
       type: object
-      description: Metering, in units every provider can report (ADR-004 標準輸出).
+      description: |
+        Metering, in units every provider can report (ADR-004 標準輸出).
+
+        Known gap, stated rather than hidden: the current provider populates
+        only `wall_clock_seconds`. Token counts and cost travel the trace path
+        instead - the workload emits `usage` events and the platform reads spend
+        from the gateway's own per-key log - so a consumer must not treat an
+        absent token count here as zero usage. Consequently the ResourceLimits
+        token ceiling is not enforced from this field; see TokenBudget.
       properties:
         input_tokens:
           type: integer
           description: |
             Includes cache-hit tokens: caching reduces cost, not token count
-            (PDM-005 5.2a-3). This is the number the worker's budget check adds up.
+            (PDM-005 5.2a-3). Not populated yet - see the schema description.
         output_tokens: { type: integer }
         model_cost_usd: { type: number }
         wall_clock_seconds: { type: number }
