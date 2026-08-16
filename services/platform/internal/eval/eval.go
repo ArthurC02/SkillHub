@@ -220,6 +220,11 @@ type material struct {
 	skill    gen.Skill
 	snapshot gen.TestCaseSnapshot
 	criteria []testlab.Criterion
+	// rubric is CONTENT-007's, read from the snapshot for the same reason the
+	// criteria are: what a run was judged against is what it was asked to do at
+	// the time, not what the draft says now (iron rule 4). nil is "no rubric",
+	// which is not the same as "the default rubric".
+	rubric *testlab.Rubric
 	// advanced and summary are the ONLY trace access path (handoff 丙-1). There is
 	// no direct trace_events query anywhere in this package.
 	advanced  trace.AdvancedView
@@ -353,6 +358,9 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 	if m.criteria, err = testlab.DecodeCriteria(m.snapshot.AcceptanceCriteria); err != nil {
 		return m, err
 	}
+	if m.rubric, err = testlab.DecodeRubric(m.snapshot.Rubric); err != nil {
+		return m, err
+	}
 
 	traceSvc := &trace.Service{Pool: s.Pool}
 	if m.advanced, err = traceSvc.Advanced(ctx, workspaceID, runID); err != nil {
@@ -414,7 +422,11 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 			"evaluation_id":        uuidString(ev.ID),
 			"judge_model":          s.judgeModel(),
 			"judge_prompt_version": s.judgePromptVersion(),
-			"rubric_version":       nil,
+			// The rubric this run's snapshot froze, or null when it has none.
+			// Declared here for the same reason judge_model is: this is what the
+			// platform is about to judge under. What was actually in force is on
+			// the evaluations row (judge.go), and where they differ the row wins.
+			"rubric_version": rubricVersion(m.rubric),
 		}); err != nil {
 		return gen.Evaluation{}, err
 	}
@@ -594,6 +606,16 @@ func nonNilFindings(f []Finding) []Finding {
 		return []Finding{}
 	}
 	return f
+}
+
+// rubricVersion renders a rubric for the trace payload: the version string, or
+// JSON null when there is no rubric. Not "" — an empty string in a payload reads
+// as "a rubric with an unnamed version", which is a different claim.
+func rubricVersion(r *testlab.Rubric) any {
+	if r == nil {
+		return nil
+	}
+	return r.Version
 }
 
 func strPtr(s string) *string {

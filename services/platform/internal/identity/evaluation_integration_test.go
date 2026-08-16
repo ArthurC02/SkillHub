@@ -24,21 +24,27 @@ import (
 
 // seedEvaluatableRun writes a finished run with two acceptance criteria in its
 // snapshot, one artifact, and a final agent output to quote from.
-func seedEvaluatableRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string) (runID, versionID string) {
+// The optional rubric is the frozen CONTENT-007 one, as JSON; omitted means the
+// snapshot has none, which is what all 45 M2 baseline snapshots look like.
+func seedEvaluatableRun(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string, rubric ...string) (runID, versionID string) {
 	t.Helper()
 	ctx := context.Background()
 	versionID = seedSkillVersion(t, pool, workspaceID, skillID)
 	testCaseID := seedTestCase(t, pool, workspaceID, skillID)
 
+	var frozenRubric *string
+	if len(rubric) == 1 {
+		frozenRubric = &rubric[0]
+	}
 	var snapshotID string
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
+		INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash, rubric)
 		VALUES ($1, $2, 'deduplicate the attached spreadsheet',
 		        '[{"id":"c1","text":"duplicates are removed","source":"user"},
 		          {"id":"c2","text":"an xlsx file is produced","source":"user"}]'::jsonb,
-		        'sha256:eval-snapshot')
+		        'sha256:eval-snapshot', $3::jsonb)
 		RETURNING id::text`,
-		mustUUID(t, workspaceID), mustUUID(t, testCaseID),
+		mustUUID(t, workspaceID), mustUUID(t, testCaseID), frozenRubric,
 	).Scan(&snapshotID); err != nil {
 		t.Fatal(err)
 	}
@@ -122,6 +128,7 @@ type evaluationBody struct {
 	} `json:"deterministic_findings"`
 	JudgeModel         string  `json:"judge_model"`
 	JudgePromptVersion string  `json:"judge_prompt_version"`
+	RubricVersion      string  `json:"rubric_version"`
 	EvidenceComplete   bool    `json:"evidence_complete"`
 	SupersededAt       *string `json:"superseded_at"`
 	Cost               struct {
@@ -264,6 +271,142 @@ func assertEvaluationTraceEvents(t *testing.T, pool *pgxpool.Pool, runID, wantSt
 		t.Error("no evaluation_completed event")
 	} else if status != wantStatus {
 		t.Errorf("evaluation_completed status = %q, want %q", status, wantStatus)
+	}
+}
+
+// --- CONTENT-007: the rubric on the product path ------------------------------
+
+// capturingJudgeServer is judgeServer plus a copy of what was actually sent.
+func capturingJudgeServer(t *testing.T, verdict llmclient.JudgeVerdict, capture *llmclient.JudgeRunRequest) *llmclient.Client {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(capture); err != nil {
+			t.Errorf("request body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(llmclient.JudgeRunResponse{
+			Verdict: verdict, Model: "gpt-5.6-terra", PromptVersion: "judge-run@2026-08-17",
+		})
+	}))
+	t.Cleanup(srv.Close)
+	return &llmclient.Client{BaseURL: srv.URL}
+}
+
+func rubricVersionOfStartedEvent(t *testing.T, pool *pgxpool.Pool, runID string) (any, bool) {
+	t.Helper()
+	var payload []byte
+	if err := pool.QueryRow(context.Background(), `
+		SELECT payload FROM trace_events
+		WHERE run_id = $1 AND event_type = 'evaluation_started'
+		ORDER BY seq DESC LIMIT 1`, mustUUID(t, runID)).Scan(&payload); err != nil {
+		t.Fatal(err)
+	}
+	decoded := map[string]any{}
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	v, present := decoded["rubric_version"]
+	return v, present
+}
+
+// The whole of G2: the frozen rubric reaches the judge, its version is declared
+// on the started event and recorded on the row, and an item naming a criterion
+// this run does not have is dropped and said so rather than silently ignored.
+func TestTheFrozenRubricReachesTheJudgeAndItsVersionIsRecorded(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-rubric")
+	skillID := seedSkill(t, pool, c.workspaceID, "rubric-run")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID, `{
+		"version": "content-007/writing/v1",
+		"items": [
+		  {"id": "c1", "text": "Quote the sentence that shows the duplicates went.", "weight": 3, "evidence_required": true},
+		  {"id": "orphan", "text": "strengthens a criterion this snapshot does not carry", "evidence_required": false}
+		]}`)
+	const finalText = "Removed 17 duplicate rows and saved the result to output.xlsx."
+	seedFinalOutput(t, pool, c.workspaceID, runID, finalText)
+
+	var sent llmclient.JudgeRunRequest
+	a.evaluations.Judge = capturingJudgeServer(t, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: "passed", Reason: "the reply says 17 rows were removed",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+					{Kind: "agent_output", Quote: "Removed 17 duplicate rows"},
+				}},
+			{CriterionID: "c2", Result: "passed", Reason: "output.xlsx is in the manifest",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+					{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")},
+				}},
+		},
+		Overall: "met", Summary: "both conditions were met",
+	}, &sent)
+
+	if err := a.evaluations.Evaluate(context.Background(),
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatalf("evaluate: %v", err)
+	}
+
+	if sent.Rubric == nil {
+		t.Fatal("the snapshot's rubric never reached the judge")
+	}
+	if len(sent.Rubric.Items) != 1 || sent.Rubric.Items[0].ID != "c1" {
+		t.Fatalf("only items naming a sent criterion go out, got %+v", sent.Rubric.Items)
+	}
+	if sent.Rubric.Items[0].Weight == nil || *sent.Rubric.Items[0].Weight != 3 {
+		t.Errorf("the item's weight is carried through, got %+v", sent.Rubric.Items[0])
+	}
+
+	if got, present := rubricVersionOfStartedEvent(t, pool, runID); !present || got != "content-007/writing/v1" {
+		t.Errorf("evaluation_started declares the rubric in force, got %#v (present=%v)", got, present)
+	}
+
+	_, body := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	if body.RubricVersion != "content-007/writing/v1" {
+		t.Errorf("the row records the rubric the verdict was reached under, got %q", body.RubricVersion)
+	}
+	var warned bool
+	for _, f := range body.DeterministicFindings {
+		if f.Severity == "warning" && strings.Contains(f.Message, "orphan") {
+			warned = true
+		}
+	}
+	if !warned {
+		t.Errorf("a rubric item nothing will answer has to be said out loud, got %+v", body.DeterministicFindings)
+	}
+}
+
+// The 45 baseline snapshots have no rubric, and must keep saying so: absent is
+// "no rubric", never "the default rubric".
+func TestARunWithoutARubricRecordsNoneAtAll(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-no-rubric")
+	skillID := seedSkill(t, pool, c.workspaceID, "no-rubric-run")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	seedFinalOutput(t, pool, c.workspaceID, runID, "Removed 17 duplicate rows.")
+
+	var sent llmclient.JudgeRunRequest
+	a.evaluations.Judge = capturingJudgeServer(t, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: "failed", Reason: "nothing shows it"},
+			{CriterionID: "c2", Result: "failed", Reason: "no file"},
+		},
+		Overall: "not_met", Summary: "neither condition was met",
+	}, &sent)
+
+	if err := a.evaluations.Evaluate(context.Background(),
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatalf("evaluate: %v", err)
+	}
+	if sent.Rubric != nil {
+		t.Errorf("no rubric means no rubric field on the request, got %+v", sent.Rubric)
+	}
+	if got, present := rubricVersionOfStartedEvent(t, pool, runID); !present || got != nil {
+		t.Errorf("the started event says null, got %#v (present=%v)", got, present)
+	}
+	_, body := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	if body.RubricVersion != "" {
+		t.Errorf("no rubric was in force, got %q", body.RubricVersion)
 	}
 }
 

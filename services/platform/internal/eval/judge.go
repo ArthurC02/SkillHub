@@ -23,6 +23,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/services/platform/internal/testlab"
 	"github.com/ArthurC02/skillhub/services/platform/internal/trace"
 )
 
@@ -46,7 +47,7 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 		return verdict{}, fmt.Errorf("no judge service is configured for this deployment")
 	}
 
-	req, digest, truncation := s.buildRequest(m, ev)
+	req, digest, truncation, dropped := s.buildRequest(m, ev)
 
 	// The internal call carries the caller's deadline and cancellation (iron rule
 	// 7). llmclient has no timeout of its own, so this is the only one.
@@ -66,8 +67,31 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 		model:            orUnknown(resp.Model),
 		promptVersion:    orUnknown(resp.PromptVersion),
 	}
+	// What the row records is the rubric that was actually in force, which is why
+	// it is read off the request rather than off the snapshot: a rubric whose
+	// items all named criteria this run does not have reached the judge as
+	// nothing, and recording its version would claim a strengthening that never
+	// applied. The `evaluation_started` event declares the intent (eval.go begin);
+	// where the two differ, the row is the authority — same rule as judge_model.
+	if req.Rubric != nil && m.rubric != nil {
+		v.rubricVersion = m.rubric.Version
+	}
 	if resp.Usage != nil {
 		v.costUSD, v.costSource = resp.Usage.CostUSD, resp.Usage.CostSource
+	}
+	// A rubric item addressed to a criterion that was not sent has nowhere for its
+	// verdict to be stored — merge() drops any id it did not ask about, exactly as
+	// /match-reasons drops an unrequested skill_id. Silently dropping it would
+	// leave a rubric the user can read and the platform quietly ignores, so it is
+	// said out loud rather than inferred from a missing line in the report.
+	if len(dropped) > 0 {
+		v.findings = append(v.findings, Finding{
+			Category: CategoryEffect, Severity: SeverityWarning,
+			Message: "these rubric items name no acceptance criterion of this run's snapshot and " +
+				"were not sent for judgement (" + strings.Join(dropped, ", ") + "); a rubric item's " +
+				"id is the criterion it strengthens",
+			Evidence: []EvidenceRef{},
+		})
 	}
 	// A judgement made on cut material is a judgement with a hole in it, and the
 	// stored row has to say so rather than leave it to a reader to notice.
@@ -86,9 +110,11 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 // buildRequest cuts the material to the §6.3 budget and returns the request, the
 // digest keyed by event id (the citation set verification checks against), and the
 // list of fields that were cut.
+// The fourth return is the rubric items that named no criterion this request
+// sends, which the caller turns into a warning.
 func (s *Service) buildRequest(
 	m material, ev gen.Evaluation,
-) (llmclient.JudgeRunRequest, map[string]trace.EventView, []string) {
+) (llmclient.JudgeRunRequest, map[string]trace.EventView, []string, []string) {
 	truncation := []string{}
 
 	final, cutOutput := cut(m.summary.FinalOutput, maxFinalOutput)
@@ -142,7 +168,47 @@ func (s *Service) buildRequest(
 	if m.skill.Name != "" {
 		req.Skill = &llmclient.JudgeSkill{Name: m.skill.Name, Summary: derefString(m.skill.Summary)}
 	}
-	return req, digest, truncation
+	rubric, dropped := rubricFor(m.rubric, criteria)
+	req.Rubric = rubric
+	return req, digest, truncation, dropped
+}
+
+// rubricFor turns the snapshot's frozen rubric into the request's, keeping only
+// the items whose id is one of the criteria actually being sent.
+//
+// The filter is not defensive tidying, it is the data semantics: /judge-run
+// answers one verdict per criterion id, and merge() drops any id it did not ask
+// about, so an item addressed to something else can never produce a stored
+// verdict (writing-rubrics.md §2.1). Sending it anyway would spend input budget
+// asking the model for an answer with nowhere to go — and, worse, would put a
+// standard in the prompt that no line of the report is ever measured against.
+//
+// The rubric's own version is not sent: llm-internal.yaml's Rubric is
+// additionalProperties:false and has only `items`. The version is the platform's
+// record of which wording was in force, and lives on the evaluations row.
+func rubricFor(r *testlab.Rubric, criteria []llmclient.JudgeCriterion) (*llmclient.Rubric, []string) {
+	if r == nil || len(r.Items) == 0 {
+		return nil, nil
+	}
+	sent := make(map[string]bool, len(criteria))
+	for _, c := range criteria {
+		sent[c.ID] = true
+	}
+	items := make([]llmclient.RubricItem, 0, len(r.Items))
+	var dropped []string
+	for _, it := range r.Items {
+		if !sent[it.ID] {
+			dropped = append(dropped, it.ID)
+			continue
+		}
+		items = append(items, llmclient.RubricItem{
+			ID: it.ID, Text: it.Text, Weight: it.Weight, EvidenceRequired: it.EvidenceRequired,
+		})
+	}
+	if len(items) == 0 {
+		return nil, dropped
+	}
+	return &llmclient.Rubric{Items: items}, dropped
 }
 
 // buildDigest selects the citable trace entries. Selection matters twice: it is

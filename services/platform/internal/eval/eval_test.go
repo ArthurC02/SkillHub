@@ -306,6 +306,79 @@ func TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete(t *testing.T) {
 	}
 }
 
+// --- the rubric (CONTENT-007) -------------------------------------------------
+
+// The rubric reaches the judge, and only for criteria that were actually sent.
+// An item addressed to something else could never produce a stored verdict —
+// merge() drops any id it did not ask about — so sending it would put a standard
+// in the prompt that no line of the report is measured against.
+func TestTheRubricIsSentOnlyForTheCriteriaTheRequestCarries(t *testing.T) {
+	m, _ := fixtureMaterial(true)
+	weight := 3.0
+	m.rubric = &testlab.Rubric{
+		Version: "content-007/writing/v1",
+		Items: []testlab.RubricItem{
+			{ID: "c1", Text: "quote the sentence that shows it", Weight: &weight, EvidenceRequired: true},
+			{ID: "c2", Text: "absence cannot be quoted", EvidenceRequired: false},
+			{ID: "gone", Text: "strengthens a criterion this snapshot does not have"},
+		},
+	}
+	s := &Service{}
+
+	req, _, _, dropped := s.buildRequest(m, gen.Evaluation{})
+	if req.Rubric == nil {
+		t.Fatal("the snapshot's rubric has to reach the judge")
+	}
+	if len(req.Rubric.Items) != 2 {
+		t.Fatalf("only items naming a sent criterion go out, got %+v", req.Rubric.Items)
+	}
+	if req.Rubric.Items[0].Weight == nil || *req.Rubric.Items[0].Weight != weight {
+		t.Errorf("weight is carried through untouched, got %+v", req.Rubric.Items[0])
+	}
+	if !req.Rubric.Items[0].EvidenceRequired || req.Rubric.Items[1].EvidenceRequired {
+		t.Error("evidence_required is per item, not a global switch")
+	}
+	if len(dropped) != 1 || dropped[0] != "gone" {
+		t.Errorf("a dropped item must be reported so it can be warned about, got %v", dropped)
+	}
+}
+
+func TestARunWithNoRubricSendsNoneAndRecordsNoVersion(t *testing.T) {
+	m, _ := fixtureMaterial(true)
+	s := &Service{}
+	req, _, _, dropped := s.buildRequest(m, gen.Evaluation{})
+	if req.Rubric != nil {
+		t.Errorf("no rubric means no rubric field, got %+v", req.Rubric)
+	}
+	if dropped != nil {
+		t.Errorf("nothing to drop, got %v", dropped)
+	}
+	if got := rubricVersion(nil); got != nil {
+		t.Errorf("the started event says null, never an empty string, got %#v", got)
+	}
+	if got := rubricVersion(&testlab.Rubric{Version: "v1"}); got != "v1" {
+		t.Errorf("rubricVersion = %#v, want v1", got)
+	}
+}
+
+// Every item pointing at a criterion the run does not have is the same as having
+// no rubric in force, and the version must not be recorded as though one were.
+func TestARubricWithNothingLeftToSendIsNotRecordedAsInForce(t *testing.T) {
+	m, _ := fixtureMaterial(true)
+	m.rubric = &testlab.Rubric{
+		Version: "content-007/writing/v1",
+		Items:   []testlab.RubricItem{{ID: "nobody", Text: "x"}},
+	}
+	s := &Service{}
+	req, _, _, dropped := s.buildRequest(m, gen.Evaluation{})
+	if req.Rubric != nil {
+		t.Errorf("nothing was left to send, got %+v", req.Rubric)
+	}
+	if len(dropped) != 1 {
+		t.Errorf("the item still has to be reported, got %v", dropped)
+	}
+}
+
 // --- the digest bounds both the cost and the citation set ---------------------
 
 func TestDigestKeepsTheTailAndSaysWhenItCut(t *testing.T) {
