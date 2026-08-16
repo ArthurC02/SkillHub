@@ -194,6 +194,15 @@ jobs:
       - name: redocly lint (contracts/openapi)
         run: npx --yes @redocly/cli@2.46.1 lint contracts/openapi/*.yaml
 
+      # Iron rule 12's other half: contracts/events is not OpenAPI, so redocly
+      # never saw it. The validator has existed since M2 and the contract README
+      # names it as the verification step, but no job ran it - a schema edit was
+      # gated only by whoever remembered. Pinned like the tools above.
+      - name: Trace event contract (contracts/events)
+        run: |
+          pip install jsonschema==4.26.0
+          python tools/contracts/validate_trace_events.py
+
       - name: OpenAPI codegen (placeholder, deliberately not failing)
         run: |
           echo "The specs are linted above, but no codegen is wired yet:"

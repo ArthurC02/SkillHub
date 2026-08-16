@@ -35,6 +35,8 @@ ADR-009 把三種能力切開，共用 Correlation ID 但**資料模型與存取
 | `error` | 值得對使用者顯示的失敗 | TRACE-004 | `category` 對齊 ADR-004 失敗分類 |
 | `usage` | Token 與成本計量 | TRACE-004 | cache 欄位可為 `null`，見 §5 |
 | `run_lifecycle` | Run 狀態轉移的**鏡像** | RUN-002 | **非事實來源**，見 §4 |
+| `evaluation_started` | 控制平面開始評估這個 Run | EVAL-001 | `emitted_by` 限 `orchestrator`，見 §4.1 |
+| `evaluation_completed` | 評估結束（有沒有判定都算） | EVAL-001 | 同上；envelope `status` 分「評完了」與「評不動」 |
 
 ADR-009 另有列 `Artifact Produced`、`Policy Decision`、`Security Event` 三類。本批**刻意未定義**：TRACE-002~004 的收集需求沒有用到，而新增事件型別在本契約下屬 additive（§7），要用時再加不必改版本主號。
 
@@ -51,6 +53,14 @@ ADR-009 另有列 `Artifact Produced`、`Policy Decision`、`Security Event` 三
 Run 狀態的唯一事實來源是 Go 擁有的 Postgres 狀態機（`runs.status` 與 `run_status_transitions`）。`run_lifecycle` 事件存在的理由只有一個：讓 Trace 時間軸是一條連續的故事，而不是一堆沒有上下文的工具呼叫。
 
 因此：**不得**以重播這些事件來重建 Run 狀態；消費者對 Run 狀態的認知與 `runs` 表不一致時，以 `runs` 表為準。schema 內 `runLifecyclePayload` 的 `$comment` 已寫死這條。
+
+### 4.1 兩個 `evaluation_*` 事件同理，而且限定 producer
+
+`evaluation_started` / `evaluation_completed`（1.2）存在的理由與 `run_lifecycle` 一樣：**讓時間軸不要在 Run 結束的那一刻斷掉**。判定的事實來源是 `evaluations` 表（ADR-009 的 Evaluation 平面），不是這兩個事件；逐條判定、證據引用、改善建議都**不**放進 Trace。
+
+多一條 `run_lifecycle` 沒有的限制：schema 把這兩型的 `emitted_by` 釘死為 `orchestrator`。評估發生在控制平面、發生時沙箱早已銷毀，所以一筆 `emitted_by: sandbox` 的 `evaluation_completed` 只可能是不受信任平面偽造的判定（validator 有對應反例）。
+
+envelope 的 `status` 承擔「評完了」與「評不動」的區別：`ok` ＝評估跑完（`overall` 可能是 `undetermined`，那是**判不出來**這個判定本身），`error` ＝評估失敗，此時 `failure_reason` 有值。三者在 UI 上是三件事，不得合併為「沒通過」。
 
 ## 5. Cache 用量欄位為何允許 `null`
 
@@ -81,6 +91,7 @@ Run 狀態的唯一事實來源是 Go 擁有的 Postgres 狀態機（`runs.statu
 | `script_log` | `message` |
 | `agent_output` | `text` |
 | `error` | `message`、`provider_diagnostics`（整個物件） |
+| `evaluation_completed` | `failure_reason` |
 
 **(b) 命名規約。** 未標記 `secret_bearing` 的欄位一律是**平台自產的結構化值**（ID、enum、計數、時間），新增欄位時二選一：不是平台自產，就必須帶標記。不允許出現「平台自產但其實會夾帶使用者內容」的第三類——那正是遮罩漏網的來源。
 
@@ -137,7 +148,7 @@ Run 狀態的唯一事實來源是 Go 擁有的 Postgres 狀態機（`runs.statu
 
 ## 9. 版本演進規則
 
-`schema_version` 形如 `MAJOR.MINOR`，目前 `1.1`。
+`schema_version` 形如 `MAJOR.MINOR`，目前 `1.2`。
 
 **版本紀錄**
 
@@ -145,10 +156,11 @@ Run 狀態的唯一事實來源是 Go 擁有的 Postgres 狀態機（`runs.statu
 | --- | --- | --- |
 | `1.0` | 2026-08-16 | 首版（TRACE-001）。 |
 | `1.1` | 2026-08-16 | additive：`usagePayload.token_source`（`result`／`accumulated`／null）。成因見下段。 |
+| `1.2` | 2026-08-17 | additive：新增 `evaluation_started`／`evaluation_completed` 兩個型別（M3 EVAL-001，[contract-deltas](../../docs/plans/mvp/m3/contract-deltas.md) §4）。兩者的 `emitted_by` 限 `orchestrator`，見 §4.1。 |
 
 `token_source` 之所以需要：`usage` 事件原本只在 Agent SDK 的 `result` 分支發出，串流以任何其他方式結束（崩潰、牆鐘、token 上限中止，或實測到的「Run 成功但 SDK 沒給 result」）就**完全不發**——不是發 0，是不發，EVAL-012 的成本合計因此系統性低估（實測 45 個 Run：Trace $3.0879 vs 閘道實付 $3.3932）。harness 改為逐則訊息累計、結束時一律發一筆 run 級 usage，`token_source` 說明這筆的數字是 SDK 的 `result` 總計還是 harness 自己累計的。**`cost_source` 不承載這件事**：成本一律來自閘道，與 SDK 有沒有給 result 無關，把兩種來源塞進同一個欄位會讓「錢的來源」跟著「token 的來源」一起說謊。
 
-**版本宣告的規則**：producer 宣告的是它「照哪一版契約寫」。只用 1.0 欄位的 producer（控制平面的 `error`／`run_lifecycle`）繼續宣告 `1.0` 是正確的，而 1.0 事件必然是合法的 1.1 事件；沙箱 harness 因為會寫 `token_source`，宣告 `1.1`。消費端一律接受任何 `1.x`（`internal/trace.compatibleVersion`）。
+**版本宣告的規則**：producer 宣告的是它「照哪一版契約寫」。只用 1.0 欄位的 producer（控制平面的 `error`／`run_lifecycle`）繼續宣告 `1.0` 是正確的，而 1.0 事件必然是合法的 1.1 事件；沙箱 harness 因為會寫 `token_source`，宣告 `1.1`；發 `evaluation_*` 的評估器宣告 `1.2`——那兩個型別在 1.0 不存在，**沿用 `internal/trace.SchemaVersion`（目前釘在 `"1.0"`）會宣告出一個當時還沒有這個型別的版本**，實作那一批必須讓宣告跟著事件型別走。消費端一律接受任何 `1.x`（`internal/trace.compatibleVersion`）。
 
 **Minor bump（additive，消費者不需改）——允許：**
 

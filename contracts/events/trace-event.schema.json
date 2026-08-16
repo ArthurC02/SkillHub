@@ -21,8 +21,8 @@
     "schema_version": {
       "type": "string",
       "pattern": "^1\\.[0-9]+$",
-      "description": "Trace event contract version. Minor bumps are additive only; a breaking change bumps the major and gets a new $id. 1.1 added usagePayload.token_source; a producer writing only 1.0 fields may keep declaring 1.0, and a 1.0 event is a valid 1.1 event.",
-      "examples": ["1.1", "1.0"]
+      "description": "Trace event contract version. Minor bumps are additive only; a breaking change bumps the major and gets a new $id. 1.1 added usagePayload.token_source; 1.2 added the evaluation_started / evaluation_completed types. A producer writing only 1.0 fields may keep declaring 1.0, and a 1.0 event is a valid 1.2 event.",
+      "examples": ["1.2", "1.1", "1.0"]
     },
     "event_id": {
       "type": "string",
@@ -66,7 +66,9 @@
         "agent_output",
         "error",
         "usage",
-        "run_lifecycle"
+        "run_lifecycle",
+        "evaluation_started",
+        "evaluation_completed"
       ]
     },
     "status": {
@@ -132,6 +134,24 @@
     {
       "if": { "properties": { "type": { "const": "run_lifecycle" } }, "required": ["type"] },
       "then": { "properties": { "payload": { "$ref": "#/$defs/runLifecyclePayload" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "evaluation_started" } }, "required": ["type"] },
+      "then": {
+        "properties": {
+          "payload": { "$ref": "#/$defs/evaluationStartedPayload" },
+          "emitted_by": { "const": "orchestrator" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "evaluation_completed" } }, "required": ["type"] },
+      "then": {
+        "properties": {
+          "payload": { "$ref": "#/$defs/evaluationCompletedPayload" },
+          "emitted_by": { "const": "orchestrator" }
+        }
+      }
     }
   ],
   "$defs": {
@@ -379,6 +399,77 @@
         "to_status": { "$ref": "#/$defs/runStatus" },
         "reason": { "type": ["string", "null"], "maxLength": 2000, "default": null }
       }
+    },
+
+    "evaluationStartedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluation_id", "judge_model", "judge_prompt_version"],
+      "description": "EVAL-001. The control plane began evaluating this run. Emitted by the orchestrator only - evaluation happens in the control plane after the sandbox is gone, so a sandbox-emitted evaluation event is a forgery and the enclosing `if` refuses it.",
+      "$comment": "NOT A SOURCE OF TRUTH for the verdict, the same way run_lifecycle is not one for run state (iron rule 5): the `evaluations` table is. These two types exist so the trace timeline does not stop mid-story at the moment the run ends. Evaluation results are the Evaluation plane of ADR-009 and are not carried here.",
+      "properties": {
+        "evaluation_id": { "type": "string", "format": "uuid" },
+        "judge_model": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Model id as sent to the LiteLLM gateway (iron rule 8). Never a provider SDK's own name."
+        },
+        "judge_prompt_version": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Judge prompt version actually used (ADR-017 requires the used prompt version to be recorded), so a re-evaluation is comparable with the one it supersedes."
+        },
+        "rubric_version": {
+          "type": ["string", "null"],
+          "maxLength": 100,
+          "description": "CONTENT-007 rubric version. NULL when the test case has no rubric, which is not the same as an empty rubric.",
+          "default": null
+        }
+      }
+    },
+
+    "evaluationCompletedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evaluation_id",
+        "overall",
+        "criteria_total",
+        "criteria_passed",
+        "criteria_failed",
+        "criteria_undetermined",
+        "evidence_complete"
+      ],
+      "description": "EVAL-001. The evaluation finished, whether or not it produced a verdict. The envelope `status` separates the two: `ok` means the evaluation ran, `error` means it could not (gateway down, evidence unreadable) and then `failure_reason` is set. `overall: undetermined` in an `ok` event is a real verdict - the judge looked and could not tell - and must not be shown as the same thing as an evaluation that never ran.",
+      "properties": {
+        "evaluation_id": { "type": "string", "format": "uuid" },
+        "overall": {
+          "type": "string",
+          "enum": ["met", "partially_met", "not_met", "undetermined"],
+          "$comment": "Mirrors the evaluations.overall CHECK in db/migrations. The DB constraint is the definition, this is a copy."
+        },
+        "criteria_total": { "type": "integer", "minimum": 0 },
+        "criteria_passed": { "type": "integer", "minimum": 0 },
+        "criteria_failed": { "type": "integer", "minimum": 0 },
+        "criteria_undetermined": { "type": "integer", "minimum": 0 },
+        "evidence_complete": {
+          "type": "boolean",
+          "description": "False when the trace this verdict was drawn from had holes (AdvancedView.complete) or evidence could not be re-verified. A criterion evaluated on incomplete evidence must not be recorded as passed, so consumers must show this rather than hide it (ADR-009: never pretend a trace is complete)."
+        },
+        "cost_usd": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "What this evaluation itself cost at the gateway. Deliberately separate from the run's own usage events: they answer different questions and must never be summed into one number. NULL means unreported, which the UI must not render as 0.",
+          "default": null
+        },
+        "failure_reason": {
+          "type": ["string", "null"],
+          "maxLength": 2000,
+          "description": "Why the evaluation could not produce a verdict. Set only when the envelope status is `error`. A failed evaluation is a visible state, not an absent one.",
+          "$comment": "sensitivity: secret_bearing - gateway and storage errors quote URLs and argument values, same reason errorPayload.message carries this marker.",
+          "default": null
+        }
+      }
     }
   },
 
@@ -565,6 +656,49 @@
       "payload": {
         "server": "placeholder",
         "tool_name": "placeholder"
+      }
+    },
+    {
+      "schema_version": "1.2",
+      "event_id": "9c0d1e2f-3a4b-4c5d-8e6f-7a8b9c0d1e10",
+      "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+      "attempt": 1,
+      "seq": 2,
+      "occurred_at": "2026-08-16T09:12:11.000Z",
+      "emitted_by": "orchestrator",
+      "type": "evaluation_started",
+      "status": "ok",
+      "masked": true,
+      "masked_fields": [],
+      "payload": {
+        "evaluation_id": "ad1e2f3a-4b5c-4d6e-9f7a-8b9c0d1e2f11",
+        "judge_model": "gpt-5.6-terra",
+        "judge_prompt_version": "judge-run@2026-08-16",
+        "rubric_version": null
+      }
+    },
+    {
+      "schema_version": "1.2",
+      "event_id": "be2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a12",
+      "run_id": "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20",
+      "attempt": 1,
+      "seq": 3,
+      "occurred_at": "2026-08-16T09:12:26.480Z",
+      "emitted_by": "orchestrator",
+      "type": "evaluation_completed",
+      "status": "ok",
+      "masked": true,
+      "masked_fields": [],
+      "payload": {
+        "evaluation_id": "ad1e2f3a-4b5c-4d6e-9f7a-8b9c0d1e2f11",
+        "overall": "partially_met",
+        "criteria_total": 3,
+        "criteria_passed": 2,
+        "criteria_failed": 0,
+        "criteria_undetermined": 1,
+        "evidence_complete": false,
+        "cost_usd": 0.0231,
+        "failure_reason": null
       }
     }
   ]
