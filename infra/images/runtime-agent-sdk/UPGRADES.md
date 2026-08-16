@@ -36,7 +36,7 @@
 | 變更 | 加入 `python3` 3.11.2 ＋ 目錄宣告的 9 個 Python 套件（`pip` 隨後移除） |
 | SDK 版本 | `0.3.233`（未變） |
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（未變） |
-| 映像 digest | 見 `../README.md`「已發佈的 digest」；GHCR tag `2026.08-2` |
+| 映像 digest | `sha256:61ef902ffed4e1a66dcc3bc61684f4253721e96b6ea2dfa370bbe43d7da5f7fe`（GHCR tag `2026.08-2`，2026-08-16 觀測；升 `-3` 後仍指向它，未被孤立） |
 | commit | `b0c270b`（映像變更本體）；閘道預算根因修復 `3906fe5` 為其前置 |
 | 證據來源 | [content-baseline-report.md §12／§13](../../../plans/mvp/m2/content-baseline-report.md) |
 | 實測規模 | **45 個 Skill 全量**（§12 的 9 筆 ＋ §13 的 36 筆），閘道實付 $0.86 ＋ $1.85 |
@@ -63,6 +63,9 @@ token −50%、成本 −28%（§13.3）；`pandas` 3.x 只觸發一則相容性
 | 變更 | **依賴集**：新增 8 個純 Python 套件（`pycountry` 26.2.16、`chardet` 7.6.0、`defusedxml` 0.7.1、`ftfy` 6.3.1、`confusable-homoglyphs` 3.3.1、`pytz` 2026.3.post1、`phonenumbers` 9.0.37、`python-stdnum` 2.2）。既有 9 個版本未變，**0 移除** |
 | 起因 | 目錄 `deps` 欄位漏抄，映像照抄了漏的那份（`../README.md`「依賴集」節） |
 | commit | `b2180b2` |
+| 映像 digest | `sha256:5bcbca884feaccb4bf1cfb437644f87627898216fde7ba428228712635c9b23d`（GHCR tag `2026.08-3`，2026-08-16 觀測） |
+| CI | [runtime-image #31949830049](https://github.com/ArthurC02/SkillHub/actions/runs/31949830049)（`review` job **success**，含 SBOM 與掃描兩份 attestation） |
+| 孤兒影響 | **無新增。** 版本 tag 一併改，`2026.08-2` 仍解析到 `sha256:61ef902f…`（發佈後實測），孤兒清單維持 3 筆 |
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
 | 映像大小 | 1.24 GB → **1.35 GB** |
