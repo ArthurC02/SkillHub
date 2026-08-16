@@ -100,6 +100,10 @@ type datasetRef struct {
 	DatasetID   string `json:"dataset_id"`
 	FileName    string `json:"file_name"`
 	ContentHash string `json:"content_hash"`
+	// ObjectKey pairs this reference with the ObjectGrant that can fetch it.
+	// Without it the execution node would have to guess which grant belongs to
+	// which file (SBX-008).
+	ObjectKey string `json:"object_key,omitempty"`
 }
 
 type TestCaseSnapshotRef struct {
@@ -133,9 +137,29 @@ type TracePolicy struct {
 	IngestionURL string `json:"ingestion_url,omitempty"`
 }
 
-// RunRequest is one execution attempt. object_grants and model_gateway are absent
-// on purpose: minting them is SBX-005/006, and sending an empty grant would look
-// like an authorization that exists.
+// ObjectGrant is one short-lived, single-path authorization (SBX-008). URL is
+// secret material: it *is* the authorization, so it is never logged or traced
+// (iron rule 11) and it never appears in a permission summary the user reads.
+type ObjectGrant struct {
+	Purpose   string    `json:"purpose"` // skill_package | dataset | artifact_upload
+	ObjectKey string    `json:"object_key"`
+	Access    string    `json:"access"` // read | write
+	URL       string    `json:"url,omitempty"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// ModelGatewayGrant is the attempt's LiteLLM Virtual Key (ADR-017). VirtualKey is
+// secret material and travels no further than the execution node and the sandbox
+// it creates.
+type ModelGatewayGrant struct {
+	BaseURL      string    `json:"base_url"`
+	VirtualKey   string    `json:"virtual_key,omitempty"`
+	MaxBudgetUSD float64   `json:"max_budget_usd,omitempty"`
+	TPMLimit     int       `json:"tpm_limit,omitempty"`
+	ExpiresAt    time.Time `json:"expires_at"`
+}
+
+// RunRequest is one execution attempt.
 type RunRequest struct {
 	RunID            string              `json:"run_id"`
 	RunAttemptID     string              `json:"run_attempt_id"`
@@ -147,6 +171,8 @@ type RunRequest struct {
 	Runtime          RuntimeProfile      `json:"runtime"`
 	ResourceLimits   ResourceLimits      `json:"resource_limits"`
 	Egress           EgressPolicy        `json:"egress"`
+	ObjectGrants     []ObjectGrant       `json:"object_grants,omitempty"`
+	ModelGateway     *ModelGatewayGrant  `json:"model_gateway,omitempty"`
 	Trace            TracePolicy         `json:"trace"`
 }
 

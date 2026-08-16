@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -122,7 +121,7 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	profile := RuntimeProfile{
 		Runtime:          req.Runtime,
 		AgentIntegration: req.AgentIntegration,
-		Model:            os.Getenv("SKILLHUB_RUN_MODEL"), // empty: the gateway's default tier (PDM-003)
+		Model:            RunModel(), // empty: the gateway's default tier (PDM-003)
 	}
 	var supported bool
 	for _, rt := range c.Runtimes {
@@ -228,11 +227,28 @@ func (s *Service) buildRunRequest(
 	if err != nil {
 		return RunRequest{}, err
 	}
+	// SBX-008. The grants are minted first because both halves are fail-closed:
+	// a dispatch that cannot authorize its own inputs, or cannot mint the model
+	// credential the egress policy assumes, must not reach a sandbox at all.
+	ttl := time.Duration(policy.ResourceLimits.WallClockHardSeconds)*time.Second + grantSlack
+	grants, datasetKeys, err := s.grantsFor(ctx, run, attempt, version, refs, ttl)
+	if err != nil {
+		return RunRequest{}, err
+	}
 	datasets := make([]datasetRef, 0, len(refs))
-	for _, d := range refs {
+	for i, d := range refs {
 		datasets = append(datasets, datasetRef{
 			DatasetID: d.DatasetID, FileName: d.FileName, ContentHash: d.ContentHash,
+			ObjectKey: datasetKeys[i],
 		})
+	}
+
+	var gatewayGrant *ModelGatewayGrant
+	if s.Gateway != nil {
+		gatewayGrant, err = s.Gateway.Issue(ctx, uuidString(run.ID), uuidString(attempt.ID), ttl)
+		if err != nil {
+			return RunRequest{}, err
+		}
 	}
 
 	return RunRequest{
@@ -258,6 +274,8 @@ func (s *Service) buildRunRequest(
 		Runtime:        profile,
 		ResourceLimits: policy.ResourceLimits,
 		Egress:         policy.Egress,
+		ObjectGrants:   grants,
+		ModelGateway:   gatewayGrant,
 		// TRACE-002: the collection destination, with a signed credential scoped
 		// to this one (run, attempt) embedded in the URL. A new attempt gets a new
 		// token, so a re-dispatched run cannot post events under the old one.

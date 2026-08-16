@@ -36,6 +36,18 @@ type Driver interface {
 	// error: it means the workload has not emitted anything yet. The bytes are
 	// untrusted workload output and are never parsed by the driver.
 	ReadTrace(ctx context.Context, providerRunID string) ([]byte, error)
+	// ReadArtifacts returns the workload's collected output as a tar stream, or
+	// nothing when it produced none (SBX-008). Like ReadTrace the bytes are
+	// untrusted and the driver does not open them; the manager does, to enforce
+	// the size ceilings and build the manifest.
+	ReadArtifacts(ctx context.Context, providerRunID string) ([]byte, error)
+	// WorkloadDone reports whether the workload has finished and is waiting to
+	// be released, and ReleaseWorkload lets it go. The two exist because the
+	// sandbox's scratch space is a tmpfs: nothing can be read out of it once the
+	// workload's process has exited, so collection has to happen in the window
+	// between the two (PDM-005's cooperative stop window).
+	WorkloadDone(ctx context.Context, providerRunID string) (bool, error)
+	ReleaseWorkload(ctx context.Context, providerRunID string) error
 	// Adopt reports the sandboxes this driver still holds, for rebuilding state
 	// after a restart.
 	Adopt(ctx context.Context) ([]Adopted, error)
@@ -103,6 +115,14 @@ type entry struct {
 	// a low-water mark only: a batch that failed leaves it where it was, so the
 	// events go again and the platform dedupes them by event_id.
 	traceSent int
+	// artifactGrant is the one write authorization this attempt was dispatched
+	// with (SBX-008). Nil means nothing was authorized and nothing is collected.
+	artifactGrant *ObjectGrant
+	// limits are the run's own ceilings, kept for the artifact collection that
+	// happens after the workload is gone and the RunRequest is out of scope.
+	limits ResourceLimits
+	// artifacts is the manifest collected before the terminal result is written.
+	artifacts []Artifact
 }
 
 // Manager owns the run bookkeeping for one provider process.
@@ -215,9 +235,11 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	id := newHandle()
 	now := m.now()
 	e := &entry{
-		hash:     hash,
-		secrets:  secretsOf(req),
-		traceURL: req.Trace.IngestionURL,
+		hash:          hash,
+		secrets:       secretsOf(req),
+		traceURL:      req.Trace.IngestionURL,
+		artifactGrant: artifactGrantOf(req),
+		limits:        req.ResourceLimits,
 		run: ProviderRun{
 			RunID:         req.RunID,
 			RunAttemptID:  req.RunAttemptID,
@@ -298,6 +320,7 @@ func (m *Manager) watch(id string, soft, hard time.Duration) {
 		out, err := m.drv.Wait(ctx, id)
 		stopTrace()
 		timer.Stop()
+
 		var re *RunError
 		if err != nil && ctx.Err() == nil {
 			re = &RunError{Class: ClassExecution, Message: "sandbox could not be followed to its end", Retryable: true}
@@ -326,6 +349,11 @@ func (m *Manager) finish(id string, out Outcome, re *RunError) {
 		StartedAt:     e.run.StartedAt,
 		FinishedAt:    now,
 		AgentOutput:   mask(out.Output, e.secrets),
+		// Manifest only: the bytes went to object storage under the write grant
+		// (SBX-008). Empty when the workload produced nothing, when no grant was
+		// issued, or when collection failed - all three are "no artifacts here",
+		// and none of them changes the run's own outcome.
+		Artifacts: e.artifacts,
 	}
 	switch {
 	case e.cancelled:
@@ -584,10 +612,28 @@ func (c Config) accept(req RunRequest) *RunError {
 		return mismatch("max_pids %d exceeds the %d this provider can enforce", l.MaxPIDs, max.MaxPIDs)
 	case l.WallClockHardSeconds > max.WallClockHardSeconds:
 		return mismatch("wall_clock_hard_seconds %d exceeds the %d this provider allows", l.WallClockHardSeconds, max.WallClockHardSeconds)
-	case req.Egress.Mode != "default_deny":
+	case req.Egress.Mode != "default_deny" && req.Egress.Mode != "none":
 		return mismatch("egress mode %q is not supported", req.Egress.Mode)
+	case req.Egress.Mode == "none" && len(req.Egress.Allow) > 0:
+		return mismatch("egress mode none cannot carry an allow list")
+	// SBX-007. The two modes are ordered, not alternatives: a node with no
+	// egress route declares only `none` and can still carry a run that is
+	// allowed to reach nothing, but never one that names a destination - it has
+	// no route to offer, and substituting a weaker mode is never allowed
+	// whatever the request said.
+	case len(req.Egress.Allow) > 0 && !contains(c.EgressModes, "default_deny"):
+		return mismatch("this provider has no egress route, so it cannot allow %d destination(s)", len(req.Egress.Allow))
 	}
 	return nil
+}
+
+func contains(values []string, want string) bool {
+	for _, v := range values {
+		if v == want {
+			return true
+		}
+	}
+	return false
 }
 
 // HashRequest decides whether a re-sent dispatch is the same one. It hashes the
@@ -625,6 +671,16 @@ func secretsOf(req RunRequest) []string {
 		}
 	}
 	return out
+}
+
+// artifactGrantOf is the attempt's single write authorization, if it has one.
+func artifactGrantOf(req RunRequest) *ObjectGrant {
+	for i, g := range req.ObjectGrants {
+		if g.Purpose == "artifact_upload" && g.Access == "write" {
+			return &req.ObjectGrants[i]
+		}
+	}
+	return nil
 }
 
 func mask(s string, secrets []string) string {

@@ -32,12 +32,21 @@ ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 RUN groupadd --gid 65532 sandbox \
     && useradd --uid 65532 --gid 65532 --no-create-home --shell /usr/sbin/nologin sandbox
 
+# Skill packages are stored as zip archives (ingest writes packages/<hash>.zip),
+# and the sandbox is where they are unpacked — never the control plane, which
+# must not open untrusted bytes (iron rule 1). node:22-bookworm-slim carries tar
+# but not unzip, so this is the one added package.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends unzip \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /opt/skillhub
 RUN npm install --omit=dev --no-audit --no-fund \
     "@anthropic-ai/claude-agent-sdk@${CLAUDE_AGENT_SDK_VERSION}" \
     && npm cache clean --force \
     # npm and corepack are build-time only: the entrypoint is `node run.mjs` and
-    # the sandbox has no network, so nothing here can install a package anyway.
+    # the only address a sandbox can reach is the model gateway (SBX-007), so
+    # nothing here can install a package anyway.
     # They are dropped because every fixable Critical/High the scan finds in this
     # image comes from npm's own bundled node_modules (tar, brace-expansion,
     # picomatch, sigstore) — packages nothing at run time loads. A package

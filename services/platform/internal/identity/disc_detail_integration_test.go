@@ -12,6 +12,7 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -30,6 +31,19 @@ func (s packageStore) Get(_ context.Context, key string) ([]byte, error) {
 		return nil, errors.New("no such object: " + key)
 	}
 	return data, nil
+}
+
+// PresignGet and PresignPut complete run.ObjectStore. They answer for any key,
+// including one that does not exist, because that is what S3 pre-signing does:
+// signing a URL is a local operation over a key and never a lookup. The
+// fail-closed case grantsFor actually guards is a deployment with no object
+// store at all (SBX-008).
+func (s packageStore) PresignGet(_ context.Context, key string, _ time.Duration) (string, error) {
+	return "https://objects.test/" + key + "?signature=test", nil
+}
+
+func (s packageStore) PresignPut(_ context.Context, key string, _ time.Duration) (string, error) {
+	return "https://objects.test/" + key + "?signature=test&method=put", nil
 }
 
 // demoPackage builds a valid Agent Skills zip carrying a script file, so the

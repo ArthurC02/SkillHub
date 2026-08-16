@@ -33,7 +33,7 @@
 | `SKILLHUB_SANDBOX_ADDR` | `:9000` | 監聽位址 |
 | `SKILLHUB_SANDBOX_IMAGE` | `skillhub/runtime-agent-sdk:2026.08-1` | Runtime Image。**生產須填 digest**（I-02），tag 是移動標的 |
 | `SKILLHUB_SANDBOX_RUNTIME` | 空（＝主機預設 runtime） | 生產填 `runsc`（gVisor，ADR-015） |
-| `SKILLHUB_SANDBOX_NETWORK` | `none` | 沙箱加入的網路。dev 用 `none`；生產填 Egress Proxy 的網路名 |
+| `SKILLHUB_SANDBOX_NETWORK` | `none` | **出口網路**的名稱。`none`／空＝本節點無出口，所有沙箱一律 `--network none`。設了名字，沙箱**仍只在 `RunRequest.egress.allow` 含 `model_gateway` 時**才接上去；dev 填 `skillhub_egress`（`internal: true`，上面只有 LiteLLM 閘道），生產填 Egress Proxy 的網路名 |
 | `SKILLHUB_SANDBOX_SLOTS` | `2` | 併發上限；滿了回 429 |
 | `SKILLHUB_SANDBOX_UID`／`GID` | `65532` | 工作負載身分，不得為 0 |
 | `SKILLHUB_SANDBOX_RUNTIME_VERSION` | `0.3.233` | 宣告在 Capability 的 Agent SDK 版本，須與 Image 內一致 |
@@ -48,7 +48,7 @@
 | --- | --- | --- |
 | 容器 runtime | 主機預設（runc） | `runsc`（`SKILLHUB_SANDBOX_RUNTIME=runsc`） |
 | Capability 宣告的隔離等級 | `container` | `gvisor` |
-| 網路 | `--network none`（無出口） | Egress Proxy 專用網路，default-deny＋允許清單 |
+| 網路 | 無出口需求＝`--network none`；有出口需求＝`internal: true` 的 Docker network，上面只有 LiteLLM 閘道 | Egress Proxy 專用網路，default-deny＋允許清單、DNS 固定解析、目的地記錄 |
 
 宣告等級跟著實際設定走：在跑 runc 的機器上宣告 `gvisor` 會讓 RUN-005 依錯誤的前提派工。ADR-005 的其餘基線（非 root、唯讀 rootfs、drop 全部 capability、無管理 Socket、無主機掛載、資源上限）**兩邊完全相同**——gVisor 是多加一層，不替代其中任何一項。
 
@@ -74,13 +74,32 @@
 
 `/work` 與 `/out` 用 tmpfs 是刻意的：tmpfs 能真的擋住 size，而它的頁面算在 memory cgroup 上，所以想灌滿磁碟的工作負載會先撞到記憶體上限——比磁碟上限更嚴格，不會更鬆。`--storage-opt` 只在檔案系統支援時才是更貼切的作法，因此以開關提供。
 
-### Egress（SBX-007，未完成）
+### Egress（SBX-007，部分完成）
 
-dev 基線是 `--network none`：完全沒有出口，比 default-deny 更嚴格，因此 Capability 只宣告 `egress_modes: ["none"]`。生產的 default-deny 允許清單**由 Egress Proxy 執行，不在本服務**——沙箱只被放進 Proxy 的網路，允許清單三項目的地（LiteLLM 閘道、物件儲存短效授權端點、Trace ingestion）與 DNS 固定解析、目的地記錄都是 Proxy 的職責。**Proxy 本身尚未實作**，允許清單管理流程亦未定（ADR-015 待決策），所以 SBX-007 不勾。
+沙箱接哪個網路是**逐 Run 決定**的：`RunRequest.egress.allow` 含 `model_gateway` 才接上 `SKILLHUB_SANDBOX_NETWORK` 指的出口網路，否則一律 `--network none`。方向只有一個——沒有出口網路的節點只宣告 `egress_modes: ["none"]`，而 `accept()` 會以 422 拒絕帶允許清單的請求；較弱的模式永遠不會頂替較強的請求（契約 `EgressPolicy` 的階序）。
+
+dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒有對外路由，而網路上只有 LiteLLM 閘道。「允許清單只有一項」因此由**線路本身**強制，不需要 Proxy。**物件儲存刻意不在上面**——dev 的 SeaweedFS 若沙箱直接連得到，預簽 URL 就形同虛設（沙箱能讀整個 bucket）；位元組由本服務代搬（見下）。
+
+**未完成**：生產的 Egress Proxy 本體、域名允許清單、DNS 固定解析與目的地記錄（N-01～N-07）都屬部署期，允許清單管理流程仍是 ADR-015 待決策，所以 SBX-007 不勾。
+
+### 短效授權與位元組搬運（SBX-008）
+
+沙箱**不持有任何預簽 URL**。它拿得到的秘密只有模型閘道的 Virtual Key，也就是它唯一到得了的目的地的憑證。其餘位元組由 sandboxd 代搬：
+
+| 方向 | 作法 |
+| --- | --- |
+| Skill 套件、Dataset 進沙箱 | sandboxd 以 `object_grants` 的預簽 URL 下載 → `docker exec /bin/tee` 寫進 `/work/.skillhub/skill.zip`、`/work/data/<檔名>` → 最後寫 `/work/.skillhub/ready` |
+| Artifact 出沙箱 | `docker exec /bin/tar -cf - -C /out artifacts` 讀出 → 套用 PDM-005 5.2 的單檔／總量上限 → 以寫入授權 `PUT` 上傳單一封存 → manifest 回填 `RunResult.artifacts` |
+
+用 `docker exec` 是被迫的，不是偏好：`docker cp` 對唯讀 rootfs 的容器一律被 daemon 拒絕（實測 `container rootfs is marked read-only`），而且 copy API 看不到掛載點下的檔案；bind mount 會把主機路徑放進沙箱（C-05 禁止）。風險界線同 `ReadTrace`：映像自帶二進位、絕對路徑、無 shell、無呼叫端參數、與工作負載同一個非特權 uid、讀取有上限。內容一律不解析——本服務不解壓套件、不讀 Dataset（鐵律 1）。
+
+**收集交接（為什麼工作負載會等）**：`/out` 是 tmpfs，工作負載的行程一結束，核心就把裡面的東西丟掉；而 `docker exec` 需要**執行中**的容器。因此沒有任何「事後讀取」存在。工作負載做完事後寫 `/out/.workload-done` 並等待，sandboxd 排完 trace、收完 artifact 才寫 `/out/.collected` 放它走。這就是 PDM-005 說的合作式停止窗口。**限制**：崩潰、被殺、逾時的工作負載走不到這一步，只剩 2 秒 ticker 已經推出去的部分。
+
+**Artifact 只有一個封存**：預簽是逐物件的，而平台在工作負載產出前不可能知道檔名，所以一張寫入授權只能授權一個 key。Manifest 逐檔列出名稱、大小與雜湊，位元組在該封存裡。
 
 ## Trace 收集（TRACE-002）
 
-沙箱跑在 `--network none` 上，**它不能自己送事件**。所以流程是：容器內的 harness 把事件寫成 JSONL（`/out/trace/events.jsonl`，一行一個 JSON）→ sandboxd 讀出來 → sandboxd POST 到 `RunRequest.trace.ingestion_url`。目的地與其憑證都在該 URL 裡，由平台每個 attempt 簽發；沒給 URL 就不收集，也不推送。
+沙箱到得了的位址只有模型閘道，**它不能自己送事件**。所以流程是：容器內的 harness 把事件寫成 JSONL（`/out/trace/events.jsonl`，一行一個 JSON）→ sandboxd 讀出來 → sandboxd POST 到 `RunRequest.trace.ingestion_url`。目的地與其憑證都在該 URL 裡，由平台每個 attempt 簽發；沒給 URL 就不收集，也不推送。
 
 讀檔的方式是**在容器內執行 `/bin/cat`**，不是 `docker cp`：`/out` 是 tmpfs，而 Docker 的 copy API 對照容器 rootfs 層解析路徑，對掛載點下的檔案一律回「找不到」（已對 daemon 實測）。bind mount 會把主機路徑放進沙箱（C-05 禁止），走 stdout 會讓 trace 與工作負載自己的輸出混在一起。exec 的風險界線寫在 `dockerdrv.ReadTrace` 的註解：唯讀 rootfs 上的映像檔自帶二進位、絕對路徑、無 shell、無呼叫端參數、與工作負載同一個非特權 uid、讀取有上限。
 
@@ -119,7 +138,8 @@ docker build -t skillhub/runtime-agent-sdk:2026.08-1 infra/images/runtime-agent-
 ## 已知簡化（第三批或部署期解掉）
 
 - **Run 狀態存記憶體，重啟靠容器 label 重建**（`Adopt`）。label 只夠回答 `GET /runs`、銷毀沙箱、以雜湊認出重送的派工，**不足以重建 RunRequest**——那裡面有 Secrets，而 label 在節點上是公開可讀的（D-05）。「建立容器」與「記錄 entry」之間崩潰仍會漏一個沙箱，由平台的遺留掃描（RUN-007）收拾。要更強就在執行節點放本地持久化，**不是**去連核心資料庫。
-- **Artifact 清單尚未產生**：`RunResult.artifacts` 目前恆空。收集與上傳需要物件儲存寫入授權路徑打通（SBX-008 的另一半）。
-- **Usage 只有 wall clock**：`RunResult.usage` 的 token 與成本仍為空。Trace 的 `usage` 事件已由 harness 產出並收集（TRACE-004），但 `cost_usd` 恆為 `null`——模型閘道授權尚未簽發（SBX-008），Agent SDK 連不到 LiteLLM，沒有數字可回報，不以本地估算填補。
+- **Artifact 是單一封存**：一個 attempt 上傳一個 tar，`RunResult.artifacts` 逐檔列出名稱、大小與雜湊但不逐檔給 `object_key`（位元組都在那一個授權 key 裡）。逐檔獨立物件需要前綴授權（S3 POST policy），留給 PACK-001。
+- **崩潰的工作負載會掉 trace 尾巴與 artifact**：收集靠合作式交接，而 `/out` 是 tmpfs、`docker exec` 需要執行中的容器，所以被殺或逾時的工作負載只剩已推出去的部分。這是 tmpfs 暫存空間的真實限制，不是交接可以補的。
+- **Usage 只有 wall clock**：`RunResult.usage` 的 token 與成本仍為空——它們走 Trace 的 `usage` 事件（TRACE-004，`cost_source: gateway`，已接）。PDM-005 5.2a 的「Go worker 累加 input_tokens 當硬上限」因此尚未接上：需要 provider 側回報或平台讀 trace。
 - **`agent_output` 只取工作負載輸出尾端 32 KB**，完整內容屬 Trace。
 - **Runtime Image 尚未可發佈**：SBOM（I-03）與漏洞掃描（I-04）是發佈時閘門，尚未接上流水線。

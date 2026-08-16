@@ -31,15 +31,24 @@ type fakeDriver struct {
 	// trace is what the workload has written to its trace file so far, keyed by
 	// provider_run_id. Set by a test to drive the collector (TRACE-002).
 	trace map[string][]byte
+	// artifacts is the tar stream the workload left in /out/artifacts (SBX-008).
+	artifacts map[string][]byte
+	// done and released are the collection handshake: `done` is a workload
+	// waiting to be collected, `released` counts how often it was let go.
+	done     map[string]bool
+	released map[string]int
 }
 
 func newFakeDriver() *fakeDriver {
 	return &fakeDriver{
-		starts:  map[string]int{},
-		stops:   map[string]time.Duration{},
-		removes: map[string]int{},
-		release: map[string]chan sandbox.Outcome{},
-		trace:   map[string][]byte{},
+		starts:    map[string]int{},
+		stops:     map[string]time.Duration{},
+		removes:   map[string]int{},
+		release:   map[string]chan sandbox.Outcome{},
+		trace:     map[string][]byte{},
+		artifacts: map[string][]byte{},
+		done:      map[string]bool{},
+		released:  map[string]int{},
 	}
 }
 
@@ -91,6 +100,30 @@ func (f *fakeDriver) ReadTrace(_ context.Context, id string) ([]byte, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.trace[id], nil
+}
+
+// ReadArtifacts answers "the workload wrote nothing", which is the ordinary case
+// and the one every contract test wants: artifact collection has its own test.
+func (f *fakeDriver) ReadArtifacts(_ context.Context, id string) ([]byte, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.artifacts[id], nil
+}
+
+// WorkloadDone / ReleaseWorkload: this fake's workloads never wait to be
+// collected, so the collection handshake never triggers and the lifecycle rules
+// under test are the ones a run with no output takes.
+func (f *fakeDriver) WorkloadDone(_ context.Context, id string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.done[id], nil
+}
+
+func (f *fakeDriver) ReleaseWorkload(_ context.Context, id string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.released[id]++
+	return nil
 }
 
 // writeTrace is the workload appending to its own trace file.

@@ -126,6 +126,11 @@ type api struct {
 	// traceSigner mints ingestion tokens, so a trace test can post as the
 	// execution plane would (TRACE-002).
 	traceSigner *trace.Signer
+	// handler is the same route table the server above serves. Kept so a test
+	// that needs the API reachable from *another container* — the real end to
+	// end run, whose sandbox provider pushes trace events back — can serve it on
+	// an address that is not 127.0.0.1.
+	handler http.Handler
 }
 
 func newAPI(t *testing.T, pool *pgxpool.Pool) *api {
@@ -173,7 +178,10 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runSvc := &run.Service{Pool: pool, Queue: jobs}
+	// Store, as cmd/api wires it: the pre-run summary scans the stored package,
+	// and a dispatch mints the short-lived grants a sandbox fetches its inputs
+	// with (SBX-008).
+	runSvc := &run.Service{Pool: pool, Queue: jobs, Store: packages}
 	runs := &run.Handler{Svc: runSvc, Identity: auth.Service}
 
 	lab := &testlab.Handler{Svc: &testlab.Service{Pool: pool, Store: packages}, Identity: auth.Service}
@@ -190,12 +198,16 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 		Identity: auth.Service,
 	}
 
-	srv := httptest.NewServer(apiserver.NewRouter(apiserver.Deps{
+	handler := apiserver.NewRouter(apiserver.Deps{
 		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs,
 		TestLab: lab, Trace: traceHandler,
-	}))
+	})
+	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
-	return &api{Server: srv, auth: auth, packages: packages, runs: runSvc, traceSigner: traceSigner}
+	return &api{
+		Server: srv, auth: auth, packages: packages, runs: runSvc,
+		traceSigner: traceSigner, handler: handler,
+	}
 }
 
 // client is one logged-in browser: its jar carries exactly one user's session.

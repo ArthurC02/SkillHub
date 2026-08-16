@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -39,8 +40,15 @@ var ErrPermissionsNotConfirmed = errors.New(
 // package, so "does this skill carry a script" is answered by scanning the exact
 // bytes that will be executed rather than by a projected flag. Nothing here
 // executes any of it (iron rule 1).
+//
+// The two Presign methods are SBX-008's other half: the short-lived, per-path
+// authorizations a dispatch hands the execution plane. They are here rather than
+// in a second interface because one deployment credential backs both, and a
+// deployment that can read a package can always sign a URL for it.
 type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
+	PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error)
+	PresignPut(ctx context.Context, key string, ttl time.Duration) (string, error)
 }
 
 // Secrets the platform injects into every sandbox (SBX-008, PDM-003). Names only:

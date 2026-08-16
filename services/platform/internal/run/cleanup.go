@@ -110,6 +110,20 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 
 	var failures []string
 	for _, attempt := range attempts {
+		// SEC-005: the model credential is revoked on every terminal outcome,
+		// dispatched or not - a key can be minted and the dispatch then fail, and
+		// that key would otherwise live out its TTL with a budget attached.
+		// Addressed by the attempt's permanent id, so this needs nothing that was
+		// held in memory and is safe to repeat (iron rule 9).
+		//
+		// The object grants have no revocation: a pre-signed URL is valid until it
+		// expires. Their bound is the TTL minted in grantsFor, which is the run's
+		// own hard wall clock plus slack.
+		if s.Gateway != nil {
+			if err := s.Gateway.Revoke(ctx, uuidString(attempt.ID)); err != nil {
+				failures = append(failures, fmt.Sprintf("model gateway key for attempt %d: %v", attempt.AttemptNumber, err))
+			}
+		}
 		if attempt.ProviderRunID == nil {
 			continue // never dispatched: nothing was ever provisioned
 		}

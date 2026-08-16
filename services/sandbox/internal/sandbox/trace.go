@@ -125,6 +125,13 @@ func (m *Manager) startTraceCollector(id string) func() {
 				return
 			case <-ticker.C:
 				m.flushTrace(id, url)
+				// The workload announces it has finished and waits. Everything
+				// that has to come out of the tmpfs comes out now, in this
+				// window, because after the workload's process exits there is
+				// nothing left to read (see DonePath in the driver).
+				if m.collect(id, url) {
+					return
+				}
 			}
 		}
 	}()

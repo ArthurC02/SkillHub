@@ -85,6 +85,11 @@ type Service struct {
 	// plane on (SKILLHUB_TRACE_INGEST_URL). Empty has the same effect as a
 	// disabled signer.
 	TraceIngestBaseURL string
+	// Gateway mints and revokes the per-run model credential (SBX-008, ADR-017).
+	// Nil is a deployment with no model gateway: no grant is minted, the egress
+	// allow list defaultPolicy writes stays empty, and the sandbox gets no route
+	// out. Only the worker sets it - the API never mints a key.
+	Gateway *Gateway
 }
 
 func (s *Service) maxAttempts() int {
@@ -160,20 +165,31 @@ type policySnapshot struct {
 }
 
 // defaultPolicy is the policy a new run gets, and the ONLY place it is written.
-// Egress is default-deny with an empty allow list: the three permitted
-// destinations of PDM-005 5.2 are URL-bearing grants, and minting them is
-// SBX-005/006. An empty list is the safe end of that gap - no egress at all -
-// rather than a placeholder URL that would look like an authorization somebody
-// already granted.
+//
+// Egress is default-deny. The allow list names the model gateway when one is
+// configured (SBX-007: the sandbox is placed on a network where that address,
+// and nothing else, is reachable) and is otherwise empty, which the dev provider
+// serves as `--network none` - no egress at all, strictly stronger. Object
+// storage and trace ingestion are deliberately *not* on it: the execution node
+// moves those bytes on the sandbox's behalf, so the sandbox itself never holds a
+// route to the platform's storage (SBX-008).
+//
+// The URL here is not an authorization - it is the destination the user is shown
+// and agrees to before the run starts (02:TEST-005). The credential for it is
+// the Virtual Key, minted per attempt at dispatch and never part of this policy.
 //
 // Every reader goes through here: Create freezes it onto the run, the scheduler
 // matches providers against it, and the pre-run summary shows it. A second copy
 // would let the screen the user confirms drift away from what the run is
 // actually held to, and the hash would keep saying they agreed (02:TEST-005).
 func defaultPolicy() policySnapshot {
+	allow := []egressAllow{}
+	if url := GatewayURL(); url != "" {
+		allow = append(allow, egressAllow{Purpose: "model_gateway", URL: url})
+	}
 	return policySnapshot{
 		ResourceLimits: DefaultResourceLimits(),
-		Egress:         EgressPolicy{Mode: "default_deny", Allow: []egressAllow{}},
+		Egress:         EgressPolicy{Mode: "default_deny", Allow: allow},
 	}
 }
 

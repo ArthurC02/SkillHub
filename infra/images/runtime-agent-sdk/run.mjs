@@ -5,20 +5,30 @@
 // is the first thing that touches untrusted bytes — and it does so inside the
 // sandbox, which is the whole point (iron rule 1).
 //
-// The four Skill-load conditions are all here, because missing any one of them
-// silently loads no skills at all (PDM-003 spike §10, measured):
+// The Skill-load conditions are all here, because missing any one of them
+// silently loads no skills at all:
 //   1. cwd points at the directory holding .claude/skills/
-//   2. settingSources includes "project" — and excludes "user", so a stray
-//      ~/.claude in the image cannot leak into a run
-//   3. skills are left enabled (the default for what was discovered)
-//   4. the tool list, if given, contains "Skill"
+//   2. settingSources is *omitted*. This is the opposite of what the PDM-003
+//      spike measured on claude-agent-sdk 0.2.137, and it was re-measured on the
+//      0.3.233 the image pins: `settingSources: ["project"]` discovers no
+//      project skill at all there, while omitting the option does. Excluding
+//      "user" was the spike's way of keeping a stray ~/.claude out of a run;
+//      HOME is the run's own per-run tmpfs (/work), so there is no other home to
+//      leak from and nothing is given up by omitting it.
+//   3. skills: "all" — 0.3.x moved skill enablement out of allowedTools, where
+//      passing "Skill" is now deprecated, into this option
+//   4. the tool list still names the tools the workload may use
+//
+// A change to any of these must be re-measured against the pinned SDK, not
+// reasoned about: every one of them fails silently.
 //
 // It is also the Run Trace producer (TRACE-002~004). Events are appended, one
 // JSON object per line, to $SKILLHUB_OUTDIR/trace/events.jsonl. They are not
-// posted anywhere from in here: this container has no network (--network none),
-// which is the point — sandboxd reads the file out and pushes it (TRACE-002).
+// posted anywhere from in here: the only address this container can reach is the
+// model gateway (SBX-007), so sandboxd reads the file out and pushes it. The
+// same asymmetry is why the run's inputs arrive as files rather than as URLs.
 import { execFileSync } from "node:child_process";
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { query } from "@anthropic-ai/claude-agent-sdk";
@@ -26,6 +36,8 @@ import { query } from "@anthropic-ai/claude-agent-sdk";
 const workDir = process.env.SKILLHUB_WORKDIR ?? "/work";
 const outDir = process.env.SKILLHUB_OUTDIR ?? "/out";
 const skillDir = process.env.SKILLHUB_SKILL_DIR ?? join(workDir, ".claude", "skills");
+const inputDir = process.env.SKILLHUB_INPUT_DIR ?? join(workDir, ".skillhub");
+const artifactDir = process.env.SKILLHUB_ARTIFACT_DIR ?? join(outDir, "artifacts");
 const prompt = process.env.SKILLHUB_USER_PROMPT;
 
 // --- trace emission ---------------------------------------------------------
@@ -93,7 +105,28 @@ function finish(status, extra = {}) {
   // The provider reads state from the container, not from this file; the file
   // is for the artifact manifest and the agent's own output.
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ status, ...extra }, null, 2));
+  waitToBeCollected();
   process.exit(status === "succeeded" ? 0 : 1);
+}
+
+// waitToBeCollected is the second half of the collection handshake, and the run
+// is not finished without it: /out is a tmpfs, so the tail of the trace and
+// every artifact vanish the instant this process exits. Announcing completion
+// and waiting lets the execution node take them out first.
+//
+// Bounded, and a timeout is not an error: the node may have no reason to collect
+// (no ingestion URL, no write grant) and a run must not hang because nobody came.
+function waitToBeCollected() {
+  const collected = join(outDir, ".collected");
+  try {
+    writeFileSync(join(outDir, ".workload-done"), "done\n");
+  } catch {
+    return; // nowhere to announce it; nothing will be collected either
+  }
+  const deadline = Date.now() + 60_000;
+  while (!existsSync(collected) && Date.now() < deadline) {
+    execFileSync("/bin/sleep", ["0.2"]);
+  }
 }
 
 // fail records the error in the trace before ending the run, so a failure the
@@ -108,23 +141,63 @@ if (!prompt) {
   fail("execution", "missing_prompt", "SKILLHUB_USER_PROMPT is required");
 }
 
-// Fetch and unpack the skill package. The hash is verified by the control plane
-// before the grant is minted; re-checking it here would need the archive on
-// disk twice, and a sandbox vouching for its own inputs proves nothing anyway.
-const pkg = process.env.SKILLHUB_SKILL_PACKAGE ? JSON.parse(process.env.SKILLHUB_SKILL_PACKAGE) : null;
-if (pkg?.url) {
-  const res = await fetch(pkg.url);
-  if (!res.ok) {
-    fail("provision", "skill_package_fetch_failed", `skill package fetch failed with ${res.status}`);
+// --- inputs -----------------------------------------------------------------
+//
+// This container cannot reach object storage: its only route out is the model
+// gateway (SBX-007). The execution node fetches the run's inputs with the
+// short-lived grants it was dispatched with and writes them in here, then drops
+// the ready marker last. Waiting for that marker is the whole handshake - the
+// container starts before its inputs are in place, and guessing would race.
+const readyPath = join(inputDir, "ready");
+const inputDeadline = Date.now() + 120_000;
+while (!existsSync(readyPath)) {
+  if (Date.now() > inputDeadline) {
+    fail("provision", "inputs_not_delivered", "the run's inputs were never delivered to the sandbox");
   }
-  mkdirSync(skillDir, { recursive: true });
-  const archive = join(workDir, "skill.tar.gz");
-  writeFileSync(archive, Buffer.from(await res.arrayBuffer()));
-  // Refuse absolute paths and ../ entries rather than trusting the archive.
-  execFileSync("tar", ["-xzf", archive, "-C", skillDir, "--no-same-owner", "--no-same-permissions"], {
-    stdio: "inherit",
-  });
+  // Busy-wait on a tmpfs path: there is no event to subscribe to across the
+  // exec boundary, and the wait is normally a few hundred milliseconds.
+  execFileSync("/bin/sleep", ["0.2"]);
 }
+
+// Unpack the skill package, which ingest stored as a zip. The hash is verified
+// by the control plane before the grant is minted; re-checking it here would
+// need the archive on disk twice, and a sandbox vouching for its own inputs
+// proves nothing anyway.
+//
+// This is the first thing in the whole system that opens the package, and it is
+// deliberately the least privileged place there is (iron rule 1). `unzip -j`
+// would flatten the tree the Agent Skills spec depends on, so the tree is kept
+// and unzip's own refusal of absolute paths and `../` entries is what bounds it.
+//
+// It unpacks into <skillDir>/<name>/, not into <skillDir>: the Agent SDK
+// discovers one directory per skill, so a package emptied straight into the
+// skills root would be discovered as no skill at all (PDM-003 spike §10). The
+// name comes from the package's own SKILL.md frontmatter, because the frozen
+// RunRequest does not carry one — and reading it here is exactly where reading
+// untrusted content belongs.
+const skillArchive = join(inputDir, "skill.zip");
+if (existsSync(skillArchive)) {
+  const staging = join(inputDir, "package");
+  mkdirSync(staging, { recursive: true });
+  execFileSync("unzip", ["-q", "-o", skillArchive, "-d", staging], { stdio: "inherit" });
+
+  let name = "skill";
+  try {
+    const frontmatter = readFileSync(join(staging, "SKILL.md"), "utf8").split(/^---\s*$/m)[1] ?? "";
+    const declared = /^name:\s*(.+)$/m.exec(frontmatter)?.[1]?.trim();
+    // Only a spec-shaped name is used as a path segment; anything else keeps the
+    // fallback rather than becoming a directory name of the package's choosing.
+    if (declared && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(declared)) name = declared;
+  } catch {
+    // No readable SKILL.md: the skill will simply not be discovered, and the
+    // trace will show no activation, which is the honest outcome.
+  }
+  const target = join(skillDir, name);
+  mkdirSync(skillDir, { recursive: true });
+  renameSync(staging, target);
+}
+// The agent writes here and the node collects it after the turn (SBX-008).
+mkdirSync(artifactDir, { recursive: true });
 
 // --- agent turn -------------------------------------------------------------
 
@@ -207,6 +280,49 @@ function closeToolUse(block) {
   }, failed ? "error" : "ok");
 }
 
+// gatewaySpend asks the model gateway what this run's own Virtual Key has spent
+// (TRACE-004, ADR-017). The key can read itself and nothing else, so this needs
+// no admin credential and discloses no other run.
+//
+// The gateway flushes spend asynchronously, so the first non-zero reading is an
+// undercount: the last calls of the turn are still in flight when it is taken.
+// This reads until the figure stops moving, then reports that. Any failure
+// answers null, which the schema and the UI both read as "unreported" - a run
+// must not fail because its accounting was slow.
+//
+// It is still a reading, not a ledger: a flush that lands after the last poll is
+// missed, and the gateway's own per-key spend remains the number to reconcile
+// against (ADR-017 - the gateway is a metering source, not the fact).
+async function gatewaySpend() {
+  const base = process.env.ANTHROPIC_BASE_URL;
+  const key = process.env.ANTHROPIC_AUTH_TOKEN;
+  if (!base || !key) return null;
+  let last = null;
+  // The turn's last call is charged after the result message arrives, so a
+  // reading taken immediately is stable and wrong. Measured against the gateway's
+  // own spend log: without this pause the figure was short by exactly the final
+  // call, every time.
+  await new Promise((resolve) => setTimeout(resolve, 2500));
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    let spend = null;
+    try {
+      const res = await fetch(`${base.replace(/\/$/, "")}/key/info`, {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      if (res.ok) {
+        const body = await res.json();
+        if (typeof body?.info?.spend === "number") spend = body.info.spend;
+      }
+    } catch {
+      // Unreachable gateway: nothing to report, and nothing to fail over.
+    }
+    if (spend !== null && spend > 0 && spend === last) return spend;
+    if (spend !== null) last = spend;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
+  return last !== null && last > 0 ? last : null;
+}
+
 const messages = [];
 let output = "";
 const startedAt = Date.now();
@@ -215,7 +331,8 @@ try {
     prompt,
     options: {
       cwd: workDir,
-      settingSources: ["project"],
+      // settingSources deliberately omitted — see the header.
+      skills: "all",
       allowedTools: ["Skill", "Read", "Write", "Edit", "Glob", "Grep", "Bash"],
       model: process.env.SKILLHUB_MODEL,
       permissionMode: "bypassPermissions",
@@ -240,14 +357,15 @@ try {
       emit("agent_output", { kind: "final", text: text.value, truncated: text.truncated },
         msg.is_error ? "error" : "ok");
 
-      // TRACE-004: tokens and cost. Both come from whatever the gateway
-      // reported back through the SDK (iron rule 8), never from a local
-      // estimate. `cost_usd: null` means the gateway did not report one and the
-      // UI must render that as unreported, not as zero (contract README §5) -
-      // which is the current state, because the model gateway grant is not
-      // minted yet (SBX-008) and there is nothing to report.
+      // TRACE-004: tokens and cost. Tokens come from the SDK's own accounting;
+      // cost is asked of the gateway, which is the only party that knows what
+      // this run was actually charged (iron rule 8). The SDK's total_cost_usd is
+      // deliberately not used: it is computed from a local price table for a
+      // model name the gateway resolves, so it would be an estimate wearing the
+      // gateway's name. `cost_usd: null` means the gateway did not answer, and
+      // the UI must render that as unreported rather than as zero.
       const usage = msg.usage ?? {};
-      const cost = typeof msg.total_cost_usd === "number" ? msg.total_cost_usd : null;
+      const cost = await gatewaySpend();
       emit("usage", {
         scope: "run_total",
         model: process.env.SKILLHUB_MODEL ?? "",

@@ -38,7 +38,10 @@ func withProvider(t *testing.T, a *api, pool *pgxpool.Pool, plan providertest.Pl
 	// too (RUN-005); it never dispatches.
 	a.runs.Providers = registry
 
-	svc := &run.Service{Pool: pool, Providers: registry, PollInterval: 20 * time.Millisecond}
+	// Store, as cmd/worker wires it: a dispatch mints the object grants a sandbox
+	// fetches its inputs with, and a worker without one refuses to dispatch at all
+	// (SBX-008 is fail-closed).
+	svc := &run.Service{Pool: pool, Providers: registry, Store: a.packages, PollInterval: 20 * time.Millisecond}
 	startWorkerWith(t, svc)
 	return fake, svc
 }
@@ -290,7 +293,7 @@ func TestSupervisorRecoversARunThatHasNoJob(t *testing.T) {
 
 	// A service with no queue creates the run and enqueues nothing, which is
 	// exactly the state a crash between the two would leave behind.
-	orphanedSvc := &run.Service{Pool: pool, Providers: run.NewRegistry(fake.Provider())}
+	orphanedSvc := &run.Service{Pool: pool, Providers: run.NewRegistry(fake.Provider()), Store: a.packages}
 	ws, actor := mustUUID(t, f.workspaceID), mustUUID(t, f.userID)
 	skill, version, testCase := mustUUID(t, f.skillID), mustUUID(t, f.versionID), mustUUID(t, f.testCaseID)
 	// Gate B applies to every caller of Create, this one included: confirm through

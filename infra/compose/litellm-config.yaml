@@ -1,0 +1,47 @@
+# LiteLLM Proxy configuration — the platform's only model exit (ADR-017).
+#
+# Model tiers are PDM-003 v5. A Run's default is the mini tier: the spike
+# measured it as sufficient for skill try-outs, and it is what the per-Run budget
+# in SBX-008 is priced against. The flagship and judge tiers are named here so
+# the platform's own LLM workloads (ADR-013 enrichment, EVAL LLM Judge) resolve
+# through the same gateway instead of reaching a provider directly.
+#
+# The provider key is read from this process's environment and never leaves it:
+# every caller — Python service, Go control plane, sandbox — holds a Virtual Key
+# instead (iron rule 8).
+model_list:
+  - model_name: gpt-5.4-mini #試跑預設 (PDM-003 v5)
+    litellm_params:
+      model: openai/gpt-5.4-mini
+      api_key: os.environ/OPENAI_API_KEY
+      # Measured LiteLLM gap, kept as documentation and as a workaround: neither
+      # drop_params nor additional_drop_params is applied on the /v1/messages
+      # (Anthropic-compatible) route, so an Anthropic `thinking` block reaches
+      # the OpenAI backend as `reasoning_effort`. The Agent SDK speaks that
+      # route, so the drop has to be declared per model.
+      additional_drop_params: ["reasoning_effort", "thinking"]
+  - model_name: gpt-5.6-sol # flagship
+    litellm_params:
+      model: openai/gpt-5.6-sol
+      api_key: os.environ/OPENAI_API_KEY
+      additional_drop_params: ["reasoning_effort", "thinking"]
+  - model_name: gpt-5.6-terra # judge tier, separated from the generating model
+    litellm_params:
+      model: openai/gpt-5.6-terra
+      api_key: os.environ/OPENAI_API_KEY
+      additional_drop_params: ["reasoning_effort", "thinking"]
+  - model_name: text-embedding-3-small
+    litellm_params:
+      model: openai/text-embedding-3-small
+      api_key: os.environ/OPENAI_API_KEY
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+  # Flush spend to the database every second. A per-Run budget that is only
+  # written on the default batched interval is a budget that cannot stop a run,
+  # and TRACE-004's cost is read back from this same record.
+  proxy_batch_write_at: 1
+
+litellm_settings:
+  drop_params: true

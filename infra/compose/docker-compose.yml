@@ -22,14 +22,20 @@ services:
 
   # S3-compatible object storage for local dev (ADR-018: production uses a
   # managed S3 service; SeaweedFS is the licensed-clean self-host option).
-  # Anonymous access — local dev only, never a production shape.
+  #
+  # Credentialed, not anonymous: SBX-008 moves every byte between the planes
+  # through a pre-signed URL, and pre-signing needs a key to sign with — an
+  # anonymous bucket cannot produce one, and would make the grant meaningless
+  # even if it could. An existing stack must recreate this container to pick the
+  # identity file up.
   seaweedfs:
     image: chrislusf/seaweedfs:3.80
-    command: server -s3 -dir=/data
+    command: server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
     ports:
       - "8333:8333"
     volumes:
       - seaweedfs-data:/data
+      - ./seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
     # Probe 127.0.0.1, not `localhost`: SeaweedFS listens on IPv4 only, while
     # `localhost` resolves to ::1 first inside the container, so the old probe
     # got ECONNREFUSED forever and the service never went healthy. `/status` is
@@ -41,9 +47,50 @@ services:
       timeout: 5s
       retries: 10
 
+  # The only model exit (ADR-017, iron rule 8). Provider API keys exist here and
+  # nowhere else; every other component holds a Virtual Key minted per Run.
+  #
+  # It sits on two networks on purpose. `default` is how the control plane
+  # reaches the management API and how the gateway reaches Postgres and the
+  # provider. `egress` is internal (no route off the host) and is the only
+  # network a sandbox is ever placed on, which makes the gateway the single
+  # reachable address from inside a sandbox — SBX-007's allow list of one, in the
+  # shape a developer machine can actually enforce. Production replaces this with
+  # the egress proxy (domain allow list, DNS pinning, destination logging).
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      # Both from the repo-root .env, which is gitignored. OPENAI_API_KEY must
+      # not appear in any other service's environment.
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY in .env}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in .env}
+      # Its own database on the shared instance (ADR-018: one Postgres, several
+      # logical databases). The gateway's key store must not share a schema with
+      # the platform's — a migration on either side would then touch both.
+      DATABASE_URL: postgresql://skillhub:skillhub@postgres:5432/litellm
+      STORE_MODEL_IN_DB: "False"
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml:ro
+    ports:
+      # Localhost only: the management API mints spending credentials.
+      - "127.0.0.1:4000:4000"
+    networks:
+      - default
+      - egress
+
   # TODO(CORE-001): add api / worker / llm / web services once infra/images/
   # holds their Dockerfiles. Build contexts are the repo root, since the Go
   # build needs services/platform and the generated packages/ output.
+
+networks:
+  default:
+  # `internal: true` is the enforcement: containers on this network have no
+  # route off the host, so a sandbox placed here can reach the gateway and
+  # nothing beyond it. Object storage is deliberately absent — the execution
+  # node moves those bytes on the sandbox's behalf (SBX-008).
+  egress:
+    internal: true
 
 volumes:
   postgres-data:

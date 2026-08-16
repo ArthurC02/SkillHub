@@ -16,6 +16,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/outbox"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
+	"github.com/ArthurC02/skillhub/services/platform/internal/platform/objstore"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
 	"github.com/ArthurC02/skillhub/services/platform/internal/trace"
@@ -59,8 +60,33 @@ func main() {
 		slog.Warn("trace ingestion not configured; sandboxes will be dispatched with no trace destination",
 			"has_secret", traceSigner.Enabled(), "has_url", traceBase != "")
 	}
+	// SBX-008: the worker is what builds a RunRequest, so it is the process that
+	// mints the short-lived object authorizations a sandbox is dispatched with.
+	store, err := objstore.New(
+		addrFromEnv("OBJSTORE_ENDPOINT", "localhost:8333"),
+		os.Getenv("OBJSTORE_ACCESS_KEY"), // empty = anonymous, local dev only
+		os.Getenv("OBJSTORE_SECRET_KEY"),
+		addrFromEnv("OBJSTORE_BUCKET", "skillhub"),
+		os.Getenv("OBJSTORE_SSL") == "1",
+	)
+	if err != nil {
+		slog.Error("object store", "error", err)
+		os.Exit(1)
+	}
+
+	// ADR-017 / iron rule 8: the only model exit. Without it no Virtual Key is
+	// minted, the egress allow list stays empty and sandboxes run with no route
+	// out - which is a working deployment, just one that cannot call a model.
+	gateway := run.GatewayFromEnv()
+	if gateway == nil {
+		slog.Warn("no model gateway configured; runs will be dispatched with no model credential")
+	} else {
+		// The address, never the key (iron rule 11).
+		slog.Info("model gateway configured", "sandbox_base_url", gateway.SandboxBaseURL, "model", gateway.Model)
+	}
+
 	runs := &run.Service{
-		Pool: pool, Providers: providers,
+		Pool: pool, Providers: providers, Store: store, Gateway: gateway,
 		TraceSigner: traceSigner, TraceIngestBaseURL: traceBase,
 	}
 
@@ -117,4 +143,11 @@ func main() {
 		slog.Error("queue stop", "error", err)
 	}
 	slog.Info("worker stopped")
+}
+
+func addrFromEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }

@@ -14,7 +14,6 @@ package dockerdrv
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -72,10 +71,19 @@ type Config struct {
 	// Runtime is the container runtime name. Empty means the host default,
 	// which is what a developer machine has; production sets "runsc" (ADR-015).
 	Runtime string
-	// Network is the network the sandbox joins. "none" is the dev baseline: no
-	// egress at all is strictly stronger than default-deny with an allow list.
-	// Production names the egress proxy's network here instead, and the proxy
-	// is what enforces the allow list (SBX-007).
+	// Network is the egress network a sandbox joins *when its RunRequest allows
+	// a destination* (SBX-007). Empty or "none" means this node has no egress
+	// route at all and every sandbox runs on `--network none`, which is strictly
+	// stronger than default-deny with an empty allow list.
+	//
+	// In development the network is a Docker network with `internal: true` on
+	// which the LiteLLM gateway is the only reachable address - an allow list of
+	// one, enforced by what is on the wire rather than by a proxy. Production
+	// names the egress proxy's network here instead, and the proxy is what
+	// enforces the destination list, DNS pinning and destination logging.
+	//
+	// Either way a run whose egress allows nothing gets no network, and object
+	// storage is never on this wire: the node moves those bytes itself.
 	Network string
 	// UID/GID the workload runs as. Never 0 (C-02).
 	UID, GID int
@@ -134,6 +142,10 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 		return fmt.Sprintf("rw,nosuid,nodev,size=%d,uid=%d,gid=%d,mode=0700%s", size, d.cfg.UID, d.cfg.GID, extra)
 	}
 
+	// SBX-007. A sandbox joins the egress network only when its own policy names
+	// a destination; anything else runs with no network at all.
+	network := d.networkFor(req)
+
 	cfg := &container.Config{
 		Image:      d.cfg.Image,
 		User:       fmt.Sprintf("%d:%d", d.cfg.UID, d.cfg.GID), // C-02: never root
@@ -145,7 +157,7 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 		// play with on the way back out (ADR-009).
 		Tty:             false,
 		OpenStdin:       false,
-		NetworkDisabled: d.cfg.Network == "none",
+		NetworkDisabled: network == "none",
 	}
 	if cmd, ok := devCmd(req); ok && d.cfg.AllowDevCmd {
 		cfg.Cmd = cmd
@@ -172,7 +184,7 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 		// C-05 / C-07: Binds and Mounts stay empty. No docker socket, no host
 		// path, no node credentials. The only bytes that reach a sandbox come
 		// through the short-lived grants in the RunRequest (SBX-008).
-		NetworkMode: container.NetworkMode(d.cfg.Network),
+		NetworkMode: container.NetworkMode(network),
 		Runtime:     d.cfg.Runtime, // "runsc" in production (ADR-015)
 		AutoRemove:  false,         // teardown is DELETE, and it must be explicit
 		Resources: container.Resources{
@@ -206,7 +218,31 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 		// cannot reconcile.
 		return fmt.Errorf("start sandbox: %w", err)
 	}
-	return nil
+	// SBX-008: the inputs go in after the start, and the workload waits for the
+	// ready marker before it touches any of them. The same failure leaves the
+	// container in place for the same reason.
+	return d.pushInputs(ctx, id, req)
+}
+
+// networkFor decides what one sandbox is connected to (SBX-007).
+//
+// The read is one way only, and it is the same ordering the contract states for
+// `none` versus `default_deny`: a run that is allowed to reach nothing gets no
+// network, whatever this node could have offered, and a run that names a
+// destination gets the egress network *only if this node has one*. A node
+// without an egress network never substitutes a weaker isolation for a stronger
+// one - it declares only `none` in its capability and the scheduler does not
+// send it work that needs a route (RUN-005).
+func (d *Driver) networkFor(req sandbox.RunRequest) string {
+	if d.cfg.Network == "" || d.cfg.Network == "none" {
+		return "none"
+	}
+	for _, allow := range req.Egress.Allow {
+		if allow.Purpose == "model_gateway" {
+			return d.cfg.Network
+		}
+	}
+	return "none"
 }
 
 func (d *Driver) Wait(ctx context.Context, id string) (sandbox.Outcome, error) {
@@ -370,10 +406,11 @@ func (d *Driver) labels(req sandbox.RunRequest, id string) map[string]string {
 	return l
 }
 
-// env hands the sandbox what it needs to fetch its own inputs: paths, URLs and
-// the per-run gateway credential. This provider passes them through and never
-// opens what is behind them — the bytes are untrusted and reading them here
-// would put untrusted content in the provider process (iron rule 1).
+// env hands the sandbox what it needs: paths, and the one credential it is meant
+// to use. Object grant URLs are deliberately *not* here any more — the node
+// fetches those itself and writes the bytes in (see transfer.go), so the only
+// secret inside a sandbox is the credential for the only destination it can
+// reach.
 //
 // The Virtual Key travels as ANTHROPIC_AUTH_TOKEN because the Claude Agent SDK
 // reads that natively (PDM-003). It is short-lived, scoped to this run and
@@ -388,6 +425,9 @@ func env(req sandbox.RunRequest) []string {
 		"SKILLHUB_WORKDIR=" + WorkDir,
 		"SKILLHUB_OUTDIR=" + OutDir,
 		"SKILLHUB_SKILL_DIR=" + WorkDir + "/.claude/skills",
+		"SKILLHUB_INPUT_DIR=" + InputDir,
+		"SKILLHUB_DATASET_DIR=" + DatasetDir,
+		"SKILLHUB_ARTIFACT_DIR=" + ArtifactDir,
 		"SKILLHUB_USER_PROMPT=" + req.TestCase.UserPrompt,
 		"SKILLHUB_SKILL_CONTENT_HASH=" + req.SkillVersion.ContentHash,
 		// The harness stamps this onto skill_activation events: the sandbox can
@@ -411,58 +451,7 @@ func env(req sandbox.RunRequest) []string {
 			e = append(e, "ANTHROPIC_AUTH_TOKEN="+g.VirtualKey)
 		}
 	}
-	for _, g := range req.ObjectGrants {
-		key := ""
-		switch g.Purpose {
-		case "skill_package":
-			key = "SKILLHUB_SKILL_PACKAGE"
-		case "artifact_upload":
-			key = "SKILLHUB_ARTIFACT_UPLOAD"
-		}
-		if key != "" {
-			e = append(e, key+"="+string(mustJSON(g)))
-		}
-	}
-	if datasets := datasetGrants(req); datasets != "" {
-		e = append(e, "SKILLHUB_DATASETS="+datasets)
-	}
 	return e
-}
-
-// datasetGrants pairs each dataset reference with the grant that can fetch it,
-// so the sandbox does not have to join two lists by object key.
-func datasetGrants(req sandbox.RunRequest) string {
-	if len(req.TestCase.DatasetRefs) == 0 {
-		return ""
-	}
-	urls := map[string]string{}
-	for _, g := range req.ObjectGrants {
-		if g.Purpose == "dataset" {
-			urls[g.ObjectKey] = g.URL
-		}
-	}
-	type entry struct {
-		FileName    string `json:"file_name"`
-		ContentHash string `json:"content_hash"`
-		ObjectKey   string `json:"object_key,omitempty"`
-		URL         string `json:"url,omitempty"`
-	}
-	out := make([]entry, 0, len(req.TestCase.DatasetRefs))
-	for _, d := range req.TestCase.DatasetRefs {
-		out = append(out, entry{
-			FileName: d.FileName, ContentHash: d.ContentHash,
-			ObjectKey: d.ObjectKey, URL: urls[d.ObjectKey],
-		})
-	}
-	return string(mustJSON(out))
-}
-
-func mustJSON(v any) []byte {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return []byte("null")
-	}
-	return b
 }
 
 // tail reads back what the workload wrote. It is bounded and demultiplexed;

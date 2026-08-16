@@ -1,0 +1,23 @@
+{
+  "_comment": [
+    "Local dev S3 identities for SeaweedFS. Anonymous access is deliberately",
+    "gone: SBX-008 hands the execution plane pre-signed URLs, and a bucket that",
+    "answers unauthenticated requests makes a pre-signed URL mean nothing - a",
+    "sandbox could then read every workspace's datasets instead of the one file",
+    "it was granted. These credentials are local placeholders in the same class",
+    "as the committed postgres skillhub/skillhub pair; production uses a managed",
+    "S3 service with real ones (ADR-018)."
+  ],
+  "identities": [
+    {
+      "name": "skillhub",
+      "credentials": [
+        {
+          "accessKey": "skillhubdev",
+          "secretKey": "skillhubdevsecret"
+        }
+      ],
+      "actions": ["Read", "Write", "List", "Tagging", "Admin"]
+    }
+  ]
+}
