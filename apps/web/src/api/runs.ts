@@ -32,3 +32,74 @@ export function useRun(runId: string) {
     retry: false,
   });
 }
+
+/**
+ * GET /runs — the workspace's run history (WS-004).
+ *
+ * A narrower row than `Run` by contract: what happened, to which skill, when.
+ * `status` carries the same warning it does everywhere else — `succeeded` says
+ * the workload finished, not that the task was done (ADR-025) — so any surface
+ * rendering it words it as execution.
+ */
+export type RunListItem = {
+  run_id: string;
+  status: string;
+  status_reason?: string;
+  skill_id: string;
+  /** Joined server-side: a history page is the one place N runs render at once. */
+  skill_name: string;
+  skill_version_id: string;
+  /** The editable draft a re-run would start from. Absent when it no longer resolves. */
+  test_case_id?: string;
+  provider: string;
+  failure_class?: string;
+  cleanup_status: "pending" | "cleaning" | "cleaned" | "failed";
+  created_at: string;
+  started_at?: string;
+  finished_at?: string;
+};
+
+export function useRuns() {
+  return useQuery({
+    queryKey: ["runs"],
+    queryFn: () => apiFetch<{ runs: RunListItem[] }>("/runs"),
+    retry: false,
+  });
+}
+
+/**
+ * GET /runs/{id}/artifacts — what a run produced, as a manifest (02:SEC-006).
+ *
+ * File names, sizes and hashes; never the bytes. The archive is a sandbox's
+ * output and the control plane does not open it (iron rule 1), so there is no
+ * link to serve and this list does not pretend there is one.
+ */
+export type RunArtifact = {
+  artifact_id: string;
+  file_name: string;
+  content_type: string;
+  size_bytes: number;
+  content_hash: string;
+  created_at: string;
+  expires_at?: string;
+  /**
+   * The stored bytes are gone while the row remains — retention expiry, or a
+   * reconciler finding them missing. Distinct from the owner deleting it, which
+   * takes the row out of this list entirely.
+   */
+  purged: boolean;
+};
+
+export function useRunArtifacts(runId: string) {
+  return useQuery({
+    queryKey: ["run", runId, "artifacts"],
+    queryFn: () => apiFetch<{ artifacts: RunArtifact[] }>(`/runs/${runId}/artifacts`),
+    enabled: runId.length > 0,
+    retry: false,
+  });
+}
+
+/** Idempotent by contract: 204 for an id that is not there, which is not a failure. */
+export function deleteRunArtifact(runId: string, artifactId: string) {
+  return apiFetch<void>(`/runs/${runId}/artifacts/${artifactId}`, { method: "DELETE" });
+}

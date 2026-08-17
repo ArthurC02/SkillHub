@@ -43,6 +43,16 @@ function stubTrace(general: TraceSummary, advanced: TraceAdvanced) {
     const url = String(input);
     // This run was never evaluated: the server answers 404, which the page
     // renders as 未評估 rather than as a pass (ADR-025).
+    // This run produced no files. The artifacts section is not what these two
+    // tests are about, but it is on the page, so the stub answers it.
+    if (url.includes("/artifacts")) {
+      return Promise.resolve(
+        new Response(JSON.stringify({ artifacts: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
     if (url.includes("/evaluation") || url.includes("/suggestions")) {
       return Promise.resolve(
         new Response(JSON.stringify({ error: "not found" }), {

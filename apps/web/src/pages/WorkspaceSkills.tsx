@@ -9,14 +9,10 @@ import { useOwnSkills } from "../api/testcases";
  * the 尺-1 shape 04 乙-7 rules on: the criterion's subject is 使用者可查看, so an
  * endpoint without a surface has not met it.
  *
- * What this page deliberately does NOT invent (m4/audit §2.4):
- *
- * - **Run 歷史** has no list endpoint at all — GET /runs/{id} exists, a
- *   workspace-level list does not. Saying so is the honest answer; a page that
- *   quietly omitted it would read as "you have no runs".
- * - **版本列表** likewise: GET /skills answers one row per skill, and the
- *   version history of one skill is reachable only through its detail page and
- *   the diff route. Neither is fabricated here.
+ * What this page deliberately does NOT invent: **版本列表**. GET /skills answers
+ * one row per skill, and the version history of one skill is reachable only
+ * through its detail page and the diff route — so this page links there rather
+ * than showing a version count nobody computed.
  */
 export function WorkspaceSkills() {
   const skills = useOwnSkills();
@@ -25,8 +21,8 @@ export function WorkspaceSkills() {
     <section className="page">
       <h1>我的 Skill</h1>
       <p className="note">
-        這個工作區裡的 Skill：Fork 進來的、自己匯入的都在這裡，新的在上面。
-        公開目錄裡的 Skill 不會出現在這裡，除非你 Fork 過它。
+        這個工作區裡的 Skill：Fork 進來的、自己匯入的都在這裡，新的在上面。 公開目錄裡的 Skill
+        不會出現在這裡，除非你 Fork 過它。
       </p>
 
       {skills.isPending && <p>載入中…</p>}
@@ -80,10 +76,7 @@ export function WorkspaceSkills() {
           <Link to="/workspace/downloads">下載紀錄</Link>：打包過的套件，含已到期的。
         </li>
         <li>
-          <strong>Run 歷史</strong>
-          ：還沒有。平台目前只能用網址開啟單一 Run（<code>/runs/&lt;run_id&gt;</code>
-          ），沒有列出整個工作區 Run 的畫面，也還沒有那個 API。 這裡寫出來，是因為「沒有這個功能」與
-          「你沒有跑過任何 Run」是兩個不同的答案。
+          <Link to="/workspace/runs">Run 歷史</Link>：這個工作區跑過的 Run，含執行狀態與清理狀態。
         </li>
       </ul>
     </section>

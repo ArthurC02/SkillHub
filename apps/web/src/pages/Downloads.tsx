@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import {
   deleteDownload,
   downloadHref,
+  useDownloadRecords,
   useDownloads,
   type DownloadArtifact,
 } from "../api/packaging";
@@ -58,6 +59,7 @@ export function Downloads() {
             {downloads.data.downloads.map((artifact) => (
               <li key={artifact.artifact_id} className="download-item">
                 <DownloadArtifactFacts artifact={artifact} />
+                <DownloadHistory artifact={artifact} />
                 <DownloadActions
                   artifact={artifact}
                   confirming={confirming === artifact.artifact_id}
@@ -74,6 +76,54 @@ export function Downloads() {
           </ul>
         ))}
     </section>
+  );
+}
+
+/**
+ * WS-004's own words are 「誰、何時、哪一筆 artifact、哪一個 profile」. The facts
+ * above answer the last two plus a count; this answers the first two, one row per
+ * download, which is what a count cannot do.
+ *
+ * Fetched only when the disclosure is opened: a history page holds every package
+ * this workspace ever built, and one request per row on load would make the
+ * cheapest question on the page the most expensive read in the API.
+ *
+ * A count of zero is not the same as a list that failed to load, and neither is
+ * rendered as the other.
+ */
+function DownloadHistory({ artifact }: { artifact: DownloadArtifact }) {
+  const [open, setOpen] = useState(false);
+  // Opened AND worth asking: the artifact already carries the count, so a zero
+  // needs no round trip to answer with.
+  const records = useDownloadRecords(artifact.artifact_id, open && artifact.download_count > 0);
+
+  return (
+    <details onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary>誰下載過、什麼時候（{artifact.download_count}）</summary>
+      {artifact.download_count === 0 ? (
+        <p className="note">還沒有人下載過這個檔案。建立一個套件不等於取走它。</p>
+      ) : (
+        <>
+          {/* `isFetching`, not `isPending`: a disabled query is "pending" forever,
+              so a closed disclosure would claim to be loading something it has
+              not asked for. */}
+          {records.isFetching && <p className="note">載入下載紀錄中…</p>}
+          {records.error && <p role="alert">無法讀取逐筆下載紀錄：{records.error.message}</p>}
+          {records.data && (
+            <ul className="note">
+              {records.data.records.map((r) => (
+                <li key={`${r.downloaded_at}-${r.actor}`}>
+                  {r.downloaded_at}｜{r.actor}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="note">
+            這是給你自己看的下載紀錄，與稽核事件是兩份不同的紀錄——保存期限與可見範圍都不一樣。
+          </p>
+        </>
+      )}
+    </details>
   );
 }
 

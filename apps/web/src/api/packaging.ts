@@ -207,6 +207,33 @@ export function useDownloads() {
   });
 }
 
+/**
+ * GET /downloads/{artifactId}/records — 「誰、何時」, one row per download
+ * (WS-004). The list above answers 「哪一筆 artifact、哪一個 profile」 plus a
+ * count, and a count cannot answer this.
+ *
+ * `actor` is a display name and not a user id: on a personal workspace it is
+ * always the owner, and an id would be an identifier the reader cannot resolve.
+ * It reads 「deleted user」 when the account was purged — the row survives
+ * de-identified, because 「somebody, at this time」 is still true.
+ *
+ * Not the audit trail: the same download writes an audit event too, and the two
+ * differ in retention and visibility (03:CORE-008 forbids merging them).
+ */
+export interface DownloadRecord {
+  downloaded_at: string;
+  actor: string;
+}
+
+export function useDownloadRecords(artifactId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["downloads", artifactId, "records"],
+    queryFn: () => apiFetch<{ records: DownloadRecord[] }>(`/downloads/${artifactId}/records`),
+    enabled,
+    retry: false,
+  });
+}
+
 /** Idempotent by contract: 204 for an id that is not there, which is not a failure. */
 export function deleteDownload(artifactId: string) {
   return apiFetch<void>(`/downloads/${artifactId}`, { method: "DELETE" });

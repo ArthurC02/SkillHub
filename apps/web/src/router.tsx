@@ -18,6 +18,7 @@ import { RunTrace } from "./pages/RunTrace";
 import { SkillDetail } from "./pages/SkillDetail";
 import { SkillFiles } from "./pages/SkillFiles";
 import { TestCaseDetail, TestCaseList } from "./pages/TestCases";
+import { WorkspaceRuns } from "./pages/WorkspaceRuns";
 import { WorkspaceSkills } from "./pages/WorkspaceSkills";
 import type { AgentRuntime } from "./api/types";
 
@@ -40,8 +41,8 @@ function RootLayout() {
         <Link to="/" className="app-title">
           Skill Hub
         </Link>{" "}
-        <Link to="/workspace/skills">我的 Skill</Link> <Link to="/lab/test-cases">Test Case</Link>{" "}
-        <Link to="/workspace/downloads">下載紀錄</Link>
+        <Link to="/workspace/skills">我的 Skill</Link> <Link to="/workspace/runs">Run 歷史</Link>{" "}
+        <Link to="/lab/test-cases">Test Case</Link> <Link to="/workspace/downloads">下載紀錄</Link>
       </header>
       <main>
         <Outlet />
@@ -147,6 +148,13 @@ const workspaceSkillsRoute = createRoute({
   component: WorkspaceSkills,
 });
 
+/** 02:WS-002 第 1 條「Run 歷史」/ WS-004, served by GET /runs. */
+const workspaceRunsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workspace/runs",
+  component: WorkspaceRuns,
+});
+
 // DISC-009: the selection lives in the URL so a comparison is linkable and
 // survives a reload. Anything past MAX_COMPARE ids is trimmed by the page.
 const compareRoute = createRoute({
@@ -244,6 +252,7 @@ const routeTree = rootRoute.addChildren([
   packagingRoute,
   downloadsRoute,
   workspaceSkillsRoute,
+  workspaceRunsRoute,
   runPreflightRoute,
   datasetUploadRoute,
   testCaseListRoute,

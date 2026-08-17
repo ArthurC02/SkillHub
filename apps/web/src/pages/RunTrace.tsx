@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
+import { deleteRunArtifact, useRunArtifacts, type RunArtifact } from "../api/runs";
 import { useTrace } from "../api/trace";
 import type { TraceAdvanced, TraceEvent, TraceSummary } from "../api/trace";
 import { EvaluationPanel, RUN_STATUS_LABEL } from "./RunEvaluation";
@@ -55,7 +57,129 @@ export function RunTrace() {
         </button>
       </div>
       {mode === "general" ? <GeneralMode runId={runId} /> : <AdvancedMode runId={runId} />}
+
+      <RunArtifacts runId={runId} />
     </section>
+  );
+}
+
+/**
+ * 02:WS-002 第 3 條 and 02:SEC-006 第 1 條 — what this run produced, and the only
+ * way to delete one of them short of deleting the whole account.
+ *
+ * Names, sizes and hashes; **no link to the bytes**. The archive is a sandbox's
+ * output, the control plane does not open it (iron rule 1), and there is no
+ * endpoint that serves it — offering a link would be inventing one.
+ *
+ * Delete states its scope before it runs and is idempotent by contract, the same
+ * two-step the download history uses. The scope sentence differs though, and the
+ * difference is the point: an evaluation that already cited this file keeps its
+ * citation, and that citation will read 「證據已不存在」 rather than silently
+ * losing its evidence.
+ */
+function RunArtifacts({ runId }: { runId: string }) {
+  const artifacts = useRunArtifacts(runId);
+  const client = useQueryClient();
+  const [confirming, setConfirming] = useState("");
+  const [message, setMessage] = useState("");
+
+  const remove = useMutation({
+    mutationFn: (artifactId: string) => deleteRunArtifact(runId, artifactId),
+    onSuccess: async () => {
+      setConfirming("");
+      setMessage("已刪除。檔案不再存在，引用過它的評估會顯示證據已不存在。");
+      await client.invalidateQueries({ queryKey: ["run", runId, "artifacts"] });
+    },
+    onError: (err) => setMessage(err instanceof Error ? err.message : "刪除失敗。"),
+  });
+
+  return (
+    <>
+      <h2>這次 Run 的產出</h2>
+      {artifacts.isPending && <p>載入產出清單中…</p>}
+      {artifacts.error && <p role="alert">無法讀取產出清單：{artifacts.error.message}</p>}
+      {message && <p role="status">{message}</p>}
+
+      {artifacts.data &&
+        (artifacts.data.artifacts.length === 0 ? (
+          <p>這次 Run 沒有留下任何檔案產出。</p>
+        ) : (
+          <ul className="download-list">
+            {artifacts.data.artifacts.map((artifact) => (
+              <li key={artifact.artifact_id} className="download-item">
+                <RunArtifactFacts artifact={artifact} />
+                {confirming === artifact.artifact_id ? (
+                  <p>
+                    <button
+                      type="button"
+                      autoFocus
+                      aria-describedby={`run-artifact-scope-${artifact.artifact_id}`}
+                      disabled={remove.isPending}
+                      onClick={() => remove.mutate(artifact.artifact_id)}
+                    >
+                      確認刪除
+                    </button>{" "}
+                    <button
+                      type="button"
+                      disabled={remove.isPending}
+                      onClick={() => setConfirming("")}
+                    >
+                      取消
+                    </button>
+                    <span className="note" id={`run-artifact-scope-${artifact.artifact_id}`}>
+                      刪除的是這個檔案本身，這個 Run
+                      的執行紀錄與評估判定都會保留。引用過這個檔案的評估不會被改寫，
+                      它會顯示證據已不存在——那是當時真的看過的東西，判定不因為檔案被刪就變得不成立。
+                      重複刪除不算失敗。
+                    </span>
+                  </p>
+                ) : (
+                  <p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMessage("");
+                        setConfirming(artifact.artifact_id);
+                      }}
+                    >
+                      刪除
+                    </button>
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        ))}
+    </>
+  );
+}
+
+function RunArtifactFacts({ artifact }: { artifact: RunArtifact }) {
+  return (
+    <>
+      <p>
+        <strong>{artifact.file_name}</strong> <span className="badge">{artifact.content_type}</span>
+        {artifact.purged && (
+          <>
+            {" "}
+            <span className="badge badge-expired">檔案已不存在</span>
+          </>
+        )}
+      </p>
+      <p className="note">
+        {artifact.size_bytes} bytes｜建立於 {artifact.created_at}
+        {artifact.expires_at ? `｜到期時間 ${artifact.expires_at}` : ""}
+      </p>
+      {artifact.purged && (
+        <p className="note">
+          內容已被清除（到期或儲存端已不存在），這一列保留，因為「曾經產生過這個檔案」仍然是事實。
+        </p>
+      )}
+      <p className="note">
+        內容雜湊：<code>{artifact.content_hash}</code>
+      </p>
+      <p className="note">平台不提供這個檔案的下載連結：它是沙箱的產出，控制平面不打開它。</p>
+    </>
   );
 }
 

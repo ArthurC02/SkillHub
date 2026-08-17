@@ -281,6 +281,37 @@ const DOWNLOADS = {
   ],
 };
 
+const RUNS = {
+  runs: [
+    {
+      run_id: RUN,
+      status: "succeeded",
+      skill_id: SKILL,
+      skill_name: "PDF Summariser",
+      skill_version_id: VERSION,
+      test_case_id: TEST_CASE,
+      provider: "self-hosted",
+      cleanup_status: "failed",
+      created_at: "2026-08-17T00:00:00Z",
+      finished_at: "2026-08-17T00:04:00Z",
+    },
+  ],
+};
+
+const RUN_ARTIFACTS = {
+  artifacts: [
+    {
+      artifact_id: "aaaa1111-2222-3333-4444-555566667777",
+      file_name: "summary.md",
+      content_type: "text/markdown",
+      size_bytes: 2048,
+      content_hash: "sha256:dddd",
+      created_at: "2026-08-17T00:03:00Z",
+      purged: false,
+    },
+  ],
+};
+
 const TEST_CASE_DRAFT = {
   test_case_id: TEST_CASE,
   skill_id: SKILL,
@@ -560,6 +591,10 @@ function stubPlatform() {
     if (path === "/packaging/targets") return json(TARGETS);
     if (path.endsWith("/packaging/preview")) return json(PREVIEW);
     if (path === "/downloads") return json(DOWNLOADS);
+    if (path === `/downloads/${ARTIFACT}/records`)
+      return json({ records: [{ downloaded_at: "2026-08-17T09:00:00Z", actor: "tester" }] });
+    if (path === "/runs") return json(RUNS);
+    if (path.endsWith("/artifacts")) return json(RUN_ARTIFACTS);
 
     if (path === "/test-cases/limits") return json(LIMITS);
     if (path.endsWith("/datasets"))
@@ -846,6 +881,16 @@ test("QA-009: Test Case 詳情", async () => {
   });
   await waitFor(has("Rubric（選用）"));
   await scan("/lab/test-cases/$testCaseId");
+}, 30000);
+
+test("QA-009: Run 歷史", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/workspace/runs" });
+  });
+  await waitFor(has("PDF Summariser"));
+  await scan("/workspace/runs");
 }, 30000);
 
 test("QA-009: 我的 Skill", async () => {
