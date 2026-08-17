@@ -44,7 +44,13 @@ const (
 	// this row is the only place that fact is durably recorded. What it cannot
 	// give is who made the change or when they made it — that needs the role
 	// table SEC-011 describes, and this is deliberately not it.
-	ActionOperatorRoster    = "operator.roster"
+	ActionOperatorRoster = "operator.roster"
+	// ActionBetaRoster is the same minimum for BETA-001's invite list (ADR-028
+	// 決策 1 sends it to the ActionOperatorRoster precedent by name): written once
+	// per API start with the cohort the process came up with, because the invite
+	// itself is a configuration change plus a restart. Same limit as above — it
+	// says who is on the list now, never who added them or when.
+	ActionBetaRoster        = "beta.roster"
 	ActionAccountDeleteAsk  = "account.deletion_requested"
 	ActionAccountDeleteStop = "account.deletion_cancelled"
 	ActionAccountPurge      = "account.purged"
@@ -90,9 +96,10 @@ const (
 	ResourceTestCase = "test_case"
 	ResourceDataset  = "dataset"
 	ResourceArtifact = "artifact"
-	// ResourceOperatorRoster has no resource_id: the roster is the deployment's
-	// configuration, not a row anything can point at.
+	// ResourceOperatorRoster and ResourceBetaRoster have no resource_id: a roster
+	// is the deployment's configuration, not a row anything can point at.
 	ResourceOperatorRoster = "operator_roster"
+	ResourceBetaRoster     = "beta_roster"
 )
 
 // Event is one audited operation.

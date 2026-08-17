@@ -46,6 +46,27 @@ type Handler struct {
 	// person appears is a roles table read here instead, not a change to the
 	// routes or the handlers.
 	Operators map[string]bool
+	// Invited is the BETA-001 admission list (ADR-028 決策 1), keyed by
+	// user_identities.provider_user_id and filled from deployment configuration
+	// (BETA_ALLOWLIST in cmd/api).
+	//
+	// The same shape as Operators above and for the same three reasons SEC-011
+	// gave: a table of invitees would need a grant endpoint, authorization for that
+	// endpoint, and an audit trail for the grants, and all three would exist so one
+	// account could add itself. Inviting somebody is editing the deployment's
+	// environment and restarting.
+	//
+	// Empty is the shipped default and it means the gate is off — every signed-in
+	// user is admitted, which is what M0 through M3 have been. It is not a
+	// fail-open hole: the gate exists to bound the cost of a public deployment
+	// during a closed beta, and a deployment that has not named a beta cohort does
+	// not have one.
+	//
+	// It is not a role and it is not a wider scope. Being on it grants nothing
+	// beyond what an ordinary signed-in user already has; being off it removes
+	// Fork, run creation and download, and leaves search and skill detail exactly
+	// as they were (DISC-010 already serves those to nobody in particular).
+	Invited map[string]bool
 }
 
 // Mount registers the auth routes on mux.
@@ -246,6 +267,93 @@ func (h *Handler) RequireOperator(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, user)))
 	}
+}
+
+// betaNotInvited is what somebody outside the cohort is told. Deliberately an
+// explanation and an invitation to say what they wanted, not a wall: the catalogue
+// has just shown this person the content, so pretending the feature does not exist
+// would be contradicted by the next request they make (the same reasoning that put
+// 403 rather than 404 on /files in 02:SEC-011).
+const betaNotInvited = "Skill Hub is in closed beta: browsing and skill details are open to " +
+	"everyone, but forking, trial runs and downloads are limited to the invited testers. " +
+	"Tell us what you were trying to do at POST /feedback with kind=need_signal and it goes " +
+	"straight into the scope review."
+
+// RequireInvited is the BETA-001 admission gate (ADR-028 決策 1), layered on top
+// of RequireSession rather than replacing it: login is still GitHub OAuth and this
+// only decides what a logged-in account may reach.
+//
+// 403 and not 404, which is the opposite of RequireOperator two functions up, and
+// the difference is deliberate. An operator route's existence is itself meant to
+// be secret. A closed beta's is not — the product says so on its own front page,
+// and the visitor was just served the catalogue by the same API. Hiding the
+// endpoint would be a fiction their next request disproves.
+//
+// There is no exemption for the dev provider and no second code path for it.
+// DEV_LOGIN's offline demo (ADR-020) is untouched because a development
+// deployment sets no BETA_ALLOWLIST and the gate is therefore off — not because
+// this function knows about it. An exemption would be a way past the gate that
+// exists only in the build where the gate matters least, and the identity table
+// keys dev logins the same way it keys GitHub ones, so a dev deployment that does
+// want the gate simply lists the names it uses.
+func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if len(h.Invited) == 0 {
+			next(w, r)
+			return
+		}
+		user, ok := SessionUser(r.Context())
+		if !ok {
+			httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
+			return
+		}
+		ids, err := h.Service.queries().GetIdentityProviderIDs(r.Context(), user.ID)
+		if err != nil {
+			// Fail closed. The list is a cost ceiling on a publicly reachable
+			// deployment, and "we could not read who you are" is not "you are on
+			// the list" (the SEC-002 rule, applied to admission).
+			httpx.WriteError(w, http.StatusServiceUnavailable, "invite check unavailable")
+			return
+		}
+		for _, id := range ids {
+			if h.Invited[id.ProviderUserID] {
+				next(w, r)
+				return
+			}
+		}
+		httpx.WriteError(w, http.StatusForbidden, betaNotInvited)
+	}
+}
+
+// LogInviteRoster records the beta cohort this process came up with, in the same
+// form and for the same reason as LogOperatorRoster above (ADR-028 決策 1 sends it
+// to that precedent explicitly).
+//
+// It answers "who is on the list now" and deliberately not "who was added when" —
+// that fact lives in the deployment configuration's own change history, and
+// claiming otherwise would make this look like a grant audit it is not.
+//
+// Fail-closed, and here that word means something different from the operator
+// roster: a start-up that cannot record the cohort recognises nobody as invited,
+// which with a configured list closes the gate on everyone rather than opening it.
+func (h *Handler) LogInviteRoster(ctx context.Context) error {
+	if len(h.Invited) == 0 {
+		return nil // no cohort configured, no gate, nothing to record
+	}
+	ids := make([]string, 0, len(h.Invited))
+	for id := range h.Invited {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return audit.Log(ctx, gen.New(h.Service.Pool), audit.Event{
+		Action:       audit.ActionBetaRoster,
+		ResourceType: audit.ResourceBetaRoster,
+		Metadata: map[string]any{
+			"provider_user_ids": ids,
+			"count":             len(ids),
+			"source":            "BETA_ALLOWLIST",
+		},
+	})
 }
 
 // SessionUser returns the user placed in the context by RequireSession or
