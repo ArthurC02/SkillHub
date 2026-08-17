@@ -168,6 +168,112 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /me/quota:
+    get:
+      operationId: getRunQuota
+      summary: How much of the free run allowance is left (PDM-010)
+      description: |
+        The beta's cost ceiling as the account holder sees it: runs left today,
+        runs left in the rolling window, when the window resets, and the four
+        limits in force.
+
+        Served from the same counters POST /skills/{id}/runs enforces, never
+        from a stored balance. A balance column drifts and a refund would be a
+        write that can be missed; the count is a time-window query over the runs
+        themselves, so a refund is a predicate excluding a failure class rather
+        than a row nobody remembered to add back.
+
+        This endpoint exists only because the enforcement point does. Showing an
+        allowance the platform does not apply is the exact mistake PDM-005 made
+        once already (04 乙-2): a ceiling displayed on the preflight screen and
+        enforced nowhere, which NFR-001 forbids. Read that order as binding —
+        the numbers here are a report on a rule, not the rule.
+      responses:
+        "200":
+          description: The allowance as it stands right now.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RunQuota" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /feedback:
+    post:
+      operationId: submitFeedback
+      summary: Report a blocking problem or a missing capability (BETA-003/004/005)
+      description: |
+        One endpoint for the three entry points the closed beta needs, split by
+        `kind` rather than by URL: the person who is not on the invite list, the
+        person whose allowance ran out, and the person who is stuck somewhere in
+        the journey. The first two are the same question ("what did you want
+        that you could not have") and were designed to share one form (PDM-010
+        §8.1); the third is a different question and says so in `kind`.
+
+        Not the same channel as PUT /runs/{id}/evaluation/feedback, which
+        answers "was this judgement useful" about one evaluation. Merging them
+        would produce one bucket that answers neither.
+
+        `page_path` and `run_id` are what the client already knows about where
+        the report came from. Nothing is captured beyond them — no screenshot,
+        no console, no automatic context grab (beta-design §5): the message is
+        the user's own words and everything else is a field they can see.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, message]
+              properties:
+                kind:
+                  type: string
+                  enum: [blocking_issue, need_signal]
+                  description: |
+                    `blocking_issue` — something stopped the user from getting
+                    further (BETA-004). `need_signal` — something they wanted
+                    and the product does not offer, which is what both the
+                    not-invited and the out-of-allowance surfaces send
+                    (BETA-005).
+                message:
+                  type: string
+                  maxLength: 2000
+                  description: The user's own words. Must not be blank.
+                page_path:
+                  type: string
+                  maxLength: 512
+                  description: |
+                    Where they were, as a route path only. A path, never a full
+                    URL with a query string: a search query can carry personal
+                    data and this channel is not where it belongs (beta-design
+                    §4.2 界線 2).
+                run_id:
+                  type: string
+                  format: uuid
+                  description: |
+                    The run they were looking at, when there was one. Must be
+                    the caller's own; a run that is not is dropped rather than
+                    failing the report, because losing the feedback would be the
+                    worse outcome.
+      responses:
+        "204":
+          description: |
+            Recorded. No body and no id: there is no read surface for feedback
+            and handing back an identifier would imply one exists.
+        "400":
+          description: Body is not JSON, `kind` is outside the enum, or `message` is blank or too long.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: |
+            No valid session. Feedback is signed-in only — the not-invited
+            surface it serves is a logged-in user who has no workspace yet, not
+            an anonymous visitor (beta-design §2).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/import/upload:
     post:
       operationId: uploadSkillPackage
@@ -2278,6 +2384,360 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  # Packaging and downloads (PACK-001/002, WS-002, SEC-006).
+  #
+  # Every route below resolves its workspace from the session and never from the
+  # request (iron rule 3), and answers 404 rather than 403 for content that is
+  # not the caller's — existence is private (WS-006, CORE-006). Packaging
+  # executes nothing: it reads stored bytes, filters them, writes a zip and hands
+  # the result to the same validator an import goes through (iron rule 1).
+  /packaging/targets:
+    get:
+      operationId: listPackagingTargets
+      summary: The packaging targets a download can be built for (PACK-002)
+      description: |
+        One standard package plus two verified install profiles (PDM-008), which
+        is how the product describes them everywhere: `kind` keeps the standard
+        package and the profiles apart rather than folding all three into one
+        list of "profiles", because the standard package is the evidence that
+        Skill Hub is not bound to a single agent and a profile is not.
+
+        An endpoint rather than a constant in the web client. `support_status`
+        changes when a target is measured, and a copy of it compiled into the
+        front end would be a second truth that nobody re-measures.
+      responses:
+        "200":
+          description: Every target this deployment can build, standard first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [targets]
+                properties:
+                  targets:
+                    type: array
+                    items: { $ref: "#/components/schemas/PackagingTarget" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/versions/{versionId}/packaging/preview:
+    get:
+      operationId: previewPackaging
+      summary: What packaging this version would produce, before producing it (PACK-001)
+      description: |
+        Runs the checks the packaging call runs, so a preview that says yes and a
+        packaging that refuses cannot both happen. Same relationship
+        GET /suggestions/{id}/diff has with the apply call, and for the same
+        reason: two sets of criteria drift, and the drift always favours the step
+        the user most wants to succeed.
+
+        It re-validates the bytes it *would* produce, not the bytes it read. The
+        source version passed validation at import, but packaging adds files and
+        a profile may add frontmatter fields, so validating the source would make
+        PACK-002 a check of something nobody downloads.
+
+        Nothing is written and no object is created. A preview of a version that
+        cannot be packaged still answers 200 with `allowed: false` and the reason
+        — being told why is the point.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Skill id. The version must belong to this skill.
+          schema: { type: string, format: uuid }
+        - name: versionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: target
+          in: query
+          required: true
+          description: |
+            Which target to preview. Required and not defaulted: the answer
+            differs per target, and a default would let a user read the standard
+            package's verdict as a profile's.
+          schema: { $ref: "#/components/schemas/PackagingTargetId" }
+        - name: include_test_cases
+          in: query
+          required: false
+          description: |
+            Preview with the PACK-005 test cases included. The excluded list is
+            returned either way, so a user can see what would be left out before
+            deciding.
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: |
+            Whether packaging is allowed, the re-validation findings, and which
+            test cases would travel.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PackagingPreview" }
+        "400":
+          description: '`target` is missing or outside the enum.'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            Skill or version not visible to the caller, or the version does not
+            belong to this skill (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/versions/{versionId}/packaging:
+    post:
+      operationId: createDownloadArtifact
+      summary: Build a downloadable package from one immutable version (PACK-001)
+      description: |
+        Reads the version's stored bytes, filters them against the PACK-004
+        allow-list, applies the target's profile, adds the platform's own three
+        files, and validates the result before any of it becomes downloadable.
+        The skill version is neither created nor modified (iron rule 4); a
+        Download Artifact is a new row every time.
+
+        **Idempotent.** The same (version, target, include_test_cases, packager
+        version) that already has an unexpired `available` artifact returns that
+        one with `duplicate: true` rather than spending the bytes again — the
+        same answer POST /skills/{id}/versions gives for identical content.
+        Re-packaging is this call again; there is no separate re-package
+        endpoint, because a second route to here would be a second route around
+        the four checks below (the same ruling that left EVAL-003 without a
+        re-run endpoint).
+
+        Four things can refuse it, and `blocked_reason` says which, because
+        whether the user can do anything about it depends entirely on that:
+        a licensing hold, content that may not be redistributed, a licence
+        nobody could establish, and a package that would not validate. The first
+        three fail closed — an unknown restriction code restricts and an
+        unestablished licence blocks, in the same direction every read of those
+        flags already faces (SEC-011, 02:DISC-003).
+
+        A refusal writes no object and leaves no artifact behind. A build that
+        gets as far as bytes and then fails validation keeps its row at
+        `rejected` with the reason, so "why can I not download this" has an
+        answer that outlives the request (packaging-design §4.6).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Skill id. The version must belong to this skill.
+          schema: { type: string, format: uuid }
+        - name: versionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target]
+              properties:
+                target: { $ref: "#/components/schemas/PackagingTargetId" }
+                include_test_cases:
+                  type: boolean
+                  default: false
+                  description: |
+                    Include the redistributable test cases and example data
+                    (PACK-005). Only platform-curated material qualifies: a
+                    dataset the user uploaded never travels, and there is no
+                    option to make it — that would hand a licensing judgement to
+                    the person least equipped to make it, about files that may
+                    not be theirs (packaging-design §5.1).
+      responses:
+        "201":
+          description: |
+            The artifact. `duplicate: true` means an identical package already
+            existed and this is it, not a second copy.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/DownloadArtifact"
+                  - type: object
+                    required: [duplicate]
+                    properties:
+                      duplicate: { type: boolean }
+        "400":
+          description: Body is not JSON, or `target` is missing or outside the enum.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            Skill or version not visible to the caller, or the version does not
+            belong to this skill (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: |
+            Well formed, and the package still may not be built. `blocked_reason`
+            names which of the four gates closed and `error` carries the sentence
+            to show; `validation` is present when the reason is
+            `validation_blocked`, carrying the same findings an import refusal
+            does.
+
+            422 rather than 403 for the licensing gates: the skill is readable
+            and the caller is allowed to ask, the *content* is what may not be
+            redistributed. Same code and same flag as POST /skills/{id}/runs uses
+            for a held skill.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Error"
+                  - type: object
+                    required: [blocked_reason]
+                    properties:
+                      blocked_reason:
+                        $ref: "#/components/schemas/PackagingBlockedReason"
+                      validation:
+                        $ref: "#/components/schemas/PackageValidation"
+  /downloads:
+    get:
+      operationId: listDownloadArtifacts
+      summary: The workspace's download history (WS-002, WS-004)
+      description: |
+        Every Download Artifact in the caller's workspace, newest first,
+        including expired ones. 02:WS-002 asks the user to be able to see what
+        they downloaded, and an expired package leaving the list silently would
+        answer that question wrongly — the row states that it expired, which is
+        a different fact from never having existed.
+      responses:
+        "200":
+          description: The caller's download artifacts, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [downloads]
+                properties:
+                  downloads:
+                    type: array
+                    items: { $ref: "#/components/schemas/DownloadArtifact" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /downloads/{artifactId}:
+    parameters:
+      - name: artifactId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getDownloadArtifact
+      summary: One download artifact, with its expiry and download count (WS-002)
+      responses:
+        "200":
+          description: The artifact.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DownloadArtifact" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's artifact. Existence is private (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: deleteDownloadArtifact
+      summary: Delete a download artifact of one's own (WS-002, SEC-006)
+      description: |
+        Removes the stored object and the row. Download artifacts are safe to
+        hard-delete, unlike a skill version's package object, which forks share
+        by content address and the governance purge deliberately spares: every
+        packaging run writes its own object and nothing else points at it.
+
+        The download *records* survive (`WS-004`): they say the user once
+        downloaded this, which stays true after the file is gone.
+
+        Idempotent, and 204 for an id that is not there — the caller's intent
+        (this artifact must not exist) is satisfied either way, and answering 404
+        for a repeat of a delete that worked would report success as failure.
+      responses:
+        "204":
+          description: Gone. Also the answer when there was nothing to delete.
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /downloads/{artifactId}/content:
+    get:
+      operationId: downloadArtifactContent
+      summary: The package bytes themselves (PACK-001)
+      description: |
+        **The platform streams the bytes; it does not hand out a pre-signed
+        URL** (packaging-design §7.1). Workspace scope is then the session
+        middleware already in place rather than a second authorization scheme;
+        the URL is not secret material, so it can appear in a log and in the
+        audit event this download writes; and the status and restriction checks
+        happen in this handler on every request instead of once at signing time,
+        where a hold applied inside the TTL would not have stopped anything.
+        Bytes crossing the API process is movement, not execution (iron rule 1).
+
+        One successful download writes three things in one transaction (iron
+        rule 9): the artifact's access time, a download record (WS-004, what the
+        user sees) and an audit event (CORE-008, what compliance keeps). Those
+        two are not merged — their retention and their visibility differ, and one
+        row would bind each to the stricter of the two.
+      parameters:
+        - name: artifactId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The package, as an attachment.
+          headers:
+            Content-Disposition:
+              description: '`attachment; filename="<file_name>"`, the same name the artifact reports.'
+              schema: { type: string }
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            One answer for every reason the bytes are not served: not the
+            caller's artifact, `status` is not `available`, it has expired, or a
+            licensing hold has since been applied to the skill.
+
+            404 and not 403, unlike GET /api/skills/{id}/files. There the skill
+            is public and search still lists it, so denying existence would be a
+            lie the rest of the API contradicts; here the artifact is private to
+            one workspace and its existence is exactly what must not leak
+            (WS-006). A caller who owns it can tell the cases apart from
+            GET /downloads/{artifactId}, which still describes the row and its
+            status.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 components:
   securitySchemes:
     sessionCookie:
@@ -3044,7 +3504,7 @@ components:
       type: object
       required:
         [skill_id, name, summary, scope, tier, enrichment, limitations, license,
-         derivation, risk, compatibility]
+         redistribution, derivation, risk, compatibility]
       properties:
         skill_id: { type: string, format: uuid }
         name: { type: string }
@@ -3078,6 +3538,32 @@ components:
           $ref: "#/components/schemas/SkillSource"
         license:
           $ref: "#/components/schemas/SkillLicense"
+        redistribution:
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+          description: |
+            allowed | blocked | unknown — whether this skill's content may be
+            handed on to someone else, which is what decides whether a download
+            package can be built from it at all (02:SEC-007, ADR-012).
+
+            Required, and required for every skill, because the question has an
+            answer for every skill: `unknown` is where one starts and where
+            anything unclassifiable stays. **Only `allowed` releases**; `unknown`
+            is treated exactly like `blocked` at the packaging gate, since
+            02:DISC-003 forbids implying that an unestablished licence may be
+            modified or redistributed.
+
+            A separate axis from `license.status` and never derivable from it:
+            02:CONTENT-002 states plainly that a manually confirmed licence is
+            not thereby a redistributable one, so `confirmed` is not a release
+            condition. Also separate from `access_restriction`, which is a
+            reviewer's temporary hold on a handful of known skills; this is a
+            property of the content that every skill has. Reading the absence of
+            a hold as permission would be asserting that whatever nobody
+            objected to may be redistributed.
+
+            The copy in `label`/`note` says what was and was not established,
+            server-side so every surface words it the same way (NFR-001).
         derivation:
           type: object
           description: |
@@ -3375,6 +3861,25 @@ components:
             touch*, and a prediction is not a permission. Recalibrating the
             numbers against a larger sample must not silently revoke every
             confirmation a user has outstanding.
+        quota:
+          allOf:
+            - $ref: "#/components/schemas/RunQuota"
+          description: |
+            What the account has left (PDM-010), shown here because it answers
+            the same kind of question `estimated_cost` does — what this run will
+            use up — and the screen where a user decides to start one is where
+            that belongs.
+
+            Outside the hash, for the same reason and by the same rule TEST-011
+            set for `estimated_cost`: the hash covers what the run is *allowed to
+            touch*, and an allowance is a state, not a permission. A run
+            finishing elsewhere in the workspace must not invalidate a
+            confirmation the user is holding.
+
+            Absent when the deployment enforces no allowance. Absent rather than
+            zeroed or filled with nulls: a number on this screen is a claim that
+            it is applied (04 乙-2), so a build with no enforcement shows nothing
+            at all.
         notes:
           type: array
           items: { type: string }
@@ -4267,3 +4772,298 @@ components:
             different skills — that diff does not exist, and inventing a
             cross-skill one would be a second diff implementation for a
             comparison nobody asked for.
+    PackagingTargetId:
+      description: |
+        The three packaging targets, named once and referenced everywhere a
+        target appears (PDM-008). One vocabulary from one place, the same reason
+        SuggestionBlockedReason is its own schema: the preview, the packaging
+        call and the stored artifact must agree on what a target is called.
+      type: string
+      enum: [standard, claude-code, claude-agent-sdk]
+    PackagingTarget:
+      description: |
+        One packaging target and what installing it involves (PACK-002,
+        PACK-006/007/008).
+      type: object
+      required: [id, kind, version, display_name, support_status, notes]
+      properties:
+        id: { $ref: "#/components/schemas/PackagingTargetId" }
+        kind:
+          type: string
+          enum: [standard_package, profile]
+          description: |
+            `standard_package` — the Agent Skills spec package itself, with no
+            agent-specific adaptation. `profile` — a versioned set of install
+            settings for one agent.
+
+            Two values rather than one flat list of profiles, because the
+            standard package is what makes "Skill Hub is not tied to one agent"
+            checkable (PDM-008): its SKILL.md is unchanged from the source
+            version, byte for byte, and a profile's is not.
+        version:
+          type: string
+          description: |
+            The profile's own version, recorded in the package manifest so a
+            downloaded package says which settings produced it. The standard
+            package reports the packager's version instead — there is no profile
+            to version.
+        display_name: { type: string }
+        install_location:
+          type: string
+          description: |
+            Where the package goes, in the words the install instructions use.
+            Absent for `standard_package`, which makes no claim about any
+            agent's layout.
+
+            The two profiles resolve to the same path today and differ in *which
+            layer* it is — a user-level or project-level skills directory versus
+            an agent's working directory — so the copy has to state the
+            difference or the two read as one option listed twice (PDM-008 v4).
+        support_status:
+          type: string
+          enum: [verified, unverified]
+          description: |
+            `verified` — Skill Hub has actually installed and run a package
+            through this target. `unverified` — it has not, and nothing here
+            promises the package will work (02:PACK-002 第 2 條). The standard
+            package is `unverified` by construction: any spec-compliant agent may
+            try it, and Skill Hub has not tried it on yours.
+
+            It is a property of the *target*, not of a skill. Whether a
+            particular version was ever measured is the `compatibility` axes on
+            the skill, and passing format validation is never permission to say
+            it installs (ADR-012).
+        notes:
+          type: array
+          items: { type: string }
+          description: |
+            Known limitations and the steps a path alone does not cover — for
+            the SDK target, that `cwd` and `setting_sources` are part of
+            installing and a skill silently never loads without them (ADR-023).
+            Server-side so every surface states them identically (NFR-001).
+    PackagingBlockedReason:
+      description: |
+        Why a package may not be built. Four values and not one `blocked: true`,
+        because what the user can do about it differs completely between them:
+        the first three are decisions about the content that they cannot argue
+        with, the fourth is a package they can fix.
+
+        `license_hold` — the skill carries a 0023 access restriction (SEC-011).
+        An unrecognised reason code still blocks: a code nobody recognises must
+        never be the way content unlocks.
+        `not_redistributable` — the skill's `redistribution` is `blocked`. A
+        source-available licence reaches this even when the licence itself was
+        manually confirmed: 02:CONTENT-002 已人工確認不等於可再散布, so
+        `confirmed` is never a release condition.
+        `license_unknown` — `redistribution` is `unknown`, which is where a skill
+        starts and where anything unclassifiable stays. Treated as blocked, not
+        as permitted: 02:DISC-003 forbids implying an unknown licence may be
+        redistributed, and the one real misreading on record (ADR-021 §5.3, a
+        root MIT file taken to cover a subdirectory) erred in exactly that
+        direction.
+        `validation_blocked` — the package that would be produced carries an
+        error-level finding, so it must not be presented as a valid package
+        (02:PACK-001). The severities are skillpkg's own; packaging does not
+        define a second notion of "blocking".
+      type: string
+      enum: [license_hold, not_redistributable, license_unknown, validation_blocked]
+    PackageValidation:
+      description: |
+        The re-validation of the bytes packaging would produce (PACK-002), in
+        the same three-severity shape an import refusal uses — errors, warnings
+        and infos apart (02:SKILL-002). It is that shape rather than one like
+        it: the findings come from the same `skillpkg` validator, and a second
+        severity vocabulary would drift from it in the lenient direction.
+
+        Warnings never block. They do have to be shown: PACK-001 blocks on
+        errors only, but hiding the warnings would break 02:SKILL-002, so they
+        travel in the download manifest and onto the download page as well.
+      allOf:
+        - $ref: "#/components/schemas/CategorizedFindings"
+        - type: object
+          required: [blocked]
+          properties:
+            blocked:
+              type: boolean
+              description: |
+                True when `errors` is non-empty. Stated rather than left to the
+                client to derive, so no surface can decide for itself what
+                counts as blocking.
+    PackagingPreview:
+      description: |
+        What POST .../packaging would do, without doing it (PACK-001). Computed
+        against the package as it stands, so it can change when a new version is
+        saved in between; the packaging call checks again and is the one that
+        decides.
+      type: object
+      required: [target, allowed, validation, included_test_cases, excluded_test_cases]
+      properties:
+        target: { $ref: "#/components/schemas/PackagingTargetId" }
+        allowed:
+          type: boolean
+          description: Whether packaging would be permitted right now.
+        blocked_reason:
+          allOf:
+            - $ref: "#/components/schemas/PackagingBlockedReason"
+          description: Present exactly when `allowed` is false.
+        blocked_message:
+          type: string
+          description: |
+            The reason in the user's language, safe to display as-is and served
+            rather than assembled client-side, so the preview and the 422 from
+            the packaging call say the same sentence.
+        validation:
+          $ref: "#/components/schemas/PackageValidation"
+        included_test_cases:
+          type: array
+          description: |
+            The test cases that would travel in the package (PACK-005). Empty
+            when the caller did not ask for them, and empty is not the same as
+            "there are none" — `excluded_test_cases` says which were left out
+            and why.
+          items:
+            type: object
+            required: [test_case_id, name, slug]
+            properties:
+              test_case_id: { type: string, format: uuid }
+              name: { type: string }
+              slug:
+                type: string
+                description: |
+                  The directory it gets under `test-cases/` in the zip. Stable:
+                  packaging the same test case twice produces the same slug, so
+                  two packages can be diffed by path.
+        excluded_test_cases:
+          type: array
+          description: |
+            Test cases that will not travel, each with its reason. Listed rather
+            than omitted so the user is told what they are not getting — most
+            often that a dataset they uploaded cannot be redistributed, which is
+            a decision about licensing and not a defect in their test case.
+          items:
+            type: object
+            required: [test_case_id, name, reason]
+            properties:
+              test_case_id: { type: string, format: uuid }
+              name: { type: string }
+              reason: { type: string }
+    DownloadArtifact:
+      description: |
+        One built package (PACK-001). Immutable: re-packaging produces another
+        row, never an edit of this one (iron rule 4).
+
+        **Two hashes, answering two different questions.** `content_hash` is over
+        the zip bytes and answers "is this the file I had". `manifest_hash` is
+        canonical over `{path: sha256}` with no zip metadata and not covering the
+        manifest itself, and answers "is the *content* the same as last time" —
+        which is what deduplication and "did the skill change or only the
+        profile" need, and what a byte hash cannot answer across packager
+        versions (packaging-design §2.4).
+      type: object
+      required:
+        [artifact_id, skill_id, skill_version_id, target, file_name, size_bytes,
+         content_hash, manifest_hash, status, expires_at, created_at,
+         download_count, includes_test_cases]
+      properties:
+        artifact_id: { type: string, format: uuid }
+        skill_id: { type: string, format: uuid }
+        skill_version_id: { type: string, format: uuid }
+        target: { $ref: "#/components/schemas/PackagingTargetId" }
+        file_name:
+          type: string
+          description: |
+            Display and attachment name only. Like a dataset's, it is never used
+            as a storage path.
+        size_bytes: { type: integer, format: int64 }
+        content_hash: { type: string }
+        manifest_hash: { type: string }
+        status:
+          type: string
+          enum: [quarantined, available, rejected]
+          description: |
+            The artifact's own scan state (ADR-003: an upload is quarantined
+            until it passes its checks), not a `ready` boolean. `rejected` and
+            `quarantined` are two different things to the person waiting for a
+            download — one is over and one is not — and one flag would say
+            neither.
+
+            Only `available` is served by GET /downloads/{artifactId}/content.
+            That is the point of keeping the state: the rule is a condition on
+            one handler that a test can hold to, rather than a habit of not
+            handing bytes over too early.
+        status_reason:
+          type: string
+          description: |
+            Why it is `rejected`, in the user's language. The row is kept rather
+            than deleted so 「為什麼打不出來」 has an answer after the request
+            that failed is gone (packaging-design §4.6). Absent on the other two
+            states.
+        expires_at:
+          type: string
+          format: date-time
+          description: |
+            When the object is deleted. The retention period is deployment
+            configuration; PDM-006 proposes 90 days for download packages and
+            that proposal is not ratified yet, so no number is fixed here.
+
+            Show it as an absolute date, never as "in N days" (PDM-006 risk
+            table), and alongside the fact that the same version can be packaged
+            again at any time — which is true because packaging is idempotent.
+            Expiry deletes the object and this row; the download records it
+            produced are kept, because "you downloaded this" stays true.
+        created_at: { type: string, format: date-time }
+        download_count:
+          type: integer
+          description: How many times the bytes were actually served.
+        includes_test_cases:
+          type: boolean
+          description: |
+            Whether the PACK-005 test cases travelled. Part of the idempotency
+            key, so the same version packaged with and without them is two
+            artifacts rather than one that quietly changed.
+        packager_version:
+          type: string
+          description: |
+            The builder that produced these bytes. `content_hash` is reproducible
+            within one packager version and not guaranteed across them, which is
+            exactly why the version is recorded rather than assumed.
+        profile_version:
+          type: string
+          description: The target profile's version. Absent for `standard`, which has no profile.
+    RunQuota:
+      description: |
+        The free-tier allowance (PDM-010). Four limits in one place so a user can
+        see all of them at once; `concurrent` is the one that has been enforced
+        since M2 and is listed here rather than left to be discovered by hitting
+        it.
+
+        The proposed values are not ratified — PDM-010 asks the owner to pick
+        between 20 and 20+30 for the first window explicitly rather than leave it
+        to be inferred — so the numbers are served from deployment configuration
+        and this contract fixes none of them.
+      type: object
+      required: [remaining_today, remaining_window, window_resets_at, limits]
+      properties:
+        remaining_today: { type: integer, minimum: 0 }
+        remaining_window: { type: integer, minimum: 0 }
+        window_resets_at:
+          type: string
+          format: date-time
+          description: |
+            When the rolling window's oldest counted run drops out. Rolling, not
+            calendar: the count is a time-window query over the runs themselves,
+            so there is no monthly reset moment to name.
+        limits:
+          type: object
+          required: [daily, window, window_days, concurrent]
+          properties:
+            daily: { type: integer }
+            window: { type: integer }
+            window_days: { type: integer }
+            concurrent:
+              type: integer
+              description: |
+                Runs of one workspace that may be in flight at once. Enforced in
+                the same transaction and under the same advisory lock as the
+                allowance, which is the only place where a run is about to exist
+                and nothing has been spent yet.
