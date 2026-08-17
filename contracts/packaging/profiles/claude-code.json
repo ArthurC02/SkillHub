@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "id": "claude-code",
+  "kind": "profile",
+  "version": "1.0.0",
+  "display_name": "Claude Code",
+  "support_status": "unverified",
+  "install": {
+    "locations": [
+      {
+        "scope": "user",
+        "path": "~/.claude/skills/<name>/",
+        "description": "Personal level: available in every project you open with Claude Code. Unzip the package here so that SKILL.md ends up at ~/.claude/skills/<name>/SKILL.md."
+      },
+      {
+        "scope": "project",
+        "path": ".claude/skills/<name>/",
+        "description": "Project level: available only in the directory tree you start Claude Code in, and committable alongside the repository so your team gets it too. Claude Code also looks in .claude/skills/ of parent directories up to the repository root, so a monorepo can keep a Skill next to the package that needs it."
+      }
+    ],
+    "top_level_dir": "<name>"
+  },
+  "frontmatter_additions": {},
+  "env_vars": [],
+  "verification_prompt": "List the skills you can use, and say whether <name> is among them.",
+  "verification_steps": [
+    "Run /skills in Claude Code and confirm <name> is listed.",
+    "If it is not listed and you created the .claude/skills/ directory during this session, restart Claude Code: it only watches directories that already existed when the session started. Changes inside a directory it is already watching are picked up without a restart.",
+    "Read INSTALL.md's dependency list. A Skill whose scripts need a package you do not have will be found and offered, then fail when it runs - which looks like a broken Skill and is a missing dependency."
+  ],
+  "mcp_config": null,
+  "known_limitations": [
+    "Unverified, and specifically: nobody has yet installed a Skill Hub package into Claude Code and confirmed it end to end. The paths here are Claude Code's documented Skill locations, and the discovery mechanism underneath is the one Skill Hub measured through the Claude Agent SDK - neither of those is the same as having done it. This field flips to verified when that check is recorded, not before (PACK-008, PACK-009).",
+    "The install path is the same as the Claude Agent SDK target's. The difference is not the path, it is the scope and the check: here it is a directory Claude Code watches for you (personal or project level, chosen by which one you unzip into), there it is resolved from the cwd your own script passes to query(). Picking either one here gets you the same files on disk.",
+    "Skills that arrive through a plugin or are synced from claude.ai live somewhere else (<plugin>/skills/, ~/.claude/skills/synced/) and plugin skills are namespaced. A package you install by hand is neither of those, so it appears under its own name and is not managed or updated by anything.",
+    "Skill Hub does not install dependencies and does not modify SKILL.md's existing frontmatter for this target - it only adds files. If the Skill needs Python packages, you install them."
+  ],
+  "notes": [
+    "Install locations follow Claude Code's documented Skill discovery: personal level ~/.claude/skills/, project level .claude/skills/, plus .claude/skills/ in parent directories up to the repository root.",
+    "The zip carries a single top-level directory named after the Skill, so unzipping inside ~/.claude/skills/ or .claude/skills/ produces the right layout in one step."
+  ]
+}

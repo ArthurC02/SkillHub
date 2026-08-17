@@ -131,7 +131,7 @@
     "snippet": {
       "type": "string",
       "minLength": 1,
-      "description": "A minimal runnable snippet for targets where the install path alone is not enough. Required for `claude-agent-sdk`, where it must demonstrate BOTH `cwd` and `setting_sources`: without either one the Skill is simply not loaded, and it fails silently - the failure mode ADR-023 recorded. The schema checks that both words are present, which is a floor under review, not a substitute for running it."
+      "description": "A minimal runnable snippet for targets where the install path alone is not enough. Required for `claude-agent-sdk`, where it must address BOTH `cwd` and `setting_sources`. The four Skill load conditions ADR-023 measured on SDK 0.3.233 are: `cwd` points at the directory holding .claude/skills/, `settingSources` / `setting_sources` is OMITTED (passing `[\"project\"]` discovered zero Skills there - the reverse of 0.2.137 and of how the documentation reads), `skills: \"all\"`, and a tool list. Missing any one of the four loads no Skill at all and raises nothing, which is the silent failure ADR-023 recorded. The schema only checks that both words appear somewhere - a snippet may satisfy it by naming `setting_sources` in the comment that says why it is left out - so it is a floor under review, not a substitute for running it."
     },
     "mcp_config": {
       "type": "null",
@@ -182,94 +182,6 @@
           }
         }
       }
-    }
-  ],
-  "examples": [
-    {
-      "schema_version": "1.0",
-      "id": "standard",
-      "kind": "standard_package",
-      "version": "1.0.0",
-      "display_name": "Standard Agent Skill package",
-      "support_status": "verified",
-      "install": { "locations": [], "top_level_dir": null },
-      "frontmatter_additions": {},
-      "env_vars": [],
-      "verification_steps": [
-        "Unzip the package; SKILL.md must be at the root.",
-        "Read the `validation` block of skillhub-manifest.json: `blocked` is false and `errors` is empty.",
-        "Optionally re-import the package into Skill Hub; removing the three platform-added files must reproduce `source.content_hash`."
-      ],
-      "mcp_config": null,
-      "known_limitations": [
-        "Skill Hub has not verified this package on your Agent. Any Agent supporting the Agent Skills spec can try it; format validity is not a promise that it installs or runs."
-      ],
-      "notes": [
-        "SKILL.md is copied byte for byte. This package is the evidence that Skill Hub is not bound to a single Agent (PDM-008)."
-      ]
-    },
-    {
-      "schema_version": "1.0",
-      "id": "claude-code",
-      "kind": "profile",
-      "version": "1.0.0",
-      "display_name": "Claude Code",
-      "support_status": "verified",
-      "install": {
-        "locations": [
-          {
-            "scope": "user",
-            "path": "~/.claude/skills/<name>/",
-            "description": "Available in every project for this user."
-          },
-          {
-            "scope": "project",
-            "path": ".claude/skills/<name>/",
-            "description": "Available only inside this repository, and committable alongside it."
-          }
-        ],
-        "top_level_dir": "<name>"
-      },
-      "frontmatter_additions": {},
-      "env_vars": [],
-      "verification_prompt": "List the skills you can use, and say whether <name> is among them.",
-      "mcp_config": null,
-      "known_limitations": [
-        "The install path is the same as the Claude Agent SDK profile's; the difference is user-level versus project-level scope, and how installation is verified."
-      ]
-    },
-    {
-      "schema_version": "1.0",
-      "id": "claude-agent-sdk",
-      "kind": "profile",
-      "version": "1.0.0",
-      "display_name": "Claude Agent SDK",
-      "support_status": "verified",
-      "install": {
-        "locations": [
-          {
-            "scope": "agent_working_dir",
-            "path": ".claude/skills/<name>/",
-            "description": "Relative to the `cwd` the SDK is given, not to where your script lives."
-          }
-        ],
-        "top_level_dir": "<name>"
-      },
-      "frontmatter_additions": {},
-      "env_vars": [
-        {
-          "name": "ANTHROPIC_API_KEY",
-          "required": true,
-          "description": "Read by the SDK. Set it in your own environment; Skill Hub never ships a key inside a package.",
-          "example": "<your-api-key>"
-        }
-      ],
-      "verification_prompt": "List the skills you can use, and say whether <name> is among them.",
-      "snippet": "async for message in query(\n    prompt=\"List the skills you can use.\",\n    options=ClaudeAgentOptions(cwd=\"./workdir\", setting_sources=[\"project\"]),\n):\n    print(message)",
-      "mcp_config": null,
-      "known_limitations": [
-        "Omitting either `cwd` or `setting_sources` makes the Skill silently not load: there is no error, the agent simply never sees it (ADR-023)."
-      ]
     }
   ]
 }

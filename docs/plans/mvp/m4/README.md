@@ -304,7 +304,72 @@ M2 與 M3 都與 M1 閘門**並行**，理由在兩份計畫裡寫得很清楚�
 
 | 位置 | 內容 |
 | --- | --- |
+| [`../../../../contracts/packaging/profiles/`](../../../../contracts/packaging/profiles/) | 三個打包目標的設定實體（第 3 批前半，見 §13）。**它們同時是 `packaging-profile.schema.json` 的 examples**——schema 因此不再帶 inline example |
 | [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) | **殘項的唯一入口，活文件不凍結。** M4 的新殘項與「MVP 之後」的接點都在那裡 |
 | [`../gate-test/`](../gate-test/) | M1 閘門材料；封測的招募文案、篩選問卷與報酬原則從這裡重用（§6.3） |
 | [`../governance/`](../governance/) | `anthropic-sa` 授權備忘與詢問信草稿；**打包上線會改變詢問信 §3 那句話的真偽**（§6.2） |
 | `m0/pdm-proposals.md` | PDM-008／009／010 的追認落在該檔 §9 的定案檢查清單（H-7） |
+
+## 13. 第 3 批（前半）的交付紀錄：Profile 內容與可散布性回填
+
+- 日期：2026-08-17。**不勾選任何工作項**——這一批交的是 Profile 的內容與一支回填腳本，不是 `PACK-006`～`008` 的產生器。
+- 交付：[`contracts/packaging/profiles/`](../../../../contracts/packaging/profiles/) 三份、`packaging-profile` 契約與 validator 的對應更正、[`tools/content/backfill-redistribution.sql`](../../../../tools/content/backfill-redistribution.sql)。
+- 一句話：三個打包目標第一次有可執行的內容，`skills.redistribution` 第一次有推導得出的值——而其中兩件事的誠實答案是「還沒」。
+
+### 13.1 安裝位置的依據
+
+| 目標 | 位置 | 依據 |
+| --- | --- | --- |
+| `standard` | **無** | 刻意：不指名 Agent 就不假裝知道你的 Agent 把 Skill 放哪（schema 的 `maxItems: 0` 是這句話的可判定形式） |
+| `claude-code` | 使用者層 `~/.claude/skills/<name>/`；專案層 `.claude/skills/<name>/` | Claude Code 官方文件的 Skill 發現位置；另含「往上找到 repo 根」與「session 啟動時不存在的目錄不會被 watch，需重啟」兩條，寫進 `verification_steps` |
+| `claude-agent-sdk` | 工作目錄層 `.claude/skills/<name>/`，**相對於傳給 `query()` 的 `cwd`** | 本 repo 實測：`run.mjs` 的 `cwd: workDir` ＋ [`UPGRADES.md`](../../../../infra/images/runtime-agent-sdk/UPGRADES.md) `2026.08-3`（`skill_activation` ＋套件內腳本真的執行），以及 M2 基準 45／45 |
+
+兩個 Profile 的路徑在磁碟上相同，差別在**誰解析它**（Claude Code 自己 watch vs 你的程式傳進去的 `cwd`），逐字寫進兩份的 `known_limitations`。**不確定的一律進 `known_limitations` 而不是路徑表**：Python 套件未實測、plugin 與 claude.ai 同步的 Skill 在別處、省略 `settingSources` 會讓 SDK 連使用者自己的 `~/.claude` 一起載入（平台是在 HOME 為空的 per-run tmpfs 裡量的）。
+
+### 13.2 `support_status`：判的是目標 Agent，不是打包器的產出
+
+`claude-agent-sdk` ＝ **`verified`**（有實測落點）；`claude-code` ＝ **`unverified`**（**沒有人把 Skill Hub 套件放進 `~/.claude/skills/` 跑過**，路徑來自官方文件不等於做過）；`standard` ＝ **`unverified`**（不指名 Agent，格式有效不等於裝得起來）。
+
+**PDM-008 對外的「2 個已驗證安裝 Profile」因此目前只成立 1 個**，差的不是程式而是一次本機安裝 ＋ 落檔（§13.5 出-1）。錯標 verified 是對使用者的承諾，錯標 unverified 只是少賣一句話——`PACK-008` 只有一個安全方向。
+
+### 13.3 ADR-023 的更正（本批發現契約寫反了一次）
+
+[ADR-023](../../../adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md) §2 測項 1 在 SDK 0.3.233 上量到的載入條件是四項：`cwd` 指向放 `.claude/skills/` 的目錄、**`settingSources`／`setting_sources` 省略**（傳 `["project"]` 發現到**零個** skill，與 0.2.137 及官方文件的讀法相反）、`skills: "all"`、工具清單。**四者缺一即零個 skill 且不報錯。**
+
+第 1 批有三處把第 2 項讀成「必須傳 `setting_sources`」：`packaging-profile.schema.json` 的 `snippet` description **與其 inline example**（該 example 逐字寫著 `setting_sources=["project"]`）、`contracts/packaging/README.md` §4、[`packaging-design.md`](packaging-design.md) §6。**三處已就地更正，依據是實測不是推理**（ADR-023 §3）。
+
+落地的 snippet：設 `cwd`、傳 `skills: "all"` 與工具清單、**不傳 `setting_sources` 並在註解寫明為什麼**——那句註解同時滿足 schema 的 lookahead。形式取實測過的 TypeScript；Python 同名選項只在 `known_limitations` 點名為未實測。
+
+同批把 schema 的 inline `examples` **移除**（同一份文件兩份會漂移，而被移除的那份已經漂了），validator 改讀 `profiles/*.json` 並斷言目錄裡恰好是 PDM-008 的三個 id；反例補 4 個（`standard` 寫安裝位置、Profile 自稱 `standard_package`、`claude-agent-sdk` 沒有 snippet、帶 MCP 設定）。**`python tools/contracts/validate_packaging.py`：3 schemas, 9 examples, 22 counterexamples, 0 failure(s)。**
+
+### 13.4 `skills.redistribution` 回填：判準、分佈、與**尚未套用**
+
+腳本 [`backfill-redistribution.sql`](../../../../tools/content/backfill-redistribution.sql) 比照同目錄既有慣例（可重跑、逐列可追溯、資料不進 migration），判準逐條照 [ADR-027](../../../adr/ADR-027-download-artifact-shape-reproducibility-and-integrity.md) 決策 4，且**從 `skill_versions.license_expression` 推導，不從 `seed-skills.json` 抄**——那是判準本來就寫在上面的欄位，也是明天使用者自己上傳的 Skill 唯一會有的東西；而**把 45 列抄進 `VALUES` 正是 `deps` 欄位漏抄過一次的方式**。策展欄位改當人工對照。`license_status = Confirmed` 不在腳本裡（`02:CONTENT-002`）。Copyleft 刻意不在放行清單內（允許再散布，但義務打包器不實作），落在 `unknown` 而被擋。Fork 沿用 `restrict-anthropic-sa-display.sql` 的形狀：root 算判定、Fork 遞迴繼承。
+
+**dry-run（腳本的 CTE 鏈原樣對線上 dev DB 唯讀執行）**：
+
+| 範圍 | `allowed` | `blocked` | `unknown` |
+| --- | --- | --- | --- |
+| catalog（45 筆） | **41** | **4** | **0** |
+| 其 Fork（45 筆，繼承） | **41** | **4** | **0** |
+
+41 筆 `allowed` 的授權運算式是 `MIT`（39）或 `Apache-2.0`（2）。**4 筆 `blocked` 就是 `anthropic-sa` 的 `docx`／`pdf`／`pptx`／`xlsx`**——DB 內的運算式為 `Proprietary. LICENSE.txt has complete terms`（`license_source = manifest`），命中 source-available 樣式。**這四筆不得是 `allowed`，實測結果是 `blocked`。** 它們同時帶著 `access_restriction = 'license-review'`：方向一致，但**兩道鎖獨立**——hold 撤下不會讓 `redistribution` 變 `allowed`。`unknown` 為 0，所以「判不了的清單」是空的（腳本末尾那支 SELECT 仍保留：空結果是目標，不是省掉檢查的理由）。與 `seed-skills.json` 的 `redistributable` 策展欄位**逐筆一致，零分歧**。
+
+**尚未套用。** 執行中的 dev DB 停在 `0026`（`skills` 沒有 `redistribution`，也沒有 `download_artifacts`／`download_records`），本批嘗試套用 `0027` 時被工具層的權限判定擋下，**沒有繞過**：同一工作樹上另有 agent 平行做打包引擎，對共用 dev DB 做 schema 變更該由需要它的那一批決定時機。套用步驟兩行，順序是硬的：
+
+```bash
+psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0027_packaging.sql
+psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistribution.sql
+```
+
+套用後預期 `UPDATE 90` 與上表的分佈。**數字對不上就不要往下做**——第 2 批的授權閘門是照這個欄位擋的。
+
+### 13.5 出入清單
+
+| # | 事項 | 誰接 |
+| --- | --- | --- |
+| 出-1 | **PDM-008 的「2 個已驗證 Profile」目前只成立 1 個。** 差一次本機安裝：套件放進 `~/.claude/skills/`、`/skills` 看得到、跑一次驗證 Prompt，落檔後把 `claude-code.json` 的 `support_status` 改 `verified` 並進 `version` 版號 | `PACK-009` 的人工那一段（§5.2、§9） |
+| 出-2 | **`0027` 未套用、回填未執行**（§13.4） | 第 2 批（打包引擎要靠這個欄位擋） |
+| 出-3 | **schema 的 lookahead 擋不住「真的傳了 `setting_sources`」**，只擋得住「從沒提過」。收緊 pattern ＝收緊值域＝major bump，為一個內建目標不值得；限制已寫進 `contracts/packaging/README.md` §4，不留給下一個人自己發現 | 已記錄，不需動作 |
+| 出-4 | **Python 的 `claude-agent-sdk` 未實測**，省略規則沒有被推廣為承諾 | 有需求訊號再走 ADR-023 §2 四項清單 |
+| 出-5 | **`redistribution` 沒有寫入端點與 audit**（ADR-027 待決策），今天改它只能直接跑 SQL | `SEC-011` 窮舉清單擴充，M4 首發不做 |

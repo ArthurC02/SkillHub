@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "id": "standard",
+  "kind": "standard_package",
+  "version": "1.0.0",
+  "display_name": "Standard Agent Skill package",
+  "support_status": "unverified",
+  "install": {
+    "locations": [],
+    "top_level_dir": null
+  },
+  "frontmatter_additions": {},
+  "env_vars": [],
+  "verification_steps": [
+    "Unzip the package. SKILL.md must be at the root of the archive, not inside a wrapper directory.",
+    "Open skillhub-manifest.json and read the `validation` block: `blocked` is false and `errors` is empty. That is the spec validation Skill Hub re-ran on these exact bytes before releasing them, not a check it ran on the source months ago.",
+    "Compare `source.content_hash` in the manifest with the content hash shown on the Skill version's page. They name the same source bytes.",
+    "Optional, and the only check that needs Skill Hub: import the package back after deleting the platform-added files (skillhub-manifest.json, INSTALL.md, and test-cases/ if present). It must import with no blocking finding and reproduce `source.content_hash`."
+  ],
+  "mcp_config": null,
+  "known_limitations": [
+    "Skill Hub has not verified this package on any Agent, and this target names no Agent. It is valid against the Agent Skills spec; that is a statement about the format, not a promise that it installs or runs in your tool.",
+    "It names no install location on purpose. This package is the evidence that Skill Hub is not bound to one Agent, so it does not claim to know where your Agent keeps its Skills. If your Agent is Claude Code or the Claude Agent SDK, use those targets instead - they carry a path and a verification step.",
+    "Dependencies the Skill declares are not installed by this package. INSTALL.md lists them, including the ones Skill Hub's own runtime image refuses; whether your environment provides them is yours to check.",
+    "Behaviour compatibility in the manifest is the record of one measurement on one runtime image, or `unverified`. It is never extrapolated from another version or another image, so `unverified` there means nobody measured it - not that it failed."
+  ],
+  "notes": [
+    "SKILL.md is copied byte for byte from the source version. The platform adds exactly three things: skillhub-manifest.json, INSTALL.md, and an optional test-cases/ directory.",
+    "The zip root is the Skill root, which is the exact inverse of Skill Hub's import path. That is what makes 'unzip and re-validate' a defined operation rather than a hope (PACK-009)."
+  ]
+}

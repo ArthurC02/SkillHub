@@ -243,7 +243,9 @@ ADR-012 §「可重現性」列了 Download Artifact 必須記錄的六項，本
 | `claude-code` | Profile | 使用者層 `~/.claude/skills/<name>/` 或專案層 `.claude/skills/<name>/` | 格式 ＋ 能力 ＋ 行為（若該版本在平台試跑過） | 一句驗證 Prompt（取自 `CONTENT-007` 的範例 Prompt） |
 | `claude-agent-sdk` | Profile | Agent 工作目錄 `.claude/skills/<name>/` | 同上 | 最小可執行 `query()` 片段，**必須示範 `cwd` 與 `setting_sources`** |
 
-**兩個 Profile 的安裝路徑實際相同**（PDM-008 v4 依實測釐清），差別在「使用者層 vs 工作目錄層」與驗證方式。**文案必須把這個差異講清楚**，否則使用者會以為是重複選項。`claude-agent-sdk` 的安裝說明**只給路徑是不夠的**——`cwd` 與 `setting_sources` 是安裝步驟的一部分，缺任一項 Skill 就不會被載入（ADR-023 記錄的那次靜默失效）。
+**兩個 Profile 的安裝路徑實際相同**（PDM-008 v4 依實測釐清），差別在「使用者層 vs 工作目錄層」與驗證方式。**文案必須把這個差異講清楚**，否則使用者會以為是重複選項。`claude-agent-sdk` 的安裝說明**只給路徑是不夠的**——載入條件是安裝步驟的一部分，缺任一項 Skill 就不會被載入（ADR-023 記錄的那次靜默失效）。
+
+> **2026-08-17 更正（第 3 批前半）**：上表與本段原寫「必須示範 `cwd` 與 `setting_sources`」，那句話把 [ADR-023](../../../adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md) §2 測項 1 讀反了。實測在 SDK 0.3.233 上量到的四個條件是：`cwd` 指向放 `.claude/skills/` 的目錄、**`settingSources`／`setting_sources` 省略**（傳 `["project"]` 發現到**零個** skill，與 0.2.137 及官方文件的讀法相反）、`skills: "all"`、工具清單——**四者缺一即零個 skill**。因此 snippet 的正確形狀是**設 `cwd`、不傳 `setting_sources`，並在註解裡寫明為什麼不傳**（那句註解同時滿足 schema 的 lookahead）。落地實體見 [`contracts/packaging/profiles/claude-agent-sdk.json`](../../../../contracts/packaging/profiles/claude-agent-sdk.json)，判準與更正紀錄見 [README §13.3](README.md#133-adr-023-的更正本批發現契約寫反了一次)。
 
 ### 6.1 Profile 能改什麼、不能改什麼
 

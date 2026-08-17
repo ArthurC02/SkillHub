@@ -21,10 +21,18 @@ import sys
 from jsonschema import Draft202012Validator
 
 PACKAGING_DIR = pathlib.Path(__file__).resolve().parents[2] / "contracts" / "packaging"
+PROFILES_DIR = PACKAGING_DIR / "profiles"
 
 MANIFEST = "download-manifest.schema.json"
 PROFILE = "packaging-profile.schema.json"
 TEST_CASE = "portable-test-case.schema.json"
+
+# The profile schema carries no inline examples: the three built-in targets are
+# real files that ship, so they are the examples. An inline copy would be a
+# second version of the same document, and the one it replaced had drifted -
+# its Agent SDK snippet passed setting_sources, which is the option ADR-023
+# measured as loading zero Skills on the pinned SDK.
+PACKAGING_TARGETS = ("claude-agent-sdk", "claude-code", "standard")
 
 
 def _manifest(**overrides: object) -> dict:
@@ -222,7 +230,11 @@ NEGATIVE_CASES: list[tuple[str, str, dict]] = [
     ),
     (
         PROFILE,
-        "an Agent SDK profile whose snippet omits setting_sources (ADR-023)",
+        # Not "must pass setting_sources" - ADR-023 measured the opposite on the
+        # pinned SDK, where omitting it is what loads the Skill. What this
+        # rejects is a snippet that never raises the subject, leaving a reader
+        # unable to tell a deliberate omission from a forgotten line.
+        "an Agent SDK snippet that never mentions setting_sources at all (ADR-023)",
         _profile(
             id="claude-agent-sdk",
             install={
@@ -237,6 +249,41 @@ NEGATIVE_CASES: list[tuple[str, str, dict]] = [
             },
             snippet='query(prompt="hi", options=ClaudeAgentOptions(cwd="./workdir"))',
         ),
+    ),
+    (
+        PROFILE,
+        "an Agent SDK profile with no snippet at all (the install path alone "
+        "cannot state the load conditions)",
+        _profile(id="claude-agent-sdk"),
+    ),
+    (
+        PROFILE,
+        "the standard package naming an install location (PDM-008)",
+        _profile(
+            id="standard",
+            kind="standard_package",
+            install={
+                "locations": [
+                    {
+                        "scope": "user",
+                        "path": "~/.claude/skills/<name>/",
+                        "description": "Guessing where the user's Agent keeps Skills.",
+                    }
+                ],
+                "top_level_dir": None,
+            },
+        ),
+    ),
+    (
+        PROFILE,
+        "a profile calling itself the standard package (PDM-008's outward count)",
+        _profile(kind="standard_package"),
+    ),
+    (
+        PROFILE,
+        "a profile carrying MCP configuration (remote MCP is out of the first "
+        "release, so the field is a null placeholder)",
+        _profile(mcp_config={"mcpServers": {"example": {"url": "https://example"}}}),
     ),
     (
         PROFILE,
@@ -333,20 +380,34 @@ def main() -> int:
         )
         validators[name] = validator
 
-        examples = schema.get("examples", [])
-        if not examples:
-            print(f"FAIL  {name} carries no examples")
+        if name == PROFILE:
+            instances = [
+                (f"profiles/{path.name}", json.loads(path.read_text(encoding="utf-8")))
+                for path in sorted(PROFILES_DIR.glob("*.json"))
+            ]
+            found = tuple(sorted(str(profile.get("id")) for _, profile in instances))
+            if found != PACKAGING_TARGETS:
+                failures += 1
+                print(f"FAIL  profiles/ declares {found}, expected {PACKAGING_TARGETS}")
+        else:
+            instances = [
+                (f"{name}[{index}]", example)
+                for index, example in enumerate(schema.get("examples", []))
+            ]
+
+        if not instances:
+            print(f"FAIL  {name} has nothing to validate against")
             failures += 1
-        examples_total += len(examples)
-        for index, example in enumerate(examples):
-            errors = sorted(validator.iter_errors(example), key=lambda e: e.path)
+        examples_total += len(instances)
+        for label, instance in instances:
+            errors = sorted(validator.iter_errors(instance), key=lambda e: e.path)
             if errors:
                 failures += 1
-                print(f"FAIL  example {name}[{index}]")
+                print(f"FAIL  example {label}")
                 for err in errors:
                     print(f"        /{'/'.join(map(str, err.path))}: {err.message}")
             else:
-                print(f"ok    example {name}[{index}]")
+                print(f"ok    example {label}")
 
         if name == MANIFEST:
             hash_schema = schema["$defs"]["manifestHashInput"]

@@ -1,7 +1,7 @@
 # 打包契約（PACK-001／002／003／005）
 
-- 檔案：[download-manifest.schema.json](download-manifest.schema.json)、[packaging-profile.schema.json](packaging-profile.schema.json)、[portable-test-case.schema.json](portable-test-case.schema.json)（皆為 JSON Schema 2020-12，內文英文）
-- 驗證：`python tools/contracts/validate_packaging.py`（驗三份 schema 的 `check_schema`、全部 `examples`、以及 18 個反例必須被擋）
+- 檔案：[download-manifest.schema.json](download-manifest.schema.json)、[packaging-profile.schema.json](packaging-profile.schema.json)、[portable-test-case.schema.json](portable-test-case.schema.json)（皆為 JSON Schema 2020-12，內文英文）＋ [profiles/](profiles/) 三個打包目標的設定實體（§7）
+- 驗證：`python tools/contracts/validate_packaging.py`（驗三份 schema 的 `check_schema`、全部 `examples`、**`profiles/` 的三份實體**、以及 22 個反例必須被擋）
 - CI：`.github/workflows/ci.yml` 的 `contracts-drift` job，比照 M3 為 `contracts/events` 補的那一步（同一個 pinned `jsonschema`）
 - 狀態：**M4 第 1 批產出，實作未落地。** 形狀依 [m4/contract-deltas.md](../../docs/plans/mvp/m4/contract-deltas.md) §3 與 [m4/packaging-design.md](../../docs/plans/mvp/m4/packaging-design.md)。
 
@@ -69,7 +69,7 @@ ADR-021 決策 1 的對外形式，`0012` 的 CHECK 是它在 DB 的那一半。
 
 - **`standard` 目標不得改 `SKILL.md` 一個位元組**：`id = standard` 時 `kind` 必為 `standard_package`、`frontmatter_additions` 必為空、`install.locations` 必為空、`top_level_dir` 必為 null。它是「Skill Hub 不綁定單一 Agent」這個承諾的可驗證證據（PDM-008）。
 - **Profile 只能 additive**：`frontmatter_additions` 的 key 不得是 `name`／`description`／`license`／`allowed-tools`／`allowed_tools`。這是 ADR-012「Adapter 不得靜默改變 Skill 的任務意圖或移除必要安全限制」的可判定形式。
-- **`claude-agent-sdk` 的 `snippet` 必須同時出現 `cwd` 與 `setting_sources`**。缺任一項 Skill 就不會被載入，而且**沒有錯誤訊息**——ADR-023 記錄的那次靜默失效。schema 的 pattern 是覆核的底線，不是實跑的替代。
+- **`claude-agent-sdk` 的 `snippet` 必須同時出現 `cwd` 與 `setting_sources` 兩個字**——**要求的是「講到」，不是「照傳」**。[ADR-023](../../docs/adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md) §2 測項 1 在釘定的 SDK 0.3.233 上量到的載入條件有四項：`cwd` 指向放 `.claude/skills/` 的目錄、**`settingSources`／`setting_sources` 省略**（傳 `["project"]` 發現到零個 skill，與 0.2.137 及官方文件的讀法相反）、`skills: "all"`、以及工具清單；**四者缺一即零個 skill，且不報錯**。因此正確的 snippet 是**設 `cwd`、不傳 `setting_sources`，並在註解裡寫明為什麼不傳**——那句註解同時滿足 schema 的 pattern。<br>**schema 的 pattern 擋得住的只有「整份 snippet 從沒提過 `setting_sources`」**（讀的人分不出是刻意省略還是漏寫）；它**擋不住「真的傳了 `setting_sources`」**，那一層由覆核與 `profiles/` 的實體負責。收緊 pattern 是收緊值域＝major bump（§5），為一個內建目標不值得，**這個限制寫在這裡而不是留給下一個人自己發現**。
 - `verification_prompt` 與 `verification_steps` 至少要有一個（`PACK-007`）。`standard` 走 steps（重新匯入得同一個雜湊），兩個 Profile 走 prompt。
 
 兩個 Profile 的安裝路徑實際相同，差別在**使用者層 vs 工作目錄層**與驗證方式（PDM-008 v4 依實測釐清），`known_limitations` 必須把這件事講清楚，否則使用者會以為是重複選項。
@@ -100,7 +100,7 @@ ADR-021 決策 1 的對外形式，`0012` 的 CHECK 是它在 DB 的那一半。
 
 ## 6. 反例清單（validator 的另一半）
 
-`examples` 只證明 schema 收得下對的東西。以下 18 個反例證明它擋得住錯的東西，全部在 `tools/contracts/validate_packaging.py`：
+`examples`（`packaging-profile` 則是 `profiles/` 的三份實體）只證明 schema 收得下對的東西。以下 22 個反例證明它擋得住錯的東西，全部在 `tools/contracts/validate_packaging.py`：
 
 | schema | 反例 | 擋的是什麼 |
 | --- | --- | --- |
@@ -113,9 +113,43 @@ ADR-021 決策 1 的對外形式，`0012` 的 CHECK 是它在 DB 的那一半。
 | manifest hash 輸入 | 含 `skillhub-manifest.json`／含 `../` 路徑／值不是 sha256 | §3.3 |
 | profile | `standard` 加 frontmatter | PDM-008 |
 | profile | `frontmatter_additions` 覆寫 `description` | ADR-012 |
-| profile | `claude-agent-sdk` 的 snippet 沒有 `setting_sources` | ADR-023 的靜默失效 |
+| profile | snippet 從頭到尾沒提過 `setting_sources` | ADR-023 的靜默失效（**不是**「沒傳」，見 §4） |
+| profile | `claude-agent-sdk` 完全沒有 snippet | 只給路徑講不出載入條件 |
+| profile | `standard` 寫了安裝位置 | PDM-008：標準套件不猜使用者的 Agent 把 Skill 放哪 |
+| profile | Profile 自稱 `standard_package` | PDM-008 對外的「1 標準套件 ＋ 2 Profile」計數 |
+| profile | 帶 MCP 設定 | 遠端 MCP 已移出首發，欄位是恆為 null 的型別佔位 |
 | profile | 既無驗證 Prompt 也無檢查步驟 | `PACK-007` |
 | profile | `env_vars[].example` 放真的金鑰樣式 | 鐵律 11 |
 | portable test case | dataset 路徑 `data/../../...` | 解壓逃逸（§3.3 同一條理由） |
 | portable test case | `origin: "user_upload"` | `PACK-005` 的可散布判準 |
 | portable test case | rubric item 缺 `evidence_required` | `0026` CHECK 的對外形式 |
+
+## 7. `profiles/`：三個打包目標的設定實體
+
+| 檔案 | `id` | `kind` | `support_status` | 安裝位置 |
+| --- | --- | --- | --- | --- |
+| [`profiles/standard.json`](profiles/standard.json) | `standard` | `standard_package` | `unverified` | 無（刻意） |
+| [`profiles/claude-code.json`](profiles/claude-code.json) | `claude-code` | `profile` | `unverified` | 使用者層 `~/.claude/skills/<name>/`；專案層 `.claude/skills/<name>/` |
+| [`profiles/claude-agent-sdk.json`](profiles/claude-agent-sdk.json) | `claude-agent-sdk` | `profile` | `verified` | 工作目錄層 `.claude/skills/<name>/`（相對於傳給 `query()` 的 `cwd`） |
+
+**這三份就是 schema 的 examples。** `packaging-profile.schema.json` 因此**不再帶 inline `examples`**——同一份文件放兩份會漂移，而被移除的那份已經漂了：它的 SDK snippet 傳 `setting_sources=["project"]`，正是 ADR-023 在釘定版本上量到「載入零個 skill」的那個寫法。validator 改讀 `profiles/*.json`，並斷言目錄裡恰好是 PDM-008 的三個 id。
+
+### 7.1 `support_status` 判的是**目標 Agent**，不是打包器的產出
+
+三個值都不是預留的。判準只有一條：**Skill Hub 有沒有在這個 Agent 上量過「Skill 被發現並啟用」**。
+
+- **`claude-agent-sdk` ＝ `verified`**：有實測。`infra/images/runtime-agent-sdk/UPGRADES.md` 的 `2026.08-3` 一節（單一真實 Run，套件掛在 `<cwd>/.claude/skills/`，`skill_activation` 事件 ＋套件內腳本真的執行），加上 M2 基準的 45/45（[`m2/content-baseline-report.md`](../../docs/plans/mvp/m2/content-baseline-report.md) §12／§13）。
+- **`claude-code` ＝ `unverified`**：**沒有人把一個 Skill Hub 套件放進 `~/.claude/skills/` 跑過**。路徑取自 Claude Code 官方文件、底層發現機制與上面那次實測同源，但兩者都不等於做過——`PACK-009`「依說明安裝」的最後一哩本來就記為人的動作（[m4/README](../../docs/plans/mvp/m4/README.md) §9）。做完並落檔即改為 `verified`，**在那之前不改**（`PACK-008`）。
+- **`standard` ＝ `unverified`**：它不指名任何 Agent，格式有效不等於裝得起來（ADR-012「不得因格式驗證通過而暗示裝得起來」）。它的驗證走 `verification_steps`（重新匯入得同一個 `content_hash`），不走 Prompt。
+
+**因此 PDM-008 對外的「2 個已驗證安裝 Profile」目前只成立 1 個**，差的那一項是一次本機安裝，不是程式。這一列記在 [m4/README §13](../../docs/plans/mvp/m4/README.md#13-第-3-批前半的交付紀錄profile-內容與可散布性回填)。
+
+### 7.2 兩個 Profile 的路徑相同，差別必須寫在 `known_limitations` 裡
+
+`.claude/skills/<name>/` 在磁碟上是同一個位置。差的是**誰解析它**：`claude-code` 是 Claude Code 自己 watch 的目錄（使用者層或專案層，且會往上找到 repo 根），`claude-agent-sdk` 是**你自己的程式傳進去的 `cwd`**。`scope` 的 `project` 與 `agent_working_dir` 就是為了把這件事分開才存在（schema 的 `scope` description 已寫明）。不講清楚，使用者會把兩個目標讀成重複選項。
+
+### 7.3 版本演進
+
+`version`（每份設定自己的版本，會記進每個套件 manifest 的 `profile_version`）與 `schema_version`（契約版本，規則見 §5）**是兩件事**。改一份 profile 的內容＝`version` 進版，這樣「這次重打包是 Profile 變了還是 Skill 變了」查得出來；改 schema 才動 `schema_version`。
+
+`support_status` 由 `unverified` 翻成 `verified` **也是一次 `version` 進版**，且要附得出實測落點——那是 `PACK-008` 唯一的機械形式。

@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "id": "claude-agent-sdk",
+  "kind": "profile",
+  "version": "1.0.0",
+  "display_name": "Claude Agent SDK",
+  "support_status": "verified",
+  "install": {
+    "locations": [
+      {
+        "scope": "agent_working_dir",
+        "path": ".claude/skills/<name>/",
+        "description": "Relative to the cwd you pass to query(), not to where your script file lives. The SDK also looks in .claude/skills/ of the parent directories of that cwd. If you run the snippet below with cwd \"./workdir\", the Skill belongs at ./workdir/.claude/skills/<name>/SKILL.md."
+      }
+    ],
+    "top_level_dir": "<name>"
+  },
+  "frontmatter_additions": {},
+  "env_vars": [
+    {
+      "name": "ANTHROPIC_API_KEY",
+      "required": true,
+      "description": "Read by the SDK from your own environment. Skill Hub never ships a key inside a package and never asks you for one; set it the way you set any other credential.",
+      "example": "<your-api-key>"
+    }
+  ],
+  "verification_prompt": "List the skills you can use, and say whether <name> is among them.",
+  "verification_steps": [
+    "Run the snippet with your own cwd and read the first message the SDK emits: its skill list must contain <name>.",
+    "If the list is empty, the cause is almost always one of the four conditions in the snippet's comments. None of them raises an error, so an empty list is the only symptom you get."
+  ],
+  "snippet": "// Measured against @anthropic-ai/claude-agent-sdk 0.3.233, the version Skill Hub\n// pins. Four conditions decide whether the Skill is loaded and every one of them\n// fails silently: a run that loaded zero Skills still answers plausibly and still\n// reports success.\n//   1. cwd is the directory that holds .claude/skills/ - not where this file is.\n//   2. settingSources (setting_sources in the Python package) is OMITTED. On\n//      0.3.233 passing [\"project\"] discovered no project Skill at all, while\n//      leaving the option out discovered it. That is the reverse of 0.2.137 and\n//      of how the documentation reads, so treat it as bound to this version.\n//   3. skills: \"all\" - 0.3.x moved Skill enablement out of allowedTools, where\n//      passing \"Skill\" is deprecated.\n//   4. allowedTools still has to name the tools the Skill's own steps use.\nimport { query } from \"@anthropic-ai/claude-agent-sdk\";\n\nfor await (const message of query({\n  prompt: \"List the skills you can use, and say whether <name> is among them.\",\n  options: {\n    cwd: \"./workdir\",\n    skills: \"all\",\n    allowedTools: [\"Skill\", \"Read\", \"Write\", \"Bash\"],\n  },\n})) {\n  console.log(message);\n}",
+  "mcp_config": null,
+  "known_limitations": [
+    "Leaving settingSources out means the SDK uses its default setting sources, and those include your personal ~/.claude. Skill Hub measured this where HOME was an empty per-run tmpfs, so there was nothing else to pick up; on your own machine your personal settings and Skills load as well.",
+    "This behaviour is bound to the SDK version. It already reversed once between 0.2.137 and 0.3.233 with no error and no warning, so after an SDK upgrade it has to be measured again rather than reasoned about (ADR-023).",
+    "Only the TypeScript package @anthropic-ai/claude-agent-sdk 0.3.233 was measured. The Python package claude-agent-sdk exposes the same options under snake_case names (cwd, setting_sources, skills), but Skill Hub has not run it, so the omission rule above is not carried over to it as a promise.",
+    "What Skill Hub measured is a Skill package mounted at <cwd>/.claude/skills/<name>/ and discovered by the SDK. It has not measured a package produced by this profile with its manifest and INSTALL.md alongside; those are extra files next to SKILL.md, which the loader does not read.",
+    "Skill Hub does not install dependencies and does not rewrite SKILL.md's existing frontmatter for this target - it only adds files."
+  ],
+  "notes": [
+    "Verified means the target Agent was measured, not that this exact package was: on 2026-08-16 a Skill mounted at <cwd>/.claude/skills/ under SDK 0.3.233 was discovered, activated and had its own scripts executed, and the same load conditions carried all 45 catalogue Skills through the M2 baseline.",
+    "The zip carries a single top-level directory named after the Skill, so unzipping inside <cwd>/.claude/skills/ produces the right layout in one step."
+  ]
+}
