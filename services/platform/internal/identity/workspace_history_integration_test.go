@@ -12,12 +12,72 @@ package identity_test
 import (
 	"context"
 	"net/http"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 )
+
+// O11Y-004's second half is the word "查詢", and the funnel query is a psql
+// script rather than an endpoint (ADR-029 決策 6). A script nothing runs rots
+// against the schema silently, so this executes the real file against the real
+// tables — the same reason the packaging tests read contracts/packaging/profiles
+// instead of a fixture copy.
+//
+// psql meta-commands and its variables are stripped here; what is under test is
+// the query body, which is what a column rename breaks.
+func TestTheFunnelQueryStillRunsAgainstTheSchema(t *testing.T) {
+	pool := requireDB(t)
+	raw, err := os.ReadFile("../../../../tools/analytics/funnel.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body []string
+	for _, line := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), `\`) {
+			continue
+		}
+		body = append(body, line)
+	}
+	sql := strings.NewReplacer(":from", "'-infinity'", ":to", "'infinity'").
+		Replace(strings.Join(body, "\n"))
+
+	rows, err := pool.Query(context.Background(), sql)
+	if err != nil {
+		t.Fatalf("the funnel query no longer runs against this schema: %v", err)
+	}
+	defer rows.Close()
+	seen := 0
+	for rows.Next() {
+		var segment int
+		var description, note string
+		var numerator, denominator int64
+		if err := rows.Scan(&segment, &description, &numerator, &denominator, &note); err != nil {
+			t.Fatal(err)
+		}
+		seen++
+		if numerator > denominator {
+			t.Errorf("segment %d reports %d of %d", segment, numerator, denominator)
+		}
+		// 02:O11Y-004's last clause: the precision limit travels with the number.
+		// A footnote in a document nobody has open is not a limitation that was
+		// stated, which is why the note is a column and not a comment.
+		if note == "" {
+			t.Errorf("segment %d reports a percentage with no precision limit", segment)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	// Seven, because 01 §11.2 has seven. A segment quietly dropped from the report
+	// is the failure this count exists to catch.
+	if seen != 7 {
+		t.Errorf("the funnel reports %d segments, and 01 §11.2 has 7", seen)
+	}
+}
 
 // seedRunArtifact records one output against a run, the way the settle path does
 // when a provider reports its manifest, and puts bytes behind it so a delete has

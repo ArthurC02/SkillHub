@@ -107,7 +107,11 @@ func startWorker(t *testing.T, pool *pgxpool.Pool) {
 // provider registry, a shorter poll interval, a lower retry ceiling. Every worker
 // cmd/worker registers is registered here too, so the cleanup, orphan-scan and
 // supervisor paths are exercised through River rather than called directly.
-func startWorkerWith(t *testing.T, svc *run.Service) *river.Client[pgx.Tx] {
+// The optional evaluator is for the one test that needs the run to be JUDGED
+// rather than merely evaluated-and-failed: without a judge the worker records a
+// failed evaluation, which is the honest outcome and is not a verdict. Every
+// other caller keeps the bare service.
+func startWorkerWith(t *testing.T, svc *run.Service, evaluator ...*eval.Service) *river.Client[pgx.Tx] {
 	t.Helper()
 	workers := river.NewWorkers()
 	river.AddWorker(workers, &run.Worker{Svc: svc})
@@ -119,7 +123,11 @@ func startWorkerWith(t *testing.T, svc *run.Service) *river.Client[pgx.Tx] {
 	// process that registers some workers but not this one cannot finish a run at
 	// all - which is why every registration list has to stay in step with
 	// cmd/worker, and why this line is not optional test scaffolding.
-	river.AddWorker(workers, &eval.Worker{Svc: &eval.Service{Pool: svc.Pool}})
+	evalSvc := &eval.Service{Pool: svc.Pool}
+	if len(evaluator) == 1 {
+		evalSvc = evaluator[0]
+	}
+	river.AddWorker(workers, &eval.Worker{Svc: evalSvc})
 	river.AddWorker(workers, &outbox.Worker{Pool: svc.Pool})
 	c, err := queue.New(svc.Pool, &river.Config{
 		Workers: workers,

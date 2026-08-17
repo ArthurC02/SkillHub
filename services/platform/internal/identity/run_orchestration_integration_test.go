@@ -17,6 +17,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/services/platform/internal/outbox"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
@@ -26,7 +27,9 @@ import (
 // withProvider starts a fake provider, points both the API and a worker at it,
 // and returns the fake plus the worker's service. Poll and retry settings are
 // squeezed so a test finishes in milliseconds rather than minutes.
-func withProvider(t *testing.T, a *api, pool *pgxpool.Pool, plan providertest.Plan) (*providertest.Fake, *run.Service) {
+func withProvider(
+	t *testing.T, a *api, pool *pgxpool.Pool, plan providertest.Plan, evaluator ...*eval.Service,
+) (*providertest.Fake, *run.Service) {
 	t.Helper()
 	clearRunBacklog(t, pool)
 	fake := providertest.New("fake_sandbox", "test-token")
@@ -42,7 +45,7 @@ func withProvider(t *testing.T, a *api, pool *pgxpool.Pool, plan providertest.Pl
 	// fetches its inputs with, and a worker without one refuses to dispatch at all
 	// (SBX-008 is fail-closed).
 	svc := &run.Service{Pool: pool, Providers: registry, Store: a.packages, PollInterval: 20 * time.Millisecond}
-	startWorkerWith(t, svc)
+	startWorkerWith(t, svc, evaluator...)
 	return fake, svc
 }
 
