@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sort"
 	"time"
@@ -136,7 +137,17 @@ type PermissionSummary struct {
 	Content       PermissionSummaryContent `json:"summary"`
 	Hash          string                   `json:"summary_hash"`
 	EstimatedCost CostEstimate             `json:"estimated_cost"`
-	Notes         []string                 `json:"notes"`
+	// Quota is what the account has left (PDM-010), on the screen where a user
+	// decides to start a run — the same kind of fact estimated_cost is, and outside
+	// the hash for the same reason (TEST-011): the hash covers what the run may
+	// touch, and an allowance is a state, not a permission. Another run finishing
+	// elsewhere in the workspace must not invalidate a confirmation in flight.
+	//
+	// Absent when this deployment enforces no allowance. Absent and not zeroed: a
+	// number here is a claim that the platform applies it, and putting up one it
+	// does not apply is exactly 04 乙-2.
+	Quota *QuotaView `json:"quota,omitempty"`
+	Notes []string   `json:"notes"`
 }
 
 // CostEstimate is PDM-005 §5.3's "預估成本區間", and §5.2a-6 is why it is a range
@@ -279,10 +290,24 @@ func (s *Service) PermissionSummaryFor(
 		return PermissionSummary{}, err
 	}
 	sum := sha256.Sum256(body)
+
+	// Read after the hash is taken, so it is structurally impossible for the
+	// allowance to reach the hashed body (TEST-011's rule for estimated_cost). A
+	// failure here does not fail the screen: the summary's job is to say what the
+	// run may touch, and that answer does not depend on how many runs are left.
+	var quota *QuotaView
+	if state, enforced, err := s.QuotaFor(ctx, workspaceID); err != nil {
+		slog.Warn("quota unavailable for the pre-run summary", "error", err)
+	} else if enforced {
+		view := state.View()
+		quota = &view
+	}
+
 	return PermissionSummary{
 		Content:       content,
 		Hash:          hex.EncodeToString(sum[:]),
 		EstimatedCost: defaultCostEstimate(),
+		Quota:         quota,
 		Notes: []string{
 			"預估成本是區間估計值,不是報價;實際費用以模型閘道記錄的實付金額為準。",
 			"MVP 不支援 MCP Server,因此工具清單只有 Sandbox 內建的檔案與 Shell 存取。",

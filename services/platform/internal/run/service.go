@@ -86,6 +86,11 @@ type Service struct {
 	// plane on (SKILLHUB_TRACE_INGEST_URL). Empty has the same effect as a
 	// disabled signer.
 	TraceIngestBaseURL string
+	// Quota is the PDM-010 free run allowance this deployment applies (ADR-028).
+	// The zero value enforces nothing and displays nothing, which is the honest
+	// state of a build with no allowance — see quota.go for why enforcement had to
+	// exist before the display did.
+	Quota QuotaLimits
 	// Gateway mints and revokes the per-run model credential (SBX-008, ADR-017).
 	// Nil is a deployment with no model gateway: no grant is minted, the egress
 	// allow list defaultPolicy writes stays empty, and the sandbox gets no route
@@ -293,6 +298,16 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	// answer another request can invalidate while this one is deciding - it takes a
 	// per-workspace lock that is released by this commit.
 	if err := s.requireRunSlot(ctx, q, p.WorkspaceID); err != nil {
+		return gen.Run{}, err
+	}
+	// PDM-010's free allowance (ADR-028 決策 2). Immediately after the concurrency
+	// check and deliberately not anywhere else: this is the only point where a run
+	// is about to exist and nothing has been spent on it, and it reuses the lock
+	// that call just took, so two simultaneous requests cannot both see the last
+	// remaining run. Nothing on the model gateway answers this question — see
+	// quota.go for why max_budget, tpm_limit and the concurrency limit are three
+	// different brakes and none of them is a monthly allowance.
+	if err := s.requireQuota(ctx, q, p.WorkspaceID); err != nil {
 		return gen.Run{}, err
 	}
 

@@ -171,8 +171,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// Same 422 for the 0023 licensing hold: the request is fine, the platform is
 	// fine, and this content may not be copied into a sandbox until the review
 	// concludes.
+	//
+	// PDM-010's allowance joins them (ADR-028 決策 2): out of runs for this window
+	// is not a malformed request either, and 422 keeps the whole of gate B on one
+	// status code. The message carries the reset time, because "come back later"
+	// without a time is the version of this screen nobody can act on.
 	if errors.Is(err, ErrScanBlocked) || errors.Is(err, ErrRunLimitReached) ||
-		errors.Is(err, ErrAccessRestricted) {
+		errors.Is(err, ErrAccessRestricted) || errors.Is(err, ErrQuotaExceeded) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
@@ -185,6 +190,31 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, resp)
+}
+
+// Quota handles GET /me/quota (PDM-010). It reports the counters
+// POST /skills/{id}/runs enforces, and computes nothing of its own — a display
+// with its own arithmetic is free to disagree with the rule, and the direction it
+// would disagree in is the generous one (04 乙-2).
+//
+// Mounted only where an allowance is actually enforced (see apiserver.NewRouter),
+// so a deployment with no allowance answers 404 here rather than serving numbers
+// nothing applies.
+func (h *Handler) Quota(w http.ResponseWriter, r *http.Request) {
+	ws, _, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	state, enforced, err := h.Svc.QuotaFor(r.Context(), ws.ID)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "quota lookup failed")
+		return
+	}
+	if !enforced {
+		httpx.WriteError(w, http.StatusNotFound, "no run allowance is configured")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, state.View())
 }
 
 // Get handles GET /runs/{id} (RUN-002: current status and how it got there).

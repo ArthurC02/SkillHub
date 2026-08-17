@@ -105,6 +105,60 @@ func (ns NullRunStatus) Value() (driver.Value, error) {
 	return string(ns.RunStatus), nil
 }
 
+type AnalyticsEvent struct {
+	EventID        pgtype.UUID
+	EventName      string
+	OccurredAt     pgtype.Timestamptz
+	SessionID      string
+	WorkspaceID    pgtype.UUID
+	QueryLength    *int32
+	QueryLanguage  *string
+	ResultCount    *int32
+	HasResults     *bool
+	FiltersApplied *bool
+	SkillID        pgtype.UUID
+	Arrival        *string
+	ArrivalRank    *int32
+	ArtifactID     pgtype.UUID
+	Target         *string
+}
+
+type AnalyticsEvents202608 struct {
+	EventID        pgtype.UUID
+	EventName      string
+	OccurredAt     pgtype.Timestamptz
+	SessionID      string
+	WorkspaceID    pgtype.UUID
+	QueryLength    *int32
+	QueryLanguage  *string
+	ResultCount    *int32
+	HasResults     *bool
+	FiltersApplied *bool
+	SkillID        pgtype.UUID
+	Arrival        *string
+	ArrivalRank    *int32
+	ArtifactID     pgtype.UUID
+	Target         *string
+}
+
+type AnalyticsEventsDefault struct {
+	EventID        pgtype.UUID
+	EventName      string
+	OccurredAt     pgtype.Timestamptz
+	SessionID      string
+	WorkspaceID    pgtype.UUID
+	QueryLength    *int32
+	QueryLanguage  *string
+	ResultCount    *int32
+	HasResults     *bool
+	FiltersApplied *bool
+	SkillID        pgtype.UUID
+	Arrival        *string
+	ArrivalRank    *int32
+	ArtifactID     pgtype.UUID
+	Target         *string
+}
+
 type Artifact struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
@@ -206,6 +260,17 @@ type EvaluationSuggestion struct {
 	DecidedAt             pgtype.Timestamptz
 	AppliedSkillVersionID pgtype.UUID
 	CreatedAt             pgtype.Timestamptz
+}
+
+type FeedbackReport struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	UserID      pgtype.UUID
+	Kind        string
+	Message     string
+	PagePath    *string
+	RunID       pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
 }
 
 type ObjectReconcileSighting struct {
