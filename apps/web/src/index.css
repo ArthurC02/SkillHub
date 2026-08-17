@@ -7,6 +7,10 @@
   --accent: #aa3bff;
   --accent-bg: rgba(170, 59, 255, 0.1);
   --accent-border: rgba(170, 59, 255, 0.5);
+  /* QA-009: the old literal #d33 was 4.11:1 on --code-bg in light mode and
+     3.55:1 in dark, i.e. below AA in both — one hardcoded red cannot serve two
+     backgrounds. This one is 5.82:1 light / 5.86:1 dark on the badge fill. */
+  --danger: #b91c1c;
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
@@ -39,6 +43,7 @@
     --accent: #c084fc;
     --accent-bg: rgba(192, 132, 252, 0.15);
     --accent-border: rgba(192, 132, 252, 0.5);
+    --danger: #f87171;
     --social-bg: rgba(47, 48, 58, 0.5);
     --shadow: rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }
@@ -153,8 +158,8 @@ main {
 .badge-compat-failed,
 .badge-risk,
 .badge-risk-flag {
-  border-color: #d33;
-  color: #d33;
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .risk-list,
@@ -204,10 +209,10 @@ main {
   flex-basis: 100%;
 }
 
-.filter-unavailable {
-  opacity: 0.65;
-}
-
+/* QA-009: this used to carry `opacity: 0.65`, which multiplied with the 0.8 on
+   `.note` below and left the reason text at 2.18:1 — the one sentence that
+   explains why the control is dead was the least readable thing in the bar. The
+   native `disabled` select is the affordance; nothing needs dimming on top. */
 .filter-unavailable .note {
   font-size: 12px;
 }
@@ -219,10 +224,6 @@ main {
   gap: 2px 12px;
   margin: 6px 0;
   font-size: 14px;
-}
-
-.result-facets dt {
-  opacity: 0.7;
 }
 
 .result-facets dd {
@@ -249,12 +250,16 @@ main {
   gap: 6px;
 }
 
+/* QA-009: secondary text is demoted by size only. The `opacity: 0.7`–`0.8` this
+   replaced put --text at 3.03:1–3.71:1 on white, under the 4.5:1 AA floor, and
+   opacity is the one way to break contrast that no colour token can catch —
+   whatever value --text holds, a multiplier lands somewhere else. --text is
+   5.73:1 on --bg and 5.15:1 on --code-bg; keep the greys in the tokens. */
 .note,
 .rank,
 .risk-counts,
 .file-size {
   font-size: 14px;
-  opacity: 0.8;
 }
 
 .notice {
@@ -332,7 +337,6 @@ summary {
 
 .compare-unknown {
   font-style: italic;
-  opacity: 0.8;
 }
 
 .ranking-explainer li {
@@ -366,7 +370,7 @@ summary {
 }
 
 .criterion-failed {
-  border-color: #d33;
+  border-color: var(--danger);
 }
 
 .criterion-undetermined {
@@ -375,8 +379,8 @@ summary {
 
 .badge-criterion-failed,
 .badge-severity-error {
-  border-color: #d33;
-  color: #d33;
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 /* 04 丙-10. A verdict the platform downgraded because the citations did not
@@ -437,16 +441,16 @@ summary {
 }
 
 .badge-expired {
-  border-color: #d33;
-  color: #d33;
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .file-script .script-tag {
   margin-left: 8px;
   font-size: 12px;
   font-family: var(--mono);
-  color: #d33;
-  border: 1px solid #d33;
+  color: var(--danger);
+  border: 1px solid var(--danger);
   border-radius: 4px;
   padding: 0 4px;
 }

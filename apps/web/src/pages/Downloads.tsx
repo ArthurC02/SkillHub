@@ -111,13 +111,27 @@ function DownloadActions({
       {" ｜ "}
       {confirming ? (
         <>
-          <button type="button" disabled={pending} onClick={onConfirmDelete}>
+          {/*
+            QA-009: the 刪除 button this replaced is gone from the DOM, so
+            without autoFocus the focus falls back to <body> and a keyboard user
+            has to tab in from the top of the page to reach a confirmation they
+            just asked for. aria-describedby puts the scope sentence below into
+            the announcement, which is the same NFR-007 requirement the visible
+            copy answers for a sighted reader.
+          */}
+          <button
+            type="button"
+            autoFocus
+            aria-describedby={`delete-scope-${artifact.artifact_id}`}
+            disabled={pending}
+            onClick={onConfirmDelete}
+          >
             確認刪除
           </button>{" "}
           <button type="button" disabled={pending} onClick={onCancelDelete}>
             取消
           </button>
-          <span className="note">
+          <span className="note" id={`delete-scope-${artifact.artifact_id}`}>
             刪除的是這個套件的檔案本身。
             「你曾經下載過幾次」的紀錄會保留，因為那件事已經發生過；這一筆之後不再出現在清單裡，下載連結也失效。
             同一個版本隨時可以重新打包一次。重複刪除不算失敗。
