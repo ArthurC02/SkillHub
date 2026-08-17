@@ -218,6 +218,15 @@ jobs:
           pip install jsonschema==4.26.0
           python tools/contracts/validate_trace_events.py
 
+      # Same half of iron rule 12, third contract type: contracts/packaging holds
+      # file formats (the manifest inside a downloaded zip, a packaging profile, a
+      # portable test case), so neither redocly nor the trace validator sees them.
+      # One of the consumers is outside this repository - the user unzipping the
+      # package - which is exactly the consumer that cannot report drift.
+      # jsonschema is already installed by the step above and pinned there.
+      - name: Packaging contracts (contracts/packaging)
+        run: python tools/contracts/validate_packaging.py
+
       - name: OpenAPI codegen (placeholder, deliberately not failing)
         run: |
           echo "The specs are linted above, but no codegen is wired yet:"

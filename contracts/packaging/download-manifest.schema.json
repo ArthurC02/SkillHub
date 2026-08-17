@@ -1,0 +1,574 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillhub.local/contracts/packaging/download-manifest.schema.json",
+  "title": "Skill Hub Download Package Manifest",
+  "description": "The `skillhub-manifest.json` a Download Artifact carries at the root of its zip (PACK-001, PACK-003, ADR-012). It is the platform's account of how one package was produced: which immutable Skill Version it came from, how that version came to exist, what licence evidence travels with it, what the pre-packaging revalidation found, and which of the three compatibility layers were actually measured. Consumers are Go (writes it), apps/web (displays it) and the user's own tooling (verifies it) - the last of those is outside this repository, which is why this is a file format and not an OpenAPI schema.\n\nTHIS MANIFEST IS NOT A SIGNATURE AND NOT AN ENDORSEMENT. The MVP does not sign packages (ADR-027): the hashes here are facts you can recompute yourself to tell one package from another, not a platform guarantee that the contents are safe, effective, or unmodified since you received them. Revocation reaches only as far as refusing to hand out further copies; a copy already downloaded cannot be invalidated.\n\nNOTHING IN THIS FILE MAY CARRY A SECRET (iron rule 11, NFR-002). Every field is either a platform-generated structured value (id, enum, hash, timestamp) or text the platform itself wrote. Run data, evaluation prose, evidence excerpts, rubrics, dataset contents and user prompts are NOT part of a package (packaging-design.md §4.3) and have no field here to land in. `additionalProperties: false` is enforced at every level precisely so a future exporter cannot quietly add one.",
+  "type": "object",
+  "additionalProperties": false,
+  "$comment": "sensitivity: no_secrets - see the description; this marker is the inverse of the `sensitivity: secret_bearing` convention in contracts/events, and it applies to the whole document.",
+  "required": [
+    "schema_version",
+    "packaged_at",
+    "packager_version",
+    "profile_id",
+    "profile_version",
+    "source",
+    "license",
+    "validation",
+    "compatibility",
+    "included_test_cases",
+    "excluded_test_cases",
+    "manifest_hash"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$",
+      "description": "Manifest contract version, MAJOR.MINOR. Minor bumps are additive only and an older manifest stays a valid instance of the newer minor; a breaking change bumps the major and gets a new $id. A producer that writes only 1.0 fields keeps declaring 1.0. Same rule as contracts/events.",
+      "examples": ["1.0"]
+    },
+    "packaged_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this package was built, RFC 3339 with offset. Note this is the only wall-clock value in the document and it is deliberately NOT an input to `manifest_hash`: two builds of the same content at different times must still hash the same (packaging-design.md §2.4)."
+    },
+    "packager_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version of the packaging pipeline that produced these bytes. `content_hash` reproducibility is only promised within one packager version, which is the reason this field exists rather than being inferable."
+    },
+    "profile_id": {
+      "type": "string",
+      "enum": ["standard", "claude-code", "claude-agent-sdk"],
+      "description": "Which packaging target produced this package (PDM-008: one standard package plus two verified install profiles). Values are the `id` of contracts/packaging/packaging-profile.schema.json."
+    },
+    "profile_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version of that target's versioned configuration, so a package can be told apart from the same source packaged under a later profile (ADR-012)."
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "license": {
+      "$ref": "#/$defs/license"
+    },
+    "validation": {
+      "$ref": "#/$defs/validation"
+    },
+    "compatibility": {
+      "$ref": "#/$defs/compatibility"
+    },
+    "included_test_cases": {
+      "type": "array",
+      "description": "Portable Test Cases shipped under `test-cases/` (PACK-005). Each entry names a directory whose `case.json` conforms to portable-test-case.schema.json. Empty when the user did not ask for them, or when none qualified.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["slug", "name"],
+        "properties": {
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "Stable platform-generated directory name under `test-cases/`. The same Test Case gets the same slug on every packaging run."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Display name of the Test Case. Curated content only, so this is platform-authored text (packaging-design.md §5.1)."
+          }
+        }
+      }
+    },
+    "excluded_test_cases": {
+      "type": "array",
+      "description": "Test Cases that exist for this Skill but were left out, with the reason. Listing them is what keeps `included_test_cases` from reading like 'this Skill has no tests'.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "reason"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "reason": {
+            "type": "string",
+            "enum": ["user_uploaded_dataset", "not_curated", "user_opted_out"],
+            "description": "`user_uploaded_dataset` - it references bytes the user uploaded, whose licence the platform cannot judge, so it is never packaged and no opt-in is offered (packaging-design.md §5.1). `not_curated` - the Test Case was not produced by platform curation. `user_opted_out` - the packaging request set include_test_cases=false."
+          }
+        }
+      }
+    },
+    "manifest_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "The canonical content hash of this package (ADR-012 reproducibility, packaging-design.md §2.4): lowercase hex SHA-256 over the canonical JSON serialisation of the object defined by `$defs/manifestHashInput`. It answers 'is the CONTENT of these two packages the same', which the zip's own byte hash cannot, because entry order, mtime, external attributes and compressor version all move the bytes without moving the content. It therefore excludes ALL zip metadata and excludes `skillhub-manifest.json` itself - a hash that covered the manifest would change whenever `packaged_at` changed, which is the exact question it exists to answer independently of."
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skill_id", "skill_version_id", "version_number", "content_hash", "origin"],
+      "description": "The immutable Skill Version these bytes were cut from, and how that version came to exist. Packaging never creates or modifies a Skill Version (iron rule 4); it only reads one.",
+      "properties": {
+        "skill_id": { "type": "string", "format": "uuid" },
+        "skill_version_id": { "type": "string", "format": "uuid" },
+        "version_number": { "type": "integer", "minimum": 1 },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "`skill_versions.content_hash`: lowercase hex SHA-256 of the source package bytes as imported. Re-importing this download's own bytes must reproduce it once the three platform-added files are removed (PACK-009, packaging-design.md §2.3)."
+        },
+        "origin": { "$ref": "#/$defs/origin" }
+      }
+    },
+    "origin": {
+      "description": "PACK-003 'preserve original source and derivation'. In the data model this is not one field but three mutually exclusive paths (packaging-design.md §4.2), so it is three mutually exclusive shapes here.\n\nEvery branch is closed (`additionalProperties: false`). That is load-bearing for the `improvement` branch: the suggestion prose (`problem`, `expected_impact`) and the evidence `excerpt` are model-written text quoting the private inputs of a Run, and they must never reach a package (iron rule 11, packaging-design.md §4.3). A closed schema makes adding them a contract change rather than an oversight.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "source_type", "fetched_at", "content_hash"],
+          "title": "import",
+          "description": "Imported directly from a URL or an upload: `skill_versions.source_id` -> `skill_sources`. This branch is its own root, so it carries no `root_source`.",
+          "properties": {
+            "kind": { "const": "import" },
+            "source_type": { "type": "string", "enum": ["git", "upload"] },
+            "source_url": {
+              "type": ["string", "null"],
+              "description": "NULL for uploads. `skill_sources` already requires a URL for `git`."
+            },
+            "source_ref": {
+              "type": ["string", "null"],
+              "description": "Commit SHA or tag; NULL for uploads."
+            },
+            "fetched_at": { "type": "string", "format": "date-time" },
+            "content_hash": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Hash of the fetched artefact as a whole (`skill_sources.content_hash`), which for a monorepo import is the repo archive, not the sub-directory package."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "upstream_skill_id", "upstream_skill_version_id", "chain", "root_source"],
+          "title": "fork",
+          "description": "Forked from another Skill: `skills.forked_from_skill_id` / `forked_from_version_id`. `source_id` is deliberately NULL on a fork because that `skill_sources` row belongs to the upstream workspace.",
+          "properties": {
+            "kind": { "const": "fork" },
+            "upstream_skill_id": { "type": "string", "format": "uuid" },
+            "upstream_skill_version_id": { "type": "string", "format": "uuid" },
+            "chain": {
+              "type": "array",
+              "minItems": 1,
+              "description": "The fork lineage from the immediate upstream to the oldest hop still known, nearest first. DISC-003 clause 5 requires tracing back to the ORIGINAL source, so recording only one hop does not satisfy it.",
+              "items": { "$ref": "#/$defs/provenanceHop" }
+            },
+            "root_source": { "$ref": "#/$defs/rootSource" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "evaluation_id", "suggestions", "base", "root_source"],
+          "title": "improvement",
+          "description": "Created by adopting improvement suggestions (EVAL-002 4). Found by reverse lookup on `evaluation_suggestions.applied_skill_version_id`; there is no `derived_from_evaluation_id` column and one is deliberately not being added (m3/evaluation-design.md §5.3).",
+          "properties": {
+            "kind": { "const": "improvement" },
+            "evaluation_id": { "type": "string", "format": "uuid" },
+            "suggestions": {
+              "type": "array",
+              "minItems": 1,
+              "description": "Which suggestions produced this version - their class and the file they targeted, and nothing else. `problem`, `proposed_change`, `expected_impact` and the evidence `excerpt` are intentionally absent and intentionally unrepresentable here.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["category", "target_path"],
+                "properties": {
+                  "category": {
+                    "type": "string",
+                    "enum": ["skill", "runtime", "mcp", "tool", "dataset"],
+                    "description": "Verbatim the value domain of `evaluation_suggestions.category` (0024). `mcp` never occurs in the MVP and is a type placeholder."
+                  },
+                  "target_path": {
+                    "type": "string",
+                    "pattern": "^(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^/\\\\][^\\\\]*$",
+                    "description": "Package-relative path the suggestion changed. Same escape rules as every other path in a package: no leading slash, no `..` segment, no drive letter, no backslash."
+                  }
+                }
+              }
+            },
+            "base": {
+              "$ref": "#/$defs/provenanceHop",
+              "description": "The version this one was improved from."
+            },
+            "root_source": { "$ref": "#/$defs/rootSource" }
+          }
+        }
+      ]
+    },
+    "provenanceHop": {
+      "description": "One hop in a lineage, or the literal string `unavailable` when that hop has been deleted. Omitting a deleted hop is not an option: a gap reads as 'there was no upstream', which is a different and false statement (packaging-design.md §4.2).",
+      "oneOf": [
+        { "const": "unavailable" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["skill_id", "skill_version_id"],
+          "properties": {
+            "skill_id": { "type": "string", "format": "uuid" },
+            "skill_version_id": { "type": "string", "format": "uuid" },
+            "version_number": { "type": "integer", "minimum": 1 }
+          }
+        }
+      ]
+    },
+    "rootSource": {
+      "description": "The original import at the end of the lineage walk, or `unavailable` when it can no longer be read. Only the `import` origin branch omits this, because there it is the origin itself.",
+      "oneOf": [
+        { "const": "unavailable" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_type", "fetched_at"],
+          "properties": {
+            "source_type": { "type": "string", "enum": ["git", "upload"] },
+            "source_url": { "type": ["string", "null"] },
+            "source_ref": { "type": ["string", "null"] },
+            "fetched_at": { "type": "string", "format": "date-time" }
+          }
+        }
+      ]
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expression", "source_tier", "disclosures"],
+      "description": "The outward form of ADR-021's four-tier provenance. `expression` and `source_tier` are recorded as a PAIR and are never flattened into one string: `MIT` declared by the author in frontmatter and `MIT` picked up from a repository root LICENSE are not the same claim, and DISC-003 requires that difference to stay visible. The pair is all-or-nothing here for the same reason it is a CHECK constraint on `skill_versions` (0012).\n\nThis schema does NOT decide which licences may be packaged. Redistributability is a separate lock on the Skill (`skills.redistribution`, three-state and defaulting to `unknown`, ADR-027 decision 4) and `license_status = Confirmed` is explicitly not a release condition (CONTENT-002: manually confirmed does not mean redistributable). Both nullable and non-null forms therefore stay legal here - the manifest reports the licence evidence, the gate refuses the package.",
+      "properties": {
+        "expression": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "not": { "enum": ["NOASSERTION", "NONE", "noassertion", "none"] },
+          "description": "SPDX expression in canonical form, or an author string that could not be mapped to one (ADR-021 decision 6: unmappable text is kept verbatim, never guessed at). NULL means unknown. The SPDX status words `NOASSERTION` / `NONE` are forbidden as values (ADR-021 decision 7): this field carries an expression, never a status, and unknown is expressed by NULL. Map to `NOASSERTION` only when emitting an SPDX/SBOM document."
+        },
+        "source_tier": {
+          "enum": [
+            "manifest",
+            "manifest-referenced-file",
+            "package-license-file",
+            "repo-license-file",
+            null
+          ],
+          "description": "ADR-021 tier, strongest first, verbatim the value domain of `skill_versions.license_source` (0012 + 0014). `manifest` - the author declared it in SKILL.md frontmatter. `manifest-referenced-file` - frontmatter pointed at a package file (`SEE LICENSE IN <file>`) and that file's text was recognised. `package-license-file` - a LICENSE file in the package itself. `repo-license-file` - a repository-level LICENSE carried in as `LICENSE.repo` for a package cut from a monorepo sub-directory; it covers the repository and not necessarily this content. The fourth ADR-021 tier `curated-declared` is defined but not implemented and is not accepted here."
+        },
+        "disclosures": {
+          "type": "array",
+          "description": "The info-level findings raised while the licence was resolved (ADR-021 decision 5: every carry and every fallback is disclosed, never silent), e.g. `license-from-package-file`, `license-from-repo-file`. Platform-authored text.",
+          "items": { "$ref": "#/$defs/finding" }
+        }
+      },
+      "oneOf": [
+        {
+          "title": "unknown",
+          "properties": {
+            "expression": { "type": "null" },
+            "source_tier": { "type": "null" }
+          }
+        },
+        {
+          "title": "known",
+          "properties": {
+            "expression": { "type": "string" },
+            "source_tier": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blocked", "errors", "warnings", "infos"],
+      "description": "The result of re-running `skillpkg.Validate` over the PRODUCED bytes, not the source bytes (PACK-002, packaging-design.md §3). Re-validating matters because packaging adds files and a profile may add frontmatter fields; validating only the source would make the acceptance criterion vacuous. Severity is `skillpkg`'s own - the packager does not get to define what counts as blocking, because two definitions drift and the packaging side always drifts looser.",
+      "properties": {
+        "blocked": {
+          "const": false,
+          "description": "Always false. A blocked package is refused and no artifact is written (packaging-design.md §3), so a manifest asserting `true` describes a file that must not exist."
+        },
+        "errors": {
+          "type": "array",
+          "maxItems": 0,
+          "description": "Always empty, for the same reason `blocked` is always false. The field is present rather than omitted so that a consumer reading a manifest and a live PackageValidation response reads the same three lists.",
+          "items": { "$ref": "#/$defs/finding" }
+        },
+        "warnings": {
+          "type": "array",
+          "description": "Non-blocking findings. PACK-001 blocks on errors only, but hiding warnings would breach SKILL-002's requirement to present blocking errors and acceptable warnings separately - so they travel with the package.",
+          "items": { "$ref": "#/$defs/finding" }
+        },
+        "infos": {
+          "type": "array",
+          "description": "Disclosure-level findings: scripts, external URLs, dependency files, licence provenance.",
+          "items": { "$ref": "#/$defs/finding" }
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "description": "One validation finding, mirroring `skillpkg.Finding` minus its severity (which is implied by the list it sits in). Platform-authored text about the package's own files; it never quotes Run output or user data.",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable machine-readable code, e.g. `license-from-repo-file`, `package-dependencies`, `binary-file`."
+        },
+        "path": {
+          "type": "string",
+          "description": "Package-relative file the finding is about, when it is about one."
+        },
+        "message": { "type": "string", "minLength": 1 },
+        "details": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "The full list behind an aggregated finding, so summarising for readability never costs the underlying facts (INGEST-008, `skillpkg.Finding.Details`)."
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "capability", "behaviour"],
+      "description": "ADR-012's three compatibility layers, kept apart. Passing the format layer must never be presented as 'it will install and work' - that is what PACK-008 and the `01` §12 risk 'spec-valid but unrunnable' exist to prevent.",
+      "properties": {
+        "format": {
+          "const": "valid",
+          "description": "Spec validation. Narrower than the API's `valid | invalid` enum on purpose: an invalid package is never produced, so `invalid` cannot appear in a manifest that exists. Mirrors `validation.blocked`."
+        },
+        "capability": {
+          "type": "string",
+          "enum": ["activated", "not_activated", "unverified"],
+          "description": "Does the agent pick this Skill up when it is mounted. Value domain verbatim from `skill_runtime_compatibility.capability` (0022). `unverified` covers both 'no run' and 'a run that ended before the question could be answered'; it is never inferred from absence."
+        },
+        "behaviour": {
+          "type": "string",
+          "enum": ["native", "transpiled", "failed", "unverified"],
+          "description": "Can the package's own scripts execute on the measured pair. Value domain verbatim from `skill_runtime_compatibility.runtime` (0022; named `behaviour` here to match ADR-012's third layer). `transpiled` is a working Run whose work was not the Skill's own code.\n\nTHIS FIELD IS A RECORD OF ONE MEASUREMENT, NOT A PROMISE. Its value may come only from the measured row for THIS Skill Version and THIS Runtime Image. With no such row the value is `unverified`, and it must never be extrapolated from another version of the same Skill or from another image - changing the image drops every Skill back to unverified until re-measured, and packaging must not paint over that honesty (04 乙-4)."
+        },
+        "runtime_image": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Full image reference (digest form where the row has one) the measurement ran on. Required whenever either measured axis is not `unverified`, because a verdict without the image it was measured on is the extrapolation the previous field forbids."
+        },
+        "measured_at": { "type": "string", "format": "date-time" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["capability", "behaviour"],
+            "properties": {
+              "capability": { "const": "unverified" },
+              "behaviour": { "const": "unverified" }
+            }
+          },
+          "then": true,
+          "else": { "required": ["runtime_image", "measured_at"] }
+        }
+      ]
+    },
+    "manifestHashInput": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "The preimage of `manifest_hash`, defined here so two implementations cannot disagree about what was hashed. It is the map from every package-relative file path to the lowercase hex SHA-256 of that file's bytes, serialised as canonical JSON (keys sorted by path, no insignificant whitespace, UTF-8) and hashed with SHA-256.\n\nWhat is deliberately NOT in it: any zip metadata (entry order, mtime, external attributes, compression method, extra fields) - because those move without the content moving; and `skillhub-manifest.json` itself - because the manifest carries the hash, and because it carries `packaged_at`, which would make two byte-identical builds hash differently.\n\nThe path keys carry the same escape rules the exporter enforces on every zip entry (packaging-design.md §4.4): the platform never unpacks to disk and so the import side has no zip-slip check, but the USER unpacks to disk, which is where that check first becomes necessary.",
+      "propertyNames": {
+        "pattern": "^(?!skillhub-manifest\\.json$)(?![A-Za-z]:)(?!.*(?:^|/)\\.\\.(?:/|$))[^/\\\\][^\\\\]*$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "examples": [
+        {
+          "INSTALL.md": "3b7a1d5f2c9e0448a6d1f0b3c5e7a9d2f4b6c8e0a2d4f6b8c0e2a4d6f8b0c2e4",
+          "LICENSE.repo": "9f2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a",
+          "LICENSE.repo.provenance.json": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+          "SKILL.md": "5d41402abc4b2a76b9719d911017c592ab6f1e2d3c4b5a69788796a5b4c3d2e1",
+          "scripts/run.py": "c3fcd3d76192e4007dfb496cca67e13b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f"
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "1.0",
+      "packaged_at": "2026-08-17T09:00:00Z",
+      "packager_version": "0.1.0",
+      "profile_id": "standard",
+      "profile_version": "1.0.0",
+      "source": {
+        "skill_id": "11111111-1111-4111-8111-111111111111",
+        "skill_version_id": "22222222-2222-4222-8222-222222222222",
+        "version_number": 1,
+        "content_hash": "5d41402abc4b2a76b9719d911017c592ab6f1e2d3c4b5a69788796a5b4c3d2e1",
+        "origin": {
+          "kind": "import",
+          "source_type": "git",
+          "source_url": "https://github.com/example/skills",
+          "source_ref": "9f2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a",
+          "fetched_at": "2026-07-01T12:00:00Z",
+          "content_hash": "c3fcd3d76192e4007dfb496cca67e13b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f"
+        }
+      },
+      "license": {
+        "expression": "MIT",
+        "source_tier": "repo-license-file",
+        "disclosures": [
+          {
+            "code": "license-from-repo-file",
+            "path": "LICENSE.repo",
+            "message": "License text was carried in from the repository root. It covers the repository and not necessarily this directory's content."
+          }
+        ]
+      },
+      "validation": {
+        "blocked": false,
+        "errors": [],
+        "warnings": [],
+        "infos": [
+          {
+            "code": "package-scripts",
+            "path": "scripts/run.py",
+            "message": "Package contains executable scripts. Review them before running."
+          }
+        ]
+      },
+      "compatibility": {
+        "format": "valid",
+        "capability": "unverified",
+        "behaviour": "unverified"
+      },
+      "included_test_cases": [],
+      "excluded_test_cases": [],
+      "manifest_hash": "0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9"
+    },
+    {
+      "schema_version": "1.0",
+      "packaged_at": "2026-08-17T09:30:00Z",
+      "packager_version": "0.1.0",
+      "profile_id": "claude-code",
+      "profile_version": "1.0.0",
+      "source": {
+        "skill_id": "33333333-3333-4333-8333-333333333333",
+        "skill_version_id": "44444444-4444-4444-8444-444444444444",
+        "version_number": 2,
+        "content_hash": "9f2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a",
+        "origin": {
+          "kind": "fork",
+          "upstream_skill_id": "11111111-1111-4111-8111-111111111111",
+          "upstream_skill_version_id": "22222222-2222-4222-8222-222222222222",
+          "chain": [
+            {
+              "skill_id": "11111111-1111-4111-8111-111111111111",
+              "skill_version_id": "22222222-2222-4222-8222-222222222222",
+              "version_number": 1
+            },
+            "unavailable"
+          ],
+          "root_source": {
+            "source_type": "git",
+            "source_url": "https://github.com/example/skills",
+            "source_ref": "9f2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a",
+            "fetched_at": "2026-07-01T12:00:00Z"
+          }
+        }
+      },
+      "license": {
+        "expression": "Apache-2.0",
+        "source_tier": "manifest-referenced-file",
+        "disclosures": [
+          {
+            "code": "license-from-package-file",
+            "path": "LICENSE.txt",
+            "message": "Frontmatter pointed at LICENSE.txt and that file's text was recognised as Apache-2.0."
+          }
+        ]
+      },
+      "validation": {
+        "blocked": false,
+        "errors": [],
+        "warnings": [
+          {
+            "code": "binary-file",
+            "path": "assets/template.xlsx",
+            "message": "Binary file included; you will be running this on your own machine."
+          }
+        ],
+        "infos": []
+      },
+      "compatibility": {
+        "format": "valid",
+        "capability": "activated",
+        "behaviour": "transpiled",
+        "runtime_image": "ghcr.io/skillhub/runtime-agent-sdk@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "measured_at": "2026-08-10T04:05:06Z"
+      },
+      "included_test_cases": [
+        { "slug": "monthly-report", "name": "Monthly report from the sample ledger" }
+      ],
+      "excluded_test_cases": [
+        { "name": "My own spreadsheet", "reason": "user_uploaded_dataset" }
+      ],
+      "manifest_hash": "1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9a0"
+    },
+    {
+      "schema_version": "1.0",
+      "packaged_at": "2026-08-17T10:15:00Z",
+      "packager_version": "0.1.0",
+      "profile_id": "claude-agent-sdk",
+      "profile_version": "1.0.0",
+      "source": {
+        "skill_id": "33333333-3333-4333-8333-333333333333",
+        "skill_version_id": "55555555-5555-4555-8555-555555555555",
+        "version_number": 3,
+        "content_hash": "c3fcd3d76192e4007dfb496cca67e13b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f",
+        "origin": {
+          "kind": "improvement",
+          "evaluation_id": "66666666-6666-4666-8666-666666666666",
+          "suggestions": [
+            { "category": "skill", "target_path": "SKILL.md" },
+            { "category": "runtime", "target_path": "scripts/run.py" }
+          ],
+          "base": {
+            "skill_id": "33333333-3333-4333-8333-333333333333",
+            "skill_version_id": "44444444-4444-4444-8444-444444444444",
+            "version_number": 2
+          },
+          "root_source": "unavailable"
+        }
+      },
+      "license": {
+        "expression": "MIT",
+        "source_tier": "manifest",
+        "disclosures": []
+      },
+      "validation": {
+        "blocked": false,
+        "errors": [],
+        "warnings": [],
+        "infos": []
+      },
+      "compatibility": {
+        "format": "valid",
+        "capability": "unverified",
+        "behaviour": "unverified"
+      },
+      "included_test_cases": [],
+      "excluded_test_cases": [
+        { "name": "Regression fixture", "reason": "user_opted_out" }
+      ],
+      "manifest_hash": "2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1"
+    }
+  ]
+}

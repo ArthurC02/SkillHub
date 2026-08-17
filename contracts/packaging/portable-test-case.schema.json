@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillhub.local/contracts/packaging/portable-test-case.schema.json",
+  "title": "Skill Hub Portable Test Case",
+  "description": "One `test-cases/<slug>/case.json` inside a Download Artifact (PACK-005, packaging-design.md §5). Sample files sit beside it under `test-cases/<slug>/data/`.\n\nThis schema is read in BOTH directions on purpose (04 丙-12): the packager exports Test Cases into it, and the curation seeding script under tools/content/ imports the same shape into a fresh deployment's catalogue workspace. Two schemas would become two formats, and the seeding path is exactly the one that does not exist yet.\n\nONLY CURATED CONTENT IS PORTABLE. A user's uploaded Dataset bytes are never packaged and no opt-in checkbox is offered: a checkbox looks like respecting the user's choice but actually hands a licensing judgement to the person least equipped to make it, about files that may belong to their employer (packaging-design.md §5.1). Run results, evaluations, traces, evidence excerpts and improvement-suggestion prose are Run data, not Skill content, and have no field here (iron rule 11, packaging-design.md §4.3).",
+  "type": "object",
+  "additionalProperties": false,
+  "$comment": "sensitivity: no_secrets - curated content only; see the description.",
+  "required": ["schema_version", "slug", "name", "origin", "user_prompt", "criteria", "datasets"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$",
+      "description": "Portable Test Case contract version, MAJOR.MINOR. Same evolution rule as the other packaging contracts: minor bumps are additive, a breaking change bumps the major and gets a new $id.",
+      "examples": ["1.0"]
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64,
+      "description": "The directory name under `test-cases/`. Platform-generated and stable: the same Test Case packaged twice gets the same slug, which is what lets `manifest_hash` stay equal across two builds of unchanged content."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Display name (`test_cases.name`)."
+    },
+    "origin": {
+      "type": "string",
+      "enum": ["curated"],
+      "description": "How this Test Case came to be. The enum has exactly one value, and that is the point: the only content that may travel inside a package is platform-curated material with no user-uploaded bytes (CONTENT-007's synthetic, secret-free, PII-free criterion). Widening this is a product decision that must change the contract, not a flag an exporter can flip."
+    },
+    "user_prompt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000,
+      "description": "The task text a user would send (`test_cases.user_prompt`, TEST-001). Curated text."
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "description": "Acceptance conditions (TEST-003). Only `id` and `text` travel: `source` and `confirmed_at` describe who proposed a condition and when a particular user agreed to its wording, which are facts about one workspace and do not survive the trip. On import they are re-established for the importing workspace.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "Unique within this Test Case and stable across edits. Rubric items reference these ids."
+          },
+          "text": { "type": "string", "minLength": 1, "maxLength": 2000 }
+        }
+      }
+    },
+    "rubric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "items"],
+      "description": "The optional strengthening of the acceptance criteria (CONTENT-007 clause 3), same shape as `test_cases.rubric` (0026) plus the version string. Absent and empty are different statements: absent means this Test Case has no rubric, which is true of all 45 baseline test cases. A rubric is not a second mechanism - its items map onto the same criterion results.",
+      "properties": {
+        "version": { "type": "string", "minLength": 1 },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "text", "evidence_required"],
+            "description": "The three fields the 0026 CHECK constraint requires on every stored rubric item, in their portable form. `id` must name a criterion of this same Test Case - a cross-reference JSON Schema cannot express, so the importer checks it, exactly as Go does for the stored form.",
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+              "weight": { "type": "number", "minimum": 0 },
+              "evidence_required": {
+                "type": "boolean",
+                "description": "Whether the judgement on this item must quote evidence."
+              }
+            }
+          }
+        }
+      }
+    },
+    "datasets": {
+      "type": "array",
+      "description": "Sample files shipped under `test-cases/<slug>/data/`. Curated synthetic data only - a user's uploaded Dataset is excluded by `origin`, and its Test Case is reported in the manifest's `excluded_test_cases` with reason `user_uploaded_dataset` rather than silently dropped.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "sha256", "content_type"],
+        "properties": {
+          "file": {
+            "type": "string",
+            "pattern": "^data/[^/\\\\]+$",
+            "description": "Path relative to this case.json, always a direct child of `data/`. Constrained rather than free-form because the user unpacks this to their own disk: the platform never unpacks to disk, so the import side has no zip-slip check, and the export side is where that check first becomes necessary (packaging-design.md §2.1, §4.4). No `..`, no absolute path, no backslash, no nesting."
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Lowercase hex SHA-256 of the file's bytes, so the importer can verify what it got and the same value feeds `manifest_hash`."
+          },
+          "content_type": {
+            "type": "string",
+            "minLength": 1,
+            "description": "As recorded on `datasets.content_type`."
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "1.0",
+      "slug": "monthly-report",
+      "name": "Monthly report from the sample ledger",
+      "origin": "curated",
+      "user_prompt": "Read data/ledger-2026-06.csv and write a one-page summary of the month: total spend, the three largest line items, and anything that looks like a duplicate charge.",
+      "criteria": [
+        { "id": "c1", "text": "The total spend figure matches the sum of the CSV rows." },
+        { "id": "c2", "text": "The three largest line items are named with their amounts." },
+        { "id": "c3", "text": "Suspected duplicate charges are listed, or their absence is stated." }
+      ],
+      "rubric": {
+        "version": "content-007-reporting-v1",
+        "items": [
+          {
+            "id": "c1",
+            "text": "The total must be quoted as a number and be arithmetically correct.",
+            "weight": 2,
+            "evidence_required": true
+          },
+          {
+            "id": "c3",
+            "text": "A claim that there are no duplicates must name what was compared.",
+            "evidence_required": true
+          }
+        ]
+      },
+      "datasets": [
+        {
+          "file": "data/ledger-2026-06.csv",
+          "sha256": "c3fcd3d76192e4007dfb496cca67e13b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f",
+          "content_type": "text/csv"
+        }
+      ]
+    },
+    {
+      "schema_version": "1.0",
+      "slug": "empty-input",
+      "name": "Behaviour on an empty input",
+      "origin": "curated",
+      "user_prompt": "Summarise the attached notes. There are none - say so rather than inventing content.",
+      "criteria": [
+        { "id": "c1", "text": "The reply states that no input was provided." },
+        { "id": "c2", "text": "No summary content is fabricated." }
+      ],
+      "datasets": []
+    }
+  ]
+}

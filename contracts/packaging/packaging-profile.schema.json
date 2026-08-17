@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillhub.local/contracts/packaging/packaging-profile.schema.json",
+  "title": "Skill Hub Agent Packaging Profile",
+  "description": "The versioned configuration of one packaging target (ADR-012: a Profile is a pair of versioned CONFIGURATION and a program Adapter). This schema describes the configuration half only - install location, additive frontmatter fields, environment variable templates, the post-install verification prompt or steps, and the known limitations. The Adapter code is not described here and no plugin mechanism is defined: the MVP ships three built-in targets and building an extension point for a second party that does not exist would be scaffolding for later (M4 README §2.2).\n\nEverything in this file is authored by the platform and reviewed. It is also the source of INSTALL.md, which is ASSEMBLED from these fields and never model-generated - letting a model write install paths produces instructions nobody verified (M4 contract-deltas §5).\n\nNO SECRETS (iron rule 11). `env_vars[].example` is a placeholder for documentation, never a working credential, and the schema refuses the credential patterns the repository's own pre-push check looks for.",
+  "type": "object",
+  "additionalProperties": false,
+  "$comment": "sensitivity: no_secrets - see the description.",
+  "required": [
+    "schema_version",
+    "id",
+    "kind",
+    "version",
+    "display_name",
+    "support_status",
+    "install",
+    "frontmatter_additions",
+    "env_vars",
+    "known_limitations"
+  ],
+  "anyOf": [
+    { "required": ["verification_prompt"] },
+    {
+      "required": ["verification_steps"],
+      "properties": { "verification_steps": { "minItems": 1 } }
+    }
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$",
+      "description": "Profile contract version, MAJOR.MINOR. Same evolution rule as the other packaging contracts: minor bumps are additive, a breaking change bumps the major and gets a new $id.",
+      "examples": ["1.0"]
+    },
+    "id": {
+      "type": "string",
+      "enum": ["standard", "claude-code", "claude-agent-sdk"],
+      "description": "The packaging target. PDM-008's first set is one standard package plus two verified install profiles; Codex / Cursor / Gemini CLI are deliberately absent because they have never run on this platform and their three compatibility layers could only say 'unverified', which turns a Profile into a guessed path table."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["standard_package", "profile"],
+      "description": "PDM-008 requires the outward statement to stay '1 standard package + 2 verified install profiles', so the standard package must be distinguishable from a Profile rather than all three being flattened into one list."
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version of this configuration. Recorded in each produced package's manifest as `profile_version`, so a re-package can be attributed to a profile change rather than a Skill change."
+    },
+    "display_name": { "type": "string", "minLength": 1 },
+    "support_status": {
+      "type": "string",
+      "enum": ["verified", "unverified"],
+      "description": "PACK-008: an unverified target must be shown as unverified and must not be promised to work. This is an endpoint-served field rather than a frontend constant because it changes with measurement, and a hard-coded copy would be a second source of truth."
+    },
+    "install": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["locations", "top_level_dir"],
+      "description": "Where the unpacked Skill goes (PACK-006). The two profiles resolve to the SAME path on disk and differ in scope and verification (PDM-008 v4, clarified by measurement) - the wording has to make that difference explicit or a user reads them as a duplicated option.",
+      "properties": {
+        "locations": {
+          "type": "array",
+          "description": "Empty for the standard package, which names no install location: it is the evidence that Skill Hub is not bound to one Agent, so it does not claim to know where any particular Agent keeps its Skills.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["scope", "path", "description"],
+            "properties": {
+              "scope": {
+                "type": "string",
+                "enum": ["user", "project", "agent_working_dir"],
+                "description": "`user` - the user-level directory. `project` - a directory inside a repository. `agent_working_dir` - relative to the Agent's `cwd`, which is a different statement from `project` even when the resolved string matches."
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Install path template, e.g. `~/.claude/skills/<name>/`. `<name>` is substituted with the Skill's frontmatter name."
+              },
+              "description": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "top_level_dir": {
+          "type": ["string", "null"],
+          "description": "Name of the single top-level directory inside the zip, or null for a zip whose root IS the Skill root (SKILL.md at the root). Null for the standard package: that shape is the exact inverse of the import path, which is what makes 'unzip and re-validate' well defined (PACK-009). A single top-level directory is still accepted by the import side, which strips it, so a Profile may name one. `<name>` is substituted as above."
+        }
+      }
+    },
+    "frontmatter_additions": {
+      "type": "object",
+      "description": "Frontmatter fields this Profile ADDS to SKILL.md. Additive only: ADR-012 forbids an Adapter silently changing a Skill's task intent or removing a necessary safety constraint, and the machine-checkable form of that is 'may not name a field the spec already defines'. `name`, `description`, `license` and `allowed-tools` / `allowed_tools` are therefore refused as keys. Must be empty for the standard package, whose SKILL.md is copied byte for byte.",
+      "propertyNames": {
+        "not": {
+          "enum": ["name", "description", "license", "allowed-tools", "allowed_tools"]
+        },
+        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+      },
+      "additionalProperties": { "type": ["string", "number", "boolean"] }
+    },
+    "env_vars": {
+      "type": "array",
+      "description": "Environment variables the target needs (PACK-006). Documentation of what the user must set, never values.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "required", "description"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "required": { "type": "boolean" },
+          "description": { "type": "string", "minLength": 1 },
+          "example": {
+            "type": "string",
+            "not": { "pattern": "sk-(proj|ant)-" },
+            "description": "A PLACEHOLDER shown in the install instructions, e.g. `<your-api-key>`. Never a real credential (iron rule 11, NFR-002). The pattern refusal here is the same one the repository checks before every push; it catches the obvious mistake and is not a substitute for review.",
+            "$comment": "sensitivity: placeholder_only - this field is rendered verbatim into INSTALL.md, which ships inside a package handed to users."
+          }
+        }
+      }
+    },
+    "verification_prompt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One prompt the user can run after installing to confirm the Skill was picked up (PACK-007 requires at least one verification prompt OR check step). Sourced from the curated example prompts of CONTENT-007, not generated."
+    },
+    "verification_steps": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Non-prompt checks, used where a prompt is not the right form. The standard package's check is 'read the spec validation report in skillhub-manifest.json and re-import the package', because it does not claim to run anywhere in particular."
+    },
+    "snippet": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A minimal runnable snippet for targets where the install path alone is not enough. Required for `claude-agent-sdk`, where it must demonstrate BOTH `cwd` and `setting_sources`: without either one the Skill is simply not loaded, and it fails silently - the failure mode ADR-023 recorded. The schema checks that both words are present, which is a floor under review, not a substitute for running it."
+    },
+    "mcp_config": {
+      "type": "null",
+      "description": "Type placeholder, always null. Remote MCP is out of the first release, so a Profile has no MCP mapping to carry; the field exists so the shape is stable and displays as not applicable, the same treatment TRACE-003's mcp_call and EVAL-008 already get."
+    },
+    "known_limitations": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "What this target is known not to do, and which capabilities are unverified (PACK-006, PACK-008). An empty array is a claim that there are none; it is not a placeholder."
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["id"],
+        "properties": { "id": { "const": "standard" } }
+      },
+      "then": {
+        "properties": {
+          "kind": { "const": "standard_package" },
+          "frontmatter_additions": { "maxProperties": 0 },
+          "install": {
+            "properties": {
+              "locations": { "maxItems": 0 },
+              "top_level_dir": { "type": "null" }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": { "kind": { "const": "profile" } }
+      }
+    },
+    {
+      "if": {
+        "required": ["id"],
+        "properties": { "id": { "const": "claude-agent-sdk" } }
+      },
+      "then": {
+        "required": ["snippet"],
+        "properties": {
+          "snippet": {
+            "pattern": "(?=[\\s\\S]*cwd)(?=[\\s\\S]*setting_sources)"
+          }
+        }
+      }
+    }
+  ],
+  "examples": [
+    {
+      "schema_version": "1.0",
+      "id": "standard",
+      "kind": "standard_package",
+      "version": "1.0.0",
+      "display_name": "Standard Agent Skill package",
+      "support_status": "verified",
+      "install": { "locations": [], "top_level_dir": null },
+      "frontmatter_additions": {},
+      "env_vars": [],
+      "verification_steps": [
+        "Unzip the package; SKILL.md must be at the root.",
+        "Read the `validation` block of skillhub-manifest.json: `blocked` is false and `errors` is empty.",
+        "Optionally re-import the package into Skill Hub; removing the three platform-added files must reproduce `source.content_hash`."
+      ],
+      "mcp_config": null,
+      "known_limitations": [
+        "Skill Hub has not verified this package on your Agent. Any Agent supporting the Agent Skills spec can try it; format validity is not a promise that it installs or runs."
+      ],
+      "notes": [
+        "SKILL.md is copied byte for byte. This package is the evidence that Skill Hub is not bound to a single Agent (PDM-008)."
+      ]
+    },
+    {
+      "schema_version": "1.0",
+      "id": "claude-code",
+      "kind": "profile",
+      "version": "1.0.0",
+      "display_name": "Claude Code",
+      "support_status": "verified",
+      "install": {
+        "locations": [
+          {
+            "scope": "user",
+            "path": "~/.claude/skills/<name>/",
+            "description": "Available in every project for this user."
+          },
+          {
+            "scope": "project",
+            "path": ".claude/skills/<name>/",
+            "description": "Available only inside this repository, and committable alongside it."
+          }
+        ],
+        "top_level_dir": "<name>"
+      },
+      "frontmatter_additions": {},
+      "env_vars": [],
+      "verification_prompt": "List the skills you can use, and say whether <name> is among them.",
+      "mcp_config": null,
+      "known_limitations": [
+        "The install path is the same as the Claude Agent SDK profile's; the difference is user-level versus project-level scope, and how installation is verified."
+      ]
+    },
+    {
+      "schema_version": "1.0",
+      "id": "claude-agent-sdk",
+      "kind": "profile",
+      "version": "1.0.0",
+      "display_name": "Claude Agent SDK",
+      "support_status": "verified",
+      "install": {
+        "locations": [
+          {
+            "scope": "agent_working_dir",
+            "path": ".claude/skills/<name>/",
+            "description": "Relative to the `cwd` the SDK is given, not to where your script lives."
+          }
+        ],
+        "top_level_dir": "<name>"
+      },
+      "frontmatter_additions": {},
+      "env_vars": [
+        {
+          "name": "ANTHROPIC_API_KEY",
+          "required": true,
+          "description": "Read by the SDK. Set it in your own environment; Skill Hub never ships a key inside a package.",
+          "example": "<your-api-key>"
+        }
+      ],
+      "verification_prompt": "List the skills you can use, and say whether <name> is among them.",
+      "snippet": "async for message in query(\n    prompt=\"List the skills you can use.\",\n    options=ClaudeAgentOptions(cwd=\"./workdir\", setting_sources=[\"project\"]),\n):\n    print(message)",
+      "mcp_config": null,
+      "known_limitations": [
+        "Omitting either `cwd` or `setting_sources` makes the Skill silently not load: there is no error, the agent simply never sees it (ADR-023)."
+      ]
+    }
+  ]
+}
