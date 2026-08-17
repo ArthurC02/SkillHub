@@ -72,16 +72,41 @@ func (h *Handler) configured(w http.ResponseWriter) bool {
 // where they are choosing a target. The profile schema guarantees at least one
 // of the two per profile; on the wire both stay optional, because the standard
 // package names no agent and therefore has no prompt to run against one.
+//
+// EnvVars travels for the same reason and it is the other half of 02:PACK-002
+// 第 1 條. It is a property of the target, not of the Skill: `ANTHROPIC_API_KEY`
+// is what the Agent Skills SDK needs, whichever Skill is inside. The dependency
+// half of that clause belongs to the package rather than the target, so it is on
+// the preview below.
 type targetView struct {
-	ID                 string   `json:"id"`
-	Kind               string   `json:"kind"`
-	Version            string   `json:"version"`
-	DisplayName        string   `json:"display_name"`
-	InstallLocation    string   `json:"install_location,omitempty"`
-	SupportStatus      string   `json:"support_status"`
-	VerificationPrompt string   `json:"verification_prompt,omitempty"`
-	VerificationSteps  []string `json:"verification_steps,omitempty"`
-	Notes              []string `json:"notes"`
+	ID                 string       `json:"id"`
+	Kind               string       `json:"kind"`
+	Version            string       `json:"version"`
+	DisplayName        string       `json:"display_name"`
+	InstallLocation    string       `json:"install_location,omitempty"`
+	SupportStatus      string       `json:"support_status"`
+	VerificationPrompt string       `json:"verification_prompt,omitempty"`
+	VerificationSteps  []string     `json:"verification_steps,omitempty"`
+	EnvVars            []envVarView `json:"env_vars"`
+	Notes              []string     `json:"notes"`
+}
+
+// envVarView is one row of the profile's env_vars. `Example` is a placeholder the
+// profile schema refuses to let carry a credential pattern, and it is the same
+// string INSTALL.md renders — one reviewed text, two surfaces (iron rule 11).
+type envVarView struct {
+	Name        string `json:"name"`
+	Required    bool   `json:"required"`
+	Description string `json:"description"`
+	Example     string `json:"example,omitempty"`
+}
+
+func envVarViews(in []EnvVar) []envVarView {
+	out := make([]envVarView, 0, len(in))
+	for _, v := range in {
+		out = append(out, envVarView(v))
+	}
+	return out
 }
 
 // Targets handles GET /packaging/targets.
@@ -109,6 +134,7 @@ func (h *Handler) Targets(w http.ResponseWriter, r *http.Request) {
 			SupportStatus:      p.SupportStatus,
 			VerificationPrompt: p.VerificationPrompt,
 			VerificationSteps:  p.VerificationSteps,
+			EnvVars:            envVarViews(p.EnvVars),
 			Notes:              notes,
 		})
 	}
@@ -134,12 +160,19 @@ func installLocationLine(p Profile) string {
 }
 
 // previewView is public.yaml's PackagingPreview.
+//
+// Dependencies is the package's half of 02:PACK-002 第 1 條, and it is here
+// rather than on the target because it is a property of these bytes: the same
+// lines INSTALL.md will carry, taken from the same findings, so the download page
+// and the packaged document cannot say different things about what the Skill
+// needs.
 type previewView struct {
 	Target            string             `json:"target"`
 	Allowed           bool               `json:"allowed"`
 	BlockedReason     string             `json:"blocked_reason,omitempty"`
 	BlockedMessage    string             `json:"blocked_message,omitempty"`
 	Validation        validationView     `json:"validation"`
+	Dependencies      []string           `json:"dependencies"`
 	IncludedTestCases []testCaseView     `json:"included_test_cases"`
 	ExcludedTestCases []excludedCaseView `json:"excluded_test_cases"`
 }
@@ -234,6 +267,7 @@ func (h *Handler) Preview(w http.ResponseWriter, r *http.Request) {
 		Target: target, Allowed: p.Allowed,
 		BlockedReason: p.BlockedReason, BlockedMessage: p.BlockedMessage,
 		Validation:        validationOf(p.Validation),
+		Dependencies:      p.Dependencies,
 		IncludedTestCases: includedViews(p.Included),
 		ExcludedTestCases: excludedViews(p.Excluded),
 	})

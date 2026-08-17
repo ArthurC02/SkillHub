@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -166,10 +167,10 @@ func TestEveryTargetProducesAPackageThePlatformWouldAcceptBack(t *testing.T) {
 			}
 
 			// The platform adds three things and no more.
-			if _, ok := entries[entryPath(t, target, "skillhub-manifest.json")]; !ok {
+			if _, ok := entries[entryPath(t, target, "round-trip-skill", "skillhub-manifest.json")]; !ok {
 				t.Error("no manifest")
 			}
-			if _, ok := entries[entryPath(t, target, "INSTALL.md")]; !ok {
+			if _, ok := entries[entryPath(t, target, "round-trip-skill", "INSTALL.md")]; !ok {
 				t.Error("no install instructions")
 			}
 
@@ -186,15 +187,15 @@ func TestEveryTargetProducesAPackageThePlatformWouldAcceptBack(t *testing.T) {
 	}
 }
 
-// entryPath is where a platform-added file lands for one target: at the zip root
-// for the standard package, inside the profile's single top-level directory for
-// the two profiles.
-func entryPath(t *testing.T, target, name string) string {
+// entryPath is where a file lands for one target: at the zip root for the
+// standard package, inside the profile's single top-level directory — which is
+// the skill's name — for the two profiles.
+func entryPath(t *testing.T, target, skill, name string) string {
 	t.Helper()
 	if target == "standard" {
 		return name
 	}
-	return "round-trip-skill/" + name
+	return skill + "/" + name
 }
 
 func readFromZip(t *testing.T, data []byte, name string) []byte {
@@ -628,6 +629,222 @@ func TestOnlyCuratedTestCasesTravelAndTheRestAreNamed(t *testing.T) {
 	}
 }
 
+// --- PACK-003 / QA-007: the licence and attribution bytes ---------------------
+
+// mitText is a real MIT licence, because skillpkg identifies a licence by its
+// text. A stub would make the package's licence `unknown` and the test would then
+// be measuring the wrong thing.
+const mitText = `MIT License
+
+Copyright (c) 2026 A. Author <author@example.test>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction.
+`
+
+// carriedProvenance is what tools/content/import_seed.py writes beside a
+// repository-level licence it carried into a per-directory package (ADR-021 tier
+// 3). Its whole job is to say whose licence this is and where it came from.
+const carriedProvenance = `{"carried_from":"LICENSE","repo":"https://github.com/example/skills","commit":"abc123"}`
+
+// licensedSKILLMD deliberately declares no `license` field, so the licence has to
+// be resolved from the files — which is the case where those files travelling is
+// load-bearing rather than incidental.
+func licensedSKILLMD(name string) string {
+	return "---\nname: " + name + "\ndescription: Reports on " + name + ".\n---\n\nProse.\n"
+}
+
+// 02:PACK-001 第 3 條 says the PACKAGE keeps the licence, the author and the
+// original source. Three of those four were asserted on the manifest, which is
+// what the platform WROTE — this asserts the other thing, on the bytes the user
+// receives.
+//
+// The distinction is the whole point (m4/README §10 R3): the allow-list copying
+// LICENSE was a correct inference and it was still only an inference, and a
+// packaging bug that drops a licence file is not reversible once somebody has the
+// zip. Author is in the same list and has no manifest field at all — nowhere in
+// the platform is there an author column to write one from — so it survives
+// exactly as these bytes and is asserted exactly as these bytes.
+func TestTheLicenceAuthorAndProvenanceFilesTravelInEveryTargetsPackage(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "licence-keeper")
+
+	source := map[string]string{
+		"SKILL.md":                     licensedSKILLMD("attributed-skill"),
+		"LICENSE":                      mitText,
+		"LICENSE.repo":                 mitText,
+		"LICENSE.repo.provenance.json": carriedProvenance,
+		"scripts/run.py":               "print('hello')\n",
+	}
+	skillID, versionID := importFiles(t, a, pool, c, source)
+	allowRedistribution(t, pool, skillID)
+
+	for _, target := range []string{"standard", "claude-code", "claude-agent-sdk"} {
+		t.Run(target, func(t *testing.T) {
+			code, body := postJSON(t, c, packagingPath(skillID, versionID), `{"target":"`+target+`"}`)
+			if code != http.StatusCreated {
+				t.Fatalf("POST packaging: got %d, body %v", code, body)
+			}
+			entries := zipEntries(t, a, body["content_hash"].(string))
+
+			for _, name := range []string{"LICENSE", "LICENSE.repo", "LICENSE.repo.provenance.json"} {
+				got, ok := entries[entryPath(t, target, "attributed-skill", name)]
+				if !ok {
+					t.Errorf("%s is not in the package; the licence did not travel with the bytes it licenses", name)
+					continue
+				}
+				if string(got) != source[name] {
+					t.Errorf("%s was rewritten:\ngot  %q\nwant %q", name, got, source[name])
+				}
+			}
+			// The author. There is no author field anywhere in the platform's data
+			// model and none is being invented (04 丙-17): attribution survives as
+			// the source package's own bytes, so it is asserted as those bytes.
+			if !bytes.Contains(entries[entryPath(t, target, "attributed-skill", "LICENSE")], []byte("A. Author <author@example.test>")) {
+				t.Error("the copyright holder did not survive the copy")
+			}
+			// And the manifest still records the licence it resolved FROM that file,
+			// paired with the tier — the manifest reports evidence, the files are the
+			// evidence, and neither replaces the other (ADR-021 決策 1).
+			var m map[string]any
+			manifest := entries[entryPath(t, target, "attributed-skill", "skillhub-manifest.json")]
+			if err := json.Unmarshal(manifest, &m); err != nil {
+				t.Fatal(err)
+			}
+			lic := m["license"].(map[string]any)
+			if lic["expression"] != "MIT" || lic["source_tier"] != "package-license-file" {
+				t.Errorf("licence = %v; the package states MIT in a root LICENSE file", lic)
+			}
+		})
+	}
+}
+
+// 02:PACK-002 第 1 條 asks the download page to show the dependency requirement,
+// and the page cannot show what the API does not send. The list is the same one
+// INSTALL.md carries, so the page and the packaged document cannot disagree —
+// and it includes what the scripts import without declaring, which is the case a
+// reader most needs and the one that used to reach only the manifest.
+func TestThePreviewCarriesTheDependenciesTheInstallInstructionsWillList(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "dependency-reader")
+	skillID, versionID := importFiles(t, a, pool, c, map[string]string{
+		"SKILL.md":       licensedSKILLMD("undeclaring-skill"),
+		"LICENSE":        mitText,
+		"scripts/run.py": "import pandas\n\nprint(pandas)\n",
+	})
+	allowRedistribution(t, pool, skillID)
+
+	var preview struct {
+		Allowed      bool     `json:"allowed"`
+		Dependencies []string `json:"dependencies"`
+	}
+	if code := getJSON(t, c.Client,
+		c.base+packagingPath(skillID, versionID)+"/preview?target=standard", &preview); code != http.StatusOK {
+		t.Fatalf("GET preview: got %d", code)
+	}
+	if !preview.Allowed {
+		t.Fatal("the fixture package was refused")
+	}
+	joined := strings.Join(preview.Dependencies, "\n")
+	if !strings.Contains(joined, "pandas") {
+		t.Errorf("the preview does not name the dependency: %v", preview.Dependencies)
+	}
+	if !strings.Contains(joined, "never declares") {
+		t.Errorf("the preview does not say the dependency was never declared: %v", preview.Dependencies)
+	}
+
+	// And the same lines are what the produced INSTALL.md carries. One source, two
+	// surfaces: a page that lists a dependency the packaged document omits is the
+	// disagreement this field exists to make impossible.
+	code, body := postJSON(t, c, packagingPath(skillID, versionID), `{"target":"standard"}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST packaging: got %d, body %v", code, body)
+	}
+	install := zipEntries(t, a, body["content_hash"].(string))["INSTALL.md"]
+	for _, line := range preview.Dependencies {
+		if !bytes.Contains(install, []byte(line)) {
+			t.Errorf("INSTALL.md does not carry the preview's line %q", line)
+		}
+	}
+}
+
+// --- PACK-009: the standard package is the source, plus three files -----------
+//
+// packaging-design §2.3 named this test
+// `TestTheStandardPackageRoundTripsToTheSameContentHash`, and that name asks for
+// something that cannot be true: `content_hash` is the SHA-256 of the ARCHIVE
+// bytes a user uploaded, and re-zipping the same files produces a different
+// archive. The invariant underneath it is real and is what is asserted here —
+// the same design sentence's other half, "除平台新增檔案外逐位元組相同".
+//
+// standard.json's fourth verification step used to tell users to reproduce that
+// hash, which made the platform ask for a check it could not pass itself; it now
+// says what this test proves.
+func TestTheStandardPackageIsTheSourceBytesPlusExactlyThreeFiles(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "round-tripper")
+
+	source := map[string]string{
+		"SKILL.md":       packagingSKILLMD("byte-stable-skill"),
+		"scripts/run.py": "print('hello')\n",
+		"reference.md":   "Some reference material.\n",
+		".editorconfig":  "root = true\n", // §2.2: not ours to delete
+	}
+	skillID, versionID := importFiles(t, a, pool, c, source)
+	allowRedistribution(t, pool, skillID)
+
+	code, body := postJSON(t, c, packagingPath(skillID, versionID), `{"target":"standard"}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST packaging: got %d, body %v", code, body)
+	}
+	entries := zipEntries(t, a, body["content_hash"].(string))
+
+	stripped := map[string]string{}
+	for name, content := range entries {
+		if name == "skillhub-manifest.json" || name == "INSTALL.md" ||
+			strings.HasPrefix(name, "test-cases/") {
+			continue
+		}
+		stripped[name] = string(content)
+	}
+	if len(stripped) != len(source) {
+		t.Fatalf("the package carries %d source files, the source has %d: %v vs %v",
+			len(stripped), len(source), keysOfString(stripped), keysOfString(source))
+	}
+	for name, want := range source {
+		if got, ok := stripped[name]; !ok || got != want {
+			t.Errorf("%s: got %q, want %q", name, got, want)
+		}
+	}
+
+	// And the stripped package is one the platform takes back — the operation the
+	// verification step describes, run here so a user is never the first to try it.
+	fsys, err := ingest.PackageFS(zipOf(t, stripped))
+	if err != nil {
+		t.Fatalf("the stripped package could not be opened the way import opens one: %v", err)
+	}
+	report := skillpkg.Validate(fsys)
+	if report.Blocked {
+		t.Fatalf("the platform would refuse its own package with its own files removed: %+v", report.Findings)
+	}
+	if report.Manifest == nil || report.Manifest.Name != "byte-stable-skill" {
+		t.Fatalf("the stripped package is not the same skill: %+v", report.Manifest)
+	}
+}
+
+func keysOfString(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // dumpManifest writes one produced manifest out for external schema validation.
 // A no-op unless the directory is configured, so it costs an ordinary test run
 // nothing.
@@ -758,7 +975,12 @@ func TestTheTargetsEndpointServesTheDeploymentsOwnProfiles(t *testing.T) {
 			InstallLocation    string   `json:"install_location"`
 			VerificationPrompt string   `json:"verification_prompt"`
 			VerificationSteps  []string `json:"verification_steps"`
-			Notes              []string `json:"notes"`
+			EnvVars            []struct {
+				Name     string `json:"name"`
+				Required bool   `json:"required"`
+				Example  string `json:"example"`
+			} `json:"env_vars"`
+			Notes []string `json:"notes"`
 		} `json:"targets"`
 	}
 	if code := getJSON(t, c.Client, c.base+"/packaging/targets", &out); code != http.StatusOK {
@@ -794,6 +1016,23 @@ func TestTheTargetsEndpointServesTheDeploymentsOwnProfiles(t *testing.T) {
 		t.Errorf("the standard package carries a verification prompt, but it names no agent to run it against: %q",
 			out.Targets[0].VerificationPrompt)
 	}
+
+	// 02:PACK-002 第 1 條's other half. Environment variables are a property of the
+	// target, so they belong here rather than inside a package the user has not
+	// built yet — the same argument the verification fields already won (04 丙-18).
+	if len(out.Targets[0].EnvVars) != 0 {
+		t.Errorf("the standard package names an environment variable: %+v", out.Targets[0].EnvVars)
+	}
+	var sdk = out.Targets[2]
+	if sdk.ID != "claude-agent-sdk" {
+		t.Fatalf("third target = %s", sdk.ID)
+	}
+	if len(sdk.EnvVars) == 0 {
+		t.Error("the SDK target declares no environment variable, but installing it needs a key")
+	}
+	// Iron rule 11 for the example strings is enforced by the profile schema and
+	// asserted in internal/packaging's own tests; it is not re-checked here,
+	// because a second copy of that rule would be a second place to update.
 
 	// A deployment with no configuration says so, rather than serving an invented
 	// list. 503 and not 200 with an empty array: "cannot package" and "nothing to

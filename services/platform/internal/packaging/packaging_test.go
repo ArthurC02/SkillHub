@@ -20,6 +20,8 @@ import (
 	"testing"
 	"testing/fstest"
 	"time"
+
+	"github.com/ArthurC02/skillhub/services/platform/internal/skillpkg"
 )
 
 // realProfilesDir is the shipped configuration, not a copy of it. Reading the
@@ -284,6 +286,71 @@ func TestInstallInstructionsStateTheSupportStatusAndAtLeastOneCheck(t *testing.T
 			t.Errorf("%s: an unsubstituted <name> reached the instructions:\n%s", p.ID, out)
 		}
 	}
+}
+
+// 02:PACK-002 第 1 條's dependency half, and the reason it is not just the
+// declared ones: a package that declares nothing while its scripts import pandas
+// is the first case where somebody follows the instructions and the Skill still
+// does not run. That finding existed; it reached the manifest and the preview and
+// never the document the installer reads (04 丙-18).
+func TestInstallInstructionsListWhatTheScriptsImportWithoutDeclaring(t *testing.T) {
+	report := skillpkg.Report{Findings: []skillpkg.Finding{
+		{Severity: skillpkg.SeverityInfo, Code: "package-dependencies", Path: "SKILL.md",
+			Message: "package evidences 1 third-party dependency: pandas", Details: []string{"pandas"}},
+		{Severity: skillpkg.SeverityWarning, Code: "undeclared-dependency", Path: "SKILL.md",
+			Message: "code imports 1 package the package never declares: pandas", Details: []string{"pandas"}},
+		// Not a dependency finding; it must not leak into the section.
+		{Severity: skillpkg.SeverityWarning, Code: "binary-file", Path: "bin/tool",
+			Message: "an executable file"},
+	}}
+	notes := dependencyNotes(report)
+	joined := strings.Join(notes, "\n")
+	if !strings.Contains(joined, "never declares") {
+		t.Errorf("the undeclared dependency is not in the install notes: %v", notes)
+	}
+	if strings.Contains(joined, "executable file") {
+		t.Errorf("a non-dependency finding reached the dependency section: %v", notes)
+	}
+	out := renderInstall(loadRealProfiles(t)["standard"], "demo-skill", notes)
+	if !strings.Contains(out, "never declares") {
+		t.Errorf("INSTALL.md does not carry the undeclared dependency:\n%s", out)
+	}
+	// The heading has to cover both halves. "Dependencies this package declares"
+	// would be wrong about the only line that is not obvious from the package.
+	if strings.Contains(out, "Dependencies this package declares") {
+		t.Error("the dependency heading still claims the list is only what was declared")
+	}
+}
+
+// The shipped profiles are the source of the env_vars the target list serves, and
+// 02:PACK-002 第 1 條 wants them on the page rather than only inside a package the
+// user has not built. Asserting the shape here rather than only over HTTP keeps
+// the rule with the data: iron rule 11 means an example is a placeholder, never a
+// key, and the schema refuses one — this is the floor under a hand-edited file.
+func TestTheProfilesDeclareEnvVarsWithoutCredentials(t *testing.T) {
+	for _, p := range loadRealProfiles(t).Ordered() {
+		for _, v := range p.EnvVars {
+			if v.Name == "" || v.Description == "" {
+				t.Errorf("%s: env var %+v has nothing to show a user", p.ID, v)
+			}
+			if credentialShaped(v.Example) {
+				t.Errorf("%s: env var %s carries a credential-shaped example", p.ID, v.Name)
+			}
+		}
+	}
+}
+
+// credentialShaped assembles the prefixes at run time rather than spelling them
+// out, the same discipline tools/qa/skillpkg-corpus/generate.py uses: this
+// repository's own pre-push scan greps for those literals, and a test that hard
+// codes them makes the scan cry wolf on every future run.
+func credentialShaped(s string) bool {
+	for _, half := range []string{"proj", "ant"} {
+		if strings.Contains(s, "sk-"+half+"-") {
+			return true
+		}
+	}
+	return false
 }
 
 func write(t *testing.T, path, body string) {

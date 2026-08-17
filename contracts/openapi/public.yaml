@@ -5057,7 +5057,7 @@ components:
         One packaging target and what installing it involves (PACK-002,
         PACK-006/007/008).
       type: object
-      required: [id, kind, version, display_name, support_status, notes]
+      required: [id, kind, version, display_name, support_status, env_vars, notes]
       properties:
         id: { $ref: "#/components/schemas/PackagingTargetId" }
         kind:
@@ -5125,6 +5125,37 @@ components:
             is not available on the page where they are choosing a target, and
             02:PACK-002 第 3 條 asks for the check itself, not for a promise
             that one ships.
+        env_vars:
+          type: array
+          description: |
+            The environment variables this target needs, and the other half of
+            02:PACK-002 第 1 條's "依賴與環境變數需求". A property of the target
+            rather than of the skill: the SDK target needs its API key whichever
+            Skill is inside, and the skill's own dependencies are on the
+            packaging preview, which is where the package's bytes are known.
+
+            Served rather than left to the INSTALL.md inside the package, for
+            the same reason as `verification_steps`: a requirement the user only
+            discovers after building the package is not on the page where they
+            choose a target. Empty array for a target that needs none — the
+            standard package names no agent and therefore no variable.
+          items:
+            type: object
+            required: [name, required, description]
+            properties:
+              name: { type: string }
+              required:
+                type: boolean
+                description: Whether the target fails without it.
+              description: { type: string }
+              example:
+                type: string
+                description: |
+                  A placeholder showing the shape of the value, never a
+                  credential: packaging-profile.schema.json refuses a value
+                  matching a live key pattern, because this string is rendered
+                  verbatim into an INSTALL.md that ships inside a package
+                  (iron rule 11).
         notes:
           type: array
           items: { type: string }
@@ -5188,7 +5219,7 @@ components:
         saved in between; the packaging call checks again and is the one that
         decides.
       type: object
-      required: [target, allowed, validation, included_test_cases, excluded_test_cases]
+      required: [target, allowed, validation, dependencies, included_test_cases, excluded_test_cases]
       properties:
         target: { $ref: "#/components/schemas/PackagingTargetId" }
         allowed:
@@ -5206,6 +5237,23 @@ components:
             the packaging call say the same sentence.
         validation:
           $ref: "#/components/schemas/PackageValidation"
+        dependencies:
+          type: array
+          items: { type: string }
+          description: |
+            What the package needs installed, as the download page's half of
+            02:PACK-002 第 1 條. These are the exact lines the produced
+            INSTALL.md carries, from the same `skillpkg` findings, so the page
+            and the packaged document cannot disagree about what a Skill needs.
+
+            It includes the dependencies the package never declares but its
+            scripts import (`undeclared-dependency`): that is the first reason a
+            reader follows the instructions and the Skill still does not run.
+
+            Empty when a licensing gate closed before any bytes were read —
+            there is no package yet to have dependencies — and empty when the
+            package genuinely declares and imports nothing. The preview's
+            `allowed` and `blocked_reason` tell those two apart.
         included_test_cases:
           type: array
           description: |

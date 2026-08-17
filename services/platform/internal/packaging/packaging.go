@@ -38,7 +38,9 @@ import (
 //
 // Bump it whenever the produced bytes could change for unchanged input: the
 // allow-list, the zip writing, the manifest shape or the INSTALL.md template.
-const PackagerVersion = "0.1.0"
+// 0.2.0: INSTALL.md's dependency section gained the `undeclared-dependency`
+// findings (04 丙-18), which changes the produced bytes for unchanged input.
+const PackagerVersion = "0.2.0"
 
 // DefaultRetention is what a deployment gets if it configures nothing. PDM-006
 // proposes 90 days for a download package and that proposal is NOT ratified
@@ -117,6 +119,11 @@ type Plan struct {
 	Validation ManifestValidation
 	Included   []IncludedTestCase
 	Excluded   []ExcludedTestCase
+	// Dependencies is the same list INSTALL.md renders, served on the preview so
+	// 02:PACK-002 第 1 條's "依賴" is answerable before a package exists. Empty when
+	// a licensing gate closed before anything was read — there is no package to
+	// have dependencies.
+	Dependencies []string
 
 	// The built bytes and what identifies them. Empty when a gate closed before
 	// the build, which is every gate except validation.
@@ -172,6 +179,7 @@ func (s *Service) Plan(
 		IncludeTestCases: includeTestCases,
 		Validation:       ManifestValidation{Errors: []ManifestFinding{}, Warnings: []ManifestFinding{}, Infos: []ManifestFinding{}},
 		Included:         []IncludedTestCase{}, Excluded: []ExcludedTestCase{},
+		Dependencies: []string{},
 	}
 	if reason, msg := gate(skill); reason != "" {
 		p.BlockedReason, p.BlockedMessage = reason, msg
@@ -273,9 +281,10 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws gen.Workspace, p
 	// A first pass over the produced content, so INSTALL.md can state the
 	// dependencies the package declares and the manifest can carry the findings.
 	report := validate(files)
+	p.Dependencies = dependencyNotes(report)
 	files = append(files, exportFile{
 		path: InstallFile,
-		data: []byte(renderInstall(p.Profile, skillName, dependencyNotes(report))),
+		data: []byte(renderInstall(p.Profile, skillName, p.Dependencies)),
 	})
 
 	// The platform's files are written after the source's, so a package that
@@ -335,12 +344,22 @@ func validate(files []exportFile) skillpkg.Report {
 	return skillpkg.Validate(exportFS(files))
 }
 
+// dependencyCodes are the findings INSTALL.md's dependency section is assembled
+// from. `undeclared-dependency` is in the list because it is the first reason a
+// reader follows the instructions and the Skill still does not run: the package
+// declares nothing, a script imports something, and until now that only appeared
+// in the manifest's warnings and on the preview page — never in the document the
+// person installing it actually reads (04 丙-18).
+var dependencyCodes = map[string]bool{
+	"dependency-file": true, "package-dependencies": true, "undeclared-dependency": true,
+}
+
 // dependencyNotes turns the dependency findings into the INSTALL.md lines
 // 02:PACK-002 asks for. The findings' own text, not a paraphrase.
 func dependencyNotes(r skillpkg.Report) []string {
 	var out []string
 	for _, f := range r.Findings {
-		if f.Code == "dependency-file" || f.Code == "package-dependencies" {
+		if dependencyCodes[f.Code] {
 			line := f.Message
 			if f.Path != "" {
 				line = f.Path + ": " + f.Message
@@ -485,6 +504,7 @@ func (s *Service) Create(
 			Skill: skill, BlockedReason: reason, BlockedMessage: msg,
 			Validation: ManifestValidation{Errors: []ManifestFinding{}, Warnings: []ManifestFinding{}, Infos: []ManifestFinding{}},
 			Included:   []IncludedTestCase{}, Excluded: []ExcludedTestCase{},
+			Dependencies: []string{},
 		}}, nil
 	}
 

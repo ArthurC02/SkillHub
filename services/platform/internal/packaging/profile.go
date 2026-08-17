@@ -224,7 +224,11 @@ func renderInstall(p Profile, skillName string, deps []string) string {
 	}
 
 	if len(deps) > 0 {
-		b.WriteString("## Dependencies this package declares\n\n")
+		// Not "dependencies this package declares": the list also carries what the
+		// scripts import WITHOUT declaring, and that entry is the one a reader most
+		// needs. A heading that excluded it would make the section wrong about the
+		// only line that is not obvious from the package itself.
+		b.WriteString("## Dependencies\n\n")
 		for _, d := range deps {
 			fmt.Fprintf(&b, "- %s\n", d)
 		}
