@@ -95,7 +95,7 @@ export function RunPreflight() {
     return <p role="alert">無法讀取權限摘要:{preflight.error.message}</p>;
   }
 
-  const { summary, summary_hash: hash, estimated_cost: cost, notes } = preflight.data;
+  const { summary, summary_hash: hash, estimated_cost: cost, quota, notes } = preflight.data;
 
   return (
     <section className="page">
@@ -176,6 +176,26 @@ export function RunPreflight() {
             <dd>
               {cost.currency} ${cost.low.toFixed(2)} – ${cost.high.toFixed(2)}（常見約 $
               {cost.typical.toFixed(2)}）<p>{cost.basis}</p>
+            </dd>
+          </>
+        )}
+        {/* PDM-010 / ADR-028: the display comes after the enforcement, never
+            instead of it. These are the counters that refuse the run below, so
+            the numbers are a report on a rule rather than the rule. A deployment
+            with no allowance sends no `quota` block and this row is absent —
+            rendering zeroes would be claiming a ceiling that does not exist
+            (04 乙-2). */}
+        {quota && (
+          <>
+            <dt>剩餘試跑額度</dt>
+            <dd>
+              今天還可以跑 {quota.remaining_today} 次、這個週期還可以跑 {quota.remaining_window}{" "}
+              次（滾動視窗，最舊的一筆在 {quota.window_resets_at} 退出計算）。
+              <p className="note">
+                上限：每日 {quota.limits.daily} 次、每 {quota.limits.window_days} 天{" "}
+                {quota.limits.window} 次、同時進行 {quota.limits.concurrent} 個。 這些數字就是建立
+                Run 時擋你的那一份計數，不是另外顯示的估計。
+              </p>
             </dd>
           </>
         )}

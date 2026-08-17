@@ -1,5 +1,9 @@
 // Base URL of services/platform (contracts/openapi/public.yaml `servers[0]`).
-const API_BASE_URL: string =
+//
+// Exported because one route is not fetched at all: the download content route
+// is reached with a plain <a href>, so the browser saves the attachment itself
+// (see api/packaging.ts).
+export const API_BASE_URL: string =
   (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "http://localhost:8080";
 
 export class ApiError extends Error {

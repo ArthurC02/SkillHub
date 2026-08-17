@@ -6,7 +6,14 @@ import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
 import { RiskIndicator } from "../components/RiskIndicator";
-import type { SkillEnrichment, SkillLimitation, SkillSource, SkillTags } from "../api/types";
+import { PACKAGING_BLOCKED_LABEL, packagingGate } from "./Packaging";
+import type {
+  SkillDetail as SkillDetailModel,
+  SkillEnrichment,
+  SkillLimitation,
+  SkillSource,
+  SkillTags,
+} from "../api/types";
 
 /**
  * DISC-006/008: general-mode skill detail, reading GET /api/skills/{id}.
@@ -69,6 +76,8 @@ export function SkillDetail() {
         <LicenseBadge license={skill.license} />
         <LicenseNotes license={skill.license} />
       </section>
+
+      <Redistribution skill={skill} />
 
       <section>
         <h2>風險揭露</h2>
@@ -145,6 +154,66 @@ export function SkillDetail() {
 
       <ForkAction skillId={skillId} isLoggedIn={!!me} />
     </article>
+  );
+}
+
+/**
+ * 02:SEC-007 / ADR-027 決策 4 — the three-state redistribution answer, and the
+ * packaging entry point that depends on it.
+ *
+ * The entry is closed for `blocked` and for `unknown` alike, in the words
+ * `PACKAGING_BLOCKED_LABEL` uses on the download page itself: one table, two
+ * surfaces, so the reason a user is refused here and the reason they would be
+ * refused there cannot drift apart. A licensing hold closes it too and is
+ * reported as the hold rather than as a licensing verdict — they are two
+ * independent locks and only one of them is temporary.
+ *
+ * The section is omitted entirely when the API sends no `redistribution`: the
+ * contract requires it and the current detail handler does not send it yet, and
+ * an absent field is not a third verdict to render. The link stays offered in
+ * that case because the packaging endpoints fail closed on their own — the page
+ * they lead to states the refusal.
+ */
+function Redistribution({ skill }: { skill: SkillDetailModel }) {
+  const blocked = packagingGate(skill);
+
+  return (
+    <section>
+      <h2>可散布性與打包</h2>
+      {skill.redistribution ? (
+        <>
+          <p>
+            <LabelledBadge kind="redistribution" value={skill.redistribution} />
+          </p>
+          <p className="note">{skill.redistribution.note}</p>
+        </>
+      ) : (
+        <p className="note">平台沒有回報這個 Skill 的可散布性判定。</p>
+      )}
+
+      {blocked ? (
+        <>
+          <p>
+            <button type="button" disabled>
+              打包並下載
+            </button>
+          </p>
+          <p className="note">{PACKAGING_BLOCKED_LABEL[blocked]}</p>
+        </>
+      ) : skill.version ? (
+        <p>
+          <Link
+            to="/skills/$skillId/package"
+            params={{ skillId: skill.skill_id }}
+            search={{ version: skill.version.version_id }}
+          >
+            打包並下載這個版本
+          </Link>
+        </p>
+      ) : (
+        <p className="note">這個 Skill 還沒有已保存的版本內容，沒有東西可以打包。</p>
+      )}
+    </section>
   );
 }
 

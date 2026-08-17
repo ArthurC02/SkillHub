@@ -66,10 +66,30 @@ export interface CostEstimate {
   basis: string;
 }
 
+/**
+ * PDM-010 / ADR-028 — the free-tier allowance as the account holder sees it.
+ *
+ * Served from the counters that POST /skills/{id}/runs enforces, never from a
+ * stored balance, and **absent on a deployment that enforces no allowance**:
+ * the same object arrives on GET /me/quota, whose route is not mounted at all in
+ * those builds. Optional here for that reason, and rendered only when present —
+ * a ceiling shown but not applied is exactly the PDM-005 mistake (04 乙-2), and
+ * zeroes stood in for an absent block would be that mistake with a number on it.
+ */
+export interface RunQuota {
+  remaining_today: number;
+  remaining_window: number;
+  /** When the rolling window's oldest counted run drops out. Rolling, not calendar. */
+  window_resets_at: string;
+  limits: { daily: number; window: number; window_days: number; concurrent: number };
+}
+
 export interface PreflightResponse {
   summary: PreflightSummary;
   summary_hash: string;
   estimated_cost: CostEstimate;
+  /** Absent when this deployment enforces no allowance. Never rendered as zero. */
+  quota?: RunQuota;
   notes: string[];
 }
 

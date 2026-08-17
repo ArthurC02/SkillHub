@@ -287,6 +287,23 @@ export interface SkillDetail {
   version?: SkillVersionSummary;
   source?: SkillSource;
   license: SkillLicense;
+  /**
+   * allowed | blocked | unknown — whether this content may be handed on to
+   * someone else, which decides whether a download package can be built from it
+   * at all (02:SEC-007, ADR-027 決策 4). Only `allowed` releases; `unknown` is
+   * where a skill starts and is treated exactly like `blocked`.
+   *
+   * A separate axis from `license.status` and never derived from it
+   * (02:CONTENT-002), and separate from `access_restriction`, which is a
+   * reviewer's temporary hold rather than a property of the content.
+   *
+   * **Optional here although the schema requires it**, which is a deviation from
+   * this file's rule and a deliberate one: `GET /api/skills/{id}` does not send
+   * the field yet (services/platform/internal/catalog/detail.go). Absent means
+   * the platform said nothing, and the UI renders nothing rather than inventing
+   * a third verdict — the packaging endpoints fail closed on their own.
+   */
+  redistribution?: Labelled;
   derivation: SkillDerivation;
   allowed_tools?: string[];
   risk: SkillRisk;

@@ -71,6 +71,22 @@ const CRITERION_LABEL: Record<CriterionResult["result"], string> = {
   undetermined: "無法判斷",
 };
 
+/**
+ * 04 丙-10. Defence 3 downgrades a criterion to `undetermined` when the judge's
+ * citations do not resolve against the platform's own data, and marks it by
+ * prefixing the reason (services/platform/internal/eval/judge.go `merge`). Two
+ * very different things share the verdict `undetermined` without this: 「引用回驗
+ * 失敗，平台不採信一個有結論的判定」 and 「模型自己說不確定」. The failure this
+ * distinction exists to catch has already happened once — EVAL-013 v1 found 45
+ * correct verdicts thrown away over a prefix in the quoted text, and on screen
+ * that was indistinguishable from a judge with no opinion.
+ */
+const EVIDENCE_UNVERIFIABLE_PREFIX = "evidence_unverifiable: ";
+
+function isEvidenceUnverifiable(c: CriterionResult): boolean {
+  return c.result === "undetermined" && c.reason.startsWith(EVIDENCE_UNVERIFIABLE_PREFIX);
+}
+
 const SOURCE_LABEL: Record<CriterionResult["source"], string> = {
   rule: "規則判定（平台自己的紀錄）",
   model: "模型評估（不是確定事實）",
@@ -217,18 +233,7 @@ function EvaluationReport({ evaluation, runId }: { evaluation: Evaluation; runId
       ) : (
         <ul className="criterion-list">
           {evaluation.criterion_results.map((c) => (
-            <li key={c.criterion_id} className={`criterion criterion-${c.result}`}>
-              <p>
-                <span className={`badge badge-criterion-${c.result}`}>
-                  {CRITERION_LABEL[c.result]}
-                </span>{" "}
-                {c.text}
-              </p>
-              <p className="note">判定來源：{SOURCE_LABEL[c.source]}</p>
-              {/* Untrusted when source is `model`: plain text, never markup. */}
-              {c.reason && <p>{c.reason}</p>}
-              <EvidenceList evidence={c.evidence} />
-            </li>
+            <CriterionItem key={c.criterion_id} criterion={c} />
           ))}
         </ul>
       )}
@@ -273,6 +278,45 @@ function EvaluationReport({ evaluation, runId }: { evaluation: Evaluation; runId
 
       <FeedbackForm runId={runId} evaluation={evaluation} disabled={superseded} />
     </div>
+  );
+}
+
+/**
+ * One acceptance criterion's verdict.
+ *
+ * The downgraded case (04 丙-10) is told apart on two channels, never on colour
+ * alone (NFR-007): the badge says a different thing, and a sentence states who
+ * decided. The border style differs as a third, and it is the only one a reader
+ * could miss without losing the fact.
+ */
+function CriterionItem({ criterion: c }: { criterion: CriterionResult }) {
+  const downgraded = isEvidenceUnverifiable(c);
+
+  return (
+    <li className={`criterion criterion-${c.result}${downgraded ? " criterion-unverifiable" : ""}`}>
+      <p>
+        <span
+          className={`badge badge-criterion-${c.result}${
+            downgraded ? " badge-criterion-unverifiable" : ""
+          }`}
+        >
+          {downgraded ? "證據無法回驗" : CRITERION_LABEL[c.result]}
+        </span>{" "}
+        {c.text}
+      </p>
+      {downgraded ? (
+        <p className="note">
+          判定來源：平台降級（模型原本有結論，但它引用的證據在平台資料裡對不上，因此不採信）。
+          <strong>這不是「模型自己說不知道」</strong>
+          ——那一種會顯示為「無法判斷」。這一條要查的是引用為什麼回驗不過，不是模型有沒有把握。
+        </p>
+      ) : (
+        <p className="note">判定來源：{SOURCE_LABEL[c.source]}</p>
+      )}
+      {/* Untrusted when source is `model`: plain text, never markup. */}
+      {c.reason && <p>{c.reason}</p>}
+      <EvidenceList evidence={c.evidence} />
+    </li>
   );
 }
 

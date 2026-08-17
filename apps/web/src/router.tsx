@@ -1,7 +1,9 @@
 import { Link, Outlet, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
 import { Compare } from "./pages/Compare";
 import { DatasetUpload } from "./pages/DatasetUpload";
+import { Downloads } from "./pages/Downloads";
 import { Home } from "./pages/Home";
+import { Packaging } from "./pages/Packaging";
 import { RunCompare } from "./pages/RunCompare";
 import { RunPreflight } from "./pages/RunPreflight";
 import { RunTrace } from "./pages/RunTrace";
@@ -17,7 +19,7 @@ function RootLayout() {
         <Link to="/" className="app-title">
           Skill Hub
         </Link>{" "}
-        <Link to="/lab/test-cases">Test Case</Link>
+        <Link to="/lab/test-cases">Test Case</Link> <Link to="/workspace/downloads">下載紀錄</Link>
       </header>
       <main>
         <Outlet />
@@ -81,6 +83,32 @@ const skillFilesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/skills/$skillId/files",
   component: SkillFiles,
+});
+
+/**
+ * 02:PACK-001/002. The version is a search param rather than a path segment
+ * because the common case is "package the latest", which the page resolves from
+ * the skill itself; a link from a version-specific place fills it in.
+ */
+const packagingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/skills/$skillId/package",
+  component: Packaging,
+  validateSearch: (search: Record<string, unknown>) => ({
+    version: typeof search.version === "string" ? search.version : undefined,
+  }),
+});
+
+/**
+ * 02:WS-002 / WS-004. Under /workspace and not at /downloads: the API owns
+ * GET /downloads, and in production the SPA and the API share an origin (see
+ * vite.config.ts), so a page at that address would be a collision rather than a
+ * deep link.
+ */
+const downloadsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workspace/downloads",
+  component: Downloads,
 });
 
 // DISC-009: the selection lives in the URL so a comparison is linkable and
@@ -177,6 +205,8 @@ const routeTree = rootRoute.addChildren([
   runCompareRoute,
   skillDetailRoute,
   skillFilesRoute,
+  packagingRoute,
+  downloadsRoute,
   runPreflightRoute,
   datasetUploadRoute,
   testCaseListRoute,

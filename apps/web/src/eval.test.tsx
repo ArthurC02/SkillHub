@@ -88,6 +88,19 @@ const evaluation: Evaluation = {
       reason: "Trace 有缺漏，證據不足以判定。",
       evidence: [],
     },
+    // 04 丙-10: the judge had a verdict and the platform threw it away because
+    // the citation did not re-verify. Marked by the reason's prefix, which is
+    // where judge.go's defence 3 puts it.
+    {
+      criterion_id: "c3",
+      text: "報告有貼出正文",
+      result: "undetermined",
+      source: "model",
+      reason:
+        "evidence_unverifiable: no trace event 0f0a... was sent to the judge. " +
+        "The judge's own reasoning was: the report quotes the body in full.",
+      evidence: [],
+    },
   ],
   deterministic_findings: [
     {
@@ -303,6 +316,29 @@ test("EVAL-011 a run whose test case no longer resolves says so instead of inven
   expect(container.textContent).toContain("無法從這裡以相同輸入重跑新版本");
   // The version was still built, and the page still says where it lives.
   expect(container.textContent).toContain("已建立新版本");
+});
+
+test("丙-10 a verdict downgraded for unverifiable evidence is not shown as a judge who does not know", async () => {
+  stubPlatform({ evaluated: true });
+  await render("succeeded");
+
+  const items = Array.from(container.querySelectorAll("li.criterion"));
+  const downgraded = items.find((li) => (li.textContent ?? "").includes("報告有貼出正文"));
+  const uncertain = items.find((li) => (li.textContent ?? "").includes("沒有刪掉原始列"));
+
+  // Channel one: different words, on the badge and in the sentence beside it.
+  expect(downgraded?.querySelector(".badge")?.textContent).toBe("證據無法回驗");
+  expect(downgraded?.textContent).toContain("平台降級");
+  expect(downgraded?.textContent).toContain("這不是「模型自己說不知道」");
+
+  // Channel two: a class of its own, so the two states differ visually as well
+  // (NFR-007 forbids leaning on colour alone, hence both channels).
+  expect(downgraded?.className).toContain("criterion-unverifiable");
+  expect(uncertain?.className).not.toContain("criterion-unverifiable");
+
+  // The plain undetermined case keeps its own wording and is not relabelled.
+  expect(uncertain?.querySelector(".badge")?.textContent).toBe("無法判斷");
+  expect(uncertain?.textContent).not.toContain("平台降級");
 });
 
 test("EVAL-002 a suggestion that cannot be applied names the rule that blocked it", async () => {

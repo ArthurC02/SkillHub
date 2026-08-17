@@ -379,6 +379,16 @@ summary {
   color: #d33;
 }
 
+/* 04 丙-10. A verdict the platform downgraded because the citations did not
+   re-verify is not the same state as a judge saying it does not know, and the
+   two are told apart by their words first — the badge reads 證據無法回驗 and a
+   sentence names who decided. The dashed edge is a third channel, never the
+   only one (NFR-007). */
+.criterion-unverifiable,
+.badge-criterion-unverifiable {
+  border-style: dashed;
+}
+
 .badge-criterion-undetermined,
 .badge-severity-warning {
   border-color: var(--accent-border);
@@ -401,6 +411,34 @@ summary {
   padding: 12px;
   border-radius: 4px;
   overflow-x: auto;
+}
+
+/* PACK-001/002 packaging page and the WS-004 download history. */
+.packaging-targets,
+.download-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.packaging-target,
+.download-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+/* Both states carry their own word (已驗證/未驗證, 已過期), so the tint is the
+   second channel and not the fact (NFR-007). */
+.badge-unverified {
+  border-color: var(--accent-border);
+}
+
+.badge-expired {
+  border-color: #d33;
+  color: #d33;
 }
 
 .file-script .script-tag {
