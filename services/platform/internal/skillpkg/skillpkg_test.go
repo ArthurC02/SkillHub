@@ -2,6 +2,7 @@ package skillpkg
 
 import (
 	"fmt"
+	"io/fs"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -699,3 +700,74 @@ import { x } from "@scope/pkg/sub";
 		})
 	}
 }
+
+// 04 丙-15 D-3: a link entry used to be scanned as an ordinary little text file,
+// so the report never said the package contained a link at all.
+func TestASymlinkEntryIsDisclosedInsteadOfBeingReadAsAFile(t *testing.T) {
+	m := pkg(goodMD, nil)
+	m["reference/host-passwd"] = &fstest.MapFile{Data: []byte("/etc/passwd"), Mode: fs.ModeSymlink}
+	m["scripts/run.sh"] = &fstest.MapFile{Data: []byte("SKILL.md"), Mode: fs.ModeSymlink}
+
+	r := Validate(m)
+	if sev := codes(r)["symlink-entry"]; sev != SeverityWarning {
+		t.Fatalf("want symlink-entry as a warning, got %+v", r.Findings)
+	}
+	if r.Blocked {
+		t.Error("a link does not block: it is excluded from every package the platform builds, and " +
+			"blocking would reject import for packages that carry a benign one")
+	}
+	if codes(r)["script-file"] != "" {
+		t.Error("a link named .sh is not a script the package ships; its body is a path")
+	}
+	var msg string
+	for _, f := range r.Findings {
+		if f.Code == "symlink-entry" && f.Path == "reference/host-passwd" {
+			msg = f.Message
+		}
+	}
+	if !strings.Contains(msg, "/etc/passwd") {
+		t.Errorf("the message must name where the link points, got %q", msg)
+	}
+}
+
+// 04 丙-15 D-1/D-2: findings the archive reader hands in must reach the report
+// even when validation gives up on the first line.
+func TestArchiveFindingsSurviveAPackageWithNoSkillMD(t *testing.T) {
+	f, ok := ArchiveEntryFinding("../../evil.sh")
+	if !ok || f.Severity != SeverityError {
+		t.Fatalf("a traversal entry must be an error-level finding, got %+v / %v", f, ok)
+	}
+	r := Validate(archiveFS{FS: pkg("", nil), findings: []Finding{f}})
+	if !r.Blocked || codes(r)[entryPathEscape] != SeverityError {
+		t.Fatalf("want the archive finding and skill-md-missing, got %+v", r.Findings)
+	}
+	if codes(r)["skill-md-missing"] != SeverityError {
+		t.Fatalf("the tree's own findings must still be produced: %+v", r.Findings)
+	}
+}
+
+func TestEntryNamesThatAreNotPathsInThePackage(t *testing.T) {
+	for _, name := range []string{
+		"../../evil.sh", "..", "a/../../b", "nested/..", `..\..\evil.sh`,
+		"/etc/cron.d/evil", `C:\Windows\evil.bat`, "c:/windows/evil.bat",
+	} {
+		if _, ok := ArchiveEntryFinding(name); !ok {
+			t.Errorf("%q was accepted as a path inside the package", name)
+		}
+	}
+	// Names that merely look alarming are not: a false block costs an appeal.
+	for _, name := range []string{
+		"SKILL.md", "reference/..hidden.md", "a..b/c.md", "scripts/run.sh", "dir/",
+	} {
+		if f, ok := ArchiveEntryFinding(name); ok {
+			t.Errorf("%q was refused: %s", name, f.Message)
+		}
+	}
+}
+
+type archiveFS struct {
+	fs.FS
+	findings []Finding
+}
+
+func (a archiveFS) ArchiveFindings() []Finding { return a.findings }

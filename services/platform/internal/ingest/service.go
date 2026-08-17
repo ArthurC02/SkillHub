@@ -419,19 +419,38 @@ func PackageFS(data []byte) (fs.FS, error) {
 		return nil, fmt.Errorf("%w: not a zip archive", ErrBadArchive)
 	}
 	var unpacked uint64
+	var findings []skillpkg.Finding
 	for _, f := range zr.File {
 		unpacked += f.UncompressedSize64
 		if unpacked > maxUnpackedBytes {
 			return nil, fmt.Errorf("%w: uncompressed content exceeds %d bytes", ErrBadArchive, maxUnpackedBytes)
 		}
-	}
-	if root := PackageRoot(zr); root != "" {
-		if sub, err := fs.Sub(zr, strings.TrimSuffix(root, "/")); err == nil {
-			return sub, nil
+		// The raw name, read here because this is the last place it exists: the
+		// fs view below rewrites `../../evil.sh` to `evil.sh` (04 丙-15 D-1/D-2).
+		if finding, escapes := skillpkg.ArchiveEntryFinding(f.Name); escapes {
+			findings = append(findings, finding)
 		}
 	}
-	return zr, nil // let Validate report skill-md-missing
+	var tree fs.FS = zr // no root to strip: let Validate report skill-md-missing
+	if root := PackageRoot(zr); root != "" {
+		if sub, err := fs.Sub(zr, strings.TrimSuffix(root, "/")); err == nil {
+			tree = sub
+		}
+	}
+	return packageFS{FS: tree, findings: findings}, nil
 }
+
+// packageFS is the tree plus what the archive declared before the tree
+// normalised it. The two travel together because skillpkg validates an fs.FS and
+// would otherwise never learn about an entry the fs view renamed; every caller
+// that opens a package through PackageFS gets the archive-level findings without
+// having to ask for them (skillpkg.ArchiveSource).
+type packageFS struct {
+	fs.FS
+	findings []skillpkg.Finding
+}
+
+func (p packageFS) ArchiveFindings() []skillpkg.Finding { return p.findings }
 
 // PackageRoot is the prefix inside the archive that PackageFS strips: empty when
 // SKILL.md is at the top level, "dir/" when the package sits in a single

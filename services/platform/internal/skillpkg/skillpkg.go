@@ -66,8 +66,12 @@ type Report struct {
 }
 
 func (r *Report) add(sev Severity, code, path, msg string) {
-	r.Findings = append(r.Findings, Finding{Severity: sev, Code: code, Path: path, Message: msg})
-	if sev == SeverityError {
+	r.addFinding(Finding{Severity: sev, Code: code, Path: path, Message: msg})
+}
+
+func (r *Report) addFinding(f Finding) {
+	r.Findings = append(r.Findings, f)
+	if f.Severity == SeverityError {
 		r.Blocked = true
 	}
 }
@@ -114,9 +118,73 @@ const (
 	maxScanBytes = 1 << 20 // 1 MiB
 )
 
+// ArchiveSource is implemented by an fs.FS that was opened from an archive and
+// can still say what that archive declared, before the fs view normalised it.
+//
+// It exists because archive/zip's fs.FS rewrites entry names: `../../evil.sh` is
+// presented as `evil.sh` and `/etc/cron.d/evil` as `etc/cron.d/evil`. A check
+// written against the tree therefore cannot see a traversal entry at all — by
+// the time anything walks, the entry has silently changed identity and the file
+// list a reviewer approves is not the one the archive carries (04 丙-15 D-1/D-2).
+// Only the opener sees the raw names, so it hands its findings in here rather
+// than every caller having to remember to ask for them separately.
+type ArchiveSource interface {
+	ArchiveFindings() []Finding
+}
+
+// entryPathEscape is one code for both shapes of the same rule: an entry name
+// that is not a path inside the package. Same severity, same remedy — the
+// message carries which shape it was.
+const entryPathEscape = "entry-path-escape"
+
+// ArchiveEntryFinding checks one raw archive entry name — the name as the
+// archive declares it — and returns the finding to record when that name is not
+// a path the package could contain.
+//
+// Error level, because this is an attempt and not format noise. A package cannot
+// contain `../../evil.sh` or `/etc/cron.d/evil`; an entry that says it does is
+// aimed at whatever unpacks it. Nothing here is a zip-slip — the platform never
+// writes the tree to disk — but the archive and the fs view answer to two
+// different names, and the one a human reviews must be the one the package
+// declares.
+//
+// Backslashes are folded to slashes first: a zip entry name is defined to use
+// forward slashes, so a backslash in one is either a literal character or an
+// entry written for a Windows extractor that will treat it as a separator, and
+// `..\..\evil.sh` has to be caught either way. packaging.travels() makes the same
+// two judgements on the way out; this is the way in.
+func ArchiveEntryFinding(name string) (Finding, bool) {
+	clean := strings.ReplaceAll(name, `\`, "/")
+	switch {
+	case strings.HasPrefix(clean, "/"), hasDriveLetter(clean):
+		return Finding{Severity: SeverityError, Code: entryPathEscape, Path: name,
+			Message: "archive entry declares an absolute path, which is not a location inside the package; " +
+				"the extracted tree would not be the tree this archive declares"}, true
+	case clean == "..", strings.HasPrefix(clean, "../"),
+		strings.Contains(clean, "/../"), strings.HasSuffix(clean, "/.."):
+		return Finding{Severity: SeverityError, Code: entryPathEscape, Path: name,
+			Message: "archive entry walks out of the package with ..; " +
+				"the extracted tree would not be the tree this archive declares"}, true
+	}
+	return Finding{}, false
+}
+
+func hasDriveLetter(path string) bool {
+	return len(path) >= 2 && path[1] == ':' &&
+		((path[0] >= 'a' && path[0] <= 'z') || (path[0] >= 'A' && path[0] <= 'Z'))
+}
+
 // Validate parses SKILL.md and statically checks the package rooted at fsys.
 func Validate(fsys fs.FS) Report {
 	var r Report
+
+	// First, so an archive-level finding survives the early returns below: a
+	// package with no SKILL.md at all still declared those entries.
+	if a, ok := fsys.(ArchiveSource); ok {
+		for _, f := range a.ArchiveFindings() {
+			r.addFinding(f)
+		}
+	}
 
 	raw, err := fs.ReadFile(fsys, "SKILL.md")
 	if err != nil {
@@ -615,6 +683,11 @@ var (
 // scan called scripts: a second extension list in the presentation layer would
 // eventually disagree with this one, and the tree is where a user decides
 // whether to trust the package.
+//
+// It answers by name alone, so a symlink named `run.sh` is marked here while the
+// scan reports it as symlink-entry instead of script-file. The two disagree in
+// the cautious direction and only for a shape no real package has; deciding it
+// by mode would need the entry, which a path does not carry.
 func IsScriptPath(path string) bool {
 	lower := strings.ToLower(path)
 	i := strings.LastIndex(lower, ".")
@@ -629,6 +702,19 @@ func (r *Report) scanTree(fsys fs.FS) {
 	_ = fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
+		}
+		info, err := d.Info()
+		if err != nil {
+			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
+		}
+		// A symlink before anything else: its body is a link target, not file
+		// content, so scanning it as a script or as text would describe a file
+		// that does not exist. A zip carries one as an ordinary entry with a mode
+		// bit, and without this the scan never says the package contains a link at
+		// all (04 丙-15 D-3).
+		if info.Mode()&fs.ModeSymlink != 0 {
+			r.add(SeverityWarning, "symlink-entry", path, symlinkMessage(fsys, path, info.Size()))
+			return nil
 		}
 		deps.note(path)
 		lower := strings.ToLower(path)
@@ -650,10 +736,6 @@ func (r *Report) scanTree(fsys fs.FS) {
 			r.add(SeverityInfo, "dependency-file", path, "package declares external dependencies")
 		}
 
-		info, err := d.Info()
-		if err != nil {
-			return nil
-		}
 		if info.Size() > maxScanBytes {
 			r.add(SeverityInfo, "file-not-scanned", path, "file exceeds the content-scan size cap")
 			return nil
@@ -681,6 +763,41 @@ func (r *Report) scanTree(fsys fs.FS) {
 	})
 	deps.report(r)
 	r.addURLDisclosures(urlsByHost)
+}
+
+// maxLinkTarget bounds what a link target may contribute to a message a user
+// reads. It is untrusted package content like any other.
+const maxLinkTarget = 512
+
+// symlinkMessage describes one link entry, naming its target when the target is
+// readable, short and plain text — a zip stores a symlink's target as the entry's
+// body, and where it points is the whole question a reviewer has about it.
+//
+// Warning, not error, and the reason is the export side: packaging.travels()
+// already refuses anything that is not a regular file, so a link never reaches a
+// download and PACK-001's "must not be packaged" list is satisfied by exclusion.
+// Blocking here would instead reject import and every Run of a package that
+// carries a benign link, which is the false-block cost ADR-007 asks to weigh.
+// What was missing was not a block, it was the disclosure: the exclusion used to
+// be silent at both ends.
+func symlinkMessage(fsys fs.FS, path string, size int64) string {
+	target, err := fs.ReadLink(fsys, path)
+	if err != nil && size > 0 && size <= maxLinkTarget {
+		// A zip's fs view does not implement ReadLinkFS: it presents the entry as
+		// an ordinary little file whose body is the target path.
+		if data, rerr := fs.ReadFile(fsys, path); rerr == nil && utf8.Valid(data) {
+			target, err = string(data), nil
+		}
+	}
+	what := "a symbolic link"
+	if target = strings.TrimSpace(target); err == nil && target != "" {
+		if len(target) > maxLinkTarget {
+			target = target[:maxLinkTarget] + "…"
+		}
+		what = fmt.Sprintf("a symbolic link to %q", target)
+	}
+	return "package entry is " + what + ", not a file; the platform never follows it and never " +
+		"writes it into a package it builds, but any tool that unpacks these bytes to disk would create the link"
 }
 
 // urlExamplesPerHost is how many URLs the summary line names before it stops;

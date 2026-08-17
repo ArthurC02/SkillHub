@@ -100,10 +100,14 @@ func collect(fsys fs.FS) ([]exportFile, error) {
 
 // travels decides one source entry.
 //
-// The path rules exist here and nowhere on the import side, and that asymmetry
-// is the point: the platform never unpacks to disk, so nothing it reads can
-// escape anywhere. The USER unpacks to disk. This is the first and only place
-// where a zip-slip check is load-bearing (packaging-design §2.1, §4.4).
+// This is still the only place a zip-slip check is load-bearing: the platform
+// never unpacks to disk, so nothing it reads can escape anywhere, and the USER
+// unpacks to disk (packaging-design §2.1, §4.4). The import side now makes the
+// same two judgements — skillpkg.ArchiveEntryFinding on the raw entry name, and
+// a symlink-entry warning in the tree scan — but for the other reason: to say
+// out loud what the archive carries. Disclosure there, exclusion here. Neither
+// substitutes for the other, and dropping a link silently at both ends was
+// exactly the hole 04 丙-15 D-3 recorded.
 func travels(path string, d fs.DirEntry) bool {
 	if !fs.ValidPath(path) || path == "." || strings.ContainsAny(path, `\`) {
 		return false

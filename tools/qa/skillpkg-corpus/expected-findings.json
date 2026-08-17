@@ -1,5 +1,5 @@
 {
-  "$comment": "QA-002 expected findings for the deliberately broken package corpus. Produced by tools/qa/skillpkg-corpus/generate.py, asserted by TestQA002BrokenPackageCorpus in services/platform/internal/ingest. Every entry was reviewed against skillpkg.go, not recorded from a run: where the observed behaviour is weaker than the failure mode deserves, the entry says so in `gap` instead of being softened into a pass.",
+  "$comment": "QA-002 expected findings for the deliberately broken package corpus. Produced by tools/qa/skillpkg-corpus/generate.py, asserted by TestQA002BrokenPackageCorpus in services/platform/internal/ingest. Every entry was reviewed against skillpkg.go, not recorded from a run: where the observed behaviour is weaker than the failure mode deserves, the entry says so in `gap` instead of being softened into a pass. The three `gap` entries v1 carried (zip-path-traversal, zip-absolute-path, zip-symlink-escape) were closed on 2026-08-18 by fixing the scanner, not by relaxing the expectation — those three now assert findings, and each entry's note keeps what the gap said.",
   "corpus_version": "qa-002/v1",
   "asserted": {
     "archive_error": "PackageFS is expected to refuse the archive (ErrBadArchive) before validation runs.",
@@ -209,23 +209,21 @@
       "base": "humanizer",
       "breaks": "a zip entry whose name walks out of the package",
       "archive_error": false,
-      "blocked": false,
-      "errors": [],
+      "blocked": true,
+      "errors": ["entry-path-escape"],
       "warnings": [],
       "info_includes": ["script-file"],
-      "gap": "No finding of any kind. archive/zip's fs.FS view rewrites `../../evil.sh` to `evil.sh` before anything in this codebase sees it, so the resulting code set is byte-for-byte the clean base's. Nothing extracts to disk, so there is no zip-slip here — but the entry silently changes identity, and the file tree a reviewer approves is not the one the archive declared.",
-      "note": "Recorded as observed, deliberately not softened into a pass. Fixing it means reading the raw zip.Reader entry names before fs.Sub, which is ingest's call to make, not this corpus's."
+      "note": "v1 recorded this as a gap: archive/zip's fs.FS rewrote `../../evil.sh` to `evil.sh` before anything in this codebase saw it, so the code set was byte-for-byte the clean base's. Closed 2026-08-18 (04 丙-15 D-1) — ingest.PackageFS now reads the raw zip.Reader entry names before fs.Sub and hands the findings to skillpkg. Still not a zip-slip (nothing extracts to disk); it blocks because an entry aimed outside the package is an attempt, and because the tree a reviewer approves has to be the tree the archive declares. The entry is also still visible as `evil.sh` in the tree, which is why script-file remains."
     },
     "zip-absolute-path": {
       "base": "humanizer",
       "breaks": "a zip entry with an absolute path",
       "archive_error": false,
-      "blocked": false,
-      "errors": [],
+      "blocked": true,
+      "errors": ["entry-path-escape"],
       "warnings": [],
       "info_includes": [],
-      "gap": "Same silence as zip-path-traversal, and quieter: `/etc/cron.d/evil` becomes `etc/cron.d/evil`, which has no script extension, so not even an info-level disclosure appears.",
-      "note": "info_includes is empty on purpose — a subset assertion of nothing is the honest statement here."
+      "note": "Same fix and the same code as zip-path-traversal (04 丙-15 D-2): one rule, one code, different message. v1's gap noted this one was quieter still — `/etc/cron.d/evil` becomes `etc/cron.d/evil`, which has no script extension, so not even an info-level disclosure appeared. info_includes stays empty on purpose."
     },
     "zip-symlink-escape": {
       "base": "humanizer",
@@ -233,10 +231,9 @@
       "archive_error": false,
       "blocked": false,
       "errors": [],
-      "warnings": [],
-      "info_includes": [],
-      "gap": "No finding. The zip fs.FS presents a symlink entry as an ordinary 11-byte file whose content is the target path, so `reference/host-passwd` reads as a harmless text file and the scan never says the package contains a link at all. Import itself is safe (the platform never materialises the tree), but any consumer that does write these bytes to disk — the M4 packaging export, or a user unzipping a download — would create the link.",
-      "note": "The one entry in this corpus that points at work outside ingest: 04 M4-4 / PACK-004. Left as a recorded gap rather than a silent pass."
+      "warnings": ["symlink-entry"],
+      "info_includes": ["script-file"],
+      "note": "v1 recorded a gap: the zip fs.FS presents the entry as an ordinary 11-byte file whose content is the target path, so the scan never said the package contained a link at all. Closed 2026-08-18 (04 丙-15 D-3) — the tree scan reads the entry's mode and discloses the link and its target. Warning and not error on purpose: packaging.travels() already refuses anything that is not a regular file, so a link never reaches a download (PACK-001's exclusion list is satisfied by exclusion), while blocking would reject import and every Run of a package carrying a benign link. What was missing was the disclosure, not a block."
     },
     "zip-bomb": {
       "base": "humanizer",

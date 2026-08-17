@@ -453,6 +453,6 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistrib
 | # | 事項 | 誰接 |
 | --- | --- | --- |
 | 出-6 | **`seed_testcases.py` 尚未對執行中的 dev DB 或任何 live 部署執行過。** 阻擋原因與 §13.4 出-2 同源：執行中的 dev DB 停在 `0026`，沒有 `0027`～`0030`，而本工具本身只需要 `0026`（rubric 欄位）——**它其實跑得動**，不跑是因為 ①目錄 Workspace 的策展帳號是誰要先確認（`is_catalog` 由 SQL 設定，dev 上是哪個 user 未查），②同一工作樹上有平行批次，對共用 dev DB 的寫入該由需要它的那一批決定時機。套用步驟：`python tools/content/seed_testcases.py --api http://localhost:8080 --user <目錄策展帳號> --dry-run` 先看 15 筆是否都解析得到 Skill，再拿掉 `--dry-run` | 部署批／第 7 批後半 |
-| 出-7 | **三個 archive 層缺陷（D-1／D-2／D-3）沒有承接者。** D-1／D-2 屬 `ingest`（原始 entry 名的揭露），D-3 屬 `PACK-004`／`04` M4-4（打包排除規則沒有一條講符號連結）。**語料已經在庫，修好之後把 `expected-findings.json` 那三列的 `gap` 換成期望 finding 即是回歸測試** | `04` 丙類（本批同時回填該清單） |
+| 出-7 | **三個 archive 層缺陷（D-1／D-2／D-3）沒有承接者。** D-1／D-2 屬 `ingest`（原始 entry 名的揭露），D-3 屬 `PACK-004`／`04` M4-4（打包排除規則沒有一條講符號連結）。**語料已經在庫，修好之後把 `expected-findings.json` 那三列的 `gap` 換成期望 finding 即是回歸測試** | ~~`04` 丙類（本批同時回填該清單）~~ **已於 2026-08-18 同日修畢**：D-1／D-2 為 `entry-path-escape`（error，Blocked，讀原始 zip entry 名），D-3 為 `symlink-entry`（warning，匯出端本就以白名單剝除）；期望清單三列的 `gap` 已換成期望 finding，harness 24/24。逐項理由見 [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) 丙-15 |
 | 出-8 | **`QA-002` 未勾。** 資料集與 harness 已具備且全綠，但 `03` §17 的九項要一起對帳（第 7 批後半），且本項的允收字面是「建立測試資料集」——資料集成立，勾選仍留給對帳那一步一次處理 | 第 7 批後半 |
 | 出-9 | **驗證用的 SeaweedFS bucket `skillhub-seedtest` 留在 dev 物件儲存裡**（容器已刪，bucket 沒有）。無害且與 `skillhub` bucket 隔離，但下次清理 dev 環境時它是可以直接丟的一個 | 不需動作，記著即可 |
