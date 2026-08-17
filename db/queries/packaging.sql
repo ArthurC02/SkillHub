@@ -23,6 +23,10 @@ WHERE da.workspace_id = $1
   AND da.includes_test_cases = $5
   AND a.scan_status = 'available'
   AND a.deleted_at IS NULL
+  -- Added by 0028: bytes the retention sweep or the reconciler removed. Without
+  -- this an artifact whose object is gone would be handed back as a duplicate and
+  -- the caller would be sent to a download that answers 404.
+  AND a.purged_at IS NULL
   AND a.expires_at > now()
 ORDER BY a.created_at DESC
 LIMIT 1;
@@ -57,6 +61,88 @@ RETURNING *;
 -- tenant's (iron rule 3).
 UPDATE artifacts SET scan_status = 'available'
 WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package';
+
+-- The download surface (WS-002, WS-004, SEC-006). Every statement is workspace
+-- scoped and none of them takes the workspace from a caller (iron rule 3).
+
+-- name: ListDownloadArtifacts :many
+-- GET /downloads: the workspace's packages, newest first.
+--
+-- Expired rows stay in the list on purpose — "it expired" and "it never existed"
+-- are different answers to 02:WS-002 1, and dropping the row silently gives the
+-- wrong one. Rows the OWNER deleted do not: 02:SEC-006 requires deleted content
+-- to stop appearing in ordinary access surfaces, which is exactly what
+-- deleted_at means and purged_at does not (0028).
+SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
+       da.packager_version, da.manifest_hash, da.includes_test_cases,
+       sv.skill_id,
+       a.file_name, a.size_bytes, a.content_hash, a.scan_status,
+       a.expires_at, a.created_at, a.purged_at,
+       (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
+           AS download_count
+FROM download_artifacts da
+JOIN artifacts a ON a.id = da.artifact_id
+JOIN skill_versions sv ON sv.id = da.skill_version_id
+WHERE da.workspace_id = $1 AND a.deleted_at IS NULL
+ORDER BY a.created_at DESC, da.artifact_id;
+
+-- name: GetDownloadArtifact :one
+-- One row, for GET /downloads/{id}, the content stream and the delete.
+--
+-- It carries three things the JSON shape does not: the object key, and the
+-- skill's two independent locks. Serving bytes re-checks those locks on every
+-- request rather than trusting the verdict packaging reached — a hold applied
+-- after the package was built has to stop the copy that already exists from
+-- going out (packaging-design §7.1, the argument against pre-signed URLs).
+SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
+       da.packager_version, da.manifest_hash, da.includes_test_cases,
+       sv.skill_id,
+       a.file_name, a.size_bytes, a.content_hash, a.scan_status, a.object_key,
+       a.expires_at, a.created_at, a.purged_at,
+       sk.access_restriction, sk.redistribution,
+       (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
+           AS download_count
+FROM download_artifacts da
+JOIN artifacts a ON a.id = da.artifact_id
+JOIN skill_versions sv ON sv.id = da.skill_version_id
+JOIN skills sk ON sk.id = sv.skill_id
+WHERE da.workspace_id = $1 AND da.artifact_id = $2 AND a.deleted_at IS NULL;
+
+-- name: InsertDownloadRecord :exec
+-- WS-004, append only (0027). Written in the same transaction as the audit event
+-- so a download cannot be in one record and missing from the other (iron rule 9),
+-- and kept in a separate table from it because their retention and their
+-- visibility differ (packaging-design §7.2).
+--
+-- No lock and no counter to increment: the count is COUNT(*) over these rows, so
+-- concurrent downloads of one artifact are two inserts that cannot race.
+INSERT INTO download_records (workspace_id, artifact_id, actor_user_id)
+VALUES ($1, $2, $3);
+
+-- name: SoftDeleteDownloadArtifact :one
+-- DELETE /downloads/{id}. Soft, although the OpenAPI prose once said the row
+-- goes: download_records has a foreign key onto download_artifacts and those
+-- records outlive the file by design (WS-004), and download_artifacts carries
+-- 0027's immutability trigger. So the row stays and stops being visible, which is
+-- what 02:SEC-006 actually asks for.
+--
+-- Returns nothing when there is nothing to delete, which is what makes the
+-- endpoint idempotent: a repeat of a delete that worked is not a failure.
+UPDATE artifacts SET deleted_at = now()
+WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package' AND deleted_at IS NULL
+RETURNING id, object_key, purged_at;
+
+-- name: CountArtifactsSharingObject :one
+-- Whether anybody else still needs these bytes, asked after the row above is
+-- already soft-deleted so it does not count itself.
+--
+-- Object keys are content addressed, so two rows CAN name one object. A download
+-- package's manifest carries its own version ids, which makes a collision between
+-- workspaces close to impossible — but "close to impossible" is not the standard
+-- for an unrecoverable delete of somebody else's file, and governance.sql already
+-- spares package objects for the same reason.
+SELECT count(*)::bigint FROM artifacts
+WHERE object_key = $1 AND deleted_at IS NULL AND purged_at IS NULL;
 
 -- name: ListTestCasesForSkill :many
 -- The PACK-005 candidates: this skill's test cases in the caller's workspace.

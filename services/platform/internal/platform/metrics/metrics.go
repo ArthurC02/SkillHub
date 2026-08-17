@@ -160,6 +160,15 @@ var (
 		Name: "skillhub_orphan_sandbox_persistent",
 		Help: "Leaked sandboxes present for two or more consecutive reconciler rounds (SBX-012, ADR-022 X-03).",
 	}, []string{"provider"})
+	// ObjectsMissing is the storage reconciler's equivalent (04 丙-9): rows whose
+	// object has now been absent for two consecutive rounds, by the table they
+	// live in. Above zero means user content was lost — not that a check failed,
+	// which is why an unreachable store produces no sighting at all and therefore
+	// never moves this number.
+	ObjectsMissing = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_storage_objects_missing",
+		Help: "Rows whose stored object has been missing for two or more consecutive reconciler rounds (SEC-006, 04 丙-9).",
+	}, []string{"resource_kind"})
 )
 
 // Trace ingestion (TRACE-005, TRACE-008). Health of the pipeline itself, not of

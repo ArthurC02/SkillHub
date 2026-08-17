@@ -82,10 +82,12 @@ var (
 )
 
 // ObjectStore is the slice of object storage packaging needs: the source
-// package and any curated dataset come out, the built package goes in.
+// package and any curated dataset come out, the built package goes in, and a
+// package the owner deleted goes away.
 type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 	Put(ctx context.Context, key string, data []byte) error
+	Remove(ctx context.Context, key string) error
 }
 
 type Service struct {
@@ -195,12 +197,20 @@ func (s *Service) Plan(
 // redistribution value that is not exactly `allowed` blocks, so a value added to
 // the column tomorrow does not release content today.
 func gate(skill gen.Skill) (reason, message string) {
-	if skill.AccessRestriction != nil && *skill.AccessRestriction != "" {
+	return gateFlags(skill.AccessRestriction, skill.Redistribution)
+}
+
+// gateFlags is gate over the two columns alone, so the download endpoint can ask
+// the same question from its own joined row without loading the skill again.
+// One function and not two readings of two flags: a second copy is how the
+// download path ends up serving what the packaging path would refuse.
+func gateFlags(accessRestriction *string, redistribution string) (reason, message string) {
+	if accessRestriction != nil && *accessRestriction != "" {
 		return BlockedLicenseHold,
 			"this skill's materials are held back while a licensing question about them is open, " +
 				"so no package can be produced from them"
 	}
-	switch skill.Redistribution {
+	switch redistribution {
 	case RedistributionAllowed:
 		return "", ""
 	case RedistributionBlocked:

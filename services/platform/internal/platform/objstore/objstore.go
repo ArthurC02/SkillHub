@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"time"
 
@@ -67,6 +68,23 @@ func (c *Client) Remove(ctx context.Context, key string) error {
 		return fmt.Errorf("objstore remove %s: %w", key, err)
 	}
 	return nil
+}
+
+// Exists reports whether one object is there, for the reconciler that keeps the
+// database's claims about stored bytes honest (04 丙-9).
+//
+// A definitive 404 is the only "no". Every other failure — a timeout, a refused
+// connection, a permissions error — returns an error and never `false`, because
+// the caller's response to false is to mark user content as gone, and an
+// unreachable store must never look like an empty one.
+func (c *Client) Exists(ctx context.Context, key string) (bool, error) {
+	if _, err := c.mc.StatObject(ctx, c.bucket, key, minio.StatObjectOptions{}); err != nil {
+		if minio.ToErrorResponse(err).StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		return false, fmt.Errorf("objstore stat %s: %w", key, err)
+	}
+	return true, nil
 }
 
 // PresignGet and PresignPut mint the short-lived, single-path authorizations of

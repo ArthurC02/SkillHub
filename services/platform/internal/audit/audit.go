@@ -61,6 +61,23 @@ const (
 	// audited: the dataset row itself already records what was uploaded and when.
 	ActionTestCaseDelete = "test_case.delete"
 	ActionDatasetDelete  = "dataset.delete"
+	// ADR-007 lists Artifact download and user data deletion by name, and they
+	// were the last two operations on that list with nothing to record them —
+	// M1 had neither a download nor a download artifact to delete (03:CORE-008).
+	//
+	// The download event is NOT the download record of WS-004, and neither
+	// replaces the other. This row is a compliance record kept for 400 days that
+	// stores identifiers only; that one is a product feature the owner reads and
+	// it outlives the artifact's bytes. One table would bind each to the other's
+	// stricter rule (packaging-design §7.2, ADR-029 decision 3).
+	ActionArtifactDownload = "artifact.download"
+	ActionArtifactDelete   = "artifact.delete"
+	// Platform-initiated and therefore actor-less: the reconciler found the bytes
+	// behind a live row missing and marked the row to stop claiming them
+	// (04 丙-9). Audited rather than only logged, because it is user content
+	// becoming unavailable without the user asking — the thing an audit trail
+	// exists to make traceable, and slog is sampled and thrown away.
+	ActionObjectMissing = "storage.object_missing"
 )
 
 // Resource types the actions above refer to.
@@ -72,6 +89,7 @@ const (
 	ResourceRun      = "run"
 	ResourceTestCase = "test_case"
 	ResourceDataset  = "dataset"
+	ResourceArtifact = "artifact"
 	// ResourceOperatorRoster has no resource_id: the roster is the deployment's
 	// configuration, not a row anything can point at.
 	ResourceOperatorRoster = "operator_roster"

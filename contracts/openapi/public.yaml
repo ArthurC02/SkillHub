@@ -2664,13 +2664,19 @@ paths:
       operationId: deleteDownloadArtifact
       summary: Delete a download artifact of one's own (WS-002, SEC-006)
       description: |
-        Removes the stored object and the row. Download artifacts are safe to
-        hard-delete, unlike a skill version's package object, which forks share
-        by content address and the governance purge deliberately spares: every
-        packaging run writes its own object and nothing else points at it.
+        Removes the stored object, and the row stops being visible: it leaves
+        this list, `GET /downloads/{artifactId}` answers 404, and so does the
+        content route. That is what 02:SEC-006 asks for — deleted content no
+        longer appearing in ordinary access surfaces.
 
-        The download *records* survive (`WS-004`): they say the user once
-        downloaded this, which stays true after the file is gone.
+        The row itself is kept rather than dropped, for two reasons that both
+        outrank tidiness: the download *records* have a foreign key onto it and
+        outlive it by design (`WS-004` — they say the user once downloaded this,
+        which stays true after the file is gone), and the packaging row is
+        immutable (iron rule 4). The bytes are what actually go, and they can:
+        every packaging run writes its own object, unlike a skill version's
+        package object, which forks share by content address and the governance
+        purge deliberately spares.
 
         Idempotent, and 204 for an id that is not there — the caller's intent
         (this artifact must not exist) is satisfied either way, and answering 404

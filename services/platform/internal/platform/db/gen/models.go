@@ -119,6 +119,8 @@ type Artifact struct {
 	ExpiresAt   pgtype.Timestamptz
 	CreatedAt   pgtype.Timestamptz
 	DeletedAt   pgtype.Timestamptz
+	// When the stored object was removed while the row was kept: retention expiry, or a reconciler finding the bytes gone. Distinct from deleted_at, which is the owner deleting it and hides the row (SEC-006). Serving the bytes requires this to be NULL. See 0028.
+	PurgedAt pgtype.Timestamptz
 }
 
 type AuditEvent struct {
@@ -204,6 +206,15 @@ type EvaluationSuggestion struct {
 	DecidedAt             pgtype.Timestamptz
 	AppliedSkillVersionID pgtype.UUID
 	CreatedAt             pgtype.Timestamptz
+}
+
+type ObjectReconcileSighting struct {
+	ResourceKind string
+	ResourceID   pgtype.UUID
+	ObjectKey    string
+	FirstSeenAt  pgtype.Timestamptz
+	LastSeenAt   pgtype.Timestamptz
+	Rounds       int32
 }
 
 type OutboxEvent struct {

@@ -530,7 +530,7 @@ func (q *Queries) ListOutboxEventsByAggregate(ctx context.Context, arg ListOutbo
 }
 
 const listRunArtifacts = `-- name: ListRunArtifacts :many
-SELECT id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at FROM artifacts
+SELECT id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at, purged_at FROM artifacts
 WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output' AND deleted_at IS NULL
 ORDER BY file_name
 `
@@ -565,6 +565,7 @@ func (q *Queries) ListRunArtifacts(ctx context.Context, arg ListRunArtifactsPara
 			&i.ExpiresAt,
 			&i.CreatedAt,
 			&i.DeletedAt,
+			&i.PurgedAt,
 		); err != nil {
 			return nil, err
 		}

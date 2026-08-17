@@ -162,6 +162,23 @@ func NewRouter(d Deps) *http.ServeMux {
 	mux.HandleFunc("POST /skills/{id}/versions/{versionId}/packaging",
 		auth.RequireSession(d.Packaging.Create))
 
+	// WS-002/WS-004 and SEC-006: the download history, one package, its bytes and
+	// its deletion. Same handler and the same workspace-from-session rule as the
+	// routes above.
+	//
+	// The bytes are served by the platform rather than by a pre-signed URL
+	// (packaging-design §7.1), so this is a route and not a redirect: the status,
+	// expiry and licensing checks then happen on every request instead of once at
+	// signing time, and the URL is not secret material, which is what lets a
+	// download be recorded and audited at all.
+	//
+	// The literal "content" segment is more specific than {artifactId}, so the two
+	// GET patterns coexist.
+	mux.HandleFunc("GET /downloads", auth.RequireSession(d.Packaging.Downloads))
+	mux.HandleFunc("GET /downloads/{artifactId}", auth.RequireSession(d.Packaging.Download))
+	mux.HandleFunc("GET /downloads/{artifactId}/content", auth.RequireSession(d.Packaging.DownloadContent))
+	mux.HandleFunc("DELETE /downloads/{artifactId}", auth.RequireSession(d.Packaging.DeleteDownload))
+
 	// TRACE-002: the execution plane pushes collected events here. Deliberately
 	// the only route in this table with no session and no RequireSession wrapper:
 	// its caller is a sandbox provider, and it authenticates with the per-attempt

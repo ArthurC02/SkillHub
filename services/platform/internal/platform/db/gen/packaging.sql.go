@@ -11,6 +11,26 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countArtifactsSharingObject = `-- name: CountArtifactsSharingObject :one
+SELECT count(*)::bigint FROM artifacts
+WHERE object_key = $1 AND deleted_at IS NULL AND purged_at IS NULL
+`
+
+// Whether anybody else still needs these bytes, asked after the row above is
+// already soft-deleted so it does not count itself.
+//
+// Object keys are content addressed, so two rows CAN name one object. A download
+// package's manifest carries its own version ids, which makes a collision between
+// workspaces close to impossible — but "close to impossible" is not the standard
+// for an unrecoverable delete of somebody else's file, and governance.sql already
+// spares package objects for the same reason.
+func (q *Queries) CountArtifactsSharingObject(ctx context.Context, objectKey string) (int64, error) {
+	row := q.db.QueryRow(ctx, countArtifactsSharingObject, objectKey)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createDownloadArtifactDetail = `-- name: CreateDownloadArtifactDetail :one
 INSERT INTO download_artifacts (
     artifact_id, workspace_id, skill_version_id, target,
@@ -63,7 +83,7 @@ INSERT INTO artifacts (
     workspace_id, run_id, kind, file_name, content_type,
     size_bytes, content_hash, object_key, expires_at
 ) VALUES ($1, NULL, 'download_package', $2, $3, $4, $5, $6, $7)
-RETURNING id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at
+RETURNING id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at, purged_at
 `
 
 type CreateDownloadArtifactRowParams struct {
@@ -109,6 +129,7 @@ func (q *Queries) CreateDownloadArtifactRow(ctx context.Context, arg CreateDownl
 		&i.ExpiresAt,
 		&i.CreatedAt,
 		&i.DeletedAt,
+		&i.PurgedAt,
 	)
 	return i, err
 }
@@ -130,6 +151,10 @@ WHERE da.workspace_id = $1
   AND da.includes_test_cases = $5
   AND a.scan_status = 'available'
   AND a.deleted_at IS NULL
+  -- Added by 0028: bytes the retention sweep or the reconciler removed. Without
+  -- this an artifact whose object is gone would be handed back as a duplicate and
+  -- the caller would be sent to a download that answers 404.
+  AND a.purged_at IS NULL
   AND a.expires_at > now()
 ORDER BY a.created_at DESC
 LIMIT 1
@@ -191,6 +216,83 @@ func (q *Queries) FindReusableDownloadArtifact(ctx context.Context, arg FindReus
 		&i.ScanStatus,
 		&i.ExpiresAt,
 		&i.CreatedAt,
+		&i.DownloadCount,
+	)
+	return i, err
+}
+
+const getDownloadArtifact = `-- name: GetDownloadArtifact :one
+SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
+       da.packager_version, da.manifest_hash, da.includes_test_cases,
+       sv.skill_id,
+       a.file_name, a.size_bytes, a.content_hash, a.scan_status, a.object_key,
+       a.expires_at, a.created_at, a.purged_at,
+       sk.access_restriction, sk.redistribution,
+       (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
+           AS download_count
+FROM download_artifacts da
+JOIN artifacts a ON a.id = da.artifact_id
+JOIN skill_versions sv ON sv.id = da.skill_version_id
+JOIN skills sk ON sk.id = sv.skill_id
+WHERE da.workspace_id = $1 AND da.artifact_id = $2 AND a.deleted_at IS NULL
+`
+
+type GetDownloadArtifactParams struct {
+	WorkspaceID pgtype.UUID
+	ArtifactID  pgtype.UUID
+}
+
+type GetDownloadArtifactRow struct {
+	ArtifactID        pgtype.UUID
+	SkillVersionID    pgtype.UUID
+	Target            string
+	ProfileVersion    string
+	PackagerVersion   string
+	ManifestHash      string
+	IncludesTestCases bool
+	SkillID           pgtype.UUID
+	FileName          string
+	SizeBytes         int64
+	ContentHash       string
+	ScanStatus        string
+	ObjectKey         string
+	ExpiresAt         pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	PurgedAt          pgtype.Timestamptz
+	AccessRestriction *string
+	Redistribution    string
+	DownloadCount     int64
+}
+
+// One row, for GET /downloads/{id}, the content stream and the delete.
+//
+// It carries three things the JSON shape does not: the object key, and the
+// skill's two independent locks. Serving bytes re-checks those locks on every
+// request rather than trusting the verdict packaging reached — a hold applied
+// after the package was built has to stop the copy that already exists from
+// going out (packaging-design §7.1, the argument against pre-signed URLs).
+func (q *Queries) GetDownloadArtifact(ctx context.Context, arg GetDownloadArtifactParams) (GetDownloadArtifactRow, error) {
+	row := q.db.QueryRow(ctx, getDownloadArtifact, arg.WorkspaceID, arg.ArtifactID)
+	var i GetDownloadArtifactRow
+	err := row.Scan(
+		&i.ArtifactID,
+		&i.SkillVersionID,
+		&i.Target,
+		&i.ProfileVersion,
+		&i.PackagerVersion,
+		&i.ManifestHash,
+		&i.IncludesTestCases,
+		&i.SkillID,
+		&i.FileName,
+		&i.SizeBytes,
+		&i.ContentHash,
+		&i.ScanStatus,
+		&i.ObjectKey,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+		&i.PurgedAt,
+		&i.AccessRestriction,
+		&i.Redistribution,
 		&i.DownloadCount,
 	)
 	return i, err
@@ -325,6 +427,110 @@ func (q *Queries) GetVersionLineage(ctx context.Context, id pgtype.UUID) (GetVer
 	return i, err
 }
 
+const insertDownloadRecord = `-- name: InsertDownloadRecord :exec
+INSERT INTO download_records (workspace_id, artifact_id, actor_user_id)
+VALUES ($1, $2, $3)
+`
+
+type InsertDownloadRecordParams struct {
+	WorkspaceID pgtype.UUID
+	ArtifactID  pgtype.UUID
+	ActorUserID pgtype.UUID
+}
+
+// WS-004, append only (0027). Written in the same transaction as the audit event
+// so a download cannot be in one record and missing from the other (iron rule 9),
+// and kept in a separate table from it because their retention and their
+// visibility differ (packaging-design §7.2).
+//
+// No lock and no counter to increment: the count is COUNT(*) over these rows, so
+// concurrent downloads of one artifact are two inserts that cannot race.
+func (q *Queries) InsertDownloadRecord(ctx context.Context, arg InsertDownloadRecordParams) error {
+	_, err := q.db.Exec(ctx, insertDownloadRecord, arg.WorkspaceID, arg.ArtifactID, arg.ActorUserID)
+	return err
+}
+
+const listDownloadArtifacts = `-- name: ListDownloadArtifacts :many
+
+SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
+       da.packager_version, da.manifest_hash, da.includes_test_cases,
+       sv.skill_id,
+       a.file_name, a.size_bytes, a.content_hash, a.scan_status,
+       a.expires_at, a.created_at, a.purged_at,
+       (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
+           AS download_count
+FROM download_artifacts da
+JOIN artifacts a ON a.id = da.artifact_id
+JOIN skill_versions sv ON sv.id = da.skill_version_id
+WHERE da.workspace_id = $1 AND a.deleted_at IS NULL
+ORDER BY a.created_at DESC, da.artifact_id
+`
+
+type ListDownloadArtifactsRow struct {
+	ArtifactID        pgtype.UUID
+	SkillVersionID    pgtype.UUID
+	Target            string
+	ProfileVersion    string
+	PackagerVersion   string
+	ManifestHash      string
+	IncludesTestCases bool
+	SkillID           pgtype.UUID
+	FileName          string
+	SizeBytes         int64
+	ContentHash       string
+	ScanStatus        string
+	ExpiresAt         pgtype.Timestamptz
+	CreatedAt         pgtype.Timestamptz
+	PurgedAt          pgtype.Timestamptz
+	DownloadCount     int64
+}
+
+// The download surface (WS-002, WS-004, SEC-006). Every statement is workspace
+// scoped and none of them takes the workspace from a caller (iron rule 3).
+// GET /downloads: the workspace's packages, newest first.
+//
+// Expired rows stay in the list on purpose — "it expired" and "it never existed"
+// are different answers to 02:WS-002 1, and dropping the row silently gives the
+// wrong one. Rows the OWNER deleted do not: 02:SEC-006 requires deleted content
+// to stop appearing in ordinary access surfaces, which is exactly what
+// deleted_at means and purged_at does not (0028).
+func (q *Queries) ListDownloadArtifacts(ctx context.Context, workspaceID pgtype.UUID) ([]ListDownloadArtifactsRow, error) {
+	rows, err := q.db.Query(ctx, listDownloadArtifacts, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDownloadArtifactsRow
+	for rows.Next() {
+		var i ListDownloadArtifactsRow
+		if err := rows.Scan(
+			&i.ArtifactID,
+			&i.SkillVersionID,
+			&i.Target,
+			&i.ProfileVersion,
+			&i.PackagerVersion,
+			&i.ManifestHash,
+			&i.IncludesTestCases,
+			&i.SkillID,
+			&i.FileName,
+			&i.SizeBytes,
+			&i.ContentHash,
+			&i.ScanStatus,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.PurgedAt,
+			&i.DownloadCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSuggestionsAppliedToVersion = `-- name: ListSuggestionsAppliedToVersion :many
 SELECT evaluation_id, category, target_path
 FROM evaluation_suggestions
@@ -432,4 +638,36 @@ type MarkDownloadArtifactAvailableParams struct {
 func (q *Queries) MarkDownloadArtifactAvailable(ctx context.Context, arg MarkDownloadArtifactAvailableParams) error {
 	_, err := q.db.Exec(ctx, markDownloadArtifactAvailable, arg.ID, arg.WorkspaceID)
 	return err
+}
+
+const softDeleteDownloadArtifact = `-- name: SoftDeleteDownloadArtifact :one
+UPDATE artifacts SET deleted_at = now()
+WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package' AND deleted_at IS NULL
+RETURNING id, object_key, purged_at
+`
+
+type SoftDeleteDownloadArtifactParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+type SoftDeleteDownloadArtifactRow struct {
+	ID        pgtype.UUID
+	ObjectKey string
+	PurgedAt  pgtype.Timestamptz
+}
+
+// DELETE /downloads/{id}. Soft, although the OpenAPI prose once said the row
+// goes: download_records has a foreign key onto download_artifacts and those
+// records outlive the file by design (WS-004), and download_artifacts carries
+// 0027's immutability trigger. So the row stays and stops being visible, which is
+// what 02:SEC-006 actually asks for.
+//
+// Returns nothing when there is nothing to delete, which is what makes the
+// endpoint idempotent: a repeat of a delete that worked is not a failure.
+func (q *Queries) SoftDeleteDownloadArtifact(ctx context.Context, arg SoftDeleteDownloadArtifactParams) (SoftDeleteDownloadArtifactRow, error) {
+	row := q.db.QueryRow(ctx, softDeleteDownloadArtifact, arg.ID, arg.WorkspaceID)
+	var i SoftDeleteDownloadArtifactRow
+	err := row.Scan(&i.ID, &i.ObjectKey, &i.PurgedAt)
+	return i, err
 }

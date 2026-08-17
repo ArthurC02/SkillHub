@@ -16,6 +16,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
+	"github.com/ArthurC02/skillhub/services/platform/internal/objreconcile"
 	"github.com/ArthurC02/skillhub/services/platform/internal/outbox"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/objstore"
@@ -120,6 +121,10 @@ func main() {
 	river.AddWorker(workers, &run.SuperviseWorker{Svc: runs})
 	river.AddWorker(workers, &eval.Worker{Svc: evaluations})
 	river.AddWorker(workers, &outbox.Worker{Pool: pool})
+	// SEC-006 retention and 04 丙-9's object-existence check, one sweep: expired
+	// download packages lose their bytes, and rows whose object has gone missing
+	// stop claiming it is there.
+	river.AddWorker(workers, &objreconcile.Worker{Svc: &objreconcile.Service{Pool: pool, Store: store}})
 
 	client, err := queue.New(pool, &river.Config{
 		Workers: workers,
@@ -142,6 +147,11 @@ func main() {
 			river.NewPeriodicJob(river.PeriodicInterval(outbox.PublishInterval),
 				func() (river.JobArgs, *river.InsertOpts) { return outbox.PublishArgs{}, nil },
 				&river.PeriodicJobOpts{RunOnStart: true}),
+			// No RunOnStart, unlike the three above: none of them is recovering
+			// from a restart, and a deploy loop would otherwise re-probe every
+			// stored object on every rollout. An hour late is on time here.
+			river.NewPeriodicJob(river.PeriodicInterval(objreconcile.Interval),
+				func() (river.JobArgs, *river.InsertOpts) { return objreconcile.Args{}, nil }, nil),
 		},
 	})
 	if err != nil {
