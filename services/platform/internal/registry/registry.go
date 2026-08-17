@@ -88,6 +88,12 @@ func (s *Service) Fork(ctx context.Context, ws gen.Workspace, skillID pgtype.UUI
 		// materials reach a workspace where they could be read in full or run, so
 		// a fork that dropped the hold would be the way around it.
 		AccessRestriction: src.AccessRestriction,
+		// So does the redistribution verdict (0027, ADR-027 decision 4), for the
+		// same reason plus one of its own: a fork that started again at the
+		// column's conservative default would silently lose an `allowed` somebody
+		// established, and letting the default answer for a copy is how a hold
+		// becomes a formality.
+		Redistribution: &src.Redistribution,
 	})
 	if isUniqueViolation(err) {
 		return gen.Skill{}, gen.SkillVersion{}, ErrNameTaken

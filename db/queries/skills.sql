@@ -6,8 +6,16 @@
 -- carry the licensing hold of what it was forked from (0023): a fork is another
 -- copy of the same materials, so the hold travels with it the way the license
 -- expression and its provenance tier already do. Import passes NULL.
-INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, access_restriction)
-VALUES ($1, $2, $3, $4, $5, $6)
+--
+-- redistribution travels the same way and for the same reason (0027, ADR-027
+-- decision 4): a fork is another copy of the same licensed material, so a fork
+-- that dropped the verdict would be the way around it. Nullable in the argument
+-- only, so import can say "I have no verdict to pass on" and get the column's
+-- own conservative default instead of having to name it — 'unknown' blocks, and
+-- the caller that would have to spell it out is the one least placed to judge.
+INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id,
+                    access_restriction, redistribution)
+VALUES ($1, $2, $3, $4, $5, $6, coalesce(sqlc.narg('redistribution')::text, 'unknown'))
 RETURNING *;
 
 -- name: GetSkill :one

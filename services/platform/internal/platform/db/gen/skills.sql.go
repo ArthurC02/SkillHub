@@ -25,8 +25,9 @@ func (q *Queries) CountSkillVersions(ctx context.Context, skillID pgtype.UUID) (
 
 const createSkill = `-- name: CreateSkill :one
 
-INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, access_restriction)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id,
+                    access_restriction, redistribution)
+VALUES ($1, $2, $3, $4, $5, $6, coalesce($7::text, 'unknown'))
 RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution
 `
 
@@ -37,6 +38,7 @@ type CreateSkillParams struct {
 	ForkedFromSkillID   pgtype.UUID
 	ForkedFromVersionID pgtype.UUID
 	AccessRestriction   *string
+	Redistribution      *string
 }
 
 // Every read here is workspace scoped (iron rule 3). The caller resolves workspace_id
@@ -45,6 +47,13 @@ type CreateSkillParams struct {
 // carry the licensing hold of what it was forked from (0023): a fork is another
 // copy of the same materials, so the hold travels with it the way the license
 // expression and its provenance tier already do. Import passes NULL.
+//
+// redistribution travels the same way and for the same reason (0027, ADR-027
+// decision 4): a fork is another copy of the same licensed material, so a fork
+// that dropped the verdict would be the way around it. Nullable in the argument
+// only, so import can say "I have no verdict to pass on" and get the column's
+// own conservative default instead of having to name it — 'unknown' blocks, and
+// the caller that would have to spell it out is the one least placed to judge.
 func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill, error) {
 	row := q.db.QueryRow(ctx, createSkill,
 		arg.WorkspaceID,
@@ -53,6 +62,7 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 		arg.ForkedFromSkillID,
 		arg.ForkedFromVersionID,
 		arg.AccessRestriction,
+		arg.Redistribution,
 	)
 	var i Skill
 	err := row.Scan(
