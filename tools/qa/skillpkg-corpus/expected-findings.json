@@ -1,0 +1,262 @@
+{
+  "$comment": "QA-002 expected findings for the deliberately broken package corpus. Produced by tools/qa/skillpkg-corpus/generate.py, asserted by TestQA002BrokenPackageCorpus in services/platform/internal/ingest. Every entry was reviewed against skillpkg.go, not recorded from a run: where the observed behaviour is weaker than the failure mode deserves, the entry says so in `gap` instead of being softened into a pass.",
+  "corpus_version": "qa-002/v1",
+  "asserted": {
+    "archive_error": "PackageFS is expected to refuse the archive (ErrBadArchive) before validation runs.",
+    "blocked": "Report.Blocked — any error-level finding.",
+    "errors": "exact set of distinct error codes",
+    "warnings": "exact set of distinct warning codes",
+    "info_includes": "subset — disclosure noise (external URLs, dependency lists) varies with each base package's content and is not what a blocking decision is made of"
+  },
+  "variants": {
+    "base-humanizer": {
+      "base": "humanizer",
+      "breaks": "nothing — legal sample, the not-falsely-blocked control",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": [],
+      "info_includes": ["script-file", "external-url"],
+      "note": "Prompt-only writing skill that ships one validation script. A base that ever gains an error or warning code means either the base moved or the scanner did; both need a human, which is why this is an exact set and not a subset."
+    },
+    "base-csv-to-json": {
+      "base": "csv-to-json",
+      "breaks": "nothing — legal sample, the not-falsely-blocked control",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": [],
+      "info_includes": ["license-from-repo-file", "package-dependencies"],
+      "note": "Declares no license in frontmatter; the repacker carried the repo-level one in as LICENSE.repo (ADR-021 tier 3), so the license disclosure is expected rather than a defect."
+    },
+    "base-excel-freeze": {
+      "base": "excel-freeze",
+      "breaks": "nothing — legal sample, the not-falsely-blocked control",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": ["undeclared-dependency"],
+      "info_includes": ["license-from-repo-file", "package-dependencies"],
+      "note": "A legal package can carry a warning: this one's embedded Python imports openpyxl while the package ships no dependency manifest. Warning, not error — it does not block, and the corpus records that distinction rather than treating every finding as a rejection."
+    },
+
+    "skill-md-missing": {
+      "base": "humanizer",
+      "breaks": "SKILL.md deleted from the package root",
+      "archive_error": false,
+      "blocked": true,
+      "errors": ["skill-md-missing"],
+      "warnings": [],
+      "info_includes": [],
+      "note": "Validate returns immediately, so the tree is never walked and the package's script file is not disclosed. Correct: there is nothing to disclose it against."
+    },
+    "frontmatter-missing": {
+      "base": "humanizer",
+      "breaks": "SKILL.md starts with prose, no `---` header",
+      "archive_error": false,
+      "blocked": true,
+      "errors": ["frontmatter-missing"],
+      "warnings": [],
+      "info_includes": ["script-file"],
+      "note": "Manifest stays nil, so the manifest, license, file-reference and embedded-code checks are all skipped while scanTree still runs. That is why no license-unknown warning appears here."
+    },
+    "frontmatter-unterminated": {
+      "base": "humanizer",
+      "breaks": "opening `---` with no closing delimiter",
+      "archive_error": false,
+      "blocked": true,
+      "errors": ["frontmatter-unterminated"],
+      "warnings": [],
+      "info_includes": ["script-file"],
+      "note": "The generator strips every bare `---` line from the body first. Without that, cutClosingDelimiter closes the header at the first horizontal rule and the variant reports frontmatter-invalid-yaml instead — a real behaviour, but not the one this entry is named after."
+    },
+    "frontmatter-invalid-yaml": {
+      "base": "humanizer",
+      "breaks": "frontmatter is not parseable YAML",
+      "archive_error": false,
+      "blocked": true,
+      "errors": ["frontmatter-invalid-yaml"],
+      "warnings": [],
+      "info_includes": ["script-file"],
+      "note": "An unclosed flow sequence in the name field. Manifest stays nil for the same reason as frontmatter-missing."
+    },
+
+    "name-missing": {
+      "base": "humanizer",
+      "breaks": "frontmatter has no `name`",
+      "archive_error": false,
+      "blocked": true,
+      "errors": ["name-missing"],
+      "warnings": [],
+      "info_includes": ["script-file"],
+      "note": "Name and description are checked independently, so a package missing only the name reports only that."
+    },
+    "name-invalid": {
+      "base": "humanizer",
+      "breaks": "`name` breaks the lowercase-hyphen rule",
+      "archive_error": false,
+      "blocked": true,
+      "errors": ["name-invalid"],
+      "warnings": [],
+      "info_includes": ["script-file"],
+      "note": "Uppercase, underscore and punctuation in one value. The rule is a single switch with the empty and over-long cases, so only one code can fire."
+    },
+    "name-too-long": {
+      "base": "humanizer",
+      "breaks": "`name` is 65 runes, one over the cap",
+      "archive_error": false,
+      "blocked": true,
+      "errors": ["name-too-long"],
+      "warnings": [],
+      "info_includes": ["script-file"],
+      "note": "One over the boundary on purpose. The value is also rule-valid, so name-too-long has to win rather than name-invalid."
+    },
+    "description-missing": {
+      "base": "csv-to-json",
+      "breaks": "frontmatter has no `description`",
+      "archive_error": false,
+      "blocked": true,
+      "errors": ["description-missing"],
+      "warnings": [],
+      "info_includes": ["license-from-repo-file"],
+      "note": "License resolution still runs here — the manifest parsed, it is only a required field that is absent."
+    },
+    "description-too-long": {
+      "base": "csv-to-json",
+      "breaks": "`description` is 1025 runes, one over the cap",
+      "archive_error": false,
+      "blocked": true,
+      "errors": ["description-too-long"],
+      "warnings": [],
+      "info_includes": ["license-from-repo-file"],
+      "note": "Counted in runes, which is the fix import-report.md §6.1 bug 1 recorded; an ASCII value is therefore the weaker of the two tests and a zh-Hant one would be the stronger. This entry uses ASCII because the boundary itself is what is under test."
+    },
+    "frontmatter-unknown-field": {
+      "base": "csv-to-json",
+      "breaks": "an unrecognised frontmatter key",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": ["frontmatter-unknown-field"],
+      "info_includes": ["package-dependencies"],
+      "note": "Deliberately not blocking: the Agent Skills spec evolves and an unknown key is a warning. The key chosen (`auto_run`) is the shape an author would use to try to claim a behaviour the platform does not honour."
+    },
+
+    "file-ref-escapes": {
+      "base": "excel-freeze",
+      "breaks": "SKILL.md links to a path outside the package",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": ["file-ref-escapes-package", "undeclared-dependency"],
+      "info_includes": ["package-dependencies"],
+      "note": "undeclared-dependency is inherited from the base, not caused by the mutation. Warning rather than error is the scanner's existing judgement: a document link cannot read anything by itself."
+    },
+    "file-ref-missing": {
+      "base": "excel-freeze",
+      "breaks": "SKILL.md links to a file the package does not ship",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": ["file-ref-missing", "undeclared-dependency"],
+      "info_includes": ["package-dependencies"],
+      "note": "The in-package counterpart of file-ref-escapes: same severity, different reason."
+    },
+
+    "embedded-script": {
+      "base": "humanizer",
+      "breaks": "60 lines of Python written into SKILL.md itself",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": ["embedded-script"],
+      "info_includes": ["script-file"],
+      "note": "The failure mode SKILL-003 exists for: the file list shows no such script, so an extension-only scan reports a package that contains none. 60 lines is over both thresholds (20 per block, 50 total)."
+    },
+    "binary-file": {
+      "base": "csv-to-json",
+      "breaks": "a compiled object nobody can review as text",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": ["binary-file"],
+      "info_includes": ["license-from-repo-file"],
+      "note": "Warning, not error. package-dependencies drops out of the info set here relative to the base — the ELF header makes isBinary true for that file, which changes nothing about the dependency scan, but the base's own dependency evidence still stands. Asserted as a subset, so this entry does not pin it either way."
+    },
+
+    "secret-in-script": {
+      "base": "csv-to-json",
+      "breaks": "an AWS access key id inside a shipped script",
+      "archive_error": false,
+      "blocked": true,
+      "errors": ["possible-secret"],
+      "warnings": [],
+      "info_includes": ["script-file", "license-from-repo-file"],
+      "note": "Blocking, and the finding must never echo the matched value (NFR-002). The corpus value is assembled at runtime from parts so this repo's own pre-push credential grep cannot be tripped by the generator's source."
+    },
+    "secret-in-skill-md": {
+      "base": "humanizer",
+      "breaks": "private key material pasted into SKILL.md",
+      "archive_error": false,
+      "blocked": true,
+      "errors": ["possible-secret"],
+      "warnings": [],
+      "info_includes": ["script-file"],
+      "note": "Same code from a different pattern and a different file — SKILL.md is scanned as part of the tree, not only parsed as a manifest."
+    },
+
+    "zip-path-traversal": {
+      "base": "humanizer",
+      "breaks": "a zip entry whose name walks out of the package",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": [],
+      "info_includes": ["script-file"],
+      "gap": "No finding of any kind. archive/zip's fs.FS view rewrites `../../evil.sh` to `evil.sh` before anything in this codebase sees it, so the resulting code set is byte-for-byte the clean base's. Nothing extracts to disk, so there is no zip-slip here — but the entry silently changes identity, and the file tree a reviewer approves is not the one the archive declared.",
+      "note": "Recorded as observed, deliberately not softened into a pass. Fixing it means reading the raw zip.Reader entry names before fs.Sub, which is ingest's call to make, not this corpus's."
+    },
+    "zip-absolute-path": {
+      "base": "humanizer",
+      "breaks": "a zip entry with an absolute path",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": [],
+      "info_includes": [],
+      "gap": "Same silence as zip-path-traversal, and quieter: `/etc/cron.d/evil` becomes `etc/cron.d/evil`, which has no script extension, so not even an info-level disclosure appears.",
+      "note": "info_includes is empty on purpose — a subset assertion of nothing is the honest statement here."
+    },
+    "zip-symlink-escape": {
+      "base": "humanizer",
+      "breaks": "a symlink entry pointing outside the package",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": [],
+      "info_includes": [],
+      "gap": "No finding. The zip fs.FS presents a symlink entry as an ordinary 11-byte file whose content is the target path, so `reference/host-passwd` reads as a harmless text file and the scan never says the package contains a link at all. Import itself is safe (the platform never materialises the tree), but any consumer that does write these bytes to disk — the M4 packaging export, or a user unzipping a download — would create the link.",
+      "note": "The one entry in this corpus that points at work outside ingest: 04 M4-4 / PACK-004. Left as a recorded gap rather than a silent pass."
+    },
+    "zip-bomb": {
+      "base": "humanizer",
+      "breaks": "declared uncompressed size over the unpack cap",
+      "archive_error": true,
+      "blocked": true,
+      "errors": [],
+      "warnings": [],
+      "info_includes": [],
+      "note": "260 MiB of real zeros, not a doctored header: PackageFS reads the declared size out of the central directory, and a corpus that lied there would stop testing the cap the day that reader changes how it measures. Refused before Validate runs, so there is no report and no finding — the harness asserts ErrBadArchive instead."
+    },
+    "oversize-file": {
+      "base": "humanizer",
+      "breaks": "a file above the content-scan size cap",
+      "archive_error": false,
+      "blocked": false,
+      "errors": [],
+      "warnings": [],
+      "info_includes": ["file-not-scanned"],
+      "note": "Working as designed and worth pinning: a file over 1 MiB is disclosed as unscanned rather than silently skipped, which is what keeps 'no secret found' from meaning 'not looked at'."
+    }
+  }
+}

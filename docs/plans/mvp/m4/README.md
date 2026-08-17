@@ -306,6 +306,8 @@ M2 與 M3 都與 M1 閘門**並行**，理由在兩份計畫裡寫得很清楚�
 | --- | --- |
 | [`../../../../contracts/packaging/profiles/`](../../../../contracts/packaging/profiles/) | 三個打包目標的設定實體（第 3 批前半，見 §13）。**它們同時是 `packaging-profile.schema.json` 的 examples**——schema 因此不再帶 inline example |
 | [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) | **殘項的唯一入口，活文件不凍結。** M4 的新殘項與「MVP 之後」的接點都在那裡 |
+| [`../../../../tools/qa/skillpkg-corpus/`](../../../../tools/qa/skillpkg-corpus/) ＋ `services/platform/internal/ingest/qa002_corpus_test.go` | `QA-002` 的破壞變體生成腳本、期望 finding 資料檔與對照 harness（第 7 批前半，見 §14.1） |
+| [`../../../../tools/content/seed_testcases.py`](../../../../tools/content/seed_testcases.py) ＋ [`seed-testcases/`](../../../../tools/content/seed-testcases/) | 策展 Test Case 的種入路徑與兩個範例 Dataset（丙-12，第 7 批前半，見 §14.2） |
 | [`../gate-test/`](../gate-test/) | M1 閘門材料；封測的招募文案、篩選問卷與報酬原則從這裡重用（§6.3） |
 | [`../governance/`](../governance/) | `anthropic-sa` 授權備忘與詢問信草稿；**打包上線會改變詢問信 §3 那句話的真偽**（§6.2） |
 | `m0/pdm-proposals.md` | PDM-008／009／010 的追認落在該檔 §9 的定案檢查清單（H-7） |
@@ -373,3 +375,84 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistrib
 | 出-3 | **schema 的 lookahead 擋不住「真的傳了 `setting_sources`」**，只擋得住「從沒提過」。收緊 pattern ＝收緊值域＝major bump，為一個內建目標不值得；限制已寫進 `contracts/packaging/README.md` §4，不留給下一個人自己發現 | 已記錄，不需動作 |
 | 出-4 | **Python 的 `claude-agent-sdk` 未實測**，省略規則沒有被推廣為承諾 | 有需求訊號再走 ADR-023 §2 四項清單 |
 | 出-5 | **`redistribution` 沒有寫入端點與 audit**（ADR-027 待決策），今天改它只能直接跑 SQL | `SEC-011` 窮舉清單擴充，M4 首發不做 |
+
+## 14. 第 7 批（前半）的交付紀錄：`QA-002` 語料與策展 Test Case 的種入路徑
+
+- 日期：2026-08-18。**不勾選任何工作項**——`QA-002` 交的是資料集與 harness，`03` 的九項 `QA-001`～`009` 要一起對帳才有意義（第 7 批後半）；丙-12 本來就沒有工作項承接。
+- 交付：[`tools/qa/skillpkg-corpus/`](../../../../tools/qa/skillpkg-corpus/)（生成腳本＋期望 finding 資料檔）、`services/platform/internal/ingest/qa002_corpus_test.go`（對照 harness）、[`tools/content/seed_testcases.py`](../../../../tools/content/seed_testcases.py) 與 [`tools/content/seed-testcases/`](../../../../tools/content/seed-testcases/)（兩個範例 Dataset）。
+- 一句話：規格驗證第一次有**會被擋的樣本**，策展 Test Case 第一次進得了一個全新部署——而前者查出三個真缺陷，後者證實了 `M4-3`「丙-12 與 `PACK-005` 是同一件事的兩半」。
+
+### 14.1 `QA-002`：21 個破壞變體 × 期望 finding，與查出的三個缺陷
+
+形式照 `03:QA-002` 的重用範圍註記：合法樣本沿用 45 個 pin commit 套件（本批取其中 3 個當基底：`humanizer`／`csv-to-json`／`excel-freeze`，皆 MIT），**新做的是刻意破壞的變體與期望清單**。harness 走的是匯入路徑的同兩支呼叫——`ingest.PackageFS` → `skillpkg.Validate`——不是另寫一套判準。
+
+**入庫的是生成腳本不是 45 份二進位**：一個變體一個函式，讀得出哪裡壞了；committed zip 不透明，而且會對著 `skillpkg` 悄悄腐爛。期望清單是資料檔（`expected-findings.json`），error 與 warning 逐 code **精確比對**，info 只做子集比對——揭露類 finding（外部 URL、依賴清單）隨基底套件內容變動，而阻擋決策不是由它做的。
+
+| 破壞類型（`03:QA-002` 點名） | 變體數 | 期望 finding | 結果 |
+| --- | --- | --- | --- |
+| 缺 `SKILL.md` | 1 | `skill-md-missing`（error，blocked） | ✅ 相符 |
+| frontmatter 壞 | 4 | `frontmatter-missing`／`-unterminated`／`-invalid-yaml`（error）、`-unknown-field`（warning，不阻擋） | ✅ 相符 |
+| 必要欄位缺 | 2 | `name-missing`／`description-missing`（error） | ✅ 相符 |
+| 名稱／長度違規 | 3 | `name-invalid`／`name-too-long`／`description-too-long`（error） | ✅ 相符 |
+| 檔案引用逃逸出套件 | 2 | `file-ref-escapes-package`／`file-ref-missing`（warning） | ✅ 相符 |
+| 內嵌可執行程式碼 | 2 | `embedded-script`／`binary-file`（warning） | ✅ 相符 |
+| 疑似 Secret | 2 | `possible-secret`（error，blocked，且不回顯命中值） | ✅ 相符 |
+| zip 炸彈 | 1 | `PackageFS` 回 `ErrBadArchive`，**沒有 report 也沒有 finding** | ✅ 相符 |
+| 路徑逃逸的 entry | 3 | — | ⚠️ **三個都不產生任何 finding，見下** |
+| （另加）掃描上限 | 1 | `file-not-scanned`（info） | ✅ 相符 |
+| （另加）合法基底對照 | 3 | 0 error；`excel-freeze` 有 1 個 `undeclared-dependency` warning | ✅ 不誤擋 |
+
+**24 個判定全數與期望相符**（3 基底＋21 變體），`golang:1.25` 容器內 `go test ./internal/ingest -run QA002`：`ok 0.140s`。
+
+> **查出的三個缺陷（如實記錄，沒有改期望去遷就）**
+>
+> | # | 變體 | 觀測 | 為什麼記下來 |
+> | --- | --- | --- | --- |
+> | D-1 | `zip-path-traversal`（entry 名為 `../../evil.sh`） | **零 finding**，code 集合與乾淨基底逐項相同 | `archive/zip` 的 `fs.FS` 檢視在本 repo 任何一行程式看到它之前就把名字改寫成 `evil.sh`。**沒有 zip-slip**——平台從不把樹寫到磁碟——但那個 entry **無聲地換了身分**，審核者核可的檔案樹不是壓縮檔宣告的那一份 |
+> | D-2 | `zip-absolute-path`（entry 名為 `/etc/cron.d/evil`） | **零 finding**，且比 D-1 更安靜 | 改寫成 `etc/cron.d/evil` 之後連副檔名都不是腳本，`script-file` 那一層 info 揭露也不會出現 |
+> | D-3 | `zip-symlink-escape`（符號連結指向 `/etc/passwd`） | **零 finding** | zip 的 `fs.FS` 把符號連結當成一個內容為目標路徑的 11 bytes 純文字檔，掃描因此**從頭到尾沒說過這個套件含有連結**。匯入本身安全（不落地），但**任何會把這些位元組寫到磁碟的消費端**都會把連結建出來——`PACK-001` 的下載套件與使用者手上的解壓工具正是兩個這樣的消費端 |
+>
+> **三者都不在本批修**：D-1／D-2 的修法是在 `fs.Sub` 之前讀原始 `zip.Reader` 的 entry 名，屬 `ingest` 的判斷；D-3 指向的是 `04` M4-4／`PACK-004`（打包排除規則目前沒有一條講符號連結）。**已在 `expected-findings.json` 逐列以 `gap` 欄記著**，而不是寫成 pass——一個期望值被調鬆的語料，下次就沒有人知道它曾經抓到過什麼。
+
+**兩項執行紀律**：①假憑證在執行時才由片段組出來，原始碼裡沒有完整字串，`--selftest` 有一條斷言直接檢查——會被自己的 pre-push 掃描擋下的語料是 commit 不進來的語料；②`zip-bomb` 用的是**真的 260 MiB 零位元組**（deflate 後 282 KB），不是竄改過的檔頭：`PackageFS` 讀的是中央目錄宣告的未壓縮大小，語料若在那裡說謊，等哪天讀法改了它就悄悄停止測試那個上限。
+
+**harness 沒有 `QA002_CORPUS` 就跳過**，形式比照 `SKILLHUB_TEST_DATABASE_URL` 的既有前例（生成要抓三個 pin commit repo 壓縮檔，CI job 沒有那個網路預算）。`go test ./internal/ingest` 在沒有語料時照舊全綠。
+
+**過程中修掉自己的一個錯**：`frontmatter-unterminated` 起初量到的是 `frontmatter-invalid-yaml`——`cutClosingDelimiter` 在**第一個**裸 `---` 就把 frontmatter 收尾，而 29 KiB 的 `SKILL.md` 裡有好幾條水平線。生成器因此先把 body 裡的裸 `---` 行去掉。**名字與行為不一致的語料比沒有語料更糟**，所以修的是生成器不是期望值。
+
+### 14.2 丙-12：策展 Test Case 的種入路徑
+
+`CONTENT-007` 承諾每個精選一組範例 Dataset、User Prompt 與驗收條件，`writing` 五個另加 rubric；這些此前只以文件與「M2 手工建的臨時 Workspace」存在。[`seed_testcases.py`](../../../../tools/content/seed_testcases.py) 就是那條路徑，形式比照同目錄慣例（只走公開 HTTP API、不碰 DB、驗證工具不進 CI）。
+
+**種入的 Workspace 必須是目錄 Workspace，這一條是設計上的硬要求不是偏好**：`internal/packaging` 的 `selectTestCases` 以 `workspaces.is_catalog` 判定「這是不是平台策展的產物」（`PACK-005`），種進個人 Workspace 的 Test Case 會被每一次匯出以 `not_curated` 排除。因此腳本以**目錄策展帳號**登入、只從 `GET /skills` 解析 Skill，**刻意不做「搜尋目錄再 Fork」的後備路徑**——Fork 會落在個人 Workspace，那條後備路徑做出來就是錯的。`is_catalog` 沒有端點，由建目錄時的 SQL 設定，這一點寫在腳本的 docstring 裡。
+
+**沒有任何策展文字被複製第二份**：Prompt 模板取 [`m2/content-baseline-report.md` §3](../m2/content-baseline-report.md)，任務句取 `summaries.json` 該筆自己的第一句 `task_examples`，`writing` 的第 4 條規則取 [`content/writing-rubrics.md`](../content/writing-rubrics.md) §3，rubric 全文**直接讀** `tools/eval-regression/rubric-content-007-writing-v1.json`。一份事實一個位置，第二份一定會漂。
+
+**冪等取「跳過」，不取「更新」**：驗收條件的 id 由伺服器配發，而 rubric item 的 id 就是它所強化的那條驗收條件的 id——原地更新等於去對帳一份識別鍵不歸本工具所有的清單，是一套會半套套用的第二機制。`--replace` 走「刪除再建立」，一次到位到策展狀態。跳過同時保證**策展人事後的編輯不會被重跑蓋掉**。
+
+**新做的只有兩個 Dataset 檔**（`seed-testcases/data.csv`、`draft.md`）：M2 §3 只留下對它們的**描述**（8 列訂單、重複列、混合日期格式、含空白的金額、缺值、國名異形；一段有贅詞與自誇語氣的 Q2 更新草稿），位元組從未留存。本批依該描述重建，**是新的合成資料不是 M2 那兩份**——`02:CONTENT-007` 第 4 條（無 Secrets／憑證／個資）由 `--selftest` 的兩條斷言把關。
+
+**驗證：拋棄式容器，全程沒有碰執行中的 dev DB。** 新開 `pgvector/pgvector:pg17` ＋ 新開一個 `golang:1.25` 的 `cmd/api`（`DEV_LOGIN=1`，物件儲存用既有 SeaweedFS 的另一個 bucket `skillhub-seedtest`），套用 `0001`～`0030` 全部 migration。
+
+| 步驟 | 結果 |
+| --- | --- |
+| `import_seed.py` 種目錄 | **45/45 imported** |
+| `seed_testcases.py --dry-run` | 15 筆 `would_create` |
+| `seed_testcases.py` | **15 建立**；DB 實查 **67 條驗收條件**（15×3 基準 ＋ 22 條 rubric 對應條件）、**5 筆帶 rubric**、**22 個 rubric item** |
+| rubric item id 是否都指得到真的驗收條件 | **22/22 matched**（逐筆 SQL 比對 `acceptance_criteria` 的 id） |
+| Dataset | 每筆 2 個，共 **30 筆**（`data.csv`／`draft.md`，`content_type` 由 magic bytes 判為 `text/plain`） |
+| 再跑一次（冪等） | **15 筆 `exists_skipped`**，零寫入 |
+| `--replace --only humanizer` | 1 筆 `replaced`；舊列軟刪除保留，live 仍 15 筆 |
+
+**順帶驗掉 `M4-3` 與 §13.4 兩件事**：①同一個拋棄式 DB 上跑 `backfill-redistribution.sql`，分佈為 **41 `allowed`／4 `blocked`／0 `unknown`**，與 §13.4 對線上 dev DB 的 dry-run **逐格相同**——那份 dry-run 因此在一個乾淨部署上獨立複現過一次；②回填後對 `humanizer` 走 `packaging/preview` 與 `POST .../packaging`（target `claude-code`、`include_test_cases=true`），**種入的 Test Case 被列為 `included`、`excluded` 為空**，下載的 artifact 位元組裡確實有 `humanizer/test-cases/content-007-humanizer-<id>/case.json` 與 `data/data.csv`、`data/draft.md`，`case.json` 帶著 `rubric_version = content-007/writing/v1` 與 4 個 item。**丙-12 與 `PACK-005` 的兩半在同一次驗證裡接上了。**
+
+（回填前那次 preview 回的是 `allowed: false` / `license_unknown`——`redistribution` 預設 `unknown` 而 fail-closed，方向正確，一併記在這裡當作 ADR-027 決策 4 的實測。）
+
+### 14.3 出入清單
+
+| # | 事項 | 誰接 |
+| --- | --- | --- |
+| 出-6 | **`seed_testcases.py` 尚未對執行中的 dev DB 或任何 live 部署執行過。** 阻擋原因與 §13.4 出-2 同源：執行中的 dev DB 停在 `0026`，沒有 `0027`～`0030`，而本工具本身只需要 `0026`（rubric 欄位）——**它其實跑得動**，不跑是因為 ①目錄 Workspace 的策展帳號是誰要先確認（`is_catalog` 由 SQL 設定，dev 上是哪個 user 未查），②同一工作樹上有平行批次，對共用 dev DB 的寫入該由需要它的那一批決定時機。套用步驟：`python tools/content/seed_testcases.py --api http://localhost:8080 --user <目錄策展帳號> --dry-run` 先看 15 筆是否都解析得到 Skill，再拿掉 `--dry-run` | 部署批／第 7 批後半 |
+| 出-7 | **三個 archive 層缺陷（D-1／D-2／D-3）沒有承接者。** D-1／D-2 屬 `ingest`（原始 entry 名的揭露），D-3 屬 `PACK-004`／`04` M4-4（打包排除規則沒有一條講符號連結）。**語料已經在庫，修好之後把 `expected-findings.json` 那三列的 `gap` 換成期望 finding 即是回歸測試** | `04` 丙類（本批同時回填該清單） |
+| 出-8 | **`QA-002` 未勾。** 資料集與 harness 已具備且全綠，但 `03` §17 的九項要一起對帳（第 7 批後半），且本項的允收字面是「建立測試資料集」——資料集成立，勾選仍留給對帳那一步一次處理 | 第 7 批後半 |
+| 出-9 | **驗證用的 SeaweedFS bucket `skillhub-seedtest` 留在 dev 物件儲存裡**（容器已刪，bucket 沒有）。無害且與 `skillhub` bucket 隔離，但下次清理 dev 環境時它是可以直接丟的一個 | 不需動作，記著即可 |

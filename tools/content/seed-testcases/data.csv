@@ -1,0 +1,9 @@
+order_id,order_date,customer,country,quantity,amount_usd,status
+A-1001,2024-01-05,Northwind Trading,USA,12, 480.00 ,shipped
+A-1002,05/02/2024,Blue Harbour Ltd,U.K.,4,  159.50,shipped
+A-1003,2024-02-11,Rhein Werke GmbH,Deutschland,,320.00,pending
+A-1004,12/03/2024,Northwind Trading,United States,7,275.25 ,shipped
+A-1004,12/03/2024,Northwind Trading,United States,7,275.25 ,shipped
+A-1005,2024-03-19,Blue Harbour Ltd,U.K.,9,,cancelled
+A-1006,2024-04-02,Rhein Werke GmbH,Germany,15,  610.75,shipped
+A-1007,07/04/2024,Kite & Anchor Co,USA,3,98.00,pending
