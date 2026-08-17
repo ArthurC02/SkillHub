@@ -10,6 +10,7 @@ package apiserver
 import (
 	"net/http"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/analytics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/services/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
@@ -36,12 +37,21 @@ type Deps struct {
 	Trace     *trace.Handler
 	Eval      *eval.Handler
 	Packaging *packaging.Handler
+	// Analytics serves POST /feedback and carries the funnel-event writer the
+	// public handlers use (02:O11Y-004, BETA-003/004/005).
+	Analytics *analytics.Handler
 }
 
 // NewRouter returns the API route table. Callers wrap it as needed — cmd/api
 // adds httpx.DevCORS — but the routes and the middleware on each one are fixed
 // here, so the authorization boundary is one reviewable list.
-func NewRouter(d Deps) *http.ServeMux {
+//
+// Returns an http.Handler rather than the bare mux because one piece of
+// middleware belongs to the table itself: analytics.Sessions wraps every route
+// (see the bottom of this function). Leaving that to the caller is what this
+// file's own history warns about — a wrapper cmd/api adds and the tests do not is
+// a wrapper the tests cannot catch the loss of.
+func NewRouter(d Deps) http.Handler {
 	auth := d.Auth
 
 	mux := http.NewServeMux()
@@ -63,7 +73,16 @@ func NewRouter(d Deps) *http.ServeMux {
 	mux.HandleFunc("GET /skills/search", auth.RequireSession(d.Search.Search))
 
 	mux.HandleFunc("GET /skills", auth.RequireSession(d.Registry.List))
-	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(d.Registry.Fork))
+	// BETA-001's admission gate (ADR-028 決策 1) sits on exactly three actions —
+	// fork, start a run, take a download — and on nothing else. Search and skill
+	// detail stay open, because they already were: DISC-010 has served the
+	// catalogue without a login since M1, so "an uninvited visitor can see the
+	// catalogue" is existing behaviour rather than a hole opened for the beta.
+	//
+	// RequireInvited is inside RequireSession, never instead of it: it reads the
+	// session user that wrapper put in the context. With no BETA_ALLOWLIST
+	// configured it is a pass-through, which is every deployment up to now.
+	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(auth.RequireInvited(d.Registry.Fork)))
 	mux.HandleFunc("POST /skills/{id}/versions", auth.RequireSession(d.Importer.SaveVersion))
 	mux.HandleFunc("GET /skills/{id}/diff", auth.RequireSession(d.Registry.Diff))
 	mux.HandleFunc("DELETE /skills/{id}", auth.RequireSession(d.Registry.Delete))
@@ -110,7 +129,14 @@ func NewRouter(d Deps) *http.ServeMux {
 	// segment is more specific than the POST above, so both patterns coexist.
 	mux.HandleFunc("GET /skills/{id}/runs/preflight", auth.RequireSession(d.Runs.Preflight))
 	mux.HandleFunc("POST /skills/{id}/runs/preflight/confirm", auth.RequireSession(d.Runs.ConfirmPreflight))
-	mux.HandleFunc("POST /skills/{id}/runs", auth.RequireSession(d.Runs.Create))
+	mux.HandleFunc("POST /skills/{id}/runs", auth.RequireSession(auth.RequireInvited(d.Runs.Create)))
+	// PDM-010's allowance as the account holder sees it. Mounted only where one is
+	// actually enforced, so a deployment with no allowance answers 404 here rather
+	// than serving a ceiling nothing applies — the order ADR-028 決策 3 makes
+	// binding, and the mistake 04 乙-2 records.
+	if d.Runs.Svc.Quota.Enforced() {
+		mux.HandleFunc("GET /me/quota", auth.RequireSession(d.Runs.Quota))
+	}
 	mux.HandleFunc("GET /runs/{id}", auth.RequireSession(d.Runs.Get))
 	mux.HandleFunc("POST /runs/{id}/cancel", auth.RequireSession(d.Runs.Cancel))
 	// TRACE-006/007: one route, two modes. Session-scoped like every other run
@@ -160,7 +186,7 @@ func NewRouter(d Deps) *http.ServeMux {
 	mux.HandleFunc("GET /skills/{id}/versions/{versionId}/packaging/preview",
 		auth.RequireSession(d.Packaging.Preview))
 	mux.HandleFunc("POST /skills/{id}/versions/{versionId}/packaging",
-		auth.RequireSession(d.Packaging.Create))
+		auth.RequireSession(auth.RequireInvited(d.Packaging.Create)))
 
 	// WS-002/WS-004 and SEC-006: the download history, one package, its bytes and
 	// its deletion. Same handler and the same workspace-from-session rule as the
@@ -176,8 +202,20 @@ func NewRouter(d Deps) *http.ServeMux {
 	// GET patterns coexist.
 	mux.HandleFunc("GET /downloads", auth.RequireSession(d.Packaging.Downloads))
 	mux.HandleFunc("GET /downloads/{artifactId}", auth.RequireSession(d.Packaging.Download))
-	mux.HandleFunc("GET /downloads/{artifactId}/content", auth.RequireSession(d.Packaging.DownloadContent))
+	// The third of the three gated actions, and the one funnel event that is not
+	// emitted from the handler that owns it. DownloadStartedOn records "somebody
+	// pressed download" before the handler decides whether the bytes go out; the
+	// half that succeeded stays in download_records, which is a domain fact and
+	// belongs in a domain table (ADR-029 決策 1). Splitting them is the entire
+	// reason download_started exists as an event.
+	mux.HandleFunc("GET /downloads/{artifactId}/content",
+		auth.RequireSession(auth.RequireInvited(d.Analytics.DownloadStartedOn(d.Packaging.DownloadContent))))
 	mux.HandleFunc("DELETE /downloads/{artifactId}", auth.RequireSession(d.Packaging.DeleteDownload))
+
+	// BETA-003/004/005: one endpoint for the three entry points, split by `kind`.
+	// Signed-in only — the surface it serves for an uninvited visitor is a user who
+	// is logged in and has just been refused above, not an anonymous one.
+	mux.HandleFunc("POST /feedback", auth.RequireSession(d.Analytics.Feedback))
 
 	// TRACE-002: the execution plane pushes collected events here. Deliberately
 	// the only route in this table with no session and no RequireSession wrapper:
@@ -186,5 +224,10 @@ func NewRouter(d Deps) *http.ServeMux {
 	// trace and can read nothing (see internal/trace/token.go).
 	mux.HandleFunc("POST "+trace.IngestPath+"{token}", d.Trace.Ingest)
 
-	return mux
+	// 02:O11Y-004. Around the whole table and not per route: the funnel's first
+	// segment happens on the public catalogue, which deliberately has no session
+	// middleware (DISC-010), so anything mounted per authenticated route would
+	// measure only signed-in traffic — precisely the population the funnel is not
+	// about. A pass-through, cookie included, when the deployment collects nothing.
+	return d.Analytics.Svc.Sessions(mux)
 }

@@ -199,6 +199,16 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            This deployment enforces no allowance, so there is none to report. The
+            route is not mounted at all in that build — the same answer the mux
+            gives for a path nobody wrote — because an endpoint that served zeroes
+            or nulls would be a claim that a ceiling exists (04 乙-2). The pre-run
+            permission summary omits its `quota` block in the same builds.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /feedback:
     post:
       operationId: submitFeedback
@@ -701,6 +711,17 @@ paths:
                       version_number: { type: integer }
         "401":
           description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: |
+            The closed beta is running and the caller is not on the invite list
+            (BETA-001, ADR-028 決策 1). Forking, starting a run and downloading are
+            the three actions the invite gate covers; search and skill detail stay
+            open to everybody, which they already were (DISC-010). Absent from
+            deployments with no invite list configured.
           content:
             application/json:
               schema:
@@ -1336,10 +1357,23 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: |
+            The closed beta is running and the caller is not on the invite list
+            (BETA-001, ADR-028 決策 1). 403 rather than 404 because the beta is
+            not a secret: the same API just served this person the catalogue, so
+            denying the endpoint exists would be contradicted by their next
+            request. The body explains, and points at POST /feedback.
+
+            Absent from deployments with no invite list configured, which is
+            every deployment that is not running a closed beta.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "422":
           description: |
             Well formed, the platform is working, and the run still may not
-            start. Two causes, and the message says which:
+            start. Three causes, and the message says which:
 
             - No configured provider can satisfy the run's requirements
               (RUN-005); the message names the requirement each one failed.
@@ -1349,6 +1383,12 @@ paths:
               hash it returns, and retry with that. A permission that changed
               since the agreement lands here rather than riding an agreement
               nobody gave.
+            - The free run allowance is spent (PDM-010). The daily and the
+              rolling-window ceilings both land here, and the message carries the
+              reset time. Enforced in the same transaction that would have
+              inserted the run and under the same advisory lock as the
+              concurrency limit, so a refusal leaves no run behind (ADR-028
+              決策 2). The counters are the same ones GET /me/quota reports.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -2577,6 +2617,16 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: |
+            The closed beta is running and the caller is not on the invite list
+            (BETA-001, ADR-028 決策 1). Producing a Download Artifact is the third
+            of the three gated actions. Distinct from the 422 below, which is
+            about the *content* rather than the caller. Absent from deployments
+            with no invite list configured.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: |
             Skill or version not visible to the caller, or the version does not
@@ -2725,6 +2775,15 @@ paths:
               schema: { type: string, format: binary }
         "401":
           description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: |
+            The closed beta is running and the caller is not on the invite list
+            (BETA-001, ADR-028 決策 1). Distinct from the 404 below on purpose: that
+            one hides whether an artifact exists, this one is about the caller and
+            says so. Absent from deployments with no invite list configured.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

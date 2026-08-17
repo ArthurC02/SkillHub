@@ -32,6 +32,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/analytics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/apiserver"
 	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/services/platform/internal/eval"
@@ -152,6 +153,20 @@ func newAPI(t *testing.T, pool *pgxpool.Pool) *api {
 // configured" branch of the DISC-001 degradation path.
 func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	t.Helper()
+	return newAPITuned(t, pool, llmBaseURL, nil)
+}
+
+// newAPITuned is newAPIWithLLM with one hook: tune runs on the assembled Deps
+// immediately before the route table is built. It exists because the closed-beta
+// features are configuration rather than code paths — the run allowance, the
+// invite list and the analytics retention are all deployment settings, and two of
+// them change which routes exist at all — so a test has to be able to set them
+// before NewRouter reads them, not after. Everything else stays exactly as
+// newAPIWithLLM builds it.
+func newAPITuned(
+	t *testing.T, pool *pgxpool.Pool, llmBaseURL string, tune func(*apiserver.Deps),
+) *api {
+	t.Helper()
 	auth := &identity.Handler{
 		Service: &identity.Service{
 			Pool: pool,
@@ -167,7 +182,12 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	// package into it, which is also the "stored package unreadable" path the
 	// detail view has to survive without claiming a clean scan.
 	packages := packageStore{}
-	search := &catalog.Handler{Pool: pool, Identity: auth.Service, Store: packages}
+	// The funnel writer, wired the way cmd/api wires it and off by default:
+	// Retention zero means this "deployment" collects nothing, which is the shipped
+	// state until PDM-006 ratifies a period (ADR-029 決策 5). A beta test turns it
+	// on through tune.
+	funnel := &analytics.Service{Pool: pool}
+	search := &catalog.Handler{Pool: pool, Identity: auth.Service, Store: packages, Analytics: funnel}
 	if llmBaseURL != "" {
 		search.LLMClient = &llmclient.Client{BaseURL: llmBaseURL}
 	}
@@ -221,12 +241,17 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	}
 	packagingSvc := &packaging.Service{Pool: pool, Store: packages, Profiles: profiles}
 
-	handler := apiserver.NewRouter(apiserver.Deps{
+	deps := apiserver.Deps{
 		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs,
 		TestLab: lab, Trace: traceHandler,
 		Eval:      &eval.Handler{Svc: evalSvc, Identity: auth.Service},
 		Packaging: &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
-	})
+		Analytics: &analytics.Handler{Svc: funnel, Identity: auth.Service},
+	}
+	if tune != nil {
+		tune(&deps)
+	}
+	handler := apiserver.NewRouter(deps)
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return &api{

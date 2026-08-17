@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/analytics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/apiserver"
 	"github.com/ArthurC02/skillhub/services/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/services/platform/internal/eval"
@@ -55,6 +56,10 @@ func main() {
 		AppURL:    os.Getenv("APP_URL"),
 		DevLogin:  os.Getenv("DEV_LOGIN") == "1", // offline dev provider; never in production
 		Operators: operatorIDs(os.Getenv("OPERATOR_USER_IDS")),
+		// BETA-001's admission list (ADR-028 決策 1), read exactly like the operator
+		// roster above and keyed by provider_user_id. Unset — the shipped default —
+		// means no closed beta is running and every signed-in user is admitted.
+		Invited: operatorIDs(os.Getenv("BETA_ALLOWLIST")),
 	}
 	// 02:SEC-011 「授予或撤銷 operator 角色本身也是 audit event」. The roster is
 	// deployment configuration, so the grant happens outside the application and
@@ -67,6 +72,15 @@ func main() {
 	if err := auth.LogOperatorRoster(ctx); err != nil {
 		slog.Error("operator roster not audited; no operator will be recognised", "error", err)
 		auth.Operators = nil
+	}
+	// ADR-028 決策 1 asks for the same record, and fails closed in the other
+	// direction. An unaudited operator list has to become empty, because an empty
+	// one grants nothing; an unaudited invite list must not become empty, because
+	// an empty one admits everybody. So a cohort that could not be recorded shuts
+	// the gate on everyone until a start-up manages to record it.
+	if err := auth.LogInviteRoster(ctx); err != nil {
+		slog.Error("beta roster not audited; the closed beta gate admits nobody", "error", err)
+		auth.Invited = betaGateClosed()
 	}
 
 	store, err := objstore.New(
@@ -138,12 +152,29 @@ func main() {
 		slog.Warn("no packaging profiles configured; PACK-001 routes will answer 503")
 	}
 
+	// 02:O11Y-004 / ADR-029. ANALYTICS_RETENTION unset means this deployment
+	// collects no funnel events at all — no cookie, no rows — which is the correct
+	// state until PDM-006 ratifies a retention period (ADR-029 決策 5 proposes 180
+	// days). NFR-002 requires the period to exist before the data class starts
+	// accumulating, and this is the one class still early enough to obey that in
+	// order rather than retrofit it.
+	funnel := &analytics.Service{
+		Pool:      pool,
+		Retention: analyticsRetentionFromEnv(),
+		Secure:    os.Getenv("COOKIE_INSECURE") != "1",
+	}
+	if !funnel.Enabled() {
+		slog.Warn("ANALYTICS_RETENTION not set; the BETA-002 funnel is not being measured")
+	}
+
 	// Routes live in internal/apiserver so the integration tests serve this exact
 	// table instead of a hand-copied one.
 	mux := apiserver.NewRouter(apiserver.Deps{
 		Auth:     auth,
 		Importer: importer,
-		Search:   &catalog.Handler{Pool: pool, Identity: auth.Service, LLMClient: llm, Store: store},
+		Search: &catalog.Handler{
+			Pool: pool, Identity: auth.Service, LLMClient: llm, Store: store, Analytics: funnel,
+		},
 		Registry: &registry.Handler{Svc: &registry.Service{Pool: pool, Store: store}, Identity: auth.Service},
 		// llm may be nil: TEST-002's suggestions are then unavailable and the test
 		// lab's manual paths carry on unaffected.
@@ -157,7 +188,15 @@ func main() {
 		Runs: &run.Handler{
 			// Store is read-only here: the pre-run permission summary scans the
 			// stored package to answer "does this carry a script" (02:TEST-005).
-			Svc:      &run.Service{Pool: pool, Queue: jobs, Providers: run.NewRegistryFromEnv(), Store: store},
+			Svc: &run.Service{
+				Pool: pool, Queue: jobs, Providers: run.NewRegistryFromEnv(), Store: store,
+				// PDM-010's free allowance, enforced inside the create-run
+				// transaction (ADR-028 決策 2). The proposed numbers are the shipped
+				// default because the enforcement point does not depend on the final
+				// values — what does depend on them is showing them, and GET /me/quota
+				// is only mounted where this is enforced. RUN_QUOTA=off turns both off.
+				Quota: quotaFromEnv(),
+			},
 			Identity: auth.Service,
 		},
 		Trace: &trace.Handler{Svc: traceSvc, Identity: auth.Service},
@@ -180,6 +219,7 @@ func main() {
 			},
 			Identity: auth.Service,
 		},
+		Analytics: &analytics.Handler{Svc: funnel, Identity: auth.Service},
 	})
 
 	// DEV_CORS_ORIGIN is the local Vite dev server (http://localhost:5173) and
@@ -229,6 +269,15 @@ func operatorIDs(raw string) map[string]bool {
 	return out
 }
 
+// betaGateClosed is the invite list of a start-up that could not audit its own
+// cohort (ADR-028 決策 1 fail-closed). It has to be non-empty, because an empty
+// list means "no closed beta is running" and admits everyone — the opposite of
+// what failing closed means here. One entry nobody can hold: a GitHub
+// provider_user_id is a decimal string.
+func betaGateClosed() map[string]bool {
+	return map[string]bool{"\x00 roster was not recorded": true}
+}
+
 // importFetcherFromEnv builds the URL-import fetcher: GitHub by default,
 // extra hosts via IMPORT_EXTRA_HOSTS (comma-separated), plain http only when
 // IMPORT_ALLOW_INSECURE=1 (local stubs and E2E, never production).
@@ -269,6 +318,43 @@ func retentionFromEnv() time.Duration {
 	d, err := time.ParseDuration(raw)
 	if err != nil {
 		slog.Warn("DOWNLOAD_ARTIFACT_RETENTION is not a duration; using the default", "value", raw)
+		return 0
+	}
+	return d
+}
+
+// quotaFromEnv reads the PDM-010 free run allowance (ADR-028 決策 2).
+//
+// The proposal's numbers are the default rather than something a deployment has to
+// set, and that asymmetry with the two retention knobs above is deliberate. An
+// unset retention means data is not collected, which is safe; an unset allowance
+// would mean the platform's only real cost ceiling is off, which is not — 01 §12
+// lists unsustainable sandbox cost as a live risk and this is its one mitigation.
+//
+// RUN_QUOTA=off is the escape hatch, and it turns off the display as well: with no
+// allowance enforced, GET /me/quota is not mounted and the pre-run summary carries
+// no quota block. The two move together on purpose (04 乙-2).
+func quotaFromEnv() run.QuotaLimits {
+	if strings.EqualFold(os.Getenv("RUN_QUOTA"), "off") {
+		slog.Warn("RUN_QUOTA=off; the PDM-010 run allowance is not enforced and not shown")
+		return run.QuotaLimits{}
+	}
+	return run.DefaultQuotaLimits()
+}
+
+// analyticsRetentionFromEnv reads how long a funnel event is kept, and therefore
+// whether any are collected at all. Deployment configuration and not a constant,
+// for the same reason DOWNLOAD_ARTIFACT_RETENTION is: ADR-029 決策 5's 180 days
+// is a proposal, and compiling in an unratified number would make "已定值" and
+// "已被追認" the same thing. Unset is off, not a default.
+func analyticsRetentionFromEnv() time.Duration {
+	raw := os.Getenv("ANALYTICS_RETENTION")
+	if raw == "" {
+		return 0
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		slog.Warn("ANALYTICS_RETENTION is not a duration; funnel events are not collected", "value", raw)
 		return 0
 	}
 	return d
