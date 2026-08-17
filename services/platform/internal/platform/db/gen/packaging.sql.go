@@ -531,6 +531,61 @@ func (q *Queries) ListDownloadArtifacts(ctx context.Context, workspaceID pgtype.
 	return items, nil
 }
 
+const listDownloadRecordsForArtifact = `-- name: ListDownloadRecordsForArtifact :many
+SELECT dr.downloaded_at, dr.actor_user_id, u.display_name
+FROM download_records dr
+JOIN download_artifacts da ON da.artifact_id = dr.artifact_id
+LEFT JOIN users u ON u.id = dr.actor_user_id
+WHERE dr.workspace_id = $1 AND dr.artifact_id = $2
+  AND da.workspace_id = $1
+ORDER BY dr.downloaded_at DESC
+`
+
+type ListDownloadRecordsForArtifactParams struct {
+	WorkspaceID pgtype.UUID
+	ArtifactID  pgtype.UUID
+}
+
+type ListDownloadRecordsForArtifactRow struct {
+	DownloadedAt pgtype.Timestamptz
+	ActorUserID  pgtype.UUID
+	DisplayName  *string
+}
+
+// WS-004's own words: "誰、何時、哪一筆 artifact、哪一個 profile". The list above
+// answers the last two and a count; this answers the first two, one row per
+// download, which is what the work item asks for and what an aggregate cannot
+// give.
+//
+// Deliberately NOT the audit event (CORE-008). This is the product feature the
+// owner reads, and it may be deleted with the account; the audit row is the
+// compliance record with its own retention and its own visibility. Same download,
+// two rows, and neither substitutes for the other (packaging-design §7.2).
+//
+// The actor is served as a display name rather than as a user id: on a personal
+// workspace it is always the owner, and an id would be an identifier the reader
+// cannot resolve. LEFT JOIN because a purged account's rows survive
+// de-identified (PDM-006 §6.1) and "somebody, at this time" is still true.
+func (q *Queries) ListDownloadRecordsForArtifact(ctx context.Context, arg ListDownloadRecordsForArtifactParams) ([]ListDownloadRecordsForArtifactRow, error) {
+	rows, err := q.db.Query(ctx, listDownloadRecordsForArtifact, arg.WorkspaceID, arg.ArtifactID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDownloadRecordsForArtifactRow
+	for rows.Next() {
+		var i ListDownloadRecordsForArtifactRow
+		if err := rows.Scan(&i.DownloadedAt, &i.ActorUserID, &i.DisplayName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSuggestionsAppliedToVersion = `-- name: ListSuggestionsAppliedToVersion :many
 SELECT evaluation_id, category, target_path
 FROM evaluation_suggestions

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -604,6 +605,112 @@ func (s *Service) Get(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.
 		return gen.Run{}, ErrNotFound
 	}
 	return run, err
+}
+
+// List returns the workspace's Run history, newest first (WS-004).
+//
+// The page size is clamped rather than trusted: it comes from a query string and
+// it decides how much work one request does.
+func (s *Service) List(
+	ctx context.Context, workspaceID pgtype.UUID, limit, offset int32,
+) ([]gen.ListWorkspaceRunsRow, error) {
+	if limit <= 0 || limit > maxRunPageSize {
+		limit = defaultRunPageSize
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	return s.queries().ListWorkspaceRuns(ctx, gen.ListWorkspaceRunsParams{
+		WorkspaceID: workspaceID, PageSize: limit, PageOffset: offset,
+	})
+}
+
+const (
+	defaultRunPageSize = 50
+	maxRunPageSize     = 200
+)
+
+// Artifacts returns one run's output manifest (WS-004's read side, and what makes
+// DeleteArtifact reachable — a delete for something nobody can list is a delete
+// nobody can press).
+func (s *Service) Artifacts(
+	ctx context.Context, workspaceID, runID pgtype.UUID,
+) ([]gen.Artifact, error) {
+	// The run itself is read first so a caller learns nothing about another
+	// workspace's run id: an unknown run and somebody else's run answer alike.
+	if _, err := s.Get(ctx, workspaceID, runID); err != nil {
+		return nil, err
+	}
+	return s.queries().ListRunArtifacts(ctx, gen.ListRunArtifactsParams{
+		RunID: runID, WorkspaceID: workspaceID,
+	})
+}
+
+// DeleteArtifact removes one Run output the owner asked to be gone
+// (02:WS-002 3, 02:SEC-006 1). Until now the only way to reach a run artifact was
+// to delete the whole account.
+//
+// Idempotent, exactly as the download package's delete is: an id that is not
+// there, is already deleted, or belongs to somebody else all reach the same
+// answer. The caller's intent — this file must not exist — holds in every one of
+// those cases.
+//
+// The row is soft-deleted and the object removed after the commit, the order
+// DeleteDownload uses and for the same reason: object storage has no rollback, so
+// removing bytes a live row still points at is the failure that cannot be
+// repaired, while an orphan object is swept by retention.
+func (s *Service) DeleteArtifact(
+	ctx context.Context, ws gen.Workspace, runID, artifactID pgtype.UUID,
+) error {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := gen.New(tx)
+
+	row, err := q.SoftDeleteRunArtifact(ctx, gen.SoftDeleteRunArtifactParams{
+		ArtifactID: artifactID, RunID: runID, WorkspaceID: ws.ID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if err := audit.Log(ctx, q, audit.Event{
+		Actor: ws.OwnerUserID, Workspace: ws.ID,
+		Action: audit.ActionArtifactDelete, ResourceType: audit.ResourceArtifact,
+		ResourceID: row.ID,
+		Metadata:   map[string]any{"run_id": uuidString(runID)},
+	}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	if row.PurgedAt.Valid || s.Store == nil {
+		return nil // the bytes are already gone, or there is no store to ask
+	}
+	// A run's outputs are one archive per attempt, so several rows can name one
+	// object key. Removing it while another row still points at it would delete a
+	// file the owner did not ask about; the count is asked after the soft delete,
+	// so it cannot count the row just removed.
+	shared, err := gen.New(s.Pool).CountArtifactsSharingObject(ctx, row.ObjectKey)
+	if err != nil || shared > 0 {
+		if err != nil {
+			slog.Warn("could not check whether a run artifact object is shared; leaving the bytes",
+				"object_key", row.ObjectKey, "error", err)
+		}
+		return nil
+	}
+	// Best effort: the row is gone either way, Remove is idempotent, and the
+	// retention sweep reaches the same key.
+	if err := s.Store.Remove(ctx, row.ObjectKey); err != nil {
+		slog.Warn("run artifact object not removed; the retention sweep will retry",
+			"object_key", row.ObjectKey, "error", err)
+	}
+	return nil
 }
 
 // Linkage returns the skill the run's version belongs to and the editable test

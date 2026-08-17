@@ -15,6 +15,46 @@ RETURNING *;
 -- name: GetRun :one
 SELECT * FROM runs WHERE id = $1 AND workspace_id = $2;
 
+-- name: ListWorkspaceRuns :many
+-- WS-004 / 02:WS-002 1: the workspace's Run history, newest first.
+--
+-- The list carries the two ids GetRunLinkage resolves for one run, joined here
+-- rather than looked up per row: a history page is the one place where N runs are
+-- rendered at once, and one query per row is the shape that turns a page into a
+-- hundred round trips. Nothing else is added — a status, a skill and a time are
+-- what a history row is for, and the detail route already answers the rest.
+--
+-- Keyset would need a composite cursor over (created_at, id); a beta cohort's Run
+-- history does not reach a page of results.
+-- ponytail: LIMIT/OFFSET. Swap for a keyset cursor if a workspace ever holds
+-- enough runs for the offset scan to show up.
+SELECT r.id, r.status, r.status_reason, r.provider, r.failure_class,
+       r.cleanup_status, r.skill_version_id, r.test_case_snapshot_id,
+       r.cancel_requested_at, r.created_at, r.started_at, r.finished_at,
+       v.skill_id, sk.name AS skill_name, s.test_case_id
+FROM runs r
+JOIN skill_versions v ON v.id = r.skill_version_id
+JOIN skills sk ON sk.id = v.skill_id
+JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
+WHERE r.workspace_id = @workspace_id
+ORDER BY r.created_at DESC, r.id
+LIMIT @page_size OFFSET @page_offset;
+
+-- name: SoftDeleteRunArtifact :one
+-- 02:WS-002 3 and 02:SEC-006 1: the owner deleting one Run output.
+--
+-- Soft, and `kind = 'run_output'` is in the predicate, for the two reasons the
+-- download package's delete already has: evaluations reference an artifact row as
+-- evidence and must not lose the reference, and a statement that could reach any
+-- kind is a statement that could publish or destroy the wrong one.
+--
+-- Returns nothing when there is nothing to delete, which is what makes the
+-- endpoint idempotent — a repeat of a delete that worked is not a failure.
+UPDATE artifacts SET deleted_at = now()
+WHERE id = @artifact_id AND run_id = @run_id AND workspace_id = @workspace_id
+  AND kind = 'run_output' AND deleted_at IS NULL
+RETURNING id, object_key, purged_at;
+
 -- name: GetRunLinkage :one
 -- The two ids the runs row does not carry itself, for the read surface (RUN-002).
 --

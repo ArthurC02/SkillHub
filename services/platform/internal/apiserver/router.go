@@ -149,8 +149,22 @@ func NewRouter(d Deps) http.Handler {
 	if d.Runs.Svc.Quota.Enforced() {
 		mux.HandleFunc("GET /me/quota", auth.RequireSession(d.Runs.Quota))
 	}
+	// WS-004's Run history. A list route beside the detail one, and the literal
+	// segments below stay more specific than {id}, so all of them coexist.
+	mux.HandleFunc("GET /runs", auth.RequireSession(d.Runs.List))
 	mux.HandleFunc("GET /runs/{id}", auth.RequireSession(d.Runs.Get))
 	mux.HandleFunc("POST /runs/{id}/cancel", auth.RequireSession(d.Runs.Cancel))
+	// 02:WS-002 第 3 條 and 02:SEC-006 第 1 條: the owner sees and deletes what a
+	// run produced. The list is what makes the delete reachable — a delete for
+	// something nobody can enumerate is a delete nobody can press — and the two
+	// arrived together for that reason (04 丙-22).
+	//
+	// No route serves the bytes: the archive is a sandbox's output and the control
+	// plane does not open it (iron rule 1). What is served is the manifest row,
+	// which is what evaluation reads too.
+	mux.HandleFunc("GET /runs/{id}/artifacts", auth.RequireSession(d.Runs.Artifacts))
+	mux.HandleFunc("DELETE /runs/{id}/artifacts/{artifactId}",
+		auth.RequireSession(d.Runs.DeleteArtifact))
 	// TRACE-006/007: one route, two modes. Session-scoped like every other run
 	// route - a trace is user data.
 	mux.HandleFunc("GET /runs/{id}/trace", auth.RequireSession(d.Trace.Get))
@@ -214,6 +228,12 @@ func NewRouter(d Deps) http.Handler {
 	// GET patterns coexist.
 	mux.HandleFunc("GET /downloads", auth.RequireSession(d.Packaging.Downloads))
 	mux.HandleFunc("GET /downloads/{artifactId}", auth.RequireSession(d.Packaging.Download))
+	// WS-004 asks for "誰、何時、哪一筆 artifact、哪一個 profile", and the list above
+	// answers the last two plus a count. This answers the first two, one row per
+	// download. Deliberately not the audit trail: same event, two records, and
+	// their retention and visibility differ (see internal/audit).
+	mux.HandleFunc("GET /downloads/{artifactId}/records",
+		auth.RequireSession(d.Packaging.DownloadRecords))
 	// The third of the three gated actions, and the one funnel event that is not
 	// emitted from the handler that owns it. DownloadStartedOn records "somebody
 	// pressed download" before the handler decides whether the bytes go out; the

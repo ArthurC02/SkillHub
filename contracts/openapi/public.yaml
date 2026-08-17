@@ -1599,6 +1599,46 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /runs:
+    get:
+      operationId: listRuns
+      summary: The workspace's run history, newest first (WS-004)
+      description: |
+        02:WS-002 第 1 條's "Run 歷史". Workspace scoped from the session like
+        every other run route (iron rule 3).
+
+        Each row carries what happened, to which skill, and when. The status
+        transitions and the per-attempt provider ids stay on GET /runs/{id}:
+        they are what a reader opens one run to see, and serving them for a page
+        of runs would make the list the heaviest read in the API for information
+        nobody reads a page of.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+          description: Clamped server-side; an out-of-range value falls back to the default.
+        - name: offset
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        "200":
+          description: The workspace's runs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [runs]
+                properties:
+                  runs:
+                    type: array
+                    items: { $ref: "#/components/schemas/RunListItem" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /runs/{id}:
     get:
       operationId: getRun
@@ -1625,6 +1665,75 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Not the caller's run.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/artifacts:
+    get:
+      operationId: listRunArtifacts
+      summary: What a run produced, as a manifest (WS-004, 02:SEC-006)
+      description: |
+        File names, sizes and hashes — never the bytes. The archive a sandbox
+        produced is untrusted content and the control plane does not open it
+        (iron rule 1); evaluation reads these same rows.
+
+        This list exists so the owner can see what there is to delete. Before it,
+        the only way to remove a run artifact was to delete the whole account.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The run's outputs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [artifacts]
+                properties:
+                  artifacts:
+                    type: array
+                    items: { $ref: "#/components/schemas/RunArtifact" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's run.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/artifacts/{artifactId}:
+    delete:
+      operationId: deleteRunArtifact
+      summary: Delete one of the caller's run outputs (02:WS-002 第 3 條, 02:SEC-006 第 1 條)
+      description: |
+        Idempotent: an id that is not there, is already deleted, or belongs to
+        somebody else all answer 204. The caller asked for the file not to exist,
+        and that holds in every one of those cases; answering 404 to a repeat of
+        a delete that worked would report success as failure.
+
+        The row is soft-deleted so evaluations keep the evidence reference they
+        already recorded, and stops appearing in this workspace's surfaces, which
+        is what 02:SEC-006 asks for. The stored object is removed after the
+        commit unless another artifact row still names the same key.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: artifactId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: The artifact is gone, or was never there.
+        "401":
+          description: No valid session.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -2946,6 +3055,58 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /downloads/{artifactId}/records:
+    get:
+      operationId: listDownloadRecords
+      summary: Who took a copy of this package, and when (WS-004)
+      description: |
+        WS-004's own words are "誰、何時、哪一筆 artifact、哪一個 profile". The
+        artifact list answers the last two plus a count; this answers the first
+        two, one row per download, which is what an aggregate cannot give.
+
+        Deliberately not the audit trail. The same download writes an audit event
+        too (CORE-008), and the two are separate records with different retention
+        and different visibility: this one is the product feature the owner reads
+        and it goes with the account, the audit row is the compliance record and
+        does not.
+
+        The actor is a display name, not a user id: on a personal workspace it is
+        always the owner, and an id would be an identifier the reader cannot
+        resolve. It reads `deleted user` when the account was purged — the rows
+        survive de-identified (PDM-006 §6.1), because "somebody, at this time" is
+        still true.
+      parameters:
+        - name: artifactId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The downloads of this package, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [records]
+                properties:
+                  records:
+                    type: array
+                    items:
+                      type: object
+                      required: [downloaded_at, actor]
+                      properties:
+                        downloaded_at: { type: string, format: date-time }
+                        actor: { type: string }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's artifact. Existence is private (WS-006).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /downloads/{artifactId}/content:
     get:
       operationId: downloadArtifactContent
@@ -3204,7 +3365,7 @@ components:
             (iron rule 5).
     Me:
       type: object
-      required: [user_id, email, display_name, workspace_id]
+      required: [user_id, email, display_name, workspace_id, deletion_requested_at, purge_after]
       properties:
         user_id:
           type: string
@@ -3216,6 +3377,21 @@ components:
         workspace_id:
           type: string
           format: uuid
+        deletion_requested_at:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            When the caller asked for their account to be deleted, or null when
+            no deletion is pending. 02:SEC-006 requires the deletion job to have
+            a state the user can follow, and until this field existed the only
+            place it appeared was the response to DELETE /me itself — a user who
+            closed the tab could not ask again.
+        purge_after:
+          type: [string, "null"]
+          format: date-time
+          description: |
+            When the grace period ends and the purge becomes due; cancellable
+            until then. Null exactly when `deletion_requested_at` is null.
     AccountDeletion:
       type: object
       required: [deletion_requested_at, purge_after, cancellable, scope]
@@ -4348,6 +4524,74 @@ components:
                 Counts cache-hit tokens: caching cuts cost, not token count
                 (PDM-005 §5.2a-3).
             max_output_tokens: { type: integer }
+    RunListItem:
+      description: |
+        One row of the run history (WS-004). A narrower shape than `Run` on
+        purpose: a list needs what happened, to which skill, and when, and the
+        transitions and attempts belong to the one run a reader opens.
+
+        `status` carries the same warning it does on `Run`: `succeeded` says the
+        workload finished, not that the task was done (ADR-025). A history list
+        showing this value must word it as execution and must not present it as a
+        pass.
+      type: object
+      required:
+        [run_id, status, skill_id, skill_name, skill_version_id, provider,
+         cleanup_status, created_at]
+      properties:
+        run_id: { type: string, format: uuid }
+        status:
+          type: string
+          enum:
+            [queued, provisioning, preparing, running, evaluating, succeeded, failed, cancelled, timed_out]
+        status_reason:
+          type: string
+          description: Why the run entered this status. Masked and safe to display.
+        skill_id: { type: string, format: uuid }
+        skill_name:
+          type: string
+          description: |
+            Joined into the row rather than resolved per item by the client: a
+            history page is the one place where N runs render at once, and a
+            lookup per row is how a page becomes a hundred round trips.
+        skill_version_id: { type: string, format: uuid }
+        test_case_id:
+          type: string
+          format: uuid
+          description: |
+            The editable test case the run's snapshot was frozen from, so a
+            re-run can be started from a history row. Not permission to re-run —
+            that is preflight's answer (TEST-009).
+        provider: { type: string }
+        failure_class: { type: string }
+        cleanup_status:
+          type: string
+          enum: [pending, cleaning, cleaned, failed]
+        created_at: { type: string, format: date-time }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time }
+    RunArtifact:
+      description: |
+        One file a run produced, as a manifest row. The bytes are never served
+        here: the archive is a sandbox's output and the control plane does not
+        open it (iron rule 1).
+      type: object
+      required: [artifact_id, file_name, content_type, size_bytes, content_hash, created_at, purged]
+      properties:
+        artifact_id: { type: string, format: uuid }
+        file_name: { type: string }
+        content_type: { type: string }
+        size_bytes: { type: integer, format: int64 }
+        content_hash: { type: string }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        purged:
+          type: boolean
+          description: |
+            True when the stored bytes are gone while the row remains — retention
+            expiry, or a reconciler finding them missing (0028). Distinct from
+            the owner deleting it, which removes the row from this list entirely:
+            "it expired" and "it never existed" are different answers.
     Run:
       description: |
         One run as the Web surface sees it. The provider-facing shapes are a

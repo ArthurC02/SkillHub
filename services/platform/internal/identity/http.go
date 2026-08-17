@@ -391,12 +391,26 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{
-		"user_id":      uuidString(user.ID),
-		"email":        user.Email,
-		"display_name": user.DisplayName,
-		"workspace_id": uuidString(ws.ID),
-	})
+	// deletion_requested_at is 02:SEC-006's "刪除工作具可追蹤狀態". Until now the
+	// only place it appeared was the response to DELETE /me itself, so a user who
+	// closed the tab had no way to ask whether the request had been recorded, and
+	// no way to find the date the grace period runs out from. Both are null when no
+	// deletion is pending, which is the difference between "not requested" and
+	// "requested and I cannot tell".
+	out := map[string]any{
+		"user_id":               uuidString(user.ID),
+		"email":                 user.Email,
+		"display_name":          user.DisplayName,
+		"workspace_id":          uuidString(ws.ID),
+		"deletion_requested_at": nil,
+		"purge_after":           nil,
+	}
+	if user.DeletionRequestedAt.Valid {
+		at := user.DeletionRequestedAt.Time.UTC()
+		out["deletion_requested_at"] = at.Format(time.RFC3339)
+		out["purge_after"] = at.Add(AccountDeletionGrace).UTC().Format(time.RFC3339)
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
 // deletionScope is the WS-002/PDM-006 §6.1 requirement that the deletion scope

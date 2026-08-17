@@ -48,6 +48,10 @@ type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 	PresignGet(ctx context.Context, key string, ttl time.Duration) (string, error)
 	PresignPut(ctx context.Context, key string, ttl time.Duration) (string, error)
+	// Remove is what makes the owner's delete of a Run output actually delete
+	// (02:SEC-006 1). Without it the row would stop being visible while the file
+	// stayed, which is the half of "deleted" that matters least.
+	Remove(ctx context.Context, key string) error
 }
 
 // Secrets the platform injects into every sandbox (SBX-008, PDM-003). Names only:

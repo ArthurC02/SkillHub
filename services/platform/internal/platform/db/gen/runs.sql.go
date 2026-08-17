@@ -751,6 +751,92 @@ func (q *Queries) ListUnpublishedOutboxEvents(ctx context.Context, limit int32) 
 	return items, nil
 }
 
+const listWorkspaceRuns = `-- name: ListWorkspaceRuns :many
+SELECT r.id, r.status, r.status_reason, r.provider, r.failure_class,
+       r.cleanup_status, r.skill_version_id, r.test_case_snapshot_id,
+       r.cancel_requested_at, r.created_at, r.started_at, r.finished_at,
+       v.skill_id, sk.name AS skill_name, s.test_case_id
+FROM runs r
+JOIN skill_versions v ON v.id = r.skill_version_id
+JOIN skills sk ON sk.id = v.skill_id
+JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
+WHERE r.workspace_id = $1
+ORDER BY r.created_at DESC, r.id
+LIMIT $3 OFFSET $2
+`
+
+type ListWorkspaceRunsParams struct {
+	WorkspaceID pgtype.UUID
+	PageOffset  int32
+	PageSize    int32
+}
+
+type ListWorkspaceRunsRow struct {
+	ID                 pgtype.UUID
+	Status             RunStatus
+	StatusReason       *string
+	Provider           string
+	FailureClass       *string
+	CleanupStatus      RunCleanupStatus
+	SkillVersionID     pgtype.UUID
+	TestCaseSnapshotID pgtype.UUID
+	CancelRequestedAt  pgtype.Timestamptz
+	CreatedAt          pgtype.Timestamptz
+	StartedAt          pgtype.Timestamptz
+	FinishedAt         pgtype.Timestamptz
+	SkillID            pgtype.UUID
+	SkillName          string
+	TestCaseID         pgtype.UUID
+}
+
+// WS-004 / 02:WS-002 1: the workspace's Run history, newest first.
+//
+// The list carries the two ids GetRunLinkage resolves for one run, joined here
+// rather than looked up per row: a history page is the one place where N runs are
+// rendered at once, and one query per row is the shape that turns a page into a
+// hundred round trips. Nothing else is added — a status, a skill and a time are
+// what a history row is for, and the detail route already answers the rest.
+//
+// Keyset would need a composite cursor over (created_at, id); a beta cohort's Run
+// history does not reach a page of results.
+// ponytail: LIMIT/OFFSET. Swap for a keyset cursor if a workspace ever holds
+// enough runs for the offset scan to show up.
+func (q *Queries) ListWorkspaceRuns(ctx context.Context, arg ListWorkspaceRunsParams) ([]ListWorkspaceRunsRow, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceRuns, arg.WorkspaceID, arg.PageOffset, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListWorkspaceRunsRow
+	for rows.Next() {
+		var i ListWorkspaceRunsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Status,
+			&i.StatusReason,
+			&i.Provider,
+			&i.FailureClass,
+			&i.CleanupStatus,
+			&i.SkillVersionID,
+			&i.TestCaseSnapshotID,
+			&i.CancelRequestedAt,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.SkillID,
+			&i.SkillName,
+			&i.TestCaseID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockWorkspaceRunSlots = `-- name: LockWorkspaceRunSlots :exec
 SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
 `
@@ -970,6 +1056,41 @@ func (q *Queries) SetRunProvider(ctx context.Context, arg SetRunProviderParams) 
 		&i.CancelRequestedAt,
 		&i.FailureClass,
 	)
+	return i, err
+}
+
+const softDeleteRunArtifact = `-- name: SoftDeleteRunArtifact :one
+UPDATE artifacts SET deleted_at = now()
+WHERE id = $1 AND run_id = $2 AND workspace_id = $3
+  AND kind = 'run_output' AND deleted_at IS NULL
+RETURNING id, object_key, purged_at
+`
+
+type SoftDeleteRunArtifactParams struct {
+	ArtifactID  pgtype.UUID
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+type SoftDeleteRunArtifactRow struct {
+	ID        pgtype.UUID
+	ObjectKey string
+	PurgedAt  pgtype.Timestamptz
+}
+
+// 02:WS-002 3 and 02:SEC-006 1: the owner deleting one Run output.
+//
+// Soft, and `kind = 'run_output'` is in the predicate, for the two reasons the
+// download package's delete already has: evaluations reference an artifact row as
+// evidence and must not lose the reference, and a statement that could reach any
+// kind is a statement that could publish or destroy the wrong one.
+//
+// Returns nothing when there is nothing to delete, which is what makes the
+// endpoint idempotent — a repeat of a delete that worked is not a failure.
+func (q *Queries) SoftDeleteRunArtifact(ctx context.Context, arg SoftDeleteRunArtifactParams) (SoftDeleteRunArtifactRow, error) {
+	row := q.db.QueryRow(ctx, softDeleteRunArtifact, arg.ArtifactID, arg.RunID, arg.WorkspaceID)
+	var i SoftDeleteRunArtifactRow
+	err := row.Scan(&i.ID, &i.ObjectKey, &i.PurgedAt)
 	return i, err
 }
 

@@ -66,6 +66,41 @@ func (s *Service) ListDownloads(ctx context.Context, ws gen.Workspace) ([]Artifa
 	return out, nil
 }
 
+// DownloadRecord is one line of WS-004's "誰、何時": one download that happened.
+type DownloadRecord struct {
+	DownloadedAt string `json:"downloaded_at"`
+	Actor        string `json:"actor"`
+}
+
+// ListDownloadRecords is GET /downloads/{artifactId}/records.
+//
+// The artifact is read first, so an id belonging to another workspace answers 404
+// rather than an empty list — an empty list would say "this exists and has never
+// been downloaded" about somebody else's package.
+func (s *Service) ListDownloadRecords(
+	ctx context.Context, ws gen.Workspace, id pgtype.UUID,
+) ([]DownloadRecord, error) {
+	if _, err := s.downloadRow(ctx, ws, id); err != nil {
+		return nil, err
+	}
+	rows, err := gen.New(s.Pool).ListDownloadRecordsForArtifact(ctx,
+		gen.ListDownloadRecordsForArtifactParams{WorkspaceID: ws.ID, ArtifactID: id})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]DownloadRecord, 0, len(rows))
+	for _, r := range rows {
+		// A purged account keeps its download records de-identified (PDM-006 §6.1),
+		// so the name can be gone while the row is still true.
+		actor := "deleted user"
+		if r.DisplayName != nil && *r.DisplayName != "" {
+			actor = *r.DisplayName
+		}
+		out = append(out, DownloadRecord{DownloadedAt: rfc3339(r.DownloadedAt), Actor: actor})
+	}
+	return out, nil
+}
+
 // GetDownload is GET /downloads/{artifactId}.
 func (s *Service) GetDownload(ctx context.Context, ws gen.Workspace, id pgtype.UUID) (Artifact, error) {
 	row, err := s.downloadRow(ctx, ws, id)
@@ -276,6 +311,30 @@ func (h *Handler) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, art)
+}
+
+// DownloadRecords handles GET /downloads/{artifactId}/records.
+func (h *Handler) DownloadRecords(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	id, ok := artifactID(w, r)
+	if !ok {
+		return
+	}
+	out, err := h.Svc.ListDownloadRecords(r.Context(), ws, id)
+	if errors.Is(err, ErrNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, "download not found")
+		return
+	}
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "download record lookup failed")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, struct {
+		Records []DownloadRecord `json:"records"`
+	}{out})
 }
 
 // DownloadContent handles GET /downloads/{artifactId}/content.

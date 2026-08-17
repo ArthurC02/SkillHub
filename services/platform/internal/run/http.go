@@ -3,7 +3,9 @@ package run
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -224,6 +226,160 @@ func (h *Handler) Quota(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, state.View())
+}
+
+// runListItem is one row of the Run history (WS-004). Deliberately narrower than
+// runResponse: a history page needs what happened, to which skill, and when, and
+// serving the transitions and attempts of fifty runs would make the list the
+// heaviest read in the API for information nobody reads fifty of.
+type runListItem struct {
+	RunID          string `json:"run_id"`
+	Status         string `json:"status"`
+	StatusReason   string `json:"status_reason,omitempty"`
+	SkillID        string `json:"skill_id"`
+	SkillName      string `json:"skill_name"`
+	SkillVersionID string `json:"skill_version_id"`
+	TestCaseID     string `json:"test_case_id,omitempty"`
+	Provider       string `json:"provider"`
+	FailureClass   string `json:"failure_class,omitempty"`
+	CleanupStatus  string `json:"cleanup_status"`
+	CreatedAt      string `json:"created_at"`
+	StartedAt      string `json:"started_at,omitempty"`
+	FinishedAt     string `json:"finished_at,omitempty"`
+}
+
+// List handles GET /runs (WS-004): the workspace's Run history.
+//
+// It did not exist until now, which is why 02:WS-002 第 1 條's "Run 歷史" had no
+// surface at any layer — not a missing screen but a missing endpoint.
+func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
+	ws, _, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	limit := intParam(r, "limit")
+	rows, err := h.Svc.List(r.Context(), ws.ID, limit, intParam(r, "offset"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "run list failed")
+		return
+	}
+	out := make([]runListItem, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, runListItem{
+			RunID: uuidString(row.ID), Status: string(row.Status),
+			StatusReason:   deref(row.StatusReason),
+			SkillID:        uuidString(row.SkillID),
+			SkillName:      row.SkillName,
+			SkillVersionID: uuidString(row.SkillVersionID),
+			TestCaseID:     uuidString(row.TestCaseID),
+			Provider:       row.Provider,
+			FailureClass:   deref(row.FailureClass),
+			CleanupStatus:  string(row.CleanupStatus),
+			CreatedAt:      rfc3339(row.CreatedAt),
+			StartedAt:      rfc3339(row.StartedAt),
+			FinishedAt:     rfc3339(row.FinishedAt),
+		})
+	}
+	httpx.WriteJSON(w, http.StatusOK, struct {
+		Runs []runListItem `json:"runs"`
+	}{out})
+}
+
+// artifactView is one Run output as its owner sees it: the manifest row, never
+// the bytes. The control plane does not open what a sandbox produced (iron rule
+// 1), and this endpoint exists so the owner can see what there is to delete.
+type artifactView struct {
+	ArtifactID  string `json:"artifact_id"`
+	FileName    string `json:"file_name"`
+	ContentType string `json:"content_type"`
+	SizeBytes   int64  `json:"size_bytes"`
+	ContentHash string `json:"content_hash"`
+	CreatedAt   string `json:"created_at"`
+	ExpiresAt   string `json:"expires_at,omitempty"`
+	// Purged says the bytes are gone while the row remains — retention expiry or a
+	// reconciler finding them missing. "It expired" and "it never existed" are
+	// different answers and the list gives the right one (0028).
+	Purged bool `json:"purged"`
+}
+
+// Artifacts handles GET /runs/{id}/artifacts (WS-004, 02:SEC-006).
+func (h *Handler) Artifacts(w http.ResponseWriter, r *http.Request) {
+	ws, _, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	runID, ok := pathUUID(w, r, "id")
+	if !ok {
+		return
+	}
+	rows, err := h.Svc.Artifacts(r.Context(), ws.ID, runID)
+	if errors.Is(err, ErrNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "artifact list failed")
+		return
+	}
+	out := make([]artifactView, 0, len(rows))
+	for _, a := range rows {
+		out = append(out, artifactView{
+			ArtifactID: uuidString(a.ID), FileName: a.FileName, ContentType: a.ContentType,
+			SizeBytes: a.SizeBytes, ContentHash: a.ContentHash,
+			CreatedAt: rfc3339(a.CreatedAt), ExpiresAt: rfc3339(a.ExpiresAt),
+			Purged: a.PurgedAt.Valid,
+		})
+	}
+	httpx.WriteJSON(w, http.StatusOK, struct {
+		Artifacts []artifactView `json:"artifacts"`
+	}{out})
+}
+
+// DeleteArtifact handles DELETE /runs/{id}/artifacts/{artifactId}
+// (02:WS-002 第 3 條, 02:SEC-006 第 1 條).
+//
+// Idempotent and therefore 204 for an id that was never there, matching the
+// download package's delete: the caller asked for the file not to exist, and
+// answering 404 to a repeat of a delete that worked reports success as failure.
+func (h *Handler) DeleteArtifact(w http.ResponseWriter, r *http.Request) {
+	ws, _, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	runID, ok := pathUUID(w, r, "id")
+	if !ok {
+		return
+	}
+	artifactID, ok := pathUUID(w, r, "artifactId")
+	if !ok {
+		return
+	}
+	if err := h.Svc.DeleteArtifact(r.Context(), ws, runID, artifactID); err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "delete failed")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// pathUUID parses one path id. A malformed one answers 404 for the reason every
+// unknown id does: the caller learns nothing either way.
+func pathUUID(w http.ResponseWriter, r *http.Request, name string) (id pgtype.UUID, ok bool) {
+	if err := id.Scan(r.PathValue(name)); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		return id, false
+	}
+	return id, true
+}
+
+// intParam reads a non-negative integer query parameter, or 0 when it is absent
+// or nonsense. The service clamps it; nothing here decides how much work a
+// request may ask for.
+func intParam(r *http.Request, name string) int32 {
+	v, err := strconv.Atoi(r.URL.Query().Get(name))
+	if err != nil || v < 0 || v > math.MaxInt32 {
+		return 0
+	}
+	return int32(v)
 }
 
 // Get handles GET /runs/{id} (RUN-002: current status and how it got there).

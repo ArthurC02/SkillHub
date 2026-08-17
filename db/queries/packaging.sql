@@ -119,6 +119,29 @@ WHERE da.workspace_id = $1 AND da.artifact_id = $2 AND a.deleted_at IS NULL;
 INSERT INTO download_records (workspace_id, artifact_id, actor_user_id)
 VALUES ($1, $2, $3);
 
+-- name: ListDownloadRecordsForArtifact :many
+-- WS-004's own words: "誰、何時、哪一筆 artifact、哪一個 profile". The list above
+-- answers the last two and a count; this answers the first two, one row per
+-- download, which is what the work item asks for and what an aggregate cannot
+-- give.
+--
+-- Deliberately NOT the audit event (CORE-008). This is the product feature the
+-- owner reads, and it may be deleted with the account; the audit row is the
+-- compliance record with its own retention and its own visibility. Same download,
+-- two rows, and neither substitutes for the other (packaging-design §7.2).
+--
+-- The actor is served as a display name rather than as a user id: on a personal
+-- workspace it is always the owner, and an id would be an identifier the reader
+-- cannot resolve. LEFT JOIN because a purged account's rows survive
+-- de-identified (PDM-006 §6.1) and "somebody, at this time" is still true.
+SELECT dr.downloaded_at, dr.actor_user_id, u.display_name
+FROM download_records dr
+JOIN download_artifacts da ON da.artifact_id = dr.artifact_id
+LEFT JOIN users u ON u.id = dr.actor_user_id
+WHERE dr.workspace_id = @workspace_id AND dr.artifact_id = @artifact_id
+  AND da.workspace_id = @workspace_id
+ORDER BY dr.downloaded_at DESC;
+
 -- name: SoftDeleteDownloadArtifact :one
 -- DELETE /downloads/{id}. Soft, although the OpenAPI prose once said the row
 -- goes: download_records has a foreign key onto download_artifacts and those
