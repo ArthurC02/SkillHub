@@ -96,6 +96,19 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 	q = q.WithTx(tx)
 
 	for _, ws := range workspaces {
+		// ADR-029 決策 5: funnel events and beta feedback are de-identified, not
+		// deleted. Aggregates have to survive a departure — the north-star metric
+		// and the funnel are compared across quarters — and a beta tester's words
+		// are the evidence the scope review rests on. The link to the person is
+		// what goes, and it goes here rather than by cascade because the purge
+		// anonymises the workspace row instead of deleting it, so 0029's
+		// ON DELETE SET NULL never fires.
+		if _, err := q.DetachWorkspaceAnalytics(ctx, ws.ID); err != nil {
+			return err
+		}
+		if _, err := q.DetachWorkspaceFeedback(ctx, ws.ID); err != nil {
+			return err
+		}
 		if _, err := q.DeleteWorkspaceArtifacts(ctx, ws.ID); err != nil {
 			return err
 		}

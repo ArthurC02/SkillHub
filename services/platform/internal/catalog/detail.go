@@ -32,6 +32,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/analytics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
@@ -379,7 +380,33 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 			out.AllowedTools = report.Manifest.AllowedTools
 		}
 	}
+	h.recordDetailView(r, skill.ID)
 	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// recordDetailView is funnel segment 1's second half (02:O11Y-004): somebody who
+// submitted an intent actually opened a detail page.
+//
+// Called only where the page is really served, not after resolveSkill, because a
+// view that ended in a 500 is not a segment anybody completed.
+//
+// The workspace is the *viewer's*, resolved from the session, and not the skill
+// owner's — the catalogue's entries all belong to the operator's workspace, so
+// recording that would label every event with the same id and answer nothing. It
+// is absent for anonymous visitors, which is most of this segment (DISC-010), and
+// session_id is what stitches those to whatever they do after signing in.
+func (h *Handler) recordDetailView(r *http.Request, skillID pgtype.UUID) {
+	if !h.Analytics.Enabled() {
+		return // no lookup, and above all no extra query, when nothing is collected
+	}
+	var workspace pgtype.UUID
+	if user, ok := identity.SessionUser(r.Context()); ok {
+		if ws, err := h.Identity.PersonalWorkspace(r.Context(), user); err == nil {
+			workspace = ws.ID
+		}
+	}
+	arrival, rank := analytics.ArrivalFromRequest(r)
+	h.Analytics.SkillDetailViewed(r.Context(), workspace, skillID, arrival, rank)
 }
 
 // SkillFiles handles GET /api/skills/{id}/files (DISC-007): the SKILL.md text

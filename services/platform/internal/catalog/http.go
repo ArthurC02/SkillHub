@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/analytics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
@@ -35,6 +36,14 @@ type Handler struct {
 	// Store reads stored packages for the detail and file views (detail.go).
 	// nil = those views report the package scan as unavailable rather than clean.
 	Store ObjectStore
+	// Analytics records the two funnel events that happen here (02:O11Y-004): an
+	// intent was submitted, and a detail page was opened. Nil, or one with no
+	// retention period configured, records nothing — see internal/analytics for
+	// why not collecting is the correct default until PDM-006 ratifies a retention.
+	//
+	// Never a source of truth and never able to fail a search: every call is fire
+	// and forget (ADR-029 決策 1).
+	Analytics *analytics.Service
 }
 
 // Match reason provenance (DISC-002). ADR-013 requires model-generated content
@@ -517,6 +526,15 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		resp.NoResults = true
 		resp.QuerySuggestion = noResultsSuggestion
 	}
+	// Funnel segment 1 (02:O11Y-004). The query's length, script, hit count and
+	// whether filters were on — never the words themselves, which can carry
+	// personal data and only reach BETA-003's consented channel (ADR-029 決策 2).
+	//
+	// This endpoint has no session middleware at all (DISC-010: public search does
+	// not require login), so the event carries no workspace. That is the honest
+	// shape rather than a gap: the first funnel segment routinely happens before
+	// anyone signs in, and session_id is what stitches it to the later ones.
+	h.Analytics.SearchPerformed(ctx, q, len(hits), filters.active())
 	httpx.WriteJSON(w, http.StatusOK, resp)
 }
 
