@@ -258,6 +258,8 @@ Go 對三種證據的回驗方式不同（`internal/eval/judge.go` 的 `verify()
 
 **兩輪都要跑，順序不能顛倒**：A 便宜（不必發 Run，只多 5 次 Judge 呼叫，以 §7 的中位數估約 $0.07），而且它測的東西 B 測不到——B 的證據是完整的，永遠問不出「該說不知道的時候會不會說不知道」。
 
+> **2026-08-17（M4 第 5 批）再更新：B 輪仍未跑，原因已從「排期」變成「查清楚的阻擋」。** 執行中的 dev DB 沒有套用 `0024`／`0025`／`0026`，而 HEAD 的 `cmd/api` 建立 Run 的必經路徑會寫 `test_case_snapshots.rubric`——**在這個 DB 上開不了 Run**；改用執行中的舊 api 二進位則沒有閘道環境變數，沙箱會被派到 `--network none`。四段查證、解除步驟（含要改哪 5 個 `test_case_id`）與成本預估見 [report-judge-regression.md §13](../m3/report-judge-regression.md)。**本文件 §3 的 Prompt 第 4 條因此尚未套用到任何一筆 Test Case**——沒有跑 Run 就先改 Test Case，只會留下一個沒有對應 Run 的半套修訂。
+
 **harness 側需要的最小改動**（`tools/eval-regression/judge_regression.py`，**不在本文件的改動範圍**，屬 M3 第 7 批）：目前 `rubric_version` 寫死 `None`、`criteria` 一律取自快照的三條。需要一個 `--rubric <file>` 之類的入口，讀進 §4 的 JSON，把 `criteria` 併入請求、把 `rubric` 帶上、把 `rubric_version` 記成 `content-007/writing/v1`。**換 `rubric_version` 就是另一次回歸**（`02:EVAL-013` 第 3 條），結果照舊 append 進 `results.jsonl`，不覆寫。
 
 > **2026-08-17 更新**：上述 harness 入口已實作（`--rubric`，輸入檔為 `tools/eval-regression/rubric-content-007-writing-v1.json`，內容逐字取自 §4），**A 輪已跑完**——結果與上表的預期**不一致**，`undetermined` 只有 13.6% 而非「絕大多數」。原因、代價與由此查出的 G7，見 [report-judge-regression.md §11](../m3/report-judge-regression.md) 與本文件 §2.2 的更正註記。**B 輪仍未跑**：它要重發 5 次真實 Run（沙箱＋映像＋閘道費用），屬 Run 批而非接線批。
@@ -287,5 +289,7 @@ Go 對三種證據的回驗方式不同（`internal/eval/judge.go` 的 `verify()
 | **G5** | **Judge 讀不到 artifact 內容**，只有 manifest 列 | 仍開著（**但 §2.2 的更正註記縮小了它的影響**：trace 的 `tool_call` payload 是第三條可引用路徑） | 後 MVP：規則腿讀 artifact 文字，另立需求 ID |
 | **G6** | **`brand-guidelines` 的四條判的是自述不是位元組。** | 仍開著。A 輪實測那四條有 3 條判 `failed`、引用的是那句只講檔名的最終回覆，**與本文件 §4.5 的設計本意相符** | 同 G5 |
 | **G7** | **`artifact` 型引用的引文從來沒有被回驗。** `verify()` 只檢查路徑在 manifest 上，引文不比對（因為請求沒送位元組）。於是 `evidence_required: true` 的條目可以用一段**沒人驗過**的引文通過，而存進報告的 `excerpt` 是平台自己的 manifest 行 | **新開（A 輪查出）**。A 輪 9 筆 `passed` 有 6 筆只靠這種引用；逐筆追查確認**模型沒有捏造**（引文逐字存在於該 Run 的 trace），但**平台分不出「歸錯類」與「編的」**。處置兩選一見 [report §11.2](../m3/report-judge-regression.md)，**動的是 ADR-026 defence 3 的判準，需要拍板** | `04` 乙-13 |
+
+| **G8** | **引文尾端多出結構殘片時，正確判定會被 defence 3 丟掉。** 注入抵抗回歸（[report §12.4](../m3/report-judge-regression.md)）實測到兩筆：引文本體逐字正確，但尾端多了 `}],`（模型把 JSON 分隔符寫進了字串值），`verify()` 的逐字子字串比對因此比不到，兩條正確的 `failed` 被降成 `undetermined` | **新開（注入回歸查出）**。27 條裡 2 條、15 筆引用裡 2 筆；**方向是安全的**（降級不是放行），但與 §6.1 的 v1 缺陷同一類——正確判定被引文邊界丟掉，且在畫面上與「Judge 沒把握」無法區分。修法會鬆動 ADR-026 defence 3 的判準，**與 G7 同一次拍板一起處理**。備註：同一輪另見一筆「判定正確但引文偏弱」（以 `agent_output` 的一句話當作「檔案存在」的證據），屬 G7 家族 | `04` 乙-13（與 G7 同一項） |
 
 **判斷（2026-08-17）**：允收準則第 3 條的三個要件——「每個精選都有」「可編輯」「供 Judge 逐項回傳證據引文」——**三個都成立**，五條允收全數符合，**`03` 的 CONTENT-007 改勾**。判斷理由與保留意見寫在 `03` 該項的註記裡，其中最需要被下一個人看見的是：**G7 不是 CONTENT-007 的缺口而是 EVAL-001／ADR-026 的**（它對任何有 `evidence_required` 的 rubric 一視同仁，與 rubric 內容無關），因此記在 `04` 而不是留著擋這一項。
