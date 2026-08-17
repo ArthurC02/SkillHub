@@ -190,7 +190,28 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePlatform, err.Error())
 	}
 
-	provider, capability, profile, err := d.svc.providers().Select(ctx, req)
+	// SEC-012 action ①, second entry point, and ADR-022 X-04's 「Run 停留 queued」.
+	//
+	// The run is left exactly where it is and the job returns clean. Not failed: a
+	// halt is a property of the fleet at this instant, and the supervisor re-enqueues
+	// every live run every 30 seconds (RUN-008), so dispatch resumes on its own the
+	// first sweep after the switch is released. Failing them instead would turn a
+	// reversible pause into a wave of runs the user has to start again.
+	//
+	// Fail-closed on an unreadable switch (halt.go): waiting costs a queued run some
+	// minutes, and the other direction hands an untrusted workload to a fleet nobody
+	// can confirm is meant to be running.
+	halts := d.svc.haltsFailClosed(ctx)
+	if halts.dispatchPaused(d.svc.providers()) {
+		slog.Warn("dispatch paused; leaving the run queued",
+			"run_id", uuidString(d.cur.ID), "status", d.cur.Status)
+		return nil
+	}
+
+	// SEC-012 action ②: a drained node is not offered work. Its running sandboxes
+	// are left to finish — that is what drain means, and destroying them would be
+	// the opposite of 「保留現場」 for the incident case.
+	provider, capability, profile, err := d.svc.providers().SelectExcluding(ctx, req, halts.byTarget)
 	if err != nil {
 		// Nothing was created, so there is nothing to clean up and no attempt to
 		// record: the run is refused before dispatch, with the reason the user gets

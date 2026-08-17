@@ -25,6 +25,12 @@
 #
 # 本檔只定義「什麼情況算異常」；ADR-022 定的動作（drain 節點、暫停整池派送、暫停
 # P-03 例行重建）屬平台實作，不是 Alertmanager 的職責。
+#
+# 2026-08-18：前兩個動作已由 SEC-012 落地（`dispatch_halts` 表 ＋
+# `internal/run/halt.go`；Reconciler 自己撥開關，P1 由 operator 端點撥，兩者同一份
+# 狀態）。上面那句仍然成立——**告警還是不執行動作**——改變的是「平台已經自己停下來
+# 了」現在是一個看得到的狀態，故新增 `DispatchHalted` 與 `DispatchHaltedForIncident`
+# 兩條。**P-03 例行重建的暫停仍未做**：節點重建在部署期，平台沒有它的控制點。
 
 groups:
   # --- O11Y-001：搜尋與 Run 漏斗 ---------------------------------------------
@@ -269,6 +275,44 @@ groups:
             掃描是 River 的 leader-only periodic job（5 分鐘一次），先查 worker 的
             leader 選舉。**沒有 Reconciler 在跑，就沒有人知道洩漏了多少**——ADR-022
             把這一項列為阻擋級，不是 warning。
+            **本條的「暫停派送」仍是人的動作**：偵測不到 Reconciler 在跑的東西，只能
+            在平台外面；SEC-012 的開關由 `PUT /admin/dispatch/halt` 撥（見下一條）。
+
+      - alert: DispatchHalted
+        # SEC-012 的開關本身（`skillhub_dispatch_halted`，1 = 該 target 不再派送）。
+        # 檔頭原本寫「ADR-022 定的動作（drain 節點、暫停整池派送）屬平台實作，不是
+        # Alertmanager 的職責」——那句仍然成立，改變的是那些動作現在真的存在，因此
+        # 「平台已經自己停下來了」變成一個要讓人知道的狀態。
+        #
+        # 兩個 source 的差別就是要不要人回來：`orphan_threshold` 連續 2 輪門檻以下會
+        # 自己解除（ADR-022 X-04），`p1_incident` 永遠不會（03:SEC-012「解除不得是
+        # 自動的」），所以只有後者是 critical。
+        #
+        # 【已知延遲】這個 gauge 由 Reconciler 每 5 分鐘從 dispatch_halts 重新發佈，
+        # 因為撥開關的可能是 API 程序而發佈指標的是 worker。行為沒有延遲（每條決策
+        # 路徑都直接讀表），只有這個顯示會晚最多一輪。
+        expr: max by (target, source) (skillhub_dispatch_halted) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.target }} 已停止派送新 Run（source={{ $labels.source }}）"
+          description: >-
+            `source=orphan_threshold` 是 ADR-022 X-04 的容量暫停，清理跟上就會自己
+            恢復；`source=p1_incident` 是 02:SEC-010 的 P1，**現場正被保留（清理與
+            孤兒回收都已停手）**，要人走完 runbook 後以
+            `DELETE /admin/dispatch/halt` 解除。
+
+      - alert: DispatchHaltedForIncident
+        # 同一個 gauge 的 P1 切片，分開一條是因為值班要做的事完全不同：上一條可能
+        # 什麼都不用做，這一條表示平台正在等人。
+        expr: max by (target) (skillhub_dispatch_halted{source="p1_incident"}) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "P1 安全事件生效中：{{ $labels.target }} 已停派送並保留現場"
+          description: >-
+            02:SEC-010「1 小時內接手，走對應 runbook」。**保留現場期間 sandbox 不會被
+            回收**，slot 與費用持續佔用；調查完成前不要以「清一清就好」繞過這個狀態。
 
   # --- Trace 管線本身 ---------------------------------------------------------
   - name: skillhub-trace-pipeline

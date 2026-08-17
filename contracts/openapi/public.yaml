@@ -1152,6 +1152,193 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/dispatch:
+    get:
+      operationId: getDispatchStatus
+      summary: Is the platform dispatching new Runs (SEC-012)
+      description: |
+        Operator only. The single answer to 「現在到底有沒有在派送」, which is the
+        whole reason 03:SEC-012 requires the P1 halt and ADR-022 X-04's
+        drain/suspend to be one switch rather than two.
+
+        Both triggers appear here in the same list and are told apart by
+        `source`: `p1_incident` waits for a person, `orphan_threshold` clears
+        itself after two consecutive reconciler rounds below the threshold.
+      responses:
+        "200":
+          description: The switch, as the platform's own dispatcher reads it.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dispatching, halts]
+                properties:
+                  dispatching:
+                    type: boolean
+                    description: |
+                      False when nothing can be dispatched at all — the pool is
+                      halted, or every configured provider is drained one at a
+                      time, which is the same operational fact.
+                  halts:
+                    type: array
+                    items:
+                      type: object
+                      required: [target, source, reason, declared_at, automatic_recovery]
+                      properties:
+                        target:
+                          type: string
+                          description: A provider name, or `pool` for the whole fleet.
+                        source:
+                          type: string
+                          enum: [p1_incident, orphan_threshold]
+                        reason: { type: string }
+                        declared_at: { type: string, format: date-time }
+                        clear_rounds:
+                          type: integer
+                          description: |
+                            Consecutive reconciler rounds this halt's own
+                            condition has been clear. Only moves for
+                            `orphan_threshold`; two lifts it.
+                        automatic_recovery:
+                          type: boolean
+                          description: |
+                            False for `p1_incident`. Automatic release would let
+                            the trigger decide when service resumes, which
+                            03:SEC-012 forbids.
+        "404":
+          description: |
+            The caller is not an operator. Same non-disclosure rule as the
+            restriction routes above, and more so: an endpoint that stops the
+            whole fleet is one whose existence is worth not advertising.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/dispatch/halt:
+    put:
+      operationId: declareDispatchHalt
+      summary: Stop dispatching new Runs (SEC-012, 02:SEC-010 P1)
+      description: |
+        Operator only. Declares a P1 and performs its three automatic actions at
+        once: new runs are refused (503 on POST /skills/{id}/runs), nothing is
+        dispatched to the target, and cleanup and orphan teardown stand down so
+        the scene is preserved for the investigation.
+
+        This endpoint exists because most P1 criteria are judgements or live
+        outside this process — 逃逸疑慮, the P-02 probe, the gVisor advisory cron,
+        and a Reconciler that has stopped cannot be the thing that notices it
+        stopped. What the platform can do is make the response one request, which
+        is what 02:SEC-010's escalation rule 「不確定屬 P1 或 P2 時一律以 P1 處理」
+        depends on.
+
+        Writes the halt row and its audit event in one transaction (iron rule 9).
+        Idempotent: re-declaring rewrites the reason and writes a second audit
+        event, because an operator repeating an action is not an error.
+
+        A P1 declared over a target already paused by the X-04 threshold takes it
+        over — including its release, which stops being automatic. The reverse
+        never happens.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                provider:
+                  type: string
+                  description: |
+                    Drain one node (ADR-022 X-04 ①「其他節點不受影響」). Omit for
+                    the whole fleet. A name that is not in the deployment's
+                    provider list is refused rather than stored: a halt on a
+                    misspelled node protects nothing and reads, on GET
+                    /admin/dispatch, exactly like one that does.
+
+                    Draining is a control-plane action only. Cordoning the VM,
+                    stopping sandboxd and rebuilding the node are deployment-period
+                    actions and nothing here simulates them.
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: |
+                    Why, in the operator's own words. Required and not satisfiable
+                    with whitespace, same rule as the restriction routes: halting
+                    the fleet is not a decision if nobody can explain it later. It
+                    is stored as the halt's reason and copied into the audit event.
+      responses:
+        "200":
+          description: Nothing is dispatched to this target until somebody resumes it.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [target, source, reason, declared_at, note]
+                properties:
+                  target: { type: string }
+                  source: { type: string, enum: [p1_incident] }
+                  reason: { type: string }
+                  declared_at: { type: string, format: date-time }
+                  note:
+                    type: string
+                    description: What the halt now does, in one sentence.
+        "400":
+          description: Body is not JSON, `note` is blank or over 1000 bytes, or `provider` is not configured.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      operationId: liftDispatchHalt
+      summary: Resume dispatching (SEC-012)
+      description: |
+        Operator only, and the only way a `p1_incident` halt is ever released:
+        03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時恢復服務）」.
+
+        It releases an `orphan_threshold` halt too, because an operator who has
+        finished dealing with a leak should not have to wait out the reconciler.
+        Same statement either way — there is no second path back to dispatching
+        that could disagree with this one.
+
+        Queued runs resume on the supervisor's next sweep; nothing was failed
+        while the halt was in force, so nobody has to start over. Cleanups that
+        stood down are performed on the next sweep as well.
+
+        Idempotent: lifting nothing answers 204, because the caller's intent is
+        already true.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                provider:
+                  type: string
+                  description: The drained node to return to service; omit for the fleet-wide halt.
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why it is safe to resume. Required, same rule as on PUT.
+      responses:
+        "204":
+          description: |
+            This target is dispatchable. Also the answer when there was nothing
+            to lift.
+        "400":
+          description: Body is not JSON, `note` is blank or over 1000 bytes, or `provider` is not configured.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/runs/preflight:
     get:
       operationId: getRunPreflight
@@ -1389,6 +1576,26 @@ paths:
               inserted the run and under the same advisory lock as the
               concurrency limit, so a refusal leaves no run behind (ADR-028
               決策 2). The counters are the same ones GET /me/quota reports.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: |
+            The fleet is held for a P1 security incident (SEC-012, 02:SEC-010's
+            automatic first action). 503 and not 422, which is what every other
+            refusal on this route is: those say the request may not proceed while
+            the platform is fine, this one says the platform is not.
+
+            Only an incident halt refuses creation. ADR-022 X-04's capacity pause
+            leaves runs `queued` instead, because its release is automatic — two
+            clear reconciler rounds — so queueing is a wait with an end. An
+            incident halt has no automatic release at all, and a queue that may
+            not move until an investigation finishes is a worse answer than
+            saying so now.
+
+            The body carries no incident detail: the person who cannot start a
+            run is not the person the incident is about. Retrying is safe and
+            nothing was written.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

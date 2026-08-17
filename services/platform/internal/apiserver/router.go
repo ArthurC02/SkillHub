@@ -102,6 +102,18 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("PUT /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.SetRestriction))
 	mux.HandleFunc("DELETE /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.ClearRestriction))
 
+	// 03:SEC-012's operator surface: 02:SEC-010's P1 first action, and the one place
+	// 「現在到底有沒有在派送」 is answered. Same RequireOperator and therefore the same
+	// 404 to everybody else — an endpoint that stops the whole fleet is one whose
+	// existence is worth not advertising.
+	//
+	// Deliberately not a per-skill or per-workspace route: what it moves is the
+	// execution plane's own switch, shared with the ADR-022 X-04 reconciler, and
+	// nothing here reads workspace-private data (SEC-011 最小權力原則 still holds).
+	mux.HandleFunc("GET /admin/dispatch", auth.RequireOperator(d.Runs.Halts))
+	mux.HandleFunc("PUT /admin/dispatch/halt", auth.RequireOperator(d.Runs.DeclareHalt))
+	mux.HandleFunc("DELETE /admin/dispatch/halt", auth.RequireOperator(d.Runs.LiftHalt))
+
 	// Test Lab (TEST-001/003/004). Everything is workspace scoped from the
 	// session; there is no anonymous read here. The literal "limits" segment is
 	// more specific than {id}, so it still wins.

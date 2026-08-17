@@ -84,6 +84,15 @@ const (
 	// becoming unavailable without the user asking — the thing an audit trail
 	// exists to make traceable, and slog is sampled and thrown away.
 	ActionObjectMissing = "storage.object_missing"
+	// 02:SEC-010's P1 first action and ADR-022 X-04's drain/suspend, which are one
+	// switch (03:SEC-012). Both triggers write both events: an operator declaring a
+	// P1 carries an actor, the reconciler crossing a threshold carries none, and the
+	// action names are the same because "is the platform dispatching" has one
+	// history. Split into halted and resumed for the reason the licensing-hold pair
+	// is split — "somebody resumed the fleet" is the event a review looks for, and
+	// one action name would make it a metadata field to filter on.
+	ActionDispatchHalt   = "dispatch.halted"
+	ActionDispatchResume = "dispatch.resumed"
 )
 
 // Resource types the actions above refer to.
@@ -100,6 +109,10 @@ const (
 	// is the deployment's configuration, not a row anything can point at.
 	ResourceOperatorRoster = "operator_roster"
 	ResourceBetaRoster     = "beta_roster"
+	// ResourceDispatch is the execution plane's dispatch switch (0030). The
+	// resource_id is the dispatch_halts row, so a halt and the resume that ended it
+	// are two events pointing at one incident.
+	ResourceDispatch = "dispatch"
 )
 
 // Event is one audited operation.

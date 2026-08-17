@@ -146,6 +146,15 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		SkillID: skillID, VersionID: versionID, TestCaseID: testCaseID,
 		ConfirmedSummaryHash: body.ConfirmedSummaryHash,
 	})
+	// SEC-012: the fleet is held for a P1. 503 and not 422, which is the whole rest
+	// of this list: every refusal below says the request may not proceed while the
+	// platform is fine, and this one says the platform is not. It carries no
+	// incident detail — the person who cannot start a run is not the person the
+	// incident is about.
+	if errors.Is(err, ErrDispatchHalted) {
+		httpx.WriteError(w, http.StatusServiceUnavailable, err.Error())
+		return
+	}
 	if errors.Is(err, ErrNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
 		return

@@ -86,7 +86,15 @@ jobs:
           set -euo pipefail
           if [ "${ESCAPE:-}" = 1 ]; then
             TITLE="gVisor escape-class advisory — 24h SLA started (SEC-002 P-04)"
-            BODY=$(printf 'ADR-022 P-04: patch the whole pool within 24h of this issue, or disable SelfHostedProvider per SEC-010.\n\n```\n%s\n```\n' "$(cat escape.txt)")
+            # SEC-012's switch is one request, and this issue is where the 24h SLA
+            # starts, so the alternative to patching belongs in the same place as
+            # the deadline. Deliberately an instruction and not an API call: this
+            # job would need a platform session to flip the switch itself, and a
+            # credential that can stop the fleet, held by CI, is a worse exposure
+            # than the minutes a person takes to paste one command. Automating it
+            # is a deployment-period decision, not a workflow edit.
+            HALT='curl -X PUT -b "$COOKIE" -H "Content-Type: application/json" -d '"'"'{"note":"gVisor escape-class advisory, pool not yet patched"}'"'"' https://<host>/admin/dispatch/halt'
+            BODY=$(printf 'ADR-022 P-04: patch the whole pool within 24h of this issue, or disable SelfHostedProvider per SEC-010.\n\nTo stop dispatching now (03:SEC-012, as the operator):\n\n```\n%s\n```\n\nThat refuses new runs, stops dispatch and preserves the scene, and it is never lifted automatically: `DELETE /admin/dispatch/halt` once the pool is patched.\n\n```\n%s\n```\n' "$HALT" "$(cat escape.txt)")
           else
             TITLE="gVisor baseline has drifted (SEC-002 P-04)"
             BODY="ADR-022 P-04: $FAIL. Update infra/nodes/gvisor-baseline.txt and rebuild the pool (P-03)."

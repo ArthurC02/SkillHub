@@ -224,6 +224,15 @@ type CreateParams struct {
 // content (iron rule 4), so later edits to the test case cannot rewrite what a past
 // run was asked to do.
 func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
+	// SEC-012 action ①, first of the two entry points (halt.go): while the fleet is
+	// held for a P1, no new run is accepted. Before every other check, including the
+	// workspace-scoped reads below, because a platform that has stopped is not going
+	// to become able to run this by the caller fixing anything about the request —
+	// and because a stopped platform should not be doing lookups on its way to
+	// saying no.
+	if err := s.requireDispatchable(ctx); err != nil {
+		return gen.Run{}, err
+	}
 	// Both reads are workspace scoped, so another workspace's version or test case
 	// is "not found" rather than "forbidden" (WS-006).
 	version, err := s.queries().GetSkillVersion(ctx, gen.GetSkillVersionParams{

@@ -95,6 +95,28 @@ func (w *CleanupWorker) Work(ctx context.Context, job *river.Job[CleanupArgs]) e
 // outcome. Exported so the supervisor and tests drive the same path.
 func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 	defer metrics.ObserveSince(metrics.CleanupDuration, time.Now())
+	// SEC-012 action ③ 「保留現場」, and the reason the halt's source matters here.
+	//
+	// An incident halt stands teardown down: a P1 is investigated by looking at the
+	// sandbox that caused it, and destroying it is the first irreversible thing the
+	// platform would otherwise do — 02:SEC-010's automatic action is 「停止派送新 Run
+	// 並保留現場」, both halves.
+	//
+	// An X-04 threshold halt must NOT stop teardown, and this is the one place the
+	// two triggers of the shared switch behave differently on purpose: cleanup is
+	// exactly what clears the leaked sandboxes that raised it, so suspending it there
+	// would make the halt permanent by its own action.
+	halts := s.haltsFailClosed(ctx)
+	if halts.incidentHeld(haltPool) {
+		// Nothing is written, so cleanup_status stays whatever it was and
+		// ListRunsNeedingCleanup keeps this run on the supervisor's worklist; the
+		// teardown happens on the first sweep after the halt is lifted. Returning nil
+		// rather than an error so River does not burn this job's attempts waiting for
+		// a human (RUN-007's retries are for transient failures, and an investigation
+		// is not one).
+		slog.Warn("cleanup held: a P1 halt is preserving the scene", "run_id", uuidString(run.ID))
+		return nil
+	}
 	if _, err := s.queries().SetRunCleanupStatus(ctx, gen.SetRunCleanupStatusParams{
 		RunID: run.ID, WorkspaceID: run.WorkspaceID, CleanupStatus: gen.RunCleanupStatusCleaningUp,
 	}); err != nil {
@@ -109,6 +131,10 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 	}
 
 	var failures []string
+	// Attempts on a node held for an incident are left standing while the rest of
+	// the run is released. Tracked rather than aborted, because a run can have
+	// attempts on two providers and only one of them may be under investigation.
+	preserved := 0
 	for _, attempt := range attempts {
 		// SEC-005: the model credential is revoked on every terminal outcome,
 		// dispatched or not - a key can be minted and the dispatch then fail, and
@@ -132,6 +158,14 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 		if attempt.ProviderRunID == nil {
 			continue // never dispatched: nothing was ever provisioned
 		}
+		// The Virtual Key above is revoked either way, and that is deliberate: it is
+		// containment, not evidence. 02:SEC-010's own P1 runbook opens with 「撤銷該
+		// 時間窗內所有 attempt 的 Virtual Key」, so a halt that skipped it would be
+		// preserving a live credential rather than a scene.
+		if halts.incidentHeld(attempt.Provider) {
+			preserved++
+			continue
+		}
 		provider := s.providers().Lookup(attempt.Provider)
 		if provider == nil {
 			// The provider was removed from the configuration while a sandbox of its
@@ -148,6 +182,15 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 		}
 	}
 
+	if preserved > 0 {
+		// Same reasoning as the pool-wide case above: no status is written, so the run
+		// stays on the supervisor's cleanup worklist and is released once the node is
+		// no longer under investigation. Recording `cleaned` here would be a claim
+		// that a sandbox which is still standing has been released.
+		slog.Warn("cleanup partly held: a P1 halt is preserving the scene",
+			"run_id", uuidString(run.ID), "attempts_held", preserved)
+		return nil
+	}
 	status := gen.RunCleanupStatusCleaned
 	if len(failures) > 0 {
 		status = gen.RunCleanupStatusFailed
@@ -228,6 +271,12 @@ func (w *OrphanScanWorker) Work(ctx context.Context, _ *river.Job[OrphanScanArgs
 		}
 		metrics.OrphanScan.WithLabelValues(provider.Name, "ok").Inc()
 	}
+	// ADR-022 X-04, evaluated after the pass that wrote the sightings it reads, and
+	// before the error return: a provider that failed to answer this round still had
+	// its previous rounds counted, and the threshold is about what is sitting on the
+	// fleet rather than about whether this call succeeded. It moves the same switch
+	// SEC-012's P1 declaration moves (halt.go).
+	w.Svc.EvaluateOrphanThresholds(ctx)
 	if len(failures) > 0 {
 		return errors.New("orphan scan incomplete: " + strings.Join(failures, "; "))
 	}
@@ -259,6 +308,13 @@ func (s *Service) scanProvider(ctx context.Context, provider *Provider) error {
 		observed = time.Now()
 	}
 
+	// SEC-012 action ③ again, on the last line of defence. Sightings are still
+	// recorded — the X-04 count has to keep running, or the incident would silently
+	// disable the capacity threshold as well — but nothing is destroyed while a P1
+	// holds this node. A leaked sandbox is also the most likely piece of evidence
+	// there is.
+	preserveScene := s.haltsFailClosed(ctx).incidentHeld(provider.Name)
+
 	// Empty, not nil: it is passed to ForgetClearedOrphans below even when nothing
 	// leaked, and "nothing leaked" is exactly when last round's rows must go.
 	stillPresent := []string{}
@@ -282,6 +338,9 @@ func (s *Service) scanProvider(ctx context.Context, provider *Provider) error {
 			// The platform run_id, never the provider handle, is what identifies this
 			// in logs and metrics (iron rule 10).
 			"run_id", entry.RunID)
+		if preserveScene {
+			continue
+		}
 		// O11Y-003: a `destroyed` above zero is a leak that happened and was
 		// contained; a `failed` is a leak that is still burning a slot. The alert
 		// rules distinguish the two because only the second needs a human.

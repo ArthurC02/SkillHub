@@ -169,6 +169,22 @@ var (
 		Name: "skillhub_storage_objects_missing",
 		Help: "Rows whose stored object has been missing for two or more consecutive reconciler rounds (SEC-006, 04 丙-9).",
 	}, []string{"resource_kind"})
+	// DispatchHalted is the SEC-012 / ADR-022 X-04 switch as one number: 1 while a
+	// target is not being dispatched to. `target` is a provider name from
+	// SKILLHUB_SANDBOX_PROVIDERS or the literal "pool", so its cardinality is the
+	// size of the fleet plus one; `source` says which trigger raised it, which is
+	// also what says whether it will clear on its own.
+	//
+	// Republished from the table on every reconciler round rather than written when
+	// the switch moves: an operator declaring a P1 does it in the API process and
+	// this gauge is exported by the worker, and a metric that only the process that
+	// happened to make the change knows about is the split view SEC-012 is about.
+	// The cost is up to one scan interval of lag on the display, never on the
+	// behaviour — every decision path reads the table directly.
+	DispatchHalted = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_dispatch_halted",
+		Help: "1 while new Runs are not dispatched to this target (03:SEC-012, ADR-022 X-04).",
+	}, []string{"target", "source"})
 )
 
 // Trace ingestion (TRACE-005, TRACE-008). Health of the pipeline itself, not of

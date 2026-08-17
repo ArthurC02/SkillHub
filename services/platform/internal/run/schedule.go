@@ -168,11 +168,29 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 // ponytail: first-fit selection, no load balancing across providers. Revisit when
 // more than one provider is configured in production and slots actually contend.
 func (r *Registry) Select(ctx context.Context, req Requirements) (*Provider, ProviderCapability, RuntimeProfile, error) {
+	return r.SelectExcluding(ctx, req, nil)
+}
+
+// SelectExcluding is Select with the drained nodes taken out (SEC-012 action ②,
+// ADR-022 X-04 ①「該節點停止接受新 Run（drain），其他節點不受影響」). `halted` is keyed
+// by provider name, which is the shape halt.go already holds the switch in.
+//
+// Draining shows up in the refusal reason like any other mismatch, so a run that
+// ends up with nowhere to go says which nodes were drained rather than reporting a
+// fleet that mysteriously supports nothing. The whole-pool case never reaches here
+// — the caller stops first and leaves the run queued.
+func (r *Registry) SelectExcluding(
+	ctx context.Context, req Requirements, halted map[string]gen.DispatchHalt,
+) (*Provider, ProviderCapability, RuntimeProfile, error) {
 	if len(r.Providers) == 0 {
 		return nil, ProviderCapability{}, RuntimeProfile{}, ErrNoProvider
 	}
 	reasons := make([]string, 0, len(r.Providers))
 	for _, p := range r.Providers {
+		if halt, ok := halted[p.Name]; ok {
+			reasons = append(reasons, fmt.Sprintf("%s is drained (%s)", p.Name, halt.Source))
+			continue
+		}
 		capability, err := r.Capability(ctx, p)
 		if err != nil {
 			reasons = append(reasons, fmt.Sprintf("%s is unreachable", p.Name))
