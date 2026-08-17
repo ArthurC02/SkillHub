@@ -15,6 +15,7 @@
 | [`task-cards.md`](task-cards.md) | 14 張情境卡（受測者版／主持人版分離） | 主持人、受測者 |
 | [`recording-sheet.md`](recording-sheet.md) | 逐場記錄表與匯總表 | 記錄員 |
 | [`analysis.md`](analysis.md) | 判準計算、質性主題、不通過決策樹 | 負責人 |
+| [`consent-and-data-policy.md`](consent-and-data-policy.md) | 受測者同意書與資料保存政策（**閘門 A 版 ＋ M4 封測 B 版，一份政策兩份同意書**）。**2026-08-18 新增，草稿待負責人與法務確認**——它是 `recruit.md` §5.2 第 5、6 兩個佔位項與 `moderator-guide.md` §1 檢核項的承接者，**不是凍結標的的變更**（§3.2 列的三樣一字未動） | 負責人、法務、主持人 |
 
 ---
 

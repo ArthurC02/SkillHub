@@ -42,9 +42,9 @@
 7. [M1 執行計畫與產出](m1/README.md)（內容策展、目錄重建、審校報告、閘門測試材料）
 8. [M2 執行計畫與產出](m2/README.md)（Skill Lab 交付摘要、基準試跑、工作項對帳）
 9. [M3 執行計畫與產出](m3/README.md)（評估與改善：範圍、批次分解與裁定、評估管線設計、契約增量清單、[逐項對帳](m3/audit.md)、[Judge 判準回歸報告](m3/report-judge-regression.md)）
-10. [M4 執行計畫與產出](m4/README.md)（打包與封閉測試：範圍、六條接點與甲類對應、**程式能完成 vs 負責人動作的分界**、批次分解、未決點；[打包管線設計](m4/packaging-design.md)、[封閉測試設計](m4/beta-design.md)、[契約增量清單](m4/contract-deltas.md)）——**計畫，未開工**
+10. [M4 執行計畫與產出](m4/README.md)（打包與封閉測試：範圍、六條接點與甲類對應、**程式能完成 vs 負責人動作的分界**、批次分解、未決點；[打包管線設計](m4/packaging-design.md)、[封閉測試設計](m4/beta-design.md)、[契約增量清單](m4/contract-deltas.md)、[PDM-009 封測提案](m4/pdm-009-beta-proposal.md)（待追認）、[逐項對帳](m4/audit.md)、[封測上線前檢查表](m4/release-checklist.md)）——**程式面已收斂；封測待部署期與負責人動作**
 
-跨里程碑仍在被引用的主題目錄（依 [ADR-024](../../adr/ADR-024-top-level-repository-layout.md)，不屬於任何 `mX/`）：[`content/`](content/)（策展資料與 writing rubric）、[`governance/`](governance/)（授權備忘）、[`gate-test/`](gate-test/)（M1 驗證閘門材料）。
+跨里程碑仍在被引用的主題目錄（依 [ADR-024](../../adr/ADR-024-top-level-repository-layout.md)，不屬於任何 `mX/`）：[`content/`](content/)（策展資料與 writing rubric）、[`governance/`](governance/)（授權備忘與上游詢問信草稿）、[`gate-test/`](gate-test/)（M1 驗證閘門材料，**另含閘門與封測共用的[受測者同意書與資料保存政策](gate-test/consent-and-data-policy.md)——草稿，待法務確認**）。
 
 **目錄骨架（M3 起適用，既有檔名不回溯改）**：每個 `mX/` 固定為 `README.md`（計畫＋狀態＋檔案地圖）、`audit.md`（逐項對帳）、`report-*`（報告）；目錄內檔名不重複 `mX` 前綴。
 
