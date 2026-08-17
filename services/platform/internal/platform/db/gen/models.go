@@ -146,6 +146,26 @@ type Dataset struct {
 	DeletedAt   pgtype.Timestamptz
 }
 
+type DownloadArtifact struct {
+	ArtifactID        pgtype.UUID
+	Kind              string
+	WorkspaceID       pgtype.UUID
+	SkillVersionID    pgtype.UUID
+	Target            string
+	ProfileVersion    string
+	PackagerVersion   string
+	ManifestHash      string
+	IncludesTestCases bool
+}
+
+type DownloadRecord struct {
+	ID           int64
+	WorkspaceID  pgtype.UUID
+	ArtifactID   pgtype.UUID
+	ActorUserID  pgtype.UUID
+	DownloadedAt pgtype.Timestamptz
+}
+
 type Evaluation struct {
 	ID                    pgtype.UUID
 	WorkspaceID           pgtype.UUID
@@ -302,6 +322,8 @@ type Skill struct {
 	TakedownReason      *string
 	// Reason code for a licensing hold on the package materials; NULL = none. Set by review, copied onto forks at fork time. See 0023.
 	AccessRestriction *string
+	// May a Download Artifact be produced from this skill? Only 'allowed' releases; 'unknown' blocks. license_status = Confirmed must never set this on its own (CONTENT-002). Copied onto forks at fork time, like access_restriction. See 0027.
+	Redistribution string
 }
 
 type SkillRuntimeCompatibility struct {

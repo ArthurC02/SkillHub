@@ -28,6 +28,20 @@ BEGIN
 END;
 $$;
 
+-- Third helper for the same reason must_violate_check is separate from must_fail:
+-- a composite foreign key raises foreign_key_violation, and letting that count as
+-- either of the other two would let one guard stand in as proof of another.
+CREATE FUNCTION must_violate_fk(stmt text) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+    BEGIN
+        EXECUTE stmt;
+    EXCEPTION WHEN foreign_key_violation THEN
+        RETURN;
+    END;
+    RAISE EXCEPTION 'expected a foreign key rejection but statement succeeded: %', stmt;
+END;
+$$;
+
 -- Fixtures.
 INSERT INTO users (id, email, display_name)
 VALUES ('11111111-1111-1111-1111-111111111111', 'a@example.test', 'A');
@@ -244,6 +258,70 @@ SELECT must_violate_check($$
     VALUES ('22222222-2222-2222-2222-222222222222', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
             'skill', 'p', '../../etc/passwd', 'c', 'i')
 $$);
+
+-- 9. Packaging (0027): redistribution is refused by default, a download package
+-- is a fact, and its download history is append only.
+
+-- 9a. Every existing skill starts blocked, because "nobody classified this yet"
+-- must not read as permission to redistribute it (DISC-003, ADR-021 §5.3).
+DO $$
+BEGIN
+    IF (SELECT redistribution FROM skills WHERE id = '33333333-3333-3333-3333-333333333333')
+       <> 'unknown' THEN
+        RAISE EXCEPTION 'a skill did not default to redistribution = unknown';
+    END IF;
+END;
+$$;
+SELECT must_violate_check($$
+    UPDATE skills SET redistribution = 'source-available'
+    WHERE id = '33333333-3333-3333-3333-333333333333'
+$$);
+
+-- 9b. Packaging attributes only attach to a download package, and only inside the
+-- artifact's own workspace - both are copied columns, checked by composite FK.
+INSERT INTO artifacts (id, workspace_id, run_id, kind, file_name, content_type,
+                       size_bytes, content_hash, object_key, expires_at)
+VALUES ('f1111111-1111-4111-8111-111111111111', '22222222-2222-2222-2222-222222222222',
+        NULL, 'download_package', 'demo-standard.zip', 'application/zip',
+        1024, 'sha256-pkg-1', 'ws/22/downloads/f1.zip', now() + interval '90 days');
+INSERT INTO artifacts (id, workspace_id, run_id, kind, file_name, content_type,
+                       size_bytes, content_hash, object_key, expires_at)
+VALUES ('f2222222-2222-4222-8222-222222222222', '22222222-2222-2222-2222-222222222222',
+        '77777777-7777-7777-7777-777777777777', 'run_output', 'out.txt', 'text/plain',
+        12, 'sha256-out-1', 'ws/22/runs/77/out.txt', now() + interval '30 days');
+
+SELECT must_violate_fk($$
+    INSERT INTO download_artifacts (artifact_id, workspace_id, skill_version_id, target,
+                                    profile_version, packager_version, manifest_hash,
+                                    includes_test_cases)
+    VALUES ('f2222222-2222-4222-8222-222222222222', '22222222-2222-2222-2222-222222222222',
+            '44444444-4444-4444-4444-444444444444', 'standard', '1', 'pkg-1', 'sha256-m-1', false)
+$$);
+
+INSERT INTO download_artifacts (artifact_id, workspace_id, skill_version_id, target,
+                                profile_version, packager_version, manifest_hash,
+                                includes_test_cases)
+VALUES ('f1111111-1111-4111-8111-111111111111', '22222222-2222-2222-2222-222222222222',
+        '44444444-4444-4444-4444-444444444444', 'standard', '1', 'pkg-1', 'sha256-m-1', false);
+
+-- 9c. Repackaging is a new row, never an edit (iron rule 4). The mutable half of a
+-- download lives on artifacts, which is not frozen.
+SELECT must_fail($$UPDATE download_artifacts SET manifest_hash = 'sha256-swapped'
+                   WHERE artifact_id = 'f1111111-1111-4111-8111-111111111111'$$);
+SELECT must_fail($$DELETE FROM download_artifacts
+                   WHERE artifact_id = 'f1111111-1111-4111-8111-111111111111'$$);
+UPDATE artifacts SET scan_status = 'available'
+WHERE id = 'f1111111-1111-4111-8111-111111111111';
+
+-- 9d. The download history is append only (WS-002 1): "you downloaded this on that
+-- date" is not editable state.
+INSERT INTO download_records (workspace_id, artifact_id, actor_user_id)
+VALUES ('22222222-2222-2222-2222-222222222222', 'f1111111-1111-4111-8111-111111111111',
+        '11111111-1111-1111-1111-111111111111');
+SELECT must_fail($$UPDATE download_records SET downloaded_at = now() - interval '1 day'
+                   WHERE artifact_id = 'f1111111-1111-4111-8111-111111111111'$$);
+SELECT must_fail($$DELETE FROM download_records
+                   WHERE artifact_id = 'f1111111-1111-4111-8111-111111111111'$$);
 
 \echo 'immutability_test: OK'
 ROLLBACK;

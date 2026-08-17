@@ -27,7 +27,7 @@ const createSkill = `-- name: CreateSkill :one
 
 INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, access_restriction)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution
 `
 
 type CreateSkillParams struct {
@@ -68,12 +68,13 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 		&i.TakedownAt,
 		&i.TakedownReason,
 		&i.AccessRestriction,
+		&i.Redistribution,
 	)
 	return i, err
 }
 
 const getCatalogSkill = `-- name: GetCatalogSkill :one
-SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction FROM skills sk
+SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution FROM skills sk
 JOIN workspaces w ON w.id = sk.workspace_id AND w.is_catalog
 WHERE sk.id = $1 AND sk.deleted_at IS NULL
 `
@@ -99,12 +100,13 @@ func (q *Queries) GetCatalogSkill(ctx context.Context, id pgtype.UUID) (Skill, e
 		&i.TakedownAt,
 		&i.TakedownReason,
 		&i.AccessRestriction,
+		&i.Redistribution,
 	)
 	return i, err
 }
 
 const getSkill = `-- name: GetSkill :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 `
 
@@ -129,6 +131,7 @@ func (q *Queries) GetSkill(ctx context.Context, arg GetSkillParams) (Skill, erro
 		&i.TakedownAt,
 		&i.TakedownReason,
 		&i.AccessRestriction,
+		&i.Redistribution,
 	)
 	return i, err
 }
@@ -210,7 +213,7 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 }
 
 const listSkills = `-- name: ListSkills :many
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution FROM skills
 WHERE workspace_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -244,6 +247,7 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]Skill
 			&i.TakedownAt,
 			&i.TakedownReason,
 			&i.AccessRestriction,
+			&i.Redistribution,
 		); err != nil {
 			return nil, err
 		}
@@ -258,7 +262,7 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]Skill
 const softDeleteSkill = `-- name: SoftDeleteSkill :one
 UPDATE skills SET deleted_at = now(), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution
 `
 
 type SoftDeleteSkillParams struct {
@@ -285,6 +289,7 @@ func (q *Queries) SoftDeleteSkill(ctx context.Context, arg SoftDeleteSkillParams
 		&i.TakedownAt,
 		&i.TakedownReason,
 		&i.AccessRestriction,
+		&i.Redistribution,
 	)
 	return i, err
 }
