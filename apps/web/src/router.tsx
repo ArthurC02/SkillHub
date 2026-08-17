@@ -1,4 +1,12 @@
-import { Link, Outlet, createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import {
+  Link,
+  Outlet,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  useRouterState,
+} from "@tanstack/react-router";
+import { FeedbackEntry } from "./components/FeedbackEntry";
 import { Compare } from "./pages/Compare";
 import { DatasetUpload } from "./pages/DatasetUpload";
 import { Downloads } from "./pages/Downloads";
@@ -10,20 +18,37 @@ import { RunTrace } from "./pages/RunTrace";
 import { SkillDetail } from "./pages/SkillDetail";
 import { SkillFiles } from "./pages/SkillFiles";
 import { TestCaseDetail, TestCaseList } from "./pages/TestCases";
+import { WorkspaceSkills } from "./pages/WorkspaceSkills";
 import type { AgentRuntime } from "./api/types";
 
+/**
+ * The feedback entry lives here rather than on the pages that refuse something,
+ * because BETA-004 is about journeys that stop anywhere — including on a screen
+ * nobody predicted would be the one (beta-design §5). It reads the current path
+ * from the router so nothing has to be threaded down to it.
+ *
+ * In the footer and not the header, for a keyboard reason: it is a closed
+ * `<details>` holding a whole form, and above `<main>` it would sit between the
+ * top of every page and that page's own first control.
+ */
 function RootLayout() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <Link to="/" className="app-title">
           Skill Hub
         </Link>{" "}
-        <Link to="/lab/test-cases">Test Case</Link> <Link to="/workspace/downloads">下載紀錄</Link>
+        <Link to="/workspace/skills">我的 Skill</Link> <Link to="/lab/test-cases">Test Case</Link>{" "}
+        <Link to="/workspace/downloads">下載紀錄</Link>
       </header>
       <main>
         <Outlet />
       </main>
+      <footer className="app-footer">
+        <FeedbackEntry pathname={pathname} />
+      </footer>
     </div>
   );
 }
@@ -109,6 +134,17 @@ const downloadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/workspace/downloads",
   component: Downloads,
+});
+
+/**
+ * 02:WS-002 第 1 條 / WS-004: the caller's own skills, served by GET /skills.
+ * Under the same /workspace prefix as the download history for the same reason —
+ * these are the workspace's own lists, not the public catalogue.
+ */
+const workspaceSkillsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workspace/skills",
+  component: WorkspaceSkills,
 });
 
 // DISC-009: the selection lives in the URL so a comparison is linkable and
@@ -207,6 +243,7 @@ const routeTree = rootRoute.addChildren([
   skillFilesRoute,
   packagingRoute,
   downloadsRoute,
+  workspaceSkillsRoute,
   runPreflightRoute,
   datasetUploadRoute,
   testCaseListRoute,

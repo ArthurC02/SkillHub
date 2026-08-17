@@ -81,6 +81,8 @@ const skill = {
   },
 };
 
+// `env_vars` is required by the contract, so both of its answers are here: empty
+// (this target needs none) and populated.
 const targets = {
   targets: [
     {
@@ -92,6 +94,18 @@ const targets = {
       // No prompt: this target names no agent to run one against.
       verification_steps: ["Unzip the package. SKILL.md must be at the root of the archive."],
       notes: ["Any spec-compliant agent may try it; Skill Hub has not tried it on yours."],
+      env_vars: [],
+    },
+    {
+      id: "claude-code",
+      kind: "profile",
+      version: "1.0.0",
+      display_name: "Claude Code",
+      install_location: "~/.claude/skills/<name>/ (user)",
+      support_status: "unverified",
+      verification_prompt: "/skills",
+      notes: [],
+      env_vars: [],
     },
     {
       id: "claude-agent-sdk",
@@ -103,6 +117,16 @@ const targets = {
       verification_prompt: "List the skills you can use.",
       verification_steps: ["Set cwd to the directory holding .claude/skills/."],
       notes: [],
+      env_vars: [
+        {
+          name: "ANTHROPIC_API_KEY",
+          required: true,
+          description: "The SDK reads the key from your own environment.",
+          // A placeholder, never a credential shape: the same string is rendered
+          // verbatim into INSTALL.md, which ships inside packages (iron rule 11).
+          example: "<your own key>",
+        },
+      ],
     },
   ],
 };
@@ -146,6 +170,9 @@ function stubPlatform(options: { blocked?: boolean; duplicate?: boolean } = {}) 
               blocked_reason: "license_unknown",
               blocked_message: "nobody has established whether this skill may be redistributed",
               validation: emptyValidation,
+              // A gate closed before any bytes were read, so there is nothing to
+              // have dependencies — not a package that has none.
+              dependencies: [],
               included_test_cases: [],
               excluded_test_cases: [
                 { test_case_id: "tc1", name: "我上傳的資料", reason: "user-uploaded dataset" },
@@ -162,6 +189,12 @@ function stubPlatform(options: { blocked?: boolean; duplicate?: boolean } = {}) 
                 ],
                 infos: [],
               },
+              // The lines the produced INSTALL.md carries, verbatim.
+              dependencies: [
+                "SKILL.md: package evidences 2 third-party dependencies: pandas, openpyxl",
+                "pandas",
+                "openpyxl",
+              ],
               included_test_cases: [],
               excluded_test_cases: [],
             },
@@ -290,6 +323,51 @@ test("PACK-001 an identical package answers 已有相同套件 rather than prete
     .map((a) => a.getAttribute("href") ?? "")
     .find((h) => h.includes("/downloads/"));
   expect(href).toContain(`/downloads/${ARTIFACT}/content`);
+});
+
+test("DESIGN-012 the three compatibility axes are on the packaging page and stay apart", async () => {
+  stubPlatform();
+  await render(<Packaging />, () => text().includes("這個版本的相容性"));
+
+  // The same component the skill page uses, so the two surfaces cannot describe
+  // one measurement differently. An axis with no answer says 未驗證 rather than
+  // being hidden — a missing row reads as "fine" and 未驗證 does not.
+  expect(text()).toContain("規格驗證：通過");
+  expect(text()).toContain("能力相容：未驗證");
+  expect(text()).toContain("實測相容：未驗證");
+  // And the page refuses to let one axis be read as another.
+  expect(text()).toContain("「規格驗證通過」不等於「裝得起來」");
+});
+
+test("PACK-002 環境變數需求 is on the target, and 「不需要」 is stated rather than left blank", async () => {
+  stubPlatform();
+  await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
+
+  // Empty on two targets: they genuinely need none, and the page says so.
+  expect(text()).toContain("這個目標不需要任何環境變數");
+  // Populated on the SDK target, with required/optional stated per variable.
+  expect(text()).toContain("ANTHROPIC_API_KEY");
+  expect(text()).toContain("（必要）");
+  expect(text()).toContain("套件裡不會有任何金鑰");
+});
+
+test("PACK-002 依賴需求 shows the same lines the package's INSTALL.md will carry", async () => {
+  stubPlatform();
+  await render(<Packaging />, () => text().includes("依賴需求"));
+
+  expect(text()).toContain("pandas");
+  expect(text()).toContain("openpyxl");
+  // Served, not derived here: the page and the packaged document read one list.
+  expect(text()).toContain("同一份清單會寫進套件內的 INSTALL.md");
+  expect(text()).toContain("Skill Hub 不會替你安裝這些");
+});
+
+test("PACK-002 an empty dependency list means two different things and is never printed as one", async () => {
+  stubPlatform({ blocked: true }); // a gate closed before any bytes were read
+  await render(<Packaging />, () => text().includes("依賴需求"));
+
+  expect(text()).toContain("還沒有讀到套件內容");
+  expect(text()).not.toContain("沒有宣告依賴檔");
 });
 
 // --- the download history ---------------------------------------------------

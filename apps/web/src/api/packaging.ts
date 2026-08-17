@@ -52,8 +52,24 @@ export interface PackagingTarget {
    * agent, so both are optional individually.
    */
   verification_steps?: string[];
+  /**
+   * Environment variables this target needs (02:PACK-002 第 1 條「環境變數需求」).
+   * Required by the contract, so an empty array is the answer 「這個目標不需要
+   * 環境變數」 and never 「沒有人回答」.
+   *
+   * `example` is a placeholder and never a credential (iron rule 11): the same
+   * value is rendered verbatim into INSTALL.md, which ships inside packages.
+   */
+  env_vars: PackagingEnvVar[];
   /** Known limitations and the steps a path alone does not cover. Server-owned copy. */
   notes: string[];
+}
+
+export interface PackagingEnvVar {
+  name: string;
+  required: boolean;
+  description: string;
+  example?: string;
 }
 
 export type PackagingBlockedReason =
@@ -89,6 +105,17 @@ export interface PackagingPreview {
   /** The same sentence the 422 from the packaging call carries. Safe to display as-is. */
   blocked_message?: string;
   validation: PackageValidation;
+  /**
+   * What the package needs installed (02:PACK-002 第 1 條「依賴」), as the exact
+   * lines the produced INSTALL.md carries — same `skillpkg` findings, so the page
+   * and the packaged document cannot disagree about what a Skill needs.
+   *
+   * Empty means two different things and the page must not merge them: a gate
+   * closed before any bytes were read (there is no package yet to have
+   * dependencies), or the package declares and imports nothing. `allowed` tells
+   * them apart.
+   */
+  dependencies: string[];
   /** Empty when the caller did not ask for them — which is not "there are none". */
   included_test_cases: IncludedTestCase[];
   excluded_test_cases: ExcludedTestCase[];

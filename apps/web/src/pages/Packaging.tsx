@@ -14,6 +14,7 @@ import {
   type PackagingTargetId,
 } from "../api/packaging";
 import { useSkillDetail } from "../api/skills";
+import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
 import type { Finding, SkillDetail } from "../api/types";
 
@@ -35,6 +36,12 @@ import type { Finding, SkillDetail } from "../api/types";
  * 4. **A dataset the user uploaded never travels and there is no checkbox for
  *    it** (02:PACK-001 第二層). The excluded list says so rather than the package
  *    quietly being smaller than expected.
+ * 5. **The three compatibility axes are shown here too, and kept apart**
+ *    (02:PACK-002 via DESIGN-012). They belong to the Skill version being
+ *    packaged, not to the target: passing spec validation is not a statement
+ *    about whether the agent picked it up, and neither is a statement about
+ *    whether its scripts ran. Packaging changes none of the three, which is
+ *    exactly why they must not be re-stated in the packager's own words.
  */
 
 type PackagingSearch = { version?: string };
@@ -141,6 +148,14 @@ export function Packaging() {
           </p>
 
           {gate && <BlockedNotice reason={gate} />}
+
+          <h2>這個版本的相容性</h2>
+          <CompatibilityStatus compatibility={skill.data.compatibility} />
+          <p className="note">
+            三軸分開看：規格驗證是對套件的靜態分析，能力相容與實測相容是沙箱裡量到的。
+            打包不會改變其中任何一項，也不會把其中一項推論成另一項——
+            <strong>「規格驗證通過」不等於「裝得起來」，更不等於「腳本跑得動」</strong>。
+          </p>
 
           <h2>打包目標</h2>
           {targets.isPending && <p>載入打包目標中…</p>}
@@ -271,6 +286,7 @@ function TargetOption({
         {target.install_location ??
           "不指定——這個目標不指名任何 Agent，也就不假裝知道你的 Agent 把 Skill 放哪。"}
       </p>
+      <EnvVars target={target} />
       {target.notes.length > 0 && (
         <details>
           <summary>已知限制與安裝時要注意的事（{target.notes.length}）</summary>
@@ -283,6 +299,44 @@ function TargetOption({
       )}
       <Verification target={target} />
     </li>
+  );
+}
+
+/**
+ * 02:PACK-002 第 1 條「環境變數需求」, on the page where the target is chosen and
+ * not only inside the package's INSTALL.md — the same reason the verification
+ * steps are here. A property of the target and never of the Skill: what the SDK
+ * needs is what it needs, whichever Skill is inside.
+ *
+ * The contract requires the field, so an empty list is the target stating it
+ * needs none — a fact, printed as one, rather than a row silently missing.
+ */
+function EnvVars({ target }: { target: PackagingTarget }) {
+  if (target.env_vars.length === 0) {
+    return <p className="note">環境變數需求：這個目標不需要任何環境變數。</p>;
+  }
+  return (
+    <details>
+      <summary>環境變數需求（{target.env_vars.length}）</summary>
+      <ul className="note">
+        {target.env_vars.map((v) => (
+          <li key={v.name}>
+            <code>{v.name}</code> {v.required ? "（必要）" : "（選用）"} {v.description}
+            {v.example ? (
+              <>
+                {" "}
+                範例值：<code>{v.example}</code>
+              </>
+            ) : (
+              ""
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="note">
+        這些值要由你自己在你的環境裡設定。Skill Hub 產生的套件裡不會有任何金鑰。
+      </p>
+    </details>
   );
 }
 
@@ -334,6 +388,7 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
       )}
 
       <Findings validation={preview.validation} />
+      <Dependencies preview={preview} />
 
       <h3>會一起打包的 Test Case</h3>
       {preview.included_test_cases.length === 0 ? (
@@ -363,6 +418,44 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
             </li>
           ))}
         </ul>
+      )}
+    </>
+  );
+}
+
+/**
+ * 02:PACK-002 第 1 條「依賴需求」. The lines come from the server, which takes them
+ * from the same `skillpkg` findings it assembles INSTALL.md from — this page does
+ * not derive its own list, because two derivations of one fact drift and the
+ * drift would be between the page and the document inside the package.
+ *
+ * An empty list is two different answers, so it is never printed as one: with a
+ * gate closed no bytes were read and there is nothing to have dependencies, while
+ * an allowed preview with none is a package that really declares and imports
+ * nothing.
+ */
+function Dependencies({ preview }: { preview: PackagingPreview }) {
+  return (
+    <>
+      <h3>依賴需求</h3>
+      {preview.dependencies.length === 0 ? (
+        <p className="note">
+          {preview.allowed
+            ? "這個套件沒有宣告依賴檔，程式碼裡也沒有掃到第三方 import。這是靜態掃描的結果，不是作者的保證——掃描不執行套件裡的任何東西。"
+            : "還沒有讀到套件內容（上面那道鎖先擋下了），所以這裡不是「沒有依賴」，是還沒有東西可以看。"}
+        </p>
+      ) : (
+        <>
+          <ul className="risk-list">
+            {preview.dependencies.map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+          </ul>
+          <p className="note">
+            同一份清單會寫進套件內的 INSTALL.md。Skill Hub 不會替你安裝這些，
+            打包與掃描階段也不執行套件內的任何程式碼——你的環境有沒有這些依賴，要你自己確認。
+          </p>
+        </>
       )}
     </>
   );

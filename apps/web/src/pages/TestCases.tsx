@@ -36,6 +36,36 @@ import type { AcceptanceCriterion, RubricItem, TestCase } from "../api/testcases
  * cleared checkbox does not read as a bug.
  */
 
+/**
+ * 02:NFR-007「表單具有標籤與清楚的驗證訊息」. The submit button is disabled until
+ * the three required fields are filled, and a disabled control with no stated
+ * cause reads as a bug — the same ruling the DISC-003 filter bar already follows
+ * for its unavailable dimensions. `role="status"` and not `alert`: nothing has
+ * gone wrong yet, the form is simply not finished.
+ */
+function CreateValidation({
+  skillId,
+  name,
+  prompt,
+}: {
+  skillId: string;
+  name: string;
+  prompt: string;
+}) {
+  const missing = [
+    skillId === "" ? "選一個 Skill" : "",
+    name === "" ? "填名稱" : "",
+    prompt.trim() === "" ? "寫 User Prompt" : "",
+  ].filter((s) => s !== "");
+
+  if (missing.length === 0) return null;
+  return (
+    <p className="note" role="status">
+      還不能建立，因為：{missing.join("、")}。三個都是必填。
+    </p>
+  );
+}
+
 function criterionState(c: AcceptanceCriterion): string {
   if (c.confirmed_at) return `已確認（${c.confirmed_at}）`;
   return c.source === "suggested" ? "系統建議，尚未確認" : "尚未確認";
@@ -99,6 +129,7 @@ export function TestCaseList() {
             onChange={(e) => setPrompt(e.target.value)}
           />
         </p>
+        <CreateValidation skillId={skillId} name={name} prompt={prompt} />
         <button
           type="submit"
           disabled={create.isPending || skillId === "" || name === "" || prompt.trim() === ""}

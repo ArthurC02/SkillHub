@@ -12,8 +12,11 @@ import { router } from "./router";
  * 驗證訊息、風險與相容與評估狀態必須同時提供文字。
  *
  * Every route in router.tsx is rendered against mocked API data and scanned with
- * axe-core; any violation fails the build. Two things this cannot see, recorded
- * here rather than switched off:
+ * axe-core; any violation fails the build. The last two sections of this file are
+ * the keyboard walkthrough and the validation messages (04 丙-21 ①②), which axe
+ * answers nothing about.
+ *
+ * Three things this cannot see, recorded here rather than switched off:
  *
  * 1. **Colour contrast.** axe answers `incomplete` for `color-contrast` on every
  *    node here, and importing index.css with `css: true` does not change that —
@@ -24,6 +27,13 @@ import { router } from "./router";
  * 2. **Page-level rules** (`html-has-lang`, `document-title`, …) do not run
  *    against an element context. `index.html` carries them and no page can
  *    change them at runtime.
+ * 3. **The browser's own key handling.** jsdom does not turn Enter on a focused
+ *    button into a click, does not implement Tab, and does not open a `<details>`
+ *    on Enter over its `<summary>`. So the walkthrough below asserts the half a
+ *    test can own — that every step of a journey is a native control, in the
+ *    tab sequence, focusable, and that activating it moves the journey on — and
+ *    leaves the half the platform owns to the platform. **What it cannot prove is
+ *    that a real browser's Tab order matches DOM order**; nothing here fakes that.
  */
 
 let container: HTMLDivElement;
@@ -199,6 +209,7 @@ const TARGETS = {
       support_status: "unverified",
       verification_steps: ["Unzip the package. SKILL.md must be at the root of the archive."],
       notes: ["Any spec-compliant agent may try it; Skill Hub has not tried it on yours."],
+      env_vars: [],
     },
     {
       id: "claude-agent-sdk",
@@ -210,6 +221,14 @@ const TARGETS = {
       verification_prompt: "List the skills you can use.",
       verification_steps: ["Set cwd to the directory holding .claude/skills/."],
       notes: [],
+      env_vars: [
+        {
+          name: "ANTHROPIC_API_KEY",
+          required: true,
+          description: "The SDK reads the key from your own environment.",
+          example: "<your own key>",
+        },
+      ],
     },
   ],
 };
@@ -225,6 +244,7 @@ const PREVIEW = {
     ],
     infos: [{ code: "external-url", message: "SKILL.md 內有外部網址", details: ["example.com"] }],
   },
+  dependencies: ["requirements.txt: package declares external dependencies", "pypdf"],
   included_test_cases: [{ test_case_id: TEST_CASE, name: "去重複列", slug: "dedupe" }],
   excluded_test_cases: [
     { test_case_id: "tc-2", name: "我上傳的資料", reason: "user-uploaded dataset" },
@@ -636,6 +656,43 @@ async function scan(where: string) {
   ).toHaveLength(0);
 }
 
+/**
+ * The tab sequence as the platform would build it: native interactive elements
+ * in DOM order, minus the ones a browser skips — disabled controls, anything
+ * hidden from the accessibility tree, and the contents of a closed `<details>`
+ * (its `<summary>` stays, which is how a keyboard opens it).
+ *
+ * Positive `tabindex` is asserted absent in scan(), so DOM order IS the sequence
+ * here. That equivalence is the assumption this helper rests on, and it is the
+ * one thing only a real browser can confirm (QA-008).
+ */
+const FOCUSABLE =
+  'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
+
+function tabbables(): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => {
+    if (el.hasAttribute("disabled") || el.getAttribute("aria-hidden") === "true") return false;
+    const closed = el.closest("details:not([open])");
+    return closed === null || el === closed.querySelector(":scope > summary");
+  });
+}
+
+/**
+ * Reaches a control the way a keyboard user does — find it in the tab sequence,
+ * put focus on it, activate it — and fails loudly when it is not in that
+ * sequence at all. `click()` stands in for Enter/Space on a focused native
+ * control, which is the browser behaviour jsdom does not implement.
+ */
+async function keyboardActivate(label: string, match: (el: HTMLElement) => boolean) {
+  const target = tabbables().find(match);
+  expect(target, `${label} is not reachable by keyboard`).toBeDefined();
+  target!.focus();
+  expect(document.activeElement, `${label} did not take focus`).toBe(target);
+  await act(async () => target!.click());
+}
+
+const byText = (text: string) => (el: HTMLElement) => (el.textContent ?? "").includes(text);
+
 // --- one case per route in router.tsx ---------------------------------------
 
 test("QA-009: 首頁與搜尋結果", async () => {
@@ -789,4 +846,139 @@ test("QA-009: Test Case 詳情", async () => {
   });
   await waitFor(has("Rubric（選用）"));
   await scan("/lab/test-cases/$testCaseId");
+}, 30000);
+
+test("QA-009: 我的 Skill", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/workspace/skills" });
+  });
+  await waitFor(has("我的 Skill"));
+  await scan("/workspace/skills");
+}, 30000);
+
+// --- 02:NFR-007「主要操作可使用鍵盤完成」: the walkthrough (04 丙-21 ①) ---------
+//
+// Journeys rather than pages: the four handbacks this project has recorded all
+// happened between two steps, and a per-page check is exactly what cannot see a
+// seam. Each step asserts the same three things — in the tab sequence, takes
+// focus, activating it moves the journey on.
+
+test("NFR-007: 搜尋 → 詳情 → 打包，全程鍵盤可達", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "pdf 摘要" } });
+  });
+  await waitFor(has("PDF Summariser"));
+
+  // The search field and its submit are both in the sequence before anything is
+  // typed: a form whose only route in is a mouse click on a suggestion is not
+  // keyboard-operable, however well labelled it is.
+  expect(tabbables().some((el) => el.tagName === "INPUT")).toBe(true);
+
+  await keyboardActivate("搜尋結果連結", byText("PDF Summariser"));
+  await waitFor(has("可散布性與打包"));
+
+  await keyboardActivate("打包入口", byText("打包並下載這個版本"));
+  await waitFor(has("標準 Agent Skill 套件")); // the heading renders before the targets do
+
+  // On the packaging page: pick a target, choose whether test cases travel, and
+  // build. Radio and checkbox are native inputs, so the platform gives them
+  // arrow/space handling — what matters here is that they are reachable and that
+  // the button they gate is not offered while the preview refuses.
+  //
+  // Matched by name rather than by type: the site-wide feedback form also has
+  // radios, and an earlier version of this walkthrough passed by activating one
+  // of those instead of a packaging target.
+  await keyboardActivate("打包目標選項", (el) => el.getAttribute("name") === "packaging-target");
+  await keyboardActivate("Test Case 選項", (el) => el.getAttribute("type") === "checkbox");
+  await waitFor(has("這些設定可以打包"));
+
+  const build = tabbables().find(byText("建立下載套件"));
+  expect(build, "建立下載套件 is not reachable by keyboard").toBeDefined();
+  build!.focus();
+  expect(document.activeElement).toBe(build);
+}, 30000);
+
+test("NFR-007: 全站回報入口是一個 <details>，用鍵盤打得開也送得出", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/workspace/downloads" });
+  });
+  await waitFor(has("pdf-summariser-v2.zip"));
+
+  // Closed: the summary is the only thing in the sequence, and the form inside
+  // is deliberately not — a control a browser skips must not count as reachable.
+  const summary = tabbables().find(byText("回報問題"));
+  expect(summary?.tagName).toBe("SUMMARY");
+  expect(tabbables().some((el) => el.id === "feedback-message")).toBe(false);
+
+  await act(async () => (summary as HTMLElement).click());
+  const opened = tabbables();
+  expect(opened.some((el) => el.id === "feedback-message")).toBe(true);
+  expect(opened.some((el) => el.getAttribute("type") === "submit")).toBe(true);
+}, 30000);
+
+// --- 02:NFR-007「清楚的驗證訊息」 (04 丙-21 ②) --------------------------------
+//
+// axe covers the labels; it says nothing about what a form does when it refuses.
+// The rule these three share: a refusal names what to fix, and a control that
+// cannot be used yet says why rather than sitting there dead.
+
+test("NFR-007: 空白的回報被擋下來時說得出要補什麼", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/" });
+  });
+  await waitFor(has("回報問題"));
+
+  const summary = tabbables().find(byText("回報問題"))!;
+  await act(async () => summary.click());
+  await act(async () => {
+    container
+      .querySelector(".feedback-entry form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+
+  const alert = container.querySelector('.feedback-entry [role="alert"]');
+  expect(alert?.textContent).toContain("內容不能空白");
+  await scan("/（回報問題，驗證訊息）");
+}, 30000);
+
+test("NFR-007: 不能建立的 Test Case 表單說得出還缺哪幾項", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/lab/test-cases" });
+  });
+  await waitFor(has("建立新的 Test Case"));
+
+  // The disabled submit is not the message; the sentence beside it is.
+  const submit = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "建立",
+  )!;
+  expect(submit.disabled).toBe(true);
+  const status = Array.from(container.querySelectorAll('[role="status"]')).find((el) =>
+    (el.textContent ?? "").includes("還不能建立"),
+  );
+  expect(status?.textContent).toContain("選一個 Skill");
+  expect(status?.textContent).toContain("填名稱");
+  expect(status?.textContent).toContain("寫 User Prompt");
+}, 30000);
+
+test("NFR-007: 沒選檔案就按上傳，說的是下一步而不是錯誤碼", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/lab/datasets", search: { test_case: TEST_CASE } });
+  });
+  await waitFor(has("上傳前請先確認"));
+
+  await keyboardActivate("上傳", byText("上傳"));
+  const alert = container.querySelector('[role="alert"]');
+  expect(alert?.textContent).toContain("請先選擇一個檔案");
 }, 30000);

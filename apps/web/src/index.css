@@ -130,6 +130,16 @@ main {
   padding: 0 24px;
 }
 
+/* BETA-003/004: the site-wide feedback entry. Last in reading order and last in
+   the tab sequence — it is a closed disclosure holding a whole form, and above
+   the page it would stand between every reader and the page's own controls. */
+.app-footer {
+  text-align: left;
+  padding: 16px 24px;
+  margin-top: 32px;
+  border-top: 1px solid var(--border);
+}
+
 .badge-row {
   display: flex;
   flex-wrap: wrap;
