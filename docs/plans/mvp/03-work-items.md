@@ -32,7 +32,7 @@
 - [ ] PDM-006 決定 Run、Dataset、Trace 與 Artifact 的保存期限。（**部分**：Dataset 90 天已定值並強制（`TEST-004` 的 `expires_at`）、Trace 分割表已按月切、SEC-009 證據保存 ≥ 1 年已定（ADR-022）。**還缺**：Run、Trace、Artifact 的保存期限本身仍無值，`SEC-006` 因此不可判定——這是 M2 之後第一個會被使用者問到的保存政策缺口）
 - [ ] PDM-007 決定 Local Runner 首批支援的作業系統。（後 MVP）
 - [ ] PDM-008 決定首批目標 Agent 打包 Profile。
-- [ ] PDM-009 決定封閉測試人數、招募方式與成功門檻。
+- [ ] PDM-009 決定封閉測試人數、招募方式與成功門檻。（**2026-08-17：已補一份提案，待追認** → [m4/pdm-009-beta-proposal.md](m4/pdm-009-beta-proposal.md)。此前**連提案都沒有**——`m0/pdm-proposals.md` 沒有 PDM-009 這一節，而兩份既有文件各自假設了一個數字（該檔 §8.2 用 30 人、`m0/cost-estimation.md` 用 20 人），**互斥且都沒有依據**。提案內容：12 人（三層各 4）、三條門檻（完整旅程完成率／漏斗無一段低於 50%／整層失效或同一問題撞到 4 人即否決）、招募與報酬全數重用 `gate-test/recruit.md`、測試期 14 天、**先閘門再封測**。**未追認前 `BETA-001`／`BETA-005`／`RELEASE-009` 全部不可判定**；殘項入列 [`04` 乙-15](04-backlog-and-handoffs.md)）
 - [ ] PDM-010 決定免費 Run 額度及是否支援使用者自備模型 API Key。
 - [x] PDM-011 完成意圖搜尋品質 Spike：以首批精選 Skill 驗證意圖比對與符合原因生成的可行性，結果回寫 M1 搜尋作法。
 
@@ -47,21 +47,33 @@
 - [ ] UX-007 驗證進階使用者是否能從 Trace 找到實際問題。
 - [ ] UX-008 驗證下載與安裝說明能否讓使用者在目標 Agent 完成使用。
 
-## 3. 資訊架構與體驗設計（M0–M3）
+## 3. 資訊架構與體驗設計（M0–M4）
 
-- [ ] DESIGN-001 建立全站資訊架構與導覽模型。
-- [ ] DESIGN-002 設計首頁與自然語言意圖搜尋流程。
-- [ ] DESIGN-003 設計搜尋結果、篩選與排序說明。
-- [ ] DESIGN-004 設計 Skill 一般詳情與進階檔案檢視。
-- [ ] DESIGN-005 設計 Skill 靜態比較介面。
-- [ ] DESIGN-006 設計 Fork、個人工作區與版本差異流程。
-- [ ] DESIGN-007 設計 Test Case、Dataset、MCP 與工具設定流程。
-- [ ] DESIGN-008 設計執行前權限及成本摘要。
-- [ ] DESIGN-009 設計 Run 進度的一般模式與進階 Trace 模式。
-- [ ] DESIGN-010 設計驗收條件、評估報告與改善建議流程。
-- [ ] DESIGN-011 設計重新試跑與版本／結果比較流程。
-- [ ] DESIGN-012 設計打包下載、安裝及驗證說明。
-- [ ] DESIGN-013 完成鍵盤操作、文字標籤與錯誤訊息的無障礙檢查。
+> **2026-08-17 收斂裁定（依 [m4/README.md §8.5](m4/README.md) 的選項 (a)，負責人授權「依最佳實務做決策」）。** 本節 13 項自 M0 起零勾選，而 [m3/audit.md §4.5](m3/audit.md) 已點名根因：**本專案至今沒有產出過設計交付物，UI 是直接依 `02` 的允收準則實作的。** 要改變這個狀態需要的是一個「這個專案要不要有設計交付物」的決定，不是某個里程碑的收尾動作。
+>
+> **裁定：`DESIGN-001`～`011` 標為「不再追蹤」並逐項指向已落地的畫面；`DESIGN-012`／`013` 保留為 M4 的實作項**（前者有真正的新畫面＝下載頁，後者有可判定的準則＝`QA-009` 已寫出的無障礙判準）。章節里程碑標記因此由 `M0–M3` 改為 **`M0–M4`**（[m4/README.md §7 差-1](m4/README.md)）。
+>
+> **三件必須一起被讀到的事**：
+>
+> 1. **「不再追蹤」不是「已完成」，所以一律維持 `- [ ]`。** 這些項目描述的設計交付物確實從未產出，勾選它們是說謊；刪掉整節則會讓 ADR-025 的待決策與差-1 的兩項失去承接者（m4/README §8.5 的選項 (b) 因此被否決）。**不刪文、不改判定、只加理由與落點**。
+> 2. **不補做 13 份設計交付物**（選項 (c)）：M0～M3 的 UI 已經照允收準則落地，事後補一份沒有人會照著改程式的設計文件，只會產生第二份真相。
+> 3. **殘留的缺口必須有具名落點，不得因為本節收斂而消失。** 兩處：`DESIGN-007` 的 preflight 版本選擇器 → [`04` 丙-14](04-backlog-and-handoffs.md)；`DESIGN-010`／`011` 承接的 ADR-025 待決策 → 實質已由既有畫面回答，剩餘的呈現缺口是 [`04` 丙-10](04-backlog-and-handoffs.md)。**ADR-025 的待決策已就地回填此裁定**。
+>
+> 代價寫明：本裁定等同承認 `01`／`02` 隱含的「先設計後實作」流程在本專案沒有發生過。這是紀錄真實發生的事，不是為了讓帳好看。
+
+- [ ] DESIGN-001 建立全站資訊架構與導覽模型。（**不再追蹤（2026-08-17）**——落點：`apps/web` 的 `router.tsx` 與頁首導覽，路由與導覽模型隨各功能項逐次成形，沒有一份先行的架構文件）
+- [ ] DESIGN-002 設計首頁與自然語言意圖搜尋流程。（**不再追蹤**——落點：`DISC-001`／`DISC-005` 已落地的首頁、搜尋與「無結果＋改寫建議」流程）
+- [ ] DESIGN-003 設計搜尋結果、篩選與排序說明。（**不再追蹤**——落點：`DISC-002`／`DISC-003`／`DISC-004`，含刻意呈現的停用篩選控制項與逐維度理由、`RankingExplainer`）
+- [ ] DESIGN-004 設計 Skill 一般詳情與進階檔案檢視。（**不再追蹤**——落點：`DISC-006`／`DISC-007`／`DISC-008`）
+- [ ] DESIGN-005 設計 Skill 靜態比較介面。（**不再追蹤**——落點：`DISC-009`）
+- [ ] DESIGN-006 設計 Fork、個人工作區與版本差異流程。（**不再追蹤**——落點：`WS-001`／`WS-002`／`WS-003`／`WS-005`）
+- [ ] DESIGN-007 設計 Test Case、Dataset、MCP 與工具設定流程。（**不再追蹤**——落點：`TEST-012` 的 `apps/web/src/pages/TestCases.tsx` 與 `/lab/datasets` 上傳頁。**兩項範圍註記**：①MCP 與工具設定屬後 MVP，本項那一半不會有落點；②**preflight 頁仍然沒有 Skill Version 選擇器**——`version` 只能從 URL query 進來，`EVAL-011` 與 `04` 丙-11 都把它記在本項名下。本項收斂後該殘留**改由 [`04` 丙-14](04-backlog-and-handoffs.md) 具名承接**，不隨本節一起消失）
+- [ ] DESIGN-008 設計執行前權限及成本摘要。（**不再追蹤**——落點：`TEST-008`／`TEST-009`／`TEST-011` 的 `RunPreflight`，含八項權限揭露、摘要 hash 重新確認與預估成本區間）
+- [ ] DESIGN-009 設計 Run 進度的一般模式與進階 Trace 模式。（**不再追蹤**——落點：`TRACE-006`／`TRACE-007` 的 `/runs/$runId`，含一般／進階切換與 `complete: false` 的誠實標示）
+- [ ] DESIGN-010 設計驗收條件、評估報告與改善建議流程。（**不再追蹤**——落點：`EVAL-003`～`EVAL-009` 的 `RunEvaluation.tsx`。**ADR-025 待決策（兩列狀態的文案與版面）的實質內容已由這個畫面回答**：執行狀態與任務判定永遠兩列、任務判定排在前、沒有評估的一邊顯示「未評估（不是通過）」，具名測試在 `eval.test.tsx`。剩餘缺口是 [`04` 丙-10](04-backlog-and-handoffs.md)——UI 分不出「引用回驗失敗」與「模型自己說不知道」，由 M4 的 UI 批承接）
+- [ ] DESIGN-011 設計重新試跑與版本／結果比較流程。（**不再追蹤**——落點：`EVAL-011`／`EVAL-012` 的 `RunCompare.tsx` 與 `AppliedResult` 的 preflight 交接。ADR-025 的兩列狀態在比較畫面同樣成立，見 `DESIGN-010`）
+- [ ] DESIGN-012 設計打包下載、安裝及驗證說明。**（M4 實作項，保留追蹤）**（本項與 `DESIGN-001`～`011` 不同：M4 有真正的新畫面。範圍＝下載頁與安裝說明的呈現面，對應 `PACK-006`／`PACK-007`／`PACK-008` 與 `02:PACK-002` 的三條允收準則；三層相容性分開呈現、未驗證必須顯示未驗證、到期日顯示絕對日期不顯示相對天數。排入 M4 第 6 批）
+- [ ] DESIGN-013 完成鍵盤操作、文字標籤與錯誤訊息的無障礙檢查。**（M4 實作項，保留追蹤）**（判準取自 `02:NFR-007`：主要流程可鍵盤完成、表單具標籤與清楚驗證訊息、狀態不只依賴顏色。**與 `QA-009` 逐字重疊**（[m4/README.md §7 差-1](m4/README.md)）：兩者以**同一份檢查結果**判定，不做兩次也不各記一份帳——本項是檢查的執行，`QA-009` 是發佈檢查表上的同一格，勾選時互相引用。排入 M4 第 6 批）
 
 ## 4. Skill 內容與供應（M1）
 
@@ -91,8 +103,8 @@
 - [x] CORE-004 定義不可變 Skill Version 與歷史 Run 快照規則。
 - [x] CORE-005 建立基本登入、登出與工作區存取控制。（GitHub OAuth ＋ Postgres session ＋ `DEV_LOGIN` 離線 provider；登出為伺服器端撤銷。證據見 [m1-work-items-audit.md §3.1](m1/m1-work-items-audit.md)）
 - [x] CORE-006 建立使用者私有內容的授權檢查。（Workspace scope 一律取自 session，不信任 UI 傳入值；非擁有者一律 404。證據見 [m1-work-items-audit.md §3.1](m1/m1-work-items-audit.md)）
-- [ ] CORE-007 建立使用者資料與 Artifact 的刪除流程。
-- [ ] CORE-008 建立重要操作的 Audit Event。
+- [ ] CORE-007 建立使用者資料與 Artifact 的刪除流程。（**2026-08-17 註記：實作排入 M4 第 4 批**，與 [`04` 丙-9](04-backlog-and-handoffs.md) 的物件存在性對帳器一併承接——`04` 已指出兩者重疊，而 M4 第一次有「使用者刪掉東西之後平台還宣稱它在」的產品後果（下載紀錄指向一個已被清掉的 artifact）。刪除範圍的分類依 PDM-006 §6.1（私有內容硬刪除 vs 已被引用版本去識別化保留），**該提案未追認前刪除範圍的說明文案沒有值可寫**。**本項不搬章節**）
+- [ ] CORE-008 建立重要操作的 Audit Event。（**2026-08-17 註記：實作排入 M4 第 4 批**。**下載端點是本項最後一個必要事件源**——ADR-007 的稽核清單明列「Artifact 下載及使用者資料刪除」，而 M1 當時兩者都不存在，所以本項從第一天起就不可能完成。既有形式已由 `SEC-011` 示範（actor 取自 session、與欄位變更**同一交易**、理由必填、operator 不可自行刪改），M4 沿用不另造。**下載紀錄（`WS-004`）與 audit event 是兩件事，不得合併**——前者是使用者自己看的產品功能（`02:WS-002` 第 1 條），後者是合規紀錄（PDM-006 提案給 audit 400 天、只存 actor／動作／資源 ID／時間戳、**不含內容**），保存期限與可見性都不同，合併會讓兩邊都被較嚴的那一個綁住。與**分析事件**的邊界另見 [ADR-029](../../adr/ADR-029-product-analytics-events-and-audit-trace-boundaries.md) 決策 3。**本項不搬章節**，理由同 `WS-004`）
 
 ## 6. Skill 匯入、驗證與索引（M1）
 
@@ -130,7 +142,7 @@
 - [x] WS-001 實作 Fork 並保留來源與 License 關係。
 - [x] WS-002 實作不可變版本保存。
 - [x] WS-003 實作任兩版本差異比較。
-- [ ] WS-004 實作個人 Skill、Test Case、Run 與下載紀錄列表。
+- [ ] WS-004 實作個人 Skill、Test Case、Run 與下載紀錄列表。（**2026-08-17 註記：實作排入 M4 第 4／6 批**（[m4/README.md §5.1](m4/README.md) 的 P-4／P-10）。**M1 當時沒有「下載」這個動作，下載紀錄自然是空的**，所以本項的最後一項自第一天起就不可能完成。**本項不搬章節**——搬到 §15 會讓 M1 那份「某一時點的帳」變動，比照 `TEST-012` 的既有前例只加排期註記。紀錄的內容為「誰、何時、哪一筆 artifact、哪一個 profile」，與 audit event 分開儲存，理由見 `CORE-008`）（允收：`02:WS-002` 第 1 條）
 - [x] WS-005 實作私有內容刪除與狀態回饋。
 - [x] WS-006 驗證不同使用者無法存取彼此私有內容。（列表／刪除／Fork／Diff 四條路徑與公開搜尋皆有具名整合測試，CI 帶 Postgres service 實際執行。證據見 [m1-work-items-audit.md §6](m1/m1-work-items-audit.md)）
 
@@ -220,6 +232,7 @@
 - [x] O11Y-001 量測搜尋、Run 排隊、建立、成功、逾時與清理指標。（Prometheus 文字格式，`services/platform` 與 `sandboxd` 各自曝露 `/metrics`；平台側走獨立 listener `METRICS_ADDR`，不掛在對外 API port 上。指標清單見 [infra/observability/README.md](../../../infra/observability/README.md)）
 - [x] O11Y-002 建立 Provider 健康度與錯誤監控。（`skillhub_provider_capability_total{provider,result}` 區分 ok／unhealthy／error；`skillhub_provider_request_total{provider,operation,class}` 以狀態碼分級記 429 與 5xx；另有每操作延遲 histogram。告警規則四條見 `alerts.yml`）
 - [x] O11Y-003 建立遺留 Sandbox、資源異常及安全事件告警。（`skillhub_run_cleanup_backlog` gauge、`skillhub_orphan_scan_total`、`skillhub_orphan_sandbox_total{action}` 區分「殺掉的漏網 Sandbox」與「殺不掉的」，加上遮罩器靜默失效偵測（`TraceMaskingStopped`——NFR-002 沒有其他偵測器）。告警為 `infra/observability/alerts.yml` 的 rules 檔＋文件，**Alertmanager 部署、通知路由與 Grafana dashboard 屬部署期，明確未做**；門檻值為首發預設非實測校準值，已在文件標明需上線後回填）
+- [ ] O11Y-004 建立核心漏斗的產品分析事件：四個新事件（搜尋送出、Skill 詳情查看、Session 開始、下載發起）的產生、儲存與查詢，其餘漏斗段以既有領域表回答。**（M4，2026-08-17 新增）**（承接 [m4/README.md §7 差-4](m4/README.md)：`BETA-002` 要量 `01` §11.2 的七段漏斗，而**此前沒有任何工作項承接「漏斗事件的產生與儲存」**——`O11Y-001`～`003` 量的是平台健康（聚合計數、無使用者維度），`CORE-008` 的 audit event 是合規紀錄（不含內容、400 天），拿任一者當分析來源都會同時做壞兩件事。<br>**範圍界線**：只做四個事件 ＋ 一組跨表查詢。其餘五段用既有領域表就答得出來（`runs`、`evaluations.feedback_helpful`、`evaluation_suggestions.decision`、`download_records`），**新增第五個事件必須先說明既有領域表為何答不出來**。<br>**必須在寫第一行事件產生程式碼之前成立的三件事**（[ADR-029](../../adr/ADR-029-product-analytics-events-and-audit-trace-boundaries.md)）：①屬性白名單，schema 未宣告的一律丟棄，**不記查詢原文**；②與 audit event 分開儲存，不得互相替代；③**保存期限未定值前不得開始收集**（NFR-002；ADR-029 提案 180 天，隨 PDM-006 追認）。<br>儲存為 Postgres 按月分割表（形式比照 `trace_events`），**不新增資料產品、不接外部分析 SaaS**。排入 M4 第 5 批）（允收：`02:O11Y-004`）
 
 ## 14. 評估與改善（M3）
 
@@ -245,7 +258,7 @@
 - [ ] PACK-002 打包前重新執行規格驗證。
 - [ ] PACK-003 保留 License、作者、原始來源與衍生關係。
 - [ ] PACK-004 排除 Secrets、測試憑證、內部路徑與受保護資料。
-- [ ] PACK-005 支援選擇是否包含可散布 Test Case 與範例資料。
+- [ ] PACK-005 支援選擇是否包含可散布 Test Case 與範例資料。（**2026-08-17：可判定性已補**——`02:PACK-001` 新增「可散布」的兩層判準（第一層：`skills.redistribution` 三態 ＋ `access_restriction`，兩道獨立的鎖；第二層：只有平台策展產生且不含使用者上傳位元組的 Test Case 與範例資料可入包，**使用者自行上傳的 Dataset 預設不入包且不提供選項**），依 [ADR-027](../../adr/ADR-027-download-artifact-shape-reproducibility-and-integrity.md) 決策 4。在此之前本項不可判定——`02` 只寫「可散布」而沒有判準。<br>**與 [`04` 丙-12](04-backlog-and-handoffs.md) 是同一件事的兩半**：本項要把 Test Case 匯出，丙-12 說的是策展側沒有「種進全新部署」的形式；**共用同一份可攜 Test Case schema**，一份 schema 兩個方向，分開做會得到兩種格式）
 - [ ] PACK-006 建立首批目標 Agent 安裝 Profile。
 - [ ] PACK-007 產生安裝位置、依賴、環境變數與驗證步驟。
 - [ ] PACK-008 對未驗證 Agent 顯示清楚限制。
@@ -272,7 +285,7 @@
 ## 17. 品質保證與封閉測試（M4）
 
 - [ ] QA-001 建立核心旅程端到端測試。
-- [ ] QA-002 建立 Agent Skills 規格驗證測試資料集。
+- [ ] QA-002 建立 Agent Skills 規格驗證測試資料集。（**2026-08-17 註記：與 M0／M1 既有產物重疊，重用範圍寫明**（[m4/README.md §7 差-7](m4/README.md)）。**不新增需求**。<br>**可重用的那一半**：45 個 pin commit 套件已有 `skillpkg` 的實跑驗證（`CONTENT-006`），它們提供的是資料集的**合法樣本**；回歸 harness 的形式比照 `tools/eval-regression/` 的既有前例（可重跑、逐筆 append-only）。<br>**必須新做的那一半**：**刻意破壞的變體**與每個變體的期望 finding 清單——缺 `SKILL.md`、frontmatter 壞、必要欄位缺、名稱違規、檔案引用逃逸出套件、內嵌可執行程式碼、疑似 Secret、zip 炸彈、路徑逃逸的 entry。合法樣本只能證明「不誤擋」，**證明「擋得住」要靠會被擋的樣本**，而那些今天一個都沒有。<br>**不重新蒐集語料**：資料集的來源就是既有的 45 個套件，不再抓新的 repo）
 - [ ] QA-003 建立正常、失敗、逾時、取消與清理 Run 測試。
 - [ ] QA-004 建立 Dataset 與 Secrets 權限測試（MCP、Local Runner 部分隨後 MVP 啟動）。
 - [ ] QA-005 建立 Trace 完整性與敏感資訊遮罩測試。

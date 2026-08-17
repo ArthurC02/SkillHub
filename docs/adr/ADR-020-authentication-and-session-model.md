@@ -81,5 +81,5 @@ CORE-005(基本登入、登出與工作區存取控制)是 M1 私有功能(Fork�
 ## 待決策
 
 - 第二身分供應商(Google)的啟用訊號與時點。
-- 封閉測試(BETA-001)是否需要邀請碼/白名單閘門疊在 OAuth 之上。
+- 封閉測試(BETA-001)是否需要邀請碼/白名單閘門疊在 OAuth 之上。→ **已決，見 [ADR-028](./ADR-028-beta-admission-and-quota-enforcement-points.md) 決策 1**：採**允許清單疊在 OAuth 之上**(比照 SEC-011 的 `OPERATOR_USER_IDS` 前例,不做 DB 角色表、不做邀請碼);未在清單內仍可搜尋與看詳情、不可 Fork/Run/下載,且看到的是說明加需求訊號入口而不是 404。同一份 ADR 另定配額的強制點(平台自己的計數器,不是閘道的 `max_budget`/`tpm_limit`/並行數)。
 - Local Runner 配對憑證是否重用 Session 機制(後 MVP,ADR-006)。

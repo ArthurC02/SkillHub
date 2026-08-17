@@ -10,14 +10,14 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 
 - **M3 對帳唯一退回的 `EVAL-011` 已於 2026-08-17 補上並勾選**：採納建議建出新版本後，`AppliedResult` 直接把三個 id 連到執行前權限確認畫面（`04` 丙-11 已結案，見 [m3/audit.md §2.1](docs/plans/mvp/m3/audit.md)）。**preflight 頁仍然沒有版本選單**，那屬 `DESIGN-007`。
 - **M1 驗證閘門仍未正式通過**：使用者測試材料已備妥（[docs/plans/mvp/gate-test/](docs/plans/mvp/gate-test/)），**D 日仍待負責人宣告**；閘門與 M2／M3 並行至今，通過與否以測試結果為準。
-- **ADR-020～026 已入列**（身分／Session、License 溯源、Sandbox 部署拓撲與安全定值、Agent SDK 版本釘選、頂層目錄分「跑的」與「讀的」；Run 終態與 Evaluation 判定分離、重評 append-only 與 LLM Judge 四條防線）。
-- **殘項三類清單**（甲＝部署期驗收、乙＝待負責人決策、丙＝移交下一里程碑的接點）見 [docs/plans/mvp/04-backlog-and-handoffs.md](docs/plans/mvp/04-backlog-and-handoffs.md)（**活文件**，隨時更新）——**開工前先看那份，它記的是「已定值但沒有強制」與「已量到但沒查根因」那一類洞**。目前甲 4 項、乙 3 項、丙 6 項；原移交 M3 的丙類七項已全數結案。
-- 下一個里程碑是 **M4 打包與封測**；M4 的接點（`PACK-002` 可重用 `EVAL-010` 的驗證路徑、衍生關係的溯源方向、評估產物不得進套件、封測與甲類的關係）已在 `04` 的「移交 M4」一節逐項寫明。
+- **ADR-020～029 已入列**（身分／Session、License 溯源、Sandbox 部署拓撲與安全定值、Agent SDK 版本釘選、頂層目錄分「跑的」與「讀的」；Run 終態與 Evaluation 判定分離、重評 append-only 與 LLM Judge 四條防線；**M4 的三份**：Download Artifact 的雙雜湊與「MVP 明文不簽章」、封測准入與配額強制點、產品分析事件的邊界）。
+- **殘項三類清單**（甲＝部署期驗收、乙＝待負責人決策、丙＝移交下一里程碑的接點）見 [docs/plans/mvp/04-backlog-and-handoffs.md](docs/plans/mvp/04-backlog-and-handoffs.md)（**活文件**，隨時更新）——**開工前先看那份，它記的是「已定值但沒有強制」與「已量到但沒查根因」那一類洞**。目前**甲 4 項、乙 5 項、丙 6 項**（2026-08-17 M4 文件批後：乙新增「甲類四項是否在封測前到期」與「PDM-009 封測提案待追認」，丙新增「preflight 沒有版本選擇器」）；原移交 M3 的丙類七項已全數結案。
+- 下一個里程碑是 **M4 打包與封測**；M4 的接點（`PACK-002` 可重用 `EVAL-010` 的驗證路徑、衍生關係的溯源方向、評估產物不得進套件、封測與甲類的關係）已在 `04` 的「移交 M4」一節逐項寫明。**M4 的計畫與三份設計文件已產出**（[docs/plans/mvp/m4/](docs/plans/mvp/m4/)），**程式面未開工**；文件批已於 2026-08-17 補齊三份 ADR、`02`／`03` 同步與 PDM-009 提案，**第 1 批剩餘的前置決策只有 PDM-008 的追認**。
 
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
 | `docs/plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單；`m0/`／`m1/`／`m2/` 為各里程碑凍結產出；`content/`／`governance/`／`gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-024） | [docs/plans/mvp/README.md](docs/plans/mvp/README.md) |
-| `docs/adr/` | 27 份架構決策紀錄（ADR-000～026；014 已 Superseded by 018，019 §1 已 Amended by 024） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
+| `docs/adr/` | 30 份架構決策紀錄（ADR-000～029；014 已 Superseded by 018，019 §1 已 Amended by 024） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
 | `docs/spikes/` | **已刪除，只留墓碑**：M0 驗證用 spike code，結論已沉澱到 m0 報告／ADR-013／ADR-023／`UPGRADES.md`／`tools/goldenset/` | [docs/spikes/README.md](docs/spikes/README.md)（含還原指令與結論落點對照） |
 
 Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1 節已由 **ADR-024** 修訂為「跑的」（`apps/`、`services/`、`contracts/`、`db/`、`infra/`、`tools/`）與「讀的」（`docs/`）兩類——鋪程式碼依其結構進行，結構性偏離需先更新 ADR。
@@ -62,7 +62,7 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容。
-- 新 ADR 從 **ADR-027** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
+- 新 ADR 從 **ADR-030** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
 - ADR 的待決策被後續 ADR 回答時，回填 `→ [ADR-xxx](...)` 引用（現有文件已有此慣例）。
 - 新 ADR 記得更新 [docs/adr/README.md](docs/adr/README.md) 的決策索引。
 - **檔案放哪裡**：活文件放 `docs/plans/mvp/` 根層（編號 `01~`）；里程碑的歷史產出放 `mX/`，里程碑完結即凍結。一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`。
@@ -92,4 +92,7 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1
 | 語言分工與跨語言守則 | ADR-016 |
 | 模型呼叫與成本 | ADR-017 |
 | 評估判定、重評與 Judge 邊界 | ADR-025、026 |
+| 打包下載的雜湊、簽章與可散布性 | ADR-027（＋ ADR-012、021） |
+| 封測准入、免費額度強制點 | ADR-028（值由 PDM-010／PDM-009 給） |
+| 漏斗量測、分析事件與 audit 的分野 | ADR-029（＋ ADR-009） |
 | 目前所有未決議題 | 各 ADR 的「待決策」章節＋ `docs/plans/mvp/03` 第 1 節 |

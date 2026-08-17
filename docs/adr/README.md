@@ -51,6 +51,9 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-024](./ADR-024-top-level-repository-layout.md) | 頂層目錄分「跑的」與「讀的」（文件收進 `docs/`，修訂 ADR-019 §1） | Accepted |
 | [ADR-025](./ADR-025-run-terminal-state-and-evaluation-verdict-separation.md) | Run 終態與 Evaluation 判定的分離（評估不回寫 `runs.status`） | Accepted |
 | [ADR-026](./ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) | Evaluation 的重評（append-only）、證據壽命與 LLM Judge 信任邊界（併入原規劃的 ADR-027） | Accepted |
+| [ADR-027](./ADR-027-download-artifact-shape-reproducibility-and-integrity.md) | Download Artifact 的形狀、可重現性與完整性（雙雜湊、規範化 zip、**MVP 不簽章**、`skills.redistribution` 三態） | Accepted |
+| [ADR-028](./ADR-028-beta-admission-and-quota-enforcement-points.md) | 封測准入與配額的強制點（允許清單疊在 OAuth 之上；配額強制點是平台計數器，不是閘道） | Accepted |
+| [ADR-029](./ADR-029-product-analytics-events-and-audit-trace-boundaries.md) | 產品分析事件與 audit／Trace 的邊界（鐵律 11 的「分析事件」定義） | Accepted |
 
 ## 整體架構摘要
 

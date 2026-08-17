@@ -102,4 +102,5 @@ event_id      單一領域或 Run Trace 事件
 - 一般模式摘要由規則、模型或混合方式產生。
 - 每個方案允許的 Trace 詳細度與保存期限。→ 保存期限本身仍未定值（PDM-006）；**Trace 被清掉後評估證據怎麼辦**已由 [ADR-026](./ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 2 回答（引用 ＋ 判定當下的可讀摘要雙存，過期時誠實標明）。
 - 本節「Evaluation 邊界」只寫了「讀取的內容仍視為可能包含 Prompt Injection」，未給防線。→ [ADR-026](./ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 3（四條防線）。Evaluation 的判定與 Run 終態的關係另見 [ADR-025](./ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)。
+- 本 ADR 的三分（外加 [ADR-017](./ADR-017-model-gateway-and-llm-observability.md) 的 Langfuse 第四軌）**不涵蓋使用者行為的漏斗量測**——那既不是平台健康、也不在任何一次 Run 之內。→ [ADR-029](./ADR-029-product-analytics-events-and-audit-trace-boundaries.md) 把它定為**第五類且明確從屬**的資料（不是事實來源），並劃清它與 audit event、Run Trace 的邊界；鐵律 11 的「分析事件」自該 ADR 起取得定義。
 
