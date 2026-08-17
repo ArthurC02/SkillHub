@@ -38,6 +38,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
+	"github.com/ArthurC02/skillhub/services/platform/internal/packaging"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
@@ -130,6 +131,10 @@ type api struct {
 	// evaluations is the API's read-only evaluation service, exposed so an
 	// EVAL-001 test can produce a verdict with a fake judge (the API never does).
 	evaluations *eval.Service
+	// packaging is the API's packaging service, exposed so a PACK-001 test can
+	// build twice without the idempotent endpoint answering the second call with
+	// the first call's artifact.
+	packaging *packaging.Service
 	// handler is the same route table the server above serves. Kept so a test
 	// that needs the API reachable from *another container* — the real end to
 	// end run, whose sandbox provider pushes trace events back — can serve it on
@@ -207,16 +212,27 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 	// goes through POST /skills/{id}/versions' own path.
 	evalSvc := &eval.Service{Pool: pool, Store: packages, Versions: versions}
 
+	// PACK-001, wired the way cmd/api wires it and pointed at the profiles the
+	// deployment actually ships. The real files rather than fixtures: a copy would
+	// keep these tests green while a profile edit changed produced packages.
+	profiles, err := packaging.LoadProfiles(filepath.Join("..", "..", "..", "..", "contracts", "packaging", "profiles"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	packagingSvc := &packaging.Service{Pool: pool, Store: packages, Profiles: profiles}
+
 	handler := apiserver.NewRouter(apiserver.Deps{
 		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs,
 		TestLab: lab, Trace: traceHandler,
-		Eval: &eval.Handler{Svc: evalSvc, Identity: auth.Service},
+		Eval:      &eval.Handler{Svc: evalSvc, Identity: auth.Service},
+		Packaging: &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
 	})
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return &api{
 		Server: srv, auth: auth, packages: packages, runs: runSvc,
 		traceSigner: traceSigner, handler: handler, evaluations: evalSvc,
+		packaging: packagingSvc,
 	}
 }
 
@@ -409,6 +425,13 @@ func TestAnonymousCallersGetThePublicSurfaceAndNothingElse(t *testing.T) {
 		{http.MethodPut, "/suggestions/" + id + "/decision", http.StatusUnauthorized},
 		{http.MethodGet, "/suggestions/" + id + "/diff", http.StatusUnauthorized},
 		{http.MethodPost, "/skills/" + id + "/versions/from-suggestions", http.StatusUnauthorized},
+
+		// PACK-001/002: a package built from a user's version is that user's, and
+		// the target list names what this deployment can build.
+		{http.MethodGet, "/packaging/targets", http.StatusUnauthorized},
+		{http.MethodGet, "/skills/" + id + "/versions/" + id + "/packaging/preview?target=standard",
+			http.StatusUnauthorized},
+		{http.MethodPost, "/skills/" + id + "/versions/" + id + "/packaging", http.StatusUnauthorized},
 
 		// The operator surface (02:SEC-011) is the one exception to the 401 rule
 		// above: it answers 404 to everybody not on the deployment's operator

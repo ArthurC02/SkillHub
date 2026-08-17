@@ -14,6 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
+	"github.com/ArthurC02/skillhub/services/platform/internal/packaging"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
@@ -26,14 +27,15 @@ import (
 // caller: cmd/api reads them from the environment, tests point them at a
 // throwaway database.
 type Deps struct {
-	Auth     *identity.Handler
-	Importer *ingest.Handler
-	Search   *catalog.Handler
-	Registry *registry.Handler
-	TestLab  *testlab.Handler
-	Runs     *run.Handler
-	Trace    *trace.Handler
-	Eval     *eval.Handler
+	Auth      *identity.Handler
+	Importer  *ingest.Handler
+	Search    *catalog.Handler
+	Registry  *registry.Handler
+	TestLab   *testlab.Handler
+	Runs      *run.Handler
+	Trace     *trace.Handler
+	Eval      *eval.Handler
+	Packaging *packaging.Handler
 }
 
 // NewRouter returns the API route table. Callers wrap it as needed — cmd/api
@@ -141,6 +143,24 @@ func NewRouter(d Deps) *http.ServeMux {
 	// confirmed_summary_hash on the path (TEST-009). A "re-run" route here could
 	// differ from that one in exactly one way — by skipping the permission screen.
 	mux.HandleFunc("GET /runs/{id}/comparison", auth.RequireSession(d.Eval.Comparison))
+
+	// PACK-001/002. Session scoped like everything else that touches a workspace:
+	// a package built from a user's version is that user's, and the target list is
+	// an endpoint rather than a frontend constant because support status changes
+	// when a target is measured.
+	//
+	// There is deliberately no "re-package" route beside the POST: re-packaging is
+	// the POST again, and because it is idempotent a repeat returns the artifact
+	// that already exists. A second route to here would be a second route around
+	// the four gates — the ruling that left EVAL-003 without a re-run route.
+	//
+	// The literal "versions/{versionId}/packaging" segments are more specific than
+	// POST /skills/{id}/versions above, so both patterns coexist.
+	mux.HandleFunc("GET /packaging/targets", auth.RequireSession(d.Packaging.Targets))
+	mux.HandleFunc("GET /skills/{id}/versions/{versionId}/packaging/preview",
+		auth.RequireSession(d.Packaging.Preview))
+	mux.HandleFunc("POST /skills/{id}/versions/{versionId}/packaging",
+		auth.RequireSession(d.Packaging.Create))
 
 	// TRACE-002: the execution plane pushes collected events here. Deliberately
 	// the only route in this table with no session and no RequireSession wrapper:

@@ -20,6 +20,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
+	"github.com/ArthurC02/skillhub/services/platform/internal/packaging"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/objstore"
@@ -122,6 +123,21 @@ func main() {
 	}
 	traceSvc := &trace.Service{Pool: pool, Signer: traceSigner}
 
+	// PACK-002: the packaging targets are versioned configuration, read from
+	// contracts/packaging/profiles at start-up rather than compiled in, so
+	// changing an install path or a support status is a reviewed file and not a
+	// release. A deployment with no directory gets no targets and says so on every
+	// packaging route — never a hard-coded fallback, which would be the second
+	// truth the endpoint exists to avoid.
+	profiles, err := packaging.LoadProfiles(addrFromEnv("PACKAGING_PROFILES_DIR", "contracts/packaging/profiles"))
+	if err != nil {
+		slog.Error("packaging profiles unreadable; packaging is unavailable", "error", err)
+		profiles = nil
+	}
+	if len(profiles) == 0 {
+		slog.Warn("no packaging profiles configured; PACK-001 routes will answer 503")
+	}
+
 	// Routes live in internal/apiserver so the integration tests serve this exact
 	// table instead of a hand-copied one.
 	mux := apiserver.NewRouter(apiserver.Deps{
@@ -152,6 +168,16 @@ func main() {
 		// path rather than around it.
 		Eval: &eval.Handler{
 			Svc:      &eval.Service{Pool: pool, Store: store, Versions: versions},
+			Identity: auth.Service,
+		},
+		// Packaging runs in the control plane and needs no sandbox: it reads
+		// stored bytes, filters them and writes a zip, and executes nothing
+		// (iron rules 1 and 2).
+		Packaging: &packaging.Handler{
+			Svc: &packaging.Service{
+				Pool: pool, Store: store, Profiles: profiles,
+				Retention: retentionFromEnv(),
+			},
 			Identity: auth.Service,
 		},
 	})
@@ -228,6 +254,24 @@ func llmOrNil(c *llmclient.Client) testlab.CriteriaSuggester {
 		return nil
 	}
 	return c
+}
+
+// retentionFromEnv reads how long a Download Artifact lives. Deployment
+// configuration and not schema: PDM-006 proposes 90 days and that proposal is
+// not ratified, so 0027 records the pointer and leaves the number here where a
+// deployment can set it (m4/README §8.1). An unparseable value falls back to the
+// package default rather than stopping the process.
+func retentionFromEnv() time.Duration {
+	raw := os.Getenv("DOWNLOAD_ARTIFACT_RETENTION")
+	if raw == "" {
+		return 0
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		slog.Warn("DOWNLOAD_ARTIFACT_RETENTION is not a duration; using the default", "value", raw)
+		return 0
+	}
+	return d
 }
 
 func addrFromEnv(key, fallback string) string {
