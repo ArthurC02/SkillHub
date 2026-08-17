@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { API_BASE_URL, apiFetch } from "./client";
+import type { Finding } from "./types";
 
 /**
  * The PACK-001/002 packaging surface and the WS-002/WS-004 download history,
@@ -39,6 +40,18 @@ export interface PackagingTarget {
    * (02:PACK-002 第 2 條). A property of the target, never of a skill.
    */
   support_status: "verified" | "unverified";
+  /**
+   * A prompt to run against the target agent after installing, to see whether
+   * the Skill was picked up. Absent for the standard package, which names no
+   * agent to run it against.
+   */
+  verification_prompt?: string;
+  /**
+   * Post-install checks, in order (02:PACK-002 第 3 條). Every target has at
+   * least one of these two fields; which one depends on whether it names an
+   * agent, so both are optional individually.
+   */
+  verification_steps?: string[];
   /** Known limitations and the steps a path alone does not cover. Server-owned copy. */
   notes: string[];
 }
@@ -46,25 +59,12 @@ export interface PackagingTarget {
 export type PackagingBlockedReason =
   "license_hold" | "not_redistributable" | "license_unknown" | "validation_blocked";
 
-/**
- * One re-validation finding. The schema calls it `Finding`, whose `severity` is
- * required; the packaging handler omits it because the list a finding sits in
- * already says it. Typed as it actually arrives rather than as a field the UI
- * would have to invent a value for.
- */
-export interface PackageFinding {
-  code: string;
-  path?: string;
-  message: string;
-  details?: string[];
-}
-
 export interface PackageValidation {
   /** True when `errors` is non-empty. Stated by the server so no surface decides for itself. */
   blocked: boolean;
-  errors: PackageFinding[];
-  warnings: PackageFinding[];
-  infos: PackageFinding[];
+  errors: Finding[];
+  warnings: Finding[];
+  infos: Finding[];
 }
 
 export interface IncludedTestCase {

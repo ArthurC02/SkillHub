@@ -29,6 +29,7 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/services/platform/internal/skillpkg"
 )
 
 type Handler struct {
@@ -64,14 +65,23 @@ func (h *Handler) configured(w http.ResponseWriter) bool {
 }
 
 // targetView is public.yaml's PackagingTarget.
+//
+// The two verification fields are served rather than left to INSTALL.md alone:
+// 02:PACK-002 第 3 條 asks for at least one post-install check, and a check that
+// only exists inside a package the user has not built yet is not on the page
+// where they are choosing a target. The profile schema guarantees at least one
+// of the two per profile; on the wire both stay optional, because the standard
+// package names no agent and therefore has no prompt to run against one.
 type targetView struct {
-	ID              string   `json:"id"`
-	Kind            string   `json:"kind"`
-	Version         string   `json:"version"`
-	DisplayName     string   `json:"display_name"`
-	InstallLocation string   `json:"install_location,omitempty"`
-	SupportStatus   string   `json:"support_status"`
-	Notes           []string `json:"notes"`
+	ID                 string   `json:"id"`
+	Kind               string   `json:"kind"`
+	Version            string   `json:"version"`
+	DisplayName        string   `json:"display_name"`
+	InstallLocation    string   `json:"install_location,omitempty"`
+	SupportStatus      string   `json:"support_status"`
+	VerificationPrompt string   `json:"verification_prompt,omitempty"`
+	VerificationSteps  []string `json:"verification_steps,omitempty"`
+	Notes              []string `json:"notes"`
 }
 
 // Targets handles GET /packaging/targets.
@@ -95,9 +105,11 @@ func (h *Handler) Targets(w http.ResponseWriter, r *http.Request) {
 		notes = append(notes, p.Notes...)
 		out = append(out, targetView{
 			ID: p.ID, Kind: p.Kind, Version: p.Version, DisplayName: p.DisplayName,
-			InstallLocation: installLocationLine(p),
-			SupportStatus:   p.SupportStatus,
-			Notes:           notes,
+			InstallLocation:    installLocationLine(p),
+			SupportStatus:      p.SupportStatus,
+			VerificationPrompt: p.VerificationPrompt,
+			VerificationSteps:  p.VerificationSteps,
+			Notes:              notes,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, struct {
@@ -127,9 +139,56 @@ type previewView struct {
 	Allowed           bool               `json:"allowed"`
 	BlockedReason     string             `json:"blocked_reason,omitempty"`
 	BlockedMessage    string             `json:"blocked_message,omitempty"`
-	Validation        ManifestValidation `json:"validation"`
+	Validation        validationView     `json:"validation"`
 	IncludedTestCases []testCaseView     `json:"included_test_cases"`
 	ExcludedTestCases []excludedCaseView `json:"excluded_test_cases"`
+}
+
+// validationView and findingView are public.yaml's PackageValidation and
+// Finding: the manifest's own validation block with each finding's severity
+// stamped back on.
+//
+// The severity is not added to ManifestFinding, because the manifest and the
+// API answer to two different contracts and both are right. Inside a package
+// the list a finding sits in IS its severity, and download-manifest.schema.json
+// is closed around that (`additionalProperties: false`), so a severity field
+// there would be a contract break. On the wire the shared `Finding` is what
+// every other endpoint returns and its `severity` is required, so a client that
+// renders findings from one place must get it. One conversion at the boundary
+// is the whole of the difference.
+type validationView struct {
+	Blocked  bool          `json:"blocked"`
+	Errors   []findingView `json:"errors"`
+	Warnings []findingView `json:"warnings"`
+	Infos    []findingView `json:"infos"`
+}
+
+type findingView struct {
+	Severity string   `json:"severity"`
+	Code     string   `json:"code"`
+	Path     string   `json:"path,omitempty"`
+	Message  string   `json:"message"`
+	Details  []string `json:"details,omitempty"`
+}
+
+func validationOf(v ManifestValidation) validationView {
+	return validationView{
+		Blocked:  v.Blocked,
+		Errors:   findingViews(v.Errors, skillpkg.SeverityError),
+		Warnings: findingViews(v.Warnings, skillpkg.SeverityWarning),
+		Infos:    findingViews(v.Infos, skillpkg.SeverityInfo),
+	}
+}
+
+func findingViews(in []ManifestFinding, severity skillpkg.Severity) []findingView {
+	out := make([]findingView, 0, len(in))
+	for _, f := range in {
+		out = append(out, findingView{
+			Severity: string(severity), Code: f.Code, Path: f.Path,
+			Message: f.Message, Details: f.Details,
+		})
+	}
+	return out
 }
 
 // testCaseView and excludedCaseView are the manifest's two test-case shapes plus
@@ -174,7 +233,7 @@ func (h *Handler) Preview(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, previewView{
 		Target: target, Allowed: p.Allowed,
 		BlockedReason: p.BlockedReason, BlockedMessage: p.BlockedMessage,
-		Validation:        p.Validation,
+		Validation:        validationOf(p.Validation),
 		IncludedTestCases: includedViews(p.Included),
 		ExcludedTestCases: excludedViews(p.Excluded),
 	})
@@ -220,7 +279,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			"blocked_reason": res.Plan.BlockedReason,
 		}
 		if res.Plan.BlockedReason == BlockedValidation {
-			out["validation"] = res.Plan.Validation
+			out["validation"] = validationOf(res.Plan.Validation)
 		}
 		httpx.WriteJSON(w, http.StatusUnprocessableEntity, out)
 		return

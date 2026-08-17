@@ -117,6 +117,11 @@ type detail struct {
 			Value string `json:"value"`
 		} `json:"status"`
 	} `json:"license"`
+	Redistribution struct {
+		Value string `json:"value"`
+		Label string `json:"label"`
+		Note  string `json:"note"`
+	} `json:"redistribution"`
 	Risk struct {
 		ScanStatus string `json:"scan_status"`
 		HasScripts bool   `json:"has_scripts"`
@@ -183,6 +188,13 @@ func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 	if got.License.Status.Value != "declared" {
 		t.Errorf("license status = %q, want declared", got.License.Status.Value)
 	}
+	// ADR-027 決策 4: every skill carries the verdict and it starts at `unknown`.
+	// A declared licence does not move it — the two axes are separate, and
+	// 02:CONTENT-002 rules out even a confirmed licence being the release
+	// condition. This is the reading the packaging gate makes, on the same column.
+	if got.Redistribution.Value != "unknown" {
+		t.Errorf("redistribution = %+v; a declared MIT must not release a skill on its own", got.Redistribution)
+	}
 	// DISC-008: the risk block comes from a real scan of the stored package.
 	if got.Risk.ScanStatus != "scanned" || !got.Risk.HasScripts {
 		t.Errorf("risk = %+v, want a scan that found scripts/run.py", got.Risk)
@@ -211,6 +223,46 @@ func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 		if l.Text == "" {
 			t.Error("limitation with no text")
 		}
+	}
+}
+
+// 02:SEC-007 / ADR-027 決策 4: the detail view is where the redistribution
+// verdict becomes visible, and it reads the column the packaging gate reads.
+// Three states, each arriving with the platform's own copy — a client mapping
+// the value to its own wording would be a second place the three can be
+// described differently (NFR-001), and the label is what tells `blocked` from
+// `unknown` in front of a reader.
+func TestSkillDetailReportsTheRedistributionVerdict(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+
+	curator := a.login(t, "curator-redistribution")
+	markCatalog(t, pool, curator.workspaceID)
+	skillID := seedSkill(t, pool, curator.workspaceID, "catalog-redistribution-skill")
+	seedLicensedVersion(t, pool, curator.workspaceID, skillID, "MIT", "manifest")
+	a.packages["packages/"+skillID+".tar"] = demoPackage(t)
+
+	labels := map[string]string{}
+	for _, want := range []string{"unknown", "allowed", "blocked"} {
+		if _, err := pool.Exec(context.Background(),
+			"UPDATE skills SET redistribution = $2 WHERE id = $1", mustUUID(t, skillID), want); err != nil {
+			t.Fatal(err)
+		}
+		var got detail
+		if code := getJSON(t, http.DefaultClient, a.URL+"/api/skills/"+skillID, &got); code != http.StatusOK {
+			t.Fatalf("GET detail with redistribution=%s: want 200, got %d", want, code)
+		}
+		if got.Redistribution.Value != want {
+			t.Errorf("redistribution value = %q, want %q", got.Redistribution.Value, want)
+		}
+		if got.Redistribution.Label == "" || got.Redistribution.Note == "" {
+			t.Errorf("redistribution %q arrived without its copy: %+v", want, got.Redistribution)
+		}
+		if prev, dup := labels[got.Redistribution.Label]; dup {
+			t.Errorf("%q and %q share the label %q; three states shown as two is one of them going missing",
+				prev, want, got.Redistribution.Label)
+		}
+		labels[got.Redistribution.Label] = want
 	}
 }
 

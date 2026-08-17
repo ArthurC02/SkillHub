@@ -4898,6 +4898,26 @@ components:
             particular version was ever measured is the `compatibility` axes on
             the skill, and passing format validation is never permission to say
             it installs (ADR-012).
+        verification_prompt:
+          type: string
+          description: |
+            A prompt to run against the target agent once the package is
+            installed, to see whether the Skill was actually picked up
+            (02:PACK-002 第 3 條). Absent for `standard_package`, which names no
+            agent to run a prompt against — its check is `verification_steps`.
+        verification_steps:
+          type: array
+          items: { type: string }
+          description: |
+            Post-install checks, in order. Every target has at least one of
+            these two fields; both are optional here because which one a target
+            carries depends on whether it names an agent.
+
+            Served rather than left to the INSTALL.md inside the package: a
+            check that only exists inside a package the user has not built yet
+            is not available on the page where they are choosing a target, and
+            02:PACK-002 第 3 條 asks for the check itself, not for a promise
+            that one ships.
         notes:
           type: array
           items: { type: string }

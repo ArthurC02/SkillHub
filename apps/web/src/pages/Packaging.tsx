@@ -7,7 +7,6 @@ import {
   usePackagingPreview,
   usePackagingTargets,
   type CreatedDownloadArtifact,
-  type PackageFinding,
   type PackageValidation,
   type PackagingBlockedReason,
   type PackagingPreview,
@@ -16,7 +15,7 @@ import {
 } from "../api/packaging";
 import { useSkillDetail } from "../api/skills";
 import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
-import type { SkillDetail } from "../api/types";
+import type { Finding, SkillDetail } from "../api/types";
 
 /**
  * 02:PACK-001 / PACK-002 — pick a target, see what packaging would produce,
@@ -64,15 +63,15 @@ export const PACKAGING_BLOCKED_LABEL: Record<PackagingBlockedReason, string> = {
  * neither is closed — which is not a promise that packaging succeeds: the server
  * checks again, and `validation_blocked` is not knowable from here at all.
  *
- * A missing `redistribution` means the platform said nothing (the current
- * detail handler does not send the field yet), and nothing is not a verdict:
- * the entry stays open and the server's own gate answers. Fail-closed lives on
- * the server, where it cannot be skipped by a client that forgot to ask.
+ * Everything that is not exactly `allowed` closes it, a field that did not
+ * arrive included. The contract requires `redistribution` on every skill, so an
+ * absent one is a platform that failed to answer and not a permission — and of
+ * the two ways to be wrong, showing a refusal for content that turns out to be
+ * fine is the recoverable one.
  */
 export function packagingGate(skill: SkillDetail): PackagingBlockedReason | null {
   if (skill.access_restriction) return "license_hold";
-  if (!skill.redistribution) return null;
-  switch (skill.redistribution.value) {
+  switch (skill.redistribution?.value) {
     case "allowed":
       return null;
     case "blocked":
@@ -282,8 +281,44 @@ function TargetOption({
           </ul>
         </details>
       )}
-      <p className="note">完整安裝說明與安裝後的驗證步驟，隨套件內的 INSTALL.md 一起下載。</p>
+      <Verification target={target} />
     </li>
+  );
+}
+
+/**
+ * 02:PACK-002 第 3 條 — 至少一個安裝後的驗證 Prompt 或檢查步驟，在這個頁面上。
+ *
+ * 這些步驟同樣會隨套件內的 INSTALL.md 一起下載，但那要先打包、先下載才讀得到；
+ * 一個還在挑目標的人需要的是現在就知道等一下要怎麼確認它真的裝好了。兩邊是同一份
+ * 伺服器提供的文字，不是這裡另外寫一份。
+ *
+ * 每個目標至少有兩者其一（由 Profile 的 schema 保證），所以「兩個都沒有」是設定
+ * 壞掉，會照實說，不會靜靜地少一段。
+ */
+function Verification({ target }: { target: PackagingTarget }) {
+  const steps = target.verification_steps ?? [];
+  const count = steps.length + (target.verification_prompt ? 1 : 0);
+  if (count === 0) {
+    return <p className="note">這個目標沒有提供安裝後的驗證方式。</p>;
+  }
+  return (
+    <details>
+      <summary>裝好之後怎麼確認（{count}）</summary>
+      {target.verification_prompt && (
+        <p className="note">
+          對你的 Agent 下這個 Prompt：<q>{target.verification_prompt}</q>
+        </p>
+      )}
+      {steps.length > 0 && (
+        <ol className="note">
+          {steps.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ol>
+      )}
+      <p className="note">同一份說明也隨套件內的 INSTALL.md 一起下載。</p>
+    </details>
   );
 }
 
@@ -338,7 +373,7 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
  * still shown: hiding them would be the same mistake as hiding an import's.
  */
 function Findings({ validation }: { validation: PackageValidation }) {
-  const groups: Array<{ key: string; label: string; items: PackageFinding[] }> = [
+  const groups: Array<{ key: string; label: string; items: Finding[] }> = [
     { key: "errors", label: "阻擋級錯誤", items: validation.errors },
     { key: "warnings", label: "警告（不阻擋，但要知道）", items: validation.warnings },
     { key: "infos", label: "資訊", items: validation.infos },

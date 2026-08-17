@@ -436,6 +436,11 @@ function detailFixture(overrides: Partial<SkillDetail>): SkillDetail {
     enrichment: { status: "pending", note: "尚未產生白話摘要。" },
     limitations: [],
     license: { status: { value: "unknown", label: "License 未知", note: "未宣告 License。" } },
+    redistribution: {
+      value: "unknown",
+      label: "可散布性未確認",
+      note: "沒有人確認過這個 Skill 可不可以再散布。",
+    },
     derivation: { is_fork: false, label: "來源關係", note: "非 Fork。" },
     risk: {
       scan_status: "scanned",
@@ -831,6 +836,59 @@ test("DISC-006: an unenriched skill reads as unknown, never as 'needs nothing'",
   expect(text).toContain("依賴：");
   expect(text).toContain("未知");
   expect(text).toContain("不代表這個 Skill 沒有限制");
+});
+
+// 02:SEC-007 / ADR-027 決策 4: three states, and two of them refuse. `unknown`
+// is not a pending state that will resolve itself — it blocks exactly like
+// `blocked` — so the screen has to say so in its own words rather than leaving a
+// reader to assume the download is on its way.
+test("SEC-007: the redistribution verdict shows all three states and only `allowed` opens packaging", async () => {
+  const cases = [
+    { value: "allowed", label: "可再散布", opens: true },
+    { value: "blocked", label: "不可再散布", opens: false },
+    { value: "unknown", label: "可散布性未確認", opens: false },
+  ];
+  for (const c of cases) {
+    const skill = detailFixture({
+      skill_id: `dddddddd-0000-0000-0000-00000000000${cases.indexOf(c) + 3}`,
+      name: `Redistribution ${c.value}`,
+      redistribution: { value: c.value, label: c.label, note: `${c.value} 的說明。` },
+      version: {
+        version_id: "v1",
+        version_number: 1,
+        content_hash: "sha256:aa",
+        created_at: "2026-08-01T00:00:00Z",
+      },
+    });
+    stubSearchAndDetails(EMPTY, { [skill.skill_id]: skill });
+    await render(<App />);
+    await act(async () => {
+      await router.navigate({ to: "/skills/$skillId", params: { skillId: skill.skill_id } });
+    });
+    await waitFor(() => (container.textContent ?? "").includes(skill.name));
+
+    const text = container.textContent ?? "";
+    expect(text).toContain(c.label);
+    expect(text).toContain(`${c.value} 的說明。`);
+
+    const link = [...container.querySelectorAll("a")].find((a) =>
+      (a.getAttribute("href") ?? "").includes("/package"),
+    );
+    const refusal = [...container.querySelectorAll("button")].find((b) =>
+      (b.textContent ?? "").includes("打包並下載"),
+    );
+    if (c.opens) {
+      expect(link).toBeDefined();
+      expect(refusal).toBeUndefined();
+    } else {
+      expect(link).toBeUndefined();
+      expect(refusal?.disabled).toBe(true);
+    }
+    // Cleanup between iterations: this test renders the app three times.
+    await act(async () => root?.unmount());
+    container.innerHTML = "";
+    queryClient.clear();
+  }
 });
 
 test("DISC-007: advanced mode shows SKILL.md in full and marks every script", async () => {

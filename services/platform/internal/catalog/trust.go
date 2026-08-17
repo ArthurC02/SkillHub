@@ -45,6 +45,31 @@ const (
 	LicenseStatusConfirmed LicenseStatus = "confirmed"
 )
 
+// Redistribution is the ADR-027 決策 4 axis: may this content be handed on to
+// somebody else at all. It decides whether a Download Artifact can be produced,
+// and only `allowed` releases.
+//
+// It is neither of the two axes above and is never derived from them.
+// 02:CONTENT-002 states plainly that a manually confirmed license is not
+// thereby a redistributable one, so LicenseStatusConfirmed is not a release
+// condition; and the 0023 hold is a reviewer's temporary decision about a
+// handful of known skills, while this is a property of the content that every
+// skill has an answer to. Reading the absence of a hold as permission would be
+// asserting that whatever nobody objected to may be copied.
+type Redistribution string
+
+const (
+	// RedistributionAllowed (可再散布): established as redistributable.
+	RedistributionAllowed Redistribution = "allowed"
+	// RedistributionBlocked (不可再散布): established as not redistributable —
+	// source-available licenses land here even when the license itself was
+	// confirmed.
+	RedistributionBlocked Redistribution = "blocked"
+	// RedistributionUnknown (未確認): where every skill starts and where
+	// anything unclassifiable stays. Treated exactly like blocked.
+	RedistributionUnknown Redistribution = "unknown"
+)
+
 // TrustDisplay is the label and explanation shown for one trust axis value.
 type TrustDisplay struct {
 	Label string
@@ -63,11 +88,28 @@ var licenseStatusDisplays = map[LicenseStatus]TrustDisplay{
 	LicenseStatusConfirmed: {Label: "License 已人工確認", Note: "已由審核者核對宣告內容;是否可下載仍需另外檢查是否允許再散布。"},
 }
 
+var redistributionDisplays = map[Redistribution]TrustDisplay{
+	RedistributionAllowed: {Label: "可再散布", Note: "已確認這個 Skill 的授權允許再散布,平台可以產出下載套件。"},
+	RedistributionBlocked: {Label: "不可再散布", Note: "授權不允許再散布,平台不會產出任何下載套件。授權已人工確認不等於可以再散布。"},
+	RedistributionUnknown: {Label: "可散布性未確認", Note: "沒有人確認過這個 Skill 可不可以再散布。未確認一律當成不可散布處理,不會產出下載套件——這不是等待中的暫時狀態,是預設就擋。"},
+}
+
 // Display returns the label/note copy for t.
 func (t SourceTrust) Display() TrustDisplay { return sourceTrustDisplays[t] }
 
 // Display returns the label/note copy for l.
 func (l LicenseStatus) Display() TrustDisplay { return licenseStatusDisplays[l] }
+
+// Display returns the label/note copy for r. A value nobody recognises gets the
+// unknown copy rather than an empty one: the packaging gate already treats
+// anything that is not exactly `allowed` as blocked, and a reader of a blocked
+// skill must still be told why.
+func (r Redistribution) Display() TrustDisplay {
+	if d, ok := redistributionDisplays[r]; ok {
+		return d
+	}
+	return redistributionDisplays[RedistributionUnknown]
+}
 
 // DerivationBadge is the fork-chain indicator shown on a Skill's detail
 // view (DISC-003, PACK-001 衍生關係).

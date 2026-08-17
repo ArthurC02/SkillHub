@@ -253,14 +253,21 @@ type skillDetail struct {
 	// Limitations is DISC-003 一般模式「限制」, from both sources, each labelled.
 	// Always present, empty when neither source stated one — which is not a
 	// claim that the skill is unconstrained.
-	Limitations  []limitation   `json:"limitations"`
-	Version      *versionInfo   `json:"version,omitempty"`
-	Source       *sourceInfo    `json:"source,omitempty"`
-	License      licenseInfo    `json:"license"`
-	Derivation   derivationInfo `json:"derivation"`
-	AllowedTools []string       `json:"allowed_tools,omitempty"`
-	Risk         riskSummary    `json:"risk"`
-	Compat       compatibility  `json:"compatibility"`
+	Limitations []limitation `json:"limitations"`
+	Version     *versionInfo `json:"version,omitempty"`
+	Source      *sourceInfo  `json:"source,omitempty"`
+	License     licenseInfo  `json:"license"`
+	// Redistribution is the ADR-027 決策 4 verdict on whether this content may be
+	// handed on at all, which is what decides whether a download package can be
+	// built from it. Always present, because every skill has an answer — a skill
+	// nobody classified is `unknown`, and an absent field would be a fourth state
+	// the packaging gate does not have. A separate axis from License and from
+	// Restriction below, and derived from neither.
+	Redistribution labelled       `json:"redistribution"`
+	Derivation     derivationInfo `json:"derivation"`
+	AllowedTools   []string       `json:"allowed_tools,omitempty"`
+	Risk           riskSummary    `json:"risk"`
+	Compat         compatibility  `json:"compatibility"`
 	// Restriction is present only while a licensing question about the package
 	// is open (0023). Everything above it still answers: the hold is on the
 	// materials, not on the platform's own description of them.
@@ -306,8 +313,12 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 		Limitations: []limitation{},
 		Derivation:  derivation(skill),
 		License:     licenseInfo{Status: statusLabel(LicenseStatusUnknown)},
-		Risk:        riskSummary{ScanStatus: "unavailable", InfoCounts: map[string]int{}, Highlights: []skillpkg.Finding{}, Note: riskNote},
-		Compat:      unverifiedCompat(),
+		// Read off the skill row, not off the license: 02:CONTENT-002 forbids
+		// deriving one from the other, and the packaging gate reads this same
+		// column.
+		Redistribution: redistributionLabel(skill.Redistribution),
+		Risk:           riskSummary{ScanStatus: "unavailable", InfoCounts: map[string]int{}, Highlights: []skillpkg.Finding{}, Note: riskNote},
+		Compat:         unverifiedCompat(),
 	}
 	if skill.Summary != nil {
 		out.Summary = *skill.Summary
@@ -613,6 +624,15 @@ func tierLabel() labelled {
 func statusLabel(s LicenseStatus) labelled {
 	d := s.Display()
 	return labelled{Value: string(s), Label: d.Label, Note: d.Note}
+}
+
+// redistributionLabel echoes the stored value and pairs it with the copy for it.
+// The value is passed through rather than normalised: a client's own gate keys
+// off it, and rewriting an unrecognised value to `unknown` would hide from the
+// reader that the row holds something nobody planned for.
+func redistributionLabel(v string) labelled {
+	d := Redistribution(v).Display()
+	return labelled{Value: v, Label: d.Label, Note: d.Note}
 }
 
 func trustLabel(t SourceTrust) labelled {

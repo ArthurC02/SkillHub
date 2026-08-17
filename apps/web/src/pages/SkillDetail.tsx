@@ -168,11 +168,10 @@ export function SkillDetail() {
  * reported as the hold rather than as a licensing verdict — they are two
  * independent locks and only one of them is temporary.
  *
- * The section is omitted entirely when the API sends no `redistribution`: the
- * contract requires it and the current detail handler does not send it yet, and
- * an absent field is not a third verdict to render. The link stays offered in
- * that case because the packaging endpoints fail closed on their own — the page
- * they lead to states the refusal.
+ * The contract requires `redistribution` on every skill, so the badge is the
+ * normal case. A response without it is a platform that failed to answer, not a
+ * fourth state: the section says that plainly instead of rendering a verdict
+ * nobody gave, and `packagingGate` closes the entry all the same.
  */
 function Redistribution({ skill }: { skill: SkillDetailModel }) {
   const blocked = packagingGate(skill);

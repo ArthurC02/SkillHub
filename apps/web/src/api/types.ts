@@ -297,13 +297,10 @@ export interface SkillDetail {
    * (02:CONTENT-002), and separate from `access_restriction`, which is a
    * reviewer's temporary hold rather than a property of the content.
    *
-   * **Optional here although the schema requires it**, which is a deviation from
-   * this file's rule and a deliberate one: `GET /api/skills/{id}` does not send
-   * the field yet (services/platform/internal/catalog/detail.go). Absent means
-   * the platform said nothing, and the UI renders nothing rather than inventing
-   * a third verdict — the packaging endpoints fail closed on their own.
+   * Required, and for every skill: a skill nobody classified is `unknown`, so
+   * there is no "no answer" state for this field to be absent for.
    */
-  redistribution?: Labelled;
+  redistribution: Labelled;
   derivation: SkillDerivation;
   allowed_tools?: string[];
   risk: SkillRisk;

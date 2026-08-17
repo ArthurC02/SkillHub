@@ -367,6 +367,20 @@ func TestASecretBearingPackageCannotBeBuiltAndBuildResidueNeverTravels(t *testin
 	if body["blocked_reason"] != "validation_blocked" {
 		t.Errorf("blocked_reason = %v, want validation_blocked", body["blocked_reason"])
 	}
+	// The findings travel as the contract's `Finding`, severity included. Inside
+	// the manifest the list a finding sits in is its severity and the schema is
+	// closed around that; on the wire the field is required, because a client
+	// rendering findings from several endpoints reads one shape.
+	validation, _ := body["validation"].(map[string]any)
+	errs, _ := validation["errors"].([]any)
+	if len(errs) == 0 {
+		t.Fatalf("a validation refusal carried no errors: %v", validation)
+	}
+	for _, f := range errs {
+		if sev := f.(map[string]any)["severity"]; sev != "error" {
+			t.Errorf("finding severity = %v, want error: %v", sev, f)
+		}
+	}
 	if n := downloadArtifactsFor(t, pool, versionID); n != 0 {
 		t.Errorf("a refused build left %d artifacts behind", n)
 	}
@@ -737,12 +751,14 @@ func TestTheTargetsEndpointServesTheDeploymentsOwnProfiles(t *testing.T) {
 
 	var out struct {
 		Targets []struct {
-			ID              string   `json:"id"`
-			Kind            string   `json:"kind"`
-			Version         string   `json:"version"`
-			SupportStatus   string   `json:"support_status"`
-			InstallLocation string   `json:"install_location"`
-			Notes           []string `json:"notes"`
+			ID                 string   `json:"id"`
+			Kind               string   `json:"kind"`
+			Version            string   `json:"version"`
+			SupportStatus      string   `json:"support_status"`
+			InstallLocation    string   `json:"install_location"`
+			VerificationPrompt string   `json:"verification_prompt"`
+			VerificationSteps  []string `json:"verification_steps"`
+			Notes              []string `json:"notes"`
 		} `json:"targets"`
 	}
 	if code := getJSON(t, c.Client, c.base+"/packaging/targets", &out); code != http.StatusOK {
@@ -764,6 +780,19 @@ func TestTheTargetsEndpointServesTheDeploymentsOwnProfiles(t *testing.T) {
 		if target.Kind != "profile" || target.InstallLocation == "" {
 			t.Errorf("profile %s = %+v", target.ID, target)
 		}
+	}
+	// 02:PACK-002 第 3 條: at least one post-install check per target, served
+	// here rather than only inside the INSTALL.md of a package the user has not
+	// built yet. The standard package has steps and no prompt — it names no
+	// agent to run one against — which is why neither field alone is required.
+	for _, target := range out.Targets {
+		if target.VerificationPrompt == "" && len(target.VerificationSteps) == 0 {
+			t.Errorf("target %s offers no way to check the install worked", target.ID)
+		}
+	}
+	if out.Targets[0].VerificationPrompt != "" {
+		t.Errorf("the standard package carries a verification prompt, but it names no agent to run it against: %q",
+			out.Targets[0].VerificationPrompt)
 	}
 
 	// A deployment with no configuration says so, rather than serving an invented

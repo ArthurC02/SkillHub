@@ -89,6 +89,8 @@ const targets = {
       version: "1.0.0",
       display_name: "標準 Agent Skill 套件",
       support_status: "unverified",
+      // No prompt: this target names no agent to run one against.
+      verification_steps: ["Unzip the package. SKILL.md must be at the root of the archive."],
       notes: ["Any spec-compliant agent may try it; Skill Hub has not tried it on yours."],
     },
     {
@@ -98,6 +100,8 @@ const targets = {
       display_name: "Claude Agent SDK",
       install_location: ".claude/skills/<name>/ (working directory)",
       support_status: "verified",
+      verification_prompt: "List the skills you can use.",
+      verification_steps: ["Set cwd to the directory holding .claude/skills/."],
       notes: [],
     },
   ],
@@ -225,9 +229,21 @@ test("ADR-027 only `allowed` opens the packaging entry, and unknown is refused l
   expect(
     packagingGate(detail({ access_restriction: { reason: "license-review", note: "" } })),
   ).toBe("license_hold");
-  // The field the current detail handler does not send yet is not a third
-  // verdict: the server's own gate answers instead.
-  expect(packagingGate(detail({ redistribution: undefined }))).toBeNull();
+  // A response missing the field the contract requires is a platform that failed
+  // to answer, not a permission. It refuses, like every other non-`allowed` case.
+  expect(packagingGate(detail({ redistribution: undefined }))).toBe("license_unknown");
+});
+
+test("PACK-002 the post-install check is on the page, not only inside the package", async () => {
+  stubPlatform();
+  await render(<Packaging />, () => text().includes("標準 Agent Skill 套件"));
+
+  // Both shapes: the standard package's steps, and the profile's prompt. The
+  // INSTALL.md sentence stays as a supplement rather than as the whole answer.
+  expect(text()).toContain("SKILL.md must be at the root of the archive");
+  expect(text()).toContain("List the skills you can use.");
+  expect(text()).toContain("裝好之後怎麼確認");
+  expect(text()).toContain("隨套件內的 INSTALL.md 一起下載");
 });
 
 // --- the packaging page -----------------------------------------------------
