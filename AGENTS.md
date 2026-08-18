@@ -6,7 +6,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 
 ## 目前狀態（2026-08-18）
 
-**M4 打包與封測的程式面已收斂；M0～M3 亦已收斂。MVP 尚未完成——剩下的是部署期與負責人動作，不是程式。** 對帳見 [docs/plans/mvp/m4/audit.md](docs/plans/mvp/m4/audit.md)（49 項：**11 勾選、38 誠實不勾、零項退回**）、[m3/audit.md](docs/plans/mvp/m3/audit.md)（16 項）與 [m2/m2-work-items-audit.md](docs/plans/mvp/m2/m2-work-items-audit.md)（41 項）。
+**M4 打包與封測的程式面已收斂；M0～M3 亦已收斂。MVP 尚未完成——剩下的是部署期與負責人動作，不是程式。** 對帳見 [docs/plans/mvp/m4/audit.md](docs/plans/mvp/m4/audit.md)（49 項：**11 勾選、38 誠實不勾、零項退回**；**2026-08-18 稍晚的後端批後為 14 勾選、35 不勾**，見該檔 §7 補記）、[m3/audit.md](docs/plans/mvp/m3/audit.md)（16 項）與 [m2/m2-work-items-audit.md](docs/plans/mvp/m2/m2-work-items-audit.md)（41 項）。
 
 - **M4 交出去的是一條完整的打包與下載路徑**：不可變版本 → 三個目標的 zip → 對**交出去的位元組**重跑匯入路徑再驗一次 → 四道鎖（人工 hold／不可散布／授權未知／驗證未過）任一即拒 → 短效授權下載 → 下載紀錄與稽核事件同交易。封測面另有准入閘門、配額強制點、四個漏斗事件、回饋端點與 P1 停派送開關。**勾選的 11 項與不勾的 38 項各自的理由逐條寫在 `03` 的行內**。
 - **「程式面收斂」不等於「MVP 完成」**：`03` §18 的 `RELEASE-001`～`010` **十項全部誠實不勾**。共同的三個阻擋是**甲類四項未到期**、**六項 PDM 未追認**、**M1 閘門 D 日未宣告**。逐項的「誰做什麼驗什麼」見 [docs/plans/mvp/m4/release-checklist.md](docs/plans/mvp/m4/release-checklist.md)。

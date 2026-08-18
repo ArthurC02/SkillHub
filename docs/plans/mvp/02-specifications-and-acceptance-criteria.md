@@ -361,6 +361,14 @@ queued → provisioning → preparing → running → evaluating
 - 下載內容保留正確的 Skill 目錄結構與 `SKILL.md`。
 - 打包前再次執行規格驗證；若有阻擋錯誤則不得標示為有效套件。
 - 套件保留必要 License、作者、原始來源及衍生關係資訊。
+
+**「作者」的落點（2026-08-18 新增；修訂依據：[m4/audit.md §2.1](m4/audit.md) 對 `PACK-003` 的裁定與 [m4/release-checklist.md §1.9](m4/release-checklist.md) P-2）**
+
+上方第 3 條的四項裡，`License`／`原始來源`／`衍生關係` 都有 manifest 欄位承載，**只有「作者」沒有**，而這不是疏漏：**平台的資料模型裡沒有作者這個欄位**，Agent Skills 規格的 frontmatter 也沒有。要立一個 manifest 欄位就得先有一處可信的來源，而平台唯一知道的是匯入來源（repo URL 與 commit），那已經由 `source.origin` 承載。
+
+因此本條的「作者」以**套件位元組本身**滿足，不另立 manifest 欄位：作者資訊隨 `SKILL.md` frontmatter、套件根的 `LICENSE`（含著作權人行）與 `LICENSE.repo.provenance.json`（ADR-021 tier 3 的溯源註記）**逐位元組被複製進包**，由白名單保證不被剝除。
+
+**可判定形式**：對三個目標的產出 zip 斷言那三個檔案存在、內容與來源版本相同、且著作權人行未被改寫——**對匯出的位元組斷言，不對意圖斷言**（[m4/README.md §10 R3](m4/README.md)）。日後若平台真的取得可信的作者欄位（例如策展流程逐筆確認），再以 additive minor bump 加進 manifest。
 - Secrets、測試憑證、內部路徑及不應散布的 Run 資料不得被打入套件。
 - 使用者可選擇是否包含可散布的 Test Case 與範例資料。
 
