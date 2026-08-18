@@ -21,6 +21,22 @@ func TestGenerationLockIsExclusive(t *testing.T) {
 	}
 }
 
+func TestGenerationLockMetadataIsWorldReadable(t *testing.T) {
+	root := t.TempDir()
+	release, err := acquireGenerationLock(root, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	info, err := os.Stat(filepath.Join(root, ".devctl", "generate.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got&0o044 != 0o044 {
+		t.Fatalf("lock mode = %o; want readable metadata", got)
+	}
+}
+
 func TestGenerationLockReclaimsExpiredFile(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, ".devctl")

@@ -1,0 +1,14 @@
+.git
+.github
+.devcontainer
+.devctl
+.env
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/node_modules
+**/dist
+**/*.pyc
+**/*.test
+scan3

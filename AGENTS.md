@@ -79,7 +79,7 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1
 
 ## 開發自動化（Agent 開工先讀）
 
-本節是人類與 Coding Agent 的共同入口；詳細決策見 [ADR-030](docs/adr/ADR-030-portable-developer-automation-and-contract-code-generation.md)。不要把只在某一台電腦成立的 native command 當成 repo 的標準流程。
+本節是人類與 Coding Agent 的共同入口；詳細決策見 [ADR-030](docs/adr/ADR-030-portable-developer-automation-and-contract-code-generation.md)，完整操作與排錯見 [開發自動化手冊](docs/development/automation.md)。不要把只在某一台電腦成立的 native command 當成 repo 的標準流程。
 
 1. **先診斷再修改**：進入 repo 後先看 `task --list`，再跑 `task doctor`。新電腦尚未安裝 Task 時，用 `go -C tools/devctl run . doctor`；版本來源是各語言原生檔與 `tools/toolchain.yaml`，不是 Agent 記憶。
 2. **初始化不覆寫秘密**：`task env:init` 只在 `.env` 不存在時由 `.env.example` 建立；不得把真實 key 寫入 `.env.example`、Log、Trace 或回覆。`task bootstrap` 只下載各語言依賴。

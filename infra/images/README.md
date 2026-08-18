@@ -7,7 +7,7 @@
 | [`devtools/`](devtools/) | ADR-030 的跨電腦開發環境；供 Dev Container、codegen 與本機檢查使用 | **不可**；它有編譯器、套件管理器與 Docker CLI |
 | [`runtime-agent-sdk/`](runtime-agent-sdk/) | Sandbox 內真正執行 Skill 的受限 Runtime Image | 可以，但只能經 ADR-005／015 的隔離層 |
 
-`devtools` 的 base 使用不可變 digest，語言與工具版本來自 `.node-version`、各 `go.mod`／`.python-version` 與 `tools/toolchain.yaml`。它不是部署產物，也不得被 `SKILLHUB_SANDBOX_IMAGE` 引用。
+`devtools` 的 base 使用不可變 digest，語言與工具版本來自 `.node-version`、各 `go.mod`／`.python-version` 與 `tools/toolchain.yaml`。它內含 Docker daemon／iptables，供 Dev Container以 privileged DinD建立跨平台一致的 nested-generation namespace；其安全邊界見 `.devcontainer/README.md`。它不是部署產物，也不得被 `SKILLHUB_SANDBOX_IMAGE` 引用。
 
 ## Runtime Image 審核流水線（SBX-002）
 

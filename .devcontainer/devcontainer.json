@@ -7,13 +7,14 @@
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
   "mounts": [
-    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    "source=skillhub-devcontainer-docker,target=/var/lib/docker,type=volume"
   ],
+  "runArgs": ["--privileged"],
   "remoteUser": "vscode",
   "containerEnv": {
     "UV_LINK_MODE": "copy"
   },
-  "postStartCommand": "sudo chmod 0660 /var/run/docker.sock 2>/dev/null || true; sudo chgrp vscode /var/run/docker.sock 2>/dev/null || true",
+  "postStartCommand": "sudo sh -c 'pgrep dockerd >/dev/null || nohup dockerd --group docker --host=unix:///var/run/docker.sock >/tmp/dockerd.log 2>&1 &' && sh -c 'i=0; until docker info >/dev/null 2>&1; do i=$((i+1)); test $i -lt 60 || { sudo tail -80 /tmp/dockerd.log; exit 1; }; sleep 1; done'",
   "postCreateCommand": "go -C tools/devctl run . env-init && go -C tools/devctl run . bootstrap",
   "customizations": {
     "vscode": {

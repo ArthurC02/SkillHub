@@ -34,8 +34,10 @@ task bootstrap           # download Go, npm and uv dependencies
 task dev                 # start secret-free Postgres and SeaweedFS
 task dev:model           # opt in to LiteLLM; requires secrets and may spend money
 task gen                 # regenerate committed outputs atomically
-task gen:openapi         # regenerate TypeScript/Python contract outputs
+task gen:openapi         # regenerate Go/TypeScript/Python contract outputs
 task gen:check           # verify generated output without changing tracked files
+task automation:check    # verify Agent docs, task descriptions and ownership markers
+task ci                  # run the deterministic, secret-free local CI sequence
 task test                # run every test suite
 task lint                # lint every service
 ```
@@ -44,6 +46,10 @@ On a new machine without Task, use `go -C tools/devctl run . doctor` and
 `go -C tools/devctl run . env-init` as the bootstrap escape hatch. Never fill
 real credentials into [`.env.example`](.env.example); only the ignored `.env`
 may hold local secrets.
+
+Coding Agents must read [`AGENTS.md`](AGENTS.md); detailed cross-machine setup,
+generation ownership, shared-worktree rules and troubleshooting live in
+[`docs/development/automation.md`](docs/development/automation.md).
 
 Each service also works with its own native toolchain — `go test ./...`,
 `uv run pytest`, `npm test` — from its own directory.

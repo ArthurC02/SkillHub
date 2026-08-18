@@ -50,7 +50,7 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		"build", "--quiet",
 		"-f", filepath.Join(root, "tools", "codegen", "python", "Dockerfile"),
 		"-t", pyImage,
-		root,
+		filepath.Join(root, "tools", "codegen", "python"),
 	}
 	if err := runCaptured("Python codegen image build", "docker", buildArgs, out); err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		"build", "--quiet",
 		"-f", filepath.Join(root, "tools", "codegen", "go", "Dockerfile"),
 		"-t", goImage,
-		root,
+		filepath.Join(root, "tools", "codegen", "go"),
 	}
 	if err := runCaptured("Go codegen image build", "docker", goBuildArgs, out); err != nil {
 		return nil, err

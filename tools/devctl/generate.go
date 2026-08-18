@@ -68,8 +68,12 @@ func generate(root string, args []string, out io.Writer) error {
 	defer os.RemoveAll(scratch)
 
 	var outputs []generationOutput
+	images, err := parseManifestSection(filepath.Join(root, "tools", "toolchain.yaml"), "images")
+	if err != nil {
+		return err
+	}
 	if scope == "all" || scope == "sql" {
-		sqlOut, err := generateSQL(root, scratch, toolchain["sqlc"], out)
+		sqlOut, err := generateSQL(root, scratch, images["sqlc"], out)
 		if err != nil {
 			return err
 		}
@@ -80,10 +84,6 @@ func generate(root string, args []string, out io.Writer) error {
 		})
 	}
 	if scope == "all" || scope == "openapi" {
-		images, err := parseManifestSection(filepath.Join(root, "tools", "toolchain.yaml"), "images")
-		if err != nil {
-			return err
-		}
 		openAPIOutputs, err := generateOpenAPI(root, scratch, toolchain, images, out)
 		if err != nil {
 			return err
@@ -133,13 +133,16 @@ func acquireGenerationLock(root string, now time.Time) (func(), error) {
 	}
 	path := filepath.Join(dir, "generate.lock")
 	create := func() (*os.File, error) {
-		return os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		return os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	}
 	file, err := create()
 	if errors.Is(err, os.ErrExist) {
 		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil, fmt.Errorf("generation lock exists but cannot be read: %w", readErr)
+		}
 		var existing generationLock
-		if readErr == nil && json.Unmarshal(data, &existing) == nil && now.Sub(existing.CreatedAt) > generationLockMaxAge {
+		if json.Unmarshal(data, &existing) == nil && now.Sub(existing.CreatedAt) > generationLockMaxAge {
 			if removeErr := os.Remove(path); removeErr != nil {
 				return nil, fmt.Errorf("remove stale generation lock: %w", removeErr)
 			}
@@ -164,9 +167,9 @@ func acquireGenerationLock(root string, now time.Time) (func(), error) {
 	return func() { _ = os.Remove(path) }, nil
 }
 
-func generateSQL(root, scratch, version string, out io.Writer) (string, error) {
-	if version == "" {
-		return "", errors.New("sqlc version is missing from tools/toolchain.yaml")
+func generateSQL(root, scratch, image string, out io.Writer) (string, error) {
+	if image == "" {
+		return "", errors.New("sqlc image is missing from tools/toolchain.yaml")
 	}
 	config := `version: "2"
 sql:
@@ -193,13 +196,13 @@ sql:
 	args = append(args,
 		"-v", mount,
 		"-w", "/src/"+filepath.ToSlash(relScratch),
-		"sqlc/sqlc:"+version,
+		image,
 		"generate",
 	)
 	cmd := exec.Command("docker", args...)
 	cmd.Stdout, cmd.Stderr = out, out
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("sqlc %s: %w", version, err)
+		return "", fmt.Errorf("sqlc generation: %w", err)
 	}
 	generated := filepath.Join(scratch, "sqlc-out")
 	if _, err := os.Stat(generated); err != nil {

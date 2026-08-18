@@ -8,7 +8,7 @@ ENV UV_LINK_MODE=copy \
 
 COPY --from=uv /uv /usr/local/bin/uv
 WORKDIR /opt/codegen
-COPY tools/codegen/python/pyproject.toml tools/codegen/python/uv.lock ./
+COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project
 
 ENTRYPOINT ["/opt/codegen/.venv/bin/datamodel-codegen"]

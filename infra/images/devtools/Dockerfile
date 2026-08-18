@@ -7,6 +7,7 @@ ARG NODE_VERSION=22.14.0
 ARG TASK_VERSION=3.45.4
 ARG UV_VERSION=0.11.3
 ARG UV_INSTALLER_SHA256=b953b3f2a2764cbf860eee4578a5949fa90ed010644c6be1006f29010bada946
+ARG GOLANGCI_LINT_VERSION=2.12.2
 ARG DOCKER_VERSION=29.0.1
 ARG COMPOSE_VERSION=2.40.3
 ARG USERNAME=vscode
@@ -20,7 +21,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     UV_PYTHON_INSTALL_DIR=/opt/uv/python
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl git sudo xz-utils \
+    && apt-get install -y --no-install-recommends ca-certificates curl git iptables sudo xz-utils \
     && rm -rf /var/lib/apt/lists/* \
     && arch="$(dpkg --print-architecture)" \
     && case "$arch" in amd64) node_arch=x64; docker_arch=x86_64 ;; arm64) node_arch=arm64; docker_arch=aarch64 ;; *) echo "unsupported architecture: $arch" >&2; exit 1 ;; esac \
@@ -30,12 +31,13 @@ RUN apt-get update \
     && tar -xJf "node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" -C /usr/local --strip-components=1 \
     && rm "node-v${NODE_VERSION}-linux-${node_arch}.tar.xz" SHASUMS256.txt \
     && curl -fsSLO "https://download.docker.com/linux/static/stable/${docker_arch}/docker-${DOCKER_VERSION}.tgz" \
-    && tar -xzf "docker-${DOCKER_VERSION}.tgz" --strip-components=1 -C /usr/local/bin docker/docker \
+    && tar -xzf "docker-${DOCKER_VERSION}.tgz" --strip-components=1 -C /usr/local/bin \
     && rm "docker-${DOCKER_VERSION}.tgz" \
     && mkdir -p /usr/local/lib/docker/cli-plugins \
     && curl -fsSL "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-${docker_arch}" -o /usr/local/lib/docker/cli-plugins/docker-compose \
     && chmod 0755 /usr/local/lib/docker/cli-plugins/docker-compose \
     && go install "github.com/go-task/task/v3/cmd/task@v${TASK_VERSION}" \
+    && go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}" \
     && curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" -o /tmp/uv-install.sh \
     && echo "${UV_INSTALLER_SHA256}  /tmp/uv-install.sh" | sha256sum -c - \
     && sh /tmp/uv-install.sh \
@@ -43,6 +45,8 @@ RUN apt-get update \
     && uv python install 3.12 \
     && groupadd --gid "${USER_GID}" "${USERNAME}" \
     && useradd --uid "${USER_UID}" --gid "${USER_GID}" -m -s /bin/bash "${USERNAME}" \
+    && groupadd --force docker \
+    && usermod -aG docker "${USERNAME}" \
     && echo "${USERNAME} ALL=(root) NOPASSWD:ALL" > "/etc/sudoers.d/${USERNAME}" \
     && chmod 0440 "/etc/sudoers.d/${USERNAME}" \
     && printf '%s\n' 'export PATH=/usr/local/go/bin:/usr/local/bin:$PATH' > /etc/profile.d/skillhub-path.sh \

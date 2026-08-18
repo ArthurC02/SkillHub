@@ -22,6 +22,7 @@ Usage:
   devctl env-init   create .env from .env.example without overwriting it
 	devctl profile-check model  verify a profile's required variables without printing values
 	devctl gen [--check] [--scope=sql|openapi|all]  regenerate or check committed output
+	devctl automation-check  verify Task, Agent docs and generated ownership markers
 `
 
 type checkResult struct {
@@ -63,6 +64,10 @@ func main() {
 		}
 	case "gen":
 		if err := generate(root, os.Args[2:], os.Stdout); err != nil {
+			fatal(err)
+		}
+	case "automation-check":
+		if err := automationCheck(root, os.Stdout); err != nil {
 			fatal(err)
 		}
 	case "help", "-h", "--help":
@@ -122,7 +127,8 @@ func doctor(root string, out io.Writer) error {
 		checkVersion("golangci-lint", []string{"--version"}, toolchain["golangci_lint"], false),
 	}
 	results = append(results, checkDockerCompose())
-	results = append(results, checkPython(root, pythonVersion))
+	results = append(results, checkDockerDaemon())
+	results = append(results, checkPython(pythonVersion))
 	results = append(results, checkEnv(root))
 
 	failed := false
@@ -170,13 +176,29 @@ func checkDockerCompose() checkResult {
 	return checkResult{name: "docker compose", status: "PASS", detail: firstLine(strings.TrimSpace(string(output))), required: true}
 }
 
-func checkPython(root, want string) checkResult {
+func checkDockerDaemon() checkResult {
+	if _, err := exec.LookPath("docker"); err != nil {
+		return checkResult{name: "docker daemon", status: "FAIL", detail: "docker not found", required: true}
+	}
+	output, err := exec.Command("docker", "info", "--format", "{{.ServerVersion}}").CombinedOutput()
+	if err != nil {
+		return checkResult{name: "docker daemon", status: "FAIL", detail: firstLine(strings.TrimSpace(string(output))), required: true}
+	}
+	return checkResult{name: "docker daemon", status: "PASS", detail: "server " + firstLine(strings.TrimSpace(string(output))), required: true}
+}
+
+func checkPython(want string) checkResult {
 	if _, err := exec.LookPath("uv"); err != nil {
 		return checkResult{name: "python", status: "FAIL", detail: "uv not found", required: true}
 	}
-	cmd := exec.Command("uv", "run", "--directory", filepath.Join(root, "services", "llm"), "python", "--version")
-	cmd.Env = append(os.Environ(), "UV_LINK_MODE=copy")
-	output, err := cmd.CombinedOutput()
+	find := exec.Command("uv", "python", "find", want)
+	find.Env = append(os.Environ(), "UV_LINK_MODE=copy")
+	pathOutput, err := find.CombinedOutput()
+	if err != nil {
+		return checkResult{name: "python", status: "FAIL", detail: strings.TrimSpace(string(pathOutput)), required: true}
+	}
+	pythonPath := strings.TrimSpace(string(pathOutput))
+	output, err := exec.Command(pythonPath, "--version").CombinedOutput()
 	got := strings.TrimSpace(string(output))
 	if err != nil {
 		return checkResult{name: "python", status: "FAIL", detail: got, required: true}

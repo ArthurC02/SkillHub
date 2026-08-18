@@ -195,6 +195,8 @@ jobs:
         with:
           go-version-file: tools/devctl/go.mod
           cache: false
+      - name: Agent automation contract
+        run: go -C tools/devctl run . automation-check
       # devctl reads the pinned sqlc version from tools/toolchain.yaml, writes
       # into same-filesystem scratch space, and compares every file including
       # untracked additions. CI and local development therefore use one path.
