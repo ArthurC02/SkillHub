@@ -4,19 +4,49 @@ version: "3"
 
 tasks:
   dev:
-    desc: Start local infrastructure
-    cmd: docker compose -f infra/compose/docker-compose.yml up -d
+    desc: Start secret-free core infrastructure (Postgres and SeaweedFS)
+    cmd: docker compose -f infra/compose/docker-compose.yml up -d postgres seaweedfs
+
+  dev:core:
+    desc: Start secret-free core infrastructure (Postgres and SeaweedFS)
+    cmd: docker compose -f infra/compose/docker-compose.yml up -d postgres seaweedfs
+
+  dev:model:
+    desc: Start core plus LiteLLM; requires model secrets and may enable paid calls
+    cmds:
+      - go -C tools/devctl run . profile-check model
+      - docker compose --profile model -f infra/compose/docker-compose.yml up -d
 
   down:
-    desc: Stop local infrastructure
+    desc: Stop local infrastructure without deleting volumes
     cmd: docker compose -f infra/compose/docker-compose.yml down
+
+  doctor:
+    desc: Check portable developer prerequisites; read-only and prints no secret values
+    cmd: go -C tools/devctl run . doctor
+
+  bootstrap:
+    desc: Download project dependencies using native package managers
+    cmd: go -C tools/devctl run . bootstrap
+
+  env:init:
+    desc: Create .env from .env.example without overwriting an existing file
+    cmd: go -C tools/devctl run . env-init
 
   test:
     desc: Run all test suites
-    deps: [test:platform, test:llm, test:web]
+    deps: [test:platform, test:sandbox, test:llm, test:web, test:devctl]
 
   test:platform:
     dir: services/platform
+    cmd: go test ./...
+
+  test:sandbox:
+    dir: services/sandbox
+    cmd: go test ./...
+
+  test:devctl:
+    dir: tools/devctl
     cmd: go test ./...
 
   test:llm:

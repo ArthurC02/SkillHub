@@ -77,6 +77,18 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1
 - 里程碑：M0 基線 → M1 Explorer（結尾有驗證閘門，不通過不進 M2）→ M2 Lab → M3 評估 → M4 打包與封測。
 - 需求 ID 前綴：DISC／SKILL／WS／TEST／RUN／SBX／TRACE／EVAL／PACK／NFR／PDM／SEC 等，見 `docs/plans/mvp/02`、`03`。
 
+## 開發自動化（Agent 開工先讀）
+
+本節是人類與 Coding Agent 的共同入口；詳細決策見 [ADR-030](docs/adr/ADR-030-portable-developer-automation-and-contract-code-generation.md)。不要把只在某一台電腦成立的 native command 當成 repo 的標準流程。
+
+1. **先診斷再修改**：進入 repo 後先看 `task --list`，再跑 `task doctor`。新電腦尚未安裝 Task 時，用 `go -C tools/devctl run . doctor`；版本來源是各語言原生檔與 `tools/toolchain.yaml`，不是 Agent 記憶。
+2. **初始化不覆寫秘密**：`task env:init` 只在 `.env` 不存在時由 `.env.example` 建立；不得把真實 key 寫入 `.env.example`、Log、Trace 或回覆。`task bootstrap` 只下載各語言依賴。
+3. **預設不花錢**：`task dev`／`task dev:core` 只啟動 Postgres 與 SeaweedFS，不需要模型金鑰；`task dev:model` 會先 fail-closed 檢查模型秘密，且後續操作可能產生費用，不得由唯讀 SubAgent 自行啟動。
+4. **共享工作樹、單一 Writer**：目前不要求 SubAgent 使用 worktree。SubAgent 預設唯讀；同一時間只能有一個 Writer。寫入 SubAgent 必須有精確 path allowlist，不得自行執行 repo-wide formatter、package install、Compose down、Git 寫入或 lockfile 更新。
+5. **保護他人變更**：除既有的禁止 `git stash` 外，也禁止對未知修改執行 `git reset`、`git clean` 或 `git checkout -- <path>`；看到不屬於自己的 delta 就保留並回報。只以明確 pathspec stage 本批檔案。
+6. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/` 不交給多個寫入 Agent 平行處理。
+7. **平台限制要誠實**：Dev Container 是跨電腦的建議路徑，但不取代 SEC-009 的真實 Linux／gVisor 部署驗收。Doctor 的版本不符是環境診斷，不得靠跳過檢查偽裝成通過。
+
 ## 快速判斷「我該看哪份文件」
 
 | 你要做的事 | 先看 |

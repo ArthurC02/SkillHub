@@ -1,0 +1,28 @@
+{
+  "name": "SkillHub",
+  "build": {
+    "context": "..",
+    "dockerfile": "../infra/images/devtools/Dockerfile"
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "UV_LINK_MODE": "copy"
+  },
+  "postStartCommand": "sudo chmod 0660 /var/run/docker.sock 2>/dev/null || true; sudo chgrp vscode /var/run/docker.sock 2>/dev/null || true",
+  "postCreateCommand": "go -C tools/devctl run . env-init && go -C tools/devctl run . bootstrap",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  }
+}

@@ -1,0 +1,18 @@
+schema_version: 1
+
+# Language runtimes remain authoritative in their native files:
+# - Go: services/*/go.mod
+# - Node: .node-version
+# - Python: services/llm/.python-version
+# This manifest owns tools without a native project-level version source.
+tools:
+  task: "3.45.4"
+  uv: "0.11.3"
+  docker_cli: "29.0.1"
+  docker_compose: "2.40.3"
+  golangci_lint: "2.12.2"
+  sqlc: "1.31.1"
+  redocly: "2.46.1"
+  ogen: "1.24.0"
+  openapi_generator: "7.19.0"
+  datamodel_code_generator: "0.35.0"

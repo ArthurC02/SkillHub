@@ -21,14 +21,25 @@ package.
 
 ## Development
 
-Prerequisites: Go, Node.js, [uv](https://docs.astral.sh/uv/), Docker, and
-[Task](https://taskfile.dev/).
+The recommended cross-machine path is the repository's Dev Container. Native
+development needs Go, Node.js, [uv](https://docs.astral.sh/uv/), Docker, and
+[Task](https://taskfile.dev/); exact versions come from native version files and
+[`tools/toolchain.yaml`](tools/toolchain.yaml), not from this prose.
 
 ```bash
-task dev                 # start Postgres
+task doctor              # diagnose versions and missing prerequisites
+task env:init            # create .env without overwriting an existing one
+task bootstrap           # download Go, npm and uv dependencies
+task dev                 # start secret-free Postgres and SeaweedFS
+task dev:model           # opt in to LiteLLM; requires secrets and may spend money
 task test                # run every test suite
 task lint                # lint every service
 ```
+
+On a new machine without Task, use `go -C tools/devctl run . doctor` and
+`go -C tools/devctl run . env-init` as the bootstrap escape hatch. Never fill
+real credentials into [`.env.example`](.env.example); only the ignored `.env`
+may hold local secrets.
 
 Each service also works with its own native toolchain — `go test ./...`,
 `uv run pytest`, `npm test` — from its own directory.

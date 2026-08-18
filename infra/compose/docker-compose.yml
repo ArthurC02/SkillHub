@@ -59,12 +59,16 @@ services:
   # the egress proxy (domain allow list, DNS pinning, destination logging).
   litellm:
     image: ghcr.io/berriai/litellm:main-stable
+    profiles: ["model"]
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     environment:
       # Both from the repo-root .env, which is gitignored. OPENAI_API_KEY must
       # not appear in any other service's environment.
-      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY in .env}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in .env}
+      # Compose interpolates every service before profile selection, so these
+      # accept blank values here. `task dev:model` runs devctl's fail-closed
+      # profile check before enabling this service; core startup needs no keys.
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       # Its own database on the shared instance (ADR-018: one Postgres, several
       # logical databases). The gateway's key store must not share a schema with
       # the platform's — a migration on either side would then touch both.
