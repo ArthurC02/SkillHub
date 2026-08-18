@@ -29,7 +29,26 @@ afterEach(async () => {
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const VERSION = "22222222-2222-2222-2222-222222222222";
+const OLDER_VERSION = "44444444-4444-4444-4444-444444444444";
 const ARTIFACT = "33333333-3333-3333-3333-333333333333";
+
+// GET /skills/{id}/versions, newest first (04 丙-14).
+const VERSIONS = {
+  versions: [
+    {
+      version_id: VERSION,
+      version_number: 2,
+      content_hash: "sha256:bb",
+      created_at: "2026-08-02T00:00:00Z",
+    },
+    {
+      version_id: OLDER_VERSION,
+      version_number: 1,
+      content_hash: "sha256:aa",
+      created_at: "2026-08-01T00:00:00Z",
+    },
+  ],
+};
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -158,8 +177,11 @@ function json(body: unknown, status = 200) {
 
 /** `blocked` drives the preview; `duplicate` drives what POST .../packaging answers. */
 function stubPlatform(options: { blocked?: boolean; duplicate?: boolean } = {}) {
+  const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
+    calls.push(url);
+    if (url.endsWith("/versions")) return json(VERSIONS);
     if (url.includes("/packaging/targets")) return json(targets);
     if (url.includes("/packaging/preview")) {
       return json(
@@ -206,6 +228,7 @@ function stubPlatform(options: { blocked?: boolean; duplicate?: boolean } = {}) 
     if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
     return json({ error: "not found" }, 404);
   });
+  return calls;
 }
 
 async function render(node: ReactNode, settled: () => boolean) {
@@ -421,4 +444,34 @@ test("SEC-006 deleting states its scope first and then deletes", async () => {
   await act(async () => button("確認刪除")?.click());
   await waitFor(() => calls.some((c) => c.method === "DELETE"));
   expect(calls.find((c) => c.method === "DELETE")?.url).toContain(`/downloads/${ARTIFACT}`);
+});
+
+// --- 04 丙-14: the version picker -------------------------------------------
+
+test("04 丙-14 the packaging page picks the version from a list, and ?version= is the default", async () => {
+  const calls = stubPlatform();
+  await render(<Packaging />, () => text().includes("這些設定可以打包"));
+
+  const select = container.querySelector<HTMLSelectElement>("select")!;
+  // The URL named a version and that is what is selected — not the first row of
+  // the list, and not the skill's latest by accident: the page previously had
+  // no control here at all and only ever read the search param.
+  expect(select.value).toBe(VERSION);
+  expect(text()).toContain("v2（最新）");
+  expect(text()).toContain("v1");
+
+  // Picking another version re-previews that version: PACK-001 packages one
+  // immutable version, so a preview belonging to a different one must not stand.
+  const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(select, OLDER_VERSION);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await waitFor(() =>
+    calls.some((u) => u.includes(`/versions/${OLDER_VERSION}/packaging/preview`)),
+  );
+  expect(text()).toContain(OLDER_VERSION);
+  // And the "最新版本" label goes with it, rather than labelling an older version
+  // as the latest.
+  expect(text()).not.toContain("最新版本）");
 });

@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { FeedbackEntry } from "./components/FeedbackEntry";
 import { Compare } from "./pages/Compare";
+import { DataPolicy } from "./pages/DataPolicy";
 import { DatasetUpload } from "./pages/DatasetUpload";
 import { Downloads } from "./pages/Downloads";
 import { Home } from "./pages/Home";
@@ -18,6 +19,7 @@ import { RunTrace } from "./pages/RunTrace";
 import { SkillDetail } from "./pages/SkillDetail";
 import { SkillFiles } from "./pages/SkillFiles";
 import { TestCaseDetail, TestCaseList } from "./pages/TestCases";
+import { WorkspaceAccount } from "./pages/WorkspaceAccount";
 import { WorkspaceRuns } from "./pages/WorkspaceRuns";
 import { WorkspaceSkills } from "./pages/WorkspaceSkills";
 import type { AgentRuntime } from "./api/types";
@@ -49,6 +51,18 @@ function RootLayout() {
       </main>
       <footer className="app-footer">
         <FeedbackEntry pathname={pathname} />
+        {/*
+          The data policy is reachable from every page and only from the footer:
+          02:O11Y-004 makes it a disclosure obligation rather than a feature, and
+          a disclosure that lives one click from wherever the reader already is
+          is the shape that meets it. Beside the feedback entry because the two
+          answer the same kind of question — "what happens to what I just did".
+        */}
+        <p className="note">
+          <Link to="/policy">資料保存政策</Link>
+          {" ｜ "}
+          <Link to="/workspace/account">帳號與刪除</Link>
+        </p>
       </footer>
     </div>
   );
@@ -148,6 +162,30 @@ const workspaceSkillsRoute = createRoute({
   component: WorkspaceSkills,
 });
 
+/**
+ * CORE-007 / 02:SEC-006: the account and its deletion, the second of the two
+ * deletion planes. Under /workspace because the account and its personal
+ * workspace are the same thing here (ADR-020) — a settings section separate from
+ * the workspace would suggest there is more than one.
+ */
+const workspaceAccountRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workspace/account",
+  component: WorkspaceAccount,
+});
+
+/**
+ * 02:O11Y-004 / 04 丙-25②. Not under /workspace and deliberately not behind a
+ * session: what the platform records about a visitor is a question that starts
+ * being asked before anybody logs in, and the endpoint behind this page is the
+ * only public one outside the catalogue for the same reason.
+ */
+const dataPolicyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/policy",
+  component: DataPolicy,
+});
+
 /** 02:WS-002 第 1 條「Run 歷史」/ WS-004, served by GET /runs. */
 const workspaceRunsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -167,9 +205,10 @@ const compareRoute = createRoute({
 });
 
 /**
- * 03:TEST-008/009. The three ids live in the URL because the Lab has no picker
- * yet (see the scope note in RunPreflight.tsx); when DESIGN-007 lands, the page
- * that owns the test case links here with them filled in.
+ * 03:TEST-008/009. All three ids can arrive in the URL, and the test case
+ * screens link here with them filled in. Only `version` also has a picker on
+ * the page (04 丙-14): skill and test case are chosen on the screens that own
+ * them, so a picker here would be a second place to choose the same thing.
  */
 const runPreflightRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -253,6 +292,8 @@ const routeTree = rootRoute.addChildren([
   downloadsRoute,
   workspaceSkillsRoute,
   workspaceRunsRoute,
+  workspaceAccountRoute,
+  dataPolicyRoute,
   runPreflightRoute,
   datasetUploadRoute,
   testCaseListRoute,

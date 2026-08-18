@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
 import { Downloads } from "./pages/Downloads";
 import { RunTrace } from "./pages/RunTrace";
+import { WorkspaceAccount } from "./pages/WorkspaceAccount";
 import { WorkspaceRuns } from "./pages/WorkspaceRuns";
 import { WorkspaceSkills } from "./pages/WorkspaceSkills";
 
@@ -165,6 +166,104 @@ test("WS-004 the own-skills list links each row on to its files and packaging", 
   // header, because this is the page a reader lands on looking for "my stuff".
   expect(hrefs).toContain("/workspace/runs");
   expect(hrefs).toContain("/workspace/downloads");
+});
+
+// --- deleting a skill (WS-005, 04 丙-22 ①) ----------------------------------
+
+test("WS-005 deleting a skill says what survives it before anything is destroyed", async () => {
+  const calls: [string, string | undefined][] = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    calls.push([String(input), init?.method]);
+    if (init?.method === "DELETE") {
+      return json({
+        deleted: true,
+        versions_retained: 2,
+        note: "skill removed from your workspace, lists, and search; version snapshots are retained for the 30-day grace period",
+      });
+    }
+    return json({ skills: [{ skill_id: SKILL, name: "CSV 清理", summary: "整理 CSV。" }] });
+  });
+  await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
+
+  await act(async () => button("刪除")?.click());
+  // 02:WS-002 第 3 條: the scope is on screen before the request, and it names
+  // the grace period and the forks it does not touch.
+  expect(text()).toContain("版本快照會凍結保留 30 天再清除");
+  expect(text()).toContain("別人 Fork 過的版本");
+  expect(calls.some(([, method]) => method === "DELETE")).toBe(false);
+
+  await act(async () => button("確認刪除")?.click());
+  await waitFor(() => calls.some(([, method]) => method === "DELETE"));
+  expect(calls.find(([, m]) => m === "DELETE")?.[0]).toContain(`/skills/${SKILL}`);
+
+  // After the fact the server's own note is what is shown — not a second copy of
+  // the scope written on this side.
+  await waitFor(() => text().includes("version snapshots are retained"));
+});
+
+// --- deleting the account (CORE-007, 04 丙-22 ②) -----------------------------
+
+const ME = {
+  user_id: "u-1",
+  email: "tester@example.com",
+  display_name: "tester",
+  workspace_id: "ws-1",
+  deletion_requested_at: null,
+  purge_after: null,
+};
+
+test("CORE-007 requesting account deletion starts a grace period and shows the server's scope", async () => {
+  const calls: [string, string | undefined][] = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    calls.push([String(input), init?.method]);
+    if (init?.method === "DELETE") {
+      return json({
+        deletion_requested_at: "2026-08-18T00:00:00Z",
+        purge_after: "2026-09-17T00:00:00Z",
+        cancellable: true,
+        scope: "Your account stays usable until the grace period ends.",
+      });
+    }
+    return json(ME);
+  });
+  await render(<WorkspaceAccount />, () => text().includes("刪除我的帳號"));
+
+  await act(async () => button("刪除我的帳號")?.click());
+  // The pre-scope is about this control, and its whole job is to say that
+  // nothing is destroyed yet — the account delete is a countdown, not an act.
+  expect(text()).toContain("不會立刻刪掉任何東西");
+  expect(calls.some(([, m]) => m === "DELETE")).toBe(false);
+
+  await act(async () => button("確認開始刪除")?.click());
+  await waitFor(() => text().includes("Your account stays usable"));
+  expect(calls.find(([, m]) => m === "DELETE")?.[0]).toContain("/me");
+});
+
+test("CORE-007 a pending deletion is a state with a date and a way out, not a receipt", async () => {
+  const posts: string[] = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    if (init?.method === "POST") {
+      posts.push(String(input));
+      return json({ deletion_requested_at: null });
+    }
+    // GET /me after the cancel still answers the pending row; what this test is
+    // about is the request going out, not the invalidation round trip.
+    return json({
+      ...ME,
+      deletion_requested_at: "2026-08-18T00:00:00Z",
+      purge_after: "2026-09-17T00:00:00Z",
+    });
+  });
+  await render(<WorkspaceAccount />, () => text().includes("刪除申請中"));
+
+  // A user who closed the tab after asking has no other place to find either of
+  // these, which is what 02:SEC-006「刪除工作具可追蹤狀態」 is asking for.
+  expect(text()).toContain("2026-09-17T00:00:00Z");
+  expect(text()).toContain("再按一次刪除不會提早");
+
+  await act(async () => button("取消刪除申請")?.click());
+  await waitFor(() => posts.length > 0);
+  expect(posts[0]).toContain("/me/deletion/cancel");
 });
 
 // --- the per-download records ----------------------------------------------

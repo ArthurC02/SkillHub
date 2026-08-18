@@ -209,6 +209,33 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /policy/data-retention:
+    get:
+      operationId: getDataRetentionPolicy
+      summary: What the product analytics events record, and for how long (O11Y-004)
+      security: []
+      description: |
+        02:O11Y-004: product analytics is the only data class a user produces
+        without submitting anything, so its disclosure obligation is no lower
+        than any other's. This is that disclosure as an endpoint rather than a
+        document, for the reason GET /test-cases/limits is one — the values come
+        from the constants the writer itself reads, so the page and the behaviour
+        cannot drift.
+
+        No session. A data policy a visitor has to log in to read is not a policy
+        they can decide by, and the funnel's first segment is measured before any
+        login exists. Nothing user-specific is read or returned.
+
+        `collecting: false` with `retention_days: 0` is the shipped default and a
+        real answer, not a missing one: NFR-002 forbids collection before a
+        retention value exists, ADR-029 決策 5's 180 days is still a proposal, and
+        a deployment that has set nothing writes no row and sets no cookie.
+      responses:
+        "200":
+          description: The analytics disclosure as this deployment applies it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataRetentionPolicy" }
   /feedback:
     post:
       operationId: submitFeedback
@@ -739,6 +766,46 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
   /skills/{id}/versions:
+    get:
+      operationId: listSkillVersions
+      summary: List a skill's immutable versions, newest first (WS-001)
+      description: |
+        Workspace scoped from the session like every other registry read
+        (ADR-011): a skill in somebody else's workspace answers with an empty
+        list rather than with their history.
+
+        This is the list the pre-run permission screen and the packaging screen
+        pick a version from. Before it existed, both took the version id from
+        the URL only, so the reader had to paste one by hand.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The skill's versions, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [versions]
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      type: object
+                      required: [version_id, version_number, content_hash, created_at]
+                      properties:
+                        version_id: { type: string, format: uuid }
+                        version_number: { type: integer }
+                        content_hash: { type: string }
+                        created_at: { type: string, format: date-time }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
     post:
       operationId: saveSkillVersion
       summary: Save a zip as the next immutable version of a skill (WS-002)
@@ -4282,6 +4349,49 @@ components:
           type: array
           items: { type: string }
         note: { type: string }
+    DataRetentionPolicy:
+      description: |
+        ADR-029's four events and their attribute whitelist, plus the retention
+        this deployment actually applies. Served from the constants in
+        internal/analytics, never from numbers typed into a document.
+      type: object
+      required: [collecting, retention_days, events, note]
+      properties:
+        collecting:
+          type: boolean
+          description: |
+            False — the shipped default — means no row is written and no cookie
+            is set. The four events below are still disclosed: "we collect
+            nothing" is a disclosure, not the absence of one.
+        retention_days:
+          type: integer
+          description: |
+            How long an event is kept, and the analytics cookie's own lifetime.
+            Zero exactly when `collecting` is false.
+        events:
+          type: array
+          description: |
+            The closed set of four (the CHECK in 0029). A fifth would have to
+            explain first why no domain table answers it (ADR-029 決策 1).
+          items:
+            type: object
+            required: [name, when, attributes, not_recorded]
+            properties:
+              name:
+                type: string
+                enum: [search_performed, skill_detail_viewed, session_started, download_started]
+              when: { type: string }
+              attributes:
+                type: array
+                description: |
+                  The whitelist itself, one entry per column the event writes.
+                  It is the constructor signature in analytics.go: an attribute
+                  nobody declared cannot be passed, so it cannot be stored.
+                items: { type: string }
+              not_recorded:
+                type: string
+                description: The disclosure that a summary of what *is* stored would hide.
+        note: { type: string }
     RunPermissionSummary:
       description: |
         Everything a run will be able to touch, shown before it starts
@@ -5575,13 +5685,6 @@ components:
             That is the point of keeping the state: the rule is a condition on
             one handler that a test can hold to, rather than a habit of not
             handing bytes over too early.
-        status_reason:
-          type: string
-          description: |
-            Why it is `rejected`, in the user's language. The row is kept rather
-            than deleted so 「為什麼打不出來」 has an answer after the request
-            that failed is gone (packaging-design §4.6). Absent on the other two
-            states.
         expires_at:
           type: string
           format: date-time

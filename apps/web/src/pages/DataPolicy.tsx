@@ -1,0 +1,144 @@
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { apiFetch } from "../api/client";
+import type { DataRetentionPolicy } from "../api/types";
+
+/**
+ * 02:O11Y-004 / 04 丙-25② — the data policy page, and specifically the analytics
+ * half of it, because that is the one data class a user produces without
+ * submitting anything. Everything else on the platform starts with somebody
+ * typing or uploading; this starts with them arriving.
+ *
+ * **Every number here is read from the server, none is written into this file.**
+ * `retention_days` comes from the deployment's ANALYTICS_RETENTION through
+ * GET /policy/data-retention, so a page that says "180 天" only ever says it
+ * because the running platform applies 180 days. When nothing is configured the
+ * page says 目前不收集 — which is not a placeholder but the honest state, and the
+ * visible form of NFR-002「未定值前不得開始收集」. Hard-coding ADR-029's proposed
+ * 180 would be exactly the 04 乙-2 mistake: a policy displayed and enforced
+ * nowhere.
+ *
+ * Public, like the endpoint behind it: a policy you have to log in to read is not
+ * one you can decide by.
+ *
+ * Scope note: this page covers the analytics class and points at where the other
+ * classes are deleted. The full per-class retention table lives in
+ * gate-test/consent-and-data-policy.md §3 and is **not** copied here, because
+ * those numbers are PDM-006 proposals that no code enforces yet — restating them
+ * as product copy would turn an unratified proposal into a promise.
+ */
+export function DataPolicy() {
+  const policy = useQuery({
+    queryKey: ["policy", "data-retention"],
+    queryFn: () => apiFetch<DataRetentionPolicy>("/policy/data-retention"),
+    retry: false,
+  });
+
+  return (
+    <section className="page">
+      <h1>資料保存政策</h1>
+      <p className="note">
+        這一頁講兩件事：平台在你沒有主動送出任何東西的情況下記了什麼，以及你要刪掉自己的東西時該去哪裡。
+      </p>
+
+      <h2>使用行為分析事件</h2>
+      {policy.isPending && <p>載入分析事件政策中…</p>}
+      {policy.error && (
+        <p role="alert">
+          無法讀取分析事件政策：{policy.error.message}
+          。讀不到不等於沒有收集，這一頁不會替伺服器回答這個問題。
+        </p>
+      )}
+
+      {policy.data && (
+        <>
+          {policy.data.collecting ? (
+            <p>
+              這個部署<strong>有</strong>在收集下面四個事件，保存
+              <strong>{policy.data.retention_days} 天</strong>
+              ，到期後刪除。分析事件用的 cookie 也是同一個期限。
+            </p>
+          ) : (
+            /* NFR-002 made visible: no retention value, no collection, and the
+               page says so rather than showing a blank or a proposed number. */
+            <p>
+              這個部署<strong>目前不收集</strong>
+              使用行為分析事件：沒有設定保存期限，所以一列都不寫，cookie 也不發。
+              保存期限定案之前不會開始收集——這是規則，不是還沒做完。下面仍然列出四個事件，
+              因為「現在不收」本身就是需要說清楚的一件事。
+            </p>
+          )}
+
+          <p className="note">{policy.data.note}</p>
+
+          <table className="compare-table">
+            <caption>
+              全部只有這四個事件。要加第五個，得先說明既有的資料表為什麼答不出那個問題。
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">事件</th>
+                <th scope="col">什麼時候產生</th>
+                <th scope="col">記了哪些欄位</th>
+                <th scope="col">沒有記什麼</th>
+              </tr>
+            </thead>
+            <tbody>
+              {policy.data.events.map((event) => (
+                <tr key={event.name}>
+                  <th scope="row">
+                    <code>{event.name}</code>
+                  </th>
+                  <td>{event.when}</td>
+                  <td>
+                    {/* The whitelist verbatim: these are column names, and
+                        translating them would break the link between what the
+                        page claims and what the table holds. */}
+                    <ul className="risk-list">
+                      {event.attributes.map((attribute) => (
+                        <li key={attribute}>
+                          <code>{attribute}</code>
+                        </li>
+                      ))}
+                    </ul>
+                  </td>
+                  <td>{event.not_recorded}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      <h2>你的東西怎麼刪</h2>
+      <p className="note">
+        刪除都是分兩步的：按下去之後會先說明這一次刪掉的是什麼、什麼會留下，確認才真的執行。
+      </p>
+      <ul className="risk-list">
+        <li>
+          <Link to="/workspace/skills">我的 Skill</Link>：刪掉一個 Skill。版本快照凍結保留 30
+          天再清除；別人 Fork 過的版本不受影響。
+        </li>
+        <li>
+          <Link to="/workspace/downloads">下載紀錄</Link>
+          ：刪掉打包好的檔案。「你下載過幾次」的紀錄會留著，因為那件事發生過。
+        </li>
+        <li>
+          <Link to="/workspace/runs">Run 歷史</Link>：進到某一次 Run
+          可以刪掉它的產出檔案。執行紀錄與評估判定保留，引用過該檔案的評估會顯示證據已不存在。
+        </li>
+        <li>
+          <Link to="/workspace/account">帳號</Link>：刪掉整個帳號。30
+          天寬限期內都可以取消；哪些會實體刪除、哪些會保留但去掉你的身分，由伺服器在申請後逐條列出。
+        </li>
+      </ul>
+
+      <h2>這一頁沒有回答的事</h2>
+      <p className="note">
+        每一類資料各自保存多久（上傳的資料集、Run
+        產出、Trace、稽核事件……）仍在核定中，核定前不會寫在這裡當成承諾。 試跑會把你的 Prompt
+        與相關內容送往模型供應商，那一段在試跑前的權限確認畫面上逐項列出。
+      </p>
+    </section>
+  );
+}

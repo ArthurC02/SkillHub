@@ -16,6 +16,12 @@ import { router } from "./router";
  * the keyboard walkthrough and the validation messages (04 丙-21 ①②), which axe
  * answers nothing about.
  *
+ * **Adding a route? It needs a case here.** The list below used to be enumerated
+ * by hand, which meant a new route was simply never scanned and nothing said so —
+ * the quietest kind of hole, because the suite stayed green. `SCANNED_ROUTES` and
+ * the test right under it now compare this file against the router's own route
+ * table, so forgetting fails instead of passing (04 丙-22).
+ *
  * Three things this cannot see, recorded here rather than switched off:
  *
  * 1. **Colour contrast.** axe answers `incomplete` for `color-contrast` on every
@@ -274,8 +280,6 @@ const DOWNLOADS = {
     {
       ...ARTIFACT_ROW,
       artifact_id: "expired-1",
-      status: "rejected",
-      status_reason: "打包後未通過驗證。",
       expires_at: "2026-01-01T00:00:00Z",
     },
   ],
@@ -387,6 +391,28 @@ const LIMITS = {
   retention_days: 90,
   allowed_kinds: ["text (.txt .md .csv)", "documents (.pdf .docx)"],
   note: "file type is decided by content, not by file extension",
+};
+
+// Collecting, so the policy page renders the table rather than the 不收集 note;
+// the other branch is covered in policy.test.tsx.
+const RETENTION_POLICY = {
+  collecting: true,
+  retention_days: 180,
+  events: [
+    {
+      name: "search_performed",
+      when: "a search is submitted",
+      attributes: ["query_length", "query_language", "result_count"],
+      not_recorded: "not one word of the query itself",
+    },
+    {
+      name: "session_started",
+      when: "a visit begins",
+      attributes: ["session_id", "occurred_at"],
+      not_recorded: "session_id is not the login session token",
+    },
+  ],
+  note: "there is no free-text column anywhere in the table",
 };
 
 const TRACE_GENERAL = {
@@ -587,7 +613,18 @@ function stubPlatform() {
     if (path.startsWith("/api/skills/"))
       return json(skillDetail(path.slice("/api/skills/".length), "PDF Summariser"));
 
-    if (path === "/me") return json({ user_id: "u-1", login: "tester" });
+    // The busy state here too: an account with a deletion already pending is the
+    // one that renders the badge, the date and the way out of it.
+    if (path === "/me")
+      return json({
+        user_id: "u-1",
+        email: "tester@example.com",
+        display_name: "tester",
+        workspace_id: "ws-1",
+        deletion_requested_at: "2026-08-17T00:00:00Z",
+        purge_after: "2026-09-16T00:00:00Z",
+      });
+    if (path === "/policy/data-retention") return json(RETENTION_POLICY);
     if (path === "/packaging/targets") return json(TARGETS);
     if (path.endsWith("/packaging/preview")) return json(PREVIEW);
     if (path === "/downloads") return json(DOWNLOADS);
@@ -729,6 +766,40 @@ async function keyboardActivate(label: string, match: (el: HTMLElement) => boole
 const byText = (text: string) => (el: HTMLElement) => (el.textContent ?? "").includes(text);
 
 // --- one case per route in router.tsx ---------------------------------------
+
+/**
+ * Every route this file scans below. Kept as data rather than as a comment so
+ * the next test can hold it against the router itself: a route with no case here
+ * is a page nobody checks, and the failure mode of the old hand-kept list was
+ * that it looked exactly like a route with no problems.
+ */
+const SCANNED_ROUTES = [
+  "/",
+  "/compare",
+  "/policy",
+  "/skills/$skillId",
+  "/skills/$skillId/files",
+  "/skills/$skillId/package",
+  "/lab/run",
+  "/lab/datasets",
+  "/lab/test-cases",
+  "/lab/test-cases/$testCaseId",
+  "/runs/$runId",
+  "/runs/$runId/compare",
+  "/workspace/account",
+  "/workspace/downloads",
+  "/workspace/runs",
+  "/workspace/skills",
+];
+
+test("QA-009: 每一條路由都有一個掃描案例", () => {
+  const declared = Object.keys(router.routesById).filter((id) => id !== "__root__");
+  // Sorted rather than ordered: the router's order is its own business, and a
+  // reshuffle of routeTree is not a reason to fail an accessibility suite.
+  expect([...declared].sort(), "a route in router.tsx has no axe case in this file").toEqual(
+    [...SCANNED_ROUTES].sort(),
+  );
+});
 
 test("QA-009: 首頁與搜尋結果", async () => {
   stubPlatform();
@@ -901,6 +972,26 @@ test("QA-009: 我的 Skill", async () => {
   });
   await waitFor(has("我的 Skill"));
   await scan("/workspace/skills");
+}, 30000);
+
+test("QA-009: 帳號與刪除", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/workspace/account" });
+  });
+  await waitFor(has("刪除申請中"));
+  await scan("/workspace/account");
+}, 30000);
+
+test("QA-009: 資料保存政策", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/policy" });
+  });
+  await waitFor(has("search_performed"));
+  await scan("/policy");
 }, 30000);
 
 // --- 02:NFR-007「主要操作可使用鍵盤完成」: the walkthrough (04 丙-21 ①) ---------

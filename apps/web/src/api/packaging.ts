@@ -135,8 +135,6 @@ export interface DownloadArtifact {
   manifest_hash: string;
   /** `rejected` and `quarantined` are two different things; only `available` is served. */
   status: "quarantined" | "available" | "rejected";
-  /** Why it is `rejected`, in the user's language. Absent on the other two states. */
-  status_reason?: string;
   /** Absolute date, never "in N days" (PDM-006 risk table). */
   expires_at: string;
   created_at: string;

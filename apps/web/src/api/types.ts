@@ -17,6 +17,55 @@ export interface Me {
   email: string;
   display_name: string;
   workspace_id: string;
+  /**
+   * When the caller asked for their account to be deleted, `null` when nothing
+   * is pending (02:SEC-006「刪除工作具可追蹤狀態」). Required by the schema and
+   * therefore not optional here: `null` and "the field is missing" would be the
+   * difference between 「沒有申請」 and 「申請了但我看不到」, and only the first is a
+   * state the product has.
+   */
+  deletion_requested_at: string | null;
+  /** When the grace period ends. Null exactly when `deletion_requested_at` is. */
+  purge_after: string | null;
+}
+
+/**
+ * The answer to DELETE /me. `scope` is a server-owned plain-language statement
+ * of what goes and what is kept de-identified — rendered verbatim, never
+ * paraphrased on this side: a second copy of it in the client is a second thing
+ * to keep true (WS-002 要求刪除前先說明範圍).
+ */
+export interface AccountDeletion {
+  deletion_requested_at: string;
+  purge_after: string;
+  cancellable: boolean;
+  scope: string;
+}
+
+/** The answer to DELETE /skills/{id} (WS-005); `note` states the scope. */
+export interface SkillDeletion {
+  deleted: boolean;
+  versions_retained: number;
+  note: string;
+}
+
+// ---- GET /policy/data-retention (02:O11Y-004, ADR-029) ----
+
+export interface AnalyticsEventDisclosure {
+  name: "search_performed" | "skill_detail_viewed" | "session_started" | "download_started";
+  when: string;
+  /** The attribute whitelist, one entry per column the event writes. */
+  attributes: string[];
+  not_recorded: string;
+}
+
+export interface DataRetentionPolicy {
+  /** False is the shipped default: no row written, no cookie set. */
+  collecting: boolean;
+  /** Zero exactly when `collecting` is false. Never a number the UI invents. */
+  retention_days: number;
+  events: AnalyticsEventDisclosure[];
+  note: string;
 }
 
 /**
@@ -258,6 +307,19 @@ export interface SkillVersionSummary {
   version_number: number;
   content_hash: string;
   created_at: string;
+}
+
+/**
+ * The answer to GET /skills/{id}/versions (WS-001), newest first. Same shape as
+ * the inline `version` above, because it is the same fact about a different
+ * number of versions.
+ *
+ * Workspace scoped server-side: a skill the caller does not own answers with an
+ * empty list, which the screens render as 「沒有可選的版本」 and never as 「這個
+ * Skill 沒有版本」.
+ */
+export interface SkillVersions {
+  versions: SkillVersionSummary[];
 }
 
 /** The inline `derivation` object on SkillDetail (DISC-003, WS-001). */

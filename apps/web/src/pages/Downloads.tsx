@@ -8,6 +8,7 @@ import {
   useDownloads,
   type DownloadArtifact,
 } from "../api/packaging";
+import { ConfirmDelete } from "../components/ConfirmDelete";
 import { DownloadArtifactFacts, isExpired } from "../components/DownloadArtifactFacts";
 
 /**
@@ -27,13 +28,11 @@ import { DownloadArtifactFacts, isExpired } from "../components/DownloadArtifact
 export function Downloads() {
   const downloads = useDownloads();
   const client = useQueryClient();
-  const [confirming, setConfirming] = useState("");
   const [message, setMessage] = useState("");
 
   const remove = useMutation({
     mutationFn: (artifactId: string) => deleteDownload(artifactId),
     onSuccess: async () => {
-      setConfirming("");
       setMessage("已刪除。檔案不再提供下載，下載紀錄本身保留。");
       await client.invalidateQueries({ queryKey: ["downloads"] });
     },
@@ -62,13 +61,8 @@ export function Downloads() {
                 <DownloadHistory artifact={artifact} />
                 <DownloadActions
                   artifact={artifact}
-                  confirming={confirming === artifact.artifact_id}
                   pending={remove.isPending}
-                  onAskDelete={() => {
-                    setMessage("");
-                    setConfirming(artifact.artifact_id);
-                  }}
-                  onCancelDelete={() => setConfirming("")}
+                  onAskDelete={() => setMessage("")}
                   onConfirmDelete={() => remove.mutate(artifact.artifact_id)}
                 />
               </li>
@@ -129,17 +123,13 @@ function DownloadHistory({ artifact }: { artifact: DownloadArtifact }) {
 
 function DownloadActions({
   artifact,
-  confirming,
   pending,
   onAskDelete,
-  onCancelDelete,
   onConfirmDelete,
 }: {
   artifact: DownloadArtifact;
-  confirming: boolean;
   pending: boolean;
   onAskDelete: () => void;
-  onCancelDelete: () => void;
   onConfirmDelete: () => void;
 }) {
   // Only `available` and unexpired bytes are served, and the server checks again
@@ -159,39 +149,19 @@ function DownloadActions({
         來源 Skill
       </Link>
       {" ｜ "}
-      {confirming ? (
-        <>
-          {/*
-            QA-009: the 刪除 button this replaced is gone from the DOM, so
-            without autoFocus the focus falls back to <body> and a keyboard user
-            has to tab in from the top of the page to reach a confirmation they
-            just asked for. aria-describedby puts the scope sentence below into
-            the announcement, which is the same NFR-007 requirement the visible
-            copy answers for a sighted reader.
-          */}
-          <button
-            type="button"
-            autoFocus
-            aria-describedby={`delete-scope-${artifact.artifact_id}`}
-            disabled={pending}
-            onClick={onConfirmDelete}
-          >
-            確認刪除
-          </button>{" "}
-          <button type="button" disabled={pending} onClick={onCancelDelete}>
-            取消
-          </button>
-          <span className="note" id={`delete-scope-${artifact.artifact_id}`}>
+      <ConfirmDelete
+        scopeId={`delete-scope-${artifact.artifact_id}`}
+        pending={pending}
+        onAsk={onAskDelete}
+        onConfirm={onConfirmDelete}
+        scope={
+          <>
             刪除的是這個套件的檔案本身。
             「你曾經下載過幾次」的紀錄會保留，因為那件事已經發生過；這一筆之後不再出現在清單裡，下載連結也失效。
             同一個版本隨時可以重新打包一次。重複刪除不算失敗。
-          </span>
-        </>
-      ) : (
-        <button type="button" onClick={onAskDelete}>
-          刪除
-        </button>
-      )}
+          </>
+        }
+      />
     </p>
   );
 }

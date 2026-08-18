@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { deleteRunArtifact, useRunArtifacts, type RunArtifact } from "../api/runs";
+import { ConfirmDelete } from "../components/ConfirmDelete";
 import { useTrace } from "../api/trace";
 import type { TraceAdvanced, TraceEvent, TraceSummary } from "../api/trace";
 import { EvaluationPanel, RUN_STATUS_LABEL } from "./RunEvaluation";
@@ -71,22 +72,20 @@ export function RunTrace() {
  * output, the control plane does not open it (iron rule 1), and there is no
  * endpoint that serves it — offering a link would be inventing one.
  *
- * Delete states its scope before it runs and is idempotent by contract, the same
- * two-step the download history uses. The scope sentence differs though, and the
- * difference is the point: an evaluation that already cited this file keeps its
+ * Delete states its scope before it runs and is idempotent by contract, through
+ * the same ConfirmDelete the download history and the skill list use. The scope
+ * sentence is what differs, and the difference is the point: an evaluation that already cited this file keeps its
  * citation, and that citation will read 「證據已不存在」 rather than silently
  * losing its evidence.
  */
 function RunArtifacts({ runId }: { runId: string }) {
   const artifacts = useRunArtifacts(runId);
   const client = useQueryClient();
-  const [confirming, setConfirming] = useState("");
   const [message, setMessage] = useState("");
 
   const remove = useMutation({
     mutationFn: (artifactId: string) => deleteRunArtifact(runId, artifactId),
     onSuccess: async () => {
-      setConfirming("");
       setMessage("已刪除。檔案不再存在，引用過它的評估會顯示證據已不存在。");
       await client.invalidateQueries({ queryKey: ["run", runId, "artifacts"] });
     },
@@ -108,44 +107,22 @@ function RunArtifacts({ runId }: { runId: string }) {
             {artifacts.data.artifacts.map((artifact) => (
               <li key={artifact.artifact_id} className="download-item">
                 <RunArtifactFacts artifact={artifact} />
-                {confirming === artifact.artifact_id ? (
-                  <p>
-                    <button
-                      type="button"
-                      autoFocus
-                      aria-describedby={`run-artifact-scope-${artifact.artifact_id}`}
-                      disabled={remove.isPending}
-                      onClick={() => remove.mutate(artifact.artifact_id)}
-                    >
-                      確認刪除
-                    </button>{" "}
-                    <button
-                      type="button"
-                      disabled={remove.isPending}
-                      onClick={() => setConfirming("")}
-                    >
-                      取消
-                    </button>
-                    <span className="note" id={`run-artifact-scope-${artifact.artifact_id}`}>
-                      刪除的是這個檔案本身，這個 Run
-                      的執行紀錄與評估判定都會保留。引用過這個檔案的評估不會被改寫，
-                      它會顯示證據已不存在——那是當時真的看過的東西，判定不因為檔案被刪就變得不成立。
-                      重複刪除不算失敗。
-                    </span>
-                  </p>
-                ) : (
-                  <p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMessage("");
-                        setConfirming(artifact.artifact_id);
-                      }}
-                    >
-                      刪除
-                    </button>
-                  </p>
-                )}
+                <p>
+                  <ConfirmDelete
+                    scopeId={`run-artifact-scope-${artifact.artifact_id}`}
+                    pending={remove.isPending}
+                    onAsk={() => setMessage("")}
+                    onConfirm={() => remove.mutate(artifact.artifact_id)}
+                    scope={
+                      <>
+                        刪除的是這個檔案本身，這個 Run
+                        的執行紀錄與評估判定都會保留。引用過這個檔案的評估不會被改寫，
+                        它會顯示證據已不存在——那是當時真的看過的東西，判定不因為檔案被刪就變得不成立。
+                        重複刪除不算失敗。
+                      </>
+                    }
+                  />
+                </p>
               </li>
             ))}
           </ul>

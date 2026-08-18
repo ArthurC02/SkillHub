@@ -171,6 +171,53 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// skillVersionResponse mirrors the inline `version` object the skill detail
+// serves, so the version history and the detail view name one version the same
+// way.
+type skillVersionResponse struct {
+	VersionID     string `json:"version_id"`
+	VersionNumber int32  `json:"version_number"`
+	ContentHash   string `json:"content_hash"`
+	CreatedAt     string `json:"created_at"`
+}
+
+// Versions handles GET /skills/{id}/versions (WS-001) — the version history the
+// pre-run and packaging screens pick from.
+//
+// A skill outside the caller's workspace answers 200 with an empty list rather
+// than 404: the scope comes from the session (iron rule 3), so a caller cannot
+// tell the two apart anyway, and the screens that read this treat "no versions"
+// as "nothing to pick" either way.
+func (h *Handler) Versions(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	var skillID pgtype.UUID
+	if err := skillID.Scan(r.PathValue("id")); err != nil {
+		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+		return
+	}
+
+	rows, err := gen.New(h.Svc.Pool).ListSkillVersions(r.Context(), gen.ListSkillVersionsParams{
+		WorkspaceID: ws.ID, SkillID: skillID,
+	})
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
+		return
+	}
+	out := make([]skillVersionResponse, 0, len(rows))
+	for _, v := range rows {
+		out = append(out, skillVersionResponse{
+			VersionID:     uuidString(v.ID),
+			VersionNumber: v.VersionNumber,
+			ContentHash:   v.ContentHash,
+			CreatedAt:     v.CreatedAt.Time.UTC().Format(time.RFC3339),
+		})
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"versions": out})
+}
+
 // Diff handles GET /skills/{id}/diff?from=&to= (WS-003).
 func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)

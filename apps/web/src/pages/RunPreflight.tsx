@@ -1,16 +1,18 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ApiError } from "../api/client";
 import { confirmPreflight, getPreflight, startRun, type PreflightSummary } from "../api/lab";
+import { useSkillVersions } from "../api/skills";
 
 /**
  * 03:TEST-008/009 — the pre-run permission summary and its confirmation.
  *
- * SCOPE, stated honestly: the test case and its files come from the Test Case
- * screens (TEST-012), which link here with `skill` and `test_case` filled in.
- * There is still no version picker, so `version` is the one id a user has to
- * supply. This page is the gate screen and nothing else.
+ * SCOPE: the test case and its files come from the Test Case screens
+ * (TEST-012), which link here with `skill` and `test_case` filled in. The
+ * version is picked on this page from the skill's own history; a `?version=`
+ * in the URL is the default that picker opens on, so links written before it
+ * existed still open on the version they name (04 丙-14).
  *
  * The one rule this screen exists to enforce: the button that starts a run is
  * only ever wired to the hash of the summary currently on the reader's screen.
@@ -19,6 +21,62 @@ import { confirmPreflight, getPreflight, startRun, type PreflightSummary } from 
  */
 
 type LabSearch = { skill?: string; version?: string; test_case?: string };
+
+/**
+ * The version history of one skill as a `<select>` (WS-001, 04 丙-14). Lives on
+ * this page because the pre-run screen is what needed it first; the packaging
+ * screen imports it rather than growing a second one, because two pickers over
+ * one endpoint would answer the same question in two vocabularies.
+ *
+ * `value` is owned by the caller, never by this component: on both screens it
+ * starts as whatever the URL said, and a link into a specific version must keep
+ * opening on that version. So an id that is not in the list — still loading, or
+ * a version this workspace cannot see — gets an option of its own and stays
+ * selected, rather than the browser silently swapping the reader onto the first
+ * option in the list.
+ */
+export function SkillVersionPicker({
+  skillId,
+  value,
+  onPick,
+}: {
+  skillId: string;
+  value: string;
+  onPick: (versionId: string) => void;
+}) {
+  const versions = useSkillVersions(skillId);
+  const list = versions.data?.versions ?? [];
+  const unknown = value !== "" && !list.some((v) => v.version_id === value);
+  const id = `skill-version-${skillId}`;
+
+  return (
+    <p className="version-picker">
+      <label htmlFor={id}>Skill Version</label>{" "}
+      <select id={id} value={value} onChange={(e) => onPick(e.target.value)}>
+        {value === "" && <option value="">請選擇版本…</option>}
+        {unknown && <option value={value}>{value}（不在下面的清單裡）</option>}
+        {list.map((v, i) => (
+          <option key={v.version_id} value={v.version_id}>
+            v{v.version_number}
+            {i === 0 ? "（最新）" : ""}・{v.created_at.slice(0, 10)}
+          </option>
+        ))}
+      </select>{" "}
+      {versions.isPending && <span className="note">載入版本清單中…</span>}
+      {versions.error && (
+        <span className="note" role="alert">
+          無法讀取版本清單：{versions.error.message}
+        </span>
+      )}
+      {!versions.isPending && !versions.error && list.length === 0 && (
+        <span className="note">
+          這個工作區沒有這個 Skill 的任何版本可選——不代表這個 Skill 沒有版本，Fork
+          之後才會有屬於你的版本。
+        </span>
+      )}
+    </p>
+  );
+}
 
 function bytes(n: number): string {
   if (n >= 1 << 30) return `${(n / (1 << 30)).toFixed(1)} GB`;
@@ -37,17 +95,23 @@ const SCRIPT_LABEL: Record<PreflightSummary["scripts"]["status"], string> = {
 export function RunPreflight() {
   const {
     skill = "",
-    version = "",
+    version: linkedVersion = "",
     test_case: testCase = "",
   } = useSearch({ strict: false }) as LabSearch;
-  const ready = skill !== "" && version !== "" && testCase !== "";
+  // The URL's version is the default the picker opens on; a pick replaces it.
+  // Deliberately not written back into the URL: this page's whole subject is
+  // what the *current* selection may touch, and a history entry per pick would
+  // be a back button that walks through permission summaries nobody confirmed.
+  const [picked, setPicked] = useState("");
+  const version = picked || linkedVersion;
+  const ready = skill !== "" && testCase !== "";
   const [message, setMessage] = useState("");
   const [runId, setRunId] = useState("");
 
   const preflight = useQuery({
     queryKey: ["preflight", skill, version, testCase],
     queryFn: () => getPreflight(skill, version, testCase),
-    enabled: ready,
+    enabled: ready && version !== "",
     retry: false,
     // Never served from cache: this screen's whole job is to show what is true
     // now, and a stale summary would be confirmed against a hash the server has
@@ -82,24 +146,45 @@ export function RunPreflight() {
       <section className="page">
         <h1>執行前權限確認</h1>
         <p>
-          這個頁面需要 <code>?skill=&amp;version=&amp;test_case=</code> 三個 ID。Test Case 與
-          Dataset 請在 <Link to="/lab/test-cases">Test Case 頁</Link> 建立,再從那裡連過來;Skill
-          Version id 目前仍需自行填入。
+          這個頁面需要 <code>?skill=&amp;test_case=</code> 兩個 ID。Test Case 與 Dataset 請在{" "}
+          <Link to="/lab/test-cases">Test Case 頁</Link> 建立,再從那裡連過來;要跑哪一個 Skill
+          Version 在這個頁面上選。
         </p>
       </section>
     );
   }
 
-  if (preflight.isPending) return <p>載入權限摘要中…</p>;
+  // One shell for every state, so the picker never disappears while the summary
+  // it selects is loading — a picker that vanishes mid-load is one the reader
+  // cannot use to get out of a version that fails to load.
+  const shell = (children: ReactNode) => (
+    <section className="page">
+      <h1>執行前權限確認</h1>
+      <SkillVersionPicker
+        skillId={skill}
+        value={version}
+        onPick={(id) => {
+          setPicked(id);
+          // A different version is a different summary and a different run: the
+          // last run's id and the last error belong to what was on screen before.
+          setRunId("");
+          setMessage("");
+        }}
+      />
+      {children}
+    </section>
+  );
+
+  if (version === "") return shell(<p>請先在上面選一個 Skill Version,才有權限摘要可以看。</p>);
+  if (preflight.isPending) return shell(<p>載入權限摘要中…</p>);
   if (preflight.error) {
-    return <p role="alert">無法讀取權限摘要:{preflight.error.message}</p>;
+    return shell(<p role="alert">無法讀取權限摘要:{preflight.error.message}</p>);
   }
 
   const { summary, summary_hash: hash, estimated_cost: cost, quota, notes } = preflight.data;
 
-  return (
-    <section className="page">
-      <h1>執行前權限確認</h1>
+  return shell(
+    <>
       <p>以下是這次 Run 可以接觸的範圍。確認後才會開始執行。</p>
 
       <dl className="preflight">
@@ -226,6 +311,6 @@ export function RunPreflight() {
         </button>
       )}
       <p>不同意就不要按下按鈕:未確認的 Run 不會被建立。</p>
-    </section>
+    </>,
   );
 }

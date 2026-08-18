@@ -26,8 +26,26 @@ afterEach(async () => {
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const VERSION = "22222222-2222-2222-2222-222222222222";
+const OLDER_VERSION = "44444444-4444-4444-4444-444444444444";
 const TEST_CASE = "33333333-3333-3333-3333-333333333333";
-const LAB_URL = `/lab/run?skill=${SKILL}&version=${VERSION}&test_case=${TEST_CASE}`;
+
+// Newest first, the order GET /skills/{id}/versions serves.
+const VERSIONS = {
+  versions: [
+    {
+      version_id: VERSION,
+      version_number: 2,
+      content_hash: "sha256:bb",
+      created_at: "2026-08-02T00:00:00Z",
+    },
+    {
+      version_id: OLDER_VERSION,
+      version_number: 1,
+      content_hash: "sha256:aa",
+      created_at: "2026-08-01T00:00:00Z",
+    },
+  ],
+};
 
 function summary(hash: string, files: string[]): PreflightResponse {
   return {
@@ -93,6 +111,7 @@ function stubPlatform() {
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
     calls.push({ url, body: init?.body as string | undefined });
+    if (url.endsWith("/versions")) return json(VERSIONS);
     if (url.includes("/runs/preflight/confirm")) {
       const sent = JSON.parse(String(init?.body)) as { summary_hash: string };
       return sent.summary_hash === current.summary_hash
@@ -117,8 +136,21 @@ function stubPlatform() {
   };
 }
 
-async function renderLab() {
-  window.history.pushState({}, "", LAB_URL);
+async function renderLab(
+  search: {
+    skill: string | undefined;
+    version: string | undefined;
+    test_case: string | undefined;
+  } = {
+    skill: SKILL,
+    version: VERSION,
+    test_case: TEST_CASE,
+  },
+) {
+  const params = new URLSearchParams(
+    Object.entries(search).filter(([, v]) => v !== undefined) as [string, string][],
+  );
+  window.history.pushState({}, "", `/lab/run?${params.toString()}`);
   await act(async () => {
     root = createRoot(container);
     root.render(
@@ -128,10 +160,33 @@ async function renderLab() {
     );
   });
   await act(async () => {
-    await router.navigate({
-      to: "/lab/run",
-      search: { skill: SKILL, version: VERSION, test_case: TEST_CASE },
+    await router.navigate({ to: "/lab/run", search });
+  });
+}
+
+async function waitFor(done: () => boolean, timeoutMs = 2000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (done()) return;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
     });
+  }
+  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+}
+
+function versionSelect(): HTMLSelectElement {
+  const select = container.querySelector<HTMLSelectElement>("select");
+  if (!select) throw new Error(`no version picker; DOM was:\n${container.textContent}`);
+  return select;
+}
+
+async function pickVersion(versionId: string) {
+  const select = versionSelect();
+  const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(select, versionId);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
   });
 }
 
@@ -216,4 +271,48 @@ test("02:TEST-005 a permission change forces a fresh confirmation instead of reu
   expect(sent).toHaveLength(1);
   expect(sent[0]).toContain("hash-two");
   expect(container.textContent).toContain("run-1");
+});
+
+// --- 04 丙-14: the version picker -------------------------------------------
+
+test("04 丙-14 the version comes from a picker, and a ?version= link is what it opens on", async () => {
+  const platform = stubPlatform();
+  await renderLab();
+
+  // The URL named a version, so that is the selection — not the first row of
+  // the list, and not the newest. An existing link must keep meaning what it
+  // said (there are two versions here, so "the default happens to be right"
+  // cannot be what passes this).
+  expect(versionSelect().value).toBe(VERSION);
+  expect(container.textContent).toContain("v2（最新）");
+  expect(container.textContent).toContain("v1");
+
+  // Picking the older one re-reads the permission summary for that version:
+  // 02:TEST-005's summary is per-version, so the screen must not keep showing
+  // the previous one.
+  await pickVersion(OLDER_VERSION);
+  await waitFor(() =>
+    platform.calls.some(
+      (c) => c.url.includes("/runs/preflight") && c.url.includes(`version_id=${OLDER_VERSION}`),
+    ),
+  );
+  expect(versionSelect().value).toBe(OLDER_VERSION);
+});
+
+test("04 丙-14 with no version in the URL the page asks for one instead of demanding an id", async () => {
+  const platform = stubPlatform();
+  await renderLab({ skill: SKILL, version: undefined, test_case: TEST_CASE });
+
+  // The old copy told the reader to supply a version id by hand; there is now a
+  // list, and nothing is read until something is chosen.
+  await waitFor(() => (container.textContent ?? "").includes("請先在上面選一個 Skill Version"));
+  // Asserted as "never asked for an empty version" rather than "never asked":
+  // the router is a module singleton these tests share, so a request left over
+  // from another case's location proves nothing either way. What must not exist
+  // is a preflight read for no version at all.
+  expect(platform.calls.some((c) => c.url.includes("version_id=&"))).toBe(false);
+
+  await pickVersion(VERSION);
+  await waitFor(() => (container.textContent ?? "").includes("資源上限"));
+  expect(container.textContent).toContain("rows.csv");
 });

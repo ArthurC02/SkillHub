@@ -14,6 +14,7 @@ import {
   type PackagingTargetId,
 } from "../api/packaging";
 import { useSkillDetail } from "../api/skills";
+import { SkillVersionPicker } from "./RunPreflight";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
 import type { Finding, SkillDetail } from "../api/types";
@@ -99,10 +100,12 @@ export function Packaging() {
   const [includeTestCases, setIncludeTestCases] = useState(false);
   const [built, setBuilt] = useState<CreatedDownloadArtifact | null>(null);
   const [message, setMessage] = useState("");
+  const [picked, setPicked] = useState("");
 
-  // The version being packaged: the one in the URL, else the skill's latest.
-  // Never invented — with neither, the page says so instead of guessing.
-  const versionId = version ?? skill.data?.version?.version_id ?? "";
+  // The version being packaged: the one the reader picked, else the one in the
+  // URL, else the skill's latest. Never invented — with none of the three, the
+  // page says so instead of guessing.
+  const versionId = picked || version || skill.data?.version?.version_id || "";
   const target = chosen || (targets.data?.targets[0]?.id ?? "");
   const preview = usePackagingPreview(skillId, versionId, target, includeTestCases);
 
@@ -142,6 +145,18 @@ export function Packaging() {
         <p role="alert">這個 Skill 還沒有已保存的版本內容，沒有東西可以打包。</p>
       ) : (
         <>
+          <SkillVersionPicker
+            skillId={skillId}
+            value={versionId}
+            onPick={(id) => {
+              setPicked(id);
+              // The built artifact belongs to the version it was built from;
+              // leaving it on screen beside another version's preview would
+              // offer bytes nobody asked for.
+              setBuilt(null);
+              setMessage("");
+            }}
+          />
           <p className="note">
             打包的是這一個不可變版本 <code>{versionId}</code>
             ；打包不會建立也不會修改任何版本，每按一次得到的是一筆 Download Artifact。

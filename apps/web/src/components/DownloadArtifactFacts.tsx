@@ -56,7 +56,6 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
         {bytes(artifact.size_bytes)}｜狀態：{STATUS_LABEL[artifact.status]}｜建立於{" "}
         {artifact.created_at}｜已下載 {artifact.download_count} 次
       </p>
-      {artifact.status_reason && <p className="note">拒絕原因：{artifact.status_reason}</p>}
       <p className="note">
         {expired ? (
           <>

@@ -4,8 +4,10 @@ import type {
   ForkedSkill,
   PublicSearchResponse,
   SearchFilters,
+  SkillDeletion,
   SkillDetail,
   SkillFiles,
+  SkillVersions,
 } from "./types";
 
 /**
@@ -77,6 +79,38 @@ export function useSkillFiles(skillId: string) {
     queryFn: () => getSkillFiles(skillId),
     enabled: skillId.length > 0,
   });
+}
+
+/**
+ * GET /skills/{id}/versions (WS-001) — the version history, newest first, for
+ * the screens that have to pick one to run or to package.
+ *
+ * Session scoped, unlike the three `/api/*` reads above: a version list is
+ * workspace data, and the server resolves the scope from the session.
+ */
+export function getSkillVersions(skillId: string) {
+  return apiFetch<SkillVersions>(`/skills/${skillId}/versions`);
+}
+
+export function useSkillVersions(skillId: string) {
+  return useQuery({
+    queryKey: ["skills", skillId, "versions"],
+    queryFn: () => getSkillVersions(skillId),
+    enabled: skillId.length > 0,
+  });
+}
+
+/**
+ * DELETE /skills/{id} (WS-005). Soft delete: the skill leaves this workspace's
+ * lists and search at once, its version snapshots stay frozen for the 30-day
+ * grace period, and package objects other forks share are untouched.
+ *
+ * The response's `note` is the server's statement of that scope. It arrives
+ * *after* the deletion, so the screen that offers this has to say the scope
+ * itself before it runs (02:WS-002 第 3 條) — see ConfirmDelete.
+ */
+export function deleteSkill(skillId: string) {
+  return apiFetch<SkillDeletion>(`/skills/${skillId}`, { method: "DELETE" });
 }
 
 export function forkSkill(skillId: string) {

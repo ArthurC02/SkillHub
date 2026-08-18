@@ -84,6 +84,11 @@ func NewRouter(d Deps) http.Handler {
 	// configured it is a pass-through, which is every deployment up to now.
 	mux.HandleFunc("POST /skills/{id}/fork", auth.RequireSession(auth.RequireInvited(d.Registry.Fork)))
 	mux.HandleFunc("POST /skills/{id}/versions", auth.RequireSession(d.Importer.SaveVersion))
+	// WS-001's read half, on the same path and a different method. The list has
+	// existed as a query since M1 and nothing called it, which is why the two
+	// screens that need to pick a version (pre-run permissions, packaging) took
+	// the id from the URL and asked the reader to paste one (04 丙-14).
+	mux.HandleFunc("GET /skills/{id}/versions", auth.RequireSession(d.Registry.Versions))
 	mux.HandleFunc("GET /skills/{id}/diff", auth.RequireSession(d.Registry.Diff))
 	mux.HandleFunc("DELETE /skills/{id}", auth.RequireSession(d.Registry.Delete))
 	// INGEST-010: manual takedown of content in the caller's own workspace,
@@ -248,6 +253,14 @@ func NewRouter(d Deps) http.Handler {
 	// Signed-in only — the surface it serves for an uninvited visitor is a user who
 	// is logged in and has just been refused above, not an anonymous one.
 	mux.HandleFunc("POST /feedback", auth.RequireSession(d.Analytics.Feedback))
+
+	// 02:O11Y-004's disclosure half, and the only route in this table with no
+	// session that is not an auth handshake: a data policy a visitor has to log in
+	// to read is not a policy they can decide by, and the funnel's first segment is
+	// measured before any login anyway. It reads nothing user-specific — the four
+	// event names, their attribute whitelist, and the retention this deployment
+	// actually applies (04 丙-25②).
+	mux.HandleFunc("GET /policy/data-retention", d.Analytics.DataRetention)
 
 	// TRACE-002: the execution plane pushes collected events here. Deliberately
 	// the only route in this table with no session and no RequireSession wrapper:
