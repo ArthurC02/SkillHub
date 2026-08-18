@@ -126,6 +126,13 @@ tasks:
     cmd: npm run build
 
   gen:
-    desc: Regenerate code from contracts and SQL (CI job contracts-drift checks this)
-    cmds:
-      - echo "codegen not wired yet - see .github/workflows/ci.yml contracts-drift"
+    desc: Regenerate committed outputs atomically; modifies generated files
+    cmd: go -C tools/devctl run . gen
+
+  gen:sql:
+    desc: Regenerate committed sqlc output atomically; modifies generated files
+    cmd: go -C tools/devctl run . gen --scope=sql
+
+  gen:check:
+    desc: Check generated outputs without modifying tracked files
+    cmd: go -C tools/devctl run . gen --check

@@ -88,6 +88,7 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1
 5. **保護他人變更**：除既有的禁止 `git stash` 外，也禁止對未知修改執行 `git reset`、`git clean` 或 `git checkout -- <path>`；看到不屬於自己的 delta 就保留並回報。只以明確 pathspec stage 本批檔案。
 6. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/` 不交給多個寫入 Agent 平行處理。
 7. **平台限制要誠實**：Dev Container 是跨電腦的建議路徑，但不取代 SEC-009 的真實 Linux／gVisor 部署驗收。Doctor 的版本不符是環境診斷，不得靠跳過檢查偽裝成通過。
+8. **generated files 禁止手改**：修改 `db/migrations/**`、`db/queries/**` 或 `db/sqlc.yaml` 後，由主 Agent序列化執行 `task gen:sql`；提交前跑 `task gen:check`。`services/platform/internal/platform/db/gen/**` 的衝突要在來源解決後重生，不得手動合併。`task gen` 有 repo-local lock、暫存輸出與原子替換；SubAgent 不自行執行。
 
 ## 快速判斷「我該看哪份文件」
 

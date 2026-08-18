@@ -21,6 +21,7 @@ Usage:
   devctl bootstrap  download project dependencies using native package managers
   devctl env-init   create .env from .env.example without overwriting it
 	devctl profile-check model  verify a profile's required variables without printing values
+	devctl gen [--check] [--scope=sql]  regenerate atomically or check committed output
 `
 
 type checkResult struct {
@@ -58,6 +59,10 @@ func main() {
 			fatal(errors.New("usage: devctl profile-check model"))
 		}
 		if err := profileCheck(root, os.Args[2], os.Stdout); err != nil {
+			fatal(err)
+		}
+	case "gen":
+		if err := generate(root, os.Args[2:], os.Stdout); err != nil {
 			fatal(err)
 		}
 	case "help", "-h", "--help":

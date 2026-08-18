@@ -32,6 +32,8 @@ task env:init            # create .env without overwriting an existing one
 task bootstrap           # download Go, npm and uv dependencies
 task dev                 # start secret-free Postgres and SeaweedFS
 task dev:model           # opt in to LiteLLM; requires secrets and may spend money
+task gen                 # regenerate committed outputs atomically
+task gen:check           # verify generated output without changing tracked files
 task test                # run every test suite
 task lint                # lint every service
 ```

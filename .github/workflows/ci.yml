@@ -183,18 +183,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Pinned to the version stamped into the committed output (see the header
-      # of any db/gen/*.sql.go). Floating the tag would make an sqlc release red
-      # a tree nobody touched, which is the opposite of a useful gate.
-      - name: sqlc generate
-        run: docker run --rm -v "$PWD:/src" -w /src/db sqlc/sqlc:1.31.1 generate
-
-      # `git add` first so a query whose generated file was never committed
-      # shows up: an untracked file is invisible to a plain `git diff`.
-      - name: Fail if generated code is out of sync with db/queries
-        run: |
-          git add -A -- db services/platform/internal/platform/db/gen
-          git diff --cached --exit-code -- db services/platform/internal/platform/db/gen
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/devctl/go.mod
+          cache: false
+      # devctl reads the pinned sqlc version from tools/toolchain.yaml, writes
+      # into same-filesystem scratch space, and compares every file including
+      # untracked additions. CI and local development therefore use one path.
+      - name: Deterministic generated-output check
+        run: go -C tools/devctl run . gen --check
 
       # Iron rule 12's first half: the schema has to be valid before anything can
       # be generated from it. Pinned like sqlc above: a floating linter turns an
