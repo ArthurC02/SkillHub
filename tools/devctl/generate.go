@@ -27,15 +27,25 @@ type generatedTree struct {
 	files map[string]string
 }
 
+type generationOutput struct {
+	label  string
+	source string
+	target string
+}
+
 func generate(root string, args []string, out io.Writer) error {
 	check := false
+	scope := "all"
 	for _, arg := range args {
 		switch arg {
 		case "--check":
 			check = true
-		case "--scope=sql", "--scope=all":
-			// SQL is the only configured scope in Phase 2. OpenAPI joins the
-			// same pipeline in Phase 3 without changing this public command.
+		case "--scope=sql":
+			scope = "sql"
+		case "--scope=openapi":
+			scope = "openapi"
+		case "--scope=all":
+			scope = "all"
 		default:
 			return fmt.Errorf("unknown gen option %q", arg)
 		}
@@ -57,30 +67,61 @@ func generate(root string, args []string, out io.Writer) error {
 	}
 	defer os.RemoveAll(scratch)
 
-	sqlOut, err := generateSQL(root, scratch, toolchain["sqlc"], out)
-	if err != nil {
-		return err
+	var outputs []generationOutput
+	if scope == "all" || scope == "sql" {
+		sqlOut, err := generateSQL(root, scratch, toolchain["sqlc"], out)
+		if err != nil {
+			return err
+		}
+		outputs = append(outputs, generationOutput{
+			label:  "sqlc",
+			source: sqlOut,
+			target: filepath.Join(root, "services", "platform", "internal", "platform", "db", "gen"),
+		})
 	}
-	target := filepath.Join(root, "services", "platform", "internal", "platform", "db", "gen")
-	drift, err := compareTrees(sqlOut, target)
-	if err != nil {
-		return err
+	if scope == "all" || scope == "openapi" {
+		images, err := parseManifestSection(filepath.Join(root, "tools", "toolchain.yaml"), "images")
+		if err != nil {
+			return err
+		}
+		openAPIOutputs, err := generateOpenAPI(root, scratch, toolchain, images, out)
+		if err != nil {
+			return err
+		}
+		outputs = append(outputs, openAPIOutputs...)
 	}
-	if len(drift) == 0 {
-		fmt.Fprintln(out, "sqlc: generated output is current")
-		return nil
+
+	type pendingOutput struct {
+		generationOutput
+		drift []string
 	}
-	if check {
-		for _, path := range drift {
-			fmt.Fprintln(out, "DRIFT sqlc", filepath.ToSlash(path))
+	var pending []pendingOutput
+	for _, output := range outputs {
+		drift, err := compareTrees(output.source, output.target)
+		if err != nil {
+			return err
+		}
+		if len(drift) == 0 {
+			fmt.Fprintf(out, "%s: generated output is current\n", output.label)
+			continue
+		}
+		pending = append(pending, pendingOutput{generationOutput: output, drift: drift})
+	}
+	if check && len(pending) > 0 {
+		for _, output := range pending {
+			for _, path := range output.drift {
+				fmt.Fprintln(out, "DRIFT", output.label, filepath.ToSlash(path))
+			}
 		}
 		return errors.New("generated output is stale; run task gen and commit the result")
 	}
-	if err := atomicReplaceDir(sqlOut, target); err != nil {
-		return fmt.Errorf("replace sqlc output: %w", err)
-	}
-	for _, path := range drift {
-		fmt.Fprintln(out, "UPDATED sqlc", filepath.ToSlash(path))
+	for _, output := range pending {
+		if err := atomicReplaceDir(output.source, output.target); err != nil {
+			return fmt.Errorf("replace %s output: %w", output.label, err)
+		}
+		for _, path := range output.drift {
+			fmt.Fprintln(out, "UPDATED", output.label, filepath.ToSlash(path))
+		}
 	}
 	return nil
 }
@@ -200,6 +241,12 @@ func hashTree(root string) (generatedTree, error) {
 			return walkErr
 		}
 		if entry.IsDir() {
+			if entry.Name() == "__pycache__" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(entry.Name(), ".pyc") {
 			return nil
 		}
 		data, err := os.ReadFile(path)

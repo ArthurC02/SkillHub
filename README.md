@@ -12,6 +12,7 @@ package.
 | `services/platform/` | Go control plane: `cmd/api` HTTP server, `cmd/worker` queue consumer |
 | `services/llm/` | Python FastAPI service for LLM workloads (uv) |
 | `contracts/openapi/` | OpenAPI specs — the single source of truth for cross-language interfaces |
+| `packages/` | Committed generated TS client and Python transport models; generated subdirectories are never hand-edited |
 | `db/` | PostgreSQL migrations, sqlc queries and config |
 | `infra/compose/` | Local and single-host deployment stack |
 | `tools/` | Repo-side scripts: CI assertions, content import, golden-set evaluation |
@@ -33,6 +34,7 @@ task bootstrap           # download Go, npm and uv dependencies
 task dev                 # start secret-free Postgres and SeaweedFS
 task dev:model           # opt in to LiteLLM; requires secrets and may spend money
 task gen                 # regenerate committed outputs atomically
+task gen:openapi         # regenerate TypeScript/Python contract outputs
 task gen:check           # verify generated output without changing tracked files
 task test                # run every test suite
 task lint                # lint every service

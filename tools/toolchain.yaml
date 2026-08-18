@@ -4,7 +4,8 @@ schema_version: 1
 # - Go: services/*/go.mod
 # - Node: .node-version
 # - Python: services/llm/.python-version
-# This manifest owns tools without a native project-level version source.
+# This manifest owns tools without a native project-level version source and
+# immutable images used by deterministic generation.
 tools:
   task: "3.45.4"
   uv: "0.11.3"
@@ -16,3 +17,7 @@ tools:
   ogen: "1.24.0"
   openapi_generator: "7.19.0"
   datamodel_code_generator: "0.35.0"
+
+images:
+  openapi_generator: "openapitools/openapi-generator-cli:v7.19.0@sha256:b9e7ad71a9f9406bd810378a939755fad114747a767e29bbf83ef9364d5f9dc0"
+  python_codegen: "skillhub/python-codegen:0.35.0"

@@ -1462,6 +1462,17 @@ wheels = [
 ]
 
 [[package]]
+name = "skillhub-api-stub"
+version = "0.0.0"
+source = { editable = "../../packages/api-stub-py" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2" }]
+
+[[package]]
 name = "skillhub-llm"
 version = "0.1.0"
 source = { editable = "." }
@@ -1469,6 +1480,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "litellm" },
     { name = "openai" },
+    { name = "skillhub-api-stub" },
     { name = "uvicorn" },
 ]
 
@@ -1484,6 +1496,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "litellm", specifier = ">=1.40" },
     { name = "openai", specifier = ">=1.60" },
+    { name = "skillhub-api-stub", editable = "../../packages/api-stub-py" },
     { name = "uvicorn", specifier = ">=0.32" },
 ]
 

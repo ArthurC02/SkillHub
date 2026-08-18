@@ -35,7 +35,7 @@ tasks:
 
   test:
     desc: Run all test suites
-    deps: [test:platform, test:sandbox, test:llm, test:web, test:devctl]
+    deps: [test:platform, test:sandbox, test:llm, test:web, test:api-client, test:devctl]
 
   test:platform:
     dir: services/platform
@@ -56,6 +56,10 @@ tasks:
   test:web:
     dir: apps/web
     cmd: npm test
+
+  test:api-client:
+    dir: packages/api-client-ts
+    cmd: npm run typecheck
 
   lint:
     desc: Lint all services
@@ -122,7 +126,12 @@ tasks:
     cmd: go build ./...
 
   build:web:
+    deps: [build:api-client]
     dir: apps/web
+    cmd: npm run build
+
+  build:api-client:
+    dir: packages/api-client-ts
     cmd: npm run build
 
   gen:
@@ -132,6 +141,10 @@ tasks:
   gen:sql:
     desc: Regenerate committed sqlc output atomically; modifies generated files
     cmd: go -C tools/devctl run . gen --scope=sql
+
+  gen:openapi:
+    desc: Regenerate committed TypeScript and Python OpenAPI outputs atomically
+    cmd: go -C tools/devctl run . gen --scope=openapi
 
   gen:check:
     desc: Check generated outputs without modifying tracked files

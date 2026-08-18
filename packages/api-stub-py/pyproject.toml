@@ -1,0 +1,11 @@
+[project]
+name = "skillhub-api-stub"
+version = "0.0.0"
+description = "Generated Pydantic models for Skill Hub internal APIs"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["pydantic>=2"]
+
+[build-system]
+requires = ["uv_build>=0.11.3,<0.12.0"]
+build-backend = "uv_build"

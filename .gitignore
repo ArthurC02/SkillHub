@@ -19,7 +19,7 @@ dist/
 
 # devctl advisory locks and same-filesystem generation scratch space
 /.devctl/
-/services/platform/internal/platform/db/gen.devctl-backup-*
+*.devctl-backup-*
 
 # Embedding caches (float arrays keyed by text hash; regenerable, no secrets)
 tools/**/embeddings_cache.json

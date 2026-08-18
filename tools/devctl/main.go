@@ -21,7 +21,7 @@ Usage:
   devctl bootstrap  download project dependencies using native package managers
   devctl env-init   create .env from .env.example without overwriting it
 	devctl profile-check model  verify a profile's required variables without printing values
-	devctl gen [--check] [--scope=sql]  regenerate atomically or check committed output
+	devctl gen [--check] [--scope=sql|openapi|all]  regenerate or check committed output
 `
 
 type checkResult struct {
@@ -204,6 +204,8 @@ func bootstrap(root string, out io.Writer) error {
 	}{
 		{name: "platform Go modules", dir: "services/platform", cmd: "go", args: []string{"mod", "download"}},
 		{name: "sandbox Go modules", dir: "services/sandbox", cmd: "go", args: []string{"mod", "download"}},
+		{name: "generated TypeScript client packages", dir: "packages/api-client-ts", cmd: "npm", args: []string{"ci"}},
+		{name: "generated TypeScript client build", dir: "packages/api-client-ts", cmd: "npm", args: []string{"run", "build"}},
 		{name: "web packages", dir: "apps/web", cmd: "npm", args: []string{"ci"}},
 		{name: "LLM packages", dir: "services/llm", cmd: "uv", args: []string{"sync", "--frozen"}, env: []string{"UV_LINK_MODE=copy"}},
 	}
@@ -286,26 +288,30 @@ func readDotEnv(path string) (map[string]string, error) {
 }
 
 func parseToolchain(path string) (map[string]string, error) {
+	return parseManifestSection(path, "tools")
+}
+
+func parseManifestSection(path, section string) (map[string]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 	values := map[string]string{}
-	inTools := false
+	inSection := false
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
 		trimmed := strings.TrimSpace(line)
-		if trimmed == "tools:" {
-			inTools = true
+		if trimmed == section+":" {
+			inSection = true
 			continue
 		}
-		if !inTools || trimmed == "" || strings.HasPrefix(trimmed, "#") {
+		if !inSection || trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			continue
 		}
 		if len(line)-len(strings.TrimLeft(line, " ")) == 0 {
-			inTools = false
+			inSection = false
 			continue
 		}
 		parts := strings.SplitN(trimmed, ":", 2)
@@ -318,7 +324,7 @@ func parseToolchain(path string) (map[string]string, error) {
 		return nil, err
 	}
 	if len(values) == 0 {
-		return nil, errors.New("tools/toolchain.yaml has no tools")
+		return nil, fmt.Errorf("%s has no %s entries", path, section)
 	}
 	return values, nil
 }

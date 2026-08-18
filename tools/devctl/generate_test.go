@@ -60,6 +60,21 @@ func TestCompareTreesReportsAddedChangedAndRemovedFiles(t *testing.T) {
 	}
 }
 
+func TestCompareTreesIgnoresPythonBytecode(t *testing.T) {
+	generated := t.TempDir()
+	committed := t.TempDir()
+	writeTestFile(t, generated, "models.py", "same")
+	writeTestFile(t, committed, "models.py", "same")
+	writeTestFile(t, committed, "__pycache__/models.cpython-312.pyc", "transient")
+	drift, err := compareTrees(generated, committed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(drift) != 0 {
+		t.Fatalf("bytecode caused drift: %v", drift)
+	}
+}
+
 func TestAtomicReplaceDir(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "source")

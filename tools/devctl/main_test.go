@@ -42,6 +42,23 @@ func TestParseToolchain(t *testing.T) {
 	}
 }
 
+func TestParseManifestSection(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "toolchain.yaml")
+	contents := "tools:\n  sqlc: \"1.31.1\"\nimages:\n  openapi_generator: \"image@sha256:abc\"\n"
+	if err := os.WriteFile(path, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	values, err := parseManifestSection(path, "images")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if values["openapi_generator"] != "image@sha256:abc" {
+		t.Fatalf("unexpected values: %#v", values)
+	}
+}
+
 func TestEnvInitDoesNotOverwriteExistingFile(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

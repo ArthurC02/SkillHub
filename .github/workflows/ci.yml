@@ -77,7 +77,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: apps/web/package-lock.json
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            packages/api-client-ts/package-lock.json
+      - run: npm ci
+        working-directory: packages/api-client-ts
+      - run: npm run typecheck
+        working-directory: packages/api-client-ts
+      - run: npm run build
+        working-directory: packages/api-client-ts
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
@@ -223,13 +231,6 @@ jobs:
       # jsonschema is already installed by the step above and pinned there.
       - name: Packaging contracts (contracts/packaging)
         run: python tools/contracts/validate_packaging.py
-
-      - name: OpenAPI codegen (placeholder, deliberately not failing)
-        run: |
-          echo "The specs are linted above, but no codegen is wired yet:"
-          echo "packages/api-client-ts and api-stub-py do not exist, so there is"
-          echo "nothing to regenerate and no drift to detect. Add the generator"
-          echo "here and extend the git diff paths above when those packages land."
 
   # Registry is still open (ADR-019 open question 1) and infra/images/ has no
   # Dockerfiles yet, so this job only records the intended shape.

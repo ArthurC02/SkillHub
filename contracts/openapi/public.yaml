@@ -432,7 +432,7 @@ paths:
         - name: script
           in: query
           required: false
-          schema: { type: string, enum: [yes, no] }
+          schema: { type: string, enum: ["yes", "no"] }
           description: |
             DISC-003 filter on whether the package carries runnable code, as
             recorded by the import scan: a script file in the tree, or code

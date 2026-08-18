@@ -12,7 +12,11 @@ dependencies = [
     "uvicorn>=0.32",
     "litellm>=1.40",
     "openai>=1.60",
+    "skillhub-api-stub",
 ]
+
+[tool.uv.sources]
+skillhub-api-stub = { path = "../../packages/api-stub-py", editable = true }
 
 [dependency-groups]
 dev = [
