@@ -167,6 +167,22 @@ func main() {
 		slog.Warn("ANALYTICS_RETENTION not set; the BETA-002 funnel is not being measured")
 	}
 
+	// The API needs the provider registry for one thing only: refusing a run no
+	// configured provider can carry, before it is queued (RUN-005, ADR-004). It
+	// never dispatches — that is the worker's job (iron rule 7).
+	//
+	// Store is read-only here: the pre-run permission summary scans the stored
+	// package to answer "does this carry a script" (02:TEST-005).
+	runs := &run.Service{
+		Pool: pool, Queue: jobs, Providers: run.NewRegistryFromEnv(), Store: store,
+		// PDM-010's free allowance, enforced inside the create-run transaction
+		// (ADR-028 決策 2). The proposed numbers are the shipped default because
+		// the enforcement point does not depend on the final values — what does
+		// depend on them is showing them, and GET /me/quota is only mounted where
+		// this is enforced. RUN_QUOTA=off turns both off.
+		Quota: quotaFromEnv(),
+	}
+
 	// Routes live in internal/apiserver so the integration tests serve this exact
 	// table instead of a hand-copied one.
 	mux := apiserver.NewRouter(apiserver.Deps{
@@ -182,23 +198,7 @@ func main() {
 			Svc:      &testlab.Service{Pool: pool, Store: store, LLM: llmOrNil(llm)},
 			Identity: auth.Service,
 		},
-		// The API needs the provider registry for one thing only: refusing a run no
-		// configured provider can carry, before it is queued (RUN-005, ADR-004). It
-		// never dispatches — that is the worker's job (iron rule 7).
-		Runs: &run.Handler{
-			// Store is read-only here: the pre-run permission summary scans the
-			// stored package to answer "does this carry a script" (02:TEST-005).
-			Svc: &run.Service{
-				Pool: pool, Queue: jobs, Providers: run.NewRegistryFromEnv(), Store: store,
-				// PDM-010's free allowance, enforced inside the create-run
-				// transaction (ADR-028 決策 2). The proposed numbers are the shipped
-				// default because the enforcement point does not depend on the final
-				// values — what does depend on them is showing them, and GET /me/quota
-				// is only mounted where this is enforced. RUN_QUOTA=off turns both off.
-				Quota: quotaFromEnv(),
-			},
-			Identity: auth.Service,
-		},
+		Runs:  &run.Handler{Svc: runs, Identity: auth.Service},
 		Trace: &trace.Handler{Svc: traceSvc, Identity: auth.Service},
 		// No judge and no suggester here: producing a verdict and asking for advice
 		// are the worker's jobs (iron rule 7). The store and the version writer are
@@ -236,6 +236,18 @@ func main() {
 	// O11Y-001~003 on its own listener, never on the public mux: /metrics is an
 	// operator surface and the public port is internet-reachable (NFR-005).
 	go metrics.Serve(os.Getenv("METRICS_ADDR"))
+
+	// 03:SEC-012's automatic first action, for the one P1 criterion of 02:SEC-010
+	// that nothing inside the worker can report: 「Reconciler 停擺 > 10 分鐘」.
+	//
+	// This is the only periodic work the API process does, and it is here rather
+	// than beside the other timers in cmd/worker on purpose — the reconciler is a
+	// River periodic job, so a worker that has died takes every watchdog running
+	// inside it along with it. The API is the other process that is always up, it
+	// already reads this database, and it is one of the two entry points the halt
+	// stops (iron rule 7 is untouched: this observes and declares, it never works a
+	// job or dispatches one).
+	go runs.WatchReconciler(ctx)
 
 	go func() {
 		slog.Info("api listening", "addr", srv.Addr)

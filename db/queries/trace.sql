@@ -51,3 +51,40 @@ SELECT id, workspace_id, status, finished_at FROM runs WHERE id = $1;
 SELECT count(*) FROM runs
 WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
   AND cleanup_status <> 'cleaned';
+
+-- name: CountTraceMaskingInWindow :one
+-- 03:SEC-012 detection: the `TraceMaskingStopped` P1 criterion of 02:SEC-010,
+-- asked of the table rather than of Prometheus, so the platform can act on it
+-- without waiting for a person to read an alert.
+--
+-- Same evidence as infra/observability/alerts.yml's rule of that name — events were
+-- stored AND not one field was redacted — because 0019 stores both halves: every row
+-- is `masked` by CHECK, and masked_fields holds what the masker actually hit. An
+-- empty array means "the masker ran and found nothing", which is why the test has to
+-- be a sum over a window rather than a per-row emptiness check.
+--
+-- Two counts and not one, because the rule is `[1h]` **plus** `for: 1h` and both
+-- halves are its threshold. Firing on the expression alone would mean halting the
+-- fleet on any quiet hour that happened to carry nothing worth redacting: the rule's
+-- premise (「正常流量下 tool_call 的 arguments 與 script_log 的 message 幾乎必然有
+-- 東西被遮」) is a statement about volume, and at low volume it is simply not true.
+-- `for: 1h` on a `[1h]` window is satisfied exactly when the rolling window stayed
+-- non-empty and redaction-free for an hour, which is what asking for traffic on both
+-- sides of @recent says in one pass and without keeping state between sweeps.
+--
+-- 0019 typed the column jsonb without constraining it to an array, and a producer
+-- that redacted nothing stores JSON `null` there rather than `[]` (trace/service.go
+-- marshals a nil slice). Both count as zero redactions, which is the only reading
+-- available and also the conservative one: a row that cannot say what was redacted
+-- is not evidence that anything was.
+--
+-- occurred_at and not an ingestion timestamp, because the table has none. It is
+-- producer time, so a producer whose clock is behind is counted into an earlier
+-- window; NFR-004 wants the gap inside 3 seconds and the windows are hours, so this
+-- costs nothing the rule was relying on.
+SELECT count(*) FILTER (WHERE occurred_at >= @recent)::bigint AS recent_events,
+       count(*) FILTER (WHERE occurred_at <  @recent)::bigint AS earlier_events,
+       coalesce(sum(CASE WHEN jsonb_typeof(masked_fields) = 'array'
+                         THEN jsonb_array_length(masked_fields) ELSE 0 END), 0)::bigint AS masked_fields
+FROM trace_events
+WHERE occurred_at >= @since;

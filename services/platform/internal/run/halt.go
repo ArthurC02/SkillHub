@@ -42,6 +42,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -540,4 +541,190 @@ func (h *Handler) decodeHaltRequest(w http.ResponseWriter, r *http.Request) (hal
 		return haltRequest{}, false
 	}
 	return body, true
+}
+
+// --- the two P1 criteria this platform can see for itself ---------------------
+//
+// 02:SEC-010's P1 row lists five criteria and 03:SEC-012's verb is 「偵測到」, not
+// 「被宣告」. Three of the five are not knowable from inside this process — 逃逸疑慮
+// is a judgement, the P-02 probe and the gVisor advisory cron run elsewhere — and
+// they keep the operator endpoint above as their entry point. The other two are
+// signals the platform already measures, and they are wired here.
+//
+// Both write the same switch as the operator endpoint and the X-04 reconciler, and
+// neither has a matching automatic lift. That asymmetry is the requirement rather
+// than an omission: 03:SEC-012 「解除不得是自動的（自動解除等於讓觸發條件自己決定何時
+// 恢復服務）」.
+
+// maskingWindow is 02:SEC-010's `TraceMaskingStopped` criterion measured with
+// infra/observability/alerts.yml's own numbers, both of them: that rule reads its
+// two halves over `[1h]` and then holds them `for: 1h`, and the P1 row names the
+// criterion by the rule's name, so a different figure here would mean the alert and
+// the halt disagreed about what "stopped" means.
+//
+// Both, and not just the expression, because `for` is part of this threshold rather
+// than pager hygiene layered on top. The rule's premise — 「正常流量下 tool_call 的
+// arguments 與 script_log 的 message 幾乎必然有東西被遮」 — is a claim about volume,
+// and a quiet hour that legitimately carried nothing worth redacting satisfies the
+// expression on its own. 02:SEC-010's escalation rule 「不確定屬 P1 或 P2 時一律以 P1
+// 處理」 says which way to resolve an event you have; it is not licence to lower the
+// bar for having one, and halting the fleet is only cheap while it is rare.
+//
+// maskingConfirm is the `for`, expressed as "there was traffic on the far side of
+// the window too". Continuously true for an hour over a rolling hour is exactly
+// traffic at both ends with no redaction anywhere between, which one aggregate
+// answers without keeping state between sweeps.
+const (
+	maskingWindow  = time.Hour
+	maskingConfirm = time.Hour
+)
+
+// reconcilerStallWindow is 02:SEC-010's fifth criterion verbatim — 「Reconciler
+// 停擺 > 10 分鐘（ADR-022 X-02）」 — which is also the window of alerts.yml's
+// OrphanScanNotRunning. X-02 sweeps every five minutes and two missed rounds is
+// ten.
+//
+// That rule's own `for: 10m` is NOT added on top, and the asymmetry with
+// maskingConfirm above is the difference between the two signals rather than an
+// inconsistency. 「停擺 > 10 分鐘」 is written into 02:SEC-010's P1 row as the
+// criterion itself, and the evidence is not statistical: either a row says the scan
+// ran inside the window or no row does. There is no quiet-hour reading of it to
+// guard against.
+const reconcilerStallWindow = 10 * time.Minute
+
+// reconcilerLastRun asks River when the orphan scan last got as far as running.
+//
+// Raw SQL and not a generated query because river_job is River's own table, applied
+// by queue.EnsureSchema rather than by db/migrations, so sqlc cannot see it (see the
+// header of 0016). No new migration either: 「上次掃描時間」 already exists here, and
+// a second copy of it would be a second thing that can be wrong.
+//
+// coalesce(finalized_at, attempted_at) is the row's last sign of life, and the pair
+// is what makes this agree with the counter the alert reads: skillhub_orphan_scan_total
+// is incremented per provider whether that provider answered or not, so a round that
+// ended in an error still proves the reconciler is alive. Keying on finalized_at
+// alone would call a spell of provider flakiness — a P2 — a P1.
+const reconcilerLastRun = `SELECT max(coalesce(finalized_at, attempted_at)) FROM river_job WHERE kind = $1`
+
+// detectMaskingStopped is `TraceMaskingStopped` as a decision instead of a notice:
+// events kept landing and the masker redacted nothing across two hours of them,
+// which under 0019's `CHECK (masked)` is the only shape a masking failure can still
+// take — the rules stopped matching while every row went on claiming to be masked.
+// That is iron rule 11 failing silently, and NFR-002 has no other detector for it.
+//
+// Called at the end of one supervisor sweep, so it costs one aggregate every 30
+// seconds over a bounded slice of one partition.
+func (s *Service) detectMaskingStopped(ctx context.Context) {
+	if s.incidentAlreadyHeld(ctx) {
+		return
+	}
+	now := time.Now()
+	window, err := s.queries().CountTraceMaskingInWindow(ctx, gen.CountTraceMaskingInWindowParams{
+		Recent: pgtype.Timestamptz{Time: now.Add(-maskingWindow), Valid: true},
+		Since:  pgtype.Timestamptz{Time: now.Add(-maskingWindow - maskingConfirm), Valid: true},
+	})
+	if err != nil {
+		slog.Error("could not evaluate the trace masking criterion", "error", err)
+		return
+	}
+	// Nothing coming in is not a masker that stopped; it is a platform with nothing
+	// to mask. Traffic at both ends and no redaction between them is the rule's
+	// expression and its `for` together — see maskingWindow for why both.
+	if window.RecentEvents == 0 || window.EarlierEvents == 0 || window.MaskedFields > 0 {
+		return
+	}
+	s.declareDetectedIncident(ctx, fmt.Sprintf(
+		"02:SEC-010 P1 (TraceMaskingStopped): %d trace events were stored over the last %s (%d of them in the last %s) "+
+			"and not one field was redacted in any of them; under 0019's CHECK (masked) that is the masker's rules "+
+			"failing while every row still claims to be masked (NFR-002, iron rule 11)",
+		window.RecentEvents+window.EarlierEvents, maskingWindow+maskingConfirm,
+		window.RecentEvents, maskingWindow))
+}
+
+// DetectReconcilerStall is 02:SEC-010's 「Reconciler 停擺 > 10 分鐘」.
+//
+// Exported because its caller is cmd/api, and cmd/api is the caller for the reason
+// the criterion exists at all: a reconciler that has stopped cannot be the thing
+// that notices it stopped, and River's periodic jobs are precisely what stops when a
+// worker dies. Hanging this off the supervisor would give the detector the same fate
+// as the thing it watches.
+func (s *Service) DetectReconcilerStall(ctx context.Context) {
+	if s.incidentAlreadyHeld(ctx) {
+		return
+	}
+	var last pgtype.Timestamptz
+	if err := s.Pool.QueryRow(ctx, reconcilerLastRun, OrphanScanArgs{}.Kind()).Scan(&last); err != nil {
+		slog.Error("could not read when the orphan reconciler last ran", "error", err)
+		return
+	}
+	// Never run at all is not a stall: it is a deployment whose worker has not
+	// started yet, and it is the same case alerts.yml gets for free — a counter that
+	// has never been observed has no series, so OrphanScanNotRunning does not fire
+	// on it either. A worker that never starts shows up as nothing being dispatched.
+	if !last.Valid {
+		return
+	}
+	idle := time.Since(last.Time)
+	if idle <= reconcilerStallWindow {
+		return
+	}
+	s.declareDetectedIncident(ctx, fmt.Sprintf(
+		"02:SEC-010 P1: the orphan reconciler last ran %s ago, past the %s ADR-022 X-02 calls stalled (two missed five-minute rounds); "+
+			"nothing is counting what has leaked, so nothing may be dispatched",
+		idle.Round(time.Second), reconcilerStallWindow))
+}
+
+// WatchReconciler polls DetectReconcilerStall until ctx is done. Started by cmd/api.
+//
+// It ticks at the scan's own interval so that no second cadence is invented; the
+// price is up to one interval of lag on top of reconcilerStallWindow, the same order
+// as the alert's own evaluation delay. The first tick is one interval in rather than
+// immediate, because at start-up the worker may still be booting and 「上次掃描是很久
+// 以前」 would then be a statement about the restart, not about a reconciler that
+// stopped.
+func (s *Service) WatchReconciler(ctx context.Context) {
+	ticker := time.NewTicker(OrphanScanInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.DetectReconcilerStall(ctx)
+		}
+	}
+}
+
+// incidentAlreadyHeld is what makes both detectors idempotent. DeclareHalt is an
+// upsert, so re-declaring does not stack a second halt — but it does write a second
+// audit event and reset clear_rounds, and a criterion that stays true for the hours
+// an investigation takes would otherwise write one of each per sweep and bury the
+// declaration that mattered under its own repetitions.
+//
+// An unreadable table counts as held, which is not a reversal of the fail-closed
+// rule this file follows elsewhere: every decision path already refuses to dispatch
+// while the table cannot be read (haltsFailClosed, requireDispatchable), so the fleet
+// is already stopped. All that is left to decide is whether to write a row, and
+// writing one per sweep on the strength of a read that failed is trail noise, not
+// safety.
+func (s *Service) incidentAlreadyHeld(ctx context.Context) bool {
+	state, err := s.activeHalts(ctx)
+	if err != nil {
+		slog.Error("dispatch halt state unreadable; skipping automatic P1 detection", "error", err)
+		return true
+	}
+	return state.incidentHeld(haltPool)
+}
+
+// declareDetectedIncident flips the switch for a criterion the platform concluded on
+// its own. The actor is the zero UUID, the same convention the X-04 reconciler uses,
+// so the trail can tell a P1 the platform declared from one an operator did — and the
+// lift is a person either way.
+func (s *Service) declareDetectedIncident(ctx context.Context, reason string) {
+	if _, err := s.DeclareHalt(ctx, haltPool, HaltSourceIncident, reason, pgtype.UUID{}); err != nil {
+		slog.Error("a P1 criterion was met but dispatch could not be stopped", "reason", reason, "error", err)
+		return
+	}
+	slog.Error("P1 detected: dispatch stopped fleet-wide and the scene is preserved; "+
+		"this halt is never lifted automatically", "reason", reason)
 }
