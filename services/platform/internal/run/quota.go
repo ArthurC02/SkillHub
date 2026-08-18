@@ -41,7 +41,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
-	"github.com/ArthurC02/skillhub/services/platform/internal/platform/metrics"
 )
 
 // ErrQuotaExceeded is the allowance refusal. Like the other gate B conditions it
@@ -249,20 +248,19 @@ func (s *Service) requireQuota(ctx context.Context, q *gen.Queries, workspaceID 
 		// Fail closed, like every other gate B condition (02:SEC-002: a check that
 		// could not be performed has not passed). An allowance that could not be
 		// counted is not an allowance of zero used.
-		metrics.RunRefused.WithLabelValues("quota_unavailable").Inc()
-		return fmt.Errorf("%w: the allowance could not be counted, "+
-			"and an uncounted allowance is not treated as an unused one: %w", ErrQuotaExceeded, err)
+		return refused("quota_unavailable", fmt.Errorf("%w: the allowance could not be counted, "+
+			"and an uncounted allowance is not treated as an unused one: %w", ErrQuotaExceeded, err))
 	}
 	if state.RemainingToday <= 0 {
-		metrics.RunRefused.WithLabelValues("quota_daily").Inc()
-		return fmt.Errorf("%w: %d runs a day is the limit; it resets 24 hours after your earliest run today",
-			ErrQuotaExceeded, s.Quota.Daily)
+		return refused("quota_daily",
+			fmt.Errorf("%w: %d runs a day is the limit; it resets 24 hours after your earliest run today",
+				ErrQuotaExceeded, s.Quota.Daily))
 	}
 	if state.RemainingWindow <= 0 {
-		metrics.RunRefused.WithLabelValues("quota_window").Inc()
-		return fmt.Errorf("%w: %d runs per %d days is the limit; the next one frees up at %s",
-			ErrQuotaExceeded, state.Limits.Window, s.Quota.WindowDays,
-			state.WindowResetsAt.UTC().Format(time.RFC3339))
+		return refused("quota_window",
+			fmt.Errorf("%w: %d runs per %d days is the limit; the next one frees up at %s",
+				ErrQuotaExceeded, state.Limits.Window, s.Quota.WindowDays,
+				state.WindowResetsAt.UTC().Format(time.RFC3339)))
 	}
 	return nil
 }

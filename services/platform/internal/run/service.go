@@ -224,7 +224,66 @@ type CreateParams struct {
 // The test case is snapshotted here rather than referenced: a run points at frozen
 // content (iron rule 4), so later edits to the test case cannot rewrite what a past
 // run was asked to do.
+//
+// This wrapper is only here to give the refusals one exit. create below has a
+// dozen error returns spread over four files, and gate B's whole point is that any
+// one of them stops the run — so "a run was refused" had a dozen places it could
+// have been recorded and, until now, was recorded in none of them. Audited here
+// instead of at each check for the same reason requirePermissionConfirmation lives
+// in Create rather than in the handler: one choke point cannot be forgotten by the
+// next check somebody adds.
 func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
+	run, err := s.create(ctx, p)
+	if err != nil {
+		s.auditRefusal(ctx, p, err)
+	}
+	return run, err
+}
+
+// auditRefusal records a gate B refusal (NFR-001). Best effort, deliberately:
+// nothing was written by the path that just failed, so there is no transaction to
+// join (iron rule 9 has nothing to hold this to) and no state for a missing row to
+// contradict. Failing the request because the note about the refusal could not be
+// filed would turn a 422 into a 500 and tell the user even less.
+//
+// Only gate B refusals are recorded. A lookup that came back ErrNotFound is the
+// caller asking about something that is not theirs — WS-006 makes that answer
+// deliberately indistinguishable from "does not exist", and a row per probe would
+// be an enumeration log. Infrastructure errors are not refusals at all; those are
+// what slog and the error counters are for.
+func (s *Service) auditRefusal(ctx context.Context, p CreateParams, err error) {
+	var r refusal
+	var reason string
+	switch {
+	case errors.As(err, &r):
+		reason = r.reason
+	// The two gate B conditions that live with their features (gateb.go's header
+	// lists them). Neither goes through refused(), so they are matched on their
+	// sentinels; each has exactly one refusal, so nothing is lost by the coarser
+	// match.
+	case errors.Is(err, ErrPermissionsNotConfirmed):
+		reason = "permissions_unconfirmed"
+	case errors.Is(err, ErrNoCompatibleProvider):
+		reason = "capability_mismatch"
+	default:
+		return
+	}
+	// Identifiers and the reason code only — never the error string, which quotes
+	// scan findings and package content (iron rule 11). There is no run to point
+	// at, so the resource is the version that was refused.
+	if logErr := audit.Log(ctx, s.queries(), audit.Event{
+		Actor:        p.Actor,
+		Workspace:    p.WorkspaceID,
+		Action:       audit.ActionRunRefused,
+		ResourceType: audit.ResourceVersion,
+		ResourceID:   p.VersionID,
+		Metadata:     map[string]any{"reason": reason},
+	}); logErr != nil {
+		slog.Error("recording a refused run failed", "reason", reason, "error", logErr)
+	}
+}
+
+func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	// SEC-012 action ①, first of the two entry points (halt.go): while the fleet is
 	// held for a P1, no new run is accepted. Before every other check, including the
 	// workspace-scoped reads below, because a platform that has stopped is not going

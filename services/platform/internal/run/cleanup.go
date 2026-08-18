@@ -242,6 +242,27 @@ func (s *Service) recordCleanup(ctx context.Context, run gen.Run, status gen.Run
 	}); err != nil {
 		return err
 	}
+	// NFR-001's execution trail, closing at the same place the run's resources do.
+	// The outbox event above is for consumers and is not the trail: it is delivered,
+	// acted on and pruned, while this row is kept for 400 days. Same transaction as
+	// the status write for the usual reason (iron rule 9) — and here it also buys
+	// the history runs.cleanup_status cannot keep, because that column is
+	// overwritten by the next attempt and a teardown that failed twice before it
+	// succeeded would otherwise look like it succeeded first time.
+	//
+	// Actor-less: cleanup is enqueued by a terminal transition or found by the
+	// supervisor's backlog scan, never asked for by a user. `meta` is reused as-is
+	// — it is already counts and a status, with the failure strings deliberately
+	// left out because they can quote a provider handle (iron rule 11).
+	if err := audit.Log(ctx, q, audit.Event{
+		Workspace:    updated.WorkspaceID,
+		Action:       audit.ActionRunCleanup,
+		ResourceType: audit.ResourceRun,
+		ResourceID:   updated.ID,
+		Metadata:     meta,
+	}); err != nil {
+		return err
+	}
 	return tx.Commit(ctx)
 }
 

@@ -63,6 +63,27 @@ const (
 	// SEC-002 gate B: who agreed to which pre-run permission summary, and when
 	// (02:TEST-005). The confirmation row itself is the gate; this is the trail.
 	ActionRunPermissionsConfirm = "run.permissions_confirmed"
+	// The other half of gate B. Until this existed the trail recorded every run
+	// that started and none that was stopped, which is backwards: a run that ran
+	// leaves a run row, a status history and an outbox event behind it, while a
+	// refusal used to leave a Prometheus counter — an aggregate that names no
+	// workspace, no version and no time, and is thrown away on the retention the
+	// metrics store happens to have. "Who kept being told no, on what, and why"
+	// is the question a security review actually opens the trail to ask.
+	//
+	// One action with a reason in metadata rather than one action per condition:
+	// unlike the restrict/unrestrict pairs above, these are not different events a
+	// review looks for separately — they are one event, "the gate said no", and the
+	// condition is the detail. The reason strings are the metrics.RunRefused labels,
+	// deliberately the same vocabulary so a spike on the dashboard and the rows
+	// explaining it are searched with one word.
+	ActionRunRefused = "run.refused"
+	// RUN-007's teardown outcome. runs.cleanup_status carries the current answer
+	// and is overwritten by the next attempt; this records each attempt that
+	// concluded, so a sandbox that took three passes to release is still visible
+	// afterwards. Platform-initiated, so actor-less — as with ActionObjectMissing,
+	// it is a thing that happened to a user's resources without the user asking.
+	ActionRunCleanup = "run.cleanup"
 	// NFR-001 requires an audit trail for deletion (CORE-007). Uploads are not
 	// audited: the dataset row itself already records what was uploaded and when.
 	ActionTestCaseDelete = "test_case.delete"
@@ -84,6 +105,15 @@ const (
 	// becoming unavailable without the user asking — the thing an audit trail
 	// exists to make traceable, and slog is sampled and thrown away.
 	ActionObjectMissing = "storage.object_missing"
+	// INGEST-010: an imported package's upstream source stopped resolving, or
+	// started resolving again. Written only on the change, never on the repeat —
+	// the sweep re-probes every source on a schedule, and a row per probe would
+	// bury the two moments that matter under thousands that say nothing new.
+	// Split into the two directions for the reason the licensing-hold pair is
+	// split: "this source came back" is the event somebody looks for, not a
+	// metadata field to filter on. Actor-less; the probe is platform-initiated.
+	ActionSourceUnavailable = "import_source.unavailable"
+	ActionSourceRestored    = "import_source.restored"
 	// 02:SEC-010's P1 first action and ADR-022 X-04's drain/suspend, which are one
 	// switch (03:SEC-012). Both triggers write both events: an operator declaring a
 	// P1 carries an actor, the reconciler crossing a threshold carries none, and the
@@ -105,6 +135,10 @@ const (
 	ResourceTestCase = "test_case"
 	ResourceDataset  = "dataset"
 	ResourceArtifact = "artifact"
+	// ResourceImportSource is the skill_sources row a package was imported from,
+	// not the skill or version built out of it: availability is a property of the
+	// upstream URL, and the immutable snapshot we hold stays valid either way.
+	ResourceImportSource = "import_source"
 	// ResourceOperatorRoster and ResourceBetaRoster have no resource_id: a roster
 	// is the deployment's configuration, not a row anything can point at.
 	ResourceOperatorRoster = "operator_roster"

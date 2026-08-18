@@ -165,7 +165,11 @@ WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: ListSourcesToCheck :many
 -- Least-recently-probed first, so repeated bounded runs sweep the whole table.
-SELECT id, source_url FROM skill_sources
+-- unavailable_since comes back so the caller can tell a state *change* from a
+-- repeat of the same answer: a probe that fails again is not news, the one that
+-- first fails, or first succeeds again, is. workspace_id rides along so that
+-- event can be scoped to the workspace whose content changed availability.
+SELECT id, workspace_id, source_url, unavailable_since FROM skill_sources
 WHERE source_type = 'git' AND source_url IS NOT NULL
 ORDER BY last_checked_at NULLS FIRST
 LIMIT $1;

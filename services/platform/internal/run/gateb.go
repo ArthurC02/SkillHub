@@ -51,6 +51,31 @@ var (
 	ErrAccessRestricted = errors.New("this skill cannot be run while its source license is under review")
 )
 
+// refusal is a gate B condition that said no, carrying the reason with it.
+//
+// It exists because the reason has two readers and only one of them was being
+// served. metrics.RunRefused answers "how often"; the audit trail has to answer
+// "who, on what, and when", and by the time Create returns, the sentinel errors
+// alone cannot tell scan_unavailable from scan_blocked, or a daily allowance
+// from a monthly one — they are two ErrScanBlocked and three ErrQuotaExceeded.
+// Wrapping keeps errors.Is working for every existing caller (the HTTP layer
+// maps the sentinels to 422) while the label survives to the choke point.
+type refusal struct {
+	reason string
+	err    error
+}
+
+func (r refusal) Error() string { return r.err.Error() }
+func (r refusal) Unwrap() error { return r.err }
+
+// refused counts a gate B refusal and labels it, in that order and in one place.
+// Every reason string in this package is written exactly once, as the argument
+// here, so the Prometheus label and the audit reason cannot drift apart.
+func refused(reason string, err error) error {
+	metrics.RunRefused.WithLabelValues(reason).Inc()
+	return refusal{reason: reason, err: err}
+}
+
 // requireNotAccessRestricted refuses a Run on materials under a licensing hold
 // (0023, m2/anthropic-sa-license-memo.md 方案 C).
 //
@@ -67,8 +92,7 @@ func (s *Service) requireNotAccessRestricted(skill gen.Skill) error {
 	if skill.AccessRestriction == nil || strings.TrimSpace(*skill.AccessRestriction) == "" {
 		return nil
 	}
-	metrics.RunRefused.WithLabelValues("access_restricted").Inc()
-	return fmt.Errorf("%w (%s)", ErrAccessRestricted, *skill.AccessRestriction)
+	return refused("access_restricted", fmt.Errorf("%w (%s)", ErrAccessRestricted, *skill.AccessRestriction))
 }
 
 // packageReport reads the stored package and validates it, without executing any
@@ -109,9 +133,8 @@ func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg
 func (s *Service) requireScanNotBlocking(ctx context.Context, objectKey string) error {
 	report, ok := s.packageReport(ctx, objectKey)
 	if !ok {
-		metrics.RunRefused.WithLabelValues("scan_unavailable").Inc()
-		return fmt.Errorf("%w: the package could not be scanned, "+
-			"and an unscanned package is not treated as a clean one", ErrScanBlocked)
+		return refused("scan_unavailable", fmt.Errorf("%w: the package could not be scanned, "+
+			"and an unscanned package is not treated as a clean one", ErrScanBlocked))
 	}
 	if !report.Blocked {
 		return nil
@@ -129,8 +152,7 @@ func (s *Service) requireScanNotBlocking(ctx context.Context, objectKey string) 
 		list = append(list, c)
 	}
 	sort.Strings(list)
-	metrics.RunRefused.WithLabelValues("scan_blocked").Inc()
-	return fmt.Errorf("%w: %s", ErrScanBlocked, strings.Join(list, ", "))
+	return refused("scan_blocked", fmt.Errorf("%w: %s", ErrScanBlocked, strings.Join(list, ", ")))
 }
 
 // requireRunSlot is gate B's concurrency condition (PDM-005 §5.2, limit 2).
@@ -150,9 +172,9 @@ func (s *Service) requireRunSlot(ctx context.Context, q *gen.Queries, workspaceI
 		return err
 	}
 	if active >= MaxConcurrentRunsPerWorkspace {
-		metrics.RunRefused.WithLabelValues("workspace_concurrency").Inc()
-		return fmt.Errorf("%w: %d of %d in progress; wait for one to finish or cancel it",
-			ErrRunLimitReached, active, MaxConcurrentRunsPerWorkspace)
+		return refused("workspace_concurrency",
+			fmt.Errorf("%w: %d of %d in progress; wait for one to finish or cancel it",
+				ErrRunLimitReached, active, MaxConcurrentRunsPerWorkspace))
 	}
 	return nil
 }

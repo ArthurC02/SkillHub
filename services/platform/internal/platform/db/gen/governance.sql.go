@@ -235,18 +235,24 @@ func (q *Queries) ListAuditEventsByActor(ctx context.Context, arg ListAuditEvent
 }
 
 const listSourcesToCheck = `-- name: ListSourcesToCheck :many
-SELECT id, source_url FROM skill_sources
+SELECT id, workspace_id, source_url, unavailable_since FROM skill_sources
 WHERE source_type = 'git' AND source_url IS NOT NULL
 ORDER BY last_checked_at NULLS FIRST
 LIMIT $1
 `
 
 type ListSourcesToCheckRow struct {
-	ID        pgtype.UUID
-	SourceUrl *string
+	ID               pgtype.UUID
+	WorkspaceID      pgtype.UUID
+	SourceUrl        *string
+	UnavailableSince pgtype.Timestamptz
 }
 
 // Least-recently-probed first, so repeated bounded runs sweep the whole table.
+// unavailable_since comes back so the caller can tell a state *change* from a
+// repeat of the same answer: a probe that fails again is not news, the one that
+// first fails, or first succeeds again, is. workspace_id rides along so that
+// event can be scoped to the workspace whose content changed availability.
 func (q *Queries) ListSourcesToCheck(ctx context.Context, limit int32) ([]ListSourcesToCheckRow, error) {
 	rows, err := q.db.Query(ctx, listSourcesToCheck, limit)
 	if err != nil {
@@ -256,7 +262,12 @@ func (q *Queries) ListSourcesToCheck(ctx context.Context, limit int32) ([]ListSo
 	var items []ListSourcesToCheckRow
 	for rows.Next() {
 		var i ListSourcesToCheckRow
-		if err := rows.Scan(&i.ID, &i.SourceUrl); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.SourceUrl,
+			&i.UnavailableSince,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
