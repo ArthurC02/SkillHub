@@ -13,7 +13,8 @@ import (
 func generateOpenAPI(root, scratch string, toolchain, images map[string]string, out io.Writer) ([]generationOutput, error) {
 	tsImage := images["openapi_generator"]
 	pyImage := images["python_codegen"]
-	if tsImage == "" || pyImage == "" {
+	goImage := images["go_codegen"]
+	if tsImage == "" || pyImage == "" || goImage == "" {
 		return nil, errors.New("OpenAPI generator images are missing from tools/toolchain.yaml")
 	}
 	if toolchain["datamodel_code_generator"] == "" {
@@ -82,6 +83,37 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		return nil, err
 	}
 
+	goBuildArgs := []string{
+		"build", "--quiet",
+		"-f", filepath.Join(root, "tools", "codegen", "go", "Dockerfile"),
+		"-t", goImage,
+		root,
+	}
+	if err := runCaptured("Go codegen image build", "docker", goBuildArgs, out); err != nil {
+		return nil, err
+	}
+	goRoot := filepath.Join(scratch, "go")
+	if err := os.MkdirAll(goRoot, 0o755); err != nil {
+		return nil, err
+	}
+	goArgs := []string{"run", "--rm"}
+	goArgs = append(goArgs, dockerUserArgs()...)
+	goArgs = append(goArgs,
+		"-v", root+":/src",
+		"-w", containerPath(root, goRoot),
+		goImage,
+		"--target", ".",
+		"--package", "publicapi",
+		"--config", "/src/tools/codegen/go/ogen.yaml",
+		"/src/contracts/openapi/public.yaml",
+	)
+	if err := runCaptured("Go OpenAPI generation", "docker", goArgs, out); err != nil {
+		return nil, err
+	}
+	if err := validateGeneratedContent(goRoot, root); err != nil {
+		return nil, err
+	}
+
 	return []generationOutput{
 		{
 			label:  "typescript-openapi",
@@ -92,6 +124,11 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 			label:  "python-openapi",
 			source: pyRoot,
 			target: filepath.Join(root, "packages", "api-stub-py", "src", "skillhub_api_stub", "generated"),
+		},
+		{
+			label:  "go-openapi",
+			source: goRoot,
+			target: filepath.Join(root, "services", "platform", "internal", "api", "gen"),
 		},
 	}, nil
 }

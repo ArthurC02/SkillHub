@@ -16,7 +16,6 @@ import (
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/packaging"
-	"github.com/ArthurC02/skillhub/services/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/services/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/services/platform/internal/run"
 	"github.com/ArthurC02/skillhub/services/platform/internal/testlab"
@@ -55,7 +54,10 @@ func NewRouter(d Deps) http.Handler {
 	auth := d.Auth
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /healthz", httpx.Health)
+	// Ogen pilot: only this exact public operation reaches the generated
+	// router. Every authenticated/operator route remains explicitly mounted
+	// below, so the reviewable AuthN/AuthZ matrix does not move into codegen.
+	mux.Handle("GET /healthz", newGeneratedHealthHandler())
 	auth.Mount(mux)
 	mux.HandleFunc("POST /skills/import/upload", auth.RequireSession(d.Importer.Upload))
 	mux.HandleFunc("POST /skills/import/url", auth.RequireSession(d.Importer.ImportURL))

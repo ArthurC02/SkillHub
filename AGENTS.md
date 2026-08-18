@@ -88,8 +88,9 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1
 5. **保護他人變更**：除既有的禁止 `git stash` 外，也禁止對未知修改執行 `git reset`、`git clean` 或 `git checkout -- <path>`；看到不屬於自己的 delta 就保留並回報。只以明確 pathspec stage 本批檔案。
 6. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/` 不交給多個寫入 Agent 平行處理。
 7. **平台限制要誠實**：Dev Container 是跨電腦的建議路徑，但不取代 SEC-009 的真實 Linux／gVisor 部署驗收。Doctor 的版本不符是環境診斷，不得靠跳過檢查偽裝成通過。
-8. **generated files 禁止手改**：修改 `db/migrations/**`、`db/queries/**` 或 `db/sqlc.yaml` 後，由主 Agent序列化執行 `task gen:sql`；修改 `contracts/openapi/public.yaml`／`llm-internal.yaml` 後執行 `task gen:openapi`。提交前一律跑 `task gen:check`。`services/platform/internal/platform/db/gen/**`、`packages/api-client-ts/src/generated/**`、`packages/api-stub-py/src/skillhub_api_stub/generated/**` 的衝突要在來源解決後重生，不得手動合併。`task gen` 有 repo-local lock、暫存輸出與原子替換；SubAgent 不自行執行。
+8. **generated files 禁止手改**：修改 `db/migrations/**`、`db/queries/**` 或 `db/sqlc.yaml` 後，由主 Agent序列化執行 `task gen:sql`；修改 `contracts/openapi/public.yaml`／`llm-internal.yaml` 後執行 `task gen:openapi`。提交前一律跑 `task gen:check`。`services/platform/internal/platform/db/gen/**`、`services/platform/internal/api/gen/**`、`packages/api-client-ts/src/generated/**`、`packages/api-stub-py/src/skillhub_api_stub/generated/**` 的衝突要在來源解決後重生，不得手動合併。`task gen` 有 repo-local lock、暫存輸出與原子替換；SubAgent 不自行執行。
 9. **transport type 不是產品政策**：Web 既有 `apps/web/src/api/types.ts` 是 UI view model，依 endpoint 逐一用 adapter 遷移，不得因 generated client 存在就整檔替換；Python generated models 只描述內部 HTTP payload，授權、政策、重試與狀態轉移仍在 Go（鐵律 6）。生成器與映像版本只從 `tools/toolchain.yaml` 讀。
+10. **Go generated router 不擁有 AuthZ**：Phase 4 只把 ogen server 放在 `router.go` 的精確 `GET /healthz` pattern 後。其他 route 仍逐條由 `router.go` 套 `RequireSession`／`RequireOperator`／`OptionalSession`；不得直接 mount 完整 generated server、不得讓 `UnimplementedHandler` 的其他 operation 對外可達。每移一條 endpoint 都要保留原 middleware 語意並加 route 測試。
 
 ## 快速判斷「我該看哪份文件」
 

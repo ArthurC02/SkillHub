@@ -8,6 +8,8 @@ pinned OpenAPI Generator `typescript-fetch` target.
 - Change the OpenAPI source, run `task gen:openapi`, then run
   `task gen:check` before committing.
 
-The existing Web API wrappers remain in place during incremental adoption. They
+The existing Web API wrappers remain in place during incremental adoption. The
+first integration only creates a cookie-enabled `generatedApi` factory; it does
+not replace an endpoint. Wrappers
 can map generated transport DTOs to UI-specific view models one endpoint at a
 time; generated types do not become product policy.
