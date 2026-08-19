@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | `SKILLHUB_SANDBOX_TOKEN` | 無（**必填**） | Provider token；未設定則拒絕啟動（fail closed） |
 | `SKILLHUB_SANDBOX_ADDR` | `:9000` | 監聽位址 |
-| `SKILLHUB_SANDBOX_IMAGE` | `skillhub/runtime-agent-sdk:2026.08-2` | Runtime Image。**生產須填 digest**（I-02），tag 是移動標的。`2026.08-2` 起含 python3 與目錄宣告的 Python 依賴（[infra/images/README.md](../../infra/images/README.md)）——**目錄的 Agent 相容欄是在 `2026.08-1` 上實測的**，換到 `2026.08-2` 後那 45 筆結論不再適用，需重跑 CONTENT-008 基準才會有新的一組 |
+| `SKILLHUB_SANDBOX_IMAGE` | `skillhub/runtime-agent-sdk:2026.08-3` | Runtime Image。**生產 `runsc` 強制填 digest**（I-02），tag 是移動標的。`2026.08-2` 起含 python3 與目錄宣告的 Python 依賴（[infra/images/README.md](../../infra/images/README.md)）——**目錄的 Agent 相容欄是在 `2026.08-1` 上實測的**，換版後那 45 筆結論不再適用，需重跑 CONTENT-008 基準才會有新的一組 |
 | `SKILLHUB_SANDBOX_RUNTIME` | 空（＝主機預設 runtime） | 生產填 `runsc`（gVisor，ADR-015） |
 | `SKILLHUB_SANDBOX_NETWORK` | `none` | **出口網路**的名稱。`none`／空＝本節點無出口，所有沙箱一律 `--network none`。設了名字，沙箱**仍只在 `RunRequest.egress.allow` 含 `model_gateway` 時**才接上去；dev 填 `skillhub_egress`（`internal: true`，上面只有 LiteLLM 閘道），生產填 Egress Proxy 的網路名 |
 | `SKILLHUB_SANDBOX_SLOTS` | `2` | 併發上限；滿了回 429 |
@@ -88,7 +88,7 @@ dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒
 
 | 方向 | 作法 |
 | --- | --- |
-| Skill 套件、Dataset 進沙箱 | sandboxd 以 `object_grants` 的預簽 URL 下載 → `docker exec /bin/tee` 寫進 `/work/.skillhub/skill.zip`、`/work/data/<檔名>` → 最後寫 `/work/.skillhub/ready` |
+| Skill 套件、Dataset 進沙箱 | sandboxd 以 `object_grants` 的預簽 URL 下載 → `docker exec /bin/dd of=… status=none` 寫進 `/work/.skillhub/skill.zip`、`/work/data/<檔名>` → 最後寫 `/work/.skillhub/ready` |
 | Artifact 出沙箱 | `docker exec /bin/tar -cf - -C /out artifacts` 讀出 → 套用 PDM-005 5.2 的單檔／總量上限 → 以寫入授權 `PUT` 上傳單一封存 → manifest 回填 `RunResult.artifacts` |
 
 用 `docker exec` 是被迫的，不是偏好：`docker cp` 對唯讀 rootfs 的容器一律被 daemon 拒絕（實測 `container rootfs is marked read-only`），而且 copy API 看不到掛載點下的檔案；bind mount 會把主機路徑放進沙箱（C-05 禁止）。風險界線同 `ReadTrace`：映像自帶二進位、絕對路徑、無 shell、無呼叫端參數、與工作負載同一個非特權 uid、讀取有上限。內容一律不解析——本服務不解壓套件、不讀 Dataset（鐵律 1）。
@@ -101,7 +101,7 @@ dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒
 
 沙箱到得了的位址只有模型閘道，**它不能自己送事件**。所以流程是：容器內的 harness 把事件寫成 JSONL（`/out/trace/events.jsonl`，一行一個 JSON）→ sandboxd 讀出來 → sandboxd POST 到 `RunRequest.trace.ingestion_url`。目的地與其憑證都在該 URL 裡，由平台每個 attempt 簽發；沒給 URL 就不收集，也不推送。
 
-讀檔的方式是**在容器內執行 `/bin/cat`**，不是 `docker cp`：`/out` 是 tmpfs，而 Docker 的 copy API 對照容器 rootfs 層解析路徑，對掛載點下的檔案一律回「找不到」（已對 daemon 實測）。bind mount 會把主機路徑放進沙箱（C-05 禁止），走 stdout 會讓 trace 與工作負載自己的輸出混在一起。exec 的風險界線寫在 `dockerdrv.ReadTrace` 的註解：唯讀 rootfs 上的映像檔自帶二進位、絕對路徑、無 shell、無呼叫端參數、與工作負載同一個非特權 uid、讀取有上限。
+讀檔的方式是**在容器內執行 bounded `/bin/dd`**，不是 `docker cp`：`/out` 是 tmpfs，而 Docker 的 copy API 對照容器 rootfs 層解析路徑，對掛載點下的檔案一律回「找不到」（已對 daemon 實測）。bind mount 會把主機路徑放進沙箱（C-05 禁止），走 stdout 會讓 trace 與工作負載自己的輸出混在一起。exec 的風險界線寫在 `dockerdrv.ReadTrace` 的註解：唯讀 rootfs 上的映像檔自帶二進位、絕對路徑、無 shell、唯一動態參數是 Manager 自己維護的十進位 byte offset、與工作負載同一個非特權 uid；`dd` 最多輸出九個 1 MiB block，driver 去掉對齊前綴後每次交付 8 MiB。offset 只在完整 JSONL 行成功 POST 後前進，所以大檔不重讀開頭、失敗也不跳過。
 
 推送是**邊跑邊送**（2 秒一次）而非結束後一次送，因為 NFR-004 要求事件產生後 3 秒內出現在畫面；容器結束後還有一次收尾推送（含重試），因為那時容器還在（`DELETE` 才移除它），而那批正是失敗 Run 最需要的尾巴。推送失敗不推進水位，下一輪整批重送——平台以 `event_id` 去重，重送是安全的（TRACE-008）。
 
@@ -143,7 +143,7 @@ docker run --rm -v "$PWD:/src" -w /src/apps/sandbox \
   golangci/golangci-lint:v2.12.2 sh -c "golangci-lint fmt --diff && golangci-lint run ./..."
 
 # Runtime Image
-docker build -t skillhub/runtime-agent-sdk:2026.08-2 infra/images/runtime-agent-sdk
+docker build -t skillhub/runtime-agent-sdk:2026.08-3 infra/images/runtime-agent-sdk
 ```
 
 整合測試偵測不到 Docker daemon 就 skip 而非 fail，並且每個測試容器都帶 `skillhub.sandbox.test=1` label、用完即刪。
@@ -153,6 +153,6 @@ docker build -t skillhub/runtime-agent-sdk:2026.08-2 infra/images/runtime-agent-
 - **Run 狀態存記憶體，重啟靠容器 label 重建**（`Adopt`）。label 只夠回答 `GET /runs`、銷毀沙箱、以雜湊認出重送的派工，**不足以重建 RunRequest**——那裡面有 Secrets，而 label 在節點上是公開可讀的（D-05）。「建立容器」與「記錄 entry」之間崩潰仍會漏一個沙箱，由平台的遺留掃描（RUN-007）收拾。要更強就在執行節點放本地持久化，**不是**去連核心資料庫。
 - **Artifact 是單一封存**：一個 attempt 上傳一個 tar，`RunResult.artifacts` 逐檔列出名稱、大小與雜湊但不逐檔給 `object_key`（位元組都在那一個授權 key 裡）。逐檔獨立物件需要前綴授權（S3 POST policy），留給 PACK-001。
 - **崩潰的工作負載會掉 trace 尾巴與 artifact**：收集靠合作式交接，而 `/out` 是 tmpfs、`docker exec` 需要執行中的容器，所以被殺或逾時的工作負載只剩已推出去的部分。這是 tmpfs 暫存空間的真實限制，不是交接可以補的。
-- **Usage 只有 wall clock**：`RunResult.usage` 的 token 與成本仍為空——它們走 Trace 的 `usage` 事件（TRACE-004，`cost_source: gateway`，已接）。PDM-005 5.2a 的「Go worker 累加 input_tokens 當硬上限」因此尚未接上：需要 provider 側回報或平台讀 trace。
+- **Usage 摘要仍只有 wall clock**：token 與成本由 Trace `usage` 事件送回並由 sandbox harness 強制 token budget；`RunResult.usage` 尚未重複彙總這兩個欄位。平台若要顯示 attempt 級摘要，應從既有 Trace ledger 聚合，避免再造第二個事實來源。
 - **`agent_output` 只取工作負載輸出尾端 32 KB**，完整內容屬 Trace。
-- **Runtime Image 尚未可發佈**：SBOM（I-03）與漏洞掃描（I-04）是發佈時閘門，尚未接上流水線。
+- **Runtime Image 的 CI 發佈閘門已接上**：workflow 會建置、產生 SBOM、掃描並保存 attestation；尚缺的是目標 Linux 節點上的真實 `runsc` 完整生命週期證據與部署准入確認，不是 CI 能力。

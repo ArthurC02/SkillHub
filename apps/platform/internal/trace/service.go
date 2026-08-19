@@ -108,6 +108,12 @@ func (s *Service) ingestOne(
 	if err := event.Validate(); err != nil {
 		return err
 	}
+	// This capability is issued to the execution plane. Letting its untrusted
+	// workload choose another producer would let it forge control-plane errors,
+	// usage and outputs in the audit timeline.
+	if event.EmittedBy != SourceSandbox {
+		return fmt.Errorf("%w: ingestion token only permits sandbox events", ErrInvalid)
+	}
 	// The token binds the batch to one attempt. An event claiming a different
 	// run or attempt is not a token this producer holds.
 	if event.RunID != uuidString(grant.RunID) {
@@ -175,6 +181,9 @@ func RecordOrchestratorEvent(
 	ctx context.Context, q *gen.Queries, workspaceID, runID pgtype.UUID,
 	attempt int, eventType, status string, payload any,
 ) error {
+	if err := q.LockTraceIngestRun(ctx, runID); err != nil {
+		return err
+	}
 	seq, err := q.NextTraceSeq(ctx, gen.NextTraceSeqParams{
 		RunID: runID, Attempt: int32(attempt), Source: SourceOrchestr,
 	})
@@ -234,12 +243,13 @@ func RecordOrchestratorEvent(
 // makes "缺失或延遲事件可被識別" (TRACE-001) an answer rather than a hope: seq is
 // gapless by contract, so a hole is a lost event and nothing else.
 type StreamHealth struct {
-	Attempt    int     `json:"attempt"`
-	EmittedBy  string  `json:"emitted_by"`
-	Received   int     `json:"received"`
-	HighestSeq int64   `json:"highest_seq"`
-	MissingSeq []int64 `json:"missing_seq,omitempty"`
-	LateEvents int     `json:"late_events"`
+	Attempt      int     `json:"attempt"`
+	EmittedBy    string  `json:"emitted_by"`
+	Received     int     `json:"received"`
+	HighestSeq   int64   `json:"highest_seq"`
+	MissingCount int64   `json:"missing_count"`
+	MissingSeq   []int64 `json:"missing_seq,omitempty"`
+	LateEvents   int     `json:"late_events"`
 }
 
 // AdvancedView is TRACE-007: the masked raw events in their reconstructed order,
@@ -251,9 +261,13 @@ type AdvancedView struct {
 	// Complete is false when any stream has a hole. It is not "the run finished";
 	// a finished run with a gap is incomplete, and a running one with no gap yet
 	// is complete so far.
-	Complete bool           `json:"complete"`
-	Streams  []StreamHealth `json:"streams"`
-	Events   []EventView    `json:"events"`
+	Complete  bool           `json:"complete"`
+	Streams   []StreamHealth `json:"streams"`
+	Events    []EventView    `json:"events"`
+	NextAfter int64          `json:"next_after"`
+	HasMore   bool           `json:"has_more"`
+	// Internal to the evaluator; user-facing pages are already explicitly paged.
+	EvaluationTruncated bool `json:"-"`
 }
 
 // EventView is one stored event as the API returns it. Payload is already
@@ -283,9 +297,12 @@ type Summary struct {
 	StatusReason string          `json:"status_reason,omitempty"`
 	Complete     bool            `json:"complete"`
 	Skills       []SkillUse      `json:"skills"`
+	SkillsTotal  int             `json:"skills_total"`
 	ResourceRead int             `json:"resources_read"`
 	ToolCalls    ToolCallSummary `json:"tool_calls"`
 	Errors       []ErrorSummary  `json:"errors"`
+	ErrorsTotal  int             `json:"errors_total"`
+	Truncated    bool            `json:"summary_truncated"`
 	FinalOutput  string          `json:"final_output,omitempty"`
 	Usage        *UsageSummary   `json:"usage,omitempty"`
 	Steps        []string        `json:"steps"`
@@ -323,34 +340,134 @@ type UsageSummary struct {
 	CostSource   string   `json:"cost_source,omitempty"`
 }
 
+const tracePageSize = int32(1_000)
+
 // Advanced returns the raw (masked) events plus stream health.
-func (s *Service) Advanced(ctx context.Context, workspaceID, runID pgtype.UUID) (AdvancedView, error) {
-	rows, err := s.load(ctx, workspaceID, runID)
+func (s *Service) Advanced(ctx context.Context, workspaceID, runID pgtype.UUID, after int64) (AdvancedView, error) {
+	if _, err := s.queries().GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AdvancedView{}, ErrNotFound
+		}
+		return AdvancedView{}, err
+	}
+	health, err := s.traceStreamHealth(ctx, workspaceID, runID)
 	if err != nil {
 		return AdvancedView{}, err
 	}
-	view := AdvancedView{RunID: uuidString(runID), Streams: streamHealth(rows), Complete: true}
+	rows, err := s.queries().ListTraceEventsAfter(ctx, gen.ListTraceEventsAfterParams{
+		RunID: runID, WorkspaceID: workspaceID, AfterIngestSeq: after, PageLimit: tracePageSize + 1,
+	})
+	if err != nil {
+		return AdvancedView{}, err
+	}
+	view := AdvancedView{RunID: uuidString(runID), Streams: health, Complete: true, NextAfter: after}
+	if len(rows) > int(tracePageSize) {
+		view.HasMore = true
+		rows = rows[:tracePageSize]
+	}
+	if len(rows) > 0 {
+		view.NextAfter = rows[len(rows)-1].IngestSeq
+	}
 	for _, stream := range view.Streams {
-		if len(stream.MissingSeq) > 0 {
+		if stream.MissingCount > 0 {
 			view.Complete = false
 		}
 	}
-	view.Events = make([]EventView, 0, len(rows))
+	view.Events = eventViews(rows)
+	sortEventViews(view.Events)
+	return view, nil
+}
+
+func eventViews(rows []gen.TraceEvent) []EventView {
+	events := make([]EventView, 0, len(rows))
 	for _, row := range rows {
 		var fields []string
 		_ = json.Unmarshal(row.MaskedFields, &fields)
+		if fields == nil {
+			fields = []string{}
+		}
 		var status string
 		if row.Status != nil {
 			status = *row.Status
 		}
-		view.Events = append(view.Events, EventView{
+		events = append(events, EventView{
 			EventID: uuidString(row.EventID), Attempt: int(row.Attempt), Seq: row.Seq,
 			OccurredAt: row.OccurredAt.Time.UTC().Format(time.RFC3339Nano),
 			EmittedBy:  row.Source, Type: row.EventType, Status: status, Late: row.Late,
 			MaskedFields: fields, Payload: json.RawMessage(row.Payload),
 		})
 	}
-	return view, nil
+	return events
+}
+
+func evaluationEventViews(rows []gen.ListEvaluationTraceEventsRow) []EventView {
+	events := make([]EventView, 0, len(rows))
+	for _, row := range rows {
+		var fields []string
+		_ = json.Unmarshal(row.MaskedFields, &fields)
+		if fields == nil {
+			fields = []string{}
+		}
+		var status string
+		if row.Status != nil {
+			status = *row.Status
+		}
+		events = append(events, EventView{
+			EventID: uuidString(row.EventID), Attempt: int(row.Attempt), Seq: row.Seq,
+			OccurredAt: row.OccurredAt.Time.UTC().Format(time.RFC3339Nano),
+			EmittedBy:  row.Source, Type: row.EventType, Status: status, Late: row.Late,
+			MaskedFields: fields, Payload: json.RawMessage(row.Payload),
+		})
+	}
+	return events
+}
+
+func sortEventViews(events []EventView) {
+	sort.Slice(events, func(i, j int) bool {
+		if events[i].OccurredAt != events[j].OccurredAt {
+			return events[i].OccurredAt < events[j].OccurredAt
+		}
+		if events[i].EmittedBy != events[j].EmittedBy {
+			return events[i].EmittedBy < events[j].EmittedBy
+		}
+		if events[i].Attempt != events[j].Attempt {
+			return events[i].Attempt < events[j].Attempt
+		}
+		return events[i].Seq < events[j].Seq
+	})
+}
+
+// AdvancedAll is for the one-shot evaluator at run completion. User-facing
+// polling must use Advanced with its cursor so it never retransmits the trace.
+func (s *Service) AdvancedAll(ctx context.Context, workspaceID, runID pgtype.UUID) (AdvancedView, error) {
+	if _, err := s.queries().GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AdvancedView{}, ErrNotFound
+		}
+		return AdvancedView{}, err
+	}
+	health, err := s.traceStreamHealth(ctx, workspaceID, runID)
+	if err != nil {
+		return AdvancedView{}, err
+	}
+	all := AdvancedView{RunID: uuidString(runID), Complete: true, Streams: health, Events: []EventView{}}
+	for _, stream := range health {
+		if stream.MissingCount > 0 {
+			all.Complete = false
+		}
+	}
+	rows, err := s.queries().ListEvaluationTraceEvents(ctx, gen.ListEvaluationTraceEventsParams{
+		EvaluationRunID: runID, EvaluationWorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return AdvancedView{}, err
+	}
+	all.Events = evaluationEventViews(rows)
+	if len(rows) > 0 && rows[0].EvaluationTruncated {
+		all.EvaluationTruncated = true
+		all.Complete = false
+	}
+	return all, nil
 }
 
 // General returns the human-readable progress summary.
@@ -362,8 +479,8 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	if err != nil {
 		return Summary{}, err
 	}
-	rows, err := s.queries().ListTraceEvents(ctx, gen.ListTraceEventsParams{
-		RunID: runID, WorkspaceID: workspaceID,
+	folded, err := s.queries().GetTraceGeneralFold(ctx, gen.GetTraceGeneralFoldParams{
+		FoldRunID: runID, FoldWorkspaceID: workspaceID,
 	})
 	if err != nil {
 		return Summary{}, err
@@ -380,8 +497,16 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	if run.StatusReason != nil {
 		summary.StatusReason = *run.StatusReason
 	}
-	for _, stream := range streamHealth(rows) {
-		if len(stream.MissingSeq) > 0 {
+	if err := json.Unmarshal(folded, &summary); err != nil {
+		return Summary{}, err
+	}
+	summary.Truncated = summary.SkillsTotal > len(summary.Skills) || summary.ErrorsTotal > len(summary.Errors)
+	health, err := s.traceStreamHealth(ctx, workspaceID, runID)
+	if err != nil {
+		return Summary{}, err
+	}
+	for _, stream := range health {
+		if stream.MissingCount > 0 {
 			summary.Complete = false
 		}
 	}
@@ -402,10 +527,25 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 		summary.Steps = append(summary.Steps, step)
 	}
 
-	for _, row := range rows {
-		summary.fold(row)
-	}
 	return summary, nil
+}
+
+func (s *Service) traceStreamHealth(ctx context.Context, workspaceID, runID pgtype.UUID) ([]StreamHealth, error) {
+	rows, err := s.queries().GetTraceStreamHealth(ctx, gen.GetTraceStreamHealthParams{
+		RunID: runID, WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]StreamHealth, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, StreamHealth{
+			Attempt: int(row.Attempt), EmittedBy: row.Source, Received: int(row.Received),
+			HighestSeq: row.HighestSeq, MissingCount: row.MissingCount,
+			MissingSeq: row.MissingSeq, LateEvents: int(row.LateEvents),
+		})
+	}
+	return out, nil
 }
 
 // fold accumulates one event into the summary. Payload decoding is best effort:
@@ -530,10 +670,14 @@ func streamHealth(rows []gen.TraceEvent) []StreamHealth {
 	}
 
 	out := make([]StreamHealth, 0, len(health))
+	const maxMissingSeqReport = 1_000
 	for k, h := range health {
 		for n := int64(1); n <= h.HighestSeq; n++ {
 			if !seen[k][n] {
-				h.MissingSeq = append(h.MissingSeq, n)
+				h.MissingCount++
+				if len(h.MissingSeq) < maxMissingSeqReport {
+					h.MissingSeq = append(h.MissingSeq, n)
+				}
 			}
 		}
 		out = append(out, *h)

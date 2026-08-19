@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -110,10 +111,22 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var payload any
-	if r.URL.Query().Get("mode") == "advanced" {
-		payload, err = h.Svc.Advanced(r.Context(), ws.ID, runID)
-	} else {
+	switch r.URL.Query().Get("mode") {
+	case "", "general":
 		payload, err = h.Svc.General(r.Context(), ws.ID, runID)
+	case "advanced":
+		after := int64(0)
+		if raw := r.URL.Query().Get("after"); raw != "" {
+			after, err = strconv.ParseInt(raw, 10, 64)
+			if err != nil || after < 0 {
+				httpx.WriteError(w, http.StatusBadRequest, "invalid trace cursor")
+				return
+			}
+		}
+		payload, err = h.Svc.Advanced(r.Context(), ws.ID, runID, after)
+	default:
+		httpx.WriteError(w, http.StatusBadRequest, "invalid trace mode")
+		return
 	}
 	switch {
 	case errors.Is(err, ErrNotFound):

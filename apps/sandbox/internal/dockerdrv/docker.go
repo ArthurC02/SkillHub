@@ -331,7 +331,7 @@ func (d *Driver) Adopt(ctx context.Context) ([]sandbox.Adopted, error) {
 
 // ReadTrace reads the workload's trace file out of the sandbox.
 //
-// It runs `cat` inside the container rather than copying the path out, and that
+// It runs bounded `dd` inside the container rather than copying the path out, and that
 // is not a preference: /out is a tmpfs, and the Docker copy API resolves paths
 // against the container's rootfs layer, so it answers "no such file" for
 // anything under a mount. Verified against the daemon, not assumed.
@@ -344,39 +344,53 @@ func (d *Driver) Adopt(ctx context.Context) ([]sandbox.Adopted, error) {
 // What this does cost is an exec into an untrusted container. It is bounded to
 // what that buys an attacker: an absolute path to the image's own binary on a
 // read-only rootfs (so the workload cannot substitute it), no shell, no
-// caller-supplied arguments, the same unprivileged uid the workload already
-// runs as, and a bounded read of the result. The workload can make `cat` print
+// only a Manager-owned decimal offset, the same unprivileged uid the workload already
+// runs as, and a bounded read of the result. The workload can make `dd` print
 // whatever it likes - which is exactly what it could already do, since the file
 // is its own output and is untrusted input to the platform either way.
 //
 // A missing file, a stopped container and an unreadable stream are all "nothing
 // collected yet" rather than errors: the collector polls from the moment the
 // sandbox starts and most early passes legitimately find nothing.
-func (d *Driver) ReadTrace(ctx context.Context, id string) ([]byte, error) {
+func (d *Driver) ReadTrace(ctx context.Context, id string, offset int64) ([]byte, bool, error) {
+	const blockSize = int64(1 << 20)
+	base := offset / blockSize * blockSize
+	prefix := int(offset - base)
 	exec, err := d.cli.ContainerExecCreate(ctx, name(id), container.ExecOptions{
-		Cmd:          []string{"/bin/cat", TracePath},
+		Cmd: []string{
+			"/bin/dd", "if=" + TracePath, "bs=" + strconv.FormatInt(blockSize, 10),
+			"skip=" + strconv.FormatInt(base/blockSize, 10), "count=9",
+		},
 		AttachStdout: true,
 		User:         fmt.Sprintf("%d:%d", d.cfg.UID, d.cfg.GID),
 	})
 	if err != nil {
 		if cerrdefs.IsNotFound(err) || cerrdefs.IsConflict(err) {
-			return nil, nil // gone, or not running yet
+			return nil, false, nil // gone, or not running yet
 		}
-		return nil, err
+		return nil, false, err
 	}
 	attached, err := d.cli.ContainerExecAttach(ctx, exec.ID, container.ExecAttachOptions{})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	defer attached.Close()
 
 	// Demultiplexed: stderr (the "No such file" of an empty run) is discarded, so
 	// a missing file reads as no events rather than as a corrupt line.
 	var out bytes.Buffer
-	if _, err := stdcopy.StdCopy(&out, io.Discard, io.LimitReader(attached.Reader, traceReadLimit)); err != nil {
-		return out.Bytes(), nil //nolint:nilerr // a truncated stream still carries whole lines, and the rest arrives next pass
+	if _, err := stdcopy.StdCopy(&out, io.Discard, attached.Reader); err != nil {
+		return nil, false, err
 	}
-	return out.Bytes(), nil
+	if prefix >= out.Len() {
+		return nil, false, nil
+	}
+	data := out.Bytes()[prefix:]
+	more := len(data) > traceReadLimit
+	if more {
+		data = data[:traceReadLimit]
+	}
+	return data, more, nil
 }
 
 func (d *Driver) Healthy(ctx context.Context) bool {

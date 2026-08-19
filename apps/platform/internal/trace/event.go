@@ -7,6 +7,7 @@ package trace
 // package writes for it.
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -109,7 +110,14 @@ var ErrInvalid = errors.New("invalid trace event")
 // maxLength values (16 KB for a script_log message, 64 KB for agent text) are
 // the producer's obligation; this is the control plane's independent ceiling,
 // because a producer inside the trust boundary is not the one to trust with it.
-const maxPayloadBytes = 96 << 10
+const (
+	maxPayloadBytes = 96 << 10
+	maxTraceAttempt = 100_000
+	// A producer-controlled ordinal is later used for gap detection. Bounding it
+	// prevents one valid ingestion token from turning a trace read into an
+	// unbounded 1..MaxInt64 allocation/CPU loop.
+	maxTraceSeq = 100_000
+)
 
 // Validate checks an event from an untrusted producer against the contract, as
 // far as the envelope goes. Payload shape is not checked here: the per-type
@@ -126,8 +134,12 @@ func (e *Event) Validate() error {
 		return fmt.Errorf("%w: event_id is required", ErrInvalid)
 	case e.Attempt < 1:
 		return fmt.Errorf("%w: attempt must be 1 or greater", ErrInvalid)
+	case e.Attempt > maxTraceAttempt:
+		return fmt.Errorf("%w: attempt must not exceed %d", ErrInvalid, maxTraceAttempt)
 	case e.Seq < 1:
 		return fmt.Errorf("%w: seq must be 1 or greater", ErrInvalid)
+	case e.Seq > maxTraceSeq:
+		return fmt.Errorf("%w: seq must not exceed %d", ErrInvalid, maxTraceSeq)
 	case e.OccurredAt.IsZero():
 		return fmt.Errorf("%w: occurred_at is required", ErrInvalid)
 	case !sources[e.EmittedBy]:
@@ -148,6 +160,8 @@ func (e *Event) Validate() error {
 		return fmt.Errorf("%w: payload is required", ErrInvalid)
 	case len(e.Payload) > maxPayloadBytes:
 		return fmt.Errorf("%w: payload exceeds %d bytes", ErrInvalid, maxPayloadBytes)
+	case len(bytes.TrimSpace(e.Payload)) == 0 || bytes.TrimSpace(e.Payload)[0] != '{':
+		return fmt.Errorf("%w: payload must be a JSON object", ErrInvalid)
 	}
 	return nil
 }

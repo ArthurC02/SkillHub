@@ -96,10 +96,15 @@ func (f *fakeDriver) Remove(_ context.Context, id string) error {
 	return f.removeErr
 }
 
-func (f *fakeDriver) ReadTrace(_ context.Context, id string) ([]byte, error) {
+func (f *fakeDriver) ReadTrace(_ context.Context, id string, offset int64) ([]byte, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.trace[id], nil
+	if offset >= int64(len(f.trace[id])) {
+		return nil, false, nil
+	}
+	const limit = 8 << 20
+	end := min(int(offset)+limit, len(f.trace[id]))
+	return f.trace[id][offset:end], end < len(f.trace[id]), nil
 }
 
 // ReadArtifacts answers "the workload wrote nothing", which is the ordinary case

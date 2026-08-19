@@ -143,7 +143,9 @@ func (d *collectDriver) ReadArtifacts(context.Context, string) ([]byte, error) {
 	return d.artifacts, nil
 }
 
-func (d *collectDriver) ReadTrace(context.Context, string) ([]byte, error) { return nil, nil }
+func (d *collectDriver) ReadTrace(context.Context, string, int64) ([]byte, bool, error) {
+	return nil, false, nil
+}
 
 func (d *collectDriver) ReleaseWorkload(context.Context, string) error {
 	d.seq++

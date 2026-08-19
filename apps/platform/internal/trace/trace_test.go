@@ -150,6 +150,9 @@ func TestMaskerIgnoresShortKnownValues(t *testing.T) {
 	if strings.Contains(string(result.Payload), Placeholder) {
 		t.Errorf("a short known value carpet-redacted ordinary text: %s", result.Payload)
 	}
+	if result.Fields == nil || len(result.Fields) != 0 {
+		t.Fatalf("an unmasked payload must report [] rather than null, got %#v", result.Fields)
+	}
 }
 
 // TRACE-008: a hole in a producer's sequence is a lost event, and the read side
@@ -181,6 +184,22 @@ func TestStreamHealthNamesTheMissingSequenceNumbers(t *testing.T) {
 	}
 }
 
+func TestStreamHealthBoundsTheMissingSequenceSample(t *testing.T) {
+	health := streamHealth([]gen.TraceEvent{
+		traceRow(1, SourceSandbox, 1, false),
+		traceRow(1, SourceSandbox, maxTraceSeq, false),
+	})
+	if len(health) != 1 {
+		t.Fatalf("got %d streams, want 1", len(health))
+	}
+	if health[0].MissingCount != maxTraceSeq-2 {
+		t.Fatalf("missing_count = %d, want %d", health[0].MissingCount, maxTraceSeq-2)
+	}
+	if len(health[0].MissingSeq) != 1_000 {
+		t.Fatalf("missing sample has %d entries, want 1000", len(health[0].MissingSeq))
+	}
+}
+
 func traceRow(attempt int32, source string, seq int64, late bool) gen.TraceEvent {
 	return gen.TraceEvent{
 		Attempt: attempt, Source: source, Seq: seq, Late: late,
@@ -205,15 +224,18 @@ func TestValidateRejectsMalformedEnvelopes(t *testing.T) {
 	}
 
 	cases := map[string]func(*Event){
-		"seq below 1":        func(e *Event) { e.Seq = 0 },
-		"attempt below 1":    func(e *Event) { e.Attempt = 0 },
-		"unknown producer":   func(e *Event) { e.EmittedBy = "the_workload" },
-		"unknown type":       func(e *Event) { e.Type = "shell_escape" },
-		"unknown status":     func(e *Event) { s := "pwned"; e.Status = &s },
-		"future major":       func(e *Event) { e.SchemaVersion = "2.0" },
-		"no payload":         func(e *Event) { e.Payload = nil },
-		"oversized payload":  func(e *Event) { e.Payload = json.RawMessage(strings.Repeat("x", maxPayloadBytes+1)) },
-		"no occurrence time": func(e *Event) { e.OccurredAt = time.Time{} },
+		"seq below 1":         func(e *Event) { e.Seq = 0 },
+		"seq above limit":     func(e *Event) { e.Seq = maxTraceSeq + 1 },
+		"attempt below 1":     func(e *Event) { e.Attempt = 0 },
+		"attempt above limit": func(e *Event) { e.Attempt = maxTraceAttempt + 1 },
+		"unknown producer":    func(e *Event) { e.EmittedBy = "the_workload" },
+		"unknown type":        func(e *Event) { e.Type = "shell_escape" },
+		"unknown status":      func(e *Event) { s := "pwned"; e.Status = &s },
+		"future major":        func(e *Event) { e.SchemaVersion = "2.0" },
+		"no payload":          func(e *Event) { e.Payload = nil },
+		"non-object payload":  func(e *Event) { e.Payload = json.RawMessage(`[]`) },
+		"oversized payload":   func(e *Event) { e.Payload = json.RawMessage(strings.Repeat("x", maxPayloadBytes+1)) },
+		"no occurrence time":  func(e *Event) { e.OccurredAt = time.Time{} },
 	}
 	for name, mutate := range cases {
 		event := base()

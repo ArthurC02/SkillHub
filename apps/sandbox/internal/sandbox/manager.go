@@ -31,11 +31,11 @@ type Driver interface {
 	// Remove releases everything the handle holds. Idempotent: removing what is
 	// not there is success (SBX-009, iron rule 9).
 	Remove(ctx context.Context, providerRunID string) error
-	// ReadTrace returns the raw JSONL the workload has written to
-	// <out>/trace/events.jsonl so far (TRACE-002). An absent file is not an
+	// ReadTrace returns a bounded JSONL chunk beginning at byte offset from
+	// <out>/trace/events.jsonl (TRACE-002). An absent file is not an
 	// error: it means the workload has not emitted anything yet. The bytes are
 	// untrusted workload output and are never parsed by the driver.
-	ReadTrace(ctx context.Context, providerRunID string) ([]byte, error)
+	ReadTrace(ctx context.Context, providerRunID string, offset int64) (data []byte, more bool, err error)
 	// ReadArtifacts returns the workload's collected output as a tar stream, or
 	// nothing when it produced none (SBX-008). Like ReadTrace the bytes are
 	// untrusted and the driver does not open them; the manager does, to enforce
@@ -111,10 +111,9 @@ type entry struct {
 	// traceURL is this attempt's ingestion destination, credential included
 	// (TRACE-002). Empty means nothing is collecting and no draining happens.
 	traceURL string
-	// traceSent is how many whole events of the file have been accepted. It is
-	// a low-water mark only: a batch that failed leaves it where it was, so the
-	// events go again and the platform dedupes them by event_id.
-	traceSent int
+	// traceOffset is the byte immediately after the last complete JSONL line
+	// accepted by the platform. Failed batches do not advance it.
+	traceOffset int64
 	// artifactGrant is the one write authorization this attempt was dispatched
 	// with (SBX-008). Nil means nothing was authorized and nothing is collected.
 	artifactGrant *ObjectGrant

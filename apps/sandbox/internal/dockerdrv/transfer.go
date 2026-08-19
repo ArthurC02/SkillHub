@@ -144,7 +144,7 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 			// diagnose with, and neither is secret.
 			return fmt.Errorf("fetch %s %s: %w", g.Purpose, g.ObjectKey, err)
 		}
-		if err := d.exec(ctx, id, []string{"/bin/tee", target}, body); err != nil {
+		if err := d.exec(ctx, id, []string{"/bin/dd", "of=" + target, "status=none"}, body); err != nil {
 			if errors.Is(err, errGone) {
 				return nil
 			}
@@ -154,7 +154,7 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 	// Best effort, and last: a workload that never sees this reports the missing
 	// inputs itself, in its own trace, which is a better diagnosis than this
 	// process guessing why the write did not land.
-	if err := d.exec(ctx, id, []string{"/bin/tee", ReadyPath}, []byte("ready\n")); err != nil {
+	if err := d.exec(ctx, id, []string{"/bin/dd", "of=" + ReadyPath, "status=none"}, []byte("ready\n")); err != nil {
 		// Identifiers and the failure only: a RunRequest carries grant URLs and a
 		// Virtual Key, and none of it belongs in a log line (iron rule 11).
 		slog.Warn("could not signal the sandbox that its inputs are ready",
@@ -230,7 +230,7 @@ func (d *Driver) WorkloadDone(ctx context.Context, id string) (bool, error) {
 // may exit. Best effort: a workload that is no longer waiting has already left,
 // which is the state this call was asking for.
 func (d *Driver) ReleaseWorkload(ctx context.Context, id string) error {
-	err := d.exec(ctx, id, []string{"/bin/tee", CollectedPath}, []byte("collected\n"))
+	err := d.exec(ctx, id, []string{"/bin/dd", "of=" + CollectedPath, "status=none"}, []byte("collected\n"))
 	if errors.Is(err, errGone) {
 		return nil
 	}
@@ -240,6 +240,10 @@ func (d *Driver) ReleaseWorkload(ctx context.Context, id string) error {
 // fetch downloads one granted object. Bounded in size and in time, and the URL
 // never appears in an error.
 func fetch(ctx context.Context, url string) ([]byte, error) {
+	return fetchWithLimit(ctx, url, grantFetchLimit)
+}
+
+func fetchWithLimit(ctx context.Context, url string, limit int64) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, grantFetchTimeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -254,9 +258,15 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("object storage answered %d", resp.StatusCode)
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, grantFetchLimit))
+	if resp.ContentLength > limit {
+		return nil, errors.New("object exceeds the grant size limit")
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
 		return nil, errors.New("object could not be read")
+	}
+	if int64(len(body)) > limit {
+		return nil, errors.New("object exceeds the grant size limit")
 	}
 	return body, nil
 }
@@ -328,6 +338,9 @@ func (d *Driver) execOnce(ctx context.Context, id string, cmd []string, stdin []
 	inspect, err := d.cli.ContainerExecInspect(ctx, created.ID)
 	if err != nil {
 		return err
+	}
+	if inspect.Running {
+		return fmt.Errorf("%s was still running after its streams closed", cmd[0])
 	}
 	if inspect.ExitCode != 0 {
 		return fmt.Errorf("%s exited with code %d", cmd[0], inspect.ExitCode)

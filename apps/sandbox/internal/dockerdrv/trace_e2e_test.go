@@ -36,6 +36,47 @@ type collector struct {
 	events []json.RawMessage
 	paths  []string
 	pushes int
+	errors []string
+	sizes  []int
+}
+
+func TestCollectorDrainsARealTraceBeyondEightMiB(t *testing.T) {
+	drv, _ := newDriver(t)
+	sink := newCollector()
+	t.Cleanup(sink.Close)
+	m := sandbox.NewManager(drv, sandbox.Config{
+		Provider: "docker_dev", Runtimes: []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
+		MaxResources: sandbox.DefaultLimits, IsolationLevel: "container", EgressModes: []string{"none"}, Slots: 1,
+	}, slog.New(slog.DiscardHandler)).WithTrace(&sandbox.HTTPTraceSink{}, nil)
+	req := testRequest(largeTraceScript)
+	req.Trace = sandbox.TracePolicy{Level: "standard", IngestionURL: sink.URL + "/internal/trace/test-token"}
+	run, created, err := m.Create(context.Background(), req)
+	if err != nil || !created {
+		t.Fatalf("create: %v (created=%v)", err, created)
+	}
+	t.Cleanup(func() { _ = m.Destroy(context.Background(), run.ProviderRunID) })
+
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) && sink.count() < 101 {
+		time.Sleep(200 * time.Millisecond)
+	}
+	if n := sink.count(); n != 101 {
+		state, _ := m.Get(run.ProviderRunID)
+		raw, more, readErr := drv.ReadTrace(context.Background(), run.ProviderRunID, 0)
+		sink.mu.Lock()
+		pushes := sink.pushes
+		errs, sizes := append([]string(nil), sink.errors...), append([]int(nil), sink.sizes...)
+		sink.mu.Unlock()
+		t.Fatalf("collector received %d events in %d pushes (sizes=%v errors=%v), want 101 including the post-8MiB tail; direct read=(bytes=%d more=%v err=%v); run=%+v result=%+v", n, pushes, sizes, errs, len(raw), more, readErr, state, state.Result)
+	}
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	var tail struct {
+		Seq int `json:"seq"`
+	}
+	if err := json.Unmarshal(sink.events[len(sink.events)-1], &tail); err != nil || tail.Seq != 101 {
+		t.Fatalf("last event = %s (err=%v), want seq 101", sink.events[len(sink.events)-1], err)
+	}
 }
 
 func newCollector() *collector {
@@ -43,12 +84,20 @@ func newCollector() *collector {
 	c.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(io.LimitReader(r.Body, 4<<20))
 		var batch []json.RawMessage
-		_ = json.Unmarshal(body, &batch)
+		decodeErr := json.Unmarshal(body, &batch)
 		c.mu.Lock()
+		c.sizes = append(c.sizes, len(body))
+		if decodeErr != nil {
+			c.errors = append(c.errors, decodeErr.Error())
+		}
 		c.events = append(c.events, batch...)
 		c.paths = append(c.paths, r.URL.Path)
 		c.pushes++
 		c.mu.Unlock()
+		if decodeErr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		w.WriteHeader(http.StatusAccepted)
 	}))
 	return c
@@ -168,4 +217,17 @@ cat >> /out/trace/events.jsonl <<'EOF'
 {"schema_version":"1.0","event_id":"2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d03","run_id":"11111111-1111-1111-1111-111111111111","attempt":1,"seq":3,"occurred_at":"2026-08-16T09:12:09.500Z","emitted_by":"sandbox","type":"agent_output","status":"ok","masked":false,"masked_fields":[],"payload":{"kind":"final","text":"Removed 17 duplicate rows and saved the result to output.xlsx.","truncated":false}}
 EOF
 sleep 1
+`
+
+const largeTraceScript = `
+mkdir -p /out/trace
+i=1
+while [ "$i" -le 100 ]; do
+  printf '{"schema_version":"1.0","event_id":"%08d-0000-4000-8000-000000000000","run_id":"11111111-1111-1111-1111-111111111111","attempt":1,"seq":%d,"occurred_at":"2026-08-16T09:12:04Z","emitted_by":"sandbox","type":"script_log","status":"ok","masked":false,"masked_fields":[],"payload":{"stream":"stdout","message":"' "$i" "$i" >> /out/trace/events.jsonl
+  head -c 92160 /dev/zero | tr '\000' '<' >> /out/trace/events.jsonl
+  printf '","truncated":false}}\n' >> /out/trace/events.jsonl
+  i=$((i+1))
+done
+printf '%s\n' '{"schema_version":"1.0","event_id":"00000101-0000-4000-8000-000000000000","run_id":"11111111-1111-1111-1111-111111111111","attempt":1,"seq":101,"occurred_at":"2026-08-16T09:12:05Z","emitted_by":"sandbox","type":"agent_output","status":"ok","masked":false,"masked_fields":[],"payload":{"kind":"final","text":"tail","truncated":false}}' >> /out/trace/events.jsonl
+sleep 8
 `

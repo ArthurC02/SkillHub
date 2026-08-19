@@ -79,7 +79,7 @@ func (m *Masker) Mask(payload json.RawMessage) (Result, error) {
 	if err := json.Unmarshal(payload, &decoded); err != nil {
 		return Result{}, err
 	}
-	var fields []string
+	fields := make([]string, 0)
 	walked := m.walk(decoded, "", &fields)
 	encoded, err := json.Marshal(walked)
 	if err != nil {

@@ -8,8 +8,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -124,6 +126,44 @@ func TestPartialTrailingLineIsHeldBackUntilComplete(t *testing.T) {
 	if got := sink.received(); got[0] != event(1) {
 		t.Errorf("pushed %q, want only the complete line", got[0])
 	}
+}
+
+func TestCollectorDrainsPastTheEightMiBReadWindow(t *testing.T) {
+	sink := &recordingSink{}
+	drv, h := newTracingServer(t, sink)
+
+	_, run := do(t, h, "POST", "/runs", tracedRequest(), testToken)
+	padding := strings.Repeat("x", 90<<10)
+	for seq := 1; seq <= 100; seq++ {
+		drv.appendRawTrace(run.ProviderRunID, fmt.Sprintf(
+			`{"event_id":"%08d-0000-4000-8000-000000000000","seq":%d,"payload":"%s"}`+"\n",
+			seq, seq, padding,
+		))
+	}
+	tail := `{"event_id":"tail","seq":101,"payload":"last"}`
+	drv.appendRawTrace(run.ProviderRunID, tail+"\n")
+	drv.exit(run.ProviderRunID, sandbox.Outcome{ExitCode: 0})
+
+	waitFor(t, func() bool {
+		got := sink.received()
+		return len(got) == 101 && got[len(got)-1] == tail
+	})
+}
+
+func TestOversizedEventDoesNotPinValidTail(t *testing.T) {
+	sink := &recordingSink{}
+	drv, h := newTracingServer(t, sink)
+
+	_, run := do(t, h, "POST", "/runs", tracedRequest(), testToken)
+	drv.appendRawTrace(run.ProviderRunID, `{"event_id":"oversized","padding":"`+strings.Repeat("x", 4<<20)+`"}`+"\n")
+	tail := `{"event_id":"tail","seq":2,"payload":"last"}`
+	drv.appendRawTrace(run.ProviderRunID, tail+"\n")
+	drv.exit(run.ProviderRunID, sandbox.Outcome{ExitCode: 0})
+
+	waitFor(t, func() bool {
+		got := sink.received()
+		return len(got) == 1 && got[0] == tail
+	})
 }
 
 // A run with no ingestion URL is a run nothing is collecting. It must not fail,

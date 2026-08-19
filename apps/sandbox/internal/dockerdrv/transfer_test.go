@@ -6,6 +6,7 @@ package dockerdrv_test
 // (see Driver.exec). A unit test over a fake could not have produced any of them.
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +16,36 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
+
+func TestLargeGrantedObjectIsDeliveredByteForByte(t *testing.T) {
+	d, _ := newDriver(t)
+	payload := bytes.Repeat([]byte("x"), (2<<20)+17)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(payload)
+	}))
+	defer srv.Close()
+
+	req := testRequest(
+		"while [ ! -f /work/.skillhub/ready ]; do sleep 0.05; done; " +
+			"test \"$(wc -c < /work/.skillhub/skill.zip)\" -eq 2097169",
+	)
+	req.ObjectGrants = []sandbox.ObjectGrant{{
+		Purpose: "skill_package", ObjectKey: "packages/large.zip", Access: "read",
+		URL: srv.URL + "/packages/large.zip", ExpiresAt: time.Now().Add(time.Hour),
+	}}
+
+	id := handle(t)
+	t.Cleanup(func() { _ = d.Remove(context.Background(), id) })
+	if err := d.Start(context.Background(), id, req); err != nil {
+		t.Fatalf("large input delivery failed: %v", err)
+	}
+	waitCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	out, err := d.Wait(waitCtx, id)
+	if err != nil || out.ExitCode != 0 {
+		t.Fatalf("workload did not observe exact input: outcome=%+v err=%v", out, err)
+	}
+}
 
 // A workload that ends before its inputs could be placed has not been failed by
 // the delivery: it ran and finished on its own terms, and Wait is about to

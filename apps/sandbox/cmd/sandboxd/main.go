@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -37,8 +38,13 @@ func main() {
 	}
 
 	runtime := os.Getenv("SKILLHUB_SANDBOX_RUNTIME") // "runsc" in production
+	image := envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-3")
+	if runtime == "runsc" && !strings.Contains(image, "@sha256:") {
+		log.Error("SKILLHUB_SANDBOX_IMAGE must use an immutable digest with runsc")
+		os.Exit(1)
+	}
 	drv, err := dockerdrv.New(dockerdrv.Config{
-		Image:        envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-2"),
+		Image:        image,
 		Runtime:      runtime,
 		Network:      envOr("SKILLHUB_SANDBOX_NETWORK", "none"),
 		UID:          envInt("SKILLHUB_SANDBOX_UID", 65532),

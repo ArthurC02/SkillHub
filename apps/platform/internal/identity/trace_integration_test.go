@@ -142,9 +142,11 @@ type traceStream struct {
 }
 
 type advancedView struct {
-	Complete bool          `json:"complete"`
-	Streams  []traceStream `json:"streams"`
-	Events   []struct {
+	Complete  bool          `json:"complete"`
+	Streams   []traceStream `json:"streams"`
+	NextAfter int64         `json:"next_after"`
+	HasMore   bool          `json:"has_more"`
+	Events    []struct {
 		Seq          int64           `json:"seq"`
 		Type         string          `json:"type"`
 		EmittedBy    string          `json:"emitted_by"`
@@ -161,6 +163,7 @@ type generalView struct {
 		Name     string `json:"name"`
 		Decision string `json:"decision"`
 	} `json:"skills"`
+	SkillsTotal  int `json:"skills_total"`
 	ResourceRead int `json:"resources_read"`
 	ToolCalls    struct {
 		Total     int   `json:"total"`
@@ -173,6 +176,8 @@ type generalView struct {
 		Code     string `json:"code"`
 		Message  string `json:"message"`
 	} `json:"errors"`
+	ErrorsTotal int    `json:"errors_total"`
+	Truncated   bool   `json:"summary_truncated"`
 	FinalOutput string `json:"final_output"`
 	Usage       *struct {
 		InputTokens int64    `json:"input_tokens"`
@@ -182,8 +187,12 @@ type generalView struct {
 }
 
 func (c *client) advancedTrace(t *testing.T, runID string) (int, advancedView) {
+	return c.advancedTraceAfter(t, runID, 0)
+}
+
+func (c *client) advancedTraceAfter(t *testing.T, runID string, after int64) (int, advancedView) {
 	t.Helper()
-	resp, err := c.Get(c.base + "/runs/" + runID + "/trace?mode=advanced")
+	resp, err := c.Get(fmt.Sprintf("%s/runs/%s/trace?mode=advanced&after=%d", c.base, runID, after))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,6 +268,12 @@ func TestTraceIngestionMasksBeforeStorageAndDedupesOnResend(t *testing.T) {
 	}
 	if len(view.Events) != 1 {
 		t.Fatalf("stored %d events after a re-send, want 1", len(view.Events))
+	}
+	if view.NextAfter <= 0 || view.HasMore {
+		t.Fatalf("cursor = %d, has_more = %v; want a final non-zero cursor", view.NextAfter, view.HasMore)
+	}
+	if code, delta := owner.advancedTraceAfter(t, runID, view.NextAfter); code != http.StatusOK || len(delta.Events) != 0 || delta.NextAfter != view.NextAfter {
+		t.Fatalf("empty delta: code=%d view=%+v", code, delta)
 	}
 	stored := string(view.Events[0].Payload)
 	if strings.Contains(stored, "sk-TESTKEY") {
@@ -373,6 +388,95 @@ func TestConcurrentTraceDeliveryClaimsAnEventIDOnce(t *testing.T) {
 	}
 }
 
+func TestTraceCursorAssignmentSerializesWithCommitPerRun(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "trace-cursor-owner")
+	skillID := seedSkill(t, pool, owner.workspaceID, "trace-cursor-skill")
+	runID := seedRun(t, pool, owner.workspaceID, skillID)
+
+	ctx := context.Background()
+	tx1, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx1.Rollback(ctx) //nolint:errcheck // no-op after commit
+	insert := `INSERT INTO trace_events
+		(event_id, workspace_id, run_id, attempt, seq, occurred_at, event_type, source,
+		 schema_version, masked, masked_fields, payload, late)
+		VALUES (gen_random_uuid(), $1, $2, 1, $3, now(), 'script_log', 'sandbox',
+		        '1.0', true, '[]', '{}', false)`
+	if _, err := tx1.Exec(ctx, insert, owner.workspaceID, runID, 1); err != nil {
+		t.Fatal(err)
+	}
+
+	tx2, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx2.Rollback(ctx) //nolint:errcheck // no-op after commit
+	second := make(chan error, 1)
+	go func() {
+		_, execErr := tx2.Exec(ctx, insert, owner.workspaceID, runID, 2)
+		second <- execErr
+	}()
+	select {
+	case err := <-second:
+		t.Fatalf("second insert did not wait for the first commit: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if err := tx1.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-second; err != nil {
+		t.Fatal(err)
+	}
+	if err := tx2.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	var first, secondCursor int64
+	if err := pool.QueryRow(ctx, `SELECT ingest_seq FROM trace_events WHERE run_id=$1 AND seq=1`, runID).Scan(&first); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT ingest_seq FROM trace_events WHERE run_id=$1 AND seq=2`, runID).Scan(&secondCursor); err != nil {
+		t.Fatal(err)
+	}
+	if first >= secondCursor {
+		t.Fatalf("commit-ordered cursors = %d then %d", first, secondCursor)
+	}
+}
+
+func TestEvaluationTraceSelectionIsBoundedAndCanonicallyOrdered(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "trace-page-order-owner")
+	skillID := seedSkill(t, pool, owner.workspaceID, "trace-page-order-skill")
+	runID := seedRun(t, pool, owner.workspaceID, skillID)
+	ctx := context.Background()
+	_, err := pool.Exec(ctx, `
+		INSERT INTO trace_events
+		(event_id, workspace_id, run_id, attempt, seq, occurred_at, event_type, source,
+		 schema_version, masked, masked_fields, payload, late)
+		SELECT gen_random_uuid(), $1, $2, 1, n,
+		       now() - (n * interval '1 second'), 'script_log', 'sandbox',
+		       '1.0', true, '[]', '{}', false
+		FROM generate_series(1, 1001) AS n`, owner.workspaceID, runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := (&trace.Service{Pool: pool}).AdvancedAll(ctx, mustUUID(t, owner.workspaceID), mustUUID(t, runID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Events) != 500 || !view.EvaluationTruncated || view.Complete {
+		t.Fatalf("bounded evaluation trace = %d events, truncated=%v complete=%v", len(view.Events), view.EvaluationTruncated, view.Complete)
+	}
+	if view.Events[0].Seq != 500 || view.Events[len(view.Events)-1].Seq != 1 {
+		t.Fatalf("bounded canonical order starts/ends at seq %d/%d", view.Events[0].Seq, view.Events[len(view.Events)-1].Seq)
+	}
+}
+
 // dumpStoredEvents writes the stored rows back out as wire envelopes, so
 // tools/contracts/validate_trace_events.py can check what the pipeline actually
 // persists - masked and all - against the schema, rather than only the schema's
@@ -441,6 +545,13 @@ func TestTraceIngestionRefusesWhatTheTokenDoesNotCover(t *testing.T) {
 	code, report = a.ingest(t, runID, 1, event(runID, 2, 1, "agent_output", output))
 	if code != http.StatusAccepted || report.Rejected != 1 {
 		t.Fatalf("cross-attempt event: got %d %+v, want it rejected", code, report)
+	}
+
+	forged := strings.Replace(event(runID, 1, 2, "error", `{"category":"runtime","code":"forged","message":"fake"}`),
+		`"emitted_by": "sandbox"`, `"emitted_by": "orchestrator"`, 1)
+	code, report = a.ingest(t, runID, 1, forged)
+	if code != http.StatusAccepted || report.Rejected != 1 || report.Stored != 0 {
+		t.Fatalf("producer impersonation: got %d %+v, want it rejected", code, report)
 	}
 
 	_, view := owner.advancedTrace(t, otherRunID)
@@ -549,14 +660,23 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 	skillID := seedSkill(t, pool, owner.workspaceID, "trace-summary-skill")
 	runID := seedRun(t, pool, owner.workspaceID, skillID)
 
-	if code, report := a.ingest(t, runID, 1,
+	events := []string{
 		event(runID, 1, 1, "skill_activation", `{"skill_version_id":"4d5e6f7a-8b9c-4d1e-9f2a-3b4c5d6e7f81","skill_name":"excel-deduplicate","decision":"activated","reason":"the task mentions duplicate rows"}`),
 		event(runID, 1, 2, "resource_read", `{"resource_path":"references/dedupe-rules.md","outcome":"read","bytes_read":4812,"truncated":false}`),
 		event(runID, 1, 3, "tool_call", `{"tool_name":"bash","outcome":"succeeded","duration_ms":3412,"truncated":false}`),
 		event(runID, 1, 4, "tool_call", `{"tool_name":"bash","outcome":"failed","duration_ms":120,"truncated":false}`),
 		event(runID, 1, 5, "agent_output", `{"kind":"final","text":"Removed 17 duplicate rows.","truncated":false}`),
 		event(runID, 1, 6, "usage", `{"scope":"run_total","model":"gpt-5-mini","input_tokens":27042,"output_tokens":1180,"cost_usd":null}`),
-	); code != http.StatusAccepted || report.Stored != 6 {
+		// Payload shape is deliberately not trusted at ingress. An out-of-range
+		// JSON number must be ignored by the aggregate, not turn this read into 500.
+		event(runID, 1, 7, "tool_call", `{"tool_name":"hostile","outcome":"succeeded","duration_ms":1e100}`),
+	}
+	// Individually valid values may still overflow bigint when summed. The API
+	// saturates its int64 transport field instead of making the whole trace 500.
+	for seq := 8; seq <= 18; seq++ {
+		events = append(events, event(runID, 1, seq, "tool_call", `{"tool_name":"large","outcome":"succeeded","duration_ms":900000000000000000}`))
+	}
+	if code, report := a.ingest(t, runID, 1, events...); code != http.StatusAccepted || report.Stored != len(events) {
 		t.Fatalf("push: got %d %+v", code, report)
 	}
 
@@ -573,14 +693,17 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 	if len(view.Skills) != 1 || view.Skills[0].Name != "excel-deduplicate" {
 		t.Errorf("skills = %+v", view.Skills)
 	}
+	if view.SkillsTotal != 1 || view.ErrorsTotal != 0 || view.Truncated {
+		t.Errorf("summary bounds = skills %d, errors %d, truncated %v", view.SkillsTotal, view.ErrorsTotal, view.Truncated)
+	}
 	if view.ResourceRead != 1 {
 		t.Errorf("resources_read = %d, want 1", view.ResourceRead)
 	}
-	if view.ToolCalls.Total != 2 || view.ToolCalls.Succeeded != 1 || view.ToolCalls.Failed != 1 {
+	if view.ToolCalls.Total != 14 || view.ToolCalls.Succeeded != 13 || view.ToolCalls.Failed != 1 {
 		t.Errorf("tool call summary = %+v", view.ToolCalls)
 	}
-	if view.ToolCalls.TotalMS != 3532 {
-		t.Errorf("total tool duration = %d, want 3532", view.ToolCalls.TotalMS)
+	if view.ToolCalls.TotalMS != int64(1<<63-1) {
+		t.Errorf("total tool duration = %d, want saturated int64", view.ToolCalls.TotalMS)
 	}
 	if view.FinalOutput != "Removed 17 duplicate rows." {
 		t.Errorf("final output = %q", view.FinalOutput)

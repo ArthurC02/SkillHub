@@ -30,6 +30,10 @@ const (
 	// traceBatch bounds one POST. A workload that logs in a loop drains over
 	// several passes instead of building one enormous request.
 	traceBatch = 200
+	// The platform caps an ingestion body at 4 MiB. Stay below it after JSON
+	// array punctuation so a batch of individually valid large events is not
+	// rejected as one oversized request.
+	traceBatchBytes = 3 << 20
 )
 
 // TraceSink pushes one batch of already-encoded events. Split out so the manager
@@ -53,11 +57,14 @@ func (s *HTTPTraceSink) client() *http.Client {
 // here and nothing about the token is logged - it is secret material that the
 // masker on the far side also knows to redact.
 func (s *HTTPTraceSink) Push(ctx context.Context, url string, events []json.RawMessage) error {
-	body, err := json.Marshal(events)
+	var encoded bytes.Buffer
+	encoder := json.NewEncoder(&encoded)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(events)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, &encoded)
 	if err != nil {
 		return err
 	}
@@ -73,19 +80,36 @@ func (s *HTTPTraceSink) Push(ctx context.Context, url string, events []json.RawM
 	return nil
 }
 
+func traceEventWireBytes(event json.RawMessage) (int, error) {
+	var encoded bytes.Buffer
+	encoder := json.NewEncoder(&encoded)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(event); err != nil {
+		return 0, err
+	}
+	return encoded.Len() - 1, nil // exclude Encoder's trailing newline
+}
+
 // splitEvents turns the raw JSONL into whole events, dropping a trailing
 // fragment. The workload appends while this is being read, so the last line can
 // be half written; sending it would produce a parse error at the far end and,
 // worse, would make the next pass skip it as already sent.
-func splitEvents(raw []byte) []json.RawMessage {
-	var out []json.RawMessage
+type traceLine struct {
+	event json.RawMessage
+	end   int64
+}
+
+func splitEvents(raw []byte) ([]traceLine, int64) {
+	var out []traceLine
+	var consumed int64
 	for {
 		i := bytes.IndexByte(raw, '\n')
 		if i < 0 {
-			return out
+			return out, consumed
 		}
 		line := bytes.TrimSpace(raw[:i])
 		raw = raw[i+1:]
+		consumed += int64(i + 1)
 		if len(line) == 0 {
 			continue
 		}
@@ -95,7 +119,7 @@ func splitEvents(raw []byte) []json.RawMessage {
 			// bad line from stalling the whole stream behind it.
 			continue
 		}
-		out = append(out, json.RawMessage(line))
+		out = append(out, traceLine{event: json.RawMessage(line), end: consumed})
 	}
 }
 
@@ -166,42 +190,96 @@ const (
 func (m *Manager) flushTrace(id, url string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	raw, err := m.drv.ReadTrace(ctx, id)
-	if err != nil || len(raw) == 0 {
-		// No trace file yet, or the sandbox is already gone. Neither is
-		// retryable from here, so this counts as done rather than as a failure
-		// that would hold the caller in a loop it cannot win.
-		return true
-	}
-	events := splitEvents(raw)
-
-	m.mu.Lock()
-	e := m.runs[id]
-	if e == nil {
-		m.mu.Unlock()
-		return true // destroyed under us; there is nothing left to read from
-	}
-	sent := e.traceSent
-	m.mu.Unlock()
-
-	for sent < len(events) {
-		end := min(sent+traceBatch, len(events))
-		if err := m.sink.Push(ctx, url, events[sent:end]); err != nil {
-			// Not advanced: the same events go again next tick, and the platform
-			// drops the ones it already has by event_id.
-			m.log.Warn("trace push failed", "provider_run_id", id, "err", err)
-			m.metrics.tracePush("error", 0)
-			return false
-		}
-		m.metrics.tracePush("ok", end-sent)
-		sent = end
+	for {
 
 		m.mu.Lock()
-		if e := m.runs[id]; e != nil {
-			e.traceSent = sent
+		e := m.runs[id]
+		if e == nil {
+			m.mu.Unlock()
+			return true
 		}
+		offset := e.traceOffset
 		m.mu.Unlock()
+
+		raw, more, err := m.drv.ReadTrace(ctx, id, offset)
+		if err != nil || len(raw) == 0 {
+			// No trace file yet, or the sandbox is already gone. Neither is
+			// retryable from here, so this counts as done rather than as a failure
+			// that would hold the caller in a loop it cannot win.
+			return true
+		}
+		lines, consumed := splitEvents(raw)
+		if more && consumed == 0 {
+			// One line exceeds the entire read window. It cannot satisfy the event
+			// payload limit, so discard this chunk to guarantee forward progress.
+			m.mu.Lock()
+			if e := m.runs[id]; e != nil {
+				e.traceOffset = offset + int64(len(raw))
+			}
+			m.mu.Unlock()
+			continue
+		}
+
+		for sent := 0; sent < len(lines); {
+			firstWireBytes, err := traceEventWireBytes(lines[sent].event)
+			if err != nil || firstWireBytes+3 > traceBatchBytes {
+				// This complete line can never fit in the platform's request body
+				// (and is far beyond the event payload limit). Drop only that line
+				// so untrusted output cannot pin every valid event behind it.
+				m.log.Warn("dropping oversized trace event", "provider_run_id", id, "bytes", firstWireBytes)
+				m.metrics.tracePush("dropped_oversized", 0)
+				m.mu.Lock()
+				if e := m.runs[id]; e != nil {
+					e.traceOffset = offset + lines[sent].end
+				}
+				m.mu.Unlock()
+				sent++
+				continue
+			}
+			end, size := sent, 2 // JSON array brackets
+			for end < len(lines) && end-sent < traceBatch {
+				wireBytes, err := traceEventWireBytes(lines[end].event)
+				if err != nil {
+					break
+				}
+				next := wireBytes + 1 // comma or Encoder's trailing newline
+				if end > sent && size+next > traceBatchBytes {
+					break
+				}
+				size += next
+				end++
+			}
+			events := make([]json.RawMessage, 0, end-sent)
+			for _, line := range lines[sent:end] {
+				events = append(events, line.event)
+			}
+			if err := m.sink.Push(ctx, url, events); err != nil {
+				// Not advanced: the same events go again next tick, and the platform
+				// drops the ones it already has by event_id.
+				m.log.Warn("trace push failed", "provider_run_id", id, "err", err)
+				m.metrics.tracePush("error", 0)
+				return false
+			}
+			m.metrics.tracePush("ok", end-sent)
+			sent = end
+
+			m.mu.Lock()
+			if e := m.runs[id]; e != nil {
+				e.traceOffset = offset + lines[sent-1].end
+			}
+			m.mu.Unlock()
+		}
+		// Empty/invalid complete lines are intentionally discarded and must not
+		// pin the cursor forever. A partial final line is excluded from consumed.
+		if consumed > 0 {
+			m.mu.Lock()
+			if e := m.runs[id]; e != nil {
+				e.traceOffset = offset + consumed
+			}
+			m.mu.Unlock()
+		}
+		if !more {
+			return true
+		}
 	}
-	return true
 }
