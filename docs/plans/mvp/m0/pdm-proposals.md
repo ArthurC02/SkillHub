@@ -357,6 +357,8 @@ Go 控制平面在 `provisioning` 階段向 LiteLLM 管理 API 簽發帶預算�
 
 ## 4. PDM-004：SelfHostedProvider 首批 Runtime 語言與版本
 
+> **現況覆寫（2026-08-19；本節仍保留為歷史提案）**：目前 Runtime Image 固定使用 Python 3.11，Claude Agent SDK 0.3.233 的實作 Profile 會省略 `setting_sources`；顯式 `setting_sources=["project"]` 在目前版本會造成 project Skill 為零。權威現況見 ADR-023、`contracts/packaging/profiles/claude-agent-sdk.json`、`apps/sandbox/README.md` 與 `UPGRADES.md`。Python 3.12 是否升級仍屬 PDM-004 待追認與真實 runsc 驗證項，以下 Python 3.12／`setting_sources=["project"]` 敘述不得當成已部署事實。
+
 ### 背景
 
 ADR-005 要求「MVP 只允許預先建置、版本化與掃描的 Runtime Image」「不允許使用者直接指定任意基礎 Image」「限定少量 Runtime、檔案格式與最大資源」。PDM-001 的三個類別決定了 Skill 內 Script 實際會用到什麼。

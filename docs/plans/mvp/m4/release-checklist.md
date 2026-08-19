@@ -99,7 +99,9 @@
 
 ### 2.2 Migration 套用（順序是硬的）
 
-**執行中的 dev DB 停在 `0026`。** 缺的是 `0024`／`0025`／`0026` 之後的七份，而它們互相依賴：
+**部署 schema 必須到目前 HEAD `0034`。** 下列十一份互相依賴；不要再以手抄的「缺幾份」判斷目前版本：
+
+> **0034 維護窗要求**：它會在 partitioned `trace_events` 上以 volatile sequence default 回填 `ingest_seq`，可能持有強鎖。正式資料庫不得直接照開發環境時間推估：先在 production-sized clone 量測鎖定與回填時間，設定 `lock_timeout`，安排停止 Trace ingestion 的維護窗並確認 rollback 空間；未留下這份演練證據即視為 deployment blocker。MVP 尚未上線，現階段不為尚不存在的線上零停機需求引入雙寫 migration。
 
 ```bash
 # 順序不可調換；每一份都 --single-transaction，中途失敗不留半套
@@ -110,8 +112,18 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0027_packaging.sql
 psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0028_download_retention_and_object_reconcile.sql
 psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0029_beta_analytics.sql
 psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0030_dispatch_halts.sql
+psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0031_trace_event_id_dedupe.sql
+psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0032_run_state_and_trace_stream_guards.sql
+psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0033_evaluation_model_usage.sql
+psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0034_trace_incremental_reads.sql
 # 然後才是資料回填（不是 migration，可重跑）
 psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistribution.sql
+
+# schema HEAD smoke check：四項任一為空都不可啟動 HEAD binary
+psql -Atqc "SELECT to_regclass('public.evaluation_model_usage')"
+psql -Atqc "SELECT to_regprocedure('public.enforce_run_status_transition()')"
+psql -Atqc "SELECT to_regprocedure('public.enforce_trace_stream_seq()')"
+psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 ```
 
 **驗什麼**：回填應回報 **`UPDATE 90`**，分佈為 **41 `allowed`／4 `blocked`／0 `unknown`**（4 筆 blocked ＝ `anthropics/skills` 的 `docx`／`pdf`／`pptx`／`xlsx`）。**數字對不上就不要往下做**——打包的授權閘門是照這個欄位擋的。該分佈已在一個乾淨的拋棄式部署上獨立複現過（[README.md §14.2](README.md)）。
@@ -119,7 +131,7 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistrib
 **套用之後必須做的三件事**：
 
 - [ ] **重建 `cmd/api`／`cmd/worker`／`sandboxd` 到 HEAD** 並帶齊環境變數（見 §2.3）。舊二進位在新 schema 上會以難看的方式失敗（丙-8 記錄的正是反過來的那一半）。
-- [ ] **`0024`～`0026` 套用後，`EVAL-013` 的 B 輪回歸解除**（丙-8）：依 [`../m3/report-judge-regression.md` §13.4](../m3/report-judge-regression.md) 的五個 `test_case_id` 走 `PATCH /test-cases/{id}` 改 Prompt → 走既有 Run 路徑重發 5 筆 → `judge_regression.py --rubric` 重評。**第 ⑤ 步之前先確認新 Run 進得了 `skill_runtime_compatibility`**，否則 harness 取到的仍是 M2 的舊 Run 而且不會有任何提示。成本約 $0.3～0.5。
+- [ ] **`0024`～`0034` 套用並通過上述 schema HEAD smoke check 後，`EVAL-013` 的 B 輪回歸解除**（丙-8）：依 [`../m3/report-judge-regression.md` §13.4](../m3/report-judge-regression.md) 的五個 `test_case_id` 走 `PATCH /test-cases/{id}` 改 Prompt → 走既有 Run 路徑重發 5 筆 → `judge_regression.py --rubric` 重評。**第 ⑤ 步之前先確認新 Run 進得了 `skill_runtime_compatibility`**，否則 harness 取到的仍是 M2 的舊 Run，而且不會有任何提示。成本約 $0.3～0.5。
 - [ ] **`0027` 套用前，dev 上的打包路徑只會回 `license_unknown`**（`redistribution` 欄位不存在 ⇒ fail-closed）。這是正確行為，不是故障——回填前的實測已記在 §14.2 末段。
 
 ### 2.3 部署設定（未設會安靜地關掉功能）
@@ -127,7 +139,7 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistrib
 | 變數 | 不設的後果 | 值從哪來 |
 | --- | --- | --- |
 | `PACKAGING_PROFILES_DIR` | 零個打包目標，**每條打包路由 503** | 預設 `contracts/packaging/profiles` |
-| `DOWNLOAD_ARTIFACT_RETENTION` | 走程式內的 90 天預設 | **PDM-006 追認**（§3） |
+| `DOWNLOAD_ARTIFACT_RETENTION` | **未設或非法即 fail-closed：打包建立回 503，不得產生下載 Artifact** | **PDM-006 追認後才設定正值**（§3） |
 | `ANALYTICS_RETENTION` | **不設 cookie、不寫任何一列** ⇒ `BETA-002` 的漏斗量不到任何東西 | **PDM-006 追認**（ADR-029 提案 180 天） |
 | `BETA_ALLOWLIST` | 閘門關閉，**任何有 GitHub 帳號的人都能用** | PDM-009 追認後的 12 個 GitHub 帳號 |
 | `RUN_QUOTA` | 額度不強制，`GET /me/quota` **不掛載**，preflight 不帶配額區塊 | PDM-010 擇一後開啟 |
