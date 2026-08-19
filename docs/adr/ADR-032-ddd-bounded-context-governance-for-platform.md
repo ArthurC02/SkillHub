@@ -78,11 +78,11 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 - 正面：邊界從「讀過 ADR 的人才知道」變成「CI 會擋」；Agent 快速迭代下新增程式碼有機械歸位規則；未來拆服務時 context 即拆分單位。
 - 成本：depguard 白名單需隨架構演進維護；ingest 拆分與 run→eval 事件化是有風險的重構，需依調整計畫分階段執行；同步改兩處（附錄＋lint 規則）的紀律有摩擦——這個摩擦是刻意的。
 
-## 待決策
+## 待決策（三項均已於 2026-08-19 由負責人裁定）
 
-- Policy & Usage 是否從 `run`／`analytics` 中抽成獨立套件，或等計費需求成立再抽。
-- `testlab` snapshot 是否抽成獨立公開契約子包，或以文件標註公開面即可。
-- 事件目錄（outbox 事件 schema）是否進 `contracts/`，或以 Go 型別＋文件為準。
+- ~~Policy & Usage 是否從 `run`／`analytics` 中抽成獨立套件，或等計費需求成立再抽。~~ → **裁定：完成 platform DDD 化（調整計畫 Phase 0～2 收斂）之後抽離**，列為 [DDD-014](../plans/platform-ddd-realignment-2026-08-19.md)。
+- ~~`testlab` snapshot 是否抽成獨立公開契約子包，或以文件標註公開面即可。~~ → **裁定：不抽子包，以 UI/UX 導向重整公開契約面**（單一讀寫門面＋依使用者旅程收整 HTTP 面），設計見 [testlab-contract-design-2026-08-19.md](../plans/testlab-contract-design-2026-08-19.md)，執行為 DDD-007。
+- ~~事件目錄（outbox 事件 schema）是否進 `contracts/`，或以 Go 型別＋文件為準。~~ → **裁定：依最佳實務落 `contracts/events/`（跟隨 Run Trace 契約前例，程式註解亦早已預告此落點）**；文件目錄先行、JSON Schema 待第一個非 Go consumer 出現再補。目錄本體：[contracts/events/domain-events.md](../../contracts/events/domain-events.md)，程式側收斂為 DDD-012。
 
 ## 附錄 A：跨 context import 白名單（初版＝凍結現況）
 
