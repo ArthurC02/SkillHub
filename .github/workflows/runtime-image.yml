@@ -56,8 +56,7 @@ concurrency:
   group: runtime-image-${{ github.ref }}
   cancel-in-progress: true
 
-# Default for every job. `review` raises exactly three of them and only because
-# publishing needs them (see the job); `rescan` raises two.
+# Default for every job. Publish and rescan raise only the permissions they need.
 permissions:
   contents: read
 
@@ -70,27 +69,38 @@ env:
   # upstream release into a red build on a tree nobody touched. The vulnerability
   # database is deliberately NOT pinned — grype pulls the current one, which is
   # the whole point of re-running the scan (I-04's "in date" requirement).
-  SYFT: anchore/syft:v1.51.0
-  GRYPE: anchore/grype:v0.117.0
+  SYFT: docker.io/anchore/syft:v1.51.0@sha256:678bfa565b60f747aac0f8e964fe5588a24445b8d0a480e91f6efd70020dfbb0
+  GRYPE: docker.io/anchore/grype:v0.117.0@sha256:ddf9e9f204049f3a4a0955ef70873cabab6a31432125ad4f20a490b54950a253
 
 jobs:
   review:
-    if: github.event_name != 'schedule'
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # The three below are only used by the publish steps at the bottom, which
-      # run on a push to main and nowhere else. They cannot be scoped to a step,
-      # so they are scoped to the one job that has a publish step: `packages` to
-      # push the image, `id-token` for the keyless Sigstore signature, and
-      # `attestations` to record it. A pull request from a fork gets a read-only
-      # token regardless, so the publish steps could not run there even without
-      # their `if:`.
-      packages: write
-      id-token: write
-      attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Runtime content changes must bump IMAGE_VERSION (I-05)
+        run: |
+          set -euo pipefail
+          case "${{ github.event_name }}" in
+            pull_request)
+              git fetch --quiet origin "${{ github.base_ref }}"
+              RANGE="origin/${{ github.base_ref }}...HEAD"
+              ;;
+            push) RANGE="${{ github.event.before }}..${{ github.sha }}" ;;
+            *) exit 0 ;;
+          esac
+          if git diff --quiet "$RANGE" -- infra/images/runtime-agent-sdk \
+            ':!infra/images/runtime-agent-sdk/*.md'; then
+            exit 0
+          fi
+          git diff -U0 "$RANGE" -- infra/images/runtime-agent-sdk/Dockerfile \
+            | grep -Eq '^[+-]ARG IMAGE_VERSION=' \
+            || { echo "::error file=infra/images/runtime-agent-sdk/Dockerfile::Runtime image content changed; bump ARG IMAGE_VERSION."; exit 1; }
 
       # I-02. Cheapest gate first: a FROM that resolves through a tag means the
       # bytes this job scanned are not the bytes a later build would get, so
@@ -130,7 +140,7 @@ jobs:
       # for the review it is supposed to support.
       - name: Keep the SBOM and the report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: runtime-agent-sdk-scan-${{ github.sha }}
           path: scan/
@@ -150,33 +160,50 @@ jobs:
           docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             --only-fixed --fail-on high -o table
 
-      # --- publish (SBX-011) -------------------------------------------------
-      #
-      # Everything below runs only after the gates above passed, and only on
-      # main. That order is the point of I-06: the gate blocks publication, so
-      # an image that fails it must never reach the registry where a node could
-      # pull it.
-      #
-      # Why GitHub artifact attestations rather than cosign, given ADR-022 named
-      # both: they produce the same thing here — a Sigstore-signed in-toto
-      # statement stored as an OCI referrer next to the image digest, which is
-      # what gate A queries. The difference is what has to be maintained. Keyless
-      # signing via the Actions OIDC token means no key to store, rotate, or leak,
-      # and `gh attestation verify` needs nothing installed on the verifying side.
-      # cosign earns its keep when signing happens outside GitHub Actions or the
-      # registry is not GHCR; neither is true, and ADR-022 chose GHCR precisely
-      # because the CI already lives here. If that changes, cosign attach produces
-      # a referrer of the same shape and the verification story is what moves.
-      - name: Log in to GHCR
-        if: github.event_name == 'push'
-        run: echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+      # Build the predicate before anything can be published. This runs on PRs
+      # too, so a broken evidence generator cannot merge behind a green review.
+      - name: Build scan attestation predicate (I-04)
+        run: bash tools/ci/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
 
-      # The version lives in the Dockerfile (ARG IMAGE_VERSION) so the tag pushed
-      # and the tag documented cannot drift. The digest is the identity that
-      # matters — SKILLHUB_SANDBOX_IMAGE must be a digest reference in production
-      # (I-02) — but a tag is what a person reads in a runbook.
+  # Pushes use a separate job because GitHub permissions are job-scoped. This
+  # repeats the gates deliberately: a write-capable token never enters PR code.
+  publish:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Runtime content changes must bump IMAGE_VERSION (I-05)
+        run: |
+          RANGE="${{ github.event.before }}..${{ github.sha }}"
+          if git diff --quiet "$RANGE" -- infra/images/runtime-agent-sdk \
+            ':!infra/images/runtime-agent-sdk/*.md'; then
+            exit 0
+          fi
+          git diff -U0 "$RANGE" -- infra/images/runtime-agent-sdk/Dockerfile \
+            | grep -Eq '^[+-]ARG IMAGE_VERSION=' \
+            || { echo "::error file=infra/images/runtime-agent-sdk/Dockerfile::Runtime image content changed; bump ARG IMAGE_VERSION."; exit 1; }
+      - name: Build and run publication gates
+        run: |
+          grep -qE '^FROM .+@sha256:[0-9a-f]{64}$' infra/images/runtime-agent-sdk/Dockerfile
+          docker build -t "$IMAGE" infra/images/runtime-agent-sdk
+          mkdir -p scan
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/scan:/scan" "$SYFT" "$IMAGE" -o spdx-json=/scan/sbom.spdx.json
+          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+            -o json --file /scan/vulnerabilities.json
+          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+            --only-fixed --fail-on high -o table
+          bash tools/ci/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
+      - name: Log in to GHCR
+        run: echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
       - name: Push to GHCR
-        if: github.event_name == 'push'
         id: push
         run: |
           version=$(sed -n 's/^ARG IMAGE_VERSION=\(.*\)$/\1/p' infra/images/runtime-agent-sdk/Dockerfile)
@@ -186,37 +213,17 @@ jobs:
           docker push "$REGISTRY_IMAGE:$version"
           docker push "$REGISTRY_IMAGE:sha-${GITHUB_SHA::12}"
           digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$REGISTRY_IMAGE:$version" | cut -d@ -f2)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           echo "Published $REGISTRY_IMAGE:$version@$digest" >> "$GITHUB_STEP_SUMMARY"
-
-      # I-03: the SBOM stops being a 90-day CI artifact and becomes a referrer of
-      # the digest, which is the form gate A (node admission) can query.
       - name: Attest the SBOM to the pushed digest (I-03)
-        if: github.event_name == 'push'
-        uses: actions/attest-sbom@v2
+        uses: actions/attest-sbom@bd218ad0dbcb3e146bd073d1d9c6d78e08aa8a0b # v2
         with:
           subject-name: ${{ env.REGISTRY_IMAGE }}
           subject-digest: ${{ steps.push.outputs.digest }}
           sbom-path: scan/sbom.spdx.json
           push-to-registry: true
-
-      # I-04: `scanned_at` becomes a machine-readable field on an attestation
-      # rather than a date somebody types into infra/images/README.md, which is
-      # what made the 30-day validity impossible to judge automatically.
-      #
-      # Invoked through `bash` for the same reason check_egress_allowlist.py is
-      # invoked through `python3`: this repo is developed on Windows, where the
-      # executable bit does not survive a plain `git add`, and a bare script path
-      # then dies on the runner with exit 126. The +x bit is set in the index as
-      # well — belt and braces, because only one of the two can be silently
-      # undone by a re-add from the wrong OS.
-      - name: Attest the scan result to the pushed digest (I-04)
-        if: github.event_name == 'push'
-        run: bash tools/ci/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
-      - name: Record the scan attestation
-        if: github.event_name == 'push'
-        uses: actions/attest@v2
+      - name: Record the scan attestation (I-04)
+        uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2
         with:
           subject-name: ${{ env.REGISTRY_IMAGE }}
           subject-digest: ${{ steps.push.outputs.digest }}
@@ -242,7 +249,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Log in to GHCR
         run: echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
@@ -275,7 +282,7 @@ jobs:
 
       - name: Keep the re-scan report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: runtime-agent-sdk-rescan-${{ github.run_id }}
           path: scan/
@@ -287,7 +294,7 @@ jobs:
       # looking un-scanned, which I-04 treats identically to expired.
       - name: Re-attest the scan result (I-04 scanned_at)
         run: bash tools/ci/scan_predicate.sh scan/vulnerabilities.json scan/scan-predicate.json
-      - uses: actions/attest@v2
+      - uses: actions/attest@ce27ba3b4a9a139d9a20a4a07d69fabb52f1e5bc # v2
         with:
           subject-name: ${{ env.REGISTRY_IMAGE }}
           subject-digest: ${{ steps.published.outputs.digest }}

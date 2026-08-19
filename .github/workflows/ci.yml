@@ -36,8 +36,8 @@ jobs:
       llm: ${{ steps.filter.outputs.llm }}
       sandbox: ${{ steps.filter.outputs.sandbox }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
         id: filter
         with:
           # This file is repeated in every filter on purpose: a change to the
@@ -72,8 +72,8 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -105,7 +105,7 @@ jobs:
     # pass by never running. A tenancy boundary nobody checks is not a boundary.
     services:
       postgres:
-        image: pgvector/pgvector:pg17
+        image: docker.io/pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: skillhub_test
@@ -119,20 +119,26 @@ jobs:
     env:
       SKILLHUB_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/skillhub_test?sslmode=disable
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: apps/platform/go.mod
           cache-dependency-path: apps/platform/go.sum
       # v8 is the action line that speaks golangci-lint v2, which is what the
       # `fmt` subcommand below needs. Both are pinned: an unpinned linter turns
       # every upstream release into a red build on an untouched tree.
-      - uses: golangci/golangci-lint-action@v8
+      - uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8
         with:
           version: v2.12.2
           working-directory: apps/platform
       - run: golangci-lint fmt --diff
       - run: go vet ./...
+      - name: Check database-only immutability constraints
+        run: |
+          go test -count=1 ./internal/identity -run '^$'
+          docker run --rm --network host -v "$GITHUB_WORKSPACE:/workspace:ro" \
+            docker.io/pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f psql "$SKILLHUB_TEST_DATABASE_URL" \
+            -v ON_ERROR_STOP=1 --single-transaction -f /workspace/db/tests/immutability_test.sql
       - run: go test ./...
       - run: go build ./...
 
@@ -151,12 +157,12 @@ jobs:
       run:
         working-directory: apps/sandbox
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: apps/sandbox/go.mod
           cache-dependency-path: apps/sandbox/go.sum
-      - uses: golangci/golangci-lint-action@v8
+      - uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8
         with:
           version: v2.12.2
           working-directory: apps/sandbox
@@ -176,8 +182,8 @@ jobs:
       run:
         working-directory: apps/llm
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
       - run: uv sync --frozen
@@ -190,8 +196,8 @@ jobs:
   contracts-drift:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: tools/devctl/go.mod
           cache: false

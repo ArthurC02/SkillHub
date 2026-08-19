@@ -25,13 +25,13 @@ jobs:
   assert:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
       - name: Allow-list invariants (ADR-022 Q3)
         run: |
-          pip install --quiet pyyaml
+          python3 -m pip install --quiet PyYAML==6.0.2
           python3 tools/ci/check_egress_allowlist.py
 
       # ADR-022 Q3 change process, step 3. The threat model's own §3 says opening a

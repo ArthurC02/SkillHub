@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: skillhub
       POSTGRES_DB: skillhub
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -32,7 +32,7 @@ services:
     image: chrislusf/seaweedfs:3.80
     command: server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
     ports:
-      - "8333:8333"
+      - "127.0.0.1:8333:8333"
     volumes:
       - seaweedfs-data:/data
       - ./seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
