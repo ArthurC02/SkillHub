@@ -7,7 +7,7 @@ import react from "@vitejs/plugin-react";
 // owns the page URL /skills/$skillId. Proxying /skills breaks every deep link
 // in the browser; not proxying it breaks fetch(). So the API allows this origin
 // instead, for development only, via DEV_CORS_ORIGIN (see
-// services/platform/internal/platform/httpx/cors.go). In production the SPA and
+// apps/platform/internal/platform/httpx/cors.go). In production the SPA and
 // the API share an origin and neither mechanism is involved.
 
 export default defineConfig({

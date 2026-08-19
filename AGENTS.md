@@ -17,11 +17,23 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
-| `docs/plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/mvp/04-backlog-and-handoffs.md)（活文件）；`m0/`～`m4/` 為各里程碑凍結產出；`content/`／`governance/`／`gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-024） | [docs/plans/mvp/README.md](docs/plans/mvp/README.md) |
-| `docs/adr/` | 30 份架構決策紀錄（ADR-000～029；014 已 Superseded by 018，019 §1 已 Amended by 024） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
+| `docs/plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/mvp/04-backlog-and-handoffs.md)（活文件）；`m0/`～`m4/` 為各里程碑凍結產出；`content/`／`governance/`／`gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/mvp/README.md](docs/plans/mvp/README.md) |
+| `docs/adr/` | 32 份架構決策紀錄（ADR-000～031；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
 | `docs/spikes/` | **已刪除，只留墓碑**：M0 驗證用 spike code，結論已沉澱到 m0 報告／ADR-013／ADR-023／`UPGRADES.md`／`tools/goldenset/` | [docs/spikes/README.md](docs/spikes/README.md)（含還原指令與結論落點對照） |
 
-Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1 節已由 **ADR-024** 修訂為「跑的」（`apps/`、`services/`、`contracts/`、`db/`、`infra/`、`tools/`）與「讀的」（`docs/`）兩類——鋪程式碼依其結構進行，結構性偏離需先更新 ADR。
+Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **ADR-031（Accepted）** 按產物角色定義；它取代 ADR-024 的 `apps/`／`services/` 雙軌。結構性偏離需先更新 ADR。
+
+| 頂層目錄 | 收納語意 |
+| --- | --- |
+| `apps/` | 可獨立啟動、建置或部署的產品程式：`web`、`platform`、`llm`、`sandbox` |
+| `packages/` | 供其他程式 import 的 library；generated 子目錄禁止手改 |
+| `contracts/` | 跨程序／跨語言介面的唯一來源 |
+| `db/` | Migration、query、sqlc config 與 DB test 等持久化來源 |
+| `infra/` | 部署、runtime image、網路、節點與 observability 設定 |
+| `tools/` | 開發、CI、資料維護、維運命令及其緊密 fixture |
+| `docs/` | 不被產品程式 import 或執行的敘事與歷史文件 |
+
+`.github/`、`.devcontainer/` 與 repo 根層工具入口保留在平台預期位置。`services/` 已停用；不是所有含程式碼的內容都進 `apps/`，判準是能否作為產品程式獨立啟動／建置／部署。
 
 ## 已定案的技術棧速覽
 
@@ -63,7 +75,7 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容。
-- 新 ADR 從 **ADR-030** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
+- 新 ADR 從 **ADR-032** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
 - ADR 的待決策被後續 ADR 回答時，回填 `→ [ADR-xxx](...)` 引用（現有文件已有此慣例）。
 - 新 ADR 記得更新 [docs/adr/README.md](docs/adr/README.md) 的決策索引。
 - **檔案放哪裡**：活文件放 `docs/plans/mvp/` 根層（編號 `01~`）；里程碑的歷史產出放 `mX/`，里程碑完結即凍結。一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`。
@@ -88,7 +100,7 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1
 5. **保護他人變更**：除既有的禁止 `git stash` 外，也禁止對未知修改執行 `git reset`、`git clean` 或 `git checkout -- <path>`；看到不屬於自己的 delta 就保留並回報。只以明確 pathspec stage 本批檔案。
 6. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/` 不交給多個寫入 Agent 平行處理。
 7. **平台限制要誠實**：Dev Container 是跨電腦的建議路徑，但不取代 SEC-009 的真實 Linux／gVisor 部署驗收。Doctor 的版本不符是環境診斷，不得靠跳過檢查偽裝成通過。
-8. **generated files 禁止手改**：修改 `db/migrations/**`、`db/queries/**` 或 `db/sqlc.yaml` 後，由主 Agent序列化執行 `task gen:sql`；修改 `contracts/openapi/public.yaml`／`llm-internal.yaml` 後執行 `task gen:openapi`。提交前一律跑 `task gen:check`。`services/platform/internal/platform/db/gen/**`、`services/platform/internal/api/gen/**`、`packages/api-client-ts/src/generated/**`、`packages/api-stub-py/src/skillhub_api_stub/generated/**` 的衝突要在來源解決後重生，不得手動合併。`task gen` 有 repo-local lock、暫存輸出與原子替換；SubAgent 不自行執行。
+8. **generated files 禁止手改**：修改 `db/migrations/**`、`db/queries/**` 或 `db/sqlc.yaml` 後，由主 Agent序列化執行 `task gen:sql`；修改 `contracts/openapi/public.yaml`／`llm-internal.yaml` 後執行 `task gen:openapi`。提交前一律跑 `task gen:check`。`apps/platform/internal/platform/db/gen/**`、`apps/platform/internal/api/gen/**`、`packages/api-client-ts/src/generated/**`、`packages/api-stub-py/src/skillhub_api_stub/generated/**` 的衝突要在來源解決後重生，不得手動合併。`task gen` 有 repo-local lock、暫存輸出與原子替換；SubAgent 不自行執行。
 9. **transport type 不是產品政策**：Web 既有 `apps/web/src/api/types.ts` 是 UI view model，依 endpoint 逐一用 adapter 遷移，不得因 generated client 存在就整檔替換；Python generated models 只描述內部 HTTP payload，授權、政策、重試與狀態轉移仍在 Go（鐵律 6）。生成器與映像版本只從 `tools/toolchain.yaml` 讀。
 10. **Go generated router 不擁有 AuthZ**：Phase 4 只把 ogen server 放在 `router.go` 的精確 `GET /healthz` pattern 後。其他 route 仍逐條由 `router.go` 套 `RequireSession`／`RequireOperator`／`OptionalSession`；不得直接 mount 完整 generated server、不得讓 `UnimplementedHandler` 的其他 operation 對外可達。每移一條 endpoint 都要保留原 middleware 語意並加 route 測試。
 
@@ -101,7 +113,7 @@ Monorepo 目錄結構與 CI/CD 已提案於 **ADR-019（Proposed）**，其第 1
 | 找下一個工作項目 | `docs/plans/mvp/03-work-items.md`（章節已標里程碑） |
 | 理解系統邊界與平面 | ADR-001、002 |
 | 資料模型與儲存 | ADR-003、018 |
-| Monorepo 結構與 CI/CD | ADR-019 |
+| Monorepo 結構與 CI/CD | ADR-019、031 |
 | Run 生命週期與 Provider 契約 | ADR-004、008 |
 | 安全與信任 | ADR-005、007、015；部署拓撲與安全門檻定值見 ADR-022 |
 | 目前還缺什麼、誰在等誰 | `docs/plans/mvp/04-backlog-and-handoffs.md`（殘項三類清單＋跨里程碑待辦） |

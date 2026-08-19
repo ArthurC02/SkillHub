@@ -49,17 +49,17 @@ jobs:
               - 'packages/api-client-ts/**'
               - '.github/workflows/ci.yml'
             platform:
-              - 'services/platform/**'
+              - 'apps/platform/**'
               - 'db/**'
               - 'contracts/**'
               - '.github/workflows/ci.yml'
             llm:
-              - 'services/llm/**'
+              - 'apps/llm/**'
               - 'packages/api-stub-py/**'
               - 'contracts/**'
               - '.github/workflows/ci.yml'
             sandbox:
-              - 'services/sandbox/**'
+              - 'apps/sandbox/**'
               - 'contracts/**'
               - 'infra/images/**'
               - '.github/workflows/ci.yml'
@@ -99,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/platform
+        working-directory: apps/platform
     # The cross-workspace authorization tests (CORE-006) skip themselves when
     # SKILLHUB_TEST_DATABASE_URL is unset, so without this service they would
     # pass by never running. A tenancy boundary nobody checks is not a boundary.
@@ -122,21 +122,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: services/platform/go.mod
-          cache-dependency-path: services/platform/go.sum
+          go-version-file: apps/platform/go.mod
+          cache-dependency-path: apps/platform/go.sum
       # v8 is the action line that speaks golangci-lint v2, which is what the
       # `fmt` subcommand below needs. Both are pinned: an unpinned linter turns
       # every upstream release into a red build on an untouched tree.
       - uses: golangci/golangci-lint-action@v8
         with:
           version: v2.12.2
-          working-directory: services/platform
+          working-directory: apps/platform
       - run: golangci-lint fmt --diff
       - run: go vet ./...
       - run: go test ./...
       - run: go build ./...
 
-  # services/sandbox is its own Go module (ADR-019, iron rule 2), so it needs
+  # apps/sandbox is its own Go module (ADR-019, iron rule 2), so it needs
   # its own job: the platform job's working-directory would never see it.
   #
   # GitHub-hosted runners have a Docker daemon, so the dockerdrv integration
@@ -149,17 +149,17 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/sandbox
+        working-directory: apps/sandbox
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: services/sandbox/go.mod
-          cache-dependency-path: services/sandbox/go.sum
+          go-version-file: apps/sandbox/go.mod
+          cache-dependency-path: apps/sandbox/go.sum
       - uses: golangci/golangci-lint-action@v8
         with:
           version: v2.12.2
-          working-directory: services/sandbox
+          working-directory: apps/sandbox
       - run: golangci-lint fmt --diff
       - run: go vet ./...
       - run: go test ./...
@@ -174,7 +174,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/llm
+        working-directory: apps/llm
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

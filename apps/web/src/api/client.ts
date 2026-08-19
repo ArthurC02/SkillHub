@@ -1,4 +1,4 @@
-// Base URL of services/platform (contracts/openapi/public.yaml `servers[0]`).
+// Base URL of apps/platform (contracts/openapi/public.yaml `servers[0]`).
 //
 // Exported because one route is not fetched at all: the download content route
 // is reached with a plain <a href>, so the browser saves the attachment itself

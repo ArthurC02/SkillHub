@@ -9,14 +9,15 @@ package.
 | Path | What lives there |
 | --- | --- |
 | `apps/web/` | React + TypeScript SPA (Vite) |
-| `services/platform/` | Go control plane: `cmd/api` HTTP server, `cmd/worker` queue consumer |
-| `services/llm/` | Python FastAPI service for LLM workloads (uv) |
-| `contracts/openapi/` | OpenAPI specs — the single source of truth for cross-language interfaces |
-| `packages/` | Committed generated TS client and Python transport models; generated subdirectories are never hand-edited |
-| `db/` | PostgreSQL migrations, sqlc queries and config |
-| `infra/compose/` | Local and single-host deployment stack |
-| `tools/` | Repo-side scripts: CI assertions, content import, golden-set evaluation |
-| `docs/` | Everything that is read rather than run (ADR-024) |
+| `apps/platform/` | Go control plane: `cmd/api` HTTP server, `cmd/worker` queue consumer |
+| `apps/llm/` | Python FastAPI service for LLM workloads (uv) |
+| `apps/sandbox/` | Go execution-plane provider (`sandboxd`) |
+| `packages/` | Importable libraries: committed generated TS client and Python transport models; generated subdirectories are never hand-edited |
+| `contracts/` | Cross-process interface sources of truth: OpenAPI, event and packaging schemas |
+| `db/` | PostgreSQL persistence sources: migrations, sqlc queries/config and DB tests |
+| `infra/` | Deployment, runtime image, network, node and observability configuration |
+| `tools/` | Developer, CI, data-maintenance and operations commands with their tightly coupled fixtures |
+| `docs/` | Narrative documentation and historical records, never product imports (ADR-031) |
 | `docs/plans/`, `docs/adr/` | Product plan and architecture decision records (Traditional Chinese) |
 | `docs/spikes/` | Tombstone only — the M0 exploration code was deleted once its conclusions landed in the M0 reports, ADR-013/023 and `tools/goldenset/` ([details](docs/spikes/README.md)) |
 
@@ -39,7 +40,7 @@ task gen:check           # verify generated output without changing tracked file
 task automation:check    # verify Agent docs, task descriptions and ownership markers
 task ci                  # run the deterministic, secret-free local CI sequence
 task test                # run every test suite
-task lint                # lint every service
+task lint                # lint every application
 ```
 
 On a new machine without Task, use `go -C tools/devctl run . doctor` and
@@ -51,7 +52,7 @@ Coding Agents must read [`AGENTS.md`](AGENTS.md); detailed cross-machine setup,
 generation ownership, shared-worktree rules and troubleshooting live in
 [`docs/development/automation.md`](docs/development/automation.md).
 
-Each service also works with its own native toolchain — `go test ./...`,
+Each application also works with its own native toolchain — `go test ./...`,
 `uv run pytest`, `npm test` — from its own directory.
 
 Line endings are LF everywhere, enforced by [`.gitattributes`](.gitattributes),
@@ -73,5 +74,5 @@ production, so the allowance is opt-in per process and unset everywhere else.
 
 Read [AGENTS.md](AGENTS.md) for the implementation rules, and
 [ADR-019](docs/adr/ADR-019-monorepo-structure-and-cicd.md) plus
-[ADR-024](docs/adr/ADR-024-top-level-repository-layout.md) for why the repository
+[ADR-031](docs/adr/ADR-031-artifact-role-repository-layout.md) for why the repository
 is laid out this way and what CI enforces.

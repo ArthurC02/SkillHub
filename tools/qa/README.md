@@ -16,7 +16,7 @@
 | --- | --- |
 | [`generate.py`](skillpkg-corpus/generate.py) | 生成腳本。抓 3 個 pin commit 基底套件（重用 `tools/content/import_seed.py` 的重打包），逐一套上 21 個破壞變體 |
 | [`expected-findings.json`](skillpkg-corpus/expected-findings.json) | 每個變體的期望 finding（code × severity）、`blocked`、以及**真缺陷的 `gap` 欄** |
-| `services/platform/internal/ingest/qa002_corpus_test.go` | 對照用的 harness。走的是匯入路徑的同兩支呼叫：`PackageFS` → `skillpkg.Validate` |
+| `apps/platform/internal/ingest/qa002_corpus_test.go` | 對照用的 harness。走的是匯入路徑的同兩支呼叫：`PackageFS` → `skillpkg.Validate` |
 
 **入庫的是腳本不是 45 份二進位**：變體是一個函式一行，讀得出哪裡壞了；committed zip 是不透明的，而且會對著 `skillpkg` 悄悄腐爛。
 
@@ -27,7 +27,7 @@ python tools/qa/skillpkg-corpus/generate.py --list          # 變體表
 python tools/qa/skillpkg-corpus/generate.py --selftest      # 離線，不需網路
 python tools/qa/skillpkg-corpus/generate.py --out /tmp/corpus
 
-cd services/platform
+cd apps/platform
 QA002_CORPUS=/tmp/corpus go test ./internal/ingest -run QA002 -v
 ```
 

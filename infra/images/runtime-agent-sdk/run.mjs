@@ -113,7 +113,7 @@ function emit(type, payload, status = "ok") {
 
 // EXIT_TOKEN_BUDGET is how this process tells the node *why* it stopped, since
 // the provider reads the exit code and not result.json. It must stay in step
-// with exitTokenBudget in services/sandbox/internal/sandbox/manager.go, which
+// with exitTokenBudget in apps/sandbox/internal/sandbox/manager.go, which
 // turns it into a RunError message a user can read; any other non-zero code is
 // an ordinary workload failure.
 const EXIT_TOKEN_BUDGET = 9;

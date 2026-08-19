@@ -85,7 +85,7 @@ services:
 
   # TODO(CORE-001): add api / worker / llm / web services once infra/images/
   # holds their Dockerfiles. Build contexts are the repo root, since the Go
-  # build needs services/platform and the generated packages/ output.
+  # build needs apps/platform and the generated packages/ output.
 
 networks:
   default:

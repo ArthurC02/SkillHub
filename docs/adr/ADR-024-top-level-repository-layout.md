@@ -1,9 +1,9 @@
 # ADR-024：頂層目錄分「跑的」與「讀的」
 
-- 狀態：Accepted
+- 狀態：Superseded（由 [ADR-031](./ADR-031-artifact-role-repository-layout.md)）
 - 日期：2026-08-16
 - 決策者：產品負責人、架構規劃
-- 相關：[ADR-019](./ADR-019-monorepo-structure-and-cicd.md)（本 ADR 修訂其第 1 節「目錄結構」）、[ADR-016](./ADR-016-language-and-framework-selection.md)（三語言分工）
+- 相關：[ADR-019](./ADR-019-monorepo-structure-and-cicd.md)（本 ADR 曾修訂其第 1 節「目錄結構」）、[ADR-016](./ADR-016-language-and-framework-selection.md)（三語言分工）、[ADR-031](./ADR-031-artifact-role-repository-layout.md)（後續取代）
 
 ## 背景
 

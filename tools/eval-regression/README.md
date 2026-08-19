@@ -4,7 +4,7 @@
 
 | 檔案 | 內容 |
 | --- | --- |
-| [`judge_regression.py`](judge_regression.py) | 把 M2 的 45 筆基準 Run 重新餵過 `services/llm` 的 `/judge-run`，逐條比對期望答案。集合定義、ground truth 轉換規則、Go 側證據回驗的鏡像實作都在檔頭與各函式的 docstring |
+| [`judge_regression.py`](judge_regression.py) | 把 M2 的 45 筆基準 Run 重新餵過 `apps/llm` 的 `/judge-run`，逐條比對期望答案。集合定義、ground truth 轉換規則、Go 側證據回驗的鏡像實作都在檔頭與各函式的 docstring |
 | `results.jsonl` | 每次回歸每個 Run 一列，**append-only**。每列自帶 `judge_model`／`judge_prompt_version`／`rubric_version`／截斷設定——換其中任一項就是另一次回歸，兩份結論必須並存可比（`02:EVAL-013` 第 4 條、[ADR-026](../../docs/adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 1）。**不要覆寫它** |
 | [`injection_regression.py`](injection_regression.py) | 注入抵抗回歸（`02:EVAL-013` 報告 §2 第二格）。樣本是合成的、沒有 `run_id`，所以是另一個進入點而不是 `--flag`；`verify()` 與 `store()` **import 自 `judge_regression.py`**，Go 側回驗的鏡像實作只留一份 |
 | [`injection-samples-v1.json`](injection-samples-v1.json) | 上者的輸入，`sample_set_version = injection/v1`：13 個樣本、27 條判定，涵蓋 ADR-026 決策 3 四條防線各自的攻擊面，含一個對照組。**期望答案由樣本自身寫明的事實推出，樣本檔即標註**；攻擊者想要的答案另存 `attacker_wants`，所以「判錯」與「被說服」數得開 |

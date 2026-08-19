@@ -6,7 +6,7 @@
 #
 # 兩條硬性邊界（ADR-009、contracts/events/README.md §1）：
 #
-# 1. 這裡的每一條規則只讀 services/platform 與 services/sandbox 自己曝露的
+# 1. 這裡的每一條規則只讀 apps/platform 與 apps/sandbox 自己曝露的
 #    /metrics。**不得**讀 trace_events：Trace payload 大量來自 Sandbox，是使用者
 #    可操控的輸入，讓告警依賴它等於把告警的觸發權交給不受信任的來源。
 # 2. 指標標籤不含 run_id、workspace_id、user_id 或任何使用者內容。要定位到個別

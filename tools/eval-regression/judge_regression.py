@@ -69,7 +69,7 @@ S3_SECRET_KEY = "skillhubdevsecret"
 
 OUT = Path(__file__).with_name("results.jsonl")
 
-# evaluation-design §6.3, mirrored from services/platform/internal/eval/judge.go
+# evaluation-design §6.3, mirrored from apps/platform/internal/eval/judge.go
 # so the request this harness builds is the one the control plane would build.
 MAX_FINAL_OUTPUT = 40000
 MAX_CRITERIA = 20

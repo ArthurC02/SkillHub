@@ -3,6 +3,7 @@
 - 狀態：Proposed
 - 日期：2026-08-14
 - 決策者：產品負責人、架構規劃
+- 後續修訂：§1 先由 [ADR-024](./ADR-024-top-level-repository-layout.md) 修訂，現由 [ADR-031](./ADR-031-artifact-role-repository-layout.md) 取代其頂層收納語意與路徑
 
 ## 背景
 

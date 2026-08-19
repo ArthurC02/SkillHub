@@ -4,7 +4,7 @@
 Verification tool, not production code. It produces the *review record* for the
 curated content, not a second enrichment implementation: every summary in
 ``summaries.json`` came out of the platform's own ``POST /v1/enrich-skill``
-(``services/llm``), either freshly called here or loaded from an earlier call.
+(``apps/llm``), either freshly called here or loaded from an earlier call.
 
 Two sources, both the production endpoint:
 
@@ -19,13 +19,13 @@ Two sources, both the production endpoint:
    importer assembles it — ``import_seed.repack_skill`` on the pinned repo zip —
    so ``skill_md`` and ``file_tree`` are what production would have sent.
 
-Key handling: this tool holds no key at all. ``services/llm`` reads
+Key handling: this tool holds no key at all. ``apps/llm`` reads
 ``LITELLM_API_KEY`` from its own process environment, exported from the repo-root
 ``.env`` when the service is started. No key is written to disk by this tool and
 none appears in the output.
 
 Usage
-  # start the LLM service first (services/llm README), then:
+  # start the LLM service first (apps/llm README), then:
   python generate_summaries.py                 # fill in whatever is missing
   python generate_summaries.py --url http://127.0.0.1:8099
   python generate_summaries.py --only a,b      # re-call just these ids (v1 -> v2 rebuild)
@@ -204,7 +204,7 @@ def run(args) -> int:
                     "state lives in docs/plans/mvp/content/content-summaries.md, not here."
                 ),
                 "generated_at": dt.date.today().isoformat(),
-                "endpoint": "POST /v1/enrich-skill (services/llm)",
+                "endpoint": "POST /v1/enrich-skill (apps/llm)",
                 "counts": {
                     "total": len(rows),
                     "reused": sum(1 for r in rows if r["origin"] == "reused:goldenset"),
@@ -266,7 +266,7 @@ def selftest() -> int:
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--url", default=DEFAULT_URL, help="services/llm base URL")
+    p.add_argument("--url", default=DEFAULT_URL, help="apps/llm base URL")
     p.add_argument(
         "--cache", default=str(pathlib.Path(tempfile.gettempdir()) / "skillhub-seed-cache")
     )

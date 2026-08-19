@@ -25,7 +25,7 @@ import {
  * The ceilings this run is held to (PDM-005 §5.2). A deliberate copy of
  * ResourceLimits in contracts/openapi/sandbox-provider.yaml, not a
  * reference to it: that file is the control-plane-to-execution-plane
- * surface and services/sandbox generates from it alone, so the two stay
+ * surface and apps/sandbox generates from it alone, so the two stay
  * separate modules. Changing a value means changing both.
  * 
  * @export

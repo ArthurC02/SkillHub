@@ -105,7 +105,7 @@ func doctor(root string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	goVersion, err := readGoVersion(filepath.Join(root, "services", "platform", "go.mod"))
+	goVersion, err := readGoVersion(filepath.Join(root, "apps", "platform", "go.mod"))
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func doctor(root string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	pythonVersion, err := readTrimmed(filepath.Join(root, "services", "llm", ".python-version"))
+	pythonVersion, err := readTrimmed(filepath.Join(root, "apps", "llm", ".python-version"))
 	if err != nil {
 		return err
 	}
@@ -224,12 +224,12 @@ func bootstrap(root string, out io.Writer) error {
 		args []string
 		env  []string
 	}{
-		{name: "platform Go modules", dir: "services/platform", cmd: "go", args: []string{"mod", "download"}},
-		{name: "sandbox Go modules", dir: "services/sandbox", cmd: "go", args: []string{"mod", "download"}},
+		{name: "platform Go modules", dir: "apps/platform", cmd: "go", args: []string{"mod", "download"}},
+		{name: "sandbox Go modules", dir: "apps/sandbox", cmd: "go", args: []string{"mod", "download"}},
 		{name: "generated TypeScript client packages", dir: "packages/api-client-ts", cmd: "npm", args: []string{"ci"}},
 		{name: "generated TypeScript client build", dir: "packages/api-client-ts", cmd: "npm", args: []string{"run", "build"}},
 		{name: "web packages", dir: "apps/web", cmd: "npm", args: []string{"ci"}},
-		{name: "LLM packages", dir: "services/llm", cmd: "uv", args: []string{"sync", "--frozen"}, env: []string{"UV_LINK_MODE=copy"}},
+		{name: "LLM packages", dir: "apps/llm", cmd: "uv", args: []string{"sync", "--frozen"}, env: []string{"UV_LINK_MODE=copy"}},
 	}
 	for _, step := range steps {
 		fmt.Fprintln(out, "==>", step.name)

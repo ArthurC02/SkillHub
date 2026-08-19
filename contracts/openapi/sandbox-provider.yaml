@@ -11,7 +11,7 @@ info:
 
     Two boundaries make this a separate file rather than part of public.yaml:
 
-    - services/sandbox is its own Go module (ADR-019, iron rule 2). It must be
+    - apps/sandbox is its own Go module (ADR-031, iron rule 2). It must be
       able to generate from this contract without reaching into the control
       plane's schemas.
     - Nothing here is reachable by a browser. public.yaml is the Web surface;

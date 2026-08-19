@@ -74,7 +74,7 @@ const CRITERION_LABEL: Record<CriterionResult["result"], string> = {
 /**
  * 04 丙-10. Defence 3 downgrades a criterion to `undetermined` when the judge's
  * citations do not resolve against the platform's own data, and marks it by
- * prefixing the reason (services/platform/internal/eval/judge.go `merge`). Two
+ * prefixing the reason (apps/platform/internal/eval/judge.go `merge`). Two
  * very different things share the verdict `undetermined` without this: 「引用回驗
  * 失敗，平台不採信一個有結論的判定」 and 「模型自己說不確定」. The failure this
  * distinction exists to catch has already happened once — EVAL-013 v1 found 45

@@ -13,7 +13,7 @@ node_modules/
 dist/
 
 # Go build output
-/services/*/bin/
+/apps/*/bin/
 *.exe
 *.test
 

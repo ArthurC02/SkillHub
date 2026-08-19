@@ -14,7 +14,7 @@
 本目錄放 Sandbox 執行用的 Runtime Image。目前只有一個：
 [`runtime-agent-sdk/`](runtime-agent-sdk/)（Node.js 22 LTS ＋ pinned
 `@anthropic-ai/claude-agent-sdk` ＋ python3 與目錄宣告的 Python 依賴），由
-`services/sandbox` 的 DockerProvider 以 `SKILLHUB_SANDBOX_IMAGE` 引用。
+`apps/sandbox` 的 DockerProvider 以 `SKILLHUB_SANDBOX_IMAGE` 引用。
 
 ## 映像內容與理由（版本 `2026.08-3`）
 
@@ -71,7 +71,7 @@ Dataset 上真的走到了 `ModuleNotFoundError`；其餘的沒被那組資料�
 1. **修資料**：`tools/content/seed-skills.json` 的 `deps` 依靜態掃描重新推導（13 筆修正）。
 2. **修規則**：聯集不再無條件全裝，加**准入門檻**；擋下的逐項具名在下方，不靜默丟棄。
 3. **修流程**：CONTENT-003 策展檢查表加一條可機械驗證的準則，掃描器補
-   `package-dependencies`／`undeclared-dependency` 兩個 finding（`services/platform/internal/skillpkg/deps.go`），
+   `package-dependencies`／`undeclared-dependency` 兩個 finding（`apps/platform/internal/skillpkg/deps.go`），
    使同一個錯誤下次由匯入時的掃描指出，而不是由半年後的一次基準試跑。
 
 ### 准入門檻

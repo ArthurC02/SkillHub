@@ -16,7 +16,7 @@ keeps its images/volumes separate from the host daemon.
 Privileged mode still grants broad kernel capabilities. Open this Dev Container
 only for the trusted SkillHub repository; never run an imported Skill, Dataset,
 generated artifact, or other untrusted workload in devtools. Untrusted execution
-belongs exclusively to `services/sandbox` and its ADR-005/015 isolation. If
+belongs exclusively to `apps/sandbox` and its ADR-005/015 isolation. If
 organizational policy forbids privileged containers, use the native toolchain;
 `task doctor` reports whether its Docker daemon is reachable.
 

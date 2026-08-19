@@ -45,8 +45,8 @@ Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS
 
 | 人工修改來源 | 生成目標（不得手改） | 入口 |
 | --- | --- | --- |
-| `db/migrations/**`、`db/queries/**`、`db/sqlc.yaml` | `services/platform/internal/platform/db/gen/**` | `task gen:sql` |
-| `contracts/openapi/public.yaml` | `services/platform/internal/api/gen/**`、`packages/api-client-ts/src/generated/**` | `task gen:openapi` |
+| `db/migrations/**`、`db/queries/**`、`db/sqlc.yaml` | `apps/platform/internal/platform/db/gen/**` | `task gen:sql` |
+| `contracts/openapi/public.yaml` | `apps/platform/internal/api/gen/**`、`packages/api-client-ts/src/generated/**` | `task gen:openapi` |
 | `contracts/openapi/llm-internal.yaml` | `packages/api-stub-py/src/skillhub_api_stub/generated/**` | `task gen:openapi` |
 
 `.devctl/**` 是 gitignored lock／scratch，不是可引用、可提交或可手改的 generated API。Generator 失敗時只查看它作診斷；正式產物只以上表為準。

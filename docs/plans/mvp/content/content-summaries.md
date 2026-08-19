@@ -21,7 +21,7 @@
 
 **是**：對 45 筆種子 Skill 的模型生成摘要，建立一份可審核、可追溯、有判定欄位的紀錄。
 
-**不是**：摘要的產生器。摘要不是在這份文件裡「手寫」出來的——平台的匯入管線（[`services/platform/internal/ingest/enrich.go`](../../../../services/platform/internal/ingest/enrich.go)）在每次匯入時自動呼叫 `POST /v1/enrich-skill` 產生，並由詳情頁的 `enrichment` 區塊呈現（見 §3）。本工序補的是**精選內容的人工審核紀錄**，也就是 ADR-013 明列、但在此之前不存在的「人工抽查機制」。
+**不是**：摘要的產生器。摘要不是在這份文件裡「手寫」出來的——平台的匯入管線（[`apps/platform/internal/ingest/enrich.go`](../../../../apps/platform/internal/ingest/enrich.go)）在每次匯入時自動呼叫 `POST /v1/enrich-skill` 產生，並由詳情頁的 `enrichment` 區塊呈現（見 §3）。本工序補的是**精選內容的人工審核紀錄**，也就是 ADR-013 明列、但在此之前不存在的「人工抽查機制」。
 
 > **摘要不在本文件就地改寫。** 判定「需修改」的處置是調整 prompt 或把該筆標為人工覆寫，再重跑增強與 reindex（ADR-013 §1「錯誤可由人工修正並觸發重建」）。直接在這裡改字，改到的只是紀錄，不是使用者看到的東西。
 
@@ -59,7 +59,7 @@
 
 ### 2.1 逐字重用生產路徑，不另寫一套
 
-45 筆全部是 `POST /v1/enrich-skill`（[`services/llm`](../../../../services/llm/src/skillhub_llm/enrich.py)）的輸出，模型一律 **`gpt-5.6-sol`**。套件內容以 `import_seed.repack_skill` 在 pin 的 commit 上重組，`skill_md` 與 `file_tree` 與匯入時送出的完全一致。工具本身不含任何 prompt、schema 或模型參數。
+45 筆全部是 `POST /v1/enrich-skill`（[`apps/llm`](../../../../apps/llm/src/skillhub_llm/enrich.py)）的輸出，模型一律 **`gpt-5.6-sol`**。套件內容以 `import_seed.repack_skill` 在 pin 的 commit 上重組，`skill_md` 與 `file_tree` 與匯入時送出的完全一致。工具本身不含任何 prompt、schema 或模型參數。
 
 ### 2.2 計費：兩輪合計 38 次呼叫、8 筆重用
 
@@ -76,13 +76,13 @@
 > - **精選 15 筆：15/15 為 v2，`limitations` 全數存在。** 02 §DISC-003 的「限制」允收在精選層已滿足。
 > - **已索引 30 筆：8 筆仍為 v1、`limitations` 為 `null`** — `anthropic-sa/docx`、`pdf`、`pptx`、`xlsx`、`yuyy-excel/excel-filter`、`excel-merge`、`wrangler/date-wrangling`、`pii-flag`。
 >
-> **這 8 筆為什麼不重跑。** 它們是 `indexed` 層，不在必審範圍；而**線上目錄不受這裡影響**——重新匯入時 45 筆一律由現行 `services/llm` 以 v2 重新生成，包含這 8 筆（見 [`catalog-rebuild-report.md`](../m1/catalog-rebuild-report.md)）。也就是說 02 §DISC-003 的「限制」允收在**線上**是全數滿足的；這 8 筆的 `null` 只是**審核紀錄本身**的版本落差，重跑它們對閘門沒有任何影響，只會多花 8 次呼叫。保留 v1 反而有一個好處：它們的文字與 `tools/goldenset/corpus_enriched/` 逐字相同，是 `MaxCosineDistance = 0.75` 推導語料的可讀對照。
+> **這 8 筆為什麼不重跑。** 它們是 `indexed` 層，不在必審範圍；而**線上目錄不受這裡影響**——重新匯入時 45 筆一律由現行 `apps/llm` 以 v2 重新生成，包含這 8 筆（見 [`catalog-rebuild-report.md`](../m1/catalog-rebuild-report.md)）。也就是說 02 §DISC-003 的「限制」允收在**線上**是全數滿足的；這 8 筆的 `null` 只是**審核紀錄本身**的版本落差，重跑它們對閘門沒有任何影響，只會多花 8 次呼叫。保留 v1 反而有一個好處：它們的文字與 `tools/goldenset/corpus_enriched/` 逐字相同，是 `MaxCosineDistance = 0.75` 推導語料的可讀對照。
 >
 > **本節講的是 `summaries.json` 的版本分佈，不是線上目錄的。** 兩者的關係見 §2.4。
 
 ### 2.3 金鑰處理
 
-`LITELLM_API_KEY` 只進 `services/llm` 的**行程環境變數**，由 repo 根 `.env` 的 `OPENAI_API_KEY` 匯出，不落任何檔案，也不在 `summaries.json` 或本文件中。
+`LITELLM_API_KEY` 只進 `apps/llm` 的**行程環境變數**，由 repo 根 `.env` 的 `OPENAI_API_KEY` 匯出，不落任何檔案，也不在 `summaries.json` 或本文件中。
 
 本次為離線內容工序，`LITELLM_BASE_URL` 直接指向 OpenAI，**未經 LiteLLM 閘道**——與 [`golden-query-set.md` §10 附註 1](../m1/golden-query-set.md) 及 [`import-report.md` §1.1](../m1/import-report.md) 同性質：**離線工具的既有例外，產品實作不得比照**（鐵律 8、ADR-017）。
 
@@ -136,7 +136,7 @@
 | PDM-002 檢查 ⑦ | 非技術使用者讀得懂它做什麼、需要什麼輸入 | 已審校：主判準 45/45、精選 15/15 通過 | ✅ **⑦ 改記 `pass`** |
 | ADR-013「需要人工抽查機制」 | 建立抽查機制 | 本文件即該機制：判定欄位、判準、否決條件、改法（重跑增強而非就地改字） | ✅ 已建立 |
 | 02 §DISC-003 | 一般模式顯示功能、限制、輸入、輸出、依賴、權限、來源、License、相容性 | 「功能」＝`summary`；「輸入／輸出／依賴」＝`tags`；「限制」＝`limitations` | ✅ **精選 15/15 已有 `limitations`**（第二輪重跑補齊，§2.5）。線上目錄 45/45 為 v2，同樣全數有 `limitations` |
-| 「呈現於平台」 | — | 已由 `ingest/enrich.go` 於匯入時自動產生（commit `b144bea`），由 `catalog/detail.go` 的 `enrichmentFrom` 供給 `enrichment` 區塊（commit `ebc4036`），契約見 `contracts/openapi/public.yaml`（`summary` 恆為套件自身 frontmatter，模型產出一律落在 `enrichment` 之下並標示）。測試：`services/platform/internal/ingest/enrich_test.go`、`services/llm/tests/test_enrich.py` | ✅ 已呈現；本工序補的是**人工審核紀錄** |
+| 「呈現於平台」 | — | 已由 `ingest/enrich.go` 於匯入時自動產生（commit `b144bea`），由 `catalog/detail.go` 的 `enrichmentFrom` 供給 `enrichment` 區塊（commit `ebc4036`），契約見 `contracts/openapi/public.yaml`（`summary` 恆為套件自身 frontmatter，模型產出一律落在 `enrichment` 之下並標示）。測試：`apps/platform/internal/ingest/enrich_test.go`、`apps/llm/tests/test_enrich.py` | ✅ 已呈現；本工序補的是**人工審核紀錄** |
 
 > **`anthropics/skills` 的免責條款怎麼處理。** `curated-skill-list.md` §3 腳註 3 要求把 README 的 "provided for demonstration and educational purposes only" 納入摘要措辭考量。**本工序的判定是：不納入摘要。** 該句是使用免責，屬於信任／品質陳述，而 ADR-013 白名單明令模型產出不得包含這一類判斷（`enrich.py` 的 system prompt 亦明文禁止）。它應由詳情頁的 License／來源區塊承接（ADR-021 的兩軸答案，`license.status` 目前最高只到 `declared`）。**此解讀需負責人確認**；若負責人要求摘要承載免責，則需改的是 ADR-013 白名單，不是這批摘要。涉及 6 筆（`brand-guidelines`、`internal-comms`、`docx`、`pdf`、`pptx`、`xlsx`）。
 

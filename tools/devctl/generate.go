@@ -80,7 +80,7 @@ func generate(root string, args []string, out io.Writer) error {
 		outputs = append(outputs, generationOutput{
 			label:  "sqlc",
 			source: sqlOut,
-			target: filepath.Join(root, "services", "platform", "internal", "platform", "db", "gen"),
+			target: filepath.Join(root, "apps", "platform", "internal", "platform", "db", "gen"),
 		})
 	}
 	if scope == "all" || scope == "openapi" {

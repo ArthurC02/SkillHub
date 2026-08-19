@@ -1,9 +1,9 @@
 schema_version: 1
 
 # Language runtimes remain authoritative in their native files:
-# - Go: services/*/go.mod
+# - Go: apps/*/go.mod
 # - Node: .node-version
-# - Python: services/llm/.python-version
+# - Python: apps/llm/.python-version
 # This manifest owns tools without a native project-level version source and
 # immutable images used by deterministic generation.
 tools:

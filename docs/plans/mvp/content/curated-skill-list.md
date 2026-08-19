@@ -124,7 +124,7 @@
    > **⑥ pass ⟺ 不需外網／MCP，且每個宣告依賴要麼在 Runtime Image 內，要麼在映像准入門檻的具名拒收清單內。**
    > 亦即：**落差已揭露即通過，落差未知才不通過。**
 
-   兩個輸入都是機器產出、可重跑：依賴集取 `services/platform/internal/skillpkg/deps.go` 的 `package-dependencies` finding，映像側取 `infra/images/README.md` 的納入／拒收表（`2026.08-3`，digest `sha256:5bcbca88…`）。**A-2 現況 pass**：`pandas`／`openpyxl`／`chardet`／`python-dateutil` 已在 `2026.08-3` 內（`chardet` 即本次為它補上的），`pyarrow` 為具名拒收（native Arrow C++，失去 Parquet 一種輸入格式，CSV／JSON／XLSX 路徑不受影響，且該筆在 `2026.08-2` 基準上判「符合」）。
+   兩個輸入都是機器產出、可重跑：依賴集取 `apps/platform/internal/skillpkg/deps.go` 的 `package-dependencies` finding，映像側取 `infra/images/README.md` 的納入／拒收表（`2026.08-3`，digest `sha256:5bcbca88…`）。**A-2 現況 pass**：`pandas`／`openpyxl`／`chardet`／`python-dateutil` 已在 `2026.08-3` 內（`chardet` 即本次為它補上的），`pyarrow` 為具名拒收（native Arrow C++，失去 Parquet 一種輸入格式，CSV／JSON／XLSX 路徑不受影響，且該筆在 `2026.08-2` 基準上判「符合」）。
 
    **精選數維持 6**（`data` 類 4–6 區間內），因為現況判定成立。若日後改採「宣告依賴須全數在映像內」的嚴格判準，A-2 將降為 `fail`、`data` 精選 6 → 5，**仍不跌破下限**——這個後果先寫在這裡，免得下次有人以為那是意外。
 

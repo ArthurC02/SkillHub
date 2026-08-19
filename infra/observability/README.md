@@ -7,7 +7,7 @@ ADR-009 把三種能力切開，這裡只涵蓋第一種：
 | 平面 | 這裡 | 在哪裡 |
 | --- | --- | --- |
 | **Platform Observability** | ✅ 服務健康、延遲、錯誤率、Provider 可用性、清理積壓 | 本目錄 ＋ 兩個服務的 `/metrics` |
-| Run Trace | ❌ | `contracts/events/trace-event.schema.json`、`services/platform/internal/trace` |
+| Run Trace | ❌ | `contracts/events/trace-event.schema.json`、`apps/platform/internal/trace` |
 | Evaluation | ❌ | `evaluations` 表（M3） |
 
 **告警不得依賴 Run Trace。** Trace payload 大量來自 Sandbox，是使用者可操控的輸入；讓告警讀它等於把觸發權交給不受信任的來源（ADR-009 背景段）。`alerts.yml` 的每一條規則都只讀服務自報的指標。
@@ -18,14 +18,14 @@ MVP 用 Prometheus 文字格式，各服務自己曝露，沒有 push gateway、
 
 | 服務 | 端點 | 開關 | 認證 |
 | --- | --- | --- | --- |
-| `services/platform`（`cmd/api`、`cmd/worker` 各一份） | `GET /metrics` | `METRICS_ADDR`（例 `:9090`），未設＝不監聽 | 無，**綁內部位址**——這是維運面，不掛在對外的 API port 上 |
-| `services/sandbox`（`sandboxd`） | `GET /metrics` | 隨主服務 port | 與其他路由同一個 provider bearer token（該路由表沒有未認證路徑，這裡不開先例） |
+| `apps/platform`（`cmd/api`、`cmd/worker` 各一份） | `GET /metrics` | `METRICS_ADDR`（例 `:9090`），未設＝不監聽 | 無，**綁內部位址**——這是維運面，不掛在對外的 API port 上 |
+| `apps/sandbox`（`sandboxd`） | `GET /metrics` | 隨主服務 port | 與其他路由同一個 provider bearer token（該路由表沒有未認證路徑，這裡不開先例） |
 
 `cmd/api` 與 `cmd/worker` 是兩個行程，各自有一份指標；Prometheus 分別 scrape，`sum()` 之後才是平台整體的數字。`alerts.yml` 的表達式都已經先 `sum` 過。
 
 ## 指標清單
 
-實作在 `services/platform/internal/platform/metrics/metrics.go` 與 `services/sandbox/internal/sandbox/metrics.go`，Help 字串是權威說明，這裡只列覆蓋範圍與 NFR-005 的對照。
+實作在 `apps/platform/internal/platform/metrics/metrics.go` 與 `apps/sandbox/internal/sandbox/metrics.go`，Help 字串是權威說明，這裡只列覆蓋範圍與 NFR-005 的對照。
 
 ### O11Y-001 搜尋與 Run 漏斗
 

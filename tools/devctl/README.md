@@ -28,7 +28,7 @@ implementation.
 
 The SQL scope's only source files are `db/migrations/**`,
 `db/queries/**` and `db/sqlc.yaml`; its committed output is
-`services/platform/internal/platform/db/gen/**`. Resolve conflicts in the
+`apps/platform/internal/platform/db/gen/**`. Resolve conflicts in the
 source, then regenerate—never merge generated Go by hand.
 
 The OpenAPI scope is documented in `tools/codegen/README.md`. It runs the

@@ -52,12 +52,12 @@ tasks:
 
   test:platform:
     desc: Run Go platform tests; DB integration requires its explicit test URL
-    dir: services/platform
+    dir: apps/platform
     cmd: go test ./...
 
   test:sandbox:
     desc: Run Go sandbox tests; Docker-backed tests use the local daemon
-    dir: services/sandbox
+    dir: apps/sandbox
     cmd: go test ./...
 
   test:devctl:
@@ -67,7 +67,7 @@ tasks:
 
   test:llm:
     desc: Run mocked Python LLM tests without live provider calls
-    dir: services/llm
+    dir: apps/llm
     cmd: uv run pytest
 
   test:web:
@@ -81,17 +81,17 @@ tasks:
     cmd: npm run typecheck
 
   lint:
-    desc: Lint all services
+    desc: Lint all applications
     deps: [lint:platform, lint:llm, lint:web]
 
   lint:platform:
     desc: Lint the Go platform module
-    dir: services/platform
+    dir: apps/platform
     cmd: golangci-lint run ./...
 
   lint:llm:
     desc: Lint the Python LLM service
-    dir: services/llm
+    dir: apps/llm
     cmd: uv run ruff check .
 
   lint:web:
@@ -101,21 +101,21 @@ tasks:
 
   vet:platform:
     desc: Run Go static analysis on the platform module
-    dir: services/platform
+    dir: apps/platform
     cmd: go vet ./...
 
   format:
-    desc: Format all services
+    desc: Format all applications
     deps: [format:platform, format:llm, format:web]
 
   format:platform:
     desc: Format the Go platform module; modifies files
-    dir: services/platform
+    dir: apps/platform
     cmd: golangci-lint fmt
 
   format:llm:
     desc: Format the Python LLM service; modifies files
-    dir: services/llm
+    dir: apps/llm
     cmd: uv run ruff format .
 
   format:web:
@@ -124,17 +124,17 @@ tasks:
     cmd: npm run format
 
   format:check:
-    desc: Check formatting in all services
+    desc: Check formatting in all applications
     deps: [format:check:platform, format:check:llm, format:check:web]
 
   format:check:platform:
     desc: Check Go platform formatting without modifying files
-    dir: services/platform
+    dir: apps/platform
     cmd: golangci-lint fmt --diff
 
   format:check:llm:
     desc: Check Python LLM formatting without modifying files
-    dir: services/llm
+    dir: apps/llm
     cmd: uv run ruff format --check .
 
   format:check:web:
@@ -147,12 +147,12 @@ tasks:
     deps: [lint, format:check, vet:platform]
 
   build:
-    desc: Build all services
+    desc: Build all applications
     deps: [build:platform, build:web]
 
   build:platform:
     desc: Build all Go platform commands
-    dir: services/platform
+    dir: apps/platform
     cmd: go build ./...
 
   build:web:

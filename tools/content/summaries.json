@@ -1,7 +1,7 @@
 {
   "$comment": "CONTENT-005 plain-language summaries for the seed catalogue. Every row is output of the production POST /v1/enrich-skill; origin says whether it was called here or loaded from tools/goldenset/corpus_enriched. Human review state lives in docs/plans/mvp/content/content-summaries.md, not here.",
   "generated_at": "2026-08-15",
-  "endpoint": "POST /v1/enrich-skill (services/llm)",
+  "endpoint": "POST /v1/enrich-skill (apps/llm)",
   "counts": {
     "total": 45,
     "reused": 8,

@@ -13,9 +13,9 @@ index, so every KPI reads `GET /api/skills/{id}` on the running stack. The
 the online text drifted from the reviewed record.
 
 Reviewer independence (`02`: the reviewer must not be the producer):
-  * generation: `gpt-5.6-sol` via services/llm `POST /v1/enrich-skill`
+  * generation: `gpt-5.6-sol` via apps/llm `POST /v1/enrich-skill`
   * this review: `gpt-5.6-terra` (PDM-003 judge tier), prompts written here and
-    deliberately NOT imported from `services/llm` - nothing in this file reads
+    deliberately NOT imported from `apps/llm` - nothing in this file reads
     `enrich.py`, so a bug in the generation prompt cannot excuse itself.
 
 Key handling: `OPENAI_API_KEY` is read from the repo-root `.env` into this
@@ -307,7 +307,7 @@ def cosine(a: list[float], b: list[float]) -> float:
     return dot / (na * nb) if na and nb else 0.0
 
 
-# --- judge prompts (written here, never imported from services/llm) ----------
+# --- judge prompts (written here, never imported from apps/llm) ----------
 
 DATA_TAG = "untrusted_skill_document"
 

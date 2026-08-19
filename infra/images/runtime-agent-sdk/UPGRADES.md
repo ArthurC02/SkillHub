@@ -49,7 +49,7 @@
 | 4 | **行為已改變，且是本批修的** | §13.2 `add-iso3166` 在 `2026.08-1` 那輪**沒有 `usage` 事件**（成本無聲缺席，§7.2 #4），本批修正後有值。`run.mjs` 現在於 `result`／`accumulated` 兩條路徑都發出，`token_source` 欄位區分兩者（事件 schema 1.1） |
 
 **是否推翻既有文件敘述**：是——`run.mjs` 檔頭原本記載 usage 只掛 `result` 分支，該敘述已
-在同批修正（見檔頭 token accounting 節）。`services/sandbox/README.md` 無需更動。
+在同批修正（見檔頭 token accounting 節）。`apps/sandbox/README.md` 無需更動。
 
 **附帶量測**（非四項清單，但屬同一次升級的結論）：33 筆 `transpiled` → `native`；輸入
 token −50%、成本 −28%（§13.3）；`pandas` 3.x 只觸發一則相容性告警。
@@ -121,7 +121,7 @@ trace 完整性：7 個事件、`seq` 1..7 **無缺口**（`tool_call` ×2、`ag
 
 **是否推翻任何既有文件敘述**：**否**。`run.mjs` 檔頭列出的四個 Skill 載入條件、caching
 欄位缺欄的記載、`usage` 的雙路徑，本次實測全部一致，`run.mjs` 與
-`services/sandbox/README.md` 均無需更動。
+`apps/sandbox/README.md` 均無需更動。
 
 ### 本次未涵蓋的（明說）
 

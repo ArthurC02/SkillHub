@@ -9,7 +9,7 @@ info:
 servers:
   - url: http://llm:8000
 
-# No authentication, stated rather than left blank. services/llm's FastAPI app
+# No authentication, stated rather than left blank. apps/llm's FastAPI app
 # has no auth dependency on any route: the only thing standing between it and a
 # caller is that it is not routable from outside the deployment. That is a
 # network boundary and there is no security scheme to describe it with, so the
