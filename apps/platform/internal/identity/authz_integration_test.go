@@ -35,9 +35,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/analytics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/apiserver"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
@@ -45,9 +43,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/packaging"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/queue"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
 
@@ -194,9 +190,10 @@ func requireDB(t *testing.T) *pgxpool.Pool {
 	return testPool
 }
 
-// api serves the route table cmd/api serves — apiserver.NewRouter, not a copy
-// of it — so a route that loses its RequireSession here loses it in production
-// too, and every route in the table is reachable from a test.
+// api is the object graph cmd/api serves — apiserver.NewApp, not a copy of it —
+// so a route that loses its RequireSession here loses it in production too, a
+// dependency left unwired here is unwired there, and every route in the table is
+// reachable from a test.
 type api struct {
 	*httptest.Server
 	auth *identity.Handler
@@ -242,105 +239,68 @@ func newAPIWithLLM(t *testing.T, pool *pgxpool.Pool, llmBaseURL string) *api {
 // features are configuration rather than code paths — the run allowance, the
 // invite list and the analytics retention are all deployment settings, and two of
 // them change which routes exist at all — so a test has to be able to set them
-// before NewRouter reads them, not after. Everything else stays exactly as
-// newAPIWithLLM builds it.
+// before the route table reads them, not after.
+//
+// The object graph itself is apiserver.NewApp's, not a copy of it (ADR-032 §5):
+// what used to be a hand-written transcription of cmd/api's wiring here is now
+// the same constructor cmd/api calls, so a dependency that goes missing in
+// production goes missing in these tests too. Only the deployment inputs below
+// differ from production's.
 func newAPITuned(
 	t *testing.T, pool *pgxpool.Pool, llmBaseURL string, tune func(*apiserver.Deps),
 ) *api {
 	t.Helper()
-	auth := &identity.Handler{
-		Service: &identity.Service{
-			Pool: pool,
-			// Zero-value OAuth: no request in these tests reaches GitHub, but
-			// GET /auth/github/login builds an authorize URL from it.
-			OAuth: &identity.GitHubOAuth{},
-		},
-		Secure:   false, // httptest speaks plain http
-		DevLogin: true,
-	}
-	reg := &registry.Handler{Svc: &registry.Service{Pool: pool}, Identity: auth.Service}
 	// packageStore is the per-test object store: empty unless a test seeds a
 	// package into it, which is also the "stored package unreadable" path the
 	// detail view has to survive without claiming a clean scan.
 	packages := packageStore{}
-	// The funnel writer, wired the way cmd/api wires it and off by default:
-	// Retention zero means this "deployment" collects nothing, which is the shipped
-	// state until PDM-006 ratifies a period (ADR-029 決策 5). A beta test turns it
-	// on through tune.
-	funnel := &analytics.Service{Pool: pool}
-	search := &catalog.Handler{Pool: pool, Identity: auth.Service, Store: packages, Analytics: funnel}
+	var llm *llmclient.Client
 	if llmBaseURL != "" {
-		search.LLMClient = &llmclient.Client{BaseURL: llmBaseURL}
+		llm = &llmclient.Client{BaseURL: llmBaseURL}
 	}
-	versions := &ingest.Service{
-		Pool:    pool,
-		Store:   packages,
-		Fetcher: &ingest.URLFetcher{Allowed: ingest.DefaultAllowedHosts()},
-	}
-	importer := &ingest.Handler{Svc: versions, Identity: auth.Service}
-
-	// Insert-only queue client, exactly as cmd/api builds one: a run created
-	// through the API enqueues its job in the same transaction as the run row.
-	// Nothing works those jobs unless a test starts a worker (see startWorker).
-	jobs, err := queue.New(pool, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Store, as cmd/api wires it: the pre-run summary scans the stored package,
-	// and a dispatch mints the short-lived grants a sandbox fetches its inputs
-	// with (SBX-008).
-	runSvc := &run.Service{Pool: pool, Queue: jobs, Store: packages}
-	runs := &run.Handler{Svc: runSvc, Identity: auth.Service}
-
-	lab := &testlab.Handler{Svc: &testlab.Service{Pool: pool, Store: packages}, Identity: auth.Service}
-	if llmBaseURL != "" {
-		// TEST-002 talks to the same internal service the search path does.
-		lab.Svc.LLM = &llmclient.Client{BaseURL: llmBaseURL}
-	}
-
-	// A fixed secret: the tests mint their own ingestion tokens against it, which
-	// is exactly what the worker does when it builds a RunRequest.
-	traceSigner := &trace.Signer{Secret: []byte("integration-test-trace-secret")}
-	traceHandler := &trace.Handler{
-		Svc:      &trace.Service{Pool: pool, Signer: traceSigner},
-		Identity: auth.Service,
-	}
-
-	// EVAL-001's read surface and EVAL-002's decide/diff/apply surface, wired the
-	// way cmd/api wires it: no judge and no suggester (producing those is the
-	// worker's job), but the object store and the ordinary version writer, because
-	// previewing and applying a suggestion both need package bytes and applying
-	// goes through POST /skills/{id}/versions' own path.
-	evalSvc := &eval.Service{Pool: pool, Store: packages, Versions: versions}
-
-	// PACK-001, wired the way cmd/api wires it and pointed at the profiles the
-	// deployment actually ships. The real files rather than fixtures: a copy would
-	// keep these tests green while a profile edit changed produced packages.
+	// The real profile files rather than fixtures: a copy would keep these tests
+	// green while a profile edit changed produced packages.
 	profiles, err := packaging.LoadProfiles(filepath.Join("..", "..", "..", "..", "contracts", "packaging", "profiles"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	packagingSvc := &packaging.Service{
-		Pool: pool, Store: packages, Profiles: profiles, Retention: 24 * time.Hour,
-	}
+	// A fixed secret: the tests mint their own ingestion tokens against it, which
+	// is exactly what the worker does when it builds a RunRequest.
+	traceSigner := &trace.Signer{Secret: []byte("integration-test-trace-secret")}
 
-	deps := apiserver.Deps{
-		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs,
-		TestLab: lab, Trace: traceHandler,
-		Eval:      &eval.Handler{Svc: evalSvc, Identity: auth.Service},
-		Packaging: &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
-		Analytics: &analytics.Handler{Svc: funnel, Identity: auth.Service},
+	app, err := apiserver.NewApp(apiserver.Config{
+		Pool:    pool,
+		Store:   packages,
+		LLM:     llm,
+		Fetcher: &ingest.URLFetcher{Allowed: ingest.DefaultAllowedHosts()},
+
+		TraceSigner:       traceSigner,
+		Profiles:          profiles,
+		DownloadRetention: 24 * time.Hour,
+		// Zero retention means this "deployment" collects no funnel events, which
+		// is the shipped state until PDM-006 ratifies a period (ADR-029 決策 5). A
+		// beta test turns it on through tune.
+		AnalyticsRetention: 0,
+
+		// Zero-value OAuth: no request in these tests reaches GitHub, but
+		// GET /auth/github/login builds an authorize URL from it.
+		OAuth:    &identity.GitHubOAuth{},
+		Secure:   false, // httptest speaks plain http
+		DevLogin: true,
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 	if tune != nil {
-		tune(&deps)
+		tune(&app.Deps)
 	}
-	handler := apiserver.NewRouter(deps)
+	handler := app.Handler()
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return &api{
-		Server: srv, auth: auth, packages: packages, runs: runSvc,
-		traceSigner: traceSigner, handler: handler, evaluations: evalSvc,
-		packaging: packagingSvc,
+		Server: srv, auth: app.Auth, packages: packages, runs: app.RunSvc,
+		traceSigner: traceSigner, handler: handler, evaluations: app.EvalSvc,
+		packaging: app.PackagingSvc,
 	}
 }
 

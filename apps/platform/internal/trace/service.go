@@ -630,18 +630,6 @@ func (s *Summary) fold(row gen.TraceEvent) {
 	}
 }
 
-func (s *Service) load(ctx context.Context, workspaceID, runID pgtype.UUID) ([]gen.TraceEvent, error) {
-	// The run read is what enforces the tenancy boundary: an unknown or
-	// somebody else's run is 404 before any event is fetched (WS-006).
-	if _, err := s.queries().GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID}); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-	return s.queries().ListTraceEvents(ctx, gen.ListTraceEventsParams{RunID: runID, WorkspaceID: workspaceID})
-}
-
 // streamHealth reconstructs each (attempt, emitted_by) stream and reports its
 // holes. seq is gapless from 1 by contract, so "1..max minus what arrived" is
 // exactly the set of lost events - no heuristic, no timeout, no guessing.

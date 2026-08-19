@@ -226,7 +226,7 @@ func (s *Service) comparisonSide(
 	// Output, errors and the run's own cost come from trace.Service and from
 	// nowhere else (handoff 丙-1): no query in this package reads trace_events
 	// directly, so the completeness rules that view applies apply here too.
-	summary, err := (&trace.Service{Pool: s.Pool}).General(ctx, workspaceID, runID)
+	summary, err := s.Trace.General(ctx, workspaceID, runID)
 	if err != nil {
 		return comparisonSide{}, sideDetail{}, err
 	}

@@ -1,4 +1,9 @@
 // Command api serves the Skill Hub public HTTP API (ADR-010 deployment unit 2).
+//
+// Everything below the environment is wired by apiserver.NewApp, which is the
+// only composition root the platform has (ADR-032 §5). What stays here is what
+// is genuinely this process's own: reading the environment, the HTTP server, the
+// metrics listener and shutdown.
 package main
 
 import (
@@ -14,10 +19,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/analytics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/apiserver"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/catalog"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
@@ -25,10 +27,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/queue"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
 
@@ -42,46 +41,6 @@ func main() {
 		os.Exit(1)
 	}
 	defer pool.Close()
-
-	auth := &identity.Handler{
-		Service: &identity.Service{
-			Pool: pool,
-			OAuth: &identity.GitHubOAuth{
-				ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
-				ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
-				RedirectURL:  os.Getenv("OAUTH_REDIRECT_URL"),
-			},
-		},
-		Secure:    os.Getenv("COOKIE_INSECURE") != "1", // 1 only for plain-http local dev
-		AppURL:    os.Getenv("APP_URL"),
-		DevLogin:  os.Getenv("DEV_LOGIN") == "1", // offline dev provider; never in production
-		Operators: operatorIDs(os.Getenv("OPERATOR_USER_IDS")),
-		// BETA-001's admission list (ADR-028 決策 1), read exactly like the operator
-		// roster above and keyed by provider_user_id. Unset — the shipped default —
-		// means no closed beta is running and every signed-in user is admitted.
-		Invited: operatorIDs(os.Getenv("BETA_ALLOWLIST")),
-	}
-	// 02:SEC-011 「授予或撤銷 operator 角色本身也是 audit event」. The roster is
-	// deployment configuration, so the grant happens outside the application and
-	// this row at start-up is the only durable record that it happened.
-	//
-	// Failing to write it revokes the roster rather than stopping the process:
-	// an unaudited operator is exactly what the requirement forbids, while an API
-	// that will not boot because of a database hiccup takes the whole platform
-	// with it. Nobody is an operator until a start-up manages to record who is.
-	if err := auth.LogOperatorRoster(ctx); err != nil {
-		slog.Error("operator roster not audited; no operator will be recognised", "error", err)
-		auth.Operators = nil
-	}
-	// ADR-028 決策 1 asks for the same record, and fails closed in the other
-	// direction. An unaudited operator list has to become empty, because an empty
-	// one grants nothing; an unaudited invite list must not become empty, because
-	// an empty one admits everybody. So a cohort that could not be recorded shuts
-	// the gate on everyone until a start-up manages to record it.
-	if err := auth.LogInviteRoster(ctx); err != nil {
-		slog.Error("beta roster not audited; the closed beta gate admits nobody", "error", err)
-		auth.Invited = betaGateClosed()
-	}
 
 	store, err := objstore.New(
 		addrFromEnv("OBJSTORE_ENDPOINT", "localhost:8333"),
@@ -115,23 +74,6 @@ func main() {
 		slog.Warn("LLM_SERVICE_URL not set; search will use FTS-only fallback and imports will not be enriched")
 	}
 
-	versions := &ingest.Service{
-		Pool:    pool,
-		Store:   store,
-		Fetcher: importFetcherFromEnv(),
-		LLM:     llm,
-	}
-	importer := &ingest.Handler{Svc: versions, Identity: auth.Service}
-
-	// Insert-only queue client: the API enqueues run jobs in the same transaction
-	// as the run row, and never works one (iron rule 7). Schema migration belongs
-	// to cmd/worker, so an API rollout does not touch the queue's tables.
-	jobs, err := queue.New(pool, nil)
-	if err != nil {
-		slog.Error("queue client", "error", err)
-		os.Exit(1)
-	}
-
 	// TRACE-002: the ingestion credential. Without a secret no ingestion URL is
 	// minted, the provider is handed no destination and no events are collected -
 	// the honest state for a deployment that has not configured one, and safer
@@ -140,7 +82,6 @@ func main() {
 	if !traceSigner.Enabled() {
 		slog.Warn("SKILLHUB_TRACE_INGEST_SECRET not set; run traces will not be collected")
 	}
-	traceSvc := &trace.Service{Pool: pool, Signer: traceSigner}
 
 	// PACK-002: the packaging targets are versioned configuration, read from
 	// contracts/packaging/profiles at start-up rather than compiled in, so
@@ -163,69 +104,44 @@ func main() {
 	// days). NFR-002 requires the period to exist before the data class starts
 	// accumulating, and this is the one class still early enough to obey that in
 	// order rather than retrofit it.
-	funnel := &analytics.Service{
-		Pool:      pool,
-		Retention: analyticsRetentionFromEnv(),
-		Secure:    os.Getenv("COOKIE_INSECURE") != "1",
-	}
-	if !funnel.Enabled() {
+	analyticsRetention := analyticsRetentionFromEnv()
+	if analyticsRetention < time.Second { // the same threshold analytics.Service.Enabled applies
 		slog.Warn("ANALYTICS_RETENTION not set; the BETA-002 funnel is not being measured")
 	}
 
-	// The API needs the provider registry for one thing only: refusing a run no
-	// configured provider can carry, before it is queued (RUN-005, ADR-004). It
-	// never dispatches — that is the worker's job (iron rule 7).
-	//
-	// Store is read-only here: the pre-run permission summary scans the stored
-	// package to answer "does this carry a script" (02:TEST-005).
-	runs := &run.Service{
-		Pool: pool, Queue: jobs, Providers: run.NewRegistryFromEnv(), Store: store,
-		// PDM-010's free allowance, enforced inside the create-run transaction
-		// (ADR-028 決策 2). The proposed numbers are the shipped default because
-		// the enforcement point does not depend on the final values — what does
-		// depend on them is showing them, and GET /me/quota is only mounted where
-		// this is enforced. RUN_QUOTA=off turns both off.
-		Quota: quotaFromEnv(),
-	}
-
-	// Routes live in internal/apiserver so the integration tests serve this exact
-	// table instead of a hand-copied one.
-	mux := apiserver.NewRouter(apiserver.Deps{
-		Auth:     auth,
-		Importer: importer,
-		Search: &catalog.Handler{
-			Pool: pool, Identity: auth.Service, LLMClient: llm, Store: store, Analytics: funnel,
+	app, err := apiserver.NewApp(apiserver.Config{
+		Pool:               pool,
+		Store:              store,
+		LLM:                llm,
+		Fetcher:            importFetcherFromEnv(),
+		TraceSigner:        traceSigner,
+		Profiles:           profiles,
+		DownloadRetention:  retentionFromEnv(),
+		AnalyticsRetention: analyticsRetention,
+		OAuth: &identity.GitHubOAuth{
+			ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
+			ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
+			RedirectURL:  os.Getenv("OAUTH_REDIRECT_URL"),
 		},
-		Registry: &registry.Handler{Svc: &registry.Service{Pool: pool, Store: store}, Identity: auth.Service},
-		// llm may be nil: TEST-002's suggestions are then unavailable and the test
-		// lab's manual paths carry on unaffected.
-		TestLab: &testlab.Handler{
-			Svc:      &testlab.Service{Pool: pool, Store: store, LLM: llmOrNil(llm)},
-			Identity: auth.Service,
-		},
-		Runs:  &run.Handler{Svc: runs, Identity: auth.Service},
-		Trace: &trace.Handler{Svc: traceSvc, Identity: auth.Service},
-		// No judge and no suggester here: producing a verdict and asking for advice
-		// are the worker's jobs (iron rule 7). The store and the version writer are
-		// wired, because EVAL-002's diff and apply are user actions and both need
-		// package bytes — and applying goes through the ordinary version-creation
-		// path rather than around it.
-		Eval: &eval.Handler{
-			Svc:      &eval.Service{Pool: pool, Store: store, Versions: versions},
-			Identity: auth.Service,
-		},
-		// Packaging runs in the control plane and needs no sandbox: it reads
-		// stored bytes, filters them and writes a zip, and executes nothing
-		// (iron rules 1 and 2).
-		Packaging: &packaging.Handler{
-			Svc: &packaging.Service{
-				Pool: pool, Store: store, Profiles: profiles,
-				Retention: retentionFromEnv(),
-			},
-			Identity: auth.Service,
-		},
-		Analytics: &analytics.Handler{Svc: funnel, Identity: auth.Service},
+		Secure:    os.Getenv("COOKIE_INSECURE") != "1", // 1 only for plain-http local dev
+		AppURL:    os.Getenv("APP_URL"),
+		DevLogin:  os.Getenv("DEV_LOGIN") == "1", // offline dev provider; never in production
+		Operators: operatorIDs(os.Getenv("OPERATOR_USER_IDS")),
+		// BETA-001's admission list (ADR-028 決策 1), read exactly like the operator
+		// roster above and keyed by provider_user_id. Unset — the shipped default —
+		// means no closed beta is running and every signed-in user is admitted.
+		Invited: operatorIDs(os.Getenv("BETA_ALLOWLIST")),
+		// The API needs the provider registry for one thing only: refusing a run no
+		// configured provider can carry, before it is queued (RUN-005, ADR-004). It
+		// never dispatches — that is the worker's job (iron rule 7).
+		Providers: run.NewRegistryFromEnv(),
+		Quota:     quotaFromEnv(),
 	})
+	if err != nil {
+		slog.Error("api composition", "error", err)
+		os.Exit(1)
+	}
+	app.AuditRosters(ctx)
 
 	// DEV_CORS_ORIGIN is the local Vite dev server (http://localhost:5173) and
 	// nothing else. Unset in production, where the SPA is same-origin with the
@@ -234,7 +150,7 @@ func main() {
 	// API's /skills/{id} routes collide, so no path-prefix rule separates them.
 	srv := &http.Server{
 		Addr:              addrFromEnv("API_ADDR", ":8080"),
-		Handler:           httpx.DevCORS(mux, os.Getenv("DEV_CORS_ORIGIN")),
+		Handler:           httpx.DevCORS(app.Handler(), os.Getenv("DEV_CORS_ORIGIN")),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -252,7 +168,7 @@ func main() {
 	// already reads this database, and it is one of the two entry points the halt
 	// stops (iron rule 7 is untouched: this observes and declares, it never works a
 	// job or dispatches one).
-	go runs.WatchReconciler(ctx)
+	go app.RunSvc.WatchReconciler(ctx)
 
 	go func() {
 		slog.Info("api listening", "addr", srv.Addr)
@@ -286,15 +202,6 @@ func operatorIDs(raw string) map[string]bool {
 	return out
 }
 
-// betaGateClosed is the invite list of a start-up that could not audit its own
-// cohort (ADR-028 決策 1 fail-closed). It has to be non-empty, because an empty
-// list means "no closed beta is running" and admits everyone — the opposite of
-// what failing closed means here. One entry nobody can hold: a GitHub
-// provider_user_id is a decimal string.
-func betaGateClosed() map[string]bool {
-	return map[string]bool{"\x00 roster was not recorded": true}
-}
-
 // importFetcherFromEnv builds the URL-import fetcher: GitHub by default,
 // extra hosts via IMPORT_EXTRA_HOSTS (comma-separated), plain http only when
 // IMPORT_ALLOW_INSECURE=1 (local stubs and E2E, never production).
@@ -309,17 +216,6 @@ func importFetcherFromEnv() *ingest.URLFetcher {
 		}
 	}
 	return f
-}
-
-// llmOrNil keeps a nil *llmclient.Client from becoming a non-nil interface value.
-// Without it, "LLM_SERVICE_URL is unset" would reach the test lab as a configured
-// suggester and every suggestion would fail with a nil-pointer panic instead of
-// the honest "unavailable".
-func llmOrNil(c *llmclient.Client) testlab.CriteriaSuggester {
-	if c == nil {
-		return nil
-	}
-	return c
 }
 
 // retentionFromEnv reads how long a Download Artifact lives. Deployment

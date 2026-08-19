@@ -114,9 +114,10 @@ func (s *packagingRaceStore) Get(ctx context.Context, key string) ([]byte, error
 func (s *packagingRaceStore) Put(ctx context.Context, key string, data []byte) error {
 	s.mu.Lock()
 	s.puts++
-	if s.puts == 1 {
+	switch s.puts {
+	case 1:
 		close(s.firstPut)
-	} else if s.puts == 2 {
+	case 2:
 		close(s.secondPut)
 	}
 	releasePut := s.releasePut

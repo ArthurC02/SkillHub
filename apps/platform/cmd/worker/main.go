@@ -98,7 +98,13 @@ func main() {
 	// runs still get an evaluation row, the deterministic findings are still
 	// written, and the row is recorded as `failed` saying the judgement could not
 	// be produced - which is a visible state, not a lenient verdict.
-	evaluations := &eval.Service{Pool: pool, Store: store}
+	// The Trace context, injected rather than built inside eval's own methods
+	// (ADR-032 §5). Same signer as the dispatcher above, so the process has one
+	// Trace configuration and not two.
+	evaluations := &eval.Service{
+		Pool: pool, Store: store,
+		Trace: &trace.Service{Pool: pool, Signer: traceSigner},
+	}
 	if llmURL := os.Getenv("LLM_SERVICE_URL"); llmURL != "" {
 		token := os.Getenv("LLM_SERVICE_TOKEN")
 		if token == "" {

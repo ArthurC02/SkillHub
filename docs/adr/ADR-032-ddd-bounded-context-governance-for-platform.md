@@ -1,7 +1,7 @@
 # ADR-032：Platform 的 DDD Bounded Context 治理與機械強制
 
-- 狀態：Proposed
-- 日期：2026-08-19
+- 狀態：Accepted（2026-08-20）
+- 日期：2026-08-19；2026-08-20 定案——負責人授權開始執行調整計畫並委任「依最佳實務決策、詳實記錄」，三項待決策已於 2026-08-19 由負責人逐項裁定（見「待決策」節）。定案同批依實測 import graph 修正：補列 Run Trace context、修正附錄 A 三處與實況的出入（修正內容見附錄 A 註記）。
 - 決策者：產品負責人（方向裁示）、架構規劃
 - 關係：補充並強制 [ADR-002](./ADR-002-domain-boundaries-and-ownership.md)（不取代其領域定義）；建基於 [ADR-008](./ADR-008-asynchronous-workflows-and-domain-events.md)（Outbox 領域事件）與 [ADR-016](./ADR-016-language-and-framework-selection.md)（Go internal package）
 
@@ -32,8 +32,11 @@ ADR-002 的領域模組正式對映為 Bounded Context。每個 `internal/` 套�
 | Run Orchestration | Core | `run` | RUN、SBX |
 | Evaluation & Improvement | Core | `eval` | EVAL |
 | Packaging & Distribution | Core | `packaging` | PACK |
+| Run Trace | Supporting | `trace` | TRACE |
 | Policy & Usage | Supporting | `analytics`（quota 計數面目前寄居 `run`，拆分屬待決策） | PDM、NFR |
 | —（跨切面，非 context） | Generic | `audit`、`outbox`、`objreconcile`、`llmclient`、`platform/*`、`apiserver`、`api/gen` | — |
+
+`trace` 原稿漏列，2026-08-20 定案時補入：它擁有 Run Trace 事件的遮罩、入庫與讀取（ADR-009 的 Run Trace 平面），`run` 同步寫入、`eval` 同步讀取。
 
 Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵律 9 的機制、`llmclient` 與 `run` 內的 provider gateway 是防腐層（Anticorruption Layer）、`platform/*` 是純技術基座、`apiserver` 是表現層與 composition root。
 
@@ -67,6 +70,8 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 
 `apiserver.NewApp(Config) (http.Handler, error)` 是 context wiring 的唯一地點；`cmd/api` 與整合測試都必須呼叫它。領域 Service 一律由 NewApp 注入，**禁止在方法內現場建構其他 context 的 Service**。
 
+（2026-08-20 實作註記：實際簽名為 `NewApp(Config) (*App, error)`＋`App.Handler()`——整合測試需要在路由表建立前 tune `App.Deps`、建立後取得 Service 把手，回傳裸 handler 做不到這兩件事。語意不變：wiring 仍只有這一個地點。）
+
 ## 考慮過的替代方案
 
 - **全面戰術 DDD（每 context 鋪 aggregate／repository／domain service 三層）**：拒絕。多數 context 不變量稀薄，三層是儀式成本；Go 慣例（package 即模組、struct 即 aggregate）已覆蓋所需。
@@ -86,12 +91,15 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 
 ## 附錄 A：跨 context import 白名單（初版＝凍結現況）
 
-依賴方向以「A → B」表示 A import B。`platform/*`、`audit`、`outbox`、`api/gen` 對所有 context 開放（Generic），不列。
+依賴方向以「A → B」表示 A import B。`platform/*`、`audit`、`outbox`、`api/gen`、`llmclient`（ACL）、`skillpkg`（Shared Kernel）對所有 context 開放（Generic），不列。**機器版**是 `apps/platform/.golangci.yml` 的 depguard 規則（DDD-002）；本附錄與機器版的 `drift:` 標記集合由 `devctl automation-check` 在 CI 比對，分岔即紅。測試檔（`_test.go`）不受規則約束——整合測試的跨 context import 由 DDD-011 收斂。
+
+2026-08-20 依實測 import graph（Docker `go list`）修正三處：補「run → trace」列；`llmclient` 的使用者實為 catalog／eval／ingest／testlab 四者，原「僅 eval、catalog」有誤，且它屬 Generic 不逐列；`run → testlab` 實況含 snapshot 建立、grant 簽發與排程三個呼叫點。
 
 | 依賴 | 判定 | 處置 |
 | --- | --- | --- |
 | `apiserver` → 全部 context | 表現層／composition root，合法 | 保留 |
-| `run` → `testlab`（snapshot） | 同步查詢，合法 | 保留 |
+| `run` → `testlab`（snapshot 建立、dataset grant、排程讀取） | 同步查詢，合法 | 保留 |
+| `run` → `trace`（寫入 Run Trace 事件） | 同步寫入，合法 | 保留 |
 | `run` → `eval`（JobArgs 入隊） | **drift: DDD-005**，方向反轉 | 事件化後移除 |
 | `eval` → `testlab`、`trace` | 同步查詢，合法 | 保留（trace 改注入，DDD-004） |
 | `eval` → `ingest`（SaveVersion 等） | **drift: DDD-006**，應依 ADR-002 由 Registry 建新版本 | ingest 拆分後改依 Registry 公開 API |
@@ -99,4 +107,3 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 | `catalog` → `ingest`、`analytics` | **drift: DDD-006**（ingest 部分）；analytics 為投影事實，合法 | ingest 部分同上 |
 | `run` → `ingest`（gateb） | **drift: DDD-006** | 同上 |
 | 各 context → `identity`（SessionUser／Workspace scope） | 鐵律 3 的入口，合法 | 保留 |
-| 各 context → `llmclient` | ACL，合法（僅 `eval`、`catalog` 使用） | 保留 |

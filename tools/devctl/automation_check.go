@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -73,6 +75,8 @@ func automationCheck(root string, out io.Writer) error {
 		}
 	}
 
+	problems = append(problems, driftMarkerProblems(root)...)
+
 	if len(problems) > 0 {
 		for _, problem := range problems {
 			fmt.Fprintln(out, "FAIL", problem)
@@ -81,6 +85,60 @@ func automationCheck(root string, out io.Writer) error {
 	}
 	fmt.Fprintf(out, "automation contract: %d tasks documented; agent and generated ownership checks passed\n", len(tasks))
 	return nil
+}
+
+// ADR-032 appendix A is the human-readable cross-context import whitelist and
+// apps/platform/.golangci.yml holds its depguard equivalent. Tolerated drifts
+// are tagged `drift: DDD-00x` in both, so the two multisets of markers must
+// match exactly; a divergence means one side was edited alone.
+//
+// `\b` keeps the ADR's own placeholder text (`# drift: DDD-00x`) out of the
+// count — a marker always ends at a non-word character.
+var driftMarkerPattern = regexp.MustCompile(`drift: DDD-\d+\b`)
+
+func driftMarkerProblems(root string) []string {
+	sources := map[string]string{
+		"lint": filepath.Join("apps", "platform", ".golangci.yml"),
+		"adr":  filepath.Join("docs", "adr", "ADR-032-ddd-bounded-context-governance-for-platform.md"),
+	}
+	counts := map[string]map[string]int{}
+	var problems []string
+	for side, relative := range sources {
+		data, err := os.ReadFile(filepath.Join(root, relative))
+		if err != nil {
+			return append(problems, fmt.Sprintf("%s: %v", relative, err))
+		}
+		counts[side] = map[string]int{}
+		for _, marker := range driftMarkerPattern.FindAllString(string(data), -1) {
+			counts[side][marker]++
+		}
+	}
+
+	markers := map[string]bool{}
+	for _, side := range counts {
+		for marker := range side {
+			markers[marker] = true
+		}
+	}
+	var sorted []string
+	for marker := range markers {
+		sorted = append(sorted, marker)
+	}
+	sort.Strings(sorted)
+
+	var differences []string
+	for _, marker := range sorted {
+		lint, adr := counts["lint"][marker], counts["adr"][marker]
+		if lint != adr {
+			differences = append(differences, fmt.Sprintf("%q lint=%d adr=%d", marker, lint, adr))
+		}
+	}
+	if len(differences) > 0 {
+		problems = append(problems, fmt.Sprintf(
+			"%s and %s disagree on drift markers: %s",
+			sources["lint"], sources["adr"], strings.Join(differences, "; ")))
+	}
+	return problems
 }
 
 func taskDescriptions(path string) (map[string]string, error) {

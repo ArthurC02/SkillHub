@@ -56,7 +56,7 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-029](./ADR-029-product-analytics-events-and-audit-trace-boundaries.md) | 產品分析事件與 audit／Trace 的邊界（鐵律 11 的「分析事件」定義） | Accepted |
 | [ADR-030](./ADR-030-portable-developer-automation-and-contract-code-generation.md) | 可攜式開發自動化與契約程式碼生成（Automation Contract、共享工作樹單一 Writer、OpenAPI 3.1 generator） | Accepted |
 | [ADR-031](./ADR-031-artifact-role-repository-layout.md) | 依產物角色劃分頂層目錄（可啟動產品程式統一進 `apps/`，取代 ADR-024 收納語意） | Accepted |
-| [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md) | Platform 的 DDD Bounded Context 治理與機械強制（補充 ADR-002；depguard 白名單＝context map 的 CI 表述） | Proposed |
+| [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md) | Platform 的 DDD Bounded Context 治理與機械強制（補充 ADR-002；depguard 白名單＝context map 的 CI 表述） | Accepted |
 
 ## 整體架構摘要
 

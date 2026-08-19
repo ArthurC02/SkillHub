@@ -27,10 +27,10 @@
 
 | ID | 狀態 | 項目 | 完成條件 |
 | --- | --- | --- | --- |
-| DDD-001 | decision | ADR-032 評審定案（負責人） | ADR-032 轉 Accepted；context 對照表與附錄 A 白名單經負責人確認。 |
-| DDD-002 | open | depguard 白名單凍結現況 | `.golangci.yml` 啟用 depguard，規則與 ADR-032 附錄 A 一致；現存漂移以 `# drift: DDD-00x` 標註列入；新增任何未列白名單的跨 context import 時 CI 紅；規則檔與附錄 A 的同步有 CI 檢查（比對兩處的依賴清單）。 |
-| DDD-003 | open | 抽 `apiserver.NewApp(Config)` 唯一 composition root | `cmd/api/main.go` 與 `authz_integration_test.go` 的 `newAPI()` 都改呼叫 NewApp；測試側手抄物件圖刪除；`betaGateClosed`／`quotaFromEnv` 等 fail-closed 邏輯隨 NewApp 可被單元測試。 |
-| DDD-004 | open | 修 DI 逃逸 | `eval` 的 trace 依賴改由 NewApp 注入 struct 欄位；`eval/eval.go`、`eval/comparison.go` 無現場建構其他 context Service；注入後 `Signer` 組態完整。 |
+| DDD-001 | fixed | ADR-032 評審定案（負責人） | **2026-08-20 完成**：負責人授權執行並委任最佳實務決策（含三項待決策的 08-19 裁定），ADR-032 轉 Accepted。定案時依實測 import graph（Docker `go list`）修正三處：補列 Run Trace context、補「run → trace」白名單列、更正 `llmclient` 使用者清單。 |
+| DDD-002 | fixed | depguard 白名單凍結現況 | **2026-08-20 完成**：`apps/platform/.golangci.yml` 啟用 depguard，12 條規則＝ADR-032 附錄 A 機器版（含 `!$test` 排除，整合測試由 DDD-011 收斂）；drift 標記 DDD-005×1、DDD-006×4 與 ADR 一致；`devctl automation-check` 新增兩側 drift 標記多重集合比對（含單元測試）。驗證：現況 lint 零 depguard 違規；假違規探針檔實測被抓（`import ... not allowed from list 'registry'`）後移除回綠。 |
+| DDD-003 | fixed | 抽 `apiserver.NewApp(Config)` 唯一 composition root | **2026-08-20 完成**：`internal/apiserver/app.go` 新增 `Config`／`App`／`NewApp`／`Handler()`／`AuditRosters()`；`ObjectStore` 以四個既有 per-context interface 的 embedded union 定義（不會與成員分岔）。`cmd/api/main.go` 385→279 行、不再 import 六個領域套件；`newAPITuned` 手抄物件圖刪除（roster fail-closed 邏輯與 `BetaGateClosed()` 移入 apiserver 並有單元測試）。附帶效果：測試 wiring 與生產更一致（`ingest.LLM`、`registry.Store`、analytics `Secure` 三處原本測試側未接，現已接上）。驗證：lint 0 issues、單元 289 PASS、整合（拋棄式 pgvector）497 PASS／0 FAIL。 |
+| DDD-004 | fixed | 修 DI 逃逸 | **2026-08-20 完成**：`eval.Service` 加 `Trace *trace.Service` 欄位（註解載明 ADR-032 §5），`eval/eval.go`／`comparison.go` 的現場建構移除；注入點：NewApp（與 Trace handler 同一實例，`Signer` 組態完整）、`cmd/worker/main.go`（重用 dispatcher 既有 signer）、兩個直接建構 `eval.Service` 的整合測試。刻意**不加 nil fallback**——漏接會 panic 而非靜默降級。 |
 
 ### Phase 1 — 邊界糾偏（清除附錄 A 的 drift 標記）
 

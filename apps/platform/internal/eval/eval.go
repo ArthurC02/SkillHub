@@ -179,6 +179,16 @@ type Service struct {
 	// from. Nil means those report themselves unavailable — never that the package
 	// is clean.
 	Store ObjectStore
+	// Trace is where the run's output, errors and cost come from, and the only
+	// place they come from (handoff 丙-1): no query in this package reads
+	// trace_events directly, so the completeness rules that view applies apply
+	// here too.
+	//
+	// Injected by the composition root; never constructed inside a method
+	// (ADR-032 §5). Building one here looked harmless and was not — the local
+	// copy carried no Signer, so it was a differently configured Trace context
+	// than the one the rest of the process uses.
+	Trace *trace.Service
 	// Versions is the ordinary version-creation path (POST /skills/{id}/versions).
 	// Applying accepted suggestions writes through it rather than around it, so a
 	// suggestion-built version goes through the same validation, storage, license
@@ -459,11 +469,10 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 		return m, err
 	}
 
-	traceSvc := &trace.Service{Pool: s.Pool}
-	if m.advanced, err = traceSvc.AdvancedAll(ctx, workspaceID, runID); err != nil {
+	if m.advanced, err = s.Trace.AdvancedAll(ctx, workspaceID, runID); err != nil {
 		return m, err
 	}
-	if m.summary, err = traceSvc.General(ctx, workspaceID, runID); err != nil {
+	if m.summary, err = s.Trace.General(ctx, workspaceID, runID); err != nil {
 		return m, err
 	}
 	if m.artifacts, err = q.ListRunArtifacts(ctx, gen.ListRunArtifactsParams{

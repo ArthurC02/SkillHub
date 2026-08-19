@@ -24,6 +24,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
 
 // --- seeding -----------------------------------------------------------------
@@ -123,7 +124,9 @@ func startWorkerWith(t *testing.T, svc *run.Service, evaluator ...*eval.Service)
 	// process that registers some workers but not this one cannot finish a run at
 	// all - which is why every registration list has to stay in step with
 	// cmd/worker, and why this line is not optional test scaffolding.
-	evalSvc := &eval.Service{Pool: svc.Pool}
+	// Trace comes from the composition root in both real processes (ADR-032 §5),
+	// so it has to be injected here too — evaluating a run reads its trace.
+	evalSvc := &eval.Service{Pool: svc.Pool, Trace: &trace.Service{Pool: svc.Pool}}
 	if len(evaluator) == 1 {
 		evalSvc = evaluator[0]
 	}

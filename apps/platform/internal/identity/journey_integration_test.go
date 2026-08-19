@@ -27,6 +27,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/run/providertest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
 
 func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
@@ -135,7 +136,11 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 	// Wired the way cmd/worker wires it, so the evaluation the run enqueues is the
 	// one that runs. Without the judge the worker records a failed evaluation, which
 	// is honest and is not a verdict.
-	evaluator := &eval.Service{Pool: pool, Store: a.packages, Judge: judge}
+	evaluator := &eval.Service{
+		Pool: pool, Store: a.packages, Judge: judge,
+		// Injected, never built inside eval's own methods (ADR-032 §5).
+		Trace: &trace.Service{Pool: pool},
+	}
 	withProvider(t, a, pool, providertest.Plan{CreatingPolls: 1, RunningPolls: 1}, evaluator)
 
 	created := f.start(t)

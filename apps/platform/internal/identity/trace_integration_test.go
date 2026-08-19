@@ -334,12 +334,12 @@ func TestConcurrentTraceDeliveryClaimsAnEventIDOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tx1.Rollback(ctx) // no-op after commit
+	defer tx1.Rollback(ctx) //nolint:errcheck // no-op after commit
 	tx2, err := conn2.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tx2.Rollback(ctx)
+	defer tx2.Rollback(ctx) //nolint:errcheck // no-op after commit
 
 	firstTag, err := tx1.Exec(ctx, insert, eventUUID, workspaceUUID, runUUID, time.Now().UTC())
 	if err != nil {
