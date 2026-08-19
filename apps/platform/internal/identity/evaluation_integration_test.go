@@ -12,9 +12,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
@@ -97,6 +100,7 @@ func judgeServer(t *testing.T, verdict llmclient.JudgeVerdict, promptVersion str
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(llmclient.JudgeRunResponse{
 			Verdict: verdict, Model: "gpt-5.6-terra", PromptVersion: promptVersion,
+			Usage: &llmclient.GatewayUsage{PromptTokens: 11, CompletionTokens: 7},
 		})
 	}))
 	t.Cleanup(srv.Close)
@@ -153,6 +157,99 @@ func (c *client) getEvaluation(t *testing.T, path string) (int, evaluationBody) 
 	var body evaluationBody
 	_ = json.NewDecoder(resp.Body).Decode(&body)
 	return resp.StatusCode, body
+}
+
+func TestEvaluationRetryDoesNotRepeatACompletedJudgeCall(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-recovery")
+	skillID := seedSkill(t, pool, c.workspaceID, "eval-recovery")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(llmclient.JudgeRunResponse{
+			Verdict: llmclient.JudgeVerdict{Overall: "undetermined", CriterionResults: []llmclient.CriterionVerdict{
+				{CriterionID: "c1", Result: "undetermined", Reason: "not enough evidence"},
+				{CriterionID: "c2", Result: "undetermined", Reason: "not enough evidence"},
+			}}, Model: "gpt-5.6-terra", PromptVersion: "recovery-test",
+		})
+	}))
+	defer srv.Close()
+	a.evaluations.Judge = &llmclient.Client{BaseURL: srv.URL}
+
+	if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatal(err)
+	}
+	worker := &eval.Worker{Svc: a.evaluations}
+	err := worker.Work(context.Background(), &river.Job[eval.JobArgs]{
+		JobRow: &rivertype.JobRow{Attempt: 2},
+		Args:   eval.JobArgs{RunID: runID, WorkspaceID: c.workspaceID},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("judge calls = %d after recovery, want 1", got)
+	}
+	var evaluations int
+	if err := pool.QueryRow(context.Background(), "SELECT count(*) FROM evaluations WHERE run_id = $1", mustUUID(t, runID)).Scan(&evaluations); err != nil {
+		t.Fatal(err)
+	}
+	if evaluations != 1 {
+		t.Fatalf("evaluation revisions = %d after recovery, want 1", evaluations)
+	}
+}
+
+func TestStalePendingEvaluationIsReconciledWithoutJudge(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-stale-recovery")
+	skillID := seedSkill(t, pool, c.workspaceID, "eval-stale-recovery")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete, created_at)
+		VALUES ($1, $2, 'pending', 'undetermined', false, now() - interval '20 minutes')`,
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatal(err)
+	}
+
+	worker := &eval.RecoveryWorker{Svc: a.evaluations}
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	for range 2 {
+		go func() {
+			<-start
+			errs <- worker.Work(context.Background(), &river.Job[eval.RecoveryArgs]{})
+		}()
+	}
+	close(start)
+	for range 2 {
+		if err := <-errs; err != nil {
+			t.Fatal(err)
+		}
+	}
+	var status string
+	if err := pool.QueryRow(context.Background(),
+		"SELECT status FROM evaluations WHERE run_id = $1 AND superseded_at IS NULL",
+		mustUUID(t, runID)).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if status != "failed" {
+		t.Fatalf("stale evaluation status = %q, want failed", status)
+	}
+	var completionEvents int
+	if err := pool.QueryRow(context.Background(), `
+		SELECT count(*) FROM trace_events
+		WHERE run_id = $1 AND event_type = 'evaluation_completed'
+		  AND status = 'error'`, mustUUID(t, runID)).Scan(&completionEvents); err != nil {
+		t.Fatal(err)
+	}
+	if completionEvents != 1 {
+		t.Fatalf("concurrent recovery wrote %d completion events, want 1", completionEvents)
+	}
 }
 
 // --- the happy path -----------------------------------------------------------
@@ -271,6 +368,40 @@ func assertEvaluationTraceEvents(t *testing.T, pool *pgxpool.Pool, runID, wantSt
 		t.Error("no evaluation_completed event")
 	} else if status != wantStatus {
 		t.Errorf("evaluation_completed status = %q, want %q", status, wantStatus)
+	}
+}
+
+func TestEvaluationEventsUseTheLatestPersistedAttempt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-latest-attempt")
+	skillID := seedSkill(t, pool, c.workspaceID, "eval-latest-attempt")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO run_attempts (run_id, workspace_id, attempt_number, provider)
+		VALUES ($1, $2, 1, 'fake_sandbox'), ($1, $2, 2, 'fake_sandbox')`,
+		mustUUID(t, runID), mustUUID(t, c.workspaceID)); err != nil {
+		t.Fatal(err)
+	}
+	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: "undetermined", Reason: "no evidence"},
+			{CriterionID: "c2", Result: "undetermined", Reason: "no evidence"},
+		},
+		Overall: "undetermined", Summary: "no evidence",
+	}, "judge-run@latest-attempt")
+	if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatal(err)
+	}
+	var minAttempt, maxAttempt int
+	if err := pool.QueryRow(context.Background(), `
+		SELECT min(attempt), max(attempt) FROM trace_events
+		WHERE run_id = $1 AND event_type IN ('evaluation_started', 'evaluation_completed')`,
+		mustUUID(t, runID)).Scan(&minAttempt, &maxAttempt); err != nil {
+		t.Fatal(err)
+	}
+	if minAttempt != 2 || maxAttempt != 2 {
+		t.Fatalf("evaluation event attempts = %d..%d, want latest persisted attempt 2", minAttempt, maxAttempt)
 	}
 }
 
@@ -529,8 +660,8 @@ func TestReEvaluationSupersedesWithoutOverwriting(t *testing.T) {
 	// A stricter prompt, and a different answer.
 	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
 		CriterionResults: []llmclient.CriterionVerdict{
-			{CriterionID: "c1", Result: "failed", Reason: "second rubric is stricter"},
-			{CriterionID: "c2", Result: "failed", Reason: "second rubric is stricter"},
+			{CriterionID: "c1", Result: "failed", Reason: "second rubric is stricter", EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: "Removed 17 duplicate rows"}}},
+			{CriterionID: "c2", Result: "failed", Reason: "second rubric is stricter", EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")}}},
 		},
 		Overall: "not_met", Summary: "not met under the second rubric",
 	}, "judge-run@v2")
@@ -721,10 +852,13 @@ func TestARunWithNoAcceptanceCriteriaIsUndeterminedAndNeverReachesTheJudge(t *te
 	skillID := seedSkill(t, pool, c.workspaceID, "no-criteria")
 	// seedRun's snapshot carries an empty acceptance_criteria array.
 	runID := seedRun(t, pool, c.workspaceID, skillID)
-	if _, err := pool.Exec(context.Background(),
-		`UPDATE runs SET status = 'succeeded', finished_at = now() WHERE id = $1`,
-		mustUUID(t, runID)); err != nil {
-		t.Fatal(err)
+	for _, status := range []string{"provisioning", "preparing", "running", "evaluating", "succeeded"} {
+		if _, err := pool.Exec(context.Background(),
+			`UPDATE runs SET status = $2::run_status,
+			 finished_at = CASE WHEN $2 = 'succeeded' THEN now() ELSE finished_at END
+			 WHERE id = $1`, mustUUID(t, runID), status); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	called := false

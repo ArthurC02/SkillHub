@@ -42,6 +42,7 @@ func llmServer(
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(llmclient.JudgeRunResponse{
 			Verdict: verdict, Model: "gpt-5.6-terra", PromptVersion: "judge-run@test",
+			Usage: &llmclient.GatewayUsage{PromptTokens: 11, CompletionTokens: 7},
 		})
 	})
 	mux.HandleFunc("POST /suggest-improvements", func(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +57,7 @@ func llmServer(
 		_ = json.NewEncoder(w).Encode(llmclient.SuggestImprovementsResponse{
 			Suggestions: proposals, Model: "gpt-5.6-terra",
 			PromptVersion: "suggest-improvements/test",
+			Usage:         &llmclient.GatewayUsage{PromptTokens: 20, CompletionTokens: 9},
 		})
 	})
 	srv := httptest.NewServer(mux)
@@ -314,6 +316,18 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 	}
 	if len(suggestions) != 1 {
 		t.Fatalf("only the in-bounds, actionable proposal is stored, got %d", len(suggestions))
+	}
+	var usageRows, operations int
+	var promptTokens int64
+	if err := pool.QueryRow(context.Background(), `
+		SELECT count(*), count(DISTINCT operation), sum(prompt_tokens)
+		FROM evaluation_model_usage WHERE evaluation_id = $1`,
+		mustUUID(t, evaluationID)).Scan(&usageRows, &operations, &promptTokens); err != nil {
+		t.Fatal(err)
+	}
+	if usageRows != 2 || operations != 2 || promptTokens != 31 {
+		t.Fatalf("model usage ledger = rows:%d operations:%d prompt_tokens:%d, want 2/2/31",
+			usageRows, operations, promptTokens)
 	}
 	s := suggestions[0]
 	if s.Category != "skill" || s.TargetPath != "SKILL.md" || s.Decision != "pending" {

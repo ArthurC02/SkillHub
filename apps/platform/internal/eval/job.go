@@ -39,10 +39,10 @@ var liveJobStates = []rivertype.JobState{
 // an insert without them carries no unique key, and a redelivered transition
 // would pay for a second judge call to reach the same verdict.
 //
-// Two attempts, not River's twenty-five: a judgement that failed because the
-// gateway was down is worth one retry, and one that failed because the evidence
-// is unreadable will fail identically forever. `evaluations.status = failed` is a
-// visible outcome, so exhausting the retries is not a silent loss.
+// The second attempt is recovery-only. Evaluate detects the pending revision
+// left by an interrupted first attempt and marks that same revision failed; it
+// does not call the judge again. If the first attempt failed before creating a
+// revision, the retry may safely start the work.
 func InsertOpts() *river.InsertOpts {
 	return &river.InsertOpts{
 		UniqueOpts:  river.UniqueOpts{ByArgs: true, ByState: liveJobStates},
@@ -63,6 +63,9 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[JobArgs]) error {
 	}
 	if err := workspaceID.Scan(job.Args.WorkspaceID); err != nil {
 		return err
+	}
+	if job.Attempt > 1 {
+		return w.Svc.recoverAttempt(ctx, workspaceID, runID)
 	}
 	return w.Svc.Evaluate(ctx, workspaceID, runID)
 }

@@ -13,24 +13,62 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from skillhub_llm.enrich import router as enrich_router
 from skillhub_llm.evaluate import router as evaluate_router
 
-app = FastAPI(title="Skill Hub LLM Service", version="0.1.0")
-app.include_router(enrich_router)
-app.include_router(evaluate_router)
+service_bearer = HTTPBearer(auto_error=False)
+
+
+def require_service_token(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(service_bearer)],
+) -> None:
+    """Authenticate the Go control plane before any LLM capability runs."""
+    expected = os.getenv("LLM_SERVICE_TOKEN", "")
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="LLM service authentication is not configured",
+        )
+    if credentials is None or not secrets.compare_digest(credentials.credentials, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid service credential",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+app = FastAPI(
+    title="Skill Hub LLM Service",
+    version="0.1.0",
+)
+protected = [Depends(require_service_token)]
+app.include_router(enrich_router, dependencies=protected)
+app.include_router(evaluate_router, dependencies=protected)
 logger = logging.getLogger("skillhub_llm")
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error(
+    _request: Request, _error: RequestValidationError
+) -> JSONResponse:
+    """Keep FastAPI's runtime 422 body aligned with the OpenAPI Error schema."""
+    return JSONResponse(status_code=422, content={"detail": "request validation failed"})
 
 # LiteLLM gateway base URL (Iron Rule 8: all model calls via LiteLLM, never direct).
 LITELLM_BASE_URL = os.getenv("LITELLM_BASE_URL", "http://localhost:4000")
 LITELLM_API_KEY = os.getenv("LITELLM_API_KEY", "sk-1234")
 
 EMBED_MODEL = "text-embedding-3-small"
-MATCH_REASON_MODEL = os.getenv("MATCH_REASON_MODEL", "gpt-4o-mini")
+MATCH_REASON_MODEL = os.getenv("MATCH_REASON_MODEL", "gpt-5.6-luna")
 # Suggestion-class work runs on the mini tier (PDM-003 §11.6: the flagship buys
 # nothing measurable here and costs 6.7x).
 SUGGEST_CRITERIA_MODEL = os.getenv("SUGGEST_CRITERIA_MODEL", "gpt-5.4-mini")
@@ -54,7 +92,7 @@ class EmbedResponse(BaseModel):
     dimensions: int
 
 
-@app.post("/embed", response_model=EmbedResponse)
+@app.post("/embed", response_model=EmbedResponse, dependencies=protected)
 async def embed(req: EmbedRequest) -> EmbedResponse:
     """Generate embeddings for one or more texts.
 
@@ -73,8 +111,19 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
         logger.exception("embedding call failed")
         raise HTTPException(status_code=502, detail=f"embedding provider error: {e}") from e
 
-    vectors = [item["embedding"] for item in response.data]
-    dims = len(vectors[0]) if vectors else 0
+    try:
+        vectors = [item["embedding"] for item in response.data]
+        valid = (
+            len(vectors) == len(req.texts)
+            and all(isinstance(vector, list) and len(vector) == 1536 for vector in vectors)
+        )
+    except (AttributeError, KeyError, TypeError):
+        valid = False
+        vectors = []
+    if not valid:
+        logger.warning("embedding provider returned a malformed envelope")
+        raise HTTPException(status_code=502, detail="embedding provider returned malformed output")
+    dims = 1536
     return EmbedResponse(embeddings=vectors, model=EMBED_MODEL, dimensions=dims)
 
 
@@ -88,7 +137,7 @@ class SkillCandidate(BaseModel):
 
 
 class MatchReasonsRequest(BaseModel):
-    query: str = Field(..., min_length=1)
+    query: str = Field(..., min_length=1, max_length=2000)
     candidates: list[SkillCandidate] = Field(..., min_length=1, max_length=20)
 
 
@@ -109,7 +158,7 @@ class MatchReasonsResponse(BaseModel):
     reasons: list[MatchReason]
 
 
-@app.post("/match-reasons", response_model=MatchReasonsResponse)
+@app.post("/match-reasons", response_model=MatchReasonsResponse, dependencies=protected)
 async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
     """Generate human-readable match reasons for search result candidates.
 
@@ -164,7 +213,13 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         logger.exception("match-reasons LLM call failed")
         raise HTTPException(status_code=502, detail=f"match-reasons provider error: {e}") from e
 
-    raw = (response.choices[0].message.content or "").strip()
+    try:
+        raw = (response.choices[0].message.content or "").strip()
+    except (AttributeError, IndexError, TypeError):
+        logger.warning("match-reasons provider returned a malformed envelope")
+        raise HTTPException(
+            status_code=502, detail="match-reasons provider returned malformed output"
+        ) from None
     try:
         parsed = MatchReasonsResponse.model_validate_json(raw)
     except ValidationError:
@@ -236,7 +291,7 @@ class SuggestCriteriaResponse(BaseModel):
     criteria: list[SuggestedCriterion]
 
 
-@app.post("/suggest-criteria", response_model=SuggestCriteriaResponse)
+@app.post("/suggest-criteria", response_model=SuggestCriteriaResponse, dependencies=protected)
 async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaResponse:
     """Propose acceptance criteria for one test case (02:TEST-001 自動建議).
 

@@ -20,6 +20,7 @@ resolve. None of them is a guarantee on its own, which is why there are four.
 from __future__ import annotations
 
 import logging
+import math
 import os
 from datetime import datetime
 from typing import Literal
@@ -162,19 +163,17 @@ one new package version, never an edit to an existing one.
 For each problem worth fixing, write one proposal:
 - category: `skill` for the package's own content, `runtime` for the execution \
 environment or its dependencies, `tool` for the tools the run used, `dataset` for the \
-test input. Never use `mcp`: remote MCP is out of this release, so such a proposal \
-cannot be applied and will be discarded.
+test input. Only propose a problem in any category when it can be fixed by replacing \
+one of the package files whose current content you were given.
 - problem: what is wrong, in one or two sentences.
 - evidence: what in the evaluation digest supports it, quoted from the digest. Do not \
 invent a finding the digest does not contain.
 - target_path: the package-relative path of the file to change, exactly as it appears \
 in the file tree. Never an absolute path and never one containing `..`; a path that \
-normalises outside the package is refused rather than cleaned up. Use an empty string \
-when the proposal is not about a package file.
+normalises outside the package is refused rather than cleaned up. It must not be empty.
 - proposed_content: the COMPLETE new content of that file. Not a diff, not an excerpt, \
 not a description of the change - what you write replaces the file byte for byte. \
-Propose content only for a file whose current content you were given. Use an empty \
-string when target_path is empty.
+Propose content only for a file whose current content you were given. It must not be empty.
 - expected_impact: what would be different about the next run if this were applied.
 
 Propose the changes with the most effect first, and at most {MAX_SUGGESTIONS}. Propose \
@@ -191,10 +190,9 @@ def _client() -> AsyncOpenAI:
     """OpenAI-compatible client pointed at the LiteLLM gateway (Iron Rule 8).
 
     No provider fallback: an unconfigured process must fail loudly rather than
-    reach a provider directly. Unlike /v1/enrich-skill there is no 503 - the
-    contract gives these two routes 422 and 502 only, so an unconfigured gateway
-    surfaces as a failed call rather than as a state of its own (the same
-    treatment /suggest-criteria gets). Read at call time so import never fails.
+    reach a provider directly. Gateway/model failures surface as 502; the
+    service-level bearer guard reports its own missing configuration as 503.
+    Read at call time so import never fails.
     """
     return AsyncOpenAI(
         base_url=os.getenv("LITELLM_BASE_URL", "http://localhost:4000"),
@@ -251,13 +249,26 @@ def _usage(completion, headers) -> GatewayUsage | None:
     reported = getattr(completion, "usage", None)
     if reported is None:
         return None
+    prompt_tokens = getattr(reported, "prompt_tokens", None)
+    completion_tokens = getattr(reported, "completion_tokens", None)
+    if (
+        not isinstance(prompt_tokens, int)
+        or isinstance(prompt_tokens, bool)
+        or prompt_tokens < 0
+        or not isinstance(completion_tokens, int)
+        or isinstance(completion_tokens, bool)
+        or completion_tokens < 0
+    ):
+        return None
     try:
         cost = float(headers["x-litellm-response-cost"])
     except (KeyError, TypeError, ValueError):
         cost = None
+    if cost is not None and (not math.isfinite(cost) or cost < 0):
+        cost = None
     return GatewayUsage(
-        prompt_tokens=reported.prompt_tokens or 0,
-        completion_tokens=reported.completion_tokens or 0,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
         cost_usd=cost,
         cost_source="gateway" if cost is not None else None,
     )
@@ -335,7 +346,7 @@ class JudgeRunRequest(BaseModel):
     user_prompt: str = Field(..., min_length=1, max_length=40_000)
     criteria: list[JudgeCriterion] = Field(..., min_length=1, max_length=20)
     rubric: Rubric | None = None
-    final_output: str = Field("", max_length=40_000)
+    final_output: str = Field(..., max_length=40_000)
     artifacts: list[JudgeArtifact] = Field(default_factory=list, max_length=500)
     trace_digest: TraceDigest
     truncation: list[str] = Field(default_factory=list, max_length=100)
@@ -516,7 +527,9 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
                     "schema": JudgeVerdict.model_json_schema(),
                 },
             },
-            extra_body=_metadata(run_id=req.run_id, evaluation_id=req.evaluation_id),
+            extra_body=_metadata(
+                run_id=req.run_id, evaluation_id=req.evaluation_id, operation="judge"
+            ),
         )
         completion = raw.parse()
     except OpenAIError as e:
@@ -575,7 +588,7 @@ class ImprovementProposal(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    category: Literal["skill", "runtime", "mcp", "tool", "dataset"]
+    category: Literal["skill", "runtime", "tool", "dataset"]
     problem: str
     evidence: str
     target_path: str
@@ -642,7 +655,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
                     "schema": ImprovementProposals.model_json_schema(),
                 },
             },
-            extra_body=_metadata(evaluation_id=req.evaluation_id),
+            extra_body=_metadata(evaluation_id=req.evaluation_id, operation="suggest"),
         )
         completion = raw.parse()
     except OpenAIError as e:
@@ -663,19 +676,26 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
     kept: list[ImprovementProposal] = []
     for s in parsed.suggestions:
         problem = s.problem.strip()
+        if (
+            not problem
+            or len(problem) > MAX_PROBLEM
+            or len(s.evidence) > MAX_EVIDENCE
+            or not s.target_path
+            or len(s.target_path) > MAX_TARGET_PATH
+            or not s.proposed_content
+            or len(s.proposed_content) > MAX_PROPOSED_CONTENT
+            or not s.expected_impact.strip()
+            or len(s.expected_impact) > MAX_EXPECTED_IMPACT
+        ):
+            logger.warning("suggest-improvements: model returned an unapplicable proposal")
+            raise HTTPException(
+                status_code=502, detail="suggestion model returned malformed output"
+            )
         key = (s.category, s.target_path, problem)
-        # `mcp` is a type placeholder the MVP never produces: remote MCP is out of
-        # first release, so such a proposal could not be applied even if accepted.
-        # Stated in the prompt and enforced here, because a promise that lives
-        # only in a prompt is not a promise.
-        if s.category == "mcp" or not problem or key in seen:
+        if not problem or key in seen:
             continue
         seen.add(key)
-        s.problem = _clip(problem, MAX_PROBLEM)
-        s.evidence = _clip(s.evidence, MAX_EVIDENCE)
-        s.target_path = _clip(s.target_path, MAX_TARGET_PATH)
-        s.proposed_content = _clip(s.proposed_content, MAX_PROPOSED_CONTENT)
-        s.expected_impact = _clip(s.expected_impact, MAX_EXPECTED_IMPACT)
+        s.problem = problem
         kept.append(s)
         if len(kept) == MAX_SUGGESTIONS:
             break

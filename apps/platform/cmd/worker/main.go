@@ -100,7 +100,12 @@ func main() {
 	// be produced - which is a visible state, not a lenient verdict.
 	evaluations := &eval.Service{Pool: pool, Store: store}
 	if llmURL := os.Getenv("LLM_SERVICE_URL"); llmURL != "" {
-		client := &llmclient.Client{BaseURL: llmURL}
+		token := os.Getenv("LLM_SERVICE_TOKEN")
+		if token == "" {
+			slog.Error("LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set")
+			os.Exit(1)
+		}
+		client := &llmclient.Client{BaseURL: llmURL, Token: token}
 		evaluations.Judge = client
 		// EVAL-002's proposal leg, same service and same gateway. Without it a run
 		// still gets a verdict; it simply gets no advice, which is a complete
@@ -120,6 +125,7 @@ func main() {
 	river.AddWorker(workers, &run.OrphanScanWorker{Svc: runs})
 	river.AddWorker(workers, &run.SuperviseWorker{Svc: runs})
 	river.AddWorker(workers, &eval.Worker{Svc: evaluations})
+	river.AddWorker(workers, &eval.RecoveryWorker{Svc: evaluations})
 	river.AddWorker(workers, &outbox.Worker{Pool: pool})
 	// SEC-006 retention and 04 丙-9's object-existence check, one sweep: expired
 	// download packages lose their bytes, and rows whose object has gone missing
@@ -138,6 +144,9 @@ func main() {
 		// do not each sweep. RunOnStart is what makes the supervisor the restart
 		// recovery path (RUN-008) and not merely a watchdog.
 		PeriodicJobs: []*river.PeriodicJob{
+			river.NewPeriodicJob(river.PeriodicInterval(eval.RecoveryInterval),
+				func() (river.JobArgs, *river.InsertOpts) { return eval.RecoveryArgs{}, nil },
+				&river.PeriodicJobOpts{RunOnStart: true}),
 			river.NewPeriodicJob(river.PeriodicInterval(run.SuperviseInterval),
 				func() (river.JobArgs, *river.InsertOpts) { return run.SuperviseArgs{}, nil },
 				&river.PeriodicJobOpts{RunOnStart: true}),

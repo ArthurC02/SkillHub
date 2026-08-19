@@ -93,6 +93,17 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 			"evaluation_id", uuidString(ev.ID), "error", err)
 		return
 	}
+	if resp.Usage != nil && resp.Usage.CostUSD != nil && resp.Usage.CostSource != "gateway" {
+		resp.Usage.CostUSD = nil
+		resp.Usage.CostSource = ""
+	}
+	if err := s.recordModelUsage(ctx, ev.ID, ev.WorkspaceID, "suggest",
+		resp.Model, resp.PromptVersion, resp.Usage); err != nil {
+		slog.Warn("evaluation suggestion usage not stored",
+			"evaluation_id", uuidString(ev.ID), "error", err)
+		// The paid model result is still useful. Accounting availability is not
+		// permission to discard proposals after a successful external call.
+	}
 
 	q := s.queries()
 	stored := 0
@@ -196,9 +207,10 @@ func suggestionDigest(m material, v verdict) (string, []EvidenceRef) {
 	refs := make([]EvidenceRef, 0, maxDigestEvidence)
 	addRefs := func(in []EvidenceRef) {
 		for _, r := range in {
-			if len(refs) < maxDigestEvidence {
-				refs = append(refs, r)
+			if len(refs) >= maxDigestEvidence {
+				return
 			}
+			refs = append(refs, r)
 			if b.Len() < maxDigestChars {
 				excerpt, _ := cut(r.Excerpt, 400)
 				fmt.Fprintf(&b, "    evidence (%s): %s\n", r.Kind, excerpt)

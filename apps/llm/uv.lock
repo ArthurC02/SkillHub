@@ -1480,7 +1480,6 @@ dependencies = [
     { name = "fastapi" },
     { name = "litellm" },
     { name = "openai" },
-    { name = "skillhub-api-stub" },
     { name = "uvicorn" },
 ]
 
@@ -1489,6 +1488,7 @@ dev = [
     { name = "httpx" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "skillhub-api-stub" },
 ]
 
 [package.metadata]
@@ -1496,7 +1496,6 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "litellm", specifier = ">=1.40" },
     { name = "openai", specifier = ">=1.60" },
-    { name = "skillhub-api-stub", editable = "../../packages/api-stub-py" },
     { name = "uvicorn", specifier = ">=0.32" },
 ]
 
@@ -1505,6 +1504,7 @@ dev = [
     { name = "httpx", specifier = ">=0.28" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "ruff", specifier = ">=0.8" },
+    { name = "skillhub-api-stub", editable = "../../packages/api-stub-py" },
 ]
 
 [[package]]

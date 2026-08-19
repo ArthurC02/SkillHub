@@ -58,6 +58,16 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 	if err != nil {
 		return verdict{}, err
 	}
+	if resp.Usage != nil && resp.Usage.CostUSD != nil && resp.Usage.CostSource != "gateway" {
+		// The internal contract has no estimated source. An unrecognised label is
+		// unreported accounting, not permission to relabel it as an estimate.
+		resp.Usage.CostUSD = nil
+		resp.Usage.CostSource = ""
+	}
+	if err := s.recordModelUsage(ctx, ev.ID, ev.WorkspaceID, "judge",
+		resp.Model, resp.PromptVersion, resp.Usage); err != nil {
+		return verdict{}, err
+	}
 
 	results := s.merge(m, resp.Verdict, digest, len(truncation) > 0)
 	v := verdict{
@@ -149,6 +159,9 @@ func (s *Service) buildRequest(
 	}
 
 	entries, digest, cutDigest := buildDigest(m.advanced)
+	if m.advanced.EvaluationTruncated {
+		truncation = append(truncation, "trace_events")
+	}
 	if cutDigest {
 		truncation = append(truncation, "trace_digest.entries")
 	}
@@ -237,13 +250,16 @@ func buildDigest(view trace.AdvancedView) ([]llmclient.TraceDigestEntry, map[str
 	entries := make([]llmclient.TraceDigestEntry, 0, len(citable))
 	digest := make(map[string]trace.EventView, len(citable))
 	for _, e := range citable {
-		excerpt, _ := cut(string(e.Payload), maxDigestEntry)
+		excerpt, cutExcerpt := cut(string(e.Payload), maxDigestEntry)
 		entries = append(entries, llmclient.TraceDigestEntry{
 			TraceEventID: e.EventID,
 			OccurredAt:   e.OccurredAt,
 			Type:         e.Type,
 			Excerpt:      excerpt,
 		})
+		if cutExcerpt {
+			truncated = true
+		}
 		digest[e.EventID] = e
 	}
 	return entries, digest, truncated
@@ -297,6 +313,11 @@ func (s *Service) merge(
 			result.Result = ResultUndetermined
 			result.Reason = "evidence_unverifiable: " + strings.Join(unverifiable, "; ") +
 				". The judge's own reasoning was: " + cv.Reason
+		}
+		if result.Result != ResultUndetermined && len(result.Evidence) == 0 {
+			result.Result = ResultUndetermined
+			result.Reason = "the judge returned no verifiable evidence for this verdict. " +
+				"The judge's own reasoning was: " + cv.Reason
 		}
 		// 丙-1 and the truncation rule of §6.3: evidence that may be missing cannot
 		// support a pass. It can still support a failure — a criterion contradicted

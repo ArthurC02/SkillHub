@@ -2,12 +2,28 @@ package llmclient
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 )
+
+func TestClientAuthenticatesToTheInternalService(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("Authorization"); got != "Bearer service-secret" {
+			t.Fatalf("Authorization = %q, want service bearer", got)
+		}
+		_ = json.NewEncoder(w).Encode(EmbedResponse{Embeddings: [][]float32{{1}}, Dimensions: 1})
+	}))
+	defer srv.Close()
+
+	c := &Client{BaseURL: srv.URL, Token: "service-secret"}
+	if _, err := c.Embed(context.Background(), []string{"anything"}); err != nil {
+		t.Fatalf("Embed: %v", err)
+	}
+}
 
 // The client must impose no deadline of its own: the caller's ctx is the only
 // one. A second, shorter client-side timeout is invisible to the caller, fires

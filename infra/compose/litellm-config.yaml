@@ -30,6 +30,11 @@ model_list:
       model: openai/gpt-5.6-terra
       api_key: os.environ/OPENAI_API_KEY
       additional_drop_params: ["reasoning_effort", "thinking"]
+  - model_name: gpt-5.6-luna # search rewrite and match-reason tier
+    litellm_params:
+      model: openai/gpt-5.6-luna
+      api_key: os.environ/OPENAI_API_KEY
+      additional_drop_params: ["reasoning_effort", "thinking"]
   - model_name: text-embedding-3-small
     litellm_params:
       model: openai/text-embedding-3-small

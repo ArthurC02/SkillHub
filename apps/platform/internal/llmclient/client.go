@@ -14,6 +14,7 @@ import (
 // Client calls the internal LLM service endpoints.
 type Client struct {
 	BaseURL    string       // e.g. "http://localhost:8001"
+	Token      string       // static service credential (ADR-020)
 	HTTPClient *http.Client // uses http.DefaultClient if nil
 }
 
@@ -54,6 +55,9 @@ func post[Req, Resp any](ctx context.Context, c *Client, path string, reqBody Re
 		return nil, fmt.Errorf("llmclient: create %s request: %w", path, err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if c.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
 
 	resp, err := c.httpClient().Do(req)
 	if err != nil {
@@ -320,10 +324,14 @@ type JudgeVerdict struct {
 // Additive and optional: the contract's JudgeRunResponse does not require it, and
 // a nil here means unreported — which the caller must not render as zero
 // (same rule as the trace usage event's cost_usd).
-type JudgeUsage struct {
-	CostUSD    *float64 `json:"cost_usd"`
-	CostSource string   `json:"cost_source"`
+type GatewayUsage struct {
+	PromptTokens     int64    `json:"prompt_tokens"`
+	CompletionTokens int64    `json:"completion_tokens"`
+	CostUSD          *float64 `json:"cost_usd"`
+	CostSource       string   `json:"cost_source"`
 }
+
+type JudgeUsage = GatewayUsage
 
 // JudgeRunResponse separates what the model wrote (`Verdict`) from what the
 // service knows and the model cannot influence (`Model`, `PromptVersion`).
@@ -388,6 +396,7 @@ type SuggestImprovementsResponse struct {
 	Suggestions   []ImprovementProposal `json:"suggestions"`
 	Model         string                `json:"model"`
 	PromptVersion string                `json:"prompt_version"`
+	Usage         *GatewayUsage         `json:"usage,omitempty"`
 }
 
 // SuggestImprovements asks the LLM service to propose improvements from one

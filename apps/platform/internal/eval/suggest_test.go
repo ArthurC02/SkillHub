@@ -12,11 +12,30 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/fs"
+	"strings"
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 )
+
+func TestSuggestionDigestNeverShowsEvidenceOutsideItsAllowlist(t *testing.T) {
+	v := verdict{overall: OverallNotMet, findings: []Finding{{
+		Category: CategoryEffect, Severity: SeverityWarning, Message: "needs work",
+	}}}
+	for i := 0; i < maxDigestEvidence+1; i++ {
+		v.findings[0].Evidence = append(v.findings[0].Evidence, EvidenceRef{
+			Kind: KindAgentOutput, Excerpt: strings.Repeat(string(rune('a'+i)), 20), Available: true,
+		})
+	}
+	digest, refs := suggestionDigest(material{}, v)
+	if len(refs) != maxDigestEvidence {
+		t.Fatalf("allowlist has %d refs, want %d", len(refs), maxDigestEvidence)
+	}
+	if strings.Contains(digest, strings.Repeat(string(rune('a'+maxDigestEvidence)), 20)) {
+		t.Fatal("prompt exposed evidence that was not in the verification allowlist")
+	}
+}
 
 func TestTargetPathsThatLeaveThePackageAreRefusedNotRepaired(t *testing.T) {
 	for _, in := range []string{

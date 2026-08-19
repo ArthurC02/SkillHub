@@ -41,6 +41,9 @@ import (
 // (WS-006), so callers turn it into a 404 whichever of the three it was.
 var ErrNotFound = errors.New("evaluation not found")
 
+var errEvaluationInProgress = errors.New("evaluation already in progress")
+var errEvaluationSettled = errors.New("evaluation already settled")
+
 // The four overall verdicts (02:EVAL-001 clause 3) and the three per-criterion
 // ones (clause 2). Both vocabularies are fixed by CHECK constraints in the
 // database; these are the Go copies, not second definitions.
@@ -191,6 +194,26 @@ type Service struct {
 
 func (s *Service) queries() *gen.Queries { return gen.New(s.Pool) }
 
+func (s *Service) recordModelUsage(
+	ctx context.Context, evaluationID, workspaceID pgtype.UUID, operation string,
+	model, promptVersion string, usage *llmclient.GatewayUsage,
+) error {
+	if usage == nil {
+		return nil
+	}
+	return s.queries().RecordEvaluationModelUsage(ctx, gen.RecordEvaluationModelUsageParams{
+		EvaluationID:     evaluationID,
+		WorkspaceID:      workspaceID,
+		Operation:        operation,
+		Model:            orUnknown(model),
+		PromptVersion:    orUnknown(promptVersion),
+		PromptTokens:     usage.PromptTokens,
+		CompletionTokens: usage.CompletionTokens,
+		CostUsd:          numeric(usage.CostUSD),
+		CostSource:       costSource(usage.CostUSD, usage.CostSource),
+	})
+}
+
 func (s *Service) judgeModel() string {
 	if s.JudgeModel != "" {
 		return s.JudgeModel
@@ -253,7 +276,21 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		return nil
 	}
 
+	// Evaluate is the first-attempt path. A current pending row belongs to a call
+	// already in flight, so a concurrent caller joins by doing nothing; only the
+	// River recovery path and periodic stale sweep may close interrupted work.
+	if current, currentErr := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
+		RunID: runID, WorkspaceID: workspaceID,
+	}); currentErr == nil && current.Status == StatusPending {
+		return nil
+	} else if currentErr != nil && !errors.Is(currentErr, pgx.ErrNoRows) {
+		return currentErr
+	}
+
 	ev, err := s.begin(ctx, m)
+	if errors.Is(err, errEvaluationInProgress) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -291,6 +328,58 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 	return s.completeAndSuggest(ctx, m, ev, v)
 }
 
+// recoverAttempt is the only work a retried River job may do. A current row of
+// any status proves the first attempt reached begin(): completed may be the
+// result of a Commit whose acknowledgement was lost, while pending means it
+// stopped before the verdict committed. Neither case may call the paid Judge
+// again. Only absence of a row proves the first attempt failed before starting.
+func (s *Service) recoverAttempt(ctx context.Context, workspaceID, runID pgtype.UUID) error {
+	current, err := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
+		RunID: runID, WorkspaceID: workspaceID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return s.Evaluate(ctx, workspaceID, runID)
+	}
+	if err != nil {
+		return err
+	}
+	if current.Status != StatusPending {
+		return nil
+	}
+	return s.recoverEvaluation(ctx, current.ID, workspaceID, runID)
+}
+
+// recoverEvaluation closes only the exact pending revision selected by a
+// recovery scan. A newer revision may supersede it between the scan and this
+// call; looking up the run's then-current row without comparing IDs would fail
+// that newer evaluation instead.
+func (s *Service) recoverEvaluation(
+	ctx context.Context, evaluationID, workspaceID, runID pgtype.UUID,
+) error {
+	current, err := s.queries().GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
+		RunID: runID, WorkspaceID: workspaceID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if current.ID != evaluationID || current.Status != StatusPending {
+		return nil
+	}
+	m, err := s.gather(ctx, workspaceID, runID)
+	if errors.Is(err, ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	findings := s.deterministicFindings(ctx, m)
+	return s.fail(ctx, m, current, findings, m.advanced.Complete,
+		errors.New("the previous evaluation attempt was interrupted before its verdict committed"))
+}
+
 // completeAndSuggest stores the verdict and then asks for improvement suggestions
 // (EVAL-002). In that order and not the other way round: the verdict is what this
 // job owes, and suggestions are advice about a verdict that already exists. If the
@@ -300,6 +389,9 @@ func (s *Service) completeAndSuggest(
 	ctx context.Context, m material, ev gen.Evaluation, v verdict,
 ) error {
 	if err := s.complete(ctx, m, ev, v); err != nil {
+		if errors.Is(err, errEvaluationSettled) {
+			return nil
+		}
 		return err
 	}
 	s.suggest(ctx, m, ev, v)
@@ -333,6 +425,15 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 		return m, err
 	}
 	m.run = run
+	attempts, err := q.ListRunAttempts(ctx, gen.ListRunAttemptsParams{
+		RunID: runID, WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return m, err
+	}
+	if len(attempts) > 0 {
+		m.attempt = int(attempts[len(attempts)-1].AttemptNumber)
+	}
 
 	if m.version, err = q.GetSkillVersion(ctx, gen.GetSkillVersionParams{
 		ID: run.SkillVersionID, WorkspaceID: workspaceID,
@@ -359,18 +460,12 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 	}
 
 	traceSvc := &trace.Service{Pool: s.Pool}
-	if m.advanced, err = traceSvc.Advanced(ctx, workspaceID, runID); err != nil {
+	if m.advanced, err = traceSvc.AdvancedAll(ctx, workspaceID, runID); err != nil {
 		return m, err
 	}
 	if m.summary, err = traceSvc.General(ctx, workspaceID, runID); err != nil {
 		return m, err
 	}
-	for _, e := range m.advanced.Events {
-		if e.Attempt > m.attempt {
-			m.attempt = e.Attempt
-		}
-	}
-
 	if m.artifacts, err = q.ListRunArtifacts(ctx, gen.ListRunArtifactsParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	}); err != nil {
@@ -401,6 +496,21 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.queries().WithTx(tx)
+	// Re-evaluation is append-only, but two callers may arrive together. Serialize
+	// the supersede/create pair so the partial current-row index is not a race.
+	lockKey := "evaluation:" + uuidString(m.run.WorkspaceID) + ":" + uuidString(m.run.ID)
+	if _, err := tx.Exec(ctx,
+		"SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", lockKey,
+	); err != nil {
+		return gen.Evaluation{}, err
+	}
+	if current, err := q.GetCurrentEvaluation(ctx, gen.GetCurrentEvaluationParams{
+		RunID: m.run.ID, WorkspaceID: m.run.WorkspaceID,
+	}); err == nil && current.Status == StatusPending {
+		return gen.Evaluation{}, errEvaluationInProgress
+	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return gen.Evaluation{}, err
+	}
 
 	if _, err := q.SupersedeCurrentEvaluation(ctx, gen.SupersedeCurrentEvaluationParams{
 		RunID: m.run.ID, WorkspaceID: m.run.WorkspaceID,
@@ -460,7 +570,9 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 		EvidenceComplete:      v.evidenceComplete,
 		CostUsd:               numeric(v.costUSD),
 		CostSource:            costSource(v.costUSD, v.costSource),
-	}); err != nil {
+	}); errors.Is(err, pgx.ErrNoRows) {
+		return errEvaluationSettled
+	} else if err != nil {
 		return err
 	}
 
@@ -507,7 +619,9 @@ func (s *Service) fail(
 		Summary:               strPtr(reason),
 		DeterministicFindings: encoded,
 		EvidenceComplete:      evidenceComplete,
-	}); err != nil {
+	}); errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	} else if err != nil {
 		return err
 	}
 	// status `error` on the envelope, `failure_reason` set: "the evaluation broke"
@@ -638,11 +752,8 @@ func numeric(v *float64) pgtype.Numeric {
 // present or both absent: an unlabelled number is exactly what NFR-001 calls
 // misleading.
 func costSource(v *float64, source string) *string {
-	if v == nil {
+	if v == nil || source != "gateway" {
 		return nil
-	}
-	if source != "gateway" {
-		source = "estimated"
 	}
 	return &source
 }

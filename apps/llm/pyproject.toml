@@ -12,7 +12,6 @@ dependencies = [
     "uvicorn>=0.32",
     "litellm>=1.40",
     "openai>=1.60",
-    "skillhub-api-stub",
 ]
 
 [tool.uv.sources]
@@ -23,6 +22,7 @@ dev = [
     "httpx>=0.28",
     "pytest>=8.3",
     "ruff>=0.8",
+    "skillhub-api-stub",
 ]
 
 [build-system]

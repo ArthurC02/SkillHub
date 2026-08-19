@@ -58,6 +58,11 @@ func main() {
 		slog.Warn("LLM_SERVICE_URL not set; skipping enrichment backfill, documents stay pending")
 		return
 	}
+	llmToken := os.Getenv("LLM_SERVICE_TOKEN")
+	if llmToken == "" {
+		slog.Error("LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set")
+		os.Exit(1)
+	}
 	store, err := objstore.New(
 		envOr("OBJSTORE_ENDPOINT", "localhost:8333"),
 		os.Getenv("OBJSTORE_ACCESS_KEY"),
@@ -70,7 +75,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	svc := &ingest.Service{Pool: pool, Store: store, LLM: &llmclient.Client{BaseURL: llmURL}}
+	svc := &ingest.Service{Pool: pool, Store: store, LLM: &llmclient.Client{BaseURL: llmURL, Token: llmToken}}
 	done, failed, err := svc.ReindexPending(ctx, batchSize())
 	if err != nil {
 		slog.Error("enrichment backfill", "error", err)

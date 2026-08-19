@@ -9,7 +9,7 @@ from openai import APIConnectionError
 from skillhub_llm import enrich
 from skillhub_llm.app import app
 
-client = TestClient(app)
+client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
 
 GOOD_PAYLOAD = {
     "summary": "把會議逐字稿整理成一頁式決議摘要 docx，需要上傳逐字稿檔案。",

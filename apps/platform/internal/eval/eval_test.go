@@ -276,11 +276,32 @@ func TestACriterionTheJudgeDidNotAnswerIsUndeterminedAndStillListed(t *testing.T
 	}
 }
 
+func TestVerdictWithoutVerifiedEvidenceIsUndetermined(t *testing.T) {
+	m, digest := fixtureMaterial(true)
+	results := (&Service{}).merge(m, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: ResultPassed, Reason: "trust me"},
+			{CriterionID: "c2", Result: ResultFailed, Reason: "also trust me"},
+		},
+	}, digest, false)
+
+	for _, result := range results {
+		if result.Result != ResultUndetermined {
+			t.Errorf("zero-evidence verdict survived: %+v", result)
+		}
+		if !strings.Contains(result.Reason, "no verifiable evidence") {
+			t.Errorf("downgrade does not explain the evidence failure: %q", result.Reason)
+		}
+	}
+}
+
 func TestAPassIsRefusedWhenTheEvidenceCouldBeIncomplete(t *testing.T) {
 	pass := llmclient.JudgeVerdict{
 		CriterionResults: []llmclient.CriterionVerdict{
-			{CriterionID: "c1", Result: ResultPassed, Reason: "looks right"},
-			{CriterionID: "c2", Result: ResultFailed, Reason: "no file"},
+			{CriterionID: "c1", Result: ResultPassed, Reason: "looks right",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"}}},
+			{CriterionID: "c2", Result: ResultFailed, Reason: "no file",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
 		},
 	}
 	s := &Service{}
@@ -421,6 +442,26 @@ func TestExcerptsAreCutOnRunesNotBytes(t *testing.T) {
 	}
 	if got, truncated := cut("short", 99); truncated || got != "short" {
 		t.Error("nothing under the budget is cut")
+	}
+}
+
+func TestEvaluationJobsGetOneRecoveryAttempt(t *testing.T) {
+	if got := InsertOpts().MaxAttempts; got != 2 {
+		t.Fatalf("MaxAttempts = %d, want 2 (one work attempt plus one recovery attempt)", got)
+	}
+}
+
+func TestDigestReportsAnExcerptCutAsTruncation(t *testing.T) {
+	view := trace.AdvancedView{Complete: true, Events: []trace.EventView{{
+		EventID: eventID, Type: trace.TypeAgentOutput,
+		Payload: json.RawMessage(`{"text":"` + strings.Repeat("x", maxDigestEntry) + `"}`),
+	}}}
+	entries, _, truncated := buildDigest(view)
+	if !truncated {
+		t.Fatal("cutting one trace payload was not reported as truncation")
+	}
+	if len([]rune(entries[0].Excerpt)) != maxDigestEntry {
+		t.Fatalf("excerpt length = %d, want %d", len([]rune(entries[0].Excerpt)), maxDigestEntry)
 	}
 }
 

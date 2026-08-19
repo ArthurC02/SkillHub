@@ -5,11 +5,34 @@ from fastapi.testclient import TestClient
 from skillhub_llm import app as app_module
 from skillhub_llm.app import app
 
-client = TestClient(app)
+client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
+
+
+def test_capabilities_reject_missing_or_wrong_service_token():
+    unauthenticated = TestClient(app)
+    assert unauthenticated.post("/embed", json={"texts": ["secret"]}).status_code == 401
+    assert (
+        unauthenticated.post(
+            "/embed",
+            headers={"Authorization": "Bearer wrong"},
+            json={"texts": ["secret"]},
+        ).status_code
+        == 401
+    )
+
+
+def test_service_fails_closed_when_authentication_is_not_configured():
+    with patch.dict("os.environ", {}, clear=True):
+        response = TestClient(app).post(
+            "/embed",
+            headers={"Authorization": "Bearer anything"},
+            json={"texts": ["secret"]},
+        )
+    assert response.status_code == 503
 
 
 def test_healthz_returns_ok():
-    response = client.get("/healthz")
+    response = TestClient(app).get("/healthz")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
@@ -17,11 +40,34 @@ def test_healthz_returns_ok():
 def test_embed_rejects_empty_texts():
     response = client.post("/embed", json={"texts": []})
     assert response.status_code == 422  # pydantic validation
+    assert response.json() == {"detail": "request validation failed"}
 
 
 def test_embed_rejects_missing_texts():
     response = client.post("/embed", json={})
     assert response.status_code == 422
+
+
+def test_embed_rejects_malformed_provider_envelope():
+    mock_response = type("Response", (), {"data": []})()
+    with patch("litellm.aembedding", AsyncMock(return_value=mock_response)):
+        response = client.post("/embed", json={"texts": ["one"]})
+    assert response.status_code == 502
+    assert response.json() == {"detail": "embedding provider returned malformed output"}
+
+
+def test_match_reasons_rejects_malformed_provider_envelope():
+    mock_response = type("Response", (), {"choices": []})()
+    with patch("litellm.acompletion", AsyncMock(return_value=mock_response)):
+        response = client.post(
+            "/match-reasons",
+            json={
+                "query": "build a PDF",
+                "candidates": [{"skill_id": "x", "name": "n", "summary": "s"}],
+            },
+        )
+    assert response.status_code == 502
+    assert response.json() == {"detail": "match-reasons provider returned malformed output"}
 
 
 def test_match_reasons_rejects_empty_query():

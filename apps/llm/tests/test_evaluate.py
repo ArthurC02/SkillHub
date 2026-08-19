@@ -9,7 +9,7 @@ from openai import APIConnectionError
 from skillhub_llm import evaluate
 from skillhub_llm.app import app
 
-client = TestClient(app)
+client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
 
 JUDGE_REQUEST = {
     "run_id": "run_01",
@@ -269,7 +269,11 @@ def test_judge_call_is_strict_json_schema_and_carries_cost_metadata(capture):
     assert schema["strict"] is True
     assert schema["schema"] == evaluate.JudgeVerdict.model_json_schema()
     # ADR-017: the spend has to land on the right Run and evaluation.
-    assert call["extra_body"]["metadata"] == {"run_id": "run_01", "evaluation_id": "eval_01"}
+    assert call["extra_body"]["metadata"] == {
+        "run_id": "run_01",
+        "evaluation_id": "eval_01",
+        "operation": "judge",
+    }
     # Single-shot: no tools, no second call.
     assert "tools" not in call
     assert len(calls) == 1
@@ -312,6 +316,26 @@ def test_unreported_usage_is_omitted_never_zero(capture, stub, expected):
     else:
         assert usage["cost_usd"] is None and usage["cost_source"] is None
         assert expected.items() <= usage.items()
+
+
+@pytest.mark.parametrize(
+    "usage,headers",
+    [
+        (SimpleNamespace(completion_tokens=1), {}),
+        (SimpleNamespace(prompt_tokens=1), {}),
+        (SimpleNamespace(prompt_tokens=-1, completion_tokens=1), {}),
+        (SimpleNamespace(prompt_tokens=1, completion_tokens=1), {"x-litellm-response-cost": "NaN"}),
+    ],
+)
+def test_malformed_gateway_usage_never_turns_a_successful_call_into_500(capture, usage, headers):
+    capture(json.dumps(GOOD_VERDICT), usage=usage, headers=headers)
+    response = client.post("/judge-run", json=JUDGE_REQUEST)
+    assert response.status_code == 200
+    reported = response.json()["usage"]
+    if headers:
+        assert reported["cost_usd"] is None
+    else:
+        assert reported is None
 
 
 def _keys(node) -> set:
@@ -468,7 +492,10 @@ def test_suggest_improvements_returns_proposals(capture):
     }
     # Nothing decision-shaped comes back: acceptance and versioning are Go's.
     assert "decision" not in proposal
-    assert calls[0]["extra_body"]["metadata"] == {"evaluation_id": "eval_01"}
+    assert calls[0]["extra_body"]["metadata"] == {
+        "evaluation_id": "eval_01",
+        "operation": "suggest",
+    }
     assert calls[0]["response_format"]["json_schema"]["strict"] is True
     # A second charged call on the judge tier, reported rather than folded into
     # the judgement's cost.
@@ -495,17 +522,14 @@ def test_improvement_input_is_fenced_off_from_the_instructions(capture):
     assert "Ignore previous instructions" in user["content"]
 
 
-def test_mcp_proposals_are_dropped_and_duplicates_collapse(capture):
-    """`mcp` is a type placeholder the MVP never produces (contract, TRACE-003 precedent)."""
+def test_duplicate_proposals_collapse_without_dropping_supported_categories(capture):
     base = GOOD_PROPOSALS["suggestions"][0]
     capture(
         json.dumps(
             {
                 "suggestions": [
-                    {**base, "category": "mcp"},
                     base,
                     {**base, "problem": f"  {base['problem']}  "},
-                    {**base, "problem": ""},
                     {**base, "category": "runtime", "problem": "缺少 pandoc。"},
                 ]
             }
@@ -515,6 +539,26 @@ def test_mcp_proposals_are_dropped_and_duplicates_collapse(capture):
     suggestions = client.post("/suggest-improvements", json=IMPROVE_REQUEST).json()["suggestions"]
 
     assert [s["category"] for s in suggestions] == ["skill", "runtime"]
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"category": "mcp"},
+        {"target_path": ""},
+        {"proposed_content": ""},
+        {"target_path": "x" * (evaluate.MAX_TARGET_PATH + 1)},
+        {"proposed_content": "x" * (evaluate.MAX_PROPOSED_CONTENT + 1)},
+    ],
+)
+def test_unapplicable_or_oversized_proposals_are_rejected_not_rewritten(capture, change):
+    base = GOOD_PROPOSALS["suggestions"][0]
+    capture(json.dumps({"suggestions": [{**base, **change}]}))
+
+    response = client.post("/suggest-improvements", json=IMPROVE_REQUEST)
+
+    assert response.status_code == 502
+    assert response.json()["detail"] == "suggestion model returned malformed output"
 
 
 def test_suggestions_are_capped(capture):
