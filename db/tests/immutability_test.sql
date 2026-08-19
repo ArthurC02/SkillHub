@@ -42,6 +42,17 @@ BEGIN
 END;
 $$;
 
+CREATE FUNCTION must_violate_unique(stmt text) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+    BEGIN
+        EXECUTE stmt;
+    EXCEPTION WHEN unique_violation THEN
+        RETURN;
+    END;
+    RAISE EXCEPTION 'expected a uniqueness rejection but statement succeeded: %', stmt;
+END;
+$$;
+
 -- Fixtures.
 INSERT INTO users (id, email, display_name)
 VALUES ('11111111-1111-1111-1111-111111111111', 'a@example.test', 'A');
@@ -70,16 +81,19 @@ SELECT must_fail($$DELETE FROM skill_versions WHERE content_hash = 'hash-1'$$);
 SELECT must_fail($$UPDATE test_case_snapshots SET user_prompt = 'edited' WHERE content_hash = 'hash-tc-1'$$);
 SELECT must_fail($$DELETE FROM test_case_snapshots WHERE content_hash = 'hash-tc-1'$$);
 
--- 3. A non-terminal run is still writable, and its transitions are logged.
-UPDATE runs SET status = 'running', started_at = now()
+-- 3. A non-terminal run is still writable, legal transitions are logged, and
+-- direct SQL cannot bypass the lifecycle matrix.
+SELECT must_violate_check($$UPDATE runs SET status = 'running'
+WHERE id = '77777777-7777-7777-7777-777777777777'$$);
+UPDATE runs SET status = 'provisioning', started_at = now()
 WHERE id = '77777777-7777-7777-7777-777777777777';
 INSERT INTO run_status_transitions (run_id, workspace_id, from_status, to_status, reason)
 VALUES ('77777777-7777-7777-7777-777777777777', '22222222-2222-2222-2222-222222222222',
-        'queued', 'running', 'provisioned');
+        'queued', 'provisioning', 'provisioned');
 
 -- 4. Transition log is append only.
-SELECT must_fail($$UPDATE run_status_transitions SET reason = 'rewritten' WHERE to_status = 'running'$$);
-SELECT must_fail($$DELETE FROM run_status_transitions WHERE to_status = 'running'$$);
+SELECT must_fail($$UPDATE run_status_transitions SET reason = 'rewritten' WHERE to_status = 'provisioning'$$);
+SELECT must_fail($$DELETE FROM run_status_transitions WHERE to_status = 'provisioning'$$);
 
 -- 5. Trace events are append only, and land in the monthly partition.
 INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at,
@@ -123,6 +137,16 @@ BEGIN
 END;
 $$;
 
+-- A different event cannot reuse a logical stream ordinal, even in another
+-- time partition. event_id idempotency alone does not protect gap detection.
+SELECT must_violate_unique($$
+    INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred_at,
+                              event_type, source, masked)
+    VALUES ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            '22222222-2222-2222-2222-222222222222', '77777777-7777-7777-7777-777777777777',
+            1, 1, '2027-03-14 10:00:00+00', 'agent_output', 'sandbox', true)
+$$);
+
 -- 5c. An event outside the pre-created month still lands, in the default partition.
 -- Without it the first run in a month nobody created a partition for would lose its
 -- whole trace (0019 partitioning note).
@@ -130,7 +154,7 @@ INSERT INTO trace_events (event_id, workspace_id, run_id, attempt, seq, occurred
                           event_type, source, masked)
 VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
         '22222222-2222-2222-2222-222222222222', '77777777-7777-7777-7777-777777777777',
-        1, 1, '2027-03-14 10:00:00+00', 'agent_output', 'sandbox', true);
+        1, 2, '2027-03-14 10:00:00+00', 'agent_output', 'sandbox', true);
 DO $$
 BEGIN
     IF (SELECT count(*) FROM trace_events_default) <> 1 THEN
@@ -140,6 +164,12 @@ END;
 $$;
 
 -- 6. A terminal run freezes, except for the cleanup columns (ADR-004).
+UPDATE runs SET status = 'preparing'
+WHERE id = '77777777-7777-7777-7777-777777777777';
+UPDATE runs SET status = 'running'
+WHERE id = '77777777-7777-7777-7777-777777777777';
+UPDATE runs SET status = 'evaluating'
+WHERE id = '77777777-7777-7777-7777-777777777777';
 UPDATE runs SET status = 'succeeded', finished_at = now()
 WHERE id = '77777777-7777-7777-7777-777777777777';
 SELECT must_fail($$UPDATE runs SET status = 'failed' WHERE id = '77777777-7777-7777-7777-777777777777'$$);

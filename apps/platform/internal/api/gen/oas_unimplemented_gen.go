@@ -493,7 +493,9 @@ func (UnimplementedHandler) GetRunQuota(ctx context.Context) (r GetRunQuotaRes, 
 //
 // `general` is a human-readable progress summary aggregated from the events: which skills were used,
 // how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is
-// the raw events in reconstructed order plus an explicit statement of which ones are missing.
+// the raw events in reliable receipt-order pages, with canonical ordering inside each page, plus an
+// explicit statement of which ones are missing. A consumer that needs one reconstructed cross-producer
+// timeline fetches all pages and applies the ordering tuple documented on `events`.
 //
 // There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext
 // an unmasked mode would show does not exist anywhere to be served.
@@ -607,7 +609,7 @@ func (UnimplementedHandler) ImportSkillFromURL(ctx context.Context, req *ImportS
 // most needs (RUN-004, TRACE-008).
 //
 // POST /internal/trace/{token}
-func (UnimplementedHandler) IngestTraceEvents(ctx context.Context, req []TraceEvent, params IngestTraceEventsParams) (r IngestTraceEventsRes, _ error) {
+func (UnimplementedHandler) IngestTraceEvents(ctx context.Context, req []SandboxTraceEvent, params IngestTraceEventsParams) (r IngestTraceEventsRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 
@@ -766,7 +768,7 @@ func (UnimplementedHandler) ListSkills(ctx context.Context) (r ListSkillsRes, _ 
 // List the caller's test cases (WS-004).
 //
 // GET /test-cases
-func (UnimplementedHandler) ListTestCases(ctx context.Context) (r ListTestCasesRes, _ error) {
+func (UnimplementedHandler) ListTestCases(ctx context.Context, params ListTestCasesParams) (r ListTestCasesRes, _ error) {
 	return r, ht.ErrNotImplemented
 }
 

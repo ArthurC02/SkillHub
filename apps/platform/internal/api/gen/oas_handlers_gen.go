@@ -6054,7 +6054,9 @@ func (s *Server) handleGetRunQuotaRequest(args [0]string, argsEscaped bool, w ht
 //
 // `general` is a human-readable progress summary aggregated from the events: which skills were used,
 // how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is
-// the raw events in reconstructed order plus an explicit statement of which ones are missing.
+// the raw events in reliable receipt-order pages, with canonical ordering inside each page, plus an
+// explicit statement of which ones are missing. A consumer that needs one reconstructed cross-producer
+// timeline fetches all pages and applies the ordering tuple documented on `events`.
 //
 // There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext
 // an unmasked mode would show does not exist anywhere to be served.
@@ -6212,6 +6214,10 @@ func (s *Server) handleGetRunTraceRequest(args [1]string, argsEscaped bool, w ht
 					Name: "mode",
 					In:   "query",
 				}: params.Mode,
+				{
+					Name: "after",
+					In:   "query",
+				}: params.After,
 			},
 			Raw: r,
 		}
@@ -7360,7 +7366,7 @@ func (s *Server) handleIngestTraceEventsRequest(args [1]string, argsEscaped bool
 		}
 
 		type (
-			Request  = []TraceEvent
+			Request  = []SandboxTraceEvent
 			Params   = IngestTraceEventsParams
 			Response = IngestTraceEventsRes
 		)
@@ -9582,6 +9588,16 @@ func (s *Server) handleListTestCasesRequest(args [0]string, argsEscaped bool, w 
 			return
 		}
 	}
+	params, err := decodeListTestCasesParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
 
 	var rawBody []byte
 
@@ -9594,13 +9610,22 @@ func (s *Server) handleListTestCasesRequest(args [0]string, argsEscaped bool, w 
 			OperationID:      "listTestCases",
 			Body:             nil,
 			RawBody:          rawBody,
-			Params:           middleware.Parameters{},
-			Raw:              r,
+			Params: middleware.Parameters{
+				{
+					Name: "limit",
+					In:   "query",
+				}: params.Limit,
+				{
+					Name: "offset",
+					In:   "query",
+				}: params.Offset,
+			},
+			Raw: r,
 		}
 
 		type (
 			Request  = struct{}
-			Params   = struct{}
+			Params   = ListTestCasesParams
 			Response = ListTestCasesRes
 		)
 		response, err = middleware.HookMiddleware[
@@ -9610,14 +9635,14 @@ func (s *Server) handleListTestCasesRequest(args [0]string, argsEscaped bool, w 
 		](
 			m,
 			mreq,
-			nil,
+			unpackListTestCasesParams,
 			func(ctx context.Context, request Request, params Params) (response Response, err error) {
-				response, err = s.h.ListTestCases(ctx)
+				response, err = s.h.ListTestCases(ctx, params)
 				return response, err
 			},
 		)
 	} else {
-		response, err = s.h.ListTestCases(ctx)
+		response, err = s.h.ListTestCases(ctx, params)
 	}
 	if err != nil {
 		defer recordError("Internal", err)

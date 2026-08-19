@@ -92,7 +92,7 @@ class SkillCandidate(BaseModel):
 
 
 class MatchReasonsRequest(BaseModel):
-    query: constr(min_length=1)
+    query: constr(min_length=1, max_length=2000)
     candidates: List[SkillCandidate] = Field(..., max_length=20, min_length=1)
 
 
@@ -420,7 +420,6 @@ class SuggestImprovementsRequest(BaseModel):
 class Category(Enum):
     skill = 'skill'
     runtime = 'runtime'
-    mcp = 'mcp'
     tool = 'tool'
     dataset = 'dataset'
 
@@ -431,7 +430,7 @@ class ImprovementProposal(BaseModel):
     )
     category: Category = Field(
         ...,
-        description='`mcp` is a type placeholder and is never produced in the MVP - remote\nMCP is out of first release, so the half of 02:EVAL-002 clause 2 that\nasks for MCP problems is shown as not applicable rather than filled in\n(same treatment as TRACE-003).\n',
+        description='Remote MCP is out of first release, so it is not part of this enum.\n',
     )
     problem: constr(max_length=2000)
     evidence: constr(max_length=2000) = Field(

@@ -10586,6 +10586,19 @@ func (s *GetRunTraceOK) Decode(d *jx.Decoder) error {
 				}
 				found = true
 				s.Type = match
+			case "errors_total":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Number {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := TraceSummaryGetRunTraceOK
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
 			case "events":
 				// Type-based discrimination: check if field has expected JSON type
 				if typ := d.Next(); typ != jx.Array {
@@ -10612,6 +10625,32 @@ func (s *GetRunTraceOK) Decode(d *jx.Decoder) error {
 				}
 				found = true
 				s.Type = match
+			case "has_more":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Bool {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := TraceAdvancedGetRunTraceOK
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
+			case "next_after":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Number {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := TraceAdvancedGetRunTraceOK
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
 			case "resources_read":
 				// Type-based discrimination: check if field has expected JSON type
 				if typ := d.Next(); typ != jx.Number {
@@ -10628,6 +10667,19 @@ func (s *GetRunTraceOK) Decode(d *jx.Decoder) error {
 			case "skills":
 				// Type-based discrimination: check if field has expected JSON type
 				if typ := d.Next(); typ != jx.Array {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := TraceSummaryGetRunTraceOK
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
+			case "skills_total":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Number {
 					// Field exists but has wrong type, not a match for this variant
 					return d.Skip()
 				}
@@ -10684,6 +10736,19 @@ func (s *GetRunTraceOK) Decode(d *jx.Decoder) error {
 					return d.Skip()
 				}
 				match := TraceAdvancedGetRunTraceOK
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
+			case "summary_truncated":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Bool {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := TraceSummaryGetRunTraceOK
 				if found && s.Type != match {
 					s.Type = ""
 					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
@@ -14933,8 +14998,8 @@ func (s *OptNilRubric) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
-// Encode encodes TraceAdvancedEventsItemStatus as json.
-func (o OptNilTraceAdvancedEventsItemStatus) Encode(e *jx.Encoder) {
+// Encode encodes SandboxTraceEventStatus as json.
+func (o OptNilSandboxTraceEventStatus) Encode(e *jx.Encoder) {
 	if !o.Set {
 		return
 	}
@@ -14945,17 +15010,17 @@ func (o OptNilTraceAdvancedEventsItemStatus) Encode(e *jx.Encoder) {
 	e.Str(string(o.Value))
 }
 
-// Decode decodes TraceAdvancedEventsItemStatus from json.
-func (o *OptNilTraceAdvancedEventsItemStatus) Decode(d *jx.Decoder) error {
+// Decode decodes SandboxTraceEventStatus from json.
+func (o *OptNilSandboxTraceEventStatus) Decode(d *jx.Decoder) error {
 	if o == nil {
-		return errors.New("invalid: unable to decode OptNilTraceAdvancedEventsItemStatus to nil")
+		return errors.New("invalid: unable to decode OptNilSandboxTraceEventStatus to nil")
 	}
 	if d.Next() == jx.Null {
 		if err := d.Null(); err != nil {
 			return err
 		}
 
-		var v TraceAdvancedEventsItemStatus
+		var v SandboxTraceEventStatus
 		o.Value = v
 		o.Set = true
 		o.Null = true
@@ -14970,63 +15035,14 @@ func (o *OptNilTraceAdvancedEventsItemStatus) Decode(d *jx.Decoder) error {
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s OptNilTraceAdvancedEventsItemStatus) MarshalJSON() ([]byte, error) {
+func (s OptNilSandboxTraceEventStatus) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *OptNilTraceAdvancedEventsItemStatus) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes TraceEventStatus as json.
-func (o OptNilTraceEventStatus) Encode(e *jx.Encoder) {
-	if !o.Set {
-		return
-	}
-	if o.Null {
-		e.Null()
-		return
-	}
-	e.Str(string(o.Value))
-}
-
-// Decode decodes TraceEventStatus from json.
-func (o *OptNilTraceEventStatus) Decode(d *jx.Decoder) error {
-	if o == nil {
-		return errors.New("invalid: unable to decode OptNilTraceEventStatus to nil")
-	}
-	if d.Next() == jx.Null {
-		if err := d.Null(); err != nil {
-			return err
-		}
-
-		var v TraceEventStatus
-		o.Value = v
-		o.Set = true
-		o.Null = true
-		return nil
-	}
-	o.Set = true
-	o.Null = false
-	if err := o.Value.Decode(d); err != nil {
-		return err
-	}
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s OptNilTraceEventStatus) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *OptNilTraceEventStatus) UnmarshalJSON(data []byte) error {
+func (s *OptNilSandboxTraceEventStatus) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -15491,6 +15507,39 @@ func (s OptSuggestionBlockedReason) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptSuggestionBlockedReason) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TraceEventViewStatus as json.
+func (o OptTraceEventViewStatus) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes TraceEventViewStatus from json.
+func (o *OptTraceEventViewStatus) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptTraceEventViewStatus to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptTraceEventViewStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptTraceEventViewStatus) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -22600,6 +22649,479 @@ func (s *RunTransitionsItem) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode implements json.Marshaler.
+func (s *SandboxTraceEvent) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *SandboxTraceEvent) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("schema_version")
+		e.Str(s.SchemaVersion)
+	}
+	{
+		e.FieldStart("event_id")
+		json.EncodeUUID(e, s.EventID)
+	}
+	{
+		e.FieldStart("run_id")
+		json.EncodeUUID(e, s.RunID)
+	}
+	{
+		e.FieldStart("attempt")
+		e.Int(s.Attempt)
+	}
+	{
+		e.FieldStart("seq")
+		e.Int(s.Seq)
+	}
+	{
+		e.FieldStart("occurred_at")
+		json.EncodeDateTime(e, s.OccurredAt)
+	}
+	{
+		e.FieldStart("emitted_by")
+		s.EmittedBy.Encode(e)
+	}
+	{
+		e.FieldStart("type")
+		s.Type.Encode(e)
+	}
+	{
+		if s.Status.Set {
+			e.FieldStart("status")
+			s.Status.Encode(e)
+		}
+	}
+	{
+		e.FieldStart("masked")
+		e.Bool(s.Masked)
+	}
+	{
+		if s.MaskedFields != nil {
+			e.FieldStart("masked_fields")
+			e.ArrStart()
+			for _, elem := range s.MaskedFields {
+				e.Str(elem)
+			}
+			e.ArrEnd()
+		}
+	}
+	{
+		e.FieldStart("payload")
+		s.Payload.Encode(e)
+	}
+}
+
+var jsonFieldsNameOfSandboxTraceEvent = [12]string{
+	0:  "schema_version",
+	1:  "event_id",
+	2:  "run_id",
+	3:  "attempt",
+	4:  "seq",
+	5:  "occurred_at",
+	6:  "emitted_by",
+	7:  "type",
+	8:  "status",
+	9:  "masked",
+	10: "masked_fields",
+	11: "payload",
+}
+
+// Decode decodes SandboxTraceEvent from json.
+func (s *SandboxTraceEvent) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SandboxTraceEvent to nil")
+	}
+	var requiredBitSet [2]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "schema_version":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.SchemaVersion = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"schema_version\"")
+			}
+		case "event_id":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.EventID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"event_id\"")
+			}
+		case "run_id":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.RunID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"run_id\"")
+			}
+		case "attempt":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Int()
+				s.Attempt = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"attempt\"")
+			}
+		case "seq":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				v, err := d.Int()
+				s.Seq = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"seq\"")
+			}
+		case "occurred_at":
+			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.OccurredAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"occurred_at\"")
+			}
+		case "emitted_by":
+			requiredBitSet[0] |= 1 << 6
+			if err := func() error {
+				if err := s.EmittedBy.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"emitted_by\"")
+			}
+		case "type":
+			requiredBitSet[0] |= 1 << 7
+			if err := func() error {
+				if err := s.Type.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"type\"")
+			}
+		case "status":
+			if err := func() error {
+				s.Status.Reset()
+				if err := s.Status.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"status\"")
+			}
+		case "masked":
+			requiredBitSet[1] |= 1 << 1
+			if err := func() error {
+				v, err := d.Bool()
+				s.Masked = bool(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"masked\"")
+			}
+		case "masked_fields":
+			if err := func() error {
+				s.MaskedFields = make([]string, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem string
+					v, err := d.Str()
+					elem = string(v)
+					if err != nil {
+						return err
+					}
+					s.MaskedFields = append(s.MaskedFields, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"masked_fields\"")
+			}
+		case "payload":
+			requiredBitSet[1] |= 1 << 3
+			if err := func() error {
+				if err := s.Payload.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"payload\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode SandboxTraceEvent")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [2]uint8{
+		0b11111111,
+		0b00001010,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfSandboxTraceEvent) {
+					name = jsonFieldsNameOfSandboxTraceEvent[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *SandboxTraceEvent) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SandboxTraceEvent) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SandboxTraceEventEmittedBy as json.
+func (s SandboxTraceEventEmittedBy) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SandboxTraceEventEmittedBy from json.
+func (s *SandboxTraceEventEmittedBy) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SandboxTraceEventEmittedBy to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SandboxTraceEventEmittedBy(v) {
+	case SandboxTraceEventEmittedBySandbox:
+		*s = SandboxTraceEventEmittedBySandbox
+	default:
+		*s = SandboxTraceEventEmittedBy(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SandboxTraceEventEmittedBy) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SandboxTraceEventEmittedBy) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *SandboxTraceEventPayload) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *SandboxTraceEventPayload) encodeFields(e *jx.Encoder) {
+}
+
+var jsonFieldsNameOfSandboxTraceEventPayload = [0]string{}
+
+// Decode decodes SandboxTraceEventPayload from json.
+func (s *SandboxTraceEventPayload) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SandboxTraceEventPayload to nil")
+	}
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		default:
+			return d.Skip()
+		}
+	}); err != nil {
+		return errors.Wrap(err, "decode SandboxTraceEventPayload")
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *SandboxTraceEventPayload) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SandboxTraceEventPayload) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SandboxTraceEventStatus as json.
+func (s SandboxTraceEventStatus) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SandboxTraceEventStatus from json.
+func (s *SandboxTraceEventStatus) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SandboxTraceEventStatus to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SandboxTraceEventStatus(v) {
+	case SandboxTraceEventStatusOk:
+		*s = SandboxTraceEventStatusOk
+	case SandboxTraceEventStatusError:
+		*s = SandboxTraceEventStatusError
+	case SandboxTraceEventStatusSkipped:
+		*s = SandboxTraceEventStatusSkipped
+	case SandboxTraceEventStatusCancelled:
+		*s = SandboxTraceEventStatusCancelled
+	case SandboxTraceEventStatusTimedOut:
+		*s = SandboxTraceEventStatusTimedOut
+	default:
+		*s = SandboxTraceEventStatus(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SandboxTraceEventStatus) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SandboxTraceEventStatus) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SandboxTraceEventType as json.
+func (s SandboxTraceEventType) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SandboxTraceEventType from json.
+func (s *SandboxTraceEventType) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SandboxTraceEventType to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SandboxTraceEventType(v) {
+	case SandboxTraceEventTypeSkillActivation:
+		*s = SandboxTraceEventTypeSkillActivation
+	case SandboxTraceEventTypeResourceRead:
+		*s = SandboxTraceEventTypeResourceRead
+	case SandboxTraceEventTypeToolCall:
+		*s = SandboxTraceEventTypeToolCall
+	case SandboxTraceEventTypeMcpCall:
+		*s = SandboxTraceEventTypeMcpCall
+	case SandboxTraceEventTypeScriptLog:
+		*s = SandboxTraceEventTypeScriptLog
+	case SandboxTraceEventTypeAgentOutput:
+		*s = SandboxTraceEventTypeAgentOutput
+	case SandboxTraceEventTypeError:
+		*s = SandboxTraceEventTypeError
+	case SandboxTraceEventTypeUsage:
+		*s = SandboxTraceEventTypeUsage
+	case SandboxTraceEventTypeRunLifecycle:
+		*s = SandboxTraceEventTypeRunLifecycle
+	default:
+		*s = SandboxTraceEventType(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SandboxTraceEventType) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SandboxTraceEventType) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes SaveSkillVersionBadRequest as json.
 func (s *SaveSkillVersionBadRequest) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -28673,13 +29195,23 @@ func (s *TraceAdvanced) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		e.FieldStart("next_after")
+		e.Int64(s.NextAfter)
+	}
+	{
+		e.FieldStart("has_more")
+		e.Bool(s.HasMore)
+	}
 }
 
-var jsonFieldsNameOfTraceAdvanced = [4]string{
+var jsonFieldsNameOfTraceAdvanced = [6]string{
 	0: "run_id",
 	1: "complete",
 	2: "streams",
 	3: "events",
+	4: "next_after",
+	5: "has_more",
 }
 
 // Decode decodes TraceAdvanced from json.
@@ -28736,9 +29268,9 @@ func (s *TraceAdvanced) Decode(d *jx.Decoder) error {
 		case "events":
 			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
-				s.Events = make([]TraceAdvancedEventsItem, 0)
+				s.Events = make([]TraceEventView, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
-					var elem TraceAdvancedEventsItem
+					var elem TraceEventView
 					if err := elem.Decode(d); err != nil {
 						return err
 					}
@@ -28751,6 +29283,30 @@ func (s *TraceAdvanced) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"events\"")
 			}
+		case "next_after":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				v, err := d.Int64()
+				s.NextAfter = int64(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"next_after\"")
+			}
+		case "has_more":
+			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				v, err := d.Bool()
+				s.HasMore = bool(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"has_more\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -28761,7 +29317,7 @@ func (s *TraceAdvanced) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00001111,
+		0b00111111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -28808,25 +29364,17 @@ func (s *TraceAdvanced) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
-func (s *TraceAdvancedEventsItem) Encode(e *jx.Encoder) {
+func (s *TraceEventView) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
 	e.ObjEnd()
 }
 
 // encodeFields encodes fields.
-func (s *TraceAdvancedEventsItem) encodeFields(e *jx.Encoder) {
-	{
-		e.FieldStart("schema_version")
-		e.Str(s.SchemaVersion)
-	}
+func (s *TraceEventView) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("event_id")
 		json.EncodeUUID(e, s.EventID)
-	}
-	{
-		e.FieldStart("run_id")
-		json.EncodeUUID(e, s.RunID)
 	}
 	{
 		e.FieldStart("attempt")
@@ -28855,70 +29403,49 @@ func (s *TraceAdvancedEventsItem) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
-		e.FieldStart("masked")
-		e.Bool(s.Masked)
-	}
-	{
-		if s.MaskedFields != nil {
-			e.FieldStart("masked_fields")
-			e.ArrStart()
-			for _, elem := range s.MaskedFields {
-				e.Str(elem)
-			}
-			e.ArrEnd()
-		}
-	}
-	{
-		e.FieldStart("payload")
-		s.Payload.Encode(e)
-	}
-	{
 		if s.Late.Set {
 			e.FieldStart("late")
 			s.Late.Encode(e)
 		}
 	}
+	{
+		e.FieldStart("masked_fields")
+		e.ArrStart()
+		for _, elem := range s.MaskedFields {
+			e.Str(elem)
+		}
+		e.ArrEnd()
+	}
+	{
+		e.FieldStart("payload")
+		s.Payload.Encode(e)
+	}
 }
 
-var jsonFieldsNameOfTraceAdvancedEventsItem = [13]string{
-	0:  "schema_version",
-	1:  "event_id",
-	2:  "run_id",
-	3:  "attempt",
-	4:  "seq",
-	5:  "occurred_at",
-	6:  "emitted_by",
-	7:  "type",
-	8:  "status",
-	9:  "masked",
-	10: "masked_fields",
-	11: "payload",
-	12: "late",
+var jsonFieldsNameOfTraceEventView = [10]string{
+	0: "event_id",
+	1: "attempt",
+	2: "seq",
+	3: "occurred_at",
+	4: "emitted_by",
+	5: "type",
+	6: "status",
+	7: "late",
+	8: "masked_fields",
+	9: "payload",
 }
 
-// Decode decodes TraceAdvancedEventsItem from json.
-func (s *TraceAdvancedEventsItem) Decode(d *jx.Decoder) error {
+// Decode decodes TraceEventView from json.
+func (s *TraceEventView) Decode(d *jx.Decoder) error {
 	if s == nil {
-		return errors.New("invalid: unable to decode TraceAdvancedEventsItem to nil")
+		return errors.New("invalid: unable to decode TraceEventView to nil")
 	}
 	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
-		case "schema_version":
-			requiredBitSet[0] |= 1 << 0
-			if err := func() error {
-				v, err := d.Str()
-				s.SchemaVersion = string(v)
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"schema_version\"")
-			}
 		case "event_id":
-			requiredBitSet[0] |= 1 << 1
+			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
 				v, err := json.DecodeUUID(d)
 				s.EventID = v
@@ -28929,20 +29456,8 @@ func (s *TraceAdvancedEventsItem) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"event_id\"")
 			}
-		case "run_id":
-			requiredBitSet[0] |= 1 << 2
-			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.RunID = v
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"run_id\"")
-			}
 		case "attempt":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
 				v, err := d.Int()
 				s.Attempt = int(v)
@@ -28954,7 +29469,7 @@ func (s *TraceAdvancedEventsItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"attempt\"")
 			}
 		case "seq":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				v, err := d.Int()
 				s.Seq = int(v)
@@ -28966,7 +29481,7 @@ func (s *TraceAdvancedEventsItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"seq\"")
 			}
 		case "occurred_at":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.OccurredAt = v
@@ -28978,7 +29493,7 @@ func (s *TraceAdvancedEventsItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"occurred_at\"")
 			}
 		case "emitted_by":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				if err := s.EmittedBy.Decode(d); err != nil {
 					return err
@@ -28988,7 +29503,7 @@ func (s *TraceAdvancedEventsItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"emitted_by\"")
 			}
 		case "type":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				if err := s.Type.Decode(d); err != nil {
 					return err
@@ -29006,47 +29521,6 @@ func (s *TraceAdvancedEventsItem) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"status\"")
-			}
-		case "masked":
-			requiredBitSet[1] |= 1 << 1
-			if err := func() error {
-				v, err := d.Bool()
-				s.Masked = bool(v)
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"masked\"")
-			}
-		case "masked_fields":
-			if err := func() error {
-				s.MaskedFields = make([]string, 0)
-				if err := d.Arr(func(d *jx.Decoder) error {
-					var elem string
-					v, err := d.Str()
-					elem = string(v)
-					if err != nil {
-						return err
-					}
-					s.MaskedFields = append(s.MaskedFields, elem)
-					return nil
-				}); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"masked_fields\"")
-			}
-		case "payload":
-			requiredBitSet[1] |= 1 << 3
-			if err := func() error {
-				if err := s.Payload.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"payload\"")
 			}
 		case "late":
 			if err := func() error {
@@ -29058,455 +29532,8 @@ func (s *TraceAdvancedEventsItem) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"late\"")
 			}
-		default:
-			return d.Skip()
-		}
-		return nil
-	}); err != nil {
-		return errors.Wrap(err, "decode TraceAdvancedEventsItem")
-	}
-	// Validate required fields.
-	var failures []validate.FieldError
-	for i, mask := range [2]uint8{
-		0b11111111,
-		0b00001010,
-	} {
-		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
-			// Mask only required fields and check equality to mask using XOR.
-			//
-			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
-			// Bits of fields which would be set are actually bits of missed fields.
-			missed := bits.OnesCount8(result)
-			for bitN := 0; bitN < missed; bitN++ {
-				bitIdx := bits.TrailingZeros8(result)
-				fieldIdx := i*8 + bitIdx
-				var name string
-				if fieldIdx < len(jsonFieldsNameOfTraceAdvancedEventsItem) {
-					name = jsonFieldsNameOfTraceAdvancedEventsItem[fieldIdx]
-				} else {
-					name = strconv.Itoa(fieldIdx)
-				}
-				failures = append(failures, validate.FieldError{
-					Name:  name,
-					Error: validate.ErrFieldRequired,
-				})
-				// Reset bit.
-				result &^= 1 << bitIdx
-			}
-		}
-	}
-	if len(failures) > 0 {
-		return &validate.Error{Fields: failures}
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s *TraceAdvancedEventsItem) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceAdvancedEventsItem) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes TraceAdvancedEventsItemEmittedBy as json.
-func (s TraceAdvancedEventsItemEmittedBy) Encode(e *jx.Encoder) {
-	e.Str(string(s))
-}
-
-// Decode decodes TraceAdvancedEventsItemEmittedBy from json.
-func (s *TraceAdvancedEventsItemEmittedBy) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode TraceAdvancedEventsItemEmittedBy to nil")
-	}
-	v, err := d.StrBytes()
-	if err != nil {
-		return err
-	}
-	// Try to use constant string.
-	switch TraceAdvancedEventsItemEmittedBy(v) {
-	case TraceAdvancedEventsItemEmittedBySandbox:
-		*s = TraceAdvancedEventsItemEmittedBySandbox
-	case TraceAdvancedEventsItemEmittedByOrchestrator:
-		*s = TraceAdvancedEventsItemEmittedByOrchestrator
-	case TraceAdvancedEventsItemEmittedByLlmService:
-		*s = TraceAdvancedEventsItemEmittedByLlmService
-	default:
-		*s = TraceAdvancedEventsItemEmittedBy(v)
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s TraceAdvancedEventsItemEmittedBy) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceAdvancedEventsItemEmittedBy) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode implements json.Marshaler.
-func (s *TraceAdvancedEventsItemPayload) Encode(e *jx.Encoder) {
-	e.ObjStart()
-	s.encodeFields(e)
-	e.ObjEnd()
-}
-
-// encodeFields encodes fields.
-func (s *TraceAdvancedEventsItemPayload) encodeFields(e *jx.Encoder) {
-}
-
-var jsonFieldsNameOfTraceAdvancedEventsItemPayload = [0]string{}
-
-// Decode decodes TraceAdvancedEventsItemPayload from json.
-func (s *TraceAdvancedEventsItemPayload) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode TraceAdvancedEventsItemPayload to nil")
-	}
-
-	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
-		switch string(k) {
-		default:
-			return d.Skip()
-		}
-	}); err != nil {
-		return errors.Wrap(err, "decode TraceAdvancedEventsItemPayload")
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s *TraceAdvancedEventsItemPayload) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceAdvancedEventsItemPayload) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes TraceAdvancedEventsItemStatus as json.
-func (s TraceAdvancedEventsItemStatus) Encode(e *jx.Encoder) {
-	e.Str(string(s))
-}
-
-// Decode decodes TraceAdvancedEventsItemStatus from json.
-func (s *TraceAdvancedEventsItemStatus) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode TraceAdvancedEventsItemStatus to nil")
-	}
-	v, err := d.StrBytes()
-	if err != nil {
-		return err
-	}
-	// Try to use constant string.
-	switch TraceAdvancedEventsItemStatus(v) {
-	case TraceAdvancedEventsItemStatusOk:
-		*s = TraceAdvancedEventsItemStatusOk
-	case TraceAdvancedEventsItemStatusError:
-		*s = TraceAdvancedEventsItemStatusError
-	case TraceAdvancedEventsItemStatusSkipped:
-		*s = TraceAdvancedEventsItemStatusSkipped
-	case TraceAdvancedEventsItemStatusCancelled:
-		*s = TraceAdvancedEventsItemStatusCancelled
-	case TraceAdvancedEventsItemStatusTimedOut:
-		*s = TraceAdvancedEventsItemStatusTimedOut
-	default:
-		*s = TraceAdvancedEventsItemStatus(v)
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s TraceAdvancedEventsItemStatus) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceAdvancedEventsItemStatus) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes TraceAdvancedEventsItemType as json.
-func (s TraceAdvancedEventsItemType) Encode(e *jx.Encoder) {
-	e.Str(string(s))
-}
-
-// Decode decodes TraceAdvancedEventsItemType from json.
-func (s *TraceAdvancedEventsItemType) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode TraceAdvancedEventsItemType to nil")
-	}
-	v, err := d.StrBytes()
-	if err != nil {
-		return err
-	}
-	// Try to use constant string.
-	switch TraceAdvancedEventsItemType(v) {
-	case TraceAdvancedEventsItemTypeSkillActivation:
-		*s = TraceAdvancedEventsItemTypeSkillActivation
-	case TraceAdvancedEventsItemTypeResourceRead:
-		*s = TraceAdvancedEventsItemTypeResourceRead
-	case TraceAdvancedEventsItemTypeToolCall:
-		*s = TraceAdvancedEventsItemTypeToolCall
-	case TraceAdvancedEventsItemTypeMcpCall:
-		*s = TraceAdvancedEventsItemTypeMcpCall
-	case TraceAdvancedEventsItemTypeScriptLog:
-		*s = TraceAdvancedEventsItemTypeScriptLog
-	case TraceAdvancedEventsItemTypeAgentOutput:
-		*s = TraceAdvancedEventsItemTypeAgentOutput
-	case TraceAdvancedEventsItemTypeError:
-		*s = TraceAdvancedEventsItemTypeError
-	case TraceAdvancedEventsItemTypeUsage:
-		*s = TraceAdvancedEventsItemTypeUsage
-	case TraceAdvancedEventsItemTypeRunLifecycle:
-		*s = TraceAdvancedEventsItemTypeRunLifecycle
-	default:
-		*s = TraceAdvancedEventsItemType(v)
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s TraceAdvancedEventsItemType) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceAdvancedEventsItemType) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode implements json.Marshaler.
-func (s *TraceEvent) Encode(e *jx.Encoder) {
-	e.ObjStart()
-	s.encodeFields(e)
-	e.ObjEnd()
-}
-
-// encodeFields encodes fields.
-func (s *TraceEvent) encodeFields(e *jx.Encoder) {
-	{
-		e.FieldStart("schema_version")
-		e.Str(s.SchemaVersion)
-	}
-	{
-		e.FieldStart("event_id")
-		json.EncodeUUID(e, s.EventID)
-	}
-	{
-		e.FieldStart("run_id")
-		json.EncodeUUID(e, s.RunID)
-	}
-	{
-		e.FieldStart("attempt")
-		e.Int(s.Attempt)
-	}
-	{
-		e.FieldStart("seq")
-		e.Int(s.Seq)
-	}
-	{
-		e.FieldStart("occurred_at")
-		json.EncodeDateTime(e, s.OccurredAt)
-	}
-	{
-		e.FieldStart("emitted_by")
-		s.EmittedBy.Encode(e)
-	}
-	{
-		e.FieldStart("type")
-		s.Type.Encode(e)
-	}
-	{
-		if s.Status.Set {
-			e.FieldStart("status")
-			s.Status.Encode(e)
-		}
-	}
-	{
-		e.FieldStart("masked")
-		e.Bool(s.Masked)
-	}
-	{
-		if s.MaskedFields != nil {
-			e.FieldStart("masked_fields")
-			e.ArrStart()
-			for _, elem := range s.MaskedFields {
-				e.Str(elem)
-			}
-			e.ArrEnd()
-		}
-	}
-	{
-		e.FieldStart("payload")
-		s.Payload.Encode(e)
-	}
-}
-
-var jsonFieldsNameOfTraceEvent = [12]string{
-	0:  "schema_version",
-	1:  "event_id",
-	2:  "run_id",
-	3:  "attempt",
-	4:  "seq",
-	5:  "occurred_at",
-	6:  "emitted_by",
-	7:  "type",
-	8:  "status",
-	9:  "masked",
-	10: "masked_fields",
-	11: "payload",
-}
-
-// Decode decodes TraceEvent from json.
-func (s *TraceEvent) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode TraceEvent to nil")
-	}
-	var requiredBitSet [2]uint8
-
-	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
-		switch string(k) {
-		case "schema_version":
-			requiredBitSet[0] |= 1 << 0
-			if err := func() error {
-				v, err := d.Str()
-				s.SchemaVersion = string(v)
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"schema_version\"")
-			}
-		case "event_id":
-			requiredBitSet[0] |= 1 << 1
-			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.EventID = v
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"event_id\"")
-			}
-		case "run_id":
-			requiredBitSet[0] |= 1 << 2
-			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.RunID = v
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"run_id\"")
-			}
-		case "attempt":
-			requiredBitSet[0] |= 1 << 3
-			if err := func() error {
-				v, err := d.Int()
-				s.Attempt = int(v)
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"attempt\"")
-			}
-		case "seq":
-			requiredBitSet[0] |= 1 << 4
-			if err := func() error {
-				v, err := d.Int()
-				s.Seq = int(v)
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"seq\"")
-			}
-		case "occurred_at":
-			requiredBitSet[0] |= 1 << 5
-			if err := func() error {
-				v, err := json.DecodeDateTime(d)
-				s.OccurredAt = v
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"occurred_at\"")
-			}
-		case "emitted_by":
-			requiredBitSet[0] |= 1 << 6
-			if err := func() error {
-				if err := s.EmittedBy.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"emitted_by\"")
-			}
-		case "type":
-			requiredBitSet[0] |= 1 << 7
-			if err := func() error {
-				if err := s.Type.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"type\"")
-			}
-		case "status":
-			if err := func() error {
-				s.Status.Reset()
-				if err := s.Status.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"status\"")
-			}
-		case "masked":
-			requiredBitSet[1] |= 1 << 1
-			if err := func() error {
-				v, err := d.Bool()
-				s.Masked = bool(v)
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"masked\"")
-			}
 		case "masked_fields":
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				s.MaskedFields = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -29526,7 +29553,7 @@ func (s *TraceEvent) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"masked_fields\"")
 			}
 		case "payload":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				if err := s.Payload.Decode(d); err != nil {
 					return err
@@ -29540,13 +29567,13 @@ func (s *TraceEvent) Decode(d *jx.Decoder) error {
 		}
 		return nil
 	}); err != nil {
-		return errors.Wrap(err, "decode TraceEvent")
+		return errors.Wrap(err, "decode TraceEventView")
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b11111111,
-		0b00001010,
+		0b00111111,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -29558,8 +29585,8 @@ func (s *TraceEvent) Decode(d *jx.Decoder) error {
 				bitIdx := bits.TrailingZeros8(result)
 				fieldIdx := i*8 + bitIdx
 				var name string
-				if fieldIdx < len(jsonFieldsNameOfTraceEvent) {
-					name = jsonFieldsNameOfTraceEvent[fieldIdx]
+				if fieldIdx < len(jsonFieldsNameOfTraceEventView) {
+					name = jsonFieldsNameOfTraceEventView[fieldIdx]
 				} else {
 					name = strconv.Itoa(fieldIdx)
 				}
@@ -29580,77 +29607,77 @@ func (s *TraceEvent) Decode(d *jx.Decoder) error {
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s *TraceEvent) MarshalJSON() ([]byte, error) {
+func (s *TraceEventView) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceEvent) UnmarshalJSON(data []byte) error {
+func (s *TraceEventView) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
 
-// Encode encodes TraceEventEmittedBy as json.
-func (s TraceEventEmittedBy) Encode(e *jx.Encoder) {
+// Encode encodes TraceEventViewEmittedBy as json.
+func (s TraceEventViewEmittedBy) Encode(e *jx.Encoder) {
 	e.Str(string(s))
 }
 
-// Decode decodes TraceEventEmittedBy from json.
-func (s *TraceEventEmittedBy) Decode(d *jx.Decoder) error {
+// Decode decodes TraceEventViewEmittedBy from json.
+func (s *TraceEventViewEmittedBy) Decode(d *jx.Decoder) error {
 	if s == nil {
-		return errors.New("invalid: unable to decode TraceEventEmittedBy to nil")
+		return errors.New("invalid: unable to decode TraceEventViewEmittedBy to nil")
 	}
 	v, err := d.StrBytes()
 	if err != nil {
 		return err
 	}
 	// Try to use constant string.
-	switch TraceEventEmittedBy(v) {
-	case TraceEventEmittedBySandbox:
-		*s = TraceEventEmittedBySandbox
-	case TraceEventEmittedByOrchestrator:
-		*s = TraceEventEmittedByOrchestrator
-	case TraceEventEmittedByLlmService:
-		*s = TraceEventEmittedByLlmService
+	switch TraceEventViewEmittedBy(v) {
+	case TraceEventViewEmittedBySandbox:
+		*s = TraceEventViewEmittedBySandbox
+	case TraceEventViewEmittedByOrchestrator:
+		*s = TraceEventViewEmittedByOrchestrator
+	case TraceEventViewEmittedByLlmService:
+		*s = TraceEventViewEmittedByLlmService
 	default:
-		*s = TraceEventEmittedBy(v)
+		*s = TraceEventViewEmittedBy(v)
 	}
 
 	return nil
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s TraceEventEmittedBy) MarshalJSON() ([]byte, error) {
+func (s TraceEventViewEmittedBy) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceEventEmittedBy) UnmarshalJSON(data []byte) error {
+func (s *TraceEventViewEmittedBy) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
 
 // Encode implements json.Marshaler.
-func (s *TraceEventPayload) Encode(e *jx.Encoder) {
+func (s *TraceEventViewPayload) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
 	e.ObjEnd()
 }
 
 // encodeFields encodes fields.
-func (s *TraceEventPayload) encodeFields(e *jx.Encoder) {
+func (s *TraceEventViewPayload) encodeFields(e *jx.Encoder) {
 }
 
-var jsonFieldsNameOfTraceEventPayload = [0]string{}
+var jsonFieldsNameOfTraceEventViewPayload = [0]string{}
 
-// Decode decodes TraceEventPayload from json.
-func (s *TraceEventPayload) Decode(d *jx.Decoder) error {
+// Decode decodes TraceEventViewPayload from json.
+func (s *TraceEventViewPayload) Decode(d *jx.Decoder) error {
 	if s == nil {
-		return errors.New("invalid: unable to decode TraceEventPayload to nil")
+		return errors.New("invalid: unable to decode TraceEventViewPayload to nil")
 	}
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
@@ -29659,121 +29686,125 @@ func (s *TraceEventPayload) Decode(d *jx.Decoder) error {
 			return d.Skip()
 		}
 	}); err != nil {
-		return errors.Wrap(err, "decode TraceEventPayload")
+		return errors.Wrap(err, "decode TraceEventViewPayload")
 	}
 
 	return nil
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s *TraceEventPayload) MarshalJSON() ([]byte, error) {
+func (s *TraceEventViewPayload) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceEventPayload) UnmarshalJSON(data []byte) error {
+func (s *TraceEventViewPayload) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
 
-// Encode encodes TraceEventStatus as json.
-func (s TraceEventStatus) Encode(e *jx.Encoder) {
+// Encode encodes TraceEventViewStatus as json.
+func (s TraceEventViewStatus) Encode(e *jx.Encoder) {
 	e.Str(string(s))
 }
 
-// Decode decodes TraceEventStatus from json.
-func (s *TraceEventStatus) Decode(d *jx.Decoder) error {
+// Decode decodes TraceEventViewStatus from json.
+func (s *TraceEventViewStatus) Decode(d *jx.Decoder) error {
 	if s == nil {
-		return errors.New("invalid: unable to decode TraceEventStatus to nil")
+		return errors.New("invalid: unable to decode TraceEventViewStatus to nil")
 	}
 	v, err := d.StrBytes()
 	if err != nil {
 		return err
 	}
 	// Try to use constant string.
-	switch TraceEventStatus(v) {
-	case TraceEventStatusOk:
-		*s = TraceEventStatusOk
-	case TraceEventStatusError:
-		*s = TraceEventStatusError
-	case TraceEventStatusSkipped:
-		*s = TraceEventStatusSkipped
-	case TraceEventStatusCancelled:
-		*s = TraceEventStatusCancelled
-	case TraceEventStatusTimedOut:
-		*s = TraceEventStatusTimedOut
+	switch TraceEventViewStatus(v) {
+	case TraceEventViewStatusOk:
+		*s = TraceEventViewStatusOk
+	case TraceEventViewStatusError:
+		*s = TraceEventViewStatusError
+	case TraceEventViewStatusSkipped:
+		*s = TraceEventViewStatusSkipped
+	case TraceEventViewStatusCancelled:
+		*s = TraceEventViewStatusCancelled
+	case TraceEventViewStatusTimedOut:
+		*s = TraceEventViewStatusTimedOut
 	default:
-		*s = TraceEventStatus(v)
+		*s = TraceEventViewStatus(v)
 	}
 
 	return nil
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s TraceEventStatus) MarshalJSON() ([]byte, error) {
+func (s TraceEventViewStatus) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceEventStatus) UnmarshalJSON(data []byte) error {
+func (s *TraceEventViewStatus) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
 
-// Encode encodes TraceEventType as json.
-func (s TraceEventType) Encode(e *jx.Encoder) {
+// Encode encodes TraceEventViewType as json.
+func (s TraceEventViewType) Encode(e *jx.Encoder) {
 	e.Str(string(s))
 }
 
-// Decode decodes TraceEventType from json.
-func (s *TraceEventType) Decode(d *jx.Decoder) error {
+// Decode decodes TraceEventViewType from json.
+func (s *TraceEventViewType) Decode(d *jx.Decoder) error {
 	if s == nil {
-		return errors.New("invalid: unable to decode TraceEventType to nil")
+		return errors.New("invalid: unable to decode TraceEventViewType to nil")
 	}
 	v, err := d.StrBytes()
 	if err != nil {
 		return err
 	}
 	// Try to use constant string.
-	switch TraceEventType(v) {
-	case TraceEventTypeSkillActivation:
-		*s = TraceEventTypeSkillActivation
-	case TraceEventTypeResourceRead:
-		*s = TraceEventTypeResourceRead
-	case TraceEventTypeToolCall:
-		*s = TraceEventTypeToolCall
-	case TraceEventTypeMcpCall:
-		*s = TraceEventTypeMcpCall
-	case TraceEventTypeScriptLog:
-		*s = TraceEventTypeScriptLog
-	case TraceEventTypeAgentOutput:
-		*s = TraceEventTypeAgentOutput
-	case TraceEventTypeError:
-		*s = TraceEventTypeError
-	case TraceEventTypeUsage:
-		*s = TraceEventTypeUsage
-	case TraceEventTypeRunLifecycle:
-		*s = TraceEventTypeRunLifecycle
+	switch TraceEventViewType(v) {
+	case TraceEventViewTypeSkillActivation:
+		*s = TraceEventViewTypeSkillActivation
+	case TraceEventViewTypeResourceRead:
+		*s = TraceEventViewTypeResourceRead
+	case TraceEventViewTypeToolCall:
+		*s = TraceEventViewTypeToolCall
+	case TraceEventViewTypeMcpCall:
+		*s = TraceEventViewTypeMcpCall
+	case TraceEventViewTypeScriptLog:
+		*s = TraceEventViewTypeScriptLog
+	case TraceEventViewTypeAgentOutput:
+		*s = TraceEventViewTypeAgentOutput
+	case TraceEventViewTypeError:
+		*s = TraceEventViewTypeError
+	case TraceEventViewTypeUsage:
+		*s = TraceEventViewTypeUsage
+	case TraceEventViewTypeRunLifecycle:
+		*s = TraceEventViewTypeRunLifecycle
+	case TraceEventViewTypeEvaluationStarted:
+		*s = TraceEventViewTypeEvaluationStarted
+	case TraceEventViewTypeEvaluationCompleted:
+		*s = TraceEventViewTypeEvaluationCompleted
 	default:
-		*s = TraceEventType(v)
+		*s = TraceEventViewType(v)
 	}
 
 	return nil
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s TraceEventType) MarshalJSON() ([]byte, error) {
+func (s TraceEventViewType) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceEventType) UnmarshalJSON(data []byte) error {
+func (s *TraceEventViewType) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -29981,6 +30012,10 @@ func (s *TraceStream) encodeFields(e *jx.Encoder) {
 		e.Int(s.HighestSeq)
 	}
 	{
+		e.FieldStart("missing_count")
+		e.Int(s.MissingCount)
+	}
+	{
 		if s.MissingSeq != nil {
 			e.FieldStart("missing_seq")
 			e.ArrStart()
@@ -29996,13 +30031,14 @@ func (s *TraceStream) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTraceStream = [6]string{
+var jsonFieldsNameOfTraceStream = [7]string{
 	0: "attempt",
 	1: "emitted_by",
 	2: "received",
 	3: "highest_seq",
-	4: "missing_seq",
-	5: "late_events",
+	4: "missing_count",
+	5: "missing_seq",
+	6: "late_events",
 }
 
 // Decode decodes TraceStream from json.
@@ -30062,6 +30098,18 @@ func (s *TraceStream) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"highest_seq\"")
 			}
+		case "missing_count":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				v, err := d.Int()
+				s.MissingCount = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"missing_count\"")
+			}
 		case "missing_seq":
 			if err := func() error {
 				s.MissingSeq = make([]int, 0)
@@ -30082,7 +30130,7 @@ func (s *TraceStream) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"missing_seq\"")
 			}
 		case "late_events":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				v, err := d.Int()
 				s.LateEvents = int(v)
@@ -30103,7 +30151,7 @@ func (s *TraceStream) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00101111,
+		0b01011111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -30185,6 +30233,10 @@ func (s *TraceSummary) encodeFields(e *jx.Encoder) {
 		e.ArrEnd()
 	}
 	{
+		e.FieldStart("skills_total")
+		e.Int(s.SkillsTotal)
+	}
+	{
 		e.FieldStart("resources_read")
 		e.Int(s.ResourcesRead)
 	}
@@ -30199,6 +30251,14 @@ func (s *TraceSummary) encodeFields(e *jx.Encoder) {
 			elem.Encode(e)
 		}
 		e.ArrEnd()
+	}
+	{
+		e.FieldStart("errors_total")
+		e.Int(s.ErrorsTotal)
+	}
+	{
+		e.FieldStart("summary_truncated")
+		e.Bool(s.SummaryTruncated)
 	}
 	{
 		if s.FinalOutput.Set {
@@ -30222,18 +30282,21 @@ func (s *TraceSummary) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTraceSummary = [11]string{
+var jsonFieldsNameOfTraceSummary = [14]string{
 	0:  "run_id",
 	1:  "status",
 	2:  "status_reason",
 	3:  "complete",
 	4:  "skills",
-	5:  "resources_read",
-	6:  "tool_calls",
-	7:  "errors",
-	8:  "final_output",
-	9:  "usage",
-	10: "steps",
+	5:  "skills_total",
+	6:  "resources_read",
+	7:  "tool_calls",
+	8:  "errors",
+	9:  "errors_total",
+	10: "summary_truncated",
+	11: "final_output",
+	12: "usage",
+	13: "steps",
 }
 
 // Decode decodes TraceSummary from json.
@@ -30307,8 +30370,20 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"skills\"")
 			}
-		case "resources_read":
+		case "skills_total":
 			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				v, err := d.Int()
+				s.SkillsTotal = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"skills_total\"")
+			}
+		case "resources_read":
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				v, err := d.Int()
 				s.ResourcesRead = int(v)
@@ -30320,7 +30395,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"resources_read\"")
 			}
 		case "tool_calls":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				if err := s.ToolCalls.Decode(d); err != nil {
 					return err
@@ -30330,7 +30405,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"tool_calls\"")
 			}
 		case "errors":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				s.Errors = make([]TraceSummaryErrorsItem, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -30346,6 +30421,30 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"errors\"")
+			}
+		case "errors_total":
+			requiredBitSet[1] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int()
+				s.ErrorsTotal = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"errors_total\"")
+			}
+		case "summary_truncated":
+			requiredBitSet[1] |= 1 << 2
+			if err := func() error {
+				v, err := d.Bool()
+				s.SummaryTruncated = bool(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"summary_truncated\"")
 			}
 		case "final_output":
 			if err := func() error {
@@ -30368,7 +30467,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"usage\"")
 			}
 		case "steps":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				s.Steps = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -30398,7 +30497,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b11111011,
-		0b00000100,
+		0b00100111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

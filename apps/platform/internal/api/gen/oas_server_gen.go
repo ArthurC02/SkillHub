@@ -392,7 +392,9 @@ type Handler interface {
 	//
 	// `general` is a human-readable progress summary aggregated from the events: which skills were used,
 	// how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is
-	// the raw events in reconstructed order plus an explicit statement of which ones are missing.
+	// the raw events in reliable receipt-order pages, with canonical ordering inside each page, plus an
+	// explicit statement of which ones are missing. A consumer that needs one reconstructed cross-producer
+	// timeline fetches all pages and applies the ordering tuple documented on `events`.
 	//
 	// There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext
 	// an unmasked mode would show does not exist anywhere to be served.
@@ -488,7 +490,7 @@ type Handler interface {
 	// most needs (RUN-004, TRACE-008).
 	//
 	// POST /internal/trace/{token}
-	IngestTraceEvents(ctx context.Context, req []TraceEvent, params IngestTraceEventsParams) (IngestTraceEventsRes, error)
+	IngestTraceEvents(ctx context.Context, req []SandboxTraceEvent, params IngestTraceEventsParams) (IngestTraceEventsRes, error)
 	// LiftDispatchHalt implements liftDispatchHalt operation.
 	//
 	// Operator only, and the only way a `p1_incident` halt is ever released: 03:SEC-012
@@ -611,7 +613,7 @@ type Handler interface {
 	// List the caller's test cases (WS-004).
 	//
 	// GET /test-cases
-	ListTestCases(ctx context.Context) (ListTestCasesRes, error)
+	ListTestCases(ctx context.Context, params ListTestCasesParams) (ListTestCasesRes, error)
 	// Logout implements logout operation.
 	//
 	// No session is required to call it. The handler revokes whatever session cookie arrives and clears

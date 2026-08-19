@@ -37,11 +37,13 @@
     "attempt": {
       "type": "integer",
       "minimum": 1,
+      "maximum": 100000,
       "description": "Platform run attempt this event belongs to (ADR-004 run_attempt). Mirrors runs.attempt."
     },
     "seq": {
       "type": "integer",
       "minimum": 1,
+      "maximum": 100000,
       "description": "Gapless monotonic ordinal, starting at 1, scoped to the (run_id, attempt, emitted_by) stream. A hole in a producer's sequence is how a lost event is detected (TRACE-001, TRACE-008). Cross-producer ordering is (occurred_at, emitted_by, seq), never seq alone.",
       "$comment": "Scoped per producer, not per run: no single writer can hand out a run-wide counter without becoming a serialization point, and a run-wide counter assigned at ingest time would make loss undetectable by construction."
     },

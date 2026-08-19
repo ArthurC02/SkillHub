@@ -260,6 +260,20 @@ type Evaluation struct {
 	SupersededAt          pgtype.Timestamptz
 }
 
+type EvaluationModelUsage struct {
+	ID               pgtype.UUID
+	EvaluationID     pgtype.UUID
+	WorkspaceID      pgtype.UUID
+	Operation        string
+	Model            string
+	PromptVersion    string
+	PromptTokens     int64
+	CompletionTokens int64
+	CostUsd          pgtype.Numeric
+	CostSource       *string
+	CreatedAt        pgtype.Timestamptz
+}
+
 type EvaluationSuggestion struct {
 	ID                    pgtype.UUID
 	WorkspaceID           pgtype.UUID
@@ -495,6 +509,7 @@ type TraceEvent struct {
 	Masked           bool
 	MaskedFields     []byte
 	Late             bool
+	IngestSeq        int64
 }
 
 type TraceEvents202608 struct {

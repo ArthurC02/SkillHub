@@ -803,7 +803,7 @@ func (s *Server) decodeImportSkillFromURLRequest(r *http.Request) (
 }
 
 func (s *Server) decodeIngestTraceEventsRequest(r *http.Request) (
-	req []TraceEvent,
+	req []SandboxTraceEvent,
 	rawBody []byte,
 	close func() error,
 	rerr error,
@@ -850,11 +850,11 @@ func (s *Server) decodeIngestTraceEventsRequest(r *http.Request) (
 		rawBody = append(rawBody, buf...)
 		d := jx.DecodeBytes(buf)
 
-		var request []TraceEvent
+		var request []SandboxTraceEvent
 		if err := func() error {
-			request = make([]TraceEvent, 0)
+			request = make([]SandboxTraceEvent, 0)
 			if err := d.Arr(func(d *jx.Decoder) error {
-				var elem TraceEvent
+				var elem SandboxTraceEvent
 				if err := elem.Decode(d); err != nil {
 					return err
 				}

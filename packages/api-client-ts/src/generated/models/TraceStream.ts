@@ -44,7 +44,13 @@ export interface TraceStream {
      */
     highestSeq: number;
     /**
-     * Sequence numbers that never arrived. Each one is a lost event.
+     * Exact count of sequence numbers that never arrived.
+     * @type {number}
+     * @memberof TraceStream
+     */
+    missingCount: number;
+    /**
+     * At most the first 1,000 missing numbers; missing_count is authoritative.
      * @type {Array<number>}
      * @memberof TraceStream
      */
@@ -65,6 +71,7 @@ export function instanceOfTraceStream(value: object): value is TraceStream {
     if (!('emittedBy' in value) || value['emittedBy'] === undefined) return false;
     if (!('received' in value) || value['received'] === undefined) return false;
     if (!('highestSeq' in value) || value['highestSeq'] === undefined) return false;
+    if (!('missingCount' in value) || value['missingCount'] === undefined) return false;
     if (!('lateEvents' in value) || value['lateEvents'] === undefined) return false;
     return true;
 }
@@ -83,6 +90,7 @@ export function TraceStreamFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'emittedBy': json['emitted_by'],
         'received': json['received'],
         'highestSeq': json['highest_seq'],
+        'missingCount': json['missing_count'],
         'missingSeq': json['missing_seq'] == null ? undefined : json['missing_seq'],
         'lateEvents': json['late_events'],
     };
@@ -103,6 +111,7 @@ export function TraceStreamToJSONTyped(value?: TraceStream | null, ignoreDiscrim
         'emitted_by': value['emittedBy'],
         'received': value['received'],
         'highest_seq': value['highestSeq'],
+        'missing_count': value['missingCount'],
         'missing_seq': value['missingSeq'],
         'late_events': value['lateEvents'],
     };

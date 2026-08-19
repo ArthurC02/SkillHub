@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { TraceEventView } from './TraceEventView';
+import {
+    TraceEventViewFromJSON,
+    TraceEventViewFromJSONTyped,
+    TraceEventViewToJSON,
+    TraceEventViewToJSONTyped,
+} from './TraceEventView';
 import type { TraceStream } from './TraceStream';
 import {
     TraceStreamFromJSON,
@@ -20,13 +27,6 @@ import {
     TraceStreamToJSON,
     TraceStreamToJSONTyped,
 } from './TraceStream';
-import type { TraceAdvancedEventsInner } from './TraceAdvancedEventsInner';
-import {
-    TraceAdvancedEventsInnerFromJSON,
-    TraceAdvancedEventsInnerFromJSONTyped,
-    TraceAdvancedEventsInnerToJSON,
-    TraceAdvancedEventsInnerToJSONTyped,
-} from './TraceAdvancedEventsInner';
 
 /**
  * 
@@ -56,11 +56,27 @@ export interface TraceAdvanced {
      */
     streams: Array<TraceStream>;
     /**
-     * Masked events in cross-producer order (occurred_at, emitted_by, seq).
-     * @type {Array<TraceAdvancedEventsInner>}
+     * Masked events, canonically ordered within this ingestion page.
+     * Pages themselves follow receipt order. A consumer that needs one
+     * cross-producer timeline must fetch every page and then sort the
+     * combined events by (occurred_at, emitted_by, attempt, seq).
+     * 
+     * @type {Array<TraceEventView>}
      * @memberof TraceAdvanced
      */
-    events: Array<TraceAdvancedEventsInner>;
+    events: Array<TraceEventView>;
+    /**
+     * Cursor to send as `after` to fetch events ingested after this page.
+     * @type {number}
+     * @memberof TraceAdvanced
+     */
+    nextAfter: number;
+    /**
+     * True when another page is already available.
+     * @type {boolean}
+     * @memberof TraceAdvanced
+     */
+    hasMore: boolean;
 }
 
 /**
@@ -71,6 +87,8 @@ export function instanceOfTraceAdvanced(value: object): value is TraceAdvanced {
     if (!('complete' in value) || value['complete'] === undefined) return false;
     if (!('streams' in value) || value['streams'] === undefined) return false;
     if (!('events' in value) || value['events'] === undefined) return false;
+    if (!('nextAfter' in value) || value['nextAfter'] === undefined) return false;
+    if (!('hasMore' in value) || value['hasMore'] === undefined) return false;
     return true;
 }
 
@@ -87,7 +105,9 @@ export function TraceAdvancedFromJSONTyped(json: any, ignoreDiscriminator: boole
         'runId': json['run_id'],
         'complete': json['complete'],
         'streams': ((json['streams'] as Array<any>).map(TraceStreamFromJSON)),
-        'events': ((json['events'] as Array<any>).map(TraceAdvancedEventsInnerFromJSON)),
+        'events': ((json['events'] as Array<any>).map(TraceEventViewFromJSON)),
+        'nextAfter': json['next_after'],
+        'hasMore': json['has_more'],
     };
 }
 
@@ -105,7 +125,9 @@ export function TraceAdvancedToJSONTyped(value?: TraceAdvanced | null, ignoreDis
         'run_id': value['runId'],
         'complete': value['complete'],
         'streams': ((value['streams'] as Array<any>).map(TraceStreamToJSON)),
-        'events': ((value['events'] as Array<any>).map(TraceAdvancedEventsInnerToJSON)),
+        'events': ((value['events'] as Array<any>).map(TraceEventViewToJSON)),
+        'next_after': value['nextAfter'],
+        'has_more': value['hasMore'],
     };
 }
 

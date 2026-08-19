@@ -5740,6 +5740,52 @@ func (o OptInt) Or(d int) int {
 	return d
 }
 
+// NewOptInt64 returns new OptInt64 with value set to v.
+func NewOptInt64(v int64) OptInt64 {
+	return OptInt64{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt64 is optional int64.
+type OptInt64 struct {
+	Value int64
+	Set   bool
+}
+
+// IsSet returns true if OptInt64 was set.
+func (o OptInt64) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt64) Reset() {
+	var v int64
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt64) SetTo(v int64) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt64) Get() (v int64, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt64) Or(d int64) int64 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptNilDateTime returns new OptNilDateTime with value set to v.
 func NewOptNilDateTime(v time.Time) OptNilDateTime {
 	return OptNilDateTime{
@@ -5944,57 +5990,57 @@ func (o OptNilRubric) Or(d Rubric) Rubric {
 	return d
 }
 
-// NewOptNilTraceAdvancedEventsItemStatus returns new OptNilTraceAdvancedEventsItemStatus with value set to v.
-func NewOptNilTraceAdvancedEventsItemStatus(v TraceAdvancedEventsItemStatus) OptNilTraceAdvancedEventsItemStatus {
-	return OptNilTraceAdvancedEventsItemStatus{
+// NewOptNilSandboxTraceEventStatus returns new OptNilSandboxTraceEventStatus with value set to v.
+func NewOptNilSandboxTraceEventStatus(v SandboxTraceEventStatus) OptNilSandboxTraceEventStatus {
+	return OptNilSandboxTraceEventStatus{
 		Value: v,
 		Set:   true,
 	}
 }
 
-// OptNilTraceAdvancedEventsItemStatus is optional nullable TraceAdvancedEventsItemStatus.
-type OptNilTraceAdvancedEventsItemStatus struct {
-	Value TraceAdvancedEventsItemStatus
+// OptNilSandboxTraceEventStatus is optional nullable SandboxTraceEventStatus.
+type OptNilSandboxTraceEventStatus struct {
+	Value SandboxTraceEventStatus
 	Set   bool
 	Null  bool
 }
 
-// IsSet returns true if OptNilTraceAdvancedEventsItemStatus was set.
-func (o OptNilTraceAdvancedEventsItemStatus) IsSet() bool { return o.Set }
+// IsSet returns true if OptNilSandboxTraceEventStatus was set.
+func (o OptNilSandboxTraceEventStatus) IsSet() bool { return o.Set }
 
 // Reset unsets value.
-func (o *OptNilTraceAdvancedEventsItemStatus) Reset() {
-	var v TraceAdvancedEventsItemStatus
+func (o *OptNilSandboxTraceEventStatus) Reset() {
+	var v SandboxTraceEventStatus
 	o.Value = v
 	o.Set = false
 	o.Null = false
 }
 
 // SetTo sets value to v.
-func (o *OptNilTraceAdvancedEventsItemStatus) SetTo(v TraceAdvancedEventsItemStatus) {
+func (o *OptNilSandboxTraceEventStatus) SetTo(v SandboxTraceEventStatus) {
 	o.Set = true
 	o.Null = false
 	o.Value = v
 }
 
 // IsNull returns true if value is Null.
-func (o OptNilTraceAdvancedEventsItemStatus) IsNull() bool { return o.Null }
+func (o OptNilSandboxTraceEventStatus) IsNull() bool { return o.Null }
 
 // SetToNull sets value to null.
-func (o *OptNilTraceAdvancedEventsItemStatus) SetToNull() {
+func (o *OptNilSandboxTraceEventStatus) SetToNull() {
 	o.Set = true
 	o.Null = true
-	var v TraceAdvancedEventsItemStatus
+	var v SandboxTraceEventStatus
 	o.Value = v
 }
 
 // IsEmpty returns true if the field was omitted from the payload (not Set and not Null).
-func (o OptNilTraceAdvancedEventsItemStatus) IsEmpty() bool {
+func (o OptNilSandboxTraceEventStatus) IsEmpty() bool {
 	return !o.Set && !o.Null
 }
 
 // Get returns value and boolean that denotes whether value was set.
-func (o OptNilTraceAdvancedEventsItemStatus) Get() (v TraceAdvancedEventsItemStatus, ok bool) {
+func (o OptNilSandboxTraceEventStatus) Get() (v SandboxTraceEventStatus, ok bool) {
 	if o.Null {
 		return v, false
 	}
@@ -6005,75 +6051,7 @@ func (o OptNilTraceAdvancedEventsItemStatus) Get() (v TraceAdvancedEventsItemSta
 }
 
 // Or returns value if set, or given parameter if does not.
-func (o OptNilTraceAdvancedEventsItemStatus) Or(d TraceAdvancedEventsItemStatus) TraceAdvancedEventsItemStatus {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptNilTraceEventStatus returns new OptNilTraceEventStatus with value set to v.
-func NewOptNilTraceEventStatus(v TraceEventStatus) OptNilTraceEventStatus {
-	return OptNilTraceEventStatus{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptNilTraceEventStatus is optional nullable TraceEventStatus.
-type OptNilTraceEventStatus struct {
-	Value TraceEventStatus
-	Set   bool
-	Null  bool
-}
-
-// IsSet returns true if OptNilTraceEventStatus was set.
-func (o OptNilTraceEventStatus) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptNilTraceEventStatus) Reset() {
-	var v TraceEventStatus
-	o.Value = v
-	o.Set = false
-	o.Null = false
-}
-
-// SetTo sets value to v.
-func (o *OptNilTraceEventStatus) SetTo(v TraceEventStatus) {
-	o.Set = true
-	o.Null = false
-	o.Value = v
-}
-
-// IsNull returns true if value is Null.
-func (o OptNilTraceEventStatus) IsNull() bool { return o.Null }
-
-// SetToNull sets value to null.
-func (o *OptNilTraceEventStatus) SetToNull() {
-	o.Set = true
-	o.Null = true
-	var v TraceEventStatus
-	o.Value = v
-}
-
-// IsEmpty returns true if the field was omitted from the payload (not Set and not Null).
-func (o OptNilTraceEventStatus) IsEmpty() bool {
-	return !o.Set && !o.Null
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptNilTraceEventStatus) Get() (v TraceEventStatus, ok bool) {
-	if o.Null {
-		return v, false
-	}
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptNilTraceEventStatus) Or(d TraceEventStatus) TraceEventStatus {
+func (o OptNilSandboxTraceEventStatus) Or(d SandboxTraceEventStatus) SandboxTraceEventStatus {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -6856,6 +6834,52 @@ func (o OptSuggestionBlockedReason) Get() (v SuggestionBlockedReason, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptSuggestionBlockedReason) Or(d SuggestionBlockedReason) SuggestionBlockedReason {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptTraceEventViewStatus returns new OptTraceEventViewStatus with value set to v.
+func NewOptTraceEventViewStatus(v TraceEventViewStatus) OptTraceEventViewStatus {
+	return OptTraceEventViewStatus{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptTraceEventViewStatus is optional TraceEventViewStatus.
+type OptTraceEventViewStatus struct {
+	Value TraceEventViewStatus
+	Set   bool
+}
+
+// IsSet returns true if OptTraceEventViewStatus was set.
+func (o OptTraceEventViewStatus) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptTraceEventViewStatus) Reset() {
+	var v TraceEventViewStatus
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptTraceEventViewStatus) SetTo(v TraceEventViewStatus) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptTraceEventViewStatus) Get() (v TraceEventViewStatus, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptTraceEventViewStatus) Or(d TraceEventViewStatus) TraceEventViewStatus {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -10750,6 +10774,339 @@ func (s *RunTransitionsItem) SetOccurredAt(val time.Time) {
 	s.OccurredAt = val
 }
 
+// Merged schema.
+// Ref: #/components/schemas/SandboxTraceEvent
+type SandboxTraceEvent struct {
+	SchemaVersion string `json:"schema_version"`
+	// Producer-assigned. This is the consumer idempotency key (TRACE-008).
+	EventID uuid.UUID `json:"event_id"`
+	RunID   uuid.UUID `json:"run_id"`
+	Attempt int       `json:"attempt"`
+	// Gapless from 1, scoped to (run_id, attempt, emitted_by). A hole is how a lost event is detected; it
+	// is not a run-wide ordinal.
+	Seq        int       `json:"seq"`
+	OccurredAt time.Time `json:"occurred_at"`
+	// Merged property.
+	EmittedBy SandboxTraceEventEmittedBy    `json:"emitted_by"`
+	Type      SandboxTraceEventType         `json:"type"`
+	Status    OptNilSandboxTraceEventStatus `json:"status"`
+	// What the producer claims. The control plane does not believe it: the masker runs on every event
+	// regardless, and a sandbox vouching for itself is exactly what the trust boundary forbids.
+	Masked bool `json:"masked"`
+	// JSON Pointers, relative to payload, of values actually redacted.
+	MaskedFields []string                 `json:"masked_fields"`
+	Payload      SandboxTraceEventPayload `json:"payload"`
+}
+
+// GetSchemaVersion returns the value of SchemaVersion.
+func (s *SandboxTraceEvent) GetSchemaVersion() string {
+	return s.SchemaVersion
+}
+
+// GetEventID returns the value of EventID.
+func (s *SandboxTraceEvent) GetEventID() uuid.UUID {
+	return s.EventID
+}
+
+// GetRunID returns the value of RunID.
+func (s *SandboxTraceEvent) GetRunID() uuid.UUID {
+	return s.RunID
+}
+
+// GetAttempt returns the value of Attempt.
+func (s *SandboxTraceEvent) GetAttempt() int {
+	return s.Attempt
+}
+
+// GetSeq returns the value of Seq.
+func (s *SandboxTraceEvent) GetSeq() int {
+	return s.Seq
+}
+
+// GetOccurredAt returns the value of OccurredAt.
+func (s *SandboxTraceEvent) GetOccurredAt() time.Time {
+	return s.OccurredAt
+}
+
+// GetEmittedBy returns the value of EmittedBy.
+func (s *SandboxTraceEvent) GetEmittedBy() SandboxTraceEventEmittedBy {
+	return s.EmittedBy
+}
+
+// GetType returns the value of Type.
+func (s *SandboxTraceEvent) GetType() SandboxTraceEventType {
+	return s.Type
+}
+
+// GetStatus returns the value of Status.
+func (s *SandboxTraceEvent) GetStatus() OptNilSandboxTraceEventStatus {
+	return s.Status
+}
+
+// GetMasked returns the value of Masked.
+func (s *SandboxTraceEvent) GetMasked() bool {
+	return s.Masked
+}
+
+// GetMaskedFields returns the value of MaskedFields.
+func (s *SandboxTraceEvent) GetMaskedFields() []string {
+	return s.MaskedFields
+}
+
+// GetPayload returns the value of Payload.
+func (s *SandboxTraceEvent) GetPayload() SandboxTraceEventPayload {
+	return s.Payload
+}
+
+// SetSchemaVersion sets the value of SchemaVersion.
+func (s *SandboxTraceEvent) SetSchemaVersion(val string) {
+	s.SchemaVersion = val
+}
+
+// SetEventID sets the value of EventID.
+func (s *SandboxTraceEvent) SetEventID(val uuid.UUID) {
+	s.EventID = val
+}
+
+// SetRunID sets the value of RunID.
+func (s *SandboxTraceEvent) SetRunID(val uuid.UUID) {
+	s.RunID = val
+}
+
+// SetAttempt sets the value of Attempt.
+func (s *SandboxTraceEvent) SetAttempt(val int) {
+	s.Attempt = val
+}
+
+// SetSeq sets the value of Seq.
+func (s *SandboxTraceEvent) SetSeq(val int) {
+	s.Seq = val
+}
+
+// SetOccurredAt sets the value of OccurredAt.
+func (s *SandboxTraceEvent) SetOccurredAt(val time.Time) {
+	s.OccurredAt = val
+}
+
+// SetEmittedBy sets the value of EmittedBy.
+func (s *SandboxTraceEvent) SetEmittedBy(val SandboxTraceEventEmittedBy) {
+	s.EmittedBy = val
+}
+
+// SetType sets the value of Type.
+func (s *SandboxTraceEvent) SetType(val SandboxTraceEventType) {
+	s.Type = val
+}
+
+// SetStatus sets the value of Status.
+func (s *SandboxTraceEvent) SetStatus(val OptNilSandboxTraceEventStatus) {
+	s.Status = val
+}
+
+// SetMasked sets the value of Masked.
+func (s *SandboxTraceEvent) SetMasked(val bool) {
+	s.Masked = val
+}
+
+// SetMaskedFields sets the value of MaskedFields.
+func (s *SandboxTraceEvent) SetMaskedFields(val []string) {
+	s.MaskedFields = val
+}
+
+// SetPayload sets the value of Payload.
+func (s *SandboxTraceEvent) SetPayload(val SandboxTraceEventPayload) {
+	s.Payload = val
+}
+
+// Merged schema.
+type SandboxTraceEventEmittedBy string
+
+const (
+	SandboxTraceEventEmittedBySandbox SandboxTraceEventEmittedBy = "sandbox"
+)
+
+// AllValues returns all SandboxTraceEventEmittedBy values.
+func (SandboxTraceEventEmittedBy) AllValues() []SandboxTraceEventEmittedBy {
+	return []SandboxTraceEventEmittedBy{
+		SandboxTraceEventEmittedBySandbox,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SandboxTraceEventEmittedBy) MarshalText() ([]byte, error) {
+	switch s {
+	case SandboxTraceEventEmittedBySandbox:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SandboxTraceEventEmittedBy) UnmarshalText(data []byte) error {
+	switch SandboxTraceEventEmittedBy(data) {
+	case SandboxTraceEventEmittedBySandbox:
+		*s = SandboxTraceEventEmittedBySandbox
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SandboxTraceEventPayload struct{}
+
+type SandboxTraceEventStatus string
+
+const (
+	SandboxTraceEventStatusOk        SandboxTraceEventStatus = "ok"
+	SandboxTraceEventStatusError     SandboxTraceEventStatus = "error"
+	SandboxTraceEventStatusSkipped   SandboxTraceEventStatus = "skipped"
+	SandboxTraceEventStatusCancelled SandboxTraceEventStatus = "cancelled"
+	SandboxTraceEventStatusTimedOut  SandboxTraceEventStatus = "timed_out"
+)
+
+// AllValues returns all SandboxTraceEventStatus values.
+func (SandboxTraceEventStatus) AllValues() []SandboxTraceEventStatus {
+	return []SandboxTraceEventStatus{
+		SandboxTraceEventStatusOk,
+		SandboxTraceEventStatusError,
+		SandboxTraceEventStatusSkipped,
+		SandboxTraceEventStatusCancelled,
+		SandboxTraceEventStatusTimedOut,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SandboxTraceEventStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case SandboxTraceEventStatusOk:
+		return []byte(s), nil
+	case SandboxTraceEventStatusError:
+		return []byte(s), nil
+	case SandboxTraceEventStatusSkipped:
+		return []byte(s), nil
+	case SandboxTraceEventStatusCancelled:
+		return []byte(s), nil
+	case SandboxTraceEventStatusTimedOut:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SandboxTraceEventStatus) UnmarshalText(data []byte) error {
+	switch SandboxTraceEventStatus(data) {
+	case SandboxTraceEventStatusOk:
+		*s = SandboxTraceEventStatusOk
+		return nil
+	case SandboxTraceEventStatusError:
+		*s = SandboxTraceEventStatusError
+		return nil
+	case SandboxTraceEventStatusSkipped:
+		*s = SandboxTraceEventStatusSkipped
+		return nil
+	case SandboxTraceEventStatusCancelled:
+		*s = SandboxTraceEventStatusCancelled
+		return nil
+	case SandboxTraceEventStatusTimedOut:
+		*s = SandboxTraceEventStatusTimedOut
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SandboxTraceEventType string
+
+const (
+	SandboxTraceEventTypeSkillActivation SandboxTraceEventType = "skill_activation"
+	SandboxTraceEventTypeResourceRead    SandboxTraceEventType = "resource_read"
+	SandboxTraceEventTypeToolCall        SandboxTraceEventType = "tool_call"
+	SandboxTraceEventTypeMcpCall         SandboxTraceEventType = "mcp_call"
+	SandboxTraceEventTypeScriptLog       SandboxTraceEventType = "script_log"
+	SandboxTraceEventTypeAgentOutput     SandboxTraceEventType = "agent_output"
+	SandboxTraceEventTypeError           SandboxTraceEventType = "error"
+	SandboxTraceEventTypeUsage           SandboxTraceEventType = "usage"
+	SandboxTraceEventTypeRunLifecycle    SandboxTraceEventType = "run_lifecycle"
+)
+
+// AllValues returns all SandboxTraceEventType values.
+func (SandboxTraceEventType) AllValues() []SandboxTraceEventType {
+	return []SandboxTraceEventType{
+		SandboxTraceEventTypeSkillActivation,
+		SandboxTraceEventTypeResourceRead,
+		SandboxTraceEventTypeToolCall,
+		SandboxTraceEventTypeMcpCall,
+		SandboxTraceEventTypeScriptLog,
+		SandboxTraceEventTypeAgentOutput,
+		SandboxTraceEventTypeError,
+		SandboxTraceEventTypeUsage,
+		SandboxTraceEventTypeRunLifecycle,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SandboxTraceEventType) MarshalText() ([]byte, error) {
+	switch s {
+	case SandboxTraceEventTypeSkillActivation:
+		return []byte(s), nil
+	case SandboxTraceEventTypeResourceRead:
+		return []byte(s), nil
+	case SandboxTraceEventTypeToolCall:
+		return []byte(s), nil
+	case SandboxTraceEventTypeMcpCall:
+		return []byte(s), nil
+	case SandboxTraceEventTypeScriptLog:
+		return []byte(s), nil
+	case SandboxTraceEventTypeAgentOutput:
+		return []byte(s), nil
+	case SandboxTraceEventTypeError:
+		return []byte(s), nil
+	case SandboxTraceEventTypeUsage:
+		return []byte(s), nil
+	case SandboxTraceEventTypeRunLifecycle:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SandboxTraceEventType) UnmarshalText(data []byte) error {
+	switch SandboxTraceEventType(data) {
+	case SandboxTraceEventTypeSkillActivation:
+		*s = SandboxTraceEventTypeSkillActivation
+		return nil
+	case SandboxTraceEventTypeResourceRead:
+		*s = SandboxTraceEventTypeResourceRead
+		return nil
+	case SandboxTraceEventTypeToolCall:
+		*s = SandboxTraceEventTypeToolCall
+		return nil
+	case SandboxTraceEventTypeMcpCall:
+		*s = SandboxTraceEventTypeMcpCall
+		return nil
+	case SandboxTraceEventTypeScriptLog:
+		*s = SandboxTraceEventTypeScriptLog
+		return nil
+	case SandboxTraceEventTypeAgentOutput:
+		*s = SandboxTraceEventTypeAgentOutput
+		return nil
+	case SandboxTraceEventTypeError:
+		*s = SandboxTraceEventTypeError
+		return nil
+	case SandboxTraceEventTypeUsage:
+		*s = SandboxTraceEventTypeUsage
+		return nil
+	case SandboxTraceEventTypeRunLifecycle:
+		*s = SandboxTraceEventTypeRunLifecycle
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type SaveSkillVersionBadRequest Error
 
 func (*SaveSkillVersionBadRequest) saveSkillVersionRes() {}
@@ -13338,8 +13695,14 @@ type TraceAdvanced struct {
 	// and a running one with no gap yet is complete so far.
 	Complete bool          `json:"complete"`
 	Streams  []TraceStream `json:"streams"`
-	// Masked events in cross-producer order (occurred_at, emitted_by, seq).
-	Events []TraceAdvancedEventsItem `json:"events"`
+	// Masked events, canonically ordered within this ingestion page. Pages themselves follow receipt
+	// order. A consumer that needs one cross-producer timeline must fetch every page and then sort the
+	// combined events by (occurred_at, emitted_by, attempt, seq).
+	Events []TraceEventView `json:"events"`
+	// Cursor to send as `after` to fetch events ingested after this page.
+	NextAfter int64 `json:"next_after"`
+	// True when another page is already available.
+	HasMore bool `json:"has_more"`
 }
 
 // GetRunID returns the value of RunID.
@@ -13358,8 +13721,18 @@ func (s *TraceAdvanced) GetStreams() []TraceStream {
 }
 
 // GetEvents returns the value of Events.
-func (s *TraceAdvanced) GetEvents() []TraceAdvancedEventsItem {
+func (s *TraceAdvanced) GetEvents() []TraceEventView {
 	return s.Events
+}
+
+// GetNextAfter returns the value of NextAfter.
+func (s *TraceAdvanced) GetNextAfter() int64 {
+	return s.NextAfter
+}
+
+// GetHasMore returns the value of HasMore.
+func (s *TraceAdvanced) GetHasMore() bool {
+	return s.HasMore
 }
 
 // SetRunID sets the value of RunID.
@@ -13378,536 +13751,160 @@ func (s *TraceAdvanced) SetStreams(val []TraceStream) {
 }
 
 // SetEvents sets the value of Events.
-func (s *TraceAdvanced) SetEvents(val []TraceAdvancedEventsItem) {
+func (s *TraceAdvanced) SetEvents(val []TraceEventView) {
 	s.Events = val
 }
 
-// Merged schema.
-type TraceAdvancedEventsItem struct {
-	SchemaVersion string `json:"schema_version"`
-	// Producer-assigned. This is the consumer idempotency key (TRACE-008).
-	EventID uuid.UUID `json:"event_id"`
-	RunID   uuid.UUID `json:"run_id"`
-	Attempt int       `json:"attempt"`
-	// Gapless from 1, scoped to (run_id, attempt, emitted_by). A hole is how a lost event is detected; it
-	// is not a run-wide ordinal.
-	Seq        int                                 `json:"seq"`
-	OccurredAt time.Time                           `json:"occurred_at"`
-	EmittedBy  TraceAdvancedEventsItemEmittedBy    `json:"emitted_by"`
-	Type       TraceAdvancedEventsItemType         `json:"type"`
-	Status     OptNilTraceAdvancedEventsItemStatus `json:"status"`
-	// What the producer claims. The control plane does not believe it: the masker runs on every event
-	// regardless, and a sandbox vouching for itself is exactly what the trust boundary forbids.
-	Masked bool `json:"masked"`
-	// JSON Pointers, relative to payload, of values actually redacted.
-	MaskedFields []string                       `json:"masked_fields"`
-	Payload      TraceAdvancedEventsItemPayload `json:"payload"`
-	Late         OptBool                        `json:"late"`
+// SetNextAfter sets the value of NextAfter.
+func (s *TraceAdvanced) SetNextAfter(val int64) {
+	s.NextAfter = val
 }
 
-// GetSchemaVersion returns the value of SchemaVersion.
-func (s *TraceAdvancedEventsItem) GetSchemaVersion() string {
-	return s.SchemaVersion
+// SetHasMore sets the value of HasMore.
+func (s *TraceAdvanced) SetHasMore(val bool) {
+	s.HasMore = val
+}
+
+// A stored, server-masked Trace event returned by the advanced reader.
+// Ref: #/components/schemas/TraceEventView
+type TraceEventView struct {
+	EventID      uuid.UUID               `json:"event_id"`
+	Attempt      int                     `json:"attempt"`
+	Seq          int                     `json:"seq"`
+	OccurredAt   time.Time               `json:"occurred_at"`
+	EmittedBy    TraceEventViewEmittedBy `json:"emitted_by"`
+	Type         TraceEventViewType      `json:"type"`
+	Status       OptTraceEventViewStatus `json:"status"`
+	Late         OptBool                 `json:"late"`
+	MaskedFields []string                `json:"masked_fields"`
+	Payload      TraceEventViewPayload   `json:"payload"`
 }
 
 // GetEventID returns the value of EventID.
-func (s *TraceAdvancedEventsItem) GetEventID() uuid.UUID {
+func (s *TraceEventView) GetEventID() uuid.UUID {
 	return s.EventID
 }
 
-// GetRunID returns the value of RunID.
-func (s *TraceAdvancedEventsItem) GetRunID() uuid.UUID {
-	return s.RunID
-}
-
 // GetAttempt returns the value of Attempt.
-func (s *TraceAdvancedEventsItem) GetAttempt() int {
+func (s *TraceEventView) GetAttempt() int {
 	return s.Attempt
 }
 
 // GetSeq returns the value of Seq.
-func (s *TraceAdvancedEventsItem) GetSeq() int {
+func (s *TraceEventView) GetSeq() int {
 	return s.Seq
 }
 
 // GetOccurredAt returns the value of OccurredAt.
-func (s *TraceAdvancedEventsItem) GetOccurredAt() time.Time {
+func (s *TraceEventView) GetOccurredAt() time.Time {
 	return s.OccurredAt
 }
 
 // GetEmittedBy returns the value of EmittedBy.
-func (s *TraceAdvancedEventsItem) GetEmittedBy() TraceAdvancedEventsItemEmittedBy {
+func (s *TraceEventView) GetEmittedBy() TraceEventViewEmittedBy {
 	return s.EmittedBy
 }
 
 // GetType returns the value of Type.
-func (s *TraceAdvancedEventsItem) GetType() TraceAdvancedEventsItemType {
+func (s *TraceEventView) GetType() TraceEventViewType {
 	return s.Type
 }
 
 // GetStatus returns the value of Status.
-func (s *TraceAdvancedEventsItem) GetStatus() OptNilTraceAdvancedEventsItemStatus {
+func (s *TraceEventView) GetStatus() OptTraceEventViewStatus {
 	return s.Status
-}
-
-// GetMasked returns the value of Masked.
-func (s *TraceAdvancedEventsItem) GetMasked() bool {
-	return s.Masked
-}
-
-// GetMaskedFields returns the value of MaskedFields.
-func (s *TraceAdvancedEventsItem) GetMaskedFields() []string {
-	return s.MaskedFields
-}
-
-// GetPayload returns the value of Payload.
-func (s *TraceAdvancedEventsItem) GetPayload() TraceAdvancedEventsItemPayload {
-	return s.Payload
 }
 
 // GetLate returns the value of Late.
-func (s *TraceAdvancedEventsItem) GetLate() OptBool {
+func (s *TraceEventView) GetLate() OptBool {
 	return s.Late
 }
 
-// SetSchemaVersion sets the value of SchemaVersion.
-func (s *TraceAdvancedEventsItem) SetSchemaVersion(val string) {
-	s.SchemaVersion = val
-}
-
-// SetEventID sets the value of EventID.
-func (s *TraceAdvancedEventsItem) SetEventID(val uuid.UUID) {
-	s.EventID = val
-}
-
-// SetRunID sets the value of RunID.
-func (s *TraceAdvancedEventsItem) SetRunID(val uuid.UUID) {
-	s.RunID = val
-}
-
-// SetAttempt sets the value of Attempt.
-func (s *TraceAdvancedEventsItem) SetAttempt(val int) {
-	s.Attempt = val
-}
-
-// SetSeq sets the value of Seq.
-func (s *TraceAdvancedEventsItem) SetSeq(val int) {
-	s.Seq = val
-}
-
-// SetOccurredAt sets the value of OccurredAt.
-func (s *TraceAdvancedEventsItem) SetOccurredAt(val time.Time) {
-	s.OccurredAt = val
-}
-
-// SetEmittedBy sets the value of EmittedBy.
-func (s *TraceAdvancedEventsItem) SetEmittedBy(val TraceAdvancedEventsItemEmittedBy) {
-	s.EmittedBy = val
-}
-
-// SetType sets the value of Type.
-func (s *TraceAdvancedEventsItem) SetType(val TraceAdvancedEventsItemType) {
-	s.Type = val
-}
-
-// SetStatus sets the value of Status.
-func (s *TraceAdvancedEventsItem) SetStatus(val OptNilTraceAdvancedEventsItemStatus) {
-	s.Status = val
-}
-
-// SetMasked sets the value of Masked.
-func (s *TraceAdvancedEventsItem) SetMasked(val bool) {
-	s.Masked = val
-}
-
-// SetMaskedFields sets the value of MaskedFields.
-func (s *TraceAdvancedEventsItem) SetMaskedFields(val []string) {
-	s.MaskedFields = val
-}
-
-// SetPayload sets the value of Payload.
-func (s *TraceAdvancedEventsItem) SetPayload(val TraceAdvancedEventsItemPayload) {
-	s.Payload = val
-}
-
-// SetLate sets the value of Late.
-func (s *TraceAdvancedEventsItem) SetLate(val OptBool) {
-	s.Late = val
-}
-
-type TraceAdvancedEventsItemEmittedBy string
-
-const (
-	TraceAdvancedEventsItemEmittedBySandbox      TraceAdvancedEventsItemEmittedBy = "sandbox"
-	TraceAdvancedEventsItemEmittedByOrchestrator TraceAdvancedEventsItemEmittedBy = "orchestrator"
-	TraceAdvancedEventsItemEmittedByLlmService   TraceAdvancedEventsItemEmittedBy = "llm_service"
-)
-
-// AllValues returns all TraceAdvancedEventsItemEmittedBy values.
-func (TraceAdvancedEventsItemEmittedBy) AllValues() []TraceAdvancedEventsItemEmittedBy {
-	return []TraceAdvancedEventsItemEmittedBy{
-		TraceAdvancedEventsItemEmittedBySandbox,
-		TraceAdvancedEventsItemEmittedByOrchestrator,
-		TraceAdvancedEventsItemEmittedByLlmService,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s TraceAdvancedEventsItemEmittedBy) MarshalText() ([]byte, error) {
-	switch s {
-	case TraceAdvancedEventsItemEmittedBySandbox:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemEmittedByOrchestrator:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemEmittedByLlmService:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *TraceAdvancedEventsItemEmittedBy) UnmarshalText(data []byte) error {
-	switch TraceAdvancedEventsItemEmittedBy(data) {
-	case TraceAdvancedEventsItemEmittedBySandbox:
-		*s = TraceAdvancedEventsItemEmittedBySandbox
-		return nil
-	case TraceAdvancedEventsItemEmittedByOrchestrator:
-		*s = TraceAdvancedEventsItemEmittedByOrchestrator
-		return nil
-	case TraceAdvancedEventsItemEmittedByLlmService:
-		*s = TraceAdvancedEventsItemEmittedByLlmService
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type TraceAdvancedEventsItemPayload struct{}
-
-type TraceAdvancedEventsItemStatus string
-
-const (
-	TraceAdvancedEventsItemStatusOk        TraceAdvancedEventsItemStatus = "ok"
-	TraceAdvancedEventsItemStatusError     TraceAdvancedEventsItemStatus = "error"
-	TraceAdvancedEventsItemStatusSkipped   TraceAdvancedEventsItemStatus = "skipped"
-	TraceAdvancedEventsItemStatusCancelled TraceAdvancedEventsItemStatus = "cancelled"
-	TraceAdvancedEventsItemStatusTimedOut  TraceAdvancedEventsItemStatus = "timed_out"
-)
-
-// AllValues returns all TraceAdvancedEventsItemStatus values.
-func (TraceAdvancedEventsItemStatus) AllValues() []TraceAdvancedEventsItemStatus {
-	return []TraceAdvancedEventsItemStatus{
-		TraceAdvancedEventsItemStatusOk,
-		TraceAdvancedEventsItemStatusError,
-		TraceAdvancedEventsItemStatusSkipped,
-		TraceAdvancedEventsItemStatusCancelled,
-		TraceAdvancedEventsItemStatusTimedOut,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s TraceAdvancedEventsItemStatus) MarshalText() ([]byte, error) {
-	switch s {
-	case TraceAdvancedEventsItemStatusOk:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemStatusError:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemStatusSkipped:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemStatusCancelled:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemStatusTimedOut:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *TraceAdvancedEventsItemStatus) UnmarshalText(data []byte) error {
-	switch TraceAdvancedEventsItemStatus(data) {
-	case TraceAdvancedEventsItemStatusOk:
-		*s = TraceAdvancedEventsItemStatusOk
-		return nil
-	case TraceAdvancedEventsItemStatusError:
-		*s = TraceAdvancedEventsItemStatusError
-		return nil
-	case TraceAdvancedEventsItemStatusSkipped:
-		*s = TraceAdvancedEventsItemStatusSkipped
-		return nil
-	case TraceAdvancedEventsItemStatusCancelled:
-		*s = TraceAdvancedEventsItemStatusCancelled
-		return nil
-	case TraceAdvancedEventsItemStatusTimedOut:
-		*s = TraceAdvancedEventsItemStatusTimedOut
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type TraceAdvancedEventsItemType string
-
-const (
-	TraceAdvancedEventsItemTypeSkillActivation TraceAdvancedEventsItemType = "skill_activation"
-	TraceAdvancedEventsItemTypeResourceRead    TraceAdvancedEventsItemType = "resource_read"
-	TraceAdvancedEventsItemTypeToolCall        TraceAdvancedEventsItemType = "tool_call"
-	TraceAdvancedEventsItemTypeMcpCall         TraceAdvancedEventsItemType = "mcp_call"
-	TraceAdvancedEventsItemTypeScriptLog       TraceAdvancedEventsItemType = "script_log"
-	TraceAdvancedEventsItemTypeAgentOutput     TraceAdvancedEventsItemType = "agent_output"
-	TraceAdvancedEventsItemTypeError           TraceAdvancedEventsItemType = "error"
-	TraceAdvancedEventsItemTypeUsage           TraceAdvancedEventsItemType = "usage"
-	TraceAdvancedEventsItemTypeRunLifecycle    TraceAdvancedEventsItemType = "run_lifecycle"
-)
-
-// AllValues returns all TraceAdvancedEventsItemType values.
-func (TraceAdvancedEventsItemType) AllValues() []TraceAdvancedEventsItemType {
-	return []TraceAdvancedEventsItemType{
-		TraceAdvancedEventsItemTypeSkillActivation,
-		TraceAdvancedEventsItemTypeResourceRead,
-		TraceAdvancedEventsItemTypeToolCall,
-		TraceAdvancedEventsItemTypeMcpCall,
-		TraceAdvancedEventsItemTypeScriptLog,
-		TraceAdvancedEventsItemTypeAgentOutput,
-		TraceAdvancedEventsItemTypeError,
-		TraceAdvancedEventsItemTypeUsage,
-		TraceAdvancedEventsItemTypeRunLifecycle,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s TraceAdvancedEventsItemType) MarshalText() ([]byte, error) {
-	switch s {
-	case TraceAdvancedEventsItemTypeSkillActivation:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemTypeResourceRead:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemTypeToolCall:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemTypeMcpCall:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemTypeScriptLog:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemTypeAgentOutput:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemTypeError:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemTypeUsage:
-		return []byte(s), nil
-	case TraceAdvancedEventsItemTypeRunLifecycle:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *TraceAdvancedEventsItemType) UnmarshalText(data []byte) error {
-	switch TraceAdvancedEventsItemType(data) {
-	case TraceAdvancedEventsItemTypeSkillActivation:
-		*s = TraceAdvancedEventsItemTypeSkillActivation
-		return nil
-	case TraceAdvancedEventsItemTypeResourceRead:
-		*s = TraceAdvancedEventsItemTypeResourceRead
-		return nil
-	case TraceAdvancedEventsItemTypeToolCall:
-		*s = TraceAdvancedEventsItemTypeToolCall
-		return nil
-	case TraceAdvancedEventsItemTypeMcpCall:
-		*s = TraceAdvancedEventsItemTypeMcpCall
-		return nil
-	case TraceAdvancedEventsItemTypeScriptLog:
-		*s = TraceAdvancedEventsItemTypeScriptLog
-		return nil
-	case TraceAdvancedEventsItemTypeAgentOutput:
-		*s = TraceAdvancedEventsItemTypeAgentOutput
-		return nil
-	case TraceAdvancedEventsItemTypeError:
-		*s = TraceAdvancedEventsItemTypeError
-		return nil
-	case TraceAdvancedEventsItemTypeUsage:
-		*s = TraceAdvancedEventsItemTypeUsage
-		return nil
-	case TraceAdvancedEventsItemTypeRunLifecycle:
-		*s = TraceAdvancedEventsItemTypeRunLifecycle
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-// One Run Trace event on the wire. The authority on this shape is
-// contracts/events/trace-event.schema.json - including the per-type payload schemas, which are not
-// repeated here. This entry exists so the HTTP contract is self-describing; when the two disagree, the
-// JSON Schema wins.
-// Ref: #/components/schemas/TraceEvent
-type TraceEvent struct {
-	SchemaVersion string `json:"schema_version"`
-	// Producer-assigned. This is the consumer idempotency key (TRACE-008).
-	EventID uuid.UUID `json:"event_id"`
-	RunID   uuid.UUID `json:"run_id"`
-	Attempt int       `json:"attempt"`
-	// Gapless from 1, scoped to (run_id, attempt, emitted_by). A hole is how a lost event is detected; it
-	// is not a run-wide ordinal.
-	Seq        int                    `json:"seq"`
-	OccurredAt time.Time              `json:"occurred_at"`
-	EmittedBy  TraceEventEmittedBy    `json:"emitted_by"`
-	Type       TraceEventType         `json:"type"`
-	Status     OptNilTraceEventStatus `json:"status"`
-	// What the producer claims. The control plane does not believe it: the masker runs on every event
-	// regardless, and a sandbox vouching for itself is exactly what the trust boundary forbids.
-	Masked bool `json:"masked"`
-	// JSON Pointers, relative to payload, of values actually redacted.
-	MaskedFields []string          `json:"masked_fields"`
-	Payload      TraceEventPayload `json:"payload"`
-}
-
-// GetSchemaVersion returns the value of SchemaVersion.
-func (s *TraceEvent) GetSchemaVersion() string {
-	return s.SchemaVersion
-}
-
-// GetEventID returns the value of EventID.
-func (s *TraceEvent) GetEventID() uuid.UUID {
-	return s.EventID
-}
-
-// GetRunID returns the value of RunID.
-func (s *TraceEvent) GetRunID() uuid.UUID {
-	return s.RunID
-}
-
-// GetAttempt returns the value of Attempt.
-func (s *TraceEvent) GetAttempt() int {
-	return s.Attempt
-}
-
-// GetSeq returns the value of Seq.
-func (s *TraceEvent) GetSeq() int {
-	return s.Seq
-}
-
-// GetOccurredAt returns the value of OccurredAt.
-func (s *TraceEvent) GetOccurredAt() time.Time {
-	return s.OccurredAt
-}
-
-// GetEmittedBy returns the value of EmittedBy.
-func (s *TraceEvent) GetEmittedBy() TraceEventEmittedBy {
-	return s.EmittedBy
-}
-
-// GetType returns the value of Type.
-func (s *TraceEvent) GetType() TraceEventType {
-	return s.Type
-}
-
-// GetStatus returns the value of Status.
-func (s *TraceEvent) GetStatus() OptNilTraceEventStatus {
-	return s.Status
-}
-
-// GetMasked returns the value of Masked.
-func (s *TraceEvent) GetMasked() bool {
-	return s.Masked
-}
-
 // GetMaskedFields returns the value of MaskedFields.
-func (s *TraceEvent) GetMaskedFields() []string {
+func (s *TraceEventView) GetMaskedFields() []string {
 	return s.MaskedFields
 }
 
 // GetPayload returns the value of Payload.
-func (s *TraceEvent) GetPayload() TraceEventPayload {
+func (s *TraceEventView) GetPayload() TraceEventViewPayload {
 	return s.Payload
 }
 
-// SetSchemaVersion sets the value of SchemaVersion.
-func (s *TraceEvent) SetSchemaVersion(val string) {
-	s.SchemaVersion = val
-}
-
 // SetEventID sets the value of EventID.
-func (s *TraceEvent) SetEventID(val uuid.UUID) {
+func (s *TraceEventView) SetEventID(val uuid.UUID) {
 	s.EventID = val
 }
 
-// SetRunID sets the value of RunID.
-func (s *TraceEvent) SetRunID(val uuid.UUID) {
-	s.RunID = val
-}
-
 // SetAttempt sets the value of Attempt.
-func (s *TraceEvent) SetAttempt(val int) {
+func (s *TraceEventView) SetAttempt(val int) {
 	s.Attempt = val
 }
 
 // SetSeq sets the value of Seq.
-func (s *TraceEvent) SetSeq(val int) {
+func (s *TraceEventView) SetSeq(val int) {
 	s.Seq = val
 }
 
 // SetOccurredAt sets the value of OccurredAt.
-func (s *TraceEvent) SetOccurredAt(val time.Time) {
+func (s *TraceEventView) SetOccurredAt(val time.Time) {
 	s.OccurredAt = val
 }
 
 // SetEmittedBy sets the value of EmittedBy.
-func (s *TraceEvent) SetEmittedBy(val TraceEventEmittedBy) {
+func (s *TraceEventView) SetEmittedBy(val TraceEventViewEmittedBy) {
 	s.EmittedBy = val
 }
 
 // SetType sets the value of Type.
-func (s *TraceEvent) SetType(val TraceEventType) {
+func (s *TraceEventView) SetType(val TraceEventViewType) {
 	s.Type = val
 }
 
 // SetStatus sets the value of Status.
-func (s *TraceEvent) SetStatus(val OptNilTraceEventStatus) {
+func (s *TraceEventView) SetStatus(val OptTraceEventViewStatus) {
 	s.Status = val
 }
 
-// SetMasked sets the value of Masked.
-func (s *TraceEvent) SetMasked(val bool) {
-	s.Masked = val
+// SetLate sets the value of Late.
+func (s *TraceEventView) SetLate(val OptBool) {
+	s.Late = val
 }
 
 // SetMaskedFields sets the value of MaskedFields.
-func (s *TraceEvent) SetMaskedFields(val []string) {
+func (s *TraceEventView) SetMaskedFields(val []string) {
 	s.MaskedFields = val
 }
 
 // SetPayload sets the value of Payload.
-func (s *TraceEvent) SetPayload(val TraceEventPayload) {
+func (s *TraceEventView) SetPayload(val TraceEventViewPayload) {
 	s.Payload = val
 }
 
-type TraceEventEmittedBy string
+type TraceEventViewEmittedBy string
 
 const (
-	TraceEventEmittedBySandbox      TraceEventEmittedBy = "sandbox"
-	TraceEventEmittedByOrchestrator TraceEventEmittedBy = "orchestrator"
-	TraceEventEmittedByLlmService   TraceEventEmittedBy = "llm_service"
+	TraceEventViewEmittedBySandbox      TraceEventViewEmittedBy = "sandbox"
+	TraceEventViewEmittedByOrchestrator TraceEventViewEmittedBy = "orchestrator"
+	TraceEventViewEmittedByLlmService   TraceEventViewEmittedBy = "llm_service"
 )
 
-// AllValues returns all TraceEventEmittedBy values.
-func (TraceEventEmittedBy) AllValues() []TraceEventEmittedBy {
-	return []TraceEventEmittedBy{
-		TraceEventEmittedBySandbox,
-		TraceEventEmittedByOrchestrator,
-		TraceEventEmittedByLlmService,
+// AllValues returns all TraceEventViewEmittedBy values.
+func (TraceEventViewEmittedBy) AllValues() []TraceEventViewEmittedBy {
+	return []TraceEventViewEmittedBy{
+		TraceEventViewEmittedBySandbox,
+		TraceEventViewEmittedByOrchestrator,
+		TraceEventViewEmittedByLlmService,
 	}
 }
 
 // MarshalText implements encoding.TextMarshaler.
-func (s TraceEventEmittedBy) MarshalText() ([]byte, error) {
+func (s TraceEventViewEmittedBy) MarshalText() ([]byte, error) {
 	switch s {
-	case TraceEventEmittedBySandbox:
+	case TraceEventViewEmittedBySandbox:
 		return []byte(s), nil
-	case TraceEventEmittedByOrchestrator:
+	case TraceEventViewEmittedByOrchestrator:
 		return []byte(s), nil
-	case TraceEventEmittedByLlmService:
+	case TraceEventViewEmittedByLlmService:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -13915,57 +13912,57 @@ func (s TraceEventEmittedBy) MarshalText() ([]byte, error) {
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler.
-func (s *TraceEventEmittedBy) UnmarshalText(data []byte) error {
-	switch TraceEventEmittedBy(data) {
-	case TraceEventEmittedBySandbox:
-		*s = TraceEventEmittedBySandbox
+func (s *TraceEventViewEmittedBy) UnmarshalText(data []byte) error {
+	switch TraceEventViewEmittedBy(data) {
+	case TraceEventViewEmittedBySandbox:
+		*s = TraceEventViewEmittedBySandbox
 		return nil
-	case TraceEventEmittedByOrchestrator:
-		*s = TraceEventEmittedByOrchestrator
+	case TraceEventViewEmittedByOrchestrator:
+		*s = TraceEventViewEmittedByOrchestrator
 		return nil
-	case TraceEventEmittedByLlmService:
-		*s = TraceEventEmittedByLlmService
+	case TraceEventViewEmittedByLlmService:
+		*s = TraceEventViewEmittedByLlmService
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
 }
 
-type TraceEventPayload struct{}
+type TraceEventViewPayload struct{}
 
-type TraceEventStatus string
+type TraceEventViewStatus string
 
 const (
-	TraceEventStatusOk        TraceEventStatus = "ok"
-	TraceEventStatusError     TraceEventStatus = "error"
-	TraceEventStatusSkipped   TraceEventStatus = "skipped"
-	TraceEventStatusCancelled TraceEventStatus = "cancelled"
-	TraceEventStatusTimedOut  TraceEventStatus = "timed_out"
+	TraceEventViewStatusOk        TraceEventViewStatus = "ok"
+	TraceEventViewStatusError     TraceEventViewStatus = "error"
+	TraceEventViewStatusSkipped   TraceEventViewStatus = "skipped"
+	TraceEventViewStatusCancelled TraceEventViewStatus = "cancelled"
+	TraceEventViewStatusTimedOut  TraceEventViewStatus = "timed_out"
 )
 
-// AllValues returns all TraceEventStatus values.
-func (TraceEventStatus) AllValues() []TraceEventStatus {
-	return []TraceEventStatus{
-		TraceEventStatusOk,
-		TraceEventStatusError,
-		TraceEventStatusSkipped,
-		TraceEventStatusCancelled,
-		TraceEventStatusTimedOut,
+// AllValues returns all TraceEventViewStatus values.
+func (TraceEventViewStatus) AllValues() []TraceEventViewStatus {
+	return []TraceEventViewStatus{
+		TraceEventViewStatusOk,
+		TraceEventViewStatusError,
+		TraceEventViewStatusSkipped,
+		TraceEventViewStatusCancelled,
+		TraceEventViewStatusTimedOut,
 	}
 }
 
 // MarshalText implements encoding.TextMarshaler.
-func (s TraceEventStatus) MarshalText() ([]byte, error) {
+func (s TraceEventViewStatus) MarshalText() ([]byte, error) {
 	switch s {
-	case TraceEventStatusOk:
+	case TraceEventViewStatusOk:
 		return []byte(s), nil
-	case TraceEventStatusError:
+	case TraceEventViewStatusError:
 		return []byte(s), nil
-	case TraceEventStatusSkipped:
+	case TraceEventViewStatusSkipped:
 		return []byte(s), nil
-	case TraceEventStatusCancelled:
+	case TraceEventViewStatusCancelled:
 		return []byte(s), nil
-	case TraceEventStatusTimedOut:
+	case TraceEventViewStatusTimedOut:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -13973,77 +13970,85 @@ func (s TraceEventStatus) MarshalText() ([]byte, error) {
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler.
-func (s *TraceEventStatus) UnmarshalText(data []byte) error {
-	switch TraceEventStatus(data) {
-	case TraceEventStatusOk:
-		*s = TraceEventStatusOk
+func (s *TraceEventViewStatus) UnmarshalText(data []byte) error {
+	switch TraceEventViewStatus(data) {
+	case TraceEventViewStatusOk:
+		*s = TraceEventViewStatusOk
 		return nil
-	case TraceEventStatusError:
-		*s = TraceEventStatusError
+	case TraceEventViewStatusError:
+		*s = TraceEventViewStatusError
 		return nil
-	case TraceEventStatusSkipped:
-		*s = TraceEventStatusSkipped
+	case TraceEventViewStatusSkipped:
+		*s = TraceEventViewStatusSkipped
 		return nil
-	case TraceEventStatusCancelled:
-		*s = TraceEventStatusCancelled
+	case TraceEventViewStatusCancelled:
+		*s = TraceEventViewStatusCancelled
 		return nil
-	case TraceEventStatusTimedOut:
-		*s = TraceEventStatusTimedOut
+	case TraceEventViewStatusTimedOut:
+		*s = TraceEventViewStatusTimedOut
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
 }
 
-type TraceEventType string
+type TraceEventViewType string
 
 const (
-	TraceEventTypeSkillActivation TraceEventType = "skill_activation"
-	TraceEventTypeResourceRead    TraceEventType = "resource_read"
-	TraceEventTypeToolCall        TraceEventType = "tool_call"
-	TraceEventTypeMcpCall         TraceEventType = "mcp_call"
-	TraceEventTypeScriptLog       TraceEventType = "script_log"
-	TraceEventTypeAgentOutput     TraceEventType = "agent_output"
-	TraceEventTypeError           TraceEventType = "error"
-	TraceEventTypeUsage           TraceEventType = "usage"
-	TraceEventTypeRunLifecycle    TraceEventType = "run_lifecycle"
+	TraceEventViewTypeSkillActivation     TraceEventViewType = "skill_activation"
+	TraceEventViewTypeResourceRead        TraceEventViewType = "resource_read"
+	TraceEventViewTypeToolCall            TraceEventViewType = "tool_call"
+	TraceEventViewTypeMcpCall             TraceEventViewType = "mcp_call"
+	TraceEventViewTypeScriptLog           TraceEventViewType = "script_log"
+	TraceEventViewTypeAgentOutput         TraceEventViewType = "agent_output"
+	TraceEventViewTypeError               TraceEventViewType = "error"
+	TraceEventViewTypeUsage               TraceEventViewType = "usage"
+	TraceEventViewTypeRunLifecycle        TraceEventViewType = "run_lifecycle"
+	TraceEventViewTypeEvaluationStarted   TraceEventViewType = "evaluation_started"
+	TraceEventViewTypeEvaluationCompleted TraceEventViewType = "evaluation_completed"
 )
 
-// AllValues returns all TraceEventType values.
-func (TraceEventType) AllValues() []TraceEventType {
-	return []TraceEventType{
-		TraceEventTypeSkillActivation,
-		TraceEventTypeResourceRead,
-		TraceEventTypeToolCall,
-		TraceEventTypeMcpCall,
-		TraceEventTypeScriptLog,
-		TraceEventTypeAgentOutput,
-		TraceEventTypeError,
-		TraceEventTypeUsage,
-		TraceEventTypeRunLifecycle,
+// AllValues returns all TraceEventViewType values.
+func (TraceEventViewType) AllValues() []TraceEventViewType {
+	return []TraceEventViewType{
+		TraceEventViewTypeSkillActivation,
+		TraceEventViewTypeResourceRead,
+		TraceEventViewTypeToolCall,
+		TraceEventViewTypeMcpCall,
+		TraceEventViewTypeScriptLog,
+		TraceEventViewTypeAgentOutput,
+		TraceEventViewTypeError,
+		TraceEventViewTypeUsage,
+		TraceEventViewTypeRunLifecycle,
+		TraceEventViewTypeEvaluationStarted,
+		TraceEventViewTypeEvaluationCompleted,
 	}
 }
 
 // MarshalText implements encoding.TextMarshaler.
-func (s TraceEventType) MarshalText() ([]byte, error) {
+func (s TraceEventViewType) MarshalText() ([]byte, error) {
 	switch s {
-	case TraceEventTypeSkillActivation:
+	case TraceEventViewTypeSkillActivation:
 		return []byte(s), nil
-	case TraceEventTypeResourceRead:
+	case TraceEventViewTypeResourceRead:
 		return []byte(s), nil
-	case TraceEventTypeToolCall:
+	case TraceEventViewTypeToolCall:
 		return []byte(s), nil
-	case TraceEventTypeMcpCall:
+	case TraceEventViewTypeMcpCall:
 		return []byte(s), nil
-	case TraceEventTypeScriptLog:
+	case TraceEventViewTypeScriptLog:
 		return []byte(s), nil
-	case TraceEventTypeAgentOutput:
+	case TraceEventViewTypeAgentOutput:
 		return []byte(s), nil
-	case TraceEventTypeError:
+	case TraceEventViewTypeError:
 		return []byte(s), nil
-	case TraceEventTypeUsage:
+	case TraceEventViewTypeUsage:
 		return []byte(s), nil
-	case TraceEventTypeRunLifecycle:
+	case TraceEventViewTypeRunLifecycle:
+		return []byte(s), nil
+	case TraceEventViewTypeEvaluationStarted:
+		return []byte(s), nil
+	case TraceEventViewTypeEvaluationCompleted:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -14051,34 +14056,40 @@ func (s TraceEventType) MarshalText() ([]byte, error) {
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler.
-func (s *TraceEventType) UnmarshalText(data []byte) error {
-	switch TraceEventType(data) {
-	case TraceEventTypeSkillActivation:
-		*s = TraceEventTypeSkillActivation
+func (s *TraceEventViewType) UnmarshalText(data []byte) error {
+	switch TraceEventViewType(data) {
+	case TraceEventViewTypeSkillActivation:
+		*s = TraceEventViewTypeSkillActivation
 		return nil
-	case TraceEventTypeResourceRead:
-		*s = TraceEventTypeResourceRead
+	case TraceEventViewTypeResourceRead:
+		*s = TraceEventViewTypeResourceRead
 		return nil
-	case TraceEventTypeToolCall:
-		*s = TraceEventTypeToolCall
+	case TraceEventViewTypeToolCall:
+		*s = TraceEventViewTypeToolCall
 		return nil
-	case TraceEventTypeMcpCall:
-		*s = TraceEventTypeMcpCall
+	case TraceEventViewTypeMcpCall:
+		*s = TraceEventViewTypeMcpCall
 		return nil
-	case TraceEventTypeScriptLog:
-		*s = TraceEventTypeScriptLog
+	case TraceEventViewTypeScriptLog:
+		*s = TraceEventViewTypeScriptLog
 		return nil
-	case TraceEventTypeAgentOutput:
-		*s = TraceEventTypeAgentOutput
+	case TraceEventViewTypeAgentOutput:
+		*s = TraceEventViewTypeAgentOutput
 		return nil
-	case TraceEventTypeError:
-		*s = TraceEventTypeError
+	case TraceEventViewTypeError:
+		*s = TraceEventViewTypeError
 		return nil
-	case TraceEventTypeUsage:
-		*s = TraceEventTypeUsage
+	case TraceEventViewTypeUsage:
+		*s = TraceEventViewTypeUsage
 		return nil
-	case TraceEventTypeRunLifecycle:
-		*s = TraceEventTypeRunLifecycle
+	case TraceEventViewTypeRunLifecycle:
+		*s = TraceEventViewTypeRunLifecycle
+		return nil
+	case TraceEventViewTypeEvaluationStarted:
+		*s = TraceEventViewTypeEvaluationStarted
+		return nil
+	case TraceEventViewTypeEvaluationCompleted:
+		*s = TraceEventViewTypeEvaluationCompleted
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -14155,7 +14166,9 @@ type TraceStream struct {
 	EmittedBy  string `json:"emitted_by"`
 	Received   int    `json:"received"`
 	HighestSeq int    `json:"highest_seq"`
-	// Sequence numbers that never arrived. Each one is a lost event.
+	// Exact count of sequence numbers that never arrived.
+	MissingCount int `json:"missing_count"`
+	// At most the first 1,000 missing numbers; missing_count is authoritative.
 	MissingSeq []int `json:"missing_seq"`
 	// Events that arrived after the run had already reached a terminal state.
 	LateEvents int `json:"late_events"`
@@ -14179,6 +14192,11 @@ func (s *TraceStream) GetReceived() int {
 // GetHighestSeq returns the value of HighestSeq.
 func (s *TraceStream) GetHighestSeq() int {
 	return s.HighestSeq
+}
+
+// GetMissingCount returns the value of MissingCount.
+func (s *TraceStream) GetMissingCount() int {
+	return s.MissingCount
 }
 
 // GetMissingSeq returns the value of MissingSeq.
@@ -14211,6 +14229,11 @@ func (s *TraceStream) SetHighestSeq(val int) {
 	s.HighestSeq = val
 }
 
+// SetMissingCount sets the value of MissingCount.
+func (s *TraceStream) SetMissingCount(val int) {
+	s.MissingCount = val
+}
+
 // SetMissingSeq sets the value of MissingSeq.
 func (s *TraceStream) SetMissingSeq(val []int) {
 	s.MissingSeq = val
@@ -14229,15 +14252,21 @@ type TraceSummary struct {
 	// Read from the runs table, which is the only authority on run state (iron rule 5). Never
 	// reconstructed by replaying run_lifecycle trace events, and never allowed to disagree with
 	// `Run.status`.
-	Status        TraceSummaryStatus       `json:"status"`
-	StatusReason  OptString                `json:"status_reason"`
-	Complete      bool                     `json:"complete"`
-	Skills        []TraceSummarySkillsItem `json:"skills"`
+	Status       TraceSummaryStatus       `json:"status"`
+	StatusReason OptString                `json:"status_reason"`
+	Complete     bool                     `json:"complete"`
+	Skills       []TraceSummarySkillsItem `json:"skills"`
+	// Exact number of skill activation events; skills contains at most the first 100.
+	SkillsTotal   int                      `json:"skills_total"`
 	ResourcesRead int                      `json:"resources_read"`
 	ToolCalls     TraceSummaryToolCalls    `json:"tool_calls"`
 	Errors        []TraceSummaryErrorsItem `json:"errors"`
-	FinalOutput   OptString                `json:"final_output"`
-	Usage         OptTraceSummaryUsage     `json:"usage"`
+	// Exact number of error events; errors contains at most the first 100.
+	ErrorsTotal int `json:"errors_total"`
+	// True when a repeated summary list was bounded; exact totals remain available.
+	SummaryTruncated bool                 `json:"summary_truncated"`
+	FinalOutput      OptString            `json:"final_output"`
+	Usage            OptTraceSummaryUsage `json:"usage"`
 	// Progress, taken from run_status_transitions - the authoritative history - and never reconstructed by
 	// replaying run_lifecycle events (iron rule 5).
 	Steps []string `json:"steps"`
@@ -14268,6 +14297,11 @@ func (s *TraceSummary) GetSkills() []TraceSummarySkillsItem {
 	return s.Skills
 }
 
+// GetSkillsTotal returns the value of SkillsTotal.
+func (s *TraceSummary) GetSkillsTotal() int {
+	return s.SkillsTotal
+}
+
 // GetResourcesRead returns the value of ResourcesRead.
 func (s *TraceSummary) GetResourcesRead() int {
 	return s.ResourcesRead
@@ -14281,6 +14315,16 @@ func (s *TraceSummary) GetToolCalls() TraceSummaryToolCalls {
 // GetErrors returns the value of Errors.
 func (s *TraceSummary) GetErrors() []TraceSummaryErrorsItem {
 	return s.Errors
+}
+
+// GetErrorsTotal returns the value of ErrorsTotal.
+func (s *TraceSummary) GetErrorsTotal() int {
+	return s.ErrorsTotal
+}
+
+// GetSummaryTruncated returns the value of SummaryTruncated.
+func (s *TraceSummary) GetSummaryTruncated() bool {
+	return s.SummaryTruncated
 }
 
 // GetFinalOutput returns the value of FinalOutput.
@@ -14323,6 +14367,11 @@ func (s *TraceSummary) SetSkills(val []TraceSummarySkillsItem) {
 	s.Skills = val
 }
 
+// SetSkillsTotal sets the value of SkillsTotal.
+func (s *TraceSummary) SetSkillsTotal(val int) {
+	s.SkillsTotal = val
+}
+
 // SetResourcesRead sets the value of ResourcesRead.
 func (s *TraceSummary) SetResourcesRead(val int) {
 	s.ResourcesRead = val
@@ -14336,6 +14385,16 @@ func (s *TraceSummary) SetToolCalls(val TraceSummaryToolCalls) {
 // SetErrors sets the value of Errors.
 func (s *TraceSummary) SetErrors(val []TraceSummaryErrorsItem) {
 	s.Errors = val
+}
+
+// SetErrorsTotal sets the value of ErrorsTotal.
+func (s *TraceSummary) SetErrorsTotal(val int) {
+	s.ErrorsTotal = val
+}
+
+// SetSummaryTruncated sets the value of SummaryTruncated.
+func (s *TraceSummary) SetSummaryTruncated(val bool) {
+	s.SummaryTruncated = val
 }
 
 // SetFinalOutput sets the value of FinalOutput.

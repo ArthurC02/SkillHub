@@ -69,6 +69,7 @@ import type {
   RunComparison,
   RunPermissionSummary,
   RunQuota,
+  SandboxTraceEvent,
   SearchSkills200Response,
   SetEvaluationFeedbackRequest,
   SetSkillRestriction200Response,
@@ -81,7 +82,6 @@ import type {
   TakedownSkill200Response,
   TakedownSkillRequest,
   TestCase,
-  TraceEvent,
   TraceIngestReport,
   UpdateAcceptanceCriterionRequest,
   UpdateTestCaseRequest,
@@ -196,6 +196,8 @@ import {
     RunPermissionSummaryToJSON,
     RunQuotaFromJSON,
     RunQuotaToJSON,
+    SandboxTraceEventFromJSON,
+    SandboxTraceEventToJSON,
     SearchSkills200ResponseFromJSON,
     SearchSkills200ResponseToJSON,
     SetEvaluationFeedbackRequestFromJSON,
@@ -220,8 +222,6 @@ import {
     TakedownSkillRequestToJSON,
     TestCaseFromJSON,
     TestCaseToJSON,
-    TraceEventFromJSON,
-    TraceEventToJSON,
     TraceIngestReportFromJSON,
     TraceIngestReportToJSON,
     UpdateAcceptanceCriterionRequestFromJSON,
@@ -352,6 +352,7 @@ export interface GetRunPreflightRequest {
 export interface GetRunTraceRequest {
     id: string;
     mode?: GetRunTraceModeEnum;
+    after?: number;
 }
 
 export interface GetSkillDetailRequest {
@@ -376,7 +377,7 @@ export interface ImportSkillFromURLOperationRequest {
 
 export interface IngestTraceEventsRequest {
     token: string;
-    traceEvent: Array<TraceEvent>;
+    sandboxTraceEvent: Array<SandboxTraceEvent>;
 }
 
 export interface LiftDispatchHaltOperationRequest {
@@ -410,6 +411,11 @@ export interface ListRunsRequest {
 
 export interface ListSkillVersionsRequest {
     id: string;
+}
+
+export interface ListTestCasesRequest {
+    limit?: number;
+    offset?: number;
 }
 
 export interface PreviewPackagingRequest {
@@ -1008,10 +1014,11 @@ export interface DefaultApiInterface {
     getRunQuota(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<RunQuota>;
 
     /**
-     * One endpoint, two modes, because both are the same stored events read two ways and a client toggling between them should not have to know two URLs.  `general` is a human-readable progress summary aggregated from the events: which skills were used, how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is the raw events in reconstructed order plus an explicit statement of which ones are missing.  There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext an unmasked mode would show does not exist anywhere to be served.  `complete: false` means a producer\'s gapless sequence has a hole, which means an event was lost. The UI must say so rather than present the remainder as the whole story (ADR-009).  Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG interpretation. 
+     * One endpoint, two modes, because both are the same stored events read two ways and a client toggling between them should not have to know two URLs.  `general` is a human-readable progress summary aggregated from the events: which skills were used, how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is the raw events in reliable receipt-order pages, with canonical ordering inside each page, plus an explicit statement of which ones are missing. A consumer that needs one reconstructed cross-producer timeline fetches all pages and applies the ordering tuple documented on `events`.  There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext an unmasked mode would show does not exist anywhere to be served.  `complete: false` means a producer\'s gapless sequence has a hole, which means an event was lost. The UI must say so rather than present the remainder as the whole story (ADR-009).  Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG interpretation. 
      * @summary Run trace, in either the general or the advanced mode (TRACE-006, TRACE-007)
      * @param {string} id The platform run_id. A provider\&#39;s ephemeral id never appears in a URL (iron rule 10).
      * @param {'general' | 'advanced'} [mode] 
+     * @param {number} [after] Advanced-mode ingestion cursor. Omit or use 0 for the first page. Page boundaries follow receipt order so a running producer cannot make an earlier page skip a newly committed event. 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -1019,7 +1026,7 @@ export interface DefaultApiInterface {
     getRunTraceRaw(requestParameters: GetRunTraceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetRunTrace200Response>>;
 
     /**
-     * One endpoint, two modes, because both are the same stored events read two ways and a client toggling between them should not have to know two URLs.  `general` is a human-readable progress summary aggregated from the events: which skills were used, how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is the raw events in reconstructed order plus an explicit statement of which ones are missing.  There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext an unmasked mode would show does not exist anywhere to be served.  `complete: false` means a producer\'s gapless sequence has a hole, which means an event was lost. The UI must say so rather than present the remainder as the whole story (ADR-009).  Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG interpretation. 
+     * One endpoint, two modes, because both are the same stored events read two ways and a client toggling between them should not have to know two URLs.  `general` is a human-readable progress summary aggregated from the events: which skills were used, how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is the raw events in reliable receipt-order pages, with canonical ordering inside each page, plus an explicit statement of which ones are missing. A consumer that needs one reconstructed cross-producer timeline fetches all pages and applies the ordering tuple documented on `events`.  There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext an unmasked mode would show does not exist anywhere to be served.  `complete: false` means a producer\'s gapless sequence has a hole, which means an event was lost. The UI must say so rather than present the remainder as the whole story (ADR-009).  Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG interpretation. 
      * Run trace, in either the general or the advanced mode (TRACE-006, TRACE-007)
      */
     getRunTrace(requestParameters: GetRunTraceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetRunTrace200Response>;
@@ -1107,7 +1114,7 @@ export interface DefaultApiInterface {
      * Machine to machine, not a user endpoint. The caller is a sandbox provider pushing what the workload wrote; the sandbox itself has no network and cannot reach this.  **Authentication is the token in the path and nothing else.** Not a session: there is no user. Not the provider\'s bearer token: that credential is deployment-wide, and a credential covering every run must not be able to append to one run\'s timeline. The token is HMAC-signed by the control plane, scoped to one (run_id, attempt), short-lived, and grants append only - it can read nothing. It travels inside `TracePolicy.ingestion_url` of the sandbox provider contract, which has no separate token field.  Everything in the body is untrusted input (ADR-001). The order on this side is fixed: verify the token, resolve workspace_id from run_id under the platform\'s own authority (iron rule 3), validate each envelope, mask (TRACE-005), then store. Nothing reaches the database unmasked.  Rejection is per event, not per batch: one malformed event must not discard the well-formed ones beside it. An event naming a different run or attempt than the token covers is rejected, never re-homed.  Delivery is at-least-once, so a redelivered `event_id` is counted as a duplicate and stored once. Events arriving after the run reached a terminal state are accepted and flagged late rather than dropped: a sandbox pushes its last batch as it shuts down, and that tail is the part a failed run most needs (RUN-004, TRACE-008). 
      * @summary Accept one batch of trace events from the execution plane (TRACE-002)
      * @param {string} token The signed per-attempt ingestion credential. Secret material; never logged.
-     * @param {Array<TraceEvent>} traceEvent 
+     * @param {Array<SandboxTraceEvent>} sandboxTraceEvent 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -1295,16 +1302,18 @@ export interface DefaultApiInterface {
     /**
      * 
      * @summary List the caller\'s test cases (WS-004)
+     * @param {number} [limit] 
+     * @param {number} [offset] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    listTestCasesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTestCases200Response>>;
+    listTestCasesRaw(requestParameters: ListTestCasesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTestCases200Response>>;
 
     /**
      * List the caller\'s test cases (WS-004)
      */
-    listTestCases(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTestCases200Response>;
+    listTestCases(requestParameters: ListTestCasesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTestCases200Response>;
 
     /**
      * No session is required to call it. The handler revokes whatever session cookie arrives and clears the cookie either way, so a caller holding an already-invalid cookie can still get rid of it. 
@@ -2936,7 +2945,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * One endpoint, two modes, because both are the same stored events read two ways and a client toggling between them should not have to know two URLs.  `general` is a human-readable progress summary aggregated from the events: which skills were used, how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is the raw events in reconstructed order plus an explicit statement of which ones are missing.  There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext an unmasked mode would show does not exist anywhere to be served.  `complete: false` means a producer\'s gapless sequence has a hole, which means an event was lost. The UI must say so rather than present the remainder as the whole story (ADR-009).  Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG interpretation. 
+     * One endpoint, two modes, because both are the same stored events read two ways and a client toggling between them should not have to know two URLs.  `general` is a human-readable progress summary aggregated from the events: which skills were used, how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is the raw events in reliable receipt-order pages, with canonical ordering inside each page, plus an explicit statement of which ones are missing. A consumer that needs one reconstructed cross-producer timeline fetches all pages and applies the ordering tuple documented on `events`.  There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext an unmasked mode would show does not exist anywhere to be served.  `complete: false` means a producer\'s gapless sequence has a hole, which means an event was lost. The UI must say so rather than present the remainder as the whole story (ADR-009).  Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG interpretation. 
      * Run trace, in either the general or the advanced mode (TRACE-006, TRACE-007)
      */
     async getRunTraceRaw(requestParameters: GetRunTraceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetRunTrace200Response>> {
@@ -2951,6 +2960,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         if (requestParameters['mode'] != null) {
             queryParameters['mode'] = requestParameters['mode'];
+        }
+
+        if (requestParameters['after'] != null) {
+            queryParameters['after'] = requestParameters['after'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -2970,7 +2983,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * One endpoint, two modes, because both are the same stored events read two ways and a client toggling between them should not have to know two URLs.  `general` is a human-readable progress summary aggregated from the events: which skills were used, how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is the raw events in reconstructed order plus an explicit statement of which ones are missing.  There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext an unmasked mode would show does not exist anywhere to be served.  `complete: false` means a producer\'s gapless sequence has a hole, which means an event was lost. The UI must say so rather than present the remainder as the whole story (ADR-009).  Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG interpretation. 
+     * One endpoint, two modes, because both are the same stored events read two ways and a client toggling between them should not have to know two URLs.  `general` is a human-readable progress summary aggregated from the events: which skills were used, how many resources were read, how the tool calls went, the final answer, token usage. `advanced` is the raw events in reliable receipt-order pages, with canonical ordering inside each page, plus an explicit statement of which ones are missing. A consumer that needs one reconstructed cross-producer timeline fetches all pages and applies the ordering tuple documented on `events`.  There is no unmasked mode. Masking runs before storage (TRACE-005, iron rule 11), so the plaintext an unmasked mode would show does not exist anywhere to be served.  `complete: false` means a producer\'s gapless sequence has a hole, which means an event was lost. The UI must say so rather than present the remainder as the whole story (ADR-009).  Every payload here is untrusted content that crossed the trust boundary (ADR-001) and must be rendered as inert text: no HTML, ANSI or SVG interpretation. 
      * Run trace, in either the general or the advanced mode (TRACE-006, TRACE-007)
      */
     async getRunTrace(requestParameters: GetRunTraceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetRunTrace200Response> {
@@ -3185,10 +3198,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             );
         }
 
-        if (requestParameters['traceEvent'] == null) {
+        if (requestParameters['sandboxTraceEvent'] == null) {
             throw new runtime.RequiredError(
-                'traceEvent',
-                'Required parameter "traceEvent" was null or undefined when calling ingestTraceEvents().'
+                'sandboxTraceEvent',
+                'Required parameter "sandboxTraceEvent" was null or undefined when calling ingestTraceEvents().'
             );
         }
 
@@ -3207,7 +3220,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: requestParameters['traceEvent']!.map(TraceEventToJSON),
+            body: requestParameters['sandboxTraceEvent']!.map(SandboxTraceEventToJSON),
         }, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => TraceIngestReportFromJSON(jsonValue));
@@ -3627,8 +3640,16 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     /**
      * List the caller\'s test cases (WS-004)
      */
-    async listTestCasesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTestCases200Response>> {
+    async listTestCasesRaw(requestParameters: ListTestCasesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTestCases200Response>> {
         const queryParameters: any = {};
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        if (requestParameters['offset'] != null) {
+            queryParameters['offset'] = requestParameters['offset'];
+        }
 
         const headerParameters: runtime.HTTPHeaders = {};
 
@@ -3648,8 +3669,8 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     /**
      * List the caller\'s test cases (WS-004)
      */
-    async listTestCases(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTestCases200Response> {
-        const response = await this.listTestCasesRaw(initOverrides);
+    async listTestCases(requestParameters: ListTestCasesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTestCases200Response> {
+        const response = await this.listTestCasesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

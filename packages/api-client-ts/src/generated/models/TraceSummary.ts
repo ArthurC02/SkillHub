@@ -84,6 +84,12 @@ export interface TraceSummary {
      */
     skills: Array<TraceSummarySkillsInner>;
     /**
+     * Exact number of skill activation events; skills contains at most the first 100.
+     * @type {number}
+     * @memberof TraceSummary
+     */
+    skillsTotal: number;
+    /**
      * 
      * @type {number}
      * @memberof TraceSummary
@@ -101,6 +107,18 @@ export interface TraceSummary {
      * @memberof TraceSummary
      */
     errors: Array<TraceSummaryErrorsInner>;
+    /**
+     * Exact number of error events; errors contains at most the first 100.
+     * @type {number}
+     * @memberof TraceSummary
+     */
+    errorsTotal: number;
+    /**
+     * True when a repeated summary list was bounded; exact totals remain available.
+     * @type {boolean}
+     * @memberof TraceSummary
+     */
+    summaryTruncated: boolean;
     /**
      * 
      * @type {string}
@@ -150,9 +168,12 @@ export function instanceOfTraceSummary(value: object): value is TraceSummary {
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('complete' in value) || value['complete'] === undefined) return false;
     if (!('skills' in value) || value['skills'] === undefined) return false;
+    if (!('skillsTotal' in value) || value['skillsTotal'] === undefined) return false;
     if (!('resourcesRead' in value) || value['resourcesRead'] === undefined) return false;
     if (!('toolCalls' in value) || value['toolCalls'] === undefined) return false;
     if (!('errors' in value) || value['errors'] === undefined) return false;
+    if (!('errorsTotal' in value) || value['errorsTotal'] === undefined) return false;
+    if (!('summaryTruncated' in value) || value['summaryTruncated'] === undefined) return false;
     if (!('steps' in value) || value['steps'] === undefined) return false;
     return true;
 }
@@ -172,9 +193,12 @@ export function TraceSummaryFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'statusReason': json['status_reason'] == null ? undefined : json['status_reason'],
         'complete': json['complete'],
         'skills': ((json['skills'] as Array<any>).map(TraceSummarySkillsInnerFromJSON)),
+        'skillsTotal': json['skills_total'],
         'resourcesRead': json['resources_read'],
         'toolCalls': TraceSummaryToolCallsFromJSON(json['tool_calls']),
         'errors': ((json['errors'] as Array<any>).map(TraceSummaryErrorsInnerFromJSON)),
+        'errorsTotal': json['errors_total'],
+        'summaryTruncated': json['summary_truncated'],
         'finalOutput': json['final_output'] == null ? undefined : json['final_output'],
         'usage': json['usage'] == null ? undefined : TraceSummaryUsageFromJSON(json['usage']),
         'steps': json['steps'],
@@ -197,9 +221,12 @@ export function TraceSummaryToJSONTyped(value?: TraceSummary | null, ignoreDiscr
         'status_reason': value['statusReason'],
         'complete': value['complete'],
         'skills': ((value['skills'] as Array<any>).map(TraceSummarySkillsInnerToJSON)),
+        'skills_total': value['skillsTotal'],
         'resources_read': value['resourcesRead'],
         'tool_calls': TraceSummaryToolCallsToJSON(value['toolCalls']),
         'errors': ((value['errors'] as Array<any>).map(TraceSummaryErrorsInnerToJSON)),
+        'errors_total': value['errorsTotal'],
+        'summary_truncated': value['summaryTruncated'],
         'final_output': value['finalOutput'],
         'usage': TraceSummaryUsageToJSON(value['usage']),
         'steps': value['steps'],

@@ -45,15 +45,15 @@ UPDATE evaluations SET
     cost_source = @cost_source,
     evaluated_at = now(),
     updated_at = now()
-WHERE id = @id AND workspace_id = @workspace_id AND status <> 'completed'
+WHERE id = @id AND workspace_id = @workspace_id AND status = 'pending'
 RETURNING *;
 
 -- name: FailEvaluation :one
 -- The evaluation could not produce a verdict (judge unreachable, evidence
 -- unreadable). It stays `undetermined` and keeps whatever deterministic findings
 -- were already established: those came from the platform's own records and are
--- still true even when the model leg failed. `status <> 'completed'` refuses to
--- turn a verdict somebody has read into a failure.
+-- still true even when the model leg failed. Only pending may settle: recovery
+-- and the original worker can race, and exactly one of them owns the terminal.
 UPDATE evaluations SET
     status = 'failed',
     summary = @summary,
@@ -61,7 +61,7 @@ UPDATE evaluations SET
     evidence_complete = @evidence_complete,
     evaluated_at = now(),
     updated_at = now()
-WHERE id = @id AND workspace_id = @workspace_id AND status <> 'completed'
+WHERE id = @id AND workspace_id = @workspace_id AND status = 'pending'
 RETURNING *;
 
 -- name: GetCurrentEvaluation :one
@@ -69,6 +69,19 @@ RETURNING *;
 -- evaluations_current_key, which also guarantees this cannot match twice.
 SELECT * FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2 AND superseded_at IS NULL;
+
+-- name: RecordEvaluationModelUsage :exec
+-- A successful gateway response is a billable fact even when a later proposal
+-- is rejected by validation. Retries must not create a second accounting row.
+INSERT INTO evaluation_model_usage (
+    evaluation_id, workspace_id, operation, model, prompt_version,
+    prompt_tokens, completion_tokens, cost_usd, cost_source
+)
+SELECT @evaluation_id, @workspace_id, @operation, @model, @prompt_version, @prompt_tokens,
+       @completion_tokens, @cost_usd, @cost_source
+FROM evaluations
+WHERE id = @evaluation_id AND workspace_id = @workspace_id
+ON CONFLICT (evaluation_id, operation) DO NOTHING;
 
 -- name: GetEvaluationRevision :one
 -- One particular judgement by id. run_id is in the predicate as well as the id:

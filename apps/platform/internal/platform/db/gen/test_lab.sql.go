@@ -273,7 +273,7 @@ func (q *Queries) ListDatasets(ctx context.Context, arg ListDatasetsParams) ([]D
 const listTestCases = `-- name: ListTestCases :many
 SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric FROM test_cases
 WHERE workspace_id = $1 AND deleted_at IS NULL
-ORDER BY created_at DESC
+ORDER BY created_at DESC, id DESC
 LIMIT $2 OFFSET $3
 `
 

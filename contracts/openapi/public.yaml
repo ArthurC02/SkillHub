@@ -423,7 +423,7 @@ paths:
         - name: q
           in: query
           required: true
-          schema: { type: string }
+          schema: { type: string, maxLength: 2000 }
           description: Natural language task description.
         - name: limit
           in: query
@@ -478,7 +478,8 @@ paths:
                 $ref: "#/components/schemas/PublicSearchResponse"
         "400":
           description: |
-            An unusable filter. Either a `script`/`validation`/`agent` value
+            An oversized query, or an unusable filter. Either a query over 2,000
+            characters, a `script`/`validation`/`agent` value
             outside its enum, or one of the three 02:DISC-002 dimensions this
             build has no per-row data for — `category`, `tier`, `mcp`. (`agent`
             left that list when 0022 gave it per-row data.) Those are
@@ -1860,8 +1861,10 @@ paths:
         `general` is a human-readable progress summary aggregated from the
         events: which skills were used, how many resources were read, how the
         tool calls went, the final answer, token usage. `advanced` is the raw
-        events in reconstructed order plus an explicit statement of which ones
-        are missing.
+        events in reliable receipt-order pages, with canonical ordering inside
+        each page, plus an explicit statement of which ones are missing. A
+        consumer that needs one reconstructed cross-producer timeline fetches
+        all pages and applies the ordering tuple documented on `events`.
 
         There is no unmasked mode. Masking runs before storage (TRACE-005, iron
         rule 11), so the plaintext an unmasked mode would show does not exist
@@ -1887,6 +1890,14 @@ paths:
             type: string
             enum: [general, advanced]
             default: general
+        - name: after
+          in: query
+          required: false
+          description: |
+            Advanced-mode ingestion cursor. Omit or use 0 for the first page.
+            Page boundaries follow receipt order so a running producer cannot
+            make an earlier page skip a newly committed event.
+          schema: { type: integer, format: int64, minimum: 0, default: 0 }
       responses:
         "200":
           description: The trace in the requested mode.
@@ -2290,7 +2301,7 @@ paths:
             schema:
               type: array
               maxItems: 1000
-              items: { $ref: "#/components/schemas/TraceEvent" }
+              items: { $ref: "#/components/schemas/SandboxTraceEvent" }
       responses:
         "202":
           description: |
@@ -2370,6 +2381,13 @@ paths:
     get:
       operationId: listTestCases
       summary: List the caller's test cases (WS-004)
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 101, default: 51 }
+        - name: offset
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
       responses:
         "200":
           description: The caller's test cases, newest first.
@@ -3283,10 +3301,11 @@ components:
           format: uuid
           description: Producer-assigned. This is the consumer idempotency key (TRACE-008).
         run_id: { type: string, format: uuid }
-        attempt: { type: integer, minimum: 1 }
+        attempt: { type: integer, minimum: 1, maximum: 100000 }
         seq:
           type: integer
           minimum: 1
+          maximum: 100000
           description: |
             Gapless from 1, scoped to (run_id, attempt, emitted_by). A hole is how
             a lost event is detected; it is not a run-wide ordinal.
@@ -3312,6 +3331,13 @@ components:
           items: { type: string }
           description: JSON Pointers, relative to payload, of values actually redacted.
         payload: { type: object }
+    SandboxTraceEvent:
+      allOf:
+        - $ref: "#/components/schemas/TraceEvent"
+        - type: object
+          description: A Trace event accepted through a sandbox attempt's signed ingestion capability.
+          properties:
+            emitted_by: { type: string, enum: [sandbox] }
     TraceIngestReport:
       type: object
       required: [received, stored, duplicate, rejected]
@@ -3326,25 +3352,51 @@ components:
           type: array
           items: { type: string }
           description: One line per rejected event, so a producer can fix its output.
+    TraceEventView:
+      type: object
+      description: A stored, server-masked Trace event returned by the advanced reader.
+      required: [event_id, attempt, seq, occurred_at, emitted_by, type, masked_fields, payload]
+      properties:
+        event_id: { type: string, format: uuid }
+        attempt: { type: integer, minimum: 1, maximum: 100000 }
+        seq: { type: integer, minimum: 1, maximum: 100000 }
+        occurred_at: { type: string, format: date-time }
+        emitted_by: { type: string, enum: [sandbox, orchestrator, llm_service] }
+        type:
+          type: string
+          enum: [skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle, evaluation_started, evaluation_completed]
+        status:
+          type: string
+          enum: [ok, error, skipped, cancelled, timed_out]
+        late: { type: boolean }
+        masked_fields:
+          type: array
+          items: { type: string }
+        payload: { type: object }
     TraceStream:
       type: object
       description: One (attempt, emitted_by) stream's completeness.
-      required: [attempt, emitted_by, received, highest_seq, late_events]
+      required: [attempt, emitted_by, received, highest_seq, missing_count, late_events]
       properties:
         attempt: { type: integer }
         emitted_by: { type: string }
         received: { type: integer }
         highest_seq: { type: integer }
+        missing_count:
+          type: integer
+          minimum: 0
+          description: Exact count of sequence numbers that never arrived.
         missing_seq:
           type: array
+          maxItems: 1000
           items: { type: integer }
-          description: Sequence numbers that never arrived. Each one is a lost event.
+          description: At most the first 1,000 missing numbers; missing_count is authoritative.
         late_events:
           type: integer
           description: Events that arrived after the run had already reached a terminal state.
     TraceAdvanced:
       type: object
-      required: [run_id, complete, streams, events]
+      required: [run_id, complete, streams, events, next_after, has_more]
       properties:
         run_id: { type: string, format: uuid }
         complete:
@@ -3358,19 +3410,27 @@ components:
           items: { $ref: "#/components/schemas/TraceStream" }
         events:
           type: array
-          description: Masked events in cross-producer order (occurred_at, emitted_by, seq).
-          items:
-            allOf:
-              - $ref: "#/components/schemas/TraceEvent"
-              - type: object
-                properties:
-                  late: { type: boolean }
+          maxItems: 1000
+          description: |
+            Masked events, canonically ordered within this ingestion page.
+            Pages themselves follow receipt order. A consumer that needs one
+            cross-producer timeline must fetch every page and then sort the
+            combined events by (occurred_at, emitted_by, attempt, seq).
+          items: { $ref: "#/components/schemas/TraceEventView" }
+        next_after:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Cursor to send as `after` to fetch events ingested after this page.
+        has_more:
+          type: boolean
+          description: True when another page is already available.
     TraceSummary:
       type: object
       description: |
         TRACE-006's general mode: what happened, in language a non-technical user
         reads, without opening a single raw event.
-      required: [run_id, status, complete, skills, resources_read, tool_calls, errors, steps]
+      required: [run_id, status, complete, skills, skills_total, resources_read, tool_calls, errors, errors_total, summary_truncated, steps]
       properties:
         run_id: { type: string, format: uuid }
         status:
@@ -3385,12 +3445,17 @@ components:
         complete: { type: boolean }
         skills:
           type: array
+          maxItems: 100
           items:
             type: object
             properties:
               name: { type: string }
               decision: { type: string, enum: [activated, skipped] }
               reason: { type: string }
+        skills_total:
+          type: integer
+          minimum: 0
+          description: Exact number of skill activation events; skills contains at most the first 100.
         resources_read: { type: integer }
         tool_calls:
           type: object
@@ -3403,12 +3468,20 @@ components:
             slowest_tool: { type: string }
         errors:
           type: array
+          maxItems: 100
           items:
             type: object
             properties:
               category: { type: string }
               code: { type: string }
               message: { type: string }
+        errors_total:
+          type: integer
+          minimum: 0
+          description: Exact number of error events; errors contains at most the first 100.
+        summary_truncated:
+          type: boolean
+          description: True when a repeated summary list was bounded; exact totals remain available.
         final_output: { type: string }
         usage:
           type: object

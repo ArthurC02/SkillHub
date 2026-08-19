@@ -9,19 +9,17 @@ info:
 servers:
   - url: http://llm:8000
 
-# No authentication, stated rather than left blank. apps/llm's FastAPI app
-# has no auth dependency on any route: the only thing standing between it and a
-# caller is that it is not routable from outside the deployment. That is a
-# network boundary and there is no security scheme to describe it with, so the
-# honest declaration is an empty requirement rather than an invented apiKey.
-# Publishing this port is what would make it wrong, not a missing scheme here.
-security: []
+# Every route requires the workload identity token from the Go control plane.
+# Private networking remains a separate deployment boundary (ADR-020).
+security:
+  - serviceBearer: []
 
 paths:
   /healthz:
     get:
       operationId: getHealth
       summary: Process liveness probe
+      security: []
       responses:
         "200":
           description: The process is up.
@@ -50,12 +48,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EmbedResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "502":
           description: Embedding provider error (LiteLLM or upstream).
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "503":
+          $ref: "#/components/responses/AuthUnavailable"
   /v1/enrich-skill:
     post:
       operationId: enrichSkill
@@ -84,6 +86,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EnrichSkillResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "422":
           description: Request failed validation.
           content:
@@ -123,12 +127,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MatchReasonsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "502":
           description: LLM provider error.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "503":
+          $ref: "#/components/responses/AuthUnavailable"
   /suggest-criteria:
     post:
       operationId: suggestCriteria
@@ -159,6 +167,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuggestCriteriaResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "422":
           description: Request failed validation.
           content:
@@ -167,13 +177,14 @@ paths:
                 $ref: "#/components/schemas/Error"
         "502":
           description: |
-            Gateway error. Unlike /v1/enrich-skill there is no 503 here: this
-            endpoint has no configuration it can be missing, so an unconfigured
-            gateway surfaces as a failed call rather than as a distinct state.
+            LiteLLM gateway or model failure. Service bearer configuration
+            failures are reported separately as 503.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "503":
+          $ref: "#/components/responses/AuthUnavailable"
   /judge-run:
     post:
       operationId: judgeRun
@@ -221,6 +232,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/JudgeRunResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "422":
           description: Request failed validation.
           content:
@@ -237,12 +250,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "503":
+          $ref: "#/components/responses/AuthUnavailable"
   /suggest-improvements:
     post:
       operationId: suggestImprovements
       summary: Propose improvements from one evaluation (EVAL-002)
       description: |
-        Proposals only. This service has no authorization, no writes and no idea
+        Proposals only. This service has no product authorization, no writes and no idea
         how a Skill Version is built; Go validates every proposal (path stays
         inside the package, target file unchanged since the proposal was made,
         the patched bytes still pass `skillpkg.Validate`, the Skill is not
@@ -269,6 +284,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuggestImprovementsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "422":
           description: Request failed validation.
           content:
@@ -281,7 +298,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "503":
+          $ref: "#/components/responses/AuthUnavailable"
 components:
+  responses:
+    Unauthorized:
+      description: The workload Bearer token is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    AuthUnavailable:
+      description: The service workload token is not configured.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  securitySchemes:
+    serviceBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque service token
   schemas:
     Health:
       type: object
@@ -424,6 +461,7 @@ components:
         query:
           type: string
           minLength: 1
+          maxLength: 2000
         candidates:
           type: array
           items:
@@ -1031,12 +1069,9 @@ components:
       properties:
         category:
           type: string
-          enum: [skill, runtime, mcp, tool, dataset]
+          enum: [skill, runtime, tool, dataset]
           description: |
-            `mcp` is a type placeholder and is never produced in the MVP - remote
-            MCP is out of first release, so the half of 02:EVAL-002 clause 2 that
-            asks for MCP problems is shown as not applicable rather than filled in
-            (same treatment as TRACE-003).
+            Remote MCP is out of first release, so it is not part of this enum.
         problem:
           type: string
           maxLength: 2000

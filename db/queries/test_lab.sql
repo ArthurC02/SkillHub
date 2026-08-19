@@ -22,7 +22,7 @@ FOR UPDATE;
 -- name: ListTestCases :many
 SELECT * FROM test_cases
 WHERE workspace_id = $1 AND deleted_at IS NULL
-ORDER BY created_at DESC
+ORDER BY created_at DESC, id DESC
 LIMIT $2 OFFSET $3;
 
 -- name: UpdateTestCase :one

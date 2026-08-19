@@ -115,6 +115,200 @@ func (q *Queries) GetRunForTraceIngest(ctx context.Context, id pgtype.UUID) (Get
 	return i, err
 }
 
+const getTraceGeneralFold = `-- name: GetTraceGeneralFold :one
+WITH events AS (
+    SELECT event_type
+    FROM trace_events
+    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2
+),
+skill_rows AS (
+    SELECT payload, occurred_at, source, attempt, seq FROM trace_events
+    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2 AND event_type = 'skill_activation'
+    ORDER BY occurred_at, source, attempt, seq LIMIT 100
+),
+error_rows AS (
+    SELECT payload, occurred_at, source, attempt, seq FROM trace_events
+    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2 AND event_type = 'error'
+    ORDER BY occurred_at, source, attempt, seq LIMIT 100
+),
+tool_rows AS (
+    SELECT payload->>'tool_name' AS tool_name,
+           payload->>'outcome' AS outcome,
+           occurred_at, source, attempt, seq,
+           CASE WHEN (payload->>'duration_ms') ~ '^[0-9]{1,18}$'
+                THEN (payload->>'duration_ms')::bigint ELSE 0 END AS duration_ms
+    FROM trace_events
+    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2 AND event_type = 'tool_call'
+),
+last_output AS (
+    SELECT payload->>'text' AS text FROM trace_events
+    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2
+      AND event_type = 'agent_output' AND payload->>'kind' = 'final'
+    ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC LIMIT 1
+),
+usage_rows AS (
+    SELECT payload->>'scope' AS scope,
+           payload->>'model' AS model,
+           payload->>'input_tokens' AS input_tokens,
+           payload->>'output_tokens' AS output_tokens,
+           payload->>'cost_usd' AS cost_usd,
+           payload->>'cost_source' AS cost_source,
+           occurred_at, source, attempt, seq
+    FROM trace_events
+    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2 AND event_type = 'usage'
+),
+last_usage AS (
+    SELECT model, cost_source FROM usage_rows
+    ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC LIMIT 1
+),
+run_total AS (
+    SELECT input_tokens, output_tokens, cost_usd FROM usage_rows WHERE scope = 'run_total'
+    ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC LIMIT 1
+),
+usage_sum AS (
+    SELECT
+      least(coalesce(sum(CASE WHEN input_tokens ~ '^[0-9]{1,18}$'
+                              THEN input_tokens::bigint ELSE 0 END), 0),
+            9223372036854775807)::bigint AS input_tokens,
+      least(coalesce(sum(CASE WHEN output_tokens ~ '^[0-9]{1,18}$'
+                              THEN output_tokens::bigint ELSE 0 END), 0),
+            9223372036854775807)::bigint AS output_tokens,
+      sum(CASE WHEN cost_usd ~ '^[0-9]{1,12}(\.[0-9]{1,12})?$'
+               THEN cost_usd::numeric ELSE NULL END) AS cost_usd
+    FROM usage_rows WHERE scope IS DISTINCT FROM 'run_total'
+)
+SELECT jsonb_build_object(
+  'skills', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+      'name', coalesce(payload->>'skill_name', ''),
+      'decision', coalesce(payload->>'decision', ''),
+      'reason', coalesce(payload->>'reason', '')
+  ) ORDER BY occurred_at, source, attempt, seq), '[]'::jsonb) FROM skill_rows),
+  'skills_total', (SELECT count(*) FROM events WHERE event_type = 'skill_activation'),
+  'resources_read', (SELECT count(*) FROM events WHERE event_type = 'resource_read'),
+  'tool_calls', jsonb_build_object(
+      'total', (SELECT count(*) FROM tool_rows),
+      'succeeded', (SELECT count(*) FROM tool_rows WHERE outcome = 'succeeded'),
+      'failed', (SELECT count(*) FROM tool_rows WHERE outcome IS DISTINCT FROM 'succeeded'),
+      'total_duration_ms', (SELECT least(coalesce(sum(duration_ms), 0), 9223372036854775807) FROM tool_rows),
+      'slowest_duration_ms', (SELECT coalesce(max(duration_ms), 0) FROM tool_rows),
+      'slowest_tool', coalesce((SELECT tool_name FROM tool_rows
+                               WHERE duration_ms > 0
+                               ORDER BY duration_ms DESC, occurred_at, source, attempt, seq LIMIT 1), '')
+  ),
+  'errors', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+      'category', coalesce(payload->>'category', ''),
+      'code', coalesce(payload->>'code', ''),
+      'message', coalesce(payload->>'message', '')
+  ) ORDER BY occurred_at, source, attempt, seq), '[]'::jsonb) FROM error_rows),
+  'errors_total', (SELECT count(*) FROM events WHERE event_type = 'error'),
+  'final_output', coalesce((SELECT text FROM last_output), ''),
+  'usage', CASE WHEN EXISTS (SELECT 1 FROM usage_rows) THEN jsonb_build_object(
+      'model', coalesce((SELECT model FROM last_usage), ''),
+      'input_tokens', coalesce(
+          (SELECT CASE WHEN input_tokens ~ '^[0-9]{1,18}$'
+                       THEN input_tokens::bigint END FROM run_total),
+          (SELECT input_tokens FROM usage_sum)),
+      'output_tokens', coalesce(
+          (SELECT CASE WHEN output_tokens ~ '^[0-9]{1,18}$'
+                       THEN output_tokens::bigint END FROM run_total),
+          (SELECT output_tokens FROM usage_sum)),
+      'cost_usd', coalesce(
+          (SELECT CASE WHEN cost_usd ~ '^[0-9]{1,12}(\.[0-9]{1,12})?$'
+                       THEN cost_usd::numeric END FROM run_total),
+          (SELECT cost_usd FROM usage_sum)),
+      'cost_source', coalesce((SELECT cost_source FROM last_usage), '')
+  ) ELSE NULL END
+) AS folded
+`
+
+type GetTraceGeneralFoldParams struct {
+	FoldRunID       pgtype.UUID
+	FoldWorkspaceID pgtype.UUID
+}
+
+// Fold the general view in PostgreSQL so polling transfers one aggregate row,
+// not every raw payload. User-visible repeated lists are bounded and their exact
+// totals are returned so truncation is explicit rather than silent.
+func (q *Queries) GetTraceGeneralFold(ctx context.Context, arg GetTraceGeneralFoldParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getTraceGeneralFold, arg.FoldRunID, arg.FoldWorkspaceID)
+	var folded []byte
+	err := row.Scan(&folded)
+	return folded, err
+}
+
+const getTraceStreamHealth = `-- name: GetTraceStreamHealth :many
+WITH scoped AS (
+    SELECT attempt, source, seq, late,
+           lag(seq, 1, 0) OVER (PARTITION BY attempt, source ORDER BY seq) AS previous_seq
+    FROM trace_events
+    WHERE run_id = $1 AND workspace_id = $2
+),
+streams AS (
+    SELECT attempt, source, count(*)::bigint AS received,
+           max(seq)::bigint AS highest_seq,
+           (max(seq) - count(*))::bigint AS missing_count,
+           count(*) FILTER (WHERE late)::bigint AS late_events
+    FROM scoped
+    GROUP BY attempt, source
+)
+SELECT s.attempt, s.source, s.received, s.highest_seq, s.missing_count, s.late_events,
+       coalesce(ARRAY(
+           SELECT candidate
+           FROM scoped e
+           CROSS JOIN LATERAL generate_series(e.previous_seq + 1, e.seq - 1) AS candidate
+           WHERE e.attempt = s.attempt AND e.source = s.source
+           ORDER BY candidate
+           LIMIT 1000
+       ), ARRAY[]::bigint[])::bigint[] AS missing_seq
+FROM streams s
+ORDER BY s.attempt, s.source
+`
+
+type GetTraceStreamHealthParams struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+type GetTraceStreamHealthRow struct {
+	Attempt      int32
+	Source       string
+	Received     int64
+	HighestSeq   int64
+	MissingCount int64
+	LateEvents   int64
+	MissingSeq   []int64
+}
+
+// Exact stream health without materialising every event in the application.
+// Only the first 1,000 missing ordinals are returned; missing_count is exact.
+func (q *Queries) GetTraceStreamHealth(ctx context.Context, arg GetTraceStreamHealthParams) ([]GetTraceStreamHealthRow, error) {
+	rows, err := q.db.Query(ctx, getTraceStreamHealth, arg.RunID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTraceStreamHealthRow
+	for rows.Next() {
+		var i GetTraceStreamHealthRow
+		if err := rows.Scan(
+			&i.Attempt,
+			&i.Source,
+			&i.Received,
+			&i.HighestSeq,
+			&i.MissingCount,
+			&i.LateEvents,
+			&i.MissingSeq,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertTraceEvent = `-- name: InsertTraceEvent :execrows
 
 INSERT INTO trace_events (
@@ -173,8 +367,115 @@ func (q *Queries) InsertTraceEvent(ctx context.Context, arg InsertTraceEventPara
 	return result.RowsAffected(), nil
 }
 
+const listEvaluationTraceEvents = `-- name: ListEvaluationTraceEvents :many
+WITH tail AS (
+    SELECT ingest_seq, occurred_at, source, attempt, seq FROM trace_events
+    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2
+    ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC
+    LIMIT 501
+),
+tail_kept AS (
+    SELECT ingest_seq FROM tail
+    ORDER BY occurred_at DESC, source DESC, attempt DESC, seq DESC
+    LIMIT 500
+),
+activations AS (
+    SELECT ingest_seq FROM trace_events
+    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2
+      AND event_type = 'skill_activation'
+    ORDER BY occurred_at, source, attempt, seq
+    LIMIT 100
+),
+errors AS (
+    SELECT ingest_seq FROM trace_events
+    WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2
+      AND event_type = 'error'
+    ORDER BY occurred_at, source, attempt, seq
+    LIMIT 100
+),
+selected AS (
+    SELECT ingest_seq FROM tail_kept
+    UNION
+    SELECT ingest_seq FROM activations
+    UNION
+    SELECT ingest_seq FROM errors
+)
+SELECT trace_events.id, trace_events.workspace_id, trace_events.run_id, trace_events.seq, trace_events.occurred_at, trace_events.event_type, trace_events.source, trace_events.status, trace_events.payload, trace_events.payload_object_key, trace_events.event_id, trace_events.attempt, trace_events.schema_version, trace_events.masked, trace_events.masked_fields, trace_events.late, trace_events.ingest_seq, (SELECT count(*) > 500 FROM tail) AS evaluation_truncated
+FROM selected
+JOIN trace_events USING (ingest_seq)
+ORDER BY trace_events.occurred_at, trace_events.source, trace_events.attempt, trace_events.seq
+`
+
+type ListEvaluationTraceEventsParams struct {
+	EvaluationRunID       pgtype.UUID
+	EvaluationWorkspaceID pgtype.UUID
+}
+
+type ListEvaluationTraceEventsRow struct {
+	ID                  pgtype.UUID
+	WorkspaceID         pgtype.UUID
+	RunID               pgtype.UUID
+	Seq                 int64
+	OccurredAt          pgtype.Timestamptz
+	EventType           string
+	Source              string
+	Status              *string
+	Payload             []byte
+	PayloadObjectKey    *string
+	EventID             pgtype.UUID
+	Attempt             int32
+	SchemaVersion       string
+	Masked              bool
+	MaskedFields        []byte
+	Late                bool
+	IngestSeq           int64
+	EvaluationTruncated bool
+}
+
+// The evaluator never needs the whole raw trace in memory. Keep a recent tail
+// plus bounded early activation/error evidence; large script-log payloads
+// outside this window are never transferred or decoded by the worker.
+func (q *Queries) ListEvaluationTraceEvents(ctx context.Context, arg ListEvaluationTraceEventsParams) ([]ListEvaluationTraceEventsRow, error) {
+	rows, err := q.db.Query(ctx, listEvaluationTraceEvents, arg.EvaluationRunID, arg.EvaluationWorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEvaluationTraceEventsRow
+	for rows.Next() {
+		var i ListEvaluationTraceEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.RunID,
+			&i.Seq,
+			&i.OccurredAt,
+			&i.EventType,
+			&i.Source,
+			&i.Status,
+			&i.Payload,
+			&i.PayloadObjectKey,
+			&i.EventID,
+			&i.Attempt,
+			&i.SchemaVersion,
+			&i.Masked,
+			&i.MaskedFields,
+			&i.Late,
+			&i.IngestSeq,
+			&i.EvaluationTruncated,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTraceEvents = `-- name: ListTraceEvents :many
-SELECT id, workspace_id, run_id, seq, occurred_at, event_type, source, status, payload, payload_object_key, event_id, attempt, schema_version, masked, masked_fields, late FROM trace_events
+SELECT id, workspace_id, run_id, seq, occurred_at, event_type, source, status, payload, payload_object_key, event_id, attempt, schema_version, masked, masked_fields, late, ingest_seq FROM trace_events
 WHERE run_id = $1 AND workspace_id = $2
 ORDER BY occurred_at, source, attempt, seq
 `
@@ -213,6 +514,7 @@ func (q *Queries) ListTraceEvents(ctx context.Context, arg ListTraceEventsParams
 			&i.Masked,
 			&i.MaskedFields,
 			&i.Late,
+			&i.IngestSeq,
 		); err != nil {
 			return nil, err
 		}
@@ -224,9 +526,91 @@ func (q *Queries) ListTraceEvents(ctx context.Context, arg ListTraceEventsParams
 	return items, nil
 }
 
+const listTraceEventsAfter = `-- name: ListTraceEventsAfter :many
+SELECT id, workspace_id, run_id, seq, occurred_at, event_type, source, status, payload, payload_object_key, event_id, attempt, schema_version, masked, masked_fields, late, ingest_seq FROM trace_events
+WHERE run_id = $1 AND workspace_id = $2
+  AND ingest_seq > $3
+ORDER BY ingest_seq
+LIMIT $4
+`
+
+type ListTraceEventsAfterParams struct {
+	RunID          pgtype.UUID
+	WorkspaceID    pgtype.UUID
+	AfterIngestSeq int64
+	PageLimit      int32
+}
+
+// Incremental advanced-view read. ingest_seq is assigned by the database and is
+// therefore stable even when producer clocks skew or several streams reuse seq.
+func (q *Queries) ListTraceEventsAfter(ctx context.Context, arg ListTraceEventsAfterParams) ([]TraceEvent, error) {
+	rows, err := q.db.Query(ctx, listTraceEventsAfter,
+		arg.RunID,
+		arg.WorkspaceID,
+		arg.AfterIngestSeq,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TraceEvent
+	for rows.Next() {
+		var i TraceEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.RunID,
+			&i.Seq,
+			&i.OccurredAt,
+			&i.EventType,
+			&i.Source,
+			&i.Status,
+			&i.Payload,
+			&i.PayloadObjectKey,
+			&i.EventID,
+			&i.Attempt,
+			&i.SchemaVersion,
+			&i.Masked,
+			&i.MaskedFields,
+			&i.Late,
+			&i.IngestSeq,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockTraceIngestRun = `-- name: LockTraceIngestRun :exec
+SELECT pg_advisory_xact_lock(hashtextextended(
+    'trace-ingest:' || CAST($1 AS uuid)::text, 0
+))
+`
+
+// Establish the global trace writer lock hierarchy before a control-plane
+// writer takes its per-stream lock. The insert trigger re-enters this lock.
+func (q *Queries) LockTraceIngestRun(ctx context.Context, runID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, lockTraceIngestRun, runID)
+	return err
+}
+
 const nextTraceSeq = `-- name: NextTraceSeq :one
-SELECT (coalesce(max(seq), 0) + 1)::bigint FROM trace_events
-WHERE run_id = $1 AND attempt = $2 AND source = $3
+WITH stream_lock AS (
+    SELECT pg_advisory_xact_lock(hashtextextended(
+        'trace-stream:' || CAST($1 AS uuid)::text || ':' || CAST($2 AS integer)::text || ':' || CAST($3 AS text),
+        0
+    ))
+)
+SELECT (coalesce(max(seq), 0) + 1)::bigint
+FROM trace_events, stream_lock
+WHERE run_id = CAST($1 AS uuid)
+  AND attempt = CAST($2 AS integer)
+  AND source = CAST($3 AS text)
 `
 
 type NextTraceSeqParams struct {
@@ -237,9 +621,7 @@ type NextTraceSeqParams struct {
 
 // The next gapless ordinal for one (run_id, attempt, source) stream. Called inside
 // the transaction that writes the event, so two concurrent writers on the same
-// stream cannot both take the same number - the unique index on event_id does not
-// protect seq, the transaction does. Only the orchestrator writes through this path;
-// sandbox and llm_service producers count in their own process.
+// stream serialize at the database rather than both observing the same maximum.
 func (q *Queries) NextTraceSeq(ctx context.Context, arg NextTraceSeqParams) (int64, error) {
 	row := q.db.QueryRow(ctx, nextTraceSeq, arg.RunID, arg.Attempt, arg.Source)
 	var column_1 int64

@@ -3629,6 +3629,151 @@ func (s RunStatus) Validate() error {
 	}
 }
 
+func (s *SandboxTraceEvent) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := (validate.Int{
+			MinSet:        true,
+			Min:           1,
+			MaxSet:        true,
+			Max:           100000,
+			MinExclusive:  false,
+			MaxExclusive:  false,
+			MultipleOfSet: false,
+			MultipleOf:    0,
+			Pattern:       nil,
+		}).Validate(int64(s.Attempt)); err != nil {
+			return errors.Wrap(err, "int")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "attempt",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := (validate.Int{
+			MinSet:        true,
+			Min:           1,
+			MaxSet:        true,
+			Max:           100000,
+			MinExclusive:  false,
+			MaxExclusive:  false,
+			MultipleOfSet: false,
+			MultipleOf:    0,
+			Pattern:       nil,
+		}).Validate(int64(s.Seq)); err != nil {
+			return errors.Wrap(err, "int")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "seq",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := s.EmittedBy.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "emitted_by",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := s.Type.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "type",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if value, ok := s.Status.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "status",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s SandboxTraceEventEmittedBy) Validate() error {
+	switch s {
+	case "sandbox":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s SandboxTraceEventStatus) Validate() error {
+	switch s {
+	case "ok":
+		return nil
+	case "error":
+		return nil
+	case "skipped":
+		return nil
+	case "cancelled":
+		return nil
+	case "timed_out":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s SandboxTraceEventType) Validate() error {
+	switch s {
+	case "skill_activation":
+		return nil
+	case "resource_read":
+		return nil
+	case "tool_call":
+		return nil
+	case "mcp_call":
+		return nil
+	case "script_log":
+		return nil
+	case "agent_output":
+		return nil
+	case "error":
+		return nil
+	case "usage":
+		return nil
+	case "run_lifecycle":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s *SearchResultRisk) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -4505,6 +4650,23 @@ func (s *TraceAdvanced) Validate() error {
 		if s.Streams == nil {
 			return errors.New("nil is invalid value")
 		}
+		var failures []validate.FieldError
+		for i, elem := range s.Streams {
+			if err := func() error {
+				if err := elem.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				failures = append(failures, validate.FieldError{
+					Name:  fmt.Sprintf("[%d]", i),
+					Error: err,
+				})
+			}
+		}
+		if len(failures) > 0 {
+			return &validate.Error{Fields: failures}
+		}
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
@@ -4515,6 +4677,14 @@ func (s *TraceAdvanced) Validate() error {
 	if err := func() error {
 		if s.Events == nil {
 			return errors.New("nil is invalid value")
+		}
+		if err := (validate.Array{
+			MinLength:    0,
+			MinLengthSet: false,
+			MaxLength:    1000,
+			MaxLengthSet: true,
+		}).ValidateLength(len(s.Events)); err != nil {
+			return errors.Wrap(err, "array")
 		}
 		var failures []validate.FieldError
 		for i, elem := range s.Events {
@@ -4540,13 +4710,34 @@ func (s *TraceAdvanced) Validate() error {
 			Error: err,
 		})
 	}
+	if err := func() error {
+		if err := (validate.Int{
+			MinSet:        true,
+			Min:           0,
+			MaxSet:        false,
+			Max:           0,
+			MinExclusive:  false,
+			MaxExclusive:  false,
+			MultipleOfSet: false,
+			MultipleOf:    0,
+			Pattern:       nil,
+		}).Validate(int64(s.NextAfter)); err != nil {
+			return errors.Wrap(err, "int")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "next_after",
+			Error: err,
+		})
+	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
 }
 
-func (s *TraceAdvancedEventsItem) Validate() error {
+func (s *TraceEventView) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
 	}
@@ -4556,8 +4747,8 @@ func (s *TraceAdvancedEventsItem) Validate() error {
 		if err := (validate.Int{
 			MinSet:        true,
 			Min:           1,
-			MaxSet:        false,
-			Max:           0,
+			MaxSet:        true,
+			Max:           100000,
 			MinExclusive:  false,
 			MaxExclusive:  false,
 			MultipleOfSet: false,
@@ -4577,8 +4768,8 @@ func (s *TraceAdvancedEventsItem) Validate() error {
 		if err := (validate.Int{
 			MinSet:        true,
 			Min:           1,
-			MaxSet:        false,
-			Max:           0,
+			MaxSet:        true,
+			Max:           100000,
 			MinExclusive:  false,
 			MaxExclusive:  false,
 			MultipleOfSet: false,
@@ -4634,13 +4825,24 @@ func (s *TraceAdvancedEventsItem) Validate() error {
 			Error: err,
 		})
 	}
+	if err := func() error {
+		if s.MaskedFields == nil {
+			return errors.New("nil is invalid value")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "masked_fields",
+			Error: err,
+		})
+	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
 }
 
-func (s TraceAdvancedEventsItemEmittedBy) Validate() error {
+func (s TraceEventViewEmittedBy) Validate() error {
 	switch s {
 	case "sandbox":
 		return nil
@@ -4653,7 +4855,7 @@ func (s TraceAdvancedEventsItemEmittedBy) Validate() error {
 	}
 }
 
-func (s TraceAdvancedEventsItemStatus) Validate() error {
+func (s TraceEventViewStatus) Validate() error {
 	switch s {
 	case "ok":
 		return nil
@@ -4670,7 +4872,7 @@ func (s TraceAdvancedEventsItemStatus) Validate() error {
 	}
 }
 
-func (s TraceAdvancedEventsItemType) Validate() error {
+func (s TraceEventViewType) Validate() error {
 	switch s {
 	case "skill_activation":
 		return nil
@@ -4690,12 +4892,16 @@ func (s TraceAdvancedEventsItemType) Validate() error {
 		return nil
 	case "run_lifecycle":
 		return nil
+	case "evaluation_started":
+		return nil
+	case "evaluation_completed":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}
 }
 
-func (s *TraceEvent) Validate() error {
+func (s *TraceStream) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
 	}
@@ -4704,7 +4910,7 @@ func (s *TraceEvent) Validate() error {
 	if err := func() error {
 		if err := (validate.Int{
 			MinSet:        true,
-			Min:           1,
+			Min:           0,
 			MaxSet:        false,
 			Max:           0,
 			MinExclusive:  false,
@@ -4712,74 +4918,32 @@ func (s *TraceEvent) Validate() error {
 			MultipleOfSet: false,
 			MultipleOf:    0,
 			Pattern:       nil,
-		}).Validate(int64(s.Attempt)); err != nil {
+		}).Validate(int64(s.MissingCount)); err != nil {
 			return errors.Wrap(err, "int")
 		}
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "attempt",
+			Name:  "missing_count",
 			Error: err,
 		})
 	}
 	if err := func() error {
-		if err := (validate.Int{
-			MinSet:        true,
-			Min:           1,
-			MaxSet:        false,
-			Max:           0,
-			MinExclusive:  false,
-			MaxExclusive:  false,
-			MultipleOfSet: false,
-			MultipleOf:    0,
-			Pattern:       nil,
-		}).Validate(int64(s.Seq)); err != nil {
-			return errors.Wrap(err, "int")
+		if s.MissingSeq == nil {
+			return nil // optional
+		}
+		if err := (validate.Array{
+			MinLength:    0,
+			MinLengthSet: false,
+			MaxLength:    1000,
+			MaxLengthSet: true,
+		}).ValidateLength(len(s.MissingSeq)); err != nil {
+			return errors.Wrap(err, "array")
 		}
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
-			Name:  "seq",
-			Error: err,
-		})
-	}
-	if err := func() error {
-		if err := s.EmittedBy.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "emitted_by",
-			Error: err,
-		})
-	}
-	if err := func() error {
-		if err := s.Type.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "type",
-			Error: err,
-		})
-	}
-	if err := func() error {
-		if value, ok := s.Status.Get(); ok {
-			if err := func() error {
-				if err := value.Validate(); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return err
-			}
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "status",
+			Name:  "missing_seq",
 			Error: err,
 		})
 	}
@@ -4787,61 +4951,6 @@ func (s *TraceEvent) Validate() error {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
-}
-
-func (s TraceEventEmittedBy) Validate() error {
-	switch s {
-	case "sandbox":
-		return nil
-	case "orchestrator":
-		return nil
-	case "llm_service":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s TraceEventStatus) Validate() error {
-	switch s {
-	case "ok":
-		return nil
-	case "error":
-		return nil
-	case "skipped":
-		return nil
-	case "cancelled":
-		return nil
-	case "timed_out":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s TraceEventType) Validate() error {
-	switch s {
-	case "skill_activation":
-		return nil
-	case "resource_read":
-		return nil
-	case "tool_call":
-		return nil
-	case "mcp_call":
-		return nil
-	case "script_log":
-		return nil
-	case "agent_output":
-		return nil
-	case "error":
-		return nil
-	case "usage":
-		return nil
-	case "run_lifecycle":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
 }
 
 func (s *TraceSummary) Validate() error {
@@ -4864,6 +4973,14 @@ func (s *TraceSummary) Validate() error {
 	if err := func() error {
 		if s.Skills == nil {
 			return errors.New("nil is invalid value")
+		}
+		if err := (validate.Array{
+			MinLength:    0,
+			MinLengthSet: false,
+			MaxLength:    100,
+			MaxLengthSet: true,
+		}).ValidateLength(len(s.Skills)); err != nil {
+			return errors.Wrap(err, "array")
 		}
 		var failures []validate.FieldError
 		for i, elem := range s.Skills {
@@ -4890,13 +5007,63 @@ func (s *TraceSummary) Validate() error {
 		})
 	}
 	if err := func() error {
+		if err := (validate.Int{
+			MinSet:        true,
+			Min:           0,
+			MaxSet:        false,
+			Max:           0,
+			MinExclusive:  false,
+			MaxExclusive:  false,
+			MultipleOfSet: false,
+			MultipleOf:    0,
+			Pattern:       nil,
+		}).Validate(int64(s.SkillsTotal)); err != nil {
+			return errors.Wrap(err, "int")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "skills_total",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if s.Errors == nil {
 			return errors.New("nil is invalid value")
+		}
+		if err := (validate.Array{
+			MinLength:    0,
+			MinLengthSet: false,
+			MaxLength:    100,
+			MaxLengthSet: true,
+		}).ValidateLength(len(s.Errors)); err != nil {
+			return errors.Wrap(err, "array")
 		}
 		return nil
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "errors",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := (validate.Int{
+			MinSet:        true,
+			Min:           0,
+			MaxSet:        false,
+			Max:           0,
+			MinExclusive:  false,
+			MaxExclusive:  false,
+			MultipleOfSet: false,
+			MultipleOf:    0,
+			Pattern:       nil,
+		}).Validate(int64(s.ErrorsTotal)); err != nil {
+			return errors.Wrap(err, "int")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "errors_total",
 			Error: err,
 		})
 	}

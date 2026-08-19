@@ -26,7 +26,7 @@ UPDATE evaluations SET
     cost_source = $10,
     evaluated_at = now(),
     updated_at = now()
-WHERE id = $11 AND workspace_id = $12 AND status <> 'completed'
+WHERE id = $11 AND workspace_id = $12 AND status = 'pending'
 RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at
 `
 
@@ -246,7 +246,7 @@ UPDATE evaluations SET
     evidence_complete = $3,
     evaluated_at = now(),
     updated_at = now()
-WHERE id = $4 AND workspace_id = $5 AND status <> 'completed'
+WHERE id = $4 AND workspace_id = $5 AND status = 'pending'
 RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at
 `
 
@@ -261,8 +261,8 @@ type FailEvaluationParams struct {
 // The evaluation could not produce a verdict (judge unreachable, evidence
 // unreadable). It stays `undetermined` and keeps whatever deterministic findings
 // were already established: those came from the platform's own records and are
-// still true even when the model leg failed. `status <> 'completed'` refuses to
-// turn a verdict somebody has read into a failure.
+// still true even when the model leg failed. Only pending may settle: recovery
+// and the original worker can race, and exactly one of them owns the terminal.
 func (q *Queries) FailEvaluation(ctx context.Context, arg FailEvaluationParams) (Evaluation, error) {
 	row := q.db.QueryRow(ctx, failEvaluation,
 		arg.Summary,
@@ -617,6 +617,47 @@ func (q *Queries) MarkSuggestionsApplied(ctx context.Context, arg MarkSuggestion
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const recordEvaluationModelUsage = `-- name: RecordEvaluationModelUsage :exec
+INSERT INTO evaluation_model_usage (
+    evaluation_id, workspace_id, operation, model, prompt_version,
+    prompt_tokens, completion_tokens, cost_usd, cost_source
+)
+SELECT $1, $2, $3, $4, $5, $6,
+       $7, $8, $9
+FROM evaluations
+WHERE id = $1 AND workspace_id = $2
+ON CONFLICT (evaluation_id, operation) DO NOTHING
+`
+
+type RecordEvaluationModelUsageParams struct {
+	EvaluationID     pgtype.UUID
+	WorkspaceID      pgtype.UUID
+	Operation        string
+	Model            string
+	PromptVersion    string
+	PromptTokens     int64
+	CompletionTokens int64
+	CostUsd          pgtype.Numeric
+	CostSource       *string
+}
+
+// A successful gateway response is a billable fact even when a later proposal
+// is rejected by validation. Retries must not create a second accounting row.
+func (q *Queries) RecordEvaluationModelUsage(ctx context.Context, arg RecordEvaluationModelUsageParams) error {
+	_, err := q.db.Exec(ctx, recordEvaluationModelUsage,
+		arg.EvaluationID,
+		arg.WorkspaceID,
+		arg.Operation,
+		arg.Model,
+		arg.PromptVersion,
+		arg.PromptTokens,
+		arg.CompletionTokens,
+		arg.CostUsd,
+		arg.CostSource,
+	)
+	return err
 }
 
 const runInputsStillAvailable = `-- name: RunInputsStillAvailable :one

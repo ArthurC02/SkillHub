@@ -16,31 +16,31 @@ import { mapValues } from '../runtime';
 /**
  * 
  * @export
- * @interface TraceAdvancedEventsInner
+ * @interface SandboxTraceEvent
  */
-export interface TraceAdvancedEventsInner {
+export interface SandboxTraceEvent {
     /**
      * 
      * @type {string}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
     schemaVersion: string;
     /**
      * Producer-assigned. This is the consumer idempotency key (TRACE-008).
      * @type {string}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
     eventId: string;
     /**
      * 
      * @type {string}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
     runId: string;
     /**
      * 
      * @type {number}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
     attempt: number;
     /**
@@ -48,77 +48,69 @@ export interface TraceAdvancedEventsInner {
      * a lost event is detected; it is not a run-wide ordinal.
      * 
      * @type {number}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
     seq: number;
     /**
      * 
      * @type {Date}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
     occurredAt: Date;
     /**
      * 
      * @type {string}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
-    emittedBy: TraceAdvancedEventsInnerEmittedByEnum;
+    emittedBy: SandboxTraceEventEmittedByEnum;
     /**
      * 
      * @type {string}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
-    type: TraceAdvancedEventsInnerTypeEnum;
+    type: SandboxTraceEventTypeEnum;
     /**
      * 
      * @type {string}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
-    status?: TraceAdvancedEventsInnerStatusEnum | null;
+    status?: SandboxTraceEventStatusEnum | null;
     /**
      * What the producer claims. The control plane does not believe it: the
      * masker runs on every event regardless, and a sandbox vouching for
      * itself is exactly what the trust boundary forbids.
      * 
      * @type {boolean}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
     masked: boolean;
     /**
      * JSON Pointers, relative to payload, of values actually redacted.
      * @type {Array<string>}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
     maskedFields?: Array<string>;
     /**
      * 
      * @type {object}
-     * @memberof TraceAdvancedEventsInner
+     * @memberof SandboxTraceEvent
      */
     payload: object;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof TraceAdvancedEventsInner
-     */
-    late?: boolean;
 }
 
 
 /**
  * @export
  */
-export const TraceAdvancedEventsInnerEmittedByEnum = {
-    Sandbox: 'sandbox',
-    Orchestrator: 'orchestrator',
-    LlmService: 'llm_service'
+export const SandboxTraceEventEmittedByEnum = {
+    Sandbox: 'sandbox'
 } as const;
-export type TraceAdvancedEventsInnerEmittedByEnum = typeof TraceAdvancedEventsInnerEmittedByEnum[keyof typeof TraceAdvancedEventsInnerEmittedByEnum];
+export type SandboxTraceEventEmittedByEnum = typeof SandboxTraceEventEmittedByEnum[keyof typeof SandboxTraceEventEmittedByEnum];
 
 /**
  * @export
  */
-export const TraceAdvancedEventsInnerTypeEnum = {
+export const SandboxTraceEventTypeEnum = {
     SkillActivation: 'skill_activation',
     ResourceRead: 'resource_read',
     ToolCall: 'tool_call',
@@ -129,25 +121,25 @@ export const TraceAdvancedEventsInnerTypeEnum = {
     Usage: 'usage',
     RunLifecycle: 'run_lifecycle'
 } as const;
-export type TraceAdvancedEventsInnerTypeEnum = typeof TraceAdvancedEventsInnerTypeEnum[keyof typeof TraceAdvancedEventsInnerTypeEnum];
+export type SandboxTraceEventTypeEnum = typeof SandboxTraceEventTypeEnum[keyof typeof SandboxTraceEventTypeEnum];
 
 /**
  * @export
  */
-export const TraceAdvancedEventsInnerStatusEnum = {
+export const SandboxTraceEventStatusEnum = {
     Ok: 'ok',
     Error: 'error',
     Skipped: 'skipped',
     Cancelled: 'cancelled',
     TimedOut: 'timed_out'
 } as const;
-export type TraceAdvancedEventsInnerStatusEnum = typeof TraceAdvancedEventsInnerStatusEnum[keyof typeof TraceAdvancedEventsInnerStatusEnum];
+export type SandboxTraceEventStatusEnum = typeof SandboxTraceEventStatusEnum[keyof typeof SandboxTraceEventStatusEnum];
 
 
 /**
- * Check if a given object implements the TraceAdvancedEventsInner interface.
+ * Check if a given object implements the SandboxTraceEvent interface.
  */
-export function instanceOfTraceAdvancedEventsInner(value: object): value is TraceAdvancedEventsInner {
+export function instanceOfSandboxTraceEvent(value: object): value is SandboxTraceEvent {
     if (!('schemaVersion' in value) || value['schemaVersion'] === undefined) return false;
     if (!('eventId' in value) || value['eventId'] === undefined) return false;
     if (!('runId' in value) || value['runId'] === undefined) return false;
@@ -161,11 +153,11 @@ export function instanceOfTraceAdvancedEventsInner(value: object): value is Trac
     return true;
 }
 
-export function TraceAdvancedEventsInnerFromJSON(json: any): TraceAdvancedEventsInner {
-    return TraceAdvancedEventsInnerFromJSONTyped(json, false);
+export function SandboxTraceEventFromJSON(json: any): SandboxTraceEvent {
+    return SandboxTraceEventFromJSONTyped(json, false);
 }
 
-export function TraceAdvancedEventsInnerFromJSONTyped(json: any, ignoreDiscriminator: boolean): TraceAdvancedEventsInner {
+export function SandboxTraceEventFromJSONTyped(json: any, ignoreDiscriminator: boolean): SandboxTraceEvent {
     if (json == null) {
         return json;
     }
@@ -183,15 +175,14 @@ export function TraceAdvancedEventsInnerFromJSONTyped(json: any, ignoreDiscrimin
         'masked': json['masked'],
         'maskedFields': json['masked_fields'] == null ? undefined : json['masked_fields'],
         'payload': json['payload'],
-        'late': json['late'] == null ? undefined : json['late'],
     };
 }
 
-export function TraceAdvancedEventsInnerToJSON(json: any): TraceAdvancedEventsInner {
-    return TraceAdvancedEventsInnerToJSONTyped(json, false);
+export function SandboxTraceEventToJSON(json: any): SandboxTraceEvent {
+    return SandboxTraceEventToJSONTyped(json, false);
 }
 
-export function TraceAdvancedEventsInnerToJSONTyped(value?: TraceAdvancedEventsInner | null, ignoreDiscriminator: boolean = false): any {
+export function SandboxTraceEventToJSONTyped(value?: SandboxTraceEvent | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }
@@ -210,7 +201,6 @@ export function TraceAdvancedEventsInnerToJSONTyped(value?: TraceAdvancedEventsI
         'masked': value['masked'],
         'masked_fields': value['maskedFields'],
         'payload': value['payload'],
-        'late': value['late'],
     };
 }
 
