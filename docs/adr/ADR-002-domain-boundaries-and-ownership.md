@@ -131,7 +131,7 @@ flowchart LR
 
 ## 待決策
 
-- 模組的程式碼分層與依賴檢查方式。→ [ADR-016](./ADR-016-language-and-framework-selection.md)（Go internal package＋依賴 lint）
-- 哪些跨模組查詢可同步，哪些必須事件化。
-- MVP 是否將 Trust 與 Ingestion 實作為同一部署內的兩個模組。
+- 模組的程式碼分層與依賴檢查方式。→ [ADR-016](./ADR-016-language-and-framework-selection.md)（Go internal package＋依賴 lint）；依賴檢查的強制機制 → [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md)（depguard 白名單）
+- 哪些跨模組查詢可同步，哪些必須事件化。→ [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md)（判準：當下決策需要的事實同步；觸發後續反應事件化）
+- MVP 是否將 Trust 與 Ingestion 實作為同一部署內的兩個模組。→ [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md)（同部署；`ingest` 拆為匯入管線與套件儲存兩個套件，後者歸 Registry context）
 
