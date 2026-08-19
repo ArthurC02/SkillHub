@@ -1,5 +1,6 @@
 # Secrets — never commit
 .env
+/.claude/settings.local.json
 
 # Python
 __pycache__/
