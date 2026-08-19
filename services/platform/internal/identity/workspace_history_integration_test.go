@@ -15,9 +15,11 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/analytics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
 )
 
@@ -31,19 +33,7 @@ import (
 // the query body, which is what a column rename breaks.
 func TestTheFunnelQueryStillRunsAgainstTheSchema(t *testing.T) {
 	pool := requireDB(t)
-	raw, err := os.ReadFile("../../../../tools/analytics/funnel.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var body []string
-	for _, line := range strings.Split(string(raw), "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), `\`) {
-			continue
-		}
-		body = append(body, line)
-	}
-	sql := strings.NewReplacer(":from", "'-infinity'", ":to", "'infinity'").
-		Replace(strings.Join(body, "\n"))
+	sql := funnelQuery(t, "'-infinity'", "'infinity'")
 
 	rows, err := pool.Query(context.Background(), sql)
 	if err != nil {
@@ -63,8 +53,6 @@ func TestTheFunnelQueryStillRunsAgainstTheSchema(t *testing.T) {
 			t.Errorf("segment %d reports %d of %d", segment, numerator, denominator)
 		}
 		// 02:O11Y-004's last clause: the precision limit travels with the number.
-		// A footnote in a document nobody has open is not a limitation that was
-		// stated, which is why the note is a column and not a comment.
 		if note == "" {
 			t.Errorf("segment %d reports a percentage with no precision limit", segment)
 		}
@@ -72,10 +60,115 @@ func TestTheFunnelQueryStillRunsAgainstTheSchema(t *testing.T) {
 	if err := rows.Err(); err != nil {
 		t.Fatal(err)
 	}
-	// Seven, because 01 §11.2 has seven. A segment quietly dropped from the report
-	// is the failure this count exists to catch.
 	if seen != 7 {
 		t.Errorf("the funnel reports %d segments, and 01 §11.2 has 7", seen)
+	}
+}
+
+func funnelQuery(t *testing.T, from, to string) string {
+	t.Helper()
+	raw, err := os.ReadFile("../../../../tools/analytics/funnel.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body []string
+	for _, line := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), `\`) {
+			continue
+		}
+		body = append(body, line)
+	}
+	return strings.NewReplacer(":from", from, ":to", to).Replace(strings.Join(body, "\n"))
+}
+
+func TestReturningWorkspaceUsesSameUTCVisitDay(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	workspaceA := a.login(t, "funnel-workspace-a").workspaceID
+	workspaceB := a.login(t, "funnel-workspace-b").workspaceID
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, "SET LOCAL TIME ZONE 'America/Los_Angeles'"); err != nil {
+		t.Fatal(err)
+	}
+	insert := func(name, at string, workspace any) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, `INSERT INTO analytics_events
+            (event_name, session_id, workspace_id, occurred_at) VALUES ($1, 'shared-browser', $2, $3)`,
+			name, workspace, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The anonymous day must not be retroactively assigned. A has two visits on
+	// opposite sides of UTC midnight (but the same Los Angeles date); B has one.
+	insert("session_started", "2040-08-18T12:00:00Z", nil)
+	for _, visit := range []struct{ at, workspace string }{
+		{"2040-08-19T23:30:00Z", workspaceA},
+		{"2040-08-20T00:30:00Z", workspaceA},
+		{"2040-08-21T12:00:00Z", workspaceB},
+	} {
+		insert("session_started", visit.at, nil)
+		insert("skill_detail_viewed", visit.at, mustUUID(t, visit.workspace))
+	}
+	rows, err := tx.Query(ctx, funnelQuery(t, "'2040-08-18T00:00:00Z'", "'2040-08-22T00:00:00Z'"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	found := false
+	for rows.Next() {
+		var segment int
+		var description, note string
+		var numerator, denominator int64
+		if err := rows.Scan(&segment, &description, &numerator, &denominator, &note); err != nil {
+			t.Fatal(err)
+		}
+		if segment == 7 {
+			found = true
+			if numerator != 1 || denominator != 2 {
+				t.Errorf("returning workspaces = %d of %d, want A only: 1 of 2", numerator, denominator)
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if !found {
+		t.Fatal("funnel returned no segment 7")
+	}
+}
+
+func TestAnalyticsPurgeHonorsTheExactCutoff(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	sessionID := "purge-cutoff-fixture"
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), "DELETE FROM analytics_events WHERE session_id = $1", sessionID)
+	})
+	// Keep the cutoff far behind every normal test row. Purge is intentionally a
+	// deployment-wide operation, so a future cutoff would erase sibling fixtures.
+	now := time.Date(2000, 1, 11, 0, 0, 0, 0, time.UTC)
+	cutoff := now.Add(-10 * 24 * time.Hour)
+	for _, at := range []time.Time{cutoff.Add(-time.Second), cutoff, cutoff.Add(time.Second)} {
+		if _, err := pool.Exec(ctx, `INSERT INTO analytics_events
+            (event_name, session_id, occurred_at) VALUES ('session_started', $1, $2)`, sessionID, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	svc := &analytics.Service{Pool: pool, Retention: 10 * 24 * time.Hour, Now: func() time.Time { return now }}
+	removed, err := svc.PurgeExpired(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if removed != 1 {
+		t.Errorf("purge removed %d rows, want only the row before the cutoff", removed)
+	}
+	if n := countRows(t, pool, "SELECT count(*) FROM analytics_events WHERE session_id = $1", sessionID); n != 2 {
+		t.Errorf("%d cutoff fixture rows remain, want the cutoff and newer rows", n)
 	}
 }
 

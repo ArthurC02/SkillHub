@@ -470,7 +470,7 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		degradedReason = "embedding unavailable; lexical search only"
 	} else if hybridHits, err := h.hybridSearch(ctx, queries, q, vec, limit, filters); err != nil {
 		slog.Warn("hybrid search failed, falling back to FTS", "error", err)
-		degradedReason = "embedding unavailable; lexical search only"
+		degradedReason = "hybrid search unavailable; lexical search only"
 	} else {
 		embedding = vec
 		hits = hybridHits
@@ -478,7 +478,12 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 
 	if degradedReason != "" {
 		searchMode = "fts"
-		hits, _ = h.ftsOnlySearch(ctx, queries, q, limit, filters)
+		hits, err = h.ftsOnlySearch(ctx, queries, q, limit, filters)
+		if err != nil {
+			slog.Error("lexical search failed", "error", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "search failed")
+			return
+		}
 	}
 
 	if hits == nil {
@@ -493,9 +498,14 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 	if len(hits) == 0 && filters.active() {
 		var unfiltered []searchResult
 		if embedding != nil {
-			unfiltered, _ = h.hybridSearch(ctx, queries, q, embedding, limit, searchFilters{})
+			unfiltered, err = h.hybridSearch(ctx, queries, q, embedding, limit, searchFilters{})
 		} else {
-			unfiltered, _ = h.ftsOnlySearch(ctx, queries, q, limit, searchFilters{})
+			unfiltered, err = h.ftsOnlySearch(ctx, queries, q, limit, searchFilters{})
+		}
+		if err != nil {
+			slog.Error("unfiltered search probe failed", "error", err)
+			httpx.WriteError(w, http.StatusInternalServerError, "search failed")
+			return
 		}
 		filteredOut = len(unfiltered) > 0
 	}

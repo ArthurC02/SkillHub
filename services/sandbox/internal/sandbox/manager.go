@@ -453,6 +453,13 @@ func (m *Manager) Cancel(ctx context.Context, id string) (ProviderRun, error) {
 // Destroy answers DELETE /runs/{provider_run_id}. Idempotent and without a 404:
 // a handle nothing is held for is already in the state the caller asked for.
 func (m *Manager) Destroy(ctx context.Context, id string) error {
+	if err := m.drv.Remove(ctx, id); err != nil {
+		// Keep the entry and its slot while the runtime still holds resources.
+		// The platform will retry this idempotent operation.
+		m.log.Error("destroy failed", "provider_run_id", id, "err", err)
+		return err
+	}
+
 	m.mu.Lock()
 	e := m.runs[id]
 	if e != nil {
@@ -470,12 +477,6 @@ func (m *Manager) Destroy(ctx context.Context, id string) error {
 	m.mu.Unlock()
 	m.metrics.active(live)
 
-	if err := m.drv.Remove(ctx, id); err != nil {
-		// Resources are still held; the platform records the cleanup failure
-		// separately and retries, and repeating this call is safe.
-		m.log.Error("destroy failed", "provider_run_id", id, "err", err)
-		return err
-	}
 	m.log.Info("run destroyed", "provider_run_id", id)
 	return nil
 }
@@ -608,8 +609,14 @@ func (c Config) accept(req RunRequest) *RunError {
 
 	l, max := req.ResourceLimits, c.MaxResources
 	switch {
-	case l.VCPU <= 0 || l.MemoryBytes <= 0 || l.DiskBytes <= 0 || l.MaxPIDs <= 0 || l.MaxOpenFiles <= 0:
+	case l.VCPU <= 0 || l.MemoryBytes <= 0 || l.DiskBytes <= 0 || l.MaxPIDs <= 0 || l.MaxOpenFiles <= 0 ||
+		l.WallClockSoftSeconds <= 0 || l.WallClockHardSeconds <= 0 ||
+		l.ArtifactTotalBytes <= 0 || l.ArtifactFileBytes <= 0:
 		return mismatch("resource_limits must set every ceiling: this provider will not run unbounded")
+	case max.VCPU <= 0 || max.MemoryBytes <= 0 || max.DiskBytes <= 0 || max.MaxPIDs <= 0 || max.MaxOpenFiles <= 0 ||
+		max.WallClockSoftSeconds <= 0 || max.WallClockHardSeconds <= 0 ||
+		max.ArtifactTotalBytes <= 0 || max.ArtifactFileBytes <= 0:
+		return mismatch("provider capability must declare every resource ceiling")
 	case l.WallClockHardSeconds <= l.WallClockSoftSeconds:
 		return mismatch("wall_clock_hard_seconds must be greater than wall_clock_soft_seconds")
 	case l.VCPU > max.VCPU:
@@ -620,13 +627,25 @@ func (c Config) accept(req RunRequest) *RunError {
 		return mismatch("disk_bytes %d exceeds the %d this provider can enforce", l.DiskBytes, max.DiskBytes)
 	case l.MaxPIDs > max.MaxPIDs:
 		return mismatch("max_pids %d exceeds the %d this provider can enforce", l.MaxPIDs, max.MaxPIDs)
+	case l.MaxOpenFiles > max.MaxOpenFiles:
+		return mismatch("max_open_files %d exceeds the %d this provider can enforce", l.MaxOpenFiles, max.MaxOpenFiles)
+	case l.WallClockSoftSeconds > max.WallClockSoftSeconds:
+		return mismatch("wall_clock_soft_seconds %d exceeds the %d this provider allows", l.WallClockSoftSeconds, max.WallClockSoftSeconds)
 	case l.WallClockHardSeconds > max.WallClockHardSeconds:
 		return mismatch("wall_clock_hard_seconds %d exceeds the %d this provider allows", l.WallClockHardSeconds, max.WallClockHardSeconds)
+	case l.ArtifactTotalBytes > max.ArtifactTotalBytes:
+		return mismatch("artifact_total_bytes %d exceeds the %d this provider can enforce", l.ArtifactTotalBytes, max.ArtifactTotalBytes)
+	case l.ArtifactFileBytes > max.ArtifactFileBytes:
+		return mismatch("artifact_file_bytes %d exceeds the %d this provider can enforce", l.ArtifactFileBytes, max.ArtifactFileBytes)
 	// A token ceiling above what this provider counts to would be a limit shown
 	// to a user and then not applied, which is the state PDM-005 5.2a was closed
 	// to end. A request with no token_budget at all is still accepted: the run is
 	// then bounded by spend, rate and wall clock, and nobody was told otherwise.
-	case l.TokenBudget != nil && max.TokenBudget != nil &&
+	case l.TokenBudget != nil && max.TokenBudget == nil:
+		return mismatch("provider capability does not declare a token budget")
+	case l.TokenBudget != nil && (l.TokenBudget.MaxInputTokens <= 0 || l.TokenBudget.MaxOutputTokens <= 0):
+		return mismatch("token_budget must set both ceilings")
+	case l.TokenBudget != nil &&
 		(l.TokenBudget.MaxInputTokens > max.TokenBudget.MaxInputTokens ||
 			l.TokenBudget.MaxOutputTokens > max.TokenBudget.MaxOutputTokens):
 		return mismatch("token_budget %d/%d exceeds the %d/%d this provider can enforce",

@@ -1,17 +1,40 @@
 package catalog
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/skillpkg"
 )
+
+func TestPublicSearchDoesNotReportDatabaseFailureAsNoResults(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(), "postgres://unused:unused@127.0.0.1:1/unused")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	req := httptest.NewRequest(http.MethodGet, "/api/skills/search?q=spreadsheet", nil).WithContext(ctx)
+	rec := httptest.NewRecorder()
+	(&Handler{Pool: pool}).PublicSearch(rec, req)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("database failure returned %d, want 500; body=%s", rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), `"no_results":true`) {
+		t.Fatalf("database failure was also reported as no results: %s", rec.Body.String())
+	}
+}
 
 func scanJSON(t *testing.T, warnings int, codes ...string) []byte {
 	t.Helper()

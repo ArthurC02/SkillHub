@@ -340,6 +340,19 @@ func TestDestroyIsIdempotentAndHasNo404(t *testing.T) {
 func TestDestroyReports500WhenResourcesAreStillHeld(t *testing.T) {
 	drv, h := newServer(t)
 	_, run := do(t, h, "POST", "/runs", runRequest(), testToken)
+	state := func() (int, int) {
+		capRec, _ := do(t, h, "GET", "/capability", nil, testToken)
+		var capability sandbox.ProviderCapability
+		if err := json.Unmarshal(capRec.Body.Bytes(), &capability); err != nil {
+			t.Fatalf("decode capability: %v", err)
+		}
+		listRec, _ := do(t, h, "GET", "/runs?active=true", nil, testToken)
+		var list sandbox.ProviderRunList
+		if err := json.Unmarshal(listRec.Body.Bytes(), &list); err != nil {
+			t.Fatalf("decode active list: %v", err)
+		}
+		return capability.Availability.ConcurrentRunSlots, len(list.Runs)
+	}
 	drv.mu.Lock()
 	drv.removeErr = errRemove{}
 	drv.mu.Unlock()
@@ -347,6 +360,25 @@ func TestDestroyReports500WhenResourcesAreStillHeld(t *testing.T) {
 	rec, _ := do(t, h, "DELETE", "/runs/"+run.ProviderRunID, nil, testToken)
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("failed destroy: got %d, want 500 so the platform records the cleanup failure", rec.Code)
+	}
+	if rec, _ := do(t, h, "GET", "/runs/"+run.ProviderRunID, nil, testToken); rec.Code != http.StatusOK {
+		t.Errorf("failed destroy removed the active run from bookkeeping: got %d, want 200", rec.Code)
+	}
+	if slots, active := state(); slots != 1 || active != 1 {
+		t.Errorf("after failed destroy: slots=%d active=%d, want 1 and 1", slots, active)
+	}
+
+	drv.mu.Lock()
+	drv.removeErr = nil
+	drv.mu.Unlock()
+	if rec, _ := do(t, h, "DELETE", "/runs/"+run.ProviderRunID, nil, testToken); rec.Code != http.StatusNoContent {
+		t.Fatalf("destroy retry: got %d, want 204", rec.Code)
+	}
+	if rec, _ := do(t, h, "GET", "/runs/"+run.ProviderRunID, nil, testToken); rec.Code != http.StatusNotFound {
+		t.Errorf("read after successful retry: got %d, want 404", rec.Code)
+	}
+	if slots, active := state(); slots != 2 || active != 0 {
+		t.Errorf("after successful retry: slots=%d active=%d, want 2 and 0", slots, active)
 	}
 }
 

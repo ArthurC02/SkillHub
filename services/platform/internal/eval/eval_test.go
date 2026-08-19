@@ -28,7 +28,7 @@ import (
 
 const (
 	eventID     = "0f0a1e6c-1c9a-4f8e-9a2b-1d5a2c7b3e01"
-	finalOutput = "Removed 17 duplicate rows and saved the result to output.xlsx."
+	finalOutput = "結果 ✅：Removed 17 duplicate rows and saved the result to output.xlsx."
 )
 
 func fixtureMaterial(complete bool) (material, map[string]trace.EventView) {
@@ -104,7 +104,7 @@ func TestOverallIsRecomputedFromTheStoredCriteria(t *testing.T) {
 
 func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 	m, digest := fixtureMaterial(true)
-	quote := "Removed 17 duplicate rows"
+	quote := "✅：Removed 17 duplicate rows"
 
 	cases := []struct {
 		name    string
@@ -161,7 +161,7 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 				if got.CharRange == nil {
 					t.Fatal("Go computes the char range itself; it must be present")
 				}
-				if finalOutput[got.CharRange.Start:got.CharRange.End] != quote {
+				if string([]rune(finalOutput)[got.CharRange.Start:got.CharRange.End]) != quote {
 					t.Errorf("char range %+v does not select the quote", got.CharRange)
 				}
 			},

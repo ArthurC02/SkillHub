@@ -12,8 +12,8 @@
 INSERT INTO trace_events (
     event_id, workspace_id, run_id, attempt, seq, occurred_at,
     event_type, source, status, schema_version, masked, masked_fields, payload, late
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-ON CONFLICT (event_id, occurred_at) DO NOTHING;
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);
 
 -- name: ListTraceEvents :many
 -- The whole trace of one run, in the cross-producer order of TRACE-001 §7:

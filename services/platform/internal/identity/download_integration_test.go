@@ -144,7 +144,7 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 	}
 	// The bytes are the object, not a re-build: the same assertion the packaging
 	// tests make about content_hash naming the stored object.
-	if want := a.packages["downloads/"+art.ContentHash+".zip"]; string(data) != string(want) {
+	if want := a.packages["downloads/"+c.workspaceID+"/"+art.ContentHash+".zip"]; string(data) != string(want) {
 		t.Error("the served bytes are not the stored object")
 	}
 
@@ -287,7 +287,7 @@ func TestDeletingADownloadIsIdempotentAndKeepsTheRecord(t *testing.T) {
 	if resp, _ := c.fetchContent(t, art.ArtifactID); resp.StatusCode != http.StatusOK {
 		t.Fatal("the artifact was not downloadable before the delete")
 	}
-	objectKey := "downloads/" + art.ContentHash + ".zip"
+	objectKey := "downloads/" + c.workspaceID + "/" + art.ContentHash + ".zip"
 
 	for i := range 2 {
 		if code := c.status(t, http.MethodDelete, "/downloads/"+art.ArtifactID); code != http.StatusNoContent {
@@ -325,7 +325,7 @@ func TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway(t *testing.T) {
 	a := newAPI(t, pool)
 	c := a.login(t, "expirer")
 	art := buildDownload(t, a, pool, c, "expiring-skill")
-	objectKey := "downloads/" + art.ContentHash + ".zip"
+	objectKey := "downloads/" + c.workspaceID + "/" + art.ContentHash + ".zip"
 
 	if _, err := pool.Exec(context.Background(),
 		"UPDATE artifacts SET expires_at = now() - interval '1 day' WHERE id = $1",
@@ -369,7 +369,7 @@ func TestTheReconcilerNeedsTwoRoundsBeforeItMarksAMissingObject(t *testing.T) {
 	a := newAPI(t, pool)
 	c := a.login(t, "reconciled")
 	art := buildDownload(t, a, pool, c, "vanishing-skill")
-	delete(a.packages, "downloads/"+art.ContentHash+".zip") // the bytes go behind the platform's back
+	delete(a.packages, "downloads/"+c.workspaceID+"/"+art.ContentHash+".zip") // the bytes go behind the platform's back
 
 	sweep := &objreconcile.Service{Pool: pool, Store: a.packages}
 	if err := sweep.Sweep(context.Background()); err != nil {
@@ -417,7 +417,7 @@ func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 	a := newAPI(t, pool)
 	c := a.login(t, "flapping")
 	art := buildDownload(t, a, pool, c, "flapping-skill")
-	key := "downloads/" + art.ContentHash + ".zip"
+	key := "downloads/" + c.workspaceID + "/" + art.ContentHash + ".zip"
 	bytes := a.packages[key]
 
 	sweep := &objreconcile.Service{Pool: pool, Store: a.packages}

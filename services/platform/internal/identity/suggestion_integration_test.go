@@ -293,7 +293,7 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 	seed := evaluateWithSuggestions(t, a, pool, c, name, []llmclient.ImprovementProposal{
 		{
 			Category: "skill", Problem: "the description never mentions deduplication",
-			Evidence: "no deduplication is described", TargetPath: "SKILL.md",
+			Evidence: suggestionQuote, TargetPath: "SKILL.md",
 			ProposedContent: improved, ExpectedImpact: "the skill is activated for this task",
 		},
 		// Refused before storage: a path out of the package, and a class this
@@ -352,7 +352,7 @@ func TestAcceptedSuggestionsBecomeOneNewVersionAndLeaveTheOldOneAlone(t *testing
 		t.Error("accepting records agreement only; nothing is applied until the version call")
 	}
 
-	code, applied := c.applySuggestions(t, seed.skillID, evaluationID, s.SuggestionID)
+	code, applied := c.applySuggestions(t, seed.skillID, evaluationID, s.SuggestionID, s.SuggestionID)
 	if code != http.StatusCreated {
 		t.Fatalf("apply: got %d (%s)", code, applied.Error)
 	}
@@ -416,10 +416,10 @@ func TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot(t *testing.T
 	base := packagedSkillMD(name)
 
 	seed := evaluateWithSuggestions(t, a, pool, c, name, []llmclient.ImprovementProposal{
-		{Category: "skill", Problem: "no mention of deduplication", Evidence: "e",
+		{Category: "skill", Problem: "no mention of deduplication", Evidence: suggestionQuote,
 			TargetPath: "SKILL.md", ProposedContent: base + "\nIt deduplicates rows.\n",
 			ExpectedImpact: "better activation"},
-		{Category: "skill", Problem: "no mention of the output format", Evidence: "e",
+		{Category: "skill", Problem: "no mention of the output format", Evidence: suggestionQuote,
 			TargetPath: "SKILL.md", ProposedContent: base + "\nIt writes an xlsx file.\n",
 			ExpectedImpact: "better activation"},
 	})
@@ -433,18 +433,31 @@ func TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot(t *testing.T
 		}
 	}
 
-	code, applied := c.applySuggestions(t, seed.skillID, evaluationID,
-		suggestions[0].SuggestionID, suggestions[1].SuggestionID)
-	if code != http.StatusCreated {
-		t.Fatalf("apply: got %d (%s)", code, applied.Error)
-	}
-	if len(applied.AppliedSuggestionIDs) != 1 || len(applied.RejectedSuggestions) != 1 {
-		t.Fatalf("one whole-file replacement wins and the other is reported, got applied=%v rejected=%+v",
-			applied.AppliedSuggestionIDs, applied.RejectedSuggestions)
-	}
-	if applied.RejectedSuggestions[0].BlockedReason != "target_changed" {
-		t.Errorf("the second replacement of the same file is target_changed, got %q",
-			applied.RejectedSuggestions[0].BlockedReason)
+	var firstOrder [2]string
+	for attempt, ids := range [][2]string{
+		{suggestions[0].SuggestionID, suggestions[1].SuggestionID},
+		{suggestions[1].SuggestionID, suggestions[0].SuggestionID},
+	} {
+		code, applied := c.applySuggestions(t, seed.skillID, evaluationID, ids[0], ids[1])
+		if code != http.StatusUnprocessableEntity {
+			t.Fatalf("apply competing replacements: got %d (%s)", code, applied.Error)
+		}
+		if len(applied.AppliedSuggestionIDs) != 0 || len(applied.RejectedSuggestions) != 2 {
+			t.Fatalf("all competing whole-file replacements must be rejected, got applied=%v rejected=%+v",
+				applied.AppliedSuggestionIDs, applied.RejectedSuggestions)
+		}
+		var order [2]string
+		for i, rejected := range applied.RejectedSuggestions {
+			if rejected.BlockedReason != "target_changed" {
+				t.Errorf("competing replacement reason = %q, want target_changed", rejected.BlockedReason)
+			}
+			order[i] = rejected.SuggestionID
+		}
+		if attempt == 0 {
+			firstOrder = order
+		} else if order != firstOrder {
+			t.Errorf("reversing suggestion_ids changed response order: %v then %v", firstOrder, order)
+		}
 	}
 	// One version for the whole request, never one per suggestion.
 	var versions int
@@ -453,8 +466,8 @@ func TestTwoSuggestionsOnTheSameFileApplyOneAndSayWhyTheOtherDidNot(t *testing.T
 		mustUUID(t, seed.skillID)).Scan(&versions); err != nil {
 		t.Fatal(err)
 	}
-	if versions != 2 {
-		t.Errorf("applying a set produces exactly one new version, got %d in total", versions)
+	if versions != 1 {
+		t.Errorf("competing replacements produced a new version; got %d versions", versions)
 	}
 }
 
@@ -467,7 +480,7 @@ func TestASuggestionThatFailsValidationIsRefusedAndNoVersionIsCreated(t *testing
 
 	seed := evaluateWithSuggestions(t, a, pool, c, "sugg-invalid-skill",
 		[]llmclient.ImprovementProposal{{
-			Category: "skill", Problem: "the document is too long", Evidence: "e",
+			Category: "skill", Problem: "the document is too long", Evidence: suggestionQuote,
 			TargetPath: "SKILL.md", ProposedContent: "just prose, no frontmatter at all\n",
 			ExpectedImpact: "shorter",
 		}})
@@ -518,7 +531,7 @@ func TestAHeldSkillNeitherShowsADiffNorBuildsAVersion(t *testing.T) {
 	const name = "sugg-held-skill"
 
 	seed := evaluateWithSuggestions(t, a, pool, c, name, []llmclient.ImprovementProposal{{
-		Category: "skill", Problem: "the description is thin", Evidence: "e",
+		Category: "skill", Problem: "the description is thin", Evidence: suggestionQuote,
 		TargetPath: "SKILL.md", ProposedContent: packagedSkillMD(name) + "\nMore detail.\n",
 		ExpectedImpact: "clearer",
 	}})
@@ -574,7 +587,7 @@ func TestSuggestionsAreInvisibleAcrossWorkspaces(t *testing.T) {
 	}
 
 	seed := evaluateWithSuggestions(t, a, pool, owner, name, []llmclient.ImprovementProposal{{
-		Category: "skill", Problem: "the description is thin", Evidence: "e",
+		Category: "skill", Problem: "the description is thin", Evidence: suggestionQuote,
 		TargetPath: "SKILL.md", ProposedContent: packagedSkillMD(name) + "\nMore detail.\n",
 		ExpectedImpact: "clearer",
 	}})

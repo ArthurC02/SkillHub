@@ -149,14 +149,36 @@ func TestMatchAcceptsAStrongerEgressModeButNeverAWeakerOne(t *testing.T) {
 	}
 }
 
-// A provider that declares no ceiling for a resource has not declared it, which is
-// not the same as declaring zero. Refusing on an omitted field would make every
-// partially-filled capability answer unusable.
-func TestMatchTreatsAnUndeclaredCeilingAsUnconstrained(t *testing.T) {
+func TestMatchRefusesAnUndeclaredCeiling(t *testing.T) {
 	c := compatible()
 	c.MaxResources = ResourceLimits{}
-	if _, err := Match(c, defaultRequirements()); err != nil {
-		t.Fatalf("a provider that declared no ceilings was refused: %v", err)
+	if _, err := Match(c, defaultRequirements()); err == nil {
+		t.Fatal("a provider that declared no ceilings accepted a bounded run")
+	}
+}
+
+func TestMatchChecksEveryResourceCeiling(t *testing.T) {
+	checks := map[string]func(*ResourceLimits){
+		"vcpu":                func(l *ResourceLimits) { l.VCPU = 1 },
+		"memory":              func(l *ResourceLimits) { l.MemoryBytes = 1 },
+		"disk":                func(l *ResourceLimits) { l.DiskBytes = 1 },
+		"processes":           func(l *ResourceLimits) { l.MaxPIDs = 1 },
+		"open files":          func(l *ResourceLimits) { l.MaxOpenFiles = 1 },
+		"soft wall clock":     func(l *ResourceLimits) { l.WallClockSoftSeconds = 1 },
+		"hard wall clock":     func(l *ResourceLimits) { l.WallClockHardSeconds = 1 },
+		"artifact total":      func(l *ResourceLimits) { l.ArtifactTotalBytes = 1 },
+		"artifact file":       func(l *ResourceLimits) { l.ArtifactFileBytes = 1 },
+		"input token budget":  func(l *ResourceLimits) { l.TokenBudget.MaxInputTokens = 1 },
+		"output token budget": func(l *ResourceLimits) { l.TokenBudget.MaxOutputTokens = 1 },
+	}
+	for name, lower := range checks {
+		t.Run(name, func(t *testing.T) {
+			c := compatible()
+			lower(&c.MaxResources)
+			if _, err := Match(c, defaultRequirements()); err == nil {
+				t.Fatal("provider accepted a run above its declared ceiling")
+			}
+		})
 	}
 }
 

@@ -132,6 +132,9 @@ func TestWritingTheSameFilesTwiceProducesTheSameBytes(t *testing.T) {
 			t.Errorf("%s carries external attributes %d; a fixed value is what keeps the bytes stable",
 				f.Name, f.ExternalAttrs)
 		}
+		if len(f.Extra) != 0 {
+			t.Errorf("%s carries a zip extra field; canonical archives require none", f.Name)
+		}
 	}
 	want := []string{"INSTALL.md", "SKILL.md", "scripts/run.py"}
 	if strings.Join(names, ",") != strings.Join(want, ",") {
@@ -179,8 +182,22 @@ func TestBuildAndVersionControlResidueNeverTravels(t *testing.T) {
 		"node_modules/left-pad/i.js": &fstest.MapFile{Data: []byte("module.exports=1\n")},
 		"src/__pycache__/a.pyc":      &fstest.MapFile{Data: []byte{0}},
 		".venv/bin/python":           &fstest.MapFile{Data: []byte("#!/bin/sh\n")},
-		"scripts/run.py":             &fstest.MapFile{Data: []byte("print(1)\n")},
-		"link":                       &fstest.MapFile{Data: []byte("SKILL.md"), Mode: fs.ModeSymlink},
+		".env":                       &fstest.MapFile{Data: []byte("API_TOKEN=my-private-test-token\n")},
+		"config/.env.local":          &fstest.MapFile{Data: []byte("TOKEN=secret\n")},
+		".npmrc":                     &fstest.MapFile{Data: []byte("//registry/:_authToken=secret\n")},
+		".aws/credentials":           &fstest.MapFile{Data: []byte("aws_secret_access_key=secret\n")},
+		".config/gcloud/application_default_credentials.json": &fstest.MapFile{Data: []byte("{}")},
+		".ENV":                           &fstest.MapFile{Data: []byte("TOKEN=secret\n")},
+		".NPMRC":                         &fstest.MapFile{Data: []byte("token=secret\n")},
+		".git-credentials":               &fstest.MapFile{Data: []byte("https://token@example.test\n")},
+		".config/gcloud/credentials.db":  &fstest.MapFile{Data: []byte("secret")},
+		".config/gh/hosts.yml":           &fstest.MapFile{Data: []byte("oauth_token: secret\n")},
+		".env.example":                   &fstest.MapFile{Data: []byte("API_TOKEN=\n")},
+		"fixtures/home/.git-credentials": &fstest.MapFile{Data: []byte("secret")},
+		"examples/.config/gcloud/access_tokens.db": &fstest.MapFile{Data: []byte("secret")},
+		"examples/.config/gh/hosts.yml":            &fstest.MapFile{Data: []byte("oauth_token: secret\n")},
+		"scripts/run.py":                           &fstest.MapFile{Data: []byte("print(1)\n")},
+		"link":                                     &fstest.MapFile{Data: []byte("SKILL.md"), Mode: fs.ModeSymlink},
 	}
 	files, err := collect(src)
 	if err != nil {
@@ -190,14 +207,17 @@ func TestBuildAndVersionControlResidueNeverTravels(t *testing.T) {
 	for _, f := range files {
 		got[f.path] = true
 	}
-	for _, want := range []string{"SKILL.md", "scripts/run.py"} {
+	for _, want := range []string{"SKILL.md", "scripts/run.py", ".env.example"} {
 		if !got[want] {
 			t.Errorf("%s did not travel", want)
 		}
 	}
 	for _, banned := range []string{
 		".git/config", ".github/workflows/ci.yml", "node_modules/left-pad/i.js",
-		"src/__pycache__/a.pyc", ".venv/bin/python",
+		"src/__pycache__/a.pyc", ".venv/bin/python", ".env", "config/.env.local",
+		".npmrc", ".aws/credentials", ".config/gcloud/application_default_credentials.json",
+		".ENV", ".NPMRC", ".git-credentials", ".config/gcloud/credentials.db", ".config/gh/hosts.yml",
+		"fixtures/home/.git-credentials", "examples/.config/gcloud/access_tokens.db", "examples/.config/gh/hosts.yml",
 		// A zip can carry a symlink and extraction tools disagree about what to
 		// do with one. That is not a decision a package makes on someone's disk.
 		"link",

@@ -57,11 +57,7 @@ const (
 
 // Who decided. `model` is set by this package from where a verdict came, never
 // from anything the model said about itself (02:EVAL-001 clause 5).
-const (
-	SourceRule  = "rule"
-	SourceModel = "model"
-	SourceUser  = "user"
-)
+const SourceModel = "model"
 
 // Evaluation statuses. `failed` is the evaluation not running; `undetermined` is
 // it running and honestly reaching no verdict. Collapsing them would make "the

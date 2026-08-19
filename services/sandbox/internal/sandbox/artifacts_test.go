@@ -173,3 +173,70 @@ func TestAcceptRefusesAnAllowListANodeCannotRoute(t *testing.T) {
 		t.Fatalf("a node with no egress route refused a run that needs none: %v", re)
 	}
 }
+
+func TestAcceptChecksEveryDeclaredResourceCeiling(t *testing.T) {
+	checks := map[string]func(*RunRequest, *Config){
+		"vcpu":                func(r *RunRequest, _ *Config) { r.ResourceLimits.VCPU++ },
+		"memory":              func(r *RunRequest, _ *Config) { r.ResourceLimits.MemoryBytes++ },
+		"disk":                func(r *RunRequest, _ *Config) { r.ResourceLimits.DiskBytes++ },
+		"processes":           func(r *RunRequest, _ *Config) { r.ResourceLimits.MaxPIDs++ },
+		"open files":          func(r *RunRequest, _ *Config) { r.ResourceLimits.MaxOpenFiles++ },
+		"soft wall clock":     func(r *RunRequest, _ *Config) { r.ResourceLimits.WallClockSoftSeconds++ },
+		"hard wall clock":     func(r *RunRequest, _ *Config) { r.ResourceLimits.WallClockHardSeconds++ },
+		"artifact total":      func(r *RunRequest, _ *Config) { r.ResourceLimits.ArtifactTotalBytes++ },
+		"artifact file":       func(r *RunRequest, _ *Config) { r.ResourceLimits.ArtifactFileBytes++ },
+		"input tokens":        func(r *RunRequest, _ *Config) { r.ResourceLimits.TokenBudget.MaxInputTokens++ },
+		"output tokens":       func(r *RunRequest, _ *Config) { r.ResourceLimits.TokenBudget.MaxOutputTokens++ },
+		"missing token limit": func(_ *RunRequest, c *Config) { c.MaxResources.TokenBudget = nil },
+	}
+	for name, exceed := range checks {
+		t.Run(name, func(t *testing.T) {
+			max := DefaultLimits
+			maxTokens := *DefaultLimits.TokenBudget
+			max.TokenBudget = &maxTokens
+			requested := DefaultLimits
+			requestedTokens := *DefaultLimits.TokenBudget
+			requested.TokenBudget = &requestedTokens
+			cfg := Config{
+				Runtimes:     []RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"1"}}},
+				MaxResources: max, EgressModes: []string{"none"},
+			}
+			req := RunRequest{
+				Runtime:        RuntimeProfile{Runtime: "claude_agent_sdk", RuntimeVersion: "1"},
+				ResourceLimits: requested, Egress: EgressPolicy{Mode: "none"},
+			}
+			exceed(&req, &cfg)
+			if got := cfg.accept(req); got == nil || got.Class != ClassCapabilityMismatch {
+				t.Fatalf("provider accepted a run it cannot enforce: %v", got)
+			}
+		})
+	}
+	missing := map[string]func(*ResourceLimits){
+		"vcpu":            func(l *ResourceLimits) { l.VCPU = 0 },
+		"memory":          func(l *ResourceLimits) { l.MemoryBytes = 0 },
+		"disk":            func(l *ResourceLimits) { l.DiskBytes = 0 },
+		"processes":       func(l *ResourceLimits) { l.MaxPIDs = 0 },
+		"open files":      func(l *ResourceLimits) { l.MaxOpenFiles = 0 },
+		"soft wall clock": func(l *ResourceLimits) { l.WallClockSoftSeconds = 0 },
+		"hard wall clock": func(l *ResourceLimits) { l.WallClockHardSeconds = 0 },
+		"artifact total":  func(l *ResourceLimits) { l.ArtifactTotalBytes = 0 },
+		"artifact file":   func(l *ResourceLimits) { l.ArtifactFileBytes = 0 },
+	}
+	for name, omit := range missing {
+		t.Run("provider omits "+name, func(t *testing.T) {
+			max := DefaultLimits
+			omit(&max)
+			cfg := Config{
+				Runtimes:     []RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"1"}}},
+				MaxResources: max, EgressModes: []string{"none"},
+			}
+			req := RunRequest{
+				Runtime:        RuntimeProfile{Runtime: "claude_agent_sdk", RuntimeVersion: "1"},
+				ResourceLimits: DefaultLimits, Egress: EgressPolicy{Mode: "none"},
+			}
+			if got := cfg.accept(req); got == nil || got.Class != ClassCapabilityMismatch {
+				t.Fatalf("provider omitted %s but accepted a bounded run: %v", name, got)
+			}
+		})
+	}
+}

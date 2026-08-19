@@ -13,12 +13,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -32,6 +35,116 @@ import (
 )
 
 // --- fixtures ----------------------------------------------------------------
+
+// packagingRaceStore makes the idempotency race deterministic: both builders
+// must read the same source before either may persist, and the first object write
+// stays blocked long enough to prove the second request is waiting on the DB
+// advisory lock rather than performing another write.
+type packagingRaceStore struct {
+	mu         sync.Mutex
+	base       packageStore
+	reads      int
+	puts       int
+	bothRead   chan struct{}
+	firstPut   chan struct{}
+	secondPut  chan struct{}
+	releasePut chan struct{}
+}
+
+type packagingFaultStore struct {
+	base      packageStore
+	existsErr error
+	putErr    error
+	puts      int
+	removes   int
+}
+
+func (s *packagingFaultStore) Get(ctx context.Context, key string) ([]byte, error) {
+	return s.base.Get(ctx, key)
+}
+
+func (s *packagingFaultStore) Exists(_ context.Context, key string) (bool, error) {
+	if s.existsErr != nil {
+		return false, s.existsErr
+	}
+	_, ok := s.base[key]
+	return ok, nil
+}
+
+func (s *packagingFaultStore) Put(ctx context.Context, key string, data []byte) error {
+	s.puts++
+	if err := s.base.Put(ctx, key, data); err != nil {
+		return err
+	}
+	return s.putErr // models a successful write whose response was lost
+}
+
+func (s *packagingFaultStore) Remove(ctx context.Context, key string) error {
+	s.removes++
+	return s.base.Remove(ctx, key)
+}
+
+func newPackagingRaceStore(base packageStore) *packagingRaceStore {
+	return &packagingRaceStore{
+		base: base, bothRead: make(chan struct{}), firstPut: make(chan struct{}),
+		secondPut: make(chan struct{}), releasePut: make(chan struct{}),
+	}
+}
+
+func (s *packagingRaceStore) Get(ctx context.Context, key string) ([]byte, error) {
+	s.mu.Lock()
+	data, ok := s.base[key]
+	s.reads++
+	if s.reads == 2 {
+		close(s.bothRead)
+	}
+	bothRead := s.bothRead
+	s.mu.Unlock()
+	if !ok {
+		return nil, errors.New("no such object: " + key)
+	}
+	select {
+	case <-bothRead:
+		return data, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func (s *packagingRaceStore) Put(ctx context.Context, key string, data []byte) error {
+	s.mu.Lock()
+	s.puts++
+	if s.puts == 1 {
+		close(s.firstPut)
+	} else if s.puts == 2 {
+		close(s.secondPut)
+	}
+	releasePut := s.releasePut
+	s.mu.Unlock()
+	select {
+	case <-releasePut:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	s.mu.Lock()
+	s.base[key] = data
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *packagingRaceStore) Remove(_ context.Context, key string) error {
+	s.mu.Lock()
+	delete(s.base, key)
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *packagingRaceStore) Exists(_ context.Context, key string) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, ok := s.base[key]
+	return ok, nil
+}
 
 func packagingSKILLMD(name string) string {
 	return "---\nname: " + name + "\ndescription: Reports on " + name +
@@ -95,8 +208,14 @@ func packagingPath(skillID, versionID string) string {
 // hash, which is also a check that the hash names the object that was written.
 func zipEntries(t *testing.T, a *api, contentHash string) map[string][]byte {
 	t.Helper()
-	data, ok := a.packages["downloads/"+contentHash+".zip"]
-	if !ok {
+	var data []byte
+	for key, candidate := range a.packages {
+		if strings.HasPrefix(key, "downloads/") && strings.HasSuffix(key, "/"+contentHash+".zip") {
+			data = candidate
+			break
+		}
+	}
+	if data == nil {
 		t.Fatalf("no object was stored for content hash %s", contentHash)
 	}
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
@@ -141,7 +260,13 @@ func TestEveryTargetProducesAPackageThePlatformWouldAcceptBack(t *testing.T) {
 				t.Fatalf("POST packaging: got %d, body %v", code, body)
 			}
 			hash, _ := body["content_hash"].(string)
-			produced := a.packages["downloads/"+hash+".zip"]
+			var produced []byte
+			for key, candidate := range a.packages {
+				if strings.HasPrefix(key, "downloads/") && strings.HasSuffix(key, "/"+hash+".zip") {
+					produced = candidate
+					break
+				}
+			}
 
 			// The invariant, stated exactly as packaging-design §2.3 states it.
 			fsys, err := ingest.PackageFS(produced)
@@ -253,6 +378,7 @@ func TestBuildingTheSamePackageTwiceProducesTheSameContentHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	time.Sleep(1100 * time.Millisecond)
 	second, err := a.packaging.Plan(ctx, ws, mustUUID(t, skillID), mustUUID(t, versionID), "claude-code", false)
 	if err != nil {
 		t.Fatal(err)
@@ -499,6 +625,149 @@ func TestPackagingTheSameThingTwiceReturnsTheArtifactThatAlreadyExists(t *testin
 	}
 	if other["duplicate"] != false || other["artifact_id"] == first["artifact_id"] {
 		t.Errorf("packaging with test cases reused the artifact built without them: %v", other)
+	}
+}
+
+func TestConcurrentPackagingCreatesOneArtifact(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "concurrent-repeater")
+	skillID, versionID := packagedSkill(t, a, pool, c, "concurrent-idempotent-skill")
+	ws, err := gen.New(pool).GetWorkspace(context.Background(), gen.GetWorkspaceParams{
+		ID: mustUUID(t, c.workspaceID), OwnerUserID: mustUUID(t, c.userID),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := newPackagingRaceStore(a.packages)
+	a.packaging.Store = store
+
+	type outcome struct {
+		result packaging.Result
+		err    error
+	}
+	start := make(chan struct{})
+	out := make(chan outcome, 2)
+	skillUUID, versionUUID := mustUUID(t, skillID), mustUUID(t, versionID)
+	for range 2 {
+		go func() {
+			<-start
+			result, err := a.packaging.Create(context.Background(), ws,
+				skillUUID, versionUUID, "standard", false)
+			out <- outcome{result, err}
+		}()
+	}
+	close(start)
+	select {
+	case <-store.firstPut:
+	case <-time.After(5 * time.Second):
+		t.Fatal("neither request reached the object write")
+	}
+	select {
+	case <-store.secondPut:
+		t.Fatal("both requests reached object storage; the idempotency lock did not serialize them")
+	case <-time.After(250 * time.Millisecond):
+		close(store.releasePut)
+	}
+	first, second := <-out, <-out
+	for _, got := range []outcome{first, second} {
+		if got.err != nil {
+			t.Fatal(got.err)
+		}
+	}
+	if first.result.Artifact.ArtifactID != second.result.Artifact.ArtifactID {
+		t.Fatalf("concurrent requests created different artifacts: %s and %s",
+			first.result.Artifact.ArtifactID, second.result.Artifact.ArtifactID)
+	}
+	if first.result.Duplicate == second.result.Duplicate {
+		t.Fatalf("duplicate flags = %t and %t, want one producer and one reuse",
+			first.result.Duplicate, second.result.Duplicate)
+	}
+	if n := downloadArtifactsFor(t, pool, versionID); n != 1 {
+		t.Errorf("%d artifacts exist after concurrent packaging, want 1", n)
+	}
+}
+
+func TestMutablePackagingInputsProduceNewArtifacts(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	curator := a.login(t, "mutable-package-inputs")
+	makeCatalog(t, pool, curator.workspaceID)
+	skillID, versionID := packagedSkill(t, a, pool, curator, "mutable-input-skill")
+
+	build := func(include bool) map[string]any {
+		t.Helper()
+		code, body := postJSON(t, curator, packagingPath(skillID, versionID), fmt.Sprintf(
+			`{"target":"standard","include_test_cases":%t}`, include))
+		if code != http.StatusCreated {
+			t.Fatalf("POST packaging: got %d, body %v", code, body)
+		}
+		return body
+	}
+	beforeCompatibility := build(false)
+	if _, err := pool.Exec(context.Background(), `INSERT INTO skill_runtime_compatibility
+        (skill_version_id, runtime_image, capability, runtime)
+        VALUES ($1, 'ghcr.io/example/runtime@sha256:1111', 'activated', 'native')`,
+		mustUUID(t, versionID)); err != nil {
+		t.Fatal(err)
+	}
+	afterCompatibility := build(false)
+	if afterCompatibility["duplicate"] != false ||
+		afterCompatibility["content_hash"] == beforeCompatibility["content_hash"] {
+		t.Errorf("a new compatibility measurement reused stale bytes: before=%v after=%v",
+			beforeCompatibility, afterCompatibility)
+	}
+
+	testCaseID := seedTestCase(t, pool, curator.workspaceID, skillID)
+	beforeEdit := build(true)
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE test_cases SET user_prompt = 'a changed portable prompt' WHERE id = $1",
+		mustUUID(t, testCaseID)); err != nil {
+		t.Fatal(err)
+	}
+	afterEdit := build(true)
+	if afterEdit["duplicate"] != false || afterEdit["content_hash"] == beforeEdit["content_hash"] {
+		t.Errorf("an edited portable Test Case reused stale bytes: before=%v after=%v", beforeEdit, afterEdit)
+	}
+}
+
+func TestPackagingObjectFailuresAreFailClosedAndCompensated(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "package-object-failures")
+	skillID, versionID := packagedSkill(t, a, pool, owner, "object-failure-skill")
+	ws, err := gen.New(pool).GetWorkspace(context.Background(), gen.GetWorkspaceParams{
+		ID: mustUUID(t, owner.workspaceID), OwnerUserID: mustUUID(t, owner.userID),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	create := func() error {
+		_, err := a.packaging.Create(context.Background(), ws, mustUUID(t, skillID),
+			mustUUID(t, versionID), "standard", false)
+		return err
+	}
+
+	existsFailure := &packagingFaultStore{base: a.packages, existsErr: errors.New("exists unavailable")}
+	a.packaging.Store = existsFailure
+	if err := create(); err == nil || existsFailure.puts != 0 || existsFailure.removes != 0 {
+		t.Fatalf("Exists failure was not fail-closed: err=%v puts=%d removes=%d",
+			err, existsFailure.puts, existsFailure.removes)
+	}
+
+	putFailure := &packagingFaultStore{base: a.packages, putErr: errors.New("lost Put response")}
+	a.packaging.Store = putFailure
+	if err := create(); err == nil {
+		t.Fatal("ambiguous Put failure reported success")
+	}
+	if putFailure.puts != 1 || putFailure.removes != 1 {
+		t.Fatalf("ambiguous Put: puts=%d removes=%d, want one write and one compensation",
+			putFailure.puts, putFailure.removes)
+	}
+	for key := range a.packages {
+		if strings.HasPrefix(key, "downloads/"+owner.workspaceID+"/") {
+			t.Errorf("compensation left download object %q", key)
+		}
 	}
 }
 

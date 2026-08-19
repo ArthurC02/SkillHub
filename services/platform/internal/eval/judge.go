@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
@@ -370,9 +371,10 @@ func verify(
 			return EvidenceRef{}, "the quote cited from the agent's final output is not in it"
 		}
 		excerpt, truncated := cut(ref.Quote, excerptLimit)
+		start := utf8.RuneCountInString(m.summary.FinalOutput[:idx])
 		return EvidenceRef{
 			Kind:             KindAgentOutput,
-			CharRange:        &Range{Start: idx, End: idx + len(ref.Quote)},
+			CharRange:        &Range{Start: start, End: start + utf8.RuneCountInString(ref.Quote)},
 			Excerpt:          excerpt,
 			ExcerptTruncated: truncated,
 			Available:        true,

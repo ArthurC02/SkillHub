@@ -5176,8 +5176,8 @@ components:
         stops a change.
 
         `path_out_of_bounds` — `target_path` resolves outside the package.
-        `target_changed` — the target file no longer hashes as it did when the
-        suggestion was written, so the change was reasoned about other bytes.
+        `target_changed` — the target file changed after the suggestion was
+        written, or this request contains multiple replacements for that file.
         `validation_blocked` — the package would no longer pass static
         validation with the change applied; the same rule that blocks an import
         blocks this, only earlier (PACK-002 的精神).

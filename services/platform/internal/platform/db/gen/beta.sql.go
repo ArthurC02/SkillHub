@@ -79,6 +79,18 @@ func (q *Queries) CountQuotaRuns(ctx context.Context, arg CountQuotaRunsParams) 
 	return i, err
 }
 
+const deleteExpiredAnalyticsEvents = `-- name: DeleteExpiredAnalyticsEvents :execrows
+DELETE FROM analytics_events WHERE occurred_at < $1
+`
+
+func (q *Queries) DeleteExpiredAnalyticsEvents(ctx context.Context, occurredAt pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredAnalyticsEvents, occurredAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const detachWorkspaceAnalytics = `-- name: DetachWorkspaceAnalytics :execrows
 UPDATE analytics_events SET workspace_id = NULL WHERE workspace_id = $1
 `

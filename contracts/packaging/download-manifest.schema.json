@@ -30,7 +30,7 @@
     "packaged_at": {
       "type": "string",
       "format": "date-time",
-      "description": "When this package was built, RFC 3339 with offset. Note this is the only wall-clock value in the document and it is deliberately NOT an input to `manifest_hash`: two builds of the same content at different times must still hash the same (packaging-design.md §2.4)."
+      "description": "Deterministic package timestamp: the immutable source Skill Version's creation time, RFC 3339 with offset. This field adds no wall-clock variance; complete builds are reusable when all inputs produce the same content hash."
     },
     "packager_version": {
       "type": "string",

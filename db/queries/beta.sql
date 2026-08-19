@@ -110,3 +110,5 @@ SELECT EXISTS (SELECT 1 FROM runs WHERE id = $1 AND workspace_id = $2);
 -- by provider_user_id, matching the SEC-011 precedent of a roster that lives in
 -- deployment configuration rather than in a role table.
 SELECT provider, provider_user_id FROM user_identities WHERE user_id = $1;
+-- name: DeleteExpiredAnalyticsEvents :execrows
+DELETE FROM analytics_events WHERE occurred_at < $1;

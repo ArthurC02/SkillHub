@@ -51,6 +51,12 @@ const deflateLevel = 5
 var excludedDirs = map[string]bool{
 	".git": true, ".github": true, "node_modules": true,
 	"__pycache__": true, ".venv": true, ".tox": true, ".mypy_cache": true,
+	".aws": true, ".azure": true, ".docker": true, ".kube": true, ".ssh": true,
+}
+
+var excludedCredentialFiles = map[string]bool{
+	".git-credentials": true, ".netrc": true, ".npmrc": true, ".pypirc": true,
+	"application_default_credentials.json": true,
 }
 
 // exportFile is one entry, keyed by its PACKAGE-relative path — the path inside
@@ -63,13 +69,9 @@ type exportFile struct {
 
 // collect walks the source package and returns the files that may travel.
 //
-// An allow-list, not a deny-list: only files that came from the Skill Version's
-// own package bytes are copied, plus the platform's own additions elsewhere in
-// this package. A deny-list that misses an entry is a leak; an allow-list that
-// misses one is a missing file (m4/README M4-4). Everything a Run produced —
-// evaluation prose, evidence excerpts, rubrics, traces, artifacts — is therefore
-// absent by construction rather than by a rule that has to remember it: none of
-// it was ever part of these bytes.
+// Only files from the immutable Skill Version are candidates. Run outputs,
+// traces and evaluation data are absent by construction; credential-shaped
+// source files are filtered by travels.
 func collect(fsys fs.FS) ([]exportFile, error) {
 	var out []exportFile
 	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
@@ -115,10 +117,19 @@ func travels(path string, d fs.DirEntry) bool {
 	if strings.HasPrefix(path, "/") || hasDriveLetter(path) {
 		return false
 	}
-	for _, seg := range strings.Split(path, "/") {
+	lowerPath := strings.ToLower(path)
+	for _, seg := range strings.Split(lowerPath, "/") {
 		if seg == ".." || seg == "." || excludedDirs[seg] {
 			return false
 		}
+	}
+	name := lastSegment(lowerPath)
+	envTemplate := strings.HasSuffix(name, ".example") || strings.HasSuffix(name, ".sample") || strings.HasSuffix(name, ".template")
+	if name == ".env" || (strings.HasPrefix(name, ".env.") && !envTemplate) || excludedCredentialFiles[name] ||
+		hasPathSuffix(lowerPath, ".config/gcloud/credentials.db") ||
+		hasPathSuffix(lowerPath, ".config/gcloud/access_tokens.db") ||
+		hasPathSuffix(lowerPath, ".config/gh/hosts.yml") {
+		return false
 	}
 	// Symlinks, devices and fifos. A zip can carry them and extraction tools
 	// disagree about what to do with one, which is a decision no package gets to
@@ -127,6 +138,10 @@ func travels(path string, d fs.DirEntry) bool {
 		return false
 	}
 	return true
+}
+
+func hasPathSuffix(path, suffix string) bool {
+	return path == suffix || strings.HasSuffix(path, "/"+suffix)
 }
 
 func hasDriveLetter(path string) bool {
@@ -198,12 +213,6 @@ var zipEpoch = time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
 // by path, no directory entries, every modification time at the zip epoch,
 // external attributes zero, fixed compression level.
 //
-// Setting Modified makes the writer add an extended-timestamp extra field, which
-// ADR-027 asked to keep out. It is kept because the alternative is the
-// deprecated ModifiedDate/ModifiedTime fields, and the reason the ADR wanted no
-// extra field — that it moves with the clock — does not apply to a field whose
-// content is entirely determined by a constant.
-//
 // The result is that the same packager version over the same content produces
 // the same bytes, which is what makes content_hash mean "is this the file I
 // had" rather than "was this built by the same process invocation". Across
@@ -220,7 +229,7 @@ func writeZip(files []exportFile, prefix string) ([]byte, error) {
 		return flate.NewWriter(w, deflateLevel)
 	})
 	for _, f := range sorted {
-		h := &zip.FileHeader{Name: prefix + f.path, Method: zip.Deflate, Modified: zipEpoch}
+		h := &zip.FileHeader{Name: prefix + f.path, Method: zip.Deflate, ModifiedDate: 33}
 		w, err := zw.CreateHeader(h)
 		if err != nil {
 			return nil, err

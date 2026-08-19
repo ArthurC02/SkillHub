@@ -237,6 +237,22 @@ func TestTraceIngestionMasksBeforeStorageAndDedupesOnResend(t *testing.T) {
 		t.Fatalf("re-push: got %d %+v, want 202 with 0 stored and 1 duplicate", code, report)
 	}
 
+	// event_id is the key by itself. A producer retry with a changed clock must
+	// not bypass dedupe by moving the partition key.
+	var shifted map[string]any
+	if err := json.Unmarshal([]byte(toolCall), &shifted); err != nil {
+		t.Fatal(err)
+	}
+	shifted["occurred_at"] = time.Now().UTC().Add(time.Minute).Format(time.RFC3339Nano)
+	shiftedJSON, err := json.Marshal(shifted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, report = a.ingest(t, runID, 1, string(shiftedJSON))
+	if code != http.StatusAccepted || report.Stored != 0 || report.Duplicate != 1 {
+		t.Fatalf("same event id with shifted time: got %d %+v, want one duplicate", code, report)
+	}
+
 	status, view := owner.advancedTrace(t, runID)
 	if status != http.StatusOK {
 		t.Fatalf("GET trace: got %d", status)
@@ -267,6 +283,94 @@ func TestTraceIngestionMasksBeforeStorageAndDedupesOnResend(t *testing.T) {
 	}
 
 	dumpStoredEvents(t, pool, runID)
+}
+
+func TestConcurrentTraceDeliveryClaimsAnEventIDOnce(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "trace-concurrent-owner")
+	skillID := seedSkill(t, pool, owner.workspaceID, "trace-concurrent-skill")
+	runID := seedRun(t, pool, owner.workspaceID, skillID)
+	eventID := deterministicEventID(runID, 1, 2)
+
+	const insert = `INSERT INTO trace_events (
+		event_id, workspace_id, run_id, attempt, seq, occurred_at,
+		event_type, source, status, schema_version, masked, masked_fields, payload, late
+	) VALUES ($1,$2,$3,1,2,$4,'agent_output','sandbox','ok','1.0',true,'[]'::jsonb,'{}'::jsonb,false)`
+	type outcome struct {
+		rows int64
+		err  error
+	}
+	eventUUID := mustUUID(t, eventID)
+	workspaceUUID := mustUUID(t, owner.workspaceID)
+	runUUID := mustUUID(t, runID)
+	ctx := context.Background()
+	conn1, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn1.Release()
+	conn2, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn2.Release()
+	tx1, err := conn1.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx1.Rollback(ctx) // no-op after commit
+	tx2, err := conn2.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx2.Rollback(ctx)
+
+	firstTag, err := tx1.Exec(ctx, insert, eventUUID, workspaceUUID, runUUID, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := make(chan outcome, 1)
+	go func() {
+		tag, err := tx2.Exec(ctx, insert, eventUUID, workspaceUUID, runUUID, time.Now().UTC().Add(time.Minute))
+		out <- outcome{tag.RowsAffected(), err}
+	}()
+
+	deadline := time.Now().Add(2 * time.Second)
+	waiting := false
+	for !waiting && time.Now().Before(deadline) {
+		if err := pool.QueryRow(ctx, `SELECT COALESCE((SELECT wait_event_type = 'Lock'
+			FROM pg_stat_activity WHERE pid=$1), false)`, conn2.Conn().PgConn().PID()).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if !waiting {
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	if !waiting {
+		t.Fatal("second insert did not wait on the first transaction's advisory lock")
+	}
+	if err := tx1.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	second := <-out
+	if second.err != nil {
+		t.Fatal(second.err)
+	}
+	if err := tx2.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if firstTag.RowsAffected() != 1 || second.rows != 0 {
+		t.Fatalf("rows affected = %d and %d, want first=1 second=0", firstTag.RowsAffected(), second.rows)
+	}
+	var stored int
+	if err := pool.QueryRow(context.Background(),
+		"SELECT count(*) FROM trace_events WHERE event_id=$1", eventUUID).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored != 1 {
+		t.Fatalf("stored %d rows for one event_id, want 1", stored)
+	}
 }
 
 // dumpStoredEvents writes the stored rows back out as wire envelopes, so

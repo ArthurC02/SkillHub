@@ -13025,8 +13025,8 @@ func (*SuggestAcceptanceCriteriaUnauthorized) suggestAcceptanceCriteriaRes() {}
 // apply call can never disagree about what stops a change.
 //
 // `path_out_of_bounds` — `target_path` resolves outside the package. `target_changed` — the target
-// file no longer hashes as it did when the suggestion was written, so the change was reasoned about
-// other bytes. `validation_blocked` — the package would no longer pass static validation with the
+// file changed after the suggestion was written, or this request contains multiple replacements for
+// that file. `validation_blocked` — the package would no longer pass static validation with the
 // change applied; the same rule that blocks an import blocks this, only earlier (PACK-002 的精神).
 // `access_restricted` — the skill is under a 0023 licensing hold, so its contents are not reproduced
 // (SEC-011). `diff_unavailable` — no diff could be computed, and EVAL-002 第 3 條 does not allow

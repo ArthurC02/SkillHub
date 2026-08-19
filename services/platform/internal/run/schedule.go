@@ -141,8 +141,8 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 		return RuntimeProfile{}, fmt.Errorf("%s does not support the %s runtime", name, req.Runtime)
 	}
 
-	// Resource ceilings. A zero on the provider's side means "did not declare",
-	// which is not the same as "allows nothing" - see ProviderCapability.
+	// Every ceiling is required by the provider contract. Missing capability is
+	// not permission to dispatch an unbounded run.
 	for _, check := range []struct {
 		what            string
 		needed, offered float64
@@ -152,9 +152,17 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 		{"disk", float64(req.Limits.DiskBytes), float64(c.MaxResources.DiskBytes)},
 		{"processes", float64(req.Limits.MaxPIDs), float64(c.MaxResources.MaxPIDs)},
 		{"open files", float64(req.Limits.MaxOpenFiles), float64(c.MaxResources.MaxOpenFiles)},
-		{"wall clock", float64(req.Limits.WallClockHardSeconds), float64(c.MaxResources.WallClockHardSeconds)},
+		{"soft wall clock", float64(req.Limits.WallClockSoftSeconds), float64(c.MaxResources.WallClockSoftSeconds)},
+		{"hard wall clock", float64(req.Limits.WallClockHardSeconds), float64(c.MaxResources.WallClockHardSeconds)},
+		{"total artifact bytes", float64(req.Limits.ArtifactTotalBytes), float64(c.MaxResources.ArtifactTotalBytes)},
+		{"artifact file bytes", float64(req.Limits.ArtifactFileBytes), float64(c.MaxResources.ArtifactFileBytes)},
+		{"input tokens", float64(req.Limits.TokenBudget.MaxInputTokens), float64(c.MaxResources.TokenBudget.MaxInputTokens)},
+		{"output tokens", float64(req.Limits.TokenBudget.MaxOutputTokens), float64(c.MaxResources.TokenBudget.MaxOutputTokens)},
 	} {
-		if check.offered > 0 && check.needed > check.offered {
+		if check.offered <= 0 {
+			return RuntimeProfile{}, fmt.Errorf("%s does not declare a %s ceiling", name, check.what)
+		}
+		if check.needed > check.offered {
 			return RuntimeProfile{}, fmt.Errorf("%s caps %s below what this run needs", name, check.what)
 		}
 	}

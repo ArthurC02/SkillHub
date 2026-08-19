@@ -112,7 +112,7 @@ ADR-012 §「可重現性」列了 Download Artifact 必須記錄的六項，本
 | 欄位 | 內容 | 出處 |
 | --- | --- | --- |
 | `schema_version` | manifest 自身的版本 | 比照 `contracts/events/` 的版本演進慣例 |
-| `packaged_at`、`packager_version`、`profile_id`、`profile_version` | 打包時間、打包器版本、目標與其版本 | ADR-012 |
+| `packaged_at`、`packager_version`、`profile_id`、`profile_version` | 來源 Skill Version 建立時間（固定的打包 timestamp）、打包器版本、目標與其版本 | ADR-012 |
 | `source.skill_id`／`skill_version_id`／`version_number`／`content_hash` | 來源不可變版本 | ADR-012、`02:DISC-003` |
 | `source.origin` | **三條溯源路徑之一**（§4.2） | `PACK-003` |
 | `license.expression`／`license.source_tier` | **成對，永不壓成單一字串** | ADR-021 決策 1；`02:CONTENT-002` |

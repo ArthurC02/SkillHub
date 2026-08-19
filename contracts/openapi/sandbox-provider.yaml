@@ -610,6 +610,8 @@ components:
         - max_open_files
         - wall_clock_soft_seconds
         - wall_clock_hard_seconds
+        - artifact_total_bytes
+        - artifact_file_bytes
       properties:
         vcpu: { type: number, default: 2 }
         memory_bytes: { type: integer, default: 4294967296, description: 4 GiB. }

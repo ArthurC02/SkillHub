@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/ArthurC02/skillhub/services/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/db/gen"
@@ -100,7 +101,9 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 			break
 		}
 		evidence, err := suggestionEvidence(p, refs)
-		if err != nil {
+		if err != nil || len(evidence) == 0 {
+			slog.Warn("improvement proposal has no matching verified evidence",
+				"evaluation_id", uuidString(ev.ID), "category", p.Category)
 			continue
 		}
 		if !storable(p) {
@@ -164,13 +167,11 @@ func storable(p llmclient.ImprovementProposal) bool {
 //
 // The model's own `evidence` is prose, and a sentence is not a citation: it is
 // stored only when it can be matched to a reference the platform itself verified
-// while judging. Otherwise the suggestion carries the references the digest it was
-// written from was built on, which is what it was actually derived from. Either
-// way every stored ref was minted by Go from the evaluation's own records — a
-// model cannot invent one (ADR-026 defence 3, applied to this leg).
+// while judging. An unmatched sentence gets no citation; unrelated verified
+// references elsewhere in the evaluation do not support this proposal.
 func suggestionEvidence(p llmclient.ImprovementProposal, refs []EvidenceRef) ([]byte, error) {
 	out := make([]EvidenceRef, 0, maxStoredEvidence)
-	if quote := strings.TrimSpace(p.Evidence); quote != "" {
+	if quote := strings.TrimSpace(p.Evidence); utf8.RuneCountInString(quote) >= 12 {
 		for _, ref := range refs {
 			if strings.Contains(ref.Excerpt, quote) {
 				out = append(out, ref)
@@ -179,9 +180,7 @@ func suggestionEvidence(p llmclient.ImprovementProposal, refs []EvidenceRef) ([]
 		}
 	}
 	if len(out) == 0 {
-		for i := 0; i < len(refs) && i < maxStoredEvidence; i++ {
-			out = append(out, refs[i])
-		}
+		return nil, nil
 	}
 	return json.Marshal(out)
 }

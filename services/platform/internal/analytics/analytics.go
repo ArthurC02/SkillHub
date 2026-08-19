@@ -32,6 +32,7 @@ package analytics
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -72,7 +73,10 @@ const (
 // and must never be mistakable for a credential. HttpOnly anyway — the SPA has no
 // reason to read it, and a value scripts can read is a value an injected script
 // can read.
-const sessionCookie = "sh_analytics"
+const (
+	sessionCookie = "sh_analytics"
+	visitCookie   = "sh_analytics_visit"
+)
 
 // Service writes funnel events.
 type Service struct {
@@ -86,10 +90,13 @@ type Service struct {
 	// Secure controls the cookie Secure flag; false only for plain-http local dev,
 	// same as the session cookie's.
 	Secure bool
+	Now    func() time.Time
 }
 
 // Enabled reports whether this deployment collects funnel events at all.
-func (s *Service) Enabled() bool { return s != nil && s.Pool != nil && s.Retention > 0 }
+func (s *Service) Enabled() bool {
+	return s != nil && s.Pool != nil && s.Retention >= time.Second
+}
 
 type ctxKey struct{}
 
@@ -101,7 +108,10 @@ func SessionID(ctx context.Context) string {
 }
 
 // Sessions is the middleware that gives every visitor an analytics session id and
-// emits EventSessionStarted the first time it mints one.
+// emits a best-effort EventSessionStarted marker once per UTC day. Concurrent
+// first requests may emit duplicates; the funnel deliberately counts distinct
+// session/day pairs. The persistent analytics id ties visits together without
+// using an authentication credential.
 //
 // Wrapped around the whole mux rather than per route, because the funnel's first
 // segment happens on the public catalogue where there is no session middleware at
@@ -115,7 +125,7 @@ func (s *Service) Sessions(next http.Handler) http.Handler {
 		return next
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id, fresh := "", false
+		id := ""
 		if c, err := r.Cookie(sessionCookie); err == nil && len(c.Value) == 32 {
 			id = c.Value
 		} else {
@@ -126,7 +136,7 @@ func (s *Service) Sessions(next http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			id, fresh = hex.EncodeToString(raw), true
+			id = hex.EncodeToString(raw)
 			http.SetCookie(w, &http.Cookie{
 				Name: sessionCookie, Value: id, Path: "/",
 				MaxAge:   int(s.Retention / time.Second),
@@ -134,13 +144,54 @@ func (s *Service) Sessions(next http.Handler) http.Handler {
 			})
 		}
 		ctx := context.WithValue(r.Context(), ctxKey{}, id)
-		if fresh {
+		now := s.now()
+		if newVisit(r, now) {
+			seconds := visitLifetimeSeconds(now, s.Retention)
+			http.SetCookie(w, &http.Cookie{
+				Name: visitCookie, Value: now.UTC().Format("2006-01-02"), Path: "/",
+				MaxAge: seconds, HttpOnly: true, Secure: s.Secure, SameSite: http.SameSiteLaxMode,
+			})
 			s.emit(ctx, gen.InsertAnalyticsEventParams{
 				EventName: EventSessionStarted, SessionID: id,
 			})
 		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func (s *Service) now() time.Time {
+	if s.Now != nil {
+		return s.Now()
+	}
+	return time.Now()
+}
+
+func newVisit(r *http.Request, now time.Time) bool {
+	c, err := r.Cookie(visitCookie)
+	return err != nil || c.Value != now.UTC().Format("2006-01-02")
+}
+
+func visitLifetimeSeconds(now time.Time, retention time.Duration) int {
+	seconds := int(now.UTC().Truncate(24*time.Hour).Add(24*time.Hour).Sub(now.UTC()) / time.Second)
+	if sessionSeconds := int(retention / time.Second); seconds > sessionSeconds {
+		seconds = sessionSeconds
+	}
+	if seconds < 1 {
+		return 1
+	}
+	return seconds
+}
+
+// PurgeExpired enforces the configured analytics retention window.
+func (s *Service) PurgeExpired(ctx context.Context) (int64, error) {
+	if s == nil || s.Pool == nil {
+		return 0, errors.New("analytics purge requires a database pool")
+	}
+	if s.Retention <= 0 {
+		return 0, errors.New("analytics purge requires a positive retention period")
+	}
+	return gen.New(s.Pool).DeleteExpiredAnalyticsEvents(ctx,
+		pgtype.Timestamptz{Time: s.now().Add(-s.Retention), Valid: true})
 }
 
 // SearchPerformed records that an intent was submitted (funnel segment 1).

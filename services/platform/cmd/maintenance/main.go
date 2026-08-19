@@ -19,6 +19,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
@@ -26,6 +27,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/services/platform/internal/analytics"
 	"github.com/ArthurC02/skillhub/services/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/services/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/services/platform/internal/platform/objstore"
@@ -33,7 +35,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		slog.Error("usage: maintenance purge-accounts|check-sources")
+		slog.Error("usage: maintenance purge-accounts|purge-analytics|check-sources")
 		os.Exit(2)
 	}
 	ctx := context.Background()
@@ -49,6 +51,8 @@ func main() {
 		err = purgeAccounts(ctx, pool)
 	case "check-sources":
 		err = checkSources(ctx, pool)
+	case "purge-analytics":
+		err = purgeAnalytics(ctx, pool)
 	default:
 		slog.Error("unknown job", "job", os.Args[1])
 		os.Exit(2)
@@ -57,6 +61,18 @@ func main() {
 		slog.Error("maintenance job failed", "job", os.Args[1], "error", err)
 		os.Exit(1)
 	}
+}
+
+func purgeAnalytics(ctx context.Context, pool *pgxpool.Pool) error {
+	retention, err := time.ParseDuration(os.Getenv("ANALYTICS_RETENTION"))
+	if err != nil || retention <= 0 {
+		return fmt.Errorf("ANALYTICS_RETENTION must be a positive Go duration")
+	}
+	n, err := (&analytics.Service{Pool: pool, Retention: retention}).PurgeExpired(ctx)
+	if err == nil {
+		slog.Info("analytics purge complete", "events_removed", n)
+	}
+	return err
 }
 
 func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {

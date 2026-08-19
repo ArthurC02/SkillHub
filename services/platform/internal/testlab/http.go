@@ -376,11 +376,8 @@ func (h *Handler) DeleteCriterion(w http.ResponseWriter, r *http.Request) {
 
 // Limits handles GET /test-cases/limits: the upload rules 02:TEST-002 requires
 // to be shown *before* the upload, not discovered by being refused.
-//
-// TODO(TEST-008/009): the pre-run permission summary (datasets, scripts, tools,
-// network, secrets, provider and resource caps) and its re-confirmation on
-// change are a different surface. They depend on the run permission model, so
-// they belong with 03:TEST-008 and 03:TEST-009, not here.
+// Run permission summaries and re-confirmation are served by the separate
+// preflight surface.
 func (h *Handler) Limits(w http.ResponseWriter, _ *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"max_file_bytes":          int64(MaxFileBytes),

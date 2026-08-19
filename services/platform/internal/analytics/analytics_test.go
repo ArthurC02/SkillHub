@@ -1,9 +1,50 @@
 package analytics
 
 import (
+	"context"
+	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
+
+func TestVisitBoundaryRecognizesANewUTCDate(t *testing.T) {
+	now := time.Date(2026, 8, 19, 23, 30, 0, 0, time.UTC)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	if !newVisit(req, now) {
+		t.Fatal("a request without a visit cookie was not a new visit")
+	}
+	req.AddCookie(&http.Cookie{Name: visitCookie, Value: "2026-08-19"})
+	if newVisit(req, now) {
+		t.Fatal("a second request on the same UTC day became another visit")
+	}
+	if !newVisit(req, now.Add(time.Hour)) {
+		t.Fatal("the first request on the next UTC day was not a new visit")
+	}
+}
+
+func TestVisitCookieNeverOutlivesTheAnalyticsSession(t *testing.T) {
+	now := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC)
+	if got := visitLifetimeSeconds(now, time.Hour); got != 3600 {
+		t.Errorf("visit cookie lifetime = %d seconds, want the one-hour session retention", got)
+	}
+	if got := visitLifetimeSeconds(now, 48*time.Hour); got != 12*60*60 {
+		t.Errorf("visit cookie lifetime = %d seconds, want until UTC midnight", got)
+	}
+}
+
+func TestPurgeExpiredRejectsMissingConfiguration(t *testing.T) {
+	for name, svc := range map[string]*Service{
+		"nil service": nil,
+		"nil pool":    {Retention: time.Hour},
+		"zero window": {},
+		"negative":    {Retention: -time.Hour},
+	} {
+		if _, err := svc.PurgeExpired(context.Background()); err == nil {
+			t.Errorf("%s: purge reported success", name)
+		}
+	}
+}
 
 // The one thing a search event records about the words themselves. A bucket, not
 // a locale and not the text: ADR-013's vector leg is meant to carry cross-script

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -41,6 +42,8 @@ import (
 // 0.2.0: INSTALL.md's dependency section gained the `undeclared-dependency`
 // findings (04 丙-18), which changes the produced bytes for unchanged input.
 const PackagerVersion = "0.2.0"
+
+const objectCleanupTimeout = 5 * time.Second
 
 // DefaultRetention is what a deployment gets if it configures nothing. PDM-006
 // proposes 90 days for a download package and that proposal is NOT ratified
@@ -90,6 +93,7 @@ type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 	Put(ctx context.Context, key string, data []byte) error
 	Remove(ctx context.Context, key string) error
+	Exists(ctx context.Context, key string) (bool, error)
 }
 
 type Service struct {
@@ -404,10 +408,13 @@ func (s *Service) buildManifest(
 		return exportFile{}, err
 	}
 	cat := report.Categorize()
+	if !p.Version.CreatedAt.Valid {
+		return exportFile{}, errors.New("skill version has no creation timestamp")
+	}
 
 	m := Manifest{
 		SchemaVersion:   ManifestSchemaVersion,
-		PackagedAt:      time.Now().UTC().Format(time.RFC3339),
+		PackagedAt:      p.Version.CreatedAt.Time.UTC().Format(time.RFC3339),
 		PackagerVersion: PackagerVersion,
 		ProfileID:       p.Profile.ID,
 		ProfileVersion:  p.Profile.Version,
@@ -476,10 +483,9 @@ type Artifact struct {
 //
 // Idempotent: the same (version, target, packager version, test-case choice)
 // that already has an unexpired, available artifact returns that one with
-// duplicate set, rather than spending the bytes again. The four columns are
-// 0027's dedupe index; the "still servable" half of the question lives on
-// artifacts and changes with time, which is why the index is a lookup and not a
-// constraint.
+// duplicate set, rather than spending the bytes again. Reuse includes the full
+// content hash because compatibility measurements and portable Test Cases may
+// change after an immutable Skill Version is created.
 //
 // The gates are re-checked before the lookup, not after: a hold applied since the
 // last packaging run has to stop the copy that already exists from being handed
@@ -511,17 +517,6 @@ func (s *Service) Create(
 	if !isTargetID(target) {
 		return Result{}, ErrUnknownTarget
 	}
-	existing, err := q.FindReusableDownloadArtifact(ctx, gen.FindReusableDownloadArtifactParams{
-		WorkspaceID: ws.ID, SkillVersionID: versionID, Target: target,
-		PackagerVersion: PackagerVersion, IncludesTestCases: includeTestCases,
-	})
-	if err == nil {
-		return Result{Artifact: reusedArtifact(skillID, existing), Duplicate: true}, nil
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		return Result{}, err
-	}
-
 	p, err := s.Plan(ctx, ws, skillID, versionID, target, includeTestCases)
 	if err != nil {
 		return Result{}, err
@@ -538,14 +533,7 @@ func (s *Service) Create(
 }
 
 func (s *Service) persist(ctx context.Context, ws gen.Workspace, p *Plan) (Result, error) {
-	objectKey := "downloads/" + p.ContentHash + ".zip"
-	// Content addressed, so storing before the commit is idempotent and a failed
-	// transaction leaves a harmless orphan object — the same arrangement import
-	// uses for package bytes.
-	if err := s.Store.Put(ctx, objectKey, p.Zip); err != nil {
-		return Result{}, err
-	}
-
+	objectKey := "downloads/" + uuidString(ws.ID) + "/" + p.ContentHash + ".zip"
 	retention := s.Retention
 	if retention <= 0 {
 		retention = DefaultRetention
@@ -556,6 +544,41 @@ func (s *Service) persist(ctx context.Context, ws gen.Workspace, p *Plan) (Resul
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
+	lockKey := fmt.Sprintf("download-package:%s/%s", uuidString(ws.ID), p.ContentHash)
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", lockKey); err != nil {
+		return Result{}, err
+	}
+	if existing, err := q.FindReusableDownloadArtifact(ctx, gen.FindReusableDownloadArtifactParams{
+		WorkspaceID: ws.ID, SkillVersionID: p.Version.ID, Target: p.Profile.ID,
+		PackagerVersion: PackagerVersion, IncludesTestCases: p.IncludeTestCases,
+		ContentHash: p.ContentHash,
+	}); err == nil {
+		return Result{Artifact: reusedArtifact(p.Skill.ID, existing), Duplicate: true}, nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return Result{}, err
+	}
+	exists, err := s.Store.Exists(ctx, objectKey)
+	if err != nil {
+		return Result{}, err
+	}
+	ownsObject, commitAttempted := !exists, false
+	// Workspace/content addressing plus the advisory lock make this compensation
+	// private to this writer. An ambiguous Commit result is deliberately retained:
+	// the row may actually have committed and deleting its object would be worse.
+	defer func() {
+		if ownsObject && !commitAttempted {
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), objectCleanupTimeout)
+			defer cancel()
+			if err := s.Store.Remove(cleanupCtx, objectKey); err != nil {
+				slog.Error("failed to compensate download package object", "key", objectKey, "error", err)
+			}
+		}
+	}()
+	if !exists {
+		if err := s.Store.Put(ctx, objectKey, p.Zip); err != nil {
+			return Result{}, err
+		}
+	}
 
 	row, err := q.CreateDownloadArtifactRow(ctx, gen.CreateDownloadArtifactRowParams{
 		WorkspaceID: ws.ID,
@@ -588,6 +611,7 @@ func (s *Service) persist(ctx context.Context, ws gen.Workspace, p *Plan) (Resul
 	}); err != nil {
 		return Result{}, err
 	}
+	commitAttempted = true
 	if err := tx.Commit(ctx); err != nil {
 		return Result{}, err
 	}

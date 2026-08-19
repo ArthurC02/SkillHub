@@ -65,15 +65,23 @@ download_intents AS (
     WHERE event_name = 'download_started' AND workspace_id IS NOT NULL
       AND occurred_at >= lo AND occurred_at < hi
 ),
--- Segment 7 asks who came back. A workspace with sessions on two distinct days
--- is the closest this data supports: `session_started` fires once per cookie, and
--- a cleared cookie is a new one.
+session_workspaces AS (
+    SELECT DISTINCT session_id, workspace_id,
+           date_trunc('day', occurred_at AT TIME ZONE 'UTC') AS visit_day
+    FROM analytics_events, bounds
+    WHERE workspace_id IS NOT NULL AND occurred_at >= lo AND occurred_at < hi
+),
+-- Segment 7 asks who came back. session_started is a best-effort browser visit
+-- marker; a signed-in event maps only that same UTC visit-day to its workspace. A
+-- browser that later changes account therefore cannot rewrite earlier visits.
 returning_workspaces AS (
-    SELECT workspace_id FROM analytics_events, bounds
-    WHERE event_name = 'session_started' AND workspace_id IS NOT NULL
-      AND occurred_at >= lo AND occurred_at < hi
-    GROUP BY workspace_id
-    HAVING count(DISTINCT date_trunc('day', occurred_at)) > 1
+    SELECT sw.workspace_id FROM analytics_events e
+    JOIN session_workspaces sw ON sw.session_id = e.session_id
+      AND sw.visit_day = date_trunc('day', e.occurred_at AT TIME ZONE 'UTC'), bounds
+    WHERE e.event_name = 'session_started'
+      AND e.occurred_at >= lo AND e.occurred_at < hi
+    GROUP BY sw.workspace_id
+    HAVING count(DISTINCT date_trunc('day', e.occurred_at AT TIME ZONE 'UTC')) > 1
 ),
 
 -- --- the domain half: every fact about a Run, a verdict or a file -------------
@@ -154,9 +162,11 @@ SELECT * FROM (
 
     (7, '首次使用後再次回來',
      (SELECT count(*) FROM returning_workspaces),
-     (SELECT count(DISTINCT workspace_id) FROM analytics_events, bounds
-      WHERE event_name = 'session_started' AND workspace_id IS NOT NULL
-        AND occurred_at >= lo AND occurred_at < hi),
+     (SELECT count(DISTINCT sw.workspace_id) FROM analytics_events e
+      JOIN session_workspaces sw ON sw.session_id = e.session_id
+        AND sw.visit_day = date_trunc('day', e.occurred_at AT TIME ZONE 'UTC'), bounds
+      WHERE e.event_name = 'session_started'
+        AND e.occurred_at >= lo AND e.occurred_at < hi),
      'analytics; per workspace, "came back" = sessions on two distinct days. A ' ||
      'cleared cookie makes one returning visitor look like two new ones, so this ' ||
      'is a floor, not an estimate.')

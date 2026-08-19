@@ -192,7 +192,7 @@ func (s *Service) readPackage(ctx context.Context, key string) (fs.FS, []byte, e
 //
 // Order matters: the licensing hold is first because a held skill's contents must
 // not be reproduced at all (SEC-011), and a diff is a reproduction.
-func check(sc suggestionCtx, alsoTouched map[string]string) (string, *Blocked) {
+func check(sc suggestionCtx) (string, *Blocked) {
 	sug := sc.suggestion
 	id := uuidString(sug.ID)
 	block := func(reason, msg string) (string, *Blocked) {
@@ -211,15 +211,6 @@ func check(sc suggestionCtx, alsoTouched map[string]string) (string, *Blocked) {
 			"the suggestion names a path that does not resolve inside the package, "+
 				"so nothing it proposes can be written")
 	}
-	if other, clash := alsoTouched[target]; clash {
-		// Two whole-file replacements of the same file in one request: the second
-		// was written against bytes the first one just replaced, which is the same
-		// situation as a file that moved underneath it.
-		return block(BlockedTargetChanged, fmt.Sprintf(
-			"another suggestion in this request (%s) already replaces %s; apply one, then "+
-				"re-read the diff of the other against the version that produced", other, target))
-	}
-
 	origin, originErr := readTarget(sc.originFS, target)
 	if originErr != nil {
 		return block(BlockedDiffUnavailable, "the file this suggestion changes could not be "+
@@ -317,7 +308,7 @@ func (s *Service) SuggestionDiff(ctx context.Context, workspaceID, id pgtype.UUI
 		out.TargetPath = target
 	}
 
-	diff, blocked := check(sc, nil)
+	diff, blocked := check(sc)
 	if blocked == nil {
 		// The same validation the apply call runs, run here so the preview cannot
 		// promise a change that import-grade validation would refuse.
@@ -489,7 +480,13 @@ func (s *Service) ApplySuggestions(
 	// Everything is resolved before anything is checked, so a request naming one
 	// undecided suggestion is refused whole instead of half-applied.
 	suggestions := make([]gen.EvaluationSuggestion, 0, len(ids))
+	seenIDs := make(map[string]bool, len(ids))
 	for _, id := range ids {
+		idText := uuidString(id)
+		if seenIDs[idText] {
+			continue
+		}
+		seenIDs[idText] = true
 		sug, err := s.queries().GetEvaluationSuggestion(ctx, gen.GetEvaluationSuggestionParams{
 			ID: id, WorkspaceID: ws.ID,
 		})
@@ -511,21 +508,46 @@ func (s *Service) ApplySuggestions(
 		// simply has not said yes. Accepting is PUT /suggestions/{id}/decision.
 		return out, ErrNotAccepted
 	}
+	sort.Slice(suggestions, func(i, j int) bool {
+		left, leftOK := cleanTargetPath(suggestions[i].TargetPath)
+		right, rightOK := cleanTargetPath(suggestions[j].TargetPath)
+		if !leftOK {
+			left = suggestions[i].TargetPath
+		}
+		if !rightOK {
+			right = suggestions[j].TargetPath
+		}
+		if left != right {
+			return left < right
+		}
+		return uuidString(suggestions[i].ID) < uuidString(suggestions[j].ID)
+	})
 
 	patches := map[string]string{}
-	touched := map[string]string{}
+	targetCounts := make(map[string]int, len(suggestions))
+	for _, sug := range suggestions {
+		if target, ok := cleanTargetPath(sug.TargetPath); ok {
+			targetCounts[target]++
+		}
+	}
 	applied := make([]pgtype.UUID, 0, len(ids))
 	for _, sug := range suggestions {
+		target, _ := cleanTargetPath(sug.TargetPath)
+		if targetCounts[target] > 1 {
+			out.Rejected = append(out.Rejected, Blocked{
+				SuggestionID: uuidString(sug.ID), Reason: BlockedTargetChanged,
+				Message: "multiple suggestions replace " + target + "; select exactly one",
+			})
+			continue
+		}
 		sc := base
 		sc.suggestion = sug
-		_, blocked := check(sc, touched)
+		_, blocked := check(sc)
 		if blocked != nil {
 			out.Rejected = append(out.Rejected, *blocked)
 			continue
 		}
-		target, _ := cleanTargetPath(sug.TargetPath)
 		patches[target] = sug.ProposedContent
-		touched[target] = uuidString(sug.ID)
 		applied = append(applied, sug.ID)
 		out.Applied = append(out.Applied, uuidString(sug.ID))
 	}

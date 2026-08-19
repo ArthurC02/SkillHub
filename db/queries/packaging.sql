@@ -3,11 +3,9 @@
 -- are the deliberate exception and say why.
 
 -- name: FindReusableDownloadArtifact :one
--- The idempotency lookup of POST .../packaging. The four columns of 0027's
--- dedupe index identify a package; the other three predicates are the part no
--- index can express, which is why 0027 left this as a lookup rather than a
--- unique constraint: "already has one" also means the bytes are still there and
--- still servable.
+-- The idempotency lookup of POST .../packaging. Mutable compatibility and
+-- portable Test Case inputs can change the bytes for one Skill Version, so the
+-- exact zip content hash is part of reuse identity.
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
@@ -21,6 +19,7 @@ WHERE da.workspace_id = $1
   AND da.target = $3
   AND da.packager_version = $4
   AND da.includes_test_cases = $5
+  AND a.content_hash = $6
   AND a.scan_status = 'available'
   AND a.deleted_at IS NULL
   -- Added by 0028: bytes the retention sweep or the reconciler removed. Without

@@ -83,28 +83,22 @@ func TestSuggestionEvidenceIsAlwaysMintedByThePlatform(t *testing.T) {
 		t.Fatalf("a quote found in a verified reference keeps it, got %+v", got)
 	}
 
-	// A quote the platform cannot find does not become a citation. What is stored
-	// is what the evaluation itself established, never the model's sentence.
+	// A quote the platform cannot find does not borrow unrelated citations.
 	raw, _ = suggestionEvidence(llmclient.ImprovementProposal{
 		Evidence: "the model is quite sure something went wrong",
 	}, refs)
-	if err := json.Unmarshal(raw, &got); err != nil {
-		t.Fatal(err)
+	if raw != nil {
+		t.Fatalf("an unmatched quote must make the proposal unstorable, got %s", raw)
 	}
-	if len(got) != maxStoredEvidence {
-		t.Fatalf("an unmatched quote falls back to the evaluation's own references, got %+v", got)
-	}
-	for _, ref := range got {
-		if ref.Excerpt == "the model is quite sure something went wrong" {
-			t.Error("the model's prose was stored as though it were a citation")
-		}
+	raw, _ = suggestionEvidence(llmclient.ImprovementProposal{Evidence: "e"}, refs)
+	if raw != nil {
+		t.Fatalf("a generic one-character substring must not become evidence: %s", raw)
 	}
 
-	// An evaluation with no references at all stores an empty list rather than an
-	// invented one. 0024 requires the array, not a non-empty one.
+	// An evaluation with no references cannot support a stored suggestion.
 	raw, _ = suggestionEvidence(llmclient.ImprovementProposal{Evidence: "x"}, nil)
-	if string(raw) != "[]" {
-		t.Errorf("no evidence available must store [], got %s", raw)
+	if raw != nil {
+		t.Errorf("no evidence available must make the proposal unstorable, got %s", raw)
 	}
 }
 
