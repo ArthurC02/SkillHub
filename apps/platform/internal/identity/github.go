@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // GitHubOAuth drives the authorization-code flow with plain net/http.
@@ -44,7 +45,7 @@ func (g *GitHubOAuth) client() *http.Client {
 	if g.Client != nil {
 		return g.Client
 	}
-	return http.DefaultClient
+	return &http.Client{Timeout: 15 * time.Second}
 }
 
 // AuthURL returns the GitHub authorization URL for the given one-shot state.

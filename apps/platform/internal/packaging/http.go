@@ -338,7 +338,7 @@ func (h *Handler) writeServiceError(w http.ResponseWriter, err error) bool {
 	case errors.Is(err, ErrUnknownTarget):
 		httpx.WriteError(w, http.StatusBadRequest,
 			"`target` must be one of standard, claude-code, claude-agent-sdk")
-	case errors.Is(err, ErrNoProfile), errors.Is(err, ErrNoStore):
+	case errors.Is(err, ErrNoProfile), errors.Is(err, ErrNoStore), errors.Is(err, ErrRetentionNotConfigured):
 		httpx.WriteError(w, http.StatusServiceUnavailable, err.Error())
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, "packaging failed")

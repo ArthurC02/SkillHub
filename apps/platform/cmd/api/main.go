@@ -104,7 +104,12 @@ func main() {
 	// imported skills land with enrichment_status = 'pending'.
 	var llm *llmclient.Client
 	if llmURL := os.Getenv("LLM_SERVICE_URL"); llmURL != "" {
-		llm = &llmclient.Client{BaseURL: llmURL}
+		token := os.Getenv("LLM_SERVICE_TOKEN")
+		if token == "" {
+			slog.Error("LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set")
+			os.Exit(1)
+		}
+		llm = &llmclient.Client{BaseURL: llmURL, Token: token}
 		slog.Info("llm service configured", "url", llmURL)
 	} else {
 		slog.Warn("LLM_SERVICE_URL not set; search will use FTS-only fallback and imports will not be enriched")
@@ -328,8 +333,8 @@ func retentionFromEnv() time.Duration {
 		return 0
 	}
 	d, err := time.ParseDuration(raw)
-	if err != nil {
-		slog.Warn("DOWNLOAD_ARTIFACT_RETENTION is not a duration; using the default", "value", raw)
+	if err != nil || d <= 0 {
+		slog.Warn("DOWNLOAD_ARTIFACT_RETENTION is invalid; artifact creation is disabled", "value", raw)
 		return 0
 	}
 	return d

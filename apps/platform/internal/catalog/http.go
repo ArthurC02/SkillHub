@@ -407,6 +407,10 @@ type searchResponse struct {
 // Uses hybrid retrieval (ADR-013) when embeddings are available.
 func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if utf8.RuneCountInString(q) > 2000 {
+		httpx.WriteError(w, http.StatusBadRequest, "query parameter q must be at most 2000 characters")
+		return
+	}
 
 	// DISC-003 filters are parsed before the query is even looked at: a request
 	// asking for a filter this build cannot honour is rejected whatever the

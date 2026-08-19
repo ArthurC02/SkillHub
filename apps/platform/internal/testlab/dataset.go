@@ -131,7 +131,19 @@ func (s *Service) DeleteDataset(ctx context.Context, ws gen.Workspace, datasetID
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
-	ds, err := q.SoftDeleteDataset(ctx, gen.SoftDeleteDatasetParams{ID: datasetID, WorkspaceID: ws.ID})
+	ds, err := q.GetDataset(ctx, gen.GetDatasetParams{ID: datasetID, WorkspaceID: ws.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.Dataset{}, ErrNotFound
+	}
+	if err != nil {
+		return gen.Dataset{}, err
+	}
+	if _, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: ds.TestCaseID, WorkspaceID: ws.ID}); errors.Is(err, pgx.ErrNoRows) {
+		return gen.Dataset{}, ErrNotFound
+	} else if err != nil {
+		return gen.Dataset{}, err
+	}
+	ds, err = q.SoftDeleteDataset(ctx, gen.SoftDeleteDatasetParams{ID: datasetID, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return gen.Dataset{}, ErrNotFound
 	}

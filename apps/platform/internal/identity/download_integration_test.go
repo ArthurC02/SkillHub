@@ -20,7 +20,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/objreconcile"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/packaging"
 )
 
 // Exists completes objreconcile.ObjectStore over the in-memory store the rest of
@@ -521,9 +520,5 @@ func TestTheConfiguredRetentionIsWhatDecidesExpiry(t *testing.T) {
 	}
 	if d := time.Until(expires); d > 2*time.Hour || d < 30*time.Minute {
 		t.Errorf("expires in %s; the configured hour did not reach the row", d)
-	}
-	if packaging.DefaultRetention != 90*24*time.Hour {
-		t.Errorf("the unconfigured default moved away from PDM-006's proposed 90 days: %s",
-			packaging.DefaultRetention)
 	}
 }

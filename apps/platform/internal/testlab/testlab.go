@@ -297,9 +297,9 @@ func (s *Service) GetTestCase(ctx context.Context, ws gen.Workspace, id pgtype.U
 }
 
 // ListTestCases returns the caller's drafts, newest first.
-func (s *Service) ListTestCases(ctx context.Context, ws gen.Workspace) ([]gen.TestCase, error) {
+func (s *Service) ListTestCases(ctx context.Context, ws gen.Workspace, limit, offset int32) ([]gen.TestCase, error) {
 	return gen.New(s.Pool).ListTestCases(ctx, gen.ListTestCasesParams{
-		WorkspaceID: ws.ID, Limit: 100, Offset: 0,
+		WorkspaceID: ws.ID, Limit: limit, Offset: offset,
 	})
 }
 

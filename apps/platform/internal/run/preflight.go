@@ -220,7 +220,12 @@ func (s *Service) store() ObjectStore { return s.Store }
 func (s *Service) PermissionSummaryFor(
 	ctx context.Context, workspaceID, skillID, versionID, testCaseID pgtype.UUID,
 ) (PermissionSummary, error) {
-	q := s.queries()
+	return s.permissionSummaryFor(ctx, s.queries(), workspaceID, skillID, versionID, testCaseID)
+}
+
+func (s *Service) permissionSummaryFor(
+	ctx context.Context, q *gen.Queries, workspaceID, skillID, versionID, testCaseID pgtype.UUID,
+) (PermissionSummary, error) {
 	version, err := q.GetSkillVersion(ctx, gen.GetSkillVersionParams{ID: versionID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PermissionSummary{}, ErrNotFound
@@ -241,6 +246,9 @@ func (s *Service) PermissionSummaryFor(
 	}
 	if err != nil {
 		return PermissionSummary{}, err
+	}
+	if skillID.Valid && testCase.SkillID != skillID {
+		return PermissionSummary{}, ErrNotFound
 	}
 	rows, err := q.ListDatasets(ctx, gen.ListDatasetsParams{TestCaseID: testCase.ID, WorkspaceID: workspaceID})
 	if err != nil {
@@ -418,15 +426,15 @@ func (s *Service) ConfirmPermissions(
 // Rebuilding rather than trusting the request is the whole mechanism: a dataset
 // added after the confirmation changes the hash here, the old agreement no longer
 // matches, and the run is refused until the user has seen the new summary.
-func (s *Service) requirePermissionConfirmation(ctx context.Context, p CreateParams) error {
-	summary, err := s.PermissionSummaryFor(ctx, p.WorkspaceID, p.SkillID, p.VersionID, p.TestCaseID)
+func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Queries, p CreateParams) error {
+	summary, err := s.permissionSummaryFor(ctx, q, p.WorkspaceID, p.SkillID, p.VersionID, p.TestCaseID)
 	if err != nil {
 		return err
 	}
 	if p.ConfirmedSummaryHash != summary.Hash {
 		return fmt.Errorf("%w: the permissions changed since it was confirmed", ErrPermissionsNotConfirmed)
 	}
-	_, err = s.queries().GetRunPermissionConfirmation(ctx, gen.GetRunPermissionConfirmationParams{
+	_, err = q.GetRunPermissionConfirmation(ctx, gen.GetRunPermissionConfirmationParams{
 		WorkspaceID: p.WorkspaceID, SkillVersionID: p.VersionID, TestCaseID: p.TestCaseID,
 		SummaryHash: summary.Hash,
 	})

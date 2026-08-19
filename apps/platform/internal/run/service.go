@@ -345,16 +345,6 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	if err := s.requireScanNotBlocking(ctx, version.PackageObjectKey); err != nil {
 		return gen.Run{}, err
 	}
-	// SEC-002 gate B: no run starts on permissions the user has not seen and
-	// agreed to, and an agreement to a summary that has since changed does not
-	// carry over (02:TEST-005). Checked here rather than in the handler so every
-	// caller of Create passes through it. Ordered after checkSchedulable so a
-	// fleet that cannot carry the work still answers with the capability reason,
-	// which is the more actionable of the two.
-	if err := s.requirePermissionConfirmation(ctx, p); err != nil {
-		return gen.Run{}, err
-	}
-
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return gen.Run{}, err
@@ -377,6 +367,24 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	// quota.go for why max_budget, tpm_limit and the concurrency limit are three
 	// different brakes and none of them is a monthly allowance.
 	if err := s.requireQuota(ctx, q, p.WorkspaceID); err != nil {
+		return gen.Run{}, err
+	}
+
+	// The permission check and snapshot are one critical section. Dataset
+	// upload/delete and test-case edits all take this parent row lock, so the
+	// confirmed hash cannot describe one input set while the snapshot freezes
+	// another (SEC-002 gate B).
+	testCase, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: p.TestCaseID, WorkspaceID: p.WorkspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.Run{}, ErrNotFound
+	}
+	if err != nil {
+		return gen.Run{}, err
+	}
+	if testCase.SkillID != p.SkillID {
+		return gen.Run{}, ErrNotFound
+	}
+	if err := s.requirePermissionConfirmation(ctx, q, p); err != nil {
 		return gen.Run{}, err
 	}
 

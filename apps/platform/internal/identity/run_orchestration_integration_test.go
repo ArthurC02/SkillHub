@@ -524,6 +524,53 @@ func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 	}
 }
 
+func TestConcurrentOutboxPublishersDoNotDeliverTheSameSnapshot(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-outbox-concurrent")
+	f.start(t)
+	backlog := unpublishedCount(t, pool)
+	if backlog == 0 {
+		t.Fatal("creating a run published nothing to the outbox")
+	}
+
+	started := make(chan struct{}, 1)
+	release := make(chan struct{})
+	result := make(chan error, 1)
+	first := &outbox.Worker{Pool: pool, Deliver: func(context.Context, gen.OutboxEvent) error {
+		select {
+		case started <- struct{}{}:
+		default:
+		}
+		<-release
+		return nil
+	}}
+	go func() {
+		_, err := first.Publish(context.Background())
+		result <- err
+	}()
+	<-started
+
+	secondDeliveries := 0
+	second := &outbox.Worker{Pool: pool, Deliver: func(context.Context, gen.OutboxEvent) error {
+		secondDeliveries++
+		return nil
+	}}
+	if n, err := second.Publish(context.Background()); err != nil || n != 0 {
+		t.Fatalf("concurrent publisher published %d events (err %v), want 0", n, err)
+	}
+	if secondDeliveries != 0 {
+		t.Fatalf("concurrent publisher delivered %d events, want 0", secondDeliveries)
+	}
+	close(release)
+	if err := <-result; err != nil {
+		t.Fatal(err)
+	}
+	if after := unpublishedCount(t, pool); after != 0 {
+		t.Fatalf("first publisher left %d of %d events unpublished", after, backlog)
+	}
+}
+
 // RUN-005 / ADR-004: work no configured provider can carry is refused before it is
 // queued, with a reason the user can read — not queued and quietly failed later.
 func TestIncompatibleWorkIsRefusedBeforeItIsQueued(t *testing.T) {

@@ -45,12 +45,10 @@ const PackagerVersion = "0.2.0"
 
 const objectCleanupTimeout = 5 * time.Second
 
-// DefaultRetention is what a deployment gets if it configures nothing. PDM-006
-// proposes 90 days for a download package and that proposal is NOT ratified
-// (m4/README §8.1), so this is a default in code that a deployment overrides —
-// not a value in the schema, which would turn a proposal into a fact.
-const DefaultRetention = 90 * 24 * time.Hour
-
+// Artifact creation remains disabled until a deployment explicitly configures
+// retention; PDM-006's proposed duration is not a production default.
+// It is intentionally not a schema or code default (m4/README §8.1), because
+// that would turn a proposal into a production fact.
 // The four reasons a package may not be built (public.yaml
 // PackagingBlockedReason). One vocabulary from one place: the preview and the
 // create call answer from these and nothing else, so a preview that says yes and
@@ -84,6 +82,9 @@ var (
 	// ErrNoStore: no object store wired in. Nothing was checked, so it is a 500
 	// and never a blocked_reason.
 	ErrNoStore = errors.New("no object store is configured, so package bytes cannot be read")
+	// ErrRetentionNotConfigured keeps artifact creation fail-closed while the
+	// retention period remains an unratified deployment decision (PDM-006).
+	ErrRetentionNotConfigured = errors.New("download artifact retention is not configured")
 )
 
 // ObjectStore is the slice of object storage packaging needs: the source
@@ -102,8 +103,8 @@ type Service struct {
 	// Profiles is the deployment's packaging target configuration. Empty is a
 	// legitimate state and it means "no targets"; it never means "use defaults".
 	Profiles Profiles
-	// Retention overrides DefaultRetention for a deployment that has ratified a
-	// different number.
+	// Retention must be explicitly configured by a deployment. Zero disables
+	// artifact creation until PDM-006 is ratified.
 	Retention time.Duration
 }
 
@@ -254,6 +255,28 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws gen.Workspace, p
 	fsys, err := ingest.PackageFS(data)
 	if err != nil {
 		return fmt.Errorf("stored package unreadable: %w", err)
+	}
+	// Re-check the immutable source before applying the export allow-list. Import
+	// normally guarantees this already, but a legacy/corrupt row must not turn a
+	// newly blocking secret finding into a successful package merely because the
+	// credential-shaped file would be omitted from the output.
+	source := skillpkg.Validate(fsys)
+	sourceBlocked := false
+	for _, finding := range source.Findings {
+		if finding.Severity == skillpkg.SeverityError && !pathUsesExcludedDir(finding.Path) {
+			sourceBlocked = true
+			break
+		}
+	}
+	if sourceBlocked {
+		cat := source.Categorize()
+		p.Validation = ManifestValidation{
+			Blocked: true, Errors: toManifestFindings(cat.Errors),
+			Warnings: toManifestFindings(cat.Warnings), Infos: toManifestFindings(cat.Infos),
+		}
+		p.BlockedReason = BlockedValidation
+		p.BlockedMessage = "the stored source package no longer passes import validation"
+		return nil
 	}
 	files, err := collect(fsys)
 	if err != nil {
@@ -494,6 +517,9 @@ func (s *Service) Create(
 	ctx context.Context, ws gen.Workspace, skillID, versionID pgtype.UUID,
 	target string, includeTestCases bool,
 ) (Result, error) {
+	if s.Retention <= 0 {
+		return Result{}, ErrRetentionNotConfigured
+	}
 	q := gen.New(s.Pool)
 
 	// Cheap enough to run first and it settles both licensing gates, so a held
@@ -535,9 +561,6 @@ func (s *Service) Create(
 func (s *Service) persist(ctx context.Context, ws gen.Workspace, p *Plan) (Result, error) {
 	objectKey := "downloads/" + uuidString(ws.ID) + "/" + p.ContentHash + ".zip"
 	retention := s.Retention
-	if retention <= 0 {
-		retention = DefaultRetention
-	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return Result{}, err

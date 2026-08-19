@@ -62,7 +62,29 @@ func (w *Worker) Work(ctx context.Context, _ *river.Job[PublishArgs]) error {
 // Publish drains up to one batch and returns how many events were handed on.
 // Exported so tests and one-off tooling can drain without waiting for a timer.
 func (w *Worker) Publish(ctx context.Context) (int, error) {
-	q := gen.New(w.Pool)
+	// One publisher owns the list/deliver/mark window. At-least-once still means
+	// a crash after delivery may redeliver, but two healthy workers must not both
+	// deliver the same unpublished snapshot concurrently.
+	conn, err := w.Pool.Acquire(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer conn.Release()
+	var locked bool
+	if err := conn.QueryRow(ctx,
+		"SELECT pg_try_advisory_lock(hashtextextended('skillhub:outbox-publisher', 0))",
+	).Scan(&locked); err != nil {
+		return 0, err
+	}
+	if !locked {
+		return 0, nil
+	}
+	defer func() {
+		_, _ = conn.Exec(context.WithoutCancel(ctx),
+			"SELECT pg_advisory_unlock(hashtextextended('skillhub:outbox-publisher', 0))")
+	}()
+
+	q := gen.New(conn)
 	events, err := q.ListUnpublishedOutboxEvents(ctx, publishBatch)
 	if err != nil {
 		return 0, err

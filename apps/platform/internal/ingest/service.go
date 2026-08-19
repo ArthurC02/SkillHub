@@ -82,11 +82,15 @@ func (s *Service) ImportURL(ctx context.Context, ws gen.Workspace, rawURL string
 	if s.Fetcher == nil {
 		return Result{}, fmt.Errorf("%w: url import not configured", ErrFetch)
 	}
-	data, ref, err := s.Fetcher.Fetch(ctx, rawURL)
+	sourceURL, err := s.Fetcher.Normalize(rawURL)
 	if err != nil {
 		return Result{}, err
 	}
-	meta := sourceMeta{Type: "git", URL: &rawURL}
+	data, ref, err := s.Fetcher.Fetch(ctx, sourceURL)
+	if err != nil {
+		return Result{}, err
+	}
+	meta := sourceMeta{Type: "git", URL: &sourceURL}
 	if ref != "" {
 		meta.Ref = &ref
 	}

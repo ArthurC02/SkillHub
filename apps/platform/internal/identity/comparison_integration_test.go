@@ -108,11 +108,11 @@ func cmpVersion(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID, tag stri
 
 // judgeAll answers every criterion the same way, which is all these tests need
 // from a judge: what is under test is the comparison, not the verdict.
-func judgeAll(result, overall string) llmclient.JudgeVerdict {
+func judgeAll(result, overall, quote string) llmclient.JudgeVerdict {
 	return llmclient.JudgeVerdict{
 		CriterionResults: []llmclient.CriterionVerdict{
-			{CriterionID: "c1", Result: result, Reason: "fixture"},
-			{CriterionID: "c2", Result: result, Reason: "fixture"},
+			{CriterionID: "c1", Result: result, Reason: "fixture", EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: quote}}},
+			{CriterionID: "c2", Result: result, Reason: "fixture", EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: quote}}},
 		},
 		Overall: overall, Summary: "fixture verdict",
 	}
@@ -135,12 +135,12 @@ func TestComparisonShowsBothVerdictsCostsAndTheVersionDiffLink(t *testing.T) {
 	seedRunUsage(t, pool, c.workspaceID, before, 0.0134)
 	seedRunUsage(t, pool, c.workspaceID, after, 0.0210)
 
-	a.evaluations.Judge = judgeServer(t, judgeAll("failed", "not_met"), "judge-run@v1")
+	a.evaluations.Judge = judgeServer(t, judgeAll("failed", "not_met", "could not find"), "judge-run@v1")
 	if err := a.evaluations.Evaluate(context.Background(),
 		mustUUID(t, c.workspaceID), mustUUID(t, before)); err != nil {
 		t.Fatal(err)
 	}
-	a.evaluations.Judge = judgeServer(t, judgeAll("passed", "met"), "judge-run@v1")
+	a.evaluations.Judge = judgeServer(t, judgeAll("passed", "met", "Removed 17"), "judge-run@v1")
 	if err := a.evaluations.Evaluate(context.Background(),
 		mustUUID(t, c.workspaceID), mustUUID(t, after)); err != nil {
 		t.Fatal(err)
@@ -275,7 +275,7 @@ func TestComparisonAgainstAnUnevaluatedRunNeverReadsAsAPass(t *testing.T) {
 		cmpVersion(t, pool, c.workspaceID, skillID, "uneval-2"))
 	seedFinalOutput(t, pool, c.workspaceID, judged, "done")
 
-	a.evaluations.Judge = judgeServer(t, judgeAll("passed", "met"), "judge-run@v1")
+	a.evaluations.Judge = judgeServer(t, judgeAll("passed", "met", "done"), "judge-run@v1")
 	if err := a.evaluations.Evaluate(context.Background(),
 		mustUUID(t, c.workspaceID), mustUUID(t, judged)); err != nil {
 		t.Fatal(err)

@@ -19,6 +19,7 @@ package identity_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -27,7 +28,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -53,12 +56,15 @@ const dbURLEnv = "SKILLHUB_TEST_DATABASE_URL"
 var testPool *pgxpool.Pool
 
 func TestMain(m *testing.M) {
-	url := os.Getenv(dbURLEnv)
-	if url == "" {
+	dsn := os.Getenv(dbURLEnv)
+	if dsn == "" {
 		os.Exit(m.Run()) // every test skips; see requireDB
 	}
+	if err := validateDestructiveTestDatabaseURL(dsn); err != nil {
+		panic(err)
+	}
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, url)
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		panic(err)
 	}
@@ -69,6 +75,81 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 	pool.Close()
 	os.Exit(code)
+}
+
+func validateDestructiveTestDatabaseURL(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("%s is invalid: %w", dbURLEnv, err)
+	}
+	host := strings.ToLower(u.Hostname())
+	database := strings.Trim(u.Path, "/")
+	if host != "localhost" && host != "127.0.0.1" && host != "::1" {
+		return fmt.Errorf("%s must target localhost before destructive migrations", dbURLEnv)
+	}
+	if !strings.HasSuffix(strings.ToLower(database), "_test") {
+		return fmt.Errorf("%s database name must end in _test before destructive migrations", dbURLEnv)
+	}
+	return nil
+}
+
+func TestDestructiveTestDatabaseURLGuard(t *testing.T) {
+	for _, raw := range []string{
+		"postgres://user:pass@db.internal/skillhub_test",
+		"postgres://user:pass@localhost/skillhub",
+		"postgres://user:pass@localhost/postgres",
+	} {
+		if err := validateDestructiveTestDatabaseURL(raw); err == nil {
+			t.Fatalf("unsafe DSN accepted: %s", raw)
+		}
+	}
+	if err := validateDestructiveTestDatabaseURL("postgres://user:pass@localhost/skillhub_test"); err != nil {
+		t.Fatalf("safe test DSN rejected: %v", err)
+	}
+}
+
+func TestConcurrentFirstLoginCreatesOneAccount(t *testing.T) {
+	pool := requireDB(t)
+	svc := &identity.Service{Pool: pool}
+	id := identity.ExternalIdentity{
+		Provider: "github", ProviderUserID: "concurrent-first-login",
+		Email: "concurrent-first-login@example.test", Name: "Concurrent", Login: "concurrent",
+	}
+
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	var wg sync.WaitGroup
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			_, err := svc.LoginOrSignup(context.Background(), id)
+			errs <- err
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent LoginOrSignup() failed: %v", err)
+		}
+	}
+
+	var users, identities, workspaces int
+	if err := pool.QueryRow(context.Background(), "SELECT count(*) FROM users WHERE email = $1", id.Email).Scan(&users); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(context.Background(), "SELECT count(*) FROM user_identities WHERE provider = $1 AND provider_user_id = $2", id.Provider, id.ProviderUserID).Scan(&identities); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(context.Background(), `SELECT count(*) FROM workspaces w JOIN users u ON u.id = w.owner_user_id WHERE u.email = $1`, id.Email).Scan(&workspaces); err != nil {
+		t.Fatal(err)
+	}
+	if users != 1 || identities != 1 || workspaces != 1 {
+		t.Fatalf("first login created users=%d identities=%d workspaces=%d, want 1/1/1", users, identities, workspaces)
+	}
 }
 
 // migrate resets the schema and applies db/migrations in filename order, which
@@ -239,7 +320,9 @@ func newAPITuned(
 	if err != nil {
 		t.Fatal(err)
 	}
-	packagingSvc := &packaging.Service{Pool: pool, Store: packages, Profiles: profiles}
+	packagingSvc := &packaging.Service{
+		Pool: pool, Store: packages, Profiles: profiles, Retention: 24 * time.Hour,
+	}
 
 	deps := apiserver.Deps{
 		Auth: auth, Importer: importer, Search: search, Registry: reg, Runs: runs,

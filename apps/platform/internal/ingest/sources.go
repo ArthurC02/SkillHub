@@ -108,13 +108,11 @@ func (s *Service) markChecked(
 // unavailable rather than being probed, because we could not re-import it
 // anyway.
 func (f *URLFetcher) Probe(ctx context.Context, rawURL string) error {
-	u, err := url.Parse(rawURL)
+	normalized, err := f.Normalize(rawURL)
 	if err != nil {
-		return fmt.Errorf("%w: invalid URL", ErrFetch)
-	}
-	if err := f.checkURL(u); err != nil {
 		return err
 	}
+	u, _ := url.Parse(normalized)
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, u.String(), nil)
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrFetch, err)
@@ -129,7 +127,7 @@ func (f *URLFetcher) Probe(ctx context.Context, rawURL string) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= http.StatusBadRequest {
-		return fmt.Errorf("%w: %s returned status %d", ErrFetch, rawURL, resp.StatusCode)
+		return fmt.Errorf("%w: source returned status %d", ErrFetch, resp.StatusCode)
 	}
 	return nil
 }

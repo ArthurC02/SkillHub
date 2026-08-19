@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -170,7 +171,14 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := h.Svc.ListTestCases(r.Context(), ws)
+	limit, offset := int32(51), int32(0)
+	if value, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && value >= 1 && value <= 101 {
+		limit = int32(value)
+	}
+	if value, err := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32); err == nil && value >= 0 {
+		offset = int32(value)
+	}
+	rows, err := h.Svc.ListTestCases(r.Context(), ws, limit, offset)
 	if err != nil {
 		fail(w, err, "list failed")
 		return

@@ -36,6 +36,19 @@ func TestPublicSearchDoesNotReportDatabaseFailureAsNoResults(t *testing.T) {
 	}
 }
 
+func TestPublicSearchRejectsOversizedQueryBeforeLLMOrDatabase(t *testing.T) {
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/skills/search?q="+strings.Repeat("x", 2001),
+		nil,
+	)
+	rec := httptest.NewRecorder()
+	(&Handler{}).PublicSearch(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("oversized query returned %d, want 400; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func scanJSON(t *testing.T, warnings int, codes ...string) []byte {
 	t.Helper()
 	b, err := json.Marshal(map[string]any{"warnings": warnings, "codes": codes})

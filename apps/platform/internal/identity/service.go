@@ -65,6 +65,23 @@ func (s *Service) signup(ctx context.Context, id ExternalIdentity) (gen.User, er
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := s.queries().WithTx(tx)
+	// The optimistic lookup in LoginOrSignup keeps established logins cheap.
+	// Serialize only first-login contenders for the same provider identity, then
+	// re-check under the lock so two OAuth callbacks cannot create an orphan user
+	// and workspace before one loses the identity primary-key race.
+	if _, err := tx.Exec(ctx,
+		"SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))",
+		id.Provider, id.ProviderUserID,
+	); err != nil {
+		return gen.User{}, err
+	}
+	if existing, err := q.GetUserByIdentity(ctx, gen.GetUserByIdentityParams{
+		Provider: id.Provider, ProviderUserID: id.ProviderUserID,
+	}); err == nil {
+		return existing, tx.Commit(ctx)
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return gen.User{}, err
+	}
 	user, err := q.CreateUser(ctx, gen.CreateUserParams{
 		Email:       id.Email,
 		DisplayName: id.Name,

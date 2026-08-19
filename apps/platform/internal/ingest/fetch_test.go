@@ -24,6 +24,29 @@ func TestFetchRejectsDisallowedHost(t *testing.T) {
 	}
 }
 
+func TestFetchRejectsURLsThatCouldLeakCredentials(t *testing.T) {
+	f := &URLFetcher{Allowed: map[string]bool{"github.com": true}}
+	for _, raw := range []string{
+		"https://user:secret@github.com/o/r",
+		"https://github.com/o/r?token=secret",
+		"https://github.com/o/r#secret",
+	} {
+		if _, _, err := f.Fetch(context.Background(), raw); !errors.Is(err, ErrFetch) {
+			t.Fatalf("%s: want ErrFetch, got %v", raw, err)
+		} else if strings.Contains(err.Error(), "secret") {
+			t.Fatalf("error leaked credential: %v", err)
+		}
+	}
+}
+
+func TestNormalizeReturnsSafeCanonicalProvenance(t *testing.T) {
+	f := &URLFetcher{Allowed: map[string]bool{"github.com": true}}
+	got, err := f.Normalize("HTTPS://GitHub.com/o/r")
+	if err != nil || got != "https://github.com/o/r" {
+		t.Fatalf("Normalize = %q, %v", got, err)
+	}
+}
+
 func TestFetchRedirectOffAllowListBlocked(t *testing.T) {
 	evil := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		t.Fatal("redirect target must never be reached")

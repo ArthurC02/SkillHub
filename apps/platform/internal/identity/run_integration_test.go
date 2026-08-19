@@ -533,6 +533,20 @@ func TestRunsAreInvisibleAcrossWorkspaces(t *testing.T) {
 	}
 }
 
+func TestRunRejectsATestCaseBelongingToAnotherSkillInTheSameWorkspace(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-run-testcase-scope")
+	_, otherTestCaseID := newTestCase(t, pool, a, f.client, "other")
+
+	path := "/skills/" + f.skillID + "/runs/preflight?version_id=" + f.versionID +
+		"&test_case_id=" + otherTestCaseID
+	code, _ := f.doJSON(t, http.MethodGet, path, "")
+	if code != http.StatusNotFound {
+		t.Fatalf("preflight paired a version with another skill's test case: got %d", code)
+	}
+}
+
 // --- assertions on raw rows --------------------------------------------------
 
 func outboxFor(t *testing.T, pool *pgxpool.Pool, runID string) []gen.OutboxEvent {

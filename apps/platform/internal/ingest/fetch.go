@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // ErrFetch marks URL-import failures the client can fix: disallowed host,
@@ -41,7 +42,7 @@ func (f *URLFetcher) client() *http.Client {
 	if f.Client != nil {
 		return f.Client
 	}
-	return http.DefaultClient
+	return &http.Client{Timeout: 30 * time.Second}
 }
 
 func (f *URLFetcher) checkURL(u *url.URL) error {
@@ -51,20 +52,36 @@ func (f *URLFetcher) checkURL(u *url.URL) error {
 	if !f.Allowed[strings.ToLower(u.Host)] {
 		return fmt.Errorf("%w: host %q is not on the allowed source list", ErrFetch, u.Host)
 	}
+	if u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("%w: source URLs cannot contain credentials, query parameters, or fragments", ErrFetch)
+	}
 	return nil
+}
+
+// Normalize validates a user-supplied source URL and returns the credential-free
+// canonical provenance that may be persisted, logged, or put in a manifest.
+func (f *URLFetcher) Normalize(rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("%w: invalid URL", ErrFetch)
+	}
+	if err := f.checkURL(u); err != nil {
+		return "", err
+	}
+	u.Scheme = strings.ToLower(u.Scheme)
+	u.Host = strings.ToLower(u.Host)
+	return u.String(), nil
 }
 
 // Fetch downloads rawURL and returns the package bytes plus the git ref when
 // it can be derived from the URL. GitHub repo pages are normalized to their
 // codeload zip archives; anything else must already point at a zip.
 func (f *URLFetcher) Fetch(ctx context.Context, rawURL string) (data []byte, ref string, err error) {
-	u, err := url.Parse(rawURL)
+	normalized, err := f.Normalize(rawURL)
 	if err != nil {
-		return nil, "", fmt.Errorf("%w: invalid URL", ErrFetch)
-	}
-	if err := f.checkURL(u); err != nil {
 		return nil, "", err
 	}
+	u, _ := url.Parse(normalized)
 
 	candidates, ref := f.candidates(u)
 	var lastErr error
@@ -141,7 +158,7 @@ func (f *URLFetcher) download(ctx context.Context, rawURL string) ([]byte, error
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: %s returned status %d", ErrFetch, rawURL, resp.StatusCode)
+		return nil, fmt.Errorf("%w: source returned status %d", ErrFetch, resp.StatusCode)
 	}
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, MaxZipBytes+1))

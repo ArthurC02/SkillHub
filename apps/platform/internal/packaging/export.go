@@ -140,6 +140,15 @@ func travels(path string, d fs.DirEntry) bool {
 	return true
 }
 
+func pathUsesExcludedDir(path string) bool {
+	for _, seg := range strings.Split(strings.ToLower(path), "/") {
+		if excludedDirs[seg] {
+			return true
+		}
+	}
+	return false
+}
+
 func hasPathSuffix(path, suffix string) bool {
 	return path == suffix || strings.HasSuffix(path, "/"+suffix)
 }
