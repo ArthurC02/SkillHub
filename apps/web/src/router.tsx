@@ -7,11 +7,13 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { FeedbackEntry } from "./components/FeedbackEntry";
+import { AuthControls } from "./components/AuthControls";
 import { Compare } from "./pages/Compare";
 import { DataPolicy } from "./pages/DataPolicy";
 import { DatasetUpload } from "./pages/DatasetUpload";
 import { Downloads } from "./pages/Downloads";
 import { Home } from "./pages/Home";
+import { ImportSkill } from "./pages/ImportSkill";
 import { Packaging } from "./pages/Packaging";
 import { RunCompare } from "./pages/RunCompare";
 import { RunPreflight } from "./pages/RunPreflight";
@@ -44,7 +46,8 @@ function RootLayout() {
           Skill Hub
         </Link>{" "}
         <Link to="/workspace/skills">我的 Skill</Link> <Link to="/workspace/runs">Run 歷史</Link>{" "}
-        <Link to="/lab/test-cases">Test Case</Link> <Link to="/workspace/downloads">下載紀錄</Link>
+        <Link to="/workspace/import">匯入 Skill</Link> <Link to="/lab/test-cases">Test Case</Link>{" "}
+        <Link to="/workspace/downloads">下載紀錄</Link> <AuthControls />
       </header>
       <main>
         <Outlet />
@@ -160,6 +163,12 @@ const workspaceSkillsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/workspace/skills",
   component: WorkspaceSkills,
+});
+
+const importSkillRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workspace/import",
+  component: ImportSkill,
 });
 
 /**
@@ -291,6 +300,7 @@ const routeTree = rootRoute.addChildren([
   packagingRoute,
   downloadsRoute,
   workspaceSkillsRoute,
+  importSkillRoute,
   workspaceRunsRoute,
   workspaceAccountRoute,
   dataPolicyRoute,

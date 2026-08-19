@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 
 /**
@@ -33,6 +33,10 @@ export function useRun(runId: string) {
   });
 }
 
+export function cancelRun(runId: string) {
+  return apiFetch<Run & { note?: string }>(`/runs/${runId}/cancel`, { method: "POST" });
+}
+
 /**
  * GET /runs — the workspace's run history (WS-004).
  *
@@ -60,9 +64,15 @@ export type RunListItem = {
 };
 
 export function useRuns() {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["runs"],
-    queryFn: () => apiFetch<{ runs: RunListItem[] }>("/runs"),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      apiFetch<{ runs: RunListItem[] }>(`/runs?limit=51&offset=${pageParam}`).then((page) => ({
+        runs: page.runs.slice(0, 50),
+        nextOffset: page.runs.length > 50 ? pageParam + 50 : undefined,
+      })),
+    getNextPageParam: (last) => last.nextOffset,
     retry: false,
   });
 }

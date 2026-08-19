@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ApiError } from "../api/client";
 import { confirmPreflight, getPreflight, startRun, type PreflightSummary } from "../api/lab";
 import { useSkillVersions } from "../api/skills";
@@ -107,6 +107,11 @@ export function RunPreflight() {
   const ready = skill !== "" && testCase !== "";
   const [message, setMessage] = useState("");
   const [runId, setRunId] = useState("");
+  useEffect(() => {
+    setPicked("");
+    setMessage("");
+    setRunId("");
+  }, [skill, linkedVersion, testCase]);
 
   const preflight = useQuery({
     queryKey: ["preflight", skill, version, testCase],

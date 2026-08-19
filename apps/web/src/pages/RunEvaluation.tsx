@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
@@ -136,7 +136,12 @@ function usd(value: number | null): string {
  */
 export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus?: string }) {
   const [revision, setRevision] = useState<string | undefined>(undefined);
-  const evaluation = useEvaluation(runId, revision);
+  useEffect(() => setRevision(undefined), [runId]);
+  const evaluation = useEvaluation(
+    runId,
+    revision,
+    runStatus === "succeeded" || runStatus === "failed",
+  );
   const revisions = useEvaluationRevisions(runId);
   const notEvaluated = evaluation.error instanceof ApiError && evaluation.error.status === 404;
 

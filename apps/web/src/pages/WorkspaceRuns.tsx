@@ -18,6 +18,7 @@ import { RUN_STATUS_LABEL } from "./RunEvaluation";
  */
 export function WorkspaceRuns() {
   const runs = useRuns();
+  const rows = runs.data?.pages.flatMap((page) => page.runs) ?? [];
 
   return (
     <section className="page">
@@ -32,18 +33,23 @@ export function WorkspaceRuns() {
       {runs.error && <p role="alert">無法讀取 Run 歷史：{runs.error.message}</p>}
 
       {runs.data &&
-        (runs.data.runs.length === 0 ? (
+        (rows.length === 0 ? (
           <p>
             還沒有跑過任何 Run。這裡是空的代表沒有發生過，不是紀錄被清掉了—— 要開始，請從{" "}
             <Link to="/lab/test-cases">Test Case</Link> 建立一個再試跑。
           </p>
         ) : (
           <ul className="download-list">
-            {runs.data.runs.map((run) => (
+            {rows.map((run) => (
               <RunRow key={run.run_id} run={run} />
             ))}
           </ul>
         ))}
+      {runs.hasNextPage && (
+        <button type="button" disabled={runs.isFetchingNextPage} onClick={() => runs.fetchNextPage()}>
+          {runs.isFetchingNextPage ? "載入中…" : "載入更多"}
+        </button>
+      )}
     </section>
   );
 }

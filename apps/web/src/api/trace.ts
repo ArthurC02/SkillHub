@@ -22,6 +22,7 @@ export type TraceSummary = {
   /** False when a producer's sequence has a hole: some events were lost. */
   complete: boolean;
   skills: { name: string; decision: string; reason?: string }[];
+  skills_total: number;
   resources_read: number;
   tool_calls: {
     total: number;
@@ -32,6 +33,8 @@ export type TraceSummary = {
     slowest_tool?: string;
   };
   errors: { category: string; code: string; message: string }[];
+  errors_total: number;
+  summary_truncated: boolean;
   final_output?: string;
   usage?: {
     model?: string;
@@ -49,6 +52,7 @@ export type TraceStream = {
   emitted_by: string;
   received: number;
   highest_seq: number;
+  missing_count: number;
   missing_seq?: number[];
   late_events: number;
 };
@@ -72,19 +76,40 @@ export type TraceAdvanced = {
   complete: boolean;
   streams: TraceStream[];
   events: TraceEvent[];
+  next_after: number;
+  has_more: boolean;
 };
 
-export function useTrace<M extends TraceMode>(runId: string, mode: M) {
+const TERMINAL_RUN_STATUSES = new Set(["succeeded", "failed", "cancelled", "timed_out"]);
+
+export function useTrace<M extends TraceMode>(runId: string, mode: M, active?: boolean, after = 0) {
+  const queryKey = ["trace", runId, mode, mode === "advanced" ? after : 0] as const;
   return useQuery({
-    queryKey: ["trace", runId, mode],
-    queryFn: () =>
-      apiFetch<M extends "advanced" ? TraceAdvanced : TraceSummary>(
-        `/runs/${runId}/trace${mode === "advanced" ? "?mode=advanced" : ""}`,
-      ),
+    queryKey,
+    queryFn: async () => {
+      if (mode === "general") {
+        return apiFetch<TraceSummary>(`/runs/${runId}/trace`) as Promise<
+          M extends "advanced" ? TraceAdvanced : TraceSummary
+        >;
+      }
+      return apiFetch<TraceAdvanced>(
+        `/runs/${runId}/trace?mode=advanced&after=${after}`,
+      ) as Promise<M extends "advanced" ? TraceAdvanced : TraceSummary>;
+    },
     // A run in flight keeps producing events, and NFR-004 wants them on screen
     // within seconds of being produced. Polling rather than a stream: there is
     // no push channel, and one cheap request every few seconds is the whole
     // requirement.
-    refetchInterval: 3000,
+    refetchInterval: (query) => {
+      if (active === false) return false;
+      if (mode === "general") {
+        const data = query.state.data as TraceSummary | undefined;
+        if (data?.status && TERMINAL_RUN_STATUSES.has(data.status)) return false;
+      }
+      return 3000;
+    },
+    // An advanced page may contain 1,000 payloads. Drop pages as soon as the
+    // user moves away; Back simply refetches that cursor.
+    gcTime: mode === "advanced" ? 0 : undefined,
   });
 }

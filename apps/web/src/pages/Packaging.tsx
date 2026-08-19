@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import {
@@ -101,6 +101,11 @@ export function Packaging() {
   const [built, setBuilt] = useState<CreatedDownloadArtifact | null>(null);
   const [message, setMessage] = useState("");
   const [picked, setPicked] = useState("");
+  useEffect(() => {
+    setPicked("");
+    setBuilt(null);
+    setMessage("");
+  }, [skillId, version]);
 
   // The version being packaged: the one the reader picked, else the one in the
   // URL, else the skill's latest. Never invented — with none of the three, the

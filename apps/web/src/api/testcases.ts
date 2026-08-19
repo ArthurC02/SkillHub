@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import type { Dataset } from "./lab";
 
@@ -57,9 +57,17 @@ export type TestCase = {
 export type SkillSummary = { skill_id: string; name: string; summary: string };
 
 export function useTestCases() {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["test-cases"],
-    queryFn: () => apiFetch<{ test_cases: TestCase[] }>("/test-cases"),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      apiFetch<{ test_cases: TestCase[] }>(`/test-cases?limit=51&offset=${pageParam}`).then(
+        (page) => ({
+          test_cases: page.test_cases.slice(0, 50),
+          nextOffset: page.test_cases.length > 50 ? pageParam + 50 : undefined,
+        }),
+      ),
+    getNextPageParam: (last) => last.nextOffset,
     retry: false,
   });
 }

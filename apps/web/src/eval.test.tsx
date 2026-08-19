@@ -25,8 +25,55 @@ beforeEach(() => {
 
 afterEach(async () => {
   await act(async () => root?.unmount());
+  vi.useRealTimers();
   container.remove();
   vi.unstubAllGlobals();
+});
+
+test("a terminal run polls evaluation from 404 through pending to completed", async () => {
+  vi.useFakeTimers();
+  let calls = 0;
+  const json = (body: unknown, status = 200) =>
+    Promise.resolve(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+    if (url.includes("/evaluation")) {
+      calls++;
+      if (calls === 1) return json({ error: "not found" }, 404);
+      if (calls === 2) return json({ ...evaluation, status: "pending", summary: "poll pending" });
+      return json({ ...evaluation, status: "completed", summary: "poll complete" });
+    }
+    return json({ error: "not found" }, 404);
+  });
+
+  await act(async () => {
+    root = createRoot(container);
+    root.render(
+      <QueryClientProvider client={queryClient}>
+        <EvaluationPanel runId={RUN} runStatus="succeeded" />
+      </QueryClientProvider>,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(calls).toBe(1);
+
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  expect(calls).toBe(2);
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  expect(calls).toBe(3);
+  expect(queryClient.getQueryData(["evaluation", RUN, "current"])).toMatchObject({
+    status: "completed",
+    summary: "poll complete",
+  });
+
+  await act(async () => vi.advanceTimersByTimeAsync(6000));
+  expect(calls).toBe(3);
 });
 
 type LinkProps = {

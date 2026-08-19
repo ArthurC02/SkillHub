@@ -38,7 +38,7 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: unknown }) => children,
 }));
 
-function stubTrace(general: TraceSummary, advanced: TraceAdvanced) {
+function stubTrace(general: TraceSummary, advanced: TraceAdvanced | ((url: string) => TraceAdvanced)) {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
     // This run was never evaluated: the server answers 404, which the page
@@ -61,7 +61,11 @@ function stubTrace(general: TraceSummary, advanced: TraceAdvanced) {
         }),
       );
     }
-    const body = url.includes("mode=advanced") ? advanced : general;
+    const body = url.includes("mode=advanced")
+      ? typeof advanced === "function"
+        ? advanced(url)
+        : advanced
+      : general;
     return Promise.resolve(
       new Response(JSON.stringify(body), {
         status: 200,
@@ -103,6 +107,7 @@ const summary: TraceSummary = {
   status_reason: "the provider could not carry the attempt",
   complete: false,
   skills: [{ name: "excel-deduplicate", decision: "activated" }],
+  skills_total: 1,
   resources_read: 1,
   tool_calls: {
     total: 2,
@@ -113,6 +118,8 @@ const summary: TraceSummary = {
     slowest_tool: "bash",
   },
   errors: [{ category: "provision", code: "provider_error", message: "no slot" }],
+  errors_total: 1,
+  summary_truncated: false,
   final_output: "Removed 17 duplicate rows.",
   usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_usd: null },
   steps: ["queued: run requested", "failed: the provider could not carry the attempt"],
@@ -121,12 +128,15 @@ const summary: TraceSummary = {
 const advanced: TraceAdvanced = {
   run_id: summary.run_id,
   complete: false,
+  next_after: 1,
+  has_more: false,
   streams: [
     {
       attempt: 1,
       emitted_by: "sandbox",
       received: 2,
       highest_seq: 3,
+      missing_count: 1,
       missing_seq: [2],
       late_events: 1,
     },
@@ -184,4 +194,48 @@ test("the advanced mode names the missing sequence numbers and renders payloads 
   // emitted_by=sandbox crossed the trust boundary (ADR-001, ADR-009).
   expect(container.querySelector("img")).toBeNull();
   expect(container.querySelector("pre")?.textContent).toContain("<img src=x onerror=alert(1)>");
+});
+
+test("the advanced mode pages through the complete trace without retaining every payload", async () => {
+  const requested: string[] = [];
+  stubTrace(summary, (url) => {
+    requested.push(url);
+    if (url.includes("after=1")) {
+      return {
+        ...advanced,
+        next_after: 2,
+        has_more: false,
+        events: [{ ...advanced.events[0], event_id: "page-two", seq: 2 }],
+      };
+    }
+    return { ...advanced, has_more: true };
+  });
+  await render();
+
+  const advancedButton = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.getAttribute("aria-pressed") === "false",
+  );
+  await act(async () => advancedButton?.click());
+  await waitFor(() => container.querySelector('nav[aria-label="Trace event pages"]') !== null);
+
+  const next = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "下一頁",
+  );
+  expect(next?.disabled).toBe(false);
+  await act(async () => next?.click());
+  await waitFor(
+    () =>
+      requested.some((url) => url.includes("after=1")) &&
+      (container.querySelector("ol")?.textContent?.includes("#2") ?? false),
+  );
+  expect(container.querySelector("ol")?.textContent ?? "").toContain("#2");
+
+  const beforeRefresh = requested.filter((url) => url.includes("after=1")).length;
+  const refresh = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "重新整理 Trace",
+  );
+  await act(async () => refresh?.click());
+  await waitFor(
+    () => requested.filter((url) => url.includes("after=1")).length > beforeRefresh,
+  );
 });

@@ -79,6 +79,7 @@ export function TestCaseList() {
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
   const [message, setMessage] = useState("");
+  const rows = testCases.data?.pages.flatMap((page) => page.test_cases) ?? [];
 
   const create = useMutation({
     mutationFn: () => createTestCase(skillId, name, prompt),
@@ -143,11 +144,11 @@ export function TestCaseList() {
       {testCases.isPending && <p>載入中…</p>}
       {testCases.error && <p role="alert">無法讀取 Test Case：{testCases.error.message}</p>}
       {testCases.data &&
-        (testCases.data.test_cases.length === 0 ? (
+        (rows.length === 0 ? (
           <p>還沒有 Test Case。</p>
         ) : (
           <ul className="search-results">
-            {testCases.data.test_cases.map((tc) => (
+            {rows.map((tc) => (
               <li key={tc.test_case_id}>
                 <Link to="/lab/test-cases/$testCaseId" params={{ testCaseId: tc.test_case_id }}>
                   {tc.name}
@@ -161,6 +162,15 @@ export function TestCaseList() {
             ))}
           </ul>
         ))}
+      {testCases.hasNextPage && (
+        <button
+          type="button"
+          disabled={testCases.isFetchingNextPage}
+          onClick={() => testCases.fetchNextPage()}
+        >
+          {testCases.isFetchingNextPage ? "載入中…" : "載入更多"}
+        </button>
+      )}
     </section>
   );
 }
@@ -180,7 +190,7 @@ export function TestCaseDetail() {
   }
 
   return (
-    <section className="page">
+    <section className="page" key={testCaseId}>
       <h1>{testCase.data.name}</h1>
       <p className="note">
         <Link to="/lab/test-cases">回到 Test Case 列表</Link>

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "./client";
+import { ApiError, apiFetch } from "./client";
 
 /**
  * The EVAL-001/002/003 read and write surface, exactly as
@@ -194,12 +194,18 @@ export function getEvaluation(runId: string, revision?: string) {
  * `retry: false` because 404 here means 「未評估」, which no amount of retrying
  * fixes and which the caller renders as a state rather than as a failure.
  */
-export function useEvaluation(runId: string, revision?: string) {
+export function useEvaluation(runId: string, revision?: string, awaitCurrent = false) {
   return useQuery({
     queryKey: ["evaluation", runId, revision ?? "current"],
     queryFn: () => getEvaluation(runId, revision),
     enabled: runId.length > 0,
     retry: false,
+    refetchInterval: (query) => {
+      if (revision || !awaitCurrent) return false;
+      if (query.state.data?.status === "pending") return 3000;
+      const error = query.state.error;
+      return error instanceof ApiError && error.status === 404 ? 3000 : false;
+    },
   });
 }
 

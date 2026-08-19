@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
-import { deleteRunArtifact, useRunArtifacts, type RunArtifact } from "../api/runs";
+import { cancelRun, deleteRunArtifact, useRunArtifacts, type RunArtifact } from "../api/runs";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { useTrace } from "../api/trace";
 import type { TraceAdvanced, TraceEvent, TraceSummary } from "../api/trace";
@@ -39,6 +39,8 @@ export function RunTrace() {
           judgement, not the run's terminal state. */}
       <EvaluationPanel runId={runId} runStatus={general.data?.status} />
 
+      <CancelRunControl runId={runId} status={general.data?.status} />
+
       <h2>執行紀錄</h2>
       <p className="note">
         <Link to="/runs/$runId/compare" params={{ runId }} search={{ against: "" }}>
@@ -57,10 +59,66 @@ export function RunTrace() {
           進階模式
         </button>
       </div>
-      {mode === "general" ? <GeneralMode runId={runId} /> : <AdvancedMode runId={runId} />}
+      {mode === "general" ? (
+        <GeneralMode runId={runId} />
+      ) : (
+        <AdvancedMode
+          key={runId}
+          runId={runId}
+          active={Boolean(general.data?.status && CANCELLABLE.has(general.data.status))}
+        />
+      )}
 
       <RunArtifacts runId={runId} />
     </section>
+  );
+}
+
+const CANCELLABLE = new Set(["queued", "provisioning", "preparing", "running", "evaluating"]);
+
+export function CancelRunControl({ runId, status }: { runId: string; status?: string }) {
+  const queryClient = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+  const [message, setMessage] = useState("");
+  const cancel = useMutation({
+    mutationFn: () => cancelRun(runId),
+    onSuccess: async (result) => {
+      setConfirming(false);
+      setMessage(result.note ?? "已送出取消要求。");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["trace", runId] }),
+        queryClient.invalidateQueries({ queryKey: ["run", runId] }),
+      ]);
+    },
+    onError: async (error) => {
+      setConfirming(false);
+      setMessage(error instanceof Error ? error.message : "取消失敗。");
+      await queryClient.invalidateQueries({ queryKey: ["trace", runId] });
+    },
+  });
+
+  if (!status || !CANCELLABLE.has(status)) return message ? <p role="status">{message}</p> : null;
+  if (!confirming) {
+    return (
+      <p>
+        <button type="button" onClick={() => setConfirming(true)}>
+          取消這個 Run
+        </button>
+        {message && <span role="status"> {message}</span>}
+      </p>
+    );
+  }
+  return (
+    <div className="notice">
+      <p>確定要取消？已開始的 Sandbox 仍要等平台完成停止與清理。</p>
+      <button type="button" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
+        確認取消
+      </button>{" "}
+      <button type="button" disabled={cancel.isPending} onClick={() => setConfirming(false)}>
+        返回
+      </button>
+      {message && <p role="alert">{message}</p>}
+    </div>
   );
 }
 
@@ -179,6 +237,12 @@ function GeneralMode({ runId }: { runId: string }) {
   return (
     <div>
       <IncompleteNotice complete={trace.complete} />
+      {trace.summary_truncated ? (
+        <p className="notice">
+          重複事件僅顯示前 100 筆（Skill {trace.skills.length}/{trace.skills_total}；錯誤{" "}
+          {trace.errors.length}/{trace.errors_total}）。完整事件仍可在進階模式分頁查看。
+        </p>
+      ) : null}
       {/* Status comes from the runs table, not from replayed events (iron rule 5),
           and is worded as execution: `succeeded` says the workload finished, not
           that the task was done (ADR-025). The task verdict is above. */}
@@ -268,8 +332,15 @@ function GeneralMode({ runId }: { runId: string }) {
   );
 }
 
-function AdvancedMode({ runId }: { runId: string }) {
-  const { data, isPending, error } = useTrace(runId, "advanced");
+function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
+  const [cursors, setCursors] = useState([0]);
+  const pageIndex = cursors.length - 1;
+  const { data, isPending, isFetching, error, refetch } = useTrace(
+    runId,
+    "advanced",
+    active,
+    cursors[pageIndex],
+  );
   if (isPending) return <p>載入中…</p>;
   if (error) return <p role="alert">無法讀取執行紀錄。</p>;
   const trace = data as TraceAdvanced;
@@ -277,6 +348,29 @@ function AdvancedMode({ runId }: { runId: string }) {
   return (
     <div>
       <IncompleteNotice complete={trace.complete} />
+      <p className="notice">
+        分頁依平台接收順序排列；每頁內依事件時間排序。這能讓執行中的 Trace 不漏掉較晚送達的事件。
+      </p>
+      <nav aria-label="Trace event pages">
+        <button
+          type="button"
+          disabled={pageIndex === 0}
+          onClick={() => setCursors((current) => current.slice(0, -1))}
+        >
+          上一頁
+        </button>
+        <span>第 {pageIndex + 1} 頁</span>
+        <button
+          type="button"
+          disabled={!trace.has_more}
+          onClick={() => setCursors((current) => [...current, trace.next_after])}
+        >
+          下一頁
+        </button>
+        <button type="button" disabled={isFetching} onClick={() => void refetch()}>
+          重新整理 Trace
+        </button>
+      </nav>
 
       <h2>事件串流</h2>
       <table>
@@ -298,7 +392,15 @@ function AdvancedMode({ runId }: { runId: string }) {
               {/* An empty missing list is "nothing lost", which is a different
                   fact from "we never checked" — so it says 無 rather than being
                   left blank. */}
-              <td>{stream.missing_seq?.length ? stream.missing_seq.join("、") : "無"}</td>
+              <td>
+                {stream.missing_count === 0
+                  ? "無"
+                  : `${stream.missing_seq?.join("、") || "未列出"}${
+                      stream.missing_count > (stream.missing_seq?.length || 0)
+                        ? `（共 ${stream.missing_count} 個）`
+                        : ""
+                    }`}
+              </td>
               <td>{stream.late_events}</td>
             </tr>
           ))}
@@ -326,7 +428,9 @@ function TraceEventRow({ event }: { event: TraceEvent }) {
         <code>#{event.seq}</code> {event.occurred_at} · {event.emitted_by} · {event.type}
         {event.status ? ` · ${event.status}` : null}
         {event.late ? " · 遲到" : null}
-        {event.masked_fields.length > 0 ? ` · 已遮罩 ${event.masked_fields.length} 個欄位` : null}
+        {(event.masked_fields?.length ?? 0) > 0
+          ? ` · 已遮罩 ${event.masked_fields.length} 個欄位`
+          : null}
       </p>
       {/* Inert text. The payload crossed the trust boundary and is never
           interpreted as markup, ANSI or SVG (ADR-009). */}

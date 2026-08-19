@@ -439,6 +439,8 @@ const TRACE_GENERAL = {
 const TRACE_ADVANCED = {
   run_id: RUN,
   complete: false,
+  next_after: 1,
+  has_more: false,
   streams: [
     {
       attempt: 1,
@@ -788,9 +790,20 @@ const SCANNED_ROUTES = [
   "/runs/$runId/compare",
   "/workspace/account",
   "/workspace/downloads",
+  "/workspace/import",
   "/workspace/runs",
   "/workspace/skills",
 ];
+
+test("QA-009: Skill import", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/workspace/import" });
+  });
+  await waitFor(() => container.querySelector("form") !== null);
+  await scan("/workspace/import");
+}, 30000);
 
 test("QA-009: 每一條路由都有一個掃描案例", () => {
   const declared = Object.keys(router.routesById).filter((id) => id !== "__root__");

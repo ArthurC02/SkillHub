@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
  * The two-step delete, in one place (04 丙-22).
@@ -48,10 +48,19 @@ export function ConfirmDelete({
   confirmLabel?: string;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const restoreFocus = useRef(false);
+  useEffect(() => {
+    if (!confirming && restoreFocus.current) {
+      restoreFocus.current = false;
+      trigger.current?.focus();
+    }
+  }, [confirming]);
 
   if (!confirming) {
     return (
       <button
+        ref={trigger}
         type="button"
         onClick={() => {
           onAsk?.();
@@ -82,7 +91,14 @@ export function ConfirmDelete({
       >
         {confirmLabel}
       </button>{" "}
-      <button type="button" disabled={pending} onClick={() => setConfirming(false)}>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          restoreFocus.current = true;
+          setConfirming(false);
+        }}
+      >
         取消
       </button>
       <span className="note" id={scopeId}>

@@ -35,3 +35,7 @@ export function useRequestAccountDeletion() {
 export function useCancelAccountDeletion() {
   return useMutation({ mutationFn: cancelAccountDeletion });
 }
+
+export function logout() {
+  return apiFetch<void>("/auth/logout", { method: "POST" });
+}

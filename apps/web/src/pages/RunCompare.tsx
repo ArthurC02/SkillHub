@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useRunComparison, useVersionDiff } from "../api/evaluation";
 import type { ComparisonSide, RunComparison } from "../api/evaluation";
@@ -55,6 +55,7 @@ export function RunCompare() {
   const { runId } = useParams({ from: "/runs/$runId/compare" });
   const { against = "" } = useSearch({ strict: false }) as { against?: string };
   const [draft, setDraft] = useState(against);
+  useEffect(() => setDraft(against), [against]);
   const navigate = useNavigate();
   const comparison = useRunComparison(runId, against);
 
