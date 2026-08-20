@@ -10,6 +10,11 @@ package run
 // Go talks to the gateway's *management* API only - key lifecycle - and never
 // makes an inference call (ADR-017 boundary rule 1). The admin key stays in this
 // process; it is never written to a RunRequest, a log, a trace or the database.
+//
+// Anti-corruption layer, same rule as provider.go: LiteLLM's request and response
+// shapes stop at this file. What leaves it is a ModelGatewayGrant — the domain's
+// own word for "this attempt may reach the gateway until then" — and nothing in
+// the aggregate or the database is expressed in the gateway's vocabulary.
 
 import (
 	"bytes"

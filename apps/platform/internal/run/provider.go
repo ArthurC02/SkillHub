@@ -9,6 +9,13 @@ package run
 //
 // Interaction is strictly polling: the platform is the only client, providers never
 // call back and never touch the database (iron rule 2).
+//
+// Anti-corruption layer: the provider's contract types stop here. ProviderRunState,
+// ProviderRun, RunResult and the rest are wire shapes, never domain state — the
+// translation into gen.RunStatus is job.go's classifyResult/mapState, and the run's
+// own status is decided by statemachine.go alone (iron rule 5). A provider vocabulary
+// word appearing in the aggregate, or in a database column other than the attempt's
+// error_class, means this layer leaked.
 
 import (
 	"bytes"

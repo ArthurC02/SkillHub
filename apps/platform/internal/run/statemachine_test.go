@@ -7,11 +7,16 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
 )
 
-// legal is the state machine written out a second time, by hand, as pairs. It is
-// deliberately not derived from run.successors: a test that reads the table it is
-// checking proves only that the table equals itself. Every pair here is one line
-// of ADR-004 / RUN-002 / RUN-004, and adding a state to the enum without adding
-// its row makes TestTransitionsAreExactlyTheAllowedSet fail.
+// The Run aggregate's rules, tested without a database: statemachine.go's top half
+// is pure so this file can be, too. Everything below is the transition table
+// written out a second time, by hand — the aggregate's invariants are worth two
+// independent statements of.
+//
+// legal is that second statement, as pairs. It is deliberately not derived from
+// run.successors: a test that reads the table it is checking proves only that the
+// table equals itself. Every pair here is one line of ADR-004 / RUN-002 / RUN-004,
+// and adding a state to the enum without adding its row makes
+// TestTransitionsAreExactlyTheAllowedSet fail.
 var legal = map[gen.RunStatus][]gen.RunStatus{
 	// The happy path, one step at a time...
 	gen.RunStatusQueued:       {gen.RunStatusProvisioning},
@@ -61,6 +66,50 @@ func TestTransitionsAreExactlyTheAllowedSet(t *testing.T) {
 			}
 		}
 	}
+}
+
+// Every test here walks run.AllStatuses, so a status missing from that list is a
+// status nothing above checks. sqlc generates the run_status constants but no list
+// of them, so the size is pinned by hand: growing the enum in db/migrations without
+// growing AllStatuses fails here rather than passing everywhere.
+func TestAllStatusesCoversTheEnum(t *testing.T) {
+	if len(run.AllStatuses) != 9 {
+		t.Fatalf("run.AllStatuses has %d entries, want the 9 values of the run_status enum; "+
+			"a new status must be added there, to the transition table, and to `legal` below",
+			len(run.AllStatuses))
+	}
+	seen := map[gen.RunStatus]bool{}
+	for _, s := range run.AllStatuses {
+		if s == "" {
+			t.Error("run.AllStatuses contains the zero status")
+		}
+		if seen[s] {
+			t.Errorf("run.AllStatuses lists %s twice, so the cross product below is not one", s)
+		}
+		seen[s] = true
+	}
+	// Each status is classified by the transition table one way or the other. A
+	// status added to the enum and to AllStatuses but forgotten in the table would
+	// silently become terminal - a run could enter it and never leave.
+	for _, s := range run.AllStatuses {
+		if run.IsTerminal(s) {
+			continue
+		}
+		if len(successorsOf(s)) == 0 {
+			t.Errorf("%s is not terminal but has no successors", s)
+		}
+	}
+}
+
+// successorsOf asks the exported rule, not the unexported table.
+func successorsOf(from gen.RunStatus) []gen.RunStatus {
+	var out []gen.RunStatus
+	for _, to := range run.AllStatuses {
+		if run.CanTransition(from, to) {
+			out = append(out, to)
+		}
+	}
+	return out
 }
 
 // A run may not transition to the state it is already in. Re-applying a state
