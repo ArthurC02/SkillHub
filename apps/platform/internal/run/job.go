@@ -418,9 +418,15 @@ func (d *driver) settle(ctx context.Context, attempt gen.RunAttempt, pr Provider
 	}
 	// The happy path is the only one that has to walk the machine: `succeeded` is
 	// reachable from `evaluating` alone, while the three unhappy terminals are
-	// reachable from anywhere.
-	for d.cur.Status != gen.RunStatusSucceeded {
-		next := successors[d.cur.Status][0]
+	// reachable from anywhere. Which successor is the happy one is the aggregate's
+	// answer to give (HappyPath), and the route is settled before the first
+	// transition is applied - a walk that cannot arrive is an error the job returns,
+	// not laps around a loop writing to the database.
+	path, err := HappyPath(d.cur.Status)
+	if err != nil {
+		return err
+	}
+	for _, next := range path {
 		if err := d.advance(ctx, attempt.ID, next, successReason(next)); err != nil {
 			return err
 		}

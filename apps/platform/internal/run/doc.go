@@ -5,9 +5,11 @@
 // purpose: the boundary is real but the coupling is a Service method call, and
 // splitting it would buy export churn and an import cycle rather than isolation.
 //
-//	aggregate    statemachine.go — the transition table, terminality, and the one
-//	             write path (Transition/record) that applies them. Nothing else may
-//	             write runs.status. Pure rules at the top, testable without a DB.
+//	aggregate    statemachine.go — the transition table, terminality, which
+//	             successor is the happy one (NextOnSuccess/HappyPath, so no caller
+//	             has to know the order a row is written in), and the one write path
+//	             (Transition/record) that applies them all. Nothing else may write
+//	             runs.status. Pure rules at the top, testable without a DB.
 //
 //	application  service.go (Service, Create, reads), schedule.go, job.go, halt.go,
 //	             cleanup.go, supervisor.go, preflight.go, quota.go, gateb.go,

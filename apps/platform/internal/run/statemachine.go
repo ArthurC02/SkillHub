@@ -39,6 +39,12 @@ var (
 	// ErrConflict is a legal transition applied to a run that had already moved.
 	// Expected under at-least-once queue delivery, not an error to alarm about.
 	ErrConflict = errors.New("run is no longer in the expected status")
+	// ErrNoHappyPath means the successes-only route out of a status does not arrive
+	// at `succeeded`. It can only come from the transition table disagreeing with
+	// itself, so it is a bug rather than a runtime condition - but it is returned
+	// instead of assumed away, because the alternative is a run wedged in a
+	// non-terminal state with nothing said about it.
+	ErrNoHappyPath = errors.New("no successes-only path to succeeded")
 )
 
 // Failure classes written to runs.failure_class. The vocabulary is the platform's
@@ -136,6 +142,59 @@ func CanTransition(from, to gen.RunStatus) bool {
 func IsTerminal(s gen.RunStatus) bool {
 	_, ongoing := successors[s]
 	return !ongoing
+}
+
+// unhappyTerminals are the three ways a run ends badly. Every non-terminal state
+// can exit to all three, which is what makes the remaining successor of a state
+// its happy path - see NextOnSuccess.
+var unhappyTerminals = map[gen.RunStatus]bool{
+	gen.RunStatusFailed:    true,
+	gen.RunStatusCancelled: true,
+	gen.RunStatusTimedOut:  true,
+}
+
+// NextOnSuccess is where a run goes when nothing has gone wrong: the one successor
+// in its row that is not a failure exit. ok is false for a terminal state, which
+// has no next anything.
+//
+// The driver used to read successors[status][0] for this. That made the order
+// inside each row load-bearing without saying so anywhere: reordering a row is an
+// edit that changes no legality at all, and it would have sent the happy path
+// somewhere else with nothing to fail. Asking which successor is not an unhappy
+// terminal is the rule the table's own comment states, and it does not care what
+// order the row is written in.
+func NextOnSuccess(from gen.RunStatus) (gen.RunStatus, bool) {
+	for _, s := range successors[from] {
+		if !unhappyTerminals[s] {
+			return s, true
+		}
+	}
+	return "", false
+}
+
+// HappyPath is every status a run in `from` still has to enter to reach
+// `succeeded`, in order; empty if it is already there.
+//
+// The whole route is computed before any of it is applied, so a machine that does
+// not arrive is one error return rather than something discovered halfway through
+// a sequence of committed transitions. The step cap is what makes that true even
+// if the table ever grew a cycle: no acyclic route can be longer than the number
+// of statuses, so exceeding it means the walk would never end, and looping there
+// would mean a database write per lap.
+func HappyPath(from gen.RunStatus) ([]gen.RunStatus, error) {
+	var path []gen.RunStatus
+	for cur := from; cur != gen.RunStatusSucceeded; {
+		if len(path) >= len(AllStatuses) {
+			return nil, fmt.Errorf("%w: %s still had not arrived after %d steps", ErrNoHappyPath, from, len(path))
+		}
+		next, ok := NextOnSuccess(cur)
+		if !ok {
+			return nil, fmt.Errorf("%w: %s is terminal", ErrNoHappyPath, cur)
+		}
+		path = append(path, next)
+		cur = next
+	}
+	return path, nil
 }
 
 // TransitionParams is one state change.

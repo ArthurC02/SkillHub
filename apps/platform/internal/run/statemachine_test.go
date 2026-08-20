@@ -1,6 +1,8 @@
 package run_test
 
 import (
+	"errors"
+	"slices"
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
@@ -157,5 +159,81 @@ func TestEveryNonTerminalStateCanBeEnded(t *testing.T) {
 				t.Errorf("%s cannot be ended with %s", s, end)
 			}
 		}
+	}
+}
+
+// The happy path, written out once more by hand. settle walks this exact sequence
+// after a provider reports success, and every step of it is a row the user sees in
+// the run's history — so it is pinned as a sequence, not as five legality checks.
+func TestHappyPathIsTheWholeLifecycle(t *testing.T) {
+	want := []gen.RunStatus{
+		gen.RunStatusProvisioning, gen.RunStatusPreparing,
+		gen.RunStatusRunning, gen.RunStatusEvaluating, gen.RunStatusSucceeded,
+	}
+	got, err := run.HappyPath(gen.RunStatusQueued)
+	if err != nil {
+		t.Fatalf("HappyPath(queued): %v", err)
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("HappyPath(queued) = %v, want %v", got, want)
+	}
+	// Starting anywhere along it yields the rest of it: settle is entered from
+	// whichever state the provider's last poll left the run in.
+	for i, from := range append([]gen.RunStatus{gen.RunStatusQueued}, want[:len(want)-1]...) {
+		got, err := run.HappyPath(from)
+		if err != nil {
+			t.Fatalf("HappyPath(%s): %v", from, err)
+		}
+		if !slices.Equal(got, want[i:]) {
+			t.Errorf("HappyPath(%s) = %v, want %v", from, got, want[i:])
+		}
+	}
+}
+
+// NextOnSuccess must be answerable from the *set* of successors, never from where
+// one sits in the row: exactly one successor of each non-terminal state is not an
+// unhappy terminal. If a state ever had two, "the happy one" would stop being a
+// fact and reordering the table would start deciding it again.
+func TestExactlyOneSuccessorIsTheHappyOne(t *testing.T) {
+	unhappy := map[gen.RunStatus]bool{}
+	for _, s := range unhappyTerminals {
+		unhappy[s] = true
+	}
+	for _, from := range run.AllStatuses {
+		next, ok := run.NextOnSuccess(from)
+		if run.IsTerminal(from) {
+			if ok {
+				t.Errorf("NextOnSuccess(%s) = %s, want none: terminal states go nowhere", from, next)
+			}
+			continue
+		}
+		var happy []gen.RunStatus
+		for _, to := range successorsOf(from) {
+			if !unhappy[to] {
+				happy = append(happy, to)
+			}
+		}
+		if len(happy) != 1 {
+			t.Fatalf("%s has %d non-failure successors (%v), want exactly 1", from, len(happy), happy)
+		}
+		if !ok || next != happy[0] {
+			t.Errorf("NextOnSuccess(%s) = %s/%v, want %s", from, next, ok, happy[0])
+		}
+	}
+}
+
+// A terminal state has no way on, and asking for one is answered rather than
+// walked. The old settle indexed the table directly and would have spun here.
+func TestHappyPathFromATerminalStateIsAnError(t *testing.T) {
+	for _, s := range unhappyTerminals {
+		path, err := run.HappyPath(s)
+		if !errors.Is(err, run.ErrNoHappyPath) {
+			t.Errorf("HappyPath(%s) = %v, %v; want ErrNoHappyPath", s, path, err)
+		}
+	}
+	// `succeeded` is the one terminal that is not an error: it is already there.
+	path, err := run.HappyPath(gen.RunStatusSucceeded)
+	if err != nil || len(path) != 0 {
+		t.Errorf("HappyPath(succeeded) = %v, %v; want no steps and no error", path, err)
 	}
 }
