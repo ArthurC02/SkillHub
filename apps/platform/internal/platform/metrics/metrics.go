@@ -114,6 +114,16 @@ var (
 	}, []string{"provider"})
 )
 
+// ADR-008: the transactional outbox. One counter, and it is the one that means a
+// human has to look: an event the publisher gave up on is a domain fact that was
+// committed and never announced. `event_type` is the closed 11-value set of
+// contracts/events/domain-events.md §3, enforced by a DB CHECK, so the series
+// count is bounded by the catalogue rather than by traffic.
+var OutboxDeadLettered = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "skillhub_outbox_dead_lettered_total",
+	Help: "Domain events isolated after repeated delivery failure (ADR-008 Poison Message).",
+}, []string{"event_type"})
+
 // O11Y-002: provider health. `provider` comes from SKILLHUB_SANDBOX_PROVIDERS,
 // which is deployment-static, so its cardinality is the size of the fleet.
 var (

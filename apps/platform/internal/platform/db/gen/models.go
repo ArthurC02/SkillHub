@@ -311,17 +311,19 @@ type ObjectReconcileSighting struct {
 }
 
 type OutboxEvent struct {
-	EventID       pgtype.UUID
-	EventType     string
-	EventVersion  int32
-	OccurredAt    pgtype.Timestamptz
-	CorrelationID pgtype.UUID
-	CausationID   pgtype.UUID
-	WorkspaceID   pgtype.UUID
-	AggregateType string
-	AggregateID   pgtype.UUID
-	Payload       []byte
-	PublishedAt   pgtype.Timestamptz
+	EventID          pgtype.UUID
+	EventType        string
+	EventVersion     int32
+	OccurredAt       pgtype.Timestamptz
+	CorrelationID    pgtype.UUID
+	CausationID      pgtype.UUID
+	WorkspaceID      pgtype.UUID
+	AggregateType    string
+	AggregateID      pgtype.UUID
+	Payload          []byte
+	PublishedAt      pgtype.Timestamptz
+	DeliveryAttempts int32
+	DeadLetteredAt   pgtype.Timestamptz
 }
 
 type ReconcilerOrphanSighting struct {

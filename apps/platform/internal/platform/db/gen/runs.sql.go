@@ -136,6 +136,28 @@ func (q *Queries) CreateRunAttempt(ctx context.Context, arg CreateRunAttemptPara
 	return i, err
 }
 
+const deleteOutboxEventsPublishedBefore = `-- name: DeleteOutboxEventsPublishedBefore :execrows
+DELETE FROM outbox_events
+WHERE published_at IS NOT NULL
+  AND published_at < $1::timestamptz
+  AND dead_lettered_at IS NULL
+`
+
+// Retention (ADR-008, contracts/events/domain-events.md §5). This table is a transport
+// buffer, not history: what has to survive for 400 days is audit_events, and keeping
+// delivered rows here forever only grows the thing the publisher scans.
+//
+// Dead-lettered rows are never published, so the first clause already excludes them;
+// the second says so out loud, because "we deleted the poison before anyone looked at
+// it" is the one way this DELETE could destroy something that mattered.
+func (q *Queries) DeleteOutboxEventsPublishedBefore(ctx context.Context, publishedBefore pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOutboxEventsPublishedBefore, publishedBefore)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const finishRunAttempt = `-- name: FinishRunAttempt :one
 UPDATE run_attempts SET finished_at = now(), error_class = $3, error_message = $4
 WHERE id = $1 AND workspace_id = $2
@@ -313,7 +335,7 @@ INSERT INTO outbox_events (
     event_type, event_version, correlation_id, causation_id,
     workspace_id, aggregate_type, aggregate_id, payload
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at
+RETURNING event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at
 `
 
 type InsertOutboxEventParams struct {
@@ -327,8 +349,11 @@ type InsertOutboxEventParams struct {
 	Payload       []byte
 }
 
-// Always written with the caller's transaction handle, so the event and the domain change
-// commit together or neither does (iron rule 9, ADR-008).
+// Call it through outbox.Insert, never directly: that wrapper takes a pgx.Tx, which is
+// what makes "the event and the domain change commit together or neither does" a
+// compile-time property rather than a convention (iron rule 9, ADR-008, DDD-012).
+// event_type must come from the outbox package's constants; the DB CHECK added in
+// 0035 refuses anything else.
 func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) (OutboxEvent, error) {
 	row := q.db.QueryRow(ctx, insertOutboxEvent,
 		arg.EventType,
@@ -353,6 +378,8 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 		&i.AggregateID,
 		&i.Payload,
 		&i.PublishedAt,
+		&i.DeliveryAttempts,
+		&i.DeadLetteredAt,
 	)
 	return i, err
 }
@@ -487,7 +514,7 @@ func (q *Queries) ListActiveRuns(ctx context.Context, limit int32) ([]Run, error
 }
 
 const listOutboxEventsByAggregate = `-- name: ListOutboxEventsByAggregate :many
-SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at FROM outbox_events
+SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at FROM outbox_events
 WHERE aggregate_type = $1 AND aggregate_id = $2
 ORDER BY occurred_at, event_id
 `
@@ -518,6 +545,8 @@ func (q *Queries) ListOutboxEventsByAggregate(ctx context.Context, arg ListOutbo
 			&i.AggregateID,
 			&i.Payload,
 			&i.PublishedAt,
+			&i.DeliveryAttempts,
+			&i.DeadLetteredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -711,14 +740,18 @@ func (q *Queries) ListRunsNeedingCleanup(ctx context.Context, limit int32) ([]Ru
 }
 
 const listUnpublishedOutboxEvents = `-- name: ListUnpublishedOutboxEvents :many
-SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at FROM outbox_events
-WHERE published_at IS NULL
+SELECT event_id, event_type, event_version, occurred_at, correlation_id, causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at, delivery_attempts, dead_lettered_at FROM outbox_events
+WHERE published_at IS NULL AND dead_lettered_at IS NULL
 ORDER BY occurred_at, event_id
 LIMIT $1
 `
 
 // The publisher's scan (internal/outbox). Oldest first, so the backlog drains in the
 // order the domain changes committed.
+//
+// Dead-lettered rows are excluded, and that exclusion is the whole point of the
+// column: without it one consumer that fails on one event blocks every event
+// committed after it, permanently (ADR-008 Poison Message).
 func (q *Queries) ListUnpublishedOutboxEvents(ctx context.Context, limit int32) ([]OutboxEvent, error) {
 	rows, err := q.db.Query(ctx, listUnpublishedOutboxEvents, limit)
 	if err != nil {
@@ -740,6 +773,8 @@ func (q *Queries) ListUnpublishedOutboxEvents(ctx context.Context, limit int32) 
 			&i.AggregateID,
 			&i.Payload,
 			&i.PublishedAt,
+			&i.DeliveryAttempts,
+			&i.DeadLetteredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -891,6 +926,43 @@ func (q *Queries) RecordOrphanSighting(ctx context.Context, arg RecordOrphanSigh
 	var rounds int32
 	err := row.Scan(&rounds)
 	return rounds, err
+}
+
+const recordOutboxDeliveryFailure = `-- name: RecordOutboxDeliveryFailure :one
+UPDATE outbox_events
+SET delivery_attempts = delivery_attempts + 1,
+    dead_lettered_at = CASE
+        WHEN dead_lettered_at IS NOT NULL THEN dead_lettered_at
+        WHEN delivery_attempts + 1 >= $1::int THEN now()
+    END
+WHERE event_id = $2
+RETURNING delivery_attempts, dead_lettered_at
+`
+
+type RecordOutboxDeliveryFailureParams struct {
+	MaxAttempts int32
+	EventID     pgtype.UUID
+}
+
+type RecordOutboxDeliveryFailureRow struct {
+	DeliveryAttempts int32
+	DeadLetteredAt   pgtype.Timestamptz
+}
+
+// Counts one failed delivery and isolates the event once it has had enough of them.
+//
+// Deliberately not run in the publisher's transaction — there isn't one, and there must
+// not be: a count that rolled back with the failure it counts would never reach the
+// threshold, and the event would retry forever, which is the behaviour this replaces.
+//
+// The threshold is compared against the incremented value so that max_attempts=1 means
+// "isolate on the first failure". Already-dead rows keep their original timestamp: the
+// publisher no longer lists them, so this is belt and braces against a manual replay.
+func (q *Queries) RecordOutboxDeliveryFailure(ctx context.Context, arg RecordOutboxDeliveryFailureParams) (RecordOutboxDeliveryFailureRow, error) {
+	row := q.db.QueryRow(ctx, recordOutboxDeliveryFailure, arg.MaxAttempts, arg.EventID)
+	var i RecordOutboxDeliveryFailureRow
+	err := row.Scan(&i.DeliveryAttempts, &i.DeadLetteredAt)
+	return i, err
 }
 
 const requestRunCancel = `-- name: RequestRunCancel :one

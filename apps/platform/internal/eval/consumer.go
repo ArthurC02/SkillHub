@@ -15,17 +15,19 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
-// Terminal run events this context reacts to. `cancelled` and `timed_out` are
-// absent on purpose: such a run was stopped before it could produce the thing
-// the criteria are about, and paying a judge to say so tells nobody anything.
-const (
-	eventRunSucceeded = "run.succeeded"
-	eventRunFailed    = "run.failed"
-)
+// Terminal run events this context reacts to, named from the catalogue's own
+// constants rather than re-spelled here: a consumer with its own copy of a
+// producer's string is a routing bug waiting for a rename, and it would go
+// unnoticed because "no event matched" looks exactly like "nothing happened".
+//
+// outbox.RunCancelled and outbox.RunTimedOut are absent on purpose: such a run
+// was stopped before it could produce the thing the criteria are about, and
+// paying a judge to say so tells nobody anything.
 
 // RunEventConsumer enqueues one evaluation per finished run, driven by the
 // outbox. Its Deliver method has outbox.Worker's Deliver shape.
@@ -44,7 +46,7 @@ type RunEventConsumer struct {
 // Deliver reacts to one domain event. Anything that is not a terminal run event
 // is not this context's business and is not an error.
 func (c *RunEventConsumer) Deliver(ctx context.Context, event gen.OutboxEvent) error {
-	if event.EventType != eventRunSucceeded && event.EventType != eventRunFailed {
+	if event.EventType != outbox.RunSucceeded && event.EventType != outbox.RunFailed {
 		return nil
 	}
 

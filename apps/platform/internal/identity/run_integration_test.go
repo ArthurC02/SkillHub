@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -401,6 +402,111 @@ func TestFailedWritesLeaveNoOutboxEvent(t *testing.T) {
 	}
 }
 
+// ADR-008 「Poison Message 進入隔離佇列並告警，不無限制重送」. Before DDD-012 the
+// publisher stopped its pass on a failed delivery and started the next pass at the
+// same event, so one event a consumer could never accept held every event
+// committed after it — for as long as the consumer stayed broken, which for a
+// genuinely undeliverable event is forever.
+//
+// Two runs, in commit order: the first is undeliverable, the second is the backlog
+// behind it. What has to be true at the end is that the first stopped being
+// retried and the second got through.
+func TestAnUndeliverableEventIsIsolatedAndReleasesTheBacklog(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-outbox-poison")
+
+	poisoned := f.start(t)
+	behind := f.start(t)
+	poisonedID := mustUUID(t, poisoned.RunID)
+
+	// Undeliverable for exactly one run. The outbox backlog is shared with every
+	// other test in this package, and failing on all of it would dead-letter events
+	// those tests still need.
+	var attempts int
+	w := &outbox.Worker{
+		Pool:                pool,
+		MaxDeliveryAttempts: 2,
+		Deliver: func(_ context.Context, e gen.OutboxEvent) error {
+			if e.AggregateID == poisonedID {
+				attempts++
+				return errors.New("this consumer will never accept this event")
+			}
+			return nil
+		},
+	}
+
+	// Three passes are enough: fail, fail-and-isolate, then the pass that no longer
+	// sees it. Looping to five rather than asserting the exact count keeps the test
+	// about the outcome, not about how many events other tests left in front.
+	for range 5 {
+		if _, err := w.Publish(context.Background()); err == nil && attempts >= 2 {
+			break
+		}
+	}
+
+	poison := eventOfType(t, pool, poisoned.RunID, outbox.RunQueued)
+	if !poison.DeadLetteredAt.Valid {
+		t.Fatalf("after %d failed deliveries the event was not isolated", attempts)
+	}
+	if poison.DeliveryAttempts != 2 {
+		t.Errorf("delivery_attempts = %d, want 2 (the configured ceiling)", poison.DeliveryAttempts)
+	}
+	// Isolated, not delivered and not deleted: the row stays for a human to look at,
+	// and nothing in the platform decides on its own that the event did not matter.
+	if poison.PublishedAt.Valid {
+		t.Error("an event that was never accepted is marked published")
+	}
+	// The ceiling is a ceiling. Further passes must not keep calling the consumer.
+	before := attempts
+	if _, err := w.Publish(context.Background()); err != nil {
+		t.Fatalf("the pass after isolation still failed: %v", err)
+	}
+	if attempts != before {
+		t.Errorf("the isolated event was delivered %d more times; isolation means it stops", attempts-before)
+	}
+
+	// The head of the line was clear, so what was behind it went out.
+	if released := eventOfType(t, pool, behind.RunID, outbox.RunQueued); !released.PublishedAt.Valid {
+		t.Error("the event committed after the poison never published: the backlog is still blocked")
+	}
+}
+
+// Retention (ADR-008, contracts/events/domain-events.md §5 缺口 1): 0016 assumed the
+// publisher would drop rows it had drained and no DELETE was ever written, so the
+// buffer grew without bound. Driven with rows aged on purpose rather than with a
+// short window, because a short window here would prune events other tests in this
+// package still assert on.
+func TestThePublisherPrunesDeliveredEventsButKeepsIsolatedOnes(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-outbox-retention")
+	ws := mustUUID(t, f.workspaceID)
+
+	old := time.Now().Add(-8 * 24 * time.Hour)
+	stale := insertAgedOutboxEvent(t, pool, ws, old, nil)
+	recent := insertAgedOutboxEvent(t, pool, ws, time.Now(), nil)
+	// Published *and* isolated is not a state the publisher produces; it is written
+	// here precisely because the DELETE's guard against it is the thing under test.
+	// Pruning an event nobody could deliver would destroy the only evidence of why.
+	poisoned := insertAgedOutboxEvent(t, pool, ws, old, &old)
+
+	w := &outbox.Worker{Pool: pool, Deliver: func(context.Context, gen.OutboxEvent) error { return nil }}
+	if _, err := w.Publish(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if outboxRowExists(t, pool, stale) {
+		t.Error("an event delivered 8 days ago is still in the buffer: retention did not run")
+	}
+	if !outboxRowExists(t, pool, recent) {
+		t.Error("an event delivered just now was pruned: the retention window is not being honoured")
+	}
+	if !outboxRowExists(t, pool, poisoned) {
+		t.Error("an isolated event was pruned; it is kept for a human, not for the publisher")
+	}
+}
+
 // RUN-002: an illegal pair is refused before the database is touched at all, so a
 // caller cannot skip states or rewind a run.
 func TestIllegalTransitionIsRefusedWithoutWriting(t *testing.T) {
@@ -574,6 +680,51 @@ func outboxFor(t *testing.T, pool *pgxpool.Pool, runID string) []gen.OutboxEvent
 		t.Fatal(err)
 	}
 	return events
+}
+
+func eventOfType(t *testing.T, pool *pgxpool.Pool, runID, eventType string) gen.OutboxEvent {
+	t.Helper()
+	for _, e := range outboxFor(t, pool, runID) {
+		if e.EventType == eventType {
+			return e
+		}
+	}
+	t.Fatalf("run %s has no %s event", runID, eventType)
+	return gen.OutboxEvent{}
+}
+
+// insertAgedOutboxEvent writes a delivered event with a chosen published_at, which
+// is the only way to exercise a seven-day window inside a test. deadAt marks it
+// isolated as well — a combination the publisher never produces, written here to
+// prove the DELETE refuses to touch it.
+func insertAgedOutboxEvent(t *testing.T, pool *pgxpool.Pool, workspace pgtype.UUID, publishedAt time.Time, deadAt *time.Time) pgtype.UUID {
+	t.Helper()
+	var id pgtype.UUID
+	if err := pool.QueryRow(context.Background(), `
+		INSERT INTO outbox_events (
+			event_type, event_version, occurred_at, correlation_id, workspace_id,
+			aggregate_type, aggregate_id, payload, published_at, dead_lettered_at
+		)
+		SELECT 'run.cleanup_cleaned', 1, $1::timestamptz, g.id, $2::uuid, 'run', g.id,
+		       '{}'::jsonb, $1::timestamptz, $3::timestamptz
+		FROM (SELECT gen_random_uuid() AS id) g
+		RETURNING event_id`,
+		publishedAt, workspace, deadAt,
+	).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+func outboxRowExists(t *testing.T, pool *pgxpool.Pool, eventID pgtype.UUID) bool {
+	t.Helper()
+	var exists bool
+	if err := pool.QueryRow(context.Background(),
+		"SELECT EXISTS (SELECT 1 FROM outbox_events WHERE event_id = $1)", eventID,
+	).Scan(&exists); err != nil {
+		t.Fatal(err)
+	}
+	return exists
 }
 
 func unpublishedCount(t *testing.T, pool *pgxpool.Pool) int {

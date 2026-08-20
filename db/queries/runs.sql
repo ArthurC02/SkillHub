@@ -216,8 +216,11 @@ WHERE run_id = $1 AND workspace_id = $2
 ORDER BY attempt_number;
 
 -- name: InsertOutboxEvent :one
--- Always written with the caller's transaction handle, so the event and the domain change
--- commit together or neither does (iron rule 9, ADR-008).
+-- Call it through outbox.Insert, never directly: that wrapper takes a pgx.Tx, which is
+-- what makes "the event and the domain change commit together or neither does" a
+-- compile-time property rather than a convention (iron rule 9, ADR-008, DDD-012).
+-- event_type must come from the outbox package's constants; the DB CHECK added in
+-- 0035 refuses anything else.
 INSERT INTO outbox_events (
     event_type, event_version, correlation_id, causation_id,
     workspace_id, aggregate_type, aggregate_id, payload
@@ -227,10 +230,46 @@ RETURNING *;
 -- name: ListUnpublishedOutboxEvents :many
 -- The publisher's scan (internal/outbox). Oldest first, so the backlog drains in the
 -- order the domain changes committed.
+--
+-- Dead-lettered rows are excluded, and that exclusion is the whole point of the
+-- column: without it one consumer that fails on one event blocks every event
+-- committed after it, permanently (ADR-008 Poison Message).
 SELECT * FROM outbox_events
-WHERE published_at IS NULL
+WHERE published_at IS NULL AND dead_lettered_at IS NULL
 ORDER BY occurred_at, event_id
 LIMIT $1;
+
+-- name: RecordOutboxDeliveryFailure :one
+-- Counts one failed delivery and isolates the event once it has had enough of them.
+--
+-- Deliberately not run in the publisher's transaction — there isn't one, and there must
+-- not be: a count that rolled back with the failure it counts would never reach the
+-- threshold, and the event would retry forever, which is the behaviour this replaces.
+--
+-- The threshold is compared against the incremented value so that max_attempts=1 means
+-- "isolate on the first failure". Already-dead rows keep their original timestamp: the
+-- publisher no longer lists them, so this is belt and braces against a manual replay.
+UPDATE outbox_events
+SET delivery_attempts = delivery_attempts + 1,
+    dead_lettered_at = CASE
+        WHEN dead_lettered_at IS NOT NULL THEN dead_lettered_at
+        WHEN delivery_attempts + 1 >= @max_attempts::int THEN now()
+    END
+WHERE event_id = @event_id
+RETURNING delivery_attempts, dead_lettered_at;
+
+-- name: DeleteOutboxEventsPublishedBefore :execrows
+-- Retention (ADR-008, contracts/events/domain-events.md §5). This table is a transport
+-- buffer, not history: what has to survive for 400 days is audit_events, and keeping
+-- delivered rows here forever only grows the thing the publisher scans.
+--
+-- Dead-lettered rows are never published, so the first clause already excludes them;
+-- the second says so out loud, because "we deleted the poison before anyone looked at
+-- it" is the one way this DELETE could destroy something that mattered.
+DELETE FROM outbox_events
+WHERE published_at IS NOT NULL
+  AND published_at < @published_before::timestamptz
+  AND dead_lettered_at IS NULL;
 
 -- name: MarkOutboxEventsPublished :execrows
 -- The publisher hands events on *before* marking them, so a crash in between re-delivers

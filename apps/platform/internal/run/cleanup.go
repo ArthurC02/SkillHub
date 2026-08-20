@@ -24,6 +24,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
@@ -236,10 +237,27 @@ func (s *Service) recordCleanup(ctx context.Context, run gen.Run, status gen.Run
 	// ADR-008's CleanupCompleted, in the same shape as the status events: the
 	// payload carries counts and identifiers, never a provider handle or an error
 	// body that might quote one (iron rule 11).
-	if _, err := q.InsertOutboxEvent(ctx, gen.InsertOutboxEventParams{
-		EventType: "run.cleanup_" + string(status), EventVersion: 1,
+	//
+	// Mapped rather than concatenated, for the reason record() gives: `pending` and
+	// `cleaning_up` are not outcomes and must not become event types, and only a
+	// mapping that can refuse says so.
+	//
+	// causation_id stays NULL, and that is a limitation the catalogue now states
+	// rather than a field nobody filled in. A cleanup pass releases *every* attempt
+	// of the run, so no single attempt id is its cause; its actual cause is the
+	// run_cleanup job, whose River identity is a bigint and does not fit a uuid
+	// column. Threading the terminal transition's attempt through CleanupArgs would
+	// fit the column and be a lie besides: it would also change the job's ByArgs
+	// unique key, so the supervisor's backlog enqueue would stop coalescing with
+	// this one and two workers would tear down the same sandbox in parallel.
+	eventType, err := outbox.CleanupEvent(status)
+	if err != nil {
+		return err
+	}
+	if err := outbox.Insert(ctx, tx, gen.InsertOutboxEventParams{
+		EventType: eventType, EventVersion: outbox.EventVersion1,
 		CorrelationID: updated.ID, WorkspaceID: updated.WorkspaceID,
-		AggregateType: audit.ResourceRun, AggregateID: updated.ID, Payload: payload,
+		AggregateType: outbox.AggregateRun, AggregateID: updated.ID, Payload: payload,
 	}); err != nil {
 		return err
 	}

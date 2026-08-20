@@ -14,6 +14,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
@@ -413,7 +414,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		return gen.Run{}, err
 	}
 
-	if err := s.record(ctx, q, run, nil, pgtype.UUID{}, "run requested", p.Actor, audit.ActionRunCreate); err != nil {
+	if err := s.record(ctx, q, tx, run, nil, pgtype.UUID{}, "run requested", p.Actor, audit.ActionRunCreate); err != nil {
 		return gen.Run{}, err
 	}
 
@@ -488,7 +489,7 @@ func (s *Service) Transition(ctx context.Context, p TransitionParams) (gen.Run, 
 	}
 
 	from := p.From
-	if err := s.record(ctx, q, run, &from, p.AttemptID, p.Reason, p.Actor, audit.ActionRunTransition); err != nil {
+	if err := s.record(ctx, q, tx, run, &from, p.AttemptID, p.Reason, p.Actor, audit.ActionRunTransition); err != nil {
 		return gen.Run{}, err
 	}
 
@@ -600,8 +601,11 @@ func observeTransition(run gen.Run, p TransitionParams) {
 // record writes the three things every state change owes: the append-only status
 // history (RUN-002), the audit event (NFR-001) and the outbox event (ADR-008).
 // q must be the caller's transaction handle - that is the whole point.
+// tx is the same transaction q was derived from, passed separately because
+// outbox.Insert takes it by type: iron rule 9 is a property the compiler can hold
+// only if the handle is one (contracts/events/domain-events.md §2).
 func (s *Service) record(
-	ctx context.Context, q *gen.Queries, run gen.Run,
+	ctx context.Context, q *gen.Queries, tx pgx.Tx, run gen.Run,
 	from *gen.RunStatus, attemptID pgtype.UUID, reason string, actor pgtype.UUID, action string,
 ) error {
 	reasonPtr := &reason
@@ -632,26 +636,37 @@ func (s *Service) record(
 	// One event type per state entered, so a consumer routes on event_type rather
 	// than by parsing a payload. The ADR-008 workflow names (RunProvisioned,
 	// RunExecutionCompleted, ...) are a coarser view of the same stream; deriving
-	// them, and moving the schemas to contracts/events/, waits for a consumer that
-	// needs them - internal/outbox delivers what is here today. Payload carries
-	// identifiers and outcome only (iron rule 11): no prompt, no output, no key.
+	// them waits for a consumer that needs them - internal/outbox delivers what is
+	// here today. Payload carries identifiers and outcome only (iron rule 11): no
+	// prompt, no output, no key.
+	//
+	// The type comes from a mapping that can fail rather than from "run." + status.
+	// Concatenation meant a new run status shipped a new, uncatalogued event type
+	// the moment the enum grew, and nothing would have said so; now the state
+	// change rolls back until someone adds the event to the catalogue too.
+	eventType, err := outbox.StatusEvent(run.Status)
+	if err != nil {
+		return err
+	}
 	payload, err := json.Marshal(meta)
 	if err != nil {
 		return err
 	}
-	_, err = q.InsertOutboxEvent(ctx, gen.InsertOutboxEventParams{
-		EventType:    "run." + string(run.Status),
-		EventVersion: 1,
+	return outbox.Insert(ctx, tx, gen.InsertOutboxEventParams{
+		EventType:    eventType,
+		EventVersion: outbox.EventVersion1,
 		// The platform run_id is the correlation for everything in this workflow;
 		// a provider id never substitutes for it (ADR-008, iron rule 10).
 		CorrelationID: run.ID,
+		// The attempt that caused the change, zero (NULL) for the genesis event: a
+		// run's creation has no attempt yet and nothing precedes it, which is the
+		// one exemption the catalogue's §2 allows (DDD-012).
 		CausationID:   attemptID,
 		WorkspaceID:   run.WorkspaceID,
-		AggregateType: audit.ResourceRun,
+		AggregateType: outbox.AggregateRun,
 		AggregateID:   run.ID,
 		Payload:       payload,
 	})
-	return err
 }
 
 // Get returns one run, workspace scoped.
