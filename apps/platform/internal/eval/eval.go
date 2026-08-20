@@ -1,21 +1,6 @@
-// Package eval is the control-plane half of the evaluation pipeline (EVAL-001).
-//
-// It answers a different question from internal/run. `runs.status` records what
-// happened while a run executed; `evaluations.overall` records whether the task
-// was achieved, and this package never writes the former (ADR-025). A run that
-// finished `succeeded` with an evaluation of `not_met` is an ordinary consistent
-// state, not a contradiction to be smoothed over.
-//
-// Everything here runs in the control plane and executes nothing (iron rule 1/2):
-// trace events are read as stored JSON, artifacts as a manifest of names and
-// hashes, packages as bytes handed to skillpkg.Validate. No user-supplied check
-// script is run — that is untrusted content and would have to go back to a
-// sandbox, which 02:EVAL-001's boundary clause puts outside the MVP.
-//
-// Five of EVAL-001's six problem classes are decided by rules over the platform's
-// own records (deterministic.go). Only "task effect" reaches a model, through
-// apps/llm (judge.go), and every reference that comes back is re-verified
-// here before it is stored (ADR-026 defence 3).
+// The Evaluation aggregate's write paths: begin, complete and fail. The
+// invariants they hold, and why four UPDATE statements do not contradict
+// ADR-026's append-only rule, are in doc.go.
 package eval
 
 import (
