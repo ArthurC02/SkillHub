@@ -8,7 +8,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -24,6 +23,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
@@ -89,7 +89,6 @@ type preparedPackage struct {
 	report      skillpkg.Report
 	contentHash string
 	objectKey   string
-	manifest    []byte
 	// skillMD and fileTree are the enrichment inputs (ADR-013 §1). They are
 	// read here, not re-read later, because this is the only point that already
 	// has the archive open. Both are untrusted package content and are only ever
@@ -144,9 +143,6 @@ func (s *Service) prepare(ctx context.Context, data []byte) (preparedPackage, er
 	sum := sha256.Sum256(data)
 	p.contentHash = hex.EncodeToString(sum[:])
 	p.objectKey = "packages/" + p.contentHash + ".zip"
-	if p.manifest, err = json.Marshal(p.report.Manifest); err != nil {
-		return preparedPackage{}, err
-	}
 	// Content-addressed put is idempotent, so storing before the DB commit
 	// means a failed transaction leaves only a harmless orphan object.
 	if err := s.Store.Put(ctx, p.objectKey, data); err != nil {
@@ -179,18 +175,14 @@ func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, 
 		WorkspaceID: ws.ID, Name: p.report.Manifest.Name,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		skill, err = q.CreateSkill(ctx, gen.CreateSkillParams{
-			WorkspaceID: ws.ID,
-			Name:        p.report.Manifest.Name,
-			Summary:     &p.report.Manifest.Description,
-		})
+		skill, err = registry.CreateSkillFromPackage(ctx, tx, ws.ID, p.report)
 	}
 	if err != nil {
 		return Result{}, err
 	}
 	res.Skill = skill
 
-	res.Version, res.Duplicate, err = s.persistVersion(ctx, q, ws, skill, p, src, e)
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, skill, p, src, e)
 	if err != nil {
 		return Result{}, err
 	}
@@ -252,14 +244,12 @@ func (s *Service) SaveVersion(ctx context.Context, ws gen.Workspace, skillID pgt
 	}
 	res.Skill = skill
 
-	res.Version, res.Duplicate, err = s.persistVersion(ctx, q, ws, skill, p, sourceMeta{Type: "upload"}, e)
+	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, skill, p, sourceMeta{Type: "upload"}, e)
 	if err != nil {
 		return Result{}, err
 	}
 	if !res.Duplicate {
-		if err := q.UpdateSkillSummary(ctx, gen.UpdateSkillSummaryParams{
-			ID: skill.ID, WorkspaceID: ws.ID, Summary: &p.report.Manifest.Description,
-		}); err != nil {
+		if err := registry.UpdateSummaryFromPackage(ctx, tx, skill.ID, ws.ID, p.report); err != nil {
 			return Result{}, err
 		}
 	}
@@ -273,7 +263,8 @@ func (s *Service) SaveVersion(ctx context.Context, ws gen.Workspace, skillID pgt
 
 // persistVersion writes the dedupe-checked version row, its source row, and
 // the search projection inside the caller's transaction.
-func (s *Service) persistVersion(ctx context.Context, q *gen.Queries, ws gen.Workspace, skill gen.Skill, p preparedPackage, src sourceMeta, e enrichment) (gen.SkillVersion, bool, error) {
+func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws gen.Workspace, skill gen.Skill, p preparedPackage, src sourceMeta, e enrichment) (gen.SkillVersion, bool, error) {
+	q := gen.New(tx)
 	if existing, err := q.GetVersionBySkillAndHash(ctx, gen.GetVersionBySkillAndHashParams{
 		SkillID: skill.ID, ContentHash: p.contentHash,
 	}); err == nil {
@@ -295,28 +286,18 @@ func (s *Service) persistVersion(ctx context.Context, q *gen.Queries, ws gen.Wor
 		return gen.SkillVersion{}, false, err
 	}
 
-	// The resolved license, not the manifest field: skillpkg falls back to a
-	// LICENSE file in the package, then to a repository-level one carried in by
-	// the packer, when the frontmatter declares nothing — and that fallback is
-	// the only thing 37 of the 45 seed packages had (import-report.md §4 Top-1).
-	// The tier travels with the expression (ADR-021): "MIT" from frontmatter and
-	// "MIT" off a repo-root file are not the same claim, and DISC-003 has to show
-	// the difference rather than flatten it into one string.
-	var license, licenseSource *string
-	if l := p.report.LicenseExpression; l != "" {
-		license = &l
-		s := p.report.LicenseSource
-		licenseSource = &s
-	}
-	version, err := q.CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
-		WorkspaceID:       ws.ID,
-		SkillID:           skill.ID,
-		SourceID:          source.ID,
-		ContentHash:       p.contentHash,
-		PackageObjectKey:  p.objectKey,
-		Manifest:          p.manifest,
-		LicenseExpression: license,
-		LicenseSource:     licenseSource,
+	// registry owns skills/skill_versions, so the row goes in through its API
+	// rather than through the query (ADR-033 clearance path 2). The whole
+	// validation report travels with it: the license columns are resolved from
+	// what skillpkg actually evidenced, and that resolution is the version row's
+	// business, not the importer's.
+	version, err := registry.CreateVersionFromPackage(ctx, tx, registry.NewVersion{
+		WorkspaceID:      ws.ID,
+		SkillID:          skill.ID,
+		SourceID:         source.ID,
+		ContentHash:      p.contentHash,
+		PackageObjectKey: p.objectKey,
+		Report:           p.report,
 	})
 	if err != nil {
 		return gen.SkillVersion{}, false, err

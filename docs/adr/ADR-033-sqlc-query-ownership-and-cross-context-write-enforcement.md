@@ -42,6 +42,8 @@ Platform DDD 審視報告把這列為 P1，並指出這與 ADR-002「每個模�
 
 1. **帳號刪除 purge（6 條，`identity` → `analytics`／`testlab`／`run`／`registry`／`ingest`）**：`identity` 的 purge 事務直接清掉五個 context 的列。正解是 purge 只發 `account.deletion_due`，各 context 訂閱後自清（Outbox 已具備此能力，ADR-008）；代價是刪除從單一交易變成最終一致，需要先定義「清完」的判準。
 2. **ingest 寫 registry（3 條）**：AGENTS.md 指定 `ingest` 是「版本寫入的唯一驗證路徑」，於是它直接寫 `skills`／`skill_versions`。正解是 `registry` 提供一支要求驗證憑據的 write API，`ingest` 呼叫它而非呼叫 query——驗證仍在 ingest，寫入回到 owner。
+
+    **2026-08-20 已執行**：`registry` 新增 `CreateSkillFromPackage`／`CreateVersionFromPackage`／`UpdateSummaryFromPackage`，三者收呼叫端的 `pgx.Tx`（不自開交易，否則會拆散 INGEST-009 要求的同交易投影與 audit）並以 `skillpkg.Report` 為參數——驗證產物本身就是決定寫什麼的輸入，不另發明誰都能構造的憑據型別。`ingest` → `registry` 同批加入 ADR-032 附錄 A 與 depguard 白名單，三條 `allow:` 條目移除。
 3. **搜尋索引投影（3 條，`registry`／`ingest` → `catalog`）**：`search_documents` 是 `catalog` 的投影，卻由來源資料的 owner 直接 upsert。正解是索引寫入收到 `catalog` 的 projection 服務後面，上游只發事件。
 4. **旗標與代掃（3 條）**：`catalog` 寫 `skills.access_restriction`、`objreconcile` 代 `packaging`／`testlab` 更新它們的列。正解分別是 `registry` 開一支受限的 restriction 寫入 API，以及掃描器只回報差異、由 owner context 決定怎麼收。
 

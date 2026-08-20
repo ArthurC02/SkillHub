@@ -121,8 +121,11 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 | `eval` → `ingest`（SaveVersion 等） | Customer–Supplier，合法——採納建議必須重用匯入的完整驗證管線（M4 PACK-002 裁定；第二條版本建立路徑＝第二個真相） | 保留 |
 | `packaging` → `testlab` | 同步查詢，合法 | 保留 |
 | `catalog` → `analytics` | 投影事實，合法 | 保留 |
+| `ingest` → `registry`（匯入路徑寫入 skills／skill_versions） | Customer–Supplier，同步寫入，合法——驗證管線在 ingest，資料表的寫入回到 owner | 保留 |
 | 各 context → `identity`（SessionUser／Workspace scope） | 鐵律 3 的入口，合法 | 保留 |
 
 2026-08-20：DDD-006 完成——三個 context 對 `ingest` 的依賴隨純函式移入 `skillpkg` 而消滅並移入 deny；`eval` → `ingest` 合法化如上。
 
 2026-08-20：DDD-005 完成，`run` → `eval` 已事件化並移入 deny。終態轉移只入隊 `run_cleanup`（同 context 內部工序），評估改由 `run.succeeded`／`run.failed` 的 outbox consumer（`internal/eval` 的 `RunEventConsumer`）觸發，故該列自白名單移除。
+
+2026-08-20：ADR-033 清除路徑 2 完成——`ingest` 不再直接呼叫 `registry` 的 `CreateSkill`／`CreateSkillVersion`／`UpdateSkillSummary`，改呼叫 `registry` 新增的三支 import 寫入 API（`CreateSkillFromPackage`／`CreateVersionFromPackage`／`UpdateSummaryFromPackage`）。該三支收呼叫端的 `pgx.Tx`、不自開交易，因此版本列、搜尋投影（INGEST-009）與 audit 事件仍在同一個交易內（鐵律 9）。`ingest` → `registry` 因此自 deny 移入白名單（上表新增一列），`db/query-owners.yaml` 的三條對應容忍條目同批移除。

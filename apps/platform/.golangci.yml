@@ -137,6 +137,11 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
+        # ingest -> registry is legal (Customer–Supplier): ingest owns the only
+        # verified version-write path, registry owns skills/skill_versions, so
+        # the import calls registry's write API inside its own transaction
+        # instead of reaching past the owner into the queries
+        # (ADR-033 clearance path 2, 2026-08-20).
         ingest:
           files:
             - "**/internal/ingest/**"
@@ -151,8 +156,6 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
-            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/run
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
