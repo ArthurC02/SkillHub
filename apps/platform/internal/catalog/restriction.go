@@ -10,6 +10,16 @@ package catalog
 // buys a tidier package boundary and pays for it with two places that can
 // disagree about which codes exist.
 //
+// 2026-08-20 (ADR-033 clearance path 4) split that finer than "all here or all
+// there", and the objection above survives untouched: the reason codes, the
+// sentences, the two HTTP routes, the authorization check and the audit event
+// are all still in this file, so there is still exactly one place that knows
+// which codes exist. What moved is the UPDATE of skills.access_restriction,
+// which is now registry.SetAccessRestriction — `skills` is registry's table, and
+// writing one column of it is not a policy anyone can disagree with this file
+// about. It takes this package's transaction, so the lock, the write and the
+// audit event are still one commit.
+//
 // Scope of what this replaces: before it, setting or lifting a hold meant a
 // reviewer running tools/content/restrict-anthropic-sa-display.sql by hand. That
 // path had no authorization check and left no audit event, which is precisely
@@ -37,6 +47,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/registry"
 )
 
 // maxOperatorNoteBytes caps the free-text note. It is the one piece of operator
@@ -159,9 +170,9 @@ func (s *Service) ChangeRestriction(ctx context.Context, skillID, actor pgtype.U
 	if err != nil {
 		return nil, err
 	}
-	if err := q.SetSkillAccessRestriction(ctx, gen.SetSkillAccessRestrictionParams{
-		ID: skillID, AccessRestriction: reason,
-	}); err != nil {
+	// registry owns the column; this package owns the decision (see the file
+	// comment). Same transaction, so the audit event below still commits with it.
+	if err := registry.SetAccessRestriction(ctx, tx, skillID, reason); err != nil {
 		return nil, err
 	}
 	// The note is operator prose about a platform decision, not user content, so

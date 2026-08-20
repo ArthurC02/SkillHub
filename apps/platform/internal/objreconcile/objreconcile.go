@@ -27,6 +27,7 @@ package objreconcile
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -66,9 +67,31 @@ type ObjectStore interface {
 	Remove(ctx context.Context, key string) error
 }
 
+// MarkFunc applies one owner context's correction to one of its own rows.
+//
+// The two writes this sweep needs are injected rather than imported: `artifacts`
+// belongs to packaging and `datasets` to testlab, while this package is a
+// generic scanner with no domain rules (ADR-032 §1). Importing either context
+// here would point a generic subdomain at a core one — the layering upside down
+// — so the composition root wires the owners' functions in instead and this
+// package keeps knowing only that something needs correcting (ADR-033 clearance
+// path 4).
+//
+// It takes a *gen.Queries and not a pool because the caller decides the
+// transaction: purgeExpired writes on the pool, markLost writes inside the
+// transaction that also carries the audit event.
+type MarkFunc func(ctx context.Context, q *gen.Queries, id pgtype.UUID) error
+
 type Service struct {
 	Pool  *pgxpool.Pool
 	Store ObjectStore
+	// The owner writes, both required. Sweep refuses to run without them rather
+	// than skipping the half it cannot apply: a sweep that silently corrects
+	// nothing looks exactly like a sweep that found nothing to correct, and the
+	// difference would only surface as users being served bytes that are not
+	// there.
+	RecordArtifactPurged MarkFunc
+	RecordDatasetLost    MarkFunc
 }
 
 // Args carries nothing: the work is whatever the database currently claims, and
@@ -90,6 +113,12 @@ func (w *Worker) Work(ctx context.Context, _ *river.Job[Args]) error {
 // Sweep is one pass. Exported so cmd/worker and the integration tests can run it
 // directly rather than waiting for a timer.
 func (s *Service) Sweep(ctx context.Context) error {
+	// Before the store check, not after: a deployment with no store legitimately
+	// has nothing to do, but a service that was wired without its owner writes is
+	// a composition bug and must not be able to hide behind that.
+	if s.RecordArtifactPurged == nil || s.RecordDatasetLost == nil {
+		return errors.New("objreconcile: owner write functions not injected; refusing to sweep")
+	}
 	if s.Store == nil {
 		return nil // no store wired: nothing to reconcile against
 	}
@@ -125,7 +154,7 @@ func (s *Service) purgeExpired(ctx context.Context) error {
 				"artifact_id", pgconv.UUIDString(row.ID), "error", err)
 			continue
 		}
-		if err := q.MarkArtifactPurged(ctx, row.ID); err != nil {
+		if err := s.RecordArtifactPurged(ctx, q, row.ID); err != nil {
 			return err
 		}
 		slog.Info("download artifact purged at retention", "artifact_id", pgconv.UUIDString(row.ID))
@@ -150,7 +179,7 @@ func (s *Service) checkArtifacts(ctx context.Context) error {
 			continue
 		}
 		if err := s.markLost(ctx, kindArtifact, row.ID, row.WorkspaceID, row.ObjectKey,
-			func(q *gen.Queries) error { return q.MarkArtifactPurged(ctx, row.ID) },
+			func(q *gen.Queries) error { return s.RecordArtifactPurged(ctx, q, row.ID) },
 			audit.ResourceArtifact); err != nil {
 			return err
 		}
@@ -176,7 +205,7 @@ func (s *Service) checkDatasets(ctx context.Context) error {
 			continue
 		}
 		if err := s.markLost(ctx, kindDataset, row.ID, row.WorkspaceID, row.ObjectKey,
-			func(q *gen.Queries) error { return q.MarkDatasetObjectLost(ctx, row.ID) },
+			func(q *gen.Queries) error { return s.RecordDatasetLost(ctx, q, row.ID) },
 			audit.ResourceDataset); err != nil {
 			return err
 		}

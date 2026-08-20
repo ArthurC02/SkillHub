@@ -84,6 +84,13 @@ linters:
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
         # catalog -> analytics is legal (projection facts).
+        # catalog -> registry is legal (Customer–Supplier): the licensing hold is
+        # catalog's decision — the reason codes, the rendered sentences, the
+        # operator routes and the audit event all live there — but the flag is a
+        # column of registry's `skills` table, so the write goes through
+        # registry.SetAccessRestriction inside catalog's own transaction instead
+        # of reaching past the owner into the query
+        # (ADR-033 clearance path 4, 2026-08-20).
         catalog:
           files:
             - "**/internal/catalog/**"
@@ -96,8 +103,6 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
-            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/run
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"

@@ -20,8 +20,22 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/objreconcile"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/packaging"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/policy"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 )
+
+// newSweep builds the reconciler the way cmd/worker does: the two row
+// corrections belong to packaging and testlab and reach the generic scanner by
+// injection (ADR-033 clearance path 4), so a test that omitted them would only
+// prove the fail-closed guard.
+func newSweep(pool *pgxpool.Pool, store objreconcile.ObjectStore) *objreconcile.Service {
+	return &objreconcile.Service{
+		Pool: pool, Store: store,
+		RecordArtifactPurged: packaging.MarkArtifactPurged,
+		RecordDatasetLost:    testlab.MarkDatasetObjectLost,
+	}
+}
 
 // Exists completes objreconcile.ObjectStore over the in-memory store the rest of
 // these tests already use. A key that is not in the map is missing, which is the
@@ -336,7 +350,7 @@ func TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway(t *testing.T) {
 		t.Fatal("an expired artifact is still being served")
 	}
 
-	sweep := &objreconcile.Service{Pool: pool, Store: a.packages}
+	sweep := newSweep(pool, a.packages)
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -371,7 +385,7 @@ func TestTheReconcilerNeedsTwoRoundsBeforeItMarksAMissingObject(t *testing.T) {
 	art := buildDownload(t, a, pool, c, "vanishing-skill")
 	delete(a.packages, "downloads/"+c.workspaceID+"/"+art.ContentHash+".zip") // the bytes go behind the platform's back
 
-	sweep := &objreconcile.Service{Pool: pool, Store: a.packages}
+	sweep := newSweep(pool, a.packages)
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -420,7 +434,7 @@ func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 	key := "downloads/" + c.workspaceID + "/" + art.ContentHash + ".zip"
 	bytes := a.packages[key]
 
-	sweep := &objreconcile.Service{Pool: pool, Store: a.packages}
+	sweep := newSweep(pool, a.packages)
 	delete(a.packages, key)
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatal(err)
@@ -460,7 +474,7 @@ func TestTheReconcilerCorrectsADatasetThatClaimsAMissingFile(t *testing.T) {
 	_, testCaseID := newTestCase(t, pool, a, c, "reconcile")
 	datasetID, objectKey := seedDataset(t, pool, a, c, testCaseID)
 
-	sweep := &objreconcile.Service{Pool: pool, Store: a.packages}
+	sweep := newSweep(pool, a.packages)
 	delete(a.packages, objectKey)
 	for range 2 {
 		if err := sweep.Sweep(context.Background()); err != nil {

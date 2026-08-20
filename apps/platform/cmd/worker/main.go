@@ -29,11 +29,13 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/outbox"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/packaging"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
 
@@ -166,6 +168,7 @@ type workerSet struct {
 	Evaluations *eval.Service
 	RunEvents   *eval.RunEventConsumer
 	Events      *outbox.Dispatcher
+	Objects     *objreconcile.Service
 	Queue       *river.Client[pgx.Tx]
 	// WorkerKinds is every job kind that has a worker registered, and Scheduled is
 	// every kind this process enqueues on a timer. Recorded while wiring because
@@ -243,7 +246,18 @@ func buildWorkers(pool *pgxpool.Pool, deps workerDeps) (*workerSet, error) {
 	// SEC-006 retention and 04 丙-9's object-existence check, one sweep: expired
 	// download packages lose their bytes, and rows whose object has gone missing
 	// stop claiming it is there.
-	addWorker(set, workers, &objreconcile.Worker{Svc: &objreconcile.Service{Pool: pool, Store: deps.Store}})
+	//
+	// The sweep finds the discrepancies; the two row corrections are the owners'
+	// own writes and are injected here (ADR-033 clearance path 4). objreconcile is
+	// a generic scanner and must not import packaging or testlab, so this
+	// composition root is the only place the three meet. Sweep fails closed if
+	// either is left unset — see main_test.go.
+	set.Objects = &objreconcile.Service{
+		Pool: pool, Store: deps.Store,
+		RecordArtifactPurged: packaging.MarkArtifactPurged,
+		RecordDatasetLost:    testlab.MarkDatasetObjectLost,
+	}
+	addWorker(set, workers, &objreconcile.Worker{Svc: set.Objects})
 
 	// Periodic jobs run on the elected leader only, so several worker processes
 	// do not each sweep. RunOnStart is what makes the supervisor the restart

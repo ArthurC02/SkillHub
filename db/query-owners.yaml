@@ -118,18 +118,9 @@ allow:
   PurgeUnreferencedSkills: identity
   PurgeUnreferencedSkillSources: identity
 
-  # drift: DDD-015 — 下架旗標是 catalog 的可見性決策，卻寫在 registry 的
-  # skills.access_restriction；正解是 registry 開一支受限的 restriction 寫入 API。
-  SetSkillAccessRestriction: catalog
-
   # drift: DDD-015 — search_documents 是 catalog 的索引投影，目前由來源資料的
   # owner 直接 upsert；正解是把索引寫入收到 catalog 的 projection 服務後面
   # （registry／ingest 只發事件）。
   UpsertSearchDocument: registry
   DeleteSearchDocument: registry
   UpsertSearchDocumentEnriched: ingest
-
-  # drift: DDD-015 — objreconcile 是 generic 掃描器，代 packaging／testlab
-  # 更新它們的列；正解是掃描器只回報差異，由 owner context 決定怎麼收。
-  MarkArtifactPurged: objreconcile
-  MarkDatasetObjectLost: objreconcile

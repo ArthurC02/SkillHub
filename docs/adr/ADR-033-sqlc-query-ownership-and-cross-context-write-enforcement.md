@@ -47,6 +47,11 @@ Platform DDD 審視報告把這列為 P1，並指出這與 ADR-002「每個模�
 3. **搜尋索引投影（3 條，`registry`／`ingest` → `catalog`）**：`search_documents` 是 `catalog` 的投影，卻由來源資料的 owner 直接 upsert。正解是索引寫入收到 `catalog` 的 projection 服務後面，上游只發事件。
 4. **旗標與代掃（3 條）**：`catalog` 寫 `skills.access_restriction`、`objreconcile` 代 `packaging`／`testlab` 更新它們的列。正解分別是 `registry` 開一支受限的 restriction 寫入 API，以及掃描器只回報差異、由 owner context 決定怎麼收。
 
+    **2026-08-20 已執行**（兩半各自的做法不同）：
+
+    - **旗標**：`registry` 新增 `SetAccessRestriction(ctx, tx, skillID, reason *string)`，收 `catalog` 的交易、不自開交易，因此鎖列、寫欄位與寫 audit 仍在同一個 commit（鐵律 9）。它唯一強制的規則是 0023 的 CHECK（空字串不是 code 也不是「無旗標」）；理由碼、可顯示的說明句、operator 路由、授權檢查與 audit 事件**全部留在 `catalog`**，故 `catalog/restriction.go` 檔頭原先反對「write endpoint 搬 registry ＋ export note map」的論證仍然成立而未被違反——沒有第二個地方知道有哪些 code。`catalog` → `registry` 同批加入 ADR-032 附錄 A 與 depguard 白名單。
+    - **代掃**：`packaging.MarkArtifactPurged` 與 `testlab.MarkDatasetObjectLost` 由 owner context 提供，`objreconcile.Service` 以兩個 function 欄位（`RecordArtifactPurged`／`RecordDatasetLost`）由 composition root（`cmd/worker` 的 `buildWorkers`）注入。**刻意不用 import**：`objreconcile` 是 Generic，import 領域套件會把 ADR-032 的分層倒過來，故此半邊沒有新增任何跨 context import，附錄 A 不變。兩支函式收呼叫端的 `*gen.Queries`，所以 retention 半邊仍是 pool 上的單一寫入、existence 半邊仍與 audit 事件及 sighting 清除同交易。漏注入時 `Sweep` fail closed（回錯而非略過），由 `objreconcile` 與 `cmd/worker` 兩處測試守住。
+
 清除順序建議照審視報告的敏感度：`skills`／`skill_versions`（路徑 2）→ `download_artifacts`（路徑 4 的 objreconcile 半邊）→ 其餘。
 
 ## 後果

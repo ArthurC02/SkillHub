@@ -76,6 +76,14 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 		t.Error("LLM was configured but the judge or the suggester did not get it")
 	}
 
+	// The object reconciler's two corrections belong to packaging and testlab
+	// (ADR-033 clearance path 4) and only this file puts them there. Unset, the
+	// hourly sweep refuses to run, so expired download packages keep their bytes
+	// and rows keep claiming objects that are gone.
+	if set.Objects.RecordArtifactPurged == nil || set.Objects.RecordDatasetLost == nil {
+		t.Error("object reconciler is missing an owner write function")
+	}
+
 	// The outbox consumer's two function fields: one reads the standing
 	// evaluation, the other enqueues. A nil Insert panics on the first finished
 	// run rather than at boot.
