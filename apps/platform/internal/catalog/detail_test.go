@@ -67,8 +67,8 @@ func TestRiskSummarySeparatesFileScriptsFromEmbeddedCode(t *testing.T) {
 
 // An unreadable package must never look like a clean one (DISC-004).
 func TestDefaultRiskIsUnavailableNotClean(t *testing.T) {
-	h := &Handler{} // no store configured
-	if _, ok := h.scanPackage(t.Context(), "packages/missing.zip"); ok {
+	s := &Service{} // no store configured
+	if _, ok := s.scanPackage(t.Context(), "packages/missing.zip"); ok {
 		t.Fatal("scanPackage reported success with no object store")
 	}
 }

@@ -27,7 +27,7 @@ func TestPublicSearchDoesNotReportDatabaseFailureAsNoResults(t *testing.T) {
 	cancel()
 	req := httptest.NewRequest(http.MethodGet, "/api/skills/search?q=spreadsheet", nil).WithContext(ctx)
 	rec := httptest.NewRecorder()
-	(&Handler{Pool: pool}).PublicSearch(rec, req)
+	(&Handler{Svc: &Service{Pool: pool}}).PublicSearch(rec, req)
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("database failure returned %d, want 500; body=%s", rec.Code, rec.Body.String())
 	}
@@ -43,7 +43,7 @@ func TestPublicSearchRejectsOversizedQueryBeforeLLMOrDatabase(t *testing.T) {
 		nil,
 	)
 	rec := httptest.NewRecorder()
-	(&Handler{}).PublicSearch(rec, req)
+	(&Handler{Svc: &Service{}}).PublicSearch(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("oversized query returned %d, want 400; body=%s", rec.Code, rec.Body.String())
 	}

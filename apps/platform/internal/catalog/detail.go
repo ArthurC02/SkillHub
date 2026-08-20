@@ -301,13 +301,26 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	ctx := r.Context()
-	q := gen.New(h.Pool)
+	out, err := h.Svc.SkillDetail(r.Context(), skill)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "skill detail failed")
+		return
+	}
+	// Scope is the handler's answer, not the service's: it records which of the
+	// two reads resolveSkill was allowed to make (iron rule 3).
+	out.Scope = scope
+	h.recordDetailView(r, skill.ID)
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// SkillDetail assembles the DISC-006/008 body for an already-resolved skill.
+// Scope is left blank — the caller owns it.
+func (s *Service) SkillDetail(ctx context.Context, skill gen.Skill) (skillDetail, error) {
+	q := gen.New(s.Pool)
 
 	out := skillDetail{
 		SkillID:     uuidString(skill.ID),
 		Name:        skill.Name,
-		Scope:       scope,
 		Tier:        tierLabel(),
 		Limitations: []limitation{},
 		Derivation:  derivation(skill),
@@ -333,8 +346,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 			out.Summary = e.Summary
 		}
 	} else if !errors.Is(err, pgx.ErrNoRows) {
-		httpx.WriteError(w, http.StatusInternalServerError, "skill detail failed")
-		return
+		return skillDetail{}, err
 	}
 
 	ver, err := q.GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
@@ -343,12 +355,10 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, pgx.ErrNoRows) {
 		// A skill with no version yet (a fork created ahead of its content) is a
 		// real state, not an error. Everything version-derived stays absent.
-		httpx.WriteJSON(w, http.StatusOK, out)
-		return
+		return out, nil
 	}
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "skill detail failed")
-		return
+		return skillDetail{}, err
 	}
 	out.Version = &versionInfo{
 		VersionID:     uuidString(ver.ID),
@@ -368,8 +378,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 		out.Compat.MeasuredAt = timeString(c.MeasuredAt)
 		out.Compat.Note = compatMeasuredNote
 	} else if !errors.Is(err, pgx.ErrNoRows) {
-		httpx.WriteError(w, http.StatusInternalServerError, "skill detail failed")
-		return
+		return skillDetail{}, err
 	}
 
 	if ver.SourceID.Valid {
@@ -377,12 +386,11 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			out.Source = sourceFrom(src)
 		} else if !errors.Is(err, pgx.ErrNoRows) {
-			httpx.WriteError(w, http.StatusInternalServerError, "skill detail failed")
-			return
+			return skillDetail{}, err
 		}
 	}
 
-	if report, ok := h.scanPackage(ctx, ver.PackageObjectKey); ok {
+	if report, ok := s.scanPackage(ctx, ver.PackageObjectKey); ok {
 		out.Risk = summarizeRisk(report)
 		out.Compat.SpecValidation = specValidation(report)
 		out.Limitations = append(out.Limitations, scanDerivedLimitations(report)...)
@@ -390,8 +398,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 			out.AllowedTools = report.Manifest.AllowedTools
 		}
 	}
-	h.recordDetailView(r, skill.ID)
-	httpx.WriteJSON(w, http.StatusOK, out)
+	return out, nil
 }
 
 // recordDetailView is funnel segment 1's second half (02:O11Y-004): somebody who
@@ -406,7 +413,7 @@ func (h *Handler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 // is absent for anonymous visitors, which is most of this segment (DISC-010), and
 // session_id is what stitches those to whatever they do after signing in.
 func (h *Handler) recordDetailView(r *http.Request, skillID pgtype.UUID) {
-	if !h.Analytics.Enabled() {
+	if !h.Svc.Analytics.Enabled() {
 		return // no lookup, and above all no extra query, when nothing is collected
 	}
 	var workspace pgtype.UUID
@@ -416,7 +423,7 @@ func (h *Handler) recordDetailView(r *http.Request, skillID pgtype.UUID) {
 		}
 	}
 	arrival, rank := analytics.ArrivalFromRequest(r)
-	h.Analytics.SkillDetailViewed(r.Context(), workspace, skillID, arrival, rank)
+	h.Svc.Analytics.SkillDetailViewed(r.Context(), workspace, skillID, arrival, rank)
 }
 
 // SkillFiles handles GET /api/skills/{id}/files (DISC-007): the SKILL.md text
@@ -436,28 +443,52 @@ func (h *Handler) SkillFiles(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusForbidden, rest.Note)
 		return
 	}
-	ctx := r.Context()
-	ver, err := gen.New(h.Pool).GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
-		SkillID: skill.ID, WorkspaceID: skill.WorkspaceID,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		httpx.WriteError(w, http.StatusNotFound, "skill has no saved version")
+	out, err := h.Svc.SkillFiles(r.Context(), skill)
+	switch {
+	case errors.Is(err, errNoSavedVersion):
+		httpx.WriteError(w, http.StatusNotFound, errNoSavedVersion.Error())
 		return
-	}
-	if err != nil {
+	case errors.Is(err, errPackageUnreadable):
+		httpx.WriteError(w, http.StatusServiceUnavailable, errPackageUnreadable.Error())
+		return
+	case err != nil:
 		httpx.WriteError(w, http.StatusInternalServerError, "skill files failed")
 		return
 	}
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
 
-	data, err := h.storeGet(ctx, ver.PackageObjectKey)
+// errNoSavedVersion and errPackageUnreadable are the two non-500 failures of the
+// files view: nothing was ever stored for this skill, and something was stored
+// but cannot be read back. They stay apart because the second is an outage of
+// the object store and the first is a permanent property of the skill.
+var (
+	errNoSavedVersion    = errors.New("skill has no saved version")
+	errPackageUnreadable = errors.New("stored package is not readable")
+)
+
+// SkillFiles reads the DISC-007 view — SKILL.md text and the file tree — off the
+// skill's newest stored version. The 0023 licensing hold is checked by the
+// caller, before this runs: the hold is on reproducing the bytes, and this is
+// the only thing that reproduces them.
+func (s *Service) SkillFiles(ctx context.Context, skill gen.Skill) (skillFiles, error) {
+	ver, err := gen.New(s.Pool).GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
+		SkillID: skill.ID, WorkspaceID: skill.WorkspaceID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return skillFiles{}, errNoSavedVersion
+	}
 	if err != nil {
-		httpx.WriteError(w, http.StatusServiceUnavailable, "stored package is not readable")
-		return
+		return skillFiles{}, err
+	}
+
+	data, err := s.storeGet(ctx, ver.PackageObjectKey)
+	if err != nil {
+		return skillFiles{}, errPackageUnreadable
 	}
 	fsys, err := skillpkg.PackageFS(data)
 	if err != nil {
-		httpx.WriteError(w, http.StatusServiceUnavailable, "stored package is not readable")
-		return
+		return skillFiles{}, errPackageUnreadable
 	}
 
 	out := skillFiles{
@@ -484,7 +515,7 @@ func (h *Handler) SkillFiles(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	httpx.WriteJSON(w, http.StatusOK, out)
+	return out, nil
 }
 
 // restrictionOf turns the stored reason code into the block the API returns.
@@ -546,9 +577,8 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (gen.Skil
 		return gen.Skill{}, "", false
 	}
 	ctx := r.Context()
-	q := gen.New(h.Pool)
 
-	skill, err := q.GetCatalogSkill(ctx, id)
+	skill, err := h.Svc.CatalogSkill(ctx, id)
 	if err == nil {
 		// INGEST-010: a taken-down skill was public and its URL is still in
 		// circulation, so it answers 410 rather than 404 — the content existed
@@ -574,7 +604,7 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (gen.Skil
 		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return gen.Skill{}, "", false
 	}
-	skill, err = q.GetSkill(ctx, gen.GetSkillParams{ID: id, WorkspaceID: ws.ID})
+	skill, err = h.Svc.WorkspaceSkill(ctx, id, ws.ID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
 		return gen.Skill{}, "", false
@@ -586,18 +616,30 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (gen.Skil
 	return skill, "private", true
 }
 
-func (h *Handler) storeGet(ctx context.Context, key string) ([]byte, error) {
-	if h.Store == nil {
+// CatalogSkill and WorkspaceSkill are the two reads resolveSkill picks between.
+// Neither takes a scope from the request: the first has catalog membership baked
+// into the SQL, the second takes the workspace the session resolved to (iron
+// rule 3).
+func (s *Service) CatalogSkill(ctx context.Context, id pgtype.UUID) (gen.Skill, error) {
+	return gen.New(s.Pool).GetCatalogSkill(ctx, id)
+}
+
+func (s *Service) WorkspaceSkill(ctx context.Context, id, workspaceID pgtype.UUID) (gen.Skill, error) {
+	return gen.New(s.Pool).GetSkill(ctx, gen.GetSkillParams{ID: id, WorkspaceID: workspaceID})
+}
+
+func (s *Service) storeGet(ctx context.Context, key string) ([]byte, error) {
+	if s.Store == nil {
 		return nil, errors.New("catalog: no object store configured")
 	}
-	return h.Store.Get(ctx, key)
+	return s.Store.Get(ctx, key)
 }
 
 // scanPackage re-validates the stored package. A package that cannot be read is
 // not a failed request: the detail view still answers, with the risk block
 // saying the scan is unavailable rather than implying a clean one.
-func (h *Handler) scanPackage(ctx context.Context, key string) (skillpkg.Report, bool) {
-	data, err := h.storeGet(ctx, key)
+func (s *Service) scanPackage(ctx context.Context, key string) (skillpkg.Report, bool) {
+	data, err := s.storeGet(ctx, key)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}

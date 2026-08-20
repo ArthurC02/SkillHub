@@ -22,6 +22,7 @@ package catalog
 // promise, not a feature. See 03:SEC-011 for the honest state.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -92,10 +93,8 @@ func (h *Handler) ClearRestriction(w http.ResponseWriter, r *http.Request) {
 	h.changeRestriction(w, r, nil, body.Note, audit.ActionSkillUnrestrict)
 }
 
-// changeRestriction is the shared body: lock the row, write the column, write
-// the audit event, commit. One transaction, so a hold can never be in force
-// without the event that explains it, or explained without being in force
-// (iron rule 9).
+// changeRestriction is the shared handler half: validate the operator's input,
+// name the actor, and map the outcome onto a status code.
 func (h *Handler) changeRestriction(w http.ResponseWriter, r *http.Request, reason *string, note, action string) {
 	note = strings.TrimSpace(note)
 	if note == "" {
@@ -113,54 +112,12 @@ func (h *Handler) changeRestriction(w http.ResponseWriter, r *http.Request, reas
 	}
 	user, _ := identity.SessionUser(r.Context())
 
-	ctx := r.Context()
-	tx, err := h.Pool.Begin(ctx)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "restriction change failed")
-		return
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	q := gen.New(tx)
-
-	before, err := q.LockSkillForRestriction(ctx, skillID)
-	if errors.Is(err, pgx.ErrNoRows) {
+	previous, err := h.Svc.ChangeRestriction(r.Context(), skillID, user.ID, reason, note, action)
+	if errors.Is(err, errSkillNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
 		return
 	}
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "restriction change failed")
-		return
-	}
-	if err := q.SetSkillAccessRestriction(ctx, gen.SetSkillAccessRestrictionParams{
-		ID: skillID, AccessRestriction: reason,
-	}); err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "restriction change failed")
-		return
-	}
-	// The note is operator prose about a platform decision, not user content, so
-	// it belongs in the event rather than beside it: 02:SEC-011 requires the
-	// reason to be *in* the audit event, and the skills row has no column for one
-	// (unlike a takedown, whose reason lives on the row).
-	//
-	// workspace_id is the affected skill's, which is how a cross-workspace action
-	// stays reviewable per workspace. Recording it is not scope: nothing about
-	// that workspace was read.
-	if err := audit.Log(ctx, q, audit.Event{
-		Actor:        user.ID,
-		Workspace:    before.WorkspaceID,
-		Action:       action,
-		ResourceType: audit.ResourceSkill,
-		ResourceID:   skillID,
-		Metadata: map[string]any{
-			"before": nullableString(before.AccessRestriction),
-			"after":  nullableString(reason),
-			"note":   note,
-		},
-	}); err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "restriction change failed")
-		return
-	}
-	if err := tx.Commit(ctx); err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "restriction change failed")
 		return
 	}
@@ -177,8 +134,61 @@ func (h *Handler) changeRestriction(w http.ResponseWriter, r *http.Request, reas
 			Reason: *reason,
 			Note:   restrictionNotes[*reason],
 		},
-		"previous_reason": nullableString(before.AccessRestriction),
+		"previous_reason": nullableString(previous),
 	})
+}
+
+// ChangeRestriction is the shared write: lock the row, write the column, write
+// the audit event, commit. One transaction, so a hold can never be in force
+// without the event that explains it, or explained without being in force
+// (iron rule 9). It returns the reason that was in force before, which is what
+// the response echoes back to the operator.
+func (s *Service) ChangeRestriction(ctx context.Context, skillID, actor pgtype.UUID, reason *string, note, action string) (*string, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := gen.New(tx)
+
+	before, err := q.LockSkillForRestriction(ctx, skillID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, errSkillNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := q.SetSkillAccessRestriction(ctx, gen.SetSkillAccessRestrictionParams{
+		ID: skillID, AccessRestriction: reason,
+	}); err != nil {
+		return nil, err
+	}
+	// The note is operator prose about a platform decision, not user content, so
+	// it belongs in the event rather than beside it: 02:SEC-011 requires the
+	// reason to be *in* the audit event, and the skills row has no column for one
+	// (unlike a takedown, whose reason lives on the row).
+	//
+	// workspace_id is the affected skill's, which is how a cross-workspace action
+	// stays reviewable per workspace. Recording it is not scope: nothing about
+	// that workspace was read.
+	if err := audit.Log(ctx, q, audit.Event{
+		Actor:        actor,
+		Workspace:    before.WorkspaceID,
+		Action:       action,
+		ResourceType: audit.ResourceSkill,
+		ResourceID:   skillID,
+		Metadata: map[string]any{
+			"before": nullableString(before.AccessRestriction),
+			"after":  nullableString(reason),
+			"note":   note,
+		},
+	}); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return before.AccessRestriction, nil
 }
 
 func decodeRestrictionRequest(w http.ResponseWriter, r *http.Request) (restrictionRequest, bool) {

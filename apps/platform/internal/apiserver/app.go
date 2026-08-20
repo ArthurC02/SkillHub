@@ -160,8 +160,10 @@ func NewApp(cfg Config) (*App, error) {
 			Auth:     auth,
 			Importer: &ingest.Handler{Svc: versions, Identity: auth.Service},
 			Search: &catalog.Handler{
-				Pool: cfg.Pool, Identity: auth.Service, LLMClient: cfg.LLM,
-				Store: cfg.Store, Analytics: funnel,
+				Svc: &catalog.Service{
+					Pool: cfg.Pool, LLM: cfg.LLM, Store: cfg.Store, Analytics: funnel,
+				},
+				Identity: auth.Service,
 			},
 			Registry: &registry.Handler{
 				Svc:      &registry.Service{Pool: cfg.Pool, Store: cfg.Store},
