@@ -2,11 +2,15 @@ package main
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -154,7 +158,8 @@ func queryOwnerProblems(root string) []string {
 			}
 		}
 	}
-	return append(problems, immutableTableProblems(root, sections, queries)...)
+	problems = append(problems, immutableTableProblems(root, sections, queries)...)
+	return append(problems, rawSQLProblems(root, sections[rawSQLAllowSection])...)
 }
 
 // Postgres already refuses these writes: db/migrations attaches
@@ -446,4 +451,171 @@ func queryCallSites(internal string, names map[string]bool) (map[string][]callSi
 		return nil, err
 	}
 	return calls, nil
+}
+
+// ── 裸 SQL tripwire ────────────────────────────────────────────────────────
+//
+// 上面兩道檢查（ownership 與 immutable）都只看 db/queries/*.sql，前提是
+// **所有寫入都經過 sqlc**。這個前提目前成立，但沒有任何東西強制它：一行
+// `tx.Exec(ctx, "UPDATE skills SET ...")` 同時繞過 owner 宣告與 immutable 宣告，
+// 而且不會有人發現。這道檢查就是補那個洞。
+//
+// 抓得到：字面值直接交給 pgx 入口的 DML。
+// **抓不到**（這是 tripwire，不是證明，不要當它完備）：
+//   - `const q = "UPDATE ..."` 之後 `tx.Exec(ctx, q)`——SQL 不在呼叫點；
+//     apps/platform/internal/run/halt.go 的 reconcilerLastRun 就是這個形狀
+//     （它是 SELECT，不是違規，但同一個形狀換成 DML 這裡看不到）。
+//   - `fmt.Sprintf` / 字串串接組出來的 SQL（只看得到拼進去的字面片段）。
+//   - 走 database/sql、River migration、或 psql 之類 pgx 以外的路徑。
+//   - apps/platform 以外的程式。
+// 要真正封死只能走型別（把 Pool 收在只暴露 sqlc 的 wrapper 後面）；那是另一個
+// 決定，不是這道檢查。
+//
+// read 本來就不強制（ADR-033），所以裸 SELECT 一律放行；
+// eval/reconcile.go 的裸 SELECT 是已知的 read 盲點，記在 ADR-033 註記裡。
+
+// pgx 會收 SQL 字面值的入口。SendBatch 收的是 *pgx.Batch 不是 SQL，
+// 真正帶 SQL 的是 Batch.Queue；CopyFrom 收的是識別字不是語句，故不列入。
+var rawSQLEntryPoints = map[string]bool{
+	"Exec": true, "Query": true, "QueryRow": true, "Queue": true,
+}
+
+// 具名豁免所在的 section：key 是 repo 相對路徑，value 是理由（不得留空）。
+// 形狀比照 allow:／immutable_allow:——具名、有理由、失效即 FAIL。
+// section 不存在＝零條豁免，是最嚴格的預設，所以不列入必要 section。
+const rawSQLAllowSection = "raw_sql_allow"
+
+// 生成碼自己就是 sqlc／ogen 的輸出，不受這道檢查約束。
+var rawSQLSkippedDirs = []string{
+	"apps/platform/internal/platform/db/gen",
+	"apps/platform/internal/api/gen",
+}
+
+func rawSQLProblems(root string, allow map[string]string) []string {
+	var problems []string
+	hit := map[string]bool{}
+
+	for _, dir := range []string{"internal", "cmd"} {
+		base := filepath.Join(root, "apps", "platform", dir)
+		if _, err := os.Stat(base); err != nil {
+			continue // 測試 fixture 不一定兩個都有；真的缺了 ownership 檢查會先喊。
+		}
+		err := filepath.WalkDir(base, func(path string, entry os.DirEntry, err error) error {
+			if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+				return err
+			}
+			relative, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			relative = filepath.ToSlash(relative)
+			for _, skipped := range rawSQLSkippedDirs {
+				if strings.HasPrefix(relative, skipped+"/") {
+					return nil
+				}
+			}
+			found, err := rawDMLCallSites(path)
+			if err != nil {
+				return err
+			}
+			for _, site := range found {
+				if _, exempt := allow[relative]; exempt {
+					hit[relative] = true
+					continue
+				}
+				problems = append(problems, fmt.Sprintf(
+					"raw DML outside sqlc: %s:%d passes %q to %s; write it as a db/queries/*.sql query so ADR-033 can see it",
+					relative, site.line, site.sql, site.method))
+			}
+			return nil
+		})
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("apps/platform/%s: %v", dir, err))
+		}
+	}
+
+	// 失效的豁免要清掉，否則它默默罩住下一個寫進同一個檔的裸 DML。
+	for _, relative := range sortedKeys(allow) {
+		switch {
+		case strings.TrimSpace(allow[relative]) == "":
+			problems = append(problems, fmt.Sprintf(
+				"db/%s: %s.%s has no reason; name why it cannot be a sqlc query",
+				queryOwnersFile, rawSQLAllowSection, relative))
+		case !hit[relative]:
+			problems = append(problems, fmt.Sprintf(
+				"db/%s: %s.%s no longer contains raw DML; delete the entry",
+				queryOwnersFile, rawSQLAllowSection, relative))
+		}
+	}
+	sort.Strings(problems)
+	return problems
+}
+
+type rawSQLSite struct {
+	line   int
+	method string
+	sql    string
+}
+
+// rawDMLCallSites 解析單一 Go 檔，回報把含 DML 的字面值交給 pgx 入口的呼叫。
+// 判定沿用 isWriteStatement——SQL 只有一套解析。
+func rawDMLCallSites(path string) ([]rawSQLSite, error) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, path, nil, 0)
+	if err != nil {
+		return nil, err
+	}
+	var sites []rawSQLSite
+	ast.Inspect(file, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		selector, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || !rawSQLEntryPoints[selector.Sel.Name] {
+			return true
+		}
+		// SQL 是第一個帶字面值的引數（Exec(ctx, sql, …) 或 Queue(sql, …)）；
+		// 後面的是參數值，把它們一起看會讓 "delete" 這種值變成假警報。
+		for _, arg := range call.Args {
+			text := stringLiterals(arg)
+			if text == "" {
+				continue
+			}
+			if isWriteStatement(text) {
+				sites = append(sites, rawSQLSite{
+					line:   fset.Position(arg.Pos()).Line,
+					method: selector.Sel.Name,
+					sql:    sqlPrefix(text),
+				})
+			}
+			break
+		}
+		return true
+	})
+	return sites, nil
+}
+
+// stringLiterals 把一個引數子樹裡的字串字面值串起來，所以 `"UPDATE " + table`
+// 的常數半邊仍然看得到。非字面值的部分就是看不到——見上面的界限說明。
+func stringLiterals(node ast.Node) string {
+	var parts []string
+	ast.Inspect(node, func(n ast.Node) bool {
+		if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.STRING {
+			if value, err := strconv.Unquote(lit.Value); err == nil {
+				parts = append(parts, value)
+			}
+		}
+		return true
+	})
+	return strings.Join(parts, " ")
+}
+
+// sqlPrefix 把多行 SQL 壓成一行開頭，讓失敗訊息認得出是哪一段。
+func sqlPrefix(sql string) string {
+	flat := strings.Join(strings.Fields(sql), " ")
+	if len(flat) > 60 {
+		return flat[:60] + "…"
+	}
+	return flat
 }

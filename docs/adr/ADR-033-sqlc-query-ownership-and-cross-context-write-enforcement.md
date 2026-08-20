@@ -79,3 +79,38 @@ Platform DDD 審視報告把這列為 P1，並指出這與 ADR-002「每個模�
 
 - read ownership 何時開始強制，以及是否要先引入 read projection／ACL 型別（等路徑 3 完成後重新評估）。
 - 存量漂移清完後是否拆 sqlc per-context package（見「考慮過但拒絕」）。
+
+## 追加：裸 SQL 的盲點與 tripwire
+
+**2026-08-20 已執行**：上面整套強制有一個未被強制的前提——**所有寫入都經過 sqlc**。決策 2 掃的是 `db/queries/*.sql` 的 query 呼叫點，`immutable:` 段落看的也是 query body；一行 `tx.Exec(ctx, "UPDATE skills SET ...")` 同時繞過 ownership 與 immutable 兩道檢查，且沒有任何東西會發現。導入本 ADR 時這個洞是**空的**（見下方覆核），所以補防線不必先清存量，這是成本最低的時點。
+
+`automation-check` 因此新增第三道檢查（`tools/devctl/query_owners.go` 的「裸 SQL tripwire」）：`apps/platform/internal/**` 與 `apps/platform/cmd/**` 的非測試 Go 檔中，把含 INSERT／UPDATE／DELETE 的**字面值**交給 pgx 的 `Exec`／`Query`／`QueryRow`／`Queue` 即 FAIL，訊息指出檔案、行號與該段 SQL 開頭。生成目錄（`internal/platform/db/gen`、`internal/api/gen`）與 `_test.go` 不在範圍，理由同決策 6。DML 判定沿用既有的 `isWriteStatement`／`normalizeSQL`——SQL 只有一套解析。呼叫點以 `go/ast` 解析（決策後果一節提到的升級路徑，在這道檢查上先行採用），故多行 SQL 與跨行呼叫都看得到。`SendBatch` 收的是 `*pgx.Batch` 不是 SQL、`CopyFrom` 收的是識別字不是語句，故不列入入口；真正帶 SQL 的是 `Batch.Queue`。
+
+具名豁免在 `db/query-owners.yaml` 的 `raw_sql_allow:`，形狀比照 `allow:`／`immutable_allow:`：key 是 repo 相對路徑、value 是理由（留空即 FAIL），且**失效的豁免**（該檔已無裸 DML）同樣 FAIL。**目前零條。**
+
+### 這道檢查抓不到什麼
+
+它是 tripwire，不是證明。以下形狀一律看不到，**不要當它完備**：
+
+- `const q = "UPDATE ..."` 之後 `tx.Exec(ctx, q)`——SQL 不在呼叫點。`apps/platform/internal/run/halt.go` 的 `reconcilerLastRun` 就是這個形狀（它是 SELECT，不是違規，但同樣的形狀換成 DML 這裡看不到）。
+- `fmt.Sprintf` 或字串串接組出來的 SQL（只看得到拼進去的字面片段）。
+- pgx 以外的路徑：`database/sql`、River migration、psql。
+- `apps/platform` 以外的程式。
+
+要真正封死只能走型別——把 `pgxpool.Pool` 收在只暴露 sqlc 的 wrapper 後面，讓「拿得到 pool」本身變成不可能。那是另一個決策，成本與「拆 sqlc 成 per-context package」同級，同樣等存量漂移清完再評估。
+
+### 導入時的覆核結果
+
+`apps/platform/internal/**` 與 `cmd/**` 的非測試程式中，裸 SQL 呼叫共 8 處，**沒有一處是 DML**：
+
+| 位置 | 語句 | 性質 |
+| --- | --- | --- |
+| `eval/eval.go:497` | `SELECT pg_advisory_xact_lock(…)` | 序列化重評的 supersede/create 配對 |
+| `eval/reconcile.go:29` | 裸 `SELECT … FROM evaluations` | **已知的 read 盲點**，見下 |
+| `identity/service.go:73` | `SELECT pg_advisory_xact_lock(…)` | 序列化首次登入的競態 |
+| `identity/purge.go:94` | `SET LOCAL skillhub.purge = 'on'` | session 設定；`immutable_allow` 的資料庫側具名豁免 |
+| `outbox/outbox.go:130`、`:139` | `SELECT pg_try_advisory_lock(…)`／`pg_advisory_unlock(…)` | publisher 單一持有者 |
+| `packaging/packaging.go:580` | `SELECT pg_advisory_xact_lock(…)` | 序列化同 content hash 的打包 |
+| `run/halt.go:657` | `const reconcilerLastRun`（SELECT `river_job`） | 讀 River 內部表；且 SQL 不在呼叫點，本檢查看不到 |
+
+**`eval/reconcile.go:29` 記為已知的 read 盲點**：它直接 `Pool.Query` 讀 `evaluations`（自己 context 的表），read 本來就不強制（決策 3），所以**不是違規**；但它繞過了宣告——這條讀取不存在於 `db/query-owners.yaml`，未來 read ownership 真的開始強制時（見「待決策」），它不會自動被涵蓋，得先變成一條 query。記在這裡以免那天漏掉。

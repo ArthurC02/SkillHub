@@ -306,3 +306,112 @@ func TestIsWriteStatement(t *testing.T) {
 		}
 	}
 }
+
+func TestRawSQLProblems(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		path  string // relative to apps/platform/
+		body  string
+		allow map[string]string
+		want  string // substring of the expected single problem; empty means clean
+	}{
+		{
+			name: "sqlc call is clean",
+			path: "internal/run/service.go",
+			body: "func f(q Q) { q.CreateRun(ctx) }",
+		},
+		{
+			name: "raw UPDATE is blocked",
+			path: "internal/run/service.go",
+			body: `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
+			want: `internal/run/service.go:3 passes "UPDATE skills SET name = 'x'" to Exec`,
+		},
+		{
+			name: "raw DELETE is blocked",
+			path: "internal/eval/purge.go",
+			body: "func f(tx T) { tx.Exec(ctx, `DELETE FROM runs WHERE id = $1`, id) }",
+			want: `passes "DELETE FROM runs WHERE id = $1" to Exec`,
+		},
+		{
+			name: "raw INSERT is blocked",
+			path: "cmd/worker/main.go",
+			body: `func f(b B) { b.Queue("INSERT INTO audit_events (id) VALUES ($1)", id) }`,
+			want: `apps/platform/cmd/worker/main.go:3 passes "INSERT INTO audit_events (id) VALUES ($1)" to Queue`,
+		},
+		{
+			name: "raw DML in a _test.go file is not constrained",
+			path: "internal/run/service_test.go",
+			body: `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
+		},
+		{
+			name: "raw DML in a generated directory is not constrained",
+			path: "internal/platform/db/gen/queries.sql.go",
+			body: `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
+		},
+		{
+			name: "raw SELECT is allowed; reads are not enforced",
+			path: "internal/eval/reconcile.go",
+			body: "func f(p P) { p.Query(ctx, `SELECT id FROM evaluations WHERE status = 'pending'`) }",
+		},
+		{
+			name: "SET LOCAL is not DML",
+			path: "internal/identity/purge.go",
+			body: `func f(tx T) { tx.Exec(ctx, "SET LOCAL skillhub.purge = 'on'") }`,
+		},
+		{
+			name: "advisory lock is not DML",
+			path: "internal/packaging/packaging.go",
+			body: `func f(tx T) { tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", k) }`,
+		},
+		{
+			name:  "named exemption lets a known raw DML through",
+			path:  "internal/run/service.go",
+			body:  `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
+			allow: map[string]string{"apps/platform/internal/run/service.go": "理由"},
+		},
+		{
+			name:  "exemption without a reason is reported",
+			path:  "internal/run/service.go",
+			body:  `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
+			allow: map[string]string{"apps/platform/internal/run/service.go": ""},
+			want:  "raw_sql_allow.apps/platform/internal/run/service.go has no reason",
+		},
+		{
+			name:  "stale exemption is reported",
+			path:  "internal/run/service.go",
+			body:  "func f(q Q) { q.CreateRun(ctx) }",
+			allow: map[string]string{"apps/platform/internal/run/service.go": "理由"},
+			want:  "raw_sql_allow.apps/platform/internal/run/service.go no longer contains raw DML",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			path := filepath.Join(root, "apps", "platform", filepath.FromSlash(test.path))
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			source := "package p\n\n" + test.body + "\n"
+			if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			problems := rawSQLProblems(root, test.allow)
+			if test.want == "" {
+				if len(problems) != 0 {
+					t.Fatalf("expected no problems, got %#v", problems)
+				}
+				return
+			}
+			if len(problems) != 1 {
+				t.Fatalf("expected exactly one problem containing %q, got %#v", test.want, problems)
+			}
+			if !strings.Contains(problems[0], test.want) {
+				t.Fatalf("problem %q does not mention %q", problems[0], test.want)
+			}
+		})
+	}
+}

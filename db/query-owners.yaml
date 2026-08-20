@@ -161,3 +161,17 @@ immutable_allow:
   # trigger 只認這個旗標。清除路徑：等 ADR-033 的事件式自清落地後，
   # 這條 CTE 連同本豁免一起消失。
   PurgeUnreferencedSkills: skill_versions
+
+# 裸 SQL 的具名豁免（ADR-033 2026-08-20 追加）
+#
+# 上面兩段的前提是「所有寫入都經過 sqlc」。`automation-check` 另有一道 tripwire：
+# apps/platform/internal/** 與 apps/platform/cmd/** 的非測試 Go 檔中，
+# 把含 INSERT／UPDATE／DELETE 的**字面值**交給 pgx 的 Exec／Query／QueryRow／Queue
+# 就 FAIL。生成目錄（internal/platform/db/gen、internal/api/gen）與 _test.go 不在範圍。
+#
+# 它是 tripwire 不是證明——const 常數、fmt.Sprintf、字串串接組出來的 SQL 都繞得過。
+# 界限寫在 tools/devctl/query_owners.go 的「裸 SQL tripwire」註解與 ADR-033。
+#
+# key 是 repo 相對路徑，value 是理由（不得留空）。失效的豁免（該檔已無裸 DML）會 FAIL。
+# **目前零條，維持零條**——需要寫 DML 就去 db/queries/*.sql 開一條 query。
+raw_sql_allow:
