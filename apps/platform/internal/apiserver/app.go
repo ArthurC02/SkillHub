@@ -108,7 +108,22 @@ type App struct {
 // because the API enqueues and never dispatches (iron rule 7).
 func NewApp(cfg Config) (*App, error) {
 	auth := &identity.Handler{
-		Service:   &identity.Service{Pool: cfg.Pool, OAuth: cfg.OAuth},
+		Service: &identity.Service{
+			Pool:  cfg.Pool,
+			OAuth: cfg.OAuth,
+			// CORE-007's account purge clears five other contexts' rows in one
+			// transaction. Each step is the owning context's own — every one of
+			// them imports identity for its workspace scope, so identity can
+			// import none of them and only a composition root sees all six
+			// (ADR-034). Unwired, the purge refuses the batch rather than
+			// silently leaving a context behind; the order is identity's, in
+			// purge.go.
+			PurgeAnalytics:     analytics.PurgeWorkspace,
+			PurgeTestData:      testlab.PurgeWorkspace,
+			PurgeRunArtifacts:  run.PurgeWorkspace,
+			PurgeSkills:        registry.PurgeWorkspace,
+			PurgeImportSources: ingest.PurgeWorkspace,
+		},
 		Secure:    cfg.Secure,
 		AppURL:    cfg.AppURL,
 		DevLogin:  cfg.DevLogin,

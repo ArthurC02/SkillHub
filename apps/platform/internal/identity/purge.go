@@ -2,7 +2,9 @@ package identity
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -15,6 +17,72 @@ import (
 // ObjectRemover is the slice of object storage the purge needs.
 type ObjectRemover interface {
 	Remove(ctx context.Context, key string) error
+}
+
+// WorkspacePurge is one context's share of an account deletion: clear what you
+// own for this workspace, on the transaction I am already in. Taking the
+// caller's *gen.Queries rather than a pool is the entire contract — CORE-007
+// promises one transaction that either clears every context or none of them,
+// and a step that opened its own would turn that promise into six that can each
+// fail alone.
+//
+// They are injected rather than imported because every context imports this one
+// for its workspace scope (iron rule 3), so `identity -> anyone` is a
+// compile-time cycle. ADR-034 reads that cycle as the signal it is: these are
+// peers, and deciding what "my rows are being deleted" means is each peer's own
+// domain knowledge, not identity's.
+type WorkspacePurge func(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID) error
+
+type purgeStep struct {
+	context string
+	purge   WorkspacePurge
+}
+
+// purgeSteps is the ordered list of cross-context purge steps and the only
+// place that order is written down. Both the refusal below and the transaction
+// itself read it, so adding a seventh context is one line in one place and a
+// missing injection cannot become a missing step.
+func (s *Service) purgeSteps() []purgeStep {
+	return []purgeStep{
+		{"analytics", s.PurgeAnalytics},
+		{"testlab", s.PurgeTestData},
+		{"run", s.PurgeRunArtifacts},
+		// registry before ingest, and this order is load-bearing. ingest's step
+		// removes the import sources that no skill_versions row still points at;
+		// registry's step is what deletes those version rows. Run the other way
+		// round and every source of the account still backs a live version, so
+		// none is removed — and nothing says so. No error, no row count out of
+		// place, just the import provenance of a deleted account left behind.
+		// Guarded rather than only documented: the account purge integration test
+		// seeds a version with a source and asserts the source is gone, which
+		// swapping these two lines makes fail.
+		{"registry", s.PurgeSkills},
+		{"ingest", s.PurgeImportSources},
+	}
+}
+
+// requirePurgeSteps refuses the entire batch when any context's step is
+// missing, and is called before the worklist is even read.
+//
+// This is a compliance property, not tidiness. Every other fail-closed check in
+// this codebase guards against a wrong answer; this one guards against a purge
+// that commits, reports success, and leaves another context's rows in place —
+// a user told their data is gone while it is still there, with nothing anywhere
+// going red. Failing the batch is the recoverable outcome: the deletion request
+// stays on the worklist and the next run, on a correctly wired deployment,
+// finishes it.
+func (s *Service) requirePurgeSteps() error {
+	var missing []string
+	for _, step := range s.purgeSteps() {
+		if step.purge == nil {
+			missing = append(missing, step.context)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("identity: account purge steps not injected for %s; refusing to purge",
+			strings.Join(missing, ", "))
+	}
+	return nil
 }
 
 // PurgeExpiredAccounts carries out the account deletions whose grace period has
@@ -38,6 +106,9 @@ type ObjectRemover interface {
 // one call; grace is a parameter so a shortened retention policy applies to
 // requests already in flight (and so tests do not have to wait 30 days).
 func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover, grace time.Duration, limit int32) (purged int, err error) {
+	if err := s.requirePurgeSteps(); err != nil {
+		return 0, err
+	}
 	q := s.queries()
 	ids, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{
 		Cutoff: pgconv.Timestamptz(time.Now().Add(-grace)),
@@ -96,31 +167,17 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 	}
 	q = q.WithTx(tx)
 
+	// Five other contexts own rows in this workspace, and each decides for itself
+	// what an account deletion means for them — analytics de-identifies, the
+	// registry keeps whatever a third party forked (ADR-034). They run here,
+	// inside this transaction and after the SET LOCAL above, because that is what
+	// makes the whole account deletion atomic and what lets the registry's step
+	// past the immutability trigger at all.
 	for _, ws := range workspaces {
-		// ADR-029 決策 5: funnel events and beta feedback are de-identified, not
-		// deleted. Aggregates have to survive a departure — the north-star metric
-		// and the funnel are compared across quarters — and a beta tester's words
-		// are the evidence the scope review rests on. The link to the person is
-		// what goes, and it goes here rather than by cascade because the purge
-		// anonymises the workspace row instead of deleting it, so 0029's
-		// ON DELETE SET NULL never fires.
-		if _, err := q.DetachWorkspaceAnalytics(ctx, ws.ID); err != nil {
-			return err
-		}
-		if _, err := q.DetachWorkspaceFeedback(ctx, ws.ID); err != nil {
-			return err
-		}
-		if _, err := q.DeleteWorkspaceArtifacts(ctx, ws.ID); err != nil {
-			return err
-		}
-		if _, err := q.DeleteWorkspaceDatasets(ctx, ws.ID); err != nil {
-			return err
-		}
-		if _, err := q.PurgeUnreferencedSkills(ctx, ws.ID); err != nil {
-			return err
-		}
-		if _, err := q.PurgeUnreferencedSkillSources(ctx, ws.ID); err != nil {
-			return err
+		for _, step := range s.purgeSteps() {
+			if err := step.purge(ctx, q, ws.ID); err != nil {
+				return fmt.Errorf("purge %s: %w", step.context, err)
+			}
 		}
 	}
 	if _, err := q.DeleteUserIdentities(ctx, userID); err != nil {

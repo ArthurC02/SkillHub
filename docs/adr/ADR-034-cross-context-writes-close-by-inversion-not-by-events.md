@@ -59,6 +59,50 @@ ADR-033 導入 query ownership 強制時，記錄了 15 條存量跨 context wri
 
 - **未改動**：`.golangci.yml` 與 ADR-032 附錄 A 都不需要動——注入沒有製造任何新的跨 context import，這正是選它的理由。`db/query-owners.yaml` 的 `allow:` 移除 `UpsertSearchDocument`／`DeleteSearchDocument`／`UpsertSearchDocumentEnriched` 三條，**剩 6 條**（帳號刪除 purge，下一批）。
 
+**2026-08-20 已執行（帳號刪除 purge，6 條）**：
+
+- **五個 owner context 各公開一支 `PurgeWorkspace`**，全部收呼叫端的 `*gen.Queries`、不自開交易，簽名一致：
+
+  ```go
+  func PurgeWorkspace(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID) error
+  ```
+
+  | 檔案 | 做的事 |
+  | --- | --- |
+  | `apps/platform/internal/analytics/purge.go` | `DetachWorkspaceAnalytics` ＋ `DetachWorkspaceFeedback`（兩條 query 同屬 analytics，合成一步） |
+  | `apps/platform/internal/testlab/purge.go` | `DeleteWorkspaceDatasets` |
+  | `apps/platform/internal/run/purge.go` | `DeleteWorkspaceArtifacts` |
+  | `apps/platform/internal/registry/purge.go` | `PurgeUnreferencedSkills` |
+  | `apps/platform/internal/ingest/purge.go` | `PurgeUnreferencedSkillSources` |
+
+  名稱一律 `PurgeWorkspace`：analytics 那支實際做的是去識別化而非刪除（ADR-029 決策 5），差異寫在它自己的 doc comment 裡；函式名描述的是「帳號刪除掃到你了」這個觸發，不是機制。**analytics 是兩條 query 一步**，因為 owner 是同一個 context，切成兩步只會讓 identity 那邊多一個它無權解釋的區分。
+
+- **注入形狀**：`identity.Service` 取得五個具名 function 欄位（`PurgeAnalytics`／`PurgeTestData`／`PurgeRunArtifacts`／`PurgeSkills`／`PurgeImportSources`，型別 `identity.WorkspacePurge`）。欄位名不沿用 query 名，理由同第一組。五個欄位由 `purgeSteps()` 收成一份**有序的具名步驟清單**，fail-closed 檢查與交易內的迴圈都讀同一份——新增第六個 context 是一行、一處，漏接不可能變成漏清。
+
+- **順序是 load-bearing 的，而且被守住**：`registry` 必須在 `ingest` 之前。`PurgeUnreferencedSkillSources` 只刪「沒有任何 `skill_versions` 指著」的 source，而刪掉那些 version 列的正是 `PurgeUnreferencedSkills`；倒過來跑，該帳號的每一條 source 都還被活著的 version 引用，於是一條都不刪，**沒有錯誤、沒有異常的 row count，只有留下來的匯入溯源**。理由寫在 `purgeSteps()` 的行內；**並且有測試**——`TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest` 現在會 seed 一個帶 source 的版本並斷言 source 消失，把那兩行對調就會紅（實測輸出：`import source of a purged version survived; the purge steps ran out of order`）。這是刻意不重蹈 DDD-023「順序 load-bearing 但沒人知道」。其餘三步之間沒有相依，順序即宣告順序。
+
+- **fail closed 的位置**：`identity.requirePurgeSteps()`，在 `PurgeExpiredAccounts` 的第一行、**連 worklist 都還沒讀**之前。訊息列出缺的是哪幾個 context：`identity: account purge steps not injected for registry; refusing to purge`。這一條與第一組的性質不同——第一組防的是答案不對，這一條防的是**清了一半卻回報成功**：使用者被告知資料已刪除、實際還在，而且沒有任何地方會紅。整批失敗反而是可回復的：刪除請求留在 worklist 上，下一次在正確接線的部署上跑完。
+
+- **注入點**：`apiserver.NewApp`（一處，`identity.Service` 的 literal）與 `cmd/maintenance` 的 `purgeService`。覆核過的其他 `identity.Service` 建構點只有 `authz_integration_test.go` 的 session 測試，它們不跑 purge，因此不接。
+
+- **`cmd/maintenance` 補了 wiring smoke test**（`main_test.go`，不需要資料庫）。DDD-018 當初判定它不需要，理由是「單一 struct literal 緊接唯一使用它的呼叫」；本批之後那個理由不再成立——**真正執行 purge 的是這個程序，不是 API**，而它的 literal 現在帶著五條注入。為此把 literal 抽成 `purgeService(pool)`，測試以反射掃 `identity.Service` 中型別為 `WorkspacePurge` 的欄位斷言非 nil，所以第六個 context 加進來的當天自動被涵蓋。`apiserver` 的 `TestNewAppWiresEveryRouteAndService` 用同一招。
+
+- **交易語意前後對照**：`purgeAccount` 的交易邊界一個字沒動——`Pool.Begin` →「`SET LOCAL skillhub.purge = 'on'`」→ `q = q.WithTx(tx)` → 每個 workspace 的六條清除 → `DeleteUserIdentities`／`DeleteUserSessions`／`Anonymize*` → `audit.Log` → `tx.Commit`。改的只是中間那段從六個 `q.XXX(...)` 變成對 `purgeSteps()` 的迴圈，傳的是**同一個 `q`**。`SET LOCAL` 的作用範圍因此完全不變：它是交易級的，而 owner 的函式跑在同一個交易裡，所以 `registry.PurgeWorkspace` 硬刪 `skill_versions` 仍然被 0013 的 trigger 放行。反過來說，如果哪一支 owner 函式將來自己開交易，它會**當場被不可變 trigger 擋下**——那是 registry 這一支獨有的第二道保險，另外四支沒有，所以規則仍然靠註解與 code review。
+
+- **反向驗證**：
+  1. **fail-closed**：拿掉 `NewApp` 的 `PurgeSkills` 注入後，`TestNewAppWiresEveryRouteAndService` 報 `identity.Service.PurgeSkills is nil: the account purge would refuse to run`，purge 整合測試報 `identity: account purge steps not injected for registry; refusing to purge`——**是拒絕，不是少清一個 context 然後回報成功**。已還原。
+  2. **交易原子性**：`TestAccountPurgeRollsBackEveryContextWhenOneStepFails`（`internal/apiserver/governance_integration_test.go`，**常設**）把最後一步（ingest）的注入欄位換成必定失敗的函式——不需要改生產程式，這正是注入設計換來的。斷言分兩半：**失敗步驟之前已經跑過的步驟其效果全部不見**（skill、skill_versions、artifacts 各 1 列仍在），**且 identity 自己的去識別化也沒生效**（`users.email` 仍含 `alice-rollback`）。少了後半，「整批回滾」與「只有那一步沒做」看起來會一樣。最後把注入還原再跑一次，確認帳號仍可被清掉——否則「下一次重試」不算是 fail-closed 宣稱的復原。
+
+     這支測試守的就是本 ADR「單一交易、全有全無」那個主張本身，所以**刪掉它等於放棄拒絕事件化的主要論據**，測試的 doc comment 也是這樣寫的。反向驗證：把 `purgeAccount` 的步驟錯誤改成吞掉（正是本 ADR 擔心的失效模式之一），四項斷言全部轉紅，`purged` 由 0 變 1、`users.email` 變成 `deleted-...@deleted.invalid`。已還原。
+
+- **已知缺口（本批不改）**：`PurgeExpiredAccounts` 對**單一帳號**的失敗是 `slog.Error` ＋ `continue`，回傳 `(purged, nil)`。原意是「一個壞帳號不該卡住整批」，但代價是 `maintenance purge-accounts` 在每個帳號都失敗時仍以 exit 0 結束，只印 `account purge complete accounts_purged=0`。注意這**不影響**未注入的情況（`requirePurgeSteps` 的錯誤是直接回傳的，整個命令會失敗）；受影響的是 owner 步驟在執行期失敗。建議：讓 `PurgeExpiredAccounts` 在有任何帳號失敗時回傳一個彙總錯誤（仍然跑完整批），使維運看得到紅燈。屬於既有行為，非本批引入，未在本批修改。
+
+- **未改動**：`.golangci.yml` 與 ADR-032 附錄 A 同樣不需要動——注入沒有製造任何新的跨 context import。`db/query-owners.yaml` 的 `allow:` 移除最後 6 條後**清空**（保留 section 標頭；`devctl` 的解析器對空 section 正確處理，見下）。
+
+- **`allow:` 清空後的 devctl 行為**：`parseOwnerDeclaration` 對 `allow:` 這一行就建立空 map，必要 section 檢查因此仍然通過，後續所有以 `allow` 為底的迴圈都是零次——與早已為空的 `raw_sql_allow:` 同一條路徑。**`tools/devctl` 不需要任何修改**，`automation-check` 通過。
+
+- **`immutable_allow:` 的 `PurgeUnreferencedSkills`**：查詢本身與它寫的 `skill_versions` 都沒變，呼叫點搬到 `registry.PurgeWorkspace` 不影響該檢查（它只比對 query 與表）。條目仍然正確。但它的註解原本寫著「等 ADR-033 的事件式自清落地後，這條 CTE 連同本豁免一起消失」——**本 ADR 否決了事件化，那條清除路徑已不存在**，因此把註解改成記錄現況：豁免沒有預定消失時程，要移除得先讓帳號刪除不再硬刪 `skill_versions`。
+
 ## 為什麼不事件化
 
 **同一個資料庫、同一個程序。** ADR-010 的拆分條件（負載、組織、安全需求）尚未觸發，四個 process 共用一個 Postgres。事件化在這個前提下買到的是「未來拆分時比較好搬」，付出的是兩個**現在就成立**的保證。用還沒發生的搬遷去換已經在手上的原子性，是拿確定的東西賭不確定的收益。

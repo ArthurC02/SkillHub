@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 )
 
 // The one invariant BetaGateClosed exists for: an unaudited cohort must not
@@ -94,6 +96,23 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	}
 	if reg := app.Deps.Registry.Svc; reg.IndexSkill == nil || reg.RemoveFromIndex == nil {
 		t.Error("the registry service is missing a search projection write")
+	}
+
+	// The account purge's cross-context steps (ADR-034). identity owns the
+	// transaction; the rows belong to five other contexts, all of which import
+	// identity, so a composition root is the only place the two can meet.
+	// Reflection rather than a list for the same reason as Deps above: the day a
+	// sixth context gains rows in a workspace, a field appears here and this test
+	// covers it without being edited. Unwired, the purge refuses the batch — safe,
+	// but it is still a compliance obligation not being met, and it should fail on
+	// the pull request rather than on the first account that asked to be deleted.
+	purgeSteps := reflect.ValueOf(*app.Auth.Service)
+	for i := range purgeSteps.NumField() {
+		field := purgeSteps.Field(i)
+		if field.Type() == reflect.TypeFor[identity.WorkspacePurge]() && field.IsNil() {
+			t.Errorf("identity.Service.%s is nil: the account purge would refuse to run",
+				purgeSteps.Type().Field(i).Name)
+		}
 	}
 
 	// suggesterOrNil's reason for existing: a nil *llmclient.Client must not land

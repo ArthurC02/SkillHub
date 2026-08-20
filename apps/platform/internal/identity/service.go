@@ -25,6 +25,17 @@ const providerGitHub = "github"
 type Service struct {
 	Pool  *pgxpool.Pool
 	OAuth *GitHubOAuth
+
+	// The account purge's cross-context steps, all of them required. Each one
+	// belongs to the context that owns the rows it clears, and arrives here from
+	// a composition root rather than an import because every context imports this
+	// one for its workspace scope (iron rule 3), so this one can import none of
+	// them (ADR-034). purge.go holds the order and the refusal.
+	PurgeAnalytics     WorkspacePurge
+	PurgeTestData      WorkspacePurge
+	PurgeRunArtifacts  WorkspacePurge
+	PurgeSkills        WorkspacePurge
+	PurgeImportSources WorkspacePurge
 }
 
 func (s *Service) queries() *gen.Queries { return gen.New(s.Pool) }

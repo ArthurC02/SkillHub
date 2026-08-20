@@ -7,6 +7,7 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 )
 
@@ -125,7 +127,10 @@ func TestAccountDeletionGraceIsCancellable(t *testing.T) {
 		t.Fatal("account became unusable during the grace period")
 	}
 
-	svc := &identity.Service{Pool: pool}
+	// The app's own identity service, not a fresh one: the purge only runs when
+	// all five owning contexts' steps have been injected, and NewApp is where
+	// that happens (ADR-034).
+	svc := a.auth.Service
 	// Nothing is due yet under the real 30 day policy.
 	if n, err := svc.PurgeExpiredAccounts(context.Background(), &recordingStore{}, identity.AccountDeletionGrace, 100); err != nil || n != 0 {
 		t.Fatalf("purge inside the grace period: purged %d, err %v", n, err)
@@ -160,7 +165,28 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	makeCatalog(t, pool, alice.workspaceID)
 
 	private := seedSkill(t, pool, alice.workspaceID, "alice-private")
-	seedVersion(t, pool, alice.workspaceID, private, "hash-private")
+	// The private version gets an import source so this test also covers the one
+	// ordering constraint between the purge steps: ingest only removes sources
+	// that no skill_versions row still points at, so it has to run after registry
+	// deletes those rows. Reverse the two and this source survives, silently
+	// (see identity.purgeSteps).
+	var sourceID pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at)
+		VALUES ($1, 'git', 'https://example.invalid/alice.git', 'hash-private', now()) RETURNING id`,
+		mustUUID(t, alice.workspaceID)).Scan(&sourceID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gen.New(pool).CreateSkillVersion(ctx, gen.CreateSkillVersionParams{
+		WorkspaceID:      mustUUID(t, alice.workspaceID),
+		SkillID:          mustUUID(t, private),
+		SourceID:         sourceID,
+		ContentHash:      "hash-private",
+		PackageObjectKey: "packages/hash-private.zip",
+		Manifest:         []byte(`{}`),
+	}); err != nil {
+		t.Fatal(err)
+	}
 	shared := seedSkill(t, pool, alice.workspaceID, "alice-shared")
 	sharedVer := seedVersion(t, pool, alice.workspaceID, shared, "hash-shared")
 
@@ -196,7 +222,7 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 		t.Fatalf("DELETE /me: got %d", status)
 	}
 	store := &recordingStore{}
-	svc := &identity.Service{Pool: pool}
+	svc := a.auth.Service
 	n, err := svc.PurgeExpiredAccounts(ctx, store, 0, 100)
 	if err != nil {
 		t.Fatal(err)
@@ -214,6 +240,9 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	}
 	if c := countRow(t, pool, "SELECT count(*) FROM search_documents WHERE skill_id = $1", mustUUID(t, private)); c != 0 {
 		t.Fatal("search document of a purged skill survived")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_sources WHERE id = $1", sourceID); c != 0 {
+		t.Fatal("import source of a purged version survived; the purge steps ran out of order")
 	}
 	if c := countRow(t, pool, "SELECT count(*) FROM datasets WHERE workspace_id = $1", mustUUID(t, alice.workspaceID)); c != 0 {
 		t.Fatal("dataset rows survived the purge")
@@ -257,6 +286,93 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	// Iron rule 9: re-running finds nothing left to do and changes nothing.
 	if again, err := svc.PurgeExpiredAccounts(ctx, store, 0, 100); err != nil || again != 0 {
 		t.Fatalf("second purge run: purged %d, err %v", again, err)
+	}
+}
+
+// The claim ADR-034 rests on: an account deletion is one transaction, all of it
+// or none of it. That guarantee is the whole reason the ADR refused to
+// event-source this purge, and it is what CORE-007 promises a user who asks to
+// be forgotten. Since DDD-026 the five owning contexts' steps are injected
+// function values, so nothing about the type system enforces it any more: an
+// owner whose PurgeWorkspace opens its own transaction, or logs its error and
+// returns nil, would make a partial deletion happen quietly. Taking the caller's
+// *gen.Queries makes that awkward to write; a closure holding a pool makes it
+// possible anyway.
+//
+// So this test is the guarantee. Deleting it means giving up the argument that
+// kept account deletion atomic — say so in the ADR before you do.
+func TestAccountPurgeRollsBackEveryContextWhenOneStepFails(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+	alice := a.login(t, "alice-rollback")
+
+	skill := seedSkill(t, pool, alice.workspaceID, "alice-rollback")
+	seedVersion(t, pool, alice.workspaceID, skill, "hash-rollback")
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO artifacts (workspace_id, kind, file_name, content_type,
+		                       size_bytes, content_hash, object_key, expires_at)
+		VALUES ($1, 'download_package', 'pkg.zip', 'application/zip', 10, 'h-rollback',
+		        'artifacts/rollback.zip', now() + interval '30 days')`,
+		mustUUID(t, alice.workspaceID)); err != nil {
+		t.Fatal(err)
+	}
+	if status, _ := deleteJSON(t, alice, "/me"); status != http.StatusOK {
+		t.Fatalf("DELETE /me: got %d", status)
+	}
+
+	svc := a.auth.Service
+	// ingest is last in identity's ordered step list, so by the time this fires
+	// the other four have all written inside the transaction. Replacing an
+	// injected field is the whole point of the injection: no production code has
+	// to grow a test hook for this.
+	svc.PurgeImportSources = func(context.Context, *gen.Queries, pgtype.UUID) error {
+		return errors.New("simulated failure inside an owner's purge step")
+	}
+	// Today one failing account is logged and skipped so it cannot strand the
+	// rest of the batch, which means this returns (0, nil) rather than an error.
+	// The count is not asserted because the batch is workspace-wide and other
+	// tests share this database; the row-level assertions below are stricter
+	// anyway — they name this account.
+	n, err := svc.PurgeExpiredAccounts(ctx, &recordingStore{}, 0, 100)
+	t.Logf("PurgeExpiredAccounts after a failing step: purged=%d err=%v", n, err)
+
+	// Everything the steps before the failure wrote has to be gone with it.
+	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, skill)); c != 1 {
+		t.Error("the registry step's delete was committed although a later step failed")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE skill_id = $1", mustUUID(t, skill)); c != 1 {
+		t.Error("skill_versions were hard deleted although a later step failed")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM artifacts WHERE workspace_id = $1",
+		mustUUID(t, alice.workspaceID)); c != 1 {
+		t.Error("the run step's delete was committed although a later step failed")
+	}
+	// ...and so does identity's own de-identification. Without this half the
+	// assertions above would also pass if the failing step had merely been
+	// skipped, which is the failure mode being ruled out: skipped means the rest
+	// committed, rolled back means nothing did.
+	var email string
+	if err := pool.QueryRow(ctx, "SELECT email FROM users WHERE id = $1",
+		mustUUID(t, alice.userID)).Scan(&email); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(email, "alice-rollback") {
+		t.Fatalf("the user row was de-identified even though the purge failed: %s", email)
+	}
+
+	// The rollback also has to leave the account purgeable, or "retry on the next
+	// run" is not the recovery the fail-closed design claims it is.
+	svc.PurgeImportSources = ingest.PurgeWorkspace
+	if _, err := svc.PurgeExpiredAccounts(ctx, &recordingStore{}, 0, 100); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, "SELECT email FROM users WHERE id = $1",
+		mustUUID(t, alice.userID)).Scan(&email); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(email, "alice-rollback") {
+		t.Fatalf("the retry after the rollback did not purge the account: %s", email)
 	}
 }
 

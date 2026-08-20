@@ -106,17 +106,10 @@ queries:
   CountRunsNeedingCleanup: run
 
 # 存量漂移：本檔導入時就已存在的跨 context write 呼叫。
-# 每一條都是 DDD-015 的待清除項目，清除路徑見 ADR-033。
-# **不准新增條目**——新的跨 context write 要改程式，不是改這裡。
+# **目前零條，維持零條**——ADR-033 記錄的 15 條已由 DDD-019／020／025／026
+# 全數清除（寫入回到 owner，呼叫端的交易原地不動），最後 6 條帳號刪除 purge
+# 由 ADR-034 的依賴反轉收斂。**不准新增條目**——新的跨 context write 要改程式。
 allow:
-  # drift: DDD-015 — 帳號刪除的 purge 事務直接清掉別的 context 的列；
-  # 正解是各 context 訂閱 account.deletion_due 事件自清（ADR-033 清除路徑 1）。
-  DetachWorkspaceAnalytics: identity
-  DetachWorkspaceFeedback: identity
-  DeleteWorkspaceDatasets: identity
-  DeleteWorkspaceArtifacts: identity
-  PurgeUnreferencedSkills: identity
-  PurgeUnreferencedSkillSources: identity
 
 # 不可變資料表宣告（ADR-003、鐵律 4；ADR-032 §4 的 aggregate 不變量）
 #
@@ -150,9 +143,12 @@ immutable:
 # **不得**為了讓檢查過關就把整張表移出 `immutable:`。
 immutable_allow:
   # 帳號刪除的保存期 purge（PDM-006 6.1）。這是唯一被允許硬刪凍結列的路徑，
-  # 資料庫側同樣走具名豁免——identity/purge.go 的 `SET LOCAL skillhub.purge = 'on'`，
-  # trigger 只認這個旗標。清除路徑：等 ADR-033 的事件式自清落地後，
-  # 這條 CTE 連同本豁免一起消失。
+  # 資料庫側同樣走具名豁免——identity/purge.go 開的交易裡那句
+  # `SET LOCAL skillhub.purge = 'on'`，trigger 只認這個旗標。
+  # DDD-026 後呼叫點搬到 registry.PurgeWorkspace，但它跑在同一個交易內
+  # （ADR-034：owner 的 purge 函式收呼叫端的 *gen.Queries，不自開交易），
+  # 所以旗標的作用範圍與本豁免都不變。ADR-034 已否決事件式自清，
+  # 這條 CTE 沒有預定的消失時程；要移除它得先讓帳號刪除不再硬刪 skill_versions。
   PurgeUnreferencedSkills: skill_versions
 
 # 裸 SQL 的具名豁免（ADR-033 2026-08-20 追加）

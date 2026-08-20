@@ -39,6 +39,9 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/registry"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 )
 
 func main() {
@@ -88,7 +91,7 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
-	svc := &identity.Service{Pool: pool}
+	svc := purgeService(pool)
 	n, err := svc.PurgeExpiredAccounts(ctx, store, grace(), batch())
 	if err != nil {
 		return err
@@ -103,6 +106,24 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	slog.Info("expired sessions removed", "sessions", sessions)
 	return nil
+}
+
+// purgeService is this subcommand's slice of the composition root, split out of
+// purgeAccounts only so main_test.go can check it without a database or object
+// storage. This process, not the API, is what actually runs the purge, so this
+// is where the five owning contexts' steps have to be handed over: each context
+// decides what an account deletion means for its own rows, and identity owns
+// only the transaction they share (ADR-034). A step left out here is refused,
+// not skipped — see identity.requirePurgeSteps.
+func purgeService(pool *pgxpool.Pool) *identity.Service {
+	return &identity.Service{
+		Pool:               pool,
+		PurgeAnalytics:     analytics.PurgeWorkspace,
+		PurgeTestData:      testlab.PurgeWorkspace,
+		PurgeRunArtifacts:  run.PurgeWorkspace,
+		PurgeSkills:        registry.PurgeWorkspace,
+		PurgeImportSources: ingest.PurgeWorkspace,
+	}
 }
 
 func checkSources(ctx context.Context, pool *pgxpool.Pool) error {
