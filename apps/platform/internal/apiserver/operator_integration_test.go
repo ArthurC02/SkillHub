@@ -2,7 +2,7 @@
 // action it can currently perform — setting and lifting the 0023 licensing hold.
 // Shared harness (TestMain, migrate, requireDB, login, markCatalog,
 // importPackage) lives in authz_integration_test.go and disc_integration_test.go.
-package identity_test
+package apiserver_test
 
 import (
 	"context"

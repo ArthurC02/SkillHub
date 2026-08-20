@@ -3,7 +3,7 @@
 // is under test is the platform's half: what it agrees to store, what it refuses
 // to apply, and the promise that applying builds a new version and leaves the old
 // one exactly as it was (iron rule 4).
-package identity_test
+package apiserver_test
 
 import (
 	"bytes"

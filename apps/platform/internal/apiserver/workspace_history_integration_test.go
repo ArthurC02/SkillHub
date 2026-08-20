@@ -7,7 +7,7 @@
 // could do the thing and there was no way to ask it. 02:WS-002 第 1 條 and
 // 02:SEC-006 第 1 條 both have a user as their subject, and a capability with no
 // route is not something a user can reach at any layer.
-package identity_test
+package apiserver_test
 
 import (
 	"context"

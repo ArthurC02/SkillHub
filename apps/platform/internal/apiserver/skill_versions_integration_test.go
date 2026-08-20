@@ -6,7 +6,7 @@
 // been a generated query since M1 and no service ever called it, so the two
 // screens that need a version took the id from the URL and told the reader to
 // paste one by hand. A query nothing calls is not a capability a user has.
-package identity_test
+package apiserver_test
 
 import (
 	"net/http"

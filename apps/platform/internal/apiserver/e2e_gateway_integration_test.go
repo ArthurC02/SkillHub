@@ -10,7 +10,7 @@
 // even a runaway agent cannot spend past ModelGatewayGrant.max_budget_usd.
 //
 // Running it: docs/plans/mvp/m2/README.md, the fourth-batch section.
-package identity_test
+package apiserver_test
 
 import (
 	"archive/zip"

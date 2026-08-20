@@ -1,8 +1,8 @@
-// Run orchestration integration tests (RUN-001~004). They live in identity_test
+// Run orchestration integration tests (RUN-001~004). They live in apiserver_test
 // with the rest of the database-backed HTTP tests so they serve the real route
 // table from apiserver.NewRouter rather than a copy — see authz_integration_test.go
 // for the helpers (TestMain, migrate, login) they reuse.
-package identity_test
+package apiserver_test
 
 import (
 	"archive/zip"

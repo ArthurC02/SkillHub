@@ -6,7 +6,7 @@
 // precedent the cost-estimate test set: a packaging bug that leaks something is
 // not reversible once a user has the file, so "the exporter meant to exclude it"
 // is not evidence.
-package identity_test
+package apiserver_test
 
 import (
 	"archive/zip"

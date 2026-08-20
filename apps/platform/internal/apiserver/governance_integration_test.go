@@ -2,7 +2,7 @@
 // Artifact purge (CORE-007), the audit trail (CORE-008), and manual takedown
 // (INGEST-010). Same harness rules as authz_integration_test.go: they need
 // SKILLHUB_TEST_DATABASE_URL and skip without it.
-package identity_test
+package apiserver_test
 
 import (
 	"context"

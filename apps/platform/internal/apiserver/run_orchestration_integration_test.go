@@ -6,7 +6,7 @@
 // The provider is a fake (internal/run/providertest) that implements the frozen
 // contract. It isolates nothing and runs nothing — these tests are about the
 // orchestrator, not about the sandbox (ADR-015, SEC-009 cover that).
-package identity_test
+package apiserver_test
 
 import (
 	"context"

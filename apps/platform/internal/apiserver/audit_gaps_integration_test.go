@@ -13,7 +13,7 @@
 // preflight_integration_test.go (confirmPermissions, startWithHash),
 // governance_integration_test.go (countRow, mustUUID) and
 // dispatch_halt_integration_test.go (haltHarness, mustRun).
-package identity_test
+package apiserver_test
 
 import (
 	"context"

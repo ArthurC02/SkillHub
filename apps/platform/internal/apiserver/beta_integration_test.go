@@ -2,11 +2,11 @@
 // BETA-001 admission list (ADR-028 決策 1), the O11Y-004 funnel events and the
 // BETA-003/004/005 feedback channel (ADR-029).
 //
-// They live in identity_test with the rest of the database-backed HTTP tests so
+// They live in apiserver_test with the rest of the database-backed HTTP tests so
 // they serve the real route table from apiserver.NewRouter rather than a copy —
 // which matters more here than anywhere else, because two of the three features
 // are configuration that changes which routes exist at all.
-package identity_test
+package apiserver_test
 
 import (
 	"context"

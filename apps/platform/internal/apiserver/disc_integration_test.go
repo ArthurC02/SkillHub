@@ -1,6 +1,6 @@
 // DISC-001 / DISC-002 / WS-001 database-backed tests. Shared harness (TestMain,
 // migrate, requireDB, login, seedSkill) lives in authz_integration_test.go.
-package identity_test
+package apiserver_test
 
 import (
 	"archive/zip"

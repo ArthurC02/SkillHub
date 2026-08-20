@@ -13,7 +13,7 @@
 // server speaking llm-internal.yaml. Neither isolates nor thinks; what is under
 // test is whether one stage hands the next what it needs. Real isolation is
 // SEC-009's, and it is a deployment-time check.
-package identity_test
+package apiserver_test
 
 import (
 	"encoding/json"

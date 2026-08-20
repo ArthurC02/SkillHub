@@ -5,7 +5,7 @@
 // They live in this package for the reason authz_integration_test.go gives: the
 // wired HTTP surface is here, so these exercise apiserver.NewRouter's real table
 // rather than a copy. They need SKILLHUB_TEST_DATABASE_URL and skip without it.
-package identity_test
+package apiserver_test
 
 import (
 	"bytes"

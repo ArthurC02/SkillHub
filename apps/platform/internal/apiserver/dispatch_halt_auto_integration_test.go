@@ -10,7 +10,7 @@
 // Shared harness: authz_integration_test.go (TestMain, migrate, requireDB, newAPI,
 // login), run_integration_test.go (fixture), governance_integration_test.go
 // (countRow), dispatch_halt_integration_test.go (haltHarness, haltAuditCount).
-package identity_test
+package apiserver_test
 
 import (
 	"context"

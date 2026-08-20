@@ -4,7 +4,7 @@
 // platform's half: token, scope, masking, idempotency, ordering and the two
 // read modes. The real container half is exercised by
 // apps/sandbox and by the docker end-to-end run in docs/plans/mvp/m2.
-package identity_test
+package apiserver_test
 
 import (
 	"context"

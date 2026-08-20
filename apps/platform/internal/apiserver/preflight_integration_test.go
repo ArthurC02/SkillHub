@@ -1,10 +1,10 @@
 // Pre-run permission summary and its confirmation (02:TEST-005 / 03:TEST-008,009),
 // plus the acceptance-criteria suggestions of 03:TEST-002.
 //
-// They live in identity_test with the rest of the database-backed HTTP tests so
+// They live in apiserver_test with the rest of the database-backed HTTP tests so
 // they serve apiserver.NewRouter's real table rather than a copy — see
 // authz_integration_test.go for the helpers (TestMain, migrate, login) they reuse.
-package identity_test
+package apiserver_test
 
 import (
 	"context"

@@ -5,7 +5,7 @@
 //
 // See authz_integration_test.go for the shared helpers (TestMain, migrate, login)
 // and evaluation_integration_test.go for seedEvaluatableRun and judgeServer.
-package identity_test
+package apiserver_test
 
 import (
 	"context"

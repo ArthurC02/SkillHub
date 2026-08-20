@@ -1,11 +1,17 @@
-// Package identity_test holds the database-backed tests that need the real HTTP
-// surface — identity + registry + catalog wired the way cmd/api wires it. It is
-// an external test package so it can do that without an import cycle, which is
+// Package apiserver_test holds the database-backed tests that exercise the whole
+// wired HTTP surface — the object graph apiserver.NewApp builds and the route
+// table apiserver.NewRouter declares, not a copy of either. It is an external
+// test package so it can construct that graph without an import cycle, which is
 // also why the DISC-001/002 search and WS-001 fork tests live here (see
 // disc_integration_test.go) rather than beside the packages they exercise.
 //
+// They used to live in internal/identity for the same import-cycle reason, which
+// made twenty-three files about runs, packaging, evaluation and tracing look like
+// identity tests. They test the API; they live beside the API (DDD-011).
+//
 // This file covers CORE-005 (login, logout, workspace access control) and
-// CORE-006 (private content authorization).
+// CORE-006 (private content authorization), and carries the harness the rest of
+// the package shares.
 //
 // These tests need a throwaway PostgreSQL with the pgvector extension
 // available. Point SKILLHUB_TEST_DATABASE_URL at one and they run; leave it
@@ -14,7 +20,7 @@
 //
 // WARNING: TestMain drops and recreates schema "public" in that database.
 // Never point SKILLHUB_TEST_DATABASE_URL at a database you care about.
-package identity_test
+package apiserver_test
 
 import (
 	"context"
@@ -435,84 +441,10 @@ func contains(ids []string, want string) bool {
 	return false
 }
 
-// CORE-005/CORE-006: every route in the real table, asserted against an
-// anonymous caller. Two things fail here that nothing else caught: a route
-// dropped from apiserver.NewRouter (the mux answers 404 where the table says
-// 401), and a private route that starts answering anonymous callers.
-//
-// It does not distinguish "wrapped in RequireSession" from "not wrapped": each
-// private handler re-checks SessionUser itself and returns the same 401, which
-// is deliberate defence in depth, not redundancy. The boundary is the assertion
-// here, not the mechanism that enforces it.
-func TestAnonymousCallersGetThePublicSurfaceAndNothingElse(t *testing.T) {
-	pool := requireDB(t)
-	a := newAPI(t, pool)
-	anon := &client{Client: &http.Client{
-		// Follow no redirects: the login route's 302 is the assertion.
-		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}, base: a.URL}
-	// Any well-formed id: authorization is decided before the handler parses it.
-	const id = "00000000-0000-0000-0000-000000000001"
-
-	for _, tc := range []struct {
-		method, path string
-		want         int
-	}{
-		// Public surface (DISC-010): reachable without a session.
-		{http.MethodGet, "/healthz", http.StatusOK},
-		{http.MethodGet, "/auth/github/login", http.StatusFound},
-		{http.MethodGet, "/auth/github/callback", http.StatusUnauthorized}, // no state cookie
-		{http.MethodPost, "/auth/logout", http.StatusNoContent},
-		{http.MethodPost, "/auth/dev/login", http.StatusNoContent}, // DevLogin: true here only
-		{http.MethodGet, "/api/skills/search?q=anything", http.StatusOK},
-		{http.MethodGet, "/api/skills/" + id, http.StatusNotFound},
-		{http.MethodGet, "/api/skills/" + id + "/files", http.StatusNotFound},
-
-		// Everything that touches a workspace: 401, never a 404 that would mean
-		// the route is missing, and never a 200.
-		{http.MethodGet, "/me", http.StatusUnauthorized},
-		{http.MethodDelete, "/me", http.StatusUnauthorized},
-		{http.MethodPost, "/me/deletion/cancel", http.StatusUnauthorized},
-		{http.MethodPost, "/skills/import/upload", http.StatusUnauthorized},
-		{http.MethodPost, "/skills/import/url", http.StatusUnauthorized},
-		{http.MethodGet, "/skills/search?q=anything", http.StatusUnauthorized},
-		{http.MethodGet, "/skills", http.StatusUnauthorized},
-		{http.MethodPost, "/skills/" + id + "/fork", http.StatusUnauthorized},
-		{http.MethodPost, "/skills/" + id + "/versions", http.StatusUnauthorized},
-		{http.MethodPost, "/skills/" + id + "/takedown", http.StatusUnauthorized},
-		{http.MethodGet, "/skills/" + id + "/diff", http.StatusUnauthorized},
-		{http.MethodDelete, "/skills/" + id, http.StatusUnauthorized},
-		{http.MethodPost, "/skills/" + id + "/runs", http.StatusUnauthorized},
-		{http.MethodGet, "/skills/" + id + "/runs/preflight", http.StatusUnauthorized},
-		{http.MethodPost, "/skills/" + id + "/runs/preflight/confirm", http.StatusUnauthorized},
-		{http.MethodGet, "/runs/" + id, http.StatusUnauthorized},
-		{http.MethodPost, "/runs/" + id + "/cancel", http.StatusUnauthorized},
-		// EVAL-002: a suggestion is a statement about a user's own run, and the
-		// version it can build is a write.
-		{http.MethodGet, "/runs/" + id + "/suggestions", http.StatusUnauthorized},
-		{http.MethodPut, "/suggestions/" + id + "/decision", http.StatusUnauthorized},
-		{http.MethodGet, "/suggestions/" + id + "/diff", http.StatusUnauthorized},
-		{http.MethodPost, "/skills/" + id + "/versions/from-suggestions", http.StatusUnauthorized},
-
-		// PACK-001/002: a package built from a user's version is that user's, and
-		// the target list names what this deployment can build.
-		{http.MethodGet, "/packaging/targets", http.StatusUnauthorized},
-		{http.MethodGet, "/skills/" + id + "/versions/" + id + "/packaging/preview?target=standard",
-			http.StatusUnauthorized},
-		{http.MethodPost, "/skills/" + id + "/versions/" + id + "/packaging", http.StatusUnauthorized},
-
-		// The operator surface (02:SEC-011) is the one exception to the 401 rule
-		// above: it answers 404 to everybody not on the deployment's operator
-		// list, so that a caller cannot learn the route exists. Anonymous callers
-		// are never on that list.
-		{http.MethodPut, "/admin/skills/" + id + "/restriction", http.StatusNotFound},
-		{http.MethodDelete, "/admin/skills/" + id + "/restriction", http.StatusNotFound},
-	} {
-		if got := anon.status(t, tc.method, tc.path); got != tc.want {
-			t.Errorf("%s %s: got %d, want %d", tc.method, tc.path, got, tc.want)
-		}
-	}
-}
+// The anonymous authorization matrix that used to live here — a hand-picked ~30
+// of the table's 68 routes — is now the complete one in
+// authz_matrix_integration_test.go, held complete by a scan of the route table's
+// own source.
 
 // CORE-005: a session is what login hands out and logout takes away.
 func TestLoginLogoutSessionLifecycle(t *testing.T) {

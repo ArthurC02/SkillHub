@@ -7,7 +7,7 @@
 // is leave two rows behind — a download record and an audit event — and the
 // tests assert they are two rows in two tables, because merging them is the
 // mistake 03:CORE-008 names by hand.
-package identity_test
+package apiserver_test
 
 import (
 	"context"

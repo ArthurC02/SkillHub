@@ -3,7 +3,7 @@
 // what is under test is the platform's half: the append-only revision chain, the
 // two trace events, workspace scope, and the promise that a verdict never moves a
 // run.
-package identity_test
+package apiserver_test
 
 import (
 	"context"

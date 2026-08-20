@@ -2,7 +2,7 @@
 // views. Shared harness (TestMain, migrate, requireDB, login, seedSkill) lives
 // in authz_integration_test.go; seedSkillVersion and markCatalog in
 // disc_integration_test.go.
-package identity_test
+package apiserver_test
 
 import (
 	"archive/zip"

@@ -8,7 +8,7 @@
 // assertion about a call that returned rather than about a timeout, and the two
 // entry points SEC-012 names (creation in the API process, dispatch in the worker
 // process) are exercised separately.
-package identity_test
+package apiserver_test
 
 import (
 	"context"
