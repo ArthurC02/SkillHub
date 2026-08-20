@@ -1,7 +1,8 @@
-// Package registry owns skills and their immutable versions (ADR-002 Skill
-// Registry & Versioning). Fork copies nothing: packages are content-addressed
-// in object storage, so a fork is two rows plus lineage (WS-001, iron rule 4).
 package registry
+
+// Skill identity and lineage: fork, soft delete, takedown. These write the
+// mutable `skills` row; the one place here that writes an immutable version row
+// is Fork. See doc.go for the aggregate rules it has to respect.
 
 import (
 	"context"

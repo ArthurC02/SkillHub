@@ -66,6 +66,14 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 ### 4. 戰術 DDD 刻意限縮
 
 - **Aggregate 只用於不變量密集處**：Run 狀態機（ADR-008）、Skill Version 不可變性（ADR-003）、Evaluation append-only（ADR-026）。這三處現有實作已是實質 aggregate，補文件與測試即可，不重寫。
+（2026-08-20 實作註記之三：**Skill Version 不可變性的「補文件與測試」已完成**，涵蓋三件事。
+
+一、**不變量宣告**：`apps/platform/internal/registry/doc.go`。這個 context 的兩張表規則相反——`skills` 可變（summary、access_restriction、redistribution、takedown_at、deleted_at 都是寫完才填的），`skill_versions` 一寫不改。doc.go 逐條列出版本 aggregate 的五條不變量與唯一寫入路徑（`write.go` 的匯入路徑、`registry.go` 的 Fork）。
+
+二、**機械防線補在 CI 側**：這裡要更正一個常見誤讀——不可變性**從一開始就有機械防線**，是 `db/migrations/0005_immutability.sql`／`0013` 的 `enforce_immutable()` trigger，`db/tests/immutability_test.sql` 有可跑的證明。缺的不是「有沒有擋」，而是**什麼時候知道**：trigger 要等語句真的執行才 RAISE。新增的是 `db/query-owners.yaml` 的 `immutable:` 段落與 `tools/devctl` 的對應檢查（併入既有 `automation-check`，不新增 task），任何命中這些表的 UPDATE／DELETE 在寫出來的那個 PR 上就是紅的。
+
+三、**兩邊互相對帳**：`immutable:` 宣告的每一張表，在 `db/migrations` 必須有一個**無 WHEN、無欄位參數**的 `enforce_immutable()` trigger，否則 FAIL。因此單獨拿掉 trigger、或單獨刪掉宣告，都過不了 CI——要退場必須兩邊一起動，而那是一次被 review 看得見的動作。只列無條件凍結的八張表（`skill_versions`、`test_case_snapshots`、`run_status_transitions`、`trace_events`、`audit_events`、`download_artifacts`、`download_records`、`evaluation_model_usage`）；`runs`／`run_attempts`／`evaluations`／`evaluation_suggestions` 是列級或欄位級凍結，不是「這張表不可寫」，納入只會製造假警報。唯一豁免是帳號刪除 purge 的 `PurgeUnreferencedSkills`，形狀比照 `allow:`：具名、有理由、有清除路徑，且資料庫側走的是同一個具名旗標 `SET LOCAL skillhub.purge = 'on'`。）
+
 - **不引入 repository interface 層**：sqlc per-context queries ＋ Go package 邊界已提供等價的封裝；在其上再鋪 interface 是單一實作的投機抽象。
 - **不採 event sourcing、不引 CQRS 框架**：Catalog 的搜尋投影（`reindex`）已是夠用的手工 CQRS。
 - **transaction script 是合法模式**：CRUD 密集、不變量稀薄的 context（analytics、audit 寫入）維持現狀。

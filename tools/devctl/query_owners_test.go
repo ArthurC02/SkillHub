@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -39,6 +40,11 @@ func writeQueryOwnerFixture(t *testing.T, declaration string, sql map[string]str
 	return root
 }
 
+// decl appends the two sections the ownership cases do not exercise. They are
+// required to exist, so a declaration that omits them fails to parse before the
+// case under test gets a chance to run.
+func decl(declaration string) string { return declaration + "immutable:\nimmutable_allow:\n" }
+
 func TestQueryOwnerProblems(t *testing.T) {
 	t.Parallel()
 
@@ -54,7 +60,7 @@ WITH doomed AS (SELECT id FROM runs WHERE stale)
 DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 `
 
-	baseDeclaration := "files:\n  runs.sql: run\nqueries:\nallow:\n"
+	baseDeclaration := decl("files:\n  runs.sql: run\nqueries:\nallow:\n")
 
 	tests := []struct {
 		name        string
@@ -86,33 +92,33 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 		},
 		{
 			name:        "allow entry lets a known drift through",
-			declaration: "files:\n  runs.sql: run\nqueries:\nallow:\n  CreateRun: eval\n",
+			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\n  CreateRun: eval\n"),
 			callers:     map[string]string{"eval": "func f(q Q) { q.CreateRun(ctx) }"},
 		},
 		{
 			name:        "stale allow entry is reported",
-			declaration: "files:\n  runs.sql: run\nqueries:\nallow:\n  CreateRun: eval\n",
+			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\n  CreateRun: eval\n"),
 			callers:     map[string]string{"run": "func f(q Q) { q.CreateRun(ctx) }"},
 			want:        "allow.CreateRun = \"eval\" no longer calls it",
 		},
 		{
 			name:        "undeclared sql file is reported",
-			declaration: "files:\nqueries:\nallow:\n",
+			declaration: decl("files:\nqueries:\nallow:\n"),
 			want:        "db/queries/runs.sql has no default owner",
 		},
 		{
 			name:        "declaration of a vanished query is reported",
-			declaration: "files:\n  runs.sql: run\nqueries:\n  ListRuns: run\nallow:\n",
+			declaration: decl("files:\n  runs.sql: run\nqueries:\n  ListRuns: run\nallow:\n"),
 			want:        "queries.ListRuns is not a query in db/queries",
 		},
 		{
 			name:        "unknown context name is reported",
-			declaration: "files:\n  runs.sql: runz\nqueries:\nallow:\n",
+			declaration: decl("files:\n  runs.sql: runz\nqueries:\nallow:\n"),
 			want:        `files.runs.sql = "runz" is not a context`,
 		},
 		{
 			name:        "per-query override beats the file default",
-			declaration: "files:\n  runs.sql: run\nqueries:\n  CreateRun: eval\nallow:\n",
+			declaration: decl("files:\n  runs.sql: run\nqueries:\n  CreateRun: eval\nallow:\n"),
 			callers:     map[string]string{"eval": "func f(q Q) { q.CreateRun(ctx) }"},
 		},
 	}
@@ -144,7 +150,7 @@ func TestQueryOwnerProblemsIgnoresTestsAndNonImporters(t *testing.T) {
 	// the sqlc package, is not a production data-access path. Counting either
 	// would make the check fire on integration tests that drive fixtures.
 	root := writeQueryOwnerFixture(t,
-		"files:\n  runs.sql: run\nqueries:\nallow:\n",
+		decl("files:\n  runs.sql: run\nqueries:\nallow:\n"),
 		map[string]string{"runs.sql": "-- name: CreateRun :one\nINSERT INTO runs (id) VALUES ($1);\n"},
 		nil)
 	for _, relative := range []string{"eval/service_test.go", "eval/helper.go"} {
@@ -158,6 +164,127 @@ func TestQueryOwnerProblemsIgnoresTestsAndNonImporters(t *testing.T) {
 	}
 	if problems := queryOwnerProblems(root); len(problems) != 0 {
 		t.Fatalf("expected no problems, got %#v", problems)
+	}
+}
+
+func TestImmutableTableProblems(t *testing.T) {
+	t.Parallel()
+
+	// The migration half of the contract. `notes` is deliberately frozen only
+	// while draft, which is what the check must refuse to treat as a frozen
+	// table: a column-scoped or conditional trigger says "part of this row",
+	// not "this table is insert-only".
+	const migration = `
+CREATE TRIGGER skill_versions_immutable
+    BEFORE UPDATE OR DELETE ON skill_versions
+    FOR EACH ROW EXECUTE FUNCTION enforce_immutable();
+
+CREATE TRIGGER notes_immutable
+    BEFORE UPDATE OR DELETE ON notes
+    FOR EACH ROW WHEN (OLD.status = 'draft')
+    EXECUTE FUNCTION enforce_immutable();
+`
+	const frozen = "immutable:\n  skill_versions: ADR-003\n"
+
+	tests := []struct {
+		name    string
+		queries string
+		suffix  string // the immutable / immutable_allow sections
+		want    string
+	}{
+		{
+			name:    "insert into a frozen table is fine",
+			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
+			suffix:  frozen + "immutable_allow:\n",
+		},
+		{
+			name:    "update of a frozen table is blocked",
+			queries: "-- name: TouchVersion :exec\nUPDATE skill_versions SET manifest = $2 WHERE id = $1;\n",
+			suffix:  frozen + "immutable_allow:\n",
+			want:    "skill_versions is append-only but TouchVersion updates or deletes it",
+		},
+		{
+			name: "delete from a frozen table is blocked, CTE included",
+			queries: "-- name: PurgeVersions :execrows\n" +
+				"WITH doomed AS (SELECT id FROM skills)\nDELETE FROM skill_versions WHERE skill_id IN (SELECT id FROM doomed);\n",
+			suffix: frozen + "immutable_allow:\n",
+			want:   "skill_versions is append-only but PurgeVersions updates or deletes it",
+		},
+		{
+			name:    "named exemption lets the retention purge through",
+			queries: "-- name: PurgeVersions :execrows\nDELETE FROM skill_versions WHERE stale;\n",
+			suffix:  frozen + "immutable_allow:\n  PurgeVersions: skill_versions\n",
+		},
+		{
+			name:    "exemption whose statement no longer writes the table is reported",
+			queries: "-- name: PurgeVersions :execrows\nDELETE FROM skills WHERE stale;\n",
+			suffix:  frozen + "immutable_allow:\n  PurgeVersions: skill_versions\n",
+			want:    `immutable_allow.PurgeVersions = "skill_versions" no longer writes it`,
+		},
+		{
+			name:    "exemption for a table nobody declared immutable is reported",
+			queries: "-- name: PurgeSkills :execrows\nDELETE FROM skills WHERE stale;\n",
+			suffix:  frozen + "immutable_allow:\n  PurgeSkills: skills\n",
+			want:    `immutable_allow.PurgeSkills = "skills" is not a declared immutable table`,
+		},
+		{
+			name:    "declaring a table the database does not freeze is reported",
+			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
+			suffix:  "immutable:\n  notes: conditional, not a frozen table\nimmutable_allow:\n",
+			want:    "immutable.notes has no unconditional enforce_immutable() trigger",
+		},
+		{
+			name:    "declaring a table without a reason is reported",
+			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
+			suffix:  "immutable:\n  skill_versions:\nimmutable_allow:\n",
+			want:    "immutable.skill_versions has no reason",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			root := writeQueryOwnerFixture(t,
+				"files:\n  versions.sql: registry\nqueries:\nallow:\n"+test.suffix,
+				map[string]string{"versions.sql": test.queries}, nil)
+			path := filepath.Join(root, "db", "migrations", "0005_immutability.sql")
+			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(migration), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			problems := queryOwnerProblems(root)
+			if test.want == "" {
+				if len(problems) != 0 {
+					t.Fatalf("expected no problems, got %#v", problems)
+				}
+				return
+			}
+			if len(problems) != 1 {
+				t.Fatalf("expected exactly one problem containing %q, got %#v", test.want, problems)
+			}
+			if !strings.Contains(problems[0], test.want) {
+				t.Fatalf("problem %q does not mention %q", problems[0], test.want)
+			}
+		})
+	}
+}
+
+func TestMutatedTables(t *testing.T) {
+	t.Parallel()
+	tests := map[string][]string{
+		"SELECT * FROM skill_versions FOR UPDATE":                      nil,
+		"INSERT INTO skill_versions (id) VALUES ($1)":                  nil,
+		"INSERT INTO skills VALUES ($1) ON CONFLICT DO UPDATE SET a=1": nil,
+		"UPDATE skill_versions SET a = 1":                              {"skill_versions"},
+		"DELETE FROM   ONLY skill_versions WHERE id = $1":              {"skill_versions"},
+		"WITH x AS (DELETE FROM a) UPDATE b SET c = 1":                 {"a", "b"},
+	}
+	for body, want := range tests {
+		if got := mutatedTables(body); !slices.Equal(got, want) {
+			t.Errorf("mutatedTables(%q) = %v, want %v", body, got, want)
+		}
 	}
 }
 

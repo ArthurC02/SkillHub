@@ -70,11 +70,13 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
+	unlock := lockTestSchema(ctx, pool)
 	if err := migrate(ctx, pool); err != nil {
 		panic(err)
 	}
 	testPool = pool
 	code := m.Run()
+	unlock()
 	pool.Close()
 	os.Exit(code)
 }
@@ -646,4 +648,32 @@ func mustURL(t *testing.T, raw string) *url.URL {
 		t.Fatal(err)
 	}
 	return u
+}
+
+// lockTestSchema serialises the packages that reset this database.
+//
+// apiserver, eval and registry each drop and recreate schema "public" in
+// SKILLHUB_TEST_DATABASE_URL, and `go test ./...` runs packages concurrently:
+// one package's reset lands while another is mid-run, and the second one sees
+// "relation does not exist". Held on one connection for the whole package run
+// rather than only across the migration, because the hazard is a reset
+// colliding with somebody else's *tests*, not with their migration.
+//
+// Session-scoped, so a crashed run releases it along with its connection and a
+// stale lock cannot wedge CI. Every package that resets this database must take
+// it; one that forgets fails loudly with the panic above rather than silently.
+func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		panic(err)
+	}
+	if _, err := conn.Exec(ctx,
+		"SELECT pg_advisory_lock(hashtextextended('skillhub:test-schema', 0))"); err != nil {
+		panic(err)
+	}
+	return func() {
+		_, _ = conn.Exec(ctx,
+			"SELECT pg_advisory_unlock(hashtextextended('skillhub:test-schema', 0))")
+		conn.Release()
+	}
 }

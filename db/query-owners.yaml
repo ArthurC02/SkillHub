@@ -124,3 +124,40 @@ allow:
   UpsertSearchDocument: registry
   DeleteSearchDocument: registry
   UpsertSearchDocumentEnriched: ingest
+
+# 不可變資料表宣告（ADR-003、鐵律 4；ADR-032 §4 的 aggregate 不變量）
+#
+# 這裡列的表**只接受 INSERT**：任何 UPDATE 或 DELETE 命中它們，
+# `automation-check` 就 FAIL。
+#
+# 為什麼還要這道檢查——資料庫已經擋了：db/migrations 的 `enforce_immutable()`
+# trigger（0005／0013／0027／0033）會在 runtime RAISE，db/tests/immutability_test.sql
+# 也證明了它會擋。差別在**什麼時候**知道：trigger 要等語句真的跑到才炸，
+# 一條 `UPDATE skill_versions SET ...` 合進來後是 staging 的 500，
+# 這道檢查讓它在寫出來的那個 PR 上就是紅的。
+#
+# 只列**無條件凍結**的表。`runs`（終態後才凍）、`run_attempts`／`evaluations`／
+# `evaluation_suggestions`（只凍部分欄位）是列級／欄位級規則，不是「這張表不可寫」，
+# 放進來只會製造一堆假警報。
+#
+# 維護規則：每一列的值是**理由**，不得留空；而且該表在 db/migrations 必須有一個
+# 無 WHEN、無欄位參數的 `enforce_immutable()` trigger——兩邊由 CI 互相對帳，
+# 單獨拿掉任何一邊都會 FAIL。要移除一張表，先移除 trigger 的那個 migration。
+immutable:
+  skill_versions: ADR-003 版本快照；採納建議＝新版本，不原地覆寫（鐵律 4）
+  test_case_snapshots: ADR-003 Run 引用的測試資料快照，改了會讓歷史 Run 的輸入說謊
+  run_status_transitions: ADR-008 狀態機的歷史；重寫轉移紀錄等於重寫 Run 發生過的事
+  trace_events: TRACE-001 執行事實；保存期到期是 DROP PARTITION，不是 DELETE
+  audit_events: NFR-001 稽核軌跡；可被改寫的軌跡不是軌跡
+  download_artifacts: ADR-027 產出的位元組與雙雜湊；重打包是新列
+  download_records: ADR-027「誰在何時下載了什麼」，不是可編輯的狀態
+  evaluation_model_usage: ADR-026 判定當下的模型用量；重評是 append 新列
+
+# 不可變表的具名豁免。形狀比照 `allow:`：具名、有理由、有清除路徑。
+# **不得**為了讓檢查過關就把整張表移出 `immutable:`。
+immutable_allow:
+  # 帳號刪除的保存期 purge（PDM-006 6.1）。這是唯一被允許硬刪凍結列的路徑，
+  # 資料庫側同樣走具名豁免——identity/purge.go 的 `SET LOCAL skillhub.purge = 'on'`，
+  # trigger 只認這個旗標。清除路徑：等 ADR-033 的事件式自清落地後，
+  # 這條 CTE 連同本豁免一起消失。
+  PurgeUnreferencedSkills: skill_versions
