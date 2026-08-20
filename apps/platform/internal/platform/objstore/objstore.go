@@ -10,10 +10,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/envx"
 )
 
 type Client struct {
@@ -30,6 +33,19 @@ func New(endpoint, accessKey, secretKey, bucket string, useSSL bool) (*Client, e
 		return nil, fmt.Errorf("objstore client: %w", err)
 	}
 	return &Client{mc: mc, bucket: bucket}, nil
+}
+
+// FromEnv builds a client from the standard OBJSTORE_* variables, the same
+// five every command reads. An empty access key means anonymous access, which
+// is local dev only. Callers still decide whether to EnsureBucket.
+func FromEnv() (*Client, error) {
+	return New(
+		envx.Or("OBJSTORE_ENDPOINT", "localhost:8333"),
+		os.Getenv("OBJSTORE_ACCESS_KEY"),
+		os.Getenv("OBJSTORE_SECRET_KEY"),
+		envx.Or("OBJSTORE_BUCKET", "skillhub"),
+		os.Getenv("OBJSTORE_SSL") == "1",
+	)
 }
 
 // EnsureBucket creates the bucket if missing. Dev convenience; production

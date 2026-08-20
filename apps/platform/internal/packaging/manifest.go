@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
@@ -231,8 +232,8 @@ func (s *Service) originOf(
 		chain, root := walkLineage(ctx, q, skill.ForkedFromVersionID)
 		return forkOrigin{
 			Kind:                   "fork",
-			UpstreamSkillID:        uuidString(skill.ForkedFromSkillID),
-			UpstreamSkillVersionID: uuidString(skill.ForkedFromVersionID),
+			UpstreamSkillID:        pgconv.UUIDString(skill.ForkedFromSkillID),
+			UpstreamSkillVersionID: pgconv.UUIDString(skill.ForkedFromVersionID),
 			Chain:                  chain,
 			RootSource:             root,
 		}, nil
@@ -256,7 +257,7 @@ func (s *Service) originOf(
 	// origin to write, and a manifest that omits one would claim this version
 	// came from nowhere. Refusing is the correct answer to a row that should not
 	// exist.
-	return nil, fmt.Errorf("skill version %s has no recorded origin", uuidString(version.ID))
+	return nil, fmt.Errorf("skill version %s has no recorded origin", pgconv.UUIDString(version.ID))
 }
 
 func (s *Service) improvementOriginOf(
@@ -274,8 +275,8 @@ func (s *Service) improvementOriginOf(
 	switch {
 	case err == nil:
 		base = lineageHop{
-			SkillID:        uuidString(prev.SkillID),
-			SkillVersionID: uuidString(prev.ID),
+			SkillID:        pgconv.UUIDString(prev.SkillID),
+			SkillVersionID: pgconv.UUIDString(prev.ID),
 			VersionNumber:  prev.VersionNumber,
 		}
 	case !errors.Is(err, pgx.ErrNoRows):
@@ -283,7 +284,7 @@ func (s *Service) improvementOriginOf(
 	}
 	return improvementOrigin{
 		Kind:         "improvement",
-		EvaluationID: uuidString(sugs[0].EvaluationID),
+		EvaluationID: pgconv.UUIDString(sugs[0].EvaluationID),
 		Suggestions:  refs,
 		Base:         base,
 		RootSource:   rootSourceOf(ctx, q, version.ID),
@@ -307,8 +308,8 @@ func walkLineage(ctx context.Context, q *gen.Queries, from pgtype.UUID) (chain [
 			return append(chain, unavailable), unavailable
 		}
 		chain = append(chain, lineageHop{
-			SkillID:        uuidString(row.SkillID),
-			SkillVersionID: uuidString(row.ID),
+			SkillID:        pgconv.UUIDString(row.SkillID),
+			SkillVersionID: pgconv.UUIDString(row.ID),
 			VersionNumber:  row.VersionNumber,
 		})
 		if !row.ForkedFromVersionID.Valid {
@@ -350,18 +351,12 @@ func rootSourceOf(ctx context.Context, q *gen.Queries, versionID pgtype.UUID) an
 	return unavailable
 }
 
+// rfc3339 is deliberately not pgconv.RFC3339: the manifest schema has no null
+// spelling for a timestamp, so a NULL becomes the epoch rather than "" and the
+// emitted document stays parseable. Do not merge the two.
 func rfc3339(ts pgtype.Timestamptz) string {
 	if !ts.Valid {
 		return time.Unix(0, 0).UTC().Format(time.RFC3339)
 	}
 	return ts.Time.UTC().Format(time.RFC3339)
-}
-
-func uuidString(u pgtype.UUID) string {
-	v, err := u.Value()
-	if err != nil {
-		return ""
-	}
-	s, _ := v.(string)
-	return s
 }

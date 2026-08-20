@@ -14,6 +14,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 var (
@@ -140,8 +141,8 @@ func (s *Service) Fork(ctx context.Context, ws gen.Workspace, skillID pgtype.UUI
 		ResourceType: audit.ResourceSkill,
 		ResourceID:   fork.ID,
 		Metadata: map[string]any{
-			"source_skill_id":   uuidString(src.ID),
-			"source_version_id": uuidString(srcVer.ID),
+			"source_skill_id":   pgconv.UUIDString(src.ID),
+			"source_version_id": pgconv.UUIDString(srcVer.ID),
 		},
 	}); err != nil {
 		return gen.Skill{}, gen.SkillVersion{}, err

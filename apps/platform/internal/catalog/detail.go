@@ -37,6 +37,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
@@ -319,7 +320,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill gen.Skill) (skillDetail
 	q := gen.New(s.Pool)
 
 	out := skillDetail{
-		SkillID:     uuidString(skill.ID),
+		SkillID:     pgconv.UUIDString(skill.ID),
 		Name:        skill.Name,
 		Tier:        tierLabel(),
 		Limitations: []limitation{},
@@ -361,7 +362,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill gen.Skill) (skillDetail
 		return skillDetail{}, err
 	}
 	out.Version = &versionInfo{
-		VersionID:     uuidString(ver.ID),
+		VersionID:     pgconv.UUIDString(ver.ID),
 		VersionNumber: ver.VersionNumber,
 		ContentHash:   ver.ContentHash,
 		CreatedAt:     timeString(ver.CreatedAt),
@@ -492,8 +493,8 @@ func (s *Service) SkillFiles(ctx context.Context, skill gen.Skill) (skillFiles, 
 	}
 
 	out := skillFiles{
-		SkillID:       uuidString(skill.ID),
-		VersionID:     uuidString(ver.ID),
+		SkillID:       pgconv.UUIDString(skill.ID),
+		VersionID:     pgconv.UUIDString(ver.ID),
 		VersionNumber: ver.VersionNumber,
 		Tree:          fileTree(fsys),
 		Note:          filesNote,
@@ -686,8 +687,8 @@ func derivation(s gen.Skill) derivationInfo {
 	b := Derivation(isFork)
 	out := derivationInfo{IsFork: isFork, Label: b.Label, Note: b.Note}
 	if isFork {
-		out.ForkedFromSkillID = uuidString(s.ForkedFromSkillID)
-		out.ForkedFromVersionID = uuidString(s.ForkedFromVersionID)
+		out.ForkedFromSkillID = pgconv.UUIDString(s.ForkedFromSkillID)
+		out.ForkedFromVersionID = pgconv.UUIDString(s.ForkedFromVersionID)
 	}
 	return out
 }

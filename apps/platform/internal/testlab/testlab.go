@@ -25,6 +25,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // PDM-005 §5.1. These are the only enforcement point for the dataset limits;
@@ -564,7 +565,7 @@ func indexOfCriterion(list []Criterion, id string) int {
 	return -1
 }
 
-func newCriterionID() string { return uuidString(newUUID()) }
+func newCriterionID() string { return pgconv.UUIDString(newUUID()) }
 
 // humanMB renders a byte cap the way the user-facing limit is written, so an
 // error message says "25 MB" and not "26214400".

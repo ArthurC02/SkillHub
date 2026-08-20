@@ -10,6 +10,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
@@ -35,8 +36,8 @@ type UploadResult struct {
 // NewUploadResult renders one stored version the way every creation path does.
 func NewUploadResult(res Result) UploadResult {
 	return UploadResult{
-		SkillID:       uuidString(res.Skill.ID),
-		VersionID:     uuidString(res.Version.ID),
+		SkillID:       pgconv.UUIDString(res.Skill.ID),
+		VersionID:     pgconv.UUIDString(res.Version.ID),
 		VersionNumber: res.Version.VersionNumber,
 		ContentHash:   res.Version.ContentHash,
 		Duplicate:     res.Duplicate,
@@ -157,10 +158,4 @@ func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
 	}
 
 	httpx.WriteJSON(w, http.StatusCreated, NewUploadResult(res))
-}
-
-func uuidString(u pgtype.UUID) string {
-	v, _ := u.Value()
-	s, _ := v.(string)
-	return s
 }

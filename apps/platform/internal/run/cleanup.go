@@ -26,6 +26,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // orphanGrace is how old an unrecognised sandbox must be, measured against the
@@ -114,7 +115,7 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 		// rather than an error so River does not burn this job's attempts waiting for
 		// a human (RUN-007's retries are for transient failures, and an investigation
 		// is not one).
-		slog.Warn("cleanup held: a P1 halt is preserving the scene", "run_id", uuidString(run.ID))
+		slog.Warn("cleanup held: a P1 halt is preserving the scene", "run_id", pgconv.UUIDString(run.ID))
 		return nil
 	}
 	if _, err := s.queries().SetRunCleanupStatus(ctx, gen.SetRunCleanupStatusParams{
@@ -146,7 +147,7 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 		// expires. Their bound is the TTL minted in grantsFor, which is the run's
 		// own hard wall clock plus slack.
 		if s.Gateway != nil {
-			if err := s.Gateway.Revoke(ctx, uuidString(attempt.ID)); err != nil {
+			if err := s.Gateway.Revoke(ctx, pgconv.UUIDString(attempt.ID)); err != nil {
 				// SBX-012: counted apart from the sandbox teardown below. A key that
 				// will not revoke needs a human at the gateway; draining the fleet,
 				// which is what the sandbox counter escalates to, would do nothing
@@ -188,7 +189,7 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 		// no longer under investigation. Recording `cleaned` here would be a claim
 		// that a sandbox which is still standing has been released.
 		slog.Warn("cleanup partly held: a P1 halt is preserving the scene",
-			"run_id", uuidString(run.ID), "attempts_held", preserved)
+			"run_id", pgconv.UUIDString(run.ID), "attempts_held", preserved)
 		return nil
 	}
 	status := gen.RunCleanupStatusCleaned

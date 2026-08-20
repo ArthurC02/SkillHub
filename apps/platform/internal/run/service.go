@@ -16,6 +16,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
@@ -420,8 +421,8 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		// Same unique options the supervisor uses, so a re-enqueue after a restart
 		// lands on this job instead of starting a second driver (RUN-008).
 		if _, err := s.Queue.InsertTx(ctx, tx, JobArgs{
-			RunID:       uuidString(run.ID),
-			WorkspaceID: uuidString(run.WorkspaceID),
+			RunID:       pgconv.UUIDString(run.ID),
+			WorkspaceID: pgconv.UUIDString(run.WorkspaceID),
 		}, executeInsertOpts()); err != nil {
 			return gen.Run{}, err
 		}
@@ -513,7 +514,7 @@ func (s *Service) Transition(ctx context.Context, p TransitionParams) (gen.Run, 
 	// transactional guarantee, one direction fewer.
 	if IsTerminal(p.To) && s.Queue != nil {
 		if _, err := s.Queue.InsertTx(ctx, tx, CleanupArgs{
-			RunID: uuidString(run.ID), WorkspaceID: uuidString(run.WorkspaceID),
+			RunID: pgconv.UUIDString(run.ID), WorkspaceID: pgconv.UUIDString(run.WorkspaceID),
 		}, cleanupInsertOpts()); err != nil {
 			return gen.Run{}, err
 		}
@@ -737,7 +738,7 @@ func (s *Service) DeleteArtifact(
 		Actor: ws.OwnerUserID, Workspace: ws.ID,
 		Action: audit.ActionArtifactDelete, ResourceType: audit.ResourceArtifact,
 		ResourceID: row.ID,
-		Metadata:   map[string]any{"run_id": uuidString(runID)},
+		Metadata:   map[string]any{"run_id": pgconv.UUIDString(runID)},
 	}); err != nil {
 		return err
 	}
@@ -835,12 +836,6 @@ func (s *Service) RequestCancel(ctx context.Context, workspaceID, runID, actor p
 		return gen.Run{}, err
 	}
 	return run, tx.Commit(ctx)
-}
-
-func uuidString(u pgtype.UUID) string {
-	v, _ := u.Value()
-	s, _ := v.(string)
-	return s
 }
 
 func nowUTC() string { return time.Now().UTC().Format(time.RFC3339) }

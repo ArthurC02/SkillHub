@@ -26,6 +26,7 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 const (
@@ -125,10 +126,10 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 	for _, event := range events {
 		if err := deliver(ctx, event); err != nil {
 			slog.Error("domain event delivery failed",
-				"event_id", uuidString(event.EventID),
+				"event_id", pgconv.UUIDString(event.EventID),
 				"event_type", event.EventType,
 				"error", err)
-			failure = fmt.Errorf("deliver %s (%s): %w", uuidString(event.EventID), event.EventType, err)
+			failure = fmt.Errorf("deliver %s (%s): %w", pgconv.UUIDString(event.EventID), event.EventType, err)
 			break
 		}
 		ids = append(ids, event.EventID)
@@ -148,19 +149,13 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 // about the transport it stands in for.
 func logDelivery(_ context.Context, event gen.OutboxEvent) error {
 	slog.Info("domain event published",
-		"event_id", uuidString(event.EventID),
+		"event_id", pgconv.UUIDString(event.EventID),
 		"event_type", event.EventType,
 		"event_version", event.EventVersion,
-		"correlation_id", uuidString(event.CorrelationID),
+		"correlation_id", pgconv.UUIDString(event.CorrelationID),
 		"aggregate_type", event.AggregateType,
-		"aggregate_id", uuidString(event.AggregateID),
+		"aggregate_id", pgconv.UUIDString(event.AggregateID),
 		"payload", string(event.Payload),
 	)
 	return nil
-}
-
-func uuidString(u pgtype.UUID) string {
-	v, _ := u.Value()
-	s, _ := v.(string)
-	return s
 }

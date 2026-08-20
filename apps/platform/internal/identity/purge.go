@@ -9,6 +9,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // ObjectRemover is the slice of object storage the purge needs.
@@ -39,7 +40,7 @@ type ObjectRemover interface {
 func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover, grace time.Duration, limit int32) (purged int, err error) {
 	q := s.queries()
 	ids, err := q.ListAccountsPastGrace(ctx, gen.ListAccountsPastGraceParams{
-		Cutoff: pgTime(time.Now().Add(-grace)),
+		Cutoff: pgconv.Timestamptz(time.Now().Add(-grace)),
 		Limit:  limit,
 	})
 	if err != nil {

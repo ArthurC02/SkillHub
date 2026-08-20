@@ -24,6 +24,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
@@ -167,8 +168,8 @@ func (s *Service) buildRequest(
 	}
 
 	req := llmclient.JudgeRunRequest{
-		RunID:        uuidString(m.run.ID),
-		EvaluationID: uuidString(ev.ID),
+		RunID:        pgconv.UUIDString(m.run.ID),
+		EvaluationID: pgconv.UUIDString(ev.ID),
 		UserPrompt:   m.snapshot.UserPrompt,
 		Criteria:     criteria,
 		FinalOutput:  final,

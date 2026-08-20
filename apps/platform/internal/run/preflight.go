@@ -26,6 +26,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // ErrPermissionsNotConfirmed is SEC-002 gate B: the run request carries no
@@ -261,7 +262,7 @@ func (s *Service) permissionSummaryFor(
 	var total int64
 	for _, d := range rows {
 		datasets = append(datasets, DatasetSummary{
-			DatasetID:   uuidString(d.ID),
+			DatasetID:   pgconv.UUIDString(d.ID),
 			FileName:    d.FileName,
 			ContentType: d.ContentType,
 			SizeBytes:   d.SizeBytes,
@@ -277,9 +278,9 @@ func (s *Service) permissionSummaryFor(
 	policy := defaultPolicy()
 
 	content := PermissionSummaryContent{
-		SkillVersionID:    uuidString(version.ID),
+		SkillVersionID:    pgconv.UUIDString(version.ID),
 		SkillContentHash:  version.ContentHash,
-		TestCaseID:        uuidString(testCase.ID),
+		TestCaseID:        pgconv.UUIDString(testCase.ID),
 		Datasets:          datasets,
 		DatasetTotalBytes: total,
 		Scripts:           s.scriptSummary(ctx, version.PackageObjectKey),
@@ -412,7 +413,7 @@ func (s *Service) ConfirmPermissions(
 	if err := audit.Log(ctx, q, audit.Event{
 		Actor: actor, Workspace: workspaceID, Action: audit.ActionRunPermissionsConfirm,
 		ResourceType: audit.ResourceTestCase, ResourceID: testCaseID,
-		Metadata: map[string]any{"summary_hash": hash, "skill_version_id": uuidString(versionID)},
+		Metadata: map[string]any{"summary_hash": hash, "skill_version_id": pgconv.UUIDString(versionID)},
 	}); err != nil {
 		return gen.RunPermissionConfirmation{}, err
 	}
@@ -509,7 +510,7 @@ func (h *Handler) ConfirmPreflight(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, map[string]any{
 		"confirmed":    true,
 		"summary_hash": row.SummaryHash,
-		"confirmed_at": rfc3339(row.ConfirmedAt),
+		"confirmed_at": pgconv.RFC3339(row.ConfirmedAt),
 	})
 }
 

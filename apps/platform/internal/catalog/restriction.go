@@ -36,6 +36,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // maxOperatorNoteBytes caps the free-text note. It is the one piece of operator
@@ -129,7 +130,7 @@ func (h *Handler) changeRestriction(w http.ResponseWriter, r *http.Request, reas
 	// The response echoes the sentence the public detail view will now show, so
 	// the operator sees what the user sees without having to fetch the skill.
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"skill_id": uuidString(skillID),
+		"skill_id": pgconv.UUIDString(skillID),
 		"access_restriction": accessRestriction{
 			Reason: *reason,
 			Note:   restrictionNotes[*reason],

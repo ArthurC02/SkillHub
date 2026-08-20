@@ -24,6 +24,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/packaging"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
@@ -42,13 +43,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	store, err := objstore.New(
-		addrFromEnv("OBJSTORE_ENDPOINT", "localhost:8333"),
-		os.Getenv("OBJSTORE_ACCESS_KEY"), // empty = anonymous, local dev only
-		os.Getenv("OBJSTORE_SECRET_KEY"),
-		addrFromEnv("OBJSTORE_BUCKET", "skillhub"),
-		os.Getenv("OBJSTORE_SSL") == "1",
-	)
+	store, err := objstore.FromEnv()
 	if err != nil {
 		slog.Error("object store", "error", err)
 		os.Exit(1)
@@ -89,7 +84,7 @@ func main() {
 	// release. A deployment with no directory gets no targets and says so on every
 	// packaging route — never a hard-coded fallback, which would be the second
 	// truth the endpoint exists to avoid.
-	profiles, err := packaging.LoadProfiles(addrFromEnv("PACKAGING_PROFILES_DIR", "contracts/packaging/profiles"))
+	profiles, err := packaging.LoadProfiles(envx.Or("PACKAGING_PROFILES_DIR", "contracts/packaging/profiles"))
 	if err != nil {
 		slog.Error("packaging profiles unreadable; packaging is unavailable", "error", err)
 		profiles = nil
@@ -149,7 +144,7 @@ func main() {
 	// why this is not a Vite proxy: the SPA's /skills/$skillId page route and the
 	// API's /skills/{id} routes collide, so no path-prefix rule separates them.
 	srv := &http.Server{
-		Addr:              addrFromEnv("API_ADDR", ":8080"),
+		Addr:              envx.Or("API_ADDR", ":8080"),
 		Handler:           httpx.DevCORS(app.Handler(), os.Getenv("DEV_CORS_ORIGIN")),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
@@ -271,11 +266,4 @@ func analyticsRetentionFromEnv() time.Duration {
 		return 0
 	}
 	return d
-}
-
-func addrFromEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }

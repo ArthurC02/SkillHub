@@ -30,6 +30,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
@@ -163,7 +164,7 @@ func (s *Service) requireScanNotBlocking(ctx context.Context, objectKey string) 
 // The workspace comes from the session (iron rule 3) - counting a workspace_id
 // out of a request body would let a caller check somebody else's quota.
 func (s *Service) requireRunSlot(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID) error {
-	if err := q.LockWorkspaceRunSlots(ctx, uuidString(workspaceID)); err != nil {
+	if err := q.LockWorkspaceRunSlots(ctx, pgconv.UUIDString(workspaceID)); err != nil {
 		return err
 	}
 	active, err := q.CountActiveRuns(ctx, workspaceID)

@@ -6,13 +6,13 @@ import (
 	"math"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // Handler exposes the run endpoints (contracts/openapi/public.yaml). Every route
@@ -83,18 +83,18 @@ type attemptView struct {
 
 func toRunResponse(run gen.Run) runResponse {
 	return runResponse{
-		RunID:             uuidString(run.ID),
+		RunID:             pgconv.UUIDString(run.ID),
 		Status:            string(run.Status),
 		StatusReason:      deref(run.StatusReason),
-		SkillVersionID:    uuidString(run.SkillVersionID),
-		TestCaseSnapshot:  uuidString(run.TestCaseSnapshotID),
+		SkillVersionID:    pgconv.UUIDString(run.SkillVersionID),
+		TestCaseSnapshot:  pgconv.UUIDString(run.TestCaseSnapshotID),
 		Provider:          run.Provider,
 		FailureClass:      deref(run.FailureClass),
 		CleanupStatus:     string(run.CleanupStatus),
-		CancelRequestedAt: rfc3339(run.CancelRequestedAt),
-		CreatedAt:         rfc3339(run.CreatedAt),
-		StartedAt:         rfc3339(run.StartedAt),
-		FinishedAt:        rfc3339(run.FinishedAt),
+		CancelRequestedAt: pgconv.RFC3339(run.CancelRequestedAt),
+		CreatedAt:         pgconv.RFC3339(run.CreatedAt),
+		StartedAt:         pgconv.RFC3339(run.StartedAt),
+		FinishedAt:        pgconv.RFC3339(run.FinishedAt),
 	}
 }
 
@@ -110,8 +110,8 @@ func (h *Handler) fillLinkage(
 		httpx.WriteError(w, http.StatusInternalServerError, "run lookup failed")
 		return false
 	}
-	resp.SkillID = uuidString(link.SkillID)
-	resp.TestCaseID = uuidString(link.TestCaseID)
+	resp.SkillID = pgconv.UUIDString(link.SkillID)
+	resp.TestCaseID = pgconv.UUIDString(link.TestCaseID)
 	return true
 }
 
@@ -266,18 +266,18 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	out := make([]runListItem, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, runListItem{
-			RunID: uuidString(row.ID), Status: string(row.Status),
+			RunID: pgconv.UUIDString(row.ID), Status: string(row.Status),
 			StatusReason:   deref(row.StatusReason),
-			SkillID:        uuidString(row.SkillID),
+			SkillID:        pgconv.UUIDString(row.SkillID),
 			SkillName:      row.SkillName,
-			SkillVersionID: uuidString(row.SkillVersionID),
-			TestCaseID:     uuidString(row.TestCaseID),
+			SkillVersionID: pgconv.UUIDString(row.SkillVersionID),
+			TestCaseID:     pgconv.UUIDString(row.TestCaseID),
 			Provider:       row.Provider,
 			FailureClass:   deref(row.FailureClass),
 			CleanupStatus:  string(row.CleanupStatus),
-			CreatedAt:      rfc3339(row.CreatedAt),
-			StartedAt:      rfc3339(row.StartedAt),
-			FinishedAt:     rfc3339(row.FinishedAt),
+			CreatedAt:      pgconv.RFC3339(row.CreatedAt),
+			StartedAt:      pgconv.RFC3339(row.StartedAt),
+			FinishedAt:     pgconv.RFC3339(row.FinishedAt),
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, struct {
@@ -324,9 +324,9 @@ func (h *Handler) Artifacts(w http.ResponseWriter, r *http.Request) {
 	out := make([]artifactView, 0, len(rows))
 	for _, a := range rows {
 		out = append(out, artifactView{
-			ArtifactID: uuidString(a.ID), FileName: a.FileName, ContentType: a.ContentType,
+			ArtifactID: pgconv.UUIDString(a.ID), FileName: a.FileName, ContentType: a.ContentType,
 			SizeBytes: a.SizeBytes, ContentHash: a.ContentHash,
-			CreatedAt: rfc3339(a.CreatedAt), ExpiresAt: rfc3339(a.ExpiresAt),
+			CreatedAt: pgconv.RFC3339(a.CreatedAt), ExpiresAt: pgconv.RFC3339(a.ExpiresAt),
 			Purged: a.PurgedAt.Valid,
 		})
 	}
@@ -414,7 +414,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, t := range transitions {
-		v := transitionView{To: string(t.ToStatus), Reason: deref(t.Reason), OccurredAt: rfc3339(t.OccurredAt)}
+		v := transitionView{To: string(t.ToStatus), Reason: deref(t.Reason), OccurredAt: pgconv.RFC3339(t.OccurredAt)}
 		if t.FromStatus != nil {
 			v.From = string(*t.FromStatus)
 		}
@@ -427,14 +427,14 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, a := range attempts {
 		resp.Attempts = append(resp.Attempts, attemptView{
-			RunAttemptID:  uuidString(a.ID),
+			RunAttemptID:  pgconv.UUIDString(a.ID),
 			AttemptNumber: a.AttemptNumber,
 			Provider:      a.Provider,
 			ProviderRunID: deref(a.ProviderRunID),
 			ErrorClass:    deref(a.ErrorClass),
 			ErrorMessage:  deref(a.ErrorMessage),
-			StartedAt:     rfc3339(a.StartedAt),
-			FinishedAt:    rfc3339(a.FinishedAt),
+			StartedAt:     pgconv.RFC3339(a.StartedAt),
+			FinishedAt:    pgconv.RFC3339(a.FinishedAt),
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, resp)
@@ -476,13 +476,6 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	}{body, "cancellation requested; the run keeps its current status " +
 		"until the workload has actually stopped"}
 	httpx.WriteJSON(w, http.StatusAccepted, resp)
-}
-
-func rfc3339(t pgtype.Timestamptz) string {
-	if !t.Valid {
-		return ""
-	}
-	return t.Time.UTC().Format(time.RFC3339)
 }
 
 func deref(s *string) string {

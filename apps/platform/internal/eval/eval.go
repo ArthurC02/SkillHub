@@ -32,6 +32,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
@@ -507,7 +508,7 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 	q := s.queries().WithTx(tx)
 	// Re-evaluation is append-only, but two callers may arrive together. Serialize
 	// the supersede/create pair so the partial current-row index is not a race.
-	lockKey := "evaluation:" + uuidString(m.run.WorkspaceID) + ":" + uuidString(m.run.ID)
+	lockKey := "evaluation:" + pgconv.UUIDString(m.run.WorkspaceID) + ":" + pgconv.UUIDString(m.run.ID)
 	if _, err := tx.Exec(ctx,
 		"SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", lockKey,
 	); err != nil {
@@ -534,7 +535,7 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 	}
 	if err := trace.RecordOrchestratorEvent(ctx, q, m.run.WorkspaceID, m.run.ID, m.attempt,
 		trace.TypeEvaluationStarted, "ok", map[string]any{
-			"evaluation_id":        uuidString(ev.ID),
+			"evaluation_id":        pgconv.UUIDString(ev.ID),
 			"judge_model":          s.judgeModel(),
 			"judge_prompt_version": s.judgePromptVersion(),
 			// The rubric this run's snapshot froze, or null when it has none.
@@ -588,7 +589,7 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 	passed, failed, undetermined := tally(v.results)
 	if err := trace.RecordOrchestratorEvent(ctx, q, m.run.WorkspaceID, m.run.ID, m.attempt,
 		trace.TypeEvaluationCompleted, "ok", map[string]any{
-			"evaluation_id":         uuidString(ev.ID),
+			"evaluation_id":         pgconv.UUIDString(ev.ID),
 			"overall":               v.overall,
 			"criteria_total":        len(v.results),
 			"criteria_passed":       passed,
@@ -640,7 +641,7 @@ func (s *Service) fail(
 	// orchestrator payload (iron rule 11) — RecordOrchestratorEvent does that.
 	if err := trace.RecordOrchestratorEvent(ctx, q, m.run.WorkspaceID, m.run.ID, m.attempt,
 		trace.TypeEvaluationCompleted, "error", map[string]any{
-			"evaluation_id":         uuidString(ev.ID),
+			"evaluation_id":         pgconv.UUIDString(ev.ID),
 			"overall":               OverallUndetermined,
 			"criteria_total":        len(m.criteria),
 			"criteria_passed":       0,
@@ -765,10 +766,4 @@ func costSource(v *float64, source string) *string {
 		return nil
 	}
 	return &source
-}
-
-func uuidString(u pgtype.UUID) string {
-	v, _ := u.Value()
-	s, _ := v.(string)
-	return s
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // Handler exposes the test lab endpoints (contracts/openapi/public.yaml). Every
@@ -99,8 +100,8 @@ func toTestCaseResponse(tc gen.TestCase) testCaseResponse {
 		rubric = nil
 	}
 	return testCaseResponse{
-		TestCaseID:         uuidString(tc.ID),
-		SkillID:            uuidString(tc.SkillID),
+		TestCaseID:         pgconv.UUIDString(tc.ID),
+		SkillID:            pgconv.UUIDString(tc.SkillID),
 		Name:               tc.Name,
 		UserPrompt:         tc.UserPrompt,
 		AcceptanceCriteria: criteria,
@@ -121,7 +122,7 @@ type datasetResponse struct {
 
 func toDatasetResponse(d gen.Dataset) datasetResponse {
 	return datasetResponse{
-		DatasetID:   uuidString(d.ID),
+		DatasetID:   pgconv.UUIDString(d.ID),
 		FileName:    d.FileName,
 		ContentType: d.ContentType,
 		SizeBytes:   d.SizeBytes,
@@ -493,7 +494,7 @@ func (h *Handler) DeleteDataset(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"deleted":    true,
-		"dataset_id": uuidString(ds.ID),
+		"dataset_id": pgconv.UUIDString(ds.ID),
 		"note": "the stored file is removed; snapshots of past runs keep its name " +
 			"and content hash so those runs stay traceable",
 	})

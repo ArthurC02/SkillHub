@@ -12,6 +12,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // Handler exposes registry endpoints (contracts/openapi/public.yaml). All
@@ -44,16 +45,16 @@ type skillResponse struct {
 }
 
 func toSkillResponse(s gen.Skill) skillResponse {
-	out := skillResponse{SkillID: uuidString(s.ID), Name: s.Name}
+	out := skillResponse{SkillID: pgconv.UUIDString(s.ID), Name: s.Name}
 	if s.Summary != nil {
 		out.Summary = *s.Summary
 	}
 	if s.ForkedFromSkillID.Valid {
-		v := uuidString(s.ForkedFromSkillID)
+		v := pgconv.UUIDString(s.ForkedFromSkillID)
 		out.ForkedFromSkillID = &v
 	}
 	if s.ForkedFromVersionID.Valid {
-		v := uuidString(s.ForkedFromVersionID)
+		v := pgconv.UUIDString(s.ForkedFromVersionID)
 		out.ForkedFromVersionID = &v
 	}
 	return out
@@ -88,7 +89,7 @@ func (h *Handler) Fork(w http.ResponseWriter, r *http.Request) {
 		skillResponse
 		VersionID     string `json:"version_id"`
 		VersionNumber int32  `json:"version_number"`
-	}{toSkillResponse(fork), uuidString(ver.ID), ver.VersionNumber}
+	}{toSkillResponse(fork), pgconv.UUIDString(ver.ID), ver.VersionNumber}
 	httpx.WriteJSON(w, http.StatusCreated, resp)
 }
 
@@ -163,7 +164,7 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"skill_id":    uuidString(skill.ID),
+		"skill_id":    pgconv.UUIDString(skill.ID),
 		"takedown_at": skill.TakedownAt.Time.UTC().Format(time.RFC3339),
 		"reason":      body.Reason,
 		"note": "removed from search and from the fork path; the skill, its versions " +
@@ -209,7 +210,7 @@ func (h *Handler) Versions(w http.ResponseWriter, r *http.Request) {
 	out := make([]skillVersionResponse, 0, len(rows))
 	for _, v := range rows {
 		out = append(out, skillVersionResponse{
-			VersionID:     uuidString(v.ID),
+			VersionID:     pgconv.UUIDString(v.ID),
 			VersionNumber: v.VersionNumber,
 			ContentHash:   v.ContentHash,
 			CreatedAt:     v.CreatedAt.Time.UTC().Format(time.RFC3339),
@@ -262,10 +263,4 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		out = append(out, toSkillResponse(s))
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"skills": out})
-}
-
-func uuidString(u pgtype.UUID) string {
-	v, _ := u.Value()
-	s, _ := v.(string)
-	return s
 }

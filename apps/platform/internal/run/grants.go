@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 )
 
@@ -102,7 +103,7 @@ func (s *Service) grantsFor(
 	// per-object, and the platform cannot know the file names before the
 	// workload has produced them, so a single archive key is what one grant can
 	// actually authorize.
-	key := artifactObjectKey(uuidString(run.ID), uuidString(attempt.ID))
+	key := artifactObjectKey(pgconv.UUIDString(run.ID), pgconv.UUIDString(attempt.ID))
 	url, err := store.PresignPut(ctx, key, ttl)
 	if err != nil {
 		return nil, nil, fmt.Errorf("grant artifact upload: %w", err)

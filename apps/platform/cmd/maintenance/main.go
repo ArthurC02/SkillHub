@@ -76,13 +76,7 @@ func purgeAnalytics(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
-	store, err := objstore.New(
-		envOr("OBJSTORE_ENDPOINT", "localhost:8333"),
-		os.Getenv("OBJSTORE_ACCESS_KEY"),
-		os.Getenv("OBJSTORE_SECRET_KEY"),
-		envOr("OBJSTORE_BUCKET", "skillhub"),
-		os.Getenv("OBJSTORE_SSL") == "1",
-	)
+	store, err := objstore.FromEnv()
 	if err != nil {
 		return err
 	}
@@ -125,11 +119,4 @@ func batch() int32 {
 		return int32(n)
 	}
 	return 100
-}
-
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }

@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
@@ -101,7 +102,7 @@ func activationFindings(m material) []Finding {
 		}
 	}
 
-	mounted := uuidString(m.run.SkillVersionID)
+	mounted := pgconv.UUIDString(m.run.SkillVersionID)
 	switch {
 	case activated[mounted]:
 		return []Finding{{

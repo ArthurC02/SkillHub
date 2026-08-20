@@ -37,6 +37,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 const (
@@ -121,13 +122,13 @@ func (s *Service) purgeExpired(ctx context.Context) error {
 			// Leave the row unmarked: next hour tries the same key again. Marking
 			// it here would be recording a deletion that did not happen.
 			slog.Warn("expired download object not removed; will retry",
-				"artifact_id", uuidString(row.ID), "error", err)
+				"artifact_id", pgconv.UUIDString(row.ID), "error", err)
 			continue
 		}
 		if err := q.MarkArtifactPurged(ctx, row.ID); err != nil {
 			return err
 		}
-		slog.Info("download artifact purged at retention", "artifact_id", uuidString(row.ID))
+		slog.Info("download artifact purged at retention", "artifact_id", pgconv.UUIDString(row.ID))
 	}
 	return nil
 }
@@ -197,7 +198,7 @@ func (s *Service) sight(
 	present, err := s.Store.Exists(ctx, key)
 	if err != nil {
 		slog.Warn("object existence check failed; not counting a sighting",
-			"kind", kind, "id", uuidString(id), "error", err)
+			"kind", kind, "id", pgconv.UUIDString(id), "error", err)
 		return false, nil
 	}
 	if present {
@@ -215,7 +216,7 @@ func (s *Service) sight(
 	}
 	if rounds < actAfterRounds {
 		slog.Warn("object missing behind a live row; waiting for a second round",
-			"kind", kind, "id", uuidString(id), "object_key", key)
+			"kind", kind, "id", pgconv.UUIDString(id), "object_key", key)
 		return false, nil
 	}
 	return true, nil
@@ -260,7 +261,7 @@ func (s *Service) markLost(
 		return err
 	}
 	slog.Error("stored object missing; the row no longer claims it exists",
-		"kind", kind, "id", uuidString(id), "object_key", key)
+		"kind", kind, "id", pgconv.UUIDString(id), "object_key", key)
 	return nil
 }
 
@@ -285,13 +286,4 @@ func (s *Service) publishGauge(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-
-func uuidString(u pgtype.UUID) string {
-	s, err := u.Value()
-	if err != nil || s == nil {
-		return ""
-	}
-	str, _ := s.(string)
-	return str
 }

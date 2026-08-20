@@ -28,6 +28,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
@@ -169,7 +170,7 @@ func (s *Service) Comparison(
 	// only exists between two versions of the same skill; comparing runs of
 	// different skills is allowed and simply has no diff to link.
 	if leftDetail.skillID == rightDetail.skillID && left.SkillVersionID != right.SkillVersionID {
-		view.VersionDiffURL = "/skills/" + uuidString(leftDetail.skillID) + "/diff" +
+		view.VersionDiffURL = "/skills/" + pgconv.UUIDString(leftDetail.skillID) + "/diff" +
 			"?from=" + left.SkillVersionID + "&to=" + right.SkillVersionID
 	}
 	return view, nil
@@ -188,8 +189,8 @@ func (s *Service) comparisonSide(
 	}
 
 	side := comparisonSide{
-		RunID:          uuidString(run.ID),
-		SkillVersionID: uuidString(run.SkillVersionID),
+		RunID:          pgconv.UUIDString(run.ID),
+		SkillVersionID: pgconv.UUIDString(run.SkillVersionID),
 		Status:         string(run.Status),
 		Errors:         []trace.ErrorSummary{},
 		Cost:           runCostView{IsLowerBound: true, AuthoritativeSource: runCostAuthority},
@@ -203,7 +204,7 @@ func (s *Service) comparisonSide(
 		return comparisonSide{}, sideDetail{}, err
 	}
 	detail.skillID = version.SkillID
-	side.SkillID = uuidString(version.SkillID)
+	side.SkillID = pgconv.UUIDString(version.SkillID)
 
 	snapshot, err := q.GetTestCaseSnapshot(ctx, gen.GetTestCaseSnapshotParams{
 		ID: run.TestCaseSnapshotID, WorkspaceID: workspaceID,
@@ -211,7 +212,7 @@ func (s *Service) comparisonSide(
 	if err != nil {
 		return comparisonSide{}, sideDetail{}, err
 	}
-	side.TestCaseID = uuidString(snapshot.TestCaseID)
+	side.TestCaseID = pgconv.UUIDString(snapshot.TestCaseID)
 	if detail.criteria, err = testlab.DecodeCriteria(snapshot.AcceptanceCriteria); err != nil {
 		return comparisonSide{}, sideDetail{}, err
 	}
@@ -251,7 +252,7 @@ func (s *Service) comparisonSide(
 		return comparisonSide{}, sideDetail{}, err
 	}
 	side.Evaluation = &comparisonVerdict{
-		EvaluationID: uuidString(ev.ID),
+		EvaluationID: pgconv.UUIDString(ev.ID),
 		Status:       ev.Status,
 		Overall:      ev.Overall,
 		Cost:         costViewOf(ev),

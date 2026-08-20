@@ -35,6 +35,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // ErrGone is every reason the bytes are not being served, folded into one:
@@ -54,8 +55,8 @@ func (s *Service) ListDownloads(ctx context.Context, ws gen.Workspace) ([]Artifa
 	out := make([]Artifact, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, Artifact{
-			ArtifactID: uuidString(r.ArtifactID), SkillID: uuidString(r.SkillID),
-			SkillVersionID: uuidString(r.SkillVersionID), Target: r.Target,
+			ArtifactID: pgconv.UUIDString(r.ArtifactID), SkillID: pgconv.UUIDString(r.SkillID),
+			SkillVersionID: pgconv.UUIDString(r.SkillVersionID), Target: r.Target,
 			FileName: r.FileName, SizeBytes: r.SizeBytes,
 			ContentHash: r.ContentHash, ManifestHash: r.ManifestHash,
 			Status: r.ScanStatus, ExpiresAt: rfc3339(r.ExpiresAt), CreatedAt: rfc3339(r.CreatedAt),
@@ -108,8 +109,8 @@ func (s *Service) GetDownload(ctx context.Context, ws gen.Workspace, id pgtype.U
 		return Artifact{}, err
 	}
 	return Artifact{
-		ArtifactID: uuidString(row.ArtifactID), SkillID: uuidString(row.SkillID),
-		SkillVersionID: uuidString(row.SkillVersionID), Target: row.Target,
+		ArtifactID: pgconv.UUIDString(row.ArtifactID), SkillID: pgconv.UUIDString(row.SkillID),
+		SkillVersionID: pgconv.UUIDString(row.SkillVersionID), Target: row.Target,
 		FileName: row.FileName, SizeBytes: row.SizeBytes,
 		ContentHash: row.ContentHash, ManifestHash: row.ManifestHash,
 		Status: row.ScanStatus, ExpiresAt: rfc3339(row.ExpiresAt), CreatedAt: rfc3339(row.CreatedAt),
@@ -170,7 +171,7 @@ func (s *Service) Download(
 		// reconciler is what corrects the row (04 丙-9); this request only has to
 		// avoid promising what it cannot deliver.
 		slog.Warn("download artifact object unreadable",
-			"artifact_id", uuidString(row.ArtifactID), "error", err)
+			"artifact_id", pgconv.UUIDString(row.ArtifactID), "error", err)
 		return none, nil, ErrGone
 	}
 
@@ -194,7 +195,7 @@ func (s *Service) Download(
 		Action: audit.ActionArtifactDownload, ResourceType: audit.ResourceArtifact,
 		ResourceID: row.ArtifactID,
 		Metadata: map[string]any{
-			"skill_version_id": uuidString(row.SkillVersionID),
+			"skill_version_id": pgconv.UUIDString(row.SkillVersionID),
 			"target":           row.Target,
 			"content_hash":     row.ContentHash,
 		},
@@ -375,7 +376,7 @@ func (h *Handler) DownloadContent(w http.ResponseWriter, r *http.Request) {
 		// download record stays, which is correct: the platform did hand the bytes
 		// over, and a truncated transfer is the network's account of it, not the
 		// platform's.
-		slog.Warn("download response truncated", "artifact_id", uuidString(row.ArtifactID), "error", err)
+		slog.Warn("download response truncated", "artifact_id", pgconv.UUIDString(row.ArtifactID), "error", err)
 	}
 }
 

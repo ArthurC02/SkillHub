@@ -28,6 +28,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
@@ -441,8 +442,8 @@ func (s *Service) buildManifest(
 		ProfileID:       p.Profile.ID,
 		ProfileVersion:  p.Profile.Version,
 		Source: ManifestSource{
-			SkillID:        uuidString(p.Skill.ID),
-			SkillVersionID: uuidString(p.Version.ID),
+			SkillID:        pgconv.UUIDString(p.Skill.ID),
+			SkillVersionID: pgconv.UUIDString(p.Version.ID),
 			VersionNumber:  p.Version.VersionNumber,
 			ContentHash:    p.Version.ContentHash,
 			Origin:         origin,
@@ -558,7 +559,7 @@ func (s *Service) Create(
 }
 
 func (s *Service) persist(ctx context.Context, ws gen.Workspace, p *Plan) (Result, error) {
-	objectKey := "downloads/" + uuidString(ws.ID) + "/" + p.ContentHash + ".zip"
+	objectKey := "downloads/" + pgconv.UUIDString(ws.ID) + "/" + p.ContentHash + ".zip"
 	retention := s.Retention
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -566,7 +567,7 @@ func (s *Service) persist(ctx context.Context, ws gen.Workspace, p *Plan) (Resul
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
-	lockKey := fmt.Sprintf("download-package:%s/%s", uuidString(ws.ID), p.ContentHash)
+	lockKey := fmt.Sprintf("download-package:%s/%s", pgconv.UUIDString(ws.ID), p.ContentHash)
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", lockKey); err != nil {
 		return Result{}, err
 	}
@@ -639,9 +640,9 @@ func (s *Service) persist(ctx context.Context, ws gen.Workspace, p *Plan) (Resul
 	}
 
 	return Result{Plan: p, Artifact: Artifact{
-		ArtifactID:        uuidString(row.ID),
-		SkillID:           uuidString(p.Skill.ID),
-		SkillVersionID:    uuidString(p.Version.ID),
+		ArtifactID:        pgconv.UUIDString(row.ID),
+		SkillID:           pgconv.UUIDString(p.Skill.ID),
+		SkillVersionID:    pgconv.UUIDString(p.Version.ID),
 		Target:            p.Profile.ID,
 		FileName:          p.FileName,
 		SizeBytes:         int64(len(p.Zip)),
@@ -659,9 +660,9 @@ func (s *Service) persist(ctx context.Context, ws gen.Workspace, p *Plan) (Resul
 
 func reusedArtifact(skillID pgtype.UUID, row gen.FindReusableDownloadArtifactRow) Artifact {
 	return Artifact{
-		ArtifactID:        uuidString(row.ArtifactID),
-		SkillID:           uuidString(skillID),
-		SkillVersionID:    uuidString(row.SkillVersionID),
+		ArtifactID:        pgconv.UUIDString(row.ArtifactID),
+		SkillID:           pgconv.UUIDString(skillID),
+		SkillVersionID:    pgconv.UUIDString(row.SkillVersionID),
 		Target:            row.Target,
 		FileName:          row.FileName,
 		SizeBytes:         row.SizeBytes,

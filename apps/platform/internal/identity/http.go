@@ -10,11 +10,10 @@ import (
 	"sort"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
-
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 const (
@@ -261,7 +260,7 @@ func (h *Handler) RequireOperator(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		user, err := h.Service.UserForToken(r.Context(), c.Value)
-		if err != nil || !h.Operators[uuidString(user.ID)] {
+		if err != nil || !h.Operators[pgconv.UUIDString(user.ID)] {
 			httpx.WriteError(w, http.StatusNotFound, "not found")
 			return
 		}
@@ -398,10 +397,10 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	// deletion is pending, which is the difference between "not requested" and
 	// "requested and I cannot tell".
 	out := map[string]any{
-		"user_id":               uuidString(user.ID),
+		"user_id":               pgconv.UUIDString(user.ID),
 		"email":                 user.Email,
 		"display_name":          user.DisplayName,
-		"workspace_id":          uuidString(ws.ID),
+		"workspace_id":          pgconv.UUIDString(ws.ID),
 		"deletion_requested_at": nil,
 		"purge_after":           nil,
 	}
@@ -445,14 +444,4 @@ func (h *Handler) cancelDeletion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"deletion_requested_at": nil})
-}
-
-func uuidString(u pgtype.UUID) string {
-	s, _ := u.Value()
-	str, _ := s.(string)
-	return str
-}
-
-func pgTime(t time.Time) pgtype.Timestamptz {
-	return pgtype.Timestamptz{Time: t, Valid: true}
 }

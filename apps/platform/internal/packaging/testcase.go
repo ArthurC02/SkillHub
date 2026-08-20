@@ -27,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 )
 
@@ -113,7 +114,7 @@ func (s *Service) selectTestCases(
 		switch {
 		case !include:
 			excluded = append(excluded, ExcludedTestCase{
-				TestCaseID: uuidString(tc.ID), Name: tc.Name, Reason: ExcludedUserOptedOut,
+				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedUserOptedOut,
 			})
 			continue
 		case !ws.IsCatalog && len(datasets) > 0:
@@ -121,24 +122,24 @@ func (s *Service) selectTestCases(
 			// says the obstacle is a licensing judgement about their files, not a
 			// defect in their test case.
 			excluded = append(excluded, ExcludedTestCase{
-				TestCaseID: uuidString(tc.ID), Name: tc.Name, Reason: ExcludedUserUploadedDataset,
+				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedUserUploadedDataset,
 			})
 			continue
 		case !ws.IsCatalog:
 			excluded = append(excluded, ExcludedTestCase{
-				TestCaseID: uuidString(tc.ID), Name: tc.Name, Reason: ExcludedNotCurated,
+				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedNotCurated,
 			})
 			continue
 		}
 
-		slug := testCaseSlug(tc.Name, uuidString(tc.ID))
+		slug := testCaseSlug(tc.Name, pgconv.UUIDString(tc.ID))
 		caseFiles, err := s.portableFiles(ctx, tc, datasets, slug)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		files = append(files, caseFiles...)
 		included = append(included, IncludedTestCase{
-			TestCaseID: uuidString(tc.ID), Slug: slug, Name: tc.Name,
+			TestCaseID: pgconv.UUIDString(tc.ID), Slug: slug, Name: tc.Name,
 		})
 	}
 	return included, excluded, files, nil

@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // DatasetRef is one file as a run saw it. The content hash is the part that
@@ -87,7 +88,7 @@ func CreateSnapshot(ctx context.Context, q *gen.Queries, workspaceID, testCaseID
 	refs := make([]DatasetRef, 0, len(rows))
 	for _, d := range rows {
 		refs = append(refs, DatasetRef{
-			DatasetID:   uuidString(d.ID),
+			DatasetID:   pgconv.UUIDString(d.ID),
 			FileName:    d.FileName,
 			ContentHash: d.ContentHash,
 			SizeBytes:   d.SizeBytes,

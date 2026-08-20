@@ -27,6 +27,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // The decision vocabulary of 0024 (EVAL-002 clause 3).
@@ -83,14 +84,14 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 	callCtx, cancel := context.WithTimeout(ctx, suggestTimeout)
 	defer cancel()
 	resp, err := s.Suggester.SuggestImprovements(callCtx, llmclient.SuggestImprovementsRequest{
-		EvaluationID:     uuidString(ev.ID),
+		EvaluationID:     pgconv.UUIDString(ev.ID),
 		EvaluationDigest: digest,
 		FileTree:         tree,
 		TargetFiles:      files,
 	})
 	if err != nil {
 		slog.Warn("evaluation suggestions unavailable",
-			"evaluation_id", uuidString(ev.ID), "error", err)
+			"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)
 		return
 	}
 	if resp.Usage != nil && resp.Usage.CostUSD != nil && resp.Usage.CostSource != "gateway" {
@@ -100,7 +101,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 	if err := s.recordModelUsage(ctx, ev.ID, ev.WorkspaceID, "suggest",
 		resp.Model, resp.PromptVersion, resp.Usage); err != nil {
 		slog.Warn("evaluation suggestion usage not stored",
-			"evaluation_id", uuidString(ev.ID), "error", err)
+			"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)
 		// The paid model result is still useful. Accounting availability is not
 		// permission to discard proposals after a successful external call.
 	}
@@ -114,7 +115,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 		evidence, err := suggestionEvidence(p, refs)
 		if err != nil || len(evidence) == 0 {
 			slog.Warn("improvement proposal has no matching verified evidence",
-				"evaluation_id", uuidString(ev.ID), "category", p.Category)
+				"evaluation_id", pgconv.UUIDString(ev.ID), "category", p.Category)
 			continue
 		}
 		if !storable(p) {
@@ -122,7 +123,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 			// the package, or whose class this platform cannot act on, is not
 			// something a user should be asked to decide about.
 			slog.Warn("improvement proposal refused before storage",
-				"evaluation_id", uuidString(ev.ID), "category", p.Category)
+				"evaluation_id", pgconv.UUIDString(ev.ID), "category", p.Category)
 			continue
 		}
 		target, _ := cleanTargetPath(p.TargetPath)
@@ -137,7 +138,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 			ExpectedImpact:  strings.TrimSpace(p.ExpectedImpact),
 		}); err != nil {
 			slog.Warn("improvement proposal not stored",
-				"evaluation_id", uuidString(ev.ID), "error", err)
+				"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)
 			continue
 		}
 		stored++
@@ -219,7 +220,7 @@ func suggestionDigest(m material, v verdict) (string, []EvidenceRef) {
 	}
 
 	fmt.Fprintf(&b, "run %s finished as %s; task verdict: %s\n",
-		uuidString(m.run.ID), m.run.Status, v.overall)
+		pgconv.UUIDString(m.run.ID), m.run.Status, v.overall)
 	fmt.Fprintf(&b, "user prompt: %s\n", firstChars(m.snapshot.UserPrompt, 1000))
 	if v.summary != "" {
 		fmt.Fprintf(&b, "summary: %s\n", firstChars(v.summary, 1000))

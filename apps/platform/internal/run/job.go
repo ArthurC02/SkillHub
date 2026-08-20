@@ -13,6 +13,7 @@ import (
 	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 const (
@@ -115,20 +116,20 @@ func (w *Worker) Work(ctx context.Context, job *river.Job[JobArgs]) error {
 func (s *Service) Drive(ctx context.Context, workspaceID, runID pgtype.UUID) error {
 	current, err := s.Get(ctx, workspaceID, runID)
 	if errors.Is(err, ErrNotFound) {
-		slog.Warn("run job for unknown run", "run_id", uuidString(runID))
+		slog.Warn("run job for unknown run", "run_id", pgconv.UUIDString(runID))
 		return nil
 	}
 	if err != nil {
 		return err
 	}
 	if IsTerminal(current.Status) {
-		slog.Info("run job skipped, run already finished", "run_id", uuidString(runID), "status", current.Status)
+		slog.Info("run job skipped, run already finished", "run_id", pgconv.UUIDString(runID), "status", current.Status)
 		return nil
 	}
 
 	err = (&driver{svc: s, cur: current, deadline: hardDeadline(current)}).execute(ctx)
 	if errors.Is(err, errSuperseded) {
-		slog.Info("run driver superseded", "run_id", uuidString(runID))
+		slog.Info("run driver superseded", "run_id", pgconv.UUIDString(runID))
 		return nil
 	}
 	return err
@@ -204,7 +205,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 	halts := d.svc.haltsFailClosed(ctx)
 	if halts.dispatchPaused(d.svc.providers()) {
 		slog.Warn("dispatch paused; leaving the run queued",
-			"run_id", uuidString(d.cur.ID), "status", d.cur.Status)
+			"run_id", pgconv.UUIDString(d.cur.ID), "status", d.cur.Status)
 		return nil
 	}
 
@@ -270,7 +271,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 				break
 			}
 			slog.Warn("run dispatch failed, retrying with a new attempt",
-				"run_id", uuidString(d.cur.ID), "attempt", attempt.AttemptNumber, "error", err)
+				"run_id", pgconv.UUIDString(d.cur.ID), "attempt", attempt.AttemptNumber, "error", err)
 			continue
 		}
 
@@ -283,7 +284,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 			// leave it for the orphan scan to find five minutes from now.
 			if destroyErr := provider.Destroy(ctx, pr.ProviderRunID); destroyErr != nil {
 				slog.Error("leaked a sandbox: its mapping could not be recorded and it could not be destroyed",
-					"run_id", uuidString(d.cur.ID), "error", destroyErr)
+					"run_id", pgconv.UUIDString(d.cur.ID), "error", destroyErr)
 			}
 			return err
 		}
@@ -341,7 +342,7 @@ func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
 		default:
 			// Transient. Keep polling: a provider that is briefly unreachable has
 			// not lost the run, and the wall clock below still bounds the wait.
-			slog.Warn("provider poll failed", "run_id", uuidString(d.cur.ID), "error", err)
+			slog.Warn("provider poll failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 		}
 
 		if !cancelSent {
@@ -354,7 +355,7 @@ func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
 				// only actually down when a later read says so. Reporting `cancelled`
 				// here would be a lie about a live sandbox.
 				if _, err := provider.Cancel(ctx, handle); err != nil {
-					slog.Warn("provider cancel failed", "run_id", uuidString(d.cur.ID), "error", err)
+					slog.Warn("provider cancel failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 				} else {
 					cancelSent = true
 				}
@@ -367,7 +368,7 @@ func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
 			// asked to stop and the run is recorded as timed out either way. The
 			// sandbox itself is released by the cleanup job.
 			if _, err := provider.Cancel(ctx, handle); err != nil {
-				slog.Warn("provider cancel on timeout failed", "run_id", uuidString(d.cur.ID), "error", err)
+				slog.Warn("provider cancel on timeout failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
 			}
 			d.failAttempt(ctx, attempt, errClassTimeout, d.timeoutReason())
 			return d.finish(ctx, attempt.ID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
@@ -545,7 +546,7 @@ func (d *driver) recordArtifacts(ctx context.Context, attempt gen.RunAttempt, pr
 	if pr.Result == nil || len(pr.Result.Artifacts) == 0 {
 		return
 	}
-	archiveKey := artifactObjectKey(uuidString(d.cur.ID), uuidString(attempt.ID))
+	archiveKey := artifactObjectKey(pgconv.UUIDString(d.cur.ID), pgconv.UUIDString(attempt.ID))
 	for _, a := range pr.Result.Artifacts {
 		if a.FileName == "" {
 			continue
@@ -566,7 +567,7 @@ func (d *driver) recordArtifacts(ctx context.Context, attempt gen.RunAttempt, pr
 			ContentHash: a.ContentHash, ObjectKey: key,
 		}); err != nil {
 			slog.Warn("could not record an artifact manifest row",
-				"run_id", uuidString(d.cur.ID), "file_name", a.FileName, "error", err)
+				"run_id", pgconv.UUIDString(d.cur.ID), "file_name", a.FileName, "error", err)
 		}
 	}
 }
@@ -587,7 +588,7 @@ func (d *driver) failAttempt(ctx context.Context, attempt gen.RunAttempt, errCla
 		ID: attempt.ID, WorkspaceID: attempt.WorkspaceID,
 		ErrorClass: classPtr, ErrorMessage: messagePtr,
 	}); err != nil {
-		slog.Warn("could not record attempt outcome", "run_attempt_id", uuidString(attempt.ID), "error", err)
+		slog.Warn("could not record attempt outcome", "run_attempt_id", pgconv.UUIDString(attempt.ID), "error", err)
 	}
 }
 

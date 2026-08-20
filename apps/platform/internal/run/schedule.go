@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 )
 
@@ -271,28 +272,28 @@ func (s *Service) buildRunRequest(
 
 	var gatewayGrant *ModelGatewayGrant
 	if s.Gateway != nil {
-		gatewayGrant, err = s.Gateway.Issue(ctx, uuidString(run.ID), uuidString(attempt.ID), ttl)
+		gatewayGrant, err = s.Gateway.Issue(ctx, pgconv.UUIDString(run.ID), pgconv.UUIDString(attempt.ID), ttl)
 		if err != nil {
 			return RunRequest{}, err
 		}
 	}
 
 	return RunRequest{
-		RunID:        uuidString(run.ID),
-		RunAttemptID: uuidString(attempt.ID),
+		RunID:        pgconv.UUIDString(run.ID),
+		RunAttemptID: pgconv.UUIDString(attempt.ID),
 		Attempt:      int(attempt.AttemptNumber),
-		WorkspaceID:  uuidString(run.WorkspaceID),
+		WorkspaceID:  pgconv.UUIDString(run.WorkspaceID),
 		// The attempt id *is* the idempotency key: one permanent platform id per
 		// dispatch, so a re-send after an uncertain first call cannot start a
 		// second sandbox (ADR-004 on failure and retry).
-		IdempotencyKey: uuidString(attempt.ID),
+		IdempotencyKey: pgconv.UUIDString(attempt.ID),
 		SkillVersion: PackageRef{
-			SkillVersionID: uuidString(version.ID),
+			SkillVersionID: pgconv.UUIDString(version.ID),
 			ContentHash:    version.ContentHash,
 			ObjectKey:      version.PackageObjectKey,
 		},
 		TestCaseSnapshot: TestCaseSnapshotRef{
-			TestCaseSnapshotID: uuidString(snapshot.ID),
+			TestCaseSnapshotID: pgconv.UUIDString(snapshot.ID),
 			ContentHash:        snapshot.ContentHash,
 			UserPrompt:         snapshot.UserPrompt,
 			DatasetRefs:        datasets,

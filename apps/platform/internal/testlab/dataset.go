@@ -17,6 +17,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // UploadDataset stores one file against a test case (TEST-004). Every PDM-005
@@ -86,7 +87,7 @@ func (s *Service) UploadDataset(ctx context.Context, ws gen.Workspace, testCaseI
 	// 授權給指定 Run／Test Case"). The id is minted here so the object exists
 	// before the row does.
 	id := newUUID()
-	key := fmt.Sprintf("datasets/%s/%s", uuidString(ws.ID), uuidString(id))
+	key := fmt.Sprintf("datasets/%s/%s", pgconv.UUIDString(ws.ID), pgconv.UUIDString(id))
 	if err := s.Store.Put(ctx, key, data); err != nil {
 		return gen.Dataset{}, err
 	}
@@ -156,7 +157,7 @@ func (s *Service) DeleteDataset(ctx context.Context, ws gen.Workspace, datasetID
 		Action:       audit.ActionDatasetDelete,
 		ResourceType: audit.ResourceDataset,
 		ResourceID:   ds.ID,
-		Metadata:     map[string]any{"test_case_id": uuidString(ds.TestCaseID)},
+		Metadata:     map[string]any{"test_case_id": pgconv.UUIDString(ds.TestCaseID)},
 	}); err != nil {
 		return gen.Dataset{}, err
 	}
@@ -209,10 +210,4 @@ func newUUID() pgtype.UUID {
 	b[6] = (b[6] & 0x0f) | 0x40
 	b[8] = (b[8] & 0x3f) | 0x80
 	return pgtype.UUID{Bytes: b, Valid: true}
-}
-
-func uuidString(u pgtype.UUID) string {
-	v, _ := u.Value()
-	s, _ := v.(string)
-	return s
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // Terminal run events this context reacts to. `cancelled` and `timed_out` are
@@ -76,8 +77,8 @@ func (c *RunEventConsumer) Deliver(ctx context.Context, event gen.OutboxEvent) e
 	}
 
 	_, err = c.Insert(ctx, JobArgs{
-		RunID:       uuidString(event.AggregateID),
-		WorkspaceID: uuidString(event.WorkspaceID),
+		RunID:       pgconv.UUIDString(event.AggregateID),
+		WorkspaceID: pgconv.UUIDString(event.WorkspaceID),
 	}, InsertOpts())
 	return err
 }

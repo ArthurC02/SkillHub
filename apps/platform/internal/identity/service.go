@@ -13,6 +13,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // SessionTTL is the fixed absolute session lifetime (ADR-020: no sliding renewal).
@@ -122,7 +123,7 @@ func (s *Service) mintSession(ctx context.Context, user gen.User) (string, error
 	session, err := q.CreateSession(ctx, gen.CreateSessionParams{
 		UserID:    user.ID,
 		TokenHash: hashToken(token),
-		ExpiresAt: pgTime(time.Now().Add(SessionTTL)),
+		ExpiresAt: pgconv.Timestamptz(time.Now().Add(SessionTTL)),
 	})
 	if err != nil {
 		return "", err

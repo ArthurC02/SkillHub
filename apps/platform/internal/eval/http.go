@@ -22,6 +22,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // Handler exposes GET /runs/{id}/evaluation, its revision list, and the feedback
@@ -149,11 +150,11 @@ func (h *Handler) Revisions(w http.ResponseWriter, r *http.Request) {
 	out := make([]revisionView, 0, len(rows))
 	for _, ev := range rows {
 		out = append(out, revisionView{
-			EvaluationID:       uuidString(ev.ID),
+			EvaluationID:       pgconv.UUIDString(ev.ID),
 			JudgePromptVersion: derefString(ev.JudgePromptVersion),
 			RubricVersion:      derefString(ev.RubricVersion),
 			Overall:            ev.Overall,
-			EvaluatedAt:        rfc3339(ev.EvaluatedAt),
+			EvaluatedAt:        pgconv.RFC3339(ev.EvaluatedAt),
 			SupersededAt:       optionalTime(ev.SupersededAt),
 		})
 	}
@@ -303,8 +304,8 @@ func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev gen.Eval
 	}
 
 	view := evaluationView{
-		EvaluationID:          uuidString(ev.ID),
-		RunID:                 uuidString(ev.RunID),
+		EvaluationID:          pgconv.UUIDString(ev.ID),
+		RunID:                 pgconv.UUIDString(ev.RunID),
 		Status:                ev.Status,
 		Overall:               ev.Overall,
 		Summary:               derefString(ev.Summary),
@@ -315,7 +316,7 @@ func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev gen.Eval
 		RubricVersion:         derefString(ev.RubricVersion),
 		EvidenceComplete:      ev.EvidenceComplete,
 		Cost:                  costViewOf(ev),
-		EvaluatedAt:           rfc3339(ev.EvaluatedAt),
+		EvaluatedAt:           pgconv.RFC3339(ev.EvaluatedAt),
 		SupersededAt:          optionalTime(ev.SupersededAt),
 	}
 	if ev.FeedbackHelpful != nil {
@@ -324,7 +325,7 @@ func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev gen.Eval
 			// The row has no separate feedback timestamp; updated_at is what moves
 			// with the two feedback columns (0024's trigger keeps exactly those
 			// three writable together), so it is when the answer was given.
-			SubmittedAt: rfc3339(ev.UpdatedAt),
+			SubmittedAt: pgconv.RFC3339(ev.UpdatedAt),
 		}
 	}
 	return view, nil
@@ -367,7 +368,7 @@ func (s *Service) liveTraceEvents(
 		return nil, err
 	}
 	for _, u := range rows {
-		ids[uuidString(u)] = true
+		ids[pgconv.UUIDString(u)] = true
 	}
 	return ids, nil
 }
@@ -419,13 +420,6 @@ func pathUUID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
 		return id, false
 	}
 	return id, true
-}
-
-func rfc3339(t pgtype.Timestamptz) string {
-	if !t.Valid {
-		return ""
-	}
-	return t.Time.UTC().Format(time.RFC3339)
 }
 
 // optionalTime keeps null meaningful: `superseded_at: null` is what says a

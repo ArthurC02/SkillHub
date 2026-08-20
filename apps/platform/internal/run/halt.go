@@ -52,6 +52,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // The two triggers, as stored in dispatch_halts.source. They are values in one
@@ -447,7 +448,7 @@ func (h *Handler) Halts(w http.ResponseWriter, r *http.Request) {
 			"target":       haltTarget(target),
 			"source":       halt.Source,
 			"reason":       halt.Reason,
-			"declared_at":  rfc3339(halt.DeclaredAt),
+			"declared_at":  pgconv.RFC3339(halt.DeclaredAt),
 			"clear_rounds": halt.ClearRounds,
 			// An incident halt waits for a person; a threshold halt clears itself.
 			// Saying which is the difference between "this will come back" and
@@ -490,7 +491,7 @@ func (h *Handler) DeclareHalt(w http.ResponseWriter, r *http.Request) {
 		"target":      haltTarget(halt.Provider),
 		"source":      halt.Source,
 		"reason":      halt.Reason,
-		"declared_at": rfc3339(halt.DeclaredAt),
+		"declared_at": pgconv.RFC3339(halt.DeclaredAt),
 		"note": "new runs are refused and nothing is dispatched to this target; " +
 			"cleanup and orphan teardown stand down so the scene is preserved. " +
 			"This halt is never lifted automatically.",

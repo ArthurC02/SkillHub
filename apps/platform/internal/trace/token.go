@@ -31,6 +31,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 var (
@@ -80,7 +82,7 @@ func (s *Signer) Mint(runID pgtype.UUID, attempt int, now time.Time) string {
 	if !s.Enabled() {
 		return ""
 	}
-	body := fmt.Sprintf("%s.%d.%d", uuidString(runID), attempt, now.Add(s.ttl()).Unix())
+	body := fmt.Sprintf("%s.%d.%d", pgconv.UUIDString(runID), attempt, now.Add(s.ttl()).Unix())
 	return body + "." + s.sign(body)
 }
 
@@ -142,10 +144,4 @@ func (s *Signer) sign(body string) string {
 	mac := hmac.New(sha256.New, s.Secret)
 	mac.Write([]byte(body))
 	return hex.EncodeToString(mac.Sum(nil))
-}
-
-func uuidString(u pgtype.UUID) string {
-	v, _ := u.Value()
-	s, _ := v.(string)
-	return s
 }

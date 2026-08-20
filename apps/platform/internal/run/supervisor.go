@@ -22,6 +22,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 const (
@@ -80,7 +81,7 @@ func (s *Service) Supervise(ctx context.Context) error {
 			break
 		}
 		if _, err := s.Queue.Insert(ctx, CleanupArgs{
-			RunID: uuidString(run.ID), WorkspaceID: uuidString(run.WorkspaceID),
+			RunID: pgconv.UUIDString(run.ID), WorkspaceID: pgconv.UUIDString(run.WorkspaceID),
 		}, cleanupInsertOpts()); err != nil {
 			return err
 		}
@@ -112,7 +113,7 @@ func (s *Service) superviseRun(ctx context.Context, run gen.Run) error {
 		err := d.finish(ctx, s.latestAttemptID(ctx, run), gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 		switch {
 		case err == nil:
-			slog.Warn("run timed out by the supervisor", "run_id", uuidString(run.ID), "status", run.Status)
+			slog.Warn("run timed out by the supervisor", "run_id", pgconv.UUIDString(run.ID), "status", run.Status)
 		case errors.Is(err, errSuperseded):
 			// A driver got there first. That is the good outcome.
 		default:
@@ -128,13 +129,13 @@ func (s *Service) superviseRun(ctx context.Context, run gen.Run) error {
 	// a no-op whenever a job is already driving the run — which is the common case,
 	// and why this can run every 30 seconds without doing anything.
 	res, err := s.Queue.Insert(ctx, JobArgs{
-		RunID: uuidString(run.ID), WorkspaceID: uuidString(run.WorkspaceID),
+		RunID: pgconv.UUIDString(run.ID), WorkspaceID: pgconv.UUIDString(run.WorkspaceID),
 	}, executeInsertOpts())
 	if err != nil {
 		return err
 	}
 	if !res.UniqueSkippedAsDuplicate {
-		slog.Info("re-enqueued a run with no live job", "run_id", uuidString(run.ID), "status", run.Status)
+		slog.Info("re-enqueued a run with no live job", "run_id", pgconv.UUIDString(run.ID), "status", run.Status)
 	}
 	return nil
 }

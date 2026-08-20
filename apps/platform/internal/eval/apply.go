@@ -32,6 +32,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
@@ -194,7 +195,7 @@ func (s *Service) readPackage(ctx context.Context, key string) (fs.FS, []byte, e
 // not be reproduced at all (SEC-011), and a diff is a reproduction.
 func check(sc suggestionCtx) (string, *Blocked) {
 	sug := sc.suggestion
-	id := uuidString(sug.ID)
+	id := pgconv.UUIDString(sug.ID)
 	block := func(reason, msg string) (string, *Blocked) {
 		return "", &Blocked{SuggestionID: id, Reason: reason, Message: msg}
 	}
@@ -313,7 +314,7 @@ func (s *Service) SuggestionDiff(ctx context.Context, workspaceID, id pgtype.UUI
 		// The same validation the apply call runs, run here so the preview cannot
 		// promise a change that import-grade validation would refuse.
 		blocked = validatePatched(sc, map[string]string{target: sc.suggestion.ProposedContent},
-			[]string{uuidString(sc.suggestion.ID)})
+			[]string{pgconv.UUIDString(sc.suggestion.ID)})
 	}
 	if blocked != nil {
 		out.Applicable, out.BlockedReason, out.Message = false, blocked.Reason, blocked.Message
@@ -482,7 +483,7 @@ func (s *Service) ApplySuggestions(
 	suggestions := make([]gen.EvaluationSuggestion, 0, len(ids))
 	seenIDs := make(map[string]bool, len(ids))
 	for _, id := range ids {
-		idText := uuidString(id)
+		idText := pgconv.UUIDString(id)
 		if seenIDs[idText] {
 			continue
 		}
@@ -499,7 +500,7 @@ func (s *Service) ApplySuggestions(
 			return out, err
 		}
 		if sug.Decision != DecisionAccepted {
-			out.NotAccepted = append(out.NotAccepted, uuidString(sug.ID))
+			out.NotAccepted = append(out.NotAccepted, pgconv.UUIDString(sug.ID))
 		}
 		suggestions = append(suggestions, sug)
 	}
@@ -520,7 +521,7 @@ func (s *Service) ApplySuggestions(
 		if left != right {
 			return left < right
 		}
-		return uuidString(suggestions[i].ID) < uuidString(suggestions[j].ID)
+		return pgconv.UUIDString(suggestions[i].ID) < pgconv.UUIDString(suggestions[j].ID)
 	})
 
 	patches := map[string]string{}
@@ -535,7 +536,7 @@ func (s *Service) ApplySuggestions(
 		target, _ := cleanTargetPath(sug.TargetPath)
 		if targetCounts[target] > 1 {
 			out.Rejected = append(out.Rejected, Blocked{
-				SuggestionID: uuidString(sug.ID), Reason: BlockedTargetChanged,
+				SuggestionID: pgconv.UUIDString(sug.ID), Reason: BlockedTargetChanged,
 				Message: "multiple suggestions replace " + target + "; select exactly one",
 			})
 			continue
@@ -549,7 +550,7 @@ func (s *Service) ApplySuggestions(
 		}
 		patches[target] = sug.ProposedContent
 		applied = append(applied, sug.ID)
-		out.Applied = append(out.Applied, uuidString(sug.ID))
+		out.Applied = append(out.Applied, pgconv.UUIDString(sug.ID))
 	}
 	if len(patches) == 0 {
 		return out, nil // nothing to apply: no version is created (contract 422)

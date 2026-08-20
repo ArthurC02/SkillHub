@@ -19,6 +19,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // Handler is the HTTP surface of discovery: request parsing, workspace scope
@@ -663,16 +664,10 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	hits := make([]searchHit, 0, len(rows))
 	for _, row := range rows {
 		hits = append(hits, searchHit{
-			SkillID: uuidString(row.SkillID),
+			SkillID: pgconv.UUIDString(row.SkillID),
 			Name:    row.Name,
 			Summary: row.Summary,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"results": hits})
-}
-
-func uuidString(u pgtype.UUID) string {
-	v, _ := u.Value()
-	s, _ := v.(string)
-	return s
 }

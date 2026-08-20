@@ -21,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // Service owns the non-HTTP dependencies of discovery.
@@ -207,7 +208,7 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 	hits := make([]searchResult, 0, len(rows))
 	for _, row := range rows {
 		hit := searchResult{
-			SkillID:  uuidString(row.SkillID),
+			SkillID:  pgconv.UUIDString(row.SkillID),
 			Name:     row.Name,
 			Summary:  row.Summary,
 			unranked: row.Unranked,
@@ -249,7 +250,7 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 	hits := make([]searchResult, 0, len(rows))
 	for _, row := range rows {
 		hit := searchResult{
-			SkillID:  uuidString(row.SkillID),
+			SkillID:  pgconv.UUIDString(row.SkillID),
 			Name:     row.Name,
 			Summary:  row.Summary,
 			RankNote: rankNoteDegraded,

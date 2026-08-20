@@ -23,6 +23,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
@@ -207,7 +208,7 @@ func (s *Service) importZip(ctx context.Context, ws gen.Workspace, data []byte, 
 // Duplicates are recorded too and marked as such: "someone uploaded this again"
 // is exactly the kind of thing an audit trail is asked about afterwards.
 func auditVersion(ctx context.Context, q *gen.Queries, ws gen.Workspace, action string, res Result, meta map[string]any) error {
-	meta["skill_id"] = uuidString(res.Skill.ID)
+	meta["skill_id"] = pgconv.UUIDString(res.Skill.ID)
 	meta["duplicate"] = res.Duplicate
 	meta["content_hash"] = res.Version.ContentHash
 	return audit.Log(ctx, q, audit.Event{

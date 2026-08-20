@@ -24,6 +24,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // ErrNotFound is "no such run, or not yours". Existence is private (WS-006).
@@ -116,7 +117,7 @@ func (s *Service) ingestOne(
 	}
 	// The token binds the batch to one attempt. An event claiming a different
 	// run or attempt is not a token this producer holds.
-	if event.RunID != uuidString(grant.RunID) {
+	if event.RunID != pgconv.UUIDString(grant.RunID) {
 		return fmt.Errorf("%w: run_id does not match the ingestion token", ErrInvalid)
 	}
 	if event.Attempt != grant.Attempt {
@@ -360,7 +361,7 @@ func (s *Service) Advanced(ctx context.Context, workspaceID, runID pgtype.UUID, 
 	if err != nil {
 		return AdvancedView{}, err
 	}
-	view := AdvancedView{RunID: uuidString(runID), Streams: health, Complete: true, NextAfter: after}
+	view := AdvancedView{RunID: pgconv.UUIDString(runID), Streams: health, Complete: true, NextAfter: after}
 	if len(rows) > int(tracePageSize) {
 		view.HasMore = true
 		rows = rows[:tracePageSize]
@@ -391,7 +392,7 @@ func eventViews(rows []gen.TraceEvent) []EventView {
 			status = *row.Status
 		}
 		events = append(events, EventView{
-			EventID: uuidString(row.EventID), Attempt: int(row.Attempt), Seq: row.Seq,
+			EventID: pgconv.UUIDString(row.EventID), Attempt: int(row.Attempt), Seq: row.Seq,
 			OccurredAt: row.OccurredAt.Time.UTC().Format(time.RFC3339Nano),
 			EmittedBy:  row.Source, Type: row.EventType, Status: status, Late: row.Late,
 			MaskedFields: fields, Payload: json.RawMessage(row.Payload),
@@ -413,7 +414,7 @@ func evaluationEventViews(rows []gen.ListEvaluationTraceEventsRow) []EventView {
 			status = *row.Status
 		}
 		events = append(events, EventView{
-			EventID: uuidString(row.EventID), Attempt: int(row.Attempt), Seq: row.Seq,
+			EventID: pgconv.UUIDString(row.EventID), Attempt: int(row.Attempt), Seq: row.Seq,
 			OccurredAt: row.OccurredAt.Time.UTC().Format(time.RFC3339Nano),
 			EmittedBy:  row.Source, Type: row.EventType, Status: status, Late: row.Late,
 			MaskedFields: fields, Payload: json.RawMessage(row.Payload),
@@ -450,7 +451,7 @@ func (s *Service) AdvancedAll(ctx context.Context, workspaceID, runID pgtype.UUI
 	if err != nil {
 		return AdvancedView{}, err
 	}
-	all := AdvancedView{RunID: uuidString(runID), Complete: true, Streams: health, Events: []EventView{}}
+	all := AdvancedView{RunID: pgconv.UUIDString(runID), Complete: true, Streams: health, Events: []EventView{}}
 	for _, stream := range health {
 		if stream.MissingCount > 0 {
 			all.Complete = false
@@ -487,7 +488,7 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	}
 
 	summary := Summary{
-		RunID:    uuidString(runID),
+		RunID:    pgconv.UUIDString(runID),
 		Status:   string(run.Status),
 		Complete: true,
 		Skills:   []SkillUse{},

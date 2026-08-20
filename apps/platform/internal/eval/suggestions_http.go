@@ -26,6 +26,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
 )
 
 // suggestionView is public.yaml's ImprovementSuggestion.
@@ -55,7 +56,7 @@ func toSuggestionView(row gen.EvaluationSuggestion) suggestionView {
 		evidence = []EvidenceRef{}
 	}
 	out := suggestionView{
-		SuggestionID:   uuidString(row.ID),
+		SuggestionID:   pgconv.UUIDString(row.ID),
 		Category:       row.Category,
 		Problem:        row.Problem,
 		Evidence:       evidence,
@@ -67,7 +68,7 @@ func toSuggestionView(row gen.EvaluationSuggestion) suggestionView {
 		out.DecidedAt = row.DecidedAt.Time.UTC().Format(time.RFC3339)
 	}
 	if row.AppliedSkillVersionID.Valid {
-		out.AppliedSkillVersionID = uuidString(row.AppliedSkillVersionID)
+		out.AppliedSkillVersionID = pgconv.UUIDString(row.AppliedSkillVersionID)
 	}
 	return out
 }
@@ -108,7 +109,7 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, struct {
 		EvaluationID string           `json:"evaluation_id"`
 		Suggestions  []suggestionView `json:"suggestions"`
-	}{uuidString(ev.ID), out})
+	}{pgconv.UUIDString(ev.ID), out})
 }
 
 // Decide handles PUT /suggestions/{id}/decision (EVAL-002 clause 3).

@@ -66,13 +66,7 @@ func main() {
 	}
 	// SBX-008: the worker is what builds a RunRequest, so it is the process that
 	// mints the short-lived object authorizations a sandbox is dispatched with.
-	store, err := objstore.New(
-		addrFromEnv("OBJSTORE_ENDPOINT", "localhost:8333"),
-		os.Getenv("OBJSTORE_ACCESS_KEY"), // empty = anonymous, local dev only
-		os.Getenv("OBJSTORE_SECRET_KEY"),
-		addrFromEnv("OBJSTORE_BUCKET", "skillhub"),
-		os.Getenv("OBJSTORE_SSL") == "1",
-	)
+	store, err := objstore.FromEnv()
 	if err != nil {
 		slog.Error("object store", "error", err)
 		os.Exit(1)
@@ -208,11 +202,4 @@ func main() {
 		slog.Error("queue stop", "error", err)
 	}
 	slog.Info("worker stopped")
-}
-
-func addrFromEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }
