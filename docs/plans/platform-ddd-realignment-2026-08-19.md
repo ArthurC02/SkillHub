@@ -57,11 +57,44 @@
 | --- | --- | --- | --- |
 | DDD-014 | fixed | 抽離 Policy & Usage context | **2026-08-20 完成**（前置 Phase 0～2 同日收斂）：新 `internal/policy`（QuotaLimits／EnforceQuota／Usage／DownloadRetention，含單元測試與計費接縫定位）；`run`、`packaging` 為兩個合法 Customer–Supplier 客戶（depguard 新 policy 規則＋10 條既有規則 deny 更新，drift 0=0 不變）。**語意零變更經套件與定向測試雙重驗證**：ADR-028 強制點仍在 create-run 交易內（policy 決定、run 執行）、三個拒絕標籤位元組不變、`RUN_QUOTA=off` 雙關閉不變、GOV-RETENTION-001 的 fail-closed 不變。刻意留在原地：`MaxConcurrentRunsPerWorkspace`（Run Orchestration 的 in-flight 不變量，非 allowance）、env 解析（cmd）。驗證：lint 0、無 DB 304、整合 518 全綠。 |
 
+### Phase 4 — 審視報告後續（2026-08-20 架構審視）
+
+> 來源是一份唯讀架構審視報告（檢查 commit、ADR、import graph、composition root、Outbox、測試與 CI 設定），**刻意未納入版本控制**——它是某一個時點的意見，不是需要被維護的基準；其結論已逐項落進下表與 §6，此後以本 ledger 為準。
+
+Phase 0～3 收斂後的唯讀審視認定方向正確，但**資料與事件邊界尚未完整封裝**，列三項風險：單一 sqlc package 是跨 context 的資料存取後門（P1）、`NewApp` 不是整個 platform 的唯一 composition root（P1/P2）、Outbox 是單一 callback 而非可擴充 dispatcher（P2）。本 Phase 逐項處理，並補上 ADR-032 §4 三個 aggregate 中未做的兩個。
+
+| ID | 狀態 | 項目 | 完成條件 |
+| --- | --- | --- | --- |
+| DDD-016 | fixed | Query ownership 機械強制（審視 P1） | **2026-08-20 完成**：`db/query-owners.yaml` 宣告 171 條 query 的 owner context（18 檔預設＋44 條覆寫），`devctl automation-check` 擋下**跨 context 的 write query 呼叫**（read 只宣告不擋，理由見 ADR-033）。呼叫點認定＝「import 了 `db/gen` 的非測試檔」，一個條件同時排除 `api/gen`、`db/gen` 自身與整合測試。雙向完整性：未宣告的 query、殘留條目、已無呼叫點的 stale allow 三者皆 FAIL。**刻意拒絕拆 sqlc per-context package**（理由見 ADR-033「考慮過但拒絕」）。導入時量到 15 條存量跨 context write，全數列入 `allow:` 標 `drift: DDD-015`，未順手重構。新增 [ADR-033](../adr/ADR-033-sqlc-query-ownership-and-cross-context-write-enforcement.md)。 |
+| DDD-017 | fixed | Outbox 改宣告式路由（審視 P2） | **2026-08-20 完成**：`outbox.Dispatcher`（`On`／`Ignore`／`Validate`／`Deliver`）。`EventTypes` 每個成員必須被明確認領或明確放棄，缺一則 `Validate` 在 composition root 回錯、process 開機失敗；未路由的 event type 在 `Deliver` 回錯而非 no-op，所以漏叫 `Validate` 也不會被標 published。**移除 production 的 silent log fallback**：`Deliver == nil` 不再退化成 log，log-only 需明示 `LogOnlyDelivery`，且該判斷在取 pool 與上鎖之前完成（可不依賴 DB 測試）。七個測試含審視點名的那條：Evaluation wiring 缺失時 `run.succeeded` 不會被當成功消費。**刻意不做**：per-consumer offset／replay cursor（需新表，等第二個 consumer 且重試成本不同再說）。 |
+| DDD-018 | fixed | 四個 process、四個 composition root（審視 P1/P2） | **2026-08-20 完成**：`cmd/api` 與 `apiserver.NewApp` 原本都宣稱 NewApp 是 platform 唯一 root，實際 worker／maintenance／reindex 各自建構 Service。NewApp 正名為 **API 的** root，四個 `cmd/*/main.go` 各自寫明自己的 root，ADR-032 §5 依既有前例追加實作註記（決策文字未改寫）。worker 的建構抽成無 I/O 的 `buildWorkers`，配 `main_test.go` 四個 wiring smoke test——其中一個守住 `run.Service.Queue` 漏設（該 bug 真實發生過，曾使每個 run 完成後未清理）；apiserver 加反射式 `App.Deps` wiring 測試。兩者皆做 mutation check。**刻意不抽共用 wiring factory**：唯一重複的是 env 讀取，三個 process 對缺值的處置與警告訊息各異，抽出去要加旗標還原差異——程式更多、log 更差。maintenance／reindex 不寫 smoke test：wiring 是單一 struct literal 緊接唯一使用它的呼叫，漏欄位當場在 operator 終端失敗。 |
+| DDD-019 | fixed | 清除路徑 2：`ingest` → `registry` 寫入 | **2026-08-20 完成**：`registry` 新增 `CreateSkillFromPackage`／`CreateVersionFromPackage`／`UpdateSummaryFromPackage`，三者**收呼叫端的 `pgx.Tx`、不自開交易**——匯入的版本列、搜尋投影（INGEST-009 要求同交易）與 audit 事件仍在同一個 commit（鐵律 9）。參數收 `skillpkg.Report` 而非散裝字串，決定寫什麼的輸入即驗證產物；guard 只擋明顯偽造（blocked、無 manifest）且 doc comment 誠實載明無法證明管線跑過，未發明誰都能構造的憑據型別。ADR-021 的 license 表述／來源分離與 manifest JSON 編碼一併移回 registry（manifest 位元組自此單一來源）。`ingest` → `registry` 同批移出 depguard deny 並加入 ADR-032 附錄 A。`allow:` 15 → 12。 |
+| DDD-020 | fixed | 清除路徑 4：掃描器回報、owner 寫入 | **2026-08-20 完成**：`objreconcile` 是 generic 掃描器卻直接寫 packaging 的 `artifacts` 與 testlab 的 `datasets`。兩個寫入改為 `packaging.MarkArtifactPurged`／`testlab.MarkDatasetObjectLost`，由 composition root **注入**而非 import——generic 反向依賴領域套件是把 ADR-032 的分層倒置，故**該半邊 depguard 與附錄 A 零改動**。`Sweep` 缺注入即回錯，且擋在 `Store == nil` 的 early return **之前**（無 store 是合法部署，漏注入是 wiring bug，不得躲在它後面）。注入欄位刻意命名 `RecordArtifactPurged`／`RecordDatasetLost` 而非 query 名——ownership 檢查是文字比對，同名會被誤判成仍在呼叫該 query（ADR-033「代價」章節預告的陷阱，此為首次撞上）。catalog 寫 `skills.access_restriction` 改走 `registry.SetAccessRestriction`（收 catalog 的 tx），reason code、說明句、兩條路由、授權與 audit 全留 catalog——`restriction.go` 檔頭既有的反對論證未被推翻，而是在其下補述新切法為何不觸發它。`allow:` 12 → **9**。 |
+| DDD-021 | fixed | Skill Version aggregate 補文件與測試（ADR-032 §4） | **2026-08-20 完成**：`registry/doc.go` 逐條寫下不變量（版本列永不 UPDATE／DELETE、採納建議＝INSERT、`version_number` 由 query 配號非呼叫端指定、三個快照欄位、license 表述與來源同行），並講明同 context 內 `skills` 可變而 `skill_versions` 不可變的分野。**執行時推翻了立項前提**：不可變性並非「碰巧沒人寫 UPDATE」——`0005_immutability.sql` 自 M0 即有 `enforce_immutable()` trigger，`db/tests` 有 `must_fail` 證明。缺的是**時機**：trigger 要等語句執行才炸（最快是 staging 的 500）。故改為 `db/query-owners.yaml` 新增 `immutable:`（八張表各附理由）＋`immutable_allow:` 具名豁免（一條，帳號刪除 purge），檢查擋四類事，其中一類是**宣告了但 migration 沒有對應 trigger**——兩邊互相對帳，單刪任一側皆 FAIL，順帶守住 trigger 被刪。`runs`／`evaluations` 刻意不納入：其 trigger 帶 WHEN 或欄位參數，是列級／欄位級凍結，納入會對正常的 `UPDATE runs SET status` 誤報。 |
+| DDD-022 | fixed | Evaluation aggregate 補文件與測試（ADR-032 §4） | **2026-08-20 完成**：先釐清不變量再寫測試——「append-only」字面不成立（`evaluations` 有四條 UPDATE），`eval/doc.go` 因此**正面回答四條各自為何合法**：`SupersedeCurrentEvaluation` 是機制本身（只寫 `superseded_at`，同交易另一半是 INSERT）、`CompleteEvaluation` 是判定的第一次寫入（列先於 judge 呼叫建立，讓中途死亡是可見的 `pending`）、`FailEvaluation` 是同列的另一終態、`SetEvaluationFeedback` 是對判定的意見而非判定的一部分。九條不變量各自標明由誰強制，多數是 DB 而非應用紀律：`evaluations_current_key` partial unique index 保證「至多一份 current」、0024 trigger 凍結 completed 列、`status = 'pending'` 述詞讓 worker 與 recovery sweep 競賽而恰好一方勝出。**`superseded_at` 的一次性不是靠不可變性**——trigger 必須讓該欄可寫，擋住「還原成 current」的是 unique index。八個 DB 測試皆經破壞驗證。未搬檔：三條寫入路徑本已收在 `eval.go` 同一區塊。 |
+| DDD-023 | fixed | Run aggregate 的順序依賴（§6 列管殘項第一條） | **2026-08-20 完成**：`settle` 原以 `successors[status][0]` 取 happy path 後繼，順序 load-bearing 而無人知曉，且外層迴圈無界——走不到 `succeeded` 是**無限迴圈**（每圈一次 DB 寫入），不是回錯值。新增 `NextOnSuccess`（從**集合**推導：唯一不是失敗出口的後繼，即轉移表註解本已陳述的規則，故重排任一列真正無作用，而非僅被測試釘住）與 `HappyPath`（先算完整路徑再套用；終態死路或超過 `len(AllStatuses)` 步回 `ErrNoHappyPath`，由 River 重試且可見）。轉移表內容與 9×9 合法性測試未動。三個新測試中兩個為外部（釘住確切生命週期路徑；釘住「每個非終態恰有一個非失敗後繼」——這是推導良定義的前提，加第二個就會紅），一個為內部（需抽換轉移表：全列反轉路徑不變、環狀表被拒而非迴圈）。皆經破壞驗證，移除步數上限會使該測試變成 hang。 |
+| DDD-024 | fixed | 裸 SQL tripwire（ADR-033 的盲點） | **2026-08-20 完成**：ADR-033 全套機制的前提是「所有寫入經過 sqlc」，而該前提未被強制——一行 `tx.Exec(ctx, "UPDATE skills SET ...")` 同時繞過 ownership 與 immutable 兩道檢查。導入時洞是空的（`apps/platform` 八處裸 pgx 呼叫**無一為 DML**），為補防線最便宜的時刻。devctl 以 `go/ast`（stdlib，維持零第三方依賴）解析非測試 Go 檔，擋下交給 `Exec`／`Query`／`QueryRow`／`Batch.Queue` 的 DML 字面值；SQL 判定重用既有 `isWriteStatement`，不寫第二套 parser。入口列 `Batch.Queue` 而非 `SendBatch`（後者收 `*pgx.Batch` 不是 SQL）；只取第一個帶字面值的引數，避免 `Exec(ctx, sql, "delete")` 假警報。`raw_sql_allow:` 形狀比照另兩份清單，目前**零條**，失效豁免 FAIL。**明載為 tripwire 而非證明**：`const` 持有 SQL、`Sprintf`、字串串接、pgx 以外的路徑皆繞得過，且該形狀現況已存在（`run/halt.go` 的 `reconcilerLastRun`，是 SELECT 故無害）。真正封死需把 pool 收在只暴露 sqlc 的 wrapper 後——與「拆 sqlc per-context package」同級，同樣等存量清完再評估。 |
+
+**Phase 4 的邊界**：審視報告第四項（`App.Deps` 與 Service handles 公開，架構規則靠慣例）**未執行**——審視自身評為「目前可以接受」，且整合測試大量依賴那些把手，改為 private 的 churn 大於收益。若日後要做，路徑是提供獨立 test constructor／test options，逐步縮小公開面。
+
 ## 6. 執行總結（2026-08-20）
 
-DDD-001～014 全數結案（DDD-006 與 DDD-007 依執行時盤點調整裁定，理由行內記錄）。負責人授權「依最佳實務決策、詳實記錄」下的裁定全部落於 ADR-032／本 ledger／各 commit message。執行期間發現、**已列管未修**的殘項：
+DDD-001～014 全數結案（DDD-006 與 DDD-007 依執行時盤點調整裁定，理由行內記錄）。負責人授權「依最佳實務決策、詳實記錄」下的裁定全部落於 ADR-032／本 ledger／各 commit message。
 
-- `run/job.go` `settle` 依賴轉移表列首為 happy path——順序 load-bearing 無測試（DDD-010 行內），宜補 `next(status)` accessor。
+**Phase 4（DDD-016～024）於同日追加並全數結案**，起因為 Phase 0～3 收斂後的架構審視。DDD-015 是保留給存量漂移清除的編號，**仍為 `open`**：`db/query-owners.yaml` 的 `allow:` 尚餘 **9 條**，分兩組且**皆非技術阻擋**——
+
+- **帳號刪除 purge（6 條，`identity` → `analytics`／`testlab`／`run`／`registry`／`ingest`）**：改為各 context 訂閱 `account.deletion_due` 自清後，刪除從單一交易變成最終一致。**待決策**：CORE-007 的硬刪除承諾在最終一致模型下，「清完了」的判準是什麼、誰負責回答。有合規面向。
+- **搜尋索引投影（3 條，`registry`／`ingest` → `catalog`）**：`search_documents` 目前在匯入的同一個交易內寫入（INGEST-009 明文），換到的是「匯入成功當下即可被搜尋」。事件化會把它變成最終一致。**待決策**：M1 Explorer 的允收準則能否接受匯入後的可發現性窗口。
+
+兩者在裁定前不動；`allow:` 的棘輪機制（新增條目禁止、失效條目 FAIL）確保它們不會惡化。清除路徑逐條見 ADR-033。
+
+執行期間發現、**已列管未修**的殘項：
+
+- ~~`run/job.go` `settle` 依賴轉移表列首為 happy path~~ → **DDD-023 已修**。
+- `FailEvaluation` 只寫 `evidence_complete`，ADR-026 決策 1 要求的 `judge_prompt_version`／`rubric_version`／`judge_model` 留 NULL。可辯護（失敗不是判定），但那三個值只活在 `evaluation_started` 這個 trace event 裡，而 trace 以 DROP PARTITION 清除——**保存期一過即無從得知該次失敗用的是哪個 judge**（DDD-022 行內）。
+- `db/migrations/0024` 的 trigger 註解稱 `failed` 列保持可寫是為了「讓 retry 把它變成判定」，但 `CompleteEvaluation` 帶 `status = 'pending'` 述詞，無任何路徑會如此——程式比 DB 嚴，非違規，但註解描述了一個不存在的機制。migration 已套用故不原地改，需要時以新 migration 或文件更正（DDD-022 行內）。
+- `eval/reconcile.go` 以裸 SQL 讀 `evaluations`，唯讀且同 context 故非 ADR-033 違規，但繞過宣告，`db/query-owners.yaml` 看不見它；日後若開始強制 read ownership 不會被自動涵蓋（DDD-022／DDD-024 行內）。
+- `apiserver`、`eval`、`registry` 三個 package 各自 `DROP SCHEMA public` 並套 migration，共用單一 `SKILLHUB_TEST_DATABASE_URL`。`go test ./...` 並行執行 package 時互相摧毀 schema（CI 有設該環境變數，會紅）。現以各自 `TestMain` 持有 session advisory lock 至整個 package 跑完序列化；**新增第四個重置該資料庫的 package 時必須一併取鎖**，漏取會以 `relation ... does not exist` 大聲失敗而非靜默（DDD-021 行內）。
 - trace 同批事件 `occurred_at` 相同導致的排序不定 flake（DDD-005 行內；與債務帳 `TRACE-SEQ-001` 同根）。
 - outbox poison 隔離是最小版：無自動重放工具、Prometheus rule 屬 `O11Y-PROMTOOL-001`（目錄 §5 行內）。
 - 事件目錄缺口 6（aggregate version）依裁定保留 open，第一個需要順序的 consumer 出現才補。
