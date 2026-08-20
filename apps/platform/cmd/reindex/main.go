@@ -31,6 +31,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
@@ -75,7 +76,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	svc := &ingest.Service{Pool: pool, Store: store, LLM: &llmclient.Client{BaseURL: llmURL, Token: llmToken}}
+	// The backfill rewrites catalog's documents, so it needs catalog's write
+	// injected exactly as the API's import path does (ADR-034); ReindexPending
+	// refuses to spend an enrichment call without it.
+	svc := &ingest.Service{
+		Pool: pool, Store: store,
+		LLM:        &llmclient.Client{BaseURL: llmURL, Token: llmToken},
+		IndexSkill: catalog.IndexSkillEnriched,
+	}
 	done, failed, err := svc.ReindexPending(ctx, batchSize())
 	if err != nil {
 		slog.Error("enrichment backfill", "error", err)

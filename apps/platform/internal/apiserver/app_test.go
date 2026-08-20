@@ -84,6 +84,18 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 		t.Error("the API's evaluation service holds a judge or suggester; producing a verdict belongs to cmd/worker")
 	}
 
+	// The search projection writes: catalog owns `search_documents`, but the rows
+	// are produced by ingest (import) and registry (fork, delete, takedown) inside
+	// their own transactions, so only this composition root puts the two together
+	// (ADR-034). Unset, both services refuse to write — which is the safe failure,
+	// but it is a failure, and it belongs here rather than at the first import.
+	if app.Versions.IndexSkill == nil {
+		t.Error("the import path is missing catalog's search projection write")
+	}
+	if reg := app.Deps.Registry.Svc; reg.IndexSkill == nil || reg.RemoveFromIndex == nil {
+		t.Error("the registry service is missing a search projection write")
+	}
+
 	// suggesterOrNil's reason for existing: a nil *llmclient.Client must not land
 	// in the interface field as a non-nil value, or "no LLM configured" panics
 	// instead of reporting itself unavailable.

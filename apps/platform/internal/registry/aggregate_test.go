@@ -316,7 +316,7 @@ func TestForkSharesThePackageObject(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	service := &Service{Pool: pool}
+	service := testProjection(&Service{Pool: pool})
 	fork, forkVersion, err := service.Fork(ctx, ws, sourceSkill)
 	if err != nil {
 		t.Fatal(err)

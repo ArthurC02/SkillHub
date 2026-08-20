@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 )
@@ -176,7 +177,7 @@ func importPackage(t *testing.T, pool *pgxpool.Pool, store packageStore, owner *
 	if err != nil {
 		t.Fatal(err)
 	}
-	svc := &ingest.Service{Pool: pool, Store: store}
+	svc := &ingest.Service{Pool: pool, Store: store, IndexSkill: catalog.IndexSkillEnriched}
 	res, err := svc.UploadZip(ctx, ws, namedPackage(t, name, withScript))
 	if err != nil {
 		t.Fatal(err)

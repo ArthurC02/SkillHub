@@ -28,6 +28,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/catalog"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/packaging"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
@@ -167,7 +168,7 @@ func importFiles(
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := (&ingest.Service{Pool: pool, Store: a.packages}).UploadZip(ctx, ws, zipOf(t, files))
+	res, err := (&ingest.Service{Pool: pool, Store: a.packages, IndexSkill: catalog.IndexSkillEnriched}).UploadZip(ctx, ws, zipOf(t, files))
 	if err != nil {
 		t.Fatal(err)
 	}

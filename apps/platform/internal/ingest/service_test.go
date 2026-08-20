@@ -3,7 +3,11 @@ package ingest
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 )
 
 // The PackageFS/PackageRoot tests that used to live here moved to
@@ -30,3 +34,21 @@ func zipBytes(t *testing.T, files map[string]string) []byte {
 }
 
 const skillMD = "---\nname: pdf-tools\ndescription: Work with PDFs.\nlicense: MIT\n---\n# PDF\n"
+
+// A service assembled without catalog's projection write must refuse before it
+// writes anything, not import a version nobody can search for (INGEST-009,
+// ADR-034). Neither call has a pool or a transaction, so anything that got past
+// the check would panic rather than return — which is what makes this a test of
+// the ordering and not only of the message.
+func TestImportPathsRefuseWithoutTheProjectionWrite(t *testing.T) {
+	ctx := context.Background()
+	if _, _, err := (&Service{}).persistVersion(ctx, nil, gen.Workspace{}, gen.Skill{},
+		preparedPackage{}, sourceMeta{Type: "upload"}, enrichment{}); err == nil {
+		t.Error("persistVersion succeeded without the search projection write injected")
+	}
+	// LLM set so the backfill's own precondition passes and the projection check
+	// is the one being exercised.
+	if _, _, err := (&Service{LLM: &llmclient.Client{}}).ReindexPending(ctx, 1); err == nil {
+		t.Error("ReindexPending succeeded without the search projection write injected")
+	}
+}

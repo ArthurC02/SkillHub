@@ -118,13 +118,6 @@ allow:
   PurgeUnreferencedSkills: identity
   PurgeUnreferencedSkillSources: identity
 
-  # drift: DDD-015 — search_documents 是 catalog 的索引投影，目前由來源資料的
-  # owner 直接 upsert；正解是把索引寫入收到 catalog 的 projection 服務後面
-  # （registry／ingest 只發事件）。
-  UpsertSearchDocument: registry
-  DeleteSearchDocument: registry
-  UpsertSearchDocumentEnriched: ingest
-
 # 不可變資料表宣告（ADR-003、鐵律 4；ADR-032 §4 的 aggregate 不變量）
 #
 # 這裡列的表**只接受 INSERT**：任何 UPDATE 或 DELETE 命中它們，

@@ -38,6 +38,8 @@ Platform DDD 審視報告把這列為 P1，並指出這與 ADR-002「每個模�
 
 ## 存量漂移與清除路徑
 
+**2026-08-20 修訂**：下列第 1、3 條的補法（事件化）已由 [ADR-034](./ADR-034-cross-context-writes-close-by-inversion-not-by-events.md) 取代——改為與第 2、4 條相同的做法：寫入回到 owner、呼叫端交易原地不動，owner 的寫入函式由 composition root 注入。理由是事件化會把帳號刪除的原子性與匯入後的即時可搜尋換成最終一致，而 ADR-010 的拆分條件尚未觸發。本節其餘文字保留為當時的判斷紀錄。
+
 導入時的 15 條跨 context write 全部列在 `db/query-owners.yaml` 的 `allow:`，標記 `# drift: DDD-015`。**`allow:` 是存量清單，不是擴充點**——新的跨 context write 一律改程式。四條清除路徑：
 
 1. **帳號刪除 purge（6 條，`identity` → `analytics`／`testlab`／`run`／`registry`／`ingest`）**：`identity` 的 purge 事務直接清掉五個 context 的列。正解是 purge 只發 `account.deletion_due`，各 context 訂閱後自清（Outbox 已具備此能力，ADR-008）；代價是刪除從單一交易變成最終一致，需要先定義「清完」的判準。

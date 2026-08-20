@@ -39,6 +39,24 @@ type Service struct {
 	Store   ObjectStore
 	Fetcher *URLFetcher       // nil disables URL import
 	LLM     *llmclient.Client // nil disables index-time enrichment (documents land pending)
+	// IndexSkill writes the search projection. `search_documents` belongs to
+	// catalog, so the write is catalog's and arrives injected from the
+	// composition root rather than imported (ADR-034) — the same shape registry
+	// uses for the same table, even though ingest could import catalog without a
+	// cycle. Named for what it does, not for the query it calls: the ownership
+	// check matches call sites textually.
+	IndexSkill func(ctx context.Context, q *gen.Queries, arg gen.UpsertSearchDocumentEnrichedParams) error
+}
+
+// requireProjection refuses to run any path that maintains the search
+// projection when the write is missing. Carrying on without it would let an
+// import commit and report success while the document never appears — a skill
+// that exists and cannot be found, with nothing going red anywhere.
+func (s *Service) requireProjection() error {
+	if s.IndexSkill == nil {
+		return errors.New("ingest: search projection write not injected; refusing to write")
+	}
+	return nil
 }
 
 // Result reports one upload. When Report.Blocked is true nothing was stored
@@ -264,6 +282,12 @@ func (s *Service) SaveVersion(ctx context.Context, ws gen.Workspace, skillID pgt
 // persistVersion writes the dedupe-checked version row, its source row, and
 // the search projection inside the caller's transaction.
 func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws gen.Workspace, skill gen.Skill, p preparedPackage, src sourceMeta, e enrichment) (gen.SkillVersion, bool, error) {
+	// Before the first row, not at the projection write: both import entry points
+	// funnel through here, and a version row that committed without its document
+	// would be exactly the outcome INGEST-009 exists to prevent.
+	if err := s.requireProjection(); err != nil {
+		return gen.SkillVersion{}, false, err
+	}
 	q := gen.New(tx)
 	if existing, err := q.GetVersionBySkillAndHash(ctx, gen.GetVersionBySkillAndHashParams{
 		SkillID: skill.ID, ContentHash: p.contentHash,
@@ -307,7 +331,7 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws gen.Workspac
 	// database, so consistency is free; full rebuilds go through cmd/reindex.
 	// The document keeps the skills row's name (fork names differ from their
 	// manifest) but takes the newest description and enrichment.
-	if err := upsertProjection(ctx, q, skill.ID, ws.ID, skill.Name, e); err != nil {
+	if err := s.upsertProjection(ctx, q, skill.ID, ws.ID, skill.Name, e); err != nil {
 		return gen.SkillVersion{}, false, err
 	}
 	return version, false, nil
@@ -315,8 +339,8 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws gen.Workspac
 
 // upsertProjection writes one search document. Shared by import and by the
 // enrichment backfill so both produce identical rows.
-func upsertProjection(ctx context.Context, q *gen.Queries, skillID, workspaceID pgtype.UUID, name string, e enrichment) error {
-	return q.UpsertSearchDocumentEnriched(ctx, gen.UpsertSearchDocumentEnrichedParams{
+func (s *Service) upsertProjection(ctx context.Context, q *gen.Queries, skillID, workspaceID pgtype.UUID, name string, e enrichment) error {
+	return s.IndexSkill(ctx, q, gen.UpsertSearchDocumentEnrichedParams{
 		SkillID:                 skillID,
 		WorkspaceID:             workspaceID,
 		Name:                    name,
@@ -345,6 +369,12 @@ func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed
 	if s.LLM == nil {
 		return 0, 0, errors.New("ingest: enrichment backfill needs an LLM service")
 	}
+	// Checked here as well as in persistVersion, and before the worklist read:
+	// this path never goes through persistVersion, and failing only after a batch
+	// of enrichment calls would bill for work it cannot store.
+	if err := s.requireProjection(); err != nil {
+		return 0, 0, err
+	}
 	q := gen.New(s.Pool)
 	rows, err := q.ListPendingEnrichment(ctx, limit)
 	if err != nil {
@@ -368,7 +398,7 @@ func (s *Service) ReindexPending(ctx context.Context, limit int32) (done, failed
 			failed++ // enrichPackage already logged why; the row stays pending
 			continue
 		}
-		if err := upsertProjection(ctx, q, row.SkillID, row.WorkspaceID, row.Name, e); err != nil {
+		if err := s.upsertProjection(ctx, q, row.SkillID, row.WorkspaceID, row.Name, e); err != nil {
 			return done, failed, err
 		}
 		done++

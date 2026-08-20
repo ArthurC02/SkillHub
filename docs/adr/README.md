@@ -58,6 +58,7 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-031](./ADR-031-artifact-role-repository-layout.md) | 依產物角色劃分頂層目錄（可啟動產品程式統一進 `apps/`，取代 ADR-024 收納語意） | Accepted |
 | [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md) | Platform 的 DDD Bounded Context 治理與機械強制（補充 ADR-002；depguard 白名單＝context map 的 CI 表述） | Accepted |
 | [ADR-033](./ADR-033-sqlc-query-ownership-and-cross-context-write-enforcement.md) | sqlc Query Ownership 與跨 Context 寫入強制（補充 ADR-032；`db/query-owners.yaml` ＋ `automation-check`，先鎖 write） | Accepted |
+| [ADR-034](./ADR-034-cross-context-writes-close-by-inversion-not-by-events.md) | 剩餘跨 Context 寫入以依賴反轉收斂，不事件化（修訂 ADR-033 清除路徑 1、3；交易保證不換最終一致） | Accepted |
 
 ## 整體架構摘要
 

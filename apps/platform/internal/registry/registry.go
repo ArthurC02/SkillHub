@@ -34,12 +34,36 @@ type ObjectStore interface {
 type Service struct {
 	Pool  *pgxpool.Pool
 	Store ObjectStore
+	// The search projection writes, both required. `search_documents` belongs to
+	// catalog, and catalog has imported this package since DDD-020, so the
+	// functions are injected by the composition root instead of imported
+	// (ADR-034). Named for what they do rather than for the queries they call:
+	// the ownership check matches call sites textually, and a field named after
+	// the query would read as registry still calling it.
+	IndexSkill      func(ctx context.Context, q *gen.Queries, arg gen.UpsertSearchDocumentParams) error
+	RemoveFromIndex func(ctx context.Context, q *gen.Queries, skillID pgtype.UUID) error
+}
+
+// requireProjection refuses to start any write that maintains the search
+// projection when either function is missing. Skipping the projection write
+// instead would be the worst available failure: the fork or the takedown
+// commits, the caller is told it worked, and the index quietly disagrees with
+// the registry — a taken-down skill still listed, a fork nobody can find — with
+// nothing anywhere going red.
+func (s *Service) requireProjection() error {
+	if s.IndexSkill == nil || s.RemoveFromIndex == nil {
+		return errors.New("registry: search projection writes not injected; refusing to write")
+	}
+	return nil
 }
 
 // Fork clones the latest version of a readable skill into ws. Provenance
 // lives in forked_from_skill_id / forked_from_version_id; the package object
 // is shared, not copied.
 func (s *Service) Fork(ctx context.Context, ws gen.Workspace, skillID pgtype.UUID) (gen.Skill, gen.SkillVersion, error) {
+	if err := s.requireProjection(); err != nil {
+		return gen.Skill{}, gen.SkillVersion{}, err
+	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return gen.Skill{}, gen.SkillVersion{}, err
@@ -127,7 +151,7 @@ func (s *Service) Fork(ctx context.Context, ws gen.Workspace, skillID pgtype.UUI
 	if fork.Summary != nil {
 		summary = *fork.Summary
 	}
-	if err := q.UpsertSearchDocument(ctx, gen.UpsertSearchDocumentParams{
+	if err := s.IndexSkill(ctx, q, gen.UpsertSearchDocumentParams{
 		SkillID:     fork.ID,
 		WorkspaceID: ws.ID,
 		Name:        fork.Name,
@@ -162,6 +186,9 @@ type DeleteResult struct {
 // they are never removed here.
 // ponytail: the hard-purge background job lands with the retention work.
 func (s *Service) Delete(ctx context.Context, ws gen.Workspace, skillID pgtype.UUID) (DeleteResult, error) {
+	if err := s.requireProjection(); err != nil {
+		return DeleteResult{}, err
+	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return DeleteResult{}, err
@@ -176,7 +203,7 @@ func (s *Service) Delete(ctx context.Context, ws gen.Workspace, skillID pgtype.U
 	if err != nil {
 		return DeleteResult{}, err
 	}
-	if err := q.DeleteSearchDocument(ctx, skill.ID); err != nil {
+	if err := s.RemoveFromIndex(ctx, q, skill.ID); err != nil {
 		return DeleteResult{}, err
 	}
 	n, err := q.CountSkillVersions(ctx, skill.ID)
@@ -213,6 +240,9 @@ var ErrAlreadyTakenDown = errors.New("skill is already taken down")
 // admin role SEC/CORE has not specified yet. Upgrade path is a second query
 // without the workspace predicate behind that role, not a change to this one.
 func (s *Service) Takedown(ctx context.Context, ws gen.Workspace, skillID pgtype.UUID, reason string) (gen.Skill, error) {
+	if err := s.requireProjection(); err != nil {
+		return gen.Skill{}, err
+	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return gen.Skill{}, err
@@ -235,8 +265,10 @@ func (s *Service) Takedown(ctx context.Context, ws gen.Workspace, skillID pgtype
 		return gen.Skill{}, err
 	}
 	// Same transaction as the flag, so the content can never be down in the
-	// registry but still listed in search.
-	if err := q.DeleteSearchDocument(ctx, skill.ID); err != nil {
+	// registry but still listed in search. The removal is catalog's write on
+	// catalog's table; it stays inside this transaction because it is injected
+	// rather than fetched from a service that would open its own (ADR-034).
+	if err := s.RemoveFromIndex(ctx, q, skill.ID); err != nil {
 		return gen.Skill{}, err
 	}
 	if err := audit.Log(ctx, q, audit.Event{

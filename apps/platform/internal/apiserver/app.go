@@ -130,11 +130,17 @@ func NewApp(cfg Config) (*App, error) {
 		Secure:    cfg.Secure,
 	}
 
+	// IndexSkill is catalog's write on catalog's table, handed to ingest here
+	// because neither may import the other's package for it (ADR-034). It runs
+	// inside the import transaction, which is what INGEST-009 asks for: a version
+	// is searchable the moment it exists. Left unset, every import path refuses
+	// rather than committing a version nobody can find — see app_test.go.
 	versions := &ingest.Service{
-		Pool:    cfg.Pool,
-		Store:   cfg.Store,
-		Fetcher: cfg.Fetcher,
-		LLM:     cfg.LLM,
+		Pool:       cfg.Pool,
+		Store:      cfg.Store,
+		Fetcher:    cfg.Fetcher,
+		LLM:        cfg.LLM,
+		IndexSkill: catalog.IndexSkillEnriched,
 	}
 
 	traceSvc := &trace.Service{Pool: cfg.Pool, Signer: cfg.TraceSigner}
@@ -174,7 +180,14 @@ func NewApp(cfg Config) (*App, error) {
 				Identity: auth.Service,
 			},
 			Registry: &registry.Handler{
-				Svc:      &registry.Service{Pool: cfg.Pool, Store: cfg.Store},
+				// Fork indexes, delete and takedown de-index; both writes are
+				// catalog's and both stay inside registry's own transaction
+				// (ADR-034).
+				Svc: &registry.Service{
+					Pool: cfg.Pool, Store: cfg.Store,
+					IndexSkill:      catalog.IndexSkill,
+					RemoveFromIndex: catalog.RemoveSkillFromIndex,
+				},
 				Identity: auth.Service,
 			},
 			TestLab: &testlab.Handler{
