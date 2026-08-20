@@ -49,7 +49,7 @@
 | DDD-010 | open | 拆 `internal/run` 內部結構 | 至少分出：狀態機（aggregate，含 transition 表）、應用編排（schedule／dispatch／halt／cleanup）、provider gateway（ACL）三個子包或明確檔案群；`run/service.go`（858 行）不再同時持有三種職責；狀態機可獨立單元測試。 |
 | DDD-011 | open | 整合測試搬家＋AuthZ 矩陣補全 | 23 個 `*_integration_test.go` 自 `internal/identity` 移至 `internal/apiserver`（`package apiserver_test`，共用 NewApp）；AuthN/AuthZ 矩陣覆蓋 `router.go` 全部路由（現況約 30/55）；缺席清單見審查：`/test-cases/*`、`/downloads/*`、`/runs/{id}/trace`、`/runs/{id}/evaluation*`、`/admin/dispatch*`、`POST /feedback`、`GET /policy/data-retention`、`GET /runs/{id}/artifacts`。 |
 | DDD-012 | open | 事件目錄程式側收斂（落點已裁定並建立：[contracts/events/domain-events.md](../../contracts/events/domain-events.md)，2026-08-19） | 關閉目錄 §5 的七個缺口：outbox retention 刪除、poison／DLQ 與 deliver 失敗可見化（含審查發現的吞錯）、`causation_id` 一律填、`aggregate_type` 常數自 audit 解耦、同交易的型別或 lint 保證、`event_version` 常數化；`event_type` 值域以 conformance test＋DB `CHECK` 封閉（目錄 §4 規則 2）；新增事件遵守「同 commit 三件事」。aggregate version 欄位**不**在本項（第一個需要順序的 consumer 出現才加）。 |
-| DDD-013 | open | Ubiquitous language 固定進 AGENTS.md | context ↔ 套件 ↔ 需求 ID 前綴對照表加入 AGENTS.md；「新增 `internal/` 套件必須先登記 context」入開發自動化守則。 |
+| DDD-013 | fixed | Ubiquitous language 固定進 AGENTS.md | **2026-08-20 完成**：AGENTS.md 開發自動化守則新增第 11 條——context 速查表（標明事實來源為 ADR-032 §1）、新增套件先登記、跨 context import 同 commit 改兩處、Service 一律經 NewApp 注入；`devctl automation-check` 驗證通過。 |
 
 ### Phase 3 — DDD 化完成後（負責人 2026-08-19 裁定時點）
 

@@ -103,6 +103,21 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 8. **generated files 禁止手改**：修改 `db/migrations/**`、`db/queries/**` 或 `db/sqlc.yaml` 後，由主 Agent序列化執行 `task gen:sql`；修改 `contracts/openapi/public.yaml`／`llm-internal.yaml` 後執行 `task gen:openapi`。提交前一律跑 `task gen:check`。`apps/platform/internal/platform/db/gen/**`、`apps/platform/internal/api/gen/**`、`packages/api-client-ts/src/generated/**`、`packages/api-stub-py/src/skillhub_api_stub/generated/**` 的衝突要在來源解決後重生，不得手動合併。`task gen` 有 repo-local lock、暫存輸出與原子替換；SubAgent 不自行執行。
 9. **transport type 不是產品政策**：Web 既有 `apps/web/src/api/types.ts` 是 UI view model，依 endpoint 逐一用 adapter 遷移，不得因 generated client 存在就整檔替換；Python generated models 只描述內部 HTTP payload，授權、政策、重試與狀態轉移仍在 Go（鐵律 6）。生成器與映像版本只從 `tools/toolchain.yaml` 讀。
 10. **Go generated router 不擁有 AuthZ**：Phase 4 只把 ogen server 放在 `router.go` 的精確 `GET /healthz` pattern 後。其他 route 仍逐條由 `router.go` 套 `RequireSession`／`RequireOperator`／`OptionalSession`；不得直接 mount 完整 generated server、不得讓 `UnimplementedHandler` 的其他 operation 對外可達。每移一條 endpoint 都要保留原 middleware 語意並加 route 測試。
+11. **Platform 的 Bounded Context 治理（ADR-032，2026-08-20 起生效）**：`apps/platform/internal/` 每個套件屬於且僅屬於一個 context；新增套件必須先在 ADR-032 §1 對照表登記。跨 context 的新 import 必須**同一個 commit** 改 ADR-032 附錄 A 與 `apps/platform/.golangci.yml` 的 depguard 規則（CI 以 depguard＋`devctl automation-check` 兩道強制）；領域 Service 一律由 `apiserver.NewApp` 注入，禁止方法內現場建構其他 context 的 Service。速查對照（事實來源是 ADR-032 §1）：
+
+    | Context | 套件 | 需求 ID |
+    | --- | --- | --- |
+    | Identity & Workspace | `identity` | WS、SEC |
+    | Catalog & Discovery | `catalog` | DISC |
+    | Skill Registry & Versioning | `registry`、`skillpkg` | SKILL |
+    | Trust & Supply Chain | `ingest`（含版本寫入的唯一驗證路徑） | SKILL、SEC |
+    | Test Lab | `testlab` | TEST |
+    | Run Orchestration | `run` | RUN、SBX |
+    | Evaluation & Improvement | `eval` | EVAL |
+    | Packaging & Distribution | `packaging` | PACK |
+    | Run Trace | `trace` | TRACE |
+    | Policy & Usage | `analytics`（quota 暫寄居 `run`，DDD-014 抽離） | PDM、NFR |
+    | Generic（無領域規則） | `audit`、`outbox`、`objreconcile`、`llmclient`、`skillpkg`、`platform/*`、`apiserver`、`api/gen` | — |
 
 ## 快速判斷「我該看哪份文件」
 
