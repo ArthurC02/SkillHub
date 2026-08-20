@@ -419,3 +419,61 @@ func TestAPendingAccountDeletionCanBeAskedAboutAfterTheRequest(t *testing.T) {
 		t.Errorf("a cancelled deletion still reports as pending: %v", v)
 	}
 }
+
+// listRunsForTestCase is listRuns narrowed to one test case.
+func (c *client) listRunsForTestCase(t *testing.T, testCaseID string) []runListView {
+	t.Helper()
+	var out struct {
+		Runs []runListView `json:"runs"`
+	}
+	url := c.base + "/runs?test_case_id=" + testCaseID
+	if code := getJSON(t, c.Client, url, &out); code != http.StatusOK {
+		t.Fatalf("GET %s: got %d", url, code)
+	}
+	return out.Runs
+}
+
+// The return leg of the journey: 建立 → 試跑 → 回來看. Without this parameter a Test
+// Case detail page has no way to ask "what happened when I ran this", which is
+// also the support the M3 主路徑 (採納建議 → 新版本 → 同一個 Test Case 重跑) needs.
+func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "history-per-case")
+	mine := f.start(t)
+
+	// A second draft on the same skill, run once. It is the row the filter has to
+	// leave out — a filter that returns everything passes a one-run test.
+	other := f
+	other.testCaseID = seedTestCase(t, pool, f.workspaceID, f.skillID)
+	theirs := other.start(t)
+
+	rows := f.listRunsForTestCase(t, f.testCaseID)
+	if len(rows) != 1 {
+		t.Fatalf("filtered history = %d runs, want 1: %+v", len(rows), rows)
+	}
+	if rows[0].RunID != mine.RunID {
+		t.Errorf("filtered history returned run %s, want %s", rows[0].RunID, mine.RunID)
+	}
+	if rows[0].RunID == theirs.RunID {
+		t.Errorf("the other test case's run %s is in this filtered history", theirs.RunID)
+	}
+	if rows[0].TestCaseID != f.testCaseID {
+		t.Errorf("test_case_id = %q, want %q", rows[0].TestCaseID, f.testCaseID)
+	}
+	// Both runs are still in the unfiltered history, so the filter narrowed rather
+	// than hid.
+	if len(f.listRuns(t)) != 2 {
+		t.Errorf("unfiltered history lost a run: %+v", f.listRuns(t))
+	}
+
+	// WS-006 / iron rule 3: another workspace's test case is not a way in, and
+	// neither is a filter the server cannot parse.
+	stranger := newFixture(t, a, pool, "history-per-case-stranger")
+	if rows := stranger.listRunsForTestCase(t, f.testCaseID); len(rows) != 0 {
+		t.Errorf("another workspace's runs leaked through test_case_id: %+v", rows)
+	}
+	if rows := f.listRunsForTestCase(t, "not-a-uuid"); len(rows) != 0 {
+		t.Errorf("an unparseable test_case_id fell back to the whole history: %+v", rows)
+	}
+}

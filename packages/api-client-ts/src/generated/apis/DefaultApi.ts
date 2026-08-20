@@ -15,6 +15,7 @@
 
 import * as runtime from '../runtime';
 import type {
+  AcceptanceCriteriaSuggestions,
   AccountDeletion,
   AddAcceptanceCriterionRequest,
   CancelAccountDeletion200Response,
@@ -88,6 +89,8 @@ import type {
   UploadResult,
 } from '../models/index';
 import {
+    AcceptanceCriteriaSuggestionsFromJSON,
+    AcceptanceCriteriaSuggestionsToJSON,
     AccountDeletionFromJSON,
     AccountDeletionToJSON,
     AddAcceptanceCriterionRequestFromJSON,
@@ -405,6 +408,7 @@ export interface ListRunSuggestionsRequest {
 }
 
 export interface ListRunsRequest {
+    testCaseId?: string;
     limit?: number;
     offset?: number;
 }
@@ -414,6 +418,7 @@ export interface ListSkillVersionsRequest {
 }
 
 export interface ListTestCasesRequest {
+    skillId?: string;
     limit?: number;
     offset?: number;
 }
@@ -499,7 +504,7 @@ export interface UploadSkillPackageRequest {
  */
 export interface DefaultApiInterface {
     /**
-     * 
+     * The one write path for a criterion, whether the user typed it or adopted a proposal from POST .../criteria/suggest. Either way it arrives unconfirmed: adopting a wording is not yet agreeing to it (TEST-003). 
      * @summary Add an acceptance criterion (TEST-003)
      * @param {string} id 
      * @param {AddAcceptanceCriterionRequest} addAcceptanceCriterionRequest 
@@ -510,6 +515,7 @@ export interface DefaultApiInterface {
     addAcceptanceCriterionRaw(requestParameters: AddAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>>;
 
     /**
+     * The one write path for a criterion, whether the user typed it or adopted a proposal from POST .../criteria/suggest. Either way it arrives unconfirmed: adopting a wording is not yet agreeing to it (TEST-003). 
      * Add an acceptance criterion (TEST-003)
      */
     addAcceptanceCriterion(requestParameters: AddAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
@@ -1255,6 +1261,7 @@ export interface DefaultApiInterface {
     /**
      * 02:WS-002 第 1 條\'s \"Run 歷史\". Workspace scoped from the session like every other run route (iron rule 3).  Each row carries what happened, to which skill, and when. The status transitions and the per-attempt provider ids stay on GET /runs/{id}: they are what a reader opens one run to see, and serving them for a page of runs would make the list the heaviest read in the API for information nobody reads a page of. 
      * @summary The workspace\'s run history, newest first (WS-004)
+     * @param {string} [testCaseId] Only runs of this test case — the \&quot;執行歷史\&quot; of one draft, which is what closes the 建立 → 試跑 → 回來看 loop. Matched against the test case the run\&#39;s snapshot was frozen from, so a run stays in the list after the draft has been edited. Workspace scoped like the unfiltered list; another workspace\&#39;s id matches nothing (WS-006).  ponytail: the filter is applied over the newest 500 runs of the workspace rather than in the SQL. A workspace with more runs than that will not see the older ones in a filtered list; the upgrade is a predicate on ListWorkspaceRuns. 
      * @param {number} [limit] Clamped server-side; an out-of-range value falls back to the default.
      * @param {number} [offset] 
      * @param {*} [options] Override http request option.
@@ -1300,8 +1307,9 @@ export interface DefaultApiInterface {
     listSkills(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListSkills200Response>;
 
     /**
-     * 
+     * Workspace scoped from the session (iron rule 3). `skill_id` narrows the list to one skill and is not a widening: a skill outside the caller\'s workspace matches nothing, exactly as an id that does not exist does (WS-006). 
      * @summary List the caller\'s test cases (WS-004)
+     * @param {string} [skillId] Only this skill\&#39;s test cases. Answers \&quot;which test cases have I written for this skill\&quot;, which the Skill detail page asks. 
      * @param {number} [limit] 
      * @param {number} [offset] 
      * @param {*} [options] Override http request option.
@@ -1311,6 +1319,7 @@ export interface DefaultApiInterface {
     listTestCasesRaw(requestParameters: ListTestCasesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTestCases200Response>>;
 
     /**
+     * Workspace scoped from the session (iron rule 3). `skill_id` narrows the list to one skill and is not a widening: a skill outside the caller\'s workspace matches nothing, exactly as an id that does not exist does (WS-006). 
      * List the caller\'s test cases (WS-004)
      */
     listTestCases(requestParameters: ListTestCasesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTestCases200Response>;
@@ -1500,20 +1509,20 @@ export interface DefaultApiInterface {
     submitFeedback(requestParameters: SubmitFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
 
     /**
-     * Appends model-proposed criteria to the draft with `source: suggested` and no confirmation. They are a starting point, not an answer: keeping one means confirming it, and editing one re-labels it as the user\'s own (TEST-003). A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather than reported — the rest of the batch is still useful. The response is the whole updated draft.  What reaches the model is the skill\'s name and summary, the user\'s own prompt, and for each attached file its name, its type and its *column names* with a type inferred from the first data row. Never a cell value, never a row, never the file: the row that led to \"number\" or \"text\" is read in this process and dropped, and the request has no field it could travel in (iron rule 11, NFR-002). 
+     * **Returns proposals and stores nothing.** TEST-001 makes automatic suggestion 可選強化 and puts the confirmation with the user; a route that wrote first and left the user deleting what it had decided for them was the opposite shape. Adopting a proposal is POST /test-cases/{id}/criteria with its text, one at a time, which is the same route a hand-written criterion goes through.  A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather than reported — the rest of the batch is still useful.  What reaches the model is the skill\'s name and summary, the user\'s own prompt, and for each attached file its name, its type and its *column names* with a type inferred from the first data row. Never a cell value, never a row, never the file: the row that led to \"number\" or \"text\" is read in this process and dropped, and the request has no field it could travel in (iron rule 11, NFR-002). 
      * @summary Ask the model to propose acceptance criteria (TEST-002)
      * @param {string} id 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    suggestAcceptanceCriteriaRaw(requestParameters: SuggestAcceptanceCriteriaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>>;
+    suggestAcceptanceCriteriaRaw(requestParameters: SuggestAcceptanceCriteriaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AcceptanceCriteriaSuggestions>>;
 
     /**
-     * Appends model-proposed criteria to the draft with `source: suggested` and no confirmation. They are a starting point, not an answer: keeping one means confirming it, and editing one re-labels it as the user\'s own (TEST-003). A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather than reported — the rest of the batch is still useful. The response is the whole updated draft.  What reaches the model is the skill\'s name and summary, the user\'s own prompt, and for each attached file its name, its type and its *column names* with a type inferred from the first data row. Never a cell value, never a row, never the file: the row that led to \"number\" or \"text\" is read in this process and dropped, and the request has no field it could travel in (iron rule 11, NFR-002). 
+     * **Returns proposals and stores nothing.** TEST-001 makes automatic suggestion 可選強化 and puts the confirmation with the user; a route that wrote first and left the user deleting what it had decided for them was the opposite shape. Adopting a proposal is POST /test-cases/{id}/criteria with its text, one at a time, which is the same route a hand-written criterion goes through.  A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather than reported — the rest of the batch is still useful.  What reaches the model is the skill\'s name and summary, the user\'s own prompt, and for each attached file its name, its type and its *column names* with a type inferred from the first data row. Never a cell value, never a row, never the file: the row that led to \"number\" or \"text\" is read in this process and dropped, and the request has no field it could travel in (iron rule 11, NFR-002). 
      * Ask the model to propose acceptance criteria (TEST-002)
      */
-    suggestAcceptanceCriteria(requestParameters: SuggestAcceptanceCriteriaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
+    suggestAcceptanceCriteria(requestParameters: SuggestAcceptanceCriteriaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AcceptanceCriteriaSuggestions>;
 
     /**
      * Not a delete. The skill, its versions and their import sources are retained (PDM-006 §6 makes takedown the only removal path for them); the skill leaves search, stops being a fork source, and its detail view answers 410. Existing forks and historical runs are unaffected, and a full reindex does not bring it back.  Authorization is the ordinary workspace scope, which for curated catalog entries means the operator who owns the catalog workspace. Taking down content in someone else\'s workspace needs an operator role the MVP does not define yet. 
@@ -1608,6 +1617,7 @@ export interface DefaultApiInterface {
 export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
     /**
+     * The one write path for a criterion, whether the user typed it or adopted a proposal from POST .../criteria/suggest. Either way it arrives unconfirmed: adopting a wording is not yet agreeing to it (TEST-003). 
      * Add an acceptance criterion (TEST-003)
      */
     async addAcceptanceCriterionRaw(requestParameters: AddAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
@@ -1647,6 +1657,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * The one write path for a criterion, whether the user typed it or adopted a proposal from POST .../criteria/suggest. Either way it arrives unconfirmed: adopting a wording is not yet agreeing to it (TEST-003). 
      * Add an acceptance criterion (TEST-003)
      */
     async addAcceptanceCriterion(requestParameters: AddAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase> {
@@ -3537,6 +3548,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     async listRunsRaw(requestParameters: ListRunsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListRuns200Response>> {
         const queryParameters: any = {};
 
+        if (requestParameters['testCaseId'] != null) {
+            queryParameters['test_case_id'] = requestParameters['testCaseId'];
+        }
+
         if (requestParameters['limit'] != null) {
             queryParameters['limit'] = requestParameters['limit'];
         }
@@ -3638,10 +3653,15 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Workspace scoped from the session (iron rule 3). `skill_id` narrows the list to one skill and is not a widening: a skill outside the caller\'s workspace matches nothing, exactly as an id that does not exist does (WS-006). 
      * List the caller\'s test cases (WS-004)
      */
     async listTestCasesRaw(requestParameters: ListTestCasesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ListTestCases200Response>> {
         const queryParameters: any = {};
+
+        if (requestParameters['skillId'] != null) {
+            queryParameters['skill_id'] = requestParameters['skillId'];
+        }
 
         if (requestParameters['limit'] != null) {
             queryParameters['limit'] = requestParameters['limit'];
@@ -3667,6 +3687,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Workspace scoped from the session (iron rule 3). `skill_id` narrows the list to one skill and is not a widening: a skill outside the caller\'s workspace matches nothing, exactly as an id that does not exist does (WS-006). 
      * List the caller\'s test cases (WS-004)
      */
     async listTestCases(requestParameters: ListTestCasesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListTestCases200Response> {
@@ -4166,10 +4187,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Appends model-proposed criteria to the draft with `source: suggested` and no confirmation. They are a starting point, not an answer: keeping one means confirming it, and editing one re-labels it as the user\'s own (TEST-003). A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather than reported — the rest of the batch is still useful. The response is the whole updated draft.  What reaches the model is the skill\'s name and summary, the user\'s own prompt, and for each attached file its name, its type and its *column names* with a type inferred from the first data row. Never a cell value, never a row, never the file: the row that led to \"number\" or \"text\" is read in this process and dropped, and the request has no field it could travel in (iron rule 11, NFR-002). 
+     * **Returns proposals and stores nothing.** TEST-001 makes automatic suggestion 可選強化 and puts the confirmation with the user; a route that wrote first and left the user deleting what it had decided for them was the opposite shape. Adopting a proposal is POST /test-cases/{id}/criteria with its text, one at a time, which is the same route a hand-written criterion goes through.  A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather than reported — the rest of the batch is still useful.  What reaches the model is the skill\'s name and summary, the user\'s own prompt, and for each attached file its name, its type and its *column names* with a type inferred from the first data row. Never a cell value, never a row, never the file: the row that led to \"number\" or \"text\" is read in this process and dropped, and the request has no field it could travel in (iron rule 11, NFR-002). 
      * Ask the model to propose acceptance criteria (TEST-002)
      */
-    async suggestAcceptanceCriteriaRaw(requestParameters: SuggestAcceptanceCriteriaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TestCase>> {
+    async suggestAcceptanceCriteriaRaw(requestParameters: SuggestAcceptanceCriteriaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AcceptanceCriteriaSuggestions>> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
@@ -4192,14 +4213,14 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => TestCaseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => AcceptanceCriteriaSuggestionsFromJSON(jsonValue));
     }
 
     /**
-     * Appends model-proposed criteria to the draft with `source: suggested` and no confirmation. They are a starting point, not an answer: keeping one means confirming it, and editing one re-labels it as the user\'s own (TEST-003). A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather than reported — the rest of the batch is still useful. The response is the whole updated draft.  What reaches the model is the skill\'s name and summary, the user\'s own prompt, and for each attached file its name, its type and its *column names* with a type inferred from the first data row. Never a cell value, never a row, never the file: the row that led to \"number\" or \"text\" is read in this process and dropped, and the request has no field it could travel in (iron rule 11, NFR-002). 
+     * **Returns proposals and stores nothing.** TEST-001 makes automatic suggestion 可選強化 and puts the confirmation with the user; a route that wrote first and left the user deleting what it had decided for them was the opposite shape. Adopting a proposal is POST /test-cases/{id}/criteria with its text, one at a time, which is the same route a hand-written criterion goes through.  A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather than reported — the rest of the batch is still useful.  What reaches the model is the skill\'s name and summary, the user\'s own prompt, and for each attached file its name, its type and its *column names* with a type inferred from the first data row. Never a cell value, never a row, never the file: the row that led to \"number\" or \"text\" is read in this process and dropped, and the request has no field it could travel in (iron rule 11, NFR-002). 
      * Ask the model to propose acceptance criteria (TEST-002)
      */
-    async suggestAcceptanceCriteria(requestParameters: SuggestAcceptanceCriteriaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase> {
+    async suggestAcceptanceCriteria(requestParameters: SuggestAcceptanceCriteriaRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AcceptanceCriteriaSuggestions> {
         const response = await this.suggestAcceptanceCriteriaRaw(requestParameters, initOverrides);
         return await response.value();
     }

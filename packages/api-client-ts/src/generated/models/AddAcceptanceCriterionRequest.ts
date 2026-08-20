@@ -25,7 +25,30 @@ export interface AddAcceptanceCriterionRequest {
      * @memberof AddAcceptanceCriterionRequest
      */
     text: string;
+    /**
+     * Who wrote the wording. `suggested` is for text taken verbatim
+     * from a suggestion — EVAL-001 reads it to keep a model's
+     * proposal from being reported as the user's own judgement, and
+     * a client that drops the label makes that impossible. Editing
+     * the text later re-labels it `user`, because by then the words
+     * are theirs.
+     * 
+     * @type {string}
+     * @memberof AddAcceptanceCriterionRequest
+     */
+    source?: AddAcceptanceCriterionRequestSourceEnum;
 }
+
+
+/**
+ * @export
+ */
+export const AddAcceptanceCriterionRequestSourceEnum = {
+    User: 'user',
+    Suggested: 'suggested'
+} as const;
+export type AddAcceptanceCriterionRequestSourceEnum = typeof AddAcceptanceCriterionRequestSourceEnum[keyof typeof AddAcceptanceCriterionRequestSourceEnum];
+
 
 /**
  * Check if a given object implements the AddAcceptanceCriterionRequest interface.
@@ -46,6 +69,7 @@ export function AddAcceptanceCriterionRequestFromJSONTyped(json: any, ignoreDisc
     return {
         
         'text': json['text'],
+        'source': json['source'] == null ? undefined : json['source'],
     };
 }
 
@@ -61,6 +85,7 @@ export function AddAcceptanceCriterionRequestToJSONTyped(value?: AddAcceptanceCr
     return {
         
         'text': value['text'],
+        'source': value['source'],
     };
 }
 

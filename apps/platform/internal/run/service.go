@@ -663,12 +663,16 @@ func (s *Service) Get(ctx context.Context, workspaceID, runID pgtype.UUID) (gen.
 	return run, err
 }
 
-// List returns the workspace's Run history, newest first (WS-004).
+// List returns the workspace's Run history, newest first (WS-004). A valid
+// testCaseID narrows it to the runs of that one test case, which is what turns
+// 建立 → 試跑 into 建立 → 試跑 → 回來看.
 //
 // The page size is clamped rather than trusted: it comes from a query string and
-// it decides how much work one request does.
+// it decides how much work one request does. The filter cannot widen the scope —
+// the statement is workspace scoped either way (iron rule 3), and another
+// workspace's test case simply matches none of the rows it returns.
 func (s *Service) List(
-	ctx context.Context, workspaceID pgtype.UUID, limit, offset int32,
+	ctx context.Context, workspaceID, testCaseID pgtype.UUID, limit, offset int32,
 ) ([]gen.ListWorkspaceRunsRow, error) {
 	if limit <= 0 || limit > maxRunPageSize {
 		limit = defaultRunPageSize
@@ -676,14 +680,46 @@ func (s *Service) List(
 	if offset < 0 {
 		offset = 0
 	}
-	return s.queries().ListWorkspaceRuns(ctx, gen.ListWorkspaceRunsParams{
-		WorkspaceID: workspaceID, PageSize: limit, PageOffset: offset,
+	if !testCaseID.Valid {
+		return s.queries().ListWorkspaceRuns(ctx, gen.ListWorkspaceRunsParams{
+			WorkspaceID: workspaceID, PageSize: limit, PageOffset: offset,
+		})
+	}
+
+	// ponytail: the predicate runs here over the newest runFilterScan runs rather
+	// than in ListWorkspaceRuns. Ceiling: a workspace with more runs than that
+	// will not see the older ones in a filtered list. Upgrade path is a nullable
+	// test_case_id argument on the statement itself, which is where it belongs the
+	// moment a real workspace approaches the cap.
+	rows, err := s.queries().ListWorkspaceRuns(ctx, gen.ListWorkspaceRunsParams{
+		WorkspaceID: workspaceID, PageSize: runFilterScan, PageOffset: 0,
 	})
+	if err != nil {
+		return nil, err
+	}
+	matched := make([]gen.ListWorkspaceRunsRow, 0, limit)
+	skipped := int32(0)
+	for _, row := range rows {
+		if row.TestCaseID != testCaseID {
+			continue
+		}
+		if skipped < offset {
+			skipped++
+			continue
+		}
+		if matched = append(matched, row); int32(len(matched)) == limit {
+			break
+		}
+	}
+	return matched, nil
 }
 
 const (
 	defaultRunPageSize = 50
 	maxRunPageSize     = 200
+	// runFilterScan bounds the in-Go filter above. Well past maxRunPageSize so a
+	// filtered page is full whenever an unfiltered one would be.
+	runFilterScan = 500
 )
 
 // Artifacts returns one run's output manifest (WS-004's read side, and what makes

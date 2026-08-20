@@ -2849,12 +2849,30 @@ func decodeListRunSuggestionsParams(args [1]string, argsEscaped bool, r *http.Re
 
 // ListRunsParams is parameters of listRuns operation.
 type ListRunsParams struct {
+	// Only runs of this test case — the "執行歷史" of one draft, which is what closes the 建立 →
+	// 試跑 → 回來看 loop. Matched against the test case the run's snapshot was frozen from, so a
+	// run stays in the list after the draft has been edited. Workspace scoped like the unfiltered list;
+	// another workspace's id matches nothing (WS-006).
+	//
+	// ponytail: the filter is applied over the newest 500 runs of the workspace rather than in the SQL. A
+	// workspace with more runs than that will not see the older ones in a filtered list; the upgrade is a
+	// predicate on ListWorkspaceRuns.
+	TestCaseID OptUUID `json:",omitempty,omitzero"`
 	// Clamped server-side; an out-of-range value falls back to the default.
 	Limit  OptInt `json:",omitempty,omitzero"`
 	Offset OptInt `json:",omitempty,omitzero"`
 }
 
 func unpackListRunsParams(packed middleware.Parameters) (params ListRunsParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "test_case_id",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.TestCaseID = v.(OptUUID)
+		}
+	}
 	{
 		key := middleware.ParameterKey{
 			Name: "limit",
@@ -2878,6 +2896,47 @@ func unpackListRunsParams(packed middleware.Parameters) (params ListRunsParams) 
 
 func decodeListRunsParams(args [0]string, argsEscaped bool, r *http.Request) (params ListRunsParams, _ error) {
 	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: test_case_id.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "test_case_id",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotTestCaseIDVal uuid.UUID
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToUUID(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotTestCaseIDVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.TestCaseID.SetTo(paramsDotTestCaseIDVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "test_case_id",
+			In:   "query",
+			Err:  err,
+		}
+	}
 	// Set default value for query: limit.
 	{
 		val := int(50)
@@ -3090,11 +3149,23 @@ func decodeListSkillVersionsParams(args [1]string, argsEscaped bool, r *http.Req
 
 // ListTestCasesParams is parameters of listTestCases operation.
 type ListTestCasesParams struct {
-	Limit  OptInt `json:",omitempty,omitzero"`
-	Offset OptInt `json:",omitempty,omitzero"`
+	// Only this skill's test cases. Answers "which test cases have I written for this skill", which the
+	// Skill detail page asks.
+	SkillID OptUUID `json:",omitempty,omitzero"`
+	Limit   OptInt  `json:",omitempty,omitzero"`
+	Offset  OptInt  `json:",omitempty,omitzero"`
 }
 
 func unpackListTestCasesParams(packed middleware.Parameters) (params ListTestCasesParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "skill_id",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.SkillID = v.(OptUUID)
+		}
+	}
 	{
 		key := middleware.ParameterKey{
 			Name: "limit",
@@ -3118,6 +3189,47 @@ func unpackListTestCasesParams(packed middleware.Parameters) (params ListTestCas
 
 func decodeListTestCasesParams(args [0]string, argsEscaped bool, r *http.Request) (params ListTestCasesParams, _ error) {
 	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: skill_id.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "skill_id",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotSkillIDVal uuid.UUID
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToUUID(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotSkillIDVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.SkillID.SetTo(paramsDotSkillIDVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "skill_id",
+			In:   "query",
+			Err:  err,
+		}
+	}
 	// Set default value for query: limit.
 	{
 		val := int(51)

@@ -248,7 +248,8 @@ type runListItem struct {
 	FinishedAt     string `json:"finished_at,omitempty"`
 }
 
-// List handles GET /runs (WS-004): the workspace's Run history.
+// List handles GET /runs (WS-004): the workspace's Run history, optionally the
+// history of one test case (`?test_case_id=`).
 //
 // It did not exist until now, which is why 02:WS-002 第 1 條's "Run 歷史" had no
 // surface at any layer — not a missing screen but a missing endpoint.
@@ -257,8 +258,20 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	var testCaseID pgtype.UUID
+	if raw := r.URL.Query().Get("test_case_id"); raw != "" {
+		if err := testCaseID.Scan(raw); err != nil {
+			// An empty list, not the unfiltered history: a caller who asked for one
+			// test case's runs must not be handed every run in the workspace because
+			// the server could not read their filter.
+			httpx.WriteJSON(w, http.StatusOK, struct {
+				Runs []runListItem `json:"runs"`
+			}{[]runListItem{}})
+			return
+		}
+	}
 	limit := intParam(r, "limit")
-	rows, err := h.Svc.List(r.Context(), ws.ID, limit, intParam(r, "offset"))
+	rows, err := h.Svc.List(r.Context(), ws.ID, testCaseID, limit, intParam(r, "offset"))
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "run list failed")
 		return

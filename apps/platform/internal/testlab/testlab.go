@@ -8,6 +8,25 @@
 //
 // Nothing in this package executes uploaded content. Datasets are stored as
 // opaque bytes and only ever unpacked inside the sandbox (iron rule 1).
+//
+// # What other bounded contexts may use (ADR-032 附錄 A)
+//
+// The package is not split into sub-packages; its public surface is, and this is
+// the whole of it:
+//
+//   - Write: [CreateSnapshot], the only place a test case is frozen for a run.
+//     Called inside the run creation transaction.
+//   - Read: [ReadDraft], the editable test case as another context sees it.
+//     Reading test_cases / datasets through gen directly is the thing this
+//     replaced — internal/run had grown its own dataset type and its own copy of
+//     the ordering comment, which is two definitions of one fact.
+//   - Decode: [DecodeCriteria], [DecodeRubric], [DecodeDatasetRefs]. These are the
+//     "read it the way it was written" guarantee; a caller that reaches for
+//     encoding/json on one of these columns has opted out of it.
+//   - Types: [Criterion], [Rubric], [RubricItem], [DatasetRef], [DatasetFile], and
+//     the sentinel errors below.
+//   - Limits: the constants below are the only enforcement point. GET
+//     /test-cases/limits is their display projection, not a second copy.
 package testlab
 
 import (
@@ -15,6 +34,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -297,11 +317,175 @@ func (s *Service) GetTestCase(ctx context.Context, ws gen.Workspace, id pgtype.U
 	return tc, err
 }
 
-// ListTestCases returns the caller's drafts, newest first.
-func (s *Service) ListTestCases(ctx context.Context, ws gen.Workspace, limit, offset int32) ([]gen.TestCase, error) {
-	return gen.New(s.Pool).ListTestCases(ctx, gen.ListTestCasesParams{
-		WorkspaceID: ws.ID, Limit: limit, Offset: offset,
+// TestCaseSummary is one row of the list surface: the draft, plus the skill's
+// name so a list is readable without a bare UUID. The criteria counts the list
+// also shows are derived from the draft itself and are computed where they are
+// rendered; only the name needs a second table.
+type TestCaseSummary struct {
+	TestCase  gen.TestCase
+	SkillName string
+}
+
+// ListTestCases returns the caller's drafts, newest first. A valid skillID
+// narrows the list to that skill; it is not a widening, because the underlying
+// statement is workspace scoped either way and a skill outside the workspace
+// simply matches nothing (iron rule 3, WS-006).
+func (s *Service) ListTestCases(
+	ctx context.Context, ws gen.Workspace, skillID pgtype.UUID, limit, offset int32,
+) ([]TestCaseSummary, error) {
+	q := gen.New(s.Pool)
+	var rows []gen.TestCase
+	if skillID.Valid {
+		all, err := q.ListTestCasesForSkill(ctx, gen.ListTestCasesForSkillParams{
+			SkillID: skillID, WorkspaceID: ws.ID,
+		})
+		if err != nil {
+			return nil, err
+		}
+		// ListTestCasesForSkill is oldest first (it exists for the packager, which
+		// wants a stable build order). Reversed here so both branches of this list
+		// answer in the same order — a page that flips direction when a filter is
+		// applied is a bug the user reports as "my newest test case disappeared".
+		slices.Reverse(all)
+		rows = page(all, limit, offset)
+	} else {
+		var err error
+		if rows, err = q.ListTestCases(ctx, gen.ListTestCasesParams{
+			WorkspaceID: ws.ID, Limit: limit, Offset: offset,
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	// One lookup per distinct skill on the page, not per row. A page holds at
+	// most 101 drafts and usually far fewer distinct skills.
+	names := make(map[pgtype.UUID]string, len(rows))
+	out := make([]TestCaseSummary, 0, len(rows))
+	for _, tc := range rows {
+		name, seen := names[tc.SkillID]
+		if !seen {
+			// A skill that is gone or not visible leaves the name empty rather than
+			// failing the list: "we cannot name it" is a display state, and dropping
+			// the whole page over it would hide test cases that still exist.
+			if skill, err := q.GetSkill(ctx, gen.GetSkillParams{
+				ID: tc.SkillID, WorkspaceID: ws.ID,
+			}); err == nil {
+				name = skill.Name
+			} else if !errors.Is(err, pgx.ErrNoRows) {
+				return nil, err
+			}
+			names[tc.SkillID] = name
+		}
+		out = append(out, TestCaseSummary{TestCase: tc, SkillName: name})
+	}
+	return out, nil
+}
+
+// page applies the list's limit and offset in Go. Only the skill-filtered branch
+// needs it: ListTestCasesForSkill has no LIMIT of its own, and giving it one
+// would mean a new generated statement for a list that is already bounded by the
+// per-skill test case count.
+func page[T any](rows []T, limit, offset int32) []T {
+	if offset > 0 {
+		if int(offset) >= len(rows) {
+			return nil
+		}
+		rows = rows[offset:]
+	}
+	if limit > 0 && int(limit) < len(rows) {
+		rows = rows[:limit]
+	}
+	return rows
+}
+
+// Draft is one editable test case as another bounded context reads it — the
+// read half of this package's public surface, and the reason internal/run no
+// longer queries test_cases and datasets itself.
+//
+// It is the *draft*, deliberately: what a past run executed is its snapshot, and
+// the two must not be confused (ADR-003, iron rule 4). A caller building a
+// pre-run screen wants this; a caller reporting on a finished run wants the
+// snapshot.
+type Draft struct {
+	TestCaseID pgtype.UUID
+	SkillID    pgtype.UUID
+	Name       string
+	UserPrompt string
+	Criteria   []Criterion
+	// Rubric is nil when the draft has none — not an empty rubric (CONTENT-007).
+	Rubric   *Rubric
+	Datasets []DatasetFile
+	// DatasetTotalBytes is the live footprint of Datasets, summed here so two
+	// callers cannot disagree about it.
+	DatasetTotalBytes int64
+}
+
+// DatasetFile is one live dataset of a draft.
+//
+// Distinct from [DatasetRef], which is the frozen record inside a snapshot: a ref
+// carries no content type, because the snapshot hash covers what a run read and
+// the type is a display fact about the file. Same field names where they overlap.
+type DatasetFile struct {
+	DatasetID   string `json:"dataset_id"`
+	FileName    string `json:"file_name"`
+	ContentType string `json:"content_type"`
+	SizeBytes   int64  `json:"size_bytes"`
+	ContentHash string `json:"content_hash"`
+}
+
+// ReadDraft reads one test case and its live files, workspace scoped.
+//
+// q is taken rather than the pool so a caller inside a transaction reads what
+// that transaction will commit — the same reason [CreateSnapshot] takes one. A
+// draft outside workspaceID answers ErrNotFound, the same answer as one that
+// does not exist (WS-006).
+//
+// Datasets come back in ListDatasets' created_at order, so anything hashed over
+// them — the pre-run permission summary, the snapshot — does not depend on how
+// the rows happened to come back. That guarantee is stated here once; callers do
+// not restate it.
+func ReadDraft(ctx context.Context, q *gen.Queries, workspaceID, testCaseID pgtype.UUID) (Draft, error) {
+	tc, err := q.GetTestCase(ctx, gen.GetTestCaseParams{ID: testCaseID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Draft{}, ErrNotFound
+	}
+	if err != nil {
+		return Draft{}, err
+	}
+	criteria, err := DecodeCriteria(tc.AcceptanceCriteria)
+	if err != nil {
+		return Draft{}, err
+	}
+	rubric, err := DecodeRubric(tc.Rubric)
+	if err != nil {
+		return Draft{}, err
+	}
+	rows, err := q.ListDatasets(ctx, gen.ListDatasetsParams{
+		TestCaseID: tc.ID, WorkspaceID: workspaceID,
 	})
+	if err != nil {
+		return Draft{}, err
+	}
+	draft := Draft{
+		TestCaseID: tc.ID,
+		SkillID:    tc.SkillID,
+		Name:       tc.Name,
+		UserPrompt: tc.UserPrompt,
+		Criteria:   criteria,
+		Rubric:     rubric,
+		Datasets:   make([]DatasetFile, 0, len(rows)),
+	}
+	for _, d := range rows {
+		draft.Datasets = append(draft.Datasets, DatasetFile{
+			DatasetID:   pgconv.UUIDString(d.ID),
+			FileName:    d.FileName,
+			ContentType: d.ContentType,
+			SizeBytes:   d.SizeBytes,
+			ContentHash: d.ContentHash,
+		})
+		draft.DatasetTotalBytes += d.SizeBytes
+	}
+	return draft, nil
 }
 
 // UpdateTestCase edits the draft's name and prompt (TEST-001).
@@ -393,17 +577,25 @@ func (s *Service) DeleteTestCase(ctx context.Context, ws gen.Workspace, id pgtyp
 	return DeleteResult{DatasetsDeleted: len(removed)}, nil
 }
 
-// AddCriterion appends a user-authored acceptance condition (TEST-003).
-func (s *Service) AddCriterion(ctx context.Context, ws gen.Workspace, id pgtype.UUID, text string) (gen.TestCase, error) {
+// AddCriterion appends an acceptance condition (TEST-003). It is the only write
+// path for one, whether the user typed the words or adopted a proposal verbatim
+// — which is what `source` distinguishes, and why SuggestCriteria does not write.
+// Anything other than SourceSuggested is the user's own.
+func (s *Service) AddCriterion(
+	ctx context.Context, ws gen.Workspace, id pgtype.UUID, text, source string,
+) (gen.TestCase, error) {
 	text, err := validateCriterion(text)
 	if err != nil {
 		return gen.TestCase{}, err
+	}
+	if source != SourceSuggested {
+		source = SourceUser
 	}
 	return s.mutateCriteria(ctx, ws, id, func(list []Criterion) ([]Criterion, error) {
 		if len(list) >= MaxCriteria {
 			return nil, fmt.Errorf("%w: at most %d acceptance criteria per test case", ErrLimitExceeded, MaxCriteria)
 		}
-		return append(list, Criterion{ID: newCriterionID(), Text: text, Source: SourceUser}), nil
+		return append(list, Criterion{ID: newCriterionID(), Text: text, Source: source}), nil
 	})
 }
 

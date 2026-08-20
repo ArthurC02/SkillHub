@@ -43,8 +43,22 @@ const (
 	datasetHeadBytes = 64 << 10
 )
 
-// SuggestCriteria proposes acceptance criteria for one draft and appends them
-// with source = "suggested" (TEST-002).
+// Suggestion is one proposed acceptance condition. Text and nothing else: it is
+// not a [Criterion] until the user adopts it, so it has no id, no source and no
+// confirmation — those are facts about a criterion that exists.
+type Suggestion struct {
+	Text string `json:"text"`
+}
+
+// SuggestCriteria proposes acceptance criteria for one draft and stores nothing
+// (TEST-002).
+//
+// Nothing, deliberately. 02:TEST-001 makes automatic suggestion 可選強化 and puts
+// the confirmation with the user; writing the model's proposals into the draft
+// and leaving the user to delete the ones they did not want is that rule
+// backwards. Adopting one is AddCriterion with its text — the same path a
+// hand-written criterion takes, with source = SourceSuggested so EVAL-001 can
+// still tell a model's wording from the user's own.
 //
 // What travels to the model, and what does not:
 //
@@ -57,28 +71,27 @@ const (
 //     to that word is dropped here and has no field to travel in (iron rule 11,
 //     NFR-002). A dataset is the user's private data, and a suggestion feature is
 //     not a reason to hand it to a model.
-//
-// Suggested criteria arrive unconfirmed. Confirming, editing (which re-labels the
-// criterion as the user's own) and deleting are the existing TEST-003 operations.
-func (s *Service) SuggestCriteria(ctx context.Context, ws gen.Workspace, id pgtype.UUID) (gen.TestCase, error) {
+func (s *Service) SuggestCriteria(ctx context.Context, ws gen.Workspace, id pgtype.UUID) ([]Suggestion, error) {
 	if s.LLM == nil {
-		return gen.TestCase{}, ErrSuggestUnavailable
+		return nil, ErrSuggestUnavailable
 	}
 	q := gen.New(s.Pool)
 	tc, err := q.GetTestCase(ctx, gen.GetTestCaseParams{ID: id, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return gen.TestCase{}, ErrNotFound
+		return nil, ErrNotFound
 	}
 	if err != nil {
-		return gen.TestCase{}, err
+		return nil, err
 	}
 	skill, err := q.GetSkill(ctx, gen.GetSkillParams{ID: tc.SkillID, WorkspaceID: ws.ID})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return gen.TestCase{}, err
+		return nil, err
 	}
+	// The stored rows and not Draft.Datasets: outlineDatasets needs the object key
+	// to read a header row, which is storage detail the read facade does not carry.
 	datasets, err := q.ListDatasets(ctx, gen.ListDatasetsParams{TestCaseID: tc.ID, WorkspaceID: ws.ID})
 	if err != nil {
-		return gen.TestCase{}, err
+		return nil, err
 	}
 
 	req := llmclient.SuggestCriteriaRequest{
@@ -92,30 +105,37 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws gen.Workspace, id pgty
 	defer cancel()
 	resp, err := s.LLM.SuggestCriteria(callCtx, req)
 	if err != nil {
-		return gen.TestCase{}, fmt.Errorf("%w: %w", ErrSuggestUnavailable, err)
+		return nil, fmt.Errorf("%w: %w", ErrSuggestUnavailable, err)
 	}
 
-	return s.mutateCriteria(ctx, ws, id, func(list []Criterion) ([]Criterion, error) {
-		existing := make(map[string]bool, len(list))
-		for _, c := range list {
-			existing[c.Text] = true
+	// Proposals the draft already holds are dropped rather than shown: offering a
+	// user a criterion they have already written is not a suggestion. The cap is
+	// the same MaxCriteria the draft is held to, so the list can never propose
+	// more than could be adopted.
+	current, err := DecodeCriteria(tc.AcceptanceCriteria)
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool, len(current))
+	for _, c := range current {
+		seen[c.Text] = true
+	}
+	out := make([]Suggestion, 0, len(resp.Criteria))
+	for _, proposed := range resp.Criteria {
+		if len(out) >= MaxCriteria {
+			break
 		}
-		for _, proposed := range resp.Criteria {
-			if len(list) >= MaxCriteria {
-				break
-			}
-			text, err := validateCriterion(proposed.Text)
-			// A proposal that breaks an input rule is dropped, not surfaced as an
-			// error: the rest of the batch is still useful, and the user never asked
-			// for the model's formatting problem.
-			if err != nil || existing[text] {
-				continue
-			}
-			existing[text] = true
-			list = append(list, Criterion{ID: newCriterionID(), Text: text, Source: SourceSuggested})
+		text, err := validateCriterion(proposed.Text)
+		// A proposal that breaks an input rule is dropped, not surfaced as an
+		// error: the rest of the batch is still useful, and the user never asked
+		// for the model's formatting problem.
+		if err != nil || seen[text] {
+			continue
 		}
-		return list, nil
-	})
+		seen[text] = true
+		out = append(out, Suggestion{Text: text})
+	}
+	return out, nil
 }
 
 // outlineDatasets describes each attached file by its shape. A file that cannot

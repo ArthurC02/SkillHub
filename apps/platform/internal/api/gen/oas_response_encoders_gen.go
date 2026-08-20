@@ -2709,7 +2709,7 @@ func encodeSubmitFeedbackResponse(response SubmitFeedbackRes, w http.ResponseWri
 
 func encodeSuggestAcceptanceCriteriaResponse(response SuggestAcceptanceCriteriaRes, w http.ResponseWriter, span trace.Span) error {
 	switch response := response.(type) {
-	case *TestCase:
+	case *AcceptanceCriteriaSuggestions:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(200)
 

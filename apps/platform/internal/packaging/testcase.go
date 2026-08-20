@@ -148,11 +148,12 @@ func (s *Service) selectTestCases(
 func (s *Service) portableFiles(
 	ctx context.Context, tc gen.TestCase, datasets []gen.Dataset, slug string,
 ) ([]exportFile, error) {
-	var criteria []testlab.Criterion
-	if len(tc.AcceptanceCriteria) > 0 {
-		if err := json.Unmarshal(tc.AcceptanceCriteria, &criteria); err != nil {
-			return nil, fmt.Errorf("test case %s: %w", slug, err)
-		}
+	// testlab's decoder and not encoding/json here: the column is that package's
+	// to read, and "written one way, read another" is exactly the drift the
+	// exported decoders exist to prevent.
+	criteria, err := testlab.DecodeCriteria(tc.AcceptanceCriteria)
+	if err != nil {
+		return nil, fmt.Errorf("test case %s: %w", slug, err)
 	}
 	out := make([]portableCriterion, 0, len(criteria))
 	for _, c := range criteria {

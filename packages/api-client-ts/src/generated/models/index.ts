@@ -1,5 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './AcceptanceCriteriaSuggestions';
+export * from './AcceptanceCriteriaSuggestionsSuggestionsInner';
 export * from './AcceptanceCriterion';
 export * from './AccountDeletion';
 export * from './AddAcceptanceCriterionRequest';
@@ -128,6 +130,7 @@ export * from './SuggestionDiff';
 export * from './TakedownSkill200Response';
 export * from './TakedownSkillRequest';
 export * from './TestCase';
+export * from './TestCaseListItem';
 export * from './TraceAdvanced';
 export * from './TraceEvent';
 export * from './TraceEventView';

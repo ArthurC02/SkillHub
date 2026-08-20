@@ -166,7 +166,22 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, toTestCaseResponse(tc))
 }
 
-// List handles GET /test-cases (TEST-001, WS-004).
+// testCaseListItem is one row of GET /test-cases. The counts and has_rubric are
+// derived from the draft the row already carries; they are served so a list of
+// fifty rows is not fifty client-side reductions, and so nothing has to decide
+// twice what "confirmed" means.
+type testCaseListItem struct {
+	testCaseResponse
+	SkillName         string `json:"skill_name"`
+	CriteriaConfirmed int    `json:"criteria_confirmed"`
+	CriteriaTotal     int    `json:"criteria_total"`
+	HasRubric         bool   `json:"has_rubric"`
+}
+
+// List handles GET /test-cases (TEST-001, WS-004). `skill_id` narrows it to one
+// skill; a malformed one is ignored rather than refused, the same as a malformed
+// limit — a filter the server could not read must not silently become "no
+// filter", so it is parsed strictly and only a valid UUID filters.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -179,14 +194,35 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if value, err := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32); err == nil && value >= 0 {
 		offset = int32(value)
 	}
-	rows, err := h.Svc.ListTestCases(r.Context(), ws, limit, offset)
+	var skillID pgtype.UUID
+	if raw := r.URL.Query().Get("skill_id"); raw != "" {
+		if err := skillID.Scan(raw); err != nil {
+			// An unparseable filter answers an empty list, not the unfiltered one:
+			// showing every test case to a caller who asked for one skill's is the
+			// wrong direction to fail in.
+			httpx.WriteJSON(w, http.StatusOK, map[string]any{"test_cases": []testCaseListItem{}})
+			return
+		}
+	}
+	rows, err := h.Svc.ListTestCases(r.Context(), ws, skillID, limit, offset)
 	if err != nil {
 		fail(w, err, "list failed")
 		return
 	}
-	out := make([]testCaseResponse, 0, len(rows))
-	for _, tc := range rows {
-		out = append(out, toTestCaseResponse(tc))
+	out := make([]testCaseListItem, 0, len(rows))
+	for _, row := range rows {
+		item := testCaseListItem{
+			testCaseResponse: toTestCaseResponse(row.TestCase),
+			SkillName:        row.SkillName,
+		}
+		item.CriteriaTotal = len(item.AcceptanceCriteria)
+		for _, c := range item.AcceptanceCriteria {
+			if c.ConfirmedAt != nil {
+				item.CriteriaConfirmed++
+			}
+		}
+		item.HasRubric = item.Rubric != nil
+		out = append(out, item)
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"test_cases": out})
 }
@@ -303,11 +339,15 @@ func (h *Handler) AddCriterion(w http.ResponseWriter, r *http.Request) {
 	}
 	var body struct {
 		Text string `json:"text"`
+		// Absent means the user wrote it. `suggested` is for text adopted verbatim
+		// from POST .../criteria/suggest; the service refuses to read anything else
+		// as a label, so an invented value cannot get into the stored criterion.
+		Source string `json:"source"`
 	}
 	if !decodeJSON(w, r, &body) {
 		return
 	}
-	tc, err := h.Svc.AddCriterion(r.Context(), ws, id, body.Text)
+	tc, err := h.Svc.AddCriterion(r.Context(), ws, id, body.Text, body.Source)
 	if err != nil {
 		fail(w, err, "add criterion failed")
 		return
@@ -316,8 +356,8 @@ func (h *Handler) AddCriterion(w http.ResponseWriter, r *http.Request) {
 }
 
 // SuggestCriteria handles POST /test-cases/{id}/criteria/suggest (TEST-002).
-// The suggestions are appended unconfirmed and labelled `suggested`; the user
-// keeps, edits or deletes them with the routes above.
+// It returns proposals and writes nothing: adopting one is AddCriterion, which
+// is the user's decision to make (TEST-001 自動建議為可選強化).
 func (h *Handler) SuggestCriteria(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -327,12 +367,12 @@ func (h *Handler) SuggestCriteria(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	tc, err := h.Svc.SuggestCriteria(r.Context(), ws, id)
+	suggestions, err := h.Svc.SuggestCriteria(r.Context(), ws, id)
 	if err != nil {
 		fail(w, err, "suggestion failed")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, toTestCaseResponse(tc))
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"suggestions": suggestions})
 }
 
 // UpdateCriterion handles PATCH /test-cases/{id}/criteria/{criterionId}: edit

@@ -15,7 +15,9 @@ var _ Handler = UnimplementedHandler{}
 
 // AddAcceptanceCriterion implements addAcceptanceCriterion operation.
 //
-// Add an acceptance criterion (TEST-003).
+// The one write path for a criterion, whether the user typed it or adopted a proposal from POST
+// .../criteria/suggest. Either way it arrives unconfirmed: adopting a wording is not yet agreeing to
+// it (TEST-003).
 //
 // POST /test-cases/{id}/criteria
 func (UnimplementedHandler) AddAcceptanceCriterion(ctx context.Context, req *AddAcceptanceCriterionReq, params AddAcceptanceCriterionParams) (r AddAcceptanceCriterionRes, _ error) {
@@ -765,7 +767,9 @@ func (UnimplementedHandler) ListSkills(ctx context.Context) (r ListSkillsRes, _ 
 
 // ListTestCases implements listTestCases operation.
 //
-// List the caller's test cases (WS-004).
+// Workspace scoped from the session (iron rule 3). `skill_id` narrows the list to one skill and is not
+// a widening: a skill outside the caller's workspace matches nothing, exactly as an id that does not
+// exist does (WS-006).
 //
 // GET /test-cases
 func (UnimplementedHandler) ListTestCases(ctx context.Context, params ListTestCasesParams) (r ListTestCasesRes, _ error) {
@@ -942,11 +946,13 @@ func (UnimplementedHandler) SubmitFeedback(ctx context.Context, req *SubmitFeedb
 
 // SuggestAcceptanceCriteria implements suggestAcceptanceCriteria operation.
 //
-// Appends model-proposed criteria to the draft with `source: suggested` and no confirmation. They are
-// a starting point, not an answer: keeping one means confirming it, and editing one re-labels it as
-// the user's own (TEST-003). A proposal that breaks an input rule, or repeats a criterion already on
-// the draft, is dropped rather than reported — the rest of the batch is still useful. The response
-// is the whole updated draft.
+// Returns proposals and stores nothing. TEST-001 makes automatic suggestion 可選強化 and puts the
+// confirmation with the user; a route that wrote first and left the user deleting what it had decided
+// for them was the opposite shape. Adopting a proposal is POST /test-cases/{id}/criteria with its
+// text, one at a time, which is the same route a hand-written criterion goes through.
+//
+// A proposal that breaks an input rule, or repeats a criterion already on the draft, is dropped rather
+// than reported — the rest of the batch is still useful.
 //
 // What reaches the model is the skill's name and summary, the user's own prompt, and for each attached
 // file its name, its type and its column names with a type inferred from the first data row. Never a

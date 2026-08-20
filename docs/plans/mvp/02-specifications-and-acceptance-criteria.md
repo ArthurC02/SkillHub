@@ -218,7 +218,7 @@
 PDM-005 §5.3 指定的欄位清單從未回寫本節，因此上一條的字面準則被現有實作滿足，而缺的欄位不可判定。完整清單為：Dataset 清單與總大小、將掛載的路徑、預計使用的 Runtime 版本、資源上限、逾時秒數、**Token 預算與預估成本區間**、egress 允許清單摘要（例如「僅模型閘道，無一般網際網路」）。
 
 - **「預估成本區間」必須是區間，不得是單值**（PDM-005 §5.2a-6）：首次與後續 Run 的單位成本差約 8 倍——prompt caching 保留 24 小時、harness 前綴跨 Run 完全相同，第二次以後的 Run 直接命中前一次留下的快取。以單值呈現會讓其中一種情境的使用者看到一個必然錯誤的數字。
-- **現況**：`預估成本區間` 在權限摘要中**完全不存在**（`Runtime 版本` 有，值取自排程快照）。此欄位不在 `03` `TEST-008` 的字面範圍內，由新增工作項 `03` `TEST-011` 承接，**未實作**。
+- **現況（2026-08-20 更新）**：`預估成本區間` 已由 `03` `TEST-011` 實作並在 preflight 畫面渲染（`RunPreflight.tsx`，區間呈現、absent 不渲染為 0）；本節先前的「完全不存在」註記寫於實作前，已過時。契約宣告已於 DDD-007 隨批驗證：`RunPermissionSummary.estimated_cost` **在 `public.yaml` 有宣告**（`RunCostEstimate`，與前端 `CostEstimate` 逐欄一致）——`m2/README.md` §「尚未宣告」的註記才是過時的一方，無鐵律 12 違規（[testlab-contract-design-2026-08-19.md §4](../testlab-contract-design-2026-08-19.md)）。
 - Token 預算欄位的呈現另受 `RUN-003` 的約束：強制未成立前不得呈現為「平台會執行的上限」。
 
 ### 4.4 Run Orchestrator 與 Sandbox

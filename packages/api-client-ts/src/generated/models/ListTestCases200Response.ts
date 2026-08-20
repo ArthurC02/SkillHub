@@ -13,13 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
-import type { TestCase } from './TestCase';
+import type { TestCaseListItem } from './TestCaseListItem';
 import {
-    TestCaseFromJSON,
-    TestCaseFromJSONTyped,
-    TestCaseToJSON,
-    TestCaseToJSONTyped,
-} from './TestCase';
+    TestCaseListItemFromJSON,
+    TestCaseListItemFromJSONTyped,
+    TestCaseListItemToJSON,
+    TestCaseListItemToJSONTyped,
+} from './TestCaseListItem';
 
 /**
  * 
@@ -29,10 +29,10 @@ import {
 export interface ListTestCases200Response {
     /**
      * 
-     * @type {Array<TestCase>}
+     * @type {Array<TestCaseListItem>}
      * @memberof ListTestCases200Response
      */
-    testCases: Array<TestCase>;
+    testCases: Array<TestCaseListItem>;
 }
 
 /**
@@ -53,7 +53,7 @@ export function ListTestCases200ResponseFromJSONTyped(json: any, ignoreDiscrimin
     }
     return {
         
-        'testCases': ((json['test_cases'] as Array<any>).map(TestCaseFromJSON)),
+        'testCases': ((json['test_cases'] as Array<any>).map(TestCaseListItemFromJSON)),
     };
 }
 
@@ -68,7 +68,7 @@ export function ListTestCases200ResponseToJSONTyped(value?: ListTestCases200Resp
 
     return {
         
-        'test_cases': ((value['testCases'] as Array<any>).map(TestCaseToJSON)),
+        'test_cases': ((value['testCases'] as Array<any>).map(TestCaseListItemToJSON)),
     };
 }
 

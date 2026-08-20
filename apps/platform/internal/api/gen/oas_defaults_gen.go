@@ -3,6 +3,14 @@
 package publicapi
 
 // setDefaults set default value of fields.
+func (s *AddAcceptanceCriterionReq) setDefaults() {
+	{
+		val := AddAcceptanceCriterionReqSource("user")
+		s.Source.SetTo(val)
+	}
+}
+
+// setDefaults set default value of fields.
 func (s *CreateDownloadArtifactReq) setDefaults() {
 	{
 		val := bool(false)

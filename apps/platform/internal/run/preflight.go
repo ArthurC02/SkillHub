@@ -5,8 +5,10 @@ package run
 //
 // The summary is built here rather than in internal/testlab because half of what
 // it discloses is run policy — provider, egress, resource ceilings, injected
-// secrets — and internal/run already owns those. testlab owns the test case and
-// its datasets, which this reads through the same scoped queries testlab writes.
+// secrets — and internal/run already owns those. The other half is the test case
+// and its files, which this reads through testlab.ReadDraft: that package owns
+// them, and a second reader of test_cases and datasets is a second definition of
+// what a draft is (ADR-032).
 
 import (
 	"context"
@@ -27,6 +29,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 )
 
 // ErrPermissionsNotConfirmed is SEC-002 gate B: the run request carries no
@@ -68,28 +71,24 @@ var injectedSecretNames = []string{"ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"}
 // criteria. Editing either changes what the run is asked to do, not what it is
 // allowed to touch, and invalidating a permission confirmation over a typo fix
 // would train users to click through the one screen that must not be reflexive.
+// Datasets is testlab's own type and not a local copy: the files a run may read
+// are the draft's files, and two structs describing them is how the two sides
+// end up disagreeing about which fields the user was shown. The JSON is
+// unchanged by that move, which matters — every outstanding confirmation is a
+// hash over these bytes.
 type PermissionSummaryContent struct {
-	SkillVersionID    string           `json:"skill_version_id"`
-	SkillContentHash  string           `json:"skill_content_hash"`
-	TestCaseID        string           `json:"test_case_id"`
-	Datasets          []DatasetSummary `json:"datasets"`
-	DatasetTotalBytes int64            `json:"dataset_total_bytes"`
-	Scripts           ScriptSummary    `json:"scripts"`
-	Tools             []string         `json:"tools"`
-	MCPServers        []string         `json:"mcp_servers"`
-	Network           NetworkSummary   `json:"network"`
-	InjectedSecrets   []string         `json:"injected_secrets"`
-	Provider          ProviderSummary  `json:"provider"`
-	ResourceLimits    ResourceLimits   `json:"resource_limits"`
-}
-
-// DatasetSummary is one file the run will be able to read.
-type DatasetSummary struct {
-	DatasetID   string `json:"dataset_id"`
-	FileName    string `json:"file_name"`
-	ContentType string `json:"content_type"`
-	SizeBytes   int64  `json:"size_bytes"`
-	ContentHash string `json:"content_hash"`
+	SkillVersionID    string                `json:"skill_version_id"`
+	SkillContentHash  string                `json:"skill_content_hash"`
+	TestCaseID        string                `json:"test_case_id"`
+	Datasets          []testlab.DatasetFile `json:"datasets"`
+	DatasetTotalBytes int64                 `json:"dataset_total_bytes"`
+	Scripts           ScriptSummary         `json:"scripts"`
+	Tools             []string              `json:"tools"`
+	MCPServers        []string              `json:"mcp_servers"`
+	Network           NetworkSummary        `json:"network"`
+	InjectedSecrets   []string              `json:"injected_secrets"`
+	Provider          ProviderSummary       `json:"provider"`
+	ResourceLimits    ResourceLimits        `json:"resource_limits"`
 }
 
 // ScriptSummary answers "does the package carry runnable code" from the stored
@@ -241,34 +240,17 @@ func (s *Service) permissionSummaryFor(
 	}
 	// Reads the draft rather than a snapshot: the summary describes the run the
 	// user is about to start, and the snapshot only exists once it has started.
-	testCase, err := q.GetTestCase(ctx, gen.GetTestCaseParams{ID: testCaseID, WorkspaceID: workspaceID})
-	if errors.Is(err, pgx.ErrNoRows) {
+	// The dataset order — and therefore the hash over it — is testlab's guarantee,
+	// stated once at ReadDraft rather than restated here.
+	draft, err := testlab.ReadDraft(ctx, q, workspaceID, testCaseID)
+	if errors.Is(err, testlab.ErrNotFound) {
 		return PermissionSummary{}, ErrNotFound
 	}
 	if err != nil {
 		return PermissionSummary{}, err
 	}
-	if skillID.Valid && testCase.SkillID != skillID {
+	if skillID.Valid && draft.SkillID != skillID {
 		return PermissionSummary{}, ErrNotFound
-	}
-	rows, err := q.ListDatasets(ctx, gen.ListDatasetsParams{TestCaseID: testCase.ID, WorkspaceID: workspaceID})
-	if err != nil {
-		return PermissionSummary{}, err
-	}
-
-	// ListDatasets orders by created_at, so the list — and the hash over it — does
-	// not depend on how the rows happened to come back.
-	datasets := make([]DatasetSummary, 0, len(rows))
-	var total int64
-	for _, d := range rows {
-		datasets = append(datasets, DatasetSummary{
-			DatasetID:   pgconv.UUIDString(d.ID),
-			FileName:    d.FileName,
-			ContentType: d.ContentType,
-			SizeBytes:   d.SizeBytes,
-			ContentHash: d.ContentHash,
-		})
-		total += d.SizeBytes
 	}
 
 	// The same policy Create freezes onto the run and the scheduler matches
@@ -280,9 +262,9 @@ func (s *Service) permissionSummaryFor(
 	content := PermissionSummaryContent{
 		SkillVersionID:    pgconv.UUIDString(version.ID),
 		SkillContentHash:  version.ContentHash,
-		TestCaseID:        pgconv.UUIDString(testCase.ID),
-		Datasets:          datasets,
-		DatasetTotalBytes: total,
+		TestCaseID:        pgconv.UUIDString(draft.TestCaseID),
+		Datasets:          draft.Datasets,
+		DatasetTotalBytes: draft.DatasetTotalBytes,
 		Scripts:           s.scriptSummary(ctx, version.PackageObjectKey),
 		// The agent's own file and shell tools, inside the sandbox and nowhere
 		// else. There is no per-tool grant to show because there is no per-tool

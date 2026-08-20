@@ -877,3 +877,140 @@ func readSnapshot(t *testing.T, pool *pgxpool.Pool, id, wsID pgtype.UUID) gen.Te
 	}
 	return snap
 }
+
+// --- GET /test-cases: the skill filter and the list-row aggregates -----------
+
+// listTestCases reads the list, optionally narrowed to one skill.
+func (c *client) listTestCases(t *testing.T, skillID string) []map[string]any {
+	t.Helper()
+	path := "/test-cases"
+	if skillID != "" {
+		path += "?skill_id=" + skillID
+	}
+	code, body := c.doJSON(t, http.MethodGet, path, "")
+	if code != http.StatusOK {
+		t.Fatalf("GET %s: got %d, body %v", path, code, body)
+	}
+	raw, ok := body["test_cases"].([]any)
+	if !ok {
+		t.Fatalf("GET %s has no test_cases: %v", path, body)
+	}
+	out := make([]map[string]any, 0, len(raw))
+	for _, item := range raw {
+		m, ok := item.(map[string]any)
+		if !ok {
+			t.Fatalf("test_cases element is not an object: %v", item)
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+// "這個 Skill 我寫過哪些 Test Case" had no route before this: the query existed
+// (the packager used it) and the parameter did not, so the Skill detail page had
+// nothing to call.
+func TestTestCaseListFiltersBySkillAndCarriesItsAggregates(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, "alice-testcase-filter")
+
+	skillA, first := newTestCase(t, pool, a, alice, "filter-a")
+	// A second draft on the same skill, and one on a different skill, so the
+	// filter has something to include and something to leave out.
+	code, body := alice.doJSON(t, http.MethodPost, "/test-cases", fmt.Sprintf(
+		`{"skill_id":%q,"name":"filter-a-second","user_prompt":"Another prompt."}`, skillA))
+	if code != http.StatusCreated {
+		t.Fatalf("second draft on the same skill: got %d, body %v", code, body)
+	}
+	skillB, _ := newTestCase(t, pool, a, alice, "filter-b")
+
+	if all := alice.listTestCases(t, ""); len(all) != 3 {
+		t.Fatalf("unfiltered list = %d drafts, want 3", len(all))
+	}
+	onA := alice.listTestCases(t, skillA)
+	if len(onA) != 2 {
+		t.Fatalf("list for skill A = %d drafts, want 2: %v", len(onA), onA)
+	}
+	for _, row := range onA {
+		if row["skill_id"] != skillA {
+			t.Errorf("the skill filter returned a draft of another skill: %v", row)
+		}
+		// 免裸 UUID: the row names its skill so a list is readable as it stands.
+		if row["skill_name"] != "filter-a-skill" {
+			t.Errorf("skill_name = %v, want the seeded skill's name", row["skill_name"])
+		}
+	}
+	// Newest first, the same order the unfiltered list answers in.
+	if onA[0]["name"] != "filter-a-second" {
+		t.Errorf("filtered list is not newest first: %v", onA)
+	}
+	if onB := alice.listTestCases(t, skillB); len(onB) != 1 {
+		t.Errorf("list for skill B = %d drafts, want 1", len(onB))
+	}
+
+	// The aggregates the browsing user reads before opening a draft.
+	row := onA[1]
+	if row["criteria_total"] != float64(0) || row["criteria_confirmed"] != float64(0) ||
+		row["has_rubric"] != false {
+		t.Fatalf("a fresh draft's aggregates are not zeroed: %v", row)
+	}
+	for _, text := range []string{"first condition", "second condition"} {
+		if code, body := alice.doJSON(t, http.MethodPost, "/test-cases/"+first+"/criteria",
+			fmt.Sprintf(`{"text":%q}`, text)); code != http.StatusCreated {
+			t.Fatalf("add criterion: got %d, body %v", code, body)
+		}
+	}
+	_, body = alice.doJSON(t, http.MethodGet, "/test-cases/"+first, "")
+	criteria := criteriaOf(t, body)
+	cid := criteria[0]["id"].(string)
+	if code, body := alice.doJSON(t, http.MethodPatch, "/test-cases/"+first+"/criteria/"+cid,
+		`{"confirmed":true}`); code != http.StatusOK {
+		t.Fatalf("confirm criterion: got %d, body %v", code, body)
+	}
+	if code, body := alice.doJSON(t, http.MethodPatch, "/test-cases/"+first, fmt.Sprintf(
+		`{"rubric":{"version":"v1","items":[{"id":%q,"text":"be specific"}]}}`, cid),
+	); code != http.StatusOK {
+		t.Fatalf("set rubric: got %d, body %v", code, body)
+	}
+
+	for _, row := range alice.listTestCases(t, skillA) {
+		if row["test_case_id"] != first {
+			continue
+		}
+		if row["criteria_total"] != float64(2) || row["criteria_confirmed"] != float64(1) {
+			t.Errorf("criteria aggregates = %v/%v, want 1/2",
+				row["criteria_confirmed"], row["criteria_total"])
+		}
+		if row["has_rubric"] != true {
+			t.Errorf("has_rubric = %v after a rubric was set", row["has_rubric"])
+		}
+	}
+}
+
+// WS-006 / iron rule 3: the filter is a narrowing of the caller's own workspace,
+// never a way to read into someone else's. Bob naming Alice's skill gets the same
+// empty answer as Bob naming an id that does not exist.
+func TestTestCaseSkillFilterDoesNotReachAnotherWorkspace(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, "alice-filter-scope")
+	bob := a.login(t, "bob-filter-scope")
+
+	aliceSkill, _ := newTestCase(t, pool, a, alice, "scope-alice")
+	if rows := bob.listTestCases(t, aliceSkill); len(rows) != 0 {
+		t.Errorf("another workspace's test cases leaked through skill_id: %v", rows)
+	}
+	if rows := bob.listTestCases(t, "00000000-0000-0000-0000-000000000001"); len(rows) != 0 {
+		t.Errorf("an unknown skill_id returned rows: %v", rows)
+	}
+	// A filter the server cannot parse answers empty, not the whole list: failing
+	// open here would show a caller every draft they own when they asked for one
+	// skill's.
+	if rows := bob.listTestCases(t, "not-a-uuid"); len(rows) != 0 {
+		t.Errorf("an unparseable skill_id fell back to the unfiltered list: %v", rows)
+	}
+	// Alice still sees her own.
+	if rows := alice.listTestCases(t, aliceSkill); len(rows) != 1 {
+		t.Errorf("owner lost her filtered list: %v", rows)
+	}
+}

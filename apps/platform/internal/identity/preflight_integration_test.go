@@ -570,7 +570,33 @@ func newSuggestStub(t *testing.T, response string) *suggestStub {
 	return stub
 }
 
-func TestSuggestedCriteriaAreStoredAsSuggestedAndStayEditable(t *testing.T) {
+// suggestionsOf reads the proposal texts out of a suggest response.
+func suggestionsOf(t *testing.T, body map[string]any) []string {
+	t.Helper()
+	raw, ok := body["suggestions"].([]any)
+	if !ok {
+		t.Fatalf("response has no suggestions: %v", body)
+	}
+	out := make([]string, 0, len(raw))
+	for _, item := range raw {
+		m, ok := item.(map[string]any)
+		if !ok {
+			t.Fatalf("suggestion element is not an object: %v", item)
+		}
+		text, _ := m["text"].(string)
+		if text == "" {
+			t.Fatalf("suggestion has no text: %v", m)
+		}
+		out = append(out, text)
+	}
+	return out
+}
+
+// 02:TEST-001 makes automatic suggestion 可選強化 and leaves the confirmation with
+// the user, so the route offers and stores nothing. Writing the model's proposals
+// into the draft and leaving the user to delete the unwanted ones is that rule
+// backwards, and it is what this used to do.
+func TestSuggestedCriteriaAreReturnedWithoutBeingStored(t *testing.T) {
 	pool := requireDB(t)
 	stub := newSuggestStub(t, `{"criteria":[{"text":"每個月都有一列總額"},{"text":"金額為數字"}]}`)
 	a := newAPIWithLLM(t, pool, stub.URL)
@@ -581,34 +607,46 @@ func TestSuggestedCriteriaAreStoredAsSuggestedAndStayEditable(t *testing.T) {
 	if code != http.StatusOK {
 		t.Fatalf("POST criteria/suggest: got %d, body %v", code, body)
 	}
-	list := criteriaOf(t, body)
-	if len(list) != 2 {
-		t.Fatalf("suggested criteria = %d, want 2: %v", len(list), list)
-	}
-	for _, c := range list {
-		// A model's proposal is never presented as the user's own judgement, and
-		// never arrives pre-agreed (02:TEST-001 自動建議為可選強化).
-		if c["source"] != "suggested" {
-			t.Errorf("suggested criterion has source %v, want \"suggested\"", c["source"])
-		}
-		if c["confirmed_at"] != nil {
-			t.Errorf("a suggestion arrived already confirmed: %v", c)
-		}
+	proposals := suggestionsOf(t, body)
+	if len(proposals) != 2 {
+		t.Fatalf("suggestions = %d, want 2: %v", len(proposals), proposals)
 	}
 
-	// The user owns them from here: editing the text makes the wording theirs.
+	// The draft is exactly as it was. This is the whole point of the change.
+	if _, after := alice.doJSON(t, http.MethodGet, "/test-cases/"+id, ""); len(criteriaOf(t, after)) != 0 {
+		t.Fatalf("suggest wrote into the draft; it must store nothing: %v", after)
+	}
+
+	// Adopting one is the ordinary write — and it keeps the label EVAL-001 reads,
+	// because the user picked the wording rather than writing it.
+	code, body = alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria",
+		fmt.Sprintf(`{"text":%q,"source":"suggested"}`, proposals[0]))
+	if code != http.StatusCreated {
+		t.Fatalf("adopting a suggestion: got %d, body %v", code, body)
+	}
+	list := criteriaOf(t, body)
+	if len(list) != 1 {
+		t.Fatalf("criteria after adopting one = %d, want 1: %v", len(list), list)
+	}
+	if list[0]["source"] != "suggested" {
+		t.Errorf("adopted suggestion has source %v, want \"suggested\"", list[0]["source"])
+	}
+	if list[0]["confirmed_at"] != nil {
+		t.Errorf("an adopted suggestion arrived already confirmed: %v", list[0])
+	}
+
+	// Asking again does not re-offer what the draft already holds.
+	_, body = alice.doJSON(t, http.MethodPost, "/test-cases/"+id+"/criteria/suggest", "")
+	if again := suggestionsOf(t, body); len(again) != 1 || again[0] != proposals[1] {
+		t.Errorf("second suggest = %v, want only the criterion not yet adopted", again)
+	}
+
+	// The user owns it from here: editing the text makes the wording theirs.
 	cid := list[0]["id"].(string)
 	_, body = alice.doJSON(t, http.MethodPatch, "/test-cases/"+id+"/criteria/"+cid,
 		`{"text":"每個月都有一列總額,且含幣別"}`)
-	edited := criteriaOf(t, body)
-	if edited[0]["source"] != "user" {
+	if edited := criteriaOf(t, body); edited[0]["source"] != "user" {
 		t.Errorf("source after the user rewrote the text = %v, want \"user\"", edited[0]["source"])
-	}
-
-	// And deleting one works exactly as it does for a hand-written criterion.
-	_, body = alice.doJSON(t, http.MethodDelete, "/test-cases/"+id+"/criteria/"+cid, "")
-	if len(criteriaOf(t, body)) != 1 {
-		t.Errorf("delete of a suggested criterion: %v", body)
 	}
 }
 

@@ -1681,6 +1681,21 @@ paths:
         of runs would make the list the heaviest read in the API for information
         nobody reads a page of.
       parameters:
+        - name: test_case_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+          description: |
+            Only runs of this test case — the "執行歷史" of one draft, which is
+            what closes the 建立 → 試跑 → 回來看 loop. Matched against the test
+            case the run's snapshot was frozen from, so a run stays in the list
+            after the draft has been edited. Workspace scoped like the unfiltered
+            list; another workspace's id matches nothing (WS-006).
+
+            ponytail: the filter is applied over the newest 500 runs of the
+            workspace rather than in the SQL. A workspace with more runs than
+            that will not see the older ones in a filtered list; the upgrade is
+            a predicate on ListWorkspaceRuns.
         - name: limit
           in: query
           required: false
@@ -2381,7 +2396,19 @@ paths:
     get:
       operationId: listTestCases
       summary: List the caller's test cases (WS-004)
+      description: |
+        Workspace scoped from the session (iron rule 3). `skill_id` narrows the
+        list to one skill and is not a widening: a skill outside the caller's
+        workspace matches nothing, exactly as an id that does not exist does
+        (WS-006).
       parameters:
+        - name: skill_id
+          in: query
+          required: false
+          schema: { type: string, format: uuid }
+          description: |
+            Only this skill's test cases. Answers "which test cases have I
+            written for this skill", which the Skill detail page asks.
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, maximum: 101, default: 51 }
@@ -2399,7 +2426,7 @@ paths:
                 properties:
                   test_cases:
                     type: array
-                    items: { $ref: "#/components/schemas/TestCase" }
+                    items: { $ref: "#/components/schemas/TestCaseListItem" }
         "401":
           description: No valid session.
           content:
@@ -2533,6 +2560,10 @@ paths:
     post:
       operationId: addAcceptanceCriterion
       summary: Add an acceptance criterion (TEST-003)
+      description: |
+        The one write path for a criterion, whether the user typed it or adopted
+        a proposal from POST .../criteria/suggest. Either way it arrives
+        unconfirmed: adopting a wording is not yet agreeing to it (TEST-003).
       parameters:
         - name: id
           in: path
@@ -2547,6 +2578,18 @@ paths:
               required: [text]
               properties:
                 text: { type: string, maxLength: 2000 }
+                source:
+                  type: string
+                  enum: [user, suggested]
+                  default: user
+                  description: |
+                    Who wrote the wording. `suggested` is for text taken verbatim
+                    from a suggestion — EVAL-001 reads it to keep a model's
+                    proposal from being reported as the user's own judgement, and
+                    a client that drops the label makes that impossible. Editing
+                    the text later re-labels it `user`, because by then the words
+                    are theirs.
+
       responses:
         "201":
           description: The updated draft, criteria included.
@@ -2578,12 +2621,16 @@ paths:
       operationId: suggestAcceptanceCriteria
       summary: Ask the model to propose acceptance criteria (TEST-002)
       description: |
-        Appends model-proposed criteria to the draft with `source: suggested` and
-        no confirmation. They are a starting point, not an answer: keeping one
-        means confirming it, and editing one re-labels it as the user's own
-        (TEST-003). A proposal that breaks an input rule, or repeats a criterion
-        already on the draft, is dropped rather than reported — the rest of the
-        batch is still useful. The response is the whole updated draft.
+        **Returns proposals and stores nothing.** TEST-001 makes automatic
+        suggestion 可選強化 and puts the confirmation with the user; a route that
+        wrote first and left the user deleting what it had decided for them was
+        the opposite shape. Adopting a proposal is POST
+        /test-cases/{id}/criteria with its text, one at a time, which is the
+        same route a hand-written criterion goes through.
+
+        A proposal that breaks an input rule, or repeats a criterion already on
+        the draft, is dropped rather than reported — the rest of the batch is
+        still useful.
 
         What reaches the model is the skill's name and summary, the user's own
         prompt, and for each attached file its name, its type and its *column
@@ -2599,12 +2646,12 @@ paths:
       responses:
         "200":
           description: |
-            The updated draft, suggestions included. 200 rather than 201 because
-            the addressed resource is the test case and it already existed;
-            nothing here creates one.
+            The proposals. 200 and not 201 because nothing was created: the
+            draft is exactly as it was before the call, and an empty list is a
+            valid answer.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/TestCase" }
+              schema: { $ref: "#/components/schemas/AcceptanceCriteriaSuggestions" }
         "401":
           description: No valid session.
           content:
@@ -4311,6 +4358,23 @@ components:
           description: |
             When the user explicitly agreed to this wording. Null means proposed
             but not confirmed. Editing the text clears it.
+    AcceptanceCriteriaSuggestions:
+      description: |
+        What the model proposed for one draft (TEST-002). Text and nothing else:
+        a proposal has no id because it is not a criterion, and it has no
+        `source` or `confirmed_at` because those are facts about a criterion the
+        user has adopted. Adopting one is POST /test-cases/{id}/criteria.
+      type: object
+      required: [suggestions]
+      properties:
+        suggestions:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            required: [text]
+            properties:
+              text: { type: string, maxLength: 2000 }
     RubricItem:
       description: |
         One rubric line, strengthening exactly one acceptance criterion
@@ -4385,6 +4449,38 @@ components:
             its snapshot, which is what `Evaluation.rubric_version` names.
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
+    TestCaseListItem:
+      description: |
+        One row of GET /test-cases: the draft plus the few facts a browsing user
+        needs before opening it. Nothing here is new state — the counts are over
+        `acceptance_criteria` and `has_rubric` is over `rubric` — they are served
+        so a list of fifty rows is not fifty client-side reductions, and so
+        `skill_name` does not have to be a second request per row.
+      allOf:
+        - $ref: "#/components/schemas/TestCase"
+        - type: object
+          required: [skill_name, criteria_confirmed, criteria_total, has_rubric]
+          properties:
+            skill_name:
+              type: string
+              description: |
+                The skill this draft is bound to, so a list is readable without
+                a bare UUID. Empty when the skill is no longer visible to the
+                caller — an empty string is "we cannot name it", which the UI
+                renders as unknown rather than as a name.
+            criteria_confirmed:
+              type: integer
+              description: |
+                How many acceptance criteria carry a `confirmed_at` (TEST-003).
+                The pair with `criteria_total` is what tells a user a draft is
+                not ready yet.
+            criteria_total: { type: integer }
+            has_rubric:
+              type: boolean
+              description: |
+                Whether the draft carries a rubric (CONTENT-007). False is "no
+                rubric", never "a default one" — same distinction `rubric`
+                itself makes by being absent.
     Dataset:
       type: object
       required: [dataset_id, file_name, content_type, size_bytes, content_hash, expires_at]

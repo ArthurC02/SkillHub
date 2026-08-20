@@ -15,6 +15,208 @@ import (
 )
 
 // Encode implements json.Marshaler.
+func (s *AcceptanceCriteriaSuggestions) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *AcceptanceCriteriaSuggestions) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("suggestions")
+		e.ArrStart()
+		for _, elem := range s.Suggestions {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+}
+
+var jsonFieldsNameOfAcceptanceCriteriaSuggestions = [1]string{
+	0: "suggestions",
+}
+
+// Decode decodes AcceptanceCriteriaSuggestions from json.
+func (s *AcceptanceCriteriaSuggestions) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode AcceptanceCriteriaSuggestions to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "suggestions":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				s.Suggestions = make([]AcceptanceCriteriaSuggestionsSuggestionsItem, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem AcceptanceCriteriaSuggestionsSuggestionsItem
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Suggestions = append(s.Suggestions, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"suggestions\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode AcceptanceCriteriaSuggestions")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000001,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfAcceptanceCriteriaSuggestions) {
+					name = jsonFieldsNameOfAcceptanceCriteriaSuggestions[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *AcceptanceCriteriaSuggestions) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *AcceptanceCriteriaSuggestions) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *AcceptanceCriteriaSuggestionsSuggestionsItem) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *AcceptanceCriteriaSuggestionsSuggestionsItem) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("text")
+		e.Str(s.Text)
+	}
+}
+
+var jsonFieldsNameOfAcceptanceCriteriaSuggestionsSuggestionsItem = [1]string{
+	0: "text",
+}
+
+// Decode decodes AcceptanceCriteriaSuggestionsSuggestionsItem from json.
+func (s *AcceptanceCriteriaSuggestionsSuggestionsItem) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode AcceptanceCriteriaSuggestionsSuggestionsItem to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "text":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Text = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"text\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode AcceptanceCriteriaSuggestionsSuggestionsItem")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000001,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfAcceptanceCriteriaSuggestionsSuggestionsItem) {
+					name = jsonFieldsNameOfAcceptanceCriteriaSuggestionsSuggestionsItem[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *AcceptanceCriteriaSuggestionsSuggestionsItem) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *AcceptanceCriteriaSuggestionsSuggestionsItem) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *AcceptanceCriterion) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -433,10 +635,17 @@ func (s *AddAcceptanceCriterionReq) encodeFields(e *jx.Encoder) {
 		e.FieldStart("text")
 		e.Str(s.Text)
 	}
+	{
+		if s.Source.Set {
+			e.FieldStart("source")
+			s.Source.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfAddAcceptanceCriterionReq = [1]string{
+var jsonFieldsNameOfAddAcceptanceCriterionReq = [2]string{
 	0: "text",
+	1: "source",
 }
 
 // Decode decodes AddAcceptanceCriterionReq from json.
@@ -445,6 +654,7 @@ func (s *AddAcceptanceCriterionReq) Decode(d *jx.Decoder) error {
 		return errors.New("invalid: unable to decode AddAcceptanceCriterionReq to nil")
 	}
 	var requiredBitSet [1]uint8
+	s.setDefaults()
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -459,6 +669,16 @@ func (s *AddAcceptanceCriterionReq) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"text\"")
+			}
+		case "source":
+			if err := func() error {
+				s.Source.Reset()
+				if err := s.Source.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"source\"")
 			}
 		default:
 			return d.Skip()
@@ -512,6 +732,46 @@ func (s *AddAcceptanceCriterionReq) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *AddAcceptanceCriterionReq) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes AddAcceptanceCriterionReqSource as json.
+func (s AddAcceptanceCriterionReqSource) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes AddAcceptanceCriterionReqSource from json.
+func (s *AddAcceptanceCriterionReqSource) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode AddAcceptanceCriterionReqSource to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch AddAcceptanceCriterionReqSource(v) {
+	case AddAcceptanceCriterionReqSourceUser:
+		*s = AddAcceptanceCriterionReqSourceUser
+	case AddAcceptanceCriterionReqSourceSuggested:
+		*s = AddAcceptanceCriterionReqSourceSuggested
+	default:
+		*s = AddAcceptanceCriterionReqSource(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s AddAcceptanceCriterionReqSource) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *AddAcceptanceCriterionReqSource) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -14145,9 +14405,9 @@ func (s *ListTestCasesOK) Decode(d *jx.Decoder) error {
 		case "test_cases":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				s.TestCases = make([]TestCase, 0)
+				s.TestCases = make([]TestCaseListItem, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
-					var elem TestCase
+					var elem TestCaseListItem
 					if err := elem.Decode(d); err != nil {
 						return err
 					}
@@ -14571,6 +14831,39 @@ func (s NilString) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *NilString) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes AddAcceptanceCriterionReqSource as json.
+func (o OptAddAcceptanceCriterionReqSource) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes AddAcceptanceCriterionReqSource from json.
+func (o *OptAddAcceptanceCriterionReqSource) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptAddAcceptanceCriterionReqSource to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptAddAcceptanceCriterionReqSource) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptAddAcceptanceCriterionReqSource) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -29158,6 +29451,300 @@ func (s *TestCase) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *TestCase) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *TestCaseListItem) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *TestCaseListItem) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("test_case_id")
+		json.EncodeUUID(e, s.TestCaseID)
+	}
+	{
+		e.FieldStart("skill_id")
+		json.EncodeUUID(e, s.SkillID)
+	}
+	{
+		e.FieldStart("name")
+		e.Str(s.Name)
+	}
+	{
+		e.FieldStart("user_prompt")
+		e.Str(s.UserPrompt)
+	}
+	{
+		e.FieldStart("acceptance_criteria")
+		e.ArrStart()
+		for _, elem := range s.AcceptanceCriteria {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+	{
+		if s.Rubric.Set {
+			e.FieldStart("rubric")
+			s.Rubric.Encode(e)
+		}
+	}
+	{
+		e.FieldStart("created_at")
+		json.EncodeDateTime(e, s.CreatedAt)
+	}
+	{
+		e.FieldStart("updated_at")
+		json.EncodeDateTime(e, s.UpdatedAt)
+	}
+	{
+		e.FieldStart("skill_name")
+		e.Str(s.SkillName)
+	}
+	{
+		e.FieldStart("criteria_confirmed")
+		e.Int(s.CriteriaConfirmed)
+	}
+	{
+		e.FieldStart("criteria_total")
+		e.Int(s.CriteriaTotal)
+	}
+	{
+		e.FieldStart("has_rubric")
+		e.Bool(s.HasRubric)
+	}
+}
+
+var jsonFieldsNameOfTestCaseListItem = [12]string{
+	0:  "test_case_id",
+	1:  "skill_id",
+	2:  "name",
+	3:  "user_prompt",
+	4:  "acceptance_criteria",
+	5:  "rubric",
+	6:  "created_at",
+	7:  "updated_at",
+	8:  "skill_name",
+	9:  "criteria_confirmed",
+	10: "criteria_total",
+	11: "has_rubric",
+}
+
+// Decode decodes TestCaseListItem from json.
+func (s *TestCaseListItem) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TestCaseListItem to nil")
+	}
+	var requiredBitSet [2]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "test_case_id":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.TestCaseID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"test_case_id\"")
+			}
+		case "skill_id":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.SkillID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"skill_id\"")
+			}
+		case "name":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.Name = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		case "user_prompt":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Str()
+				s.UserPrompt = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"user_prompt\"")
+			}
+		case "acceptance_criteria":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				s.AcceptanceCriteria = make([]AcceptanceCriterion, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem AcceptanceCriterion
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.AcceptanceCriteria = append(s.AcceptanceCriteria, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"acceptance_criteria\"")
+			}
+		case "rubric":
+			if err := func() error {
+				s.Rubric.Reset()
+				if err := s.Rubric.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"rubric\"")
+			}
+		case "created_at":
+			requiredBitSet[0] |= 1 << 6
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.CreatedAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"created_at\"")
+			}
+		case "updated_at":
+			requiredBitSet[0] |= 1 << 7
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.UpdatedAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"updated_at\"")
+			}
+		case "skill_name":
+			requiredBitSet[1] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.SkillName = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"skill_name\"")
+			}
+		case "criteria_confirmed":
+			requiredBitSet[1] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int()
+				s.CriteriaConfirmed = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"criteria_confirmed\"")
+			}
+		case "criteria_total":
+			requiredBitSet[1] |= 1 << 2
+			if err := func() error {
+				v, err := d.Int()
+				s.CriteriaTotal = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"criteria_total\"")
+			}
+		case "has_rubric":
+			requiredBitSet[1] |= 1 << 3
+			if err := func() error {
+				v, err := d.Bool()
+				s.HasRubric = bool(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"has_rubric\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode TestCaseListItem")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [2]uint8{
+		0b11011111,
+		0b00001111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfTestCaseListItem) {
+					name = jsonFieldsNameOfTestCaseListItem[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TestCaseListItem) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TestCaseListItem) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

@@ -12,6 +12,40 @@ import (
 	ht "github.com/ogen-go/ogen/http"
 )
 
+// What the model proposed for one draft (TEST-002). Text and nothing else: a proposal has no id
+// because it is not a criterion, and it has no `source` or `confirmed_at` because those are facts
+// about a criterion the user has adopted. Adopting one is POST /test-cases/{id}/criteria.
+// Ref: #/components/schemas/AcceptanceCriteriaSuggestions
+type AcceptanceCriteriaSuggestions struct {
+	Suggestions []AcceptanceCriteriaSuggestionsSuggestionsItem `json:"suggestions"`
+}
+
+// GetSuggestions returns the value of Suggestions.
+func (s *AcceptanceCriteriaSuggestions) GetSuggestions() []AcceptanceCriteriaSuggestionsSuggestionsItem {
+	return s.Suggestions
+}
+
+// SetSuggestions sets the value of Suggestions.
+func (s *AcceptanceCriteriaSuggestions) SetSuggestions(val []AcceptanceCriteriaSuggestionsSuggestionsItem) {
+	s.Suggestions = val
+}
+
+func (*AcceptanceCriteriaSuggestions) suggestAcceptanceCriteriaRes() {}
+
+type AcceptanceCriteriaSuggestionsSuggestionsItem struct {
+	Text string `json:"text"`
+}
+
+// GetText returns the value of Text.
+func (s *AcceptanceCriteriaSuggestionsSuggestionsItem) GetText() string {
+	return s.Text
+}
+
+// SetText sets the value of Text.
+func (s *AcceptanceCriteriaSuggestionsSuggestionsItem) SetText(val string) {
+	s.Text = val
+}
+
 // One acceptance condition (TEST-003). Stored inside the test case rather than as its own resource,
 // because the run snapshot and the evaluation result already carry this exact shape as JSON.
 // Ref: #/components/schemas/AcceptanceCriterion
@@ -173,6 +207,11 @@ func (*AddAcceptanceCriterionNotFound) addAcceptanceCriterionRes() {}
 
 type AddAcceptanceCriterionReq struct {
 	Text string `json:"text"`
+	// Who wrote the wording. `suggested` is for text taken verbatim from a suggestion — EVAL-001 reads
+	// it to keep a model's proposal from being reported as the user's own judgement, and a client that
+	// drops the label makes that impossible. Editing the text later re-labels it `user`, because by then
+	// the words are theirs.
+	Source OptAddAcceptanceCriterionReqSource `json:"source"`
 }
 
 // GetText returns the value of Text.
@@ -180,9 +219,64 @@ func (s *AddAcceptanceCriterionReq) GetText() string {
 	return s.Text
 }
 
+// GetSource returns the value of Source.
+func (s *AddAcceptanceCriterionReq) GetSource() OptAddAcceptanceCriterionReqSource {
+	return s.Source
+}
+
 // SetText sets the value of Text.
 func (s *AddAcceptanceCriterionReq) SetText(val string) {
 	s.Text = val
+}
+
+// SetSource sets the value of Source.
+func (s *AddAcceptanceCriterionReq) SetSource(val OptAddAcceptanceCriterionReqSource) {
+	s.Source = val
+}
+
+// Who wrote the wording. `suggested` is for text taken verbatim from a suggestion — EVAL-001 reads
+// it to keep a model's proposal from being reported as the user's own judgement, and a client that
+// drops the label makes that impossible. Editing the text later re-labels it `user`, because by then
+// the words are theirs.
+type AddAcceptanceCriterionReqSource string
+
+const (
+	AddAcceptanceCriterionReqSourceUser      AddAcceptanceCriterionReqSource = "user"
+	AddAcceptanceCriterionReqSourceSuggested AddAcceptanceCriterionReqSource = "suggested"
+)
+
+// AllValues returns all AddAcceptanceCriterionReqSource values.
+func (AddAcceptanceCriterionReqSource) AllValues() []AddAcceptanceCriterionReqSource {
+	return []AddAcceptanceCriterionReqSource{
+		AddAcceptanceCriterionReqSourceUser,
+		AddAcceptanceCriterionReqSourceSuggested,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AddAcceptanceCriterionReqSource) MarshalText() ([]byte, error) {
+	switch s {
+	case AddAcceptanceCriterionReqSourceUser:
+		return []byte(s), nil
+	case AddAcceptanceCriterionReqSourceSuggested:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AddAcceptanceCriterionReqSource) UnmarshalText(data []byte) error {
+	switch AddAcceptanceCriterionReqSource(data) {
+	case AddAcceptanceCriterionReqSourceUser:
+		*s = AddAcceptanceCriterionReqSourceUser
+		return nil
+	case AddAcceptanceCriterionReqSourceSuggested:
+		*s = AddAcceptanceCriterionReqSourceSuggested
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 type AddAcceptanceCriterionRequestEntityTooLarge Error
@@ -5050,16 +5144,16 @@ func (s *ListSkillsOK) SetSkills(val []Skill) {
 func (*ListSkillsOK) listSkillsRes() {}
 
 type ListTestCasesOK struct {
-	TestCases []TestCase `json:"test_cases"`
+	TestCases []TestCaseListItem `json:"test_cases"`
 }
 
 // GetTestCases returns the value of TestCases.
-func (s *ListTestCasesOK) GetTestCases() []TestCase {
+func (s *ListTestCasesOK) GetTestCases() []TestCaseListItem {
 	return s.TestCases
 }
 
 // SetTestCases sets the value of TestCases.
-func (s *ListTestCasesOK) SetTestCases(val []TestCase) {
+func (s *ListTestCasesOK) SetTestCases(val []TestCaseListItem) {
 	s.TestCases = val
 }
 
@@ -5320,6 +5414,52 @@ func (o NilString) Get() (v string, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o NilString) Or(d string) string {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptAddAcceptanceCriterionReqSource returns new OptAddAcceptanceCriterionReqSource with value set to v.
+func NewOptAddAcceptanceCriterionReqSource(v AddAcceptanceCriterionReqSource) OptAddAcceptanceCriterionReqSource {
+	return OptAddAcceptanceCriterionReqSource{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptAddAcceptanceCriterionReqSource is optional AddAcceptanceCriterionReqSource.
+type OptAddAcceptanceCriterionReqSource struct {
+	Value AddAcceptanceCriterionReqSource
+	Set   bool
+}
+
+// IsSet returns true if OptAddAcceptanceCriterionReqSource was set.
+func (o OptAddAcceptanceCriterionReqSource) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptAddAcceptanceCriterionReqSource) Reset() {
+	var v AddAcceptanceCriterionReqSource
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptAddAcceptanceCriterionReqSource) SetTo(v AddAcceptanceCriterionReqSource) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptAddAcceptanceCriterionReqSource) Get() (v AddAcceptanceCriterionReqSource, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptAddAcceptanceCriterionReqSource) Or(d AddAcceptanceCriterionReqSource) AddAcceptanceCriterionReqSource {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -13684,9 +13824,154 @@ func (*TestCase) addAcceptanceCriterionRes()    {}
 func (*TestCase) createTestCaseRes()            {}
 func (*TestCase) deleteAcceptanceCriterionRes() {}
 func (*TestCase) getTestCaseRes()               {}
-func (*TestCase) suggestAcceptanceCriteriaRes() {}
 func (*TestCase) updateAcceptanceCriterionRes() {}
 func (*TestCase) updateTestCaseRes()            {}
+
+// Merged schema.
+// Ref: #/components/schemas/TestCaseListItem
+type TestCaseListItem struct {
+	TestCaseID         uuid.UUID             `json:"test_case_id"`
+	SkillID            uuid.UUID             `json:"skill_id"`
+	Name               string                `json:"name"`
+	UserPrompt         string                `json:"user_prompt"`
+	AcceptanceCriteria []AcceptanceCriterion `json:"acceptance_criteria"`
+	// Absent means this test case has no rubric — never that it uses a default one. The copy a run was
+	// judged against is the one frozen in its snapshot, which is what `Evaluation.rubric_version` names.
+	Rubric    OptRubric `json:"rubric"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	// The skill this draft is bound to, so a list is readable without a bare UUID. Empty when the skill is
+	// no longer visible to the caller — an empty string is "we cannot name it", which the UI renders as
+	// unknown rather than as a name.
+	SkillName string `json:"skill_name"`
+	// How many acceptance criteria carry a `confirmed_at` (TEST-003). The pair with `criteria_total` is
+	// what tells a user a draft is not ready yet.
+	CriteriaConfirmed int `json:"criteria_confirmed"`
+	CriteriaTotal     int `json:"criteria_total"`
+	// Whether the draft carries a rubric (CONTENT-007). False is "no rubric", never "a default one" —
+	// same distinction `rubric` itself makes by being absent.
+	HasRubric bool `json:"has_rubric"`
+}
+
+// GetTestCaseID returns the value of TestCaseID.
+func (s *TestCaseListItem) GetTestCaseID() uuid.UUID {
+	return s.TestCaseID
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *TestCaseListItem) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetName returns the value of Name.
+func (s *TestCaseListItem) GetName() string {
+	return s.Name
+}
+
+// GetUserPrompt returns the value of UserPrompt.
+func (s *TestCaseListItem) GetUserPrompt() string {
+	return s.UserPrompt
+}
+
+// GetAcceptanceCriteria returns the value of AcceptanceCriteria.
+func (s *TestCaseListItem) GetAcceptanceCriteria() []AcceptanceCriterion {
+	return s.AcceptanceCriteria
+}
+
+// GetRubric returns the value of Rubric.
+func (s *TestCaseListItem) GetRubric() OptRubric {
+	return s.Rubric
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *TestCaseListItem) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *TestCaseListItem) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// GetSkillName returns the value of SkillName.
+func (s *TestCaseListItem) GetSkillName() string {
+	return s.SkillName
+}
+
+// GetCriteriaConfirmed returns the value of CriteriaConfirmed.
+func (s *TestCaseListItem) GetCriteriaConfirmed() int {
+	return s.CriteriaConfirmed
+}
+
+// GetCriteriaTotal returns the value of CriteriaTotal.
+func (s *TestCaseListItem) GetCriteriaTotal() int {
+	return s.CriteriaTotal
+}
+
+// GetHasRubric returns the value of HasRubric.
+func (s *TestCaseListItem) GetHasRubric() bool {
+	return s.HasRubric
+}
+
+// SetTestCaseID sets the value of TestCaseID.
+func (s *TestCaseListItem) SetTestCaseID(val uuid.UUID) {
+	s.TestCaseID = val
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *TestCaseListItem) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetName sets the value of Name.
+func (s *TestCaseListItem) SetName(val string) {
+	s.Name = val
+}
+
+// SetUserPrompt sets the value of UserPrompt.
+func (s *TestCaseListItem) SetUserPrompt(val string) {
+	s.UserPrompt = val
+}
+
+// SetAcceptanceCriteria sets the value of AcceptanceCriteria.
+func (s *TestCaseListItem) SetAcceptanceCriteria(val []AcceptanceCriterion) {
+	s.AcceptanceCriteria = val
+}
+
+// SetRubric sets the value of Rubric.
+func (s *TestCaseListItem) SetRubric(val OptRubric) {
+	s.Rubric = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *TestCaseListItem) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *TestCaseListItem) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+// SetSkillName sets the value of SkillName.
+func (s *TestCaseListItem) SetSkillName(val string) {
+	s.SkillName = val
+}
+
+// SetCriteriaConfirmed sets the value of CriteriaConfirmed.
+func (s *TestCaseListItem) SetCriteriaConfirmed(val int) {
+	s.CriteriaConfirmed = val
+}
+
+// SetCriteriaTotal sets the value of CriteriaTotal.
+func (s *TestCaseListItem) SetCriteriaTotal(val int) {
+	s.CriteriaTotal = val
+}
+
+// SetHasRubric sets the value of HasRubric.
+func (s *TestCaseListItem) SetHasRubric(val bool) {
+	s.HasRubric = val
+}
 
 // Ref: #/components/schemas/TraceAdvanced
 type TraceAdvanced struct {
