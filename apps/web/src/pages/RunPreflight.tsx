@@ -256,6 +256,36 @@ export function RunPreflight() {
           {summary.resource_limits.token_budget.max_input_tokens} 進 /{" "}
           {summary.resource_limits.token_budget.max_output_tokens} 出
         </dd>
+
+        {/*
+          Every field inside summary_hash has to be readable here, or the user
+          is re-confirming things they have never seen (設計 §1 原則 3). These
+          are the rest of them — collapsed because they are not what a reader
+          came to check, present because they are part of what is being agreed
+          to. Narrowing the hash instead would be the unsafe direction.
+        */}
+        <dt>進階限制與 Provider 細節</dt>
+        <dd>
+          <details>
+            <summary>展開其餘一併確認的欄位</summary>
+            <ul>
+              <li>行程數上限：{summary.resource_limits.max_pids}</li>
+              <li>開檔數上限：{summary.resource_limits.max_open_files}</li>
+              <li>
+                產出檔案總量上限：{bytes(summary.resource_limits.artifact_total_bytes)}、單檔{" "}
+                {bytes(summary.resource_limits.artifact_file_bytes)}
+              </li>
+              <li>
+                軟性時間上限：{summary.resource_limits.wall_clock_soft_seconds} 秒（先要求收尾;硬性
+                上限 {summary.resource_limits.wall_clock_hard_seconds} 秒才是強制中止）
+              </li>
+              <li>Provider 是否 rootless：{summary.provider.rootless ? "是" : "否"}</li>
+              {/* 未回報就寫未回報:沒有值不等於沒有 runtime。 */}
+              <li>Runtime：{summary.provider.runtime ?? "未回報"}</li>
+              <li>Runtime 版本：{summary.provider.runtime_version ?? "未回報"}</li>
+            </ul>
+          </details>
+        </dd>
         {/* PDM-005 §5.3. A range, and labelled an estimate in the term itself —
             it is outside summary_hash, so it must not read like something the
             user is agreeing to. Absent on an older server: rendered as nothing

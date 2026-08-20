@@ -152,6 +152,24 @@ export function SkillDetail() {
         </nav>
       )}
 
+      {/*
+        「這個 Skill 我寫過哪些 Test Case」 had no route until the list grew a
+        `skill_id` filter. Signed-in only, for the same reason the fork action
+        is: a Test Case belongs to a workspace, and a link to an empty list is
+        what an anonymous reader would get.
+      */}
+      {me && (
+        <section>
+          <h2>試跑</h2>
+          <p>
+            <Link to="/lab/test-cases" search={{ skill: skillId }}>
+              此 Skill 的 Test Case
+            </Link>
+          </p>
+          <p className="note">Test Case 是試跑用的草稿：User Prompt、測試資料與驗收條件。</p>
+        </section>
+      )}
+
       <ForkAction skillId={skillId} isLoggedIn={!!me} />
     </article>
   );

@@ -54,19 +54,36 @@ export type TestCase = {
   updated_at: string;
 };
 
+/**
+ * One row of GET /test-cases. The three aggregates are served rather than
+ * reduced here so a page of fifty rows is not fifty client-side counts, and
+ * `skill_name` spares the list a bare UUID. An empty `skill_name` is "we cannot
+ * name it" — the skill left the caller's view — never a name.
+ */
+export type TestCaseListItem = TestCase & {
+  skill_name: string;
+  criteria_confirmed: number;
+  criteria_total: number;
+  has_rubric: boolean;
+};
+
 export type SkillSummary = { skill_id: string; name: string; summary: string };
 
-export function useTestCases() {
+/** `skillId` narrows the list to one skill; it is a filter, never a widening (WS-006). */
+export function useTestCases(skillId?: string) {
   return useInfiniteQuery({
-    queryKey: ["test-cases"],
+    // Under the ["test-cases"] prefix so every existing invalidation still
+    // reaches it, and keyed by the filter so two filters are two caches.
+    queryKey: ["test-cases", "list", skillId ?? ""],
     initialPageParam: 0,
-    queryFn: ({ pageParam }) =>
-      apiFetch<{ test_cases: TestCase[] }>(`/test-cases?limit=51&offset=${pageParam}`).then(
-        (page) => ({
-          test_cases: page.test_cases.slice(0, 50),
-          nextOffset: page.test_cases.length > 50 ? pageParam + 50 : undefined,
-        }),
-      ),
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: "51", offset: String(pageParam) });
+      if (skillId) params.set("skill_id", skillId);
+      return apiFetch<{ test_cases: TestCaseListItem[] }>(`/test-cases?${params}`).then((page) => ({
+        test_cases: page.test_cases.slice(0, 50),
+        nextOffset: page.test_cases.length > 50 ? pageParam + 50 : undefined,
+      }));
+    },
     getNextPageParam: (last) => last.nextOffset,
     retry: false,
   });
@@ -113,11 +130,21 @@ export function updateTestCase(
   });
 }
 
-export function addCriterion(testCaseId: string, text: string) {
+/**
+ * The one write path for a criterion, whether the user typed it or adopted a
+ * proposal. `source: "suggested"` labels text taken verbatim from a suggestion
+ * so a model's wording is never reported as the user's own judgement; either
+ * way it arrives unconfirmed, because adopting a wording is not agreeing to it.
+ */
+export function addCriterion(
+  testCaseId: string,
+  text: string,
+  source: "user" | "suggested" = "user",
+) {
   return apiFetch<TestCase>(`/test-cases/${testCaseId}/criteria`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, source }),
   });
 }
 
@@ -139,9 +166,32 @@ export function deleteCriterion(testCaseId: string, criterionId: string) {
   });
 }
 
-/** TEST-002's optional enhancement. 503 means unavailable, not a failed request. */
+/**
+ * TEST-002's optional enhancement. 503 means unavailable, not a failed request.
+ *
+ * **Proposals, not criteria.** The call stores nothing: a proposal has no id,
+ * no source and no confirmation, because those are facts about a criterion the
+ * user has adopted. Adopting one is `addCriterion(..., "suggested")`, one at a
+ * time — the route that wrote first and left the user deleting what it had
+ * decided for them was the opposite of TEST-001's "確認權在使用者".
+ */
 export function suggestCriteria(testCaseId: string) {
-  return apiFetch<TestCase>(`/test-cases/${testCaseId}/criteria/suggest`, { method: "POST" });
+  return apiFetch<{ suggestions: { text: string }[] }>(
+    `/test-cases/${testCaseId}/criteria/suggest`,
+    { method: "POST" },
+  );
+}
+
+/**
+ * WS-002 delete. `datasets_deleted` is the deletion's actual scope, which the
+ * caller states back to the user: what went is the draft and its live files,
+ * what stays is every past run's snapshot (ADR-003).
+ */
+export function deleteTestCase(testCaseId: string) {
+  return apiFetch<{ deleted: boolean; datasets_deleted: number; note: string }>(
+    `/test-cases/${testCaseId}`,
+    { method: "DELETE" },
+  );
 }
 
 export function useTestCaseDatasets(testCaseId: string) {

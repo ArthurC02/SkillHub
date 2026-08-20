@@ -63,15 +63,23 @@ export type RunListItem = {
   finished_at?: string;
 };
 
-export function useRuns() {
+/**
+ * `testCaseId` narrows the history to one draft — the 執行歷史 that closes the
+ * 建立 → 試跑 → 回來看 loop. Matched against the test case each run's snapshot
+ * was frozen from, so a run stays listed after the draft has been edited.
+ */
+export function useRuns(testCaseId?: string) {
   return useInfiniteQuery({
-    queryKey: ["runs"],
+    queryKey: ["runs", testCaseId ?? ""],
     initialPageParam: 0,
-    queryFn: ({ pageParam }) =>
-      apiFetch<{ runs: RunListItem[] }>(`/runs?limit=51&offset=${pageParam}`).then((page) => ({
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: "51", offset: String(pageParam) });
+      if (testCaseId) params.set("test_case_id", testCaseId);
+      return apiFetch<{ runs: RunListItem[] }>(`/runs?${params}`).then((page) => ({
         runs: page.runs.slice(0, 50),
         nextOffset: page.runs.length > 50 ? pageParam + 50 : undefined,
-      })),
+      }));
+    },
     getNextPageParam: (last) => last.nextOffset,
     retry: false,
   });

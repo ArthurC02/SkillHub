@@ -273,15 +273,29 @@ const runCompareRoute = createRoute({
   }),
 });
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * 03:TEST-012. The Test Case screens, which are also the picker the Lab never
  * had: /lab/run and /lab/datasets take their ids from here instead of from a
  * user who had to know them.
+ *
+ * `skill` filters the list to one skill, which is what the Skill detail page's
+ * 「此 Skill 的 Test Case」 link asks for. Anything that is not a UUID is
+ * dropped rather than passed through, for the same reason the home route drops
+ * an out-of-enum filter: the server answers 400 and a hand-edited URL should
+ * land on the unfiltered list, not on an error page.
  */
 const testCaseListRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/lab/test-cases",
   component: TestCaseList,
+  // Optional key, like HomeSearch: this list is linked to from six places that
+  // have no skill to name, and a required `search` would make every one of them
+  // pass an empty object to say so.
+  validateSearch: (search: Record<string, unknown>): { skill?: string } => ({
+    skill: typeof search.skill === "string" && UUID.test(search.skill) ? search.skill : undefined,
+  }),
 });
 
 const testCaseDetailRoute = createRoute({

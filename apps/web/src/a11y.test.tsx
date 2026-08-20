@@ -639,11 +639,30 @@ function stubPlatform() {
     if (path.endsWith("/datasets"))
       return json({
         datasets: [
-          { dataset_id: "d0", file_name: "rows.csv", content_type: "text/csv", size_bytes: 1024 },
+          {
+            dataset_id: "d0",
+            file_name: "rows.csv",
+            content_type: "text/csv",
+            size_bytes: 1024,
+            expires_at: "2026-11-15T00:00:00Z",
+          },
         ],
         total_bytes: 1024,
       });
-    if (path === "/test-cases") return json({ test_cases: [TEST_CASE_DRAFT] });
+    // The list row carries the aggregates the list renders; the detail read
+    // does not, which is why they are added here rather than to the fixture.
+    if (path === "/test-cases")
+      return json({
+        test_cases: [
+          {
+            ...TEST_CASE_DRAFT,
+            skill_name: "PDF Summariser",
+            criteria_confirmed: 1,
+            criteria_total: 2,
+            has_rubric: true,
+          },
+        ],
+      });
     if (path.startsWith("/test-cases/")) return json(TEST_CASE_DRAFT);
     if (path === "/skills")
       return json({ skills: [{ skill_id: SKILL, name: "PDF Summariser", summary: "摘要" }] });

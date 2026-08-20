@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import {
   addCriterion,
   createTestCase,
   deleteCriterion,
   deleteDataset,
+  deleteTestCase,
   suggestCriteria,
   updateCriterion,
   updateTestCase,
@@ -15,6 +16,9 @@ import {
   useTestCaseDatasets,
   useTestCases,
 } from "../api/testcases";
+import { useRuns, type RunListItem } from "../api/runs";
+import { ConfirmDelete } from "../components/ConfirmDelete";
+import { RUN_STATUS_LABEL } from "./RunEvaluation";
 import type { AcceptanceCriterion, RubricItem, TestCase } from "../api/testcases";
 
 /**
@@ -73,7 +77,8 @@ function criterionState(c: AcceptanceCriterion): string {
 
 export function TestCaseList() {
   const navigate = useNavigate();
-  const testCases = useTestCases();
+  const { skill: filter } = useSearch({ from: "/lab/test-cases" });
+  const testCases = useTestCases(filter);
   const skills = useOwnSkills();
   const [skillId, setSkillId] = useState("");
   const [name, setName] = useState("");
@@ -141,11 +146,25 @@ export function TestCaseList() {
       {message && <p role="alert">{message}</p>}
 
       <h2>既有的 Test Case</h2>
+      {/*
+        The filter is stated whenever it is on, with the way out beside it: a
+        list that silently shows a subset reads as "this is everything".
+        The skill is named from the rows rather than from a second request —
+        every row of a filtered list carries the same `skill_name`.
+      */}
+      {filter && (
+        <p className="note" role="status">
+          只顯示 <strong>{rows[0]?.skill_name || "這一個 Skill"}</strong> 的 Test Case。{" "}
+          <Link to="/lab/test-cases" search={{ skill: undefined }}>
+            顯示全部
+          </Link>
+        </p>
+      )}
       {testCases.isPending && <p>載入中…</p>}
       {testCases.error && <p role="alert">無法讀取 Test Case：{testCases.error.message}</p>}
       {testCases.data &&
         (rows.length === 0 ? (
-          <p>還沒有 Test Case。</p>
+          <p>{filter ? "這個 Skill 還沒有 Test Case。" : "還沒有 Test Case。"}</p>
         ) : (
           <ul className="search-results">
             {rows.map((tc) => (
@@ -154,9 +173,14 @@ export function TestCaseList() {
                   {tc.name}
                 </Link>
                 <p className="note">
-                  驗收條件 {tc.acceptance_criteria.length} 條（已確認{" "}
-                  {tc.acceptance_criteria.filter((c) => c.confirmed_at).length} 條）· 最後修改{" "}
-                  {tc.updated_at}
+                  {/* Empty means the skill is no longer visible to the caller —
+                      "we cannot name it", which is not a name and not a UUID. */}
+                  Skill：
+                  {tc.skill_name === "" ? "未回報（這個 Skill 已不在你的可見範圍）" : tc.skill_name}
+                </p>
+                <p className="note">
+                  驗收條件已確認 {tc.criteria_confirmed}/{tc.criteria_total} 條 · Rubric{" "}
+                  {tc.has_rubric ? "有" : "無"} · 最後修改 {tc.updated_at}
                 </p>
               </li>
             ))}
@@ -178,6 +202,32 @@ export function TestCaseList() {
 export function TestCaseDetail() {
   const { testCaseId } = useParams({ from: "/lab/test-cases/$testCaseId" });
   const testCase = useTestCase(testCaseId);
+  // One read serves two things: the 執行歷史 section below, and the version the
+  // 開始試跑 link opens the picker on. The "last version run" is a fact about
+  // the run history, so it is read from there rather than copied into the draft.
+  const runs = useRuns(testCaseId);
+  const [deleted, setDeleted] = useState<{ datasets_deleted: number } | null>(null);
+
+  if (deleted) {
+    return (
+      <section className="page">
+        <h1>已刪除這個 Test Case</h1>
+        {/* WS-002 「系統應說明刪除範圍」: the count is the server's, not a guess,
+            and what survived is named as plainly as what went. */}
+        <p role="status">
+          草稿與它的 {deleted.datasets_deleted} 個上傳檔案都已刪除，檔案本體也已移除。
+        </p>
+        <p className="note">
+          <strong>快照與歷史 Run 不受影響</strong>
+          ：已經跑過的 Run 仍保留當時凍結的 Prompt、驗收條件，以及每個檔案的名稱與內容雜湊，所以那些
+          Run 仍可追溯，只是不再可重現。
+        </p>
+        <p>
+          <Link to="/lab/test-cases">回到 Test Case 列表</Link>
+        </p>
+      </section>
+    );
+  }
 
   if (testCase.isPending) return <p>載入 Test Case 中…</p>;
   if (testCase.error) {
@@ -189,11 +239,16 @@ export function TestCaseDetail() {
     );
   }
 
+  const history = runs.data?.pages.flatMap((page) => page.runs) ?? [];
+  const lastVersion = history[0]?.skill_version_id;
+
   return (
     <section className="page" key={testCaseId}>
       <h1>{testCase.data.name}</h1>
       <p className="note">
-        <Link to="/lab/test-cases">回到 Test Case 列表</Link>
+        <Link to="/lab/test-cases" search={{ skill: testCase.data.skill_id }}>
+          回到這個 Skill 的 Test Case 列表
+        </Link>
       </p>
       <PromptForm testCase={testCase.data} />
       <CriteriaSection testCase={testCase.data} />
@@ -203,13 +258,124 @@ export function TestCaseDetail() {
       <p className="note">
         <Link
           to="/lab/run"
-          search={{ skill: testCase.data.skill_id, test_case: testCaseId, version: undefined }}
+          search={{ skill: testCase.data.skill_id, test_case: testCaseId, version: lastVersion }}
         >
           前往執行前權限確認
         </Link>
-        （還需要填入要執行的 Skill Version id）。開始 Run 前一定會再顯示一次權限摘要並要求確認。
+        （要跑哪一個 Skill Version 在那個頁面上選
+        {lastVersion ? "，預設是這個 Test Case 上次跑的那一版" : ""}）。開始 Run
+        前一定會再顯示一次權限摘要並要求確認。
       </p>
+      <RunHistory runs={runs} history={history} />
+      <DeleteTestCase testCaseId={testCaseId} onDeleted={setDeleted} />
     </section>
+  );
+}
+
+/**
+ * The return leg of 建立 → 試跑 → 回來看, served by GET /runs?test_case_id=.
+ *
+ * `status` is worded as execution and never as a pass, the same ruling the run
+ * history page keeps (ADR-025): what finished is the workload, and whether the
+ * task was done is the evaluation's verdict on the run's own page.
+ */
+function RunHistory({
+  runs,
+  history,
+}: {
+  runs: ReturnType<typeof useRuns>;
+  history: RunListItem[];
+}) {
+  return (
+    <>
+      <h2>執行歷史</h2>
+      {runs.isPending && <p>載入執行歷史中…</p>}
+      {runs.error && <p role="alert">無法讀取執行歷史：{runs.error.message}</p>}
+      {runs.data &&
+        (history.length === 0 ? (
+          <p>尚無執行。這個 Test Case 還沒有跑過任何 Run。</p>
+        ) : (
+          <ul className="download-list">
+            {history.map((run) => (
+              <li key={run.run_id} className="download-item">
+                <p>
+                  <Link to="/runs/$runId" params={{ runId: run.run_id }}>
+                    {run.created_at}
+                  </Link>{" "}
+                  <span className="badge">
+                    執行狀態：{RUN_STATUS_LABEL[run.status] ?? run.status}
+                  </span>
+                </p>
+                <p className="note">
+                  Skill Version <code>{run.skill_version_id}</code>
+                  {run.finished_at ? `｜結束於 ${run.finished_at}` : "｜尚未結束"}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ))}
+      {runs.hasNextPage && (
+        <button
+          type="button"
+          disabled={runs.isFetchingNextPage}
+          onClick={() => runs.fetchNextPage()}
+        >
+          {runs.isFetchingNextPage ? "載入中…" : "載入更多"}
+        </button>
+      )}
+      <p className="note">
+        這裡寫的是「執行狀態」，不是「任務有沒有做到」——後者是評估的判定，在各自的 Run 頁面上。
+      </p>
+    </>
+  );
+}
+
+/**
+ * 02:WS-002 第 3 條 — the delete, with its scope stated before it runs and the
+ * server's own count stated after. Uses the shared two-step control so this is
+ * not a fourth copy of the same markup (04 丙-22).
+ */
+function DeleteTestCase({
+  testCaseId,
+  onDeleted,
+}: {
+  testCaseId: string;
+  onDeleted: (result: { datasets_deleted: number }) => void;
+}) {
+  const client = useQueryClient();
+  const [message, setMessage] = useState("");
+
+  const remove = useMutation({
+    mutationFn: () => deleteTestCase(testCaseId),
+    onSuccess: async (result) => {
+      // The whole ["test-cases"] subtree: this draft's own read, every filtered
+      // list, and the unfiltered one. Narrower keys would leave the list the
+      // user is about to land on still showing the row that just went.
+      await client.invalidateQueries({ queryKey: ["test-cases"] });
+      onDeleted(result);
+    },
+    onError: (err) => setMessage(err instanceof Error ? err.message : "刪除失敗。"),
+  });
+
+  return (
+    <>
+      <h2>刪除這個 Test Case</h2>
+      <p>
+        <ConfirmDelete
+          scopeId={`delete-scope-${testCaseId}`}
+          scope="會刪掉這個草稿與它已上傳的檔案。已經跑過的 Run 及其快照不受影響——那是那些 Run 執行內容的紀錄。"
+          pending={remove.isPending}
+          onAsk={() => setMessage("")}
+          onConfirm={() => remove.mutate()}
+          // Distinct from the 刪除 on every criterion and every uploaded file:
+          // three unlabelled 刪除 buttons on one page is three ways to destroy
+          // three different things, told apart only by position.
+          label="刪除整個 Test Case"
+          confirmLabel="確認刪除整個 Test Case"
+        />
+      </p>
+      {message && <p role="alert">{message}</p>}
+    </>
   );
 }
 
@@ -262,6 +428,9 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
   const client = useQueryClient();
   const [text, setText] = useState("");
   const [message, setMessage] = useState("");
+  // Proposals, held on the client only. Nothing was written by asking, so
+  // walking away from this list leaves the draft exactly as it was.
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const refresh = () => client.invalidateQueries({ queryKey: ["test-cases"] });
 
   const add = useMutation({
@@ -276,9 +445,9 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
 
   const suggest = useMutation({
     mutationFn: () => suggestCriteria(testCase.test_case_id),
-    onSuccess: async () => {
-      setMessage("");
-      await refresh();
+    onSuccess: (res) => {
+      setSuggestions(res.suggestions.map((s) => s.text));
+      setMessage(res.suggestions.length === 0 ? "這次沒有可用的建議，請自己手動輸入。" : "");
     },
     onError: (err) =>
       setMessage(
@@ -288,6 +457,21 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
             ? err.message
             : "無法取得建議。",
       ),
+  });
+
+  // Adoption is the ordinary add route with the wording labelled as a model's,
+  // one at a time: the user decides which proposals become criteria, and each
+  // one still arrives unconfirmed because adopting a wording is not agreeing
+  // to it (TEST-001 確認權在使用者).
+  const adopt = useMutation({
+    mutationFn: (proposal: string) =>
+      addCriterion(testCase.test_case_id, proposal, "suggested").then(() => proposal),
+    onSuccess: async (proposal) => {
+      setSuggestions((prev) => prev.filter((s) => s !== proposal));
+      setMessage("");
+      await refresh();
+    },
+    onError: (err) => setMessage(err instanceof Error ? err.message : "無法採納這條建議。"),
   });
 
   return (
@@ -330,6 +514,34 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
         </button>
       </p>
       {message && <p role="alert">{message}</p>}
+
+      {suggestions.length > 0 && (
+        <>
+          <h3>系統的建議（尚未加入）</h3>
+          <p className="note">
+            以下只是建議，還沒有寫進這個 Test Case。按「採納」才會加成一條驗收條件，並且會標成
+            系統建議、維持未確認——要不要算數還是你決定。不想要就按「忽略」，什麼都不會發生。
+          </p>
+          <ul className="criterion-list">
+            {suggestions.map((s) => (
+              <li key={s} className="criterion">
+                <p>{s}</p>
+                <p>
+                  <button type="button" disabled={adopt.isPending} onClick={() => adopt.mutate(s)}>
+                    採納
+                  </button>{" "}
+                  <button
+                    type="button"
+                    onClick={() => setSuggestions((prev) => prev.filter((x) => x !== s))}
+                  >
+                    忽略
+                  </button>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </>
   );
 }
@@ -590,6 +802,11 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
                 >
                   刪除
                 </button>
+                {/* TEST-002 的保存政策，落到這一個檔案上。沒回報就寫「未回報」,
+                    不編一個到期日出來。 */}
+                <p className="note">
+                  {d.expires_at ? `保存到 ${d.expires_at} 自動刪除` : "到期日未回報"}
+                </p>
               </li>
             ))}
           </ul>

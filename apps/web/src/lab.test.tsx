@@ -224,6 +224,28 @@ test("02:TEST-005 the summary discloses every required item before the run start
   expect(text).not.toContain("sk-");
 });
 
+// 設計 §1 原則 3: every field inside summary_hash has to be readable, or the
+// user is re-confirming something they have never seen. The four resource
+// limits and the provider details below the fold are in the hash, so they are
+// on the page — collapsed, but present and reachable.
+test("02:TEST-005 the fields inside summary_hash are all on screen, the quiet ones behind a disclosure", async () => {
+  stubPlatform();
+  await renderLab();
+
+  const details = container.querySelector("details");
+  expect(details, `no disclosure; DOM was:\n${container.textContent}`).not.toBeNull();
+  const text = details?.textContent ?? "";
+  expect(text).toContain("256"); // max_pids
+  expect(text).toContain("1024"); // max_open_files
+  expect(text).toContain("100.0 MB"); // artifact_total_bytes
+  expect(text).toContain("25.0 MB"); // artifact_file_bytes
+  expect(text).toContain("600 秒"); // wall_clock_soft_seconds
+  // provider.rootless is false here and says so; runtime is absent and is
+  // 未回報 rather than an empty gap that reads as "none".
+  expect(text).toContain("rootless：否");
+  expect(text).toContain("未回報");
+});
+
 // PDM-005 §5.3/§5.2a-6. Both ends of the range have to be on screen, and the word
 // "估計" has to be too — it sits outside summary_hash, so it must not read like
 // one of the facts the user is agreeing to.

@@ -112,6 +112,12 @@ export interface Dataset {
   file_name: string;
   content_type: string;
   size_bytes: number;
+  /**
+   * TEST-002's retention, per file: 90 days from upload. Optional here and not
+   * in the contract — a server that does not report it is rendered as 未回報
+   * rather than as an expiry nobody stated.
+   */
+  expires_at?: string;
 }
 
 export function uploadDataset(testCaseId: string, file: File) {
