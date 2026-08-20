@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
 // ErrFetch marks URL-import failures the client can fix: disallowed host,
@@ -161,12 +163,12 @@ func (f *URLFetcher) download(ctx context.Context, rawURL string) ([]byte, error
 		return nil, fmt.Errorf("%w: source returned status %d", ErrFetch, resp.StatusCode)
 	}
 
-	data, err := io.ReadAll(io.LimitReader(resp.Body, MaxZipBytes+1))
+	data, err := io.ReadAll(io.LimitReader(resp.Body, skillpkg.MaxZipBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrFetch, err)
 	}
-	if len(data) > MaxZipBytes {
-		return nil, fmt.Errorf("%w: package exceeds %d bytes", ErrFetch, MaxZipBytes)
+	if len(data) > skillpkg.MaxZipBytes {
+		return nil, fmt.Errorf("%w: package exceeds %d bytes", ErrFetch, skillpkg.MaxZipBytes)
 	}
 	return data, nil
 }

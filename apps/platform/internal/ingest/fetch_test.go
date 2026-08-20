@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
 func TestFetchRejectsDisallowedHost(t *testing.T) {
@@ -66,7 +68,7 @@ func TestFetchRedirectOffAllowListBlocked(t *testing.T) {
 
 func TestFetchSizeCap(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write(make([]byte, MaxZipBytes+1))
+		_, _ = w.Write(make([]byte, skillpkg.MaxZipBytes+1))
 	}))
 	defer srv.Close()
 	host := strings.TrimPrefix(srv.URL, "http://")

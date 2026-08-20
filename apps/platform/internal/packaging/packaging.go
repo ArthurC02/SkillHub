@@ -27,7 +27,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
@@ -252,7 +251,7 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws gen.Workspace, p
 	if err != nil {
 		return fmt.Errorf("stored package unreadable: %w", err)
 	}
-	fsys, err := ingest.PackageFS(data)
+	fsys, err := skillpkg.PackageFS(data)
 	if err != nil {
 		return fmt.Errorf("stored package unreadable: %w", err)
 	}
@@ -329,15 +328,15 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws gen.Workspace, p
 	if err != nil {
 		return err
 	}
-	if len(zipped) > ingest.MaxZipBytes {
+	if len(zipped) > skillpkg.MaxZipBytes {
 		return fmt.Errorf("the produced package is %d bytes, over the %d byte limit",
-			len(zipped), ingest.MaxZipBytes)
+			len(zipped), skillpkg.MaxZipBytes)
 	}
 
 	// The invariant of PACK-009, asserted on the bytes that would be handed out:
 	// re-opening them the way import does must produce a package import would
 	// accept.
-	produced, err := ingest.PackageFS(zipped)
+	produced, err := skillpkg.PackageFS(zipped)
 	if err != nil {
 		return fmt.Errorf("the produced package could not be re-opened: %w", err)
 	}

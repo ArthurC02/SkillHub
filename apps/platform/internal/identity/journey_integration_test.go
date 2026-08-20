@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/eval"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/run/providertest"
@@ -221,7 +220,7 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 	}
 	// The journey ends with bytes on the user's disk, so it ends with an assertion
 	// about those bytes rather than about the response code.
-	fsys, err := ingest.PackageFS(data)
+	fsys, err := skillpkg.PackageFS(data)
 	if err != nil {
 		t.Fatalf("what the journey handed the user is not an openable package: %v", err)
 	}

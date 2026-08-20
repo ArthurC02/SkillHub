@@ -161,8 +161,8 @@ func (s *Service) Download(
 	// file, and writing one for bytes that were not there would make the history
 	// wrong in the direction nobody checks.
 	//
-	// ponytail: the whole package is materialised (32 MiB ceiling, ingest
-	// .MaxZipBytes). Give ObjectStore an io.ReadCloser variant if packages or
+	// ponytail: the whole package is materialised (32 MiB ceiling,
+	// skillpkg.MaxZipBytes). Give ObjectStore an io.ReadCloser variant if packages or
 	// concurrency grow past what that costs in memory.
 	data, err := s.Store.Get(ctx, row.ObjectKey)
 	if err != nil {

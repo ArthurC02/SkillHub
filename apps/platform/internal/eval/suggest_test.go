@@ -15,8 +15,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
 func TestSuggestionDigestNeverShowsEvidenceOutsideItsAllowlist(t *testing.T) {
@@ -173,7 +173,7 @@ func TestPatchingKeepsThePackageRootAndEveryUntouchedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fsys, err := ingest.PackageFS(patched)
+	fsys, err := skillpkg.PackageFS(patched)
 	if err != nil {
 		t.Fatalf("the patched archive is no longer a readable package: %v", err)
 	}
@@ -192,7 +192,7 @@ func TestPatchingKeepsThePackageRootAndEveryUntouchedFile(t *testing.T) {
 
 	// The original bytes are still the original bytes: patching returns a new
 	// archive and never edits the stored one (iron rule 4 in the small).
-	if same, _ := ingest.PackageFS(original); same != nil {
+	if same, _ := skillpkg.PackageFS(original); same != nil {
 		if before, _ := fs.ReadFile(same, "SKILL.md"); string(before) != skillMD {
 			t.Error("patching modified the archive it was given")
 		}

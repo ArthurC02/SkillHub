@@ -18,8 +18,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
 // --- fixtures ----------------------------------------------------------------
@@ -272,7 +272,7 @@ func storedFile(t *testing.T, a *api, key, path string) string {
 	if err != nil {
 		t.Fatalf("stored package %s: %v", key, err)
 	}
-	fsys, err := ingest.PackageFS(data)
+	fsys, err := skillpkg.PackageFS(data)
 	if err != nil {
 		t.Fatal(err)
 	}

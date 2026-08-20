@@ -34,7 +34,6 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/analytics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
@@ -455,7 +454,7 @@ func (h *Handler) SkillFiles(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusServiceUnavailable, "stored package is not readable")
 		return
 	}
-	fsys, err := ingest.PackageFS(data)
+	fsys, err := skillpkg.PackageFS(data)
 	if err != nil {
 		httpx.WriteError(w, http.StatusServiceUnavailable, "stored package is not readable")
 		return
@@ -602,7 +601,7 @@ func (h *Handler) scanPackage(ctx context.Context, key string) (skillpkg.Report,
 	if err != nil {
 		return skillpkg.Report{}, false
 	}
-	fsys, err := ingest.PackageFS(data)
+	fsys, err := skillpkg.PackageFS(data)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}

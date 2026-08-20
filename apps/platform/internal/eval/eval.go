@@ -666,7 +666,7 @@ func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg
 	if err != nil {
 		return skillpkg.Report{}, false
 	}
-	fsys, err := ingest.PackageFS(data)
+	fsys, err := skillpkg.PackageFS(data)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}

@@ -28,7 +28,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
@@ -107,7 +106,7 @@ func (s *Service) packageReport(ctx context.Context, objectKey string) (skillpkg
 	if err != nil {
 		return skillpkg.Report{}, false
 	}
-	fsys, err := ingest.PackageFS(data)
+	fsys, err := skillpkg.PackageFS(data)
 	if err != nil {
 		return skillpkg.Report{}, false
 	}

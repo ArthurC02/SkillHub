@@ -80,14 +80,14 @@ linters:
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
         # catalog -> analytics is legal (projection facts).
-        # catalog -> ingest is tolerated for now:
-        # drift: DDD-006 (catalog -> ingest, 拆分後移入 deny)
         catalog:
           files:
             - "**/internal/catalog/**"
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/eval
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/ingest
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
@@ -105,8 +105,10 @@ linters:
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
         # eval -> testlab and eval -> trace are legal synchronous queries.
-        # eval -> ingest is tolerated for now:
-        # drift: DDD-006 (eval -> ingest)
+        # eval -> ingest is legal (Customer–Supplier): 採納建議 writes the new
+        # version through ingest.SaveVersion, the one path that runs the full
+        # import validation pipeline. A second version-creation path here would
+        # be a second truth (M4 PACK-002 ruling, DDD-006 2026-08-20).
         eval:
           files:
             - "**/internal/eval/**"
@@ -154,8 +156,6 @@ linters:
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
         # packaging -> testlab is a legal synchronous query.
-        # packaging -> ingest is tolerated for now:
-        # drift: DDD-006 (packaging -> ingest)
         packaging:
           files:
             - "**/internal/packaging/**"
@@ -166,6 +166,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/catalog
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/eval
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/ingest
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
@@ -207,8 +209,6 @@ linters:
         # run -> testlab and run -> trace are legal synchronous collaborations.
         # run -> eval was DDD-005; the terminal transition now only announces
         # run.succeeded/run.failed and eval's own consumer enqueues the evaluation.
-        # One tolerated inversion left:
-        # drift: DDD-006 (run -> ingest)
         run:
           files:
             - "**/internal/run/**"
@@ -219,6 +219,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/catalog
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/eval
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/ingest
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"

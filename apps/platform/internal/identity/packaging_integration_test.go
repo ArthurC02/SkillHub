@@ -270,7 +270,7 @@ func TestEveryTargetProducesAPackageThePlatformWouldAcceptBack(t *testing.T) {
 			}
 
 			// The invariant, stated exactly as packaging-design §2.3 states it.
-			fsys, err := ingest.PackageFS(produced)
+			fsys, err := skillpkg.PackageFS(produced)
 			if err != nil {
 				t.Fatalf("the produced package could not be opened the way import opens one: %v", err)
 			}
@@ -1093,7 +1093,7 @@ func TestTheStandardPackageIsTheSourceBytesPlusExactlyThreeFiles(t *testing.T) {
 
 	// And the stripped package is one the platform takes back — the operation the
 	// verification step describes, run here so a user is never the first to try it.
-	fsys, err := ingest.PackageFS(zipOf(t, stripped))
+	fsys, err := skillpkg.PackageFS(zipOf(t, stripped))
 	if err != nil {
 		t.Fatalf("the stripped package could not be opened the way import opens one: %v", err)
 	}

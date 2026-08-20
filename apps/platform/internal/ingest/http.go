@@ -58,7 +58,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, MaxZipBytes)
+	r.Body = http.MaxBytesReader(w, r.Body, skillpkg.MaxZipBytes)
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		var tooLarge *http.MaxBytesError
@@ -94,7 +94,7 @@ func (h *Handler) SaveVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, MaxZipBytes)
+	r.Body = http.MaxBytesReader(w, r.Body, skillpkg.MaxZipBytes)
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		var tooLarge *http.MaxBytesError
@@ -140,7 +140,7 @@ func (h *Handler) ImportURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
-	if errors.Is(err, ErrBadArchive) || errors.Is(err, ErrFetch) {
+	if errors.Is(err, skillpkg.ErrBadArchive) || errors.Is(err, ErrFetch) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}

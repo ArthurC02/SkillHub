@@ -17,7 +17,7 @@ import (
 // The 45 pinned-commit seed packages are the legal samples and prove only that
 // validation does not reject good input. This test drives the other half — one
 // mutated package per failure mode — through the same two calls the real import
-// path makes (PackageFS then skillpkg.Validate) and compares every finding
+// path makes (skillpkg.PackageFS then skillpkg.Validate) and compares every finding
 // against a curated expectation file.
 //
 // Env-gated and skipped by default, the same shape as the cross-workspace tests
@@ -34,7 +34,7 @@ import (
 // what a blocking decision is made of.
 type qa002Expectation struct {
 	Base string `json:"base"`
-	// ArchiveError is set when PackageFS is expected to refuse the archive
+	// ArchiveError is set when skillpkg.PackageFS is expected to refuse the archive
 	// outright, which happens before any finding can be produced.
 	ArchiveError bool     `json:"archive_error"`
 	Blocked      bool     `json:"blocked"`
@@ -96,13 +96,13 @@ func checkQA002Variant(t *testing.T, path string, exp qa002Expectation) {
 		t.Fatalf("read: %v", err)
 	}
 
-	fsys, err := PackageFS(data)
+	fsys, err := skillpkg.PackageFS(data)
 	switch {
 	case exp.ArchiveError && err == nil:
 		t.Fatalf("archive was accepted; expected it to be refused before validation")
 	case exp.ArchiveError:
-		if !errors.Is(err, ErrBadArchive) {
-			t.Fatalf("archive refused with %v; expected ErrBadArchive", err)
+		if !errors.Is(err, skillpkg.ErrBadArchive) {
+			t.Fatalf("archive refused with %v; expected skillpkg.ErrBadArchive", err)
 		}
 		return
 	case err != nil:

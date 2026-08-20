@@ -26,8 +26,8 @@ ADR-002 的領域模組正式對映為 Bounded Context。每個 `internal/` 套�
 | --- | --- | --- | --- |
 | Identity & Workspace | Core | `identity` | WS、SEC |
 | Catalog & Discovery | Core | `catalog` | DISC |
-| Skill Registry & Versioning | Core | `registry`、`skillpkg`、（自 `ingest` 拆出的套件儲存面） | SKILL |
-| Trust & Supply Chain | Core | `ingest`（拆分後保留的匯入管線面） | SKILL、SEC |
+| Skill Registry & Versioning | Core | `registry`、`skillpkg` | SKILL |
+| Trust & Supply Chain | Core | `ingest`（匯入管線；`SaveVersion` 是版本寫入的唯一驗證路徑） | SKILL、SEC |
 | Test Lab | Core | `testlab` | TEST |
 | Run Orchestration | Core | `run` | RUN、SBX |
 | Evaluation & Improvement | Core | `eval` | EVAL |
@@ -35,6 +35,8 @@ ADR-002 的領域模組正式對映為 Bounded Context。每個 `internal/` 套�
 | Run Trace | Supporting | `trace` | TRACE |
 | Policy & Usage | Supporting | `analytics`（quota 計數面目前寄居 `run`，拆分屬待決策） | PDM、NFR |
 | —（跨切面，非 context） | Generic | `audit`、`outbox`、`objreconcile`、`llmclient`、`platform/*`、`apiserver`、`api/gen` | — |
+
+2026-08-20（DDD-006）：原設想自 `ingest` 拆出的「套件儲存面」經盤點實為無狀態 zip 讀取 helper（`PackageFS`／`PackageRoot`／`MaxZipBytes`），已移入 Shared Kernel `skillpkg`；版本寫入與 Trust 驗證管線不可分（M4 PACK-002 重用裁定），留在 `ingest`。
 
 `trace` 原稿漏列，2026-08-20 定案時補入：它擁有 Run Trace 事件的遮罩、入庫與讀取（ADR-009 的 Run Trace 平面），`run` 同步寫入、`eval` 同步讀取。
 
@@ -101,10 +103,11 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 | `run` → `testlab`（snapshot 建立、dataset grant、排程讀取） | 同步查詢，合法 | 保留 |
 | `run` → `trace`（寫入 Run Trace 事件） | 同步寫入，合法 | 保留 |
 | `eval` → `testlab`、`trace` | 同步查詢，合法 | 保留（trace 改注入，DDD-004） |
-| `eval` → `ingest`（SaveVersion 等） | **drift: DDD-006**，應依 ADR-002 由 Registry 建新版本 | ingest 拆分後改依 Registry 公開 API |
-| `packaging` → `ingest`、`testlab` | **drift: DDD-006**（ingest 部分） | 同上；testlab 部分為同步查詢，保留 |
-| `catalog` → `ingest`、`analytics` | **drift: DDD-006**（ingest 部分）；analytics 為投影事實，合法 | ingest 部分同上 |
-| `run` → `ingest`（gateb） | **drift: DDD-006** | 同上 |
+| `eval` → `ingest`（SaveVersion 等） | Customer–Supplier，合法——採納建議必須重用匯入的完整驗證管線（M4 PACK-002 裁定；第二條版本建立路徑＝第二個真相） | 保留 |
+| `packaging` → `testlab` | 同步查詢，合法 | 保留 |
+| `catalog` → `analytics` | 投影事實，合法 | 保留 |
 | 各 context → `identity`（SessionUser／Workspace scope） | 鐵律 3 的入口，合法 | 保留 |
+
+2026-08-20：DDD-006 完成——三個 context 對 `ingest` 的依賴隨純函式移入 `skillpkg` 而消滅並移入 deny；`eval` → `ingest` 合法化如上。
 
 2026-08-20：DDD-005 完成，`run` → `eval` 已事件化並移入 deny。終態轉移只入隊 `run_cleanup`（同 context 內部工序），評估改由 `run.succeeded`／`run.failed` 的 outbox consumer（`internal/eval` 的 `RunEventConsumer`）觸發，故該列自白名單移除。

@@ -169,7 +169,7 @@ func (s *Service) loadVersions(
 func (s *Service) store() ObjectStore { return s.Store }
 
 // readPackage opens a stored archive for reading. Analysis only — the package
-// root is resolved by ingest.PackageFS so a reader here sees exactly the tree the
+// root is resolved by skillpkg.PackageFS so a reader here sees exactly the tree the
 // importer validated.
 func (s *Service) readPackage(ctx context.Context, key string) (fs.FS, []byte, error) {
 	if s.store() == nil {
@@ -179,7 +179,7 @@ func (s *Service) readPackage(ctx context.Context, key string) (fs.FS, []byte, e
 	if err != nil {
 		return nil, nil, err
 	}
-	fsys, err := ingest.PackageFS(data)
+	fsys, err := skillpkg.PackageFS(data)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -333,7 +333,7 @@ func validatePatched(sc suggestionCtx, patches map[string]string, ids []string) 
 		return &Blocked{SuggestionID: first(ids), Reason: BlockedDiffUnavailable,
 			Message: "the stored package could not be rewritten with this change: " + err.Error()}
 	}
-	fsys, err := ingest.PackageFS(patched)
+	fsys, err := skillpkg.PackageFS(patched)
 	if err != nil {
 		return &Blocked{SuggestionID: first(ids), Reason: BlockedValidation,
 			Message: "the package would no longer be readable with this change applied"}
@@ -376,7 +376,7 @@ func patchArchive(data []byte, patches map[string]string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("stored package unreadable: %w", err)
 	}
-	root := ingest.PackageRoot(zr)
+	root := skillpkg.PackageRoot(zr)
 
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
