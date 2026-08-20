@@ -96,9 +96,16 @@ type App struct {
 	TraceSvc     *trace.Service
 }
 
-// NewApp builds the API's object graph. It is the only place the contexts are
-// wired together (ADR-032 §5): cmd/api and the integration tests both call it,
-// so a dependency that is missing here is missing in both.
+// NewApp is the API's composition root: the one place this process wires its
+// contexts together (ADR-032 §5). cmd/api and the integration tests both call
+// it, so a dependency missing here is missing in both — which is the point, and
+// why app_test.go checks the graph without a database.
+//
+// It is the API's root, not the platform's. cmd/worker, cmd/maintenance and
+// cmd/reindex build the services their own deployment unit runs, and none of
+// those objects is this one: the worker's run.Service holds a model gateway and
+// a working queue client, this one holds an insert-only client and no gateway,
+// because the API enqueues and never dispatches (iron rule 7).
 func NewApp(cfg Config) (*App, error) {
 	auth := &identity.Handler{
 		Service:   &identity.Service{Pool: cfg.Pool, OAuth: cfg.OAuth},

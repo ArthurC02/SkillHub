@@ -1,9 +1,14 @@
 // Command api serves the Skill Hub public HTTP API (ADR-010 deployment unit 2).
 //
-// Everything below the environment is wired by apiserver.NewApp, which is the
-// only composition root the platform has (ADR-032 §5). What stays here is what
-// is genuinely this process's own: reading the environment, the HTTP server, the
-// metrics listener and shutdown.
+// Everything below the environment is wired by apiserver.NewApp, this process's
+// composition root — the API's, and only the API's. The platform has four
+// processes and each wires the graph it runs (ADR-032 §5): cmd/worker's root is
+// its buildWorkers, cmd/maintenance wires one service per subcommand, cmd/reindex
+// wires its backfill in main. They share this file's environment variables, not
+// its objects.
+//
+// What stays here is what is genuinely this process's own: reading the
+// environment, the HTTP server, the metrics listener and shutdown.
 package main
 
 import (

@@ -15,6 +15,12 @@
 // and for now that decision is an operator running this command. Re-running is
 // harmless — enriched documents leave the worklist, failures stay pending.
 // REINDEX_BATCH caps one run (default 200).
+//
+// This process's composition root is main() itself, and it wires almost nothing:
+// phase 1 is two generated queries with no service behind them, and phase 2
+// builds the one ingest.Service the backfill needs, after the phase that does not
+// need it has already succeeded. That ordering is the reason it is not wired up
+// front (ADR-032 §5: apiserver.NewApp is the API's root, not the platform's).
 package main
 
 import (

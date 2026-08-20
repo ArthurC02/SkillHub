@@ -15,6 +15,14 @@
 //
 // PURGE_GRACE (Go duration, default 720h) and MAINTENANCE_BATCH (default 100)
 // tune one run. A shortened grace applies to requests already in flight.
+//
+// This process has one composition root per subcommand — the function that runs
+// it — and that is the shape, not an oversight: each job builds the single
+// Service it needs and reads only the configuration that service uses, so
+// check-sources runs on a deployment whose object storage is misconfigured and
+// purge-accounts refuses to start on one whose storage it cannot reach. A shared
+// root would make every job depend on every job's configuration. (ADR-032 §5:
+// apiserver.NewApp is the API's root, not the platform's.)
 package main
 
 import (

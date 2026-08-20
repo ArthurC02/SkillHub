@@ -76,6 +76,17 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 
 （2026-08-20 實作註記：實際簽名為 `NewApp(Config) (*App, error)`＋`App.Handler()`——整合測試需要在路由表建立前 tune `App.Deps`、建立後取得 Service 把手，回傳裸 handler 做不到這兩件事。語意不變：wiring 仍只有這一個地點。）
 
+（2026-08-20 實作註記之二：**「唯一」的範圍是 API 這個 deployment unit，不是整個 platform**。platform 有四個 process，各自有自己的 composition root，且彼此不共用物件：
+
+| Process | Composition root | wire 什麼 |
+| --- | --- | --- |
+| `cmd/api` | `apiserver.NewApp` | 全部 API context 的 Service 與 Handler；`run.Service` 只有 insert-only queue client、沒有 model gateway（鐵律 7） |
+| `cmd/worker` | `cmd/worker` 的 `buildWorkers` | `run.Service`（含 gateway 與可工作的 queue client）、`eval.Service`、outbox dispatcher 與全部 River worker／periodic job |
+| `cmd/maintenance` | 每個子命令各自的函式 | 該次工作用得到的單一 Service；刻意不共用，否則每個 job 都要依賴其他 job 的設定 |
+| `cmd/reindex` | `main()` | phase 1 直接用 generated query，phase 2 才建 `ingest.Service` |
+
+四個 root 是刻意的（deployment unit 不同、需要的設定也不同），此註記只是把文件講準：原文的「唯一化」約束仍然成立於各 process 內部——領域 Service 只在該 process 的 root 建構，禁止在方法內現場建構其他 context 的 Service。漂移防線改為機械化：`cmd/worker/main_test.go` 與 `internal/apiserver/app_test.go` 是不需要資料庫的 wiring smoke test，關鍵依賴漏注入即紅（worker 曾因漏設 `run.Service.Queue` 導致每個 run 都沒清理，當時沒有任何測試會紅）。`cmd/maintenance` 與 `cmd/reindex` 未補測試：兩者的 wiring 是單一 struct literal 且緊接著就被使用，漏注入會在該次命令當場失敗，smoke test 抓不到額外的失效模式。）
+
 ## 考慮過的替代方案
 
 - **全面戰術 DDD（每 context 鋪 aggregate／repository／domain service 三層）**：拒絕。多數 context 不變量稀薄，三層是儀式成本；Go 慣例（package 即模組、struct 即 aggregate）已覆蓋所需。
