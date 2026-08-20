@@ -9,14 +9,18 @@
 // is marked published, so a crash in between re-delivers rather than drops, and
 // every consumer dedupes on event_id (ADR-008 一致性與冪等).
 //
-// The destination is whatever the composition root wires into Deliver; with
-// nothing wired it is the process log. This package stays generic (ADR-032 §1):
+// The destination is whatever the composition root wires into Deliver, normally
+// a Dispatcher fanning one event out to the consumers registered for its type.
+// Wiring nothing is refused rather than defaulted to the log: an outbox that
+// accepts every event and does nothing with it looks identical to a healthy one.
+// This package stays generic (ADR-032 §1):
 // it knows the delivery contract — ordered by commit time, at-least-once,
 // idempotent marking — and nothing about who cares about which event.
 package outbox
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -60,10 +64,21 @@ func (PublishArgs) Kind() string { return "outbox_publish" }
 type Worker struct {
 	river.WorkerDefaults[PublishArgs]
 	Pool *pgxpool.Pool
-	// Deliver hands one event to its destination. Nil means the default log
-	// delivery. A non-nil implementation must be safe to call twice with the same
-	// event_id: this is at-least-once.
+	// Deliver hands one event to its destination, normally (*Dispatcher).Deliver.
+	// It must be safe to call twice with the same event_id: this is at-least-once.
+	//
+	// Nil is a configuration error, not the log destination. It used to mean "log
+	// it and mark it published", which reads as a harmless default and behaves as
+	// a consumer that accepts everything and does nothing: a worker deployed with
+	// its wiring dropped announced healthy delivery of events nobody acted on.
+	// Wanting that behaviour is now something you have to say — see LogOnlyDelivery.
 	Deliver func(context.Context, gen.OutboxEvent) error
+	// LogOnlyDelivery drains to the process log instead of to consumers. For
+	// development, where the point is to watch the events flow without standing up
+	// what listens to them. In production it silently discards every reaction the
+	// events were supposed to trigger, so it is an explicit field rather than the
+	// consequence of forgetting one.
+	LogOnlyDelivery bool
 	// PublishInterval is how often the periodic job drains the backlog; zero means
 	// DefaultPublishInterval. A field rather than a constant so a test can drain in
 	// milliseconds instead of waiting out a production interval.
@@ -95,6 +110,14 @@ func (w *Worker) Work(ctx context.Context, _ *river.Job[PublishArgs]) error {
 // Publish drains up to one batch and returns how many events were handed on.
 // Exported so tests and one-off tooling can drain without waiting for a timer.
 func (w *Worker) Publish(ctx context.Context) (int, error) {
+	// Before the lock and before the pool: a worker with no destination cannot
+	// publish anything, and finding that out after reading a batch would mean
+	// having decided what to do with events we have no way to hand on.
+	deliver, err := w.delivery()
+	if err != nil {
+		return 0, err
+	}
+
 	// One publisher owns the list/deliver/mark window. At-least-once still means
 	// a crash after delivery may redeliver, but two healthy workers must not both
 	// deliver the same unpublished snapshot concurrently.
@@ -137,11 +160,6 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 		return 0, nil
 	}
 
-	deliver := w.Deliver
-	if deliver == nil {
-		deliver = logDelivery
-	}
-
 	// Delivered one at a time, marked in one batch. A failure stops the pass: the
 	// events behind it stay unpublished and get re-delivered, which is the
 	// at-least-once guarantee doing its job. The prefix that did land is still
@@ -181,6 +199,19 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	return len(ids), failure
+}
+
+// delivery picks the destination, or refuses to run without one. Separate from
+// Publish so the refusal is testable without a database: "fail closed" is a
+// claim about a decision, and the decision is here.
+func (w *Worker) delivery() (func(context.Context, gen.OutboxEvent) error, error) {
+	if w.Deliver != nil {
+		return w.Deliver, nil
+	}
+	if w.LogOnlyDelivery {
+		return logDelivery, nil
+	}
+	return nil, errors.New("outbox worker has no Deliver and LogOnlyDelivery is off: refusing to mark events published that nobody consumed")
 }
 
 func (w *Worker) retention() time.Duration {
