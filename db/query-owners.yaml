@@ -1,0 +1,142 @@
+# Query ownership 宣告（ADR-033）
+#
+# sqlc 把 db/queries/*.sql 全部生成到同一個 Go package
+# (apps/platform/internal/platform/db/gen)，所以 depguard 擋得住 `run` import
+# `eval`，卻擋不住 `run` 直接呼叫 `eval` 的 query。這份檔案補上那道防線：
+# 為每一個 query 宣告擁有它的 Bounded Context，由
+# `go -C tools/devctl run . automation-check` 在 CI 強制。
+#
+# 檢查範圍（ADR-033 §決策）：
+#   - 只強制 **write query**（INSERT／UPDATE／DELETE，含 `WITH ... DELETE` 這種
+#     CTE 寫入）。read query 仍要宣告 owner，但暫不擋——擋 read 會在同一批把
+#     十幾條跨 context 讀取變成 allow 條目，讓宣告本身失去訊號。
+#   - 呼叫端 context 由檔案路徑推得：apps/platform/internal/<context>/...
+#   - 只掃 import 了 db/gen 的非測試 Go 檔。
+#
+# owner 判準：**該 query 主要資料表的擁有 context**（context 清單見 ADR-032 §1）。
+# `artifacts` 是唯一被兩個 context 共用的表，依 `kind` 逐 query 指派：
+# run 輸出歸 run，download package 歸 packaging。
+#
+# 維護規則：
+#   - 新增 db/queries/*.sql 的 query 一定要在這裡登記，漏了 CI 會 FAIL。
+#   - 刪掉的 query 也要從這裡移除，殘留條目 CI 會 FAIL。
+#   - `allow:` 是**存量漂移**，不是擴充點。新的跨 context write 一律修程式，
+#     不准往下面加行；清除路徑見 ADR-033。
+
+# 每個 db/queries/*.sql 的預設 owner。
+files:
+  auth.sql: identity
+  beta.sql: analytics
+  dispatch.sql: run
+  evaluation.sql: eval
+  governance.sql: identity
+  packaging.sql: packaging
+  reconcile.sql: objreconcile
+  run_permissions.sql: run
+  runs.sql: run
+  search.sql: catalog
+  skill_fork.sql: registry
+  skill_import.sql: ingest
+  skill_versions.sql: registry
+  skills.sql: registry
+  test_lab.sql: testlab
+  trace.sql: trace
+  users.sql: identity
+  workspaces.sql: identity
+
+# 單一 query 的 owner 覆寫。混合檔（governance/beta/reconcile/runs/trace…）
+# 依主要資料表歸屬，不依它躺在哪個檔。
+queries:
+  # beta.sql：配額與漏斗量測的讀取端在 policy／analytics，資料表不是。
+  CountQuotaRuns: run
+  RunInWorkspace: run
+  GetWorkspaceCreatedAt: identity
+  GetIdentityProviderIDs: identity
+
+  # evaluation.sql：Judge 取材讀 trace_events。
+  FindLiveTraceEvents: trace
+
+  # governance.sql：一個檔裝了三種治理動作，資料表分屬四個 context。
+  InsertAuditEvent: audit
+  ListAuditEventsByActor: audit
+  ListWorkspaceObjectKeys: testlab
+  DeleteWorkspaceDatasets: testlab
+  DeleteWorkspaceArtifacts: run
+  PurgeUnreferencedSkills: registry
+  PurgeUnreferencedSkillSources: ingest
+  TakedownSkill: registry
+  LockSkillForRestriction: registry
+  SetSkillAccessRestriction: registry
+  ListSourcesToCheck: ingest
+  MarkSourceChecked: ingest
+
+  # packaging.sql：打包要讀的溯源材料本身屬於 registry／ingest／testlab／eval。
+  ListTestCasesForSkill: testlab
+  ListSuggestionsAppliedToVersion: eval
+  GetPreviousSkillVersion: registry
+  GetVersionLineage: registry
+  GetOldestSkillVersion: registry
+  GetLineageSource: ingest
+
+  # reconcile.sql：objreconcile 自己的表只有 object_reconcile_sightings；
+  # 其餘是它代掃的別人的列（artifacts 這三條只碰 kind='download_package'）。
+  ListArtifactsPastRetention: packaging
+  MarkArtifactPurged: packaging
+  ListArtifactsClaimingObject: packaging
+  ListDatasetsClaimingObject: testlab
+  MarkDatasetObjectLost: testlab
+
+  # runs.sql：Outbox 表與 run 同檔（同交易寫入），但表是 outbox 的。
+  InsertOutboxEvent: outbox
+  ListUnpublishedOutboxEvents: outbox
+  RecordOutboxDeliveryFailure: outbox
+  DeleteOutboxEventsPublishedBefore: outbox
+  MarkOutboxEventsPublished: outbox
+  ListOutboxEventsByAggregate: outbox
+
+  # skill_import.sql：匯入流程要先查 registry 的既有 Skill／版本。
+  GetSkillByName: registry
+  GetVersionBySkillAndHash: registry
+
+  # skills.sql：Enrichment 摘要住在 search_documents。
+  GetSkillEnrichment: catalog
+
+  # trace.sql：Trace ingest 要先確認 run 存在。
+  GetRunForTraceIngest: run
+  CountRunsNeedingCleanup: run
+
+# 存量漂移：本檔導入時就已存在的跨 context write 呼叫。
+# 每一條都是 DDD-015 的待清除項目，清除路徑見 ADR-033。
+# **不准新增條目**——新的跨 context write 要改程式，不是改這裡。
+allow:
+  # drift: DDD-015 — 帳號刪除的 purge 事務直接清掉別的 context 的列；
+  # 正解是各 context 訂閱 account.deletion_due 事件自清（ADR-033 清除路徑 1）。
+  DetachWorkspaceAnalytics: identity
+  DetachWorkspaceFeedback: identity
+  DeleteWorkspaceDatasets: identity
+  DeleteWorkspaceArtifacts: identity
+  PurgeUnreferencedSkills: identity
+  PurgeUnreferencedSkillSources: identity
+
+  # drift: DDD-015 — ingest 是 AGENTS.md 指定的「版本寫入的唯一驗證路徑」，
+  # 目前直接寫 registry 的 skills／skill_versions；正解是 registry 提供
+  # 帶驗證憑據的 write API，ingest 呼叫它而不是呼叫 query。
+  CreateSkill: ingest
+  CreateSkillVersion: ingest
+  UpdateSkillSummary: ingest
+
+  # drift: DDD-015 — 下架旗標是 catalog 的可見性決策，卻寫在 registry 的
+  # skills.access_restriction；正解是 registry 開一支受限的 restriction 寫入 API。
+  SetSkillAccessRestriction: catalog
+
+  # drift: DDD-015 — search_documents 是 catalog 的索引投影，目前由來源資料的
+  # owner 直接 upsert；正解是把索引寫入收到 catalog 的 projection 服務後面
+  # （registry／ingest 只發事件）。
+  UpsertSearchDocument: registry
+  DeleteSearchDocument: registry
+  UpsertSearchDocumentEnriched: ingest
+
+  # drift: DDD-015 — objreconcile 是 generic 掃描器，代 packaging／testlab
+  # 更新它們的列；正解是掃描器只回報差異，由 owner context 決定怎麼收。
+  MarkArtifactPurged: objreconcile
+  MarkDatasetObjectLost: objreconcile

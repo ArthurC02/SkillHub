@@ -407,7 +407,7 @@ func fileExists(path string) bool {
 
 // Sorted keys make future diagnostic output deterministic when tool-specific
 // checks are added from the manifest.
-func sortedKeys(values map[string]string) []string {
+func sortedKeys[V any](values map[string]V) []string {
 	keys := make([]string, 0, len(values))
 	for key := range values {
 		keys = append(keys, key)

@@ -76,6 +76,7 @@ func automationCheck(root string, out io.Writer) error {
 	}
 
 	problems = append(problems, driftMarkerProblems(root)...)
+	problems = append(problems, queryOwnerProblems(root)...)
 
 	if len(problems) > 0 {
 		for _, problem := range problems {

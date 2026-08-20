@@ -18,7 +18,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
 | `docs/plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/mvp/04-backlog-and-handoffs.md)（活文件）；`m0/`～`m4/` 為各里程碑凍結產出；`content/`／`governance/`／`gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/mvp/README.md](docs/plans/mvp/README.md) |
-| `docs/adr/` | 32 份架構決策紀錄（ADR-000～031；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
+| `docs/adr/` | 34 份架構決策紀錄（ADR-000～033；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
 | `docs/spikes/` | **已刪除，只留墓碑**：M0 驗證用 spike code，結論已沉澱到 m0 報告／ADR-013／ADR-023／`UPGRADES.md`／`tools/goldenset/` | [docs/spikes/README.md](docs/spikes/README.md)（含還原指令與結論落點對照） |
 
 Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **ADR-031（Accepted）** 按產物角色定義；它取代 ADR-024 的 `apps/`／`services/` 雙軌。結構性偏離需先更新 ADR。
@@ -75,7 +75,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容。
-- 新 ADR 從 **ADR-032** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
+- 新 ADR 從 **ADR-034** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
 - ADR 的待決策被後續 ADR 回答時，回填 `→ [ADR-xxx](...)` 引用（現有文件已有此慣例）。
 - 新 ADR 記得更新 [docs/adr/README.md](docs/adr/README.md) 的決策索引。
 - **檔案放哪裡**：活文件放 `docs/plans/mvp/` 根層（編號 `01~`）；里程碑的歷史產出放 `mX/`，里程碑完結即凍結。一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`。
@@ -119,6 +119,8 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
     | Policy & Usage | `policy`（quota 與 retention 規則）、`analytics`（漏斗量測） | PDM、NFR |
     | Generic（無領域規則） | `audit`、`outbox`、`objreconcile`、`llmclient`、`skillpkg`、`platform/*`、`apiserver`、`api/gen` | — |
 
+12. **Query ownership（ADR-033，2026-08-20 起生效）**：sqlc 把全部 query 生成到同一個 package，depguard 看不到。每條 query 的 owner context 宣告在 `db/query-owners.yaml`，由 `devctl automation-check` 強制：**跨 context 的 write query 呼叫會 FAIL**（read 只宣告不擋）。新增或刪除 `db/queries/*.sql` 的 query，同一批要改 `db/query-owners.yaml`，漏了 CI 會 FAIL。該檔的 `allow:` 是**存量漂移清單，不是擴充點**——新的跨 context 寫入要改程式，不准往下面加行。
+
 ## 快速判斷「我該看哪份文件」
 
 | 你要做的事 | 先看 |
@@ -131,6 +133,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 | Monorepo 結構與 CI/CD | ADR-019、031 |
 | Run 生命週期與 Provider 契約 | ADR-004、008 |
 | 安全與信任 | ADR-005、007、015；部署拓撲與安全門檻定值見 ADR-022 |
+| Query 屬於哪個 context、能不能直接寫 | ADR-033＋`db/query-owners.yaml` |
 | 目前還缺什麼、誰在等誰 | `docs/plans/mvp/04-backlog-and-handoffs.md`（殘項三類清單＋跨里程碑待辦） |
 | 封測上線前要做什麼、誰做 | `docs/plans/mvp/m4/release-checklist.md`（程式面尚缺／部署期／負責人動作三段） |
 | 受測者同意書與資料保存政策 | `docs/plans/mvp/gate-test/consent-and-data-policy.md`（**草稿，待法務確認**；閘門與封測共用） |
