@@ -119,11 +119,11 @@ func startWorkerWith(t *testing.T, svc *run.Service, evaluator ...*eval.Service)
 	river.AddWorker(workers, &run.CleanupWorker{Svc: svc})
 	river.AddWorker(workers, &run.OrphanScanWorker{Svc: svc})
 	river.AddWorker(workers, &run.SuperviseWorker{Svc: svc})
-	// EVAL-001: a terminal transition enqueues an evaluation as well as a cleanup,
-	// and River refuses to insert a kind its own Workers bundle does not know. A
-	// process that registers some workers but not this one cannot finish a run at
-	// all - which is why every registration list has to stay in step with
-	// cmd/worker, and why this line is not optional test scaffolding.
+	// EVAL-001: a finished run gets an evaluation, and River refuses to insert a
+	// kind its own Workers bundle does not know. A process that registers some
+	// workers but not this one cannot evaluate a run at all — which is why every
+	// registration list has to stay in step with cmd/worker, and why this line is
+	// not optional test scaffolding.
 	// Trace comes from the composition root in both real processes (ADR-032 §5),
 	// so it has to be injected here too — evaluating a run reads its trace.
 	evalSvc := &eval.Service{Pool: svc.Pool, Trace: &trace.Service{Pool: svc.Pool}}
@@ -131,14 +131,28 @@ func startWorkerWith(t *testing.T, svc *run.Service, evaluator ...*eval.Service)
 		evalSvc = evaluator[0]
 	}
 	river.AddWorker(workers, &eval.Worker{Svc: evalSvc})
-	river.AddWorker(workers, &outbox.Worker{Pool: svc.Pool})
+	// DDD-005: the evaluation job is enqueued by the `run.succeeded`/`run.failed`
+	// consumer, not by the terminal transition, so the outbox has to actually
+	// drain here for a run to reach a verdict. Wired exactly as cmd/worker wires
+	// it, at a test-sized interval.
+	runEvents := &eval.RunEventConsumer{Current: gen.New(svc.Pool).GetCurrentEvaluation}
+	outboxWorker := &outbox.Worker{
+		Pool: svc.Pool, Deliver: runEvents.Deliver, PublishInterval: 200 * time.Millisecond,
+	}
+	river.AddWorker(workers, outboxWorker)
 	c, err := queue.New(svc.Pool, &river.Config{
 		Workers: workers,
 		Queues:  map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 2}},
+		PeriodicJobs: []*river.PeriodicJob{
+			river.NewPeriodicJob(river.PeriodicInterval(outboxWorker.Interval()),
+				func() (river.JobArgs, *river.InsertOpts) { return outbox.PublishArgs{}, nil },
+				&river.PeriodicJobOpts{RunOnStart: true}),
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	runEvents.Insert = c.Insert
 	// The worker needs its own insert-capable client so the jobs it enqueues (the
 	// cleanup a terminal transition owes) actually reach the queue.
 	if svc.Queue == nil {

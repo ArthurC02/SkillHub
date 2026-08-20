@@ -100,10 +100,11 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 | `apiserver` → 全部 context | 表現層／composition root，合法 | 保留 |
 | `run` → `testlab`（snapshot 建立、dataset grant、排程讀取） | 同步查詢，合法 | 保留 |
 | `run` → `trace`（寫入 Run Trace 事件） | 同步寫入，合法 | 保留 |
-| `run` → `eval`（JobArgs 入隊） | **drift: DDD-005**，方向反轉 | 事件化後移除 |
 | `eval` → `testlab`、`trace` | 同步查詢，合法 | 保留（trace 改注入，DDD-004） |
 | `eval` → `ingest`（SaveVersion 等） | **drift: DDD-006**，應依 ADR-002 由 Registry 建新版本 | ingest 拆分後改依 Registry 公開 API |
 | `packaging` → `ingest`、`testlab` | **drift: DDD-006**（ingest 部分） | 同上；testlab 部分為同步查詢，保留 |
 | `catalog` → `ingest`、`analytics` | **drift: DDD-006**（ingest 部分）；analytics 為投影事實，合法 | ingest 部分同上 |
 | `run` → `ingest`（gateb） | **drift: DDD-006** | 同上 |
 | 各 context → `identity`（SessionUser／Workspace scope） | 鐵律 3 的入口，合法 | 保留 |
+
+2026-08-20：DDD-005 完成，`run` → `eval` 已事件化並移入 deny。終態轉移只入隊 `run_cleanup`（同 context 內部工序），評估改由 `run.succeeded`／`run.failed` 的 outbox consumer（`internal/eval` 的 `RunEventConsumer`）觸發，故該列自白名單移除。

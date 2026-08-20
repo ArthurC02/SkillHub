@@ -205,8 +205,9 @@ linters:
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
         # run -> testlab and run -> trace are legal synchronous collaborations.
-        # Two tolerated inversions:
-        # drift: DDD-005 (run -> eval, 事件化後移入 deny)
+        # run -> eval was DDD-005; the terminal transition now only announces
+        # run.succeeded/run.failed and eval's own consumer enqueues the evaluation.
+        # One tolerated inversion left:
         # drift: DDD-006 (run -> ingest)
         run:
           files:
@@ -216,6 +217,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/analytics
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/catalog
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/eval
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"

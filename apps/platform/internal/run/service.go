@@ -14,7 +14,6 @@ import (
 	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
@@ -506,28 +505,17 @@ func (s *Service) Transition(ctx context.Context, p TransitionParams) (gen.Run, 
 	// terminal state owes a cleanup, and the job that does it is enqueued in the
 	// same transaction as the state change. Nobody has to remember to call it, and
 	// a rolled-back transition leaves no orphan cleanup behind (iron rule 9).
+	//
+	// Cleanup is the only job enqueued here, because it is this context's own
+	// housekeeping. What *other* contexts do about a finished run — evaluation,
+	// above all — is driven by the `run.<status>` event written above, not from in
+	// here (DDD-005, contracts/events/domain-events.md §4 rule 5). Same
+	// transactional guarantee, one direction fewer.
 	if IsTerminal(p.To) && s.Queue != nil {
 		if _, err := s.Queue.InsertTx(ctx, tx, CleanupArgs{
 			RunID: uuidString(run.ID), WorkspaceID: uuidString(run.WorkspaceID),
 		}, cleanupInsertOpts()); err != nil {
 			return gen.Run{}, err
-		}
-		// EVAL-001, enqueued in the same transaction for the same reason cleanup is:
-		// a committed terminal run always has an evaluation job and a rolled-back
-		// transition never does (iron rule 9).
-		//
-		// This does NOT feed back into the run. The job writes `evaluations` and
-		// nothing else; `runs.status` and `runs.failure_class` are already final at
-		// this point and stay that way whatever the verdict turns out to be
-		// (ADR-025). Only `succeeded` and `failed` are evaluated: a cancelled or
-		// timed-out run was stopped before it could produce the thing the criteria
-		// are about, and paying a judge to say so tells nobody anything.
-		if p.To == gen.RunStatusSucceeded || p.To == gen.RunStatusFailed {
-			if _, err := s.Queue.InsertTx(ctx, tx, eval.JobArgs{
-				RunID: uuidString(run.ID), WorkspaceID: uuidString(run.WorkspaceID),
-			}, eval.InsertOpts()); err != nil {
-				return gen.Run{}, err
-			}
 		}
 	}
 	if err := tx.Commit(ctx); err != nil {

@@ -18,6 +18,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/outbox"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/queue"
@@ -122,6 +123,14 @@ func main() {
 		slog.Warn("LLM_SERVICE_URL not set; evaluations will be recorded as failed with no task verdict")
 	}
 
+	// DDD-005: the only trigger for an evaluation. A terminal run transition
+	// announces `run.succeeded` / `run.failed` in its own transaction and the
+	// outbox hands that event to this consumer, so internal/run does not have to
+	// know evaluation exists. Queue is filled in below, once the client the whole
+	// worker set is registered with exists.
+	runEvents := &eval.RunEventConsumer{Current: gen.New(pool).GetCurrentEvaluation}
+	outboxWorker := &outbox.Worker{Pool: pool, Deliver: runEvents.Deliver}
+
 	workers := river.NewWorkers()
 	// Every job kind the platform knows about is registered here. A kind with no
 	// worker is not a silent no-op — River fails the job — which is the behaviour
@@ -132,7 +141,7 @@ func main() {
 	river.AddWorker(workers, &run.SuperviseWorker{Svc: runs})
 	river.AddWorker(workers, &eval.Worker{Svc: evaluations})
 	river.AddWorker(workers, &eval.RecoveryWorker{Svc: evaluations})
-	river.AddWorker(workers, &outbox.Worker{Pool: pool})
+	river.AddWorker(workers, outboxWorker)
 	// SEC-006 retention and 04 丙-9's object-existence check, one sweep: expired
 	// download packages lose their bytes, and rows whose object has gone missing
 	// stop claiming it is there.
@@ -159,7 +168,10 @@ func main() {
 			river.NewPeriodicJob(river.PeriodicInterval(run.OrphanScanInterval),
 				func() (river.JobArgs, *river.InsertOpts) { return run.OrphanScanArgs{}, nil },
 				&river.PeriodicJobOpts{RunOnStart: true}),
-			river.NewPeriodicJob(river.PeriodicInterval(outbox.PublishInterval),
+			// RunOnStart because an evaluation now waits on this drain: a restart
+			// that left events in the backlog should not cost the user a full
+			// interval before their finished run gets a verdict.
+			river.NewPeriodicJob(river.PeriodicInterval(outboxWorker.Interval()),
 				func() (river.JobArgs, *river.InsertOpts) { return outbox.PublishArgs{}, nil },
 				&river.PeriodicJobOpts{RunOnStart: true}),
 			// No RunOnStart, unlike the three above: none of them is recovering
@@ -179,6 +191,7 @@ func main() {
 	// meant every run finished un-cleaned — its sandbox and its Virtual Key
 	// surviving the run — with nothing in the log to say so.
 	runs.Queue = client
+	runEvents.Insert = client.Insert
 
 	if err := client.Start(ctx); err != nil {
 		slog.Error("queue start", "error", err)

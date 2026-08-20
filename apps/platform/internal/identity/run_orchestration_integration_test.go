@@ -10,12 +10,15 @@ package identity_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
+	"github.com/riverqueue/river/rivertype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/eval"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/outbox"
@@ -145,6 +148,73 @@ func TestRunWalksTheStateMachineAndIsCleanedUp(t *testing.T) {
 	if fake.Live() != 0 {
 		t.Errorf("%d sandboxes are still held after cleanup", fake.Live())
 	}
+}
+
+// DDD-005 / contracts/events/domain-events.md §4 rule 5: nothing in internal/run
+// enqueues an evaluation any more. The whole chain has to work for a finished run
+// to get one — terminal transition writes `run.succeeded`, the publisher hands it
+// to eval's consumer, the consumer enqueues — and it has to produce exactly one,
+// however many times the at-least-once outbox delivers the event.
+func TestAFinishedRunIsEvaluatedThroughItsDomainEventExactlyOnce(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-event-driven-eval")
+	withProvider(t, a, pool, providertest.Plan{CreatingPolls: 1, RunningPolls: 1})
+
+	created := f.start(t)
+	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
+
+	// The consumer runs off the periodic publish startWorkerWith registers, so the
+	// evaluation appears on its own — no test calls Evaluate here.
+	deadline := time.Now().Add(20 * time.Second)
+	for evaluations(t, pool, created.RunID) == 0 && time.Now().Before(deadline) {
+		time.Sleep(50 * time.Millisecond)
+	}
+	if n := evaluations(t, pool, created.RunID); n != 1 {
+		t.Fatalf("the run's domain event produced %d evaluations, want exactly 1", n)
+	}
+
+	// Redelivery: the run's own committed event, handed to the consumer a second
+	// time the way a publisher that died before marking it published would. A
+	// second evaluation here is a second paid judge call for one run.
+	//
+	// Delivered directly rather than by re-running the publisher: the backlog is
+	// shared with every other test in this package, and this assertion is about
+	// one run's event.
+	var event gen.OutboxEvent
+	if err := pool.QueryRow(context.Background(), `
+		SELECT event_id, event_type, event_version, occurred_at, correlation_id,
+		       causation_id, workspace_id, aggregate_type, aggregate_id, payload, published_at
+		FROM outbox_events WHERE aggregate_id = $1 AND event_type = 'run.succeeded'`,
+		mustUUID(t, created.RunID),
+	).Scan(&event.EventID, &event.EventType, &event.EventVersion, &event.OccurredAt,
+		&event.CorrelationID, &event.CausationID, &event.WorkspaceID, &event.AggregateType,
+		&event.AggregateID, &event.Payload, &event.PublishedAt); err != nil {
+		t.Fatal(err)
+	}
+	consumer := &eval.RunEventConsumer{
+		Current: gen.New(pool).GetCurrentEvaluation,
+		Insert: func(context.Context, river.JobArgs, *river.InsertOpts) (*rivertype.JobInsertResult, error) {
+			t.Error("a redelivered run.succeeded enqueued a second evaluation")
+			return nil, nil
+		},
+	}
+	if err := consumer.Deliver(context.Background(), event); err != nil {
+		t.Fatal(err)
+	}
+	if n := evaluations(t, pool, created.RunID); n != 1 {
+		t.Fatalf("after redelivery the run has %d evaluations, want 1", n)
+	}
+}
+
+func evaluations(t *testing.T, pool *pgxpool.Pool, runID string) int {
+	t.Helper()
+	var n int
+	if err := pool.QueryRow(context.Background(),
+		"SELECT count(*) FROM evaluations WHERE run_id = $1", mustUUID(t, runID)).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
 }
 
 // RUN-006: cancelling a dispatched run reaches the provider, and the run only
@@ -491,13 +561,19 @@ func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 	}
 
 	// A delivery that fails must not mark anything: at-least-once means the event
-	// is still there to be re-sent.
+	// is still there to be re-sent. It must also be *reported* — the pass returns
+	// the failure so River retries the publish job, instead of the backlog sitting
+	// there until the next tick with nobody the wiser.
 	backlog := unpublishedCount(t, pool)
 	failing := &outbox.Worker{Pool: pool, Deliver: func(context.Context, gen.OutboxEvent) error {
 		return context.DeadlineExceeded
 	}}
-	if n, err := failing.Publish(ctx); err != nil || n != 0 {
-		t.Fatalf("failed delivery published %d events (err %v), want 0", n, err)
+	n, err := failing.Publish(ctx)
+	if n != 0 {
+		t.Fatalf("failed delivery published %d events, want 0", n)
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("failed delivery returned %v, want the delivery error", err)
 	}
 	if after := unpublishedCount(t, pool); after != backlog {
 		t.Errorf("a failed delivery changed the backlog from %d to %d", backlog, after)
@@ -508,7 +584,7 @@ func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 		delivered = append(delivered, e.EventType)
 		return nil
 	}}
-	n, err := publisher.Publish(ctx)
+	n, err = publisher.Publish(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
