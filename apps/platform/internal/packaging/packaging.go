@@ -29,6 +29,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/policy"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skillpkg"
 )
 
@@ -83,8 +84,11 @@ var (
 	// and never a blocked_reason.
 	ErrNoStore = errors.New("no object store is configured, so package bytes cannot be read")
 	// ErrRetentionNotConfigured keeps artifact creation fail-closed while the
-	// retention period remains an unratified deployment decision (PDM-006).
-	ErrRetentionNotConfigured = errors.New("download artifact retention is not configured")
+	// retention period remains an unratified deployment decision (PDM-006). The
+	// rule and the sentinel are Policy & Usage's (ADR-032 §1, DDD-014); this alias
+	// keeps it in the list of reasons a packaging call can fail, where the HTTP
+	// layer looks for them.
+	ErrRetentionNotConfigured = policy.ErrRetentionNotConfigured
 )
 
 // ObjectStore is the slice of object storage packaging needs: the source
@@ -104,8 +108,9 @@ type Service struct {
 	// legitimate state and it means "no targets"; it never means "use defaults".
 	Profiles Profiles
 	// Retention must be explicitly configured by a deployment. Zero disables
-	// artifact creation until PDM-006 is ratified.
-	Retention time.Duration
+	// artifact creation until PDM-006 is ratified — the rule is
+	// policy.DownloadRetention.Period, not a check written here.
+	Retention policy.DownloadRetention
 }
 
 // Plan is one answered packaging question, shared by the preview and the create
@@ -517,8 +522,11 @@ func (s *Service) Create(
 	ctx context.Context, ws gen.Workspace, skillID, versionID pgtype.UUID,
 	target string, includeTestCases bool,
 ) (Result, error) {
-	if s.Retention <= 0 {
-		return Result{}, ErrRetentionNotConfigured
+	// Asked before anything is read or built: without a ratified period there is no
+	// expires_at to write, and PDM-006's proposal is not a default (GOV-RETENTION-001).
+	retention, err := s.Retention.Period()
+	if err != nil {
+		return Result{}, err
 	}
 	q := gen.New(s.Pool)
 
@@ -555,12 +563,13 @@ func (s *Service) Create(
 		// "why did this fail" has to outlive the request.
 		return Result{Plan: p}, nil
 	}
-	return s.persist(ctx, ws, p)
+	return s.persist(ctx, ws, p, retention)
 }
 
-func (s *Service) persist(ctx context.Context, ws gen.Workspace, p *Plan) (Result, error) {
+func (s *Service) persist(
+	ctx context.Context, ws gen.Workspace, p *Plan, retention time.Duration,
+) (Result, error) {
 	objectKey := "downloads/" + pgconv.UUIDString(ws.ID) + "/" + p.ContentHash + ".zip"
-	retention := s.Retention
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return Result{}, err

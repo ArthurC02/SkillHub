@@ -116,7 +116,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
     | Evaluation & Improvement | `eval` | EVAL |
     | Packaging & Distribution | `packaging` | PACK |
     | Run Trace | `trace` | TRACE |
-    | Policy & Usage | `analytics`（quota 暫寄居 `run`，DDD-014 抽離） | PDM、NFR |
+    | Policy & Usage | `policy`（quota 與 retention 規則）、`analytics`（漏斗量測） | PDM、NFR |
     | Generic（無領域規則） | `audit`、`outbox`、`objreconcile`、`llmclient`、`skillpkg`、`platform/*`、`apiserver`、`api/gen` | — |
 
 ## 快速判斷「我該看哪份文件」

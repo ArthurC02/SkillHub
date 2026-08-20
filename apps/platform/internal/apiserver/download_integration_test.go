@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/objreconcile"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/policy"
 )
 
 // Exists completes objreconcile.ObjectStore over the in-memory store the rest of
@@ -511,7 +512,7 @@ func TestTheConfiguredRetentionIsWhatDecidesExpiry(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	c := a.login(t, "retention")
-	a.packaging.Retention = time.Hour
+	a.packaging.Retention = policy.DownloadRetention(time.Hour)
 
 	art := buildDownload(t, a, pool, c, "short-lived-skill")
 	expires, err := time.Parse(time.RFC3339, art.ExpiresAt)

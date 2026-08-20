@@ -40,6 +40,8 @@ linters:
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/run
@@ -66,6 +68,8 @@ linters:
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/run
@@ -90,6 +94,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/ingest
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
@@ -120,6 +126,8 @@ linters:
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/run
@@ -141,6 +149,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/eval
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
@@ -180,6 +190,40 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/objreconcile
               desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
 
+        # Policy & Usage (DDD-014). It answers "what may this workspace spend"
+        # and "how long is this kept", and it must be able to answer without
+        # knowing who is asking: every context is denied, including the two that
+        # call it. run and packaging import policy, never the other way round.
+        policy:
+          files:
+            - "**/internal/policy/**"
+            - "!$test"
+          deny:
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/identity
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/analytics
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/catalog
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/eval
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/ingest
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/run
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/testlab
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trace
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/apiserver
+              desc: "presentation layer / composition root; contexts must not import it (ADR-032 §5)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/objreconcile
+              desc: "generic subdomain; contexts must not import it (ADR-032 appendix A)"
+
         registry:
           files:
             - "**/internal/registry/**"
@@ -194,6 +238,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/ingest
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/run
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
@@ -246,6 +292,8 @@ linters:
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/run
@@ -272,6 +320,8 @@ linters:
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/run
@@ -297,6 +347,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/ingest
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
+              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
@@ -332,6 +384,8 @@ linters:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/ingest
               desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/packaging
+              desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
+            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/policy
               desc: "generic subdomain must not import a bounded context (ADR-032 §1)"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/registry
               desc: "generic subdomain must not import a bounded context (ADR-032 §1)"

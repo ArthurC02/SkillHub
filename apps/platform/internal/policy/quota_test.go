@@ -1,6 +1,11 @@
-package run
+package policy
 
-import "testing"
+import (
+	"context"
+	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
+)
 
 // Enforcement and display move together (ADR-028 決策 3): the router mounts
 // GET /me/quota and the pre-run summary carries a quota block only where this
@@ -49,5 +54,16 @@ func TestRemainingIsClamped(t *testing.T) {
 	}
 	if got := remaining(5, 2); got != 3 {
 		t.Errorf("remaining(5, 2) = %d, want 3", got)
+	}
+}
+
+// An unenforced allowance refuses nothing and touches no database — which is why
+// EnforceQuota can be asked with a nil handle here. The paired half (a configured
+// allowance actually refusing a run) needs real rows and lives in
+// apiserver/beta_integration_test.go.
+func TestEnforceQuotaIsSilentWhenNotConfigured(t *testing.T) {
+	reason, err := EnforceQuota(context.Background(), nil, QuotaLimits{}, pgtype.UUID{})
+	if reason != "" || err != nil {
+		t.Errorf("EnforceQuota with no allowance = (%q, %v), want (\"\", nil)", reason, err)
 	}
 }

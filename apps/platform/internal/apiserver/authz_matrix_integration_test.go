@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/policy"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
 
@@ -127,7 +127,7 @@ var anonymousRoutes = []anonCase{
 	// Mounted only where an allowance is enforced (ADR-028 決策 3). newAPI enforces
 	// none, so the answer here is the unmounted one; the mounted one is asserted
 	// separately below, because a route with two states needs both.
-	{pattern: "GET /me/quota", want: http.StatusNotFound, conditional: "run.QuotaLimits.Enforced()"},
+	{pattern: "GET /me/quota", want: http.StatusNotFound, conditional: "policy.QuotaLimits.Enforced()"},
 	{pattern: "GET /runs", want: http.StatusUnauthorized},
 	{pattern: "GET /runs/{id}", want: http.StatusUnauthorized},
 	{pattern: "POST /runs/{id}/cancel", want: http.StatusUnauthorized},
@@ -208,7 +208,7 @@ func TestAnonymousCallersGetThePublicSurfaceAndNothingElse(t *testing.T) {
 	// The second state of the one conditional route the matrix cannot carry twice.
 	// Enforced or not, an anonymous caller must never get an allowance back — the
 	// difference between the two deployments is 404 versus 401, not 404 versus 200.
-	quota := betaAPI(t, pool, run.DefaultQuotaLimits(), nil, 0)
+	quota := betaAPI(t, pool, policy.DefaultQuotaLimits(), nil, 0)
 	quotaAnon := &client{Client: http.DefaultClient, base: quota.URL}
 	if got := quotaAnon.status(t, http.MethodGet, "/me/quota"); got != http.StatusUnauthorized {
 		t.Errorf("GET /me/quota with an allowance enforced: got %d, want 401", got)

@@ -28,6 +28,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/policy"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
@@ -242,12 +243,12 @@ func retentionFromEnv() time.Duration {
 // RUN_QUOTA=off is the escape hatch, and it turns off the display as well: with no
 // allowance enforced, GET /me/quota is not mounted and the pre-run summary carries
 // no quota block. The two move together on purpose (04 乙-2).
-func quotaFromEnv() run.QuotaLimits {
+func quotaFromEnv() policy.QuotaLimits {
 	if strings.EqualFold(os.Getenv("RUN_QUOTA"), "off") {
 		slog.Warn("RUN_QUOTA=off; the PDM-010 run allowance is not enforced and not shown")
-		return run.QuotaLimits{}
+		return policy.QuotaLimits{}
 	}
-	return run.DefaultQuotaLimits()
+	return policy.DefaultQuotaLimits()
 }
 
 // analyticsRetentionFromEnv reads how long a funnel event is kept, and therefore

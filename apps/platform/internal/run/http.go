@@ -13,6 +13,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/policy"
 )
 
 // Handler exposes the run endpoints (contracts/openapi/public.yaml). Every route
@@ -188,7 +189,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	// status code. The message carries the reset time, because "come back later"
 	// without a time is the version of this screen nobody can act on.
 	if errors.Is(err, ErrScanBlocked) || errors.Is(err, ErrRunLimitReached) ||
-		errors.Is(err, ErrAccessRestricted) || errors.Is(err, ErrQuotaExceeded) {
+		errors.Is(err, ErrAccessRestricted) || errors.Is(err, policy.ErrQuotaExceeded) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}

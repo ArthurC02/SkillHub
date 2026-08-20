@@ -33,10 +33,12 @@ ADR-002 的領域模組正式對映為 Bounded Context。每個 `internal/` 套�
 | Evaluation & Improvement | Core | `eval` | EVAL |
 | Packaging & Distribution | Core | `packaging` | PACK |
 | Run Trace | Supporting | `trace` | TRACE |
-| Policy & Usage | Supporting | `analytics`（quota 計數面目前寄居 `run`，拆分屬待決策） | PDM、NFR |
+| Policy & Usage | Supporting | `policy`（quota 與 retention 規則）、`analytics`（漏斗量測） | PDM、NFR |
 | —（跨切面，非 context） | Generic | `audit`、`outbox`、`objreconcile`、`llmclient`、`platform/*`、`apiserver`、`api/gen` | — |
 
 2026-08-20（DDD-006）：原設想自 `ingest` 拆出的「套件儲存面」經盤點實為無狀態 zip 讀取 helper（`PackageFS`／`PackageRoot`／`MaxZipBytes`），已移入 Shared Kernel `skillpkg`；版本寫入與 Trust 驗證管線不可分（M4 PACK-002 重用裁定），留在 `ingest`。
+
+2026-08-20（DDD-014）：Policy & Usage 完成抽離。`policy` 是新套件，收下兩條原先寄居他處的規則——PDM-010 的 quota 上限、計數查詢與拒絕判定（原 `run/quota.go`），以及 Download Artifact retention 的 fail-closed 判定（原 `packaging` 內一行 `<= 0` 檢查，債務帳 `GOV-RETENTION-001`）。**強制點沒有跟著搬**：`policy.EnforceQuota` 由 `run` 在 create-run 交易內、`requireRunSlot` 的 advisory lock 之下呼叫，ADR-028 決策 2 的時點不變；`policy` 只決策，不動作。`analytics` 維持獨立的 Supporting，**不併入** `policy`——ADR-029 的漏斗量測有自己的保存期、自己的揭露端點與自己的稽核邊界，與此處共用的只有「retention」這個詞。Workspace 併發上限（`run.MaxConcurrentRunsPerWorkspace`）留在 `run`：那是「同時能有幾個 Run」的 Run Orchestration 不變量，不是額度；`run` 在輸出畫面時把它併進 quota 的四項顯示，那是顯示決定不是所有權。未來計費以 `policy` 為家（ADR-011 的 Policy & Usage 所有權清單）。
 
 `trace` 原稿漏列，2026-08-20 定案時補入：它擁有 Run Trace 事件的遮罩、入庫與讀取（ADR-009 的 Run Trace 平面），`run` 同步寫入、`eval` 同步讀取。
 
@@ -87,7 +89,7 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 
 ## 待決策（三項均已於 2026-08-19 由負責人裁定）
 
-- ~~Policy & Usage 是否從 `run`／`analytics` 中抽成獨立套件，或等計費需求成立再抽。~~ → **裁定：完成 platform DDD 化（調整計畫 Phase 0～2 收斂）之後抽離**，列為 [DDD-014](../plans/platform-ddd-realignment-2026-08-19.md)。
+- ~~Policy & Usage 是否從 `run`／`analytics` 中抽成獨立套件，或等計費需求成立再抽。~~ → **裁定：完成 platform DDD 化（調整計畫 Phase 0～2 收斂）之後抽離**，列為 [DDD-014](../plans/platform-ddd-realignment-2026-08-19.md)。**2026-08-20 已執行**（`internal/policy`，見 §1 註記與附錄 A 兩列）。
 - ~~`testlab` snapshot 是否抽成獨立公開契約子包，或以文件標註公開面即可。~~ → **裁定：不抽子包，以 UI/UX 導向重整公開契約面**（單一讀寫門面＋依使用者旅程收整 HTTP 面），設計見 [testlab-contract-design-2026-08-19.md](../plans/testlab-contract-design-2026-08-19.md)，執行為 DDD-007。
 - ~~事件目錄（outbox 事件 schema）是否進 `contracts/`，或以 Go 型別＋文件為準。~~ → **裁定：依最佳實務落 `contracts/events/`（跟隨 Run Trace 契約前例，程式註解亦早已預告此落點）**；文件目錄先行、JSON Schema 待第一個非 Go consumer 出現再補。目錄本體：[contracts/events/domain-events.md](../../contracts/events/domain-events.md)，程式側收斂為 DDD-012。
 
@@ -102,6 +104,8 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 | `apiserver` → 全部 context | 表現層／composition root，合法 | 保留 |
 | `run` → `testlab`（snapshot 建立、dataset grant、排程讀取） | 同步查詢，合法 | 保留 |
 | `run` → `trace`（寫入 Run Trace 事件） | 同步寫入，合法 | 保留 |
+| `run` → `policy`（create-run 交易內問額度、讀 quota 顯示面） | Customer–Supplier，合法——「當下決策需要的事實」 | 保留 |
+| `packaging` → `policy`（建立 Download Artifact 前問 retention） | Customer–Supplier，合法——沒有已核定的保存期就不建產物 | 保留 |
 | `eval` → `testlab`、`trace` | 同步查詢，合法 | 保留（trace 改注入，DDD-004） |
 | `eval` → `ingest`（SaveVersion 等） | Customer–Supplier，合法——採納建議必須重用匯入的完整驗證管線（M4 PACK-002 裁定；第二條版本建立路徑＝第二個真相） | 保留 |
 | `packaging` → `testlab` | 同步查詢，合法 | 保留 |

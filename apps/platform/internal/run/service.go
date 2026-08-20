@@ -20,6 +20,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/policy"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
@@ -74,9 +75,9 @@ type Service struct {
 	TraceIngestBaseURL string
 	// Quota is the PDM-010 free run allowance this deployment applies (ADR-028).
 	// The zero value enforces nothing and displays nothing, which is the honest
-	// state of a build with no allowance — see quota.go for why enforcement had to
-	// exist before the display did.
-	Quota QuotaLimits
+	// state of a build with no allowance — see internal/policy for why enforcement
+	// had to exist before the display did.
+	Quota policy.QuotaLimits
 	// Gateway mints and revokes the per-run model credential (SBX-008, ADR-017).
 	// Nil is a deployment with no model gateway: no grant is minted, the egress
 	// allow list defaultPolicy writes stays empty, and the sandbox gets no route

@@ -55,7 +55,18 @@
 
 | ID | 狀態 | 項目 | 完成條件 |
 | --- | --- | --- | --- |
-| DDD-014 | open | 抽離 Policy & Usage context | 前置：Phase 0～2 全數收斂。quota 計數與強制點（現寄居 `run`）、retention 政策（現寄居 `packaging`，見債務帳 `GOV-RETENTION-001`）、用量記錄收攏為獨立套件；`analytics` 維持 Supporting 不併入；ADR-032 context 對照表與 depguard 白名單同批更新；計費接縫（ADR-011 的 Policy & Usage 所有權清單）以此套件為家。 |
+| DDD-014 | fixed | 抽離 Policy & Usage context | **2026-08-20 完成**（前置 Phase 0～2 同日收斂）：新 `internal/policy`（QuotaLimits／EnforceQuota／Usage／DownloadRetention，含單元測試與計費接縫定位）；`run`、`packaging` 為兩個合法 Customer–Supplier 客戶（depguard 新 policy 規則＋10 條既有規則 deny 更新，drift 0=0 不變）。**語意零變更經套件與定向測試雙重驗證**：ADR-028 強制點仍在 create-run 交易內（policy 決定、run 執行）、三個拒絕標籤位元組不變、`RUN_QUOTA=off` 雙關閉不變、GOV-RETENTION-001 的 fail-closed 不變。刻意留在原地：`MaxConcurrentRunsPerWorkspace`（Run Orchestration 的 in-flight 不變量，非 allowance）、env 解析（cmd）。驗證：lint 0、無 DB 304、整合 518 全綠。 |
+
+## 6. 執行總結（2026-08-20）
+
+DDD-001～014 全數結案（DDD-006 與 DDD-007 依執行時盤點調整裁定，理由行內記錄）。負責人授權「依最佳實務決策、詳實記錄」下的裁定全部落於 ADR-032／本 ledger／各 commit message。執行期間發現、**已列管未修**的殘項：
+
+- `run/job.go` `settle` 依賴轉移表列首為 happy path——順序 load-bearing 無測試（DDD-010 行內），宜補 `next(status)` accessor。
+- trace 同批事件 `occurred_at` 相同導致的排序不定 flake（DDD-005 行內；與債務帳 `TRACE-SEQ-001` 同根）。
+- outbox poison 隔離是最小版：無自動重放工具、Prometheus rule 屬 `O11Y-PROMTOOL-001`（目錄 §5 行內）。
+- 事件目錄缺口 6（aggregate version）依裁定保留 open，第一個需要順序的 consumer 出現才補。
+- `m2/README.md` 的「`RunPermissionSummary` 未宣告 `estimated_cost`」註記已證實過時（`02` 已修正，m2 為凍結目錄故不回改）。
+- packaging 的 `rfc3339` NULL→epoch 行為若日後判定非刻意，需連同 manifest 版本一起決策（DDD-009 行內）。
 
 ## 4. 不做什麼（ponytail 界線）
 

@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/apiserver"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/policy"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
 )
 
@@ -30,7 +31,7 @@ import (
 // built. Any of them may be zero, which is the shipped default for all three.
 func betaAPI(
 	t *testing.T, pool *pgxpool.Pool,
-	quota run.QuotaLimits, invited []string, retention time.Duration,
+	quota policy.QuotaLimits, invited []string, retention time.Duration,
 ) *api {
 	t.Helper()
 	return newAPITuned(t, pool, "", func(d *apiserver.Deps) {
@@ -150,7 +151,7 @@ func betaCount(t *testing.T, pool *pgxpool.Pool, query string, args ...any) int 
 // may not proceed), and no run left behind.
 func TestRunIsRefusedWhenTheDailyAllowanceIsSpent(t *testing.T) {
 	pool := requireDB(t)
-	limits := run.QuotaLimits{Daily: 2, Window: 30, FirstWindow: 30, WindowDays: 30}
+	limits := policy.QuotaLimits{Daily: 2, Window: 30, FirstWindow: 30, WindowDays: 30}
 	a := betaAPI(t, pool, limits, nil, 0)
 	f := newFixture(t, a, pool, "alice-quota-daily")
 
@@ -180,7 +181,7 @@ func TestRunIsRefusedWhenTheDailyAllowanceIsSpent(t *testing.T) {
 // workspace is inside its first window, so the lower of the two applies.
 func TestFirstWindowUsesTheLowerAllowance(t *testing.T) {
 	pool := requireDB(t)
-	limits := run.QuotaLimits{Daily: 50, Window: 30, FirstWindow: 3, WindowDays: 30}
+	limits := policy.QuotaLimits{Daily: 50, Window: 30, FirstWindow: 3, WindowDays: 30}
 	a := betaAPI(t, pool, limits, nil, 0)
 	f := newFixture(t, a, pool, "alice-quota-first-window")
 
@@ -216,7 +217,7 @@ func TestFirstWindowUsesTheLowerAllowance(t *testing.T) {
 // costing users their allowance, and the compiler cannot catch that.
 func TestOnlyPlatformSideFailuresAreRefunded(t *testing.T) {
 	pool := requireDB(t)
-	limits := run.QuotaLimits{Daily: 100, Window: 100, FirstWindow: 100, WindowDays: 30}
+	limits := policy.QuotaLimits{Daily: 100, Window: 100, FirstWindow: 100, WindowDays: 30}
 	a := betaAPI(t, pool, limits, nil, 0)
 
 	cases := []struct {
@@ -254,7 +255,7 @@ func TestOnlyPlatformSideFailuresAreRefunded(t *testing.T) {
 // refund (PDM-010's own inference from where counting starts).
 func TestRunsThatNeverReachedPreparingDoNotCount(t *testing.T) {
 	pool := requireDB(t)
-	limits := run.QuotaLimits{Daily: 10, Window: 10, FirstWindow: 10, WindowDays: 30}
+	limits := policy.QuotaLimits{Daily: 10, Window: 10, FirstWindow: 10, WindowDays: 30}
 	a := betaAPI(t, pool, limits, nil, 0)
 	f := newFixture(t, a, pool, "alice-quota-provisioning")
 
@@ -279,7 +280,7 @@ func TestRunsThatNeverReachedPreparingDoNotCount(t *testing.T) {
 // worth more than a test that asserts a bound nothing enforces.
 func TestTwoSimultaneousRunsCannotBothTakeTheLastSlot(t *testing.T) {
 	pool := requireDB(t)
-	limits := run.QuotaLimits{Daily: 50, Window: 50, FirstWindow: 50, WindowDays: 30}
+	limits := policy.QuotaLimits{Daily: 50, Window: 50, FirstWindow: 50, WindowDays: 30}
 	a := betaAPI(t, pool, limits, nil, 0)
 	f := newFixture(t, a, pool, "alice-concurrency-race")
 
@@ -325,7 +326,7 @@ func TestTwoSimultaneousRunsCannotBothTakeTheLastSlot(t *testing.T) {
 // allowance shows no allowance — not zeroes, not the route.
 func TestQuotaIsNotShownWhereItIsNotEnforced(t *testing.T) {
 	pool := requireDB(t)
-	a := betaAPI(t, pool, run.QuotaLimits{}, nil, 0)
+	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
 	f := newFixture(t, a, pool, "alice-no-quota")
 
 	if code := f.status(t, http.MethodGet, "/me/quota"); code != http.StatusNotFound {
@@ -345,7 +346,7 @@ func TestQuotaIsNotShownWhereItIsNotEnforced(t *testing.T) {
 // TEST-011 set for estimated_cost: an allowance is a state, not a permission.
 func TestPreflightCarriesTheQuotaOutsideTheHash(t *testing.T) {
 	pool := requireDB(t)
-	limits := run.QuotaLimits{Daily: 5, Window: 30, FirstWindow: 20, WindowDays: 30}
+	limits := policy.QuotaLimits{Daily: 5, Window: 30, FirstWindow: 20, WindowDays: 30}
 	a := betaAPI(t, pool, limits, nil, 0)
 	f := newFixture(t, a, pool, "alice-quota-preflight")
 
@@ -382,7 +383,7 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 	pool := requireDB(t)
 	// alice is invited; bob is not. Keyed by provider_user_id, which for the dev
 	// provider is the login name.
-	a := betaAPI(t, pool, run.QuotaLimits{}, []string{"alice-invited"}, 0)
+	a := betaAPI(t, pool, policy.QuotaLimits{}, []string{"alice-invited"}, 0)
 	alice := newFixture(t, a, pool, "alice-invited")
 	bob := newFixture(t, a, pool, "bob-uninvited")
 
@@ -424,7 +425,7 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 // the offline demo path needs no exemption of its own.
 func TestNoAdmissionListMeansNoGate(t *testing.T) {
 	pool := requireDB(t)
-	a := betaAPI(t, pool, run.QuotaLimits{}, nil, 0)
+	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
 	f := newFixture(t, a, pool, "alice-no-allowlist")
 
 	if code, _ := f.doJSON(t, http.MethodPost, "/skills/"+f.skillID+"/fork", `{}`); code != http.StatusCreated {
@@ -438,7 +439,7 @@ func TestNoAdmissionListMeansNoGate(t *testing.T) {
 // query text (ADR-029 決策 2).
 func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 	pool := requireDB(t)
-	a := betaAPI(t, pool, run.QuotaLimits{}, nil, 180*24*time.Hour)
+	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 180*24*time.Hour)
 	f := newFixture(t, a, pool, "alice-funnel")
 
 	// Everything below is scoped to this browser's analytics session, which is also
@@ -520,7 +521,7 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 // Not a row, and not a cookie either.
 func TestNoFunnelEventsWithoutARetentionPeriod(t *testing.T) {
 	pool := requireDB(t)
-	a := betaAPI(t, pool, run.QuotaLimits{}, nil, 0)
+	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
 	// Counted as a delta: every test in this package shares one database, so the
 	// question is what this API collected, not what the table holds.
 	before := betaCount(t, pool, `SELECT count(*) FROM analytics_events`)
@@ -547,7 +548,7 @@ func TestNoFunnelEventsWithoutARetentionPeriod(t *testing.T) {
 // that is where a reuse would show up.
 func TestAnalyticsSessionIsNotTheSessionToken(t *testing.T) {
 	pool := requireDB(t)
-	a := betaAPI(t, pool, run.QuotaLimits{}, nil, 180*24*time.Hour)
+	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 180*24*time.Hour)
 	f := newFixture(t, a, pool, "alice-session-ids")
 
 	var session, funnel string
@@ -579,7 +580,7 @@ func TestAnalyticsSessionIsNotTheSessionToken(t *testing.T) {
 // Account deletion de-identifies rather than deletes (ADR-029 決策 5).
 func TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem(t *testing.T) {
 	pool := requireDB(t)
-	a := betaAPI(t, pool, run.QuotaLimits{}, nil, 180*24*time.Hour)
+	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 180*24*time.Hour)
 	f := newFixture(t, a, pool, "alice-purge-analytics")
 
 	if code := f.status(t, http.MethodGet, "/api/skills/"+f.skillID); code != http.StatusOK {
@@ -618,7 +619,7 @@ func TestPurgeDetachesAnalyticsAndFeedbackWithoutDeletingThem(t *testing.T) {
 
 func TestFeedbackIsRecordedWithWorkspaceScope(t *testing.T) {
 	pool := requireDB(t)
-	a := betaAPI(t, pool, run.QuotaLimits{}, nil, 0)
+	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
 	alice := newFixture(t, a, pool, "alice-feedback")
 	bob := newFixture(t, a, pool, "bob-feedback")
 	bobRun := bob.start(t)
@@ -655,7 +656,7 @@ func TestFeedbackIsRecordedWithWorkspaceScope(t *testing.T) {
 
 func TestFeedbackRejectsWhatTheContractRejects(t *testing.T) {
 	pool := requireDB(t)
-	a := betaAPI(t, pool, run.QuotaLimits{}, nil, 0)
+	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
 	f := newFixture(t, a, pool, "alice-feedback-validation")
 
 	cases := map[string]string{

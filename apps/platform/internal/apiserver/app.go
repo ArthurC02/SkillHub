@@ -16,6 +16,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/packaging"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/queue"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/policy"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
@@ -76,7 +77,7 @@ type Config struct {
 	Providers *run.Registry
 	// Quota is the PDM-010 free allowance. The zero value is "not enforced", and
 	// it also unmounts GET /me/quota (ADR-028 決策 3).
-	Quota run.QuotaLimits
+	Quota policy.QuotaLimits
 }
 
 // App is the wired object graph. Deps is exposed so a test can adjust the
@@ -152,7 +153,7 @@ func NewApp(cfg Config) (*App, error) {
 	// and 2).
 	packagingSvc := &packaging.Service{
 		Pool: cfg.Pool, Store: cfg.Store, Profiles: cfg.Profiles,
-		Retention: cfg.DownloadRetention,
+		Retention: policy.DownloadRetention(cfg.DownloadRetention),
 	}
 
 	return &App{

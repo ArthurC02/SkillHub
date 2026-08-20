@@ -29,6 +29,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/policy"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 )
 
@@ -150,8 +151,8 @@ type PermissionSummary struct {
 	// Absent when this deployment enforces no allowance. Absent and not zeroed: a
 	// number here is a claim that the platform applies it, and putting up one it
 	// does not apply is exactly 04 乙-2.
-	Quota *QuotaView `json:"quota,omitempty"`
-	Notes []string   `json:"notes"`
+	Quota *policy.QuotaView `json:"quota,omitempty"`
+	Notes []string          `json:"notes"`
 }
 
 // CostEstimate is PDM-005 §5.3's "預估成本區間", and §5.2a-6 is why it is a range
@@ -257,7 +258,10 @@ func (s *Service) permissionSummaryFor(
 	// against, read from its one definition. Rebuilding the literal here is what
 	// would let a user confirm a summary of yesterday's policy and still pass the
 	// hash check, which is the one failure this whole screen exists to prevent.
-	policy := defaultPolicy()
+	// Named snap, not policy: internal/policy is the Policy & Usage context and
+	// this is a run policy snapshot — two different things that used to want the
+	// same identifier.
+	snap := defaultPolicy()
 
 	content := PermissionSummaryContent{
 		SkillVersionID:    pgconv.UUIDString(version.ID),
@@ -274,10 +278,10 @@ func (s *Service) permissionSummaryFor(
 		// list shown as empty is the honest disclosure; omitting the row would let
 		// a user assume the question was never asked.
 		MCPServers:      []string{},
-		Network:         NetworkSummary{Mode: policy.Egress.Mode, Allow: egressAllowLines(policy.Egress.Allow)},
+		Network:         NetworkSummary{Mode: snap.Egress.Mode, Allow: egressAllowLines(snap.Egress.Allow)},
 		InjectedSecrets: injectedSecretNames,
-		Provider:        s.providerSummary(ctx, policy),
-		ResourceLimits:  policy.ResourceLimits,
+		Provider:        s.providerSummary(ctx, snap),
+		ResourceLimits:  snap.ResourceLimits,
 	}
 
 	body, err := json.Marshal(content)
@@ -290,7 +294,7 @@ func (s *Service) permissionSummaryFor(
 	// allowance to reach the hashed body (TEST-011's rule for estimated_cost). A
 	// failure here does not fail the screen: the summary's job is to say what the
 	// run may touch, and that answer does not depend on how many runs are left.
-	var quota *QuotaView
+	var quota *policy.QuotaView
 	if state, enforced, err := s.QuotaFor(ctx, workspaceID); err != nil {
 		slog.Warn("quota unavailable for the pre-run summary", "error", err)
 	} else if enforced {
