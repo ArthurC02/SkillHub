@@ -31,7 +31,9 @@ export function ImportSkill() {
     },
     onError: (error) => {
       setResult(undefined);
-      setRejected(error instanceof ApiError && isCategorizedFindings(error.body) ? error.body : undefined);
+      setRejected(
+        error instanceof ApiError && isCategorizedFindings(error.body) ? error.body : undefined,
+      );
     },
   });
 

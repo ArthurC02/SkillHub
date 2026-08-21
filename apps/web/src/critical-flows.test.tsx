@@ -11,8 +11,21 @@ let container: HTMLDivElement;
 let root: Root;
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, params, children }: { to: string; params?: Record<string, string>; children: unknown }) => (
-    <a href={Object.entries(params ?? {}).reduce((path, [key, value]) => path.replace(`$${key}`, value), to)}>
+  Link: ({
+    to,
+    params,
+    children,
+  }: {
+    to: string;
+    params?: Record<string, string>;
+    children: unknown;
+  }) => (
+    <a
+      href={Object.entries(params ?? {}).reduce(
+        (path, [key, value]) => path.replace(`$${key}`, value),
+        to,
+      )}
+    >
       {children as never}
     </a>
   ),
@@ -54,7 +67,10 @@ async function render(node: ReactNode, settled: () => boolean) {
 }
 
 test("anonymous visitors get a working GitHub login entry", async () => {
-  vi.stubGlobal("fetch", vi.fn(() => json({ error: "no session" }, 401)));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => json({ error: "no session" }, 401)),
+  );
   await render(<AuthControls />, () => container.querySelector("a") !== null);
 
   expect(container.querySelector("a")?.getAttribute("href")).toBe(
@@ -91,14 +107,17 @@ test("signed-in users can end the session and clear cached workspace data", asyn
 
 test("URL import sends the source and links the imported skill", async () => {
   const fetchMock = vi.fn((_url: string | URL | Request, init?: RequestInit) =>
-    json({
-      skill_id: "skill-1",
-      version_id: "version-1",
-      version_number: 2,
-      content_hash: "abc",
-      duplicate: false,
-      findings: { errors: [], warnings: [], infos: [] },
-    }, init?.method === "POST" ? 201 : 200),
+    json(
+      {
+        skill_id: "skill-1",
+        version_id: "version-1",
+        version_number: 2,
+        content_hash: "abc",
+        duplicate: false,
+        findings: { errors: [], warnings: [], infos: [] },
+      },
+      init?.method === "POST" ? 201 : 200,
+    ),
   );
   vi.stubGlobal("fetch", fetchMock);
   await render(<ImportSkill />, () => container.querySelector("form") !== null);
@@ -112,7 +131,9 @@ test("URL import sends the source and links the imported skill", async () => {
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await act(async () => {
-    container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
   });
   await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
 
@@ -124,16 +145,21 @@ test("URL import sends the source and links the imported skill", async () => {
 
 test("a running Run requires confirmation before cancellation", async () => {
   const fetchMock = vi.fn((_url: string | URL | Request, _init?: RequestInit) =>
-    json({
-      run_id: "run-1",
-      skill_id: "skill-1",
-      skill_version_id: "version-1",
-      test_case_snapshot_id: "snapshot-1",
-      note: "cancellation requested",
-    }, 202),
+    json(
+      {
+        run_id: "run-1",
+        skill_id: "skill-1",
+        skill_version_id: "version-1",
+        test_case_snapshot_id: "snapshot-1",
+        note: "cancellation requested",
+      },
+      202,
+    ),
   );
   vi.stubGlobal("fetch", fetchMock);
-  await render(<CancelRunControl runId="run-1" status="running" />, () => Boolean(container.querySelector("button")));
+  await render(<CancelRunControl runId="run-1" status="running" />, () =>
+    Boolean(container.querySelector("button")),
+  );
 
   await act(async () => container.querySelector<HTMLButtonElement>("button")!.click());
   expect(container.textContent).toContain("確定要取消");

@@ -46,7 +46,11 @@ export function WorkspaceRuns() {
           </ul>
         ))}
       {runs.hasNextPage && (
-        <button type="button" disabled={runs.isFetchingNextPage} onClick={() => runs.fetchNextPage()}>
+        <button
+          type="button"
+          disabled={runs.isFetchingNextPage}
+          onClick={() => runs.fetchNextPage()}
+        >
           {runs.isFetchingNextPage ? "載入中…" : "載入更多"}
         </button>
       )}

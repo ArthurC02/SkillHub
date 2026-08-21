@@ -38,7 +38,10 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children?: unknown }) => children,
 }));
 
-function stubTrace(general: TraceSummary, advanced: TraceAdvanced | ((url: string) => TraceAdvanced)) {
+function stubTrace(
+  general: TraceSummary,
+  advanced: TraceAdvanced | ((url: string) => TraceAdvanced),
+) {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
     // This run was never evaluated: the server answers 404, which the page
@@ -235,7 +238,5 @@ test("the advanced mode pages through the complete trace without retaining every
     (button) => button.textContent === "重新整理 Trace",
   );
   await act(async () => refresh?.click());
-  await waitFor(
-    () => requested.filter((url) => url.includes("after=1")).length > beforeRefresh,
-  );
+  await waitFor(() => requested.filter((url) => url.includes("after=1")).length > beforeRefresh);
 });
