@@ -1,33 +1,3 @@
-// Package analytics writes the product analytics events of the core funnel
-// (02:O11Y-004, ADR-029) — the fifth data class, and the only one that is
-// explicitly not a source of truth.
-//
-// What that means in practice, because it is the whole design:
-//
-//   - Any funnel segment an existing domain table can answer is answered there.
-//     Runs come from `runs`, "was it helpful" from evaluations.feedback_helpful,
-//     "was the advice taken" from evaluation_suggestions.decision, "did they
-//     download" from download_records. Only four segments have no table behind
-//     them, and those four are the only events this package emits. A fifth one
-//     has to explain first why no domain table answers it (ADR-029 決策 1).
-//   - No free text, ever. Not masked free text — none. Each event has its own
-//     constructor below, and that signature is the attribute whitelist: an
-//     attribute nobody declared cannot be passed, so it cannot be stored. Iron
-//     rule 11's ban on secrets in "分析事件" is met by structure rather than by a
-//     masking pass, because unlike a Trace there is nothing here to mask.
-//   - The search query's words are not recorded. Its length and a coarse script
-//     bucket are. A query can carry personal data, and the only channel that may
-//     see the words is BETA-003's, which has explicit consent (ADR-029 決策 2).
-//   - The session identifier is not the ADR-020 session token, nor a hash of it,
-//     nor anything derivable from it. That is credential material. This is an
-//     unrelated random cookie value that cannot be resolved back to a sessions
-//     row, and before login it is the only linkage that exists (ADR-029 決策 4).
-//
-// Nothing is collected at all until a deployment sets a retention period. That is
-// not caution for its own sake: NFR-002 requires a retention value to exist before
-// a data class starts accumulating, ADR-029 決策 5 proposes 180 days and that
-// proposal is not ratified, and this is the one data class that can still be built
-// in the right order because it has not started yet.
 package analytics
 
 import (

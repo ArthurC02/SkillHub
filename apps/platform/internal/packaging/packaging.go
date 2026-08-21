@@ -1,19 +1,3 @@
-// Package packaging turns an immutable Skill Version into a downloadable
-// package (PACK-001..005, ADR-012, ADR-027).
-//
-// It is the inverse of import: it reads the bytes a version was stored with,
-// filters them against an allow-list, applies the target profile, adds the
-// platform's own three files, and hands the result to the same validator an
-// import goes through. A package this refuses is a package the platform would
-// not accept back (PACK-009).
-//
-// Nothing here executes anything (iron rules 1 and 2). There is no os/exec, no
-// unpacking to disk and no interpretation of package content; bytes flow as
-// []byte and fs.FS and nowhere else. Packaging therefore runs in the control
-// plane and needs no sandbox, for the same reason M3's evaluation does.
-//
-// It also creates and modifies no Skill Version (iron rule 4): re-packaging is
-// another Download Artifact row, never an edit of one.
 package packaging
 
 import (

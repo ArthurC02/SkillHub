@@ -1,7 +1,3 @@
-// Package ingest imports skill packages (SKILL-001, INGEST-002). Packages are
-// analyzed statically only — nothing inside is executed (iron rule 1) — and
-// accepted content lands as an immutable skill version plus the original
-// archive in object storage (ADR-003).
 package ingest
 
 import (

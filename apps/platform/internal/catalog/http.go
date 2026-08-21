@@ -1,8 +1,3 @@
-// Package catalog owns skill discovery (ADR-002 Catalog & Discovery).
-// Hybrid retrieval: pgvector similarity ranks, Postgres FTS only widens the
-// candidate set (ADR-013 定案調整 3, measured in golden-query-set.md §3.7).
-// The Python LLM service provides embeddings and match-reason generation;
-// Go owns policy, auth, state, and retry (ADR-016 Iron Rule 6).
 package catalog
 
 import (

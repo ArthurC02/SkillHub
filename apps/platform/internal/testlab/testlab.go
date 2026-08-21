@@ -1,32 +1,3 @@
-// Package testlab owns test cases, their acceptance criteria, their uploaded
-// datasets, and the immutable snapshot a run executes (TEST-001/003/004/010,
-// ADR-002 Test Lab).
-//
-// The split that matters here: a test case is an editable draft, a
-// test_case_snapshots row is the frozen fact of what one run actually used
-// (ADR-003, iron rule 4). Editing a draft never rewrites what a past run did.
-//
-// Nothing in this package executes uploaded content. Datasets are stored as
-// opaque bytes and only ever unpacked inside the sandbox (iron rule 1).
-//
-// # What other bounded contexts may use (ADR-032 附錄 A)
-//
-// The package is not split into sub-packages; its public surface is, and this is
-// the whole of it:
-//
-//   - Write: [CreateSnapshot], the only place a test case is frozen for a run.
-//     Called inside the run creation transaction.
-//   - Read: [ReadDraft], the editable test case as another context sees it.
-//     Reading test_cases / datasets through gen directly is the thing this
-//     replaced — internal/run had grown its own dataset type and its own copy of
-//     the ordering comment, which is two definitions of one fact.
-//   - Decode: [DecodeCriteria], [DecodeRubric], [DecodeDatasetRefs]. These are the
-//     "read it the way it was written" guarantee; a caller that reaches for
-//     encoding/json on one of these columns has opted out of it.
-//   - Types: [Criterion], [Rubric], [RubricItem], [DatasetRef], [DatasetFile], and
-//     the sentinel errors below.
-//   - Limits: the constants below are the only enforcement point. GET
-//     /test-cases/limits is their display projection, not a second copy.
 package testlab
 
 import (

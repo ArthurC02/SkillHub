@@ -1,6 +1,3 @@
-// Package identity owns login, sessions, and resolving the authenticated user
-// (CORE-005, ADR-020). Authorization stays workspace-scoped in SQL (ADR-011);
-// this package only answers "who is calling".
 package identity
 
 import (

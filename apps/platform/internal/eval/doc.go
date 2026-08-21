@@ -95,6 +95,26 @@
 //     `available: true` would go on claiming the original is still there long
 //     after retention removed it (ADR-026 decision 2).
 //
+// # What a pending row already claims
+//
+// begin writes judge_model, judge_prompt_version and rubric_version onto the row
+// it creates. They are a *declaration* of what this attempt is about to be judged
+// under, not a report of what ran: complete overwrites all three with what the
+// response said actually happened, and on a completed row that is the authority.
+//
+// fail leaves them alone, and that is the point. A failed evaluation is the one
+// where "which judge could not answer" is the first question, and the answer used
+// to live only in the `evaluation_started` trace event — dropped with its
+// partition, which is the same lesson invariant 9 learned about evidence.
+// Re-writing them in fail would also let the recovery sweep stamp its own
+// process's configuration onto an attempt another process started.
+//
+// NULL in any of the three is a statement, not a gap: no judge_model means the
+// deployment has no judge at all, no judge_prompt_version means the platform
+// declared none (it is learned from the response a failed attempt never got), no
+// rubric_version means the snapshot froze no rubric. A placeholder string would
+// claim a judge or a version that does not exist.
+//
 // # What append-only does not constrain
 //
 // "Append-only" is about *judgements*, not about rows never being updated. There
