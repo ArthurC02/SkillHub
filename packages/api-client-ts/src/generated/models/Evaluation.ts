@@ -119,8 +119,9 @@ export interface Evaluation {
     deterministicFindings: Array<DeterministicFinding>;
     /**
      * The model that produced the `model`-sourced verdicts (EVAL-001
-     * 第 5 條). Recorded even when every verdict came from a rule, so a
-     * report says what was available to it.
+     * 第 5 條). Empty when no judge ran at all - a run with no acceptance
+     * criteria is settled without one - because naming a model here would
+     * describe a call that was never made.
      * 
      * @type {string}
      * @memberof Evaluation

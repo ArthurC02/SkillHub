@@ -91,14 +91,23 @@ func (q *Queries) CompleteEvaluation(ctx context.Context, arg CompleteEvaluation
 
 const createEvaluation = `-- name: CreateEvaluation :one
 
-INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete)
-VALUES ($1, $2, 'pending', 'undetermined', false)
+INSERT INTO evaluations (
+    workspace_id, run_id, status, overall, evidence_complete,
+    judge_model, judge_prompt_version, rubric_version
+)
+VALUES (
+    $1, $2, 'pending', 'undetermined', false,
+    $3, $4, $5
+)
 RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at
 `
 
 type CreateEvaluationParams struct {
-	WorkspaceID pgtype.UUID
-	RunID       pgtype.UUID
+	WorkspaceID        pgtype.UUID
+	RunID              pgtype.UUID
+	JudgeModel         *string
+	JudgePromptVersion *string
+	RubricVersion      *string
 }
 
 // Evaluation (EVAL-001, ADR-025, ADR-026). Every statement is workspace scoped
@@ -114,8 +123,34 @@ type CreateEvaluationParams struct {
 // what a verdict that has not been reached actually is, and evidence_complete
 // starts false because nothing has been read yet - both are corrected by
 // CompleteEvaluation.
+//
+// judge_model / judge_prompt_version / rubric_version are written HERE and not
+// only by CompleteEvaluation, because ADR-026 decision 1 asks every judgement to
+// record the conditions it was made under and a `failed` one never reaches
+// CompleteEvaluation. Their only other home was the `evaluation_started` trace
+// event, and trace_events is dropped by partition - so "which judge could not
+// answer", the first question asked about a failure, was the one fact that
+// expired.
+//
+// What is written here is the platform's *declaration* of what this attempt is
+// about to be judged under, not a report of what ran. CompleteEvaluation
+// overwrites all three with what the response said actually happened, and on a
+// completed row that is the authority; on a `pending` or `failed` row they read
+// as intent, which `status` already makes plain.
+//
+// NULL in any of the three is a statement and not a gap: no judge_model means
+// this deployment has no judge at all, no judge_prompt_version means the platform
+// declared none (it is learned from the response, which a failed attempt never
+// got), and no rubric_version means the snapshot froze no rubric. Same rule 0024
+// gives for rubric_version - ” would claim a version that does not exist.
 func (q *Queries) CreateEvaluation(ctx context.Context, arg CreateEvaluationParams) (Evaluation, error) {
-	row := q.db.QueryRow(ctx, createEvaluation, arg.WorkspaceID, arg.RunID)
+	row := q.db.QueryRow(ctx, createEvaluation,
+		arg.WorkspaceID,
+		arg.RunID,
+		arg.JudgeModel,
+		arg.JudgePromptVersion,
+		arg.RubricVersion,
+	)
 	var i Evaluation
 	err := row.Scan(
 		&i.ID,
@@ -263,6 +298,11 @@ type FailEvaluationParams struct {
 // were already established: those came from the platform's own records and are
 // still true even when the model leg failed. Only pending may settle: recovery
 // and the original worker can race, and exactly one of them owns the terminal.
+//
+// It deliberately does not touch judge_model, judge_prompt_version or
+// rubric_version: CreateEvaluation already wrote what THIS attempt declared, and
+// re-writing them from the caller's own configuration would let the recovery
+// sweep stamp its process's judge onto an attempt another process started.
 func (q *Queries) FailEvaluation(ctx context.Context, arg FailEvaluationParams) (Evaluation, error) {
 	row := q.db.QueryRow(ctx, failEvaluation,
 		arg.Summary,

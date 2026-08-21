@@ -618,6 +618,13 @@ func TestAJudgeFailureIsRecordedAsAFailedEvaluation(t *testing.T) {
 	if len(body.DeterministicFindings) == 0 {
 		t.Error("the rule findings came from the platform's own records and survive a judge failure")
 	}
+	// ADR-026 decision 1 on the path that needs it most. "Which judge could not
+	// answer" is the first question asked about a failure, and its only other home
+	// is the `evaluation_started` event below — which stops answering the month
+	// retention drops that partition.
+	if body.JudgeModel != "gpt-5.6-terra" {
+		t.Errorf("a failed evaluation must record the judge it was attempted with, got %q", body.JudgeModel)
+	}
 	assertEvaluationTraceEvents(t, pool, runID, "error")
 
 	// ADR-025 again: even a broken evaluation leaves the run alone.
@@ -884,6 +891,27 @@ func TestARunWithNoAcceptanceCriteriaIsUndeterminedAndNeverReachesTheJudge(t *te
 	if len(body.CriterionResults) != 0 {
 		t.Errorf("no criteria, no criterion results, got %d", len(body.CriterionResults))
 	}
+	// The row completed without the judge ever being reached, and on a `completed`
+	// row these columns mean "what produced this verdict". Read from the columns
+	// rather than the body because the body cannot tell NULL from '': a model name
+	// here would be a finished report claiming a metered call that never happened.
+	var judgeModel, judgePromptVersion *string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT judge_model, judge_prompt_version FROM evaluations WHERE run_id = $1`,
+		mustUUID(t, runID)).Scan(&judgeModel, &judgePromptVersion); err != nil {
+		t.Fatal(err)
+	}
+	if judgeModel != nil || judgePromptVersion != nil {
+		t.Errorf("no judge ran, so the verdict's judge columns must be NULL, got %q / %q",
+			derefTest(judgeModel), derefTest(judgePromptVersion))
+	}
+}
+
+func derefTest(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
 
 // --- statics -----------------------------------------------------------------

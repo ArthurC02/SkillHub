@@ -3032,8 +3032,9 @@ type Evaluation struct {
 	// Kept apart from `criterion_results` because the two answer different questions: "what is wrong with
 	// this run" versus "did this criterion pass". An empty list is not a clean bill of health.
 	DeterministicFindings []DeterministicFinding `json:"deterministic_findings"`
-	// The model that produced the `model`-sourced verdicts (EVAL-001 第 5 條). Recorded even when every
-	// verdict came from a rule, so a report says what was available to it.
+	// The model that produced the `model`-sourced verdicts (EVAL-001 第 5 條). Empty when no judge ran
+	// at all - a run with no acceptance criteria is settled without one - because naming a model here
+	// would describe a call that was never made.
 	JudgeModel string `json:"judge_model"`
 	// The judge prompt this verdict was reached under (ADR-017). Together with `rubric_version` it is what
 	// makes two revisions comparable.

@@ -227,6 +227,23 @@ func (s *Service) judgePromptVersion() string {
 	return "unreported"
 }
 
+// declaredJudge is what the row created by begin says this attempt will be judged
+// under. Empty means "record NULL", and each empty is a different fact worth
+// keeping distinct from a forgotten write:
+//
+//   - no Judge configured: no model was ever going to be involved, so naming one
+//     would describe a call this deployment cannot make.
+//   - no JudgePromptVersion configured: the platform declares none. The real
+//     version is learned from the judge's response, which a failed attempt never
+//     got — judgePromptVersion()'s "unreported" placeholder is fine in a trace
+//     payload but would be a fake version in a column reports read.
+func (s *Service) declaredJudge() (model, promptVersion string) {
+	if s.Judge == nil {
+		return "", ""
+	}
+	return s.judgeModel(), s.JudgePromptVersion
+}
+
 // material is everything one evaluation reads, gathered once. Every field comes
 // from the platform's own records under the run's workspace (iron rule 3).
 type material struct {
@@ -307,8 +324,12 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 			results:          []CriterionResult{},
 			findings:         findings,
 			evidenceComplete: evidenceComplete,
-			model:            s.judgeModel(),
-			promptVersion:    s.judgePromptVersion(),
+			// No judge fields. On a `completed` row these columns mean "what
+			// actually produced this verdict", and this path returns before the
+			// judge is reached — naming a model here would record a metered call
+			// that never happened. The declaration begin() wrote is replaced by
+			// NULL for the same reason: intent is only readable as intent while
+			// the row is pending or failed.
 		})
 	}
 
@@ -512,8 +533,19 @@ func (s *Service) begin(ctx context.Context, m material) (gen.Evaluation, error)
 	}); err != nil {
 		return gen.Evaluation{}, err
 	}
+	// The conditions this attempt is about to be judged under, recorded on the row
+	// before anything runs. complete() overwrites all three with what the response
+	// says actually ran; fail() leaves them, which is the whole point — a failed
+	// evaluation is the one where "which judge could not answer" is asked first,
+	// and until now that lived only in the `evaluation_started` event below, which
+	// retention drops with its partition (ADR-026 decision 1).
+	declaredModel, declaredPromptVersion := s.declaredJudge()
 	ev, err := q.CreateEvaluation(ctx, gen.CreateEvaluationParams{
-		WorkspaceID: m.run.WorkspaceID, RunID: m.run.ID,
+		WorkspaceID:        m.run.WorkspaceID,
+		RunID:              m.run.ID,
+		JudgeModel:         strPtr(declaredModel),
+		JudgePromptVersion: strPtr(declaredPromptVersion),
+		RubricVersion:      strPtr(rubricVersionOf(m.rubric)),
 	})
 	if err != nil {
 		return gen.Evaluation{}, err
@@ -719,6 +751,15 @@ func nonNilFindings(f []Finding) []Finding {
 func rubricVersion(r *testlab.Rubric) any {
 	if r == nil {
 		return nil
+	}
+	return r.Version
+}
+
+// rubricVersionOf is the same fact in the form the column takes: "" where
+// rubricVersion renders null, because strPtr turns "" into that same NULL.
+func rubricVersionOf(r *testlab.Rubric) string {
+	if r == nil {
+		return ""
 	}
 	return r.Version
 }

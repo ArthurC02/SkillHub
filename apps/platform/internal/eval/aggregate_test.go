@@ -28,7 +28,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
 )
 
 const aggregateDBURLEnv = "SKILLHUB_TEST_DATABASE_URL"
@@ -522,4 +524,104 @@ func lockTestSchema(ctx context.Context, pool *pgxpool.Pool) func() {
 			"SELECT pg_advisory_unlock(hashtextextended('skillhub:test-schema', 0))")
 		conn.Release()
 	}
+}
+
+// --- ADR-026 decision 1: every judgement records the conditions it was made under
+
+// The half of that clause a verdict never needed. A `failed` revision is the one
+// where "which judge could not answer" is the first question, and until begin
+// wrote these three columns the answer existed only in the `evaluation_started`
+// trace event — which retention drops with its partition, so the failure outlived
+// the only record of what it had been attempted with.
+//
+// Each subtest also fixes the meaning of NULL there: absent is a statement about
+// the attempt, never a forgotten write.
+func TestAFailedRevisionRecordsWhatItWasAttemptedWith(t *testing.T) {
+	pool := requireEvalDB(t)
+	ctx := context.Background()
+
+	// begin then fail, which is the exact pair a judge outage produces.
+	failed := func(t *testing.T, s *Service, m material) gen.Evaluation {
+		t.Helper()
+		ev, err := s.begin(ctx, m)
+		if err != nil {
+			t.Fatalf("begin: %v", err)
+		}
+		if err := s.fail(ctx, m, ev, nil, false, errors.New("the judge was unreachable")); err != nil {
+			t.Fatalf("fail: %v", err)
+		}
+		got := reload(t, s, m, ev.ID)
+		if got.Status != StatusFailed {
+			t.Fatalf("status = %q, want failed", got.Status)
+		}
+		return got
+	}
+
+	t.Run("the declared conditions survive the failure", func(t *testing.T) {
+		s := &Service{
+			Pool: pool, Judge: &llmclient.Client{},
+			JudgeModel: "gpt-5.6-terra", JudgePromptVersion: "judge-run@v1",
+		}
+		m := seedRun(t, s.Pool)
+		m.rubric = &testlab.Rubric{Version: "content-007/writing/v1"}
+
+		got := failed(t, s, m)
+		if derefString(got.JudgeModel) != "gpt-5.6-terra" ||
+			derefString(got.JudgePromptVersion) != "judge-run@v1" {
+			t.Errorf("a failed revision must still say which judge could not answer, got %q / %q",
+				derefString(got.JudgeModel), derefString(got.JudgePromptVersion))
+		}
+		if derefString(got.RubricVersion) != "content-007/writing/v1" {
+			t.Errorf("the rubric it would have been judged under is frozen in the snapshot and knowable, got %q",
+				derefString(got.RubricVersion))
+		}
+	})
+
+	t.Run("a deployment with no judge records NULL, not a model name", func(t *testing.T) {
+		s := &Service{Pool: pool} // Judge nil: nothing was ever going to be called.
+		m := seedRun(t, s.Pool)
+
+		got := failed(t, s, m)
+		if got.JudgeModel != nil || got.JudgePromptVersion != nil {
+			t.Errorf("naming a judge here describes a call this deployment cannot make, got %q / %q",
+				derefString(got.JudgeModel), derefString(got.JudgePromptVersion))
+		}
+		if got.RubricVersion != nil {
+			t.Errorf("this snapshot froze no rubric; '' would claim one, got %q", derefString(got.RubricVersion))
+		}
+	})
+
+	t.Run("an undeclared prompt version stays NULL while the model is recorded", func(t *testing.T) {
+		s := &Service{Pool: pool, Judge: &llmclient.Client{}}
+		m := seedRun(t, s.Pool)
+
+		got := failed(t, s, m)
+		if derefString(got.JudgeModel) != "gpt-5.6-terra" {
+			t.Errorf("the ADR-026 decision 4 tier is a real declaration even unconfigured, got %q",
+				derefString(got.JudgeModel))
+		}
+		if got.JudgePromptVersion != nil {
+			t.Errorf("the prompt version is learned from a response this attempt never got, "+
+				"so %q is a placeholder standing where a fact belongs", derefString(got.JudgePromptVersion))
+		}
+	})
+
+	t.Run("a completed row reports what ran, not what was declared", func(t *testing.T) {
+		s := &Service{
+			Pool: pool, Judge: &llmclient.Client{},
+			JudgeModel: "declared-and-never-used", JudgePromptVersion: "declared-prompt",
+		}
+		m := seedRun(t, s.Pool)
+		m.rubric = &testlab.Rubric{Version: "declared-rubric"}
+
+		ev := beginAndComplete(t, s, m, aVerdict("what actually ran", OverallMet))
+		got := reload(t, s, m, ev.ID)
+		if derefString(got.JudgeModel) != "gpt-5.6-terra" ||
+			derefString(got.JudgePromptVersion) != "judge-v1" ||
+			derefString(got.RubricVersion) != "rubric-v1" {
+			t.Errorf("the declaration outranked the response: got %q / %q / %q",
+				derefString(got.JudgeModel), derefString(got.JudgePromptVersion),
+				derefString(got.RubricVersion))
+		}
+	})
 }

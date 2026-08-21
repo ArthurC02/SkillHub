@@ -13,8 +13,34 @@
 -- what a verdict that has not been reached actually is, and evidence_complete
 -- starts false because nothing has been read yet - both are corrected by
 -- CompleteEvaluation.
-INSERT INTO evaluations (workspace_id, run_id, status, overall, evidence_complete)
-VALUES ($1, $2, 'pending', 'undetermined', false)
+--
+-- judge_model / judge_prompt_version / rubric_version are written HERE and not
+-- only by CompleteEvaluation, because ADR-026 decision 1 asks every judgement to
+-- record the conditions it was made under and a `failed` one never reaches
+-- CompleteEvaluation. Their only other home was the `evaluation_started` trace
+-- event, and trace_events is dropped by partition - so "which judge could not
+-- answer", the first question asked about a failure, was the one fact that
+-- expired.
+--
+-- What is written here is the platform's *declaration* of what this attempt is
+-- about to be judged under, not a report of what ran. CompleteEvaluation
+-- overwrites all three with what the response said actually happened, and on a
+-- completed row that is the authority; on a `pending` or `failed` row they read
+-- as intent, which `status` already makes plain.
+--
+-- NULL in any of the three is a statement and not a gap: no judge_model means
+-- this deployment has no judge at all, no judge_prompt_version means the platform
+-- declared none (it is learned from the response, which a failed attempt never
+-- got), and no rubric_version means the snapshot froze no rubric. Same rule 0024
+-- gives for rubric_version - '' would claim a version that does not exist.
+INSERT INTO evaluations (
+    workspace_id, run_id, status, overall, evidence_complete,
+    judge_model, judge_prompt_version, rubric_version
+)
+VALUES (
+    @workspace_id, @run_id, 'pending', 'undetermined', false,
+    @judge_model, @judge_prompt_version, @rubric_version
+)
 RETURNING *;
 
 -- name: SupersedeCurrentEvaluation :execrows
@@ -54,6 +80,11 @@ RETURNING *;
 -- were already established: those came from the platform's own records and are
 -- still true even when the model leg failed. Only pending may settle: recovery
 -- and the original worker can race, and exactly one of them owns the terminal.
+--
+-- It deliberately does not touch judge_model, judge_prompt_version or
+-- rubric_version: CreateEvaluation already wrote what THIS attempt declared, and
+-- re-writing them from the caller's own configuration would let the recovery
+-- sweep stamp its process's judge onto an attempt another process started.
 UPDATE evaluations SET
     status = 'failed',
     summary = @summary,
