@@ -90,7 +90,7 @@ DDD-001～014 全數結案（DDD-006 與 DDD-007 依執行時盤點調整裁定�
 執行期間發現、**已列管未修**的殘項：
 
 - ~~`run/job.go` `settle` 依賴轉移表列首為 happy path~~ → **DDD-023 已修**。
-- `identity.PurgeExpiredAccounts` 對單一帳號的 purge 失敗只 log 並 `continue`，最後回 `nil`。因此「每個帳號都失敗」的一次執行會是 `accounts_purged=0` 且 **exit 0**——與「沒有東西要清」在維運眼中完全相同。未注入的情形不受影響（`requirePurgeSteps` 的錯誤直接回傳，指令會整個失敗）。建議改為仍跑完整批但以 `errors.Join` 回傳，讓 `purged` 保持原意而 exit code 轉紅；這會改變 operator 可見的契約，故需獨立決策（DDD-026 行內，ADR-034 執行註記「已知缺口」）。
+- ~~`identity.PurgeExpiredAccounts` 對單一帳號的 purge 失敗只 log 並 `continue`，最後回 `nil`~~ → **2026-08-21 已修**（DDD-027）：失敗仍 log 並 `continue`（一個壞帳號不該卡住整批），但以 `errors.Join` 回傳，`purged` 保持「真的清掉幾筆」的原意而 exit code 誠實。同批修掉 `cmd/maintenance` 一個會被此改動引發的回歸：原本帳號錯誤會提前 return，使同一支命令的 session 清理被跳過——那與被修的毛病同型。兩個 sweep 現在都跑、錯誤 join。原子性測試同步從「記錄 `err=<nil>`」改為斷言錯誤必須浮上來，並經破壞驗證。
 - `FailEvaluation` 只寫 `evidence_complete`，ADR-026 決策 1 要求的 `judge_prompt_version`／`rubric_version`／`judge_model` 留 NULL。可辯護（失敗不是判定），但那三個值只活在 `evaluation_started` 這個 trace event 裡，而 trace 以 DROP PARTITION 清除——**保存期一過即無從得知該次失敗用的是哪個 judge**（DDD-022 行內）。
 - `db/migrations/0024` 的 trigger 註解稱 `failed` 列保持可寫是為了「讓 retry 把它變成判定」，但 `CompleteEvaluation` 帶 `status = 'pending'` 述詞，無任何路徑會如此——程式比 DB 嚴，非違規，但註解描述了一個不存在的機制。migration 已套用故不原地改，需要時以新 migration 或文件更正（DDD-022 行內）。
 - `eval/reconcile.go` 以裸 SQL 讀 `evaluations`，唯讀且同 context 故非 ADR-033 違規，但繞過宣告，`db/query-owners.yaml` 看不見它；日後若開始強制 read ownership 不會被自動涵蓋（DDD-022／DDD-024 行內）。

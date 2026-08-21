@@ -27,6 +27,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -92,20 +93,23 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 		return err
 	}
 	svc := purgeService(pool)
-	n, err := svc.PurgeExpiredAccounts(ctx, store, grace(), batch())
-	if err != nil {
-		return err
-	}
+	n, purgeErr := svc.PurgeExpiredAccounts(ctx, store, grace(), batch())
+	// Logged before the error is dealt with: a batch that failed on some accounts
+	// still purged the rest, and the count is what tells an operator which case
+	// this was.
 	slog.Info("account purge complete", "accounts_purged", n)
 
 	// Expired sessions are the other retention sweep this command owns; it is
-	// one statement and already idempotent (ADR-020).
-	sessions, err := svc.CleanupExpiredSessions(ctx)
-	if err != nil {
-		return err
+	// one statement and already idempotent (ADR-020). It runs even when accounts
+	// failed, because the two sweeps have nothing to do with each other and
+	// returning early here would make one account's failure silently skip the
+	// other sweep as well - the same shape of quiet omission as the swallowed
+	// error above.
+	sessions, sessionsErr := svc.CleanupExpiredSessions(ctx)
+	if sessionsErr == nil {
+		slog.Info("expired sessions removed", "sessions", sessions)
 	}
-	slog.Info("expired sessions removed", "sessions", sessions)
-	return nil
+	return errors.Join(purgeErr, sessionsErr)
 }
 
 // purgeService is this subcommand's slice of the composition root, split out of

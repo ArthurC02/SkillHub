@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -117,16 +118,27 @@ func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover,
 	if err != nil {
 		return 0, err
 	}
+	var failures []error
 	for _, id := range ids {
 		if err := s.purgeAccount(ctx, store, id); err != nil {
-			// One bad account must not strand the rest of the batch; the row
-			// stays on the worklist and the next run retries it.
+			// One bad account must not strand the rest of the batch: its row stays
+			// on the worklist and the next run retries it. Reported as well as
+			// logged, though. Returning nil here meant a run in which every account
+			// failed reported `accounts_purged=0` and exited 0 — the same thing a
+			// run with nothing to purge reports, so a retention sweep that had
+			// quietly stopped working was indistinguishable from one with no work.
+			// CORE-007 is a promise with a deadline on it; the failure to keep it
+			// has to be able to page somebody.
 			slog.Error("account purge failed", "user_id", uuidText(id), "error", err)
+			failures = append(failures, fmt.Errorf("purge account %s: %w", uuidText(id), err))
 			continue
 		}
 		purged++
 	}
-	return purged, nil
+	// Joined rather than first-error-wins: which accounts failed is the useful
+	// fact, and `purged` keeps its meaning either way — it counts what did get
+	// purged, not whether the run was clean.
+	return purged, errors.Join(failures...)
 }
 
 func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID pgtype.UUID) error {

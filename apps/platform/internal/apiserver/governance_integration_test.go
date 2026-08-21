@@ -329,12 +329,18 @@ func TestAccountPurgeRollsBackEveryContextWhenOneStepFails(t *testing.T) {
 	svc.PurgeImportSources = func(context.Context, *gen.Queries, pgtype.UUID) error {
 		return errors.New("simulated failure inside an owner's purge step")
 	}
-	// Today one failing account is logged and skipped so it cannot strand the
-	// rest of the batch, which means this returns (0, nil) rather than an error.
+	// The failure has to reach the caller. A failing account is still logged and
+	// skipped so it cannot strand the rest of the batch, but the batch reports
+	// it: returning nil made a run in which every account failed look exactly
+	// like a run with nothing to purge, and `maintenance purge-accounts` exited
+	// 0 either way.
 	// The count is not asserted because the batch is workspace-wide and other
 	// tests share this database; the row-level assertions below are stricter
 	// anyway — they name this account.
 	n, err := svc.PurgeExpiredAccounts(ctx, &recordingStore{}, 0, 100)
+	if err == nil {
+		t.Error("a failing purge step was swallowed; maintenance purge-accounts would exit 0")
+	}
 	t.Logf("PurgeExpiredAccounts after a failing step: purged=%d err=%v", n, err)
 
 	// Everything the steps before the failure wrote has to be gone with it.
