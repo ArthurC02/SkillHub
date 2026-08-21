@@ -11,7 +11,7 @@ tools:
   uv: "0.11.3"
   docker_cli: "29.0.1"
   docker_compose: "2.40.3"
-  golangci_lint: "2.12.2"
+  golangci_lint: "2.13.1"
   sqlc: "1.31.1"
   redocly: "2.46.1"
   ogen: "1.24.0"

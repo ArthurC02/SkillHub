@@ -129,7 +129,7 @@ jobs:
       # every upstream release into a red build on an untouched tree.
       - uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8
         with:
-          version: v2.12.2
+          version: v2.13.1
           working-directory: apps/platform
       - run: golangci-lint fmt --diff
       - run: go vet ./...
@@ -166,7 +166,7 @@ jobs:
           cache-dependency-path: apps/sandbox/go.sum
       - uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8
         with:
-          version: v2.12.2
+          version: v2.13.1
           working-directory: apps/sandbox
       - run: golangci-lint fmt --diff
       - run: go vet ./...

@@ -1,13 +1,13 @@
 # syntax=docker/dockerfile:1.7
 # Canonical developer environment for ADR-030. The multi-arch index digest is
 # pinned so another computer cannot silently receive a different base image.
-FROM golang:1.25.0-bookworm@sha256:81dc45d05a7444ead8c92a389621fafabc8e40f8fd1a19d7e5df14e61e98bc1a
+FROM golang:1.27.0-bookworm@sha256:484ef6066fa69acb059fdfeda7ba2b8f7391f2ef6abc6f9b8411e669ebd56466
 
 ARG NODE_VERSION=22.14.0
 ARG TASK_VERSION=3.45.4
 ARG UV_VERSION=0.11.3
 ARG UV_INSTALLER_SHA256=b953b3f2a2764cbf860eee4578a5949fa90ed010644c6be1006f29010bada946
-ARG GOLANGCI_LINT_VERSION=2.12.2
+ARG GOLANGCI_LINT_VERSION=2.13.1
 ARG DOCKER_VERSION=29.0.1
 ARG COMPOSE_VERSION=2.40.3
 ARG USERNAME=vscode

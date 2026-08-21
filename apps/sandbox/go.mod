@@ -4,7 +4,7 @@
 // than by review. Nothing here depends on apps/platform.
 module github.com/ArthurC02/skillhub/apps/sandbox
 
-go 1.25.0
+go 1.27.0
 
 require (
 	github.com/containerd/errdefs v1.0.0
