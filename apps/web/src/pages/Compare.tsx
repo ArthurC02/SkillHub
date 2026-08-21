@@ -214,6 +214,7 @@ const ROWS: CompareRow[] = [
 function CompareTable({ skills }: { skills: SkillDetail[] }) {
   return (
     <table className="compare-table">
+      <caption>並排比較 {skills.length} 個 Skill 的靜態資料（匯入時記錄與掃描結果）</caption>
       <thead>
         <tr>
           <th scope="col">比較項目</th>

@@ -110,6 +110,7 @@ function ComparisonTables({ data }: { data: RunComparison }) {
   return (
     <>
       <table className="compare-table">
+        <caption>Run 執行狀態與任務判定對比</caption>
         <thead>
           <tr>
             <th scope="col">項目</th>
@@ -215,6 +216,7 @@ function ComparisonTables({ data }: { data: RunComparison }) {
         <p>沒有可對照的驗收條件。</p>
       ) : (
         <table className="compare-table">
+          <caption>驗收條件判定矩陣對比</caption>
           <thead>
             <tr>
               <th scope="col">驗收條件</th>

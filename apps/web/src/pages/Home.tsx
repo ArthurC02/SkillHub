@@ -85,7 +85,7 @@ export function Home() {
         disabled={search.q === undefined}
       />
 
-      {isFetching && <p>搜尋中…</p>}
+      {isFetching && <p role="status">搜尋中…</p>}
       {isError && <p role="alert">搜尋失敗，請稍後再試。</p>}
 
       {data && (
@@ -139,7 +139,15 @@ export function Home() {
             <>
               <RankingExplainer degraded={data.degraded} partialIndex={data.partial_index} />
               <CompareBar selected={selected} />
-              <ul className="search-results">
+              {/*
+                The count is the live region, not the list: a list of result
+                cards under aria-live makes a screen reader re-read every card
+                in full on each search, which is louder than saying nothing.
+              */}
+              <p role="status" className="note">
+                找到 {data.results.length} 個 Skill。
+              </p>
+              <ul className="search-results" aria-label="搜尋結果">
                 {data.results.map((hit) => (
                   <SearchResultRow
                     key={hit.skill_id}

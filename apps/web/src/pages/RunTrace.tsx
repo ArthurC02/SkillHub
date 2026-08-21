@@ -246,7 +246,7 @@ function GeneralMode({ runId }: { runId: string }) {
       {/* Status comes from the runs table, not from replayed events (iron rule 5),
           and is worded as execution: `succeeded` says the workload finished, not
           that the task was done (ADR-025). The task verdict is above. */}
-      <p>
+      <p role="status">
         執行狀態：<strong>{RUN_STATUS_LABEL[trace.status] ?? trace.status}</strong>（
         <code>{trace.status}</code>）{trace.status_reason ? `（${trace.status_reason}）` : null}
       </p>

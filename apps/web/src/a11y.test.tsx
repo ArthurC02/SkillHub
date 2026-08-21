@@ -843,6 +843,26 @@ test("QA-009: 首頁與搜尋結果", async () => {
   await scan("/");
 }, 30000);
 
+test("NFR-007: 搜尋結果的即時區是筆數，不是整份清單", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "pdf 摘要" } });
+  });
+  await waitFor(has("PDF Summariser"));
+
+  // A live region wrapping the result cards makes a reader recite every card in
+  // full on each search — louder than announcing nothing, and the reason this
+  // assertion exists rather than just the count one below.
+  const list = container.querySelector(".search-results")!;
+  expect(list.getAttribute("aria-live")).toBe(null);
+
+  const count = Array.from(container.querySelectorAll('[role="status"]')).find((el) =>
+    (el.textContent ?? "").includes("找到"),
+  );
+  expect(count?.textContent).toContain(`找到 ${SEARCH.results.length} 個 Skill`);
+}, 30000);
+
 test("QA-009: Skill 詳情", async () => {
   stubPlatform();
   await mount();
