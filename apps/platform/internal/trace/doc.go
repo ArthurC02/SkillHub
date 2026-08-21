@@ -83,12 +83,19 @@
 // Duplicates are counted, not treated as errors: delivery is at-least-once and a
 // producer retrying after an uncertain response is doing the right thing.
 //
-// Retention is not implemented in this package and not implemented anywhere in
-// Go: `trace_events` is partitioned by month and its retention is a DROP
-// PARTITION run outside the application. Two consequences worth knowing before
-// relying on it. Partitions are created by hand in db/migrations, and 0019 adds a
-// DEFAULT partition — so events outside a declared month are accepted (writes
-// never fail) but land somewhere a monthly drop will not remove. And evidence
-// stored elsewhere must re-answer availability at read time rather than trusting
-// a stored flag, which is exactly what eval does (ADR-026 decision 2).
+// Retention is a partition drop, and as of DDD-032 there is a job that performs
+// it: [MaintainPartitions], run by `maintenance rotate-partitions`. Three things
+// about it are worth knowing before relying on it. It only runs when the
+// deployment sets TRACE_RETENTION — unset means no month is ever created or
+// dropped, deliberately, because PDM-006 has not ratified a number and this job
+// deletes. It is invoked by the deployment's cron and not by anything in this
+// process (iron rule 6). And it does not reach the rows already sitting in
+// `trace_events_default`, the catch-all 0019 added: every event written between
+// 2026-09 and the first run of this job is there, and getting them into a month
+// is a one-off drain the job's error message spells out when it hits one.
+//
+// The consequence for readers is unchanged: evidence stored elsewhere must
+// re-answer availability at read time rather than trusting a stored flag, which
+// is exactly what eval does (ADR-026 decision 2). A dropped month takes its
+// events with it and no reference to them is repaired.
 package trace

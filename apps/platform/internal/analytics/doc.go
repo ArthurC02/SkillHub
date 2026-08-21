@@ -88,7 +88,11 @@
 // could not have" produces one bucket that answers neither. Not the session
 // credential, which is identity's. Not the retention rules of other data classes:
 // the download artifact's is policy's, trace's is a partition drop, and this
-// package's own knob is separate from all of them.
+// package's own knob is separate from all of them. `analytics_events` is
+// partitioned by month like `trace_events` and is rolled by the same generic
+// job (MaintainPartitions, `maintenance rotate-partitions`), but the mechanism
+// being shared is not the policy being shared: the window is still this
+// package's ANALYTICS_RETENTION and trace's is still TRACE_RETENTION.
 //
 // # Failure modes
 //

@@ -169,6 +169,8 @@ psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 ### 2.6 對帳器與排程
 
 - [ ] `cmd/maintenance purge-accounts` 接上 cron（**程式刻意不自帶 scheduler**）；`PURGE_GRACE` 預設 720h
+- [ ] `cmd/maintenance rotate-partitions` **接上每月 cron**（DDD-032 新增）：預先建立 `trace_events` 與 `analytics_events` 未來兩個月的分割，並丟棄超過保存期的月份。**`TRACE_RETENTION` 與 `ANALYTICS_RETENTION` 皆無預設，未設即整個 job 拒絕執行**（H-5 的 PDM-006 追認之前設不了值 ⇒ **分割不會被丟棄，也不會被預先建立**）
+- [ ] 驗**第一次執行時 default 分割的抽乾**：2026-09-01 至該 job 首次執行之間寫入的 trace 事件都在 `trace_events_default`，`CREATE TABLE ... PARTITION OF` 會因此被拒絕。**錯誤訊息本身就是操作步驟**（detach／搬列／re-attach），程式刻意不自動抽乾——這是一次性動作，不是每月動作（`0019` 早已預告）
 - [ ] 物件存在性對帳器一小時一輪且**刻意沒有 `RunOnStart`** ⇒ **部署後第一小時是空窗**，知道就好
 - [ ] 驗對帳器要兩輪才標記（`object_reconcile_sightings`），且無法連線的儲存產生**零次觀測**而不是一次假的
 

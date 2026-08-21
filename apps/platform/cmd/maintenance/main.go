@@ -5,16 +5,29 @@
 // second scheduler beside the queue is exactly the moving part nobody pages
 // themselves for.
 //
-//	maintenance purge-accounts   CORE-007: hard delete the private content of
-//	                             accounts past their 30-day grace period and
-//	                             de-identify what has to be retained. Needs
-//	                             DATABASE_URL and object storage.
-//	maintenance check-sources    INGEST-010: probe recorded import source URLs
-//	                             and mark the ones that no longer resolve.
-//	                             Needs DATABASE_URL and network egress.
+//	maintenance purge-accounts     CORE-007: hard delete the private content of
+//	                               accounts past their 30-day grace period and
+//	                               de-identify what has to be retained. Needs
+//	                               DATABASE_URL and object storage.
+//	maintenance purge-analytics    ADR-029 決策 5: remove funnel events older than
+//	                               ANALYTICS_RETENTION, including the ones sitting
+//	                               in the default partition. Needs DATABASE_URL.
+//	maintenance check-sources      INGEST-010: probe recorded import source URLs
+//	                               and mark the ones that no longer resolve.
+//	                               Needs DATABASE_URL and network egress.
+//	maintenance rotate-partitions  Keep trace_events and analytics_events'
+//	                               monthly partitions in step: pre-create the
+//	                               months about to be written to, drop the ones
+//	                               past retention. Needs DATABASE_URL,
+//	                               TRACE_RETENTION and ANALYTICS_RETENTION.
 //
 // PURGE_GRACE (Go duration, default 720h) and MAINTENANCE_BATCH (default 100)
 // tune one run. A shortened grace applies to requests already in flight.
+//
+// TRACE_RETENTION and ANALYTICS_RETENTION have no defaults on purpose: both are
+// PDM-006 proposals that have not been ratified, and a default would make this
+// process enforce a retention nobody agreed to, by deleting. Unset means the job
+// refuses to start.
 //
 // This process has one composition root per subcommand — the function that runs
 // it — and that is the shape, not an oversight: each job builds the single
@@ -40,14 +53,16 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/registry"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
 
 func main() {
 	if len(os.Args) != 2 {
-		slog.Error("usage: maintenance purge-accounts|purge-analytics|check-sources")
+		slog.Error("usage: maintenance purge-accounts|purge-analytics|check-sources|rotate-partitions")
 		os.Exit(2)
 	}
 	ctx := context.Background()
@@ -65,6 +80,8 @@ func main() {
 		err = checkSources(ctx, pool)
 	case "purge-analytics":
 		err = purgeAnalytics(ctx, pool)
+	case "rotate-partitions":
+		err = rotatePartitions(ctx, pool)
 	default:
 		slog.Error("unknown job", "job", os.Args[1])
 		os.Exit(2)
@@ -75,10 +92,53 @@ func main() {
 	}
 }
 
+// rotatePartitions is this subcommand's composition root. Both partitioned
+// tables are rolled by one invocation because they need the same thing at the
+// same cadence and a deployment that wires up one cron entry and forgets the
+// other has a silent hole; the DDL for each still belongs to its owner, which is
+// why this function names two packages and no table.
+//
+// Both windows are read before any statement runs. Fail-closed is the whole
+// point: an unset window is not "use a sensible default", it is "this deployment
+// has not decided what to delete", and this job deletes.
+func rotatePartitions(ctx context.Context, pool *pgxpool.Pool) error {
+	traceRetention, err := positiveDuration("TRACE_RETENTION")
+	if err != nil {
+		return err
+	}
+	analyticsRetention, err := positiveDuration("ANALYTICS_RETENTION")
+	if err != nil {
+		return err
+	}
+	// One `now` for both, so a run that straddles midnight on the first of a
+	// month does not give the two tables different ideas of which month it is.
+	now := time.Now().UTC()
+
+	traceReport, traceErr := trace.MaintainPartitions(ctx, pool, now, traceRetention)
+	logRotation(trace.PartitionedTable, traceReport)
+	// analytics runs even when trace failed, for the reason purgeAccounts runs
+	// its second sweep: the two tables have nothing to do with each other, and
+	// returning early would make one table's stuck month quietly suspend the
+	// other table's retention.
+	analyticsReport, analyticsErr := analytics.MaintainPartitions(ctx, pool, now, analyticsRetention)
+	logRotation(analytics.PartitionedTable, analyticsReport)
+
+	return errors.Join(traceErr, analyticsErr)
+}
+
+// logRotation prints what actually happened, including the common case of
+// nothing: "created=[] dropped=[]" on a re-run is the evidence the job is
+// idempotent, and it is what an operator needs to see the month it stops being
+// idempotent.
+func logRotation(table string, report partition.Report) {
+	slog.Info("partitions rotated", "table", table,
+		"created", report.Created, "dropped", report.Dropped)
+}
+
 func purgeAnalytics(ctx context.Context, pool *pgxpool.Pool) error {
-	retention, err := time.ParseDuration(os.Getenv("ANALYTICS_RETENTION"))
-	if err != nil || retention <= 0 {
-		return fmt.Errorf("ANALYTICS_RETENTION must be a positive Go duration")
+	retention, err := positiveDuration("ANALYTICS_RETENTION")
+	if err != nil {
+		return err
 	}
 	n, err := (&analytics.Service{Pool: pool, Retention: retention}).PurgeExpired(ctx)
 	if err == nil {
@@ -138,6 +198,17 @@ func checkSources(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	slog.Info("source check complete", "checked", checked, "unavailable", unavailable)
 	return nil
+}
+
+// positiveDuration reads a retention window that has no default. The error names
+// the variable rather than the job, because the operator's next action is to set
+// it and the job name is already on the failure line main prints.
+func positiveDuration(key string) (time.Duration, error) {
+	d, err := time.ParseDuration(os.Getenv(key))
+	if err != nil || d <= 0 {
+		return 0, fmt.Errorf("%s must be a positive Go duration", key)
+	}
+	return d, nil
 }
 
 func grace() time.Duration {
