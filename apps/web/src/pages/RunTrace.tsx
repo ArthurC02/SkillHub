@@ -373,39 +373,41 @@ function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
       </nav>
 
       <h2>事件串流</h2>
-      <table>
-        <thead>
-          <tr>
-            <th scope="col">Attempt</th>
-            <th scope="col">來源</th>
-            <th scope="col">收到</th>
-            <th scope="col">缺號</th>
-            <th scope="col">遲到</th>
-          </tr>
-        </thead>
-        <tbody>
-          {trace.streams.map((stream) => (
-            <tr key={`${stream.attempt}-${stream.emitted_by}`}>
-              <td>{stream.attempt}</td>
-              <td>{stream.emitted_by}</td>
-              <td>{stream.received}</td>
-              {/* An empty missing list is "nothing lost", which is a different
+      <div className="table-scroll" tabIndex={0}>
+        <table className="compare-table">
+          <thead>
+            <tr>
+              <th scope="col">Attempt</th>
+              <th scope="col">來源</th>
+              <th scope="col">收到</th>
+              <th scope="col">缺號</th>
+              <th scope="col">遲到</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trace.streams.map((stream) => (
+              <tr key={`${stream.attempt}-${stream.emitted_by}`}>
+                <td>{stream.attempt}</td>
+                <td>{stream.emitted_by}</td>
+                <td>{stream.received}</td>
+                {/* An empty missing list is "nothing lost", which is a different
                   fact from "we never checked" — so it says 無 rather than being
                   left blank. */}
-              <td>
-                {stream.missing_count === 0
-                  ? "無"
-                  : `${stream.missing_seq?.join("、") || "未列出"}${
-                      stream.missing_count > (stream.missing_seq?.length || 0)
-                        ? `（共 ${stream.missing_count} 個）`
-                        : ""
-                    }`}
-              </td>
-              <td>{stream.late_events}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                <td>
+                  {stream.missing_count === 0
+                    ? "無"
+                    : `${stream.missing_seq?.join("、") || "未列出"}${
+                        stream.missing_count > (stream.missing_seq?.length || 0)
+                          ? `（共 ${stream.missing_count} 個）`
+                          : ""
+                      }`}
+                </td>
+                <td>{stream.late_events}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <h2>事件（已遮罩，依序重建）</h2>
       {trace.events.length === 0 ? (

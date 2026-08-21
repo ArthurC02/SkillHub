@@ -109,117 +109,12 @@ function ComparisonTables({ data }: { data: RunComparison }) {
 
   return (
     <>
-      <table className="compare-table">
-        <caption>Run 執行狀態與任務判定對比</caption>
-        <thead>
-          <tr>
-            <th scope="col">項目</th>
-            {sides.map((s) => (
-              <th key={s.run_id} scope="col">
-                <code>{s.run_id}</code>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {/* Two rows, deliberately never one: execution outcome, then task
-              judgement (ADR-025). */}
-          <tr>
-            <th scope="row">執行狀態</th>
-            {sides.map((s) => (
-              <td key={s.run_id}>
-                {RUN_STATUS_LABEL[s.status] ?? s.status}（<code>{s.status}</code>）
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <th scope="row">任務判定</th>
-            {sides.map((s) => (
-              <td key={s.run_id}>{verdictCell(s)}</td>
-            ))}
-          </tr>
-          <tr>
-            <th scope="row">Skill 版本</th>
-            {sides.map((s) => (
-              <td key={s.run_id}>
-                <code>{s.skill_version_id}</code>
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <th scope="row">最終輸出</th>
-            {sides.map((s) => (
-              // Untrusted content: inert text, never markup (ADR-001).
-              <td key={s.run_id}>{s.final_output ? <pre>{s.final_output}</pre> : "無"}</td>
-            ))}
-          </tr>
-          <tr>
-            <th scope="row">錯誤</th>
-            {sides.map((s) => (
-              <td key={s.run_id}>
-                {s.errors && s.errors.length > 0 ? (
-                  <ul>
-                    {s.errors.map((e, i) => (
-                      <li key={`${e.code ?? ""}-${i}`}>
-                        [{e.category ?? "?"}/{e.code ?? "?"}] {e.message}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  "無"
-                )}
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <th scope="row">延遲</th>
-            {sides.map((s) => (
-              <td key={s.run_id}>
-                {s.duration_ms === undefined ? "未開始執行" : `${s.duration_ms} 毫秒`}
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <th scope="row">Run 成本（下界）</th>
-            {sides.map((s) => (
-              <td key={s.run_id}>
-                {usd(s.cost.usd)}
-                <p className="note">
-                  {s.cost.is_lower_bound ? "這是下界，不是總額。" : ""}
-                  權威來源：{s.cost.authoritative_source}
-                </p>
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <th scope="row">評估成本</th>
-            {sides.map((s) => (
-              <td key={s.run_id}>
-                {s.evaluation ? usd(s.evaluation.cost.evaluation_usd) : "未評估"}
-                <p className="note">與上一列分開列，不相加。</p>
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <th scope="row">輸入是否仍在</th>
-            {sides.map((s) => (
-              <td key={s.run_id}>
-                <RerunCell side={s} />
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
-
-      <h2>逐條驗收條件</h2>
-      {data.criterion_matrix.length === 0 ? (
-        <p>沒有可對照的驗收條件。</p>
-      ) : (
+      <div className="table-scroll" tabIndex={0}>
         <table className="compare-table">
-          <caption>驗收條件判定矩陣對比</caption>
+          <caption>Run 執行狀態與任務判定對比</caption>
           <thead>
             <tr>
-              <th scope="col">驗收條件</th>
+              <th scope="col">項目</th>
               {sides.map((s) => (
                 <th key={s.run_id} scope="col">
                   <code>{s.run_id}</code>
@@ -228,25 +123,134 @@ function ComparisonTables({ data }: { data: RunComparison }) {
             </tr>
           </thead>
           <tbody>
-            {data.criterion_matrix.map((row) => (
-              <tr key={row.criterion_id}>
-                <th scope="row">{row.text}</th>
-                {row.results.map((r) => (
-                  <td key={r.run_id}>
-                    {/* null is "no verdict on this side" — a different fact from
-                        undetermined, which is a verdict that was reached. */}
-                    {r.result === null ? (
-                      <span className="compare-unknown">無判定</span>
-                    ) : (
-                      CRITERION_LABEL[r.result]
-                    )}
-                    {r.source === "model" ? <p className="note">模型評估</p> : null}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {/* Two rows, deliberately never one: execution outcome, then task
+              judgement (ADR-025). */}
+            <tr>
+              <th scope="row">執行狀態</th>
+              {sides.map((s) => (
+                <td key={s.run_id}>
+                  {RUN_STATUS_LABEL[s.status] ?? s.status}（<code>{s.status}</code>）
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <th scope="row">任務判定</th>
+              {sides.map((s) => (
+                <td key={s.run_id}>{verdictCell(s)}</td>
+              ))}
+            </tr>
+            <tr>
+              <th scope="row">Skill 版本</th>
+              {sides.map((s) => (
+                <td key={s.run_id}>
+                  <code>{s.skill_version_id}</code>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <th scope="row">最終輸出</th>
+              {sides.map((s) => (
+                // Untrusted content: inert text, never markup (ADR-001).
+                <td key={s.run_id}>{s.final_output ? <pre>{s.final_output}</pre> : "無"}</td>
+              ))}
+            </tr>
+            <tr>
+              <th scope="row">錯誤</th>
+              {sides.map((s) => (
+                <td key={s.run_id}>
+                  {s.errors && s.errors.length > 0 ? (
+                    <ul>
+                      {s.errors.map((e, i) => (
+                        <li key={`${e.code ?? ""}-${i}`}>
+                          [{e.category ?? "?"}/{e.code ?? "?"}] {e.message}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    "無"
+                  )}
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <th scope="row">延遲</th>
+              {sides.map((s) => (
+                <td key={s.run_id}>
+                  {s.duration_ms === undefined ? "未開始執行" : `${s.duration_ms} 毫秒`}
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <th scope="row">Run 成本（下界）</th>
+              {sides.map((s) => (
+                <td key={s.run_id}>
+                  {usd(s.cost.usd)}
+                  <p className="note">
+                    {s.cost.is_lower_bound ? "這是下界，不是總額。" : ""}
+                    權威來源：{s.cost.authoritative_source}
+                  </p>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <th scope="row">評估成本</th>
+              {sides.map((s) => (
+                <td key={s.run_id}>
+                  {s.evaluation ? usd(s.evaluation.cost.evaluation_usd) : "未評估"}
+                  <p className="note">與上一列分開列，不相加。</p>
+                </td>
+              ))}
+            </tr>
+            <tr>
+              <th scope="row">輸入是否仍在</th>
+              {sides.map((s) => (
+                <td key={s.run_id}>
+                  <RerunCell side={s} />
+                </td>
+              ))}
+            </tr>
           </tbody>
         </table>
+      </div>
+
+      <h2>逐條驗收條件</h2>
+      {data.criterion_matrix.length === 0 ? (
+        <p>沒有可對照的驗收條件。</p>
+      ) : (
+        <div className="table-scroll" tabIndex={0}>
+          <table className="compare-table">
+            <caption>驗收條件判定矩陣對比</caption>
+            <thead>
+              <tr>
+                <th scope="col">驗收條件</th>
+                {sides.map((s) => (
+                  <th key={s.run_id} scope="col">
+                    <code>{s.run_id}</code>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {data.criterion_matrix.map((row) => (
+                <tr key={row.criterion_id}>
+                  <th scope="row">{row.text}</th>
+                  {row.results.map((r) => (
+                    <td key={r.run_id}>
+                      {/* null is "no verdict on this side" — a different fact from
+                        undetermined, which is a verdict that was reached. */}
+                      {r.result === null ? (
+                        <span className="compare-unknown">無判定</span>
+                      ) : (
+                        CRITERION_LABEL[r.result]
+                      )}
+                      {r.source === "model" ? <p className="note">模型評估</p> : null}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <h2>Skill 版本差異</h2>

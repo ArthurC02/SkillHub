@@ -44,10 +44,27 @@ function RootLayout() {
       <header className="app-header">
         <Link to="/" className="app-title">
           Skill Hub
-        </Link>{" "}
-        <Link to="/workspace/skills">我的 Skill</Link> <Link to="/workspace/runs">Run 歷史</Link>{" "}
-        <Link to="/workspace/import">匯入 Skill</Link> <Link to="/lab/test-cases">Test Case</Link>{" "}
-        <Link to="/workspace/downloads">下載紀錄</Link> <AuthControls />
+        </Link>
+        {/*
+          A real landmark instead of a row of links glued together with {" "}:
+          the menu was previously indistinguishable from body text to a screen
+          reader, and on a narrow viewport it wrapped into the title. Named,
+          because SkillDetail and SkillFiles each carry an unlabelled <nav> of
+          their own and two same-named navigation landmarks is an axe
+          landmark-unique violation.
+
+          No activeProps and no change to any Link: the router already marks the
+          matching one with data-status="active" and aria-current="page", which
+          is both halves of "where am I" — see .app-nav in index.css.
+        */}
+        <nav className="app-nav" aria-label="主要導覽">
+          <Link to="/workspace/skills">我的 Skill</Link>
+          <Link to="/workspace/runs">Run 歷史</Link>
+          <Link to="/workspace/import">匯入 Skill</Link>
+          <Link to="/lab/test-cases">Test Case</Link>
+          <Link to="/workspace/downloads">下載紀錄</Link>
+        </nav>
+        <AuthControls />
       </header>
       <main>
         <Outlet />

@@ -213,47 +213,49 @@ const ROWS: CompareRow[] = [
 /** The table itself, taking already-loaded skills. */
 function CompareTable({ skills }: { skills: SkillDetail[] }) {
   return (
-    <table className="compare-table">
-      <caption>並排比較 {skills.length} 個 Skill 的靜態資料（匯入時記錄與掃描結果）</caption>
-      <thead>
-        <tr>
-          <th scope="col">比較項目</th>
-          {skills.map((skill) => (
-            <th key={skill.skill_id} scope="col">
-              <Link to="/skills/$skillId" params={{ skillId: skill.skill_id }}>
-                {skill.name}
-              </Link>
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {ROWS.map((row) => {
-          const signatures = skills.map(row.signature);
-          // 未知 is its own value here: one skill declaring MIT and another
-          // declaring nothing is a difference, and the sentinel keeps it from
-          // colliding with a genuine empty-ish signature.
-          const differs = new Set(signatures.map((value) => value ?? " 未知")).size > 1;
-          return (
-            <tr key={row.label} className={differs ? "compare-differs" : undefined}>
-              <th scope="row">
-                {row.label}
-                {differs && <span className="badge badge-differs">有差異</span>}
+    <div className="table-scroll" tabIndex={0}>
+      <table className="compare-table">
+        <caption>並排比較 {skills.length} 個 Skill 的靜態資料（匯入時記錄與掃描結果）</caption>
+        <thead>
+          <tr>
+            <th scope="col">比較項目</th>
+            {skills.map((skill) => (
+              <th key={skill.skill_id} scope="col">
+                <Link to="/skills/$skillId" params={{ skillId: skill.skill_id }}>
+                  {skill.name}
+                </Link>
               </th>
-              {skills.map((skill, index) => (
-                <td key={skill.skill_id}>
-                  {signatures[index] === undefined ? (
-                    <span className="compare-unknown">未知</span>
-                  ) : (
-                    (row.render?.(skill) ?? signatures[index])
-                  )}
-                </td>
-              ))}
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {ROWS.map((row) => {
+            const signatures = skills.map(row.signature);
+            // 未知 is its own value here: one skill declaring MIT and another
+            // declaring nothing is a difference, and the sentinel keeps it from
+            // colliding with a genuine empty-ish signature.
+            const differs = new Set(signatures.map((value) => value ?? "\u0000未知")).size > 1;
+            return (
+              <tr key={row.label} className={differs ? "compare-differs" : undefined}>
+                <th scope="row">
+                  {row.label}
+                  {differs && <span className="badge badge-differs">有差異</span>}
+                </th>
+                {skills.map((skill, index) => (
+                  <td key={skill.skill_id}>
+                    {signatures[index] === undefined ? (
+                      <span className="compare-unknown">未知</span>
+                    ) : (
+                      (row.render?.(skill) ?? signatures[index])
+                    )}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

@@ -71,42 +71,44 @@ export function DataPolicy() {
 
           <p className="note">{policy.data.note}</p>
 
-          <table className="compare-table">
-            <caption>
-              全部只有這四個事件。要加第五個，得先說明既有的資料表為什麼答不出那個問題。
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">事件</th>
-                <th scope="col">什麼時候產生</th>
-                <th scope="col">記了哪些欄位</th>
-                <th scope="col">沒有記什麼</th>
-              </tr>
-            </thead>
-            <tbody>
-              {policy.data.events.map((event) => (
-                <tr key={event.name}>
-                  <th scope="row">
-                    <code>{event.name}</code>
-                  </th>
-                  <td>{event.when}</td>
-                  <td>
-                    {/* The whitelist verbatim: these are column names, and
+          <div className="table-scroll" tabIndex={0}>
+            <table className="compare-table">
+              <caption>
+                全部只有這四個事件。要加第五個，得先說明既有的資料表為什麼答不出那個問題。
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">事件</th>
+                  <th scope="col">什麼時候產生</th>
+                  <th scope="col">記了哪些欄位</th>
+                  <th scope="col">沒有記什麼</th>
+                </tr>
+              </thead>
+              <tbody>
+                {policy.data.events.map((event) => (
+                  <tr key={event.name}>
+                    <th scope="row">
+                      <code>{event.name}</code>
+                    </th>
+                    <td>{event.when}</td>
+                    <td>
+                      {/* The whitelist verbatim: these are column names, and
                         translating them would break the link between what the
                         page claims and what the table holds. */}
-                    <ul className="risk-list">
-                      {event.attributes.map((attribute) => (
-                        <li key={attribute}>
-                          <code>{attribute}</code>
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                  <td>{event.not_recorded}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      <ul className="risk-list">
+                        {event.attributes.map((attribute) => (
+                          <li key={attribute}>
+                            <code>{attribute}</code>
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                    <td>{event.not_recorded}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
 

@@ -111,6 +111,12 @@ const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
   ["danger", "bg", 4.5, ".file-script .script-tag"],
   ["danger", "code-bg", 4.5, ".badge-compat-failed/.badge-risk/.badge-expired text"],
   ["accent", "bg", 3, ".notice border-left — 1.4.11 non-text, never used as text"],
+  // --link exists because --accent is 4.39:1 on --bg: it can outline a .notice
+  // and it cannot be a link. That distinction only holds while something checks
+  // it, so these two lines are the check — without them the reason --link was
+  // added is a sentence in a comment rather than a property of the palette.
+  ["link", "bg", 4.5, "a, .app-nav links — link text on the page"],
+  ["link", "code-bg", 4.5, "a inside .skill-md / .diff / a styled control"],
 ];
 
 test("QA-009: every colour token is declared once per theme", () => {
