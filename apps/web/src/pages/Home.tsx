@@ -66,7 +66,10 @@ export function Home() {
   }
 
   return (
-    <section>
+    // `home` is a styling hook, not a variant: this is the only route whose h1
+    // is a hero rather than a document title, and the only one whose form is the
+    // page's primary control (see index.css `.home h1` / `.home form`).
+    <section className="home">
       <h1>用一句話描述你的任務</h1>
       <form onSubmit={handleSubmit}>
         <input

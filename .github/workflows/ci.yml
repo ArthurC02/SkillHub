@@ -104,7 +104,29 @@ jobs:
   web-browser:
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
+    # ADR-036 §待決策 1, resolved in part. Two things about this app genuinely
+    # differ by operating system and both are what the layout assertion
+    # measures: `system-ui` resolves to Segoe UI here and to DejaVu/Cantarell on
+    # the Linux runner, so text wraps at different widths; and Chromium on
+    # Windows draws classic scrollbars that occupy 15-17px of layout, where
+    # macOS and Linux draw overlay scrollbars that occupy none. A page that does
+    # not scroll sideways on Linux can still do so on Windows.
+    #
+    # macOS is deliberately absent. Its runners bill at 10x against Windows's
+    # 2x, and the gap it would close — "real Safari" — it does not actually
+    # close, because Playwright ships its own WebKit build on macOS too. That
+    # one stays open in ADR-036.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            install: chromium firefox webkit
+            projects: ""
+          - os: windows-latest
+            install: chromium
+            projects: "--project=chromium"
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: apps/web
@@ -122,14 +144,18 @@ jobs:
       - run: npm run build
         working-directory: packages/api-client-ts
       - run: npm ci
-      - run: npx playwright install --with-deps chromium firefox webkit
-      - run: npm run test:e2e
+      # --with-deps installs OS packages and only means anything on Linux.
+      - if: runner.os == 'Linux'
+        run: npx playwright install --with-deps ${{ matrix.install }}
+      - if: runner.os != 'Linux'
+        run: npx playwright install ${{ matrix.install }}
+      - run: npm run test:e2e -- ${{ matrix.projects }}
       # The report is only worth keeping when something failed; on a green run
       # it is a few hundred kilobytes saying so.
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.os }}
           path: apps/web/playwright-report/
           retention-days: 7
 

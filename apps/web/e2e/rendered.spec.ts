@@ -66,10 +66,10 @@ test.describe("QA-008 composite pixels", () => {
   /**
    * Scanned on the two routes this tier can reach without inventing a fixture,
    * which is 2 of 12 — and the honest reading of that number is narrower than
-   * it looks. Of the four `rgba()` tokens 04 丙-21③ named as out of reach:
+   * it looks. 04 丙-21③ named four `rgba()` tokens as out of reach. Two of them,
+   * `--social-bg` and `--shadow`, turned out to be painted by no rule at all and
+   * have since been deleted. Of the two that remain:
    *
-   *   - `--social-bg` and `--shadow` are declared in both themes and used
-   *     nowhere. Nothing composites them because nothing paints them.
    *   - `--accent-border` is only ever a `border-color`. Borders are 1.4.11
    *     non-text, which `color-contrast` does not judge in any engine.
    *   - `--accent-bg` is the only one that lands behind text — `.notice` and

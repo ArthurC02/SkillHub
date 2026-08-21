@@ -17,8 +17,6 @@
      --code-bg. In dark mode --accent already clears it (6.77:1) and the two
      values coincide. */
   --link: #9b2ae6;
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
   --sans: system-ui, "Segoe UI", Roboto, sans-serif;
   --heading: system-ui, "Segoe UI", Roboto, sans-serif;
@@ -51,12 +49,6 @@
     --accent-border: rgba(192, 132, 252, 0.5);
     --danger: #f87171;
     --link: #c084fc;
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow: rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
   }
 }
 
@@ -83,14 +75,47 @@ h2 {
   color: var(--text-h);
 }
 
+/* 40px is a page title. 56px was a landing hero applied to every route, so
+   「資料保存政策」 — a document heading above a table of prose — was set at the
+   same size as the search page's one-line invitation. Those are two different
+   jobs; only the search page does the second one, and it opts in below. */
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
+  font-size: 40px;
+  letter-spacing: -1.2px;
   margin: 32px 0;
   @media (max-width: 1024px) {
-    font-size: 36px;
+    font-size: 30px;
     margin: 20px 0;
   }
+}
+
+/* The one hero in the app: `Home` is the entry point and its h1 is the prompt,
+   not a label for content below it. */
+.home h1 {
+  font-size: 56px;
+  letter-spacing: -1.68px;
+  @media (max-width: 1024px) {
+    font-size: 36px;
+  }
+}
+
+/* The product's primary control was a browser-default text input: ~180px wide,
+   too narrow to show its own placeholder, sitting under a 56px heading. The
+   input takes the row and the button keeps its intrinsic width; the cap stops a
+   1126px viewport from stretching one field across the whole page. */
+.home form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home form input {
+  flex: 1;
+  max-width: 560px;
+}
+
+.home form button {
+  flex-shrink: 0;
 }
 h2 {
   font-size: 24px;
@@ -103,6 +128,16 @@ h2 {
 }
 p {
   margin: 0;
+}
+
+/* The UA centres a caption. Every other block on these pages is left-aligned
+   flush with the table below it, so a centred, indented sentence read as a
+   floating remark rather than as the table's own title. Demoted by size only —
+   never `opacity` (see the QA-009 note on `.note` further down). */
+caption {
+  text-align: left;
+  font-size: 14px;
+  margin-bottom: 8px;
 }
 
 code,
@@ -296,16 +331,32 @@ main {
   color: var(--danger);
 }
 
+/* `margin: 0` finishes the reset that `padding: 0` started. Without it the UA's
+   margin-block survived, and in a /policy table cell — where the list IS the
+   cell — it dropped every badge a full line below the text in the neighbouring
+   cells, on all four rows. */
 .risk-list,
 .compat-list,
 .file-tree,
 .search-results,
 .tag-list {
   list-style: none;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* `p` is `margin: 0` app-wide, so with the reset above a list in running text
+   welded itself to the text on either side (RiskIndicator, CompatibilityStatus,
+   the result count on Home). Put back as an explicit sibling gap rather than by
+   restoring the margin: a list that is the whole of a table cell has no element
+   sibling and so still sits flush, which is the case being fixed. */
+:is(p, details, .risk-list, .compat-list, .file-tree, .search-results, .tag-list)
+  + :is(.risk-list, .compat-list, .file-tree, .search-results, .tag-list),
+:is(.risk-list, .compat-list, .file-tree, .search-results, .tag-list) + p {
+  margin-top: 8px;
 }
 
 .tag-list {
@@ -320,10 +371,20 @@ main {
 /* DISC-003 filter bar. The unavailable dimensions keep their reason visible
    rather than hiding it in a tooltip: a disabled control with no stated cause
    reads as a bug, and the cause is the honest part of the feature. */
+/* Grid, not wrapping flex. Three of the six items are a label plus a select and
+   three carry two or three lines of reason text, so on a flex line box the tall
+   ones set the line height and the short ones left ~120px of dead space
+   underneath — 「需要 MCP」 wrapped alone onto a second line three quarters
+   empty, and the whole bar ran ~340px tall directly under the search box. Grid
+   tracks are equal width and each row is one height, so nothing is padded out
+   by a neighbour. 320px is chosen so a 1126px page gets three tracks, not four:
+   at four, 類別 lands beside the three short live controls and re-opens the same
+   void one row up. Three puts the live controls on one short row and the three
+   reasons on one tall row. min() keeps the track inside a narrow viewport. */
 .filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  align-items: start;
   gap: 12px 20px;
   margin: 12px 0;
   padding: 12px;
@@ -331,16 +392,17 @@ main {
   border-radius: 8px;
 }
 
+/* No max-width: the grid track is the width now, and capping the label inside
+   it would put the dead space back one level down. */
 .filter-bar label {
   display: flex;
   flex-direction: column;
   gap: 4px;
   font-size: 14px;
-  max-width: 220px;
 }
 
 .filter-bar > .note {
-  flex-basis: 100%;
+  grid-column: 1 / -1;
 }
 
 /* QA-009: this used to carry `opacity: 0.65`, which multiplied with the 0.8 on
@@ -623,9 +685,5 @@ summary {
   /* 220px of a 351px viewport is not a row header, it is the whole table. */
   .compare-table th[scope="row"] {
     width: 140px;
-  }
-
-  .filter-bar label {
-    max-width: none;
   }
 }

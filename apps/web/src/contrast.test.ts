@@ -25,10 +25,13 @@ import { expect, test } from "vitest";
  *
  * **What it does not prove**, in the same spirit as the a11y header:
  *
- * 1. **Anything involving alpha.** `--accent-bg`, `--accent-border`,
- *    `--social-bg` and `--shadow` are `rgba()`; whatever sits on top of them is
- *    composited against a background this file never resolves. `.notice` (text
- *    on `--accent-bg`) is therefore unchecked here.
+ * 1. **Anything involving alpha.** `--accent-bg` and `--accent-border` are
+ *    `rgba()`; whatever sits on top of them is composited against a background
+ *    this file never resolves. `.notice` (text on `--accent-bg`) is therefore
+ *    unchecked here — but no longer unchecked anywhere: the browser tier
+ *    (ADR-036) composites it in three engines, and that gap was verified closed
+ *    by breaking `--accent-bg` on purpose and watching this file stay green
+ *    while the browser tier failed.
  * 2. **`opacity`.** A multiplier lands wherever it lands regardless of the
  *    token — which is exactly why QA-009 removed the `opacity: 0.65`–`0.8`
  *    mutes from `index.css` rather than tuning them. Nothing stops them coming
