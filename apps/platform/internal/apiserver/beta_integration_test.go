@@ -294,14 +294,12 @@ func TestTwoSimultaneousRunsCannotBothTakeTheLastSlot(t *testing.T) {
 		codes []int
 	)
 	for range 2 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			code, _ := f.startWithHash(t, hash)
 			mu.Lock()
 			codes = append(codes, code)
 			mu.Unlock()
-		}()
+		})
 	}
 	wg.Wait()
 

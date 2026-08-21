@@ -124,13 +124,11 @@ func TestConcurrentFirstLoginCreatesOneAccount(t *testing.T) {
 	errs := make(chan error, 2)
 	var wg sync.WaitGroup
 	for range 2 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			<-start
 			_, err := svc.LoginOrSignup(context.Background(), id)
 			errs <- err
-		}()
+		})
 	}
 	close(start)
 	wg.Wait()
