@@ -63,26 +63,55 @@ test.describe("QA-008 composite pixels", () => {
    * only then that it found nothing. Without that check this tier quietly
    * becomes the hole it was built to close.
    */
-  test("color-contrast is decided, not skipped, and passes", async ({ page }) => {
-    await stubApi(page);
-    await page.goto("/?q=pdf");
-    await expect(page.getByText("PDF Summariser")).toBeVisible();
-    // Both .notice bars are on screen. --accent-bg is an rgba() token and this
-    // is the only tier that can see what it composites against.
-    await expect(page.locator(".notice")).toHaveCount(2);
+  /**
+   * Scanned on the two routes this tier can reach without inventing a fixture,
+   * which is 2 of 12 — and the honest reading of that number is narrower than
+   * it looks. Of the four `rgba()` tokens 04 丙-21③ named as out of reach:
+   *
+   *   - `--social-bg` and `--shadow` are declared in both themes and used
+   *     nowhere. Nothing composites them because nothing paints them.
+   *   - `--accent-border` is only ever a `border-color`. Borders are 1.4.11
+   *     non-text, which `color-contrast` does not judge in any engine.
+   *   - `--accent-bg` is the only one that lands behind text — `.notice` and
+   *     `.compare-differs`, both compositing it over `--bg`. The first is on
+   *     screen below.
+   *
+   * So the token that mattered is covered. What the other ten routes would add
+   * is their own text on the ordinary background, which the static tier already
+   * measures — worth having, not worth a forty-field fixture per route.
+   */
+  for (const [route, where] of [
+    ["/?q=pdf", "search results, both .notice bars"],
+    ["/policy", "the retention table"],
+  ] as const) {
+    /**
+     * The second assertion is the one that matters. Zero `color-contrast`
+     * violations proves nothing by itself — that is exactly what jsdom reports,
+     * by never deciding. So this asserts the rule left `incomplete` first, and
+     * only then that it found nothing. Without that check this tier quietly
+     * becomes the hole it was built to close.
+     */
+    test(`color-contrast decides and passes: ${where}`, async ({ page }) => {
+      await stubApi(page);
+      await page.goto(route);
+      await expect(page.locator(".app-nav a").first()).toBeVisible();
+      if (route === "/?q=pdf") {
+        await expect(page.locator(".notice")).toHaveCount(2);
+      }
 
-    const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
+      const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
 
-    expect(
-      results.incomplete.filter((r) => r.id === "color-contrast"),
-      "color-contrast came back incomplete — this tier decided nothing",
-    ).toEqual([]);
-    expect(
-      results.passes.some((r) => r.id === "color-contrast"),
-      "color-contrast never ran at all",
-    ).toBe(true);
-    expect(results.violations).toEqual([]);
-  });
+      expect(
+        results.incomplete.filter((r) => r.id === "color-contrast"),
+        "color-contrast came back incomplete — this tier decided nothing",
+      ).toEqual([]);
+      expect(
+        results.passes.some((r) => r.id === "color-contrast"),
+        "color-contrast never ran at all",
+      ).toBe(true);
+      expect(results.violations).toEqual([]);
+    });
+  }
 
   /**
    * The ring drawn for :focus-visible has to survive compositing too.

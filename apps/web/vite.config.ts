@@ -14,5 +14,10 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
+    // The e2e directory belongs to Playwright (ADR-036). Vitest's default glob
+    // reaches it, and a Playwright spec collected by the wrong runner fails at
+    // import with "did not expect test.describe() to be called here" — a red
+    // suite whose test count is still green, which reads as flake.
+    exclude: ["**/node_modules/**", "**/dist/**", "e2e/**"],
   },
 });
