@@ -359,9 +359,16 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	// The permission check and snapshot are one critical section. Dataset
 	// upload/delete and test-case edits all take this parent row lock, so the
 	// confirmed hash cannot describe one input set while the snapshot freezes
-	// another (SEC-002 gate B).
-	testCase, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: p.TestCaseID, WorkspaceID: p.WorkspaceID})
-	if errors.Is(err, pgx.ErrNoRows) {
+	// another (SEC-002 gate B). The lock has to be taken here rather than left to
+	// CreateSnapshot below, which also takes it: the section has to be open
+	// before the permission check reads the summary it compares.
+	//
+	// Asked of the test lab rather than taken with its query (DDD-031): the row
+	// belongs to that context and so does the decision about what locking it
+	// protects. This package still owns everything it owned - which skill the
+	// case must belong to, the permission check, the run row.
+	testCase, err := testlab.LockDraft(ctx, q, p.WorkspaceID, p.TestCaseID)
+	if errors.Is(err, testlab.ErrNotFound) {
 		return gen.Run{}, ErrNotFound
 	}
 	if err != nil {

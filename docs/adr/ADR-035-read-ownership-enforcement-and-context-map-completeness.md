@@ -65,14 +65,16 @@ read 與 write 走同一個迴圈，只有 `queries[name].write` 的比對值不
 - **呼叫點判定仍是文字比對**（`.<QueryName>(` ＋ `db/gen` import），不是型別解析。read 側繼承 write 側的這個限制，升級路徑不變（改用 `go/ast`，裸 SQL tripwire 已先行採用）。
 - **`read_allow:` 的「理由」由分組註解承載，不由機器檢查。** 與 `allow:`／`immutable_allow:` 相同（只有 `raw_sql_allow:` 的 value 就是理由，因為它的 key 是檔案路徑、沒有第二個欄位可放）。機器強制的是「具名」與「失效即 FAIL」；理由的品質靠 review。
 
-## 存量：35 條，七組
+## 存量：35 條，七組（2026-08-21 DDD-031 後：33 條、六組）
 
 導入時量到 47 組 (query, caller) 跨 context read、共 56 個呼叫點，收斂為 `read_allow:` 的 35 個條目（同一 query 的多個呼叫端合成一行）。下表的「條」與 yaml 的分組標題一致，指的是 (query, caller) 組數。分組與清除方向如下——**逐組的判讀寫在 `db/query-owners.yaml` 的分組註解裡，本節不重寫成另一套說法**。
+
+2026-08-21（DDD-031 實作註記）：**B 組已收，存量現為 33 條、六組**（45 組 (query, caller)、54 個呼叫點）。組別字母不重編，A 之後直接跳 C——下表的字母與 yaml 的分組標題永遠指同一組東西，重編會讓兩邊的歷史對不上。導入時的數字保留在上面一段，那是量測當下的事實。
 
 | 組 | 內容 | 成因 | 清除方向 |
 | --- | --- | --- | --- |
 | **A** | registry 的 Skill／Version 事實（21 條、6 個呼叫端） | `skills`／`skill_versions` 是全平台的共享事實；registry 至今只公開了寫入面（DDD-019／020 的三支 `*FromPackage` 與 `SetAccessRestriction`），沒有讀取面 | registry 開一支讀取面。這一組不是判定可商榷，是缺一支 API |
-| **B** | `LockSkillForRestriction`（catalog）、`LockTestCase`（run） | 寫入已回到 owner，**同一筆動作的 `SELECT … FOR UPDATE` 沒跟著搬** | 鎖併進 owner 的寫入函式。**優先收，見下** |
+| **B** | ~~`LockSkillForRestriction`（catalog）、`LockTestCase`（run）~~ | 寫入已回到 owner，**同一筆動作的 `SELECT … FOR UPDATE` 沒跟著搬** | ~~鎖併進 owner 的寫入函式。**優先收，見下**~~ → **2026-08-21 DDD-031 已收**，見下 |
 | **C** | testlab 的 Test Case／Dataset 快照（6 條） | 與 A 同因，但成本低得多：附錄 A 已允許 `run`／`eval`／`packaging` → `testlab` 三條 import，testlab 也已有 Service 門面（DDD-007） | 直接走既有 import ＋ Service 門面。`ListWorkspaceObjectKeys`（identity 的帳號刪除盤點待刪物件鍵）方向與 ADR-034 的 `PurgeWorkspace` 一致，併進那支注入 |
 | **D** | run 的 Run 事實（7 條） | 與 A、C 同因，但 import 方向被 depguard 擋著 | **注入，不是 import，見下** |
 | **E** | objreconcile 代讀 owner 的清單（3 條） | DDD-020 反轉了掃描器的**寫入**半邊，**讀取半邊留著**——掃描器仍自己決定「哪些列該被掃」 | 注入形狀已經在 `cmd/worker` 的 `buildWorkers` 裡，補幾個 lister 欄位即可 |
@@ -84,6 +86,19 @@ read 與 write 走同一個迴圈，只有 `queries[name].write` 的比對值不
 `LockSkillForRestriction` 與 `LockTestCase` 都是 `SELECT … FOR UPDATE`（`normalizeSQL` 會把 `FOR UPDATE` 消掉，所以本檢查正確判為 read）：呼叫端先鎖 owner 的列，再叫 owner 寫。DDD-020／ADR-034 反轉的是**寫入那一半**，鎖這一半沒跟著搬，於是「鎖誰」這個決定仍在呼叫端手上——**owner 無法保證自己的寫入被正確序列化**。第二個呼叫端只要鎖錯行、或忘了鎖，owner 這邊不會有任何跡象。
 
 這與其他六組不同級：A／C／D／E／F／G 是整潔與 schema 耦合問題（今天不收，明天也只是更難改）；B 是**正確性**問題，而且是已經被反轉一半、留下不完整接縫的那種——比從未動過的更危險，因為它看起來已經收過了。
+
+#### 2026-08-21（DDD-031 實作註記）：B 組已收
+
+上面的判斷不變，兩條都照它收掉了——**鎖搬到寫入所在的 context，不是搬到別的地方**：
+
+- `LockSkillForRestriction`：`registry.SetAccessRestriction` 自己取 `FOR UPDATE`，並把 before-state 當作回傳值交出去；catalog 不再自己讀那一列，它拿到的是 owner 保證過的前值。簽章由 `(...) error` 變成 `(...) (gen.LockSkillForRestrictionRow, error)`。catalog 保留了它原本擁有的每一項決定：reason code 清單、兩條 HTTP route、授權檢查、audit event。
+- `LockTestCase`：`testlab.CreateSnapshot` 自己取鎖（原本讀的是不上鎖的 `GetTestCase`，完全倚賴呼叫端先鎖），而 run 需要的「臨界區要在權限確認**之前**開始」則由新的 owner 匯出函式 `testlab.LockDraft(ctx, q, workspaceID, testCaseID)` 提供（**刻意不與 query 同名**：本檢查以 `.LockTestCase(` 文字比對找呼叫點，同名 wrapper 在每個呼叫點都與 query 無從分辨，等於把剛清掉的違規原樣種回去——見「已知盲點」第二條）。同一交易內重複鎖同一列在 Postgres 是 no-op，所以兩者並存不是成本。`run → testlab` 本來就是附錄 A 的合法方向，故不需要 ADR-034 式的注入。
+
+兩者都維持在**呼叫端的交易內**（收 `pgx.Tx`／`*gen.Queries`，不自開交易），鐵律 9 不變。錯誤語意逐條保留：`pgx.ErrNoRows` → owner 的 `ErrNotFound` → run／catalog 的「找不到」，軟刪除與跨 workspace 的列仍讀為找不到。
+
+守門的是三樣東西，缺一不可：`read_allow:` 兩條移除後，任何呼叫端再直接叫這兩條 query，`automation-check` 就是紅的（新違規）；`internal/registry/restriction_test.go` 以兩個真實交易競爭同一列，斷言第二個操作者看到的 before-state 是第一個 commit 後的值（拿掉 `FOR UPDATE` 即紅）；`internal/apiserver/snapshot_lock_integration_test.go` 讓一筆併發編輯與 `CreateSnapshot` 競爭，斷言凍結會等、且凍到 commit 後的 prompt（把鎖換回 `GetTestCase` 即紅）。
+
+刻意沒做的事：A／C／D／E／F／G 六組原地不動——它們是整潔問題，本批只收正確性那一組；`testlab` 沒有新增資料庫測試骨架（那會是第四個重置 `public` schema 的套件），case 2 的併發測試因此放在既有的 `apiserver` 整合測試裡。
 
 ### D 組的正解是注入，不是 import
 

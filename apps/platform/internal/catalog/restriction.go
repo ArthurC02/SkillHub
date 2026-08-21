@@ -39,7 +39,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/audit"
@@ -150,8 +149,9 @@ func (h *Handler) changeRestriction(w http.ResponseWriter, r *http.Request, reas
 	})
 }
 
-// ChangeRestriction is the shared write: lock the row, write the column, write
-// the audit event, commit. One transaction, so a hold can never be in force
+// ChangeRestriction is the shared write: change the column through its owner
+// (which locks the row and hands back the before-state), write the audit event,
+// commit. One transaction, so a hold can never be in force
 // without the event that explains it, or explained without being in force
 // (iron rule 9). It returns the reason that was in force before, which is what
 // the response echoes back to the operator.
@@ -163,16 +163,19 @@ func (s *Service) ChangeRestriction(ctx context.Context, skillID, actor pgtype.U
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := gen.New(tx)
 
-	before, err := q.LockSkillForRestriction(ctx, skillID)
-	if errors.Is(err, pgx.ErrNoRows) {
+	// registry owns the column; this package owns the decision (see the file
+	// comment). Same transaction, so the audit event below still commits with it.
+	//
+	// The lock that makes `before` the true before-state is taken inside that
+	// call, not here (DDD-031). This package used to take it one statement
+	// earlier, which meant the owner of the write could not guarantee its own
+	// writes were serialised — see registry.SetAccessRestriction. What this file
+	// lost is one query call; what it kept is every decision it had.
+	before, err := registry.SetAccessRestriction(ctx, tx, skillID, reason)
+	if errors.Is(err, registry.ErrNotFound) {
 		return nil, errSkillNotFound
 	}
 	if err != nil {
-		return nil, err
-	}
-	// registry owns the column; this package owns the decision (see the file
-	// comment). Same transaction, so the audit event below still commits with it.
-	if err := registry.SetAccessRestriction(ctx, tx, skillID, reason); err != nil {
 		return nil, err
 	}
 	// The note is operator prose about a platform decision, not user content, so

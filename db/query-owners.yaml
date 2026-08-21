@@ -123,6 +123,10 @@ allow:
 # **不是擴充點**——新的跨 context read 一律改程式（owner 開讀取面，或比照
 # ADR-034 由 composition root 注入）。逐組清除方向見 ADR-035「存量清除路徑」。
 # 值是被容忍的呼叫端 context 清單；理由按成因分組寫在各組上方。
+#
+# 導入時是 35 條、七組；**B 組（鎖留在呼叫端的兩條）已由 DDD-031 收掉**，現為
+# 33 條、六組。組別字母不重編：A 之後直接跳 C，是為了讓 ADR-035 的分組表與這裡
+# 永遠指同一組東西。
 read_allow:
   # ── A. registry 的 Skill／Version 事實（21 條、6 個呼叫端）────────────────
   # 最大的一組，成因單一：`skills` 與 `skill_versions` 是全平台的共享事實——
@@ -140,14 +144,6 @@ read_allow:
   GetPreviousSkillVersion: packaging
   GetOldestSkillVersion: packaging
   GetVersionLineage: packaging
-
-  # ── B. 寫入已回到 owner，但同一筆動作的鎖／前置讀留在呼叫端（2 條）────────
-  # 兩條都是 `SELECT ... FOR UPDATE`（本檢查正確判為 read）：呼叫端先鎖 owner 的列，
-  # 再叫 owner 寫。DDD-020 反轉的是寫入那一半，鎖這一半沒跟著搬，於是「鎖誰」這個
-  # 決定仍在呼叫端手上。這是四組裡最該優先收的——鎖與寫分屬兩個 context 時，
-  # owner 無法保證自己的寫入被正確序列化。
-  LockSkillForRestriction: catalog
-  LockTestCase: run
 
   # ── C. testlab 的 Test Case／Dataset 快照（6 條）──────────────────────────
   # 與 A 同因（owner 沒有讀取面），但成本低得多：附錄 A 已允許

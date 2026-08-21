@@ -29,6 +29,12 @@
 //     Reading test_cases / datasets through gen directly is the thing this
 //     replaced — internal/run had grown its own dataset type and its own copy of
 //     the ordering comment, which is two definitions of one fact.
+//   - Lock: [LockDraft], the same read with the row lock, for a caller whose
+//     critical section has to open before its own checks. DDD-031 added it so
+//     that internal/run could stop taking this package's lock with this
+//     package's query: a lock and the invariants it protects belong to one
+//     context, or the owner cannot say whether its writes were serialised
+//     (ADR-035 B 組).
 //   - Decode: [DecodeCriteria], [DecodeRubric], [DecodeDatasetRefs]. These are the
 //     "read it the way it was written" guarantee; a caller that reaches for
 //     encoding/json on one of these columns has opted out of it.
@@ -45,9 +51,10 @@
 // All four inbound edges are synchronous queries (Customer–Supplier); nothing
 // here is driven by or publishes a domain event.
 //
-//	run -> testlab          CreateSnapshot inside the create-run transaction,
-//	                        ReadDraft at preflight, DecodeDatasetRefs when
-//	                        scheduling and DatasetRef when issuing object grants.
+//	run -> testlab          LockDraft then CreateSnapshot inside the create-run
+//	                        transaction, ReadDraft at preflight, DecodeDatasetRefs
+//	                        when scheduling and DatasetRef when issuing object
+//	                        grants.
 //	eval -> testlab         the criteria and rubric a verdict is measured against,
 //	                        read from the snapshot through the Decode* functions.
 //	packaging -> testlab    the curated Test Cases that travel in a download.
