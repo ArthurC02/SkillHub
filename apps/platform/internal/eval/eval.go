@@ -462,9 +462,7 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 	}); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return m, err
 	}
-	if m.snapshot, err = q.GetTestCaseSnapshot(ctx, gen.GetTestCaseSnapshotParams{
-		ID: run.TestCaseSnapshotID, WorkspaceID: workspaceID,
-	}); err != nil {
+	if m.snapshot, err = testlab.ReadSnapshot(ctx, q, workspaceID, run.TestCaseSnapshotID); err != nil {
 		return m, err
 	}
 	// The criteria come from the snapshot, not from the editable test case

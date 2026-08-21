@@ -35,6 +35,13 @@
 //     package's query: a lock and the invariants it protects belong to one
 //     context, or the owner cannot say whether its writes were serialised
 //     (ADR-035 B 組).
+//   - Read (other contexts' entry points, all taking the caller's *gen.Queries):
+//     [ReadSnapshot] for the frozen inputs a run executed, [ReadDataset] for one
+//     live file's current object key, [CasesForSkill] and [CaseDatasets] for a
+//     Skill's cases and their files. DDD-033 added them so eval, run and
+//     packaging could stop calling this package's queries: nothing was at risk,
+//     but a query called from outside freezes this schema against callers this
+//     package has no way to find (ADR-035 C 組).
 //   - Decode: [DecodeCriteria], [DecodeRubric], [DecodeDatasetRefs]. These are the
 //     "read it the way it was written" guarantee; a caller that reaches for
 //     encoding/json on one of these columns has opted out of it.
@@ -42,9 +49,11 @@
 //     the sentinel errors in testlab.go.
 //   - Limits: the constants in testlab.go are the only enforcement point. GET
 //     /test-cases/limits is their display projection, not a second copy.
-//   - Injected writes: [PurgeWorkspace] for identity's account purge and
-//     [MarkDatasetObjectLost] for objreconcile's sweep. Both take the caller's
-//     *gen.Queries and open nothing of their own.
+//   - Injected: [PurgeWorkspace] and [WorkspaceObjectKeys] for identity's account
+//     purge, [MarkDatasetObjectLost] for objreconcile's sweep. All three take the
+//     caller's *gen.Queries and open nothing of their own. The two purge halves
+//     are separate because they run at different moments — keys before the
+//     transaction, rows inside it, and objects have no rollback.
 //
 // # Relationships (ADR-032 §2)
 //
@@ -52,12 +61,14 @@
 // here is driven by or publishes a domain event.
 //
 //	run -> testlab          LockDraft then CreateSnapshot inside the create-run
-//	                        transaction, ReadDraft at preflight, DecodeDatasetRefs
-//	                        when scheduling and DatasetRef when issuing object
-//	                        grants.
-//	eval -> testlab         the criteria and rubric a verdict is measured against,
-//	                        read from the snapshot through the Decode* functions.
-//	packaging -> testlab    the curated Test Cases that travel in a download.
+//	                        transaction, ReadDraft at preflight, ReadSnapshot and
+//	                        DecodeDatasetRefs when scheduling, and ReadDataset when
+//	                        issuing object grants.
+//	eval -> testlab         ReadSnapshot, then the criteria and rubric a verdict is
+//	                        measured against through the Decode* functions.
+//	packaging -> testlab    CasesForSkill and CaseDatasets: the Test Cases that may
+//	                        travel in a download, and the files that decide whether
+//	                        they may.
 //	testlab -> llmclient    ACL. TEST-002 criteria suggestions; the model returns
 //	                        text and nothing else (iron rule 6).
 //	testlab -> identity     synchronous, iron rule 3.

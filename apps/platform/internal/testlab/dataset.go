@@ -108,6 +108,41 @@ func (s *Service) UploadDataset(ctx context.Context, ws gen.Workspace, testCaseI
 	return ds, tx.Commit(ctx)
 }
 
+// ReadDataset reads one live dataset row, workspace scoped.
+//
+// Exported for internal/run, which needs the current object key to mint the
+// per-run read grant (SBX-008). A snapshot's [DatasetRef] carries the content hash
+// and never the key, because the hash is what outlives the file and the key is a
+// storage fact - so the key has to be re-read at dispatch time, from here.
+//
+// A deleted row answers ErrNotFound, which is the answer that matters: it is what
+// makes a run whose input is gone fail saying so instead of running without it.
+//
+// q rather than the pool, same reason as [ReadDraft].
+func ReadDataset(ctx context.Context, q *gen.Queries, workspaceID, datasetID pgtype.UUID) (gen.Dataset, error) {
+	ds, err := q.GetDataset(ctx, gen.GetDatasetParams{ID: datasetID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.Dataset{}, ErrNotFound
+	}
+	return ds, err
+}
+
+// CaseDatasets lists one test case's live files in created_at order, workspace
+// scoped, for a caller that already holds a *gen.Queries.
+//
+// The same rows [Service.ListDatasets] serves, and deliberately not the same
+// function: that one is for a session-scoped HTTP request and reads the parent
+// first, so a test case in another workspace answers "not found" rather than an
+// empty list. Its caller here - internal/packaging - has just listed the parent
+// through [CasesForSkill] and would only be re-reading it, and it holds a
+// *gen.Queries rather than a Service because it is inside its own transaction.
+//
+// The ordering is the same guarantee [ReadDraft] states: anything hashed over
+// these rows does not depend on how they happened to come back.
+func CaseDatasets(ctx context.Context, q *gen.Queries, workspaceID, testCaseID pgtype.UUID) ([]gen.Dataset, error) {
+	return q.ListDatasets(ctx, gen.ListDatasetsParams{TestCaseID: testCaseID, WorkspaceID: workspaceID})
+}
+
 // ListDatasets returns one test case's live files.
 func (s *Service) ListDatasets(ctx context.Context, ws gen.Workspace, testCaseID pgtype.UUID) ([]gen.Dataset, error) {
 	// Scoped read of the parent first, so a test case in another workspace

@@ -123,6 +123,9 @@ func NewApp(cfg Config) (*App, error) {
 			PurgeRunArtifacts:  run.PurgeWorkspace,
 			PurgeSkills:        registry.PurgeWorkspace,
 			PurgeImportSources: ingest.PurgeWorkspace,
+			// Not a step: it runs before the transaction, because objects are
+			// deleted before rows (DDD-033).
+			ObjectKeys: testlab.WorkspaceObjectKeys,
 		},
 		Secure:    cfg.Secure,
 		AppURL:    cfg.AppURL,

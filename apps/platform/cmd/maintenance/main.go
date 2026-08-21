@@ -187,6 +187,7 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 		PurgeRunArtifacts:  run.PurgeWorkspace,
 		PurgeSkills:        registry.PurgeWorkspace,
 		PurgeImportSources: ingest.PurgeWorkspace,
+		ObjectKeys:         testlab.WorkspaceObjectKeys,
 	}
 }
 

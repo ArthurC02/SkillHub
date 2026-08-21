@@ -244,9 +244,7 @@ func (s *Service) buildRunRequest(
 	if err != nil {
 		return RunRequest{}, err
 	}
-	snapshot, err := q.GetTestCaseSnapshot(ctx, gen.GetTestCaseSnapshotParams{
-		ID: run.TestCaseSnapshotID, WorkspaceID: run.WorkspaceID,
-	})
+	snapshot, err := testlab.ReadSnapshot(ctx, q, run.WorkspaceID, run.TestCaseSnapshotID)
 	if err != nil {
 		return RunRequest{}, err
 	}

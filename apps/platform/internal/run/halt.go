@@ -53,6 +53,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
 )
 
 // The two triggers, as stored in dispatch_halts.source. They are values in one
@@ -620,10 +621,8 @@ func (s *Service) detectMaskingStopped(ctx context.Context) {
 		return
 	}
 	now := time.Now()
-	window, err := s.queries().CountTraceMaskingInWindow(ctx, gen.CountTraceMaskingInWindowParams{
-		Recent: pgtype.Timestamptz{Time: now.Add(-maskingWindow), Valid: true},
-		Since:  pgtype.Timestamptz{Time: now.Add(-maskingWindow - maskingConfirm), Valid: true},
-	})
+	window, err := trace.MaskingActivity(ctx, s.queries(),
+		now.Add(-maskingWindow), now.Add(-maskingWindow-maskingConfirm))
 	if err != nil {
 		slog.Error("could not evaluate the trace masking criterion", "error", err)
 		return

@@ -93,6 +93,44 @@ func waitForCleanup(t *testing.T, c *client, runID string) runView {
 	return last
 }
 
+// SBX-008's dataset half: a run whose test case carries an uploaded file has to
+// be dispatched with a read grant for that file's *current* object key.
+//
+// The key is not in the snapshot — a DatasetRef freezes the content hash, because
+// that is what outlives the file, while the key is a storage fact (ADR-003 刪除與
+// 可追溯性). So the dispatcher re-reads the row, through testlab.ReadDataset since
+// DDD-033. Nothing exercised that branch of grantsFor before: every other fixture
+// runs a test case with no files, so a dispatcher that could not resolve a dataset
+// at all still made every run in this file go green.
+//
+// The assertion is that the run finishes. Grant minting is fail-closed and runs
+// before anything reaches a sandbox, so a lookup that cannot find the dataset
+// fails the dispatch — "it succeeded" is exactly the statement that the file was
+// resolved.
+func TestARunWhoseTestCaseCarriesAFileIsDispatchedWithAGrantForIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-dataset-run")
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO datasets (workspace_id, test_case_id, file_name, content_type,
+		                      size_bytes, content_hash, object_key, expires_at)
+		VALUES ($1, $2, 'input.csv', 'text/csv', 9, 'sha256:dispatch-input',
+		        'datasets/dispatch-input.csv', now() + interval '90 days')`,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.testCaseID)); err != nil {
+		t.Fatal(err)
+	}
+	fake, _ := withProvider(t, a, pool, providertest.Plan{RunningPolls: 1})
+
+	created := f.start(t)
+	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
+	if final.StatusReason == "" {
+		t.Error("a terminal transition records no reason")
+	}
+	if fake.Dispatches() != 1 {
+		t.Errorf("dispatches = %d, want 1", fake.Dispatches())
+	}
+}
+
 // RUN-005 + RUN-007, the happy path: a provider is selected, the run walks the
 // whole state machine, and the sandbox is released afterwards.
 func TestRunWalksTheStateMachineAndIsCleanedUp(t *testing.T) {

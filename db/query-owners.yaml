@@ -124,11 +124,17 @@ allow:
 # ADR-034 由 composition root 注入）。逐組清除方向見 ADR-035「存量清除路徑」。
 # 值是被容忍的呼叫端 context 清單；理由按成因分組寫在各組上方。
 #
-# 導入時是 35 條、七組；**B 組（鎖留在呼叫端的兩條）已由 DDD-031 收掉**，現為
-# 33 條、六組。組別字母不重編：A 之後直接跳 C，是為了讓 ADR-035 的分組表與這裡
-# 永遠指同一組東西。
+# **這裡有兩個單位，別把它們相加**：本段講的是 **yaml 條目數**（一個 query 一行），
+# 而下面每一組標題裡的「條」是 **(query, caller) 組數**（同一 query 的多個呼叫端
+# 合成一行，所以組數大於條目數）。ADR-035「存量」節用的是同一組定義。
+#
+# 導入時是 35 個條目、七組（47 組 (query, caller)）；**B 組（鎖留在呼叫端的兩條）
+# 已由 DDD-031 收掉**，**C 組（testlab 的 Test Case／Dataset／物件鍵）與 G 組
+# （trace 的事件讀取）已由 DDD-033 收掉**，現為 **26 個條目、四組（37 組
+# (query, caller)）**。組別字母不重編：留下的 A、D、E、F 之間的空缺是刻意的，
+# 為了讓 ADR-035 的分組表與這裡永遠指同一組東西。
 read_allow:
-  # ── A. registry 的 Skill／Version 事實（21 條、6 個呼叫端）────────────────
+  # ── A. registry 的 Skill／Version 事實（11 條目 ＝ 21 組 (query, caller)）──
   # 最大的一組，成因單一：`skills` 與 `skill_versions` 是全平台的共享事實——
   # 要跑、要打包、要評估、要顯示，都得先讀到那一列。registry 至今只公開了**寫入面**
   # （DDD-019／020 的三支 `*FromPackage` 與 `SetAccessRestriction`），沒有對應的
@@ -145,19 +151,7 @@ read_allow:
   GetOldestSkillVersion: packaging
   GetVersionLineage: packaging
 
-  # ── C. testlab 的 Test Case／Dataset 快照（6 條）──────────────────────────
-  # 與 A 同因（owner 沒有讀取面），但成本低得多：附錄 A 已允許
-  # `run → testlab`、`eval → testlab`、`packaging → testlab` 三條 import，
-  # testlab 也已有 Service 門面（DDD-007 的單一讀寫門面），純粹是還沒搬。
-  # `ListWorkspaceObjectKeys` 是例外：identity 的帳號刪除要盤點待刪物件鍵，
-  # 方向與 ADR-034 的 `PurgeWorkspace` 一致，卻沒被收進那支注入的函式裡。
-  GetTestCaseSnapshot: eval, run
-  GetDataset: run
-  ListDatasets: packaging
-  ListTestCasesForSkill: packaging
-  ListWorkspaceObjectKeys: identity
-
-  # ── D. run 的 Run 事實（7 條）──────────────────────────────────────────────
+  # ── D. run 的 Run 事實（6 條目 ＝ 7 組 (query, caller)）────────────────────
   # 與 A、C 同因，但 import 方向被 depguard 擋著：`eval → run`、`trace → run`、
   # `analytics → run`、`policy → run` 全在 deny 清單裡，而且 `run → policy`、
   # `run → trace` 是既有的合法方向——加白名單會製造循環。因此這一組的正解是
@@ -169,7 +163,7 @@ read_allow:
   ListRunStatusTransitions: trace
   RunInWorkspace: analytics
 
-  # ── E. Generic 掃描器代讀 owner 的清單（3 條）─────────────────────────────
+  # ── E. Generic 掃描器代讀 owner 的清單（3 條目 ＝ 3 組）───────────────────
   # DDD-020 把 objreconcile 的**寫入**半邊反轉成注入（`MarkArtifactPurged`／
   # `MarkDatasetObjectLost` 由 composition root 提供），**讀取半邊留著**：
   # 掃描器仍自己決定「哪些列該被掃」。注入形狀已經在那裡，補兩三個 lister 欄位即可。
@@ -177,7 +171,7 @@ read_allow:
   ListArtifactsClaimingObject: objreconcile
   ListDatasetsClaimingObject: objreconcile
 
-  # ── F. 單點跨界，各有各的成因（6 條）──────────────────────────────────────
+  # ── F. 單點跨界，各有各的成因（6 條目 ＝ 6 組）────────────────────────────
   # `ListPendingEnrichment`：ADR-034 把 `search_documents` 的**寫入**反轉成
   #   `catalog.IndexSkill` 注入，但 `ReindexPending` 讀「還沒 enrich 的投影列」
   #   這一半沒跟著走——同一批的自然殘留，補一個 lister 欄位就收掉。
@@ -198,12 +192,6 @@ read_allow:
   CountArtifactsSharingObject: run
   CountQuotaRuns: policy
   GetWorkspaceCreatedAt: policy
-
-  # ── G. trace 事件的讀取（2 條）────────────────────────────────────────────
-  # 兩條的 import 方向都已經合法（附錄 A 有 `run → trace` 與 `eval → trace`），
-  # trace 也已有 Service（DDD-004 把現場建構改成注入）。純粹是還沒搬，成本同 C。
-  FindLiveTraceEvents: eval
-  CountTraceMaskingInWindow: run
 
 # 不可變資料表宣告（ADR-003、鐵律 4；ADR-032 §4 的 aggregate 不變量）
 #

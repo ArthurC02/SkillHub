@@ -36,6 +36,13 @@ type Service struct {
 	PurgeRunArtifacts  WorkspacePurge
 	PurgeSkills        WorkspacePurge
 	PurgeImportSources WorkspacePurge
+
+	// ObjectKeys names the uploaded files to delete, and is required for the same
+	// reason the steps above are: it arrives from a composition root because
+	// identity -> testlab is both a compile-time cycle and an ADR-032 appendix A
+	// denial. It is not one of the steps because it does not run where they run -
+	// see WorkspaceObjectKeys and the object/transaction ordering in purge.go.
+	ObjectKeys WorkspaceObjectKeys
 }
 
 func (s *Service) queries() *gen.Queries { return gen.New(s.Pool) }

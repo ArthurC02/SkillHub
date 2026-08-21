@@ -361,9 +361,7 @@ func (s *Service) liveTraceEvents(
 			uuids = append(uuids, u)
 		}
 	}
-	rows, err := s.queries().FindLiveTraceEvents(ctx, gen.FindLiveTraceEventsParams{
-		WorkspaceID: workspaceID, RunID: runID, EventIds: uuids,
-	})
+	rows, err := s.Trace.LiveEvents(ctx, workspaceID, runID, uuids)
 	if err != nil {
 		return nil, err
 	}

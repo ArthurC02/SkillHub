@@ -206,9 +206,7 @@ func (s *Service) comparisonSide(
 	detail.skillID = version.SkillID
 	side.SkillID = pgconv.UUIDString(version.SkillID)
 
-	snapshot, err := q.GetTestCaseSnapshot(ctx, gen.GetTestCaseSnapshotParams{
-		ID: run.TestCaseSnapshotID, WorkspaceID: workspaceID,
-	})
+	snapshot, err := testlab.ReadSnapshot(ctx, q, workspaceID, run.TestCaseSnapshotID)
 	if err != nil {
 		return comparisonSide{}, sideDetail{}, err
 	}

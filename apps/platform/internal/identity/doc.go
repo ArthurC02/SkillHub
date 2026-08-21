@@ -66,7 +66,8 @@
 // # Failure modes
 //
 // requirePurgeSteps refuses the entire batch before the worklist is even read
-// when any context's step is missing. This is a compliance property, not
+// when any context's step is missing, or when the object-key lister that runs
+// ahead of the transaction is not injected (DDD-033). This is a compliance property, not
 // tidiness: every other fail-closed check here guards against a wrong answer,
 // this one guards against a purge that commits, reports success and leaves
 // another context's rows in place — a user told their data is gone while it is

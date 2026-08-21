@@ -98,16 +98,12 @@ func (s *Service) selectTestCases(
 ) (included []IncludedTestCase, excluded []ExcludedTestCase, files []exportFile, err error) {
 	included, excluded, files = []IncludedTestCase{}, []ExcludedTestCase{}, nil
 
-	rows, err := q.ListTestCasesForSkill(ctx, gen.ListTestCasesForSkillParams{
-		SkillID: skillID, WorkspaceID: ws.ID,
-	})
+	rows, err := testlab.CasesForSkill(ctx, q, ws.ID, skillID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	for _, tc := range rows {
-		datasets, err := q.ListDatasets(ctx, gen.ListDatasetsParams{
-			TestCaseID: tc.ID, WorkspaceID: ws.ID,
-		})
+		datasets, err := testlab.CaseDatasets(ctx, q, ws.ID, tc.ID)
 		if err != nil {
 			return nil, nil, nil, err
 		}

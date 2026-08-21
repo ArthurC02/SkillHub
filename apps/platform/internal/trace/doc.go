@@ -5,7 +5,8 @@
 // # What it owns
 //
 // One table, `trace_events` (db/query-owners.yaml: trace.sql, plus
-// FindLiveTraceEvents where eval quotes it). It is declared immutable and is the
+// FindLiveTraceEvents, which sits in evaluation.sql because of who quotes it,
+// not because of who owns it). It is declared immutable and is the
 // execution record itself — TRACE-001 calls it 執行事實, and retention on it is a
 // partition drop, never an UPDATE or a DELETE.
 //
@@ -24,8 +25,9 @@
 //	                   the state change it describes (iron rule 9).
 //	eval -> trace      synchronous read. The judge's evidence and the
 //	                   deterministic checks are stored events, read through
-//	                   Service and the exported event-type vocabulary. The
-//	                   Service is injected from the composition root — DDD-004
+//	                   Service and the exported event-type vocabulary, including
+//	                   [Service.LiveEvents] for whether a citation still resolves.
+//	                   The Service is injected from the composition root — DDD-004
 //	                   removed two methods that built one on the spot, which also
 //	                   built one with a nil Signer.
 //	trace -> identity  synchronous, iron rule 3. The read routes are session
@@ -42,7 +44,13 @@
 //
 // # Public face
 //
-// [RecordOrchestratorEvent] is the only write another context may perform.
+// [RecordOrchestratorEvent] is the only write another context may perform, and
+// [MaskingActivity] is the one read that is not about a single run: it is what
+// the masker did across a window, which internal/run's supervisor reads as
+// 02:SEC-010's TraceMaskingStopped criterion. Both take the caller's *gen.Queries.
+// DDD-033 added the latter, and [Service.LiveEvents], so that eval and run could
+// stop calling this package's queries directly (ADR-035 G 組).
+//
 // [Service] carries the read shapes eval and the UI need — [Summary],
 // [AdvancedView], [ErrorSummary], [StreamHealth] — and the event-type and source
 // constants are exported so a reader classifies events by the same names the

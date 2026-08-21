@@ -471,6 +471,59 @@ func (s *Service) AdvancedAll(ctx context.Context, workspaceID, runID pgtype.UUI
 	return all, nil
 }
 
+// LiveEvents answers which of the cited events still exist, scoped to one run in
+// one workspace (ADR-026 decision 2).
+//
+// Exported because internal/eval has to re-answer availability at read time
+// rather than trust a flag stored when the evidence was first cited: retention
+// here is a partition drop, so a reference stored as available goes on claiming
+// the original is there long after the month it lived in was dropped. That is
+// this package's failure mode, so answering it is this package's job - eval had
+// been asking the table directly, which froze this schema against a caller this
+// package has no way to find (ADR-035 G 組).
+//
+// It answers existence and nothing else. Which events a report cites, and what a
+// missing one means to a reader - the excerpt stays, labelled, never blanked
+// (ADR-009) - remain eval's decisions.
+//
+// Reads through this Service's own pool, outside any transaction, exactly as
+// [Service.General] does: it is a report read. The returned slice is the live
+// subset of eventIDs, in no promised order; the caller matches by id.
+func (s *Service) LiveEvents(
+	ctx context.Context, workspaceID, runID pgtype.UUID, eventIDs []pgtype.UUID,
+) ([]pgtype.UUID, error) {
+	return s.queries().FindLiveTraceEvents(ctx, gen.FindLiveTraceEventsParams{
+		WorkspaceID: workspaceID, RunID: runID, EventIds: eventIDs,
+	})
+}
+
+// MaskingActivity counts stored events and redacted fields over two adjacent
+// windows: recent starts the near one, since starts the pair.
+//
+// Exported for internal/run's supervisor, which reads it as 02:SEC-010's
+// `TraceMaskingStopped` P1 criterion. The split is why it is exported rather than
+// left as a query that package calls: what the masker did is this package's fact,
+// and under 0019's CHECK (masked) the only reading of it that detects anything is
+// the two-window one this query encodes - a broken masker produces rows that
+// claim to be masked, not unmasked rows. How much traffic counts as evidence, how
+// long the condition must hold, and what to do about it stay in run/halt.go,
+// which is why the window sizes are the caller's arguments and not constants here.
+//
+// Deployment-wide and therefore not workspace scoped: a masker that stopped
+// stopped for everyone, and iron rule 3 governs user data reads, which this is
+// not - it returns three counts and no row.
+//
+// q rather than the pool because the caller already has one. Nothing here writes,
+// so it neither needs nor opens a transaction.
+func MaskingActivity(
+	ctx context.Context, q *gen.Queries, recent, since time.Time,
+) (gen.CountTraceMaskingInWindowRow, error) {
+	return q.CountTraceMaskingInWindow(ctx, gen.CountTraceMaskingInWindowParams{
+		Recent: pgtype.Timestamptz{Time: recent, Valid: true},
+		Since:  pgtype.Timestamptz{Time: since, Valid: true},
+	})
+}
+
 // General returns the human-readable progress summary.
 func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (Summary, error) {
 	run, err := s.queries().GetRun(ctx, gen.GetRunParams{ID: runID, WorkspaceID: workspaceID})

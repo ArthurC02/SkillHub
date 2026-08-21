@@ -78,6 +78,39 @@ func LockDraft(ctx context.Context, q *gen.Queries, workspaceID, testCaseID pgty
 	return tc, err
 }
 
+// ReadSnapshot reads the frozen inputs one run executed, workspace scoped.
+//
+// The read half of [CreateSnapshot], and exported for the same reason [ReadDraft]
+// is: eval judges against the snapshot rather than against the draft (iron rule
+// 4) and run dispatches what the snapshot froze, so both had grown their own call
+// to this package's query. A row reached that way is a row this package cannot
+// change the shape of without breaking a caller it has no way to find - which is
+// what read ownership is about, no invariant being at risk here (ADR-035 C 組).
+//
+// q rather than the pool, for the same reason [ReadDraft] takes one: a caller
+// already inside a transaction has to read what that transaction will commit.
+// Nothing here opens one.
+//
+// Deliberately returns the row rather than a decoded view. What the criteria, the
+// rubric and the dataset refs mean is [DecodeCriteria], [DecodeRubric] and
+// [DecodeDatasetRefs], and the three callers want three different subsets of
+// them; a Draft-shaped return would decode all of it for everyone and put a
+// second definition of those columns next to the one that already exists.
+//
+// A snapshot outside workspaceID answers ErrNotFound, the same answer as one that
+// does not exist (WS-006). No caller distinguished pgx.ErrNoRows from a real error
+// before this function and none does now - all three return it upward as a 500,
+// because a run always has the snapshot it points at.
+func ReadSnapshot(ctx context.Context, q *gen.Queries, workspaceID, snapshotID pgtype.UUID) (gen.TestCaseSnapshot, error) {
+	snap, err := q.GetTestCaseSnapshot(ctx, gen.GetTestCaseSnapshotParams{
+		ID: snapshotID, WorkspaceID: workspaceID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return gen.TestCaseSnapshot{}, ErrNotFound
+	}
+	return snap, err
+}
+
 // CreateSnapshot freezes a test case into the row a run executes (TEST-010).
 //
 // Contract with the run domain (RUN-001/004):

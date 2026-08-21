@@ -250,8 +250,22 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	if c := countRow(t, pool, "SELECT count(*) FROM artifacts WHERE workspace_id = $1", mustUUID(t, alice.workspaceID)); c != 0 {
 		t.Fatal("artifact rows survived the purge")
 	}
+	// By name and not by count. The purge asks testlab.WorkspaceObjectKeys what to
+	// delete (DDD-033), and that lister unions datasets with artifacts: a half that
+	// stopped being listed, or a workspace filter that stopped applying, is a
+	// user's file left alive after they were told it was gone — and a count of two
+	// would not say which half, nor whose.
+	removed := map[string]bool{}
+	for _, k := range store.removed {
+		removed[k] = true
+	}
+	for _, want := range []string{"datasets/alice.csv", "artifacts/alice.zip"} {
+		if !removed[want] {
+			t.Errorf("object %q survived the purge; keys removed were %v", want, store.removed)
+		}
+	}
 	if len(store.removed) != 2 {
-		t.Fatalf("object storage keys removed: %v, want the dataset and the artifact", store.removed)
+		t.Fatalf("object storage keys removed: %v, want exactly the dataset and the artifact", store.removed)
 	}
 
 	// Referenced content stays intact for the third party who depends on it.

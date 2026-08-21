@@ -65,21 +65,27 @@ read 與 write 走同一個迴圈，只有 `queries[name].write` 的比對值不
 - **呼叫點判定仍是文字比對**（`.<QueryName>(` ＋ `db/gen` import），不是型別解析。read 側繼承 write 側的這個限制，升級路徑不變（改用 `go/ast`，裸 SQL tripwire 已先行採用）。
 - **`read_allow:` 的「理由」由分組註解承載，不由機器檢查。** 與 `allow:`／`immutable_allow:` 相同（只有 `raw_sql_allow:` 的 value 就是理由，因為它的 key 是檔案路徑、沒有第二個欄位可放）。機器強制的是「具名」與「失效即 FAIL」；理由的品質靠 review。
 
-## 存量：35 條，七組（2026-08-21 DDD-031 後：33 條、六組）
+## 存量：35 個 `read_allow:` 條目、七組（2026-08-21 DDD-031 後：33 個、六組；DDD-033 後：26 個、四組）
 
-導入時量到 47 組 (query, caller) 跨 context read、共 56 個呼叫點，收斂為 `read_allow:` 的 35 個條目（同一 query 的多個呼叫端合成一行）。下表的「條」與 yaml 的分組標題一致，指的是 (query, caller) 組數。分組與清除方向如下——**逐組的判讀寫在 `db/query-owners.yaml` 的分組註解裡，本節不重寫成另一套說法**。
+導入時量到 47 組 (query, caller) 跨 context read、共 56 個呼叫點，收斂為 `read_allow:` 的 35 個條目（同一 query 的多個呼叫端合成一行）。
 
-2026-08-21（DDD-031 實作註記）：**B 組已收，存量現為 33 條、六組**（45 組 (query, caller)、54 個呼叫點）。組別字母不重編，A 之後直接跳 C——下表的字母與 yaml 的分組標題永遠指同一組東西，重編會讓兩邊的歷史對不上。導入時的數字保留在上面一段，那是量測當下的事實。
+**本節有兩個單位，別把它們相加**：節標題的數字是 **yaml 條目數**（一個 query 一行），而下表與 `db/query-owners.yaml` 分組標題裡的「條」是 **(query, caller) 組數**——所以下表六組的「條」相加是 45（導入時七組相加是 47），不是 33（導入時 35）。
+
+分組與清除方向如下——**逐組的判讀寫在 `db/query-owners.yaml` 的分組註解裡，本節不重寫成另一套說法**。
+
+2026-08-21（DDD-031 實作註記）：**B 組已收，存量現為 33 個條目、六組**（45 組 (query, caller)、54 個呼叫點）。組別字母不重編，A 之後直接跳 C——下表的字母與 yaml 的分組標題永遠指同一組東西，重編會讓兩邊的歷史對不上。導入時的數字保留在上面一段，那是量測當下的事實。
+
+2026-08-21（DDD-033 實作註記）：**C 組與 G 組已收，存量現為 26 個條目、四組**（37 組 (query, caller)、45 個呼叫點）。同樣不重編字母——現在留下的是 A、D、E、F 四組，中間的空缺是刻意的。
 
 | 組 | 內容 | 成因 | 清除方向 |
 | --- | --- | --- | --- |
 | **A** | registry 的 Skill／Version 事實（21 條、6 個呼叫端） | `skills`／`skill_versions` 是全平台的共享事實；registry 至今只公開了寫入面（DDD-019／020 的三支 `*FromPackage` 與 `SetAccessRestriction`），沒有讀取面 | registry 開一支讀取面。這一組不是判定可商榷，是缺一支 API |
 | **B** | ~~`LockSkillForRestriction`（catalog）、`LockTestCase`（run）~~ | 寫入已回到 owner，**同一筆動作的 `SELECT … FOR UPDATE` 沒跟著搬** | ~~鎖併進 owner 的寫入函式。**優先收，見下**~~ → **2026-08-21 DDD-031 已收**，見下 |
-| **C** | testlab 的 Test Case／Dataset 快照（6 條） | 與 A 同因，但成本低得多：附錄 A 已允許 `run`／`eval`／`packaging` → `testlab` 三條 import，testlab 也已有 Service 門面（DDD-007） | 直接走既有 import ＋ Service 門面。`ListWorkspaceObjectKeys`（identity 的帳號刪除盤點待刪物件鍵）方向與 ADR-034 的 `PurgeWorkspace` 一致，併進那支注入 |
+| **C** | ~~testlab 的 Test Case／Dataset 快照（6 條）~~ | 與 A 同因，但成本低得多：附錄 A 已允許 `run`／`eval`／`packaging` → `testlab` 三條 import，testlab 也已有 Service 門面（DDD-007） | ~~直接走既有 import ＋ Service 門面。`ListWorkspaceObjectKeys`（identity 的帳號刪除盤點待刪物件鍵）方向與 ADR-034 的 `PurgeWorkspace` 一致，併進那支注入~~ → **2026-08-21 DDD-033 已收**，見下（`ListWorkspaceObjectKeys` 沒有併進 `PurgeWorkspace`，理由見下） |
 | **D** | run 的 Run 事實（7 條） | 與 A、C 同因，但 import 方向被 depguard 擋著 | **注入，不是 import，見下** |
 | **E** | objreconcile 代讀 owner 的清單（3 條） | DDD-020 反轉了掃描器的**寫入**半邊，**讀取半邊留著**——掃描器仍自己決定「哪些列該被掃」 | 注入形狀已經在 `cmd/worker` 的 `buildWorkers` 裡，補幾個 lister 欄位即可 |
 | **F** | 單點跨界（6 條） | 各有各的成因，見 yaml 註解 | `ListPendingEnrichment` 是 ADR-034 那批的自然殘留（寫入反轉了、讀「還沒 enrich 的投影列」沒跟著走），補一個 lister 欄位；`ListSuggestionsAppliedToVersion`／`GetLineageSource` 走注入（`packaging → eval`／`packaging → ingest` 皆為 deny）；`CountArtifactsSharingObject` 是「別人還要不要用這個物件」，只有 owner 答得出來；`CountQuotaRuns` 維持按表歸屬（見「不變事項」）；`GetWorkspaceCreatedAt` 最好收——鐵律 3 讓每個 context 都已 import `identity`，只差 identity 公開一支讀取面 |
-| **G** | trace 事件的讀取（2 條） | 與 C 同型：import 方向已合法（附錄 A 有 `run → trace`、`eval → trace`），trace 也已有 Service（DDD-004） | 純粹還沒搬，成本同 C |
+| **G** | ~~trace 事件的讀取（2 條）~~ | 與 C 同型：import 方向已合法（附錄 A 有 `run → trace`、`eval → trace`），trace 也已有 Service（DDD-004） | ~~純粹還沒搬，成本同 C~~ → **2026-08-21 DDD-033 已收**，見下 |
 
 ### B 組優先，因為它是正確性問題
 
@@ -99,6 +105,44 @@ read 與 write 走同一個迴圈，只有 `queries[name].write` 的比對值不
 守門的是三樣東西，缺一不可：`read_allow:` 兩條移除後，任何呼叫端再直接叫這兩條 query，`automation-check` 就是紅的（新違規）；`internal/registry/restriction_test.go` 以兩個真實交易競爭同一列，斷言第二個操作者看到的 before-state 是第一個 commit 後的值（拿掉 `FOR UPDATE` 即紅）；`internal/apiserver/snapshot_lock_integration_test.go` 讓一筆併發編輯與 `CreateSnapshot` 競爭，斷言凍結會等、且凍到 commit 後的 prompt（把鎖換回 `GetTestCase` 即紅）。
 
 刻意沒做的事：A／C／D／E／F／G 六組原地不動——它們是整潔問題，本批只收正確性那一組；`testlab` 沒有新增資料庫測試骨架（那會是第四個重置 `public` schema 的套件），case 2 的併發測試因此放在既有的 `apiserver` 整合測試裡。
+
+### 2026-08-21（DDD-033 實作註記）：C 組與 G 組已收
+
+兩組的成因相同，也照上表的方向收掉了：**owner 沒有開讀取面，所以呼叫端各自去叫 query**。九個呼叫點全部改成呼叫 owner 匯出的函式，**沒有任何一個決定跟著搬家**——這批搬的是取事實的機制，不是業務規則。
+
+C 組（testlab），四支新匯出函式，全部收呼叫端的 `*gen.Queries`、不自開交易（鐵律 9 不變）：
+
+| 函式 | 取代 | 呼叫端 |
+| --- | --- | --- |
+| `testlab.ReadSnapshot(ctx, q, workspaceID, snapshotID) (gen.TestCaseSnapshot, error)` | `GetTestCaseSnapshot` | `eval/comparison.go`、`eval/eval.go`、`run/schedule.go` |
+| `testlab.ReadDataset(ctx, q, workspaceID, datasetID) (gen.Dataset, error)` | `GetDataset` | `run/grants.go` |
+| `testlab.CasesForSkill(ctx, q, workspaceID, skillID) ([]gen.TestCase, error)` | `ListTestCasesForSkill` | `packaging/testcase.go` |
+| `testlab.CaseDatasets(ctx, q, workspaceID, testCaseID) ([]gen.Dataset, error)` | `ListDatasets` | `packaging/testcase.go` |
+
+`ReadSnapshot` 回傳資料列而不是解碼後的視圖：三個呼叫端要的是三個不同子集，欄位怎麼讀已經由 `DecodeCriteria`／`DecodeRubric`／`DecodeDatasetRefs` 回答過一次，再包一層等於把同一組欄位定義寫第二遍。錯誤語意逐條保留：`pgx.ErrNoRows` → `testlab.ErrNotFound`，三個呼叫端本來就沒有區分「查無此列」與真錯誤（都往上丟成 500），現在也沒有。
+
+**`ListWorkspaceObjectKeys` 沒有併進 `PurgeWorkspace`，上表的清除方向在這一點上被推翻**，理由是兩半根本不在同一個時刻跑：物件儲存沒有 rollback，所以帳號刪除**先刪物件、後開交易刪列**（`identity/purge.go` 的既有註解就是這麼寫的）。一支在交易裡執行的 `PurgeWorkspace` 沒辦法回答呼叫端在交易開始**之前**才用得上的問題。因此它走的是同一種注入、但另一個欄位：
+
+- `testlab.WorkspaceObjectKeys(ctx, q, workspaceID) ([]string, error)`，由 composition root（`apiserver.NewApp` 與 `cmd/maintenance`）注入 `identity.Service.ObjectKeys`。
+- **`identity → testlab` 確實是 deny**（`apps/platform/.golangci.yml` 的 `identity` 規則第九條），所以這裡本來就只有注入這條路，ADR-034 的判讀在這一條上成立。
+- 未注入即**拒絕整批**（`requirePurgeSteps` 多一條檢查）。理由與既有五個 step 相同、而且更直接：少了它，列刪光了、使用者上傳的檔案還在，而該次執行照樣回報成功。
+
+留下一個**已知的髒角落，寫出來而不是藏起來**：`ListWorkspaceObjectKeys` 的 SQL 是 `datasets` UNION `artifacts`，所以它同時回答 run／packaging 的列，而 `db/query-owners.yaml` 把 owner 判給 testlab（判準是「主要資料表」）。函式因此只能住在 testlab。要照 owner 拆開就得先拆 query，而 `db/queries/` 不在本批的範圍內。
+
+G 組（trace）兩支：
+
+| 函式 | 取代 | 呼叫端 |
+| --- | --- | --- |
+| `(*trace.Service).LiveEvents(ctx, workspaceID, runID, eventIDs) ([]pgtype.UUID, error)` | `FindLiveTraceEvents` | `eval/http.go`（eval 已注入 `Trace *trace.Service`，不必再接線） |
+| `trace.MaskingActivity(ctx, q, recent, since) (gen.CountTraceMaskingInWindowRow, error)` | `CountTraceMaskingInWindow` | `run/halt.go` |
+
+`MaskingActivity` 是套件層函式而不是 Service 方法，因為 `run` 手上沒有 `trace.Service`（它只有 `trace.Signer`），而既有的 `trace.RecordOrchestratorEvent` 已經是「收呼叫端 `q` 的套件層函式」這個形狀。窗口長度（`maskingWindow`／`maskingConfirm`）**刻意留在 `run/halt.go`**：多少流量算證據、條件要成立多久、成立了要做什麼，都是 run 的判定；trace 只回答「遮罩器做了什麼」。
+
+**命名全部刻意避開 query 名**（`ReadSnapshot` 而非 `GetTestCaseSnapshot`，`CaseDatasets` 而非 `ListDatasets`，`LiveEvents` 而非 `FindLiveTraceEvents`…）。這不是風格：本檢查以 `` `.QueryName(` `` 文字比對找呼叫點，同名 wrapper 在每個呼叫點都與 query 無從分辨，等於把剛清掉的違規原樣種回去——DDD-031 已經踩過一次，見「已知盲點」第二條。
+
+守門的東西：`read_allow:` 七條移除後，任何非 owner 再直接叫這七條 query，`automation-check` 就是紅的（新違規）——**「呼叫點搬回去」這一半由它守，沒有再寫成 Go 測試**。語意漂移那一半由測試守：`apiserver/read_face_integration_test.go` 直接對七支新函式斷言 workspace scope 與找不到的答案，`governance_integration_test.go` 改成逐鍵比對（不再只數兩個），`evaluation_integration_test.go` 第一次斷言 evidence 的 `available`（在此之前整個 repo 沒有任何一處斷言它）。
+
+刻意沒做的事：A／D／E／F 四組原地不動；`db/queries/*.sql` 一行沒改（包括上面那個 UNION 的髒角落）；`testlab`／`trace` 沒有新增資料庫測試骨架（那會是第四、第五個重置 `public` schema 的套件），所以新測試放在既有的 `apiserver` 整合測試套件裡。
 
 ### D 組的正解是注入，不是 import
 

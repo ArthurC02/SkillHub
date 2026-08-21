@@ -841,6 +841,21 @@ func TestOnlyCuratedTestCasesTravelAndTheRestAreNamed(t *testing.T) {
 	user := a.login(t, "test-case-owner")
 	skillID, versionID := packagedSkill(t, a, pool, user, "tested-skill")
 	seedTestCase(t, pool, user.workspaceID, skillID)
+	// A second case with a file on it, so both refusals are exercised. The one
+	// with a dataset gets the more specific of the two, and it is the one worth
+	// naming: it says the obstacle is a licensing judgement about the user's own
+	// files, not a defect in their test case. Nothing asserted this before, and
+	// the packager reads those files through testlab.CaseDatasets (DDD-033) —
+	// a call that lost its scope would silently downgrade this to not_curated.
+	withFile := seedTestCase(t, pool, user.workspaceID, skillID)
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO datasets (workspace_id, test_case_id, file_name, content_type,
+		                      size_bytes, content_hash, object_key, expires_at)
+		VALUES ($1, $2, 'private.csv', 'text/csv', 12, 'sha256:private',
+		        'datasets/private.csv', now() + interval '90 days')`,
+		mustUUID(t, user.workspaceID), mustUUID(t, withFile)); err != nil {
+		t.Fatal(err)
+	}
 
 	var preview map[string]any
 	if code := getJSON(t, user.Client,
@@ -852,11 +867,21 @@ func TestOnlyCuratedTestCasesTravelAndTheRestAreNamed(t *testing.T) {
 		t.Errorf("%d test cases of a user's own workspace were packaged; only curated content travels", n)
 	}
 	excluded, _ := preview["excluded_test_cases"].([]any)
-	if len(excluded) != 1 {
-		t.Fatalf("the excluded test case was not reported: %v", preview)
+	if len(excluded) != 2 {
+		t.Fatalf("both excluded test cases were not reported: %v", preview)
 	}
-	if reason := excluded[0].(map[string]any)["reason"]; reason != "not_curated" {
-		t.Errorf("exclusion reason = %v, want not_curated", reason)
+	reasons := map[string]string{}
+	for _, e := range excluded {
+		row := e.(map[string]any)
+		reasons[row["test_case_id"].(string)], _ = row["reason"].(string)
+	}
+	if reasons[withFile] != "user_uploaded_dataset" {
+		t.Errorf("exclusion reason for the case carrying a file = %q, want user_uploaded_dataset", reasons[withFile])
+	}
+	for id, reason := range reasons {
+		if id != withFile && reason != "not_curated" {
+			t.Errorf("exclusion reason for the case with no file = %q, want not_curated", reason)
+		}
 	}
 
 	// The same Test Case in a catalog workspace is curated, and then it travels.

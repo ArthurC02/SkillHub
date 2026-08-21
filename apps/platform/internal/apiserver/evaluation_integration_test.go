@@ -543,6 +543,94 @@ func TestARunWithoutARubricRecordsNoneAtAll(t *testing.T) {
 
 // --- the downgrade rule, end to end -------------------------------------------
 
+// ADR-026 decision 2: whether a citation still resolves is answered when the
+// report is read, never trusted from a flag written when the evidence was cited.
+// Retention on trace_events is a partition drop, so a stored `available: true`
+// goes on claiming the original is there long after the month it lived in was
+// dropped — and the reader is told the excerpt is all that is left rather than
+// having it blanked out (ADR-009).
+//
+// Nothing in this repository asserted `available` before DDD-033. It is now the
+// behavioural guard on trace's read face: the report calls trace.LiveEvents for
+// this answer, and a read face that returned nothing would label a live citation
+// stale, while one that ignored its run or workspace scope would leave this
+// citation claiming to resolve after its event is gone.
+func TestCitedTraceEvidenceStopsClaimingToResolveOnceItsEventIsGone(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-evidence-availability")
+	skillID := seedSkill(t, pool, c.workspaceID, "evidence-availability")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	eventID := seedToolCallEvent(t, pool, c.workspaceID, runID, 7, "deduplicate")
+
+	cite := []llmclient.JudgeEvidenceRef{
+		{Kind: "trace_event", TraceEventID: strPtrTest(uuidText(eventID)), Quote: `"tool_name": "deduplicate"`},
+	}
+	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: "passed", Reason: "the tool call is in the trace", EvidenceRefs: cite},
+			{CriterionID: "c2", Result: "passed", Reason: "same call produced the file", EvidenceRefs: cite},
+		},
+		Overall: "met", Summary: "both conditions were met",
+	}, "judge-run@2026-08-17")
+
+	if err := a.evaluations.Evaluate(context.Background(),
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatalf("evaluate: %v", err)
+	}
+
+	_, body := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	excerpts := map[string]string{}
+	for _, r := range body.CriterionResults {
+		var cited bool
+		for _, e := range r.Evidence {
+			if e.Kind != "trace_event" {
+				continue
+			}
+			cited = true
+			if !e.Available {
+				t.Errorf("criterion %s cites an event that is still in the table and is labelled unavailable", r.CriterionID)
+			}
+			excerpts[r.CriterionID] = e.Excerpt
+		}
+		if !cited {
+			t.Fatalf("criterion %s kept no trace_event citation, so this test proves nothing", r.CriterionID)
+		}
+	}
+
+	// TRUNCATE and not DELETE: 0005's trace_events_immutable trigger is BEFORE
+	// UPDATE OR DELETE FOR EACH ROW, which is the execution record being the
+	// execution record. Dropping the table's contents is the test harness standing
+	// in for the partition drop retention actually performs.
+	if _, err := pool.Exec(context.Background(), `TRUNCATE trace_events`); err != nil {
+		t.Fatal(err)
+	}
+
+	_, after := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	if len(after.CriterionResults) != 2 {
+		t.Fatalf("the report itself must survive its evidence, got %d criteria", len(after.CriterionResults))
+	}
+	for _, r := range after.CriterionResults {
+		for _, e := range r.Evidence {
+			if e.Kind != "trace_event" {
+				continue
+			}
+			if e.Available {
+				t.Errorf("criterion %s still claims its citation resolves after the event was dropped", r.CriterionID)
+			}
+			if e.Excerpt != excerpts[r.CriterionID] {
+				t.Errorf("criterion %s lost its excerpt when the event went; a stale citation keeps it, labelled (ADR-009): %q",
+					r.CriterionID, e.Excerpt)
+			}
+		}
+	}
+	// The verdict itself is untouched: availability is a statement about the
+	// evidence, not a re-judgement (iron rule 4 — the evaluation is a record).
+	if after.Overall != body.Overall {
+		t.Errorf("overall changed from %q to %q when evidence expired", body.Overall, after.Overall)
+	}
+}
+
 func TestAVerdictOnEvidenceThePlatformCannotFindIsDowngraded(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

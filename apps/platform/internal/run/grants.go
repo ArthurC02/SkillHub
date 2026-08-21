@@ -83,7 +83,7 @@ func (s *Service) grantsFor(
 		// after the snapshot was frozen is gone for good: the snapshot is
 		// immutable (iron rule 4) but the bytes are not, and a run that cannot
 		// read what it was asked to read must say so rather than run without it.
-		dataset, err := q.GetDataset(ctx, gen.GetDatasetParams{ID: id, WorkspaceID: run.WorkspaceID})
+		dataset, err := testlab.ReadDataset(ctx, q, run.WorkspaceID, id)
 		if err != nil {
 			return nil, nil, fmt.Errorf("dataset %s is no longer available for this run: %w", ref.FileName, err)
 		}

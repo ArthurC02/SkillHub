@@ -34,6 +34,20 @@ type ObjectRemover interface {
 // domain knowledge, not identity's.
 type WorkspacePurge func(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID) error
 
+// WorkspaceObjectKeys names the private uploaded content of one workspace, so the
+// purge can delete the objects before the transaction that deletes the rows.
+//
+// Injected for the same reason [WorkspacePurge] is, and separate from it because
+// it runs at a different moment: object storage has no rollback, so the objects go
+// first and the rows second (see purgeAccount), and a step running inside the
+// transaction cannot supply an answer the caller needed before it opened.
+//
+// Today it is testlab.WorkspaceObjectKeys and one function covers every owner,
+// because the query behind it unions datasets with artifacts. If that query is
+// ever split by owner this becomes a list like purgeSteps; until then a single
+// field says what is actually true.
+type WorkspaceObjectKeys func(ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID) ([]string, error)
+
 type purgeStep struct {
 	context string
 	purge   WorkspacePurge
@@ -78,6 +92,12 @@ func (s *Service) requirePurgeSteps() error {
 		if step.purge == nil {
 			missing = append(missing, step.context)
 		}
+	}
+	// Same compliance property as the steps, one stage earlier: without it the
+	// rows go and the user's uploaded files stay, and the run still reports
+	// success. Refusing the batch leaves the request on the worklist instead.
+	if s.ObjectKeys == nil {
+		missing = append(missing, "testlab (object keys)")
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("identity: account purge steps not injected for %s; refusing to purge",
@@ -155,7 +175,7 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 	// finishes the job. The other order can leave a user's uploaded file alive
 	// with nothing left in the database that knows it exists.
 	for _, ws := range workspaces {
-		keys, err := q.ListWorkspaceObjectKeys(ctx, ws.ID)
+		keys, err := s.ObjectKeys(ctx, q, ws.ID)
 		if err != nil {
 			return err
 		}

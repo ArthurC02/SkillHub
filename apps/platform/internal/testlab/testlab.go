@@ -369,6 +369,23 @@ func page[T any](rows []T, limit, offset int32) []T {
 	return rows
 }
 
+// CasesForSkill lists one skill's live test cases in the given workspace, in
+// created_at order.
+//
+// Exported for internal/packaging (PACK-005). Which of them may travel in a
+// download is that package's decision and stays there entirely - curation is a
+// property of the workspace the packaging request is scoped to, and this package
+// has no opinion about it. This answers "which cases exist", nothing more.
+//
+// q rather than the pool because the caller is inside its own transaction; nothing
+// here opens one. Cases are workspace scoped like every other read (iron rule 3),
+// so a skill someone else owns lists as empty rather than as somebody's test data.
+func CasesForSkill(ctx context.Context, q *gen.Queries, workspaceID, skillID pgtype.UUID) ([]gen.TestCase, error) {
+	return q.ListTestCasesForSkill(ctx, gen.ListTestCasesForSkillParams{
+		SkillID: skillID, WorkspaceID: workspaceID,
+	})
+}
+
 // Draft is one editable test case as another bounded context reads it — the
 // read half of this package's public surface, and the reason internal/run no
 // longer queries test_cases and datasets itself.
