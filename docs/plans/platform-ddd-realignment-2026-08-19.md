@@ -79,6 +79,16 @@ Phase 0～3 收斂後的唯讀審視認定方向正確，但**資料與事件邊
 
 **Phase 4 的邊界**：審視報告第四項（`App.Deps` 與 Service handles 公開，架構規則靠慣例）**未執行**——審視自身評為「目前可以接受」，且整合測試大量依賴那些把手，改為 private 的 churn 大於收益。若日後要做，路徑是提供獨立 test constructor／test options，逐步縮小公開面。
 
+### Phase 5 — read 側強制與 aggregate 文件面（2026-08-21）
+
+Phase 4 把 `allow:` 清到 0 之後，ADR-033／034 各自留下的「read 何時強制」待決策失去了原本的阻擋理由（訊號稀釋來源已消失），順勢處理；同批補上 ADR-032 §4 三個 aggregate 之外其餘 context 的 package 文件，以及 §6 列管殘項的第三條。
+
+| ID | 狀態 | 項目 | 完成條件 |
+| --- | --- | --- | --- |
+| DDD-028 | fixed | read ownership 開始強制，Context 對照表補完整性檢查 | **2026-08-21 完成**：新增 [ADR-035](../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md)，回答 ADR-033 待決策第 1 項與 ADR-034 待決策第 2 項（兩處皆回填刪節線引用）。`db/query-owners.yaml` 新增 `read_allow:`，形狀與 `allow:`／`immutable_allow:`／`raw_sql_allow:` 完全相同（具名、有理由、失效即 FAIL）；判定式是唯一差別，解析與掃描完全重用，`tools/devctl` 維持零第三方依賴。**條目放錯段落也 FAIL 且不給豁免**——訊息直接指出該搬去哪一段。第二道檢查讓三份清單互相對帳：`apps/platform/internal/` 的套件目錄、ADR-032 §1 對照表、`.golangci.yml` 的 depguard 規則，任一方向缺漏即 FAIL——AGENTS.md 第 11 條的「新增套件必須先登記」自此第一次有機械強制力。對照表以正規表示式解析，格式變動會**報讀不出來而非靜默通過**（刻意選的失敗方向，代價是改 §1 格式要順手跑 `automation-check`，已在 ADR-032 §1 加實作註記）。存量 47 組 (query, caller)、56 個呼叫點，收斂為 35 條 `read_allow:`，分七群 A～G 各有清除方向。**B 組（`LockSkillForRestriction`、`LockTestCase`）被判為正確性問題而非整潔問題**：DDD-020／ADR-034 反轉了寫入半邊，`SELECT … FOR UPDATE` 沒跟著搬，於是「鎖誰」仍在呼叫端手上，owner 無法保證自己的寫入被序列化——看起來已經收過，反而比從未動過的更危險。D 組的正解是注入不是 import（`eval`／`trace`／`analytics`／`policy` → `run` 皆在 deny，而 `run → policy`、`run → trace` 合法，改 import 會製造編譯期循環）。**刻意不做**：read 一律禁止（要先重構 56 處才能綠，與補檢查無關）、為 Generic 另立可繞過所有權的 read 語意（E 組正是反例——掃描器自己決定哪些列該掃是領域決定）。 |
+| DDD-029 | fixed | 其餘七個 context 補 package 文件 | **2026-08-21 完成**：ADR-032 §4 只要求三個 aggregate（DDD-021／022／023 已做），其餘 context 的邊界只存在於 ADR 裡，讀 `internal/` 的人看不到。`analytics`／`catalog`／`identity`／`ingest`／`packaging`／`testlab`／`trace` 各補 `doc.go`，逐份寫明所屬 context、需求 ID 前綴、不變量與各自由誰強制，並把散落在 `analytics.go`／`http.go`／`github.go`／`service.go`／`packaging.go`／`testlab.go` 的既有 package 註解**搬移**而非複製（同一份說明不留兩處）。零行為變動。 |
+| DDD-030 | fixed | 失敗的評估記下它被嘗試時的條件（§6 列管殘項第三條） | **2026-08-21 完成**：`FailEvaluation` 只寫 `evidence_complete`，ADR-026 決策 1 要求的三個值留 NULL，而它們唯一的另一個家是 `evaluation_started` trace event——trace 以 DROP PARTITION 清除，保存期一過「那次失敗用的是哪個 judge」就消失。修法**不在 `fail()` 寫**（`recoverEvaluation` 是別的 process 的 sweep，它不知道原本宣告了什麼，寫下去會把自己的設定蓋到別人開始的嘗試上），而是**在 `begin()` 建立 `pending` 列時就寫入宣告值**，`complete()` 照舊以回應實際回報的值覆寫三者。語意分野寫在 query 註解裡：`completed` 列上這三欄是「實際產出這份判定的是什麼」，`pending`／`failed` 列上是「宣告要用什麼」，`status` 已經讓兩者不會混淆。三個 NULL 各自是陳述而非缺漏（無 judge／平台未宣告 prompt 版本／快照沒凍結 rubric），與 0024 對 `rubric_version` 的既有規則同一條理由。同批修掉一個反向錯誤：**無 acceptance criteria 的路徑原本會記下 judge model**，但該路徑在抵達 judge 之前就回傳——那是替一通從未發生的計費呼叫具名。`contracts/openapi/public.yaml` 的 `judge_model` 說明同步改正（原文寫「即使每條判定都來自規則也會記錄」，與新行為衝突），`task gen:openapi` 重生 TS 與 Go stub。兩個方向皆做破壞驗證：漏寫值會紅，寫假值也會紅。 |
+
 ## 6. 執行總結（2026-08-20）
 
 DDD-001～014 全數結案（DDD-006 與 DDD-007 依執行時盤點調整裁定，理由行內記錄）。負責人授權「依最佳實務決策、詳實記錄」下的裁定全部落於 ADR-032／本 ledger／各 commit message。
@@ -87,14 +97,18 @@ DDD-001～014 全數結案（DDD-006 與 DDD-007 依執行時盤點調整裁定�
 
 最後兩批原本被記為「卡在產品與合規決策」，因為 ADR-033 為它們提的補法是事件化。[ADR-034](../adr/ADR-034-cross-context-writes-close-by-inversion-not-by-events.md) 裁定**不採該補法**，改用與前兩批相同的依賴反轉，於是那兩個決策（CORE-007 在最終一致下的「清完了」判準、M1 Explorer 能否接受匯入後的可發現性窗口）**不需要被回答**——它們是事件化才會產生的問題。兩個交易保證原封不動：帳號刪除仍是單一交易的全有全無，匯入完成的當下仍然搜得到。代價是 composition root 變大、依賴從編譯期變執行期，補償為 fail-closed 與 wiring 測試（ADR-034 §影響）。
 
+**Phase 5（DDD-028～030）於 2026-08-21 追加並結案**：`allow:` 清空後，ADR-033／034 各自留下的「read 何時強制」待決策失去了阻擋理由，由 [ADR-035](../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 回答為「強制，棘輪形狀與 write 相同」，同批讓 ADR-032 §1 對照表第一次被 CI 對帳。read 的存量 35 條凍結為待辦（見下），**不是清完了**——與 write 側不同，這一批只裝籬笆。
+
 執行期間發現、**已列管未修**的殘項：
 
 - ~~`run/job.go` `settle` 依賴轉移表列首為 happy path~~ → **DDD-023 已修**。
 - ~~`identity.PurgeExpiredAccounts` 對單一帳號的 purge 失敗只 log 並 `continue`，最後回 `nil`~~ → **2026-08-21 已修**（DDD-027）：失敗仍 log 並 `continue`（一個壞帳號不該卡住整批），但以 `errors.Join` 回傳，`purged` 保持「真的清掉幾筆」的原意而 exit code 誠實。同批修掉 `cmd/maintenance` 一個會被此改動引發的回歸：原本帳號錯誤會提前 return，使同一支命令的 session 清理被跳過——那與被修的毛病同型。兩個 sweep 現在都跑、錯誤 join。原子性測試同步從「記錄 `err=<nil>`」改為斷言錯誤必須浮上來，並經破壞驗證。
-- `FailEvaluation` 只寫 `evidence_complete`，ADR-026 決策 1 要求的 `judge_prompt_version`／`rubric_version`／`judge_model` 留 NULL。可辯護（失敗不是判定），但那三個值只活在 `evaluation_started` 這個 trace event 裡，而 trace 以 DROP PARTITION 清除——**保存期一過即無從得知該次失敗用的是哪個 judge**（DDD-022 行內）。
+- ~~`FailEvaluation` 只寫 `evidence_complete`，ADR-026 決策 1 要求的三個值留 NULL~~ → **DDD-030 已修**（改在 `begin()` 寫宣告值，非在 `fail()` 補寫，理由見該列）。
 - `db/migrations/0024` 的 trigger 註解稱 `failed` 列保持可寫是為了「讓 retry 把它變成判定」，但 `CompleteEvaluation` 帶 `status = 'pending'` 述詞，無任何路徑會如此——程式比 DB 嚴，非違規，但註解描述了一個不存在的機制。migration 已套用故不原地改，需要時以新 migration 或文件更正（DDD-022 行內）。
-- `eval/reconcile.go` 以裸 SQL 讀 `evaluations`，唯讀且同 context 故非 ADR-033 違規，但繞過宣告，`db/query-owners.yaml` 看不見它；日後若開始強制 read ownership 不會被自動涵蓋（DDD-022／DDD-024 行內）。
+- `eval/reconcile.go` 以裸 SQL 讀 `evaluations`，唯讀且同 context 故非 ADR-033 違規，但繞過宣告，`db/query-owners.yaml` 看不見它（DDD-022／DDD-024 行內）。**read ownership 已於 DDD-028 開始強制，這一條沒有跟著收**：它今天恰好讀自家表故結果不受影響，但換成別人的表，`raw_sql_allow:` 的 tripwire 也不會響（那道只看 DML）。要封死只能把 pool 收在只暴露 sqlc 的 wrapper 後面，成本與拆 sqlc per-context package 同級，維持「等存量清完再評估」（ADR-035 已知盲點）。
 - `apiserver`、`eval`、`registry` 三個 package 各自 `DROP SCHEMA public` 並套 migration，共用單一 `SKILLHUB_TEST_DATABASE_URL`。`go test ./...` 並行執行 package 時互相摧毀 schema（CI 有設該環境變數，會紅）。現以各自 `TestMain` 持有 session advisory lock 至整個 package 跑完序列化；**新增第四個重置該資料庫的 package 時必須一併取鎖**，漏取會以 `relation ... does not exist` 大聲失敗而非靜默（DDD-021 行內）。
+- `read_allow:` 的 35 條（47 組 (query, caller)、56 個呼叫點）是 DDD-028 導入時凍結的存量，**七群各有清除方向但都還沒做**。**B 組優先**：`LockSkillForRestriction`／`LockTestCase` 是正確性問題不是整潔問題——DDD-020／ADR-034 反轉了寫入半邊，`SELECT … FOR UPDATE` 留在呼叫端，owner 無法保證自己的寫入被序列化，而它看起來已經收過了。逐組判讀見 `db/query-owners.yaml` 的分組註解與 [ADR-035](../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md)「存量」節。
+- **`trace_events` 的保存期清除沒有實作**。六處文件稱「retention 是 DROP PARTITION」，實際上只有 `trace_events_2026_08` 一個月分割表，`0019` 另建了 `trace_events_default`，**沒有任何程式建立或丟棄分割**。2026-09-01 起所有 trace event 會落進 default 分割，而按月丟分割的做法永遠碰不到它。`analytics_events` 形狀相同，差別在 `purge-analytics` 至少會 DELETE。此項在 DDD-030 調查 `FailEvaluation` 的資料保存前提時發現，屬部署期風險而非 DDD 邊界問題，故未在本計畫內修。
 - trace 同批事件 `occurred_at` 相同導致的排序不定 flake（DDD-005 行內；與債務帳 `TRACE-SEQ-001` 同根）。
 - outbox poison 隔離是最小版：無自動重放工具、Prometheus rule 屬 `O11Y-PROMTOOL-001`（目錄 §5 行內）。
 - 事件目錄缺口 6（aggregate version）依裁定保留 open，第一個需要順序的 consumer 出現才補。
