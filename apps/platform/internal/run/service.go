@@ -238,10 +238,10 @@ func (s *Service) Create(ctx context.Context, p CreateParams) (gen.Run, error) {
 // be an enumeration log. Infrastructure errors are not refusals at all; those are
 // what slog and the error counters are for.
 func (s *Service) auditRefusal(ctx context.Context, p CreateParams, err error) {
-	var r refusal
 	var reason string
+	r, isRefusal := errors.AsType[refusal](err)
 	switch {
-	case errors.As(err, &r):
+	case isRefusal:
 		reason = r.reason
 	// The two gate B conditions that live with their features (gateb.go's header
 	// lists them). Neither goes through refused(), so they are matched on their

@@ -495,8 +495,7 @@ func classifyResult(pr ProviderRun) (status gen.RunStatus, failureClass, errClas
 // A 422 is the provider refusing the request itself, which is a capability
 // mismatch however sure the scheduler was a moment ago.
 func dispatchErrorClass(err error) string {
-	var pe *providerError
-	if errors.As(err, &pe) {
+	if pe, ok := errors.AsType[*providerError](err); ok {
 		if pe.Class != "" {
 			return pe.Class
 		}

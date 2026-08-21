@@ -281,8 +281,7 @@ func (e *providerError) Error() string {
 // itself being wrong, and repeating it fails identically forever (ADR-004: only
 // known-idempotent actions retry, and never without bound).
 func retryable(err error) bool {
-	var pe *providerError
-	if errors.As(err, &pe) {
+	if pe, ok := errors.AsType[*providerError](err); ok {
 		return pe.Status == http.StatusTooManyRequests || pe.Status >= 500
 	}
 	// Context cancellation is the platform stopping, not the provider failing.

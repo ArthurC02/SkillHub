@@ -62,8 +62,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, skillpkg.MaxZipBytes)
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
-		var tooLarge *http.MaxBytesError
-		if errors.As(err, &tooLarge) {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			httpx.WriteError(w, http.StatusRequestEntityTooLarge, "package exceeds the upload size limit")
 			return
 		}
@@ -98,8 +97,7 @@ func (h *Handler) SaveVersion(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, skillpkg.MaxZipBytes)
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
-		var tooLarge *http.MaxBytesError
-		if errors.As(err, &tooLarge) {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			httpx.WriteError(w, http.StatusRequestEntityTooLarge, "package exceeds the upload size limit")
 			return
 		}

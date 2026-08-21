@@ -172,8 +172,7 @@ func (g *Gateway) Revoke(ctx context.Context, runAttemptID string) error {
 	err := g.post(ctx, "/key/delete", map[string]any{
 		"key_aliases": []string{keyAlias(runAttemptID)},
 	}, nil)
-	var ge *gatewayError
-	if errors.As(err, &ge) && ge.notFound() {
+	if ge, ok := errors.AsType[*gatewayError](err); ok && ge.notFound() {
 		return nil
 	}
 	return err
