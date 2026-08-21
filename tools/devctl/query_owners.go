@@ -37,6 +37,11 @@ var platformContexts = map[string]bool{
 // import itself and api/gen never imports it.
 const genImportPath = "internal/platform/db/gen\""
 
+// 跨 context read 的具名豁免所在 section（ADR-035）。形狀與 `allow:` 完全一致：
+// key 是 query 名、value 是被容忍的呼叫端 context 清單，理由寫在上方的分組註解。
+// section 不存在＝零條豁免，是最嚴格的預設，故不列入必要 section。
+const readAllowSection = "read_allow"
+
 type sqlQuery struct {
 	file    string   // basename of the db/queries/*.sql file it lives in
 	write   bool     // INSERT / UPDATE / DELETE, including CTE writes
@@ -59,7 +64,7 @@ func queryOwnerProblems(root string) []string {
 	}
 
 	var problems []string
-	fileOwners, queryOwners, allow := sections["files"], sections["queries"], sections["allow"]
+	fileOwners, queryOwners := sections["files"], sections["queries"]
 
 	for _, section := range []string{"files", "queries"} {
 		for _, key := range sortedKeys(sections[section]) {
@@ -92,12 +97,6 @@ func queryOwnerProblems(root string) []string {
 			problems = append(problems, fmt.Sprintf("db/%s: queries.%s is not a query in db/queries", queryOwnersFile, name))
 		}
 	}
-	for _, name := range sortedKeys(allow) {
-		if _, ok := queries[name]; !ok {
-			problems = append(problems, fmt.Sprintf("db/%s: allow.%s is not a query in db/queries", queryOwnersFile, name))
-		}
-	}
-
 	names := map[string]bool{}
 	for name := range queries {
 		names[name] = true
@@ -114,47 +113,63 @@ func queryOwnerProblems(root string) []string {
 		return fileOwners[queries[name].file]
 	}
 
-	// Reads stay unenforced on purpose (ADR-033): a write is where a foreign
-	// context can break an invariant it does not know about.
-	for _, name := range sortedKeys(queries) {
-		if !queries[name].write {
-			continue
-		}
-		allowed := map[string]bool{}
-		for _, context := range splitList(allow[name]) {
-			allowed[context] = true
-		}
-		for _, site := range calls[name] {
-			if site.context == owner(name) || allowed[site.context] {
+	// ADR-035: read 與 write 走同一個棘輪，判定式只差在 query 是不是 write。
+	// ADR-032 §2 的四種關係裡沒有「直接呼叫別人的 query」這一項——取別人的事實
+	// 要 import 對方的公開 Service API，所以跨 context read 是 write 漂移的 read 版。
+	for _, side := range []struct {
+		write bool
+		// section 是本側的容忍清單，other 是另一側的——條目放錯段落時
+		// 訊息要直接指出該搬去哪裡，否則讀的人得自己推。
+		section, other  string
+		verb, otherVerb string // 訊息裡的動詞；`%ss` 補成 writes／reads
+	}{
+		{write: true, section: "allow", other: readAllowSection, verb: "write", otherVerb: "read"},
+		{write: false, section: readAllowSection, other: "allow", verb: "read", otherVerb: "write"},
+	} {
+		tolerated := sections[side.section]
+		for _, name := range sortedKeys(queries) {
+			if queries[name].write != side.write {
 				continue
 			}
-			problems = append(problems, fmt.Sprintf(
-				"cross-context write: %s is owned by %q but %q writes it at %s",
-				name, owner(name), site.context, site.path))
+			allowed := map[string]bool{}
+			for _, context := range splitList(tolerated[name]) {
+				allowed[context] = true
+			}
+			for _, site := range calls[name] {
+				if site.context == owner(name) || allowed[site.context] {
+					continue
+				}
+				problems = append(problems, fmt.Sprintf(
+					"cross-context %s: %s is owned by %q but %q %ss it at %s",
+					side.verb, name, owner(name), site.context, side.verb, site.path))
+			}
 		}
-	}
 
-	// A tolerated drift whose call site is gone must be deleted from the file;
-	// leaving it there quietly re-opens the hole for the next caller.
-	for _, name := range sortedKeys(allow) {
-		query, ok := queries[name]
-		if !ok {
-			continue // already reported above
-		}
-		for _, context := range splitList(allow[name]) {
-			switch {
-			case !platformContexts[context]:
+		// A tolerated drift whose call site is gone must be deleted from the file;
+		// leaving it there quietly re-opens the hole for the next caller.
+		for _, name := range sortedKeys(tolerated) {
+			query, ok := queries[name]
+			if !ok {
 				problems = append(problems, fmt.Sprintf(
-					"db/%s: allow.%s = %q is not a context in ADR-032 §1", queryOwnersFile, name, context))
-			case !query.write:
-				problems = append(problems, fmt.Sprintf(
-					"db/%s: allow.%s is a read query; reads are not enforced", queryOwnersFile, name))
-			case context == owner(name):
-				problems = append(problems, fmt.Sprintf(
-					"db/%s: allow.%s = %q is the owner; the entry is redundant", queryOwnersFile, name, context))
-			case !callsFrom(calls[name], context):
-				problems = append(problems, fmt.Sprintf(
-					"db/%s: allow.%s = %q no longer calls it; delete the entry", queryOwnersFile, name, context))
+					"db/%s: %s.%s is not a query in db/queries", queryOwnersFile, side.section, name))
+				continue
+			}
+			for _, context := range splitList(tolerated[name]) {
+				switch {
+				case !platformContexts[context]:
+					problems = append(problems, fmt.Sprintf(
+						"db/%s: %s.%s = %q is not a context in ADR-032 §1", queryOwnersFile, side.section, name, context))
+				case query.write != side.write:
+					problems = append(problems, fmt.Sprintf(
+						"db/%s: %s.%s is a %s query; declare it in %s:",
+						queryOwnersFile, side.section, name, side.otherVerb, side.other))
+				case context == owner(name):
+					problems = append(problems, fmt.Sprintf(
+						"db/%s: %s.%s = %q is the owner; the entry is redundant", queryOwnersFile, side.section, name, context))
+				case !callsFrom(calls[name], context):
+					problems = append(problems, fmt.Sprintf(
+						"db/%s: %s.%s = %q no longer calls it; delete the entry", queryOwnersFile, side.section, name, context))
+				}
 			}
 		}
 	}
@@ -618,4 +633,143 @@ func sqlPrefix(sql string) string {
 		return flat[:60] + "…"
 	}
 	return flat
+}
+
+// ── ADR-032 §1 對照表的完整性 ──────────────────────────────────────────────
+//
+// AGENTS.md 第 11 條要求「新增套件必須先在 ADR-032 §1 對照表登記」，在此之前
+// 沒有任何東西強制它——漏登記的套件會安靜地活在 internal/ 底下，既不屬於任何
+// context，也不受 depguard 約束。這道檢查讓三份清單互相對帳：
+//
+//	apps/platform/internal/ 的套件目錄
+//	ADR-032 §1 表格「internal/ 套件」欄
+//	apps/platform/.golangci.yml 的 depguard 規則
+//
+// 三者任一方向缺漏都 FAIL，訊息指出是哪個套件、缺在哪一側。
+//
+// **depguard 覆蓋只對非 Generic 的列強制**。ADR-032 §1 的 Generic 列裡，
+// `apiserver` 是 composition root（它 import 每一個 context，一條 deny 什麼都不能寫）、
+// `api/gen` 是生成碼；兩者刻意沒有規則。其餘 Generic 套件（audit／outbox／
+// llmclient／skillpkg／platform）實際上被 `generic` 那條規則覆蓋，這道檢查不反對——
+// 它只要求「領域 context 一定要有人管」，不禁止 Generic 也被管。
+const contextMapADR = "ADR-032-ddd-bounded-context-governance-for-platform.md"
+
+var (
+	// §1 的表格；下一個 `### ` 標題就是邊界。文件裡還有 §2、§5 與附錄 A 三張表，
+	// 抓錯一張會讓這道檢查對著關係列表比對套件名。
+	contextTableHeading = "### 1. Context 對照表"
+	// 套件欄的儲存格會夾註解（`ingest`（…`SaveVersion`…）），註解裡也有反引號。
+	// 先把全形括號夾住的部分整段拿掉，再抽反引號，否則 `SaveVersion` 會被當成套件。
+	contextNotePattern    = regexp.MustCompile(`（[^（）]*）`)
+	contextTokenPattern   = regexp.MustCompile("`([^`]+)`")
+	contextPackagePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(/(\*|[a-z][a-z0-9_]*))?$`)
+	// depguard 規則的 files: 清單，例如 `- "**/internal/registry/**"`。
+	depguardFilePattern = regexp.MustCompile(`\*\*/internal/([a-z0-9_]+)/\*\*`)
+)
+
+func contextMapProblems(root string) []string {
+	// 訊息裡的路徑一律用正斜線：它是給人看的 repo 相對路徑，不是要拿去開檔的。
+	const adrPath, lintPath = "docs/adr/" + contextMapADR, "apps/platform/.golangci.yml"
+
+	declared, problems := contextTablePackages(filepath.Join(root, filepath.FromSlash(adrPath)), adrPath)
+	if len(declared) == 0 {
+		return append(problems, fmt.Sprintf("%s: %s has no package rows", adrPath, contextTableHeading))
+	}
+
+	lint, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(lintPath)))
+	if err != nil {
+		return append(problems, fmt.Sprintf("%s: %v", lintPath, err))
+	}
+	guarded := map[string]bool{}
+	for _, match := range depguardFilePattern.FindAllStringSubmatch(string(lint), -1) {
+		guarded[match[1]] = true
+	}
+
+	internal := filepath.Join(root, "apps", "platform", "internal")
+	entries, err := os.ReadDir(internal)
+	if err != nil {
+		return append(problems, fmt.Sprintf("apps/platform/internal: %v", err))
+	}
+	present := map[string]bool{}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			present[entry.Name()] = true
+		}
+	}
+
+	for _, name := range sortedKeys(present) {
+		if _, ok := declared[name]; !ok {
+			problems = append(problems, fmt.Sprintf(
+				"apps/platform/internal/%s is not listed in %s §1; register it before adding the package (AGENTS.md 第 11 條)",
+				name, contextMapADR))
+		}
+	}
+	for _, name := range sortedKeys(declared) {
+		switch {
+		case !present[name]:
+			problems = append(problems, fmt.Sprintf(
+				"%s §1 lists %q but apps/platform/internal/%s does not exist", contextMapADR, name, name))
+		case !declared[name] && !guarded[name]: // 非 Generic 的列一定要有人管
+			problems = append(problems, fmt.Sprintf(
+				"%s §1 puts %q in a bounded context but %s has no depguard rule covering it",
+				contextMapADR, name, lintPath))
+		}
+	}
+	for _, name := range sortedKeys(guarded) {
+		if !present[name] {
+			problems = append(problems, fmt.Sprintf(
+				"%s guards apps/platform/internal/%s but that package does not exist", lintPath, name))
+		}
+	}
+	return problems
+}
+
+// contextTablePackages 回傳 §1 表格宣告的套件目錄，value 為 true 表示該列是
+// Generic（跨切面，非 context），據此決定要不要強制 depguard 覆蓋。
+// `platform/*` 與 `api/gen` 這類寫法取第一段當目錄名；不符形狀的 token 直接報錯，
+// 不靜默跳過——安靜跳過的解析器等於沒有這道檢查。
+func contextTablePackages(path, relative string) (map[string]bool, []string) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, []string{fmt.Sprintf("%s: %v", relative, err)}
+	}
+	declared := map[string]bool{}
+	var problems []string
+	inTable := false
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.HasPrefix(line, "### ") {
+			inTable = strings.HasPrefix(line, contextTableHeading)
+			continue
+		}
+		if !inTable || !strings.HasPrefix(strings.TrimSpace(line), "|") {
+			continue
+		}
+		cells := strings.Split(strings.Trim(strings.TrimSpace(line), "|"), "|")
+		if len(cells) < 3 {
+			continue
+		}
+		kind := strings.TrimSpace(cells[1])
+		if kind == "類型" || strings.Trim(kind, "- ") == "" {
+			continue // 表頭與分隔列
+		}
+		generic := kind == "Generic"
+		for _, token := range contextTokenPattern.FindAllStringSubmatch(
+			contextNotePattern.ReplaceAllString(cells[2], ""), -1) {
+			name := token[1]
+			if !contextPackagePattern.MatchString(name) {
+				problems = append(problems, fmt.Sprintf(
+					"%s §1 lists %q, which is not a package directory this check can read", relative, name))
+				continue
+			}
+			directory, _, _ := strings.Cut(name, "/")
+			// 同一個套件出現在兩列時（`skillpkg` 既是 Core 的一員也被當
+			// Shared Kernel），只要有一列是非 Generic 就照非 Generic 要求。
+			shared := generic
+			if seen, ok := declared[directory]; ok {
+				shared = shared && seen
+			}
+			declared[directory] = shared
+		}
+	}
+	return declared, problems
 }

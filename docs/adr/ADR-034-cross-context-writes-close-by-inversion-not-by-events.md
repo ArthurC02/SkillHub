@@ -157,4 +157,4 @@ ADR-033 導入 query ownership 強制時，記錄了 15 條存量跨 context wri
 ## 待決策
 
 - 若日後 `catalog` 的檢索需要脫離主資料庫（例如專用檢索引擎），投影就不再能同交易寫入，屆時事件化成為必要而非選擇。觸發條件與 ADR-010 的拆分條件一併評估。
-- read ownership 是否開始強制（ADR-033 待決策）：本 ADR 清掉 write 側存量後，該問題可以在乾淨的基礎上重新評估。
+- ~~read ownership 是否開始強制（ADR-033 待決策）：本 ADR 清掉 write 側存量後，該問題可以在乾淨的基礎上重新評估。~~ → [ADR-035](./ADR-035-read-ownership-enforcement-and-context-map-completeness.md)：已在乾淨的基礎上重評並**決定強制**。其中 D 組（`run` 的 Run 事實）的正解沿用本 ADR「為什麼是注入而不是 import」——`eval`／`trace`／`analytics`／`policy` → `run` 都在 deny，而 `run → policy`、`run → trace` 是既有合法方向，加白名單會製造循環。

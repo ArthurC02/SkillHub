@@ -79,7 +79,7 @@ Platform DDD 審視報告把這列為 P1，並指出這與 ADR-002「每個模�
 
 ## 待決策
 
-- read ownership 何時開始強制，以及是否要先引入 read projection／ACL 型別（等路徑 3 完成後重新評估）。
+- ~~read ownership 何時開始強制，以及是否要先引入 read projection／ACL 型別（等路徑 3 完成後重新評估）。~~ → [ADR-035](./ADR-035-read-ownership-enforcement-and-context-map-completeness.md)：**2026-08-21 起強制**，棘輪形狀與 write 相同（`read_allow:`），存量 47 組分七群、各有清除方向；不先引入 read projection／ACL 型別。同批補上「裸 SQL 的 read 盲點」的現況記錄（`eval/reconcile.go` 未隨強制一起收）。
 - 存量漂移清完後是否拆 sqlc per-context package（見「考慮過但拒絕」）。
 
 ## 追加：裸 SQL 的盲點與 tripwire

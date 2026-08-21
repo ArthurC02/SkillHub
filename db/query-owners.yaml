@@ -7,9 +7,12 @@
 # `go -C tools/devctl run . automation-check` 在 CI 強制。
 #
 # 檢查範圍（ADR-033 §決策）：
-#   - 只強制 **write query**（INSERT／UPDATE／DELETE，含 `WITH ... DELETE` 這種
-#     CTE 寫入）。read query 仍要宣告 owner，但暫不擋——擋 read 會在同一批把
-#     十幾條跨 context 讀取變成 allow 條目，讓宣告本身失去訊號。
+#   - **write 與 read 都強制**（ADR-035，2026-08-21 起）。write 是
+#     INSERT／UPDATE／DELETE，含 `WITH ... DELETE` 這種 CTE 寫入；其餘是 read。
+#     兩側棘輪的形狀相同，只是容忍清單分成 `allow:`（write）與
+#     `read_allow:`（read）兩段——放錯段落 CI 會指出該搬去哪一段。
+#     ADR-033 當初只鎖 write 的理由是「同一批擋 read 會製造十幾條容忍條目」；
+#     write 存量歸零後那個顧慮不再成立，read 的存量因此有自己乾淨的一段。
 #   - 呼叫端 context 由檔案路徑推得：apps/platform/internal/<context>/...
 #   - 只掃 import 了 db/gen 的非測試 Go 檔。
 #
@@ -110,6 +113,101 @@ queries:
 # 全數清除（寫入回到 owner，呼叫端的交易原地不動），最後 6 條帳號刪除 purge
 # 由 ADR-034 的依賴反轉收斂。**不准新增條目**——新的跨 context write 要改程式。
 allow:
+
+# 存量跨 context read（ADR-035 導入時就已存在的呼叫）
+#
+# ADR-032 §2 的四種關係裡沒有「直接呼叫別人的 query」這一項——跨 context 取事實
+# 的合法機制是 **import 對方套件的公開 Service API**。下面每一條都是那條規則的
+# read 版漏洞，形狀與清空前的 `allow:` 一模一樣。
+#
+# **不是擴充點**——新的跨 context read 一律改程式（owner 開讀取面，或比照
+# ADR-034 由 composition root 注入）。逐組清除方向見 ADR-035「存量清除路徑」。
+# 值是被容忍的呼叫端 context 清單；理由按成因分組寫在各組上方。
+read_allow:
+  # ── A. registry 的 Skill／Version 事實（21 條、6 個呼叫端）────────────────
+  # 最大的一組，成因單一：`skills` 與 `skill_versions` 是全平台的共享事實——
+  # 要跑、要打包、要評估、要顯示，都得先讀到那一列。registry 至今只公開了**寫入面**
+  # （DDD-019／020 的三支 `*FromPackage` 與 `SetAccessRestriction`），沒有對應的
+  # 讀取面，於是六個 context 各自去呼叫 query。這一組不是判定可商榷，是缺一支 API。
+  GetSkill: catalog, eval, ingest, packaging, run, testlab
+  GetSkillVersion: eval, packaging, run
+  GetLatestSkillVersion: catalog, eval
+  GetSkillRuntimeCompatibility: catalog, eval, packaging
+  GetCatalogSkill: catalog
+  GetSkillSource: catalog
+  GetSkillByName: ingest
+  GetVersionBySkillAndHash: ingest
+  GetPreviousSkillVersion: packaging
+  GetOldestSkillVersion: packaging
+  GetVersionLineage: packaging
+
+  # ── B. 寫入已回到 owner，但同一筆動作的鎖／前置讀留在呼叫端（2 條）────────
+  # 兩條都是 `SELECT ... FOR UPDATE`（本檢查正確判為 read）：呼叫端先鎖 owner 的列，
+  # 再叫 owner 寫。DDD-020 反轉的是寫入那一半，鎖這一半沒跟著搬，於是「鎖誰」這個
+  # 決定仍在呼叫端手上。這是四組裡最該優先收的——鎖與寫分屬兩個 context 時，
+  # owner 無法保證自己的寫入被正確序列化。
+  LockSkillForRestriction: catalog
+  LockTestCase: run
+
+  # ── C. testlab 的 Test Case／Dataset 快照（6 條）──────────────────────────
+  # 與 A 同因（owner 沒有讀取面），但成本低得多：附錄 A 已允許
+  # `run → testlab`、`eval → testlab`、`packaging → testlab` 三條 import，
+  # testlab 也已有 Service 門面（DDD-007 的單一讀寫門面），純粹是還沒搬。
+  # `ListWorkspaceObjectKeys` 是例外：identity 的帳號刪除要盤點待刪物件鍵，
+  # 方向與 ADR-034 的 `PurgeWorkspace` 一致，卻沒被收進那支注入的函式裡。
+  GetTestCaseSnapshot: eval, run
+  GetDataset: run
+  ListDatasets: packaging
+  ListTestCasesForSkill: packaging
+  ListWorkspaceObjectKeys: identity
+
+  # ── D. run 的 Run 事實（7 條）──────────────────────────────────────────────
+  # 與 A、C 同因，但 import 方向被 depguard 擋著：`eval → run`、`trace → run`、
+  # `analytics → run`、`policy → run` 全在 deny 清單裡，而且 `run → policy`、
+  # `run → trace` 是既有的合法方向——加白名單會製造循環。因此這一組的正解是
+  # ADR-034 的注入，不是 import。
+  GetRun: eval, trace
+  GetRunForTraceIngest: trace
+  ListRunArtifacts: eval
+  ListRunAttempts: eval
+  ListRunStatusTransitions: trace
+  RunInWorkspace: analytics
+
+  # ── E. Generic 掃描器代讀 owner 的清單（3 條）─────────────────────────────
+  # DDD-020 把 objreconcile 的**寫入**半邊反轉成注入（`MarkArtifactPurged`／
+  # `MarkDatasetObjectLost` 由 composition root 提供），**讀取半邊留著**：
+  # 掃描器仍自己決定「哪些列該被掃」。注入形狀已經在那裡，補兩三個 lister 欄位即可。
+  ListArtifactsPastRetention: objreconcile
+  ListArtifactsClaimingObject: objreconcile
+  ListDatasetsClaimingObject: objreconcile
+
+  # ── F. 單點跨界，各有各的成因（6 條）──────────────────────────────────────
+  # `ListPendingEnrichment`：ADR-034 把 `search_documents` 的**寫入**反轉成
+  #   `catalog.IndexSkill` 注入，但 `ReindexPending` 讀「還沒 enrich 的投影列」
+  #   這一半沒跟著走——同一批的自然殘留，補一個 lister 欄位就收掉。
+  # `ListSuggestionsAppliedToVersion`：打包 manifest 要寫「這個版本採納了哪些建議」，
+  #   那是 eval 的溯源事實；`packaging → eval` 是 deny，故走注入。
+  # `GetLineageSource`：同上，打包要寫匯入來源，事實屬 ingest；`packaging → ingest`
+  #   亦為 deny。B 之外的溯源讀取全部集中在 `packaging/manifest.go` 一個檔。
+  # `CountArtifactsSharingObject`：run 刪自己的 Run 產物前，要確認底層物件沒有被
+  #   packaging 的 download package 共用。這是「別人還要不要用」，只有 owner 答得出來。
+  # `CountQuotaRuns`：owner 判定**可以商榷**——表是 `runs`（故歸 run），但 ADR-032 §1
+  #   說 quota 規則歸 policy，而這條 query 除了算配額沒有第二個用途。維持按表歸屬
+  #   （宣告的判準是「主要資料表的擁有 context」，不是用途），改判會讓判準出現例外。
+  # `GetWorkspaceCreatedAt`：policy 要 workspace 建立時間才能算配額週期。這一條最好收：
+  #   鐵律 3 讓每個 context 都已經 import `identity`，只差 identity 公開一支讀取面。
+  ListPendingEnrichment: ingest
+  ListSuggestionsAppliedToVersion: packaging
+  GetLineageSource: packaging
+  CountArtifactsSharingObject: run
+  CountQuotaRuns: policy
+  GetWorkspaceCreatedAt: policy
+
+  # ── G. trace 事件的讀取（2 條）────────────────────────────────────────────
+  # 兩條的 import 方向都已經合法（附錄 A 有 `run → trace` 與 `eval → trace`），
+  # trace 也已有 Service（DDD-004 把現場建構改成注入）。純粹是還沒搬，成本同 C。
+  FindLiveTraceEvents: eval
+  CountTraceMaskingInWindow: run
 
 # 不可變資料表宣告（ADR-003、鐵律 4；ADR-032 §4 的 aggregate 不變量）
 #

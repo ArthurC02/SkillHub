@@ -74,9 +74,41 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 			callers:     map[string]string{"run": "func f(q Q) { q.CreateRun(ctx) }"},
 		},
 		{
-			name:        "foreign context reading is not enforced",
+			name:        "owner reads its own query",
+			declaration: baseDeclaration,
+			callers:     map[string]string{"run": "func f(q Q) { q.GetRun(ctx) }"},
+		},
+		{
+			name:        "foreign context reading is blocked",
 			declaration: baseDeclaration,
 			callers:     map[string]string{"eval": "func f(q Q) { q.GetRun(ctx) }"},
+			want:        `GetRun is owned by "run" but "eval" reads it`,
+		},
+		{
+			name:        "read_allow entry lets a known drift through",
+			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\nread_allow:\n  GetRun: eval\n"),
+			callers:     map[string]string{"eval": "func f(q Q) { q.GetRun(ctx) }"},
+		},
+		{
+			name:        "stale read_allow entry is reported",
+			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\nread_allow:\n  GetRun: eval\n"),
+			callers:     map[string]string{"run": "func f(q Q) { q.GetRun(ctx) }"},
+			want:        "read_allow.GetRun = \"eval\" no longer calls it",
+		},
+		{
+			name:        "a write parked in read_allow is sent to the other section",
+			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\nread_allow:\n  CreateRun: eval\n"),
+			want:        "read_allow.CreateRun is a write query; declare it in allow:",
+		},
+		{
+			name:        "a read parked in allow is sent to the other section",
+			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\n  GetRun: eval\nread_allow:\n"),
+			want:        "allow.GetRun is a read query; declare it in read_allow:",
+		},
+		{
+			name:        "read_allow entry for a vanished query is reported",
+			declaration: decl("files:\n  runs.sql: run\nqueries:\nallow:\nread_allow:\n  ListRuns: eval\n"),
+			want:        "read_allow.ListRuns is not a query in db/queries",
 		},
 		{
 			name:        "foreign context writing is blocked",

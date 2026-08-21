@@ -42,6 +42,8 @@ ADR-002 的領域模組正式對映為 Bounded Context。每個 `internal/` 套�
 
 `trace` 原稿漏列，2026-08-20 定案時補入：它擁有 Run Trace 事件的遮罩、入庫與讀取（ADR-009 的 Run Trace 平面），`run` 同步寫入、`eval` 同步讀取。
 
+2026-08-21（[ADR-035](./ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 實作註記）：**本表現在由 CI 對帳**。`devctl automation-check` 讓三份清單互相驗證——`apps/platform/internal/` 的套件目錄、本表「internal/ 套件」欄、`apps/platform/.golangci.yml` 的 depguard 規則——任一方向缺漏即 FAIL，AGENTS.md 第 11 條的「新增套件必須先在本表登記」因此第一次有強制力。兩點提醒：**depguard 覆蓋只對非 Generic 的列強制**（`apiserver` 是 composition root、`api/gen` 是生成碼，兩者刻意沒有規則），而**本表的格式是被解析的**——儲存格夾註解要用全形括號（解析器整段移除後才抽反引號，所以 `SaveVersion` 那類註解內的反引號不會被當成套件名），套件名要寫成 `名稱`、`名稱/*` 或 `名稱/子目錄`，其他寫法會 FAIL 而不是被略過。改本表的格式請順手跑一次 `automation-check`。決策內容不變。
+
 Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵律 9 的機制、`llmclient` 與 `run` 內的 provider gateway 是防腐層（Anticorruption Layer）、`platform/*` 是純技術基座、`apiserver` 是表現層與 composition root。
 
 ### 2. Context 間關係只有四種，且各有固定機制
