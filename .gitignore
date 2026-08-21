@@ -13,6 +13,12 @@ __pycache__/
 node_modules/
 dist/
 
+# Playwright (ADR-036). Reports and traces are per-run artefacts; the browser
+# binaries live outside the repo, installed by `npx playwright install`.
+/apps/web/test-results/
+/apps/web/playwright-report/
+/apps/web/blob-report/
+
 # Go build output
 /apps/*/bin/
 *.exe

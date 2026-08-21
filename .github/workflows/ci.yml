@@ -93,6 +93,46 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  # ADR-036 / 03:QA-008. A separate job, not extra steps on `web`: this one
+  # downloads three browser engines and the tier above answers in under a
+  # minute, so folding them together would put the slow half in front of the
+  # fast half's feedback on every push.
+  #
+  # No browser cache yet. `actions/cache` is not among the SHAs this repo has
+  # pinned, and inventing one to save ninety seconds is the wrong trade against
+  # a supply-chain rule the rest of this file keeps.
+  web-browser:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            packages/api-client-ts/package-lock.json
+      - run: npm ci
+        working-directory: packages/api-client-ts
+      - run: npm run build
+        working-directory: packages/api-client-ts
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run test:e2e
+      # The report is only worth keeping when something failed; on a green run
+      # it is a few hundred kilobytes saying so.
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
   platform:
     needs: changes
     if: needs.changes.outputs.platform == 'true'

@@ -1,3 +1,8 @@
 # Build output and npm-owned lockfile: generated, not ours to format.
 dist/
 package-lock.json
+
+# Playwright run artefacts (ADR-036): traces, screenshots and the HTML report.
+test-results/
+playwright-report/
+blob-report/
