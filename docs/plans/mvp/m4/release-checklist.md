@@ -140,7 +140,8 @@ psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 | --- | --- | --- |
 | `PACKAGING_PROFILES_DIR` | 零個打包目標，**每條打包路由 503** | 預設 `contracts/packaging/profiles` |
 | `DOWNLOAD_ARTIFACT_RETENTION` | **未設或非法即 fail-closed：打包建立回 503，不得產生下載 Artifact** | **PDM-006 追認後才設定正值**（§3） |
-| `ANALYTICS_RETENTION` | **不設 cookie、不寫任何一列** ⇒ `BETA-002` 的漏斗量不到任何東西 | **PDM-006 追認**（ADR-029 提案 180 天） |
+| `ANALYTICS_RETENTION` | **不設 cookie、不寫任何一列** ⇒ `BETA-002` 的漏斗量不到任何東西；**且 `maintenance rotate-partitions` 整個 job 拒絕執行**（§2.6） | **PDM-006 追認**（ADR-029 提案 180 天） |
+| `TRACE_RETENTION` | **`maintenance rotate-partitions` 整個 job 拒絕執行**（兩個保存期在任何語句之前一起讀）⇒ **`trace_events` 與 `analytics_events` 的月分割既不會被預先建立，也不會被丟棄**。Trace 寫入本身不受影響，事件照收，只是全部落進 `trace_events_default`（§2.6） | **PDM-006 追認**（`0004` 註解寫的 90 天是提案，至今沒有任何東西在執行它） |
 | `BETA_ALLOWLIST` | 閘門關閉，**任何有 GitHub 帳號的人都能用** | PDM-009 追認後的 12 個 GitHub 帳號 |
 | `RUN_QUOTA` | 額度不強制，`GET /me/quota` **不掛載**，preflight 不帶配額區塊 | PDM-010 擇一後開啟 |
 | `OPERATOR_USER_IDS` | 沒有人能操作 `/admin/dispatch*`（P1 停派送只能改 DB） | 負責人自己 |
@@ -169,8 +170,9 @@ psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 ### 2.6 對帳器與排程
 
 - [ ] `cmd/maintenance purge-accounts` 接上 cron（**程式刻意不自帶 scheduler**）；`PURGE_GRACE` 預設 720h
-- [ ] `cmd/maintenance rotate-partitions` **接上每月 cron**（DDD-032 新增）：預先建立 `trace_events` 與 `analytics_events` 未來兩個月的分割，並丟棄超過保存期的月份。**`TRACE_RETENTION` 與 `ANALYTICS_RETENTION` 皆無預設，未設即整個 job 拒絕執行**（H-5 的 PDM-006 追認之前設不了值 ⇒ **分割不會被丟棄，也不會被預先建立**）
-- [ ] 驗**第一次執行時 default 分割的抽乾**：2026-09-01 至該 job 首次執行之間寫入的 trace 事件都在 `trace_events_default`，`CREATE TABLE ... PARTITION OF` 會因此被拒絕。**錯誤訊息本身就是操作步驟**（detach／搬列／re-attach），程式刻意不自動抽乾——這是一次性動作，不是每月動作（`0019` 早已預告）
+- [ ] `cmd/maintenance rotate-partitions` **接上每月 cron**（DDD-032 新增；需要 `DATABASE_URL`）：一次執行同時處理 `trace_events` 與 `analytics_events`——建立**當月與其後兩個月**的分割，並丟棄超過保存期的月份。**`TRACE_RETENTION` 與 `ANALYTICS_RETENTION` 皆無預設，兩者在任何語句之前一起讀，任一未設即整個 job 拒絕執行**（H-5 的 PDM-006 追認之前設不了值 ⇒ **分割不會被丟棄，也不會被預先建立**）。**排程至少每月一次**：預建兩個月是給「連續漏跑一次」的餘裕，連漏兩次就會開始寫進 default，而 default 是分割丟棄永遠碰不到的地方
+- [ ] 驗**第一次執行時 default 分割的抽乾**：2026-09-01 至該 job 首次執行之間寫入的 trace 事件都在 `trace_events_default`，`CREATE TABLE ... PARTITION OF` 會因此被 Postgres 的 `23514` 拒絕。**錯誤訊息本身就是操作步驟**（detach／建月份／搬列／re-attach／重跑），程式刻意不自動抽乾——這是一次性動作，不是每月動作（`0019` 早已預告）。**`analytics_events` 現在不需要抽乾但可能需要**：`ANALYTICS_RETENTION` 未設之前一列都不寫，所以 `analytics_events_default` 是空的；**若先設了它才接 cron**，事件就會落進 default 而重演同一件事——設定與接 cron 請同一次做完
+- [ ] 驗一次**重跑**：同一個月再跑一次應該印出 `created=[] dropped=[]`（`slog` 的 `partitions rotated`）。job 是冪等的，cron 觸發兩次不是故障；哪天它不再是空的，就是有事發生了
 - [ ] 物件存在性對帳器一小時一輪且**刻意沒有 `RunOnStart`** ⇒ **部署後第一小時是空窗**，知道就好
 - [ ] 驗對帳器要兩輪才標記（`object_reconcile_sightings`），且無法連線的儲存產生**零次觀測**而不是一次假的
 
@@ -190,7 +192,7 @@ psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 | H-2 | 負責人 | **乙-14 拍板**：甲類四項是否在封測前到期。建議「到期」；替代路徑「只讀不跑的封測」的代價已寫清楚（北極星指標量不到、DoD 第一條走不完） | 裁定寫進 `04` 乙-14 | 封測 D 日取決於誰 |
 | H-3 | 負責人 | **PDM-009 追認**：[pdm-009-beta-proposal.md §8](pdm-009-beta-proposal.md) 的十項檢查清單全部 `- [x]`。**追認時一併過報酬預算**（最大單項支出，`cost-estimation.md` 沒有任何一行涵蓋它） | 該清單十項全勾 ＋ 回寫 `03` §1 與 `04` 乙-15 | `BETA-001`／`005`、`RELEASE-009` |
 | H-4 | 負責人 | **PDM-010 擇一**：首月 `min(20,30)=20` 或 20+30=50。提案自己要求「明確擇一，不要留給實作推斷」 | `internal/run/quota.go` 的四個常數拿掉「待追認」 ＋ `RUN_QUOTA` 開啟 | 配額**顯示**（強制可先做，顯示必須等值定案——乙-2 的教訓） |
-| H-5 | 負責人 | **PDM-006 追認**：保存期限分級表 ＋ §6.1 的帳號刪除分類 | `DOWNLOAD_ARTIFACT_RETENTION` 與 `ANALYTICS_RETENTION` 有值 ＋ 同意書 §3 的 ⬜ 填完 | `SEC-006`、`RELEASE-005`、**整個 `BETA-002`**（未定值前一列都不收） |
+| H-5 | 負責人 | **PDM-006 追認**：保存期限分級表 ＋ §6.1 的帳號刪除分類 | `DOWNLOAD_ARTIFACT_RETENTION`、`ANALYTICS_RETENTION` 與 `TRACE_RETENTION` 三者都有值（第三個是 DDD-032 新增，未設時分割輪替整個停擺，見 §2.3／§2.6）＋ 同意書 §3 的 ⬜ 填完 | `SEC-006`、`RELEASE-005`、**整個 `BETA-002`**（未定值前一列都不收） |
 | H-6 | 負責人 | **PDM-008 追認**：打包目標清單與對外措辭。**「2 個已驗證 Profile」目前只成立 1 個**，追認時要決定改口徑還是等 H-9 | `m0/pdm-proposals.md` §9.1 該列打勾 | `PACK-006` 的決策依據 |
 | H-7 | 負責人 | **PDM-004／005 的定案紀錄**（值實質已定，缺追認；PDM-005 另有「兩份文件對是否已定案說法不一致」要裁一個，乙-9） | 同上 | `03` §1、乙-9 |
 | H-8 | 負責人 | **M1 閘門 D 日宣告**與其後 10 天（1 場 pilot ＋ 9 場正式 ＋ 分析）。**先閘門、再封測**，三個理由見 [README.md §5.3](README.md) | `gate-test/analysis.md` 的閘門結論 | **封測不能與閘門並行**；`CONTENT-011` 的解凍也等它 |

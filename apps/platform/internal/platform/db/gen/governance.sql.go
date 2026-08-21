@@ -325,6 +325,12 @@ type LockSkillForRestrictionRow struct {
 // audit event: without the lock, two operators acting at once would both record
 // the same before-state and one of the two events would be a lie.
 //
+// 2026-08-21 (DDD-031, ADR-035 B 組): both halves are issued by
+// registry.SetAccessRestriction, which returns this row as the before-state.
+// Until then the read half was issued by internal/catalog and only the write
+// half by the owner, so the owner of the column could not tell whether the row
+// had been locked at all. Nothing here changed; who runs it did.
+//
 // Deliberately *not* workspace scoped, which makes it one of only two statements
 // in this tree that are not. That is the whole point of the operator role: a
 // catalogue entry lives in the curator's workspace and a fork of it lives in

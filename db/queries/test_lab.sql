@@ -12,9 +12,19 @@ SELECT * FROM test_cases
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL;
 
 -- name: LockTestCase :one
--- Same read as GetTestCase, but it serialises concurrent dataset uploads to one
--- test case. Without the lock two parallel uploads both measure the usage before
--- either has written its row and both pass a limit their sum breaks (TEST-004).
+-- Same read as GetTestCase, but it serialises every change to one test case
+-- against every other: dataset upload and delete, acceptance-criteria edits,
+-- rubric writes, and the snapshot a run freezes before it executes. Without the
+-- lock two parallel uploads both measure the usage before either has written its
+-- row and both pass a limit their sum breaks (TEST-004), and a snapshot can hash
+-- a prompt that is overwritten before it commits (TEST-010).
+--
+-- 2026-08-21 (DDD-031, ADR-035 B 組): the snapshot freeze is in that list because
+-- it takes this lock itself now instead of reading unlocked and trusting whoever
+-- called it, and every remaining call site is inside internal/testlab. A caller
+-- in another context that needs the critical section open before its own checks
+-- asks testlab.LockDraft for it rather than issuing this statement, so the owner
+-- of the invariant can see the lock it depends on.
 SELECT * FROM test_cases
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 FOR UPDATE;

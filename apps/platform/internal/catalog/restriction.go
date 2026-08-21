@@ -20,6 +20,15 @@ package catalog
 // about. It takes this package's transaction, so the lock, the write and the
 // audit event are still one commit.
 //
+// 2026-08-21 (DDD-031, ADR-035 B 組) moved the other half of the same statement
+// pair: the SELECT ... FOR UPDATE was still issued here, one line before the
+// call, so registry could not tell whether the row it was about to write had
+// been locked. It is now inside registry.SetAccessRestriction too, and the
+// before-state this file records in the audit event is that function's return
+// value rather than something this file read for itself. Same transaction, same
+// commit, same division of decisions — this file just stopped holding a lock on
+// somebody else's invariant.
+//
 // Scope of what this replaces: before it, setting or lifting a hold meant a
 // reviewer running tools/content/restrict-anthropic-sa-display.sql by hand. That
 // path had no authorization check and left no audit event, which is precisely
