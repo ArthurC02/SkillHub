@@ -89,6 +89,15 @@ Phase 4 把 `allow:` 清到 0 之後，ADR-033／034 各自留下的「read 何�
 | DDD-029 | fixed | 其餘七個 context 補 package 文件 | **2026-08-21 完成**：ADR-032 §4 只要求三個 aggregate（DDD-021／022／023 已做），其餘 context 的邊界只存在於 ADR 裡，讀 `internal/` 的人看不到。`analytics`／`catalog`／`identity`／`ingest`／`packaging`／`testlab`／`trace` 各補 `doc.go`，逐份寫明所屬 context、需求 ID 前綴、不變量與各自由誰強制，並把散落在 `analytics.go`／`http.go`／`github.go`／`service.go`／`packaging.go`／`testlab.go` 的既有 package 註解**搬移**而非複製（同一份說明不留兩處）。零行為變動。 |
 | DDD-030 | fixed | 失敗的評估記下它被嘗試時的條件（§6 列管殘項第三條） | **2026-08-21 完成**：`FailEvaluation` 只寫 `evidence_complete`，ADR-026 決策 1 要求的三個值留 NULL，而它們唯一的另一個家是 `evaluation_started` trace event——trace 以 DROP PARTITION 清除，保存期一過「那次失敗用的是哪個 judge」就消失。修法**不在 `fail()` 寫**（`recoverEvaluation` 是別的 process 的 sweep，它不知道原本宣告了什麼，寫下去會把自己的設定蓋到別人開始的嘗試上），而是**在 `begin()` 建立 `pending` 列時就寫入宣告值**，`complete()` 照舊以回應實際回報的值覆寫三者。語意分野寫在 query 註解裡：`completed` 列上這三欄是「實際產出這份判定的是什麼」，`pending`／`failed` 列上是「宣告要用什麼」，`status` 已經讓兩者不會混淆。三個 NULL 各自是陳述而非缺漏（無 judge／平台未宣告 prompt 版本／快照沒凍結 rubric），與 0024 對 `rubric_version` 的既有規則同一條理由。同批修掉一個反向錯誤：**無 acceptance criteria 的路徑原本會記下 judge model**，但該路徑在抵達 judge 之前就回傳——那是替一通從未發生的計費呼叫具名。`contracts/openapi/public.yaml` 的 `judge_model` 說明同步改正（原文寫「即使每條判定都來自規則也會記錄」，與新行為衝突），`task gen:openapi` 重生 TS 與 Go stub。兩個方向皆做破壞驗證：漏寫值會紅，寫假值也會紅。 |
 
+### Phase 6 — 列管殘項回收（2026-08-21 稍晚）
+
+Phase 5 交出去時列了兩條新殘項，一條是正確性問題、一條是部署期會踩到的資料保存缺口。負責人裁定「先處理剛剛找到的問題，再繼續邁進 DDD」，故本 Phase 只收這兩條，不動 read 存量的其餘六組。
+
+| ID | 狀態 | 項目 | 完成條件 |
+| --- | --- | --- | --- |
+| DDD-031 | fixed | Group B：鎖回到 owner（ADR-035 判定的正確性問題） | **2026-08-21 完成**：兩條 `SELECT … FOR UPDATE` 留在呼叫端，而寫入已於 DDD-020／ADR-034 搬回 owner——「鎖誰」的決定與「寫什麼」的責任分屬兩個 context，owner 因此無法保證自己的寫入被序列化，而它看起來已經收過。`registry.SetAccessRestriction` 改為自己取鎖並**回傳 before-row**（catalog 的 audit 事件與回應都吃這個值，不再自己讀）；`testlab.CreateSnapshot` 改用新的 `testlab.LockDraft` 取鎖，不再以未加鎖的 `GetTestCase` 讀完就相信呼叫端鎖過。`run` 仍需在自己的 permission check **之前**開啟臨界區，故也走 `LockDraft`——同一交易內重複鎖同一列在 Postgres 是 no-op，兩者都持鎖不衝突。`run → testlab` 是附錄 A 既有合法方向，故不需注入。**新函式刻意不叫 `LockTestCase`**：`automation-check` 的呼叫點判定是文字比對 `.LockTestCase(`，同名 wrapper 會與 query 無法區分而重新觸發它要清掉的那條違規——ADR-035 自己記的盲點第一次被撞上（DDD-020 撞過同型的一次，見該列）。測試是真的併發測試：兩條連線在同一列上競爭，斷言第二筆**看到的是第一筆已提交的 before-state**——只斷言「有阻塞」證明不了什麼，因為沒有 `FOR UPDATE` 時第二筆仍會卡在 `UPDATE`；讓 audit 事件說謊的是**過期的 before-state**，所以那才是被釘住的東西。`read_allow:` 35 條七組 → **33 條六組**（組別字母不重編，A 之後直接跳 C，讓 yaml 與 ADR-035 的表永遠指同一組東西）。 |
+| DDD-032 | fixed | 分割表輪替與保存期清除（Phase 5 發現的部署期缺口） | **2026-08-21 完成**：六處文件宣稱「retention 是 DROP PARTITION」，實際上**沒有那個 job，也沒有分割可丟**——`trace_events` 只有 `0004` 建的 `2026_08` 一個月分割，`0019` 補了 default 並自己寫明「There is no such job」，`0029` 給 `analytics_events` 同樣的形狀。2026-09-01 起所有 trace 事件會落進 default，而按月丟分割永遠碰不到它。新增 generic 的 `internal/platform/partition`（ADR-032 §1 Generic 列，無領域規則）提供 `MaintainMonthly`，由 `trace` 與 `analytics` 各自宣告 `PartitionedTable` 與自己的視窗——**兩個 owner 都無法讓對方的表被輪替**，因為這個套件只碰它被交到手上的那一個名字。新 subcommand `maintenance rotate-partitions`（沿用既有 operator job 形狀：不是 scheduler，鐵律 6 把「何時」留在程式外）。**保存期一律由部署給值、fail-closed**：`TRACE_RETENTION` 新增、`ANALYTICS_RETENTION` 沿用，皆無預設——PDM-006 未追認，寫死常數等於讓平台**以刪除的方式**執行沒人同意的政策，而丟掉的月份不會回來。安全性由命名承載：只有 `<table>_YYYY_MM` 形狀的分割會被考慮丟棄，所以 **default 分割與任何人手掛的分割永遠不會被誤丟**；到期判定用月份的排他上界而非起點，故視窗內的月份不會因為裝了更舊的資料被丟。先清後建，避免一個卡住的月份默默停掉其他月份的保存期清除。**default 的抽乾刻意不自動化**：Postgres 的 `23514` 被接住並改寫成一則「照著做」的錯誤訊息（detach／建月份／搬列／re-attach／重跑），因為那是操作員唯一會收到的「0019 預告的抽乾現在必須做了」的訊號；`ponytail:` 註解寫明天花板與升級路徑。八個破壞驗證全紅（含「把 default 當成過期分割」與「吞掉 23514」兩個最危險的方向）。`internal/trace/doc.go` 那句「not implemented anywhere in Go」是六處裡最直白的一則謊，同批改正；`db/migrations/` 已套用故不原地改，逐則列在下方殘項。 |
+
 ## 6. 執行總結（2026-08-20）
 
 DDD-001～014 全數結案（DDD-006 與 DDD-007 依執行時盤點調整裁定，理由行內記錄）。負責人授權「依最佳實務決策、詳實記錄」下的裁定全部落於 ADR-032／本 ledger／各 commit message。
@@ -99,6 +108,8 @@ DDD-001～014 全數結案（DDD-006 與 DDD-007 依執行時盤點調整裁定�
 
 **Phase 5（DDD-028～030）於 2026-08-21 追加並結案**：`allow:` 清空後，ADR-033／034 各自留下的「read 何時強制」待決策失去了阻擋理由，由 [ADR-035](../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 回答為「強制，棘輪形狀與 write 相同」，同批讓 ADR-032 §1 對照表第一次被 CI 對帳。read 的存量 35 條凍結為待辦（見下），**不是清完了**——與 write 側不同，這一批只裝籬笆。
 
+**Phase 6（DDD-031～032）於同日稍晚追加並結案**：Phase 5 交出去時列的兩條新殘項——鎖與寫分屬兩個 context 的正確性缺口、以及六處文件宣稱存在但根本沒有實作的分割保存期清除——各自收掉。前者讓 `read_allow:` 從 35 條七組降到 33 條六組，後者的**程式面**完成而**部署期三項未動**（值、cron、首次執行的 default 抽乾），逐項在下方與 `m4/release-checklist.md` §2.6。
+
 執行期間發現、**已列管未修**的殘項：
 
 - ~~`run/job.go` `settle` 依賴轉移表列首為 happy path~~ → **DDD-023 已修**。
@@ -106,9 +117,10 @@ DDD-001～014 全數結案（DDD-006 與 DDD-007 依執行時盤點調整裁定�
 - ~~`FailEvaluation` 只寫 `evidence_complete`，ADR-026 決策 1 要求的三個值留 NULL~~ → **DDD-030 已修**（改在 `begin()` 寫宣告值，非在 `fail()` 補寫，理由見該列）。
 - `db/migrations/0024` 的 trigger 註解稱 `failed` 列保持可寫是為了「讓 retry 把它變成判定」，但 `CompleteEvaluation` 帶 `status = 'pending'` 述詞，無任何路徑會如此——程式比 DB 嚴，非違規，但註解描述了一個不存在的機制。migration 已套用故不原地改，需要時以新 migration 或文件更正（DDD-022 行內）。
 - `eval/reconcile.go` 以裸 SQL 讀 `evaluations`，唯讀且同 context 故非 ADR-033 違規，但繞過宣告，`db/query-owners.yaml` 看不見它（DDD-022／DDD-024 行內）。**read ownership 已於 DDD-028 開始強制，這一條沒有跟著收**：它今天恰好讀自家表故結果不受影響，但換成別人的表，`raw_sql_allow:` 的 tripwire 也不會響（那道只看 DML）。要封死只能把 pool 收在只暴露 sqlc 的 wrapper 後面，成本與拆 sqlc per-context package 同級，維持「等存量清完再評估」（ADR-035 已知盲點）。
-- `apiserver`、`eval`、`registry` 三個 package 各自 `DROP SCHEMA public` 並套 migration，共用單一 `SKILLHUB_TEST_DATABASE_URL`。`go test ./...` 並行執行 package 時互相摧毀 schema（CI 有設該環境變數，會紅）。現以各自 `TestMain` 持有 session advisory lock 至整個 package 跑完序列化；**新增第四個重置該資料庫的 package 時必須一併取鎖**，漏取會以 `relation ... does not exist` 大聲失敗而非靜默（DDD-021 行內）。
-- `read_allow:` 的 35 條（47 組 (query, caller)、56 個呼叫點）是 DDD-028 導入時凍結的存量，**七群各有清除方向但都還沒做**。**B 組優先**：`LockSkillForRestriction`／`LockTestCase` 是正確性問題不是整潔問題——DDD-020／ADR-034 反轉了寫入半邊，`SELECT … FOR UPDATE` 留在呼叫端，owner 無法保證自己的寫入被序列化，而它看起來已經收過了。逐組判讀見 `db/query-owners.yaml` 的分組註解與 [ADR-035](../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md)「存量」節。
-- **`trace_events` 的保存期清除沒有實作**。六處文件稱「retention 是 DROP PARTITION」，實際上只有 `trace_events_2026_08` 一個月分割表，`0019` 另建了 `trace_events_default`，**沒有任何程式建立或丟棄分割**。2026-09-01 起所有 trace event 會落進 default 分割，而按月丟分割的做法永遠碰不到它。`analytics_events` 形狀相同，差別在 `purge-analytics` 至少會 DELETE。此項在 DDD-030 調查 `FailEvaluation` 的資料保存前提時發現，屬部署期風險而非 DDD 邊界問題，故未在本計畫內修。
+- `apiserver`、`eval`、`registry`、`platform/partition` 四個 package 各自 `DROP SCHEMA public` 並套 migration，共用單一 `SKILLHUB_TEST_DATABASE_URL`。`go test ./...` 並行執行 package 時互相摧毀 schema（CI 有設該環境變數，會紅）。現以各自 `TestMain` 持有 session advisory lock 至整個 package 跑完序列化；**再新增重置該資料庫的 package 時必須一併取鎖**，漏取會以 `relation ... does not exist` 大聲失敗而非靜默（DDD-021 行內；第四個由 DDD-032 加入，該批照此規則取鎖）。
+- `read_allow:` 現為 **33 條、六組**（導入時 35 條七組，**B 組已由 DDD-031 收掉**）。**其餘六組都還沒做**，但都是整潔與 schema 耦合問題，不是正確性問題。最便宜的是 C 與 G——`run`／`eval`／`packaging` → `testlab` 與 `run`／`eval` → `trace` 的 import 方向本就合法、owner 也都有 Service 門面，純粹還沒搬。A 組 21 條要 registry 開一支讀取面，D 組要走注入（import 會成環）。逐組判讀見 `db/query-owners.yaml` 的分組註解與 [ADR-035](../adr/ADR-035-read-ownership-enforcement-and-context-map-completeness.md)「存量」節。
+- ~~`trace_events` 的保存期清除沒有實作~~ → **DDD-032 已修**（機制存在了）。**但仍有三件事是部署期動作，不是程式**：`TRACE_RETENTION` 未設之前 job 整個拒絕執行，所以**分割既不會被丟、也不會被預先建立**（等 PDM-006 追認，見 `04` 甲類）；每月 cron 要由部署接上；以及 2026-09-01 至該 job 首次執行之間寫入的 trace 事件都在 `trace_events_default`，**首次執行會被 `23514` 擋下**，需要一次性的抽乾——錯誤訊息本身就是操作步驟。三項均已進 [m4/release-checklist.md](mvp/m4/release-checklist.md) §2.6。
+- **`db/migrations/` 有三則註解現在是錯的，已套用故未原地改**（AGENTS.md：更正走新 migration 或文件）：`0019` 的「There is no such job」現在為假，且它預告的升級路徑只做了一半（預先建立有了、抽乾沒有）；`0029` 的「both tables will want」那個 job 現在存在；`0004` 仍主張「PDM-006 的 90 天保存」，而那個數字至今沒有任何東西在執行。
 - trace 同批事件 `occurred_at` 相同導致的排序不定 flake（DDD-005 行內；與債務帳 `TRACE-SEQ-001` 同根）。
 - outbox poison 隔離是最小版：無自動重放工具、Prometheus rule 屬 `O11Y-PROMTOOL-001`（目錄 §5 行內）。
 - 事件目錄缺口 6（aggregate version）依裁定保留 open，第一個需要順序的 consumer 出現才補。
