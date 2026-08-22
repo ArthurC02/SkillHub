@@ -22,28 +22,58 @@ import { expect, test } from "vitest";
  */
 const css = readFileSync(join(import.meta.dirname, "index.css"), "utf8");
 
-/** §4.1. Nine steps; the five responsive values are the same steps at ≤1024px. */
-const TYPE_SCALE = [56, 40, 36, 30, 24, 20, 18, 16, 15, 14, 12];
-
-/** §4.2. The 4px grid. */
-const SPACE_SCALE = [0, 4, 8, 12, 16, 20, 24, 32];
-
 /**
- * §5, verbatim. Every entry is a value the document has already argued about;
- * `keep` ones have a derivation, `collect` ones are owed a change. Nothing may
- * be added here to make a build pass — that is the whole point of the list.
+ * The scales are READ FROM THE DOCUMENT, not copied into this file.
+ *
+ * ADR-039 named the cost of writing a design system down: "文件會漂——`index.css`
+ * 改了而文件沒改，就變成第二份不可信的來源", and admitted nothing would fail when
+ * it did. Hand-copying the scale here would have made that worse: the numbers
+ * would then live in three places (system.md §4.1/§4.2/§5, the ADR, and this
+ * array) and a green test would prove nothing about whether the document is
+ * current.
+ *
+ * So the split is: **the document holds the policy, `index.css` holds the fact,
+ * and this file compares them.** Editing the scale means editing system.md —
+ * which is the visible decision the ratchet is supposed to force. The parser
+ * only accepts bold `**NNpx**` cells; if the table's formatting drifts, the
+ * sentinel assertions below fail rather than the scale silently emptying.
  */
-const KNOWN_DEVIATIONS: { value: number; kind: "type" | "space"; why: string }[] = [
-  { value: 5, kind: "space", why: "control padding — 20px line-height + 5×2 + 2 borders = 32px" },
-  { value: 10, kind: "space", why: "card padding 10px 12px, one value shared by four card families" },
-];
+const doc = readFileSync(
+  join(import.meta.dirname, "..", "..", "..", "docs", "design", "system.md"),
+  "utf8",
+);
+
+/** The px values written in bold between one `### n.n` heading and the next. */
+function boldPx(section: string): number[] {
+  const from = doc.indexOf(`### ${section}`);
+  expect(from, `system.md has no section ${section}`).toBeGreaterThan(-1);
+  const next = doc.indexOf("### ", from + 4);
+  const body = doc.slice(from, next === -1 ? doc.length : next);
+  return [...new Set([...body.matchAll(/\*\*(\d+)px\*\*/g)].map(([, n]) => Number(n)))];
+}
+
+/** §4.1, every step including the ≤1024px halves — they are values in the file. */
+const TYPE_SCALE = boldPx("4.1");
+
+/** §4.2's 4px grid. 0 is not a step; it is the absence of one. */
+const SPACE_SCALE = [0, ...boldPx("4.2")];
+
+/** §5.2, verbatim. Every entry is a value the document has already argued about. */
+const DEVIATIONS = boldPx("5.2");
+
+test("ADR-039: the document's tables are still machine-readable", () => {
+  // Without these, a formatting change would empty the scales and turn every
+  // assertion below into a tautology that passes on any stylesheet at all.
+  expect(TYPE_SCALE.length, "§4.1 parsed no type steps").toBeGreaterThan(6);
+  expect(SPACE_SCALE.length, "§4.2 parsed no spacing steps").toBeGreaterThan(6);
+  expect(TYPE_SCALE, "§4.1 lost its body step").toContain(18);
+  expect(SPACE_SCALE, "§4.2 lost its base step").toContain(8);
+  expect(DEVIATIONS, "§5.2 parsed no deviations").not.toEqual([]);
+});
 
 function allowed(kind: "type" | "space") {
   const scale = kind === "type" ? TYPE_SCALE : SPACE_SCALE;
-  return new Set([
-    ...scale,
-    ...KNOWN_DEVIATIONS.filter((d) => d.kind === kind).map((d) => d.value),
-  ]);
+  return new Set([...scale, ...DEVIATIONS]);
 }
 
 test("ADR-039 §4.1: every font-size is on the type scale or named in §5", () => {
@@ -68,13 +98,26 @@ test("ADR-039 §4.2: every padding/margin/gap length is on the 4px grid or named
 });
 
 /**
- * The list is the debt, so it has to be visible as debt. This does not assert a
- * particular length — that would fail on the day someone collects one — but it
- * does fail if the list grows past what §5 currently documents.
+ * The ratchet, fastened to the array that can actually launder debt.
+ *
+ * The previous version capped only the deviation list — while §5's documented
+ * way to retire a deviation is 「改回尺度上」, i.e. move it into the scale. That
+ * made the escape route the one unguarded array: add a value to TYPE_SCALE and
+ * everything stayed green. Now the scales come from the document, so growing
+ * one is an edit to system.md; this caps the total anyway, so the edit has to
+ * be argued for rather than slipped in.
  */
-test("ADR-039 §5: the deviation list has not grown", () => {
+test("ADR-039 §5: the vocabulary may shrink, not grow", () => {
   expect(
-    KNOWN_DEVIATIONS.length,
+    TYPE_SCALE.length,
+    "a tenth type step — merge it into an existing one or argue for it in §4.1",
+  ).toBeLessThanOrEqual(11);
+  expect(
+    SPACE_SCALE.length,
+    "an eighth spacing step — 4px grid, or argue for it in §4.2",
+  ).toBeLessThanOrEqual(8);
+  expect(
+    DEVIATIONS.length,
     "the deviation list may only shrink; a new value belongs on the scale, not here",
   ).toBeLessThanOrEqual(2);
 });
@@ -90,7 +133,7 @@ test("ADR-039 §5: the deviation list has not grown", () => {
  * `opacity` was removed twice (QA-009) because a multiplier lands where no
  * colour token can follow it, and `contrast.test.ts` measures static hex — it
  * cannot see a multiplier, and says so. A literal outside `:root` is the same
- * defect by a different route: it is a colour no contrast test is looking at.
+ * defect by a different route: a colour no contrast test is looking at.
  */
 test("ADR-039 §2.7: colour lives in tokens, and nothing multiplies it", () => {
   const body = css
@@ -109,10 +152,10 @@ test("ADR-039 §2.7: colour lives in tokens, and nothing multiplies it", () => {
 });
 
 /**
- * The blind spot this file's own header declares — "`index.css` being the
- * single stylesheet is what makes that true rather than lucky" — asserted
- * instead of observed. A second stylesheet, and every scale check above keeps
- * passing while covering less of the app.
+ * The blind spot this file's own header used to declare — "`index.css` being
+ * the single stylesheet is what makes that true rather than lucky" — asserted
+ * instead of observed. A second stylesheet, and every check above keeps passing
+ * while covering less of the app.
  */
 test("ADR-039 §4: index.css is still the only stylesheet", () => {
   expect(
