@@ -324,8 +324,14 @@ export const PREFLIGHT = {
     provider: { name: "self-hosted", isolation_level: "gvisor", rootless: true },
     resource_limits: {
       vcpu: 2,
-      memory_bytes: 4 << 30,
-      disk_bytes: 8 << 30,
+      // NOT `4 << 30` / `8 << 30`. Those were transcribed from
+      // DefaultResourceLimits() in Go, where an untyped constant is
+      // arbitrary-precision; JS `<<` is 32-bit, so both evaluate to 0 and the
+      // pre-run screen asked the user to confirm 記憶體 0 B、磁碟 0 B — a
+      // ceiling that passed every rule in the design system and was still
+      // wrong (設計 §2.2).
+      memory_bytes: 4 * 1024 ** 3, // 4 GiB
+      disk_bytes: 8 * 1024 ** 3, // 8 GiB
       max_pids: 256,
       max_open_files: 1024,
       wall_clock_soft_seconds: 600,

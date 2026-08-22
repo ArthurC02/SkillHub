@@ -1,0 +1,8 @@
+h1 去重複列
+h2 名稱與 User Prompt
+h2 驗收條件
+h3 Rubric（選用）
+h2 測試資料
+h2 開始試跑
+h2 執行歷史
+h2 刪除這個 Test Case

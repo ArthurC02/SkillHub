@@ -136,9 +136,14 @@ test("WS-004 a run whose sandbox was not cleaned up says so on the row", async (
 
   expect(text()).toContain("the provider could not carry the attempt");
   expect(text()).toContain("清理失敗");
-  // The clean one carries no cleanup badge: a fact worth stating is not stated
-  // when it is not a fact.
-  expect(container.querySelectorAll(".badge-unverified")).toHaveLength(1);
+  // 設計系統 §2.1: 已清理 is a fact the owner wants — the sandbox was torn down —
+  // and rendering nothing for it made the majority case indistinguishable from a
+  // field that was never rendered at all.
+  expect(text()).toContain("已清理");
+  // §4.4: --accent-border is 未知／未驗證 and --danger is 這件事不通過. 清理失敗 is
+  // the second, so it must not wear the class 尚未清理 and 清理中 wear.
+  expect(container.querySelectorAll(".badge-unverified")).toHaveLength(0);
+  expect(container.querySelectorAll(".badge-danger")).toHaveLength(1);
 });
 
 test("WS-002 an empty run history says nothing ran, not that records were cleared", async () => {
@@ -188,7 +193,7 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
   await act(async () => button("刪除")?.click());
   // 02:WS-002 第 3 條: the scope is on screen before the request, and it names
   // the grace period and the forks it does not touch.
-  expect(text()).toContain("版本快照會凍結保留 30 天再清除");
+  expect(text()).toContain("版本快照會先凍結保留一段期間再清除");
   expect(text()).toContain("別人 Fork 過的版本");
   expect(calls.some(([, method]) => method === "DELETE")).toBe(false);
 

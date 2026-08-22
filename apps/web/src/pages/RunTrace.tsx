@@ -32,7 +32,7 @@ export function RunTrace() {
   const general = useTrace(runId, "general");
 
   return (
-    <section className="run-trace">
+    <section>
       <h1>Run 詳情</h1>
 
       {/* EVAL-001 / design §4.3: the first thing on the page is the task
@@ -114,8 +114,12 @@ export function CancelRunControl({ runId, status }: { runId: string; status?: st
     );
   }
   return (
-    <div className="notice">
-      <p>確定要取消？已開始的 Sandbox 仍要等平台完成停止與清理。</p>
+    // Design §4.3: notice is 「平台對這一頁講的話」, a standing condition. A
+    // two-step confirmation is the user's own action mid-flight, and the app
+    // already renders that bare with the scope sentence as .note — see
+    // components/ConfirmDelete.tsx, which every other destructive control uses.
+    <div>
+      <p className="note">確定要取消？已開始的 Sandbox 仍要等平台完成停止與清理。</p>
       <button type="button" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
         確認取消
       </button>{" "}
@@ -208,16 +212,19 @@ function RunArtifactFacts({ artifact }: { artifact: RunArtifact }) {
       </p>
       <p className="note">
         {artifact.size_bytes} bytes｜建立於 {artifact.created_at}
-        {artifact.expires_at ? `｜到期時間 ${artifact.expires_at}` : ""}
+        {artifact.expires_at
+          ? `｜到期時間 ${artifact.expires_at}`
+          : "｜保存期限：尚未設定（平台還沒有為 Run 產出定下保存期限，這不表示它會永久保留）"}
       </p>
       {artifact.purged && (
         <p className="note">
           內容已被清除（到期或儲存端已不存在），這一列保留，因為「曾經產生過這個檔案」仍然是事實。
         </p>
       )}
-      <p className="note">
-        內容雜湊：<code>{artifact.content_hash}</code>
-      </p>
+      <details>
+        <summary>內容雜湊</summary>
+        <code>{artifact.content_hash}</code>
+      </details>
       <p className="note">平台不提供這個檔案的下載連結：它是沙箱的產出，控制平面不打開它。</p>
     </>
   );
@@ -227,7 +234,10 @@ function RunArtifactFacts({ artifact }: { artifact: RunArtifact }) {
 function IncompleteNotice({ complete }: { complete: boolean }) {
   if (complete) return null;
   return (
-    <p role="status" className="trace-incomplete">
+    // Design §4.3 puts 降級 squarely in the notice surface. `.trace-incomplete`
+    // never had a rule in index.css, so the first thing on the page painted as
+    // ordinary body text, indistinguishable from the paragraph under it.
+    <p role="status" className="notice">
       部分事件未送達，以下內容可能不完整。
     </p>
   );
@@ -353,7 +363,10 @@ function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
   return (
     <div>
       <IncompleteNotice complete={trace.complete} />
-      <p className="notice">
+      {/* Design §4.3: explanatory prose, so .note — not the notice surface,
+          which is reserved for what the platform is currently doing to this
+          page (the incomplete banner right above it is one). */}
+      <p className="note">
         分頁依平台接收順序排列；每頁內依事件時間排序。這能讓執行中的 Trace 不漏掉較晚送達的事件。
       </p>
       <nav aria-label="Trace event pages">
@@ -372,6 +385,7 @@ function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
         >
           下一頁
         </button>
+        {!trace.has_more && <span className="note"> 沒有更多事件。</span>}{" "}
         <button type="button" disabled={isFetching} onClick={() => void refetch()}>
           重新整理 Trace
         </button>
@@ -418,6 +432,14 @@ function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
       {trace.events.length === 0 ? (
         <p>尚無事件。</p>
       ) : (
+        // `.trace-events` has no rule in index.css yet, so the UA decimal
+        // markers are still on: each event is numbered twice, `1.` beside `#1`.
+        // The two disagree the moment a sequence has a hole — the counter is
+        // per page and gapless, `seq` is neither — and a hole is the one thing
+        // this view exists to make visible (ADR-009). Kept rather than dropped
+        // because the fix is one line of CSS in a file this batch does not own:
+        // add `.trace-events` to the `.criterion-list, .finding-list,
+        // .suggestion-list, .evidence-list` list-reset group.
         <ol className="trace-events">
           {trace.events.map((event) => (
             <TraceEventRow key={event.event_id} event={event} />

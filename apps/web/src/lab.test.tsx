@@ -78,8 +78,8 @@ function summary(hash: string, files: string[]): PreflightResponse {
       provider: { name: "unassigned", rootless: false },
       resource_limits: {
         vcpu: 2,
-        memory_bytes: 4 << 30,
-        disk_bytes: 8 << 30,
+        memory_bytes: 4 * 1024 ** 3,
+        disk_bytes: 8 * 1024 ** 3,
         max_pids: 256,
         max_open_files: 1024,
         wall_clock_soft_seconds: 600,

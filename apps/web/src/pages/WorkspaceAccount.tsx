@@ -8,8 +8,11 @@ import { ConfirmDelete } from "../components/ConfirmDelete";
  * CORE-007 / 02:SEC-006 — the account, and the second of the two deletion planes
  * (04 丙-22). The first plane deletes one thing at a time: a package, a run's
  * output, a skill. This one ends the account, and the two are not versions of
- * each other — the per-item deletes take effect at once, this one starts a 30-day
- * grace period and takes effect at the end of it.
+ * each other — the per-item deletes take effect at once, this one starts a grace
+ * period and takes effect at the end of it. How long that period lasts is not
+ * written here: PDM-006 is unratified, so a numeral on this side would be a
+ * promise nobody has ratified (design §2.2). The server's `purge_after` date is
+ * the only figure this screen states.
  *
  * Three endpoints have existed since M1 with no screen on them, which is the same
  * 尺-1 shape the workspace lists were: 02:SEC-006 asks for 刪除工作具可追蹤狀態,
@@ -26,6 +29,15 @@ import { ConfirmDelete } from "../components/ConfirmDelete";
  *    deletion job, and the API owns that wording (WS-002/PDM-006 §6.1). A second
  *    copy on this side would be a second thing to keep true, and the copy that
  *    goes stale is always the one further from the job.
+ *
+ * The consequence, stated rather than papered over: `scope` reaches the screen
+ * only in the response to DELETE /me, so it lives in component state and a
+ * reload loses it. GET /me carries `deletion_requested_at` and `purge_after`
+ * and nothing else (contracts/openapi/public.yaml, schema `Me`), so keeping the
+ * disclosure across a reload is a contract change, not a UI one. Until that
+ * happens this page must not promise the sentence will still be here — the
+ * pre-confirm copy did, and a promise the page cannot keep is design §2.2's
+ * 顯示但不強制 in its other direction.
  */
 export function WorkspaceAccount() {
   const me = useMe();
@@ -94,9 +106,9 @@ export function WorkspaceAccount() {
                 scope={
                   <>
                     這一步<strong>不會立刻刪掉任何東西</strong>
-                    ：它開始一段 30 天的寬限期，期間帳號照常可以用，隨時可以取消。
-                    確認之後這一頁會列出伺服器對「哪些會刪、哪些會保留但去掉你的身分」的完整說明，
-                    寬限期結束前都還來得及反悔。
+                    ：它開始一段寬限期，期間帳號照常可以用，隨時可以取消。
+                    按下之後伺服器會回覆「哪些會刪、哪些會保留但去掉你的身分」的完整說明，
+                    以及寬限期結束的日期；在那之前都還來得及反悔。
                   </>
                 }
               />

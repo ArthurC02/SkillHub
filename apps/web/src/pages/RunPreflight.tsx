@@ -50,7 +50,7 @@ export function SkillVersionPicker({
   const id = `skill-version-${skillId}`;
 
   return (
-    <p className="version-picker">
+    <p>
       <label htmlFor={id}>Skill Version</label>{" "}
       <select id={id} value={value} onChange={(e) => onPick(e.target.value)}>
         {value === "" && <option value="">請選擇版本…</option>}
@@ -78,11 +78,37 @@ export function SkillVersionPicker({
   );
 }
 
-function bytes(n: number): string {
-  if (n >= 1 << 30) return `${(n / (1 << 30)).toFixed(1)} GB`;
-  if (n >= 1 << 20) return `${(n / (1 << 20)).toFixed(1)} MB`;
-  if (n >= 1 << 10) return `${(n / (1 << 10)).toFixed(1)} KB`;
+/** Shared with the Test Case screens rather than copied there (設計 §4.1 的同一把尺). */
+export function bytes(n: number): string {
+  if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(1)} GB`;
+  if (n >= 1024 ** 2) return `${(n / 1024 ** 2).toFixed(1)} MB`;
+  if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${n} B`;
+}
+
+/**
+ * A resource ceiling, which is not the same kind of number as a file size.
+ *
+ * 設計 §2.2「不強制的東西就不要顯示」 and §2.1「未知不是空白」 are two different
+ * failures here and they need two different words:
+ *
+ *   - **absent** — the server sent no ceiling at all. That is 未知, and 未知 is
+ *     rendered as a word rather than as a gap.
+ *   - **zero** — the server sent a ceiling of 0. That is not 未知 and it is not a
+ *     limit either: no sandbox runs in 0 B of memory, so whatever the run will
+ *     actually be held to, it is not this. Printing `0 B` puts a number that
+ *     passed every rule in the design system (not blank, carries a word, on the
+ *     type scale) in front of a user who is about to press 我確認 — which is
+ *     precisely the 04 乙-2 shape: display without enforcement.
+ *
+ * `bytes()` cannot make this call, and must not: a dataset of 0 bytes is a real
+ * empty file. The judgement is only ever about ceilings, so it lives here and is
+ * applied only to them.
+ */
+function ceiling(n: number | undefined): string {
+  if (typeof n !== "number" || !Number.isFinite(n)) return "未回報";
+  if (n <= 0) return `伺服器回報 ${n}——這不是有效的上限,請勿據此判斷這次 Run 的可用資源`;
+  return bytes(n);
 }
 
 const SCRIPT_LABEL: Record<PreflightSummary["scripts"]["status"], string> = {
@@ -192,7 +218,56 @@ export function RunPreflight() {
     <>
       <p>以下是這次 Run 可以接觸的範圍。確認後才會開始執行。</p>
 
-      <dl className="preflight">
+      {/*
+        設計 §1.1: 成本是這一頁被點名的那份證據,而 §1.2 說頭條不能排在識別碼與
+        例行細節後面。這兩列原本在 <dl> 的最後,900px 的第一屏之外(手機更遠),
+        所以讀者要按下「我確認」時,能不捲動就看到的只有 MCP Server=無、網路、
+        Secrets、Provider 這些例行項。錢與剩餘次數先講,其餘照原順序。
+      */}
+      <dl>
+        {/* PDM-005 §5.3. A range, and labelled an estimate in the term itself —
+            it is outside summary_hash, so it must not read like something the
+            user is agreeing to. Absent on an older server: rendered as nothing
+            rather than as a zero. */}
+        {cost && (
+          <>
+            <dt>預估成本（估計值）</dt>
+            <dd>
+              {cost.currency} ${cost.low.toFixed(2)} – ${cost.high.toFixed(2)}（常見約 $
+              {cost.typical.toFixed(2)}）<p>{cost.basis}</p>
+            </dd>
+          </>
+        )}
+        {/* PDM-010 / ADR-028: the display comes after the enforcement, never
+            instead of it. These are the counters that refuse the run below, so
+            the numbers are a report on a rule rather than the rule. A deployment
+            with no allowance sends no `quota` block and this row is absent —
+            rendering zeroes would be claiming a ceiling that does not exist
+            (04 乙-2). */}
+        {quota && (
+          <>
+            <dt>剩餘試跑額度</dt>
+            <dd>
+              今天還可以跑 {quota.remaining_today} 次、這個週期還可以跑 {quota.remaining_window}{" "}
+              次。
+              {/*
+                設計 §2.2. 這裡曾經寫「滾動視窗,最舊的一筆在 X 退出計算」,而
+                entitlements/quota.go 的 Usage() 把 window_resets_at 設成
+                「最舊的一筆退出」與「首個視窗的上限抬高」兩者中較早的那一個 ——
+                成立未滿 30 天的工作區走的是後者,一次都還沒跑的工作區則兩者皆非。
+                機制的說法對多數新帳號是假的,日期不是,所以只留日期,並且只主張
+                它是下界。
+              */}
+              額度下一次增加不會早於 {quota.window_resets_at}。
+              <p className="note">
+                上限：每日 {quota.limits.daily} 次、每 {quota.limits.window_days} 天{" "}
+                {quota.limits.window} 次、同時進行 {quota.limits.concurrent} 個。 這些數字就是建立
+                Run 時擋你的那一份計數，不是另外顯示的估計。
+              </p>
+            </dd>
+          </>
+        )}
+
         <dt>Dataset</dt>
         <dd>
           {summary.datasets.length === 0 ? (
@@ -221,8 +296,10 @@ export function RunPreflight() {
           )}
         </dd>
 
+        {/* 設計 §2.1: 空陣列渲染成空白會被讀成「這裡沒有風險」,而這正是使用者
+            按下確認的那一頁。與下面的 MCP Server 同一條規則,同一個做法。 */}
         <dt>工具</dt>
-        <dd>{summary.tools.join("、")}</dd>
+        <dd>{summary.tools.length === 0 ? "無（沒有授予任何工具）" : summary.tools.join("、")}</dd>
 
         {/* MVP 沒有 MCP。明確顯示為「無」,不是省略不提。 */}
         <dt>MCP Server</dt>
@@ -238,8 +315,14 @@ export function RunPreflight() {
 
         <dt>Secrets</dt>
         <dd>
-          {summary.injected_secrets.join("、")}
-          <p>只顯示名稱;實際值為每個 Run 專屬的短效憑證,不會顯示於任何畫面。</p>
+          {summary.injected_secrets.length === 0 ? (
+            "無（不會注入任何 Secret）"
+          ) : (
+            <>
+              {summary.injected_secrets.join("、")}
+              <p>只顯示名稱;實際值為每個 Run 專屬的短效憑證,不會顯示於任何畫面。</p>
+            </>
+          )}
         </dd>
 
         <dt>Provider</dt>
@@ -250,8 +333,9 @@ export function RunPreflight() {
 
         <dt>資源上限</dt>
         <dd>
-          vCPU {summary.resource_limits.vcpu}、記憶體 {bytes(summary.resource_limits.memory_bytes)}
-          、 磁碟 {bytes(summary.resource_limits.disk_bytes)}、 時間上限{" "}
+          vCPU {summary.resource_limits.vcpu}、記憶體{" "}
+          {ceiling(summary.resource_limits.memory_bytes)}、 磁碟{" "}
+          {ceiling(summary.resource_limits.disk_bytes)}、 時間上限{" "}
           {summary.resource_limits.wall_clock_hard_seconds} 秒、 Token{" "}
           {summary.resource_limits.token_budget.max_input_tokens} 進 /{" "}
           {summary.resource_limits.token_budget.max_output_tokens} 出
@@ -272,8 +356,8 @@ export function RunPreflight() {
               <li>行程數上限：{summary.resource_limits.max_pids}</li>
               <li>開檔數上限：{summary.resource_limits.max_open_files}</li>
               <li>
-                產出檔案總量上限：{bytes(summary.resource_limits.artifact_total_bytes)}、單檔{" "}
-                {bytes(summary.resource_limits.artifact_file_bytes)}
+                產出檔案總量上限：{ceiling(summary.resource_limits.artifact_total_bytes)}、單檔{" "}
+                {ceiling(summary.resource_limits.artifact_file_bytes)}
               </li>
               <li>
                 軟性時間上限：{summary.resource_limits.wall_clock_soft_seconds} 秒（先要求收尾;硬性
@@ -286,46 +370,18 @@ export function RunPreflight() {
             </ul>
           </details>
         </dd>
-        {/* PDM-005 §5.3. A range, and labelled an estimate in the term itself —
-            it is outside summary_hash, so it must not read like something the
-            user is agreeing to. Absent on an older server: rendered as nothing
-            rather than as a zero. */}
-        {cost && (
-          <>
-            <dt>預估成本（估計值）</dt>
-            <dd>
-              {cost.currency} ${cost.low.toFixed(2)} – ${cost.high.toFixed(2)}（常見約 $
-              {cost.typical.toFixed(2)}）<p>{cost.basis}</p>
-            </dd>
-          </>
-        )}
-        {/* PDM-010 / ADR-028: the display comes after the enforcement, never
-            instead of it. These are the counters that refuse the run below, so
-            the numbers are a report on a rule rather than the rule. A deployment
-            with no allowance sends no `quota` block and this row is absent —
-            rendering zeroes would be claiming a ceiling that does not exist
-            (04 乙-2). */}
-        {quota && (
-          <>
-            <dt>剩餘試跑額度</dt>
-            <dd>
-              今天還可以跑 {quota.remaining_today} 次、這個週期還可以跑 {quota.remaining_window}{" "}
-              次（滾動視窗，最舊的一筆在 {quota.window_resets_at} 退出計算）。
-              <p className="note">
-                上限：每日 {quota.limits.daily} 次、每 {quota.limits.window_days} 天{" "}
-                {quota.limits.window} 次、同時進行 {quota.limits.concurrent} 個。 這些數字就是建立
-                Run 時擋你的那一份計數，不是另外顯示的估計。
-              </p>
-            </dd>
-          </>
-        )}
       </dl>
 
-      <ul className="preflight-notes">
-        {notes.map((n) => (
-          <li key={n}>{n}</li>
-        ))}
-      </ul>
+      {/*
+        設計 §4.3: 這幾句是「平台對這一頁講的話」——notice 的定義本身。原本掛在
+        一個沒有任何 CSS 規則的 .preflight-notes 上,渲染成瀏覽器預設的項目符號
+        清單,看起來像資料的一部分而不是平台的自述。改吃既有的 .notice。
+      */}
+      {notes.map((n) => (
+        <p key={n} className="notice">
+          {n}
+        </p>
+      ))}
 
       {message && <p role="alert">{message}</p>}
 

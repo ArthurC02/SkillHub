@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useRunComparison, useVersionDiff } from "../api/evaluation";
 import type { ComparisonSide, RunComparison } from "../api/evaluation";
-import { RUN_STATUS_LABEL } from "./RunEvaluation";
+import { CRITERION_LABEL, OVERALL_LABEL, RUN_STATUS_LABEL } from "./RunEvaluation";
 
 /**
  * 02:EVAL-003 — two runs side by side.
@@ -27,18 +27,13 @@ import { RUN_STATUS_LABEL } from "./RunEvaluation";
  * started the run from here would be the shortcut around it.
  */
 
-const OVERALL_LABEL: Record<string, string> = {
-  met: "符合",
-  partially_met: "部分符合",
-  not_met: "未符合",
-  undetermined: "無法判斷",
-};
-
-const CRITERION_LABEL: Record<string, string> = {
-  passed: "通過",
-  failed: "未通過",
-  undetermined: "無法判斷",
-};
+/*
+ * OVERALL_LABEL and CRITERION_LABEL are imported, not re-declared. This file
+ * used to keep its own `Record<string, string>` copies of both: the originals
+ * are keyed on the discriminated union, so a new server enum value was a
+ * compile error there and a silent `undefined` here — the two planes wording
+ * one fact two ways, which is what 02:NFR-001 forbids.
+ */
 
 function verdictCell(side: ComparisonSide) {
   if (!side.evaluation) return "未評估（不是通過）";
@@ -59,35 +54,63 @@ export function RunCompare() {
   const navigate = useNavigate();
   const comparison = useRunComparison(runId, against);
 
+  const pickForm = (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        // The selection lives in the URL so a comparison is linkable, the same
+        // rule the Explorer's compare screen follows.
+        void navigate({
+          to: "/runs/$runId/compare",
+          params: { runId },
+          search: { against: draft },
+        });
+      }}
+    >
+      <label htmlFor="against">要比較的另一個 Run ID</label>{" "}
+      <input
+        id="against"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        size={40}
+        placeholder="另一個 Run 的平台 run_id"
+      />{" "}
+      <button type="submit">比較</button>
+    </form>
+  );
+
   return (
     <section className="page">
       <h1>Run 比較</h1>
-      <p className="note">
-        這一邊是 <code>{runId}</code>。比較只是讀取，不會改動任何一個 Run 的歷史資料。
-      </p>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          // The selection lives in the URL so a comparison is linkable, the same
-          // rule the Explorer's compare screen follows.
-          void navigate({
-            to: "/runs/$runId/compare",
-            params: { runId },
-            search: { against: draft },
-          });
-        }}
-      >
-        <label htmlFor="against">要比較的另一個 Run ID</label>{" "}
-        <input
-          id="against"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          size={40}
-          placeholder="另一個 Run 的平台 run_id"
-        />{" "}
-        <button type="submit">比較</button>
-      </form>
+      {/* Checklist 1: the page led with a uuid, then a form, then two columns
+          headed by 36-char ids, and no sentence anywhere said what differed.
+          Both verdicts were already computed; now they are the headline. */}
+      {comparison.data && <ComparisonLead data={comparison.data} />}
+      <p className="note">比較只是讀取，不會改動任何一個 Run 的歷史資料。</p>
+
+      {/* Design §2.6: the two run ids are identifiers, not the answer. */}
+      <details>
+        <summary>進階資訊（Run 識別碼）</summary>
+        <ul>
+          <li>
+            這一邊：<code>{runId}</code>
+          </li>
+          <li>另一邊：{against === "" ? "尚未選擇" : <code>{against}</code>}</li>
+        </ul>
+      </details>
+
+      {/* With a comparison on screen the picker is a "change it" affordance and
+          its value is a 36-char uuid, so it folds (design §2.6). With nothing
+          picked yet it is the only way forward and stays open. */}
+      {comparison.data ? (
+        <details>
+          <summary>換一個要比較的 Run</summary>
+          {pickForm}
+        </details>
+      ) : (
+        pickForm
+      )}
 
       {against === "" && <p>輸入另一個 Run 的 ID 後開始比較。</p>}
       {comparison.isPending && against !== "" && <p>載入比較中…</p>}
@@ -103,28 +126,62 @@ export function RunCompare() {
   );
 }
 
+/**
+ * What differs, in one sentence, before anything else on the page.
+ *
+ * ADR-025 落地要求: 使用者看到的第一行是任務判定. The two sides are ordered by
+ * contract — the run named in the path first, `against` second — so 這一邊 /
+ * 另一邊 identify the columns without repeating either uuid.
+ */
+function ComparisonLead({ data }: { data: RunComparison }) {
+  const [left, right] = data.runs;
+  const leftVerdict = verdictCell(left);
+  const rightVerdict = verdictCell(right);
+
+  return (
+    <p className="verdict">
+      任務判定：這一邊<strong>{leftVerdict}</strong>，另一邊<strong>{rightVerdict}</strong>
+      {leftVerdict === rightVerdict ? "——兩邊相同。" : "——兩邊不同。"}
+    </p>
+  );
+}
+
+/** Column head for a side. The ids are folded once, up beside the heading. */
+const SIDE_LABEL = ["這一邊", "另一邊"];
+
 function ComparisonTables({ data }: { data: RunComparison }) {
   const [left, right] = data.runs;
   const sides = [left, right];
 
   return (
     <>
+      {/* Checklist 6: this is the page's whole point and it had only a
+          <caption>, while the two lesser blocks below carry <h2> — so heading
+          navigation skipped the content and landed on the appendices. */}
+      <h2>任務判定與執行狀態</h2>
       <div className="table-scroll" tabIndex={0}>
         <table className="compare-table">
-          <caption>Run 執行狀態與任務判定對比</caption>
+          <caption>Run 任務判定與執行狀態對比</caption>
           <thead>
             <tr>
               <th scope="col">項目</th>
-              {sides.map((s) => (
+              {sides.map((s, i) => (
                 <th key={s.run_id} scope="col">
-                  <code>{s.run_id}</code>
+                  {SIDE_LABEL[i]}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {/* Two rows, deliberately never one: execution outcome, then task
-              judgement (ADR-025). */}
+            {/* Two rows, deliberately never one, and the judgement is the first
+              of them: 執行成功 ≠ 任務完成, and ADR-025 落地要求 puts the verdict
+              on top because that is the question the reader asked. */}
+            <tr>
+              <th scope="row">任務判定</th>
+              {sides.map((s) => (
+                <td key={s.run_id}>{verdictCell(s)}</td>
+              ))}
+            </tr>
             <tr>
               <th scope="row">執行狀態</th>
               {sides.map((s) => (
@@ -134,16 +191,15 @@ function ComparisonTables({ data }: { data: RunComparison }) {
               ))}
             </tr>
             <tr>
-              <th scope="row">任務判定</th>
-              {sides.map((s) => (
-                <td key={s.run_id}>{verdictCell(s)}</td>
-              ))}
-            </tr>
-            <tr>
               <th scope="row">Skill 版本</th>
               {sides.map((s) => (
                 <td key={s.run_id}>
-                  <code>{s.skill_version_id}</code>
+                  {/* A uuid twice over, and the diff below answers the question
+                      it was standing in for (design §2.6). */}
+                  <details>
+                    <summary>版本 ID</summary>
+                    <code>{s.skill_version_id}</code>
+                  </details>
                 </td>
               ))}
             </tr>
@@ -223,9 +279,9 @@ function ComparisonTables({ data }: { data: RunComparison }) {
             <thead>
               <tr>
                 <th scope="col">驗收條件</th>
-                {sides.map((s) => (
+                {sides.map((s, i) => (
                   <th key={s.run_id} scope="col">
-                    <code>{s.run_id}</code>
+                    {SIDE_LABEL[i]}
                   </th>
                 ))}
               </tr>

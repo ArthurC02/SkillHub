@@ -60,10 +60,17 @@ export function RiskIndicator({ risk }: { risk: SkillRisk }) {
         </ul>
       )}
 
+      {/* Untinted on purpose (§4.4): the two tints mean 不通過 and 未知, and a
+          clean scan is neither — the sentence, not a colour, is what stops it
+          reading as a 「安全」 badge (NFR-001). `badge-risk-none` carried no rule
+          and no meaning, so it is gone rather than left as a hook. */}
       {risk.highlights.length === 0 && flags.length === 0 && (
-        <p className="badge badge-risk-none">靜態掃描未發現錯誤或警告；這不等於安全。</p>
+        <p className="badge">靜態掃描未發現錯誤或警告；這不等於安全。</p>
       )}
 
+      {/* `risk-infos` has no CSS rule, but it is not dead markup either:
+          disc.test.tsx selects `details.risk-infos` to assert the 321 info
+          findings stay collapsed. It is a test hook, so it stays. */}
       {infoCodes.length > 0 && (
         <details className="risk-infos">
           <summary>提示層級揭露（{risk.counts.infos} 項，依類型彙總）</summary>

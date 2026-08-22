@@ -149,6 +149,39 @@ async function scan(where: string) {
     container.querySelectorAll('[tabindex]:not([tabindex="0"]):not([tabindex="-1"])'),
     `${where}: positive tabindex breaks focus order`,
   ).toHaveLength(0);
+
+  // system.md §2.4, in the principle's own words: the reason may be *in* a
+  // tooltip, but never *only* there. A disabled control with no stated cause
+  // reads as a bug, and `title` is invisible to touch and to most readers.
+  for (const el of container.querySelectorAll("[disabled][title]")) {
+    expect(
+      el.getAttribute("aria-describedby"),
+      `${where}: a disabled control whose reason exists only as a title tooltip (§2.4)`,
+    ).not.toBeNull();
+  }
+
+  // system.md §2.3 / 02:NFR-007. Colour is the second channel and the border is
+  // the third; the word is the first. A badge with no text has skipped to the
+  // second and made the tint the fact.
+  for (const badge of container.querySelectorAll(".badge")) {
+    expect(
+      badge.textContent?.trim(),
+      `${where}: a badge with no word — colour is carrying the state alone`,
+    ).not.toBe("");
+  }
+
+  // system.md §3 item 6 / §6 — the one rule with a known defect and no gate.
+  // axe fails a *skipped* level, never a level that should have gone down and
+  // didn't, so eight wrong `h2` in RunTrace lived for weeks. This does not
+  // judge the outline; it publishes it, so the next wrong one arrives as a diff
+  // somebody has to approve. Same shape as KNOWN_DEVIATIONS and SCANNED_ROUTES:
+  // a checked-in list whose changes must be argued for.
+  const outline = Array.from(container.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+    .map((h) => `${h.tagName.toLowerCase()} ${h.textContent?.trim().slice(0, 60)}`)
+    .join("\n");
+  await expect(outline).toMatchFileSnapshot(
+    `./__outlines__/${where.replace(/[^\w一-鿿]+/g, "-").replace(/^-|-$/g, "")}.txt`,
+  );
 }
 
 /**

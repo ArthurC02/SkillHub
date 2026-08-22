@@ -70,7 +70,8 @@ body {
 
 h1,
 h2,
-h3 {
+h3,
+h4 {
   font-family: var(--heading);
   font-weight: 500;
   color: var(--text-h);
@@ -122,7 +123,9 @@ h2 {
   font-size: 24px;
   line-height: 118%;
   letter-spacing: -0.24px;
-  margin: 0 0 8px;
+  /* 0 on top meant every section title welded to whatever preceded it, while h3
+     below carries 16px — a subheading with more air than its own parent. */
+  margin: 24px 0 8px;
   @media (max-width: 1024px) {
     font-size: 20px;
   }
@@ -138,6 +141,18 @@ h3 {
   margin: 16px 0 8px;
   @media (max-width: 1024px) {
     font-size: 18px;
+  }
+}
+
+/* Packaging renders three finding groups inside a section that is already an h3,
+   and they were <p> — real subsections carried as body text, which is checklist
+   item 6's defect in the direction axe never looks. 18px is the body step, not a
+   tenth type size; the heading font and weight are what mark it (§4.1). */
+h4 {
+  font-size: 18px;
+  margin: 12px 0 4px;
+  @media (max-width: 1024px) {
+    font-size: 16px;
   }
 }
 
@@ -208,6 +223,15 @@ input:not([type="checkbox"], [type="radio"]) {
 button {
   background: var(--code-bg);
   cursor: pointer;
+}
+
+/* The two controls the layer above excludes still need their selected state to
+   be visible: left to the UA, dark mode renders a checked box in a grey that
+   sits a hair off the unchecked one. --accent is 4.39:1 on --bg — under AA for
+   text, over the 3:1 WCAG 1.4.11 floor for a control, which is what this is. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
 }
 
 button:hover:not(:disabled) {
@@ -332,8 +356,16 @@ main {
   align-items: center;
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 13px;
+  /* The pill is a flex container holding up to four children — a <strong>, a
+     mono code, a file chip and a sentence — and it declared no gap, so at the
+     default 1280px width /compare rendered `警告embedded-script` with the
+     SKILL.md chip overlapping the message. `flex-wrap` is the other half: at
+     375px the same pill broke `警告` across two lines rather than wrapping
+     between its children. Both are the container's job, not the caller's. */
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 12px;
+  font-size: 14px;
   background: var(--code-bg);
   color: var(--text-h);
 }
@@ -366,7 +398,7 @@ main {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 /* `p` is `margin: 0` app-wide, so with the reset above a list in running text
@@ -505,8 +537,8 @@ main {
 .result-facets {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 2px 12px;
-  margin: 6px 0;
+  gap: 4px 12px;
+  margin: 8px 0;
   font-size: 14px;
 }
 
@@ -515,11 +547,22 @@ main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .badge-untested {
   border-color: var(--accent-border);
+}
+
+/* .file-tree is a column, so its rows inherited nothing: SkillFiles put a path
+   and a size in two adjacent <span>s and the browser rendered `SKILL.md42
+   bytes`. Three pages use this list and all three have a row of two or more
+   parts, so the gap belongs to the row and not to any one caller. */
+.file-tree > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
 }
 
 /* The app's primary content had less visual structure than the panels around
@@ -533,7 +576,7 @@ main {
 }
 
 .search-result p {
-  margin: 2px 0;
+  margin: 4px 0;
 }
 
 .license-badge,
@@ -541,7 +584,7 @@ main {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 /* QA-009: secondary text is demoted by size only. The `opacity: 0.7`–`0.8` this
@@ -592,7 +635,7 @@ summary {
 .compare-pick {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 14px;
   margin-right: 12px;
 }
@@ -652,10 +695,15 @@ summary {
 /* EVAL-001. The verdict states are told apart by their words first — the label
    is always on screen — and the tint is only a second channel (NFR-007 風險、
    相容與評估狀態必須同時提供文字,不只依賴顏色). */
+/* .trace-events is an <ol> and kept the UA decimal marker, so every event was
+   numbered twice — and the two numbers disagreed: the UA counter is gapless and
+   per-page, `seq` is neither, and a gap in `seq` is the one thing that view
+   exists to surface (ADR-009). */
 .criterion-list,
 .finding-list,
 .suggestion-list,
-.evidence-list {
+.evidence-list,
+.trace-events {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -665,7 +713,7 @@ summary {
 }
 
 .evidence-list {
-  gap: 6px;
+  gap: 8px;
 }
 
 .criterion,
@@ -746,6 +794,21 @@ summary {
   border-color: var(--accent-border);
 }
 
+/* One declaration, three domain names. `.badge-expired` encoded a reason — an
+   artifact past its date — and then 清理失敗 needed the same visual without
+   being expired at all. `.badge-danger` is the name of the claim §4.4 assigns
+   to this token（這件事不通過／會擋住你）; the two older names stay because the
+   pages that use them are naming a real thing, not a colour. */
+/* §2.8: the scope sentence IS the disclosure, so it gets its own line above the
+   two buttons rather than running inline into them. It stays a <span> because
+   ConfirmDelete returns a fragment that has to be valid inside a <p> at all
+   seven call sites. */
+.confirm-scope {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.badge-danger,
 .badge-expired {
   border-color: var(--danger);
   color: var(--danger);

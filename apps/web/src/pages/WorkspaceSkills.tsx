@@ -70,6 +70,22 @@ export function WorkspaceSkills() {
                   </Link>
                 </p>
                 <p>{s.summary}</p>
+                {/*
+                  §1.1 / §2.1: this row carries no risk, licence, validation or
+                  verification facet, while the public search row for the same
+                  skill carries all four. **That is a contract gap, not an
+                  omission here**: GET /skills answers schema `Skill`
+                  (contracts/openapi/public.yaml), which is skill_id / name /
+                  summary / forked_from_*, and none of the four exist on it to
+                  render — `PublicSearchHit` is where tier / risk /
+                  compatibility / verified_at live. Nothing is invented; the
+                  absence is stated instead, because a list of code you own and
+                  will run, with nothing on it to decide by, reads as approved.
+                */}
+                <p className="note">
+                  這一列只有名稱與摘要：風險掃描結果、授權狀態與相容性驗證都不在這份清單的資料裡。
+                  這裡空著不代表通過——要看那些，請開這個 Skill 的頁面。
+                </p>
                 <p className="note">
                   <Link to="/skills/$skillId/files" params={{ skillId: s.skill_id }}>
                     檔案
@@ -87,7 +103,16 @@ export function WorkspaceSkills() {
                   >
                     打包與下載
                   </Link>
-                  {" ｜ "}
+                </p>
+                {/*
+                  checklist 8: 刪除 used to sit in the same inline run as the two
+                  navigation links, separated by a ｜ glyph — and in the
+                  confirming state that one `<p>` also grew two buttons and a
+                  ~100-character scope sentence. At 375px that is an
+                  undifferentiated run of prose and controls. A destruction is
+                  not a third link, so it gets its own row; no label is removed.
+                */}
+                <p>
                   <ConfirmDelete
                     scopeId={`skill-delete-scope-${s.skill_id}`}
                     pending={remove.isPending}
@@ -97,7 +122,17 @@ export function WorkspaceSkills() {
                       <>
                         刪除的是這個 Skill
                         在你工作區裡的存在：它會離開這份清單與搜尋結果，也不能再拿來試跑或打包。
-                        版本快照會凍結保留 30 天再清除，所以誤刪在那段期間內還有救； 別人 Fork
+                        {/*
+                          §2.2: the numeral was 30 天 here, and PDM-006 — the
+                          only thing that would ratify it — is unratified. The
+                          same figure was removed from /policy and
+                          /workspace/account for that reason, which left this
+                          page as the last place the claim shipped from. The
+                          server's own `note`, shown verbatim after the delete,
+                          is where a grace period gets stated by something that
+                          enforces it.
+                        */}
+                        版本快照會先凍結保留一段期間再清除，所以誤刪在那之前還有救； 別人 Fork
                         過的版本與歷史 Run 引用的內容不受影響——那是他們的溯源鏈，不是你的。
                         已經打包好的下載檔案要另外刪，在下載紀錄那一頁。
                       </>

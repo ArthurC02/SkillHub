@@ -58,14 +58,20 @@ export const RUN_STATUS_LABEL: Record<string, string> = {
   timed_out: "執行逾時",
 };
 
-const OVERALL_LABEL: Record<Evaluation["overall"], string> = {
+/**
+ * Exported for `RunCompare.tsx`, which used to keep its own `Record<string,
+ * string>` copy of both maps. Keyed on the union, so a new server enum value is
+ * a compile error on both screens instead of a silent `undefined` on one
+ * (02:NFR-001 — the two planes must not word the same fact two ways).
+ */
+export const OVERALL_LABEL: Record<Evaluation["overall"], string> = {
   met: "符合",
   partially_met: "部分符合",
   not_met: "未符合",
   undetermined: "無法判斷",
 };
 
-const CRITERION_LABEL: Record<CriterionResult["result"], string> = {
+export const CRITERION_LABEL: Record<CriterionResult["result"], string> = {
   passed: "通過",
   failed: "未通過",
   undetermined: "無法判斷",
@@ -74,7 +80,7 @@ const CRITERION_LABEL: Record<CriterionResult["result"], string> = {
 /**
  * 04 丙-10. Defence 3 downgrades a criterion to `undetermined` when the judge's
  * citations do not resolve against the platform's own data, and marks it by
- * prefixing the reason (apps/platform/internal/eval/judge.go `merge`). Two
+ * prefixing the reason (apps/platform/internal/trial/improvement/judge.go `merge`). Two
  * very different things share the verdict `undetermined` without this: 「引用回驗
  * 失敗，平台不採信一個有結論的判定」 and 「模型自己說不確定」. The failure this
  * distinction exists to catch has already happened once — EVAL-013 v1 found 45
@@ -146,7 +152,7 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
   const notEvaluated = evaluation.error instanceof ApiError && evaluation.error.status === 404;
 
   return (
-    <section className="evaluation">
+    <section>
       <h2>任務判定</h2>
 
       {evaluation.isPending && <p>載入評估結果中…</p>}
@@ -164,15 +170,14 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
         <p role="alert">無法讀取評估結果：{evaluation.error.message}</p>
       )}
 
-      {evaluation.data && <EvaluationReport evaluation={evaluation.data} runId={runId} />}
-
-      {/* Execution state, worded as execution and kept on its own row. */}
-      {runStatus && (
-        <p className="note">
-          執行狀態：{RUN_STATUS_LABEL[runStatus] ?? runStatus}（<code>{runStatus}</code>）。
-          這說的是工作負載跑完了沒有，不是任務達成了沒有。
-        </p>
+      {evaluation.data && (
+        <EvaluationReport evaluation={evaluation.data} runId={runId} runStatus={runStatus} />
       )}
+
+      {/* No verdict for it to sit under, so it stands on its own here. With a
+          verdict on screen it belongs immediately below it (design §2.5), which
+          is where EvaluationReport renders it. */}
+      {!evaluation.data && runStatus && <ExecutionState runStatus={runStatus} />}
 
       {revisions.data && revisions.data.revisions.length > 1 && (
         <p>
@@ -201,7 +206,30 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
   );
 }
 
-function EvaluationReport({ evaluation, runId }: { evaluation: Evaluation; runId: string }) {
+/**
+ * The run's terminal state, worded as execution and never as a pass (ADR-025).
+ * Design §2.5: the two axes are two rows and the task verdict is the first of
+ * them — so this is a row directly under the verdict, not a paragraph that
+ * happened to land after the whole report and beside the feedback form.
+ */
+function ExecutionState({ runStatus }: { runStatus: string }) {
+  return (
+    <p className="note">
+      執行狀態：{RUN_STATUS_LABEL[runStatus] ?? runStatus}（<code>{runStatus}</code>）。
+      這說的是工作負載跑完了沒有，不是任務達成了沒有。
+    </p>
+  );
+}
+
+function EvaluationReport({
+  evaluation,
+  runId,
+  runStatus,
+}: {
+  evaluation: Evaluation;
+  runId: string;
+  runStatus?: string;
+}) {
   const superseded = Boolean(evaluation.superseded_at);
 
   return (
@@ -220,9 +248,10 @@ function EvaluationReport({ evaluation, runId }: { evaluation: Evaluation; runId
       )}
       {evaluation.status === "pending" && <p className="notice">評估進行中，以下結果尚未定案。</p>}
 
-      <p className={`verdict verdict-${evaluation.overall}`}>
+      <p className="verdict">
         任務判定：<strong>{OVERALL_LABEL[evaluation.overall]}</strong>
       </p>
+      {runStatus && <ExecutionState runStatus={runStatus} />}
       {evaluation.summary && <p>{evaluation.summary}</p>}
 
       {!evaluation.evidence_complete && (
@@ -249,7 +278,12 @@ function EvaluationReport({ evaluation, runId }: { evaluation: Evaluation; runId
       ) : (
         <ul className="finding-list">
           {evaluation.deterministic_findings.map((f, i) => (
-            <li key={`${f.category}-${i}`}>
+            // Design §4.3: a finding carries its own category, severity, message
+            // and evidence — a thing that can be believed or dismissed on its
+            // own — so it is the card every other such list uses, and not a
+            // fifth style. Same defect commit 90ade82 fixed for Test Case rows,
+            // sitting directly under the .criterion cards it was unlike.
+            <li className="criterion" key={`${f.category}-${i}`}>
               <p>
                 <span className="badge">{FINDING_CATEGORY_LABEL[f.category]}</span>{" "}
                 <span className={`badge badge-severity-${f.severity}`}>
@@ -273,13 +307,18 @@ function EvaluationReport({ evaluation, runId }: { evaluation: Evaluation; runId
         {" 這是平台判定花的錢，與 Run 自己花的錢分開列，不相加。"}
       </p>
 
-      <h3>判定資訊</h3>
-      <ul className="note">
-        <li>Judge 模型：{evaluation.judge_model || "未使用模型"}</li>
-        <li>Judge prompt 版本：{evaluation.judge_prompt_version}</li>
-        <li>Rubric 版本：{evaluation.rubric_version ?? "無 rubric（不是採用預設 rubric）"}</li>
-        <li>評估時間：{evaluation.evaluated_at}</li>
-      </ul>
+      {/* Design §2.6 / checklist 5: the model, the two version strings and the
+          timestamp are provenance, not the answer. Folded behind the same
+          disclosure shape SkillDetail uses for version ids and hashes. */}
+      <details>
+        <summary>判定資訊（Judge 模型與版本）</summary>
+        <ul className="note">
+          <li>Judge 模型：{evaluation.judge_model || "未使用模型"}</li>
+          <li>Judge prompt 版本：{evaluation.judge_prompt_version}</li>
+          <li>Rubric 版本：{evaluation.rubric_version ?? "無 rubric（不是採用預設 rubric）"}</li>
+          <li>評估時間：{evaluation.evaluated_at}</li>
+        </ul>
+      </details>
 
       <FeedbackForm runId={runId} evaluation={evaluation} disabled={superseded} />
     </div>
@@ -337,7 +376,7 @@ function EvidenceList({ evidence }: { evidence: EvidenceRef[] }) {
       {evidence.map((e, i) => (
         <li key={`${e.kind}-${i}`}>
           <p className="note">
-            {e.kind === "trace_event" && `Trace 事件 ${e.trace_event_id ?? ""}`}
+            {e.kind === "trace_event" && "Trace 事件"}
             {e.kind === "artifact" &&
               `Artifact ${e.artifact_path ?? ""}${
                 e.byte_range ? `（位元組 ${e.byte_range.start}–${e.byte_range.end}）` : ""
@@ -347,6 +386,19 @@ function EvidenceList({ evidence }: { evidence: EvidenceRef[] }) {
                 e.char_range ? `（字元 ${e.char_range.start}–${e.char_range.end}）` : ""
               }`}
           </p>
+          {/* Design §2.6: the excerpt is the evidence; the event's uuid is an
+              identifier and folds. A missing id says so rather than rendering
+              as the blank §2.1 forbids — this line used to end in one. */}
+          {e.kind === "trace_event" && (
+            <details>
+              <summary>事件 ID</summary>
+              {e.trace_event_id ? (
+                <code>{e.trace_event_id}</code>
+              ) : (
+                <p className="note">這筆引用沒有附上事件 ID。</p>
+              )}
+            </details>
+          )}
           {!e.available && (
             <p className="note">原始資料已過期或已刪除，以下是評估當時保存的摘要。</p>
           )}
@@ -451,8 +503,12 @@ function SuggestionsPanel({ runId }: { runId: string }) {
   const accepted = suggestions.data.suggestions.filter((s) => s.decision === "accepted");
 
   return (
-    <section className="suggestions">
-      <h2>改善建議</h2>
+    // Child of 任務判定 by data (keyed on evaluation_id), by gating
+    // (status === "completed") and by DOM — so h3, not a second h2 pretending to
+    // be its sibling (checklist 6). Demoting the heading is the smaller change
+    // than lifting the section out, and the nesting it states is the true one.
+    <section>
+      <h3>改善建議</h3>
       {suggestions.data.suggestions.length === 0 ? (
         <p>這份評估沒有產生改善建議。</p>
       ) : (
@@ -464,7 +520,7 @@ function SuggestionsPanel({ runId }: { runId: string }) {
       )}
 
       {suggestions.data.suggestions.length > 0 && (
-        <div className="suggestion-apply">
+        <div>
           <p className="note">
             採納建議會建立一個<strong>新的 Skill Version</strong>
             ，不會覆寫已經跑過的版本；新版本的套件內容不同，開始 Run 前必須重新確認權限摘要。
@@ -602,7 +658,10 @@ function AppliedResult({
   testCaseId?: string;
 }) {
   return (
-    <div className="notice">
+    // Design §4.3: notice is a standing platform condition. This is the result
+    // of the action the user just took, which is what the rest of the app says
+    // with role="status" — so it takes that surface, not the platform's.
+    <div role="status">
       <p>
         已建立新版本 <strong>#{result.version_number}</strong>
         {result.duplicate ? "（內容與既有版本相同，沿用該版本）" : ""}

@@ -36,12 +36,22 @@ const RUNTIME_LABELS: Record<AgentRuntime, string> = {
   failed: "腳本無法執行",
 };
 
-/** Badge colouring: the three states that are not a clean pass share the styles. */
-const BADGE_STATE: Record<string, string> = {
+/**
+ * Badge tint, and only for the states that have one. §4.4 gives the two tints
+ * a specific meaning each — `--danger` = 不通過／會擋住你, `--accent-border` =
+ * 未知／未驗證 — and `transpiled` is neither: the sandbox did run the Skill and
+ * this is the answer it measured (0022 got it for 33 of 45). Painting a measured
+ * outcome with the 未知 border made the colour contradict the word, which is
+ * §2.3 backwards. It takes the untinted `.badge` and lets its own label —
+ * 「腳本未執行，由模型轉譯」, spelled out for exactly this reason — carry the
+ * caveat. No new class: an unmapped state simply has no modifier, which is what
+ * `native`/`activated`/`passed` were already getting (`badge-compat-passed` has
+ * no rule in index.css either).
+ */
+const BADGE_TINT: Record<string, string> = {
   unverified: "unverified",
   not_activated: "failed",
   failed: "failed",
-  transpiled: "unverified",
 };
 
 export function CompatibilityStatus({ compatibility }: { compatibility: SkillCompatibility }) {
@@ -72,7 +82,10 @@ export function CompatibilityStatus({ compatibility }: { compatibility: SkillCom
           that ran these pills the full width of the page. */}
       <ul className="compat-list">
         {axes.map(({ key, label, value, text }) => (
-          <li key={key} className={`badge badge-compat-${BADGE_STATE[value] ?? "passed"}`}>
+          <li
+            key={key}
+            className={BADGE_TINT[value] ? `badge badge-compat-${BADGE_TINT[value]}` : "badge"}
+          >
             {label}：{text}
           </li>
         ))}

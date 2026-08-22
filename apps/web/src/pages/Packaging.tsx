@@ -89,6 +89,47 @@ export function packagingGate(skill: SkillDetail): PackagingBlockedReason | null
   }
 }
 
+const DEAD_REASON_ID = "packaging-build-disabled-reason";
+
+/**
+ * Why 建立下載套件 cannot be pressed, in visible text (system.md §2.4 / §3 item
+ * 4: 「a disabled control with no stated cause reads as a bug, and the cause is
+ * the honest part of the feature」).
+ *
+ * The `allowed === false` path always had its sentence — `BlockedNotice` names
+ * which of the four locks closed. The error paths had none: if the targets read
+ * fails there is no target, the preview query never runs, and `preview.isPending
+ * && target !== ""` is false, so nothing at all rendered between that error and
+ * a dead button. Returns "" exactly where something else on the page already
+ * says it, so the reason is stated once rather than twice.
+ */
+function buildButtonReason({
+  pending,
+  target,
+  targetsPending,
+  preview,
+}: {
+  pending: boolean;
+  target: string;
+  targetsPending: boolean;
+  preview: { isPending: boolean; error: unknown; data: PackagingPreview | undefined };
+}): string {
+  if (pending) return "";
+  if (target === "") {
+    return targetsPending
+      ? "還在讀打包目標清單。讀到之前沒有目標可以送出，所以按鈕還不能按。"
+      : "讀不到任何打包目標，所以沒有設定可以送出——上面那行錯誤就是原因。這不是「這個版本不能打包」，是平台這一刻答不出來。";
+  }
+  if (preview.error) {
+    return "打包預覽讀不到，因此無法確認這些設定能不能打包。沒有確認過就不會打包。";
+  }
+  if (preview.isPending) return "打包預覽還在計算，算完才知道這些設定能不能打包。";
+  if (!preview.data) return "還沒有打包預覽可以依據，所以按鈕還不能按。";
+  // allowed === false 已經由上面的 BlockedNotice（或缺原因代碼時的 alert）說明；
+  // allowed === true 時按鈕是開的，沒有原因要說。
+  return "";
+}
+
 export function Packaging() {
   const { skillId } = useParams({ from: "/skills/$skillId/package" });
   const { version } = useSearch({ strict: false }) as PackagingSearch;
@@ -134,6 +175,12 @@ export function Packaging() {
   if (skill.error || !skill.data) return <p role="alert">找不到這個 Skill，或載入失敗。</p>;
 
   const gate = packagingGate(skill.data);
+  const deadReason = buildButtonReason({
+    pending: build.isPending,
+    target,
+    targetsPending: targets.isPending,
+    preview,
+  });
 
   return (
     <section className="page">
@@ -150,22 +197,39 @@ export function Packaging() {
         <p role="alert">這個 Skill 還沒有已保存的版本內容，沒有東西可以打包。</p>
       ) : (
         <>
-          <SkillVersionPicker
-            skillId={skillId}
-            value={versionId}
-            onPick={(id) => {
-              setPicked(id);
-              // The built artifact belongs to the version it was built from;
-              // leaving it on screen beside another version's preview would
-              // offer bytes nobody asked for.
-              setBuilt(null);
-              setMessage("");
-            }}
-          />
-          <p className="note">
-            打包的是這一個不可變版本 <code>{versionId}</code>
-            ；打包不會建立也不會修改任何版本，每按一次得到的是一筆 Download Artifact。
-          </p>
+          {/*
+            system.md §2.6 / §3 item 5. Two UUIDs used to open this page: the
+            picker's `<select>` renders the version id as its own option text,
+            and the sentence under it repeated the id — both above every plain
+            answer, with the page's own verdict (打包預覽) more than a viewport
+            down. The picker is a real control and it stays reachable, but a
+            reader who has not decided to change version does not need an
+            identifier before an answer.
+
+            It also removes a phone defect: at 375px the `<select>` cut
+            「（不在下面的清單裡）」 off screen, and that string is an absence
+            statement — the version about to be packaged is not in the list the
+            server returned. Inside the disclosure it has the page's full width.
+          */}
+          <details>
+            <summary>換一個版本打包，或看這個版本的識別碼</summary>
+            <SkillVersionPicker
+              skillId={skillId}
+              value={versionId}
+              onPick={(id) => {
+                setPicked(id);
+                // The built artifact belongs to the version it was built from;
+                // leaving it on screen beside another version's preview would
+                // offer bytes nobody asked for.
+                setBuilt(null);
+                setMessage("");
+              }}
+            />
+            <p className="note">
+              打包的是這一個不可變版本 <code>{versionId}</code>
+              ；打包不會建立也不會修改任何版本，每按一次得到的是一筆 Download Artifact。
+            </p>
+          </details>
 
           {gate && <BlockedNotice reason={gate} />}
 
@@ -223,10 +287,16 @@ export function Packaging() {
               type="button"
               disabled={!preview.data?.allowed || build.isPending}
               onClick={() => build.mutate()}
+              aria-describedby={deadReason ? DEAD_REASON_ID : undefined}
             >
               {build.isPending ? "打包中…" : "建立下載套件"}
             </button>
           </p>
+          {deadReason && (
+            <p className="note" id={DEAD_REASON_ID}>
+              {deadReason}
+            </p>
+          )}
 
           {built && (
             <div className="notice">
@@ -484,6 +554,25 @@ function Dependencies({ preview }: { preview: PackagingPreview }) {
 /**
  * 02:SKILL-002's three severities, kept apart. Warnings never block and are
  * still shown: hiding them would be the same mistake as hiding an import's.
+ *
+ * Two rules this had been failing:
+ *
+ * 1. **The zero is printed** (system.md §2.1 / §3 item 2). Only groups with
+ *    items were rendered, so a package with one warning and no errors never told
+ *    the reader there were zero blocking errors — the single most
+ *    decision-relevant number on the page arrived as silence, and silence reads
+ *    as 通過. The count line states all three every time, the same shape
+ *    `RiskIndicator` already uses (`.risk-counts`).
+ * 2. **The group labels are headings** (§3 item 6). They are real subsections of
+ *    打包後的規格驗證 and were `<p>`, i.e. 18px body text. `h4` because `h3` is
+ *    this block's own level: promoting one of them to `h3` would make a child of
+ *    打包後的規格驗證 into its sibling, which is the same defect in the other
+ *    direction. **`index.css` has no `h4` rule yet.**
+ *
+ * The row itself leads with the sentence and puts the machine code after it, as
+ * `RunEvaluation` does with 執行完成（succeeded）: `.risk-code` is a 12px mono
+ * identifier and it was standing in front of the 18px sentence that says what
+ * happened.
  */
 function Findings({ validation }: { validation: PackageValidation }) {
   const groups: Array<{ key: string; label: string; items: Finding[] }> = [
@@ -496,6 +585,10 @@ function Findings({ validation }: { validation: PackageValidation }) {
   return (
     <>
       <h3>打包後的規格驗證</h3>
+      <p className="risk-counts">
+        阻擋級錯誤 {validation.errors.length} 項／警告 {validation.warnings.length} 項／資訊{" "}
+        {validation.infos.length} 項
+      </p>
       {total === 0 ? (
         <p className="note">這次重驗沒有產生任何發現。</p>
       ) : (
@@ -503,13 +596,13 @@ function Findings({ validation }: { validation: PackageValidation }) {
           .filter((g) => g.items.length > 0)
           .map((g) => (
             <div key={g.key}>
-              <p>
+              <h4>
                 {g.label}（{g.items.length}）
-              </p>
+              </h4>
               <ul className="risk-list">
                 {g.items.map((f, i) => (
                   <li key={`${f.code}-${i}`}>
-                    <span className="risk-code">{f.code}</span> {f.message}
+                    {f.message}（<span className="risk-code">{f.code}</span>）
                     {f.path && (
                       <>
                         {" "}

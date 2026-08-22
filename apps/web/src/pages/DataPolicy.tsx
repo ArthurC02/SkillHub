@@ -53,8 +53,12 @@ export function DataPolicy() {
       {policy.data && (
         <>
           {policy.data.collecting ? (
+            /* §2.2: the count is the list's length, not a numeral typed here.
+               「四個」 was written three times against a list the server
+               supplies — the shipped fixture has two — which is the same class
+               of defect as a hardcoded retention window, just cheaper to hit. */
             <p>
-              這個部署<strong>有</strong>在收集下面四個事件，保存
+              這個部署<strong>有</strong>在收集下面 {policy.data.events.length} 個事件，保存
               <strong>{policy.data.retention_days} 天</strong>
               ，到期後刪除。分析事件用的 cookie 也是同一個期限。
             </p>
@@ -64,8 +68,8 @@ export function DataPolicy() {
             <p>
               這個部署<strong>目前不收集</strong>
               使用行為分析事件：沒有設定保存期限，所以一列都不寫，cookie 也不發。
-              保存期限定案之前不會開始收集——這是規則，不是還沒做完。下面仍然列出四個事件，
-              因為「現在不收」本身就是需要說清楚的一件事。
+              保存期限定案之前不會開始收集——這是規則，不是還沒做完。下面仍然列出
+              {policy.data.events.length} 個事件，因為「現在不收」本身就是需要說清楚的一件事。
             </p>
           )}
 
@@ -74,7 +78,8 @@ export function DataPolicy() {
           <div className="table-scroll" tabIndex={0}>
             <table className="compare-table">
               <caption>
-                全部只有這四個事件。要加第五個，得先說明既有的資料表為什麼答不出那個問題。
+                全部只有這 {policy.data.events.length} 個事件。要再加一個，得先說明既有的資料表
+                為什麼答不出那個問題。
               </caption>
               <thead>
                 <tr>
@@ -113,13 +118,24 @@ export function DataPolicy() {
       )}
 
       <h2>你的東西怎麼刪</h2>
+      {/*
+        §2.2 / this file's own docstring: the per-class retention numbers are
+        PDM-006 proposals no code enforces, which is why the table above is not
+        copied here — and two of those numbers were then written into this list
+        anyway (版本快照 30 天、帳號 30 天寬限期). They are removed rather than
+        re-sourced: neither is the analytics `retention_days` this page reads,
+        so there is no server value here to route them through. Each destination
+        page states its own scope at the moment of the deletion, and one of them
+        (WorkspaceAccount) gets the real end date from the server.
+      */}
       <p className="note">
-        刪除都是分兩步的：按下去之後會先說明這一次刪掉的是什麼、什麼會留下，確認才真的執行。
+        刪除都是分兩步的：按下去之後會先說明這一次刪掉的是什麼、什麼會留下、期限多長，確認才真的執行。
       </p>
       <ul className="risk-list">
         <li>
-          <Link to="/workspace/skills">我的 Skill</Link>：刪掉一個 Skill。版本快照凍結保留 30
-          天再清除；別人 Fork 過的版本不受影響。
+          <Link to="/workspace/skills">我的 Skill</Link>
+          ：刪掉一個 Skill。版本快照會先凍結保留一段期間再清除，誤刪在那之前還有救；別人 Fork
+          過的版本不受影響。
         </li>
         <li>
           <Link to="/workspace/downloads">下載紀錄</Link>
@@ -130,8 +146,9 @@ export function DataPolicy() {
           可以刪掉它的產出檔案。執行紀錄與評估判定保留，引用過該檔案的評估會顯示證據已不存在。
         </li>
         <li>
-          <Link to="/workspace/account">帳號</Link>：刪掉整個帳號。30
-          天寬限期內都可以取消；哪些會實體刪除、哪些會保留但去掉你的身分，由伺服器在申請後逐條列出。
+          <Link to="/workspace/account">帳號</Link>
+          ：刪掉整個帳號。申請之後有一段寬限期，期間隨時可以取消，實際結束日期由伺服器算出來顯示在
+          那一頁；哪些會實體刪除、哪些會保留但去掉你的身分，也由伺服器在申請後逐條列出。
         </li>
       </ul>
 

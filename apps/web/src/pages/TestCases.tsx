@@ -19,6 +19,8 @@ import {
 import { useRuns, type RunListItem } from "../api/runs";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { RUN_STATUS_LABEL } from "./RunEvaluation";
+// One byte formatter for the app, not a third copy of the same four lines.
+import { bytes } from "./RunPreflight";
 import type { AcceptanceCriterion, RubricItem, TestCase } from "../api/testcases";
 
 /**
@@ -101,49 +103,12 @@ export function TestCaseList() {
         Prompt 與驗收條件凍結成快照，之後再改都不會動到已經跑過的 Run。
       </p>
 
-      <h2>建立新的 Test Case</h2>
-      {skills.error && <p role="alert">無法讀取你的 Skill 清單：{skills.error.message}</p>}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          create.mutate();
-        }}
-      >
-        <p className="field">
-          <label htmlFor="tc-skill">Skill</label>
-          <select id="tc-skill" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
-            <option value="">請選擇</option>
-            {skills.data?.skills.map((s) => (
-              <option key={s.skill_id} value={s.skill_id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </p>
-        <p className="field">
-          <label htmlFor="tc-name">名稱</label>
-          <input id="tc-name" value={name} onChange={(e) => setName(e.target.value)} size={40} />
-        </p>
-        <p className="field">
-          <label htmlFor="tc-prompt">User Prompt</label>
-          <textarea
-            id="tc-prompt"
-            rows={4}
-            cols={60}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-          />
-        </p>
-        <CreateValidation skillId={skillId} name={name} prompt={prompt} />
-        <button
-          type="submit"
-          disabled={create.isPending || skillId === "" || name === "" || prompt.trim() === ""}
-        >
-          建立
-        </button>
-      </form>
-      {message && <p role="alert">{message}</p>}
-
+      {/*
+        設計 checklist 1 / 義務 §1.2: 這一頁要回答的是「我有哪些 Test Case」,而
+        在 375×900 下建立表單把第一列推到 ~y715——答案在 78% 的位置。清單先,
+        表單後。§1.3 說這種情況的工具是漸進式揭露而不是模式切換,而把次要動作
+        往下移是同一件事最便宜的做法:兩段都還在同一頁,誰都沒有被藏起來。
+      */}
       <h2>既有的 Test Case</h2>
       {/*
         The filter is stated whenever it is on, with the way out beside it: a
@@ -194,6 +159,49 @@ export function TestCaseList() {
           {testCases.isFetchingNextPage ? "載入中…" : "載入更多"}
         </button>
       )}
+
+      <h2>建立新的 Test Case</h2>
+      {skills.error && <p role="alert">無法讀取你的 Skill 清單：{skills.error.message}</p>}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          create.mutate();
+        }}
+      >
+        <p className="field">
+          <label htmlFor="tc-skill">Skill</label>
+          <select id="tc-skill" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
+            <option value="">請選擇</option>
+            {skills.data?.skills.map((s) => (
+              <option key={s.skill_id} value={s.skill_id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </p>
+        <p className="field">
+          <label htmlFor="tc-name">名稱</label>
+          <input id="tc-name" value={name} onChange={(e) => setName(e.target.value)} size={40} />
+        </p>
+        <p className="field">
+          <label htmlFor="tc-prompt">User Prompt</label>
+          <textarea
+            id="tc-prompt"
+            rows={4}
+            cols={60}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+          />
+        </p>
+        <CreateValidation skillId={skillId} name={name} prompt={prompt} />
+        <button
+          type="submit"
+          disabled={create.isPending || skillId === "" || name === "" || prompt.trim() === ""}
+        >
+          建立
+        </button>
+      </form>
+      {message && <p role="alert">{message}</p>}
     </section>
   );
 }
@@ -288,6 +296,15 @@ function RunHistory({
   return (
     <>
       <h2>執行歷史</h2>
+      {/*
+        設計 §2.5 / ADR-025 說兩軸,判定排在前面。這份清單只有一軸 —— GET /runs
+        的 RunListItem 契約裡沒有任何判定欄位(見 api/runs.ts),所以第二列在這裡
+        不是排版問題,是契約缺口。能修的是順序:這句話原本掛在清單「下面」,讀者
+        先讀完一整排「執行完成」才被告知那不是「做到了」。先講,再列。
+      */}
+      <p className="note">
+        這裡寫的是「執行狀態」，不是「任務有沒有做到」——後者是評估的判定，在各自的 Run 頁面上。
+      </p>
       {runs.isPending && <p>載入執行歷史中…</p>}
       {runs.error && <p role="alert">無法讀取執行歷史：{runs.error.message}</p>}
       {runs.data &&
@@ -305,6 +322,15 @@ function RunHistory({
                     執行狀態：{RUN_STATUS_LABEL[run.status] ?? run.status}
                   </span>
                 </p>
+                {/* 義務 §1.1: 這兩個欄位一直在 RunListItem 裡而從來沒有被畫
+                    出來,所以一列「執行失敗」講不出為什麼失敗。伺服器沒給就
+                    不編一個理由出來——不渲染,而不是渲染成空白。 */}
+                {(run.status_reason || run.failure_class) && (
+                  <p className="note">
+                    {run.status_reason ?? "伺服器未回報原因"}
+                    {run.failure_class && `（分類：${run.failure_class}）`}
+                  </p>
+                )}
                 <p className="note">
                   Skill Version <code>{run.skill_version_id}</code>
                   {run.finished_at ? `｜結束於 ${run.finished_at}` : "｜尚未結束"}
@@ -322,9 +348,6 @@ function RunHistory({
           {runs.isFetchingNextPage ? "載入中…" : "載入更多"}
         </button>
       )}
-      <p className="note">
-        這裡寫的是「執行狀態」，不是「任務有沒有做到」——後者是評估的判定，在各自的 Run 頁面上。
-      </p>
     </>
   );
 }
@@ -416,7 +439,21 @@ function PromptForm({ testCase }: { testCase: TestCase }) {
         onClick={() => save.mutate()}
       >
         儲存
-      </button>
+      </button>{" "}
+      {/* 設計 §2.4 — 停用要說原因,原因是看得見的文字而不是 title。同一頁上方的
+          CreateValidation 已經是這個形狀,這裡往下套用同一個。 */}
+      {(name.trim() === "" || prompt.trim() === "") && (
+        <span className="note" role="status">
+          還不能儲存，因為：
+          {[
+            name.trim() === "" ? "名稱是空的" : "",
+            prompt.trim() === "" ? "User Prompt 是空的" : "",
+          ]
+            .filter((s) => s !== "")
+            .join("、")}
+          。兩個都是必填。
+        </span>
+      )}
       {message && <p role="status">{message}</p>}
     </>
   );
@@ -509,7 +546,13 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
         </button>{" "}
         <button type="button" disabled={suggest.isPending} onClick={() => suggest.mutate()}>
           請系統建議（選用）
-        </button>
+        </button>{" "}
+        {/* 設計 §2.4. */}
+        {text.trim() === "" && (
+          <span className="note" role="status">
+            還不能新增，因為左邊的欄位是空的。
+          </span>
+        )}
       </p>
       {message && <p role="alert">{message}</p>}
 
@@ -612,10 +655,53 @@ function CriterionRow({
             確認
           </button>
         )}{" "}
-        <button type="button" disabled={mutate.isPending} onClick={() => mutate.mutate("delete")}>
-          刪除
-        </button>
+        {/*
+          設計 §2.8 — 毀滅性動作兩段式,而範圍那句話就是整個揭露。驗收條件是使用者
+          自己寫的文字,原本是一顆一鍵即毀、沒有範圍句也沒有 aria-describedby 的
+          按鈕,與同一個檔案裡「刪除整個 Test Case」用的是兩套機制。四段照
+          WorkspaceSkills 的範本:消失什麼、還救得回來多久、什麼不受影響、還要另外
+          刪什麼。
+        */}
+        <ConfirmDelete
+          scopeId={`criterion-delete-scope-${criterion.id}`}
+          scope={
+            <>
+              會刪掉這一條驗收條件的文字與它的確認狀態，之後的 Run
+              不再逐條判定它。這一條沒有暫存區也沒有保留期，按下去就沒有了，救不回來。 已經跑過的
+              Run 與已經寫好的評估不受影響——它們判定的是當時凍結的快照，那一份仍然 留著這一條。
+              掛在這一條上的 rubric 說明要另外處理，在下面的「Rubric（選用）」那一節。
+            </>
+          }
+          pending={mutate.isPending}
+          onAsk={() => setMessage("")}
+          onConfirm={() => mutate.mutate("delete")}
+          // Distinct from 刪除整個 Test Case and from a file's 刪除: three
+          // unlabelled 刪除 on one page is three different destructions told
+          // apart only by position.
+          label="刪除這一條"
+          confirmLabel="確認刪除這一條"
+        />
       </p>
+      {/*
+        設計 §2.4 — this pair is the worst of the four on this screen, because
+        neither condition can be read off the screen: 儲存文字 is dead when the
+        box matches what is stored, and 確認 is dead when it does not.
+      */}
+      {!edited && (
+        <p className="note" role="status">
+          「儲存文字」現在不能按，因為文字和已儲存的內容一樣，沒有變更要存。
+        </p>
+      )}
+      {edited && draft.trim() === "" && (
+        <p className="note" role="status">
+          「儲存文字」現在不能按，因為驗收條件不能是空白。
+        </p>
+      )}
+      {edited && !criterion.confirmed_at && (
+        <p className="note" role="status">
+          「確認」現在不能按，因為文字改過還沒儲存——確認的是已儲存的那段文字，請先按「儲存文字」。
+        </p>
+      )}
       {message && <p role="alert">{message}</p>}
     </li>
   );
@@ -668,7 +754,14 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
 
   return (
     <>
-      <h2>Rubric（選用）</h2>
+      {/*
+        設計 checklist 6 — `h3`, not a second `h2`. Rubric is a child of 驗收條件
+        by this section's own copy (「每一條都掛在上面某一條驗收條件上」) and by
+        its own code: it refuses to render an editor at all when the criteria
+        list is empty. axe never sees this — `heading-order` fails a skipped
+        level, not a level that should have gone down and didn't (§6).
+      */}
+      <h3>Rubric（選用）</h3>
       <p className="note">
         Rubric 是驗收條件的<strong>加強說法</strong>，不是另一套判定：每一條都掛在上面某一條驗收
         條件上，只是額外說明「做到什麼程度算過」以及「要不要引原文」。權重只是給模型看的相對
@@ -789,25 +882,53 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
         (datasets.data.datasets.length === 0 ? (
           <p>還沒有上傳任何檔案。</p>
         ) : (
-          <ul className="file-tree">
-            {datasets.data.datasets.map((d) => (
-              <li key={d.dataset_id}>
-                {d.file_name} <span className="note">（{d.content_type}）</span>{" "}
-                <button
-                  type="button"
-                  disabled={remove.isPending}
-                  onClick={() => remove.mutate(d.dataset_id)}
-                >
-                  刪除
-                </button>
-                {/* TEST-002 的保存政策，落到這一個檔案上。沒回報就寫「未回報」,
-                    不編一個到期日出來。 */}
-                <p className="note">
-                  {d.expires_at ? `保存到 ${d.expires_at} 自動刪除` : "到期日未回報"}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <>
+            {/* 義務 §1.1: 上傳頁報的是上限,而這裡是唯一知道「已經用掉多少」的
+                地方。size_bytes 一直在型別裡而從來沒有被畫出來,所以讀者無從
+                拿一個檔案去對那兩個上限。 */}
+            <p className="note">
+              目前 {datasets.data.datasets.length} 個檔案，合計 {bytes(datasets.data.total_bytes)}
+              。上限在上傳頁的「大小限制」。
+            </p>
+            <ul className="file-tree">
+              {datasets.data.datasets.map((d) => (
+                <li key={d.dataset_id}>
+                  {d.file_name}{" "}
+                  <span className="note">
+                    （{d.content_type}・{bytes(d.size_bytes)}）
+                  </span>{" "}
+                  {/*
+                    設計 §2.8 — 同一條規則,不同的範圍句。刪掉的是檔案本體,而
+                    「已跑過的 Run 仍保留它的名稱與內容雜湊」是伺服器自己講的
+                    (trial/design/dataset.go DeleteDataset 與該端點回的 note)。
+                  */}
+                  <ConfirmDelete
+                    scopeId={`dataset-delete-scope-${d.dataset_id}`}
+                    scope={
+                      <>
+                        會刪掉 <strong>{d.file_name}</strong> 的檔案本體，儲存的位元組會被移除，
+                        之後的 Run 讀不到它。沒有回收桶也沒有保留期，刪了就沒有備份可以還原。
+                        已經跑過的 Run 不受影響——它們的快照仍保留這個檔案的名稱與內容雜湊， 所以那些
+                        Run 仍可追溯，只是不再可重現。這個 Test Case
+                        本身與其他檔案都還在；要連草稿一起刪，在這一頁最下面的「刪除這個 Test
+                        Case」。
+                      </>
+                    }
+                    pending={remove.isPending}
+                    onAsk={() => setMessage("")}
+                    onConfirm={() => remove.mutate(d.dataset_id)}
+                    label="刪除這個檔案"
+                    confirmLabel="確認刪除這個檔案"
+                  />
+                  {/* TEST-002 的保存政策，落到這一個檔案上。沒回報就寫「未回報」,
+                      不編一個到期日出來。 */}
+                  <p className="note">
+                    {d.expires_at ? `保存到 ${d.expires_at} 自動刪除` : "到期日未回報"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </>
         ))}
       {message && <p role="status">{message}</p>}
     </>

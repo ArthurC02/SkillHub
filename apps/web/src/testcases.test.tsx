@@ -179,7 +179,13 @@ test("02:TEST-001 第 3 條 a user can add, delete and withdraw the confirmation
   const withdrawn = calls.find((c) => c.method === "PATCH" && c.url.includes("/criteria/c1"));
   expect(withdrawn?.body).toContain('"confirmed":false');
 
-  await act(async () => button("刪除").click());
+  // 設計系統 §2.8: deleting a criterion destroys text the user wrote, so it goes
+  // through the same two-step control as every other destructive action — and
+  // the first click must send nothing, because the scope sentence is the whole
+  // disclosure and it is only on screen between the two clicks.
+  await act(async () => button("刪除這一條").click());
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+  await act(async () => button("確認刪除這一條").click());
   expect(calls.some((c) => c.method === "DELETE" && c.url.includes("/criteria/c1"))).toBe(true);
 });
 

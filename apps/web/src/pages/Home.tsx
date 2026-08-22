@@ -94,7 +94,7 @@ export function Home() {
       {data && (
         <>
           {/* DISC-001: the original query is kept and echoed, not rewritten away. */}
-          <p className="echoed-query">
+          <p>
             查詢：<q>{data.query}</q>
           </p>
 
@@ -118,9 +118,9 @@ export function Home() {
             looking in a place where the answer is not.
           */}
           {data.filtered_out && (
-            <div className="no-results">
+            <div>
               <p>有符合這個任務的 Skill，但全部被目前的篩選條件排除了。</p>
-              <p className="query-suggestion">放寬或清除下方的篩選條件即可看到它們。</p>
+              <p>放寬或清除下方的篩選條件即可看到它們。</p>
               <button
                 type="button"
                 onClick={() => submitSearch({ script: undefined, validation: undefined })}
@@ -131,10 +131,10 @@ export function Home() {
           )}
 
           {data.no_results && (
-            <div className="no-results">
+            <div>
               <p>沒有夠接近的 Skill。</p>
               {/* DISC-005: the suggestion is the server's, not a hardcoded string. */}
-              {data.query_suggestion && <p className="query-suggestion">{data.query_suggestion}</p>}
+              {data.query_suggestion && <p>{data.query_suggestion}</p>}
             </div>
           )}
 
@@ -216,6 +216,19 @@ function FilterBar({
   onChange: (next: SearchFilters) => void;
   disabled: boolean;
 }) {
+  /*
+    §2.4「停用要說原因」: these three are live filters, dead only until there is a
+    result set to narrow, and until this batch nothing said so — while the note
+    at the bottom of the bar explains that the *other* three are the unavailable
+    ones, which reads as a promise that these work. The reason gets the same
+    shape as the unavailable dimensions below (visible .note + aria-describedby,
+    never a `title`): a tooltip does not exist on touch, and QA-009 already
+    established that the reason is the honest part of the feature, not a
+    footnote. One node, referenced by all three — three copies of one sentence
+    is noise, and aria-describedby may be pointed at a shared id.
+  */
+  const whyDisabled = disabled ? "filter-why-query" : undefined;
+
   return (
     <div className="filter-bar" role="group" aria-label="篩選條件">
       <label>
@@ -223,6 +236,7 @@ function FilterBar({
         <select
           value={filters.script ?? ""}
           disabled={disabled}
+          aria-describedby={whyDisabled}
           onChange={(event) =>
             onChange({ script: (event.target.value || undefined) as SearchFilters["script"] })
           }
@@ -238,6 +252,7 @@ function FilterBar({
         <select
           value={filters.validation ?? ""}
           disabled={disabled}
+          aria-describedby={whyDisabled}
           onChange={(event) =>
             onChange({
               validation: (event.target.value || undefined) as SearchFilters["validation"],
@@ -261,6 +276,7 @@ function FilterBar({
         <select
           value={filters.agent ?? ""}
           disabled={disabled}
+          aria-describedby={whyDisabled}
           onChange={(event) =>
             onChange({ agent: (event.target.value || undefined) as SearchFilters["agent"] })
           }
@@ -272,6 +288,12 @@ function FilterBar({
           <option value="unverified">尚未試跑</option>
         </select>
       </label>
+
+      {disabled && (
+        <p className="note" id="filter-why-query">
+          先描述一次任務，才會有結果可以篩：上面三項在第一次搜尋之後才能使用。
+        </p>
+      )}
 
       {UNAVAILABLE_FILTERS.map(({ key, label, reason }) => (
         <label key={key} title={reason}>
@@ -333,12 +355,18 @@ function RankingExplainer({
         <li>
           {/*
             ponytail: 0.25 is transcribed from catalog.MaxCosineDistance (0.75
-            cosine distance). The contract does not expose it, and one hardcoded
-            number beats a new endpoint for it — move it onto the search
-            response the next time the value changes.
+            cosine distance) and the contract does not expose it, so the page
+            cannot stay in sync with it. §2.2 says do not print a value this
+            surface does not own — the honest half-measure until the search
+            response carries it is to attribute it: the sentence now says whose
+            setting it is, so a reader who finds a 0.3 cut-off in the server has
+            been told which of the two is authoritative. Move it onto the search
+            response the next time the value changes; it is stated once here and
+            referred to as 「那個門檻」 below rather than transcribed twice.
           */}
           <strong>相似度低於 0.25 的一律不顯示。</strong>
-          全部都低於門檻時會直接說「沒有夠接近的 Skill」，而不是硬給一頁不相關的結果。這個門檻是實測
+          這個 0.25 是平台目前的設定值，不是介面契約的一部分，調整了這一頁不會自己跟著改。全部都低於
+          門檻時會直接說「沒有夠接近的 Skill」，而不是硬給一頁不相關的結果。這個門檻是實測
           出來的：在評測語料上，12 條離題查詢全部被正確拒答，同時 48 條正常查詢一條也沒漏掉。
         </li>
         <li>
@@ -355,7 +383,7 @@ function RankingExplainer({
         </li>
         <li>
           <strong>例外一：只能用關鍵字比對時。</strong>
-          語意服務不可用的話，整頁改用關鍵字分數排序。那個分數不是相似度、沒有固定範圍，上面的 0.25
+          語意服務不可用的話，整頁改用關鍵字分數排序。那個分數不是相似度、沒有固定範圍，上面那個
           門檻也不生效；這時不顯示相似度，改在每個結果旁註明原因。篩選條件在這個狀態下照樣生效。
           {degraded && <span className="badge">目前這次搜尋就是這個狀態</span>}
         </li>
@@ -371,7 +399,16 @@ function RankingExplainer({
   );
 }
 
-/** DISC-009 entry point: 2–3 selected candidates go to the comparison page. */
+/**
+ * DISC-009 entry point: 2–3 selected candidates go to the comparison page.
+ *
+ * §2.4 again, on the other disabled control on this page: at MAX_COMPARE every
+ * remaining checkbox goes dead, and the hint below used to say 「勾選 2 至 3
+ * 個」 whether or not three were already picked — so the state that disables
+ * them was the one state the copy never mentioned. The limit line is separate
+ * from the two-candidate hint because at three the link branch renders and the
+ * hint does not, which is exactly when the reason is needed.
+ */
 function CompareBar({ selected }: { selected: string[] }) {
   return (
     <div className="compare-bar">
@@ -381,6 +418,12 @@ function CompareBar({ selected }: { selected: string[] }) {
         </Link>
       ) : (
         <p className="note">勾選 2 至 {MAX_COMPARE} 個 Skill，即可並排比較它們的靜態資料。</p>
+      )}
+      {selected.length >= MAX_COMPARE && (
+        <p className="note" id="compare-limit">
+          已經選滿 {MAX_COMPARE}{" "}
+          個，並排比較最多就是這麼多；其餘的勾選框會停用，取消一個才能改選別的。
+        </p>
       )}
     </div>
   );
@@ -418,11 +461,20 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
         <LabelledBadge kind="tier" value={hit.tier} />
       </dd>
 
+      {/*
+        Both server notes below were `title=` only. Three problems, one fix:
+        obligation §1.1 wants the evidence *and its qualifier* visible, `title`
+        does not exist on touch at all, and /compare renders these same two
+        server strings as visible text — two surfaces stating one fact
+        differently is 02:NFR-001. They are the server's copy either way
+        (§4.4: the wording is the server's, the front end keeps no enum table).
+      */}
       <dt>相容狀態</dt>
-      <dd title={hit.compatibility.note}>
+      <dd>
         規格驗證：{hit.compatibility.spec_validation === "passed" ? "通過" : "未驗證"}
         {/* DISC-002: 沒有驗證證據的 Skill 必須明確標記「尚未試跑」. */}
         {untested && <span className="badge badge-untested">尚未試跑</span>}
+        <span className="note">{hit.compatibility.note}</span>
       </dd>
 
       <dt>依賴</dt>
@@ -435,7 +487,7 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
       </dd>
 
       <dt>風險提示</dt>
-      <dd title={hit.risk.note}>
+      <dd>
         {hit.risk.scan_status === "unavailable" ? (
           <span className="note">尚無掃描紀錄，狀態未知——不代表已通過檢查。</span>
         ) : (
@@ -454,6 +506,7 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
                 )}
           </>
         )}
+        <span className="note">{hit.risk.note}</span>
       </dd>
 
       <dt>最近驗證時間</dt>
@@ -486,6 +539,8 @@ function SearchResultRow({
           type="checkbox"
           checked={checked}
           disabled={!checked && atLimit}
+          /* The limit line in CompareBar exists exactly when this is disabled. */
+          aria-describedby={!checked && atLimit ? "compare-limit" : undefined}
           onChange={() => onToggle(hit.skill_id)}
         />
         加入比較
@@ -496,8 +551,7 @@ function SearchResultRow({
       <p>{hit.summary}</p>
       {hit.match_reason && (
         <p className="match-reason">
-          <span className="match-reason-label">符合原因：</span>
-          {hit.match_reason}
+          符合原因：{hit.match_reason}
           {/*
             ADR-013: model-generated copy has to be visibly marked as such, so
             a reader can tell an LLM's explanation from a mechanical one derived
@@ -508,6 +562,9 @@ function SearchResultRow({
               AI 產生
             </span>
           )}
+          {/* `badge-source-template` has no CSS rule, but disc.test.tsx counts
+              this selector to assert template copy does not borrow the model
+              marker, and SkillDetail.tsx uses the same class. Test hook, kept. */}
           {hit.match_reason_source === "template" && (
             <span className="badge badge-source-template" title="依查詢與文件的關鍵字重疊組出">
               規則產生

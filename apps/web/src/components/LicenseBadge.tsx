@@ -20,6 +20,13 @@ const SOURCE_LABELS: Record<string, string> = {
   "repo-license-file": "來源：repo 根目錄 LICENSE",
 };
 
+/*
+ * `license-expression` and `badge-license-source` have no rule in index.css and
+ * both look like dead classes. They are not: disc.test.tsx asserts on both
+ * selectors that an unknown license shows neither a name nor a provenance tier
+ * (DISC-008), and a class is the only handle on those two nodes. Test hooks,
+ * kept.
+ */
 export function LicenseBadge({ license }: { license: SkillLicense }) {
   return (
     <span className="license-badge">

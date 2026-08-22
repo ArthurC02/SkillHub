@@ -16,6 +16,14 @@ import type { DownloadArtifact } from "../api/packaging";
  * 3. **`status` is three states, not a ready flag.** `quarantined` (still being
  *    checked) and `rejected` (over) are not the same thing to the person waiting
  *    for a download, so they are not folded together.
+ * 4. **The status word is derived from `status` AND expiry** (system.md §2.2,
+ *    02:NFR-001). `available` alone is not servable: the platform requires
+ *    `available && !purged && expires_at > now` (delivery/download.go) before it
+ *    hands over bytes, so printing 可下載 beside 已過期 and 目前不提供下載 stated
+ *    three things about one artifact, two of them false. Displaying a state the
+ *    platform enforces against is the 顯示但不強制 shape §2.2 names as the worst
+ *    of the options. Both surfaces read this one derivation, which is the point
+ *    of the shared component — they must not be able to disagree.
  */
 
 export function isExpired(artifact: DownloadArtifact, now = Date.now()): boolean {
@@ -28,6 +36,17 @@ const STATUS_LABEL: Record<DownloadArtifact["status"], string> = {
   available: "可下載",
   rejected: "已拒絕（打包後未通過驗證）",
 };
+
+/**
+ * Expiry outranks `available`, and only that one: `quarantined` and `rejected`
+ * already say the bytes are not on offer, and overwriting them with 已過期 would
+ * lose why. An expired `available` row is the only combination that used to read
+ * as servable while the server refuses it.
+ */
+function statusWord(artifact: DownloadArtifact, expired: boolean): string {
+  if (expired && artifact.status === "available") return "已過期，不再提供下載";
+  return STATUS_LABEL[artifact.status];
+}
 
 const TARGET_NOTE = "打包目標；安裝說明在套件內的 INSTALL.md。";
 
@@ -53,7 +72,7 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
         {expired && <span className="badge badge-expired">已過期</span>}
       </p>
       <p className="note">
-        {bytes(artifact.size_bytes)}｜狀態：{STATUS_LABEL[artifact.status]}｜建立於{" "}
+        {bytes(artifact.size_bytes)}｜狀態：{statusWord(artifact, expired)}｜建立於{" "}
         {artifact.created_at}｜已下載 {artifact.download_count} 次
       </p>
       <p className="note">

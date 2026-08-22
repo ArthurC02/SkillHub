@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 
@@ -34,15 +34,8 @@ const SPACE_SCALE = [0, 4, 8, 12, 16, 20, 24, 32];
  * be added here to make a build pass — that is the whole point of the list.
  */
 const KNOWN_DEVIATIONS: { value: number; kind: "type" | "space"; why: string }[] = [
-  { value: 13, kind: "type", why: ".badge — collect into meta 14px" },
   { value: 5, kind: "space", why: "control padding — 20px line-height + 5×2 + 2 borders = 32px" },
-  { value: 10, kind: "space", why: "control padding, and the card padding 10px 12px" },
-  { value: 2, kind: "space", why: ".badge padding, .result-facets gap, .search-result p margin" },
-  {
-    value: 6,
-    kind: "space",
-    why: "six rules share it as a tight list gap — register it or collect it",
-  },
+  { value: 10, kind: "space", why: "card padding 10px 12px, one value shared by four card families" },
 ];
 
 function allowed(kind: "type" | "space") {
@@ -83,5 +76,47 @@ test("ADR-039 §5: the deviation list has not grown", () => {
   expect(
     KNOWN_DEVIATIONS.length,
     "the deviation list may only shrink; a new value belongs on the scale, not here",
-  ).toBeLessThanOrEqual(5);
+  ).toBeLessThanOrEqual(2);
+});
+
+/**
+ * §2.7. The one principle with no row in §6 at all — neither credited nor
+ * listed as unenforced. Its real state until now was "satisfied by every line
+ * of the file, guarded by nothing", which is the state `contrast.test.ts`
+ * describes in its own "What it does not prove" list: *nothing stops them
+ * coming back*. Something does now.
+ *
+ * Both halves are ratchets on a regression this file has already suffered.
+ * `opacity` was removed twice (QA-009) because a multiplier lands where no
+ * colour token can follow it, and `contrast.test.ts` measures static hex — it
+ * cannot see a multiplier, and says so. A literal outside `:root` is the same
+ * defect by a different route: it is a colour no contrast test is looking at.
+ */
+test("ADR-039 §2.7: colour lives in tokens, and nothing multiplies it", () => {
+  const body = css
+    // Comments first — QA-009's reasoning quotes the hex values it deleted.
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    // Then the token declarations themselves; those are where colour belongs.
+    .replace(/--[\w-]+:[^;]+;/g, "");
+  expect(
+    body.match(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g) ?? [],
+    "a colour literal outside the token blocks — contrast.test.ts cannot see it",
+  ).toEqual([]);
+  expect(
+    body.match(/(^|[;{\s])opacity\s*:/g) ?? [],
+    "opacity on anything: removed twice already, and no colour token can follow a multiplier",
+  ).toEqual([]);
+});
+
+/**
+ * The blind spot this file's own header declares — "`index.css` being the
+ * single stylesheet is what makes that true rather than lucky" — asserted
+ * instead of observed. A second stylesheet, and every scale check above keeps
+ * passing while covering less of the app.
+ */
+test("ADR-039 §4: index.css is still the only stylesheet", () => {
+  expect(
+    readdirSync(import.meta.dirname).filter((f) => f.endsWith(".css")),
+    "a second stylesheet — the scale guards above only read index.css",
+  ).toEqual(["index.css"]);
 });

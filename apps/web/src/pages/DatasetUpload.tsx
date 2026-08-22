@@ -68,12 +68,29 @@ export function DatasetUpload() {
       {limits.data && (
         <>
           <h2>上傳前請先確認</h2>
-          <dl className="preflight">
+          <dl>
             <dt>大小限制</dt>
             <dd>
               單一檔案最大 {bytes(limits.data.max_file_bytes)};同一個 Test Case 合計最大{" "}
               {bytes(limits.data.max_test_case_bytes)}、最多 {limits.data.max_files_per_test_case}{" "}
               個檔案。
+              {/*
+                設計 §2.1 與義務 §1.1: 上限單獨站著,讀者無從知道自己離它多遠。
+                這一頁刻意不去讀檔案清單(它的整個工作是「上傳前先顯示規則」,
+                在還沒選檔案時就發一個列表請求會讓那句話變成兩件事),所以缺席
+                被寫成一句話,並指出它在哪裡看得到——而不是留白。
+              */}
+              <p className="note">
+                這一頁不知道這個 Test Case 已經用掉多少：已上傳的檔案、每個檔案的大小與合計,在{" "}
+                {testCase === "" ? (
+                  "Test Case 頁的「測試資料」那一節"
+                ) : (
+                  <Link to="/lab/test-cases/$testCaseId" params={{ testCaseId: testCase }}>
+                    這個 Test Case 的「測試資料」那一節
+                  </Link>
+                )}
+                。超過上限時伺服器會擋下來並說明原因。
+              </p>
             </dd>
 
             <dt>支援格式</dt>

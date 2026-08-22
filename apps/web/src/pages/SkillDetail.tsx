@@ -62,14 +62,23 @@ export function SkillDetail() {
         </section>
       )}
 
-      <Enrichment enrichment={skill.enrichment} />
+      {/*
+        The four human-checkable verdicts come first (system.md §1.1 + §3 item
+        1). They used to sit below ~400px of model-written 白話摘要: 可散布性 at
+        roughly y1174, 風險揭露 at y1297, 相容性 at y1507 in a 900px viewport, so
+        on the page where 「這個別人寫的東西可不可信」 is asked, the first screen was
+        half model output and the scan result was 1.4 viewports down.
 
-      <Limitations limitations={skill.limitations} />
-
+        The AI summary losing its top slot is the intent, not a side effect
+        (§2.6): a model's restatement of the package is not the answer to that
+        question, and it is the one block here that nobody has checked.
+      */}
       <section>
-        <h2>來源</h2>
-        {skill.source ? <SourceBlock source={skill.source} /> : <p>沒有保存任何來源紀錄。</p>}
+        <h2>風險揭露</h2>
+        <RiskIndicator risk={skill.risk} />
       </section>
+
+      <Redistribution skill={skill} />
 
       <section>
         <h2>License</h2>
@@ -77,16 +86,18 @@ export function SkillDetail() {
         <LicenseNotes license={skill.license} />
       </section>
 
-      <Redistribution skill={skill} />
-
-      <section>
-        <h2>風險揭露</h2>
-        <RiskIndicator risk={skill.risk} />
-      </section>
-
       <section>
         <h2>相容性</h2>
         <CompatibilityStatus compatibility={skill.compatibility} />
+      </section>
+
+      <Enrichment enrichment={skill.enrichment} />
+
+      <Limitations limitations={skill.limitations} />
+
+      <section>
+        <h2>來源</h2>
+        {skill.source ? <SourceBlock source={skill.source} /> : <p>沒有保存任何來源紀錄。</p>}
       </section>
 
       {skill.allowed_tools && skill.allowed_tools.length > 0 && (
@@ -244,8 +255,17 @@ function Redistribution({ skill }: { skill: SkillDetailModel }) {
  * An empty list says so explicitly. Dropping the section would read as "this
  * skill has no limits", which is the opposite of what an empty list means here:
  * neither source stated one.
+ *
+ * What each marker means is visible text below the list, not only the badge's
+ * `title` (system.md §3 item 4). These are the two sentences that stop a reader
+ * over-trusting a badge, and on a touch device a tooltip is not there at all.
+ * Stated per marker actually present, so the page never explains a label it did
+ * not render.
  */
 function Limitations({ limitations }: { limitations: SkillLimitation[] }) {
+  const fromModel = limitations.some((l) => l.source === "model");
+  const fromScan = limitations.some((l) => l.source !== "model");
+
   return (
     <section>
       <h2>限制</h2>
@@ -270,6 +290,10 @@ function Limitations({ limitations }: { limitations: SkillLimitation[] }) {
             </li>
           ))}
         </ul>
+      )}
+      {fromModel && <p className="note">「AI 產生」的項目由模型重述套件內容，未經人工核對。</p>}
+      {fromScan && (
+        <p className="note">「掃描推得」的項目由匯入時的靜態掃描結果推得，掃描不執行套件內容。</p>
       )}
     </section>
   );
@@ -430,7 +454,10 @@ function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
   const fork = useForkSkill();
 
   if (!isLoggedIn) {
-    return <p className="login-prompt">登入後即可 Fork 這個 Skill 到你的工作區。</p>;
+    // `login-prompt` carried no CSS rule and no test selected it, so it was a
+    // class that only looked like a hook. Removed rather than left to be read
+    // as one (same call as `badge-risk-none` in RiskIndicator).
+    return <p>登入後即可 Fork 這個 Skill 到你的工作區。</p>;
   }
 
   return (
