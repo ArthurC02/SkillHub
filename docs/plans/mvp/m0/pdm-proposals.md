@@ -1,7 +1,7 @@
 # Skill Hub M0：產品決策提案（PDM）
 
 > **狀態：提案 v5；PDM-001／002／003 已於 2026-08-14 依本文件定案（見下方定案紀錄），其餘各項仍為提案。**
-> 本文件由架構／規劃側起草，目的是把 `plans/mvp/03-work-items.md` 第 1 節的待決策項目，從「開放式問題」收斂成「可被否決或核准的具體方案」。
+> 本文件由架構／規劃側起草，目的是把 `plans/03-work-items.md` 第 1 節的待決策項目，從「開放式問題」收斂成「可被否決或核准的具體方案」。
 > **除下方已記錄的定案外，其餘仍只提案、不定案。** 定案後請由負責人：(1) 在本文件對應章節標註「已採納／已修改／已否決」與日期；(2) 依 §9 的回寫對照表，把數值寫進 `plans/mvp/02` 對應需求 ID 的允收準則；(3) 才把 `plans/mvp/03` 的 `- [ ]` 勾選為 `- [x]`。
 > **已完成的落地動作（2026-08-14）**：`03` 的 PDM-001／002／003／011 已勾選；ADR-013／015 轉 Accepted、新增 ADR-018、ADR-014 轉 Superseded。**§9 的數值回寫至 `02` 尚未執行**，仍是開工前的待辦。
 
@@ -10,7 +10,7 @@
 > | 日期 | 決策 | 影響範圍 |
 > | --- | --- | --- |
 > | **2026-08-14** | **模型供應商採 OpenAI API**（經 LiteLLM 閘道）。ADR-017 架構與實作鐵律 8 不變——所有模型呼叫仍只走閘道、供應商金鑰只存在閘道，改變的只是閘道背後的後端。 | §3 PDM-003 模型分層改為 OpenAI 系列（型號與定價見該節）；§3 補測清單收斂；§5.2 Token 與預算編列；[cost-estimation.md](cost-estimation.md) §6.2；[pdm-003-litellm-spike-report.md](pdm-003-litellm-spike-report.md) §11 即為定案後在**正式後端**上完成的補測 |
-> | **2026-08-14** | **PDM-001／002／003 三項全部依本文件 v5 提案定案**（首批三個 Skill 類別＝`documents`／`writing`／`data`；白名單來源與九項精選檢查表；Runtime＝Claude Agent SDK TS on Node.js 22 LTS ＋ OpenAI 模型分層）。負責人同時批准 M0 全部產出並指示開工。 | `plans/mvp/03-work-items.md` 的 PDM-001／002／003／011 已勾選；§4 的 `lxml`（必要）與 `matplotlib`（建議）白名單增補隨 PDM-002 一併採納；§9 回寫對照表的數值寫入 `02` 仍待執行 |
+> | **2026-08-14** | **PDM-001／002／003 三項全部依本文件 v5 提案定案**（首批三個 Skill 類別＝`documents`／`writing`／`data`；白名單來源與九項精選檢查表；Runtime＝Claude Agent SDK TS on Node.js 22 LTS ＋ OpenAI 模型分層）。負責人同時批准 M0 全部產出並指示開工。 | `plans/03-work-items.md` 的 PDM-001／002／003／011 已勾選；§4 的 `lxml`（必要）與 `matplotlib`（建議）白名單增補隨 PDM-002 一併採納；§9 回寫對照表的數值寫入 `02` 仍待執行 |
 > | **2026-08-14** | **ADR 定案**：[ADR-013](../../../adr/ADR-013-intent-search-architecture.md) → **Accepted**（依 PDM-011 Spike，含四項實證調整）；[ADR-015](../../../adr/ADR-015-sandbox-isolation-technology.md) → **Accepted**（gVisor 基線與獨立 VM 池不變）；新增 [ADR-018](../../../adr/ADR-018-containerized-core-infrastructure.md) 核心基礎設施容器化自架 → **Accepted**，[ADR-014](../../../adr/ADR-014-core-infrastructure-selection.md) 隨之標為 **Superseded**。 | 本文件 §3 的 Embedding 與模型分層已回填至 ADR-013 待決策；§5.2 的 Sandbox 資源上限已回填至 ADR-015 容量池；[cost-estimation.md](cost-estimation.md) §5／§7 的容器化例外與 E1→E2 觸發條件已成為 ADR-018 決策內容 |
 >
 > **此定案的一個直接紅利**：§11 的補測不再需要 Anthropic 憑證，且測到的就是生產模型本身，結論效力高於原先的「代打」設計。

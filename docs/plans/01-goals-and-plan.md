@@ -175,9 +175,9 @@ MVP 先提供：
 
 | 里程碑 | 狀態（2026-08-16） |
 | --- | --- |
-| M0 產品與安全基線 | **已完結**（2026-08-14）——見 [m0/README.md](m0/README.md) |
-| M1 Skill Explorer | **程式碼面已收斂**（對帳見 [m1/m1-work-items-audit.md](m1/m1-work-items-audit.md)）；**驗證閘門尚未正式通過**——使用者測試材料已備妥（[gate-test/](gate-test/)），**D 日待負責人宣告** |
-| M2 Skill Lab | **已完結**（2026-08-16）——對帳見 [m2/m2-work-items-audit.md](m2/m2-work-items-audit.md)，殘項三類清單見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md) |
+| M0 產品與安全基線 | **已完結**（2026-08-14）——見 [m0/README.md](mvp/m0/README.md) |
+| M1 Skill Explorer | **程式碼面已收斂**（對帳見 [m1/m1-work-items-audit.md](mvp/m1/m1-work-items-audit.md)）；**驗證閘門尚未正式通過**——使用者測試材料已備妥（[gate-test/](mvp/gate-test/)），**D 日待負責人宣告** |
+| M2 Skill Lab | **已完結**（2026-08-16）——對帳見 [m2/m2-work-items-audit.md](mvp/m2/m2-work-items-audit.md)，殘項三類清單見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md) |
 | M3 評估與改善 | 未開工；接點與已知限制見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md) 殘項清單「丙」類 |
 | M4 打包與封閉測試 | 未開工；SEC-009 驗收證據落檔位置已預留 `m4/sec-009-acceptance/` |
 
@@ -194,8 +194,8 @@ MVP 先提供：
 
 - 建立內容匯入、來源追蹤、規格驗證與搜尋。
 - 完成首頁、結果列表、詳情與 Fork 流程。
-- 建立第一批精選 Skill。（**2026-08-15 範圍調整，依 [m1/m1-work-items-audit.md §8](m1/m1-work-items-audit.md)**：精選 Skill 的**範例資料／Prompt／驗收條件與基準試跑改列 M2**——`03:CONTENT-007／008`，兩者依賴 M2 的 Test Case 與 Sandbox。M1 的內容範圍是收錄、來源與 License 檢查、白話摘要與靜態掃描。）
-- **驗證閘門**：測試使用者以自然語言能找到相關 Skill 並理解符合原因，否則先修正搜尋與內容，不進入 M2。（**2026-08-16 現況**：閘門與 M2 開發並行，測試材料已備妥於 [gate-test/](gate-test/)，**D 日仍待負責人宣告**；閘門尚未正式通過。）
+- 建立第一批精選 Skill。（**2026-08-15 範圍調整，依 [m1/m1-work-items-audit.md §8](mvp/m1/m1-work-items-audit.md)**：精選 Skill 的**範例資料／Prompt／驗收條件與基準試跑改列 M2**——`03:CONTENT-007／008`，兩者依賴 M2 的 Test Case 與 Sandbox。M1 的內容範圍是收錄、來源與 License 檢查、白話摘要與靜態掃描。）
+- **驗證閘門**：測試使用者以自然語言能找到相關 Skill 並理解符合原因，否則先修正搜尋與內容，不進入 M2。（**2026-08-16 現況**：閘門與 M2 開發並行，測試材料已備妥於 [gate-test/](mvp/gate-test/)，**D 日仍待負責人宣告**；閘門尚未正式通過。）
 
 ### M2：Skill Lab
 
@@ -203,7 +203,7 @@ MVP 先提供：
 
 - 完成 Cloud Sandbox、Dataset、Prompt 與 Run Trace。→ ✅ 後端完成並經 45 個真實 Skill 端到端驗證；**Test Lab 的介面只有 `/lab/run` 與 `/lab/datasets` 兩個畫面**（建立 Test Case、編輯 Prompt 與驗收條件仍無 UI，由 `03:DESIGN-007`／`TEST-012` 承接）。
 - 完成權限確認、逾時、取消及清理。→ ✅（`03:TEST-008/009`、`RUN-006/007`、`SBX-009`；73/73 Run 全部 `cleaned`）
-- 完成精選 Skill 的範例資料、Prompt、驗收條件與基準試跑（`03:CONTENT-007／008`，2026-08-15 由 M1 移入）。→ ✅ CONTENT-008（精選 15/15 符合）；~~**CONTENT-007 差 `writing` rubric 一項**（Judge 介面未實作，rubric 沒有消費端）~~ **CONTENT-007 於 2026-08-17 於 M3 內補完並勾選**——rubric 內容、資料層（`0026`）、產品路徑、編輯介面與回歸 harness 全數落地，A 輪回歸見 [m3/report-judge-regression.md §11](m3/report-judge-regression.md)。**M2 完結當時的判定不變**（當時確實沒有消費端），此處只記後續結果。
+- 完成精選 Skill 的範例資料、Prompt、驗收條件與基準試跑（`03:CONTENT-007／008`，2026-08-15 由 M1 移入）。→ ✅ CONTENT-008（精選 15/15 符合）；~~**CONTENT-007 差 `writing` rubric 一項**（Judge 介面未實作，rubric 沒有消費端）~~ **CONTENT-007 於 2026-08-17 於 M3 內補完並勾選**——rubric 內容、資料層（`0026`）、產品路徑、編輯介面與回歸 harness 全數落地，A 輪回歸見 [m3/report-judge-regression.md §11](mvp/m3/report-judge-regression.md)。**M2 完結當時的判定不變**（當時確實沒有消費端），此處只記後續結果。
 - 依 Sandbox 實測結果啟用搜尋的 Agent 相容篩選維度（`02:DISC-002`，2026-08-15 標定）。→ ✅ migration `0022` 建表、45 筆實測值回填、`?agent=` 篩選與 UI 控制項上線。
 
 殘項（部署期驗收／待負責人決策／移交 M3）見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md)。

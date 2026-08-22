@@ -5,7 +5,7 @@
 - **舊狀態原文**：**計畫；程式面未開工，文件面已跑過一批。** 本文件是 M4 的入口：範圍、接點對應、批次分解、程式／人的分界、未決點與檔案地圖。
   - **2026-08-17 文件批已完成（不含任何產品程式碼、不勾選任何工作項）**：①§8.2 建議的三份 ADR 全部已立並 Accepted（[ADR-027](../../../adr/ADR-027-download-artifact-shape-reproducibility-and-integrity.md)／[028](../../../adr/ADR-028-beta-admission-and-quota-enforcement-points.md)／[029](../../../adr/ADR-029-product-analytics-events-and-audit-trace-boundaries.md)），刻意不立的兩項維持不立；②§7 的八項 `02`／`03` 差異依建議全數落地；③§8.4 的可散布性欄位與 §8.5 的 DESIGN 處置**已裁定**（併入 ADR-027 決策 4 與 `03` §3）；④§8.1 缺的 PDM-009 提案已補（[pdm-009-beta-proposal.md](pdm-009-beta-proposal.md)，**待追認**）；⑤§6.2 的詢問信草稿已修訂。**第 1 批的前置決策因此只剩 PDM-008 的追認**。
 - 前提：M3 已完結（[../m3/README.md](../m3/README.md)、[../m3/audit.md](../m3/audit.md)）；**M1 驗證閘門的 D 日仍待負責人宣告**（[../gate-test/](../gate-test/)）——與 M0～M3 不同的是，**M4 的封測與那個閘門不能再平行**，理由見 §5.3。
-- 上游輸入：[`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) 的「移交 M4」六條接點（逐項對應見 §3）、甲類四項（§4）、乙類三項（§8.3）、丙類五項未結案（§3.7）。
+- 上游輸入：[`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md) 的「移交 M4」六條接點（逐項對應見 §3）、甲類四項（§4）、乙類三項（§8.3）、丙類五項未結案（§3.7）。
 - 這是 MVP 的**最後一個里程碑**。做完 M4，`02` §7 的 Definition of Done 九條要全部成立——`03` §18 的 RELEASE-001～010 是它的逐條檢查表。
 
 ## 1. 一句話範圍
@@ -47,7 +47,7 @@
 
 ## 3. 「移交 M4」六條接點的逐項對應
 
-**六條全部進計畫，一條不漏**（出處：[`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) §移交 M4）。
+**六條全部進計畫，一條不漏**（出處：[`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md) §移交 M4）。
 
 | 接點 | M4 怎麼接 | 落在哪一批 |
 | --- | --- | --- |
@@ -187,7 +187,7 @@ M2 與 M3 都與 M1 閘門**並行**，理由在兩份計畫裡寫得很清楚�
 | PDM | 提案在哪 | 不追認的後果 |
 | --- | --- | --- |
 | **PDM-008** 首批打包 Profile | `m0/pdm-proposals.md` §7（1 標準套件 ＋ `claude-code` ＋ `claude-agent-sdk`；source-available 一律不產出任何 Download Artifact） | 批 3 沒有可實作的目標清單。**提案完整且與 PDM-003 的 Runtime 一致，建議直接追認** |
-| **PDM-009** 封測人數、招募方式、成功門檻 | ~~**完全沒有提案**~~ → **2026-08-17 已補**：[pdm-009-beta-proposal.md](pdm-009-beta-proposal.md)（**待追認**）。此前 `m0/pdm-proposals.md` 沒有 PDM-009 這一節，`pdm-proposals` 假設 30 人、`cost-estimation` 用 20 人，兩份文件互斥且都沒有推導 | `BETA-001`／`005` 與 `RELEASE-009` 全部不可判定。~~建議在批 1 之前先補一份提案~~ **提案已在，拍板仍在人**；殘項入列 [`../04` 乙-15](../04-backlog-and-handoffs.md)。提案要點：12 人（三層各 4）、三條門檻＋不通過決策樹、招募與報酬整套重用 `gate-test/recruit.md`、測試期 14 天、先閘門再封測 |
+| **PDM-009** 封測人數、招募方式、成功門檻 | ~~**完全沒有提案**~~ → **2026-08-17 已補**：[pdm-009-beta-proposal.md](pdm-009-beta-proposal.md)（**待追認**）。此前 `m0/pdm-proposals.md` 沒有 PDM-009 這一節，`pdm-proposals` 假設 30 人、`cost-estimation` 用 20 人，兩份文件互斥且都沒有推導 | `BETA-001`／`005` 與 `RELEASE-009` 全部不可判定。~~建議在批 1 之前先補一份提案~~ **提案已在，拍板仍在人**；殘項入列 [`../04` 乙-15](../../04-backlog-and-handoffs.md)。提案要點：12 人（三層各 4）、三條門檻＋不通過決策樹、招募與報酬整套重用 `gate-test/recruit.md`、測試期 14 天、先閘門再封測 |
 | **PDM-010** 免費額度與 BYO Key | `m0/pdm-proposals.md` §8（首月 20 次、其後每月 30 次、每日 5 次、並行 2、退還語意）。**其中「首月 20 vs 20+30」提案自己標了「請負責人明確擇一，不要留給實作推斷」** | 批 5 的額度強制點沒有值可寫。**擇一即可** |
 | **PDM-006** 保存期限 | `m0/pdm-proposals.md` §6（Download Artifact **90 天**、Run Artifact 30 天、Trace 90 天、audit 400 天、帳號刪除的兩類處理） | `SEC-006` 仍不可判定；下載頁的到期日顯示沒有值 |
 | **PDM-004** Runtime 語言與版本 | 實質已定（`2026.08-3` ＋ SDK 0.3.233），缺的是定案紀錄與 `runsc` 上的完整 Run 生命週期實測（＝`SEC-009` T4） | 部署批一併帶掉 |
@@ -219,8 +219,8 @@ M2 與 M3 都與 M1 閘門**並行**，理由在兩份計畫裡寫得很清楚�
 | **乙-9**（PDM-005 一致性） | 契約面已由 M3 批 1 補完；剩下的併入 H-7。**不阻擋 M4 任何一批** |
 | **乙-10**（`anthropic-sa` 法務終判 ＋ 閘門 D 日） | **兩半都阻擋 M4**：法務終判那一半見 §6.2（打包上線會讓詢問信的一句承諾變成可被證偽）；D 日那一半見 §5.3（封測不能與閘門並行）。**這是 M4 最重要的一項乙類** |
 | **乙-13**（G7：`artifact` 型引用的引文從未回驗） | **阻擋封測，不阻擋打包**。理由見 M4-5 ②：封測者是第一批會讀到評估報告的非團隊成員，而目前平台分不出「歸錯類」與「編的」。二選一：(a) `artifact` 型引用不得滿足 `evidence_required`；(b) 保留但在儲存與 UI 上標示「此引文未經回驗」。**建議 (a)**（最小改動且與「引文用來證明存在」的原意一致），但**它動的是 ADR-026 defence 3 的判準，所以要拍板** |
-| **乙-14（新，本計畫提出）** | **甲類四項是否在封測前到期**（§4）。建議「到期」；替代路徑「只讀不跑的封測」的代價已在 §4 寫清楚。**2026-08-17 已入列 [`../04` 乙-14](../04-backlog-and-handoffs.md)**，仍待拍板 |
-| **乙-15（新，2026-08-17）** | **PDM-009 的封測提案待追認**（§8.1）。提案已產出（[pdm-009-beta-proposal.md](pdm-009-beta-proposal.md)），已入列 [`../04` 乙-15](../04-backlog-and-handoffs.md)。**追認時要一併過報酬預算與 PDM-010 的首月語意擇一** |
+| **乙-14（新，本計畫提出）** | **甲類四項是否在封測前到期**（§4）。建議「到期」；替代路徑「只讀不跑的封測」的代價已在 §4 寫清楚。**2026-08-17 已入列 [`../04` 乙-14](../../04-backlog-and-handoffs.md)**，仍待拍板 |
+| **乙-15（新，2026-08-17）** | **PDM-009 的封測提案待追認**（§8.1）。提案已產出（[pdm-009-beta-proposal.md](pdm-009-beta-proposal.md)），已入列 [`../04` 乙-15](../../04-backlog-and-handoffs.md)。**追認時要一併過報酬預算與 PDM-010 的首月語意擇一** |
 
 ### 8.4 可散布性要不要成為一個資料庫欄位（**M4 最具體的一個新決策**）
 
@@ -232,7 +232,7 @@ M2 與 M3 都與 M1 閘門**並行**，理由在兩份計畫裡寫得很清楚�
 
 ### 8.5 `DESIGN` 系列 13 項零勾選的處置建議
 
-~~**三個選項，建議 (a)，但需要拍板。**~~ → **2026-08-17 已裁定取 (a) 並落地於 `03` §3**（負責人授權「依最佳實務做決策」）。落地形式：`DESIGN-001`～`011` 標「**不再追蹤**」並逐項指向已落地的畫面，**一律維持 `- [ ]` 不勾**（那些設計交付物確實從未產出，勾選是說謊）；`DESIGN-012`／`013` 保留為 M4 實作項並各自寫出範圍；章節里程碑改為 `M0–M4`。**兩處殘留缺口已具名交棒，沒有隨收斂消失**——`DESIGN-007` 的 preflight 版本選擇器 → [`../04` 丙-14](../04-backlog-and-handoffs.md)；`DESIGN-010`／`011` 承接的 ADR-025 待決策 → 實質已由 `RunEvaluation.tsx`／`RunCompare.tsx` 的兩列狀態回答，剩餘的呈現缺口是 [`../04` 丙-10](../04-backlog-and-handoffs.md)，**ADR-025 的待決策已就地回填此裁定**。下表原文保留。
+~~**三個選項，建議 (a)，但需要拍板。**~~ → **2026-08-17 已裁定取 (a) 並落地於 `03` §3**（負責人授權「依最佳實務做決策」）。落地形式：`DESIGN-001`～`011` 標「**不再追蹤**」並逐項指向已落地的畫面，**一律維持 `- [ ]` 不勾**（那些設計交付物確實從未產出，勾選是說謊）；`DESIGN-012`／`013` 保留為 M4 實作項並各自寫出範圍；章節里程碑改為 `M0–M4`。**兩處殘留缺口已具名交棒，沒有隨收斂消失**——`DESIGN-007` 的 preflight 版本選擇器 → [`../04` 丙-14](../../04-backlog-and-handoffs.md)；`DESIGN-010`／`011` 承接的 ADR-025 待決策 → 實質已由 `RunEvaluation.tsx`／`RunCompare.tsx` 的兩列狀態回答，剩餘的呈現缺口是 [`../04` 丙-10](../../04-backlog-and-handoffs.md)，**ADR-025 的待決策已就地回填此裁定**。下表原文保留。
 
 | 選項 | 內容 | 評價 |
 | --- | --- | --- |
@@ -297,9 +297,12 @@ M2 與 M3 都與 M1 閘門**並行**，理由在兩份計畫裡寫得很清楚�
 | [`packaging-design.md`](packaging-design.md) | 設計 | 打包管線：匯出形狀與匯入的互逆、規格重驗、內容白名單、License 與溯源隨附、可攜 Test Case、下載授權與紀錄 | 已產出，未實作 |
 | [`beta-design.md`](beta-design.md) | 設計 | 封測面：准入與邀請、配額與成本上限的強制點、漏斗量測、回饋收集、受測者資料處理 | 已產出，未實作 |
 | [`contract-deltas.md`](contract-deltas.md) | 設計 | 第 1 批要先寫的 OpenAPI／JSON Schema 增量清單（只列形狀，不寫 YAML 實體） | 已產出，未實作 |
-| [`pdm-009-beta-proposal.md`](pdm-009-beta-proposal.md) | 提案 | 封測的人數、招募方式與成功門檻（含不通過的決策樹、時程與成本）。**放這裡不放 `m0/`**：`m0/pdm-proposals.md` 已隨 M0 完結凍結，補不進去；而 PDM-009 決定的是 M4 的形狀，M4 結束即凍結 | **提案，待負責人追認**（[`../04` 乙-15](../04-backlog-and-handoffs.md)） |
+| [`pdm-009-beta-proposal.md`](pdm-009-beta-proposal.md) | 提案 | 封測的人數、招募方式與成功門檻（含不通過的決策樹、時程與成本）。**放這裡不放 `m0/`**：`m0/pdm-proposals.md` 已隨 M0 完結凍結，補不進去；而 PDM-009 決定的是 M4 的形狀，M4 結束即凍結 | **提案，待負責人追認**（[`../04` 乙-15](../../04-backlog-and-handoffs.md)） |
 | [`audit.md`](audit.md) | 審計 | M4 全工作項的逐項對帳（49 項的勾選裁定、三把判定尺、**每一批出入清單的採納／退回／轉殘項**、已勾項覆核、新殘項彙總、對帳自己的限制） | **已產出**（2026-08-18，第 7 批後半） |
+| [`report-completed-work-items-audit-2026-08-19.md`](report-completed-work-items-audit-2026-08-19.md) | 報告 | 跨 M0–M4 已勾項覆核；123 個原勾選項中確認 122 個完成，`CONTENT-010` 已退勾 | **已凍結** |
 | [`release-checklist.md`](release-checklist.md) | 檢查表 | `RELEASE-001`～`010` 的執行面：程式面已完成 11 項 ＋ 尚缺 12 項、部署期七段（甲類四項／migration 順序／部署設定／策展種入／告警／排程／第一次真實驗證）、負責人 11 項動作、B 日當天 5 項。**勾選狀態的事實來源仍是 `03` §18 與 `04`，本檔只給順序與「誰做什麼驗什麼」** | **已產出**（2026-08-18，第 7 批後半） |
+| [`report-platform-ddd-boundary-convergence-2026-08-19.md`](report-platform-ddd-boundary-convergence-2026-08-19.md) | 報告 | Platform DDD 邊界收斂的凍結摘要；現行治理以 ADR-032～035／038／040 為準 | **已凍結** |
+| [`report-technical-debt-remediation-2026-08-19.md`](report-technical-debt-remediation-2026-08-19.md) | 報告 | 技術債盤點與修復的凍結摘要；仍開項指向 `04` 與 release checklist | **已凍結** |
 | `sec-009-acceptance/<日期>-<節點>/` | 證據 | `SEC-009` 十個測項的判定表與 `versions.txt`（原始輸出留 CI artifact 並附連結），保存 ≥ 1 年 | **尚未產出**（部署批）；路徑由 [ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第三部分指定 |
 
 本目錄外、M4 期間會被修訂而**不屬於本目錄**的東西：
@@ -307,7 +310,7 @@ M2 與 M3 都與 M1 閘門**並行**，理由在兩份計畫裡寫得很清楚�
 | 位置 | 內容 |
 | --- | --- |
 | [`../../../../contracts/packaging/profiles/`](../../../../contracts/packaging/profiles/) | 三個打包目標的設定實體（第 3 批前半，見 §13）。**它們同時是 `packaging-profile.schema.json` 的 examples**——schema 因此不再帶 inline example |
-| [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) | **殘項的唯一入口，活文件不凍結。** M4 的新殘項與「MVP 之後」的接點都在那裡 |
+| [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md) | **殘項的唯一入口，活文件不凍結。** M4 的新殘項與「MVP 之後」的接點都在那裡 |
 | [`../../../../tools/qa/skillpkg-corpus/`](../../../../tools/qa/skillpkg-corpus/) ＋ `services/platform/internal/ingest/qa002_corpus_test.go` | `QA-002` 的破壞變體生成腳本、期望 finding 資料檔與對照 harness（第 7 批前半，見 §14.1） |
 | [`../../../../tools/content/seed_testcases.py`](../../../../tools/content/seed_testcases.py) ＋ [`seed-testcases/`](../../../../tools/content/seed-testcases/) | 策展 Test Case 的種入路徑與兩個範例 Dataset（丙-12，第 7 批前半，見 §14.2） |
 | [`../gate-test/`](../gate-test/) | M1 閘門材料；封測的招募文案、篩選問卷與報酬原則從這裡重用（§6.3）。**§6.3 點名「必須從零做的唯一一項」已於 2026-08-18 補上** → [`consent-and-data-policy.md`](../gate-test/consent-and-data-policy.md)（一份政策兩份同意書，**草稿待法務確認**）。**放那裡不放本目錄**：它由閘門與封測共用、M4 完結後仍會被修訂，依 `AGENTS.md` 的檔案放置規則不屬於任何 `mX/` |
@@ -455,7 +458,7 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistrib
 | # | 事項 | 誰接 |
 | --- | --- | --- |
 | 出-6 | **`seed_testcases.py` 尚未對執行中的 dev DB 或任何 live 部署執行過。** 阻擋原因與 §13.4 出-2 同源：執行中的 dev DB 停在 `0026`，沒有 `0027`～`0030`，而本工具本身只需要 `0026`（rubric 欄位）——**它其實跑得動**，不跑是因為 ①目錄 Workspace 的策展帳號是誰要先確認（`is_catalog` 由 SQL 設定，dev 上是哪個 user 未查），②同一工作樹上有平行批次，對共用 dev DB 的寫入該由需要它的那一批決定時機。套用步驟：`python tools/content/seed_testcases.py --api http://localhost:8080 --user <目錄策展帳號> --dry-run` 先看 15 筆是否都解析得到 Skill，再拿掉 `--dry-run` | 部署批／第 7 批後半 |
-| 出-7 | **三個 archive 層缺陷（D-1／D-2／D-3）沒有承接者。** D-1／D-2 屬 `ingest`（原始 entry 名的揭露），D-3 屬 `PACK-004`／`04` M4-4（打包排除規則沒有一條講符號連結）。**語料已經在庫，修好之後把 `expected-findings.json` 那三列的 `gap` 換成期望 finding 即是回歸測試** | ~~`04` 丙類（本批同時回填該清單）~~ **已於 2026-08-18 同日修畢**：D-1／D-2 為 `entry-path-escape`（error，Blocked，讀原始 zip entry 名），D-3 為 `symlink-entry`（warning，匯出端本就以白名單剝除）；期望清單三列的 `gap` 已換成期望 finding，harness 24/24。逐項理由見 [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) 丙-15 |
+| 出-7 | **三個 archive 層缺陷（D-1／D-2／D-3）沒有承接者。** D-1／D-2 屬 `ingest`（原始 entry 名的揭露），D-3 屬 `PACK-004`／`04` M4-4（打包排除規則沒有一條講符號連結）。**語料已經在庫，修好之後把 `expected-findings.json` 那三列的 `gap` 換成期望 finding 即是回歸測試** | ~~`04` 丙類（本批同時回填該清單）~~ **已於 2026-08-18 同日修畢**：D-1／D-2 為 `entry-path-escape`（error，Blocked，讀原始 zip entry 名），D-3 為 `symlink-entry`（warning，匯出端本就以白名單剝除）；期望清單三列的 `gap` 已換成期望 finding，harness 24/24。逐項理由見 [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md) 丙-15 |
 | 出-8 | **`QA-002` 未勾。** 資料集與 harness 已具備且全綠，但 `03` §17 的九項要一起對帳（第 7 批後半），且本項的允收字面是「建立測試資料集」——資料集成立，勾選仍留給對帳那一步一次處理 | 第 7 批後半 |
 | 出-9 | **驗證用的 SeaweedFS bucket `skillhub-seedtest` 留在 dev 物件儲存裡**（容器已刪，bucket 沒有）。無害且與 `skillhub` bucket 隔離，但下次清理 dev 環境時它是可以直接丟的一個 | 不需動作，記著即可 |
 
@@ -491,8 +494,8 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistrib
 
 | # | 事項 | 誰接 |
 | --- | --- | --- |
-| 出-10 | **同意書是草稿，§9 有十一項 ⬜ 待填，其中三項要等 PDM-006 追認才有值**（保存期限）。法務確認與簽署是人的動作 | [`../04` 乙-16](../04-backlog-and-handoffs.md) |
+| 出-10 | **同意書是草稿，§9 有十一項 ⬜ 待填，其中三項要等 PDM-006 追認才有值**（保存期限）。法務確認與簽署是人的動作 | [`../04` 乙-16](../../04-backlog-and-handoffs.md) |
 | 出-11 | **本批沒有在本機重跑任何 Go 測試**（Windows 無 Go 工具鏈，整合測試需 DB，`QA-002` 需語料與網路）。**對帳查的是「測試存在、具名、斷言的是對的東西」，不是「今天跑起來是綠的」**；唯一實跑的是無障礙那一支（65 個測試全綠，只需 Node） | [audit.md §6](audit.md) 已記為本次對帳的限制 |
 | 出-12 | **`0027`～`0030` 仍未套在執行中的 dev DB 上**，所以打包、下載、配額、漏斗、停派送**五組功能從來沒有在同一個部署上一起跑過**——各批各自在拋棄式容器驗過自己那一段 | [release-checklist.md §2.2](release-checklist.md) |
 | 出-13 | **`RELEASE-*` 十項的不勾理由有一部分是引用別項的狀態**（`QA-001` 未完成 ⇒ `RELEASE-002` 不勾）。**這是刻意的結構**——`RELEASE-*` 本來就是別項的彙總，不該有獨立的證據；但如果那些項的判定錯了，這十項會跟著錯 | 記錄，不需動作 |
-| 出-14 | **`m4/` 自此凍結。** 之後的變動記在 [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md)（活文件）與 `03` 的行內，不回頭改寫本目錄 | 記錄，不需動作 |
+| 出-14 | **`m4/` 自此凍結。** 之後的變動記在 [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md)（活文件）與 `03` 的行內，不回頭改寫本目錄 | 記錄，不需動作 |

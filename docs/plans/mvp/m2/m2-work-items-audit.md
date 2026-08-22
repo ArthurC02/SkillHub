@@ -2,7 +2,7 @@
 
 - 日期：**2026-08-16**
 - 基準 commit：**`512add1`**（`Run all 45 catalogue skills through the real platform and report what happened`）；對帳範圍為 `3bfd8db..512add1` 的 18 個 M2 commit
-- 範圍：`03-work-items.md` 的 **§9 TEST／§10 RUN／§11 SBX／§13 TRACE＋O11Y**，加上自 M1 移入 M2 的 **§4 CONTENT-007／008**，以及 M2 明列為部署驗證批的 **§16 SEC-002／SEC-009**，逐項對照 [`02-specifications-and-acceptance-criteria.md`](../02-specifications-and-acceptance-criteria.md) 的允收準則。
+- 範圍：`03-work-items.md` 的 **§9 TEST／§10 RUN／§11 SBX／§13 TRACE＋O11Y**，加上自 M1 移入 M2 的 **§4 CONTENT-007／008**，以及 M2 明列為部署驗證批的 **§16 SEC-002／SEC-009**，逐項對照 [`02-specifications-and-acceptance-criteria.md`](../../02-specifications-and-acceptance-criteria.md) 的允收準則。
 - 方法：沿用 [M1 對帳](../m1/m1-work-items-audit.md) 的證據標準——**只採信 repo 內可指名的落地證據**（migration 檔、Go 檔與匯出符號、具名測試函式、CI 設定、已交付報告），沒有證據的項目一律記「未動」，不以「應該有」補位。本次另加一層：**已交付報告宣稱的數字，回到執行中的資料庫重查**（見 §2.3）。
 - 判定值：**完全符合**（勾 `[x]`）／**部分完成**（不勾，列缺口）／**未動**（不勾）。
 - 依 AGENTS.md 文件維護規則：**部分完成一律保持 `[ ]`**。
@@ -379,7 +379,7 @@ PDM-005 §5.3 明文列出「`02:TEST-005` 權限摘要的具體欄位」，其�
 | 9 | **§9.8(b) `ReindexAll` 的 `updated_at = now()`** | 不修就是每次補跑都要人工圈掉 45 筆 fork 文件，漏一次多花 $2 |
 | 10 | **`docx` 的裁定（CONTENT-005 44/45）** | 三條路徑見 [README 乙-11](README.md)。**選「下架」前要先看清楚代價**——它是 golden query D01 的 gold primary 且為現行 Top-1 |
 
-### 第三梯：M2 內結構性不可能完成（→ 部署期／待決策，見 [../04-backlog-and-handoffs.md](../04-backlog-and-handoffs.md) 的殘項三類清單）
+### 第三梯：M2 內結構性不可能完成（→ 部署期／待決策，見 [../../04-backlog-and-handoffs.md](../../04-backlog-and-handoffs.md) 的殘項三類清單）
 
 SEC-009、SBX-010、SBX-005／007 的生產網路面、SBX-002 的門檻定值、SEC-002 的六項門檻與 Q1～Q3。**這些不是拖延，是它們需要 Linux＋巢狀虛擬化與生產網路，本機 Windows 開發環境結構性做不到**（`README.md`「開發環境限制」已誠實記錄）。
 

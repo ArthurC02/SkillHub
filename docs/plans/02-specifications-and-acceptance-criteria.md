@@ -50,12 +50,12 @@
 允收準則：
 
 - 每個結果至少顯示名稱、白話摘要、來源層級、Agent 相容狀態、依賴、風險提示與最近驗證時間。
-- 使用者可依類別、來源層級、Agent、是否包含 Script、是否需要 MCP 與驗證狀態篩選。（**2026-08-15 修訂**：原文保留，六個維度改為分階段允收，見下方「篩選維度的允收階段」表。修訂依據：[m1/m1-work-items-audit.md §5.2／§5.3](m1/m1-work-items-audit.md)——其中 Agent 相容與 MCP 兩維度在 M1 內結構性不可能收斂。）
+- 使用者可依類別、來源層級、Agent、是否包含 Script、是否需要 MCP 與驗證狀態篩選。（**2026-08-15 修訂**：原文保留，六個維度改為分階段允收，見下方「篩選維度的允收階段」表。修訂依據：[m1/m1-work-items-audit.md §5.2／§5.3](mvp/m1/m1-work-items-audit.md)——其中 Agent 相容與 MCP 兩維度在 M1 內結構性不可能收斂。）
 - 排序不得只使用 Star；排序依據需可被簡要說明。
 - 沒有驗證證據的 Skill 必須明確標記「尚未試跑」。
 - 尚未進入允收階段的篩選維度不得隱藏，也不得默默忽略：UI 以停用控制項＋逐維度理由呈現，API 對該參數回 400 並附理由。（默默忽略會讓帶該參數的分享連結把整個目錄呈現為篩選後的子集。2026-08-15 隨上一條同批新增。）
 
-**篩選維度的允收階段**（2026-08-15 依 [m1/m1-work-items-audit.md §5.3](m1/m1-work-items-audit.md) 新增；此表只切分允收時程，不改變上方任何一條準則的內容）：
+**篩選維度的允收階段**（2026-08-15 依 [m1/m1-work-items-audit.md §5.3](mvp/m1/m1-work-items-audit.md) 新增；此表只切分允收時程，不改變上方任何一條準則的內容）：
 
 | 篩選維度 | 允收階段 | 啟用條件 |
 | --- | --- | --- |
@@ -118,7 +118,7 @@
 
 #### SKILL-004：License 多層溯源
 
-背景與決策依據：[ADR-021](../../adr/ADR-021-skill-license-provenance.md)。精選來源多為 monorepo 子目錄，授權事實散落於 manifest、套件內 LICENSE 檔與 repo 根 LICENSE 三個層級；首批匯入有 37／45 個套件在 frontmatter 未宣告授權（`m1/import-report.md` §4 Top-1）。
+背景與決策依據：[ADR-021](../adr/ADR-021-skill-license-provenance.md)。精選來源多為 monorepo 子目錄，授權事實散落於 manifest、套件內 LICENSE 檔與 repo 根 LICENSE 三個層級；首批匯入有 37／45 個套件在 frontmatter 未宣告授權（`m1/import-report.md` §4 Top-1）。
 
 允收準則：
 
@@ -213,12 +213,12 @@
 - 權限有變更時必須重新確認，不得沿用不相符的舊確認。
 - 使用者拒絕權限時不得啟動 Run。
 
-**摘要的具體欄位（2026-08-16 自 [PDM-005 §5.3](m0/pdm-proposals.md) 回寫；m0 提案已凍結，本節只引用）**
+**摘要的具體欄位（2026-08-16 自 [PDM-005 §5.3](mvp/m0/pdm-proposals.md) 回寫；m0 提案已凍結，本節只引用）**
 
 PDM-005 §5.3 指定的欄位清單從未回寫本節，因此上一條的字面準則被現有實作滿足，而缺的欄位不可判定。完整清單為：Dataset 清單與總大小、將掛載的路徑、預計使用的 Runtime 版本、資源上限、逾時秒數、**Token 預算與預估成本區間**、egress 允許清單摘要（例如「僅模型閘道，無一般網際網路」）。
 
 - **「預估成本區間」必須是區間，不得是單值**（PDM-005 §5.2a-6）：首次與後續 Run 的單位成本差約 8 倍——prompt caching 保留 24 小時、harness 前綴跨 Run 完全相同，第二次以後的 Run 直接命中前一次留下的快取。以單值呈現會讓其中一種情境的使用者看到一個必然錯誤的數字。
-- **現況（2026-08-20 更新）**：`預估成本區間` 已由 `03` `TEST-011` 實作並在 preflight 畫面渲染（`RunPreflight.tsx`，區間呈現、absent 不渲染為 0）；本節先前的「完全不存在」註記寫於實作前，已過時。契約宣告已於 DDD-007 隨批驗證：`RunPermissionSummary.estimated_cost` **在 `public.yaml` 有宣告**（`RunCostEstimate`，與前端 `CostEstimate` 逐欄一致）——`m2/README.md` §「尚未宣告」的註記才是過時的一方，無鐵律 12 違規（[testlab-contract-design-2026-08-19.md §4](../testlab-contract-design-2026-08-19.md)）。
+- **現況（2026-08-20 更新）**：`預估成本區間` 已由 `03` `TEST-011` 實作並在 preflight 畫面渲染（`RunPreflight.tsx`，區間呈現、absent 不渲染為 0）；本節先前的「完全不存在」註記寫於實作前，已過時。現行契約證據以 [`contracts/openapi/public.yaml`](../../contracts/openapi/public.yaml) 的 `RunPermissionSummary`／`RunCostEstimate` 與 [`03` `TEST-011`](03-work-items.md) 為準；兩者宣告與前端 `CostEstimate` 逐欄一致，無鐵律 12 違規。
 - Token 預算欄位的呈現另受 `RUN-003` 的約束：強制未成立前不得呈現為「平台會執行的上限」。
 
 ### 4.4 Run Orchestrator 與 Sandbox
@@ -260,7 +260,7 @@ queued → provisioning → preparing → running → evaluating
 - 套用 CPU、記憶體、磁碟、程序數與執行時間限制。
 - Run 結束後清除暫存環境，平台只保存政策允許的 Trace 與 Artifact。
 
-**單次 Run 的上限定值（2026-08-16 自 [PDM-005 §5.2／§5.2a](m0/pdm-proposals.md) 回寫；m0 提案已凍結，本節只引用其值，不改寫該文件）**
+**單次 Run 的上限定值（2026-08-16 自 [PDM-005 §5.2／§5.2a](mvp/m0/pdm-proposals.md) 回寫；m0 提案已凍結，本節只引用其值，不改寫該文件）**
 
 上一條允收準則自 2026-08-15 起就沒有數值可驗，值其實已於 PDM-005 定案。以下為該組值，作為本需求的可判定形式：
 
@@ -318,7 +318,7 @@ queued → provisioning → preparing → running → evaluating
 - 整體結果使用「符合、部分符合、未符合、無法判斷」，不得只提供無法解釋的分數。
 - 使用者可對結果提供有幫助／無幫助及文字回饋。
 - LLM Judge 的判斷必須標示為模型評估，不得冒充確定事實。
-- **「可執行的檢查」界定為平台內建的確定性檢查**（讀平台自己的事實：`skillpkg.Validate` 結果、trace 的 `skill_activation`／`error`／`usage` 事件、`runs.status`／`failure_class`、artifact manifest、格式與門檻比對）。**明文排除執行使用者提供的檢查腳本**——那是不受信任內容，執行它必須回到 Sandbox（鐵律 1／2），屬後 MVP，需求訊號出現時另立需求 ID。評估管線本身跑在控制平面且不執行任何不受信任的東西。（2026-08-17 新增，依 [m3/README.md §5 差-2](m3/README.md)）
+- **「可執行的檢查」界定為平台內建的確定性檢查**（讀平台自己的事實：`skillpkg.Validate` 結果、trace 的 `skill_activation`／`error`／`usage` 事件、`runs.status`／`failure_class`、artifact manifest、格式與門檻比對）。**明文排除執行使用者提供的檢查腳本**——那是不受信任內容，執行它必須回到 Sandbox（鐵律 1／2），屬後 MVP，需求訊號出現時另立需求 ID。評估管線本身跑在控制平面且不執行任何不受信任的東西。（2026-08-17 新增，依 [m3/README.md §5 差-2](mvp/m3/README.md)）
 
 #### EVAL-002：改善建議
 
@@ -339,14 +339,14 @@ queued → provisioning → preparing → running → evaluating
 
 #### EVAL-013：Judge 判準驗證（M3）
 
-本節於 **2026-08-17 新增**，補的是 `EVAL-001` 第 5 條的缺口：規格要求 LLM Judge 的判斷標示為模型評估，但**沒有任何準則要求驗證它判得準不準**（[m3/README.md §5 差-3](m3/README.md)、風險 R2）。編號刻意與 `03` 的新工作項 `EVAL-013` 對齊。
+本節於 **2026-08-17 新增**，補的是 `EVAL-001` 第 5 條的缺口：規格要求 LLM Judge 的判斷標示為模型評估，但**沒有任何準則要求驗證它判得準不準**（[m3/README.md §5 差-3](mvp/m3/README.md)、風險 R2）。編號刻意與 `03` 的新工作項 `EVAL-013` 對齊。
 
 允收準則：
 
-- 存在一組**固定的回歸集**：M2 的 45 筆基準 Run（[m2/content-baseline-report.md](m2/content-baseline-report.md) 已逐筆判定「符合／未產出」，Trace、Artifact manifest 與 Test Case 快照皆可重查），作為第一組標註資料。回歸集的期望答案與其出處必須可追溯。
+- 存在一組**固定的回歸集**：M2 的 45 筆基準 Run（[m2/content-baseline-report.md](mvp/m2/content-baseline-report.md) 已逐筆判定「符合／未產出」，Trace、Artifact manifest 與 Test Case 快照皆可重查），作為第一組標註資料。回歸集的期望答案與其出處必須可追溯。
 - Judge 在回歸集上的判定與標註答案**逐筆可比對**，並產出一份含**符合率、逐筆差異清單、以及每筆差異屬「Judge 判錯」或「標註本身可議」**的報告；差異不得只以總分呈現。
 - 報告記錄該次回歸使用的 `judge_model`、`judge_prompt_version`、`rubric_version` 與截斷設定——**換其中任何一項就是另一次回歸**，不得沿用舊結論（同 ADR-023「靜默失效不得以推理帶過」）。
-- Judge prompt 或 rubric 升版後**必須重跑回歸集**，且重評依 [ADR-026](../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 為 append-only，前後兩次結論並存可比。
+- Judge prompt 或 rubric 升版後**必須重跑回歸集**，且重評依 [ADR-026](../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 為 append-only，前後兩次結論並存可比。
 - `undetermined` 與判錯**分開計數**：因證據不完整、引用回驗失敗或輸入截斷而降為 `undetermined` 的條目不計入判錯，但必須逐筆列出——它們是安全的預設，不是準確度。
 - 回歸成本可估並記錄實付（走閘道，帶 `evaluation_id` metadata）。
 
@@ -362,17 +362,17 @@ queued → provisioning → preparing → running → evaluating
 - 打包前再次執行規格驗證；若有阻擋錯誤則不得標示為有效套件。
 - 套件保留必要 License、作者、原始來源及衍生關係資訊。
 
-**「作者」的落點（2026-08-18 新增；修訂依據：[m4/audit.md §2.1](m4/audit.md) 對 `PACK-003` 的裁定與 [m4/release-checklist.md §1.9](m4/release-checklist.md) P-2）**
+**「作者」的落點（2026-08-18 新增；修訂依據：[m4/audit.md §2.1](mvp/m4/audit.md) 對 `PACK-003` 的裁定與 [m4/release-checklist.md §1.9](mvp/m4/release-checklist.md) P-2）**
 
 上方第 3 條的四項裡，`License`／`原始來源`／`衍生關係` 都有 manifest 欄位承載，**只有「作者」沒有**，而這不是疏漏：**平台的資料模型裡沒有作者這個欄位**，Agent Skills 規格的 frontmatter 也沒有。要立一個 manifest 欄位就得先有一處可信的來源，而平台唯一知道的是匯入來源（repo URL 與 commit），那已經由 `source.origin` 承載。
 
 因此本條的「作者」以**套件位元組本身**滿足，不另立 manifest 欄位：作者資訊隨 `SKILL.md` frontmatter、套件根的 `LICENSE`（含著作權人行）與 `LICENSE.repo.provenance.json`（ADR-021 tier 3 的溯源註記）**逐位元組被複製進包**，由白名單保證不被剝除。
 
-**可判定形式**：對三個目標的產出 zip 斷言那三個檔案存在、內容與來源版本相同、且著作權人行未被改寫——**對匯出的位元組斷言，不對意圖斷言**（[m4/README.md §10 R3](m4/README.md)）。日後若平台真的取得可信的作者欄位（例如策展流程逐筆確認），再以 additive minor bump 加進 manifest。
+**可判定形式**：對三個目標的產出 zip 斷言那三個檔案存在、內容與來源版本相同、且著作權人行未被改寫——**對匯出的位元組斷言，不對意圖斷言**（[m4/README.md §10 R3](mvp/m4/README.md)）。日後若平台真的取得可信的作者欄位（例如策展流程逐筆確認），再以 additive minor bump 加進 manifest。
 - Secrets、測試憑證、內部路徑及不應散布的 Run 資料不得被打入套件。
 - 使用者可選擇是否包含可散布的 Test Case 與範例資料。
 
-**「可散布」的判準（2026-08-17 新增，依 [ADR-027](../../adr/ADR-027-download-artifact-shape-reproducibility-and-integrity.md)；修訂依據：[m4/README.md §7 差-2](m4/README.md)）**
+**「可散布」的判準（2026-08-17 新增，依 [ADR-027](../adr/ADR-027-download-artifact-shape-reproducibility-and-integrity.md)；修訂依據：[m4/README.md §7 差-2](mvp/m4/README.md)）**
 
 上方第 5 條的「可散布」此前沒有判準，`03` `PACK-005` 因此不可判定——範例 Dataset 的授權從哪來、使用者上傳的資料算不算，條文都沒有回答。以下把既有政策（PDM-002／PDM-008 的 source-available 保守預設、`CONTENT-002` 的「已人工確認不等於可再散布」、`CONTENT-007` 的範例資料判準）寫成可判定的形式，**不新增要求**。判準分兩層，**兩層都要通過**：
 
@@ -404,11 +404,11 @@ queued → provisioning → preparing → running → evaluating
 
 ### 4.7 內容供應與策展
 
-本節於 **2026-08-15 新增**。修訂依據：[content/content-summaries.md §3](content/content-summaries.md) 交付時發現本文件沒有任何 CONTENT 系列的需求 ID 與允收準則，`03-work-items.md` 第 4 節的九個工作項因此只有一行敘述、無可判定的完成標準（與威脅模型 Q19 記錄的 SEC 缺口同型，見第 6 節）。以下準則**把已定案與已落地的實務寫成判準**，不新增要求：來源與精選標準取自 [PDM-002](m0/pdm-proposals.md)（2026-08-14 定案），授權呈現取自 [ADR-021](../../adr/ADR-021-skill-license-provenance.md)，摘要工序取自 [ADR-013](../../adr/ADR-013-intent-search-architecture.md) 與 [content/content-summaries.md](content/content-summaries.md)，三層內容分級取自 [01 第 8 節](01-goals-and-plan.md)。
+本節於 **2026-08-15 新增**。修訂依據：[content/content-summaries.md §3](mvp/content/content-summaries.md) 交付時發現本文件沒有任何 CONTENT 系列的需求 ID 與允收準則，`03-work-items.md` 第 4 節的九個工作項因此只有一行敘述、無可判定的完成標準（與威脅模型 Q19 記錄的 SEC 缺口同型，見第 6 節）。以下準則**把已定案與已落地的實務寫成判準**，不新增要求：來源與精選標準取自 [PDM-002](mvp/m0/pdm-proposals.md)（2026-08-14 定案），授權呈現取自 [ADR-021](../adr/ADR-021-skill-license-provenance.md)，摘要工序取自 [ADR-013](../adr/ADR-013-intent-search-architecture.md) 與 [content/content-summaries.md](mvp/content/content-summaries.md)，三層內容分級取自 [01 第 8 節](01-goals-and-plan.md)。
 
 本節供應的是 4.1 Skill Explorer 的內容來源；來源與 License 的**平台實作**準則見 4.2 的 `SKILL-004`，本節規範的是**策展流程**。
 
-里程碑：`CONTENT-001`～`006`、`009` 為 M1；**`CONTENT-007`／`008` 為 M2**（依賴 M2 的 Test Case 與 Sandbox，2026-08-15 依 [m1/m1-work-items-audit.md §8](m1/m1-work-items-audit.md) 調整）。
+里程碑：`CONTENT-001`～`006`、`009` 為 M1；**`CONTENT-007`／`008` 為 M2**（依賴 M2 的 Test Case 與 Sandbox，2026-08-15 依 [m1/m1-work-items-audit.md §8](mvp/m1/m1-work-items-audit.md) 調整）。
 
 #### CONTENT-001：三層收錄政策與白名單
 
@@ -475,7 +475,7 @@ queued → provisioning → preparing → running → evaluating
 - 產出欄位限 ADR-013 的白名單（白話摘要、任務範例句、輸入／輸出／工具／依賴標籤、限制）；**不得包含信任、風險、安全、品質的判斷**。
 - 一般模式顯示所需的「限制」欄位須有值（`DISC-003`）；缺值者不得判定為通過。
 - ~~審核人為內容負責人，且**不得是該批產出的產生者**。精選全數必審；已索引抽審不低於 1/3，且必須涵蓋全部類別。~~
-  > **2026-08-16 修訂（負責人授權紀錄：2026-08-16 決定不進行人工審核）。** 審核方式改為**自動化審校**：以**獨立 Judge 模型**（`gpt-5.6-terra`，PDM-003 Judge 層，與生成模型 `gpt-5.6-sol` 分離）加機械檢查逐筆判定，判準與閾值先驗寫死於審校 Script 並附設計理由。「審核人不得是產生者」由**模型分離**滿足；抽審規定由**全 45 筆全量審校**取代（強度高於原準則，故不另設抽樣比例）。審校對象為**線上目錄的該版文字**（下方非決定性上限），工具為 [`tools/content/review_summaries.py`](../../../tools/content/review_summaries.py)，KPI 定義、閾值推導與逐筆判定見 [`m1/content-review-report.md`](m1/content-review-report.md)。負責人核可該報告即為核可審核結果；原文保留於刪除線供回溯。
+  > **2026-08-16 修訂（負責人授權紀錄：2026-08-16 決定不進行人工審核）。** 審核方式改為**自動化審校**：以**獨立 Judge 模型**（`gpt-5.6-terra`，PDM-003 Judge 層，與生成模型 `gpt-5.6-sol` 分離）加機械檢查逐筆判定，判準與閾值先驗寫死於審校 Script 並附設計理由。「審核人不得是產生者」由**模型分離**滿足；抽審規定由**全 45 筆全量審校**取代（強度高於原準則，故不另設抽樣比例）。審校對象為**線上目錄的該版文字**（下方非決定性上限），工具為 [`tools/content/review_summaries.py`](../../tools/content/review_summaries.py)，KPI 定義、閾值推導與逐筆判定見 [`m1/content-review-report.md`](mvp/m1/content-review-report.md)。負責人核可該報告即為核可審核結果；原文保留於刪除線供回溯。
 - 唯一主判準：非技術使用者讀完摘要與範例句後，能說出「這個 Skill 能為我做什麼、我要給它什麼」。
 - 否決條件（任一成立即不得記通過）：(a) 幻覺——宣稱套件文件沒有寫的能力；(b) 未依文件語言慣例在地化；(c) 超出 ADR-013 白名單的判斷。
 - 審核狀態值為 `待審`／`通過`／`需修改`；`需修改` 必須寫原因，無原因者視同 `待審`。
@@ -534,7 +534,7 @@ queued → provisioning → preparing → running → evaluating
 
 ### 4.8 產品分析與漏斗量測
 
-本節於 **2026-08-17 新增**。修訂依據：[m4/README.md §7 差-4](m4/README.md)——`03` `BETA-002` 要量 `01` §11.2 的核心漏斗，而**平台沒有產生使用者行為事件的任何機制**，且該工作項在本文件沒有對應的需求 ID 與允收準則（與 §4.7 CONTENT、§6 SEC 兩節新增前的狀況同型）。邊界依 [ADR-029](../../adr/ADR-029-product-analytics-events-and-audit-trace-boundaries.md)，本節不新增該 ADR 以外的要求。
+本節於 **2026-08-17 新增**。修訂依據：[m4/README.md §7 差-4](mvp/m4/README.md)——`03` `BETA-002` 要量 `01` §11.2 的核心漏斗，而**平台沒有產生使用者行為事件的任何機制**，且該工作項在本文件沒有對應的需求 ID 與允收準則（與 §4.7 CONTENT、§6 SEC 兩節新增前的狀況同型）。邊界依 [ADR-029](../adr/ADR-029-product-analytics-events-and-audit-trace-boundaries.md)，本節不新增該 ADR 以外的要求。
 
 里程碑：**M4**（承接工作項 `03` `O11Y-004`）。
 
@@ -612,7 +612,7 @@ queued → provisioning → preparing → running → evaluating
 
 ## 6. 安全需求（SEC）
 
-本節於 **2026-08-15 新增**，關閉威脅模型的開放問題 **Q19**（`02` 沒有 SEC-* 需求 ID 與允收準則，`03` 第 16 節的十個工作項因此無正式判準）。位置依 Q19 的建議置於非功能需求之後。以下準則**取自 [m0/threat-model-and-sandbox-baseline.md](m0/threat-model-and-sandbox-baseline.md)（v2）已落地的 32 條威脅與 45 項基線檢查**，不新增安全要求；該文件未定的門檻值一律標為未涵蓋，不在此處代為定值。
+本節於 **2026-08-15 新增**，關閉威脅模型的開放問題 **Q19**（`02` 沒有 SEC-* 需求 ID 與允收準則，`03` 第 16 節的十個工作項因此無正式判準）。位置依 Q19 的建議置於非功能需求之後。以下準則**取自 [m0/threat-model-and-sandbox-baseline.md](mvp/m0/threat-model-and-sandbox-baseline.md)（v2）已落地的 32 條威脅與 45 項基線檢查**，不新增安全要求；該文件未定的門檻值一律標為未涵蓋，不在此處代為定值。
 
 標註「後 MVP」者不在 MVP 首發範圍，其允收準則於對應功能啟動時生效。
 
@@ -641,7 +641,7 @@ queued → provisioning → preparing → running → evaluating
 - 節點池中無合格節點時，新 Run 停留在 `queued` 並顯示「執行環境暫時不可用」；不得降級排到一般應用節點。
 - 除基線檢查外，閘門 B 另阻擋：使用者未確認或未重新確認執行前權限摘要（`TEST-005`）、Skill Version 靜態掃描結果為阻擋級（依 `SEC-003` 政策）、超出 Workspace 並行或額度上限、請求能力超出 Provider 宣告能力（`RUN-001`）。
 - 每一項檢查都被第 5.6 節的測試類型覆蓋；**M1 結束前不要求全數通過，M2 的 SelfHostedProvider 驗收必須全數通過**。
-- 六項門檻**已定值（來源 [ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分，定案日 2026-08-16）**，每項的完整依據、量測點與違反時動作見該 ADR：
+- 六項門檻**已定值（來源 [ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分，定案日 2026-08-16）**，每項的完整依據、量測點與違反時動作見該 ADR：
 
   | 檢查 | 值 | 量測點 | 違反時 |
   | --- | --- | --- | --- |
@@ -653,7 +653,7 @@ queued → provisioning → preparing → running → evaluating
   | X-03／X-04 遺留資源告警與暫停 | **告警**：同一 `provider_run_id` 連續 2 輪（10 分鐘）仍存在。**暫停**：單節點遺留 ≥ 該節點 slot 的 50%（下限 1 筆）→ drain 該節點（drain 期間暫停 P-03 例行滾動重建）；全池遺留 ≥ 總 slot 的 25%（**下限 2 筆**）→ 暫停整池派送。非 slot 類（Virtual Key、Network Rule）連續 3 輪撤銷失敗 → 最高嚴重度告警，**不暫停派送**；**物件短效授權不在此類**（預簽 URL 無撤銷手段，窗口上界＝簽發 TTL，屬明示殘餘風險） | Reconciler 的 in-flight orphan 表（`provider_run_id → first_seen_round`）＋ 分項失敗計數器 `gateway_revoke_failed`／`sandbox_destroy_failed`（**需新指標，`03` SBX-012**） | drain／暫停派送／SEC-010 |
 
   **量測落地狀態**：I-03／I-04 的落點已由 **GHCR** 定案（ADR-019 待決策 1 已回填）解決，但**發佈流水線接 GHCR push ＋ attestation（`03` SBX-011）尚未實作**；X-03／X-04 的「連續 2 輪」與分項計數器**需新指標（`03` SBX-012）**。兩者完成前該三項不得記為自動通過。
-- ~~**勾選前提**：節點編排方案、節點是否單租戶、Egress Proxy 實作與允許清單管理流程（Q1～Q3）已有答案。~~ → **已成立（2026-08-16）**：Q1 節點編排採 compose-per-VM（一節點一個 `sandboxd`，不裝叢集排程器）；Q2 節點為**執行平面單租戶**（節點只承載不受信任工作負載，不與應用混排；同節點多 Run 併存，橫向風險為明示的殘餘風險）；Q3 沙箱層 egress 採 nftables default-deny ＋節點固定 DNS 解析器，允許清單存於 `infra/egress/allowlist.yaml` 並有變更、複審與記錄流程。三者見 [ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第一部分。
+- ~~**勾選前提**：節點編排方案、節點是否單租戶、Egress Proxy 實作與允許清單管理流程（Q1～Q3）已有答案。~~ → **已成立（2026-08-16）**：Q1 節點編排採 compose-per-VM（一節點一個 `sandboxd`，不裝叢集排程器）；Q2 節點為**執行平面單租戶**（節點只承載不受信任工作負載，不與應用混排；同節點多 Run 併存，橫向風險為明示的殘餘風險）；Q3 沙箱層 egress 採 nftables default-deny ＋節點固定 DNS 解析器，允許清單存於 `infra/egress/allowlist.yaml` 並有變更、複審與記錄流程。三者見 [ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第一部分。
 - **定值與有答案 ≠ 45 項全過。** 本需求仍未完全符合：閘門 B 的四項額外阻擋只落地兩項（靜態掃描等級判斷缺，根因為威脅模型 Q7；Workspace 並行上限強制缺），且 45 項基線尚未經 SEC-009 全數驗證。
 
 ### SEC-003：Skill 匯入與執行前靜態掃描政策
@@ -740,7 +740,7 @@ queued → provisioning → preparing → running → evaluating
 - 設定與供應鏈項目以**宣告式稽核**（節點准入探針、映像發佈流水線斷言）驗證，不以滲透測試代替。
 - 每次擴充 Runtime 時重跑 Runtime 相容性測試。
 - **M1 結束前不要求全數通過；M2 的 SelfHostedProvider 驗收必須全數通過。** 隔離技術 ADR 由 `Proposed` 轉 `Accepted` 的條件包含逃逸測試通過與 Runtime 相容性驗證通過。
-- **可執行的驗收程序見 [ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第三部分（2026-08-16 定案）**：測試環境需求（Suite 1 一般 Linux runner／Suite 2 生產同規格節點；**gVisor 的 `systrap` 平台不需巢狀虛擬化**，待部署批第一台節點實測確認）、**10 個測項**與 45 項基線的覆蓋核對、通過判準（**45 項全數 pass、0 項 unknown**，任一 fail 或 unknown 即不得開放外部使用者提交 Skill 執行，無例外流程）、執行者與時機、證據存放於 `plans/mvp/m4/sec-009-acceptance/<日期>-<節點>/`（判定表與 `versions.txt` 進 repo，原始輸出留 CI artifact 並附連結）並保存 ≥ 1 年。
+- **可執行的驗收程序見 [ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第三部分（2026-08-16 定案）**：測試環境需求（Suite 1 一般 Linux runner／Suite 2 生產同規格節點；**gVisor 的 `systrap` 平台不需巢狀虛擬化**，待部署批第一台節點實測確認）、**10 個測項**與 45 項基線的覆蓋核對、通過判準（**45 項全數 pass、0 項 unknown**，任一 fail 或 unknown 即不得開放外部使用者提交 Skill 執行，無例外流程）、執行者與時機、證據存放於 `plans/mvp/m4/sec-009-acceptance/<日期>-<節點>/`（判定表與 `versions.txt` 進 repo，原始輸出留 CI artifact 並附連結）並保存 ≥ 1 年。
 - **前置條件（缺一即判 `unknown` ＝ fail）**：受測 Runtime Image 已發佈至 **GHCR 且附 SBOM 與掃描 attestation**；`infra/nodes/gvisor-baseline.txt` 已填實際版本；`infra/egress/allowlist.yaml` 的 `tier: sandbox` 條目已填實際 `pinned_ip`，且該位址**不是控制平面節點**。
 - **程序定案不等於測試通過**：本項於 M2 結束時仍未達成，維持未勾。
 
@@ -751,7 +751,7 @@ queued → provisioning → preparing → running → evaluating
 - 存在一鍵停用 `SelfHostedProvider` 的流程：停止派送新 Run、排空節點池、保留現場供調查。
 - 觸發條件至少包含：逃逸疑慮、隔離技術的高風險 CVE 揭露、遺留資源持續超標、清理長期失敗。
 - 流程以 runbook 形式產出，可被值班人員直接執行。
-- 隔離技術「安全基準版本」的維護者與 CVE 應變 SLA **已定（[ADR-022](../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分 P-04，2026-08-16）**：維護者為平台維運負責人，基準檔 `infra/nodes/gvisor-baseline.txt`；逃逸類 CVE **24 h 內全池換版，做不到即依本需求停用 Provider**（此即本需求「觸發條件含隔離技術高風險 CVE 揭露」的具體判準），High 7 天，Medium 以下隨每月例行更新；24 h 自 `.github/workflows/gvisor-baseline.yml` 開出 issue 起算。
+- 隔離技術「安全基準版本」的維護者與 CVE 應變 SLA **已定（[ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分 P-04，2026-08-16）**：維護者為平台維運負責人，基準檔 `infra/nodes/gvisor-baseline.txt`；逃逸類 CVE **24 h 內全池換版，做不到即依本需求停用 Provider**（此即本需求「觸發條件含隔離技術高風險 CVE 揭露」的具體判準），High 7 天，Medium 以下隨每月例行更新；24 h 自 `.github/workflows/gvisor-baseline.yml` 開出 issue 起算。
 - ~~**未涵蓋（待決策）**：安全事件的嚴重度分級與值班責任歸屬（誰接最高等級告警）尚未定案~~ **已定案（2026-08-16）**：下方提案經負責人核可，自即日起為本需求的允收準則；值班輪替的討論待團隊有第二人時重開。
 
 #### SEC-010 事件嚴重度分級與回應（2026-08-16 提案，**同日經負責人核可生效**）
@@ -798,7 +798,7 @@ queued → provisioning → preparing → running → evaluating
 - operator 端點與一般端點分離；`member` 呼叫 operator 端點時回 **404**（不揭露資源與端點存在，同 `SEC-008` 的不揭露原則）。
 - 下架、失效與來源變更共用 `CONTENT-009`／`INGEST-010` 的同一流程與同一組狀態，不得為 operator 另開第二套。
 
-**2026-08-16 追加：授權受限展示（licensing hold）**——負責人裁定對 `anthropics/skills` 的 4 筆 source-available Skill 執行 [anthropic-sa-license-memo](governance/anthropic-sa-license-memo.md) 的方案 C，實作已落地（migration `0023` 的 `skills.access_restriction`）。它是 operator 動作 ① 的一個**更輕的等級**，因此其允收準則寫在此處而非另立需求：
+**2026-08-16 追加：授權受限展示（licensing hold）**——負責人裁定對 `anthropics/skills` 的 4 筆 source-available Skill 執行 [anthropic-sa-license-memo](mvp/governance/anthropic-sa-license-memo.md) 的方案 C，實作已落地（migration `0023` 的 `skills.access_restriction`）。它是 operator 動作 ① 的一個**更輕的等級**，因此其允收準則寫在此處而非另立需求：
 
 - **受限 ≠ 下架。** 受限的 Skill **仍列於搜尋結果、仍保有摘要／限制／依賴／來源／License／風險區塊**；只有「逐字重現套件內容」與「把套件複製進沙箱」兩條路徑關閉。以下架（`INGEST-010`，410 Gone ＋ 移出索引）處理，會移除這個裁定明確要保留的東西。
 - **關閉的範圍必須恰好是**：`GET /api/skills/{id}/files`（`SKILL.md` 全文與檔案樹）與 `POST /skills/{id}/runs`。下載本來就已由 `CONTENT-004`／ADR-012 封鎖，不在此重複上鎖。
@@ -839,4 +839,3 @@ MVP 只有在以下條件全部成立時，才能視為完成：
 - 下載套件通過格式驗證，不包含 Secrets，並保留來源與 License。
 - 完成安全、隱私、權限、資料隔離及刪除流程測試。
 - 完成至少一輪目標個人創作者的封閉測試，並記錄漏斗與質性回饋。
-

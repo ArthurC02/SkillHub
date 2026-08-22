@@ -4,7 +4,7 @@
 
 Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然語言描述任務 → 探索候選 Skill → 用自己的 Prompt 與測試資料在隔離 Sandbox 試跑 → 依 Trace 與評估報告改善 → 下載符合 Agent Skills 規格的可攜套件。
 
-## 目前狀態（2026-08-18）
+## 目前狀態（2026-08-22）
 
 **M4 打包與封測的程式面已收斂；M0～M3 亦已收斂。MVP 尚未完成——剩下的是部署期與負責人動作，不是程式。** 對帳見 [docs/plans/mvp/m4/audit.md](docs/plans/mvp/m4/audit.md)（49 項：**11 勾選、38 誠實不勾、零項退回**；**2026-08-18 稍晚的後端批後為 14 勾選、35 不勾**，見該檔 §7 補記；**同日的 UI 批再加 `DESIGN-012` 與 `WS-004` 兩項，為 16 勾選、33 不勾**，見 §8 補記）、[m3/audit.md](docs/plans/mvp/m3/audit.md)（16 項）與 [m2/m2-work-items-audit.md](docs/plans/mvp/m2/m2-work-items-audit.md)（41 項）。
 
@@ -12,13 +12,14 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 - **「程式面收斂」不等於「MVP 完成」**：`03` §18 的 `RELEASE-001`～`010` **十項全部誠實不勾**。共同的三個阻擋是**甲類四項未到期**、**六項 PDM 未追認**、**M1 閘門 D 日未宣告**。逐項的「誰做什麼驗什麼」見 [docs/plans/mvp/m4/release-checklist.md](docs/plans/mvp/m4/release-checklist.md)。
 - **M1 驗證閘門仍未正式通過**：材料已備妥（[docs/plans/mvp/gate-test/](docs/plans/mvp/gate-test/)），**D 日仍待負責人宣告**。**M4 與前三個里程碑不同——封測不能與閘門並行**（三個理由見 [m4/README.md §5.3](docs/plans/mvp/m4/README.md)），打包批可以。同意書草稿已補（[gate-test/consent-and-data-policy.md](docs/plans/mvp/gate-test/consent-and-data-policy.md)，**待法務確認**），它是閘門與封測共用的前置。
 - **ADR-020～029 已入列**（身分／Session、License 溯源、Sandbox 部署拓撲與安全定值、Agent SDK 版本釘選、頂層目錄分「跑的」與「讀的」；Run 終態與 Evaluation 判定分離、重評 append-only 與 LLM Judge 四條防線；**M4 的三份**：Download Artifact 的雙雜湊與「MVP 明文不簽章」、封測准入與配額強制點、產品分析事件的邊界）。**M4 沒有新增 ADR-030 之後的任何一份**——三份在文件批就寫完了。
-- **殘項三類清單**（甲＝部署期驗收、乙＝待負責人決策、丙＝實作或資料工作）見 [docs/plans/mvp/04-backlog-and-handoffs.md](docs/plans/mvp/04-backlog-and-handoffs.md)（**活文件**，隨時更新）——**開工前先看那份，它記的是「已定值但沒有強制」與「已量到但沒查根因」那一類洞**。目前**甲 4 項、乙 6 項、丙 17 項**（2026-08-18 M4 對帳批後：乙新增「同意書待法務確認」，丙新增十二項並結案丙-9／丙-10）。**十七項丙類沒有一項在等決策**，逐項補法見 [m4/release-checklist.md §1.9](docs/plans/mvp/m4/release-checklist.md)。
+- **殘項三類清單**（甲＝部署期驗收、乙＝待負責人決策、丙＝實作或資料工作）見 [docs/plans/04-backlog-and-handoffs.md](docs/plans/04-backlog-and-handoffs.md)（**活文件**，隨時更新）——**開工前先看那份，它記的是「已定值但沒有強制」與「已量到但沒查根因」那一類洞**。目前**甲 4 項、乙 6 項、丙 17 項**（2026-08-18 M4 對帳批後：乙新增「同意書待法務確認」，丙新增十二項並結案丙-9／丙-10）。**十七項丙類沒有一項在等決策**，逐項補法見 [m4/release-checklist.md §1.9](docs/plans/mvp/m4/release-checklist.md)。
 - **「移交 M4」六條接點已逐項裁定**：四條關閉（`PACK-002` 重用驗證路徑、衍生關係的溯源方向、可攜 Test Case 的兩半、評估產物由白名單排除），兩條轉殘項（乙-13 的 G7／G8、乙-14 的甲類到期）。**MVP 之後的接點另起一節**（`04` §移交下一階段）。
+- **2026-08-22 Platform 邊界批（不改 MVP 範圍，只改程式拓撲與強制力）**：`apps/platform/internal/` 依 [ADR-038](docs/adr/ADR-038-platform-product-domain-language-and-value-stream-navigation.md)／[ADR-040](docs/adr/ADR-040-platform-foundation-shared-kernel-and-entrypoint-topology.md) 重排為 `creator`／`skill`／`trial`／`product`／`shared`／`foundation`／`entrypoint`——**Boundary ID 一個都沒改**（`run`、`registry`、`identity` 仍是 query ownership 與 depguard 的機械鍵），改的只有 path，對照表在 [ADR-032](docs/adr/ADR-032-ddd-bounded-context-governance-for-platform.md) §1，導覽在 [apps/platform/internal/README.md](apps/platform/internal/README.md)。同批把 ADR-033／035 的跨 context 存量收乾：`db/query-owners.yaml` 的 `allow:` 與 `read_allow:` **現在都是零條**（DDD-031～060，逐條記在 `03` 的行內），裸 SQL 只剩九個具名技術豁免。**`03` 的歷史完成紀錄刻意保留當時的 flat path**，那是里程碑時點的證據，不是現行導覽。
 
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
-| `docs/plans/mvp/` | 產品基準：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/mvp/04-backlog-and-handoffs.md)（活文件）；`m0/`～`m4/` 為各里程碑凍結產出；`content/`／`governance/`／`gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/mvp/README.md](docs/plans/mvp/README.md) |
-| `docs/adr/` | 37 份架構決策紀錄（ADR-000～036；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
+| `docs/plans/` | [產品基準](docs/plans/README.md)：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/04-backlog-and-handoffs.md)（活文件）；`mvp/m0/`～`mvp/m4/` 為各里程碑凍結產出；`mvp/content/`／`mvp/governance/`／`mvp/gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/README.md](docs/plans/README.md) |
+| `docs/adr/` | 42 份架構決策紀錄（ADR-000～041；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
 | `docs/spikes/` | **已刪除，只留墓碑**：M0 驗證用 spike code，結論已沉澱到 m0 報告／ADR-013／ADR-023／`UPGRADES.md`／`tools/goldenset/` | [docs/spikes/README.md](docs/spikes/README.md)（含還原指令與結論落點對照） |
 
 Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **ADR-031（Accepted）** 按產物角色定義；它取代 ADR-024 的 `apps/`／`services/` 雙軌。結構性偏離需先更新 ADR。
@@ -75,10 +76,10 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容。
-- 新 ADR 從 **ADR-037** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
+- 新 ADR 從 **ADR-042** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
 - ADR 的待決策被後續 ADR 回答時，回填 `→ [ADR-xxx](...)` 引用（現有文件已有此慣例）。
 - 新 ADR 記得更新 [docs/adr/README.md](docs/adr/README.md) 的決策索引。
-- **檔案放哪裡**：活文件放 `docs/plans/mvp/` 根層（編號 `01~`）；里程碑的歷史產出放 `mX/`，里程碑完結即凍結。一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`。
+- **檔案放哪裡**：活文件放 `docs/plans/` 根層（編號 `01~`）；里程碑的歷史產出放 `docs/plans/mvp/mX/`，里程碑完結即凍結。跨里程碑主題材料放 `docs/plans/mvp/` 的相應主題目錄。一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`。
 - **里程碑目錄固定骨架**：`README.md`（計畫＋狀態＋檔案地圖）、`audit.md`、報告用 `report-*` 前綴；目錄內檔名不重複 `mX` 前綴（路徑已經說了）。**M3 起適用，既有檔名不回溯改。**
 
 ## 慣例
@@ -91,7 +92,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 
 ## 開發自動化（Agent 開工先讀）
 
-本節是人類與 Coding Agent 的共同入口；詳細決策見 [ADR-030](docs/adr/ADR-030-portable-developer-automation-and-contract-code-generation.md)，完整操作與排錯見 [開發自動化手冊](docs/development/automation.md)。不要把只在某一台電腦成立的 native command 當成 repo 的標準流程。
+本節是人類與 Coding Agent 的共同入口；詳細決策見 [ADR-030](docs/adr/ADR-030-portable-developer-automation-and-contract-code-generation.md)，完整操作與排錯見 [開發自動化手冊](docs/development/automation.md)，Platform 的 Bounded Context 日常判斷（含跨界協作選型、反模式與搬遷 checklist）見 [DDD 實務指南](docs/development/platform-ddd-practices.md)。不要把只在某一台電腦成立的 native command 當成 repo 的標準流程。
 
 1. **先診斷再修改**：進入 repo 後先看 `task --list`，再跑 `task doctor`。新電腦尚未安裝 Task 時，用 `go -C tools/devctl run . doctor`；版本來源是各語言原生檔與 `tools/toolchain.yaml`，不是 Agent 記憶。
 2. **初始化不覆寫秘密**：`task env:init` 只在 `.env` 不存在時由 `.env.example` 建立；不得把真實 key 寫入 `.env.example`、Log、Trace 或回覆。`task bootstrap` 只下載各語言依賴。
@@ -100,24 +101,27 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 5. **保護他人變更**：除既有的禁止 `git stash` 外，也禁止對未知修改執行 `git reset`、`git clean` 或 `git checkout -- <path>`；看到不屬於自己的 delta 就保留並回報。只以明確 pathspec stage 本批檔案。
 6. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/` 不交給多個寫入 Agent 平行處理。
 7. **平台限制要誠實**：Dev Container 是跨電腦的建議路徑，但不取代 SEC-009 的真實 Linux／gVisor 部署驗收。Doctor 的版本不符是環境診斷，不得靠跳過檢查偽裝成通過。
-8. **generated files 禁止手改**：修改 `db/migrations/**`、`db/queries/**` 或 `db/sqlc.yaml` 後，由主 Agent序列化執行 `task gen:sql`；修改 `contracts/openapi/public.yaml`／`llm-internal.yaml` 後執行 `task gen:openapi`。提交前一律跑 `task gen:check`。`apps/platform/internal/platform/db/gen/**`、`apps/platform/internal/api/gen/**`、`packages/api-client-ts/src/generated/**`、`packages/api-stub-py/src/skillhub_api_stub/generated/**` 的衝突要在來源解決後重生，不得手動合併。`task gen` 有 repo-local lock、暫存輸出與原子替換；SubAgent 不自行執行。
+8. **generated files 禁止手改**：修改 `db/migrations/**`、`db/queries/**` 或 `db/sqlc.yaml` 後，由主 Agent序列化執行 `task gen:sql`；修改 `contracts/openapi/public.yaml`／`llm-internal.yaml` 後執行 `task gen:openapi`。提交前一律跑 `task gen:check`。`apps/platform/internal/foundation/persistence/db/gen/**`、`apps/platform/internal/entrypoint/api/gen/**`、`packages/api-client-ts/src/generated/**`、`packages/api-stub-py/src/skillhub_api_stub/generated/**` 的衝突要在來源解決後重生，不得手動合併。`task gen` 有 repo-local lock、暫存輸出與原子替換；SubAgent 不自行執行。
 9. **transport type 不是產品政策**：Web 既有 `apps/web/src/api/types.ts` 是 UI view model，依 endpoint 逐一用 adapter 遷移，不得因 generated client 存在就整檔替換；Python generated models 只描述內部 HTTP payload，授權、政策、重試與狀態轉移仍在 Go（鐵律 6）。生成器與映像版本只從 `tools/toolchain.yaml` 讀。
 10. **Go generated router 不擁有 AuthZ**：Phase 4 只把 ogen server 放在 `router.go` 的精確 `GET /healthz` pattern 後。其他 route 仍逐條由 `router.go` 套 `RequireSession`／`RequireOperator`／`OptionalSession`；不得直接 mount 完整 generated server、不得讓 `UnimplementedHandler` 的其他 operation 對外可達。每移一條 endpoint 都要保留原 middleware 語意並加 route 測試。
-11. **Platform 的 Bounded Context 治理（ADR-032，2026-08-20 起生效）**：`apps/platform/internal/` 每個套件屬於且僅屬於一個 context；新增套件必須先在 ADR-032 §1 對照表登記。跨 context 的新 import 必須**同一個 commit** 改 ADR-032 附錄 A 與 `apps/platform/.golangci.yml` 的 depguard 規則（CI 以 depguard＋`devctl automation-check` 兩道強制）；領域 Service 一律由 `apiserver.NewApp` 注入，禁止方法內現場建構其他 context 的 Service。速查對照（事實來源是 ADR-032 §1）：
+11. **Platform 的 Bounded Context 治理（ADR-032，2026-08-20 起生效）**：`apps/platform/internal/` 每個套件屬於且僅屬於一個 context；新增套件必須先在 ADR-032 §1 對照表登記。跨 context 的新 import 必須**同一個 commit** 改 ADR-032 附錄 A 與 `apps/platform/.golangci.yml` 的 depguard 規則（CI 以 depguard＋`devctl automation-check` 兩道強制）；領域 Service 一律由 `entrypoint/api/apiserver.NewApp` 注入，禁止方法內現場建構其他 context 的 Service。速查對照（事實來源是 ADR-032 §1）：
 
-    | Context | 套件 | 需求 ID |
-    | --- | --- | --- |
-    | Identity & Workspace | `identity` | WS、SEC |
-    | Catalog & Discovery | `catalog` | DISC |
-    | Skill Registry & Versioning | `registry`、`skillpkg` | SKILL |
-    | Trust & Supply Chain | `ingest`（含版本寫入的唯一驗證路徑） | SKILL、SEC |
-    | Test Lab | `testlab` | TEST |
-    | Run Orchestration | `run` | RUN、SBX |
-    | Evaluation & Improvement | `eval` | EVAL |
-    | Packaging & Distribution | `packaging` | PACK |
-    | Run Trace | `trace` | TRACE |
-    | Policy & Usage | `policy`（quota 與 retention 規則）、`analytics`（漏斗量測） | PDM、NFR |
-    | Generic（無領域規則） | `audit`、`outbox`、`objreconcile`、`llmclient`、`skillpkg`、`platform/*`、`apiserver`、`api/gen` | — |
+    | Bounded Context | Boundary ID | 現行 internal path | 需求 ID |
+    | --- | --- | --- | --- |
+    | 創作者帳戶與工作區／Identity & Workspace | `identity` | `creator/workspace` | WS、SEC |
+    | Skill 探索／Catalog & Discovery | `catalog` | `skill/discovery` | DISC |
+    | Skill 資產與版本歷史／Skill Registry & Versioning | `registry` | `skill/library` | SKILL |
+    | Skill 接納與信任／Trust & Supply Chain | `ingest`（含版本寫入的唯一驗證路徑） | `skill/admission` | SKILL、SEC |
+    | 試跑情境設計／Test Lab | `testlab` | `trial/design` | TEST |
+    | Skill 試跑執行／Run Orchestration | `run` | `trial/execution` | RUN、SBX |
+    | 成果判定與改善／Evaluation & Improvement | `eval` | `trial/improvement` | EVAL |
+    | Skill 交付與安裝／Packaging & Distribution | `packaging` | `skill/delivery` | PACK |
+    | 執行證據／Run Trace | `trace` | `trial/evidence` | TRACE |
+    | 創作者使用權益與資料生命週期／Policy & Usage | `policy`（quota 與 retention 規則） | `product/entitlements` | PDM、NFR |
+    | 創作者旅程學習／Product Analytics | `analytics`（漏斗量測） | `product/learning` | O11Y、PDM |
+    | Shared Kernel | `skillpkg`（套件格式與驗證純函式） | `shared/skillpkg` | — |
+    | Generic（無領域規則） | `audit`、`outbox`、`objreconcile`、`llmclient`、`queue`、`objstore`、`metrics`、`partition`、`pgconv`、`envx`、`httpx` | `foundation/*` | — |
+    | Generated 與 composition root | `platform`、`apiserver`、`api` | `foundation/persistence/db/gen`、`entrypoint/api/apiserver`、`entrypoint/api/gen` | — |
 
 12. **Query ownership（ADR-033，2026-08-20 起生效）**：sqlc 把全部 query 生成到同一個 package，depguard 看不到。每條 query 的 owner context 宣告在 `db/query-owners.yaml`，由 `devctl automation-check` 強制：**跨 context 的 write query 呼叫會 FAIL**（read 只宣告不擋）。新增或刪除 `db/queries/*.sql` 的 query，同一批要改 `db/query-owners.yaml`，漏了 CI 會 FAIL。該檔的 `allow:` 是**存量漂移清單，不是擴充點**——新的跨 context 寫入要改程式，不准往下面加行。
 
@@ -125,16 +129,16 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 
 | 你要做的事 | 先看 |
 | --- | --- |
-| 理解產品範圍與里程碑 | `docs/plans/mvp/01-goals-and-plan.md` |
-| 查某功能的允收準則 | `docs/plans/mvp/02-specifications-and-acceptance-criteria.md`（按需求 ID） |
-| 找下一個工作項目 | `docs/plans/mvp/03-work-items.md`（章節已標里程碑） |
+| 理解產品範圍與里程碑 | `docs/plans/01-goals-and-plan.md` |
+| 查某功能的允收準則 | `docs/plans/02-specifications-and-acceptance-criteria.md`（按需求 ID） |
+| 找下一個工作項目 | `docs/plans/03-work-items.md`（章節已標里程碑） |
 | 理解系統邊界與平面 | ADR-001、002 |
 | 資料模型與儲存 | ADR-003、018 |
 | Monorepo 結構與 CI/CD | ADR-019、031 |
 | Run 生命週期與 Provider 契約 | ADR-004、008 |
 | 安全與信任 | ADR-005、007、015；部署拓撲與安全門檻定值見 ADR-022 |
 | Query 屬於哪個 context、能不能直接讀寫 | ADR-033（write）＋ADR-035（read、context 對照表對帳）＋`db/query-owners.yaml` |
-| 目前還缺什麼、誰在等誰 | `docs/plans/mvp/04-backlog-and-handoffs.md`（殘項三類清單＋跨里程碑待辦） |
+| 目前還缺什麼、誰在等誰 | `docs/plans/04-backlog-and-handoffs.md`（殘項三類清單＋跨里程碑待辦） |
 | 封測上線前要做什麼、誰做 | `docs/plans/mvp/m4/release-checklist.md`（程式面尚缺／部署期／負責人動作三段） |
 | 受測者同意書與資料保存政策 | `docs/plans/mvp/gate-test/consent-and-data-policy.md`（**草稿，待法務確認**；閘門與封測共用） |
 | 語言分工與跨語言守則 | ADR-016 |

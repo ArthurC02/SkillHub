@@ -3,7 +3,7 @@
 - 日期：**2026-08-15**（第一次對帳）／**2026-08-15 第二次對帳，範圍僅 §7 DISC**
 - 基準 commit：第一次 **`9ab422b`**（`Fix the four M1 import-report platform bugs and widen CONTENT-006 scanning`）；§7 DISC 的判定已於 **DISC-003 篩選器落地後重做**，見 §5 開頭的說明
 - 第二次對帳只重驗 §7 DISC。**§2／§3／§4／§6（CONTENT／CORE／INGEST／WS）維持第一次對帳的判定**，其基準仍是 `9ab422b`，其中提到的 DISC 現況已被 §5 取代
-- 範圍：`03-work-items.md` 的 **§4 CONTENT／§5 CORE／§6 INGEST／§7 DISC／§8 WS**，逐項對照 [`02-specifications-and-acceptance-criteria.md`](../02-specifications-and-acceptance-criteria.md) 的允收準則。
+- 範圍：`03-work-items.md` 的 **§4 CONTENT／§5 CORE／§6 INGEST／§7 DISC／§8 WS**，逐項對照 [`02-specifications-and-acceptance-criteria.md`](../../02-specifications-and-acceptance-criteria.md) 的允收準則。
 - 方法：**只採信 repo 內可指名的落地證據**——migration 檔、Go 檔與匯出符號、具名測試函式、CI 設定、已交付報告。沒有證據的項目一律記「未動」，不以「應該有」補位。
 - 判定值：**完全符合**（勾 `[x]`）／**部分完成**（不勾，列缺口）／**進行中**（另一位協作者的未 commit 工作，不勾）／**未動**（不勾）。
 - 依 AGENTS.md 文件維護規則：**部分完成一律保持 `[ ]`**。

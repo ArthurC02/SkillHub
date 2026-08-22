@@ -3,7 +3,7 @@
 - 狀態：Accepted
 - 日期：2026-08-22
 - 決策者：產品負責人、架構規劃
-- 相關：[ADR-016](./ADR-016-language-and-framework-selection.md)（前端選型）、[`02:NFR-007`](../plans/mvp/02-specifications-and-acceptance-criteria.md)、[`03` `QA-008`／`QA-009`／`DESIGN-013`](../plans/mvp/03-work-items.md)、[`04` 丙-21](../plans/mvp/04-backlog-and-handoffs.md)
+- 相關：[ADR-016](./ADR-016-language-and-framework-selection.md)（前端選型）、[`02:NFR-007`](../plans/02-specifications-and-acceptance-criteria.md)、[`03` `QA-008`／`QA-009`／`DESIGN-013`](../plans/03-work-items.md)、[`04` 丙-21](../plans/04-backlog-and-handoffs.md)
 
 ## 背景
 
@@ -13,7 +13,7 @@ M4 對帳（[m4/audit.md](../plans/mvp/m4/audit.md)）逐項量到一件事：**
 2. **真實版面**。`table-layout: fixed` 在窄視窗不會溢位，它會把欄位擠爛；jsdom 兩者都不算。
 3. **真實的 Tab 鍵**。jsdom 不實作它，所以 `src/a11y.test.tsx` 斷言的是「在 tab 序列裡、拿得到焦點」，而不是「真瀏覽器的 Tab 順序等於 DOM 順序」——這句界線寫在該檔檔頭第 3 點。
 
-這三件事構成 `QA-008` 的缺口，並且**是 `QA-009`／`DESIGN-013` 第三個不勾理由的天花板**（[`04` 丙-21 ③](../plans/mvp/04-backlog-and-handoffs.md)）。M4 對帳當時把它記成「需要一個決策而不只是一段程式」：要為 MVP 引入瀏覽器驅動（CI 時間、維護成本、單人團隊），還是改以人工在三個瀏覽器各走一次主要流程並落檔。
+這三件事構成 `QA-008` 的缺口，並且**是 `QA-009`／`DESIGN-013` 第三個不勾理由的天花板**（[`04` 丙-21 ③](../plans/04-backlog-and-handoffs.md)）。M4 對帳當時把它記成「需要一個決策而不只是一段程式」：要為 MVP 引入瀏覽器驅動（CI 時間、維護成本、單人團隊），還是改以人工在三個瀏覽器各走一次主要流程並落檔。
 
 決策驅動因素：
 
@@ -81,7 +81,7 @@ API 一律以 `page.route` 攔截。攔截器**先註冊 catch-all 再註冊具�
 | `--accent-bg` 改成深色 alpha | **19 個全過（完全瞎掉）** | **失敗** |
 | `--text` 改亮 | — | **報 58 個違規**（預期 0） |
 
-第一列正是 [`04` 丙-21 ③](../plans/mvp/04-backlog-and-handoffs.md) 記載的洞：`contrast.test.ts` 檔頭自陳四個 `rgba()` token 不解析、`.notice` 因此未檢——**那個洞現在被關上了，而且是被證明關上的，不是被宣稱關上的**。第二列證明綠燈代表規則真的跑了並做了判定。
+第一列正是 [`04` 丙-21 ③](../plans/04-backlog-and-handoffs.md) 記載的洞：`contrast.test.ts` 檔頭自陳四個 `rgba()` token 不解析、`.notice` 因此未檢——**那個洞現在被關上了，而且是被證明關上的，不是被宣稱關上的**。第二列證明綠燈代表規則真的跑了並做了判定。
 
 ### 6. 跨引擎的真實發現：Tab 測試斷言性質，不比對清單
 

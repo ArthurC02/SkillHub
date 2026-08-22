@@ -3,7 +3,7 @@
 - 狀態：Accepted
 - 日期：2026-08-22
 - 決策者：產品負責人、架構規劃
-- 相關：[ADR-016](./ADR-016-language-and-framework-selection.md)（前端選型）、[ADR-036](./ADR-036-real-browser-verification-tier.md)（真實瀏覽器驗證層＝本 ADR 多數規則的實際把關者）、[ADR-025](./ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)（執行狀態與評估判定分離）、[ADR-038](./ADR-038-platform-product-domain-language-and-value-stream-navigation.md)（價值流詞彙）、[`01` §2.1／§3／§5](../plans/mvp/01-goals-and-plan.md)、[`02:NFR-001`／`NFR-007`／`DISC-004`](../plans/mvp/02-specifications-and-acceptance-criteria.md)、[`04` 乙-2](../plans/mvp/04-backlog-and-handoffs.md)
+- 相關：[ADR-016](./ADR-016-language-and-framework-selection.md)（前端選型）、[ADR-036](./ADR-036-real-browser-verification-tier.md)（真實瀏覽器驗證層＝本 ADR 多數規則的實際把關者）、[ADR-025](./ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)（執行狀態與評估判定分離）、[ADR-038](./ADR-038-platform-product-domain-language-and-value-stream-navigation.md)（價值流詞彙）、[`01` §2.1／§3／§5](../plans/01-goals-and-plan.md)、[`02:NFR-001`／`NFR-007`／`DISC-004`](../plans/02-specifications-and-acceptance-criteria.md)、[`04` 乙-2](../plans/04-backlog-and-handoffs.md)
 - 操作手冊（活文件）：[docs/design/system.md](../design/system.md)
 
 ## 背景

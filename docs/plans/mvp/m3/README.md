@@ -3,8 +3,8 @@
 - 日期：2026-08-16（計畫）／**2026-08-17（程式面收斂）**
 - 狀態：**七批全部完成，程式面已收斂。** 逐工作項對帳見 [audit.md](audit.md)——**16 項：13 勾選、1 誠實不勾（`EVAL-011`）、2 已勾覆核後維持（`EVAL-013`／`CONTENT-007`）**。§7 的四個未決點已由 [ADR-025](../../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)／[ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策，§5 的三處差異已在 `02`／`03` 對齊。
 - 前提：M2 已完結（[../m2/README.md](../m2/README.md)）；**M1 驗證閘門 D 日仍待負責人宣告**，比照 M2 前例，M3 與閘門並行——**閘門結果沒有改變本計畫的任何技術內容**，R1 的對策（第 1～3 批不碰搜尋與內容、碰內容的 `CONTENT-007` 排最後）照計畫執行完畢。
-- 下一個里程碑是 **M4（打包與封測）**；M3 留下的殘項與 M4 接點見 [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md)（**活文件**）。
-- 上游輸入：[`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) 的**丙類七項接點**（逐項對應見 §3）、[`../m2/m2-work-items-audit.md`](../m2/m2-work-items-audit.md) 的七項誠實不勾（§4）。
+- 下一個里程碑是 **M4（打包與封測）**；M3 留下的殘項與 M4 接點見 [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md)（**活文件**）。
+- 上游輸入：[`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md) 的**丙類七項接點**（逐項對應見 §3）、[`../m2/m2-work-items-audit.md`](../m2/m2-work-items-audit.md) 的七項誠實不勾（§4）。
 
 ## 1. 一句話範圍
 
@@ -137,7 +137,7 @@ M3 讓每一次 Run 得到一份**逐條驗收條件、附可驗證證據、標�
 | --- | --- |
 | [`../content/writing-rubrics.md`](../content/writing-rubrics.md) | `CONTENT-007` 的 5 份 writing 預設 rubric（`content-007/writing/v1`）；A 輪之後就地更正 §2.2 的證據路徑遺漏並新增缺口 G7 |
 | `tools/eval-regression/` | 回歸 harness `judge_regression.py`、append-only 的 `results.jsonl`、機器可讀的 `rubric-content-007-writing-v1.json` |
-| [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) | **殘項的唯一入口，活文件不凍結。** M3 的新殘項與 M4 接點都在那裡 |
+| [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md) | **殘項的唯一入口，活文件不凍結。** M3 的新殘項與 M4 接點都在那裡 |
 
 ## 10. 架構鐵律在 M3 的落點（開工前必讀）
 

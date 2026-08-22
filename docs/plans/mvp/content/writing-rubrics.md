@@ -1,8 +1,8 @@
 # CONTENT-007：`writing` 類精選的預設 rubric
 
 - 日期：**2026-08-17**
-- 對應需求：[`02` §4.7 CONTENT-007](../02-specifications-and-acceptance-criteria.md) 第 3 條——「`writing` 類的每個精選附一份可編輯 rubric，供 LLM Judge 逐項回傳證據引文」
-- `rubric_version`：**`content-007/writing/v1`**（本文件即該版本的內容。任一條目的文字、`weight` 或 `evidence_required` 變更＝**升版**，並依 [`02:EVAL-013`](../02-specifications-and-acceptance-criteria.md) 第 3、4 條重跑 Judge 回歸）
+- 對應需求：[`02` §4.7 CONTENT-007](../../02-specifications-and-acceptance-criteria.md) 第 3 條——「`writing` 類的每個精選附一份可編輯 rubric，供 LLM Judge 逐項回傳證據引文」
+- `rubric_version`：**`content-007/writing/v1`**（本文件即該版本的內容。任一條目的文字、`weight` 或 `evidence_required` 變更＝**升版**，並依 [`02:EVAL-013`](../../02-specifications-and-acceptance-criteria.md) 第 3、4 條重跑 Judge 回歸）
 - 對象：`curated-skill-list.md` §2.2 的 **5 個 `writing` 精選**——`brand-guidelines`、`internal-comms`、`humanizer`、`line-edit`、`ai-written-check`
 - 消費端：[`contracts/openapi/llm-internal.yaml`](../../../../contracts/openapi/llm-internal.yaml) 的 `Rubric`／`RubricItem`、`POST /judge-run`
 - ~~**CONTENT-007 仍不勾**，缺口逐項見 §6。本文件關掉的是「rubric 的內容不存在」，**沒有**關掉「rubric 存不進平台、使用者改不到、產品路徑上送不出去」。~~
@@ -263,6 +263,8 @@ Go 對三種證據的回驗方式不同（`internal/eval/judge.go` 的 `verify()
 **harness 側需要的最小改動**（`tools/eval-regression/judge_regression.py`，**不在本文件的改動範圍**，屬 M3 第 7 批）：目前 `rubric_version` 寫死 `None`、`criteria` 一律取自快照的三條。需要一個 `--rubric <file>` 之類的入口，讀進 §4 的 JSON，把 `criteria` 併入請求、把 `rubric` 帶上、把 `rubric_version` 記成 `content-007/writing/v1`。**換 `rubric_version` 就是另一次回歸**（`02:EVAL-013` 第 3 條），結果照舊 append 進 `results.jsonl`，不覆寫。
 
 > **2026-08-17 更新**：上述 harness 入口已實作（`--rubric`，輸入檔為 `tools/eval-regression/rubric-content-007-writing-v1.json`，內容逐字取自 §4），**A 輪已跑完**——結果與上表的預期**不一致**，`undetermined` 只有 13.6% 而非「絕大多數」。原因、代價與由此查出的 G7，見 [report-judge-regression.md §11](../m3/report-judge-regression.md) 與本文件 §2.2 的更正註記。**B 輪仍未跑**：它要重發 5 次真實 Run（沙箱＋映像＋閘道費用），屬 Run 批而非接線批。
+
+> **2026-08-22 工具治理更新**：B 輪的五筆新 Run 完成後，必須以五個重複的 `--run-id UUID` 明確選取，並先加 `--dry-run` 做 live-read 預檢；通過後才移除 `--dry-run` 呼叫 Judge。這避免新 Run 尚未進 compatibility 表時，harness 無聲重播 A 輪的 M2 Run；結果仍只准 append 到 `results.jsonl`。
 
 ---
 

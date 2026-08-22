@@ -432,7 +432,7 @@ pdf                    fa820905ee07004192ea1dfe01132891
 ### 12.5 連帶狀態
 
 - 就 KPI3 這一條而言，`excel-format` 的**通過維持**，`curated-skill-list` 檢查 ⑦ 的 15/15 維持，`03` 的 CONTENT-005 勾選**不因本項退回**。
-- CONTENT-005 現為 **44/45**，唯一未收斂的是 `docx`（§11.3），**與本追認無關**，仍待負責人裁定（[`04` 殘項乙-11](../04-backlog-and-handoffs.md)）。
+- CONTENT-005 現為 **44/45**，唯一未收斂的是 `docx`（§11.3），**與本追認無關**，仍待負責人裁定（[`04` 殘項乙-11](../../04-backlog-and-handoffs.md)）。
 - [gate-test/README §3.1](../gate-test/README.md) 的「一項判準範圍修正待追認」已可改記為已追認。
 
 ---

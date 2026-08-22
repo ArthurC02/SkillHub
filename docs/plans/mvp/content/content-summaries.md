@@ -6,12 +6,12 @@
 - 版本基線：**精選 15 筆全部為 `enrich-skill/v2`**；已索引 30 筆中 8 筆仍為 v1（§2.2）
 - 機器可讀產出：[`tools/content/summaries.json`](../../../../tools/content/summaries.json)（45 筆，含 `model`、`prompt_version`、生成時間）
 - 產生工具：[`tools/content/generate_summaries.py`](../../../../tools/content/generate_summaries.py)（`--selftest` 為離線自我檢查）
-- 承接工作項：[`03-work-items.md` CONTENT-005](../03-work-items.md)；[`curated-skill-list.md` §3 檢查 ⑦](curated-skill-list.md)
+- 承接工作項：[`03-work-items.md` CONTENT-005](../../03-work-items.md)；[`curated-skill-list.md` §3 檢查 ⑦](curated-skill-list.md)
 - 依據：
   - [ADR-013 §1](../../../adr/ADR-013-intent-search-architecture.md)（索引時增強每個 Skill Version 執行一次；**生成內容標示為模型產出，錯誤可由人工修正並觸發重建**）
   - ADR-013「成本與限制」第 1 條（**索引時增強的品質決定搜尋上限，需要人工抽查機制**）——本文件即該機制的落地
   - [PDM-002 精選檢查 ⑦](../m0/pdm-proposals.md)（有可理解的白話摘要：非技術使用者讀得懂它做什麼、需要什麼輸入）
-  - [02 §DISC-003](../02-specifications-and-acceptance-criteria.md)（一般模式顯示功能、限制、輸入、輸出、依賴……）
+  - [02 §DISC-003](../../02-specifications-and-acceptance-criteria.md)（一般模式顯示功能、限制、輸入、輸出、依賴……）
 
 ---
 
@@ -21,7 +21,7 @@
 
 **是**：對 45 筆種子 Skill 的模型生成摘要，建立一份可審核、可追溯、有判定欄位的紀錄。
 
-**不是**：摘要的產生器。摘要不是在這份文件裡「手寫」出來的——平台的匯入管線（[`apps/platform/internal/ingest/enrich.go`](../../../../apps/platform/internal/ingest/enrich.go)）在每次匯入時自動呼叫 `POST /v1/enrich-skill` 產生，並由詳情頁的 `enrichment` 區塊呈現（見 §3）。本工序補的是**精選內容的人工審核紀錄**，也就是 ADR-013 明列、但在此之前不存在的「人工抽查機制」。
+**不是**：摘要的產生器。摘要不是在這份文件裡「手寫」出來的——平台的匯入管線（[`apps/platform/internal/skill/admission/enrich.go`](../../../../apps/platform/internal/skill/admission/enrich.go)）在每次匯入時自動呼叫 `POST /v1/enrich-skill` 產生，並由詳情頁的 `enrichment` 區塊呈現（見 §3）。本工序補的是**精選內容的人工審核紀錄**，也就是 ADR-013 明列、但在此之前不存在的「人工抽查機制」。
 
 > **摘要不在本文件就地改寫。** 判定「需修改」的處置是調整 prompt 或把該筆標為人工覆寫，再重跑增強與 reindex（ADR-013 §1「錯誤可由人工修正並觸發重建」）。直接在這裡改字，改到的只是紀錄，不是使用者看到的東西。
 
@@ -136,7 +136,7 @@
 | PDM-002 檢查 ⑦ | 非技術使用者讀得懂它做什麼、需要什麼輸入 | 已審校：主判準 45/45、精選 15/15 通過 | ✅ **⑦ 改記 `pass`** |
 | ADR-013「需要人工抽查機制」 | 建立抽查機制 | 本文件即該機制：判定欄位、判準、否決條件、改法（重跑增強而非就地改字） | ✅ 已建立 |
 | 02 §DISC-003 | 一般模式顯示功能、限制、輸入、輸出、依賴、權限、來源、License、相容性 | 「功能」＝`summary`；「輸入／輸出／依賴」＝`tags`；「限制」＝`limitations` | ✅ **精選 15/15 已有 `limitations`**（第二輪重跑補齊，§2.5）。線上目錄 45/45 為 v2，同樣全數有 `limitations` |
-| 「呈現於平台」 | — | 已由 `ingest/enrich.go` 於匯入時自動產生（commit `b144bea`），由 `catalog/detail.go` 的 `enrichmentFrom` 供給 `enrichment` 區塊（commit `ebc4036`），契約見 `contracts/openapi/public.yaml`（`summary` 恆為套件自身 frontmatter，模型產出一律落在 `enrichment` 之下並標示）。測試：`apps/platform/internal/ingest/enrich_test.go`、`apps/llm/tests/test_enrich.py` | ✅ 已呈現；本工序補的是**人工審核紀錄** |
+| 「呈現於平台」 | — | 已由 `skill/admission/enrich.go` 於匯入時自動產生（commit `b144bea`），由 `skill/discovery/detail.go` 的 `enrichmentFrom` 供給 `enrichment` 區塊（commit `ebc4036`），契約見 `contracts/openapi/public.yaml`（`summary` 恆為套件自身 frontmatter，模型產出一律落在 `enrichment` 之下並標示）。測試：`apps/platform/internal/skill/admission/enrich_test.go`、`apps/llm/tests/test_enrich.py` | ✅ 已呈現；本工序補的是**人工審核紀錄** |
 
 > **`anthropics/skills` 的免責條款怎麼處理。** `curated-skill-list.md` §3 腳註 3 要求把 README 的 "provided for demonstration and educational purposes only" 納入摘要措辭考量。**本工序的判定是：不納入摘要。** 該句是使用免責，屬於信任／品質陳述，而 ADR-013 白名單明令模型產出不得包含這一類判斷（`enrich.py` 的 system prompt 亦明文禁止）。它應由詳情頁的 License／來源區塊承接（ADR-021 的兩軸答案，`license.status` 目前最高只到 `declared`）。**此解讀需負責人確認**；若負責人要求摘要承載免責，則需改的是 ADR-013 白名單，不是這批摘要。涉及 6 筆（`brand-guidelines`、`internal-comms`、`docx`、`pdf`、`pptx`、`xlsx`）。
 

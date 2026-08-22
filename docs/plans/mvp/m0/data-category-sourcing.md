@@ -220,4 +220,4 @@ PDM-002 對此方向的風險預判——「作者可辨識性與 License 明確
 | `plans/mvp/m0/pdm-proposals.md` §2 選項 A 註記 | 「skill 目錄實數待清點(v1 記為 17,未經核對)」可結案:**實數確為 17**,選項 A 維持否決 | 同上 |
 | `plans/mvp/m0/pdm-proposals.md` §4 白名單表 | 加 `lxml`(必要)、`matplotlib`(建議) | §5 條件 1／2 定案 |
 | `plans/mvp/m0/README.md` | 「PDM-001/002 阻塞於 `data` 類別零白名單供給(唯一高嚴重度未解項)」需更新 | 負責人採納後 |
-| `plans/mvp/03-work-items.md` | CONTENT-003／008 的勾選;**本次未動,依 AGENTS.md 須完全符合允收準則才勾** | 精選標準第 8 項可執行後 |
+| `plans/03-work-items.md` | CONTENT-003／008 的勾選;**本次未動,依 AGENTS.md 須完全符合允收準則才勾** | 精選標準第 8 項可執行後 |

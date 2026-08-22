@@ -2,7 +2,7 @@
 
 - 日期：**2026-08-18**
 - 這是什麼：`03` §18 的十項 `RELEASE-*` 是 `02` §7 Definition of Done 的**逐條檢查表**，但它們只寫了「要檢查什麼」，沒有寫「**誰做、做什麼、驗什麼、什麼順序**」。這份補那一半。
-- **勾選狀態的唯一事實來源不是本檔**，是 [`../03-work-items.md`](../03-work-items.md) §18 與 [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md)。本檔是**順序與說明**，M4 完結即凍結；部署期的實際結果回填那兩份。
+- **勾選狀態的唯一事實來源不是本檔**，是 [`../../03-work-items.md`](../../03-work-items.md) §18 與 [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md)。本檔是**順序與說明**，M4 完結即凍結；部署期的實際結果回填那兩份。
 - 目標事件：**B 日**（封測開始日，[pdm-009-beta-proposal.md §5.2](pdm-009-beta-proposal.md)）。B 日的前提是本檔 §2～§4 全部成立。
 - 相關：[README.md §4](README.md)（甲類四項的到期裁定）、[README.md §5](README.md)（程式／人的分界）、[beta-design.md §8](beta-design.md)（封測開始前的 11 項檢查，本檔是它的擴充）、[audit.md](audit.md)（勾選與不勾的逐項理由）
 
@@ -58,7 +58,7 @@
 
 > **2026-08-18 第二次補記（本檔凍結，只加這一段，表格與其後的段落原文不動）**：**§1.9 的十二項全部完成。** P-6 與 P-12、以及 P-5／P-9／P-10 的前端半邊由 UI 批與其後的收尾批補上；`03` 的 `DESIGN-012`／`WS-004`／`PACK-007`／`CORE-007`／`O11Y-004` 五項改判勾選（前兩項見 [audit.md §8](audit.md)，後三項見 [§9](audit.md)）。
 >
-> **本節末尾那句「另有兩項要先有 §3 的決策才能動」要當作已被推翻讀**（同 P-7 的處置）。**兩項都不需要新決策，而且兩項的可做部分都已經做完**：①`SEC-012` 的自動觸發——「接哪幾條判準」不是偏好而是查得出來的事實，平台自己看得見的兩條（`TraceMaskingStopped`、Reconciler 停擺 > 10 分鐘）已接上，其餘三條的訊號在本 process 之外，屬 §2 部署期；**`SEC-012` 仍不勾**。②無障礙的對比守門——`QA-008` 管的是**算繪後的合成像素**，而 token 層的靜態十六進位值不需要版面計算，已落地為 `apps/web/src/contrast.test.ts`；合成像素（alpha、`opacity`、真瀏覽器算繪）仍無守門，**`QA-009`／`DESIGN-013` 仍不勾**。**兩次是同一個形狀：一段不需要決策的工作，被掛在一個真的要人拍板的東西旁邊一起等。** 逐項見 [audit.md §9](audit.md) 與 [`04` 丙-21／丙-26](../04-backlog-and-handoffs.md)。
+> **本節末尾那句「另有兩項要先有 §3 的決策才能動」要當作已被推翻讀**（同 P-7 的處置）。**兩項都不需要新決策，而且兩項的可做部分都已經做完**：①`SEC-012` 的自動觸發——「接哪幾條判準」不是偏好而是查得出來的事實，平台自己看得見的兩條（`TraceMaskingStopped`、Reconciler 停擺 > 10 分鐘）已接上，其餘三條的訊號在本 process 之外，屬 §2 部署期；**`SEC-012` 仍不勾**。②無障礙的對比守門——`QA-008` 管的是**算繪後的合成像素**，而 token 層的靜態十六進位值不需要版面計算，已落地為 `apps/web/src/contrast.test.ts`；合成像素（alpha、`opacity`、真瀏覽器算繪）仍無守門，**`QA-009`／`DESIGN-013` 仍不勾**。**兩次是同一個形狀：一段不需要決策的工作，被掛在一個真的要人拍板的東西旁邊一起等。** 逐項見 [audit.md §9](audit.md) 與 [`04` 丙-21／丙-26](../../04-backlog-and-handoffs.md)。
 
 | # | 做什麼 | 驗什麼 | 解鎖 |
 | --- | --- | --- | --- |
@@ -81,7 +81,7 @@
 
 ## 2. 部署期（真機，`SEC-009` 未過即不得開放外部使用者提交 Skill 執行）
 
-**依據不是新的**：ADR-015 定案紀錄。M0～M3 能把甲類當平行工作是因為**沒有任何外部使用者**；封測第一次讓外部人員在真實部署上建立 Run。裁定見 [README.md §4](README.md)，拍板見 [`04` 乙-14](../04-backlog-and-handoffs.md)。
+**依據不是新的**：ADR-015 定案紀錄。M0～M3 能把甲類當平行工作是因為**沒有任何外部使用者**；封測第一次讓外部人員在真實部署上建立 Run。裁定見 [README.md §4](README.md)，拍板見 [`04` 乙-14](../../04-backlog-and-handoffs.md)。
 
 ### 2.1 甲類四項（封測阻擋項）
 
@@ -181,6 +181,15 @@ psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 - [ ] 一個人走完 `02` §7 DoD 第一條的旅程（意圖搜尋 → 詳情 → Fork → 試跑 → 評估 → 打包下載），落檔
 - [ ] 驗 `anthropics/skills` 那四筆**真的打不出包**（兩道鎖各驗一次：撤下 hold 之後 `redistribution` 仍應擋住）——**這是寄詢問信前的實測要求**（§3）
 - [ ] 驗至少一個 `documents` 類精選 Skill **可下載**（[beta-design.md §8](beta-design.md) 第 11 項；那四筆受限讓該類最好的樣本不可下載，PDM-002 早已要求補 2–3 個 OSI 授權的替代品，**那是 `documents` 類的必要條件不是加分項**）
+
+### 2.8 仍待定值或部署驗證的技術債
+
+- [ ] **`DEPLOY-IAC-001`**：部署負責人建立 ADR-022 的 sandbox node IaC／cloud-init/render；pinned IP 未填時不得產生放行規則，並以 SEC-009 真機證據驗收。
+- [ ] **`RUNTIME-PYTHON-001`**：負責人先定值 Python runtime 版本；部署負責人令 runtime image、文件與真實 gVisor 證據一致。不得把目前 image 的版本視為追認。
+- [ ] **`LLM-RES-001`（partial）**：既有 query 長度三層上限保留；部署負責人補 anonymous search 的分散式 rate limit／成本保護，並證明拒絕請求不會呼叫 embedding 或 match-reason LLM。
+- [ ] **`SUPPLY-RUNTIME-LOCK-001`**：runtime image owner 將 Python／Node transitive dependency 改為 repo-owned lock 或 constraints；以乾淨 cache 的兩次 build 證明 dependency tree 一致。
+
+`LLM-EVAL-007` 是產品／帳務決策，不在部署清單中；其 owner、決策與 contract evidence 見 [`04` N-8](../../04-backlog-and-handoffs.md)。
 
 ---
 

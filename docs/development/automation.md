@@ -1,6 +1,6 @@
 # 開發自動化與 Coding Agent 協作
 
-本文件是 ADR-030 的操作手冊。`AGENTS.md` 放開工前的強制短版規則；本檔解釋命令、檔案所有權、環境分級與排錯。兩者不另造第二套流程，所有入口最後都走 `Taskfile.yml` 與 `tools/devctl`。
+本文件是 ADR-030 的操作手冊。`AGENTS.md` 放開工前的強制短版規則；本檔解釋命令、檔案所有權、環境分級與排錯。兩者不另造第二套流程，所有入口最後都走 `Taskfile.yml` 與 `tools/devctl`。Platform 的 Bounded Context 日常判斷見 [DDD 實務指南](./platform-ddd-practices.md)。
 
 ## 新電腦的最短路徑
 
@@ -45,8 +45,8 @@ Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS
 
 | 人工修改來源 | 生成目標（不得手改） | 入口 |
 | --- | --- | --- |
-| `db/migrations/**`、`db/queries/**`、`db/sqlc.yaml` | `apps/platform/internal/platform/db/gen/**` | `task gen:sql` |
-| `contracts/openapi/public.yaml` | `apps/platform/internal/api/gen/**`、`packages/api-client-ts/src/generated/**` | `task gen:openapi` |
+| `db/migrations/**`、`db/queries/**`、`db/sqlc.yaml` | `apps/platform/internal/foundation/persistence/db/gen/**` | `task gen:sql` |
+| `contracts/openapi/public.yaml` | `apps/platform/internal/entrypoint/api/gen/**`、`packages/api-client-ts/src/generated/**` | `task gen:openapi` |
 | `contracts/openapi/llm-internal.yaml` | `packages/api-stub-py/src/skillhub_api_stub/generated/**` | `task gen:openapi` |
 
 `.devctl/**` 是 gitignored lock／scratch，不是可引用、可提交或可手改的 generated API。Generator 失敗時只查看它作診斷；正式產物只以上表為準。

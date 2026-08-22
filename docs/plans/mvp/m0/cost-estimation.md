@@ -2,7 +2,7 @@
 
 - 狀態：**試算完成（v2，經複核修正；§6.2 已依模型供應商定案增補 v3 重估），ADR-014／ADR-015 定案待負責人確認**
 - 日期：2026-08-13（v1）／2026-08-13 修訂（v2）／**2026-08-14 §6.2 增補 v3**（模型供應商定案為 OpenAI，見 §6.2.3 與 §9.4）
-- 用途：解除 [ADR-014](../../../adr/ADR-014-core-infrastructure-selection.md)（「部署平台確認與成本試算」）與 [ADR-015](../../../adr/ADR-015-sandbox-isolation-technology.md)（「部署平台支援驗證」）的定案前置條件；同時回應 [01-goals-and-plan.md](../01-goals-and-plan.md) 第 12 節風險「Sandbox 成本不可持續」。
+- 用途：解除 [ADR-014](../../../adr/ADR-014-core-infrastructure-selection.md)（「部署平台確認與成本試算」）與 [ADR-015](../../../adr/ADR-015-sandbox-isolation-technology.md)（「部署平台支援驗證」）的定案前置條件；同時回應 [01-goals-and-plan.md](../../01-goals-and-plan.md) 第 12 節風險「Sandbox 成本不可持續」。
 - 幣別：USD。所有價格為 2026-08-13 查詢之公開牌價（On-Demand／隨用隨付，未套用任何承諾折扣或新創補助）。
 - 匯率假設：1 EUR = 1.1538 USD（[Federal Reserve H.10, 2026-08-12](https://www.federalreserve.gov/releases/h10/hist/dat00_eu.htm)）。
 

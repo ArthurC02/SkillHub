@@ -7,7 +7,7 @@
 
 ## 背景
 
-[AGENTS.md](../../AGENTS.md) 明列「Monorepo 目錄結構與 CI/CD **尚未決策**——不要自行發明結構開始鋪程式碼，先提案」。負責人已指示開工，M1 要落地的工作量（`plans/mvp/03-work-items.md` 第 5～8 節：CORE-001~008、INGEST-001~010、DISC-001~010、WS-001~006）橫跨三種語言與資料庫 Migration，沒有共同結構就無法開始。
+[AGENTS.md](../../AGENTS.md) 明列「Monorepo 目錄結構與 CI/CD **尚未決策**——不要自行發明結構開始鋪程式碼，先提案」。負責人已指示開工，M1 要落地的工作量（`plans/03-work-items.md` 第 5～8 節：CORE-001~008、INGEST-001~010、DISC-001~010、WS-001~006）橫跨三種語言與資料庫 Migration，沒有共同結構就無法開始。
 
 決策驅動因素：
 

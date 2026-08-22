@@ -1,7 +1,7 @@
 # M1 驗證閘門 — 使用者測試套件
 
 - 日期：**2026-08-15**
-- 對應：[01-goals-and-plan.md §10](../01-goals-and-plan.md)「M1 驗證閘門」、[m1-work-items-audit.md §7](../m1/m1-work-items-audit.md)、[golden-query-set.md §10.8](../m1/golden-query-set.md)、`02:DISC-001`～`DISC-004`
+- 對應：[01-goals-and-plan.md §10](../../01-goals-and-plan.md)「M1 驗證閘門」、[m1-work-items-audit.md §7](../m1/m1-work-items-audit.md)、[golden-query-set.md §10.8](../m1/golden-query-set.md)、`02:DISC-001`～`DISC-004`
 - 狀態：**材料就緒，未執行。** 本目錄不修改任何既有文件，不勾選任何工作項目，不改寫任何 ADR。
 - 位置：出自 M1，但**不放在 `m1/`**——它治理的是一道與 M2 並行、D 日仍未宣告的**跨里程碑**閘門（2026-08-16 依 [ADR-024](../../../adr/ADR-024-top-level-repository-layout.md) 由 `m1/gate-test/` 遷至此，見 [§3.1](#31-執行前置未全數解除前不得開始)）。目錄整體為**閘門凍結標的**，變更規則見 §3.2。
 

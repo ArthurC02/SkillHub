@@ -3,7 +3,7 @@
 - 日期：2026-08-16
 - 性質：**分析與處置提案，非法律意見。終判保留給負責人與法務。**
 - 撰寫依據：`plans/` 內既有的實查紀錄，未新增法律檢索、未諮詢外部意見
-- 承接：[`04` 殘項乙-10](../04-backlog-and-handoffs.md)（M1 遺留的法務判定）、[curated-skill-list §5.2](../content/curated-skill-list.md)（升級告警原文）、`03` `CONTENT-003`／`CONTENT-004` 的未勾原因
+- 承接：[`04` 殘項乙-10](../../04-backlog-and-handoffs.md)（M1 遺留的法務判定）、[curated-skill-list §5.2](../content/curated-skill-list.md)（升級告警原文）、`03` `CONTENT-003`／`CONTENT-004` 的未勾原因
 - 相關：[ADR-012](../../../adr/ADR-012-packaging-portability-and-agent-adapters.md)（不可散布即不打包）、[ADR-021](../../../adr/ADR-021-skill-license-provenance.md)（授權兩軸）、`02` `CONTENT-002`／`CONTENT-004`
 
 ## 1. 事實（已實查，非本備忘新查）
@@ -97,7 +97,7 @@
 ## 5. 待處理的連帶事項
 
 - `03` `CONTENT-003`／`CONTENT-004` 的未勾原因之一即為本判定，終判後可一併結案。
-- `docx` 另有一件**獨立**的未決事項：CONTENT-005 審校兩輪未過，狀態 `需修改`（[content-review-report §11.3](../m1/content-review-report.md)、[`04` 殘項乙-11](../04-backlog-and-handoffs.md)）。**兩件事都可能導致同一筆下架，但理由完全不同**，裁定時應分開判、一併看代價——它同時是 D01 的 gold primary。
+- `docx` 另有一件**獨立**的未決事項：CONTENT-005 審校兩輪未過，狀態 `需修改`（[content-review-report §11.3](../m1/content-review-report.md)、[`04` 殘項乙-11](../../04-backlog-and-handoffs.md)）。**兩件事都可能導致同一筆下架，但理由完全不同**，裁定時應分開判、一併看代價——它同時是 D01 的 gold primary。
 - 終判結果須回填 [PDM-002 風險表](../m0/pdm-proposals.md) 的引用處（m0 已凍結，以引用方式回填，不改寫該文件）與 [curated-skill-list §5.2](../content/curated-skill-list.md)。
 
 ---

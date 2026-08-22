@@ -4,7 +4,7 @@
 - 範圍：目錄內全部 **45 個 Skill**（精選 15、已索引 30），每個 Skill 一次平台基準 Run
 - **Runtime Image：§1～§11 量測於 `2026.08-1`（無 python3）；§12（9 筆）＋§13（36 筆）於 `2026.08-2`（含 python3）；§14（41 筆，另 4 筆授權受限跳過）於 `2026.08-3`（deps 修正後）。最新一組量測為 `2026.08-3`，`docx`／`pdf`／`pptx`／`xlsx` 四筆停在 `2026.08-2`。**
 - 路徑：完整平台路徑（fork → Test Case → Dataset → Preflight → 確認 → Run → Worker 派送 → Sandbox → Trace → Artifact → Cleanup），無任何一段是假的
-- 依據：[`02` §4.7 CONTENT-007／008](../02-specifications-and-acceptance-criteria.md)、[m2/README.md 第四批交付摘要](README.md)
+- 依據：[`02` §4.7 CONTENT-007／008](../../02-specifications-and-acceptance-criteria.md)、[m2/README.md 第四批交付摘要](README.md)
 - 機器可讀原始資料：`results.json`／`rows.json`（scratchpad，未入庫；本報告的每個數字都可由下列 Run ID 在資料庫重查）
 
 ---
@@ -299,7 +299,7 @@ Key=skillhub-attempt-03d6493d-… Current cost: 0.50056965, Max budget: 0.5
 > `native`／`transpiled`／`failed`／`unverified`、樣本量 1 次基準 Run 即可寫入並帶 `source_run_id`。
 > Migration `0022_agent_compatibility.sql` 建表，`tools/content/backfill-agent-compatibility.sql`
 > 回填本節這 45 筆（`capability` 45/45、`runtime` 12／33），目錄的詳情與搜尋已讀真值，DISC-002 的
-> 「Agent 相容」篩選維度啟用。決策理由見 migration 檔頂與 [`04` 殘項乙-4](../04-backlog-and-handoffs.md)。
+> 「Agent 相容」篩選維度啟用。決策理由見 migration 檔頂與 [`04` 殘項乙-4](../../04-backlog-and-handoffs.md)。
 > §11 第 7、8 兩項因此關閉（第 8 項「Runtime Image 要不要含 Python」的裁定是**加**，映像升
 > `2026.08-2`，見殘項乙-6）——**連帶注意：本節的結論只對 `2026.08-1` 成立，新映像需要新的一輪基準。**
 

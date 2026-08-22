@@ -4,7 +4,7 @@
 - 日期：2026-08-17
 - 決策者：產品負責人、架構規劃
 - 相關：[ADR-009](./ADR-009-observability-trace-and-evaluation-boundaries.md)（O11y／Trace／Evaluation 三分）、[ADR-004](./ADR-004-provider-neutral-run-orchestration.md)（Run 生命週期與狀態）、[ADR-008](./ADR-008-asynchronous-workflows-and-domain-events.md)（狀態機是事實來源）、[ADR-003](./ADR-003-data-ownership-and-storage.md)（不可變快照）
-- 設計來源：[docs/plans/mvp/m3/evaluation-design.md §4](../plans/mvp/m3/evaluation-design.md)、[04-backlog-and-handoffs.md 丙-5](../plans/mvp/04-backlog-and-handoffs.md)
+- 設計來源：[docs/plans/mvp/m3/evaluation-design.md §4](../plans/mvp/m3/evaluation-design.md)、[04-backlog-and-handoffs.md 丙-5](../plans/04-backlog-and-handoffs.md)
 
 ## 背景
 
@@ -75,5 +75,5 @@ Run Trace 是**執行事實**，Evaluation 是**判斷**。把判斷寫回執行
 
 ## 待決策
 
-- ~~一般模式與比較畫面上兩列狀態的實際文案與版面，由 `DESIGN-010`／`DESIGN-011` 承接。~~ → **2026-08-17 換承接者**：`03` §3 的 DESIGN 系列已依 [m4/README.md §8.5](../plans/mvp/m4/README.md) 收斂為「指向已落地畫面的紀錄」，`DESIGN-010`／`011` 不再是可被完成的工作項。本項的**實質內容已由既有畫面回答**——`RunEvaluation.tsx`／`RunCompare.tsx` 上執行狀態與任務判定永遠是兩列、任務判定排在前、沒有評估的一邊顯示「未評估（不是通過）」，具名測試在 `eval.test.tsx`。**剩下的呈現缺口是一個具名殘項**：UI 分不出「引用回驗失敗」與「模型自己說不知道」（[`04` 丙-10](../plans/mvp/04-backlog-and-handoffs.md)），由 M4 的 UI 批承接。
+- ~~一般模式與比較畫面上兩列狀態的實際文案與版面，由 `DESIGN-010`／`DESIGN-011` 承接。~~ → **2026-08-17 換承接者**：`03` §3 的 DESIGN 系列已依 [m4/README.md §8.5](../plans/mvp/m4/README.md) 收斂為「指向已落地畫面的紀錄」，`DESIGN-010`／`011` 不再是可被完成的工作項。本項的**實質內容已由既有畫面回答**——`RunEvaluation.tsx`／`RunCompare.tsx` 上執行狀態與任務判定永遠是兩列、任務判定排在前、沒有評估的一邊顯示「未評估（不是通過）」，具名測試在 `eval.test.tsx`。**剩下的呈現缺口是一個具名殘項**：UI 分不出「引用回驗失敗」與「模型自己說不知道」（[`04` 丙-10](../plans/04-backlog-and-handoffs.md)），由 M4 的 UI 批承接。
 - 歷史 Run 是否補做評估（M2 的 73 筆）：屬產品決策，成本可估（見 [evaluation-design.md §6.3](../plans/mvp/m3/evaluation-design.md)），本 ADR 不代為決定。

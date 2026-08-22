@@ -2,8 +2,8 @@
 
 - 日期：2026-08-15（起）／**2026-08-16 更新**
 - 狀態：**程式碼面已收斂，驗證閘門尚未正式通過。** 工作項對帳見 [m1-work-items-audit.md](m1-work-items-audit.md)；閘門的使用者測試材料已備妥（[gate-test/](../gate-test/)），**D 日待負責人宣告**。閘門與 M2 開發並行，正式通過與否以測試結果為準。
-- 對應里程碑：M1（見 [../01-goals-and-plan.md](../01-goals-and-plan.md) §10）
-- 殘項與待決：見 [../04-backlog-and-handoffs.md](../04-backlog-and-handoffs.md)（M1 遺留的法務判定與 D 日宣告記於「乙-10」）
+- 對應里程碑：M1（見 [../../01-goals-and-plan.md](../../01-goals-and-plan.md) §10）
+- 殘項與待決：見 [../../04-backlog-and-handoffs.md](../../04-backlog-and-handoffs.md)（M1 遺留的法務判定與 D 日宣告記於「乙-10」）
 
 ## 範圍
 
@@ -21,7 +21,7 @@ M1 交付兩件互相依賴的東西：
 | [`README.md`](README.md)（本檔） | 計畫 | M1 的計畫、狀態與本目錄導覽 | 活文件 |
 | [`m1-work-items-audit.md`](m1-work-items-audit.md) | 審計 | M1 工作項逐項對帳，是某一時點的帳 | 凍結 |
 | [`content-candidates.md`](../content/content-candidates.md) | 策展資料 | CONTENT-003 的候選盤點與類別邊界原始論證；已由 `curated-skill-list.md` 升級為正式清單，保留為推導過程 | **已移至 `../content/`**（2026-08-16，ADR-024）；凍結 |
-| [`curated-skill-list.md`](../content/curated-skill-list.md) | 策展資料 | CONTENT-003 的 45 筆正式精選清單（來源、pin commit、授權、依賴欄位） | **已移至 `../content/`**（2026-08-16，ADR-024，[`04` 檔-1](../04-backlog-and-handoffs.md) 已結）；**活文件** |
+| [`curated-skill-list.md`](../content/curated-skill-list.md) | 策展資料 | CONTENT-003 的 45 筆正式精選清單（來源、pin commit、授權、依賴欄位） | **已移至 `../content/`**（2026-08-16，ADR-024，[`04` 檔-1](../../04-backlog-and-handoffs.md) 已結）；**活文件** |
 | [`content-summaries.md`](../content/content-summaries.md) | 策展資料 | CONTENT-005 白話摘要的審核紀錄本體（逐筆增強產出與審核判定） | **已移至 `../content/`**（同上）；**活文件** |
 | [`import-report.md`](import-report.md) | 報告 | 種子清單首次本機端到端匯入的實作紀錄（INGEST-001～009）；線上基線已由 `catalog-rebuild-report.md` 取代 | 凍結 |
 | [`catalog-rebuild-report.md`](catalog-rebuild-report.md) | 報告 | 為閘門重建**可凍結的線上目錄基線**（實際 45 筆，非本檔前身所寫的 44 筆）的實作與實查紀錄 | 凍結 |

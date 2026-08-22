@@ -1,7 +1,7 @@
 # M2:Skill Lab — 執行計畫
 
 - 日期:2026-08-16
-- 狀態:**已完結**(工作項對帳見 [m2-work-items-audit.md](m2-work-items-audit.md),基準 commit `512add1`;殘項三類清單已移至 [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md))
+- 狀態:**已完結**(工作項對帳見 [m2-work-items-audit.md](m2-work-items-audit.md),基準 commit `512add1`;殘項三類清單已移至 [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md))
 - 前提:M1 程式碼面收斂(工作項對帳見 [../m1/m1-work-items-audit.md](../m1/m1-work-items-audit.md));M1 驗證閘門的使用者測試與 M2 開發並行,正式通過與否以測試結果為準(材料:[../gate-test/](../gate-test/))。
 
 ## 完結摘要(2026-08-16)
@@ -45,7 +45,7 @@ M2 範圍 **41 個工作項**,**33 項維持勾選、1 項對帳退回、7 項�
 | [`../governance/anthropic-sa-license-memo.md`](../governance/anthropic-sa-license-memo.md) | 治理 | `anthropics/skills` source-available 條款的平台行為風險分析與方案 A/B/C(**非法律意見**,終判在負責人與法務) | **已移至 `../governance/`**(2026-08-16,ADR-024);凍結 |
 | [`../governance/anthropic-sa-inquiry-draft.md`](../governance/anthropic-sa-inquiry-draft.md) | 治理 | 上述備忘的並行建議:上游詢問信草稿,由負責人親自審閱後以自己身分寄出 | **已移至 `../governance/`**(2026-08-16,ADR-024);凍結 |
 
-殘項三類清單不在本目錄,見 [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md)(活文件)。
+殘項三類清單不在本目錄,見 [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md)(活文件)。
 
 ## 架構鐵律在 M2 的落點(開工前必讀)
 
@@ -231,7 +231,7 @@ docker run -d --name sandboxd --network skillhub_default --network-alias sandbox
 
 ## 殘項收斂批:平台限制與成本正確性(2026-08-16)
 
-M2 完結後的補件批,處理殘項清單([`04`](../04-backlog-and-handoffs.md))裡「已定值但沒有強制」與「已量到但沒查根因」那幾項。migration `0021`,無契約變更。
+M2 完結後的補件批,處理殘項清單([`04`](../../04-backlog-and-handoffs.md))裡「已定值但沒有強制」與「已量到但沒查根因」那幾項。migration `0021`,無契約變更。
 
 ### 閘道預算 50 倍誤差:根因是保留而不是計數(乙-3)
 
@@ -294,6 +294,6 @@ sighting 記在 destroy **之前**,而且 destroy 成功不會抹掉它:X-03 問
 `contracts/openapi/public.yaml` 的 `RunPermissionSummary` 尚未宣告 `estimated_cost`。屬 additive(該 schema 沒有 `additionalProperties: false`,現有 client 不受影響),但鐵律 12 要求 schema 先行,**待契約批補上**。
 ---
 
-# M2 殘項清單（三類）→ 已移至 [`04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md)
+# M2 殘項清單（三類）→ 已移至 [`04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md)
 
-甲（部署期驗收）／乙（待負責人決策）／丙（移交 M3 的接點）三類清單**不再放在本文件**：它會隨裁定與部署持續變動，而本目錄是 M2 完結時的一份帳；兩處各留一份必定漂移，所以只留一處——[`plans/mvp/04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md)，那是「目前還缺什麼、誰在等誰」的唯一入口。逐項證據仍在 [m2-work-items-audit.md](m2-work-items-audit.md)。
+甲（部署期驗收）／乙（待負責人決策）／丙（移交 M3 的接點）三類清單**不再放在本文件**：它會隨裁定與部署持續變動，而本目錄是 M2 完結時的一份帳；兩處各留一份必定漂移，所以只留一處——[`plans/04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md)，那是「目前還缺什麼、誰在等誰」的唯一入口。逐項證據仍在 [m2-work-items-audit.md](m2-work-items-audit.md)。

@@ -5,7 +5,7 @@
 > 本文件由工程批次撰寫，**未經負責人核可，亦未經法務確認**。生效前：
 >
 > - **不得寄給任何受測者，不得用於任何一場閘門測試或封閉測試**；
-> - `03` §17 的 `BETA-001` 與 [`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) 乙-15 的追認清單第 8 項**維持未勾**；
+> - `03` §17 的 `BETA-001` 與 [`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md) 乙-15 的追認清單第 8 項**維持未勾**；
 > - [`recruit.md` §5.2](recruit.md) 第 5、6 兩個佔位項**維持待決**——本文件是它們的**提案**，不是它們的答案。
 >
 > **必須由人完成的三件事**（agent 做不到，本文件只把材料備妥）：①**法務確認**用語、法域與個資法規對應；②負責人**填入 §9 的所有 ⬜ 佔位**（聯絡方式、報酬、保存期限的最終值）；③受測者**簽署**。
@@ -14,7 +14,7 @@
 
 - 日期：2026-08-18
 - 承接：[`../m4/README.md` §5.1 P-12](../m4/README.md)、[`../m4/beta-design.md` §6.2](../m4/beta-design.md)、[`recruit.md` §5.2](recruit.md) 第 5、6 項、[`moderator-guide.md` §1／§3.A](moderator-guide.md) 的兩處掛勾
-- 對齊：[`02` NFR-002](../02-specifications-and-acceptance-criteria.md)（隱私與資料生命週期）、[`02:O11Y-004`](../02-specifications-and-acceptance-criteria.md)（分析事件的揭露義務）、[`02:SEC-006`](../02-specifications-and-acceptance-criteria.md)、[ADR-029](../../../adr/ADR-029-product-analytics-events-and-audit-trace-boundaries.md)（分析事件的白名單與邊界）、[`m0/pdm-proposals.md` §6](../m0/pdm-proposals.md)（PDM-006 保存期限，**同樣待追認**）
+- 對齊：[`02` NFR-002](../../02-specifications-and-acceptance-criteria.md)（隱私與資料生命週期）、[`02:O11Y-004`](../../02-specifications-and-acceptance-criteria.md)（分析事件的揭露義務）、[`02:SEC-006`](../../02-specifications-and-acceptance-criteria.md)、[ADR-029](../../../adr/ADR-029-product-analytics-events-and-audit-trace-boundaries.md)（分析事件的白名單與邊界）、[`m0/pdm-proposals.md` §6](../m0/pdm-proposals.md)（PDM-006 保存期限，**同樣待追認**）
 - 位置：**放 `gate-test/` 不放 `m4/`。** 依 `AGENTS.md`「一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`」——本文件由 **M1 驗證閘門與 M4 封閉測試共用**（[`beta-design.md` §6.2](../m4/beta-design.md)：做一次，兩邊共用），M4 完結後仍會被引用與修訂。**它其實是閘門的前置，不是封測的**（[`pdm-009-beta-proposal.md` §7](../m4/pdm-009-beta-proposal.md) 風險表已如此判定）。
 
 ---
@@ -143,7 +143,7 @@
 | R-2 | **你上傳的檔案會離開你的電腦** | 受測者與其第三方 | B-4 **可以拒絕**——平台策展的範例資料足以走完完整旅程；上傳前顯示大小限制、保存政策與資料使用範圍（`02:TEST-002`） |
 | R-3 | **你的內容會送往模型供應商**（§4） | 受測者 | 明說，不假裝沒有；一律經閘道、每 Run 一把短效金鑰；**這一項無法在技術上消除，只能揭露** |
 | R-4 | **錄影／逐字稿可能辨識得出你是誰**（聲音、畫面上的個人資訊） | 受測者 | A-1／A-2 **可以拒絕**；轉寫時去識別化；原始檔提前刪除（§3）；**遠端模式請關閉不相關的分頁與通知** |
-| R-5 | **試跑會執行第三方 Skill 的程式碼** | 平台（不是受測者） | 全部在隔離 Sandbox 內執行，無網路、非 root、唯讀 rootfs；**受測者的電腦上不會執行任何東西**。⚠️ **甲類四項（`SEC-009` 等）未全數通過前不得開放外部使用者提交 Skill 執行**（ADR-015、[`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) 乙-14） |
+| R-5 | **試跑會執行第三方 Skill 的程式碼** | 平台（不是受測者） | 全部在隔離 Sandbox 內執行，無網路、非 root、唯讀 rootfs；**受測者的電腦上不會執行任何東西**。⚠️ **甲類四項（`SEC-009` 等）未全數通過前不得開放外部使用者提交 Skill 執行**（ADR-015、[`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md) 乙-14） |
 | R-6 | **評估報告可能是錯的** | 受測者的判斷 | 報告逐項標示判定來源（規則／模型），模型判定明寫「模型評估（不是確定事實）」；成本為**下界**；`succeeded` **不等於**任務完成（ADR-025）。**封測是第一批非團隊成員讀到評估報告**，這一點寫進 onboarding |
 | R-7 | **你退出後資料還在** | 受測者 | §6 的退出機制逐項寫明哪些刪、哪些去識別化保留、為什麼 |
 | R-8 | **這是未上線的產品，可能壞掉、可能遺失資料** | 受測者 | 明說：**請不要把封測平台當成唯一的資料保存處**；重要產出請自行下載 |
@@ -337,7 +337,7 @@
 - [ ] **PDM-010 首月額度語意擇一**——§4 與 §8.2 第 4 條的 ⬜ 由它決定
 - [ ] **ADR-029 的分析事件保存期限追認**（提案 180 天）——未定值前平台不收集，§8.2 第 6 條那一格因此也填不了
 - [ ] **法務確認**：用語、法域、個資法規對應、未成年受測者的處理（本草稿假設全部受測者為成年人，**未處理未成年情境**）
-- [ ] 核可後回寫：[`recruit.md` §5.2](recruit.md) 第 5、6 項標為已決；[`moderator-guide.md` §1](moderator-guide.md) 的檢核項指向本文件；[`../04-backlog-and-handoffs.md`](../04-backlog-and-handoffs.md) 乙-15 追認清單第 8 項
+- [ ] 核可後回寫：[`recruit.md` §5.2](recruit.md) 第 5、6 項標為已決；[`moderator-guide.md` §1](moderator-guide.md) 的檢核項指向本文件；[`../../04-backlog-and-handoffs.md`](../../04-backlog-and-handoffs.md) 乙-15 追認清單第 8 項
 
 ---
 
