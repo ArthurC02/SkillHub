@@ -2764,6 +2764,18 @@ func (s *CreateDownloadArtifactCreated) encodeFields(e *jx.Encoder) {
 		json.EncodeUUID(e, s.SkillVersionID)
 	}
 	{
+		e.FieldStart("version_number")
+		e.Int(s.VersionNumber)
+	}
+	{
+		e.FieldStart("latest_version_number")
+		e.Int(s.LatestVersionNumber)
+	}
+	{
+		e.FieldStart("version_state")
+		s.VersionState.Encode(e)
+	}
+	{
 		e.FieldStart("target")
 		s.Target.Encode(e)
 	}
@@ -2829,25 +2841,28 @@ func (s *CreateDownloadArtifactCreated) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreateDownloadArtifactCreated = [18]string{
+var jsonFieldsNameOfCreateDownloadArtifactCreated = [21]string{
 	0:  "artifact_id",
 	1:  "skill_id",
 	2:  "skill_version_id",
-	3:  "target",
-	4:  "file_name",
-	5:  "size_bytes",
-	6:  "content_hash",
-	7:  "manifest_hash",
-	8:  "status",
-	9:  "servable",
-	10: "serve_state",
-	11: "expires_at",
-	12: "created_at",
-	13: "download_count",
-	14: "includes_test_cases",
-	15: "packager_version",
-	16: "profile_version",
-	17: "duplicate",
+	3:  "version_number",
+	4:  "latest_version_number",
+	5:  "version_state",
+	6:  "target",
+	7:  "file_name",
+	8:  "size_bytes",
+	9:  "content_hash",
+	10: "manifest_hash",
+	11: "status",
+	12: "servable",
+	13: "serve_state",
+	14: "expires_at",
+	15: "created_at",
+	16: "download_count",
+	17: "includes_test_cases",
+	18: "packager_version",
+	19: "profile_version",
+	20: "duplicate",
 }
 
 // Decode decodes CreateDownloadArtifactCreated from json.
@@ -2895,8 +2910,42 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"skill_version_id\"")
 			}
-		case "target":
+		case "version_number":
 			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Int()
+				s.VersionNumber = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version_number\"")
+			}
+		case "latest_version_number":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				v, err := d.Int()
+				s.LatestVersionNumber = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"latest_version_number\"")
+			}
+		case "version_state":
+			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				if err := s.VersionState.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version_state\"")
+			}
+		case "target":
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				if err := s.Target.Decode(d); err != nil {
 					return err
@@ -2906,7 +2955,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"target\"")
 			}
 		case "file_name":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Str()
 				s.FileName = string(v)
@@ -2918,7 +2967,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"file_name\"")
 			}
 		case "size_bytes":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Int64()
 				s.SizeBytes = int64(v)
@@ -2930,7 +2979,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"size_bytes\"")
 			}
 		case "content_hash":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				v, err := d.Str()
 				s.ContentHash = string(v)
@@ -2942,7 +2991,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"content_hash\"")
 			}
 		case "manifest_hash":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				v, err := d.Str()
 				s.ManifestHash = string(v)
@@ -2954,7 +3003,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"manifest_hash\"")
 			}
 		case "status":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				if err := s.Status.Decode(d); err != nil {
 					return err
@@ -2964,7 +3013,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"status\"")
 			}
 		case "servable":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				v, err := d.Bool()
 				s.Servable = bool(v)
@@ -2976,7 +3025,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"servable\"")
 			}
 		case "serve_state":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				if err := s.ServeState.Decode(d); err != nil {
 					return err
@@ -2986,7 +3035,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"serve_state\"")
 			}
 		case "expires_at":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.ExpiresAt = v
@@ -2998,7 +3047,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"expires_at\"")
 			}
 		case "created_at":
-			requiredBitSet[1] |= 1 << 4
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -3010,7 +3059,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"created_at\"")
 			}
 		case "download_count":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[2] |= 1 << 0
 			if err := func() error {
 				v, err := d.Int()
 				s.DownloadCount = int(v)
@@ -3022,7 +3071,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"download_count\"")
 			}
 		case "includes_test_cases":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
 				v, err := d.Bool()
 				s.IncludesTestCases = bool(v)
@@ -3054,7 +3103,7 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"profile_version\"")
 			}
 		case "duplicate":
-			requiredBitSet[2] |= 1 << 1
+			requiredBitSet[2] |= 1 << 4
 			if err := func() error {
 				v, err := d.Bool()
 				s.Duplicate = bool(v)
@@ -3076,8 +3125,8 @@ func (s *CreateDownloadArtifactCreated) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [3]uint8{
 		0b11111111,
-		0b01111111,
-		0b00000010,
+		0b11111111,
+		0b00010011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -7410,6 +7459,18 @@ func (s *DownloadArtifact) encodeFields(e *jx.Encoder) {
 		json.EncodeUUID(e, s.SkillVersionID)
 	}
 	{
+		e.FieldStart("version_number")
+		e.Int(s.VersionNumber)
+	}
+	{
+		e.FieldStart("latest_version_number")
+		e.Int(s.LatestVersionNumber)
+	}
+	{
+		e.FieldStart("version_state")
+		s.VersionState.Encode(e)
+	}
+	{
 		e.FieldStart("target")
 		s.Target.Encode(e)
 	}
@@ -7471,24 +7532,27 @@ func (s *DownloadArtifact) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfDownloadArtifact = [17]string{
+var jsonFieldsNameOfDownloadArtifact = [20]string{
 	0:  "artifact_id",
 	1:  "skill_id",
 	2:  "skill_version_id",
-	3:  "target",
-	4:  "file_name",
-	5:  "size_bytes",
-	6:  "content_hash",
-	7:  "manifest_hash",
-	8:  "status",
-	9:  "servable",
-	10: "serve_state",
-	11: "expires_at",
-	12: "created_at",
-	13: "download_count",
-	14: "includes_test_cases",
-	15: "packager_version",
-	16: "profile_version",
+	3:  "version_number",
+	4:  "latest_version_number",
+	5:  "version_state",
+	6:  "target",
+	7:  "file_name",
+	8:  "size_bytes",
+	9:  "content_hash",
+	10: "manifest_hash",
+	11: "status",
+	12: "servable",
+	13: "serve_state",
+	14: "expires_at",
+	15: "created_at",
+	16: "download_count",
+	17: "includes_test_cases",
+	18: "packager_version",
+	19: "profile_version",
 }
 
 // Decode decodes DownloadArtifact from json.
@@ -7536,8 +7600,42 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"skill_version_id\"")
 			}
-		case "target":
+		case "version_number":
 			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Int()
+				s.VersionNumber = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version_number\"")
+			}
+		case "latest_version_number":
+			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				v, err := d.Int()
+				s.LatestVersionNumber = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"latest_version_number\"")
+			}
+		case "version_state":
+			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				if err := s.VersionState.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"version_state\"")
+			}
+		case "target":
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				if err := s.Target.Decode(d); err != nil {
 					return err
@@ -7547,7 +7645,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"target\"")
 			}
 		case "file_name":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Str()
 				s.FileName = string(v)
@@ -7559,7 +7657,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"file_name\"")
 			}
 		case "size_bytes":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Int64()
 				s.SizeBytes = int64(v)
@@ -7571,7 +7669,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"size_bytes\"")
 			}
 		case "content_hash":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				v, err := d.Str()
 				s.ContentHash = string(v)
@@ -7583,7 +7681,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"content_hash\"")
 			}
 		case "manifest_hash":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				v, err := d.Str()
 				s.ManifestHash = string(v)
@@ -7595,7 +7693,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"manifest_hash\"")
 			}
 		case "status":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				if err := s.Status.Decode(d); err != nil {
 					return err
@@ -7605,7 +7703,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"status\"")
 			}
 		case "servable":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				v, err := d.Bool()
 				s.Servable = bool(v)
@@ -7617,7 +7715,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"servable\"")
 			}
 		case "serve_state":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				if err := s.ServeState.Decode(d); err != nil {
 					return err
@@ -7627,7 +7725,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"serve_state\"")
 			}
 		case "expires_at":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.ExpiresAt = v
@@ -7639,7 +7737,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"expires_at\"")
 			}
 		case "created_at":
-			requiredBitSet[1] |= 1 << 4
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -7651,7 +7749,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"created_at\"")
 			}
 		case "download_count":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[2] |= 1 << 0
 			if err := func() error {
 				v, err := d.Int()
 				s.DownloadCount = int(v)
@@ -7663,7 +7761,7 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"download_count\"")
 			}
 		case "includes_test_cases":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
 				v, err := d.Bool()
 				s.IncludesTestCases = bool(v)
@@ -7705,8 +7803,8 @@ func (s *DownloadArtifact) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [3]uint8{
 		0b11111111,
-		0b01111111,
-		0b00000000,
+		0b11111111,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -9509,6 +9607,8 @@ func (s *EvidenceRefMatch) Decode(d *jx.Decoder) error {
 		*s = EvidenceRefMatchNormalized
 	case EvidenceRefMatchNotFound:
 		*s = EvidenceRefMatchNotFound
+	case EvidenceRefMatchNotChecked:
+		*s = EvidenceRefMatchNotChecked
 	default:
 		*s = EvidenceRefMatch(v)
 	}

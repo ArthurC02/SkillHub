@@ -309,14 +309,15 @@ func traceRef(e trace.EventView, kind string) EvidenceRef {
 // attempt's archive and this pipeline never opens it, so there is no offset that
 // would mean anything.
 //
-// `match: exact` for the same reason as traceRef: the excerpt is the manifest
-// row this package read, not a quote anybody claimed. A *judge's* artifact
-// citation is a different thing and verify() stamps it `not_found` — the row
-// proves the file exists and never that a quote came out of it (ADR-043 §3).
+// `match: not_checked`, not `exact`: the excerpt is the manifest row this
+// package read, and no quote of the file's *contents* was ever compared to
+// anything — the archive stays shut in the control plane. Stamping it `exact`
+// claimed a verification that never happened, which is the same defect on the
+// other side of the ledger from stamping it `not_found` (ADR-043 §3).
 func artifactRef(a ArtifactFacts) EvidenceRef {
 	return EvidenceRef{
 		Kind:         KindArtifact,
-		Match:        MatchExact,
+		Match:        MatchNotChecked,
 		ArtifactPath: a.FileName,
 		Excerpt: fmt.Sprintf("%s (%d bytes, %s, %s)",
 			a.FileName, a.SizeBytes, orUnknown(a.ContentType), a.ContentHash),

@@ -427,3 +427,32 @@ func TestManifestOriginRefusesWithoutOwnerReaders(t *testing.T) {
 		t.Error("manifest origin succeeded without eval and ingest owner readers")
 	}
 }
+
+// 04 丙-42. Two axes, and the whole point is that they do not collapse into one:
+// a superseded package is still servable, and an expired one is still whichever
+// version it was.
+func TestVersionStateIsSeparateFromServeState(t *testing.T) {
+	stale := Artifact{Status: "available", VersionNumber: 2, LatestVersionNumber: 5}.
+		withVersionState().withServeState(time.Now().Add(time.Hour), false)
+	if stale.VersionState.Value != "superseded" {
+		t.Errorf("version_state = %q, want superseded", stale.VersionState.Value)
+	}
+	if !stale.Servable || stale.ServeState.Value != "available" {
+		t.Errorf("a superseded package is still downloadable: %+v", stale)
+	}
+	// The numbers are in the words, because 「已被取代」 without saying by what
+	// sends the reader to another page to find out how far behind they are.
+	if !strings.Contains(stale.VersionState.Label, "v2") ||
+		!strings.Contains(stale.VersionState.Label, "v5") {
+		t.Errorf("both numbers belong in the label, got %q", stale.VersionState.Label)
+	}
+
+	newest := Artifact{Status: "available", VersionNumber: 5, LatestVersionNumber: 5}.
+		withVersionState().withServeState(time.Now().Add(-time.Hour), false)
+	if newest.VersionState.Value != "current" {
+		t.Errorf("version_state = %q, want current", newest.VersionState.Value)
+	}
+	if newest.ServeState.Value != "expired" {
+		t.Errorf("expiry still decides serving on its own axis: %+v", newest)
+	}
+}

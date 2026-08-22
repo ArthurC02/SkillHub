@@ -125,6 +125,26 @@ const evaluation: Evaluation = {
           excerpt: "header: name,phone",
           excerpt_truncated: true,
         },
+        // ADR-043: the judge filed this under `artifact` and the quote was
+        // actually in the agent's own output. Mis-filed, not fabricated.
+        {
+          kind: "agent_output",
+          reattributed_from: "artifact",
+          match: "normalized",
+          available: true,
+          excerpt: "已移除 email 欄位",
+          excerpt_truncated: false,
+        },
+        // The manifest row. Proves the file is there and nothing about what is
+        // in it — the archive is never opened in the control plane.
+        {
+          kind: "artifact",
+          artifact_path: "out/cleaned.csv",
+          match: "not_checked",
+          available: true,
+          excerpt: "cleaned.csv (2048 bytes, text/csv, sha256:dddd)",
+          excerpt_truncated: false,
+        },
       ],
     },
     {
@@ -356,6 +376,31 @@ test("ADR-026 expired evidence shows the excerpt kept at judgement time and says
   // Neither blanked out nor presented as though the trace event were still there.
   expect(container.querySelector("pre")?.textContent).toContain("header: name,phone");
   expect(text).toContain("摘要已截斷");
+});
+
+test("ADR-043 a citation says whether its quote was verified, and where it was filed", async () => {
+  stubPlatform({ evaluated: true });
+  await render("succeeded");
+  const text = container.textContent ?? "";
+
+  // 04 丙-41: both fields landed server-side and neither reached the screen.
+  // The ADR says it in its own §影響 — an audit field that never reaches the
+  // screen is not an audit field.
+
+  // Mis-filed and fabricated are different failures, and the report has to be
+  // able to show which one happened. This one is the first.
+  expect(text).toContain("Judge 原本標為");
+  expect(text).toContain("標錯來源與捏造引文是兩件不同的事");
+  // G8: two correct verdicts were lost to a trailing punctuation mark. One
+  // glance at this line instead of a regression report.
+  expect(text).toContain("正規化後才比對得上");
+  // An artifact citation proves the file exists. Saying 「找不到」 would be an
+  // accusation about a quote nobody ever checked.
+  expect(text).toContain("沒有回驗任何引文");
+  expect(text).not.toContain("在本次 Run 的可回驗來源裡找不到");
+  // The trace citation in this fixture predates the field entirely. Silence is
+  // not a pass: it says the report cannot answer.
+  expect(text).toContain("還沒有記錄引文回驗結果");
 });
 
 test("EVAL-002 the apply action is offered on a run reached without a skill in its URL", async () => {

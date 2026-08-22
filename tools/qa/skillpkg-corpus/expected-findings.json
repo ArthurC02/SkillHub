@@ -135,11 +135,11 @@
       "base": "csv-to-json",
       "breaks": "an unrecognised frontmatter key",
       "archive_error": false,
-      "blocked": false,
-      "errors": [],
-      "warnings": ["frontmatter-unknown-field"],
+      "blocked": true,
+      "errors": ["frontmatter-unknown-field"],
+      "warnings": [],
       "info_includes": ["package-dependencies"],
-      "note": "Deliberately not blocking: the Agent Skills spec evolves and an unknown key is a warning. The key chosen (`auto_run`) is the shape an author would use to try to claim a behaviour the platform does not honour."
+      "note": "Blocking since 2026-08-22 (ADR-044 decision 4, unlocked by the census in TestSpecFrontmatterCensus: 0 of 106 packages across the 11 pinned source repos carry a field outside the six). The reference validator and at least one major client hard-error here, so accepting it meant handing out a package that breaks where the author takes it. The key chosen (`auto_run`) is the shape an author would use to try to claim a behaviour the platform does not honour."
     },
 
     "file-ref-escapes": {

@@ -152,6 +152,18 @@ export interface DownloadArtifact {
    * fought the word on the screen instead of settling it.
    */
   serve_state: Labelled;
+  /** Which version these bytes are (04 丙-42). The uuid identifies the row; this identifies the content. */
+  version_number: number;
+  /** The skill's highest version number right now. Equal to `version_number` when this is the newest. */
+  latest_version_number: number;
+  /**
+   * `current` or `superseded`, wording and numbers from the server.
+   *
+   * A separate axis from `serve_state` on purpose: a superseded package is still
+   * downloadable, and wanting exactly the version you packaged is legitimate.
+   * `serve_state` answers 「拿不拿得到位元組」, this answers 「是不是最新的內容」.
+   */
+  version_state: Labelled;
   /** Absolute date, never "in N days" (PDM-006 risk table). */
   expires_at: string;
   created_at: string;

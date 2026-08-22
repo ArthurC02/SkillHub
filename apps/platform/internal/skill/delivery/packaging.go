@@ -639,6 +639,14 @@ type Artifact struct {
 	// 顯示但不強制 shape 設計系統 §2.2 names as the worst of the options.
 	Servable   bool     `json:"servable"`
 	ServeState labelled `json:"serve_state"`
+
+	// VersionNumber and LatestVersionNumber are the two numbers that turn this
+	// row from "a uuid" into "v3, and this skill is on v5" (04 丙-42). Both are
+	// read from the same query as the rest of the row; nothing here is computed
+	// from a second request the client would have to make and could skip.
+	VersionNumber       int32    `json:"version_number"`
+	LatestVersionNumber int32    `json:"latest_version_number"`
+	VersionState        labelled `json:"version_state"`
 }
 
 // labelled is the contract's Labelled.
@@ -656,6 +664,27 @@ type labelled struct {
 // Expiry outranks purge because expiry is the reason and the purge is its
 // consequence; a purge with no expiry is the reconciler having found the object
 // missing, which is a different sentence and gets one.
+// withVersionState answers "am I looking at the newest content", which is a
+// different question from withServeState's "can I have these bytes" and is kept
+// on its own axis for that reason (設計系統 §2.12). A superseded package is still
+// perfectly downloadable and downloading it can be exactly what was wanted.
+//
+// The note carries the numbers because the reader's next question is always
+// "how far behind", and a label that says 已被取代 without saying by what sends
+// them to another page to find out.
+func (a Artifact) withVersionState() Artifact {
+	if a.LatestVersionNumber > a.VersionNumber {
+		a.VersionState = labelled{"superseded",
+			fmt.Sprintf("v%d(這個 Skill 已經到 v%d)", a.VersionNumber, a.LatestVersionNumber),
+			fmt.Sprintf("這一份是 v%d 的內容,而且不會改變——版本是不可變的。"+
+				"要拿 v%d 的內容,回到該 Skill 對 v%d 重新打包一次。",
+				a.VersionNumber, a.LatestVersionNumber, a.LatestVersionNumber)}
+		return a
+	}
+	a.VersionState = labelled{"current", fmt.Sprintf("v%d(最新)", a.VersionNumber), ""}
+	return a
+}
+
 func (a Artifact) withServeState(expiresAt time.Time, purged bool) Artifact {
 	switch {
 	case a.Status == "quarantined":
@@ -796,12 +825,13 @@ func (s *Service) persist(
 	if err != nil {
 		return Result{}, err
 	}
-	if _, err := q.CreateDownloadArtifactDetail(ctx, gen.CreateDownloadArtifactDetailParams{
+	detail, err := q.CreateDownloadArtifactDetail(ctx, gen.CreateDownloadArtifactDetailParams{
 		ArtifactID: row.ID, WorkspaceID: ws.ID, SkillVersionID: p.Version.ID,
 		Target: p.Profile.ID, ProfileVersion: p.Profile.Version,
 		PackagerVersion: PackagerVersion, ManifestHash: p.ManifestHash,
 		IncludesTestCases: p.IncludeTestCases,
-	}); err != nil {
+	})
+	if err != nil {
 		return Result{}, err
 	}
 	// The quarantine release of ADR-003, in the same transaction as the rows.
@@ -834,9 +864,11 @@ func (s *Service) persist(
 		CreatedAt:         rfc3339(row.CreatedAt),
 		DownloadCount:     0,
 		IncludesTestCases: p.IncludeTestCases,
-		PackagerVersion:   PackagerVersion,
-		ProfileVersion:    p.Profile.Version,
-	}.withServeState(row.ExpiresAt.Time, false)}, nil
+		PackagerVersion:     PackagerVersion,
+		ProfileVersion:      p.Profile.Version,
+		VersionNumber:       p.Version.VersionNumber,
+		LatestVersionNumber: detail.LatestVersionNumber,
+	}.withVersionState().withServeState(row.ExpiresAt.Time, false)}, nil
 }
 
 func reusedArtifact(skillID pgtype.UUID, row gen.FindReusableDownloadArtifactRow) Artifact {
@@ -854,9 +886,11 @@ func reusedArtifact(skillID pgtype.UUID, row gen.FindReusableDownloadArtifactRow
 		CreatedAt:         rfc3339(row.CreatedAt),
 		DownloadCount:     row.DownloadCount,
 		IncludesTestCases: row.IncludesTestCases,
-		PackagerVersion:   row.PackagerVersion,
-		ProfileVersion:    row.ProfileVersion,
+		PackagerVersion:     row.PackagerVersion,
+		ProfileVersion:      row.ProfileVersion,
+		VersionNumber:       row.VersionNumber,
+		LatestVersionNumber: row.LatestVersionNumber,
 		// FindReusableDownloadArtifact filters `purged_at IS NULL`, so a reused row
 		// is by construction not purged — the query is where that is enforced.
-	}.withServeState(row.ExpiresAt.Time, false)
+	}.withVersionState().withServeState(row.ExpiresAt.Time, false)
 }

@@ -58,6 +58,22 @@ export interface EvidenceRef {
      *   cost the platform a `judge-run/v2`.
      * - `not_found` — the quote is in none of the run's verifiable sources.
      *   It does not become evidence, whatever it was filed as.
+     * - `not_checked` — no comparison happened. This is what an `artifact`
+     *   citation carries: the path is on the run's manifest, so the file
+     *   exists and is that size and that hash, but the archive is never
+     *   opened in the control plane (evaluation-design §2.2), so no quote
+     *   of its **contents** was verified against anything.
+     * 
+     *   `not_checked` and `not_found` were one value until 2026-08-22 and
+     *   are not the same claim. `not_found` says the platform searched and
+     *   the quote is nowhere, which is close to an accusation; this says
+     *   the platform never looked. Filing the second under the first made
+     *   the report sound certain about something it had not examined. It
+     *   is the independent field ADR-043 §影響 asked for, rather than the
+     *   statement being left implicit in `excerpt`.
+     * 
+     *   Like `not_found` it never counts as verified evidence, so a rubric
+     *   item with `evidence_required` is not satisfied by it.
      * 
      * @type {string}
      * @memberof EvidenceRef
@@ -156,7 +172,8 @@ export type EvidenceRefKindEnum = typeof EvidenceRefKindEnum[keyof typeof Eviden
 export const EvidenceRefMatchEnum = {
     Exact: 'exact',
     Normalized: 'normalized',
-    NotFound: 'not_found'
+    NotFound: 'not_found',
+    NotChecked: 'not_checked'
 } as const;
 export type EvidenceRefMatchEnum = typeof EvidenceRefMatchEnum[keyof typeof EvidenceRefMatchEnum];
 

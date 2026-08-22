@@ -954,10 +954,31 @@ func (*CreateDownloadArtifactBadRequest) createDownloadArtifactRes() {}
 
 // Merged schema.
 type CreateDownloadArtifactCreated struct {
-	ArtifactID     uuid.UUID         `json:"artifact_id"`
-	SkillID        uuid.UUID         `json:"skill_id"`
-	SkillVersionID uuid.UUID         `json:"skill_version_id"`
-	Target         PackagingTargetId `json:"target"`
+	ArtifactID     uuid.UUID `json:"artifact_id"`
+	SkillID        uuid.UUID `json:"skill_id"`
+	SkillVersionID uuid.UUID `json:"skill_version_id"`
+	// Which version these bytes are, in the monotonic per-skill numbering the immutability trigger
+	// protects. The uuid beside it identifies the row; this is the only field on this schema a person can
+	// read as an answer to "which one is this" (04 丙-42, `02:WS-002` 1「版本」).
+	VersionNumber int `json:"version_number"`
+	// The highest version number this skill currently has. Present so the client never has to fetch a
+	// second resource to find out whether it is showing a stale package, and equal to `version_number`
+	// when this is the newest.
+	LatestVersionNumber int `json:"latest_version_number"`
+	// `current` or `superseded`, with the wording — including the numbers — from the server
+	// (設計系統 §4.4).
+	//
+	// Deliberately not a fifth `serve_state`. Being superseded says nothing about whether the bytes are
+	// available: a superseded package is downloadable, and downloading exactly the version you packaged is
+	// a legitimate thing to want. `serve_state` answers "can I have the bytes"; this answers "is this the
+	// newest content". Folding them would make one field mean two things and force a
+	// superseded-and-expired row to pick which truth to tell (設計系統 §2.12 的第三軸).
+	//
+	// It is not upstream freshness. Whether the source the skill was imported from has moved is
+	// `CONTENT-009`/`INGEST-010`, neither of which is built, and whose re-fetch cadence is still
+	// 待決策.
+	VersionState Labelled          `json:"version_state"`
+	Target       PackagingTargetId `json:"target"`
 	// Display and attachment name only. Like a dataset's, it is never used as a storage path.
 	FileName     string `json:"file_name"`
 	SizeBytes    int64  `json:"size_bytes"`
@@ -1022,6 +1043,21 @@ func (s *CreateDownloadArtifactCreated) GetSkillID() uuid.UUID {
 // GetSkillVersionID returns the value of SkillVersionID.
 func (s *CreateDownloadArtifactCreated) GetSkillVersionID() uuid.UUID {
 	return s.SkillVersionID
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *CreateDownloadArtifactCreated) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetLatestVersionNumber returns the value of LatestVersionNumber.
+func (s *CreateDownloadArtifactCreated) GetLatestVersionNumber() int {
+	return s.LatestVersionNumber
+}
+
+// GetVersionState returns the value of VersionState.
+func (s *CreateDownloadArtifactCreated) GetVersionState() Labelled {
+	return s.VersionState
 }
 
 // GetTarget returns the value of Target.
@@ -1112,6 +1148,21 @@ func (s *CreateDownloadArtifactCreated) SetSkillID(val uuid.UUID) {
 // SetSkillVersionID sets the value of SkillVersionID.
 func (s *CreateDownloadArtifactCreated) SetSkillVersionID(val uuid.UUID) {
 	s.SkillVersionID = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *CreateDownloadArtifactCreated) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetLatestVersionNumber sets the value of LatestVersionNumber.
+func (s *CreateDownloadArtifactCreated) SetLatestVersionNumber(val int) {
+	s.LatestVersionNumber = val
+}
+
+// SetVersionState sets the value of VersionState.
+func (s *CreateDownloadArtifactCreated) SetVersionState(val Labelled) {
+	s.VersionState = val
 }
 
 // SetTarget sets the value of Target.
@@ -2707,10 +2758,31 @@ func (s *Disclosure) SetNote(val string) {
 // answer across packager versions (packaging-design §2.4).
 // Ref: #/components/schemas/DownloadArtifact
 type DownloadArtifact struct {
-	ArtifactID     uuid.UUID         `json:"artifact_id"`
-	SkillID        uuid.UUID         `json:"skill_id"`
-	SkillVersionID uuid.UUID         `json:"skill_version_id"`
-	Target         PackagingTargetId `json:"target"`
+	ArtifactID     uuid.UUID `json:"artifact_id"`
+	SkillID        uuid.UUID `json:"skill_id"`
+	SkillVersionID uuid.UUID `json:"skill_version_id"`
+	// Which version these bytes are, in the monotonic per-skill numbering the immutability trigger
+	// protects. The uuid beside it identifies the row; this is the only field on this schema a person can
+	// read as an answer to "which one is this" (04 丙-42, `02:WS-002` 1「版本」).
+	VersionNumber int `json:"version_number"`
+	// The highest version number this skill currently has. Present so the client never has to fetch a
+	// second resource to find out whether it is showing a stale package, and equal to `version_number`
+	// when this is the newest.
+	LatestVersionNumber int `json:"latest_version_number"`
+	// `current` or `superseded`, with the wording — including the numbers — from the server
+	// (設計系統 §4.4).
+	//
+	// Deliberately not a fifth `serve_state`. Being superseded says nothing about whether the bytes are
+	// available: a superseded package is downloadable, and downloading exactly the version you packaged is
+	// a legitimate thing to want. `serve_state` answers "can I have the bytes"; this answers "is this the
+	// newest content". Folding them would make one field mean two things and force a
+	// superseded-and-expired row to pick which truth to tell (設計系統 §2.12 的第三軸).
+	//
+	// It is not upstream freshness. Whether the source the skill was imported from has moved is
+	// `CONTENT-009`/`INGEST-010`, neither of which is built, and whose re-fetch cadence is still
+	// 待決策.
+	VersionState Labelled          `json:"version_state"`
+	Target       PackagingTargetId `json:"target"`
 	// Display and attachment name only. Like a dataset's, it is never used as a storage path.
 	FileName     string `json:"file_name"`
 	SizeBytes    int64  `json:"size_bytes"`
@@ -2774,6 +2846,21 @@ func (s *DownloadArtifact) GetSkillID() uuid.UUID {
 // GetSkillVersionID returns the value of SkillVersionID.
 func (s *DownloadArtifact) GetSkillVersionID() uuid.UUID {
 	return s.SkillVersionID
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *DownloadArtifact) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetLatestVersionNumber returns the value of LatestVersionNumber.
+func (s *DownloadArtifact) GetLatestVersionNumber() int {
+	return s.LatestVersionNumber
+}
+
+// GetVersionState returns the value of VersionState.
+func (s *DownloadArtifact) GetVersionState() Labelled {
+	return s.VersionState
 }
 
 // GetTarget returns the value of Target.
@@ -2859,6 +2946,21 @@ func (s *DownloadArtifact) SetSkillID(val uuid.UUID) {
 // SetSkillVersionID sets the value of SkillVersionID.
 func (s *DownloadArtifact) SetSkillVersionID(val uuid.UUID) {
 	s.SkillVersionID = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *DownloadArtifact) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetLatestVersionNumber sets the value of LatestVersionNumber.
+func (s *DownloadArtifact) SetLatestVersionNumber(val int) {
+	s.LatestVersionNumber = val
+}
+
+// SetVersionState sets the value of VersionState.
+func (s *DownloadArtifact) SetVersionState(val Labelled) {
+	s.VersionState = val
 }
 
 // SetTarget sets the value of Target.
@@ -3666,6 +3768,17 @@ type EvidenceRef struct {
 	//    a `judge-run/v2`.
 	//  - `not_found` — the quote is in none of the run's verifiable sources. It does not become
 	//    evidence, whatever it was filed as.
+	//  - `not_checked` — no comparison happened. This is what an `artifact` citation carries: the path
+	//    is on the run's manifest, so the file exists and is that size and that hash, but the archive is
+	//    never opened in the control plane (evaluation-design §2.2), so no quote of its contents was
+	//    verified against anything.
+	//    `not_checked` and `not_found` were one value until 2026-08-22 and are not the same claim.
+	//    `not_found` says the platform searched and the quote is nowhere, which is close to an accusation;
+	//    this says the platform never looked. Filing the second under the first made the report sound
+	//    certain about something it had not examined. It is the independent field ADR-043 §影響 asked
+	//    for, rather than the statement being left implicit in `excerpt`.
+	//    Like `not_found` it never counts as verified evidence, so a rubric item with `evidence_required`
+	//    is not satisfied by it.
 	Match EvidenceRefMatch `json:"match"`
 	// Present when the quote was found, but not in the source the judge named — `kind` is corrected to
 	// where it actually is and this records where it was filed. ADR-043's核心: mis-filed and fabricated
@@ -3915,12 +4028,24 @@ func (s *EvidenceRefKind) UnmarshalText(data []byte) error {
 //     a `judge-run/v2`.
 //   - `not_found` — the quote is in none of the run's verifiable sources. It does not become
 //     evidence, whatever it was filed as.
+//   - `not_checked` — no comparison happened. This is what an `artifact` citation carries: the path
+//     is on the run's manifest, so the file exists and is that size and that hash, but the archive is
+//     never opened in the control plane (evaluation-design §2.2), so no quote of its contents was
+//     verified against anything.
+//     `not_checked` and `not_found` were one value until 2026-08-22 and are not the same claim.
+//     `not_found` says the platform searched and the quote is nowhere, which is close to an accusation;
+//     this says the platform never looked. Filing the second under the first made the report sound
+//     certain about something it had not examined. It is the independent field ADR-043 §影響 asked
+//     for, rather than the statement being left implicit in `excerpt`.
+//     Like `not_found` it never counts as verified evidence, so a rubric item with `evidence_required`
+//     is not satisfied by it.
 type EvidenceRefMatch string
 
 const (
 	EvidenceRefMatchExact      EvidenceRefMatch = "exact"
 	EvidenceRefMatchNormalized EvidenceRefMatch = "normalized"
 	EvidenceRefMatchNotFound   EvidenceRefMatch = "not_found"
+	EvidenceRefMatchNotChecked EvidenceRefMatch = "not_checked"
 )
 
 // AllValues returns all EvidenceRefMatch values.
@@ -3929,6 +4054,7 @@ func (EvidenceRefMatch) AllValues() []EvidenceRefMatch {
 		EvidenceRefMatchExact,
 		EvidenceRefMatchNormalized,
 		EvidenceRefMatchNotFound,
+		EvidenceRefMatchNotChecked,
 	}
 }
 
@@ -3940,6 +4066,8 @@ func (s EvidenceRefMatch) MarshalText() ([]byte, error) {
 	case EvidenceRefMatchNormalized:
 		return []byte(s), nil
 	case EvidenceRefMatchNotFound:
+		return []byte(s), nil
+	case EvidenceRefMatchNotChecked:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -3957,6 +4085,9 @@ func (s *EvidenceRefMatch) UnmarshalText(data []byte) error {
 		return nil
 	case EvidenceRefMatchNotFound:
 		*s = EvidenceRefMatchNotFound
+		return nil
+	case EvidenceRefMatchNotChecked:
+		*s = EvidenceRefMatchNotChecked
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

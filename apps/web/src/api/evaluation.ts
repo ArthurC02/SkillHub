@@ -28,8 +28,22 @@ export type VerdictSource = "rule" | "model" | "user";
  * long afterwards. `available: false` means the original is gone — the excerpt
  * still shows, labelled as the copy kept at judgement time (ADR-026 決策 2).
  */
+/**
+ * How the platform's own search for the quote ended (ADR-043). Never the
+ * judge's answer — a citation holds because its quote is findable, not because
+ * of the label it arrived under.
+ */
+export type EvidenceMatch = "exact" | "normalized" | "not_found" | "not_checked";
+
 export type EvidenceRef = {
   kind: "trace_event" | "artifact" | "agent_output";
+  /** Reports written before 2026-08-22 carry no `match`; treat absence as unknown, never as verified. */
+  match?: EvidenceMatch;
+  /**
+   * Present when the quote was found somewhere other than where the judge filed
+   * it. `kind` has been corrected; this keeps what it was filed as.
+   */
+  reattributed_from?: "trace_event" | "artifact" | "agent_output";
   trace_event_id?: string;
   occurred_at?: string;
   artifact_path?: string;

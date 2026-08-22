@@ -49,7 +49,11 @@ type qa002File struct {
 	Variants map[string]qa002Expectation `json:"variants"`
 }
 
-const qa002ExpectedPath = "../../../../tools/qa/skillpkg-corpus/expected-findings.json"
+// Five levels: internal/skill/admission is one deeper than the internal/ingest
+// this path was written for, and the 2026-08-20 boundary reshuffle (ADR-038,
+// ADR-040) moved the package without moving the count. The test is env-gated,
+// so it read four levels up and found nothing without anyone noticing.
+const qa002ExpectedPath = "../../../../../tools/qa/skillpkg-corpus/expected-findings.json"
 
 func TestQA002BrokenPackageCorpus(t *testing.T) {
 	dir := os.Getenv("QA002_CORPUS")

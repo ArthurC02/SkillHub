@@ -5389,7 +5389,7 @@ components:
           enum: [trace_event, artifact, agent_output]
         match:
           type: string
-          enum: [exact, normalized, not_found]
+          enum: [exact, normalized, not_found, not_checked]
           description: |
             How the excerpt was found in the source it names (ADR-043). This is
             the platform's own answer, never the judge's — a citation is verified
@@ -5403,6 +5403,22 @@ components:
               cost the platform a `judge-run/v2`.
             - `not_found` — the quote is in none of the run's verifiable sources.
               It does not become evidence, whatever it was filed as.
+            - `not_checked` — no comparison happened. This is what an `artifact`
+              citation carries: the path is on the run's manifest, so the file
+              exists and is that size and that hash, but the archive is never
+              opened in the control plane (evaluation-design §2.2), so no quote
+              of its **contents** was verified against anything.
+
+              `not_checked` and `not_found` were one value until 2026-08-22 and
+              are not the same claim. `not_found` says the platform searched and
+              the quote is nowhere, which is close to an accusation; this says
+              the platform never looked. Filing the second under the first made
+              the report sound certain about something it had not examined. It
+              is the independent field ADR-043 §影響 asked for, rather than the
+              statement being left implicit in `excerpt`.
+
+              Like `not_found` it never counts as verified evidence, so a rubric
+              item with `evidence_required` is not satisfied by it.
         reattributed_from:
           type: string
           enum: [trace_event, artifact, agent_output]
@@ -6135,13 +6151,45 @@ components:
         versions (packaging-design §2.4).
       type: object
       required:
-        [artifact_id, skill_id, skill_version_id, target, file_name, size_bytes,
+        [artifact_id, skill_id, skill_version_id, version_number,
+         latest_version_number, version_state, target, file_name, size_bytes,
          content_hash, manifest_hash, status, servable, serve_state, expires_at,
          created_at, download_count, includes_test_cases]
       properties:
         artifact_id: { type: string, format: uuid }
         skill_id: { type: string, format: uuid }
         skill_version_id: { type: string, format: uuid }
+        version_number:
+          type: integer
+          description: |
+            Which version these bytes are, in the monotonic per-skill numbering
+            the immutability trigger protects. The uuid beside it identifies the
+            row; this is the only field on this schema a person can read as an
+            answer to "which one is this" (04 丙-42, `02:WS-002` 1「版本」).
+        latest_version_number:
+          type: integer
+          description: |
+            The highest version number this skill currently has. Present so the
+            client never has to fetch a second resource to find out whether it
+            is showing a stale package, and equal to `version_number` when this
+            is the newest.
+        version_state:
+          $ref: "#/components/schemas/Labelled"
+          description: |
+            `current` or `superseded`, with the wording — including the numbers —
+            from the server (設計系統 §4.4).
+
+            **Deliberately not a fifth `serve_state`.** Being superseded says
+            nothing about whether the bytes are available: a superseded package
+            is downloadable, and downloading exactly the version you packaged is
+            a legitimate thing to want. `serve_state` answers "can I have the
+            bytes"; this answers "is this the newest content". Folding them would
+            make one field mean two things and force a superseded-and-expired row
+            to pick which truth to tell (設計系統 §2.12 的第三軸).
+
+            It is not upstream freshness. Whether the *source* the skill was
+            imported from has moved is `CONTENT-009`/`INGEST-010`, neither of
+            which is built, and whose re-fetch cadence is still 待決策.
         target: { $ref: "#/components/schemas/PackagingTargetId" }
         file_name:
           type: string

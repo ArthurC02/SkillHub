@@ -16,6 +16,7 @@ Usage:
     python import_seed.py --only excel-insert  # substring filter on skill id
     python import_seed.py --probe-url          # INGEST-001 allow-list probes
     python import_seed.py --selftest           # offline check of the repacker
+    python import_seed.py --pack-only <dir>    # repack all 45 to disk, no API
 """
 
 from __future__ import annotations
@@ -350,6 +351,68 @@ def selftest() -> int:
     return 0
 
 
+def every_skill(sources: dict, cache: pathlib.Path) -> list[dict]:
+    """Every SKILL.md in every pinned source repo, not only the 45 selected.
+
+    The seed list is a curated selection, so a census over it answers "does this
+    break our own catalogue" and nothing else. ADR-044 decision 4's cost sentence
+    was about skills written for Claude Code that users bring — and the selection
+    contains none of them by construction. This walks the same pinned archives
+    for every skill they hold, which is the closest un-curated sample available
+    without downloading anything new.
+    """
+    found: list[dict] = []
+    for sid, src in sources.items():
+        try:
+            repo_zip = download_repo_zip(src, cache)
+        except Exception as e:
+            print(f"[skip] {sid}: {str(e)[:120]}")
+            continue
+        with zipfile.ZipFile(repo_zip) as z:
+            for n in z.namelist():
+                if not n.endswith("/SKILL.md"):
+                    continue
+                inner = n.split("/", 1)[1]  # drop the <repo>-<sha>/ top directory
+                found.append({
+                    "id": f"{sid}/{inner}",
+                    # A SKILL.md at the repo root has no directory to name it.
+                    "name": f"{sid}__" + (inner.rsplit("/", 2)[-2] if "/" in inner else "root"),
+                    "source_id": sid,
+                    "skill_md_path": inner,
+                })
+    return found
+
+
+def pack_only(args) -> int:
+    """Repack every seed skill to `<dir>/<name>.zip` without touching the API.
+
+    The same bytes `run()` would upload. Kept API-free on purpose: the census
+    that ADR-044 decision 4 asks for measures the packages, not a running Skill
+    Hub, and requiring a dev stack for it would make it a deployment task.
+    """
+    seed = json.loads(SEED.read_text(encoding="utf-8"))
+    sources, skills = seed["sources"], seed["skills"]
+    out = pathlib.Path(args.pack_only)
+    out.mkdir(parents=True, exist_ok=True)
+    cache = pathlib.Path(args.cache)
+    if args.all_skills:
+        skills = every_skill(sources, cache)
+    failed = 0
+    for i, skill in enumerate(skills, 1):
+        src = sources[skill["source_id"]]
+        try:
+            repo_zip = download_repo_zip(src, cache)
+            data = repack_skill(repo_zip, skill["skill_md_path"], src)
+        except Exception as e:  # one unreachable source must not lose the other 44
+            print(f"[{i:>2}/{len(skills)}] {skill['id']:<40} FAILED {str(e)[:120]}")
+            failed += 1
+            continue
+        (out / f"{skill['name']}.zip").write_bytes(data)
+        print(f"[{i:>2}/{len(skills)}] {skill['id']:<40} {len(data):>8} bytes")
+    print(f"\nwrote {len(skills) - failed} package(s) to {out}")
+    return 1 if failed else 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--api", default=DEFAULT_API)
@@ -358,9 +421,14 @@ def main() -> int:
     p.add_argument("--out", default=os.path.join(tempfile.gettempdir(), "import-results.json"))
     p.add_argument("--probe-url", action="store_true", help="probe the INGEST-001 URL importer")
     p.add_argument("--selftest", action="store_true", help="offline repacker check")
+    p.add_argument("--pack-only", metavar="DIR", help="repack every seed skill to DIR; no API calls")
+    p.add_argument("--all-skills", action="store_true",
+                   help="with --pack-only: every SKILL.md in the pinned repos, not only the 45 selected")
     args = p.parse_args()
     if args.selftest:
         return selftest()
+    if args.pack_only:
+        return pack_only(args)
     if args.probe_url:
         return probe_url(args)
     return run(args)

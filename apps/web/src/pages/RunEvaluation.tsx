@@ -17,6 +17,7 @@ import type {
   CriterionResult,
   DeterministicFinding,
   Evaluation,
+  EvidenceMatch,
   EvidenceRef,
   ImprovementSuggestion,
   SuggestionBlockedReason,
@@ -419,6 +420,58 @@ function CriterionItem({ criterion: c }: { criterion: CriterionResult }) {
  * was made and says the original is gone — not a blank, and not a pretence that
  * the trace event is still there.
  */
+/**
+ * ADR-043's two audit fields, on the screen.
+ *
+ * The ADR's own §影響 says it: an audit field that never reaches the screen is
+ * not an audit field. G8 — two correct `failed` verdicts lost to a trailing
+ * `}],` the model wrote inside a string value — would have been one glance at
+ * 「正規化後比對」 instead of a regression report.
+ *
+ * Wording is client-side here, and that is deliberate rather than an oversight
+ * of 設計系統 §4.4. An evaluation report is immutable and read long afterwards,
+ * so a label written into it would freeze at storage time and every later
+ * rewording would apply to new reports only — the same sentence appearing in two
+ * forms across one list. The enum is the fact and it is stored; the sentence is
+ * presentation and is not.
+ *
+ * `undefined` is its own case and does not fall through to 「已回驗」: reports
+ * written before the field existed have no answer, and rendering silence as a
+ * pass is exactly the failure ADR-043 was written about.
+ */
+const MATCH_NOTE: Record<EvidenceMatch, string> = {
+  exact: "引文已逐字回驗。",
+  normalized:
+    "引文已回驗——需要正規化後才比對得上（全形半形、空白、頭尾標點）。原文與引用有細微差異，內容相同。",
+  not_found: "這段引文在本次 Run 的可回驗來源裡找不到，因此不作為證據。",
+  not_checked:
+    "只證明這個檔案存在（路徑、大小、雜湊都在 manifest 上），沒有回驗任何引文——平台不會打開產物內容。",
+};
+
+const KIND_WORD: Record<EvidenceRef["kind"], string> = {
+  trace_event: "Trace 事件",
+  artifact: "Artifact",
+  agent_output: "Agent 輸出",
+};
+
+function EvidenceMatchNote({ e }: { e: EvidenceRef }) {
+  return (
+    <>
+      {e.reattributed_from && (
+        <p className="note">
+          Judge 原本標為「{KIND_WORD[e.reattributed_from]}」，實際出處是「{KIND_WORD[e.kind]}」，
+          已更正。標錯來源與捏造引文是兩件不同的事，這一筆是前者。
+        </p>
+      )}
+      <p className="note">
+        {e.match
+          ? MATCH_NOTE[e.match]
+          : "這份報告產生時還沒有記錄引文回驗結果，無法判斷這段引文是否被回驗過。"}
+      </p>
+    </>
+  );
+}
+
 function EvidenceList({ evidence }: { evidence: EvidenceRef[] }) {
   if (evidence.length === 0) return <p className="note">沒有附上證據引用。</p>;
   return (
@@ -452,6 +505,7 @@ function EvidenceList({ evidence }: { evidence: EvidenceRef[] }) {
           {!e.available && (
             <p className="note">原始資料已過期或已刪除，以下是評估當時保存的摘要。</p>
           )}
+          <EvidenceMatchNote e={e} />
           {/* Crossed the trust boundary: inert text, never interpreted. */}
           <pre>{e.excerpt}</pre>
           {e.excerpt_truncated && <p className="note">（摘要已截斷，不是全文）</p>}

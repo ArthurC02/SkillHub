@@ -53,6 +53,46 @@ export interface CreateDownloadArtifact201Response {
      */
     skillVersionId: string;
     /**
+     * Which version these bytes are, in the monotonic per-skill numbering
+     * the immutability trigger protects. The uuid beside it identifies the
+     * row; this is the only field on this schema a person can read as an
+     * answer to "which one is this" (04 丙-42, `02:WS-002` 1「版本」).
+     * 
+     * @type {number}
+     * @memberof CreateDownloadArtifact201Response
+     */
+    versionNumber: number;
+    /**
+     * The highest version number this skill currently has. Present so the
+     * client never has to fetch a second resource to find out whether it
+     * is showing a stale package, and equal to `version_number` when this
+     * is the newest.
+     * 
+     * @type {number}
+     * @memberof CreateDownloadArtifact201Response
+     */
+    latestVersionNumber: number;
+    /**
+     * `current` or `superseded`, with the wording — including the numbers —
+     * from the server (設計系統 §4.4).
+     * 
+     * **Deliberately not a fifth `serve_state`.** Being superseded says
+     * nothing about whether the bytes are available: a superseded package
+     * is downloadable, and downloading exactly the version you packaged is
+     * a legitimate thing to want. `serve_state` answers "can I have the
+     * bytes"; this answers "is this the newest content". Folding them would
+     * make one field mean two things and force a superseded-and-expired row
+     * to pick which truth to tell (設計系統 §2.12 的第三軸).
+     * 
+     * It is not upstream freshness. Whether the *source* the skill was
+     * imported from has moved is `CONTENT-009`/`INGEST-010`, neither of
+     * which is built, and whose re-fetch cadence is still 待決策.
+     * 
+     * @type {Labelled}
+     * @memberof CreateDownloadArtifact201Response
+     */
+    versionState: Labelled;
+    /**
      * 
      * @type {PackagingTargetId}
      * @memberof CreateDownloadArtifact201Response
@@ -208,6 +248,9 @@ export function instanceOfCreateDownloadArtifact201Response(value: object): valu
     if (!('artifactId' in value) || value['artifactId'] === undefined) return false;
     if (!('skillId' in value) || value['skillId'] === undefined) return false;
     if (!('skillVersionId' in value) || value['skillVersionId'] === undefined) return false;
+    if (!('versionNumber' in value) || value['versionNumber'] === undefined) return false;
+    if (!('latestVersionNumber' in value) || value['latestVersionNumber'] === undefined) return false;
+    if (!('versionState' in value) || value['versionState'] === undefined) return false;
     if (!('target' in value) || value['target'] === undefined) return false;
     if (!('fileName' in value) || value['fileName'] === undefined) return false;
     if (!('sizeBytes' in value) || value['sizeBytes'] === undefined) return false;
@@ -237,6 +280,9 @@ export function CreateDownloadArtifact201ResponseFromJSONTyped(json: any, ignore
         'artifactId': json['artifact_id'],
         'skillId': json['skill_id'],
         'skillVersionId': json['skill_version_id'],
+        'versionNumber': json['version_number'],
+        'latestVersionNumber': json['latest_version_number'],
+        'versionState': LabelledFromJSON(json['version_state']),
         'target': PackagingTargetIdFromJSON(json['target']),
         'fileName': json['file_name'],
         'sizeBytes': json['size_bytes'],
@@ -269,6 +315,9 @@ export function CreateDownloadArtifact201ResponseToJSONTyped(value?: CreateDownl
         'artifact_id': value['artifactId'],
         'skill_id': value['skillId'],
         'skill_version_id': value['skillVersionId'],
+        'version_number': value['versionNumber'],
+        'latest_version_number': value['latestVersionNumber'],
+        'version_state': LabelledToJSON(value['versionState']),
         'target': PackagingTargetIdToJSON(value['target']),
         'file_name': value['fileName'],
         'size_bytes': value['sizeBytes'],

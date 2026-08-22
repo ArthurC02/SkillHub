@@ -69,6 +69,15 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
         </span>{" "}
         {expired && <span className="badge badge-expired">已過期</span>}
       </p>
+      {/* 04 丙-42: this row used to name its version only as a uuid, folded inside
+          a disclosure. 「我下載的是不是最新調整好的那一版」 is the question WS-002
+          第 1 條 asks, and no arrangement of a uuid answers it. The wording and
+          both numbers are the server's (設計系統 §4.4) — the client is not the
+          place to decide what 「舊」 means. */}
+      <p className="note">
+        版本：{artifact.version_state.label}
+        {artifact.version_state.note && <> — {artifact.version_state.note}</>}
+      </p>
       <p className="note">
         {bytes(artifact.size_bytes)}｜狀態：{artifact.serve_state.label}｜建立於{" "}
         {artifact.created_at}｜已下載 {artifact.download_count} 次
@@ -95,7 +104,8 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
           <li>打包器版本：{artifact.packager_version ?? "未回報"}</li>
           <li>Profile 版本：{artifact.profile_version ?? "無（標準套件沒有 Profile）"}</li>
           <li>
-            Skill Version ID：<code>{artifact.skill_version_id}</code>
+            Skill Version ID：<code>{artifact.skill_version_id}</code>（v
+            {artifact.version_number}）
           </li>
         </ul>
       </details>

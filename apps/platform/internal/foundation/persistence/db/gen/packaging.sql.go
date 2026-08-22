@@ -36,7 +36,11 @@ INSERT INTO download_artifacts (
     artifact_id, workspace_id, skill_version_id, target,
     profile_version, packager_version, manifest_hash, includes_test_cases
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING artifact_id, kind, workspace_id, skill_version_id, target, profile_version, packager_version, manifest_hash, includes_test_cases
+RETURNING artifact_id, kind, workspace_id, skill_version_id, target, profile_version, packager_version, manifest_hash, includes_test_cases, (
+    SELECT max(v2.version_number) FROM skill_versions v2
+     WHERE v2.skill_id = (SELECT v1.skill_id FROM skill_versions v1
+                           WHERE v1.id = download_artifacts.skill_version_id)
+)::int AS latest_version_number
 `
 
 type CreateDownloadArtifactDetailParams struct {
@@ -50,9 +54,25 @@ type CreateDownloadArtifactDetailParams struct {
 	IncludesTestCases bool
 }
 
+type CreateDownloadArtifactDetailRow struct {
+	ArtifactID          pgtype.UUID
+	Kind                string
+	WorkspaceID         pgtype.UUID
+	SkillVersionID      pgtype.UUID
+	Target              string
+	ProfileVersion      string
+	PackagerVersion     string
+	ManifestHash        string
+	IncludesTestCases   bool
+	LatestVersionNumber int32
+}
+
 // The packaging half (0027 4-a). The composite foreign key checks that the
 // artifact it hangs off is a download package in this same workspace.
-func (q *Queries) CreateDownloadArtifactDetail(ctx context.Context, arg CreateDownloadArtifactDetailParams) (DownloadArtifact, error) {
+// 04 丙-42: the skill's highest version number, read in the same statement that
+// writes the row. A second round trip would be a second point in time, and the
+// one thing this number must not do is disagree with the row it is shown beside.
+func (q *Queries) CreateDownloadArtifactDetail(ctx context.Context, arg CreateDownloadArtifactDetailParams) (CreateDownloadArtifactDetailRow, error) {
 	row := q.db.QueryRow(ctx, createDownloadArtifactDetail,
 		arg.ArtifactID,
 		arg.WorkspaceID,
@@ -63,7 +83,7 @@ func (q *Queries) CreateDownloadArtifactDetail(ctx context.Context, arg CreateDo
 		arg.ManifestHash,
 		arg.IncludesTestCases,
 	)
-	var i DownloadArtifact
+	var i CreateDownloadArtifactDetailRow
 	err := row.Scan(
 		&i.ArtifactID,
 		&i.Kind,
@@ -74,6 +94,7 @@ func (q *Queries) CreateDownloadArtifactDetail(ctx context.Context, arg CreateDo
 		&i.PackagerVersion,
 		&i.ManifestHash,
 		&i.IncludesTestCases,
+		&i.LatestVersionNumber,
 	)
 	return i, err
 }
@@ -138,12 +159,19 @@ const findReusableDownloadArtifact = `-- name: FindReusableDownloadArtifact :one
 
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
+       sv.version_number,
+       -- 04 丙-42: the download row said which bytes, never which version, and
+       -- never whether a newer one exists. Both halves are one join and one
+       -- subquery away, and without them WS-002's "版本" is a uuid.
+       (SELECT max(v2.version_number) FROM skill_versions v2
+         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
        a.expires_at, a.created_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
            AS download_count
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
+JOIN skill_versions sv ON sv.id = da.skill_version_id
 WHERE da.workspace_id = $1
   AND da.skill_version_id = $2
   AND da.target = $3
@@ -171,20 +199,22 @@ type FindReusableDownloadArtifactParams struct {
 }
 
 type FindReusableDownloadArtifactRow struct {
-	ArtifactID        pgtype.UUID
-	SkillVersionID    pgtype.UUID
-	Target            string
-	ProfileVersion    string
-	PackagerVersion   string
-	ManifestHash      string
-	IncludesTestCases bool
-	FileName          string
-	SizeBytes         int64
-	ContentHash       string
-	ScanStatus        string
-	ExpiresAt         pgtype.Timestamptz
-	CreatedAt         pgtype.Timestamptz
-	DownloadCount     int64
+	ArtifactID          pgtype.UUID
+	SkillVersionID      pgtype.UUID
+	Target              string
+	ProfileVersion      string
+	PackagerVersion     string
+	ManifestHash        string
+	IncludesTestCases   bool
+	VersionNumber       int32
+	LatestVersionNumber int32
+	FileName            string
+	SizeBytes           int64
+	ContentHash         string
+	ScanStatus          string
+	ExpiresAt           pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	DownloadCount       int64
 }
 
 // Packaging (PACK-001/002/003/005, 0027). Every statement that touches user
@@ -211,6 +241,8 @@ func (q *Queries) FindReusableDownloadArtifact(ctx context.Context, arg FindReus
 		&i.PackagerVersion,
 		&i.ManifestHash,
 		&i.IncludesTestCases,
+		&i.VersionNumber,
+		&i.LatestVersionNumber,
 		&i.FileName,
 		&i.SizeBytes,
 		&i.ContentHash,
@@ -226,6 +258,12 @@ const getDownloadArtifact = `-- name: GetDownloadArtifact :one
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
        sv.skill_id,
+       sv.version_number,
+       -- 04 丙-42: the download row said which bytes, never which version, and
+       -- never whether a newer one exists. Both halves are one join and one
+       -- subquery away, and without them WS-002's "版本" is a uuid.
+       (SELECT max(v2.version_number) FROM skill_versions v2
+         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status, a.object_key,
        a.expires_at, a.created_at, a.purged_at,
        sk.access_restriction, sk.redistribution,
@@ -244,25 +282,27 @@ type GetDownloadArtifactParams struct {
 }
 
 type GetDownloadArtifactRow struct {
-	ArtifactID        pgtype.UUID
-	SkillVersionID    pgtype.UUID
-	Target            string
-	ProfileVersion    string
-	PackagerVersion   string
-	ManifestHash      string
-	IncludesTestCases bool
-	SkillID           pgtype.UUID
-	FileName          string
-	SizeBytes         int64
-	ContentHash       string
-	ScanStatus        string
-	ObjectKey         string
-	ExpiresAt         pgtype.Timestamptz
-	CreatedAt         pgtype.Timestamptz
-	PurgedAt          pgtype.Timestamptz
-	AccessRestriction *string
-	Redistribution    string
-	DownloadCount     int64
+	ArtifactID          pgtype.UUID
+	SkillVersionID      pgtype.UUID
+	Target              string
+	ProfileVersion      string
+	PackagerVersion     string
+	ManifestHash        string
+	IncludesTestCases   bool
+	SkillID             pgtype.UUID
+	VersionNumber       int32
+	LatestVersionNumber int32
+	FileName            string
+	SizeBytes           int64
+	ContentHash         string
+	ScanStatus          string
+	ObjectKey           string
+	ExpiresAt           pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	PurgedAt            pgtype.Timestamptz
+	AccessRestriction   *string
+	Redistribution      string
+	DownloadCount       int64
 }
 
 // One row, for GET /downloads/{id}, the content stream and the delete.
@@ -284,6 +324,8 @@ func (q *Queries) GetDownloadArtifact(ctx context.Context, arg GetDownloadArtifa
 		&i.ManifestHash,
 		&i.IncludesTestCases,
 		&i.SkillID,
+		&i.VersionNumber,
+		&i.LatestVersionNumber,
 		&i.FileName,
 		&i.SizeBytes,
 		&i.ContentHash,
@@ -456,6 +498,12 @@ const listDownloadArtifacts = `-- name: ListDownloadArtifacts :many
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
        sv.skill_id,
+       sv.version_number,
+       -- 04 丙-42: the download row said which bytes, never which version, and
+       -- never whether a newer one exists. Both halves are one join and one
+       -- subquery away, and without them WS-002's "版本" is a uuid.
+       (SELECT max(v2.version_number) FROM skill_versions v2
+         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
        a.expires_at, a.created_at, a.purged_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
@@ -468,22 +516,24 @@ ORDER BY a.created_at DESC, da.artifact_id
 `
 
 type ListDownloadArtifactsRow struct {
-	ArtifactID        pgtype.UUID
-	SkillVersionID    pgtype.UUID
-	Target            string
-	ProfileVersion    string
-	PackagerVersion   string
-	ManifestHash      string
-	IncludesTestCases bool
-	SkillID           pgtype.UUID
-	FileName          string
-	SizeBytes         int64
-	ContentHash       string
-	ScanStatus        string
-	ExpiresAt         pgtype.Timestamptz
-	CreatedAt         pgtype.Timestamptz
-	PurgedAt          pgtype.Timestamptz
-	DownloadCount     int64
+	ArtifactID          pgtype.UUID
+	SkillVersionID      pgtype.UUID
+	Target              string
+	ProfileVersion      string
+	PackagerVersion     string
+	ManifestHash        string
+	IncludesTestCases   bool
+	SkillID             pgtype.UUID
+	VersionNumber       int32
+	LatestVersionNumber int32
+	FileName            string
+	SizeBytes           int64
+	ContentHash         string
+	ScanStatus          string
+	ExpiresAt           pgtype.Timestamptz
+	CreatedAt           pgtype.Timestamptz
+	PurgedAt            pgtype.Timestamptz
+	DownloadCount       int64
 }
 
 // The download surface (WS-002, WS-004, SEC-006). Every statement is workspace
@@ -513,6 +563,8 @@ func (q *Queries) ListDownloadArtifacts(ctx context.Context, workspaceID pgtype.
 			&i.ManifestHash,
 			&i.IncludesTestCases,
 			&i.SkillID,
+			&i.VersionNumber,
+			&i.LatestVersionNumber,
 			&i.FileName,
 			&i.SizeBytes,
 			&i.ContentHash,

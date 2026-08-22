@@ -327,8 +327,13 @@ func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
 	if why != "" {
 		t.Fatalf("the manifest row is still checkable, so the citation is kept: %q", why)
 	}
-	if got.Match != MatchNotFound {
-		t.Errorf("match = %q, want %q: nothing verified this quote", got.Match, MatchNotFound)
+	// `not_checked`, not `not_found`: the platform never opened the archive, so
+	// it is in no position to say the quote is nowhere. Both fail the rubric item
+	// below; they differ in what the report accuses the judge of (ADR-044 batch,
+	// 04 丙-41).
+	if got.Match != MatchNotChecked {
+		t.Errorf("match = %q, want %q: nothing verified this quote, and nothing looked either",
+			got.Match, MatchNotChecked)
 	}
 
 	weight := 2.0

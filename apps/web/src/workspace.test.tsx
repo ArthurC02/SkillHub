@@ -573,11 +573,35 @@ const ARTIFACT_ROW = {
   status: "available" as const,
   servable: true,
   serve_state: { value: "available", label: "可下載", note: "" },
+  version_number: 2,
+  latest_version_number: 5,
+  version_state: {
+    value: "superseded",
+    label: "v2（這個 Skill 已經到 v5）",
+    note: "這一份是 v2 的內容,而且不會改變——版本是不可變的。要拿 v5 的內容,回到該 Skill 對 v5 重新打包一次。",
+  },
   expires_at: "2099-01-01T00:00:00Z",
   created_at: "2026-08-17T00:00:00Z",
   download_count: 2,
   includes_test_cases: false,
 };
+
+test("WS-004 a download row says which version it is and whether a newer one exists", async () => {
+  vi.stubGlobal("fetch", () => json({ downloads: [ARTIFACT_ROW] }));
+  await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
+
+  // 04 丙-42: the row named its version only as a uuid, and said nothing at all
+  // about a newer one existing. 「我下載的是不是最新調整好的那一版」 is the
+  // question, and a uuid is not an answer to it however it is arranged.
+  expect(text()).toContain("v2（這個 Skill 已經到 v5）");
+  // Immutability is the reason, and the reason is what makes the next step
+  // obvious: this row will never become v5, so re-package rather than wait.
+  expect(text()).toContain("重新打包");
+  // Being superseded is not a serving state: these bytes are still on offer,
+  // and wanting exactly the version you packaged is legitimate.
+  expect(text()).toContain("可下載");
+  expect(container.querySelector('a[href*="/content"]')).not.toBeNull();
+});
 
 test("WS-004 the download history answers 誰 and 何時 per download, not just a count", async () => {
   const urls: string[] = [];

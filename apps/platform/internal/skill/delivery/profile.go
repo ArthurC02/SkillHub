@@ -234,10 +234,9 @@ func renderInstall(p Profile, skillName string, deps []string) string {
 		"`compatibility` block of `skillhub-manifest.json` records what was actually measured for "+
 		"this version - which for most versions is nothing.\n\n"+
 		"The specification defines exactly six frontmatter fields (`name`, `description`, `license`, "+
-		"`compatibility`, `metadata`, `allowed-tools`). Skill Hub reports anything else as a warning "+
-		"and still packages it; the specification's own reference validator and some clients' upload "+
-		"paths treat it as a **hard error**. If this package carries one it is in "+
-		"`skillhub-manifest.json` under `validation.warnings`.\n\n",
+		"`compatibility`, `metadata`, `allowed-tools`), and anything else is a **hard error** here, "+
+		"as it is in the specification's own reference validator and in some clients' upload paths. "+
+		"No package you download from Skill Hub carries one.\n\n",
 		skillpkg.SpecRevision)
 
 	b.WriteString("## Where it goes\n\n")

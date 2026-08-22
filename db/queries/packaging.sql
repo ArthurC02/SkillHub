@@ -8,12 +8,19 @@
 -- exact zip content hash is part of reuse identity.
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
+       sv.version_number,
+       -- 04 丙-42: the download row said which bytes, never which version, and
+       -- never whether a newer one exists. Both halves are one join and one
+       -- subquery away, and without them WS-002's "版本" is a uuid.
+       (SELECT max(v2.version_number) FROM skill_versions v2
+         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
        a.expires_at, a.created_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
            AS download_count
 FROM download_artifacts da
 JOIN artifacts a ON a.id = da.artifact_id
+JOIN skill_versions sv ON sv.id = da.skill_version_id
 WHERE da.workspace_id = $1
   AND da.skill_version_id = $2
   AND da.target = $3
@@ -52,7 +59,14 @@ INSERT INTO download_artifacts (
     artifact_id, workspace_id, skill_version_id, target,
     profile_version, packager_version, manifest_hash, includes_test_cases
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING *;
+-- 04 丙-42: the skill's highest version number, read in the same statement that
+-- writes the row. A second round trip would be a second point in time, and the
+-- one thing this number must not do is disagree with the row it is shown beside.
+RETURNING *, (
+    SELECT max(v2.version_number) FROM skill_versions v2
+     WHERE v2.skill_id = (SELECT v1.skill_id FROM skill_versions v1
+                           WHERE v1.id = download_artifacts.skill_version_id)
+)::int AS latest_version_number;
 
 -- name: MarkDownloadArtifactAvailable :exec
 -- The quarantine release of ADR-003. Kind is in the predicate so this can never
@@ -75,6 +89,12 @@ WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package';
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
        sv.skill_id,
+       sv.version_number,
+       -- 04 丙-42: the download row said which bytes, never which version, and
+       -- never whether a newer one exists. Both halves are one join and one
+       -- subquery away, and without them WS-002's "版本" is a uuid.
+       (SELECT max(v2.version_number) FROM skill_versions v2
+         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status,
        a.expires_at, a.created_at, a.purged_at,
        (SELECT count(*) FROM download_records dr WHERE dr.artifact_id = da.artifact_id)::bigint
@@ -96,6 +116,12 @@ ORDER BY a.created_at DESC, da.artifact_id;
 SELECT da.artifact_id, da.skill_version_id, da.target, da.profile_version,
        da.packager_version, da.manifest_hash, da.includes_test_cases,
        sv.skill_id,
+       sv.version_number,
+       -- 04 丙-42: the download row said which bytes, never which version, and
+       -- never whether a newer one exists. Both halves are one join and one
+       -- subquery away, and without them WS-002's "版本" is a uuid.
+       (SELECT max(v2.version_number) FROM skill_versions v2
+         WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number,
        a.file_name, a.size_bytes, a.content_hash, a.scan_status, a.object_key,
        a.expires_at, a.created_at, a.purged_at,
        sk.access_restriction, sk.redistribution,

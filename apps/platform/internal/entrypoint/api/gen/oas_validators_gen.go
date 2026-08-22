@@ -1570,6 +1570,8 @@ func (s EvidenceRefMatch) Validate() error {
 		return nil
 	case "not_found":
 		return nil
+	case "not_checked":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}

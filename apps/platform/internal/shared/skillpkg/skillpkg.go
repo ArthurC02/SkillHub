@@ -309,11 +309,12 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 			}
 		default:
 			m.Extra[k] = v
-			r.add(SeverityWarning, "frontmatter-unknown-field", "SKILL.md",
+			r.add(SeverityError, "frontmatter-unknown-field", "SKILL.md",
 				fmt.Sprintf("unknown frontmatter field %q — the Agent Skills specification defines exactly six "+
 					"(name, description, license, compatibility, metadata, allowed-tools), and its reference "+
 					"validator rejects anything else, as do the upload paths of at least one major client. "+
-					"This package is accepted here and may be refused there", k))
+					"Move it under metadata (a map of string keys to string values) or remove it; a "+
+					"package carrying it is not something this platform can call specification-valid", k))
 		}
 	}
 	r.Manifest = m

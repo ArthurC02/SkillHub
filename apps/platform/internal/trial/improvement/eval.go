@@ -107,15 +107,34 @@ const (
 // model wrote into a string value — would have been one glance instead of a
 // regression report.
 //
-// `not_found` is a stored state, not only a rejection. An artifact citation
-// keeps it: the manifest proves the file exists, and nothing in this platform
-// ever proves that a quote came out of its bytes (evaluation-design §2.2 keeps
-// the archive shut in the control plane).
+// `not_checked` is what an artifact citation carries, and it is the field
+// ADR-043 §影響 asked for: the statement "this proves the file exists and
+// nothing about its contents" as a value of its own, rather than left implicit
+// in the excerpt. It replaced `not_found` on that path on 2026-08-22 — the two
+// were being collapsed, and they are not the same claim. `not_found` says the
+// platform searched every verifiable source and the quote is in none of them,
+// which is close to an accusation. `not_checked` says the platform never opened
+// the bytes (evaluation-design §2.2 keeps the archive shut in the control
+// plane), which is a statement about us. Filing the second under the first
+// makes the platform sound certain about something it never looked at.
+//
+// `not_found` stays in the enum: evaluation reports are immutable, so reports
+// written before that day still carry it, and it remains the right value the day
+// a source is searched and comes up empty.
 const (
 	MatchExact      = "exact"
 	MatchNormalized = "normalized"
 	MatchNotFound   = "not_found"
+	MatchNotChecked = "not_checked"
 )
+
+// verifiedQuote is the one predicate that decides whether a citation carries
+// content this platform stands behind. Written as a whitelist on purpose: the
+// previous form (`!= MatchNotFound`) counted an empty string as verified, which
+// is exactly what a report stored before `match` existed decodes to.
+func verifiedQuote(match string) bool {
+	return match == MatchExact || match == MatchNormalized
+}
 
 // CriterionResult is one acceptance criterion's verdict (public.yaml
 // CriterionResult). `criterion_id` refers to the run's frozen snapshot, so editing

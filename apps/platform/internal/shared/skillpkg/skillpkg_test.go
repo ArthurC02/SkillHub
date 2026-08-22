@@ -82,15 +82,33 @@ func TestFrontmatterRules(t *testing.T) {
 	}
 }
 
+// ADR-044 decision 4: a warning until 2026-08-22, an error since. The unlock
+// was one measurement, not a preference - TestSpecFrontmatterCensus counted 0
+// of 106 packages across the 11 pinned source repos carrying a field outside
+// the six, so escalation retroactively blocks nothing that exists.
+func TestAnUnknownFrontmatterFieldBlocks(t *testing.T) {
+	md := "---\nname: x\ndescription: d\nauto_run: true\n---\n"
+	r := Validate(pkg(md, nil))
+	if codes(r)["frontmatter-unknown-field"] != SeverityError {
+		t.Fatalf("want an error: %+v", r.Findings)
+	}
+	if !r.Blocked {
+		t.Fatal("an unknown field must block; the reference validator rejects it and so do some clients")
+	}
+	// metadata is one of the six and has no typed home, so it lands in Extra
+	// alongside the unknown keys. Parking it there must not make it unknown.
+	r = Validate(pkg("---\nname: x\ndescription: d\nmetadata:\n  team: platform\n---\n", nil))
+	if codes(r)["frontmatter-unknown-field"] != "" {
+		t.Fatalf("metadata is a specification field: %+v", r.Findings)
+	}
+}
+
 func TestWarningsDoNotBlock(t *testing.T) {
-	md := "---\nname: x\ndescription: d\ncustom-field: y\n---\nSee [ref](docs/gone.md).\n"
+	md := "---\nname: x\ndescription: d\n---\nSee [ref](docs/gone.md).\n"
 	r := Validate(pkg(md, nil))
 	c := codes(r)
 	if c["license-unknown"] != SeverityWarning {
 		t.Fatalf("want license-unknown warning: %+v", r.Findings)
-	}
-	if c["frontmatter-unknown-field"] != SeverityWarning {
-		t.Fatalf("want unknown-field warning: %+v", r.Findings)
 	}
 	if c["file-ref-missing"] != SeverityWarning {
 		t.Fatalf("want file-ref-missing warning: %+v", r.Findings)

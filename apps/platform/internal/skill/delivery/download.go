@@ -63,7 +63,8 @@ func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]A
 			Status: r.ScanStatus, ExpiresAt: rfc3339(r.ExpiresAt), CreatedAt: rfc3339(r.CreatedAt),
 			DownloadCount: r.DownloadCount, IncludesTestCases: r.IncludesTestCases,
 			PackagerVersion: r.PackagerVersion, ProfileVersion: r.ProfileVersion,
-		}.withServeState(r.ExpiresAt.Time, r.PurgedAt.Valid))
+			VersionNumber:   r.VersionNumber, LatestVersionNumber: r.LatestVersionNumber,
+		}.withVersionState().withServeState(r.ExpiresAt.Time, r.PurgedAt.Valid))
 	}
 	return out, nil
 }
@@ -117,10 +118,11 @@ func (s *Service) GetDownload(ctx context.Context, ws identity.Workspace, id pgt
 		Status: row.ScanStatus, ExpiresAt: rfc3339(row.ExpiresAt), CreatedAt: rfc3339(row.CreatedAt),
 		DownloadCount: row.DownloadCount, IncludesTestCases: row.IncludesTestCases,
 		PackagerVersion: row.PackagerVersion, ProfileVersion: row.ProfileVersion,
+		VersionNumber:   row.VersionNumber, LatestVersionNumber: row.LatestVersionNumber,
 		// The same three facts Download() enforces on, one function apart from it:
 		// this is the endpoint an owner reads to tell 404's reasons apart, so it
 		// must not be able to answer 可下載 about bytes the other one refuses.
-	}.withServeState(row.ExpiresAt.Time, row.PurgedAt.Valid), nil
+	}.withVersionState().withServeState(row.ExpiresAt.Time, row.PurgedAt.Valid), nil
 }
 
 func (s *Service) downloadRow(

@@ -379,11 +379,10 @@ func (s *Service) merge(
 }
 
 // hasVerifiedQuote answers whether any of these citations rests on a quote the
-// platform found somewhere. `not_found` is the one match state that carries no
-// verified content, whichever source it ended up filed under.
+// platform found somewhere, whichever source it ended up filed under.
 func hasVerifiedQuote(refs []EvidenceRef) bool {
 	for _, r := range refs {
-		if r.Match != MatchNotFound {
+		if verifiedQuote(r.Match) {
 			return true
 		}
 	}
@@ -500,11 +499,12 @@ func verify(
 				// The path is what is checkable here, and it is the part a model
 				// cannot invent — so the citation is kept rather than thrown away
 				// (ADR-043 §3). What it supports is "this file exists, this big",
-				// and `not_found` is how it says its quote, if it had one, was
-				// verified against nothing. merge() is where that stops being
+				// and `not_checked` is how it says its quote, if it had one,
+				// was verified against nothing — not that we looked and it was
+				// absent, which is a different and harsher claim. merge() is where that stops being
 				// enough for a rubric item that demands evidence.
 				out := artifactRef(a)
-				out.Match = MatchNotFound
+				out.Match = MatchNotChecked
 				return out, ""
 			}
 		}
