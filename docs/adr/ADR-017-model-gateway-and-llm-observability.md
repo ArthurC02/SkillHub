@@ -81,6 +81,6 @@ flowchart LR
 
 ## 待決策
 
-- LiteLLM 與主 Postgres 共用實例或獨立小實例。
+- LiteLLM 與主 Postgres 共用實例或獨立小實例。 **→ 已解決**：取「共用實例、獨立邏輯 database」——LiteLLM 的 `DATABASE_URL` 指向同一個 postgres 服務的 `litellm` database，`infra/compose/docker-compose.yml` 的註解逐字寫明理由（migration 不得互相波及）。
 - Langfuse 保存期限與遮罩範圍的具體政策（隨 SEC-006）。
-- Sandbox 內 Agent Runtime 注入 Virtual Key 的具體機制（環境變數 vs 設定檔，隨 PDM-003 Runtime 確認）。
+- Sandbox 內 Agent Runtime 注入 Virtual Key 的具體機制（環境變數 vs 設定檔，隨 PDM-003 Runtime 確認）。 **→ 已解決**：取環境變數。sandboxd 以 `ANTHROPIC_BASE_URL`／`ANTHROPIC_AUTH_TOKEN` 注入容器，平台側 preflight 以同一組名稱對使用者揭露，Trace 遮罩也以這兩個名稱為 pattern——三處同名，所以揭露、注入與遮罩不會各講各的。

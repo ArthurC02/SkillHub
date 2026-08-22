@@ -77,4 +77,4 @@ MVP 進入實作前需選定語言與框架。決策驅動因素：
 
 - Go↔Python 內部通訊維持 REST 或改 gRPC（流量與串流需求確認後）。
 - 公開 Skill 頁面的 SEO 需求與 SSR 時點。
-- LangGraph checkpoint 在長時評估中的暫存策略（單 Job 內重試恢復）。
+- LangGraph checkpoint 在長時評估中的暫存策略（單 Job 內重試恢復）。 **→ 前提消失（2026-08-22 查證）：LangGraph 從未被採用。** `apps/llm/pyproject.toml` 的依賴只有 `fastapi`／`uvicorn`／`litellm`／`openai`，`evaluate.py` 檔頭逐字寫「no tools, no LangGraph」，兩個 endpoint 都是單次閘道呼叫。**所以這條待決策不存在受詞。** AGENTS.md 的技術棧表與鐵律 5 曾以它為條文，已同批更正。

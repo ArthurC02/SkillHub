@@ -108,7 +108,7 @@ Skill Hub 會從網路取得 Skill。Skill 可能包含指令、Script、依賴�
 
 ## 待決策
 
-- 阻擋與警告的具體 Policy。
-- 支援的 License 辨識與無 License 內容行為。
+- 阻擋與警告的具體 Policy。 **→ 已解決（2026-08-22 對帳查證）**：等級表存在且是可逐條判定的——`shared/skillpkg` 的 `Severity`（`error` 阻擋／`warning` 揭露／`info` 揭露）在每個 finding code 上逐條指定，`Report.Blocked` 是彙總；閘門 B 的 `trial/execution/gateb.go` 的 `requireScanNotBlocking()` 重新掃描套件位元組、`error` 級即拒、掃不成也拒（fail-closed），三支具名測試（`04` 乙-8 已結案）。**威脅模型 Q7 與 `03:SEC-003` 都還寫著它未定案，那兩處已同批更正。**
+- 支援的 License 辨識與無 License 內容行為。 **→ 已解決**：`skillpkg` 的 `licenseSignatures` 做 SPDX 辨識、缺席即 `unknown`；`skill/delivery/packaging.go` 把 `license_hold`／`license_unknown` 當成四道鎖之二直接拒發打包（ADR-021、migration `0012`）。
 - Artifact 掃描及高風險檔案顯示策略。
 

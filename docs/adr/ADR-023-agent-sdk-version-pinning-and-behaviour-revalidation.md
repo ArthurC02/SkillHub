@@ -70,5 +70,5 @@ Agent SDK 是沙箱內唯一執行 Skill 的元件，平台對「Skill 有沒有
 ## 待決策
 
 - 是否為 SDK 升級開一條有預算的 CI 路徑（例如每月一次的排程 e2e），使升級不完全依賴人工觸發；需先有 `PDM-010` 的成本歸屬。
-- npm 供應鏈的涵蓋範圍：`03` SBX-011 的 SBOM／attestation 是否涵蓋 `node_modules`，以及 SDK 的傳遞依賴是否納入 I-06 的漏洞門檻。
+- npm 供應鏈的涵蓋範圍：`03` SBX-011 的 SBOM／attestation 是否涵蓋 `node_modules`，以及 SDK 的傳遞依賴是否納入 I-06 的漏洞門檻。 **→ 已解決，兩問都是「是」，而且是被強制的**：syft 掃整個 image（含 `/opt/skillhub` 的 SDK 樹），grype 以 `--only-fixed --fail-on high` 對同一份 SBOM 擋門。反向證據更硬——Dockerfile 逐字記錄可修的 Critical/High 全部來自 npm 自帶的 `node_modules`，並因此在 build 尾端 `rm` 掉 npm／corepack。
 - 上游若提供可程式化的能力宣告（例如查詢「目前生效的 skill 來源」），可否用它把測項 1 從 e2e 降級為便宜的煙霧測試。

@@ -215,8 +215,20 @@ jobs:
   #
   # GitHub-hosted runners have a Docker daemon, so the dockerdrv integration
   # tests run here for real rather than skipping. What they cannot cover is
-  # gVisor: runsc needs nested virtualization, which is ADR-019 open question 3
-  # and stays a deployment-time check (SEC-009, SBX-010).
+  # gVisor used to be written off here on the grounds that runsc needs nested
+  # virtualization (ADR-019 open question 3). **ADR-022 §0 overturned that**:
+  # the systrap platform intercepts with seccomp + SIGSYS and needs no /dev/kvm,
+  # so a GitHub-hosted ubuntu-latest is enough, and ADR-022 附錄 splits SEC-009
+  # into a Suite 1 that needs only Linux + Docker + runsc and a Suite 2 that can
+  # only run on the node about to join the pool. The comment outlived the
+  # correction by a milestone and kept Suite 1 filed as impossible.
+  #
+  # The step below is Suite 1's first cut: the same driver assertions, on runsc.
+  # It buys syscall-compatibility regression, which ADR-015 flags as recurring
+  # whenever a Runtime is added. It buys **none** of the escape, egress,
+  # credential-scope or cleanup testing — those measure the production node's own
+  # configuration, so a different machine is a different subject and SEC-009 /
+  # SBX-010 stay deployment-time acceptance (04 甲-1～甲-4).
   sandbox:
     needs: changes
     if: needs.changes.outputs.sandbox == 'true'
@@ -241,6 +253,34 @@ jobs:
       - name: Build the runtime image (SBX-002)
         run: docker build -t skillhub/runtime-agent-sdk:ci infra/images/runtime-agent-sdk
         working-directory: .
+      # SEC-009 Suite 1 (ADR-022 附錄). `latest` rather than a pin because the
+      # pin belongs in infra/nodes/gvisor-baseline.txt and that file is still
+      # `unset` — there is no node yet to be reconciled against. Point this at
+      # the baseline the moment the first node fills it, so CI and the pool
+      # cannot drift.
+      - name: Install gVisor
+        run: |
+          set -euo pipefail
+          ARCH="$(uname -m)"
+          URL="https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH}"
+          wget -q "${URL}/runsc" "${URL}/runsc.sha512"                "${URL}/containerd-shim-runsc-v1" "${URL}/containerd-shim-runsc-v1.sha512"
+          sha512sum -c runsc.sha512 -c containerd-shim-runsc-v1.sha512
+          sudo install -m 0755 -t /usr/local/bin runsc containerd-shim-runsc-v1
+          sudo runsc install
+          sudo systemctl reload docker
+        working-directory: .
+      # The driver tests again, on runsc this time. `Config.Runtime` has existed
+      # since SBX-001 and no test had ever taken its non-empty path, so the knob
+      # that implements ADR-015 was itself unexercised.
+      #
+      # TestRequestedRuntimeIsTheOneTheContainerGot fails rather than skips when
+      # a runtime was explicitly asked for, which is what stops this step from
+      # going green on a daemon that never heard of runsc — the same silent-zero
+      # shape as 04 丙-36.
+      - name: Sandbox driver tests on gVisor
+        run: go test ./internal/dockerdrv/... -count=1
+        env:
+          SKILLHUB_SANDBOX_TEST_RUNTIME: runsc
 
   llm:
     needs: changes

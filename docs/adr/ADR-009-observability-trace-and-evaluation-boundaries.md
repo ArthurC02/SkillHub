@@ -98,8 +98,8 @@ event_id      單一領域或 Run Trace 事件
 
 ## 待決策
 
-- Trace 的保存格式、即時傳輸與查詢技術。
-- 一般模式摘要由規則、模型或混合方式產生。
+- Trace 的保存格式、即時傳輸與查詢技術。 **→ 已解決**：格式 `contracts/events/trace-event.schema.json`（已升 1.1）、傳輸 `POST /internal/trace/{token}`（sandbox 唯一入口）、查詢為月分割表＋cursor 分頁；`03` TRACE-002～009 全部勾選，含缺號與遲到偵測。
+- 一般模式摘要由規則、模型或混合方式產生。 **→ 已解決：純規則，不是模型也不是混合。** `trial/evidence/service.go` 的 `General` 讀 `GetTraceGeneralFold` 的 SQL fold ＋ `runs` 表狀態，全程沒有模型呼叫（`03` TRACE-006 已勾）。這一條的答案值得記著：**摘要一旦是模型產生的，它就要受 ADR-013 的「模型輸出必須被標示為模型輸出」約束**，而純規則的摘要不必——選規則等於省掉一整條揭露義務。
 - 每個方案允許的 Trace 詳細度與保存期限。→ 保存期限本身仍未定值（PDM-006）；**Trace 被清掉後評估證據怎麼辦**已由 [ADR-026](./ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 2 回答（引用 ＋ 判定當下的可讀摘要雙存，過期時誠實標明）。
 - 本節「Evaluation 邊界」只寫了「讀取的內容仍視為可能包含 Prompt Injection」，未給防線。→ [ADR-026](./ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md) 決策 3（四條防線）。Evaluation 的判定與 Run 終態的關係另見 [ADR-025](./ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)。
 - 本 ADR 的三分（外加 [ADR-017](./ADR-017-model-gateway-and-llm-observability.md) 的 Langfuse 第四軌）**不涵蓋使用者行為的漏斗量測**——那既不是平台健康、也不在任何一次 Run 之內。→ [ADR-029](./ADR-029-product-analytics-events-and-audit-trace-boundaries.md) 把它定為**第五類且明確從屬**的資料（不是事實來源），並劃清它與 audit event、Run Trace 的邊界；鐵律 11 的「分析事件」自該 ADR 起取得定義。

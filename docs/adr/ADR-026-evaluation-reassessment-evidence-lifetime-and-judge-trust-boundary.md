@@ -2,6 +2,7 @@
 
 - 狀態：Accepted
 - 日期：2026-08-17
+- **2026-08-22 修訂**：defence 3（引用回驗）的判準由 [ADR-043](ADR-043-evidence-citation-is-verified-by-content-not-by-its-claimed-source.md) 改寫——引用的成立條件是引文本身可回驗，`kind` 只是提示。**其餘四條防線不變**，本 ADR 不標 `Superseded`。
 - 決策者：產品負責人、架構規劃
 - 相關：[ADR-009](./ADR-009-observability-trace-and-evaluation-boundaries.md)（Evaluation 邊界與低權限讀取）、[ADR-003](./ADR-003-data-ownership-and-storage.md)（不可變快照與保存）、[ADR-017](./ADR-017-model-gateway-and-llm-observability.md)（模型閘道與成本歸因）、[ADR-025](./ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)（重評不牽動 Run 終態）
 - 設計來源：[docs/plans/mvp/m3/evaluation-design.md](../plans/mvp/m3/evaluation-design.md) §2.4、§3.2～3.4、§6.1

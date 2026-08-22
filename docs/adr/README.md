@@ -67,6 +67,7 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-040](./ADR-040-platform-foundation-shared-kernel-and-entrypoint-topology.md) | Platform 的 Foundation、Shared Kernel 與 Entrypoint 拓撲（保留 Go `internal` 私有邊界；將 Generic 技術基座與 HTTP 組裝收納為明確角色） | Accepted |
 | [ADR-041](./ADR-041-trust-signal-vocabulary-typed-absence-and-rule-precedence.md) | 信任訊號的表達方式、缺席的型別與規則優先序（否決綜合信任分數——它必然把「沒檢查」映射到與「檢查過沒事」同一條軸；缺席固定六詞；原則牴觸時的順位；文件即政策、CSS 即事實、測試比對兩者） | Accepted |
 | [ADR-042](./ADR-042-roadmap-product-rulings-evidence-aggregate-in-flight-axis-and-enforcer-attribution.md) | 路線圖上六個未決問題的產品裁定（評分與排行榜**永久不做**，替代品是帶分母的試跑證據彙總；進行中是第三軸；大清單的判準是「這一頁在問什麼」而不是列數；強制者必須具名；量測只在「對位元組成立」時可繼承） | Accepted |
+| [ADR-043](./ADR-043-evidence-citation-is-verified-by-content-not-by-its-claimed-source.md) | 引用的成立條件是引文本身可回驗，來源標籤只是提示（修訂 ADR-026 defence 3 的判準：歸錯類的引用要改正而不是打回；`artifact` 引用只證明存在；正規化有界且比對結果分三態） | Accepted |
 
 ## 整體架構摘要
 

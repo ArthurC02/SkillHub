@@ -94,7 +94,7 @@ MVP 可先使用共享資料庫與共享 Schema 的邏輯隔離，但必須：
 
 ## 待決策
 
-- Workspace ID 的生成與服務間傳遞規範。
+- Workspace ID 的生成與服務間傳遞規範。 **→ 已解決**：`db/migrations/0002_identity.sql` 以 `gen_random_uuid()` 伺服器端生成；`contracts/openapi/sandbox-provider.yaml` 明訂 `workspace_id` 為 tenancy label（Provider 無法用它擴權）；事件的 `workspace_id` 由寫入端從 `run_id` 查出、不信任外部傳入；`RequireSession` 是唯一 scope 來源。
 - 身分供應商與服務身分模式。→ [ADR-020](./ADR-020-authentication-and-session-model.md)
 - 免費額度、自備 Key 與成本顯示方式。→ **強制點與語意已由 [ADR-028](./ADR-028-beta-admission-and-quota-enforcement-points.md) 決策 2、3 回答**（配額的強制點是平台自己的計數器，落在建立 Run 的同一個交易與 advisory lock；閘道的 `max_budget`／`tpm_limit`／並行上限各管另一件事，三層併用不可互相取代；顯示必須排在強制之後）。**數值本身仍未定**——免費額度由 PDM-010 給（首月語意待擇一），自備 Key 依 ADR-017 為閘道功能、MVP 不開放；成本顯示的既有落點是 `02:TEST-005` 的預估成本區間（`03` TEST-011，已實作）。
 - 企業資料隔離 Profile 的觸發條件。

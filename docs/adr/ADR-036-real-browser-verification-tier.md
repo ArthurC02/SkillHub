@@ -129,7 +129,7 @@ API 一律以 `page.route` 攔截。攔截器**先註冊 catch-all 再註冊具�
 
 ## 待決策
 
-1. **OS 矩陣要不要做**（`windows-latest`／`macos-latest`）。這是 `QA-008` 目前唯一的不勾理由。取捨：macOS runner 分鐘數計價較高，而三個引擎在三個 OS 上等於 9 組；也可能只補 WebKit-on-macOS 一格（那是唯一一個「引擎行為可能真的隨 OS 不同」的組合）。**在做這個決定之前 `QA-008` 不得勾選。**
+1. **OS 矩陣要不要做**（`windows-latest`／`macos-latest`）。這是 `QA-008` 目前唯一的不勾理由。取捨：macOS runner 分鐘數計價較高，而三個引擎在三個 OS 上等於 9 組；也可能只補 WebKit-on-macOS 一格（那是唯一一個「引擎行為可能真的隨 OS 不同」的組合）。**在做這個決定之前 `QA-008` 不得勾選。** **→ 部分已解決（2026-08-22 查證）**：Windows 那一半已落地——`.github/workflows/ci.yml` 的 `web-browser` job 現在是 ubuntu×三引擎 ＋ windows×chromium，理由寫在 job 註解裡（Segoe UI 的換行寬度、Windows 經典捲軸吃 15–17px 版面）。**macOS 那一格仍開著**，而且它關不掉一個結構性缺口：Playwright 在 macOS 上一樣是自編 WebKit，「真 Safari」不在任何一格裡。`QA-008` 目前唯一的不勾理由已縮小為這一格。
 2. **要不要加瀏覽器快取。** 前提是先決定一個 `actions/cache` 的釘死 SHA 並驗證它——本 workflow 的規矩是每個 action 都釘 SHA，不能為了省 90 秒破例。
 3. **要不要涵蓋行動裝置**（Playwright 的 device emulation，或真機服務）。目前只有一格 375px 視窗。
 4. 引擎版本的升級節奏與觸發條件（比照 [ADR-023](./ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md) 對 Agent SDK 的處理方式，還是跟著 `@playwright/test` 的 semver 走）。

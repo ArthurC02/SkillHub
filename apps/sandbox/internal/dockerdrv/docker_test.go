@@ -27,10 +27,20 @@ import (
 // without Docker — and every container they create carries
 // skillhub.sandbox.test=1 and is removed on the way out.
 //
-// The gVisor half of ADR-015 is not testable here: runsc needs Linux, the
-// development machine is Windows, and the escape testing that actually proves
-// isolation (SEC-009 / SBX-010) is deployment-time acceptance. What these tests
-// cover is the ADR-005 baseline that gVisor sits on top of, not gVisor itself.
+// The gVisor half of ADR-015 used to be written off here as untestable, on the
+// grounds that runsc needs Linux and the development machine is Windows. Half of
+// that is still true and half of it was never the point: **CI runs on Linux**,
+// and ADR-022 §附錄 splits SEC-009 into a Suite 1 that needs nothing but Linux +
+// Docker + runsc and a Suite 2 that can only run on the node about to join the
+// pool. `SKILLHUB_SANDBOX_TEST_RUNTIME` is how the first half gets exercised;
+// `Config.Runtime` has existed since SBX-001 and no test had ever taken the
+// non-empty path through it.
+//
+// What that buys is syscall-compatibility regression, which ADR-015 flags as
+// recurring whenever a Runtime is added. What it does not buy is any of the
+// escape, network-egress, credential-scope or cleanup testing — those measure
+// **the production node's own configuration**, so a different machine is a
+// different subject and SEC-009 / SBX-010 stay deployment-time acceptance.
 const testLabel = "skillhub.sandbox.test"
 
 // testImage only has to run a shell. The real Runtime Image (SBX-002) is
@@ -43,6 +53,12 @@ func testImage() string {
 	}
 	return "busybox:1.37"
 }
+
+// testRuntime is empty on a developer machine (the daemon's default runtime) and
+// `runsc` on the CI leg that installs gVisor. Everything else about these tests
+// is identical on both legs, which is the point: the same assertions have to
+// hold on the runtime the product actually deploys on.
+func testRuntime() string { return os.Getenv("SKILLHUB_SANDBOX_TEST_RUNTIME") }
 
 func newDriver(t *testing.T) (*dockerdrv.Driver, *client.Client) {
 	t.Helper()
@@ -73,6 +89,7 @@ func newDriver(t *testing.T) (*dockerdrv.Driver, *client.Client) {
 		UID:         65532,
 		GID:         65532,
 		AllowDevCmd: true,
+		Runtime:     testRuntime(),
 		ExtraLabels: map[string]string{testLabel: "1"},
 	})
 	if err != nil {
@@ -327,5 +344,43 @@ func TestAdoptRebuildsRunsFromContainerLabels(t *testing.T) {
 	}
 	if got.RequestHash != sandbox.HashRequest(req) {
 		t.Error("request hash did not survive the restart: a re-sent dispatch would 409")
+	}
+}
+
+// TestRequestedRuntimeIsTheOneTheContainerGot is the guard that stops the gVisor
+// leg from going green without gVisor.
+//
+// Every other test here skips when Docker is unreachable, which is right for a
+// developer machine and exactly wrong for a leg whose entire purpose is to run
+// on one specific runtime: a daemon that does not know `runsc` would answer with
+// an error, the test would skip, and the job would be green having proved
+// nothing. That failure shape has already been observed once in this repo (04
+// 丙-36, the browser tier reporting zero tests and exiting 0), so this asserts
+// rather than skips whenever a runtime was explicitly requested.
+func TestRequestedRuntimeIsTheOneTheContainerGot(t *testing.T) {
+	want := testRuntime()
+	if want == "" {
+		t.Skip("no runtime requested; the daemon default is what the other tests exercise")
+	}
+	d, cli := newDriver(t)
+	ctx := context.Background()
+	id := handle(t)
+	t.Cleanup(func() { _ = d.Remove(context.Background(), id) })
+
+	// A workload that outlives the inspect below: startProbe waits for the
+	// container and the driver removes it on the way out, so inspecting after it
+	// would ask the daemon about something that no longer exists.
+	if err := d.Start(ctx, id, testRequest("sleep 30")); err != nil {
+		t.Fatalf("starting a container on runtime %q failed: %v", want, err)
+	}
+	info, err := cli.ContainerInspect(ctx, "skillhub-run-"+id)
+	if err != nil {
+		t.Fatalf("inspect: %v", err)
+	}
+	if info.HostConfig.Runtime != want {
+		t.Fatalf("asked the daemon for runtime %q and got %q", want, info.HostConfig.Runtime)
+	}
+	if err := d.Stop(ctx, id, time.Second); err != nil {
+		t.Fatalf("stop: %v", err)
 	}
 }

@@ -19,7 +19,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
 | `docs/plans/` | [產品基準](docs/plans/README.md)：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/04-backlog-and-handoffs.md)（活文件）；`mvp/m0/`～`mvp/m4/` 為各里程碑凍結產出；`mvp/content/`／`mvp/governance/`／`mvp/gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/README.md](docs/plans/README.md) |
-| `docs/adr/` | 43 份架構決策紀錄（ADR-000～042；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂；042 回答 041 的六個待決策） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
+| `docs/adr/` | 44 份架構決策紀錄（ADR-000～043；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂；042 回答 041 的六個待決策，043 修訂 026 的 defence 3 判準） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
 | `docs/spikes/` | **已刪除，只留墓碑**：M0 驗證用 spike code，結論已沉澱到 m0 報告／ADR-013／ADR-023／`UPGRADES.md`／`tools/goldenset/` | [docs/spikes/README.md](docs/spikes/README.md)（含還原指令與結論落點對照） |
 
 Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **ADR-031（Accepted）** 按產物角色定義；它取代 ADR-024 的 `apps/`／`services/` 雙軌。結構性偏離需先更新 ADR。
@@ -42,7 +42,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 | --- | --- | --- |
 | 前端 | React + TS（Vite、TanStack Router/Query），SPA 起步 | ADR-016 |
 | 平台後端 | Go：chi/echo 薄層、pgx + sqlc、River（Postgres 佇列） | ADR-016、014 |
-| LLM 工作負載 | Python：FastAPI + LangGraph（uv 管理），內部服務 | ADR-016 |
+| LLM 工作負載 | Python：FastAPI（uv 管理），內部服務。**LangGraph 沒有被採用**——`apps/llm` 的依賴只有 `fastapi`／`uvicorn`／`litellm`／`openai`，兩個 endpoint 都是單次閘道呼叫（`evaluate.py` 檔頭逐字寫「no tools, no LangGraph」）。ADR-016 選型時把它列進來，實作沒有走到需要它的形狀 | ADR-016 |
 | 模型供應商 | OpenAI API（試跑預設 mini 級；Embedding `text-embedding-3-small`），一律經 LiteLLM 閘道 | PDM-003、ADR-017 |
 | 資料 | PostgreSQL 中心（交易、FTS + pgvector、佇列、Trace 分割表）＋受管 S3 相容物件儲存；核心元件容器化自架（E1） | ADR-018 |
 | 搜尋 | 混合檢索（向量腿承載跨語言召回，FTS＋RRF 為召回覆蓋）＋索引時 LLM 增強（摘要與任務範例句為必要項） | ADR-013 |
@@ -62,7 +62,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 2. 執行平面不得直接存取核心資料庫；只透過任務契約、短效物件授權與事件互動。（ADR-001）
 3. 所有使用者資料查詢預設要求 Workspace Scope；不信任 UI 傳入的 `workspace_id`。（ADR-011）
 4. Skill Version、Test Case 快照、歷史 Run 不可變；採用改善建議＝建立新版本，不原地覆寫。（ADR-003）
-5. Run 狀態的唯一事實來源是 Go 擁有的 Postgres 狀態機；LangGraph 只是單次 Job 內的程序內編排，其 checkpoint 是暫存草稿。（ADR-008、016）
+5. Run 狀態的唯一事實來源是 Go 擁有的 Postgres 狀態機；Python 側的任何程序內狀態都是暫存草稿，不得回寫成狀態。（ADR-008、016）**原條文以 LangGraph 的 checkpoint 為例，而 LangGraph 從未被採用**——例子刪掉，規則不變：它管的是「誰擁有 Run 狀態」，與 Python 用哪個框架無關。
 6. Python 是能力提供者：收結構化請求、回結構化結果；政策、授權、狀態轉移、重試決策全在 Go，業務規則不進 Python。（ADR-016）
 7. 佇列消費者只有 Go Worker；Python 不消費佇列，由 Go 以內部 HTTP 呼叫（含逾時與取消傳遞）。（ADR-016）
 8. 所有模型呼叫走 LiteLLM 閘道，不得直連供應商；供應商金鑰只存在閘道。（ADR-017）
@@ -76,7 +76,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容。
-- 新 ADR 從 **ADR-043** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
+- 新 ADR 從 **ADR-044** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
 - ADR 的待決策被後續 ADR 回答時，回填 `→ [ADR-xxx](...)` 引用（現有文件已有此慣例）。
 - 新 ADR 記得更新 [docs/adr/README.md](docs/adr/README.md) 的決策索引。
 - **檔案放哪裡**：活文件放 `docs/plans/` 根層（編號 `01~`）；里程碑的歷史產出放 `docs/plans/mvp/mX/`，里程碑完結即凍結。跨里程碑主題材料放 `docs/plans/mvp/` 的相應主題目錄。一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`。

@@ -91,7 +91,7 @@ Download Artifact 記錄：
 ## 待決策
 
 - MVP 首批支援的 Agent Packaging Profile。（提案見 PDM-008：1 標準套件 ＋ `claude-code`／`claude-agent-sdk` 兩個已驗證安裝 Profile，**待負責人追認**）
-- Profile 的設定格式與 Adapter Plugin 機制。（**刻意仍不立 ADR**：MVP 只有三個打包目標且全部內建，Profile 以「版本化設定 ＋ 內建 Adapter」落地即滿足本 ADR；先做一套外掛機制是為一個不存在的第二方鋪路。理由見 [m4/README.md §2.2／§8.2](../plans/mvp/m4/README.md)）
+- Profile 的設定格式與 Adapter Plugin 機制。（**刻意仍不立 ADR**：MVP 只有三個打包目標且全部內建，Profile 以「版本化設定 ＋ 內建 Adapter」落地即滿足本 ADR；先做一套外掛機制是為一個不存在的第二方鋪路。理由見 [m4/README.md §2.2／§8.2](../plans/mvp/m4/README.md)） **→ 已解決（以「不做」的形式）**：MVP 不立 Adapter Plugin 機制，改以版本化設定＋內建 Adapter。而且設定真的是資料檔不是編譯常數——`contracts/packaging/profiles/*.json` 三份 `schema_version 1.0`，`skill/delivery/profile.go` 檔頭寫「Data driven rather than compiled in」。
 - 打包 Artifact 簽章、完整性驗證與撤銷方式。→ **已決，見 [ADR-027](./ADR-027-download-artifact-shape-reproducibility-and-integrity.md) 決策 3**：**MVP 明文不簽章**（下載是登入後的短效授權而非公開發布、沒有驗證端、簽章是一組金鑰生命週期而非一個欄位），完整性由 `content_hash` ＋ `manifest_hash` 雙雜湊承載（決策 1），撤銷在 MVP 只到「停止再發」不到「使已發出的副本失效」——該殘餘風險與重開訊號逐項寫在該 ADR。
 - 上方「可重現性」一節要求的**規範化 Manifest Hash** → 已由 [ADR-027](./ADR-027-download-artifact-shape-reproducibility-and-integrity.md) 決策 1、2 回答（`manifest_hash` 的算法與範圍、zip 寫入規範化，以及可重現性僅限同一個打包器版本內）。
 
