@@ -186,17 +186,37 @@ var (
 		"unverified": {"未驗證", ""},
 	}
 	capabilityWords = axisWords{
-		"activated": {"已啟用", ""},
+		// The note is not decoration. This axis was measured with prompts that
+		// **name the skill**, because 02:CONTENT-007 requires it — and it requires
+		// it because PDM-011's spike measured the autonomous trigger rate at 0.
+		// So 「已啟用」 answers "does it load when asked for by name", and a reader
+		// meeting the badge takes it for "an agent will pick this up", which is a
+		// different question that this platform's own measurement answers with 0.
+		//
+		// It was empty until 2026-08-23, while `not_activated` right below carried
+		// a careful two-sentence caveat — the reassuring value qualified less than
+		// the alarming one, which is the wrong way round for a badge whose whole
+		// job is to be believed.
+		"activated": {"已啟用",
+			"該次試跑的 Prompt **點名了這個 Skill**(`02:CONTENT-007` 的要求),所以這一格說的是" +
+				"「被點名時載得起來」,不是「Agent 會自己想到要用它」。後者平台量過:自主觸發基準率是 0(PDM-011)。"},
 		"not_activated": {"未被啟用",
 			"該次試跑完成了,Trace 顯示這個 Skill 被提供但用了別的。" +
 				"**不是從「沒有事件」推定的**——SDK 訊息流表達不了「可用但沒被叫」(TRACE-002)。"},
 		"unverified": {"未驗證", ""},
 	}
 	runtimeWords = axisWords{
-		"native": {"腳本可直接執行", ""},
+		// 「腳本可直接執行」 with an empty note said two things nobody checked: that
+		// there are scripts, and that they ran. 11 of the 45 measured packages
+		// have no dependencies at all and reached this value by falling through
+		// the CASE's ELSE branch.
+		"native": {"映像提供了它宣告的執行環境",
+			"套件腳本宣告的 Runtime 這個映像有,所以腳本可以是真正執行的那個東西。" +
+				"**這是一條規則的結論,不是一次觀察**——平台沒有查那次 Run 裡腳本有沒有真的跑、跑成功沒有。"},
 		"transpiled": {"腳本未執行,由模型轉譯",
-			"套件宣告的 Runtime 這個映像沒有,而觀察到的結果來自模型重寫程式碼、不是執行它。" +
-				"那次 Run 有產出,但做事的不是 Skill 自己的程式碼——這一格決定你拿到的是不是你以為的東西。"},
+			"套件宣告的 Runtime 這個映像沒有,所以那次 Run 的產出來自模型重寫程式碼、不是執行它。" +
+				"那次 Run 有產出,但做事的不是 Skill 自己的程式碼——這一格決定你拿到的是不是你以為的東西。" +
+				"**同樣是規則的結論**:判準是映像有沒有那個 Runtime,不是觀察到模型在改寫。"},
 		"failed":     {"腳本無法執行", "套件宣告的 Runtime 這個映像沒有,該次 Run 因此失敗。"},
 		"unverified": {"未驗證", ""},
 	}
@@ -624,14 +644,29 @@ const restrictionNoteDefault = "此 Skill 目前因授權因素受限:不提供 
 const (
 	riskNote = "以上為靜態掃描結果:匯入與掃描期間不執行套件內任何程式碼。" +
 		"通過掃描不等於安全或有效,請自行檢視。"
-	compatUnverifiedNote = "規格驗證只檢查套件格式。能力相容與實測相容需要 Sandbox 實測才有結果," +
-		"未實測一律標示為未驗證,不代表相容。"
+	compatUnverifiedNote = "規格驗證只檢查套件格式。能力相容與執行環境相容要等這個版本在 Sandbox 跑過一次才有結果," +
+		"沒跑過一律標示為未驗證,不代表相容。"
 	// The measured note names the image because the verdict is only about that
 	// image. 「模型轉譯」 is spelled out rather than left as a value name: it is
 	// the case a reader will not guess, and it is the one that decides whether
 	// the Skill's own script is what actually ran.
-	compatMeasuredNote = "能力相容與實測相容為 Sandbox 實測結果,只對下方 runtime_image 成立," +
-		"換一個執行映像需要重新實測。實測相容為「模型轉譯」時,執行的是模型對套件腳本的改寫,不是腳本本身。"
+	//
+	// It said 「能力相容與實測相容為 Sandbox 實測結果」 until 2026-08-23, and one of
+	// those two is not. tools/content/backfill-agent-compatibility.sql derives the
+	// runtime axis from `CASE WHEN deps_runtime = 'python' THEN :python_runtime
+	// ELSE 'native' END` — a curation judgement listed in seed-skills.json about
+	// what the SKILL.md's worked examples are written for, plus a variable the
+	// operator sets on the command line. No trace is consulted and no script is
+	// observed running. The capability axis genuinely does come from the trace,
+	// so the two sat under one sentence that was true of one of them.
+	//
+	// The rule is still worth showing — "does this image provide what the package
+	// declares" decides whether you get your scripts or a model's rewrite of them.
+	// What it may not do is arrive wearing the word 實測 and a timestamp.
+	compatMeasuredNote = "這兩軸的來源不同:**能力相容**來自該次 Run 的 Trace,是觀察到的事件;" +
+		"**執行環境相容**來自一條規則——「這個映像有沒有提供套件腳本宣告的執行環境」——" +
+		"平台沒有觀察腳本是否真的執行成功。兩者都只對下方 runtime_image 成立,換一個執行映像要重新判定。" +
+		"執行環境相容為「模型轉譯」時,做事的是模型對套件腳本的改寫,不是腳本本身。"
 	filesNote = "tree 為套件內檔案清單與大小;目前僅回傳 SKILL.md 全文。" +
 		"其他單檔內容的讀取端點屬 DISC-007 後續工作項,尚未實作。"
 	enrichPendingNote = "尚未產生模型摘要;顯示的是套件自身的 frontmatter description。"

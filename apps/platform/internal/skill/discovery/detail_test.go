@@ -184,3 +184,33 @@ func hasDisclosure(list []disclosure, code string) bool {
 	}
 	return false
 }
+
+// A measured verdict has to say what was measured, and the rule has to hold for
+// the good news as well as the bad.
+//
+// The defect this locks down: `activated` shipped with an empty note while
+// `not_activated` and `transpiled` each carried a careful caveat. So the value
+// a reader most wants to believe was the one qualified least — and the thing it
+// was not saying is that the measurement used prompts that name the skill
+// (02:CONTENT-007), because the platform's own spike put autonomous triggering
+// at 0 (PDM-011). 「已啟用」 was being read as an answer to a question nobody had
+// asked the sandbox.
+//
+// `unverified` is exempt on both axes: there is no measurement to qualify, and
+// the block note already says so — repeating it per axis is checklist 第 14 條.
+func TestAMeasuredCompatibilityVerdictSaysWhatWasMeasured(t *testing.T) {
+	for name, words := range map[string]axisWords{
+		"capability": capabilityWords,
+		"runtime":    runtimeWords,
+	} {
+		for value := range words {
+			if value == "unverified" {
+				continue
+			}
+			if axis(words, value).Note == "" {
+				t.Errorf("%s/%s has no note: a measured verdict that does not say "+
+					"under what conditions is read as a broader claim than it is", name, value)
+			}
+		}
+	}
+}

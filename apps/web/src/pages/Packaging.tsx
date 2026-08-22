@@ -244,8 +244,17 @@ export function Packaging() {
 
           <h2>這個版本的相容性</h2>
           <CompatibilityStatus compatibility={skill.data.compatibility} />
+          {/*
+            This sentence said 「能力相容與實測相容是沙箱裡量到的」, and one of the
+            two is not — the runtime axis is a rule about whether the image
+            provides the declared runtime, not an observation of anything
+            running. The block note the server sends with the axes now says
+            which is which, so this line stops restating their source and keeps
+            only the part that is this page's own: packaging changes none of
+            them and infers none of them from another.
+          */}
           <p className="note">
-            三軸分開看：規格驗證是對套件的靜態分析，能力相容與實測相容是沙箱裡量到的。
+            三軸分開看，來源各自不同（上面每一軸都寫著自己是量到的還是推出來的）。
             打包不會改變其中任何一項，也不會把其中一項推論成另一項——
             <strong>「規格驗證通過」不等於「裝得起來」，更不等於「腳本跑得動」</strong>。
           </p>

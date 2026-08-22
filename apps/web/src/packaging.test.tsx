@@ -383,7 +383,10 @@ test("DESIGN-012 the three compatibility axes are on the packaging page and stay
   // being hidden — a missing row reads as "fine" and 未驗證 does not.
   expect(text()).toContain("規格驗證：通過");
   expect(text()).toContain("能力相容：未驗證");
-  expect(text()).toContain("實測相容：未驗證");
+  // 執行環境相容, not 實測相容: that axis is a rule about whether the image
+  // provides the declared runtime, and nothing observes a script running.
+  expect(text()).toContain("執行環境相容：未驗證");
+  expect(text()).not.toContain("實測相容");
   // And the page refuses to let one axis be read as another.
   expect(text()).toContain("「規格驗證通過」不等於「裝得起來」");
 });

@@ -36,7 +36,11 @@ export function CompatibilityStatus({ compatibility }: { compatibility: SkillCom
   const axes = [
     { key: "spec_validation", label: "規格驗證", axis: compatibility.spec_validation },
     { key: "capability", label: "能力相容", axis: compatibility.capability },
-    { key: "runtime", label: "實測相容", axis: compatibility.runtime },
+    // Not 實測相容 any more. That axis is a rule about the image, not an
+    // observation of anything running (backfill-agent-compatibility.sql), and an
+    // axis called 實測 sitting next to a measured_at timestamp was the strongest
+    // claim on this block and the least earned one.
+    { key: "runtime", label: "執行環境相容", axis: compatibility.runtime },
   ];
 
   return (
