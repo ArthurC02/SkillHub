@@ -27,6 +27,13 @@ import {
     FindingToJSON,
     FindingToJSONTyped,
 } from './Finding';
+import type { Disclosure } from './Disclosure';
+import {
+    DisclosureFromJSON,
+    DisclosureFromJSONTyped,
+    DisclosureToJSON,
+    DisclosureToJSONTyped,
+} from './Disclosure';
 
 /**
  * Static scan of the stored package, recomputed on read. Nothing in the
@@ -68,37 +75,18 @@ export interface SkillRisk {
      */
     infoCounts: { [key: string]: number; };
     /**
+     * The same list the search row carries, from the same catalogue —
+     * including `dependency-file`, which this view used to be missing while
+     * the row above it showed it (04 丙-29 ④).
      * 
-     * @type {boolean}
+     * `embedded-script` stays its own code rather than folding into
+     * `script-file`: runnable code inside SKILL.md is SKILL-003's case and
+     * no file list can show it.
+     * 
+     * @type {Array<Disclosure>}
      * @memberof SkillRisk
      */
-    hasScripts?: boolean;
-    /**
-     * Runnable code inside SKILL.md itself (SKILL-003). Separate from
-     * has_scripts because the package file list cannot show it.
-     * 
-     * @type {boolean}
-     * @memberof SkillRisk
-     */
-    hasEmbeddedScript?: boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof SkillRisk
-     */
-    hasExternalUrls?: boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof SkillRisk
-     */
-    hasPossibleSecrets?: boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof SkillRisk
-     */
-    hasBinaries?: boolean;
+    disclosures: Array<Disclosure>;
     /**
      * 
      * @type {string}
@@ -126,6 +114,7 @@ export function instanceOfSkillRisk(value: object): value is SkillRisk {
     if (!('counts' in value) || value['counts'] === undefined) return false;
     if (!('highlights' in value) || value['highlights'] === undefined) return false;
     if (!('infoCounts' in value) || value['infoCounts'] === undefined) return false;
+    if (!('disclosures' in value) || value['disclosures'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;
 }
@@ -144,11 +133,7 @@ export function SkillRiskFromJSONTyped(json: any, ignoreDiscriminator: boolean):
         'counts': SkillRiskCountsFromJSON(json['counts']),
         'highlights': ((json['highlights'] as Array<any>).map(FindingFromJSON)),
         'infoCounts': json['info_counts'],
-        'hasScripts': json['has_scripts'] == null ? undefined : json['has_scripts'],
-        'hasEmbeddedScript': json['has_embedded_script'] == null ? undefined : json['has_embedded_script'],
-        'hasExternalUrls': json['has_external_urls'] == null ? undefined : json['has_external_urls'],
-        'hasPossibleSecrets': json['has_possible_secrets'] == null ? undefined : json['has_possible_secrets'],
-        'hasBinaries': json['has_binaries'] == null ? undefined : json['has_binaries'],
+        'disclosures': ((json['disclosures'] as Array<any>).map(DisclosureFromJSON)),
         'note': json['note'],
     };
 }
@@ -168,11 +153,7 @@ export function SkillRiskToJSONTyped(value?: SkillRisk | null, ignoreDiscriminat
         'counts': SkillRiskCountsToJSON(value['counts']),
         'highlights': ((value['highlights'] as Array<any>).map(FindingToJSON)),
         'info_counts': value['infoCounts'],
-        'has_scripts': value['hasScripts'],
-        'has_embedded_script': value['hasEmbeddedScript'],
-        'has_external_urls': value['hasExternalUrls'],
-        'has_possible_secrets': value['hasPossibleSecrets'],
-        'has_binaries': value['hasBinaries'],
+        'disclosures': ((value['disclosures'] as Array<any>).map(DisclosureToJSON)),
         'note': value['note'],
     };
 }

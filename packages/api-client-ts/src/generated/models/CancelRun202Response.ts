@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { Labelled } from './Labelled';
+import {
+    LabelledFromJSON,
+    LabelledFromJSONTyped,
+    LabelledToJSON,
+    LabelledToJSONTyped,
+} from './Labelled';
 import type { RunTransitionsInner } from './RunTransitionsInner';
 import {
     RunTransitionsInnerFromJSON,
@@ -117,12 +124,14 @@ export interface CancelRun202Response {
     provider: string;
     /**
      * Tracked apart from the run outcome, and still writable after a
-     * terminal state. Idempotent cleanup is RUN-007.
+     * terminal state. Idempotent cleanup is RUN-007. `value` is the
+     * database enum; see RunListItem.cleanup_status for why it is served
+     * with its words.
      * 
-     * @type {string}
+     * @type {Labelled}
      * @memberof CancelRun202Response
      */
-    cleanupStatus: CancelRun202ResponseCleanupStatusEnum;
+    cleanupStatus: Labelled;
     /**
      * Set by POST /runs/{id}/cancel. Intent, not the outcome.
      * @type {Date}
@@ -190,17 +199,6 @@ export const CancelRun202ResponseStatusEnum = {
 } as const;
 export type CancelRun202ResponseStatusEnum = typeof CancelRun202ResponseStatusEnum[keyof typeof CancelRun202ResponseStatusEnum];
 
-/**
- * @export
- */
-export const CancelRun202ResponseCleanupStatusEnum = {
-    Pending: 'pending',
-    CleaningUp: 'cleaning_up',
-    Cleaned: 'cleaned',
-    Failed: 'failed'
-} as const;
-export type CancelRun202ResponseCleanupStatusEnum = typeof CancelRun202ResponseCleanupStatusEnum[keyof typeof CancelRun202ResponseCleanupStatusEnum];
-
 
 /**
  * Check if a given object implements the CancelRun202Response interface.
@@ -235,7 +233,7 @@ export function CancelRun202ResponseFromJSONTyped(json: any, ignoreDiscriminator
         'testCaseSnapshotId': json['test_case_snapshot_id'],
         'testCaseId': json['test_case_id'] == null ? undefined : json['test_case_id'],
         'provider': json['provider'],
-        'cleanupStatus': json['cleanup_status'],
+        'cleanupStatus': LabelledFromJSON(json['cleanup_status']),
         'cancelRequestedAt': json['cancel_requested_at'] == null ? undefined : (new Date(json['cancel_requested_at'])),
         'createdAt': (new Date(json['created_at'])),
         'startedAt': json['started_at'] == null ? undefined : (new Date(json['started_at'])),
@@ -265,7 +263,7 @@ export function CancelRun202ResponseToJSONTyped(value?: CancelRun202Response | n
         'test_case_snapshot_id': value['testCaseSnapshotId'],
         'test_case_id': value['testCaseId'],
         'provider': value['provider'],
-        'cleanup_status': value['cleanupStatus'],
+        'cleanup_status': LabelledToJSON(value['cleanupStatus']),
         'cancel_requested_at': value['cancelRequestedAt'] == null ? value['cancelRequestedAt'] : value['cancelRequestedAt'].toISOString(),
         'created_at': value['createdAt'].toISOString(),
         'started_at': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),

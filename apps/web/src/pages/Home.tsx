@@ -3,7 +3,6 @@ import { useState, type FormEvent } from "react";
 import { useSkillSearch } from "../api/skills";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { RiskSummary } from "../components/RiskIndicator";
-import { SPEC_LABELS } from "../components/CompatibilityStatus";
 import { MAX_COMPARE } from "./Compare";
 import type { PublicSearchResult, SearchFilters } from "../api/types";
 
@@ -457,7 +456,8 @@ function CompareBar({ selected }: { selected: string[] }) {
 
 function ResultFacets({ hit }: { hit: PublicSearchResult }) {
   const untested =
-    hit.compatibility.capability === "unverified" && hit.compatibility.runtime === "unverified";
+    hit.compatibility.capability.value === "unverified" &&
+    hit.compatibility.runtime.value === "unverified";
 
   return (
     <dl className="result-facets">
@@ -476,7 +476,7 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
       */}
       <dt>相容狀態</dt>
       <dd>
-        規格驗證：{SPEC_LABELS[hit.compatibility.spec_validation]}
+        規格驗證：{hit.compatibility.spec_validation.label}
         {/* DISC-002: 沒有驗證證據的 Skill 必須明確標記「尚未試跑」. */}
         {untested && <span className="badge badge-untested">尚未試跑</span>}
         <span className="note">{hit.compatibility.note}</span>

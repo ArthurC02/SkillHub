@@ -19,8 +19,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 )
 
 // O11Y-004's second half is the word "查詢", and the funnel query is a psql
@@ -203,14 +203,14 @@ func seedRunArtifact(
 }
 
 type runListView struct {
-	RunID          string `json:"run_id"`
-	Status         string `json:"status"`
-	SkillID        string `json:"skill_id"`
-	SkillName      string `json:"skill_name"`
-	SkillVersionID string `json:"skill_version_id"`
-	TestCaseID     string `json:"test_case_id"`
-	CleanupStatus  string `json:"cleanup_status"`
-	CreatedAt      string `json:"created_at"`
+	RunID          string       `json:"run_id"`
+	Status         string       `json:"status"`
+	SkillID        string       `json:"skill_id"`
+	SkillName      string       `json:"skill_name"`
+	SkillVersionID string       `json:"skill_version_id"`
+	TestCaseID     string       `json:"test_case_id"`
+	CleanupStatus  labelledJSON `json:"cleanup_status"`
+	CreatedAt      string       `json:"created_at"`
 }
 
 func (c *client) listRuns(t *testing.T) []runListView {
@@ -257,7 +257,7 @@ func TestTheRunHistoryListsTheWorkspacesOwnRunsAndNobodyElses(t *testing.T) {
 	if found.TestCaseID != mine.testCaseID {
 		t.Errorf("test_case_id = %q, want the editable case %q", found.TestCaseID, mine.testCaseID)
 	}
-	if found.CreatedAt == "" || found.CleanupStatus == "" {
+	if found.CreatedAt == "" || found.CleanupStatus.Label == "" {
 		t.Errorf("history row is missing when/what state: %+v", found)
 	}
 }

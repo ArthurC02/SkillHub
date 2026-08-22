@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { Labelled } from './Labelled';
+import {
+    LabelledFromJSON,
+    LabelledFromJSONTyped,
+    LabelledToJSON,
+    LabelledToJSONTyped,
+} from './Labelled';
 import type { RunTransitionsInner } from './RunTransitionsInner';
 import {
     RunTransitionsInnerFromJSON,
@@ -120,12 +127,14 @@ export interface Run {
     provider: string;
     /**
      * Tracked apart from the run outcome, and still writable after a
-     * terminal state. Idempotent cleanup is RUN-007.
+     * terminal state. Idempotent cleanup is RUN-007. `value` is the
+     * database enum; see RunListItem.cleanup_status for why it is served
+     * with its words.
      * 
-     * @type {string}
+     * @type {Labelled}
      * @memberof Run
      */
-    cleanupStatus: RunCleanupStatusEnum;
+    cleanupStatus: Labelled;
     /**
      * Set by POST /runs/{id}/cancel. Intent, not the outcome.
      * @type {Date}
@@ -187,17 +196,6 @@ export const RunStatusEnum = {
 } as const;
 export type RunStatusEnum = typeof RunStatusEnum[keyof typeof RunStatusEnum];
 
-/**
- * @export
- */
-export const RunCleanupStatusEnum = {
-    Pending: 'pending',
-    CleaningUp: 'cleaning_up',
-    Cleaned: 'cleaned',
-    Failed: 'failed'
-} as const;
-export type RunCleanupStatusEnum = typeof RunCleanupStatusEnum[keyof typeof RunCleanupStatusEnum];
-
 
 /**
  * Check if a given object implements the Run interface.
@@ -232,7 +230,7 @@ export function RunFromJSONTyped(json: any, ignoreDiscriminator: boolean): Run {
         'testCaseSnapshotId': json['test_case_snapshot_id'],
         'testCaseId': json['test_case_id'] == null ? undefined : json['test_case_id'],
         'provider': json['provider'],
-        'cleanupStatus': json['cleanup_status'],
+        'cleanupStatus': LabelledFromJSON(json['cleanup_status']),
         'cancelRequestedAt': json['cancel_requested_at'] == null ? undefined : (new Date(json['cancel_requested_at'])),
         'createdAt': (new Date(json['created_at'])),
         'startedAt': json['started_at'] == null ? undefined : (new Date(json['started_at'])),
@@ -261,7 +259,7 @@ export function RunToJSONTyped(value?: Run | null, ignoreDiscriminator: boolean 
         'test_case_snapshot_id': value['testCaseSnapshotId'],
         'test_case_id': value['testCaseId'],
         'provider': value['provider'],
-        'cleanup_status': value['cleanupStatus'],
+        'cleanup_status': LabelledToJSON(value['cleanupStatus']),
         'cancel_requested_at': value['cancelRequestedAt'] == null ? value['cancelRequestedAt'] : value['cancelRequestedAt'].toISOString(),
         'created_at': value['createdAt'].toISOString(),
         'started_at': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),

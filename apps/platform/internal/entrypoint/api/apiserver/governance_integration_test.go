@@ -16,9 +16,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
 
 // recordingStore stands in for object storage: the purge has to reach it, and

@@ -31,14 +31,20 @@ export const HIT_FACETS = {
     scan_status: "scanned",
     level: "disclosed",
     warnings: 1,
-    has_scripts: true,
+    disclosures: [
+      {
+        code: "script-file",
+        label: "含可執行 Script 檔案",
+        note: "平台不曾執行它們——這是靜態掃描的結果,不是行為分析。",
+      },
+    ],
     note: "以上為靜態掃描結果。",
   },
   dependencies: ["pypdf"],
   compatibility: {
-    spec_validation: "passed",
-    capability: "unverified",
-    runtime: "unverified",
+    spec_validation: { value: "passed", label: "通過", note: "" },
+    capability: { value: "unverified", label: "未驗證", note: "" },
+    runtime: { value: "unverified", label: "未驗證", note: "" },
     note: "尚未試跑。",
   },
   verified_at: "2026-08-01T10:00:00Z",
@@ -132,13 +138,23 @@ export function skillDetail(id: string, name: string) {
         },
       ],
       info_counts: { "external-url": 320, "large-file": 1 },
-      has_embedded_script: true,
+      disclosures: [
+        {
+          code: "embedded-script",
+          label: "SKILL.md 內含可執行程式碼",
+          note: "程式碼寫在 SKILL.md 裡面,不是獨立檔案,所以看檔案清單看不出來。",
+        },
+      ],
       note: "以上為靜態掃描結果。",
     },
     compatibility: {
-      spec_validation: "passed",
-      capability: "activated",
-      runtime: "transpiled",
+      spec_validation: { value: "passed", label: "通過", note: "" },
+      capability: { value: "activated", label: "已啟用", note: "" },
+      runtime: {
+        value: "transpiled",
+        label: "腳本未執行,由模型轉譯",
+        note: "套件宣告的 Runtime 這個映像沒有,而觀察到的結果來自模型重寫程式碼、不是執行它。",
+      },
       runtime_image: "ghcr.io/skillhub/runtime:2026.08-3",
       measured_at: "2026-08-10T00:00:00Z",
       note: "以上為單次沙箱實測。",
@@ -222,6 +238,8 @@ export const ARTIFACT_ROW = {
   content_hash: "sha256:bbbb",
   manifest_hash: "sha256:cccc",
   status: "available",
+  servable: true,
+  serve_state: { value: "available", label: "可下載", note: "" },
   expires_at: "2099-01-01T00:00:00Z",
   created_at: "2026-08-17T00:00:00Z",
   download_count: 1,
@@ -235,6 +253,14 @@ export const DOWNLOADS = {
     {
       ...ARTIFACT_ROW,
       artifact_id: "expired-1",
+      // The server decides this now, not the row's date (04 丙-29 ⑤) — so an
+      // expired fixture has to say so, exactly as the API would.
+      servable: false,
+      serve_state: {
+        value: "expired",
+        label: "已過期,不再提供下載",
+        note: "檔案已刪除,這筆紀錄保留。同一版本隨時可以再打包一次。",
+      },
       expires_at: "2026-01-01T00:00:00Z",
     },
   ],
@@ -250,7 +276,11 @@ export const RUNS = {
       skill_version_id: VERSION,
       test_case_id: TEST_CASE,
       provider: "self-hosted",
-      cleanup_status: "failed",
+      cleanup_status: {
+        value: "failed",
+        label: "清理失敗",
+        note: "沙箱沒有被成功拆除,平台會重試。這不代表這次 Run 失敗。",
+      },
       // 04 丙-32: the second axis. Required and never null — 未評估 is a value, not an
       // omission, because an empty verdict beside 「執行完成」 reads as a pass.
       evaluation: {
@@ -654,7 +684,13 @@ export function platformResponse(input: string): { body: unknown; status: number
             scan_status: "scanned",
             level: "disclosed",
             warnings: 0,
-            has_scripts: true,
+            disclosures: [
+              {
+                code: "script-file",
+                label: "含可執行 Script 檔案",
+                note: "平台不曾執行它們——這是靜態掃描的結果,不是行為分析。",
+              },
+            ],
             note: "來自匯入時的靜態掃描,不執行套件內任何程式碼;開啟 Skill 可看逐項結果。",
           },
           verification: {

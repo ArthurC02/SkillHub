@@ -72,7 +72,7 @@ func TestRiskHintReportsMissingScanAsUnknown(t *testing.T) {
 			if name != "json 'null'" && got.ScanStatus != "unavailable" {
 				t.Fatalf("scan_status = %q, want unavailable", got.ScanStatus)
 			}
-			if got.Warnings != 0 || got.HasScripts {
+			if got.Warnings != 0 || len(got.Disclosures) != 0 {
 				t.Fatalf("unknown scan invented findings: %+v", got)
 			}
 		})
@@ -140,7 +140,7 @@ func TestResultFacetsDeriveCompatibilityFromVersionPresence(t *testing.T) {
 
 	var withVersion searchResult
 	resultFacets(&withVersion, nil, nil, pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true}, unmeasured)
-	if withVersion.Compat.SpecValidation != "passed" {
+	if withVersion.Compat.SpecValidation.Value != "passed" {
 		t.Fatalf("spec_validation = %q for an indexed version", withVersion.Compat.SpecValidation)
 	}
 	if withVersion.VerifiedAt == "" {
@@ -149,7 +149,7 @@ func TestResultFacetsDeriveCompatibilityFromVersionPresence(t *testing.T) {
 
 	var noVersion searchResult
 	resultFacets(&noVersion, nil, nil, pgtype.Timestamptz{}, unmeasured)
-	if noVersion.Compat.SpecValidation != "unverified" {
+	if noVersion.Compat.SpecValidation.Value != "unverified" {
 		t.Fatalf("spec_validation = %q for a skill with no version", noVersion.Compat.SpecValidation)
 	}
 	if noVersion.VerifiedAt != "" {
@@ -157,7 +157,7 @@ func TestResultFacetsDeriveCompatibilityFromVersionPresence(t *testing.T) {
 	}
 
 	for _, r := range []searchResult{withVersion, noVersion} {
-		if r.Compat.Capability != "unverified" || r.Compat.Runtime != "unverified" {
+		if r.Compat.Capability.Value != "unverified" || r.Compat.Runtime.Value != "unverified" {
 			t.Fatalf("sandbox axes claimed a verdict nothing measured: %+v", r.Compat)
 		}
 		if r.Compat.Note != compatUnverifiedNote {
@@ -229,7 +229,7 @@ func TestResultFacetsCarryTheMeasuredAgentAxis(t *testing.T) {
 		pgtype.Timestamptz{Time: time.Unix(1_755_000_000, 0), Valid: true})
 	resultFacets(&r, nil, nil, pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true}, measured)
 
-	if r.Compat.Capability != "activated" || r.Compat.Runtime != "transpiled" {
+	if r.Compat.Capability.Value != "activated" || r.Compat.Runtime.Value != "transpiled" {
 		t.Fatalf("measured verdict lost on the way to the row: %+v", r.Compat)
 	}
 	if r.Compat.RuntimeImage == "" || r.Compat.MeasuredAt == "" {
@@ -240,7 +240,7 @@ func TestResultFacetsCarryTheMeasuredAgentAxis(t *testing.T) {
 	}
 	// spec_validation is a different axis with a different source and must not be
 	// overwritten by the measurement block.
-	if r.Compat.SpecValidation != "passed" {
+	if r.Compat.SpecValidation.Value != "passed" {
 		t.Fatalf("spec_validation = %q, want passed", r.Compat.SpecValidation)
 	}
 }

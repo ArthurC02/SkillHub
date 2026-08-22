@@ -123,12 +123,10 @@ type searchRisk struct {
 	Level    string `json:"level"`
 	Warnings int    `json:"warnings"`
 
-	HasScripts            bool `json:"has_scripts"`
-	HasEmbeddedScript     bool `json:"has_embedded_script"`
-	HasExternalURLs       bool `json:"has_external_urls"`
-	HasPossibleSecrets    bool `json:"has_possible_secrets"`
-	HasBinaries           bool `json:"has_binaries"`
-	HasDependencyManifest bool `json:"has_dependency_manifest"`
+	// Disclosures is the same catalogue the detail view serves (disclosure.go).
+	// Same list, same order, same words — which is the entire point: these two
+	// used to be separate boolean sets of different size (04 丙-29 ④).
+	Disclosures []disclosure `json:"disclosures"`
 
 	Note string `json:"note"`
 }
@@ -168,9 +166,9 @@ func resultFacets(r *searchResult, tagsJSON, scanJSON []byte, verifiedAt pgtype.
 	r.Risk = riskHint(scanJSON)
 	r.VerifiedAt = timeString(verifiedAt)
 	r.Compat = compat
-	r.Compat.SpecValidation = "unverified"
+	r.Compat.SpecValidation = axis(specWords, "unverified")
 	if verifiedAt.Valid {
-		r.Compat.SpecValidation = "passed"
+		r.Compat.SpecValidation = axis(specWords, "passed")
 	}
 	r.Compat.Note = compatUnverifiedNote
 	if r.Compat.RuntimeImage != "" {
@@ -183,8 +181,8 @@ func resultFacets(r *searchResult, tagsJSON, scanJSON []byte, verifiedAt pgtype.
 // SQL COALESCEs it), and it is what tells resultFacets which note to attach.
 func measuredCompat(capability, runtime, image string, measuredAt pgtype.Timestamptz) compatibility {
 	return compatibility{
-		Capability:   capability,
-		Runtime:      runtime,
+		Capability:   axis(capabilityWords, capability),
+		Runtime:      axis(runtimeWords, runtime),
 		RuntimeImage: image,
 		MeasuredAt:   timeString(measuredAt),
 	}
@@ -208,30 +206,26 @@ func riskHint(scanJSON []byte) searchRisk {
 		Codes    []string `json:"codes"`
 	}
 	if len(scanJSON) == 0 || json.Unmarshal(scanJSON, &f) != nil {
-		return searchRisk{ScanStatus: "unavailable", Level: riskLevelNone, Note: searchRiskUnknown}
-	}
-	out := searchRisk{ScanStatus: "scanned", Warnings: f.Warnings, Note: searchRiskNote}
-	for _, code := range f.Codes {
-		switch code {
-		case "script-file":
-			out.HasScripts = true
-		case "embedded-script":
-			out.HasEmbeddedScript = true
-		case "external-url":
-			out.HasExternalURLs = true
-		case "possible-secret":
-			out.HasPossibleSecrets = true
-		case "binary-file":
-			out.HasBinaries = true
-		case "dependency-file":
-			out.HasDependencyManifest = true
+		return searchRisk{
+			ScanStatus:  "unavailable",
+			Level:       riskLevelNone,
+			Disclosures: []disclosure{},
+			Note:        searchRiskUnknown,
 		}
 	}
+	out := searchRisk{ScanStatus: "scanned", Warnings: f.Warnings, Note: searchRiskNote}
+	codes := map[string]bool{}
+	for _, code := range f.Codes {
+		codes[code] = true
+	}
+	out.Disclosures = disclosuresFor(codes)
 	switch {
 	case out.Warnings > 0:
 		out.Level = riskLevelWarning
-	case out.HasScripts || out.HasEmbeddedScript || out.HasExternalURLs ||
-		out.HasPossibleSecrets || out.HasBinaries || out.HasDependencyManifest:
+	// Any disclosure at all, rather than six named booleans OR-ed together: a
+	// seventh finding code added to the catalogue is then disclosed here without
+	// anyone remembering to extend this condition.
+	case len(out.Disclosures) > 0:
 		out.Level = riskLevelDisclosed
 	default:
 		out.Level = riskLevelNone

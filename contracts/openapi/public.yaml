@@ -3892,7 +3892,7 @@ components:
         no verbatim findings — open the skill for those. There is deliberately
         no "safe" level (NFR-001).
       type: object
-      required: [scan_status, level, warnings, note]
+      required: [scan_status, level, warnings, disclosures, note]
       properties:
         scan_status:
           type: string
@@ -3915,12 +3915,13 @@ components:
         warnings:
           type: integer
           description: Warning-level finding count.
-        has_scripts: { type: boolean }
-        has_embedded_script: { type: boolean }
-        has_external_urls: { type: boolean }
-        has_possible_secrets: { type: boolean }
-        has_binaries: { type: boolean }
-        has_dependency_manifest: { type: boolean }
+        disclosures:
+          type: array
+          items: { $ref: "#/components/schemas/Disclosure" }
+          description: |
+            What the scan found the package declaring, server-worded. Empty when
+            it declared none of them — which is not 「安全」 and is not rendered
+            as such (NFR-001).
         note: { type: string }
     PublicSearchResult:
       type: object
@@ -4020,6 +4021,38 @@ components:
         value: { type: string }
         label: { type: string }
         note: { type: string }
+    Disclosure:
+      description: |
+        One thing a package declares about itself, with the words to show for it
+        (04 丙-29 ④). It replaces the parallel `has_*` booleans that used to sit
+        on `SkillRisk` and `SearchResultRisk`.
+
+        Booleans could not become `Labelled`: `Labelled` describes one enum
+        value, and six independent flags are not one. The list form fixes what
+        the booleans made easy to get wrong — the two payloads carried
+        **different sets** (the search row disclosed `has_dependency_manifest`,
+        the detail view did not), so the screen a reader meets first said more
+        than the screen they open next. A list has no shape to disagree on.
+
+        `code` is the scan finding code and stays stable; `label` and `note` are
+        the server's wording, so the search row and the detail view cannot word
+        the same disclosure differently (設計系統 §4.4, NFR-007 第 3 條).
+
+        **Only what the package asserts appears.** An absent code is not a claim
+        that the thing is not there, it is the scan not having found it — which
+        is why there is no `false` entry and no "clean" member.
+      type: object
+      required: [code, label, note]
+      properties:
+        code:
+          type: string
+          description: |
+            Scan finding code — `script-file`, `embedded-script`, `external-url`,
+            `possible-secret`, `binary-file`, `dependency-file`. Not an enum: a
+            code this client does not know still has a label and a note, and
+            dropping it would hide a disclosure to keep a union tidy.
+        label: { type: string }
+        note: { type: string }
     SkillSource:
       description: |
         Import provenance (DISC-003). Fields the import never recorded are absent
@@ -4099,7 +4132,7 @@ components:
         package is executed (iron rule 1) and there is deliberately no single
         "safe" verdict (NFR-001).
       type: object
-      required: [scan_status, counts, highlights, info_counts, note]
+      required: [scan_status, counts, highlights, info_counts, disclosures, note]
       properties:
         scan_status:
           type: string
@@ -4127,15 +4160,17 @@ components:
             Info-level disclosures folded to a count per finding code. One seed
             package produced 321 URL findings; a list nobody reads hides the
             findings that matter.
-        has_scripts: { type: boolean }
-        has_embedded_script:
-          type: boolean
+        disclosures:
+          type: array
+          items: { $ref: "#/components/schemas/Disclosure" }
           description: |
-            Runnable code inside SKILL.md itself (SKILL-003). Separate from
-            has_scripts because the package file list cannot show it.
-        has_external_urls: { type: boolean }
-        has_possible_secrets: { type: boolean }
-        has_binaries: { type: boolean }
+            The same list the search row carries, from the same catalogue —
+            including `dependency-file`, which this view used to be missing while
+            the row above it showed it (04 丙-29 ④).
+
+            `embedded-script` stays its own code rather than folding into
+            `script-file`: runnable code inside SKILL.md is SKILL-003's case and
+            no file list can show it.
         note: { type: string }
     SkillAccessRestriction:
       description: |
@@ -4176,17 +4211,23 @@ components:
       required: [spec_validation, capability, runtime, note]
       properties:
         spec_validation:
-          type: string
-          enum: [passed, failed, unverified]
+          $ref: "#/components/schemas/Labelled"
           description: |
             Format and static validation only. Passing is never a claim that the
-            skill is safe to run or effective (SKILL-002).
+            skill is safe to run or effective (SKILL-002). `value` is `passed`,
+            `failed` or `unverified`.
+
+            Labelled rather than a bare enum (04 丙-29 ③): two screens had
+            already worded this axis differently, and one of them wrote
+            `passed ? 通過 : 未驗證`, which reports **`failed` as 未驗證** — the
+            one reading a client-side table makes easy and a served label makes
+            impossible.
         capability:
-          type: string
-          enum: [activated, not_activated, unverified]
+          $ref: "#/components/schemas/Labelled"
           description: |
             Does the agent actually pick this skill up when it is mounted, read
-            from the run trace.
+            from the run trace. `value` is `activated`, `not_activated` or
+            `unverified`.
 
             - `activated` — a `skill_activation` event for this skill in the run.
             - `not_activated` — the run completed and the trace shows the skill
@@ -4199,10 +4240,14 @@ components:
             限制註記), so a missing activation event on a truncated run is not
             evidence of non-activation, and it is reported as `unverified`.
         runtime:
-          type: string
-          enum: [native, transpiled, failed, unverified]
+          $ref: "#/components/schemas/Labelled"
           description: |
-            Can the package's own scripts execute in this image.
+            Can the package's own scripts execute in this image. `value` is
+            `native`, `transpiled`, `failed` or `unverified`.
+
+            `transpiled` is why this axis carries a `note` and not just a label:
+            the caveat below is not guessable from any single word, and a reader
+            who does not get it will believe the Skill's own script ran.
 
             - `native` — every runtime the package declares is provided here.
             - `transpiled` — they are not, and the observed run got its result
@@ -5019,14 +5064,20 @@ components:
         provider: { type: string }
         failure_class: { type: string }
         cleanup_status:
-          type: string
-          # `cleaning_up`, matching the database type run_cleanup_status
-          # (0004_test_lab_and_runs.sql) and Run.cleanup_status below. This said
-          # `cleaning` until 2026-08-22, and the handler puts the database value
-          # on the wire unmapped, so the one state this field exists to report —
-          # the sandbox is being torn down right now — arrived as a value no
-          # client had a word for and rendered as a blank row.
-          enum: [pending, cleaning_up, cleaned, failed]
+          $ref: "#/components/schemas/Labelled"
+          description: |
+            `value` is the database type run_cleanup_status
+            (0004_test_lab_and_runs.sql): `pending`, `cleaning_up`, `cleaned`,
+            `failed`. The handler puts that value on the wire unmapped.
+
+            Labelled rather than a bare enum (04 丙-29 ②) because of what went
+            wrong here: the contract said `cleaning` until 2026-08-22 while the
+            database said `cleaning_up`, so the one state this field exists to
+            report — the sandbox is being torn down right now — arrived as a
+            value no client had a word for and **rendered as a blank row**. A
+            client-side enum→中文 table can only fail that way; a served label
+            cannot. One field, one consumer, four values: the cheapest place to
+            stop the whole failure mode.
         created_at: { type: string, format: date-time }
         started_at: { type: string, format: date-time }
         finished_at: { type: string, format: date-time }
@@ -5124,11 +5175,12 @@ components:
           type: string
           description: '`unassigned` until provider selection lands (RUN-005).'
         cleanup_status:
-          type: string
-          enum: [pending, cleaning_up, cleaned, failed]
+          $ref: "#/components/schemas/Labelled"
           description: |
             Tracked apart from the run outcome, and still writable after a
-            terminal state. Idempotent cleanup is RUN-007.
+            terminal state. Idempotent cleanup is RUN-007. `value` is the
+            database enum; see RunListItem.cleanup_status for why it is served
+            with its words.
         cancel_requested_at:
           type: string
           format: date-time
@@ -6007,8 +6059,8 @@ components:
       type: object
       required:
         [artifact_id, skill_id, skill_version_id, target, file_name, size_bytes,
-         content_hash, manifest_hash, status, expires_at, created_at,
-         download_count, includes_test_cases]
+         content_hash, manifest_hash, status, servable, serve_state, expires_at,
+         created_at, download_count, includes_test_cases]
       properties:
         artifact_id: { type: string, format: uuid }
         skill_id: { type: string, format: uuid }
@@ -6036,6 +6088,30 @@ components:
             That is the point of keeping the state: the rule is a condition on
             one handler that a test can hold to, rather than a habit of not
             handing bytes over too early.
+        servable:
+          type: boolean
+          description: |
+            Whether GET /downloads/{artifactId}/content would hand the bytes over
+            **right now**: `status == available` AND the stored object has not
+            been purged AND `expires_at` is still in the future
+            (skill/delivery/download.go). Served rather than derived (04 丙-29 ⑤)
+            because one of its three inputs — the purge — is not on this schema
+            at all, so no client can compute it and every client that tried was
+            computing something else.
+
+            The three parts stay visible beside it: `status` says which check,
+            `expires_at` says when, and this says the answer. Folding them into
+            one flag would lose why (`quarantined` is not over, `rejected` is).
+        serve_state:
+          $ref: "#/components/schemas/Labelled"
+          description: |
+            The one sentence for the composite above — 「可下載」, 「檢查中」,
+            「已拒絕」, 「已過期，不再提供下載」. `value` is the state that decided
+            it, which is `status` except when an `available` artifact has expired
+            or been purged, where it is `expired` or `purged` — **two values that
+            do not appear in `status` at all**, which is why a label on `status`
+            alone would have fought the word on the screen instead of settling it
+            (設計系統 §2.2 顯示但不強制).
         expires_at:
           type: string
           format: date-time

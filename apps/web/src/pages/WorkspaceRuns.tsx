@@ -61,38 +61,27 @@ export function WorkspaceRuns() {
 }
 
 /*
- * design §4.4 wants badge wording to come from the server, so the two planes
- * cannot word one fact two ways (02:NFR-001) — and for this one the server has
- * no wording to give: `RunListItem.cleanup_status` in
- * contracts/openapi/public.yaml is a bare enum with no label beside it, unlike
- * e.g. `tier` or `trust`, which ship `{value, label, note}`. **That is a
- * contract gap, not a choice made here**: deleting this map would put `pending`
- * on screen in English, and 02:NFR-007 forbids taking text away. It stays keyed
- * on the union so a new server value is a compile error here rather than an
- * `undefined` on the row, which is the same guard RUN_STATUS_LABEL carries.
+ * The label map is gone (04 丙-29 ②). §4.4 wants badge wording from the server so
+ * the two planes cannot word one fact two ways (02:NFR-001), and the reason it
+ * lived here was a contract gap: `RunListItem.cleanup_status` was a bare enum
+ * with no label beside it, unlike `tier` or `trust`. Deleting the map without
+ * closing that gap would have put `pending` on screen in English, which
+ * 02:NFR-007 forbids.
  *
- * That guard was aimed at the wrong target until 2026-08-22: the union itself
- * said `cleaning` where the database says `cleaning_up`, so being total over the
- * union proved nothing and a run mid-teardown rendered a blank state. Hence the
- * fallback at the call site — a compile-time guard cannot see a server value the
- * union never knew about, and design §2.9 says a blank is the one rendering an
- * absence may never take.
+ * The gap is closed, and closing it also removed the failure the map could not
+ * survive: it was keyed on a union that said `cleaning` where the database says
+ * `cleaning_up`, so being total over the union proved nothing and a run
+ * mid-teardown rendered a **blank**. The server now sends the words for whatever
+ * value it holds — an unrecognised one keeps the raw value as its own label
+ * rather than becoming the blank §2.9 forbids.
+ *
+ * Only the tint stays. §4.4 assigns `--accent-border` to 這件事未知／未驗證 and
+ * `--danger` to 這件事不通過: 尚未清理 and 清理中 are the first, **清理失敗 is the
+ * second**, and one tint for all three made a single visual mean both. The word
+ * is the fact and the tint is the second channel (§2.3); presentation is this
+ * side's job, wording is not.
  */
-const CLEANUP_LABEL: Record<RunListItem["cleanup_status"], string> = {
-  pending: "尚未清理",
-  cleaning_up: "清理中",
-  cleaned: "已清理",
-  failed: "清理失敗",
-};
-
-/*
- * §4.4 assigns `--accent-border` to 這件事未知／未驗證 and `--danger` to 這件事不
- * 通過. 尚未清理 and 清理中 are genuinely the first; **清理失敗 is the second**,
- * and giving all three the same tint made one visual mean both "pending" and
- * "failed". The word is still the fact and the tint is the second channel
- * (§2.3), so this only stops the colour from contradicting the word.
- */
-const CLEANUP_BADGE: Record<RunListItem["cleanup_status"], string> = {
+const CLEANUP_BADGE: Record<string, string> = {
   pending: "badge badge-unverified",
   cleaning_up: "badge badge-unverified",
   cleaned: "badge",
@@ -131,8 +120,11 @@ function RunRow({ run }: { run: RunListItem }) {
             file's own header argues cleanup belongs on the row because hiding it
             would make the list a prettier answer than the truth; the guard was
             hiding it for exactly the runs where the answer is good. */}
-        <span className={CLEANUP_BADGE[run.cleanup_status] ?? "badge badge-unverified"}>
-          清理狀態：{CLEANUP_LABEL[run.cleanup_status] ?? `平台回報 ${run.cleanup_status}`}
+        <span
+          className={CLEANUP_BADGE[run.cleanup_status.value] ?? "badge badge-unverified"}
+          title={run.cleanup_status.note}
+        >
+          清理狀態：{run.cleanup_status.label}
         </span>
       </p>
       {run.status_reason ? (

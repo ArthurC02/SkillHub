@@ -17,7 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 // packageStore is an in-memory object store. Missing keys return an error,
@@ -129,16 +129,16 @@ type detail struct {
 		Note  string `json:"note"`
 	} `json:"redistribution"`
 	Risk struct {
-		ScanStatus string `json:"scan_status"`
-		HasScripts bool   `json:"has_scripts"`
-		Counts     struct {
+		ScanStatus  string                               `json:"scan_status"`
+		Disclosures []struct{ Code, Label, Note string } `json:"disclosures"`
+		Counts      struct {
 			Errors, Warnings, Infos int
 		} `json:"counts"`
 	} `json:"risk"`
 	Compatibility struct {
-		SpecValidation string `json:"spec_validation"`
-		Capability     string `json:"capability"`
-		Runtime        string `json:"runtime"`
+		SpecValidation struct{ Value, Label, Note string } `json:"spec_validation"`
+		Capability     struct{ Value, Label, Note string } `json:"capability"`
+		Runtime        struct{ Value, Label, Note string } `json:"runtime"`
 	} `json:"compatibility"`
 	Limitations []struct {
 		Text   string `json:"text"`
@@ -214,14 +214,14 @@ func TestAnonymousReadsCatalogSkillDetail(t *testing.T) {
 		t.Errorf("redistribution = %+v; a declared MIT must not release a skill on its own", got.Redistribution)
 	}
 	// DISC-008: the risk block comes from a real scan of the stored package.
-	if got.Risk.ScanStatus != "scanned" || !got.Risk.HasScripts {
+	if got.Risk.ScanStatus != "scanned" || !hasDisclosureCode(got.Risk.Disclosures, "script-file") {
 		t.Errorf("risk = %+v, want a scan that found scripts/run.py", got.Risk)
 	}
 	// DISC-008: three axes, and the two that need a sandbox say so.
-	if got.Compatibility.SpecValidation != "passed" {
-		t.Errorf("spec_validation = %q, want passed", got.Compatibility.SpecValidation)
+	if got.Compatibility.SpecValidation.Value != "passed" {
+		t.Errorf("spec_validation = %q, want passed", got.Compatibility.SpecValidation.Value)
 	}
-	if got.Compatibility.Capability != "unverified" || got.Compatibility.Runtime != "unverified" {
+	if got.Compatibility.Capability.Value != "unverified" || got.Compatibility.Runtime.Value != "unverified" {
 		t.Errorf("compatibility = %+v, want capability and runtime unverified before M2", got.Compatibility)
 	}
 	if got.Tier.Value != "indexed" || got.Tier.Label == "" {
@@ -394,7 +394,7 @@ func TestUnreadablePackageIsReportedAsUnknownNotClean(t *testing.T) {
 	if got.Risk.ScanStatus != "unavailable" {
 		t.Errorf("scan_status = %q, want unavailable", got.Risk.ScanStatus)
 	}
-	if got.Compatibility.SpecValidation != "unverified" {
-		t.Errorf("spec_validation = %q, want unverified when the package cannot be read", got.Compatibility.SpecValidation)
+	if got.Compatibility.SpecValidation.Value != "unverified" {
+		t.Errorf("spec_validation = %q, want unverified when the package cannot be read", got.Compatibility.SpecValidation.Value)
 	}
 }

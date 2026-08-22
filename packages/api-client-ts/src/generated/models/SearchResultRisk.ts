@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { Disclosure } from './Disclosure';
+import {
+    DisclosureFromJSON,
+    DisclosureFromJSONTyped,
+    DisclosureToJSON,
+    DisclosureToJSONTyped,
+} from './Disclosure';
+
 /**
  * Compact risk hint for a result row (DISC-002 風險提示). Unlike
  * `SkillRisk` on the detail view this is read from the search projection,
@@ -53,41 +61,14 @@ export interface SearchResultRisk {
      */
     warnings: number;
     /**
+     * What the scan found the package declaring, server-worded. Empty when
+     * it declared none of them — which is not 「安全」 and is not rendered
+     * as such (NFR-001).
      * 
-     * @type {boolean}
+     * @type {Array<Disclosure>}
      * @memberof SearchResultRisk
      */
-    hasScripts?: boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof SearchResultRisk
-     */
-    hasEmbeddedScript?: boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof SearchResultRisk
-     */
-    hasExternalUrls?: boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof SearchResultRisk
-     */
-    hasPossibleSecrets?: boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof SearchResultRisk
-     */
-    hasBinaries?: boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof SearchResultRisk
-     */
-    hasDependencyManifest?: boolean;
+    disclosures: Array<Disclosure>;
     /**
      * 
      * @type {string}
@@ -124,6 +105,7 @@ export function instanceOfSearchResultRisk(value: object): value is SearchResult
     if (!('scanStatus' in value) || value['scanStatus'] === undefined) return false;
     if (!('level' in value) || value['level'] === undefined) return false;
     if (!('warnings' in value) || value['warnings'] === undefined) return false;
+    if (!('disclosures' in value) || value['disclosures'] === undefined) return false;
     if (!('note' in value) || value['note'] === undefined) return false;
     return true;
 }
@@ -141,12 +123,7 @@ export function SearchResultRiskFromJSONTyped(json: any, ignoreDiscriminator: bo
         'scanStatus': json['scan_status'],
         'level': json['level'],
         'warnings': json['warnings'],
-        'hasScripts': json['has_scripts'] == null ? undefined : json['has_scripts'],
-        'hasEmbeddedScript': json['has_embedded_script'] == null ? undefined : json['has_embedded_script'],
-        'hasExternalUrls': json['has_external_urls'] == null ? undefined : json['has_external_urls'],
-        'hasPossibleSecrets': json['has_possible_secrets'] == null ? undefined : json['has_possible_secrets'],
-        'hasBinaries': json['has_binaries'] == null ? undefined : json['has_binaries'],
-        'hasDependencyManifest': json['has_dependency_manifest'] == null ? undefined : json['has_dependency_manifest'],
+        'disclosures': ((json['disclosures'] as Array<any>).map(DisclosureFromJSON)),
         'note': json['note'],
     };
 }
@@ -165,12 +142,7 @@ export function SearchResultRiskToJSONTyped(value?: SearchResultRisk | null, ign
         'scan_status': value['scanStatus'],
         'level': value['level'],
         'warnings': value['warnings'],
-        'has_scripts': value['hasScripts'],
-        'has_embedded_script': value['hasEmbeddedScript'],
-        'has_external_urls': value['hasExternalUrls'],
-        'has_possible_secrets': value['hasPossibleSecrets'],
-        'has_binaries': value['hasBinaries'],
-        'has_dependency_manifest': value['hasDependencyManifest'],
+        'disclosures': ((value['disclosures'] as Array<any>).map(DisclosureToJSON)),
         'note': value['note'],
     };
 }

@@ -107,7 +107,7 @@ const RUN_ROW = {
   skill_name: "CSV 清理",
   skill_version_id: "22222222-2222-2222-2222-222222222222",
   provider: "self-hosted",
-  cleanup_status: "cleaned",
+  cleanup_status: { value: "cleaned", label: "已清理", note: "沙箱與其資源已回收。" },
   // 04 丙-32: the second axis. Required and never null — 未評估 is a value, not an
   // omission, because an empty verdict beside 「執行完成」 reads as a pass.
   evaluation: {
@@ -181,7 +181,11 @@ test("WS-004 a run whose sandbox was not cleaned up says so on the row", async (
     json({
       runs: [
         { ...RUN_ROW, status: "failed", status_reason: "the provider could not carry the attempt" },
-        { ...RUN_ROW, run_id: "run-2", cleanup_status: "failed" },
+        {
+          ...RUN_ROW,
+          run_id: "run-2",
+          cleanup_status: { value: "failed", label: "清理失敗", note: "平台會重試。" },
+        },
       ],
     }),
   );
@@ -210,8 +214,21 @@ test("WS-004 a cleanup state the client does not recognise is still rendered as 
   vi.stubGlobal("fetch", () =>
     json({
       runs: [
-        { ...RUN_ROW, cleanup_status: "cleaning_up" },
-        { ...RUN_ROW, run_id: "run-3", cleanup_status: "a-state-from-a-newer-server" },
+        {
+          ...RUN_ROW,
+          cleanup_status: { value: "cleaning_up", label: "清理中", note: "會自己結束。" },
+        },
+        {
+          ...RUN_ROW,
+          run_id: "run-3",
+          // The server keeps the raw value as its own label when it has no words
+          // for it, so this build renders something rather than a blank.
+          cleanup_status: {
+            value: "a-state-from-a-newer-server",
+            label: "a-state-from-a-newer-server",
+            note: "這個平台版本沒有這個清理狀態的說明,值照原樣顯示,不猜測它的意思。",
+          },
+        },
       ],
     }),
   );
@@ -220,7 +237,7 @@ test("WS-004 a cleanup state the client does not recognise is still rendered as 
   expect(text()).toContain("清理狀態：清理中");
   // Not a translation — the platform said something this build has no word for,
   // and saying so is honest where a blank would read as "nothing to report".
-  expect(text()).toContain("平台回報 a-state-from-a-newer-server");
+  expect(text()).toContain("a-state-from-a-newer-server");
   for (const badge of container.querySelectorAll(".badge")) {
     expect(badge.textContent?.trim(), "a badge with no word (§2.3)").not.toBe("");
   }
@@ -244,7 +261,9 @@ const SCANNED = {
     scan_status: "scanned",
     level: "disclosed",
     warnings: 0,
-    has_scripts: true,
+    disclosures: [
+      { code: "script-file", label: "含可執行 Script 檔案", note: "平台不曾執行它們。" },
+    ],
     note: "來自匯入時的靜態掃描,不執行套件內任何程式碼;開啟 Skill 可看逐項結果。",
   },
   verification: {
@@ -552,6 +571,8 @@ const ARTIFACT_ROW = {
   content_hash: "sha256:bbbb",
   manifest_hash: "sha256:cccc",
   status: "available" as const,
+  servable: true,
+  serve_state: { value: "available", label: "可下載", note: "" },
   expires_at: "2099-01-01T00:00:00Z",
   created_at: "2026-08-17T00:00:00Z",
   download_count: 2,

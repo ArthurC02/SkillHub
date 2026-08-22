@@ -19,9 +19,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 )
 
 // haltHarness is a fake provider wired into both planes, with no worker running.
@@ -172,7 +172,7 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Errorf("cleanup destroyed the scene under a P1 halt: destroys=%d live=%d",
 			fake.Destroys(), fake.Live())
 	}
-	if _, view := f.getRun(t, finished.RunID); view.CleanupStatus == string(gen.RunCleanupStatusCleaned) {
+	if _, view := f.getRun(t, finished.RunID); view.CleanupStatus.Value == string(gen.RunCleanupStatusCleaned) {
 		t.Error("cleanup_status says cleaned while the sandbox is still standing")
 	}
 
@@ -237,8 +237,8 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 	if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
 		t.Fatalf("cleanup after the resume: %v", err)
 	}
-	if _, view := f.getRun(t, finished.RunID); view.CleanupStatus != string(gen.RunCleanupStatusCleaned) {
-		t.Errorf("cleanup_status = %q after the resume, want cleaned", view.CleanupStatus)
+	if _, view := f.getRun(t, finished.RunID); view.CleanupStatus.Value != string(gen.RunCleanupStatusCleaned) {
+		t.Errorf("cleanup_status = %+v after the resume, want cleaned", view.CleanupStatus)
 	}
 
 	// Idempotent in both directions, same rule as the SEC-011 operator routes.

@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 // e2eSkillPackage is a real, spec-valid Agent Skill: frontmatter the validator
@@ -209,7 +209,7 @@ func waitForCleanupOutcome(t *testing.T, c *client, runID string) string {
 	var last string
 	for time.Now().Before(deadline) {
 		_, view := c.getRun(t, runID)
-		last = view.CleanupStatus
+		last = view.CleanupStatus.Value
 		if last == "cleaned" || last == "failed" {
 			return last
 		}

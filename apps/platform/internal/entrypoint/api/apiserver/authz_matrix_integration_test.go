@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 // anonID is any well-formed uuid: every route below decides authorization before

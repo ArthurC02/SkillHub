@@ -18,9 +18,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 )
 
 const embedDims = 1536
@@ -252,17 +252,17 @@ type searchResult struct {
 		Label string `json:"label"`
 	} `json:"tier"`
 	Risk struct {
-		ScanStatus      string `json:"scan_status"`
-		Level           string `json:"level"`
-		Warnings        int    `json:"warnings"`
-		HasScripts      bool   `json:"has_scripts"`
-		HasExternalURLs bool   `json:"has_external_urls"`
+		ScanStatus      string                               `json:"scan_status"`
+		Level           string                               `json:"level"`
+		Warnings        int                                  `json:"warnings"`
+		Disclosures     []struct{ Code, Label, Note string } `json:"disclosures"`
+		HasExternalURLs bool                                 `json:"has_external_urls"`
 	} `json:"risk"`
 	Dependencies  []string `json:"dependencies"`
 	Compatibility struct {
-		SpecValidation string `json:"spec_validation"`
-		Capability     string `json:"capability"`
-		Runtime        string `json:"runtime"`
+		SpecValidation struct{ Value, Label, Note string } `json:"spec_validation"`
+		Capability     struct{ Value, Label, Note string } `json:"capability"`
+		Runtime        struct{ Value, Label, Note string } `json:"runtime"`
 	} `json:"compatibility"`
 	VerifiedAt        string `json:"verified_at"`
 	MatchReason       string `json:"match_reason"`
@@ -620,18 +620,18 @@ func TestSearchResultsCarryTheDISC002Columns(t *testing.T) {
 	if got.Risk.ScanStatus != "scanned" {
 		t.Fatalf("risk scan_status = %q, want scanned", got.Risk.ScanStatus)
 	}
-	if !got.Risk.HasScripts {
-		t.Fatal("a package containing a script reported no script in its risk hint")
+	if !hasDisclosureCode(got.Risk.Disclosures, "script-file") {
+		t.Fatalf("a package containing a script disclosed none: %+v", got.Risk.Disclosures)
 	}
 	if got.Risk.Level == "none" {
 		t.Fatalf("risk level = none for a package with disclosures: %+v", got.Risk)
 	}
 	// 相容狀態: spec passed (the import would have been blocked otherwise), the
 	// two sandbox axes explicitly unverified — DISC-002's 尚未試跑.
-	if got.Compatibility.SpecValidation != "passed" {
-		t.Fatalf("spec_validation = %q for an accepted import", got.Compatibility.SpecValidation)
+	if got.Compatibility.SpecValidation.Value != "passed" {
+		t.Fatalf("spec_validation = %q for an accepted import", got.Compatibility.SpecValidation.Value)
 	}
-	if got.Compatibility.Capability != "unverified" || got.Compatibility.Runtime != "unverified" {
+	if got.Compatibility.Capability.Value != "unverified" || got.Compatibility.Runtime.Value != "unverified" {
 		t.Fatalf("sandbox axes claimed a verdict before M2: %+v", got.Compatibility)
 	}
 	// 最近驗證時間: the version's creation time, which is the import that scanned it.
@@ -662,8 +662,8 @@ func TestUnversionedSkillDoesNotClaimSpecValidation(t *testing.T) {
 		t.Fatalf("seeded skill not searchable: %v", body.ids())
 	}
 	got := body.Results[0]
-	if got.Compatibility.SpecValidation != "unverified" {
-		t.Fatalf("spec_validation = %q for a skill with nothing saved", got.Compatibility.SpecValidation)
+	if got.Compatibility.SpecValidation.Value != "unverified" {
+		t.Fatalf("spec_validation = %q for a skill with nothing saved", got.Compatibility.SpecValidation.Value)
 	}
 	if got.VerifiedAt != "" {
 		t.Fatalf("verified_at = %q for content that was never imported", got.VerifiedAt)
@@ -1090,4 +1090,16 @@ func TestARunOnHeldMaterialsIsRefused(t *testing.T) {
 	if !strings.Contains(view.Error, "license") {
 		t.Errorf("refusal = %q, want it to say the licence review is why", view.Error)
 	}
+}
+
+// hasDisclosureCode reports whether the served list carries one catalogue code.
+// Codes, not labels: the wording is the server's and may be edited, the identity
+// may not (04 丙-29 ④).
+func hasDisclosureCode(list []struct{ Code, Label, Note string }, code string) bool {
+	for _, d := range list {
+		if d.Code == code {
+			return true
+		}
+	}
+	return false
 }

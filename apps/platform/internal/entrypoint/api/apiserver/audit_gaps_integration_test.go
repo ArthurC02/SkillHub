@@ -25,9 +25,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 // refusalReasons is every reason recorded against one workspace, in order. The
@@ -210,8 +210,8 @@ func TestCleanupOutcomeIsAudited(t *testing.T) {
 
 	// Iron rule 9: the row and the status write are one transaction, so the trail
 	// cannot claim a teardown that the run row does not agree happened.
-	if _, view := f.getRun(t, finished.RunID); view.CleanupStatus != string(gen.RunCleanupStatusCleaned) {
-		t.Errorf("cleanup_status = %q, want cleaned", view.CleanupStatus)
+	if _, view := f.getRun(t, finished.RunID); view.CleanupStatus.Value != string(gen.RunCleanupStatusCleaned) {
+		t.Errorf("cleanup_status = %+v, want cleaned", view.CleanupStatus)
 	}
 }
 

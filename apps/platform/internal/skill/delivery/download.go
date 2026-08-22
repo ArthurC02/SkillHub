@@ -32,11 +32,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
 // ErrGone is every reason the bytes are not being served, folded into one:
@@ -63,7 +63,7 @@ func (s *Service) ListDownloads(ctx context.Context, ws identity.Workspace) ([]A
 			Status: r.ScanStatus, ExpiresAt: rfc3339(r.ExpiresAt), CreatedAt: rfc3339(r.CreatedAt),
 			DownloadCount: r.DownloadCount, IncludesTestCases: r.IncludesTestCases,
 			PackagerVersion: r.PackagerVersion, ProfileVersion: r.ProfileVersion,
-		})
+		}.withServeState(r.ExpiresAt.Time, r.PurgedAt.Valid))
 	}
 	return out, nil
 }
@@ -117,7 +117,10 @@ func (s *Service) GetDownload(ctx context.Context, ws identity.Workspace, id pgt
 		Status: row.ScanStatus, ExpiresAt: rfc3339(row.ExpiresAt), CreatedAt: rfc3339(row.CreatedAt),
 		DownloadCount: row.DownloadCount, IncludesTestCases: row.IncludesTestCases,
 		PackagerVersion: row.PackagerVersion, ProfileVersion: row.ProfileVersion,
-	}, nil
+		// The same three facts Download() enforces on, one function apart from it:
+		// this is the endpoint an owner reads to tell 404's reasons apart, so it
+		// must not be able to answer 可下載 about bytes the other one refuses.
+	}.withServeState(row.ExpiresAt.Time, row.PurgedAt.Valid), nil
 }
 
 func (s *Service) downloadRow(

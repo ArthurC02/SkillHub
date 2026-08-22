@@ -66,6 +66,8 @@
 
 > **Amended by [ADR-024](./ADR-024-top-level-repository-layout.md)（2026-08-16）**：頂層改分「跑的」（`apps/`、`services/`、`contracts/`、`db/`、`infra/`、`tools/`）與「讀的」（`docs/`）。下方樹狀圖中的 `spikes/`、`plans/`、`adr/` 三行已純前綴搬移為 `docs/spikes/`、`docs/plans/`、`docs/adr/`（目錄名不變），CI 的 `!spikes/**` 排除項改為 `docs/**`。本節其餘內容不受影響。
 
+> **更正（2026-08-22 查證）**：樹狀圖的 `llm/` 一行寫「FastAPI + LangGraph + uv」，**LangGraph 從未被採用**——`apps/llm/pyproject.toml` 的依賴只有 `fastapi`／`uvicorn`／`litellm`／`openai`，`uv.lock` 裡沒有 langgraph，三個 endpoint 都是單次閘道呼叫（`evaluate.py` 檔頭與 `contracts/openapi/llm-internal.yaml` 逐字寫「no LangGraph」）。不引入的裁定見 [m3/evaluation-design.md §2.3](../plans/mvp/m3/evaluation-design.md)：那是選型層級的授權，不是每個端點的義務。ADR-016 的同源敘述已同批更正。樹狀圖本身不改寫——它是決策當下的紀錄。
+
 單一 monorepo，頂層依「部署產物」而非「技術層」分組：
 
 ```text

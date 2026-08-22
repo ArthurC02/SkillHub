@@ -1,4 +1,4 @@
-import type { SearchResultRisk, SkillRisk } from "../api/types";
+import type { Disclosure, SearchResultRisk, SkillRisk } from "../api/types";
 
 /**
  * DISC-008 risk disclosure. Deliberately no single "safe" badge (NFR-001):
@@ -10,35 +10,20 @@ import type { SearchResultRisk, SkillRisk } from "../api/types";
  * (DISC-004 不得自行推定為通過).
  */
 /**
- * One list, because there were two and they disagreed.
+ * There is no list here any more.
  *
- * The search row kept its own copy with weaker wording — 「含 Script 檔案」 against
- * 「含可執行 Script 檔案」, 「SKILL.md 內含程式碼」 against 「SKILL.md 內含可執行程式碼」 —
- * so the same boolean disclosed less on the screen a reader meets first. 可執行 is
- * the word doing the work in both; dropping it is not a shorter label, it is a
- * smaller claim. 設計 §4.4 exists for exactly this shape.
+ * There used to be two — one on the search row, one on the detail view — and
+ * they **disagreed**: the row said 「含 Script 檔案」 where this said
+ * 「含可執行 Script 檔案」, and 可執行 is the word doing the work. They also held
+ * different numbers of entries, so the detail view disclosed one thing less than
+ * the row above it. Merging them into one client-side list fixed the wording and
+ * left the shape: two payloads, two boolean sets, free to drift again.
  *
- * Keyed by name rather than by `keyof`, because the two payloads carry different
- * sets: `SearchResultRisk` has `has_dependency_manifest` and `SkillRisk` does not,
- * which means **the detail view discloses one thing less than the list row**. That
- * asymmetry is in the contract (04 丙-29), not here; this list is written so that
- * closing it needs no change on this side.
+ * The server now sends `disclosures` already worded (04 丙-29 ④, 設計 §4.4), from
+ * one catalogue both endpoints read. A code this build has never seen still
+ * renders, with the server's label — which is the property no `keyof` union can
+ * have.
  */
-export const RISK_DISCLOSURES: Array<{ key: string; label: string }> = [
-  { key: "has_scripts", label: "含可執行 Script 檔案" },
-  // SKILL-003: separate from has_scripts because no file list can show it.
-  { key: "has_embedded_script", label: "SKILL.md 內含可執行程式碼" },
-  { key: "has_external_urls", label: "含外部網址" },
-  { key: "has_possible_secrets", label: "疑似含 Secret" },
-  { key: "has_binaries", label: "含二進位檔案" },
-  { key: "has_dependency_manifest", label: "含依賴宣告檔" },
-];
-
-/** The disclosures a risk payload actually asserts, in the order above. */
-export function disclosures(risk: object): Array<{ key: string; label: string }> {
-  const flags = risk as Record<string, unknown>;
-  return RISK_DISCLOSURES.filter((f) => flags[f.key] === true);
-}
 
 /**
  * The compact form: the projected block a row carries, not a fresh scan. Used by
@@ -52,16 +37,16 @@ export function disclosures(risk: object): Array<{ key: string; label: string }>
  * in two spellings.
  */
 export function RiskSummary({ risk }: { risk: SearchResultRisk }) {
-  const flags = disclosures(risk);
+  const flags = risk.disclosures;
   return (
     <>
       {risk.scan_status === "scanned" && (
         <>
           {risk.warnings > 0 && <span className="badge badge-risk">警告 {risk.warnings}</span>}
           {flags.length > 0
-            ? flags.map(({ key, label }) => (
-                <span key={key} className="badge badge-risk-flag">
-                  {label}
+            ? flags.map((d: Disclosure) => (
+                <span key={d.code} className="badge badge-risk-flag" title={d.note}>
+                  {d.label}
                 </span>
               ))
             : risk.warnings === 0 && (
@@ -84,7 +69,7 @@ export function RiskIndicator({ risk }: { risk: SkillRisk }) {
     );
   }
 
-  const flags = disclosures(risk);
+  const flags = risk.disclosures;
   const infoCodes = Object.entries(risk.info_counts).sort(([a], [b]) => a.localeCompare(b));
 
   return (
@@ -108,9 +93,14 @@ export function RiskIndicator({ risk }: { risk: SkillRisk }) {
 
       {flags.length > 0 && (
         <ul className="risk-list">
-          {flags.map(({ key, label }) => (
-            <li key={key} className="badge badge-risk-flag">
-              {label}
+          {/* The note is visible here, not a `title` — §2.4: an explanation that
+              only exists in a tooltip does not exist on touch. The row above
+              keeps it in `title` because a compact row has nowhere to put it,
+              and this is the view a reader opens to find out more. */}
+          {flags.map((d: Disclosure) => (
+            <li key={d.code} className="badge badge-risk-flag">
+              {d.label}
+              {d.note && <span className="note">{d.note}</span>}
             </li>
           ))}
         </ul>

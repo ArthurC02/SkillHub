@@ -32,6 +32,7 @@ export * from './DeleteTestCase200Response';
 export * from './DeterministicFinding';
 export * from './DevLoginRequest';
 export * from './DiffSkillVersions200Response';
+export * from './Disclosure';
 export * from './DownloadArtifact';
 export * from './Evaluation';
 export * from './EvaluationCost';

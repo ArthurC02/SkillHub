@@ -22,9 +22,9 @@ import (
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 )
 
 func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
@@ -142,7 +142,7 @@ func TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage(t *testing.T) {
 	// ADR-025, and the reason this line is here rather than in the evaluation
 	// section: `succeeded` is execution, not a task verdict, and a journey test is
 	// exactly where somebody would be tempted to treat it as the finish line.
-	if final.CleanupStatus == "" {
+	if final.CleanupStatus.Label == "" {
 		t.Error("the run reports no cleanup state")
 	}
 

@@ -22,7 +22,7 @@ import (
 	"testing/fstest"
 	"time"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 

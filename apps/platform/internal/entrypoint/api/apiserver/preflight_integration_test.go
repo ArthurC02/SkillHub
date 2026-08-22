@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 // --- helpers -----------------------------------------------------------------

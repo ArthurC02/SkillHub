@@ -93,7 +93,13 @@ MVP 用 Prometheus 文字格式，各服務自己曝露，沒有 push gateway、
 
 `alerts.yml`（Prometheus alerting rules，繁中註解說明每條的判準與處置）。
 
-**未做的部分，明說**：沒有 Alertmanager 部署、沒有通知路由、沒有 silence 政策、沒有 Grafana dashboard。那些是部署期的事，本批交付的是「什麼算異常、依據哪個指標、要人做什麼」。掛法：Prometheus 的 `rule_files` 指向本檔。
+**掛法（2026-08-22 起不再是一句說明）**：`task dev:observability` 起一個 Prometheus（`infra/compose/docker-compose.yml` 的 `observability` profile），設定在 [`prometheus.yml`](prometheus.yml)，`rule_files` 指向本目錄的 `alerts.yml`，UI 在 `127.0.0.1:9095`。
+
+**在這之前，這 20 條規則從來沒有被任何東西載入過。** 指標寫了、規則寫了、門檻由 ADR-022 定值了，而中間沒有 evaluator——**X-02～X-04 因此沒有觸發路徑，缺的不是門檻是求值**。首次載入即通過（`promtool check rules` 與實際 `/api/v1/rules` 各驗一次，4 群組 20 條），所以這一段補的是路徑不是錯誤。
+
+**scrape 目標是宿主機不是別的容器**：`cmd/api` 與 `cmd/worker` 跑在開發者機器上（compose 裡還沒有它們，見 CORE-001 的 TODO），而兩者讀**同一個** `METRICS_ADDR`——同一台機器上要給兩個值（`:9090` 與 `:9091`），否則後起的那個綁不上。`sandboxd` 故意不列為 target：它的 `/metrics` 要 bearer，沒有 token 檔的 scrape 只會拿到 401，而**一個永遠 down 的 target 讀起來跟服務掛了一模一樣**。
+
+**未做的部分，明說**：沒有 Alertmanager、沒有通知路由、沒有 silence 政策、沒有 Grafana dashboard，**上面那個 Prometheus 是開發機的，不是生產部署**。那些是部署期的事（`04` 甲類），本批交付的是「什麼算異常、依據哪個指標、要人做什麼」，加上一個會真的去算它的東西。
 
 **門檻值多數是首發預設，不是實測校準值**。NFR-004 自陳效能目標「需在確認基礎設施後校準」，上線後第一個月應以實際分佈回填並註明校準日期。
 

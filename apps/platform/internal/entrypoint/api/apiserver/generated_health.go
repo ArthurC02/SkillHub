@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-publicapi "github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/gen"
+	publicapi "github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/gen"
 )
 
 // generatedHealth implements the single generated operation currently mounted

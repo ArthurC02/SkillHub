@@ -345,8 +345,9 @@ type CancelRunAccepted struct {
 	// `unassigned` until provider selection lands (RUN-005).
 	Provider string `json:"provider"`
 	// Tracked apart from the run outcome, and still writable after a terminal state. Idempotent cleanup is
-	// RUN-007.
-	CleanupStatus CancelRunAcceptedCleanupStatus `json:"cleanup_status"`
+	// RUN-007. `value` is the database enum; see RunListItem.cleanup_status for why it is served with its
+	// words.
+	CleanupStatus Labelled `json:"cleanup_status"`
 	// Set by POST /runs/{id}/cancel. Intent, not the outcome.
 	CancelRequestedAt OptDateTime `json:"cancel_requested_at"`
 	CreatedAt         time.Time   `json:"created_at"`
@@ -402,7 +403,7 @@ func (s *CancelRunAccepted) GetProvider() string {
 }
 
 // GetCleanupStatus returns the value of CleanupStatus.
-func (s *CancelRunAccepted) GetCleanupStatus() CancelRunAcceptedCleanupStatus {
+func (s *CancelRunAccepted) GetCleanupStatus() Labelled {
 	return s.CleanupStatus
 }
 
@@ -482,7 +483,7 @@ func (s *CancelRunAccepted) SetProvider(val string) {
 }
 
 // SetCleanupStatus sets the value of CleanupStatus.
-func (s *CancelRunAccepted) SetCleanupStatus(val CancelRunAcceptedCleanupStatus) {
+func (s *CancelRunAccepted) SetCleanupStatus(val Labelled) {
 	s.CleanupStatus = val
 }
 
@@ -614,63 +615,6 @@ func (s *CancelRunAcceptedAttemptsItem) SetStartedAt(val OptDateTime) {
 // SetFinishedAt sets the value of FinishedAt.
 func (s *CancelRunAcceptedAttemptsItem) SetFinishedAt(val OptDateTime) {
 	s.FinishedAt = val
-}
-
-// Tracked apart from the run outcome, and still writable after a terminal state. Idempotent cleanup is
-// RUN-007.
-type CancelRunAcceptedCleanupStatus string
-
-const (
-	CancelRunAcceptedCleanupStatusPending    CancelRunAcceptedCleanupStatus = "pending"
-	CancelRunAcceptedCleanupStatusCleaningUp CancelRunAcceptedCleanupStatus = "cleaning_up"
-	CancelRunAcceptedCleanupStatusCleaned    CancelRunAcceptedCleanupStatus = "cleaned"
-	CancelRunAcceptedCleanupStatusFailed     CancelRunAcceptedCleanupStatus = "failed"
-)
-
-// AllValues returns all CancelRunAcceptedCleanupStatus values.
-func (CancelRunAcceptedCleanupStatus) AllValues() []CancelRunAcceptedCleanupStatus {
-	return []CancelRunAcceptedCleanupStatus{
-		CancelRunAcceptedCleanupStatusPending,
-		CancelRunAcceptedCleanupStatusCleaningUp,
-		CancelRunAcceptedCleanupStatusCleaned,
-		CancelRunAcceptedCleanupStatusFailed,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s CancelRunAcceptedCleanupStatus) MarshalText() ([]byte, error) {
-	switch s {
-	case CancelRunAcceptedCleanupStatusPending:
-		return []byte(s), nil
-	case CancelRunAcceptedCleanupStatusCleaningUp:
-		return []byte(s), nil
-	case CancelRunAcceptedCleanupStatusCleaned:
-		return []byte(s), nil
-	case CancelRunAcceptedCleanupStatusFailed:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *CancelRunAcceptedCleanupStatus) UnmarshalText(data []byte) error {
-	switch CancelRunAcceptedCleanupStatus(data) {
-	case CancelRunAcceptedCleanupStatusPending:
-		*s = CancelRunAcceptedCleanupStatusPending
-		return nil
-	case CancelRunAcceptedCleanupStatusCleaningUp:
-		*s = CancelRunAcceptedCleanupStatusCleaningUp
-		return nil
-	case CancelRunAcceptedCleanupStatusCleaned:
-		*s = CancelRunAcceptedCleanupStatusCleaned
-		return nil
-	case CancelRunAcceptedCleanupStatusFailed:
-		*s = CancelRunAcceptedCleanupStatusFailed
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
 }
 
 // The standard lifecycle of ADR-004 / RUN-002. `cleaning_up` is not in here: cleanup happens after a
@@ -1027,6 +971,22 @@ type CreateDownloadArtifactCreated struct {
 	// state: the rule is a condition on one handler that a test can hold to, rather than a habit of not
 	// handing bytes over too early.
 	Status CreateDownloadArtifactCreatedStatus `json:"status"`
+	// Whether GET /downloads/{artifactId}/content would hand the bytes over right now:
+	// `status == available` AND the stored object has not been purged AND `expires_at` is still in the
+	// future (skill/delivery/download.go). Served rather than derived (04 丙-29 ⑤) because one of its
+	// three inputs — the purge — is not on this schema at all, so no client can compute it and every
+	// client that tried was computing something else.
+	//
+	// The three parts stay visible beside it: `status` says which check, `expires_at` says when, and this
+	// says the answer. Folding them into one flag would lose why (`quarantined` is not over, `rejected`
+	// is).
+	Servable bool `json:"servable"`
+	// The one sentence for the composite above — 「可下載」, 「檢查中」, 「已拒絕」,
+	// 「已過期，不再提供下載」. `value` is the state that decided it, which is `status` except
+	// when an `available` artifact has expired or been purged, where it is `expired` or `purged` — two
+	// values that do not appear in `status` at all, which is why a label on `status` alone would have
+	// fought the word on the screen instead of settling it (設計系統 §2.2 顯示但不強制).
+	ServeState Labelled `json:"serve_state"`
 	// When the object is deleted. The retention period is deployment configuration; PDM-006 proposes 90
 	// days for download packages and that proposal is not ratified yet, so no number is fixed here.
 	//
@@ -1092,6 +1052,16 @@ func (s *CreateDownloadArtifactCreated) GetManifestHash() string {
 // GetStatus returns the value of Status.
 func (s *CreateDownloadArtifactCreated) GetStatus() CreateDownloadArtifactCreatedStatus {
 	return s.Status
+}
+
+// GetServable returns the value of Servable.
+func (s *CreateDownloadArtifactCreated) GetServable() bool {
+	return s.Servable
+}
+
+// GetServeState returns the value of ServeState.
+func (s *CreateDownloadArtifactCreated) GetServeState() Labelled {
+	return s.ServeState
 }
 
 // GetExpiresAt returns the value of ExpiresAt.
@@ -1172,6 +1142,16 @@ func (s *CreateDownloadArtifactCreated) SetManifestHash(val string) {
 // SetStatus sets the value of Status.
 func (s *CreateDownloadArtifactCreated) SetStatus(val CreateDownloadArtifactCreatedStatus) {
 	s.Status = val
+}
+
+// SetServable sets the value of Servable.
+func (s *CreateDownloadArtifactCreated) SetServable(val bool) {
+	s.Servable = val
+}
+
+// SetServeState sets the value of ServeState.
+func (s *CreateDownloadArtifactCreated) SetServeState(val Labelled) {
+	s.ServeState = val
 }
 
 // SetExpiresAt sets the value of ExpiresAt.
@@ -2662,6 +2642,61 @@ type DiffSkillVersionsUnauthorized Error
 
 func (*DiffSkillVersionsUnauthorized) diffSkillVersionsRes() {}
 
+// One thing a package declares about itself, with the words to show for it (04 丙-29 ④). It
+// replaces the parallel `has_*` booleans that used to sit on `SkillRisk` and `SearchResultRisk`.
+//
+// Booleans could not become `Labelled`: `Labelled` describes one enum value, and six independent flags
+// are not one. The list form fixes what the booleans made easy to get wrong — the two payloads
+// carried different sets (the search row disclosed `has_dependency_manifest`, the detail view did
+// not), so the screen a reader meets first said more than the screen they open next. A list has no
+// shape to disagree on.
+//
+// `code` is the scan finding code and stays stable; `label` and `note` are the server's wording, so
+// the search row and the detail view cannot word the same disclosure differently (設計系統 §4.4,
+// NFR-007 第 3 條).
+//
+// Only what the package asserts appears. An absent code is not a claim that the thing is not there, it
+// is the scan not having found it — which is why there is no `false` entry and no "clean" member.
+// Ref: #/components/schemas/Disclosure
+type Disclosure struct {
+	// Scan finding code — `script-file`, `embedded-script`, `external-url`, `possible-secret`,
+	// `binary-file`, `dependency-file`. Not an enum: a code this client does not know still has a label
+	// and a note, and dropping it would hide a disclosure to keep a union tidy.
+	Code  string `json:"code"`
+	Label string `json:"label"`
+	Note  string `json:"note"`
+}
+
+// GetCode returns the value of Code.
+func (s *Disclosure) GetCode() string {
+	return s.Code
+}
+
+// GetLabel returns the value of Label.
+func (s *Disclosure) GetLabel() string {
+	return s.Label
+}
+
+// GetNote returns the value of Note.
+func (s *Disclosure) GetNote() string {
+	return s.Note
+}
+
+// SetCode sets the value of Code.
+func (s *Disclosure) SetCode(val string) {
+	s.Code = val
+}
+
+// SetLabel sets the value of Label.
+func (s *Disclosure) SetLabel(val string) {
+	s.Label = val
+}
+
+// SetNote sets the value of Note.
+func (s *Disclosure) SetNote(val string) {
+	s.Note = val
+}
+
 // One built package (PACK-001). Immutable: re-packaging produces another row, never an edit of this
 // one (iron rule 4).
 //
@@ -2689,6 +2724,22 @@ type DownloadArtifact struct {
 	// state: the rule is a condition on one handler that a test can hold to, rather than a habit of not
 	// handing bytes over too early.
 	Status DownloadArtifactStatus `json:"status"`
+	// Whether GET /downloads/{artifactId}/content would hand the bytes over right now:
+	// `status == available` AND the stored object has not been purged AND `expires_at` is still in the
+	// future (skill/delivery/download.go). Served rather than derived (04 丙-29 ⑤) because one of its
+	// three inputs — the purge — is not on this schema at all, so no client can compute it and every
+	// client that tried was computing something else.
+	//
+	// The three parts stay visible beside it: `status` says which check, `expires_at` says when, and this
+	// says the answer. Folding them into one flag would lose why (`quarantined` is not over, `rejected`
+	// is).
+	Servable bool `json:"servable"`
+	// The one sentence for the composite above — 「可下載」, 「檢查中」, 「已拒絕」,
+	// 「已過期，不再提供下載」. `value` is the state that decided it, which is `status` except
+	// when an `available` artifact has expired or been purged, where it is `expired` or `purged` — two
+	// values that do not appear in `status` at all, which is why a label on `status` alone would have
+	// fought the word on the screen instead of settling it (設計系統 §2.2 顯示但不強制).
+	ServeState Labelled `json:"serve_state"`
 	// When the object is deleted. The retention period is deployment configuration; PDM-006 proposes 90
 	// days for download packages and that proposal is not ratified yet, so no number is fixed here.
 	//
@@ -2753,6 +2804,16 @@ func (s *DownloadArtifact) GetManifestHash() string {
 // GetStatus returns the value of Status.
 func (s *DownloadArtifact) GetStatus() DownloadArtifactStatus {
 	return s.Status
+}
+
+// GetServable returns the value of Servable.
+func (s *DownloadArtifact) GetServable() bool {
+	return s.Servable
+}
+
+// GetServeState returns the value of ServeState.
+func (s *DownloadArtifact) GetServeState() Labelled {
+	return s.ServeState
 }
 
 // GetExpiresAt returns the value of ExpiresAt.
@@ -2828,6 +2889,16 @@ func (s *DownloadArtifact) SetManifestHash(val string) {
 // SetStatus sets the value of Status.
 func (s *DownloadArtifact) SetStatus(val DownloadArtifactStatus) {
 	s.Status = val
+}
+
+// SetServable sets the value of Servable.
+func (s *DownloadArtifact) SetServable(val bool) {
+	s.Servable = val
+}
+
+// SetServeState sets the value of ServeState.
+func (s *DownloadArtifact) SetServeState(val Labelled) {
+	s.ServeState = val
 }
 
 // SetExpiresAt sets the value of ExpiresAt.
@@ -8936,8 +9007,9 @@ type Run struct {
 	// `unassigned` until provider selection lands (RUN-005).
 	Provider string `json:"provider"`
 	// Tracked apart from the run outcome, and still writable after a terminal state. Idempotent cleanup is
-	// RUN-007.
-	CleanupStatus RunCleanupStatus `json:"cleanup_status"`
+	// RUN-007. `value` is the database enum; see RunListItem.cleanup_status for why it is served with its
+	// words.
+	CleanupStatus Labelled `json:"cleanup_status"`
 	// Set by POST /runs/{id}/cancel. Intent, not the outcome.
 	CancelRequestedAt OptDateTime `json:"cancel_requested_at"`
 	CreatedAt         time.Time   `json:"created_at"`
@@ -8992,7 +9064,7 @@ func (s *Run) GetProvider() string {
 }
 
 // GetCleanupStatus returns the value of CleanupStatus.
-func (s *Run) GetCleanupStatus() RunCleanupStatus {
+func (s *Run) GetCleanupStatus() Labelled {
 	return s.CleanupStatus
 }
 
@@ -9067,7 +9139,7 @@ func (s *Run) SetProvider(val string) {
 }
 
 // SetCleanupStatus sets the value of CleanupStatus.
-func (s *Run) SetCleanupStatus(val RunCleanupStatus) {
+func (s *Run) SetCleanupStatus(val Labelled) {
 	s.CleanupStatus = val
 }
 
@@ -9292,63 +9364,6 @@ func (s *RunAttemptsItem) SetStartedAt(val OptDateTime) {
 // SetFinishedAt sets the value of FinishedAt.
 func (s *RunAttemptsItem) SetFinishedAt(val OptDateTime) {
 	s.FinishedAt = val
-}
-
-// Tracked apart from the run outcome, and still writable after a terminal state. Idempotent cleanup is
-// RUN-007.
-type RunCleanupStatus string
-
-const (
-	RunCleanupStatusPending    RunCleanupStatus = "pending"
-	RunCleanupStatusCleaningUp RunCleanupStatus = "cleaning_up"
-	RunCleanupStatusCleaned    RunCleanupStatus = "cleaned"
-	RunCleanupStatusFailed     RunCleanupStatus = "failed"
-)
-
-// AllValues returns all RunCleanupStatus values.
-func (RunCleanupStatus) AllValues() []RunCleanupStatus {
-	return []RunCleanupStatus{
-		RunCleanupStatusPending,
-		RunCleanupStatusCleaningUp,
-		RunCleanupStatusCleaned,
-		RunCleanupStatusFailed,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s RunCleanupStatus) MarshalText() ([]byte, error) {
-	switch s {
-	case RunCleanupStatusPending:
-		return []byte(s), nil
-	case RunCleanupStatusCleaningUp:
-		return []byte(s), nil
-	case RunCleanupStatusCleaned:
-		return []byte(s), nil
-	case RunCleanupStatusFailed:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *RunCleanupStatus) UnmarshalText(data []byte) error {
-	switch RunCleanupStatus(data) {
-	case RunCleanupStatusPending:
-		*s = RunCleanupStatusPending
-		return nil
-	case RunCleanupStatusCleaningUp:
-		*s = RunCleanupStatusCleaningUp
-		return nil
-	case RunCleanupStatusCleaned:
-		*s = RunCleanupStatusCleaned
-		return nil
-	case RunCleanupStatusFailed:
-		*s = RunCleanupStatusFailed
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
 }
 
 // Two runs of the same test case, side by side (EVAL-003). A read: neither run is written to, and both
@@ -10158,13 +10173,22 @@ type RunListItem struct {
 	SkillVersionID uuid.UUID `json:"skill_version_id"`
 	// The editable test case the run's snapshot was frozen from, so a re-run can be started from a history
 	// row. Not permission to re-run — that is preflight's answer (TEST-009).
-	TestCaseID    OptUUID                  `json:"test_case_id"`
-	Provider      string                   `json:"provider"`
-	FailureClass  OptString                `json:"failure_class"`
-	CleanupStatus RunListItemCleanupStatus `json:"cleanup_status"`
-	CreatedAt     time.Time                `json:"created_at"`
-	StartedAt     OptDateTime              `json:"started_at"`
-	FinishedAt    OptDateTime              `json:"finished_at"`
+	TestCaseID   OptUUID   `json:"test_case_id"`
+	Provider     string    `json:"provider"`
+	FailureClass OptString `json:"failure_class"`
+	// `value` is the database type run_cleanup_status (0004_test_lab_and_runs.sql): `pending`,
+	// `cleaning_up`, `cleaned`, `failed`. The handler puts that value on the wire unmapped.
+	//
+	// Labelled rather than a bare enum (04 丙-29 ②) because of what went wrong here: the contract said
+	// `cleaning` until 2026-08-22 while the database said `cleaning_up`, so the one state this field
+	// exists to report — the sandbox is being torn down right now — arrived as a value no client had a
+	// word for and rendered as a blank row. A client-side enum→中文 table can only fail that way; a
+	// served label cannot. One field, one consumer, four values: the cheapest place to stop the whole
+	// failure mode.
+	CleanupStatus Labelled    `json:"cleanup_status"`
+	CreatedAt     time.Time   `json:"created_at"`
+	StartedAt     OptDateTime `json:"started_at"`
+	FinishedAt    OptDateTime `json:"finished_at"`
 }
 
 // GetRunID returns the value of RunID.
@@ -10218,7 +10242,7 @@ func (s *RunListItem) GetFailureClass() OptString {
 }
 
 // GetCleanupStatus returns the value of CleanupStatus.
-func (s *RunListItem) GetCleanupStatus() RunListItemCleanupStatus {
+func (s *RunListItem) GetCleanupStatus() Labelled {
 	return s.CleanupStatus
 }
 
@@ -10288,7 +10312,7 @@ func (s *RunListItem) SetFailureClass(val OptString) {
 }
 
 // SetCleanupStatus sets the value of CleanupStatus.
-func (s *RunListItem) SetCleanupStatus(val RunListItemCleanupStatus) {
+func (s *RunListItem) SetCleanupStatus(val Labelled) {
 	s.CleanupStatus = val
 }
 
@@ -10305,61 +10329,6 @@ func (s *RunListItem) SetStartedAt(val OptDateTime) {
 // SetFinishedAt sets the value of FinishedAt.
 func (s *RunListItem) SetFinishedAt(val OptDateTime) {
 	s.FinishedAt = val
-}
-
-type RunListItemCleanupStatus string
-
-const (
-	RunListItemCleanupStatusPending    RunListItemCleanupStatus = "pending"
-	RunListItemCleanupStatusCleaningUp RunListItemCleanupStatus = "cleaning_up"
-	RunListItemCleanupStatusCleaned    RunListItemCleanupStatus = "cleaned"
-	RunListItemCleanupStatusFailed     RunListItemCleanupStatus = "failed"
-)
-
-// AllValues returns all RunListItemCleanupStatus values.
-func (RunListItemCleanupStatus) AllValues() []RunListItemCleanupStatus {
-	return []RunListItemCleanupStatus{
-		RunListItemCleanupStatusPending,
-		RunListItemCleanupStatusCleaningUp,
-		RunListItemCleanupStatusCleaned,
-		RunListItemCleanupStatusFailed,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s RunListItemCleanupStatus) MarshalText() ([]byte, error) {
-	switch s {
-	case RunListItemCleanupStatusPending:
-		return []byte(s), nil
-	case RunListItemCleanupStatusCleaningUp:
-		return []byte(s), nil
-	case RunListItemCleanupStatusCleaned:
-		return []byte(s), nil
-	case RunListItemCleanupStatusFailed:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *RunListItemCleanupStatus) UnmarshalText(data []byte) error {
-	switch RunListItemCleanupStatus(data) {
-	case RunListItemCleanupStatusPending:
-		*s = RunListItemCleanupStatusPending
-		return nil
-	case RunListItemCleanupStatusCleaningUp:
-		*s = RunListItemCleanupStatusCleaningUp
-		return nil
-	case RunListItemCleanupStatusCleaned:
-		*s = RunListItemCleanupStatusCleaned
-		return nil
-	case RunListItemCleanupStatusFailed:
-		*s = RunListItemCleanupStatusFailed
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
 }
 
 type RunListItemStatus string
@@ -11749,14 +11718,11 @@ type SearchResultRisk struct {
 	// import, so nothing carrying one is in the index at all.
 	Level SearchResultRiskLevel `json:"level"`
 	// Warning-level finding count.
-	Warnings              int     `json:"warnings"`
-	HasScripts            OptBool `json:"has_scripts"`
-	HasEmbeddedScript     OptBool `json:"has_embedded_script"`
-	HasExternalUrls       OptBool `json:"has_external_urls"`
-	HasPossibleSecrets    OptBool `json:"has_possible_secrets"`
-	HasBinaries           OptBool `json:"has_binaries"`
-	HasDependencyManifest OptBool `json:"has_dependency_manifest"`
-	Note                  string  `json:"note"`
+	Warnings int `json:"warnings"`
+	// What the scan found the package declaring, server-worded. Empty when it declared none of them —
+	// which is not 「安全」 and is not rendered as such (NFR-001).
+	Disclosures []Disclosure `json:"disclosures"`
+	Note        string       `json:"note"`
 }
 
 // GetScanStatus returns the value of ScanStatus.
@@ -11774,34 +11740,9 @@ func (s *SearchResultRisk) GetWarnings() int {
 	return s.Warnings
 }
 
-// GetHasScripts returns the value of HasScripts.
-func (s *SearchResultRisk) GetHasScripts() OptBool {
-	return s.HasScripts
-}
-
-// GetHasEmbeddedScript returns the value of HasEmbeddedScript.
-func (s *SearchResultRisk) GetHasEmbeddedScript() OptBool {
-	return s.HasEmbeddedScript
-}
-
-// GetHasExternalUrls returns the value of HasExternalUrls.
-func (s *SearchResultRisk) GetHasExternalUrls() OptBool {
-	return s.HasExternalUrls
-}
-
-// GetHasPossibleSecrets returns the value of HasPossibleSecrets.
-func (s *SearchResultRisk) GetHasPossibleSecrets() OptBool {
-	return s.HasPossibleSecrets
-}
-
-// GetHasBinaries returns the value of HasBinaries.
-func (s *SearchResultRisk) GetHasBinaries() OptBool {
-	return s.HasBinaries
-}
-
-// GetHasDependencyManifest returns the value of HasDependencyManifest.
-func (s *SearchResultRisk) GetHasDependencyManifest() OptBool {
-	return s.HasDependencyManifest
+// GetDisclosures returns the value of Disclosures.
+func (s *SearchResultRisk) GetDisclosures() []Disclosure {
+	return s.Disclosures
 }
 
 // GetNote returns the value of Note.
@@ -11824,34 +11765,9 @@ func (s *SearchResultRisk) SetWarnings(val int) {
 	s.Warnings = val
 }
 
-// SetHasScripts sets the value of HasScripts.
-func (s *SearchResultRisk) SetHasScripts(val OptBool) {
-	s.HasScripts = val
-}
-
-// SetHasEmbeddedScript sets the value of HasEmbeddedScript.
-func (s *SearchResultRisk) SetHasEmbeddedScript(val OptBool) {
-	s.HasEmbeddedScript = val
-}
-
-// SetHasExternalUrls sets the value of HasExternalUrls.
-func (s *SearchResultRisk) SetHasExternalUrls(val OptBool) {
-	s.HasExternalUrls = val
-}
-
-// SetHasPossibleSecrets sets the value of HasPossibleSecrets.
-func (s *SearchResultRisk) SetHasPossibleSecrets(val OptBool) {
-	s.HasPossibleSecrets = val
-}
-
-// SetHasBinaries sets the value of HasBinaries.
-func (s *SearchResultRisk) SetHasBinaries(val OptBool) {
-	s.HasBinaries = val
-}
-
-// SetHasDependencyManifest sets the value of HasDependencyManifest.
-func (s *SearchResultRisk) SetHasDependencyManifest(val OptBool) {
-	s.HasDependencyManifest = val
+// SetDisclosures sets the value of Disclosures.
+func (s *SearchResultRisk) SetDisclosures(val []Disclosure) {
+	s.Disclosures = val
 }
 
 // SetNote sets the value of Note.
@@ -12169,9 +12085,14 @@ func (s *SkillAccessRestriction) SetNote(val string) {
 // Ref: #/components/schemas/SkillCompatibility
 type SkillCompatibility struct {
 	// Format and static validation only. Passing is never a claim that the skill is safe to run or
-	// effective (SKILL-002).
-	SpecValidation SkillCompatibilitySpecValidation `json:"spec_validation"`
-	// Does the agent actually pick this skill up when it is mounted, read from the run trace.
+	// effective (SKILL-002). `value` is `passed`, `failed` or `unverified`.
+	//
+	// Labelled rather than a bare enum (04 丙-29 ③): two screens had already worded this axis
+	// differently, and one of them wrote `passed ? 通過 : 未驗證`, which reports `failed` as
+	// 未驗證 — the one reading a client-side table makes easy and a served label makes impossible.
+	SpecValidation Labelled `json:"spec_validation"`
+	// Does the agent actually pick this skill up when it is mounted, read from the run trace. `value` is
+	// `activated`, `not_activated` or `unverified`.
 	//
 	//  - `activated` — a `skill_activation` event for this skill in the run.
 	//  - `not_activated` — the run completed and the trace shows the skill was offered and something
@@ -12181,8 +12102,13 @@ type SkillCompatibility struct {
 	// `not_activated` is never inferred from silence. The SDK message stream cannot express "available but
 	// not called" at all (TRACE-002 限制註記), so a missing activation event on a truncated run is not
 	// evidence of non-activation, and it is reported as `unverified`.
-	Capability SkillCompatibilityCapability `json:"capability"`
-	// Can the package's own scripts execute in this image.
+	Capability Labelled `json:"capability"`
+	// Can the package's own scripts execute in this image. `value` is `native`, `transpiled`, `failed` or
+	// `unverified`.
+	//
+	// `transpiled` is why this axis carries a `note` and not just a label: the caveat below is not
+	// guessable from any single word, and a reader who does not get it will believe the Skill's own script
+	// ran.
 	//
 	//  - `native` — every runtime the package declares is provided here.
 	//  - `transpiled` — they are not, and the observed run got its result from the model re-implementing
@@ -12193,7 +12119,7 @@ type SkillCompatibility struct {
 	//    the Skill's own script is what ran.
 	//  - `failed` — they are not, and the run failed because of it.
 	//  - `unverified` — this (version, image) pair was never measured.
-	Runtime SkillCompatibilityRuntime `json:"runtime"`
+	Runtime Labelled `json:"runtime"`
 	// The image `capability` and `runtime` were measured on, e.g. `skillhub/runtime-agent-sdk:2026.08-1`.
 	// A digest reference is the preferred form; the M2 baseline predates the publishing pipeline and its
 	// rows record the tag they genuinely ran under rather than a digest invented to fit. Absent exactly
@@ -12208,17 +12134,17 @@ type SkillCompatibility struct {
 }
 
 // GetSpecValidation returns the value of SpecValidation.
-func (s *SkillCompatibility) GetSpecValidation() SkillCompatibilitySpecValidation {
+func (s *SkillCompatibility) GetSpecValidation() Labelled {
 	return s.SpecValidation
 }
 
 // GetCapability returns the value of Capability.
-func (s *SkillCompatibility) GetCapability() SkillCompatibilityCapability {
+func (s *SkillCompatibility) GetCapability() Labelled {
 	return s.Capability
 }
 
 // GetRuntime returns the value of Runtime.
-func (s *SkillCompatibility) GetRuntime() SkillCompatibilityRuntime {
+func (s *SkillCompatibility) GetRuntime() Labelled {
 	return s.Runtime
 }
 
@@ -12238,17 +12164,17 @@ func (s *SkillCompatibility) GetNote() string {
 }
 
 // SetSpecValidation sets the value of SpecValidation.
-func (s *SkillCompatibility) SetSpecValidation(val SkillCompatibilitySpecValidation) {
+func (s *SkillCompatibility) SetSpecValidation(val Labelled) {
 	s.SpecValidation = val
 }
 
 // SetCapability sets the value of Capability.
-func (s *SkillCompatibility) SetCapability(val SkillCompatibilityCapability) {
+func (s *SkillCompatibility) SetCapability(val Labelled) {
 	s.Capability = val
 }
 
 // SetRuntime sets the value of Runtime.
-func (s *SkillCompatibility) SetRuntime(val SkillCompatibilityRuntime) {
+func (s *SkillCompatibility) SetRuntime(val Labelled) {
 	s.Runtime = val
 }
 
@@ -12265,180 +12191,6 @@ func (s *SkillCompatibility) SetMeasuredAt(val OptDateTime) {
 // SetNote sets the value of Note.
 func (s *SkillCompatibility) SetNote(val string) {
 	s.Note = val
-}
-
-// Does the agent actually pick this skill up when it is mounted, read from the run trace.
-//
-//   - `activated` — a `skill_activation` event for this skill in the run.
-//   - `not_activated` — the run completed and the trace shows the skill was offered and something
-//     else was used instead.
-//   - `unverified` — no run, or a run that ended before the question could be answered.
-//
-// `not_activated` is never inferred from silence. The SDK message stream cannot express "available but
-// not called" at all (TRACE-002 限制註記), so a missing activation event on a truncated run is not
-// evidence of non-activation, and it is reported as `unverified`.
-type SkillCompatibilityCapability string
-
-const (
-	SkillCompatibilityCapabilityActivated    SkillCompatibilityCapability = "activated"
-	SkillCompatibilityCapabilityNotActivated SkillCompatibilityCapability = "not_activated"
-	SkillCompatibilityCapabilityUnverified   SkillCompatibilityCapability = "unverified"
-)
-
-// AllValues returns all SkillCompatibilityCapability values.
-func (SkillCompatibilityCapability) AllValues() []SkillCompatibilityCapability {
-	return []SkillCompatibilityCapability{
-		SkillCompatibilityCapabilityActivated,
-		SkillCompatibilityCapabilityNotActivated,
-		SkillCompatibilityCapabilityUnverified,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s SkillCompatibilityCapability) MarshalText() ([]byte, error) {
-	switch s {
-	case SkillCompatibilityCapabilityActivated:
-		return []byte(s), nil
-	case SkillCompatibilityCapabilityNotActivated:
-		return []byte(s), nil
-	case SkillCompatibilityCapabilityUnverified:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *SkillCompatibilityCapability) UnmarshalText(data []byte) error {
-	switch SkillCompatibilityCapability(data) {
-	case SkillCompatibilityCapabilityActivated:
-		*s = SkillCompatibilityCapabilityActivated
-		return nil
-	case SkillCompatibilityCapabilityNotActivated:
-		*s = SkillCompatibilityCapabilityNotActivated
-		return nil
-	case SkillCompatibilityCapabilityUnverified:
-		*s = SkillCompatibilityCapabilityUnverified
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-// Can the package's own scripts execute in this image.
-//
-//   - `native` — every runtime the package declares is provided here.
-//   - `transpiled` — they are not, and the observed run got its result from the model re-implementing
-//     the script rather than running it. A working run whose work was not the Skill's own code. It is
-//     its own state because collapsing it into `native` would claim an execution that did not happen,
-//     and collapsing it into `failed` would contradict the artifacts the run produced. Surface the
-//     distinction to the reader; it is the one a user will not guess and the one that decides whether
-//     the Skill's own script is what ran.
-//   - `failed` — they are not, and the run failed because of it.
-//   - `unverified` — this (version, image) pair was never measured.
-type SkillCompatibilityRuntime string
-
-const (
-	SkillCompatibilityRuntimeNative     SkillCompatibilityRuntime = "native"
-	SkillCompatibilityRuntimeTranspiled SkillCompatibilityRuntime = "transpiled"
-	SkillCompatibilityRuntimeFailed     SkillCompatibilityRuntime = "failed"
-	SkillCompatibilityRuntimeUnverified SkillCompatibilityRuntime = "unverified"
-)
-
-// AllValues returns all SkillCompatibilityRuntime values.
-func (SkillCompatibilityRuntime) AllValues() []SkillCompatibilityRuntime {
-	return []SkillCompatibilityRuntime{
-		SkillCompatibilityRuntimeNative,
-		SkillCompatibilityRuntimeTranspiled,
-		SkillCompatibilityRuntimeFailed,
-		SkillCompatibilityRuntimeUnverified,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s SkillCompatibilityRuntime) MarshalText() ([]byte, error) {
-	switch s {
-	case SkillCompatibilityRuntimeNative:
-		return []byte(s), nil
-	case SkillCompatibilityRuntimeTranspiled:
-		return []byte(s), nil
-	case SkillCompatibilityRuntimeFailed:
-		return []byte(s), nil
-	case SkillCompatibilityRuntimeUnverified:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *SkillCompatibilityRuntime) UnmarshalText(data []byte) error {
-	switch SkillCompatibilityRuntime(data) {
-	case SkillCompatibilityRuntimeNative:
-		*s = SkillCompatibilityRuntimeNative
-		return nil
-	case SkillCompatibilityRuntimeTranspiled:
-		*s = SkillCompatibilityRuntimeTranspiled
-		return nil
-	case SkillCompatibilityRuntimeFailed:
-		*s = SkillCompatibilityRuntimeFailed
-		return nil
-	case SkillCompatibilityRuntimeUnverified:
-		*s = SkillCompatibilityRuntimeUnverified
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-// Format and static validation only. Passing is never a claim that the skill is safe to run or
-// effective (SKILL-002).
-type SkillCompatibilitySpecValidation string
-
-const (
-	SkillCompatibilitySpecValidationPassed     SkillCompatibilitySpecValidation = "passed"
-	SkillCompatibilitySpecValidationFailed     SkillCompatibilitySpecValidation = "failed"
-	SkillCompatibilitySpecValidationUnverified SkillCompatibilitySpecValidation = "unverified"
-)
-
-// AllValues returns all SkillCompatibilitySpecValidation values.
-func (SkillCompatibilitySpecValidation) AllValues() []SkillCompatibilitySpecValidation {
-	return []SkillCompatibilitySpecValidation{
-		SkillCompatibilitySpecValidationPassed,
-		SkillCompatibilitySpecValidationFailed,
-		SkillCompatibilitySpecValidationUnverified,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s SkillCompatibilitySpecValidation) MarshalText() ([]byte, error) {
-	switch s {
-	case SkillCompatibilitySpecValidationPassed:
-		return []byte(s), nil
-	case SkillCompatibilitySpecValidationFailed:
-		return []byte(s), nil
-	case SkillCompatibilitySpecValidationUnverified:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *SkillCompatibilitySpecValidation) UnmarshalText(data []byte) error {
-	switch SkillCompatibilitySpecValidation(data) {
-	case SkillCompatibilitySpecValidationPassed:
-		*s = SkillCompatibilitySpecValidationPassed
-		return nil
-	case SkillCompatibilitySpecValidationFailed:
-		*s = SkillCompatibilitySpecValidationFailed
-		return nil
-	case SkillCompatibilitySpecValidationUnverified:
-		*s = SkillCompatibilitySpecValidationUnverified
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
 }
 
 // Ref: #/components/schemas/SkillDetail
@@ -13334,14 +13086,13 @@ type SkillRisk struct {
 	// Info-level disclosures folded to a count per finding code. One seed package produced 321 URL
 	// findings; a list nobody reads hides the findings that matter.
 	InfoCounts SkillRiskInfoCounts `json:"info_counts"`
-	HasScripts OptBool             `json:"has_scripts"`
-	// Runnable code inside SKILL.md itself (SKILL-003). Separate from has_scripts because the package file
-	// list cannot show it.
-	HasEmbeddedScript  OptBool `json:"has_embedded_script"`
-	HasExternalUrls    OptBool `json:"has_external_urls"`
-	HasPossibleSecrets OptBool `json:"has_possible_secrets"`
-	HasBinaries        OptBool `json:"has_binaries"`
-	Note               string  `json:"note"`
+	// The same list the search row carries, from the same catalogue — including `dependency-file`, which
+	// this view used to be missing while the row above it showed it (04 丙-29 ④).
+	//
+	// `embedded-script` stays its own code rather than folding into `script-file`: runnable code inside
+	// SKILL.md is SKILL-003's case and no file list can show it.
+	Disclosures []Disclosure `json:"disclosures"`
+	Note        string       `json:"note"`
 }
 
 // GetScanStatus returns the value of ScanStatus.
@@ -13364,29 +13115,9 @@ func (s *SkillRisk) GetInfoCounts() SkillRiskInfoCounts {
 	return s.InfoCounts
 }
 
-// GetHasScripts returns the value of HasScripts.
-func (s *SkillRisk) GetHasScripts() OptBool {
-	return s.HasScripts
-}
-
-// GetHasEmbeddedScript returns the value of HasEmbeddedScript.
-func (s *SkillRisk) GetHasEmbeddedScript() OptBool {
-	return s.HasEmbeddedScript
-}
-
-// GetHasExternalUrls returns the value of HasExternalUrls.
-func (s *SkillRisk) GetHasExternalUrls() OptBool {
-	return s.HasExternalUrls
-}
-
-// GetHasPossibleSecrets returns the value of HasPossibleSecrets.
-func (s *SkillRisk) GetHasPossibleSecrets() OptBool {
-	return s.HasPossibleSecrets
-}
-
-// GetHasBinaries returns the value of HasBinaries.
-func (s *SkillRisk) GetHasBinaries() OptBool {
-	return s.HasBinaries
+// GetDisclosures returns the value of Disclosures.
+func (s *SkillRisk) GetDisclosures() []Disclosure {
+	return s.Disclosures
 }
 
 // GetNote returns the value of Note.
@@ -13414,29 +13145,9 @@ func (s *SkillRisk) SetInfoCounts(val SkillRiskInfoCounts) {
 	s.InfoCounts = val
 }
 
-// SetHasScripts sets the value of HasScripts.
-func (s *SkillRisk) SetHasScripts(val OptBool) {
-	s.HasScripts = val
-}
-
-// SetHasEmbeddedScript sets the value of HasEmbeddedScript.
-func (s *SkillRisk) SetHasEmbeddedScript(val OptBool) {
-	s.HasEmbeddedScript = val
-}
-
-// SetHasExternalUrls sets the value of HasExternalUrls.
-func (s *SkillRisk) SetHasExternalUrls(val OptBool) {
-	s.HasExternalUrls = val
-}
-
-// SetHasPossibleSecrets sets the value of HasPossibleSecrets.
-func (s *SkillRisk) SetHasPossibleSecrets(val OptBool) {
-	s.HasPossibleSecrets = val
-}
-
-// SetHasBinaries sets the value of HasBinaries.
-func (s *SkillRisk) SetHasBinaries(val OptBool) {
-	s.HasBinaries = val
+// SetDisclosures sets the value of Disclosures.
+func (s *SkillRisk) SetDisclosures(val []Disclosure) {
+	s.Disclosures = val
 }
 
 // SetNote sets the value of Note.

@@ -19,8 +19,8 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 // --- fixtures ----------------------------------------------------------------

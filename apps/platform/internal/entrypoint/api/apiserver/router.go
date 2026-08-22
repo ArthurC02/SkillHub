@@ -10,16 +10,16 @@ package apiserver
 import (
 	"net/http"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 // Deps are the wired handlers the routes dispatch to. Constructing them

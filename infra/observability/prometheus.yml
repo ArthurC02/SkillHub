@@ -1,0 +1,35 @@
+# 本地開發用的 scrape 設定（`task dev:observability`）。
+#
+# 這個檔案存在的理由只有一個：**alerts.yml 的規則在此之前沒有任何東西會載入它們**。
+# 指標寫了、規則寫了、門檻由 ADR-022 定值了,而中間沒有一個 evaluator —— ADR-022 的
+# X-02～X-04 因此沒有觸發路徑,不是門檻不對,是沒有人在算。
+#
+# **生產部署不是這一份。** 生產的 Prometheus、Alertmanager、通知路由與 silence 政策
+# 屬部署期（04 甲類）。這裡給的是開發機上「規則真的會被求值」的那一半。
+global:
+  scrape_interval: 15s
+  # 規則求值比 scrape 慢一點沒有意義,兩者同頻即可;告警的 `for:` 才是去抖動的地方。
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # cmd/api 與 cmd/worker 是兩個行程,各有一份指標,而它們讀的是**同一個**
+  # METRICS_ADDR。同一台開發機上要兩個值:
+  #
+  #   METRICS_ADDR=:9090 go -C apps/platform run ./cmd/api
+  #   METRICS_ADDR=:9091 go -C apps/platform run ./cmd/worker
+  #
+  # 未設即不監聽（metrics.go），所以沒跑的那一個在這裡就是 down,不是 0。
+  - job_name: platform
+    static_configs:
+      - targets: ["host.docker.internal:9090"]
+        labels: { process: api }
+      - targets: ["host.docker.internal:9091"]
+        labels: { process: worker }
+
+  # sandboxd 的 /metrics 與其他路由共用同一個 provider bearer token(該路由表沒有
+  # 未認證路徑,這裡不開先例)。**故意不列成 target**:沒有 bearer_token_file 的
+  # scrape 只會拿到 401,而一個永遠 down 的 target 讀起來跟服務掛了一模一樣。
+  # 要在開發機上收 sandboxd 的指標,自己加一段並掛一份 token 檔進容器。

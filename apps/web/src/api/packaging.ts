@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { API_BASE_URL, apiFetch } from "./client";
-import type { Finding } from "./types";
+import type { Finding, Labelled } from "./types";
 
 /**
  * The PACK-001/002 packaging surface and the WS-002/WS-004 download history,
@@ -135,6 +135,23 @@ export interface DownloadArtifact {
   manifest_hash: string;
   /** `rejected` and `quarantined` are two different things; only `available` is served. */
   status: "quarantined" | "available" | "rejected";
+  /**
+   * Whether the content endpoint would hand the bytes over **right now**:
+   * `available` AND not purged AND not expired (04 丙-29 ⑤).
+   *
+   * Served, not derived here, because one of its three inputs — the purge — is
+   * not on this shape at all. Every client that derived a word was therefore
+   * deriving a different predicate from the one the server enforces, which is
+   * 設計 §2.2's 顯示但不強制.
+   */
+  servable: boolean;
+  /**
+   * The one sentence for the composite above. `value` is `status` except when an
+   * `available` artifact has expired or been purged — two values that do not
+   * appear in `status` at all, which is why a label on `status` alone would have
+   * fought the word on the screen instead of settling it.
+   */
+  serve_state: Labelled;
   /** Absolute date, never "in N days" (PDM-006 risk table). */
   expires_at: string;
   created_at: string;

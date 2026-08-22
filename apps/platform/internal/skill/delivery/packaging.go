@@ -11,12 +11,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
 // PackagerVersion identifies this builder. content_hash reproduces within one
@@ -575,6 +575,54 @@ type Artifact struct {
 	IncludesTestCases bool   `json:"includes_test_cases"`
 	PackagerVersion   string `json:"packager_version,omitempty"`
 	ProfileVersion    string `json:"profile_version,omitempty"`
+
+	// Servable is whether the content endpoint would hand the bytes over right
+	// now, and ServeState is the one sentence for it (04 丙-29 ⑤).
+	//
+	// Served rather than left to the client because **one of the three inputs is
+	// not on this shape at all**: the purge. A client could see `status` and
+	// `expires_at` and never `purged_at`, so every client that derived a word was
+	// deriving a different predicate from the one download.go enforces — the
+	// 顯示但不強制 shape 設計系統 §2.2 names as the worst of the options.
+	Servable   bool     `json:"servable"`
+	ServeState labelled `json:"serve_state"`
+}
+
+// labelled is the contract's Labelled.
+type labelled struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+	Note  string `json:"note"`
+}
+
+// withServeState fills the pair from the three facts that decide it, and is the
+// only place they are combined. Every Artifact leaves this package through it.
+//
+// Order is deliberate. `quarantined` and `rejected` already say the bytes are not
+// on offer and overwriting them would lose *why* — one is over, one is not.
+// Expiry outranks purge because expiry is the reason and the purge is its
+// consequence; a purge with no expiry is the reconciler having found the object
+// missing, which is a different sentence and gets one.
+func (a Artifact) withServeState(expiresAt time.Time, purged bool) Artifact {
+	switch {
+	case a.Status == "quarantined":
+		a.ServeState = labelled{"quarantined", "檢查中(尚未可下載)",
+			"打包完成,驗證還沒結束。這是暫時狀態(ADR-003 隔離)。"}
+	case a.Status == "rejected":
+		a.ServeState = labelled{"rejected", "已拒絕(打包後未通過驗證)",
+			"這一份不會被提供。要再拿到同樣的內容,回到該版本重新打包一次。"}
+	case !expiresAt.IsZero() && !expiresAt.After(time.Now()):
+		a.ServeState = labelled{"expired", "已過期,不再提供下載",
+			"檔案已刪除,這筆紀錄保留。「已過期」與「沒有這一筆」不是同一件事。" +
+				"同一版本隨時可以再打包一次。"}
+	case purged:
+		a.ServeState = labelled{"purged", "檔案已不存在,紀錄保留",
+			"儲存的位元組已經不在了,而這一列還在。同一版本可以再打包一次。"}
+	default:
+		a.Servable = true
+		a.ServeState = labelled{"available", "可下載", ""}
+	}
+	return a
 }
 
 // Create builds and stores one Download Artifact.
@@ -735,7 +783,7 @@ func (s *Service) persist(
 		IncludesTestCases: p.IncludeTestCases,
 		PackagerVersion:   PackagerVersion,
 		ProfileVersion:    p.Profile.Version,
-	}}, nil
+	}.withServeState(row.ExpiresAt.Time, false)}, nil
 }
 
 func reusedArtifact(skillID pgtype.UUID, row gen.FindReusableDownloadArtifactRow) Artifact {
@@ -755,5 +803,7 @@ func reusedArtifact(skillID pgtype.UUID, row gen.FindReusableDownloadArtifactRow
 		IncludesTestCases: row.IncludesTestCases,
 		PackagerVersion:   row.PackagerVersion,
 		ProfileVersion:    row.ProfileVersion,
-	}
+		// FindReusableDownloadArtifact filters `purged_at IS NULL`, so a reused row
+		// is by construction not purged — the query is where that is enforced.
+	}.withServeState(row.ExpiresAt.Time, false)
 }

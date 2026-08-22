@@ -66,17 +66,18 @@ export type RunListItem = {
   test_case_id?: string;
   provider: string;
   failure_class?: string;
-  /*
-   * `cleaning_up`, not `cleaning`. The authority is the database enum
-   * `run_cleanup_status` (db/migrations/0004_test_lab_and_runs.sql:75), and
-   * `trial/execution/http.go:291` puts that value on the wire with a plain
-   * `string()` conversion — no mapping in between. `RunListItem` in
-   * contracts/openapi/public.yaml still says `cleaning` while `Run` in the same
-   * file says `cleaning_up`; the contract is wrong, and this union was compiled
-   * against the wrong half of it, so a run that was actually being torn down
-   * rendered its cleanup state as a blank.
+  /**
+   * `{value, label, note}`, not a bare enum (04 丙-29 ②).
+   *
+   * The value is still the database enum `run_cleanup_status`
+   * (db/migrations/0004_test_lab_and_runs.sql:75) — but the words now come from
+   * the server, because of how this field failed. The contract said `cleaning`
+   * where the database said `cleaning_up`, this union was compiled against the
+   * wrong half, and a run that was genuinely mid-teardown rendered its cleanup
+   * state as a **blank**. A client-side enum→中文 table can only fail that way;
+   * a served label cannot.
    */
-  cleanup_status: "pending" | "cleaning_up" | "cleaned" | "failed";
+  cleanup_status: Labelled;
   created_at: string;
   started_at?: string;
   finished_at?: string;

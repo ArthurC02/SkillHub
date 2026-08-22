@@ -230,36 +230,10 @@ func (s *CancelRunAccepted) Validate() error {
 			Error: err,
 		})
 	}
-	if err := func() error {
-		if err := s.CleanupStatus.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "cleanup_status",
-			Error: err,
-		})
-	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
-}
-
-func (s CancelRunAcceptedCleanupStatus) Validate() error {
-	switch s {
-	case "pending":
-		return nil
-	case "cleaning_up":
-		return nil
-	case "cleaned":
-		return nil
-	case "failed":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
 }
 
 func (s CancelRunAcceptedStatus) Validate() error {
@@ -2742,17 +2716,6 @@ func (s *PublicSearchResult) Validate() error {
 		})
 	}
 	if err := func() error {
-		if err := s.Compatibility.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "compatibility",
-			Error: err,
-		})
-	}
-	if err := func() error {
 		if value, ok := s.MatchReasonSource.Get(); ok {
 			if err := func() error {
 				if err := value.Validate(); err != nil {
@@ -2988,36 +2951,10 @@ func (s *Run) Validate() error {
 			Error: err,
 		})
 	}
-	if err := func() error {
-		if err := s.CleanupStatus.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "cleanup_status",
-			Error: err,
-		})
-	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
-}
-
-func (s RunCleanupStatus) Validate() error {
-	switch s {
-	case "pending":
-		return nil
-	case "cleaning_up":
-		return nil
-	case "cleaned":
-		return nil
-	case "failed":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
 }
 
 func (s *RunComparison) Validate() error {
@@ -3460,36 +3397,10 @@ func (s *RunListItem) Validate() error {
 			Error: err,
 		})
 	}
-	if err := func() error {
-		if err := s.CleanupStatus.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "cleanup_status",
-			Error: err,
-		})
-	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
-}
-
-func (s RunListItemCleanupStatus) Validate() error {
-	switch s {
-	case "pending":
-		return nil
-	case "cleaning_up":
-		return nil
-	case "cleaned":
-		return nil
-	case "failed":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
 }
 
 func (s RunListItemStatus) Validate() error {
@@ -4014,6 +3925,17 @@ func (s *SearchResultRisk) Validate() error {
 			Error: err,
 		})
 	}
+	if err := func() error {
+		if s.Disclosures == nil {
+			return errors.New("nil is invalid value")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "disclosures",
+			Error: err,
+		})
+	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
@@ -4144,92 +4066,6 @@ func (s *SetSkillRestrictionReq) Validate() error {
 	return nil
 }
 
-func (s *SkillCompatibility) Validate() error {
-	if s == nil {
-		return validate.ErrNilPointer
-	}
-
-	var failures []validate.FieldError
-	if err := func() error {
-		if err := s.SpecValidation.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "spec_validation",
-			Error: err,
-		})
-	}
-	if err := func() error {
-		if err := s.Capability.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "capability",
-			Error: err,
-		})
-	}
-	if err := func() error {
-		if err := s.Runtime.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "runtime",
-			Error: err,
-		})
-	}
-	if len(failures) > 0 {
-		return &validate.Error{Fields: failures}
-	}
-	return nil
-}
-
-func (s SkillCompatibilityCapability) Validate() error {
-	switch s {
-	case "activated":
-		return nil
-	case "not_activated":
-		return nil
-	case "unverified":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s SkillCompatibilityRuntime) Validate() error {
-	switch s {
-	case "native":
-		return nil
-	case "transpiled":
-		return nil
-	case "failed":
-		return nil
-	case "unverified":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s SkillCompatibilitySpecValidation) Validate() error {
-	switch s {
-	case "passed":
-		return nil
-	case "failed":
-		return nil
-	case "unverified":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
 func (s *SkillDetail) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -4323,17 +4159,6 @@ func (s *SkillDetail) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "risk",
-			Error: err,
-		})
-	}
-	if err := func() error {
-		if err := s.Compatibility.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		failures = append(failures, validate.FieldError{
-			Name:  "compatibility",
 			Error: err,
 		})
 	}
@@ -4606,6 +4431,17 @@ func (s *SkillRisk) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "highlights",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if s.Disclosures == nil {
+			return errors.New("nil is invalid value")
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "disclosures",
 			Error: err,
 		})
 	}

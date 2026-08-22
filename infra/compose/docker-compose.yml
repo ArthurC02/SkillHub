@@ -83,6 +83,34 @@ services:
       - default
       - egress
 
+  # The thing that was missing under alerts.yml. Twenty rules, thresholds set by
+  # ADR-022, and nothing that evaluates them — so X-02～X-04 had no trigger path
+  # at all, on any machine. Profile-gated because it is a maintenance surface,
+  # not part of the ten-minute journey: `task dev:observability`.
+  #
+  # It scrapes the host, not other containers: cmd/api and cmd/worker run on the
+  # developer's machine (see the TODO below), so the targets are
+  # host.docker.internal. Production is not this file (04 甲類).
+  prometheus:
+    image: prom/prometheus:v3.6.0
+    profiles: ["observability"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      # Rules are reloadable without a restart: `curl -XPOST localhost:9095/-/reload`
+      # after editing alerts.yml, which is the point of mounting the directory.
+      - --web.enable-lifecycle
+    volumes:
+      - ../observability:/etc/prometheus:ro
+    ports:
+      # 9095, not 9090: 9090 is what METRICS_ADDR usually binds on the host, and
+      # a collision there means the scraper eats its own target's port.
+      - "127.0.0.1:9095:9090"
+    # No-op on Docker Desktop, required on Linux — without it host.docker.internal
+    # does not resolve and every target is down for a reason that looks like the
+    # services being down.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   # TODO(CORE-001): add api / worker / llm / web services once infra/images/
   # holds their Dockerfiles. Build contexts are the repo root, since the Go
   # build needs apps/platform and the generated packages/ output.

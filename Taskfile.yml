@@ -17,6 +17,10 @@ tasks:
       - go -C tools/devctl run . profile-check model
       - docker compose --profile model -f infra/compose/docker-compose.yml up -d
 
+  dev:observability:
+    desc: Start Prometheus so infra/observability/alerts.yml is actually evaluated
+    cmd: docker compose --profile observability -f infra/compose/docker-compose.yml up -d prometheus
+
   down:
     desc: Stop local infrastructure without deleting volumes
     cmd: docker compose -f infra/compose/docker-compose.yml down

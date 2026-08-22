@@ -31,22 +31,20 @@ export function isExpired(artifact: DownloadArtifact, now = Date.now()): boolean
   return Number.isFinite(at) && at <= now;
 }
 
-const STATUS_LABEL: Record<DownloadArtifact["status"], string> = {
-  quarantined: "檢查中（尚未可下載）",
-  available: "可下載",
-  rejected: "已拒絕（打包後未通過驗證）",
-};
-
 /**
- * Expiry outranks `available`, and only that one: `quarantined` and `rejected`
- * already say the bytes are not on offer, and overwriting them with 已過期 would
- * lose why. An expired `available` row is the only combination that used to read
- * as servable while the server refuses it.
+ * The status word is the server's (04 丙-29 ⑤).
+ *
+ * It was derived here, from `status` and expiry, and the derivation was right as
+ * far as it could see — but it could not see the purge, which is the third input
+ * the platform actually checks (skill/delivery/download.go). So this file was
+ * computing a *different predicate* from the one that decides whether bytes come
+ * out, and printing its answer beside the server's expiry date. `serve_state`
+ * and `servable` come from the one function that combines all three.
+ *
+ * What that rule preserved and the server now preserves: expiry outranks
+ * `available` and **only that one** — `quarantined` and `rejected` already say
+ * the bytes are not on offer, and overwriting them with 已過期 would lose why.
  */
-function statusWord(artifact: DownloadArtifact, expired: boolean): string {
-  if (expired && artifact.status === "available") return "已過期，不再提供下載";
-  return STATUS_LABEL[artifact.status];
-}
 
 const TARGET_NOTE = "打包目標；安裝說明在套件內的 INSTALL.md。";
 
@@ -72,7 +70,7 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
         {expired && <span className="badge badge-expired">已過期</span>}
       </p>
       <p className="note">
-        {bytes(artifact.size_bytes)}｜狀態：{statusWord(artifact, expired)}｜建立於{" "}
+        {bytes(artifact.size_bytes)}｜狀態：{artifact.serve_state.label}｜建立於{" "}
         {artifact.created_at}｜已下載 {artifact.download_count} 次
       </p>
       <p className="note">

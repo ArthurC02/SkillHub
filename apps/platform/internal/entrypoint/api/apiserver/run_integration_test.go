@@ -20,11 +20,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 // --- seeding -----------------------------------------------------------------
@@ -50,15 +50,15 @@ func seedTestCase(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string)
 // --- HTTP helpers ------------------------------------------------------------
 
 type runView struct {
-	RunID         string `json:"run_id"`
-	Status        string `json:"status"`
-	StatusReason  string `json:"status_reason"`
-	SkillID       string `json:"skill_id"`
-	TestCaseID    string `json:"test_case_id"`
-	Provider      string `json:"provider"`
-	FailureClass  string `json:"failure_class"`
-	CleanupStatus string `json:"cleanup_status"`
-	Error         string `json:"error"`
+	RunID         string       `json:"run_id"`
+	Status        string       `json:"status"`
+	StatusReason  string       `json:"status_reason"`
+	SkillID       string       `json:"skill_id"`
+	TestCaseID    string       `json:"test_case_id"`
+	Provider      string       `json:"provider"`
+	FailureClass  string       `json:"failure_class"`
+	CleanupStatus labelledJSON `json:"cleanup_status"`
+	Error         string       `json:"error"`
 	Transitions   []struct {
 		From   string `json:"from_status"`
 		To     string `json:"to_status"`
@@ -735,4 +735,11 @@ func uuidText(u pgtype.UUID) string {
 	v, _ := u.Value()
 	s, _ := v.(string)
 	return s
+}
+
+// labelledJSON is the contract's Labelled as a test decodes it.
+type labelledJSON struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+	Note  string `json:"note"`
 }

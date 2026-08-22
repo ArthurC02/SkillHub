@@ -20,6 +20,13 @@ import {
     PackagingTargetIdToJSON,
     PackagingTargetIdToJSONTyped,
 } from './PackagingTargetId';
+import type { Labelled } from './Labelled';
+import {
+    LabelledFromJSON,
+    LabelledFromJSONTyped,
+    LabelledToJSON,
+    LabelledToJSONTyped,
+} from './Labelled';
 
 /**
  * 
@@ -93,6 +100,36 @@ export interface CreateDownloadArtifact201Response {
      * @memberof CreateDownloadArtifact201Response
      */
     status: CreateDownloadArtifact201ResponseStatusEnum;
+    /**
+     * Whether GET /downloads/{artifactId}/content would hand the bytes over
+     * **right now**: `status == available` AND the stored object has not
+     * been purged AND `expires_at` is still in the future
+     * (skill/delivery/download.go). Served rather than derived (04 丙-29 ⑤)
+     * because one of its three inputs — the purge — is not on this schema
+     * at all, so no client can compute it and every client that tried was
+     * computing something else.
+     * 
+     * The three parts stay visible beside it: `status` says which check,
+     * `expires_at` says when, and this says the answer. Folding them into
+     * one flag would lose why (`quarantined` is not over, `rejected` is).
+     * 
+     * @type {boolean}
+     * @memberof CreateDownloadArtifact201Response
+     */
+    servable: boolean;
+    /**
+     * The one sentence for the composite above — 「可下載」, 「檢查中」,
+     * 「已拒絕」, 「已過期，不再提供下載」. `value` is the state that decided
+     * it, which is `status` except when an `available` artifact has expired
+     * or been purged, where it is `expired` or `purged` — **two values that
+     * do not appear in `status` at all**, which is why a label on `status`
+     * alone would have fought the word on the screen instead of settling it
+     * (設計系統 §2.2 顯示但不強制).
+     * 
+     * @type {Labelled}
+     * @memberof CreateDownloadArtifact201Response
+     */
+    serveState: Labelled;
     /**
      * When the object is deleted. The retention period is deployment
      * configuration; PDM-006 proposes 90 days for download packages and
@@ -177,6 +214,8 @@ export function instanceOfCreateDownloadArtifact201Response(value: object): valu
     if (!('contentHash' in value) || value['contentHash'] === undefined) return false;
     if (!('manifestHash' in value) || value['manifestHash'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
+    if (!('servable' in value) || value['servable'] === undefined) return false;
+    if (!('serveState' in value) || value['serveState'] === undefined) return false;
     if (!('expiresAt' in value) || value['expiresAt'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('downloadCount' in value) || value['downloadCount'] === undefined) return false;
@@ -204,6 +243,8 @@ export function CreateDownloadArtifact201ResponseFromJSONTyped(json: any, ignore
         'contentHash': json['content_hash'],
         'manifestHash': json['manifest_hash'],
         'status': json['status'],
+        'servable': json['servable'],
+        'serveState': LabelledFromJSON(json['serve_state']),
         'expiresAt': (new Date(json['expires_at'])),
         'createdAt': (new Date(json['created_at'])),
         'downloadCount': json['download_count'],
@@ -234,6 +275,8 @@ export function CreateDownloadArtifact201ResponseToJSONTyped(value?: CreateDownl
         'content_hash': value['contentHash'],
         'manifest_hash': value['manifestHash'],
         'status': value['status'],
+        'servable': value['servable'],
+        'serve_state': LabelledToJSON(value['serveState']),
         'expires_at': value['expiresAt'].toISOString(),
         'created_at': value['createdAt'].toISOString(),
         'download_count': value['downloadCount'],

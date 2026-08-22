@@ -20,11 +20,11 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 // withProvider starts a fake provider, points both the API and a worker at it,
@@ -91,12 +91,12 @@ func waitForCleanup(t *testing.T, c *client, runID string) runView {
 	var last runView
 	for time.Now().Before(deadline) {
 		_, last = c.getRun(t, runID)
-		if last.CleanupStatus == string(gen.RunCleanupStatusCleaned) {
+		if last.CleanupStatus.Value == string(gen.RunCleanupStatusCleaned) {
 			return last
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
-	t.Fatalf("run %s never finished cleanup; last cleanup_status %q", runID, last.CleanupStatus)
+	t.Fatalf("run %s never finished cleanup; last cleanup_status %+v", runID, last.CleanupStatus)
 	return last
 }
 

@@ -53,13 +53,55 @@ type runResponse struct {
 	TestCaseID        string           `json:"test_case_id,omitempty"`
 	Provider          string           `json:"provider"`
 	FailureClass      string           `json:"failure_class,omitempty"`
-	CleanupStatus     string           `json:"cleanup_status"`
+	CleanupStatus     labelled         `json:"cleanup_status"`
 	CancelRequestedAt string           `json:"cancel_requested_at,omitempty"`
 	CreatedAt         string           `json:"created_at"`
 	StartedAt         string           `json:"started_at,omitempty"`
 	FinishedAt        string           `json:"finished_at,omitempty"`
 	Transitions       []transitionView `json:"transitions,omitempty"`
 	Attempts          []attemptView    `json:"attempts,omitempty"`
+}
+
+// labelled is the contract's Labelled: an enum value with the words for it.
+//
+// cleanup_status is served this way (04 丙-29 ②) because of how it failed. The
+// contract said `cleaning` while the database type said `cleaning_up`, the
+// handler put the database value on the wire unmapped, and the client's
+// enum→中文 table had no entry — so the one state this field exists to report,
+// **the sandbox is being torn down right now**, rendered as a blank row (04
+// 丙-28). A client-side table can only fail that way. A served label cannot.
+type labelled struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+	Note  string `json:"note"`
+}
+
+// cleanupWords is the run_cleanup_status enum (0004_test_lab_and_runs.sql) in
+// words. RUN-007's teardown is tracked apart from the run outcome, so every note
+// here says what it is *not* saying about the run itself.
+var cleanupWords = map[string][2]string{
+	"pending": {"待清理",
+		"沙箱還沒有被拆除。與這次 Run 的成敗無關——那是上面那一列。"},
+	"cleaning_up": {"清理中",
+		"沙箱正在拆除。這是暫時狀態,會自己結束。"},
+	"cleaned": {"已清理",
+		"沙箱與其資源已回收。"},
+	"failed": {"清理失敗",
+		"沙箱沒有被成功拆除,平台會重試;殘留由對帳器接手(RUN-007 冪等清理)。" +
+			"這不代表這次 Run 失敗。"},
+}
+
+// cleanupWord wraps the raw value in its words, keeping the raw value as the
+// label when it is unrecognised — showing a word the reader has to look up beats
+// the blank row that made this change necessary.
+func cleanupWord(v string) labelled {
+	if w, ok := cleanupWords[v]; ok {
+		return labelled{Value: v, Label: w[0], Note: w[1]}
+	}
+	return labelled{
+		Value: v, Label: v,
+		Note: "這個平台版本沒有這個清理狀態的說明,值照原樣顯示,不猜測它的意思。",
+	}
 }
 
 type transitionView struct {
@@ -91,7 +133,7 @@ func toRunResponse(run gen.Run) runResponse {
 		TestCaseSnapshot:  pgconv.UUIDString(run.TestCaseSnapshotID),
 		Provider:          run.Provider,
 		FailureClass:      deref(run.FailureClass),
-		CleanupStatus:     string(run.CleanupStatus),
+		CleanupStatus:     cleanupWord(string(run.CleanupStatus)),
 		CancelRequestedAt: pgconv.RFC3339(run.CancelRequestedAt),
 		CreatedAt:         pgconv.RFC3339(run.CreatedAt),
 		StartedAt:         pgconv.RFC3339(run.StartedAt),
@@ -234,19 +276,19 @@ func (h *Handler) Quota(w http.ResponseWriter, r *http.Request) {
 // serving the transitions and attempts of fifty runs would make the list the
 // heaviest read in the API for information nobody reads fifty of.
 type runListItem struct {
-	RunID          string `json:"run_id"`
-	Status         string `json:"status"`
-	StatusReason   string `json:"status_reason,omitempty"`
-	SkillID        string `json:"skill_id"`
-	SkillName      string `json:"skill_name"`
-	SkillVersionID string `json:"skill_version_id"`
-	TestCaseID     string `json:"test_case_id,omitempty"`
-	Provider       string `json:"provider"`
-	FailureClass   string `json:"failure_class,omitempty"`
-	CleanupStatus  string `json:"cleanup_status"`
-	CreatedAt      string `json:"created_at"`
-	StartedAt      string `json:"started_at,omitempty"`
-	FinishedAt     string `json:"finished_at,omitempty"`
+	RunID          string   `json:"run_id"`
+	Status         string   `json:"status"`
+	StatusReason   string   `json:"status_reason,omitempty"`
+	SkillID        string   `json:"skill_id"`
+	SkillName      string   `json:"skill_name"`
+	SkillVersionID string   `json:"skill_version_id"`
+	TestCaseID     string   `json:"test_case_id,omitempty"`
+	Provider       string   `json:"provider"`
+	FailureClass   string   `json:"failure_class,omitempty"`
+	CleanupStatus  labelled `json:"cleanup_status"`
+	CreatedAt      string   `json:"created_at"`
+	StartedAt      string   `json:"started_at,omitempty"`
+	FinishedAt     string   `json:"finished_at,omitempty"`
 	// The second axis (ADR-025, 設計系統 §2.5, 04 丙-32). Never omitempty: a run
 	// with no evaluation carries 未評估, and an absent field is the one rendering
 	// §2.9 forbids — an empty column beside 「執行完成」 reads as a pass.
@@ -311,7 +353,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			TestCaseID:     pgconv.UUIDString(row.TestCaseID),
 			Provider:       row.Provider,
 			FailureClass:   deref(row.FailureClass),
-			CleanupStatus:  string(row.CleanupStatus),
+			CleanupStatus:  cleanupWord(string(row.CleanupStatus)),
 			CreatedAt:      pgconv.RFC3339(row.CreatedAt),
 			StartedAt:      pgconv.RFC3339(row.StartedAt),
 			FinishedAt:     pgconv.RFC3339(row.FinishedAt),

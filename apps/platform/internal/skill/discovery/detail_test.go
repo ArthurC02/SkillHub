@@ -7,8 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 // pkgWithScriptAndEmbeddedCode is a package that carries risk on both axes the
@@ -35,14 +35,18 @@ func TestRiskSummarySeparatesFileScriptsFromEmbeddedCode(t *testing.T) {
 	if r.ScanStatus != "scanned" {
 		t.Fatalf("scan_status = %q, want scanned", r.ScanStatus)
 	}
-	if !r.HasScripts {
-		t.Error("has_scripts is false for a package containing scripts/run.py")
+	// The disclosure list, not five booleans (04 丙-29 ④). Codes rather than
+	// labels: the wording is allowed to be edited, the identity is not.
+	for _, want := range []string{"script-file", "embedded-script", "external-url"} {
+		if !hasDisclosure(r.Disclosures, want) {
+			t.Errorf("%s missing from disclosures: %+v", want, r.Disclosures)
+		}
 	}
-	if !r.HasEmbeddedScript {
-		t.Error("has_embedded_script is false for 60 lines of Python inside SKILL.md")
-	}
-	if !r.HasExternalURLs {
-		t.Error("has_external_urls is false for a package citing example.com")
+	// Every entry carries its own words, so no surface has to keep a table.
+	for _, d := range r.Disclosures {
+		if d.Label == "" || d.Note == "" {
+			t.Errorf("disclosure %q has no words: %+v", d.Code, d)
+		}
 	}
 	// The embedded-script disclosure is a warning and must be readable verbatim,
 	// not folded into a count: the file list is exactly what fails to show it.
@@ -169,4 +173,14 @@ func TestSpecValidationIsSeparateFromRuntimeCompatibility(t *testing.T) {
 	if got := specValidation(blocked); got != "failed" {
 		t.Errorf("spec_validation for a package without SKILL.md = %q, want failed", got)
 	}
+}
+
+
+func hasDisclosure(list []disclosure, code string) bool {
+	for _, d := range list {
+		if d.Code == code {
+			return true
+		}
+	}
+	return false
 }

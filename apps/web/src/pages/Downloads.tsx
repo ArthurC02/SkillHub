@@ -9,7 +9,7 @@ import {
   type DownloadArtifact,
 } from "../api/packaging";
 import { ConfirmDelete } from "../components/ConfirmDelete";
-import { DownloadArtifactFacts, isExpired } from "../components/DownloadArtifactFacts";
+import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
 
 /**
  * 02:WS-002 第 1 條「使用者可查看……下載紀錄」, served by GET /downloads (WS-004).
@@ -132,14 +132,15 @@ function DownloadActions({
   onAskDelete: () => void;
   onConfirmDelete: () => void;
 }) {
-  // Only `available` and unexpired bytes are served, and the server checks again
-  // on every request. Offering a link that is known to 404 would put the refusal
-  // in a new tab instead of on this page.
-  const servable = artifact.status === "available" && !isExpired(artifact);
-
+  // The server's own predicate, not a copy of it (04 丙-29 ⑤). This read
+  // `status === "available" && !isExpired(...)` — two of the three things
+  // download.go checks, missing the purge, which is not on this shape at all. So
+  // a purged artifact offered a link that was known to 404, which puts the
+  // refusal in a new tab instead of on this page. The reason it is not stated
+  // here twice: `serve_state.label` above already says which of the four it is.
   return (
     <p>
-      {servable ? (
+      {artifact.servable ? (
         <a href={downloadHref(artifact.artifact_id)}>下載</a>
       ) : (
         <span className="note">目前不提供下載。</span>

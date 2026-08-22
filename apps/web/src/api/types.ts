@@ -99,6 +99,25 @@ export interface Finding {
   details?: string[];
 }
 
+/**
+ * `Disclosure`: one thing a package declares about itself, with the words for it.
+ *
+ * It replaced the parallel `has_*` booleans on both risk shapes (04 丙-29 ④), and
+ * the reason is what the booleans made easy: the two payloads carried
+ * **different sets** — the search row had `has_dependency_manifest` and the
+ * detail view did not — so the screen a reader meets first disclosed more than
+ * the screen they open next. A list has no shape to disagree on.
+ *
+ * `code` is not a union. A code this build has never heard of still arrives with
+ * a label and a note, and narrowing the type would be a way to *hide* a
+ * disclosure to keep a union tidy.
+ */
+export interface Disclosure {
+  code: string;
+  label: string;
+  note: string;
+}
+
 // ---- GET /api/skills/search (DISC-001, DISC-002, DISC-005) ----
 
 export type MatchReasonSource = "model" | "template";
@@ -115,12 +134,8 @@ export interface SearchResultRisk {
   /** Highest severity recorded. Errors block import, so they never appear. */
   level: "none" | "disclosed" | "warning";
   warnings: number;
-  has_scripts?: boolean;
-  has_embedded_script?: boolean;
-  has_external_urls?: boolean;
-  has_possible_secrets?: boolean;
-  has_binaries?: boolean;
-  has_dependency_manifest?: boolean;
+  /** What the scan found declared, server-worded. Empty is not 「安全」. */
+  disclosures: Disclosure[];
   note: string;
 }
 
@@ -247,12 +262,11 @@ export interface SkillRisk {
   highlights: Finding[];
   /** Info-level disclosures folded to a count per finding code. */
   info_counts: Record<string, number>;
-  has_scripts?: boolean;
-  /** Runnable code inside SKILL.md itself (SKILL-003); the file tree cannot show it. */
-  has_embedded_script?: boolean;
-  has_external_urls?: boolean;
-  has_possible_secrets?: boolean;
-  has_binaries?: boolean;
+  /**
+   * The same catalogue the search row carries — including `dependency-file`,
+   * which this shape used to be missing while the row above it showed it.
+   */
+  disclosures: Disclosure[];
   note: string;
 }
 
@@ -269,10 +283,17 @@ export type AgentCapability = "activated" | "not_activated" | "unverified";
  */
 export type AgentRuntime = "native" | "transpiled" | "failed" | "unverified";
 
+/**
+ * The three axes arrive labelled (04 丙-29 ③). `value` is still the enum above;
+ * the words are the server's, because two screens had already worded this block
+ * differently and one of them wrote `passed ? 通過 : 未驗證` — reporting **failed
+ * as 未驗證**. `note` is empty for the states the block-level `note` already
+ * covers and non-empty exactly where the label alone would be misread.
+ */
 export interface SkillCompatibility {
-  spec_validation: CompatibilityResult;
-  capability: AgentCapability;
-  runtime: AgentRuntime;
+  spec_validation: Labelled;
+  capability: Labelled;
+  runtime: Labelled;
   /**
    * The runtime image the two axes above were measured on. Absent = never
    * measured, which is also when both axes read `unverified`. It is not a

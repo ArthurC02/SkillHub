@@ -93,9 +93,9 @@ const skill = {
     note: "",
   },
   compatibility: {
-    spec_validation: "passed",
-    capability: "unverified",
-    runtime: "unverified",
+    spec_validation: { value: "passed", label: "通過", note: "" },
+    capability: { value: "unverified", label: "未驗證", note: "" },
+    runtime: { value: "unverified", label: "未驗證", note: "" },
     note: "",
   },
 };
@@ -162,6 +162,8 @@ const artifact: DownloadArtifact = {
   content_hash: "sha256:bbbb",
   manifest_hash: "sha256:cccc",
   status: "available",
+  servable: true,
+  serve_state: { value: "available", label: "可下載", note: "" },
   expires_at: "2099-01-01T00:00:00Z",
   created_at: "2026-08-17T00:00:00Z",
   download_count: 1,
@@ -399,7 +401,20 @@ test("WS-004 an expired package stays in the list, says it expired, and offers n
   vi.stubGlobal("fetch", () =>
     json({
       downloads: [
-        { ...artifact, artifact_id: "expired-1", expires_at: "2026-01-01T00:00:00Z" },
+        {
+          ...artifact,
+          artifact_id: "expired-1",
+          // Servability is the server's answer now (04 丙-29 ⑤) — it checks a
+          // purge this shape cannot see — so an expired fixture states it the
+          // way the API would rather than leaving the date to imply it.
+          servable: false,
+          serve_state: {
+            value: "expired",
+            label: "已過期,不再提供下載",
+            note: "檔案已刪除,這筆紀錄保留。",
+          },
+          expires_at: "2026-01-01T00:00:00Z",
+        },
         artifact,
       ],
     }),

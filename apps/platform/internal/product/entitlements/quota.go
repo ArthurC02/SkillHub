@@ -51,10 +51,20 @@ var ErrQuotaExceeded = errors.New("this workspace has used its free run allowanc
 
 // PDM-010 §8.1's proposed numbers.
 //
-// 待追認 — every one of them. PDM-010 is a proposal, and it names one place where
-// the owner must choose explicitly rather than let an implementation infer:
-// whether the first window is min(20,30) = 20 or 20+30 = 50 ("請負責人明確擇一,
-// 不要留給實作推斷"). The value below is the proposal's own recommendation, 20.
+// 待追認 — every one of them, in the sense that PDM-010 is still a proposal and
+// the owner has not signed the figures.
+//
+// The one thing that was genuinely undecided is not: PDM-010 named a choice the
+// implementation must not infer — whether the first window is min(20,30) = 20 or
+// 20+30 = 50 ("請負責人明確擇一,不要留給實作推斷") — and 04 乙-15 ruled it on
+// 2026-08-22: **20, not cumulative**. Three reasons, the load-bearing one being
+// the second: the proposal's own wording reads as the lower number; cumulating
+// introduces a second clock (does it roll over? expire at month end?) and a quota
+// is a §2.2 object, where display and enforcement must point at one line; and the
+// beta's 14 days sit inside one window anyway, where the gate is completion rate
+// and not run count. Recorded there with its dissent (most products make the first
+// month larger, not smaller — the ruling rests on beta testers not being organic
+// signups).
 //
 // ADR-028 決策 4 permits exactly this split: the enforcement point may be built
 // before the numbers are ratified, because it does not depend on them — what may

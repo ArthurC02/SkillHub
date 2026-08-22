@@ -115,11 +115,23 @@ export interface RunListItem {
      */
     failureClass?: string;
     /**
+     * `value` is the database type run_cleanup_status
+     * (0004_test_lab_and_runs.sql): `pending`, `cleaning_up`, `cleaned`,
+     * `failed`. The handler puts that value on the wire unmapped.
      * 
-     * @type {string}
+     * Labelled rather than a bare enum (04 丙-29 ②) because of what went
+     * wrong here: the contract said `cleaning` until 2026-08-22 while the
+     * database said `cleaning_up`, so the one state this field exists to
+     * report — the sandbox is being torn down right now — arrived as a
+     * value no client had a word for and **rendered as a blank row**. A
+     * client-side enum→中文 table can only fail that way; a served label
+     * cannot. One field, one consumer, four values: the cheapest place to
+     * stop the whole failure mode.
+     * 
+     * @type {Labelled}
      * @memberof RunListItem
      */
-    cleanupStatus: RunListItemCleanupStatusEnum;
+    cleanupStatus: Labelled;
     /**
      * 
      * @type {Date}
@@ -156,17 +168,6 @@ export const RunListItemStatusEnum = {
     TimedOut: 'timed_out'
 } as const;
 export type RunListItemStatusEnum = typeof RunListItemStatusEnum[keyof typeof RunListItemStatusEnum];
-
-/**
- * @export
- */
-export const RunListItemCleanupStatusEnum = {
-    Pending: 'pending',
-    CleaningUp: 'cleaning_up',
-    Cleaned: 'cleaned',
-    Failed: 'failed'
-} as const;
-export type RunListItemCleanupStatusEnum = typeof RunListItemCleanupStatusEnum[keyof typeof RunListItemCleanupStatusEnum];
 
 
 /**
@@ -205,7 +206,7 @@ export function RunListItemFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'testCaseId': json['test_case_id'] == null ? undefined : json['test_case_id'],
         'provider': json['provider'],
         'failureClass': json['failure_class'] == null ? undefined : json['failure_class'],
-        'cleanupStatus': json['cleanup_status'],
+        'cleanupStatus': LabelledFromJSON(json['cleanup_status']),
         'createdAt': (new Date(json['created_at'])),
         'startedAt': json['started_at'] == null ? undefined : (new Date(json['started_at'])),
         'finishedAt': json['finished_at'] == null ? undefined : (new Date(json['finished_at'])),
@@ -233,7 +234,7 @@ export function RunListItemToJSONTyped(value?: RunListItem | null, ignoreDiscrim
         'test_case_id': value['testCaseId'],
         'provider': value['provider'],
         'failure_class': value['failureClass'],
-        'cleanup_status': value['cleanupStatus'],
+        'cleanup_status': LabelledToJSON(value['cleanupStatus']),
         'created_at': value['createdAt'].toISOString(),
         'started_at': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),
         'finished_at': value['finishedAt'] == null ? value['finishedAt'] : value['finishedAt'].toISOString(),

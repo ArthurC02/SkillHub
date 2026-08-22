@@ -32,14 +32,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 // ObjectStore is the slice of object storage the detail views need.
@@ -132,11 +132,12 @@ type riskSummary struct {
 	Highlights []skillpkg.Finding `json:"highlights"`
 	InfoCounts map[string]int     `json:"info_counts"`
 
-	HasScripts         bool `json:"has_scripts"`
-	HasEmbeddedScript  bool `json:"has_embedded_script"`
-	HasExternalURLs    bool `json:"has_external_urls"`
-	HasPossibleSecrets bool `json:"has_possible_secrets"`
-	HasBinaries        bool `json:"has_binaries"`
+	// Disclosures is what the package declares about itself, worded here (04
+	// 丙-29 ④). It replaced five parallel booleans, and the reason is not tidiness:
+	// the search row carried a sixth (`dependency-file`) that this view did not,
+	// so the screen a reader meets first disclosed more than the screen they open
+	// next. Both sides now read one catalogue and that shape cannot come back.
+	Disclosures []disclosure `json:"disclosures"`
 
 	Note string `json:"note"`
 }
@@ -151,22 +152,81 @@ type riskSummary struct {
 // that provides python3 than on one that does not, so a verdict without its
 // image is a claim nobody made. Empty RuntimeImage means unverified — nothing
 // was measured, so there is no image to name.
+//
+// The three axes are labelled rather than bare enums (04 丙-29 ③). Two screens
+// had already worded the same axis differently, and one of them wrote
+// `passed ? 通過 : 未驗證` — which reports **failed as 未驗證**. That is the
+// reading a client-side table makes easy and a served label makes impossible.
+// `transpiled` is the other half of the reason: its caveat is not guessable from
+// any one word, so the axis needs a note and not just a label.
 type compatibility struct {
-	SpecValidation string `json:"spec_validation"` // passed | failed | unverified
-	Capability     string `json:"capability"`      // activated | not_activated | unverified
-	Runtime        string `json:"runtime"`         // native | transpiled | failed | unverified
-	RuntimeImage   string `json:"runtime_image,omitempty"`
-	MeasuredAt     string `json:"measured_at,omitempty"`
-	Note           string `json:"note"`
+	SpecValidation labelled `json:"spec_validation"` // passed | failed | unverified
+	Capability     labelled `json:"capability"`      // activated | not_activated | unverified
+	Runtime        labelled `json:"runtime"`         // native | transpiled | failed | unverified
+	RuntimeImage   string   `json:"runtime_image,omitempty"`
+	MeasuredAt     string   `json:"measured_at,omitempty"`
+	Note           string   `json:"note"`
+}
+
+// axisWords is value → (label, note) for the three compatibility axes. One table
+// per axis so an unknown value cannot borrow another axis's wording.
+//
+// **An empty note is deliberate and load bearing.** The block-level
+// `compatibility.note` already says what static validation covers and that the
+// two sandbox axes need a real run, so repeating it three times would be the
+// same fact said four times on one screen (設計系統 checklist 第 14 條). A note
+// here is reserved for the states where the label alone would be *misread* —
+// `transpiled` above all, where a working run's work was not the Skill's code.
+type axisWords map[string][2]string
+
+var (
+	specWords = axisWords{
+		"passed":     {"通過", ""},
+		"failed":     {"未通過", "套件格式或引用有問題,匯入時已標記。"},
+		"unverified": {"未驗證", ""},
+	}
+	capabilityWords = axisWords{
+		"activated": {"已啟用", ""},
+		"not_activated": {"未被啟用",
+			"該次試跑完成了,Trace 顯示這個 Skill 被提供但用了別的。" +
+				"**不是從「沒有事件」推定的**——SDK 訊息流表達不了「可用但沒被叫」(TRACE-002)。"},
+		"unverified": {"未驗證", ""},
+	}
+	runtimeWords = axisWords{
+		"native": {"腳本可直接執行", ""},
+		"transpiled": {"腳本未執行,由模型轉譯",
+			"套件宣告的 Runtime 這個映像沒有,而觀察到的結果來自模型重寫程式碼、不是執行它。" +
+				"那次 Run 有產出,但做事的不是 Skill 自己的程式碼——這一格決定你拿到的是不是你以為的東西。"},
+		"failed":     {"腳本無法執行", "套件宣告的 Runtime 這個映像沒有,該次 Run 因此失敗。"},
+		"unverified": {"未驗證", ""},
+	}
+)
+
+// axis wraps a raw axis value in its words.
+//
+// An unrecognised value keeps the raw value as its own label rather than
+// rendering blank. That is 丙-28's failure mode read from the other end: the
+// contract and the database disagreed on one spelling and the screen showed
+// nothing at all, which is the one outcome worse than showing a word the reader
+// has to look up.
+func axis(w axisWords, value string) labelled {
+	if v, ok := w[value]; ok {
+		return labelled{Value: value, Label: v[0], Note: v[1]}
+	}
+	return labelled{
+		Value: value,
+		Label: value,
+		Note:  "這個平台版本沒有這個值的說明,值照原樣顯示,不猜測它的意思。",
+	}
 }
 
 // unverifiedCompat is the pre-measurement state of the two sandbox axes, and the
 // zero value every caller starts from.
 func unverifiedCompat() compatibility {
 	return compatibility{
-		SpecValidation: "unverified",
-		Capability:     "unverified",
-		Runtime:        "unverified",
+		SpecValidation: axis(specWords, "unverified"),
+		Capability:     axis(capabilityWords, "unverified"),
+		Runtime:        axis(runtimeWords, "unverified"),
 		Note:           compatUnverifiedNote,
 	}
 }
@@ -333,8 +393,14 @@ func (s *Service) SkillDetail(ctx context.Context, skill registry.Skill) (skillD
 		// deriving one from the other, and the packaging gate reads this same
 		// column.
 		Redistribution: redistributionLabel(skill.Redistribution),
-		Risk:           riskSummary{ScanStatus: "unavailable", InfoCounts: map[string]int{}, Highlights: []skillpkg.Finding{}, Note: riskNote},
-		Compat:         unverifiedCompat(),
+		Risk: riskSummary{
+			ScanStatus:  "unavailable",
+			InfoCounts:  map[string]int{},
+			Highlights:  []skillpkg.Finding{},
+			Disclosures: []disclosure{},
+			Note:        riskNote,
+		},
+		Compat: unverifiedCompat(),
 	}
 	if skill.Summary != nil {
 		out.Summary = *skill.Summary
@@ -377,8 +443,8 @@ func (s *Service) SkillDetail(ctx context.Context, skill registry.Skill) (skillD
 	// run yet, and it leaves the two axes on unverified rather than failing the
 	// request — a skill with no measurement is still a skill worth showing.
 	if c, found, err := s.Registry.RuntimeCompatibility(ctx, ver.ID); err == nil && found {
-		out.Compat.Capability = c.Capability
-		out.Compat.Runtime = c.Runtime
+		out.Compat.Capability = axis(capabilityWords, c.Capability)
+		out.Compat.Runtime = axis(runtimeWords, c.Runtime)
 		out.Compat.RuntimeImage = c.RuntimeImage
 		out.Compat.MeasuredAt = timeString(c.MeasuredAt)
 		out.Compat.Note = compatMeasuredNote
@@ -400,7 +466,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill registry.Skill) (skillD
 
 	if report, ok := s.scanPackage(ctx, ver.PackageObjectKey); ok {
 		out.Risk = summarizeRisk(report)
-		out.Compat.SpecValidation = specValidation(report)
+		out.Compat.SpecValidation = axis(specWords, specValidation(report))
 		out.Limitations = append(out.Limitations, scanDerivedLimitations(report)...)
 		if report.Manifest != nil {
 			out.AllowedTools = report.Manifest.AllowedTools
@@ -819,6 +885,7 @@ func summarizeRisk(r skillpkg.Report) riskSummary {
 		InfoCounts: map[string]int{},
 		Note:       riskNote,
 	}
+	codes := map[string]bool{}
 	for _, f := range r.Findings {
 		switch f.Severity {
 		case skillpkg.SeverityError:
@@ -831,19 +898,9 @@ func summarizeRisk(r skillpkg.Report) riskSummary {
 			out.Counts.Infos++
 			out.InfoCounts[f.Code]++
 		}
-		switch f.Code {
-		case "script-file":
-			out.HasScripts = true
-		case "embedded-script":
-			out.HasEmbeddedScript = true
-		case "external-url":
-			out.HasExternalURLs = true
-		case "possible-secret":
-			out.HasPossibleSecrets = true
-		case "binary-file":
-			out.HasBinaries = true
-		}
+		codes[f.Code] = true
 	}
+	out.Disclosures = disclosuresFor(codes)
 	return out
 }
 

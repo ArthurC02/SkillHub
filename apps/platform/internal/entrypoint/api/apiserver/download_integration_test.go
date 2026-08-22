@@ -20,9 +20,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
 // newSweep builds the reconciler the way cmd/worker does: the two row

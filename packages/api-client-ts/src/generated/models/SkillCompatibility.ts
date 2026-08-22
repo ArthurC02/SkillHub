@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { Labelled } from './Labelled';
+import {
+    LabelledFromJSON,
+    LabelledFromJSONTyped,
+    LabelledToJSON,
+    LabelledToJSONTyped,
+} from './Labelled';
+
 /**
  * The three DISC-008 axes, kept apart, and the same shape on the search
  * result and the detail view. An axis with no answer says `unverified`
@@ -35,15 +43,23 @@ import { mapValues } from '../runtime';
 export interface SkillCompatibility {
     /**
      * Format and static validation only. Passing is never a claim that the
-     * skill is safe to run or effective (SKILL-002).
+     * skill is safe to run or effective (SKILL-002). `value` is `passed`,
+     * `failed` or `unverified`.
      * 
-     * @type {string}
+     * Labelled rather than a bare enum (04 丙-29 ③): two screens had
+     * already worded this axis differently, and one of them wrote
+     * `passed ? 通過 : 未驗證`, which reports **`failed` as 未驗證** — the
+     * one reading a client-side table makes easy and a served label makes
+     * impossible.
+     * 
+     * @type {Labelled}
      * @memberof SkillCompatibility
      */
-    specValidation: SkillCompatibilitySpecValidationEnum;
+    specValidation: Labelled;
     /**
      * Does the agent actually pick this skill up when it is mounted, read
-     * from the run trace.
+     * from the run trace. `value` is `activated`, `not_activated` or
+     * `unverified`.
      * 
      * - `activated` — a `skill_activation` event for this skill in the run.
      * - `not_activated` — the run completed and the trace shows the skill
@@ -56,12 +72,17 @@ export interface SkillCompatibility {
      * 限制註記), so a missing activation event on a truncated run is not
      * evidence of non-activation, and it is reported as `unverified`.
      * 
-     * @type {string}
+     * @type {Labelled}
      * @memberof SkillCompatibility
      */
-    capability: SkillCompatibilityCapabilityEnum;
+    capability: Labelled;
     /**
-     * Can the package's own scripts execute in this image.
+     * Can the package's own scripts execute in this image. `value` is
+     * `native`, `transpiled`, `failed` or `unverified`.
+     * 
+     * `transpiled` is why this axis carries a `note` and not just a label:
+     * the caveat below is not guessable from any single word, and a reader
+     * who does not get it will believe the Skill's own script ran.
      * 
      * - `native` — every runtime the package declares is provided here.
      * - `transpiled` — they are not, and the observed run got its result
@@ -75,10 +96,10 @@ export interface SkillCompatibility {
      * - `failed` — they are not, and the run failed because of it.
      * - `unverified` — this (version, image) pair was never measured.
      * 
-     * @type {string}
+     * @type {Labelled}
      * @memberof SkillCompatibility
      */
-    runtime: SkillCompatibilityRuntimeEnum;
+    runtime: Labelled;
     /**
      * The image `capability` and `runtime` were measured on, e.g.
      * `skillhub/runtime-agent-sdk:2026.08-1`. A digest reference is the
@@ -109,39 +130,6 @@ export interface SkillCompatibility {
     note: string;
 }
 
-
-/**
- * @export
- */
-export const SkillCompatibilitySpecValidationEnum = {
-    Passed: 'passed',
-    Failed: 'failed',
-    Unverified: 'unverified'
-} as const;
-export type SkillCompatibilitySpecValidationEnum = typeof SkillCompatibilitySpecValidationEnum[keyof typeof SkillCompatibilitySpecValidationEnum];
-
-/**
- * @export
- */
-export const SkillCompatibilityCapabilityEnum = {
-    Activated: 'activated',
-    NotActivated: 'not_activated',
-    Unverified: 'unverified'
-} as const;
-export type SkillCompatibilityCapabilityEnum = typeof SkillCompatibilityCapabilityEnum[keyof typeof SkillCompatibilityCapabilityEnum];
-
-/**
- * @export
- */
-export const SkillCompatibilityRuntimeEnum = {
-    Native: 'native',
-    Transpiled: 'transpiled',
-    Failed: 'failed',
-    Unverified: 'unverified'
-} as const;
-export type SkillCompatibilityRuntimeEnum = typeof SkillCompatibilityRuntimeEnum[keyof typeof SkillCompatibilityRuntimeEnum];
-
-
 /**
  * Check if a given object implements the SkillCompatibility interface.
  */
@@ -163,9 +151,9 @@ export function SkillCompatibilityFromJSONTyped(json: any, ignoreDiscriminator: 
     }
     return {
         
-        'specValidation': json['spec_validation'],
-        'capability': json['capability'],
-        'runtime': json['runtime'],
+        'specValidation': LabelledFromJSON(json['spec_validation']),
+        'capability': LabelledFromJSON(json['capability']),
+        'runtime': LabelledFromJSON(json['runtime']),
         'runtimeImage': json['runtime_image'] == null ? undefined : json['runtime_image'],
         'measuredAt': json['measured_at'] == null ? undefined : (new Date(json['measured_at'])),
         'note': json['note'],
@@ -183,9 +171,9 @@ export function SkillCompatibilityToJSONTyped(value?: SkillCompatibility | null,
 
     return {
         
-        'spec_validation': value['specValidation'],
-        'capability': value['capability'],
-        'runtime': value['runtime'],
+        'spec_validation': LabelledToJSON(value['specValidation']),
+        'capability': LabelledToJSON(value['capability']),
+        'runtime': LabelledToJSON(value['runtime']),
         'runtime_image': value['runtimeImage'],
         'measured_at': value['measuredAt'] == null ? value['measuredAt'] : value['measuredAt'].toISOString(),
         'note': value['note'],
