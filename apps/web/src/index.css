@@ -69,7 +69,8 @@ body {
 }
 
 h1,
-h2 {
+h2,
+h3 {
   font-family: var(--heading);
   font-weight: 500;
   color: var(--text-h);
@@ -126,6 +127,20 @@ h2 {
     font-size: 20px;
   }
 }
+/* QA-010: there were 11 <h3> in the app and no rule for any of them, so every
+   one rendered at the UA's bold 1.17em in --text — a *secondary* grey, smaller
+   than the body it introduced. RunEvaluation's levels were right and looked
+   wrong. One step under h2 (24/20), one step over the 18/16 body. */
+h3 {
+  font-size: 20px;
+  line-height: 125%;
+  letter-spacing: -0.2px;
+  margin: 16px 0 8px;
+  @media (max-width: 1024px) {
+    font-size: 18px;
+  }
+}
+
 p {
   margin: 0;
 }
@@ -182,6 +197,12 @@ input:not([type="checkbox"], [type="radio"]) {
   padding: 5px 10px;
   min-height: 32px;
   box-sizing: border-box;
+  /* `cols` and `size` are intrinsic widths from a time before phones: a
+     `<textarea cols={60}>` asks for 478px and gets it, and four of the app's
+     eighteen screens pushed the whole document past a 375px viewport because of
+     it. The attributes stay — they are a reasonable desktop default — and this
+     stops them being wider than what holds them. */
+  max-width: 100%;
 }
 
 button {
@@ -353,15 +374,58 @@ main {
    the result count on Home). Put back as an explicit sibling gap rather than by
    restoring the margin: a list that is the whole of a table cell has no element
    sibling and so still sits flush, which is the case being fixed. */
-:is(p, details, .risk-list, .compat-list, .file-tree, .search-results, .tag-list)
-  + :is(.risk-list, .compat-list, .file-tree, .search-results, .tag-list),
-:is(.risk-list, .compat-list, .file-tree, .search-results, .tag-list) + p {
+:is(
+    p,
+    details,
+    .risk-list,
+    .compat-list,
+    .file-tree,
+    .search-results,
+    .tag-list,
+    .criterion-list,
+    .finding-list,
+    .suggestion-list,
+    .evidence-list
+  )
+  + :is(
+    .risk-list,
+    .compat-list,
+    .file-tree,
+    .search-results,
+    .tag-list,
+    .criterion-list,
+    .finding-list,
+    .suggestion-list,
+    .evidence-list
+  ),
+:is(
+    .risk-list,
+    .compat-list,
+    .file-tree,
+    .search-results,
+    .tag-list,
+    .criterion-list,
+    .finding-list,
+    .suggestion-list,
+    .evidence-list
+  )
+  + p {
   margin-top: 8px;
 }
 
 .tag-list {
   flex-direction: row;
   flex-wrap: wrap;
+}
+
+/* Some of these rows ARE the badge — a pill carrying the whole item. As a flex
+   item in a column container it gets the default `stretch`, so each one ran the
+   full width of its container (1075px on the packaging page, the whole cell on
+   /compare, the whole page under 風險揭露). Matched on `.badge` and not on the
+   list: the same two classes also hold rows of prose and code, and those do want
+   the container's width. */
+:is(.compat-list, .risk-list) > .badge {
+  align-self: flex-start;
 }
 
 .search-results {
@@ -411,6 +475,28 @@ main {
    native `disabled` select is the affordance; nothing needs dimming on top. */
 .filter-unavailable .note {
   font-size: 12px;
+}
+
+/* One stacked form field: the label on its own line above its control, which is
+   the layout `.filter-bar label` already uses — the difference is only that here
+   the control is the label's sibling, not its child, so the wrapper carries it.
+   Opt-in by class rather than by `form p`: the Home search box is a deliberate
+   one-row flex and must not be stacked. The cap makes the three controls of one
+   form the same width instead of three intrinsic widths (~155/330/480px). */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0;
+  max-width: 480px;
+}
+
+.field label {
+  font-size: 14px;
+}
+
+.field :is(input, select, textarea) {
+  width: 100%;
 }
 
 /* The 02:DISC-002 columns on a result row. */
@@ -569,6 +655,7 @@ summary {
 .suggestion-list,
 .evidence-list {
   list-style: none;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -577,7 +664,6 @@ summary {
 
 .evidence-list {
   gap: 6px;
-  margin: 6px 0 0;
 }
 
 .criterion,

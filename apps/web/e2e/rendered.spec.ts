@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { PHONE_ROUTES } from "./routes";
 import { stubPlatform } from "./stub";
 
 /**
@@ -114,26 +115,47 @@ test.describe("QA-008 composite pixels", () => {
 
 test.describe("QA-008 real layout", () => {
   /**
-   * /policy needs no session and its response has four fields, so the fixture
-   * behind this table cannot drift far from the truth. The page must not
-   * scroll sideways; the table inside it must.
+   * Every address the router declares, at phone width. This used to check one
+   * page, and one page was not enough: the Test Case detail screen carries
+   * `<textarea cols={60}>` and `<input size={50}>`, whose intrinsic sizing is
+   * wider than a 375px viewport, and it rendered 504px wide with controls
+   * bleeding past the edge for as long as nothing looked.
+   *
+   * The assertion is on the document, not on any element: whatever a page does
+   * internally, the page itself must not scroll sideways. A table that is too
+   * wide is expected to scroll inside `.table-scroll`, and the second
+   * assertion below keeps that distinction honest.
    */
-  test("a comparison table does not push the page sideways at 375px", async ({ page }) => {
+  for (const [name, url] of PHONE_ROUTES) {
+    test(`the page does not scroll sideways at 375px: ${name}`, async ({ page }) => {
+      await stubPlatform(page);
+      await page.setViewportSize({ width: 375, height: 667 });
+      await page.goto(url);
+      await expect(page.locator(".app-nav a").first()).toBeVisible();
+
+      const doc = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+      expect(
+        doc.scrollWidth,
+        `the page scrolls horizontally: ${doc.scrollWidth}px inside ${doc.clientWidth}px`,
+      ).toBeLessThanOrEqual(doc.clientWidth);
+    });
+  }
+
+  /**
+   * ...and the overflow a comparison table does have goes where it was meant
+   * to. `table-layout: fixed` plus `width: 100%` does not overflow on a phone,
+   * it squeezes, so before `.table-scroll` a 4-column table became shreds of
+   * wrapped text rather than something a finger could push sideways.
+   */
+  test("a wide table scrolls inside its own container", async ({ page }) => {
     await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/policy");
     await expect(page.locator(".compare-table")).toBeVisible();
 
-    const doc = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
-    expect(doc.scrollWidth, "the page itself scrolls horizontally").toBeLessThanOrEqual(
-      doc.clientWidth,
-    );
-
-    // ...and the overflow went where it was meant to go, rather than the table
-    // squeezing its columns into shreds the way it did before .table-scroll.
     const scroller = await page
       .locator(".table-scroll")
       .first()

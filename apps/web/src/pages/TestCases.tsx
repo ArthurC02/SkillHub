@@ -109,8 +109,8 @@ export function TestCaseList() {
           create.mutate();
         }}
       >
-        <p>
-          <label htmlFor="tc-skill">Skill</label>{" "}
+        <p className="field">
+          <label htmlFor="tc-skill">Skill</label>
           <select id="tc-skill" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
             <option value="">請選擇</option>
             {skills.data?.skills.map((s) => (
@@ -120,13 +120,12 @@ export function TestCaseList() {
             ))}
           </select>
         </p>
-        <p>
-          <label htmlFor="tc-name">名稱</label>{" "}
+        <p className="field">
+          <label htmlFor="tc-name">名稱</label>
           <input id="tc-name" value={name} onChange={(e) => setName(e.target.value)} size={40} />
         </p>
-        <p>
+        <p className="field">
           <label htmlFor="tc-prompt">User Prompt</label>
-          <br />
           <textarea
             id="tc-prompt"
             rows={4}
@@ -168,7 +167,7 @@ export function TestCaseList() {
         ) : (
           <ul className="search-results">
             {rows.map((tc) => (
-              <li key={tc.test_case_id}>
+              <li key={tc.test_case_id} className="search-result">
                 <Link to="/lab/test-cases/$testCaseId" params={{ testCaseId: tc.test_case_id }}>
                   {tc.name}
                 </Link>
@@ -397,13 +396,12 @@ function PromptForm({ testCase }: { testCase: TestCase }) {
   return (
     <>
       <h2>名稱與 User Prompt</h2>
-      <p>
-        <label htmlFor="edit-name">名稱</label>{" "}
+      <p className="field">
+        <label htmlFor="edit-name">名稱</label>
         <input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} size={40} />
       </p>
-      <p>
+      <p className="field">
         <label htmlFor="edit-prompt">User Prompt</label>
-        <br />
         <textarea
           id="edit-prompt"
           rows={5}

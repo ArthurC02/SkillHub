@@ -41,6 +41,11 @@ export function RunTrace() {
 
       <CancelRunControl runId={runId} status={general.data?.status} />
 
+      {/* The sections inside the two modes below are h3: they are subsections of
+          this heading, and screen-reader users navigate a document by its
+          heading levels. 這次 Run 的產出 stays an h2 — it is a sibling of the
+          record, not part of it. axe does not catch this: it flags a skipped
+          level, never a level that should have been nested and was not. */}
       <h2>執行紀錄</h2>
       <p className="note">
         <Link to="/runs/$runId/compare" params={{ runId }} search={{ against: "" }}>
@@ -251,14 +256,14 @@ function GeneralMode({ runId }: { runId: string }) {
         <code>{trace.status}</code>）{trace.status_reason ? `（${trace.status_reason}）` : null}
       </p>
 
-      <h2>進度</h2>
+      <h3>進度</h3>
       <ol>
         {trace.steps.map((step, i) => (
           <li key={`${i}-${step}`}>{step}</li>
         ))}
       </ol>
 
-      <h2>使用的 Skill</h2>
+      <h3>使用的 Skill</h3>
       {trace.skills.length === 0 ? (
         <p>沒有記錄到 Skill 啟用事件。</p>
       ) : (
@@ -272,7 +277,7 @@ function GeneralMode({ runId }: { runId: string }) {
         </ul>
       )}
 
-      <h2>工作內容</h2>
+      <h3>工作內容</h3>
       <ul>
         <li>讀取套件資源 {trace.resources_read} 次</li>
         <li>
@@ -286,7 +291,7 @@ function GeneralMode({ runId }: { runId: string }) {
 
       {trace.errors.length > 0 ? (
         <>
-          <h2>錯誤</h2>
+          <h3>錯誤</h3>
           <ul>
             {trace.errors.map((err, i) => (
               <li key={`${err.code}-${i}`}>
@@ -297,11 +302,11 @@ function GeneralMode({ runId }: { runId: string }) {
         </>
       ) : null}
 
-      <h2>最終輸出</h2>
+      <h3>最終輸出</h3>
       {/* Model output over user data: inert text, never rendered as markup. */}
       {trace.final_output ? <pre>{trace.final_output}</pre> : <p>尚無最終輸出。</p>}
 
-      <h2>用量</h2>
+      <h3>用量</h3>
       {trace.usage ? (
         <ul>
           <li>模型：{trace.usage.model || "未知"}</li>
@@ -372,7 +377,7 @@ function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
         </button>
       </nav>
 
-      <h2>事件串流</h2>
+      <h3>事件串流</h3>
       <div className="table-scroll" tabIndex={0}>
         <table className="compare-table">
           <thead>
@@ -409,7 +414,7 @@ function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
         </table>
       </div>
 
-      <h2>事件（已遮罩，依序重建）</h2>
+      <h3>事件（已遮罩，依序重建）</h3>
       {trace.events.length === 0 ? (
         <p>尚無事件。</p>
       ) : (

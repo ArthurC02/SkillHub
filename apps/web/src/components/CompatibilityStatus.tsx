@@ -68,6 +68,8 @@ export function CompatibilityStatus({ compatibility }: { compatibility: SkillCom
 
   return (
     <div>
+      {/* Each row IS the badge, so .compat-list turns off the flex `stretch`
+          that ran these pills the full width of the page. */}
       <ul className="compat-list">
         {axes.map(({ key, label, value, text }) => (
           <li key={key} className={`badge badge-compat-${BADGE_STATE[value] ?? "passed"}`}>
