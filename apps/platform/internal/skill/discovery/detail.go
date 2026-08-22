@@ -670,7 +670,15 @@ const (
 	filesNote = "tree 為套件內檔案清單與大小;目前僅回傳 SKILL.md 全文。" +
 		"其他單檔內容的讀取端點屬 DISC-007 後續工作項,尚未實作。"
 	enrichPendingNote = "尚未產生模型摘要;顯示的是套件自身的 frontmatter description。"
-	enrichedNote      = "本區塊由模型產生(非套件作者撰寫),僅供理解用途。"
+	// The second sentence is the asymmetry nobody was told about. The platform's
+	// own rewrite is what a person reads on Skill Hub; the package's own
+	// `description` is what an agent reads when it decides whether to load the
+	// Skill, and packaging never writes the rewrite back (ADR-012/PDM-008 refuse
+	// to add frontmatter). So a Skill can read well here and be passed over
+	// where it counts, and improving this text changes nothing about that.
+	enrichedNote = "本區塊由模型產生(非套件作者撰寫),僅供理解用途。" +
+		"**你的 Agent 讀的不是這一段**——它讀的是套件自己的 `description`(上方「摘要」)," +
+		"而下載回去的套件裡也不會有這一段。這段寫得好不會讓 Agent 更願意用它。"
 )
 
 // --- scope resolution ------------------------------------------------------

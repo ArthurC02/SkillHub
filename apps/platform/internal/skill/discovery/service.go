@@ -241,10 +241,11 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 	hits := make([]searchResult, 0, len(rows))
 	for _, row := range rows {
 		hit := searchResult{
-			SkillID:  pgconv.UUIDString(row.SkillID),
-			Name:     row.Name,
-			Summary:  row.Summary,
-			unranked: row.Unranked,
+			SkillID:       pgconv.UUIDString(row.SkillID),
+			Name:          row.Name,
+			Summary:       row.Summary,
+			SummarySource: row.SummarySource,
+			unranked:      row.Unranked,
 		}
 		// A row that arrived through the lexical leg with no embedding was never
 		// measured against the query. Reporting 0 for it said "measured, and as
@@ -283,10 +284,11 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 	hits := make([]searchResult, 0, len(rows))
 	for _, row := range rows {
 		hit := searchResult{
-			SkillID:  pgconv.UUIDString(row.SkillID),
-			Name:     row.Name,
-			Summary:  row.Summary,
-			RankNote: rankNoteDegraded,
+			SkillID:       pgconv.UUIDString(row.SkillID),
+			Name:          row.Name,
+			Summary:       row.Summary,
+			SummarySource: row.SummarySource,
+			RankNote:      rankNoteDegraded,
 		}
 		resultFacets(&hit, row.Tags, row.Scan, row.VerifiedAt,
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))

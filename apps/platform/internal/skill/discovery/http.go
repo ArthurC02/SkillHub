@@ -86,6 +86,13 @@ type searchResult struct {
 	SkillID string `json:"skill_id"`
 	Name    string `json:"name"`
 	Summary string `json:"summary"`
+	// SummarySource is `model` or `package`, and it exists because this row was
+	// already labelling the model's `match_reason` three fields down while
+	// printing the model's rewrite of the summary unmarked (ADR-013). The
+	// summary is the sentence a reader decides on; the match reason is the
+	// footnote. Marking the footnote and not the sentence is the wrong way
+	// round.
+	SummarySource string `json:"summary_source"`
 	// Rank is cosine similarity in 0..1, or null when this page was not ranked
 	// by similarity at all. RankNote then says what ordered it instead.
 	//

@@ -2795,6 +2795,17 @@ func (s *PublicSearchResult) Validate() error {
 
 	var failures []validate.FieldError
 	if err := func() error {
+		if err := s.SummarySource.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "summary_source",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if value, ok := s.Rank.Get(); ok {
 			if err := func() error {
 				if err := (validate.Float{
@@ -2873,6 +2884,17 @@ func (s PublicSearchResultMatchReasonSource) Validate() error {
 	case "model":
 		return nil
 	case "template":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s PublicSearchResultSummarySource) Validate() error {
+	switch s {
+	case "model":
+		return nil
+	case "package":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)

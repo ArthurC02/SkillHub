@@ -370,10 +370,15 @@ main {
   color: var(--text-h);
 }
 
+/* --accent-border is §4.4's 未知／未驗證 tint. `badge-source-unknown` joins it
+   because that is exactly what it says: the server did not state who wrote the
+   summary. `badge-source-package` deliberately does not — 作者原文 is a settled
+   fact, and tinting it as uncertain would make the colour contradict the word. */
 .badge-license-unknown,
 .badge-trust-unknown,
 .badge-compat-unverified,
-.badge-source-model {
+.badge-source-model,
+.badge-source-unknown {
   border-color: var(--accent-border);
 }
 

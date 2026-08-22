@@ -535,7 +535,41 @@ function SearchResultRow({
       <Link to="/skills/$skillId" params={{ skillId: hit.skill_id }}>
         {hit.name}
       </Link>
-      <p>{hit.summary}</p>
+      {/*
+        ADR-013 again, and the important half of it. This row already badged
+        `match_reason` as 「AI 產生」 three lines below while printing the model's
+        rewrite of the summary in the same <p> the author's own text occupies —
+        the footnote was marked and the sentence a reader decides on was not.
+        Same badge, same title convention, so the two cannot drift apart.
+      */}
+      <p>
+        {hit.summary}{" "}
+        {hit.summary_source === "model" && (
+          <span
+            className="badge badge-source-model"
+            title="這段摘要由模型改寫，不是套件作者寫的；你的 Agent 讀的是套件自己的 description"
+          >
+            AI 改寫
+          </span>
+        )}
+        {hit.summary_source === "package" && (
+          <span className="badge badge-source-package" title="套件自己的 frontmatter description">
+            作者原文
+          </span>
+        )}
+        {/*
+          The contract requires the field, so this branch is a server that
+          failed to answer — and the one thing it must not do is answer for it.
+          Defaulting to 作者原文 would put the author's name on the model's
+          sentence, which is the ADR-013 failure this whole change is about,
+          reintroduced as a fallback.
+        */}
+        {hit.summary_source !== "model" && hit.summary_source !== "package" && (
+          <span className="badge badge-source-unknown" title="伺服器沒有回報這段摘要的來源">
+            來源未標示
+          </span>
+        )}
+      </p>
       {hit.match_reason && (
         <p className="match-reason">
           符合原因：{hit.match_reason}

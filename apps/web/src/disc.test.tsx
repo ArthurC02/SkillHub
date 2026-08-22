@@ -160,6 +160,7 @@ test("DISC-002: each candidate shows its match reason, labelled by provenance", 
         skill_id: "11111111-1111-1111-1111-111111111111",
         name: "PDF Summariser",
         summary: "把 PDF 轉成摘要",
+        summary_source: "model",
         rank: 0.82,
         match_reason: "這個 Skill 直接處理 PDF 並輸出摘要。",
         match_reason_source: "model",
@@ -169,6 +170,7 @@ test("DISC-002: each candidate shows its match reason, labelled by provenance", 
         skill_id: "22222222-2222-2222-2222-222222222222",
         name: "Doc Splitter",
         summary: "切分文件",
+        summary_source: "package",
         rank: 0.4,
         match_reason: "查詢與文件共同出現：pdf",
         match_reason_source: "template",
@@ -182,9 +184,46 @@ test("DISC-002: each candidate shows its match reason, labelled by provenance", 
   expect(text).toContain("這個 Skill 直接處理 PDF 並輸出摘要。");
   expect(text).toContain("查詢與文件共同出現：pdf");
   // ADR-013: model-written copy carries a visible marker; template copy does not
-  // borrow it.
-  expect(container.querySelectorAll(".badge-source-model")).toHaveLength(1);
-  expect(container.querySelectorAll(".badge-source-template")).toHaveLength(1);
+  // borrow it. Scoped to .match-reason since the summary carries the same marker
+  // now — an unscoped count would let one badge stand in for the other, and the
+  // whole point is that they are two separate claims about two separate strings.
+  expect(container.querySelectorAll(".match-reason .badge-source-model")).toHaveLength(1);
+  expect(container.querySelectorAll(".match-reason .badge-source-template")).toHaveLength(1);
+
+  // ADR-013's other half, and the one that was missing. The summary is the
+  // sentence a reader decides on, and it is the model's rewrite for every
+  // enriched skill — 45/45 of the catalogue. The badge was on the match reason
+  // three lines below and not on this.
+  expect(container.querySelectorAll(".badge-source-package")).toHaveLength(1);
+  expect(text).toContain("AI 改寫");
+  expect(text).toContain("作者原文");
+  // A server that did not answer must not be answered for: defaulting to
+  // 作者原文 would print the author's name over the model's sentence, which is
+  // the failure this badge exists to prevent, reintroduced as a fallback.
+  expect(container.querySelectorAll(".badge-source-unknown")).toHaveLength(0);
+});
+
+test("DISC-002: a summary with no stated source says so rather than crediting the author", async () => {
+  stubSearch({
+    ...EMPTY,
+    query: "pdf",
+    results: [
+      {
+        ...HIT_FACETS,
+        skill_id: "33333333-3333-3333-3333-333333333333",
+        name: "Mystery",
+        summary: "來源不明的摘要",
+        rank: 0.5,
+        match_reason: "查詢與文件共同出現：pdf",
+        match_reason_source: "template",
+      },
+    ],
+  });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  expect(container.querySelectorAll(".badge-source-unknown")).toHaveLength(1);
+  expect(container.textContent ?? "").not.toContain("作者原文");
 });
 
 test("DISC-002: a truncated result page says so, and says how many it is showing", async () => {

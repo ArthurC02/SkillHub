@@ -8993,8 +8993,19 @@ type PublicSearchResult struct {
 	SkillID uuid.UUID `json:"skill_id"`
 	Name    string    `json:"name"`
 	// Plain summary (DISC-002). The index-time LLM summary when the skill has been enriched (ADR-013 §1,
-	// model-generated), otherwise the package's own frontmatter description.
+	// model-generated), otherwise the package's own frontmatter description. `summary_source` says which,
+	// because until it existed this sentence was documented as sometimes model-written and had no field a
+	// client could act on.
 	Summary string `json:"summary"`
+	// Who wrote `summary`. ADR-013 requires model-generated content to be labelled, and this row was
+	// already labelling `match_reason` while printing the model's rewrite of the summary unmarked — the
+	// footnote carried the badge and the sentence a reader decides on did not.
+	//
+	// `package` also carries a second fact worth knowing: it is the `description` an agent actually reads
+	// when it decides whether to load this Skill. A `model` summary is not that text, so a Skill can read
+	// well here and be passed over by the agent, and nothing about the enriched summary changes what the
+	// downloaded package says.
+	SummarySource PublicSearchResultSummarySource `json:"summary_source"`
 	// Cosine similarity to the query, 0..1, higher is better (DISC-002 — never star count). Results are
 	// ordered by it.
 	//
@@ -9047,6 +9058,11 @@ func (s *PublicSearchResult) GetName() string {
 // GetSummary returns the value of Summary.
 func (s *PublicSearchResult) GetSummary() string {
 	return s.Summary
+}
+
+// GetSummarySource returns the value of SummarySource.
+func (s *PublicSearchResult) GetSummarySource() PublicSearchResultSummarySource {
+	return s.SummarySource
 }
 
 // GetRank returns the value of Rank.
@@ -9107,6 +9123,11 @@ func (s *PublicSearchResult) SetName(val string) {
 // SetSummary sets the value of Summary.
 func (s *PublicSearchResult) SetSummary(val string) {
 	s.Summary = val
+}
+
+// SetSummarySource sets the value of SummarySource.
+func (s *PublicSearchResult) SetSummarySource(val PublicSearchResultSummarySource) {
+	s.SummarySource = val
 }
 
 // SetRank sets the value of Rank.
@@ -9192,6 +9213,55 @@ func (s *PublicSearchResultMatchReasonSource) UnmarshalText(data []byte) error {
 		return nil
 	case PublicSearchResultMatchReasonSourceTemplate:
 		*s = PublicSearchResultMatchReasonSourceTemplate
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Who wrote `summary`. ADR-013 requires model-generated content to be labelled, and this row was
+// already labelling `match_reason` while printing the model's rewrite of the summary unmarked — the
+// footnote carried the badge and the sentence a reader decides on did not.
+//
+// `package` also carries a second fact worth knowing: it is the `description` an agent actually reads
+// when it decides whether to load this Skill. A `model` summary is not that text, so a Skill can read
+// well here and be passed over by the agent, and nothing about the enriched summary changes what the
+// downloaded package says.
+type PublicSearchResultSummarySource string
+
+const (
+	PublicSearchResultSummarySourceModel   PublicSearchResultSummarySource = "model"
+	PublicSearchResultSummarySourcePackage PublicSearchResultSummarySource = "package"
+)
+
+// AllValues returns all PublicSearchResultSummarySource values.
+func (PublicSearchResultSummarySource) AllValues() []PublicSearchResultSummarySource {
+	return []PublicSearchResultSummarySource{
+		PublicSearchResultSummarySourceModel,
+		PublicSearchResultSummarySourcePackage,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PublicSearchResultSummarySource) MarshalText() ([]byte, error) {
+	switch s {
+	case PublicSearchResultSummarySourceModel:
+		return []byte(s), nil
+	case PublicSearchResultSummarySourcePackage:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PublicSearchResultSummarySource) UnmarshalText(data []byte) error {
+	switch PublicSearchResultSummarySource(data) {
+	case PublicSearchResultSummarySourceModel:
+		*s = PublicSearchResultSummarySourceModel
+		return nil
+	case PublicSearchResultSummarySourcePackage:
+		*s = PublicSearchResultSummarySourcePackage
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

@@ -144,6 +144,12 @@ export interface PublicSearchResult {
   name: string;
   summary: string;
   /**
+   * Who wrote `summary` (ADR-013). `package` is also the `description` an agent
+   * reads when it decides whether to load the Skill; a `model` summary is not
+   * that text, and the downloaded package never carries it.
+   */
+  summary_source: "model" | "package";
+  /**
    * Cosine similarity 0..1, higher is better; the array order follows it.
    *
    * Null when the page was not ranked by similarity — the whole answer came

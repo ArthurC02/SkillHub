@@ -56,12 +56,30 @@ export interface PublicSearchResult {
     /**
      * Plain summary (DISC-002). The index-time LLM summary when the skill
      * has been enriched (ADR-013 §1, model-generated), otherwise the
-     * package's own frontmatter description.
+     * package's own frontmatter description. `summary_source` says which,
+     * because until it existed this sentence was documented as sometimes
+     * model-written and had no field a client could act on.
      * 
      * @type {string}
      * @memberof PublicSearchResult
      */
     summary: string;
+    /**
+     * Who wrote `summary`. ADR-013 requires model-generated content to be
+     * labelled, and this row was already labelling `match_reason` while
+     * printing the model's rewrite of the summary unmarked — the footnote
+     * carried the badge and the sentence a reader decides on did not.
+     * 
+     * `package` also carries a second fact worth knowing: it is the
+     * `description` an agent actually reads when it decides whether to
+     * load this Skill. A `model` summary is not that text, so a Skill can
+     * read well here and be passed over by the agent, and nothing about
+     * the enriched summary changes what the downloaded package says.
+     * 
+     * @type {string}
+     * @memberof PublicSearchResult
+     */
+    summarySource: PublicSearchResultSummarySourceEnum;
     /**
      * Cosine similarity to the query, 0..1, higher is better (DISC-002 —
      * never star count). Results are ordered by it.
@@ -160,6 +178,15 @@ export interface PublicSearchResult {
 /**
  * @export
  */
+export const PublicSearchResultSummarySourceEnum = {
+    Model: 'model',
+    Package: 'package'
+} as const;
+export type PublicSearchResultSummarySourceEnum = typeof PublicSearchResultSummarySourceEnum[keyof typeof PublicSearchResultSummarySourceEnum];
+
+/**
+ * @export
+ */
 export const PublicSearchResultMatchReasonSourceEnum = {
     Model: 'model',
     Template: 'template'
@@ -174,6 +201,7 @@ export function instanceOfPublicSearchResult(value: object): value is PublicSear
     if (!('skillId' in value) || value['skillId'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('summary' in value) || value['summary'] === undefined) return false;
+    if (!('summarySource' in value) || value['summarySource'] === undefined) return false;
     if (!('rank' in value) || value['rank'] === undefined) return false;
     if (!('tier' in value) || value['tier'] === undefined) return false;
     if (!('risk' in value) || value['risk'] === undefined) return false;
@@ -195,6 +223,7 @@ export function PublicSearchResultFromJSONTyped(json: any, ignoreDiscriminator: 
         'skillId': json['skill_id'],
         'name': json['name'],
         'summary': json['summary'],
+        'summarySource': json['summary_source'],
         'rank': json['rank'],
         'rankNote': json['rank_note'] == null ? undefined : json['rank_note'],
         'tier': LabelledFromJSON(json['tier']),
@@ -221,6 +250,7 @@ export function PublicSearchResultToJSONTyped(value?: PublicSearchResult | null,
         'skill_id': value['skillId'],
         'name': value['name'],
         'summary': value['summary'],
+        'summary_source': value['summarySource'],
         'rank': value['rank'],
         'rank_note': value['rankNote'],
         'tier': LabelledToJSON(value['tier']),

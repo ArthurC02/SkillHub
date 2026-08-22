@@ -207,6 +207,13 @@ candidates AS (
 )
 SELECT c.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
+       -- Which branch the COALESCE above took. ADR-013 requires model-written
+       -- copy to be labelled, and this row already labels ` + "`" + `match_reason` + "`" + ` while
+       -- printing the model's rewrite of the summary in the same <p> the author's
+       -- own text would occupy. Derived here rather than in Go so the flag cannot
+       -- disagree with the value it describes.
+       CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
+           AS summary_source,
        s.tags, s.scan, ver.created_at AS verified_at,
        COALESCE(cmp.capability, 'unverified') AS agent_capability,
        COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
@@ -269,6 +276,7 @@ type PublicHybridSearchSkillsRow struct {
 	SkillID           pgtype.UUID
 	Name              string
 	Summary           string
+	SummarySource     string
 	Tags              []byte
 	Scan              []byte
 	VerifiedAt        pgtype.Timestamptz
@@ -344,6 +352,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 			&i.SkillID,
 			&i.Name,
 			&i.Summary,
+			&i.SummarySource,
 			&i.Tags,
 			&i.Scan,
 			&i.VerifiedAt,
@@ -369,6 +378,13 @@ const publicSearchSkills = `-- name: PublicSearchSkills :many
 
 SELECT s.skill_id, s.name,
        COALESCE(NULLIF(s.enriched_summary, ''), s.summary) AS summary,
+       -- Which branch the COALESCE above took. ADR-013 requires model-written
+       -- copy to be labelled, and this row already labels ` + "`" + `match_reason` + "`" + ` while
+       -- printing the model's rewrite of the summary in the same <p> the author's
+       -- own text would occupy. Derived here rather than in Go so the flag cannot
+       -- disagree with the value it describes.
+       CASE WHEN NULLIF(s.enriched_summary, '') IS NULL THEN 'package' ELSE 'model' END
+           AS summary_source,
        s.tags, s.scan, ver.created_at AS verified_at,
        -- COALESCEd here rather than in Go: a row with no measurement is
        -- unverified on both axes, which is the same answer the handler used to
@@ -426,6 +442,7 @@ type PublicSearchSkillsRow struct {
 	SkillID           pgtype.UUID
 	Name              string
 	Summary           string
+	SummarySource     string
 	Tags              []byte
 	Scan              []byte
 	VerifiedAt        pgtype.Timestamptz
@@ -513,6 +530,7 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 			&i.SkillID,
 			&i.Name,
 			&i.Summary,
+			&i.SummarySource,
 			&i.Tags,
 			&i.Scan,
 			&i.VerifiedAt,

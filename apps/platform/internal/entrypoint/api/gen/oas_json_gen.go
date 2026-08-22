@@ -18732,6 +18732,10 @@ func (s *PublicSearchResult) encodeFields(e *jx.Encoder) {
 		e.Str(s.Summary)
 	}
 	{
+		e.FieldStart("summary_source")
+		s.SummarySource.Encode(e)
+	}
+	{
 		e.FieldStart("rank")
 		s.Rank.Encode(e)
 	}
@@ -18781,19 +18785,20 @@ func (s *PublicSearchResult) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfPublicSearchResult = [12]string{
+var jsonFieldsNameOfPublicSearchResult = [13]string{
 	0:  "skill_id",
 	1:  "name",
 	2:  "summary",
-	3:  "rank",
-	4:  "rank_note",
-	5:  "tier",
-	6:  "risk",
-	7:  "dependencies",
-	8:  "compatibility",
-	9:  "verified_at",
-	10: "match_reason",
-	11: "match_reason_source",
+	3:  "summary_source",
+	4:  "rank",
+	5:  "rank_note",
+	6:  "tier",
+	7:  "risk",
+	8:  "dependencies",
+	9:  "compatibility",
+	10: "verified_at",
+	11: "match_reason",
+	12: "match_reason_source",
 }
 
 // Decode decodes PublicSearchResult from json.
@@ -18841,8 +18846,18 @@ func (s *PublicSearchResult) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"summary\"")
 			}
-		case "rank":
+		case "summary_source":
 			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				if err := s.SummarySource.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"summary_source\"")
+			}
+		case "rank":
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				if err := s.Rank.Decode(d); err != nil {
 					return err
@@ -18862,7 +18877,7 @@ func (s *PublicSearchResult) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"rank_note\"")
 			}
 		case "tier":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				if err := s.Tier.Decode(d); err != nil {
 					return err
@@ -18872,7 +18887,7 @@ func (s *PublicSearchResult) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"tier\"")
 			}
 		case "risk":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				if err := s.Risk.Decode(d); err != nil {
 					return err
@@ -18882,7 +18897,7 @@ func (s *PublicSearchResult) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"risk\"")
 			}
 		case "dependencies":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				s.Dependencies = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -18902,7 +18917,7 @@ func (s *PublicSearchResult) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"dependencies\"")
 			}
 		case "compatibility":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				if err := s.Compatibility.Decode(d); err != nil {
 					return err
@@ -18951,8 +18966,8 @@ func (s *PublicSearchResult) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b11101111,
-		0b00000001,
+		0b11011111,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -19034,6 +19049,46 @@ func (s PublicSearchResultMatchReasonSource) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *PublicSearchResultMatchReasonSource) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PublicSearchResultSummarySource as json.
+func (s PublicSearchResultSummarySource) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes PublicSearchResultSummarySource from json.
+func (s *PublicSearchResultSummarySource) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PublicSearchResultSummarySource to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch PublicSearchResultSummarySource(v) {
+	case PublicSearchResultSummarySourceModel:
+		*s = PublicSearchResultSummarySourceModel
+	case PublicSearchResultSummarySourcePackage:
+		*s = PublicSearchResultSummarySourcePackage
+	default:
+		*s = PublicSearchResultSummarySource(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s PublicSearchResultSummarySource) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PublicSearchResultSummarySource) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
