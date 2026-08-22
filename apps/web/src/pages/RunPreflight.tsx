@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
@@ -62,7 +63,7 @@ export function SkillVersionPicker({
           </option>
         ))}
       </select>{" "}
-      {versions.isPending && <span className="note">載入版本清單中…</span>}
+      {versions.isPending && <Loading what="版本清單" className="note" />}
       {versions.error && (
         <span className="note" role="alert">
           無法讀取版本清單：{versions.error.message}
@@ -207,7 +208,7 @@ export function RunPreflight() {
   );
 
   if (version === "") return shell(<p>請先在上面選一個 Skill Version,才有權限摘要可以看。</p>);
-  if (preflight.isPending) return shell(<p>載入權限摘要中…</p>);
+  if (preflight.isPending) return shell(<Loading what="權限摘要" />);
   if (preflight.error) {
     return shell(<p role="alert">無法讀取權限摘要:{preflight.error.message}</p>);
   }

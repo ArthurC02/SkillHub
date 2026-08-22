@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -53,7 +54,7 @@ export function WorkspaceAccount() {
     <section className="page">
       <h1>帳號</h1>
 
-      {me.isPending && <p>載入帳號資料中…</p>}
+      {me.isPending && <Loading what="帳號資料" />}
       {me.error && (
         <p role="alert">
           無法讀取帳號資料：{me.error.message}

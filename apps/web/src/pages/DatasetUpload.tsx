@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import { useRef, useState } from "react";
@@ -58,7 +59,7 @@ export function DatasetUpload() {
     <section className="page">
       <h1>上傳 Dataset</h1>
 
-      {limits.isPending && <p>載入上傳規則中…</p>}
+      {limits.isPending && <Loading what="上傳規則" />}
       {limits.error && (
         // Fail-closed in the UI too: without the rules on screen the "顯示" step
         // has not happened, so the file input is not offered.

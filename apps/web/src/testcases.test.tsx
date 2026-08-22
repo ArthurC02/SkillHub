@@ -131,12 +131,12 @@ async function renderComponent(node: ReactNode) {
 
 async function render() {
   await renderComponent(<TestCaseDetail />);
-  await waitFor(() => !(container.textContent ?? "").includes("載入 Test Case 中"));
+  await waitFor(() => container.querySelector("[data-loading]") === null);
 }
 
 async function renderList() {
   await renderComponent(<TestCaseList />);
-  await waitFor(() => !(container.textContent ?? "").includes("載入中…"));
+  await waitFor(() => container.querySelector("[data-loading]") === null);
 }
 
 async function waitFor(done: () => boolean, timeoutMs = 2000) {

@@ -183,6 +183,8 @@ const blockedDiff: SuggestionDiff = {
 
 function stubPlatform(options: {
   evaluated: boolean;
+  /** The evaluation row exists but the judge has not finished (04 丙-35). */
+  pending?: boolean;
   /** The suggestion arrives already accepted, so the apply button is enabled. */
   accepted?: boolean;
   /** False: the editable test case this run was frozen from no longer resolves. */
@@ -225,7 +227,8 @@ function stubPlatform(options: {
       );
     }
     if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
-    if (url.includes("/evaluation")) return json(evaluation);
+    if (url.includes("/evaluation"))
+      return json(options.pending ? { ...evaluation, status: "pending" } : evaluation);
     if (url.includes("/suggestions/s1/diff")) return json(blockedDiff);
     if (url.includes("/suggestions"))
       return json({
@@ -265,7 +268,7 @@ async function render(runStatus: string) {
       </StrictMode>,
     );
   });
-  await waitFor(() => !(container.textContent ?? "").includes("載入評估結果中"));
+  await waitFor(() => container.querySelector("[data-loading]") === null);
 }
 
 /** Polls until the query has settled and React has flushed the result. */
@@ -309,6 +312,39 @@ test("ADR-025 a run with no evaluation says 未評估 and does not imply a pass"
   expect(text).toContain("未評估");
   expect(text).toContain("未評估不等於通過");
   expect(text).not.toContain("符合");
+});
+
+test("§2.12 a judge still running is 進行中, not a verdict — and says you may leave", async () => {
+  // `status: "pending"` is a row saying the judgement is being made right now.
+  // It used to go to EvaluationReport like any other answer, which renders a
+  // verdict block for a verdict nobody has reached. 進行中 is a third axis.
+  stubPlatform({ evaluated: true, pending: true });
+  await render("succeeded");
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("評估進行中");
+  // The three sentences §2.12 asks for.
+  expect(text).toContain("會自己完成");
+  expect(text).toContain("可以關掉這一頁");
+  // And the one it cannot answer, said rather than faked: a judge returns a
+  // verdict or fails, so there is no intermediate count to report.
+  expect(text).toContain("沒有進度可以報");
+  // Not a verdict, and not the absence of one either.
+  expect(text).not.toContain("未評估");
+});
+
+test("§2.12 未評估 stays 未評估 — a 404 is not evidence that a judge is coming", async () => {
+  // useEvaluation polls a 404 too, because a judge that has not started has no
+  // row. But an old run nobody ever evaluated 404s forever, and 「評估進行中」
+  // there would be a promise with nothing enforcing it (§2.2). What the page may
+  // say is what it is actually doing: re-checking.
+  stubPlatform({ evaluated: false });
+  await render("succeeded");
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("未評估");
+  expect(text).not.toContain("評估進行中");
+  expect(text).toContain("每 3 秒再查一次");
 });
 
 test("ADR-026 expired evidence shows the excerpt kept at judgement time and says the original is gone", async () => {

@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { Link, useParams } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import { useForkSkill, useSkillDetail } from "../api/skills";
@@ -28,7 +29,7 @@ export function SkillDetail() {
   const { data: skill, isLoading, error } = useSkillDetail(skillId);
   const { data: me } = useMe();
 
-  if (isLoading) return <p>載入中…</p>;
+  if (isLoading) return <Loading what="這個 Skill" />;
   // 410 is a different fact from 404: this skill existed and was withdrawn.
   if (error instanceof ApiError && error.status === 410) {
     return <p role="alert">這個 Skill 已從目錄下架，內容不再提供。</p>;

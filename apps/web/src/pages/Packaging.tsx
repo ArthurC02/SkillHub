@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
@@ -171,7 +172,7 @@ export function Packaging() {
     },
   });
 
-  if (skill.isLoading) return <p>載入中…</p>;
+  if (skill.isLoading) return <Loading what="這個 Skill" />;
   if (skill.error || !skill.data) return <p role="alert">找不到這個 Skill，或載入失敗。</p>;
 
   const gate = packagingGate(skill.data);
@@ -242,7 +243,7 @@ export function Packaging() {
           </p>
 
           <h2>打包目標</h2>
-          {targets.isPending && <p>載入打包目標中…</p>}
+          {targets.isPending && <Loading what="打包目標" />}
           {targets.error && <p role="alert">無法讀取打包目標：{targets.error.message}</p>}
           {targets.data && (
             <ul className="packaging-targets">

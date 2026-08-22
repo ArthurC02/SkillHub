@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -46,7 +47,7 @@ export function Downloads() {
         這個工作區打包過的套件，新的在上面。到期的仍然列在這裡並標示已過期——那與「沒有這一筆」是兩個不同的答案。
       </p>
 
-      {downloads.isPending && <p>載入下載紀錄中…</p>}
+      {downloads.isPending && <Loading what="下載紀錄" />}
       {downloads.error && <p role="alert">無法讀取下載紀錄：{downloads.error.message}</p>}
       {message && <p role="status">{message}</p>}
 
@@ -101,7 +102,14 @@ function DownloadHistory({ artifact }: { artifact: DownloadArtifact }) {
           {/* `isFetching`, not `isPending`: a disabled query is "pending" forever,
               so a closed disclosure would claim to be loading something it has
               not asked for. */}
-          {records.isFetching && <p className="note">載入下載紀錄中…</p>}
+          {/* The expected count is already on the summary above (download_count),
+              so this is the one loading line in the app that can say how many
+              rows it is waiting for rather than only that it is waiting. */}
+          {records.isFetching && (
+            <p role="status" className="note">
+              載入下載紀錄中…（共 {artifact.download_count} 筆）
+            </p>
+          )}
           {records.error && <p role="alert">無法讀取逐筆下載紀錄：{records.error.message}</p>}
           {records.data && (
             <ul className="note">

@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -143,26 +144,75 @@ function usd(value: number | null): string {
 export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus?: string }) {
   const [revision, setRevision] = useState<string | undefined>(undefined);
   useEffect(() => setRevision(undefined), [runId]);
-  const evaluation = useEvaluation(
-    runId,
-    revision,
-    runStatus === "succeeded" || runStatus === "failed",
-  );
+  // Hoisted out of the call because the banner below needs it too: it is what
+  // separates 「沒有人評過這個 Run」 from 「評審正在跑，這一頁在等它」.
+  const awaiting = runStatus === "succeeded" || runStatus === "failed";
+  const evaluation = useEvaluation(runId, revision, awaiting);
   const revisions = useEvaluationRevisions(runId);
   const notEvaluated = evaluation.error instanceof ApiError && evaluation.error.status === 404;
+  /*
+   * 設計 §2.12, and the one place in the app that still got it backwards.
+   *
+   * A `pending` evaluation is a row that says **the judge is running right now**,
+   * and this panel used to hand it to `EvaluationReport` like any other answer.
+   * 進行中 is a third axis, not a value of the verdict.
+   *
+   * Deliberately **not** including the 404 case, although `useEvaluation` polls
+   * that too (api/evaluation.ts). A 404 says only that no evaluation exists —
+   * true of a judge that has not started, and equally true of an old run nobody
+   * ever evaluated. Rendering 「評估進行中」 for the second one would be a promise
+   * with nothing enforcing it, which is the §2.2 shape this file argues against
+   * everywhere else. 未評估 stays the answer there, with the polling stated as
+   * what it is.
+   */
+  const evaluating = !revision && evaluation.data?.status === "pending";
 
   return (
     <section>
       <h2>任務判定</h2>
 
-      {evaluation.isPending && <p>載入評估結果中…</p>}
+      {evaluation.isPending && !evaluating && <Loading what="評估結果" />}
 
-      {notEvaluated && (
+      {evaluating && (
+        <div className="notice" role="status">
+          <p>
+            <strong>評估進行中</strong>
+            ——判定還在做。它會自己完成，不需要你回來按任何東西。
+          </p>
+          <p className="note">
+            可以關掉這一頁。評估是平台佇列裡的一個工作（`evaluate_run`），由 worker
+            執行，瀏覽器不在那條路徑上；回到這個網址就會看到當時的結果。
+          </p>
+          {/*
+            §2.12 asks for a changing quantity, and this one honestly has none:
+            a judge either returns a verdict or fails, and there is no
+            intermediate count to report. Saying so beats inventing a progress
+            bar out of elapsed time, which would move whether or not anything
+            was happening.
+          */}
+          <p className="note">
+            這一段沒有進度可以報——評審不是分批完成的，它要嘛給出判定要嘛失敗，
+            而兩種結果都會出現在這裡。這一頁每 3 秒自己查一次。
+          </p>
+        </div>
+      )}
+
+      {notEvaluated && !evaluating && (
         <div className="notice">
           <p>
             <strong>未評估</strong>
           </p>
           <p>這個 Run 沒有評估結果。未評估不等於通過，也不等於未通過。</p>
+          {/*
+            §2.12's 「會不會自己結束」, sized to what is actually known: the page
+            is re-checking, and if a judge is on its way the answer will appear
+            here without anyone pressing anything. It does not claim one is.
+          */}
+          {awaiting && !revision && (
+            <p className="note">
+              這一頁每 3 秒再查一次；如果有評估正在排隊，結果會自己出現在這裡，不必重新整理。
+            </p>
+          )}
         </div>
       )}
 
@@ -494,7 +544,7 @@ function SuggestionsPanel({ runId }: { runId: string }) {
   });
 
   const notFound = suggestions.error instanceof ApiError && suggestions.error.status === 404;
-  if (suggestions.isPending) return <p>載入改善建議中…</p>;
+  if (suggestions.isPending) return <Loading what="改善建議" />;
   if (notFound) return null;
   if (suggestions.error) {
     return <p role="alert">無法讀取改善建議：{suggestions.error.message}</p>;
@@ -612,7 +662,7 @@ function SuggestionItem({
 
 function SuggestionDiffView({ suggestionId }: { suggestionId: string }) {
   const diff = useSuggestionDiff(suggestionId, true);
-  if (diff.isPending) return <p>載入差異中…</p>;
+  if (diff.isPending) return <Loading what="差異" />;
   if (diff.error) return <p role="alert">無法讀取差異：{diff.error.message}</p>;
 
   return (

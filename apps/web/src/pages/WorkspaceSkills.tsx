@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -51,7 +52,7 @@ export function WorkspaceSkills() {
         不會出現在這裡，除非你 Fork 過它。
       </p>
 
-      {skills.isPending && <p>載入中…</p>}
+      {skills.isPending && <Loading what="你的 Skill 清單" />}
       {skills.error && <p role="alert">無法讀取你的 Skill 清單：{skills.error.message}</p>}
       {message && <p role="status">{message}</p>}
 

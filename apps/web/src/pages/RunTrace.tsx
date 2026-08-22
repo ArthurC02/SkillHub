@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
@@ -168,7 +169,7 @@ function RunArtifacts({ runId }: { runId: string }) {
   return (
     <>
       <h2>這次 Run 的產出</h2>
-      {artifacts.isPending && <p>載入產出清單中…</p>}
+      {artifacts.isPending && <Loading what="產出清單" />}
       {artifacts.error && <p role="alert">無法讀取產出清單：{artifacts.error.message}</p>}
       {message && <p role="status">{message}</p>}
 
@@ -251,7 +252,7 @@ function IncompleteNotice({ complete }: { complete: boolean }) {
 
 function GeneralMode({ runId }: { runId: string }) {
   const { data, isPending, error } = useTrace(runId, "general");
-  if (isPending) return <p>載入中…</p>;
+  if (isPending) return <Loading what="執行紀錄" />;
   if (error) return <p role="alert">無法讀取執行紀錄。</p>;
   const trace = data as TraceSummary;
 
@@ -362,7 +363,11 @@ function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
     active,
     cursors[pageIndex],
   );
-  if (isPending) return <p>載入中…</p>;
+  // Named apart from the general tab's, because this one is genuinely the
+  // heaviest response in the app: up to 1,000 masked payloads a page, with
+  // `gcTime: 0` (api/trace.ts), so every return refetches. Saying which tab is
+  // loading is what stops it reading as the page having hung.
+  if (isPending) return <Loading what="原始事件（一頁最多 1,000 筆，資料量大）" />;
   if (error) return <p role="alert">無法讀取執行紀錄。</p>;
   const trace = data as TraceAdvanced;
 

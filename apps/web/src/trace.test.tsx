@@ -89,7 +89,7 @@ async function render() {
       </StrictMode>,
     );
   });
-  await waitFor(() => !(container.textContent ?? "").includes("載入中"));
+  await waitFor(() => container.querySelector("[data-loading]") === null);
 }
 
 /** Polls until the query has settled and React has flushed the result. */

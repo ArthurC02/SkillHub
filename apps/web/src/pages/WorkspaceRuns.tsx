@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { Link } from "@tanstack/react-router";
 import { useRuns, type RunListItem } from "../api/runs";
 import { RUN_STATUS_LABEL } from "./RunEvaluation";
@@ -31,7 +32,7 @@ export function WorkspaceRuns() {
         頁面上。
       </p>
 
-      {runs.isPending && <p>載入 Run 歷史中…</p>}
+      {runs.isPending && <Loading what=" Run 歷史" />}
       {runs.error && <p role="alert">無法讀取 Run 歷史：{runs.error.message}</p>}
 
       {runs.data &&

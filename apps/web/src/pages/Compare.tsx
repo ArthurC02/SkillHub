@@ -288,7 +288,16 @@ export function Compare() {
       </p>
 
       {skillIds.length < 2 && <p role="alert">請從搜尋結果選擇 2 到 3 個 Skill 再進行比較。</p>}
-      {results.some((result) => result.isLoading) && <p>載入中…</p>}
+      {/*
+        The count, because it is already in hand and it changes: three parallel
+        skill reads resolve one at a time, and a bare 「載入中…」 says the same
+        thing whether two of the three have already arrived or none has.
+      */}
+      {results.some((result) => result.isLoading) && (
+        <p role="status">
+          載入中…（{skillIds.length} 個裡讀到 {skills.length} 個）
+        </p>
+      )}
       {failed > 0 && <p role="alert">有 {failed} 個 Skill 讀取失敗，未列入下表。</p>}
 
       {skills.length >= 2 && <CompareTable skills={skills} />}

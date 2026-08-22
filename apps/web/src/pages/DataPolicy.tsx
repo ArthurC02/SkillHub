@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { apiFetch } from "../api/client";
@@ -42,7 +43,7 @@ export function DataPolicy() {
       </p>
 
       <h2>使用行為分析事件</h2>
-      {policy.isPending && <p>載入分析事件政策中…</p>}
+      {policy.isPending && <Loading what="分析事件政策" />}
       {policy.error && (
         <p role="alert">
           無法讀取分析事件政策：{policy.error.message}

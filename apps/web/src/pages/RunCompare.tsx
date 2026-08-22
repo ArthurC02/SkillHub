@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useRunComparison, useVersionDiff } from "../api/evaluation";
@@ -113,7 +114,7 @@ export function RunCompare() {
       )}
 
       {against === "" && <p>輸入另一個 Run 的 ID 後開始比較。</p>}
-      {comparison.isPending && against !== "" && <p>載入比較中…</p>}
+      {comparison.isPending && against !== "" && <Loading what="比較" />}
       {comparison.error && <p role="alert">無法比較：{comparison.error.message}</p>}
       {comparison.data && <ComparisonTables data={comparison.data} />}
 
@@ -355,7 +356,7 @@ function RerunCell({ side }: { side: ComparisonSide }) {
 
 function VersionDiff({ url }: { url: string }) {
   const diff = useVersionDiff(url);
-  if (diff.isPending) return <p>載入版本差異中…</p>;
+  if (diff.isPending) return <Loading what="版本差異" />;
   if (diff.error) return <p role="alert">無法讀取版本差異：{diff.error.message}</p>;
   if (diff.data.files.length === 0) return <p>兩個版本的檔案內容相同。</p>;
 

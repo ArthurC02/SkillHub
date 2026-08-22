@@ -1,3 +1,4 @@
+import { Loading } from "../components/Loading";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
@@ -125,7 +126,7 @@ export function TestCaseList() {
           </Link>
         </p>
       )}
-      {testCases.isPending && <p>載入中…</p>}
+      {testCases.isPending && <Loading what=" Test Case 清單" />}
       {testCases.error && <p role="alert">無法讀取 Test Case：{testCases.error.message}</p>}
       {testCases.data &&
         (rows.length === 0 ? (
@@ -237,7 +238,7 @@ export function TestCaseDetail() {
     );
   }
 
-  if (testCase.isPending) return <p>載入 Test Case 中…</p>;
+  if (testCase.isPending) return <Loading what=" Test Case " />;
   if (testCase.error) {
     const missing = testCase.error instanceof ApiError && testCase.error.status === 404;
     return (
@@ -306,7 +307,7 @@ function RunHistory({
         每一列兩軸：<strong>任務判定在前，執行狀態在後</strong>
         ——後者只說工作負載跑完了沒有。逐條驗收結果在各自的 Run 頁面上。
       </p>
-      {runs.isPending && <p>載入執行歷史中…</p>}
+      {runs.isPending && <Loading what="執行歷史" />}
       {runs.error && <p role="alert">無法讀取執行歷史：{runs.error.message}</p>}
       {runs.data &&
         (history.length === 0 ? (
@@ -882,7 +883,7 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
         </Link>
         （上傳規則會在選檔前顯示）。
       </p>
-      {datasets.isPending && <p>載入檔案清單中…</p>}
+      {datasets.isPending && <Loading what="檔案清單" />}
       {datasets.error && <p role="alert">無法讀取檔案清單：{datasets.error.message}</p>}
       {datasets.data &&
         (datasets.data.datasets.length === 0 ? (
