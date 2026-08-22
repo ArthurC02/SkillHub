@@ -268,6 +268,10 @@ func NewApp(cfg Config) (*App, error) {
 	// precisely so that neither side can re-declare its shape.
 	registrySvc.SkillRisks = catalogSvc.SkillRisks
 	registrySvc.CatalogSkillRisks = catalogSvc.CatalogSkillRisks
+	// The run history's second axis (04 丙-32). Same shape and same reason as the
+	// two above: eval owns `evaluations`, and a JOIN to it from a run-owned query
+	// would slip past the ownership checker rather than satisfy it.
+	runSvc.RunVerdicts = evalSvc.RunVerdicts
 
 	return &App{
 		Deps: Deps{

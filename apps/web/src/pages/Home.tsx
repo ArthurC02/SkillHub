@@ -112,6 +112,18 @@ export function Home() {
               部分 Skill 尚未建立語意索引，只能靠關鍵字命中，沒有相似度可顯示，並排在最後。
             </p>
           )}
+          {/*
+            ADR-042 決策 3 / 設計 §4.3: 這個上限一直都在（預設 20），而第 21 筆
+            對這一頁而言不存在——**被截斷的清單必須說出自己被截斷了**，否則它讀
+            起來就是完整答案。與上面兩則刻意分開：那兩則說的是「我們看得夠不夠
+            清楚」，這一則說的是「找到的東西有多少在這一頁上」。
+          */}
+          {data.truncated && (
+            <p className="notice" role="status">
+              符合的 Skill 超過 {data.limit} 個，這裡只列出最接近的 {data.limit} 個。
+              目前沒有翻頁；縮小任務描述或加上篩選條件會讓排序更貼近你要的。
+            </p>
+          )}
 
           {/*
             DISC-003: the two empty states are different problems with different

@@ -245,3 +245,22 @@ WHERE status = 'pending'
   AND created_at < @stale_before
 ORDER BY created_at
 LIMIT @result_limit;
+
+-- name: ListCurrentEvaluations :many
+-- The standing verdict for a page of runs, so a run history can render two axes
+-- in one request (ADR-025, 設計系統 §2.5; 04 丙-32).
+--
+-- Same predicate as GetCurrentEvaluation, batched: `superseded_at IS NULL` picks
+-- the current revision, and evaluations_current_key guarantees at most one per
+-- run. Runs with no evaluation simply do not come back, and the caller renders
+-- that as 未評估 rather than as nothing — a blank verdict column reads as a pass.
+--
+-- `status` travels with `overall` because on its own `overall` lies: a pending
+-- or failed evaluation still carries the `undetermined` it was created with, and
+-- 「無法判斷」 is a verdict the judge reached, while 「評估中」 and 「評估失敗」 are
+-- statements about the evaluation. Only this context may fold the two, which is
+-- why it hands out finished copy rather than two enums.
+SELECT run_id, status, overall
+FROM evaluations
+WHERE workspace_id = $1 AND run_id = ANY(sqlc.arg(run_ids)::uuid[])
+  AND superseded_at IS NULL;

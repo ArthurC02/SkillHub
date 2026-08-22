@@ -117,7 +117,7 @@ func (q *Queries) GetRunForTraceIngest(ctx context.Context, id pgtype.UUID) (Get
 
 const getTraceGeneralFold = `-- name: GetTraceGeneralFold :one
 WITH events AS (
-    SELECT event_type
+    SELECT event_type, occurred_at
     FROM trace_events
     WHERE trace_events.run_id = $1 AND trace_events.workspace_id = $2
 ),
@@ -201,6 +201,12 @@ SELECT jsonb_build_object(
       'message', coalesce(payload->>'message', '')
   ) ORDER BY occurred_at, source, attempt, seq), '[]'::jsonb) FROM error_rows),
   'errors_total', (SELECT count(*) FROM events WHERE event_type = 'error'),
+  -- 設計系統 §2.12: a run in flight needs a fact saying how long since anything
+  -- moved, because a spinner that never stops looks the same whether the run is
+  -- working or wedged. Null while no event has arrived yet, which the caller
+  -- renders as a named state rather than as a blank or as "0 seconds ago".
+  'last_event_at', (SELECT to_char(max(occurred_at) AT TIME ZONE 'UTC',
+                                   'YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM events),
   'final_output', coalesce((SELECT text FROM last_output), ''),
   'usage', CASE WHEN EXISTS (SELECT 1 FROM usage_rows) THEN jsonb_build_object(
       'model', coalesce((SELECT model FROM last_usage), ''),

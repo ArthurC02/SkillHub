@@ -532,6 +532,57 @@ func (q *Queries) GetEvaluationSuggestion(ctx context.Context, arg GetEvaluation
 	return i, err
 }
 
+const listCurrentEvaluations = `-- name: ListCurrentEvaluations :many
+SELECT run_id, status, overall
+FROM evaluations
+WHERE workspace_id = $1 AND run_id = ANY($2::uuid[])
+  AND superseded_at IS NULL
+`
+
+type ListCurrentEvaluationsParams struct {
+	WorkspaceID pgtype.UUID
+	RunIds      []pgtype.UUID
+}
+
+type ListCurrentEvaluationsRow struct {
+	RunID   pgtype.UUID
+	Status  string
+	Overall string
+}
+
+// The standing verdict for a page of runs, so a run history can render two axes
+// in one request (ADR-025, 設計系統 §2.5; 04 丙-32).
+//
+// Same predicate as GetCurrentEvaluation, batched: `superseded_at IS NULL` picks
+// the current revision, and evaluations_current_key guarantees at most one per
+// run. Runs with no evaluation simply do not come back, and the caller renders
+// that as 未評估 rather than as nothing — a blank verdict column reads as a pass.
+//
+// `status` travels with `overall` because on its own `overall` lies: a pending
+// or failed evaluation still carries the `undetermined` it was created with, and
+// 「無法判斷」 is a verdict the judge reached, while 「評估中」 and 「評估失敗」 are
+// statements about the evaluation. Only this context may fold the two, which is
+// why it hands out finished copy rather than two enums.
+func (q *Queries) ListCurrentEvaluations(ctx context.Context, arg ListCurrentEvaluationsParams) ([]ListCurrentEvaluationsRow, error) {
+	rows, err := q.db.Query(ctx, listCurrentEvaluations, arg.WorkspaceID, arg.RunIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCurrentEvaluationsRow
+	for rows.Next() {
+		var i ListCurrentEvaluationsRow
+		if err := rows.Scan(&i.RunID, &i.Status, &i.Overall); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEvaluationRevisions = `-- name: ListEvaluationRevisions :many
 SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2

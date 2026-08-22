@@ -108,6 +108,13 @@ const RUN_ROW = {
   skill_version_id: "22222222-2222-2222-2222-222222222222",
   provider: "self-hosted",
   cleanup_status: "cleaned",
+  // 04 丙-32: the second axis. Required and never null — 未評估 is a value, not an
+  // omission, because an empty verdict beside 「執行完成」 reads as a pass.
+  evaluation: {
+    value: "met",
+    label: "符合",
+    note: "依這個 Run 當時的驗收條件判定為符合。",
+  },
   created_at: "2026-08-17T00:00:00Z",
   finished_at: "2026-08-17T00:04:00Z",
 };
@@ -119,8 +126,54 @@ test("WS-004 a run history row words `succeeded` as execution, never as a pass",
   // ADR-025: a list is where "the workload finished" is cheapest to misread as
   // "the task was done", so the row says which one it means.
   expect(text()).toContain("執行狀態：執行完成");
-  expect(text()).toContain("不是「任務有沒有做到」");
+  // ADR-025 / 設計 §2.5: two axes, verdict first. This used to assert the
+  // apology — a footnote saying the one axis on screen was not the other one —
+  // because RunListItem had no verdict field until 04 丙-32. Now it asserts the
+  // second axis is really there and really ahead of the first.
+  expect(text()).toContain("任務判定：符合");
+  expect(text().indexOf("任務判定")).toBeLessThan(text().indexOf("執行狀態"));
   expect(text()).not.toContain("成功");
+});
+
+test("WS-004 an unevaluated run says 未評估, which is not a blank and not a pass", async () => {
+  // 04 丙-32 / §2.9. The whole reason `evaluation` is required rather than
+  // nullable: an empty verdict column beside 「執行完成」 reads as a pass, and this
+  // is the commonest row in any history — most runs are never evaluated.
+  vi.stubGlobal("fetch", () =>
+    json({
+      runs: [
+        {
+          ...RUN_ROW,
+          evaluation: {
+            value: "not_evaluated",
+            label: "未評估",
+            note: "這個 Run 還沒有任務判定。執行狀態說的是工作負載跑完了沒有,不是任務有沒有做到(ADR-025)。",
+          },
+        },
+        {
+          ...RUN_ROW,
+          run_id: "run-9",
+          evaluation: {
+            value: "evaluation_failed",
+            label: "評估失敗",
+            note: "判定沒有產生出來。這不代表任務失敗——沒有人判過,不是判過不合格。",
+          },
+        },
+      ],
+    }),
+  );
+  await render(<WorkspaceRuns />, () => text().includes("CSV 清理"));
+
+  expect(text()).toContain("任務判定：未評估");
+  // The note rides along for exactly the states whose label can be misread; the
+  // three real verdicts speak for themselves and would be fifty repetitions of
+  // one sentence on a full page (04 丙-29 裁定① rejected that shape for status).
+  expect(text()).toContain("不是任務有沒有做到");
+  // 「評估失敗」 is the one most likely to be read as a task failure, so it says
+  // it is not — and it must not be tinted as a failure either.
+  expect(text()).toContain("任務判定：評估失敗");
+  expect(text()).toContain("這不代表任務失敗");
+  expect(container.querySelectorAll(".badge-danger")).toHaveLength(0);
 });
 
 test("WS-004 a run whose sandbox was not cleaned up says so on the row", async () => {

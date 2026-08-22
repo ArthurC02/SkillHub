@@ -17,6 +17,7 @@ import {
   useTestCases,
 } from "../api/testcases";
 import { useRuns, type RunListItem } from "../api/runs";
+import { RunVerdict } from "../components/RunVerdict";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { RUN_STATUS_LABEL } from "./RunEvaluation";
 // One byte formatter for the app, not a third copy of the same four lines.
@@ -297,13 +298,13 @@ function RunHistory({
     <>
       <h2>執行歷史</h2>
       {/*
-        設計 §2.5 / ADR-025 說兩軸,判定排在前面。這份清單只有一軸 —— GET /runs
-        的 RunListItem 契約裡沒有任何判定欄位(見 api/runs.ts),所以第二列在這裡
-        不是排版問題,是契約缺口。能修的是順序:這句話原本掛在清單「下面」,讀者
-        先讀完一整排「執行完成」才被告知那不是「做到了」。先講,再列。
+        設計 §2.5 / ADR-025 說兩軸,判定排在前面。這份清單一直只有一軸,因為
+        `RunListItem` 沒有判定欄位——那是契約缺口不是排版問題,已於 04 丙-32
+        補上。這句話留著:順序本身教不會任何人兩軸的差別。
       */}
       <p className="note">
-        這裡寫的是「執行狀態」，不是「任務有沒有做到」——後者是評估的判定，在各自的 Run 頁面上。
+        每一列兩軸：<strong>任務判定在前，執行狀態在後</strong>
+        ——後者只說工作負載跑完了沒有。逐條驗收結果在各自的 Run 頁面上。
       </p>
       {runs.isPending && <p>載入執行歷史中…</p>}
       {runs.error && <p role="alert">無法讀取執行歷史：{runs.error.message}</p>}
@@ -317,7 +318,12 @@ function RunHistory({
                 <p>
                   <Link to="/runs/$runId" params={{ runId: run.run_id }}>
                     {run.created_at}
-                  </Link>{" "}
+                  </Link>
+                </p>
+                <p className="badge-row">
+                  <RunVerdict verdict={run.evaluation} />
+                </p>
+                <p className="badge-row">
                   <span className="badge">
                     執行狀態：{RUN_STATUS_LABEL[run.status] ?? run.status}
                   </span>

@@ -8271,6 +8271,16 @@ type PublicSearchResponse struct {
 	// Why the vector leg was skipped. Absent when degraded is false. Every result on a degraded answer
 	// carries a null `rank`: the page is ordered by lexical score, which is not a similarity.
 	DegradedReason OptString `json:"degraded_reason"`
+	// How many results this page will carry at most — the `limit` parameter if it was accepted,
+	// otherwise the default. Zero when nothing was retrieved at all, because naming a cap that never
+	// applied would be a number with no enforcement behind it (設計系統 §2.2).
+	Limit int `json:"limit"`
+	// True when the catalogue held more matches than this page shows. The cap has always been here and
+	// result 21 simply did not exist as far as a caller could tell; ADR-042 決策 3 makes that the defect
+	// it is — a truncated list must state that it was truncated, and "no limit at all" stopped being an
+	// available answer. Distinct from `degraded` and `partial_index`, which are statements about how well
+	// the search could look rather than about how much of what it found is here.
+	Truncated bool `json:"truncated"`
 	// True when at least one result on this page has no embedding yet (enrichment_status 'pending'): it
 	// reached the page through the lexical leg, the distance cut-off could not judge it, and it sits at
 	// the bottom of the list with a null `rank`.
@@ -8322,6 +8332,16 @@ func (s *PublicSearchResponse) GetDegradedReason() OptString {
 	return s.DegradedReason
 }
 
+// GetLimit returns the value of Limit.
+func (s *PublicSearchResponse) GetLimit() int {
+	return s.Limit
+}
+
+// GetTruncated returns the value of Truncated.
+func (s *PublicSearchResponse) GetTruncated() bool {
+	return s.Truncated
+}
+
 // GetPartialIndex returns the value of PartialIndex.
 func (s *PublicSearchResponse) GetPartialIndex() bool {
 	return s.PartialIndex
@@ -8360,6 +8380,16 @@ func (s *PublicSearchResponse) SetDegraded(val bool) {
 // SetDegradedReason sets the value of DegradedReason.
 func (s *PublicSearchResponse) SetDegradedReason(val OptString) {
 	s.DegradedReason = val
+}
+
+// SetLimit sets the value of Limit.
+func (s *PublicSearchResponse) SetLimit(val int) {
+	s.Limit = val
+}
+
+// SetTruncated sets the value of Truncated.
+func (s *PublicSearchResponse) SetTruncated(val bool) {
+	s.Truncated = val
 }
 
 // SetPartialIndex sets the value of PartialIndex.
@@ -10106,8 +10136,19 @@ func (s *RunCostEstimate) SetBasis(val string) {
 // not present it as a pass.
 // Ref: #/components/schemas/RunListItem
 type RunListItem struct {
-	RunID  uuid.UUID         `json:"run_id"`
-	Status RunListItemStatus `json:"status"`
+	RunID uuid.UUID `json:"run_id"`
+	// The second axis (ADR-025, 04 丙-32). Required and never null: a run with no evaluation carries
+	// `not_evaluated` / 未評估, because an absent verdict beside a column of 「執行完成」 reads
+	// as a pass — which is the precise misreading ADR-025 separates the two axes to prevent. A list
+	// rendering these must put the verdict ahead of `status`.
+	//
+	// `value` folds the evaluation's own status into the verdict, and only the evaluation context may do
+	// that: an evaluation is created carrying `undetermined` and keeps it until the judge finishes, so
+	// `overall` read alone reports 「無法判斷」 for a pending or failed one. Values are
+	// `not_evaluated`, `evaluating`, `evaluation_failed`, and the four verdicts `met` / `partially_met` /
+	// `not_met` / `undetermined`. `evaluation_failed` says nobody judged, not that the task failed.
+	Evaluation Labelled          `json:"evaluation"`
+	Status     RunListItemStatus `json:"status"`
 	// Why the run entered this status. Masked and safe to display.
 	StatusReason OptString `json:"status_reason"`
 	SkillID      uuid.UUID `json:"skill_id"`
@@ -10129,6 +10170,11 @@ type RunListItem struct {
 // GetRunID returns the value of RunID.
 func (s *RunListItem) GetRunID() uuid.UUID {
 	return s.RunID
+}
+
+// GetEvaluation returns the value of Evaluation.
+func (s *RunListItem) GetEvaluation() Labelled {
+	return s.Evaluation
 }
 
 // GetStatus returns the value of Status.
@@ -10194,6 +10240,11 @@ func (s *RunListItem) GetFinishedAt() OptDateTime {
 // SetRunID sets the value of RunID.
 func (s *RunListItem) SetRunID(val uuid.UUID) {
 	s.RunID = val
+}
+
+// SetEvaluation sets the value of Evaluation.
+func (s *RunListItem) SetEvaluation(val Labelled) {
+	s.Evaluation = val
 }
 
 // SetStatus sets the value of Status.
@@ -14904,9 +14955,17 @@ type TraceSummary struct {
 	// Exact number of error events; errors contains at most the first 100.
 	ErrorsTotal int `json:"errors_total"`
 	// True when a repeated summary list was bounded; exact totals remain available.
-	SummaryTruncated bool                 `json:"summary_truncated"`
-	FinalOutput      OptString            `json:"final_output"`
-	Usage            OptTraceSummaryUsage `json:"usage"`
+	SummaryTruncated bool `json:"summary_truncated"`
+	// When this run last produced anything. Absent while nothing has arrived yet — a real state for a
+	// run still being provisioned, not a missing field, and a consumer must word it rather than render a
+	// blank or a zero elapsed time (設計系統 §2.12).
+	//
+	// A watching screen needs this and cannot derive it from the counters: a wedged run's counters simply
+	// stop, and stopping looks exactly like finishing. Client-side timing cannot stand in either, because
+	// it restarts at zero on every page load and would report a stalled run as having just moved.
+	LastEventAt OptDateTime          `json:"last_event_at"`
+	FinalOutput OptString            `json:"final_output"`
+	Usage       OptTraceSummaryUsage `json:"usage"`
 	// Progress, taken from run_status_transitions - the authoritative history - and never reconstructed by
 	// replaying run_lifecycle events (iron rule 5).
 	Steps []string `json:"steps"`
@@ -14965,6 +15024,11 @@ func (s *TraceSummary) GetErrorsTotal() int {
 // GetSummaryTruncated returns the value of SummaryTruncated.
 func (s *TraceSummary) GetSummaryTruncated() bool {
 	return s.SummaryTruncated
+}
+
+// GetLastEventAt returns the value of LastEventAt.
+func (s *TraceSummary) GetLastEventAt() OptDateTime {
+	return s.LastEventAt
 }
 
 // GetFinalOutput returns the value of FinalOutput.
@@ -15035,6 +15099,11 @@ func (s *TraceSummary) SetErrorsTotal(val int) {
 // SetSummaryTruncated sets the value of SummaryTruncated.
 func (s *TraceSummary) SetSummaryTruncated(val bool) {
 	s.SummaryTruncated = val
+}
+
+// SetLastEventAt sets the value of LastEventAt.
+func (s *TraceSummary) SetLastEventAt(val OptDateTime) {
+	s.LastEventAt = val
 }
 
 // SetFinalOutput sets the value of FinalOutput.

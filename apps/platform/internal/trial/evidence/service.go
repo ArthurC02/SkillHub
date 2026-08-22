@@ -22,8 +22,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -340,6 +340,13 @@ type Summary struct {
 	FinalOutput  string          `json:"final_output,omitempty"`
 	Usage        *UsageSummary   `json:"usage,omitempty"`
 	Steps        []string        `json:"steps"`
+	// LastEventAt is when this run last produced anything (設計系統 §2.12). Empty
+	// means no event has arrived yet — a real state for a run still being
+	// provisioned, and the caller words it rather than rendering a blank or, far
+	// worse, "0 seconds ago". A watching screen needs it because a changing
+	// counter alone cannot distinguish working from wedged: the counter simply
+	// stops, and stopping looks identical to finishing.
+	LastEventAt string `json:"last_event_at,omitempty"`
 }
 
 type SkillUse struct {

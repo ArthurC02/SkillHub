@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { Labelled } from './Labelled';
+import {
+    LabelledFromJSON,
+    LabelledFromJSONTyped,
+    LabelledToJSON,
+    LabelledToJSONTyped,
+} from './Labelled';
+
 /**
  * One row of the run history (WS-004). A narrower shape than `Run` on
  * purpose: a list needs what happened, to which skill, and when, and the
@@ -33,6 +41,25 @@ export interface RunListItem {
      * @memberof RunListItem
      */
     runId: string;
+    /**
+     * The second axis (ADR-025, 04 丙-32). Required and never null: a run
+     * with no evaluation carries `not_evaluated` / 未評估, because an absent
+     * verdict beside a column of 「執行完成」 reads as a pass — which is the
+     * precise misreading ADR-025 separates the two axes to prevent. A list
+     * rendering these must put the verdict **ahead of** `status`.
+     * 
+     * `value` folds the evaluation's own status into the verdict, and only
+     * the evaluation context may do that: an evaluation is created carrying
+     * `undetermined` and keeps it until the judge finishes, so `overall`
+     * read alone reports 「無法判斷」 for a pending or failed one. Values are
+     * `not_evaluated`, `evaluating`, `evaluation_failed`, and the four
+     * verdicts `met` / `partially_met` / `not_met` / `undetermined`.
+     * `evaluation_failed` says nobody judged, **not** that the task failed.
+     * 
+     * @type {Labelled}
+     * @memberof RunListItem
+     */
+    evaluation: Labelled;
     /**
      * 
      * @type {string}
@@ -147,6 +174,7 @@ export type RunListItemCleanupStatusEnum = typeof RunListItemCleanupStatusEnum[k
  */
 export function instanceOfRunListItem(value: object): value is RunListItem {
     if (!('runId' in value) || value['runId'] === undefined) return false;
+    if (!('evaluation' in value) || value['evaluation'] === undefined) return false;
     if (!('status' in value) || value['status'] === undefined) return false;
     if (!('skillId' in value) || value['skillId'] === undefined) return false;
     if (!('skillName' in value) || value['skillName'] === undefined) return false;
@@ -168,6 +196,7 @@ export function RunListItemFromJSONTyped(json: any, ignoreDiscriminator: boolean
     return {
         
         'runId': json['run_id'],
+        'evaluation': LabelledFromJSON(json['evaluation']),
         'status': json['status'],
         'statusReason': json['status_reason'] == null ? undefined : json['status_reason'],
         'skillId': json['skill_id'],
@@ -195,6 +224,7 @@ export function RunListItemToJSONTyped(value?: RunListItem | null, ignoreDiscrim
     return {
         
         'run_id': value['runId'],
+        'evaluation': LabelledToJSON(value['evaluation']),
         'status': value['status'],
         'status_reason': value['statusReason'],
         'skill_id': value['skillId'],

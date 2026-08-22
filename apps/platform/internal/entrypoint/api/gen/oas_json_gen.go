@@ -10973,6 +10973,14 @@ func (s *GetRunTraceOK) Decode(d *jx.Decoder) error {
 				}
 				found = true
 				s.Type = match
+			case "last_event_at":
+				match := TraceSummaryGetRunTraceOK
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
 			case "next_after":
 				// Type-based discrimination: check if field has expected JSON type
 				if typ := d.Next(); typ != jx.Number {
@@ -17833,6 +17841,14 @@ func (s *PublicSearchResponse) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		e.FieldStart("limit")
+		e.Int(s.Limit)
+	}
+	{
+		e.FieldStart("truncated")
+		e.Bool(s.Truncated)
+	}
+	{
 		e.FieldStart("partial_index")
 		e.Bool(s.PartialIndex)
 	}
@@ -17852,15 +17868,17 @@ func (s *PublicSearchResponse) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfPublicSearchResponse = [8]string{
+var jsonFieldsNameOfPublicSearchResponse = [10]string{
 	0: "query",
 	1: "results",
 	2: "degraded",
 	3: "degraded_reason",
-	4: "partial_index",
-	5: "no_results",
-	6: "filtered_out",
-	7: "query_suggestion",
+	4: "limit",
+	5: "truncated",
+	6: "partial_index",
+	7: "no_results",
+	8: "filtered_out",
+	9: "query_suggestion",
 }
 
 // Decode decodes PublicSearchResponse from json.
@@ -17868,7 +17886,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode PublicSearchResponse to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -17924,8 +17942,32 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"degraded_reason\"")
 			}
-		case "partial_index":
+		case "limit":
 			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				v, err := d.Int()
+				s.Limit = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"limit\"")
+			}
+		case "truncated":
+			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				v, err := d.Bool()
+				s.Truncated = bool(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"truncated\"")
+			}
+		case "partial_index":
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				v, err := d.Bool()
 				s.PartialIndex = bool(v)
@@ -17937,7 +17979,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"partial_index\"")
 			}
 		case "no_results":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Bool()
 				s.NoResults = bool(v)
@@ -17949,7 +17991,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"no_results\"")
 			}
 		case "filtered_out":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Bool()
 				s.FilteredOut = bool(v)
@@ -17979,8 +18021,9 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
-		0b01110111,
+	for i, mask := range [2]uint8{
+		0b11110111,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -21039,6 +21082,10 @@ func (s *RunListItem) encodeFields(e *jx.Encoder) {
 		json.EncodeUUID(e, s.RunID)
 	}
 	{
+		e.FieldStart("evaluation")
+		s.Evaluation.Encode(e)
+	}
+	{
 		e.FieldStart("status")
 		s.Status.Encode(e)
 	}
@@ -21098,20 +21145,21 @@ func (s *RunListItem) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfRunListItem = [13]string{
+var jsonFieldsNameOfRunListItem = [14]string{
 	0:  "run_id",
-	1:  "status",
-	2:  "status_reason",
-	3:  "skill_id",
-	4:  "skill_name",
-	5:  "skill_version_id",
-	6:  "test_case_id",
-	7:  "provider",
-	8:  "failure_class",
-	9:  "cleanup_status",
-	10: "created_at",
-	11: "started_at",
-	12: "finished_at",
+	1:  "evaluation",
+	2:  "status",
+	3:  "status_reason",
+	4:  "skill_id",
+	5:  "skill_name",
+	6:  "skill_version_id",
+	7:  "test_case_id",
+	8:  "provider",
+	9:  "failure_class",
+	10: "cleanup_status",
+	11: "created_at",
+	12: "started_at",
+	13: "finished_at",
 }
 
 // Decode decodes RunListItem from json.
@@ -21135,8 +21183,18 @@ func (s *RunListItem) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"run_id\"")
 			}
-		case "status":
+		case "evaluation":
 			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.Evaluation.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"evaluation\"")
+			}
+		case "status":
+			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
 				if err := s.Status.Decode(d); err != nil {
 					return err
@@ -21156,7 +21214,7 @@ func (s *RunListItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"status_reason\"")
 			}
 		case "skill_id":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				v, err := json.DecodeUUID(d)
 				s.SkillID = v
@@ -21168,7 +21226,7 @@ func (s *RunListItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"skill_id\"")
 			}
 		case "skill_name":
-			requiredBitSet[0] |= 1 << 4
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				v, err := d.Str()
 				s.SkillName = string(v)
@@ -21180,7 +21238,7 @@ func (s *RunListItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"skill_name\"")
 			}
 		case "skill_version_id":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				v, err := json.DecodeUUID(d)
 				s.SkillVersionID = v
@@ -21202,7 +21260,7 @@ func (s *RunListItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"test_case_id\"")
 			}
 		case "provider":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Str()
 				s.Provider = string(v)
@@ -21224,7 +21282,7 @@ func (s *RunListItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"failure_class\"")
 			}
 		case "cleanup_status":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				if err := s.CleanupStatus.Decode(d); err != nil {
 					return err
@@ -21234,7 +21292,7 @@ func (s *RunListItem) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"cleanup_status\"")
 			}
 		case "created_at":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -21275,8 +21333,8 @@ func (s *RunListItem) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b10111011,
-		0b00000110,
+		0b01110111,
+		0b00001101,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -31275,6 +31333,12 @@ func (s *TraceSummary) encodeFields(e *jx.Encoder) {
 		e.Bool(s.SummaryTruncated)
 	}
 	{
+		if s.LastEventAt.Set {
+			e.FieldStart("last_event_at")
+			s.LastEventAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+	{
 		if s.FinalOutput.Set {
 			e.FieldStart("final_output")
 			s.FinalOutput.Encode(e)
@@ -31296,7 +31360,7 @@ func (s *TraceSummary) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTraceSummary = [14]string{
+var jsonFieldsNameOfTraceSummary = [15]string{
 	0:  "run_id",
 	1:  "status",
 	2:  "status_reason",
@@ -31308,9 +31372,10 @@ var jsonFieldsNameOfTraceSummary = [14]string{
 	8:  "errors",
 	9:  "errors_total",
 	10: "summary_truncated",
-	11: "final_output",
-	12: "usage",
-	13: "steps",
+	11: "last_event_at",
+	12: "final_output",
+	13: "usage",
+	14: "steps",
 }
 
 // Decode decodes TraceSummary from json.
@@ -31460,6 +31525,16 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"summary_truncated\"")
 			}
+		case "last_event_at":
+			if err := func() error {
+				s.LastEventAt.Reset()
+				if err := s.LastEventAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"last_event_at\"")
+			}
 		case "final_output":
 			if err := func() error {
 				s.FinalOutput.Reset()
@@ -31481,7 +31556,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"usage\"")
 			}
 		case "steps":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				s.Steps = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -31511,7 +31586,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b11111011,
-		0b00100111,
+		0b01000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

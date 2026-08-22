@@ -68,6 +68,13 @@ const RUN = {
   test_case_id: TEST_CASE,
   provider: "self-hosted",
   cleanup_status: "cleaned",
+  // 04 丙-32: the second axis. Required and never null — 未評估 is a value, not an
+  // omission, because an empty verdict beside 「執行完成」 reads as a pass.
+  evaluation: {
+    value: "met",
+    label: "符合",
+    note: "依這個 Run 當時的驗收條件判定為符合。",
+  },
   created_at: "2026-08-18T00:00:00Z",
   finished_at: "2026-08-18T00:04:00Z",
 };
@@ -328,7 +335,11 @@ test("執行歷史 lists this test case's runs and links to each one", async () 
   expect(container.textContent).toContain(VERSION);
   // ADR-025: worded as execution, never as a pass.
   expect(container.textContent).toContain("執行完成");
-  expect(container.textContent).toContain("不是「任務有沒有做到」");
+  // Two axes with the verdict first (ADR-025, 04 丙-32). The old assertion was
+  // for the footnote that stood in for the missing axis.
+  expect(container.textContent).toContain("任務判定：符合");
+  const t = container.textContent ?? "";
+  expect(t.indexOf("任務判定")).toBeLessThan(t.indexOf("執行狀態"));
 });
 
 test("執行歷史 with no runs says 尚無執行 rather than rendering a zero", async () => {

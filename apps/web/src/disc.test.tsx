@@ -122,6 +122,8 @@ const EMPTY: PublicSearchResponse = {
   partial_index: false,
   no_results: false,
   filtered_out: false,
+  limit: 20,
+  truncated: false,
 };
 
 test("DISC-001: search hits the public endpoint, which needs no session", async () => {
@@ -184,8 +186,39 @@ test("DISC-002: each candidate shows its match reason, labelled by provenance", 
   expect(container.querySelectorAll(".badge-source-template")).toHaveLength(1);
 });
 
+test("DISC-002: a truncated result page says so, and says how many it is showing", async () => {
+  // ADR-042 決策 3. The cap (20 by default) has always been here; result 21 did
+  // not exist as far as the page could tell, and a list that is quietly short
+  // reads as the whole answer. Deliberately worded apart from the two notices
+  // below: those say how well the search could look, this says how much of what
+  // it found is on the page.
+  stubSearch({
+    ...EMPTY,
+    query: "pdf",
+    limit: 20,
+    truncated: true,
+    results: [
+      {
+        ...HIT_FACETS,
+        skill_id: "77777777-7777-7777-7777-777777777777",
+        name: "PDF 一號",
+        summary: "摘要",
+        rank: 0.9,
+      },
+    ],
+  });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  expect(container.textContent).toContain("只列出最接近的 20 個");
+  // Not the degraded copy: recall being lower and the page being cut are
+  // different facts with different fixes.
+  expect(container.textContent).not.toContain("召回率明顯較低");
+});
+
 test("DISC-005: degraded and partial_index are separate, non-blocking notices", async () => {
   stubSearch({
+    ...EMPTY,
     query: "pdf",
     results: [
       {

@@ -161,6 +161,14 @@ export interface PublicSearchResponse {
   degraded_reason?: string;
   /** At least one result has no embedding yet, so the cut-off never judged it. */
   partial_index: boolean;
+  /** How many results this page carries at most; 0 when nothing was retrieved. */
+  limit: number;
+  /**
+   * The catalogue held more matches than this page shows. Separate from
+   * `degraded` and `partial_index`: those say how well the search could look,
+   * this says how much of what it found is here (ADR-042 決策 3).
+   */
+  truncated: boolean;
   no_results: boolean;
   /**
    * The query matched skills and the active filters removed all of them.

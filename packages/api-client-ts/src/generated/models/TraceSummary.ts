@@ -120,6 +120,22 @@ export interface TraceSummary {
      */
     summaryTruncated: boolean;
     /**
+     * When this run last produced anything. Absent while nothing has
+     * arrived yet — a real state for a run still being provisioned, not a
+     * missing field, and a consumer must word it rather than render a blank
+     * or a zero elapsed time (設計系統 §2.12).
+     * 
+     * A watching screen needs this and cannot derive it from the counters:
+     * a wedged run's counters simply stop, and stopping looks exactly like
+     * finishing. Client-side timing cannot stand in either, because it
+     * restarts at zero on every page load and would report a stalled run as
+     * having just moved.
+     * 
+     * @type {Date}
+     * @memberof TraceSummary
+     */
+    lastEventAt?: Date;
+    /**
      * 
      * @type {string}
      * @memberof TraceSummary
@@ -199,6 +215,7 @@ export function TraceSummaryFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'errors': ((json['errors'] as Array<any>).map(TraceSummaryErrorsInnerFromJSON)),
         'errorsTotal': json['errors_total'],
         'summaryTruncated': json['summary_truncated'],
+        'lastEventAt': json['last_event_at'] == null ? undefined : (new Date(json['last_event_at'])),
         'finalOutput': json['final_output'] == null ? undefined : json['final_output'],
         'usage': json['usage'] == null ? undefined : TraceSummaryUsageFromJSON(json['usage']),
         'steps': json['steps'],
@@ -227,6 +244,7 @@ export function TraceSummaryToJSONTyped(value?: TraceSummary | null, ignoreDiscr
         'errors': ((value['errors'] as Array<any>).map(TraceSummaryErrorsInnerToJSON)),
         'errors_total': value['errorsTotal'],
         'summary_truncated': value['summaryTruncated'],
+        'last_event_at': value['lastEventAt'] == null ? value['lastEventAt'] : value['lastEventAt'].toISOString(),
         'final_output': value['finalOutput'],
         'usage': TraceSummaryUsageToJSON(value['usage']),
         'steps': value['steps'],

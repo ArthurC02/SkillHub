@@ -240,3 +240,44 @@ test("the advanced mode pages through the complete trace without retaining every
   await act(async () => refresh?.click());
   await waitFor(() => requested.filter((url) => url.includes("after=1")).length > beforeRefresh);
 });
+
+// 設計 §2.12 / ADR-042 決策 2. The third axis: what is happening, as opposed to
+// what happened. A run in flight had no rendering of its own — the page showed
+// a trace that simply had less in it, which reads the same as a run that did
+// very little and finished.
+test("§2.12: a run in flight says which step, that it ends by itself, and that you may leave", async () => {
+  stubTrace({ ...summary, status: "running", last_event_at: "2026-08-22T10:04:00Z" }, advanced);
+  await render();
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("進行中：執行中");
+  expect(text).toContain("會自己跑到結束");
+  // Not a guess: run_execute is a River job consumed by cmd/worker and trace
+  // events are posted by the sandbox, so the browser is in neither path.
+  expect(text).toContain("可以關掉這一頁");
+  // The two facts a spinner cannot carry: something that moves, and how long
+  // since it moved.
+  expect(text).toContain("目前已記錄");
+  expect(text).toContain("2026-08-22T10:04:00Z");
+});
+
+test("§2.12: no events yet is a named state, never 0 秒前 and never a blank", async () => {
+  // A run still being provisioned genuinely has produced nothing. §2.9 rates the
+  // blank worst and a zero elapsed time worse still — it says "just moved" about
+  // something that has not started.
+  stubTrace({ ...summary, status: "provisioning", last_event_at: undefined }, advanced);
+  await render();
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("還沒有任何事件送達");
+  expect(text).not.toContain("0 秒前");
+});
+
+test("§2.12: the banner is gone once the run is terminal", async () => {
+  // A finished run already answers with a verdict and an execution state; a
+  // third answer about waiting would be one fact worded twice (§3 第 14 條).
+  stubTrace(summary, advanced);
+  await render();
+
+  expect(container.textContent ?? "").not.toContain("會自己跑到結束");
+});

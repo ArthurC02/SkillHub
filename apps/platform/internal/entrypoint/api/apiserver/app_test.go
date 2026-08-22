@@ -118,6 +118,12 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	if app.RunSvc.ActiveArtifactReferences == nil {
 		t.Error("the run service is missing packaging's artifact reference counter")
 	}
+	// Unset, GET /runs answers 500 rather than a history with one axis: a column
+	// of 「執行完成」 with no verdict beside it is the reading ADR-025 exists to
+	// prevent (04 丙-32).
+	if app.RunSvc.RunVerdicts == nil {
+		t.Error("the run service is missing eval's standing verdict read")
+	}
 	if app.RunSvc.WorkspaceCreatedAt == nil {
 		t.Error("the run service is missing identity's workspace creation reader")
 	}

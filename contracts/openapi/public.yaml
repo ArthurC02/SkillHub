@@ -3543,6 +3543,20 @@ components:
         summary_truncated:
           type: boolean
           description: True when a repeated summary list was bounded; exact totals remain available.
+        last_event_at:
+          type: string
+          format: date-time
+          description: |
+            When this run last produced anything. Absent while nothing has
+            arrived yet — a real state for a run still being provisioned, not a
+            missing field, and a consumer must word it rather than render a blank
+            or a zero elapsed time (設計系統 §2.12).
+
+            A watching screen needs this and cannot derive it from the counters:
+            a wedged run's counters simply stop, and stopping looks exactly like
+            finishing. Client-side timing cannot stand in either, because it
+            restarts at zero on every page load and would report a stalled run as
+            having just moved.
         final_output: { type: string }
         usage:
           type: object
@@ -3787,7 +3801,8 @@ components:
     PublicSearchResponse:
       type: object
       required:
-        [query, results, degraded, no_results, partial_index, filtered_out]
+        [query, results, degraded, no_results, partial_index, filtered_out,
+         limit, truncated]
       properties:
         query:
           type: string
@@ -3809,6 +3824,23 @@ components:
             Why the vector leg was skipped. Absent when degraded is false. Every
             result on a degraded answer carries a null `rank`: the page is
             ordered by lexical score, which is not a similarity.
+        limit:
+          type: integer
+          description: |
+            How many results this page will carry at most — the `limit` parameter
+            if it was accepted, otherwise the default. Zero when nothing was
+            retrieved at all, because naming a cap that never applied would be a
+            number with no enforcement behind it (設計系統 §2.2).
+        truncated:
+          type: boolean
+          description: |
+            True when the catalogue held more matches than this page shows. The
+            cap has always been here and result 21 simply did not exist as far as
+            a caller could tell; ADR-042 決策 3 makes that the defect it is —
+            **a truncated list must state that it was truncated**, and "no limit
+            at all" stopped being an available answer. Distinct from `degraded`
+            and `partial_index`, which are statements about how well the search
+            could look rather than about how much of what it found is here.
         partial_index:
           type: boolean
           description: |
@@ -4941,10 +4973,27 @@ components:
         pass.
       type: object
       required:
-        [run_id, status, skill_id, skill_name, skill_version_id, provider,
-         cleanup_status, created_at]
+        [run_id, status, evaluation, skill_id, skill_name, skill_version_id,
+         provider, cleanup_status, created_at]
       properties:
         run_id: { type: string, format: uuid }
+        evaluation:
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+          description: |
+            The second axis (ADR-025, 04 丙-32). Required and never null: a run
+            with no evaluation carries `not_evaluated` / 未評估, because an absent
+            verdict beside a column of 「執行完成」 reads as a pass — which is the
+            precise misreading ADR-025 separates the two axes to prevent. A list
+            rendering these must put the verdict **ahead of** `status`.
+
+            `value` folds the evaluation's own status into the verdict, and only
+            the evaluation context may do that: an evaluation is created carrying
+            `undetermined` and keeps it until the judge finishes, so `overall`
+            read alone reports 「無法判斷」 for a pending or failed one. Values are
+            `not_evaluated`, `evaluating`, `evaluation_failed`, and the four
+            verdicts `met` / `partially_met` / `not_met` / `undetermined`.
+            `evaluation_failed` says nobody judged, **not** that the task failed.
         status:
           type: string
           enum:

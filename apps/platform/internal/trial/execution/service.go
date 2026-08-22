@@ -16,14 +16,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 var (
@@ -63,6 +63,16 @@ type Service struct {
 	// ReadSkill and ReadVersion are Registry owner reads adapted by each root.
 	ReadSkill   func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
 	ReadVersion func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
+	// RunVerdicts is eval's owner read of the standing verdict for a page of
+	// runs, injected by the composition root (ADR-034, 04 丙-32). A JOIN to
+	// `evaluations` from a query in this context would pass CI — the ownership
+	// checker sees which context calls which query, not which tables a query
+	// touches — and that blind spot is exactly what ADR-033 was written to close.
+	//
+	// The block crosses as bytes because nothing here reads a field of it: the
+	// wording folds the evaluation's status together with its verdict, and only
+	// eval can tell 「評估中」 from 「無法判斷」.
+	RunVerdicts func(context.Context, pgtype.UUID, []pgtype.UUID) (map[string]json.RawMessage, error)
 	// WorkspaceCreatedAt is identity's pool-backed owner read for quota display.
 	WorkspaceCreatedAt func(context.Context, pgtype.UUID) (time.Time, error)
 	// ActiveArtifactReferences is packaging's owner read, injected by each

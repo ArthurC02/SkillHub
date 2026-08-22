@@ -9,11 +9,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 )
 
 // Handler exposes the run endpoints (contracts/openapi/public.yaml). Every route
@@ -247,6 +247,10 @@ type runListItem struct {
 	CreatedAt      string `json:"created_at"`
 	StartedAt      string `json:"started_at,omitempty"`
 	FinishedAt     string `json:"finished_at,omitempty"`
+	// The second axis (ADR-025, 設計系統 §2.5, 04 丙-32). Never omitempty: a run
+	// with no evaluation carries 未評估, and an absent field is the one rendering
+	// §2.9 forbids — an empty column beside 「執行完成」 reads as a pass.
+	Evaluation json.RawMessage `json:"evaluation"`
 }
 
 // List handles GET /runs (WS-004): the workspace's Run history, optionally the
@@ -277,10 +281,29 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "run list failed")
 		return
 	}
+	// Not wired is a 500, not a list with one axis. §2.5 wants the verdict on the
+	// row and ahead of the execution status; a page that silently lost it is a
+	// column of 「執行完成」 with nothing to qualify it, which is the exact reading
+	// ADR-025 exists to prevent. app_test.go asserts the wiring.
+	if h.Svc.RunVerdicts == nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "run list failed")
+		return
+	}
+	runIDs := make([]pgtype.UUID, 0, len(rows))
+	for _, row := range rows {
+		runIDs = append(runIDs, row.ID)
+	}
+	verdicts, err := h.Svc.RunVerdicts(r.Context(), ws.ID, runIDs)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "run list failed")
+		return
+	}
+
 	out := make([]runListItem, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, runListItem{
-			RunID: pgconv.UUIDString(row.ID), Status: string(row.Status),
+			Evaluation: verdicts[pgconv.UUIDString(row.ID)],
+			RunID:      pgconv.UUIDString(row.ID), Status: string(row.Status),
 			StatusReason:   deref(row.StatusReason),
 			SkillID:        pgconv.UUIDString(row.SkillID),
 			SkillName:      row.SkillName,

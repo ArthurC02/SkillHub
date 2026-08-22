@@ -1,3 +1,4 @@
+import type { Labelled } from "./types";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 
@@ -48,6 +49,14 @@ export function cancelRun(runId: string) {
 export type RunListItem = {
   run_id: string;
   status: string;
+  /**
+   * The second axis (04 丙-32). Required and never null — a run with no
+   * evaluation carries `not_evaluated` / 未評估, because an empty verdict beside
+   * a column of 「執行完成」 reads as a pass, which is the misreading ADR-025
+   * separates the two axes to prevent. `value` folds the evaluation's own status
+   * in, so 「評估中」 and 「評估失敗」 are distinguishable from 「無法判斷」.
+   */
+  evaluation: Labelled;
   status_reason?: string;
   skill_id: string;
   /** Joined server-side: a history page is the one place N runs render at once. */

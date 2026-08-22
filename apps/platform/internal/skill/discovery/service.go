@@ -17,12 +17,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 // Service owns the non-HTTP dependencies of discovery.
@@ -67,6 +67,13 @@ type searchOutcome struct {
 	Hits           []searchResult
 	DegradedReason string
 	FilteredOut    bool
+	// Truncated says the catalogue had more matches than this page shows. The cap
+	// was always here — 20 by default — and hit 21 simply did not exist as far as
+	// the caller could tell. ADR-042 決策 3 makes that the defect it is: a
+	// truncated list has to state that it was truncated, and 「完全不設限」 stopped
+	// being an available answer. Retrieval asks for one more row than it will
+	// return, which is the same trick GET /skills uses and costs one row.
+	Truncated bool
 }
 
 // Search runs the DISC-001/002/003 retrieval pipeline for an already-validated
@@ -108,7 +115,7 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 	} else if vec, err := s.embedQuery(ctx, query); err != nil {
 		slog.Warn("query embedding failed, falling back to FTS", "error", err)
 		out.DegradedReason = "embedding unavailable; lexical search only"
-	} else if hybridHits, err := s.hybridSearch(ctx, queries, query, vec, limit, filters); err != nil {
+	} else if hybridHits, err := s.hybridSearch(ctx, queries, query, vec, limit+1, filters); err != nil {
 		slog.Warn("hybrid search failed, falling back to FTS", "error", err)
 		out.DegradedReason = "hybrid search unavailable; lexical search only"
 	} else {
@@ -118,7 +125,7 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 
 	if out.DegradedReason != "" {
 		searchMode = "fts"
-		hits, err := s.ftsOnlySearch(ctx, queries, query, limit, filters)
+		hits, err := s.ftsOnlySearch(ctx, queries, query, limit+1, filters)
 		if err != nil {
 			slog.Error("lexical search failed", "error", err)
 			return searchOutcome{}, err
@@ -128,6 +135,15 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 
 	if out.Hits == nil {
 		out.Hits = []searchResult{}
+	}
+
+	// Trimmed here rather than in the handler, and before the match-reason call:
+	// the probe row exists only to answer "was there more", and paying a model
+	// call to explain a hit nobody will see is the kind of cost that gets noticed
+	// once and never explained.
+	if len(out.Hits) > int(limit) {
+		out.Hits = out.Hits[:limit]
+		out.Truncated = true
 	}
 
 	// An empty filtered page has two very different causes, and the same

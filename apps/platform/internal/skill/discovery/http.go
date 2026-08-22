@@ -11,10 +11,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
 // Handler is the HTTP surface of discovery: request parsing, workspace scope
@@ -360,6 +360,14 @@ type searchResponse struct {
 	// query-side embedding call. One boolean covering both would tell the caller
 	// neither (import-report.md §6.1 bug 2).
 	PartialIndex bool `json:"partial_index"`
+	// Limit and Truncated are the cap saying so (ADR-042 決策 3). The cap has
+	// always been here; what was missing is that hit 21 did not exist as far as
+	// the caller could tell, and a page that is quietly short reads as the whole
+	// answer. Distinct from PartialIndex and Degraded on purpose: those are
+	// statements about how well we could look, this one is about how much of what
+	// we found is on the page.
+	Limit     int32 `json:"limit"`
+	Truncated bool  `json:"truncated"`
 	// NoResults distinguishes "we searched and nothing was close enough" from
 	// an empty list the caller has to interpret (DISC-001 清楚的無結果狀態).
 	// Also true for a query that was never searched at all — blank or
@@ -407,6 +415,10 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 			Results:         []searchResult{},
 			NoResults:       true,
 			QuerySuggestion: noResultsSuggestion,
+			// Nothing was retrieved, so nothing was cut. Zero rather than the
+			// default cap: `limit` describes this page, and naming a cap that never
+			// applied would be a number with no enforcement behind it (§2.2).
+			Limit: 0,
 		})
 		return
 	}
@@ -431,6 +443,8 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		DegradedReason: out.DegradedReason,
 		PartialIndex:   anyUnranked(out.Hits),
 		FilteredOut:    out.FilteredOut,
+		Limit:          limit,
+		Truncated:      out.Truncated,
 	}
 	// Everything fell outside MaxCosineDistance (or the lexical floor matched
 	// nothing). Saying so explicitly is the point: a degraded empty answer still

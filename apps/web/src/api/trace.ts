@@ -45,6 +45,12 @@ export type TraceSummary = {
     cost_source?: string;
   };
   steps: string[];
+  /**
+   * When this run last produced anything. Absent means nothing has arrived yet —
+   * a real state for a run still being provisioned, not a missing field, and it
+   * is worded rather than rendered as a blank or as "0 秒前" (設計 §2.12).
+   */
+  last_event_at?: string;
 };
 
 export type TraceStream = {
@@ -80,7 +86,7 @@ export type TraceAdvanced = {
   has_more: boolean;
 };
 
-const TERMINAL_RUN_STATUSES = new Set(["succeeded", "failed", "cancelled", "timed_out"]);
+export const TERMINAL_RUN_STATUSES = new Set(["succeeded", "failed", "cancelled", "timed_out"]);
 
 export function useTrace<M extends TraceMode>(runId: string, mode: M, active?: boolean, after = 0) {
   const queryKey = ["trace", runId, mode, mode === "advanced" ? after : 0] as const;

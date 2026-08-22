@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { cancelRun, deleteRunArtifact, useRunArtifacts, type RunArtifact } from "../api/runs";
 import { ConfirmDelete } from "../components/ConfirmDelete";
+import { InFlight } from "../components/InFlight";
 import { useTrace } from "../api/trace";
 import type { TraceAdvanced, TraceEvent, TraceSummary } from "../api/trace";
 import { EvaluationPanel, RUN_STATUS_LABEL } from "./RunEvaluation";
@@ -38,6 +39,11 @@ export function RunTrace() {
       {/* EVAL-001 / design §4.3: the first thing on the page is the task
           judgement, not the run's terminal state. */}
       <EvaluationPanel runId={runId} runStatus={general.data?.status} />
+
+      {/* §2.12: the third axis. Above the cancel control on purpose — 「還在跑，
+          而且會自己跑完」 is the fact, and cancelling is what you might do about
+          it. It removes itself once the run is terminal. */}
+      {general.data && <InFlight summary={general.data} />}
 
       <CancelRunControl runId={runId} status={general.data?.status} />
 

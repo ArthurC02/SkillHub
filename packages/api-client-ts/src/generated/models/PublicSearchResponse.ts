@@ -59,6 +59,29 @@ export interface PublicSearchResponse {
      */
     degradedReason?: string;
     /**
+     * How many results this page will carry at most — the `limit` parameter
+     * if it was accepted, otherwise the default. Zero when nothing was
+     * retrieved at all, because naming a cap that never applied would be a
+     * number with no enforcement behind it (設計系統 §2.2).
+     * 
+     * @type {number}
+     * @memberof PublicSearchResponse
+     */
+    limit: number;
+    /**
+     * True when the catalogue held more matches than this page shows. The
+     * cap has always been here and result 21 simply did not exist as far as
+     * a caller could tell; ADR-042 決策 3 makes that the defect it is —
+     * **a truncated list must state that it was truncated**, and "no limit
+     * at all" stopped being an available answer. Distinct from `degraded`
+     * and `partial_index`, which are statements about how well the search
+     * could look rather than about how much of what it found is here.
+     * 
+     * @type {boolean}
+     * @memberof PublicSearchResponse
+     */
+    truncated: boolean;
+    /**
      * True when at least one result on this page has no embedding yet
      * (enrichment_status 'pending'): it reached the page through the
      * lexical leg, the distance cut-off could not judge it, and it sits at
@@ -122,6 +145,8 @@ export function instanceOfPublicSearchResponse(value: object): value is PublicSe
     if (!('query' in value) || value['query'] === undefined) return false;
     if (!('results' in value) || value['results'] === undefined) return false;
     if (!('degraded' in value) || value['degraded'] === undefined) return false;
+    if (!('limit' in value) || value['limit'] === undefined) return false;
+    if (!('truncated' in value) || value['truncated'] === undefined) return false;
     if (!('partialIndex' in value) || value['partialIndex'] === undefined) return false;
     if (!('noResults' in value) || value['noResults'] === undefined) return false;
     if (!('filteredOut' in value) || value['filteredOut'] === undefined) return false;
@@ -142,6 +167,8 @@ export function PublicSearchResponseFromJSONTyped(json: any, ignoreDiscriminator
         'results': ((json['results'] as Array<any>).map(PublicSearchResultFromJSON)),
         'degraded': json['degraded'],
         'degradedReason': json['degraded_reason'] == null ? undefined : json['degraded_reason'],
+        'limit': json['limit'],
+        'truncated': json['truncated'],
         'partialIndex': json['partial_index'],
         'noResults': json['no_results'],
         'filteredOut': json['filtered_out'],
@@ -164,6 +191,8 @@ export function PublicSearchResponseToJSONTyped(value?: PublicSearchResponse | n
         'results': ((value['results'] as Array<any>).map(PublicSearchResultToJSON)),
         'degraded': value['degraded'],
         'degraded_reason': value['degradedReason'],
+        'limit': value['limit'],
+        'truncated': value['truncated'],
         'partial_index': value['partialIndex'],
         'no_results': value['noResults'],
         'filtered_out': value['filteredOut'],

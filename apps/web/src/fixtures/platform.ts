@@ -70,6 +70,8 @@ export const SEARCH = {
   degraded: true,
   degraded_reason: "embedding unavailable; lexical search only",
   partial_index: true,
+  limit: 20,
+  truncated: false,
   no_results: false,
   filtered_out: false,
 };
@@ -249,6 +251,13 @@ export const RUNS = {
       test_case_id: TEST_CASE,
       provider: "self-hosted",
       cleanup_status: "failed",
+      // 04 丙-32: the second axis. Required and never null — 未評估 is a value, not an
+      // omission, because an empty verdict beside 「執行完成」 reads as a pass.
+      evaluation: {
+        value: "met",
+        label: "符合",
+        note: "依這個 Run 當時的驗收條件判定為符合。",
+      },
       created_at: "2026-08-17T00:00:00Z",
       finished_at: "2026-08-17T00:04:00Z",
     },

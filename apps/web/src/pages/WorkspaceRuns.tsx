@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useRuns, type RunListItem } from "../api/runs";
 import { RUN_STATUS_LABEL } from "./RunEvaluation";
+import { RunVerdict } from "../components/RunVerdict";
 
 /**
  * 02:WS-002 第 1 條「Run 歷史」, served by GET /runs (WS-004).
@@ -24,9 +25,10 @@ export function WorkspaceRuns() {
     <section className="page">
       <h1>Run 歷史</h1>
       <p className="note">
-        這個工作區跑過的 Run，新的在上面。
-        <strong>這裡寫的是「執行狀態」，不是「任務有沒有做到」</strong>
-        ——後者是評估的判定，在各自的 Run 頁面上。
+        這個工作區跑過的 Run，新的在上面。每一列有兩軸：
+        <strong>任務判定在前，執行狀態在後</strong>
+        ——前者說任務有沒有做到，後者只說工作負載跑完了沒有（ADR-025）。逐條驗收結果在各自的 Run
+        頁面上。
       </p>
 
       {runs.isPending && <p>載入 Run 歷史中…</p>}
@@ -113,6 +115,15 @@ function RunRow({ run }: { run: RunListItem }) {
         <Link to="/runs/$runId" params={{ runId: run.run_id }}>
           <strong>{run.skill_name}</strong>
         </Link>{" "}
+      </p>
+      {/* §2.5 wants both axes and the verdict first. It was a footnote under the
+          list until 04 丙-32 landed the field — the note above still says what
+          the two axes are, because the order alone does not teach anyone the
+          difference. */}
+      <p className="badge-row">
+        <RunVerdict verdict={run.evaluation} />
+      </p>
+      <p className="badge-row">
         <span className="badge">執行狀態：{RUN_STATUS_LABEL[run.status] ?? run.status}</span>{" "}
         {/* §2.1: 已清理 used to render as nothing at all, so the majority case —
             the sandbox was torn down, which is a security fact the owner wants —
@@ -140,9 +151,9 @@ function RunRow({ run }: { run: RunListItem }) {
             ? "｜失敗類別未記錄"
             : ""}
       </p>
-      <p className="note">
-        <code>{run.status}</code> 說的是工作負載跑完了沒有。任務達成與否要看這個 Run 的評估判定。
-      </p>
+      {/* The per-row restatement is gone: it said what the verdict badge above
+          it now says, and 設計 §3 第 14 條 counts a fact worded twice on one row
+          as a defect rather than as emphasis. */}
     </li>
   );
 }
