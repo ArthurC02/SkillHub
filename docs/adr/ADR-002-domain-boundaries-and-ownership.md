@@ -3,6 +3,7 @@
 - 狀態：Accepted
 - 日期：2026-08-13
 - 決策者：產品負責人、架構規劃
+- 修訂：package 對應與 Product Analytics 邊界見 [ADR-037](./ADR-037-product-analytics-and-package-architecture-identities.md)
 
 ## 背景
 
@@ -11,6 +12,26 @@ Skill Hub 涵蓋搜尋、版本、信任、試跑、評估及打包等不同業�
 ## 決策
 
 控制平面採領域導向的模組化單體。每個模組擁有自己的領域規則、應用服務與資料存取邊界；其他模組透過公開 API、領域事件或只讀投影互動。
+
+## 2026-08-22 產品領域名稱釐清（ADR-038 Accepted）
+
+本 ADR 已接受的模組所有權與下節名稱保持不變；它們也是程式治理使用的 stable Boundary ID。為避免把 Go package 或 `Core`／`Supporting` 誤當成產品語言，[ADR-038](./ADR-038-platform-product-domain-language-and-value-stream-navigation.md) 另立一張**已接受**的產品領域地圖。產品導覽先以創作者成果與價值流閱讀，需查資料所有權、CI 或實作位置時才回到本 ADR 與 ADR-032。
+
+| 產品領域名稱 | stable Boundary ID | 對創作者的職責 |
+| --- | --- | --- |
+| 創作者帳戶與工作區 | `identity` | 在自己的工作區中安全地保存、管理與刪除成果。 |
+| Skill 探索 | `catalog` | 以任務語言找到候選 Skill，理解符合原因與限制。 |
+| Skill 資產與版本歷史 | `registry` | 建立或 Fork 可追溯的 Skill，保有不可變版本與來源關係。 |
+| Skill 接納與信任 | `ingest` | 在試跑或交付前確認來源、授權、格式與靜態風險。 |
+| 試跑情境設計 | `testlab` | 設計 Prompt、資料、驗收條件與權限確認。 |
+| Skill 試跑執行 | `run` | 在受控環境中執行、取消或恢復一次 Skill 試跑。 |
+| 成果判定與改善 | `eval` | 依驗收條件理解結果、比較試跑並選擇是否採納改善。 |
+| Skill 交付與安裝 | `packaging` | 取得可安裝、可追溯且符合散布條件的 Skill 套件。 |
+| 執行證據 | `trace` | 查看已遮罩的執行過程、成本、錯誤與可追溯證據。 |
+| 創作者使用權益與資料生命週期 | `policy` | 在可理解的額度、保存與未來方案規則下使用平台。 |
+| 創作者旅程學習 | `analytics` | 讓產品依受控的旅程訊號與回饋持續改善。 |
+
+上表不是對既有 Context 重新命名，也不改資料 owner、需求 ID 或跨 Context 關係。**Boundary ID 與 Go path 是兩件事**：Boundary ID 如上表不變，而 `internal/` 底下的實際路徑由 [ADR-040](./ADR-040-platform-foundation-shared-kernel-and-entrypoint-topology.md) 依價值流重排，兩者的機械對照由 [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md) §1 擁有並由 CI 對帳。`skillpkg` 與 Generic packages 仍是共同語言或技術機制，不硬套成創作者產品領域。
 
 ## 領域模組
 
@@ -88,6 +109,15 @@ Skill Hub 涵蓋搜尋、版本、信任、試跑、評估及打包等不同業�
 - 執行額度、資源限制、Provider 使用政策與 Usage Record。
 - 未來方案、計費及企業政策的接縫。
 
+### Product Analytics
+
+擁有：
+
+- 產品漏斗事件、使用者回饋與分析資料保存政策。
+- 聚合分析的揭露端點；不擁有 audit 或 Run Trace 事實。
+
+此 Supporting Bounded Context 由 ADR-037 自 Policy & Usage 的舊分組中明確分出；事件與隱私邊界沿用 ADR-029。
+
 ## 主要協作關係
 
 ```mermaid
@@ -99,6 +129,7 @@ flowchart LR
     Lab["Test Lab"] --> Run["Run Orchestration"]
     Registry --> Run
     Policy["Policy & Usage"] --> Run
+    Analytics["Product Analytics"] --> Catalog
     Run --> Eval["Evaluation"]
     Eval --> Registry
     Registry --> Pack["Packaging"]
@@ -134,4 +165,3 @@ flowchart LR
 - 模組的程式碼分層與依賴檢查方式。→ [ADR-016](./ADR-016-language-and-framework-selection.md)（Go internal package＋依賴 lint）；依賴檢查的強制機制 → [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md)（depguard 白名單）
 - 哪些跨模組查詢可同步，哪些必須事件化。→ [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md)（判準：當下決策需要的事實同步；觸發後續反應事件化）
 - MVP 是否將 Trust 與 Ingestion 實作為同一部署內的兩個模組。→ [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md)（同部署單一模組；zip 讀取 helper 移入 shared kernel `skillpkg`，版本寫入留在 `ingest` 作為唯一驗證路徑，`eval` 經 Customer–Supplier 合法依賴）
-
