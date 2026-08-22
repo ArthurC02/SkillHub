@@ -277,6 +277,11 @@ test("ADR-027 only `allowed` opens the packaging entry, and unknown is refused l
   });
 
   expect(packagingGate(detail({}))).toBeNull();
+  // ADR-045: the owner getting their own upload back. Releases, and is a
+  // separate value from `allowed` because it is not a licence verdict.
+  expect(
+    packagingGate(detail({ redistribution: { value: "self_supplied", label: "", note: "" } })),
+  ).toBeNull();
   expect(packagingGate(detail({ redistribution: { value: "blocked", label: "", note: "" } }))).toBe(
     "not_redistributable",
   );

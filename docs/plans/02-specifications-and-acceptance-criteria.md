@@ -378,7 +378,9 @@ queued → provisioning → preparing → running → evaluating
 
 **第一層：這個 Skill 可不可以產出任何 Download Artifact**
 
-- 平台以 `skills.redistribution` 三態（`allowed`／`blocked`／`unknown`，預設 `unknown`）記錄可散布性，**只有 `allowed` 放行**，`unknown` 視同 `blocked`（ADR-027 決策 4）。判準依序為：授權運算式為未知 → `unknown`；在 OSI 允許再散布的清單內 → `allowed`；已知的 source-available 條款 → `blocked`；認得但無法歸類 → `unknown`。
+- 平台以 `skills.redistribution` 四態（`allowed`／`blocked`／`unknown`／`self_supplied`，策展內容預設 `unknown`）記錄可散布性。**放行的有兩個值，理由不同**（[ADR-045](../adr/ADR-045-self-supplied-content-is-not-redistribution.md)）：`allowed` 是對**授權**的判定（有人確認過可以再散布）；`self_supplied` 是對**供給者**的事實（這份內容是這個工作區自己帶進來的，平台交還給它不算再散布——沒有第二方）。`unknown` 與 `blocked` 一律不放行（ADR-027 決策 4）。授權判準依序為：授權運算式為未知 → `unknown`；在 OSI 允許再散布的清單內 → `allowed`；已知的 source-available 條款 → `blocked`；認得但無法歸類 → `unknown`。
+- **`self_supplied` 由匯入寫入，且只寫給非策展工作區**（`workspaces.is_catalog` 為否）。策展目錄是經同一個上傳端點載入的，若以「是不是上傳」而非「誰的工作區」為判準，全部策展內容都會被標成 self-supplied，而 Fork 會把這個判定帶進每一個 Fork 它的工作區——那正是 [ADR-021](../adr/ADR-021-skill-license-provenance.md) §5.3 要求誤判必須錯在「擋」的方向所防的事。
+- **`self_supplied` 不得被當成 `allowed`。** 任何日後的「發佈到目錄」路徑必須面對一個不是 `allowed` 的值並停下來，不得把它視同已判定。
 - **License 狀態為「已人工確認」不得成為放行條件**（`CONTENT-002`：已人工確認不等於可再散布）。
 - 授權受限展示（`SEC-011` 的 `access_restriction`）非 NULL 者一律不得產出任何 Download Artifact，**含標準套件在內**；未知原因碼 fail-closed 視為受限。**這道鎖與上一條是兩道獨立的鎖，不得互相取代**——前者是人工按下的暫時性 hold，後者是每個 Skill 都要有答案的內容屬性。
 - 被阻擋時必須回可讀的理由，且理由要分得出是哪一道鎖（人工 hold／不可散布／授權未知／驗證未過）——使用者能不能自己解決，取決於是哪一個。

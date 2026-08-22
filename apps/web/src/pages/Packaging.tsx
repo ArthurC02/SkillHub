@@ -87,6 +87,9 @@ export function packagingGate(skill: SkillDetail): PackagingBlockedReason | null
   if (skill.access_restriction) return "license_hold";
   switch (skill.redistribution?.value) {
     case "allowed":
+    // The owner getting their own upload back. Not a licence verdict and not
+    // treated as one anywhere — it releases this gate and nothing else (0036).
+    case "self_supplied":
       return null;
     case "blocked":
       return "not_redistributable";

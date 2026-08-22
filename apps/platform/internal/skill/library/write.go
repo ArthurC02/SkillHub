@@ -56,19 +56,40 @@ type NewVersion struct {
 	Report           skillpkg.Report
 }
 
+// RedistributionSelfSupplied is skills.redistribution's fourth value (0036):
+// this workspace supplied the bytes, so handing them back is retrieval and not
+// redistribution. It releases the packaging gate without asserting anything
+// about the licence, which is why it is a separate value from `allowed`.
+//
+// registry owns the writes to skills, so the constant lives here. delivery and
+// discovery each carry their own copy of this vocabulary already — the database
+// CHECK is what actually holds them together.
+const RedistributionSelfSupplied = "self_supplied"
+
 // CreateSkillFromPackage inserts the skills row for a package being imported
-// under a name that does not exist in the workspace yet. Fork-only columns stay
-// unset: an import carries no lineage and no verdict of its own, so the column
-// defaults (conservative on redistribution) are the honest answer.
-func CreateSkillFromPackage(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, report skillpkg.Report) (Skill, error) {
+// under a name that does not exist in the workspace yet. Lineage columns stay
+// unset: an import carries none.
+//
+// `redistribution` is a parameter and not a default, since 0036. An import
+// carries no verdict about the licence — that part of the 0027 reasoning still
+// holds — but it does carry one fact the column has to be able to express: who
+// supplied the bytes. The caller knows it and this function does not, so it is
+// passed in rather than guessed. Empty means "say nothing", which lands on the
+// column's own conservative default.
+func CreateSkillFromPackage(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, report skillpkg.Report, redistribution string) (Skill, error) {
 	manifest, err := validatedManifest(report)
 	if err != nil {
 		return Skill{}, err
 	}
+	var verdict *string
+	if redistribution != "" {
+		verdict = &redistribution
+	}
 	row, err := gen.New(tx).CreateSkill(ctx, gen.CreateSkillParams{
-		WorkspaceID: workspaceID,
-		Name:        manifest.Name,
-		Summary:     &manifest.Description,
+		WorkspaceID:    workspaceID,
+		Name:           manifest.Name,
+		Summary:        &manifest.Description,
+		Redistribution: verdict,
 	})
 	if err != nil {
 		return Skill{}, err

@@ -19,7 +19,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
 | `docs/plans/` | [產品基準](docs/plans/README.md)：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/04-backlog-and-handoffs.md)（活文件）；`mvp/m0/`～`mvp/m4/` 為各里程碑凍結產出；`mvp/content/`／`mvp/governance/`／`mvp/gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/README.md](docs/plans/README.md) |
-| `docs/adr/` | 45 份架構決策紀錄（ADR-000～044；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂；042 回答 041 的六個待決策，043 修訂 026 的 defence 3 判準，044 釘選 Agent Skills 規格並定義「符合規格」的範圍） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
+| `docs/adr/` | 46 份架構決策紀錄（ADR-000～045；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂；042 回答 041 的六個待決策，043 修訂 026 的 defence 3 判準，044 釘選 Agent Skills 規格並定義「符合規格」的範圍；045 讓使用者第一次下載得了自己的 Skill——自己帶進來的位元組交還給自己不是再散布） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
 | `docs/spikes/` | **已刪除，只留墓碑**：M0 驗證用 spike code，結論已沉澱到 m0 報告／ADR-013／ADR-023／`UPGRADES.md`／`tools/goldenset/` | [docs/spikes/README.md](docs/spikes/README.md)（含還原指令與結論落點對照） |
 
 Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **ADR-031（Accepted）** 按產物角色定義；它取代 ADR-024 的 `apps/`／`services/` 雙軌。結構性偏離需先更新 ADR。
@@ -76,7 +76,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容。
-- 新 ADR 從 **ADR-045** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
+- 新 ADR 從 **ADR-046** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
 - ADR 的待決策被後續 ADR 回答時，回填 `→ [ADR-xxx](...)` 引用（現有文件已有此慣例）。
 - 新 ADR 記得更新 [docs/adr/README.md](docs/adr/README.md) 的決策索引。
 - **檔案放哪裡**：活文件放 `docs/plans/` 根層（編號 `01~`）；里程碑的歷史產出放 `docs/plans/mvp/mX/`，里程碑完結即凍結。跨里程碑主題材料放 `docs/plans/mvp/` 的相應主題目錄。一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`。

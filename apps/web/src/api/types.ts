@@ -450,12 +450,14 @@ export interface Skill {
   summary: string;
   /**
    * Whether a Download Artifact may be produced from this skill. Two of the
-   * three values refuse the download and `unknown` is what a user's own import
-   * carries by default, so on the owner's own list this separates a skill they
-   * can take away from one they cannot. It was on the row and dropped in
-   * serialisation until 04 丙-31.
+   * four values release and two refuse, so on the owner's own list this
+   * separates a skill they can take away from one they cannot. It was on the
+   * row and dropped in serialisation until 04 丙-31.
+   *
+   * `self_supplied` is what a user's own import carries since 0036; it was
+   * `unknown`, which refused (ADR-045).
    */
-  redistribution: "allowed" | "blocked" | "unknown";
+  redistribution: "allowed" | "blocked" | "unknown" | "self_supplied";
   /** Reason code for a licensing hold, `null` when there is none. */
   access_restriction: string | null;
   forked_from_skill_id?: string;

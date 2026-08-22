@@ -24,7 +24,7 @@ func TestImportWritesRejectUnvalidatedReports(t *testing.T) {
 	}
 	for name, report := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := CreateSkillFromPackage(ctx, nil, pgtype.UUID{}, report); !errors.Is(err, ErrUnvalidatedPackage) {
+			if _, err := CreateSkillFromPackage(ctx, nil, pgtype.UUID{}, report, ""); !errors.Is(err, ErrUnvalidatedPackage) {
 				t.Errorf("CreateSkillFromPackage err = %v", err)
 			}
 			if _, err := CreateVersionFromPackage(ctx, nil, NewVersion{Report: report}); !errors.Is(err, ErrUnvalidatedPackage) {

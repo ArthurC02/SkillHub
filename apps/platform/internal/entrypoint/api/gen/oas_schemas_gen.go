@@ -4356,11 +4356,14 @@ type ForkSkillCreated struct {
 	SkillID uuid.UUID `json:"skill_id"`
 	Name    string    `json:"name"`
 	Summary string    `json:"summary"`
-	// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
-	// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
-	// list this is the difference between a skill they can take away and one they cannot. It was already
-	// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
-	// limit which will block you has to be visible before you hit it.
+	// Whether a Download Artifact may be produced from this skill. Two of its four values release and two
+	// refuse, so on the owner's own list this is the difference between a skill they can take away and one
+	// they cannot. It was already on the row and dropped in serialisation; surfacing it is 02:NFR-001 in
+	// the direction that says a limit which will block you has to be visible before you hit it.
+	//
+	// `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
+	// refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
+	// licensing question nobody could resolve (ADR-045).
 	Redistribution ForkSkillCreatedRedistribution `json:"redistribution"`
 	// Reason code for a licensing hold on the package materials, null when there is none. Also copied onto
 	// forks at fork time, which is why it belongs on a list of skills the caller owns rather than only on
@@ -4464,17 +4467,21 @@ func (s *ForkSkillCreated) SetVersionNumber(val int) {
 
 func (*ForkSkillCreated) forkSkillRes() {}
 
-// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
-// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
-// list this is the difference between a skill they can take away and one they cannot. It was already
-// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
-// limit which will block you has to be visible before you hit it.
+// Whether a Download Artifact may be produced from this skill. Two of its four values release and two
+// refuse, so on the owner's own list this is the difference between a skill they can take away and one
+// they cannot. It was already on the row and dropped in serialisation; surfacing it is 02:NFR-001 in
+// the direction that says a limit which will block you has to be visible before you hit it.
+//
+// `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
+// refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
+// licensing question nobody could resolve (ADR-045).
 type ForkSkillCreatedRedistribution string
 
 const (
-	ForkSkillCreatedRedistributionAllowed ForkSkillCreatedRedistribution = "allowed"
-	ForkSkillCreatedRedistributionBlocked ForkSkillCreatedRedistribution = "blocked"
-	ForkSkillCreatedRedistributionUnknown ForkSkillCreatedRedistribution = "unknown"
+	ForkSkillCreatedRedistributionAllowed      ForkSkillCreatedRedistribution = "allowed"
+	ForkSkillCreatedRedistributionBlocked      ForkSkillCreatedRedistribution = "blocked"
+	ForkSkillCreatedRedistributionUnknown      ForkSkillCreatedRedistribution = "unknown"
+	ForkSkillCreatedRedistributionSelfSupplied ForkSkillCreatedRedistribution = "self_supplied"
 )
 
 // AllValues returns all ForkSkillCreatedRedistribution values.
@@ -4483,6 +4490,7 @@ func (ForkSkillCreatedRedistribution) AllValues() []ForkSkillCreatedRedistributi
 		ForkSkillCreatedRedistributionAllowed,
 		ForkSkillCreatedRedistributionBlocked,
 		ForkSkillCreatedRedistributionUnknown,
+		ForkSkillCreatedRedistributionSelfSupplied,
 	}
 }
 
@@ -4494,6 +4502,8 @@ func (s ForkSkillCreatedRedistribution) MarshalText() ([]byte, error) {
 	case ForkSkillCreatedRedistributionBlocked:
 		return []byte(s), nil
 	case ForkSkillCreatedRedistributionUnknown:
+		return []byte(s), nil
+	case ForkSkillCreatedRedistributionSelfSupplied:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -4511,6 +4521,9 @@ func (s *ForkSkillCreatedRedistribution) UnmarshalText(data []byte) error {
 		return nil
 	case ForkSkillCreatedRedistributionUnknown:
 		*s = ForkSkillCreatedRedistributionUnknown
+		return nil
+	case ForkSkillCreatedRedistributionSelfSupplied:
+		*s = ForkSkillCreatedRedistributionSelfSupplied
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -7805,11 +7818,14 @@ type OwnSkill struct {
 	SkillID uuid.UUID `json:"skill_id"`
 	Name    string    `json:"name"`
 	Summary string    `json:"summary"`
-	// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
-	// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
-	// list this is the difference between a skill they can take away and one they cannot. It was already
-	// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
-	// limit which will block you has to be visible before you hit it.
+	// Whether a Download Artifact may be produced from this skill. Two of its four values release and two
+	// refuse, so on the owner's own list this is the difference between a skill they can take away and one
+	// they cannot. It was already on the row and dropped in serialisation; surfacing it is 02:NFR-001 in
+	// the direction that says a limit which will block you has to be visible before you hit it.
+	//
+	// `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
+	// refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
+	// licensing question nobody could resolve (ADR-045).
 	Redistribution OwnSkillRedistribution `json:"redistribution"`
 	// Reason code for a licensing hold on the package materials, null when there is none. Also copied onto
 	// forks at fork time, which is why it belongs on a list of skills the caller owns rather than only on
@@ -7915,17 +7931,21 @@ func (s *OwnSkill) SetVerification(val SkillVerification) {
 	s.Verification = val
 }
 
-// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
-// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
-// list this is the difference between a skill they can take away and one they cannot. It was already
-// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
-// limit which will block you has to be visible before you hit it.
+// Whether a Download Artifact may be produced from this skill. Two of its four values release and two
+// refuse, so on the owner's own list this is the difference between a skill they can take away and one
+// they cannot. It was already on the row and dropped in serialisation; surfacing it is 02:NFR-001 in
+// the direction that says a limit which will block you has to be visible before you hit it.
+//
+// `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
+// refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
+// licensing question nobody could resolve (ADR-045).
 type OwnSkillRedistribution string
 
 const (
-	OwnSkillRedistributionAllowed OwnSkillRedistribution = "allowed"
-	OwnSkillRedistributionBlocked OwnSkillRedistribution = "blocked"
-	OwnSkillRedistributionUnknown OwnSkillRedistribution = "unknown"
+	OwnSkillRedistributionAllowed      OwnSkillRedistribution = "allowed"
+	OwnSkillRedistributionBlocked      OwnSkillRedistribution = "blocked"
+	OwnSkillRedistributionUnknown      OwnSkillRedistribution = "unknown"
+	OwnSkillRedistributionSelfSupplied OwnSkillRedistribution = "self_supplied"
 )
 
 // AllValues returns all OwnSkillRedistribution values.
@@ -7934,6 +7954,7 @@ func (OwnSkillRedistribution) AllValues() []OwnSkillRedistribution {
 		OwnSkillRedistributionAllowed,
 		OwnSkillRedistributionBlocked,
 		OwnSkillRedistributionUnknown,
+		OwnSkillRedistributionSelfSupplied,
 	}
 }
 
@@ -7945,6 +7966,8 @@ func (s OwnSkillRedistribution) MarshalText() ([]byte, error) {
 	case OwnSkillRedistributionBlocked:
 		return []byte(s), nil
 	case OwnSkillRedistributionUnknown:
+		return []byte(s), nil
+	case OwnSkillRedistributionSelfSupplied:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -7962,6 +7985,9 @@ func (s *OwnSkillRedistribution) UnmarshalText(data []byte) error {
 		return nil
 	case OwnSkillRedistributionUnknown:
 		*s = OwnSkillRedistributionUnknown
+		return nil
+	case OwnSkillRedistributionSelfSupplied:
+		*s = OwnSkillRedistributionSelfSupplied
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -12687,13 +12713,20 @@ type SkillDetail struct {
 	Version OptSkillDetailVersion `json:"version"`
 	Source  OptSkillSource        `json:"source"`
 	License SkillLicense          `json:"license"`
-	// Allowed | blocked | unknown — whether this skill's content may be handed on to someone else, which
+	// Allowed | blocked | unknown | self_supplied — whether this skill's content may be handed on, which
 	// is what decides whether a download package can be built from it at all (02:SEC-007, ADR-012).
 	//
 	// Required, and required for every skill, because the question has an answer for every skill:
-	// `unknown` is where one starts and where anything unclassifiable stays. Only `allowed` releases;
-	// `unknown` is treated exactly like `blocked` at the packaging gate, since 02:DISC-003 forbids
-	// implying that an unestablished licence may be modified or redistributed.
+	// `unknown` is where a curated skill starts and where anything unclassifiable stays, and it is treated
+	// exactly like `blocked` at the packaging gate, since 02:DISC-003 forbids implying that an
+	// unestablished licence may be modified or redistributed.
+	//
+	// Two values release, for different reasons, and the difference matters (ADR-045). `allowed` is a
+	// verdict about the licence: somebody established that this content may be copied. `self_supplied` is
+	// a fact about the supplier: this workspace brought the bytes in, so the platform handing them back is
+	// retrieval and not redistribution — there is no second party for a licence to protect. A publish
+	// path that treated the two as one would hand out content nobody ever judged, which is the direction
+	// ADR-021 §5.3 forbids erring in.
 	//
 	// A separate axis from `license.status` and never derivable from it: 02:CONTENT-002 states plainly
 	// that a manually confirmed licence is not thereby a redistributable one, so `confirmed` is not a

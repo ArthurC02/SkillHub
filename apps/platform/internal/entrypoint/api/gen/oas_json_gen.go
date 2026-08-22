@@ -10349,6 +10349,8 @@ func (s *ForkSkillCreatedRedistribution) Decode(d *jx.Decoder) error {
 		*s = ForkSkillCreatedRedistributionBlocked
 	case ForkSkillCreatedRedistributionUnknown:
 		*s = ForkSkillCreatedRedistributionUnknown
+	case ForkSkillCreatedRedistributionSelfSupplied:
+		*s = ForkSkillCreatedRedistributionSelfSupplied
 	default:
 		*s = ForkSkillCreatedRedistribution(v)
 	}
@@ -16804,6 +16806,8 @@ func (s *OwnSkillRedistribution) Decode(d *jx.Decoder) error {
 		*s = OwnSkillRedistributionBlocked
 	case OwnSkillRedistributionUnknown:
 		*s = OwnSkillRedistributionUnknown
+	case OwnSkillRedistributionSelfSupplied:
+		*s = OwnSkillRedistributionSelfSupplied
 	default:
 		*s = OwnSkillRedistribution(v)
 	}

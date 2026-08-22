@@ -149,16 +149,24 @@ export interface SkillDetail {
      */
     license: SkillLicense;
     /**
-     * allowed | blocked | unknown — whether this skill's content may be
-     * handed on to someone else, which is what decides whether a download
+     * allowed | blocked | unknown | self_supplied — whether this skill's
+     * content may be handed on, which is what decides whether a download
      * package can be built from it at all (02:SEC-007, ADR-012).
      * 
      * Required, and required for every skill, because the question has an
-     * answer for every skill: `unknown` is where one starts and where
-     * anything unclassifiable stays. **Only `allowed` releases**; `unknown`
-     * is treated exactly like `blocked` at the packaging gate, since
-     * 02:DISC-003 forbids implying that an unestablished licence may be
-     * modified or redistributed.
+     * answer for every skill: `unknown` is where a curated skill starts and
+     * where anything unclassifiable stays, and it is treated exactly like
+     * `blocked` at the packaging gate, since 02:DISC-003 forbids implying
+     * that an unestablished licence may be modified or redistributed.
+     * 
+     * **Two values release, for different reasons, and the difference
+     * matters** (ADR-045). `allowed` is a verdict about the licence:
+     * somebody established that this content may be copied. `self_supplied`
+     * is a fact about the supplier: this workspace brought the bytes in, so
+     * the platform handing them back is retrieval and not redistribution —
+     * there is no second party for a licence to protect. A publish path
+     * that treated the two as one would hand out content nobody ever
+     * judged, which is the direction ADR-021 §5.3 forbids erring in.
      * 
      * A separate axis from `license.status` and never derivable from it:
      * 02:CONTENT-002 states plainly that a manually confirmed licence is

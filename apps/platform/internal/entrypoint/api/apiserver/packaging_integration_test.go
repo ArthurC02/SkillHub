@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -413,6 +414,103 @@ func TestBuildingTheSamePackageTwiceProducesTheSameContentHash(t *testing.T) {
 	}
 	if !bytes.Equal(first.Zip, second.Zip) {
 		t.Error("the hashes matched but the bytes did not, which means one of them is not over the bytes")
+	}
+}
+
+// --- the owner's own content -------------------------------------------------
+
+// ADR-045. The question a person actually asks: I wrote this Skill, uploaded it,
+// may I have it back? The answer was permanently no — skills.redistribution
+// defaulted to 'unknown', which blocks, and no product path set it (04 乙-17).
+//
+// Note what the package here already had: `license: MIT` in frontmatter AND a
+// LICENSE file at the root, so the licence resolved cleanly. It was refused
+// anyway, which is the whole point — the gate was never asking about the
+// licence, it was asking for a verdict nobody was in a position to give.
+func TestAWorkspaceCanDownloadWhatItSuppliedItself(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "brought-my-own")
+
+	// Deliberately NOT calling allowRedistribution: that helper is a curator's
+	// verdict typed straight into the database, and a user has no such thing.
+	skillID, versionID := importFiles(t, a, pool, c, map[string]string{
+		"SKILL.md": "---\nname: my-own-skill\ndescription: A skill I wrote myself.\nlicense: MIT\n---\n\nDo the thing.\n",
+		"LICENSE":  "MIT License\n\nPermission is hereby granted, free of charge...\n",
+	})
+
+	var redistribution string
+	if err := pool.QueryRow(context.Background(),
+		"SELECT redistribution FROM skills WHERE id = $1", mustUUID(t, skillID),
+	).Scan(&redistribution); err != nil {
+		t.Fatal(err)
+	}
+	// `self_supplied` and not `allowed`: releasing this gate is not a statement
+	// that somebody checked the licence, and a publish path must be able to see
+	// the difference (ADR-021 §5.3).
+	if redistribution != "self_supplied" {
+		t.Errorf("redistribution = %q, want self_supplied", redistribution)
+	}
+
+	code, body := postJSON(t, c, packagingPath(skillID, versionID), `{"target":"standard"}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST packaging: got %d (%v / %v)", code, body["blocked_reason"], body["blocked_message"])
+	}
+	artifactID, _ := body["artifact_id"].(string)
+	if artifactID == "" {
+		t.Fatalf("no artifact id in %v", body)
+	}
+
+	// All the way to bytes: a preview that says yes and a content endpoint that
+	// 404s would be the same defect one step later.
+	resp, err := c.Get(c.base + "/downloads/" + artifactID + "/content")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET content: got %d", resp.StatusCode)
+	}
+	if n, _ := io.Copy(io.Discard, resp.Body); n == 0 {
+		t.Error("the download served no bytes")
+	}
+}
+
+// The condition the whole change rests on. The seed catalogue is loaded through
+// this same upload endpoint (tools/content/import_seed.py), so a rule keyed on
+// "was this uploaded" instead of "whose workspace" would mark all 45 curated
+// skills self-supplied — and every fork of one carries the verdict, so it would
+// release other people's content into every workspace that forked it. That is
+// the failure ADR-021 §5.3 exists to prevent, so it gets its own test rather
+// than living in a comment.
+func TestAnUploadIntoTheCatalogueIsNotSelfSupplied(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "curator")
+
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE workspaces SET is_catalog = true WHERE id = $1", mustUUID(t, c.workspaceID),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	skillID, versionID := importFiles(t, a, pool, c, map[string]string{
+		"SKILL.md": "---\nname: curated-skill\ndescription: Something the platform is handing out.\n---\n\nDo the thing.\n",
+	})
+
+	var redistribution string
+	if err := pool.QueryRow(context.Background(),
+		"SELECT redistribution FROM skills WHERE id = $1", mustUUID(t, skillID),
+	).Scan(&redistribution); err != nil {
+		t.Fatal(err)
+	}
+	if redistribution != "unknown" {
+		t.Errorf("redistribution = %q, want unknown: the catalogue is content the "+
+			"platform hands to other people, so it still needs a verdict", redistribution)
+	}
+	if code, body := postJSON(t, c, packagingPath(skillID, versionID), `{"target":"standard"}`); code !=
+		http.StatusUnprocessableEntity || body["blocked_reason"] != "license_unknown" {
+		t.Errorf("POST packaging: got %d / %v, want 422 license_unknown", code, body["blocked_reason"])
 	}
 }
 

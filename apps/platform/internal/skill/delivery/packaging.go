@@ -54,10 +54,17 @@ const (
 	BlockedFileRemoved = "file_removed_by_packager"
 )
 
-// Redistribution values (0027 / ADR-027 decision 4). Only `allowed` releases.
+// Redistribution values (0027 / ADR-027 decision 4, extended by 0036).
+//
+// Two of the four release, and they release for different reasons: `allowed` is
+// a verdict about the licence, `self_supplied` is a fact about who brought the
+// bytes. Keeping them apart is the point — a publish-to-catalogue path must be
+// able to tell "somebody established this may be copied" from "the owner is
+// getting their own file back".
 const (
-	RedistributionAllowed = "allowed"
-	RedistributionBlocked = "blocked"
+	RedistributionAllowed      = "allowed"
+	RedistributionBlocked      = "blocked"
+	RedistributionSelfSupplied = "self_supplied"
 )
 
 var (
@@ -322,6 +329,13 @@ func gateFlags(accessRestriction *string, redistribution string) (reason, messag
 	}
 	switch redistribution {
 	case RedistributionAllowed:
+		return "", ""
+	case RedistributionSelfSupplied:
+		// Not a licence verdict, and it does not need to be. This workspace
+		// supplied the package; handing it back is retrieval, and the second
+		// party a licence protects does not exist in that transaction (0036,
+		// ADR-045). The workspace scope every read on this path already carries
+		// is what keeps it that way — nothing here widens it.
 		return "", ""
 	case RedistributionBlocked:
 		return BlockedNotRedistributable,

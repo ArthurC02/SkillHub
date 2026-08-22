@@ -81,8 +81,20 @@ export function WorkspaceSkills() {
                   packaging screen.
                 */}
                 <p className="badge-row">
-                  {s.redistribution === "allowed" ? (
-                    <span className="badge">可打包下載</span>
+                  {/*
+                    Two values release, and this row says which one, because they
+                    are not the same promise: `allowed` means somebody checked
+                    the licence, `self_supplied` means you brought it in and the
+                    platform is only handing it back (ADR-045). Collapsing them
+                    into 可打包下載 would tell a user their own upload had been
+                    licence-checked, which nobody did.
+                  */}
+                  {s.redistribution === "allowed" || s.redistribution === "self_supplied" ? (
+                    <span className="badge">
+                      {s.redistribution === "self_supplied"
+                        ? "可下載（你自己帶進來的）"
+                        : "可打包下載"}
+                    </span>
                   ) : (
                     <span className="badge badge-danger">
                       {s.redistribution === "blocked" ? "不可散布" : "授權未知，不能打包"}

@@ -39,12 +39,16 @@ export interface ForkSkill201Response {
     summary: string;
     /**
      * Whether a Download Artifact may be produced from this skill. Two of
-     * its three values refuse the download, and `unknown` is the default a
-     * user's own import carries (0027), so on the owner's own list this is
-     * the difference between a skill they can take away and one they
-     * cannot. It was already on the row and dropped in serialisation;
+     * its four values release and two refuse, so on the owner's own list
+     * this is the difference between a skill they can take away and one
+     * they cannot. It was already on the row and dropped in serialisation;
      * surfacing it is 02:NFR-001 in the direction that says a limit which
      * will block you has to be visible before you hit it.
+     * 
+     * `self_supplied` is what a user's own import carries since 0036. It
+     * was `unknown` before that, which refused — so the answer to "may I
+     * download the Skill I just wrote" was permanently no, over a licensing
+     * question nobody could resolve (ADR-045).
      * 
      * @type {string}
      * @memberof ForkSkill201Response
@@ -93,7 +97,8 @@ export interface ForkSkill201Response {
 export const ForkSkill201ResponseRedistributionEnum = {
     Allowed: 'allowed',
     Blocked: 'blocked',
-    Unknown: 'unknown'
+    Unknown: 'unknown',
+    SelfSupplied: 'self_supplied'
 } as const;
 export type ForkSkill201ResponseRedistributionEnum = typeof ForkSkill201ResponseRedistributionEnum[keyof typeof ForkSkill201ResponseRedistributionEnum];
 

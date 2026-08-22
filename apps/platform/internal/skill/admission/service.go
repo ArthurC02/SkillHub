@@ -93,6 +93,30 @@ type Result struct {
 	Duplicate bool // same content already existed as a version of this skill
 }
 
+// redistributionFor is the one place import answers "may this leave again".
+//
+// It answers about the SUPPLIER, not about the licence. A workspace that brought
+// its own bytes in gets them back: that is retrieval, not redistribution, and
+// there is no second party for a licence to protect. A licence verdict is still
+// nobody's here, which is why the value is `self_supplied` and not `allowed`
+// (0036).
+//
+// The catalogue is excluded because it is loaded through this same upload
+// endpoint (tools/content/import_seed.py). A rule keyed on "was this uploaded"
+// would mark all 45 curated skills self-supplied and let every fork of them out
+// — the failure ADR-021 §5.3 is written about. is_catalog is the same
+// discriminator PACK-001 第二層 already uses for "is this the platform's own".
+//
+// Both source types are included. The question the gate exists to ask is
+// whether the platform is adding a distribution step, and for a fetch the user
+// asked for, into the user's own workspace, readable only by them, it is not.
+func redistributionFor(ws identity.Workspace) string {
+	if ws.IsCatalog {
+		return ""
+	}
+	return registry.RedistributionSelfSupplied
+}
+
 // sourceMeta records where a package came from (INGEST-004).
 type sourceMeta struct {
 	Type string  // 'upload' or 'git'
@@ -215,7 +239,7 @@ func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []b
 	readSkill, found, err := registry.SkillByName(ctx, tx, ws.ID, p.report.Manifest.Name)
 	var skill registry.Skill
 	if !found && err == nil {
-		skill, err = registry.CreateSkillFromPackage(ctx, tx, ws.ID, p.report)
+		skill, err = registry.CreateSkillFromPackage(ctx, tx, ws.ID, p.report, redistributionFor(ws))
 	} else {
 		skill = readSkill
 	}

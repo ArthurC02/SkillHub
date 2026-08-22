@@ -428,7 +428,7 @@ type Skill struct {
 	TakedownReason      *string
 	// Reason code for a licensing hold on the package materials; NULL = none. Set by review, copied onto forks at fork time. See 0023.
 	AccessRestriction *string
-	// May a Download Artifact be produced from this skill? Only 'allowed' releases; 'unknown' blocks. license_status = Confirmed must never set this on its own (CONTENT-002). Copied onto forks at fork time, like access_restriction. See 0027.
+	// May a Download Artifact be produced from this skill? 'allowed' (a verdict about the licence) and 'self_supplied' (this workspace brought the bytes, so handing them back is not redistribution) release; 'unknown' and 'blocked' refuse. license_status = Confirmed must never set this on its own (CONTENT-002). Copied onto forks at fork time, like access_restriction. See 0027 and 0036.
 	Redistribution string
 }
 

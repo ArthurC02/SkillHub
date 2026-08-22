@@ -69,6 +69,7 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-042](./ADR-042-roadmap-product-rulings-evidence-aggregate-in-flight-axis-and-enforcer-attribution.md) | 路線圖上六個未決問題的產品裁定（評分與排行榜**永久不做**，替代品是帶分母的試跑證據彙總；進行中是第三軸；大清單的判準是「這一頁在問什麼」而不是列數；強制者必須具名；量測只在「對位元組成立」時可繼承） | Accepted |
 | [ADR-043](./ADR-043-evidence-citation-is-verified-by-content-not-by-its-claimed-source.md) | 引用的成立條件是引文本身可回驗，來源標籤只是提示（修訂 ADR-026 defence 3 的判準：歸錯類的引用要改正而不是打回；`artifact` 引用只證明存在；正規化有界且比對結果分三態） | Accepted |
 | [ADR-044](./ADR-044-agent-skills-specification-conformance.md) | Agent Skills 規格的釘選（agentskills.io，無版本號，以 commit＋blob SHA 釘選）、與參考實作衝突時的取捨、六個 frontmatter 欄位的完整判準，以及「符合規格」這句話可以說到哪裡（`INSTALL.md` 原本宣稱符合一份 repo 裡不存在的規格）；同批補上打包器移除檔案的揭露與「平台弄壞的引用要擋下來」 | Accepted |
+| [ADR-045](./ADR-045-self-supplied-content-is-not-redistribution.md) | 把一個工作區自己帶進來的位元組交還給它不是「再散布」，所以 `skills.redistribution` 多一個 `self_supplied`——使用者第一次下載得了自己的 Skill；判準是「誰的工作區」而不是「是不是上傳」（策展目錄走同一個上傳端點），且刻意不寫成 `allowed`，好讓日後的發佈路徑必須停下來要求判定 | Accepted |
 
 ## 整體架構摘要
 

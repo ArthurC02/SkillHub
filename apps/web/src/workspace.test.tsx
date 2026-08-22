@@ -293,8 +293,13 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
   // 04 丙-31 / 設計 §2.2 in its second direction. `redistribution` and
   // `access_restriction` were on the row ListSkills selects and were dropped in
   // serialisation, so a skill that packaging will refuse looked exactly like one
-  // it will not — right up to the packaging screen. `unknown` is the default a
-  // user's own import carries, so this is the common case, not the edge one.
+  // it will not — right up to the packaging screen.
+  //
+  // ADR-045 changed which value is the common case: a user's own import carries
+  // `self_supplied` now and downloads, where it used to carry `unknown` and
+  // never could. Both are on this fixture, and they must not render as the same
+  // badge — 「可打包下載」 for a self-supplied skill would tell its owner somebody
+  // had checked the licence, which nobody did.
   vi.stubGlobal("fetch", () =>
     json({
       skills: [
@@ -302,6 +307,14 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
           skill_id: SKILL,
           name: "自己匯入的",
           summary: "一份自己傳上來的套件。",
+          redistribution: "self_supplied",
+          access_restriction: null,
+          ...SCANNED,
+        },
+        {
+          skill_id: "s-3",
+          name: "沒人判定過的",
+          summary: "目錄裡還沒有人分類的內容。",
           redistribution: "unknown",
           access_restriction: null,
           ...SCANNED,
@@ -326,6 +339,7 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
 
   expect(text()).toContain("授權未知，不能打包");
   expect(text()).toContain("可打包下載");
+  expect(text()).toContain("可下載（你自己帶進來的）");
   // The contract carried forked_from_* the whole time; a narrower local type for
   // the same endpoint was the app's entire view of it, so the page could not
   // tell a fork from an import even though its own header promised to.
