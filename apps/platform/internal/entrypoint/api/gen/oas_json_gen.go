@@ -8970,6 +8970,16 @@ func (s *EvidenceRef) encodeFields(e *jx.Encoder) {
 		s.Kind.Encode(e)
 	}
 	{
+		e.FieldStart("match")
+		s.Match.Encode(e)
+	}
+	{
+		if s.ReattributedFrom.Set {
+			e.FieldStart("reattributed_from")
+			s.ReattributedFrom.Encode(e)
+		}
+	}
+	{
 		if s.TraceEventID.Set {
 			e.FieldStart("trace_event_id")
 			s.TraceEventID.Encode(e)
@@ -9013,16 +9023,18 @@ func (s *EvidenceRef) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfEvidenceRef = [9]string{
-	0: "kind",
-	1: "trace_event_id",
-	2: "occurred_at",
-	3: "artifact_path",
-	4: "byte_range",
-	5: "char_range",
-	6: "excerpt",
-	7: "excerpt_truncated",
-	8: "available",
+var jsonFieldsNameOfEvidenceRef = [11]string{
+	0:  "kind",
+	1:  "match",
+	2:  "reattributed_from",
+	3:  "trace_event_id",
+	4:  "occurred_at",
+	5:  "artifact_path",
+	6:  "byte_range",
+	7:  "char_range",
+	8:  "excerpt",
+	9:  "excerpt_truncated",
+	10: "available",
 }
 
 // Decode decodes EvidenceRef from json.
@@ -9043,6 +9055,26 @@ func (s *EvidenceRef) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"kind\"")
+			}
+		case "match":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.Match.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"match\"")
+			}
+		case "reattributed_from":
+			if err := func() error {
+				s.ReattributedFrom.Reset()
+				if err := s.ReattributedFrom.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"reattributed_from\"")
 			}
 		case "trace_event_id":
 			if err := func() error {
@@ -9095,7 +9127,7 @@ func (s *EvidenceRef) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"char_range\"")
 			}
 		case "excerpt":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Str()
 				s.Excerpt = string(v)
@@ -9107,7 +9139,7 @@ func (s *EvidenceRef) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"excerpt\"")
 			}
 		case "excerpt_truncated":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				v, err := d.Bool()
 				s.ExcerptTruncated = bool(v)
@@ -9119,7 +9151,7 @@ func (s *EvidenceRef) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"excerpt_truncated\"")
 			}
 		case "available":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				v, err := d.Bool()
 				s.Available = bool(v)
@@ -9140,8 +9172,8 @@ func (s *EvidenceRef) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b11000001,
-		0b00000001,
+		0b00000011,
+		0b00000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -9451,6 +9483,90 @@ func (s EvidenceRefKind) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *EvidenceRefKind) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes EvidenceRefMatch as json.
+func (s EvidenceRefMatch) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes EvidenceRefMatch from json.
+func (s *EvidenceRefMatch) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode EvidenceRefMatch to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch EvidenceRefMatch(v) {
+	case EvidenceRefMatchExact:
+		*s = EvidenceRefMatchExact
+	case EvidenceRefMatchNormalized:
+		*s = EvidenceRefMatchNormalized
+	case EvidenceRefMatchNotFound:
+		*s = EvidenceRefMatchNotFound
+	default:
+		*s = EvidenceRefMatch(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s EvidenceRefMatch) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *EvidenceRefMatch) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes EvidenceRefReattributedFrom as json.
+func (s EvidenceRefReattributedFrom) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes EvidenceRefReattributedFrom from json.
+func (s *EvidenceRefReattributedFrom) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode EvidenceRefReattributedFrom to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch EvidenceRefReattributedFrom(v) {
+	case EvidenceRefReattributedFromTraceEvent:
+		*s = EvidenceRefReattributedFromTraceEvent
+	case EvidenceRefReattributedFromArtifact:
+		*s = EvidenceRefReattributedFromArtifact
+	case EvidenceRefReattributedFromAgentOutput:
+		*s = EvidenceRefReattributedFromAgentOutput
+	default:
+		*s = EvidenceRefReattributedFrom(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s EvidenceRefReattributedFrom) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *EvidenceRefReattributedFrom) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -15354,6 +15470,39 @@ func (s *OptEvidenceRefCharRange) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes EvidenceRefReattributedFrom as json.
+func (o OptEvidenceRefReattributedFrom) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes EvidenceRefReattributedFrom from json.
+func (o *OptEvidenceRefReattributedFrom) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptEvidenceRefReattributedFrom to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptEvidenceRefReattributedFrom) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptEvidenceRefReattributedFrom) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes float64 as json.
 func (o OptFloat64) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -16776,6 +16925,8 @@ func (s *PackagingBlockedReason) Decode(d *jx.Decoder) error {
 		*s = PackagingBlockedReasonLicenseUnknown
 	case PackagingBlockedReasonValidationBlocked:
 		*s = PackagingBlockedReasonValidationBlocked
+	case PackagingBlockedReasonFileRemovedByPackager:
+		*s = PackagingBlockedReasonFileRemovedByPackager
 	default:
 		*s = PackagingBlockedReason(v)
 	}
@@ -16853,9 +17004,17 @@ func (s *PackagingPreview) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		e.FieldStart("excluded_files")
+		e.ArrStart()
+		for _, elem := range s.ExcludedFiles {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
 }
 
-var jsonFieldsNameOfPackagingPreview = [8]string{
+var jsonFieldsNameOfPackagingPreview = [9]string{
 	0: "target",
 	1: "allowed",
 	2: "blocked_reason",
@@ -16864,6 +17023,7 @@ var jsonFieldsNameOfPackagingPreview = [8]string{
 	5: "dependencies",
 	6: "included_test_cases",
 	7: "excluded_test_cases",
+	8: "excluded_files",
 }
 
 // Decode decodes PackagingPreview from json.
@@ -16871,7 +17031,7 @@ func (s *PackagingPreview) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode PackagingPreview to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -16983,6 +17143,24 @@ func (s *PackagingPreview) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"excluded_test_cases\"")
 			}
+		case "excluded_files":
+			requiredBitSet[1] |= 1 << 0
+			if err := func() error {
+				s.ExcludedFiles = make([]PackagingPreviewExcludedFilesItem, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem PackagingPreviewExcludedFilesItem
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.ExcludedFiles = append(s.ExcludedFiles, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"excluded_files\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -16992,8 +17170,9 @@ func (s *PackagingPreview) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b11110011,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -17035,6 +17214,212 @@ func (s *PackagingPreview) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *PackagingPreview) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *PackagingPreviewExcludedFilesItem) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *PackagingPreviewExcludedFilesItem) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("path")
+		e.Str(s.Path)
+	}
+	{
+		e.FieldStart("reason")
+		s.Reason.Encode(e)
+	}
+	{
+		e.FieldStart("label")
+		e.Str(s.Label)
+	}
+	{
+		e.FieldStart("note")
+		e.Str(s.Note)
+	}
+	{
+		if s.ReferencedBySkillMd.Set {
+			e.FieldStart("referenced_by_skill_md")
+			s.ReferencedBySkillMd.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfPackagingPreviewExcludedFilesItem = [5]string{
+	0: "path",
+	1: "reason",
+	2: "label",
+	3: "note",
+	4: "referenced_by_skill_md",
+}
+
+// Decode decodes PackagingPreviewExcludedFilesItem from json.
+func (s *PackagingPreviewExcludedFilesItem) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PackagingPreviewExcludedFilesItem to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "path":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Path = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"path\"")
+			}
+		case "reason":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.Reason.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"reason\"")
+			}
+		case "label":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.Label = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"label\"")
+			}
+		case "note":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Str()
+				s.Note = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"note\"")
+			}
+		case "referenced_by_skill_md":
+			if err := func() error {
+				s.ReferencedBySkillMd.Reset()
+				if err := s.ReferencedBySkillMd.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"referenced_by_skill_md\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode PackagingPreviewExcludedFilesItem")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfPackagingPreviewExcludedFilesItem) {
+					name = jsonFieldsNameOfPackagingPreviewExcludedFilesItem[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PackagingPreviewExcludedFilesItem) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PackagingPreviewExcludedFilesItem) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PackagingPreviewExcludedFilesItemReason as json.
+func (s PackagingPreviewExcludedFilesItemReason) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes PackagingPreviewExcludedFilesItemReason from json.
+func (s *PackagingPreviewExcludedFilesItemReason) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PackagingPreviewExcludedFilesItemReason to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch PackagingPreviewExcludedFilesItemReason(v) {
+	case PackagingPreviewExcludedFilesItemReasonExcludedDir:
+		*s = PackagingPreviewExcludedFilesItemReasonExcludedDir
+	case PackagingPreviewExcludedFilesItemReasonCredentialFile:
+		*s = PackagingPreviewExcludedFilesItemReasonCredentialFile
+	case PackagingPreviewExcludedFilesItemReasonNotARegularFile:
+		*s = PackagingPreviewExcludedFilesItemReasonNotARegularFile
+	case PackagingPreviewExcludedFilesItemReasonUnsafePath:
+		*s = PackagingPreviewExcludedFilesItemReasonUnsafePath
+	default:
+		*s = PackagingPreviewExcludedFilesItemReason(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s PackagingPreviewExcludedFilesItemReason) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PackagingPreviewExcludedFilesItemReason) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

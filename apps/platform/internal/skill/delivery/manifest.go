@@ -51,7 +51,66 @@ type Manifest struct {
 	Compatibility     Compatibility      `json:"compatibility"`
 	IncludedTestCases []IncludedTestCase `json:"included_test_cases"`
 	ExcludedTestCases []ExcludedTestCase `json:"excluded_test_cases"`
-	ManifestHash      string             `json:"manifest_hash"`
+	// ExcludedFiles is what the exporter removed from the author's own tree.
+	// Never omitempty: an absent list and an empty one would say the same thing
+	// on the page, and only one of them is "nothing was removed".
+	ExcludedFiles []ExcludedFile `json:"excluded_files"`
+	ManifestHash  string         `json:"manifest_hash"`
+}
+
+// ExcludedFile is one source file the packager removed, and why.
+//
+// The reasons are a closed set because a user acts differently on each one, and
+// they carry their own words for the same reason every other enum on this
+// contract does (設計系統 §4.4): two surfaces wording one removal differently is
+// how a reader ends up believing the platform did two different things.
+type ExcludedFile struct {
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
+	Label  string `json:"label"`
+	Note   string `json:"note"`
+	// ReferencedBySkillMD marks the case the platform treats as its own fault:
+	// the file was in the version, SKILL.md needs it, and the exporter is what
+	// took it away. Packaging refuses on that (BlockedFileRemoved). A reference
+	// that was already dangling at import never reaches here — that one is the
+	// author's, and it ships with a warning.
+	ReferencedBySkillMD bool `json:"referenced_by_skill_md,omitempty"`
+}
+
+// The excluded_files[].reason enum of contracts/packaging/download-manifest.schema.json.
+const (
+	ReasonExcludedDir    = "excluded_dir"
+	ReasonCredentialFile = "credential_file"
+	ReasonNotRegularFile = "not_a_regular_file"
+	ReasonUnsafePath     = "unsafe_path"
+)
+
+// excludedFileWords is the served wording for each reason. Written from the
+// author's side rather than the exporter's: the reader of this list is the
+// person who packaged their own Skill and is now missing a file, so each note
+// says what to do rather than restating the rule.
+var excludedFileWords = map[string][2]string{
+	ReasonExcludedDir: {"目錄不隨套件散布",
+		"這個路徑在不隨套件走的目錄底下(.git、.github、node_modules、__pycache__、.venv、.tox、.mypy_cache、.aws、.azure、.docker、.kube、.ssh)。" +
+			"要讓它進包,把檔案移到這些目錄之外。"},
+	ReasonCredentialFile: {"看起來是憑證檔",
+		"檔名屬於憑證清單(.env 與 .env.*、.git-credentials、.netrc、.npmrc、.pypirc 等),一律不散布。" +
+			"要提供範本,改名為 .example／.sample／.template 結尾。"},
+	ReasonNotRegularFile: {"不是一般檔案",
+		"symlink、裝置或 fifo。解壓工具對它們的處理各不相同,而那不是一個套件可以替別人的機器決定的事。" +
+			"要讓內容進包,用實體檔案取代連結。"},
+	ReasonUnsafePath: {"路徑不安全",
+		"這個 entry 名稱會逃出套件根目錄,或帶著磁碟機代號或反斜線。重新壓縮成相對路徑即可。"},
+}
+
+// withWords fills the served label and note for a reason.
+func (e ExcludedFile) withWords() ExcludedFile {
+	if w, ok := excludedFileWords[e.Reason]; ok {
+		e.Label, e.Note = w[0], w[1]
+		return e
+	}
+	e.Label, e.Note = e.Reason, "這個平台版本沒有這個排除原因的說明,值照原樣顯示,不猜測它的意思。"
+	return e
 }
 
 type ManifestSource struct {

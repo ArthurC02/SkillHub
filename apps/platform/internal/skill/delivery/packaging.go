@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -46,6 +47,11 @@ const (
 	BlockedNotRedistributable = "not_redistributable"
 	BlockedLicenseUnknown     = "license_unknown"
 	BlockedValidation         = "validation_blocked"
+	// BlockedFileRemoved is the one refusal on this list the platform caused
+	// itself: SKILL.md points at a file that was in the version and that the
+	// exporter removed. Everything else here is a decision about the content
+	// that the user cannot argue with; this one they can fix in a minute.
+	BlockedFileRemoved = "file_removed_by_packager"
 )
 
 // Redistribution values (0027 / ADR-027 decision 4). Only `allowed` releases.
@@ -196,6 +202,10 @@ type Plan struct {
 	Validation ManifestValidation
 	Included   []IncludedTestCase
 	Excluded   []ExcludedTestCase
+	// ExcludedFiles is what the exporter removed from the author's own tree,
+	// served on the preview so the answer arrives before the download rather
+	// than as a surprise inside it.
+	ExcludedFiles []ExcludedFile
 	// Dependencies is the same list INSTALL.md renders, served on the preview so
 	// 02:PACK-002 第 1 條's "依賴" is answerable before a package exists. Empty when
 	// a licensing gate closed before anything was read — there is no package to
@@ -208,6 +218,18 @@ type Plan struct {
 	FileName     string
 	ContentHash  string
 	ManifestHash string
+}
+
+// referencedUnder reports whether SKILL.md points at anything inside a removed
+// directory. Directories are recorded as one entry (a vendored dependency tree
+// is tens of thousands of files), so the membership test has to be a prefix.
+func referencedUnder(referenced map[string]bool, dirPath string) bool {
+	for ref := range referenced {
+		if strings.HasPrefix(ref, dirPath) {
+			return true
+		}
+	}
+	return false
 }
 
 // Plan answers "may this version be packaged for this target, and what would
@@ -353,9 +375,39 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws identity.Workspa
 		p.BlockedMessage = "the stored source package no longer passes import validation"
 		return nil
 	}
-	files, err := collect(fsys)
+	files, dropped, err := collect(fsys)
 	if err != nil {
 		return err
+	}
+	// What the exporter removed, and whether SKILL.md needed any of it.
+	//
+	// The two halves are one check on purpose. Listing the removals is a
+	// disclosure the author can act on; refusing when the document points at one
+	// of them is the platform declining to hand over a package **it** broke.
+	// A reference that was already dangling when the version was imported is a
+	// different fact and does not reach here — that one is the author's, and
+	// skillpkg reports it as a warning and lets it ship (02:SKILL-002 asks for
+	// the severities to be shown apart, not for this one to block).
+	referenced := map[string]bool{}
+	for _, ref := range skillpkg.SkillMDReferences(fsys) {
+		referenced[ref] = true
+	}
+	p.ExcludedFiles = make([]ExcludedFile, 0, len(dropped))
+	var broke []string
+	for _, e := range dropped {
+		e.ReferencedBySkillMD = referenced[e.Path] ||
+			(strings.HasSuffix(e.Path, "/") && referencedUnder(referenced, e.Path))
+		if e.ReferencedBySkillMD {
+			broke = append(broke, e.Path)
+		}
+		p.ExcludedFiles = append(p.ExcludedFiles, e.withWords())
+	}
+	if len(broke) > 0 {
+		p.BlockedReason = BlockedFileRemoved
+		p.BlockedMessage = "SKILL.md 指向 " + strings.Join(broke, "、") +
+			"，而打包器不會把它帶進套件——這一份下載回去會缺少它自己說明要用的東西。" +
+			"把檔案移出被排除的目錄、或改用實體檔案取代連結之後再打包一次。"
+		return nil
 	}
 
 	skillName := p.Skill.Name
@@ -540,6 +592,7 @@ func (s *Service) buildManifest(
 		Compatibility:     compat,
 		IncludedTestCases: p.Included,
 		ExcludedTestCases: p.Excluded,
+		ExcludedFiles:     p.ExcludedFiles,
 		ManifestHash:      hash,
 	}
 	p.ManifestHash = hash

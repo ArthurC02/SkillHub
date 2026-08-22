@@ -67,24 +67,38 @@ type exportFile struct {
 	data []byte
 }
 
-// collect walks the source package and returns the files that may travel.
+// collect walks the source package and returns the files that may travel, plus
+// the ones that did not and why.
 //
 // Only files from the immutable Skill Version are candidates. Run outputs,
 // traces and evaluation data are absent by construction; credential-shaped
 // source files are filtered by travels.
-func collect(fsys fs.FS) ([]exportFile, error) {
+//
+// The second return value is the change 04's 完整性 review asked for. The
+// exclusions were always right; what was wrong is that they were **silent** —
+// a Skill that vendored `node_modules/` shipped without it and nothing in the
+// manifest, the download page or INSTALL.md said so, which made a package that
+// lost something indistinguishable from one that never had it. The list one
+// field over, `excluded_test_cases`, had already made that argument.
+func collect(fsys fs.FS) ([]exportFile, []ExcludedFile, error) {
 	var out []exportFile
+	var dropped []ExcludedFile
 	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
 			if path != "." && excludedDirs[lastSegment(path)] {
+				// Recorded as one entry for the directory rather than walked for
+				// its contents: a vendored dependency tree is tens of thousands of
+				// files, and a list nobody can read hides the one that matters.
+				dropped = append(dropped, ExcludedFile{Path: path + "/", Reason: ReasonExcludedDir})
 				return fs.SkipDir
 			}
 			return nil
 		}
-		if !travels(path, d) {
+		if ok, reason := travels(path, d); !ok {
+			dropped = append(dropped, ExcludedFile{Path: path, Reason: reason})
 			return nil
 		}
 		data, err := fs.ReadFile(fsys, path)
@@ -95,9 +109,9 @@ func collect(fsys fs.FS) ([]exportFile, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return out, nil
+	return out, dropped, nil
 }
 
 // travels decides one source entry.
@@ -110,17 +124,25 @@ func collect(fsys fs.FS) ([]exportFile, error) {
 // out loud what the archive carries. Disclosure there, exclusion here. Neither
 // substitutes for the other, and dropping a link silently at both ends was
 // exactly the hole 04 丙-15 D-3 recorded.
-func travels(path string, d fs.DirEntry) bool {
+// It returns the reason alongside the verdict so the caller can say what it
+// removed. The reasons are the contract's `excluded_files[].reason` enum: four
+// values and not one boolean, because what a user does about each is different
+// — move the file out of `.git/`, stop committing the `.env`, replace the
+// symlink with the file it points at, fix the archive.
+func travels(path string, d fs.DirEntry) (bool, string) {
 	if !fs.ValidPath(path) || path == "." || strings.ContainsAny(path, `\`) {
-		return false
+		return false, ReasonUnsafePath
 	}
 	if strings.HasPrefix(path, "/") || hasDriveLetter(path) {
-		return false
+		return false, ReasonUnsafePath
 	}
 	lowerPath := strings.ToLower(path)
 	for _, seg := range strings.Split(lowerPath, "/") {
-		if seg == ".." || seg == "." || excludedDirs[seg] {
-			return false
+		if seg == ".." || seg == "." {
+			return false, ReasonUnsafePath
+		}
+		if excludedDirs[seg] {
+			return false, ReasonExcludedDir
 		}
 	}
 	name := lastSegment(lowerPath)
@@ -129,15 +151,15 @@ func travels(path string, d fs.DirEntry) bool {
 		hasPathSuffix(lowerPath, ".config/gcloud/credentials.db") ||
 		hasPathSuffix(lowerPath, ".config/gcloud/access_tokens.db") ||
 		hasPathSuffix(lowerPath, ".config/gh/hosts.yml") {
-		return false
+		return false, ReasonCredentialFile
 	}
 	// Symlinks, devices and fifos. A zip can carry them and extraction tools
 	// disagree about what to do with one, which is a decision no package gets to
 	// make on a user's machine.
 	if info, err := d.Info(); err != nil || !info.Mode().IsRegular() {
-		return false
+		return false, ReasonNotRegularFile
 	}
-	return true
+	return true, ""
 }
 
 func pathUsesExcludedDir(path string) bool {

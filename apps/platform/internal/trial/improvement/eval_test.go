@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -236,6 +237,149 @@ func TestVerifyResolvesOnlyReferencesThePlatformCanFind(t *testing.T) {
 				c.check(t, got)
 			}
 		})
+	}
+}
+
+// --- content-first citation (ADR-043) -----------------------------------------
+
+// The ordinary case, and the one the three-state field has to keep saying out
+// loud: nothing was widened to accept this.
+func TestAVerbatimQuoteIsRecordedAsAnExactMatch(t *testing.T) {
+	m, digest := fixtureMaterial(true)
+	got, why := verify(llmclient.JudgeEvidenceRef{
+		Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows",
+	}, m, digest)
+
+	if why != "" {
+		t.Fatalf("a verbatim quote resolves: %q", why)
+	}
+	if got.Match != MatchExact {
+		t.Errorf("match = %q, want %q", got.Match, MatchExact)
+	}
+	if got.ReattributedFrom != "" {
+		t.Errorf("the judge filed this one correctly, so nothing was re-attributed: %q", got.ReattributedFrom)
+	}
+	if got.CharRange == nil {
+		t.Fatal("an exact hit keeps its offset; that is what the fast path is for")
+	}
+}
+
+// G8, the failure that put 45 correct verdicts on the floor in the A round: the
+// quote is right and the model wrote its own JSON delimiters into the end of it.
+// It resolves now, and the report says it had to be normalised to get there.
+func TestAQuoteThatOnlyMatchesAfterNormalisationSaysSo(t *testing.T) {
+	m, digest := fixtureMaterial(true)
+	got, why := verify(llmclient.JudgeEvidenceRef{
+		// Two stray spaces in the middle and the `}],` G8 was lost to.
+		Kind: KindAgentOutput, Quote: "Removed 17  duplicate rows and saved}],",
+	}, m, digest)
+
+	if why != "" {
+		t.Fatalf("a quote that is verbatim correct but for its wrapping resolves: %q", why)
+	}
+	if got.Match != MatchNormalized {
+		t.Errorf("match = %q, want %q: a widened comparison is an auditable fact, not a silent success",
+			got.Match, MatchNormalized)
+	}
+	if got.Excerpt != "Removed 17 duplicate rows and saved" {
+		t.Errorf("the excerpt is the string that was actually verified, got %q", got.Excerpt)
+	}
+	if got.CharRange != nil {
+		t.Error("the offset found was into a normalised copy; reporting it would point the reader at nothing")
+	}
+}
+
+// The A round's real finding: the model had read the trace and written `artifact`
+// on it. Mis-filed and fabricated are different failures, and one string search
+// tells them apart.
+func TestAQuoteFiledUnderTheWrongSourceIsCorrectedInsteadOfRefused(t *testing.T) {
+	m, digest := fixtureMaterial(true)
+	got, why := verify(llmclient.JudgeEvidenceRef{
+		Kind: KindArtifact, ArtifactPath: strp("output.xlsx"), Quote: `"tool_name":"bash"`,
+	}, m, digest)
+
+	if why != "" {
+		t.Fatalf("the quote is in this run's trace, so the citation holds: %q", why)
+	}
+	if got.Kind != KindTraceEvent || got.TraceEventID != eventID {
+		t.Errorf("kind is corrected to where the quote actually is, got %+v", got)
+	}
+	if got.ReattributedFrom != KindArtifact {
+		t.Errorf("reattributed_from = %q, want %q: the report has to show the label was wrong",
+			got.ReattributedFrom, KindArtifact)
+	}
+	if got.Match != MatchExact {
+		t.Errorf("match = %q, want %q", got.Match, MatchExact)
+	}
+}
+
+// G7. The citation is kept — the file really is on the manifest — but it proves
+// existence and nothing else, so it cannot answer a rubric item that asked for a
+// quote. That is exactly the shape 6 of the A round's 9 `passed` rested on.
+func TestAFabricatedQuoteIsNotEvidenceWhateverItWasFiledAs(t *testing.T) {
+	m, digest := fixtureMaterial(true)
+	ref := llmclient.JudgeEvidenceRef{
+		Kind: KindArtifact, ArtifactPath: strp("output.xlsx"),
+		Quote: "the duplicates were removed by hand",
+	}
+
+	got, why := verify(ref, m, digest)
+	if why != "" {
+		t.Fatalf("the manifest row is still checkable, so the citation is kept: %q", why)
+	}
+	if got.Match != MatchNotFound {
+		t.Errorf("match = %q, want %q: nothing verified this quote", got.Match, MatchNotFound)
+	}
+
+	weight := 2.0
+	m.rubric = &testlab.Rubric{Version: "v1", Items: []testlab.RubricItem{
+		{ID: "c1", Text: "quote the sentence that shows it", Weight: &weight, EvidenceRequired: true},
+		{ID: "c2", Text: "an xlsx file is produced", EvidenceRequired: false},
+	}}
+	results := (&Service{}).merge(m, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: ResultPassed, Reason: "it says so",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{ref}},
+			{CriterionID: "c2", Result: ResultPassed, Reason: "the file is there",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+					{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")}}},
+		},
+	}, digest, false)
+
+	if results[0].Result != ResultUndetermined {
+		t.Errorf("an item requiring evidence cannot be passed on a quote nothing verified: %+v", results[0])
+	}
+	if !strings.HasPrefix(results[0].Reason, "evidence_unverifiable:") {
+		t.Errorf("the downgrade wears the label the UI reads (丙-10): %q", results[0].Reason)
+	}
+	if len(results[0].Evidence) != 1 {
+		t.Error("the citation is still stored; the reader is shown what was offered and why it was not enough")
+	}
+	// The narrow half of ADR-043 §3: outside `evidence_required` an artifact
+	// citation still supports a verdict, because "the file is there" is a fact the
+	// platform checked against its own manifest.
+	if results[1].Result != ResultPassed {
+		t.Errorf("an item that never asked for a quote is not downgraded for lacking one: %+v", results[1])
+	}
+}
+
+// The floor of §4. This quote's normalised form *is* in the final output; the only
+// thing refusing it is its length, which is the whole point — normalisation widens
+// matching, and short strings in a widened comparison hit by accident.
+func TestAShortQuoteIsNotHandedTheLoosenedComparison(t *testing.T) {
+	m, digest := fixtureMaterial(true)
+	short := `"Removed 17"` // ten characters once the quote marks are trimmed
+
+	if _, why := verify(llmclient.JudgeEvidenceRef{
+		Kind: KindAgentOutput, Quote: short,
+	}, m, digest); why == "" {
+		t.Error("a quote below the length floor may only be accepted verbatim")
+	}
+	if n := utf8.RuneCountInString(normalizeQuote(short)); n >= minNormalizedQuote {
+		t.Fatalf("this fixture stopped testing the floor: %d runes, floor is %d", n, minNormalizedQuote)
+	}
+	if !strings.Contains(normalizeQuote(finalOutput), normalizeQuote(short)) {
+		t.Fatal("this fixture stopped testing the floor: the quote is no longer a normalised substring")
 	}
 }
 

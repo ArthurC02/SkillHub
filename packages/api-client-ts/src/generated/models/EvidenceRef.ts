@@ -46,6 +46,36 @@ export interface EvidenceRef {
      */
     kind: EvidenceRefKindEnum;
     /**
+     * How the excerpt was found in the source it names (ADR-043). This is
+     * the platform's own answer, never the judge's — a citation is verified
+     * **by content**, not by the source it was filed under.
+     * 
+     * - `exact` — the quote occurs verbatim.
+     * - `normalized` — it occurs after bounded normalisation (NFC, runs of
+     *   whitespace collapsed, leading and trailing structural punctuation
+     *   trimmed). A real citation losing to one stray colon is the failure
+     *   that put 45 correct verdicts on the floor in the A round, and it
+     *   cost the platform a `judge-run/v2`.
+     * - `not_found` — the quote is in none of the run's verifiable sources.
+     *   It does not become evidence, whatever it was filed as.
+     * 
+     * @type {string}
+     * @memberof EvidenceRef
+     */
+    match: EvidenceRefMatchEnum;
+    /**
+     * Present when the quote was found, but **not in the source the judge
+     * named** — `kind` is corrected to where it actually is and this
+     * records where it was filed. ADR-043's核心: mis-filed and fabricated
+     * are different failures and one string search tells them apart, so the
+     * platform stopped treating them the same. Absent when `kind` was
+     * right, which is the ordinary case.
+     * 
+     * @type {string}
+     * @memberof EvidenceRef
+     */
+    reattributedFrom?: EvidenceRefReattributedFromEnum;
+    /**
      * Present for `trace_event`.
      * @type {string}
      * @memberof EvidenceRef
@@ -120,12 +150,33 @@ export const EvidenceRefKindEnum = {
 } as const;
 export type EvidenceRefKindEnum = typeof EvidenceRefKindEnum[keyof typeof EvidenceRefKindEnum];
 
+/**
+ * @export
+ */
+export const EvidenceRefMatchEnum = {
+    Exact: 'exact',
+    Normalized: 'normalized',
+    NotFound: 'not_found'
+} as const;
+export type EvidenceRefMatchEnum = typeof EvidenceRefMatchEnum[keyof typeof EvidenceRefMatchEnum];
+
+/**
+ * @export
+ */
+export const EvidenceRefReattributedFromEnum = {
+    TraceEvent: 'trace_event',
+    Artifact: 'artifact',
+    AgentOutput: 'agent_output'
+} as const;
+export type EvidenceRefReattributedFromEnum = typeof EvidenceRefReattributedFromEnum[keyof typeof EvidenceRefReattributedFromEnum];
+
 
 /**
  * Check if a given object implements the EvidenceRef interface.
  */
 export function instanceOfEvidenceRef(value: object): value is EvidenceRef {
     if (!('kind' in value) || value['kind'] === undefined) return false;
+    if (!('match' in value) || value['match'] === undefined) return false;
     if (!('excerpt' in value) || value['excerpt'] === undefined) return false;
     if (!('excerptTruncated' in value) || value['excerptTruncated'] === undefined) return false;
     if (!('available' in value) || value['available'] === undefined) return false;
@@ -143,6 +194,8 @@ export function EvidenceRefFromJSONTyped(json: any, ignoreDiscriminator: boolean
     return {
         
         'kind': json['kind'],
+        'match': json['match'],
+        'reattributedFrom': json['reattributed_from'] == null ? undefined : json['reattributed_from'],
         'traceEventId': json['trace_event_id'] == null ? undefined : json['trace_event_id'],
         'occurredAt': json['occurred_at'] == null ? undefined : (new Date(json['occurred_at'])),
         'artifactPath': json['artifact_path'] == null ? undefined : json['artifact_path'],
@@ -166,6 +219,8 @@ export function EvidenceRefToJSONTyped(value?: EvidenceRef | null, ignoreDiscrim
     return {
         
         'kind': value['kind'],
+        'match': value['match'],
+        'reattributed_from': value['reattributedFrom'],
         'trace_event_id': value['traceEventId'],
         'occurred_at': value['occurredAt'] == null ? value['occurredAt'] : value['occurredAt'].toISOString(),
         'artifact_path': value['artifactPath'],

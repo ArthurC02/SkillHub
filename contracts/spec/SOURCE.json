@@ -1,0 +1,21 @@
+{
+  "name": "Agent Skills specification",
+  "authority": "https://agentskills.io/specification",
+  "machine_readable": "https://agentskills.io/specification.md",
+  "source_repository": "https://github.com/agentskills/agentskills",
+  "source_path": "docs/specification.mdx",
+  "pinned": {
+    "commit": "217be548739f21d6008915c29aefe320ea1a90af",
+    "blob_sha": "d9a2db099d905da8b879a5c6f996728073985279",
+    "retrieved_at": "2026-08-22"
+  },
+  "versioning": "none",
+  "reference_validator": "https://github.com/agentskills/agentskills/tree/main/skills-ref",
+  "machine_readable_schema": null,
+  "notes": [
+    "The specification has no version string, no git tag and no release. A commit SHA plus the blob SHA of docs/specification.mdx is the strongest identifier available, which is why both are pinned rather than a version.",
+    "It moved: github.com/anthropics/skills spec/agent-skills-spec.md is now an 87-byte redirect to agentskills.io, and that repository is a sample collection rather than the specification.",
+    "There is no JSON Schema. The reference validator skills-ref (Python, click + strictyaml) is the only executable statement of the rules, so where the prose and skills-ref disagree this repository follows skills-ref and says so in ADR-044.",
+    "Anthropic's Skills API adds requirements the open specification does not state (no XML tags in name or description, reserved words, a 30 MB upload ceiling). Those are platform requirements, not specification requirements, and are kept out of the conformance check for that reason."
+  ]
+}

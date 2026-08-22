@@ -3656,6 +3656,22 @@ func (s *EvaluationStatus) UnmarshalText(data []byte) error {
 // Ref: #/components/schemas/EvidenceRef
 type EvidenceRef struct {
 	Kind EvidenceRefKind `json:"kind"`
+	// How the excerpt was found in the source it names (ADR-043). This is the platform's own answer, never
+	// the judge's — a citation is verified by content, not by the source it was filed under.
+	//
+	//  - `exact` — the quote occurs verbatim.
+	//  - `normalized` — it occurs after bounded normalisation (NFC, runs of whitespace collapsed,
+	//    leading and trailing structural punctuation trimmed). A real citation losing to one stray colon
+	//    is the failure that put 45 correct verdicts on the floor in the A round, and it cost the platform
+	//    a `judge-run/v2`.
+	//  - `not_found` — the quote is in none of the run's verifiable sources. It does not become
+	//    evidence, whatever it was filed as.
+	Match EvidenceRefMatch `json:"match"`
+	// Present when the quote was found, but not in the source the judge named — `kind` is corrected to
+	// where it actually is and this records where it was filed. ADR-043's核心: mis-filed and fabricated
+	// are different failures and one string search tells them apart, so the platform stopped treating them
+	// the same. Absent when `kind` was right, which is the ordinary case.
+	ReattributedFrom OptEvidenceRefReattributedFrom `json:"reattributed_from"`
 	// Present for `trace_event`.
 	TraceEventID OptUUID `json:"trace_event_id"`
 	// Present for `trace_event`, and not optional in practice: trace_events is partitioned by time and
@@ -3682,6 +3698,16 @@ type EvidenceRef struct {
 // GetKind returns the value of Kind.
 func (s *EvidenceRef) GetKind() EvidenceRefKind {
 	return s.Kind
+}
+
+// GetMatch returns the value of Match.
+func (s *EvidenceRef) GetMatch() EvidenceRefMatch {
+	return s.Match
+}
+
+// GetReattributedFrom returns the value of ReattributedFrom.
+func (s *EvidenceRef) GetReattributedFrom() OptEvidenceRefReattributedFrom {
+	return s.ReattributedFrom
 }
 
 // GetTraceEventID returns the value of TraceEventID.
@@ -3727,6 +3753,16 @@ func (s *EvidenceRef) GetAvailable() bool {
 // SetKind sets the value of Kind.
 func (s *EvidenceRef) SetKind(val EvidenceRefKind) {
 	s.Kind = val
+}
+
+// SetMatch sets the value of Match.
+func (s *EvidenceRef) SetMatch(val EvidenceRefMatch) {
+	s.Match = val
+}
+
+// SetReattributedFrom sets the value of ReattributedFrom.
+func (s *EvidenceRef) SetReattributedFrom(val OptEvidenceRefReattributedFrom) {
+	s.ReattributedFrom = val
 }
 
 // SetTraceEventID sets the value of TraceEventID.
@@ -3863,6 +3899,116 @@ func (s *EvidenceRefKind) UnmarshalText(data []byte) error {
 		return nil
 	case EvidenceRefKindAgentOutput:
 		*s = EvidenceRefKindAgentOutput
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// How the excerpt was found in the source it names (ADR-043). This is the platform's own answer, never
+// the judge's — a citation is verified by content, not by the source it was filed under.
+//
+//   - `exact` — the quote occurs verbatim.
+//   - `normalized` — it occurs after bounded normalisation (NFC, runs of whitespace collapsed,
+//     leading and trailing structural punctuation trimmed). A real citation losing to one stray colon
+//     is the failure that put 45 correct verdicts on the floor in the A round, and it cost the platform
+//     a `judge-run/v2`.
+//   - `not_found` — the quote is in none of the run's verifiable sources. It does not become
+//     evidence, whatever it was filed as.
+type EvidenceRefMatch string
+
+const (
+	EvidenceRefMatchExact      EvidenceRefMatch = "exact"
+	EvidenceRefMatchNormalized EvidenceRefMatch = "normalized"
+	EvidenceRefMatchNotFound   EvidenceRefMatch = "not_found"
+)
+
+// AllValues returns all EvidenceRefMatch values.
+func (EvidenceRefMatch) AllValues() []EvidenceRefMatch {
+	return []EvidenceRefMatch{
+		EvidenceRefMatchExact,
+		EvidenceRefMatchNormalized,
+		EvidenceRefMatchNotFound,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s EvidenceRefMatch) MarshalText() ([]byte, error) {
+	switch s {
+	case EvidenceRefMatchExact:
+		return []byte(s), nil
+	case EvidenceRefMatchNormalized:
+		return []byte(s), nil
+	case EvidenceRefMatchNotFound:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *EvidenceRefMatch) UnmarshalText(data []byte) error {
+	switch EvidenceRefMatch(data) {
+	case EvidenceRefMatchExact:
+		*s = EvidenceRefMatchExact
+		return nil
+	case EvidenceRefMatchNormalized:
+		*s = EvidenceRefMatchNormalized
+		return nil
+	case EvidenceRefMatchNotFound:
+		*s = EvidenceRefMatchNotFound
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Present when the quote was found, but not in the source the judge named — `kind` is corrected to
+// where it actually is and this records where it was filed. ADR-043's核心: mis-filed and fabricated
+// are different failures and one string search tells them apart, so the platform stopped treating them
+// the same. Absent when `kind` was right, which is the ordinary case.
+type EvidenceRefReattributedFrom string
+
+const (
+	EvidenceRefReattributedFromTraceEvent  EvidenceRefReattributedFrom = "trace_event"
+	EvidenceRefReattributedFromArtifact    EvidenceRefReattributedFrom = "artifact"
+	EvidenceRefReattributedFromAgentOutput EvidenceRefReattributedFrom = "agent_output"
+)
+
+// AllValues returns all EvidenceRefReattributedFrom values.
+func (EvidenceRefReattributedFrom) AllValues() []EvidenceRefReattributedFrom {
+	return []EvidenceRefReattributedFrom{
+		EvidenceRefReattributedFromTraceEvent,
+		EvidenceRefReattributedFromArtifact,
+		EvidenceRefReattributedFromAgentOutput,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s EvidenceRefReattributedFrom) MarshalText() ([]byte, error) {
+	switch s {
+	case EvidenceRefReattributedFromTraceEvent:
+		return []byte(s), nil
+	case EvidenceRefReattributedFromArtifact:
+		return []byte(s), nil
+	case EvidenceRefReattributedFromAgentOutput:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *EvidenceRefReattributedFrom) UnmarshalText(data []byte) error {
+	switch EvidenceRefReattributedFrom(data) {
+	case EvidenceRefReattributedFromTraceEvent:
+		*s = EvidenceRefReattributedFromTraceEvent
+		return nil
+	case EvidenceRefReattributedFromArtifact:
+		*s = EvidenceRefReattributedFromArtifact
+		return nil
+	case EvidenceRefReattributedFromAgentOutput:
+		*s = EvidenceRefReattributedFromAgentOutput
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -5940,6 +6086,52 @@ func (o OptEvidenceRefCharRange) Or(d EvidenceRefCharRange) EvidenceRefCharRange
 	return d
 }
 
+// NewOptEvidenceRefReattributedFrom returns new OptEvidenceRefReattributedFrom with value set to v.
+func NewOptEvidenceRefReattributedFrom(v EvidenceRefReattributedFrom) OptEvidenceRefReattributedFrom {
+	return OptEvidenceRefReattributedFrom{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptEvidenceRefReattributedFrom is optional EvidenceRefReattributedFrom.
+type OptEvidenceRefReattributedFrom struct {
+	Value EvidenceRefReattributedFrom
+	Set   bool
+}
+
+// IsSet returns true if OptEvidenceRefReattributedFrom was set.
+func (o OptEvidenceRefReattributedFrom) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptEvidenceRefReattributedFrom) Reset() {
+	var v EvidenceRefReattributedFrom
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptEvidenceRefReattributedFrom) SetTo(v EvidenceRefReattributedFrom) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptEvidenceRefReattributedFrom) Get() (v EvidenceRefReattributedFrom, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptEvidenceRefReattributedFrom) Or(d EvidenceRefReattributedFrom) EvidenceRefReattributedFrom {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptFloat64 returns new OptFloat64 with value set to v.
 func NewOptFloat64(v float64) OptFloat64 {
 	return OptFloat64{
@@ -7711,15 +7903,21 @@ func (s *PackageValidation) SetBlocked(val bool) {
 // a subdirectory) erred in exactly that direction. `validation_blocked` — the package that would be
 // produced carries an error-level finding, so it must not be presented as a valid package
 // (02:PACK-001). The severities are skillpkg's own; packaging does not define a second notion of
-// "blocking".
+// "blocking". `file_removed_by_packager` — `SKILL.md` points at a file that was in the version and
+// that the exporter removed (`excluded_files` names it). The fifth value exists because it is the one
+// failure on this list the platform caused: a dangling reference that arrived that way is the
+// author's, disclosed as a warning and shipped, but a package the packager itself broke must not go
+// out looking whole. It is also the one a user can act on without arguing with a licence — move the
+// file out of `.git/`, stop vendoring `node_modules/`, replace the symlink.
 // Ref: #/components/schemas/PackagingBlockedReason
 type PackagingBlockedReason string
 
 const (
-	PackagingBlockedReasonLicenseHold        PackagingBlockedReason = "license_hold"
-	PackagingBlockedReasonNotRedistributable PackagingBlockedReason = "not_redistributable"
-	PackagingBlockedReasonLicenseUnknown     PackagingBlockedReason = "license_unknown"
-	PackagingBlockedReasonValidationBlocked  PackagingBlockedReason = "validation_blocked"
+	PackagingBlockedReasonLicenseHold           PackagingBlockedReason = "license_hold"
+	PackagingBlockedReasonNotRedistributable    PackagingBlockedReason = "not_redistributable"
+	PackagingBlockedReasonLicenseUnknown        PackagingBlockedReason = "license_unknown"
+	PackagingBlockedReasonValidationBlocked     PackagingBlockedReason = "validation_blocked"
+	PackagingBlockedReasonFileRemovedByPackager PackagingBlockedReason = "file_removed_by_packager"
 )
 
 // AllValues returns all PackagingBlockedReason values.
@@ -7729,6 +7927,7 @@ func (PackagingBlockedReason) AllValues() []PackagingBlockedReason {
 		PackagingBlockedReasonNotRedistributable,
 		PackagingBlockedReasonLicenseUnknown,
 		PackagingBlockedReasonValidationBlocked,
+		PackagingBlockedReasonFileRemovedByPackager,
 	}
 }
 
@@ -7742,6 +7941,8 @@ func (s PackagingBlockedReason) MarshalText() ([]byte, error) {
 	case PackagingBlockedReasonLicenseUnknown:
 		return []byte(s), nil
 	case PackagingBlockedReasonValidationBlocked:
+		return []byte(s), nil
+	case PackagingBlockedReasonFileRemovedByPackager:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -7762,6 +7963,9 @@ func (s *PackagingBlockedReason) UnmarshalText(data []byte) error {
 		return nil
 	case PackagingBlockedReasonValidationBlocked:
 		*s = PackagingBlockedReasonValidationBlocked
+		return nil
+	case PackagingBlockedReasonFileRemovedByPackager:
+		*s = PackagingBlockedReasonFileRemovedByPackager
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -7802,6 +8006,18 @@ type PackagingPreview struct {
 	// told what they are not getting — most often that a dataset they uploaded cannot be redistributed,
 	// which is a decision about licensing and not a defect in their test case.
 	ExcludedTestCases []PackagingPreviewExcludedTestCasesItem `json:"excluded_test_cases"`
+	// Source files the packager removed, each with its reason.
+	//
+	// The exporter has always dropped these — `.git/`, `node_modules/`, `.ssh/`, `.env`, symlinks —
+	// and until now it dropped them silently: nothing in the manifest, nothing on this page, nothing in
+	// INSTALL.md. `excluded_test_cases` existed for exactly this reason one field over, and the argument
+	// is the same one 02:PACK-001 makes about keeping the Skill's directory structure: a package missing a
+	// file the Skill needs is not the same product as one that never had it, and only one of those two is
+	// worth telling the author about.
+	//
+	// Empty for almost every package. It is not empty for the case that matters — a Skill that vendored
+	// its dependencies, or one whose `SKILL.md` points at something the exporter would not carry.
+	ExcludedFiles []PackagingPreviewExcludedFilesItem `json:"excluded_files"`
 }
 
 // GetTarget returns the value of Target.
@@ -7844,6 +8060,11 @@ func (s *PackagingPreview) GetExcludedTestCases() []PackagingPreviewExcludedTest
 	return s.ExcludedTestCases
 }
 
+// GetExcludedFiles returns the value of ExcludedFiles.
+func (s *PackagingPreview) GetExcludedFiles() []PackagingPreviewExcludedFilesItem {
+	return s.ExcludedFiles
+}
+
 // SetTarget sets the value of Target.
 func (s *PackagingPreview) SetTarget(val PackagingTargetId) {
 	s.Target = val
@@ -7884,7 +8105,131 @@ func (s *PackagingPreview) SetExcludedTestCases(val []PackagingPreviewExcludedTe
 	s.ExcludedTestCases = val
 }
 
+// SetExcludedFiles sets the value of ExcludedFiles.
+func (s *PackagingPreview) SetExcludedFiles(val []PackagingPreviewExcludedFilesItem) {
+	s.ExcludedFiles = val
+}
+
 func (*PackagingPreview) previewPackagingRes() {}
+
+type PackagingPreviewExcludedFilesItem struct {
+	// Package-relative path of the file that was removed.
+	Path   string                                  `json:"path"`
+	Reason PackagingPreviewExcludedFilesItemReason `json:"reason"`
+	Label  string                                  `json:"label"`
+	Note   string                                  `json:"note"`
+	// True when `SKILL.md` points at this path. That combination is the one the platform treats as its own
+	// fault rather than the author's: the file was there, the document needs it, and the packager is what
+	// removed it. Packaging refuses in that case (`blocked_reason: file_removed_by_packager`). A reference
+	// that was already dangling on import is a different fact and stays a warning — the platform did not
+	// break that one.
+	ReferencedBySkillMd OptBool `json:"referenced_by_skill_md"`
+}
+
+// GetPath returns the value of Path.
+func (s *PackagingPreviewExcludedFilesItem) GetPath() string {
+	return s.Path
+}
+
+// GetReason returns the value of Reason.
+func (s *PackagingPreviewExcludedFilesItem) GetReason() PackagingPreviewExcludedFilesItemReason {
+	return s.Reason
+}
+
+// GetLabel returns the value of Label.
+func (s *PackagingPreviewExcludedFilesItem) GetLabel() string {
+	return s.Label
+}
+
+// GetNote returns the value of Note.
+func (s *PackagingPreviewExcludedFilesItem) GetNote() string {
+	return s.Note
+}
+
+// GetReferencedBySkillMd returns the value of ReferencedBySkillMd.
+func (s *PackagingPreviewExcludedFilesItem) GetReferencedBySkillMd() OptBool {
+	return s.ReferencedBySkillMd
+}
+
+// SetPath sets the value of Path.
+func (s *PackagingPreviewExcludedFilesItem) SetPath(val string) {
+	s.Path = val
+}
+
+// SetReason sets the value of Reason.
+func (s *PackagingPreviewExcludedFilesItem) SetReason(val PackagingPreviewExcludedFilesItemReason) {
+	s.Reason = val
+}
+
+// SetLabel sets the value of Label.
+func (s *PackagingPreviewExcludedFilesItem) SetLabel(val string) {
+	s.Label = val
+}
+
+// SetNote sets the value of Note.
+func (s *PackagingPreviewExcludedFilesItem) SetNote(val string) {
+	s.Note = val
+}
+
+// SetReferencedBySkillMd sets the value of ReferencedBySkillMd.
+func (s *PackagingPreviewExcludedFilesItem) SetReferencedBySkillMd(val OptBool) {
+	s.ReferencedBySkillMd = val
+}
+
+type PackagingPreviewExcludedFilesItemReason string
+
+const (
+	PackagingPreviewExcludedFilesItemReasonExcludedDir     PackagingPreviewExcludedFilesItemReason = "excluded_dir"
+	PackagingPreviewExcludedFilesItemReasonCredentialFile  PackagingPreviewExcludedFilesItemReason = "credential_file"
+	PackagingPreviewExcludedFilesItemReasonNotARegularFile PackagingPreviewExcludedFilesItemReason = "not_a_regular_file"
+	PackagingPreviewExcludedFilesItemReasonUnsafePath      PackagingPreviewExcludedFilesItemReason = "unsafe_path"
+)
+
+// AllValues returns all PackagingPreviewExcludedFilesItemReason values.
+func (PackagingPreviewExcludedFilesItemReason) AllValues() []PackagingPreviewExcludedFilesItemReason {
+	return []PackagingPreviewExcludedFilesItemReason{
+		PackagingPreviewExcludedFilesItemReasonExcludedDir,
+		PackagingPreviewExcludedFilesItemReasonCredentialFile,
+		PackagingPreviewExcludedFilesItemReasonNotARegularFile,
+		PackagingPreviewExcludedFilesItemReasonUnsafePath,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PackagingPreviewExcludedFilesItemReason) MarshalText() ([]byte, error) {
+	switch s {
+	case PackagingPreviewExcludedFilesItemReasonExcludedDir:
+		return []byte(s), nil
+	case PackagingPreviewExcludedFilesItemReasonCredentialFile:
+		return []byte(s), nil
+	case PackagingPreviewExcludedFilesItemReasonNotARegularFile:
+		return []byte(s), nil
+	case PackagingPreviewExcludedFilesItemReasonUnsafePath:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PackagingPreviewExcludedFilesItemReason) UnmarshalText(data []byte) error {
+	switch PackagingPreviewExcludedFilesItemReason(data) {
+	case PackagingPreviewExcludedFilesItemReasonExcludedDir:
+		*s = PackagingPreviewExcludedFilesItemReasonExcludedDir
+		return nil
+	case PackagingPreviewExcludedFilesItemReasonCredentialFile:
+		*s = PackagingPreviewExcludedFilesItemReasonCredentialFile
+		return nil
+	case PackagingPreviewExcludedFilesItemReasonNotARegularFile:
+		*s = PackagingPreviewExcludedFilesItemReasonNotARegularFile
+		return nil
+	case PackagingPreviewExcludedFilesItemReasonUnsafePath:
+		*s = PackagingPreviewExcludedFilesItemReasonUnsafePath
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 type PackagingPreviewExcludedTestCasesItem struct {
 	TestCaseID uuid.UUID `json:"test_case_id"`

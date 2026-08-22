@@ -1514,6 +1514,35 @@ func (s *EvidenceRef) Validate() error {
 			Error: err,
 		})
 	}
+	if err := func() error {
+		if err := s.Match.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "match",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if value, ok := s.ReattributedFrom.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "reattributed_from",
+			Error: err,
+		})
+	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
@@ -1521,6 +1550,32 @@ func (s *EvidenceRef) Validate() error {
 }
 
 func (s EvidenceRefKind) Validate() error {
+	switch s {
+	case "trace_event":
+		return nil
+	case "artifact":
+		return nil
+	case "agent_output":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s EvidenceRefMatch) Validate() error {
+	switch s {
+	case "exact":
+		return nil
+	case "normalized":
+		return nil
+	case "not_found":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s EvidenceRefReattributedFrom) Validate() error {
 	switch s {
 	case "trace_event":
 		return nil
@@ -2427,6 +2482,8 @@ func (s PackagingBlockedReason) Validate() error {
 		return nil
 	case "validation_blocked":
 		return nil
+	case "file_removed_by_packager":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}
@@ -2511,10 +2568,76 @@ func (s *PackagingPreview) Validate() error {
 			Error: err,
 		})
 	}
+	if err := func() error {
+		if s.ExcludedFiles == nil {
+			return errors.New("nil is invalid value")
+		}
+		var failures []validate.FieldError
+		for i, elem := range s.ExcludedFiles {
+			if err := func() error {
+				if err := elem.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				failures = append(failures, validate.FieldError{
+					Name:  fmt.Sprintf("[%d]", i),
+					Error: err,
+				})
+			}
+		}
+		if len(failures) > 0 {
+			return &validate.Error{Fields: failures}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "excluded_files",
+			Error: err,
+		})
+	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
+}
+
+func (s *PackagingPreviewExcludedFilesItem) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := s.Reason.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "reason",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s PackagingPreviewExcludedFilesItemReason) Validate() error {
+	switch s {
+	case "excluded_dir":
+		return nil
+	case "credential_file":
+		return nil
+	case "not_a_regular_file":
+		return nil
+	case "unsafe_path":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
 }
 
 func (s *PackagingTarget) Validate() error {

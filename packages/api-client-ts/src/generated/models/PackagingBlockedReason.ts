@@ -36,6 +36,14 @@
  * error-level finding, so it must not be presented as a valid package
  * (02:PACK-001). The severities are skillpkg's own; packaging does not
  * define a second notion of "blocking".
+ * `file_removed_by_packager` — `SKILL.md` points at a file that was in the
+ * version and that the **exporter** removed (`excluded_files` names it).
+ * The fifth value exists because it is the one failure on this list the
+ * platform caused: a dangling reference that arrived that way is the
+ * author's, disclosed as a warning and shipped, but a package the packager
+ * itself broke must not go out looking whole. It is also the one a user can
+ * act on without arguing with a licence — move the file out of `.git/`,
+ * stop vendoring `node_modules/`, replace the symlink.
  * 
  * @export
  */
@@ -43,7 +51,8 @@ export const PackagingBlockedReason = {
     LicenseHold: 'license_hold',
     NotRedistributable: 'not_redistributable',
     LicenseUnknown: 'license_unknown',
-    ValidationBlocked: 'validation_blocked'
+    ValidationBlocked: 'validation_blocked',
+    FileRemovedByPackager: 'file_removed_by_packager'
 } as const;
 export type PackagingBlockedReason = typeof PackagingBlockedReason[keyof typeof PackagingBlockedReason];
 

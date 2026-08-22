@@ -287,10 +287,16 @@ func costFindings(m material) []Finding {
 
 // traceRef cites one trace event. The (id, occurred_at) pair is the whole address:
 // trace_events is partitioned by time and keyed on both.
+//
+// `match: exact` because the excerpt here is the payload itself, copied out of
+// the platform's own record with no model claim anywhere in it. The findings
+// this mints are not citations that have to be believed; verify() overwrites
+// the field when a judge's quote is what is being placed (ADR-043 §1).
 func traceRef(e trace.EventView, kind string) EvidenceRef {
 	excerpt, truncated := cut(string(e.Payload), excerptLimit)
 	return EvidenceRef{
 		Kind:             KindTraceEvent,
+		Match:            MatchExact,
 		TraceEventID:     e.EventID,
 		OccurredAt:       e.OccurredAt,
 		Excerpt:          kind + " " + excerpt,
@@ -302,9 +308,15 @@ func traceRef(e trace.EventView, kind string) EvidenceRef {
 // artifactRef cites one manifest row. No byte range: the bytes live inside the
 // attempt's archive and this pipeline never opens it, so there is no offset that
 // would mean anything.
+//
+// `match: exact` for the same reason as traceRef: the excerpt is the manifest
+// row this package read, not a quote anybody claimed. A *judge's* artifact
+// citation is a different thing and verify() stamps it `not_found` — the row
+// proves the file exists and never that a quote came out of it (ADR-043 §3).
 func artifactRef(a ArtifactFacts) EvidenceRef {
 	return EvidenceRef{
 		Kind:         KindArtifact,
+		Match:        MatchExact,
 		ArtifactPath: a.FileName,
 		Excerpt: fmt.Sprintf("%s (%d bytes, %s, %s)",
 			a.FileName, a.SizeBytes, orUnknown(a.ContentType), a.ContentHash),

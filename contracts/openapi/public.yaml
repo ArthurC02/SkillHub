@@ -5382,11 +5382,37 @@ components:
         is read long after. Only the pointer would turn old reports into empty
         citations; only the excerpt would make fresh ones unverifiable.
       type: object
-      required: [kind, excerpt, excerpt_truncated, available]
+      required: [kind, excerpt, excerpt_truncated, available, match]
       properties:
         kind:
           type: string
           enum: [trace_event, artifact, agent_output]
+        match:
+          type: string
+          enum: [exact, normalized, not_found]
+          description: |
+            How the excerpt was found in the source it names (ADR-043). This is
+            the platform's own answer, never the judge's — a citation is verified
+            **by content**, not by the source it was filed under.
+
+            - `exact` — the quote occurs verbatim.
+            - `normalized` — it occurs after bounded normalisation (NFC, runs of
+              whitespace collapsed, leading and trailing structural punctuation
+              trimmed). A real citation losing to one stray colon is the failure
+              that put 45 correct verdicts on the floor in the A round, and it
+              cost the platform a `judge-run/v2`.
+            - `not_found` — the quote is in none of the run's verifiable sources.
+              It does not become evidence, whatever it was filed as.
+        reattributed_from:
+          type: string
+          enum: [trace_event, artifact, agent_output]
+          description: |
+            Present when the quote was found, but **not in the source the judge
+            named** — `kind` is corrected to where it actually is and this
+            records where it was filed. ADR-043's核心: mis-filed and fabricated
+            are different failures and one string search tells them apart, so the
+            platform stopped treating them the same. Absent when `kind` was
+            right, which is the ordinary case.
         trace_event_id:
           type: string
           format: uuid
@@ -5945,8 +5971,18 @@ components:
         error-level finding, so it must not be presented as a valid package
         (02:PACK-001). The severities are skillpkg's own; packaging does not
         define a second notion of "blocking".
+        `file_removed_by_packager` — `SKILL.md` points at a file that was in the
+        version and that the **exporter** removed (`excluded_files` names it).
+        The fifth value exists because it is the one failure on this list the
+        platform caused: a dangling reference that arrived that way is the
+        author's, disclosed as a warning and shipped, but a package the packager
+        itself broke must not go out looking whole. It is also the one a user can
+        act on without arguing with a licence — move the file out of `.git/`,
+        stop vendoring `node_modules/`, replace the symlink.
       type: string
-      enum: [license_hold, not_redistributable, license_unknown, validation_blocked]
+      enum:
+        [license_hold, not_redistributable, license_unknown, validation_blocked,
+         file_removed_by_packager]
     PackageValidation:
       description: |
         The re-validation of the bytes packaging would produce (PACK-002), in
@@ -5976,7 +6012,9 @@ components:
         saved in between; the packaging call checks again and is the one that
         decides.
       type: object
-      required: [target, allowed, validation, dependencies, included_test_cases, excluded_test_cases]
+      required:
+        [target, allowed, validation, dependencies, included_test_cases,
+         excluded_test_cases, excluded_files]
       properties:
         target: { $ref: "#/components/schemas/PackagingTargetId" }
         allowed:
@@ -6044,6 +6082,45 @@ components:
               test_case_id: { type: string, format: uuid }
               name: { type: string }
               reason: { type: string }
+        excluded_files:
+          type: array
+          description: |
+            Source files the packager removed, each with its reason.
+
+            The exporter has always dropped these — `.git/`, `node_modules/`,
+            `.ssh/`, `.env`, symlinks — and until now it dropped them
+            **silently**: nothing in the manifest, nothing on this page, nothing
+            in INSTALL.md. `excluded_test_cases` existed for exactly this reason
+            one field over, and the argument is the same one 02:PACK-001 makes
+            about keeping the Skill's directory structure: a package missing a
+            file the Skill needs is not the same product as one that never had
+            it, and only one of those two is worth telling the author about.
+
+            Empty for almost every package. It is not empty for the case that
+            matters — a Skill that vendored its dependencies, or one whose
+            `SKILL.md` points at something the exporter would not carry.
+          items:
+            type: object
+            required: [path, reason, label, note]
+            properties:
+              path:
+                type: string
+                description: Package-relative path of the file that was removed.
+              reason:
+                type: string
+                enum: [excluded_dir, credential_file, not_a_regular_file, unsafe_path]
+              label: { type: string }
+              note: { type: string }
+              referenced_by_skill_md:
+                type: boolean
+                description: |
+                  True when `SKILL.md` points at this path. That combination is
+                  the one the platform treats as its own fault rather than the
+                  author's: the file was there, the document needs it, and the
+                  packager is what removed it. Packaging refuses in that case
+                  (`blocked_reason: file_removed_by_packager`).
+                  A reference that was already dangling on import is a different
+                  fact and stays a warning — the platform did not break that one.
     DownloadArtifact:
       description: |
         One built package (PACK-001). Immutable: re-packaging produces another

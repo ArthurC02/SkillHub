@@ -174,6 +174,10 @@ type previewView struct {
 	Dependencies      []string           `json:"dependencies"`
 	IncludedTestCases []testCaseView     `json:"included_test_cases"`
 	ExcludedTestCases []excludedCaseView `json:"excluded_test_cases"`
+	// Served on the preview, not only in the manifest, because the manifest is
+	// inside the thing the user has not decided to download yet. An answer that
+	// only exists after the decision is not an answer to that decision.
+	ExcludedFiles []ExcludedFile `json:"excluded_files"`
 }
 
 // validationView and findingView are public.yaml's PackageValidation and
@@ -269,6 +273,7 @@ func (h *Handler) Preview(w http.ResponseWriter, r *http.Request) {
 		Dependencies:      p.Dependencies,
 		IncludedTestCases: includedViews(p.Included),
 		ExcludedTestCases: excludedViews(p.Excluded),
+		ExcludedFiles:     p.ExcludedFiles,
 	})
 }
 

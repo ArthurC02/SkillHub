@@ -69,7 +69,18 @@ type Range struct {
 // events live in monthly partitions the retention policy drops, while an
 // evaluation report is read long after. `available` is answered at read time.
 type EvidenceRef struct {
-	Kind             string `json:"kind"`
+	Kind string `json:"kind"`
+	// Match is how the excerpt was found in the source `kind` names, and it is the
+	// platform's own answer rather than the judge's (ADR-043 §1: a citation holds
+	// because its quote is findable, not because of the label it arrived under).
+	Match string `json:"match"`
+	// ReattributedFrom is set when the quote was found somewhere other than where
+	// the judge filed it. `kind` is corrected to where it actually is and this
+	// keeps the original label, because mis-filed and fabricated are different
+	// failures and the report has to be able to show which one happened
+	// (ADR-043 §2; 04 乙-13's A-round finding that the model was not inventing
+	// anything, it was mislabelling).
+	ReattributedFrom string `json:"reattributed_from,omitempty"`
 	TraceEventID     string `json:"trace_event_id,omitempty"`
 	OccurredAt       string `json:"occurred_at,omitempty"`
 	ArtifactPath     string `json:"artifact_path,omitempty"`
@@ -85,6 +96,25 @@ const (
 	KindTraceEvent  = "trace_event"
 	KindArtifact    = "artifact"
 	KindAgentOutput = "agent_output"
+)
+
+// The three match states of ADR-043 §4 (public.yaml EvidenceRef.match).
+//
+// `normalized` exists as its own value rather than collapsing into `exact`
+// because it is an auditable fact: it says the platform had to widen the
+// comparison to accept this citation, and a reader who sees it knows exactly
+// what happened. G8 — two correct `failed` verdicts lost to a trailing `}],` the
+// model wrote into a string value — would have been one glance instead of a
+// regression report.
+//
+// `not_found` is a stored state, not only a rejection. An artifact citation
+// keeps it: the manifest proves the file exists, and nothing in this platform
+// ever proves that a quote came out of its bytes (evaluation-design §2.2 keeps
+// the archive shut in the control plane).
+const (
+	MatchExact      = "exact"
+	MatchNormalized = "normalized"
+	MatchNotFound   = "not_found"
 )
 
 // CriterionResult is one acceptance criterion's verdict (public.yaml

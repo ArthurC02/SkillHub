@@ -201,9 +201,27 @@ func TestBuildAndVersionControlResidueNeverTravels(t *testing.T) {
 		"scripts/run.py":                           &fstest.MapFile{Data: []byte("print(1)\n")},
 		"link":                                     &fstest.MapFile{Data: []byte("SKILL.md"), Mode: fs.ModeSymlink},
 	}
-	files, err := collect(src)
+	files, dropped, err := collect(src)
 	if err != nil {
 		t.Fatal(err)
+	}
+	// Every removal is now reported, not just performed (04 完整性 review): a
+	// package that lost a file and one that never had it used to look the same.
+	droppedPaths := map[string]string{}
+	for _, e := range dropped {
+		if e.Reason == "" {
+			t.Errorf("%s was removed with no reason", e.Path)
+		}
+		droppedPaths[e.Path] = e.Reason
+	}
+	for path, reason := range map[string]string{
+		".git/":                          ReasonExcludedDir,
+		"fixtures/home/.git-credentials": ReasonCredentialFile,
+		"link":                           ReasonNotRegularFile,
+	} {
+		if droppedPaths[path] != reason {
+			t.Errorf("%s reported as %q, want %q (all removals: %v)", path, droppedPaths[path], reason, droppedPaths)
+		}
 	}
 	got := map[string]bool{}
 	for _, f := range files {

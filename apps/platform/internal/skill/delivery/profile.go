@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
 // TargetIDs is the value domain of public.yaml's PackagingTargetId, in the order
@@ -203,12 +205,40 @@ func renderInstall(p Profile, skillName string, deps []string) string {
 			"block in `skillhub-manifest.json` for what was actually measured for this version.\n\n")
 	} else {
 		fmt.Fprintf(&b, "**Support status: unverified.** Skill Hub has not installed or run a package "+
-			"through this target, and nothing here promises it will work. The package is valid against "+
-			"the Agent Skills specification; that is a statement about its format and not about whether "+
-			"it installs or runs on your Agent.\n\n")
+			"through this target, and nothing here promises it will work.\n\n")
 	}
 	fmt.Fprintf(&b, "- Target: %s (profile version %s)\n- Packaged by: Skill Hub packager %s\n\n",
 		p.DisplayName, p.Version, PackagerVersion)
+
+	// What "conforms" means, named.
+	//
+	// This section replaced a sentence that told every downloader the package was
+	// "valid against the Agent Skills specification" at a time when this
+	// repository contained no such document — no URL, no copy, no revision, no
+	// ADR. Its only real content was "it passed our own parser", which is not
+	// what a reader takes from it, and it shipped inside the artifact rather than
+	// on a screen somebody could argue with (04 一致性 review, ADR-044).
+	//
+	// The specification is now pinned (contracts/spec/SOURCE.json). The claim
+	// names its revision and lists what was checked, because a claim the reader
+	// cannot re-check is the same defect written longer.
+	fmt.Fprintf(&b, "## What was checked\n\n"+
+		"Validated against the Agent Skills specification, revision `%s` "+
+		"(https://agentskills.io/specification). Checked: `SKILL.md` present at the package root; "+
+		"frontmatter parses as YAML; `name` present, at most 64 characters, lowercase alphanumerics "+
+		"and single hyphens, not starting or ending with one; `description` present, non-blank and at "+
+		"most 1024 characters; `compatibility`, where present, at most 500 characters; every file "+
+		"`SKILL.md` points at is in this package.\n\n"+
+		"**Not checked and not claimed:** that your Agent loads this Skill, that its scripts run, or "+
+		"that it does what it says. Those are the other two layers of ADR-012, and the "+
+		"`compatibility` block of `skillhub-manifest.json` records what was actually measured for "+
+		"this version - which for most versions is nothing.\n\n"+
+		"The specification defines exactly six frontmatter fields (`name`, `description`, `license`, "+
+		"`compatibility`, `metadata`, `allowed-tools`). Skill Hub reports anything else as a warning "+
+		"and still packages it; the specification's own reference validator and some clients' upload "+
+		"paths treat it as a **hard error**. If this package carries one it is in "+
+		"`skillhub-manifest.json` under `validation.warnings`.\n\n",
+		skillpkg.SpecRevision)
 
 	b.WriteString("## Where it goes\n\n")
 	if len(p.Install.Locations) == 0 {

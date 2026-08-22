@@ -71,6 +71,7 @@ export * from './OwnSkill';
 export * from './PackageValidation';
 export * from './PackagingBlockedReason';
 export * from './PackagingPreview';
+export * from './PackagingPreviewExcludedFilesInner';
 export * from './PackagingPreviewExcludedTestCasesInner';
 export * from './PackagingPreviewIncludedTestCasesInner';
 export * from './PackagingTarget';

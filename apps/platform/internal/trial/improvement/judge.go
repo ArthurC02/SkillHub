@@ -9,7 +9,12 @@ package eval
 //	                             write, a workspace or a run id it can act on.
 //	defence 3  verifiable refs   verify() re-resolves every reference against the
 //	                             platform's own data; a criterion whose references
-//	                             do not resolve is downgraded and said so.
+//	                             do not resolve is downgraded and said so. ADR-043
+//	                             rewrote its criterion (not the defence): a citation
+//	                             holds because its quote is findable in a verifiable
+//	                             source, not because of the `kind` it arrived under.
+//	                             That closed the one path — `artifact` — that used
+//	                             to walk around this defence entirely.
 //	defence 4  content separated  the labelled data block is the Python side's job;
 //	                             what this file controls is what gets in at all.
 //
@@ -20,7 +25,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode"
 	"unicode/utf8"
+
+	// The NFC half of ADR-043 §4's normalisation. Unicode normalisation is a table
+	// this repo is not going to carry a hand-rolled copy of, and x/text is already
+	// in the module graph.
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -275,6 +286,17 @@ func buildDigest(view trace.AdvancedView) ([]llmclient.TraceDigestEntry, map[str
 func (s *Service) merge(
 	m material, v llmclient.JudgeVerdict, digest map[string]trace.EventView, truncated bool,
 ) []CriterionResult {
+	// Which criteria the frozen rubric demands quoted evidence for. Read off the
+	// snapshot's rubric, like everything else about what this run was measured
+	// against (iron rule 4), and keyed by criterion id because a rubric item's id
+	// *is* the criterion it strengthens (writing-rubrics.md §2.1).
+	evidenceRequired := map[string]bool{}
+	if m.rubric != nil {
+		for _, it := range m.rubric.Items {
+			evidenceRequired[it.ID] = it.EvidenceRequired
+		}
+	}
+
 	answers := make(map[string]llmclient.CriterionVerdict, len(v.CriterionResults))
 	for _, cv := range v.CriterionResults {
 		// An id that was not sent is dropped, exactly as an unrequested skill_id is
@@ -320,6 +342,28 @@ func (s *Service) merge(
 			result.Reason = "the judge returned no verifiable evidence for this verdict. " +
 				"The judge's own reasoning was: " + cv.Reason
 		}
+		// ADR-043 §3. A rubric item with `evidence_required` is asking for a quote
+		// that was checked against something. An `artifact` citation is a real
+		// citation — the path is on the manifest and a model cannot invent that —
+		// but all it can support is "this file exists, this big": the bytes are
+		// never opened here, so no quote of it is ever verified, and verify()
+		// stamps it `not_found` to say so. That is the G7 hole: 6 of the A round's
+		// 9 `passed` rested on citations of exactly this shape, and nothing had
+		// compared their quotes to anything.
+		//
+		// It is deliberately not the general rule. Outside `evidence_required` an
+		// artifact citation still supports a verdict, because "the file is there"
+		// is a fact the platform checked; what ADR-043 forbids is letting it stand
+		// in for a quote somebody asked to see. The prefix is the one 丙-10's UI
+		// reads to say "證據無法回驗" rather than "the judge was unsure" — this is
+		// that same downgrade, so it wears the same label.
+		if evidenceRequired[c.ID] && result.Result != ResultUndetermined && !hasVerifiedQuote(result.Evidence) {
+			result.Result = ResultUndetermined
+			result.Reason = "evidence_unverifiable: this rubric item requires quoted evidence, and " +
+				"none of the citations offered has a quote this platform could find in the run's " +
+				"verifiable sources (an artifact citation proves the file exists, not what is in it). " +
+				"The judge's own reasoning was: " + cv.Reason
+		}
 		// 丙-1 and the truncation rule of §6.3: evidence that may be missing cannot
 		// support a pass. It can still support a failure — a criterion contradicted
 		// by what *is* there does not become uncertain because something else is
@@ -332,6 +376,18 @@ func (s *Service) merge(
 		out = append(out, result)
 	}
 	return out
+}
+
+// hasVerifiedQuote answers whether any of these citations rests on a quote the
+// platform found somewhere. `not_found` is the one match state that carries no
+// verified content, whichever source it ended up filed under.
+func hasVerifiedQuote(refs []EvidenceRef) bool {
+	for _, r := range refs {
+		if r.Match != MatchNotFound {
+			return true
+		}
+	}
+	return false
 }
 
 // normaliseResult is defence 1's Go half: three values, no fourth. Anything else -
@@ -348,63 +404,284 @@ func normaliseResult(r string) string {
 // verify re-resolves one claimed reference against the platform's own data and
 // returns the stored form. A non-empty second return is why it did not resolve.
 //
+// ADR-043 is the criterion this implements, in one sentence: **a citation holds
+// if and only if its quote is findable in a verifiable source of this run.**
+// `ref.Kind` is a hint from the model, not a credential. It is still tried first,
+// because it is the only path that can carry a precise address (the trace event
+// id, the char range), but when the named source cannot produce the quote the
+// platform looks in the other verifiable sources before concluding anything.
+//
+// That one rule closes both halves of 04 乙-13, which is why it had to be one
+// rule: G7 (an `artifact` citation waved through with its quote never compared to
+// anything, so a fabricated sentence could satisfy `evidence_required`) and G8 (a
+// verbatim-correct quote with a trailing `}],` lost to a bare substring search,
+// taking two correct `failed` verdicts down with it). Splitting them would have
+// meant two different rulers.
+//
 // Ranges are computed here, never taken from the model: the request carries no
 // offsets for it to return, and an offset a model computed would be one more thing
 // to get wrong.
 func verify(
 	ref llmclient.JudgeEvidenceRef, m material, digest map[string]trace.EventView,
 ) (EvidenceRef, string) {
+	// Why the named source could not produce the quote, per kind. Held so that a
+	// citation which then fails everywhere is refused with the specific reason.
+	var namedFailure string
+
 	switch ref.Kind {
 	case KindTraceEvent:
 		id := derefString(ref.TraceEventID)
-		event, ok := digest[id]
-		if !ok {
-			return EvidenceRef{}, fmt.Sprintf("cited trace event %q was not in the digest", id)
-		}
-		if ref.Quote != "" && !strings.Contains(string(event.Payload), ref.Quote) {
-			return EvidenceRef{}, fmt.Sprintf("the quote cited from trace event %q is not in it", id)
-		}
-		out := traceRef(event, event.Type)
-		if ref.Quote != "" {
-			out.Excerpt, out.ExcerptTruncated = cut(ref.Quote, excerptLimit)
-		}
-		return out, ""
-
-	case KindArtifact:
-		path := derefString(ref.ArtifactPath)
-		for _, a := range m.artifacts {
-			if a.FileName == path {
-				// The path is what is checkable here, and it is the part a model
-				// cannot invent. The quote is not matched: no artifact bytes were
-				// sent (buildRequest ships manifest rows only), so there was
-				// nothing for the model to quote and the platform's own manifest
-				// line is the honest excerpt. No byte_range for the same reason.
-				return artifactRef(a), ""
+		event, inDigest := digest[id]
+		switch {
+		case !inDigest:
+			if ref.Quote == "" {
+				// An id the digest does not carry, with no quote to look for, is a
+				// citation of nothing: there is no content to re-attribute.
+				return EvidenceRef{}, fmt.Sprintf("cited trace event %q was not in the digest", id)
 			}
+			namedFailure = fmt.Sprintf("cited trace event %q was not in the digest", id)
+		case ref.Quote == "":
+			// The citation is the event itself. The excerpt is the platform's own
+			// payload, so there is nothing in it a model could have invented.
+			out := traceRef(event, event.Type)
+			out.Match = MatchExact
+			return out, ""
+		default:
+			if match, _, ok := locate(string(event.Payload), ref.Quote); ok {
+				return traceQuoteRef(event, ref.Quote, match), ""
+			}
+			namedFailure = fmt.Sprintf("the quote cited from trace event %q is not in it", id)
 		}
-		return EvidenceRef{}, fmt.Sprintf("cited artifact %q is not in this run's manifest", path)
 
 	case KindAgentOutput:
 		if ref.Quote == "" {
 			return EvidenceRef{}, "an agent output reference was cited with no quote to locate"
 		}
-		idx := strings.Index(m.summary.FinalOutput, ref.Quote)
-		if idx < 0 {
-			return EvidenceRef{}, "the quote cited from the agent's final output is not in it"
+		if match, idx, ok := locate(m.summary.FinalOutput, ref.Quote); ok {
+			return outputRef(m.summary.FinalOutput, ref.Quote, idx, match), ""
 		}
-		excerpt, truncated := cut(ref.Quote, excerptLimit)
-		start := utf8.RuneCountInString(m.summary.FinalOutput[:idx])
-		return EvidenceRef{
-			Kind:             KindAgentOutput,
-			CharRange:        &Range{Start: start, End: start + utf8.RuneCountInString(ref.Quote)},
-			Excerpt:          excerpt,
-			ExcerptTruncated: truncated,
-			Available:        true,
-		}, ""
+		namedFailure = "the quote cited from the agent's final output is not in it"
+
+	case KindArtifact:
+		// Nothing to try on the named source: no artifact bytes were sent
+		// (buildRequest ships manifest rows only), and reading them would mean
+		// unarchiving inside the control plane, which is the line
+		// evaluation-design §2.2 draws. So an artifact citation goes straight to
+		// the content search, and failing that proves existence and no more.
+		namedFailure = "an artifact citation's quote is verified against nothing"
 
 	default:
 		return EvidenceRef{}, fmt.Sprintf("reference kind %q is not one this platform can resolve", ref.Kind)
 	}
+
+	// The named source did not produce the quote. Before calling it fabricated,
+	// look where the quote could actually be (ADR-043 §2). This is the step that
+	// tells mis-filed from invented, and the A round is why it is worth taking:
+	// every quote sampled from the 6 `passed` verdicts resting on `artifact`
+	// citations was present verbatim in that run's trace_events. The model had
+	// read the trace and written the wrong label on it.
+	if ref.Quote != "" {
+		if src, idx, match, ok := findQuote(ref.Quote, verifiableSources(m, digest)); ok {
+			var out EvidenceRef
+			if src.kind == KindTraceEvent {
+				out = traceQuoteRef(src.event, ref.Quote, match)
+			} else {
+				out = outputRef(src.text, ref.Quote, idx, match)
+			}
+			out.ReattributedFrom = ref.Kind
+			return out, ""
+		}
+	}
+
+	if ref.Kind == KindArtifact {
+		path := derefString(ref.ArtifactPath)
+		for _, a := range m.artifacts {
+			if a.FileName == path {
+				// The path is what is checkable here, and it is the part a model
+				// cannot invent — so the citation is kept rather than thrown away
+				// (ADR-043 §3). What it supports is "this file exists, this big",
+				// and `not_found` is how it says its quote, if it had one, was
+				// verified against nothing. merge() is where that stops being
+				// enough for a rubric item that demands evidence.
+				out := artifactRef(a)
+				out.Match = MatchNotFound
+				return out, ""
+			}
+		}
+		return EvidenceRef{}, fmt.Sprintf("cited artifact %q is not in this run's manifest", path)
+	}
+	return EvidenceRef{}, namedFailure + ", and it is in no other verifiable source of this run"
+}
+
+// source is one place a quote may honestly be found. There are two of them, and
+// artifact bytes are deliberately not a third — see the artifact branch of
+// verify(). The third candidate, the test case's input snapshot, is ADR-043's
+// open question 2 and is not wired here: "the skill quoted my own input back at
+// me" must not quietly become a way to satisfy an evidence requirement.
+type source struct {
+	kind  string
+	text  string
+	event trace.EventView // set only when kind is KindTraceEvent
+}
+
+// verifiableSources lists them in search order: the final output first, because a
+// hit there carries a char range, then the trace entries.
+//
+// Trace order, not map order. digest is a map and ranging it would make the event
+// a report cites depend on Go's hash seed; the same evaluation has to cite the
+// same event twice running. Only ids the digest carries are searched, which keeps
+// the citation set exactly what buildDigest sent.
+func verifiableSources(m material, digest map[string]trace.EventView) []source {
+	out := make([]source, 0, len(digest)+1)
+	if m.summary.FinalOutput != "" {
+		out = append(out, source{kind: KindAgentOutput, text: m.summary.FinalOutput})
+	}
+	for _, e := range m.advanced.Events {
+		if de, ok := digest[e.EventID]; ok {
+			out = append(out, source{kind: KindTraceEvent, text: string(de.Payload), event: de})
+		}
+	}
+	return out
+}
+
+// findQuote searches every verifiable source, exact hits before normalized ones.
+// Two passes on purpose: an exact hit in the last source is a stronger fact than a
+// normalized hit in the first, and the stronger fact is the one to record.
+//
+// The returned index is a byte offset into that source's text for an exact hit,
+// and -1 for a normalized one.
+func findQuote(quote string, sources []source) (source, int, string, bool) {
+	for _, s := range sources {
+		if i := strings.Index(s.text, quote); i >= 0 {
+			return s, i, MatchExact, true
+		}
+	}
+	nq := normalizeQuote(quote)
+	if utf8.RuneCountInString(nq) < minNormalizedQuote {
+		return source{}, -1, "", false
+	}
+	for _, s := range sources {
+		if strings.Contains(normalizeQuote(s.text), nq) {
+			return s, -1, MatchNormalized, true
+		}
+	}
+	return source{}, -1, "", false
+}
+
+// locate is findQuote for a single text: the same two attempts in the same order.
+func locate(text, quote string) (string, int, bool) {
+	if i := strings.Index(text, quote); i >= 0 {
+		return MatchExact, i, true
+	}
+	nq := normalizeQuote(quote)
+	if utf8.RuneCountInString(nq) < minNormalizedQuote {
+		return "", -1, false
+	}
+	if strings.Contains(normalizeQuote(text), nq) {
+		return MatchNormalized, -1, true
+	}
+	return "", -1, false
+}
+
+// minNormalizedQuote is ADR-043 §4's floor: below this length a quote is accepted
+// only on an exact hit, never on a normalized one.
+//
+// Normalisation widens matching by construction, and a short string in a widened
+// comparison hits by accident — `"ok"}` finds itself in almost any payload. A
+// length floor is the cheapest compensation that does not require inventing a
+// second notion of similarity.
+//
+// The number is a derivation and not a measurement. Nothing was counted to arrive
+// at 12; it is sized to be longer than the fragments that collide and shorter than
+// a real cited sentence. The B round (04 丙-8, `EVAL-013` — five real Runs, so a
+// batch that costs money) is what would calibrate it against actual citations, and
+// per §4 it may only ever move upward: lowering it would let through matches this
+// threshold has already been asserted to stop.
+//
+// Runes, not bytes, for the same reason cut() counts runes: the product's own
+// language writes 12 characters in 36 bytes.
+const minNormalizedQuote = 12
+
+// normalizeQuote is the bounded normalisation of ADR-043 §4, and the bound is part
+// of the criterion rather than an implementation detail:
+//
+//  1. Unicode NFC;
+//  2. runs of whitespace (full-width spaces, newlines, tabs) collapsed to one
+//     half-width space;
+//  3. leading and trailing structural punctuation trimmed.
+//
+// Ends only, never the middle: punctuation inside a quote is content. And nothing
+// else — no lowercasing, no stripping of internal punctuation, no fuzzy or
+// edit-distance matching. Each of those was rejected for one reason: they widen
+// the match by an amount nobody can state, and a defence whose looseness cannot be
+// stated is not a defence. What is here widens it by exactly the shapes G8 lost to.
+func normalizeQuote(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	pendingSpace := false
+	for _, r := range norm.NFC.String(s) {
+		if unicode.IsSpace(r) {
+			pendingSpace = true
+			continue
+		}
+		if pendingSpace && b.Len() > 0 {
+			b.WriteRune(' ')
+		}
+		pendingSpace = false
+		b.WriteRune(r)
+	}
+	return strings.Trim(b.String(), structuralPunctuation)
+}
+
+// structuralPunctuation is §4's list, verbatim, plus the space that trimming a
+// closer can expose. These are the characters a model's own serialisation leaks
+// into a string value — G8's quote was correct and ended `}],` — and none of them
+// carries meaning at the edge of a citation. Openers are not in the set: §4 lists
+// closers, and a citation that begins mid-structure is not the failure that was
+// measured.
+const structuralPunctuation = "}]),;\"'`「」『』 "
+
+// traceQuoteRef cites a trace event for a quote found in its payload. No char
+// range: a trace citation is addressed by (event id, occurred_at), and on a
+// normalized match an offset would point into a normalized copy that is not what
+// the report stores.
+func traceQuoteRef(e trace.EventView, quote, match string) EvidenceRef {
+	out := traceRef(e, e.Type)
+	out.Excerpt, out.ExcerptTruncated = cut(verifiedText(quote, match), excerptLimit)
+	out.Match = match
+	return out
+}
+
+// outputRef cites the agent's final output. idx is a byte offset for an exact hit
+// and -1 for a normalized one; a normalized hit gets no char range, because the
+// offset that was found addresses the normalized copy, and pointing a reader at it
+// is worse than pointing them at nothing.
+func outputRef(final, quote string, idx int, match string) EvidenceRef {
+	excerpt, truncated := cut(verifiedText(quote, match), excerptLimit)
+	out := EvidenceRef{
+		Kind:             KindAgentOutput,
+		Match:            match,
+		Excerpt:          excerpt,
+		ExcerptTruncated: truncated,
+		Available:        true,
+	}
+	if idx >= 0 {
+		start := utf8.RuneCountInString(final[:idx])
+		out.CharRange = &Range{Start: start, End: start + utf8.RuneCountInString(quote)}
+	}
+	return out
+}
+
+// verifiedText is what the excerpt stores: the string that was actually checked.
+// On a normalized match that is the normalized quote and not what the model sent,
+// so a reader is never shown a form of the quote that nothing verified. ADR-043's
+// clean-up of `excerpt` semantics is exactly this — it is always the verified
+// text, and never the platform's own manifest line standing in for one.
+func verifiedText(quote, match string) string {
+	if match == MatchNormalized {
+		return normalizeQuote(quote)
+	}
+	return quote
 }
 
 // cut truncates to a character budget and says whether it had to. Runes, not

@@ -48,6 +48,13 @@ import {
     PackagingPreviewExcludedTestCasesInnerToJSON,
     PackagingPreviewExcludedTestCasesInnerToJSONTyped,
 } from './PackagingPreviewExcludedTestCasesInner';
+import type { PackagingPreviewExcludedFilesInner } from './PackagingPreviewExcludedFilesInner';
+import {
+    PackagingPreviewExcludedFilesInnerFromJSON,
+    PackagingPreviewExcludedFilesInnerFromJSONTyped,
+    PackagingPreviewExcludedFilesInnerToJSON,
+    PackagingPreviewExcludedFilesInnerToJSONTyped,
+} from './PackagingPreviewExcludedFilesInner';
 
 /**
  * What POST .../packaging would do, without doing it (PACK-001). Computed
@@ -131,6 +138,26 @@ export interface PackagingPreview {
      * @memberof PackagingPreview
      */
     excludedTestCases: Array<PackagingPreviewExcludedTestCasesInner>;
+    /**
+     * Source files the packager removed, each with its reason.
+     * 
+     * The exporter has always dropped these — `.git/`, `node_modules/`,
+     * `.ssh/`, `.env`, symlinks — and until now it dropped them
+     * **silently**: nothing in the manifest, nothing on this page, nothing
+     * in INSTALL.md. `excluded_test_cases` existed for exactly this reason
+     * one field over, and the argument is the same one 02:PACK-001 makes
+     * about keeping the Skill's directory structure: a package missing a
+     * file the Skill needs is not the same product as one that never had
+     * it, and only one of those two is worth telling the author about.
+     * 
+     * Empty for almost every package. It is not empty for the case that
+     * matters — a Skill that vendored its dependencies, or one whose
+     * `SKILL.md` points at something the exporter would not carry.
+     * 
+     * @type {Array<PackagingPreviewExcludedFilesInner>}
+     * @memberof PackagingPreview
+     */
+    excludedFiles: Array<PackagingPreviewExcludedFilesInner>;
 }
 
 
@@ -145,6 +172,7 @@ export function instanceOfPackagingPreview(value: object): value is PackagingPre
     if (!('dependencies' in value) || value['dependencies'] === undefined) return false;
     if (!('includedTestCases' in value) || value['includedTestCases'] === undefined) return false;
     if (!('excludedTestCases' in value) || value['excludedTestCases'] === undefined) return false;
+    if (!('excludedFiles' in value) || value['excludedFiles'] === undefined) return false;
     return true;
 }
 
@@ -166,6 +194,7 @@ export function PackagingPreviewFromJSONTyped(json: any, ignoreDiscriminator: bo
         'dependencies': json['dependencies'],
         'includedTestCases': ((json['included_test_cases'] as Array<any>).map(PackagingPreviewIncludedTestCasesInnerFromJSON)),
         'excludedTestCases': ((json['excluded_test_cases'] as Array<any>).map(PackagingPreviewExcludedTestCasesInnerFromJSON)),
+        'excludedFiles': ((json['excluded_files'] as Array<any>).map(PackagingPreviewExcludedFilesInnerFromJSON)),
     };
 }
 
@@ -188,6 +217,7 @@ export function PackagingPreviewToJSONTyped(value?: PackagingPreview | null, ign
         'dependencies': value['dependencies'],
         'included_test_cases': ((value['includedTestCases'] as Array<any>).map(PackagingPreviewIncludedTestCasesInnerToJSON)),
         'excluded_test_cases': ((value['excludedTestCases'] as Array<any>).map(PackagingPreviewExcludedTestCasesInnerToJSON)),
+        'excluded_files': ((value['excludedFiles'] as Array<any>).map(PackagingPreviewExcludedFilesInnerToJSON)),
     };
 }
 

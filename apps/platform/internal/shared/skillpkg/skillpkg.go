@@ -42,12 +42,33 @@ type Finding struct {
 // Manifest is the parsed SKILL.md frontmatter. Extra keeps unknown fields
 // as-is: the spec evolves and unknown keys are a warning, not data loss.
 type Manifest struct {
-	Name         string         `json:"name"`
-	Description  string         `json:"description"`
-	License      string         `json:"license,omitempty"`
-	AllowedTools []string       `json:"allowed_tools,omitempty"`
-	Extra        map[string]any `json:"extra,omitempty"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	License     string `json:"license,omitempty"`
+	// Compatibility is the specification's environment-requirements field
+	// ("Designed for Claude Code", "Requires Python 3.14+ and uv"). One of the
+	// six the specification defines, and the one this parser was missing.
+	Compatibility string         `json:"compatibility,omitempty"`
+	AllowedTools  []string       `json:"allowed_tools,omitempty"`
+	Extra         map[string]any `json:"extra,omitempty"`
 }
+
+// SpecRevision identifies the Agent Skills specification this validator was
+// written against, and it is a pair of hashes rather than a version because the
+// specification has neither a version string nor a tag nor a release
+// (contracts/spec/SOURCE.json, ADR-044).
+//
+// It is a constant so that every sentence the platform says about conformance
+// can name it. Before 2026-08-22 the produced INSTALL.md told every downloader
+// the package was "valid against the Agent Skills specification" while no such
+// document existed anywhere in this repository — the sentence's only real
+// meaning was "it passed the function below", which is not what a reader takes
+// from it. A claim about an external standard has to be able to say which one.
+const SpecRevision = "agentskills.io, agentskills/agentskills@217be54 (2026-08-04)"
+
+// SpecFields is the complete frontmatter vocabulary of that revision. Six, and
+// the specification's reference validator rejects anything outside it.
+var SpecFields = []string{"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
 
 // Report is the full validation outcome. Findings are grouped by severity at
 // the presentation layer; Blocked is true when any error-level finding exists.
@@ -112,6 +133,8 @@ const (
 	// "1024 characters" at 341 of them (import-report.md §6.1 bug 1).
 	maxNameLen        = 64
 	maxDescriptionLen = 1024
+	// maxCompatibilityLen is the specification's "1-500 characters if provided".
+	maxCompatibilityLen = 500
 	// maxScanBytes bounds content scanning per file.
 	// ponytail: flat cap, oversized files are disclosed and skipped; stream
 	// scanning only if real packages ever exceed it.
@@ -236,26 +259,61 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 			m.Description, _ = v.(string)
 		case "license":
 			m.License, _ = v.(string)
+		case "compatibility":
+			// A specification field, and one this parser did not know until
+			// 2026-08-22 — so a Skill that correctly declared its environment
+			// requirements was told it had an unknown key. ADR-044.
+			m.Compatibility, _ = v.(string)
 		case "allowed-tools":
 			switch t := v.(type) {
-			case string: // spec allows a comma-separated string
-				for _, s := range strings.Split(t, ",") {
+			case string:
+				// The specification says space-separated (`Bash(git:*) Bash(jq:*) Read`).
+				// Commas are accepted too — this parser read comma-separated
+				// before the specification was pinned, and refusing a comma now
+				// would reject stored packages over punctuation nobody documented
+				// as significant.
+				for _, s := range strings.Fields(strings.ReplaceAll(t, ",", " ")) {
 					if s = strings.TrimSpace(s); s != "" {
 						m.AllowedTools = append(m.AllowedTools, s)
 					}
 				}
 			case []any:
+				// Not the specification's shape — a YAML list here is Claude
+				// Code's extension. Parsed rather than dropped (dropping it would
+				// silently widen what the Skill may do), and reported so the
+				// author knows it does not travel.
 				for _, e := range t {
 					if s, ok := e.(string); ok {
 						m.AllowedTools = append(m.AllowedTools, s)
 					}
 				}
+				r.add(SeverityWarning, "spec-allowed-tools-not-a-string", "SKILL.md",
+					"allowed-tools is a YAML list; the Agent Skills specification defines it as a "+
+						"space-separated string, and a list is a client extension other runtimes may ignore")
 			}
-		case "metadata": // free-form per spec, kept verbatim
+		case "metadata":
 			m.Extra[k] = v
+			// The specification is specific: "a map from string keys to string
+			// values". Anything else is dropped by at least one client rather
+			// than carried, so a Skill relying on it loses data silently.
+			if mm, ok := v.(map[string]any); ok {
+				for mk, mv := range mm {
+					if _, isString := mv.(string); !isString {
+						r.add(SeverityWarning, "spec-metadata-not-string-map", "SKILL.md",
+							fmt.Sprintf("metadata.%s is not a string; the specification defines metadata as a map from string keys to string values", mk))
+					}
+				}
+			} else if v != nil {
+				r.add(SeverityWarning, "spec-metadata-not-string-map", "SKILL.md",
+					"metadata is not a mapping; the specification defines it as a map from string keys to string values")
+			}
 		default:
 			m.Extra[k] = v
-			r.add(SeverityWarning, "frontmatter-unknown-field", "SKILL.md", fmt.Sprintf("unknown frontmatter field %q", k))
+			r.add(SeverityWarning, "frontmatter-unknown-field", "SKILL.md",
+				fmt.Sprintf("unknown frontmatter field %q — the Agent Skills specification defines exactly six "+
+					"(name, description, license, compatibility, metadata, allowed-tools), and its reference "+
+					"validator rejects anything else, as do the upload paths of at least one major client. "+
+					"This package is accepted here and may be refused there", k))
 		}
 	}
 	r.Manifest = m
@@ -290,10 +348,21 @@ func (r *Report) checkManifest() {
 		r.add(SeverityError, "name-invalid", "SKILL.md", "name must be lowercase letters, digits, and single hyphens")
 	}
 	switch {
-	case m.Description == "":
-		r.add(SeverityError, "description-missing", "SKILL.md", "frontmatter field description is required")
+	// Blank, not just absent. The specification says "Non-empty" and its
+	// reference validator strips before testing — and this is the field an agent
+	// reads to decide whether to load the Skill at all, so a description of
+	// spaces is a Skill nothing will ever pick up. That makes it an error rather
+	// than a warning: it is not a style preference, it is a Skill that cannot work.
+	case strings.TrimSpace(m.Description) == "":
+		r.add(SeverityError, "description-missing", "SKILL.md", "frontmatter field description is required and must not be blank")
 	case utf8.RuneCountInString(m.Description) > maxDescriptionLen:
 		r.add(SeverityError, "description-too-long", "SKILL.md", fmt.Sprintf("description exceeds %d characters", maxDescriptionLen))
+	}
+	// Specification: "Must be 1-500 characters if provided". Counted in runes,
+	// for the reason import-report.md §6.1 bug 1 records about description.
+	if n := utf8.RuneCountInString(m.Compatibility); n > maxCompatibilityLen {
+		r.add(SeverityWarning, "spec-compatibility-too-long", "SKILL.md",
+			fmt.Sprintf("compatibility is %d characters, over the specification's %d", n, maxCompatibilityLen))
 	}
 }
 
@@ -522,22 +591,94 @@ func detectLicense(data []byte) string {
 // mdRef matches markdown links and images: [text](target) / ![alt](target).
 var mdRef = regexp.MustCompile(`!?\[[^\]]*\]\(([^)\s]+)\)`)
 
-// checkFileReferences verifies that relative paths referenced from SKILL.md
-// exist in the package (SKILL-002 檔案引用).
-func (r *Report) checkFileReferences(fsys fs.FS, body string) {
-	for _, m := range mdRef.FindAllStringSubmatch(body, -1) {
-		target := m[1]
+// bareRef matches a relative path written as prose rather than as a link —
+// "Run scripts/analyze.py", "See references/passes.md", or the same path inside
+// a fenced command.
+//
+// Markdown links alone were not enough, and the seed corpus is the evidence:
+// real Skills point at their own files in running text far more often than they
+// link them (docs/plans/mvp/content/content-summaries.md records one whose whole
+// second pass lives in `references/`, named in prose). A checker that only reads
+// `[text](target)` verifies the Skills that happen to be written as documents
+// and silently skips the ones written as instructions — and the second kind is
+// the kind with scripts.
+//
+// The anchor that keeps this out of prose is not in the pattern, it is in
+// referencedPaths: **the first segment must be a directory the package actually
+// has**. `scripts/analyze.py` in a package with no `scripts/` is someone talking
+// about another repo; in a package that has one, it is a reference.
+var bareRef = regexp.MustCompile(`(?:^|[\s"'` + "`" + `(<\[])((?:[A-Za-z0-9._-]+/)+[A-Za-z0-9._-]+\.[A-Za-z0-9]{1,8})`)
+
+// SkillMDReferences returns the package-relative paths SKILL.md points at, in
+// the order they were found and without duplicates.
+//
+// Exported because the packager needs the same answer for a different question.
+// Validation asks "is this reference satisfied?"; packaging asks "did I remove
+// something this document needs?" — and those must not be allowed to disagree
+// about what counts as a reference, which two implementations eventually would.
+func SkillMDReferences(fsys fs.FS) []string {
+	raw, err := fs.ReadFile(fsys, "SKILL.md")
+	if err != nil {
+		return nil
+	}
+	// A throwaway report: this is the parse, not the validation. Findings raised
+	// here belong to the caller that runs Validate, not to this helper.
+	body := (&Report{}).parseFrontmatter(raw)
+	refs, _ := referencedPaths(fsys, body)
+	return refs
+}
+
+// referencedPaths extracts what SKILL.md points at, returning the in-package
+// references and, separately, the ones that escape the package root.
+func referencedPaths(fsys fs.FS, body string) (refs, escapes []string) {
+	seen := map[string]bool{}
+	add := func(target string) {
 		if strings.Contains(target, "://") || strings.HasPrefix(target, "#") || strings.HasPrefix(target, "mailto:") {
-			continue
+			return
 		}
 		target, _, _ = strings.Cut(target, "#") // drop anchors
 		clean := strings.TrimPrefix(target, "./")
+		if clean == "" || seen[clean] {
+			return
+		}
+		seen[clean] = true
 		if !fs.ValidPath(clean) {
-			r.add(SeverityWarning, "file-ref-escapes-package", "SKILL.md", fmt.Sprintf("reference %q escapes the package root", target))
+			escapes = append(escapes, target)
+			return
+		}
+		refs = append(refs, clean)
+	}
+	for _, m := range mdRef.FindAllStringSubmatch(body, -1) {
+		add(m[1])
+	}
+	for _, m := range bareRef.FindAllStringSubmatch(body, -1) {
+		// The anchor. Without it every mention of `requirements.txt` in someone
+		// else's repo becomes a missing file in this one.
+		dir, _, _ := strings.Cut(m[1], "/")
+		if info, err := fs.Stat(fsys, dir); err != nil || !info.IsDir() {
 			continue
 		}
+		add(m[1])
+	}
+	return refs, escapes
+}
+
+// checkFileReferences verifies that relative paths referenced from SKILL.md
+// exist in the package (SKILL-002 檔案引用).
+//
+// Still a warning and not an error, deliberately. A package that arrived with a
+// dangling reference is the author's package and the platform's job is to say
+// so, not to refuse it — 02:SKILL-002 asks for the two severities to be shown
+// apart, not for this one to block. The case that *does* block is the one the
+// platform caused: see BlockedFileRemoved in skill/delivery.
+func (r *Report) checkFileReferences(fsys fs.FS, body string) {
+	refs, escapes := referencedPaths(fsys, body)
+	for _, target := range escapes {
+		r.add(SeverityWarning, "file-ref-escapes-package", "SKILL.md", fmt.Sprintf("reference %q escapes the package root", target))
+	}
+	for _, clean := range refs {
 		if _, err := fs.Stat(fsys, clean); err != nil {
-			r.add(SeverityWarning, "file-ref-missing", clean, fmt.Sprintf("SKILL.md references %q which is not in the package", target))
+			r.add(SeverityWarning, "file-ref-missing", clean, fmt.Sprintf("SKILL.md references %q which is not in the package", clean))
 		}
 	}
 }
