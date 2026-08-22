@@ -57,7 +57,7 @@ def build(sample: dict, evaluation_id: str):
     """The JudgeRunRequest a sample stands for, plus the digest verify() checks against.
 
     The digest excerpt is json.dumps(payload) because that is what
-    internal/eval/judge.go puts on the wire and what its verify() compares a
+    internal/trial/improvement/judge.go puts on the wire and what its verify() compares a
     quote to. Authoring the payload as an object rather than as a rendered string
     is what keeps a quote verifiable here on production's terms rather than on
     this file's.

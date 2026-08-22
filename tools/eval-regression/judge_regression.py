@@ -2,13 +2,16 @@
 
     python judge_regression.py            # the whole set, one gateway call per run
     python judge_regression.py --limit 3  # a cheap smoke pass
-    python judge_regression.py --dry-run  # build the requests, call nothing
+    python judge_regression.py --dry-run  # live-read facts and build requests; call nothing
+    python judge_regression.py --run-id <UUID> --run-id <UUID> --dry-run
     python judge_regression.py --rubric rubric-content-007-writing-v1.json
 
-Not product code, does not run in CI, and re-running it spends real money
+Not product code, does not run in CI, and a non-dry run spends real money
 (same standing as tools/goldenset). The authoritative data is the platform's
 own: this reads runs, trace events, test case snapshots and artifact tars that
-are already there and writes nothing back to any of them.
+are already there and writes nothing back to any of them. `--dry-run` still
+reads PostgreSQL and S3 to construct the exact requests, but makes no Judge or
+model call, costs $0, and appends no result rows.
 
 WHAT IS BEING MEASURED, stated up front so a reader does not over-read the
 number that comes out. The regression set is the 45 M2 baseline Runs, and the
@@ -69,7 +72,7 @@ S3_SECRET_KEY = "skillhubdevsecret"
 
 OUT = Path(__file__).with_name("results.jsonl")
 
-# evaluation-design §6.3, mirrored from apps/platform/internal/eval/judge.go
+# evaluation-design §6.3, mirrored from apps/platform/internal/trial/improvement/judge.go
 # so the request this harness builds is the one the control plane would build.
 MAX_FINAL_OUTPUT = 40000
 MAX_CRITERIA = 20
@@ -166,6 +169,7 @@ def regression_set():
            order by skill_version_id, measured_at desc
         )
         select s.name              as skill_name,
+               s.name              as rubric_skill_name,
                coalesce(s.summary, '') as skill_summary,
                l.runtime_image,
                r.id::text          as run_id,
@@ -180,6 +184,45 @@ def regression_set():
           join test_case_snapshots snap on snap.id = r.test_case_snapshot_id
          order by s.name
     """)
+
+
+def explicit_run_set(run_ids: list[uuid.UUID]):
+    """Rows selected by caller-owned Run ids, independent of compatibility.
+
+    This is intentionally not a fallback to `skill_runtime_compatibility`: B
+    round Runs are new facts and may not have a compatibility measurement yet.
+    The left join preserves a fork's actual name for the request while using its
+    parent name only to select the parent-owned content rubric.
+    """
+    requested = ", ".join(f"'{run_id}'::uuid" for run_id in run_ids)
+    rows = psql(f"""
+        select s.name              as skill_name,
+               coalesce(parent.name, s.name) as rubric_skill_name,
+               coalesce(s.summary, '') as skill_summary,
+               null::text          as runtime_image,
+               r.id::text          as run_id,
+               r.status::text      as run_status,
+               coalesce(r.failure_class, '') as failure_class,
+               snap.user_prompt,
+               snap.acceptance_criteria
+          from runs r
+          join skill_versions sv on sv.id = r.skill_version_id
+          join skills s on s.id = sv.skill_id
+     left join skills parent on parent.id = s.forked_from_skill_id
+          join test_case_snapshots snap on snap.id = r.test_case_snapshot_id
+         where r.id in ({requested})
+         order by array_position(array[{requested}], r.id)
+    """)
+    found = {row["run_id"] for row in rows}
+    missing = [str(run_id) for run_id in run_ids if str(run_id) not in found]
+    if missing:
+        raise SystemExit(
+            "--run-id must name an existing Run with a Skill Version and Test Case Snapshot; "
+            f"not selectable: {', '.join(missing)}"
+        )
+    if len(rows) != len(run_ids):
+        raise SystemExit("--run-id selection returned duplicate or incomplete Run rows")
+    return rows
 
 
 def trace_events(run_id: str):
@@ -321,7 +364,7 @@ def trace_complete(events) -> bool:
     )
 
 
-# --- Defence 3, mirrored from internal/eval/judge.go -------------------------
+# --- Defence 3, mirrored from internal/trial/improvement/judge.go -----------
 
 
 def verify(ref, digest, artifacts, final_output) -> str:
@@ -444,20 +487,36 @@ def judge(request: dict, url: str) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--limit", type=int, help="only the first N Runs")
-    ap.add_argument("--dry-run", action="store_true", help="build requests, call nothing")
+    ap.add_argument(
+        "--dry-run", action="store_true",
+        help="live-read PostgreSQL/S3 and build requests; no Judge/model calls, no writes",
+    )
     ap.add_argument("--note", default="", help="free text stored with every row")
     ap.add_argument("--judge-url", default=JUDGE_URL, help=f"default {JUDGE_URL}")
     ap.add_argument("--rubric", type=Path,
                     help="CONTENT-007 rubric file; narrows the set to the Skills it covers")
+    ap.add_argument(
+        "--run-id", action="append", type=uuid.UUID, metavar="UUID",
+        help="select this Run directly (repeatable); bypasses compatibility baseline selection",
+    )
     args = ap.parse_args()
 
     rubrics = load_rubrics(args.rubric) if args.rubric else None
     started = datetime.datetime.now(datetime.UTC).isoformat()
     regression_id = f"{started[:19].replace(':', '')}Z"
-    rows = regression_set()
+    selection = "explicit_run_ids" if args.run_id else "m2_latest_compatibility"
+    rows = explicit_run_set(args.run_id) if args.run_id else regression_set()
     if rubrics:
-        rows = [r for r in rows if r["skill_name"] in rubrics["skills"]]
-        missing = set(rubrics["skills"]) - {r["skill_name"] for r in rows}
+        if args.run_id:
+            not_covered = [r["run_id"] for r in rows if r["rubric_skill_name"] not in rubrics["skills"]]
+            if not_covered:
+                raise SystemExit(
+                    "--rubric does not cover explicitly selected Run ids: "
+                    + ", ".join(not_covered)
+                )
+        else:
+            rows = [r for r in rows if r["rubric_skill_name"] in rubrics["skills"]]
+        missing = set(rubrics["skills"]) - {r["rubric_skill_name"] for r in rows}
         if missing:
             # Said out loud rather than skipped: a rubric whose Skill is not in
             # the baseline set was not measured, and a smaller run would
@@ -466,14 +525,16 @@ def main() -> None:
     if args.limit:
         rows = rows[: args.limit]
     version = rubrics["version"] if rubrics else None
-    print(f"regression {regression_id}: {len(rows)} runs, rubric_version={version}")
+    if not rows:
+        raise SystemExit("selection produced zero Runs")
+    print(f"regression {regression_id}: {len(rows)} runs, selection={selection}, rubric_version={version}")
 
     total_cost, unreported, lines = 0.0, 0, []
     for i, row in enumerate(rows, 1):
         events = trace_events(row["run_id"])
         artifacts = artifact_manifest(row["run_id"])
         evaluation_id = str(uuid.uuid4())
-        entry = rubrics["skills"][row["skill_name"]] if rubrics else None
+        entry = rubrics["skills"][row["rubric_skill_name"]] if rubrics else None
         request, digest, final_output = build_request(
             row, events, artifacts, evaluation_id, entry)
         want = expected(row, events, artifacts)
@@ -494,11 +555,11 @@ def main() -> None:
             total_cost += cost
             if cost > COST_ALARM_USD:
                 print(f"    !! ${cost:.4f} for one call, over the ${COST_ALARM_USD} alarm - stopping")
-                lines.append(record(regression_id, started, args.note, row, request, want,
+                lines.append(record(regression_id, started, args.note, selection, row, request, want,
                                     results, response, usage, version))
                 break
 
-        line = record(regression_id, started, args.note, row, request, want, results, response,
+        line = record(regression_id, started, args.note, selection, row, request, want, results, response,
                       usage, version)
         lines.append(line)
         for r in line["criteria"]:
@@ -518,7 +579,7 @@ def main() -> None:
     summarise(lines, total_cost, unreported)
 
 
-def record(regression_id, started, note, row, request, want, results, response, usage,
+def record(regression_id, started, note, run_selection, row, request, want, results, response, usage,
            rubric_version=None):
     by_id = {r["criterion_id"]: r for r in results}
     rubric_ids = {i["id"] for i in (request.get("rubric") or {}).get("items", [])}
@@ -556,6 +617,7 @@ def record(regression_id, started, note, row, request, want, results, response, 
             "artifact_rows": MAX_ARTIFACT_ROWS,
         },
         "skill_name": row["skill_name"],
+        "run_selection": run_selection,
         "runtime_image": row["runtime_image"],
         "run_id": row["run_id"],
         "run_status": row["run_status"],

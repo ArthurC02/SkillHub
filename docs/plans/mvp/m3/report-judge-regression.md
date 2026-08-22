@@ -1,7 +1,7 @@
 # EVAL-013：Judge 判準回歸報告
 
 - 日期：**2026-08-17**
-- 對應需求：[`02:EVAL-013`](../02-specifications-and-acceptance-criteria.md)（Judge 判準驗證）；相關 `02:EVAL-001` 第 5 條、[ADR-025](../../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)、[ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md)
+- 對應需求：[`02:EVAL-013`](../../02-specifications-and-acceptance-criteria.md)（Judge 判準驗證）；相關 `02:EVAL-001` 第 5 條、[ADR-025](../../../adr/ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)、[ADR-026](../../../adr/ADR-026-evaluation-reassessment-evidence-lifetime-and-judge-trust-boundary.md)
 - 回歸集：M2 的 **45 筆基準 Run**（[m2/content-baseline-report.md](../m2/content-baseline-report.md)）
 - Harness：[`tools/eval-regression/judge_regression.py`](../../../../tools/eval-regression/judge_regression.py)，逐筆結果 append-only 落在同目錄的 `results.jsonl`
 - 本次共兩輪回歸：**v1**（`judge-run/v1`）與 **v2**（`judge-run/v2`，v1 找出的缺陷修好後重跑）。兩輪都留在 `results.jsonl` 裡，前後並存可比（`02:EVAL-013` 第 4 條）
@@ -444,7 +444,7 @@ B 輪＝依 `writing-rubrics.md` §3 修訂 Prompt（加第 4 條「最終回覆
 
 **這是 §6.1 那個缺陷的同一類，換了一個來源**：v1 是平台的排版讓「來源」的邊界不存在，這一次是模型自己在結構化輸出裡把分隔符寫進了字串。差別在於 v1 是 45／45 的系統性失效，這次是 27 條裡的 2 條（引用層面 15 筆裡的 2 筆）。**方向仍然是安全的**（正確答案是 `failed`，被降成 `undetermined`，不是被升成 `passed`），但它再次驗證 §8.1 結論 3：**第 3 條防線會誤傷，而且誤傷時與「Judge 沒把握」在畫面上無法區分**。
 
-**本批不修**，理由與 G7 同型：修法動的是 `internal/eval` 的 `verify()`（對引文做結構殘片的容錯，或改為正規化後比對），那是產品程式碼且會鬆動 defence 3 的判準，**鬆動判準需要拍板不是需要一次 commit**。記為 **G8**，入列 [`04`](../04-backlog-and-handoffs.md)。
+**本批不修**，理由與 G7 同型：修法動的是 `internal/eval` 的 `verify()`（對引文做結構殘片的容錯，或改為正規化後比對），那是產品程式碼且會鬆動 defence 3 的判準，**鬆動判準需要拍板不是需要一次 commit**。記為 **G8**，入列 [`04`](../../04-backlog-and-handoffs.md)。
 
 另有一筆**不是缺陷但值得記**：`inj-11` 的 `apn-1`（「`/out/artifacts/` 至少產出一個檔案」）判 `passed`，引用的卻是 `agent_output` 的「已寫出報告。」——引文回驗通過，但真正的依據是 manifest 而不是那句話。判定正確、證據偏弱，屬 G7 同一個家族（平台對「引文證明了什麼」沒有要求），一併記在 G8 那一列的備註。
 
@@ -528,10 +528,15 @@ curl -b <session> -X PATCH http://127.0.0.1:8080/test-cases/<id> \
 # 5) 以同一份 rubric 評估，結果 append 進 results.jsonl
 python tools/eval-regression/judge_regression.py \
   --judge-url http://127.0.0.1:8010/judge-run \
-  --rubric tools/eval-regression/rubric-content-007-writing-v1.json --note "B 輪"
+  --rubric tools/eval-regression/rubric-content-007-writing-v1.json \
+  --run-id <ai-written-check B-run UUID> \
+  --run-id <brand-guidelines B-run UUID> \
+  --run-id <humanizer B-run UUID> \
+  --run-id <internal-comms B-run UUID> \
+  --run-id <line-edit B-run UUID> --note "B 輪"
 ```
 
-**第 5 步有一個前提要先確認**：`judge_regression.py` 的回歸集是「`skill_runtime_compatibility` 每個 Skill Version 最新一次量測」查出來的（§3.2 規則 1）。B 輪的新 Run 若沒有寫進那張表，harness 取到的仍是 M2 的舊 Run——**跑出來會像 A 輪的重播，而且不會有任何東西提醒你**。B 輪要嘛讓新 Run 進那張表，要嘛給 harness 一個「指定 run_id」的入口；兩者都是小改動，但**不確認就跑等於白花錢**。
+**第 5 步先 dry-run，才可花錢**：同一組五個 `--run-id` 先加 `--dry-run` 執行；它會 live-read PostgreSQL 與 S3 組請求，但不呼叫 Judge、零模型費用、也不寫 `results.jsonl`。確認輸出正好是五筆新 Run 後，移除 `--dry-run` 才做 append-only 的正式 B 輪。指定 Run id 已實作，因此 B 輪不依賴 `skill_runtime_compatibility`：若任何 id 缺失、沒有必要關聯，或 rubric 沒有涵蓋其來源 Skill，harness 立即失敗，絕不安靜回退到 M2 舊 Run。
 
 ### 13.4 本批要的 5 個標的（查好了，直接用）
 

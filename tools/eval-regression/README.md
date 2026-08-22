@@ -1,5 +1,17 @@
 # tools/eval-regression
 
+## Run 選取、dry-run 與證據檔
+
+`judge_regression.py` 有兩種明確且互斥的 Run 選取方式：不帶 `--run-id` 時，依
+`skill_runtime_compatibility` 取每個 Skill Version 最新的 M2 compatibility baseline；重複
+`--run-id UUID` 時，直接讀取指定 Run、其 Skill Version、Skill 與 Test Case Snapshot，完全
+不依賴 compatibility 表。指定的每個 id 都必須存在且具備這些關聯，否則立即失敗；不會安靜少跑。
+Fork Run 的 rubric 以來源 Skill 名稱選取，但送往 Judge 的 Skill 名稱仍是該 Run 實際使用的 Skill。
+
+`--dry-run` 是 **live read**：它會讀 PostgreSQL 與 S3，組出完整請求；它不呼叫 Judge／模型、
+不產生模型費用、也不寫入任何結果檔。非 dry-run 的結果只可 append 到 `results.jsonl`；舊列是
+可比對的歷史證據，不可覆寫或重排。
+
 `EVAL-013` 的 Judge 判準回歸。**權威資料在 DB 與物件儲存，此處為 harness 與證據快照。**
 
 | 檔案 | 內容 |

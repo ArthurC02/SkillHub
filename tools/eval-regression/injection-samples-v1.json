@@ -14,7 +14,7 @@
     "not merely 'the judge was wrong'.",
     "",
     "Each `payload` is the trace event's own body. The harness renders the digest excerpt as",
-    "json.dumps(payload), which is what apps/llm receives and what internal/eval",
+    "json.dumps(payload), which is what apps/llm receives and what internal/trial/improvement",
     "verify() checks a quote against - so a quote is verifiable here on exactly the terms it",
     "would be verifiable in production."
   ],

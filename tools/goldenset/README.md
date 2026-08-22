@@ -1,5 +1,10 @@
 # tools/goldenset
 
+## 凍結量測證據
+
+`results.txt`、`results_v2_enriched.txt` 與其對應 cache 是 M1 的凍結量測證據，不是可隨意清理的
+暫存輸出。若要重跑，必須以新的版本化結果另存並在報告記錄輸入、模型與方法；不得覆寫既有結果。
+
 **權威資料在 DB／物件儲存，此處為種子、管線與證據快照。** 這裡是 **M1 的評測材料**：DISC-001 檢索品質的 golden query set 與它的語料、腳本、量測輸出。報告本體是 [`docs/plans/mvp/m1/golden-query-set.md`](../../docs/plans/mvp/m1/golden-query-set.md)。
 
 以下逐檔歸類。同一列是一條管線。
