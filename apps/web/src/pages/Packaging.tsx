@@ -64,6 +64,11 @@ export const PACKAGING_BLOCKED_LABEL: Record<PackagingBlockedReason, string> = {
     "沒有人確認過這個 Skill 可不可以再散布。授權未知一律當成不可散布處理——這不是等待中的暫時狀態，是預設就擋。",
   validation_blocked:
     "用這些設定打出來的套件，過不了平台自己匯入時要過的驗證，因此不能標示為有效套件。下面的錯誤清單就是要修的東西。",
+  // The only entry on this table the reader can act on in a minute, and the only
+  // one where the platform is refusing something it broke itself: the file was in
+  // the version, the exporter took it out, and SKILL.md still points at it.
+  file_removed_by_packager:
+    "SKILL.md 指向的檔案被打包器排除了，所以這一份下載回去會缺少它自己說明要用的東西——平台不交出一個自己弄殘的套件。下面「平台的說法」會指名是哪個檔；把它移出被排除的目錄、或用實體檔案取代連結，就可以再打包一次。",
 };
 
 /**

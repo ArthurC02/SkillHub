@@ -8019,9 +8019,10 @@ func (s *PackageValidation) SetBlocked(val bool) {
 	s.Blocked = val
 }
 
-// Why a package may not be built. Four values and not one `blocked: true`, because what the user can
+// Why a package may not be built. Five values and not one `blocked: true`, because what the user can
 // do about it differs completely between them: the first three are decisions about the content that
-// they cannot argue with, the fourth is a package they can fix.
+// they cannot argue with, the fourth is a package they can fix, and the fifth is one this platform
+// broke itself.
 //
 // `license_hold` — the skill carries a 0023 access restriction (SEC-011). An unrecognised reason
 // code still blocks: a code nobody recognises must never be the way content unlocks.

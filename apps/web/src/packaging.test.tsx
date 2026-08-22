@@ -4,8 +4,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
 import { Downloads } from "./pages/Downloads";
-import { Packaging, packagingGate } from "./pages/Packaging";
-import type { DownloadArtifact } from "./api/packaging";
+import { PackagingBlockedReason as PackagingBlockedReasonEnum } from "@skillhub/api-client-ts";
+import { PACKAGING_BLOCKED_LABEL, Packaging, packagingGate } from "./pages/Packaging";
+import type { DownloadArtifact, PackagingBlockedReason } from "./api/packaging";
 import type { SkillDetail } from "./api/types";
 
 // 02:PACK-001 / PACK-002 / WS-002 / WS-004. Same hand-rolled DOM plumbing as
@@ -293,6 +294,21 @@ test("ADR-027 only `allowed` opens the packaging entry, and unknown is refused l
   // A response missing the field the contract requires is a platform that failed
   // to answer, not a permission. It refuses, like every other non-`allowed` case.
   expect(packagingGate(detail({ redistribution: undefined }))).toBe("license_unknown");
+});
+
+test("every refusal the contract can send has a sentence on this page", () => {
+  // The label table's own comment says two copies of it would drift. One did:
+  // `file_removed_by_packager` was added to the contract and to the generated
+  // client, and this hand-written union kept four values — so a real refusal
+  // rendered 「不能打包：」 followed by nothing, which is the blank §2.1 forbids,
+  // in the one place a reader most needs a sentence.
+  //
+  // Asserted against the generated enum rather than a list written here, because
+  // a list written here is the same drift one file over.
+  for (const value of Object.values(PackagingBlockedReasonEnum)) {
+    const label = PACKAGING_BLOCKED_LABEL[value as PackagingBlockedReason];
+    expect(label, `no sentence for blocked_reason ${value}`).toBeTruthy();
+  }
 });
 
 test("PACK-002 the post-install check is on the page, not only inside the package", async () => {

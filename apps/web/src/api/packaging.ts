@@ -73,7 +73,12 @@ export interface PackagingEnvVar {
 }
 
 export type PackagingBlockedReason =
-  "license_hold" | "not_redistributable" | "license_unknown" | "validation_blocked";
+  | "license_hold"
+  | "not_redistributable"
+  | "license_unknown"
+  | "validation_blocked"
+  /** The one refusal the platform caused itself: SKILL.md points at a file the exporter removed. */
+  | "file_removed_by_packager";
 
 export interface PackageValidation {
   /** True when `errors` is non-empty. Stated by the server so no surface decides for itself. */
