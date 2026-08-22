@@ -146,6 +146,33 @@ test("WS-004 a run whose sandbox was not cleaned up says so on the row", async (
   expect(container.querySelectorAll(".badge-danger")).toHaveLength(1);
 });
 
+test("WS-004 a cleanup state the client does not recognise is still rendered as words", async () => {
+  // The union in api/runs.ts said `cleaning` where the database enum
+  // run_cleanup_status says `cleaning_up` (0004_test_lab_and_runs.sql:75), and
+  // trial/execution/http.go:291 puts the database value on the wire unmapped.
+  // So the one state this row exists to report — the sandbox is being torn down
+  // right now — arrived as a key no map had, and 設計系統 §2.9 is explicit that a
+  // blank is the one shape an absence may never take. Being total over the union
+  // could not catch it: the union was the thing that was wrong.
+  vi.stubGlobal("fetch", () =>
+    json({
+      runs: [
+        { ...RUN_ROW, cleanup_status: "cleaning_up" },
+        { ...RUN_ROW, run_id: "run-3", cleanup_status: "a-state-from-a-newer-server" },
+      ],
+    }),
+  );
+  await render(<WorkspaceRuns />, () => text().includes("清理中"));
+
+  expect(text()).toContain("清理狀態：清理中");
+  // Not a translation — the platform said something this build has no word for,
+  // and saying so is honest where a blank would read as "nothing to report".
+  expect(text()).toContain("平台回報 a-state-from-a-newer-server");
+  for (const badge of container.querySelectorAll(".badge")) {
+    expect(badge.textContent?.trim(), "a badge with no word (§2.3)").not.toBe("");
+  }
+});
+
 test("WS-002 an empty run history says nothing ran, not that records were cleared", async () => {
   vi.stubGlobal("fetch", () => json({ runs: [] }));
   await render(<WorkspaceRuns />, () => text().includes("還沒有跑過任何 Run"));

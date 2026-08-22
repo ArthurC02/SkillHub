@@ -68,10 +68,17 @@ export function WorkspaceRuns() {
  * on screen in English, and 02:NFR-007 forbids taking text away. It stays keyed
  * on the union so a new server value is a compile error here rather than an
  * `undefined` on the row, which is the same guard RUN_STATUS_LABEL carries.
+ *
+ * That guard was aimed at the wrong target until 2026-08-22: the union itself
+ * said `cleaning` where the database says `cleaning_up`, so being total over the
+ * union proved nothing and a run mid-teardown rendered a blank state. Hence the
+ * fallback at the call site — a compile-time guard cannot see a server value the
+ * union never knew about, and design §2.9 says a blank is the one rendering an
+ * absence may never take.
  */
 const CLEANUP_LABEL: Record<RunListItem["cleanup_status"], string> = {
   pending: "尚未清理",
-  cleaning: "清理中",
+  cleaning_up: "清理中",
   cleaned: "已清理",
   failed: "清理失敗",
 };
@@ -85,7 +92,7 @@ const CLEANUP_LABEL: Record<RunListItem["cleanup_status"], string> = {
  */
 const CLEANUP_BADGE: Record<RunListItem["cleanup_status"], string> = {
   pending: "badge badge-unverified",
-  cleaning: "badge badge-unverified",
+  cleaning_up: "badge badge-unverified",
   cleaned: "badge",
   failed: "badge badge-danger",
 };
@@ -113,8 +120,8 @@ function RunRow({ run }: { run: RunListItem }) {
             file's own header argues cleanup belongs on the row because hiding it
             would make the list a prettier answer than the truth; the guard was
             hiding it for exactly the runs where the answer is good. */}
-        <span className={CLEANUP_BADGE[run.cleanup_status]}>
-          清理狀態：{CLEANUP_LABEL[run.cleanup_status]}
+        <span className={CLEANUP_BADGE[run.cleanup_status] ?? "badge badge-unverified"}>
+          清理狀態：{CLEANUP_LABEL[run.cleanup_status] ?? `平台回報 ${run.cleanup_status}`}
         </span>
       </p>
       {run.status_reason ? (
