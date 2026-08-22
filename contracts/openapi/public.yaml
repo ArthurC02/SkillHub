@@ -670,7 +670,7 @@ paths:
                   skills:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Skill"
+                      $ref: "#/components/schemas/OwnSkill"
                   limit:
                     type: integer
                     description: |
@@ -3709,6 +3709,69 @@ components:
         forked_from_version_id:
           type: string
           format: uuid
+    OwnSkill:
+      description: |
+        A row of the caller's own skill list. `Skill` plus the two facets that
+        make the list decidable rather than merely enumerable: this is a page of
+        code the caller owns and will run, and without them there was nothing on
+        it to decide by (設計系統 §1.1, 04 丙-31). Not folded into `Skill`,
+        because the fork reply shares that schema and a fork one second old has
+        neither.
+
+        The two are one fact seen from two sides. Both come from the import
+        scan, and a fork has neither, for the same reason: a fork copies the
+        bytes and not the measurement.
+      allOf:
+        - $ref: "#/components/schemas/Skill"
+        - type: object
+          required: [risk, verification]
+          properties:
+            risk:
+              allOf:
+                - $ref: "#/components/schemas/SearchResultRisk"
+              description: |
+                The same block, from the same projection, that a search row
+                carries for the same skill — deliberately the same schema and not
+                a second one shaped like it, because the rule this facet exists
+                to keep is that the two planes word one fact the same way
+                (02:NFR-007 第 3 條). `scan_status: unavailable` is the usual
+                answer for a fork; see `verification` for why.
+            verification:
+              $ref: "#/components/schemas/SkillVerification"
+    SkillVerification:
+      description: |
+        Whether anything was measured **in this workspace**, and when.
+
+        The obvious field would have been a bare `verified_at`, defined as the
+        newest version's creation time the way the search projection defines it.
+        That is right for an import — the version row is created by the scan —
+        and false for a fork, whose version row is created the instant somebody
+        pressed Fork, with nothing scanned. Serving that timestamp would print
+        something reading as "scanned just now" on the one case where nothing was
+        scanned; serving a blank instead is what 設計系統 §2.9 forbids. So the
+        state is named, and the timestamp appears only in the state that has one.
+
+        `Labelled` rather than a bare enum, which is the 04 丙-29 ruling applied
+        at birth instead of retrofitted: one field, one consumer, three values,
+        and the alternative is a twenty-first enum→中文 map on the client for a
+        state whose entire job is to be worded carefully.
+
+        `value` is `scanned` | `not_measured` | `not_applicable`. `scanned`: this
+        version was imported here and the static scan ran on import.
+        `not_measured`: it arrived as a fork, so the scan ran in the workspace it
+        was forked from and not here — **not a claim that the content is unsafe**,
+        and not a claim that it is fine either. Whether an ancestor's measurement
+        may be attributed to a byte-identical copy is a product decision nobody
+        has made; what is settled is that it may not be made silently.
+        `not_applicable`: no version exists yet, so there is nothing to scan.
+      allOf:
+        - $ref: "#/components/schemas/Labelled"
+        - type: object
+          properties:
+            scanned_at:
+              type: [string, "null"]
+              format: date-time
+              description: Present only when `value` is `scanned`.
     PublicSearchResponse:
       type: object
       required:

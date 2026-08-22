@@ -638,6 +638,22 @@ export function platformResponse(input: string): { body: unknown; status: number
           // this is the common case for a workspace list rather than an edge.
           redistribution: "unknown",
           access_restriction: null,
+          // 04 丙-31: the two facets that make this list decidable rather than
+          // merely enumerable. An import, so both are present — the fork case,
+          // where neither is, has its own test in workspace.test.tsx.
+          risk: {
+            scan_status: "scanned",
+            level: "disclosed",
+            warnings: 0,
+            has_scripts: true,
+            note: "來自匯入時的靜態掃描,不執行套件內任何程式碼;開啟 Skill 可看逐項結果。",
+          },
+          verification: {
+            value: "scanned",
+            label: "已掃描",
+            note: "匯入這個版本時做過靜態掃描,不執行套件內任何程式碼;逐項結果在 Skill 頁面。",
+            scanned_at: "2026-08-01T10:00:00Z",
+          },
         },
       ],
       limit: 100,

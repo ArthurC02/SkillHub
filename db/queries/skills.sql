@@ -49,9 +49,30 @@ UPDATE skills SET summary = $3, updated_at = now()
 WHERE id = $1 AND workspace_id = $2;
 
 -- name: ListSkills :many
-SELECT * FROM skills
-WHERE workspace_id = $1 AND deleted_at IS NULL
-ORDER BY created_at DESC
+-- The owner's own skills, newest first, with the one measurement fact the list
+-- can answer for itself (04 丙-31).
+--
+-- `verified_at` is the newest version's creation time, the same definition the
+-- public search path uses. `verified_source_id` is what keeps that definition
+-- honest here and there is no equivalent need in search: **a fork gets a version
+-- row of its own whose created_at is the moment somebody pressed Fork**, and
+-- nothing was scanned at that moment — the bytes were scanned in the workspace
+-- it was forked from. Import sets source_id, fork leaves it NULL (see
+-- registry.Fork), so a NULL here means "this version arrived as a copy" and the
+-- caller reports 未測量 rather than a timestamp that reads like a fresh scan.
+-- Catalogue search never sees that case: it only lists catalog workspaces, and
+-- nothing forks into one.
+SELECT sqlc.embed(sk), ver.created_at AS verified_at, ver.source_id AS verified_source_id
+FROM skills sk
+LEFT JOIN LATERAL (
+    SELECT v.created_at, v.source_id
+    FROM skill_versions v
+    WHERE v.skill_id = sk.id
+    ORDER BY v.version_number DESC
+    LIMIT 1
+) ver ON true
+WHERE sk.workspace_id = $1 AND sk.deleted_at IS NULL
+ORDER BY sk.created_at DESC
 LIMIT $2 OFFSET $3;
 
 -- name: CountSkillVersions :one

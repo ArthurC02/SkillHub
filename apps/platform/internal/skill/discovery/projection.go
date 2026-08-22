@@ -23,12 +23,14 @@ package catalog
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pgvector/pgvector-go"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 // PendingEnrichment is the catalog-owned view consumed by the enrichment backfill.
@@ -114,4 +116,53 @@ func IndexSkillEnriched(ctx context.Context, tx pgx.Tx, projection EnrichedSkill
 // while the version snapshots it owns stay frozen (iron rule 4).
 func RemoveSkillFromIndex(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID) error {
 	return gen.New(tx).DeleteSearchDocument(ctx, skillID)
+}
+
+// SkillRisks answers the projected risk block for a page of skills in one
+// workspace, keyed by skill id and already serialised.
+//
+// Serialised rather than structured, unlike SourceByID next door, and the
+// difference is the point: the caller does not read a single field of this. It
+// forwards the block to the same `SearchResultRisk` schema a search row uses, so
+// a mirror struct would only be a second place the shape can drift — and the one
+// rule this facet exists to keep is that the two planes word one fact the same
+// way (02:NFR-007 第 3 條). Nothing drifts if nobody re-declares it.
+//
+// Every requested id gets an entry. A skill with no document, and one whose
+// document carries no scan, both get the same 未測量 block a search row gets:
+// silence is the one answer DISC-004 forbids. The commonest case by far is a
+// fork — IndexSkill writes name and summary only, because a fork shares its
+// source's bytes and has nothing of its own to scan.
+func (s *Service) SkillRisks(
+	ctx context.Context, workspaceID pgtype.UUID, skillIDs []pgtype.UUID,
+) (map[string]json.RawMessage, error) {
+	unknown, err := json.Marshal(riskHint(nil))
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]json.RawMessage, len(skillIDs))
+	for _, id := range skillIDs {
+		out[pgconv.UUIDString(id)] = unknown
+	}
+	if len(skillIDs) == 0 {
+		return out, nil
+	}
+
+	rows, err := gen.New(s.Pool).ListSkillScans(ctx, gen.ListSkillScansParams{
+		WorkspaceID: workspaceID, SkillIds: skillIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		if len(row.Scan) == 0 {
+			continue
+		}
+		blob, err := json.Marshal(riskHint(row.Scan))
+		if err != nil {
+			return nil, err
+		}
+		out[pgconv.UUIDString(row.SkillID)] = blob
+	}
+	return out, nil
 }

@@ -727,7 +727,16 @@ test("DISC-002: a result row carries all seven columns, and infers none of them"
         name: "Unscanned Skill",
         summary: "沒有掃描紀錄",
         rank: 0.3,
-        risk: { scan_status: "unavailable", level: "none", warnings: 0, note: "無掃描紀錄。" },
+        // The server's own sentence, verbatim (catalog.searchRiskUnknown). The row
+        // used to print a near-copy of it from the client as well, so an unscanned
+        // hit said the same thing twice in two spellings; the note is now the only
+        // place that sentence comes from.
+        risk: {
+          scan_status: "unavailable",
+          level: "none",
+          warnings: 0,
+          note: "此結果尚無掃描紀錄,狀態未知——不代表已通過檢查。",
+        },
         dependencies: [],
         compatibility: {
           spec_validation: "unverified",

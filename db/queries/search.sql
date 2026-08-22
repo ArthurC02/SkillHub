@@ -324,3 +324,20 @@ DELETE FROM search_documents sd
 USING skills sk
 WHERE sd.skill_id = sk.id
   AND (sk.deleted_at IS NOT NULL OR sk.takedown_at IS NOT NULL);
+
+-- name: ListSkillScans :many
+-- The projected scan for a set of skills in one workspace, so a caller holding a
+-- page of skills can ask once instead of per row.
+--
+-- Workspace scoped even though skill_id is a primary key: the ids arrive from
+-- another context's page, and an unscoped read keyed on caller-supplied ids is
+-- the cross-tenant read iron rule 3 exists to stop.
+--
+-- Rows with no document, and rows whose document has no scan, simply do not come
+-- back with a scan — the caller fills both as "unavailable", never as clean
+-- (DISC-004 不得自行推定為通過). The commonest of those is a fork: catalog's
+-- IndexSkill writes name and summary only, because a fork shares its source's
+-- bytes and has nothing of its own to scan.
+SELECT skill_id, scan
+FROM search_documents
+WHERE workspace_id = $1 AND skill_id = ANY(sqlc.arg(skill_ids)::uuid[]);

@@ -75,6 +75,54 @@ func (q *Queries) ListPendingEnrichment(ctx context.Context, limit int32) ([]Lis
 	return items, nil
 }
 
+const listSkillScans = `-- name: ListSkillScans :many
+SELECT skill_id, scan
+FROM search_documents
+WHERE workspace_id = $1 AND skill_id = ANY($2::uuid[])
+`
+
+type ListSkillScansParams struct {
+	WorkspaceID pgtype.UUID
+	SkillIds    []pgtype.UUID
+}
+
+type ListSkillScansRow struct {
+	SkillID pgtype.UUID
+	Scan    []byte
+}
+
+// The projected scan for a set of skills in one workspace, so a caller holding a
+// page of skills can ask once instead of per row.
+//
+// Workspace scoped even though skill_id is a primary key: the ids arrive from
+// another context's page, and an unscoped read keyed on caller-supplied ids is
+// the cross-tenant read iron rule 3 exists to stop.
+//
+// Rows with no document, and rows whose document has no scan, simply do not come
+// back with a scan — the caller fills both as "unavailable", never as clean
+// (DISC-004 不得自行推定為通過). The commonest of those is a fork: catalog's
+// IndexSkill writes name and summary only, because a fork shares its source's
+// bytes and has nothing of its own to scan.
+func (q *Queries) ListSkillScans(ctx context.Context, arg ListSkillScansParams) ([]ListSkillScansRow, error) {
+	rows, err := q.db.Query(ctx, listSkillScans, arg.WorkspaceID, arg.SkillIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListSkillScansRow
+	for rows.Next() {
+		var i ListSkillScansRow
+		if err := rows.Scan(&i.SkillID, &i.Scan); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const pruneDeletedSearchDocuments = `-- name: PruneDeletedSearchDocuments :execrows
 DELETE FROM search_documents sd
 USING skills sk

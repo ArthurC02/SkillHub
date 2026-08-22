@@ -6,6 +6,7 @@ package registry
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
@@ -13,9 +14,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -51,6 +52,15 @@ type Service struct {
 	// the query would read as registry still calling it.
 	IndexSkill      func(ctx context.Context, tx pgx.Tx, projection SkillProjection) error
 	RemoveFromIndex func(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID) error
+	// SkillRisks reads back what those writes projected: the scan block for a
+	// page of this workspace's skills, keyed by skill id, already serialised.
+	// Injected for the same reason and by the same root as the two writes above.
+	//
+	// The blob is forwarded to the response untouched. Nothing here reads a field
+	// of it, and nothing here should: the block is catalog's wording of catalog's
+	// column, and the owner's list has to say what a search row says about the
+	// same skill (02:NFR-007 第 3 條). Re-declaring the shape would be the drift.
+	SkillRisks func(ctx context.Context, workspaceID pgtype.UUID, skillIDs []pgtype.UUID) (map[string]json.RawMessage, error)
 }
 
 // requireProjection refuses to start any write that maintains the search

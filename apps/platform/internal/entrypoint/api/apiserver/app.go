@@ -10,19 +10,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 // ObjectStore is the whole object-storage surface the API's contexts need,
@@ -258,6 +258,15 @@ func NewApp(cfg Config) (*App, error) {
 			}, found, err
 		},
 	}
+	// The read half of the same inversion as registrySvc's two projection writes
+	// (ADR-034): catalog's column, catalog's wording, handed to the owner's list
+	// rather than imported by it. Assigned here rather than inside the literal
+	// above because catalogSvc does not exist yet at that point — the same reason
+	// testlabSvc.ReadSkill and runSvc.ActiveArtifactReferences are assigned late.
+	//
+	// No adapter, unlike SourceByID directly above: the block crosses as bytes
+	// precisely so that neither side can re-declare its shape.
+	registrySvc.SkillRisks = catalogSvc.SkillRisks
 
 	return &App{
 		Deps: Deps{

@@ -13,13 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
-import type { Skill } from './Skill';
+import type { OwnSkill } from './OwnSkill';
 import {
-    SkillFromJSON,
-    SkillFromJSONTyped,
-    SkillToJSON,
-    SkillToJSONTyped,
-} from './Skill';
+    OwnSkillFromJSON,
+    OwnSkillFromJSONTyped,
+    OwnSkillToJSON,
+    OwnSkillToJSONTyped,
+} from './OwnSkill';
 
 /**
  * 
@@ -29,10 +29,10 @@ import {
 export interface ListSkills200Response {
     /**
      * 
-     * @type {Array<Skill>}
+     * @type {Array<OwnSkill>}
      * @memberof ListSkills200Response
      */
-    skills: Array<Skill>;
+    skills: Array<OwnSkill>;
     /**
      * How many rows this endpoint will return at most. It is a
      * server-side cap, not a page size the caller chose — there
@@ -75,7 +75,7 @@ export function ListSkills200ResponseFromJSONTyped(json: any, ignoreDiscriminato
     }
     return {
         
-        'skills': ((json['skills'] as Array<any>).map(SkillFromJSON)),
+        'skills': ((json['skills'] as Array<any>).map(OwnSkillFromJSON)),
         'limit': json['limit'],
         'truncated': json['truncated'],
     };
@@ -92,7 +92,7 @@ export function ListSkills200ResponseToJSONTyped(value?: ListSkills200Response |
 
     return {
         
-        'skills': ((value['skills'] as Array<any>).map(SkillToJSON)),
+        'skills': ((value['skills'] as Array<any>).map(OwnSkillToJSON)),
         'limit': value['limit'],
         'truncated': value['truncated'],
     };

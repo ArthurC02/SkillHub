@@ -6,6 +6,7 @@ import { deleteSkill } from "../api/skills";
 // query for one endpoint, wherever it was first needed (WS-004).
 import { useOwnSkills } from "../api/testcases";
 import { ConfirmDelete } from "../components/ConfirmDelete";
+import { RiskSummary } from "../components/RiskIndicator";
 
 /**
  * 02:WS-002 第 1 條「使用者可查看自己的 Fork、版本、Test Case、Run 歷史與下載紀錄」
@@ -96,19 +97,47 @@ export function WorkspaceSkills() {
                   )}
                 </p>
                 {/*
-                  §1.1 / §2.1. The two facets above are the ones GET /skills can
-                  answer today; risk, compatibility and verification are on
-                  `PublicSearchResult` and not on `Skill`, so they cannot be
-                  rendered here without a contract change (04 丙-31). The absence
-                  is stated rather than left blank — a list of code you own and
-                  will run, with nothing on it to decide by, reads as approved.
-                  **Narrow this sentence as facets land; do not delete it.** A
-                  disclaimer that has gone false beside real evidence is worse
-                  than the disclaimer alone.
+                  §1.1: this is a list of code you own and will run, and until
+                  2026-08-22 it carried nothing to decide by (04 丙-31). The same
+                  component the public search row uses, on purpose — the two are
+                  the same fact about the same skill, and 02:NFR-007 第 3 條 does
+                  not let them be worded independently.
+                */}
+                <p className="badge-row">
+                  <RiskSummary risk={s.risk} />
+                </p>
+                {/*
+                  §2.9. The state, not a timestamp: a fork's newest version row
+                  was created the instant somebody pressed Fork, so the field
+                  that reads as 「剛剛掃過」 belongs to the one case where nothing
+                  was scanned. Label and note both come from the server (§4.4),
+                  which is why there is no enum→中文 map on this side.
+                */}
+                <p className="badge-row">
+                  <span
+                    className={
+                      s.verification.value === "scanned" ? "badge" : "badge badge-unverified"
+                    }
+                  >
+                    掃描狀態：{s.verification.label}
+                    {s.verification.scanned_at
+                      ? `（${s.verification.scanned_at.slice(0, 10)}）`
+                      : ""}
+                  </span>
+                </p>
+                <p className="note">{s.verification.note}</p>
+                {/*
+                  Still true and still needed, narrowed to what is genuinely not
+                  here. Compatibility is not a contract gap: nothing in the
+                  product writes `skill_runtime_compatibility` at all — only the
+                  catalogue seeding tool does — so a compatibility column on this
+                  list could say 未測量 and nothing else, which is a facet that
+                  looks like evidence and can never carry any. **Do not delete
+                  this sentence to make room for one.**
                 */}
                 <p className="note">
-                  風險掃描結果與相容性驗證不在這份清單的資料裡。這裡沒有它們不代表通過——要看那些，請開這個
-                  Skill 的頁面。
+                  相容性驗證（Agent 是否載入、Runtime 是否齊備）不在這份清單的資料裡，
+                  平台目前也不會為你自己的 Skill 量測它。要看逐項掃描結果，請開這個 Skill 的頁面。
                 </p>
                 <p className="note">
                   <Link to="/skills/$skillId/files" params={{ skillId: s.skill_id }}>

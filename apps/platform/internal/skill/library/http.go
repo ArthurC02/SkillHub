@@ -279,13 +279,105 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if truncated {
 		rows = rows[:listSkillsLimit]
 	}
-	out := make([]skillResponse, 0, len(rows))
-	for _, s := range rows {
-		out = append(out, toSkillResponse(s))
+
+	// Not wired is a 500, not a list without the facet. This is a page of code
+	// the caller owns and will run, and 02:DISC-004 forbids letting an absent
+	// scan read as a clean one — a row that silently lost its risk block is that
+	// exact failure, arriving through a deployment mistake instead of a scan.
+	// app_test.go asserts the wiring, so this is the runtime half of a guard that
+	// normally fails at startup.
+	if h.Svc.SkillRisks == nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
+		return
+	}
+	ids := make([]pgtype.UUID, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.Skill.ID)
+	}
+	risks, err := h.Svc.SkillRisks(r.Context(), ws.ID, ids)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
+		return
+	}
+
+	out := make([]ownSkillResponse, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, ownSkillResponse{
+			skillResponse: toSkillResponse(row.Skill),
+			Risk:          risks[pgconv.UUIDString(row.Skill.ID)],
+			Verification:  verificationOf(row),
+		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"skills":    out,
 		"limit":     listSkillsLimit,
 		"truncated": truncated,
 	})
+}
+
+// ownSkillResponse is a row of the caller's own list: the skill, plus the two
+// facets that make the list decidable rather than merely enumerable (04 丙-31,
+// 設計系統 §1.1). Not on skillResponse itself, because the fork reply shares
+// that shape and a freshly created fork has neither.
+type ownSkillResponse struct {
+	skillResponse
+	// Catalog's block, verbatim. See registry.Service.SkillRisks.
+	Risk         json.RawMessage   `json:"risk"`
+	Verification skillVerification `json:"verification"`
+}
+
+// skillVerification says whether anything was measured *here*, and when.
+//
+// It exists because the obvious answer is wrong. `verified_at` is defined as the
+// newest version's creation time, which is exactly right for an import — that
+// row was created by the scan — and a lie for a fork, whose version row was
+// created the instant somebody pressed Fork with nothing scanned. Serving that
+// timestamp would print something that reads as "scanned just now" on the one
+// case where nothing was scanned at all, which is worse than a blank; serving a
+// blank is what 設計系統 §2.9 forbids. So the state is named and the timestamp
+// only appears in the state that has one.
+//
+// 未測量 for a fork is not the same claim as "unsafe": the bytes are identical to
+// something that was scanned upstream, and attributing that measurement to the
+// copy is arguable. It is a product decision that has not been made, and until
+// it is, the one thing forbidden is making it silently.
+// Labelled rather than a bare value, which is the 04 丙-29 ruling applied at
+// birth rather than retrofitted: one field, one consumer, three values, and the
+// alternative is a twenty-first enum→中文 map on the client for a state whose
+// whole job is to be worded carefully.
+type skillVerification struct {
+	// scanned | not_measured | not_applicable — 設計系統 §2.9 的固定詞彙。
+	Value     string  `json:"value"`
+	Label     string  `json:"label"`
+	Note      string  `json:"note"`
+	ScannedAt *string `json:"scanned_at"`
+}
+
+func verificationOf(row gen.ListSkillsRow) skillVerification {
+	switch {
+	case !row.VerifiedAt.Valid:
+		return skillVerification{
+			Value: "not_applicable",
+			Label: "不適用",
+			Note:  "這個 Skill 還沒有任何版本,沒有可掃描的內容。",
+		}
+	case !row.VerifiedSourceID.Valid:
+		// Import sets source_id; Fork leaves it NULL because skill_sources rows
+		// belong to the origin workspace (registry.Fork). So a version with no
+		// source is one that arrived as a copy.
+		return skillVerification{
+			Value: "not_measured",
+			Label: "未測量",
+			Note: "這個版本是 Fork 進來的複本,靜態掃描是在來源工作區做的,平台沒有在你的工作區重跑。" +
+				"內容位元組相同,但那是來源的量測結果,不是這裡的。",
+		}
+	default:
+		at := row.VerifiedAt.Time.UTC().Format(time.RFC3339)
+		return skillVerification{
+			Value:     "scanned",
+			Label:     "已掃描",
+			Note:      "匯入這個版本時做過靜態掃描,不執行套件內任何程式碼;逐項結果在 Skill 頁面。",
+			ScannedAt: &at,
+		}
+	}
 }

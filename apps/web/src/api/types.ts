@@ -440,9 +440,37 @@ export interface Skill {
  * list that is quietly short reads as a complete answer.
  */
 export interface OwnSkills {
-  skills: Skill[];
+  skills: OwnSkill[];
   limit: number;
   truncated: boolean;
+}
+
+/**
+ * A row of the caller's own list: `Skill` plus the two facets that make the list
+ * decidable rather than merely enumerable (設計 §1.1). Not on `Skill` itself —
+ * the fork reply shares that shape and a one-second-old fork has neither.
+ *
+ * `risk` is deliberately the *same* `SearchResultRisk` a search row carries for
+ * the same skill, not a second type shaped like it.
+ */
+export interface OwnSkill extends Skill {
+  risk: SearchResultRisk;
+  verification: SkillVerification;
+}
+
+/**
+ * Was anything measured **in this workspace**, and when.
+ *
+ * `not_measured` is the fork case: the bytes were scanned where it was forked
+ * from, and the platform did not re-run anything here. It is not a claim that
+ * the content is unsafe — and not a claim that it is fine. `scanned_at` exists
+ * only in the `scanned` state, which is the point of naming the state at all:
+ * a fork's version row is created the moment somebody presses Fork, so the
+ * timestamp that reads as "just scanned" is exactly the one nothing scanned.
+ */
+export interface SkillVerification extends Labelled {
+  value: "scanned" | "not_measured" | "not_applicable";
+  scanned_at?: string | null;
 }
 
 export interface ForkedSkill extends Skill {

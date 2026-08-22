@@ -5212,7 +5212,7 @@ func (s *ListSkillVersionsOKVersionsItem) SetCreatedAt(val time.Time) {
 }
 
 type ListSkillsOK struct {
-	Skills []Skill `json:"skills"`
+	Skills []OwnSkill `json:"skills"`
 	// How many rows this endpoint will return at most. It is a server-side cap, not a page size the caller
 	// chose — there is no pagination here yet.
 	Limit int `json:"limit"`
@@ -5223,7 +5223,7 @@ type ListSkillsOK struct {
 }
 
 // GetSkills returns the value of Skills.
-func (s *ListSkillsOK) GetSkills() []Skill {
+func (s *ListSkillsOK) GetSkills() []OwnSkill {
 	return s.Skills
 }
 
@@ -5238,7 +5238,7 @@ func (s *ListSkillsOK) GetTruncated() bool {
 }
 
 // SetSkills sets the value of Skills.
-func (s *ListSkillsOK) SetSkills(val []Skill) {
+func (s *ListSkillsOK) SetSkills(val []OwnSkill) {
 	s.Skills = val
 }
 
@@ -7403,6 +7403,175 @@ func (o OptUUID) Or(d uuid.UUID) uuid.UUID {
 		return v
 	}
 	return d
+}
+
+// Merged schema.
+// Ref: #/components/schemas/OwnSkill
+type OwnSkill struct {
+	SkillID uuid.UUID `json:"skill_id"`
+	Name    string    `json:"name"`
+	Summary string    `json:"summary"`
+	// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
+	// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
+	// list this is the difference between a skill they can take away and one they cannot. It was already
+	// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
+	// limit which will block you has to be visible before you hit it.
+	Redistribution OwnSkillRedistribution `json:"redistribution"`
+	// Reason code for a licensing hold on the package materials, null when there is none. Also copied onto
+	// forks at fork time, which is why it belongs on a list of skills the caller owns rather than only on
+	// the detail view.
+	AccessRestriction   OptNilString `json:"access_restriction"`
+	ForkedFromSkillID   OptUUID      `json:"forked_from_skill_id"`
+	ForkedFromVersionID OptUUID      `json:"forked_from_version_id"`
+	// The same block, from the same projection, that a search row carries for the same skill —
+	// deliberately the same schema and not a second one shaped like it, because the rule this facet exists
+	// to keep is that the two planes word one fact the same way (02:NFR-007 第 3 條).
+	// `scan_status: unavailable` is the usual answer for a fork; see `verification` for why.
+	Risk         SearchResultRisk  `json:"risk"`
+	Verification SkillVerification `json:"verification"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *OwnSkill) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetName returns the value of Name.
+func (s *OwnSkill) GetName() string {
+	return s.Name
+}
+
+// GetSummary returns the value of Summary.
+func (s *OwnSkill) GetSummary() string {
+	return s.Summary
+}
+
+// GetRedistribution returns the value of Redistribution.
+func (s *OwnSkill) GetRedistribution() OwnSkillRedistribution {
+	return s.Redistribution
+}
+
+// GetAccessRestriction returns the value of AccessRestriction.
+func (s *OwnSkill) GetAccessRestriction() OptNilString {
+	return s.AccessRestriction
+}
+
+// GetForkedFromSkillID returns the value of ForkedFromSkillID.
+func (s *OwnSkill) GetForkedFromSkillID() OptUUID {
+	return s.ForkedFromSkillID
+}
+
+// GetForkedFromVersionID returns the value of ForkedFromVersionID.
+func (s *OwnSkill) GetForkedFromVersionID() OptUUID {
+	return s.ForkedFromVersionID
+}
+
+// GetRisk returns the value of Risk.
+func (s *OwnSkill) GetRisk() SearchResultRisk {
+	return s.Risk
+}
+
+// GetVerification returns the value of Verification.
+func (s *OwnSkill) GetVerification() SkillVerification {
+	return s.Verification
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *OwnSkill) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetName sets the value of Name.
+func (s *OwnSkill) SetName(val string) {
+	s.Name = val
+}
+
+// SetSummary sets the value of Summary.
+func (s *OwnSkill) SetSummary(val string) {
+	s.Summary = val
+}
+
+// SetRedistribution sets the value of Redistribution.
+func (s *OwnSkill) SetRedistribution(val OwnSkillRedistribution) {
+	s.Redistribution = val
+}
+
+// SetAccessRestriction sets the value of AccessRestriction.
+func (s *OwnSkill) SetAccessRestriction(val OptNilString) {
+	s.AccessRestriction = val
+}
+
+// SetForkedFromSkillID sets the value of ForkedFromSkillID.
+func (s *OwnSkill) SetForkedFromSkillID(val OptUUID) {
+	s.ForkedFromSkillID = val
+}
+
+// SetForkedFromVersionID sets the value of ForkedFromVersionID.
+func (s *OwnSkill) SetForkedFromVersionID(val OptUUID) {
+	s.ForkedFromVersionID = val
+}
+
+// SetRisk sets the value of Risk.
+func (s *OwnSkill) SetRisk(val SearchResultRisk) {
+	s.Risk = val
+}
+
+// SetVerification sets the value of Verification.
+func (s *OwnSkill) SetVerification(val SkillVerification) {
+	s.Verification = val
+}
+
+// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
+// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
+// list this is the difference between a skill they can take away and one they cannot. It was already
+// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
+// limit which will block you has to be visible before you hit it.
+type OwnSkillRedistribution string
+
+const (
+	OwnSkillRedistributionAllowed OwnSkillRedistribution = "allowed"
+	OwnSkillRedistributionBlocked OwnSkillRedistribution = "blocked"
+	OwnSkillRedistributionUnknown OwnSkillRedistribution = "unknown"
+)
+
+// AllValues returns all OwnSkillRedistribution values.
+func (OwnSkillRedistribution) AllValues() []OwnSkillRedistribution {
+	return []OwnSkillRedistribution{
+		OwnSkillRedistributionAllowed,
+		OwnSkillRedistributionBlocked,
+		OwnSkillRedistributionUnknown,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OwnSkillRedistribution) MarshalText() ([]byte, error) {
+	switch s {
+	case OwnSkillRedistributionAllowed:
+		return []byte(s), nil
+	case OwnSkillRedistributionBlocked:
+		return []byte(s), nil
+	case OwnSkillRedistributionUnknown:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OwnSkillRedistribution) UnmarshalText(data []byte) error {
+	switch OwnSkillRedistribution(data) {
+	case OwnSkillRedistributionAllowed:
+		*s = OwnSkillRedistributionAllowed
+		return nil
+	case OwnSkillRedistributionBlocked:
+		*s = OwnSkillRedistributionBlocked
+		return nil
+	case OwnSkillRedistributionUnknown:
+		*s = OwnSkillRedistributionUnknown
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Merged schema.
@@ -11903,95 +12072,6 @@ func (s *SetSkillRestrictionReq) SetNote(val string) {
 	s.Note = val
 }
 
-// Ref: #/components/schemas/Skill
-type Skill struct {
-	SkillID uuid.UUID `json:"skill_id"`
-	Name    string    `json:"name"`
-	Summary string    `json:"summary"`
-	// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
-	// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
-	// list this is the difference between a skill they can take away and one they cannot. It was already
-	// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
-	// limit which will block you has to be visible before you hit it.
-	Redistribution SkillRedistribution `json:"redistribution"`
-	// Reason code for a licensing hold on the package materials, null when there is none. Also copied onto
-	// forks at fork time, which is why it belongs on a list of skills the caller owns rather than only on
-	// the detail view.
-	AccessRestriction   OptNilString `json:"access_restriction"`
-	ForkedFromSkillID   OptUUID      `json:"forked_from_skill_id"`
-	ForkedFromVersionID OptUUID      `json:"forked_from_version_id"`
-}
-
-// GetSkillID returns the value of SkillID.
-func (s *Skill) GetSkillID() uuid.UUID {
-	return s.SkillID
-}
-
-// GetName returns the value of Name.
-func (s *Skill) GetName() string {
-	return s.Name
-}
-
-// GetSummary returns the value of Summary.
-func (s *Skill) GetSummary() string {
-	return s.Summary
-}
-
-// GetRedistribution returns the value of Redistribution.
-func (s *Skill) GetRedistribution() SkillRedistribution {
-	return s.Redistribution
-}
-
-// GetAccessRestriction returns the value of AccessRestriction.
-func (s *Skill) GetAccessRestriction() OptNilString {
-	return s.AccessRestriction
-}
-
-// GetForkedFromSkillID returns the value of ForkedFromSkillID.
-func (s *Skill) GetForkedFromSkillID() OptUUID {
-	return s.ForkedFromSkillID
-}
-
-// GetForkedFromVersionID returns the value of ForkedFromVersionID.
-func (s *Skill) GetForkedFromVersionID() OptUUID {
-	return s.ForkedFromVersionID
-}
-
-// SetSkillID sets the value of SkillID.
-func (s *Skill) SetSkillID(val uuid.UUID) {
-	s.SkillID = val
-}
-
-// SetName sets the value of Name.
-func (s *Skill) SetName(val string) {
-	s.Name = val
-}
-
-// SetSummary sets the value of Summary.
-func (s *Skill) SetSummary(val string) {
-	s.Summary = val
-}
-
-// SetRedistribution sets the value of Redistribution.
-func (s *Skill) SetRedistribution(val SkillRedistribution) {
-	s.Redistribution = val
-}
-
-// SetAccessRestriction sets the value of AccessRestriction.
-func (s *Skill) SetAccessRestriction(val OptNilString) {
-	s.AccessRestriction = val
-}
-
-// SetForkedFromSkillID sets the value of ForkedFromSkillID.
-func (s *Skill) SetForkedFromSkillID(val OptUUID) {
-	s.ForkedFromSkillID = val
-}
-
-// SetForkedFromVersionID sets the value of ForkedFromVersionID.
-func (s *Skill) SetForkedFromVersionID(val OptUUID) {
-	s.ForkedFromVersionID = val
-}
-
 // The 0023 licensing hold on a skill, rendered so a reader is told what is withheld and why rather
 // than shown a gap.
 // Ref: #/components/schemas/SkillAccessRestriction
@@ -13190,59 +13270,6 @@ func (s *SkillLimitationSource) UnmarshalText(data []byte) error {
 	}
 }
 
-// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
-// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
-// list this is the difference between a skill they can take away and one they cannot. It was already
-// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
-// limit which will block you has to be visible before you hit it.
-type SkillRedistribution string
-
-const (
-	SkillRedistributionAllowed SkillRedistribution = "allowed"
-	SkillRedistributionBlocked SkillRedistribution = "blocked"
-	SkillRedistributionUnknown SkillRedistribution = "unknown"
-)
-
-// AllValues returns all SkillRedistribution values.
-func (SkillRedistribution) AllValues() []SkillRedistribution {
-	return []SkillRedistribution{
-		SkillRedistributionAllowed,
-		SkillRedistributionBlocked,
-		SkillRedistributionUnknown,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s SkillRedistribution) MarshalText() ([]byte, error) {
-	switch s {
-	case SkillRedistributionAllowed:
-		return []byte(s), nil
-	case SkillRedistributionBlocked:
-		return []byte(s), nil
-	case SkillRedistributionUnknown:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *SkillRedistribution) UnmarshalText(data []byte) error {
-	switch SkillRedistribution(data) {
-	case SkillRedistributionAllowed:
-		*s = SkillRedistributionAllowed
-		return nil
-	case SkillRedistributionBlocked:
-		*s = SkillRedistributionBlocked
-		return nil
-	case SkillRedistributionUnknown:
-		*s = SkillRedistributionUnknown
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
 // Static scan of the stored package, recomputed on read. Nothing in the package is executed (iron rule
 // 1) and there is deliberately no single "safe" verdict (NFR-001).
 // Ref: #/components/schemas/SkillRisk
@@ -13601,6 +13628,56 @@ func (s *SkillSourceType) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// Merged schema.
+// Ref: #/components/schemas/SkillVerification
+type SkillVerification struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+	Note  string `json:"note"`
+	// Present only when `value` is `scanned`.
+	ScannedAt OptNilDateTime `json:"scanned_at"`
+}
+
+// GetValue returns the value of Value.
+func (s *SkillVerification) GetValue() string {
+	return s.Value
+}
+
+// GetLabel returns the value of Label.
+func (s *SkillVerification) GetLabel() string {
+	return s.Label
+}
+
+// GetNote returns the value of Note.
+func (s *SkillVerification) GetNote() string {
+	return s.Note
+}
+
+// GetScannedAt returns the value of ScannedAt.
+func (s *SkillVerification) GetScannedAt() OptNilDateTime {
+	return s.ScannedAt
+}
+
+// SetValue sets the value of Value.
+func (s *SkillVerification) SetValue(val string) {
+	s.Value = val
+}
+
+// SetLabel sets the value of Label.
+func (s *SkillVerification) SetLabel(val string) {
+	s.Label = val
+}
+
+// SetNote sets the value of Note.
+func (s *SkillVerification) SetNote(val string) {
+	s.Note = val
+}
+
+// SetScannedAt sets the value of ScannedAt.
+func (s *SkillVerification) SetScannedAt(val OptNilDateTime) {
+	s.ScannedAt = val
 }
 
 // StartGithubLoginFound is response for StartGithubLogin operation.

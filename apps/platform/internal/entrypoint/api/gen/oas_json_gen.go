@@ -14384,9 +14384,9 @@ func (s *ListSkillsOK) Decode(d *jx.Decoder) error {
 		case "skills":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				s.Skills = make([]Skill, 0)
+				s.Skills = make([]OwnSkill, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
-					var elem Skill
+					var elem OwnSkill
 					if err := elem.Decode(d); err != nil {
 						return err
 					}
@@ -16142,6 +16142,275 @@ func (s OptUUID) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptUUID) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *OwnSkill) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *OwnSkill) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("skill_id")
+		json.EncodeUUID(e, s.SkillID)
+	}
+	{
+		e.FieldStart("name")
+		e.Str(s.Name)
+	}
+	{
+		e.FieldStart("summary")
+		e.Str(s.Summary)
+	}
+	{
+		e.FieldStart("redistribution")
+		s.Redistribution.Encode(e)
+	}
+	{
+		if s.AccessRestriction.Set {
+			e.FieldStart("access_restriction")
+			s.AccessRestriction.Encode(e)
+		}
+	}
+	{
+		if s.ForkedFromSkillID.Set {
+			e.FieldStart("forked_from_skill_id")
+			s.ForkedFromSkillID.Encode(e)
+		}
+	}
+	{
+		if s.ForkedFromVersionID.Set {
+			e.FieldStart("forked_from_version_id")
+			s.ForkedFromVersionID.Encode(e)
+		}
+	}
+	{
+		e.FieldStart("risk")
+		s.Risk.Encode(e)
+	}
+	{
+		e.FieldStart("verification")
+		s.Verification.Encode(e)
+	}
+}
+
+var jsonFieldsNameOfOwnSkill = [9]string{
+	0: "skill_id",
+	1: "name",
+	2: "summary",
+	3: "redistribution",
+	4: "access_restriction",
+	5: "forked_from_skill_id",
+	6: "forked_from_version_id",
+	7: "risk",
+	8: "verification",
+}
+
+// Decode decodes OwnSkill from json.
+func (s *OwnSkill) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode OwnSkill to nil")
+	}
+	var requiredBitSet [2]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "skill_id":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := json.DecodeUUID(d)
+				s.SkillID = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"skill_id\"")
+			}
+		case "name":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Name = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"name\"")
+			}
+		case "summary":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.Summary = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"summary\"")
+			}
+		case "redistribution":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				if err := s.Redistribution.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"redistribution\"")
+			}
+		case "access_restriction":
+			if err := func() error {
+				s.AccessRestriction.Reset()
+				if err := s.AccessRestriction.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"access_restriction\"")
+			}
+		case "forked_from_skill_id":
+			if err := func() error {
+				s.ForkedFromSkillID.Reset()
+				if err := s.ForkedFromSkillID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"forked_from_skill_id\"")
+			}
+		case "forked_from_version_id":
+			if err := func() error {
+				s.ForkedFromVersionID.Reset()
+				if err := s.ForkedFromVersionID.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"forked_from_version_id\"")
+			}
+		case "risk":
+			requiredBitSet[0] |= 1 << 7
+			if err := func() error {
+				if err := s.Risk.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"risk\"")
+			}
+		case "verification":
+			requiredBitSet[1] |= 1 << 0
+			if err := func() error {
+				if err := s.Verification.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"verification\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode OwnSkill")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [2]uint8{
+		0b10001111,
+		0b00000001,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfOwnSkill) {
+					name = jsonFieldsNameOfOwnSkill[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *OwnSkill) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OwnSkill) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes OwnSkillRedistribution as json.
+func (s OwnSkillRedistribution) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes OwnSkillRedistribution from json.
+func (s *OwnSkillRedistribution) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode OwnSkillRedistribution to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch OwnSkillRedistribution(v) {
+	case OwnSkillRedistributionAllowed:
+		*s = OwnSkillRedistributionAllowed
+	case OwnSkillRedistributionBlocked:
+		*s = OwnSkillRedistributionBlocked
+	case OwnSkillRedistributionUnknown:
+		*s = OwnSkillRedistributionUnknown
+	default:
+		*s = OwnSkillRedistribution(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OwnSkillRedistribution) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OwnSkillRedistribution) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -24925,202 +25194,6 @@ func (s *SetSkillRestrictionReq) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
-func (s *Skill) Encode(e *jx.Encoder) {
-	e.ObjStart()
-	s.encodeFields(e)
-	e.ObjEnd()
-}
-
-// encodeFields encodes fields.
-func (s *Skill) encodeFields(e *jx.Encoder) {
-	{
-		e.FieldStart("skill_id")
-		json.EncodeUUID(e, s.SkillID)
-	}
-	{
-		e.FieldStart("name")
-		e.Str(s.Name)
-	}
-	{
-		e.FieldStart("summary")
-		e.Str(s.Summary)
-	}
-	{
-		e.FieldStart("redistribution")
-		s.Redistribution.Encode(e)
-	}
-	{
-		if s.AccessRestriction.Set {
-			e.FieldStart("access_restriction")
-			s.AccessRestriction.Encode(e)
-		}
-	}
-	{
-		if s.ForkedFromSkillID.Set {
-			e.FieldStart("forked_from_skill_id")
-			s.ForkedFromSkillID.Encode(e)
-		}
-	}
-	{
-		if s.ForkedFromVersionID.Set {
-			e.FieldStart("forked_from_version_id")
-			s.ForkedFromVersionID.Encode(e)
-		}
-	}
-}
-
-var jsonFieldsNameOfSkill = [7]string{
-	0: "skill_id",
-	1: "name",
-	2: "summary",
-	3: "redistribution",
-	4: "access_restriction",
-	5: "forked_from_skill_id",
-	6: "forked_from_version_id",
-}
-
-// Decode decodes Skill from json.
-func (s *Skill) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode Skill to nil")
-	}
-	var requiredBitSet [1]uint8
-
-	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
-		switch string(k) {
-		case "skill_id":
-			requiredBitSet[0] |= 1 << 0
-			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.SkillID = v
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"skill_id\"")
-			}
-		case "name":
-			requiredBitSet[0] |= 1 << 1
-			if err := func() error {
-				v, err := d.Str()
-				s.Name = string(v)
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"name\"")
-			}
-		case "summary":
-			requiredBitSet[0] |= 1 << 2
-			if err := func() error {
-				v, err := d.Str()
-				s.Summary = string(v)
-				if err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"summary\"")
-			}
-		case "redistribution":
-			requiredBitSet[0] |= 1 << 3
-			if err := func() error {
-				if err := s.Redistribution.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"redistribution\"")
-			}
-		case "access_restriction":
-			if err := func() error {
-				s.AccessRestriction.Reset()
-				if err := s.AccessRestriction.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"access_restriction\"")
-			}
-		case "forked_from_skill_id":
-			if err := func() error {
-				s.ForkedFromSkillID.Reset()
-				if err := s.ForkedFromSkillID.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"forked_from_skill_id\"")
-			}
-		case "forked_from_version_id":
-			if err := func() error {
-				s.ForkedFromVersionID.Reset()
-				if err := s.ForkedFromVersionID.Decode(d); err != nil {
-					return err
-				}
-				return nil
-			}(); err != nil {
-				return errors.Wrap(err, "decode field \"forked_from_version_id\"")
-			}
-		default:
-			return d.Skip()
-		}
-		return nil
-	}); err != nil {
-		return errors.Wrap(err, "decode Skill")
-	}
-	// Validate required fields.
-	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
-		0b00001111,
-	} {
-		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
-			// Mask only required fields and check equality to mask using XOR.
-			//
-			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
-			// Bits of fields which would be set are actually bits of missed fields.
-			missed := bits.OnesCount8(result)
-			for bitN := 0; bitN < missed; bitN++ {
-				bitIdx := bits.TrailingZeros8(result)
-				fieldIdx := i*8 + bitIdx
-				var name string
-				if fieldIdx < len(jsonFieldsNameOfSkill) {
-					name = jsonFieldsNameOfSkill[fieldIdx]
-				} else {
-					name = strconv.Itoa(fieldIdx)
-				}
-				failures = append(failures, validate.FieldError{
-					Name:  name,
-					Error: validate.ErrFieldRequired,
-				})
-				// Reset bit.
-				result &^= 1 << bitIdx
-			}
-		}
-	}
-	if len(failures) > 0 {
-		return &validate.Error{Fields: failures}
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s *Skill) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *Skill) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode implements json.Marshaler.
 func (s *SkillAccessRestriction) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -27385,48 +27458,6 @@ func (s *SkillLimitationSource) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
-// Encode encodes SkillRedistribution as json.
-func (s SkillRedistribution) Encode(e *jx.Encoder) {
-	e.Str(string(s))
-}
-
-// Decode decodes SkillRedistribution from json.
-func (s *SkillRedistribution) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode SkillRedistribution to nil")
-	}
-	v, err := d.StrBytes()
-	if err != nil {
-		return err
-	}
-	// Try to use constant string.
-	switch SkillRedistribution(v) {
-	case SkillRedistributionAllowed:
-		*s = SkillRedistributionAllowed
-	case SkillRedistributionBlocked:
-		*s = SkillRedistributionBlocked
-	case SkillRedistributionUnknown:
-		*s = SkillRedistributionUnknown
-	default:
-		*s = SkillRedistribution(v)
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s SkillRedistribution) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *SkillRedistribution) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
 // Encode implements json.Marshaler.
 func (s *SkillRisk) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -28154,6 +28185,153 @@ func (s SkillSourceType) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *SkillSourceType) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *SkillVerification) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *SkillVerification) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("value")
+		e.Str(s.Value)
+	}
+	{
+		e.FieldStart("label")
+		e.Str(s.Label)
+	}
+	{
+		e.FieldStart("note")
+		e.Str(s.Note)
+	}
+	{
+		if s.ScannedAt.Set {
+			e.FieldStart("scanned_at")
+			s.ScannedAt.Encode(e, json.EncodeDateTime)
+		}
+	}
+}
+
+var jsonFieldsNameOfSkillVerification = [4]string{
+	0: "value",
+	1: "label",
+	2: "note",
+	3: "scanned_at",
+}
+
+// Decode decodes SkillVerification from json.
+func (s *SkillVerification) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SkillVerification to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "value":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Value = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"value\"")
+			}
+		case "label":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Label = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"label\"")
+			}
+		case "note":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.Note = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"note\"")
+			}
+		case "scanned_at":
+			if err := func() error {
+				s.ScannedAt.Reset()
+				if err := s.ScannedAt.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"scanned_at\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode SkillVerification")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfSkillVerification) {
+					name = jsonFieldsNameOfSkillVerification[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *SkillVerification) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SkillVerification) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

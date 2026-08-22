@@ -182,6 +182,41 @@ test("WS-002 an empty run history says nothing ran, not that records were cleare
 
 // --- the own-skills list ----------------------------------------------------
 
+// The two facets every row of this list now carries (04 丙-31). Spread into the
+// fixtures below so a test about deletion does not have to restate them, and so
+// the fork shape stays written down in exactly one place: **a fork has neither**,
+// because it copies the bytes and not the measurement.
+const SCANNED = {
+  risk: {
+    scan_status: "scanned",
+    level: "disclosed",
+    warnings: 0,
+    has_scripts: true,
+    note: "來自匯入時的靜態掃描,不執行套件內任何程式碼;開啟 Skill 可看逐項結果。",
+  },
+  verification: {
+    value: "scanned",
+    label: "已掃描",
+    note: "匯入這個版本時做過靜態掃描,不執行套件內任何程式碼;逐項結果在 Skill 頁面。",
+    scanned_at: "2026-08-01T10:00:00Z",
+  },
+} as const;
+
+const FORKED = {
+  risk: {
+    scan_status: "unavailable",
+    level: "none",
+    warnings: 0,
+    note: "此結果尚無掃描紀錄,狀態未知——不代表已通過檢查。",
+  },
+  verification: {
+    value: "not_measured",
+    label: "未測量",
+    note: "這個版本是 Fork 進來的複本,靜態掃描是在來源工作區做的,平台沒有在你的工作區重跑。",
+    scanned_at: null,
+  },
+} as const;
+
 test("WS-004 the own-skills row says whether this skill can be taken away", async () => {
   // 04 丙-31 / 設計 §2.2 in its second direction. `redistribution` and
   // `access_restriction` were on the row ListSkills selects and were dropped in
@@ -197,6 +232,7 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
           summary: "一份自己傳上來的套件。",
           redistribution: "unknown",
           access_restriction: null,
+          ...SCANNED,
         },
         {
           skill_id: "s-2",
@@ -205,6 +241,7 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
           redistribution: "allowed",
           access_restriction: null,
           forked_from_skill_id: "s-origin",
+          ...FORKED,
         },
       ],
       limit: 100,
@@ -227,6 +264,41 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
   expect(text()).toContain("只列出前 100 個");
 });
 
+test("WS-004 a forked row says the scan happened somewhere else, not that it passed", async () => {
+  // 04 丙-31 / 設計 §2.9. The obvious implementation serves `verified_at` as the
+  // newest version's created_at, which is what the search projection means by it
+  // — and a fork's newest version row is created the instant somebody presses
+  // Fork, with nothing scanned. That would print a timestamp reading as
+  // 「剛剛掃過」 on the one case where nothing was measured at all, so the state is
+  // named and the timestamp only exists in the state that has one.
+  vi.stubGlobal("fetch", () =>
+    json({
+      skills: [
+        {
+          skill_id: SKILL,
+          name: "Fork 來的",
+          summary: "從目錄 Fork 的。",
+          redistribution: "allowed",
+          access_restriction: null,
+          forked_from_skill_id: "s-origin",
+          ...FORKED,
+        },
+      ],
+      limit: 100,
+      truncated: false,
+    }),
+  );
+  await render(<WorkspaceSkills />, () => text().includes("從目錄 Fork 的"));
+
+  expect(text()).toContain("未測量");
+  expect(text()).toContain("靜態掃描是在來源工作區做的");
+  // The two facets have to agree: an unscanned row must not also claim the scan
+  // found nothing, which is the sentence the scanned-and-clean branch prints.
+  expect(text()).not.toContain("未發現警告");
+  // §2.9: never a blank, and never a date on a state that has none.
+  expect(container.querySelector(".badge-row")?.textContent ?? "").not.toBe("");
+});
+
 test("WS-004 the own-skills list links each row on to its files and packaging", async () => {
   vi.stubGlobal("fetch", () =>
     json({
@@ -237,6 +309,7 @@ test("WS-004 the own-skills list links each row on to its files and packaging", 
           summary: "整理 CSV。",
           redistribution: "allowed",
           access_restriction: null,
+          ...SCANNED,
         },
       ],
       limit: 100,
@@ -270,7 +343,9 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
         note: "skill removed from your workspace, lists, and search; version snapshots are retained for the 30-day grace period",
       });
     }
-    return json({ skills: [{ skill_id: SKILL, name: "CSV 清理", summary: "整理 CSV。" }] });
+    return json({
+      skills: [{ skill_id: SKILL, name: "CSV 清理", summary: "整理 CSV。", ...SCANNED }],
+    });
   });
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 

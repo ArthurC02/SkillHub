@@ -2,7 +2,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useSkillSearch } from "../api/skills";
 import { LabelledBadge } from "../components/LabelledBadge";
-import { disclosures } from "../components/RiskIndicator";
+import { RiskSummary } from "../components/RiskIndicator";
 import { SPEC_LABELS } from "../components/CompatibilityStatus";
 import { MAX_COMPARE } from "./Compare";
 import type { PublicSearchResult, SearchFilters } from "../api/types";
@@ -444,7 +444,6 @@ function CompareBar({ selected }: { selected: string[] }) {
  */
 
 function ResultFacets({ hit }: { hit: PublicSearchResult }) {
-  const flags = disclosures(hit.risk);
   const untested =
     hit.compatibility.capability === "unverified" && hit.compatibility.runtime === "unverified";
 
@@ -482,25 +481,7 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
 
       <dt>風險提示</dt>
       <dd>
-        {hit.risk.scan_status === "unavailable" ? (
-          <span className="note">尚無掃描紀錄，狀態未知——不代表已通過檢查。</span>
-        ) : (
-          <>
-            {hit.risk.warnings > 0 && (
-              <span className="badge badge-risk">警告 {hit.risk.warnings}</span>
-            )}
-            {flags.length > 0
-              ? flags.map(({ key, label }) => (
-                  <span key={key} className="badge badge-risk-flag">
-                    {label}
-                  </span>
-                ))
-              : hit.risk.warnings === 0 && (
-                  <span className="note">靜態掃描未發現警告；這不等於安全。</span>
-                )}
-          </>
-        )}
-        <span className="note">{hit.risk.note}</span>
+        <RiskSummary risk={hit.risk} />
       </dd>
 
       <dt>最近驗證時間</dt>

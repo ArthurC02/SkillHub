@@ -98,6 +98,12 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	if reg := app.Deps.Registry.Svc; reg.IndexSkill == nil || reg.RemoveFromIndex == nil {
 		t.Error("the registry service is missing a search projection write")
 	}
+	// The read back out of that projection. Unset, GET /skills answers 500 rather
+	// than a page of skills with no risk block on it: a row that quietly lost its
+	// scan reads as a scanned row that found nothing (DISC-004).
+	if app.Deps.Registry.Svc.SkillRisks == nil {
+		t.Error("the registry service is missing catalog's projected scan read")
+	}
 	if search := app.Deps.Search.Svc; search.Registry != app.Deps.Registry.Svc || search.SourceByID == nil {
 		t.Error("the catalog service is missing owner-scoped registry or source reads")
 	}

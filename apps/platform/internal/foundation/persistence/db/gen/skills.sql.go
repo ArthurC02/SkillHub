@@ -223,9 +223,17 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 }
 
 const listSkills = `-- name: ListSkills :many
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution FROM skills
-WHERE workspace_id = $1 AND deleted_at IS NULL
-ORDER BY created_at DESC
+SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, ver.created_at AS verified_at, ver.source_id AS verified_source_id
+FROM skills sk
+LEFT JOIN LATERAL (
+    SELECT v.created_at, v.source_id
+    FROM skill_versions v
+    WHERE v.skill_id = sk.id
+    ORDER BY v.version_number DESC
+    LIMIT 1
+) ver ON true
+WHERE sk.workspace_id = $1 AND sk.deleted_at IS NULL
+ORDER BY sk.created_at DESC
 LIMIT $2 OFFSET $3
 `
 
@@ -235,29 +243,50 @@ type ListSkillsParams struct {
 	Offset      int32
 }
 
-func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]Skill, error) {
+type ListSkillsRow struct {
+	Skill            Skill
+	VerifiedAt       pgtype.Timestamptz
+	VerifiedSourceID pgtype.UUID
+}
+
+// The owner's own skills, newest first, with the one measurement fact the list
+// can answer for itself (04 丙-31).
+//
+// `verified_at` is the newest version's creation time, the same definition the
+// public search path uses. `verified_source_id` is what keeps that definition
+// honest here and there is no equivalent need in search: **a fork gets a version
+// row of its own whose created_at is the moment somebody pressed Fork**, and
+// nothing was scanned at that moment — the bytes were scanned in the workspace
+// it was forked from. Import sets source_id, fork leaves it NULL (see
+// registry.Fork), so a NULL here means "this version arrived as a copy" and the
+// caller reports 未測量 rather than a timestamp that reads like a fresh scan.
+// Catalogue search never sees that case: it only lists catalog workspaces, and
+// nothing forks into one.
+func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListSkillsRow, error) {
 	rows, err := q.db.Query(ctx, listSkills, arg.WorkspaceID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Skill
+	var items []ListSkillsRow
 	for rows.Next() {
-		var i Skill
+		var i ListSkillsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.Name,
-			&i.Summary,
-			&i.ForkedFromSkillID,
-			&i.ForkedFromVersionID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.DeletedAt,
-			&i.TakedownAt,
-			&i.TakedownReason,
-			&i.AccessRestriction,
-			&i.Redistribution,
+			&i.Skill.ID,
+			&i.Skill.WorkspaceID,
+			&i.Skill.Name,
+			&i.Skill.Summary,
+			&i.Skill.ForkedFromSkillID,
+			&i.Skill.ForkedFromVersionID,
+			&i.Skill.CreatedAt,
+			&i.Skill.UpdatedAt,
+			&i.Skill.DeletedAt,
+			&i.Skill.TakedownAt,
+			&i.Skill.TakedownReason,
+			&i.Skill.AccessRestriction,
+			&i.Skill.Redistribution,
+			&i.VerifiedAt,
+			&i.VerifiedSourceID,
 		); err != nil {
 			return nil, err
 		}
