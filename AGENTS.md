@@ -12,14 +12,14 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 - **「程式面收斂」不等於「MVP 完成」**：`03` §18 的 `RELEASE-001`～`010` **十項全部誠實不勾**。共同的三個阻擋是**甲類四項未到期**、**六項 PDM 未追認**、**M1 閘門 D 日未宣告**。逐項的「誰做什麼驗什麼」見 [docs/plans/mvp/m4/release-checklist.md](docs/plans/mvp/m4/release-checklist.md)。
 - **M1 驗證閘門仍未正式通過**：材料已備妥（[docs/plans/mvp/gate-test/](docs/plans/mvp/gate-test/)），**D 日仍待負責人宣告**。**M4 與前三個里程碑不同——封測不能與閘門並行**（三個理由見 [m4/README.md §5.3](docs/plans/mvp/m4/README.md)），打包批可以。同意書草稿已補（[gate-test/consent-and-data-policy.md](docs/plans/mvp/gate-test/consent-and-data-policy.md)，**待法務確認**），它是閘門與封測共用的前置。
 - **ADR-020～029 已入列**（身分／Session、License 溯源、Sandbox 部署拓撲與安全定值、Agent SDK 版本釘選、頂層目錄分「跑的」與「讀的」；Run 終態與 Evaluation 判定分離、重評 append-only 與 LLM Judge 四條防線；**M4 的三份**：Download Artifact 的雙雜湊與「MVP 明文不簽章」、封測准入與配額強制點、產品分析事件的邊界）。**M4 沒有新增 ADR-030 之後的任何一份**——三份在文件批就寫完了。
-- **殘項三類清單**（甲＝部署期驗收、乙＝待負責人決策、丙＝實作或資料工作）見 [docs/plans/04-backlog-and-handoffs.md](docs/plans/04-backlog-and-handoffs.md)（**活文件**，隨時更新）——**開工前先看那份，它記的是「已定值但沒有強制」與「已量到但沒查根因」那一類洞**。目前**甲 4 項、乙 6 項、丙 17 項**（2026-08-18 M4 對帳批後：乙新增「同意書待法務確認」，丙新增十二項並結案丙-9／丙-10）。**十七項丙類沒有一項在等決策**，逐項補法見 [m4/release-checklist.md §1.9](docs/plans/mvp/m4/release-checklist.md)。
+- **殘項三類清單**（甲＝部署期驗收、乙＝待負責人決策、丙＝實作或資料工作）見 [docs/plans/04-backlog-and-handoffs.md](docs/plans/04-backlog-and-handoffs.md)（**活文件**，隨時更新）——**開工前先看那份，它記的是「已定值但沒有強制」與「已量到但沒查根因」那一類洞**。目前**甲 4 項、乙 8 項、丙 20 項**（2026-08-18 M4 對帳批後為甲 4／乙 6／丙 17；**2026-08-22 兩批再加**：設計系統與 UI 對帳批新增丙-28～32 並結案其中三項，產品裁定批依 ADR-042 新增乙-19／乙-20 與丙-33～35）。**丙類沒有一項在等決策**——ADR-042 之後連丙-32 都有裁定了，逐項補法見 [m4/release-checklist.md §1.9](docs/plans/mvp/m4/release-checklist.md)。
 - **「移交 M4」六條接點已逐項裁定**：四條關閉（`PACK-002` 重用驗證路徑、衍生關係的溯源方向、可攜 Test Case 的兩半、評估產物由白名單排除），兩條轉殘項（乙-13 的 G7／G8、乙-14 的甲類到期）。**MVP 之後的接點另起一節**（`04` §移交下一階段）。
 - **2026-08-22 Platform 邊界批（不改 MVP 範圍，只改程式拓撲與強制力）**：`apps/platform/internal/` 依 [ADR-038](docs/adr/ADR-038-platform-product-domain-language-and-value-stream-navigation.md)／[ADR-040](docs/adr/ADR-040-platform-foundation-shared-kernel-and-entrypoint-topology.md) 重排為 `creator`／`skill`／`trial`／`product`／`shared`／`foundation`／`entrypoint`——**Boundary ID 一個都沒改**（`run`、`registry`、`identity` 仍是 query ownership 與 depguard 的機械鍵），改的只有 path，對照表在 [ADR-032](docs/adr/ADR-032-ddd-bounded-context-governance-for-platform.md) §1，導覽在 [apps/platform/internal/README.md](apps/platform/internal/README.md)。同批把 ADR-033／035 的跨 context 存量收乾：`db/query-owners.yaml` 的 `allow:` 與 `read_allow:` **現在都是零條**（DDD-031～060，逐條記在 `03` 的行內），裸 SQL 只剩九個具名技術豁免。**`03` 的歷史完成紀錄刻意保留當時的 flat path**，那是里程碑時點的證據，不是現行導覽。
 
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
 | `docs/plans/` | [產品基準](docs/plans/README.md)：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/04-backlog-and-handoffs.md)（活文件）；`mvp/m0/`～`mvp/m4/` 為各里程碑凍結產出；`mvp/content/`／`mvp/governance/`／`mvp/gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/README.md](docs/plans/README.md) |
-| `docs/adr/` | 42 份架構決策紀錄（ADR-000～041；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
+| `docs/adr/` | 43 份架構決策紀錄（ADR-000～042；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂；042 回答 041 的六個待決策） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
 | `docs/spikes/` | **已刪除，只留墓碑**：M0 驗證用 spike code，結論已沉澱到 m0 報告／ADR-013／ADR-023／`UPGRADES.md`／`tools/goldenset/` | [docs/spikes/README.md](docs/spikes/README.md)（含還原指令與結論落點對照） |
 
 Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **ADR-031（Accepted）** 按產物角色定義；它取代 ADR-024 的 `apps/`／`services/` 雙軌。結構性偏離需先更新 ADR。
@@ -76,7 +76,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容。
-- 新 ADR 從 **ADR-042** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
+- 新 ADR 從 **ADR-043** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
 - ADR 的待決策被後續 ADR 回答時，回填 `→ [ADR-xxx](...)` 引用（現有文件已有此慣例）。
 - 新 ADR 記得更新 [docs/adr/README.md](docs/adr/README.md) 的決策索引。
 - **檔案放哪裡**：活文件放 `docs/plans/` 根層（編號 `01~`）；里程碑的歷史產出放 `docs/plans/mvp/mX/`，里程碑完結即凍結。跨里程碑主題材料放 `docs/plans/mvp/` 的相應主題目錄。一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`。
