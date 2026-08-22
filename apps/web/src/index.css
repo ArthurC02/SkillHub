@@ -469,13 +469,15 @@ main {
   grid-column: 1 / -1;
 }
 
-/* QA-009: this used to carry `opacity: 0.65`, which multiplied with the 0.8 on
-   `.note` below and left the reason text at 2.18:1 — the one sentence that
-   explains why the control is dead was the least readable thing in the bar. The
-   native `disabled` select is the affordance; nothing needs dimming on top. */
-.filter-unavailable .note {
-  font-size: 12px;
-}
+/* QA-009 removed an `opacity: 0.65` here, which multiplied with the 0.8 on
+   `.note` and left this text at 2.18:1 — the one sentence explaining why the
+   control is dead was the least readable thing in the bar. ADR-039 §5 found the
+   second half of the same mistake: the rule that replaced the opacity dropped
+   the sentence to 12px, and §4.1 gives 12px to monospace only, because mono
+   runs optically larger. So it was demoted twice by two different mechanisms,
+   and the sentence 原則 2.4 exists to protect was the smallest text in the app.
+   It takes `.note`'s 14px now; the native `disabled` select is the affordance
+   and nothing needs shrinking on top of it. */
 
 /* One stacked form field: the label on its own line above its control, which is
    the layout `.filter-bar label` already uses — the difference is only that here

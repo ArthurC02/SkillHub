@@ -61,6 +61,10 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-034](./ADR-034-cross-context-writes-close-by-inversion-not-by-events.md) | 剩餘跨 Context 寫入以依賴反轉收斂，不事件化（修訂 ADR-033 清除路徑 1、3；交易保證不換最終一致） | Accepted |
 | [ADR-035](./ADR-035-read-ownership-enforcement-and-context-map-completeness.md) | Read Ownership 開始強制，Context 對照表補上完整性檢查（回答 ADR-033／034 待決策；`read_allow:` 棘輪＋ AGENTS.md 第 11 條的機械強制） | Accepted |
 | [ADR-036](./ADR-036-real-browser-verification-tier.md) | 前端的真實瀏覽器驗證層：引入 Playwright 三引擎，否決人工走查落檔（層刻意窄，只測 jsdom 判定不了的合成像素／版面／Tab 鍵；OS 矩陣仍未做） | Accepted |
+| [ADR-037](./ADR-037-product-analytics-and-package-architecture-identities.md) | Product Analytics 與 package architecture identity（修訂 ADR-002／032／035；Context Map、depguard 與 query ownership 共用 package mapping） | Accepted |
+| [ADR-038](./ADR-038-platform-product-domain-language-and-value-stream-navigation.md) | Platform 產品領域語言與價值流導覽（雙軌 Context Map：產品領域名稱與 stable Boundary ID／現行 path 分離） | Accepted |
+| [ADR-039](./ADR-039-frontend-design-system-and-ui-evaluation-criteria.md) | 前端設計系統與 UI/UX 評估準則（把 `index.css` 註解裡的隱性決策成文化，否決第三方設計系統；四層＝義務／原則／系統／強制對照表，含誠實的「沒有人把關」空格；手冊在 [docs/design/system.md](../design/system.md)） | Accepted |
+| [ADR-040](./ADR-040-platform-foundation-shared-kernel-and-entrypoint-topology.md) | Platform 的 Foundation、Shared Kernel 與 Entrypoint 拓撲（保留 Go `internal` 私有邊界；將 Generic 技術基座與 HTTP 組裝收納為明確角色） | Proposed |
 
 ## 整體架構摘要
 

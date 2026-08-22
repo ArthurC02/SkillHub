@@ -274,7 +274,7 @@ function FilterBar({
       </label>
 
       {UNAVAILABLE_FILTERS.map(({ key, label, reason }) => (
-        <label key={key} className="filter-unavailable" title={reason}>
+        <label key={key} title={reason}>
           {label}
           <select disabled aria-describedby={`filter-why-${key}`}>
             <option>無法篩選</option>
