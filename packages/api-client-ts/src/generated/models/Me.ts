@@ -44,6 +44,19 @@ export interface Me {
      */
     workspaceId: string;
     /**
+     * What the purge will and will not destroy, in the server's own words,
+     * or null when no deletion is pending. The same sentence DELETE /me
+     * returns — and it is required here because a client that only had it
+     * from that one response lost it on the next reload, which is exactly
+     * when a user goes looking for it. 02:WS-002 第 3 條 and PDM-006 §6.1
+     * want the scope stated up front rather than discovered afterwards, and
+     * a disclosure that survives one render is not stated.
+     * 
+     * @type {string}
+     * @memberof Me
+     */
+    deletionScope: string | null;
+    /**
      * When the caller asked for their account to be deleted, or null when
      * no deletion is pending. 02:SEC-006 requires the deletion job to have
      * a state the user can follow, and until this field existed the only
@@ -72,6 +85,7 @@ export function instanceOfMe(value: object): value is Me {
     if (!('email' in value) || value['email'] === undefined) return false;
     if (!('displayName' in value) || value['displayName'] === undefined) return false;
     if (!('workspaceId' in value) || value['workspaceId'] === undefined) return false;
+    if (!('deletionScope' in value) || value['deletionScope'] === undefined) return false;
     if (!('deletionRequestedAt' in value) || value['deletionRequestedAt'] === undefined) return false;
     if (!('purgeAfter' in value) || value['purgeAfter'] === undefined) return false;
     return true;
@@ -91,6 +105,7 @@ export function MeFromJSONTyped(json: any, ignoreDiscriminator: boolean): Me {
         'email': json['email'],
         'displayName': json['display_name'],
         'workspaceId': json['workspace_id'],
+        'deletionScope': json['deletion_scope'],
         'deletionRequestedAt': (json['deletion_requested_at'] == null ? null : new Date(json['deletion_requested_at'])),
         'purgeAfter': (json['purge_after'] == null ? null : new Date(json['purge_after'])),
     };
@@ -111,6 +126,7 @@ export function MeToJSONTyped(value?: Me | null, ignoreDiscriminator: boolean = 
         'email': value['email'],
         'display_name': value['displayName'],
         'workspace_id': value['workspaceId'],
+        'deletion_scope': value['deletionScope'],
         'deletion_requested_at': value['deletionRequestedAt'] == null ? value['deletionRequestedAt'] : value['deletionRequestedAt'].toISOString(),
         'purge_after': value['purgeAfter'] == null ? value['purgeAfter'] : value['purgeAfter'].toISOString(),
     };

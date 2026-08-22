@@ -25,6 +25,14 @@ export interface Me {
    * state the product has.
    */
   deletion_requested_at: string | null;
+  /**
+   * The server's own sentence about what the purge destroys and what it keeps
+   * de-identified, `null` when nothing is pending. It is the same wording
+   * DELETE /me returns, and it is here because a disclosure that only existed in
+   * that one response survived exactly one render: a reload lost it while the
+   * grace period it described ran on (04 丙-30).
+   */
+  deletion_scope: string | null;
   /** When the grace period ends. Null exactly when `deletion_requested_at` is. */
   purge_after: string | null;
 }
@@ -411,8 +419,30 @@ export interface Skill {
   skill_id: string;
   name: string;
   summary: string;
+  /**
+   * Whether a Download Artifact may be produced from this skill. Two of the
+   * three values refuse the download and `unknown` is what a user's own import
+   * carries by default, so on the owner's own list this separates a skill they
+   * can take away from one they cannot. It was on the row and dropped in
+   * serialisation until 04 丙-31.
+   */
+  redistribution: "allowed" | "blocked" | "unknown";
+  /** Reason code for a licensing hold, `null` when there is none. */
+  access_restriction: string | null;
   forked_from_skill_id?: string;
   forked_from_version_id?: string;
+}
+
+/**
+ * GET /skills. `truncated` is the cap saying so: the server has always returned
+ * at most 100 rows, and skill 101 simply did not appear — a limit the platform
+ * enforces and the page cannot see is 設計 §2.2 in its second direction, and a
+ * list that is quietly short reads as a complete answer.
+ */
+export interface OwnSkills {
+  skills: Skill[];
+  limit: number;
+  truncated: boolean;
 }
 
 export interface ForkedSkill extends Skill {

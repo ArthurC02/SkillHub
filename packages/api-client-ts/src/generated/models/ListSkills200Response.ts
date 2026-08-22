@@ -33,6 +33,26 @@ export interface ListSkills200Response {
      * @memberof ListSkills200Response
      */
     skills: Array<Skill>;
+    /**
+     * How many rows this endpoint will return at most. It is a
+     * server-side cap, not a page size the caller chose — there
+     * is no pagination here yet.
+     * 
+     * @type {number}
+     * @memberof ListSkills200Response
+     */
+    limit: number;
+    /**
+     * True when the workspace holds more skills than `limit`.
+     * The cap existed before this field did, and skill 101 simply
+     * did not appear: a limit the platform enforces and the page
+     * cannot see is 02:NFR-001's other direction, and a list that
+     * is silently short reads as a complete answer.
+     * 
+     * @type {boolean}
+     * @memberof ListSkills200Response
+     */
+    truncated: boolean;
 }
 
 /**
@@ -40,6 +60,8 @@ export interface ListSkills200Response {
  */
 export function instanceOfListSkills200Response(value: object): value is ListSkills200Response {
     if (!('skills' in value) || value['skills'] === undefined) return false;
+    if (!('limit' in value) || value['limit'] === undefined) return false;
+    if (!('truncated' in value) || value['truncated'] === undefined) return false;
     return true;
 }
 
@@ -54,6 +76,8 @@ export function ListSkills200ResponseFromJSONTyped(json: any, ignoreDiscriminato
     return {
         
         'skills': ((json['skills'] as Array<any>).map(SkillFromJSON)),
+        'limit': json['limit'],
+        'truncated': json['truncated'],
     };
 }
 
@@ -69,6 +93,8 @@ export function ListSkills200ResponseToJSONTyped(value?: ListSkills200Response |
     return {
         
         'skills': ((value['skills'] as Array<any>).map(SkillToJSON)),
+        'limit': value['limit'],
+        'truncated': value['truncated'],
     };
 }
 

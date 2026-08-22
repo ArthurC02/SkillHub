@@ -628,7 +628,21 @@ export function platformResponse(input: string): { body: unknown; status: number
     });
   if (path.startsWith("/test-cases/")) return ok(TEST_CASE_DRAFT);
   if (path === "/skills")
-    return ok({ skills: [{ skill_id: SKILL, name: "PDF Summariser", summary: "摘要" }] });
+    return ok({
+      skills: [
+        {
+          skill_id: SKILL,
+          name: "PDF Summariser",
+          summary: "摘要",
+          // `unknown` is what a user's own import carries by default (0027), so
+          // this is the common case for a workspace list rather than an edge.
+          redistribution: "unknown",
+          access_restriction: null,
+        },
+      ],
+      limit: 100,
+      truncated: false,
+    });
   if (path.includes("/versions/diff")) return ok(VERSION_DIFF);
   if (path.endsWith("/runs/preflight")) return ok(PREFLIGHT);
 

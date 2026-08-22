@@ -9750,6 +9750,16 @@ func (s *ForkSkillCreated) encodeFields(e *jx.Encoder) {
 		e.Str(s.Summary)
 	}
 	{
+		e.FieldStart("redistribution")
+		s.Redistribution.Encode(e)
+	}
+	{
+		if s.AccessRestriction.Set {
+			e.FieldStart("access_restriction")
+			s.AccessRestriction.Encode(e)
+		}
+	}
+	{
 		if s.ForkedFromSkillID.Set {
 			e.FieldStart("forked_from_skill_id")
 			s.ForkedFromSkillID.Encode(e)
@@ -9771,14 +9781,16 @@ func (s *ForkSkillCreated) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfForkSkillCreated = [7]string{
+var jsonFieldsNameOfForkSkillCreated = [9]string{
 	0: "skill_id",
 	1: "name",
 	2: "summary",
-	3: "forked_from_skill_id",
-	4: "forked_from_version_id",
-	5: "version_id",
-	6: "version_number",
+	3: "redistribution",
+	4: "access_restriction",
+	5: "forked_from_skill_id",
+	6: "forked_from_version_id",
+	7: "version_id",
+	8: "version_number",
 }
 
 // Decode decodes ForkSkillCreated from json.
@@ -9786,7 +9798,7 @@ func (s *ForkSkillCreated) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode ForkSkillCreated to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -9826,6 +9838,26 @@ func (s *ForkSkillCreated) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"summary\"")
 			}
+		case "redistribution":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				if err := s.Redistribution.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"redistribution\"")
+			}
+		case "access_restriction":
+			if err := func() error {
+				s.AccessRestriction.Reset()
+				if err := s.AccessRestriction.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"access_restriction\"")
+			}
 		case "forked_from_skill_id":
 			if err := func() error {
 				s.ForkedFromSkillID.Reset()
@@ -9847,7 +9879,7 @@ func (s *ForkSkillCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"forked_from_version_id\"")
 			}
 		case "version_id":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeUUID(d)
 				s.VersionID = v
@@ -9859,7 +9891,7 @@ func (s *ForkSkillCreated) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"version_id\"")
 			}
 		case "version_number":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Int()
 				s.VersionNumber = int(v)
@@ -9879,8 +9911,9 @@ func (s *ForkSkillCreated) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
-		0b01100111,
+	for i, mask := range [2]uint8{
+		0b10001111,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -9922,6 +9955,48 @@ func (s *ForkSkillCreated) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *ForkSkillCreated) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ForkSkillCreatedRedistribution as json.
+func (s ForkSkillCreatedRedistribution) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes ForkSkillCreatedRedistribution from json.
+func (s *ForkSkillCreatedRedistribution) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ForkSkillCreatedRedistribution to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch ForkSkillCreatedRedistribution(v) {
+	case ForkSkillCreatedRedistributionAllowed:
+		*s = ForkSkillCreatedRedistributionAllowed
+	case ForkSkillCreatedRedistributionBlocked:
+		*s = ForkSkillCreatedRedistributionBlocked
+	case ForkSkillCreatedRedistributionUnknown:
+		*s = ForkSkillCreatedRedistributionUnknown
+	default:
+		*s = ForkSkillCreatedRedistribution(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s ForkSkillCreatedRedistribution) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ForkSkillCreatedRedistribution) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -14281,10 +14356,20 @@ func (s *ListSkillsOK) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		e.FieldStart("limit")
+		e.Int(s.Limit)
+	}
+	{
+		e.FieldStart("truncated")
+		e.Bool(s.Truncated)
+	}
 }
 
-var jsonFieldsNameOfListSkillsOK = [1]string{
+var jsonFieldsNameOfListSkillsOK = [3]string{
 	0: "skills",
+	1: "limit",
+	2: "truncated",
 }
 
 // Decode decodes ListSkillsOK from json.
@@ -14314,6 +14399,30 @@ func (s *ListSkillsOK) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"skills\"")
 			}
+		case "limit":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int()
+				s.Limit = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"limit\"")
+			}
+		case "truncated":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Bool()
+				s.Truncated = bool(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"truncated\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -14324,7 +14433,7 @@ func (s *ListSkillsOK) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000001,
+		0b00000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -14502,6 +14611,10 @@ func (s *Me) encodeFields(e *jx.Encoder) {
 		json.EncodeUUID(e, s.WorkspaceID)
 	}
 	{
+		e.FieldStart("deletion_scope")
+		s.DeletionScope.Encode(e)
+	}
+	{
 		e.FieldStart("deletion_requested_at")
 		s.DeletionRequestedAt.Encode(e, json.EncodeDateTime)
 	}
@@ -14511,13 +14624,14 @@ func (s *Me) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfMe = [6]string{
+var jsonFieldsNameOfMe = [7]string{
 	0: "user_id",
 	1: "email",
 	2: "display_name",
 	3: "workspace_id",
-	4: "deletion_requested_at",
-	5: "purge_after",
+	4: "deletion_scope",
+	5: "deletion_requested_at",
+	6: "purge_after",
 }
 
 // Decode decodes Me from json.
@@ -14577,8 +14691,18 @@ func (s *Me) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"workspace_id\"")
 			}
-		case "deletion_requested_at":
+		case "deletion_scope":
 			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				if err := s.DeletionScope.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"deletion_scope\"")
+			}
+		case "deletion_requested_at":
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				if err := s.DeletionRequestedAt.Decode(d, json.DecodeDateTime); err != nil {
 					return err
@@ -14588,7 +14712,7 @@ func (s *Me) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"deletion_requested_at\"")
 			}
 		case "purge_after":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				if err := s.PurgeAfter.Decode(d, json.DecodeDateTime); err != nil {
 					return err
@@ -14607,7 +14731,7 @@ func (s *Me) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00111111,
+		0b01111111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -15336,6 +15460,57 @@ func (s OptNilSandboxTraceEventStatus) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OptNilSandboxTraceEventStatus) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes string as json.
+func (o OptNilString) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	if o.Null {
+		e.Null()
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes string from json.
+func (o *OptNilString) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptNilString to nil")
+	}
+	if d.Next() == jx.Null {
+		if err := d.Null(); err != nil {
+			return err
+		}
+
+		var v string
+		o.Value = v
+		o.Set = true
+		o.Null = true
+		return nil
+	}
+	o.Set = true
+	o.Null = false
+	v, err := d.Str()
+	if err != nil {
+		return err
+	}
+	o.Value = string(v)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptNilString) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptNilString) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -20896,8 +21071,8 @@ func (s *RunListItemCleanupStatus) Decode(d *jx.Decoder) error {
 	switch RunListItemCleanupStatus(v) {
 	case RunListItemCleanupStatusPending:
 		*s = RunListItemCleanupStatusPending
-	case RunListItemCleanupStatusCleaning:
-		*s = RunListItemCleanupStatusCleaning
+	case RunListItemCleanupStatusCleaningUp:
+		*s = RunListItemCleanupStatusCleaningUp
 	case RunListItemCleanupStatusCleaned:
 		*s = RunListItemCleanupStatusCleaned
 	case RunListItemCleanupStatusFailed:
@@ -24771,6 +24946,16 @@ func (s *Skill) encodeFields(e *jx.Encoder) {
 		e.Str(s.Summary)
 	}
 	{
+		e.FieldStart("redistribution")
+		s.Redistribution.Encode(e)
+	}
+	{
+		if s.AccessRestriction.Set {
+			e.FieldStart("access_restriction")
+			s.AccessRestriction.Encode(e)
+		}
+	}
+	{
 		if s.ForkedFromSkillID.Set {
 			e.FieldStart("forked_from_skill_id")
 			s.ForkedFromSkillID.Encode(e)
@@ -24784,12 +24969,14 @@ func (s *Skill) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfSkill = [5]string{
+var jsonFieldsNameOfSkill = [7]string{
 	0: "skill_id",
 	1: "name",
 	2: "summary",
-	3: "forked_from_skill_id",
-	4: "forked_from_version_id",
+	3: "redistribution",
+	4: "access_restriction",
+	5: "forked_from_skill_id",
+	6: "forked_from_version_id",
 }
 
 // Decode decodes Skill from json.
@@ -24837,6 +25024,26 @@ func (s *Skill) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"summary\"")
 			}
+		case "redistribution":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				if err := s.Redistribution.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"redistribution\"")
+			}
+		case "access_restriction":
+			if err := func() error {
+				s.AccessRestriction.Reset()
+				if err := s.AccessRestriction.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"access_restriction\"")
+			}
 		case "forked_from_skill_id":
 			if err := func() error {
 				s.ForkedFromSkillID.Reset()
@@ -24867,7 +25074,7 @@ func (s *Skill) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000111,
+		0b00001111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -27174,6 +27381,48 @@ func (s SkillLimitationSource) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *SkillLimitationSource) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SkillRedistribution as json.
+func (s SkillRedistribution) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SkillRedistribution from json.
+func (s *SkillRedistribution) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SkillRedistribution to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SkillRedistribution(v) {
+	case SkillRedistributionAllowed:
+		*s = SkillRedistributionAllowed
+	case SkillRedistributionBlocked:
+		*s = SkillRedistributionBlocked
+	case SkillRedistributionUnknown:
+		*s = SkillRedistributionUnknown
+	default:
+		*s = SkillRedistribution(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SkillRedistribution) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SkillRedistribution) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

@@ -71,20 +71,44 @@ export function WorkspaceSkills() {
                 </p>
                 <p>{s.summary}</p>
                 {/*
-                  §1.1 / §2.1: this row carries no risk, licence, validation or
-                  verification facet, while the public search row for the same
-                  skill carries all four. **That is a contract gap, not an
-                  omission here**: GET /skills answers schema `Skill`
-                  (contracts/openapi/public.yaml), which is skill_id / name /
-                  summary / forked_from_*, and none of the four exist on it to
-                  render — `PublicSearchHit` is where tier / risk /
-                  compatibility / verified_at live. Nothing is invented; the
-                  absence is stated instead, because a list of code you own and
+                  §2.2 in its second direction: two of the four locks that refuse
+                  a download live on this row and were being dropped in
+                  serialisation (04 丙-31). `unknown` is what a user's own import
+                  carries by default, so without this the skill you cannot take
+                  away looked exactly like the one you can, right up to the
+                  packaging screen.
+                */}
+                <p className="badge-row">
+                  {s.redistribution === "allowed" ? (
+                    <span className="badge">可打包下載</span>
+                  ) : (
+                    <span className="badge badge-danger">
+                      {s.redistribution === "blocked" ? "不可散布" : "授權未知，不能打包"}
+                    </span>
+                  )}
+                  {s.access_restriction && (
+                    <span className="badge badge-danger">授權保留：{s.access_restriction}</span>
+                  )}
+                  {s.forked_from_skill_id ? (
+                    <span className="badge">Fork 自其他 Skill</span>
+                  ) : (
+                    <span className="badge">自己匯入</span>
+                  )}
+                </p>
+                {/*
+                  §1.1 / §2.1. The two facets above are the ones GET /skills can
+                  answer today; risk, compatibility and verification are on
+                  `PublicSearchResult` and not on `Skill`, so they cannot be
+                  rendered here without a contract change (04 丙-31). The absence
+                  is stated rather than left blank — a list of code you own and
                   will run, with nothing on it to decide by, reads as approved.
+                  **Narrow this sentence as facets land; do not delete it.** A
+                  disclaimer that has gone false beside real evidence is worse
+                  than the disclaimer alone.
                 */}
                 <p className="note">
-                  這一列只有名稱與摘要：風險掃描結果、授權狀態與相容性驗證都不在這份清單的資料裡。
-                  這裡空著不代表通過——要看那些，請開這個 Skill 的頁面。
+                  風險掃描結果與相容性驗證不在這份清單的資料裡。這裡沒有它們不代表通過——要看那些，請開這個
+                  Skill 的頁面。
                 </p>
                 <p className="note">
                   <Link to="/skills/$skillId/files" params={{ skillId: s.skill_id }}>
@@ -143,6 +167,21 @@ export function WorkspaceSkills() {
             ))}
           </ul>
         ))}
+
+      {/*
+        §2.2: the cap has always been there — the handler asked for 100 rows and
+        skill 101 did not exist as far as this page was concerned. A limit the
+        platform enforces and the page cannot see is the same defect as a limit
+        the page shows and the platform does not, read from the other end. There
+        is no pagination yet, which is why this says so rather than offering a
+        next page it does not have.
+      */}
+      {skills.data?.truncated && (
+        <p className="notice" role="status">
+          這個工作區的 Skill 超過 {skills.data.limit} 個，上面只列出前 {skills.data.limit} 個。
+          目前沒有翻頁，其餘的要用搜尋找。
+        </p>
+      )}
 
       <h2>這個工作區的其他清單</h2>
       <ul className="risk-list">

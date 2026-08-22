@@ -30,14 +30,14 @@ import { ConfirmDelete } from "../components/ConfirmDelete";
  *    copy on this side would be a second thing to keep true, and the copy that
  *    goes stale is always the one further from the job.
  *
- * The consequence, stated rather than papered over: `scope` reaches the screen
- * only in the response to DELETE /me, so it lives in component state and a
- * reload loses it. GET /me carries `deletion_requested_at` and `purge_after`
- * and nothing else (contracts/openapi/public.yaml, schema `Me`), so keeping the
- * disclosure across a reload is a contract change, not a UI one. Until that
- * happens this page must not promise the sentence will still be here — the
- * pre-confirm copy did, and a promise the page cannot keep is design §2.2's
- * 顯示但不強制 in its other direction.
+ * That split used to come with a hole, and it is worth recording how it closed.
+ * `scope` reached the screen only in the response to DELETE /me, so it lived in
+ * component state: a reload lost the disclosure while the grace period it
+ * described ran on, and the reader who goes looking for it is precisely the one
+ * who came back later. The page was made to stop promising what it could not
+ * keep, which was honest but not a fix. `Me.deletion_scope` (04 丙-30) is the
+ * fix — one constant, both endpoints, so the sentence cannot go stale on one
+ * side of the pair.
  */
 export function WorkspaceAccount() {
   const me = useMe();
@@ -73,6 +73,7 @@ export function WorkspaceAccount() {
             <PendingDeletion
               requestedAt={me.data.deletion_requested_at}
               purgeAfter={me.data.purge_after}
+              scope={me.data.deletion_scope}
               pending={cancel.isPending}
               onCancel={() =>
                 cancel.mutate(undefined, {
@@ -136,20 +137,37 @@ export function WorkspaceAccount() {
 function PendingDeletion({
   requestedAt,
   purgeAfter,
+  scope,
   pending,
   onCancel,
 }: {
   requestedAt: string;
   purgeAfter: string | null;
+  scope: string | null;
   pending: boolean;
   onCancel: () => void;
 }) {
   return (
     <>
       <p role="status">
-        <span className="badge badge-expired">刪除申請中</span> 申請於 {requestedAt}。
-        {purgeAfter ? `寬限期在 ${purgeAfter} 結束，之後才會真的刪除。` : ""}
+        <span className="badge badge-danger">刪除申請中</span> 申請於 {requestedAt}。
+        {purgeAfter
+          ? `寬限期在 ${purgeAfter} 結束，之後才會真的刪除。`
+          : "伺服器沒有回報寬限期結束的日期——那不表示沒有期限，是這一頁問不到它。"}
       </p>
+      {/*
+       * 設計 §2.8: the scope sentence is the whole disclosure, and §2.10 puts it
+       * on the never-collapse list. Verbatim from the server (WS-002/PDM-006
+       * §6.1 own the wording); a second copy here would be a second thing to
+       * keep true, and the stale one is always the copy further from the job.
+       */}
+      {scope ? (
+        <p>{scope}</p>
+      ) : (
+        <p className="note">
+          伺服器沒有附上刪除範圍的說明。這不代表範圍是空的——代表這一頁現在讀不到它。
+        </p>
+      )}
       <p className="note">
         在那之前帳號照常可以用，這個申請也隨時可以取消。再按一次刪除不會提早，也不會重新計時。
       </p>

@@ -4005,13 +4005,23 @@ func (*ForkSkillConflict) forkSkillRes() {}
 
 // Merged schema.
 type ForkSkillCreated struct {
-	SkillID             uuid.UUID `json:"skill_id"`
-	Name                string    `json:"name"`
-	Summary             string    `json:"summary"`
-	ForkedFromSkillID   OptUUID   `json:"forked_from_skill_id"`
-	ForkedFromVersionID OptUUID   `json:"forked_from_version_id"`
-	VersionID           uuid.UUID `json:"version_id"`
-	VersionNumber       int       `json:"version_number"`
+	SkillID uuid.UUID `json:"skill_id"`
+	Name    string    `json:"name"`
+	Summary string    `json:"summary"`
+	// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
+	// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
+	// list this is the difference between a skill they can take away and one they cannot. It was already
+	// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
+	// limit which will block you has to be visible before you hit it.
+	Redistribution ForkSkillCreatedRedistribution `json:"redistribution"`
+	// Reason code for a licensing hold on the package materials, null when there is none. Also copied onto
+	// forks at fork time, which is why it belongs on a list of skills the caller owns rather than only on
+	// the detail view.
+	AccessRestriction   OptNilString `json:"access_restriction"`
+	ForkedFromSkillID   OptUUID      `json:"forked_from_skill_id"`
+	ForkedFromVersionID OptUUID      `json:"forked_from_version_id"`
+	VersionID           uuid.UUID    `json:"version_id"`
+	VersionNumber       int          `json:"version_number"`
 }
 
 // GetSkillID returns the value of SkillID.
@@ -4027,6 +4037,16 @@ func (s *ForkSkillCreated) GetName() string {
 // GetSummary returns the value of Summary.
 func (s *ForkSkillCreated) GetSummary() string {
 	return s.Summary
+}
+
+// GetRedistribution returns the value of Redistribution.
+func (s *ForkSkillCreated) GetRedistribution() ForkSkillCreatedRedistribution {
+	return s.Redistribution
+}
+
+// GetAccessRestriction returns the value of AccessRestriction.
+func (s *ForkSkillCreated) GetAccessRestriction() OptNilString {
+	return s.AccessRestriction
 }
 
 // GetForkedFromSkillID returns the value of ForkedFromSkillID.
@@ -4064,6 +4084,16 @@ func (s *ForkSkillCreated) SetSummary(val string) {
 	s.Summary = val
 }
 
+// SetRedistribution sets the value of Redistribution.
+func (s *ForkSkillCreated) SetRedistribution(val ForkSkillCreatedRedistribution) {
+	s.Redistribution = val
+}
+
+// SetAccessRestriction sets the value of AccessRestriction.
+func (s *ForkSkillCreated) SetAccessRestriction(val OptNilString) {
+	s.AccessRestriction = val
+}
+
 // SetForkedFromSkillID sets the value of ForkedFromSkillID.
 func (s *ForkSkillCreated) SetForkedFromSkillID(val OptUUID) {
 	s.ForkedFromSkillID = val
@@ -4085,6 +4115,59 @@ func (s *ForkSkillCreated) SetVersionNumber(val int) {
 }
 
 func (*ForkSkillCreated) forkSkillRes() {}
+
+// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
+// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
+// list this is the difference between a skill they can take away and one they cannot. It was already
+// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
+// limit which will block you has to be visible before you hit it.
+type ForkSkillCreatedRedistribution string
+
+const (
+	ForkSkillCreatedRedistributionAllowed ForkSkillCreatedRedistribution = "allowed"
+	ForkSkillCreatedRedistributionBlocked ForkSkillCreatedRedistribution = "blocked"
+	ForkSkillCreatedRedistributionUnknown ForkSkillCreatedRedistribution = "unknown"
+)
+
+// AllValues returns all ForkSkillCreatedRedistribution values.
+func (ForkSkillCreatedRedistribution) AllValues() []ForkSkillCreatedRedistribution {
+	return []ForkSkillCreatedRedistribution{
+		ForkSkillCreatedRedistributionAllowed,
+		ForkSkillCreatedRedistributionBlocked,
+		ForkSkillCreatedRedistributionUnknown,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ForkSkillCreatedRedistribution) MarshalText() ([]byte, error) {
+	switch s {
+	case ForkSkillCreatedRedistributionAllowed:
+		return []byte(s), nil
+	case ForkSkillCreatedRedistributionBlocked:
+		return []byte(s), nil
+	case ForkSkillCreatedRedistributionUnknown:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ForkSkillCreatedRedistribution) UnmarshalText(data []byte) error {
+	switch ForkSkillCreatedRedistribution(data) {
+	case ForkSkillCreatedRedistributionAllowed:
+		*s = ForkSkillCreatedRedistributionAllowed
+		return nil
+	case ForkSkillCreatedRedistributionBlocked:
+		*s = ForkSkillCreatedRedistributionBlocked
+		return nil
+	case ForkSkillCreatedRedistributionUnknown:
+		*s = ForkSkillCreatedRedistributionUnknown
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 type ForkSkillForbidden Error
 
@@ -5130,6 +5213,13 @@ func (s *ListSkillVersionsOKVersionsItem) SetCreatedAt(val time.Time) {
 
 type ListSkillsOK struct {
 	Skills []Skill `json:"skills"`
+	// How many rows this endpoint will return at most. It is a server-side cap, not a page size the caller
+	// chose — there is no pagination here yet.
+	Limit int `json:"limit"`
+	// True when the workspace holds more skills than `limit`. The cap existed before this field did, and
+	// skill 101 simply did not appear: a limit the platform enforces and the page cannot see is
+	// 02:NFR-001's other direction, and a list that is silently short reads as a complete answer.
+	Truncated bool `json:"truncated"`
 }
 
 // GetSkills returns the value of Skills.
@@ -5137,9 +5227,29 @@ func (s *ListSkillsOK) GetSkills() []Skill {
 	return s.Skills
 }
 
+// GetLimit returns the value of Limit.
+func (s *ListSkillsOK) GetLimit() int {
+	return s.Limit
+}
+
+// GetTruncated returns the value of Truncated.
+func (s *ListSkillsOK) GetTruncated() bool {
+	return s.Truncated
+}
+
 // SetSkills sets the value of Skills.
 func (s *ListSkillsOK) SetSkills(val []Skill) {
 	s.Skills = val
+}
+
+// SetLimit sets the value of Limit.
+func (s *ListSkillsOK) SetLimit(val int) {
+	s.Limit = val
+}
+
+// SetTruncated sets the value of Truncated.
+func (s *ListSkillsOK) SetTruncated(val bool) {
+	s.Truncated = val
 }
 
 func (*ListSkillsOK) listSkillsRes() {}
@@ -5169,6 +5279,12 @@ type Me struct {
 	Email       string    `json:"email"`
 	DisplayName string    `json:"display_name"`
 	WorkspaceID uuid.UUID `json:"workspace_id"`
+	// What the purge will and will not destroy, in the server's own words, or null when no deletion is
+	// pending. The same sentence DELETE /me returns — and it is required here because a client that only
+	// had it from that one response lost it on the next reload, which is exactly when a user goes looking
+	// for it. 02:WS-002 第 3 條 and PDM-006 §6.1 want the scope stated up front rather than discovered
+	// afterwards, and a disclosure that survives one render is not stated.
+	DeletionScope NilString `json:"deletion_scope"`
 	// When the caller asked for their account to be deleted, or null when no deletion is pending.
 	// 02:SEC-006 requires the deletion job to have a state the user can follow, and until this field
 	// existed the only place it appeared was the response to DELETE /me itself — a user who closed the
@@ -5199,6 +5315,11 @@ func (s *Me) GetWorkspaceID() uuid.UUID {
 	return s.WorkspaceID
 }
 
+// GetDeletionScope returns the value of DeletionScope.
+func (s *Me) GetDeletionScope() NilString {
+	return s.DeletionScope
+}
+
 // GetDeletionRequestedAt returns the value of DeletionRequestedAt.
 func (s *Me) GetDeletionRequestedAt() NilDateTime {
 	return s.DeletionRequestedAt
@@ -5227,6 +5348,11 @@ func (s *Me) SetDisplayName(val string) {
 // SetWorkspaceID sets the value of WorkspaceID.
 func (s *Me) SetWorkspaceID(val uuid.UUID) {
 	s.WorkspaceID = val
+}
+
+// SetDeletionScope sets the value of DeletionScope.
+func (s *Me) SetDeletionScope(val NilString) {
+	s.DeletionScope = val
 }
 
 // SetDeletionRequestedAt sets the value of DeletionRequestedAt.
@@ -6193,6 +6319,74 @@ func (o OptNilSandboxTraceEventStatus) Get() (v SandboxTraceEventStatus, ok bool
 
 // Or returns value if set, or given parameter if does not.
 func (o OptNilSandboxTraceEventStatus) Or(d SandboxTraceEventStatus) SandboxTraceEventStatus {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptNilString returns new OptNilString with value set to v.
+func NewOptNilString(v string) OptNilString {
+	return OptNilString{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptNilString is optional nullable string.
+type OptNilString struct {
+	Value string
+	Set   bool
+	Null  bool
+}
+
+// IsSet returns true if OptNilString was set.
+func (o OptNilString) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptNilString) Reset() {
+	var v string
+	o.Value = v
+	o.Set = false
+	o.Null = false
+}
+
+// SetTo sets value to v.
+func (o *OptNilString) SetTo(v string) {
+	o.Set = true
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o OptNilString) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *OptNilString) SetToNull() {
+	o.Set = true
+	o.Null = true
+	var v string
+	o.Value = v
+}
+
+// IsEmpty returns true if the field was omitted from the payload (not Set and not Null).
+func (o OptNilString) IsEmpty() bool {
+	return !o.Set && !o.Null
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptNilString) Get() (v string, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptNilString) Or(d string) string {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -9896,17 +10090,17 @@ func (s *RunListItem) SetFinishedAt(val OptDateTime) {
 type RunListItemCleanupStatus string
 
 const (
-	RunListItemCleanupStatusPending  RunListItemCleanupStatus = "pending"
-	RunListItemCleanupStatusCleaning RunListItemCleanupStatus = "cleaning"
-	RunListItemCleanupStatusCleaned  RunListItemCleanupStatus = "cleaned"
-	RunListItemCleanupStatusFailed   RunListItemCleanupStatus = "failed"
+	RunListItemCleanupStatusPending    RunListItemCleanupStatus = "pending"
+	RunListItemCleanupStatusCleaningUp RunListItemCleanupStatus = "cleaning_up"
+	RunListItemCleanupStatusCleaned    RunListItemCleanupStatus = "cleaned"
+	RunListItemCleanupStatusFailed     RunListItemCleanupStatus = "failed"
 )
 
 // AllValues returns all RunListItemCleanupStatus values.
 func (RunListItemCleanupStatus) AllValues() []RunListItemCleanupStatus {
 	return []RunListItemCleanupStatus{
 		RunListItemCleanupStatusPending,
-		RunListItemCleanupStatusCleaning,
+		RunListItemCleanupStatusCleaningUp,
 		RunListItemCleanupStatusCleaned,
 		RunListItemCleanupStatusFailed,
 	}
@@ -9917,7 +10111,7 @@ func (s RunListItemCleanupStatus) MarshalText() ([]byte, error) {
 	switch s {
 	case RunListItemCleanupStatusPending:
 		return []byte(s), nil
-	case RunListItemCleanupStatusCleaning:
+	case RunListItemCleanupStatusCleaningUp:
 		return []byte(s), nil
 	case RunListItemCleanupStatusCleaned:
 		return []byte(s), nil
@@ -9934,8 +10128,8 @@ func (s *RunListItemCleanupStatus) UnmarshalText(data []byte) error {
 	case RunListItemCleanupStatusPending:
 		*s = RunListItemCleanupStatusPending
 		return nil
-	case RunListItemCleanupStatusCleaning:
-		*s = RunListItemCleanupStatusCleaning
+	case RunListItemCleanupStatusCleaningUp:
+		*s = RunListItemCleanupStatusCleaningUp
 		return nil
 	case RunListItemCleanupStatusCleaned:
 		*s = RunListItemCleanupStatusCleaned
@@ -11711,11 +11905,21 @@ func (s *SetSkillRestrictionReq) SetNote(val string) {
 
 // Ref: #/components/schemas/Skill
 type Skill struct {
-	SkillID             uuid.UUID `json:"skill_id"`
-	Name                string    `json:"name"`
-	Summary             string    `json:"summary"`
-	ForkedFromSkillID   OptUUID   `json:"forked_from_skill_id"`
-	ForkedFromVersionID OptUUID   `json:"forked_from_version_id"`
+	SkillID uuid.UUID `json:"skill_id"`
+	Name    string    `json:"name"`
+	Summary string    `json:"summary"`
+	// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
+	// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
+	// list this is the difference between a skill they can take away and one they cannot. It was already
+	// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
+	// limit which will block you has to be visible before you hit it.
+	Redistribution SkillRedistribution `json:"redistribution"`
+	// Reason code for a licensing hold on the package materials, null when there is none. Also copied onto
+	// forks at fork time, which is why it belongs on a list of skills the caller owns rather than only on
+	// the detail view.
+	AccessRestriction   OptNilString `json:"access_restriction"`
+	ForkedFromSkillID   OptUUID      `json:"forked_from_skill_id"`
+	ForkedFromVersionID OptUUID      `json:"forked_from_version_id"`
 }
 
 // GetSkillID returns the value of SkillID.
@@ -11731,6 +11935,16 @@ func (s *Skill) GetName() string {
 // GetSummary returns the value of Summary.
 func (s *Skill) GetSummary() string {
 	return s.Summary
+}
+
+// GetRedistribution returns the value of Redistribution.
+func (s *Skill) GetRedistribution() SkillRedistribution {
+	return s.Redistribution
+}
+
+// GetAccessRestriction returns the value of AccessRestriction.
+func (s *Skill) GetAccessRestriction() OptNilString {
+	return s.AccessRestriction
 }
 
 // GetForkedFromSkillID returns the value of ForkedFromSkillID.
@@ -11756,6 +11970,16 @@ func (s *Skill) SetName(val string) {
 // SetSummary sets the value of Summary.
 func (s *Skill) SetSummary(val string) {
 	s.Summary = val
+}
+
+// SetRedistribution sets the value of Redistribution.
+func (s *Skill) SetRedistribution(val SkillRedistribution) {
+	s.Redistribution = val
+}
+
+// SetAccessRestriction sets the value of AccessRestriction.
+func (s *Skill) SetAccessRestriction(val OptNilString) {
+	s.AccessRestriction = val
 }
 
 // SetForkedFromSkillID sets the value of ForkedFromSkillID.
@@ -12960,6 +13184,59 @@ func (s *SkillLimitationSource) UnmarshalText(data []byte) error {
 		return nil
 	case SkillLimitationSourceScan:
 		*s = SkillLimitationSourceScan
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Whether a Download Artifact may be produced from this skill. Two of its three values refuse the
+// download, and `unknown` is the default a user's own import carries (0027), so on the owner's own
+// list this is the difference between a skill they can take away and one they cannot. It was already
+// on the row and dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a
+// limit which will block you has to be visible before you hit it.
+type SkillRedistribution string
+
+const (
+	SkillRedistributionAllowed SkillRedistribution = "allowed"
+	SkillRedistributionBlocked SkillRedistribution = "blocked"
+	SkillRedistributionUnknown SkillRedistribution = "unknown"
+)
+
+// AllValues returns all SkillRedistribution values.
+func (SkillRedistribution) AllValues() []SkillRedistribution {
+	return []SkillRedistribution{
+		SkillRedistributionAllowed,
+		SkillRedistributionBlocked,
+		SkillRedistributionUnknown,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SkillRedistribution) MarshalText() ([]byte, error) {
+	switch s {
+	case SkillRedistributionAllowed:
+		return []byte(s), nil
+	case SkillRedistributionBlocked:
+		return []byte(s), nil
+	case SkillRedistributionUnknown:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SkillRedistribution) UnmarshalText(data []byte) error {
+	switch SkillRedistribution(data) {
+	case SkillRedistributionAllowed:
+		*s = SkillRedistributionAllowed
+		return nil
+	case SkillRedistributionBlocked:
+		*s = SkillRedistributionBlocked
+		return nil
+	case SkillRedistributionUnknown:
+		*s = SkillRedistributionUnknown
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

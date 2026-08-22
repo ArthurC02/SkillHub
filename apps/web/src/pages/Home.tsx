@@ -2,6 +2,8 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useSkillSearch } from "../api/skills";
 import { LabelledBadge } from "../components/LabelledBadge";
+import { disclosures } from "../components/RiskIndicator";
+import { SPEC_LABELS } from "../components/CompatibilityStatus";
 import { MAX_COMPARE } from "./Compare";
 import type { PublicSearchResult, SearchFilters } from "../api/types";
 
@@ -440,17 +442,9 @@ function CompareBar({ selected }: { selected: string[] }) {
  * rather than "none", and the two sandbox compatibility axes are marked
  * 尚未試跑 rather than left out — an absent row reads as "fine" (NFR-001).
  */
-const RISK_FLAGS: Array<{ key: keyof PublicSearchResult["risk"]; label: string }> = [
-  { key: "has_scripts", label: "含 Script 檔案" },
-  { key: "has_embedded_script", label: "SKILL.md 內含程式碼" },
-  { key: "has_external_urls", label: "含外部網址" },
-  { key: "has_possible_secrets", label: "疑似含 Secret" },
-  { key: "has_binaries", label: "含二進位檔案" },
-  { key: "has_dependency_manifest", label: "含依賴宣告檔" },
-];
 
 function ResultFacets({ hit }: { hit: PublicSearchResult }) {
-  const flags = RISK_FLAGS.filter(({ key }) => hit.risk[key] === true);
+  const flags = disclosures(hit.risk);
   const untested =
     hit.compatibility.capability === "unverified" && hit.compatibility.runtime === "unverified";
 
@@ -471,7 +465,7 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
       */}
       <dt>相容狀態</dt>
       <dd>
-        規格驗證：{hit.compatibility.spec_validation === "passed" ? "通過" : "未驗證"}
+        規格驗證：{SPEC_LABELS[hit.compatibility.spec_validation]}
         {/* DISC-002: 沒有驗證證據的 Skill 必須明確標記「尚未試跑」. */}
         {untested && <span className="badge badge-untested">尚未試跑</span>}
         <span className="note">{hit.compatibility.note}</span>

@@ -9,10 +9,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
 // Handler exposes registry endpoints (contracts/openapi/public.yaml). All
@@ -37,15 +37,27 @@ func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Wo
 }
 
 type skillResponse struct {
-	SkillID             string  `json:"skill_id"`
-	Name                string  `json:"name"`
-	Summary             string  `json:"summary"`
+	SkillID string `json:"skill_id"`
+	Name    string `json:"name"`
+	Summary string `json:"summary"`
+	// Both of these were already on the row `ListSkills` selects and were dropped
+	// here. They are two of the four locks that refuse a download, and the owner's
+	// own list is where they matter most: `unknown` is what a user's own import
+	// carries by default (0027), so a skill they cannot take away looked exactly
+	// like one they could until they reached the packaging screen.
+	Redistribution      string  `json:"redistribution"`
+	AccessRestriction   *string `json:"access_restriction"`
 	ForkedFromSkillID   *string `json:"forked_from_skill_id,omitempty"`
 	ForkedFromVersionID *string `json:"forked_from_version_id,omitempty"`
 }
 
 func toSkillResponse(s gen.Skill) skillResponse {
-	out := skillResponse{SkillID: pgconv.UUIDString(s.ID), Name: s.Name}
+	out := skillResponse{
+		SkillID:           pgconv.UUIDString(s.ID),
+		Name:              s.Name,
+		Redistribution:    s.Redistribution,
+		AccessRestriction: s.AccessRestriction,
+	}
 	if s.Summary != nil {
 		out.Summary = *s.Summary
 	}
@@ -251,16 +263,29 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// Ask for one more than the cap so the cap can be reported rather than
+	// enforced silently. The limit was already here; what was missing is that a
+	// workspace past it got a short list with nothing saying so, and a list that
+	// is quietly incomplete reads as a complete answer.
+	const listSkillsLimit = 100
 	rows, err := gen.New(h.Svc.Pool).ListSkills(r.Context(), gen.ListSkillsParams{
-		WorkspaceID: ws.ID, Limit: 100, Offset: 0,
+		WorkspaceID: ws.ID, Limit: listSkillsLimit + 1, Offset: 0,
 	})
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
 		return
 	}
+	truncated := len(rows) > listSkillsLimit
+	if truncated {
+		rows = rows[:listSkillsLimit]
+	}
 	out := make([]skillResponse, 0, len(rows))
 	for _, s := range rows {
 		out = append(out, toSkillResponse(s))
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"skills": out})
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"skills":    out,
+		"limit":     listSkillsLimit,
+		"truncated": truncated,
+	})
 }

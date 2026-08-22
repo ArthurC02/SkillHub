@@ -12,7 +12,13 @@ import type {
  * an explicit 未驗證 rather than being hidden, because a missing row reads as
  * "fine" and 未驗證 does not.
  */
-const SPEC_LABELS: Record<CompatibilityResult, string> = {
+/**
+ * Exported because Home was deciding this inline as
+ * `spec_validation === "passed" ? "通過" : "未驗證"` — three values collapsed into
+ * two, so a `failed` spec would have read as 未驗證 on the search row while the
+ * detail view called it 未通過. 設計 §4.4: one authority per fact.
+ */
+export const SPEC_LABELS: Record<CompatibilityResult, string> = {
   unverified: "未驗證",
   passed: "通過",
   failed: "未通過",

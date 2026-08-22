@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import type { Dataset } from "./lab";
+import type { OwnSkills } from "./types";
 
 /**
  * 03:TEST-012 — the consumer side of the Test Case and acceptance-criteria
@@ -67,7 +68,14 @@ export type TestCaseListItem = TestCase & {
   has_rubric: boolean;
 };
 
-export type SkillSummary = { skill_id: string; name: string; summary: string };
+/*
+ * There used to be a `SkillSummary` here — skill_id / name / summary — and
+ * because GET /skills has exactly one caller through this hook, that narrower
+ * type was the app's whole view of the endpoint. `forked_from_skill_id` and
+ * `forked_from_version_id` were in the contract and on the wire the entire time,
+ * and the page that promises to tell a fork from an import could not see them.
+ * Two shapes for one endpoint is how a gap hides (04 丙-31).
+ */
 
 /** `skillId` narrows the list to one skill; it is a filter, never a widening (WS-006). */
 export function useTestCases(skillId?: string) {
@@ -101,7 +109,7 @@ export function useTestCase(testCaseId: string) {
 export function useOwnSkills() {
   return useQuery({
     queryKey: ["own-skills"],
-    queryFn: () => apiFetch<{ skills: SkillSummary[] }>("/skills"),
+    queryFn: () => apiFetch<OwnSkills>("/skills"),
     retry: false,
   });
 }

@@ -9,14 +9,36 @@ import type { SkillRisk } from "../api/types";
  * `scan_status: "unavailable"` is rendered as unknown, never as a clean scan
  * (DISC-004 不得自行推定為通過).
  */
-const FLAG_LABELS: Array<{ key: keyof SkillRisk; label: string }> = [
+/**
+ * One list, because there were two and they disagreed.
+ *
+ * The search row kept its own copy with weaker wording — 「含 Script 檔案」 against
+ * 「含可執行 Script 檔案」, 「SKILL.md 內含程式碼」 against 「SKILL.md 內含可執行程式碼」 —
+ * so the same boolean disclosed less on the screen a reader meets first. 可執行 is
+ * the word doing the work in both; dropping it is not a shorter label, it is a
+ * smaller claim. 設計 §4.4 exists for exactly this shape.
+ *
+ * Keyed by name rather than by `keyof`, because the two payloads carry different
+ * sets: `SearchResultRisk` has `has_dependency_manifest` and `SkillRisk` does not,
+ * which means **the detail view discloses one thing less than the list row**. That
+ * asymmetry is in the contract (04 丙-29), not here; this list is written so that
+ * closing it needs no change on this side.
+ */
+export const RISK_DISCLOSURES: Array<{ key: string; label: string }> = [
   { key: "has_scripts", label: "含可執行 Script 檔案" },
   // SKILL-003: separate from has_scripts because no file list can show it.
   { key: "has_embedded_script", label: "SKILL.md 內含可執行程式碼" },
   { key: "has_external_urls", label: "含外部網址" },
   { key: "has_possible_secrets", label: "疑似含 Secret" },
   { key: "has_binaries", label: "含二進位檔案" },
+  { key: "has_dependency_manifest", label: "含依賴宣告檔" },
 ];
+
+/** The disclosures a risk payload actually asserts, in the order above. */
+export function disclosures(risk: object): Array<{ key: string; label: string }> {
+  const flags = risk as Record<string, unknown>;
+  return RISK_DISCLOSURES.filter((f) => flags[f.key] === true);
+}
 
 export function RiskIndicator({ risk }: { risk: SkillRisk }) {
   if (risk.scan_status === "unavailable") {
@@ -28,7 +50,7 @@ export function RiskIndicator({ risk }: { risk: SkillRisk }) {
     );
   }
 
-  const flags = FLAG_LABELS.filter(({ key }) => risk[key] === true);
+  const flags = disclosures(risk);
   const infoCodes = Object.entries(risk.info_counts).sort(([a], [b]) => a.localeCompare(b));
 
   return (

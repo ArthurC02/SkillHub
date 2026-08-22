@@ -182,9 +182,66 @@ test("WS-002 an empty run history says nothing ran, not that records were cleare
 
 // --- the own-skills list ----------------------------------------------------
 
+test("WS-004 the own-skills row says whether this skill can be taken away", async () => {
+  // 04 丙-31 / 設計 §2.2 in its second direction. `redistribution` and
+  // `access_restriction` were on the row ListSkills selects and were dropped in
+  // serialisation, so a skill that packaging will refuse looked exactly like one
+  // it will not — right up to the packaging screen. `unknown` is the default a
+  // user's own import carries, so this is the common case, not the edge one.
+  vi.stubGlobal("fetch", () =>
+    json({
+      skills: [
+        {
+          skill_id: SKILL,
+          name: "自己匯入的",
+          summary: "一份自己傳上來的套件。",
+          redistribution: "unknown",
+          access_restriction: null,
+        },
+        {
+          skill_id: "s-2",
+          name: "Fork 來的",
+          summary: "從目錄 Fork 的。",
+          redistribution: "allowed",
+          access_restriction: null,
+          forked_from_skill_id: "s-origin",
+        },
+      ],
+      limit: 100,
+      truncated: true,
+    }),
+  );
+  // Wait on the summary, not the name: 「自己匯入的」 also appears in this page's
+  // own intro sentence, so waiting on it resolves before any data arrives.
+  await render(<WorkspaceSkills />, () => text().includes("一份自己傳上來的套件"));
+
+  expect(text()).toContain("授權未知，不能打包");
+  expect(text()).toContain("可打包下載");
+  // The contract carried forked_from_* the whole time; a narrower local type for
+  // the same endpoint was the app's entire view of it, so the page could not
+  // tell a fork from an import even though its own header promised to.
+  expect(text()).toContain("Fork 自其他 Skill");
+  expect(text()).toContain("自己匯入");
+  // §2.2: the 100-row cap was enforced and invisible, so a workspace past it got
+  // a short list that read as the whole list.
+  expect(text()).toContain("只列出前 100 個");
+});
+
 test("WS-004 the own-skills list links each row on to its files and packaging", async () => {
   vi.stubGlobal("fetch", () =>
-    json({ skills: [{ skill_id: SKILL, name: "CSV 清理", summary: "整理 CSV。" }] }),
+    json({
+      skills: [
+        {
+          skill_id: SKILL,
+          name: "CSV 清理",
+          summary: "整理 CSV。",
+          redistribution: "allowed",
+          access_restriction: null,
+        },
+      ],
+      limit: 100,
+      truncated: false,
+    }),
   );
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
 
@@ -242,6 +299,7 @@ const ME = {
   workspace_id: "ws-1",
   deletion_requested_at: null,
   purge_after: null,
+  deletion_scope: null,
 };
 
 test("CORE-007 requesting account deletion starts a grace period and shows the server's scope", async () => {
@@ -284,6 +342,7 @@ test("CORE-007 a pending deletion is a state with a date and a way out, not a re
       ...ME,
       deletion_requested_at: "2026-08-18T00:00:00Z",
       purge_after: "2026-09-17T00:00:00Z",
+      deletion_scope: "Your account stays usable until the grace period ends.",
     });
   });
   await render(<WorkspaceAccount />, () => text().includes("刪除申請中"));
@@ -292,6 +351,12 @@ test("CORE-007 a pending deletion is a state with a date and a way out, not a re
   // these, which is what 02:SEC-006「刪除工作具可追蹤狀態」 is asking for.
   expect(text()).toContain("2026-09-17T00:00:00Z");
   expect(text()).toContain("再按一次刪除不會提早");
+  // 04 丙-30. Nothing in this test ever calls DELETE /me: this is the reload
+  // case, and the scope sentence used to exist only in that one response, so it
+  // was gone by the time the user came back to look for it. 設計 §2.8 calls the
+  // scope sentence the entire disclosure and §2.10 forbids hiding it, and a
+  // disclosure that survives one render is not stated.
+  expect(text()).toContain("Your account stays usable until the grace period ends.");
 
   await act(async () => button("取消刪除申請")?.click());
   await waitFor(() => posts.length > 0);

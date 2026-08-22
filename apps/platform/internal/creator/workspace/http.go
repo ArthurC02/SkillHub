@@ -402,11 +402,18 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		"workspace_id":          pgconv.UUIDString(ws.ID),
 		"deletion_requested_at": nil,
 		"purge_after":           nil,
+		// The scope sentence used to exist only in the response to DELETE /me, so
+		// it survived exactly one render: reload the page and the disclosure
+		// 02:WS-002 第 3 條 asks for was gone, while the grace period it describes
+		// ran on. One constant, both endpoints — a second copy of this wording is
+		// a second thing to keep true.
+		"deletion_scope": nil,
 	}
 	if user.DeletionRequestedAt.Valid {
 		at := user.DeletionRequestedAt.Time.UTC()
 		out["deletion_requested_at"] = at.Format(time.RFC3339)
 		out["purge_after"] = at.Add(AccountDeletionGrace).UTC().Format(time.RFC3339)
+		out["deletion_scope"] = deletionScope
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }

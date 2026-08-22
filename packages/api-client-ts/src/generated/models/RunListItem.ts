@@ -135,7 +135,7 @@ export type RunListItemStatusEnum = typeof RunListItemStatusEnum[keyof typeof Ru
  */
 export const RunListItemCleanupStatusEnum = {
     Pending: 'pending',
-    Cleaning: 'cleaning',
+    CleaningUp: 'cleaning_up',
     Cleaned: 'cleaned',
     Failed: 'failed'
 } as const;

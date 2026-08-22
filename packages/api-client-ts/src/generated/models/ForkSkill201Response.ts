@@ -38,6 +38,29 @@ export interface ForkSkill201Response {
      */
     summary: string;
     /**
+     * Whether a Download Artifact may be produced from this skill. Two of
+     * its three values refuse the download, and `unknown` is the default a
+     * user's own import carries (0027), so on the owner's own list this is
+     * the difference between a skill they can take away and one they
+     * cannot. It was already on the row and dropped in serialisation;
+     * surfacing it is 02:NFR-001 in the direction that says a limit which
+     * will block you has to be visible before you hit it.
+     * 
+     * @type {string}
+     * @memberof ForkSkill201Response
+     */
+    redistribution: ForkSkill201ResponseRedistributionEnum;
+    /**
+     * Reason code for a licensing hold on the package materials, null when
+     * there is none. Also copied onto forks at fork time, which is why it
+     * belongs on a list of skills the caller owns rather than only on the
+     * detail view.
+     * 
+     * @type {string}
+     * @memberof ForkSkill201Response
+     */
+    accessRestriction?: string;
+    /**
      * 
      * @type {string}
      * @memberof ForkSkill201Response
@@ -63,6 +86,18 @@ export interface ForkSkill201Response {
     versionNumber: number;
 }
 
+
+/**
+ * @export
+ */
+export const ForkSkill201ResponseRedistributionEnum = {
+    Allowed: 'allowed',
+    Blocked: 'blocked',
+    Unknown: 'unknown'
+} as const;
+export type ForkSkill201ResponseRedistributionEnum = typeof ForkSkill201ResponseRedistributionEnum[keyof typeof ForkSkill201ResponseRedistributionEnum];
+
+
 /**
  * Check if a given object implements the ForkSkill201Response interface.
  */
@@ -70,6 +105,7 @@ export function instanceOfForkSkill201Response(value: object): value is ForkSkil
     if (!('skillId' in value) || value['skillId'] === undefined) return false;
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('summary' in value) || value['summary'] === undefined) return false;
+    if (!('redistribution' in value) || value['redistribution'] === undefined) return false;
     if (!('versionId' in value) || value['versionId'] === undefined) return false;
     if (!('versionNumber' in value) || value['versionNumber'] === undefined) return false;
     return true;
@@ -88,6 +124,8 @@ export function ForkSkill201ResponseFromJSONTyped(json: any, ignoreDiscriminator
         'skillId': json['skill_id'],
         'name': json['name'],
         'summary': json['summary'],
+        'redistribution': json['redistribution'],
+        'accessRestriction': json['access_restriction'] == null ? undefined : json['access_restriction'],
         'forkedFromSkillId': json['forked_from_skill_id'] == null ? undefined : json['forked_from_skill_id'],
         'forkedFromVersionId': json['forked_from_version_id'] == null ? undefined : json['forked_from_version_id'],
         'versionId': json['version_id'],
@@ -109,6 +147,8 @@ export function ForkSkill201ResponseToJSONTyped(value?: ForkSkill201Response | n
         'skill_id': value['skillId'],
         'name': value['name'],
         'summary': value['summary'],
+        'redistribution': value['redistribution'],
+        'access_restriction': value['accessRestriction'],
         'forked_from_skill_id': value['forkedFromSkillId'],
         'forked_from_version_id': value['forkedFromVersionId'],
         'version_id': value['versionId'],

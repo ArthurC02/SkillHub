@@ -749,7 +749,10 @@ test("DISC-002: a result row carries all seven columns, and infers none of them"
   expect(scanned).toContain("把 PDF 整理成摘要"); // 白話摘要
   expect(scanned).toContain("已收錄"); // 來源層級 (server-owned copy)
   expect(scanned).toContain("規格驗證：通過"); // 相容狀態
-  expect(scanned).toContain("含 Script 檔案"); // 風險提示
+  // 設計 §4.4: the search row and the detail view used to word this boolean
+  // differently — 「含 Script 檔案」 here, 「含可執行 Script 檔案」 one component over —
+  // and 可執行 is the word doing the work. One list now serves both.
+  expect(scanned).toContain("含可執行 Script 檔案"); // 風險提示
   expect(scanned).toContain("pypdf"); // 依賴
   expect(scanned).toContain("2026-08-01"); // 最近驗證時間
   // 沒有驗證證據的 Skill 必須明確標記「尚未試跑」.

@@ -1631,6 +1631,42 @@ func (s FindingSeverity) Validate() error {
 	}
 }
 
+func (s *ForkSkillCreated) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := s.Redistribution.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "redistribution",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s ForkSkillCreatedRedistribution) Validate() error {
+	switch s {
+	case "allowed":
+		return nil
+	case "blocked":
+		return nil
+	case "unknown":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s *GetDispatchStatusOK) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -2193,6 +2229,23 @@ func (s *ListSkillsOK) Validate() error {
 	if err := func() error {
 		if s.Skills == nil {
 			return errors.New("nil is invalid value")
+		}
+		var failures []validate.FieldError
+		for i, elem := range s.Skills {
+			if err := func() error {
+				if err := elem.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				failures = append(failures, validate.FieldError{
+					Name:  fmt.Sprintf("[%d]", i),
+					Error: err,
+				})
+			}
+		}
+		if len(failures) > 0 {
+			return &validate.Error{Fields: failures}
 		}
 		return nil
 	}(); err != nil {
@@ -3381,7 +3434,7 @@ func (s RunListItemCleanupStatus) Validate() error {
 	switch s {
 	case "pending":
 		return nil
-	case "cleaning":
+	case "cleaning_up":
 		return nil
 	case "cleaned":
 		return nil
@@ -4044,6 +4097,29 @@ func (s *SetSkillRestrictionReq) Validate() error {
 	return nil
 }
 
+func (s *Skill) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if err := s.Redistribution.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "redistribution",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
 func (s *SkillCompatibility) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -4458,6 +4534,19 @@ func (s SkillLimitationSource) Validate() error {
 	case "model":
 		return nil
 	case "scan":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s SkillRedistribution) Validate() error {
+	switch s {
+	case "allowed":
+		return nil
+	case "blocked":
+		return nil
+	case "unknown":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
