@@ -71,13 +71,14 @@ ADR-033 導入 query ownership 強制時，記錄了 15 條存量跨 context wri
   | --- | --- |
   | `apps/platform/internal/analytics/purge.go` | `DetachWorkspaceAnalytics` ＋ `DetachWorkspaceFeedback`（兩條 query 同屬 analytics，合成一步） |
   | `apps/platform/internal/testlab/purge.go` | `DeleteWorkspaceDatasets` |
-  | `apps/platform/internal/run/purge.go` | `DeleteWorkspaceArtifacts` |
+  | `apps/platform/internal/run/purge.go` | `DeleteWorkspaceRunArtifacts` |
+  | `apps/platform/internal/packaging/purge.go` | `DeleteWorkspaceDownloadArtifacts` |
   | `apps/platform/internal/registry/purge.go` | `PurgeUnreferencedSkills` |
   | `apps/platform/internal/ingest/purge.go` | `PurgeUnreferencedSkillSources` |
 
   名稱一律 `PurgeWorkspace`：analytics 那支實際做的是去識別化而非刪除（ADR-029 決策 5），差異寫在它自己的 doc comment 裡；函式名描述的是「帳號刪除掃到你了」這個觸發，不是機制。**analytics 是兩條 query 一步**，因為 owner 是同一個 context，切成兩步只會讓 identity 那邊多一個它無權解釋的區分。
 
-- **注入形狀**：`identity.Service` 取得五個具名 function 欄位（`PurgeAnalytics`／`PurgeTestData`／`PurgeRunArtifacts`／`PurgeSkills`／`PurgeImportSources`，型別 `identity.WorkspacePurge`）。欄位名不沿用 query 名，理由同第一組。五個欄位由 `purgeSteps()` 收成一份**有序的具名步驟清單**，fail-closed 檢查與交易內的迴圈都讀同一份——新增第六個 context 是一行、一處，漏接不可能變成漏清。
+- **注入形狀**：`identity.Service` 取得六個具名 function 欄位（含 packaging 的 `PurgeDownloads`，型別皆為 `identity.WorkspacePurge`）。欄位名不沿用 query 名，理由同第一組。六個欄位由 `purgeSteps()` 收成一份**有序的具名步驟清單**，fail-closed 檢查與交易內的迴圈都讀同一份；三個 owner object-key reader 另由 `objectKeySteps()` 在交易前執行並去重，漏接任一項都拒絕整批。
 
 - **順序是 load-bearing 的，而且被守住**：`registry` 必須在 `ingest` 之前。`PurgeUnreferencedSkillSources` 只刪「沒有任何 `skill_versions` 指著」的 source，而刪掉那些 version 列的正是 `PurgeUnreferencedSkills`；倒過來跑，該帳號的每一條 source 都還被活著的 version 引用，於是一條都不刪，**沒有錯誤、沒有異常的 row count，只有留下來的匯入溯源**。理由寫在 `purgeSteps()` 的行內；**並且有測試**——`TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest` 現在會 seed 一個帶 source 的版本並斷言 source 消失，把那兩行對調就會紅（實測輸出：`import source of a purged version survived; the purge steps ran out of order`）。這是刻意不重蹈 DDD-023「順序 load-bearing 但沒人知道」。其餘三步之間沒有相依，順序即宣告順序。
 
@@ -102,6 +103,8 @@ ADR-033 導入 query ownership 強制時，記錄了 15 條存量跨 context wri
 - **`allow:` 清空後的 devctl 行為**：`parseOwnerDeclaration` 對 `allow:` 這一行就建立空 map，必要 section 檢查因此仍然通過，後續所有以 `allow` 為底的迴圈都是零次——與早已為空的 `raw_sql_allow:` 同一條路徑。**`tools/devctl` 不需要任何修改**，`automation-check` 通過。
 
 - **`immutable_allow:` 的 `PurgeUnreferencedSkills`**：查詢本身與它寫的 `skill_versions` 都沒變，呼叫點搬到 `registry.PurgeWorkspace` 不影響該檢查（它只比對 query 與表）。條目仍然正確。但它的註解原本寫著「等 ADR-033 的事件式自清落地後，這條 CTE 連同本豁免一起消失」——**本 ADR 否決了事件化，那條清除路徑已不存在**，因此把註解改成記錄現況：豁免沒有預定消失時程，要移除得先讓帳號刪除不再硬刪 `skill_versions`。
+
+**2026-08-22 DDD-051 carrier 收斂註記**：上述 purge 的同步與單交易決策不變，但跨 context contract 已由 `*gen.Queries` 收窄為 caller 的 `pgx.Tx`。六個 owner `Service.PurgeWorkspace` 在自身 package 內 `gen.New(tx)`；identity 仍以同一個 tx 依序呼叫，registry-before-ingest 不變。交易前的 dataset／run output／download package object-key reads 則改為三個 owner Service 的 pool-backed bound methods，只收 `ctx/workspaceID`。因此 object bytes 仍先刪，DB rows／identity 去識別化／audit 仍在其後同一 transaction；API 與 maintenance roots 注入 bound methods，缺任一 dependency 仍整批拒絕。
 
 ## 為什麼不事件化
 

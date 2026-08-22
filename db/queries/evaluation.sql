@@ -233,3 +233,15 @@ WHERE s.id = @snapshot_id AND s.workspace_id = @workspace_id;
 SELECT event_id FROM trace_events
 WHERE workspace_id = @workspace_id AND run_id = @run_id
   AND event_id = ANY(@event_ids::uuid[]);
+
+-- name: ListStalePendingEvaluations :many
+-- Recovery is deliberately bounded and oldest-first. The caller supplies the
+-- cutoff so the policy clock stays in Evaluation while the query remains an
+-- owner-declared sqlc read covered by query ownership checks.
+SELECT id, workspace_id, run_id
+FROM evaluations
+WHERE status = 'pending'
+  AND superseded_at IS NULL
+  AND created_at < @stale_before
+ORDER BY created_at
+LIMIT @result_limit;

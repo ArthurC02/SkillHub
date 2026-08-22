@@ -8,10 +8,23 @@ import (
 	"testing"
 )
 
+const queryOwnerADRFixture = `### 1. Context 對照表
+
+| 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
+| --- | --- | --- | --- | --- |
+| Skill 試跑執行／Run Orchestration | Core | run | run | RUN |
+| 成果判定與改善／Evaluation & Improvement | Core | eval | eval | EVAL |
+| Skill 收藏與版本歷史／Skill Registry & Versioning | Core | registry | registry | SKILL |
+`
+
 // writeQueryOwnerFixture lays out the three inputs the check reads: the
 // declaration, the .sql files it declares, and the Go callers. The caller files
 // carry the sqlc import because that is what marks a `.Name(` as a query call.
 func writeQueryOwnerFixture(t *testing.T, declaration string, sql map[string]string, callers map[string]string) string {
+	return writeQueryOwnerFixtureWithADR(t, queryOwnerADRFixture, declaration, sql, callers)
+}
+
+func writeQueryOwnerFixtureWithADR(t *testing.T, adr, declaration string, sql map[string]string, callers map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
 	write := func(relative, contents string) {
@@ -29,12 +42,13 @@ func writeQueryOwnerFixture(t *testing.T, declaration string, sql map[string]str
 		t.Fatal(err)
 	}
 	write("db/"+queryOwnersFile, declaration)
+	write("docs/adr/"+contextMapADR, adr)
 	for name, contents := range sql {
 		write("db/queries/"+name, contents)
 	}
 	for context, body := range callers {
 		write("apps/platform/internal/"+context+"/service.go",
-			"package "+context+"\n\nimport \"github.com/ArthurC02/skillhub/apps/platform/"+
+			"package "+filepath.Base(context)+"\n\nimport \"github.com/ArthurC02/skillhub/apps/platform/"+
 				strings.TrimSuffix(genImportPath, "\"")+"\"\n\n"+body+"\n")
 	}
 	return root
@@ -77,6 +91,11 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 			name:        "owner reads its own query",
 			declaration: baseDeclaration,
 			callers:     map[string]string{"run": "func f(q Q) { q.GetRun(ctx) }"},
+		},
+		{
+			name:        "another package in the owner context may read",
+			declaration: baseDeclaration,
+			callers:     map[string]string{"run/read": "func f(q Q) { q.GetRun(ctx) }"},
 		},
 		{
 			name:        "foreign context reading is blocked",
@@ -146,7 +165,13 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 		{
 			name:        "unknown context name is reported",
 			declaration: decl("files:\n  runs.sql: runz\nqueries:\nallow:\n"),
-			want:        `files.runs.sql = "runz" is not a context`,
+			want:        `files.runs.sql = "runz" is not a Boundary ID`,
+		},
+		{
+			name:        "unregistered caller is reported",
+			declaration: baseDeclaration,
+			callers:     map[string]string{"billing": "func f(q Q) { q.GetRun(ctx) }"},
+			want:        `apps/platform/internal/billing calls sqlc but has no architecture identity`,
 		},
 		{
 			name:        "per-query override beats the file default",
@@ -173,6 +198,20 @@ DELETE FROM runs WHERE id IN (SELECT id FROM doomed);
 				t.Fatalf("problem %q does not mention %q", problems[0], test.want)
 			}
 		})
+	}
+}
+
+func TestQueryOwnerProblemsNestedCallerUsesBoundaryID(t *testing.T) {
+	t.Parallel()
+	adr := strings.Replace(queryOwnerADRFixture, "| run | run | RUN |", "| run | trial/execution | RUN |", 1)
+	adr = strings.Replace(adr, "| eval | eval | EVAL |", "| eval | trial/evidence | EVAL |", 1)
+	root := writeQueryOwnerFixtureWithADR(t, adr,
+		decl("files:\n  runs.sql: run\nqueries:\nallow:\n"),
+		map[string]string{"runs.sql": "-- name: CreateRun :one\nINSERT INTO runs (id) VALUES ($1);\n"},
+		map[string]string{"trial/evidence": "func f(q Q) { q.CreateRun(ctx) }"})
+	problems := queryOwnerProblems(root)
+	if len(problems) != 1 || !strings.Contains(problems[0], `CreateRun is owned by "run" but "eval" writes it`) {
+		t.Fatalf("expected stable Boundary IDs in nested ownership error, got %#v", problems)
 	}
 }
 
@@ -342,6 +381,9 @@ func TestIsWriteStatement(t *testing.T) {
 func TestRawSQLProblems(t *testing.T) {
 	t.Parallel()
 
+	// These flat internal/<boundary-id>/ paths are deliberate legacy-layout fixtures.
+	// They verify the parser continues to diagnose repositories before nested migration;
+	// do not rewrite them to the current product-address paths.
 	tests := []struct {
 		name  string
 		path  string // relative to apps/platform/
@@ -358,7 +400,7 @@ func TestRawSQLProblems(t *testing.T) {
 			name: "raw UPDATE is blocked",
 			path: "internal/run/service.go",
 			body: `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
-			want: `internal/run/service.go:3 passes "UPDATE skills SET name = 'x'" to Exec`,
+			want: `internal/run/service.go:3 (f) passes "UPDATE skills SET name = 'x'" to Exec`,
 		},
 		{
 			name: "raw DELETE is blocked",
@@ -370,7 +412,7 @@ func TestRawSQLProblems(t *testing.T) {
 			name: "raw INSERT is blocked",
 			path: "cmd/worker/main.go",
 			body: `func f(b B) { b.Queue("INSERT INTO audit_events (id) VALUES ($1)", id) }`,
-			want: `apps/platform/cmd/worker/main.go:3 passes "INSERT INTO audit_events (id) VALUES ($1)" to Queue`,
+			want: `apps/platform/cmd/worker/main.go:3 (f) passes "INSERT INTO audit_events (id) VALUES ($1)" to Queue`,
 		},
 		{
 			name: "raw DML in a _test.go file is not constrained",
@@ -379,43 +421,65 @@ func TestRawSQLProblems(t *testing.T) {
 		},
 		{
 			name: "raw DML in a generated directory is not constrained",
-			path: "internal/platform/db/gen/queries.sql.go",
+			path: "internal/foundation/persistence/db/gen/queries.sql.go",
 			body: `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
 		},
 		{
-			name: "raw SELECT is allowed; reads are not enforced",
+			name: "raw SELECT is blocked",
 			path: "internal/eval/reconcile.go",
 			body: "func f(p P) { p.Query(ctx, `SELECT id FROM evaluations WHERE status = 'pending'`) }",
+			want: `passes "SELECT id FROM evaluations WHERE status = 'pending'" to Query`,
 		},
 		{
-			name: "SET LOCAL is not DML",
-			path: "internal/identity/purge.go",
-			body: `func f(tx T) { tx.Exec(ctx, "SET LOCAL skillhub.purge = 'on'") }`,
+			name: "package const is resolved",
+			path: "internal/run/halt.go",
+			body: "const statement = `SELECT id FROM river_job`\nfunc f(pool P) { pool.Query(ctx, statement) }",
+			want: `passes "SELECT id FROM river_job" to Query`,
 		},
 		{
-			name: "advisory lock is not DML",
-			path: "internal/packaging/packaging.go",
-			body: `func f(tx T) { tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", k) }`,
+			name: "function local is resolved",
+			path: "internal/foundation/persistence/partition/partition.go",
+			body: "func f(pool P) { statement := `CREATE TABLE child (id int)`; pool.Exec(ctx, statement) }",
+			want: `passes "CREATE TABLE child (id int)" to Exec`,
 		},
 		{
-			name:  "named exemption lets a known raw DML through",
+			name: "fmt Sprintf format is resolved",
+			path: "internal/foundation/persistence/partition/partition.go",
+			body: `func f(pool P) { pool.Exec(ctx, fmt.Sprintf("DROP TABLE %s", name)) }`,
+			want: `passes "DROP TABLE %s" to Exec`,
+		},
+		{
+			name: "WITH is treated as SQL",
+			path: "internal/run/service.go",
+			body: `func f(tx T) { tx.Exec(ctx, "WITH live AS (SELECT 1) SELECT * FROM live") }`,
+			want: `passes "WITH live AS (SELECT 1) SELECT * FROM live" to Exec`,
+		},
+		{
+			name:  "function-scoped exemption lets known SQL through",
+			path:  "internal/packaging/packaging.go",
+			body:  `func f(tx T) { tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", k) }`,
+			allow: map[string]string{"apps/platform/internal/packaging/packaging.go@f": "serialize package persistence"},
+		},
+		{
+			name:  "an exemption does not cover another function in the file",
 			path:  "internal/run/service.go",
-			body:  `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
-			allow: map[string]string{"apps/platform/internal/run/service.go": "理由"},
+			body:  "func f(tx T) { tx.Exec(ctx, \"SELECT 1\") }\nfunc g(tx T) { tx.Exec(ctx, \"DELETE FROM skills\") }",
+			allow: map[string]string{"apps/platform/internal/run/service.go@f": "technical probe"},
+			want:  `internal/run/service.go:4 (g) passes "DELETE FROM skills" to Exec`,
 		},
 		{
 			name:  "exemption without a reason is reported",
 			path:  "internal/run/service.go",
 			body:  `func f(tx T) { tx.Exec(ctx, "UPDATE skills SET name = 'x'") }`,
-			allow: map[string]string{"apps/platform/internal/run/service.go": ""},
-			want:  "raw_sql_allow.apps/platform/internal/run/service.go has no reason",
+			allow: map[string]string{"apps/platform/internal/run/service.go@f": ""},
+			want:  "raw_sql_allow.apps/platform/internal/run/service.go@f has no reason",
 		},
 		{
 			name:  "stale exemption is reported",
 			path:  "internal/run/service.go",
 			body:  "func f(q Q) { q.CreateRun(ctx) }",
-			allow: map[string]string{"apps/platform/internal/run/service.go": "理由"},
-			want:  "raw_sql_allow.apps/platform/internal/run/service.go no longer contains raw DML",
+			allow: map[string]string{"apps/platform/internal/run/service.go@f": "technical query"},
+			want:  "raw_sql_allow.apps/platform/internal/run/service.go@f no longer contains raw SQL",
 		},
 	}
 

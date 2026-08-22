@@ -49,15 +49,16 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/analytics"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/partition"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/registry"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
+"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
+"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 func main() {
@@ -175,19 +176,28 @@ func purgeAccounts(ctx context.Context, pool *pgxpool.Pool) error {
 // purgeService is this subcommand's slice of the composition root, split out of
 // purgeAccounts only so main_test.go can check it without a database or object
 // storage. This process, not the API, is what actually runs the purge, so this
-// is where the five owning contexts' steps have to be handed over: each context
+// is where the six owning contexts' steps have to be handed over: each context
 // decides what an account deletion means for its own rows, and identity owns
 // only the transaction they share (ADR-034). A step left out here is refused,
 // not skipped — see identity.requirePurgeSteps.
 func purgeService(pool *pgxpool.Pool) *identity.Service {
+	analyticsSvc := &analytics.Service{Pool: pool}
+	testlabSvc := &testlab.Service{Pool: pool}
+	runSvc := &run.Service{Pool: pool}
+	packagingSvc := &packaging.Service{Pool: pool}
+	registrySvc := &registry.Service{Pool: pool}
+	ingestSvc := &ingest.Service{Pool: pool}
 	return &identity.Service{
-		Pool:               pool,
-		PurgeAnalytics:     analytics.PurgeWorkspace,
-		PurgeTestData:      testlab.PurgeWorkspace,
-		PurgeRunArtifacts:  run.PurgeWorkspace,
-		PurgeSkills:        registry.PurgeWorkspace,
-		PurgeImportSources: ingest.PurgeWorkspace,
-		ObjectKeys:         testlab.WorkspaceObjectKeys,
+		Pool:                       pool,
+		PurgeAnalytics:             analyticsSvc.PurgeWorkspace,
+		PurgeTestData:              testlabSvc.PurgeWorkspace,
+		PurgeRunArtifacts:          runSvc.PurgeWorkspace,
+		PurgeDownloads:             packagingSvc.PurgeWorkspace,
+		PurgeSkills:                registrySvc.PurgeWorkspace,
+		PurgeImportSources:         ingestSvc.PurgeWorkspace,
+		DatasetObjectKeys:          testlabSvc.WorkspaceObjectKeys,
+		RunArtifactObjectKeys:      runSvc.WorkspaceObjectKeys,
+		DownloadArtifactObjectKeys: packagingSvc.WorkspaceObjectKeys,
 	}
 }
 

@@ -29,13 +29,14 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/catalog"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
+"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
+"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 )
 
 func main() {
@@ -79,10 +80,22 @@ func main() {
 	// The backfill rewrites catalog's documents, so it needs catalog's write
 	// injected exactly as the API's import path does (ADR-034); ReindexPending
 	// refuses to spend an enrichment call without it.
+	catalogSvc := &catalog.Service{Pool: pool}
 	svc := &ingest.Service{
 		Pool: pool, Store: store,
-		LLM:        &llmclient.Client{BaseURL: llmURL, Token: llmToken},
-		IndexSkill: catalog.IndexSkillEnriched,
+		LLM: &llmclient.Client{BaseURL: llmURL, Token: llmToken},
+		IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
+			return catalog.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
+				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,
+				EnrichedSummary: p.EnrichedSummary, TaskExamples: p.TaskExamples, Tags: p.Tags,
+				Limitations: p.Limitations, Scan: p.Scan, Embedding: p.Embedding,
+				EnrichmentStatus: p.EnrichmentStatus, EnrichmentModel: p.EnrichmentModel,
+				EnrichmentPromptVersion: p.EnrichmentPromptVersion,
+			})
+		},
+		PendingEnrichments: func(ctx context.Context, limit int32) ([]ingest.PendingEnrichment, error) {
+			return pendingEnrichments(ctx, catalogSvc, limit)
+		},
 	}
 	done, failed, err := svc.ReindexPending(ctx, batchSize())
 	if err != nil {
@@ -90,6 +103,23 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("enrichment backfill complete", "enriched", done, "still_pending", failed)
+}
+
+func pendingEnrichments(ctx context.Context, svc *catalog.Service, limit int32) ([]ingest.PendingEnrichment, error) {
+	rows, err := svc.PendingEnrichments(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]ingest.PendingEnrichment, len(rows))
+	for i, row := range rows {
+		result[i] = ingest.PendingEnrichment{
+			SkillID:          row.SkillID,
+			WorkspaceID:      row.WorkspaceID,
+			Name:             row.Name,
+			PackageObjectKey: row.PackageObjectKey,
+		}
+	}
+	return result, nil
 }
 
 func batchSize() int32 {

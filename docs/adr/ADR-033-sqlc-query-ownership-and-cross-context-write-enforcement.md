@@ -8,7 +8,9 @@
 
 ## 背景
 
-ADR-032 用 package 邊界＋`apps/platform/.golangci.yml` 的 depguard 把跨 context import 機械化擋住。但 `db/sqlc.yaml` 只有一個設定，`db/queries/*.sql` 的 171 條 query 全部生成到同一個 Go package（`apps/platform/internal/platform/db/gen`）。depguard 只看得到 import，看不到呼叫的是誰的 query——任何 context 只要 import 了 `db/gen`（目前 14 個 context 都有），就能直接寫別人的資料表。
+ADR-032 用 package 邊界＋`apps/platform/.golangci.yml` 的 depguard 把跨 context import 機械化擋住。但 `db/sqlc.yaml` 只有一個設定，`db/queries/*.sql` 的 171 條 query 全部生成到同一個 Go package（本 ADR 撰寫時為 `apps/platform/internal/platform/db/gen`）。depguard 只看得到 import，看不到呼叫的是誰的 query——任何 context 只要 import 了 `db/gen`（目前 14 個 context 都有），就能直接寫別人的資料表。
+
+2026-08-22（ADR-040 實體搬遷註記）：generated persistence 的現行位置為 `apps/platform/internal/foundation/persistence/db/gen`；它的單一 sqlc package、來源 `db/sqlc.yaml`、query ownership 與「generated 檔不得手改」規則均不變。前段舊路徑是本 ADR 當時的歷史描述。
 
 Platform DDD 審視報告把這列為 P1，並指出這與 ADR-002「每個模組擁有自己的資料存取邊界」有落差。實測確認的跨 context **寫入**有 15 條，分佈在五個群組（帳號刪除 purge、ingest 寫 registry、catalog 寫 skills 旗標、搜尋索引投影、objreconcile 代掃）。跨 context **讀取**更多，其中一部分（例如 policy 讀 runs 算配額）是刻意的。
 
@@ -20,7 +22,7 @@ Platform DDD 審視報告把這列為 P1，並指出這與 ADR-002「每個模�
 2. `go -C tools/devctl run . automation-check`（既有指令，CI 已在跑）新增檢查：解析 `db/queries/*.sql` 判定 write query，掃 `apps/platform/internal/**` 的非測試 Go 檔找呼叫點，由路徑推出呼叫端 context；**owner ≠ caller 的 write 呼叫即 FAIL**。
 3. **只強制 write**（INSERT／UPDATE／DELETE，含 `WITH ... DELETE` 這種 CTE 寫入）。read 仍要宣告 owner，但不擋。理由：寫入才會破壞別人不知道的不變量；同一批把跨 context read 一起擋，會製造十幾條容忍條目，讓宣告本身失去訊號。
 4. **完整性雙向檢查**：`db/queries` 有而宣告檔沒有的 query、宣告檔有而 `db/queries` 沒有的條目、已無呼叫點的容忍條目，三者都 FAIL。沒有這道檢查，宣告檔會在幾次改動內爛掉，變成看起來像防線的裝飾。
-5. **Generic 套件**（ADR-032 §1 的 `audit`、`outbox`、`objreconcile`、`llmclient`、`skillpkg`、`platform/*`、`apiserver`）視同 context 參與判定：它們呼叫自己領域的 query（`outbox` 寫 `outbox_events`、`audit` 寫 `audit_events`）合法；呼叫別人的 write query 一樣要進容忍清單。「Generic」指的是沒有領域規則，不是可以繞過所有權。
+5. **Generic 套件**（ADR-032 §1 的 `foundation/*`、`platform/*`、`entrypoint/api/apiserver`、`entrypoint/api/gen`）視同 context 參與判定：它們呼叫自己領域的 query（`outbox` 寫 `outbox_events`、`audit` 寫 `audit_events`）合法；呼叫別人的 write query 一樣要進容忍清單。「Generic」指的是沒有領域規則，不是可以繞過所有權。
 6. **呼叫點的認定**：只掃 import 了 `db/gen` 的檔案，排除 `_test.go`。前者讓 generated package 自然落在掃描範圍外，也避免同名 Service 方法被誤判；後者讓 integration test 仍能自由建 fixture——測試不是 production 的資料存取路徑。
 7. 宣告檔用 `section:` ／ `  key: value` 兩層的 YAML 子集，由 devctl 自解析。`tools/devctl` 目前**零第三方依賴**，這個形狀不值得引入第一個；解析器對子集外的寫法直接報錯，不靜默跳過。
 
@@ -28,7 +30,7 @@ Platform DDD 審視報告把這列為 P1，並指出這與 ADR-002「每個模�
 
 **拆 sqlc 成 per-context package**（`db/sqlc.yaml` 多組設定，各 context 一個 generated package）。這是最徹底的作法——邊界會變成型別問題，depguard 直接就能擋。拒絕的理由：
 
-- 要改動全部 14 個 context 的呼叫點與 import，且 `apps/platform/internal/platform/db/gen` 的型別（`gen.CreateRunParams` 等）散佈在 service、worker 與 integration test 中，是一次橫跨整個 platform 的機械式大改。
+- 要改動全部 14 個 context 的呼叫點與 import，且單一 generated persistence package 的型別（`gen.CreateRunParams` 等）散佈在 service、worker 與 integration test 中，是一次橫跨整個 platform 的機械式大改。
 - 同交易跨表寫入（run 狀態機在同一個 tx 內寫 `runs`＋`run_status_transitions`＋`outbox_events`＋`audit_events`）會需要跨 package 共用 `pgx.Tx` 與多個 `Queries` handle，wiring 成本落在最敏感的一條路徑上。
 - 它解決的是「能不能呼叫」，但本 repo 真正缺的是「誰該擁有」的答案。宣告檔先把答案寫下來並鎖住 write，成本是一個檔案加一段檢查；等 15 條存量漂移清完，再拆 package 才是低風險的機械操作。
 
@@ -86,7 +88,7 @@ Platform DDD 審視報告把這列為 P1，並指出這與 ADR-002「每個模�
 
 **2026-08-20 已執行**：上面整套強制有一個未被強制的前提——**所有寫入都經過 sqlc**。決策 2 掃的是 `db/queries/*.sql` 的 query 呼叫點，`immutable:` 段落看的也是 query body；一行 `tx.Exec(ctx, "UPDATE skills SET ...")` 同時繞過 ownership 與 immutable 兩道檢查，且沒有任何東西會發現。導入本 ADR 時這個洞是**空的**（見下方覆核），所以補防線不必先清存量，這是成本最低的時點。
 
-`automation-check` 因此新增第三道檢查（`tools/devctl/query_owners.go` 的「裸 SQL tripwire」）：`apps/platform/internal/**` 與 `apps/platform/cmd/**` 的非測試 Go 檔中，把含 INSERT／UPDATE／DELETE 的**字面值**交給 pgx 的 `Exec`／`Query`／`QueryRow`／`Queue` 即 FAIL，訊息指出檔案、行號與該段 SQL 開頭。生成目錄（`internal/platform/db/gen`、`internal/api/gen`）與 `_test.go` 不在範圍，理由同決策 6。DML 判定沿用既有的 `isWriteStatement`／`normalizeSQL`——SQL 只有一套解析。呼叫點以 `go/ast` 解析（決策後果一節提到的升級路徑，在這道檢查上先行採用），故多行 SQL 與跨行呼叫都看得到。`SendBatch` 收的是 `*pgx.Batch` 不是 SQL、`CopyFrom` 收的是識別字不是語句，故不列入入口；真正帶 SQL 的是 `Batch.Queue`。
+`automation-check` 因此新增第三道檢查（`tools/devctl/query_owners.go` 的「裸 SQL tripwire」）：`apps/platform/internal/**` 與 `apps/platform/cmd/**` 的非測試 Go 檔中，把含 INSERT／UPDATE／DELETE 的**字面值**交給 pgx 的 `Exec`／`Query`／`QueryRow`／`Queue` 即 FAIL，訊息指出檔案、行號與該段 SQL 開頭。生成目錄（現為 `internal/foundation/persistence/db/gen`、`internal/entrypoint/api/gen`）與 `_test.go` 不在範圍，理由同決策 6。DML 判定沿用既有的 `isWriteStatement`／`normalizeSQL`——SQL 只有一套解析。呼叫點以 `go/ast` 解析（決策後果一節提到的升級路徑，在這道檢查上先行採用），故多行 SQL 與跨行呼叫都看得到。`SendBatch` 收的是 `*pgx.Batch` 不是 SQL、`CopyFrom` 收的是識別字不是語句，故不列入入口；真正帶 SQL 的是 `Batch.Queue`。
 
 具名豁免在 `db/query-owners.yaml` 的 `raw_sql_allow:`，形狀比照 `allow:`／`immutable_allow:`：key 是 repo 相對路徑、value 是理由（留空即 FAIL），且**失效的豁免**（該檔已無裸 DML）同樣 FAIL。**目前零條。**
 

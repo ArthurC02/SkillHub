@@ -7,7 +7,7 @@
 | 檔案 | 產生者 | 代表什麼 |
 | --- | --- | --- |
 | `run-trace-sample.jsonl` | `apps/sandbox/internal/dockerdrv` 的 `TestTraceEventsReachTheCollectorFromARealContainer` | **生產端未遮罩的線上格式**：真實容器寫進自己 `/out` tmpfs、由 driver 讀出、collector 推送後在接收端錄到的原樣。`masked: false` 是正確的——沙箱不得自稱已遮罩（鐵律 11）。 |
-| `stored-trace-sample.jsonl` | `apps/platform/internal/identity` 的 `TestTraceIngestionMasksBeforeStorage...` | **入庫後的形態**：`trace_events` 的列重新組回 envelope。`masked: true`、`masked_fields` 指出被替換的位置、payload 內是 `[REDACTED]`。 |
+| `stored-trace-sample.jsonl` | `apps/platform/internal/creator/workspace` 的 `TestTraceIngestionMasksBeforeStorage...` | **入庫後的形態**：`trace_events` 的列重新組回 envelope。`masked: true`、`masked_fields` 指出被替換的位置、payload 內是 `[REDACTED]`。 |
 | `harness-usage-sample.jsonl` | `apps/sandbox/internal/dockerdrv` 的 `TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` | **schema 1.1、且是「沒有 `result` 訊息」那條路徑的真實輸出**：真容器、真 Agent SDK、真閘道呼叫，harness 在 token 上限處自行中止，因此那一輪沒有 `result`。三個事件依序是 `agent_output`(intermediate) → `error`(`token_budget_exceeded`) → `usage`(`token_source: accumulated`，`cost_source: gateway`)。這正是修正前**完全不會出現 `usage`** 的情形，所以它是這條路徑的迴歸證據，不只是格式範例。 |
 
 重新產生（兩者都由環境變數開關，平常跑測試不會寫檔）：
@@ -19,7 +19,7 @@ SKILLHUB_TRACE_SAMPLE_OUT=contracts/events/samples/run-trace-sample.jsonl \
 
 # 入庫端：需要 SKILLHUB_TEST_DATABASE_URL
 SKILLHUB_TRACE_SAMPLE_OUT=contracts/events/samples/stored-trace-sample.jsonl \
-  go test ./internal/identity/ -run TestTraceIngestionMasksBeforeStorage -count=1
+  go test ./internal/creator/workspace/ -run TestTraceIngestionMasksBeforeStorage -count=1
 
 # harness 的 usage 路徑：需要 Docker、Runtime Image，以及一把可用的閘道金鑰（會花錢，約 $0.002）
 SKILLHUB_E2E_GATEWAY_URL=http://litellm:4000 SKILLHUB_E2E_GATEWAY_KEY=sk-... \

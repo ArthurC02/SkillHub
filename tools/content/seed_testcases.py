@@ -12,7 +12,7 @@ the public HTTP API only (ADR-020 dev login, then the TEST-001..004 endpoints),
 never the database.
 
 **Run it as the catalog curator.** Test cases land in the session's workspace,
-and `internal/packaging` decides "was this produced by platform curation" from
+and `internal/skill/delivery` decides "was this produced by platform curation" from
 `workspaces.is_catalog` (PACK-005) — a test case seeded into a personal
 workspace is excluded from every export with `not_curated`. There is no endpoint
 that flips that flag; it is set by SQL when the catalog is built, so the account

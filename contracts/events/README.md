@@ -3,7 +3,7 @@
 - 檔案：[trace-event.schema.json](trace-event.schema.json)（JSON Schema 2020-12，英文）
 - 驗證：`python tools/contracts/validate_trace_events.py`（驗 schema 內所有範例實例 + 三個反例）
 - 樣本：[samples/](samples/) 是管線兩端的真實輸出（生產端未遮罩、入庫端已遮罩），validator 一併逐行驗證
-- 狀態：契約為 M2 第一批產出；**收集管線於第三批（2026-08-16）落地**——事件產生見 `infra/images/runtime-agent-sdk/run.mjs`，收集與推送見 `apps/sandbox/internal/sandbox/trace.go`，遮罩、入庫與兩種讀取模式見 `apps/platform/internal/trace`。§8 的四個表欄位缺口已由 `db/migrations/0019_trace_ingestion.sql` 全數關閉。
+- 狀態：契約為 M2 第一批產出；**收集管線於第三批（2026-08-16）落地**——事件產生見 `infra/images/runtime-agent-sdk/run.mjs`，收集與推送見 `apps/sandbox/internal/sandbox/trace.go`，遮罩、入庫與兩種讀取模式見 `apps/platform/internal/trial/evidence`。§8 的四個表欄位缺口已由 `db/migrations/0019_trace_ingestion.sql` 全數關閉。
 
 ## 1. 這份 schema 的位置（ADR-009 邊界）
 

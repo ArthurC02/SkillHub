@@ -6,10 +6,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 // The wiring test this process did not have when it shipped without
@@ -63,6 +63,14 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 		t.Error("run service has no provider registry")
 	case set.Runs.Store == nil:
 		t.Error("run service has no object store")
+	case set.Runs.ActiveArtifactReferences == nil:
+		t.Error("run service has no packaging artifact reference counter")
+	case set.Runs.ReadSkill == nil || set.Runs.ReadVersion == nil:
+		t.Error("run service has no Registry owner reads")
+	case set.Runs.TestLab == nil:
+		t.Error("run service has no Test Lab owner reads")
+	case set.Runs.Trace == nil:
+		t.Error("run service has no Trace masking activity reader")
 	case set.Runs.TraceSigner == nil || set.Runs.TraceIngestBaseURL == "":
 		t.Error("run service was wired with half a trace configuration")
 	}
@@ -72,23 +80,42 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 		t.Error("evaluation service is missing its persistence")
 	case set.Evaluations.Trace == nil:
 		t.Error("evaluation service has no trace context")
+	case set.Runs.Trace != set.Evaluations.Trace:
+		t.Error("run and evaluation were not wired to the shared Trace service")
+	case set.Evaluations.Trace.ReadRunState == nil || set.Evaluations.Trace.ReadIngestRunState == nil ||
+		set.Evaluations.Trace.ReadRunTransitions == nil:
+		t.Error("trace service is missing a Run-owned fact reader")
+	case set.Evaluations.ReadRunFacts == nil || set.Evaluations.ReadEvaluationInput == nil:
+		t.Error("evaluation service is missing Run-owned fact readers")
+	case set.Evaluations.ReadVersion == nil || set.Evaluations.ReadLatestVersion == nil ||
+		set.Evaluations.ReadSkill == nil || set.Evaluations.ReadRuntimeCompatibility == nil:
+		t.Error("evaluation service is missing Registry-owned fact readers")
+	case set.Evaluations.TestLab == nil:
+		t.Error("evaluation service is missing Test Lab owner reads")
 	case set.Evaluations.Judge == nil || set.Evaluations.Suggester == nil:
 		t.Error("LLM was configured but the judge or the suggester did not get it")
 	}
+	if set.Packaging == nil || set.Packaging.TestLab == nil {
+		t.Error("packaging service is missing Test Lab owner reads")
+	} else if set.Runs.TestLab != set.Evaluations.TestLab || set.Runs.TestLab != set.Packaging.TestLab {
+		t.Error("run, evaluation and packaging were not wired to the shared Test Lab service")
+	}
 
-	// The object reconciler's two corrections belong to packaging and testlab
+	// The object reconciler's reads and corrections belong to packaging and testlab
 	// (ADR-033 clearance path 4) and only this file puts them there. Unset, the
 	// hourly sweep refuses to run, so expired download packages keep their bytes
 	// and rows keep claiming objects that are gone.
-	if set.Objects.RecordArtifactPurged == nil || set.Objects.RecordDatasetLost == nil {
-		t.Error("object reconciler is missing an owner write function")
+	if set.Objects.ListExpiredArtifacts == nil || set.Objects.ListClaimedArtifacts == nil ||
+		set.Objects.ListClaimedDatasets == nil || set.Objects.RecordArtifactPurged == nil ||
+		set.Objects.RecordDatasetLost == nil {
+		t.Error("object reconciler is missing an owner read/write function")
 	}
 
 	// The outbox consumer's two function fields: one reads the standing
 	// evaluation, the other enqueues. A nil Insert panics on the first finished
 	// run rather than at boot.
-	if set.RunEvents.Current == nil || set.RunEvents.Insert == nil {
-		t.Error("run event consumer is missing Current or Insert")
+	if set.RunEvents.HasCurrentEvaluation == nil || set.RunEvents.Insert == nil {
+		t.Error("run event consumer is missing HasCurrentEvaluation or Insert")
 	}
 }
 

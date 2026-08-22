@@ -1,6 +1,6 @@
 # Platform 領域事件目錄（ADR-008／ADR-032）
 
-- 狀態：目錄首版 2026-08-19；**2026-08-20（DDD-012）§5 七項缺口關閉六項**，值域封閉、同交易型別保證、retention 與 poison 隔離皆已落地。**Go 型別是實作的事實來源**（`apps/platform/internal/platform/db/gen` 的 `OutboxEvent` 信封＋各 producer 的 payload 組裝）；本目錄是**規範與盤點**——列出全部合法 `event_type`、payload 形狀與新增規則。
+- 狀態：目錄首版 2026-08-19；**2026-08-20（DDD-012）§5 七項缺口關閉六項**，值域封閉、同交易型別保證、retention 與 poison 隔離皆已落地。**Go 型別是實作的事實來源**（`apps/platform/internal/foundation/persistence/db/gen` 的 `OutboxEvent` 信封＋各 producer 的 payload 組裝）；本目錄是**規範與盤點**——列出全部合法 `event_type`、payload 形狀與新增規則。
 - 形式：文件目錄，暫無 JSON Schema 與 validator。**第一個非 Go consumer 出現時**，依 [Run Trace 契約](README.md) 的前例補 schema＋validator；在那之前加 schema 是投機成本（目前唯一 consumer 是 process log）。§3 的 `run.*` token 現在**是被機器讀的**：`internal/outbox` 的 conformance test 抓它們，與 Go 常數和 DB `CHECK` 三方比對，所以那些反引號不是排版而是契約。
 - 位置理由：`contracts/` 是跨程序介面的唯一來源；領域事件今天雖只在 Go 程序內流動，`internal/run/service.go` 的既有註解早已預告 schema 落點是 `contracts/events/`，本目錄兌現該預告。
 

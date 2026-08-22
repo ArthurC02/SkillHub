@@ -104,7 +104,7 @@ def parse_skill(path: Path, doc_id: str) -> dict:
 def enriched_index_text(name: str, payload: dict) -> str:
     """The exact string the platform embeds for an enriched document.
 
-    Transcribed from apps/platform/internal/ingest/enrich.go: embeddingText
+    Transcribed from apps/platform/internal/skill/admission/enrich.go: embeddingText
     joins "name: enriched_summary", the bilingual task examples one per line, and
     the flattened tag buckets, with "\\n" between the three parts. Task examples
     keep the zh_hant line before the en line; tags flatten inputs, outputs, tools

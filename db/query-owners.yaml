@@ -1,7 +1,7 @@
 # Query ownership 宣告（ADR-033）
 #
 # sqlc 把 db/queries/*.sql 全部生成到同一個 Go package
-# (apps/platform/internal/platform/db/gen)，所以 depguard 擋得住 `run` import
+# (apps/platform/internal/foundation/persistence/db/gen)，所以 depguard 擋得住 `run` import
 # `eval`，卻擋不住 `run` 直接呼叫 `eval` 的 query。這份檔案補上那道防線：
 # 為每一個 query 宣告擁有它的 Bounded Context，由
 # `go -C tools/devctl run . automation-check` 在 CI 強制。
@@ -62,9 +62,12 @@ queries:
   # governance.sql：一個檔裝了三種治理動作，資料表分屬四個 context。
   InsertAuditEvent: audit
   ListAuditEventsByActor: audit
-  ListWorkspaceObjectKeys: testlab
+  ListWorkspaceDatasetObjectKeys: testlab
+  ListWorkspaceRunArtifactObjectKeys: run
+  ListWorkspaceDownloadArtifactObjectKeys: packaging
   DeleteWorkspaceDatasets: testlab
-  DeleteWorkspaceArtifacts: run
+  DeleteWorkspaceRunArtifacts: run
+  DeleteWorkspaceDownloadArtifacts: packaging
   PurgeUnreferencedSkills: registry
   PurgeUnreferencedSkillSources: ingest
   TakedownSkill: registry
@@ -80,6 +83,9 @@ queries:
   GetVersionLineage: registry
   GetOldestSkillVersion: registry
   GetLineageSource: ingest
+
+  # skill_sources is ingest's import provenance, despite living in skills.sql.
+  GetSkillSource: ingest
 
   # reconcile.sql：objreconcile 自己的表只有 object_reconcile_sightings；
   # 其餘是它代掃的別人的列（artifacts 這三條只碰 kind='download_package'）。
@@ -130,68 +136,12 @@ allow:
 #
 # 導入時是 35 個條目、七組（47 組 (query, caller)）；**B 組（鎖留在呼叫端的兩條）
 # 已由 DDD-031 收掉**，**C 組（testlab 的 Test Case／Dataset／物件鍵）與 G 組
-# （trace 的事件讀取）已由 DDD-033 收掉**，現為 **26 個條目、四組（37 組
-# (query, caller)）**。組別字母不重編：留下的 A、D、E、F 之間的空缺是刻意的，
-# 為了讓 ADR-035 的分組表與這裡永遠指同一組東西。
+# （trace 的事件讀取）已由 DDD-033 收掉**，**E 組（Generic scanner 代讀 owner）
+# 已由 DDD-035 收掉**，F 組的 enrichment 單點由 DDD-036 收掉、manifest
+# 兩單點由 DDD-037 收掉、artifact reference count 由 DDD-038 收掉、F 組最後
+# 兩項由 DDD-039 收掉、D 組由 DDD-040～042 收掉，A 組最後
+# 六項由 DDD-047 收掉；**目前零條，維持零條**。
 read_allow:
-  # ── A. registry 的 Skill／Version 事實（11 條目 ＝ 21 組 (query, caller)）──
-  # 最大的一組，成因單一：`skills` 與 `skill_versions` 是全平台的共享事實——
-  # 要跑、要打包、要評估、要顯示，都得先讀到那一列。registry 至今只公開了**寫入面**
-  # （DDD-019／020 的三支 `*FromPackage` 與 `SetAccessRestriction`），沒有對應的
-  # 讀取面，於是六個 context 各自去呼叫 query。這一組不是判定可商榷，是缺一支 API。
-  GetSkill: catalog, eval, ingest, packaging, run, testlab
-  GetSkillVersion: eval, packaging, run
-  GetLatestSkillVersion: catalog, eval
-  GetSkillRuntimeCompatibility: catalog, eval, packaging
-  GetCatalogSkill: catalog
-  GetSkillSource: catalog
-  GetSkillByName: ingest
-  GetVersionBySkillAndHash: ingest
-  GetPreviousSkillVersion: packaging
-  GetOldestSkillVersion: packaging
-  GetVersionLineage: packaging
-
-  # ── D. run 的 Run 事實（6 條目 ＝ 7 組 (query, caller)）────────────────────
-  # 與 A、C 同因，但 import 方向被 depguard 擋著：`eval → run`、`trace → run`、
-  # `analytics → run`、`policy → run` 全在 deny 清單裡，而且 `run → policy`、
-  # `run → trace` 是既有的合法方向——加白名單會製造循環。因此這一組的正解是
-  # ADR-034 的注入，不是 import。
-  GetRun: eval, trace
-  GetRunForTraceIngest: trace
-  ListRunArtifacts: eval
-  ListRunAttempts: eval
-  ListRunStatusTransitions: trace
-  RunInWorkspace: analytics
-
-  # ── E. Generic 掃描器代讀 owner 的清單（3 條目 ＝ 3 組）───────────────────
-  # DDD-020 把 objreconcile 的**寫入**半邊反轉成注入（`MarkArtifactPurged`／
-  # `MarkDatasetObjectLost` 由 composition root 提供），**讀取半邊留著**：
-  # 掃描器仍自己決定「哪些列該被掃」。注入形狀已經在那裡，補兩三個 lister 欄位即可。
-  ListArtifactsPastRetention: objreconcile
-  ListArtifactsClaimingObject: objreconcile
-  ListDatasetsClaimingObject: objreconcile
-
-  # ── F. 單點跨界，各有各的成因（6 條目 ＝ 6 組）────────────────────────────
-  # `ListPendingEnrichment`：ADR-034 把 `search_documents` 的**寫入**反轉成
-  #   `catalog.IndexSkill` 注入，但 `ReindexPending` 讀「還沒 enrich 的投影列」
-  #   這一半沒跟著走——同一批的自然殘留，補一個 lister 欄位就收掉。
-  # `ListSuggestionsAppliedToVersion`：打包 manifest 要寫「這個版本採納了哪些建議」，
-  #   那是 eval 的溯源事實；`packaging → eval` 是 deny，故走注入。
-  # `GetLineageSource`：同上，打包要寫匯入來源，事實屬 ingest；`packaging → ingest`
-  #   亦為 deny。B 之外的溯源讀取全部集中在 `packaging/manifest.go` 一個檔。
-  # `CountArtifactsSharingObject`：run 刪自己的 Run 產物前，要確認底層物件沒有被
-  #   packaging 的 download package 共用。這是「別人還要不要用」，只有 owner 答得出來。
-  # `CountQuotaRuns`：owner 判定**可以商榷**——表是 `runs`（故歸 run），但 ADR-032 §1
-  #   說 quota 規則歸 policy，而這條 query 除了算配額沒有第二個用途。維持按表歸屬
-  #   （宣告的判準是「主要資料表的擁有 context」，不是用途），改判會讓判準出現例外。
-  # `GetWorkspaceCreatedAt`：policy 要 workspace 建立時間才能算配額週期。這一條最好收：
-  #   鐵律 3 讓每個 context 都已經 import `identity`，只差 identity 公開一支讀取面。
-  ListPendingEnrichment: ingest
-  ListSuggestionsAppliedToVersion: packaging
-  GetLineageSource: packaging
-  CountArtifactsSharingObject: run
-  CountQuotaRuns: policy
-  GetWorkspaceCreatedAt: policy
 
 # 不可變資料表宣告（ADR-003、鐵律 4；ADR-032 §4 的 aggregate 不變量）
 #
@@ -233,16 +183,25 @@ immutable_allow:
   # 這條 CTE 沒有預定的消失時程；要移除它得先讓帳號刪除不再硬刪 skill_versions。
   PurgeUnreferencedSkills: skill_versions
 
-# 裸 SQL 的具名豁免（ADR-033 2026-08-20 追加）
+# 裸 SQL 的具名豁免（ADR-033 2026-08-20 追加；DDD-058 2026-08-22 強化）
 #
-# 上面兩段的前提是「所有寫入都經過 sqlc」。`automation-check` 另有一道 tripwire：
-# apps/platform/internal/** 與 apps/platform/cmd/** 的非測試 Go 檔中，
-# 把含 INSERT／UPDATE／DELETE 的**字面值**交給 pgx 的 Exec／Query／QueryRow／Queue
-# 就 FAIL。生成目錄（internal/platform/db/gen、internal/api/gen）與 _test.go 不在範圍。
+# `automation-check` 掃 apps/platform/internal/** 與 apps/platform/cmd/** 的非測試 Go 檔：
+# 把含 SELECT／INSERT／UPDATE／DELETE／SET／CREATE／ALTER／DROP／TRUNCATE／WITH
+# 的 SQL 交給 pgx Exec／Query／QueryRow／Queue 就 FAIL。它解析 direct literal、
+# package const、function-local binding 與 fmt.Sprintf format；生成目錄與 _test.go 排除。
 #
-# 它是 tripwire 不是證明——const 常數、fmt.Sprintf、字串串接組出來的 SQL 都繞得過。
-# 界限寫在 tools/devctl/query_owners.go 的「裸 SQL tripwire」註解與 ADR-033。
+# 它是 tripwire 不是完整 dataflow；跨函數傳遞、runtime 動態字串與非 pgx 入口仍是界限。
+# 界限寫在 tools/devctl/query_owners.go 的「裸 SQL tripwire」註解與 ADR-035。
 #
-# key 是 repo 相對路徑，value 是理由（不得留空）。失效的豁免（該檔已無裸 DML）會 FAIL。
-# **目前零條，維持零條**——需要寫 DML 就去 db/queries/*.sql 開一條 query。
+# key 是精確 repo/path.go@FunctionName，value 是理由（不得留空）；失效即 FAIL，
+# 同檔其他函數不受遮蔽。領域 SQL 必須移入 db/queries/*.sql，只有下列技術 SQL保留。
 raw_sql_allow:
+  apps/platform/internal/creator/workspace/service.go@signup: advisory lock serializes first-login creation for one provider identity
+  apps/platform/internal/creator/workspace/purge.go@purgeAccount: SET LOCAL enables immutable-table purge only inside the account purge transaction
+  apps/platform/internal/foundation/messaging/outbox/outbox.go@Publish: session advisory lock elects one publisher and must be explicitly unlocked on its connection
+  apps/platform/internal/skill/delivery/packaging.go@persist: advisory lock serializes reusable download artifact persistence by content hash
+  apps/platform/internal/trial/improvement/eval.go@begin: advisory lock serializes supersede-and-create for one run evaluation
+  apps/platform/internal/trial/execution/halt.go@DetectReconcilerStall: reads River-owned river_job state that is outside SkillHub migrations and sqlc
+  apps/platform/internal/foundation/persistence/partition/partition.go@MaintainMonthly: drops validated monthly partition identifiers through PostgreSQL DDL
+  apps/platform/internal/foundation/persistence/partition/partition.go@childPartitions: reads PostgreSQL partition catalogs rather than a domain table
+  apps/platform/internal/foundation/persistence/partition/partition.go@createMonth: creates validated monthly partitions through PostgreSQL DDL

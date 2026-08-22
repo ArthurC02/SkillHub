@@ -24,18 +24,18 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/apiserver"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/identity"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/ingest"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/packaging"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/envx"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/httpx"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/policy"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
+"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 func main() {

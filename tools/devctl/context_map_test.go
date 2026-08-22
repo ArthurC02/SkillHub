@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-// writeContextMapFixture 鋪出這道檢查讀的三份清單：ADR-032 §1 的表格、
-// depguard 規則，以及 apps/platform/internal/ 底下的套件目錄。
 func writeContextMapFixture(t *testing.T, adr, lint string, packages []string) string {
 	t.Helper()
 	root := t.TempDir()
@@ -29,105 +27,105 @@ func writeContextMapFixture(t *testing.T, adr, lint string, packages []string) s
 	return root
 }
 
-// 真實 §1 表格的形狀：一列多個套件、儲存格夾全形括號的註解（而註解裡**也有**
-// 反引號，`SaveVersion` 就是那個陷阱）、以及 `platform/*`／`api/gen` 這種
-// 不是單一目錄名的寫法。表格後面刻意再放一個 `### ` 標題與另一張表，
-// 因為 ADR-032 有四張表，抓錯一張這道檢查就在比對別的東西。
-const contextMapADRFixture = "### 1. Context 對照表\n" +
-	"\n" +
-	"| Bounded Context | 類型 | internal/ 套件 | 需求 ID 前綴 |\n" +
-	"| --- | --- | --- | --- |\n" +
-	"| Skill Registry | Core | `registry`、`skillpkg` | SKILL |\n" +
-	"| Trust | Core | `ingest`（匯入管線；`SaveVersion` 是唯一驗證路徑） | SKILL |\n" +
-	"| —（跨切面，非 context） | Generic | `audit`、`platform/*`、`apiserver`、`api/gen` | — |\n" +
-	"\n" +
-	"### 2. 關係\n" +
-	"\n" +
-	"| 關係 | 機制 | 適用 |\n" +
-	"| --- | --- | --- |\n" +
-	"| 同步查詢 | import `registryz` 的公開 API | 事實 |\n"
+const contextMapADRFixture = `### 1. Context 對照表
 
-// depguard 的規則只以 files: 的 glob 認人，所以 fixture 也只留那一半。
+| 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
+| --- | --- | --- | --- | --- |
+| Skill 試跑執行／Run Orchestration | Core | run | run | RUN |
+| Skill 接納與信任／Trust & Supply Chain | Core | ingest | ingest | SKILL |
+| — | Shared Kernel | skillpkg | shared/skillpkg | — |
+| — | Generic | audit | foundation/observability/audit | — |
+| — | Generic | queue | foundation/messaging/queue | — |
+| — | Generic | platform | foundation/persistence/db/gen | — |
+| — | Generic | apiserver | entrypoint/api/apiserver | — |
+| — | Generic | api | entrypoint/api/gen | — |
+
+### 2. Governance
+`
+
 const contextMapLintFixture = `      depguard:
         rules:
-          registry:
+          run:
             files:
-              - "**/internal/registry/**"
-              - "!$test"
-          generic:
-            files:
-              - "**/internal/audit/**"
-              - "**/internal/skillpkg/**"
-              - "**/internal/platform/**"
+              - "**/internal/run/**"
               - "!$test"
           ingest:
             files:
               - "**/internal/ingest/**"
+              - "!$test"
+          generic:
+            files:
+              - "**/internal/foundation/observability/audit/**"
+              - "**/internal/foundation/messaging/queue/**"
+              - "**/internal/foundation/persistence/db/gen/**"
+              - "!$test"
+          shared-kernel:
+            files:
+              - "**/internal/shared/skillpkg/**"
               - "!$test"
 `
 
 func TestContextMapProblems(t *testing.T) {
 	t.Parallel()
 
-	// 對得上的基準：五個套件目錄對上 §1 的七個 token（`platform/*` → platform、
-	// `api/gen` → api），非 Generic 的三個都有 depguard 規則。
-	packages := []string{"registry", "skillpkg", "ingest", "audit", "platform", "apiserver", "api"}
+	flatPackages := []string{"run", "ingest", "shared/skillpkg", "foundation/observability/audit", "foundation/messaging/queue", "foundation/persistence/db/gen", "entrypoint/api/apiserver", "entrypoint/api/gen"}
+	nestedADR := strings.Replace(contextMapADRFixture, "| run | run | RUN |", "| run | trial/execution | RUN |", 1)
+	nestedLint := strings.Replace(contextMapLintFixture, "**/internal/run/**", "**/internal/trial/execution/**", 1)
+	nestedPackages := []string{"trial/execution", "ingest", "shared/skillpkg", "foundation/observability/audit", "foundation/messaging/queue", "foundation/persistence/db/gen", "entrypoint/api/apiserver", "entrypoint/api/gen"}
 
 	tests := []struct {
 		name     string
 		adr      string
 		lint     string
 		packages []string
-		want     string // 預期唯一問題的子字串；空字串代表要全綠
+		want     string
 	}{
 		{
-			name:     "three lists agree",
+			name:     "flat layout remains compatible",
 			adr:      contextMapADRFixture,
 			lint:     contextMapLintFixture,
-			packages: packages,
+			packages: flatPackages,
 		},
 		{
-			name:     "package missing from the ADR table",
-			adr:      contextMapADRFixture,
+			name:     "nested layout is complete",
+			adr:      nestedADR,
+			lint:     nestedLint,
+			packages: nestedPackages,
+		},
+		{
+			name:     "unknown nested package is rejected",
+			adr:      nestedADR,
+			lint:     nestedLint,
+			packages: append(append([]string{}, nestedPackages...), "trial/evidence"),
+			want:     "apps/platform/internal/trial/evidence is not listed",
+		},
+		{
+			name: "overlapping selectors are rejected",
+			adr: strings.Replace(nestedADR, "\n### 2.", "\n| 執行證據／Run Trace | Supporting | trace | trial/* | TRACE |\n\n### 2.", 1),
+			lint:     nestedLint,
+			packages: nestedPackages,
+			want:     `internal paths "trial/execution" (run) and "trial/*" (trace) overlap`,
+		},
+		{
+			name: "duplicate Boundary ID is rejected",
+			adr: strings.Replace(contextMapADRFixture, "\n### 2.", "\n| 重複 | Core | run | duplicate | RUN |\n\n### 2.", 1),
 			lint:     contextMapLintFixture,
-			packages: append(append([]string{}, packages...), "billing"),
-			want:     "apps/platform/internal/billing is not listed in",
+			packages: flatPackages,
+			want:     `declares Boundary ID "run" twice`,
 		},
 		{
-			name:     "ADR lists a package that does not exist",
-			adr:      strings.Replace(contextMapADRFixture, "`registry`、`skillpkg`", "`registry`、`skillpkg`、`ghost`", 1),
+			name: "duplicate path is rejected",
+			adr: strings.Replace(contextMapADRFixture, "\n### 2.", "\n| 重複 | Core | trace | run | TRACE |\n\n### 2.", 1),
 			lint:     contextMapLintFixture,
-			packages: packages,
-			want:     `§1 lists "ghost" but apps/platform/internal/ghost does not exist`,
+			packages: flatPackages,
+			want:     `declares internal path "run" twice (run and trace)`,
 		},
 		{
-			name:     "bounded context with no depguard rule",
-			adr:      contextMapADRFixture,
-			lint:     strings.Replace(contextMapLintFixture, "              - \"**/internal/ingest/**\"\n", "", 1),
-			packages: packages,
-			want:     `§1 puts "ingest" in a bounded context but apps/platform/.golangci.yml has no depguard rule`,
-		},
-		{
-			name:     "generic packages need no depguard rule",
-			adr:      contextMapADRFixture,
-			lint:     strings.Replace(contextMapLintFixture, "              - \"**/internal/audit/**\"\n", "", 1),
-			packages: packages,
-		},
-		{
-			name:     "depguard rule for a package that is gone",
-			adr:      contextMapADRFixture,
-			lint:     contextMapLintFixture,
-			packages: []string{"skillpkg", "ingest", "audit", "platform", "apiserver", "api"},
-			want:     "guards apps/platform/internal/registry but that package does not exist",
-		},
-		{
-			name: "a package name the parser cannot read is reported, not skipped",
-			adr: strings.Replace(contextMapADRFixture,
-				"`registry`、`skillpkg`", "`registry`、`internal/db/gen/*`", 1),
-			lint:     contextMapLintFixture,
-			packages: packages,
-			// skillpkg 消失也會被報，所以這個案例預期兩個問題；只斷言解析那一條。
-			want: `lists "internal/db/gen/*", which is not a package directory this check can read`,
+			name: "stale nested depguard glob is rejected",
+			adr:      nestedADR,
+			lint:     strings.Replace(nestedLint, "              - \"!$test\"", "              - \"**/internal/ghost/nested/**\"\n              - \"!$test\"", 1),
+			packages: nestedPackages,
+			want:     "guards apps/platform/internal/ghost/nested but no ADR-032 §1 Boundary ID declares that path",
 		},
 	}
 

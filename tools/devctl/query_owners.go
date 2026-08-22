@@ -21,21 +21,10 @@ import (
 // what makes that declaration binding. See ADR-033.
 const queryOwnersFile = "query-owners.yaml"
 
-// The Bounded Contexts of ADR-032 §1 plus the generic packages listed there.
-// A context name outside this set is almost always a typo in the declaration,
-// and a silently ignored typo would open exactly the hole this check closes.
-var platformContexts = map[string]bool{
-	"identity": true, "catalog": true, "registry": true, "skillpkg": true,
-	"ingest": true, "testlab": true, "run": true, "eval": true,
-	"packaging": true, "trace": true, "policy": true, "analytics": true,
-	"audit": true, "outbox": true, "objreconcile": true, "llmclient": true,
-	"apiserver": true, "api": true, "platform": true,
-}
-
 // Only files that import the sqlc package can call a query, which is also what
 // keeps the generated packages themselves out of the scan: db/gen does not
 // import itself and api/gen never imports it.
-const genImportPath = "internal/platform/db/gen\""
+const genImportPath = "internal/foundation/persistence/db/gen\""
 
 // 跨 context read 的具名豁免所在 section（ADR-035）。形狀與 `allow:` 完全一致：
 // key 是 query 名、value 是被容忍的呼叫端 context 清單，理由寫在上方的分組註解。
@@ -49,28 +38,30 @@ type sqlQuery struct {
 }
 
 type callSite struct {
-	context string
-	path    string
+	boundary string
+	caller   string
+	path     string
 }
 
 func queryOwnerProblems(root string) []string {
+	identities, problems := contextTablePackages(
+		filepath.Join(root, "docs", "adr", contextMapADR), "docs/adr/"+contextMapADR)
 	sections, err := parseOwnerDeclaration(filepath.Join(root, "db", queryOwnersFile))
 	if err != nil {
-		return []string{fmt.Sprintf("db/%s: %v", queryOwnersFile, err)}
+		return append(problems, fmt.Sprintf("db/%s: %v", queryOwnersFile, err))
 	}
 	queries, err := loadSQLQueries(filepath.Join(root, "db", "queries"))
 	if err != nil {
 		return []string{fmt.Sprintf("db/queries: %v", err)}
 	}
 
-	var problems []string
 	fileOwners, queryOwners := sections["files"], sections["queries"]
 
 	for _, section := range []string{"files", "queries"} {
 		for _, key := range sortedKeys(sections[section]) {
-			if owner := sections[section][key]; !platformContexts[owner] {
+			if owner := sections[section][key]; !knownBoundaryID(identities, owner) {
 				problems = append(problems, fmt.Sprintf(
-					"db/%s: %s.%s = %q is not a context in ADR-032 §1", queryOwnersFile, section, key, owner))
+					"db/%s: %s.%s = %q is not a Boundary ID in ADR-032 §1", queryOwnersFile, section, key, owner))
 			}
 		}
 	}
@@ -101,7 +92,7 @@ func queryOwnerProblems(root string) []string {
 	for name := range queries {
 		names[name] = true
 	}
-	calls, err := queryCallSites(filepath.Join(root, "apps", "platform", "internal"), names)
+	calls, err := queryCallSites(filepath.Join(root, "apps", "platform", "internal"), names, identities)
 	if err != nil {
 		return append(problems, fmt.Sprintf("apps/platform/internal: %v", err))
 	}
@@ -112,6 +103,7 @@ func queryOwnerProblems(root string) []string {
 		}
 		return fileOwners[queries[name].file]
 	}
+	ownerBoundary := func(name string) string { return owner(name) }
 
 	// ADR-035: read 與 write 走同一個棘輪，判定式只差在 query 是不是 write。
 	// ADR-032 §2 的四種關係裡沒有「直接呼叫別人的 query」這一項——取別人的事實
@@ -132,16 +124,18 @@ func queryOwnerProblems(root string) []string {
 				continue
 			}
 			allowed := map[string]bool{}
-			for _, context := range splitList(tolerated[name]) {
-				allowed[context] = true
+			for _, id := range splitList(tolerated[name]) {
+				if _, ok := identities[id]; ok {
+					allowed[id] = true
+				}
 			}
 			for _, site := range calls[name] {
-				if site.context == owner(name) || allowed[site.context] {
+				if site.boundary == ownerBoundary(name) || allowed[site.boundary] {
 					continue
 				}
 				problems = append(problems, fmt.Sprintf(
 					"cross-context %s: %s is owned by %q but %q %ss it at %s",
-					side.verb, name, owner(name), site.context, side.verb, site.path))
+					side.verb, name, owner(name), site.caller, side.verb, site.path))
 			}
 		}
 
@@ -156,14 +150,14 @@ func queryOwnerProblems(root string) []string {
 			}
 			for _, context := range splitList(tolerated[name]) {
 				switch {
-				case !platformContexts[context]:
+				case !knownBoundaryID(identities, context):
 					problems = append(problems, fmt.Sprintf(
-						"db/%s: %s.%s = %q is not a context in ADR-032 §1", queryOwnersFile, side.section, name, context))
+						"db/%s: %s.%s = %q is not a Boundary ID in ADR-032 §1", queryOwnersFile, side.section, name, context))
 				case query.write != side.write:
 					problems = append(problems, fmt.Sprintf(
 						"db/%s: %s.%s is a %s query; declare it in %s:",
 						queryOwnersFile, side.section, name, side.otherVerb, side.other))
-				case context == owner(name):
+				case context == ownerBoundary(name):
 					problems = append(problems, fmt.Sprintf(
 						"db/%s: %s.%s = %q is the owner; the entry is redundant", queryOwnersFile, side.section, name, context))
 				case !callsFrom(calls[name], context):
@@ -279,7 +273,7 @@ func frozenTables(dir string) (map[string]bool, error) {
 
 func callsFrom(sites []callSite, context string) bool {
 	for _, site := range sites {
-		if site.context == context {
+		if site.boundary == context {
 			return true
 		}
 	}
@@ -420,7 +414,7 @@ func mutatedTables(body string) []string {
 	return tables
 }
 
-func queryCallSites(internal string, names map[string]bool) (map[string][]callSite, error) {
+func queryCallSites(internal string, names map[string]bool, identities map[string]packageIdentity) (map[string][]callSite, error) {
 	alternatives := make([]string, 0, len(names))
 	for name := range names {
 		alternatives = append(alternatives, regexp.QuoteMeta(name))
@@ -449,7 +443,11 @@ func queryCallSites(internal string, names map[string]bool) (map[string][]callSi
 			return err
 		}
 		relative = filepath.ToSlash(relative)
-		context, _, _ := strings.Cut(relative, "/")
+		directory := filepath.ToSlash(filepath.Dir(relative))
+		identity, known := resolveContextPath(directory, identities)
+		if !known {
+			return fmt.Errorf("apps/platform/internal/%s calls sqlc but has no architecture identity in ADR-032 §1", directory)
+		}
 		// One entry per query per file: the report names the file, and a second
 		// call on the next line adds nothing to it.
 		seen := map[string]bool{}
@@ -458,7 +456,11 @@ func queryCallSites(internal string, names map[string]bool) (map[string][]callSi
 				continue
 			}
 			seen[match[1]] = true
-			calls[match[1]] = append(calls[match[1]], callSite{context: context, path: "apps/platform/internal/" + relative})
+			calls[match[1]] = append(calls[match[1]], callSite{
+				boundary: identity.ID,
+				caller:   identity.ID,
+				path:     "apps/platform/internal/" + relative,
+			})
 		}
 		return nil
 	})
@@ -470,30 +472,25 @@ func queryCallSites(internal string, names map[string]bool) (map[string][]callSi
 
 // ── 裸 SQL tripwire ────────────────────────────────────────────────────────
 //
-// 上面兩道檢查（ownership 與 immutable）都只看 db/queries/*.sql，前提是
-// **所有寫入都經過 sqlc**。這個前提目前成立，但沒有任何東西強制它：一行
-// `tx.Exec(ctx, "UPDATE skills SET ...")` 同時繞過 owner 宣告與 immutable 宣告，
-// 而且不會有人發現。這道檢查就是補那個洞。
+// 上面兩道檢查（ownership 與 immutable）都只看 db/queries/*.sql。直接走 pgx
+// 的 read／write／DDL 都繞過 owner 宣告；這道檢查讓這種例外必須精確具名。
 //
-// 抓得到：字面值直接交給 pgx 入口的 DML。
+// 抓得到：literal、package const、function-local binding，以及 fmt.Sprintf
+// format 交給 pgx 入口的 SQL keyword（SELECT／DML／DDL／SET／WITH）。
 // **抓不到**（這是 tripwire，不是證明，不要當它完備）：
-//   - `const q = "UPDATE ..."` 之後 `tx.Exec(ctx, q)`——SQL 不在呼叫點；
-//     apps/platform/internal/run/halt.go 的 reconcilerLastRun 就是這個形狀
-//     （它是 SELECT，不是違規，但同一個形狀換成 DML 這裡看不到）。
-//   - `fmt.Sprintf` / 字串串接組出來的 SQL（只看得到拼進去的字面片段）。
+//   - 跨函數傳遞或完整由 runtime data 組成的 SQL。
 //   - 走 database/sql、River migration、或 psql 之類 pgx 以外的路徑。
 //   - apps/platform 以外的程式。
 // 要真正封死只能走型別（把 Pool 收在只暴露 sqlc 的 wrapper 後面）；那是另一個
 // 決定，不是這道檢查。
-//
-// read 本來就不強制（ADR-033），所以裸 SELECT 一律放行；
-// eval/reconcile.go 的裸 SELECT 是已知的 read 盲點，記在 ADR-033 註記裡。
 
 // pgx 會收 SQL 字面值的入口。SendBatch 收的是 *pgx.Batch 不是 SQL，
 // 真正帶 SQL 的是 Batch.Queue；CopyFrom 收的是識別字不是語句，故不列入。
 var rawSQLEntryPoints = map[string]bool{
 	"Exec": true, "Query": true, "QueryRow": true, "Queue": true,
 }
+
+var rawSQLKeywordPattern = regexp.MustCompile(`\b(?:SELECT|INSERT|UPDATE|DELETE|SET|CREATE|ALTER|DROP|TRUNCATE|WITH)\b`)
 
 // 具名豁免所在的 section：key 是 repo 相對路徑，value 是理由（不得留空）。
 // 形狀比照 allow:／immutable_allow:——具名、有理由、失效即 FAIL。
@@ -502,8 +499,8 @@ const rawSQLAllowSection = "raw_sql_allow"
 
 // 生成碼自己就是 sqlc／ogen 的輸出，不受這道檢查約束。
 var rawSQLSkippedDirs = []string{
-	"apps/platform/internal/platform/db/gen",
-	"apps/platform/internal/api/gen",
+	"apps/platform/internal/foundation/persistence/db/gen",
+	"apps/platform/internal/entrypoint/api/gen",
 }
 
 func rawSQLProblems(root string, allow map[string]string) []string {
@@ -529,18 +526,19 @@ func rawSQLProblems(root string, allow map[string]string) []string {
 					return nil
 				}
 			}
-			found, err := rawDMLCallSites(path)
+			found, err := rawSQLCallSites(path)
 			if err != nil {
 				return err
 			}
 			for _, site := range found {
-				if _, exempt := allow[relative]; exempt {
-					hit[relative] = true
+				key := relative + "@" + site.function
+				if _, exempt := allow[key]; exempt {
+					hit[key] = true
 					continue
 				}
 				problems = append(problems, fmt.Sprintf(
-					"raw DML outside sqlc: %s:%d passes %q to %s; write it as a db/queries/*.sql query so ADR-033 can see it",
-					relative, site.line, site.sql, site.method))
+					"raw SQL outside sqlc: %s:%d (%s) passes %q to %s; write it as a db/queries/*.sql query so ADR-033 can see it",
+					relative, site.line, site.function, site.sql, site.method))
 			}
 			return nil
 		})
@@ -549,17 +547,17 @@ func rawSQLProblems(root string, allow map[string]string) []string {
 		}
 	}
 
-	// 失效的豁免要清掉，否則它默默罩住下一個寫進同一個檔的裸 DML。
-	for _, relative := range sortedKeys(allow) {
+	// 失效的豁免要清掉，否則它默默罩住下一個寫進同一個函數的裸 SQL。
+	for _, key := range sortedKeys(allow) {
 		switch {
-		case strings.TrimSpace(allow[relative]) == "":
+		case strings.TrimSpace(allow[key]) == "":
 			problems = append(problems, fmt.Sprintf(
 				"db/%s: %s.%s has no reason; name why it cannot be a sqlc query",
-				queryOwnersFile, rawSQLAllowSection, relative))
-		case !hit[relative]:
+				queryOwnersFile, rawSQLAllowSection, key))
+		case !hit[key]:
 			problems = append(problems, fmt.Sprintf(
-				"db/%s: %s.%s no longer contains raw DML; delete the entry",
-				queryOwnersFile, rawSQLAllowSection, relative))
+				"db/%s: %s.%s no longer contains raw SQL; delete the entry",
+				queryOwnersFile, rawSQLAllowSection, key))
 		}
 	}
 	sort.Strings(problems)
@@ -567,63 +565,140 @@ func rawSQLProblems(root string, allow map[string]string) []string {
 }
 
 type rawSQLSite struct {
-	line   int
-	method string
-	sql    string
+	line     int
+	function string
+	method   string
+	sql      string
 }
 
-// rawDMLCallSites 解析單一 Go 檔，回報把含 DML 的字面值交給 pgx 入口的呼叫。
-// 判定沿用 isWriteStatement——SQL 只有一套解析。
-func rawDMLCallSites(path string) ([]rawSQLSite, error) {
+// rawSQLCallSites resolves the small set of string shapes used by production:
+// direct literals, package constants, local bindings, and fmt.Sprintf formats.
+// It deliberately is not general dataflow; unknown expressions remain unknown.
+func rawSQLCallSites(path string) ([]rawSQLSite, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, path, nil, 0)
 	if err != nil {
 		return nil, err
 	}
+	packageStrings := map[string]string{}
+	for _, decl := range file.Decls {
+		if gen, ok := decl.(*ast.GenDecl); ok && gen.Tok == token.CONST {
+			bindValueSpecs(gen.Specs, packageStrings)
+		}
+	}
 	var sites []rawSQLSite
-	ast.Inspect(file, func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
-		if !ok {
-			return true
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Body == nil {
+			continue
 		}
-		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || !rawSQLEntryPoints[selector.Sel.Name] {
-			return true
+		stringsByName := make(map[string]string, len(packageStrings))
+		for name, value := range packageStrings {
+			stringsByName[name] = value
 		}
-		// SQL 是第一個帶字面值的引數（Exec(ctx, sql, …) 或 Queue(sql, …)）；
-		// 後面的是參數值，把它們一起看會讓 "delete" 這種值變成假警報。
-		for _, arg := range call.Args {
-			text := stringLiterals(arg)
-			if text == "" {
-				continue
+		bindLocalStrings(fn.Body, stringsByName)
+		ast.Inspect(fn.Body, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok {
+				return true
 			}
-			if isWriteStatement(text) {
-				sites = append(sites, rawSQLSite{
-					line:   fset.Position(arg.Pos()).Line,
-					method: selector.Sel.Name,
-					sql:    sqlPrefix(text),
-				})
+			selector, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || !rawSQLEntryPoints[selector.Sel.Name] {
+				return true
 			}
-			break
-		}
-		return true
-	})
+			// SQL is the first resolvable string argument: ctx precedes it for pgx,
+			// while Batch.Queue takes it first. Later bind values are ignored.
+			for _, arg := range call.Args {
+				text, ok := stringValue(arg, stringsByName)
+				if !ok {
+					continue
+				}
+				if rawSQLKeywordPattern.MatchString(normalizeSQL(text)) {
+					sites = append(sites, rawSQLSite{
+						line: fset.Position(arg.Pos()).Line, function: fn.Name.Name,
+						method: selector.Sel.Name, sql: sqlPrefix(text),
+					})
+				}
+				break
+			}
+			return true
+		})
+	}
 	return sites, nil
 }
 
-// stringLiterals 把一個引數子樹裡的字串字面值串起來，所以 `"UPDATE " + table`
-// 的常數半邊仍然看得到。非字面值的部分就是看不到——見上面的界限說明。
-func stringLiterals(node ast.Node) string {
-	var parts []string
-	ast.Inspect(node, func(n ast.Node) bool {
-		if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.STRING {
-			if value, err := strconv.Unquote(lit.Value); err == nil {
-				parts = append(parts, value)
+func bindLocalStrings(body *ast.BlockStmt, values map[string]string) {
+	ast.Inspect(body, func(node ast.Node) bool {
+		switch node := node.(type) {
+		case *ast.DeclStmt:
+			if gen, ok := node.Decl.(*ast.GenDecl); ok {
+				bindValueSpecs(gen.Specs, values)
+			}
+		case *ast.AssignStmt:
+			for i, lhs := range node.Lhs {
+				if i >= len(node.Rhs) {
+					break
+				}
+				name, ok := lhs.(*ast.Ident)
+				if value, found := stringValue(node.Rhs[i], values); ok && found {
+					values[name.Name] = value
+				}
 			}
 		}
 		return true
 	})
-	return strings.Join(parts, " ")
+}
+
+func bindValueSpecs(specs []ast.Spec, values map[string]string) {
+	for _, spec := range specs {
+		valueSpec, ok := spec.(*ast.ValueSpec)
+		if !ok {
+			continue
+		}
+		for i, name := range valueSpec.Names {
+			if i >= len(valueSpec.Values) {
+				break
+			}
+			if value, ok := stringValue(valueSpec.Values[i], values); ok {
+				values[name.Name] = value
+			}
+		}
+	}
+}
+
+func stringValue(expr ast.Expr, values map[string]string) (string, bool) {
+	switch expr := expr.(type) {
+	case *ast.BasicLit:
+		if expr.Kind != token.STRING {
+			return "", false
+		}
+		value, err := strconv.Unquote(expr.Value)
+		return value, err == nil
+	case *ast.Ident:
+		value, ok := values[expr.Name]
+		return value, ok
+	case *ast.ParenExpr:
+		return stringValue(expr.X, values)
+	case *ast.BinaryExpr:
+		if expr.Op != token.ADD {
+			return "", false
+		}
+		left, leftOK := stringValue(expr.X, values)
+		right, rightOK := stringValue(expr.Y, values)
+		return left + " " + right, leftOK || rightOK
+	case *ast.CallExpr:
+		selector, ok := expr.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return "", false
+		}
+		pkg, pkgOK := selector.X.(*ast.Ident)
+		if !pkgOK || pkg.Name != "fmt" || selector.Sel.Name != "Sprintf" || len(expr.Args) == 0 {
+			return "", false
+		}
+		return stringValue(expr.Args[0], values)
+	default:
+		return "", false
+	}
 }
 
 // sqlPrefix 把多行 SQL 壓成一行開頭，讓失敗訊息認得出是哪一段。
@@ -654,17 +729,31 @@ func sqlPrefix(sql string) string {
 // 它只要求「領域 context 一定要有人管」，不禁止 Generic 也被管。
 const contextMapADR = "ADR-032-ddd-bounded-context-governance-for-platform.md"
 
+type architectureKind string
+
+const (
+	architectureCore         architectureKind = "Core"
+	architectureSupporting   architectureKind = "Supporting"
+	architectureSharedKernel architectureKind = "Shared Kernel"
+	architectureGeneric      architectureKind = "Generic"
+)
+
+type packageIdentity struct {
+	Product string
+	Kind    architectureKind
+	ID      string
+	Path    string
+}
+
 var (
 	// §1 的表格；下一個 `### ` 標題就是邊界。文件裡還有 §2、§5 與附錄 A 三張表，
 	// 抓錯一張會讓這道檢查對著關係列表比對套件名。
 	contextTableHeading = "### 1. Context 對照表"
-	// 套件欄的儲存格會夾註解（`ingest`（…`SaveVersion`…）），註解裡也有反引號。
-	// 先把全形括號夾住的部分整段拿掉，再抽反引號，否則 `SaveVersion` 會被當成套件。
-	contextNotePattern    = regexp.MustCompile(`（[^（）]*）`)
-	contextTokenPattern   = regexp.MustCompile("`([^`]+)`")
-	contextPackagePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(/(\*|[a-z][a-z0-9_]*))?$`)
-	// depguard 規則的 files: 清單，例如 `- "**/internal/registry/**"`。
-	depguardFilePattern = regexp.MustCompile(`\*\*/internal/([a-z0-9_]+)/\*\*`)
+	contextTableHeader = []string{"產品／Bounded Context", "類型", "Boundary ID", "現行 internal path", "需求 ID 前綴"}
+	boundaryIDPattern  = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	contextPathPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*(?:/\*)?$`)
+	// depguard 規則的 files: 清單，例如 `- "**/internal/trial/execution/**"`。
+	depguardFilePattern = regexp.MustCompile(`\*\*/internal/([a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*)/\*\*`)
 )
 
 func contextMapProblems(root string) []string {
@@ -686,56 +775,48 @@ func contextMapProblems(root string) []string {
 	}
 
 	internal := filepath.Join(root, "apps", "platform", "internal")
-	entries, err := os.ReadDir(internal)
+	present, err := goPackageDirs(internal)
 	if err != nil {
 		return append(problems, fmt.Sprintf("apps/platform/internal: %v", err))
 	}
-	present := map[string]bool{}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			present[entry.Name()] = true
-		}
-	}
-
-	for _, name := range sortedKeys(present) {
-		if _, ok := declared[name]; !ok {
+	for _, path := range sortedKeys(present) {
+		if _, ok := resolveContextPath(path, declared); !ok {
 			problems = append(problems, fmt.Sprintf(
 				"apps/platform/internal/%s is not listed in %s §1; register it before adding the package (AGENTS.md 第 11 條)",
-				name, contextMapADR))
+				path, contextMapADR))
 		}
 	}
-	for _, name := range sortedKeys(declared) {
+	for _, id := range sortedKeys(declared) {
+		identity := declared[id]
 		switch {
-		case !present[name]:
+		case !selectorExists(identity.Path, present):
 			problems = append(problems, fmt.Sprintf(
-				"%s §1 lists %q but apps/platform/internal/%s does not exist", contextMapADR, name, name))
-		case !declared[name] && !guarded[name]: // 非 Generic 的列一定要有人管
+				"%s §1 lists Boundary ID %q at internal/%s but no Go package directory exists there", contextMapADR, id, identity.Path))
+		case architectureNeedsDepguard(identity) && !guardCovers(identity.Path, guarded):
 			problems = append(problems, fmt.Sprintf(
-				"%s §1 puts %q in a bounded context but %s has no depguard rule covering it",
-				contextMapADR, name, lintPath))
+				"%s §1 gives Boundary ID %q architecture kind %q but %s has no depguard rule covering internal/%s",
+				contextMapADR, id, identity.Kind, lintPath, identity.Path))
 		}
 	}
-	for _, name := range sortedKeys(guarded) {
-		if !present[name] {
+	for _, path := range sortedKeys(guarded) {
+		if !guardedPathDeclared(path, declared) {
 			problems = append(problems, fmt.Sprintf(
-				"%s guards apps/platform/internal/%s but that package does not exist", lintPath, name))
+				"%s guards apps/platform/internal/%s but no ADR-032 §1 Boundary ID declares that path", lintPath, path))
 		}
 	}
 	return problems
 }
 
-// contextTablePackages 回傳 §1 表格宣告的套件目錄，value 為 true 表示該列是
-// Generic（跨切面，非 context），據此決定要不要強制 depguard 覆蓋。
-// `platform/*` 與 `api/gen` 這類寫法取第一段當目錄名；不符形狀的 token 直接報錯，
-// 不靜默跳過——安靜跳過的解析器等於沒有這道檢查。
-func contextTablePackages(path, relative string) (map[string]bool, []string) {
+// contextTablePackages 讀 ADR-032 §1 唯一的 Context Map。Boundary ID 是 query
+// ownership 的穩定鍵；現行 internal path 則可隨資料夾遷移改成多段路徑。
+func contextTablePackages(path, relative string) (map[string]packageIdentity, []string) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, []string{fmt.Sprintf("%s: %v", relative, err)}
 	}
-	declared := map[string]bool{}
+	declared := map[string]packageIdentity{}
 	var problems []string
-	inTable := false
+	inTable, sawHeader := false, false
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.HasPrefix(line, "### ") {
 			inTable = strings.HasPrefix(line, contextTableHeading)
@@ -745,31 +826,143 @@ func contextTablePackages(path, relative string) (map[string]bool, []string) {
 			continue
 		}
 		cells := strings.Split(strings.Trim(strings.TrimSpace(line), "|"), "|")
-		if len(cells) < 3 {
+		for i := range cells {
+			cells[i] = strings.TrimSpace(cells[i])
+		}
+		if !sawHeader {
+			if !slices.Equal(cells, contextTableHeader) {
+				problems = append(problems, fmt.Sprintf("%s §1 table header must be %q", relative, strings.Join(contextTableHeader, " | ")))
+				return declared, problems
+			}
+			sawHeader = true
 			continue
 		}
-		kind := strings.TrimSpace(cells[1])
-		if kind == "類型" || strings.Trim(kind, "- ") == "" {
-			continue // 表頭與分隔列
+		if len(cells) == len(contextTableHeader) && strings.Trim(cells[0], "- ") == "" {
+			continue
 		}
-		generic := kind == "Generic"
-		for _, token := range contextTokenPattern.FindAllStringSubmatch(
-			contextNotePattern.ReplaceAllString(cells[2], ""), -1) {
-			name := token[1]
-			if !contextPackagePattern.MatchString(name) {
-				problems = append(problems, fmt.Sprintf(
-					"%s §1 lists %q, which is not a package directory this check can read", relative, name))
-				continue
-			}
-			directory, _, _ := strings.Cut(name, "/")
-			// 同一個套件出現在兩列時（`skillpkg` 既是 Core 的一員也被當
-			// Shared Kernel），只要有一列是非 Generic 就照非 Generic 要求。
-			shared := generic
-			if seen, ok := declared[directory]; ok {
-				shared = shared && seen
-			}
-			declared[directory] = shared
+		if len(cells) != len(contextTableHeader) {
+			problems = append(problems, fmt.Sprintf("%s §1 row has %d cells; want %d", relative, len(cells), len(contextTableHeader)))
+			continue
 		}
+		kind := cells[1]
+		architecture := architectureKind(kind)
+		switch architecture {
+		case architectureCore, architectureSupporting, architectureSharedKernel, architectureGeneric:
+		default:
+			problems = append(problems, fmt.Sprintf("%s §1 has unknown architecture kind %q", relative, kind))
+			continue
+		}
+		context := cells[0]
+		if strings.Trim(context, " -—–") == "" {
+			context = ""
+		}
+		if (architecture == architectureCore || architecture == architectureSupporting) && context == "" {
+			problems = append(problems, fmt.Sprintf("%s §1 kind %q requires a context name", relative, architecture))
+			continue
+		}
+		if (architecture == architectureSharedKernel || architecture == architectureGeneric) && context != "" {
+			problems = append(problems, fmt.Sprintf("%s §1 kind %q must use — instead of a context name", relative, architecture))
+			continue
+		}
+		id, currentPath := cells[2], cells[3]
+		if !boundaryIDPattern.MatchString(id) {
+			problems = append(problems, fmt.Sprintf("%s §1 has invalid Boundary ID %q", relative, id))
+			continue
+		}
+		if !contextPathPattern.MatchString(currentPath) {
+			problems = append(problems, fmt.Sprintf("%s §1 has invalid internal path %q", relative, currentPath))
+			continue
+		}
+		if _, duplicate := declared[id]; duplicate {
+			problems = append(problems, fmt.Sprintf("%s §1 declares Boundary ID %q twice", relative, id))
+			continue
+		}
+		identity := packageIdentity{Product: context, Kind: architecture, ID: id, Path: currentPath}
+		for _, previous := range declared {
+			if previous.Path == identity.Path {
+				problems = append(problems, fmt.Sprintf("%s §1 declares internal path %q twice (%s and %s)", relative, identity.Path, previous.ID, identity.ID))
+				break
+			}
+			if selectorsOverlap(previous.Path, identity.Path) {
+				problems = append(problems, fmt.Sprintf("%s §1 internal paths %q (%s) and %q (%s) overlap", relative, previous.Path, previous.ID, identity.Path, identity.ID))
+				break
+			}
+		}
+		declared[id] = identity
+	}
+	if !sawHeader {
+		problems = append(problems, fmt.Sprintf("%s §1 table header must be %q", relative, strings.Join(contextTableHeader, " | ")))
 	}
 	return declared, problems
+}
+
+func architectureNeedsDepguard(identity packageIdentity) bool {
+	return identity.Kind != architectureGeneric || (identity.ID != "apiserver" && identity.ID != "api")
+}
+
+func knownBoundaryID(identities map[string]packageIdentity, id string) bool {
+	_, ok := identities[id]
+	return ok
+}
+
+func resolveContextPath(path string, identities map[string]packageIdentity) (packageIdentity, bool) {
+	path = strings.Trim(filepath.ToSlash(path), "/")
+	var match packageIdentity
+	found, longest := false, -1
+	for _, identity := range identities {
+		selector := strings.TrimSuffix(identity.Path, "/*")
+		if path != selector && !strings.HasPrefix(path, selector+"/") {
+			continue
+		}
+		if strings.HasSuffix(identity.Path, "/*") && path == selector {
+			continue
+		}
+		if len(selector) > longest {
+			match, found, longest = identity, true, len(selector)
+		}
+	}
+	return match, found
+}
+
+func goPackageDirs(internal string) (map[string]bool, error) {
+	present := map[string]bool{}
+	err := filepath.WalkDir(internal, func(path string, entry os.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
+			return err
+		}
+		relative, err := filepath.Rel(internal, filepath.Dir(path))
+		if err != nil {
+			return err
+		}
+		present[filepath.ToSlash(relative)] = true
+		return nil
+	})
+	return present, err
+}
+
+func selectorExists(selector string, present map[string]bool) bool {
+	for path := range present {
+		if _, ok := resolveContextPath(path, map[string]packageIdentity{"": {Path: selector}}); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func guardCovers(selector string, guarded map[string]bool) bool {
+	return guarded[strings.TrimSuffix(selector, "/*")]
+}
+
+func guardedPathDeclared(path string, identities map[string]packageIdentity) bool {
+	for _, identity := range identities {
+		if strings.TrimSuffix(identity.Path, "/*") == path {
+			return true
+		}
+	}
+	return false
+}
+
+func selectorsOverlap(a, b string) bool {
+	a, b = strings.TrimSuffix(a, "/*"), strings.TrimSuffix(b, "/*")
+	return a == b || strings.HasPrefix(a, b+"/") || strings.HasPrefix(b, a+"/")
 }

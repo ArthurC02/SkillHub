@@ -20,21 +20,36 @@ ADR-002 在 2026-08-13 已定義九個領域模組與所有權——那就是戰
 
 ### 1. Context 對照表（ubiquitous language 的錨點）
 
-ADR-002 的領域模組正式對映為 Bounded Context。每個 `internal/` 套件必須屬於且僅屬於下表一列；新增套件必須先在本表登記。
+ADR-002 的領域模組正式對映為 Bounded Context。每個 Go package dir 必須由下表一列的 `現行 internal path` 完整段落匹配；`Boundary ID` 是 query ownership、caller 回報與未來搬遷期間不變的機械鍵。新增 Context 或移動 path 必須先改本表。
 
-| Bounded Context | 類型 | internal/ 套件 | 需求 ID 前綴 |
-| --- | --- | --- | --- |
-| Identity & Workspace | Core | `identity` | WS、SEC |
-| Catalog & Discovery | Core | `catalog` | DISC |
-| Skill Registry & Versioning | Core | `registry`、`skillpkg` | SKILL |
-| Trust & Supply Chain | Core | `ingest`（匯入管線；`SaveVersion` 是版本寫入的唯一驗證路徑） | SKILL、SEC |
-| Test Lab | Core | `testlab` | TEST |
-| Run Orchestration | Core | `run` | RUN、SBX |
-| Evaluation & Improvement | Core | `eval` | EVAL |
-| Packaging & Distribution | Core | `packaging` | PACK |
-| Run Trace | Supporting | `trace` | TRACE |
-| Policy & Usage | Supporting | `policy`（quota 與 retention 規則）、`analytics`（漏斗量測） | PDM、NFR |
-| —（跨切面，非 context） | Generic | `audit`、`outbox`、`objreconcile`、`llmclient`、`platform/*`、`apiserver`、`api/gen` | — |
+| 產品／Bounded Context | 類型 | Boundary ID | 現行 internal path | 需求 ID 前綴 |
+| --- | --- | --- | --- | --- |
+| 創作者帳戶與工作區／Identity & Workspace | Core | identity | creator/workspace | WS、SEC |
+| Skill 探索／Catalog & Discovery | Core | catalog | skill/discovery | DISC |
+| Skill 資產與版本歷史／Skill Registry & Versioning | Core | registry | skill/library | SKILL |
+| Skill 接納與信任／Trust & Supply Chain | Core | ingest | skill/admission | SKILL、SEC |
+| 試跑情境設計／Test Lab | Core | testlab | trial/design | TEST |
+| Skill 試跑執行／Run Orchestration | Core | run | trial/execution | RUN、SBX |
+| 成果判定與改善／Evaluation & Improvement | Core | eval | trial/improvement | EVAL |
+| Skill 交付與安裝／Packaging & Distribution | Core | packaging | skill/delivery | PACK |
+| 執行證據／Run Trace | Supporting | trace | trial/evidence | TRACE |
+| 創作者使用權益與資料生命週期／Policy & Usage | Supporting | policy | product/entitlements | PDM、NFR |
+| 創作者旅程學習／Product Analytics | Supporting | analytics | product/learning | O11Y、PDM |
+| — | Shared Kernel | skillpkg | shared/skillpkg | — |
+| — | Generic | audit | foundation/observability/audit | — |
+| — | Generic | outbox | foundation/messaging/outbox | — |
+| — | Generic | objreconcile | foundation/storage/objreconcile | — |
+| — | Generic | llmclient | foundation/integration/llmclient | — |
+| — | Generic | queue | foundation/messaging/queue | — |
+| — | Generic | objstore | foundation/storage/objstore | — |
+| — | Generic | metrics | foundation/observability/metrics | — |
+| — | Generic | partition | foundation/persistence/partition | — |
+| — | Generic | pgconv | foundation/persistence/pgconv | — |
+| — | Generic | envx | foundation/runtime/envx | — |
+| — | Generic | httpx | foundation/runtime/httpx | — |
+| — | Generic | platform | foundation/persistence/db/gen | — |
+| — | Generic | apiserver | entrypoint/api/apiserver | — |
+| — | Generic | api | entrypoint/api/gen | — |
 
 2026-08-20（DDD-006）：原設想自 `ingest` 拆出的「套件儲存面」經盤點實為無狀態 zip 讀取 helper（`PackageFS`／`PackageRoot`／`MaxZipBytes`），已移入 Shared Kernel `skillpkg`；版本寫入與 Trust 驗證管線不可分（M4 PACK-002 重用裁定），留在 `ingest`。
 
@@ -42,9 +57,35 @@ ADR-002 的領域模組正式對映為 Bounded Context。每個 `internal/` 套�
 
 `trace` 原稿漏列，2026-08-20 定案時補入：它擁有 Run Trace 事件的遮罩、入庫與讀取（ADR-009 的 Run Trace 平面），`run` 同步寫入、`eval` 同步讀取。
 
-2026-08-21（[ADR-035](./ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 實作註記）：**本表現在由 CI 對帳**。`devctl automation-check` 讓三份清單互相驗證——`apps/platform/internal/` 的套件目錄、本表「internal/ 套件」欄、`apps/platform/.golangci.yml` 的 depguard 規則——任一方向缺漏即 FAIL，AGENTS.md 第 11 條的「新增套件必須先在本表登記」因此第一次有強制力。兩點提醒：**depguard 覆蓋只對非 Generic 的列強制**（`apiserver` 是 composition root、`api/gen` 是生成碼，兩者刻意沒有規則），而**本表的格式是被解析的**——儲存格夾註解要用全形括號（解析器整段移除後才抽反引號，所以 `SaveVersion` 那類註解內的反引號不會被當成套件名），套件名要寫成 `名稱`、`名稱/*` 或 `名稱/子目錄`，其他寫法會 FAIL 而不是被略過。改本表的格式請順手跑一次 `automation-check`。決策內容不變。
+2026-08-21（[ADR-035](./ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 實作註記）：**本表現在由 CI 對帳**。`devctl automation-check` 讓三份清單互相驗證——所有 Go package dir、本表的 `Boundary ID`／`現行 internal path`、`apps/platform/.golangci.yml` 的 depguard `files` glob——任一方向缺漏即 FAIL，AGENTS.md 第 11 條的「新增套件必須先在本表登記」因此第一次有強制力。2026-08-22（ADR-038 授權）：表格欄位順序固定為「產品／Bounded Context、類型、Boundary ID、現行 internal path、需求 ID 前綴」；path 只能是小寫 path segment，或唯一的 terminal `/*`，重複或 prefix overlap 一律 FAIL。這讓 flat layout 先持續通過，之後 nested path 可由完整段落最長前綴解析。
 
-Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵律 9 的機制、`llmclient` 與 `run` 內的 provider gateway 是防腐層（Anticorruption Layer）、`platform/*` 是純技術基座、`apiserver` 是表現層與 composition root。
+2026-08-22（[ADR-037](./ADR-037-product-analytics-and-package-architecture-identities.md)）：本表原先同時把 `skillpkg` 列入 Skill Registry 並在 §2 稱為 Shared Kernel，也把 `analytics` 與 `policy` 放在同一列。ADR-037 修訂為每個 package 只有一個 architecture identity：`skillpkg` 只屬 Shared Kernel，Product Analytics 與 Policy & Usage 各自是 Supporting Bounded Context；Core、Supporting、Shared Kernel 與 Generic 現在都要求 depguard coverage，僅 `entrypoint/api/apiserver` 與 `entrypoint/api/gen` generated transport 例外。表格現值是供 CI 解析的修訂後事實來源，原決策與修訂原因保留於 ADR-037。
+
+Generic 列的套件**不得包含領域規則**：`foundation/observability/audit` 與 `foundation/messaging/outbox` 是鐵律 9 的機制、`foundation/integration/llmclient` 與 `run` 內的 provider gateway 是防腐層（Anticorruption Layer）、`foundation/*`（包含 `foundation/persistence/db/gen` generated persistence）是純技術基座、`entrypoint/api/apiserver` 是表現層與 composition root。
+
+2026-08-22（[ADR-038](./ADR-038-platform-product-domain-language-and-value-stream-navigation.md)，Accepted）命名釐清：本表的產品領域名稱供人讀導覽；`類型`、`Boundary ID` 與 `現行 internal path` 是 CI 的 architecture identity 對照。人讀文件可先用「試跑情境設計」→ `testlab`、「Skill 試跑執行」→ `run`、「執行證據」→ `trace`；仍須以本表的 stable Boundary ID 決定 owner、depguard 與 query ownership。後續實體遷移只改 path，不改 stable Boundary ID。
+
+2026-08-22（ADR-038 Phase 3、Batch 1）：`identity` 已遷移至 `creator/workspace`；stable Boundary ID、Go `package identity`、公開 API 與 query owner 均維持不變。
+
+2026-08-22（ADR-038 Phase 3、Batch 2）：`registry` 已遷移至 `skill/library`；stable Boundary ID、Go `package registry`、公開 API 與 query owner 均維持不變。
+
+2026-08-22（ADR-038 Phase 3、Batch 3）：`ingest` 已遷移至 `skill/admission`；stable Boundary ID、Go `package ingest`、公開 API 與 query owner 均維持不變。
+
+2026-08-22（ADR-038 Phase 3、Batch 4）：`analytics` 已遷移至 `product/learning`；stable Boundary ID、Go `package analytics`、公開 API 與 query owner 均維持不變。
+
+2026-08-22（ADR-038 Phase 3、Batch 5）：`catalog` 已遷移至 `skill/discovery`；stable Boundary ID、Go `package catalog`、公開 API 與 query owner 均維持不變。
+
+2026-08-22（ADR-038 Phase 3、Batch 6）：`testlab` 已遷移至 `trial/design`；stable Boundary ID、Go `package testlab`、公開 API 與 query owner 均維持不變。
+
+2026-08-22（ADR-038 Phase 3、Batch 7）：`policy` 已遷移至 `product/entitlements`；stable Boundary ID、Go `package policy`、公開 API 與 query owner 均維持不變。
+
+2026-08-22（ADR-038 Phase 3、Batch 8）：`packaging` 已遷移至 `skill/delivery`；stable Boundary ID、Go `package packaging`、公開 API 與 query owner 均維持不變。
+
+2026-08-22（ADR-038 Phase 3、Batch 9）：`trace` 已遷移至 `trial/evidence`；stable Boundary ID、Go `package trace`、公開 API 與 query owner 均維持不變。
+
+2026-08-22（ADR-038 Phase 3、Batch 10）：`run` 已遷移至 `trial/execution`（包含 `providertest`）；stable Boundary ID、Go `package run`、公開 API 與 query owner 均維持不變。
+
+2026-08-22（ADR-038 Phase 3、Batch 11）：`eval` 已遷移至 `trial/improvement`；stable Boundary ID、Go `package eval`、公開 API 與 query owner 均維持不變。
 
 ### 2. Context 間關係只有四種，且各有固定機制
 
@@ -52,7 +93,7 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 | --- | --- | --- |
 | 同步查詢（Customer–Supplier） | import 對方套件的公開 Service API | 「當下決策需要的事實」：preflight 查 quota、run 建立時取 Test Case snapshot |
 | 領域事件（Published Language） | Transactional Outbox（ADR-008），consumer 冪等 | 「觸發後續反應」：Run 終態 → 排評估、版本建立 → 重建索引投影 |
-| Shared Kernel | `skillpkg`（套件格式與驗證的純函式庫）與 `platform/*` | 無狀態、無政策的共用碼；擴充需雙方 context 同意 |
+| Shared Kernel | `skillpkg`（套件格式與驗證的純函式庫） | 無狀態、無政策的共用碼；擴充需使用它的 context 共同同意 |
 | 防腐層（ACL） | `llmclient`、`run` 的 provider gateway、（未來）payment 等外部系統一律經手寫轉譯層 | 外部契約不得滲入領域模型；外部型別止於 ACL |
 
 **判準**：跨 context 的呼叫若失敗會導致「當下這筆請求無法正確回應」→ 同步；若只是「之後該發生的事沒發生」→ 事件。這回答 ADR-002 待決策第 2 項。
@@ -62,7 +103,7 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 `.golangci.yml` 加入 `depguard` 規則，內容即本 ADR 附錄 A 的 import 白名單。規則：
 
 - 白名單是 context map 的 CI 表述：**任何跨 context 的新 import 必須在同一個 commit 內同時修改附錄 A 與 depguard 規則**，等於強制先過架構決策再過編譯。
-- 初版白名單「凍結現況」：現存的四類漂移以明確標註（`# drift: DDD-00x`）列入白名單，阻止新增越界，存量由 [調整計畫](../plans/platform-ddd-realignment-2026-08-19.md) 逐項清除後移出白名單。
+- 初版白名單「凍結現況」：現存的四類漂移以明確標註（`# drift: DDD-00x`）列入白名單，阻止新增越界；存量已在 DDD-001～060 收斂後清零，凍結摘要見 [M4 DDD 邊界收斂報告](../plans/mvp/m4/report-platform-ddd-boundary-convergence-2026-08-19.md)。
 - 移出白名單的項目不得再加回；加回＝新 ADR。
 
 ### 4. 戰術 DDD 刻意限縮
@@ -70,7 +111,7 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 - **Aggregate 只用於不變量密集處**：Run 狀態機（ADR-008）、Skill Version 不可變性（ADR-003）、Evaluation append-only（ADR-026）。這三處現有實作已是實質 aggregate，補文件與測試即可，不重寫。
 （2026-08-20 實作註記之三：**Skill Version 不可變性的「補文件與測試」已完成**，涵蓋三件事。
 
-一、**不變量宣告**：`apps/platform/internal/registry/doc.go`。這個 context 的兩張表規則相反——`skills` 可變（summary、access_restriction、redistribution、takedown_at、deleted_at 都是寫完才填的），`skill_versions` 一寫不改。doc.go 逐條列出版本 aggregate 的五條不變量與唯一寫入路徑（`write.go` 的匯入路徑、`registry.go` 的 Fork）。
+一、**不變量宣告**：`apps/platform/internal/skill/library/doc.go`。這個 context 的兩張表規則相反——`skills` 可變（summary、access_restriction、redistribution、takedown_at、deleted_at 都是寫完才填的），`skill_versions` 一寫不改。doc.go 逐條列出版本 aggregate 的五條不變量與唯一寫入路徑（`write.go` 的匯入路徑、`registry.go` 的 Fork）。
 
 二、**機械防線補在 CI 側**：這裡要更正一個常見誤讀——不可變性**從一開始就有機械防線**，是 `db/migrations/0005_immutability.sql`／`0013` 的 `enforce_immutable()` trigger，`db/tests/immutability_test.sql` 有可跑的證明。缺的不是「有沒有擋」，而是**什麼時候知道**：trigger 要等語句真的執行才 RAISE。新增的是 `db/query-owners.yaml` 的 `immutable:` 段落與 `tools/devctl` 的對應檢查（併入既有 `automation-check`，不新增 task），任何命中這些表的 UPDATE／DELETE 在寫出來的那個 PR 上就是紅的。
 
@@ -82,7 +123,7 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 
 ### 5. Composition root 唯一化
 
-`apiserver.NewApp(Config) (http.Handler, error)` 是 context wiring 的唯一地點；`cmd/api` 與整合測試都必須呼叫它。領域 Service 一律由 NewApp 注入，**禁止在方法內現場建構其他 context 的 Service**。
+`entrypoint/api/apiserver.NewApp(Config) (http.Handler, error)` 是 context wiring 的唯一地點；`cmd/api` 與整合測試都必須呼叫它。領域 Service 一律由 NewApp 注入，**禁止在方法內現場建構其他 context 的 Service**。
 
 （2026-08-20 實作註記：實際簽名為 `NewApp(Config) (*App, error)`＋`App.Handler()`——整合測試需要在路由表建立前 tune `App.Deps`、建立後取得 Service 把手，回傳裸 handler 做不到這兩件事。語意不變：wiring 仍只有這一個地點。）
 
@@ -90,12 +131,12 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 
 | Process | Composition root | wire 什麼 |
 | --- | --- | --- |
-| `cmd/api` | `apiserver.NewApp` | 全部 API context 的 Service 與 Handler；`run.Service` 只有 insert-only queue client、沒有 model gateway（鐵律 7） |
+| `cmd/api` | `entrypoint/api/apiserver.NewApp` | 全部 API context 的 Service 與 Handler；`run.Service` 只有 insert-only queue client、沒有 model gateway（鐵律 7） |
 | `cmd/worker` | `cmd/worker` 的 `buildWorkers` | `run.Service`（含 gateway 與可工作的 queue client）、`eval.Service`、outbox dispatcher 與全部 River worker／periodic job |
 | `cmd/maintenance` | 每個子命令各自的函式 | 該次工作用得到的單一 Service；刻意不共用，否則每個 job 都要依賴其他 job 的設定 |
 | `cmd/reindex` | `main()` | phase 1 直接用 generated query，phase 2 才建 `ingest.Service` |
 
-四個 root 是刻意的（deployment unit 不同、需要的設定也不同），此註記只是把文件講準：原文的「唯一化」約束仍然成立於各 process 內部——領域 Service 只在該 process 的 root 建構，禁止在方法內現場建構其他 context 的 Service。漂移防線改為機械化：`cmd/worker/main_test.go` 與 `internal/apiserver/app_test.go` 是不需要資料庫的 wiring smoke test，關鍵依賴漏注入即紅（worker 曾因漏設 `run.Service.Queue` 導致每個 run 都沒清理，當時沒有任何測試會紅）。`cmd/maintenance` 與 `cmd/reindex` 未補測試：兩者的 wiring 是單一 struct literal 且緊接著就被使用，漏注入會在該次命令當場失敗，smoke test 抓不到額外的失效模式。）
+四個 root 是刻意的（deployment unit 不同、需要的設定也不同），此註記只是把文件講準：原文的「唯一化」約束仍然成立於各 process 內部——領域 Service 只在該 process 的 root 建構，禁止在方法內現場建構其他 context 的 Service。漂移防線改為機械化：`cmd/worker/main_test.go` 與 `internal/entrypoint/api/apiserver/app_test.go` 是不需要資料庫的 wiring smoke test，關鍵依賴漏注入即紅（worker 曾因漏設 `run.Service.Queue` 導致每個 run 都沒清理，當時沒有任何測試會紅）。`cmd/maintenance` 與 `cmd/reindex` 未補測試：兩者的 wiring 是單一 struct literal 且緊接著就被使用，漏注入會在該次命令當場失敗，smoke test 抓不到額外的失效模式。）
 
 ## 考慮過的替代方案
 
@@ -110,13 +151,13 @@ Generic 列的套件**不得包含領域規則**：`audit` 與 `outbox` 是鐵�
 
 ## 待決策（三項均已於 2026-08-19 由負責人裁定）
 
-- ~~Policy & Usage 是否從 `run`／`analytics` 中抽成獨立套件，或等計費需求成立再抽。~~ → **裁定：完成 platform DDD 化（調整計畫 Phase 0～2 收斂）之後抽離**，列為 [DDD-014](../plans/platform-ddd-realignment-2026-08-19.md)。**2026-08-20 已執行**（`internal/policy`，見 §1 註記與附錄 A 兩列）。
-- ~~`testlab` snapshot 是否抽成獨立公開契約子包，或以文件標註公開面即可。~~ → **裁定：不抽子包，以 UI/UX 導向重整公開契約面**（單一讀寫門面＋依使用者旅程收整 HTTP 面），設計見 [testlab-contract-design-2026-08-19.md](../plans/testlab-contract-design-2026-08-19.md)，執行為 DDD-007。
+- ~~Policy & Usage 是否從 `run`／`analytics` 中抽成獨立套件，或等計費需求成立再抽。~~ → **裁定：完成 platform DDD 化後抽離**，列為 DDD-014。**2026-08-20 已執行**（現址 `internal/product/entitlements`，見 §1 註記與附錄 A 兩列）；完整收斂摘要見 [M4 DDD 邊界收斂報告](../plans/mvp/m4/report-platform-ddd-boundary-convergence-2026-08-19.md)。
+- ~~`testlab` snapshot 是否抽成獨立公開契約子包，或以文件標註公開面即可。~~ → **裁定：不抽子包，以 UI/UX 導向重整公開契約面**（單一讀寫門面＋依使用者旅程收整 HTTP 面）；DDD-052 的 read ownership 收斂見 [ADR-035](./ADR-035-read-ownership-enforcement-and-context-map-completeness.md)，凍結摘要見 [M4 DDD 邊界收斂報告](../plans/mvp/m4/report-platform-ddd-boundary-convergence-2026-08-19.md)。執行為 DDD-007。
 - ~~事件目錄（outbox 事件 schema）是否進 `contracts/`，或以 Go 型別＋文件為準。~~ → **裁定：依最佳實務落 `contracts/events/`（跟隨 Run Trace 契約前例，程式註解亦早已預告此落點）**；文件目錄先行、JSON Schema 待第一個非 Go consumer 出現再補。目錄本體：[contracts/events/domain-events.md](../../contracts/events/domain-events.md)，程式側收斂為 DDD-012。
 
 ## 附錄 A：跨 context import 白名單（初版＝凍結現況）
 
-依賴方向以「A → B」表示 A import B。`platform/*`、`audit`、`outbox`、`api/gen`、`llmclient`（ACL）、`skillpkg`（Shared Kernel）對所有 context 開放（Generic），不列。**機器版**是 `apps/platform/.golangci.yml` 的 depguard 規則（DDD-002）；本附錄與機器版的 `drift:` 標記集合由 `devctl automation-check` 在 CI 比對，分岔即紅。測試檔（`_test.go`）不受規則約束——整合測試的跨 context import 由 DDD-011 收斂。
+依賴方向以「A → B」表示 A import B。`foundation/*`、`foundation/persistence/db/gen`、`entrypoint/api/gen` 等 Generic package 與 `shared/skillpkg` Shared Kernel 對所有 context 開放，不列。**機器版**是 `apps/platform/.golangci.yml` 的 depguard 規則（DDD-002）；本附錄與機器版的 `drift:` 標記集合由 `devctl automation-check` 在 CI 比對，分岔即紅。測試檔（`_test.go`）不受規則約束——整合測試的跨 context import 由 DDD-011 收斂。
 
 2026-08-20 依實測 import graph（Docker `go list`）修正三處：補「run → trace」列；`llmclient` 的使用者實為 catalog／eval／ingest／testlab 四者，原「僅 eval、catalog」有誤，且它屬 Generic 不逐列；`run → testlab` 實況含 snapshot 建立、grant 簽發與排程三個呼叫點。
 

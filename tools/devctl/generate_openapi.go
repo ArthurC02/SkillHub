@@ -128,7 +128,7 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		{
 			label:  "go-openapi",
 			source: goRoot,
-			target: filepath.Join(root, "apps", "platform", "internal", "api", "gen"),
+			target: filepath.Join(root, "apps", "platform", "internal", "entrypoint", "api", "gen"),
 		},
 	}, nil
 }

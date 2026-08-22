@@ -38,20 +38,27 @@ WHERE deleted_at IS NULL
 ORDER BY deletion_requested_at
 LIMIT $1;
 
--- name: ListWorkspaceObjectKeys :many
--- Private uploaded content of one workspace: dataset files and run/download
--- artifacts (PDM-006 6.1 硬刪除). Package objects are deliberately absent —
--- they are content-addressed and shared with every fork, so removing one would
--- break a third party's skill rather than erase this account's data.
-SELECT d.object_key FROM datasets d WHERE d.workspace_id = sqlc.arg(workspace_id)
-UNION
-SELECT a.object_key FROM artifacts a WHERE a.workspace_id = sqlc.arg(workspace_id);
+-- name: ListWorkspaceDatasetObjectKeys :many
+-- Private object keys are split by owner. Identity combines these scoped
+-- answers before deleting bytes; package objects remain deliberately absent.
+SELECT object_key FROM datasets WHERE workspace_id = $1;
+
+-- name: ListWorkspaceRunArtifactObjectKeys :many
+SELECT object_key FROM artifacts
+WHERE workspace_id = $1 AND kind = 'run_output';
+
+-- name: ListWorkspaceDownloadArtifactObjectKeys :many
+SELECT object_key FROM artifacts
+WHERE workspace_id = $1 AND kind = 'download_package';
 
 -- name: DeleteWorkspaceDatasets :execrows
 DELETE FROM datasets WHERE workspace_id = $1;
 
--- name: DeleteWorkspaceArtifacts :execrows
-DELETE FROM artifacts WHERE workspace_id = $1;
+-- name: DeleteWorkspaceRunArtifacts :execrows
+DELETE FROM artifacts WHERE workspace_id = $1 AND kind = 'run_output';
+
+-- name: DeleteWorkspaceDownloadArtifacts :execrows
+DELETE FROM artifacts WHERE workspace_id = $1 AND kind = 'download_package';
 
 -- name: PurgeUnreferencedSkills :execrows
 -- Hard-deletes the workspace's skills that nothing outside it depends on, with

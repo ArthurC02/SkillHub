@@ -202,8 +202,8 @@ jobs:
       - name: Check database-only immutability constraints
         run: |
           # The integration harness (TestMain runs the migrations) lives in
-          # internal/apiserver since DDD-011 moved the API-wide tests there.
-          go test -count=1 ./internal/apiserver -run '^$'
+          # internal/entrypoint/api/apiserver owns the API-wide tests.
+          go test -count=1 ./internal/entrypoint/api/apiserver -run '^$'
           docker run --rm --network host -v "$GITHUB_WORKSPACE:/workspace:ro" \
             docker.io/pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f psql "$SKILLHUB_TEST_DATABASE_URL" \
             -v ON_ERROR_STOP=1 --single-transaction -f /workspace/db/tests/immutability_test.sql

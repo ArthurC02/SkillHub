@@ -9,7 +9,7 @@ info:
 servers:
   - url: http://localhost:8080
 
-# Every route in internal/apiserver/router.go is wrapped in RequireSession
+# Every route in internal/entrypoint/api/apiserver/router.go is wrapped in RequireSession
 # unless it is listed below with its own `security`. Inheriting the requirement
 # here rather than repeating it per operation keeps the two in step: a new
 # operation is authenticated by default, which is the direction a mistake should
@@ -3311,7 +3311,7 @@ components:
       name: sh_session
       description: |
         The opaque session token set by the auth routes and resolved by
-        RequireSession (apps/platform/internal/identity/http.go). HttpOnly,
+        RequireSession (apps/platform/internal/creator/workspace/http.go). HttpOnly,
         SameSite=Lax, Secure outside plain-http local dev, so a browser sends it
         on its own and no client code reads or sets it - the generated TS client
         only has to send credentials with the request.

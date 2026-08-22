@@ -8,7 +8,7 @@ atomically replaces only generated subdirectories.
 | --- | --- | --- |
 | `contracts/openapi/public.yaml` | OpenAPI Generator 7.19.0 `typescript-fetch`, digest-pinned container | `packages/api-client-ts/src/generated/` |
 | `contracts/openapi/llm-internal.yaml` | datamodel-code-generator 0.35.0/Pydantic v2, fully locked image in `python/` | `packages/api-stub-py/src/skillhub_api_stub/generated/` |
-| `contracts/openapi/public.yaml` | ogen 1.24.0 server-only, fully locked image in `go/` | `apps/platform/internal/api/gen/` |
+| `contracts/openapi/public.yaml` | ogen 1.24.0 server-only, fully locked image in `go/` | `apps/platform/internal/entrypoint/api/gen/` |
 
 The Python image uses a digest-pinned Python base, copies uv from its own pinned
 image, and installs the complete `uv.lock`; do not replace it with an unpinned
@@ -33,7 +33,7 @@ The generated Go `Handler` spans the whole public API and its
 `UnimplementedHandler` returns not-implemented for every operation. It is
 therefore **not** mounted as the platform router. The production pilot embeds
 that handler, overrides only `GetHealth`, and places the generated server behind
-the existing exact `GET /healthz` pattern in `internal/apiserver/router.go`.
+the existing exact `GET /healthz` pattern in `internal/entrypoint/api/apiserver/router.go`.
 This keeps the complete AuthN/AuthZ matrix visible in one hand-reviewed file and
 makes every other generated operation unreachable.
 

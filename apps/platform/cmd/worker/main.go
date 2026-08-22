@@ -22,21 +22,22 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/eval"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/llmclient"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/objreconcile"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/outbox"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/packaging"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/db/gen"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/metrics"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/objstore"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/platform/queue"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/run"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/testlab"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/trace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
+"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
+"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 func main() {
@@ -166,6 +167,7 @@ type workerDeps struct {
 type workerSet struct {
 	Runs        *run.Service
 	Evaluations *eval.Service
+	Packaging   *packaging.Service
 	RunEvents   *eval.RunEventConsumer
 	Events      *outbox.Dispatcher
 	Objects     *objreconcile.Service
@@ -179,25 +181,75 @@ type workerSet struct {
 	Scheduled   []string
 }
 
+func packagingCandidates(list func(context.Context, int32) ([]packaging.ReconcileCandidate, error)) objreconcile.ListFunc {
+	return func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+		rows, err := list(ctx, limit)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]objreconcile.Candidate, len(rows))
+		for i, row := range rows {
+			out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
+		}
+		return out, nil
+	}
+}
+
+func datasetCandidates(list func(context.Context, int32) ([]testlab.ReconcileCandidate, error)) objreconcile.ListFunc {
+	return func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+		rows, err := list(ctx, limit)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]objreconcile.Candidate, len(rows))
+		for i, row := range rows {
+			out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
+		}
+		return out, nil
+	}
+}
+
 // buildWorkers wires this process's object graph: no environment reads, no
 // database round trips, no goroutines. Everything here is a struct literal, a
 // registration or a back-assignment, so the failure it exists to prevent — a
 // dependency nobody noticed was never set — is reachable from a test.
 func buildWorkers(pool *pgxpool.Pool, deps workerDeps) (*workerSet, error) {
 	set := &workerSet{WorkerKinds: map[string]bool{}}
+	downloads := &packaging.Service{Pool: pool}
+	set.Packaging = downloads
+	registrySvc := &registry.Service{Pool: pool}
+	testlabSvc := &testlab.Service{Pool: pool}
+	downloads.TestLab = testlabSvc
 
 	set.Runs = &run.Service{
 		Pool: pool, Providers: deps.Providers, Store: deps.Store, Gateway: deps.Gateway,
+		TestLab:     testlabSvc,
 		TraceSigner: deps.TraceSigner, TraceIngestBaseURL: deps.TraceIngestBaseURL,
+		ActiveArtifactReferences: downloads.ActiveArtifactReferences,
+		ReadSkill: func(ctx context.Context, workspaceID, skillID pgtype.UUID) (run.SkillFacts, bool, error) {
+			skill, found, err := registrySvc.WorkspaceSkill(ctx, workspaceID, skillID)
+			return run.SkillFacts{AccessRestriction: skill.AccessRestriction}, found, err
+		},
+		ReadVersion: func(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.VersionFacts, bool, error) {
+			version, found, err := registrySvc.WorkspaceVersion(ctx, workspaceID, versionID)
+			return run.VersionFacts{
+				ID: version.ID, SkillID: version.SkillID, ContentHash: version.ContentHash,
+				PackageObjectKey: version.PackageObjectKey,
+			}, found, err
+		},
 	}
+	traceSvc := newTraceService(pool, deps.TraceSigner, set.Runs)
+	set.Runs.Trace = traceSvc
 
 	// The Trace context, injected rather than built inside eval's own methods
 	// (ADR-032 §5). Same signer as the dispatcher above, so the process has one
 	// Trace configuration and not two.
 	set.Evaluations = &eval.Service{
 		Pool: pool, Store: deps.Store,
-		Trace: &trace.Service{Pool: pool, Signer: deps.TraceSigner},
+		Trace: traceSvc, TestLab: testlabSvc,
 	}
+	wireEvaluationRunReaders(set.Evaluations, set.Runs)
+	wireEvaluationRegistryReaders(set.Evaluations, registrySvc)
 	if deps.LLM != nil {
 		set.Evaluations.Judge = deps.LLM
 		// EVAL-002's proposal leg, same service and same gateway. Without it a run
@@ -211,7 +263,7 @@ func buildWorkers(pool *pgxpool.Pool, deps workerDeps) (*workerSet, error) {
 	// outbox hands that event to this consumer, so internal/run does not have to
 	// know evaluation exists. Insert is filled in below, once the client the whole
 	// worker set is registered with exists.
-	set.RunEvents = &eval.RunEventConsumer{Current: gen.New(pool).GetCurrentEvaluation}
+	set.RunEvents = &eval.RunEventConsumer{HasCurrentEvaluation: set.Evaluations.HasCurrentEvaluation}
 
 	// Who listens to what, as data rather than as one callback (DDD review P2).
 	// Every event type in the catalogue is either claimed by a consumer here or
@@ -254,8 +306,11 @@ func buildWorkers(pool *pgxpool.Pool, deps workerDeps) (*workerSet, error) {
 	// either is left unset — see main_test.go.
 	set.Objects = &objreconcile.Service{
 		Pool: pool, Store: deps.Store,
-		RecordArtifactPurged: packaging.MarkArtifactPurged,
-		RecordDatasetLost:    testlab.MarkDatasetObjectLost,
+		ListExpiredArtifacts: packagingCandidates(downloads.ExpiredReconcileCandidates),
+		ListClaimedArtifacts: packagingCandidates(downloads.ClaimedReconcileCandidates),
+		ListClaimedDatasets:  datasetCandidates(testlabSvc.ClaimedReconcileCandidates),
+		RecordArtifactPurged: downloads.MarkArtifactPurged,
+		RecordDatasetLost:    testlabSvc.MarkDatasetObjectLost,
 	}
 	addWorker(set, workers, &objreconcile.Worker{Svc: set.Objects})
 
@@ -307,6 +362,85 @@ func buildWorkers(pool *pgxpool.Pool, deps workerDeps) (*workerSet, error) {
 	set.Runs.Queue = client
 	set.RunEvents.Insert = client.Insert
 	return set, nil
+}
+
+func newTraceService(pool *pgxpool.Pool, signer *trace.Signer, runs *run.Service) *trace.Service {
+	return &trace.Service{
+		Pool: pool, Signer: signer,
+		ReadRunState: func(ctx context.Context, workspaceID, runID pgtype.UUID) (trace.RunState, bool, error) {
+			state, found, err := runs.TraceRun(ctx, workspaceID, runID)
+			return trace.RunState{Status: state.Status, StatusReason: state.StatusReason}, found, err
+		},
+		ReadIngestRunState: func(ctx context.Context, runID pgtype.UUID) (trace.IngestRunState, bool, error) {
+			state, found, err := runs.TraceIngestRun(ctx, runID)
+			return trace.IngestRunState{
+				ID: state.ID, WorkspaceID: state.WorkspaceID, Status: state.Status, FinishedAt: state.FinishedAt,
+			}, found, err
+		},
+		ReadRunTransitions: func(ctx context.Context, workspaceID, runID pgtype.UUID) ([]trace.RunTransition, error) {
+			rows, err := runs.TraceTransitions(ctx, workspaceID, runID)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]trace.RunTransition, len(rows))
+			for i, row := range rows {
+				out[i] = trace.RunTransition{ToStatus: row.ToStatus, Reason: row.Reason}
+			}
+			return out, nil
+		},
+	}
+}
+
+func wireEvaluationRunReaders(service *eval.Service, runs *run.Service) {
+	service.ReadRunFacts = func(ctx context.Context, workspaceID, runID pgtype.UUID) (eval.RunFacts, bool, error) {
+		facts, found, err := runs.EvaluationRun(ctx, workspaceID, runID)
+		return evalRunFacts(facts), found, err
+	}
+	service.ReadEvaluationInput = func(ctx context.Context, workspaceID, runID pgtype.UUID) (eval.EvaluationInput, bool, error) {
+		input, found, err := runs.EvaluationInput(ctx, workspaceID, runID)
+		artifacts := make([]eval.ArtifactFacts, len(input.Artifacts))
+		for i, artifact := range input.Artifacts {
+			artifacts[i] = eval.ArtifactFacts{
+				FileName: artifact.FileName, ContentType: artifact.ContentType,
+				SizeBytes: artifact.SizeBytes, ContentHash: artifact.ContentHash,
+			}
+		}
+		return eval.EvaluationInput{
+			Run: evalRunFacts(input.Run), Artifacts: artifacts, LatestAttempt: input.LatestAttempt,
+		}, found, err
+	}
+}
+
+func wireEvaluationRegistryReaders(service *eval.Service, registryService *registry.Service) {
+	service.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (eval.VersionFacts, bool, error) {
+		version, found, err := registryService.WorkspaceVersion(ctx, workspaceID, versionID)
+		return eval.VersionFacts{ID: version.ID, SkillID: version.SkillID, PackageObjectKey: version.PackageObjectKey}, found, err
+	}
+	service.ReadLatestVersion = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (eval.VersionFacts, bool, error) {
+		version, found, err := registryService.LatestVersion(ctx, workspaceID, skillID)
+		return eval.VersionFacts{ID: version.ID, SkillID: version.SkillID, PackageObjectKey: version.PackageObjectKey}, found, err
+	}
+	service.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (eval.SkillFacts, bool, error) {
+		skill, found, err := registryService.WorkspaceSkill(ctx, workspaceID, skillID)
+		return eval.SkillFacts{
+			ID: skill.ID, Name: skill.Name, Summary: skill.Summary, AccessRestriction: skill.AccessRestriction,
+		}, found, err
+	}
+	service.ReadRuntimeCompatibility = func(ctx context.Context, versionID pgtype.UUID) (eval.RuntimeCompatibility, bool, error) {
+		compat, found, err := registryService.RuntimeCompatibility(ctx, versionID)
+		return eval.RuntimeCompatibility{
+			Capability: compat.Capability, Runtime: compat.Runtime, RuntimeImage: compat.RuntimeImage,
+		}, found, err
+	}
+}
+
+func evalRunFacts(facts run.EvaluationRun) eval.RunFacts {
+	return eval.RunFacts{
+		ID: facts.ID, WorkspaceID: facts.WorkspaceID,
+		SkillVersionID: facts.SkillVersionID, TestCaseSnapshotID: facts.TestCaseSnapshotID,
+		Status: facts.Status, StatusReason: facts.StatusReason, RuntimeSnapshot: facts.RuntimeSnapshot,
+		StartedAt: facts.StartedAt, FinishedAt: facts.FinishedAt, FailureClass: facts.FailureClass,
+	}
 }
 
 // addWorker registers one worker and remembers the kind it claims, which is the
