@@ -1,6 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { RETENTION, SEARCH } from "./fixtures";
+import { stubPlatform } from "./stub";
 
 /**
  * 03:QA-008 / 04 丙-21③ — the three things `src/a11y.test.tsx` states in its own
@@ -22,38 +22,6 @@ import { RETENTION, SEARCH } from "./fixtures";
  *   3. **The real Tab key.** jsdom does not implement it, so the other file
  *      asserts tab-ability rather than tab order.
  */
-
-/**
- * Every request the app makes is answered from here — no platform, no Postgres,
- * no model key. Two things this had to learn the hard way:
- *
- * Routes match in reverse registration order, so the catch-all goes in first.
- * And it cannot be scoped by path prefix: the platform owns /me and /policy/*
- * as well as /api/*, and anything let through reaches the preview server, which
- * answers index.html to every unknown path — a 200 full of HTML, parsed as
- * JSON, failing a long way from its cause. So it catches everything and filters
- * on what the request is for; documents, styles and scripts are the app itself
- * loading and have to go through.
- *
- * There is no `/api/skills/*` route even though a detail fixture is the obvious
- * way to reach a comparison table: that glob also matches `/api/skills/search`
- * and, registered later, would win — handing the search page a skill-detail
- * body. /policy reaches the same table through one four-field response instead.
- */
-async function stubApi(page: Page) {
-  await page.route("**/*", (route, request) => {
-    const kind = request.resourceType();
-    if (kind === "document" || kind === "stylesheet" || kind === "script" || kind === "font") {
-      return route.continue();
-    }
-    return route.fulfill({ status: 401, json: { error: "unstubbed in e2e" } });
-  });
-  await page.route("**/me", (route) =>
-    route.fulfill({ status: 401, json: { error: "anonymous" } }),
-  );
-  await page.route("**/api/skills/search**", (route) => route.fulfill({ json: SEARCH }));
-  await page.route("**/policy/data-retention", (route) => route.fulfill({ json: RETENTION }));
-}
 
 test.describe("QA-008 composite pixels", () => {
   /**
@@ -92,7 +60,7 @@ test.describe("QA-008 composite pixels", () => {
      * becomes the hole it was built to close.
      */
     test(`color-contrast decides and passes: ${where}`, async ({ page }) => {
-      await stubApi(page);
+      await stubPlatform(page);
       await page.goto(route);
       await expect(page.locator(".app-nav a").first()).toBeVisible();
       if (route === "/?q=pdf") {
@@ -124,7 +92,7 @@ test.describe("QA-008 composite pixels", () => {
    * hard-coding one press would have answered it only for Chromium and Firefox.
    */
   test("the focus ring is actually painted", async ({ page }) => {
-    await stubApi(page);
+    await stubPlatform(page);
     await page.goto("/");
 
     let outline: { width: string; style: string } | null = null;
@@ -151,7 +119,7 @@ test.describe("QA-008 real layout", () => {
    * scroll sideways; the table inside it must.
    */
   test("a comparison table does not push the page sideways at 375px", async ({ page }) => {
-    await stubApi(page);
+    await stubPlatform(page);
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/policy");
     await expect(page.locator(".compare-table")).toBeVisible();
@@ -190,7 +158,7 @@ test.describe("QA-008 the real Tab key", () => {
    * property jsdom cannot see.
    */
   test("tab order never goes backwards through the document", async ({ page }) => {
-    await stubApi(page);
+    await stubPlatform(page);
     await page.goto("/");
     await expect(page.locator(".app-nav a").first()).toBeVisible();
 
