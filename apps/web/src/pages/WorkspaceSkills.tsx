@@ -90,8 +90,19 @@ export function WorkspaceSkills() {
                   {s.access_restriction && (
                     <span className="badge badge-danger">授權保留：{s.access_restriction}</span>
                   )}
+                  {/*
+                    Linked, not just stated: when the scan below is the source's
+                    (ADR-042 決策 6) the attribution is only useful if the reader
+                    can go and look at what it was attributed from. The id has
+                    been on the row since 丙-31; it was rendering as a sentence.
+                  */}
                   {s.forked_from_skill_id ? (
-                    <span className="badge">Fork 自其他 Skill</span>
+                    <span className="badge">
+                      Fork 自
+                      <Link to="/skills/$skillId" params={{ skillId: s.forked_from_skill_id }}>
+                        來源 Skill
+                      </Link>
+                    </span>
                   ) : (
                     <span className="badge">自己匯入</span>
                   )}

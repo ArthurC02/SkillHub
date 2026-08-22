@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 )
 
 // The one invariant BetaGateClosed exists for: an unaudited cohort must not
@@ -101,7 +101,7 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	// The read back out of that projection. Unset, GET /skills answers 500 rather
 	// than a page of skills with no risk block on it: a row that quietly lost its
 	// scan reads as a scanned row that found nothing (DISC-004).
-	if app.Deps.Registry.Svc.SkillRisks == nil {
+	if reg := app.Deps.Registry.Svc; reg.SkillRisks == nil || reg.CatalogSkillRisks == nil {
 		t.Error("the registry service is missing catalog's projected scan read")
 	}
 	if search := app.Deps.Search.Svc; search.Registry != app.Deps.Registry.Svc || search.SourceByID == nil {

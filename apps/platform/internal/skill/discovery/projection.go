@@ -154,15 +154,58 @@ func (s *Service) SkillRisks(
 	if err != nil {
 		return nil, err
 	}
+	return fillScans(out, rows, func(r gen.ListSkillScansRow) (pgtype.UUID, []byte) {
+		return r.SkillID, r.Scan
+	})
+}
+
+// CatalogSkillRisks is SkillRisks against the public catalogue instead of one
+// workspace, for the one caller that legitimately reads outside its own scope:
+// a fork whose bytes are byte-identical to a catalogue ancestor shows the
+// ancestor's scan (ADR-042 決策 6). The scope is baked into the SQL and there is
+// no workspace argument, exactly like GetCatalogSkill — a widened scope the
+// caller could name is what 鐵律 3 forbids, and a private ancestor therefore
+// simply does not come back.
+func (s *Service) CatalogSkillRisks(
+	ctx context.Context, skillIDs []pgtype.UUID,
+) (map[string]json.RawMessage, error) {
+	unknown, err := json.Marshal(riskHint(nil))
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]json.RawMessage, len(skillIDs))
+	for _, id := range skillIDs {
+		out[pgconv.UUIDString(id)] = unknown
+	}
+	if len(skillIDs) == 0 {
+		return out, nil
+	}
+
+	rows, err := gen.New(s.Pool).ListCatalogSkillScans(ctx, skillIDs)
+	if err != nil {
+		return nil, err
+	}
+	return fillScans(out, rows, func(r gen.ListCatalogSkillScansRow) (pgtype.UUID, []byte) {
+		return r.SkillID, r.Scan
+	})
+}
+
+// fillScans replaces the 未測量 placeholder for every row that carries a scan.
+// A row with no document, and one whose document has no scan, keeps it: silence
+// is the one answer DISC-004 forbids.
+func fillScans[R any](
+	out map[string]json.RawMessage, rows []R, split func(R) (pgtype.UUID, []byte),
+) (map[string]json.RawMessage, error) {
 	for _, row := range rows {
-		if len(row.Scan) == 0 {
+		id, scan := split(row)
+		if len(scan) == 0 {
 			continue
 		}
-		blob, err := json.Marshal(riskHint(row.Scan))
+		blob, err := json.Marshal(riskHint(scan))
 		if err != nil {
 			return nil, err
 		}
-		out[pgconv.UUIDString(row.SkillID)] = blob
+		out[pgconv.UUIDString(id)] = blob
 	}
 	return out, nil
 }

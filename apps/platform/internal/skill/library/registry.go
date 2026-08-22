@@ -61,6 +61,11 @@ type Service struct {
 	// column, and the owner's list has to say what a search row says about the
 	// same skill (02:NFR-007 第 3 條). Re-declaring the shape would be the drift.
 	SkillRisks func(ctx context.Context, workspaceID pgtype.UUID, skillIDs []pgtype.UUID) (map[string]json.RawMessage, error)
+	// CatalogSkillRisks is the same read against the public catalogue, for forks
+	// whose bytes are identical to a catalogue ancestor (ADR-042 決策 6). It takes
+	// no workspace argument because its scope is fixed inside catalog's SQL —
+	// this side must not be able to name one (鐵律 3).
+	CatalogSkillRisks func(ctx context.Context, skillIDs []pgtype.UUID) (map[string]json.RawMessage, error)
 }
 
 // requireProjection refuses to start any write that maintains the search

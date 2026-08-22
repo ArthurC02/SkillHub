@@ -267,6 +267,7 @@ func NewApp(cfg Config) (*App, error) {
 	// No adapter, unlike SourceByID directly above: the block crosses as bytes
 	// precisely so that neither side can re-declare its shape.
 	registrySvc.SkillRisks = catalogSvc.SkillRisks
+	registrySvc.CatalogSkillRisks = catalogSvc.CatalogSkillRisks
 
 	return &App{
 		Deps: Deps{

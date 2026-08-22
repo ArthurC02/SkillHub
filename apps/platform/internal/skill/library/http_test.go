@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -37,6 +38,32 @@ func TestVerificationDistinguishesForkFromImport(t *testing.T) {
 		t.Errorf("a state with no measurement must carry no timestamp: %q", *forked.ScannedAt)
 	}
 
+	// ADR-042 決策 6. Same row as the fork above plus an ancestor the SQL was
+	// willing to hand back, which it only does when the content hashes match now,
+	// the ancestor is in the public catalogue, and it is neither deleted nor taken
+	// down. It stays `scanned` because an inherited measurement is a value with an
+	// attribution, not an absence — and the timestamp is the ancestor's, which is
+	// older than the fork on purpose.
+	older := pgtype.Timestamptz{Time: time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC), Valid: true}
+	inh := verificationOf(gen.ListSkillsRow{
+		VerifiedAt:           at,
+		InheritedFromSkillID: pgtype.UUID{Valid: true},
+		InheritedFromName:    "PDF Summariser",
+		InheritedVerifiedAt:  older,
+	})
+	if inh.Value != "scanned" || inh.ScannedAt == nil {
+		t.Fatalf("identical bytes carry the ancestor's scan: %+v", inh)
+	}
+	if *inh.ScannedAt != "2026-07-01T09:00:00Z" {
+		t.Errorf("the inherited time is the ancestor's import, not the fork: %q", *inh.ScannedAt)
+	}
+	if inh.Label == imported.Label {
+		t.Error("an inherited scan and a local one must not read as the same provenance")
+	}
+	if !strings.Contains(inh.Note, "PDF Summariser") {
+		t.Errorf("ADR-042 forbids inheriting silently; the ancestor is unnamed: %q", inh.Note)
+	}
+
 	empty := verificationOf(gen.ListSkillsRow{})
 	if empty.Value != "not_applicable" {
 		t.Errorf("no version means nothing to scan, got %q", empty.Value)
@@ -44,7 +71,7 @@ func TestVerificationDistinguishesForkFromImport(t *testing.T) {
 
 	// §2.9 again, from the other end: every state is worded, so none of them can
 	// reach a screen as a blank or as an English enum value.
-	for _, v := range []skillVerification{imported, forked, empty} {
+	for _, v := range []skillVerification{imported, forked, inh, empty} {
 		if v.Label == "" || v.Note == "" {
 			t.Errorf("state %q has no wording: %+v", v.Value, v)
 		}

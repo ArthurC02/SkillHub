@@ -286,15 +286,28 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	// exact failure, arriving through a deployment mistake instead of a scan.
 	// app_test.go asserts the wiring, so this is the runtime half of a guard that
 	// normally fails at startup.
-	if h.Svc.SkillRisks == nil {
+	if h.Svc.SkillRisks == nil || h.Svc.CatalogSkillRisks == nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
 		return
 	}
 	ids := make([]pgtype.UUID, 0, len(rows))
+	// Ancestors are asked for separately because they are a different scope, not
+	// because they are a different question (ADR-042 決策 6). The SQL has already
+	// refused every ancestor that fails a precondition, so anything in here is one
+	// whose bytes still hash to the same value as the row's own.
+	ancestors := make([]pgtype.UUID, 0, len(rows))
 	for _, row := range rows {
 		ids = append(ids, row.Skill.ID)
+		if row.InheritedFromSkillID.Valid {
+			ancestors = append(ancestors, row.InheritedFromSkillID)
+		}
 	}
 	risks, err := h.Svc.SkillRisks(r.Context(), ws.ID, ids)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
+		return
+	}
+	inherited, err := h.Svc.CatalogSkillRisks(r.Context(), ancestors)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "list failed")
 		return
@@ -302,9 +315,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	out := make([]ownSkillResponse, 0, len(rows))
 	for _, row := range rows {
+		risk := risks[pgconv.UUIDString(row.Skill.ID)]
+		if row.InheritedFromSkillID.Valid {
+			risk = inherited[pgconv.UUIDString(row.InheritedFromSkillID)]
+		}
 		out = append(out, ownSkillResponse{
 			skillResponse: toSkillResponse(row.Skill),
-			Risk:          risks[pgconv.UUIDString(row.Skill.ID)],
+			Risk:          risk,
 			Verification:  verificationOf(row),
 		})
 	}
@@ -361,15 +378,38 @@ func verificationOf(row gen.ListSkillsRow) skillVerification {
 			Label: "不適用",
 			Note:  "這個 Skill 還沒有任何版本,沒有可掃描的內容。",
 		}
+	case row.InheritedFromSkillID.Valid:
+		// A copy inherits measurements that hold for bytes and never those that
+		// hold for an environment (ADR-042 決策 6). All four preconditions were
+		// enforced in ListSkills, including comparing the content hash now rather
+		// than trusting it from fork time — so reaching here means these bytes and
+		// the ancestor's bytes are the same bytes, and a deterministic scan of them
+		// is the same answer wherever it ran.
+		//
+		// The state stays `scanned` because this is not an absence: it is a value
+		// with an attribution, which is why it does not appear in 設計系統 §2.9's
+		// table. The timestamp is the ancestor's import, so it is *older* than the
+		// fork — honest, and it tells the reader how stale the scan is.
+		at := row.InheritedVerifiedAt.Time.UTC().Format(time.RFC3339)
+		return skillVerification{
+			Value: "scanned",
+			Label: "已掃描（來源）",
+			Note: "這個版本是 Fork 進來的複本,內容雜湊與來源「" + row.InheritedFromName +
+				"」相同,所以沿用來源匯入時的靜態掃描結果。時間是來源掃描的時間,不是 Fork 的時間;" +
+				"相容性與試跑結果不沿用,那些量的是內容在某個環境下的行為。",
+			ScannedAt: &at,
+		}
 	case !row.VerifiedSourceID.Valid:
 		// Import sets source_id; Fork leaves it NULL because skill_sources rows
 		// belong to the origin workspace (registry.Fork). So a version with no
-		// source is one that arrived as a copy.
+		// source is one that arrived as a copy — and this branch is the copy whose
+		// ancestor could *not* answer: taken down, deleted, outside the public
+		// catalogue (無權檢視 rather than inherited), or no longer the same bytes.
 		return skillVerification{
 			Value: "not_measured",
 			Label: "未測量",
-			Note: "這個版本是 Fork 進來的複本,靜態掃描是在來源工作區做的,平台沒有在你的工作區重跑。" +
-				"內容位元組相同,但那是來源的量測結果,不是這裡的。",
+			Note: "這個版本是 Fork 進來的複本,而它的來源現在無法提供掃描結果" +
+				"(已下架、不在公開目錄,或內容已經不同),平台也沒有在你的工作區重跑。",
 		}
 	default:
 		at := row.VerifiedAt.Time.UTC().Format(time.RFC3339)

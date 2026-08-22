@@ -257,7 +257,9 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
   // The contract carried forked_from_* the whole time; a narrower local type for
   // the same endpoint was the app's entire view of it, so the page could not
   // tell a fork from an import even though its own header promised to.
-  expect(text()).toContain("Fork 自其他 Skill");
+  // 「Fork 自來源 Skill」 since the attribution became a link (ADR-042 決策 6):
+  // the id was already on the row and was rendering as an unreachable sentence.
+  expect(text()).toContain("Fork 自");
   expect(text()).toContain("自己匯入");
   // §2.2: the 100-row cap was enforced and invisible, so a workspace past it got
   // a short list that read as the whole list.
@@ -297,6 +299,53 @@ test("WS-004 a forked row says the scan happened somewhere else, not that it pas
   expect(text()).not.toContain("未發現警告");
   // §2.9: never a blank, and never a date on a state that has none.
   expect(container.querySelector(".badge-row")?.textContent ?? "").not.toBe("");
+});
+
+test("WS-004 a fork of identical bytes shows the source's scan, attributed and dated to the source", async () => {
+  // ADR-042 決策 6. The measurement holds for the bytes, not for the location —
+  // in-toto binds an attestation to the subject's digest — so a copy whose hash
+  // still matches a public-catalogue ancestor carries the ancestor's scan. What
+  // is forbidden is doing it silently, so this asserts the three visible halves:
+  // the label is not the same as a local scan's, the note names the source, and
+  // the date is the source's import rather than the moment of the fork.
+  vi.stubGlobal("fetch", () =>
+    json({
+      skills: [
+        {
+          skill_id: SKILL,
+          name: "Fork 來的",
+          summary: "從目錄 Fork 的。",
+          redistribution: "allowed",
+          access_restriction: null,
+          forked_from_skill_id: "s-origin",
+          risk: SCANNED.risk,
+          verification: {
+            value: "scanned",
+            label: "已掃描（來源）",
+            note: "這個版本是 Fork 進來的複本,內容雜湊與來源「PDF Summariser」相同,所以沿用來源匯入時的靜態掃描結果。",
+            scanned_at: "2026-07-01T09:00:00Z",
+          },
+        },
+      ],
+      limit: 100,
+      truncated: false,
+    }),
+  );
+  await render(<WorkspaceSkills />, () => text().includes("從目錄 Fork 的"));
+
+  expect(text()).toContain("已掃描（來源）");
+  expect(text()).toContain("PDF Summariser");
+  // The source's import time, older than the fork. An inherited scan showing the
+  // fork's own timestamp would read as 「剛剛掃過」, which is the failure the whole
+  // named-state design exists to prevent.
+  expect(text()).toContain("2026-07-01");
+  // The disclosures come across with it, because they are facts about the bytes.
+  expect(text()).toContain("含可執行 Script 檔案");
+  // Attribution has to be reachable, not just stated.
+  const hrefs = Array.from(container.querySelectorAll("a")).map(
+    (a) => a.getAttribute("href") ?? "",
+  );
+  expect(hrefs).toContain("/skills/s-origin");
 });
 
 test("WS-004 the own-skills list links each row on to its files and packaging", async () => {

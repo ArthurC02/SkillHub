@@ -341,3 +341,19 @@ WHERE sd.skill_id = sk.id
 SELECT skill_id, scan
 FROM search_documents
 WHERE workspace_id = $1 AND skill_id = ANY(sqlc.arg(skill_ids)::uuid[]);
+
+-- name: ListCatalogSkillScans :many
+-- The same read as ListSkillScans, for the public catalogue instead of one
+-- workspace. Its only caller is the inherited-measurement path: a fork whose
+-- bytes are identical to a catalogue ancestor's shows the ancestor's scan
+-- (ADR-042 決策 6).
+--
+-- Takes no workspace argument on purpose, exactly like GetCatalogSkill: the
+-- scope is baked into the statement so a caller cannot name a wider one (鐵律
+-- 3). Skills outside the catalogue never match, so a private ancestor stays
+-- invisible and the caller reports 未測量 rather than reaching into another
+-- workspace to answer.
+SELECT sd.skill_id, sd.scan
+FROM search_documents sd
+JOIN workspaces w ON w.id = sd.workspace_id AND w.is_catalog
+WHERE sd.skill_id = ANY(sqlc.arg(skill_ids)::uuid[]);

@@ -21,6 +21,48 @@ func (q *Queries) DeleteSearchDocument(ctx context.Context, skillID pgtype.UUID)
 	return err
 }
 
+const listCatalogSkillScans = `-- name: ListCatalogSkillScans :many
+SELECT sd.skill_id, sd.scan
+FROM search_documents sd
+JOIN workspaces w ON w.id = sd.workspace_id AND w.is_catalog
+WHERE sd.skill_id = ANY($1::uuid[])
+`
+
+type ListCatalogSkillScansRow struct {
+	SkillID pgtype.UUID
+	Scan    []byte
+}
+
+// The same read as ListSkillScans, for the public catalogue instead of one
+// workspace. Its only caller is the inherited-measurement path: a fork whose
+// bytes are identical to a catalogue ancestor's shows the ancestor's scan
+// (ADR-042 決策 6).
+//
+// Takes no workspace argument on purpose, exactly like GetCatalogSkill: the
+// scope is baked into the statement so a caller cannot name a wider one (鐵律
+// 3). Skills outside the catalogue never match, so a private ancestor stays
+// invisible and the caller reports 未測量 rather than reaching into another
+// workspace to answer.
+func (q *Queries) ListCatalogSkillScans(ctx context.Context, skillIds []pgtype.UUID) ([]ListCatalogSkillScansRow, error) {
+	rows, err := q.db.Query(ctx, listCatalogSkillScans, skillIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCatalogSkillScansRow
+	for rows.Next() {
+		var i ListCatalogSkillScansRow
+		if err := rows.Scan(&i.SkillID, &i.Scan); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingEnrichment = `-- name: ListPendingEnrichment :many
 SELECT sd.skill_id, sd.workspace_id, sd.name, sv.package_object_key
 FROM search_documents sd

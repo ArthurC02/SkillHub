@@ -30,13 +30,25 @@ import { mapValues } from '../runtime';
  * and the alternative is a twenty-first enum→中文 map on the client for a
  * state whose entire job is to be worded carefully.
  * 
- * `value` is `scanned` | `not_measured` | `not_applicable`. `scanned`: this
- * version was imported here and the static scan ran on import.
- * `not_measured`: it arrived as a fork, so the scan ran in the workspace it
- * was forked from and not here — **not a claim that the content is unsafe**,
- * and not a claim that it is fine either. Whether an ancestor's measurement
- * may be attributed to a byte-identical copy is a product decision nobody
- * has made; what is settled is that it may not be made silently.
+ * `value` is `scanned` | `not_measured` | `not_applicable`.
+ * 
+ * `scanned` covers two cases and `label` tells them apart, because they are
+ * the same claim with different provenance rather than different claims.
+ * Either this version was imported here and the scan ran on import, or it is
+ * a fork whose bytes are identical to a public-catalogue ancestor's and the
+ * ancestor's scan is being attributed to it (ADR-042 決策 6 — in-toto binds
+ * an attestation to the subject's digest, not to where it sits, and the scan
+ * is a deterministic function of the bytes). In the inherited case
+ * `scanned_at` is the **ancestor's** import time, so it is older than the
+ * fork, and `note` names the ancestor. Only measurements that hold for bytes
+ * are inherited: compatibility, trial results and evaluation verdicts
+ * measure behaviour in an environment and are never carried across.
+ * 
+ * `not_measured`: a fork whose ancestor cannot answer — taken down, deleted,
+ * outside the public catalogue (無權檢視, and a lineage column existing does
+ * not widen ADR-011), or no longer the same bytes. **Not a claim that the
+ * content is unsafe**, and not a claim that it is fine either.
+ * 
  * `not_applicable`: no version exists yet, so there is nothing to scan.
  * 
  * @export

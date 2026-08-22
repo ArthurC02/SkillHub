@@ -223,15 +223,32 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 }
 
 const listSkills = `-- name: ListSkills :many
-SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, ver.created_at AS verified_at, ver.source_id AS verified_source_id
+SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, ver.created_at AS verified_at, ver.source_id AS verified_source_id,
+       inh.skill_id AS inherited_from_skill_id,
+       -- COALESCEd for the reason search.sql spells out: sqlc reads the table's
+       -- NOT NULL and cannot see that an outer-joined column is nullable, so the
+       -- generated scan takes a plain string and blows up on the first row with
+       -- no inheritable ancestor — which is most rows.
+       COALESCE(inh.name, '') AS inherited_from_name,
+       inh.created_at AS inherited_verified_at
 FROM skills sk
 LEFT JOIN LATERAL (
-    SELECT v.created_at, v.source_id
+    SELECT v.created_at, v.source_id, v.content_hash
     FROM skill_versions v
     WHERE v.skill_id = sk.id
     ORDER BY v.version_number DESC
     LIMIT 1
 ) ver ON true
+LEFT JOIN LATERAL (
+    SELECT anc.id AS skill_id, anc.name, ancv.created_at
+    FROM skills anc
+    JOIN workspaces w ON w.id = anc.workspace_id AND w.is_catalog
+    JOIN skill_versions ancv ON ancv.id = sk.forked_from_version_id AND ancv.skill_id = anc.id
+    WHERE ver.source_id IS NULL
+      AND anc.id = sk.forked_from_skill_id
+      AND anc.deleted_at IS NULL AND anc.takedown_at IS NULL
+      AND ancv.content_hash = ver.content_hash
+) inh ON true
 WHERE sk.workspace_id = $1 AND sk.deleted_at IS NULL
 ORDER BY sk.created_at DESC
 LIMIT $2 OFFSET $3
@@ -244,9 +261,12 @@ type ListSkillsParams struct {
 }
 
 type ListSkillsRow struct {
-	Skill            Skill
-	VerifiedAt       pgtype.Timestamptz
-	VerifiedSourceID pgtype.UUID
+	Skill                Skill
+	VerifiedAt           pgtype.Timestamptz
+	VerifiedSourceID     pgtype.UUID
+	InheritedFromSkillID pgtype.UUID
+	InheritedFromName    string
+	InheritedVerifiedAt  pgtype.Timestamptz
 }
 
 // The owner's own skills, newest first, with the one measurement fact the list
@@ -262,6 +282,27 @@ type ListSkillsRow struct {
 // caller reports 未測量 rather than a timestamp that reads like a fresh scan.
 // Catalogue search never sees that case: it only lists catalog workspaces, and
 // nothing forks into one.
+//
+// The `inh` lateral is ADR-042 decision 6: a copy inherits measurements that hold
+// for *bytes* (the static scan, spec validation, the licence verdict) and never
+// those that hold for an environment. in-toto binds an attestation to the
+// subject's digest rather than to where it sits, and the scan is a deterministic
+// function of the bytes, so the same content hash is the same answer. All four
+// preconditions are in the join and none of them are assumed:
+//
+//   - content_hash is compared **now**, not trusted from fork time. A fork whose
+//     newest version is its own later import fails this and falls through to the
+//     ordinary `scanned` branch, which is correct — it has a scan of its own.
+//   - the ancestor must live in a catalog workspace. An ancestor in somebody
+//     else's private workspace is 無權檢視 (ADR-011 does not widen because a
+//     lineage column happens to exist), and it simply does not match here.
+//   - takedown_at IS NULL: the bytes are still those bytes, but "we still say
+//     this about them" stopped being true.
+//   - deleted_at IS NULL, for the same reason.
+//
+// created_at here is the **ancestor's** import, so it is older than the fork.
+// That is the point: an older timestamp is honest, and it tells the reader how
+// stale the scan is.
 func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListSkillsRow, error) {
 	rows, err := q.db.Query(ctx, listSkills, arg.WorkspaceID, arg.Limit, arg.Offset)
 	if err != nil {
@@ -287,6 +328,9 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 			&i.Skill.Redistribution,
 			&i.VerifiedAt,
 			&i.VerifiedSourceID,
+			&i.InheritedFromSkillID,
+			&i.InheritedFromName,
+			&i.InheritedVerifiedAt,
 		); err != nil {
 			return nil, err
 		}
