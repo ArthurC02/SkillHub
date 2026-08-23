@@ -11,7 +11,7 @@ ADR-046 決策 6 的查證補記寫著：
 
 > `skillpkg.go` 的**阻擋級**檢查全部是結構性的：`SKILL.md` 在不在、frontmatter 是不是合法 YAML、有沒有規格外的欄位、`name` 的大小寫格式與長度、`description` 在不在與長度、壓縮檔的路徑逃逸。
 
-**這句話漏了一個，而漏掉的那個不是結構檢查。** `SeverityError` 實際有 12 個 code，第 12 個是 `possible-secret`（[skillpkg.go:900](../../apps/platform/internal/shared/skillpkg/skillpkg.go)）：它對**每個檔案的內容**跑六條憑證樣式 regex（AWS access key id、GitHub token、`sk-` 開頭 32 字元以上、Slack token、`BEGIN ... PRIVATE KEY`、`aws_secret_access_key=` 後接 20 個非空白字元），命中即阻擋。程式自己的註解逐字寫著「blocks on likely secrets (error)」，而 `Validate()` 一定會呼叫 `scanTree`。
+**這句話漏了一個，而漏掉的那個不是結構檢查。** `SeverityError` 實際有 12 個 code，第 12 個是 `possible-secret`（[skillpkg.go:909](../../apps/platform/internal/shared/skillpkg/skillpkg.go)）：它對**每個檔案的內容**跑六條憑證樣式 regex（AWS access key id、GitHub token、`sk-` 開頭 32 字元以上、Slack token、`BEGIN ... PRIVATE KEY`、`aws_secret_access_key=` 後接 20 個非空白字元），命中即阻擋。程式自己的註解逐字寫著「blocks on likely secrets (error)」，而 `Validate()` 一定會呼叫 `scanTree`。
 
 spike 那 20 個樣本剛好沒撞到它，所以那個錯誤沒有在數字上留下痕跡——**它只留在句子裡，而句子被抄了三份**（ADR-046 決策 6、`02:GEN-003`、`generate_spike_test.go` 檔頭）。這正是 ADR-043 與丙-38 各自付過學費的形狀，這次輪到我們自己。
 

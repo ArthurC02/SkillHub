@@ -232,7 +232,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 			s.auditGenerateFailure(ctx, ws, task, attempt, map[string]any{
 				"failure": "blocked",
 				// Codes and nothing else. A finding's Message never carries the
-				// matched value (skillpkg.go:900) and this must not become the
+				// matched value (skillpkg.go:909) and this must not become the
 				// place that reintroduces it (NFR-002, iron rule 11).
 				"codes": blockingCodes(res.Report),
 			})

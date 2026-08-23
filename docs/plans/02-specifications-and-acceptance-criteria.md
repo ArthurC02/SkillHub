@@ -379,7 +379,7 @@ queued → provisioning → preparing → running → evaluating
 
 **第一層：這個 Skill 可不可以產出任何 Download Artifact**
 
-- 平台以 `skills.redistribution` 四態（`allowed`／`blocked`／`unknown`／`self_supplied`，策展內容預設 `unknown`）記錄可散布性。**放行的有兩個值，理由不同**（[ADR-045](../adr/ADR-045-self-supplied-content-is-not-redistribution.md)）：`allowed` 是對**授權**的判定（有人確認過可以再散布）；`self_supplied` 是對**供給者**的事實（這份內容是這個工作區自己帶進來的，平台交還給它不算再散布——沒有第二方）。`unknown` 與 `blocked` 一律不放行（ADR-027 決策 4）。授權判準依序為：授權運算式為未知 → `unknown`；在 OSI 允許再散布的清單內 → `allowed`；已知的 source-available 條款 → `blocked`；認得但無法歸類 → `unknown`。
+- 平台以 `skills.redistribution` **五態**（`allowed`／`blocked`／`unknown`／`self_supplied`／`generated`，策展內容預設 `unknown`）記錄可散布性。**放行的有三個值，理由各不相同**（[ADR-045](../adr/ADR-045-self-supplied-content-is-not-redistribution.md)）：`allowed` 是對**授權**的判定（有人確認過可以再散布）；`self_supplied` 是對**供給者**的事實（這份內容是這個工作區自己帶進來的，平台交還給它不算再散布——沒有第二方）。`unknown` 與 `blocked` 一律不放行（ADR-027 決策 4）。授權判準依序為：授權運算式為未知 → `unknown`；在 OSI 允許再散布的清單內 → `allowed`；已知的 source-available 條款 → `blocked`；認得但無法歸類 → `unknown`。<br>**第五個值 `generated` 於 2026-08-23 加入**（`GEN-005`、[ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md) 決策 4）：平台依使用者的任務描述寫出來的位元組，交還給本人不是再散布，所以它**放行**；它**不是 `allowed`**，也**不與 `self_supplied` 互相替代**——後者問的是「使用者有沒有權利把別人的位元組傳下去」，前者問的是「模型寫出來的東西歸誰」，兩個不同的問題共用一個值，遲早會有一個被另一個的答案放行。
 - **`self_supplied` 由匯入寫入，且只寫給非策展工作區**（`workspaces.is_catalog` 為否）。策展目錄是經同一個上傳端點載入的，若以「是不是上傳」而非「誰的工作區」為判準，全部策展內容都會被標成 self-supplied，而 Fork 會把這個判定帶進每一個 Fork 它的工作區——那正是 [ADR-021](../adr/ADR-021-skill-license-provenance.md) §5.3 要求誤判必須錯在「擋」的方向所防的事。
 - **`self_supplied` 不得被當成 `allowed`。** 任何日後的「發佈到目錄」路徑必須面對一個不是 `allowed` 的值並停下來，不得把它視同已判定。
 - **License 狀態為「已人工確認」不得成為放行條件**（`CONTENT-002`：已人工確認不等於可再散布）。
@@ -591,7 +591,7 @@ queued → provisioning → preparing → running → evaluating
 - **生成器不得產生 `license` 欄位。** License 狀態預設為「未知」，由使用者自行宣告後才進入「已宣告」；模型寫出的任何授權字串一律丟棄，不是記下來再標示（ADR-046 決策 5）。
 - 生成物的 `redistribution` 為 `generated`：**使用者下載得了自己生成的 Skill**（判準同 [ADR-045](../adr/ADR-045-self-supplied-content-is-not-redistribution.md) 決策 4——平台沒有多加一個散布環節），但該值**不是 `allowed`**，任何發佈路徑都必須停下來要求判定。
 - `generated` 與 `self_supplied` 是**兩個值**，不得互相替代或一起放行（ADR-046 決策 4）。
-- 生成物**不進公開目錄，也不進搜尋索引**，包括生成它的人自己搜尋時；工作區的 Skill 列表是它唯一的入口。`DISC-002` 的來源層級篩選不因此新增值域。解鎖這條路徑的三個前置見 [ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 3。
+- 生成物**不進公開目錄，也搜尋不到**，包括生成它的人自己搜尋時；工作區的 Skill 列表是它唯一的入口。<br>**2026-08-23 實作訂正：排除做在讀取側，而不是不寫索引列**（`GEN-007`）。本條原文寫的是「不進搜尋索引」，照字面做就是不寫 `search_documents` 那一列——**但工作區自己的 Skill 列表正是從那一列讀靜態掃描結果**，而下方 `GEN-003` 又禁止生成物比匯入的 Skill 少一個警告。**不寫那一列，等於用刪掉揭露來換取這條保證。** 使用者看到的結果不變：搜尋查不到它，本人也查不到。`DISC-002` 的來源層級篩選不因此新增值域。解鎖這條路徑的三個前置見 [ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 3。
 - **任務描述原文的保存期限是「與它生成出來的那個 Skill Version 同壽」，不是一個獨立的天數**（`GEN-010`、`SEC-006`）。給它獨立的期限會產出一個「還在、但說不出自己從哪來」的生成 Skill，而它沒有上游，那份文字就是它全部的來源紀錄。刪除走既有的 `PurgeUnreferencedSkillSources`：不再被任何版本引用的來源列在帳號刪除時實體刪除。**這一條不得與 `O11Y-004`（分析事件不記查詢原文）互相援引**——一個是使用者主動提交的自由文字，一個是使用者沒提交任何東西就會產生的計數，兩者剛好都關於「打了什麼字」而規則相反。
 - 生成物**可以作為 `WS-001` Fork 的來源**；Fork 後的版本逐字繼承 `redistribution = generated`（ADR-047 決策 4）。**這一條需要一支具名測試**——繼承若失效，該值退回 `unknown` 會把下載鎖回去，而那個失效沒有任何症狀。
 
@@ -603,7 +603,7 @@ queued → provisioning → preparing → running → evaluating
 - **這道門幾乎是語法門，不是品質門**：阻擋級的 12 個 code 裡 **11 條是結構／語法檢查**，只有 `possible-secret` 一條比對檔案內容（[ADR-048](../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md)）。實測端到端通過率 **16／20**（[m5/report-generate-spike.md](mvp/m5/report-generate-spike.md)），**而兩張「Skill 本來就做不到」的干擾卡都通過了**。**UI 與文案不得把「通過驗證」呈現為任何品質、可用性或安全結論**，該說的話在 `GEN-004`。
 - 阻擋級 finding 出現時，系統**自動重試恰好一次**——同一個 prompt、同一個模型、**不加修正提示**（[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 1：缺陷是隨機排版手滑不是系統性能力缺陷）。第二次仍被擋即為失敗。
 - **重試之後仍有殘餘失敗，UI 不得承諾成功率**：實測一次重試把 80% 帶到 **90%**，不是趨近於零（[ADR-051](../adr/ADR-051-the-cheaper-model-generated-better-packages.md) 決策 3，同 §2.2「不得顯示沒被強制的承諾」的既有紀律）。
-- **例外：finding 的 code 是 `possible-secret` 時不重試，直接失敗**（[ADR-048](../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md)）——那是寫作習慣不是手滑，同一個 prompt 重試會原樣重現。同時出現兩類時**以不重試為準**。失敗訊息含檔案路徑但**不得含比對到的值**（`skillpkg.go:898` 的既有紀律，NFR-002）。
+- **例外：finding 的 code 是 `possible-secret` 時不重試，直接失敗**（[ADR-048](../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md)）——那是寫作習慣不是手滑，同一個 prompt 重試會原樣重現。同時出現兩類時**以不重試為準**。失敗訊息含檔案路徑但**不得含比對到的值**（`skillpkg.go:909` 的既有紀律，NFR-002）。
 - 失敗時把 `skillpkg.Validate` 的 finding **逐字**交給使用者（同 `SKILL-002` 對匯入失敗的既有處理），不重寫成安慰話；並提供「再試一次」與「修改任務描述」兩條出路，**不得留下一個半成品版本**。
 - 生成物若含 Script、可執行檔、外部 URL 或可能的 Secrets，揭露方式與匯入的 Skill **逐字相同**（`SKILL-002`、`SKILL-003`）；**不得因為內容由平台生成而少一個警告或降一級風險標示**。平台的模型不是可信來源，它只是一個沒有上游的來源。
 - 生成物內的 Script 一律只在 Sandbox 執行（鐵律 1）；生成與驗證階段皆不執行套件內任何 Script。
