@@ -202,10 +202,10 @@ psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 | H-3 | 負責人 | **PDM-009 追認**：[pdm-009-beta-proposal.md §8](pdm-009-beta-proposal.md) 的十項檢查清單全部 `- [x]`。**追認時一併過報酬預算**（最大單項支出，`cost-estimation.md` 沒有任何一行涵蓋它） | 該清單十項全勾 ＋ 回寫 `03` §1 與 `04` 乙-15 | `BETA-001`／`005`、`RELEASE-009` |
 | H-4 | 負責人 | **PDM-010 擇一**：首月 `min(20,30)=20` 或 20+30=50。提案自己要求「明確擇一，不要留給實作推斷」 | `internal/run/quota.go` 的四個常數拿掉「待追認」 ＋ `RUN_QUOTA` 開啟 | 配額**顯示**（強制可先做，顯示必須等值定案——乙-2 的教訓） |
 | H-5 | 負責人 | **PDM-006 追認**：保存期限分級表 ＋ §6.1 的帳號刪除分類 | `DOWNLOAD_ARTIFACT_RETENTION`、`ANALYTICS_RETENTION` 與 `TRACE_RETENTION` 三者都有值（第三個是 DDD-032 新增，未設時分割輪替整個停擺，見 §2.3／§2.6）＋ 同意書 §3 的 ⬜ 填完 | `SEC-006`、`RELEASE-005`、**整個 `BETA-002`**（未定值前一列都不收） |
-| H-6 | 負責人 | **PDM-008 追認**：打包目標清單與對外措辭。**「2 個已驗證 Profile」目前只成立 1 個**，追認時要決定改口徑還是等 H-9 | `m0/pdm-proposals.md` §9.1 該列打勾 | `PACK-006` 的決策依據 |
+| H-6 | 負責人 | **PDM-008 追認**：打包目標清單與對外措辭。~~**「2 個已驗證 Profile」目前只成立 1 個**，追認時要決定改口徑還是等 H-9~~ **2026-08-23：H-9 已完成，這個數字現在是真的，追認時不必再處理它**；追認本身仍缺 | `m0/pdm-proposals.md` §9.1 該列打勾 | `PACK-006` 的決策依據 |
 | H-7 | 負責人 | **PDM-004／005 的定案紀錄**（值實質已定，缺追認；PDM-005 另有「兩份文件對是否已定案說法不一致」要裁一個，乙-9） | 同上 | `03` §1、乙-9 |
 | H-8 | 負責人 | **M1 閘門 D 日宣告**與其後 10 天（1 場 pilot ＋ 9 場正式 ＋ 分析）。**先閘門、再封測**，三個理由見 [README.md §5.3](README.md) | `gate-test/analysis.md` 的閘門結論 | **封測不能與閘門並行**；`CONTENT-011` 的解凍也等它 |
-| H-9 | 負責人 | **一次本機安裝**：套件放進 `~/.claude/skills/`、`/skills` 看得到、跑一次驗證 Prompt；落檔後把 `claude-code.json` 的 `support_status` 改 `verified` 並進 `version` 版號 | 落檔證據 ＋ 兩個欄位改動 | `PACK-009`、PDM-008 的「2 個已驗證」 |
+| ~~H-9~~ **✅ 2026-08-23 完成** | 負責人 | ~~**一次本機安裝**：套件放進 `~/.claude/skills/`、`/skills` 看得到、跑一次驗證 Prompt；落檔後把 `claude-code.json` 的 `support_status` 改 `verified` 並進 `version` 版號~~ **三步全部走完**：平台經真實 HTTP 路徑產出的 `claude-code` 套件（`content_hash 6be1065…`）→ 解進 `~/.claude/skills/` → `/skills` **同一個 session** 就列出（使用者與 agent 兩邊各自確認）→ 以 profile 的 `verification_prompt` 叫用，載入成功、回出約定 marker、讀到 SKILL.md 旁的 `reference.md` | `claude-code.json` `support_status=verified`、`version` 1.1.0，落點與**不成立的部分**同寫在 `known_limitations[0]`（一個套件／一個 OS／純提示型／未裝依賴未執行腳本） | `PACK-009` **已勾**、PDM-008 的「2 個已驗證」**現在是真的** |
 | H-10 | 負責人＋法務 | **`anthropics/skills` 法務終判**（乙-10）；並在寄詢問信前**擇一 4A／4B** 且**實測那四筆真的打不出包**（不得以政策文件代替實際試過） | 終判紀錄 ＋ 寄出的信 | `CONTENT-003`／`004`、`RELEASE-003` |
 | H-11 | 負責人＋法務 | **同意書定稿**：[`../gate-test/consent-and-data-policy.md` §9](../gate-test/consent-and-data-policy.md) 的待填清單全部有值 ＋ 法務確認用語與法域 ＋ 未成年受測者的處理（草稿未涵蓋） | §9 十一項全勾 | **招募寄確認信時沒有東西可簽**；`BETA-001`；乙-16 |
 

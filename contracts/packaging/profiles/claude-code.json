@@ -2,9 +2,9 @@
   "schema_version": "1.0",
   "id": "claude-code",
   "kind": "profile",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "display_name": "Claude Code",
-  "support_status": "unverified",
+  "support_status": "verified",
   "install": {
     "locations": [
       {
@@ -30,13 +30,14 @@
   ],
   "mcp_config": null,
   "known_limitations": [
-    "Unverified, and specifically: nobody has yet installed a Skill Hub package into Claude Code and confirmed it end to end. The paths here are Claude Code's documented Skill locations, and the discovery mechanism underneath is the one Skill Hub measured through the Claude Agent SDK - neither of those is the same as having done it. This field flips to verified when that check is recorded, not before (PACK-008, PACK-009).",
+    "Verified on 2026-08-23 on Windows 11 with Claude Code: a claude-code package built by this platform (content_hash 6be106520dec72b588ee764f96e472d7f208484d12d7259609ee7b9b6e00931a) was unzipped into ~/.claude/skills/, appeared in /skills without restarting the session, loaded when invoked, and read a file that sits beside SKILL.md. What that does NOT establish: it was one package on one operating system, the Skill was prompt-only, and no dependency was installed or script executed. `verified` here means the install path works, which is what this field has always meant (PACK-008) - it is not a statement that any given Skill runs.",
     "The install path is the same as the Claude Agent SDK target's. The difference is not the path, it is the scope and the check: here it is a directory Claude Code watches for you (personal or project level, chosen by which one you unzip into), there it is resolved from the cwd your own script passes to query(). Picking either one here gets you the same files on disk.",
     "Skills that arrive through a plugin or are synced from claude.ai live somewhere else (<plugin>/skills/, ~/.claude/skills/synced/) and plugin skills are namespaced. A package you install by hand is neither of those, so it appears under its own name and is not managed or updated by anything.",
     "Skill Hub does not install dependencies and does not modify SKILL.md's existing frontmatter for this target - it only adds files. If the Skill needs Python packages, you install them."
   ],
   "notes": [
     "Install locations follow Claude Code's documented Skill discovery: personal level ~/.claude/skills/, project level .claude/skills/, plus .claude/skills/ in parent directories up to the repository root.",
-    "The zip carries a single top-level directory named after the Skill, so unzipping inside ~/.claude/skills/ or .claude/skills/ produces the right layout in one step."
+    "The zip carries a single top-level directory named after the Skill, so unzipping inside ~/.claude/skills/ or .claude/skills/ produces the right layout in one step.",
+    "The claim in verification_steps that an already-watched directory picks up a new Skill without a restart was documentation until 2026-08-23; it was confirmed on that install (~/.claude/skills/ already existed, the Skill appeared in the same session)."
   ]
 }
