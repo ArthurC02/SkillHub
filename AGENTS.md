@@ -12,14 +12,14 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 - **「程式面收斂」不等於「MVP 完成」**：`03` §18 的 `RELEASE-001`～`010` **十項全部誠實不勾**。共同的三個阻擋是**甲類四項未到期**、**六項 PDM 未追認**、**M1 閘門 D 日未宣告**。逐項的「誰做什麼驗什麼」見 [docs/plans/mvp/m4/release-checklist.md](docs/plans/mvp/m4/release-checklist.md)。
 - **M1 驗證閘門仍未正式通過**：材料已備妥（[docs/plans/mvp/gate-test/](docs/plans/mvp/gate-test/)），**D 日仍待負責人宣告**。**M4 與前三個里程碑不同——封測不能與閘門並行**（三個理由見 [m4/README.md §5.3](docs/plans/mvp/m4/README.md)），打包批可以。同意書草稿已補（[gate-test/consent-and-data-policy.md](docs/plans/mvp/gate-test/consent-and-data-policy.md)，**待法務確認**），它是閘門與封測共用的前置。
 - **ADR-020～029 已入列**（身分／Session、License 溯源、Sandbox 部署拓撲與安全定值、Agent SDK 版本釘選、頂層目錄分「跑的」與「讀的」；Run 終態與 Evaluation 判定分離、重評 append-only 與 LLM Judge 四條防線；**M4 的三份**：Download Artifact 的雙雜湊與「MVP 明文不簽章」、封測准入與配額強制點、產品分析事件的邊界）。**M4 沒有新增 ADR-030 之後的任何一份**——三份在文件批就寫完了。
-- **殘項三類清單**（甲＝部署期驗收、乙＝待負責人決策、丙＝實作或資料工作）見 [docs/plans/04-backlog-and-handoffs.md](docs/plans/04-backlog-and-handoffs.md)（**活文件**，隨時更新）——**開工前先看那份，它記的是「已定值但沒有強制」與「已量到但沒查根因」那一類洞**。目前**甲 4 項、乙 7 項、丙 21 項**（丙類 20 項中 5 項已結案，2 項部分結案）（2026-08-18 M4 對帳批後為甲 4／乙 6／丙 17；**2026-08-22 兩批再加**：設計系統與 UI 對帳批新增丙-28～32 並結案其中三項，產品裁定批依 ADR-042 新增乙-19／乙-20 與丙-33～35）。**2026-08-22 的契約與可觀測性批把丙類整表逐列重數過一次：甲 4／丙 5**（丙類未結為丙-8、丙-13、丙-19、丙-26、丙-38；同批結案丙-29／丙-34／丙-35／丙-36，並新增同批即結案的丙-37。**乙類本批沒有重數**，以 `04` 逐列為準）。**丙類沒有一項在等決策**——ADR-042 之後連丙-32 都有裁定了，逐項補法見 [m4/release-checklist.md §1.9](docs/plans/mvp/m4/release-checklist.md)。**剩下五項沒有一項是程式面做得完的**：兩項會花錢（丙-8、丙-38 各要一批真實 Run）、一項要那 43 筆真實資料（丙-13）、兩項要人或要機器（丙-19(b) 真機實裝、丙-26①②④ 屬部署期）。**2026-08-22 的交付物五維對帳批一度新增丙-39～丙-42，同日補批四項全部結案，丙類回到同樣的五項**——未知欄位的殺傷範圍量出來是零（106 個 pin commit 套件）於是升級為 error（ADR-044「後續」）、規格漂移改為排程偵測不進 merge gate、ADR-043 的兩個稽核欄位上了畫面並補了 `match: not_checked`、下載列從一串 UUID 變成「v2（這個 Skill 已經到 v5）」。**2026-08-23 的兩批各結掉一項,丙類剩三項**:丙-19(b) 的 gVisor 已在本機以 Docker 跑通(巢狀環境,**測項可執行化了,甲-1 的驗收沒有動**);丙-38 的基線跑了,**第一次的答案是 26 筆提案 0 筆存活**,根因是 `evidence` 欄位在契約／prompt 與 Go 之間有兩份定義,修正後 65%([m3/report-suggest-baseline.md](docs/plans/mvp/m3/report-suggest-baseline.md))。**未結的三項是丙-8(要錢的 B 輪 Run)、丙-13(要那 43 筆真實資料)、丙-26(部署期)。**
+- **殘項三類清單**（甲＝部署期驗收、乙＝待負責人決策、丙＝實作或資料工作）見 [docs/plans/04-backlog-and-handoffs.md](docs/plans/04-backlog-and-handoffs.md)（**活文件**，隨時更新）——**開工前先看那份，它記的是「已定值但沒有強制」與「已量到但沒查根因」那一類洞**。目前**甲 4 項、乙 7 項、丙 21 項**（丙類 20 項中 5 項已結案，2 項部分結案）（2026-08-18 M4 對帳批後為甲 4／乙 6／丙 17；**2026-08-22 兩批再加**：設計系統與 UI 對帳批新增丙-28～32 並結案其中三項，產品裁定批依 ADR-042 新增乙-19／乙-20 與丙-33～35）。**2026-08-22 的契約與可觀測性批把丙類整表逐列重數過一次：甲 4／丙 5**（丙類未結為丙-8、丙-13、丙-19、丙-26、丙-38；同批結案丙-29／丙-34／丙-35／丙-36，並新增同批即結案的丙-37。**乙類本批沒有重數**，以 `04` 逐列為準）。**丙類沒有一項在等決策**——ADR-042 之後連丙-32 都有裁定了，逐項補法見 [m4/release-checklist.md §1.9](docs/plans/mvp/m4/release-checklist.md)。**剩下五項沒有一項是程式面做得完的**：兩項會花錢（丙-8、丙-38 各要一批真實 Run）、一項要那 43 筆真實資料（丙-13）、兩項要人或要機器（丙-19(b) 真機實裝、丙-26①②④ 屬部署期）。**2026-08-22 的交付物五維對帳批一度新增丙-39～丙-42，同日補批四項全部結案，丙類回到同樣的五項**——未知欄位的殺傷範圍量出來是零（106 個 pin commit 套件）於是升級為 error（ADR-044「後續」）、規格漂移改為排程偵測不進 merge gate、ADR-043 的兩個稽核欄位上了畫面並補了 `match: not_checked`、下載列從一串 UUID 變成「v2（這個 Skill 已經到 v5）」。**2026-08-23 的兩批各結掉一項,丙類剩三項**:丙-19(b) 的 gVisor 已在本機以 Docker 跑通(巢狀環境,**測項可執行化了,甲-1 的驗收沒有動**);丙-38 的基線跑了,**第一次的答案是 26 筆提案 0 筆存活**,根因是 `evidence` 欄位在契約／prompt 與 Go 之間有兩份定義,修正後 65%([m3/report-suggest-baseline.md](docs/plans/mvp/m3/report-suggest-baseline.md))。**2026-08-23 稍晚:丙-13 也結了**——回填工具 `tools/content/backfill_artifacts.py` 寫進 177 列(123 個 Run),回填後重評 53 筆,**`met` 從 0 變成 18、`not_met` 從 4 變成 0**:那些 Run 一直都有產出檔案,只是平台沒把清單寫下來。同批新增**丙-47**(`buildDigest` 的截斷旗標一個布林兩個來源,`undetermined` 30／30 全來自它)。**未結的三項是丙-8(要錢的 B 輪 Run)、丙-26(部署期)、丙-47(先量 payload 長度分布再改)。**
 - **「移交 M4」六條接點已逐項裁定**：四條關閉（`PACK-002` 重用驗證路徑、衍生關係的溯源方向、可攜 Test Case 的兩半、評估產物由白名單排除），兩條轉殘項（乙-13 的 G7／G8、乙-14 的甲類到期）。**MVP 之後的接點另起一節**（`04` §移交下一階段）。
 - **2026-08-22 Platform 邊界批（不改 MVP 範圍，只改程式拓撲與強制力）**：`apps/platform/internal/` 依 [ADR-038](docs/adr/ADR-038-platform-product-domain-language-and-value-stream-navigation.md)／[ADR-040](docs/adr/ADR-040-platform-foundation-shared-kernel-and-entrypoint-topology.md) 重排為 `creator`／`skill`／`trial`／`product`／`shared`／`foundation`／`entrypoint`——**Boundary ID 一個都沒改**（`run`、`registry`、`identity` 仍是 query ownership 與 depguard 的機械鍵），改的只有 path，對照表在 [ADR-032](docs/adr/ADR-032-ddd-bounded-context-governance-for-platform.md) §1，導覽在 [apps/platform/internal/README.md](apps/platform/internal/README.md)。同批把 ADR-033／035 的跨 context 存量收乾：`db/query-owners.yaml` 的 `allow:` 與 `read_allow:` **現在都是零條**（DDD-031～060，逐條記在 `03` 的行內），裸 SQL 只剩九個具名技術豁免。**`03` 的歷史完成紀錄刻意保留當時的 flat path**，那是里程碑時點的證據，不是現行導覽。
 
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
 | `docs/plans/` | [產品基準](docs/plans/README.md)：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/04-backlog-and-handoffs.md)（活文件）；`mvp/m0/`～`mvp/m4/` 為各里程碑凍結產出；`mvp/content/`／`mvp/governance/`／`mvp/gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/README.md](docs/plans/README.md) |
-| `docs/adr/` | 46 份架構決策紀錄（ADR-000～045；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂；042 回答 041 的六個待決策，043 修訂 026 的 defence 3 判準，044 釘選 Agent Skills 規格並定義「符合規格」的範圍；045 讓使用者第一次下載得了自己的 Skill——自己帶進來的位元組交還給自己不是再散布） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
+| `docs/adr/` | 47 份架構決策紀錄（ADR-000～046；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂；042 回答 041 的六個待決策，043 修訂 026 的 defence 3 判準，044 釘選 Agent Skills 規格並定義「符合規格」的範圍；045 讓使用者第一次下載得了自己的 Skill——自己帶進來的位元組交還給自己不是再散布；**046 開 M5：從任務描述生成 Skill，生成物只在個人工作區、不進目錄也不進搜尋索引**） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
 | `docs/spikes/` | **已刪除，只留墓碑**：M0 驗證用 spike code，結論已沉澱到 m0 報告／ADR-013／ADR-023／`UPGRADES.md`／`tools/goldenset/` | [docs/spikes/README.md](docs/spikes/README.md)（含還原指令與結論落點對照） |
 
 Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **ADR-031（Accepted）** 按產物角色定義；它取代 ADR-024 的 `apps/`／`services/` 雙軌。結構性偏離需先更新 ADR。
@@ -76,7 +76,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
 - 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
 - ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容。
-- 新 ADR 從 **ADR-046** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
+- 新 ADR 從 **ADR-047** 起編；選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
 - ADR 的待決策被後續 ADR 回答時，回填 `→ [ADR-xxx](...)` 引用（現有文件已有此慣例）。
 - 新 ADR 記得更新 [docs/adr/README.md](docs/adr/README.md) 的決策索引。
 - **檔案放哪裡**：活文件放 `docs/plans/` 根層（編號 `01~`）；里程碑的歷史產出放 `docs/plans/mvp/mX/`，里程碑完結即凍結。跨里程碑主題材料放 `docs/plans/mvp/` 的相應主題目錄。一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`。
@@ -87,8 +87,8 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 - 文件語言：繁體中文（保留 Run、Workspace、Provider 等英文術語不硬翻）。
 - 多人／多 agent 共用同一工作樹平行作業時：只以明確 pathspec stage 自己的檔案、push 前 `git pull --rebase`；**禁止 `git stash`**（stash 會連他人未提交與未追蹤的工作一起收走，本專案已三度因此出事）；暫存產物放 scratchpad，不放 repo 根目錄。
 - 程式碼、識別字、commit message：英文。
-- 里程碑：M0 基線 → M1 Explorer（結尾有驗證閘門，不通過不進 M2）→ M2 Lab → M3 評估 → M4 打包與封測。
-- 需求 ID 前綴：DISC／SKILL／WS／TEST／RUN／SBX／TRACE／EVAL／PACK／NFR／PDM／SEC 等，見 `docs/plans/mvp/02`、`03`。
+- 里程碑：M0 基線 → M1 Explorer（結尾有驗證閘門，不通過不進 M2）→ M2 Lab → M3 評估 → M4 打包與封測 → **M5 從任務描述生成 Skill**（2026-08-23 新增，ADR-046；規格與工作項已立，實作等封測漏斗第一段的讀數，**不在 MVP 完成度內**）。
+- 需求 ID 前綴：DISC／SKILL／WS／TEST／RUN／SBX／TRACE／EVAL／PACK／GEN／NFR／PDM／SEC 等，見 `docs/plans/02`、`03`。（`GEN` 為 2026-08-23 新增的 M5 前綴；`02` 的需求 ID 與 `03` 的工作項 ID 各自編號，同前綴不同號是既有慣例，見 `DISC`。）
 
 ## 開發自動化（Agent 開工先讀）
 
