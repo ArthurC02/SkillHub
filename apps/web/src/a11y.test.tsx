@@ -386,7 +386,7 @@ test("QA-009: Dataset 上傳", async () => {
   await scan("/lab/datasets");
 }, 30000);
 
-test("QA-009: Run 詳情（一般與進階模式）", async () => {
+test("QA-009: Run 結果（一般與進階模式）", async () => {
   stubPlatform();
   await mount();
   await act(async () => {

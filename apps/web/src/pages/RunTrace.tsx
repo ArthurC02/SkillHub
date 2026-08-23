@@ -35,7 +35,14 @@ export function RunTrace() {
 
   return (
     <section>
-      <h1>Run 詳情</h1>
+      {/*
+        「Run 結果」 and not 「Run 詳情」: 詳情 is a container word — it says
+        「這一頁有一些關於 X 的東西」 rather than naming what the page answers,
+        which is the shape 資訊架構 §0.1 R5 exists to refuse. The page is already
+        arranged as one answer: 任務判定 first, 執行紀錄 as its evidence, 產出 last.
+        Only the title said otherwise.
+      */}
+      <h1>Run 結果</h1>
 
       {/* EVAL-001 / design §4.3: the first thing on the page is the task
           judgement, not the run's terminal state. */}

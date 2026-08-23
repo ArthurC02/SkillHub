@@ -65,7 +65,9 @@ function paths(markdown: string): string[] {
 test("IA §1: every route in router.tsx has a row, and every row is a route", () => {
   const actual = [...router.matchAll(/^\s*path: "([^"]+)"/gm)].map((m) => m[1]).sort();
   // Sentinel: a formatting change that breaks the parse must fail here rather
-  // than quietly comparing two empty sets and passing.
+  // than quietly comparing two empty sets and passing. Deliberately a floor and
+  // not an exact count — §1's heading used to carry 「17 條路由」 and a number in
+  // a heading is one more copy of a fact to keep in step. The table is the count.
   expect(actual.length).toBeGreaterThanOrEqual(17);
 
   const documented = paths(
