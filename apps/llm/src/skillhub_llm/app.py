@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from skillhub_llm.enrich import router as enrich_router
 from skillhub_llm.evaluate import router as evaluate_router
+from skillhub_llm.generate import router as generate_router
 
 service_bearer = HTTPBearer(auto_error=False)
 
@@ -53,6 +54,7 @@ app = FastAPI(
 protected = [Depends(require_service_token)]
 app.include_router(enrich_router, dependencies=protected)
 app.include_router(evaluate_router, dependencies=protected)
+app.include_router(generate_router, dependencies=protected)
 logger = logging.getLogger("skillhub_llm")
 
 
