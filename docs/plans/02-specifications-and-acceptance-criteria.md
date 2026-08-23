@@ -575,7 +575,10 @@ queued → provisioning → preparing → running → evaluating
 - 空白或無法理解的任務描述不得建立生成工作，並應提示使用者補充任務、輸入或預期輸出（與 `DISC-001` 同一條紀律）。
 - 生成前顯示預估成本與本次將消耗的額度，並套用 [ADR-028](../adr/ADR-028-beta-admission-and-quota-enforcement-points.md) 的既有配額強制點；額度不足時**在呼叫模型之前**拒絕，不得先花錢再說。
 - 模型呼叫走 LiteLLM 閘道（鐵律 8）；生成的提示詞版本可識別，與 `judge-run`／`suggest-improvements` 同一套版本化紀律。
-- 系統保存生成當下的任務描述原文、提示詞版本與模型識別，作為該版本的來源紀錄（`GEN-002`）。
+- 系統保存生成當下的任務描述原文、提示詞版本與模型識別，作為該版本的來源紀錄（`GEN-002`）。**該紀錄必須重現得出工作區裡的那份套件**——平台不得在中間修改模型交出的位元組（[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 1）。
+- 輸出上限為 **16000** token；`finish_reason` 為 `length` 時視為失敗，**不重試**，並告訴使用者這件事的內容超過一次生成的上限（ADR-047 決策 2）。
+- **額度以「一次生成」為單位扣抵，不以閘道呼叫次數扣抵**；`GEN-003` 的重試不額外扣，**生成失敗一律不扣**（ADR-047 決策 2）。
+- **生成的額度與 Run 的額度分開計數**，不共用同一個餘額（ADR-047 決策 5）。
 
 #### GEN-002：生成物的來源、License 與可散布性
 
@@ -587,7 +590,8 @@ queued → provisioning → preparing → running → evaluating
 - **生成器不得產生 `license` 欄位。** License 狀態預設為「未知」，由使用者自行宣告後才進入「已宣告」；模型寫出的任何授權字串一律丟棄，不是記下來再標示（ADR-046 決策 5）。
 - 生成物的 `redistribution` 為 `generated`：**使用者下載得了自己生成的 Skill**（判準同 [ADR-045](../adr/ADR-045-self-supplied-content-is-not-redistribution.md) 決策 4——平台沒有多加一個散布環節），但該值**不是 `allowed`**，任何發佈路徑都必須停下來要求判定。
 - `generated` 與 `self_supplied` 是**兩個值**，不得互相替代或一起放行（ADR-046 決策 4）。
-- 生成物**不進公開目錄，也不進搜尋索引**，包括生成它的人自己搜尋時；工作區的 Skill 列表是它唯一的入口。`DISC-002` 的來源層級篩選不因此新增值域。
+- 生成物**不進公開目錄，也不進搜尋索引**，包括生成它的人自己搜尋時；工作區的 Skill 列表是它唯一的入口。`DISC-002` 的來源層級篩選不因此新增值域。解鎖這條路徑的三個前置見 [ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 3。
+- 生成物**可以作為 `WS-001` Fork 的來源**；Fork 後的版本逐字繼承 `redistribution = generated`（ADR-047 決策 4）。**這一條需要一支具名測試**——繼承若失效，該值退回 `unknown` 會把下載鎖回去，而那個失效沒有任何症狀。
 
 #### GEN-003：生成物的驗證、失敗處理與 Script
 
@@ -595,7 +599,8 @@ queued → provisioning → preparing → running → evaluating
 
 - 生成結果在建立版本前走**與匯入相同的那條驗證路徑**；`skillpkg.Validate` 有任何一條阻擋錯誤，**整個生成結果拒絕，不建立版本**（與套用改善建議的 `validatePatched` 同一把尺）。
 - **這道門是語法門，不是品質門**（ADR-046 決策 6 的 2026-08-23 查證補記）：阻擋級檢查全部是結構性的，通過率預期接近 100%。**UI 與文案不得把「通過驗證」呈現為任何品質、可用性或安全結論**，該說的話在 `GEN-004`。
-- 驗證未過時顯示可理解的原因與「重試」或「修改任務描述」兩條出路，**不得留下一個半成品版本**。
+- 阻擋級 finding 出現時，系統**自動重試恰好一次**——同一個 prompt、同一個模型、**不加修正提示**（[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 1：缺陷是隨機排版手滑不是系統性能力缺陷）。第二次仍被擋即為失敗。
+- 失敗時把 `skillpkg.Validate` 的 finding **逐字**交給使用者（同 `SKILL-002` 對匯入失敗的既有處理），不重寫成安慰話；並提供「再試一次」與「修改任務描述」兩條出路，**不得留下一個半成品版本**。
 - 生成物若含 Script、可執行檔、外部 URL 或可能的 Secrets，揭露方式與匯入的 Skill **逐字相同**（`SKILL-002`、`SKILL-003`）；**不得因為內容由平台生成而少一個警告或降一級風險標示**。平台的模型不是可信來源，它只是一個沒有上游的來源。
 - 生成物內的 Script 一律只在 Sandbox 執行（鐵律 1）；生成與驗證階段皆不執行套件內任何 Script。
 - 生成失敗、逾時或被額度拒絕時，不扣除已宣告的額度以外的任何用量，並在工作區留下可查的失敗紀錄。
