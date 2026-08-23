@@ -83,6 +83,13 @@ var anonymousRoutes = []anonCase{
 
 	// --- import and registry (SKILL-*, WS-001, INGEST-010) ----------------------
 	{pattern: "POST /skills/import/upload", want: http.StatusUnauthorized},
+	// Mounted only where ADR-052's exposure flag is on, which newAPI leaves off —
+	// so what an anonymous caller gets here is what any unregistered path under
+	// /skills gets, and that is 405 rather than 404 because GET /skills/{id}
+	// matches the shape. That sameness IS the invisibility, and it is asserted
+	// against a live sibling path in generate_integration_test rather than pinned
+	// to a number here.
+	{pattern: "POST /skills/generate", want: http.StatusMethodNotAllowed, conditional: "Config.GenerateExposed"},
 	{pattern: "POST /skills/import/url", want: http.StatusUnauthorized},
 	{pattern: "GET /skills/search", query: "?q=anything", want: http.StatusUnauthorized},
 	{pattern: "GET /skills", want: http.StatusUnauthorized},

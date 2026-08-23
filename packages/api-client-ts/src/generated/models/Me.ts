@@ -44,6 +44,20 @@ export interface Me {
      */
     workspaceId: string;
     /**
+     * Optional entry points this deployment turns on. **Absent** when there
+     * are none — not an empty object, so a client never has to tell "off"
+     * apart from "this build predates the flag".
+     * 
+     * It exists because a route that is simply not mounted cannot be
+     * discovered without a request that fails, and a feature discovered by
+     * a failed request has already been drawn on somebody's screen. Today
+     * the only key is `generate_skill` (ADR-052).
+     * 
+     * @type {{ [key: string]: boolean; }}
+     * @memberof Me
+     */
+    features?: { [key: string]: boolean; };
+    /**
      * What the purge will and will not destroy, in the server's own words,
      * or null when no deletion is pending. The same sentence DELETE /me
      * returns — and it is required here because a client that only had it
@@ -105,6 +119,7 @@ export function MeFromJSONTyped(json: any, ignoreDiscriminator: boolean): Me {
         'email': json['email'],
         'displayName': json['display_name'],
         'workspaceId': json['workspace_id'],
+        'features': json['features'] == null ? undefined : json['features'],
         'deletionScope': json['deletion_scope'],
         'deletionRequestedAt': (json['deletion_requested_at'] == null ? null : new Date(json['deletion_requested_at'])),
         'purgeAfter': (json['purge_after'] == null ? null : new Date(json['purge_after'])),
@@ -126,6 +141,7 @@ export function MeToJSONTyped(value?: Me | null, ignoreDiscriminator: boolean = 
         'email': value['email'],
         'display_name': value['displayName'],
         'workspace_id': value['workspaceId'],
+        'features': value['features'],
         'deletion_scope': value['deletionScope'],
         'deletion_requested_at': value['deletionRequestedAt'] == null ? value['deletionRequestedAt'] : value['deletionRequestedAt'].toISOString(),
         'purge_after': value['purgeAfter'] == null ? value['purgeAfter'] : value['purgeAfter'].toISOString(),

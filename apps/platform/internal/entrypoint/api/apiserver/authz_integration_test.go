@@ -341,14 +341,19 @@ func (a *api) login(t *testing.T, name string) *client {
 		t.Fatalf("dev login for %s: got %d", name, resp.StatusCode)
 	}
 	me := c.me(t)
-	c.userID, c.workspaceID = me["user_id"], me["workspace_id"]
+	c.userID, _ = me["user_id"].(string)
+	c.workspaceID, _ = me["workspace_id"].(string)
 	if c.workspaceID == "" {
 		t.Fatalf("login for %s produced no workspace", name)
 	}
 	return c
 }
 
-func (c *client) me(t *testing.T) map[string]string {
+// me decodes GET /me. `any` rather than `string`: the response has stopped being
+// flat — `features` is an object — and a map[string]string here failed EVERY
+// login on a deployment that turned one on, which is a helper being wrong about
+// the API rather than the API being wrong.
+func (c *client) me(t *testing.T) map[string]any {
 	t.Helper()
 	resp, err := c.Get(c.base + "/me")
 	if err != nil {
@@ -358,12 +363,13 @@ func (c *client) me(t *testing.T) map[string]string {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET /me: got %d", resp.StatusCode)
 	}
-	var out map[string]string
+	var out map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		t.Fatal(err)
 	}
 	return out
 }
+
 
 func (c *client) status(t *testing.T, method, path string) int {
 	t.Helper()

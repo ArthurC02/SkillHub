@@ -357,6 +357,85 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CategorizedFindings"
+  /skills/generate:
+    post:
+      operationId: generateSkill
+      summary: Generate a Skill from a task description (GEN-001)
+      description: |
+        Requires a session and an invite. **Mounted only where the deployment
+        turns the M5 exposure flag on** (ADR-052); everywhere else this route
+        does not exist and answers 404, and `GET /me` does not list
+        `generate_skill` among its features. A client must read that field rather
+        than probing here — an entry point that has to be discovered by a failed
+        request has already been drawn.
+
+        Synchronous: there is no job and no run id, so an abandoned request is a
+        cancelled generation. Nothing inside the produced package is ever
+        executed, and it goes through exactly the validation path an upload does.
+        A blocking finding after one retry rejects the whole thing and creates no
+        version.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task_description]
+              properties:
+                task_description:
+                  type: string
+                  minLength: 1
+                  maxLength: 4000
+                  description: |
+                    The user's own words. Stored as the generated version's
+                    provenance record (GEN-002) and subject to NFR-002 deletion
+                    like any other user content.
+      responses:
+        "201":
+          description: A package was generated, validated and stored as version 1.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateSkillResult"
+        "400":
+          description: Body was not JSON with a task_description.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Not on the beta invite list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: |
+            Either the generated package failed validation — findings verbatim,
+            same shape a failed import returns, and no version was created — or
+            the request was refused before the model was called (blank
+            description, exhausted generation allowance) or after it produced
+            something unusable (output truncated at the token ceiling, which is
+            **not** retried, ADR-047 決策 2). The two are told apart by shape:
+            findings for the first, a single error message for the rest.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CategorizedFindings"
+                  - $ref: "#/components/schemas/Error"
+        "502":
+          description: The model gateway failed. Nothing was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /skills/import/url:
     post:
       operationId: importSkillFromURL
@@ -3601,6 +3680,19 @@ components:
         workspace_id:
           type: string
           format: uuid
+        features:
+          type: object
+          additionalProperties:
+            type: boolean
+          description: |
+            Optional entry points this deployment turns on. **Absent** when there
+            are none — not an empty object, so a client never has to tell "off"
+            apart from "this build predates the flag".
+
+            It exists because a route that is simply not mounted cannot be
+            discovered without a request that fails, and a feature discovered by
+            a failed request has already been drawn on somebody's screen. Today
+            the only key is `generate_skill` (ADR-052).
         deletion_scope:
           type: [string, "null"]
           description: |
@@ -4583,6 +4675,27 @@ components:
           description: True when identical content already existed as a version of this skill.
         findings:
           $ref: "#/components/schemas/CategorizedFindings"
+    GenerateSkillResult:
+      description: |
+        One generated package that passed validation and became a version
+        (GEN-001). Everything UploadResult reports, plus how it got here.
+      allOf:
+        - $ref: "#/components/schemas/UploadResult"
+        - type: object
+          required: [attempts, generator_model, generator_prompt_version]
+          properties:
+            attempts:
+              type: integer
+              minimum: 1
+              maximum: 2
+              description: |
+                1 or 2. Reported because 02:GEN-003 forbids the UI promising a
+                success rate: one retry was measured to move 80% to 90%, not to
+                nothing, and "it took two goes" is the honest form of that.
+            generator_model:
+              type: string
+            generator_prompt_version:
+              type: string
     AcceptanceCriterion:
       description: |
         One acceptance condition (TEST-003). Stored inside the test case rather

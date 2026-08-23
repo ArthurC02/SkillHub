@@ -85,6 +85,10 @@ type ForkSkillRes interface {
 	forkSkillRes()
 }
 
+type GenerateSkillRes interface {
+	generateSkillRes()
+}
+
 type GetDatasetLimitsRes interface {
 	getDatasetLimitsRes()
 }

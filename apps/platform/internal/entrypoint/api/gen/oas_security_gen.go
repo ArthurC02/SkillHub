@@ -61,6 +61,7 @@ var operationRolesSessionCookie = map[string][]string{
 	DiffSkillVersionsOperation:                 []string{},
 	DownloadArtifactContentOperation:           []string{},
 	ForkSkillOperation:                         []string{},
+	GenerateSkillOperation:                     []string{},
 	GetDatasetLimitsOperation:                  []string{},
 	GetDispatchStatusOperation:                 []string{},
 	GetDownloadArtifactOperation:               []string{},

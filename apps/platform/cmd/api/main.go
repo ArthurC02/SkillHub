@@ -135,9 +135,10 @@ func main() {
 		// The API needs the provider registry for one thing only: refusing a run no
 		// configured provider can carry, before it is queued (RUN-005, ADR-004). It
 		// never dispatches — that is the worker's job (iron rule 7).
-		Providers:     run.NewRegistryFromEnv(),
-		Quota:         quotaFromEnv(),
-		GenerateQuota: generateQuotaFromEnv(),
+		Providers:       run.NewRegistryFromEnv(),
+		Quota:           quotaFromEnv(),
+		GenerateQuota:   generateQuotaFromEnv(),
+		GenerateExposed: generateExposedFromEnv(),
 	})
 	if err != nil {
 		slog.Error("api composition", "error", err)
@@ -274,6 +275,29 @@ func generateQuotaFromEnv() policy.QuotaLimits {
 		return policy.QuotaLimits{}
 	}
 	return policy.DefaultGenerateQuotaLimits()
+}
+
+// generateExposedFromEnv reads ADR-052's exposure flag.
+//
+// The asymmetry runs the OTHER way from the two allowances above, and
+// deliberately: unset means NOT exposed. An allowance left unconfigured leaves
+// the platform's cost ceiling open, so unset has to mean enforced; an entry
+// point left unconfigured just is not there yet, and ADR-052 says the default
+// is off. Turning it on takes an action somebody has to write down, which is
+// the point — 01 §11.2's first funnel segment measures whether search works,
+// and a beta participant who meets "搜不到 → 生成一個" is measuring something
+// else. That number has one chance, with twelve people.
+//
+// Not a rebuild-time constant and not a client-side flag: the web asks /me,
+// because the same build has to be able to serve a cohort that sees it and one
+// that does not.
+func generateExposedFromEnv() bool {
+	on := strings.EqualFold(os.Getenv("GENERATE_SKILL_EXPOSED"), "on")
+	if on {
+		slog.Warn("GENERATE_SKILL_EXPOSED=on; the M5 generation entry point is visible. " +
+			"ADR-052 requires 01 §11.2's first funnel segment to have a reading first")
+	}
+	return on
 }
 
 // analyticsRetentionFromEnv reads how long a funnel event is kept, and therefore

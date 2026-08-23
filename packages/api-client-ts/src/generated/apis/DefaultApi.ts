@@ -45,6 +45,9 @@ import type {
   DownloadArtifact,
   Evaluation,
   ForkSkill201Response,
+  GenerateSkill422Response,
+  GenerateSkillRequest,
+  GenerateSkillResult,
   GetDispatchStatus200Response,
   GetRunTrace200Response,
   Health,
@@ -149,6 +152,12 @@ import {
     EvaluationToJSON,
     ForkSkill201ResponseFromJSON,
     ForkSkill201ResponseToJSON,
+    GenerateSkill422ResponseFromJSON,
+    GenerateSkill422ResponseToJSON,
+    GenerateSkillRequestFromJSON,
+    GenerateSkillRequestToJSON,
+    GenerateSkillResultFromJSON,
+    GenerateSkillResultToJSON,
     GetDispatchStatus200ResponseFromJSON,
     GetDispatchStatus200ResponseToJSON,
     GetRunTrace200ResponseFromJSON,
@@ -331,6 +340,10 @@ export interface FinishGithubLoginRequest {
 
 export interface ForkSkillRequest {
     id: string;
+}
+
+export interface GenerateSkillOperationRequest {
+    generateSkillRequest: GenerateSkillRequest;
 }
 
 export interface GetDownloadArtifactRequest {
@@ -864,6 +877,22 @@ export interface DefaultApiInterface {
      * Fork a readable skill\'s latest version into the caller\'s workspace (WS-001)
      */
     forkSkill(requestParameters: ForkSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ForkSkill201Response>;
+
+    /**
+     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist and answers 404, and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
+     * @summary Generate a Skill from a task description (GEN-001)
+     * @param {GenerateSkillRequest} generateSkillRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    generateSkillRaw(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerateSkillResult>>;
+
+    /**
+     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist and answers 404, and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
+     * Generate a Skill from a task description (GEN-001)
+     */
+    generateSkill(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateSkillResult>;
 
     /**
      * 02:O11Y-004: product analytics is the only data class a user produces without submitting anything, so its disclosure obligation is no lower than any other\'s. This is that disclosure as an endpoint rather than a document, for the reason GET /test-cases/limits is one — the values come from the constants the writer itself reads, so the page and the behaviour cannot drift.  No session. A data policy a visitor has to log in to read is not a policy they can decide by, and the funnel\'s first segment is measured before any login exists. Nothing user-specific is read or returned.  `collecting: false` with `retention_days: 0` is the shipped default and a real answer, not a missing one: NFR-002 forbids collection before a retention value exists, ADR-029 決策 5\'s 180 days is still a proposal, and a deployment that has set nothing writes no row and sets no cookie. 
@@ -2590,6 +2619,47 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async forkSkill(requestParameters: ForkSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ForkSkill201Response> {
         const response = await this.forkSkillRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist and answers 404, and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
+     * Generate a Skill from a task description (GEN-001)
+     */
+    async generateSkillRaw(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerateSkillResult>> {
+        if (requestParameters['generateSkillRequest'] == null) {
+            throw new runtime.RequiredError(
+                'generateSkillRequest',
+                'Required parameter "generateSkillRequest" was null or undefined when calling generateSkill().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/skills/generate`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: GenerateSkillRequestToJSON(requestParameters['generateSkillRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GenerateSkillResultFromJSON(jsonValue));
+    }
+
+    /**
+     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist and answers 404, and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
+     * Generate a Skill from a task description (GEN-001)
+     */
+    async generateSkill(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateSkillResult> {
+        const response = await this.generateSkillRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

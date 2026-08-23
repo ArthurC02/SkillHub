@@ -344,6 +344,23 @@ func (UnimplementedHandler) ForkSkill(ctx context.Context, params ForkSkillParam
 	return r, ht.ErrNotImplemented
 }
 
+// GenerateSkill implements generateSkill operation.
+//
+// Requires a session and an invite. Mounted only where the deployment turns the M5 exposure flag on
+// (ADR-052); everywhere else this route does not exist and answers 404, and `GET /me` does not list
+// `generate_skill` among its features. A client must read that field rather than probing here — an
+// entry point that has to be discovered by a failed request has already been drawn.
+//
+// Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation.
+// Nothing inside the produced package is ever executed, and it goes through exactly the validation
+// path an upload does. A blocking finding after one retry rejects the whole thing and creates no
+// version.
+//
+// POST /skills/generate
+func (UnimplementedHandler) GenerateSkill(ctx context.Context, req *GenerateSkillReq) (r GenerateSkillRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetDataRetentionPolicy implements getDataRetentionPolicy operation.
 //
 // 02:O11Y-004: product analytics is the only data class a user produces without submitting anything,

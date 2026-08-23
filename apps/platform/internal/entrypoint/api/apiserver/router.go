@@ -39,6 +39,11 @@ type Deps struct {
 	// Analytics serves POST /feedback and carries the funnel-event writer the
 	// public handlers use (02:O11Y-004, BETA-003/004/005).
 	Analytics *analytics.Handler
+	// GenerateExposed decides whether POST /skills/generate is in the table at
+	// all (ADR-052). A field on Deps rather than a check inside the handler,
+	// because "the route does not exist" and "the route refuses" are different
+	// answers to a probe, and only the first one keeps the entry point invisible.
+	GenerateExposed bool
 }
 
 // NewRouter returns the API route table. Callers wrap it as needed — cmd/api
@@ -61,6 +66,15 @@ func NewRouter(d Deps) http.Handler {
 	auth.Mount(mux)
 	mux.HandleFunc("POST /skills/import/upload", auth.RequireSession(d.Importer.Upload))
 	mux.HandleFunc("POST /skills/import/url", auth.RequireSession(d.Importer.ImportURL))
+	// M5 generation (GEN-001, GEN-008). Mounted only where the exposure flag is
+	// on: ADR-052 放行了開工，沒有放行曝光. A beta participant who meets
+	// "搜不到 → 生成一個" changes what 01 §11.2's first funnel segment measures,
+	// and that number has one chance with twelve people. Off, the route does not
+	// exist and /me does not advertise it — the same pairing GET /me/quota uses,
+	// for the same reason: an entry point nobody enforces must not be drawable.
+	if d.GenerateExposed {
+		mux.HandleFunc("POST /skills/generate", auth.RequireSession(auth.RequireInvited(d.Importer.Generate)))
+	}
 
 	// DISC-001: public search works without login.
 	mux.HandleFunc("GET /api/skills/search", d.Search.PublicSearch)

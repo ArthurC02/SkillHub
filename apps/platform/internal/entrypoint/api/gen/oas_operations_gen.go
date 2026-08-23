@@ -28,6 +28,7 @@ const (
 	DownloadArtifactContentOperation           OperationName = "DownloadArtifactContent"
 	FinishGithubLoginOperation                 OperationName = "FinishGithubLogin"
 	ForkSkillOperation                         OperationName = "ForkSkill"
+	GenerateSkillOperation                     OperationName = "GenerateSkill"
 	GetDataRetentionPolicyOperation            OperationName = "GetDataRetentionPolicy"
 	GetDatasetLimitsOperation                  OperationName = "GetDatasetLimits"
 	GetDispatchStatusOperation                 OperationName = "GetDispatchStatus"

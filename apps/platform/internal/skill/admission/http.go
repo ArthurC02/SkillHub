@@ -8,9 +8,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -156,4 +158,82 @@ func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
 	}
 
 	httpx.WriteJSON(w, http.StatusCreated, NewUploadResult(res))
+}
+
+// GenerateResponse is public.yaml's GenerateSkillResult: one accepted package
+// plus the two facts about how it got here that the page has to say out loud.
+type GenerateResponse struct {
+	UploadResult
+	// Attempts is 1 or 2. Shown because 02:GEN-003 forbids the UI promising a
+	// success rate, and "it took two goes" is the honest version of the same
+	// information — measured, one retry moves 80% to 90%, not to nothing.
+	Attempts int `json:"attempts"`
+	// Model and PromptVersion are the service's own, not the model's.
+	Model         string `json:"generator_model"`
+	PromptVersion string `json:"generator_prompt_version"`
+}
+
+// Generate handles POST /skills/generate (GEN-001, GEN-008).
+//
+// Mounted only where the exposure flag is on (ADR-052): a beta participant who
+// can see "搜不到 → 生成一個" changes what the funnel's first segment measures,
+// and that number has one chance with twelve people. Off, this route does not
+// exist and /me does not advertise it.
+//
+// Synchronous, and that is a product fact the page has to state rather than
+// hide: there is no job and no run_id, so a closed tab cancels the request. Wrap
+// with RequireSession; the workspace comes from the session (iron rule 3).
+func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
+		return
+	}
+
+	var body struct {
+		TaskDescription string `json:"task_description"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16*1024)).Decode(&body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "body must be JSON with a task_description")
+		return
+	}
+
+	res, err := h.Svc.GenerateSkill(r.Context(), ws, body.TaskDescription)
+	switch {
+	case errors.Is(err, ErrGenerateBlank):
+		// Same discipline DISC-001 already applies to an empty search: say what
+		// to add, do not just refuse (02:GEN-001).
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"請描述你要完成的任務：做什麼、輸入是什麼、預期產出是什麼。")
+	case errors.Is(err, policy.ErrGenerateQuotaExceeded):
+		// 422 like every other allowance refusal: the request is well formed and
+		// the platform is working, the account has nothing left in this window.
+		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
+	case errors.Is(err, llmclient.ErrGenerateTruncated):
+		// 02:GEN-001: tell the user this specific thing, and do not retry it.
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"這件事的內容超過一次生成的上限，已經停下來，沒有建立任何版本。"+
+				"把任務拆小一點再試一次會有幫助。")
+	case errors.Is(err, ErrGenerateNotForCatalogue):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
+	case err != nil:
+		httpx.WriteError(w, http.StatusBadGateway, "generation failed")
+	case res.Report.Blocked:
+		// The findings verbatim, exactly as a failed import gets them
+		// (02:GEN-003, SKILL-002). Nothing was written: prepare returns before the
+		// object store and importZip before the transaction.
+		httpx.WriteJSON(w, http.StatusUnprocessableEntity, res.Report.Categorize())
+	default:
+		httpx.WriteJSON(w, http.StatusCreated, GenerateResponse{
+			UploadResult:  NewUploadResult(res.Result),
+			Attempts:      res.Attempts,
+			Model:         res.Model,
+			PromptVersion: res.PromptVersion,
+		})
+	}
 }

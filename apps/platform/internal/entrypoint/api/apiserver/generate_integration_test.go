@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	gen "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
@@ -304,4 +305,95 @@ func uuidString(id pgtype.UUID) string {
 		return ""
 	}
 	return s.(string)
+}
+
+// ADR-052's boundary, both directions. The default is off, and "off" has to
+// mean the route is absent rather than refusing: a 403 or a 422 tells a probe
+// the feature exists and is coming, which is enough for an entry point to be
+// drawn somewhere. /me has to agree, because that is the only thing the web
+// asks before deciding whether to draw one.
+func TestTheGenerationEntryPointIsInvisibleUntilItIsExposed(t *testing.T) {
+	pool := requireDB(t)
+
+	off := newAPI(t, pool)
+	c := off.login(t, "gen-flag-off")
+	// The assertion is not a particular status code, it is SAMENESS: with the
+	// flag off, /skills/generate must answer exactly what any other path under
+	// /skills that nobody registered answers. (Today both are 405, because
+	// GET /skills/{id} matches the shape — which is precisely why pinning 404
+	// would have been asserting an accident.)
+	absent, _ := postJSON(t, c, "/skills/zzz-not-a-route", `{}`)
+	if code, _ := postJSON(t, c, "/skills/generate", `{"task_description":"任何任務"}`); code != absent {
+		t.Errorf("POST /skills/generate with the flag off answered %d; an unregistered "+
+			"sibling answers %d, and a different answer is how a probe finds the feature", code, absent)
+	}
+	if features(t, c) != nil {
+		t.Errorf("/me advertised features with the flag off: %v", features(t, c))
+	}
+
+	on := newAPIExposingGenerate(t, pool)
+	c2 := on.login(t, "gen-flag-on")
+	if code, _ := postJSON(t, c2, "/skills/generate", `{"task_description":""}`); code == absent {
+		t.Errorf("POST /skills/generate with the flag on still answers %d", code)
+	}
+	if f := features(t, c2); f == nil || !f["generate_skill"] {
+		t.Errorf("/me did not advertise generate_skill with the flag on: %v", f)
+	}
+}
+
+// A blank description is refused before the gateway, and the refusal says what
+// to add rather than only that it was refused (02:GEN-001, same discipline
+// DISC-001 already applies to an empty search).
+func TestABlankTaskDescriptionIsRefusedWithAdvice(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t) // no answers: a gateway call fails the test
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	c := a.login(t, "gen-blank")
+
+	code, body := postJSON(t, c, "/skills/generate", `{"task_description":"    "}`)
+	if code != http.StatusUnprocessableEntity {
+		t.Fatalf("got %d, want 422", code)
+	}
+	msg, _ := body["error"].(string)
+	if !strings.Contains(msg, "預期產出") {
+		t.Errorf("refusal gives no advice: %q", msg)
+	}
+	if stub.calls != 0 {
+		t.Errorf("a blank description paid for %d gateway call(s)", stub.calls)
+	}
+}
+
+func features(t *testing.T, c *client) map[string]bool {
+	t.Helper()
+	resp, err := c.Get(c.base + "/me")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out struct {
+		Features map[string]bool `json:"features"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	return out.Features
+}
+
+// newAPIExposingGenerate is newAPIWithLLM with ADR-052's flag on. It goes
+// through newAPITuned's hook for the reason that hook exists: the exposure flag
+// changes which routes are in the table at all, so it has to be set before the
+// table is built, not after.
+func newAPIExposingGenerate(t *testing.T, pool *pgxpool.Pool, llmBaseURL ...string) *api {
+	t.Helper()
+	base := ""
+	if len(llmBaseURL) > 0 {
+		base = llmBaseURL[0]
+	}
+	return newAPITuned(t, pool, base, func(d *apiserver.Deps) {
+		d.GenerateExposed = true
+		// The other half of the same switch: cmd/api sets both from one env var,
+		// and a test that flipped only the route would be asserting a state no
+		// deployment can be in.
+		d.Auth.Features = map[string]bool{"generate_skill": true}
+	})
 }

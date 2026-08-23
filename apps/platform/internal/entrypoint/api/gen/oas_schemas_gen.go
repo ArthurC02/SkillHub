@@ -4549,6 +4549,218 @@ type ForkSkillUnauthorized Error
 
 func (*ForkSkillUnauthorized) forkSkillRes() {}
 
+type GenerateSkillBadGateway Error
+
+func (*GenerateSkillBadGateway) generateSkillRes() {}
+
+type GenerateSkillBadRequest Error
+
+func (*GenerateSkillBadRequest) generateSkillRes() {}
+
+type GenerateSkillForbidden Error
+
+func (*GenerateSkillForbidden) generateSkillRes() {}
+
+type GenerateSkillReq struct {
+	// The user's own words. Stored as the generated version's provenance record (GEN-002) and subject to
+	// NFR-002 deletion like any other user content.
+	TaskDescription string `json:"task_description"`
+}
+
+// GetTaskDescription returns the value of TaskDescription.
+func (s *GenerateSkillReq) GetTaskDescription() string {
+	return s.TaskDescription
+}
+
+// SetTaskDescription sets the value of TaskDescription.
+func (s *GenerateSkillReq) SetTaskDescription(val string) {
+	s.TaskDescription = val
+}
+
+// Merged schema.
+// Ref: #/components/schemas/GenerateSkillResult
+type GenerateSkillResult struct {
+	SkillID       uuid.UUID `json:"skill_id"`
+	VersionID     uuid.UUID `json:"version_id"`
+	VersionNumber int       `json:"version_number"`
+	ContentHash   string    `json:"content_hash"`
+	// True when identical content already existed as a version of this skill.
+	Duplicate bool                `json:"duplicate"`
+	Findings  CategorizedFindings `json:"findings"`
+	// 1 or 2. Reported because 02:GEN-003 forbids the UI promising a success rate: one retry was measured
+	// to move 80% to 90%, not to nothing, and "it took two goes" is the honest form of that.
+	Attempts               int    `json:"attempts"`
+	GeneratorModel         string `json:"generator_model"`
+	GeneratorPromptVersion string `json:"generator_prompt_version"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *GenerateSkillResult) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *GenerateSkillResult) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetVersionNumber returns the value of VersionNumber.
+func (s *GenerateSkillResult) GetVersionNumber() int {
+	return s.VersionNumber
+}
+
+// GetContentHash returns the value of ContentHash.
+func (s *GenerateSkillResult) GetContentHash() string {
+	return s.ContentHash
+}
+
+// GetDuplicate returns the value of Duplicate.
+func (s *GenerateSkillResult) GetDuplicate() bool {
+	return s.Duplicate
+}
+
+// GetFindings returns the value of Findings.
+func (s *GenerateSkillResult) GetFindings() CategorizedFindings {
+	return s.Findings
+}
+
+// GetAttempts returns the value of Attempts.
+func (s *GenerateSkillResult) GetAttempts() int {
+	return s.Attempts
+}
+
+// GetGeneratorModel returns the value of GeneratorModel.
+func (s *GenerateSkillResult) GetGeneratorModel() string {
+	return s.GeneratorModel
+}
+
+// GetGeneratorPromptVersion returns the value of GeneratorPromptVersion.
+func (s *GenerateSkillResult) GetGeneratorPromptVersion() string {
+	return s.GeneratorPromptVersion
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *GenerateSkillResult) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *GenerateSkillResult) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetVersionNumber sets the value of VersionNumber.
+func (s *GenerateSkillResult) SetVersionNumber(val int) {
+	s.VersionNumber = val
+}
+
+// SetContentHash sets the value of ContentHash.
+func (s *GenerateSkillResult) SetContentHash(val string) {
+	s.ContentHash = val
+}
+
+// SetDuplicate sets the value of Duplicate.
+func (s *GenerateSkillResult) SetDuplicate(val bool) {
+	s.Duplicate = val
+}
+
+// SetFindings sets the value of Findings.
+func (s *GenerateSkillResult) SetFindings(val CategorizedFindings) {
+	s.Findings = val
+}
+
+// SetAttempts sets the value of Attempts.
+func (s *GenerateSkillResult) SetAttempts(val int) {
+	s.Attempts = val
+}
+
+// SetGeneratorModel sets the value of GeneratorModel.
+func (s *GenerateSkillResult) SetGeneratorModel(val string) {
+	s.GeneratorModel = val
+}
+
+// SetGeneratorPromptVersion sets the value of GeneratorPromptVersion.
+func (s *GenerateSkillResult) SetGeneratorPromptVersion(val string) {
+	s.GeneratorPromptVersion = val
+}
+
+func (*GenerateSkillResult) generateSkillRes() {}
+
+type GenerateSkillUnauthorized Error
+
+func (*GenerateSkillUnauthorized) generateSkillRes() {}
+
+// GenerateSkillUnprocessableEntity represents sum type.
+type GenerateSkillUnprocessableEntity struct {
+	// Type selects the active sum variant, switch on this field.
+	Type                GenerateSkillUnprocessableEntityType
+	CategorizedFindings CategorizedFindings
+	Error               Error
+}
+
+// GenerateSkillUnprocessableEntityType is oneOf type of GenerateSkillUnprocessableEntity.
+type GenerateSkillUnprocessableEntityType string
+
+// Possible values for GenerateSkillUnprocessableEntityType.
+const (
+	CategorizedFindingsGenerateSkillUnprocessableEntity GenerateSkillUnprocessableEntityType = "CategorizedFindings"
+	ErrorGenerateSkillUnprocessableEntity               GenerateSkillUnprocessableEntityType = "Error"
+)
+
+// IsCategorizedFindings reports whether GenerateSkillUnprocessableEntity is CategorizedFindings.
+func (s GenerateSkillUnprocessableEntity) IsCategorizedFindings() bool {
+	return s.Type == CategorizedFindingsGenerateSkillUnprocessableEntity
+}
+
+// IsError reports whether GenerateSkillUnprocessableEntity is Error.
+func (s GenerateSkillUnprocessableEntity) IsError() bool {
+	return s.Type == ErrorGenerateSkillUnprocessableEntity
+}
+
+// SetCategorizedFindings sets GenerateSkillUnprocessableEntity to CategorizedFindings.
+func (s *GenerateSkillUnprocessableEntity) SetCategorizedFindings(v CategorizedFindings) {
+	s.Type = CategorizedFindingsGenerateSkillUnprocessableEntity
+	s.CategorizedFindings = v
+}
+
+// GetCategorizedFindings returns CategorizedFindings and true boolean if GenerateSkillUnprocessableEntity is CategorizedFindings.
+func (s GenerateSkillUnprocessableEntity) GetCategorizedFindings() (v CategorizedFindings, ok bool) {
+	if !s.IsCategorizedFindings() {
+		return v, false
+	}
+	return s.CategorizedFindings, true
+}
+
+// NewCategorizedFindingsGenerateSkillUnprocessableEntity returns new GenerateSkillUnprocessableEntity from CategorizedFindings.
+func NewCategorizedFindingsGenerateSkillUnprocessableEntity(v CategorizedFindings) GenerateSkillUnprocessableEntity {
+	var s GenerateSkillUnprocessableEntity
+	s.SetCategorizedFindings(v)
+	return s
+}
+
+// SetError sets GenerateSkillUnprocessableEntity to Error.
+func (s *GenerateSkillUnprocessableEntity) SetError(v Error) {
+	s.Type = ErrorGenerateSkillUnprocessableEntity
+	s.Error = v
+}
+
+// GetError returns Error and true boolean if GenerateSkillUnprocessableEntity is Error.
+func (s GenerateSkillUnprocessableEntity) GetError() (v Error, ok bool) {
+	if !s.IsError() {
+		return v, false
+	}
+	return s.Error, true
+}
+
+// NewErrorGenerateSkillUnprocessableEntity returns new GenerateSkillUnprocessableEntity from Error.
+func NewErrorGenerateSkillUnprocessableEntity(v Error) GenerateSkillUnprocessableEntity {
+	var s GenerateSkillUnprocessableEntity
+	s.SetError(v)
+	return s
+}
+
+func (*GenerateSkillUnprocessableEntity) generateSkillRes() {}
+
 type GetDispatchStatusOK struct {
 	// False when nothing can be dispatched at all — the pool is halted, or every configured provider is
 	// drained one at a time, which is the same operational fact.
@@ -5647,6 +5859,13 @@ type Me struct {
 	Email       string    `json:"email"`
 	DisplayName string    `json:"display_name"`
 	WorkspaceID uuid.UUID `json:"workspace_id"`
+	// Optional entry points this deployment turns on. Absent when there are none — not an empty object,
+	// so a client never has to tell "off" apart from "this build predates the flag".
+	//
+	// It exists because a route that is simply not mounted cannot be discovered without a request that
+	// fails, and a feature discovered by a failed request has already been drawn on somebody's screen.
+	// Today the only key is `generate_skill` (ADR-052).
+	Features OptMeFeatures `json:"features"`
 	// What the purge will and will not destroy, in the server's own words, or null when no deletion is
 	// pending. The same sentence DELETE /me returns — and it is required here because a client that only
 	// had it from that one response lost it on the next reload, which is exactly when a user goes looking
@@ -5681,6 +5900,11 @@ func (s *Me) GetDisplayName() string {
 // GetWorkspaceID returns the value of WorkspaceID.
 func (s *Me) GetWorkspaceID() uuid.UUID {
 	return s.WorkspaceID
+}
+
+// GetFeatures returns the value of Features.
+func (s *Me) GetFeatures() OptMeFeatures {
+	return s.Features
 }
 
 // GetDeletionScope returns the value of DeletionScope.
@@ -5718,6 +5942,11 @@ func (s *Me) SetWorkspaceID(val uuid.UUID) {
 	s.WorkspaceID = val
 }
 
+// SetFeatures sets the value of Features.
+func (s *Me) SetFeatures(val OptMeFeatures) {
+	s.Features = val
+}
+
 // SetDeletionScope sets the value of DeletionScope.
 func (s *Me) SetDeletionScope(val NilString) {
 	s.DeletionScope = val
@@ -5734,6 +5963,23 @@ func (s *Me) SetPurgeAfter(val NilDateTime) {
 }
 
 func (*Me) getMeRes() {}
+
+// Optional entry points this deployment turns on. Absent when there are none — not an empty object,
+// so a client never has to tell "off" apart from "this build predates the flag".
+//
+// It exists because a route that is simply not mounted cannot be discovered without a request that
+// fails, and a feature discovered by a failed request has already been drawn on somebody's screen.
+// Today the only key is `generate_skill` (ADR-052).
+type MeFeatures map[string]bool
+
+func (s *MeFeatures) init() MeFeatures {
+	m := *s
+	if m == nil {
+		m = map[string]bool{}
+		*s = m
+	}
+	return m
+}
 
 // NewNilDateTime returns new NilDateTime with value set to v.
 func NewNilDateTime(v time.Time) NilDateTime {
@@ -6461,6 +6707,52 @@ func (o OptInt64) Get() (v int64, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptInt64) Or(d int64) int64 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptMeFeatures returns new OptMeFeatures with value set to v.
+func NewOptMeFeatures(v MeFeatures) OptMeFeatures {
+	return OptMeFeatures{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptMeFeatures is optional MeFeatures.
+type OptMeFeatures struct {
+	Value MeFeatures
+	Set   bool
+}
+
+// IsSet returns true if OptMeFeatures was set.
+func (o OptMeFeatures) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptMeFeatures) Reset() {
+	var v MeFeatures
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptMeFeatures) SetTo(v MeFeatures) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptMeFeatures) Get() (v MeFeatures, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptMeFeatures) Or(d MeFeatures) MeFeatures {
 	if v, ok := o.Get(); ok {
 		return v
 	}

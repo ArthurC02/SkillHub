@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
 const (
@@ -65,6 +65,15 @@ type Handler struct {
 	// Fork, run creation and download, and leaves search and skill detail exactly
 	// as they were (DISC-010 already serves those to nobody in particular).
 	Invited map[string]bool
+	// Features is deployment configuration this endpoint passes through without
+	// understanding it: the web has to know whether an entry point exists before
+	// it draws one, and a route that is simply not mounted cannot be discovered
+	// without asking for it and getting a 404 — which is a probe, not an answer.
+	//
+	// A generic map on purpose. identity has no business knowing what
+	// `generate_skill` means (ADR-032), and the alternative — one named boolean
+	// per feature — puts every future flag through this file.
+	Features map[string]bool
 }
 
 // Mount registers the auth routes on mux.
@@ -408,6 +417,12 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		// ran on. One constant, both endpoints — a second copy of this wording is
 		// a second thing to keep true.
 		"deletion_scope": nil,
+	}
+	// Absent, not empty, when the deployment turns everything off: an empty
+	// object invites the client to treat a missing key as false somewhere and a
+	// present-but-false key as something else somewhere.
+	if len(h.Features) > 0 {
+		out["features"] = h.Features
 	}
 	if user.DeletionRequestedAt.Valid {
 		at := user.DeletionRequestedAt.Time.UTC()

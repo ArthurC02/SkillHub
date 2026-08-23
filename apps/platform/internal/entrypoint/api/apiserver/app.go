@@ -83,6 +83,12 @@ type Config struct {
 	// GenerateQuota is the M5 generation allowance, deliberately a second value
 	// rather than a second draw on Quota (ADR-047 決策 5).
 	GenerateQuota policy.QuotaLimits
+	// GenerateExposed is ADR-052's hard boundary between 開工 and 曝光. False
+	// means POST /skills/generate is not mounted and /me does not mention it, so
+	// a beta participant cannot meet "搜不到 → 生成一個" — the funnel's first
+	// segment measures whether search works, and that number has one chance with
+	// twelve people.
+	GenerateExposed bool
 }
 
 // App is the wired object graph. Deps is exposed so a test can adjust the
@@ -146,6 +152,7 @@ func NewApp(cfg Config) (*App, error) {
 		DevLogin:  cfg.DevLogin,
 		Operators: cfg.Operators,
 		Invited:   cfg.Invited,
+		Features:  features(cfg),
 	}
 
 	// Insert-only queue client: the API enqueues run jobs in the same transaction
@@ -298,11 +305,12 @@ func NewApp(cfg Config) (*App, error) {
 				Svc:      testlabSvc,
 				Identity: auth.Service,
 			},
-			Runs:      &run.Handler{Svc: runSvc, Identity: auth.Service},
-			Trace:     &trace.Handler{Svc: traceSvc, Identity: auth.Service},
-			Eval:      &eval.Handler{Svc: evalSvc, Identity: auth.Service},
-			Packaging: &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
-			Analytics: &analytics.Handler{Svc: funnel, Identity: auth.Service},
+			Runs:            &run.Handler{Svc: runSvc, Identity: auth.Service},
+			Trace:           &trace.Handler{Svc: traceSvc, Identity: auth.Service},
+			Eval:            &eval.Handler{Svc: evalSvc, Identity: auth.Service},
+			Packaging:       &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
+			Analytics:       &analytics.Handler{Svc: funnel, Identity: auth.Service},
+			GenerateExposed: cfg.GenerateExposed,
 		},
 		Auth:         auth,
 		RunSvc:       runSvc,
@@ -504,4 +512,16 @@ func suggesterOrNil(c *llmclient.Client) testlab.CriteriaSuggester {
 		return nil
 	}
 	return c
+}
+
+// features is what /me tells the web about this deployment's optional entry
+// points. Only true ones are listed, and the map is absent entirely when there
+// are none — a client that has to distinguish "off" from "this build predates
+// the flag" is a client that will get one of them wrong.
+func features(cfg Config) map[string]bool {
+	f := map[string]bool{}
+	if cfg.GenerateExposed {
+		f["generate_skill"] = true
+	}
+	return f
 }

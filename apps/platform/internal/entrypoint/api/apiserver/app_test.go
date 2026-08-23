@@ -48,6 +48,13 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	for i := range deps.NumField() {
 		name := deps.Type().Field(i).Name
 		handler := deps.Field(i)
+		// Deps also carries deployment configuration now (GenerateExposed, ADR-052).
+		// A bool has no wiring to check and false is a legitimate value, so the
+		// handler sweep skips anything that is not a pointer rather than growing a
+		// name-based exception list.
+		if handler.Kind() != reflect.Pointer {
+			continue
+		}
 		if handler.IsNil() {
 			t.Errorf("Deps.%s is nil: its routes are mounted on nothing", name)
 			continue
