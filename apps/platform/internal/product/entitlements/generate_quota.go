@@ -75,12 +75,14 @@ func DefaultGenerateQuotaLimits() QuotaLimits {
 // model call sits in between, and holding a transaction open across it would
 // hold a connection for the length of a generation. The overshoot that allows is
 // stated rather than implied: concurrent generations in one workspace all read
-// the same usage, and unlike runs there is no concurrency gate bounding how many
-// that can be.
+// the same usage before any of them writes a row.
 //
-// ponytail: unbounded overshoot under concurrency. Add a per-workspace advisory
-// lock around the count if a workspace ever generates concurrently on purpose —
-// today the entry point is one button in one browser tab.
+// What bounds it is not here — ingest holds one generation slot per workspace,
+// so within one API replica the concurrent readers are at most one. That gate is
+// in-process, which is the ceiling: two replicas, two slots, two readers.
+//
+// ponytail: overshoot bounded by replica count. Add a per-workspace advisory
+// lock around the count when there is more than one cmd/api.
 func EnforceGenerateQuota(
 	ctx context.Context, reader UsageReader, l QuotaLimits, workspaceID pgtype.UUID,
 ) (string, error) {

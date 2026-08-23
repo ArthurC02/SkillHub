@@ -50,6 +50,20 @@ import (
 // account simply has nothing left in this window.
 var ErrQuotaExceeded = errors.New("this workspace has used its free run allowance")
 
+// ErrAllowanceUnavailable is the other way enforce can refuse: the allowance
+// could not be counted at all. It fails closed exactly as an exhausted one does
+// (02:SEC-002 — a check that could not be performed has not passed), but it is
+// NOT the same answer and must not wrap the same sentinel.
+//
+// It used to. Both handlers map their exceeded sentinel to a 422 carrying
+// err.Error(), so a database outage reached the user as "this workspace has used
+// its free allowance ... " with the wrapped pgx error appended — a sentence that
+// is false, unactionable, and carries a connection string into a response body
+// (NFR-002, iron rule 11). Not wrapping it is what makes the two distinguishable
+// at the handler, and neither handler matches this one, so it falls through to
+// the generic 5xx, which is what an outage is.
+var ErrAllowanceUnavailable = errors.New("the allowance could not be counted")
+
 // PDM-010 §8.1's proposed numbers.
 //
 // 待追認 — every one of them, in the sense that PDM-010 is still a proposal and
@@ -301,8 +315,9 @@ func enforce(
 		// Fail closed, like every other gate B condition (02:SEC-002: a check that
 		// could not be performed has not passed). An allowance that could not be
 		// counted is not an allowance of zero used.
-		return a.prefix + "_unavailable", fmt.Errorf("%w: the allowance could not be counted, "+
-			"and an uncounted allowance is not treated as an unused one: %w", a.sentinel, err)
+		return a.prefix + "_unavailable", fmt.Errorf(
+			"%w: an uncounted allowance is not treated as an unused one: %w",
+			ErrAllowanceUnavailable, err)
 	}
 	if state.RemainingToday <= 0 {
 		return a.prefix + "_daily",

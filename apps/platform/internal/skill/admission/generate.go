@@ -81,14 +81,6 @@ var ErrGeneratedPackageInvalid = errors.New("ingest: generated skill cannot be p
 var ErrGeneratedNameCollision = errors.New(
 	"ingest: this workspace already has a skill with that name, and one of the two was generated")
 
-// errGenerateAllowanceUnavailable: the allowance could not be counted. Fails
-// closed like every other gate B condition — but deliberately NOT wrapped in
-// ErrGenerateQuotaExceeded, because that sentinel becomes a 422 saying the
-// workspace used up its allowance, which for a database outage is both false and
-// unactionable (and, wrapping the pgx error, leaks the connection string into a
-// response body).
-var errGenerateAllowanceUnavailable = errors.New("ingest: the generation allowance could not be counted")
-
 // GenerateResult is one generation. Result.Report is the validation outcome and
 // is shown to the user verbatim on failure (02:GEN-003, same treatment SKILL-002
 // already gives a failed import); Result.Version is meaningless when
@@ -402,14 +394,13 @@ func (s *Service) auditGenerateFailure(ctx context.Context, ws identity.Workspac
 	meta["task_description_chars"] = len([]rune(task))
 	// WithoutCancel: the commonest failure is the gateway call running out of the
 	// caller's deadline, and that same dead ctx would take the record with it.
+	//
+	// Written straight to the pool, not through a transaction of this package's
+	// own: audit.Log takes a DBTX and *pgxpool.Pool is one, so a single INSERT
+	// gets its implicit transaction from the server. Opening one here bought two
+	// error branches no test can reach and nothing else.
 	ctx = context.WithoutCancel(ctx)
-	tx, err := s.Pool.Begin(ctx)
-	if err != nil {
-		slog.Error("generate: failure record could not open a transaction", "error", err)
-		return
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	if err := audit.Log(ctx, tx, audit.Event{
+	if err := audit.Log(ctx, s.Pool, audit.Event{
 		Actor:     ws.OwnerUserID,
 		Workspace: ws.ID,
 		Action:    audit.ActionSkillGenerateFailed,
@@ -419,10 +410,6 @@ func (s *Service) auditGenerateFailure(ctx context.Context, ws identity.Workspac
 		Metadata:     meta,
 	}); err != nil {
 		slog.Error("generate: failure record not written", "error", err)
-		return
-	}
-	if err := tx.Commit(ctx); err != nil {
-		slog.Error("generate: failure record not committed", "error", err)
 	}
 }
 
@@ -446,28 +433,11 @@ func (s *Service) requireGenerateAllowance(ctx context.Context, workspaceID pgty
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		slog.Error("generate: the allowance could not be counted", "error", err)
-		return "generate_quota_unavailable", errGenerateAllowanceUnavailable
+		return "generate_quota_unavailable", fmt.Errorf("%w: %w", policy.ErrAllowanceUnavailable, err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	return policy.EnforceGenerateQuota(ctx, generateUsageReader(tx), s.GenerateQuota, workspaceID)
-}
-
-// GenerateQuotaFor is the read path behind the pre-generation cost and allowance
-// summary (02:GEN-001). ok is false when this deployment enforces no generation
-// allowance, and the caller must then show nothing rather than zeroes.
-func (s *Service) GenerateQuotaFor(ctx context.Context, workspaceID pgtype.UUID) (policy.QuotaState, bool, error) {
-	if !s.GenerateQuota.Enforced() {
-		return policy.QuotaState{}, false, nil
-	}
-	tx, err := s.Pool.Begin(ctx)
-	if err != nil {
-		return policy.QuotaState{}, false, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	state, err := policy.Usage(ctx, generateUsageReader(tx), s.GenerateQuota, workspaceID, time.Now())
-	return state, err == nil, err
 }
 
 // generateUsageReader counts generations the way policy counts runs. One

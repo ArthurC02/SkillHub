@@ -69,20 +69,47 @@ func TestGenerationAllowanceOffRefusesNothing(t *testing.T) {
 // zero used (02:SEC-002). The generation path calls this before spending money,
 // so the failure direction here is the one that decides whether an unreadable
 // database becomes a free gateway.
-func TestAnUncountableGenerationAllowanceRefuses(t *testing.T) {
+// Both allowances, because enforce() is one function and this is its behaviour,
+// not either caller's.
+//
+// It must refuse, and it must NOT say the workspace ran out. Both handlers turn
+// their exceeded sentinel into a 422 carrying err.Error(), so wrapping that
+// sentinel here told a user with a healthy account that they had used up an
+// allowance — and appended the pgx error, connection string included, to a
+// response body (NFR-002, iron rule 11).
+func TestAnUncountableAllowanceRefusesWithoutClaimingItRanOut(t *testing.T) {
 	broken := UsageReader{
 		WorkspaceCreatedAt: func(context.Context, pgtype.UUID) (time.Time, error) {
-			return time.Time{}, errors.New("database is down")
+			return time.Time{}, errors.New("password=hunter2 host=db.internal: connection refused")
 		},
 		CountRuns: func(context.Context, pgtype.UUID, time.Time) (RunUsage, error) {
 			return RunUsage{}, nil
 		},
 	}
-	reason, err := EnforceGenerateQuota(context.Background(), broken, DefaultGenerateQuotaLimits(), pgtype.UUID{})
-	if !errors.Is(err, ErrGenerateQuotaExceeded) {
-		t.Fatalf("err = %v, want ErrGenerateQuotaExceeded", err)
-	}
-	if reason != "generate_quota_unavailable" {
-		t.Errorf("reason = %q", reason)
+	for _, tc := range []struct {
+		name     string
+		call     func() (string, error)
+		exceeded error
+		reason   string
+	}{
+		{"generations", func() (string, error) {
+			return EnforceGenerateQuota(context.Background(), broken, DefaultGenerateQuotaLimits(), pgtype.UUID{})
+		}, ErrGenerateQuotaExceeded, "generate_quota_unavailable"},
+		{"runs", func() (string, error) {
+			return EnforceQuota(context.Background(), broken, DefaultQuotaLimits(), pgtype.UUID{})
+		}, ErrQuotaExceeded, "quota_unavailable"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reason, err := tc.call()
+			if !errors.Is(err, ErrAllowanceUnavailable) {
+				t.Fatalf("err = %v, want ErrAllowanceUnavailable", err)
+			}
+			if errors.Is(err, tc.exceeded) {
+				t.Errorf("an uncountable allowance must not read as an exhausted one: %v", err)
+			}
+			if reason != tc.reason {
+				t.Errorf("reason = %q, want %q", reason, tc.reason)
+			}
+		})
 	}
 }
