@@ -107,15 +107,22 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 	}
 
 	q := s.queries()
-	stored := 0
+	// The counters exist because 04 丙-38 asked "what fraction of proposals gets
+	// thrown away", and the answer was unobservable: every drop was a slog.Warn
+	// and nothing counted them, so the only recoverable number was how many
+	// survived. A rate needs its denominator, and the denominator was being
+	// discarded one line at a time.
+	stored, noEvidence, unstorable, writeFailed, overCap := 0, 0, 0, 0, 0
 	for _, p := range resp.Suggestions {
 		if stored == maxSuggestionsStore {
+			overCap = len(resp.Suggestions) - stored - noEvidence - unstorable - writeFailed
 			break
 		}
 		evidence, err := suggestionEvidence(p, refs)
 		if err != nil || len(evidence) == 0 {
 			slog.Warn("improvement proposal has no matching verified evidence",
 				"evaluation_id", pgconv.UUIDString(ev.ID), "category", p.Category)
+			noEvidence++
 			continue
 		}
 		if !storable(p) {
@@ -124,6 +131,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 			// something a user should be asked to decide about.
 			slog.Warn("improvement proposal refused before storage",
 				"evaluation_id", pgconv.UUIDString(ev.ID), "category", p.Category)
+			unstorable++
 			continue
 		}
 		target, _ := cleanTargetPath(p.TargetPath)
@@ -139,10 +147,23 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 		}); err != nil {
 			slog.Warn("improvement proposal not stored",
 				"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)
+			writeFailed++
 			continue
 		}
 		stored++
 	}
+	// One line per evaluation, always — including the all-clear. A counter that
+	// is only emitted when something was dropped cannot distinguish "nothing was
+	// dropped" from "this never ran", which is the same defect as a scan whose
+	// absence reads as a pass.
+	slog.Info("improvement proposals",
+		"evaluation_id", pgconv.UUIDString(ev.ID),
+		"proposed", len(resp.Suggestions),
+		"stored", stored,
+		"dropped_no_evidence", noEvidence,
+		"dropped_unstorable", unstorable,
+		"dropped_write_failed", writeFailed,
+		"dropped_over_cap", overCap)
 }
 
 // worthSuggesting keeps the platform from paying a model to improve a run that met
