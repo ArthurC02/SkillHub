@@ -1116,7 +1116,7 @@ components:
         task_description:
           type: string
           minLength: 8
-          maxLength: 4000
+          maxLength: 4000  # one-number: generateMaxTaskRunes
           description: |
             What the user wants done, in their own words. Not a Skill name and
             not a query - the whole point of GEN-001 is that the user does not

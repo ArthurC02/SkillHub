@@ -20,6 +20,28 @@ import { GeneratedNotice } from "./GeneratedNotice";
  * here assumes the flag is already on.
  */
 
+/**
+ * The three bounds a generation is held to, stated before the button is
+ * pressed (02:GEN-001 「生成前顯示…本次將消耗的額度」, design system §2.2).
+ *
+ * These are not estimates and they are not the allowance. They are the ceilings
+ * the server enforces — ErrGenerateTooLong in admission, finish_reason=length in
+ * apps/llm, the retry loop's upper bound — and each carries a one-number marker
+ * so `devctl automation-check` fails the day a copy drifts from the line that
+ * enforces it. That marker is the answer to §3 第 11 條 「指出強制它的那一行」:
+ * the line is named, and a machine compares against it.
+ *
+ * What is NOT here is a dollar figure. The only unenforced input to a cost is
+ * the unit price, which is the provider's fact and changes; printing the
+ * measured average ($0.0055) as 「預估成本」 would be the promise §2.2 forbids
+ * (04 丙-53). The allowance half is absent too, for the reason RunPreflight's
+ * quota row is: a deployment enforcing none sends none, and a number would be a
+ * claim (04 乙-2).
+ */
+const GENERATE_MAX_TASK_RUNES = 4000; // one-number: generateMaxTaskRunes
+const GENERATE_MAX_OUTPUT_TOKENS = 16000; // one-number: generateMaxOutputTokens
+const GENERATE_MAX_ATTEMPTS = 2; // one-number: generateMaxAttempts
+
 export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
   const [task, setTask] = useState(initialTask);
   const [rejected, setRejected] = useState<GenerateRejected>();
@@ -67,7 +89,29 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         onChange={(e) => setTask(e.target.value)}
         placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
         disabled={mutation.isPending}
+        maxLength={GENERATE_MAX_TASK_RUNES}
       />
+
+      <dl>
+        <dt>這一次最多會用到</dt>
+        <dd>
+          描述 {GENERATE_MAX_TASK_RUNES.toLocaleString("zh-TW")} 字、模型輸出{" "}
+          {GENERATE_MAX_OUTPUT_TOKENS.toLocaleString("zh-TW")} token、最多嘗試{" "}
+          {GENERATE_MAX_ATTEMPTS} 次。
+          <span className="note">
+            {" "}
+            這三個數字是伺服器實際擋你的上限，不是估計；超過第一個會被拒絕，超過第二個會直接停下、不重試。
+          </span>
+        </dd>
+        <dt>預估成本</dt>
+        <dd>
+          尚未定值
+          <span className="note">
+            {" "}
+            ——平台還沒有為單次生成設定費用上限，所以這裡不印一個沒有東西在保證的金額。
+          </span>
+        </dd>
+      </dl>
 
       <button type="button" onClick={submit} disabled={mutation.isPending || task.trim() === ""}>
         {mutation.isPending ? "生成中…" : "生成一個 Skill"}

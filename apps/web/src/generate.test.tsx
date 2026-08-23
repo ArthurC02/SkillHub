@@ -208,3 +208,25 @@ test("GEN-003: a workspace with no failures is shown no history section", async 
   expect(container.textContent).toContain("讓平台依你的描述做一個");
   expect(container.textContent).not.toContain("過去沒有成功的生成");
 });
+
+// GEN-008 / 02:GEN-001 「生成前顯示…」. Two things are asserted: that the three
+// enforced ceilings are on screen, and that the money position says 尚未定值
+// rather than printing the measured average — the latter is the 04 乙-2 shape
+// (a number with nothing behind it) and the former is its correction.
+test("GEN-008: the bounds the server enforces are stated before the button, and the cost says it is unset", async () => {
+  stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("這一次最多會用到");
+  expect(text).toContain("4,000 字");
+  expect(text).toContain("16,000 token");
+  expect(text).toContain("最多嘗試 2 次");
+  expect(text).toContain("尚未定值");
+  // The measured average must not appear as a promise.
+  expect(text).not.toMatch(/\$0\.00/);
+  // And the textarea enforces the same ceiling the server does.
+  expect(container.querySelector<HTMLTextAreaElement>("#generate-task")!.maxLength).toBe(4000);
+});
+

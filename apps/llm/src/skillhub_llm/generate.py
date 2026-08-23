@@ -56,7 +56,7 @@ GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v1"
 # output, and reasoning varies far more than output does. The one round-A
 # failure spent all 8000 of its tokens reasoning and emitted an empty string,
 # then succeeded at 16000 having used 7552 in total.
-MAX_OUTPUT_TOKENS = 16000
+MAX_OUTPUT_TOKENS = 16000  # one-number: generateMaxOutputTokens
 
 # Contract caps (llm-internal.yaml). They cannot be expressed in the schema the
 # model is given - strict `json_schema` rejects `maxLength` and `maxItems` - so
@@ -119,7 +119,7 @@ class GeneratedSkill(BaseModel):
 
 
 class GenerateSkillRequest(BaseModel):
-    task_description: str = Field(..., min_length=8, max_length=4000)
+    task_description: str = Field(..., min_length=8, max_length=4000)  # one-number: generateMaxTaskRunes
 
     @field_validator("task_description")
     @classmethod

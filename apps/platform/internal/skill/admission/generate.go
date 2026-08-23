@@ -43,7 +43,7 @@ import (
 // measured what it buys: 80% to 90%, not to nothing. 6 of 20 task descriptions
 // failed at least once and 2 of 20 failed both times, so the residual is real
 // and the UI is forbidden from promising a success rate (02:GEN-003).
-const generateMaxAttempts = 2
+const generateMaxAttempts = 2 // one-number: generateMaxAttempts
 
 // ErrGenerateBlank: nothing to generate from. Refused before the gateway, so a
 // blank box never costs money (02:GEN-001). apps/llm refuses it again as a
@@ -61,7 +61,7 @@ var ErrGenerateInFlight = errors.New("ingest: a generation is already running fo
 // that owns product rules (iron rule 6). Runes, not bytes.
 const (
 	minTaskDescriptionRunes = 8
-	maxTaskDescriptionRunes = 4000
+	maxTaskDescriptionRunes = 4000 // one-number: generateMaxTaskRunes
 )
 
 // ErrGenerateNotForCatalogue: generation is a personal-workspace feature
