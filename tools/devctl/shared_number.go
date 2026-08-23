@@ -61,7 +61,13 @@ var sharedNumberMarker = regexp.MustCompile(`(?://|#)\s*one-number:\s*([A-Za-z0-
 // The last integer before the marker comment. Anchored to the end so that
 // `Field(None, max_length=8000)` yields 8000 and not the 0 in some earlier
 // argument.
-var trailingIntPattern = regexp.MustCompile(`(\d+)[^0-9]*$`)
+//
+// Underscores are part of the number, not a boundary: Python and Go both write
+// 40_000, and the first version of this pattern read that as 000 — three sites
+// agreeing on 40000 and one "disagreeing" at 000. A comparison that reports a
+// difference nobody made is worse than no comparison, because the next person
+// learns to distrust it.
+var trailingIntPattern = regexp.MustCompile(`([0-9][0-9_]*)[^0-9]*$`)
 
 // Where to look. Deliberately a short list of source trees rather than the whole
 // repo: vendored Python under apps/llm/.venv is large, and generated output is
@@ -126,7 +132,10 @@ func sharedNumberProblems(root string) []string {
 						"%s:%d: one-number: %s marks a line with no number on it", rel, i+1, name))
 					continue
 				}
-				found[name] = append(found[name], sharedNumberSite{file: rel, line: i + 1, value: value[1]})
+				found[name] = append(found[name], sharedNumberSite{
+					file: rel, line: i + 1,
+					value: strings.ReplaceAll(value[1], "_", ""),
+				})
 			}
 			return nil
 		})

@@ -46,8 +46,8 @@ import (
 // Every cut is named in the request's `truncation` list, and a criterion that
 // depends on a cut field may then only be answered `undetermined`.
 const (
-	maxFinalOutput  = 40000 // CONTENT-005's existing review threshold
-	maxCriteria     = 20
+	maxFinalOutput  = 40000 // one-number: maxFinalOutput - CONTENT-005's existing review threshold
+	maxCriteria     = 20 // one-number: maxCriteria
 	// 2000 until 2026-08-23, when 04 丙-47 measured what that cost: over 164 runs
 	// with a trace, 95 of them - 58% - had at least one citable payload trimmed,
 	// and every one of those runs then reported incomplete evidence and had its
@@ -68,9 +68,9 @@ const (
 	// trusted: all 164 runs come from one workspace's synthetic corpus of writing
 	// Skills. Something that emits a large CSV is not in the sample.
 	maxDigestEntry  = 8000 // one-number: maxDigestEntry
-	maxDigestCount  = 100 // llm-internal.yaml TraceDigest.entries maxItems
-	maxArtifactRows = 500
-	excerptLimit    = 1000 // what a stored EvidenceRef keeps of its source
+	maxDigestCount  = 100 // one-number: maxDigestCount
+	maxArtifactRows = 500 // one-number: maxArtifactRows
+	excerptLimit    = 1000 // one-number: excerptLimit - what a stored EvidenceRef keeps of its source
 )
 
 // judge assembles the request, calls apps/llm, and verifies everything that

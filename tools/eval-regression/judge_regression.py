@@ -75,12 +75,12 @@ OUT = Path(__file__).with_name("results.jsonl")
 
 # evaluation-design §6.3, mirrored from apps/platform/internal/trial/improvement/judge.go
 # so the request this harness builds is the one the control plane would build.
-MAX_FINAL_OUTPUT = 40000
-MAX_CRITERIA = 20
+MAX_FINAL_OUTPUT = 40000  # one-number: maxFinalOutput
+MAX_CRITERIA = 20  # one-number: maxCriteria
 MAX_DIGEST_ENTRY = 8000  # one-number: maxDigestEntry - raised 2026-08-23, evaluation-design 6.3 / 04 丙-47
-MAX_DIGEST_COUNT = 100
-MAX_ARTIFACT_ROWS = 500
-EXCERPT_LIMIT = 1000
+MAX_DIGEST_COUNT = 100  # one-number: maxDigestCount
+MAX_ARTIFACT_ROWS = 500  # one-number: maxArtifactRows
+EXCERPT_LIMIT = 1000  # one-number: excerptLimit
 
 # The event types Go lets into the digest, and therefore the only ids a verdict
 # may cite.

@@ -786,7 +786,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TraceDigestEntry"
-          maxItems: 100
+          maxItems: 100  # one-number: maxDigestCount
           default: []
     RubricItem:
       type: object
@@ -873,14 +873,16 @@ components:
         user_prompt:
           type: string
           minLength: 1
-          maxLength: 40000
+          maxLength: 40000  # deliberately unmarked: not maxFinalOutput. Nothing produces a prompt this long
+          # - trial/design MaxPromptBytes caps it at 32 KiB upstream, and bytes bound
+          # characters from above, so this ceiling cannot bite. Same number, different fact.
           description: The task the user asked for. Untrusted, and the thing the criteria are about.
         criteria:
           type: array
           items:
             $ref: "#/components/schemas/JudgeCriterion"
           minItems: 1
-          maxItems: 20
+          maxItems: 20  # one-number: maxCriteria
           description: |
             The criteria to judge, one verdict each. At least one: a Run with no
             criteria has nothing for a judge to answer and Go does not call here.
@@ -888,7 +890,7 @@ components:
           $ref: "#/components/schemas/Rubric"
         final_output:
           type: string
-          maxLength: 40000
+          maxLength: 40000  # one-number: maxFinalOutput
           description: |
             The agent's final reply. Untrusted. Cut at 40,000 characters, the
             threshold CONTENT-005's review script already uses; a cut is recorded
@@ -898,7 +900,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/JudgeArtifact"
-          maxItems: 500
+          maxItems: 500  # one-number: maxArtifactRows
           default: []
           description: |
             The full manifest. An empty list is meaningful: a Run that reported

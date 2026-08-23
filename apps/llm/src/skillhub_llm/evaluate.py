@@ -317,7 +317,7 @@ class TraceDigest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     complete: bool
-    entries: list[TraceDigestEntry] = Field(default_factory=list, max_length=100)
+    entries: list[TraceDigestEntry] = Field(default_factory=list, max_length=100)  # one-number: maxDigestCount
 
 
 class RubricItem(BaseModel):
@@ -347,10 +347,10 @@ class JudgeRunRequest(BaseModel):
     evaluation_id: str
     skill: JudgeSkill | None = None
     user_prompt: str = Field(..., min_length=1, max_length=40_000)
-    criteria: list[JudgeCriterion] = Field(..., min_length=1, max_length=20)
+    criteria: list[JudgeCriterion] = Field(..., min_length=1, max_length=20)  # one-number: maxCriteria
     rubric: Rubric | None = None
-    final_output: str = Field(..., max_length=40_000)
-    artifacts: list[JudgeArtifact] = Field(default_factory=list, max_length=500)
+    final_output: str = Field(..., max_length=40_000)  # one-number: maxFinalOutput
+    artifacts: list[JudgeArtifact] = Field(default_factory=list, max_length=500)  # one-number: maxArtifactRows
     trace_digest: TraceDigest
     truncation: list[str] = Field(default_factory=list, max_length=100)
 
