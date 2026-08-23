@@ -39,6 +39,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -275,6 +276,23 @@ func remaining(limit int, used int64) int {
 func EnforceQuota(
 	ctx context.Context, reader UsageReader, l QuotaLimits, workspaceID pgtype.UUID,
 ) (string, error) {
+	return enforce(ctx, reader, l, workspaceID, allowance{
+		sentinel: ErrQuotaExceeded, noun: "runs", prefix: "quota",
+	})
+}
+
+// allowance is what differs between the two things this file can refuse. The
+// arithmetic does not differ, and duplicating it would be the way the two
+// silently stop agreeing on what "the window resets at" means.
+type allowance struct {
+	sentinel error
+	noun     string // "runs" or "generations"
+	prefix   string // metric/audit reason prefix
+}
+
+func enforce(
+	ctx context.Context, reader UsageReader, l QuotaLimits, workspaceID pgtype.UUID, a allowance,
+) (string, error) {
 	if !l.Enforced() {
 		return "", nil
 	}
@@ -283,18 +301,18 @@ func EnforceQuota(
 		// Fail closed, like every other gate B condition (02:SEC-002: a check that
 		// could not be performed has not passed). An allowance that could not be
 		// counted is not an allowance of zero used.
-		return "quota_unavailable", fmt.Errorf("%w: the allowance could not be counted, "+
-			"and an uncounted allowance is not treated as an unused one: %w", ErrQuotaExceeded, err)
+		return a.prefix + "_unavailable", fmt.Errorf("%w: the allowance could not be counted, "+
+			"and an uncounted allowance is not treated as an unused one: %w", a.sentinel, err)
 	}
 	if state.RemainingToday <= 0 {
-		return "quota_daily",
-			fmt.Errorf("%w: %d runs a day is the limit; it resets 24 hours after your earliest run today",
-				ErrQuotaExceeded, l.Daily)
+		return a.prefix + "_daily",
+			fmt.Errorf("%w: %d %s a day is the limit; it resets 24 hours after your earliest %s today",
+				a.sentinel, l.Daily, a.noun, strings.TrimSuffix(a.noun, "s"))
 	}
 	if state.RemainingWindow <= 0 {
-		return "quota_window",
-			fmt.Errorf("%w: %d runs per %d days is the limit; the next one frees up at %s",
-				ErrQuotaExceeded, state.Limits.Window, l.WindowDays,
+		return a.prefix + "_window",
+			fmt.Errorf("%w: %d %s per %d days is the limit; the next one frees up at %s",
+				a.sentinel, state.Limits.Window, a.noun, l.WindowDays,
 				state.WindowResetsAt.UTC().Format(time.RFC3339))
 	}
 	return "", nil

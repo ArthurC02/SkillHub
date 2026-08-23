@@ -21,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
@@ -46,6 +47,12 @@ type Service struct {
 	IndexSkill func(ctx context.Context, tx pgx.Tx, projection SkillProjection) error
 	// PendingEnrichments is catalog's owner read, adapted by the composition root.
 	PendingEnrichments func(ctx context.Context, limit int32) ([]PendingEnrichment, error)
+	// GenerateQuota is the generation allowance (GEN-004, ADR-047 決策 5). The
+	// zero value enforces nothing and displays nothing, which is what a build
+	// with no generation allowance is. Deliberately NOT the run allowance: one
+	// pool would let a generation quietly eat a trial run's balance, and the
+	// trial run is what the MVP funnel measures.
+	GenerateQuota policy.QuotaLimits
 }
 
 // SkillProjection is the complete search data produced by ingest.

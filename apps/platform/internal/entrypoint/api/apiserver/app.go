@@ -80,6 +80,9 @@ type Config struct {
 	// Quota is the PDM-010 free allowance. The zero value is "not enforced", and
 	// it also unmounts GET /me/quota (ADR-028 決策 3).
 	Quota policy.QuotaLimits
+	// GenerateQuota is the M5 generation allowance, deliberately a second value
+	// rather than a second draw on Quota (ADR-047 決策 5).
+	GenerateQuota policy.QuotaLimits
 }
 
 // App is the wired object graph. Deps is exposed so a test can adjust the
@@ -165,10 +168,11 @@ func NewApp(cfg Config) (*App, error) {
 	// is searchable the moment it exists. Left unset, every import path refuses
 	// rather than committing a version nobody can find — see app_test.go.
 	versions := &ingest.Service{
-		Pool:    cfg.Pool,
-		Store:   cfg.Store,
-		Fetcher: cfg.Fetcher,
-		LLM:     cfg.LLM,
+		Pool:          cfg.Pool,
+		Store:         cfg.Store,
+		Fetcher:       cfg.Fetcher,
+		LLM:           cfg.LLM,
+		GenerateQuota: cfg.GenerateQuota,
 		IndexSkill: func(ctx context.Context, tx pgx.Tx, p ingest.SkillProjection) error {
 			return catalog.IndexSkillEnriched(ctx, tx, catalog.EnrichedSkillProjection{
 				SkillID: p.SkillID, WorkspaceID: p.WorkspaceID, Name: p.Name, Summary: p.Summary,

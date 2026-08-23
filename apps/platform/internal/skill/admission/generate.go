@@ -11,12 +11,17 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"gopkg.in/yaml.v3"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -80,6 +85,15 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 	task := strings.TrimSpace(taskDescription)
 	if task == "" {
 		return GenerateResult{}, ErrGenerateBlank
+	}
+	// Before the first gateway call and before anything is written: 02:GEN-001
+	// 「額度不足時在呼叫模型之前拒絕，不得先花錢再說」.
+	if reason, err := s.requireGenerateAllowance(ctx, ws.ID); err != nil {
+		s.auditGenerateFailure(ctx, ws, task, 0, map[string]any{
+			"failure": "quota",
+			"reason":  reason,
+		})
+		return GenerateResult{}, err
 	}
 
 	var out GenerateResult
@@ -305,5 +319,75 @@ func (s *Service) auditGenerateFailure(ctx context.Context, ws identity.Workspac
 	}
 	if err := tx.Commit(ctx); err != nil {
 		slog.Error("generate: failure record not committed", "error", err)
+	}
+}
+
+// requireGenerateAllowance is the generation half of ADR-028's enforcement
+// points (GEN-004). The rule is policy's, the point is here: `policy` decides
+// whether there is allowance left, this package is what asks and what refuses.
+//
+// Nil GenerateQuota, or a zero one, means this deployment enforces no generation
+// allowance — it then refuses nothing and claims none exists, the same pairing
+// QuotaLimits.Enforced already defines for runs (04 乙-2: a number on a screen is
+// a claim that it is applied).
+//
+// The read runs in its own short transaction because identity.ReadWorkspaceCreatedAt
+// needs one. It is not the transaction that writes the result and cannot be: the
+// model call happens in between, and holding a connection open across it would
+// cost far more than the overshoot it would prevent.
+func (s *Service) requireGenerateAllowance(ctx context.Context, workspaceID pgtype.UUID) (string, error) {
+	if !s.GenerateQuota.Enforced() {
+		return "", nil
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return "generate_quota_unavailable", fmt.Errorf("%w: %v", policy.ErrGenerateQuotaExceeded, err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	return policy.EnforceGenerateQuota(ctx, generateUsageReader(tx), s.GenerateQuota, workspaceID)
+}
+
+// GenerateQuotaFor is the read path behind the pre-generation cost and allowance
+// summary (02:GEN-001). ok is false when this deployment enforces no generation
+// allowance, and the caller must then show nothing rather than zeroes.
+func (s *Service) GenerateQuotaFor(ctx context.Context, workspaceID pgtype.UUID) (policy.QuotaState, bool, error) {
+	if !s.GenerateQuota.Enforced() {
+		return policy.QuotaState{}, false, nil
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return policy.QuotaState{}, false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	state, err := policy.Usage(ctx, generateUsageReader(tx), s.GenerateQuota, workspaceID, time.Now())
+	return state, err == nil, err
+}
+
+// generateUsageReader counts generations the way policy counts runs. One
+// definition, because the enforcement path and the display path disagreeing
+// about the number is the failure 04 乙-2 describes: a screen that promises an
+// allowance the gate does not apply.
+func generateUsageReader(tx pgx.Tx) policy.UsageReader {
+	q := gen.New(tx)
+	return policy.UsageReader{
+		WorkspaceCreatedAt: func(ctx context.Context, id pgtype.UUID) (time.Time, error) {
+			return identity.ReadWorkspaceCreatedAt(ctx, tx, id)
+		},
+		CountRuns: func(ctx context.Context, id pgtype.UUID, since time.Time) (policy.RunUsage, error) {
+			row, err := q.CountGeneratedSkills(ctx, gen.CountGeneratedSkillsParams{
+				WorkspaceID: id, Since: pgtype.Timestamptz{Time: since, Valid: true},
+			})
+			if err != nil {
+				return policy.RunUsage{}, err
+			}
+			u := policy.RunUsage{Used: row.Used}
+			if row.Oldest.Valid {
+				oldest := row.Oldest.Time
+				u.Oldest = &oldest
+			}
+			return u, nil
+		},
 	}
 }

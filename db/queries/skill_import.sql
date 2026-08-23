@@ -17,3 +17,22 @@ WHERE workspace_id = $1 AND name = $2 AND deleted_at IS NULL;
 -- same skill returns the existing immutable version instead of a new row.
 SELECT * FROM skill_versions
 WHERE skill_id = $1 AND content_hash = $2;
+
+-- name: CountGeneratedSkills :one
+-- The generation allowance's counter (GEN-004, ADR-047 決策 5).
+--
+-- It counts the rows generation produced, the same way PDM-010 counts the runs
+-- themselves rather than keeping a balance column (ADR-028 決策 2) — so there is
+-- nothing to decrement and nothing that can decrement wrongly. Two of ADR-047
+-- 決策 2's rules fall out of that for free: a retry writes no second row, so the
+-- unit is one generation and not one gateway call; and a generation that failed
+-- validation writes no row at all, so it costs nothing.
+--
+-- `oldest` is when the window frees up again, matching CountQuotaRuns' shape.
+SELECT
+    count(*)::bigint AS used,
+    min(fetched_at)::timestamptz AS oldest
+FROM skill_sources
+WHERE workspace_id = @workspace_id
+  AND source_type = 'generated'
+  AND fetched_at > @since;

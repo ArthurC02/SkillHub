@@ -24,18 +24,18 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 func main() {
@@ -135,8 +135,9 @@ func main() {
 		// The API needs the provider registry for one thing only: refusing a run no
 		// configured provider can carry, before it is queued (RUN-005, ADR-004). It
 		// never dispatches — that is the worker's job (iron rule 7).
-		Providers: run.NewRegistryFromEnv(),
-		Quota:     quotaFromEnv(),
+		Providers:     run.NewRegistryFromEnv(),
+		Quota:         quotaFromEnv(),
+		GenerateQuota: generateQuotaFromEnv(),
 	})
 	if err != nil {
 		slog.Error("api composition", "error", err)
@@ -254,6 +255,25 @@ func quotaFromEnv() policy.QuotaLimits {
 		return policy.QuotaLimits{}
 	}
 	return policy.DefaultQuotaLimits()
+}
+
+// generateQuotaFromEnv reads the generation allowance (GEN-004, ADR-047 決策 5).
+//
+// Same asymmetry as RUN_QUOTA and for the same reason: unset means enforced, and
+// turning it off takes an action somebody has to write down. ADR-055 made that
+// mistake visible for runs — 05 R-1a had recorded unset as meaning unenforced,
+// which is the opposite of what the code says, and the difference is whether a
+// deployment that configured nothing has a cost ceiling.
+//
+// A second env var and not a shared one: the two allowances are counted
+// separately on purpose, and one switch turning off both would be the shared
+// pool ADR-047 決策 5 ruled against, wearing different clothes.
+func generateQuotaFromEnv() policy.QuotaLimits {
+	if strings.EqualFold(os.Getenv("GENERATE_QUOTA"), "off") {
+		slog.Warn("GENERATE_QUOTA=off; the generation allowance is not enforced and not shown")
+		return policy.QuotaLimits{}
+	}
+	return policy.DefaultGenerateQuotaLimits()
 }
 
 // analyticsRetentionFromEnv reads how long a funnel event is kept, and therefore

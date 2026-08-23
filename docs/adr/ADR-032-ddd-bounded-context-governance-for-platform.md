@@ -168,6 +168,7 @@ Generic 列的套件**不得包含領域規則**：`foundation/observability/aud
 | `run` → `trace`（寫入 Run Trace 事件） | 同步寫入，合法 | 保留 |
 | `run` → `policy`（create-run 交易內問額度、讀 quota 顯示面） | Customer–Supplier，合法——「當下決策需要的事實」 | 保留 |
 | `packaging` → `policy`（建立 Download Artifact 前問 retention） | Customer–Supplier，合法——沒有已核定的保存期就不建產物 | 保留 |
+| `ingest` → `policy`（生成前問額度，GEN-004） | Customer–Supplier，合法——同 `run` → `policy`：規則在 policy，強制點在問問題的 context | 保留 |
 | `eval` → `testlab`、`trace` | 同步查詢，合法 | 保留（trace 改注入，DDD-004） |
 | `eval` → `ingest`（SaveVersion 等） | Customer–Supplier，合法——採納建議必須重用匯入的完整驗證管線（M4 PACK-002 裁定；第二條版本建立路徑＝第二個真相） | 保留 |
 | `packaging` → `testlab` | 同步查詢，合法 | 保留 |
@@ -185,3 +186,5 @@ Generic 列的套件**不得包含領域規則**：`foundation/observability/aud
 2026-08-20：ADR-033 清除路徑 4 完成，兩半分別處理。**catalog 半邊**：`catalog` 不再直接呼叫 `SetSkillAccessRestriction`，改呼叫 `registry.SetAccessRestriction`；該函式收 catalog 的 `pgx.Tx`、不自開交易，故「鎖列→寫欄位→寫 audit」仍是同一個 commit（鐵律 9）。理由碼、可顯示的說明句、兩條 operator 路由與授權檢查**全部留在 `catalog`**——這正是 `catalog/restriction.go` 檔頭原本反對「把 write endpoint 搬到 registry」的理由，該反對意見在這個分法下不成立，因為沒有第二個地方知道有哪些 code。`catalog` → `registry` 因此自 deny 移入白名單（上表新增一列）。**objreconcile 半邊不動附錄 A**：`objreconcile` 是 Generic 掃描器，若 import `packaging`／`testlab` 等於把分層倒過來，故改為由 composition root（`cmd/worker` 的 `buildWorkers`）注入 `packaging.MarkArtifactPurged`／`testlab.MarkDatasetObjectLost` 兩支函式，沒有新增任何跨 context import。三條對應的 `db/query-owners.yaml` `allow:` 條目同批移除。
 
 2026-08-21（DDD-031 實作註記）：上一段的「鎖列→寫欄位→寫 audit 仍是同一個 commit」**結論不變，但取鎖的人換了**。當時 `SELECT … FOR UPDATE` 還留在 `catalog`，只有 `UPDATE` 回到 owner；[ADR-035](./ADR-035-read-ownership-enforcement-and-context-map-completeness.md) 把這種「鎖與它保護的不變量分屬兩個 context」判為正確性問題（B 組），DDD-031 據此把鎖搬進 `registry.SetAccessRestriction`，並讓它把 before-state 當回傳值交給 `catalog`——`catalog` 不再自己讀那一列。交易仍是 `catalog` 開的、audit event 仍由 `catalog` 在同一個 commit 內寫、理由碼與授權檢查仍在 `catalog`，鐵律 9 與上表 `catalog` → `registry` 那一列的判定和處置都不變；本註記只更正**誰取鎖**這一點。同批的 `run` → `testlab` 沒有動附錄 A：該方向本來就在上表，`run` 只是改為呼叫 owner 匯出的 `testlab.LockDraft` 而不是直接下 owner 的 query。
+
+2026-08-23（[ADR-056](./ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md)）：`ingest` → `policy` 自 deny 移入白名單（上表新增一列）。M5 的生成路徑要在呼叫模型之前問額度（`02:GEN-001`「不得先花錢再說」），而額度規則屬 Policy & Usage；方向與既有的 `run` → `policy`、`packaging` → `policy` 完全相同——**policy 只決策不動作，強制點留在問問題的那個 context**。**沒有動 `db/query-owners.yaml`**：計數查的是 `skill_sources`，那本來就是 `ingest` 自己的表，`CountGeneratedSkills` 落在 `skill_import.sql` 的既有 owner 之下。

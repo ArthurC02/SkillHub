@@ -160,8 +160,6 @@ linters:
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
-            - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements
-              desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution
               desc: "cross-context import forbidden by ADR-032; see docs/adr/ADR-032 appendix A"
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/design

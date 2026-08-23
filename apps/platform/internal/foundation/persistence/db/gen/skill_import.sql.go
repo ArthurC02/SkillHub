@@ -11,6 +11,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countGeneratedSkills = `-- name: CountGeneratedSkills :one
+SELECT
+    count(*)::bigint AS used,
+    min(fetched_at)::timestamptz AS oldest
+FROM skill_sources
+WHERE workspace_id = $1
+  AND source_type = 'generated'
+  AND fetched_at > $2
+`
+
+type CountGeneratedSkillsParams struct {
+	WorkspaceID pgtype.UUID
+	Since       pgtype.Timestamptz
+}
+
+type CountGeneratedSkillsRow struct {
+	Used   int64
+	Oldest pgtype.Timestamptz
+}
+
+// The generation allowance's counter (GEN-004, ADR-047 決策 5).
+//
+// It counts the rows generation produced, the same way PDM-010 counts the runs
+// themselves rather than keeping a balance column (ADR-028 決策 2) — so there is
+// nothing to decrement and nothing that can decrement wrongly. Two of ADR-047
+// 決策 2's rules fall out of that for free: a retry writes no second row, so the
+// unit is one generation and not one gateway call; and a generation that failed
+// validation writes no row at all, so it costs nothing.
+//
+// `oldest` is when the window frees up again, matching CountQuotaRuns' shape.
+func (q *Queries) CountGeneratedSkills(ctx context.Context, arg CountGeneratedSkillsParams) (CountGeneratedSkillsRow, error) {
+	row := q.db.QueryRow(ctx, countGeneratedSkills, arg.WorkspaceID, arg.Since)
+	var i CountGeneratedSkillsRow
+	err := row.Scan(&i.Used, &i.Oldest)
+	return i, err
+}
+
 const createSkillSource = `-- name: CreateSkillSource :one
 INSERT INTO skill_sources (
     workspace_id, source_type, source_url, source_ref, content_hash, fetched_at,
