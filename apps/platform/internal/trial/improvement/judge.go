@@ -170,12 +170,21 @@ func (s *Service) buildRequest(
 		})
 	}
 
-	entries, digest, cutDigest := buildDigest(m.advanced)
+	entries, digest, cuts := buildDigest(m.advanced)
 	if m.advanced.EvaluationTruncated {
 		truncation = append(truncation, "trace_events")
 	}
-	if cutDigest {
+	// Two names, because they are two different holes and the finding message is
+	// built by joining this list. `entries` means events are missing; the second
+	// means every event is here and one of them stops mid-payload. Both still set
+	// evidenceComplete false - whether a trimmed tail deserves the same
+	// conservatism as a missing event is a judgement about 丙-1's rule and is not
+	// decided by renaming it.
+	if cuts.DroppedEvents {
 		truncation = append(truncation, "trace_digest.entries")
+	}
+	if cuts.TrimmedExcerpts {
+		truncation = append(truncation, "trace_digest.entries[].excerpt")
 	}
 
 	req := llmclient.JudgeRunRequest{
@@ -244,7 +253,25 @@ func rubricFor(r *testlab.Rubric, criteria []llmclient.JudgeCriterion) (*llmclie
 // The tail is kept rather than the head. A run's interesting events (the final
 // output, the errors, the usage roll-up) are at the end, and a head-first cut on a
 // chatty run would hand the judge nothing but the warm-up.
-func buildDigest(view trace.AdvancedView) ([]llmclient.TraceDigestEntry, map[string]trace.EventView, bool) {
+// digestCuts is what buildDigest had to leave out, kept apart because the two
+// are not the same size of hole.
+//
+// They used to be one bool, and 04 丙-47 measured what that cost: over 164 runs
+// the entry cap has never once been reached (the busiest run has 55 citable
+// events against a cap of 100), while 95 of them - 58% - had at least one
+// payload trimmed. So every truncation this platform has ever reported was the
+// second kind while the label named the first, and a reader chasing
+// `trace_digest.entries` went looking for events that were never dropped.
+type digestCuts struct {
+	// DroppedEvents: whole events never reached the judge (maxDigestCount).
+	DroppedEvents bool
+	// TrimmedExcerpts: an event is present but its payload lost its tail
+	// (maxDigestEntry). Mostly `tool_call.arguments` - a Write call carrying the
+	// document the run produced, which is exactly what a content rubric is about.
+	TrimmedExcerpts bool
+}
+
+func buildDigest(view trace.AdvancedView) ([]llmclient.TraceDigestEntry, map[string]trace.EventView, digestCuts) {
 	citable := make([]trace.EventView, 0, len(view.Events))
 	for _, e := range view.Events {
 		switch e.Type {
@@ -253,10 +280,10 @@ func buildDigest(view trace.AdvancedView) ([]llmclient.TraceDigestEntry, map[str
 			citable = append(citable, e)
 		}
 	}
-	truncated := false
+	var cuts digestCuts
 	if len(citable) > maxDigestCount {
 		citable = citable[len(citable)-maxDigestCount:]
-		truncated = true
+		cuts.DroppedEvents = true
 	}
 
 	entries := make([]llmclient.TraceDigestEntry, 0, len(citable))
@@ -270,11 +297,11 @@ func buildDigest(view trace.AdvancedView) ([]llmclient.TraceDigestEntry, map[str
 			Excerpt:      excerpt,
 		})
 		if cutExcerpt {
-			truncated = true
+			cuts.TrimmedExcerpts = true
 		}
 		digest[e.EventID] = e
 	}
-	return entries, digest, truncated
+	return entries, digest, cuts
 }
 
 // merge turns the model's answer into stored criterion results.

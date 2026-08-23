@@ -608,9 +608,15 @@ func TestDigestKeepsTheTailAndSaysWhenItCut(t *testing.T) {
 		EventID: "lifecycle", Type: trace.TypeRunLifecycle, Payload: json.RawMessage(`{}`),
 	})
 
-	entries, digest, truncated := buildDigest(view)
-	if !truncated {
+	entries, digest, cuts := buildDigest(view)
+	if !cuts.DroppedEvents {
 		t.Error("a digest that dropped events has to report the cut")
+	}
+	// The two are reported apart (04 丙-47): dropping events past the cap says
+	// nothing about whether any surviving payload also lost its tail, and over
+	// 164 real runs it was always the other one that fired.
+	if cuts.TrimmedExcerpts {
+		t.Error("no payload here is over maxDigestEntry; that cut must not be claimed")
 	}
 	if len(entries) != maxDigestCount {
 		t.Errorf("digest capped at %d, got %d", maxDigestCount, len(entries))
@@ -644,9 +650,14 @@ func TestDigestReportsAnExcerptCutAsTruncation(t *testing.T) {
 		EventID: eventID, Type: trace.TypeAgentOutput,
 		Payload: json.RawMessage(`{"text":"` + strings.Repeat("x", maxDigestEntry) + `"}`),
 	}}}
-	entries, _, truncated := buildDigest(view)
-	if !truncated {
+	entries, _, cuts := buildDigest(view)
+	if !cuts.TrimmedExcerpts {
 		t.Fatal("cutting one trace payload was not reported as truncation")
+	}
+	// One event, so nothing was dropped. Reporting `trace_digest.entries` here
+	// would send a reader looking for events that are all present.
+	if cuts.DroppedEvents {
+		t.Error("one event is not over maxDigestCount; no event was dropped")
 	}
 	if len([]rune(entries[0].Excerpt)) != maxDigestEntry {
 		t.Fatalf("excerpt length = %d, want %d", len([]rune(entries[0].Excerpt)), maxDigestEntry)
