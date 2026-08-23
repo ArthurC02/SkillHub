@@ -41,7 +41,16 @@ SET workspace_id = EXCLUDED.workspace_id,
 -- out of the worklist here rather than becoming a null the caller has to skip.
 SELECT sd.skill_id, sd.workspace_id, sd.name, sv.package_object_key
 FROM search_documents sd
+--
+-- `redistribution <> 'generated'` keeps generated packages off the worklist
+-- (GEN-007). Their documents exist and must — the workspace's own list reads the
+-- static-scan facts out of them, and 02:GEN-003 forbids showing a generated
+-- package one warning fewer than an imported one. What they never get is the
+-- enrichment, because enrichment exists to make a document findable and this one
+-- is never searched. Without this predicate the backfill would re-enrich them
+-- forever: import already skips the call, so they stay `pending` by design.
 JOIN skills sk ON sk.id = sd.skill_id AND sk.deleted_at IS NULL AND sk.takedown_at IS NULL
+    AND sk.redistribution <> 'generated'
 JOIN LATERAL (
     SELECT v.package_object_key
     FROM skill_versions v
@@ -59,8 +68,20 @@ LIMIT $1;
 --
 -- The lexical score orders the page and is not selected; see PublicSearchSkills
 -- for why it must not be handed to a caller as a rank.
+--
+-- The join is GEN-007's enforcement point, and it is on the READ side on
+-- purpose. A generated skill must not be found by search — including by the
+-- person who generated it — but its search_documents row still has to exist,
+-- because the workspace's own Skill list reads the static-scan facts out of it
+-- and 02:GEN-003 forbids a generated package disclosing one warning fewer than
+-- an imported one. Excluding it at write time would have bought the guarantee by
+-- deleting the disclosure.
+--
+-- The public queries below need no equivalent: they are restricted to catalog
+-- workspaces, and generation is refused in one (skill/admission/generate.go).
 SELECT s.skill_id, s.workspace_id, s.name, s.summary
 FROM search_documents s
+JOIN skills sk ON sk.id = s.skill_id AND sk.redistribution <> 'generated'
 WHERE s.workspace_id = $1
   AND s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
 ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC

@@ -50,6 +50,11 @@ const generateMaxAttempts = 2
 // backstop; this is the product rule.
 var ErrGenerateBlank = errors.New("ingest: task description is empty")
 
+// ErrGenerateNotForCatalogue: generation is a personal-workspace feature
+// (ADR-046 決策 1). See the check in GenerateSkill for why it is enforced rather
+// than assumed.
+var ErrGenerateNotForCatalogue = errors.New("ingest: the catalogue does not generate skills")
+
 // ErrGeneratedPackageInvalid: the answer parsed but cannot be made into an
 // archive at all. Distinct from a blocked report — there is no Report to show —
 // and not retried, because the model returned a shape the schema said it could
@@ -81,6 +86,16 @@ type GenerateResult struct {
 func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, taskDescription string) (GenerateResult, error) {
 	if s.LLM == nil {
 		return GenerateResult{}, errors.New("ingest: generation needs an LLM service")
+	}
+	// GEN-007 keys the search exclusion on redistribution, and redistributionFor
+	// answers "" for a catalog workspace before it ever looks at the source type
+	// — so a package generated into the catalogue would be `unknown`, would not
+	// match that exclusion, and would be searchable. Refusing here is one line
+	// and keeps `redistribution = generated` and `source_type = generated`
+	// meaning the same set of rows. It costs nothing: ADR-046 決策 1 puts
+	// generated content in a personal workspace and nowhere else.
+	if ws.IsCatalog {
+		return GenerateResult{}, ErrGenerateNotForCatalogue
 	}
 	task := strings.TrimSpace(taskDescription)
 	if task == "" {

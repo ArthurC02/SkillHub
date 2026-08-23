@@ -42,6 +42,32 @@ export interface SkillSource {
      */
     url?: string;
     /**
+     * The user's own words that produced a generated package (GEN-002).
+     * Present only for `generated`. It is the whole provenance record for
+     * a package with no upstream, which is why the source of a generated
+     * skill is never reported as unknown — it is known, it just is not a
+     * URL.
+     * 
+     * @type {string}
+     * @memberof SkillSource
+     */
+    taskDescription?: string;
+    /**
+     * Model id that wrote a generated package. Present only for `generated`.
+     * @type {string}
+     * @memberof SkillSource
+     */
+    generatorModel?: string;
+    /**
+     * Generator prompt revision, e.g. `generate-skill/v1`. Present only for
+     * `generated`. Together with task_description and generator_model this
+     * is what lets someone re-derive the package (ADR-047 決策 1).
+     * 
+     * @type {string}
+     * @memberof SkillSource
+     */
+    generatorPromptVersion?: string;
+    /**
      * Commit SHA, tag, or branch, when the fetch resolved one.
      * @type {string}
      * @memberof SkillSource
@@ -77,10 +103,13 @@ export interface SkillSource {
      */
     unavailableSince?: Date;
     /**
-     * unknown | traceable | manually_confirmed. `traceable` requires a git
-     * import that recorded a URL; an upload has no verifiable origin.
-     * `manually_confirmed` needs a reviewer and has no store yet, so this
-     * endpoint never returns it.
+     * unknown | traceable | manually_confirmed | generated. `traceable`
+     * requires a git import that recorded a URL; an upload has no
+     * verifiable origin. `manually_confirmed` needs a reviewer and has no
+     * store yet, so this endpoint never returns it. `generated` is not a
+     * rung above `unknown` on the same ladder — it says the origin is
+     * recorded and is not a URL, and it makes no claim at all about
+     * quality or safety.
      * 
      * @type {Labelled}
      * @memberof SkillSource
@@ -94,7 +123,8 @@ export interface SkillSource {
  */
 export const SkillSourceTypeEnum = {
     Git: 'git',
-    Upload: 'upload'
+    Upload: 'upload',
+    Generated: 'generated'
 } as const;
 export type SkillSourceTypeEnum = typeof SkillSourceTypeEnum[keyof typeof SkillSourceTypeEnum];
 
@@ -120,6 +150,9 @@ export function SkillSourceFromJSONTyped(json: any, ignoreDiscriminator: boolean
         
         'type': json['type'],
         'url': json['url'] == null ? undefined : json['url'],
+        'taskDescription': json['task_description'] == null ? undefined : json['task_description'],
+        'generatorModel': json['generator_model'] == null ? undefined : json['generator_model'],
+        'generatorPromptVersion': json['generator_prompt_version'] == null ? undefined : json['generator_prompt_version'],
         'sourceVersion': json['source_version'] == null ? undefined : json['source_version'],
         'fetchedAt': json['fetched_at'] == null ? undefined : (new Date(json['fetched_at'])),
         'contentHash': json['content_hash'] == null ? undefined : json['content_hash'],
@@ -142,6 +175,9 @@ export function SkillSourceToJSONTyped(value?: SkillSource | null, ignoreDiscrim
         
         'type': value['type'],
         'url': value['url'],
+        'task_description': value['taskDescription'],
+        'generator_model': value['generatorModel'],
+        'generator_prompt_version': value['generatorPromptVersion'],
         'source_version': value['sourceVersion'],
         'fetched_at': value['fetchedAt'] == null ? value['fetchedAt'] : value['fetchedAt'].toISOString(),
         'content_hash': value['contentHash'],

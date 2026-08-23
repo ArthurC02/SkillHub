@@ -22,6 +22,16 @@ const (
 	// PDM-002 回溯准入流程— checked the repo, author, and history match the
 	// whitelist entry — not just that a URL string is present.
 	SourceTrustManuallyConfirmed SourceTrust = "manually_confirmed"
+	// SourceTrustGenerated (平台生成): the platform wrote these bytes from a task
+	// description this workspace supplied, and the description, the model and the
+	// prompt revision are all on file (GEN-006).
+	//
+	// It exists because `unknown` would be a false statement here. 02:GEN-002
+	// forbids showing a generated package as an unknown source in as many words:
+	// the origin IS known, it just is not a URL. It is deliberately not a rung
+	// above `traceable` on the same ladder — there is nothing upstream to trace
+	// to, and this value claims nothing whatsoever about quality or safety.
+	SourceTrustGenerated SourceTrust = "generated"
 )
 
 // LicenseStatus is the license axis. DISC-003 requires this to default to
@@ -92,6 +102,7 @@ var sourceTrustDisplays = map[SourceTrust]TrustDisplay{
 	SourceTrustUnknown:           {Label: "來源未知", Note: "沒有可查核的來源紀錄。"},
 	SourceTrustTraceable:         {Label: "來源可追溯", Note: "已保存 repo URL、版本／Commit、擷取時間與內容雜湊,尚未經人工核對。"},
 	SourceTrustManuallyConfirmed: {Label: "來源已人工確認", Note: "已由審核者核對原始 repo、作者與歷史紀錄。"},
+	SourceTrustGenerated:         {Label: "平台依你的任務描述生成", Note: "沒有上游來源。平台保存了你當時輸入的任務描述、生成時間、提示詞版本與模型識別,那就是它的來源紀錄。這不是品質或安全的結論——沒有任何人看過它,也沒有任何試跑證據。"},
 }
 
 var licenseStatusDisplays = map[LicenseStatus]TrustDisplay{

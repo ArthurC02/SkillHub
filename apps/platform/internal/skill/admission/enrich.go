@@ -230,3 +230,19 @@ func trimAll(in []string) []string {
 	}
 	return out
 }
+
+// skipEnrichment is enrichPackage without the model calls: the two fields that
+// come from the package itself, and `pending` forever.
+//
+// It exists for generated packages (GEN-007). Leaving them `pending` is not a
+// deferred success — ListPendingEnrichment excludes them by the same rule, so
+// nothing ever comes back for them. `pending` is the honest word for a document
+// with no enrichment in it, and the alternative would have been a fourth
+// enrichment_status meaning "not applicable" that only one caller ever reads.
+func skipEnrichment(p preparedPackage) enrichment {
+	return enrichment{
+		summary: p.report.Manifest.Description,
+		scan:    scanFactsFrom(p.report),
+		status:  enrichmentPending,
+	}
+}

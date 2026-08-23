@@ -214,3 +214,47 @@ func TestAMeasuredCompatibilityVerdictSaysWhatWasMeasured(t *testing.T) {
 		}
 	}
 }
+
+// 02:GEN-002, in as many words: a generated package must not be shown as an
+// unknown source, because its origin IS recorded — it just is not a URL.
+//
+// Without the switch arm added for it, sourceFrom falls through to
+// SourceTrustUnknown and the detail page tells the owner "沒有可查核的來源紀錄"
+// about a package the platform wrote from words that same owner typed, while the
+// row holding those words sits one join away. Nothing fails; the sentence is just
+// false.
+func TestAGeneratedSourceIsNotAnUnknownSource(t *testing.T) {
+	task := "我每個月要把廠商寄來的掃描單據整理成一份表格交出去。"
+	model, prompt := "gpt-5.4-mini", "generate-skill/v1"
+
+	got := sourceFrom(SourceFacts{
+		SourceType:             "generated",
+		ContentHash:            "sha256:abc",
+		TaskDescription:        &task,
+		GeneratorModel:         &model,
+		GeneratorPromptVersion: &prompt,
+	})
+
+	if got.Trust.Value == string(SourceTrustUnknown) {
+		t.Error("a generated package was reported as an unknown source")
+	}
+	if got.Trust.Value != string(SourceTrustGenerated) {
+		t.Errorf("trust = %q, want %q", got.Trust.Value, SourceTrustGenerated)
+	}
+	// The three that make the record reproduce the package (ADR-047 決策 1).
+	if got.TaskDescription != task || got.GeneratorModel != model || got.GeneratorPromptVersion != prompt {
+		t.Errorf("provenance lost in serialisation: %+v", got)
+	}
+	// It is not a rung above traceable on the same ladder, and the copy must not
+	// read like one: there is nothing upstream to trace to, and nobody has
+	// reviewed anything.
+	if got.Trust.Value == string(SourceTrustTraceable) || got.Trust.Value == string(SourceTrustManuallyConfirmed) {
+		t.Error("generated borrowed a trust level that means somebody checked something")
+	}
+
+	// The other three source types must not start carrying it.
+	upload := sourceFrom(SourceFacts{SourceType: "upload", ContentHash: "sha256:abc"})
+	if upload.Trust.Value != string(SourceTrustUnknown) || upload.TaskDescription != "" {
+		t.Errorf("upload picked up the generation record: %+v", upload)
+	}
+}

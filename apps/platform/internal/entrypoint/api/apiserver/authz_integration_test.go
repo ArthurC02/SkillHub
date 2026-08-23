@@ -216,6 +216,10 @@ type api struct {
 	// evaluations is the API's read-only evaluation service, exposed so an
 	// EVAL-001 test can produce a verdict with a fake judge (the API never does).
 	evaluations *eval.Service
+	// versions is the API's ingest service, exposed so a GEN-003 test can drive
+	// the generation pipeline against a stub LLM. There is no HTTP route for it
+	// yet — GEN-008 mounts one behind the exposure flag (ADR-052).
+	versions *ingest.Service
 	// packaging is the API's packaging service, exposed so a PACK-001 test can
 	// build twice without the idempotent endpoint answering the second call with
 	// the first call's artifact.
@@ -306,7 +310,7 @@ func newAPITuned(
 	return &api{
 		Server: srv, auth: app.Auth, packages: packages, runs: app.RunSvc,
 		traceSigner: traceSigner, handler: handler, evaluations: app.EvalSvc,
-		packaging: app.PackagingSvc,
+		packaging: app.PackagingSvc, versions: app.Versions,
 	}
 }
 

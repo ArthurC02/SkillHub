@@ -4083,10 +4083,27 @@ components:
       properties:
         type:
           type: string
-          enum: [git, upload]
+          enum: [git, upload, generated]
         url:
           type: string
           description: Source URL for a git import.
+        task_description:
+          type: string
+          description: |
+            The user's own words that produced a generated package (GEN-002).
+            Present only for `generated`. It is the whole provenance record for
+            a package with no upstream, which is why the source of a generated
+            skill is never reported as unknown — it is known, it just is not a
+            URL.
+        generator_model:
+          type: string
+          description: Model id that wrote a generated package. Present only for `generated`.
+        generator_prompt_version:
+          type: string
+          description: |
+            Generator prompt revision, e.g. `generate-skill/v1`. Present only for
+            `generated`. Together with task_description and generator_model this
+            is what lets someone re-derive the package (ADR-047 決策 1).
         source_version:
           type: string
           description: Commit SHA, tag, or branch, when the fetch resolved one.
@@ -4113,10 +4130,13 @@ components:
           allOf:
             - $ref: "#/components/schemas/Labelled"
           description: |
-            unknown | traceable | manually_confirmed. `traceable` requires a git
-            import that recorded a URL; an upload has no verifiable origin.
-            `manually_confirmed` needs a reviewer and has no store yet, so this
-            endpoint never returns it.
+            unknown | traceable | manually_confirmed | generated. `traceable`
+            requires a git import that recorded a URL; an upload has no
+            verifiable origin. `manually_confirmed` needs a reviewer and has no
+            store yet, so this endpoint never returns it. `generated` is not a
+            rung above `unknown` on the same ladder — it says the origin is
+            recorded and is not a URL, and it makes no claim at all about
+            quality or safety.
     SkillLicense:
       description: |
         ADR-021 two axes. The expression alone cannot distinguish "the author

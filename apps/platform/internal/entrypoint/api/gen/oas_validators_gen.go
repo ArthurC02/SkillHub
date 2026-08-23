@@ -4646,6 +4646,8 @@ func (s SkillSourceType) Validate() error {
 		return nil
 	case "upload":
 		return nil
+	case "generated":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}

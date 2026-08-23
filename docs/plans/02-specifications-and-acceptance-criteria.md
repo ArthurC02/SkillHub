@@ -592,6 +592,7 @@ queued → provisioning → preparing → running → evaluating
 - 生成物的 `redistribution` 為 `generated`：**使用者下載得了自己生成的 Skill**（判準同 [ADR-045](../adr/ADR-045-self-supplied-content-is-not-redistribution.md) 決策 4——平台沒有多加一個散布環節），但該值**不是 `allowed`**，任何發佈路徑都必須停下來要求判定。
 - `generated` 與 `self_supplied` 是**兩個值**，不得互相替代或一起放行（ADR-046 決策 4）。
 - 生成物**不進公開目錄，也不進搜尋索引**，包括生成它的人自己搜尋時；工作區的 Skill 列表是它唯一的入口。`DISC-002` 的來源層級篩選不因此新增值域。解鎖這條路徑的三個前置見 [ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 3。
+- **任務描述原文的保存期限是「與它生成出來的那個 Skill Version 同壽」，不是一個獨立的天數**（`GEN-010`、`SEC-006`）。給它獨立的期限會產出一個「還在、但說不出自己從哪來」的生成 Skill，而它沒有上游，那份文字就是它全部的來源紀錄。刪除走既有的 `PurgeUnreferencedSkillSources`：不再被任何版本引用的來源列在帳號刪除時實體刪除。**這一條不得與 `O11Y-004`（分析事件不記查詢原文）互相援引**——一個是使用者主動提交的自由文字，一個是使用者沒提交任何東西就會產生的計數，兩者剛好都關於「打了什麼字」而規則相反。
 - 生成物**可以作為 `WS-001` Fork 的來源**；Fork 後的版本逐字繼承 `redistribution = generated`（ADR-047 決策 4）。**這一條需要一支具名測試**——繼承若失效，該值退回 `unknown` 會把下載鎖回去，而那個失效沒有任何症狀。
 
 #### GEN-003：生成物的驗證、失敗處理與 Script

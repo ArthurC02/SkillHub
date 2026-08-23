@@ -58,6 +58,10 @@ type SourceFacts struct {
 	FetchedAt        pgtype.Timestamptz
 	LastCheckedAt    pgtype.Timestamptz
 	UnavailableSince pgtype.Timestamptz
+	// The generation record (GEN-006), nil for every other source type.
+	TaskDescription        *string
+	GeneratorModel         *string
+	GeneratorPromptVersion *string
 }
 
 // searchOutcome is what one retrieval run produced, with the two facts about

@@ -13849,6 +13849,16 @@ type SkillSource struct {
 	Type SkillSourceType `json:"type"`
 	// Source URL for a git import.
 	URL OptString `json:"url"`
+	// The user's own words that produced a generated package (GEN-002). Present only for `generated`. It
+	// is the whole provenance record for a package with no upstream, which is why the source of a
+	// generated skill is never reported as unknown — it is known, it just is not a URL.
+	TaskDescription OptString `json:"task_description"`
+	// Model id that wrote a generated package. Present only for `generated`.
+	GeneratorModel OptString `json:"generator_model"`
+	// Generator prompt revision, e.g. `generate-skill/v1`. Present only for `generated`. Together with
+	// task_description and generator_model this is what lets someone re-derive the package (ADR-047 決策
+	// 1).
+	GeneratorPromptVersion OptString `json:"generator_prompt_version"`
 	// Commit SHA, tag, or branch, when the fetch resolved one.
 	SourceVersion OptString   `json:"source_version"`
 	FetchedAt     OptDateTime `json:"fetched_at"`
@@ -13860,9 +13870,11 @@ type SkillSource struct {
 	// When the source started failing, not the latest failure, so a two-week outage stays distinguishable
 	// from a blip. Absent means the source answered on its last probe.
 	UnavailableSince OptDateTime `json:"unavailable_since"`
-	// Unknown | traceable | manually_confirmed. `traceable` requires a git import that recorded a URL; an
-	// upload has no verifiable origin. `manually_confirmed` needs a reviewer and has no store yet, so this
-	// endpoint never returns it.
+	// Unknown | traceable | manually_confirmed | generated. `traceable` requires a git import that
+	// recorded a URL; an upload has no verifiable origin. `manually_confirmed` needs a reviewer and has no
+	// store yet, so this endpoint never returns it. `generated` is not a rung above `unknown` on the same
+	// ladder — it says the origin is recorded and is not a URL, and it makes no claim at all about
+	// quality or safety.
 	Trust Labelled `json:"trust"`
 }
 
@@ -13874,6 +13886,21 @@ func (s *SkillSource) GetType() SkillSourceType {
 // GetURL returns the value of URL.
 func (s *SkillSource) GetURL() OptString {
 	return s.URL
+}
+
+// GetTaskDescription returns the value of TaskDescription.
+func (s *SkillSource) GetTaskDescription() OptString {
+	return s.TaskDescription
+}
+
+// GetGeneratorModel returns the value of GeneratorModel.
+func (s *SkillSource) GetGeneratorModel() OptString {
+	return s.GeneratorModel
+}
+
+// GetGeneratorPromptVersion returns the value of GeneratorPromptVersion.
+func (s *SkillSource) GetGeneratorPromptVersion() OptString {
+	return s.GeneratorPromptVersion
 }
 
 // GetSourceVersion returns the value of SourceVersion.
@@ -13916,6 +13943,21 @@ func (s *SkillSource) SetURL(val OptString) {
 	s.URL = val
 }
 
+// SetTaskDescription sets the value of TaskDescription.
+func (s *SkillSource) SetTaskDescription(val OptString) {
+	s.TaskDescription = val
+}
+
+// SetGeneratorModel sets the value of GeneratorModel.
+func (s *SkillSource) SetGeneratorModel(val OptString) {
+	s.GeneratorModel = val
+}
+
+// SetGeneratorPromptVersion sets the value of GeneratorPromptVersion.
+func (s *SkillSource) SetGeneratorPromptVersion(val OptString) {
+	s.GeneratorPromptVersion = val
+}
+
 // SetSourceVersion sets the value of SourceVersion.
 func (s *SkillSource) SetSourceVersion(val OptString) {
 	s.SourceVersion = val
@@ -13949,8 +13991,9 @@ func (s *SkillSource) SetTrust(val Labelled) {
 type SkillSourceType string
 
 const (
-	SkillSourceTypeGit    SkillSourceType = "git"
-	SkillSourceTypeUpload SkillSourceType = "upload"
+	SkillSourceTypeGit       SkillSourceType = "git"
+	SkillSourceTypeUpload    SkillSourceType = "upload"
+	SkillSourceTypeGenerated SkillSourceType = "generated"
 )
 
 // AllValues returns all SkillSourceType values.
@@ -13958,6 +14001,7 @@ func (SkillSourceType) AllValues() []SkillSourceType {
 	return []SkillSourceType{
 		SkillSourceTypeGit,
 		SkillSourceTypeUpload,
+		SkillSourceTypeGenerated,
 	}
 }
 
@@ -13967,6 +14011,8 @@ func (s SkillSourceType) MarshalText() ([]byte, error) {
 	case SkillSourceTypeGit:
 		return []byte(s), nil
 	case SkillSourceTypeUpload:
+		return []byte(s), nil
+	case SkillSourceTypeGenerated:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -13981,6 +14027,9 @@ func (s *SkillSourceType) UnmarshalText(data []byte) error {
 		return nil
 	case SkillSourceTypeUpload:
 		*s = SkillSourceTypeUpload
+		return nil
+	case SkillSourceTypeGenerated:
+		*s = SkillSourceTypeGenerated
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

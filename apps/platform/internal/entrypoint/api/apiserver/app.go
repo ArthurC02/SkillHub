@@ -259,6 +259,8 @@ func NewApp(cfg Config) (*App, error) {
 				SourceType: source.SourceType, SourceURL: source.SourceURL, SourceRef: source.SourceRef,
 				ContentHash: source.ContentHash, FetchedAt: source.FetchedAt,
 				LastCheckedAt: source.LastCheckedAt, UnavailableSince: source.UnavailableSince,
+				TaskDescription: source.TaskDescription, GeneratorModel: source.GeneratorModel,
+				GeneratorPromptVersion: source.GeneratorPromptVersion,
 			}, found, err
 		},
 	}

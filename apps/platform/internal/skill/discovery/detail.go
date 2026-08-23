@@ -73,7 +73,7 @@ type labelled struct {
 // when, and the hash of what arrived. Fields absent from the record stay absent
 // rather than being filled with a plausible value (DISC-004 缺少資料顯示未知).
 type sourceInfo struct {
-	Type          string `json:"type"` // git | upload
+	Type          string `json:"type"` // git | upload | generated
 	URL           string `json:"url,omitempty"`
 	SourceVersion string `json:"source_version,omitempty"` // commit sha, tag, or branch
 	FetchedAt     string `json:"fetched_at,omitempty"`
@@ -84,9 +84,16 @@ type sourceInfo struct {
 	// "checked a minute ago, still there" and "checked a minute ago, gone for two
 	// weeks" are different provenance stories (DISC-003/008). Absent means never
 	// probed / currently available — never rendered as a reassurance.
-	LastCheckedAt    string   `json:"last_checked_at,omitempty"`
-	UnavailableSince string   `json:"unavailable_since,omitempty"`
-	Trust            labelled `json:"trust"`
+	LastCheckedAt    string `json:"last_checked_at,omitempty"`
+	UnavailableSince string `json:"unavailable_since,omitempty"`
+	// The generation record (GEN-006). Absent for every other source type, and
+	// present in full for a generated one: 02:GEN-002 requires the detail page to
+	// be able to expand into the task description, the time, the prompt revision
+	// and the model, and forbids reporting the source as unknown.
+	TaskDescription        string   `json:"task_description,omitempty"`
+	GeneratorModel         string   `json:"generator_model,omitempty"`
+	GeneratorPromptVersion string   `json:"generator_prompt_version,omitempty"`
+	Trust                  labelled `json:"trust"`
 }
 
 // licenseInfo carries the ADR-021 two-axis answer: which license the package
@@ -910,9 +917,23 @@ func sourceFrom(s SourceFacts) *sourceInfo {
 	if s.SourceRef != nil {
 		out.SourceVersion = *s.SourceRef
 	}
+	if s.TaskDescription != nil {
+		out.TaskDescription = *s.TaskDescription
+	}
+	if s.GeneratorModel != nil {
+		out.GeneratorModel = *s.GeneratorModel
+	}
+	if s.GeneratorPromptVersion != nil {
+		out.GeneratorPromptVersion = *s.GeneratorPromptVersion
+	}
 	trust := SourceTrustUnknown
-	if s.SourceType == "git" && out.URL != "" {
+	switch {
+	case s.SourceType == "git" && out.URL != "":
 		trust = SourceTrustTraceable
+	case s.SourceType == "generated":
+		// Not a fallthrough to unknown: a generated package's origin is on file,
+		// and 02:GEN-002 forbids showing it as unknown (GEN-006).
+		trust = SourceTrustGenerated
 	}
 	out.Trust = trustLabel(trust)
 	return out

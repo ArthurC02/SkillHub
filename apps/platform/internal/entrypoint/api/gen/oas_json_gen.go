@@ -28365,6 +28365,24 @@ func (s *SkillSource) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.TaskDescription.Set {
+			e.FieldStart("task_description")
+			s.TaskDescription.Encode(e)
+		}
+	}
+	{
+		if s.GeneratorModel.Set {
+			e.FieldStart("generator_model")
+			s.GeneratorModel.Encode(e)
+		}
+	}
+	{
+		if s.GeneratorPromptVersion.Set {
+			e.FieldStart("generator_prompt_version")
+			s.GeneratorPromptVersion.Encode(e)
+		}
+	}
+	{
 		if s.SourceVersion.Set {
 			e.FieldStart("source_version")
 			s.SourceVersion.Encode(e)
@@ -28400,15 +28418,18 @@ func (s *SkillSource) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfSkillSource = [8]string{
-	0: "type",
-	1: "url",
-	2: "source_version",
-	3: "fetched_at",
-	4: "content_hash",
-	5: "last_checked_at",
-	6: "unavailable_since",
-	7: "trust",
+var jsonFieldsNameOfSkillSource = [11]string{
+	0:  "type",
+	1:  "url",
+	2:  "task_description",
+	3:  "generator_model",
+	4:  "generator_prompt_version",
+	5:  "source_version",
+	6:  "fetched_at",
+	7:  "content_hash",
+	8:  "last_checked_at",
+	9:  "unavailable_since",
+	10: "trust",
 }
 
 // Decode decodes SkillSource from json.
@@ -28416,7 +28437,7 @@ func (s *SkillSource) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode SkillSource to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -28439,6 +28460,36 @@ func (s *SkillSource) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"url\"")
+			}
+		case "task_description":
+			if err := func() error {
+				s.TaskDescription.Reset()
+				if err := s.TaskDescription.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"task_description\"")
+			}
+		case "generator_model":
+			if err := func() error {
+				s.GeneratorModel.Reset()
+				if err := s.GeneratorModel.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"generator_model\"")
+			}
+		case "generator_prompt_version":
+			if err := func() error {
+				s.GeneratorPromptVersion.Reset()
+				if err := s.GeneratorPromptVersion.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"generator_prompt_version\"")
 			}
 		case "source_version":
 			if err := func() error {
@@ -28491,7 +28542,7 @@ func (s *SkillSource) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"unavailable_since\"")
 			}
 		case "trust":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				if err := s.Trust.Decode(d); err != nil {
 					return err
@@ -28509,8 +28560,9 @@ func (s *SkillSource) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
-		0b10000001,
+	for i, mask := range [2]uint8{
+		0b00000001,
+		0b00000100,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -28576,6 +28628,8 @@ func (s *SkillSourceType) Decode(d *jx.Decoder) error {
 		*s = SkillSourceTypeGit
 	case SkillSourceTypeUpload:
 		*s = SkillSourceTypeUpload
+	case SkillSourceTypeGenerated:
+		*s = SkillSourceTypeGenerated
 	default:
 		*s = SkillSourceType(v)
 	}

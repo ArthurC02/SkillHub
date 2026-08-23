@@ -16,14 +16,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 // ObjectStore is the slice of object storage ingest needs. Get serves the
@@ -256,7 +256,19 @@ func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []b
 	// ponytail: re-importing byte-identical content pays for one enrichment call
 	// that persistVersion then discards as a duplicate. Add a pre-transaction
 	// content-hash lookup if duplicate imports ever show up in the model bill.
-	e := s.enrichPackage(ctx, p)
+	//
+	// Skipped entirely for a generated package: enrichment exists to make a
+	// document findable, and GEN-007 says this one is never found — not even by
+	// the person who generated it. The document is still written, because the
+	// workspace's own list reads the static-scan facts out of it, and those come
+	// from the validation report rather than from the model (enrich.go's summary
+	// and scan are populated before the LLM is consulted at all).
+	var e enrichment
+	if src.Type == sourceGenerated {
+		e = skipEnrichment(p)
+	} else {
+		e = s.enrichPackage(ctx, p)
+	}
 
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {

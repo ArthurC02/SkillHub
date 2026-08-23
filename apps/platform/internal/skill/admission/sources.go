@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 // Source is the workspace-scoped provenance Catalog may display.
@@ -24,6 +24,12 @@ type Source struct {
 	FetchedAt        pgtype.Timestamptz
 	LastCheckedAt    pgtype.Timestamptz
 	UnavailableSince pgtype.Timestamptz
+	// The generation record (GEN-006). All three are nil for git and upload, and
+	// all three are set together for a generated package — 0037 has a CHECK
+	// saying so, because a half-filled record does not reproduce anything.
+	TaskDescription        *string
+	GeneratorModel         *string
+	GeneratorPromptVersion *string
 }
 
 // ReadSource keeps the generated skill_sources row inside its owner.
@@ -41,6 +47,8 @@ func (s *Service) ReadSource(ctx context.Context, workspaceID, sourceID pgtype.U
 		SourceType: row.SourceType, SourceURL: row.SourceUrl, SourceRef: row.SourceRef,
 		ContentHash: row.ContentHash, FetchedAt: row.FetchedAt,
 		LastCheckedAt: row.LastCheckedAt, UnavailableSince: row.UnavailableSince,
+		TaskDescription: row.TaskDescription, GeneratorModel: row.GeneratorModel,
+		GeneratorPromptVersion: row.GeneratorPromptVersion,
 	}, true, nil
 }
 
