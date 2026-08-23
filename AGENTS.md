@@ -21,6 +21,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 | `docs/plans/` | [產品基準](docs/plans/README.md)：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/04-backlog-and-handoffs.md)（活文件）；`mvp/m0/`～`mvp/m4/` 為各里程碑凍結產出；`mvp/content/`／`mvp/governance/`／`mvp/gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/README.md](docs/plans/README.md) |
 | `docs/adr/` | 50 份架構決策紀錄（ADR-000～049；014 已由 018 取代，024 已由 031 取代，019 §1 現由 031 修訂；042 回答 041 的六個待決策，043 修訂 026 的 defence 3 判準，044 釘選 Agent Skills 規格並定義「符合規格」的範圍；045 讓使用者第一次下載得了自己的 Skill——自己帶進來的位元組交還給自己不是再散布；**046 開 M5：從任務描述生成 Skill，生成物只在個人工作區、不進目錄也不進搜尋索引；047 把 046 的五個待決策一次裁完——單次重試且平台不改模型的位元組、截斷不重試、額度按「一次生成」計且失敗不扣、與 Run 的額度分開；**048 訂正一句被抄了三份的話**——阻擋級檢查不是全部結構性的，`possible-secret` 比對的是檔案內容，所以它不重試；**049 引用回驗比對的是被存下來的值不是它的編碼**） | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
 | `docs/spikes/` | **已刪除，只留墓碑**：M0 驗證用 spike code，結論已沉澱到 m0 報告／ADR-013／ADR-023／`UPGRADES.md`／`tools/goldenset/` | [docs/spikes/README.md](docs/spikes/README.md)（含還原指令與結論落點對照） |
+| `docs/runbooks/` | 值班當下照著做的操作程序（`02:SEC-010` 要求的形式）。與 `docs/development/` 的分別：那裡是開工前讀的手冊，這裡是出事時讀的 | [p1-dispatch-halt.md](docs/runbooks/p1-dispatch-halt.md)（P1 停止派送與解除） |
 
 Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **ADR-031（Accepted）** 按產物角色定義；它取代 ADR-024 的 `apps/`／`services/` 雙軌。結構性偏離需先更新 ADR。
 
@@ -137,6 +138,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 | Monorepo 結構與 CI/CD | ADR-019、031 |
 | Run 生命週期與 Provider 契約 | ADR-004、008 |
 | 安全與信任 | ADR-005、007、015；部署拓撲與安全門檻定值見 ADR-022 |
+| 派送被停了、要怎麼判斷與解除 | [docs/runbooks/p1-dispatch-halt.md](docs/runbooks/p1-dispatch-halt.md)（五條 P1 判準哪兩條是自動的、怎麼分辨誤觸、解除前要檢查什麼） |
 | Query 屬於哪個 context、能不能直接讀寫 | ADR-033（write）＋ADR-035（read、context 對照表對帳）＋`db/query-owners.yaml` |
 | 目前還缺什麼、誰在等誰 | `docs/plans/04-backlog-and-handoffs.md`（殘項三類清單＋跨里程碑待辦） |
 | 封測上線前要做什麼、誰做 | `docs/plans/mvp/m4/release-checklist.md`（程式面尚缺／部署期／負責人動作三段） |
