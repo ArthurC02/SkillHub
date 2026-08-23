@@ -598,8 +598,9 @@ queued → provisioning → preparing → running → evaluating
 允收準則：
 
 - 生成結果在建立版本前走**與匯入相同的那條驗證路徑**；`skillpkg.Validate` 有任何一條阻擋錯誤，**整個生成結果拒絕，不建立版本**（與套用改善建議的 `validatePatched` 同一把尺）。
-- **這道門是語法門，不是品質門**（ADR-046 決策 6 的 2026-08-23 查證補記）：阻擋級檢查全部是結構性的，通過率預期接近 100%。**UI 與文案不得把「通過驗證」呈現為任何品質、可用性或安全結論**，該說的話在 `GEN-004`。
+- **這道門幾乎是語法門，不是品質門**：阻擋級的 12 個 code 裡 **11 條是結構／語法檢查**，只有 `possible-secret` 一條比對檔案內容（[ADR-048](../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md)）。實測端到端通過率 **16／20**（[m5/report-generate-spike.md](mvp/m5/report-generate-spike.md)），**而兩張「Skill 本來就做不到」的干擾卡都通過了**。**UI 與文案不得把「通過驗證」呈現為任何品質、可用性或安全結論**，該說的話在 `GEN-004`。
 - 阻擋級 finding 出現時，系統**自動重試恰好一次**——同一個 prompt、同一個模型、**不加修正提示**（[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 1：缺陷是隨機排版手滑不是系統性能力缺陷）。第二次仍被擋即為失敗。
+- **例外：finding 的 code 是 `possible-secret` 時不重試，直接失敗**（[ADR-048](../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md)）——那是寫作習慣不是手滑，同一個 prompt 重試會原樣重現。同時出現兩類時**以不重試為準**。失敗訊息含檔案路徑但**不得含比對到的值**（`skillpkg.go:898` 的既有紀律，NFR-002）。
 - 失敗時把 `skillpkg.Validate` 的 finding **逐字**交給使用者（同 `SKILL-002` 對匯入失敗的既有處理），不重寫成安慰話；並提供「再試一次」與「修改任務描述」兩條出路，**不得留下一個半成品版本**。
 - 生成物若含 Script、可執行檔、外部 URL 或可能的 Secrets，揭露方式與匯入的 Skill **逐字相同**（`SKILL-002`、`SKILL-003`）；**不得因為內容由平台生成而少一個警告或降一級風險標示**。平台的模型不是可信來源，它只是一個沒有上游的來源。
 - 生成物內的 Script 一律只在 Sandbox 執行（鐵律 1）；生成與驗證階段皆不執行套件內任何 Script。
@@ -614,7 +615,9 @@ queued → provisioning → preparing → running → evaluating
 - 生成物在完成第一次試跑前，執行狀態維持「尚未試跑」（`02` §3 既有值），**不得因為它是平台生成的而預設為任何較好的狀態**。
 - 使用者可刪除自己生成的 Skill 與其版本，刪除範圍的說明與 `WS-002` 相同。
 
-**未涵蓋（待決策，見 ADR-046「待決策」）**：生成物發佈到目錄的路徑與其要求；Go 側「生成 → 驗證 → 重來」迴圈的次數上限（要等 `03:GEN-009` 的基線）；生成物能否作為 `WS-001` Fork 的來源。
+**未涵蓋**：生成物**發佈到目錄的完整路徑與審核流程**——[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 3 只定出三個解鎖前置，尚未落成需求 ID 與允收準則。
+
+（**2026-08-23 訂正**：本段原本還列了「重試次數上限」與「Fork 來源」兩項並指向 ADR-046 的待決策章節。**兩項都已在本節上方有準則**——重試見 `GEN-003`、Fork 見 `GEN-002`——而 ADR-046 的待決策章節已由 ADR-047 全部回答。一份文件同時說「可以」與「待決策」，是本批稽核抓到最嚴重的一處自相矛盾。）
 
 ## 5. 非功能需求
 

@@ -1,10 +1,10 @@
 # 生成品質基線（前置）：一次呼叫產得出什麼
 
 - 日期：2026-08-23
-- 依據：[ADR-046](../../../adr/ADR-046-generating-a-skill-from-a-task-description.md) 前期驗證 1／[`03` GEN-009](../../03-work-items.md) 的前三分之一
+- 依據：[README.md §前期驗證](README.md) 的前期驗證 1／[`03` GEN-009](../../03-work-items.md) 的前三分之一（[ADR-046](../../../adr/ADR-046-generating-a-skill-from-a-task-description.md) 決策 3 與決策 6 各壓了一個經驗假設，這批就是去驗那兩個）
 - Harness：[`apps/platform/internal/shared/skillpkg/generate_spike_test.go`](../../../../apps/platform/internal/shared/skillpkg/generate_spike_test.go)（env-gated，形狀照 `spec_census_test.go`）
 - 模型：`gpt-5.6-sol`（flagship）。**不用 `gpt-5.6-terra`**——[litellm-config.yaml](../../../../infra/compose/litellm-config.yaml) 逐字寫它是「judge tier, **separated from the generating model**」，拿評審的模型去生成會把 ADR-026 想分開的兩件事併回去。
-- 閘道實付：**$2.3684**（21 次呼叫＝20 次生成＋1 次連通測試），平均 **$0.113／次**
+- 閘道實付：**$2.3684**（21 次呼叫＝20 次生成＋1 次連通測試）。**生成的單價是 $0.1184**——扣掉那次 13 token 的連通測試（$0.000185）再除以 20。（**2026-08-23 訂正**：原文寫「平均 $0.113／次」並在 §4 拿它代表一次生成，那是用 21 的分母去講 20 件事，低估約 5%。）
 
 ## 0. 這批要回答什麼
 
@@ -21,7 +21,7 @@ ADR-046 的決策 3 與決策 6 各壓了一個經驗假設，寫 ADR 當下**�
 
 | 組 | 數 | 來源 |
 | --- | --- | --- |
-| `in_category` | 12 | [gate-test/task-cards.md](../gate-test/task-cards.md) §2 的 DOC-1～4／WRI-1～4／DAT-1～4，**逐字**（含兩張英文卡） |
+| `in_category` | 12 | [gate-test/task-cards.md](../gate-test/task-cards.md) §2 的 DOC-1～4／WRI-1～4／DAT-1～4，**逐字**（含**三張**英文卡：DOC-4／WRI-4／DAT-4。原文寫「兩張」，2026-08-23 訂正——第四張英文卡 X-2 屬 `not_skill_shaped` 組） |
 | `out_of_category` | 6 | 本批新寫：補習班錯題歸類、咖啡店排班、React 提交前自檢、慢性病用藥提醒、桌遊選擇、三方對帳。**刻意落在 `documents`／`writing`／`data` 三類之外**——`04` 乙-21 的前提①講的正是這種人 |
 | `not_skill_shaped` | 2 | gate-test 的兩張干擾卡 X-1（日本七天機票＋租車）、X-2（正時皮帶）。**一個 Skill 本來就做不到這兩件事** |
 
@@ -36,9 +36,10 @@ ADR-046 的決策 3 與決策 6 各壓了一個經驗假設，寫 ADR 當下**�
 | **通過 `skillpkg.Validate`** | **16／19（端到端 16／20 ＝ 80%）** |
 | 阻擋 | 3 |
 | 阻擋 code 分布 | `frontmatter-invalid-yaml` = 3（**全部同一個**） |
-| 警告 code 分布 | `license-unknown` = 16、`undeclared-dependency` = 2 |
+| 警告 code 分布 | `license-unknown` = **16／16**、`undeclared-dependency` = **2／5**（**分母不是 19**，見下） |
 | **emitted `license` 欄位** | **0／19** |
-| 產出多於一個檔案 | 8／19 |
+| 通過驗證器那道門本身 | **16／19 ＝ 84.2%**（端到端的 80% 另含那次截斷） |
+| 產出多於一個檔案 | **6／19**（其中帶可執行腳本的是 5／19） |
 | SKILL.md 本文長度 | 中位數約 3.6k runes（min 1107、max 8388） |
 | **空殼** | **0／19** |
 
@@ -57,11 +58,13 @@ ADR-046 決策 6 的查證補記推論「阻擋級檢查全是結構性的，一
 
 frontmatter 的第一個鍵頂格，**第二個鍵前面多一個空格**，YAML 的 mapping 縮排就不一致了。三次都是這個形狀。**不是內容錯，是排版手滑**，而它撞的正是驗證器唯一擋得住的那一類東西。
 
-**一次截斷（DOC-1）——`max_tokens=8000` 上限吃掉整個結果。** 那是全批最長的一次（會議大綱→Word，模型連 `.docx` 產生腳本一起寫），`finish_reason` 到頂、JSON 不完整、**什麼都沒有留下**。一個被截斷的生成不是「品質差的套件」，是零。
+**一次截斷（DOC-1）——`max_tokens=8000` 上限吃掉整個結果。** `finish_reason` 是 `length`，而 **8000 個 completion token 全部是 `reasoning_tokens`，`content` 是空字串**（錯誤是 `JSONDecodeError: Expecting value: line 1 column 1`，`DOC-1.raw.txt` 是 0 bytes）。一個被截斷的生成不是「品質差的套件」，是零。
+
+> **2026-08-23 訂正**：本段原本寫「那是全批最長的一次（會議大綱→Word，模型連 `.docx` 產生腳本一起寫）、JSON 不完整」。**兩句都是推測寫成了事實**——模型一個字的內容都沒有交出來，所以既沒有不完整的 JSON，也無從得知它本來要寫什麼。**它是全批最貴的一次（$0.2417）而產出為零**，這一點才是可佐證的。
 
 ### 3.2 空殼沒有出現——而我用來抓空殼的那把尺是壞的，這件事要一起記
 
-19 個套件本文中位數約 3.6k runes，最短的 DAT-1 也有 1107 runes 加一支 4135 字元的 Python 腳本。**沒有一個是「標題加待填欄位」那種形狀。**
+19 個套件本文中位數 **3586** runes（n=19），最短的 DAT-1 也有 1107 runes 加一支 4135 字元的 Python 腳本。**沒有一個是「標題加待填欄位」那種形狀。**
 
 placeholder 偵測器報了 2 個（DOC-4、OUT-3），**逐一看過，兩個都是偽陽性**：
 
@@ -69,6 +72,8 @@ placeholder 偵測器報了 2 個（DOC-4、OUT-3），**逐一看過，兩個�
 - **DOC-4** 的 `<original-name>`／`<extension>` 是輸出檔名樣板的說明文字，不是沒填完的欄位。
 
 **這把尺 0 真陽性、2 偽陽性。** 記在這裡是因為 `GEN-009` 的完整版還要用它——**照現在的樣子用會系統性高估空殼率**，而「有 placeholder 字樣」與「是空殼」本來就是兩件事。下一版要嘛改成人看，要嘛換一個真的量得到「這份指示可執行嗎」的指標。
+
+**偽陽性的面比上面兩例更寬**：`<angle>` 的 regex 是 `<[a-z_ -]{3,30}>`，會命中任何小寫 HTML 標籤（`<div>`、`<summary>`）；`ellipsis` 會命中程式碼區塊裡標準的省略行——**而 6／19 的套件帶其他檔案**。另以六種本尺沒有的形狀（`TBD`／`{{`／`___`／待填類中文／寬鬆角括號／空標題）重掃全部 19 份，命中的都是散文，**沒有漏掉的真陽性**，所以「0 真陽性」這個結論站得住。
 
 ### 3.3 最重要的一個：X-1 與 X-2 都通過了
 
@@ -78,30 +83,33 @@ X-1 產出的東西叫 `japan-flight-car-planner`，它自己的 `compatibility`
 
 > 需要網路存取才能查詢即時航班、租車供應、價格、營業時間及入境規定；無法連網時只能提供查詢策略與待確認清單。
 
-**而平台的 Sandbox 預設封鎖網路**（ADR-005／ADR-022，沙箱層 nftables default-deny）。所以這是一個：使用者付了錢、通過了每一道檢查、寫進了他的工作區、**而且在這個平台的執行環境裡結構性地跑不起來**的 Skill。
+**而平台的 Sandbox 預設封鎖網路**（ADR-005／ADR-022，沙箱層 nftables default-deny，**恰好放行一個目的地：LiteLLM 閘道**）。**這是決策不是已部署的事實**——repo 裡沒有任何 nftables ruleset，只有 `infra/egress/allowlist.yaml` 這份由 IaC 在節點建置時 render 的來源，而 SEC-009 的真實 Linux／gVisor 驗收仍在甲類未到期。所以這是一個：使用者付了錢、通過了每一道檢查、寫進了他的工作區、**而且在這個平台的執行環境裡結構性地跑不起來**的 Skill。
 
 這就是 ADR-046 決策 6 那條補記說的「拒絕率接近 0，門幾乎不擋東西」**具體長什麼樣**。驗證器沒有任何一條能發現這件事，因為它不是格式問題。**`GEN-004` 那句「沒有經過任何人工檢視、沒有任何試跑證據」不是禮貌用語，它是這個產品對 X-1 唯一說得出口的話。**
 
 ### 3.4 Script 是常態，不是例外
 
-8／19 產出多於一個檔案，內容是 Python 與 shell 腳本（`scripts/csv_to_jsonl.py`、`scripts/format_stock_sheet.py`、`scripts/scan-staged.sh`…）。其中 2 個帶 `undeclared-dependency` 警告。
+**6／19** 產出多於一個檔案（DAT-1、DAT-2、DOC-2、DOC-4、OUT-3、WRI-1），內容是 Python 與 shell 腳本（`scripts/csv_to_jsonl.py`、`scripts/format_stock_sheet.py`、`scripts/scan-staged.sh`…）。**其中 WRI-1 的第二個檔是 Markdown 不是腳本，所以真正帶可執行腳本的是 5／19 ＝ 26%。** 5 個受檢的腳本包裡有 2 個帶 `undeclared-dependency` 警告。
 
-**ADR-046 決策 6 的「生成的 Script 不享有任何寬待」不是理論條款**——第一批就有將近一半用得上它。
+> **2026-08-23 訂正**：原文寫「8／19」與「將近一半」。三個來源（`runs.json` 的 `file_count`、zip 內容、census 的 `files` 欄）都是 6，那個 8 沒有任何來源支持。
+
+**ADR-046 決策 6 的「生成的 Script 不享有任何寬待」不是理論條款**——四分之一的產出用得上它。**而它漏了唯一一條會因為 Script 內容而阻擋的規則**：`possible-secret`（[ADR-048](../../../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md)）。這批 20 個樣本一次都沒觸發它。
 
 ## 4. 對 ADR-046 的回寫
 
 | 原文 | 實測 | 處置 |
 | --- | --- | --- |
-| 決策 6 補記：「通過率預期接近 100%」 | **80%** | 已回寫為實測值 |
+| 決策 6 補記：「通過率預期接近 100%」 | **端到端 80%／驗證器那道門 84.2%** | 已回寫為實測值。**同一段的列舉還漏了 `possible-secret`**，見 [ADR-048](../../../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md) |
 | 待決策 2：「重試次數上限大概率是一個不存在的問題」 | **問題存在，但很便宜** | 已回寫：三次失敗是隨機縮排手滑不是系統性缺陷，**單次重試就夠**；但「平台要不要直接修掉那個空格」是政策不是 bug fix，留在待決策 |
 | 決策 6：「門是語法門不是品質門」 | **證實，且比預期嚴重**（X-1／X-2 通過） | 已補上 X-1 這個具體案例 |
 | （無）`max_tokens` 上限 | **1／20 被截斷** | 新增：`GEN-001` 需要一條關於輸出上限與截斷處置的準則 |
-| （無）成本 | **$0.113／次** | 新增：生成比一次 mini 級試跑貴，ADR-028 的配額設計要知道 |
+| （無）成本 | **$0.1184／次**（生成的單價，不含連通測試） | 新增：生成比一次 mini 級試跑貴，ADR-028 的配額設計要知道 → 已由 [ADR-047](../../../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 5 裁定為獨立額度 |
 
 ## 5. 這批**沒有**回答的
 
 - **生成的 Skill 跑起來好不好用。** 要 Sandbox ＋ 評估管線，是 `GEN-009` 的第②③項。
 - **人會不會留著它。** 要人（`GEN-009` 第④項），刻意不用機器指標頂替——同 `04` 丙-38 的既有紀律。
+- **`possible-secret` 的命中率。** 20 個樣本一次都沒觸發，所以 ADR-048 那條不重試規則目前是一段沒有人走過的分支。
 - **同一段描述重跑會不會穩定。** 每段只跑一次，`frontmatter-invalid-yaml` 的 3／19 是不是隨機，沒有第二次觀察可以佐證。**這是重試決策的直接輸入**，`GEN-009` 要補。
 - **三類之外的六段是不是真的更難。** 6 段全部通過，但樣本太小；`out_of_category` 與 `in_category` 的通過率差異在這個 n 下不可分辨。
 

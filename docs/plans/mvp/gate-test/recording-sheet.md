@@ -66,14 +66,18 @@
 | 1. 查詢原文 | `⬜⬜⬜⬜⬜⬜` |
 | 2. `system_refused`（系統是否回無結果） | Y ／ **N（重大訊號，見 `task-cards.md` §3.1）** |
 | 3. 系統給的改寫建議原文 | 「⬜⬜⬜⬜」 |
-| 4. `distractor_reaction`（第一反應） | `rewrote` ／ `gave_up` ／ `thinks_broken` ／ `accepts` |
+| 4. `distractor_reaction`（第一反應） | `rewrote` ／ `gave_up` ／ `thinks_broken` ／ `accepts`（**不要與第 9 欄的 `rewrite_query` 混記**） |
 | 5. 受測者原話 | 「⬜⬜⬜⬜⬜」 |
 | 6. **`g3_pass`**（是否認同無結果為正確回應） | Y ／ N |
 | 7. 判 N 的理由 | ⬜⬜⬜ |
-| 8. `next_step_raw`（「那接下來你會做什麼？」**逐字**） | 「⬜⬜⬜⬜⬜」 |
-| 9. `next_step_class` | `rewrite`／`other_site`／`build_it_himself`／`ask_ai_to_build`／`give_up`／`dont_know` |
+| 8. `next_step_raw`（「那接下來你會做什麼？」**逐字**）**僅干擾②填** | 「⬜⬜⬜⬜⬜」／□ 本張是干擾① |
+| 9. `next_step_class` **僅干擾②填** | `rewrite_query`／`other_site`／`build_it_himself`／`ask_ai_to_build`／`give_up`／`dont_know` |
 
-> **第 8、9 欄不參與 G1～G4 任何一條判準**（2026-08-23 新增，ADR-046 前期驗證 2）。它量的是 MVP 之外的 M5 訊號。**必須在判完第 6 欄之後才問**，且**絕不能問引導題**——「你會想要系統幫你做一個嗎」這種問法必定拿到假的 yes，那筆資料就作廢。
+> **第 8、9 欄不參與 G1～G4 任何一條判準**（2026-08-23 新增；來由見 [m5/README.md §前期驗證](../m5/README.md)）。它量的是 MVP 之外的 M5 訊號。**只在干擾②填**——干擾①後面還有兩張計分卡，在那裡問會污染 G1（見 `moderator-guide.md` §3.D 紀律 1）。**必須在判完第 6 欄之後才問**，且**絕不能問引導題**——「你會想要系統幫你做一個嗎」這種問法必定拿到假的 yes，那筆資料就作廢。
+>
+> **每人恰好一筆**，所以 `analysis.md` §2.5 的三列可以直接以人為分母，不需要題次換算。
+>
+> **`rewrite_query` 不是第 4 欄的 `rewrote`**：第 4 欄記的是看到無結果當下的第一反應，這一欄記的是他說出口的下一步。兩者相隔五行、意思相近，**現場不要串**。
 >
 > `next_step_class` 的判準：`rewrite` 再改一次查詢／`other_site` 去別的網站或問別人／`build_it_himself` **自發**說出要自己做一個／`ask_ai_to_build` **自發**說出要叫 AI 或這個網站幫他做一個／`give_up` 放棄／`dont_know` 說不出來。**後兩類（`build_it_himself`／`ask_ai_to_build`）只在受測者自己先講出來時才成立**，主持人一旦提過，該題次一律記 `dont_know` 並在第 8 欄註明主持人破功。
 
@@ -108,6 +112,7 @@
 
 | 欄 | 定義 | 常見誤判 |
 | --- | --- | --- |
+| `next_step_class` | 干擾②追問的分類。**只有受測者自己先講出來才算**：`build_it_himself` 自發說要自己做一個／`ask_ai_to_build` 自發說要叫 AI 或這個網站幫他做／`rewrite_query` 再改一次查詢／`other_site` 去別的網站或問別人／`give_up` 放棄／`dont_know` 說不出來 | **主持人一旦提過任何一種做法，該場一律記 `dont_know`** 並在第 8 欄註明主持人破功。不參與任何閘門判準 |
 | `gold_in_top5` | 受測者**最終採用的那一版查詢**，其結果前 5 名含 primary 或 acceptable 任一項 | 不是「任何一版查詢曾經出現過」。改寫過就以最後一版算 |
 | `picked` | 受測者在**無提示**下明確說「我會用這個」的那一項 | 受測者只是點開看看不算指認；要有「會用」的意思表示 |
 | `reason_source: on_screen` | 理由引用了畫面上的具體資訊（摘要、符合原因、依賴、風險提示、來源） | 受測者說「它寫說可以處理 CSV」→ `on_screen`（引用摘要） |
@@ -175,8 +180,8 @@
 
 ### 3.2 干擾任務總表（18 列）
 
-| 場 | 受測者 | 卡片 | `system_refused` | `distractor_reaction` | **`g3_pass`** |
-| --- | --- | --- | --- | --- | --- |
+| 場 | 受測者 | 卡片 | `system_refused` | `distractor_reaction` | **`g3_pass`** | `next_step_class`（僅干擾②） |
+| --- | --- | --- | --- | --- | --- | --- |
 | S01 | P1 | X-1 | | | |
 | S01 | P1 | X-2 | | | |
 | S02 | P2 | X-2 | | | |
