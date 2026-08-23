@@ -29,6 +29,8 @@ MVP 預設介面以非技術使用者可理解的任務語言呈現，並提供�
 
 > 成為個人與團隊探索、驗證、改善及發佈 Agent Skill 的可信任基礎平台。
 
+> **⚠️ 這句話的四個動詞已經蓋不住現在在做的事（2026-08-23）。** M5 加了第五個：**生成**（[ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md)，同日 [ADR-052](../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)／[ADR-054](../adr/ADR-054-the-cap-was-lifted-by-authorisation-not-by-evidence.md) 全面開工）。**願景句是產品定位，不是事實對帳，所以本檔不自行改寫它**——問題與建議措辭列為 [`05` R-8](05-pending-rulings.md)，等負責人一句話。<br>要留意的是這不只是加一個詞：前四個動詞的受詞都是**別人寫的 Skill**，第五個的受詞是**平台自己寫的**。「可信任」在這兩種情況下要證明的東西不一樣，而 §12 的最後一列已經在處理後者。
+
 MVP 承諾：
 
 > 個人創作者能在 10 分鐘內找到一個可能符合需求的 Skill，用自己的 Prompt 與測試資料驗證效果，並下載可安裝的版本。
@@ -63,7 +65,7 @@ MVP 承諾：
 ## 5. 產品原則
 
 1. 使用任務語言：使用者不需要先理解 Skill 規格才能開始。
-2. 證據優先：品質判斷以來源、試跑與驗收證據為主，不只依賴 Star。
+2. 證據優先：品質判斷以來源、試跑與驗收證據為主，不只依賴 Star。**（2026-08-22 由 [ADR-042](../adr/ADR-042-roadmap-product-rulings-evidence-aggregate-in-flight-axis-and-enforcer-attribution.md) 決策 1 收緊：不是「不只依賴」，是全域評分與排行榜**永久不做**——名次要求可比較，而本產品的證據天生不可比較，A 的驗收條件不是 B 的驗收條件。替代品是帶分母、非預設排序、有 k 門檻的試跑證據彙總。見 §7.3。）**
 3. 權限透明：執行前說明預計使用的資料、工具、MCP 與網路權限。
 4. 可解釋改善：每項建議都需指出原因、位置與可能影響。
 5. 可攜但不過度承諾：分開呈現規格有效、能力相容與實際測試通過。
@@ -175,16 +177,26 @@ MVP 先提供：
 
 ## 10. 里程碑
 
-| 里程碑 | 狀態（2026-08-16） |
-| --- | --- |
-| M0 產品與安全基線 | **已完結**（2026-08-14）——見 [m0/README.md](mvp/m0/README.md) |
-| M1 Skill Explorer | **程式碼面已收斂**（對帳見 [m1/m1-work-items-audit.md](mvp/m1/m1-work-items-audit.md)）；**驗證閘門尚未正式通過**——使用者測試材料已備妥（[gate-test/](mvp/gate-test/)），**D 日待負責人宣告** |
-| M2 Skill Lab | **已完結**（2026-08-16）——對帳見 [m2/m2-work-items-audit.md](mvp/m2/m2-work-items-audit.md)，殘項三類清單見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md) |
-| M3 評估與改善 | 未開工；接點與已知限制見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md) 殘項清單「丙」類 |
-| M4 打包與封閉測試 | 未開工；SEC-009 驗收證據落檔位置已預留 `m4/sec-009-acceptance/` |
-| M5 從任務描述生成 Skill | **未開工，2026-08-23 新增**（[ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md)）——規格已立（[`02` §4.9](02-specifications-and-acceptance-criteria.md) `GEN-001`～`004`）、工作項已立（[`03` §19](03-work-items.md)）。~~**啟動條件：MVP 封測結束、漏斗第一段有讀數。**~~ **2026-08-23：三項啟動條件全部暫時放行，M5 即刻可開工**（[ADR-052](../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)）。**三項的事實一件都沒改變**——封測未開始、D 日未宣告、`GEN-009` ③④未完成；被移除的是「阻擋」這個效力。**⛔ 放行不含曝光**：生成入口不得對封測使用者出現，直到漏斗第一段有讀數為止（否則那個讀數量到的就不再是搜尋好不好）。**同日稍晚負責人授權全面開工，[ADR-053](../adr/ADR-053-the-assumption-under-m5-gets-its-own-five-people.md) 的投入上限亦解除**（[ADR-054](../adr/ADR-054-the-cap-was-lifted-by-authorisation-not-by-evidence.md)）——**解除它的是授權不是證據**：ADR-046 底下「使用者搜不到會想要生成一個」這個假設，今天的證據量仍然是零（[ask-5.md](mvp/m5/ask-5.md) 一次都沒執行）。 本表其餘各列的狀態為 2026-08-16 當時，未回頭改寫 |
+**狀態欄以 2026-08-23 為準。** 前一版的狀態欄停在 2026-08-16 並明文說「未回頭改寫」，結果 M5 那一格是當天的、M3／M4 那兩格是一週前的「未開工」——**一個讀者看那張表會以為 M3 與 M4 還沒開始**。既然這是活文件，狀態欄就整欄對齊到今天；歷史狀態留在各里程碑目錄的 `audit.md`，那裡才是里程碑時點的證據。
 
-**閘門與並行的關係（誠實記錄）**：M1 的驗證閘門與 M2 開發並行進行，因此「M2 完結」不代表 M1 閘門已通過；閘門未過時的處置仍依 M1 節的規定——先修正搜尋與內容。
+**這張表不再是一條直線。** M4 與 M5 目前**同時未完結**，那是 ADR-052 明示接受的代價，不是記錄疏漏。
+
+| 里程碑 | 程式面 | 還缺什麼 |
+| --- | --- | --- |
+| M0 產品與安全基線 | **已完結**（2026-08-14） | — [m0/README.md](mvp/m0/README.md) |
+| M1 Skill Explorer | **已收斂**（[m1 對帳](mvp/m1/m1-work-items-audit.md)） | **驗證閘門未通過**：材料備妥（[gate-test/](mvp/gate-test/)）、同意書法務已清，**D 日待負責人宣告**，9 場一場沒跑，G1～G4 沒有任何一個數（[`05` R-5](05-pending-rulings.md)） |
+| M2 Skill Lab | **已完結**（2026-08-16，[m2 對帳](mvp/m2/m2-work-items-audit.md)） | — |
+| M3 評估與改善 | **已收斂**（[m3 對帳](mvp/m3/audit.md)，16 項） | — |
+| M4 打包與封閉測試 | **已收斂**（[m4 對帳](mvp/m4/audit.md)，49 項中 16 勾／33 誠實不勾） | **封測未開始**。`RELEASE-001`～`010` **十項全部不勾**，共同的三個阻擋是甲類四項未到期、PDM 追認、M1 閘門 D 日（[release-checklist](mvp/m4/release-checklist.md)） |
+| M5 從任務描述生成 Skill | **開工中**（2026-08-23 新增，[ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md)） | 三項啟動條件由 [ADR-052](../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md) 暫時放行、投入上限由 [ADR-054](../adr/ADR-054-the-cap-was-lifted-by-authorisation-not-by-evidence.md) 解除——**解除它的是授權不是證據**：「使用者搜不到會想要生成一個」這個假設，證據量仍然是零（[ask-5.md](mvp/m5/ask-5.md) 一次都沒執行） |
+
+**⛔ 三條仍然生效的邊界**：
+
+1. **放行不含曝光**（ADR-052）。生成入口不得對封測使用者出現，直到漏斗第一段有讀數為止——否則那個讀數量到的就不再是「搜尋好不好」。實作形狀是 `GET /me` 的 `generate_skill` 旗標，見 [資訊架構 §2.4](../design/information-architecture.md)。
+2. **M5 不在 MVP 完成度內**（§7.3 不變）。「M4∥M5」不等於「MVP 進度 = 兩者平均」。
+3. **閘門與封測不可並行**（[m4/README §5.3](mvp/m4/README.md)）——這一點與 M1～M3 不同，打包批可以並行，封測不行。
+
+**閘門與並行的歷史紀錄**：M1 的驗證閘門與 M2 開發並行進行，因此「M2 完結」不代表 M1 閘門已通過；閘門未過時的處置仍依 M1 節的規定——先修正搜尋與內容。
 
 ### M0：產品與安全基線
 
@@ -224,6 +236,8 @@ MVP 先提供：
 
 ## 11. 成功指標
 
+> **這一節目前一個數字都沒有（2026-08-23）。** 量測管線在 M4 落地了（四個漏斗事件、ADR-029 的邊界、`ANALYTICS_RETENTION` 已追認為 365 天），但**封測未開始，沒有任何一位受測者產生過事件**；M1 閘門的 G1～G4 同樣沒有讀數，因為 D 日未宣告。<br>所以下面三小節現在的身分是**假設，不是指標**——包含「10 分鐘」這個數字，它在 §3 與 §11.3 各出現一次，而**兩處都沒有被量過**。第一個讀數會來自閘門的 9 場，第二個來自封測的漏斗；在那之前不要拿這一節的任何一句話當成已達成的證據。
+
 ### 11.1 北極星指標
 
 > 每週通過使用者驗收並完成打包的 Skill 數量。
@@ -258,16 +272,23 @@ MVP 先提供：
 | **內容涵蓋不到使用者的任務**（2026-08-23 新增，`04` 乙-21） | 學習者 persona 走不完第一步：精選只有 `documents`／`writing`／`data` 三類，落在三類外就掉到「外部結果」層，而那一層要使用者自己提供 URL——不會寫 Skill 的人通常也不知道去哪找 | MVP 內只有誠實：無結果狀態說出下一步而不是只給改寫建議。**封測要看的數是漏斗第一段**；M5 的生成路徑（[ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md)）是它的解，但刻意排在讀數之後 |
 | **生成物看起來像一個 Skill，但沒有任何人或任何 Run 檢視過**（M5 新增風險，2026-08-23） | 使用者把一份沒有證據的產出當成與精選內容同級 | 三道：不進公開目錄也不進搜尋索引（ADR-046 決策 2）、Script 的揭露與匯入物逐字相同不享寬待（決策 6）、詳情與列表必須說出「沒有經過任何人工檢視、沒有任何試跑證據」（`02:GEN-004`） |
 
-## 13. 待決策事項
+## 13. 待決策事項 → 已散開，這裡只留去向
 
-- 首批三個 Skill 類別。
-- 首批 Skill 的來源清單與精選標準。
-- MVP 的主要 Agent Runtime 與模型。
-- SelfHostedProvider 第一版支援的 Runtime 語言。
-- Dataset 大小、執行時間與資源上限。
-- Run 輸入、輸出與 Artifact 的預設保存期限。
-- Local Runner 首批支援的作業系統（後 MVP，啟動時再決）。
-- 目標 Agent 打包 Profile 的首批支援範圍。
-- 封閉測試人數、招募方式與成功門檻。
-- 免費 Run 額度與是否支援使用者自備模型 API Key。
+**本節不再是一份清單。** 它原本列的十項多數早已定案，而定案寫在別處——同一份文件裡 §8 已經記著「類別已定案（PDM-001）」，§13 卻還把它列為待決策。**一份專案不需要兩份待決策清單，而過期的那一份會被相信。**
 
+**現在要簽什麼，只看 [`05-pending-rulings.md`](05-pending-rulings.md)**（活文件，逐項寫了要決定什麼、已查到的事實、建議，以及**不決定的代價**）。原十項的去向：
+
+| 原待決策項 | 現在在哪裡 |
+| --- | --- |
+| 首批三個 Skill 類別 | **已定** PDM-001：`documents`／`writing`／`data`（§8 已記） |
+| 首批來源清單與精選標準 | **已定** PDM-002（白名單、四步回溯准入、九項精選檢查）；判準見 [`02` §4.7](02-specifications-and-acceptance-criteria.md) `CONTENT-001`～`009` |
+| MVP 主要 Agent Runtime 與模型 | **已定** [ADR-023](../adr/ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md)（Claude Agent SDK 0.3.233，digest ＋ lockfile 釘選）＋ PDM-003（試跑預設 mini；Judge 層模型分離） |
+| Dataset 大小、執行時間與資源上限 | **已定** PDM-005 §5.2／§5.2a，已回寫 [`02`](02-specifications-and-acceptance-criteria.md) 為可判定形式（含 token 上限的強制點修正） |
+| Run 輸入／輸出／Artifact 保存期限 | **已定** PDM-006，**2026-08-23 追認**三個保存窗口（[`05` R-1a](05-pending-rulings.md)）；數字之間的關係已寫成規則，見 `02` |
+| 目標 Agent 打包 Profile 首批範圍 | **已定**：M4 交付三個目標，見 [m4/README.md](mvp/m4/README.md) |
+| 封閉測試人數、招募方式與成功門檻 | **人數與門檻已定** PDM-010；**報酬金額與受測者簽署仍未定** → [`05` R-2](05-pending-rulings.md) |
+| 免費 Run 額度、是否支援自備 API Key | **已定** [ADR-055](../adr/ADR-055-the-run-allowance-is-turned-off-and-that-took-an-action.md) ＋ PDM-009：**封測不套用免費額度**，而「不限制」是一個動作不是維持現狀 |
+| SelfHostedProvider 第一版支援的 Runtime 語言 | **仍未定，且不擋 MVP**：`02` 的相容性以 (Skill Version × Runtime Image) 為鍵、換映像即回未驗證，所以這一項是內容策略問題不是架構問題 |
+| Local Runner 首批支援的作業系統 | **刻意不決**：Local Runner 已移出 MVP 首發（§7.3），依需求訊號啟動時再決 |
+
+**十項裡只有兩項還真的在等人**：封測報酬（R-2）與 SelfHostedProvider 的語言範圍。其餘八項是已定案卻被一份沒人維護的清單留在原地。
