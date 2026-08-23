@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -13,6 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -492,6 +494,39 @@ func (a *App) AuditRosters(ctx context.Context) {
 		slog.Error("beta roster not audited; the closed beta gate admits nobody", "error", err)
 		a.Auth.Invited = BetaGateClosed()
 	}
+	if err := a.logFeatureFlags(ctx); err != nil {
+		// Not fail-closed, unlike the two rosters: this row is a record of a
+		// decision somebody already made in the deployment's configuration, not
+		// the thing that enforces it. Refusing to serve because the record failed
+		// would take the platform down over its own bookkeeping.
+		slog.Error("feature flags not audited; a mis-opened flag will leave no trace", "error", err)
+	}
+}
+
+// logFeatureFlags records which optional entry points this process came up with,
+// once per start (ADR-052's own 待決策, answered here).
+//
+// Written even when everything is off, which is the difference from the two
+// rosters above: "nothing was exposed on this deployment, from this time" is the
+// statement somebody will need, and an absent row cannot make it — it is equally
+// consistent with a build that predates the flag.
+func (a *App) logFeatureFlags(ctx context.Context) error {
+	on := make([]string, 0, len(a.Auth.Features))
+	for name, enabled := range a.Auth.Features {
+		if enabled {
+			on = append(on, name)
+		}
+	}
+	sort.Strings(on)
+	return audit.Log(ctx, a.Auth.Service.Pool, audit.Event{
+		Action:       audit.ActionFeatureFlags,
+		ResourceType: audit.ResourceFeatureFlags,
+		Metadata: map[string]any{
+			"enabled": on,
+			"count":   len(on),
+			"source":  "environment",
+		},
+	})
 }
 
 // BetaGateClosed is the invite list of a start-up that could not audit its own

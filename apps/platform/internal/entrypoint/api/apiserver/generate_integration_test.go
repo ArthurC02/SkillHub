@@ -450,3 +450,76 @@ func TestAGeneratedNameCollisionIsRefusedInBothDirections(t *testing.T) {
 		}
 	})
 }
+
+// ADR-052's flag is deployment-wide; the permission behind the route is not.
+// POST /skills/generate is RequireInvited, so an ordinary signed-in account
+// outside the beta cohort was being shown the entry point, typing a
+// description, waiting, and getting a 403 with an English paragraph on a
+// Chinese page. `/me` now answers per caller.
+func TestTheEntryPointIsNotAdvertisedToSomeoneWhoMayNotUseIt(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+		d.GenerateExposed = true
+		d.Auth.Features = map[string]bool{"generate_skill": true}
+		// A cohort that exists and does not contain this test's user. The dev
+		// login mints provider ids from the name, so a literal nobody-id closes it.
+		d.Auth.Invited = map[string]bool{"a-provider-id-nobody-holds": true}
+	})
+	c := a.login(t, "gen-uninvited")
+
+	if f := features(t, c); f != nil {
+		t.Errorf("/me advertised %v to an account the route refuses", f)
+	}
+	if code, _ := postJSON(t, c, "/skills/generate", `{"task_description":"把掃描的單據整理成表格。"}`); code != http.StatusForbidden {
+		t.Errorf("POST /skills/generate = %d, want 403 — the test's premise is that this caller is refused", code)
+	}
+}
+
+// ADR-052 left 「曝光旗標要不要有稽核事件」 open and named its own weakness in the
+// same paragraph: 「沒有任何機制會告訴我們它被誤開過」. This is that mechanism.
+// Written even when everything is off, because "nothing was exposed on this
+// deployment, from this time" is the statement somebody will need, and an absent
+// row is equally consistent with a build that predates the flag.
+func TestTheExposureFlagLeavesATraceEitherWay(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+
+	for _, tc := range []struct {
+		name    string
+		exposed bool
+		want    string
+	}{
+		{"off", false, "[]"},
+		{"on", true, `["generate_skill"]`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Audit rows are immutable by trigger (ADR-003), so the test reads
+			// forward from a watermark rather than clearing the table.
+			var before int64
+			if err := pool.QueryRow(ctx,
+				"SELECT coalesce(max(id), 0) FROM audit_events",
+			).Scan(&before); err != nil {
+				t.Fatal(err)
+			}
+			a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+				d.GenerateExposed = tc.exposed
+				if tc.exposed {
+					d.Auth.Features = map[string]bool{"generate_skill": true}
+				}
+			})
+			a.app.AuditRosters(ctx)
+
+			var enabled string
+			if err := pool.QueryRow(ctx,
+				`SELECT metadata->>'enabled' FROM audit_events
+				 WHERE action = $1 AND id > $2 ORDER BY id DESC LIMIT 1`,
+				"feature_flags.roster", before,
+			).Scan(&enabled); err != nil {
+				t.Fatalf("no feature-flag audit row: %v", err)
+			}
+			if enabled != tc.want {
+				t.Errorf("enabled = %s, want %s", enabled, tc.want)
+			}
+		})
+	}
+}

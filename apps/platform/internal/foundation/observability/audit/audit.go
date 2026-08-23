@@ -74,7 +74,16 @@ const (
 	// per API start with the cohort the process came up with, because the invite
 	// itself is a configuration change plus a restart. Same limit as above — it
 	// says who is on the list now, never who added them or when.
-	ActionBetaRoster        = "beta.roster"
+	ActionBetaRoster = "beta.roster"
+	// ADR-052 left one question open by name — 「曝光旗標要不要有稽核事件」 — and
+	// named its own weakness in the same paragraph: 「沒有任何機制會告訴我們它被誤
+	// 開過」. This is that mechanism, in the shape the two rosters above already
+	// use: written once per API start, recording the deployment's own
+	// configuration rather than a grant. It answers "was this ever on, and from
+	// when", which is the only question a mis-opened exposure flag raises after
+	// the fact — 01 §11.2's first funnel segment has one chance with twelve
+	// people, and nothing else would say it had been spent.
+	ActionFeatureFlags = "feature_flags.roster"
 	ActionAccountDeleteAsk  = "account.deletion_requested"
 	ActionAccountDeleteStop = "account.deletion_cancelled"
 	ActionAccountPurge      = "account.purged"
@@ -166,7 +175,10 @@ const (
 	// ResourceOperatorRoster and ResourceBetaRoster have no resource_id: a roster
 	// is the deployment's configuration, not a row anything can point at.
 	ResourceOperatorRoster = "operator_roster"
-	ResourceBetaRoster     = "beta_roster"
+	ResourceBetaRoster = "beta_roster"
+	// ResourceFeatureFlags has no resource_id for the same reason the two rosters
+	// above have none: a deployment's flag set is configuration, not a row.
+	ResourceFeatureFlags = "feature_flags"
 	// ResourceDispatch is the execution plane's dispatch switch (0030). The
 	// resource_id is the dispatch_halts row, so a halt and the resume that ended it
 	// are two events pointing at one incident.

@@ -230,6 +230,14 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity,
 			"這件事的內容超過一次生成的上限，已經停下來，沒有建立任何版本。"+
 				"把任務拆小一點再試一次會有幫助。")
+	case errors.Is(err, ErrGenerateTooLong):
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"這段任務描述超過一次生成能吃下的長度。請留下要做什麼、輸入是什麼、預期產出是什麼，其餘可以省略。")
+	case errors.Is(err, ErrGenerateInFlight):
+		// 409 rather than 422: nothing is wrong with the request, it is the
+		// workspace that is busy, and the same request will work in a moment.
+		httpx.WriteError(w, http.StatusConflict,
+			"這個工作區已經有一次生成正在進行。等它結束再送出——同時跑兩次會付兩次錢。")
 	case errors.Is(err, ErrGenerateNotForCatalogue):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, ErrGeneratedNameCollision):

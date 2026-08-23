@@ -220,6 +220,10 @@ type api struct {
 	// the generation pipeline against a stub LLM. There is no HTTP route for it
 	// yet — GEN-008 mounts one behind the exposure flag (ADR-052).
 	versions *ingest.Service
+	// app is the whole composition root, exposed so a test can call the
+	// start-up work cmd/api does after NewApp — today that is AuditRosters,
+	// which is where the feature-flag record is written (ADR-052).
+	app *apiserver.App
 	// packaging is the API's packaging service, exposed so a PACK-001 test can
 	// build twice without the idempotent endpoint answering the second call with
 	// the first call's artifact.
@@ -310,7 +314,7 @@ func newAPITuned(
 	return &api{
 		Server: srv, auth: app.Auth, packages: packages, runs: app.RunSvc,
 		traceSigner: traceSigner, handler: handler, evaluations: app.EvalSvc,
-		packaging: app.PackagingSvc, versions: app.Versions,
+		packaging: app.PackagingSvc, versions: app.Versions, app: app,
 	}
 }
 
@@ -369,7 +373,6 @@ func (c *client) me(t *testing.T) map[string]any {
 	}
 	return out
 }
-
 
 func (c *client) status(t *testing.T, method, path string) int {
 	t.Helper()

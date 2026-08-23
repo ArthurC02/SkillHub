@@ -49,7 +49,21 @@ const generateMaxAttempts = 2
 // ErrGenerateBlank: nothing to generate from. Refused before the gateway, so a
 // blank box never costs money (02:GEN-001). apps/llm refuses it again as a
 // backstop; this is the product rule.
-var ErrGenerateBlank = errors.New("ingest: task description is empty")
+var ErrGenerateBlank = errors.New("ingest: task description is empty or too short to act on")
+
+// ErrGenerateTooLong: past what one generation takes as input. Refused here
+// rather than at the gateway, for the same reason as the floor.
+var ErrGenerateTooLong = errors.New("ingest: task description is too long")
+
+// ErrGenerateInFlight: this workspace already has a generation running.
+var ErrGenerateInFlight = errors.New("ingest: a generation is already running for this workspace")
+
+// The same two numbers apps/llm's GenerateSkillRequest carries, in the language
+// that owns product rules (iron rule 6). Runes, not bytes.
+const (
+	minTaskDescriptionRunes = 8
+	maxTaskDescriptionRunes = 4000
+)
 
 // ErrGenerateNotForCatalogue: generation is a personal-workspace feature
 // (ADR-046 決策 1). See the check in GenerateSkill for why it is enforced rather
@@ -113,9 +127,36 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 		return GenerateResult{}, ErrGenerateNotForCatalogue
 	}
 	task := strings.TrimSpace(taskDescription)
-	if task == "" {
+	// Both bounds in Go, because both are product rules and only one of them was
+	// here. apps/llm enforces `min_length=8, max_length=4000` on its own side, so
+	// a three-character description used to travel all the way there, come back a
+	// Pydantic 422, and reach the user as **502 「generation failed」** — the
+	// platform reporting itself broken when the fix was "write a bit more".
+	// Counted in runes: 「整理發票」 is four characters and eight bytes.
+	if n := len([]rune(task)); n == 0 || n < minTaskDescriptionRunes {
 		return GenerateResult{}, ErrGenerateBlank
+	} else if n > maxTaskDescriptionRunes {
+		return GenerateResult{}, ErrGenerateTooLong
 	}
+
+	// One generation per workspace at a time. It is the only brake that exists on
+	// how MANY generations a session can start: GENERATE_QUOTA is off, the invite
+	// list is empty in the shipped config, no rate limiter exists anywhere in this
+	// service, and the allowance — when it is on — reads a live count that
+	// concurrent callers all see the same value of. Without this one session can
+	// hold an unbounded number of paid calls open at once, and they all draw on
+	// the SHARED gateway key: exhausting it stops search enrichment and every
+	// LLM judge too, because those use the same key.
+	//
+	// ponytail: in-process, so it bounds one API replica and not a fleet. That is
+	// the right size for today (one cmd/api) and the wrong size the day there are
+	// two; the durable version is a rate limit at the edge (NFR-001 clause 5),
+	// tracked in 04. It is a brake, not a quota — the quota is policy's.
+	if !s.holdGenerateSlot(ws.ID) {
+		return GenerateResult{}, ErrGenerateInFlight
+	}
+	defer s.releaseGenerateSlot(ws.ID)
+
 	// Before the first gateway call and before anything is written: 02:GEN-001
 	// 「額度不足時在呼叫模型之前拒絕，不得先花錢再說」.
 	if reason, err := s.requireGenerateAllowance(ctx, ws.ID); err != nil {
@@ -133,8 +174,14 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 		// Same prompt, same model, no correction hint added from the first
 		// failure (ADR-047 決策 1). Feeding the findings back would be a second
 		// prompt, and then the provenance row no longer reproduces the package.
-		gen, err := s.LLM.GenerateSkill(ctx, task)
+		gen, err := s.generateOnce(ctx, task)
 		if err != nil {
+			// Logged as well as audited. The audit row records that a generation
+			// failed at the gateway; nothing recorded WHY, so a deployment failing
+			// 100% of the time (wrong key, model name typo, budget exhausted,
+			// apps/llm down) produced four identical 502s and no way to tell them
+			// apart (NFR-003 「內部診斷碼」). Same shape enrich.go已經 uses.
+			slog.Warn("generate: gateway call failed", "attempt", attempt, "error", err)
 			// Truncation arrives here too and is not retried: the ceiling covers
 			// reasoning plus output, so a second call at the same ceiling buys
 			// the same answer (ADR-047 決策 2). Neither is a gateway refusal,
@@ -162,6 +209,14 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 			GeneratorPromptVersion: &promptVersion,
 		})
 		if err != nil {
+			// A refused generation is still a paid one, and 02:GEN-003 asks for a
+			// record of it. The name collision arrives here rather than as a
+			// blocked report, so without this the one failure a user can actually
+			// act on was the one that left nothing behind.
+			s.auditGenerateFailure(ctx, ws, task, attempt, map[string]any{
+				"failure":   "rejected",
+				"collision": errors.Is(err, ErrGeneratedNameCollision),
+			})
 			return out, err
 		}
 		out.Result = res
@@ -200,6 +255,28 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 func shouldRetry(attempt int, r skillpkg.Report) bool {
 	return attempt < generateMaxAttempts &&
 		!slices.Contains(blockingCodes(r), skillpkg.CodePossibleSecret)
+}
+
+// generateTimeout bounds ONE attempt at the gateway.
+//
+// llmclient deliberately imposes no timeout of its own — the deadline is the
+// caller's ctx and nothing else — and this caller was the one that forgot. A
+// generation request had no deadline anywhere in Go: not here, not in the client,
+// and cmd/api sets only ReadHeaderTimeout. A stalled apps/llm (a rolling
+// container, a blackholed address that still resolves) therefore pinned the
+// goroutine and the connection until the browser gave up, and a caller that never
+// gives up pinned them for good.
+//
+// Just above apps/llm's own 120s socket ceiling, the same rule enrich.go states:
+// the upstream's limit has to surface as its error rather than as our deadline,
+// or the work is billed and thrown away. Per ATTEMPT, so the retry does not
+// inherit what the first attempt spent.
+const generateTimeout = 130 * time.Second
+
+func (s *Service) generateOnce(ctx context.Context, task string) (*llmclient.GenerateSkillResponse, error) {
+	callCtx, cancel := context.WithTimeout(ctx, generateTimeout)
+	defer cancel()
+	return s.LLM.GenerateSkill(callCtx, task)
 }
 
 // blockingCodes lists the distinct error-level codes, in report order.
@@ -436,4 +513,16 @@ func generateUsageReader(tx pgx.Tx) policy.UsageReader {
 			return u, nil
 		},
 	}
+}
+
+// holdGenerateSlot takes this workspace's single generation slot, reporting
+// false when somebody already has it. See GenerateSkill for why it exists and
+// what it does not cover.
+func (s *Service) holdGenerateSlot(workspaceID pgtype.UUID) bool {
+	_, busy := s.generating.LoadOrStore(workspaceID, struct{}{})
+	return !busy
+}
+
+func (s *Service) releaseGenerateSlot(workspaceID pgtype.UUID) {
+	s.generating.Delete(workspaceID)
 }

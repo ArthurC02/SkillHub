@@ -4557,6 +4557,10 @@ type GenerateSkillBadRequest Error
 
 func (*GenerateSkillBadRequest) generateSkillRes() {}
 
+type GenerateSkillConflict Error
+
+func (*GenerateSkillConflict) generateSkillRes() {}
+
 type GenerateSkillForbidden Error
 
 func (*GenerateSkillForbidden) generateSkillRes() {}

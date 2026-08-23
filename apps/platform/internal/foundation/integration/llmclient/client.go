@@ -72,12 +72,28 @@ func post[Req, Resp any](ctx context.Context, c *Client, path string, reqBody Re
 		return nil, fmt.Errorf("llmclient: %s returned %d: %s", path, resp.StatusCode, string(b))
 	}
 
+	// Bounded, because "internal" is not "trusted". 02:GEN-003 says so in as many
+	// words about the generation endpoint — 「平台的模型不是可信來源」 — and the
+	// upload path already puts a MaxBytesReader at its own trust boundary
+	// (ingest/http.go). Without this the only ceiling on a generated package was
+	// MAX_OUTPUT_TOKENS, a constant in a different language: raise it, point
+	// GENERATE_SKILL_MODEL at a model with a bigger cap, or compromise apps/llm,
+	// and the API process buffers the JSON, the decoded structs and then a zip.
 	var result Resp
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, MaxResponseBytes)).Decode(&result); err != nil {
 		return nil, fmt.Errorf("llmclient: decode %s response: %w", path, err)
 	}
 	return &result, nil
 }
+
+// MaxResponseBytes caps one internal LLM response.
+//
+// 8 MiB: comfortably above the largest thing any current endpoint returns (a
+// 16000-token generation is ~64 KB of JSON; an embedding batch is the other
+// candidate and is far smaller), and far below anything that threatens the API
+// process. A response that hits it fails to decode, which is the right outcome —
+// a truncated JSON document is not a partial answer to be salvaged.
+const MaxResponseBytes = 8 << 20
 
 // EmbedRequest is the request body for POST /embed.
 type EmbedRequest struct {

@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -53,6 +54,10 @@ type Service struct {
 	// pool would let a generation quietly eat a trial run's balance, and the
 	// trial run is what the MVP funnel measures.
 	GenerateQuota policy.QuotaLimits
+	// generating holds the workspace ids with a generation in flight, one slot
+	// each. Zero value is ready to use; see GenerateSkill for what it bounds and
+	// what it deliberately does not.
+	generating sync.Map
 }
 
 // SkillProjection is the complete search data produced by ingest.

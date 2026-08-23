@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
@@ -210,4 +212,67 @@ func TestAnEntryThatNamesNoFileIsRefused(t *testing.T) {
 			t.Errorf("path %q: err = %v, want ErrGeneratedPackageInvalid", p, err)
 		}
 	}
+}
+
+// The length rule is a PRODUCT rule and therefore Go's (iron rule 6). It used to
+// live only in apps/llm, so a three-character description travelled to the
+// gateway, came back a Pydantic 422, and reached the user as
+// 502 「generation failed」 — the platform reporting itself broken when the fix
+// was "write a bit more". The service has no pool here, so anything that got
+// past the check would panic rather than return.
+func TestATooShortOrTooLongDescriptionNeverReachesTheGateway(t *testing.T) {
+	svc := &Service{LLM: &llmclient.Client{}}
+	ctx, ws := context.Background(), identity.Workspace{}
+
+	for _, in := range []string{"abc", "  短  ", strings.Repeat("a", minTaskDescriptionRunes-1)} {
+		if _, err := svc.GenerateSkill(ctx, ws, in); !errors.Is(err, ErrGenerateBlank) {
+			t.Errorf("GenerateSkill(%q) err = %v, want ErrGenerateBlank", in, err)
+		}
+	}
+	// Runes, not bytes: 「整理發票單據」 is six characters and eighteen bytes, and
+	// a byte count would have let it through while the floor exists to stop it.
+	if _, err := svc.GenerateSkill(ctx, ws, "整理發票單據"); !errors.Is(err, ErrGenerateBlank) {
+		t.Errorf("a six-character description was measured in bytes: %v", err)
+	}
+	long := strings.Repeat("台", maxTaskDescriptionRunes+1)
+	if _, err := svc.GenerateSkill(ctx, ws, long); !errors.Is(err, ErrGenerateTooLong) {
+		t.Errorf("an over-long description err = %v, want ErrGenerateTooLong", err)
+	}
+}
+
+// The only brake on how MANY generations one session can start, with the
+// allowance off. Without it a loop of requests holds an unbounded number of paid
+// calls open, all drawing on the shared gateway key — and exhausting that key
+// stops index-time enrichment and every LLM judge with it.
+func TestOneGenerationPerWorkspaceAtATime(t *testing.T) {
+	svc := &Service{LLM: &llmclient.Client{}}
+	ws := identity.Workspace{ID: mustUUIDForTest(t, "11111111-1111-1111-1111-111111111111")}
+	other := identity.Workspace{ID: mustUUIDForTest(t, "22222222-2222-2222-2222-222222222222")}
+
+	if !svc.holdGenerateSlot(ws.ID) {
+		t.Fatal("the first hold on a fresh workspace failed")
+	}
+	if _, err := svc.GenerateSkill(context.Background(), ws, "把掃描的單據整理成表格。"); !errors.Is(err, ErrGenerateInFlight) {
+		t.Fatalf("err = %v, want ErrGenerateInFlight", err)
+	}
+	// Per workspace, not global: one busy workspace must not stop another. This
+	// one gets past the slot and dies at the quota read, which needs a pool.
+	if svc.holdGenerateSlot(other.ID) != true {
+		t.Error("a second workspace was blocked by the first workspace's slot")
+	}
+	svc.releaseGenerateSlot(other.ID)
+
+	svc.releaseGenerateSlot(ws.ID)
+	if !svc.holdGenerateSlot(ws.ID) {
+		t.Error("the slot was not released")
+	}
+}
+
+func mustUUIDForTest(t *testing.T, s string) pgtype.UUID {
+	t.Helper()
+	var id pgtype.UUID
+	if err := id.Scan(s); err != nil {
+		t.Fatal(err)
+	}
+	return id
 }

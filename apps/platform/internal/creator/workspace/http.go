@@ -314,7 +314,7 @@ func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
 			return
 		}
-		ids, err := h.Service.queries().GetIdentityProviderIDs(r.Context(), user.ID)
+		invited, err := h.invited(r.Context(), user)
 		if err != nil {
 			// Fail closed. The list is a cost ceiling on a publicly reachable
 			// deployment, and "we could not read who you are" is not "you are on
@@ -322,14 +322,35 @@ func (h *Handler) RequireInvited(next http.HandlerFunc) http.HandlerFunc {
 			httpx.WriteError(w, http.StatusServiceUnavailable, "invite check unavailable")
 			return
 		}
-		for _, id := range ids {
-			if h.Invited[id.ProviderUserID] {
-				next(w, r)
-				return
-			}
+		if !invited {
+			httpx.WriteError(w, http.StatusForbidden, betaNotInvited)
+			return
 		}
-		httpx.WriteError(w, http.StatusForbidden, betaNotInvited)
+		next(w, r)
 	}
+}
+
+// invited answers the beta-cohort question for one user. Extracted so that /me
+// can ask it too: a feature this caller may not use must not be advertised to
+// them (see the `features` block in me), and two copies of the lookup is how the
+// gate and the advertisement start disagreeing.
+//
+// An empty list means no closed beta is running, which admits everyone — the same
+// reading RequireInvited has always had.
+func (h *Handler) invited(ctx context.Context, user User) (bool, error) {
+	if len(h.Invited) == 0 {
+		return true, nil
+	}
+	ids, err := h.Service.queries().GetIdentityProviderIDs(ctx, user.ID)
+	if err != nil {
+		return false, err
+	}
+	for _, id := range ids {
+		if h.Invited[id.ProviderUserID] {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // LogInviteRoster records the beta cohort this process came up with, in the same
@@ -418,11 +439,23 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 		// a second thing to keep true.
 		"deletion_scope": nil,
 	}
-	// Absent, not empty, when the deployment turns everything off: an empty
-	// object invites the client to treat a missing key as false somewhere and a
-	// present-but-false key as something else somewhere.
+	// Absent, not empty, when this caller has none: an empty object invites the
+	// client to treat a missing key as false somewhere and a present-but-false key
+	// as something else somewhere.
+	//
+	// Per CALLER, not per deployment. The flag is deployment-wide but the
+	// permission behind it is not: POST /skills/generate is RequireInvited, so a
+	// signed-in account outside the beta cohort was being shown the entry point,
+	// typing a description, waiting, and getting a 403 with an English paragraph
+	// on a Chinese page. An entry point drawn for someone who may not use it is
+	// the same failure ADR-052's flag exists to prevent, one scope down.
+	//
+	// Fail closed on a lookup error, like the gate itself: an unanswerable invite
+	// question is not a yes.
 	if len(h.Features) > 0 {
-		out["features"] = h.Features
+		if invited, err := h.invited(r.Context(), user); err == nil && invited {
+			out["features"] = h.Features
+		}
 	}
 	if user.DeletionRequestedAt.Valid {
 		at := user.DeletionRequestedAt.Time.UTC()

@@ -1827,7 +1827,7 @@ func (s *GenerateSkillReq) Validate() error {
 	var failures []validate.FieldError
 	if err := func() error {
 		if err := (validate.String{
-			MinLength:     1,
+			MinLength:     8,
 			MinLengthSet:  true,
 			MaxLength:     4000,
 			MaxLengthSet:  true,
