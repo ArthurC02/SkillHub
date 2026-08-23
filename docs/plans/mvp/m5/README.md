@@ -1,6 +1,6 @@
 # M5：從任務描述生成 Skill
 
-- 狀態：**可開工，但投入有上限**（2026-08-23）——三個啟動條件**全部暫時放行**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)），**但兩條邊界仍在**：①生成入口不得對封測使用者曝光；②**`GEN-002`～`011` 在 [ask-5.md](ask-5.md) 有訊號之前暫停**（[ADR-053](../../../adr/ADR-053-the-assumption-under-m5-gets-its-own-five-people.md) 決策 2）。見下方§啟動條件與§前期驗證
+- 狀態：**全面開工**（2026-08-23）——投入上限已由**授權**解除（[ADR-054](../../../adr/ADR-054-the-cap-was-lifted-by-authorisation-not-by-evidence.md)，**不是由 `ask-5` 的證據解除；那個假設的證據量仍然是零**）——三個啟動條件**全部暫時放行**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)），**剩下一條邊界**：生成入口**不得對封測使用者曝光**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)，綁漏斗讀數，與本次授權無關）。見下方§啟動條件與§投入上限
 - 決策：[ADR-046](../../../adr/ADR-046-generating-a-skill-from-a-task-description.md)
 - 規格：[`02` §4.9](../../02-specifications-and-acceptance-criteria.md)（`GEN-001`～`004`）
 - 工作項：[`03` §19](../../03-work-items.md)（`GEN-001`～`011`，全部未勾）
@@ -35,9 +35,13 @@ ADR-046 的決策 3 與決策 6 各壓了一個經驗假設，而 `01` §7.3 把
 
 **兩件都不是 `GEN-009` 的替代品**：前期驗證 1 只涵蓋 `GEN-009` 的①②兩個數，而且每段描述只跑一次。
 
-## ⛔ 投入上限（[ADR-053](../../../adr/ADR-053-the-assumption-under-m5-gets-its-own-five-people.md) 決策 2）
+## ~~⛔ 投入上限~~ **已解除（2026-08-23），但解除的方式要看清楚**
 
-**在 [ask-5.md](ask-5.md) 有訊號之前**，M5 的投入限制在「假設不成立就丟得掉」的量。分界線就是這一句。
+**上限已由授權解除** → [ADR-054](../../../adr/ADR-054-the-cap-was-lifted-by-authorisation-not-by-evidence.md)。**不是由 `ask-5.md` 的證據解除**——ADR-053 決策 3 寫的解除條件是「5 人中 3 人自發說要做一個」，而**那 5 個人一次都沒被問過，那個假設今天的證據量仍然是零**。
+
+**`ask-5.md` 不作廢，它從 gate 變成 check**：M5 已經在做，這 5 個人告訴我們方向對不對。三段門檻仍然成立，只是 0／5 的後果從「停在契約層」變成「**立刻重開 ADR-046，並且知道已投入的部分要丟**」。**它的價值反而變高了**——上限解除之後，晚一天知道的代價從「多寫一天會丟掉的程式」變成「多寫一天已經在丟的程式」。
+
+以下原表保留，作為那筆暴險的分界線紀錄——**現在被解除的正是右欄，也就是丟不掉的那一半**：
 
 | 可做 | 暫停 |
 | --- | --- |
