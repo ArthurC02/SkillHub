@@ -1,6 +1,6 @@
 # 開發自動化與 Coding Agent 協作
 
-本文件是 ADR-030 的操作手冊。`AGENTS.md` 放開工前的強制短版規則；本檔解釋命令、檔案所有權、環境分級與排錯。兩者不另造第二套流程，所有入口最後都走 `Taskfile.yml` 與 `tools/devctl`。Platform 的 Bounded Context 日常判斷見 [DDD 實務指南](./platform-ddd-practices.md)。
+本文件是 ADR-030 的操作手冊，也是**開發自動化規則與操作的完整事實來源**：命令、檔案所有權、能力與成本分級、生成來源表與排錯都在這裡。`AGENTS.md` 只放紅線與入口連結，不複製本檔內容。兩者不另造第二套流程，所有入口最後都走 `Taskfile.yml` 與 `tools/devctl`。Platform 的 Bounded Context 日常判斷見 [DDD 實務指南](./platform-ddd-practices.md)。
 
 ## 新電腦的最短路徑
 
@@ -121,7 +121,7 @@ maxDigestEntry  = 8000 // one-number: maxDigestEntry
 - 受影響語言的 typecheck/test/build
 - `git diff --check`
 
-版本／generator／Task入口異動要同步更新 `AGENTS.md`、本文件、相關 package README與 CI。工具能跑但新 Agent找不到，視為未完成。
+版本／generator／Task入口異動要同步更新**本文件**、`tools/toolchain.yaml`、相關 package README與 CI；**`AGENTS.md` 只在紅線本身增刪時才動**（它不複製版本、命令清單與生成來源表）。工具能跑但新 Agent找不到，視為未完成。
 
 ## Agent 黑箱驗收（2026-08-18）
 
