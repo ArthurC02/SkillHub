@@ -85,6 +85,32 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `dev:model` 缺變數 | devctl只列變數名稱。把 secret放 ignored `.env`，不要放 `.env.example` |
 | Python editable install access denied on OneDrive | 關閉仍占用 `.venv` 的程序後重跑 `uv sync --frozen`；不要刪他人工作或 lockfile |
 
+## 同一個數字散在好幾個檔案：`one-number:` 標記
+
+有些值必須在**沒有任何編譯器會比對**的地方保持一致：一個 Go const、契約裡的 `maxLength`、`apps/llm` 的 Pydantic `max_length`、量測 harness 裡的常數。沒有東西把它們綁在一起，所以它們會漂，而且漂掉的時候是在最糟的時刻才被發現。
+
+**它已經發生過一次**：`maxDigestEntry` 從 2000 調到 8000 **只改了 `judge.go`**（`04` 丙-47），於是**每一次評分都回 422**——因為 `apps/llm` 還在拒絕超過 2000 的字串。而那是四份副本裡**最大聲**的一份；`tools/eval-regression` 的那一份漂掉時，只會安靜地送出一個不一樣的請求，然後把結果當成沒事一樣報出來。
+
+作法：每一個站點在同一行標一個名字，`devctl automation-check` 比對它們。
+
+```go
+maxDigestEntry  = 8000 // one-number: maxDigestEntry
+```
+```yaml
+          maxLength: 8000  # one-number: maxDigestEntry
+```
+```python
+    excerpt: str = Field(..., max_length=8000)  # one-number: maxDigestEntry
+```
+
+三條規則：
+
+1. **數字與標記同一行**，值取標記之前的最後一個整數。這是它能在四種語法裡運作而不需要任何一種的 parser 的原因。
+2. **標記要開啟那個註解**。`# one-number: x - 因為 y` 算；`# 因為 y; one-number: x` **不算**，而且它會是「安靜地看不見」而不是「報錯」——harness 那一份第一次就是這樣漏掉的，偏偏它正是漂掉時最安靜的那一份。
+3. **只剩一個站點會 FAIL**。一個站點的不變量保護不了任何東西，而它變成一個站點的方式通常是有人刪掉了別人的標記而不是別人的副本。
+
+**這不取代契約作為事實來源（鐵律 12）。** 每一份副本正確的修法都是「生成它或推導它」，能便宜做到就該做——`packages/api-stub-py` 的那一份就是從契約生出來的，所以它不帶標記。這個機制是給**生成器搆不到的那些副本**。
+
 ## 完成判準
 
 一次 automation 變更至少通過：

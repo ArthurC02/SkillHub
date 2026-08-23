@@ -77,7 +77,7 @@ OUT = Path(__file__).with_name("results.jsonl")
 # so the request this harness builds is the one the control plane would build.
 MAX_FINAL_OUTPUT = 40000
 MAX_CRITERIA = 20
-MAX_DIGEST_ENTRY = 8000  # raised 2026-08-23, evaluation-design 6.3 / 04 丙-47
+MAX_DIGEST_ENTRY = 8000  # one-number: maxDigestEntry - raised 2026-08-23, evaluation-design 6.3 / 04 丙-47
 MAX_DIGEST_COUNT = 100
 MAX_ARTIFACT_ROWS = 500
 EXCERPT_LIMIT = 1000

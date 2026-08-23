@@ -299,7 +299,7 @@ class JudgeArtifact(BaseModel):
     # Present only where Go read the file as plain text. Archives and binaries
     # arrive as a manifest row with no excerpt: nothing is unpacked and nothing
     # is parsed by file extension (evaluation-design §2.2).
-    text_excerpt: str | None = Field(None, max_length=8000)
+    text_excerpt: str | None = Field(None, max_length=8000)  # one-number: maxDigestEntry
 
 
 class TraceDigestEntry(BaseModel):
@@ -310,7 +310,7 @@ class TraceDigestEntry(BaseModel):
     # and its key is (id, occurred_at), so a citation without it is unresolvable.
     occurred_at: datetime
     type: str
-    excerpt: str = Field(..., max_length=8000)  # = judge.go maxDigestEntry; see llm-internal.yaml
+    excerpt: str = Field(..., max_length=8000)  # one-number: maxDigestEntry
 
 
 class TraceDigest(BaseModel):

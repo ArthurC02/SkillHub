@@ -67,7 +67,7 @@ const (
 	// The measurement's own limit, because it decides how far this number can be
 	// trusted: all 164 runs come from one workspace's synthetic corpus of writing
 	// Skills. Something that emits a large CSV is not in the sample.
-	maxDigestEntry  = 8000
+	maxDigestEntry  = 8000 // one-number: maxDigestEntry
 	maxDigestCount  = 100 // llm-internal.yaml TraceDigest.entries maxItems
 	maxArtifactRows = 500
 	excerptLimit    = 1000 // what a stored EvidenceRef keeps of its source

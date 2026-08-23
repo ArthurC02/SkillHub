@@ -719,7 +719,7 @@ components:
           default: ""
         text_excerpt:
           type: string
-          maxLength: 8000
+          maxLength: 8000  # one-number: maxDigestEntry
           description: |
             Present only where Go read the file as plain text. Archives, binaries
             and anything over the budget arrive as a manifest row with no
@@ -746,7 +746,7 @@ components:
           description: Event type, e.g. skill_activation, tool_call, error, usage.
         excerpt:
           type: string
-          maxLength: 8000
+          maxLength: 8000  # one-number: maxDigestEntry
           description: |
             Masked, truncated rendering of the event's payload.
 
