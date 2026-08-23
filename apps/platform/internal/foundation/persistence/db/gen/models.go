@@ -428,7 +428,7 @@ type Skill struct {
 	TakedownReason      *string
 	// Reason code for a licensing hold on the package materials; NULL = none. Set by review, copied onto forks at fork time. See 0023.
 	AccessRestriction *string
-	// May a Download Artifact be produced from this skill? 'allowed' (a verdict about the licence) and 'self_supplied' (this workspace brought the bytes, so handing them back is not redistribution) release; 'unknown' and 'blocked' refuse. license_status = Confirmed must never set this on its own (CONTENT-002). Copied onto forks at fork time, like access_restriction. See 0027 and 0036.
+	// May a Download Artifact be produced from this skill? 'allowed' (a verdict about the licence), 'self_supplied' (this workspace brought the bytes) and 'generated' (the platform wrote them for this workspace) release; 'unknown' and 'blocked' refuse. license_status = Confirmed must never set this on its own (CONTENT-002). Copied onto forks at fork time, like access_restriction — a fork of a generated skill stays 'generated' (ADR-047 決策 4). See 0027, 0036 and 0037.
 	Redistribution string
 }
 
@@ -452,6 +452,12 @@ type SkillSource struct {
 	CreatedAt        pgtype.Timestamptz
 	LastCheckedAt    pgtype.Timestamptz
 	UnavailableSince pgtype.Timestamptz
+	// The user's own words that produced a generated package (GEN-001). NULL for git and upload. Free text the user submitted, so it is subject to NFR-002 deletion like any other user content — unlike the analytics events, which never record query text at all (02:O11Y-004).
+	TaskDescription *string
+	// Model id that wrote a generated package, as apps/llm reported it. NULL for git and upload.
+	GeneratorModel *string
+	// Generator prompt revision, e.g. generate-skill/v1. NULL for git and upload. Together with task_description and generator_model this is what lets someone re-derive the package (ADR-047 決策 1).
+	GeneratorPromptVersion *string
 }
 
 type SkillVersion struct {

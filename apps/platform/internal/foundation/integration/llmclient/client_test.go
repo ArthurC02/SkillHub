@@ -54,3 +54,36 @@ func TestClientDeadlineIsTheCallersContext(t *testing.T) {
 		t.Errorf("call took %s; the caller's deadline did not end it", elapsed)
 	}
 }
+
+// The Go half of a string held across a language boundary. apps/llm's
+// test_truncation_is_a_different_failure_from_malformed_output holds the other.
+//
+// Both failures come back as 502, and the round-A truncation emitted an EMPTY
+// string after spending its whole budget reasoning - so without this the two are
+// indistinguishable and the generation path retries a call that cannot answer
+// differently (ADR-047 決策 2).
+func TestTruncationComesBackAsItsOwnError(t *testing.T) {
+	for _, tc := range []struct {
+		name, detail string
+		want         bool
+	}{
+		{"truncated", "generate model output was truncated at the token ceiling", true},
+		{"malformed", "generate model returned malformed output", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusBadGateway)
+				_ = json.NewEncoder(w).Encode(map[string]string{"detail": tc.detail})
+			}))
+			defer srv.Close()
+
+			_, err := (&Client{BaseURL: srv.URL}).GenerateSkill(context.Background(), "任何任務")
+			if err == nil {
+				t.Fatal("a 502 came back as success")
+			}
+			if got := errors.Is(err, ErrGenerateTruncated); got != tc.want {
+				t.Errorf("errors.Is(err, ErrGenerateTruncated) = %v, want %v (err: %v)", got, tc.want, err)
+			}
+		})
+	}
+}

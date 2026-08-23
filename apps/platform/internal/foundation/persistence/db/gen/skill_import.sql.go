@@ -12,20 +12,28 @@ import (
 )
 
 const createSkillSource = `-- name: CreateSkillSource :one
-INSERT INTO skill_sources (workspace_id, source_type, source_url, source_ref, content_hash, fetched_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since
+INSERT INTO skill_sources (
+    workspace_id, source_type, source_url, source_ref, content_hash, fetched_at,
+    task_description, generator_model, generator_prompt_version
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since, task_description, generator_model, generator_prompt_version
 `
 
 type CreateSkillSourceParams struct {
-	WorkspaceID pgtype.UUID
-	SourceType  string
-	SourceUrl   *string
-	SourceRef   *string
-	ContentHash string
-	FetchedAt   pgtype.Timestamptz
+	WorkspaceID            pgtype.UUID
+	SourceType             string
+	SourceUrl              *string
+	SourceRef              *string
+	ContentHash            string
+	FetchedAt              pgtype.Timestamptz
+	TaskDescription        *string
+	GeneratorModel         *string
+	GeneratorPromptVersion *string
 }
 
+// The three generator columns are NULL for git and upload; 0037's one-way CHECK
+// requires all three when source_type is 'generated' (GEN-005).
 func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourceParams) (SkillSource, error) {
 	row := q.db.QueryRow(ctx, createSkillSource,
 		arg.WorkspaceID,
@@ -34,6 +42,9 @@ func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourcePa
 		arg.SourceRef,
 		arg.ContentHash,
 		arg.FetchedAt,
+		arg.TaskDescription,
+		arg.GeneratorModel,
+		arg.GeneratorPromptVersion,
 	)
 	var i SkillSource
 	err := row.Scan(
@@ -47,6 +58,9 @@ func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourcePa
 		&i.CreatedAt,
 		&i.LastCheckedAt,
 		&i.UnavailableSince,
+		&i.TaskDescription,
+		&i.GeneratorModel,
+		&i.GeneratorPromptVersion,
 	)
 	return i, err
 }

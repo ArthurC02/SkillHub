@@ -6,9 +6,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 // Client calls the internal LLM service endpoints.
@@ -410,4 +412,72 @@ func (c *Client) SuggestImprovements(
 ) (*SuggestImprovementsResponse, error) {
 	return post[SuggestImprovementsRequest, SuggestImprovementsResponse](
 		ctx, c, "/suggest-improvements", req)
+}
+
+// --- /v1/generate-skill (GEN-001, GEN-002) -----------------------------------
+
+// GenerateSkillRequest carries the user's own words and nothing else. No
+// existing Skill Version is an input: starting from one is improvement and goes
+// to /suggest-improvements (ADR-046 決策 3).
+type GenerateSkillRequest struct {
+	TaskDescription string `json:"task_description"`
+}
+
+// GeneratedFile is one package file besides SKILL.md.
+type GeneratedFile struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+// GeneratedSkill is typed frontmatter plus a body, not a SKILL.md string.
+//
+// There is deliberately no License field, and adding one would not help: the
+// schema handed to the model has no such property either, so a licence string
+// cannot arrive to be dropped (ADR-046 決策 5). The value the platform stores is
+// "unknown" until a person declares one.
+type GeneratedSkill struct {
+	Name          string            `json:"name"`
+	Description   string            `json:"description"`
+	Compatibility string            `json:"compatibility,omitempty"`
+	Metadata      map[string]string `json:"metadata,omitempty"`
+	AllowedTools  string            `json:"allowed_tools,omitempty"`
+	Body          string            `json:"body"`
+	Files         []GeneratedFile   `json:"files,omitempty"`
+}
+
+// GenerateSkillResponse separates model output (`Skill`) from what the service
+// knows and the model cannot influence (`Model`, `PromptVersion`) — the two
+// halves of the provenance row a generated version carries (02:GEN-002).
+type GenerateSkillResponse struct {
+	Skill         GeneratedSkill `json:"skill"`
+	Model         string         `json:"model"`
+	PromptVersion string         `json:"prompt_version"`
+	Usage         *GatewayUsage  `json:"usage,omitempty"`
+}
+
+// ErrGenerateTruncated: the model hit the output ceiling. A separate failure
+// class because the retry rule must not apply to it — the cap covers reasoning
+// plus output, so a second call at the same cap buys the same answer
+// (ADR-047 決策 2).
+var ErrGenerateTruncated = errors.New("llmclient: generated skill was truncated at the token ceiling")
+
+// truncationMarker is the word apps/llm puts in the 502 detail for that case.
+// A string across a language boundary, held by a test on each side:
+// test_truncation_is_a_different_failure_from_malformed_output asserts the
+// Python half, TestTruncationComesBackAsItsOwnError the Go half. The
+// alternative was a second status code, which is the same coupling wearing a
+// number.
+const truncationMarker = "truncated"
+
+// GenerateSkill asks the LLM service to write one Skill from a task description
+// (GEN-001). One call, no retry here: whether to try again is a decision made
+// against the validation report, which only exists after Go has packaged the
+// answer (iron rule 6, see skill/admission/generate.go).
+func (c *Client) GenerateSkill(ctx context.Context, taskDescription string) (*GenerateSkillResponse, error) {
+	resp, err := post[GenerateSkillRequest, GenerateSkillResponse](
+		ctx, c, "/v1/generate-skill", GenerateSkillRequest{TaskDescription: taskDescription})
+	if err != nil && strings.Contains(err.Error(), truncationMarker) {
+		return nil, fmt.Errorf("%w: %v", ErrGenerateTruncated, err)
+	}
+	return resp, err
 }

@@ -41,6 +41,12 @@ const (
 	ActionSkillImport        = "skill.import"
 	ActionSkillVersionCreate = "skill.version_create"
 	ActionSkillFork          = "skill.fork"
+	// GEN-003 requires a generation that produced nothing to still leave the
+	// workspace something it can look at. There is no matching success action:
+	// an accepted generated package IS an import and is recorded as one, with
+	// source_type = generated in its metadata — "every package this workspace
+	// accepted" stays one history rather than two that have to be merged.
+	ActionSkillGenerateFailed = "skill.generate_failed"
 	ActionSkillDelete        = "skill.delete"
 	ActionSkillTakedown      = "skill.takedown"
 	// 02:SEC-011: the platform operator's two licensing-hold actions and the

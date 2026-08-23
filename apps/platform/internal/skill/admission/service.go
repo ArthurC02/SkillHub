@@ -110,18 +110,38 @@ type Result struct {
 // Both source types are included. The question the gate exists to ask is
 // whether the platform is adding a distribution step, and for a fetch the user
 // asked for, into the user's own workspace, readable only by them, it is not.
-func redistributionFor(ws identity.Workspace) string {
+func redistributionFor(ws identity.Workspace, src sourceMeta) string {
 	if ws.IsCatalog {
 		return ""
+	}
+	// A generated package was never supplied by anybody, so `self_supplied`
+	// would answer a question nobody asked. The two release the same download
+	// and differ in what a future publishing path has to ask about: whether the
+	// user had the right to redistribute someone else's bytes, or who owns what
+	// a model wrote (ADR-047 決策 4).
+	if src.Type == sourceGenerated {
+		return registry.RedistributionGenerated
 	}
 	return registry.RedistributionSelfSupplied
 }
 
+// sourceGenerated is the third source_type, added by 0037. A package the
+// platform wrote is neither a fetch nor an upload, and recording it as an
+// upload would take `self_supplied` above without anybody deciding to.
+const sourceGenerated = "generated"
+
 // sourceMeta records where a package came from (INGEST-004).
 type sourceMeta struct {
-	Type string  // 'upload' or 'git'
+	Type string  // 'upload', 'git' or 'generated'
 	URL  *string // original URL for git imports
 	Ref  *string // branch, tag, or commit when known
+	// The three below are set together or not at all, and only for
+	// sourceGenerated: they are what lets someone re-derive the package sitting
+	// in the workspace (02:GEN-002, ADR-047 決策 1). 0037 has a CHECK saying the
+	// same thing, so a half-filled generated row cannot commit.
+	TaskDescription        *string
+	GeneratorModel         *string
+	GeneratorPromptVersion *string
 }
 
 // UploadZip validates data as an Agent Skills package and, if it passes,
@@ -239,7 +259,7 @@ func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []b
 	readSkill, found, err := registry.SkillByName(ctx, tx, ws.ID, p.report.Manifest.Name)
 	var skill registry.Skill
 	if !found && err == nil {
-		skill, err = registry.CreateSkillFromPackage(ctx, tx, ws.ID, p.report, redistributionFor(ws))
+		skill, err = registry.CreateSkillFromPackage(ctx, tx, ws.ID, p.report, redistributionFor(ws, src))
 	} else {
 		skill = readSkill
 	}
@@ -350,6 +370,10 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		SourceRef:   src.Ref,
 		ContentHash: p.contentHash,
 		FetchedAt:   pgtype.Timestamptz{Time: time.Now(), Valid: true},
+
+		TaskDescription:        src.TaskDescription,
+		GeneratorModel:         src.GeneratorModel,
+		GeneratorPromptVersion: src.GeneratorPromptVersion,
 	})
 	if err != nil {
 		return registry.Version{}, false, err

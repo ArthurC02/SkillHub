@@ -1,6 +1,11 @@
 -- name: CreateSkillSource :one
-INSERT INTO skill_sources (workspace_id, source_type, source_url, source_ref, content_hash, fetched_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+-- The three generator columns are NULL for git and upload; 0037's one-way CHECK
+-- requires all three when source_type is 'generated' (GEN-005).
+INSERT INTO skill_sources (
+    workspace_id, source_type, source_url, source_ref, content_hash, fetched_at,
+    task_description, generator_model, generator_prompt_version
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: GetSkillByName :one

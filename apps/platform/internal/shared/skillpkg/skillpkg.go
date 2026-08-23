@@ -160,6 +160,15 @@ type ArchiveSource interface {
 // message carries which shape it was.
 const entryPathEscape = "entry-path-escape"
 
+// CodePossibleSecret is the one blocking code that reads file *content* rather
+// than package structure. Exported because the generation path has to tell it
+// apart from the other eleven: those are formatting slips a second attempt at
+// the same prompt usually fixes, and a model writing a credential-shaped line is
+// a writing habit that reproduces (ADR-048). A string literal in the other
+// package would have made that distinction silently wrong the day this one was
+// renamed.
+const CodePossibleSecret = "possible-secret"
+
 // ArchiveEntryFinding checks one raw archive entry name — the name as the
 // archive declares it — and returns the finding to record when that name is not
 // a path the package could contain.
@@ -897,7 +906,7 @@ func (r *Report) scanTree(fsys fs.FS) {
 			if loc := pat.FindString(content); loc != "" {
 				// Never echo the matched value: findings end up in logs and
 				// the UI, and secrets must not (NFR-002).
-				r.add(SeverityError, "possible-secret", path, "content matches a known credential pattern; remove it before importing")
+				r.add(SeverityError, CodePossibleSecret, path, "content matches a known credential pattern; remove it before importing")
 				break
 			}
 		}
