@@ -282,6 +282,13 @@ test("ADR-027 only `allowed` opens the packaging entry, and unknown is refused l
   expect(
     packagingGate(detail({ redistribution: { value: "self_supplied", label: "", note: "" } })),
   ).toBeNull();
+  // 0037 / ADR-047 決策 4: the platform's own output. It released on the server
+  // (gateFlags) from the day the value existed, and refused here — the switch
+  // this table replaced sent it to `default`. A generated skill the owner could
+  // not download was the visible half of that.
+  expect(
+    packagingGate(detail({ redistribution: { value: "generated", label: "", note: "" } })),
+  ).toBeNull();
   expect(packagingGate(detail({ redistribution: { value: "blocked", label: "", note: "" } }))).toBe(
     "not_redistributable",
   );

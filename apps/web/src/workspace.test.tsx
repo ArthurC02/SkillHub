@@ -320,6 +320,14 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
           ...SCANNED,
         },
         {
+          skill_id: "s-4",
+          name: "平台生成的",
+          summary: "依任務描述生成出來的。",
+          redistribution: "generated",
+          access_restriction: null,
+          ...SCANNED,
+        },
+        {
           skill_id: "s-2",
           name: "Fork 來的",
           summary: "從目錄 Fork 的。",
@@ -340,6 +348,10 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
   expect(text()).toContain("授權未知，不能打包");
   expect(text()).toContain("可打包下載");
   expect(text()).toContain("可下載（你自己帶進來的）");
+  // 0037: the value the server releases and this list refused. The row rendered
+  // a red 「授權未知，不能打包」 for a download the platform would have
+  // produced — a ternary chain that had never heard of the fifth value.
+  expect(text()).toContain("可下載（平台為你生成的）");
   // The contract carried forked_from_* the whole time; a narrower local type for
   // the same endpoint was the app's entire view of it, so the page could not
   // tell a fork from an import even though its own header promised to.

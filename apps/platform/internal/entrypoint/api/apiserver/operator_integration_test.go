@@ -359,6 +359,19 @@ func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
 		t.Fatalf("a refused verdict changed the row anyway: %q", got)
 	}
 
+	//    `generated` (0037) is the same category of value and refused the same
+	//    way. It is here because the list of provenance values grew after this
+	//    route was written, and a route that enumerates a vocabulary somebody
+	//    else extends is exactly where the next one gets missed.
+	code, body = operatorCall(t, operator, http.MethodPut, path,
+		`{"value":"generated","note":"trying it on"}`)
+	if code != http.StatusBadRequest {
+		t.Errorf("PUT generated: got %d, want 400 (%v)", code, body)
+	}
+	if got := current(); got != "blocked" {
+		t.Fatalf("a refused verdict changed the row anyway: %q", got)
+	}
+
 	// 4. No note, no decision — the same rule SEC-011 applies next door.
 	code, _ = operatorCall(t, operator, http.MethodPut, path, `{"value":"allowed"}`)
 	if code != http.StatusBadRequest {

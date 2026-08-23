@@ -48,21 +48,36 @@ import (
 // operatorSettableRedistribution is the subset of the column's four values an
 // operator may assert.
 //
-// `self_supplied` is absent, and its absence is the interesting part: 0036
-// defines it as a fact about who supplied the bytes, established by the import
-// path at the moment the workspace uploaded them. It is not a verdict about a
-// licence, so there is nobody who could be right in asserting it after the fact
-// — an operator who typed it would be claiming the platform received bytes it
-// did not receive. The column's CHECK still permits it, because import must
-// write it; this route does not.
+// `self_supplied` and `generated` are absent, and their absence is the
+// interesting part: both are facts about where the bytes came from, established
+// at the moment they arrived — the import path for one (0036), the generation
+// path for the other (0037). Neither is a verdict about a licence, so there is
+// nobody who could be right in asserting one after the fact: an operator who
+// typed it would be claiming the platform received or wrote bytes it did not.
+// The column's CHECK still permits both, because those two paths must write
+// them; this route does not.
 //
-// Setting a self_supplied skill to `blocked` is allowed, and that direction is
-// deliberate: content the owner uploaded can still turn out to be something the
-// platform must stop handing back.
+// Setting such a skill to `blocked` is allowed, and that direction is
+// deliberate: content the owner uploaded, or the platform generated, can still
+// turn out to be something the platform must stop handing back.
 var operatorSettableRedistribution = map[string]struct{}{
 	string(RedistributionAllowed): {},
 	string(RedistributionBlocked): {},
 	string(RedistributionUnknown): {},
+}
+
+// provenanceRedistribution is the other half of that list: values the column
+// accepts and this route refuses on purpose. Named rather than left to the
+// generic "unknown value" branch, because the two refusals are not the same
+// answer — one says you spelled it wrong, the other says the thing you asked
+// for is not a thing anyone can assert. A sixth value added to the column will
+// land in the generic branch and be refused, which is the safe direction; it
+// just deserves its own sentence when somebody gets round to it.
+var provenanceRedistribution = map[string]string{
+	string(RedistributionSelfSupplied): "self_supplied is not a verdict anyone can assert: it records that this " +
+		"workspace supplied the bytes, and only the import path can establish that",
+	string(RedistributionGenerated): "generated is not a verdict anyone can assert: it records that the platform " +
+		"wrote these bytes for this workspace, and only the generation path can establish that",
 }
 
 // redistributionRequest is the body of PUT /admin/skills/{id}/redistribution.
@@ -132,14 +147,12 @@ func (s *Service) SetRedistribution(ctx context.Context, skillID, actor pgtype.U
 		return "", restrictionInputError("value is required")
 	}
 	if _, ok := operatorSettableRedistribution[value]; !ok {
-		// self_supplied is named in the message rather than lumped in with
-		// typos: a caller who tried it made a category error, not a spelling
-		// mistake, and telling them the list of valid values would not explain
-		// why the one they picked is missing from it.
-		if value == string(RedistributionSelfSupplied) {
-			return "", restrictionInputError(
-				"self_supplied is not a verdict anyone can assert: it records that this " +
-					"workspace supplied the bytes, and only the import path can establish that")
+		// The provenance values are named in the message rather than lumped in
+		// with typos: a caller who tried one made a category error, not a
+		// spelling mistake, and telling them the list of valid values would not
+		// explain why the one they picked is missing from it.
+		if msg, ok := provenanceRedistribution[value]; ok {
+			return "", restrictionInputError(msg)
 		}
 		return "", restrictionInputError(
 			"unknown redistribution value; settable values: allowed, blocked, unknown")

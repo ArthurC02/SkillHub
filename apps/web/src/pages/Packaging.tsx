@@ -18,7 +18,7 @@ import { useSkillDetail } from "../api/skills";
 import { SkillVersionPicker } from "./RunPreflight";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
-import type { Finding, SkillDetail } from "../api/types";
+import type { Finding, Redistribution, SkillDetail } from "../api/types";
 
 /**
  * 02:PACK-001 / PACK-002 — pick a target, see what packaging would produce,
@@ -72,30 +72,51 @@ export const PACKAGING_BLOCKED_LABEL: Record<PackagingBlockedReason, string> = {
 };
 
 /**
+ * What each redistribution value does to this gate — the client's copy of
+ * delivery/packaging.go `gateFlags`.
+ *
+ * A `Record<Redistribution, ...>` and not a `switch`, because a switch's
+ * `default` cannot tell "a value we decided refuses" from "a value nobody told
+ * this file about". It could not, and did not: `generated` arrived in 0037, the
+ * server released the gate for it, and this page went on refusing — so the
+ * platform would build the package while the button that asks for it was
+ * disabled with 「沒有人確認過這個 Skill 可不可以再散布」. Keyed by the union, the
+ * next value stops this file compiling instead.
+ */
+export const REDISTRIBUTION_GATE: Record<Redistribution, PackagingBlockedReason | null> = {
+  allowed: null,
+  // The owner getting their own upload back. Not a licence verdict and not
+  // treated as one anywhere — it releases this gate and nothing else (0036).
+  self_supplied: null,
+  // The platform wrote these bytes at this workspace's request. Releases for the
+  // same shape of reason — no upstream author for a licence to protect — and
+  // stays a separate value because the open question is a different one: who
+  // owns what a model wrote (0037, ADR-047 決策 4).
+  generated: null,
+  blocked: "not_redistributable",
+  unknown: "license_unknown",
+};
+
+/**
  * The two independent locks (ADR-027 決策 4) as the skill detail reports them, so
  * the entry point and this page refuse for the same reason. Returns null when
  * neither is closed — which is not a promise that packaging succeeds: the server
  * checks again, and `validation_blocked` is not knowable from here at all.
  *
- * Everything that is not exactly `allowed` closes it, a field that did not
- * arrive included. The contract requires `redistribution` on every skill, so an
- * absent one is a platform that failed to answer and not a permission — and of
- * the two ways to be wrong, showing a refusal for content that turns out to be
- * fine is the recoverable one.
+ * A value the table has no row for refuses, a field that did not arrive
+ * included. The contract requires `redistribution` on every skill, so an absent
+ * one is a platform that failed to answer and not a permission — and of the two
+ * ways to be wrong, showing a refusal for content that turns out to be fine is
+ * the recoverable one. The exhaustiveness above is about the copy we control;
+ * this line is about not trusting the wire.
  */
 export function packagingGate(skill: SkillDetail): PackagingBlockedReason | null {
   if (skill.access_restriction) return "license_hold";
-  switch (skill.redistribution?.value) {
-    case "allowed":
-    // The owner getting their own upload back. Not a licence verdict and not
-    // treated as one anywhere — it releases this gate and nothing else (0036).
-    case "self_supplied":
-      return null;
-    case "blocked":
-      return "not_redistributable";
-    default:
-      return "license_unknown";
+  const value = skill.redistribution?.value;
+  if (value === undefined || !Object.prototype.hasOwnProperty.call(REDISTRIBUTION_GATE, value)) {
+    return "license_unknown";
   }
+  return REDISTRIBUTION_GATE[value as Redistribution];
 }
 
 const DEAD_REASON_ID = "packaging-build-disabled-reason";

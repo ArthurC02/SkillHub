@@ -8,6 +8,40 @@ import { deleteSkill } from "../api/skills";
 import { useOwnSkills } from "../api/testcases";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { RiskSummary } from "../components/RiskIndicator";
+import type { Redistribution } from "../api/types";
+
+/**
+ * One sentence per redistribution value, and never one sentence for two of them:
+ * the three that release do not make the same promise. `allowed` means somebody
+ * checked the licence, `self_supplied` means you brought it in and the platform
+ * is only handing it back (ADR-045), `generated` means the platform wrote it and
+ * nobody has answered who owns that (0037, ADR-047 決策 4). Collapsing any of
+ * them into 可打包下載 would tell a user something nobody established.
+ *
+ * Keyed by the union for the reason Packaging.tsx REDISTRIBUTION_GATE is: this
+ * row used a ternary chain, `generated` was not in it, and every generated skill
+ * rendered a red 授權未知，不能打包 next to a download the server would have
+ * produced. A missing key is now a compile error rather than a wrong verdict.
+ */
+const REDISTRIBUTION_BADGE: Record<Redistribution, { text: string; danger?: true }> = {
+  allowed: { text: "可打包下載" },
+  self_supplied: { text: "可下載（你自己帶進來的）" },
+  generated: { text: "可下載（平台為你生成的）" },
+  blocked: { text: "不可散布", danger: true },
+  unknown: { text: "授權未知，不能打包", danger: true },
+};
+
+/**
+ * `value` stays `string`: the union is what this file maintains, the wire is not
+ * bound by it. A value with no row falls back to the refusing sentence, which is
+ * the same direction every other copy of this gate fails in.
+ */
+function RedistributionBadge({ value }: { value: string }) {
+  const badge = Object.prototype.hasOwnProperty.call(REDISTRIBUTION_BADGE, value)
+    ? REDISTRIBUTION_BADGE[value as Redistribution]
+    : REDISTRIBUTION_BADGE.unknown;
+  return <span className={badge.danger ? "badge badge-danger" : "badge"}>{badge.text}</span>;
+}
 
 /**
  * 02:WS-002 第 1 條「使用者可查看自己的 Fork、版本、Test Case、Run 歷史與下載紀錄」
@@ -81,25 +115,7 @@ export function WorkspaceSkills() {
                   packaging screen.
                 */}
                 <p className="badge-row">
-                  {/*
-                    Two values release, and this row says which one, because they
-                    are not the same promise: `allowed` means somebody checked
-                    the licence, `self_supplied` means you brought it in and the
-                    platform is only handing it back (ADR-045). Collapsing them
-                    into 可打包下載 would tell a user their own upload had been
-                    licence-checked, which nobody did.
-                  */}
-                  {s.redistribution === "allowed" || s.redistribution === "self_supplied" ? (
-                    <span className="badge">
-                      {s.redistribution === "self_supplied"
-                        ? "可下載（你自己帶進來的）"
-                        : "可打包下載"}
-                    </span>
-                  ) : (
-                    <span className="badge badge-danger">
-                      {s.redistribution === "blocked" ? "不可散布" : "授權未知，不能打包"}
-                    </span>
-                  )}
+                  <RedistributionBadge value={s.redistribution} />
                   {s.access_restriction && (
                     <span className="badge badge-danger">授權保留：{s.access_restriction}</span>
                   )}

@@ -97,8 +97,15 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
 /**
  * The DISC-002 per-result columns every hit now carries. Spread into fixtures
  * so a test only spells out the field it is actually about.
+ *
+ * `summary_source` joined the list when 117ba44 made it required and updated the
+ * two fixtures that assert the badge, leaving twelve that do not — which is what
+ * a shared base is for. It sits here as `package`, the value that renders no
+ * badge, so a test that says nothing about the summary's provenance keeps
+ * asserting nothing about it.
  */
 const HIT_FACETS = {
+  summary_source: "package",
   tier: { value: "indexed", label: "已收錄", note: "收錄不等於精選。" },
   risk: {
     scan_status: "scanned",
@@ -114,7 +121,10 @@ const HIT_FACETS = {
     runtime: { value: "unverified", label: "未驗證", note: "" },
     note: "尚未試跑。",
   },
-} satisfies Pick<PublicSearchResult, "tier" | "risk" | "dependencies" | "compatibility">;
+} satisfies Pick<
+  PublicSearchResult,
+  "summary_source" | "tier" | "risk" | "dependencies" | "compatibility"
+>;
 
 const EMPTY: PublicSearchResponse = {
   query: "",
@@ -210,13 +220,19 @@ test("DISC-002: a summary with no stated source says so rather than crediting th
     results: [
       {
         ...HIT_FACETS,
+        // The one fixture that must NOT inherit the shared base's
+        // `summary_source`: this test is about a server that did not send the
+        // field. The view-model type says it always does and the wire is not
+        // bound by that, so the cast is where the disagreement is written down
+        // rather than assumed away.
+        summary_source: undefined,
         skill_id: "33333333-3333-3333-3333-333333333333",
         name: "Mystery",
         summary: "來源不明的摘要",
         rank: 0.5,
         match_reason: "查詢與文件共同出現：pdf",
         match_reason_source: "template",
-      },
+      } as unknown as PublicSearchResult,
     ],
   });
   await render(<App />);

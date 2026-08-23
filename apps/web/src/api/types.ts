@@ -88,6 +88,28 @@ export interface Labelled {
   note: string;
 }
 
+/**
+ * skills.redistribution — the licence lock on downloads (0027, extended by 0036
+ * and 0037). Named rather than inlined so the places that decide something from
+ * it can be keyed by it: a `Record<Redistribution, ...>` stops compiling when a
+ * value is added here, which is how the web finds out.
+ *
+ * It found out the hard way once. `generated` arrived in 0037, the server
+ * released the gate for it (delivery/packaging.go gateFlags) and this side's
+ * `switch` sent it to `default` — so the platform built the package and the UI
+ * told the owner nobody had established whether it could be redistributed.
+ *
+ * `SkillDetail.redistribution` is a `Labelled` whose `value` stays `string`:
+ * that one is rendered from the server's own sentences and has nothing to keep
+ * in step.
+ */
+export type Redistribution =
+  | "allowed"
+  | "blocked"
+  | "unknown"
+  | "self_supplied"
+  | "generated";
+
 export type FindingSeverity = "error" | "warning" | "info";
 
 export interface Finding {
@@ -455,8 +477,8 @@ export interface Skill {
   name: string;
   summary: string;
   /**
-   * Whether a Download Artifact may be produced from this skill. Two of the
-   * four values release and two refuse, so on the owner's own list this
+   * Whether a Download Artifact may be produced from this skill. Three of the
+   * five values release and two refuse, so on the owner's own list this
    * separates a skill they can take away from one they cannot. It was on the
    * row and dropped in serialisation until 04 丙-31.
    *
@@ -468,12 +490,7 @@ export interface Skill {
    * `self_supplied` is what a user's own import carries since 0036; it was
    * `unknown`, which refused (ADR-045).
    */
-  redistribution:
-    | "allowed"
-    | "blocked"
-    | "unknown"
-    | "self_supplied"
-    | "generated";
+  redistribution: Redistribution;
   /** Reason code for a licensing hold, `null` when there is none. */
   access_restriction: string | null;
   forked_from_skill_id?: string;
