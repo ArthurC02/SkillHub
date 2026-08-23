@@ -82,6 +82,8 @@ ADR-005 已定義最低安全基線（非 root、唯讀檔案系統、資源限�
 | 逃逸測試通過（SEC-009、SBX-010） | **未執行 → 轉為實作期驗收關卡** | 這兩項本來就是需求 ID 承接的實作工作，不是文件階段可完成的項目 |
 
 > ⚠️ **定案的語意界線**：本 ADR 轉 Accepted 表示「採用 gVisor 這個方向、後續實作應遵循」，**不表示隔離強度已被驗證**。上方最後兩列是**上線前的硬性關卡**——SEC-009／SBX-010 未通過不得開放外部使用者提交 Skill 執行。
+>
+> **→ [ADR-050](./ADR-050-beta-runs-in-parallel-with-the-sandbox-acceptance.md)（2026-08-23）縮小了最後一句的適用範圍**：負責人裁定甲類四項不是封測 D 日的阻擋項，封測與 SEC-009／SBX-010 驗收**並行**。**原文不刪除**——它記的是當時的判斷，而 ADR-050 記的是那個判斷被推翻時付出的代價是什麼。本 ADR 其餘全部不變：gVisor 為基線、獨立 VM 池、ADR-005 基線疊加、default-deny egress 都沒有被動到，`02:SEC-009` 的 45 項門檻也一個字都沒改——改的只是「這個門檻在什麼時點之前必須達成」。
 
 **Hetzner 濫用政策的連帶工作**（隨 ADR-018 選定 Hetzner 而生效）：Sandbox 執行不受信任程式碼，若被用於挖礦、掃描或濫用流量，Hetzner 處置偏向直接停機。除本 ADR 既有的 default-deny Egress Proxy 外，另需**事前與供應商溝通用途**、建立濫用偵測與自動封停 Run 的流程（對應 SEC 需求）。見 [cost-estimation.md](../plans/mvp/m0/cost-estimation.md) §7.1。
 
