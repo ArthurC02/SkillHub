@@ -24,6 +24,7 @@ import { expect, test } from "vitest";
  *   3. a page loses its ways in             → §2.3's 0- and 1-inbound rows
  *   4. an entry point appears behind a flag → §2.4's table
  *   5. a new route breaks §0.1 R2           → §0.2's ledger, which may only shrink
+ *   6. a product capability enters the nav  → §0.1 R7
  *
  * The fourth is the one the generation entry needed, and it is the one no
  * route-based check could have caught: a flagged entry point adds no route and
@@ -94,6 +95,24 @@ test("IA §2.1: the primary nav's targets are the ones the document lists", () =
   // The row names the nav's five labels in one cell and their targets in the
   // next; only the targets are backticked paths.
   expect(paths(row!)).toEqual(actual);
+
+  // §0.1 R7, from the 2026-08-23 ruling 「探索不進導覽列」 and ADR-046 決策 7
+  // before it: the nav holds the owner's own material, not the product's
+  // capabilities. Mechanically that is R2's list-address test — every nav
+  // target lives under /workspace/ or /lab/.
+  //
+  // Discovery and generation are not places you go, they are what the product
+  // does; a nav of six makes them one option out of six. `/` keeps its entry —
+  // the product title — and that page is only search, so clicking the product's
+  // name lands on the product's core action.
+  for (const target of actual) {
+    expect(
+      target.startsWith("/workspace/") || target.startsWith("/lab/"),
+      `${target} is in the primary nav but is not one of the owner's own lists. ` +
+        `A product capability in the nav reads as one option among the others ` +
+        `(§0.1 R7). If this is deliberate, R7 is what has to change first.`,
+    ).toBe(true);
+  }
 });
 
 // --- 3. reachability ---------------------------------------------------------
