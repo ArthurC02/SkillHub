@@ -149,7 +149,7 @@ export interface SkillDetail {
      */
     license: SkillLicense;
     /**
-     * allowed | blocked | unknown | self_supplied — whether this skill's
+     * allowed | blocked | unknown | self_supplied | generated — whether this skill's
      * content may be handed on, which is what decides whether a download
      * package can be built from it at all (02:SEC-007, ADR-012).
      * 

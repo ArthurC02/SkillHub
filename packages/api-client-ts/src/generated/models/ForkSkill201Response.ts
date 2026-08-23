@@ -98,7 +98,8 @@ export const ForkSkill201ResponseRedistributionEnum = {
     Allowed: 'allowed',
     Blocked: 'blocked',
     Unknown: 'unknown',
-    SelfSupplied: 'self_supplied'
+    SelfSupplied: 'self_supplied',
+    Generated: 'generated'
 } as const;
 export type ForkSkill201ResponseRedistributionEnum = typeof ForkSkill201ResponseRedistributionEnum[keyof typeof ForkSkill201ResponseRedistributionEnum];
 

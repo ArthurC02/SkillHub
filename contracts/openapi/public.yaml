@@ -3701,7 +3701,7 @@ components:
           type: string
         redistribution:
           type: string
-          enum: [allowed, blocked, unknown, self_supplied]
+          enum: [allowed, blocked, unknown, self_supplied, generated]
           description: |
             Whether a Download Artifact may be produced from this skill. Two of
             its four values release and two refuse, so on the owner's own list
@@ -4401,7 +4401,7 @@ components:
           allOf:
             - $ref: "#/components/schemas/Labelled"
           description: |
-            allowed | blocked | unknown | self_supplied — whether this skill's
+            allowed | blocked | unknown | self_supplied | generated — whether this skill's
             content may be handed on, which is what decides whether a download
             package can be built from it at all (02:SEC-007, ADR-012).
 

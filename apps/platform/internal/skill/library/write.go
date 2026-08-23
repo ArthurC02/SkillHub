@@ -66,6 +66,20 @@ type NewVersion struct {
 // CHECK is what actually holds them together.
 const RedistributionSelfSupplied = "self_supplied"
 
+// RedistributionGenerated is the fifth value (0037): the platform wrote these
+// bytes for this workspace, at its request. It releases the packaging gate for
+// the same shape of reason as self_supplied — no upstream author exists for a
+// licence to protect — and is a separate value for a reason that only shows up
+// later: self_supplied asks whether the user had the right to redistribute
+// somebody else's bytes, generated asks who owns what a model wrote. One value
+// for two questions eventually releases one of them by answering the other
+// (ADR-047 決策 4).
+//
+// Copied onto forks like every other gate column, so a fork of a generated
+// skill stays generated rather than falling back to unknown and locking the
+// download the user already had.
+const RedistributionGenerated = "generated"
+
 // CreateSkillFromPackage inserts the skills row for a package being imported
 // under a name that does not exist in the workspace yet. Lineage columns stay
 // unset: an import carries none.

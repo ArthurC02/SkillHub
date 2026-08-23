@@ -1695,6 +1695,8 @@ func (s ForkSkillCreatedRedistribution) Validate() error {
 		return nil
 	case "self_supplied":
 		return nil
+	case "generated":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}
@@ -2376,6 +2378,8 @@ func (s OwnSkillRedistribution) Validate() error {
 	case "unknown":
 		return nil
 	case "self_supplied":
+		return nil
+	case "generated":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)

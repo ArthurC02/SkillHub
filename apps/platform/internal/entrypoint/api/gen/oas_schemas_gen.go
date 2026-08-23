@@ -4482,6 +4482,7 @@ const (
 	ForkSkillCreatedRedistributionBlocked      ForkSkillCreatedRedistribution = "blocked"
 	ForkSkillCreatedRedistributionUnknown      ForkSkillCreatedRedistribution = "unknown"
 	ForkSkillCreatedRedistributionSelfSupplied ForkSkillCreatedRedistribution = "self_supplied"
+	ForkSkillCreatedRedistributionGenerated    ForkSkillCreatedRedistribution = "generated"
 )
 
 // AllValues returns all ForkSkillCreatedRedistribution values.
@@ -4491,6 +4492,7 @@ func (ForkSkillCreatedRedistribution) AllValues() []ForkSkillCreatedRedistributi
 		ForkSkillCreatedRedistributionBlocked,
 		ForkSkillCreatedRedistributionUnknown,
 		ForkSkillCreatedRedistributionSelfSupplied,
+		ForkSkillCreatedRedistributionGenerated,
 	}
 }
 
@@ -4504,6 +4506,8 @@ func (s ForkSkillCreatedRedistribution) MarshalText() ([]byte, error) {
 	case ForkSkillCreatedRedistributionUnknown:
 		return []byte(s), nil
 	case ForkSkillCreatedRedistributionSelfSupplied:
+		return []byte(s), nil
+	case ForkSkillCreatedRedistributionGenerated:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -4524,6 +4528,9 @@ func (s *ForkSkillCreatedRedistribution) UnmarshalText(data []byte) error {
 		return nil
 	case ForkSkillCreatedRedistributionSelfSupplied:
 		*s = ForkSkillCreatedRedistributionSelfSupplied
+		return nil
+	case ForkSkillCreatedRedistributionGenerated:
+		*s = ForkSkillCreatedRedistributionGenerated
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -7946,6 +7953,7 @@ const (
 	OwnSkillRedistributionBlocked      OwnSkillRedistribution = "blocked"
 	OwnSkillRedistributionUnknown      OwnSkillRedistribution = "unknown"
 	OwnSkillRedistributionSelfSupplied OwnSkillRedistribution = "self_supplied"
+	OwnSkillRedistributionGenerated    OwnSkillRedistribution = "generated"
 )
 
 // AllValues returns all OwnSkillRedistribution values.
@@ -7955,6 +7963,7 @@ func (OwnSkillRedistribution) AllValues() []OwnSkillRedistribution {
 		OwnSkillRedistributionBlocked,
 		OwnSkillRedistributionUnknown,
 		OwnSkillRedistributionSelfSupplied,
+		OwnSkillRedistributionGenerated,
 	}
 }
 
@@ -7968,6 +7977,8 @@ func (s OwnSkillRedistribution) MarshalText() ([]byte, error) {
 	case OwnSkillRedistributionUnknown:
 		return []byte(s), nil
 	case OwnSkillRedistributionSelfSupplied:
+		return []byte(s), nil
+	case OwnSkillRedistributionGenerated:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -7988,6 +7999,9 @@ func (s *OwnSkillRedistribution) UnmarshalText(data []byte) error {
 		return nil
 	case OwnSkillRedistributionSelfSupplied:
 		*s = OwnSkillRedistributionSelfSupplied
+		return nil
+	case OwnSkillRedistributionGenerated:
+		*s = OwnSkillRedistributionGenerated
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -12783,8 +12797,9 @@ type SkillDetail struct {
 	Version OptSkillDetailVersion `json:"version"`
 	Source  OptSkillSource        `json:"source"`
 	License SkillLicense          `json:"license"`
-	// Allowed | blocked | unknown | self_supplied — whether this skill's content may be handed on, which
-	// is what decides whether a download package can be built from it at all (02:SEC-007, ADR-012).
+	// Allowed | blocked | unknown | self_supplied | generated — whether this skill's content may be
+	// handed on, which is what decides whether a download package can be built from it at all (02:SEC-007,
+	// ADR-012).
 	//
 	// Required, and required for every skill, because the question has an answer for every skill:
 	// `unknown` is where a curated skill starts and where anything unclassifiable stays, and it is treated

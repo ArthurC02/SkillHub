@@ -456,3 +456,42 @@ func TestVersionStateIsSeparateFromServeState(t *testing.T) {
 		t.Errorf("expiry still decides serving on its own axis: %+v", newest)
 	}
 }
+
+// gateFlags must release for `generated`, and the way this breaks is the
+// reason it has a test: delete the case and it falls through to `default`,
+// which returns BlockedLicenseUnknown. The user is then told "nobody has
+// established whether this skill may be redistributed" about a package the
+// platform wrote for them thirty seconds ago, and nothing fails except them.
+//
+// That is exactly the defect ADR-045 was written about, one value later.
+func TestGeneratedReleasesThePackagingGate(t *testing.T) {
+	reason, message := gateFlags(nil, RedistributionGenerated)
+	if reason != "" || message != "" {
+		t.Fatalf("generated must release the gate, got reason=%q message=%q", reason, message)
+	}
+}
+
+// The other half: releasing is not the same as being `allowed`, and the two
+// must stay distinguishable. A publish-to-catalogue path has to be able to
+// tell "somebody established this may be copied" from "a model wrote it and
+// nobody has said who owns it" (ADR-047 決策 4).
+func TestGeneratedIsNotAllowed(t *testing.T) {
+	if RedistributionGenerated == RedistributionAllowed {
+		t.Fatal("generated must stay a distinct value from allowed")
+	}
+	if RedistributionGenerated == RedistributionSelfSupplied {
+		t.Fatal("generated must stay a distinct value from self_supplied: they leave different questions open")
+	}
+}
+
+// A hold outranks every redistribution value, generated included. Ordering is
+// the rule ADR-041 states and the one that is easy to get wrong when a value
+// is added: a new case placed before the access-restriction check would let a
+// held skill out.
+func TestAccessRestrictionStillOutranksGenerated(t *testing.T) {
+	hold := "license-review"
+	reason, _ := gateFlags(&hold, RedistributionGenerated)
+	if reason != BlockedLicenseHold {
+		t.Fatalf("a hold must outrank generated, got %q", reason)
+	}
+}

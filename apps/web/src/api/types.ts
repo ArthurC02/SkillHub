@@ -460,10 +460,20 @@ export interface Skill {
    * separates a skill they can take away from one they cannot. It was on the
    * row and dropped in serialisation until 04 丙-31.
    *
+   * `generated` is what the platform's own output carries since 0037. It
+   * releases the download for the same shape of reason as `self_supplied` —
+   * no upstream author — and is a separate value because the open question
+   * differs: who owns what a model wrote (ADR-047 決策 4).
+   *
    * `self_supplied` is what a user's own import carries since 0036; it was
    * `unknown`, which refused (ADR-045).
    */
-  redistribution: "allowed" | "blocked" | "unknown" | "self_supplied";
+  redistribution:
+    | "allowed"
+    | "blocked"
+    | "unknown"
+    | "self_supplied"
+    | "generated";
   /** Reason code for a licensing hold, `null` when there is none. */
   access_restriction: string | null;
   forked_from_skill_id?: string;

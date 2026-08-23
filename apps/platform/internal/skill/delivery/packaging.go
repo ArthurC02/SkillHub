@@ -54,17 +54,19 @@ const (
 	BlockedFileRemoved = "file_removed_by_packager"
 )
 
-// Redistribution values (0027 / ADR-027 decision 4, extended by 0036).
+// Redistribution values (0027 / ADR-027 decision 4, extended by 0036 and 0037).
 //
-// Two of the four release, and they release for different reasons: `allowed` is
-// a verdict about the licence, `self_supplied` is a fact about who brought the
-// bytes. Keeping them apart is the point — a publish-to-catalogue path must be
-// able to tell "somebody established this may be copied" from "the owner is
-// getting their own file back".
+// Three of the five release, and they release for three different reasons:
+// `allowed` is a verdict about the licence, `self_supplied` is a fact about who
+// brought the bytes, `generated` is a fact about who wrote them. Keeping them
+// apart is the point — a publish-to-catalogue path must be able to tell
+// "somebody established this may be copied" from "the owner is getting their
+// own file back" from "a model wrote this and nobody has said who owns it".
 const (
 	RedistributionAllowed      = "allowed"
 	RedistributionBlocked      = "blocked"
 	RedistributionSelfSupplied = "self_supplied"
+	RedistributionGenerated    = "generated"
 )
 
 var (
@@ -336,6 +338,15 @@ func gateFlags(accessRestriction *string, redistribution string) (reason, messag
 		// party a licence protects does not exist in that transaction (0036,
 		// ADR-045). The workspace scope every read on this path already carries
 		// is what keeps it that way — nothing here widens it.
+		return "", ""
+	case RedistributionGenerated:
+		// The platform wrote these bytes for this workspace, at its request. No
+		// upstream author exists for a licence to protect, so the question a
+		// licence answers is not the one being asked (ADR-047 決策 4). Separate
+		// from self_supplied on purpose: that one asks whether the user had the
+		// right to redistribute somebody else's bytes, this one asks who owns
+		// what a model wrote, and one value for two questions eventually gets
+		// one of them released by an answer to the other.
 		return "", ""
 	case RedistributionBlocked:
 		return BlockedNotRedistributable,

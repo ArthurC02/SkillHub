@@ -129,7 +129,8 @@ export const OwnSkillRedistributionEnum = {
     Allowed: 'allowed',
     Blocked: 'blocked',
     Unknown: 'unknown',
-    SelfSupplied: 'self_supplied'
+    SelfSupplied: 'self_supplied',
+    Generated: 'generated'
 } as const;
 export type OwnSkillRedistributionEnum = typeof OwnSkillRedistributionEnum[keyof typeof OwnSkillRedistributionEnum];
 

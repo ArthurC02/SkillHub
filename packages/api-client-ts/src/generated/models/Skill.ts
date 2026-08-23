@@ -86,7 +86,8 @@ export const SkillRedistributionEnum = {
     Allowed: 'allowed',
     Blocked: 'blocked',
     Unknown: 'unknown',
-    SelfSupplied: 'self_supplied'
+    SelfSupplied: 'self_supplied',
+    Generated: 'generated'
 } as const;
 export type SkillRedistributionEnum = typeof SkillRedistributionEnum[keyof typeof SkillRedistributionEnum];
 
