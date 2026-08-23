@@ -180,3 +180,54 @@ go -C apps/platform run ./cmd/worker
 ```
 
 **注意 dev 庫的 migration 落後**：本批開跑前 `0024`、`0025`、`0026`、`0028`～`0035` 都沒套過（`evaluations` 還是 `0004` 的形狀，`evaluation_suggestions` 根本不存在）。這也是丙-38 一直沒跑起來的實際障礙之一。
+
+---
+
+## 9. 事後更正：這批評估的輸入本身有兩個已知的洞（2026-08-23，同日）
+
+規劃丙-8／丙-13／丙-26 時回頭查證，發現**本報告的 53 筆評估正是 [`04` 丙-13](../../04-backlog-and-handoffs.md) 明文警告過的那件事**。更正寫在這裡而不是改上面的數字，因為量到的東西是真的，**只是它量的不是原本以為的那個母體**。
+
+### 9.1 `artifacts` 全表 0 列，所以每一份判定的產出清單都是空陣列
+
+丙-13 寫著：M2 的管線沒有寫 `artifacts` 列，封存還在物件儲存裡（`run-artifacts/<run_id>/<attempt_id>/artifacts.tar`，**實查 123 個物件都在**）；而**補評時送給 Judge 的 `artifacts[]` 會是空陣列**，Judge 於是在「這個 Run 沒有任何產出清單」的前提下逐條判定。它同時寫著「今天不會發生：沒有路徑會自動評估它們」。
+
+**本批是人手動 insert `river_job` 觸發的，所以它發生了。** 84 筆評估**全部**帶著這條 deterministic finding：
+
+```
+the run reported success and no output files were recorded for it.
+Whether the task needed a file is for the criteria below to say
+```
+
+這也解釋了第 3.2 節那些引文為什麼**每一條都在講 artifact manifest**——模型看到的最顯眼的問題就是它，因為那是我們給它看的東西裡唯一確定為空的。
+
+**對本報告各數字的影響，逐項講清楚：**
+
+| 數字 | 受影響嗎 |
+| --- | --- |
+| ②的 0%（26 提案 0 存活）與其根因 | **不受影響。** 那是欄位定義不一致，與提案內容無關；空 artifact 只是決定了模型談什麼主題 |
+| 修正後的 65% | **不受影響為比率，受影響為代表性。** 分母仍是真的，但這批提案的主題高度集中在同一件事上 |
+| ③的 16／16 `applicable` | **不受影響。** `validatePatched` 檢查的是打回 zip 後過不過 `skillpkg.Validate`，與 artifact 無關 |
+| 5.1 節「16／16 全打 `SKILL.md`」 | **要保留但降級為觀察。** 提案主題集中，目標檔案跟著集中是預期的 |
+
+### 9.2 一個 2000 字元的截斷，被算成和「整批事件被丟掉」同一件事
+
+84 筆裡 **50 筆**帶著：
+
+```
+the material sent for judgement was truncated (trace_digest.entries);
+criteria depending on it are undetermined rather than passed
+```
+
+而 **26 筆 `undetermined` 判定裡，26 筆都有這一條**——完全相關。
+
+查下去：`buildDigest` 的 `truncated` 是**一個布林**，兩個來源共用——`len(citable) > maxDigestCount`（100 筆，**整個事件被丟掉**）與 `cutExcerpt`（單一 payload 超過 `maxDigestEntry = 2000` 字元被切尾）。本批的 Run 最多 44 個事件，**沒有一筆碰得到 100**，所以那 50 筆全是後者。
+
+後者一路把 `evidenceComplete` 打成 `false`，於是相依的準則只能是 `undetermined`。**一個 payload 被切掉尾巴，與一批事件根本沒送出去，是兩個大小差很多的洞**，目前用同一個旗標與同一個後果表達。
+
+**這一項獨立於丙-13，另立殘項**（見 `04` 丙-47），因為回填 `artifacts` 不會讓它消失。
+
+### 9.3 對重跑的意思
+
+丙-13 的順序規則（**先回填 `artifacts`，再評估**）現在多了一個具體理由：**要拿到一份主題不被空 artifact 綁架的提案基線，必須先回填再重評**。本報告的數字是「在已知輸入缺陷下量到的」，重評後應該回來覆核第 4 節與 5.1 節。
+
+**本報告的 53 筆評估不刪除**（評估是 append-only，ADR-026），重評會成為新的 revision，兩份並存可比——這與 `EVAL-013` 的 v1／v2 兩輪同一個處理方式。
