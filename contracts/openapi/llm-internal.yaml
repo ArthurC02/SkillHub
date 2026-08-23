@@ -252,6 +252,85 @@ paths:
                 $ref: "#/components/schemas/Error"
         "503":
           $ref: "#/components/responses/AuthUnavailable"
+  /v1/generate-skill:
+    post:
+      operationId: generateSkill
+      summary: Generate a Skill package from a task description (GEN-001)
+      description: |
+        A task description in, a package out. No existing Skill Version is an
+        input: starting from one is improvement, and that is
+        /suggest-improvements' territory (ADR-046 決策 3). Keeping the two apart
+        at the input is what stops one endpoint carrying two meanings for
+        "evidence" - /suggest-improvements verifies every citation against an
+        excerpt the platform put in the digest, and from nothing there is no
+        excerpt to verify against.
+
+        Single-shot, like every other endpoint here. If a "generate, validate,
+        retry" loop is ever needed it belongs in Go, which already owns the zip,
+        the validator and the retry policy (Iron Rule 6); Python would not
+        change.
+
+        **The response is structured frontmatter, not a SKILL.md string, and
+        that is the whole point of this schema.** Measured over 59 generated
+        packages (m5/report-generate-spike.md, report-generate-baseline.md),
+        every single blocking failure was the model damaging a frontmatter
+        *key*: a leading space before `description`, an Arabic letter glued to
+        it, `说明: invalid` in place of the field. Six of twenty descriptions
+        failed at least once that way. Returning typed fields and letting Go
+        write the YAML makes `frontmatter-invalid-yaml`,
+        `frontmatter-unknown-field` and `description-missing` structurally
+        impossible rather than merely unlikely - four of the six observed
+        failures cannot recur. `license` is absent from GeneratedSkill for the
+        same reason: ADR-046 決策 5 forbids the generator from emitting one, and
+        a prohibition that lives only in a prompt is a prohibition that holds
+        until the next prompt revision (03:GEN-001 asks for it on the schema).
+
+        Model defaults to the mini tier (ADR-051): measured 19/20 against
+        flagship's 16/20 and 21x cheaper, because failures land on frontmatter
+        keys and mini writes 3.5x fewer tokens, so it has less surface to
+        damage. It also wrote no scripts at all in twenty attempts - whether
+        that is better is GEN-009 ③④ and is not known.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateSkillRequest"
+      responses:
+        "200":
+          description: |
+            The generated package. Go assembles SKILL.md from `skill`, zips it
+            with `skill.files`, and writes a version only if the bytes pass
+            `skillpkg.Validate` on admission's one validation path - a 200 here
+            is not a package that exists yet (02:GEN-003).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateSkillResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: |
+            Request failed validation. A blank or unintelligible task
+            description is refused here rather than turned into a package
+            nobody asked for (02:GEN-001).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: |
+            Gateway error, or the model returned unusable output. Truncation
+            (`finish_reason: length`) arrives here and is NOT retried: the cap
+            covers reasoning plus output and a second call at the same cap buys
+            the same answer (ADR-047 決策 2, corrected by the B round - the round
+            A failure spent all 8000 tokens on reasoning and emitted an empty
+            string).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /suggest-improvements:
     post:
       operationId: suggestImprovements
@@ -1028,6 +1107,143 @@ components:
         content:
           type: string
           maxLength: 60000
+    GenerateSkillRequest:
+      type: object
+      required: [task_description]
+      properties:
+        task_description:
+          type: string
+          minLength: 8
+          maxLength: 4000
+          description: |
+            What the user wants done, in their own words. Not a Skill name and
+            not a query - the whole point of GEN-001 is that the user does not
+            have to know what a Skill is (01 §2.1 學習者).
+
+            Go refuses blank and unintelligible input before this call, so the
+            length floor here is a backstop and not the product rule
+            (02:GEN-001, same discipline as DISC-001).
+        prompt_version_hint:
+          type: string
+          description: |
+            Optional pin for reproducing an earlier generation. Absent means the
+            service's current version, which is what it reports back.
+
+    GeneratedSkill:
+      type: object
+      additionalProperties: false
+      required: [name, description, body]
+      description: |
+        The frontmatter as typed fields plus the body, NOT a SKILL.md string.
+        Go serialises the YAML. See the endpoint description for the measured
+        reason; the short version is that every observed blocking failure was a
+        damaged frontmatter key, and a key that the model never writes cannot be
+        damaged.
+
+        `license` is deliberately absent and `additionalProperties: false`
+        keeps it that way: ADR-046 決策 5 rules that a model-written licence
+        string must not occupy the "已宣告" state, which means someone declared
+        it. The user declares it afterwards or it stays unknown.
+      properties:
+        name:
+          type: string
+          maxLength: 64
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+          description: |
+            The Agent Skills name rule, enforced here rather than discovered by
+            `skillpkg.Validate` after a zip has been built (name-invalid,
+            name-too-long). Limit is counted in runes by the validator; this
+            pattern is ASCII-only so the two agree.
+        description:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: |
+            What the skill does and when to use it. `minLength: 1` is what makes
+            `description-missing` unreachable - it was 2 of 6 observed failures.
+        compatibility:
+          type: string
+          maxLength: 500
+          description: Environment requirements, the specification's 1-500 characters.
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+          description: |
+            String to string. The specification defines nothing else, and the
+            validator warns on anything that is not (spec-metadata-not-string-map).
+        allowed_tools:
+          type: string
+          description: |
+            A single string, not a list - the specification defines it that way
+            and the validator warns when a package uses a YAML list. Serialised
+            as `allowed-tools`.
+        body:
+          type: string
+          minLength: 1
+          description: |
+            The instructions the agent follows, in Markdown, without the
+            frontmatter. Empty is refused: the B round produced a 38-character
+            SKILL.md whose whole body was missing, and it was blocked only
+            because its key was also damaged. Had the key been right, a
+            syntactically perfect package with no content would have passed
+            every check.
+        files:
+          type: array
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/GeneratedFile"
+          description: |
+            Additional package files. Optional and often absent - the mini tier
+            produced none in twenty attempts. Scripts here get the same
+            treatment as an imported package's: static scan, SKILL-003
+            disclosure, sandbox-only execution. No leniency for being
+            platform-generated (ADR-046 決策 6).
+
+    GeneratedFile:
+      type: object
+      additionalProperties: false
+      required: [path, content]
+      properties:
+        path:
+          type: string
+          maxLength: 255
+          pattern: "^[A-Za-z0-9._][A-Za-z0-9._/-]*$"
+          description: |
+            Relative and not starting with a separator. **`..` is deliberately
+            NOT in this pattern**: expressing it needs a negative lookahead, and
+            lookahead is not portable across the generators that consume this
+            file. It is enforced where it already blocks - `entry-path-escape` is
+            a SeverityError read off the raw zip entry names before `fs.Sub`
+            rewrites them (04 丙-15). This pattern is a first line, not the line.
+        content:
+          type: string
+          maxLength: 100000
+
+    GenerateSkillResponse:
+      type: object
+      required: [skill, model, prompt_version]
+      description: |
+        `skill` is model output; `model`, `prompt_version` and `usage` are this
+        service's own. All three are stored as the generated version's
+        provenance (02:GEN-002), and that record has to reproduce the package
+        sitting in the workspace - which is why Go does not edit these bytes
+        before packaging (ADR-047 決策 1).
+      properties:
+        skill:
+          $ref: "#/components/schemas/GeneratedSkill"
+        model:
+          type: string
+        prompt_version:
+          type: string
+        usage:
+          $ref: "#/components/schemas/GatewayUsage"
+          description: |
+            What the generation cost at the gateway. Measured median for a mini
+            generation is about $0.0055; the quota is charged per generation and
+            not per call, so a retry does not double it and a failure costs the
+            user nothing (ADR-047 決策 2).
+
     SuggestImprovementsRequest:
       type: object
       description: |

@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import (
     AwareDatetime,
@@ -405,6 +405,28 @@ class TargetFile(BaseModel):
     content: constr(max_length=60000)
 
 
+class GenerateSkillRequest(BaseModel):
+    task_description: constr(min_length=8, max_length=4000) = Field(
+        ...,
+        description='What the user wants done, in their own words. Not a Skill name and\nnot a query - the whole point of GEN-001 is that the user does not\nhave to know what a Skill is (01 §2.1 學習者).\n\nGo refuses blank and unintelligible input before this call, so the\nlength floor here is a backstop and not the product rule\n(02:GEN-001, same discipline as DISC-001).\n',
+    )
+    prompt_version_hint: Optional[str] = Field(
+        None,
+        description="Optional pin for reproducing an earlier generation. Absent means the\nservice's current version, which is what it reports back.\n",
+    )
+
+
+class GeneratedFile(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    path: constr(pattern=r'^[A-Za-z0-9._][A-Za-z0-9._/-]*$', max_length=255) = Field(
+        ...,
+        description='Relative and not starting with a separator. **`..` is deliberately\nNOT in this pattern**: expressing it needs a negative lookahead, and\nlookahead is not portable across the generators that consume this\nfile. It is enforced where it already blocks - `entry-path-escape` is\na SeverityError read off the raw zip entry names before `fs.Sub`\nrewrites them (04 丙-15). This pattern is a first line, not the line.\n',
+    )
+    content: constr(max_length=100000)
+
+
 class SuggestImprovementsRequest(BaseModel):
     evaluation_id: str = Field(
         ...,
@@ -460,4 +482,49 @@ class SuggestImprovementsResponse(BaseModel):
     usage: Optional[GatewayUsage] = Field(
         None,
         description="What producing these proposals cost at the gateway. Same shape and\nsame optionality as JudgeRunResponse.usage: generating suggestions is\na second charged call on the judge tier, so it is reported rather than\nsilently folded into the judgement's cost.\n",
+    )
+
+
+class GeneratedSkill(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    name: constr(pattern=r'^[a-z0-9]+(-[a-z0-9]+)*$', max_length=64) = Field(
+        ...,
+        description='The Agent Skills name rule, enforced here rather than discovered by\n`skillpkg.Validate` after a zip has been built (name-invalid,\nname-too-long). Limit is counted in runes by the validator; this\npattern is ASCII-only so the two agree.\n',
+    )
+    description: constr(min_length=1, max_length=1024) = Field(
+        ...,
+        description='What the skill does and when to use it. `minLength: 1` is what makes\n`description-missing` unreachable - it was 2 of 6 observed failures.\n',
+    )
+    compatibility: Optional[constr(max_length=500)] = Field(
+        None,
+        description="Environment requirements, the specification's 1-500 characters.",
+    )
+    metadata: Optional[Dict[str, str]] = Field(
+        None,
+        description='String to string. The specification defines nothing else, and the\nvalidator warns on anything that is not (spec-metadata-not-string-map).\n',
+    )
+    allowed_tools: Optional[str] = Field(
+        None,
+        description='A single string, not a list - the specification defines it that way\nand the validator warns when a package uses a YAML list. Serialised\nas `allowed-tools`.\n',
+    )
+    body: constr(min_length=1) = Field(
+        ...,
+        description='The instructions the agent follows, in Markdown, without the\nfrontmatter. Empty is refused: the B round produced a 38-character\nSKILL.md whose whole body was missing, and it was blocked only\nbecause its key was also damaged. Had the key been right, a\nsyntactically perfect package with no content would have passed\nevery check.\n',
+    )
+    files: Optional[List[GeneratedFile]] = Field(
+        None,
+        description="Additional package files. Optional and often absent - the mini tier\nproduced none in twenty attempts. Scripts here get the same\ntreatment as an imported package's: static scan, SKILL-003\ndisclosure, sandbox-only execution. No leniency for being\nplatform-generated (ADR-046 決策 6).\n",
+        max_length=10,
+    )
+
+
+class GenerateSkillResponse(BaseModel):
+    skill: GeneratedSkill
+    model: str
+    prompt_version: str
+    usage: Optional[GatewayUsage] = Field(
+        None,
+        description='What the generation cost at the gateway. Measured median for a mini\ngeneration is about $0.0055; the quota is charged per generation and\nnot per call, so a retry does not double it and a failure costs the\nuser nothing (ADR-047 決策 2).\n',
     )
