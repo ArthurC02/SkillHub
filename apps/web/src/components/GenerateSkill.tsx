@@ -6,6 +6,7 @@ import { useGenerateSkill } from "../api/generate";
 import { isCategorizedFindings } from "../api/import";
 import type { GenerateRejected } from "../api/types";
 import { Findings } from "./Findings";
+import { GeneratedNotice } from "./GeneratedNotice";
 
 /**
  * GEN-004's entry point: describe the task, get a Skill package (GEN-001).
@@ -46,7 +47,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
   };
 
   return (
-    <section className="generate-skill">
+    <section>
       <h2>沒有夠接近的？讓平台依你的描述做一個</h2>
       <p className="note">
         平台會依你寫的任務描述產生一個 Skill 套件，放進你自己的工作區。
@@ -97,7 +98,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
  */
 function GenerateInFlight() {
   return (
-    <div role="status" className="in-flight">
+    <div role="status" className="notice">
       <p>正在請模型寫這個 Skill，然後用與匯入完全相同的那道驗證檢查它。</p>
       <p>這一步會自己結束，通常十幾秒到一分鐘。</p>
       <p>
@@ -146,9 +147,17 @@ function GenerateFailed({ rejected, onRetry }: { rejected: GenerateRejected; onR
 /**
  * GEN-004: what the user must be told about a package nobody has looked at.
  *
- * `attempts` is shown because 02:GEN-003 forbids the UI promising a success
- * rate — one retry was measured to move 80% to 90%, not to nothing — and
- * "it took two goes" is the honest form of that number.
+ * The two absences come from GeneratedNotice rather than being written again
+ * here. They were written again here, and the copy had already started to
+ * drift: it said 「這份內容是模型剛剛寫出來的」 where the detail page says 「平台
+ * 依任務描述生成的」, and it dropped the link to the first trial run. Findings.tsx
+ * names the rule this broke — two copies is how one of the two screens quietly
+ * rewrites a warning into reassurance.
+ *
+ * `attempts` stays local, because it belongs to this generation and not to the
+ * package: 02:GEN-003 forbids the UI promising a success rate — one retry was
+ * measured to move 80% to 90%, not to nothing — and "it took two goes" is the
+ * honest form of that number.
  */
 function GenerateSucceeded({
   result,
@@ -158,14 +167,7 @@ function GenerateSucceeded({
   return (
     <section role="status">
       <h3>已經產生一個 Skill，放在你的工作區</h3>
-      <p className="badge badge-unverified">
-        沒有經過任何人工檢視，沒有任何試跑證據
-      </p>
-      <p className="note">
-        這份內容是模型剛剛寫出來的。它通過的只有格式與靜態檢查，
-        <strong>那不是品質、可用性或安全的結論</strong>。
-        先跑一次試跑，才會有第一份證據。
-      </p>
+      <GeneratedNotice skillId={result.skill_id} />
       {result.attempts > 1 && (
         <p className="note">這一次生成試了 {result.attempts} 趟才通過驗證。</p>
       )}

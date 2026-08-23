@@ -150,7 +150,7 @@ test("GEN-008: with the flag on, the entry point appears in the no-results state
 // GEN-004 requires two named absences rather than one neutral word. Both are
 // sentences that stay wrong silently.
 test("GEN-002/GEN-004: a generated skill's source is stated, and its two absences with it", async () => {
-  const { GeneratedNotice } = await import("./pages/SkillDetail");
+  const { GeneratedNotice } = await import("./components/GeneratedNotice");
   await act(async () => {
     root = createRoot(container);
     root.render(<GeneratedNotice />);

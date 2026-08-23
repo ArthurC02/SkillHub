@@ -9,7 +9,7 @@ import { useOwnSkills } from "../api/testcases";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { useGenerateEntryPoint } from "../api/generate";
 import { GenerateSkill } from "../components/GenerateSkill";
-import { GeneratedNotice } from "./SkillDetail";
+import { GeneratedNotice } from "../components/GeneratedNotice";
 import { RiskSummary } from "../components/RiskIndicator";
 import type { Redistribution } from "../api/types";
 

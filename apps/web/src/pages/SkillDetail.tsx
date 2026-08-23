@@ -4,6 +4,7 @@ import { ApiError } from "../api/client";
 import { useForkSkill, useSkillDetail } from "../api/skills";
 import { useMe } from "../api/me";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
+import { GeneratedNotice } from "../components/GeneratedNotice";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
 import { RiskIndicator } from "../components/RiskIndicator";
@@ -475,7 +476,7 @@ function GeneratedSourceBlock({ source }: { source: SkillSource }) {
       {source.task_description && (
         <details>
           <summary>你當時輸入的任務描述</summary>
-          <p className="quoted">{source.task_description}</p>
+          <p>{source.task_description}</p>
         </details>
       )}
       {source.fetched_at && <p>生成時間：{source.fetched_at}</p>}
@@ -495,38 +496,6 @@ function GeneratedSourceBlock({ source }: { source: SkillSource }) {
           <code>{source.content_hash}</code>
         </details>
       )}
-    </>
-  );
-}
-
-/**
- * GEN-004: two named absences, on the detail page and on the workspace list.
- *
- * Two, not one, and neither is 「新建立」: nobody has looked at this package, and
- * nothing has run it. ADR-041 決策 2 makes absence a value rather than a blank,
- * and 02:GEN-004 names this wording specifically — a neutral word here would
- * describe a package the platform wrote thirty seconds ago as if it were merely
- * recent.
- */
-export function GeneratedNotice({ skillId }: { skillId?: string }) {
-  return (
-    <>
-      <p className="badge badge-unverified">沒有經過任何人工檢視，沒有任何試跑證據</p>
-      <p className="note">
-        這份內容是平台依任務描述生成的。它通過的只有格式與靜態檢查，
-        <strong>那不是品質、可用性或安全的結論</strong>。
-        {skillId ? (
-          <>
-            {" "}
-            <Link to="/lab/run" search={{ skill: skillId, version: undefined, test_case: undefined }}>
-              先跑一次試跑
-            </Link>
-            ，才會有第一份證據。
-          </>
-        ) : (
-          " 先跑一次試跑，才會有第一份證據。"
-        )}
-      </p>
     </>
   );
 }
