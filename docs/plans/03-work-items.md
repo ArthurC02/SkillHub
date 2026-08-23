@@ -365,3 +365,22 @@
 - [ ] RELEASE-008 下載套件可安裝且不包含受保護資料。（**不勾**：後半（不含受保護資料）已由 `PACK-004` 成立並對匯出位元組斷言；**前半（可安裝）正是 `PACK-009` 未勾的那一半**——`claude-code` 從來沒有人實際裝過，`standard` 的 round-trip 測試缺席。另 `QA-007` 的 License 檔隨包斷言缺席，`PACK-003` 同源）<br>**2026-08-18 更新：本行列的三個理由關掉兩個半，仍不勾。** `QA-007`／`PACK-003` 已勾（授權與溯源檔對**匯出的位元組**有斷言）；`standard` 的 round-trip 那一支已落地為 `TestTheStandardPackageIsTheSourceBytesPlusExactlyThreeFiles`（**原具名的那支依字面不可能成立**，見 `PACK-009`）；`PACK-007` 亦已勾。**仍缺的是同一件事**：`claude-code` 從來沒有人實際裝過（`PACK-009` (b)，[release-checklist](mvp/m4/release-checklist.md) H-9，**要人**）
 - [ ] RELEASE-009 完成封閉測試成功門檻並處理阻斷問題。（**不勾**：封測未開始。**PDM-009 未追認前本項結構上不可判定**——三條門檻（B1／B2／B3）與否決條款是它定的（[`04` 乙-15](04-backlog-and-handoffs.md)）。「處理阻斷問題」另需 `BETA-004` 的紀錄，而那需要漏斗事件與阻斷回報能用同一個 session 串起來）
 - [ ] RELEASE-010 發佈決策、已知限制與下一階段範圍完成記錄。（**不勾**：純負責人動作，且前置是 `BETA-005` 的範圍複審。**「已知限制」的素材已經齊備且不必等封測**——[m4/audit.md](mvp/m4/audit.md) 的不勾清單、[`04`](04-backlog-and-handoffs.md) 的三類殘項、各 ADR 的「待決策」章節三者合起來就是它；缺的是把它們收斂成一份對外的限制清單，以及發佈與否的那個決定）
+
+## 19. 從任務描述生成 Skill（M5，MVP 封測結束、漏斗第一段有讀數後啟動）
+
+> **2026-08-23 新增。** 依據 [ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md)，允收準則見 [`02` §4.9](02-specifications-and-acceptance-criteria.md)（`GEN-001`～`004`）。本節**全部未勾且不在 MVP 的完成度計算內**——與 §12「Local Runner Beta（後 MVP）」同一種收納方式：ID 先立、準則先立、實作等啟動條件。
+>
+> **啟動條件有三個，缺一不可**：①MVP 封測結束；②`01` §11.2 漏斗第一段（「輸入意圖後查看至少一個 Skill 詳情的比例」）有讀數；③`GEN-009` 的生成品質基線跑過。第三項是本節自己的前置，不依賴任何人的決策。
+>
+> **本節刻意不重複既有機制的工作項。** 生成物一旦寫成版本，`SKILL-002`／`SKILL-003`／`WS-001`／`WS-002`／`TEST-*`／`RUN-*`／`EVAL-*`／`PACK-*` 對它一體適用；本節只列「生成那一步」新增的東西。
+
+- [ ] GEN-001 在 `contracts/openapi/llm-internal.yaml` 定義 `POST /v1/generate-skill`：輸入任務描述，輸出完整套件檔案內容。（先寫 schema 再實作，鐵律 12；生成器**不得輸出 `license` 欄位**，這條在 schema 上就要成立而不是靠 prompt——ADR-046 決策 5）（允收：`02:GEN-001`、`GEN-002`）
+- [ ] GEN-002 在 `apps/llm` 實作該端點：單次閘道呼叫，與既有六個端點同一個形狀（收結構化請求、回結構化結果，政策與狀態全在 Go，鐵律 6）。提示詞以 `GENERATE_SKILL_PROMPT_VERSION` 版本化，紀律同 `judge-run`／`suggest-improvements`。（允收：`02:GEN-001`）
+- [ ] GEN-003 在 Go 側實作生成流程：呼叫 → 打包成 zip → 走 **admission 的同一條驗證路徑**寫版本。任一阻擋錯誤即整組拒絕、不建版本（與 `apply.go` 的 `validatePatched` 同一把尺）。**不引入 agent framework**——若要「生成 → 驗證 → 重來」的迴圈，它是 Go 裡的一個 `for`（ADR-046 決策 3、`04` 丙-38 同批裁定）。（允收：`02:GEN-003`）
+- [ ] GEN-004 生成前的成本預估與配額強制點：套用 [ADR-028](../adr/ADR-028-beta-admission-and-quota-enforcement-points.md) 的既有強制點，額度不足時**在呼叫模型之前**拒絕。（允收：`02:GEN-001` 第 4 條）
+- [ ] GEN-005 Migration：`skills.redistribution` 的 CHECK 新增第五個值 `generated`，並在生成路徑寫入。**不回填任何既有列**（既有列沒有一列是生成的）。（允收：`02:GEN-002` 第 3、4 條）（**注意**：`delivery`／`discovery`／`registry` 各有一份這組字串的副本，真正綁住它們的是資料庫的 CHECK；三處都要跟上）
+- [ ] GEN-006 生成物的來源紀錄與呈現：保存任務描述原文、生成時間、提示詞版本與模型識別，詳情頁顯示為「由平台依你的任務描述生成」並可展開。**不得顯示為未知來源。**（允收：`02:GEN-002` 第 1 條）
+- [ ] GEN-007 生成物不進公開目錄也不進搜尋索引，包括生成它的人自己搜尋時；工作區 Skill 列表是唯一入口。`tier` 不新增值域，`DISC-002` 的來源層級篩選不受影響。（允收：`02:GEN-002` 第 5 條）（**這一項的驗證方式是反證測試**：以生成物的關鍵字搜尋，斷言自己也搜不到——它屬於「壞掉的時候沒有任何症狀」那一類）
+- [ ] GEN-008 UI：無結果狀態的生成入口、生成中的進行中狀態（`InFlight` 既有元件，設計系統 §2.12）、失敗時的兩條出路、詳情與列表上「沒有經過任何人工檢視、沒有任何試跑證據」的說明（措辭適用 ADR-041 的缺席詞彙）。**首頁不提供與搜尋對等的生成入口。**（允收：`02:GEN-004`）
+- [ ] GEN-009 生成品質基線：跑一批真實生成，記四個數——①第一次就通過 `skillpkg.Validate` 的比率、②被擋下來的錯誤分布、③生成物完成第一次試跑後的評估判定分布、④人看了會不會留著（這一項要人，前三項不用）。<br>**◐ ①②於 2026-08-23 先跑掉了**（ADR-046 前期驗證 1，報告 [m5/report-generate-spike.md](mvp/m5/report-generate-spike.md)）：20 段描述、`gpt-5.6-sol`、實付 $2.3684 ⇒ **端到端 16／20**，三次阻擋**全部**是 frontmatter 縮排手滑（`frontmatter-invalid-yaml`），一次是 `max_tokens` 截斷，**空殼 0／19**，**兩張「Skill 做不到」的干擾卡都通過**。harness 在 `apps/platform/internal/shared/skillpkg/generate_spike_test.go`。<br>**整列仍不勾**：③要 Sandbox ＋ 評估管線，④要人；另外**每段只跑一次**，`3／19` 是不是隨機沒有第二次觀察佐證，而那是重試決策的直接輸入。**還有一件要修的**：那批用的 placeholder 偵測器 **0 真陽性、2 偽陽性**，照原樣用會系統性高估空殼率。報告落 `mvp/m5/report-generate-baseline.md`，格式照 [`m3/report-suggest-baseline.md`](mvp/m3/report-suggest-baseline.md)。（**這是本節的啟動前置，不是收尾**——丙-38 的數字**不能外推到生成**：改善有既有內容當骨架，生成沒有。沒有這批數字，`GEN-003` 的重試次數上限就沒有依據，ADR-046 待決策第 2 項也答不出來）
+- [ ] GEN-010 資料保存政策補上生成這一類資料：任務描述原文的保存期限與刪除行為。（**任務描述是使用者主動提交的自由文字**，與 `O11Y-004` 的分析事件「不記查詢原文」是兩件事，不得互相援引）（允收：`02:GEN-002`、`SEC-006`）

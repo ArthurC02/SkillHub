@@ -70,6 +70,12 @@
 | 5. 受測者原話 | 「⬜⬜⬜⬜⬜」 |
 | 6. **`g3_pass`**（是否認同無結果為正確回應） | Y ／ N |
 | 7. 判 N 的理由 | ⬜⬜⬜ |
+| 8. `next_step_raw`（「那接下來你會做什麼？」**逐字**） | 「⬜⬜⬜⬜⬜」 |
+| 9. `next_step_class` | `rewrite`／`other_site`／`build_it_himself`／`ask_ai_to_build`／`give_up`／`dont_know` |
+
+> **第 8、9 欄不參與 G1～G4 任何一條判準**（2026-08-23 新增，ADR-046 前期驗證 2）。它量的是 MVP 之外的 M5 訊號。**必須在判完第 6 欄之後才問**，且**絕不能問引導題**——「你會想要系統幫你做一個嗎」這種問法必定拿到假的 yes，那筆資料就作廢。
+>
+> `next_step_class` 的判準：`rewrite` 再改一次查詢／`other_site` 去別的網站或問別人／`build_it_himself` **自發**說出要自己做一個／`ask_ai_to_build` **自發**說出要叫 AI 或這個網站幫他做一個／`give_up` 放棄／`dont_know` 說不出來。**後兩類（`build_it_himself`／`ask_ai_to_build`）只在受測者自己先講出來時才成立**，主持人一旦提過，該題次一律記 `dont_know` 並在第 8 欄註明主持人破功。
 
 ---
 
