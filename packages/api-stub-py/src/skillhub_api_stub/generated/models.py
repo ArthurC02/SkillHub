@@ -416,12 +416,12 @@ class GeneratedFile(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    path: str = Field(
+    path: constr(max_length=255) = Field(
         ...,
-        description="Relative and not starting with a separator; over 255 characters is\nrefused as malformed. **The shape is not constrained here**, for the same\nreason GeneratedSkill's properties are not: this schema is handed to\nthe model under strict `json_schema`, which refuses `pattern` and\n`maxLength` with a 400 rather than ignoring them. It is enforced\nwhere it already blocked anyway - `entry-path-escape` is a\nSeverityError read off the raw zip entry names before `fs.Sub`\nrewrites them (04 丙-15), and Go refuses an entry that resolves to\nSKILL.md or to the archive root before the zip is built.\n",
+        description="Relative and not starting with a separator; over the cap is refused\nas malformed. **The shape is not constrained here**, for the same\nreason GeneratedSkill's properties are not: this schema is handed to\nthe model under strict `json_schema`, which refuses `pattern` and\n`maxLength` with a 400 rather than ignoring them. It is enforced\nwhere it already blocked anyway - `entry-path-escape` is a\nSeverityError read off the raw zip entry names before `fs.Sub`\nrewrites them (04 丙-15), and Go refuses an entry that resolves to\nSKILL.md or to the archive root before the zip is built.\n",
     )
-    content: str = Field(
-        ..., description='Over 100000 characters is refused as malformed, not clipped.'
+    content: constr(max_length=100000) = Field(
+        ..., description='Over the cap is refused as malformed, not clipped.'
     )
 
 
@@ -503,9 +503,9 @@ class GeneratedSkill(BaseModel):
         ...,
         description='A single string, not a list - the specification defines it that way\nand the validator warns when a package uses a YAML list. Serialised\nas `allowed-tools`.\n',
     )
-    body: constr(min_length=1, max_length=60000) = Field(
+    body: constr(min_length=1) = Field(
         ...,
-        description="The instructions the agent follows, in Markdown, without the\nfrontmatter. Over 60000 characters is refused as malformed (not\nclipped); the cap is the contract's, checked on the answer. Empty is refused: the B round produced a 38-character\nSKILL.md whose whole body was missing, and it was blocked only\nbecause its key was also damaged. Had the key been right, a\nsyntactically perfect package with no content would have passed\nevery check.\n\n**The one answer-side rule that is not a cap.** An empty body is a\n502, not a clip, which is what keeps this floor true even though the\nschema the model is given cannot carry it.\n",
+        description='The instructions the agent follows, in Markdown, without the\nfrontmatter. No character cap, on purpose: the token ceiling\n(16,000, reasoning plus output) is the cap, and a character cap\nbelow what it can produce refuses complete answers — 60,000 was\ntried and sits inside that range for English. Empty is refused: the B round produced a 38-character\nSKILL.md whose whole body was missing, and it was blocked only\nbecause its key was also damaged. Had the key been right, a\nsyntactically perfect package with no content would have passed\nevery check.\n\n**The one answer-side rule that is not a cap.** An empty body is a\n502, not a clip, which is what keeps this floor true even though the\nschema the model is given cannot carry it.\n',
     )
     files: List[GeneratedFile] = Field(
         ...,
