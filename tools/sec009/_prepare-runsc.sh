@@ -6,9 +6,15 @@
 # second copy of it is a second place for it to quietly stop being run.
 set -e
 
+# `</dev/null` on every apt-get, and it is not defensive. The callers pipe this
+# script into `bash -s`, so bash is reading the script itself from stdin; apt
+# reads stdin too, and what it swallows is the rest of the script. The result is
+# a container that runs the first half, exits 0, and prints nothing about the
+# half that never happened — the same silent-truncation shape as the missing
+# `-i` documented in t1-escape-attempts.sh, and just as green.
 if ! command -v runsc >/dev/null 2>&1; then
-  apt-get update -qq >/dev/null 2>&1
-  apt-get install -y -qq curl ca-certificates >/dev/null 2>&1
+  apt-get update -qq >/dev/null 2>&1 </dev/null
+  apt-get install -y -qq curl ca-certificates >/dev/null 2>&1 </dev/null
 
   ARCH=$(uname -m)
   URL=https://storage.googleapis.com/gvisor/releases/release/latest/${ARCH}

@@ -37,6 +37,16 @@
 #             Production never uses `do`; sandboxd goes through the Docker
 #             runtime. That socket is the harness measuring itself, so it is
 #             excluded, narrowly and by path.
+#   marker    (2026-08-23) 'plant a file on the node' graded the touch(1) from
+#             INSIDE the sandbox, so it read ESCAPED every time: the sandbox has
+#             its own writable view and creating a file in it is not an escape.
+#             The same run's node-side observation said the node was clean, so
+#             the script was contradicting itself in adjacent lines — and the
+#             half that was wrong was the one that cannot see the answer. T1's
+#             criterion is "no new file on the NODE filesystem", so the attempt
+#             is now made from inside and graded only from outside. Third
+#             instance of the same mistake in this file: a probe that cannot
+#             observe the thing it is grading will still confidently grade it.
 #
 # Usage: tools/sec009/t1-escape-attempts.sh
 # Exit:  0 every attempt refused, no side effect observed
@@ -145,10 +155,19 @@ probe 'find any unix socket' \
 probe 'reach the docker socket' \
   '[ -S /var/run/docker.sock ] && echo ESCAPED docker.sock present || echo REFUSED'
 
-# The side-effect half, attempted from inside: plant a file where the node would
-# see it.
-probe 'plant a file on the node' \
-  "touch \$MARKER 2>/dev/null && [ -f \$MARKER ] && echo ESCAPED planted || echo REFUSED"
+# The side-effect half. The attempt is made from inside and graded from OUTSIDE,
+# and the split is the whole point: see PROBE NOTES entry 4.
+#
+# It honours NO_SANDBOX like the probes do, and that is not tidiness: run
+# unconditionally through the sandbox, the node-side observation below would
+# read PASS even in the negative control, i.e. it would be a check with no
+# failing input anywhere in the suite. Unsandboxed it plants the file for real
+# and that observation goes red, which is the only evidence it works.
+if [ "\$NO_SANDBOX" = 1 ]; then
+  touch "\$MARKER" >/dev/null 2>&1
+else
+  \$RUNSC sh -c "touch \$MARKER" >/dev/null 2>&1
+fi
 
 echo
 echo 'Node-side observations (T1 requires these too):'
