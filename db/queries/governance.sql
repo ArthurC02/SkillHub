@@ -13,6 +13,22 @@ WHERE actor_user_id = $1
 ORDER BY created_at DESC, id DESC
 LIMIT $2;
 
+-- name: ListWorkspaceAuditEvents :many
+-- What happened in this workspace, most recent first (02:GEN-003 「可查」).
+--
+-- Workspace-scoped and not actor-scoped even though a personal workspace has one
+-- actor: iron rule 3 asks the question of the workspace, and the two answers
+-- being equal today is a property of the population, not of the query.
+--
+-- The action filter is a parameter rather than a WHERE clause per caller so that
+-- "generation failures" and any later "what happened here" share one query and
+-- one index. Passing an empty array returns nothing, which is the safe direction
+-- for a caller that forgot to say what it wanted.
+SELECT * FROM audit_events
+WHERE workspace_id = $1 AND action = ANY(@actions::text[])
+ORDER BY created_at DESC, id DESC
+LIMIT $2;
+
 -- name: RequestAccountDeletion :one
 -- Starts (or re-reads) the 30-day grace period. Idempotent: asking twice keeps
 -- the original start time rather than extending the wait.

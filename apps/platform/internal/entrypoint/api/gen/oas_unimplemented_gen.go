@@ -693,6 +693,28 @@ func (UnimplementedHandler) ListDownloadRecords(ctx context.Context, params List
 	return r, ht.ErrNotImplemented
 }
 
+// ListGenerationFailures implements listGenerationFailures operation.
+//
+// The read half of 02:GEN-003 「在工作區留下可查的失敗紀錄」. A generation that failed
+// leaves an audit row; until this route existed, that row could only be seen by someone holding a
+// database connection, which is not a record left in the workspace.
+//
+// Requires a session and an invite, and is mounted on the same flag as POST /skills/generate (ADR-052)
+// — a failure list is a generation surface, and a route answering 200 with an empty array is still
+// an answer about a feature that must not be discoverable. Where the flag is off this route does not
+// exist and answers 404.
+//
+// Workspace-scoped from the session; the caller never names a workspace (iron rule 3).
+//
+// The task description is not here and will not be added. It belongs to the skill_sources row, under
+// NFR-002 deletion; these rows are kept 400 days under a different rule, and one copy under each is a
+// retention promise nobody made (ADR-029 decision 3 draws the same line).
+//
+// GET /skills/generate/failures
+func (UnimplementedHandler) ListGenerationFailures(ctx context.Context) (r ListGenerationFailuresRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // ListPackagingTargets implements listPackagingTargets operation.
 //
 // One standard package plus two verified install profiles (PDM-008), which is how the product

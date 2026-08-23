@@ -90,6 +90,11 @@ var anonymousRoutes = []anonCase{
 	// against a live sibling path in generate_integration_test rather than pinned
 	// to a number here.
 	{pattern: "POST /skills/generate", want: http.StatusMethodNotAllowed, conditional: "Config.GenerateExposed"},
+	// GEN-003's read half, on the same flag. 404 and not 405 like the line
+	// above: three segments match no other pattern, so an unmounted GET is
+	// simply not a route — the same answer GET /me/quota gives where no
+	// allowance is enforced. Mounted, it is RequireSession → 401.
+	{pattern: "GET /skills/generate/failures", want: http.StatusNotFound, conditional: "Config.GenerateExposed"},
 	{pattern: "POST /skills/import/url", want: http.StatusUnauthorized},
 	{pattern: "GET /skills/search", query: "?q=anything", want: http.StatusUnauthorized},
 	{pattern: "GET /skills", want: http.StatusUnauthorized},

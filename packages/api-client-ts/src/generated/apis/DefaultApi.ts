@@ -48,6 +48,7 @@ import type {
   GenerateSkill422Response,
   GenerateSkillRequest,
   GenerateSkillResult,
+  GenerationFailures,
   GetDispatchStatus200Response,
   GetRunTrace200Response,
   Health,
@@ -158,6 +159,8 @@ import {
     GenerateSkillRequestToJSON,
     GenerateSkillResultFromJSON,
     GenerateSkillResultToJSON,
+    GenerationFailuresFromJSON,
+    GenerationFailuresToJSON,
     GetDispatchStatus200ResponseFromJSON,
     GetDispatchStatus200ResponseToJSON,
     GetRunTrace200ResponseFromJSON,
@@ -1223,6 +1226,21 @@ export interface DefaultApiInterface {
      * Who took a copy of this package, and when (WS-004)
      */
     listDownloadRecords(requestParameters: ListDownloadRecordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDownloadRecords200Response>;
+
+    /**
+     * The read half of 02:GEN-003 「在工作區留下可查的失敗紀錄」. A generation that failed leaves an audit row; until this route existed, that row could only be seen by someone holding a database connection, which is not a record left in the workspace.  Requires a session and an invite, and is **mounted on the same flag as POST /skills/generate** (ADR-052) — a failure list is a generation surface, and a route answering 200 with an empty array is still an answer about a feature that must not be discoverable. Where the flag is off this route does not exist and answers 404.  Workspace-scoped from the session; the caller never names a workspace (iron rule 3).  **The task description is not here and will not be added.** It belongs to the skill_sources row, under NFR-002 deletion; these rows are kept 400 days under a different rule, and one copy under each is a retention promise nobody made (ADR-029 decision 3 draws the same line). 
+     * @summary Generations in this workspace that produced nothing (GEN-003)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listGenerationFailuresRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerationFailures>>;
+
+    /**
+     * The read half of 02:GEN-003 「在工作區留下可查的失敗紀錄」. A generation that failed leaves an audit row; until this route existed, that row could only be seen by someone holding a database connection, which is not a record left in the workspace.  Requires a session and an invite, and is **mounted on the same flag as POST /skills/generate** (ADR-052) — a failure list is a generation surface, and a route answering 200 with an empty array is still an answer about a feature that must not be discoverable. Where the flag is off this route does not exist and answers 404.  Workspace-scoped from the session; the caller never names a workspace (iron rule 3).  **The task description is not here and will not be added.** It belongs to the skill_sources row, under NFR-002 deletion; these rows are kept 400 days under a different rule, and one copy under each is a retention promise nobody made (ADR-029 decision 3 draws the same line). 
+     * Generations in this workspace that produced nothing (GEN-003)
+     */
+    listGenerationFailures(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationFailures>;
 
     /**
      * One standard package plus two verified install profiles (PDM-008), which is how the product describes them everywhere: `kind` keeps the standard package and the profiles apart rather than folding all three into one list of \"profiles\", because the standard package is the evidence that Skill Hub is not bound to a single agent and a profile is not.  An endpoint rather than a constant in the web client. `support_status` changes when a target is measured, and a copy of it compiled into the front end would be a second truth that nobody re-measures. 
@@ -3460,6 +3478,37 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async listDownloadRecords(requestParameters: ListDownloadRecordsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ListDownloadRecords200Response> {
         const response = await this.listDownloadRecordsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The read half of 02:GEN-003 「在工作區留下可查的失敗紀錄」. A generation that failed leaves an audit row; until this route existed, that row could only be seen by someone holding a database connection, which is not a record left in the workspace.  Requires a session and an invite, and is **mounted on the same flag as POST /skills/generate** (ADR-052) — a failure list is a generation surface, and a route answering 200 with an empty array is still an answer about a feature that must not be discoverable. Where the flag is off this route does not exist and answers 404.  Workspace-scoped from the session; the caller never names a workspace (iron rule 3).  **The task description is not here and will not be added.** It belongs to the skill_sources row, under NFR-002 deletion; these rows are kept 400 days under a different rule, and one copy under each is a retention promise nobody made (ADR-029 decision 3 draws the same line). 
+     * Generations in this workspace that produced nothing (GEN-003)
+     */
+    async listGenerationFailuresRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerationFailures>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/skills/generate/failures`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GenerationFailuresFromJSON(jsonValue));
+    }
+
+    /**
+     * The read half of 02:GEN-003 「在工作區留下可查的失敗紀錄」. A generation that failed leaves an audit row; until this route existed, that row could only be seen by someone holding a database connection, which is not a record left in the workspace.  Requires a session and an invite, and is **mounted on the same flag as POST /skills/generate** (ADR-052) — a failure list is a generation surface, and a route answering 200 with an empty array is still an answer about a feature that must not be discoverable. Where the flag is off this route does not exist and answers 404.  Workspace-scoped from the session; the caller never names a workspace (iron rule 3).  **The task description is not here and will not be added.** It belongs to the skill_sources row, under NFR-002 deletion; these rows are kept 400 days under a different rule, and one copy under each is a retention promise nobody made (ADR-029 decision 3 draws the same line). 
+     * Generations in this workspace that produced nothing (GEN-003)
+     */
+    async listGenerationFailures(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationFailures> {
+        const response = await this.listGenerationFailuresRaw(initOverrides);
         return await response.value();
     }
 

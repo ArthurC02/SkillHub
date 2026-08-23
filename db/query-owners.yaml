@@ -62,6 +62,7 @@ queries:
   # governance.sql：一個檔裝了三種治理動作，資料表分屬四個 context。
   InsertAuditEvent: audit
   ListAuditEventsByActor: audit
+  ListWorkspaceAuditEvents: audit
   ListWorkspaceDatasetObjectKeys: testlab
   ListWorkspaceRunArtifactObjectKeys: run
   ListWorkspaceDownloadArtifactObjectKeys: packaging

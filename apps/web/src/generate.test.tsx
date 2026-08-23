@@ -57,7 +57,7 @@ const NO_RESULTS = {
 };
 
 /** A logged-in session, with `features` present only when asked for. */
-function stubSession(features?: Record<string, boolean>) {
+function stubSession(features?: Record<string, boolean>, failures?: unknown[]) {
   const posted: { path: string; body: string }[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = String(input).replace(/^https?:\/\/[^/]+/, "").split("?")[0];
@@ -65,6 +65,11 @@ function stubSession(features?: Record<string, boolean>) {
       posted.push({ path, body: String(init.body ?? "") });
       return Promise.resolve(
         new Response(JSON.stringify({ error: "not implemented in this stub" }), { status: 502 }),
+      );
+    }
+    if (path === "/skills/generate/failures") {
+      return Promise.resolve(
+        new Response(JSON.stringify({ failures: failures ?? [] }), { status: 200 }),
       );
     }
     if (path.startsWith("/api/skills/search")) {
@@ -163,4 +168,43 @@ test("GEN-002/GEN-004: a generated skill's source is stated, and its two absence
   // platform wrote thirty seconds ago as merely recent is the failure named.
   expect(text).not.toContain("新建立");
   expect(text).not.toContain("來源未知");
+});
+
+// GEN-003's last clause. The write half shipped first and was briefly counted as
+// satisfying it; a row only a database connection can see is not a record left
+// in the workspace, and the gap shows no symptom on any screen.
+test("GEN-003: past failures are readable, and the task description is not among them", async () => {
+  stubSession({ generate_skill: true }, [
+    {
+      occurred_at: "2026-08-23T10:00:00Z",
+      failure: "blocked",
+      attempts: 2,
+      codes: ["name-invalid"],
+    },
+    { occurred_at: "2026-08-23T09:00:00Z", failure: "quota", attempts: 0 },
+  ]);
+  await render();
+  await submitSearch("沒有人做過的事");
+  await waitFor(() => (container.textContent ?? "").includes("過去沒有成功的生成"));
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("過去沒有成功的生成（2）");
+  expect(text).toContain("name-invalid");
+  // 02:GEN-001: a refusal before the model call costs nothing, and the row has
+  // to say so — otherwise "額度不足" reads like something the user was billed for.
+  expect(text).toContain("沒有呼叫模型，也沒有花錢");
+  // NFR-002: the description belongs to the source row, not to 400-day history.
+  expect(text).toContain("這裡沒有記下你當時輸入的任務描述");
+});
+
+// An empty history is a section with no rows, not a value rendered blank
+// (design system §2.9 is about the latter). A user who has never failed must
+// not be shown a heading for something that did not happen.
+test("GEN-003: a workspace with no failures is shown no history section", async () => {
+  stubSession({ generate_skill: true });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  expect(container.textContent).toContain("讓平台依你的描述做一個");
+  expect(container.textContent).not.toContain("過去沒有成功的生成");
 });

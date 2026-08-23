@@ -165,6 +165,10 @@ type ListDownloadRecordsRes interface {
 	listDownloadRecordsRes()
 }
 
+type ListGenerationFailuresRes interface {
+	listGenerationFailuresRes()
+}
+
 type ListPackagingTargetsRes interface {
 	listPackagingTargetsRes()
 }

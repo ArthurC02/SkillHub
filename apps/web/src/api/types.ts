@@ -307,6 +307,30 @@ export interface GenerateRejected extends CategorizedFindings {
  * version write, and two descriptions of one row is how the two screens start
  * disagreeing about what a version is.
  */
+/**
+ * One generation that produced nothing — GET /skills/generate/failures.
+ *
+ * 02:GEN-003 「在工作區留下可查的失敗紀錄」. Every field but `occurred_at` is
+ * best-effort: these rows are 400-day history written by whichever version of
+ * the code was running at the time, so a missing key produces a row with less in
+ * it rather than an error.
+ *
+ * **The task description is not here and must not be added.** It belongs to the
+ * source row, under NFR-002 deletion; audit rows live 400 days under a different
+ * rule, and one copy under each is a retention promise nobody made.
+ */
+export interface GenerationFailure {
+  occurred_at: string;
+  /** Empty when the row's metadata could not be decoded. The row still happened. */
+  failure: "quota" | "gateway" | "unpackageable" | "rejected" | "blocked" | "";
+  /** 0 for a refusal that never reached the gateway — which is what `quota` is. */
+  attempts: number;
+  /** Blocking finding codes, `blocked` only. Codes and never matched values. */
+  codes?: string[];
+  truncated?: boolean;
+  collision?: boolean;
+}
+
 export interface GenerateSkillResult extends ImportResult {
   /**
    * 1 or 2. Shown rather than hidden because 02:GEN-003 forbids the UI

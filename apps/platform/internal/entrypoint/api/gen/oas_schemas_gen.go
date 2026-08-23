@@ -4814,6 +4814,187 @@ func NewErrorGenerateSkillUnprocessableEntity(v Error) GenerateSkillUnprocessabl
 
 func (*GenerateSkillUnprocessableEntity) generateSkillRes() {}
 
+// One generation that produced nothing, as the workspace reads it back.
+//
+// Every field except `occurred_at` is best-effort. These rows are 400-day history written by whichever
+// version of the code was running at the time, so a missing or re-typed key produces a row with less
+// in it rather than an error — the alternative is a screen that goes blank because of something that
+// happened last year.
+// Ref: #/components/schemas/GenerationFailure
+type GenerationFailure struct {
+	OccurredAt time.Time `json:"occurred_at"`
+	// What went wrong. `quota` never reached the gateway; `gateway` is the model service or the proxy;
+	// `unpackageable` is an answer that parsed but cannot be made into an archive; `rejected` is admission
+	// refusing it (a name collision, most often); `blocked` is a validation finding. Empty when a row's
+	// metadata could not be decoded — the row still happened, and its timestamp is the part the screen
+	// needs most.
+	Failure GenerationFailureFailure `json:"failure"`
+	// How many gateway calls that failure cost. 0 for a refusal that never reached the gateway, which is
+	// exactly what `quota` is.
+	Attempts int `json:"attempts"`
+	// Blocking finding codes, present only for `blocked`. Codes and never values: a finding's message
+	// never carries the matched text (iron rule 11), and this must not become the place that reintroduces
+	// it.
+	Codes []string `json:"codes"`
+	// The model hit the token ceiling. One of the two failures a user can act on — the action is "make
+	// the task smaller".
+	Truncated OptBool `json:"truncated"`
+	// This workspace already had a skill of that name and the two are not the same kind of content. The
+	// other actionable one — rename or delete the existing skill.
+	Collision OptBool `json:"collision"`
+}
+
+// GetOccurredAt returns the value of OccurredAt.
+func (s *GenerationFailure) GetOccurredAt() time.Time {
+	return s.OccurredAt
+}
+
+// GetFailure returns the value of Failure.
+func (s *GenerationFailure) GetFailure() GenerationFailureFailure {
+	return s.Failure
+}
+
+// GetAttempts returns the value of Attempts.
+func (s *GenerationFailure) GetAttempts() int {
+	return s.Attempts
+}
+
+// GetCodes returns the value of Codes.
+func (s *GenerationFailure) GetCodes() []string {
+	return s.Codes
+}
+
+// GetTruncated returns the value of Truncated.
+func (s *GenerationFailure) GetTruncated() OptBool {
+	return s.Truncated
+}
+
+// GetCollision returns the value of Collision.
+func (s *GenerationFailure) GetCollision() OptBool {
+	return s.Collision
+}
+
+// SetOccurredAt sets the value of OccurredAt.
+func (s *GenerationFailure) SetOccurredAt(val time.Time) {
+	s.OccurredAt = val
+}
+
+// SetFailure sets the value of Failure.
+func (s *GenerationFailure) SetFailure(val GenerationFailureFailure) {
+	s.Failure = val
+}
+
+// SetAttempts sets the value of Attempts.
+func (s *GenerationFailure) SetAttempts(val int) {
+	s.Attempts = val
+}
+
+// SetCodes sets the value of Codes.
+func (s *GenerationFailure) SetCodes(val []string) {
+	s.Codes = val
+}
+
+// SetTruncated sets the value of Truncated.
+func (s *GenerationFailure) SetTruncated(val OptBool) {
+	s.Truncated = val
+}
+
+// SetCollision sets the value of Collision.
+func (s *GenerationFailure) SetCollision(val OptBool) {
+	s.Collision = val
+}
+
+// What went wrong. `quota` never reached the gateway; `gateway` is the model service or the proxy;
+// `unpackageable` is an answer that parsed but cannot be made into an archive; `rejected` is admission
+// refusing it (a name collision, most often); `blocked` is a validation finding. Empty when a row's
+// metadata could not be decoded — the row still happened, and its timestamp is the part the screen
+// needs most.
+type GenerationFailureFailure string
+
+const (
+	GenerationFailureFailureQuota         GenerationFailureFailure = "quota"
+	GenerationFailureFailureGateway       GenerationFailureFailure = "gateway"
+	GenerationFailureFailureUnpackageable GenerationFailureFailure = "unpackageable"
+	GenerationFailureFailureRejected      GenerationFailureFailure = "rejected"
+	GenerationFailureFailureBlocked       GenerationFailureFailure = "blocked"
+	GenerationFailureFailureEmpty         GenerationFailureFailure = ""
+)
+
+// AllValues returns all GenerationFailureFailure values.
+func (GenerationFailureFailure) AllValues() []GenerationFailureFailure {
+	return []GenerationFailureFailure{
+		GenerationFailureFailureQuota,
+		GenerationFailureFailureGateway,
+		GenerationFailureFailureUnpackageable,
+		GenerationFailureFailureRejected,
+		GenerationFailureFailureBlocked,
+		GenerationFailureFailureEmpty,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s GenerationFailureFailure) MarshalText() ([]byte, error) {
+	switch s {
+	case GenerationFailureFailureQuota:
+		return []byte(s), nil
+	case GenerationFailureFailureGateway:
+		return []byte(s), nil
+	case GenerationFailureFailureUnpackageable:
+		return []byte(s), nil
+	case GenerationFailureFailureRejected:
+		return []byte(s), nil
+	case GenerationFailureFailureBlocked:
+		return []byte(s), nil
+	case GenerationFailureFailureEmpty:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *GenerationFailureFailure) UnmarshalText(data []byte) error {
+	switch GenerationFailureFailure(data) {
+	case GenerationFailureFailureQuota:
+		*s = GenerationFailureFailureQuota
+		return nil
+	case GenerationFailureFailureGateway:
+		*s = GenerationFailureFailureGateway
+		return nil
+	case GenerationFailureFailureUnpackageable:
+		*s = GenerationFailureFailureUnpackageable
+		return nil
+	case GenerationFailureFailureRejected:
+		*s = GenerationFailureFailureRejected
+		return nil
+	case GenerationFailureFailureBlocked:
+		*s = GenerationFailureFailureBlocked
+		return nil
+	case GenerationFailureFailureEmpty:
+		*s = GenerationFailureFailureEmpty
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/GenerationFailures
+type GenerationFailures struct {
+	Failures []GenerationFailure `json:"failures"`
+}
+
+// GetFailures returns the value of Failures.
+func (s *GenerationFailures) GetFailures() []GenerationFailure {
+	return s.Failures
+}
+
+// SetFailures sets the value of Failures.
+func (s *GenerationFailures) SetFailures(val []GenerationFailure) {
+	s.Failures = val
+}
+
+func (*GenerationFailures) listGenerationFailuresRes() {}
+
 type GetDispatchStatusOK struct {
 	// False when nothing can be dispatched at all — the pool is halted, or every configured provider is
 	// drained one at a time, which is the same operational fact.
@@ -5664,6 +5845,14 @@ func (s *ListDownloadRecordsOKRecordsItem) SetActor(val string) {
 type ListDownloadRecordsUnauthorized Error
 
 func (*ListDownloadRecordsUnauthorized) listDownloadRecordsRes() {}
+
+type ListGenerationFailuresForbidden Error
+
+func (*ListGenerationFailuresForbidden) listGenerationFailuresRes() {}
+
+type ListGenerationFailuresUnauthorized Error
+
+func (*ListGenerationFailuresUnauthorized) listGenerationFailuresRes() {}
 
 type ListPackagingTargetsOK struct {
 	Targets []PackagingTarget `json:"targets"`

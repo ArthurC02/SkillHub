@@ -1,0 +1,18 @@
+-- 0038_audit_events_workspace_index: an index so a workspace can be asked what
+-- happened in it. Applied migrations are immutable: fix forward.
+--
+-- 02:GEN-003 asks for a generation failure to leave 「在工作區留下可查的失敗
+-- 紀錄」, and the write half has existed since M5's first pass. The read half
+-- had nothing to read with: audit_events carries workspace_id, but 0013 indexed
+-- only created_at (the retention sweep) and (actor_user_id, created_at DESC)
+-- ("what did this account do", during an incident).
+--
+-- Not served by the actor index, and the difference is not performance. A
+-- personal workspace's owner is its only actor, so an actor-scoped query would
+-- return the right rows today -- by coincidence, not by construction. Iron rule
+-- 3 requires workspace scope on user-data queries, and a coincidence is exactly
+-- what stops holding the day a workspace has two people in it.
+--
+-- DESC on created_at to match the ORDER BY: the question is always "the most
+-- recent ones", never a scan of the whole history.
+CREATE INDEX audit_events_workspace_idx ON audit_events (workspace_id, created_at DESC);

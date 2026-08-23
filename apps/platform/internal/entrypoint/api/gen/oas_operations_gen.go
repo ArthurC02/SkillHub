@@ -50,6 +50,7 @@ const (
 	ListDatasetsOperation                      OperationName = "ListDatasets"
 	ListDownloadArtifactsOperation             OperationName = "ListDownloadArtifacts"
 	ListDownloadRecordsOperation               OperationName = "ListDownloadRecords"
+	ListGenerationFailuresOperation            OperationName = "ListGenerationFailures"
 	ListPackagingTargetsOperation              OperationName = "ListPackagingTargets"
 	ListRunArtifactsOperation                  OperationName = "ListRunArtifacts"
 	ListRunEvaluationRevisionsOperation        OperationName = "ListRunEvaluationRevisions"

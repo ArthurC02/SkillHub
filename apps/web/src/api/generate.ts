@@ -1,7 +1,7 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import { useMe } from "./me";
-import type { GenerateSkillResult } from "./types";
+import type { GenerateSkillResult, GenerationFailure } from "./types";
 
 /**
  * POST /skills/generate — GEN-001.
@@ -40,4 +40,24 @@ export function useGenerateSkill() {
 export function useGenerateEntryPoint(): boolean {
   const me = useMe();
   return me.data?.features?.generate_skill === true;
+}
+
+/**
+ * GET /skills/generate/failures — GEN-003's read half.
+ *
+ * The write half has existed since M5's first pass, and for a while that was
+ * counted as 「在工作區留下可查的失敗紀錄」 being met. It was not: a row only
+ * somebody with a database connection can see is not a record left in the
+ * workspace, and the gap has no symptom — the write succeeds and the user sees
+ * nothing at all.
+ *
+ * Same flag as the entry point, so this is only ever called from behind
+ * `useGenerateEntryPoint`; where the flag is off the route does not exist.
+ */
+export function useGenerateFailures() {
+  return useQuery({
+    queryKey: ["generate", "failures"],
+    queryFn: () =>
+      apiFetch<{ failures: GenerationFailure[] }>("/skills/generate/failures"),
+  });
 }

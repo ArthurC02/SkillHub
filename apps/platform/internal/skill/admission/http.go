@@ -5,11 +5,13 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
@@ -270,4 +272,95 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 			PromptVersion: res.PromptVersion,
 		})
 	}
+}
+
+// generateFailureLimit is how far back the failure list goes.
+//
+// A ceiling and not a pager: 02:GEN-003 asks for a record that can be looked at,
+// and what a user looks for is "what happened the last few times". A page-two
+// control on a list nobody scrolls is a second thing to get right.
+const generateFailureLimit = 20
+
+// GenerateFailure is one refused generation, as the workspace reads it back.
+type GenerateFailure struct {
+	// OccurredAt is when, and it is the only field guaranteed to be there.
+	OccurredAt time.Time `json:"occurred_at"`
+	// Failure is what went wrong, in the vocabulary GenerateSkill writes:
+	// quota, gateway, unpackageable, rejected, blocked. Empty when a row's
+	// metadata could not be decoded — the row still happened.
+	Failure string `json:"failure"`
+	// Codes are the blocking finding codes, present only for `blocked`. Codes
+	// and never values: a finding's message never carries the matched text
+	// (iron rule 11) and this must not become the place that reintroduces it.
+	Codes []string `json:"codes,omitempty"`
+	// Attempts is how many gateway calls that failure cost. 0 for a refusal
+	// that never reached the gateway, which is exactly what quota is.
+	Attempts int `json:"attempts"`
+	// Truncated and Collision distinguish the two failures a user can act on
+	// from the ones they cannot: shorten the task, rename the other skill.
+	Truncated bool `json:"truncated,omitempty"`
+	Collision bool `json:"collision,omitempty"`
+}
+
+// GenerateFailures handles GET /skills/generate/failures (GEN-003).
+//
+// The read half of 「在工作區留下可查的失敗紀錄」. The write half has existed
+// since the first pass; a row only the person with a database connection can see
+// is not a record left in the workspace.
+//
+// Mounted on the same flag as Generate, because a failure list is a generation
+// surface: a deployment that has not exposed generation has nothing to list, and
+// a route that answers 200 with an empty array is still an answer about a
+// feature ADR-052 says must not be discoverable.
+//
+// Workspace-scoped from the session, never from the request (iron rule 3).
+func (h *Handler) GenerateFailures(w http.ResponseWriter, r *http.Request) {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
+		return
+	}
+	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
+		return
+	}
+	records, err := audit.ListForWorkspace(r.Context(), h.Svc.Pool, ws.ID,
+		[]string{audit.ActionSkillGenerateFailed}, generateFailureLimit)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "failure history could not be read")
+		return
+	}
+	out := make([]GenerateFailure, 0, len(records))
+	for _, rec := range records {
+		out = append(out, generateFailureFrom(rec))
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"failures": out})
+}
+
+// generateFailureFrom reads back what auditGenerateFailure wrote.
+//
+// Every field is optional on the way in. These rows are 400-day history written
+// by whatever version of the code was running at the time, so a missing or
+// re-typed key has to produce a row with less in it rather than an error: the
+// alternative is a screen that goes blank because of something that happened
+// last year.
+func generateFailureFrom(rec audit.Record) GenerateFailure {
+	f := GenerateFailure{OccurredAt: rec.OccurredAt}
+	if s, ok := rec.Metadata["failure"].(string); ok {
+		f.Failure = s
+	}
+	if n, ok := rec.Metadata["attempts"].(float64); ok {
+		f.Attempts = int(n)
+	}
+	f.Truncated, _ = rec.Metadata["truncated"].(bool)
+	f.Collision, _ = rec.Metadata["collision"].(bool)
+	if raw, ok := rec.Metadata["codes"].([]any); ok {
+		for _, c := range raw {
+			if s, ok := c.(string); ok {
+				f.Codes = append(f.Codes, s)
+			}
+		}
+	}
+	return f
 }

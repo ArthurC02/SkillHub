@@ -290,6 +290,58 @@ func (q *Queries) ListSourcesToCheck(ctx context.Context, limit int32) ([]ListSo
 	return items, nil
 }
 
+const listWorkspaceAuditEvents = `-- name: ListWorkspaceAuditEvents :many
+SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at FROM audit_events
+WHERE workspace_id = $1 AND action = ANY($3::text[])
+ORDER BY created_at DESC, id DESC
+LIMIT $2
+`
+
+type ListWorkspaceAuditEventsParams struct {
+	WorkspaceID pgtype.UUID
+	Limit       int32
+	Actions     []string
+}
+
+// What happened in this workspace, most recent first (02:GEN-003 「可查」).
+//
+// Workspace-scoped and not actor-scoped even though a personal workspace has one
+// actor: iron rule 3 asks the question of the workspace, and the two answers
+// being equal today is a property of the population, not of the query.
+//
+// The action filter is a parameter rather than a WHERE clause per caller so that
+// "generation failures" and any later "what happened here" share one query and
+// one index. Passing an empty array returns nothing, which is the safe direction
+// for a caller that forgot to say what it wanted.
+func (q *Queries) ListWorkspaceAuditEvents(ctx context.Context, arg ListWorkspaceAuditEventsParams) ([]AuditEvent, error) {
+	rows, err := q.db.Query(ctx, listWorkspaceAuditEvents, arg.WorkspaceID, arg.Limit, arg.Actions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AuditEvent
+	for rows.Next() {
+		var i AuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorUserID,
+			&i.WorkspaceID,
+			&i.Action,
+			&i.ResourceType,
+			&i.ResourceID,
+			&i.Metadata,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkspaceDatasetObjectKeys = `-- name: ListWorkspaceDatasetObjectKeys :many
 SELECT object_key FROM datasets WHERE workspace_id = $1
 `

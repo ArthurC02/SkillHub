@@ -48,6 +48,8 @@ export * from './GenerateSkill422Response';
 export * from './GenerateSkillRejected';
 export * from './GenerateSkillRequest';
 export * from './GenerateSkillResult';
+export * from './GenerationFailure';
+export * from './GenerationFailures';
 export * from './GetDispatchStatus200Response';
 export * from './GetDispatchStatus200ResponseHaltsInner';
 export * from './GetRunTrace200Response';

@@ -74,6 +74,12 @@ func NewRouter(d Deps) http.Handler {
 	// for the same reason: an entry point nobody enforces must not be drawable.
 	if d.GenerateExposed {
 		mux.HandleFunc("POST /skills/generate", auth.RequireSession(auth.RequireInvited(d.Importer.Generate)))
+		// GEN-003's read half. Same flag and same RequireInvited as the write:
+		// a failure list is a generation surface, and a route that answers 200
+		// with an empty array is still an answer about a feature that must not
+		// be discoverable.
+		mux.HandleFunc("GET /skills/generate/failures",
+			auth.RequireSession(auth.RequireInvited(d.Importer.GenerateFailures)))
 	}
 
 	// DISC-001: public search works without login.

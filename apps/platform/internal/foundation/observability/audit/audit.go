@@ -16,12 +16,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 // DBTX is the smallest database handle sqlc needs. A pgx transaction and a
@@ -47,8 +48,8 @@ const (
 	// source_type = generated in its metadata — "every package this workspace
 	// accepted" stays one history rather than two that have to be merged.
 	ActionSkillGenerateFailed = "skill.generate_failed"
-	ActionSkillDelete        = "skill.delete"
-	ActionSkillTakedown      = "skill.takedown"
+	ActionSkillDelete         = "skill.delete"
+	ActionSkillTakedown       = "skill.takedown"
 	// 02:SEC-011: the platform operator's two licensing-hold actions and the
 	// roster that decides who may perform them. Split into set and clear because
 	// "somebody lifted a hold" is the event a review actually looks for, and a
@@ -83,7 +84,7 @@ const (
 	// when", which is the only question a mis-opened exposure flag raises after
 	// the fact — 01 §11.2's first funnel segment has one chance with twelve
 	// people, and nothing else would say it had been spent.
-	ActionFeatureFlags = "feature_flags.roster"
+	ActionFeatureFlags      = "feature_flags.roster"
 	ActionAccountDeleteAsk  = "account.deletion_requested"
 	ActionAccountDeleteStop = "account.deletion_cancelled"
 	ActionAccountPurge      = "account.purged"
@@ -175,7 +176,7 @@ const (
 	// ResourceOperatorRoster and ResourceBetaRoster have no resource_id: a roster
 	// is the deployment's configuration, not a row anything can point at.
 	ResourceOperatorRoster = "operator_roster"
-	ResourceBetaRoster = "beta_roster"
+	ResourceBetaRoster     = "beta_roster"
 	// ResourceFeatureFlags has no resource_id for the same reason the two rosters
 	// above have none: a deployment's flag set is configuration, not a row.
 	ResourceFeatureFlags = "feature_flags"
@@ -219,4 +220,57 @@ func Log(ctx context.Context, db DBTX, ev Event) error {
 		ResourceID:   ev.ResourceID,
 		Metadata:     meta,
 	})
+}
+
+// Record is one stored row as a caller reads it back.
+//
+// Deliberately narrower than Event: no actor and no resource id, because the one
+// question anything asks of this trail from a product screen is "what happened
+// here and when". A screen that wanted to name the actor would be a different
+// feature with a different authorisation question, and adding the field now
+// would answer that question by accident.
+type Record struct {
+	Action     string
+	OccurredAt time.Time
+	Metadata   map[string]any
+}
+
+// ListForWorkspace answers "what happened in this workspace", newest first.
+//
+// This is the read half 02:GEN-003 asks for by name (「在工作區留下可查的失敗
+// 紀錄」). It lives here rather than in the context that writes the rows because
+// audit_events belongs to this package (db/query-owners.yaml): a caller does a
+// Go function call into foundation, not a cross-context query.
+//
+// An empty actions slice returns nothing rather than everything. A caller that
+// forgot to say what it wanted gets the answer that discloses least.
+func ListForWorkspace(
+	ctx context.Context, db DBTX, workspaceID pgtype.UUID, actions []string, limit int32,
+) ([]Record, error) {
+	if db == nil {
+		return nil, errors.New("audit: database handle is not configured")
+	}
+	if len(actions) == 0 {
+		return nil, nil
+	}
+	rows, err := gen.New(db).ListWorkspaceAuditEvents(ctx, gen.ListWorkspaceAuditEventsParams{
+		WorkspaceID: workspaceID,
+		Limit:       limit,
+		Actions:     actions,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Record, 0, len(rows))
+	for _, r := range rows {
+		rec := Record{Action: r.Action, OccurredAt: r.CreatedAt.Time}
+		// A row whose metadata will not decode is still a row that happened, and
+		// the timestamp is the part the screen needs most. Dropping the whole
+		// record would turn a display defect into a missing history.
+		if len(r.Metadata) > 0 {
+			_ = json.Unmarshal(r.Metadata, &rec.Metadata)
+		}
+		out = append(out, rec)
+	}
+	return out, nil
 }

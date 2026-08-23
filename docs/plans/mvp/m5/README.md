@@ -3,7 +3,7 @@
 - 狀態：**全面開工**（2026-08-23）——投入上限已由**授權**解除（[ADR-054](../../../adr/ADR-054-the-cap-was-lifted-by-authorisation-not-by-evidence.md)，**不是由 `ask-5` 的證據解除；那個假設的證據量仍然是零**）——三個啟動條件**全部暫時放行**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)），**剩下一條邊界**：生成入口**不得對封測使用者曝光**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)，綁漏斗讀數，與本次授權無關）。見下方§啟動條件與§投入上限
 - 決策：[ADR-046](../../../adr/ADR-046-generating-a-skill-from-a-task-description.md)
 - 規格：[`02` §4.9](../../02-specifications-and-acceptance-criteria.md)（`GEN-001`～`004`）
-- 工作項：[`03` §19](../../03-work-items.md)（`GEN-001`～`011`）——**2026-08-23：11 項中 8 項已勾，3 項 ◐**——`GEN-009` ③④（要 Sandbox ＋評估管線＋人）、`GEN-008`（缺「生成前的預估成本」，缺的是一個沒人核定過的數字，`04` 丙-53）、`GEN-003`（失敗紀錄寫下去了但**沒有讀取面**，`04` 丙-55）
+- 工作項：[`03` §19](../../03-work-items.md)（`GEN-001`～`011`）——**2026-08-24：11 項中 9 項已勾，2 項 ◐**——`GEN-009` ③④（要 Sandbox ＋評估管線＋人）、`GEN-008`（缺「生成前的預估成本」；`04` 丙-53 已補上一條不需簽名的路——用已強制的三個界算上限——所以它是還沒做，不是被擋著）。`GEN-003` 於 2026-08-24 隨失敗紀錄讀取面（`GET /skills/generate/failures`，`04` 丙-55 結案）重新勾選
 
 ## 已經做完的是什麼（2026-08-23）
 

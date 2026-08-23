@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
-import { useGenerateSkill } from "../api/generate";
+import { useGenerateFailures, useGenerateSkill } from "../api/generate";
 import { isCategorizedFindings } from "../api/import";
-import type { GenerateRejected } from "../api/types";
+import type { GenerateRejected, GenerationFailure } from "../api/types";
 import { Findings } from "./Findings";
 import { GeneratedNotice } from "./GeneratedNotice";
 
@@ -31,6 +31,11 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
     mutation.mutate(task, {
       onSuccess: async () => {
         await queryClient.invalidateQueries({ queryKey: ["skills"] });
+      },
+      onSettled: async () => {
+        // Both ways: a failure adds a row, and a success does not — but the
+        // list is stale either way once a generation has been attempted.
+        await queryClient.invalidateQueries({ queryKey: ["generate", "failures"] });
       },
       onError: (error) => {
         // The categorised 422 is the package's own findings, verbatim, exactly
@@ -80,8 +85,90 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
       {rejected && <GenerateFailed rejected={rejected} onRetry={submit} />}
 
       {mutation.data && <GenerateSucceeded result={mutation.data} />}
+
+      <GenerateHistory />
     </section>
   );
+}
+
+/**
+ * GEN-003's read half: 「在工作區留下可查的失敗紀錄」.
+ *
+ * A separate clause from the verbatim findings shown above, which cover the
+ * generation the user is looking at right now. This one has to outlive the
+ * request — a failure the user walked away from is exactly the one they come
+ * back to ask about.
+ *
+ * Absent when there is nothing to show, and that is not a §2.9 violation: an
+ * empty history is a whole section with no rows, not a value position rendered
+ * blank. A failed read IS a value position, and says so.
+ */
+function GenerateHistory() {
+  const history = useGenerateFailures();
+
+  if (history.isError) {
+    return (
+      <p className="note" role="status">
+        過去的生成紀錄讀取失敗。這不影響你現在能不能生成。
+      </p>
+    );
+  }
+  const failures = history.data?.failures ?? [];
+  if (failures.length === 0) return null;
+
+  return (
+    <details>
+      <summary>過去沒有成功的生成（{failures.length}）</summary>
+      <ul>
+        {failures.map((f) => (
+          <li key={f.occurred_at}>
+            <time dateTime={f.occurred_at}>
+              {new Date(f.occurred_at).toLocaleString("zh-TW")}
+            </time>
+            {" — "}
+            {failureSentence(f)}
+          </li>
+        ))}
+      </ul>
+      <p className="note">
+        這些是沒有建立任何版本的那幾次。
+        <strong>這裡沒有記下你當時輸入的任務描述</strong>
+        ——那份文字跟著它產生的 Skill 走，刪掉 Skill 就跟著刪掉；這份紀錄保存得更久，
+        兩邊各留一份等於一個沒有人做過的保存承諾。
+      </p>
+    </details>
+  );
+}
+
+/**
+ * One row's sentence.
+ *
+ * Two of the five failures are things the user can act on — a truncated answer
+ * means make the task smaller, a collision means rename the other skill — and
+ * they are the two that get a next step. The other three say what happened and
+ * stop, because 「再試一次」 is the only answer and it is already a button.
+ */
+function failureSentence(f: GenerationFailure): string {
+  if (f.truncated) return "模型的輸出超過一次生成的上限，已經停下。把任務拆小一點再試會有幫助。";
+  if (f.collision) return "工作區已經有一個同名的 Skill，而它不是生成的。改掉那一個的名字或刪掉它再試。";
+  switch (f.failure) {
+    case "quota":
+      return "額度不足，沒有呼叫模型，也沒有花錢。";
+    case "gateway":
+      return "模型服務沒有回應。沒有建立任何版本。";
+    case "unpackageable":
+      return "模型交出來的東西沒辦法打包成一個套件。";
+    case "rejected":
+      return "驗證之後被拒絕，沒有建立任何版本。";
+    case "blocked":
+      return f.codes?.length
+        ? `套件沒有通過驗證（${f.codes.join("、")}），試了 ${f.attempts} 次。`
+        : `套件沒有通過驗證，試了 ${f.attempts} 次。`;
+    default:
+      // The row exists and its timestamp is real; only its detail is missing.
+      // Saying so beats dropping the row, which would silently shorten history.
+      return "這一次沒有成功，而這列紀錄的細節讀不出來。";
+  }
 }
 
 /**

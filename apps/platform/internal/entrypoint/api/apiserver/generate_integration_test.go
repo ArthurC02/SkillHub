@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -521,5 +522,109 @@ func TestTheExposureFlagLeavesATraceEitherWay(t *testing.T) {
 				t.Errorf("enabled = %s, want %s", enabled, tc.want)
 			}
 		})
+	}
+}
+
+// GEN-003's last clause: 「在工作區留下可查的失敗紀錄」.
+//
+// The write half has existed since the first pass, and for a while that was
+// counted as the criterion being met. It was not: a row only the person holding
+// a database connection can see is not a record left in the workspace, and the
+// failure has no symptom — the write succeeds, the tests of the write pass, and
+// the user sees nothing at all.
+func TestARefusedGenerationIsReadableAfterwards(t *testing.T) {
+	pool := requireDB(t)
+	// An invalid name is a structural finding, so it blocks AND is retried once
+	// (ADR-047 決策 1 / ADR-048) — hence two queued answers, and hence attempts=2
+	// below, which is the number the failure screen's retry sentence depends on.
+	bad := generatedSkill("Not A Valid Name!", "步驟一：把每一份掃描件轉成表格。")
+	stub := newGenerateStub(t, bad, bad)
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	c := a.login(t, "gen-history")
+
+	if code, _ := postJSON(t, c, "/skills/generate", `{"task_description":"把掃描的單據整理成一張表"}`); code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected the empty body to be blocked, got %d", code)
+	}
+
+	var out struct {
+		Failures []struct {
+			OccurredAt string   `json:"occurred_at"`
+			Failure    string   `json:"failure"`
+			Codes      []string `json:"codes"`
+			Attempts   int      `json:"attempts"`
+		} `json:"failures"`
+	}
+	if code := getJSON(t, c.Client, c.base+"/skills/generate/failures", &out); code != http.StatusOK {
+		t.Fatalf("GET failures: %d", code)
+	}
+	if len(out.Failures) != 1 {
+		t.Fatalf("got %d failure rows, want 1: %+v", len(out.Failures), out.Failures)
+	}
+	f := out.Failures[0]
+	if f.Failure != "blocked" {
+		t.Errorf("failure = %q, want blocked", f.Failure)
+	}
+	if len(f.Codes) == 0 {
+		t.Error("a blocked failure with no codes tells the user nothing they can act on")
+	}
+	if f.Attempts != 2 {
+		t.Errorf("attempts = %d, want 2 — a blocked report is retried once", f.Attempts)
+	}
+	if f.OccurredAt == "" {
+		t.Error("no timestamp: 「可查」 means the user can tell which attempt this was")
+	}
+}
+
+// The task description is deliberately not in the audit row (it belongs to the
+// skill_sources row, under NFR-002 deletion, while audit rows are kept 400 days
+// under a different rule). The read path must not be the place that puts it
+// back — nothing would report it, and the retention promise would be broken by
+// a screen rather than by a schema.
+func TestTheFailureHistoryDoesNotEchoTheTaskDescription(t *testing.T) {
+	pool := requireDB(t)
+	bad := generatedSkill("Not A Valid Name!", "步驟一：把每一份掃描件轉成表格。")
+	stub := newGenerateStub(t, bad, bad)
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+	c := a.login(t, "gen-history-quiet")
+
+	const secretish = "把客戶名單裡的每一列都整理好"
+	postJSON(t, c, "/skills/generate", `{"task_description":"`+secretish+`"}`)
+
+	resp, err := c.Get(c.base + "/skills/generate/failures")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(body), secretish) {
+		t.Errorf("the failure history echoed the task description back: %s", body)
+	}
+}
+
+// Iron rule 3. The rows are workspace-scoped in SQL and not actor-scoped, and
+// this is the assertion that would notice if that ever slipped back — in a
+// population where every workspace has exactly one member, the two queries
+// return the same thing and only a second workspace tells them apart.
+func TestOneWorkspaceCannotReadAnothersFailures(t *testing.T) {
+	pool := requireDB(t)
+	bad := generatedSkill("Not A Valid Name!", "步驟一：把每一份掃描件轉成表格。")
+	stub := newGenerateStub(t, bad, bad)
+	a := newAPIExposingGenerate(t, pool, stub.URL)
+
+	mine := a.login(t, "gen-history-mine")
+	postJSON(t, mine, "/skills/generate", `{"task_description":"把掃描的單據整理成一張表"}`)
+
+	theirs := a.login(t, "gen-history-theirs")
+	var out struct {
+		Failures []map[string]any `json:"failures"`
+	}
+	if code := getJSON(t, theirs.Client, theirs.base+"/skills/generate/failures", &out); code != http.StatusOK {
+		t.Fatalf("GET failures: %d", code)
+	}
+	if len(out.Failures) != 0 {
+		t.Errorf("a second workspace read %d of someone else's failures", len(out.Failures))
 	}
 }
