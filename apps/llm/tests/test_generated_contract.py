@@ -34,6 +34,12 @@ def test_generated_enrich_request_validates_the_internal_contract() -> None:
         "JudgeRunResponse",
         "SuggestImprovementsRequest",
         "SuggestImprovementsResponse",
+        # M5. Absent until 2026-08-23, which is how a `metadata` property that
+        # the contract carried and the runtime DTO could not express under
+        # strict `json_schema` went unnoticed: this guard covers every other
+        # endpoint, and the new one was the one it did not.
+        "GenerateSkillRequest",
+        "GenerateSkillResponse",
     ],
 )
 def test_runtime_transport_shape_matches_generated_contract(name: str) -> None:

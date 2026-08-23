@@ -15,9 +15,13 @@ report-generate-baseline.md), every blocking failure was the model damaging a
 frontmatter *key*: a leading space before `description`, an Arabic letter glued
 to it, `说明: invalid` in its place. Six of twenty task descriptions failed that
 way at least once. A key the model never writes cannot be damaged, so Go
-serialises the YAML and `frontmatter-invalid-yaml`, `frontmatter-unknown-field`
-and `description-missing` stop being possible rather than merely unlikely -
-four of the six observed failures.
+serialises the YAML and `frontmatter-invalid-yaml` and `frontmatter-unknown-field`
+stop being possible rather than merely unlikely - four of the six observed
+failures. `description-missing` is not in that list: it was, back when this
+module put `min_length=1` on the field, and strict `json_schema` does not accept
+that keyword. It is `skillpkg.Validate`'s to catch, which is where 02:GEN-003
+wants it anyway - a blocking finding reaches the user verbatim, a 502 from here
+reaches them as "generation failed".
 
 `license` is absent from GeneratedSkill and `extra="forbid"` keeps it that way.
 ADR-046 決策 5: a model-written licence string must not occupy the "已宣告"
@@ -34,7 +38,7 @@ from fastapi import APIRouter, HTTPException
 from openai import OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from skillhub_llm.evaluate import GatewayUsage, _client, _metadata, _usage
+from skillhub_llm.evaluate import GatewayUsage, _client, _clip, _metadata, _usage
 
 logger = logging.getLogger("skillhub_llm.generate")
 
@@ -54,9 +58,16 @@ GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v1"
 # then succeeded at 16000 having used 7552 in total.
 MAX_OUTPUT_TOKENS = 16000
 
+# Contract caps (llm-internal.yaml). They cannot be expressed in the schema the
+# model is given - strict `json_schema` rejects `maxLength` and `maxItems` - so
+# they are applied to the answer instead, the way evaluate.py already does it.
 MAX_EXTRA_FILES = 10
 MAX_FILE_BYTES = 100_000
 MAX_BODY_CHARS = 60_000
+MAX_NAME_CHARS = 64
+MAX_DESCRIPTION_CHARS = 1024
+MAX_COMPATIBILITY_CHARS = 500
+MAX_PATH_CHARS = 255
 
 
 class GeneratedFile(BaseModel):
@@ -69,39 +80,46 @@ class GeneratedFile(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    path: str = Field(..., min_length=1, max_length=255)
-    content: str = Field(..., max_length=MAX_FILE_BYTES)
+    path: str
+    content: str
 
 
 class GeneratedSkill(BaseModel):
     """The frontmatter as fields plus the body. Also the schema handed to the
     model, so the wire shape and the shape the prompt asks for cannot drift
     apart (same rule as SuggestCriteriaResponse).
+
+    **No `Field(...)` constraints and no defaults, and that is load-bearing.**
+    Strict `json_schema` rejects `maxLength`/`minLength`/`pattern`/`maxItems`
+    and requires every property to appear in `required` - a default takes a
+    property out of `required`, which is why the four sibling schemas have
+    none either. This class had four defaults, a `dict[str, str]` (whose
+    `additionalProperties: {"type": "string"}` strict also refuses) and six
+    length constraints, so the gateway answered 400 to every call this endpoint
+    ever made. Nothing caught it: all seven tests monkeypatch the client, and
+    the measured rounds called the gateway from a spike rather than through
+    here. `tests/test_strict_schemas.py` is now the thing that would.
+
+    The caps live below, applied to the answer. The two rules that were doing
+    real work - a well-formed `name` and a non-empty `description` - are
+    `skillpkg.Validate`'s already, and it hands the user the verbatim finding
+    (02:GEN-003) where a 502 from here would say only that generation failed.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    # The Agent Skills name rule, enforced before a zip exists rather than
-    # discovered by skillpkg.Validate afterwards.
-    name: str = Field(..., max_length=64, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$")
-    # min_length=1 is what makes `description-missing` unreachable.
-    description: str = Field(..., min_length=1, max_length=1024)
-    compatibility: str = Field(default="", max_length=500)
-    metadata: dict[str, str] = Field(default_factory=dict)
+    name: str
+    description: str
+    compatibility: str
     # A single string, not a list: the specification defines it that way and the
     # validator warns on a YAML list.
-    allowed_tools: str = ""
-    # Empty is refused. The B round produced a 38-character SKILL.md with no
-    # body at all, blocked only because its key was damaged too; had the key
-    # been right, a syntactically perfect package with nothing in it would have
-    # passed every check.
-    body: str = Field(..., min_length=1, max_length=MAX_BODY_CHARS)
-    files: list[GeneratedFile] = Field(default_factory=list, max_length=MAX_EXTRA_FILES)
+    allowed_tools: str
+    body: str
+    files: list[GeneratedFile]
 
 
 class GenerateSkillRequest(BaseModel):
     task_description: str = Field(..., min_length=8, max_length=4000)
-    prompt_version_hint: str = ""
 
     @field_validator("task_description")
     @classmethod
@@ -206,6 +224,26 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
         raise HTTPException(
             status_code=502, detail="generate model returned malformed output"
         ) from e
+
+    # An empty body is refused rather than clipped, and it is the one answer-side
+    # rule that is not a cap: the B round produced a 38-character SKILL.md with
+    # no body at all, blocked only because its key was damaged too. Had the key
+    # been right, a syntactically perfect package with nothing in it would have
+    # passed every check skillpkg has.
+    if not skill.body.strip():
+        logger.warning("generate-skill: model returned an empty body")
+        raise HTTPException(
+            status_code=502, detail="generate model returned malformed output"
+        )
+
+    skill.name = _clip(skill.name, MAX_NAME_CHARS)
+    skill.description = _clip(skill.description, MAX_DESCRIPTION_CHARS)
+    skill.compatibility = _clip(skill.compatibility, MAX_COMPATIBILITY_CHARS)
+    skill.body = _clip(skill.body, MAX_BODY_CHARS)
+    skill.files = skill.files[:MAX_EXTRA_FILES]
+    for f in skill.files:
+        f.path = _clip(f.path, MAX_PATH_CHARS)
+        f.content = _clip(f.content, MAX_FILE_BYTES)
 
     return GenerateSkillResponse(
         skill=skill,

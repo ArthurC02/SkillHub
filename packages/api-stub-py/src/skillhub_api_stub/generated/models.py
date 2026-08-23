@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import (
     AwareDatetime,
@@ -410,21 +410,19 @@ class GenerateSkillRequest(BaseModel):
         ...,
         description='What the user wants done, in their own words. Not a Skill name and\nnot a query - the whole point of GEN-001 is that the user does not\nhave to know what a Skill is (01 §2.1 學習者).\n\nGo refuses blank and unintelligible input before this call, so the\nlength floor here is a backstop and not the product rule\n(02:GEN-001, same discipline as DISC-001).\n',
     )
-    prompt_version_hint: Optional[str] = Field(
-        None,
-        description="Optional pin for reproducing an earlier generation. Absent means the\nservice's current version, which is what it reports back.\n",
-    )
 
 
 class GeneratedFile(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    path: constr(pattern=r'^[A-Za-z0-9._][A-Za-z0-9._/-]*$', max_length=255) = Field(
+    path: str = Field(
         ...,
-        description='Relative and not starting with a separator. **`..` is deliberately\nNOT in this pattern**: expressing it needs a negative lookahead, and\nlookahead is not portable across the generators that consume this\nfile. It is enforced where it already blocks - `entry-path-escape` is\na SeverityError read off the raw zip entry names before `fs.Sub`\nrewrites them (04 丙-15). This pattern is a first line, not the line.\n',
+        description="Relative and not starting with a separator, clipped to 255\ncharacters. **The shape is not constrained here**, for the same\nreason GeneratedSkill's properties are not: this schema is handed to\nthe model under strict `json_schema`, which refuses `pattern` and\n`maxLength` with a 400 rather than ignoring them. It is enforced\nwhere it already blocked anyway - `entry-path-escape` is a\nSeverityError read off the raw zip entry names before `fs.Sub`\nrewrites them (04 丙-15), and Go refuses an entry that resolves to\nSKILL.md or to the archive root before the zip is built.\n",
     )
-    content: constr(max_length=100000)
+    content: str = Field(
+        ..., description='Clipped to 100000 characters on the way out.'
+    )
 
 
 class SuggestImprovementsRequest(BaseModel):
@@ -489,32 +487,28 @@ class GeneratedSkill(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    name: constr(pattern=r'^[a-z0-9]+(-[a-z0-9]+)*$', max_length=64) = Field(
+    name: str = Field(
         ...,
-        description='The Agent Skills name rule, enforced here rather than discovered by\n`skillpkg.Validate` after a zip has been built (name-invalid,\nname-too-long). Limit is counted in runes by the validator; this\npattern is ASCII-only so the two agree.\n',
+        description='The Agent Skills name. Clipped to 64 characters on the way out; the\n`^[a-z0-9]+(-[a-z0-9]+)*$` rule is `skillpkg.Validate`\'s\n(name-invalid, name-too-long) and stays there, because a blocking\nfinding reaches the user verbatim (02:GEN-003) where a refusal here\nwould reach them as "generation failed".\n',
     )
-    description: constr(min_length=1, max_length=1024) = Field(
+    description: str = Field(
         ...,
-        description='What the skill does and when to use it. `minLength: 1` is what makes\n`description-missing` unreachable - it was 2 of 6 observed failures.\n',
+        description='What the skill does and when to use it. Clipped to 1024 characters.\nEmpty is `description-missing`, a blocking finding - it used to be\nunreachable via `minLength: 1`, which strict `json_schema` refuses.\n',
     )
-    compatibility: Optional[constr(max_length=500)] = Field(
-        None,
-        description="Environment requirements, the specification's 1-500 characters.",
+    compatibility: str = Field(
+        ...,
+        description="Environment requirements, the specification's 1-500 characters.\nClipped to 500. Empty string when the model has nothing to say;\nGo omits the key rather than writing an empty one.\n",
     )
-    metadata: Optional[Dict[str, str]] = Field(
-        None,
-        description='String to string. The specification defines nothing else, and the\nvalidator warns on anything that is not (spec-metadata-not-string-map).\n',
-    )
-    allowed_tools: Optional[str] = Field(
-        None,
+    allowed_tools: str = Field(
+        ...,
         description='A single string, not a list - the specification defines it that way\nand the validator warns when a package uses a YAML list. Serialised\nas `allowed-tools`.\n',
     )
     body: constr(min_length=1) = Field(
         ...,
-        description='The instructions the agent follows, in Markdown, without the\nfrontmatter. Empty is refused: the B round produced a 38-character\nSKILL.md whose whole body was missing, and it was blocked only\nbecause its key was also damaged. Had the key been right, a\nsyntactically perfect package with no content would have passed\nevery check.\n',
+        description='The instructions the agent follows, in Markdown, without the\nfrontmatter. Empty is refused: the B round produced a 38-character\nSKILL.md whose whole body was missing, and it was blocked only\nbecause its key was also damaged. Had the key been right, a\nsyntactically perfect package with no content would have passed\nevery check.\n\n**The one answer-side rule that is not a cap.** An empty body is a\n502, not a clip, which is what keeps this floor true even though the\nschema the model is given cannot carry it.\n',
     )
-    files: Optional[List[GeneratedFile]] = Field(
-        None,
+    files: List[GeneratedFile] = Field(
+        ...,
         description="Additional package files. Optional and often absent - the mini tier\nproduced none in twenty attempts. Scripts here get the same\ntreatment as an imported package's: static scan, SKILL-003\ndisclosure, sandbox-only execution. No leniency for being\nplatform-generated (ADR-046 決策 6).\n",
         max_length=10,
     )

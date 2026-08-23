@@ -34,8 +34,11 @@ type Client struct {
 // deadline is not a safety net, it is a bill for work that gets thrown away.
 //
 // Every caller carries a deadline today (enrich 75s, embed 20s, catalog embed
-// 10s / match reasons 8s, testlab suggest); a future one that forgets will hang
-// on its own ctx, which is the failure the caller can see and fix.
+// 10s / match reasons 8s, testlab suggest, generate 130s); a future one that
+// forgets will hang on its own ctx, which is the failure the caller can see and
+// fix. Generate is on that list because it was the one that forgot: this comment
+// was the record of who had a deadline, and a record with a hole in it reads
+// exactly like a record with none.
 func (c *Client) httpClient() *http.Client {
 	if c.HTTPClient != nil {
 		return c.HTTPClient
@@ -451,14 +454,19 @@ type GeneratedFile struct {
 // schema handed to the model has no such property either, so a licence string
 // cannot arrive to be dropped (ADR-046 決策 5). The value the platform stores is
 // "unknown" until a person declares one.
+//
+// There is no Metadata field either, for a duller reason: an open-ended string
+// map is `additionalProperties: {"type": "string"}`, which a strict
+// `json_schema` cannot express, and no prompt ever asked the model to fill it.
+// It was a spec field carried because the specification has one, producing an
+// empty map on every generation.
 type GeneratedSkill struct {
-	Name          string            `json:"name"`
-	Description   string            `json:"description"`
-	Compatibility string            `json:"compatibility,omitempty"`
-	Metadata      map[string]string `json:"metadata,omitempty"`
-	AllowedTools  string            `json:"allowed_tools,omitempty"`
-	Body          string            `json:"body"`
-	Files         []GeneratedFile   `json:"files,omitempty"`
+	Name          string          `json:"name"`
+	Description   string          `json:"description"`
+	Compatibility string          `json:"compatibility,omitempty"`
+	AllowedTools  string          `json:"allowed_tools,omitempty"`
+	Body          string          `json:"body"`
+	Files         []GeneratedFile `json:"files,omitempty"`
 }
 
 // GenerateSkillResponse separates model output (`Skill`) from what the service

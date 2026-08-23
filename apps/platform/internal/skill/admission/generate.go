@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"maps"
 	"path"
 	"slices"
 	"strings"
@@ -295,12 +294,12 @@ func blockingCodes(r skillpkg.Report) []string {
 // Field order here is the file's field order, which is why it is a struct and
 // not a map. `license` is absent and cannot be added by anything the model
 // returns: llmclient.GeneratedSkill has no such field either (ADR-046 決策 5).
+// `metadata` is absent for a duller reason — see llmclient.GeneratedSkill.
 type generatedFrontmatter struct {
-	Name          string     `yaml:"name"`
-	Description   string     `yaml:"description"`
-	Compatibility string     `yaml:"compatibility,omitempty"`
-	Metadata      *yaml.Node `yaml:"metadata,omitempty"`
-	AllowedTools  string     `yaml:"allowed-tools,omitempty"`
+	Name          string `yaml:"name"`
+	Description   string `yaml:"description"`
+	Compatibility string `yaml:"compatibility,omitempty"`
+	AllowedTools  string `yaml:"allowed-tools,omitempty"`
 }
 
 // buildGeneratedPackage turns the model's answer into a package archive.
@@ -321,7 +320,6 @@ func buildGeneratedPackage(g llmclient.GeneratedSkill) ([]byte, error) {
 		Name:          g.Name,
 		Description:   g.Description,
 		Compatibility: g.Compatibility,
-		Metadata:      metadataNode(g.Metadata),
 		AllowedTools:  g.AllowedTools,
 	})
 	if err != nil {
@@ -386,22 +384,6 @@ func buildGeneratedPackage(g llmclient.GeneratedSkill) ([]byte, error) {
 		return nil, fmt.Errorf("%w: %v", ErrGeneratedPackageInvalid, err)
 	}
 	return buf.Bytes(), nil
-}
-
-// metadataNode renders the metadata map with its keys sorted, so the same answer
-// always hashes to the same package. Go map order is randomised, and
-// content_hash is what INGEST-005 dedupes on.
-func metadataNode(m map[string]string) *yaml.Node {
-	if len(m) == 0 {
-		return nil
-	}
-	n := &yaml.Node{Kind: yaml.MappingNode}
-	for _, k := range slices.Sorted(maps.Keys(m)) {
-		n.Content = append(n.Content,
-			&yaml.Node{Kind: yaml.ScalarNode, Value: k},
-			&yaml.Node{Kind: yaml.ScalarNode, Value: m[k]})
-	}
-	return n
 }
 
 // auditGenerateFailure leaves the workspace something to look at after a

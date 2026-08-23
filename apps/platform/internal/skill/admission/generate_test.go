@@ -23,7 +23,6 @@ func goodGeneratedSkill() llmclient.GeneratedSkill {
 		Name:          "scanned-invoice-table",
 		Description:   "從掃描的單據影像抽出表格內容並合併成一份檔案。當使用者手上是掃描件時使用。",
 		Compatibility: "需要能讀取影像或 PDF 的工具。",
-		Metadata:      map[string]string{"category": "documents", "audience": "finance"},
 		AllowedTools:  "Read Write",
 		Body:          "# 掃描單據轉表格\n\n1. 確認每份檔案是影像還是 PDF。\n2. 逐份抽出表格。\n",
 	}
@@ -75,8 +74,14 @@ func TestGeneratedFrontmatterHasNoLicence(t *testing.T) {
 	}
 }
 
-// Go map order is randomised, and content_hash is what INGEST-005 dedupes on.
-// Without the sort this passes ~1 run in 2 and nothing ever reports why.
+// content_hash is what INGEST-005 dedupes on, so the same answer has to produce
+// the same archive every time.
+//
+// It used to guard a sort: the frontmatter carried a `metadata` map, Go map
+// order is randomised, and without sorting the keys this passed about one run in
+// two with nothing ever reporting why. The map is gone (a strict `json_schema`
+// cannot express an open-ended one, and no prompt ever asked the model to fill
+// it), so what is left to protect is the zip: entry order and headers.
 func TestTheSameAnswerAlwaysProducesTheSameBytes(t *testing.T) {
 	first, err := buildGeneratedPackage(goodGeneratedSkill())
 	if err != nil {

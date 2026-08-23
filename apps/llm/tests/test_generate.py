@@ -27,7 +27,6 @@ GOOD_SKILL = {
         "當使用者手上是掃描件、需要把每份裡的表格彙整成一份時使用。"
     ),
     "compatibility": "需要能讀取影像或 PDF 的工具。",
-    "metadata": {"category": "documents"},
     "allowed_tools": "Read Write",
     "body": (
         "# 掃描單據轉表格\n\n1. 確認每份檔案是影像還是可選取文字的 PDF。\n"
@@ -116,23 +115,6 @@ def test_a_licence_field_in_the_model_output_is_refused(capture):
     assert "malformed" in r.json()["detail"]
 
 
-def test_truncation_is_a_different_failure_from_malformed_output(capture):
-    """ADR-047 決策 2: truncation must not be retried at the same cap, because
-    the cap covers reasoning plus output and a second call buys the same
-    answer. Go can only act on that if the two are distinguishable here.
-
-    The round-A failure this guards against emitted an EMPTY string after
-    spending all 8000 tokens reasoning - so a truncated call looks exactly like
-    a malformed one unless finish_reason is checked first.
-    """
-    capture("", finish_reason="length")
-    r = client.post("/v1/generate-skill", json={"task_description": TASK})
-    assert r.status_code == 502
-    detail = r.json()["detail"]
-    assert "truncated" in detail
-    assert "malformed" not in detail
-
-
 def test_gateway_failure_is_502(monkeypatch):
     monkeypatch.setattr(
         generate,
@@ -165,15 +147,23 @@ def test_whitespace_only_never_reaches_the_gateway(capture):
 
 
 def test_the_truncation_sentence_is_the_one_go_matches_on(capture):
-    """The Go side classifies truncation by this exact sentence.
+    """Truncation is a different failure from malformed output, and the Go side
+    tells them apart by this exact sentence.
 
-    It used to match the bare word "truncated", which the other 502 — the
-    gateway exception, quoted verbatim — could contain by accident, and then the
-    user was told to shorten a task that was never too long. Changing the wording
-    here without changing llmclient.truncationMarker puts every truncation into
-    the "malformed" branch, where it gets retried at the same ceiling and buys
-    the same answer (ADR-047 決策 2). Nothing else would report that.
+    ADR-047 決策 2: truncation must not be retried at the same cap, because the
+    cap covers reasoning plus output and a second call buys the same answer. The
+    round-A failure emitted an EMPTY string after spending all 8000 tokens
+    reasoning, so a truncated call looks exactly like a malformed one unless
+    finish_reason is checked first.
+
+    The sentence used to be matched on the bare word "truncated", which the
+    other 502 — the gateway exception, quoted verbatim — could contain by
+    accident, and then the user was told to shorten a task that was never too
+    long. Changing the wording here without changing llmclient.truncationMarker
+    puts every truncation into the "malformed" branch. Nothing else would
+    report that.
     """
     capture("", finish_reason="length")
     r = client.post("/v1/generate-skill", json={"task_description": TASK})
+    assert r.status_code == 502
     assert r.json()["detail"] == "generate model output was truncated at the token ceiling"
