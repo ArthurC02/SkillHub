@@ -180,3 +180,34 @@ func containsCode(r skillpkg.Report, code string) bool {
 	}
 	return false
 }
+
+// The zip reader runs path.Clean over entry names, so these three resolve to
+// SKILL.md while looking nothing like it. Missing one does not produce a
+// collision anybody is told about: it produces `skill-md-missing` on a package
+// that visibly contains SKILL.md, and then a second paid attempt at the same
+// thing.
+func TestTheSecondSkillMDIsCaughtUnderItsRealName(t *testing.T) {
+	for _, p := range []string{"SKILL.md/", ".//SKILL.md", "././SKILL.md", "skill.MD", `.\SKILL.md`} {
+		g := goodGeneratedSkill()
+		g.Files = []llmclient.GeneratedFile{{Path: p, Content: "---\nname: other\n---\n"}}
+		if _, err := buildGeneratedPackage(g); !errors.Is(err, ErrGeneratedPackageInvalid) {
+			t.Errorf("path %q: err = %v, want ErrGeneratedPackageInvalid", p, err)
+		}
+	}
+}
+
+// An entry naming the archive root is not an escape, so ArchiveEntryFinding
+// passes it — and then it sits inside content_hash and inside the stored archive
+// while every disclosure surface skips it: scanTree never opens it, so
+// `possible-secret` and the script disclosure never see it, and delivery's
+// exporter neither ships it nor lists it as dropped. Model-authored bytes that
+// no warning covers is what 02:GEN-003 forbids.
+func TestAnEntryThatNamesNoFileIsRefused(t *testing.T) {
+	for _, p := range []string{".", "./", "/", "././"} {
+		g := goodGeneratedSkill()
+		g.Files = []llmclient.GeneratedFile{{Path: p, Content: "AKIA0123456789ABCDEF\n"}}
+		if _, err := buildGeneratedPackage(g); !errors.Is(err, ErrGeneratedPackageInvalid) {
+			t.Errorf("path %q: err = %v, want ErrGeneratedPackageInvalid", p, err)
+		}
+	}
+}

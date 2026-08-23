@@ -69,6 +69,12 @@ func TestTruncationComesBackAsItsOwnError(t *testing.T) {
 	}{
 		{"truncated", "generate model output was truncated at the token ceiling", true},
 		{"malformed", "generate model returned malformed output", false},
+		// The false positive the bare word "truncated" used to produce. This is
+		// the shape apps/llm's OTHER 502 has — the gateway exception verbatim —
+		// and the user was told to shorten a task that was never too long.
+		{"gateway error quoting the word", "generate gateway error: provider said the input was truncated upstream", false},
+		// And the same word arriving from the user's own text, echoed back.
+		{"user text quoting the word", "generate gateway error: 400 on prompt \"my logs are truncated\"", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

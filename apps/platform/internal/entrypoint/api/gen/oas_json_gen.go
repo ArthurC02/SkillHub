@@ -10602,6 +10602,183 @@ func (s *GenerateSkillForbidden) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
+func (s *GenerateSkillRejected) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *GenerateSkillRejected) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("errors")
+		e.ArrStart()
+		for _, elem := range s.Errors {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+	{
+		e.FieldStart("warnings")
+		e.ArrStart()
+		for _, elem := range s.Warnings {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+	{
+		e.FieldStart("infos")
+		e.ArrStart()
+		for _, elem := range s.Infos {
+			elem.Encode(e)
+		}
+		e.ArrEnd()
+	}
+	{
+		e.FieldStart("attempts")
+		e.Int(s.Attempts)
+	}
+}
+
+var jsonFieldsNameOfGenerateSkillRejected = [4]string{
+	0: "errors",
+	1: "warnings",
+	2: "infos",
+	3: "attempts",
+}
+
+// Decode decodes GenerateSkillRejected from json.
+func (s *GenerateSkillRejected) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GenerateSkillRejected to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "errors":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				s.Errors = make([]Finding, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem Finding
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Errors = append(s.Errors, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"errors\"")
+			}
+		case "warnings":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				s.Warnings = make([]Finding, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem Finding
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Warnings = append(s.Warnings, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"warnings\"")
+			}
+		case "infos":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				s.Infos = make([]Finding, 0)
+				if err := d.Arr(func(d *jx.Decoder) error {
+					var elem Finding
+					if err := elem.Decode(d); err != nil {
+						return err
+					}
+					s.Infos = append(s.Infos, elem)
+					return nil
+				}); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"infos\"")
+			}
+		case "attempts":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Int()
+				s.Attempts = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"attempts\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode GenerateSkillRejected")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00001111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfGenerateSkillRejected) {
+					name = jsonFieldsNameOfGenerateSkillRejected[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GenerateSkillRejected) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GenerateSkillRejected) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
 func (s *GenerateSkillReq) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
@@ -10969,8 +11146,8 @@ func (s *GenerateSkillUnauthorized) UnmarshalJSON(data []byte) error {
 // Encode encodes GenerateSkillUnprocessableEntity as json.
 func (s GenerateSkillUnprocessableEntity) Encode(e *jx.Encoder) {
 	switch s.Type {
-	case CategorizedFindingsGenerateSkillUnprocessableEntity:
-		s.CategorizedFindings.Encode(e)
+	case GenerateSkillRejectedGenerateSkillUnprocessableEntity:
+		s.GenerateSkillRejected.Encode(e)
 	case ErrorGenerateSkillUnprocessableEntity:
 		s.Error.Encode(e)
 	}
@@ -10978,8 +11155,8 @@ func (s GenerateSkillUnprocessableEntity) Encode(e *jx.Encoder) {
 
 func (s GenerateSkillUnprocessableEntity) encodeFields(e *jx.Encoder) {
 	switch s.Type {
-	case CategorizedFindingsGenerateSkillUnprocessableEntity:
-		s.CategorizedFindings.encodeFields(e)
+	case GenerateSkillRejectedGenerateSkillUnprocessableEntity:
+		s.GenerateSkillRejected.encodeFields(e)
 	case ErrorGenerateSkillUnprocessableEntity:
 		s.Error.encodeFields(e)
 	}
@@ -10999,6 +11176,19 @@ func (s *GenerateSkillUnprocessableEntity) Decode(d *jx.Decoder) error {
 	if err := d.Capture(func(d *jx.Decoder) error {
 		return d.ObjBytes(func(d *jx.Decoder, key []byte) error {
 			switch string(key) {
+			case "attempts":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Number {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := GenerateSkillRejectedGenerateSkillUnprocessableEntity
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
 			case "error":
 				// Type-based discrimination: check if field has expected JSON type
 				if typ := d.Next(); typ != jx.String {
@@ -11018,7 +11208,7 @@ func (s *GenerateSkillUnprocessableEntity) Decode(d *jx.Decoder) error {
 					// Field exists but has wrong type, not a match for this variant
 					return d.Skip()
 				}
-				match := CategorizedFindingsGenerateSkillUnprocessableEntity
+				match := GenerateSkillRejectedGenerateSkillUnprocessableEntity
 				if found && s.Type != match {
 					s.Type = ""
 					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
@@ -11031,7 +11221,7 @@ func (s *GenerateSkillUnprocessableEntity) Decode(d *jx.Decoder) error {
 					// Field exists but has wrong type, not a match for this variant
 					return d.Skip()
 				}
-				match := CategorizedFindingsGenerateSkillUnprocessableEntity
+				match := GenerateSkillRejectedGenerateSkillUnprocessableEntity
 				if found && s.Type != match {
 					s.Type = ""
 					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
@@ -11044,7 +11234,7 @@ func (s *GenerateSkillUnprocessableEntity) Decode(d *jx.Decoder) error {
 					// Field exists but has wrong type, not a match for this variant
 					return d.Skip()
 				}
-				match := CategorizedFindingsGenerateSkillUnprocessableEntity
+				match := GenerateSkillRejectedGenerateSkillUnprocessableEntity
 				if found && s.Type != match {
 					s.Type = ""
 					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
@@ -11061,8 +11251,8 @@ func (s *GenerateSkillUnprocessableEntity) Decode(d *jx.Decoder) error {
 		return errors.New("unable to detect sum type variant")
 	}
 	switch s.Type {
-	case CategorizedFindingsGenerateSkillUnprocessableEntity:
-		if err := s.CategorizedFindings.Decode(d); err != nil {
+	case GenerateSkillRejectedGenerateSkillUnprocessableEntity:
+		if err := s.GenerateSkillRejected.Decode(d); err != nil {
 			return err
 		}
 	case ErrorGenerateSkillUnprocessableEntity:

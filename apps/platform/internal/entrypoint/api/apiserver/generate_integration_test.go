@@ -40,8 +40,12 @@ func newGenerateStub(t *testing.T, answers ...map[string]any) *generateStub {
 	stub := &generateStub{answers: answers}
 	stub.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/v1/generate-skill" {
-			t.Errorf("unexpected call to %s", r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
+			// The same base URL serves index-time enrichment, which an upload in
+			// one of these tests will reach. Refused rather than failed: import
+			// treats an enrichment failure as "document left pending", which is a
+			// path these tests do not care about. The assertion that matters is
+			// the generate-call COUNT below, and it is separate.
+			w.WriteHeader(http.StatusBadGateway)
 			return
 		}
 		i := stub.calls
@@ -395,5 +399,54 @@ func newAPIExposingGenerate(t *testing.T, pool *pgxpool.Pool, llmBaseURL ...stri
 		// and a test that flipped only the route would be asserting a state no
 		// deployment can be in.
 		d.Auth.Features = map[string]bool{"generate_skill": true}
+	})
+}
+
+// `skills.redistribution` is decided when the skills row is created and never
+// revisited, and GEN-007's search exclusion keys on that column. So a manifest
+// name that collides with an existing skill in the same workspace mixes the two
+// kinds of content under one verdict, in both directions and with no symptom
+// either way:
+//
+//   - generated content landing on an uploaded skill keeps `self_supplied`, and
+//     becomes searchable — including to its own creator, which is the one thing
+//     GEN-007 promises;
+//   - an upload landing on a generated skill keeps `generated`, and the user's
+//     own upload can never be found again.
+//
+// The model is asked for a name derived from the task, so `pdf-extract`
+// colliding with an uploaded `pdf-extract` is ordinary, not exotic.
+func TestAGeneratedNameCollisionIsRefusedInBothDirections(t *testing.T) {
+	pool := requireDB(t)
+
+	t.Run("generating onto an uploaded skill", func(t *testing.T) {
+		stub := newGenerateStub(t, generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n"))
+		a := newAPIWithLLM(t, pool, stub.URL)
+		c := a.login(t, "gen-collide-a")
+		importFiles(t, a, pool, c, map[string]string{
+			"SKILL.md": "---\nname: pdf-extract\ndescription: An uploaded one.\n---\n\nDo it.\n",
+		})
+
+		_, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), "抽出 PDF 文字。")
+		if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
+			t.Fatalf("err = %v, want ErrGeneratedNameCollision", err)
+		}
+	})
+
+	t.Run("uploading onto a generated skill", func(t *testing.T) {
+		stub := newGenerateStub(t, generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n"))
+		a := newAPIWithLLM(t, pool, stub.URL)
+		c := a.login(t, "gen-collide-b")
+		if _, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c), "抽出 PDF 文字。"); err != nil {
+			t.Fatalf("GenerateSkill: %v", err)
+		}
+
+		ws := workspaceOf(t, pool, c)
+		_, err := a.versions.UploadZip(context.Background(), ws, zipOf(t, map[string]string{
+			"SKILL.md": "---\nname: pdf-extract\ndescription: An uploaded one.\n---\n\nDo it.\n",
+		}))
+		if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
+			t.Fatalf("err = %v, want ErrGeneratedNameCollision", err)
+		}
 	})
 }

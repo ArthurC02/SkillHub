@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"maps"
+	"path"
 	"slices"
 	"strings"
 	"time"
@@ -60,6 +61,20 @@ var ErrGenerateNotForCatalogue = errors.New("ingest: the catalogue does not gene
 // and not retried, because the model returned a shape the schema said it could
 // not return, and the same prompt asks for the same shape.
 var ErrGeneratedPackageInvalid = errors.New("ingest: generated skill cannot be packaged")
+
+// ErrGeneratedNameCollision: this workspace already has a skill of that name,
+// and the two are not the same kind of content. See importZip for why merging
+// them is worse than refusing.
+var ErrGeneratedNameCollision = errors.New(
+	"ingest: this workspace already has a skill with that name, and one of the two was generated")
+
+// errGenerateAllowanceUnavailable: the allowance could not be counted. Fails
+// closed like every other gate B condition — but deliberately NOT wrapped in
+// ErrGenerateQuotaExceeded, because that sentinel becomes a 422 saying the
+// workspace used up its allowance, which for a database outage is both false and
+// unactionable (and, wrapping the pgx error, leaks the connection string into a
+// response body).
+var errGenerateAllowanceUnavailable = errors.New("ingest: the generation allowance could not be counted")
 
 // GenerateResult is one generation. Result.Report is the validation outcome and
 // is shown to the user verbatim on failure (02:GEN-003, same treatment SKILL-002
@@ -259,12 +274,27 @@ func buildGeneratedPackage(g llmclient.GeneratedSkill) ([]byte, error) {
 		return nil, err
 	}
 	for _, f := range g.Files {
-		// A second SKILL.md is not content being dropped, it is two entries
-		// claiming one name — and which one a reader resolves to is not
-		// something this package should be deciding. Refused loudly instead:
-		// never observed in 79 generations, and silent would be worse than rare.
-		if strings.EqualFold(strings.TrimPrefix(f.Path, "./"), "SKILL.md") {
+		// Compared on the NAME THE READER WILL SEE, not on the string the model
+		// wrote. archive/zip's fs view runs path.Clean over entry names, so
+		// `SKILL.md/`, `.//SKILL.md` and `././SKILL.md` all resolve to SKILL.md
+		// while looking nothing like it here — and none of them is an
+		// entry-path-escape, so nothing else catches them either. The result of
+		// missing one is not a collision the user is told about: it is
+		// `skill-md-missing` on a package that visibly contains SKILL.md, plus a
+		// second paid attempt at the same thing.
+		clean := path.Clean(strings.ReplaceAll(f.Path, `\`, "/"))
+		if strings.EqualFold(clean, "SKILL.md") {
 			return nil, fmt.Errorf("%w: a second SKILL.md at %q", ErrGeneratedPackageInvalid, f.Path)
+		}
+		// "." and "" resolve to the archive root. Such an entry is not an escape,
+		// so ArchiveEntryFinding passes it; it lands inside content_hash and
+		// inside the stored archive, and then every disclosure surface skips it —
+		// scanTree never opens it, so `possible-secret` and the script disclosure
+		// never see it, and delivery's exporter neither ships it nor lists it as
+		// dropped. Model-authored bytes that no warning covers is exactly what
+		// 02:GEN-003 forbids.
+		if clean == "." || clean == "" || clean == "/" {
+			return nil, fmt.Errorf("%w: entry %q names no file", ErrGeneratedPackageInvalid, f.Path)
 		}
 		// Escaping and absolute paths are deliberately NOT filtered here. They
 		// are read off the raw archive entry names by skillpkg.ArchiveEntryFinding
@@ -356,7 +386,8 @@ func (s *Service) requireGenerateAllowance(ctx context.Context, workspaceID pgty
 	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return "generate_quota_unavailable", fmt.Errorf("%w: %v", policy.ErrGenerateQuotaExceeded, err)
+		slog.Error("generate: the allowance could not be counted", "error", err)
+		return "generate_quota_unavailable", errGenerateAllowanceUnavailable
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 

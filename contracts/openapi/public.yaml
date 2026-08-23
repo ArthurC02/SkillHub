@@ -428,7 +428,7 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: "#/components/schemas/CategorizedFindings"
+                  - $ref: "#/components/schemas/GenerateSkillRejected"
                   - $ref: "#/components/schemas/Error"
         "502":
           description: The model gateway failed. Nothing was created.
@@ -4675,6 +4675,24 @@ components:
           description: True when identical content already existed as a version of this skill.
         findings:
           $ref: "#/components/schemas/CategorizedFindings"
+    GenerateSkillRejected:
+      description: |
+        A generated package that failed validation: the findings verbatim, the
+        same body a failed import returns, plus how many attempts produced them.
+
+        `attempts` is here and not only on the 201 because the failure screen has
+        a sentence about the automatic retry, and that sentence is false for a
+        `possible-secret` finding — ADR-048 does not retry that one. Without the
+        number the page cannot tell the two apart.
+      allOf:
+        - $ref: "#/components/schemas/CategorizedFindings"
+        - type: object
+          required: [attempts]
+          properties:
+            attempts:
+              type: integer
+              minimum: 1
+              maximum: 2
     GenerateSkillResult:
       description: |
         One generated package that passed validation and became a version

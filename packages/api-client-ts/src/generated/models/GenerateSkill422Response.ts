@@ -12,20 +12,20 @@
  * Do not edit the class manually.
  */
 
-import type { CategorizedFindings } from './CategorizedFindings';
+import type { GenerateSkillRejected } from './GenerateSkillRejected';
 import {
-    instanceOfCategorizedFindings,
-    CategorizedFindingsFromJSON,
-    CategorizedFindingsFromJSONTyped,
-    CategorizedFindingsToJSON,
-} from './CategorizedFindings';
+    instanceOfGenerateSkillRejected,
+    GenerateSkillRejectedFromJSON,
+    GenerateSkillRejectedFromJSONTyped,
+    GenerateSkillRejectedToJSON,
+} from './GenerateSkillRejected';
 
 /**
  * @type GenerateSkill422Response
  * 
  * @export
  */
-export type GenerateSkill422Response = CategorizedFindings | ModelError;
+export type GenerateSkill422Response = GenerateSkillRejected | ModelError;
 
 export function GenerateSkill422ResponseFromJSON(json: any): GenerateSkill422Response {
     return GenerateSkill422ResponseFromJSONTyped(json, false);
@@ -38,8 +38,8 @@ export function GenerateSkill422ResponseFromJSONTyped(json: any, ignoreDiscrimin
     if (typeof json !== 'object') {
         return json;
     }
-    if (instanceOfCategorizedFindings(json)) {
-        return CategorizedFindingsFromJSONTyped(json, true);
+    if (instanceOfGenerateSkillRejected(json)) {
+        return GenerateSkillRejectedFromJSONTyped(json, true);
     }
     return {} as any;
 }
@@ -55,8 +55,8 @@ export function GenerateSkill422ResponseToJSONTyped(value?: GenerateSkill422Resp
     if (typeof value !== 'object') {
         return value;
     }
-    if (instanceOfCategorizedFindings(value)) {
-        return CategorizedFindingsToJSON(value as CategorizedFindings);
+    if (instanceOfGenerateSkillRejected(value)) {
+        return GenerateSkillRejectedToJSON(value as GenerateSkillRejected);
     }
     return {};
 }

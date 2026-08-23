@@ -1,4 +1,4 @@
-import type { ImportResult } from "./import";
+import type { CategorizedFindings, ImportResult } from "./import";
 
 // Hand-written mirror of `components.schemas` in contracts/openapi/public.yaml.
 //
@@ -285,6 +285,18 @@ export interface SkillSource {
    * to, and it claims nothing about quality or safety.
    */
   trust: Labelled;
+}
+
+/**
+ * The 422 from POST /skills/generate: the findings a failed import would return,
+ * plus how many attempts produced them.
+ *
+ * `attempts` is on the failure and not only on the success because the failure
+ * screen has a sentence about the automatic retry, and that sentence is false
+ * for a `possible-secret` finding — ADR-048 does not retry that one.
+ */
+export interface GenerateRejected extends CategorizedFindings {
+  attempts: number;
 }
 
 /**

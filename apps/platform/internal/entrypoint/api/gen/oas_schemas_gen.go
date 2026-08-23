@@ -4561,6 +4561,55 @@ type GenerateSkillForbidden Error
 
 func (*GenerateSkillForbidden) generateSkillRes() {}
 
+// Merged schema.
+// Ref: #/components/schemas/GenerateSkillRejected
+type GenerateSkillRejected struct {
+	Errors   []Finding `json:"errors"`
+	Warnings []Finding `json:"warnings"`
+	Infos    []Finding `json:"infos"`
+	Attempts int       `json:"attempts"`
+}
+
+// GetErrors returns the value of Errors.
+func (s *GenerateSkillRejected) GetErrors() []Finding {
+	return s.Errors
+}
+
+// GetWarnings returns the value of Warnings.
+func (s *GenerateSkillRejected) GetWarnings() []Finding {
+	return s.Warnings
+}
+
+// GetInfos returns the value of Infos.
+func (s *GenerateSkillRejected) GetInfos() []Finding {
+	return s.Infos
+}
+
+// GetAttempts returns the value of Attempts.
+func (s *GenerateSkillRejected) GetAttempts() int {
+	return s.Attempts
+}
+
+// SetErrors sets the value of Errors.
+func (s *GenerateSkillRejected) SetErrors(val []Finding) {
+	s.Errors = val
+}
+
+// SetWarnings sets the value of Warnings.
+func (s *GenerateSkillRejected) SetWarnings(val []Finding) {
+	s.Warnings = val
+}
+
+// SetInfos sets the value of Infos.
+func (s *GenerateSkillRejected) SetInfos(val []Finding) {
+	s.Infos = val
+}
+
+// SetAttempts sets the value of Attempts.
+func (s *GenerateSkillRejected) SetAttempts(val int) {
+	s.Attempts = val
+}
+
 type GenerateSkillReq struct {
 	// The user's own words. Stored as the generated version's provenance record (GEN-002) and subject to
 	// NFR-002 deletion like any other user content.
@@ -4693,9 +4742,9 @@ func (*GenerateSkillUnauthorized) generateSkillRes() {}
 // GenerateSkillUnprocessableEntity represents sum type.
 type GenerateSkillUnprocessableEntity struct {
 	// Type selects the active sum variant, switch on this field.
-	Type                GenerateSkillUnprocessableEntityType
-	CategorizedFindings CategorizedFindings
-	Error               Error
+	Type                  GenerateSkillUnprocessableEntityType
+	GenerateSkillRejected GenerateSkillRejected
+	Error                 Error
 }
 
 // GenerateSkillUnprocessableEntityType is oneOf type of GenerateSkillUnprocessableEntity.
@@ -4703,13 +4752,13 @@ type GenerateSkillUnprocessableEntityType string
 
 // Possible values for GenerateSkillUnprocessableEntityType.
 const (
-	CategorizedFindingsGenerateSkillUnprocessableEntity GenerateSkillUnprocessableEntityType = "CategorizedFindings"
-	ErrorGenerateSkillUnprocessableEntity               GenerateSkillUnprocessableEntityType = "Error"
+	GenerateSkillRejectedGenerateSkillUnprocessableEntity GenerateSkillUnprocessableEntityType = "GenerateSkillRejected"
+	ErrorGenerateSkillUnprocessableEntity                 GenerateSkillUnprocessableEntityType = "Error"
 )
 
-// IsCategorizedFindings reports whether GenerateSkillUnprocessableEntity is CategorizedFindings.
-func (s GenerateSkillUnprocessableEntity) IsCategorizedFindings() bool {
-	return s.Type == CategorizedFindingsGenerateSkillUnprocessableEntity
+// IsGenerateSkillRejected reports whether GenerateSkillUnprocessableEntity is GenerateSkillRejected.
+func (s GenerateSkillUnprocessableEntity) IsGenerateSkillRejected() bool {
+	return s.Type == GenerateSkillRejectedGenerateSkillUnprocessableEntity
 }
 
 // IsError reports whether GenerateSkillUnprocessableEntity is Error.
@@ -4717,24 +4766,24 @@ func (s GenerateSkillUnprocessableEntity) IsError() bool {
 	return s.Type == ErrorGenerateSkillUnprocessableEntity
 }
 
-// SetCategorizedFindings sets GenerateSkillUnprocessableEntity to CategorizedFindings.
-func (s *GenerateSkillUnprocessableEntity) SetCategorizedFindings(v CategorizedFindings) {
-	s.Type = CategorizedFindingsGenerateSkillUnprocessableEntity
-	s.CategorizedFindings = v
+// SetGenerateSkillRejected sets GenerateSkillUnprocessableEntity to GenerateSkillRejected.
+func (s *GenerateSkillUnprocessableEntity) SetGenerateSkillRejected(v GenerateSkillRejected) {
+	s.Type = GenerateSkillRejectedGenerateSkillUnprocessableEntity
+	s.GenerateSkillRejected = v
 }
 
-// GetCategorizedFindings returns CategorizedFindings and true boolean if GenerateSkillUnprocessableEntity is CategorizedFindings.
-func (s GenerateSkillUnprocessableEntity) GetCategorizedFindings() (v CategorizedFindings, ok bool) {
-	if !s.IsCategorizedFindings() {
+// GetGenerateSkillRejected returns GenerateSkillRejected and true boolean if GenerateSkillUnprocessableEntity is GenerateSkillRejected.
+func (s GenerateSkillUnprocessableEntity) GetGenerateSkillRejected() (v GenerateSkillRejected, ok bool) {
+	if !s.IsGenerateSkillRejected() {
 		return v, false
 	}
-	return s.CategorizedFindings, true
+	return s.GenerateSkillRejected, true
 }
 
-// NewCategorizedFindingsGenerateSkillUnprocessableEntity returns new GenerateSkillUnprocessableEntity from CategorizedFindings.
-func NewCategorizedFindingsGenerateSkillUnprocessableEntity(v CategorizedFindings) GenerateSkillUnprocessableEntity {
+// NewGenerateSkillRejectedGenerateSkillUnprocessableEntity returns new GenerateSkillUnprocessableEntity from GenerateSkillRejected.
+func NewGenerateSkillRejectedGenerateSkillUnprocessableEntity(v GenerateSkillRejected) GenerateSkillUnprocessableEntity {
 	var s GenerateSkillUnprocessableEntity
-	s.SetCategorizedFindings(v)
+	s.SetGenerateSkillRejected(v)
 	return s
 }
 

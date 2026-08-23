@@ -3,7 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import { useGenerateSkill } from "../api/generate";
-import { isCategorizedFindings, type CategorizedFindings } from "../api/import";
+import { isCategorizedFindings } from "../api/import";
+import type { GenerateRejected } from "../api/types";
 import { Findings } from "./Findings";
 
 /**
@@ -20,7 +21,7 @@ import { Findings } from "./Findings";
 
 export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
   const [task, setTask] = useState(initialTask);
-  const [rejected, setRejected] = useState<CategorizedFindings>();
+  const [rejected, setRejected] = useState<GenerateRejected>();
   const queryClient = useQueryClient();
   const mutation = useGenerateSkill();
 
@@ -36,7 +37,9 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         // a refusal around the model call — blank input, no allowance left,
         // output truncated — and has a sentence instead.
         setRejected(
-          error instanceof ApiError && isCategorizedFindings(error.body) ? error.body : undefined,
+          error instanceof ApiError && isCategorizedFindings(error.body)
+            ? (error.body as GenerateRejected)
+            : undefined,
         );
       },
     });
@@ -73,7 +76,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
       */}
       {mutation.error && !rejected && <p role="alert">{mutation.error.message}</p>}
 
-      {rejected && <GenerateFailed findings={rejected} onRetry={submit} />}
+      {rejected && <GenerateFailed rejected={rejected} onRetry={submit} />}
 
       {mutation.data && <GenerateSucceeded result={mutation.data} />}
     </section>
@@ -112,21 +115,23 @@ function GenerateInFlight() {
  * so there is no half-made version to clean up, and saying so is part of the
  * answer.
  */
-function GenerateFailed({
-  findings,
-  onRetry,
-}: {
-  findings: CategorizedFindings;
-  onRetry: () => void;
-}) {
+function GenerateFailed({ rejected, onRetry }: { rejected: GenerateRejected; onRetry: () => void }) {
   return (
     <section role="alert">
       <h3>生成失敗：套件被擋下，沒有建立任何版本</h3>
+      {/*
+        Conditional, because the automatic retry does not always happen: a
+        `possible-secret` finding is not retried (ADR-048), and saying "we
+        already tried twice" about one attempt is the same §2.2 violation this
+        file's in-flight block refuses to commit one component up. The server
+        sends `attempts` on the 422 for exactly this sentence.
+      */}
       <p className="note">
-        平台已經自動用同一段描述再試過一次，第二次仍然沒有通過。
-        下面是檢查逐字回報的內容，沒有經過改寫。
+        {rejected.attempts > 1
+          ? "平台已經自動用同一段描述再試過一次，第二次仍然沒有通過。下面是檢查逐字回報的內容，沒有經過改寫。"
+          : "這一次沒有自動重試——被擋下的原因不是排版手滑，同一段描述再送一次會得到同樣的結果。下面是檢查逐字回報的內容，沒有經過改寫。"}
       </p>
-      <Findings findings={findings} />
+      <Findings findings={rejected} />
       <p>
         <button type="button" onClick={onRetry}>
           再試一次

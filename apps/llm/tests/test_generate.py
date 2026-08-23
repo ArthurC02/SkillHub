@@ -162,3 +162,18 @@ def test_whitespace_only_never_reaches_the_gateway(capture):
     r = client.post("/v1/generate-skill", json={"task_description": " " * 10})
     assert r.status_code == 422
     assert calls == []
+
+
+def test_the_truncation_sentence_is_the_one_go_matches_on(capture):
+    """The Go side classifies truncation by this exact sentence.
+
+    It used to match the bare word "truncated", which the other 502 — the
+    gateway exception, quoted verbatim — could contain by accident, and then the
+    user was told to shorten a task that was never too long. Changing the wording
+    here without changing llmclient.truncationMarker puts every truncation into
+    the "malformed" branch, where it gets retried at the same ceiling and buys
+    the same answer (ADR-047 決策 2). Nothing else would report that.
+    """
+    capture("", finish_reason="length")
+    r = client.post("/v1/generate-skill", json={"task_description": TASK})
+    assert r.json()["detail"] == "generate model output was truncated at the token ceiling"

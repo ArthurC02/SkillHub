@@ -285,6 +285,26 @@ func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []b
 	if err != nil {
 		return Result{}, err
 	}
+	// `redistribution` is decided when the skills row is CREATED and never
+	// revisited, so a name collision across the generated/not-generated line
+	// silently attaches one kind of content to the other kind's verdict — in both
+	// directions, and neither has a symptom:
+	//
+	//   - a generated package landing on an uploaded skill keeps `self_supplied`,
+	//     so GEN-007's exclusion (which keys on this column) stops applying and
+	//     the generated content becomes searchable, including to its own creator;
+	//   - an uploaded package landing on a generated skill keeps `generated`, so
+	//     the user's own upload can never be found again.
+	//
+	// The manifest name is the model's, and the model is asked for a name derived
+	// from the task, so `code-review` colliding with an uploaded `code-review` is
+	// an ordinary Tuesday rather than an exotic case. Refused rather than merged:
+	// renaming would edit bytes the platform promised not to edit (ADR-047 決策 1),
+	// and 02:GEN-001 says a generation creates 「第一個版本」, not version N of
+	// something else.
+	if found && (skill.Redistribution == registry.RedistributionGenerated) != (src.Type == sourceGenerated) {
+		return Result{}, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, skill.Name)
+	}
 	res.Skill = skill
 
 	res.Version, res.Duplicate, err = s.persistVersion(ctx, tx, ws, skill, p, src, e)

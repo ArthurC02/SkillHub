@@ -461,13 +461,24 @@ type GenerateSkillResponse struct {
 // (ADR-047 決策 2).
 var ErrGenerateTruncated = errors.New("llmclient: generated skill was truncated at the token ceiling")
 
-// truncationMarker is the word apps/llm puts in the 502 detail for that case.
-// A string across a language boundary, held by a test on each side:
+// truncationMarker is the WHOLE sentence apps/llm puts in the 502 detail for
+// that case, not the word "truncated".
+//
+// The word alone was wrong, and provably so: post() builds the error from up to
+// 1 KiB of the response body, and apps/llm's other 502 is
+// `generate gateway error: {e}` — the LiteLLM exception text verbatim, which
+// routinely quotes provider messages and the request payload. Any of those
+// containing the word (a context-window notice, a provider's own "input was
+// truncated", or a task description that simply uses the word and comes back in
+// a 400 body) was classified as a token-ceiling truncation, and the user was
+// then told to make their task smaller about a failure that had nothing to do
+// with size.
+//
+// Still a string across a language boundary, held by a test on each side:
 // test_truncation_is_a_different_failure_from_malformed_output asserts the
-// Python half, TestTruncationComesBackAsItsOwnError the Go half. The
-// alternative was a second status code, which is the same coupling wearing a
-// number.
-const truncationMarker = "truncated"
+// Python half, TestTruncationComesBackAsItsOwnError the Go half — now including
+// the false positive.
+const truncationMarker = "generate model output was truncated at the token ceiling"
 
 // GenerateSkill asks the LLM service to write one Skill from a task description
 // (GEN-001). One call, no retry here: whether to try again is a decision made

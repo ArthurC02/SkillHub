@@ -40,6 +40,14 @@ type CountGeneratedSkillsRow struct {
 // unit is one generation and not one gateway call; and a generation that failed
 // validation writes no row at all, so it costs nothing.
 //
+// There is a third case, and it is only safe because of something elsewhere:
+// duplicate content returns from persistVersion BEFORE CreateSkillSource, so a
+// paid generation could write no row at all. It cannot happen today because
+// importZip refuses a generated package whose name collides with an existing
+// skill, which means generation always creates a fresh skills row and a fresh
+// row has no version to duplicate. Remove that guard and this counter starts
+// undercharging silently.
+//
 // `oldest` is when the window frees up again, matching CountQuotaRuns' shape.
 func (q *Queries) CountGeneratedSkills(ctx context.Context, arg CountGeneratedSkillsParams) (CountGeneratedSkillsRow, error) {
 	row := q.db.QueryRow(ctx, countGeneratedSkills, arg.WorkspaceID, arg.Since)

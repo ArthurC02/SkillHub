@@ -173,6 +173,17 @@ type GenerateResponse struct {
 	PromptVersion string `json:"generator_prompt_version"`
 }
 
+// GenerateRejected is the 422 for a package that failed validation: the same
+// findings a failed import returns, plus how many attempts produced them.
+//
+// Deliberately a superset of the import shape rather than a different one — the
+// web renders both with one component, and 02:GEN-003 requires the findings
+// 逐字 on both paths.
+type GenerateRejected struct {
+	skillpkg.CategorizedFindings
+	Attempts int `json:"attempts"`
+}
+
 // Generate handles POST /skills/generate (GEN-001, GEN-008).
 //
 // Mounted only where the exposure flag is on (ADR-052): a beta participant who
@@ -221,13 +232,28 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 				"把任務拆小一點再試一次會有幫助。")
 	case errors.Is(err, ErrGenerateNotForCatalogue):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
+	case errors.Is(err, ErrGeneratedNameCollision):
+		// 422 and not 500: the request was fine, the workspace is in a state the
+		// platform will not silently merge. Nothing was written.
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"這個工作區已經有一個同名的 Skill，而它不是生成的。"+
+				"請先改掉那一個的名字或刪除它，再生成一次——"+
+				"平台不會把生成的內容接在別的 Skill 後面當成新版本。")
 	case err != nil:
 		httpx.WriteError(w, http.StatusBadGateway, "generation failed")
 	case res.Report.Blocked:
 		// The findings verbatim, exactly as a failed import gets them
 		// (02:GEN-003, SKILL-002). Nothing was written: prepare returns before the
 		// object store and importZip before the transaction.
-		httpx.WriteJSON(w, http.StatusUnprocessableEntity, res.Report.Categorize())
+		//
+		// `attempts` rides along because the failure screen has a sentence about
+		// the automatic retry, and that sentence is FALSE for a `possible-secret`
+		// finding, which ADR-048 says is not retried. Without this the page cannot
+		// tell the two apart and says "we already tried twice" about one attempt.
+		httpx.WriteJSON(w, http.StatusUnprocessableEntity, GenerateRejected{
+			CategorizedFindings: res.Report.Categorize(),
+			Attempts:            res.Attempts,
+		})
 	default:
 		httpx.WriteJSON(w, http.StatusCreated, GenerateResponse{
 			UploadResult:  NewUploadResult(res.Result),

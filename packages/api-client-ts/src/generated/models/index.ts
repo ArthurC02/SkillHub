@@ -45,6 +45,7 @@ export * from './FileDiff';
 export * from './Finding';
 export * from './ForkSkill201Response';
 export * from './GenerateSkill422Response';
+export * from './GenerateSkillRejected';
 export * from './GenerateSkillRequest';
 export * from './GenerateSkillResult';
 export * from './GetDispatchStatus200Response';
