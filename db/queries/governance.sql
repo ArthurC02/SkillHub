@@ -140,7 +140,7 @@ SET takedown_at = now(), takedown_reason = sqlc.arg(reason), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL AND takedown_at IS NULL
 RETURNING *;
 
--- name: LockSkillForRestriction :one
+-- name: LockSkillForOperatorWrite :one
 -- The read half of an operator's licensing-hold change (02:SEC-011 追加小節,
 -- 0023). FOR UPDATE because the value it returns becomes the "before" side of an
 -- audit event: without the lock, two operators acting at once would both record
@@ -160,9 +160,38 @@ RETURNING *;
 -- no package content, no name, nothing about the workspace's private contents,
 -- and it is reachable only from the operator routes (02:SEC-011「operator 不得
 -- 讀取任何 Workspace 私有資料」).
-SELECT id, workspace_id, access_restriction FROM skills
+--
+-- 2026-08-23: also returns `redistribution`, and the name lost the word
+-- "Restriction" with it. Two operator-writable governance columns now share one
+-- lock statement rather than having one each — they are the same row, taken for
+-- the same reason (the value returned becomes an audit event's before-state),
+-- and a second FOR UPDATE of the same row would be a second place to get the
+-- scoping wrong. Each writer reads the column it owns off the same result.
+SELECT id, workspace_id, access_restriction, redistribution FROM skills
 WHERE id = $1 AND deleted_at IS NULL
 FOR UPDATE;
+
+-- name: SetSkillRedistribution :exec
+-- The write half of an operator's redistribution verdict (02:SEC-007, 0027,
+-- extended by 0036; `04` 乙-17 / `05` R-3c).
+--
+-- Until now this column had no write path at all outside import: changing it
+-- meant running UPDATE by hand. It is the gate that decides whether the platform
+-- will hand a skill's bytes to somebody, and it was the only such gate with no
+-- endpoint, no authorization check and no audit event — while
+-- access_restriction, which blocks the same download for a weaker reason, had
+-- all three. That asymmetry is what this closes; it does not answer who may call
+-- it or what evidence they must show (`05` R-3a/R-3b, still open).
+--
+-- Unscoped by workspace for the same reason as the statements above: a
+-- redistribution verdict is about the content, and the same content exists as
+-- forks in other people's workspaces.
+--
+-- The CHECK on the column refuses anything outside the four values; the caller
+-- refuses `self_supplied` on top of that, because that value is a fact about who
+-- brought the bytes (0036) and not a verdict anyone can assert on their behalf.
+UPDATE skills SET redistribution = $2, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: SetSkillAccessRestriction :exec
 -- The write half. One statement for both directions: a reason code holds the

@@ -108,6 +108,10 @@ func NewRouter(d Deps) http.Handler {
 	// hold has to reach the catalogue entry and every fork of it alike.
 	mux.HandleFunc("PUT /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.SetRestriction))
 	mux.HandleFunc("DELETE /admin/skills/{id}/restriction", auth.RequireOperator(d.Search.ClearRestriction))
+	// The redistribution gate blocks the same download as the restriction above
+	// and, until 2026-08-23, was the only one of the two with no route, no
+	// operator check and no audit event (`05` R-3c).
+	mux.HandleFunc("PUT /admin/skills/{id}/redistribution", auth.RequireOperator(d.Search.SetRedistribution))
 
 	// 03:SEC-012's operator surface: 02:SEC-010's P1 first action, and the one place
 	// 「現在到底有沒有在派送」 is answered. Same RequireOperator and therefore the same

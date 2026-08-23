@@ -366,16 +366,17 @@ func (q *Queries) ListWorkspaceRunArtifactObjectKeys(ctx context.Context, worksp
 	return items, nil
 }
 
-const lockSkillForRestriction = `-- name: LockSkillForRestriction :one
-SELECT id, workspace_id, access_restriction FROM skills
+const lockSkillForOperatorWrite = `-- name: LockSkillForOperatorWrite :one
+SELECT id, workspace_id, access_restriction, redistribution FROM skills
 WHERE id = $1 AND deleted_at IS NULL
 FOR UPDATE
 `
 
-type LockSkillForRestrictionRow struct {
+type LockSkillForOperatorWriteRow struct {
 	ID                pgtype.UUID
 	WorkspaceID       pgtype.UUID
 	AccessRestriction *string
+	Redistribution    string
 }
 
 // The read half of an operator's licensing-hold change (02:SEC-011 追加小節,
@@ -397,10 +398,22 @@ type LockSkillForRestrictionRow struct {
 // no package content, no name, nothing about the workspace's private contents,
 // and it is reachable only from the operator routes (02:SEC-011「operator 不得
 // 讀取任何 Workspace 私有資料」).
-func (q *Queries) LockSkillForRestriction(ctx context.Context, id pgtype.UUID) (LockSkillForRestrictionRow, error) {
-	row := q.db.QueryRow(ctx, lockSkillForRestriction, id)
-	var i LockSkillForRestrictionRow
-	err := row.Scan(&i.ID, &i.WorkspaceID, &i.AccessRestriction)
+//
+// 2026-08-23: also returns `redistribution`, and the name lost the word
+// "Restriction" with it. Two operator-writable governance columns now share one
+// lock statement rather than having one each — they are the same row, taken for
+// the same reason (the value returned becomes an audit event's before-state),
+// and a second FOR UPDATE of the same row would be a second place to get the
+// scoping wrong. Each writer reads the column it owns off the same result.
+func (q *Queries) LockSkillForOperatorWrite(ctx context.Context, id pgtype.UUID) (LockSkillForOperatorWriteRow, error) {
+	row := q.db.QueryRow(ctx, lockSkillForOperatorWrite, id)
+	var i LockSkillForOperatorWriteRow
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.AccessRestriction,
+		&i.Redistribution,
+	)
 	return i, err
 }
 
@@ -536,6 +549,39 @@ type SetSkillAccessRestrictionParams struct {
 // is touched — a hold is not a takedown and not an edit of anybody's content.
 func (q *Queries) SetSkillAccessRestriction(ctx context.Context, arg SetSkillAccessRestrictionParams) error {
 	_, err := q.db.Exec(ctx, setSkillAccessRestriction, arg.ID, arg.AccessRestriction)
+	return err
+}
+
+const setSkillRedistribution = `-- name: SetSkillRedistribution :exec
+UPDATE skills SET redistribution = $2, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+type SetSkillRedistributionParams struct {
+	ID             pgtype.UUID
+	Redistribution string
+}
+
+// The write half of an operator's redistribution verdict (02:SEC-007, 0027,
+// extended by 0036; `04` 乙-17 / `05` R-3c).
+//
+// Until now this column had no write path at all outside import: changing it
+// meant running UPDATE by hand. It is the gate that decides whether the platform
+// will hand a skill's bytes to somebody, and it was the only such gate with no
+// endpoint, no authorization check and no audit event — while
+// access_restriction, which blocks the same download for a weaker reason, had
+// all three. That asymmetry is what this closes; it does not answer who may call
+// it or what evidence they must show (`05` R-3a/R-3b, still open).
+//
+// Unscoped by workspace for the same reason as the statements above: a
+// redistribution verdict is about the content, and the same content exists as
+// forks in other people's workspaces.
+//
+// The CHECK on the column refuses anything outside the four values; the caller
+// refuses `self_supplied` on top of that, because that value is a fact about who
+// brought the bytes (0036) and not a verdict anyone can assert on their behalf.
+func (q *Queries) SetSkillRedistribution(ctx context.Context, arg SetSkillRedistributionParams) error {
+	_, err := q.db.Exec(ctx, setSkillRedistribution, arg.ID, arg.Redistribution)
 	return err
 }
 

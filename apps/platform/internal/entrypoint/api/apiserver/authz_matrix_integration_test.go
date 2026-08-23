@@ -99,6 +99,7 @@ var anonymousRoutes = []anonCase{
 	// operator list, so 404 is the whole assertion.
 	{pattern: "PUT /admin/skills/{id}/restriction", want: http.StatusNotFound},
 	{pattern: "DELETE /admin/skills/{id}/restriction", want: http.StatusNotFound},
+	{pattern: "PUT /admin/skills/{id}/redistribution", want: http.StatusNotFound},
 	{pattern: "GET /admin/dispatch", want: http.StatusNotFound},
 	{pattern: "PUT /admin/dispatch/halt", want: http.StatusNotFound},
 	{pattern: "DELETE /admin/dispatch/halt", want: http.StatusNotFound},

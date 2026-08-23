@@ -71,8 +71,9 @@ queries:
   PurgeUnreferencedSkills: registry
   PurgeUnreferencedSkillSources: ingest
   TakedownSkill: registry
-  LockSkillForRestriction: registry
+  LockSkillForOperatorWrite: registry
   SetSkillAccessRestriction: registry
+  SetSkillRedistribution: registry
   ListSourcesToCheck: ingest
   MarkSourceChecked: ingest
 

@@ -278,3 +278,93 @@ func TestOperatorRosterIsAudited(t *testing.T) {
 		t.Fatalf("roster event = %v (count %d), want exactly the configured operator", ids, count)
 	}
 }
+
+// `05` R-3c: the redistribution gate blocks the same download as the licensing
+// hold above and, until 2026-08-23, was the only one of the two that could be
+// changed with no route, no role check and no audit event — the weaker reason
+// was the governed one. This is the parity test.
+//
+// It deliberately does not test who *should* be allowed to call it or what
+// evidence a release should require: `05` R-3a and R-3b are still open, and a
+// test asserting a guess at them would make the guess expensive to revisit.
+func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+
+	curator := a.login(t, "curator-redist-operator")
+	markCatalog(t, pool, curator.workspaceID)
+	skillID := importPackage(t, pool, a.packages, curator, "manxome-redist-writer", false)
+	path := "/admin/skills/" + skillID + "/redistribution"
+
+	current := func() string {
+		t.Helper()
+		var v string
+		if err := pool.QueryRow(context.Background(),
+			"SELECT redistribution FROM skills WHERE id = $1", mustUUID(t, skillID)).Scan(&v); err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+	was := current()
+
+	// 1. Invisible without the role, and the refusal really refused.
+	member := a.login(t, "member-redist-operator")
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+	for _, c := range []struct {
+		name string
+		cl   *client
+	}{{"anonymous", anon}, {"member", member}} {
+		if code, _ := operatorCall(t, c.cl, http.MethodPut, path,
+			`{"value":"allowed","note":"n"}`); code != http.StatusNotFound {
+			t.Errorf("PUT redistribution as %s: got %d, want 404", c.name, code)
+		}
+	}
+	if got := current(); got != was {
+		t.Fatalf("a caller without the operator role changed the gate anyway: %q -> %q", was, got)
+	}
+
+	operator := a.login(t, "platform-operator-redist")
+	a.auth.Operators = map[string]bool{operator.userID: true}
+
+	// 2. The verdict lands, and the trail says who decided and why.
+	code, body := operatorCall(t, operator, http.MethodPut, path,
+		`{"value":"blocked","note":"source-available licence, see the review thread"}`)
+	if code != http.StatusOK {
+		t.Fatalf("operator PUT redistribution: got %d, want 200 (%v)", code, body)
+	}
+	if got := current(); got != "blocked" {
+		t.Fatalf("redistribution = %q, want blocked", got)
+	}
+	before, after, note, count := auditNote(t, operator, "skill.redistribution_set", skillID)
+	if count != 1 {
+		t.Fatalf("audit events = %d, want 1", count)
+	}
+	if deref(before) != was || deref(after) != "blocked" {
+		t.Errorf("audit before/after = %q/%q, want %q/blocked", deref(before), deref(after), was)
+	}
+	if !strings.Contains(deref(note), "source-available") {
+		t.Errorf("audit note = %q; the operator's reason has to survive into the trail", deref(note))
+	}
+
+	// 3. self_supplied is not a verdict anyone can assert (0036): it records that
+	//    this workspace supplied the bytes, which only the import path can
+	//    establish. A route that accepted it would let an operator release
+	//    somebody else's content by describing it as the owner's own.
+	code, body = operatorCall(t, operator, http.MethodPut, path,
+		`{"value":"self_supplied","note":"trying it on"}`)
+	if code != http.StatusBadRequest {
+		t.Errorf("PUT self_supplied: got %d, want 400 (%v)", code, body)
+	}
+	if got := current(); got != "blocked" {
+		t.Fatalf("a refused verdict changed the row anyway: %q", got)
+	}
+
+	// 4. No note, no decision — the same rule SEC-011 applies next door.
+	code, _ = operatorCall(t, operator, http.MethodPut, path, `{"value":"allowed"}`)
+	if code != http.StatusBadRequest {
+		t.Errorf("PUT without a note: got %d, want 400", code)
+	}
+	if got := current(); got != "blocked" {
+		t.Fatalf("an unexplained verdict changed the row anyway: %q", got)
+	}
+}

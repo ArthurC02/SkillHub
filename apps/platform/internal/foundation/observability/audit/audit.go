@@ -49,6 +49,12 @@ const (
 	// single action name would make it a metadata field to filter on.
 	ActionSkillRestrict   = "skill.access_restrict"
 	ActionSkillUnrestrict = "skill.access_unrestrict"
+	// ActionSkillRedistribution records an operator changing the
+	// redistribution verdict (0027/0036). One action for all directions,
+	// unlike the restrict/unrestrict pair above: that column has two states
+	// and reads naturally as a verb, this one has four and "set to blocked"
+	// is not the opposite of "set to unknown".
+	ActionSkillRedistribution = "skill.redistribution_set"
 	// ActionOperatorRoster is written once per API start with the operator list
 	// the process came up with. It is the minimum satisfaction of 02:SEC-011
 	// 「授予或撤銷 operator 角色本身也是 audit event」 for a roster that lives in

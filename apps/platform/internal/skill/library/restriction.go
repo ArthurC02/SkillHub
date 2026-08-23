@@ -61,7 +61,7 @@ func SetAccessRestriction(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, r
 		return RestrictionBefore{}, ErrEmptyRestriction
 	}
 	q := gen.New(tx)
-	before, err := q.LockSkillForRestriction(ctx, skillID)
+	before, err := q.LockSkillForOperatorWrite(ctx, skillID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return RestrictionBefore{}, ErrNotFound
 	}
