@@ -77,6 +77,16 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 	}
 
 	digest, refs := suggestionDigest(m, v)
+	// Nothing to verify a proposal against. Every proposal that came back would be
+	// dropped by suggestionEvidence below whatever the model wrote, so the call is
+	// money spent on a result that cannot be stored. Counted rather than silent:
+	// "the judge produced a verdict with no citable evidence" is a fact about the
+	// evaluation, not an absence.
+	if len(refs) == 0 {
+		slog.Info("improvement proposals skipped: verdict carries no citable evidence",
+			"evaluation_id", pgconv.UUIDString(ev.ID))
+		return
+	}
 	tree, files := s.packageFiles(ctx, m)
 
 	// The internal call carries this caller's deadline and cancellation (iron rule
@@ -120,8 +130,23 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 		}
 		evidence, err := suggestionEvidence(p, refs)
 		if err != nil || len(evidence) == 0 {
+			// Why it did not match, not just that it did not. The 0824 baseline
+			// came back at 26 proposals and 0 stored, and this line could not
+			// distinguish the three ways that happens: the model quoted nothing,
+			// it quoted something that is not in any excerpt, or `refs` was empty
+			// because the digest carried no evidence at all. A 100% drop rate with
+			// no cause is a number nobody can act on.
+			//
+			// The quote is the model echoing back an excerpt that reached it
+			// through the digest, so it is downstream of the masker (iron rule 11);
+			// it is still cut short, because a diagnostic does not need the whole
+			// thing.
+			quote := strings.TrimSpace(p.Evidence)
+			head, _ := cut(quote, 80)
 			slog.Warn("improvement proposal has no matching verified evidence",
-				"evaluation_id", pgconv.UUIDString(ev.ID), "category", p.Category)
+				"evaluation_id", pgconv.UUIDString(ev.ID), "category", p.Category,
+				"quote_runes", utf8.RuneCountInString(quote), "candidate_refs", len(refs),
+				"quote_head", head)
 			noEvidence++
 			continue
 		}
@@ -204,18 +229,79 @@ func storable(p llmclient.ImprovementProposal) bool {
 // references elsewhere in the evaluation do not support this proposal.
 func suggestionEvidence(p llmclient.ImprovementProposal, refs []EvidenceRef) ([]byte, error) {
 	out := make([]EvidenceRef, 0, maxStoredEvidence)
-	if quote := strings.TrimSpace(p.Evidence); utf8.RuneCountInString(quote) >= 12 {
+	for _, quote := range evidenceQuotes(p.Evidence) {
 		for _, ref := range refs {
 			if strings.Contains(ref.Excerpt, quote) {
 				out = append(out, ref)
 				break
 			}
 		}
+		if len(out) > 0 {
+			break
+		}
 	}
 	if len(out) == 0 {
 		return nil, nil
 	}
 	return json.Marshal(out)
+}
+
+// quoteMarks are the paired delimiters a model reaches for. The Chinese pair is
+// first because the digest is Chinese; the straight pair is last because it is
+// also what wraps prose that is not a quote at all, and trying it after the
+// others costs nothing.
+var quoteMarks = [][2]string{{"「", "」"}, {"“", "”"}, {"\"", "\""}}
+
+// evidenceQuotes returns the candidate verbatim strings inside one `evidence`
+// field, longest first.
+//
+// The field used to be matched whole, and the 0823 baseline measured what that
+// costs: 26 proposals, 26 dropped, every one of them for "no matching verified
+// evidence". The cause was not the model inventing things. `evidence` is
+// specified as "what in the digest supports this, quoted from the digest", and
+// the model writes exactly that - two or three quoted fragments joined by its own
+// reasoning, 200 to 300 runes of it. Requiring the whole field to be a substring
+// of one excerpt is a rule no document states, and it can never be satisfied by
+// a field that contains any prose at all.
+//
+// What the check is for survives intact: a stored proposal still rests on text
+// that appears verbatim in an excerpt the platform itself put in the digest. What
+// changes is that the model may say why around the quote, which is what it was
+// asked for.
+func evidenceQuotes(evidence string) []string {
+	const minQuoteRunes = 12
+	var out []string
+	add := func(s string) {
+		s = strings.TrimSpace(s)
+		if utf8.RuneCountInString(s) >= minQuoteRunes {
+			out = append(out, s)
+		}
+	}
+	// The whole field first: a model that answered with a bare quote and no prose
+	// is the case the old check was written for, and it stays the strongest match.
+	add(evidence)
+	for _, pair := range quoteMarks {
+		rest := evidence
+		for {
+			i := strings.Index(rest, pair[0])
+			if i < 0 {
+				break
+			}
+			rest = rest[i+len(pair[0]):]
+			j := strings.Index(rest, pair[1])
+			if j < 0 {
+				break
+			}
+			add(rest[:j])
+			rest = rest[j+len(pair[1]):]
+		}
+	}
+	// Longest first: the most specific fragment is the one worth attributing a
+	// proposal to, and a short fragment can match an excerpt by accident.
+	sort.SliceStable(out, func(i, j int) bool {
+		return utf8.RuneCountInString(out[i]) > utf8.RuneCountInString(out[j])
+	})
+	return out
 }
 
 // suggestionDigest renders the verdict for the model and returns the references

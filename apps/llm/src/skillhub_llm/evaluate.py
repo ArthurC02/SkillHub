@@ -52,7 +52,7 @@ JUDGE_MODEL = os.getenv("JUDGE_MODEL", "gpt-5.6-terra")
 # (docs/plans/mvp/m3/report-judge-regression.md). Bumped rather than edited in
 # place: the two regressions have to stay comparable.
 JUDGE_PROMPT_VERSION = "judge-run/v2"
-SUGGEST_IMPROVEMENTS_PROMPT_VERSION = "suggest-improvements/v1"
+SUGGEST_IMPROVEMENTS_PROMPT_VERSION = "suggest-improvements/v2"
 
 # Socket ceiling only. The deadline that matters is Go's: it owns timeout and
 # cancellation policy, and a client disconnect cancels this at the HTTP layer
@@ -166,8 +166,11 @@ environment or its dependencies, `tool` for the tools the run used, `dataset` fo
 test input. Only propose a problem in any category when it can be fixed by replacing \
 one of the package files whose current content you were given.
 - problem: what is wrong, in one or two sentences.
-- evidence: what in the evaluation digest supports it, quoted from the digest. Do not \
-invent a finding the digest does not contain.
+- evidence: what in the evaluation digest supports it. Copy at least one fragment out \
+of the digest verbatim - character for character, no rewording and no summarising - and \
+put it in quotation marks; twelve characters or more. Say why around it if you want to. \
+A proposal whose quoted fragment cannot be found in the digest is discarded, and so is \
+one with no quoted fragment at all. Do not invent a finding the digest does not contain.
 - target_path: the package-relative path of the file to change, exactly as it appears \
 in the file tree. Never an absolute path and never one containing `..`; a path that \
 normalises outside the package is refused rather than cleaned up. It must not be empty.

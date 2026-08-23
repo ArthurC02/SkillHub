@@ -1078,7 +1078,18 @@ components:
         evidence:
           type: string
           maxLength: 2000
-          description: What in the evaluation supports this, quoted from the digest.
+          description: |
+            What in the evaluation supports this. It must contain at least one
+            fragment copied verbatim out of the digest and wrapped in quotation
+            marks - 「」, “”, or straight - of at least 12 characters. Reasoning
+            around the quote is expected and is what the rest of the field is for.
+
+            Go stores a proposal only when one of its quoted fragments is found
+            verbatim in an excerpt the platform itself put in the digest, so a
+            field with no quotation marks in it is dropped whatever it says. The
+            0823 baseline is why this is spelled out: the field was described
+            only as "quoted from the digest", Go matched the whole field as one
+            substring, and 26 of 26 proposals were discarded.
         target_path:
           type: string
           maxLength: 1024

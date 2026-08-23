@@ -434,7 +434,8 @@ class ImprovementProposal(BaseModel):
     )
     problem: constr(max_length=2000)
     evidence: constr(max_length=2000) = Field(
-        ..., description='What in the evaluation supports this, quoted from the digest.'
+        ...,
+        description='What in the evaluation supports this. It must contain at least one\nfragment copied verbatim out of the digest and wrapped in quotation\nmarks - 「」, “”, or straight - of at least 12 characters. Reasoning\naround the quote is expected and is what the rest of the field is for.\n\nGo stores a proposal only when one of its quoted fragments is found\nverbatim in an excerpt the platform itself put in the digest, so a\nfield with no quotation marks in it is dropped whatever it says. The\n0823 baseline is why this is spelled out: the field was described\nonly as "quoted from the digest", Go matched the whole field as one\nsubstring, and 26 of 26 proposals were discarded.\n',
     )
     target_path: constr(max_length=1024) = Field(
         ...,

@@ -121,6 +121,58 @@ func TestSuggestionEvidenceIsAlwaysMintedByThePlatform(t *testing.T) {
 	}
 }
 
+// The exact shape the 0823 baseline died on. 26 proposals, 26 dropped, every one
+// of them for "no matching verified evidence" - and the cause was not a model
+// inventing things. `evidence` is specified as "what supports this, quoted from
+// the digest", so the model returns two or three real quotes joined by its own
+// reasoning, and the old whole-field substring match could not accept a field
+// with any prose in it.
+//
+// The property this must not lose is the one the check exists for: a stored
+// proposal rests on text that appears verbatim in an excerpt the platform itself
+// minted. The prose around the quote is the only thing that became allowed.
+func TestAProposalMayExplainItselfAroundTheQuoteItCites(t *testing.T) {
+	refs := []EvidenceRef{
+		{Kind: KindTraceEvent, TraceEventID: eventID, Available: true,
+			Excerpt: "artifact manifest: 完整 artifact manifest 明確顯示本次 run 未寫入任何檔案"},
+	}
+
+	// Verbatim inside quotation marks, reasoning outside it: what the model
+	// actually writes, and what used to be discarded whole.
+	for _, evidence := range []string{
+		`「完整 artifact manifest 明確顯示本次 run 未寫入任何檔案」，所以 /out/artifacts/ 是空的。`,
+		`"完整 artifact manifest 明確顯示本次 run 未寫入任何檔案" and the summary agrees.`,
+		`“完整 artifact manifest 明確顯示本次 run 未寫入任何檔案” — nothing was saved.`,
+	} {
+		raw, err := suggestionEvidence(llmclient.ImprovementProposal{Evidence: evidence}, refs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []EvidenceRef
+		if raw == nil {
+			t.Fatalf("a verbatim quote with reasoning around it must still be citable: %s", evidence)
+		}
+		if err := json.Unmarshal(raw, &got); err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != 1 || got[0].TraceEventID != eventID {
+			t.Fatalf("must keep the reference the quote was found in, got %+v", got)
+		}
+	}
+
+	// What must not become possible: quotation marks are not a way in. A fragment
+	// the platform cannot find stays unstorable however it is punctuated.
+	for _, evidence := range []string{
+		`「the manifest shows nothing was written at all」 which is the problem.`,
+		`no quotation marks here, and none of this text is in any excerpt either`,
+		`「too short」`, // under the 12-rune floor, so not a fragment worth attributing
+	} {
+		if raw, _ := suggestionEvidence(llmclient.ImprovementProposal{Evidence: evidence}, refs); raw != nil {
+			t.Errorf("unverifiable evidence must stay unstorable, got %s for %s", raw, evidence)
+		}
+	}
+}
+
 func TestAdviceIsNotPaidForOnARunThatMetEverything(t *testing.T) {
 	met := verdict{overall: OverallMet, findings: []Finding{{Severity: SeverityInfo}}}
 	if worthSuggesting(met) {
