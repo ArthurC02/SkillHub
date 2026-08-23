@@ -26,7 +26,7 @@
 
 - 主要使用者為個人創作者。
 - Skill 以開放、通用的 Agent Skills 規格為核心，不綁定單一 Agent。
-- MVP 的第一入口是探索既有 Skill，而不是從零撰寫。
+- MVP 的第一入口是探索既有 Skill，而不是從零撰寫。（**2026-08-23 補記**：[ADR-046](../../adr/ADR-046-generating-a-skill-from-a-task-description.md) 開了 M5 的生成路徑，**這一條不因此改變**——決策 7 逐字把生成的入口放在「沒有夠接近的 Skill」那一格，首頁不提供與搜尋對等的生成入口。「第一入口」仍然是探索。）
 - Skill 來源初期可包含人工精選內容、已索引來源與外部網路結果。
 - MVP 試跑支援 User Prompt 與測試資料；遠端 MCP 與 Local Runner 為既定架構方向，但移出 MVP 首發，依封閉測試需求訊號啟動。
 - 初期 Cloud Sandbox 可以自建，但 Run Orchestrator 必須透過可抽換的 Sandbox Provider 介面執行。
@@ -45,8 +45,9 @@
 8. [M2 執行計畫與產出](m2/README.md)（Skill Lab 交付摘要、基準試跑、工作項對帳）
 9. [M3 執行計畫與產出](m3/README.md)（評估與改善：範圍、批次分解與裁定、評估管線設計、契約增量清單、[逐項對帳](m3/audit.md)、[Judge 判準回歸報告](m3/report-judge-regression.md)）
 10. [M4 執行計畫與產出](m4/README.md)（打包與封閉測試：範圍、六條接點與甲類對應、**程式能完成 vs 負責人動作的分界**、批次分解、未決點；[打包管線設計](m4/packaging-design.md)、[封閉測試設計](m4/beta-design.md)、[契約增量清單](m4/contract-deltas.md)、[PDM-009 封測提案](m4/pdm-009-beta-proposal.md)（待追認）、[逐項對帳](m4/audit.md)、[封測上線前檢查表](m4/release-checklist.md)）——**程式面已收斂；封測待部署期與負責人動作**
+11. [M5 執行計畫與產出](m5/README.md)（從任務描述生成 Skill，[ADR-046](../../adr/ADR-046-generating-a-skill-from-a-task-description.md)）——**唯一一個未開工卻已有目錄的里程碑**，因為 `GEN-009` 的前三分之一先跑掉了（[生成品質基線（前置）](m5/report-generate-spike.md)）；啟動條件三項見該 README
 
-跨里程碑仍在被引用的主題目錄（依 [ADR-024](../../adr/ADR-024-top-level-repository-layout.md)，不屬於任何 `mX/`）：[`content/`](content/)（策展資料與 writing rubric）、[`governance/`](governance/)（授權備忘與上游詢問信草稿）、[`gate-test/`](gate-test/)（M1 驗證閘門材料，**另含閘門與封測共用的[受測者同意書與資料保存政策](gate-test/consent-and-data-policy.md)——草稿，待法務確認**）。
+跨里程碑仍在被引用的主題目錄（依 [ADR-031](../../adr/ADR-031-artifact-role-repository-layout.md)，**取代原文引用的 ADR-024**——後者已 Superseded，2026-08-23 順手訂正；不屬於任何 `mX/`）：[`content/`](content/)（策展資料與 writing rubric）、[`governance/`](governance/)（授權備忘與上游詢問信草稿）、[`gate-test/`](gate-test/)（M1 驗證閘門材料，**另含閘門與封測共用的[受測者同意書與資料保存政策](gate-test/consent-and-data-policy.md)——草稿，待法務確認**）。
 
 **目錄骨架（M3 起適用，既有檔名不回溯改）**：每個 `mX/` 固定為 `README.md`（計畫＋狀態＋檔案地圖）、`audit.md`（逐項對帳）、`report-*`（報告）；目錄內檔名不重複 `mX` 前綴。
 
