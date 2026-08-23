@@ -96,6 +96,8 @@ export function SkillDetail() {
 
       <Limitations limitations={skill.limitations} />
 
+      {skill.source?.type === "generated" && <GeneratedNotice skillId={skill.skill_id} />}
+
       <section>
         <h2>來源</h2>
         {skill.source ? <SourceBlock source={skill.source} /> : <p>沒有保存任何來源紀錄。</p>}
@@ -407,6 +409,9 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
 
 /** DISC-003: URL, version/commit, fetch time and content hash of what arrived. */
 function SourceBlock({ source }: { source: SkillSource }) {
+  if (source.type === "generated") {
+    return <GeneratedSourceBlock source={source} />;
+  }
   return (
     <>
       <p>匯入方式：{source.type === "git" ? "從 Git 來源擷取" : "使用者上傳"}</p>
@@ -447,6 +452,81 @@ function SourceBlock({ source }: { source: SkillSource }) {
           <code>{source.content_hash}</code>
         </details>
       )}
+    </>
+  );
+}
+
+/**
+ * GEN-002's provenance block: a package with no upstream, whose entire source
+ * record is the words the owner typed.
+ *
+ * A separate branch rather than three more optional lines in SourceBlock,
+ * because almost every line there is about an upstream that does not exist
+ * here — the availability probe, the commit, the URL. Rendering those as
+ * unknown would describe this package as one whose origin nobody recorded, and
+ * 02:GEN-002 forbids exactly that: **不得顯示為未知來源**. It is known. It is
+ * not a URL.
+ */
+function GeneratedSourceBlock({ source }: { source: SkillSource }) {
+  return (
+    <>
+      <p>來源：由平台依你的任務描述生成</p>
+      <p className="note">{source.trust.note}</p>
+      {source.task_description && (
+        <details>
+          <summary>你當時輸入的任務描述</summary>
+          <p className="quoted">{source.task_description}</p>
+        </details>
+      )}
+      {source.fetched_at && <p>生成時間：{source.fetched_at}</p>}
+      {source.generator_model && (
+        <p>
+          模型：<code>{source.generator_model}</code>
+        </p>
+      )}
+      {source.generator_prompt_version && (
+        <p>
+          提示詞版本：<code>{source.generator_prompt_version}</code>
+        </p>
+      )}
+      {source.content_hash && (
+        <details>
+          <summary>內容雜湊</summary>
+          <code>{source.content_hash}</code>
+        </details>
+      )}
+    </>
+  );
+}
+
+/**
+ * GEN-004: two named absences, on the detail page and on the workspace list.
+ *
+ * Two, not one, and neither is 「新建立」: nobody has looked at this package, and
+ * nothing has run it. ADR-041 決策 2 makes absence a value rather than a blank,
+ * and 02:GEN-004 names this wording specifically — a neutral word here would
+ * describe a package the platform wrote thirty seconds ago as if it were merely
+ * recent.
+ */
+export function GeneratedNotice({ skillId }: { skillId?: string }) {
+  return (
+    <>
+      <p className="badge badge-unverified">沒有經過任何人工檢視，沒有任何試跑證據</p>
+      <p className="note">
+        這份內容是平台依任務描述生成的。它通過的只有格式與靜態檢查，
+        <strong>那不是品質、可用性或安全的結論</strong>。
+        {skillId ? (
+          <>
+            {" "}
+            <Link to="/lab/run" search={{ skill: skillId, version: undefined, test_case: undefined }}>
+              先跑一次試跑
+            </Link>
+            ，才會有第一份證據。
+          </>
+        ) : (
+          " 先跑一次試跑，才會有第一份證據。"
+        )}
+      </p>
     </>
   );
 }

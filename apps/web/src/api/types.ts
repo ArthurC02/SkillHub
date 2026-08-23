@@ -1,3 +1,5 @@
+import type { ImportResult } from "./import";
+
 // Hand-written mirror of `components.schemas` in contracts/openapi/public.yaml.
 //
 // That file is the single source of truth for the contract (implementation
@@ -33,6 +35,16 @@ export interface Me {
    * grace period it described ran on (04 丙-30).
    */
   deletion_scope: string | null;
+  /**
+   * Optional entry points this deployment turns on (ADR-052). **Absent** when
+   * there are none — not an empty object, so there is never a difference to
+   * resolve between "off" and "this build predates the flag".
+   *
+   * It is here because a route that is simply not mounted cannot be discovered
+   * without a request that fails, and a feature discovered by a failed request
+   * has already been drawn on somebody's screen.
+   */
+  features?: Record<string, boolean>;
   /** When the grace period ends. Null exactly when `deletion_requested_at` is. */
   purge_after: string | null;
 }
@@ -243,7 +255,7 @@ export interface SearchFilters {
 // ---- GET /api/skills/{id} (DISC-006, DISC-008) ----
 
 export interface SkillSource {
-  type: "git" | "upload";
+  type: "git" | "upload" | "generated";
   url?: string;
   source_version?: string;
   fetched_at?: string;
@@ -258,8 +270,40 @@ export interface SkillSource {
    * outage stays distinguishable from a blip. Absent means it answered last time.
    */
   unavailable_since?: string;
-  /** unknown | traceable | manually_confirmed */
+  /**
+   * The user's own words that produced a generated package (GEN-002). Present
+   * only for `generated`, and it is that package's ENTIRE provenance record —
+   * which is why a generated source is never shown as unknown. It is known; it
+   * just is not a URL.
+   */
+  task_description?: string;
+  generator_model?: string;
+  generator_prompt_version?: string;
+  /**
+   * unknown | traceable | manually_confirmed | generated. `generated` is not a
+   * rung above `unknown` on the same ladder: there is nothing upstream to trace
+   * to, and it claims nothing about quality or safety.
+   */
   trust: Labelled;
+}
+
+/**
+ * POST /skills/generate — ImportResult plus how it got here (GEN-001).
+ *
+ * It extends the import shape rather than restating it: a generated package IS
+ * an import on the server side, through the same validation path and the same
+ * version write, and two descriptions of one row is how the two screens start
+ * disagreeing about what a version is.
+ */
+export interface GenerateSkillResult extends ImportResult {
+  /**
+   * 1 or 2. Shown rather than hidden because 02:GEN-003 forbids the UI
+   * promising a success rate: one retry was measured to move 80% to 90%, not to
+   * nothing, and "it took two goes" is the honest form of the same information.
+   */
+  attempts: number;
+  generator_model: string;
+  generator_prompt_version: string;
 }
 
 /** ADR-021 provenance tier, strongest first. */

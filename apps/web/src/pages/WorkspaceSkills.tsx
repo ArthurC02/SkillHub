@@ -7,6 +7,9 @@ import { deleteSkill } from "../api/skills";
 // query for one endpoint, wherever it was first needed (WS-004).
 import { useOwnSkills } from "../api/testcases";
 import { ConfirmDelete } from "../components/ConfirmDelete";
+import { useGenerateEntryPoint } from "../api/generate";
+import { GenerateSkill } from "../components/GenerateSkill";
+import { GeneratedNotice } from "./SkillDetail";
 import { RiskSummary } from "../components/RiskIndicator";
 import type { Redistribution } from "../api/types";
 
@@ -65,6 +68,7 @@ export function WorkspaceSkills() {
   const skills = useOwnSkills();
   const client = useQueryClient();
   const [message, setMessage] = useState("");
+  const generateExposed = useGenerateEntryPoint();
 
   const remove = useMutation({
     mutationFn: deleteSkill,
@@ -85,6 +89,14 @@ export function WorkspaceSkills() {
         這個工作區裡的 Skill：Fork 進來的、自己匯入的都在這裡，新的在上面。 公開目錄裡的 Skill
         不會出現在這裡，除非你 Fork 過它。
       </p>
+
+      {/*
+        GEN-004's second entry point (the first is the search's no-results
+        state). Behind ADR-052's flag, read from /me: off by default, and off is
+        what every beta deployment is in until 01 §11.2's first funnel segment
+        has a reading.
+      */}
+      {generateExposed && <GenerateSkill />}
 
       {skills.isPending && <Loading what="你的 Skill 清單" />}
       {skills.error && <p role="alert">無法讀取你的 Skill 清單：{skills.error.message}</p>}
@@ -166,6 +178,15 @@ export function WorkspaceSkills() {
                   </span>
                 </p>
                 <p className="note">{s.verification.note}</p>
+                {/*
+                  GEN-004: two named absences on the list as well as on the
+                  detail page, because this list is a generated skill's only
+                  entry point — it is not in the catalogue and not in search,
+                  including the owner's own (GEN-007). If the sentence lived only
+                  on the detail page, the one screen it can be met on would not
+                  say it.
+                */}
+                {s.redistribution === "generated" && <GeneratedNotice skillId={s.skill_id} />}
                 {/*
                   Still true and still needed, narrowed to what is genuinely not
                   here. Compatibility is not a contract gap: nothing in the

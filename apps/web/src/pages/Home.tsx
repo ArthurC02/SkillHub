@@ -1,6 +1,8 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useSkillSearch } from "../api/skills";
+import { useGenerateEntryPoint } from "../api/generate";
+import { GenerateSkill } from "../components/GenerateSkill";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { RiskSummary } from "../components/RiskIndicator";
 import { MAX_COMPARE } from "./Compare";
@@ -25,6 +27,7 @@ export function Home() {
   const navigate = useNavigate({ from: "/" });
   const [draft, setDraft] = useState(search.q ?? "");
   const [selected, setSelected] = useState<string[]>([]);
+  const generateExposed = useGenerateEntryPoint();
 
   const filters: SearchFilters = {
     script: search.script,
@@ -148,6 +151,19 @@ export function Home() {
               <p>沒有夠接近的 Skill。</p>
               {/* DISC-005: the suggestion is the server's, not a hardcoded string. */}
               {data.query_suggestion && <p>{data.query_suggestion}</p>}
+              {/*
+                GEN-004's entry point, and only here — never in the
+                `filtered_out` branch above (widening a filter and describing a
+                task are opposite advice) and never beside the search box
+                (ADR-046 決策 7: 先搜尋、搜不到再生成 is a product opinion, and
+                an entry point of equal weight says the opposite).
+
+                `generateExposed` is ADR-052's flag, read from /me. Off — which
+                is the default and the state every beta deployment is in until
+                01 §11.2's first funnel segment has a reading — and none of this
+                renders.
+              */}
+              {generateExposed && <GenerateSkill initialTask={data.query} />}
             </div>
           )}
 
