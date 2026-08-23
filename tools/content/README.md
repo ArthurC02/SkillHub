@@ -22,3 +22,11 @@
 四支 Python 都是**驗證工具，不是產品程式碼**：不進 CI、不被服務引用。前三支重跑的代價是真實的模型費用；`seed_testcases.py` 不呼叫模型，代價只有寫入。`__pycache__/` 是本機執行的副產物。
 
 `seed-testcases/` 的兩個檔案是**本批新做的合成資料**：[`m2/content-baseline-report.md` §3](../../docs/plans/mvp/m2/content-baseline-report.md) 只留下對它們的描述，位元組從未留存，所以這裡重建的是符合該描述的新資料，不是 M2 那兩份。無 Secrets、憑證與個資（`--selftest` 有斷言）。
+
+## 種子語料為什麼不進 Git
+
+45 個 seed 套件是抓下來的，不是 commit 的。**4 個來源標記 `redistributable: false`**（`anthropic-sa`，`LicenseRef-Anthropic-Source-Available`，法務終判未下，見 `04` 乙-10）——把它們放進 git 歷史就是再散布，而那正是平台用 `skills.redistribution` 擋住使用者做的事。只收另外 41 個更糟：每一份報告引用的數字都是 45，一份安靜少四筆的語料讀起來像完整的。
+
+可攜性靠的是**決定性**而不是 commit：`repack_skill` 把 zip entry 時間戳釘死，所以同一個 pin commit 在任何機器上產出的位元組完全相同。
+
+`seed-packages.sha256` 是那句話的證據，也是它的守門人。`--pack-only` 每次都會比對；不合就 exit 2 並逐筆列名。**不會自動重新基準化**——雜湊變了代表上游對一個釘死的 commit 服務了不同的位元組，唯一正確的反應是有人去看，跟規格釘選同一條規則（ADR-044）。要重寫基準得明確加 `--write-manifest`。

@@ -22,6 +22,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import http.cookiejar
 import io
 import json
@@ -383,6 +384,49 @@ def every_skill(sources: dict, cache: pathlib.Path) -> list[dict]:
     return found
 
 
+# The hashes of what a correct fetch produces, committed so any machine can
+# check it got the same bytes (tools/content/seed-packages.sha256).
+#
+# The packages themselves are NOT committed and must not be: 4 of the 45 are
+# LicenseRef-Anthropic-Source-Available with redistributable=false, and putting
+# them in git history would be redistribution the platform refuses to let its own
+# users perform (skills.redistribution, ADR-021 §5.3). Committing only the other
+# 41 would be worse than fetching: every report cites 45, and a corpus that is
+# quietly four short reads as complete.
+#
+# What can be committed is the answer. repack_skill pins entry timestamps, so a
+# pinned commit yields byte-identical zips everywhere — which means a mismatch is
+# a real event (upstream force-push, a rewritten tag, a corrupted cache) and not
+# noise. Without this file that event is silent.
+MANIFEST = pathlib.Path(__file__).with_name("seed-packages.sha256")
+
+
+def load_manifest() -> dict[str, str]:
+    if not MANIFEST.exists():
+        return {}
+    out = {}
+    for line in MANIFEST.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        digest, _, name = line.partition("  ")
+        out[name] = digest
+    return out
+
+
+def write_manifest(digests: dict[str, str]) -> None:
+    lines = [
+        "# sha256 of each seed package as tools/content/import_seed.py --pack-only writes it.",
+        "# Regenerate with --pack-only --write-manifest; verified automatically on every",
+        "# --pack-only run. A mismatch means the bytes upstream serves have changed, which",
+        "# is a fact somebody has to look at, not something to re-baseline reflexively.",
+        "#",
+        "# The packages are deliberately not committed: 4 of the 45 are not redistributable.",
+    ]
+    lines += [f"{digests[n]}  {n}" for n in sorted(digests)]
+    MANIFEST.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def pack_only(args) -> int:
     """Repack every seed skill to `<dir>/<name>.zip` without touching the API.
 
@@ -397,6 +441,9 @@ def pack_only(args) -> int:
     cache = pathlib.Path(args.cache)
     if args.all_skills:
         skills = every_skill(sources, cache)
+    expected = {} if args.all_skills else load_manifest()
+    digests: dict[str, str] = {}
+    mismatched: list[str] = []
     failed = 0
     for i, skill in enumerate(skills, 1):
         src = sources[skill["source_id"]]
@@ -408,8 +455,36 @@ def pack_only(args) -> int:
             failed += 1
             continue
         (out / f"{skill['name']}.zip").write_bytes(data)
-        print(f"[{i:>2}/{len(skills)}] {skill['id']:<40} {len(data):>8} bytes")
+        digest = hashlib.sha256(data).hexdigest()
+        digests[skill["name"]] = digest
+        mark = ""
+        if not args.write_manifest and skill["name"] in expected:
+            if expected[skill["name"]] == digest:
+                mark = "  ok"
+            else:
+                mark = "  MISMATCH"
+                mismatched.append(skill["name"])
+        print(f"[{i:>2}/{len(skills)}] {skill['id']:<40} {len(data):>8} bytes{mark}")
     print(f"\nwrote {len(skills) - failed} package(s) to {out}")
+    if args.write_manifest and not args.all_skills:
+        write_manifest(digests)
+        print(f"wrote {len(digests)} hashes to {MANIFEST}")
+    elif expected:
+        missing = sorted(set(expected) - set(digests))
+        extra = sorted(set(digests) - set(expected))
+        if mismatched or missing or extra:
+            # Not auto-rebaselined. A changed hash is upstream serving different
+            # bytes for a pinned commit, and the only correct response is a person
+            # reading the diff — the same rule the spec pin follows (ADR-044).
+            print(
+                f"\nMANIFEST MISMATCH: {len(mismatched)} changed, {len(missing)} missing, "
+                f"{len(extra)} unexpected",
+                file=sys.stderr,
+            )
+            for n in mismatched + missing + extra:
+                print(f"  {n}", file=sys.stderr)
+            return 2
+        print(f"all {len(digests)} package hashes match {MANIFEST.name}")
     return 1 if failed else 0
 
 
@@ -422,6 +497,8 @@ def main() -> int:
     p.add_argument("--probe-url", action="store_true", help="probe the INGEST-001 URL importer")
     p.add_argument("--selftest", action="store_true", help="offline repacker check")
     p.add_argument("--pack-only", metavar="DIR", help="repack every seed skill to DIR; no API calls")
+    p.add_argument("--write-manifest", action="store_true",
+                   help="with --pack-only: rewrite seed-packages.sha256 from what was produced")
     p.add_argument("--all-skills", action="store_true",
                    help="with --pack-only: every SKILL.md in the pinned repos, not only the 45 selected")
     args = p.parse_args()
