@@ -286,8 +286,8 @@ type GenerateFailure struct {
 	// OccurredAt is when, and it is the only field guaranteed to be there.
 	OccurredAt time.Time `json:"occurred_at"`
 	// Failure is what went wrong, in the vocabulary GenerateSkill writes:
-	// quota, gateway, unpackageable, rejected, blocked. Empty when a row's
-	// metadata could not be decoded — the row still happened.
+	// quota, unavailable, gateway, unpackageable, rejected, blocked. Empty when
+	// a row's metadata could not be decoded — the row still happened.
 	Failure string `json:"failure"`
 	// Codes are the blocking finding codes, present only for `blocked`. Codes
 	// and never values: a finding's message never carries the matched text

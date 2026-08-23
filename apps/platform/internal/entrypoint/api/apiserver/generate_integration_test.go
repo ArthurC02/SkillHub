@@ -15,6 +15,7 @@ import (
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	gen "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
@@ -22,11 +23,12 @@ import (
 // M5 generation, end to end against a stub model service (GEN-003, GEN-007,
 // GEN-011).
 //
-// There is no HTTP route yet — GEN-008 mounts one behind the exposure flag
-// (ADR-052) — so these drive ingest.Service directly, which is the same object
-// the route will call. What they exercise is everything below that line: the
-// gateway call, the packaging, admission's one validation path, the retry
-// decision, the rows, and what search does with the result.
+// The first tests here drive ingest.Service directly — they predate the route,
+// and the service is the same object the route calls, so what they exercise is
+// everything below that line: the gateway call, the packaging, admission's one
+// validation path, the retry decision, the rows, and what search does with the
+// result. The later ones go through the mounted routes (POST /skills/generate,
+// GET /skills/generate/failures) behind the exposure flag (ADR-052, GEN-008).
 
 // generateStub is the internal LLM service, replying with a queued answer per
 // call and counting how many times it was asked.
@@ -604,27 +606,46 @@ func TestTheFailureHistoryDoesNotEchoTheTaskDescription(t *testing.T) {
 	}
 }
 
-// Iron rule 3. The rows are workspace-scoped in SQL and not actor-scoped, and
-// this is the assertion that would notice if that ever slipped back — in a
-// population where every workspace has exactly one member, the two queries
-// return the same thing and only a second workspace tells them apart.
-func TestOneWorkspaceCannotReadAnothersFailures(t *testing.T) {
+// Iron rule 3. The rows are workspace-scoped in SQL and not actor-scoped, and in
+// a population where every workspace has exactly one member the two queries
+// return the same thing — a second login is a second actor AND a second
+// workspace, and tells them apart no better than the first. So this test writes
+// a row the two scopes disagree on: actor = A, workspace = B's. Workspace scope
+// shows it to B and hides it from A; actor scope would do the opposite.
+func TestTheFailureHistoryIsScopedByWorkspaceNotByActor(t *testing.T) {
 	pool := requireDB(t)
-	bad := generatedSkill("Not A Valid Name!", "步驟一：把每一份掃描件轉成表格。")
-	stub := newGenerateStub(t, bad, bad)
-	a := newAPIExposingGenerate(t, pool, stub.URL)
+	a := newAPIExposingGenerate(t, pool)
+	alice := a.login(t, "gen-scope-alice")
+	bob := a.login(t, "gen-scope-bob")
+	aliceWS := workspaceOf(t, pool, alice)
+	bobWS := workspaceOf(t, pool, bob)
 
-	mine := a.login(t, "gen-history-mine")
-	postJSON(t, mine, "/skills/generate", `{"task_description":"把掃描的單據整理成一張表"}`)
+	// Written the way the product writes it, minus the product: audit.Log with
+	// Alice as actor and Bob's workspace as the scope.
+	if err := audit.Log(context.Background(), pool, audit.Event{
+		Actor:        aliceWS.OwnerUserID,
+		Workspace:    bobWS.ID,
+		Action:       audit.ActionSkillGenerateFailed,
+		ResourceType: audit.ResourceSkill,
+		Metadata:     map[string]any{"failure": "gateway", "attempts": 1},
+	}); err != nil {
+		t.Fatal(err)
+	}
 
-	theirs := a.login(t, "gen-history-theirs")
 	var out struct {
 		Failures []map[string]any `json:"failures"`
 	}
-	if code := getJSON(t, theirs.Client, theirs.base+"/skills/generate/failures", &out); code != http.StatusOK {
-		t.Fatalf("GET failures: %d", code)
+	if code := getJSON(t, bob.Client, bob.base+"/skills/generate/failures", &out); code != http.StatusOK {
+		t.Fatalf("bob GET failures: %d", code)
+	}
+	if len(out.Failures) != 1 {
+		t.Errorf("the row is in Bob's workspace and Bob read %d rows; the query is not workspace-scoped", len(out.Failures))
+	}
+	out.Failures = nil
+	if code := getJSON(t, alice.Client, alice.base+"/skills/generate/failures", &out); code != http.StatusOK {
+		t.Fatalf("alice GET failures: %d", code)
 	}
 	if len(out.Failures) != 0 {
-		t.Errorf("a second workspace read %d of someone else's failures", len(out.Failures))
+		t.Errorf("Alice is the actor but not the workspace and read %d rows; the query is actor-scoped", len(out.Failures))
 	}
 }

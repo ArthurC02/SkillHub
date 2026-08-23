@@ -185,10 +185,10 @@ test("GEN-003: past failures are readable, and the task description is not among
   ]);
   await render();
   await submitSearch("沒有人做過的事");
-  await waitFor(() => (container.textContent ?? "").includes("過去沒有成功的生成"));
+  await waitFor(() => (container.textContent ?? "").includes("最近沒有成功的生成"));
 
   const text = container.textContent ?? "";
-  expect(text).toContain("過去沒有成功的生成（2）");
+  expect(text).toContain("最近沒有成功的生成（2 次）");
   expect(text).toContain("name-invalid");
   // 02:GEN-001: a refusal before the model call costs nothing, and the row has
   // to say so — otherwise "額度不足" reads like something the user was billed for.
@@ -206,7 +206,7 @@ test("GEN-003: a workspace with no failures is shown no history section", async 
   await submitSearch("沒有人做過的事");
 
   expect(container.textContent).toContain("讓平台依你的描述做一個");
-  expect(container.textContent).not.toContain("過去沒有成功的生成");
+  expect(container.textContent).not.toContain("最近沒有成功的生成");
 });
 
 // GEN-008 / 02:GEN-001 「生成前顯示…」. Two things are asserted: that the three
@@ -221,12 +221,13 @@ test("GEN-008: the bounds the server enforces are stated before the button, and 
   const text = container.textContent ?? "";
   expect(text).toContain("這一次最多會用到");
   expect(text).toContain("4,000 字");
-  expect(text).toContain("16,000 token");
+  expect(text).toContain("推理加輸出合計 16,000 token");
   expect(text).toContain("最多嘗試 2 次");
   expect(text).toContain("尚未定值");
   // The measured average must not appear as a promise.
   expect(text).not.toMatch(/\$0\.00/);
-  // And the textarea enforces the same ceiling the server does.
-  expect(container.querySelector<HTMLTextAreaElement>("#generate-task")!.maxLength).toBe(4000);
+  // And the textarea carries no maxLength: the browser's unit (UTF-16 code
+  // units) is not the server's (runes), so one enforcer, and it is the server.
+  expect(container.querySelector<HTMLTextAreaElement>("#generate-task")!.maxLength).toBe(-1);
 });
 

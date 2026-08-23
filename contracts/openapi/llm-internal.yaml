@@ -277,10 +277,14 @@ paths:
         *key*: a leading space before `description`, an Arabic letter glued to
         it, `说明: invalid` in place of the field. Six of twenty descriptions
         failed at least once that way. Returning typed fields and letting Go
-        write the YAML makes `frontmatter-invalid-yaml`,
-        `frontmatter-unknown-field` and `description-missing` structurally
-        impossible rather than merely unlikely - four of the six observed
-        failures cannot recur. `license` is absent from GeneratedSkill for the
+        write the YAML makes `frontmatter-invalid-yaml` and
+        `frontmatter-unknown-field` structurally impossible, and closes the
+        damaged-key route to `description-missing` with them - four of the six
+        observed failures cannot recur by the route they took.
+        `description-missing` itself stays reachable through an empty value
+        (the `minLength: 1` that once closed it is not legal under strict
+        `json_schema`), and skillpkg reports it as a blocking finding, which
+        is where 02:GEN-003 wants it. `license` is absent from GeneratedSkill for the
         same reason: ADR-046 決策 5 forbids the generator from emitting one, and
         a prohibition that lives only in a prompt is a prohibition that holds
         until the next prompt revision (03:GEN-001 asks for it on the schema).
@@ -1142,36 +1146,41 @@ components:
         string must not occupy the "已宣告" state, which means someone declared
         it. The user declares it afterwards or it stays unknown.
 
-        **Every property is required and none carries a length or pattern
-        constraint**, because this schema is handed to the model as a strict
+        **Every property is required, and the schema the MODEL receives carries
+        no length or pattern constraint**, because it is handed over as a strict
         `json_schema` and the gateway refuses both - an optional property and a
-        `maxLength` are each a 400 on every call, not a relaxed check. The caps
-        are applied to the answer instead (apps/llm/src/skillhub_llm/generate.py),
-        which is what makes them true here. `metadata` was dropped rather than
-        relaxed: an open-ended string map is `additionalProperties: {"type":
-        "string"}`, which strict cannot express at all, and no prompt ever asked
-        the model to fill it.
+        `maxLength` are each a 400 on every call, not a relaxed check. The
+        `minLength`/`maxItems` still written below are this contract's
+        statement of the cap; the Pydantic class the model's schema is derived
+        from carries none of them, and apps/llm checks the answer against them
+        instead (`_over_cap`, and the empty-body refusal) - checks, not clips:
+        an answer over a cap is refused as malformed, never edited (ADR-047
+        決策 1). `metadata` was dropped rather than relaxed: an open-ended
+        string map is `additionalProperties: {"type": "string"}`, which strict
+        cannot express at all, and no prompt ever asked the model to fill it.
       properties:
         name:
           type: string
           description: |
-            The Agent Skills name. Clipped to 64 characters on the way out; the
-            `^[a-z0-9]+(-[a-z0-9]+)*$` rule is `skillpkg.Validate`'s
-            (name-invalid, name-too-long) and stays there, because a blocking
-            finding reaches the user verbatim (02:GEN-003) where a refusal here
-            would reach them as "generation failed".
+            The Agent Skills name. Not constrained here and not clipped: the
+            `^[a-z0-9]+(-[a-z0-9]+)*$` rule and the 64-character limit are
+            `skillpkg.Validate`'s (name-invalid, name-too-long) and stay there,
+            because a blocking finding reaches the user verbatim (02:GEN-003)
+            where a refusal here would reach them as "generation failed".
         description:
           type: string
           description: |
-            What the skill does and when to use it. Clipped to 1024 characters.
-            Empty is `description-missing`, a blocking finding - it used to be
+            What the skill does and when to use it. Not clipped; the 1024
+            limit is skillpkg's (description-too-long). Empty is
+            `description-missing`, a blocking finding - it used to be
             unreachable via `minLength: 1`, which strict `json_schema` refuses.
         compatibility:
           type: string
           description: |
-            Environment requirements, the specification's 1-500 characters.
-            Clipped to 500. Empty string when the model has nothing to say;
-            Go omits the key rather than writing an empty one.
+            Environment requirements, the specification's 1-500 characters;
+            skillpkg warns past 500. Empty string when the model has nothing to
+            say (the prompt says so explicitly); Go omits the key rather than
+            writing an empty one.
         allowed_tools:
           type: string
           description: |
@@ -1181,9 +1190,11 @@ components:
         body:
           type: string
           minLength: 1
+          maxLength: 60000
           description: |
             The instructions the agent follows, in Markdown, without the
-            frontmatter. Empty is refused: the B round produced a 38-character
+            frontmatter. Over 60000 characters is refused as malformed (not
+            clipped); the cap is the contract's, checked on the answer. Empty is refused: the B round produced a 38-character
             SKILL.md whose whole body was missing, and it was blocked only
             because its key was also damaged. Had the key been right, a
             syntactically perfect package with no content would have passed
@@ -1212,8 +1223,8 @@ components:
         path:
           type: string
           description: |
-            Relative and not starting with a separator, clipped to 255
-            characters. **The shape is not constrained here**, for the same
+            Relative and not starting with a separator; over 255 characters is
+            refused as malformed. **The shape is not constrained here**, for the same
             reason GeneratedSkill's properties are not: this schema is handed to
             the model under strict `json_schema`, which refuses `pattern` and
             `maxLength` with a 400 rather than ignoring them. It is enforced
@@ -1223,7 +1234,7 @@ components:
             SKILL.md or to the archive root before the zip is built.
         content:
           type: string
-          description: Clipped to 100000 characters on the way out.
+          description: Over 100000 characters is refused as malformed, not clipped.
 
     GenerateSkillResponse:
       type: object

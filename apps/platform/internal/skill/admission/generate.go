@@ -28,7 +28,7 @@ import (
 // Generation from a task description (GEN-003, ADR-046).
 //
 // It lives in ingest and not next to the other LLM callers because the thing it
-// produces is an import: the bytes go through prepare → Validate → enrich → tx
+// produces is an import: the bytes go through prepare → Validate → tx
 // exactly as an upload does, and a generated package that fails validation fails
 // it for the same reason and with the same words. A second version-creation path
 // would be a second truth about what a valid package is — the failure PACK-002
@@ -151,8 +151,17 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 	// Before the first gateway call and before anything is written: 02:GEN-001
 	// 「額度不足時在呼叫模型之前拒絕，不得先花錢再說」.
 	if reason, err := s.requireGenerateAllowance(ctx, ws.ID); err != nil {
+		// Two different things refuse here and the record has to say which. An
+		// exhausted allowance is `quota`; an allowance that could not be COUNTED
+		// is `unavailable` — the 422 path stopped conflating them (d555564), and
+		// the failure list a user reads back must not be the place that tells a
+		// healthy account it ran out.
+		failure := "quota"
+		if errors.Is(err, policy.ErrAllowanceUnavailable) {
+			failure = "unavailable"
+		}
 		s.auditGenerateFailure(ctx, ws, task, 0, map[string]any{
-			"failure": "quota",
+			"failure": failure,
 			"reason":  reason,
 		})
 		return GenerateResult{}, err
@@ -300,8 +309,10 @@ type generatedFrontmatter struct {
 // whole reason the endpoint returns fields instead of a SKILL.md string: across
 // 59 measured generations every blocking failure was a damaged *key* — a leading
 // space, an Arabic letter glued to `description`, `说明` in its place — and a key
-// the model does not write cannot be damaged. Three of the twelve blocking codes
-// stop being reachable rather than merely unlikely.
+// the model does not write cannot be damaged. Two of the twelve blocking codes
+// stop being reachable rather than merely unlikely, and the damaged-key route to
+// a third (description-missing) closes with them; that one stays reachable
+// through an empty value, and skillpkg reports it.
 //
 // The body and the extra files are copied byte for byte. ADR-047 決策 1 says the
 // platform does not edit what the model returned, and that rule is only

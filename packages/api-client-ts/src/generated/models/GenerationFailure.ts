@@ -33,8 +33,10 @@ export interface GenerationFailure {
      */
     occurredAt: Date;
     /**
-     * What went wrong. `quota` never reached the gateway; `gateway` is the
-     * model service or the proxy; `unpackageable` is an answer that parsed
+     * What went wrong. `quota` never reached the gateway; `unavailable`
+     * never reached it either, but for the opposite reason — the allowance
+     * could not be counted, and that is not the account running out, so it
+     * is not called `quota`; `gateway` is the model service or the proxy; `unpackageable` is an answer that parsed
      * but cannot be made into an archive; `rejected` is admission refusing
      * it (a name collision, most often); `blocked` is a validation finding.
      * Empty when a row's metadata could not be decoded — the row still
@@ -86,6 +88,7 @@ export interface GenerationFailure {
  */
 export const GenerationFailureFailureEnum = {
     Quota: 'quota',
+    Unavailable: 'unavailable',
     Gateway: 'gateway',
     Unpackageable: 'unpackageable',
     Rejected: 'rejected',

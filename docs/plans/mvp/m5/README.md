@@ -3,7 +3,7 @@
 - 狀態：**全面開工**（2026-08-23）——投入上限已由**授權**解除（[ADR-054](../../../adr/ADR-054-the-cap-was-lifted-by-authorisation-not-by-evidence.md)，**不是由 `ask-5` 的證據解除；那個假設的證據量仍然是零**）——三個啟動條件**全部暫時放行**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)），**剩下一條邊界**：生成入口**不得對封測使用者曝光**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)，綁漏斗讀數，與本次授權無關）。見下方§啟動條件與§投入上限
 - 決策：[ADR-046](../../../adr/ADR-046-generating-a-skill-from-a-task-description.md)
 - 規格：[`02` §4.9](../../02-specifications-and-acceptance-criteria.md)（`GEN-001`～`004`）
-- 工作項：[`03` §19](../../03-work-items.md)（`GEN-001`～`011`）——**2026-08-24：11 項中 9 項已勾，2 項 ◐**——`GEN-009` ③④（要 Sandbox ＋評估管線＋人）、`GEN-008`（缺「生成前的預估成本」；`04` 丙-53 已補上一條不需簽名的路——用已強制的三個界算上限——所以它是還沒做，不是被擋著）。`GEN-003` 於 2026-08-24 隨失敗紀錄讀取面（`GET /skills/generate/failures`，`04` 丙-55 結案）重新勾選
+- 工作項：[`03` §19](../../03-work-items.md)（`GEN-001`～`011`）——**2026-08-24：11 項中 9 項已勾，2 項 ◐**——`GEN-009` ③④（要 Sandbox ＋評估管線＋人）、`GEN-008`（缺「生成前的預估成本」的**金額**；三個被強制的界 08-24 已上畫面、成本位置印 `尚未定值`；剩下的唯一輸入是單價，要不要釘進設定是 `05` R-10 的事，在 `GENERATE_SKILL_EXPOSED=on` 之前不擋人）。`GEN-003` 於 2026-08-24 隨失敗紀錄讀取面（`GET /skills/generate/failures`，`04` 丙-55 結案）重新勾選
 
 ## 已經做完的是什麼（2026-08-23）
 
@@ -18,7 +18,7 @@
 3. **曝光旗標 `GENERATE_SKILL_EXPOSED` 預設為關**，而「關」的定義是**這條路由不存在**，不是它會拒絕。
 4. **`GEN-009` ③④ 沒有做，也不該假裝做了**：目前所有「通過」都只到 `skillpkg.Validate`，**那是語法門不是品質門**——A 輪兩張「Skill 本來就做不到」的干擾卡全部通過。
 
-**第三輪（同日最後一批，用「懶惰資深工程師」的尺重審而不是找 bug）抓到的第一個，比前兩輪任何一個都嚴重：這條路徑對真實閘道從來沒有成功過一次。** 交給模型的 schema 是 `GeneratedSkill.model_json_schema()`，而 `strict: true` 下閘道**拒絕**它而不是放寬它——四個 default（每一個都把自己的 property 從 `required` 拿掉）、一個 `dict[str, str]`、六個長度與 pattern 約束，**任何一項都是每一次請求都 400**。**沒有任何東西看得到它**：七支測試全部 monkeypatch 掉 client（那是它們該做的事），A／B 兩輪的 59 次量測走的是 spike 不是這個端點。**而答案就在三個檔案外**——`evaluate.py` 從 M3 起就帶著一行註解逐字寫著「strict `json_schema` rejects `maxLength` and `maxItems`」，另外四個交給模型的 schema 靠人手紀律一直是合法的，M5 是唯一破例的那一個。已修並補上 `tests/test_strict_schemas.py`（六個 schema 全覆蓋）；**修好之後也還沒對真實閘道跑過一次**（`04` 丙-56）。
+**第三輪（同日最後一批，用「懶惰資深工程師」的尺重審而不是找 bug）抓到的第一個，比前兩輪任何一個都嚴重：這條路徑對真實閘道從來沒有成功過一次。** 交給模型的 schema 是 `GeneratedSkill.model_json_schema()`，而 `strict: true` 下閘道**拒絕**它而不是放寬它——四個 default（每一個都把自己的 property 從 `required` 拿掉）、一個 `dict[str, str]`、六個長度與 pattern 約束，**任何一項都是每一次請求都 400**。**沒有任何東西看得到它**：這個端點的測試全部 monkeypatch 掉 client（那是它們該做的事），A／B 兩輪的 59 次量測走的是 spike 不是這個端點。**而答案就在三個檔案外**——`evaluate.py` 從 M3 起就帶著一行註解逐字寫著「strict `json_schema` rejects `maxLength` and `maxItems`」，另外四個交給模型的 schema 靠人手紀律一直是合法的，M5 是唯一破例的那一個。已修並補上 `tests/test_strict_schemas.py`（六個 schema 全覆蓋）；**修好之後也還沒對真實閘道跑過一次**（`04` 丙-56）。
 
 **同日的兩輪對抗式稽核共抓到十二個缺陷。** 第一輪五個（逐條記在 `03` §19 的行內），第二輪七個程式面加十三處文件面。最嚴重的那個兩個方向都沒有症狀：`skills.redistribution` 是建立那一列時決定的、之後永不重算，而 `GEN-007` 的搜尋排除鎖的正是這一欄——**同名碰撞會讓生成物變成搜得到的（包括它自己的作者），或讓使用者自己上傳的東西從此搜不到**。處置是在 `importZip` 拒絕碰撞而不是合併。
 

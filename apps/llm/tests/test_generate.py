@@ -167,3 +167,50 @@ def test_the_truncation_sentence_is_the_one_go_matches_on(capture):
     r = client.post("/v1/generate-skill", json={"task_description": TASK})
     assert r.status_code == 502
     assert r.json()["detail"] == "generate model output was truncated at the token ceiling"
+
+
+def test_an_empty_body_is_refused_not_packaged(capture):
+    """The one answer-side rule that is not a cap, and the one skillpkg cannot
+    catch: the B round produced a 38-character SKILL.md with no body at all,
+    blocked only because its key was damaged too. With Go writing the key, a
+    syntactically perfect package with nothing in it would pass every check.
+    """
+    capture(json.dumps({**GOOD_SKILL, "body": "   "}))
+    r = client.post("/v1/generate-skill", json={"task_description": TASK})
+    assert r.status_code == 502
+    assert "malformed" in r.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "patch",
+    [
+        {"body": "x" * (generate.MAX_BODY_CHARS + 1)},
+        {"files": [{"path": f"f{i}.md", "content": "x"} for i in range(generate.MAX_EXTRA_FILES + 1)]},
+        {"files": [{"path": "p" * (generate.MAX_PATH_CHARS + 1), "content": "x"}]},
+        {"files": [{"path": "big.txt", "content": "x" * (generate.MAX_FILE_BYTES + 1)}]},
+    ],
+    ids=["body", "file-count", "path", "content"],
+)
+def test_an_answer_over_a_contract_cap_is_refused_not_clipped(capture, patch):
+    """Strict json_schema cannot carry the contract's caps, so they are checked
+    on the answer. Checked and REFUSED: an earlier version clipped, and clipping
+    rewrites model output without any finding saying so (ADR-047 決策 1).
+    """
+    capture(json.dumps({**GOOD_SKILL, **patch}))
+    r = client.post("/v1/generate-skill", json={"task_description": TASK})
+    assert r.status_code == 502
+    assert "malformed" in r.json()["detail"]
+
+
+def test_a_long_name_and_an_empty_description_pass_through_to_the_validator(capture):
+    """Deliberately NOT refused here. skillpkg.Validate has name-too-long and
+    description-missing, and it hands the user the finding verbatim
+    (02:GEN-003); a 502 from this side reaches them as "generation failed".
+    """
+    calls = capture(json.dumps({**GOOD_SKILL, "name": "a" * 80, "description": ""}))
+    r = client.post("/v1/generate-skill", json={"task_description": TASK})
+    assert r.status_code == 200, r.text
+    assert r.json()["skill"]["name"] == "a" * 80
+    assert r.json()["skill"]["description"] == ""
+    assert len(calls) == 1
+

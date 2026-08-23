@@ -15,13 +15,14 @@ report-generate-baseline.md), every blocking failure was the model damaging a
 frontmatter *key*: a leading space before `description`, an Arabic letter glued
 to it, `说明: invalid` in its place. Six of twenty task descriptions failed that
 way at least once. A key the model never writes cannot be damaged, so Go
-serialises the YAML and `frontmatter-invalid-yaml` and `frontmatter-unknown-field`
-stop being possible rather than merely unlikely - four of the six observed
-failures. `description-missing` is not in that list: it was, back when this
-module put `min_length=1` on the field, and strict `json_schema` does not accept
-that keyword. It is `skillpkg.Validate`'s to catch, which is where 02:GEN-003
-wants it anyway - a blocking finding reaches the user verbatim, a 502 from here
-reaches them as "generation failed".
+serialises the YAML: `frontmatter-invalid-yaml` and `frontmatter-unknown-field`
+stop being possible, and the damaged-key ROUTE to `description-missing` closes
+with them - four of the six observed failures cannot recur by the route they
+took. `description-missing` itself stays reachable, through an empty value: it
+was unreachable back when this module put `min_length=1` on the field, and
+strict `json_schema` does not accept that keyword. It is `skillpkg.Validate`'s
+to catch, which is where 02:GEN-003 wants it anyway - a blocking finding reaches
+the user verbatim, a 502 from here reaches them as "generation failed".
 
 `license` is absent from GeneratedSkill and `extra="forbid"` keeps it that way.
 ADR-046 決策 5: a model-written licence string must not occupy the "已宣告"
@@ -38,7 +39,7 @@ from fastapi import APIRouter, HTTPException
 from openai import OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from skillhub_llm.evaluate import GatewayUsage, _client, _clip, _metadata, _usage
+from skillhub_llm.evaluate import GatewayUsage, _client, _metadata, _usage
 
 logger = logging.getLogger("skillhub_llm.generate")
 
@@ -60,23 +61,27 @@ MAX_OUTPUT_TOKENS = 16000  # one-number: generateMaxOutputTokens
 
 # Contract caps (llm-internal.yaml). They cannot be expressed in the schema the
 # model is given - strict `json_schema` rejects `maxLength` and `maxItems` - so
-# they are applied to the answer instead, the way evaluate.py already does it.
+# they are checked on the answer instead.
+#
+# Checked, not clipped. An earlier version clipped, and clipping is editing: it
+# rewrites what the model returned, which ADR-047 決策 1 forbids, and it does so
+# without any finding telling the user it happened. Over the cap is a 502 like
+# any other unusable answer. Name, description and compatibility carry no cap
+# here at all - skillpkg.Validate has name-too-long / description-too-long for
+# those and hands the user the finding verbatim (02:GEN-003), which a 502 from
+# here cannot do.
 MAX_EXTRA_FILES = 10
 MAX_FILE_BYTES = 100_000
 MAX_BODY_CHARS = 60_000
-MAX_NAME_CHARS = 64
-MAX_DESCRIPTION_CHARS = 1024
-MAX_COMPATIBILITY_CHARS = 500
 MAX_PATH_CHARS = 255
 
 
+# `..` in a path is not checked here. It is a blocking finding read off the raw
+# zip entry names before `fs.Sub` rewrites them (`entry-path-escape`, 04 丙-15),
+# which is both earlier and harder to bypass than a regex on this side. (Comment
+# and not docstring: see GeneratedSkill.)
 class GeneratedFile(BaseModel):
-    """One package file besides SKILL.md.
-
-    `..` is not checked here. It is a blocking finding read off the raw zip
-    entry names before `fs.Sub` rewrites them (`entry-path-escape`, 04 丙-15),
-    which is both earlier and harder to bypass than a regex on this side.
-    """
+    """One package file besides SKILL.md: a relative path and its content."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -84,27 +89,32 @@ class GeneratedFile(BaseModel):
     content: str
 
 
+# GeneratedSkill is the frontmatter as fields plus the body. It is ALSO the schema
+# handed to the model, so the wire shape and the shape the prompt asks for cannot
+# drift apart (same rule as SuggestCriteriaResponse).
+#
+# No Field(...) constraints and no defaults, and that is load-bearing. Strict
+# `json_schema` rejects maxLength/minLength/pattern/maxItems and requires every
+# property to appear in `required` - a default takes a property out of
+# `required`, which is why the four sibling schemas have none either. This class
+# had four defaults, a dict[str, str] (whose `additionalProperties: {"type":
+# "string"}` strict also refuses) and six length constraints, so the gateway
+# answered 400 to every call this endpoint ever made. Nothing caught it: the
+# tests monkeypatch the client, and the measured rounds called the gateway from
+# a spike rather than through here. tests/test_strict_schemas.py is now the
+# thing that would.
+#
+# The caps are checked on the answer (see _over_cap). The two rules that were
+# doing real work - a well-formed name and a non-empty description - are
+# skillpkg.Validate's already, and it hands the user the verbatim finding
+# (02:GEN-003) where a 502 from here would say only that generation failed.
+#
+# This is a comment block and not the class docstring on purpose: pydantic
+# copies a docstring into the schema's `description`, and the schema is sent to
+# the model on every call. Engineering history is not something the model needs
+# to read for ~200 tokens a generation.
 class GeneratedSkill(BaseModel):
-    """The frontmatter as fields plus the body. Also the schema handed to the
-    model, so the wire shape and the shape the prompt asks for cannot drift
-    apart (same rule as SuggestCriteriaResponse).
-
-    **No `Field(...)` constraints and no defaults, and that is load-bearing.**
-    Strict `json_schema` rejects `maxLength`/`minLength`/`pattern`/`maxItems`
-    and requires every property to appear in `required` - a default takes a
-    property out of `required`, which is why the four sibling schemas have
-    none either. This class had four defaults, a `dict[str, str]` (whose
-    `additionalProperties: {"type": "string"}` strict also refuses) and six
-    length constraints, so the gateway answered 400 to every call this endpoint
-    ever made. Nothing caught it: all seven tests monkeypatch the client, and
-    the measured rounds called the gateway from a spike rather than through
-    here. `tests/test_strict_schemas.py` is now the thing that would.
-
-    The caps live below, applied to the answer. The two rules that were doing
-    real work - a well-formed `name` and a non-empty `description` - are
-    `skillpkg.Validate`'s already, and it hands the user the verbatim finding
-    (02:GEN-003) where a 502 from here would say only that generation failed.
-    """
+    """One generated Skill: typed frontmatter fields and a Markdown body."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -133,6 +143,20 @@ class GenerateSkillRequest(BaseModel):
         return v
 
 
+def _over_cap(skill: GeneratedSkill) -> str | None:
+    """The contract cap the answer exceeds, or None. Never touches the answer."""
+    if len(skill.body) > MAX_BODY_CHARS:
+        return f"body {len(skill.body)} > {MAX_BODY_CHARS}"
+    if len(skill.files) > MAX_EXTRA_FILES:
+        return f"files {len(skill.files)} > {MAX_EXTRA_FILES}"
+    for f in skill.files:
+        if len(f.path) > MAX_PATH_CHARS:
+            return f"path {len(f.path)} > {MAX_PATH_CHARS}"
+        if len(f.content) > MAX_FILE_BYTES:
+            return f"content {len(f.content)} > {MAX_FILE_BYTES}"
+    return None
+
+
 class GenerateSkillResponse(BaseModel):
     skill: GeneratedSkill
     model: str
@@ -153,9 +177,10 @@ front matter yourself; do not write `---` delimiters; do not include a licence.
 - `description`: what the skill does AND when to use it, in one or two sentences.
   This is the only thing an agent sees when deciding whether to load the skill, so
   say the trigger, not just the capability.
-- `compatibility`: environment requirements, only if there are real ones.
-- `allowed_tools`: a single space-separated string, only if the skill needs
-  specific tools.
+- `compatibility`: environment requirements. An empty string when there are
+  none - not "none", not "N/A"; the field is written into the package as-is.
+- `allowed_tools`: a single space-separated string of tool names, only if the
+  skill needs specific tools. An empty string otherwise.
 - `body`: the actual instructions, in Markdown. Concrete steps a competent agent
   can follow. No placeholders for someone to fill in later, no "TODO", no
   "insert X here" - if you do not know a value, write instructions for finding it.
@@ -236,14 +261,11 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
             status_code=502, detail="generate model returned malformed output"
         )
 
-    skill.name = _clip(skill.name, MAX_NAME_CHARS)
-    skill.description = _clip(skill.description, MAX_DESCRIPTION_CHARS)
-    skill.compatibility = _clip(skill.compatibility, MAX_COMPATIBILITY_CHARS)
-    skill.body = _clip(skill.body, MAX_BODY_CHARS)
-    skill.files = skill.files[:MAX_EXTRA_FILES]
-    for f in skill.files:
-        f.path = _clip(f.path, MAX_PATH_CHARS)
-        f.content = _clip(f.content, MAX_FILE_BYTES)
+    if over := _over_cap(skill):
+        logger.warning("generate-skill: model output over the contract cap: %s", over)
+        raise HTTPException(
+            status_code=502, detail="generate model returned malformed output"
+        )
 
     return GenerateSkillResponse(
         skill=skill,

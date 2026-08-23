@@ -499,7 +499,7 @@ var ErrGenerateTruncated = errors.New("llmclient: generated skill was truncated 
 // with size.
 //
 // Still a string across a language boundary, held by a test on each side:
-// test_truncation_is_a_different_failure_from_malformed_output asserts the
+// test_the_truncation_sentence_is_the_one_go_matches_on asserts the
 // Python half, TestTruncationComesBackAsItsOwnError the Go half — now including
 // the false positive.
 const truncationMarker = "generate model output was truncated at the token ceiling"

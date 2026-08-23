@@ -11526,6 +11526,8 @@ func (s *GenerationFailureFailure) Decode(d *jx.Decoder) error {
 	switch GenerationFailureFailure(v) {
 	case GenerationFailureFailureQuota:
 		*s = GenerationFailureFailureQuota
+	case GenerationFailureFailureUnavailable:
+		*s = GenerationFailureFailureUnavailable
 	case GenerationFailureFailureGateway:
 		*s = GenerationFailureFailureGateway
 	case GenerationFailureFailureUnpackageable:

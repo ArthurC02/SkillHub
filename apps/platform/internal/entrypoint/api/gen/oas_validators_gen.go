@@ -1960,6 +1960,8 @@ func (s GenerationFailureFailure) Validate() error {
 	switch s {
 	case "quota":
 		return nil
+	case "unavailable":
+		return nil
 	case "gateway":
 		return nil
 	case "unpackageable":

@@ -31,6 +31,11 @@ import { GeneratedNotice } from "./GeneratedNotice";
  * enforces it. That marker is the answer to §3 第 11 條 「指出強制它的那一行」:
  * the line is named, and a machine compares against it.
  *
+ * The textarea deliberately carries no `maxLength`: the browser counts UTF-16
+ * code units and the server counts runes, so the same number would refuse an
+ * emoji-heavy description the server accepts. One enforcer, and it is the
+ * server; the 422 already says what to trim.
+ *
  * What is NOT here is a dollar figure. The only unenforced input to a cost is
  * the unit price, which is the provider's fact and changes; printing the
  * measured average ($0.0055) as 「預估成本」 would be the promise §2.2 forbids
@@ -89,13 +94,12 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         onChange={(e) => setTask(e.target.value)}
         placeholder="要完成什麼、輸入是什麼、預期產出是什麼。"
         disabled={mutation.isPending}
-        maxLength={GENERATE_MAX_TASK_RUNES}
       />
 
       <dl>
         <dt>這一次最多會用到</dt>
         <dd>
-          描述 {GENERATE_MAX_TASK_RUNES.toLocaleString("zh-TW")} 字、模型輸出{" "}
+          描述 {GENERATE_MAX_TASK_RUNES.toLocaleString("zh-TW")} 字、模型推理加輸出合計{" "}
           {GENERATE_MAX_OUTPUT_TOKENS.toLocaleString("zh-TW")} token、最多嘗試{" "}
           {GENERATE_MAX_ATTEMPTS} 次。
           <span className="note">
@@ -162,7 +166,7 @@ function GenerateHistory() {
 
   return (
     <details>
-      <summary>過去沒有成功的生成（{failures.length}）</summary>
+      <summary>最近沒有成功的生成（{failures.length} 次）</summary>
       <ul>
         {failures.map((f) => (
           <li key={f.occurred_at}>
@@ -175,7 +179,7 @@ function GenerateHistory() {
         ))}
       </ul>
       <p className="note">
-        這些是沒有建立任何版本的那幾次。
+        這些是沒有建立任何版本的那幾次，最多列最近 20 次。
         <strong>這裡沒有記下你當時輸入的任務描述</strong>
         ——那份文字跟著它產生的 Skill 走，刪掉 Skill 就跟著刪掉；這份紀錄保存得更久，
         兩邊各留一份等於一個沒有人做過的保存承諾。
@@ -198,6 +202,11 @@ function failureSentence(f: GenerationFailure): string {
   switch (f.failure) {
     case "quota":
       return "額度不足，沒有呼叫模型，也沒有花錢。";
+    case "unavailable":
+      // Not "額度不足": the allowance could not be counted, and a healthy
+      // account must not be told it ran out (d555564 fixed the 422; this is
+      // the same sentence on the record).
+      return "當時算不出剩餘額度，平台沒有冒險呼叫模型，也沒有花錢。";
     case "gateway":
       return "模型服務沒有回應。沒有建立任何版本。";
     case "unpackageable":

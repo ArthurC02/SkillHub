@@ -56,7 +56,7 @@ func TestClientDeadlineIsTheCallersContext(t *testing.T) {
 }
 
 // The Go half of a string held across a language boundary. apps/llm's
-// test_truncation_is_a_different_failure_from_malformed_output holds the other.
+// test_the_truncation_sentence_is_the_one_go_matches_on holds the other.
 //
 // Both failures come back as 502, and the round-A truncation emitted an EMPTY
 // string after spending its whole budget reasoning - so without this the two are

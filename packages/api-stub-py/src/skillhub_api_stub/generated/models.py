@@ -418,10 +418,10 @@ class GeneratedFile(BaseModel):
     )
     path: str = Field(
         ...,
-        description="Relative and not starting with a separator, clipped to 255\ncharacters. **The shape is not constrained here**, for the same\nreason GeneratedSkill's properties are not: this schema is handed to\nthe model under strict `json_schema`, which refuses `pattern` and\n`maxLength` with a 400 rather than ignoring them. It is enforced\nwhere it already blocked anyway - `entry-path-escape` is a\nSeverityError read off the raw zip entry names before `fs.Sub`\nrewrites them (04 丙-15), and Go refuses an entry that resolves to\nSKILL.md or to the archive root before the zip is built.\n",
+        description="Relative and not starting with a separator; over 255 characters is\nrefused as malformed. **The shape is not constrained here**, for the same\nreason GeneratedSkill's properties are not: this schema is handed to\nthe model under strict `json_schema`, which refuses `pattern` and\n`maxLength` with a 400 rather than ignoring them. It is enforced\nwhere it already blocked anyway - `entry-path-escape` is a\nSeverityError read off the raw zip entry names before `fs.Sub`\nrewrites them (04 丙-15), and Go refuses an entry that resolves to\nSKILL.md or to the archive root before the zip is built.\n",
     )
     content: str = Field(
-        ..., description='Clipped to 100000 characters on the way out.'
+        ..., description='Over 100000 characters is refused as malformed, not clipped.'
     )
 
 
@@ -489,23 +489,23 @@ class GeneratedSkill(BaseModel):
     )
     name: str = Field(
         ...,
-        description='The Agent Skills name. Clipped to 64 characters on the way out; the\n`^[a-z0-9]+(-[a-z0-9]+)*$` rule is `skillpkg.Validate`\'s\n(name-invalid, name-too-long) and stays there, because a blocking\nfinding reaches the user verbatim (02:GEN-003) where a refusal here\nwould reach them as "generation failed".\n',
+        description='The Agent Skills name. Not constrained here and not clipped: the\n`^[a-z0-9]+(-[a-z0-9]+)*$` rule and the 64-character limit are\n`skillpkg.Validate`\'s (name-invalid, name-too-long) and stay there,\nbecause a blocking finding reaches the user verbatim (02:GEN-003)\nwhere a refusal here would reach them as "generation failed".\n',
     )
     description: str = Field(
         ...,
-        description='What the skill does and when to use it. Clipped to 1024 characters.\nEmpty is `description-missing`, a blocking finding - it used to be\nunreachable via `minLength: 1`, which strict `json_schema` refuses.\n',
+        description="What the skill does and when to use it. Not clipped; the 1024\nlimit is skillpkg's (description-too-long). Empty is\n`description-missing`, a blocking finding - it used to be\nunreachable via `minLength: 1`, which strict `json_schema` refuses.\n",
     )
     compatibility: str = Field(
         ...,
-        description="Environment requirements, the specification's 1-500 characters.\nClipped to 500. Empty string when the model has nothing to say;\nGo omits the key rather than writing an empty one.\n",
+        description="Environment requirements, the specification's 1-500 characters;\nskillpkg warns past 500. Empty string when the model has nothing to\nsay (the prompt says so explicitly); Go omits the key rather than\nwriting an empty one.\n",
     )
     allowed_tools: str = Field(
         ...,
         description='A single string, not a list - the specification defines it that way\nand the validator warns when a package uses a YAML list. Serialised\nas `allowed-tools`.\n',
     )
-    body: constr(min_length=1) = Field(
+    body: constr(min_length=1, max_length=60000) = Field(
         ...,
-        description='The instructions the agent follows, in Markdown, without the\nfrontmatter. Empty is refused: the B round produced a 38-character\nSKILL.md whose whole body was missing, and it was blocked only\nbecause its key was also damaged. Had the key been right, a\nsyntactically perfect package with no content would have passed\nevery check.\n\n**The one answer-side rule that is not a cap.** An empty body is a\n502, not a clip, which is what keeps this floor true even though the\nschema the model is given cannot carry it.\n',
+        description="The instructions the agent follows, in Markdown, without the\nfrontmatter. Over 60000 characters is refused as malformed (not\nclipped); the cap is the contract's, checked on the answer. Empty is refused: the B round produced a 38-character\nSKILL.md whose whole body was missing, and it was blocked only\nbecause its key was also damaged. Had the key been right, a\nsyntactically perfect package with no content would have passed\nevery check.\n\n**The one answer-side rule that is not a cap.** An empty body is a\n502, not a clip, which is what keeps this floor true even though the\nschema the model is given cannot carry it.\n",
     )
     files: List[GeneratedFile] = Field(
         ...,

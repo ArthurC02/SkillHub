@@ -4750,7 +4750,7 @@ components:
             attempts:
               type: integer
               minimum: 1
-              maximum: 2
+              maximum: 2 # one-number: generateMaxAttempts
     GenerationFailure:
       description: |
         One generation that produced nothing, as the workspace reads it back.
@@ -4768,10 +4768,12 @@ components:
           format: date-time
         failure:
           type: string
-          enum: [quota, gateway, unpackageable, rejected, blocked, ""]
+          enum: [quota, unavailable, gateway, unpackageable, rejected, blocked, ""]
           description: |
-            What went wrong. `quota` never reached the gateway; `gateway` is the
-            model service or the proxy; `unpackageable` is an answer that parsed
+            What went wrong. `quota` never reached the gateway; `unavailable`
+            never reached it either, but for the opposite reason — the allowance
+            could not be counted, and that is not the account running out, so it
+            is not called `quota`; `gateway` is the model service or the proxy; `unpackageable` is an answer that parsed
             but cannot be made into an archive; `rejected` is admission refusing
             it (a name collision, most often); `blocked` is a validation finding.
             Empty when a row's metadata could not be decoded — the row still
@@ -4779,7 +4781,7 @@ components:
         attempts:
           type: integer
           minimum: 0
-          maximum: 2
+          maximum: 2 # one-number: generateMaxAttempts
           description: |
             How many gateway calls that failure cost. 0 for a refusal that never
             reached the gateway, which is exactly what `quota` is.
@@ -4822,7 +4824,7 @@ components:
             attempts:
               type: integer
               minimum: 1
-              maximum: 2
+              maximum: 2 # one-number: generateMaxAttempts
               description: |
                 1 or 2. Reported because 02:GEN-003 forbids the UI promising a
                 success rate: one retry was measured to move 80% to 90%, not to

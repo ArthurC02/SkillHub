@@ -4823,11 +4823,12 @@ func (*GenerateSkillUnprocessableEntity) generateSkillRes() {}
 // Ref: #/components/schemas/GenerationFailure
 type GenerationFailure struct {
 	OccurredAt time.Time `json:"occurred_at"`
-	// What went wrong. `quota` never reached the gateway; `gateway` is the model service or the proxy;
-	// `unpackageable` is an answer that parsed but cannot be made into an archive; `rejected` is admission
-	// refusing it (a name collision, most often); `blocked` is a validation finding. Empty when a row's
-	// metadata could not be decoded — the row still happened, and its timestamp is the part the screen
-	// needs most.
+	// What went wrong. `quota` never reached the gateway; `unavailable` never reached it either, but for
+	// the opposite reason — the allowance could not be counted, and that is not the account running out,
+	// so it is not called `quota`; `gateway` is the model service or the proxy; `unpackageable` is an
+	// answer that parsed but cannot be made into an archive; `rejected` is admission refusing it (a name
+	// collision, most often); `blocked` is a validation finding. Empty when a row's metadata could not be
+	// decoded — the row still happened, and its timestamp is the part the screen needs most.
 	Failure GenerationFailureFailure `json:"failure"`
 	// How many gateway calls that failure cost. 0 for a refusal that never reached the gateway, which is
 	// exactly what `quota` is.
@@ -4904,15 +4905,17 @@ func (s *GenerationFailure) SetCollision(val OptBool) {
 	s.Collision = val
 }
 
-// What went wrong. `quota` never reached the gateway; `gateway` is the model service or the proxy;
-// `unpackageable` is an answer that parsed but cannot be made into an archive; `rejected` is admission
-// refusing it (a name collision, most often); `blocked` is a validation finding. Empty when a row's
-// metadata could not be decoded — the row still happened, and its timestamp is the part the screen
-// needs most.
+// What went wrong. `quota` never reached the gateway; `unavailable` never reached it either, but for
+// the opposite reason — the allowance could not be counted, and that is not the account running out,
+// so it is not called `quota`; `gateway` is the model service or the proxy; `unpackageable` is an
+// answer that parsed but cannot be made into an archive; `rejected` is admission refusing it (a name
+// collision, most often); `blocked` is a validation finding. Empty when a row's metadata could not be
+// decoded — the row still happened, and its timestamp is the part the screen needs most.
 type GenerationFailureFailure string
 
 const (
 	GenerationFailureFailureQuota         GenerationFailureFailure = "quota"
+	GenerationFailureFailureUnavailable   GenerationFailureFailure = "unavailable"
 	GenerationFailureFailureGateway       GenerationFailureFailure = "gateway"
 	GenerationFailureFailureUnpackageable GenerationFailureFailure = "unpackageable"
 	GenerationFailureFailureRejected      GenerationFailureFailure = "rejected"
@@ -4924,6 +4927,7 @@ const (
 func (GenerationFailureFailure) AllValues() []GenerationFailureFailure {
 	return []GenerationFailureFailure{
 		GenerationFailureFailureQuota,
+		GenerationFailureFailureUnavailable,
 		GenerationFailureFailureGateway,
 		GenerationFailureFailureUnpackageable,
 		GenerationFailureFailureRejected,
@@ -4936,6 +4940,8 @@ func (GenerationFailureFailure) AllValues() []GenerationFailureFailure {
 func (s GenerationFailureFailure) MarshalText() ([]byte, error) {
 	switch s {
 	case GenerationFailureFailureQuota:
+		return []byte(s), nil
+	case GenerationFailureFailureUnavailable:
 		return []byte(s), nil
 	case GenerationFailureFailureGateway:
 		return []byte(s), nil
@@ -4957,6 +4963,9 @@ func (s *GenerationFailureFailure) UnmarshalText(data []byte) error {
 	switch GenerationFailureFailure(data) {
 	case GenerationFailureFailureQuota:
 		*s = GenerationFailureFailureQuota
+		return nil
+	case GenerationFailureFailureUnavailable:
+		*s = GenerationFailureFailureUnavailable
 		return nil
 	case GenerationFailureFailureGateway:
 		*s = GenerationFailureFailureGateway
