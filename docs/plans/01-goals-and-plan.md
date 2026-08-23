@@ -182,7 +182,7 @@ MVP 先提供：
 | M2 Skill Lab | **已完結**（2026-08-16）——對帳見 [m2/m2-work-items-audit.md](mvp/m2/m2-work-items-audit.md)，殘項三類清單見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md) |
 | M3 評估與改善 | 未開工；接點與已知限制見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md) 殘項清單「丙」類 |
 | M4 打包與封閉測試 | 未開工；SEC-009 驗收證據落檔位置已預留 `m4/sec-009-acceptance/` |
-| M5 從任務描述生成 Skill | **未開工，2026-08-23 新增**（[ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md)）——規格已立（[`02` §4.9](02-specifications-and-acceptance-criteria.md) `GEN-001`～`004`）、工作項已立（[`03` §19](03-work-items.md)）。**啟動條件：MVP 封測結束、漏斗第一段有讀數**（**後者於 2026-08-23 由 PDM 暫時放行，僅此一格、隨 D 日宣告終止；前者未放行，所以 M5 仍未解除封鎖**——完整範圍見 [`04` 乙-10](04-backlog-and-handoffs.md)）。 本表其餘各列的狀態為 2026-08-16 當時，未回頭改寫 |
+| M5 從任務描述生成 Skill | **未開工，2026-08-23 新增**（[ADR-046](../adr/ADR-046-generating-a-skill-from-a-task-description.md)）——規格已立（[`02` §4.9](02-specifications-and-acceptance-criteria.md) `GEN-001`～`004`）、工作項已立（[`03` §19](03-work-items.md)）。~~**啟動條件：MVP 封測結束、漏斗第一段有讀數。**~~ **2026-08-23：三項啟動條件全部暫時放行，M5 即刻可開工**（[ADR-052](../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)）。**三項的事實一件都沒改變**——封測未開始、D 日未宣告、`GEN-009` ③④未完成；被移除的是「阻擋」這個效力。**⛔ 放行不含曝光**：生成入口不得對封測使用者出現，直到漏斗第一段有讀數為止（否則那個讀數量到的就不再是搜尋好不好）。 本表其餘各列的狀態為 2026-08-16 當時，未回頭改寫 |
 
 **閘門與並行的關係（誠實記錄）**：M1 的驗證閘門與 M2 開發並行進行，因此「M2 完結」不代表 M1 閘門已通過；閘門未過時的處置仍依 M1 節的規定——先修正搜尋與內容。
 
