@@ -1,6 +1,6 @@
 # M5：從任務描述生成 Skill
 
-- 狀態：**可開工**（2026-08-23）——三個啟動條件**全部暫時放行**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)），**但生成入口不得對封測使用者曝光**，見下方§啟動條件
+- 狀態：**可開工，但投入有上限**（2026-08-23）——三個啟動條件**全部暫時放行**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)），**但兩條邊界仍在**：①生成入口不得對封測使用者曝光；②**`GEN-002`～`011` 在 [ask-5.md](ask-5.md) 有訊號之前暫停**（[ADR-053](../../../adr/ADR-053-the-assumption-under-m5-gets-its-own-five-people.md) 決策 2）。見下方§啟動條件與§前期驗證
 - 決策：[ADR-046](../../../adr/ADR-046-generating-a-skill-from-a-task-description.md)
 - 規格：[`02` §4.9](../../02-specifications-and-acceptance-criteria.md)（`GEN-001`～`004`）
 - 工作項：[`03` §19](../../03-work-items.md)（`GEN-001`～`011`，全部未勾）
@@ -30,15 +30,27 @@ ADR-046 的決策 3 與決策 6 各壓了一個經驗假設，而 `01` §7.3 把
 | # | 驗證什麼 | 成本 | 結果 |
 | --- | --- | --- | --- |
 | **前期驗證 1** | 模型單次呼叫產得出通過 `skillpkg.Validate` 的套件嗎？通過的是實質內容還是空殼？ | 閘道實付 **$2.3684** | 已完成 → `report-generate-spike.md`。**兩個假設都沒有完全成立**，詳見該報告 §4 的回寫表 |
-| **前期驗證 2** | 使用者搜不到之後，**自發**說出的下一步是什麼？ | **零**——掛在本來就要跑的 M1 閘門上 | **未執行。** 材料已就位（[gate-test/moderator-guide.md §3.D](../gate-test/moderator-guide.md)），**待 D 日**。<br>**2026-08-23 的暫時放行沒有放行這一件**——它放行的是啟動條件第 2 列，不是這個量測。這一題一次都沒問過，所以 §0 那個「使用者搜不到會自發想生成」的假設**至今零證據**（見 [`04` 乙-10](../../04-backlog-and-handoffs.md)） |
+| **前期驗證 2a（脫離 D 日，這週可做）** | 同上，但問的是**回溯的真實經驗**，不需要產品 | 5 人 × 5～8 分鐘 | **材料已就緒 → [ask-5.md](ask-5.md)**（[ADR-053](../../../adr/ADR-053-the-assumption-under-m5-gets-its-own-five-people.md)）。**它是 M5 的 kill switch**：門檻 0／1～2／3+ 三段，寫在問之前 |
+| **前期驗證 2b（原版，在閘門內）** | 使用者搜不到之後，**自發**說出的下一步是什麼？ | **零**——掛在本來就要跑的 M1 閘門上 | **未執行。** 材料已就位（[gate-test/moderator-guide.md §3.D](../gate-test/moderator-guide.md)），**待 D 日**。<br>**2026-08-23 的暫時放行沒有放行這一件**——它放行的是啟動條件第 2 列，不是這個量測。這一題一次都沒問過，所以 §0 那個「使用者搜不到會自發想生成」的假設**至今零證據**（見 [`04` 乙-10](../../04-backlog-and-handoffs.md)） |
 
 **兩件都不是 `GEN-009` 的替代品**：前期驗證 1 只涵蓋 `GEN-009` 的①②兩個數，而且每段描述只跑一次。
+
+## ⛔ 投入上限（[ADR-053](../../../adr/ADR-053-the-assumption-under-m5-gets-its-own-five-people.md) 決策 2）
+
+**在 [ask-5.md](ask-5.md) 有訊號之前**，M5 的投入限制在「假設不成立就丟得掉」的量。分界線就是這一句。
+
+| 可做 | 暫停 |
+| --- | --- |
+| `GEN-001` 契約 schema（一份 YAML）<br>`GEN-005` `redistribution` 值域（一行 CHECK ＋ enum）<br>`GEN-009` ③④ 量測（它本身就是在買資訊） | **`GEN-002`** `apps/llm` 端點<br>**`GEN-003`** 生成管線（**最大的一塊**）<br>**`GEN-004`／`006`～`008`／`010`／`011`** |
+
+**為什麼要有這條上限**：ADR-052 放行了 M5 開工，而曝光旗標擋得住「使用者看得到」、**擋不住投入**。假設若不成立，那時已經有一批程式。這是路線圖上**唯一一個「越晚知道越貴」的風險**——其餘各項晚一天的代價是晚一天，這一項晚一天的代價是多寫一天會丟掉的程式。
 
 ## 檔案地圖
 
 | 檔案 | 內容 |
 | --- | --- |
 | `report-generate-spike.md` | A 輪：一次呼叫產出的套件過不過 `skillpkg.Validate`、是不是空殼、實付成本 |
+| `ask-5.md` | **問 5 個人：搜不到之後他們真的會想做一個嗎。** 腳本、禁止事項、記錄欄位與三段門檻——可直接拿去用 |
 | `report-generate-baseline.md` | B 輪＋mini 對照：**失敗是不是隨機的**（不完全是）、**mini 夠不夠用**（更好且便宜 21 倍 → [ADR-051](../../../adr/ADR-051-the-cheaper-model-generated-better-packages.md)）、`possible-secret` 命中率（0／59） |
 
 量測 harness 在 [`apps/platform/internal/shared/skillpkg/generate_spike_test.go`](../../../../apps/platform/internal/shared/skillpkg/generate_spike_test.go)（env-gated，形狀照 `spec_census_test.go`）。生成端的腳本是一次性的，不進 repo——它呼叫的端點還不存在（`GEN-001`／`GEN-002` 未做），腳本直接打閘道，逐字內容記在報告的附錄。
