@@ -615,7 +615,7 @@ queued → provisioning → preparing → running → evaluating
 
 - 生成的入口出現在搜尋的無結果狀態（`DISC-005` 既有的「沒有夠接近的 Skill」）與工作區的 Skill 列表；**首頁不提供與搜尋對等的生成入口**（ADR-046 決策 7：先搜尋、搜不到再生成，這個順序本身是產品意見）。
 - 生成物在詳情與列表上必須帶一句說明它**沒有經過任何人工檢視、沒有任何試跑證據**，並指向試跑；該說明的措辭適用 [ADR-041](../adr/ADR-041-trust-signal-vocabulary-typed-absence-and-rule-precedence.md) 的缺席詞彙，不得以「新建立」這類中性詞取代。
-- 生成物在完成第一次試跑前，執行狀態維持「尚未試跑」（`02` §3 既有值），**不得因為它是平台生成的而預設為任何較好的狀態**。**這一條有一個具體的實測理由**：B 輪出現過一份 **38 個字元**的 SKILL.md——語法正確、本文完全是空的（[m5/report-generate-baseline.md §2.3](mvp/m5/report-generate-baseline.md)）。它那次是因為鍵名也壞了才被擋；**鍵名如果對，它會通過每一道檢查**。
+- 生成物在完成第一次試跑前，執行狀態維持「尚未試跑」（`02` §3 既有值），**不得因為它是平台生成的而預設為任何較好的狀態**。**這一條有一個具體的實測理由**：B 輪出現過一份 **38 個字元**的 SKILL.md——語法正確、本文完全是空的（[m5/report-generate-baseline.md §2.3](mvp/m5/report-generate-baseline.md)）。它那次是因為鍵名也壞了才被擋；**鍵名如果對，它會通過每一道檢查（**08-24 補記：apps/llm 現在把空 body 當 malformed 直接拒絕，`test_an_empty_body_is_refused_not_packaged` 押著；這句描述的是那道檢查為什麼存在**）**。
 - 使用者可刪除自己生成的 Skill 與其版本，刪除範圍的說明與 `WS-002` 相同。
 
 **未涵蓋**：生成物**發佈到目錄的完整路徑與審核流程**——[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 3 只定出三個解鎖前置，尚未落成需求 ID 與允收準則。

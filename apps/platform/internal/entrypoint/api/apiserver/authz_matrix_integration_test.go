@@ -85,7 +85,7 @@ var anonymousRoutes = []anonCase{
 	{pattern: "POST /skills/import/upload", want: http.StatusUnauthorized},
 	// Mounted only where ADR-052's exposure flag is on, which newAPI leaves off —
 	// so what an anonymous caller gets here is what any unregistered path under
-	// /skills gets, and that is 405 rather than 404 because GET /skills/{id}
+	// /skills gets, and that is 405 rather than 404 because DELETE /skills/{id}
 	// matches the shape. That sameness IS the invisibility, and it is asserted
 	// against a live sibling path in generate_integration_test rather than pinned
 	// to a number here.

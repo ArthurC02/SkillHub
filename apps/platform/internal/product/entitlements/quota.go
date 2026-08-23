@@ -60,8 +60,9 @@ var ErrQuotaExceeded = errors.New("this workspace has used its free run allowanc
 // its free allowance ... " with the wrapped pgx error appended — a sentence that
 // is false, unactionable, and carries a connection string into a response body
 // (NFR-002, iron rule 11). Not wrapping it is what makes the two distinguishable
-// at the handler, and neither handler matches this one, so it falls through to
-// the generic 5xx, which is what an outage is.
+// at the handler: the generate handler maps it to a 503 with a static sentence,
+// the run handler lets it fall through to its generic 500 — either way a 5xx,
+// which is what an outage is, and never err.Error().
 var ErrAllowanceUnavailable = errors.New("the allowance could not be counted")
 
 // PDM-010 §8.1's proposed numbers.

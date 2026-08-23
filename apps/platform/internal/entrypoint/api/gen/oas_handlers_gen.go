@@ -4303,7 +4303,7 @@ func (s *Server) handleForkSkillRequest(args [1]string, argsEscaped bool, w http
 //
 // Requires a session and an invite. Mounted only where the deployment turns the M5 exposure flag on
 // (ADR-052); everywhere else this route does not exist — it answers whatever an unregistered path
-// under /skills answers (405 today, because GET /skills/{id} matches the shape; the sameness is the
+// under /skills answers (405 today, because DELETE /skills/{id} matches the shape; the sameness is the
 // point, not the number) — and `GET /me` does not list `generate_skill` among its features. A client
 // must read that field rather than probing here — an entry point that has to be discovered by a
 // failed request has already been drawn.

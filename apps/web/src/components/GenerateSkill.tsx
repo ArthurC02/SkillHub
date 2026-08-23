@@ -4,9 +4,10 @@ import { Link } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import { useGenerateFailures, useGenerateSkill } from "../api/generate";
 import { isCategorizedFindings } from "../api/import";
-import type { GenerateRejected, GenerationFailure } from "../api/types";
+import type { GenerateRejected } from "../api/types";
 import { Findings } from "./Findings";
 import { GeneratedNotice } from "./GeneratedNotice";
+import { failureSentence } from "./generateFailureSentence";
 
 /**
  * GEN-004's entry point: describe the task, get a Skill package (GEN-001).
@@ -133,7 +134,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         left, or output past the token ceiling. The message is the whole answer,
         and each of those three already says what to do next.
       */}
-      {mutation.error && !rejected && <p role="alert">{mutation.error.message}</p>}
+      {mutation.error && !rejected && <p role="alert">生成失敗：{mutation.error.message}</p>}
 
       {rejected && <GenerateFailed rejected={rejected} onRetry={submit} />}
 
@@ -193,46 +194,6 @@ function GenerateHistory() {
   );
 }
 
-/**
- * One row's sentence, keyed on the contract's enum so that adding a value to
- * the union without a sentence fails `tsc` here (the PACKAGING_BLOCKED_LABEL
- * pattern; generate.test.tsx asserts the table against the generated enum so
- * a value added to the contract and not to this union fails too).
- *
- * Two of the failures are things the user can act on — a truncated answer
- * means make the task smaller, a collision means rename the other skill — and
- * they take precedence over the kind, because they are the two with a next
- * step. The rest say what happened and stop, because 「再試一次」 is the only
- * answer and it is already a button.
- */
-export const FAILURE_SENTENCE: Record<GenerationFailure["failure"], (f: GenerationFailure) => string> = {
-  quota: () => "額度不足，沒有呼叫模型，也沒有花錢。",
-  // Not "額度不足": the allowance could not be counted, and a healthy account
-  // must not be told it ran out (d555564 fixed the 422; this is the same
-  // sentence on the record).
-  unavailable: () => "當時算不出剩餘額度，平台沒有冒險呼叫模型，也沒有花錢。",
-  // "Gateway" on the Go side covers both a service that did not answer and one
-  // that answered something the platform could not use (an empty body, an
-  // answer over a contract cap). The sentence must not claim the first.
-  gateway: () => "模型服務那一端失敗——沒有回應，或回了平台用不了的答案。沒有建立任何版本。",
-  unpackageable: () => "模型交出來的東西沒辦法打包成一個套件。",
-  rejected: () => "驗證之後被拒絕，沒有建立任何版本。",
-  blocked: (f) =>
-    f.codes?.length
-      ? `套件沒有通過驗證（${f.codes.join("、")}），試了 ${f.attempts} 次。`
-      : `套件沒有通過驗證，試了 ${f.attempts} 次。`,
-  // The row exists and its timestamp is real; only its detail is missing.
-  // Saying so beats dropping the row, which would silently shorten history.
-  "": () => "這一次沒有成功，而這列紀錄的細節讀不出來。",
-};
-
-function failureSentence(f: GenerationFailure): string {
-  if (f.truncated) return "模型的輸出超過一次生成的上限，已經停下。把任務拆小一點再試會有幫助。";
-  if (f.collision) return "工作區已經有一個同名的 Skill，而它不是生成的。改掉那一個的名字或刪掉它再試。";
-  // A value this build does not know falls to the "" sentence: the row
-  // happened, the detail is unreadable to this build.
-  return (FAILURE_SENTENCE[f.failure] ?? FAILURE_SENTENCE[""])(f);
-}
 
 /**
  * Design system §2.12: an in-progress screen has to say which step it is on,

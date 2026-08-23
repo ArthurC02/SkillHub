@@ -14,6 +14,8 @@ ADR-046 留了五個待決策，其中兩個在同日的 spike 之後**變成可
 
 ## 決策 1：單次重試，**平台不修改模型交出來的位元組**
 
+→ 適用範圍由 [ADR-048](./ADR-048-not-every-blocking-finding-is-a-random-slip.md) 縮小：`possible-secret` 不重試（它不是排版手滑）。「不修改位元組」那一半在 2026-08-24 被確認過一次——apps/llm 曾短暫對回答做 clip，已改為超限拒絕（實作錯，非決策變動；記在 `03` GEN-003）。
+
 實測：3／19 撞同一個 `frontmatter-invalid-yaml`，形狀完全相同——frontmatter 第二個鍵前面多一個空格。
 
 三個選項裡選 **(a) 純重試**，否決 **(b) 重試前先把空格修掉**：
@@ -87,8 +89,8 @@ spike 的每段描述**只跑一次**，所以「3／19 是隨機還是系統性
 ### 成本與限制
 
 - **決策 1 讓生成的期望成本上升約 16%**（$0.113 → 約 $0.131）。這是選擇不修改模型輸出的價錢，寫在這裡而不是藏在帳單裡。
-- **決策 5 讓額度模型多一條線。** ADR-028 的強制點要多一個計數維度，`02:GEN-001` 已補準則。
-- **決策 4 沒有測試證據**——它是一個推論（Fork 對工作區自己的內容本來就通），落地時要有一支具名測試證明生成物 Fork 之後 `redistribution` 仍是 `generated`，否則它會安靜地退化成 `unknown` 並把下載鎖回去。
+- **決策 5 讓額度模型多一條線。** ADR-028 的強制點要多一個計數維度，`02:GEN-001` 已補準則 → 強制點與開關落在 [ADR-056](./ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md)。
+- **決策 4 沒有測試證據**——它是一個推論（Fork 對工作區自己的內容本來就通），落地時要有一支具名測試證明生成物 Fork 之後 `redistribution` 仍是 `generated`（→ 已兌現：`TestAForkOfAGeneratedSkillStaysGenerated`，`generate_integration_test.go`），否則它會安靜地退化成 `unknown` 並把下載鎖回去。
 
 ## 待決策
 

@@ -4566,8 +4566,8 @@ type GenerateSkillForbidden Error
 func (*GenerateSkillForbidden) generateSkillRes() {}
 
 // The 422 body of POST /skills/generate: either the package's own findings (GenerateSkillRejected) or
-// a single-sentence refusal from around the model call. Told apart by shape — `findings` present, or
-// `error` present.
+// a single-sentence refusal from around the model call. Told apart by shape — the three finding
+// arrays (`errors`/`warnings`/`infos`) present, or `error` present.
 //
 // A named schema rather than an inline `oneOf` with `Error`, and the second arm inlined rather than
 // `$ref`'d: openapi-generator's typescript-fetch renames the `Error` schema to `ModelError` (it
@@ -4834,6 +4834,10 @@ func (s *GenerateSkillResult) SetGeneratorPromptVersion(val string) {
 }
 
 func (*GenerateSkillResult) generateSkillRes() {}
+
+type GenerateSkillServiceUnavailable Error
+
+func (*GenerateSkillServiceUnavailable) generateSkillRes() {}
 
 type GenerateSkillUnauthorized Error
 

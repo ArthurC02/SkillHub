@@ -237,7 +237,7 @@ test("GEN-008: the bounds the server enforces are stated before the button, and 
 // types.ts fails here rather than rendering the "unreadable" fallback for a
 // value the server meant (the PACKAGING_BLOCKED_LABEL pattern).
 test("GEN-003: every failure value in the contract has a sentence", async () => {
-  const { FAILURE_SENTENCE } = await import("./components/GenerateSkill");
+  const { FAILURE_SENTENCE } = await import("./components/generateFailureSentence");
   for (const value of Object.values(GenerationFailureFailureEnum)) {
     const sentence = FAILURE_SENTENCE[value as keyof typeof FAILURE_SENTENCE];
     expect(sentence, `no sentence for failure ${JSON.stringify(value)}`).toBeTypeOf("function");

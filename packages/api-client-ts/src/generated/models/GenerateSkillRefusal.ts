@@ -31,7 +31,8 @@ import {
  * @type GenerateSkillRefusal
  * The 422 body of POST /skills/generate: either the package's own findings
  * (GenerateSkillRejected) or a single-sentence refusal from around the
- * model call. Told apart by shape — `findings` present, or `error` present.
+ * model call. Told apart by shape — the three finding arrays
+ * (`errors`/`warnings`/`infos`) present, or `error` present.
  * 
  * A named schema rather than an inline `oneOf` with `Error`, and the
  * second arm inlined rather than `$ref`'d: openapi-generator's

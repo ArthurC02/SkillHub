@@ -323,7 +323,7 @@ export interface GenerationFailure {
   occurred_at: string;
   /** Empty when the row's metadata could not be decoded. The row still happened. */
   failure: "quota" | "unavailable" | "gateway" | "unpackageable" | "rejected" | "blocked" | "";
-  /** 0 for a refusal that never reached the gateway — which is what `quota` is. */
+  /** 0 for a refusal that never reached the gateway — `quota` and `unavailable`. */
   attempts: number;
   /** Blocking finding codes, `blocked` only. Codes and never matched values. */
   codes?: string[];

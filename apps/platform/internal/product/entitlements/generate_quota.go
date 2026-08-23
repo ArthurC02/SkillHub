@@ -43,8 +43,8 @@ var ErrGenerateQuotaExceeded = errors.New("this workspace has used its free gene
 // deployment that shows a generation allowance is showing a guess (04 乙-22).
 //
 // Where the guesses come from, so that ratifying them is a review and not a
-// fresh start: a generation measured $0.0055 with the default mini model and
-// $0.113 with the flagship (m5/report-generate-baseline.md). That is cheaper
+// fresh start: a generation measured $0.00553 with the default mini model and
+// $0.1186 with the flagship (m5/report-generate-baseline.md). That is cheaper
 // than the $0.0382 median gateway spend of a Run, and a user who does not like
 // what came back will rewrite the task description and go again — so the daily
 // number is higher than the Run's five, and the window number is not.

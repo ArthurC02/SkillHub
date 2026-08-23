@@ -307,7 +307,18 @@ func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []b
 	// renaming would edit bytes the platform promised not to edit (ADR-047 決策 1),
 	// and 02:GEN-001 says a generation creates 「第一個版本」, not version N of
 	// something else.
-	if found && (skill.Redistribution == registry.RedistributionGenerated) != (src.Type == sourceGenerated) {
+	//
+	// A generation landing on an existing GENERATED skill is refused too, and it
+	// used to slip through: the guard only crossed the generated/not-generated
+	// line, so regenerating the same task — the same name, from the same model —
+	// became version N of the earlier one, or, with identical bytes, the
+	// duplicate early-return in persistVersion: no skill_sources row, so a paid
+	// generation the allowance never counted, and a 201 telling the user 「已經
+	// 產生一個 Skill」 about nothing. CountGeneratedSkills' comment claimed that
+	// case was unreachable; now it is. The rule is one sentence: a generation
+	// never lands on a skill that already exists, whatever kind it is, and an
+	// upload never lands on a generated one.
+	if found && (skill.Redistribution == registry.RedistributionGenerated || src.Type == sourceGenerated) {
 		return Result{}, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, skill.Name)
 	}
 	res.Skill = skill

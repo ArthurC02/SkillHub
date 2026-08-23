@@ -253,11 +253,12 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		// 422 and not 500: the request was fine, the workspace is in a state the
 		// platform will not silently merge. Nothing was written.
 		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"這個工作區已經有一個同名的 Skill，而它不是生成的。"+
-				"請先改掉那一個的名字或刪除它，再生成一次——"+
-				"平台不會把生成的內容接在別的 Skill 後面當成新版本。")
+			"這個工作區已經有一個同名的 Skill。"+
+				"請先刪除它（或改掉它的名字），再生成一次——"+
+				"生成永遠建立一個新的 Skill 的第一個版本，不會接在既有的 Skill 後面；"+
+				"同一段任務描述再生成一次通常會取到同一個名字，改寫描述也會讓模型換名字。")
 	case err != nil:
-		httpx.WriteError(w, http.StatusBadGateway, "generation failed")
+		httpx.WriteError(w, http.StatusBadGateway, "模型服務這一次沒有給出可用的結果。沒有建立任何版本，可以再試一次。")
 	case res.Report.Blocked:
 		// The findings verbatim, exactly as a failed import gets them
 		// (02:GEN-003, SKILL-002). Nothing was written: prepare returns before the
@@ -301,7 +302,7 @@ type GenerateFailure struct {
 	// (iron rule 11) and this must not become the place that reintroduces it.
 	Codes []string `json:"codes,omitempty"`
 	// Attempts is how many gateway calls that failure cost. 0 for a refusal
-	// that never reached the gateway, which is exactly what quota is.
+	// that never reached the gateway — quota and unavailable.
 	Attempts int `json:"attempts"`
 	// Truncated and Collision distinguish the two failures a user can act on
 	// from the ones they cannot: shorten the task, rename the other skill.

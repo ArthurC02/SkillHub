@@ -18,6 +18,7 @@ import (
 	apigen "github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	gen "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	policy "github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
 
@@ -328,7 +329,7 @@ func TestTheGenerationEntryPointIsInvisibleUntilItIsExposed(t *testing.T) {
 	// The assertion is not a particular status code, it is SAMENESS: with the
 	// flag off, /skills/generate must answer exactly what any other path under
 	// /skills that nobody registered answers. (Today both are 405, because
-	// GET /skills/{id} matches the shape — which is precisely why pinning 404
+	// DELETE /skills/{id} matches the shape — which is precisely why pinning 404
 	// would have been asserting an accident.)
 	absent, _ := postJSON(t, c, "/skills/zzz-not-a-route", `{}`)
 	if code, _ := postJSON(t, c, "/skills/generate", `{"task_description":"任何任務"}`); code != absent {
@@ -453,6 +454,76 @@ func TestAGeneratedNameCollisionIsRefusedInBothDirections(t *testing.T) {
 			t.Fatalf("err = %v, want ErrGeneratedNameCollision", err)
 		}
 	})
+
+	// The third direction, which the guard used to let through: regenerating the
+	// same task takes the same name from the same model, and the second
+	// generation landed on the first — as version N with different bytes, or as
+	// persistVersion's duplicate early-return with identical ones, which writes
+	// no skill_sources row (a paid generation the allowance never counted) and
+	// answered 201 「已經產生一個 Skill」 about nothing. 02:GEN-001 says 「第一個版本」.
+	t.Run("generating onto a generated skill", func(t *testing.T) {
+		same := generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n")
+		stub := newGenerateStub(t, same, same)
+		a := newAPIWithLLM(t, pool, stub.URL)
+		c := a.login(t, "gen-collide-c")
+		ws := workspaceOf(t, pool, c)
+		if _, err := a.versions.GenerateSkill(context.Background(), ws, "抽出 PDF 文字。"); err != nil {
+			t.Fatalf("first GenerateSkill: %v", err)
+		}
+		_, err := a.versions.GenerateSkill(context.Background(), ws, "抽出 PDF 文字。")
+		if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
+			t.Fatalf("second generation of the same name: err = %v, want ErrGeneratedNameCollision", err)
+		}
+		// One generation happened, and the counter that bills generations says so.
+		var used int64
+		if err := pool.QueryRow(context.Background(),
+			`SELECT count(*) FROM skill_sources WHERE workspace_id = $1 AND source_type = 'generated'`, ws.ID,
+		).Scan(&used); err != nil {
+			t.Fatal(err)
+		}
+		if used != 1 {
+			t.Errorf("skill_sources counts %d generated rows, want 1", used)
+		}
+	})
+}
+
+// The allowance could not be counted: 503 with a static sentence, not the 502
+// the gateway gets and not the 422 「用完了」 an exhausted allowance gets
+// (d555564 split the sentinels; this pins the generate handler's mapping).
+// The pool handed to ingest points at a database that is not there; identity
+// keeps the real pool, so the session and workspace lookups still work and the
+// request reaches the allowance check and nothing past it — the stub has no
+// answers queued, so a gateway call would fail the test by itself.
+func TestAnUncountableAllowanceIsA503NotAnExhaustedOne(t *testing.T) {
+	pool := requireDB(t)
+	stub := newGenerateStub(t)
+	deadPool, err := pgxpool.New(context.Background(), "postgres://nobody:nobody@127.0.0.1:1/nope?sslmode=disable&connect_timeout=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(deadPool.Close)
+	a := newAPITuned(t, pool, stub.URL, func(d *apiserver.Deps) {
+		d.GenerateExposed = true
+		d.Auth.Features = map[string]bool{"generate_skill": true}
+		d.Importer.Svc.GenerateQuota = policy.DefaultGenerateQuotaLimits()
+		d.Importer.Svc.Pool = deadPool
+	})
+	c := a.login(t, "gen-503")
+
+	code, body := postJSON(t, c, "/skills/generate", `{"task_description":"把掃描的單據整理成一張表"}`)
+	if code != http.StatusServiceUnavailable {
+		t.Fatalf("got %d %v, want 503", code, body)
+	}
+	msg, _ := body["error"].(string)
+	if strings.Contains(msg, "額度已用完") || strings.Contains(msg, "used its free") {
+		t.Errorf("an uncountable allowance was reported as an exhausted one: %q", msg)
+	}
+	if strings.Contains(msg, "nobody") || strings.Contains(msg, "127.0.0.1") {
+		t.Errorf("the connection string reached the response body: %q", msg)
+	}
+	if stub.calls != 0 {
+		t.Errorf("an uncountable allowance paid for %d gateway call(s)", stub.calls)
+	}
 }
 
 // ADR-052's flag is deployment-wide; the permission behind the route is not.

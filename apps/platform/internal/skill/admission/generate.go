@@ -75,11 +75,11 @@ var ErrGenerateNotForCatalogue = errors.New("ingest: the catalogue does not gene
 // not return, and the same prompt asks for the same shape.
 var ErrGeneratedPackageInvalid = errors.New("ingest: generated skill cannot be packaged")
 
-// ErrGeneratedNameCollision: this workspace already has a skill of that name,
-// and the two are not the same kind of content. See importZip for why merging
-// them is worse than refusing.
+// ErrGeneratedNameCollision: this workspace already has a skill of that name
+// and at least one of the two is generated. See importZip for why merging them
+// is worse than refusing.
 var ErrGeneratedNameCollision = errors.New(
-	"ingest: this workspace already has a skill with that name, and one of the two was generated")
+	"ingest: this workspace already has a skill with that name, and at least one of the two is generated")
 
 // The failure vocabulary auditGenerateFailure writes and GenerateFailures reads
 // back. Constants rather than literals because the same words also appear in

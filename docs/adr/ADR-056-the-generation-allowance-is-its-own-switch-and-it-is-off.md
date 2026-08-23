@@ -27,7 +27,7 @@ ADR-055 已把 Run 額度關掉（`RUN_QUOTA=off`），並在同一份裡訂正�
 
 `policy.DefaultGenerateQuotaLimits()` 給的是**每日 10／每窗 30／首窗 20／窗長 30 天**，四個數全部標 **待追認**，並在程式碼裡寫明它們是怎麼估的，讓 PDM 追認時是複審而不是重來：
 
-- 一次生成實測 **$0.0055**（預設的 mini 級）、**$0.113**（flagship），見 [m5/report-generate-baseline.md](../plans/mvp/m5/report-generate-baseline.md)。
+- 一次生成實測 **$0.0055**（預設的 mini 級）、**$0.113**（flagship），見 [m5/report-generate-baseline.md](../plans/mvp/m5/report-generate-baseline.md)。（**2026-08-24 補記**：flagship 的 $0.113 是 spike 報告訂正前的數，baseline 報告記的是 **$0.1186**；mini 精確值 $0.00553。數字不影響本 ADR 的任何決策。）
 - 一次 Run 的閘道實付中位數是 **$0.0382**（ADR-055 訂正後的數）。**生成比試跑便宜。**
 - 使用者對生成結果不滿意時會改寫任務描述再跑一次，所以**每日的數字比 Run 的 5 高**；每窗的不高。
 
@@ -41,7 +41,7 @@ ADR-028 決策 4 允許這個分工，但它同時禁止一件事：**未追認�
 
 | | Run | 生成 |
 | --- | --- | --- |
-| 每次的煞車 | 閘道 key `max_budget` $0.50、SBX-013 的 300K in／60K out | 16000 token 上限、閘道 key |
+| 每次的煞車 | 閘道 key `max_budget` $0.50、SBX-013 的 300K in／60K out | 16000 token 上限、~~閘道 key~~（**08-24 補記**：生成走的是共用靜態 `LITELLM_API_KEY`，它的 `max_budget` 是部署級累計餘額，不是每次的煞車——`.env.example` 已訂正；每次真正的煞車只有 token 上限與 4000 rune 的輸入界） |
 | 沒有上限的是 | 次數 | 次數 |
 | 一次的實測中位數 | $0.0382 | $0.0055（mini） |
 | 一次失敗會不會收費 | 會（Run 走到 `preparing` 就計） | **不會**（沒有列就沒有計數） |
@@ -53,7 +53,7 @@ ADR-028 決策 4 允許這個分工，但它同時禁止一件事：**未追認�
 ## 後果
 
 - **`GEN-004` 的強制點在呼叫模型之前**，符合 `02:GEN-001`「不得先花錢再說」。它**不在寫入結果的那個交易裡**，與 `EnforceQuota` 不同——模型呼叫夾在中間，跨著它持有一個連線的代價遠大於它擋掉的溢出。
-- **溢出是無界的，這裡寫明而不是暗示**：同一個工作區的並行生成會讀到同一份用量，而 Run 有 `MaxConcurrentRunsPerWorkspace` 把溢出夾住，生成沒有對應的閘。今天的入口是一個瀏覽器分頁裡的一個按鈕；哪天不是了，就在計數外面加一個 per-workspace advisory lock（程式碼裡有 `ponytail:` 註記指到這裡）。
+- **溢出是無界的，這裡寫明而不是暗示**（**08-24 補記：同日稍晚 `skill/admission` 加了每工作區單一進行中的生成槽（`holdGenerateSlot`），溢出現在以 API 副本數為界，不再無界**）：同一個工作區的並行生成會讀到同一份用量，而 Run 有 `MaxConcurrentRunsPerWorkspace` 把溢出夾住，生成~~沒有對應的閘~~。今天的入口是一個瀏覽器分頁裡的一個按鈕；哪天不是了，就在計數外面加一個 per-workspace advisory lock（程式碼裡有 `ponytail:` 註記指到這裡）。
 - **`ingest` → `policy` 是一條新的跨 context import**，同批已加入 [ADR-032](./ADR-032-ddd-bounded-context-governance-for-platform.md) 附錄 A 與 depguard；方向與既有的 `run` → `policy`、`packaging` → `policy` 相同——規則在 `policy`，**強制點在問問題的那個 context**。
 - **一件沒有被這份 ADR 解決的事**：`GENERATE_QUOTA=off` 之下，`02:GEN-001` 要求的「生成前顯示預估成本與本次將消耗的額度」**顯示不出額度**（沒有額度可顯示），只剩成本。這是 04 乙-2 既有紀律的直接後果——**沒有被強制的數字不得顯示**——不是缺漏。
 
