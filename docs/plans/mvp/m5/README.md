@@ -3,7 +3,20 @@
 - 狀態：**全面開工**（2026-08-23）——投入上限已由**授權**解除（[ADR-054](../../../adr/ADR-054-the-cap-was-lifted-by-authorisation-not-by-evidence.md)，**不是由 `ask-5` 的證據解除；那個假設的證據量仍然是零**）——三個啟動條件**全部暫時放行**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)），**剩下一條邊界**：生成入口**不得對封測使用者曝光**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)，綁漏斗讀數，與本次授權無關）。見下方§啟動條件與§投入上限
 - 決策：[ADR-046](../../../adr/ADR-046-generating-a-skill-from-a-task-description.md)
 - 規格：[`02` §4.9](../../02-specifications-and-acceptance-criteria.md)（`GEN-001`～`004`）
-- 工作項：[`03` §19](../../03-work-items.md)（`GEN-001`～`011`，全部未勾）
+- 工作項：[`03` §19](../../03-work-items.md)（`GEN-001`～`011`）——**2026-08-23：11 項中 10 項已勾**，未勾的只有 `GEN-009` ③④（試跑後的評估判定分布、人看了會不會留著），**兩項都要 Sandbox ＋評估管線＋人，不是程式面做得完的**
+
+## 已經做完的是什麼（2026-08-23）
+
+一條從任務描述到工作區裡一個不可變版本的完整路徑，**外加一個把它關著的開關**：
+
+`POST /skills/generate` → `apps/llm` 單次閘道呼叫（回**型別化 frontmatter ＋ body**，模型一個 YAML 鍵都不寫）→ Go 序列化 `SKILL.md`、打包 zip → **走 admission 與匯入完全相同的那條驗證路徑** → 阻擋級 finding 就整組拒絕並**重試恰好一次**（`possible-secret` 除外，[ADR-048](../../../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md)；截斷不重試，[ADR-047](../../../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 2）→ 寫版本、`redistribution = generated`、來源列記下任務描述原文／模型／提示詞版本。
+
+**四件與「還沒做完」同樣重要的事**：
+
+1. **額度有自己的開關**（`GENERATE_QUOTA`，[ADR-056](../../../adr/ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md)），依同日裁示設為 `off`；四個數待 PDM 追認（`04` 乙-22），**追認前不得畫在畫面上**。
+2. **不進搜尋索引的排除做在讀取側**，因為工作區列表要從那一列讀靜態掃描結果——寫入側排除等於**用刪掉揭露換取這條保證**。
+3. **曝光旗標 `GENERATE_SKILL_EXPOSED` 預設為關**，而「關」的定義是**這條路由不存在**，不是它會拒絕。
+4. **`GEN-009` ③④ 沒有做，也不該假裝做了**：目前所有「通過」都只到 `skillpkg.Validate`，**那是語法門不是品質門**——A 輪兩張「Skill 本來就做不到」的干擾卡全部通過。
 
 ## 為什麼一個未開工的里程碑已經有目錄
 

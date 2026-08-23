@@ -88,6 +88,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納現由 **AD
 - 文件語言：繁體中文（保留 Run、Workspace、Provider 等英文術語不硬翻）。
 - 多人／多 agent 共用同一工作樹平行作業時：只以明確 pathspec stage 自己的檔案、push 前 `git pull --rebase`；**禁止 `git stash`**（stash 會連他人未提交與未追蹤的工作一起收走，本專案已三度因此出事）；暫存產物放 scratchpad，不放 repo 根目錄。
 - 程式碼、識別字、commit message：英文。
+- **M5 的程式面已收斂（2026-08-23）**：`03` §19 的 11 項中 **10 項已勾**，未勾的只有 `GEN-009` ③④（試跑後的評估判定分布、人的接受率），**兩項都要 Sandbox ＋評估管線＋人**。已交出的是一條從任務描述到工作區裡一個不可變版本的完整路徑，**加上兩個預設關著的開關**：`GENERATE_QUOTA`（額度，[ADR-056](docs/adr/ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md)）與 `GENERATE_SKILL_EXPOSED`（曝光，ADR-052——**「關」的定義是那條路由不存在，不是它會拒絕**）。**「程式面收斂」不等於這條路成立**：所有「通過」都只到 `skillpkg.Validate`，那是語法門不是品質門，而 [ADR-046](docs/adr/ADR-046-generating-a-skill-from-a-task-description.md) 底下那個假設的證據量**仍然是零**（`ask-5` 一次都沒問過）。
 - 里程碑：M0 基線 → M1 Explorer（結尾有驗證閘門，不通過不進 M2）→ M2 Lab → M3 評估 → M4 打包與封測 → **M5 從任務描述生成 Skill**（2026-08-23 新增，ADR-046；**同日三個啟動條件全部暫時放行，M5 與未完成的 MVP 並行**，ADR-052；**同日稍晚投入上限亦由授權解除，M5 全面開工**，ADR-054）。**M4 與 M5 現在同時未完結**——這是 ADR-052 明示接受的代價，不是記錄疏漏。**M5 不在 MVP 完成度內**，`01` §7.3 不變。
 - 需求 ID 前綴：DISC／SKILL／WS／TEST／RUN／SBX／TRACE／EVAL／PACK／GEN／NFR／PDM／SEC 等，見 `docs/plans/02`、`03`。（`GEN` 為 2026-08-23 新增的 M5 前綴；`02` 的需求 ID 與 `03` 的工作項 ID 各自編號，同前綴不同號是既有慣例，見 `DISC`。）
 
