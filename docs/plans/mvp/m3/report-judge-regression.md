@@ -561,3 +561,86 @@ Workspace `91b951b3-ce71-4a4f-9e0b-c5548e133fe1`（`content-baseline` 的個人 
 | 合計 | **$0.2～0.4**，與 [m4/README.md §3.7](../m4/README.md) 的 $0.3～0.5 同量級 |
 
 單筆 > $0.10 停下檢查的警戒線由 harness 自己帶（`COST_ALARM_USD`），Run 側由 per-Run `max_budget` 帶。
+
+---
+
+## 14. B 輪：跑了（2026-08-23）
+
+`04` 丙-8。§13 列的四段鏈今天全部解開，B 輪以 5 筆**全新真實 Run** 完成，結果 append 進 `results.jsonl`（`regression_id=2026-08-23T073414Z`）。
+
+### 14.1 第 4 條確實生效了
+
+| | A 輪（2026-08-16） | B 輪（2026-08-23） |
+| --- | --- | --- |
+| `agent_output` 平均長度 | **43 字元** | **999 字元** |
+| 最短／最長 | 33／49 | 302／1737 |
+
+`writing-rubrics.md` §3 的第 4 條（「最終回覆必須完整貼出這次產出的正文」）把最終回覆從一句「我產出了 X.md」變成整份正文。**這正是 B 輪的前提**：§2.2 說 rubric 逐項會因為沒有可引用的證據而降為 `undetermined`，第 4 條就是為了把證據送進來。
+
+5 筆 Run 全部 `succeeded`，全部有 artifact 列（M3 的 `recordArtifacts` 正常），trace 事件 10～16 筆。
+
+### 14.2 可計分的兩項：與 A 輪一樣是滿分
+
+`activation` 與 `artifact` 兩項共 10 筆判定：**10／10 一致、0 判錯、0 降級**。
+
+### 14.3 rubric 逐項：預測錯了，而且錯得有內容
+
+| 22 個 rubric 項 | A 輪 | B 輪 |
+| --- | --- | --- |
+| `passed` | 9（40%） | **11（50%）** |
+| `failed` | 10 | **6** |
+| `undetermined` | 3（13%） | **5（22%）** |
+| 其中**被平台降級**的 | **0** | **5（全部）** |
+
+預測是「證據送進來了，`undetermined` 會降下去」。**實際是升上去了**——而且 A 輪那 3 筆是 Judge 自己說判不動，B 輪這 5 筆**一筆都不是**：模型全都給了判定（2 筆 `passed`、3 筆 `failed`），**是平台的證據回驗把它們打成 `undetermined` 的**。
+
+`passed` 9→11、`failed` 10→6 同時發生，所以第 4 條在「讓文字變得可判定」這件事上是有效的；**代價出現在回驗那一關**。
+
+### 14.4 根因：Judge 引的是解碼後的字，Go 比對的是原始 JSON
+
+5 筆降級**全部**來自 `trace_event` 引文被拒，理由一律是「the quote cited from trace event '…' is not in it」。逐筆比對其中一筆：
+
+```
+quote  (367 字元):  0\t# Q2 Update\n1\t\n2\tSo basically, we've been leveraging ...
+                    ↑ 真正的 tab 與換行字元
+
+payload(627 字元):  {"outcome":"succeeded", ..., "result_summary": "0\t# Q2 Update\n1\t\n2\tSo basically, ..."}
+                    ↑ JSON 轉義序列,兩個字元的 backslash-n
+```
+
+送給 Judge 的 digest entry 是 `string(e.Payload)`——**原始 JSON**。模型讀到 `\n` 之後，引用時寫成真正的換行；Go 拿這段字去 `strings.Contains(payload)`，**帶著真換行的字串永遠不可能出現在把它寫成 `\n` 的 JSON 裡**。
+
+**這是 §6.1 那個缺陷的同一個形狀，往下一層**：v1 是行首多了 `事件型別: ` 前綴，v2 修掉了排版；這一次是**同一個事實的兩種呈現**——Judge 看到的是渲染後的，Go 驗的是原始的，而失敗一樣是靜默的（判定變成 `undetermined`，看起來像 Judge 保守）。
+
+**還有一件同樣值得記的**：5 筆裡有 **3 筆**同時附了一則 `agent_output` 引文，而那一則**回驗通過**（`rejected: null`）。**一則壞引用會拖垮整條準則，即使同一條準則另有一則驗得過的引用。** 那是 ADR-026 defence 3 現行的行為，本報告只記錄，不在同一批改動它——它是一道有 ADR 的防線，而今天這份量測正好是任何修改該有的依據。
+
+**新增殘項 `04` 丙-48。**
+
+### 14.5 成本
+
+| 項目 | 實付 |
+| --- | --- |
+| 5 次真實 Run（`gpt-5.4-mini`，`usage` 事件加總） | **$0.2312** |
+| 5 次帶 rubric 的 Judge 呼叫 | **$0.1409** |
+| 合計 | **$0.3721** |
+
+§13.5 估的是 $0.2～0.4。
+
+### 14.6 路上絆到的四件事（三件已修，一件是有意的逃生門）
+
+| # | 撞到什麼 | 處置 |
+| --- | --- | --- |
+| 1 | **P1 自動停派送誤觸**：`TraceMaskingStopped` 在建立 Run 時把整個機隊停掉。274 筆「trace 事件、零遮罩」全部是平台自己的 `evaluation_started`／`evaluation_completed`——**那種事件按定義沒有東西可遮** | 修 `CountTraceMaskingInWindow`：只數 `source = 'sandbox'`。詳見 `04` 丙-49 |
+| 2 | **PDM-010 免費額度**：30 天 20 筆，這個工作區在 M2 已用掉 159 筆 | 用既有的逃生門 `RUN_QUOTA=off`（`cmd/api` 自己記了一行 WARN）。**這是量測批的選擇，不是對 PDM-010 的意見** |
+| 3 | **harness 的 `explicit_run_set` 會把 5 筆全判錯**：`expected()` 拿 `skills.name`（fork 是 `<parent>-fork`）去比對 activation 事件裡的名字，而那個名字是 runtime 從套件自己的 frontmatter 讀出來的 `<parent>`。**M2 路徑碰不到，因為那條路只選目錄 Skill，兩個名字剛好相等** | 改用 `rubric_skill_name`（parent-or-self ＝套件宣告的名字）。**dry-run 就是這一項的檢查**：修之前 5 筆 `expect activation=failed`，修之後 5 筆 `passed` |
+| 4 | harness 沒有帶 `LLM_SERVICE_TOKEN`，第一次付費呼叫就 401 | 從環境變數讀，不預設值 |
+
+第 3 項要特別記：**它會製造 5 筆假的不一致**，而且長得就像「B 輪發現 Judge 判錯了」。dry-run 先跑一次是 §13.3 寫進步驟裡的，本批因此在花錢之前抓到它。
+
+### 14.7 §2 那張「沒測到」的表現在怎麼樣
+
+| 格子 | 狀態 |
+| --- | --- |
+| 主觀的任務效果判定 | **B 輪測到了一部分**：22 個 rubric 項在證據完整下有 17 項得到模型判定（11 passed／6 failed）。**但 5 項卡在回驗**，所以「rubric 判得準」仍然不能宣稱——能宣稱的是「rubric 判得動，而平台的回驗會吃掉 23%」 |
+| 注入抵抗 | 已測（§12） |
+| 證據殘缺下的保守性 | **仍然零覆蓋** |

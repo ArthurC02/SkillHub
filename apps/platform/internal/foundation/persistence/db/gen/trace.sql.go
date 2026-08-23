@@ -33,7 +33,7 @@ SELECT count(*) FILTER (WHERE occurred_at >= $1)::bigint AS recent_events,
        coalesce(sum(CASE WHEN jsonb_typeof(masked_fields) = 'array'
                          THEN jsonb_array_length(masked_fields) ELSE 0 END), 0)::bigint AS masked_fields
 FROM trace_events
-WHERE occurred_at >= $2
+WHERE occurred_at >= $2 AND source = 'sandbox'
 `
 
 type CountTraceMaskingInWindowParams struct {
@@ -76,6 +76,29 @@ type CountTraceMaskingInWindowRow struct {
 // producer time, so a producer whose clock is behind is counted into an earlier
 // window; NFR-004 wants the gap inside 3 seconds and the windows are hours, so this
 // costs nothing the rule was relying on.
+//
+// `source = 'sandbox'` and not every row, which is the difference between
+// measuring the masker and measuring the platform's own bookkeeping.
+//
+// The rule's premise is about workload traffic - tool_call arguments and
+// script_log messages - and those only ever come from a sandbox. Orchestrator
+// rows (run_lifecycle, evaluation_started, evaluation_completed) are written by
+// this platform out of its own state: there is nothing untrusted in them, so the
+// masker can never redact anything from one, and counting them as traffic makes
+// the expression true by construction whenever the platform is busy with
+// something other than runs.
+//
+// Measured, not theorised: on 2026-08-23 a batch of 137 re-evaluations emitted
+// 274 orchestrator events in two hours with zero redactions between them, and the
+// detector halted the whole fleet - correctly by its own arithmetic, and about
+// nothing. That is a *busy*-hour false positive, the opposite failure to the
+// quiet-hour one `for: 1h` was added to prevent, and `for` cannot see it because
+// the traffic is real.
+//
+// This makes the detector strictly sharper rather than more forgiving: a masker
+// that stopped is still caught by the same expression, and it can no longer be
+// diluted by rows that were never candidates for redaction. If nothing is running
+// at all, recent_events is zero and the rule stays silent, which it already did.
 func (q *Queries) CountTraceMaskingInWindow(ctx context.Context, arg CountTraceMaskingInWindowParams) (CountTraceMaskingInWindowRow, error) {
 	row := q.db.QueryRow(ctx, countTraceMaskingInWindow, arg.Recent, arg.Since)
 	var i CountTraceMaskingInWindowRow

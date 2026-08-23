@@ -49,6 +49,7 @@ import hashlib
 import hmac
 import io
 import json
+import os
 import subprocess
 import tarfile
 import urllib.parse
@@ -466,7 +467,21 @@ def expected(row, events, artifacts) -> dict:
     }
     return {
         # "對指定 Skill" - the named Skill's own activation, not just any.
-        "activation": "passed" if row["skill_name"] in activated else "failed",
+        #
+        # Compared against `rubric_skill_name`, not `skill_name`, because the two
+        # differ for a fork and only one of them is the name that reaches a
+        # sandbox. `skills.name` is a platform-side label (`<parent>-fork`); the
+        # activation event reports what the runtime read out of the package's own
+        # frozen SKILL.md frontmatter, and a fork copies those bytes verbatim - so
+        # it says `<parent>`. `rubric_skill_name` is coalesce(parent, self), which
+        # is the package's declared name in both cases.
+        #
+        # This never showed up on the M2 path: regression_set draws from
+        # skill_runtime_compatibility, whose runs are all catalogue skills where
+        # the two names are equal. The B round is the first caller with forks, and
+        # without this it scores all five `activation=failed` against a judge that
+        # correctly says passed - five fabricated mismatches.
+        "activation": "passed" if row["rubric_skill_name"] in activated else "failed",
         # An absence that is itself observable is a real `failed`, which is the
         # rule the judge prompt states for exactly this case.
         "artifact": "passed" if artifacts else "failed",
@@ -478,8 +493,20 @@ def expected(row, events, artifacts) -> dict:
 
 
 def judge(request: dict, url: str) -> dict:
+    """POST one judgement request.
+
+    The bearer token is the same one apps/llm checks and the Go worker sends
+    (`LLM_SERVICE_TOKEN`). It became required after the A round: the service used
+    to run without one locally, so this harness had no reason to carry it, and the
+    B round met a 401 on its first paid call. Read from the environment and never
+    defaulted - a token in a repo file is a token that leaks (iron rule 11).
+    """
     body = json.dumps(request, ensure_ascii=False).encode()
-    req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+    headers = {"Content-Type": "application/json"}
+    token = os.getenv("LLM_SERVICE_TOKEN", "")
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    req = urllib.request.Request(url, data=body, headers=headers)
     with urllib.request.urlopen(req, timeout=300) as r:
         return json.loads(r.read())
 
