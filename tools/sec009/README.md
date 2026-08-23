@@ -45,3 +45,36 @@ cannot set up cgroup for root: configuring cgroup: write /sys/fs/cgroup/cgroup.s
 ## 下一步
 
 把 ADR-022 第三部分的 10 個測項逐條寫成腳本，在這裡 dry run。**跑得過的記成「程序可執行」，不記成測項通過**；真的驗收要一台獨立 Linux 節點，而 `infra/nodes/gvisor-baseline.txt` 現在還是 `unset`（＝還沒有任何沙箱節點被開出來）。
+
+---
+
+## T1 的通用嘗試(2026-08-23 新增)
+
+`tools/sec009/t1-escape-attempts.sh`——ADR-022 第三部分 T1 裡**通用嘗試**那一半,八項:寫 `core_pattern`、`mount(2)`、載入核心模組、讀 `/dev/mem`、看見宿主程序、找 unix socket、碰 docker socket、在節點上放一個檔案;外加 T1 判準要求的兩項節點側觀察(沒有檔案被放上來、`dmesg` 沒有 taint)。
+
+**T1 點名的四個 CVE PoC 不在裡面**,而且刻意不放:它們需要真的 exploit 程式碼打真的宿主,在一個巢狀的開發機容器裡跑別人的 PoC,對一台它從沒碰過的節點證明不了任何事。那四項屬部署批。
+
+### 它有一個負對照,而且那不是裝飾
+
+```bash
+tools/sec009/t1-escape-attempts.sh                    # 沙箱內,期望全部 REFUSED
+SEC009_NO_SANDBOX=1 tools/sec009/t1-escape-attempts.sh  # 無沙箱,期望至少一項 ESCAPED
+```
+
+**一個不管有沒有沙箱都會綠的探針組,量的是零。** 負對照把期望反過來:沒有沙箱時至少要有一項成功,否則腳本自己判失敗。實跑結果——無沙箱下三項逃得出去:`core_pattern` 寫得進去、`/dev/mem` 讀得到、而 `mount` 掛上來的 proc **報的是宿主核心 `6.6.87.2-microsoft-standard-WSL2`**。加上沙箱之後這三項全部 REFUSED。
+
+### 第一次跑抓到的三件事,全部是這支腳本自己的問題
+
+| # | 症狀 | 真相 |
+| --- | --- | --- |
+| 1 | `mount(2)` 判為 ESCAPED | **gVisor 有實作 mount**,給的是它自己的 procfs。**syscall 成功不等於逃逸**;探針改成把掛上來的 proc 讀回來,只有在它報出非 gVisor 核心時才算逃逸 |
+| 2 | 找到 unix socket | 那是 `runsc do` 自己的控制通道 `/tmp/runsc-do*/runsc-*.sock`。**生產不走 `do`**(sandboxd 走 Docker runtime),所以那是**探針量到自己**;現以路徑窄範圍排除 |
+| 3 | 全部通過而且**什麼都沒跑** | `bash -s` 從 stdin 讀腳本,而 `docker run` 少了 `-i` 時 stdin 什麼都沒有——容器跑了一個空腳本,**exit 0**。一個從沒執行過的測試給出綠燈,正是這個目錄存在的理由 |
+
+**這三件全都會在部署日當天發生**,差別是那天有時間壓力、有一台剛建好沒人除錯過的機器,而且第 3 件會讓人以為驗收過了。
+
+### 它仍然不是 SEC-009 的驗收
+
+一格都不是。巢狀環境量的是「沙箱」與「一個被刻意給了全部 capability 的容器」之間的邊界,核心也不是生產那個。ADR-022 把 Suite 2 的受測物定義成**即將加入池的那台節點**——換一台機器就換了受測物。
+
+**T3(資源耗盡)刻意沒有寫成腳本**:它要量的是「限制由 runtime 強制生效」與「同節點其他 Run 劣化 < 20%」,而限制是 `sandboxd` 經 Docker runtime 套上去的,不是 `runsc do` 套的。用 `ulimit` 在沙箱裡自己設一個上限再驗證它生效,測到的是 `ulimit`。**那一項要一台跑著 sandboxd 的節點,不是一支 shell 腳本。**
