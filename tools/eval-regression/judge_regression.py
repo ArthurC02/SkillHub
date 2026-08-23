@@ -77,7 +77,7 @@ OUT = Path(__file__).with_name("results.jsonl")
 # so the request this harness builds is the one the control plane would build.
 MAX_FINAL_OUTPUT = 40000
 MAX_CRITERIA = 20
-MAX_DIGEST_ENTRY = 2000
+MAX_DIGEST_ENTRY = 8000  # raised 2026-08-23, evaluation-design 6.3 / 04 丙-47
 MAX_DIGEST_COUNT = 100
 MAX_ARTIFACT_ROWS = 500
 EXCERPT_LIMIT = 1000
@@ -325,8 +325,15 @@ def build_request(row, events, artifacts, evaluation_id: str, rubric_entry=None)
         truncation.append("trace_digest.entries")
 
     entries, digest = [], {}
+    trimmed = False
     for e in citable:
-        excerpt, _ = clip(json.dumps(e["payload"], ensure_ascii=False), MAX_DIGEST_ENTRY)
+        excerpt, cut_excerpt = clip(json.dumps(e["payload"], ensure_ascii=False), MAX_DIGEST_ENTRY)
+        # Go reports this and the harness used to drop it on the floor, so a
+        # regression run understated truncation against what production would
+        # report: the B round had four events over the old 2000 and recorded
+        # `truncation: []`. Same two names Go uses since 04 丙-47 - the entry cap
+        # above, and this, which is the one that actually fires.
+        trimmed = trimmed or cut_excerpt
         entries.append({
             "trace_event_id": e["event_id"],
             "occurred_at": e["occurred_at"],
@@ -334,6 +341,8 @@ def build_request(row, events, artifacts, evaluation_id: str, rubric_entry=None)
             "excerpt": excerpt,
         })
         digest[e["event_id"]] = e
+    if trimmed:
+        truncation.append("trace_digest.entries[].excerpt")
 
     request = {
         "run_id": row["run_id"],
@@ -368,6 +377,35 @@ def trace_complete(events) -> bool:
 # --- Defence 3, mirrored from internal/trial/improvement/judge.go -----------
 
 
+def trace_search_text(payload) -> str:
+    """What a trace citation is checked against: ADR-049's rule, mirrored.
+
+    The payload as stored, plus every string value inside it decoded. The judge is
+    shown the raw JSON, so a quote copied character for character carries the
+    escape sequences and a quote read and re-typed carries real newlines - only
+    the first could ever be found before, and the B round lost five rubric
+    verdicts to exactly that.
+
+    Leaves joined with NUL, which a JSON string cannot contain, so no quote can
+    match by spanning two fields.
+    """
+    raw = json.dumps(payload, ensure_ascii=False)
+    leaves: list[str] = []
+
+    def walk(node) -> None:
+        if isinstance(node, str):
+            leaves.append(node)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+        elif isinstance(node, dict):
+            for item in node.values():
+                walk(item)
+
+    walk(payload)
+    return raw + "\0" + "\0".join(leaves) if leaves else raw
+
+
 def verify(ref, digest, artifacts, final_output) -> str:
     """Empty string when the reference resolves, otherwise why it did not."""
     kind = ref.get("kind")
@@ -375,7 +413,7 @@ def verify(ref, digest, artifacts, final_output) -> str:
         event = digest.get(ref.get("trace_event_id") or "")
         if event is None:
             return f"cited trace event {ref.get('trace_event_id')!r} was not in the digest"
-        if ref.get("quote") and ref["quote"] not in json.dumps(event["payload"], ensure_ascii=False):
+        if ref.get("quote") and ref["quote"] not in trace_search_text(event["payload"]):
             return f"the quote cited from trace event {ref.get('trace_event_id')!r} is not in it"
         return ""
     if kind == "artifact":

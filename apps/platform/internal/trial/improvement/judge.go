@@ -23,6 +23,7 @@ package eval
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"unicode"
@@ -34,10 +35,10 @@ import (
 	"golang.org/x/text/unicode/norm"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 // The input budget of evaluation-design §6.3. The cost of a judgement is almost
@@ -47,7 +48,26 @@ import (
 const (
 	maxFinalOutput  = 40000 // CONTENT-005's existing review threshold
 	maxCriteria     = 20
-	maxDigestEntry  = 2000
+	// 2000 until 2026-08-23, when 04 丙-47 measured what that cost: over 164 runs
+	// with a trace, 95 of them - 58% - had at least one citable payload trimmed,
+	// and every one of those runs then reported incomplete evidence and had its
+	// dependent criteria answered `undetermined`. What gets trimmed is not filler:
+	// the largest payload seen was 24624 characters of which 24322 were a Write
+	// call's `arguments`, i.e. the whole document the run produced, which is
+	// exactly what a content rubric is about.
+	//
+	// 8000 takes the affected runs to 19.5% for 43% more digest characters -
+	// well under a cent on a judgement that costs $0.0136. It is not larger
+	// because this constant's job is the worst case, not the median: the ceiling
+	// is maxDigestCount * maxDigestEntry, so 8000 buys a bound of 800k characters
+	// (~200k tokens) per request where 2000 bought 200k. Lifting it far enough to
+	// cut nothing at all (25000, measured) would put that ceiling at 2.5M
+	// characters, and a budget that cannot be exceeded is the point of having one.
+	//
+	// The measurement's own limit, because it decides how far this number can be
+	// trusted: all 164 runs come from one workspace's synthetic corpus of writing
+	// Skills. Something that emits a large CSV is not in the sample.
+	maxDigestEntry  = 8000
 	maxDigestCount  = 100 // llm-internal.yaml TraceDigest.entries maxItems
 	maxArtifactRows = 500
 	excerptLimit    = 1000 // what a stored EvidenceRef keeps of its source
@@ -473,7 +493,7 @@ func verify(
 			out.Match = MatchExact
 			return out, ""
 		default:
-			if match, _, ok := locate(string(event.Payload), ref.Quote); ok {
+			if match, _, ok := locate(traceSearchText(event.Payload), ref.Quote); ok {
 				return traceQuoteRef(event, ref.Quote, match), ""
 			}
 			namedFailure = fmt.Sprintf("the quote cited from trace event %q is not in it", id)
@@ -565,7 +585,7 @@ func verifiableSources(m material, digest map[string]trace.EventView) []source {
 	}
 	for _, e := range m.advanced.Events {
 		if de, ok := digest[e.EventID]; ok {
-			out = append(out, source{kind: KindTraceEvent, text: string(de.Payload), event: de})
+			out = append(out, source{kind: KindTraceEvent, text: traceSearchText(de.Payload), event: de})
 		}
 	}
 	return out
@@ -593,6 +613,57 @@ func findQuote(quote string, sources []source) (source, int, string, bool) {
 		}
 	}
 	return source{}, -1, "", false
+}
+
+// traceSearchText is what a citation is checked against: the event payload as
+// stored, plus every string value inside it decoded.
+//
+// Both halves, because a judge can legitimately quote either. The digest entry it
+// was shown is `string(e.Payload)` - raw JSON - so a model that copies characters
+// off the screen produces the first, and a model that reads `\\n` as a line break
+// and writes a line break produces the second. Under the old check only the first
+// could ever match, and the second is what the B round actually saw: all five
+// downgraded rubric items cited real text whose only fault was being decoded
+// (04 丙-48, report-judge-regression §14.4).
+//
+// The property defence 3 exists for is unchanged - the quote must still appear
+// verbatim (or under ADR-043 §4 normalisation) in bytes this platform stored -
+// because a decoded leaf is not new material, it is the same field with its
+// escapes resolved. What stops being possible is a citation failing for the
+// encoding it happened to be written in.
+//
+// Leaves are joined with NUL, which no JSON string can contain (it encodes as
+// \\u0000) and which normalizeQuote does not collapse. So a quote can never match
+// by spanning two fields: the separator is unquotable by construction rather than
+// merely unlikely.
+func traceSearchText(payload json.RawMessage) string {
+	var v any
+	if err := json.Unmarshal(payload, &v); err != nil {
+		return string(payload) // unparseable: the raw form is all there is
+	}
+	var leaves []string
+	var walk func(any)
+	walk = func(node any) {
+		switch t := node.(type) {
+		case string:
+			leaves = append(leaves, t)
+		case []any:
+			for _, item := range t {
+				walk(item)
+			}
+		case map[string]any:
+			// Keys are field names the platform chose, not content; only values
+			// can carry something a judge would quote.
+			for _, item := range t {
+				walk(item)
+			}
+		}
+	}
+	walk(v)
+	if len(leaves) == 0 {
+		return string(payload)
+	}
+	return string(payload) + "\x00" + strings.Join(leaves, "\x00")
 }
 
 // locate is findQuote for a single text: the same two attempts in the same order.

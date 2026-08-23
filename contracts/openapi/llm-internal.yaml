@@ -667,8 +667,18 @@ components:
           description: Event type, e.g. skill_activation, tool_call, error, usage.
         excerpt:
           type: string
-          maxLength: 2000
-          description: Masked, truncated rendering of the event's payload.
+          maxLength: 8000
+          description: |
+            Masked, truncated rendering of the event's payload.
+
+            This number is `maxDigestEntry` in
+            apps/platform/internal/trial/improvement/judge.go and `excerpt`'s
+            max_length in apps/llm's TraceDigestEntry. The three must move
+            together: on 2026-08-23 it was raised from 2000 to 8000 in Go alone
+            (04 丙-47) and every judgement came back 422. That is the loudest of
+            the four copies failing, and the only one that fails at all - the
+            harness in tools/eval-regression mirrors it too and simply builds a
+            different request when it drifts.
     TraceDigest:
       type: object
       description: |

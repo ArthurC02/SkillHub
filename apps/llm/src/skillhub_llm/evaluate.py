@@ -310,7 +310,7 @@ class TraceDigestEntry(BaseModel):
     # and its key is (id, occurred_at), so a citation without it is unresolvable.
     occurred_at: datetime
     type: str
-    excerpt: str = Field(..., max_length=2000)
+    excerpt: str = Field(..., max_length=8000)  # = judge.go maxDigestEntry; see llm-internal.yaml
 
 
 class TraceDigest(BaseModel):

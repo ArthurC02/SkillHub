@@ -201,8 +201,9 @@ class TraceDigestEntry(BaseModel):
     type: str = Field(
         ..., description='Event type, e.g. skill_activation, tool_call, error, usage.'
     )
-    excerpt: constr(max_length=2000) = Field(
-        ..., description="Masked, truncated rendering of the event's payload."
+    excerpt: constr(max_length=8000) = Field(
+        ...,
+        description="Masked, truncated rendering of the event's payload.\n\nThis number is `maxDigestEntry` in\napps/platform/internal/trial/improvement/judge.go and `excerpt`'s\nmax_length in apps/llm's TraceDigestEntry. The three must move\ntogether: on 2026-08-23 it was raised from 2000 to 8000 in Go alone\n(04 丙-47) and every judgement came back 422. That is the loudest of\nthe four copies failing, and the only one that fails at all - the\nharness in tools/eval-regression mirrors it too and simply builds a\ndifferent request when it drifts.\n",
     )
 
 
