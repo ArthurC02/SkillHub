@@ -600,6 +600,7 @@ queued → provisioning → preparing → running → evaluating
 - 生成結果在建立版本前走**與匯入相同的那條驗證路徑**；`skillpkg.Validate` 有任何一條阻擋錯誤，**整個生成結果拒絕，不建立版本**（與套用改善建議的 `validatePatched` 同一把尺）。
 - **這道門幾乎是語法門，不是品質門**：阻擋級的 12 個 code 裡 **11 條是結構／語法檢查**，只有 `possible-secret` 一條比對檔案內容（[ADR-048](../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md)）。實測端到端通過率 **16／20**（[m5/report-generate-spike.md](mvp/m5/report-generate-spike.md)），**而兩張「Skill 本來就做不到」的干擾卡都通過了**。**UI 與文案不得把「通過驗證」呈現為任何品質、可用性或安全結論**，該說的話在 `GEN-004`。
 - 阻擋級 finding 出現時，系統**自動重試恰好一次**——同一個 prompt、同一個模型、**不加修正提示**（[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 1：缺陷是隨機排版手滑不是系統性能力缺陷）。第二次仍被擋即為失敗。
+- **重試之後仍有殘餘失敗，UI 不得承諾成功率**：實測一次重試把 80% 帶到 **90%**，不是趨近於零（[ADR-051](../adr/ADR-051-the-cheaper-model-generated-better-packages.md) 決策 3，同 §2.2「不得顯示沒被強制的承諾」的既有紀律）。
 - **例外：finding 的 code 是 `possible-secret` 時不重試，直接失敗**（[ADR-048](../adr/ADR-048-not-every-blocking-finding-is-a-random-slip.md)）——那是寫作習慣不是手滑，同一個 prompt 重試會原樣重現。同時出現兩類時**以不重試為準**。失敗訊息含檔案路徑但**不得含比對到的值**（`skillpkg.go:898` 的既有紀律，NFR-002）。
 - 失敗時把 `skillpkg.Validate` 的 finding **逐字**交給使用者（同 `SKILL-002` 對匯入失敗的既有處理），不重寫成安慰話；並提供「再試一次」與「修改任務描述」兩條出路，**不得留下一個半成品版本**。
 - 生成物若含 Script、可執行檔、外部 URL 或可能的 Secrets，揭露方式與匯入的 Skill **逐字相同**（`SKILL-002`、`SKILL-003`）；**不得因為內容由平台生成而少一個警告或降一級風險標示**。平台的模型不是可信來源，它只是一個沒有上游的來源。
@@ -612,7 +613,7 @@ queued → provisioning → preparing → running → evaluating
 
 - 生成的入口出現在搜尋的無結果狀態（`DISC-005` 既有的「沒有夠接近的 Skill」）與工作區的 Skill 列表；**首頁不提供與搜尋對等的生成入口**（ADR-046 決策 7：先搜尋、搜不到再生成，這個順序本身是產品意見）。
 - 生成物在詳情與列表上必須帶一句說明它**沒有經過任何人工檢視、沒有任何試跑證據**，並指向試跑；該說明的措辭適用 [ADR-041](../adr/ADR-041-trust-signal-vocabulary-typed-absence-and-rule-precedence.md) 的缺席詞彙，不得以「新建立」這類中性詞取代。
-- 生成物在完成第一次試跑前，執行狀態維持「尚未試跑」（`02` §3 既有值），**不得因為它是平台生成的而預設為任何較好的狀態**。
+- 生成物在完成第一次試跑前，執行狀態維持「尚未試跑」（`02` §3 既有值），**不得因為它是平台生成的而預設為任何較好的狀態**。**這一條有一個具體的實測理由**：B 輪出現過一份 **38 個字元**的 SKILL.md——語法正確、本文完全是空的（[m5/report-generate-baseline.md §2.3](mvp/m5/report-generate-baseline.md)）。它那次是因為鍵名也壞了才被擋；**鍵名如果對，它會通過每一道檢查**。
 - 使用者可刪除自己生成的 Skill 與其版本，刪除範圍的說明與 `WS-002` 相同。
 
 **未涵蓋**：生成物**發佈到目錄的完整路徑與審核流程**——[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 3 只定出三個解鎖前置，尚未落成需求 ID 與允收準則。

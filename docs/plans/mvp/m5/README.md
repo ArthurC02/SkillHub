@@ -17,7 +17,7 @@
 | --- | --- | --- |
 | 1 | MVP 封測結束 | 未開始（`03` §18 `RELEASE-009` 未勾） |
 | 2 | `01` §11.2 漏斗第一段有讀數 | 未量。**閘門的 D 日先於封測**，而 [gate-test 的 D 段](../gate-test/moderator-guide.md) 已加掛一句追問（見下方§前期驗證），那是這個訊號的前半 |
-| 3 | `GEN-009` 生成品質基線 | **前三分之一已完成** → `report-generate-spike.md` |
+| 3 | `GEN-009` 生成品質基線 | **①②與 (甲)(乙) 已完成** → `report-generate-spike.md`（A 輪）、`report-generate-baseline.md`（B 輪＋mini）。**剩 ③④**——要 Sandbox、評估管線與人 |
 
 ## 前期驗證
 
@@ -34,6 +34,7 @@ ADR-046 的決策 3 與決策 6 各壓了一個經驗假設，而 `01` §7.3 把
 
 | 檔案 | 內容 |
 | --- | --- |
-| `report-generate-spike.md` | `GEN-009` 前置量測：一次呼叫產出的套件過不過 `skillpkg.Validate`、是不是空殼、實付成本 |
+| `report-generate-spike.md` | A 輪：一次呼叫產出的套件過不過 `skillpkg.Validate`、是不是空殼、實付成本 |
+| `report-generate-baseline.md` | B 輪＋mini 對照：**失敗是不是隨機的**（不完全是）、**mini 夠不夠用**（更好且便宜 21 倍 → [ADR-051](../../../adr/ADR-051-the-cheaper-model-generated-better-packages.md)）、`possible-secret` 命中率（0／59） |
 
 量測 harness 在 [`apps/platform/internal/shared/skillpkg/generate_spike_test.go`](../../../../apps/platform/internal/shared/skillpkg/generate_spike_test.go)（env-gated，形狀照 `spec_census_test.go`）。生成端的腳本是一次性的，不進 repo——它呼叫的端點還不存在（`GEN-001`／`GEN-002` 未做），腳本直接打閘道，逐字內容記在報告的附錄。

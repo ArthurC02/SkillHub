@@ -75,6 +75,7 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-048](./ADR-048-not-every-blocking-finding-is-a-random-slip.md) | 不是每一個阻擋級 finding 都是隨機手滑（修訂 ADR-047 決策 1 的適用範圍）：`SeverityError` 有 12 個 code 而非文件列舉的 11 條結構檢查，第 12 個 `possible-secret` 比對的是**檔案內容**；一個模型在範例裡寫出憑證樣式是寫作習慣不是手滑，**重試會原樣重現**，所以它不重試、直接失敗。那句「阻擋級都是結構性的」被抄了三份，同批訂正 | Accepted |
 | [ADR-049](./ADR-049-citation-verification-matches-the-stored-value-not-its-encoding.md) | 引用回驗的比對對象從「payload 的原始 JSON 文字」擴為「原始文字**加上**其中每個字串值解碼後的內容」——`EVAL-013` B 輪量到 5／22 個 rubric 項被降級,原因全是同一個:Judge 讀到 `\n` 就寫成真換行,而 payload 裡它是兩個字元,**同一個事實的兩種呈現,看的和驗的不是同一份**。解碼後的值不是新材料,所以這不是放寬;欄位間以 NUL 相接,跨欄位命中結構上不可能。**刻意不改「一則壞引用拖垮整條準則」**——支持放寬的證據(那 5 筆的壞引用其實不是捏造)在放寬之前就被本 ADR 移除了 | Accepted |
 | [ADR-050](./ADR-050-beta-runs-in-parallel-with-the-sandbox-acceptance.md) | 負責人裁定**甲類四項不是封測 D 日的阻擋項,封測與 SEC-009／SBX-010 驗收並行**,縮小 ADR-015 定案紀錄「未通過不得開放外部使用者提交 Skill 執行」那一句的適用範圍(ADR-015 其餘不變、不 Superseded)。**這是接受一個風險不是解決一個問題**:在甲類通過前,不受信任程式碼會在逃逸邊界尚未驗證的節點上執行,45 項覆蓋此時 0 項 pass、`gvisor-baseline.txt` 仍是 `unset`、P-02 常駐探針不存在。刻意寫下三件事:①這個裁定**沒有**授權把封測擴大為公開註冊(12 位具名受邀者是它敢下的理由之一);②**Suite 1 只要 Linux＋Docker＋runsc,在那台節點跑一次是一天的事**,「全部到期」與「什麼都不做」之間不是只有兩個選項;③同意書必須據實說明執行環境尚未完成逃逸驗收。**待決策留了三條,其中第一條沒有答案就等於「否」** | Accepted |
+| [ADR-051](./ADR-051-the-cheaper-model-generated-better-packages.md) | 便宜 21 倍的那個模型產出更好——生成的預設改為 mini（修訂 ADR-047 決策 5，該決策自己寫好了解鎖條件）：實測 mini 通過 **19／20** 對 flagship 的 16／20，每次 $0.00553 對 $0.1186；機制是失敗全落在 frontmatter 鍵名的字元級瑕疵上，而 mini 少寫 3.5 倍的 token，暴露面較小。**同批記下兩件不假裝知道的事**：mini 一次腳本都沒寫（哪一種更有用要靠試跑與人），以及重試後仍有 10% 殘餘失敗、UI 不得承諾成功率 | Accepted |
 
 ## 整體架構摘要
 
