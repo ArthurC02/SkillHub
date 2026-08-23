@@ -15,6 +15,7 @@ import (
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+	apigen "github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	gen "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -647,5 +648,22 @@ func TestTheFailureHistoryIsScopedByWorkspaceNotByActor(t *testing.T) {
 	}
 	if len(out.Failures) != 0 {
 		t.Errorf("Alice is the actor but not the workspace and read %d rows; the query is actor-scoped", len(out.Failures))
+	}
+}
+
+// The failure vocabulary lives in four places — ingest's constants, the
+// contract's enum, the generated client's enum, the web sentence table — and
+// nothing links them. This pins ingest to the contract (via ogen's generated
+// enum); generate.test.tsx pins the web table to the generated TS client. A
+// value written here and missing there would reach the screen as "unreadable".
+func TestEveryFailureValueIngestWritesIsInTheContract(t *testing.T) {
+	known := map[string]bool{}
+	for _, v := range apigen.GenerationFailureFailure("").AllValues() {
+		known[string(v)] = true
+	}
+	for _, v := range ingest.FailureVocabulary {
+		if !known[v] {
+			t.Errorf("ingest writes failure=%q, which the contract's GenerationFailure.failure enum does not list", v)
+		}
 	}
 }

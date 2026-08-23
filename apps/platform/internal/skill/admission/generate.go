@@ -81,6 +81,26 @@ var ErrGeneratedPackageInvalid = errors.New("ingest: generated skill cannot be p
 var ErrGeneratedNameCollision = errors.New(
 	"ingest: this workspace already has a skill with that name, and one of the two was generated")
 
+// The failure vocabulary auditGenerateFailure writes and GenerateFailures reads
+// back. Constants rather than literals because the same words also appear in
+// contracts/openapi/public.yaml's GenerationFailure.failure enum and in the web
+// sentence table, and a word changed in one place and not the others is a row
+// the screen calls unreadable. generate_integration_test asserts every one of
+// these is in the generated enum.
+const (
+	FailureQuota         = "quota"
+	FailureUnavailable   = "unavailable"
+	FailureGateway       = "gateway"
+	FailureUnpackageable = "unpackageable"
+	FailureRejected      = "rejected"
+	FailureBlocked       = "blocked"
+)
+
+// FailureVocabulary is every value this package writes, for the test above.
+var FailureVocabulary = []string{
+	FailureQuota, FailureUnavailable, FailureGateway, FailureUnpackageable, FailureRejected, FailureBlocked,
+}
+
 // GenerateResult is one generation. Result.Report is the validation outcome and
 // is shown to the user verbatim on failure (02:GEN-003, same treatment SKILL-002
 // already gives a failed import); Result.Version is meaningless when
@@ -156,9 +176,9 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 		// is `unavailable` — the 422 path stopped conflating them (d555564), and
 		// the failure list a user reads back must not be the place that tells a
 		// healthy account it ran out.
-		failure := "quota"
+		failure := FailureQuota
 		if errors.Is(err, policy.ErrAllowanceUnavailable) {
-			failure = "unavailable"
+			failure = FailureUnavailable
 		}
 		s.auditGenerateFailure(ctx, ws, task, 0, map[string]any{
 			"failure": failure,
@@ -180,7 +200,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 			// failed at the gateway; nothing recorded WHY, so a deployment failing
 			// 100% of the time (wrong key, model name typo, budget exhausted,
 			// apps/llm down) produced four identical 502s and no way to tell them
-			// apart (NFR-003 「內部診斷碼」). Same shape enrich.go已經 uses.
+			// apart (NFR-003 「內部診斷碼」). Same shape enrich.go uses.
 			slog.Warn("generate: gateway call failed", "attempt", attempt, "error", err)
 			// Truncation arrives here too and is not retried: the ceiling covers
 			// reasoning plus output, so a second call at the same ceiling buys
@@ -188,7 +208,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 			// for the reason SuggestImprovements already gives — a gateway that
 			// refused this input refuses it again.
 			s.auditGenerateFailure(ctx, ws, task, attempt, map[string]any{
-				"failure":   "gateway",
+				"failure":   FailureGateway,
 				"truncated": errors.Is(err, llmclient.ErrGenerateTruncated),
 			})
 			return out, err
@@ -197,7 +217,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 
 		data, err := buildGeneratedPackage(gen.Skill)
 		if err != nil {
-			s.auditGenerateFailure(ctx, ws, task, attempt, map[string]any{"failure": "unpackageable"})
+			s.auditGenerateFailure(ctx, ws, task, attempt, map[string]any{"failure": FailureUnpackageable})
 			return out, err
 		}
 
@@ -214,7 +234,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 			// blocked report, so without this the one failure a user can actually
 			// act on was the one that left nothing behind.
 			s.auditGenerateFailure(ctx, ws, task, attempt, map[string]any{
-				"failure":   "rejected",
+				"failure":   FailureRejected,
 				"collision": errors.Is(err, ErrGeneratedNameCollision),
 			})
 			return out, err
@@ -230,7 +250,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 		// 半成品版本」).
 		if !shouldRetry(attempt, res.Report) {
 			s.auditGenerateFailure(ctx, ws, task, attempt, map[string]any{
-				"failure": "blocked",
+				"failure": FailureBlocked,
 				// Codes and nothing else. A finding's Message never carries the
 				// matched value (skillpkg.go:909) and this must not become the
 				// place that reintroduces it (NFR-002, iron rule 11).

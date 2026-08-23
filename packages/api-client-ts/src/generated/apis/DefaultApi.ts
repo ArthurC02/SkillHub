@@ -45,7 +45,7 @@ import type {
   DownloadArtifact,
   Evaluation,
   ForkSkill201Response,
-  GenerateSkill422Response,
+  GenerateSkillRefusal,
   GenerateSkillRequest,
   GenerateSkillResult,
   GenerationFailures,
@@ -153,8 +153,8 @@ import {
     EvaluationToJSON,
     ForkSkill201ResponseFromJSON,
     ForkSkill201ResponseToJSON,
-    GenerateSkill422ResponseFromJSON,
-    GenerateSkill422ResponseToJSON,
+    GenerateSkillRefusalFromJSON,
+    GenerateSkillRefusalToJSON,
     GenerateSkillRequestFromJSON,
     GenerateSkillRequestToJSON,
     GenerateSkillResultFromJSON,
@@ -882,7 +882,7 @@ export interface DefaultApiInterface {
     forkSkill(requestParameters: ForkSkillRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ForkSkill201Response>;
 
     /**
-     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist and answers 404, and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
+     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist — it answers whatever an unregistered path under /skills answers (405 today, because GET /skills/{id} matches the shape; the sameness is the point, not the number) — and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
      * @summary Generate a Skill from a task description (GEN-001)
      * @param {GenerateSkillRequest} generateSkillRequest 
      * @param {*} [options] Override http request option.
@@ -892,7 +892,7 @@ export interface DefaultApiInterface {
     generateSkillRaw(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerateSkillResult>>;
 
     /**
-     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist and answers 404, and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
+     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist — it answers whatever an unregistered path under /skills answers (405 today, because GET /skills/{id} matches the shape; the sameness is the point, not the number) — and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
      * Generate a Skill from a task description (GEN-001)
      */
     generateSkill(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateSkillResult>;
@@ -2641,7 +2641,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist and answers 404, and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
+     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist — it answers whatever an unregistered path under /skills answers (405 today, because GET /skills/{id} matches the shape; the sameness is the point, not the number) — and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
      * Generate a Skill from a task description (GEN-001)
      */
     async generateSkillRaw(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GenerateSkillResult>> {
@@ -2673,7 +2673,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
-     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist and answers 404, and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
+     * Requires a session and an invite. **Mounted only where the deployment turns the M5 exposure flag on** (ADR-052); everywhere else this route does not exist — it answers whatever an unregistered path under /skills answers (405 today, because GET /skills/{id} matches the shape; the sameness is the point, not the number) — and `GET /me` does not list `generate_skill` among its features. A client must read that field rather than probing here — an entry point that has to be discovered by a failed request has already been drawn.  Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation. Nothing inside the produced package is ever executed, and it goes through exactly the validation path an upload does. A blocking finding after one retry rejects the whole thing and creates no version. 
      * Generate a Skill from a task description (GEN-001)
      */
     async generateSkill(requestParameters: GenerateSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerateSkillResult> {

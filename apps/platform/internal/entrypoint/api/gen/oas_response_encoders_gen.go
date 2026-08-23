@@ -1147,7 +1147,7 @@ func encodeGenerateSkillResponse(response GenerateSkillRes, w http.ResponseWrite
 
 		return nil
 
-	case *GenerateSkillUnprocessableEntity:
+	case *GenerateSkillRefusal:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(422)
 

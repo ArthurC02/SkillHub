@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
 import { queryClient } from "./api/queryClient";
 import { router } from "./router";
+import { GenerationFailureFailureEnum } from "@skillhub/api-client-ts";
 
 // GEN-004 and GEN-008. Same hand-rolled harness the other suites use.
 //
@@ -229,5 +230,17 @@ test("GEN-008: the bounds the server enforces are stated before the button, and 
   // And the textarea carries no maxLength: the browser's unit (UTF-16 code
   // units) is not the server's (runes), so one enforcer, and it is the server.
   expect(container.querySelector<HTMLTextAreaElement>("#generate-task")!.maxLength).toBe(-1);
+});
+
+// The sentence table is keyed on the hand-written union; this asserts it
+// against the generated enum, so a value added to the contract and not to
+// types.ts fails here rather than rendering the "unreadable" fallback for a
+// value the server meant (the PACKAGING_BLOCKED_LABEL pattern).
+test("GEN-003: every failure value in the contract has a sentence", async () => {
+  const { FAILURE_SENTENCE } = await import("./components/GenerateSkill");
+  for (const value of Object.values(GenerationFailureFailureEnum)) {
+    const sentence = FAILURE_SENTENCE[value as keyof typeof FAILURE_SENTENCE];
+    expect(sentence, `no sentence for failure ${JSON.stringify(value)}`).toBeTypeOf("function");
+  }
 });
 

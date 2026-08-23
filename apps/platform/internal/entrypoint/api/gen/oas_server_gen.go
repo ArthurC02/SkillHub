@@ -276,9 +276,11 @@ type Handler interface {
 	// GenerateSkill implements generateSkill operation.
 	//
 	// Requires a session and an invite. Mounted only where the deployment turns the M5 exposure flag on
-	// (ADR-052); everywhere else this route does not exist and answers 404, and `GET /me` does not list
-	// `generate_skill` among its features. A client must read that field rather than probing here — an
-	// entry point that has to be discovered by a failed request has already been drawn.
+	// (ADR-052); everywhere else this route does not exist — it answers whatever an unregistered path
+	// under /skills answers (405 today, because GET /skills/{id} matches the shape; the sameness is the
+	// point, not the number) — and `GET /me` does not list `generate_skill` among its features. A client
+	// must read that field rather than probing here — an entry point that has to be discovered by a
+	// failed request has already been drawn.
 	//
 	// Synchronous: there is no job and no run id, so an abandoned request is a cancelled generation.
 	// Nothing inside the produced package is ever executed, and it goes through exactly the validation

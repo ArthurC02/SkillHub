@@ -48,7 +48,7 @@ export interface GenerationFailure {
     failure: GenerationFailureFailureEnum;
     /**
      * How many gateway calls that failure cost. 0 for a refusal that never
-     * reached the gateway, which is exactly what `quota` is.
+     * reached the gateway — `quota` and `unavailable`.
      * 
      * @type {number}
      * @memberof GenerationFailure

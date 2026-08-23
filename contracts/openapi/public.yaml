@@ -364,7 +364,9 @@ paths:
       description: |
         Requires a session and an invite. **Mounted only where the deployment
         turns the M5 exposure flag on** (ADR-052); everywhere else this route
-        does not exist and answers 404, and `GET /me` does not list
+        does not exist — it answers whatever an unregistered path under /skills
+        answers (405 today, because GET /skills/{id} matches the shape; the
+        sameness is the point, not the number) — and `GET /me` does not list
         `generate_skill` among its features. A client must read that field rather
         than probing here — an entry point that has to be discovered by a failed
         request has already been drawn.
@@ -385,7 +387,7 @@ paths:
                 task_description:
                   type: string
                   minLength: 8
-                  maxLength: 4000
+                  maxLength: 4000 # one-number: generateMaxTaskRunes
                   description: |
                     The user's own words. Stored as the generated version's
                     provenance record (GEN-002) and subject to NFR-002 deletion
@@ -441,9 +443,7 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
-                  - $ref: "#/components/schemas/GenerateSkillRejected"
-                  - $ref: "#/components/schemas/Error"
+                $ref: "#/components/schemas/GenerateSkillRefusal"
         "502":
           description: The model gateway failed. Nothing was created.
           content:
@@ -4733,6 +4733,28 @@ components:
           description: True when identical content already existed as a version of this skill.
         findings:
           $ref: "#/components/schemas/CategorizedFindings"
+    GenerateSkillRefusal:
+      description: |
+        The 422 body of POST /skills/generate: either the package's own findings
+        (GenerateSkillRejected) or a single-sentence refusal from around the
+        model call. Told apart by shape — `findings` present, or `error` present.
+
+        A named schema rather than an inline `oneOf` with `Error`, and the
+        second arm inlined rather than `$ref`'d: openapi-generator's
+        typescript-fetch renames the `Error` schema to `ModelError` (it shadows
+        JS's Error) and then forgets to import it inside a oneOf wrapper, so
+        `packages/api-client-ts` failed to build for a day with nothing on the
+        web side noticing. The inline arm is Error's exact shape; if Error ever
+        grows a field, this has to grow with it — the drift the generated
+        client would otherwise have caught is now the contract author's.
+      oneOf:
+        - $ref: "#/components/schemas/GenerateSkillRejected"
+        - type: object
+          title: GenerateSkillRefusalMessage
+          required: [error]
+          properties:
+            error:
+              type: string
     GenerateSkillRejected:
       description: |
         A generated package that failed validation: the findings verbatim, the
@@ -4784,7 +4806,7 @@ components:
           maximum: 2 # one-number: generateMaxAttempts
           description: |
             How many gateway calls that failure cost. 0 for a refusal that never
-            reached the gateway, which is exactly what `quota` is.
+            reached the gateway — `quota` and `unavailable`.
         codes:
           type: array
           items:

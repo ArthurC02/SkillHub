@@ -51,7 +51,14 @@ router = APIRouter()
 # so it has less surface to damage. It also wrote no scripts in twenty
 # attempts; whether that is better is GEN-009 and is not known (ADR-051 決策 2).
 GENERATE_SKILL_MODEL = os.getenv("GENERATE_SKILL_MODEL", "gpt-5.4-mini")
-GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v1"
+# Bumped whenever anything the model is shown changes: the system prompt OR the
+# schema, because the schema is part of the prompt — it is what the model fills
+# in. v2 = the strict-legal schema (no metadata, no defaults, no constraints) and
+# the prompt's explicit "empty string when none" for the two fields that became
+# required. The provenance row stores this string, and 02:GEN-001 says that row
+# must reproduce the package; a prompt that changed under an unchanged version
+# string is a record that says one thing and did another.
+GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v2"
 
 # ADR-047 決策 2, corrected by the B round: the cap covers reasoning *plus*
 # output, and reasoning varies far more than output does. The one round-A
@@ -70,10 +77,17 @@ MAX_OUTPUT_TOKENS = 16000  # one-number: generateMaxOutputTokens
 # here at all - skillpkg.Validate has name-too-long / description-too-long for
 # those and hands the user the finding verbatim (02:GEN-003), which a 502 from
 # here cannot do.
-MAX_EXTRA_FILES = 10
-MAX_FILE_BYTES = 100_000
-MAX_BODY_CHARS = 60_000
-MAX_PATH_CHARS = 255
+#
+# There is no body cap. There was one (60,000 characters), and it sat INSIDE the
+# range a legal answer can reach: 16,000 output tokens of English Markdown
+# measured at ~14,700 tokens for 60,480 characters, so a complete, untruncated
+# answer would have been refused as malformed. The token ceiling is the cap; a
+# character cap below what the ceiling can produce is a false rejection, and
+# above it is dead code. The file caps below are well above what 16,000 tokens
+# can write, so they only ever catch a shape the model should not have produced.
+MAX_EXTRA_FILES = 10  # one-number: generateMaxExtraFiles
+MAX_FILE_CHARS = 100_000  # one-number: generateMaxFileChars
+MAX_PATH_CHARS = 255  # one-number: generateMaxPathChars
 
 
 # `..` in a path is not checked here. It is a blocking finding read off the raw
@@ -145,15 +159,13 @@ class GenerateSkillRequest(BaseModel):
 
 def _over_cap(skill: GeneratedSkill) -> str | None:
     """The contract cap the answer exceeds, or None. Never touches the answer."""
-    if len(skill.body) > MAX_BODY_CHARS:
-        return f"body {len(skill.body)} > {MAX_BODY_CHARS}"
     if len(skill.files) > MAX_EXTRA_FILES:
         return f"files {len(skill.files)} > {MAX_EXTRA_FILES}"
     for f in skill.files:
         if len(f.path) > MAX_PATH_CHARS:
             return f"path {len(f.path)} > {MAX_PATH_CHARS}"
-        if len(f.content) > MAX_FILE_BYTES:
-            return f"content {len(f.content)} > {MAX_FILE_BYTES}"
+        if len(f.content) > MAX_FILE_CHARS:
+            return f"content {len(f.content)} > {MAX_FILE_CHARS}"
     return None
 
 

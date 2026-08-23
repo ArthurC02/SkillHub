@@ -57,7 +57,12 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
     setRejected(undefined);
     mutation.mutate(task, {
       onSuccess: async () => {
-        await queryClient.invalidateQueries({ queryKey: ["skills"] });
+        // The workspace list's key, not ["skills"]. The wrong key did two
+        // things: left the list on /workspace/skills stale after a success,
+        // and on Home matched ["skills","search",…] — re-running the search
+        // and writing a second search_performed analytics event per success,
+        // which is the funnel number the ⛔ boundary exists to protect.
+        await queryClient.invalidateQueries({ queryKey: ["own-skills"] });
       },
       onSettled: async () => {
         // Both ways: a failure adds a row, and a success does not — but the
@@ -189,39 +194,44 @@ function GenerateHistory() {
 }
 
 /**
- * One row's sentence.
+ * One row's sentence, keyed on the contract's enum so that adding a value to
+ * the union without a sentence fails `tsc` here (the PACKAGING_BLOCKED_LABEL
+ * pattern; generate.test.tsx asserts the table against the generated enum so
+ * a value added to the contract and not to this union fails too).
  *
- * Two of the five failures are things the user can act on — a truncated answer
+ * Two of the failures are things the user can act on — a truncated answer
  * means make the task smaller, a collision means rename the other skill — and
- * they are the two that get a next step. The other three say what happened and
- * stop, because 「再試一次」 is the only answer and it is already a button.
+ * they take precedence over the kind, because they are the two with a next
+ * step. The rest say what happened and stop, because 「再試一次」 is the only
+ * answer and it is already a button.
  */
+export const FAILURE_SENTENCE: Record<GenerationFailure["failure"], (f: GenerationFailure) => string> = {
+  quota: () => "額度不足，沒有呼叫模型，也沒有花錢。",
+  // Not "額度不足": the allowance could not be counted, and a healthy account
+  // must not be told it ran out (d555564 fixed the 422; this is the same
+  // sentence on the record).
+  unavailable: () => "當時算不出剩餘額度，平台沒有冒險呼叫模型，也沒有花錢。",
+  // "Gateway" on the Go side covers both a service that did not answer and one
+  // that answered something the platform could not use (an empty body, an
+  // answer over a contract cap). The sentence must not claim the first.
+  gateway: () => "模型服務那一端失敗——沒有回應，或回了平台用不了的答案。沒有建立任何版本。",
+  unpackageable: () => "模型交出來的東西沒辦法打包成一個套件。",
+  rejected: () => "驗證之後被拒絕，沒有建立任何版本。",
+  blocked: (f) =>
+    f.codes?.length
+      ? `套件沒有通過驗證（${f.codes.join("、")}），試了 ${f.attempts} 次。`
+      : `套件沒有通過驗證，試了 ${f.attempts} 次。`,
+  // The row exists and its timestamp is real; only its detail is missing.
+  // Saying so beats dropping the row, which would silently shorten history.
+  "": () => "這一次沒有成功，而這列紀錄的細節讀不出來。",
+};
+
 function failureSentence(f: GenerationFailure): string {
   if (f.truncated) return "模型的輸出超過一次生成的上限，已經停下。把任務拆小一點再試會有幫助。";
   if (f.collision) return "工作區已經有一個同名的 Skill，而它不是生成的。改掉那一個的名字或刪掉它再試。";
-  switch (f.failure) {
-    case "quota":
-      return "額度不足，沒有呼叫模型，也沒有花錢。";
-    case "unavailable":
-      // Not "額度不足": the allowance could not be counted, and a healthy
-      // account must not be told it ran out (d555564 fixed the 422; this is
-      // the same sentence on the record).
-      return "當時算不出剩餘額度，平台沒有冒險呼叫模型，也沒有花錢。";
-    case "gateway":
-      return "模型服務沒有回應。沒有建立任何版本。";
-    case "unpackageable":
-      return "模型交出來的東西沒辦法打包成一個套件。";
-    case "rejected":
-      return "驗證之後被拒絕，沒有建立任何版本。";
-    case "blocked":
-      return f.codes?.length
-        ? `套件沒有通過驗證（${f.codes.join("、")}），試了 ${f.attempts} 次。`
-        : `套件沒有通過驗證，試了 ${f.attempts} 次。`;
-    default:
-      // The row exists and its timestamp is real; only its detail is missing.
-      // Saying so beats dropping the row, which would silently shorten history.
-      return "這一次沒有成功，而這列紀錄的細節讀不出來。";
-  }
+  // A value this build does not know falls to the "" sentence: the row
+  // happened, the detail is unreadable to this build.
+  return (FAILURE_SENTENCE[f.failure] ?? FAILURE_SENTENCE[""])(f);
 }
 
 /**

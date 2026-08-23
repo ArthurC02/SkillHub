@@ -1150,8 +1150,8 @@ components:
         no length or pattern constraint**, because it is handed over as a strict
         `json_schema` and the gateway refuses both - an optional property and a
         `maxLength` are each a 400 on every call, not a relaxed check. The
-        `minLength`/`maxItems` still written below are this contract's
-        statement of the cap; the Pydantic class the model's schema is derived
+        `minLength`/`maxLength`/`maxItems` still written below are this
+        contract's statement of the cap; the Pydantic class the model's schema is derived
         from carries none of them, and apps/llm checks the answer against them
         instead (`_over_cap`, and the empty-body refusal) - checks, not clips:
         an answer over a cap is refused as malformed, never edited (ADR-047
@@ -1190,11 +1190,12 @@ components:
         body:
           type: string
           minLength: 1
-          maxLength: 60000
           description: |
             The instructions the agent follows, in Markdown, without the
-            frontmatter. Over 60000 characters is refused as malformed (not
-            clipped); the cap is the contract's, checked on the answer. Empty is refused: the B round produced a 38-character
+            frontmatter. No character cap, on purpose: the token ceiling
+            (16,000, reasoning plus output) is the cap, and a character cap
+            below what it can produce refuses complete answers — 60,000 was
+            tried and sits inside that range for English. Empty is refused: the B round produced a 38-character
             SKILL.md whose whole body was missing, and it was blocked only
             because its key was also damaged. Had the key been right, a
             syntactically perfect package with no content would have passed
@@ -1205,7 +1206,7 @@ components:
             schema the model is given cannot carry it.
         files:
           type: array
-          maxItems: 10
+          maxItems: 10  # one-number: generateMaxExtraFiles
           items:
             $ref: "#/components/schemas/GeneratedFile"
           description: |
@@ -1222,9 +1223,10 @@ components:
       properties:
         path:
           type: string
+          maxLength: 255  # one-number: generateMaxPathChars
           description: |
-            Relative and not starting with a separator; over 255 characters is
-            refused as malformed. **The shape is not constrained here**, for the same
+            Relative and not starting with a separator; over the cap is refused
+            as malformed. **The shape is not constrained here**, for the same
             reason GeneratedSkill's properties are not: this schema is handed to
             the model under strict `json_schema`, which refuses `pattern` and
             `maxLength` with a 400 rather than ignoring them. It is enforced
@@ -1234,7 +1236,8 @@ components:
             SKILL.md or to the archive root before the zip is built.
         content:
           type: string
-          description: Over 100000 characters is refused as malformed, not clipped.
+          maxLength: 100000  # one-number: generateMaxFileChars
+          description: Over the cap is refused as malformed, not clipped.
 
     GenerateSkillResponse:
       type: object

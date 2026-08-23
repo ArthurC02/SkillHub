@@ -4565,6 +4565,102 @@ type GenerateSkillForbidden Error
 
 func (*GenerateSkillForbidden) generateSkillRes() {}
 
+// The 422 body of POST /skills/generate: either the package's own findings (GenerateSkillRejected) or
+// a single-sentence refusal from around the model call. Told apart by shape — `findings` present, or
+// `error` present.
+//
+// A named schema rather than an inline `oneOf` with `Error`, and the second arm inlined rather than
+// `$ref`'d: openapi-generator's typescript-fetch renames the `Error` schema to `ModelError` (it
+// shadows JS's Error) and then forgets to import it inside a oneOf wrapper, so
+// `packages/api-client-ts` failed to build for a day with nothing on the web side noticing. The inline
+// arm is Error's exact shape; if Error ever grows a field, this has to grow with it — the drift the
+// generated client would otherwise have caught is now the contract author's.
+// Ref: #/components/schemas/GenerateSkillRefusal
+// GenerateSkillRefusal represents sum type.
+type GenerateSkillRefusal struct {
+	// Type selects the active sum variant, switch on this field.
+	Type                  GenerateSkillRefusalType
+	GenerateSkillRejected GenerateSkillRejected
+	GenerateSkillRefusal1 GenerateSkillRefusal1
+}
+
+// GenerateSkillRefusalType is oneOf type of GenerateSkillRefusal.
+type GenerateSkillRefusalType string
+
+// Possible values for GenerateSkillRefusalType.
+const (
+	GenerateSkillRejectedGenerateSkillRefusal GenerateSkillRefusalType = "GenerateSkillRejected"
+	GenerateSkillRefusal1GenerateSkillRefusal GenerateSkillRefusalType = "GenerateSkillRefusal1"
+)
+
+// IsGenerateSkillRejected reports whether GenerateSkillRefusal is GenerateSkillRejected.
+func (s GenerateSkillRefusal) IsGenerateSkillRejected() bool {
+	return s.Type == GenerateSkillRejectedGenerateSkillRefusal
+}
+
+// IsGenerateSkillRefusal1 reports whether GenerateSkillRefusal is GenerateSkillRefusal1.
+func (s GenerateSkillRefusal) IsGenerateSkillRefusal1() bool {
+	return s.Type == GenerateSkillRefusal1GenerateSkillRefusal
+}
+
+// SetGenerateSkillRejected sets GenerateSkillRefusal to GenerateSkillRejected.
+func (s *GenerateSkillRefusal) SetGenerateSkillRejected(v GenerateSkillRejected) {
+	s.Type = GenerateSkillRejectedGenerateSkillRefusal
+	s.GenerateSkillRejected = v
+}
+
+// GetGenerateSkillRejected returns GenerateSkillRejected and true boolean if GenerateSkillRefusal is GenerateSkillRejected.
+func (s GenerateSkillRefusal) GetGenerateSkillRejected() (v GenerateSkillRejected, ok bool) {
+	if !s.IsGenerateSkillRejected() {
+		return v, false
+	}
+	return s.GenerateSkillRejected, true
+}
+
+// NewGenerateSkillRejectedGenerateSkillRefusal returns new GenerateSkillRefusal from GenerateSkillRejected.
+func NewGenerateSkillRejectedGenerateSkillRefusal(v GenerateSkillRejected) GenerateSkillRefusal {
+	var s GenerateSkillRefusal
+	s.SetGenerateSkillRejected(v)
+	return s
+}
+
+// SetGenerateSkillRefusal1 sets GenerateSkillRefusal to GenerateSkillRefusal1.
+func (s *GenerateSkillRefusal) SetGenerateSkillRefusal1(v GenerateSkillRefusal1) {
+	s.Type = GenerateSkillRefusal1GenerateSkillRefusal
+	s.GenerateSkillRefusal1 = v
+}
+
+// GetGenerateSkillRefusal1 returns GenerateSkillRefusal1 and true boolean if GenerateSkillRefusal is GenerateSkillRefusal1.
+func (s GenerateSkillRefusal) GetGenerateSkillRefusal1() (v GenerateSkillRefusal1, ok bool) {
+	if !s.IsGenerateSkillRefusal1() {
+		return v, false
+	}
+	return s.GenerateSkillRefusal1, true
+}
+
+// NewGenerateSkillRefusal1GenerateSkillRefusal returns new GenerateSkillRefusal from GenerateSkillRefusal1.
+func NewGenerateSkillRefusal1GenerateSkillRefusal(v GenerateSkillRefusal1) GenerateSkillRefusal {
+	var s GenerateSkillRefusal
+	s.SetGenerateSkillRefusal1(v)
+	return s
+}
+
+func (*GenerateSkillRefusal) generateSkillRes() {}
+
+type GenerateSkillRefusal1 struct {
+	Error string `json:"error"`
+}
+
+// GetError returns the value of Error.
+func (s *GenerateSkillRefusal1) GetError() string {
+	return s.Error
+}
+
+// SetError sets the value of Error.
+func (s *GenerateSkillRefusal1) SetError(val string) {
+	s.Error = val
+}
+
 // Merged schema.
 // Ref: #/components/schemas/GenerateSkillRejected
 type GenerateSkillRejected struct {
@@ -4743,77 +4839,6 @@ type GenerateSkillUnauthorized Error
 
 func (*GenerateSkillUnauthorized) generateSkillRes() {}
 
-// GenerateSkillUnprocessableEntity represents sum type.
-type GenerateSkillUnprocessableEntity struct {
-	// Type selects the active sum variant, switch on this field.
-	Type                  GenerateSkillUnprocessableEntityType
-	GenerateSkillRejected GenerateSkillRejected
-	Error                 Error
-}
-
-// GenerateSkillUnprocessableEntityType is oneOf type of GenerateSkillUnprocessableEntity.
-type GenerateSkillUnprocessableEntityType string
-
-// Possible values for GenerateSkillUnprocessableEntityType.
-const (
-	GenerateSkillRejectedGenerateSkillUnprocessableEntity GenerateSkillUnprocessableEntityType = "GenerateSkillRejected"
-	ErrorGenerateSkillUnprocessableEntity                 GenerateSkillUnprocessableEntityType = "Error"
-)
-
-// IsGenerateSkillRejected reports whether GenerateSkillUnprocessableEntity is GenerateSkillRejected.
-func (s GenerateSkillUnprocessableEntity) IsGenerateSkillRejected() bool {
-	return s.Type == GenerateSkillRejectedGenerateSkillUnprocessableEntity
-}
-
-// IsError reports whether GenerateSkillUnprocessableEntity is Error.
-func (s GenerateSkillUnprocessableEntity) IsError() bool {
-	return s.Type == ErrorGenerateSkillUnprocessableEntity
-}
-
-// SetGenerateSkillRejected sets GenerateSkillUnprocessableEntity to GenerateSkillRejected.
-func (s *GenerateSkillUnprocessableEntity) SetGenerateSkillRejected(v GenerateSkillRejected) {
-	s.Type = GenerateSkillRejectedGenerateSkillUnprocessableEntity
-	s.GenerateSkillRejected = v
-}
-
-// GetGenerateSkillRejected returns GenerateSkillRejected and true boolean if GenerateSkillUnprocessableEntity is GenerateSkillRejected.
-func (s GenerateSkillUnprocessableEntity) GetGenerateSkillRejected() (v GenerateSkillRejected, ok bool) {
-	if !s.IsGenerateSkillRejected() {
-		return v, false
-	}
-	return s.GenerateSkillRejected, true
-}
-
-// NewGenerateSkillRejectedGenerateSkillUnprocessableEntity returns new GenerateSkillUnprocessableEntity from GenerateSkillRejected.
-func NewGenerateSkillRejectedGenerateSkillUnprocessableEntity(v GenerateSkillRejected) GenerateSkillUnprocessableEntity {
-	var s GenerateSkillUnprocessableEntity
-	s.SetGenerateSkillRejected(v)
-	return s
-}
-
-// SetError sets GenerateSkillUnprocessableEntity to Error.
-func (s *GenerateSkillUnprocessableEntity) SetError(v Error) {
-	s.Type = ErrorGenerateSkillUnprocessableEntity
-	s.Error = v
-}
-
-// GetError returns Error and true boolean if GenerateSkillUnprocessableEntity is Error.
-func (s GenerateSkillUnprocessableEntity) GetError() (v Error, ok bool) {
-	if !s.IsError() {
-		return v, false
-	}
-	return s.Error, true
-}
-
-// NewErrorGenerateSkillUnprocessableEntity returns new GenerateSkillUnprocessableEntity from Error.
-func NewErrorGenerateSkillUnprocessableEntity(v Error) GenerateSkillUnprocessableEntity {
-	var s GenerateSkillUnprocessableEntity
-	s.SetError(v)
-	return s
-}
-
-func (*GenerateSkillUnprocessableEntity) generateSkillRes() {}
-
 // One generation that produced nothing, as the workspace reads it back.
 //
 // Every field except `occurred_at` is best-effort. These rows are 400-day history written by whichever
@@ -4830,8 +4855,8 @@ type GenerationFailure struct {
 	// collision, most often); `blocked` is a validation finding. Empty when a row's metadata could not be
 	// decoded — the row still happened, and its timestamp is the part the screen needs most.
 	Failure GenerationFailureFailure `json:"failure"`
-	// How many gateway calls that failure cost. 0 for a refusal that never reached the gateway, which is
-	// exactly what `quota` is.
+	// How many gateway calls that failure cost. 0 for a refusal that never reached the gateway — `quota`
+	// and `unavailable`.
 	Attempts int `json:"attempts"`
 	// Blocking finding codes, present only for `blocked`. Codes and never values: a finding's message
 	// never carries the matched text (iron rule 11), and this must not become the place that reintroduces

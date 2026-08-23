@@ -1,6 +1,6 @@
 """GEN-002 tests.
 
-Six cases, chosen because each one fails silently if it regresses. The happy
+Each case is here because it fails silently if it regresses. The happy
 path anchors the shape; the rest guard rules that exist because of a
 measurement and would otherwise degrade into "it still returns something".
 """
@@ -184,12 +184,11 @@ def test_an_empty_body_is_refused_not_packaged(capture):
 @pytest.mark.parametrize(
     "patch",
     [
-        {"body": "x" * (generate.MAX_BODY_CHARS + 1)},
         {"files": [{"path": f"f{i}.md", "content": "x"} for i in range(generate.MAX_EXTRA_FILES + 1)]},
         {"files": [{"path": "p" * (generate.MAX_PATH_CHARS + 1), "content": "x"}]},
-        {"files": [{"path": "big.txt", "content": "x" * (generate.MAX_FILE_BYTES + 1)}]},
+        {"files": [{"path": "big.txt", "content": "x" * (generate.MAX_FILE_CHARS + 1)}]},
     ],
-    ids=["body", "file-count", "path", "content"],
+    ids=["file-count", "path", "content"],
 )
 def test_an_answer_over_a_contract_cap_is_refused_not_clipped(capture, patch):
     """Strict json_schema cannot carry the contract's caps, so they are checked
@@ -214,3 +213,12 @@ def test_a_long_name_and_an_empty_description_pass_through_to_the_validator(capt
     assert r.json()["skill"]["description"] == ""
     assert len(calls) == 1
 
+
+def test_a_long_body_is_not_refused_for_being_long(capture):
+    """There is deliberately no body cap: 16,000 output tokens of English can
+    exceed 60,000 characters, and a cap inside that range refused complete
+    answers as malformed. The token ceiling is the cap (ADR-047 決策 2).
+    """
+    capture(json.dumps({**GOOD_SKILL, "body": "step " * 15_000}))
+    r = client.post("/v1/generate-skill", json={"task_description": TASK})
+    assert r.status_code == 200, r.text

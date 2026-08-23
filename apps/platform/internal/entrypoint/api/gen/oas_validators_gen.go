@@ -1702,6 +1702,20 @@ func (s ForkSkillCreatedRedistribution) Validate() error {
 	}
 }
 
+func (s GenerateSkillRefusal) Validate() error {
+	switch s.Type {
+	case GenerateSkillRejectedGenerateSkillRefusal:
+		if err := s.GenerateSkillRejected.Validate(); err != nil {
+			return err
+		}
+		return nil
+	case GenerateSkillRefusal1GenerateSkillRefusal:
+		return nil // no validation needed
+	default:
+		return errors.Errorf("invalid type %q", s.Type)
+	}
+}
+
 func (s *GenerateSkillRejected) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -1896,20 +1910,6 @@ func (s *GenerateSkillResult) Validate() error {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
-}
-
-func (s GenerateSkillUnprocessableEntity) Validate() error {
-	switch s.Type {
-	case GenerateSkillRejectedGenerateSkillUnprocessableEntity:
-		if err := s.GenerateSkillRejected.Validate(); err != nil {
-			return err
-		}
-		return nil
-	case ErrorGenerateSkillUnprocessableEntity:
-		return nil // no validation needed
-	default:
-		return errors.Errorf("invalid type %q", s.Type)
-	}
 }
 
 func (s *GenerationFailure) Validate() error {

@@ -10639,6 +10639,237 @@ func (s *GenerateSkillForbidden) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes GenerateSkillRefusal as json.
+func (s GenerateSkillRefusal) Encode(e *jx.Encoder) {
+	switch s.Type {
+	case GenerateSkillRejectedGenerateSkillRefusal:
+		s.GenerateSkillRejected.Encode(e)
+	case GenerateSkillRefusal1GenerateSkillRefusal:
+		s.GenerateSkillRefusal1.Encode(e)
+	}
+}
+
+func (s GenerateSkillRefusal) encodeFields(e *jx.Encoder) {
+	switch s.Type {
+	case GenerateSkillRejectedGenerateSkillRefusal:
+		s.GenerateSkillRejected.encodeFields(e)
+	case GenerateSkillRefusal1GenerateSkillRefusal:
+		s.GenerateSkillRefusal1.encodeFields(e)
+	}
+}
+
+// Decode decodes GenerateSkillRefusal from json.
+func (s *GenerateSkillRefusal) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GenerateSkillRefusal to nil")
+	}
+	// Sum type fields.
+	if typ := d.Next(); typ != jx.Object {
+		return errors.Errorf("unexpected json type %q", typ)
+	}
+
+	var found bool
+	if err := d.Capture(func(d *jx.Decoder) error {
+		return d.ObjBytes(func(d *jx.Decoder, key []byte) error {
+			switch string(key) {
+			case "attempts":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Number {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := GenerateSkillRejectedGenerateSkillRefusal
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
+			case "error":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.String {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := GenerateSkillRefusal1GenerateSkillRefusal
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
+			case "errors":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Array {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := GenerateSkillRejectedGenerateSkillRefusal
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
+			case "infos":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Array {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := GenerateSkillRejectedGenerateSkillRefusal
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
+			case "warnings":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Array {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := GenerateSkillRejectedGenerateSkillRefusal
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
+			}
+			return d.Skip()
+		})
+	}); err != nil {
+		return errors.Wrap(err, "capture")
+	}
+	if !found {
+		return errors.New("unable to detect sum type variant")
+	}
+	switch s.Type {
+	case GenerateSkillRejectedGenerateSkillRefusal:
+		if err := s.GenerateSkillRejected.Decode(d); err != nil {
+			return err
+		}
+	case GenerateSkillRefusal1GenerateSkillRefusal:
+		if err := s.GenerateSkillRefusal1.Decode(d); err != nil {
+			return err
+		}
+	default:
+		return errors.Errorf("inferred invalid type: %s", s.Type)
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s GenerateSkillRefusal) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GenerateSkillRefusal) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *GenerateSkillRefusal1) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *GenerateSkillRefusal1) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("error")
+		e.Str(s.Error)
+	}
+}
+
+var jsonFieldsNameOfGenerateSkillRefusal1 = [1]string{
+	0: "error",
+}
+
+// Decode decodes GenerateSkillRefusal1 from json.
+func (s *GenerateSkillRefusal1) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GenerateSkillRefusal1 to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "error":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Error = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"error\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode GenerateSkillRefusal1")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000001,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfGenerateSkillRefusal1) {
+					name = jsonFieldsNameOfGenerateSkillRefusal1[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GenerateSkillRefusal1) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GenerateSkillRefusal1) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *GenerateSkillRejected) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -11177,141 +11408,6 @@ func (s *GenerateSkillUnauthorized) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *GenerateSkillUnauthorized) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes GenerateSkillUnprocessableEntity as json.
-func (s GenerateSkillUnprocessableEntity) Encode(e *jx.Encoder) {
-	switch s.Type {
-	case GenerateSkillRejectedGenerateSkillUnprocessableEntity:
-		s.GenerateSkillRejected.Encode(e)
-	case ErrorGenerateSkillUnprocessableEntity:
-		s.Error.Encode(e)
-	}
-}
-
-func (s GenerateSkillUnprocessableEntity) encodeFields(e *jx.Encoder) {
-	switch s.Type {
-	case GenerateSkillRejectedGenerateSkillUnprocessableEntity:
-		s.GenerateSkillRejected.encodeFields(e)
-	case ErrorGenerateSkillUnprocessableEntity:
-		s.Error.encodeFields(e)
-	}
-}
-
-// Decode decodes GenerateSkillUnprocessableEntity from json.
-func (s *GenerateSkillUnprocessableEntity) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode GenerateSkillUnprocessableEntity to nil")
-	}
-	// Sum type fields.
-	if typ := d.Next(); typ != jx.Object {
-		return errors.Errorf("unexpected json type %q", typ)
-	}
-
-	var found bool
-	if err := d.Capture(func(d *jx.Decoder) error {
-		return d.ObjBytes(func(d *jx.Decoder, key []byte) error {
-			switch string(key) {
-			case "attempts":
-				// Type-based discrimination: check if field has expected JSON type
-				if typ := d.Next(); typ != jx.Number {
-					// Field exists but has wrong type, not a match for this variant
-					return d.Skip()
-				}
-				match := GenerateSkillRejectedGenerateSkillUnprocessableEntity
-				if found && s.Type != match {
-					s.Type = ""
-					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
-				}
-				found = true
-				s.Type = match
-			case "error":
-				// Type-based discrimination: check if field has expected JSON type
-				if typ := d.Next(); typ != jx.String {
-					// Field exists but has wrong type, not a match for this variant
-					return d.Skip()
-				}
-				match := ErrorGenerateSkillUnprocessableEntity
-				if found && s.Type != match {
-					s.Type = ""
-					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
-				}
-				found = true
-				s.Type = match
-			case "errors":
-				// Type-based discrimination: check if field has expected JSON type
-				if typ := d.Next(); typ != jx.Array {
-					// Field exists but has wrong type, not a match for this variant
-					return d.Skip()
-				}
-				match := GenerateSkillRejectedGenerateSkillUnprocessableEntity
-				if found && s.Type != match {
-					s.Type = ""
-					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
-				}
-				found = true
-				s.Type = match
-			case "infos":
-				// Type-based discrimination: check if field has expected JSON type
-				if typ := d.Next(); typ != jx.Array {
-					// Field exists but has wrong type, not a match for this variant
-					return d.Skip()
-				}
-				match := GenerateSkillRejectedGenerateSkillUnprocessableEntity
-				if found && s.Type != match {
-					s.Type = ""
-					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
-				}
-				found = true
-				s.Type = match
-			case "warnings":
-				// Type-based discrimination: check if field has expected JSON type
-				if typ := d.Next(); typ != jx.Array {
-					// Field exists but has wrong type, not a match for this variant
-					return d.Skip()
-				}
-				match := GenerateSkillRejectedGenerateSkillUnprocessableEntity
-				if found && s.Type != match {
-					s.Type = ""
-					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
-				}
-				found = true
-				s.Type = match
-			}
-			return d.Skip()
-		})
-	}); err != nil {
-		return errors.Wrap(err, "capture")
-	}
-	if !found {
-		return errors.New("unable to detect sum type variant")
-	}
-	switch s.Type {
-	case GenerateSkillRejectedGenerateSkillUnprocessableEntity:
-		if err := s.GenerateSkillRejected.Decode(d); err != nil {
-			return err
-		}
-	case ErrorGenerateSkillUnprocessableEntity:
-		if err := s.Error.Decode(d); err != nil {
-			return err
-		}
-	default:
-		return errors.Errorf("inferred invalid type: %s", s.Type)
-	}
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s GenerateSkillUnprocessableEntity) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *GenerateSkillUnprocessableEntity) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

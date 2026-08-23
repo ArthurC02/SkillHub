@@ -58,7 +58,7 @@ export function ImportSkill() {
     onSuccess: async (data) => {
       setRejected(undefined);
       setResult(data);
-      await queryClient.invalidateQueries({ queryKey: ["skills"] });
+      await queryClient.invalidateQueries({ queryKey: ["own-skills"] });
     },
     onError: (error) => {
       setResult(undefined);

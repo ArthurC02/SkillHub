@@ -227,6 +227,13 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 		// 422 like every other allowance refusal: the request is well formed and
 		// the platform is working, the account has nothing left in this window.
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
+	case errors.Is(err, policy.ErrAllowanceUnavailable):
+		// 503, not the 502 below: the thing that failed is our own database, not
+		// the model gateway, and the failure record says exactly that
+		// (FailureUnavailable) — the live answer and the record must tell one
+		// story. Static string: the wrapped pgx error is not for a response body.
+		httpx.WriteError(w, http.StatusServiceUnavailable,
+			"目前算不出這個工作區剩下的生成額度，所以沒有呼叫模型、也沒有花錢。稍後再試。")
 	case errors.Is(err, llmclient.ErrGenerateTruncated):
 		// 02:GEN-001: tell the user this specific thing, and do not retry it.
 		httpx.WriteError(w, http.StatusUnprocessableEntity,
