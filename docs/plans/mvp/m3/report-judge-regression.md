@@ -1,3 +1,14 @@
+> **2026-08-24 補記（不改本報告的數字與結論）**：
+> 本報告的數是 `judge-run/v2` 在**當日判準**下量到的。
+> [ADR-043](../../../adr/ADR-043-evidence-citation-is-verified-by-content-not-by-its-claimed-source.md) 之後，`judge.go` 多了
+> 內容回驗與改判（§1、§2）、NFC＋空白摺疊＋十二字元門檻的正規化（§4）、
+> `exact`／`normalized`／`not_checked` 三態（§4），以及 `artifact` 引用不得滿足
+> `evidence_required`（§3）；而 `tools/eval-regression/judge_regression.py` **四項都沒有跟上**
+> （它跟了 ADR-049，漏了 ADR-043）。
+> **因此：§5.1 的 90／90 是歷史證據，用今天的 harness 重跑不會等值重現。**
+> 要讓它重新成為可用的回歸閘門，得先把那四個行為鏡像過去，
+> 而那之後這些數字是**要重量一次**、不是拿來對比的。（M3 稽核）
+
 # EVAL-013：Judge 判準回歸報告
 
 - 日期：**2026-08-17**

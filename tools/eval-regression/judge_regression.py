@@ -28,6 +28,23 @@ criterion whose references do not resolve downgraded to `undetermined`) and its
 truncation rule, because that is what a user would have seen. Downgrades are
 counted apart from wrong answers - a safe default is not an error.
 
+PINNED TO PRE-ADR-043 JUDGEMENT (noted 2026-08-24, M3 audit). The paragraph
+above stopped being true when ADR-043 landed: judge.go now re-verifies a
+citation's CONTENT and reattributes it to whichever source actually contains it
+(§1, §2), normalises quotes with NFC plus whitespace folding and a twelve-rune
+floor (§4), reports `exact` / `normalized` / `not_checked` rather than a
+two-state accepted-or-not, and refuses to let an `artifact` citation satisfy a
+rubric item marked `evidence_required` (§3). This file followed ADR-049 and
+missed ADR-043 entirely: it has no normalisation, no reattribution, no third
+state, and the string `evidence_required` does not appear in it at all - while
+rubric-content-007-writing-v1.json sets that flag on eighteen items.
+
+So: report-judge-regression.md's 90/90 is a measurement of judge-run/v2 under
+the rules of its own day, and re-running this harness today will NOT reproduce
+it. It is historical evidence, not a live regression gate. Making it one again
+means mirroring those four behaviours here, at which point the recorded numbers
+have to be measured again rather than compared against.
+
 --rubric adds CONTENT-007's rubric to the run (writing-rubrics.md §5.1). The file
 names, per Skill, the extra acceptance criteria to judge and the rubric that
 strengthens them; the set is narrowed to the Skills the file covers, the

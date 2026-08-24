@@ -37,6 +37,53 @@ func TestSuggestionDigestNeverShowsEvidenceOutsideItsAllowlist(t *testing.T) {
 	}
 }
 
+// The quotable text is on its own line, and the platform's label is not on it.
+//
+// judge-v1 printed "evidence: <text>" on one line; the model copied the line
+// whole, Go compared only the payload, and 45 of 45 verdicts were downgraded
+// (m3/report-judge-regression.md). The suggest digest still had that layout, and
+// the same asymmetry underneath it: suggestionEvidence matches against
+// r.Excerpt, which never contains the heading, so any quotation that includes
+// the heading can never resolve. It had not cost 45 verdicts only because the
+// evidence extractor happens to prefer text inside quotation marks (M3 audit,
+// 2026-08-24).
+func TestTheDigestKeepsItsOwnLabelsOffTheQuotableLines(t *testing.T) {
+	const excerpt = "bash exited 1 while writing output.xlsx"
+	v := verdict{overall: OverallNotMet, findings: []Finding{{
+		Category: CategoryEffect, Severity: SeverityWarning, Message: "needs work",
+		Evidence: []EvidenceRef{{Kind: KindAgentOutput, Excerpt: excerpt, Available: true}},
+	}}}
+	digest, refs := suggestionDigest(material{}, v)
+	if len(refs) != 1 {
+		t.Fatalf("this fixture stopped producing one ref: %d", len(refs))
+	}
+
+	for _, line := range strings.Split(digest, "\n") {
+		if !strings.Contains(line, "evidence (") {
+			continue
+		}
+		// A heading line ends at its colon. Anything after it is text the model
+		// will read as quotable and the platform will then fail to find.
+		if !strings.HasSuffix(strings.TrimRight(line, " "), ":") {
+			t.Fatalf("label and content share a line, so a verbatim quote of it "+
+				"can never be verified: %q", line)
+		}
+	}
+	if !strings.Contains(digest, excerpt) {
+		t.Fatal("the excerpt itself is gone; the split dropped what it was meant to isolate")
+	}
+
+	// The other half of the same fact: a quotation that swallowed the heading
+	// does not resolve, which is what makes the layout load-bearing rather than
+	// cosmetic.
+	if raw, _ := suggestionEvidence(llmclient.ImprovementProposal{
+		Evidence: `"evidence (agent_output): ` + excerpt + `"`,
+	}, refs); raw != nil {
+		t.Fatal("a quote carrying the platform's own label resolved; if that ever " +
+			"becomes true, the label is content and this test is the wrong shape")
+	}
+}
+
 func TestTargetPathsThatLeaveThePackageAreRefusedNotRepaired(t *testing.T) {
 	for _, in := range []string{
 		"", "   ", "/etc/passwd", "../secrets.txt", "docs/../../out", "./SKILL.md",

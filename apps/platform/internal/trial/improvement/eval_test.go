@@ -23,9 +23,9 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 // --- fixtures ----------------------------------------------------------------
@@ -425,6 +425,53 @@ func TestUnverifiableEvidenceDowngradesTheVerdictRatherThanBeingStored(t *testin
 		if r.Source != SourceModel {
 			t.Errorf("everything from the judge is labelled model, got %q", r.Source)
 		}
+	}
+}
+
+// ADR-043 defence 3, on the case it was actually written for: a verdict that
+// cites two things, one of which the platform can find and one of which it
+// cannot.
+//
+// Every existing fixture cited exactly one reference per criterion, so a
+// downgrade could equally be explained by "no evidence resolved at all" —
+// narrowing the rule to `len(result.Evidence) == 0 && len(unverifiable) > 0`
+// kept the whole suite green (M3 audit, 2026-08-24). Under that narrowing this
+// verdict stands as a pass on the strength of the half that checked out, and
+// the invented trace event id is never mentioned to the reader. Partial
+// grounding is the shape a plausible fabrication takes.
+func TestOneUnverifiableCitationDowngradesAVerdictThatAlsoCitesSomethingReal(t *testing.T) {
+	m, digest := fixtureMaterial(true)
+	s := &Service{}
+	results := s.merge(m, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: ResultPassed, Reason: "both of these check out",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+					// Real: this sentence is in the run's final output.
+					{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"},
+					// Invented: no such event, and the quote appears nowhere else
+					// either — otherwise ADR-043 §1 would reattribute it to the
+					// source that does contain it, which is the right answer to a
+					// different question.
+					{Kind: KindTraceEvent, TraceEventID: strp("33333333-3333-4333-8333-333333333333"),
+						Quote: "the deduplicator ran twice and agreed with itself"},
+				}},
+			{CriterionID: "c2", Result: ResultFailed, Reason: "no xlsx",
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{
+					{Kind: KindArtifact, ArtifactPath: strp("output.xlsx")},
+				}},
+		},
+	}, digest, false)
+
+	if results[0].Result != ResultUndetermined {
+		t.Errorf("a verdict half of whose citations were invented was stored as %q", results[0].Result)
+	}
+	if !strings.HasPrefix(results[0].Reason, "evidence_unverifiable:") {
+		t.Errorf("the downgrade has to name the reference it could not find: %q", results[0].Reason)
+	}
+	// The half that did resolve is kept. Dropping it would leave the reader an
+	// undetermined verdict with nothing to look at, and the quote was real.
+	if len(results[0].Evidence) != 1 {
+		t.Errorf("the verifiable citation should survive the downgrade, got %d", len(results[0].Evidence))
 	}
 }
 

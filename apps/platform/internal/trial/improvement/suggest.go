@@ -26,7 +26,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -50,13 +50,13 @@ var suggestionCategories = map[string]bool{
 // input, so it is bounded by cutting rather than by hoping.
 const (
 	suggestTimeout      = 120 * time.Second
-	maxDigestChars      = 20000 // SuggestImprovementsRequest.evaluation_digest
-	maxFileTreeEntries  = 500   // .file_tree maxItems
+	maxDigestChars      = 20000 // one-number: suggestMaxDigestChars
+	maxFileTreeEntries  = 500   // one-number: suggestMaxFileTreeEntries
 	maxTargetFiles      = 5     // contract allows 10; five files is what one round of advice needs
-	maxTargetFileChars  = 60000 // TargetFile.content maxLength
+	maxTargetFileChars  = 60000 // one-number: suggestMaxProposedContent
 	maxStoredEvidence   = 2     // evidence refs carried onto one stored suggestion
 	maxDigestEvidence   = 8     // refs quoted into the digest, and the set the above draws from
-	maxSuggestionsStore = 10    // SuggestImprovementsResponse.suggestions maxItems
+	maxSuggestionsStore = 10    // one-number: suggestMaxSuggestions
 )
 
 // Suggester is the improvement-proposal leg. One implementation (llmclient.Client)
@@ -321,7 +321,15 @@ func suggestionDigest(m material, v verdict) (string, []EvidenceRef) {
 			refs = append(refs, r)
 			if b.Len() < maxDigestChars {
 				excerpt, _ := cut(r.Excerpt, 400)
-				fmt.Fprintf(&b, "    evidence (%s): %s\n", r.Kind, excerpt)
+				// The label and the content go on separate lines, which is the
+				// judge-v1 fix applied here before it costs the same thing.
+				// There, "evidence: <text>" on one line got copied back whole by
+				// the model while Go compared only the payload, and 45 of 45
+				// verdicts were downgraded (m3/report-judge-regression.md
+				// §184-192). suggestionEvidence has the same asymmetry — it
+				// matches against r.Excerpt, which never contains this label —
+				// so a quote that includes it can never resolve.
+				fmt.Fprintf(&b, "    evidence (%s):\n      %s\n", r.Kind, excerpt)
 			}
 		}
 	}

@@ -959,7 +959,7 @@ components:
           description: Set for `artifact`, null otherwise. Must be a path from the manifest.
         quote:
           type: string
-          maxLength: 2000
+          maxLength: 2000  # one-number: judgeMaxQuote
           description: |
             Text copied verbatim from the cited source. Go looks for it there; a
             quote it cannot find is an unverifiable reference.
@@ -987,13 +987,13 @@ components:
             evidence was truncated or `trace_digest.complete` is false.
         reason:
           type: string
-          maxLength: 2000
+          maxLength: 2000  # one-number: judgeMaxReason
           description: Why, in the user's language. Shown to the user, so it states what was observed.
         evidence_refs:
           type: array
           items:
             $ref: "#/components/schemas/JudgeEvidenceRef"
-          maxItems: 10
+          maxItems: 10  # one-number: judgeMaxEvidenceRefs
           description: |
             May be empty, and an empty list is honest for `undetermined`. For
             `passed` or `failed` it is what keeps the verdict checkable: Go
@@ -1014,7 +1014,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CriterionVerdict"
-          maxItems: 20
+          maxItems: 20  # one-number: judgeMaxCriterionResults
         overall:
           type: string
           enum: [met, partially_met, not_met, undetermined]
@@ -1025,7 +1025,7 @@ components:
             verify, so this and the stored result can legitimately differ.
         summary:
           type: string
-          maxLength: 4000
+          maxLength: 4000  # one-number: judgeMaxSummary
     GatewayUsage:
       type: object
       description: |
@@ -1277,7 +1277,7 @@ components:
         evaluation_digest:
           type: string
           minLength: 1
-          maxLength: 20000
+          maxLength: 20000  # one-number: suggestMaxDigestChars
           description: |
             Go's rendering of the evaluation - failed criteria, deterministic
             findings, the evidence behind them. A digest rather than the stored
@@ -1286,7 +1286,7 @@ components:
           type: array
           items:
             type: string
-          maxItems: 500
+          maxItems: 500  # one-number: suggestMaxFileTreeEntries
           default: []
         target_files:
           type: array
@@ -1319,10 +1319,10 @@ components:
             Remote MCP is out of first release, so it is not part of this enum.
         problem:
           type: string
-          maxLength: 2000
+          maxLength: 2000  # one-number: suggestMaxProblem
         evidence:
           type: string
-          maxLength: 2000
+          maxLength: 2000  # one-number: suggestMaxEvidence
           description: |
             What in the evaluation supports this. It must contain at least one
             fragment copied verbatim out of the digest and wrapped in quotation
@@ -1337,21 +1337,21 @@ components:
             substring, and 26 of 26 proposals were discarded.
         target_path:
           type: string
-          maxLength: 1024
+          maxLength: 1024  # one-number: suggestMaxTargetPath
           description: |
             Package-relative path. Anything that normalises outside the package -
             `..`, an absolute path, a symlink pointing out - is refused by Go
             rather than sanitised, so this field is never a way out of the package.
         proposed_content:
           type: string
-          maxLength: 60000
+          maxLength: 60000  # one-number: suggestMaxProposedContent
           description: |
             The replacement content for `target_path`. The diff the user approves
             is computed in Go from this against the current file; nothing is
             applied without that diff being viewable (02:EVAL-002 clause 3).
         expected_impact:
           type: string
-          maxLength: 1000
+          maxLength: 1000  # one-number: suggestMaxExpectedImpact
     SuggestImprovementsResponse:
       type: object
       description: |
@@ -1364,7 +1364,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ImprovementProposal"
-          maxItems: 10
+          maxItems: 10  # one-number: suggestMaxSuggestions
           description: |
             De-duplicated and capped by the service. Empty means no usable
             proposal was produced, which is not the same as the Run being fine.
