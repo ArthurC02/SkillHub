@@ -6,7 +6,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 
 ## 目前狀態
 
-**M0～M4 的程式面已收斂，M5 的程式面亦已收斂**（`03` §19 十一項中 **9 勾、2 項 ◐**：`GEN-008`／`GEN-009`）。**「程式面收斂」不等於「MVP 完成」——剩下的是部署期與負責人動作，不是程式。** M4 與 M5 同時未完結（[ADR-052](docs/adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md) 明示接受）。
+**M0～M4 的程式面已收斂，M5 的程式面亦已收斂**（**◐ 的是 `GEN-008` 與 `GEN-009`；勾選數以 [`03` §19](docs/plans/03-work-items.md) 的 checkbox 為準，本檔不複述**——那個數字曾經同時存在於五份文件並三度彼此不符）。**「程式面收斂」不等於「MVP 完成」——剩下的是部署期與負責人動作，不是程式。** M4 與 M5 同時未完結（[ADR-052](docs/adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md) 明示接受）。
 
 **⛔ 硬邊界：開工不等於曝光**——M5 的生成入口不得對封測使用者出現，直到漏斗第一段有讀數為止。三條仍然生效的邊界逐條見 `01` §10。
 
@@ -104,6 +104,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納由 **ADR-0
 6. **Go generated router 不擁有 AuthZ**：ogen server 只在 `router.go` 的精確 `GET /healthz` pattern 後；其他 route 逐條由 `router.go` 套 `RequireSession`／`RequireOperator`／`OptionalSession`，不得整批 mount generated server。每移一條 endpoint 都要保留原 middleware 語意並加 route 測試（順序見 automation.md）。
 7. **Platform 的 Bounded Context 治理（ADR-032）**：`apps/platform/internal/` 每個套件屬於且僅屬於一個 context；新增套件必須先在 ADR-032 §1 對照表登記。跨 context 的新 import 必須**同一個 commit** 改 ADR-032 附錄 A 與 `apps/platform/.golangci.yml` 的 depguard 規則（CI 以 depguard ＋ `devctl automation-check` 兩道強制）；領域 Service 一律由 `entrypoint/api/apiserver.NewApp` 注入，禁止方法內現場建構其他 context 的 Service。**逐套件對照表以 ADR-032 §1 為準，受 `devctl automation-check` 機械對帳**；日常判斷見 [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)。
 8. **Query ownership（ADR-033、035）**：每條 query 的 owner context 宣告在 `db/query-owners.yaml`，由 `devctl automation-check` 強制——**跨 context 的 write query 呼叫會 FAIL**（read 已一併強制）。新增或刪除 `db/queries/*.sql` 的 query，同一批要改 `db/query-owners.yaml`，漏了 CI 會 FAIL；該檔的 `allow:`／`read_allow:` 是**存量漂移清單，不是擴充點**——新的跨 context 存取要改程式，不准往下面加行。
+9. **修好一個東西之後，把修法弄壞一次**：改完跑一次測試是綠的，那只證明測試存在，不證明它會紅。**把修正那一行還原、跑對應的測試、確認它變紅、再改回來**（`git diff` 確認為空）。本專案已經三次「修好了但測試沒有牙齒」：invalidate 用錯 query key（改回錯的、171 支全綠）、placeholder 六條規則有三條零正面測試（同時刪掉、全綠）、兩條 import 路由的速率限制包裝（無聲刪掉、全套綠）。**三次都不是 code review 找到的**，是突變找到的。成本是一次 `sed` 加一次 `go test`。<br>**不適用於**：純文案、純註解、以及本來就沒有斷言可言的變更。**適用於**：任何你在 commit 訊息裡寫「修好了 X」的東西——那句話的證據就是那次紅。
 
 ## 快速判斷「我該看哪份文件」
 
