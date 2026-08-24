@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -256,14 +257,35 @@ func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 
 // C-13, the fork bomb case: the limit has to be enforced by the runtime, not
 // merely requested.
+//
+// The ceiling is 64 and not 16. Under runc a shell needs one pid, so 16 left
+// plenty of room; under runsc the container's pids cgroup also holds the
+// sentry's own host threads, and 16 is fewer than gVisor needs to come up at
+// all. The gVisor leg failed on its first ever execution with
+//
+//	OCI runtime create failed: creating container: cannot create sandbox:
+//	cannot read client sync file: waiting for sandbox to start: EOF
+//
+// which is the sandbox dying before the workload existed -- a fixture value, not
+// a defect in what C-13 defends. 400 attempts against 64 keeps the margin wide
+// at both ends: enough headroom for the sentry, and enough processes that a
+// runtime honouring the limit must refuse some of them.
+//
+// If this ever fails with "produced no fork failure" rather than at start, that
+// is the interesting answer and not a flake: it would mean the pids ceiling does
+// not reach guest tasks under that runtime, and C-13 is not enforced where it
+// actually has to be.
 func TestPidsLimitStopsAForkBomb(t *testing.T) {
 	d, _ := newDriver(t)
-	req := testRequest(`i=0; while [ $i -lt 200 ]; do sleep 20 & i=$((i+1)); done; echo "spawned"`)
-	req.ResourceLimits.MaxPIDs = 16
+	const spawnAttempts = 400
+	req := testRequest(fmt.Sprintf(
+		`i=0; while [ $i -lt %d ]; do sleep 20 & i=$((i+1)); done; echo "spawned"`, spawnAttempts))
+	req.ResourceLimits.MaxPIDs = 64
 
 	_, out := startProbe(t, d, req)
 	if !strings.Contains(strings.ToLower(out.Output), "fork") {
-		t.Errorf("200 processes under a 16 pid limit produced no fork failure; output:\n%s", out.Output)
+		t.Errorf("%d processes under a %d pid limit produced no fork failure; the ceiling is not reaching guest tasks on this runtime. output:\n%s",
+			spawnAttempts, req.ResourceLimits.MaxPIDs, out.Output)
 	}
 }
 
