@@ -205,6 +205,24 @@ export function getEvaluation(runId: string, revision?: string) {
 }
 
 /**
+ * How many 404s the page will wait through before it stops asking. 20 × 3s ≈
+ * 一分鐘 — long enough for a queued `evaluate_run` to be picked up, short enough
+ * that a March run nobody ever evaluated does not 404 every three seconds for as
+ * long as the tab stays open.
+ *
+ * Counted with `errorUpdateCount` and **not** `fetchFailureCount`: query-core's
+ * `fetchState` zeroes the latter at the start of every fetch, so with
+ * `retry: false` it never gets past 1 and a bound written against it does not
+ * bound anything. A verdict that does arrive leaves this branch entirely — the
+ * poll then follows `status === "pending"` instead.
+ *
+ * When it runs out the copy has to change with it: EvaluationPanel says the page
+ * has stopped asking, because 「結果會自己出現在這裡」 is a promise the code no
+ * longer keeps.
+ */
+export const EVALUATION_POLL_MAX_404 = 20;
+
+/**
  * `retry: false` because 404 here means 「未評估」, which no amount of retrying
  * fixes and which the caller renders as a state rather than as a failure.
  */
@@ -218,7 +236,8 @@ export function useEvaluation(runId: string, revision?: string, awaitCurrent = f
       if (revision || !awaitCurrent) return false;
       if (query.state.data?.status === "pending") return 3000;
       const error = query.state.error;
-      return error instanceof ApiError && error.status === 404 ? 3000 : false;
+      if (!(error instanceof ApiError) || error.status !== 404) return false;
+      return query.state.errorUpdateCount < EVALUATION_POLL_MAX_404 ? 3000 : false;
     },
   });
 }

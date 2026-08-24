@@ -36,6 +36,19 @@ const KIND_LABEL: Record<FeedbackKind, string> = {
   need_signal: "我想要的東西，這裡沒有",
 };
 
+/**
+ * What the server counts. `String.length` is UTF-16 code units, `len([]rune(s))`
+ * on the Go side is code points, and an emoji is two of the first and one of the
+ * second — so the counter below used to tell a reporter they were over a limit
+ * they were not near. The direction was safe; the sentence was not true.
+ *
+ * The `maxLength` attribute is gone for the same reason and not replaced: the
+ * browser can only count the wrong unit, and GenerateSkill.tsx already refuses
+ * it on this exact argument. The pre-check in `submit` is the one gate here,
+ * and the server is the one that decides.
+ */
+const runes = (s: string) => [...s].length;
+
 const KIND_NOTE: Record<FeedbackKind, string> = {
   blocking_issue: "例如：按了沒有反應、看不懂錯誤訊息、卡在某一步過不去。",
   need_signal: "例如：想用的功能不存在、額度不夠、還沒被邀請就想試。",
@@ -66,9 +79,12 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
       setInvalid("請先寫下發生了什麼事。內容不能空白——只有這一段是你的話，其餘欄位都只是位置。");
       return;
     }
-    if (trimmed.length > FEEDBACK_MAX_MESSAGE) {
+    // Code points, not UTF-16 code units: the server checks `len([]rune(message))`
+    // and `String.length` counts an emoji as two. Same reasoning GenerateSkill.tsx
+    // states for refusing a `maxLength` — one problem, and now one answer.
+    if (runes(trimmed) > FEEDBACK_MAX_MESSAGE) {
       setInvalid(
-        `內容最多 ${FEEDBACK_MAX_MESSAGE} 字，目前 ${trimmed.length} 字。` +
+        `內容最多 ${FEEDBACK_MAX_MESSAGE} 字，目前 ${runes(trimmed)} 字。` +
           "請刪掉一些再送出，這樣才不會有一半被丟掉。",
       );
       return;
@@ -112,7 +128,6 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
             id="feedback-message"
             rows={4}
             cols={60}
-            maxLength={FEEDBACK_MAX_MESSAGE}
             aria-describedby="feedback-context"
             value={message}
             onChange={(e) => {
@@ -122,7 +137,7 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
           />
           <br />
           <span className="note">
-            {message.length}／{FEEDBACK_MAX_MESSAGE} 字
+            {runes(message)}／{FEEDBACK_MAX_MESSAGE} 字
           </span>
         </p>
 

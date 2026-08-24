@@ -853,6 +853,16 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
               ? "目前沒有任何一條有內容，儲存等於移除這個 Test Case 的 rubric。"
               : `目前 ${used} 條有內容。`}
           </span>
+          {/* 設計 §2.4 — 這是這一頁第五個停用的控制項，也是唯一一個沒有說原因的：
+              上面那句只報「幾條有內容」，讀者看到按不下去的按鈕會以為是壞掉。
+              同一頁另外四處（CreateValidation、新增驗收條件、儲存文字／確認）已經是
+              這個形狀。 */}
+          {used > 0 && version.trim() === "" && (
+            <span className="note" role="status">
+              還不能儲存，因為 Rubric 版本是空的。有內容的 rubric
+              一定要有版本——評估報告要記下這次判定是在哪個版本下做的。
+            </span>
+          )}
           {message && <p role="status">{message}</p>}
         </>
       )}

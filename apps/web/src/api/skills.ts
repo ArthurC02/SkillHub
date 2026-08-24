@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import type {
   ForkedSkill,
@@ -145,6 +145,21 @@ export function forkSkill(skillId: string) {
   return apiFetch<ForkedSkill>(`/skills/${skillId}/fork`, { method: "POST" });
 }
 
+/**
+ * Fork is the third writer to 我的 Skill——import and generate are the other two,
+ * and both invalidate the list they wrote to. Only refetch-on-mount was covering
+ * this one, and this app turns focus and reconnect refetch off (api/queryClient),
+ * so that margin is thinner than it looks.
+ *
+ * `["own-skills"]`, deliberately **not** `["skills"]`: that key also matches
+ * `["skills","search",…]`, and re-running the search makes the server write a
+ * second `search_performed` event — the funnel number the ⛔ boundary protects
+ * (see GenerateSkill.tsx, which records the same trap).
+ */
 export function useForkSkill() {
-  return useMutation({ mutationFn: forkSkill });
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: forkSkill,
+    onSuccess: () => client.invalidateQueries({ queryKey: ["own-skills"] }),
+  });
 }

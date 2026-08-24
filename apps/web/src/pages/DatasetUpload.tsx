@@ -1,7 +1,7 @@
 import { Loading } from "../components/Loading";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getDatasetLimits, uploadDataset, type Dataset } from "../api/lab";
 
 /**
@@ -35,6 +35,14 @@ export function DatasetUpload() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
   const [uploaded, setUploaded] = useState<Dataset[]>([]);
+  // `test_case` is a search param on this same route, so changing it re-renders
+  // rather than remounting: 「已上傳 X」 and the last error survived into a
+  // different Test Case and claimed a file had been attached to it. Same effect
+  // RunPreflight and Packaging write for the same reason.
+  useEffect(() => {
+    setMessage("");
+    setUploaded([]);
+  }, [testCase]);
 
   const limits = useQuery({
     queryKey: ["dataset-limits"],

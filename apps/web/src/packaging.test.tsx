@@ -528,3 +528,66 @@ test("04 丙-14 the packaging page picks the version from a list, and ?version= 
   // as the latest.
   expect(text()).not.toContain("最新版本）");
 });
+
+test("WS-004 taking the file re-reads the list, so the page stops saying nobody has downloaded it", async () => {
+  // The record is written by the server when it serves `/downloads/{id}/content`,
+  // and `download_count` is computed from that table. Nothing here unmounts on a
+  // click and refetchOnWindowFocus is off, so before the invalidate the count
+  // stayed 0 — and DownloadHistory's `enabled` guard reads that same 0, so the
+  // disclosure did not even ask.
+  let served = false;
+  const reads: string[] = [];
+  vi.stubGlobal("fetch", (input: string) => {
+    reads.push(String(input));
+    return json({ downloads: [{ ...artifact, download_count: served ? 1 : 0 }] });
+  });
+  // jsdom cannot navigate; only the anchor's default action is stopped, so
+  // React's own click handler still runs.
+  const stopNav = (e: Event) => e.preventDefault();
+  document.addEventListener("click", stopNav, true);
+
+  await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
+  expect(text()).toContain("還沒有人下載過這個檔案");
+  const readsBefore = reads.length;
+
+  served = true;
+  const link = Array.from(container.querySelectorAll("a")).find((a) =>
+    (a.getAttribute("href") ?? "").includes("/content"),
+  )!;
+  await act(async () =>
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })),
+  );
+  document.removeEventListener("click", stopNav, true);
+  await waitFor(() => text().includes("誰下載過、什麼時候（1）"));
+
+  expect(reads.length).toBeGreaterThan(readsBefore);
+  expect(text()).not.toContain("還沒有人下載過這個檔案");
+});
+
+test("WS-004 the same link on the packaging page marks the download list stale too", async () => {
+  // The twin of the link above. Nothing on this page observes ["downloads"], so
+  // what is asserted is the stale mark rather than a refetch — that is exactly
+  // what makes 到下載紀錄 arrive with the count the server has.
+  stubPlatform();
+  const stopNav = (e: Event) => e.preventDefault();
+  document.addEventListener("click", stopNav, true);
+
+  await render(<Packaging />, () => text().includes("這些設定可以打包"));
+  await act(async () => button("建立下載套件")?.click());
+  await waitFor(() => text().includes("套件已建立"));
+
+  // The build itself invalidates the list; re-seed so the click is the only
+  // thing this can be measuring.
+  queryClient.setQueryData(["downloads"], { downloads: [] });
+  expect(queryClient.getQueryState(["downloads"])?.isInvalidated).toBe(false);
+
+  const link = Array.from(container.querySelectorAll("a")).find((a) =>
+    (a.getAttribute("href") ?? "").includes("/content"),
+  )!;
+  await act(async () =>
+    link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })),
+  );
+  document.removeEventListener("click", stopNav, true);
+
+  expect(queryClient.getQueryState(["downloads"])?.isInvalidated).toBe(true);
+});

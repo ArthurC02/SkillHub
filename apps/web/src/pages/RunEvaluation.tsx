@@ -1,9 +1,10 @@
 import { Loading } from "../components/Loading";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import {
+  EVALUATION_POLL_MAX_404,
   createVersionFromSuggestions,
   decideSuggestion,
   setEvaluationFeedback,
@@ -144,13 +145,41 @@ function usd(value: number | null): string {
  */
 export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus?: string }) {
   const [revision, setRevision] = useState<string | undefined>(undefined);
-  useEffect(() => setRevision(undefined), [runId]);
+  const seenEvaluationId = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    setRevision(undefined);
+    seenEvaluationId.current = undefined;
+  }, [runId]);
   // Hoisted out of the call because the banner below needs it too: it is what
   // separates 「沒有人評過這個 Run」 from 「評審正在跑，這一頁在等它」.
   const awaiting = runStatus === "succeeded" || runStatus === "failed";
   const evaluation = useEvaluation(runId, revision, awaiting);
   const revisions = useEvaluationRevisions(runId);
   const notEvaluated = evaluation.error instanceof ApiError && evaluation.error.status === 404;
+  // 404 polling gave up (api/evaluation.ts). The sentence below has to change
+  // with it, or the page goes on promising a re-check it no longer performs.
+  const stoppedAsking = notEvaluated && evaluation.errorUpdateCount >= EVALUATION_POLL_MAX_404;
+
+  /*
+   * The revision list follows the verdict. `useEvaluation` polls, this one does
+   * not and nothing invalidated it, so a re-evaluation landing while the page was
+   * open swapped the report's content with no switcher to say which of the two
+   * you were reading — ADR-026 / 設計 §2.5 require them to be distinguishable, and
+   * until a reload they were not.
+   *
+   * Invalidating on a *changed* id rather than on every arrival: firing on mount
+   * too would spend a duplicate request on every run page for nothing. The ref
+   * survives StrictMode's double effect because the second pass sees the same id.
+   */
+  const client = useQueryClient();
+  const currentEvaluationId = revision ? undefined : evaluation.data?.evaluation_id;
+  useEffect(() => {
+    if (!currentEvaluationId) return;
+    if (seenEvaluationId.current && seenEvaluationId.current !== currentEvaluationId) {
+      void client.invalidateQueries({ queryKey: ["evaluation", runId, "revisions"] });
+    }
+    seenEvaluationId.current = currentEvaluationId;
+  }, [client, runId, currentEvaluationId]);
   /*
    * 設計 §2.12, and the one place in the app that still got it backwards.
    *
@@ -209,9 +238,23 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
             is re-checking, and if a judge is on its way the answer will appear
             here without anyone pressing anything. It does not claim one is.
           */}
-          {awaiting && !revision && (
+          {awaiting && !revision && !stoppedAsking && (
             <p className="note">
               這一頁每 3 秒再查一次；如果有評估正在排隊，結果會自己出現在這裡，不必重新整理。
+            </p>
+          )}
+          {/*
+            The promise ends when the polling does. 「結果會自己出現在這裡」 was
+            true for the first minute and false for every hour after it, and an
+            old run nobody ever evaluated spent that hour asking for a 404 every
+            three seconds. What replaces it says which of the two happened and
+            what the reader can do — not 「載入失敗」, because nothing failed.
+          */}
+          {awaiting && !revision && stoppedAsking && (
+            <p className="note">
+              這一頁已經停止再查了——查了 {EVALUATION_POLL_MAX_404}{" "}
+              次都還是沒有評估，所以它不會再自己更新。 這通常表示沒有人替這個 Run
+              送出評估，而不是評估失敗。重新整理這一頁會再查一次。
             </p>
           )}
         </div>

@@ -348,7 +348,15 @@ export function Packaging() {
               </p>
               <DownloadArtifactFacts artifact={built} />
               <p>
-                <a href={downloadHref(built.artifact_id)}>下載 {built.file_name}</a>
+                {/* Same reason as Downloads.tsx: the download record is written
+                    when the server serves the bytes, so the list this page just
+                    invalidated on build is stale again the moment this is clicked. */}
+                <a
+                  href={downloadHref(built.artifact_id)}
+                  onClick={() => void client.invalidateQueries({ queryKey: ["downloads"] })}
+                >
+                  下載 {built.file_name}
+                </a>
                 {" ｜ "}
                 <Link to="/workspace/downloads">到下載紀錄</Link>
               </p>

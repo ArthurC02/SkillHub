@@ -8,6 +8,7 @@ import { RunTrace } from "./pages/RunTrace";
 import { WorkspaceAccount } from "./pages/WorkspaceAccount";
 import { WorkspaceRuns } from "./pages/WorkspaceRuns";
 import { WorkspaceSkills } from "./pages/WorkspaceSkills";
+import { useForkSkill } from "./api/skills";
 
 // 02:WS-002 第 1 條 / WS-004 — the workspace's own lists, plus 第 3 條's delete
 // on what a run produced (02:SEC-006). Same hand-rolled DOM plumbing as the
@@ -751,4 +752,32 @@ test("WS-004 a package nobody downloaded says so instead of loading an empty lis
   expect(text()).toContain("還沒有人下載過");
   expect(text()).toContain("建立一個套件不等於取走它");
   expect(urls.some((u) => u.includes("/records"))).toBe(false);
+});
+
+// --- WS-005: fork writes to 我的 Skill ---------------------------------------
+
+test("WS-004 a fork invalidates the list it writes to, and does not touch the search key", async () => {
+  // The third writer to ["own-skills"] — import and generate are the other two
+  // and both invalidate it. Only refetch-on-mount was covering this one, and
+  // this app turns focus and reconnect refetch off (api/queryClient).
+  vi.stubGlobal("fetch", () => json({ skill_id: "forked-1", version_id: "v1" }, 201));
+
+  // Two cached lists, so the assertion can tell them apart. ["skills"] as the key
+  // would reach the second one, and re-running that search makes the server write
+  // a second search_performed event (GenerateSkill.tsx records the same trap).
+  queryClient.setQueryData(["own-skills"], { skills: [] });
+  queryClient.setQueryData(["skills", "search", "pdf"], { results: [] });
+
+  let fork: ReturnType<typeof useForkSkill> | undefined;
+  function ForkHarness() {
+    fork = useForkSkill();
+    return null;
+  }
+  await render(<ForkHarness />, () => fork !== undefined);
+  await act(async () => {
+    await fork!.mutateAsync(SKILL);
+  });
+
+  expect(queryClient.getQueryState(["own-skills"])?.isInvalidated).toBe(true);
+  expect(queryClient.getQueryState(["skills", "search", "pdf"])?.isInvalidated).toBe(false);
 });

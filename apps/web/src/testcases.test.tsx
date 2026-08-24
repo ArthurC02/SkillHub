@@ -407,3 +407,24 @@ test("列表 ?skill= narrows the request and says so, with a way back to the ful
   expect(container.textContent).toContain("只顯示");
   expect(container.textContent).toContain("顯示全部");
 });
+
+test("設計 §2.4 the Rubric save button says why it cannot be pressed", async () => {
+  // The fifth disabled control on this screen and the only one that stated no
+  // reason: 「目前 1 條有內容」 reports a count, not a cause, so a dead button read
+  // as a bug. The a11y scan cannot catch this shape — it checks that a reason is
+  // not *only* in a `title`, which finds nothing when there is no reason at all.
+  stubPlatform();
+  await render();
+
+  const box = container.querySelector<HTMLTextAreaElement>("#rubric-c1")!;
+  await act(async () => setValue(box, "引出顯示列數變少的那一句。"));
+
+  expect(button("儲存 Rubric").disabled).toBe(true);
+  expect(container.textContent).toContain("還不能儲存，因為 Rubric 版本是空的");
+
+  // And the reason goes when the cause does.
+  const version = container.querySelector<HTMLInputElement>("#rubric-version")!;
+  await act(async () => setValue(version, "content-007/writing/v1"));
+  expect(button("儲存 Rubric").disabled).toBe(false);
+  expect(container.textContent).not.toContain("還不能儲存，因為 Rubric 版本是空的");
+});

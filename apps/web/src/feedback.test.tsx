@@ -197,3 +197,20 @@ test("BETA-005 the two kinds are the reporter's choice and the need signal is on
     run_id: undefined,
   });
 });
+
+test("BETA-003 the counter counts what the server counts, so an emoji report is not refused at half length", async () => {
+  // The server checks `len([]rune(message))`; `String.length` counts an emoji as
+  // two UTF-16 units. 1500 emoji is 1500 runes and 3000 units, so the old counter
+  // said 3000／2000 and the pre-check refused a report the server would have
+  // taken. GenerateSkill.tsx already refuses `maxLength` on this same reasoning.
+  const calls = stubPlatform();
+  await render(<FeedbackEntry pathname="/" />);
+
+  const emoji = "🙂".repeat(1500);
+  await type(emoji);
+  expect(text()).toContain(`1500／${FEEDBACK_MAX_MESSAGE} 字`);
+
+  await submit();
+  await waitFor(() => calls.length > 0);
+  expect(calls[0].body).toMatchObject({ message: emoji });
+});

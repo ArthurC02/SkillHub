@@ -99,3 +99,66 @@ test("02:TEST-002 without the rules there is no upload control at all", async ()
   expect(container.textContent).toContain("無法讀取上傳規則");
   expect(container.querySelector("input[type=file]")).toBeNull();
 });
+
+test("02:TEST-002 changing the Test Case clears what was uploaded to the previous one", async () => {
+  // `?test_case=` is a search param on this route, so a change re-renders instead
+  // of remounting. 「已上傳 a.csv」 and the last error survived into a different
+  // Test Case and claimed a file had been attached to it — RunPreflight and
+  // Packaging both write the reset effect for exactly this.
+  const OTHER = "44444444-4444-4444-4444-444444444444";
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const url = String(input);
+    if (url.includes("/test-cases/limits")) {
+      return Promise.resolve(
+        new Response(JSON.stringify(LIMITS), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    if (init?.method === "POST") {
+      return Promise.resolve(
+        new Response(JSON.stringify({ dataset_id: "d-1", file_name: "a.csv", size_bytes: 10 }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
+    return Promise.resolve(new Response(`{"error":"not found"}`, { status: 404 }));
+  });
+  await renderUpload();
+
+  const input = container.querySelector<HTMLInputElement>("input[type=file]")!;
+  const file = new File(["a,b\n"], "a.csv", { type: "text/csv" });
+  Object.defineProperty(input, "files", { value: [file], configurable: true });
+  await act(async () => uploadButton().click());
+  await waitFor(() => (container.textContent ?? "").includes("已上傳 a.csv"));
+
+  // And the other half of the state: an error message from this Test Case.
+  Object.defineProperty(input, "files", { value: [], configurable: true });
+  await act(async () => uploadButton().click());
+  expect(container.textContent).toContain("請先選擇一個檔案");
+  expect(container.textContent).toContain("已上傳 a.csv");
+
+  await act(async () => {
+    await router.navigate({ to: "/lab/datasets", search: { test_case: OTHER } });
+  });
+
+  expect(container.textContent).not.toContain("已上傳 a.csv");
+  expect(container.textContent).not.toContain("請先選擇一個檔案");
+});
+
+function uploadButton(): HTMLButtonElement {
+  return Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "上傳")!;
+}
+
+async function waitFor(done: () => boolean, timeoutMs = 2000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (done()) return;
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    });
+  }
+  throw new Error(`waitFor timed out; DOM was: ${container.textContent}`);
+}

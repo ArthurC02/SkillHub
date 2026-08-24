@@ -47,6 +47,12 @@ import { failureSentence } from "./generateFailureSentence";
 const GENERATE_MAX_TASK_RUNES = 4000; // one-number: generateMaxTaskRunes
 const GENERATE_MAX_OUTPUT_TOKENS = 16000; // one-number: generateMaxOutputTokens
 const GENERATE_MAX_ATTEMPTS = 2; // one-number: generateMaxAttempts
+/**
+ * The fourth number this component states, and until now the only one with no
+ * machine behind it: how far back 最近沒有成功的生成 goes. The server decides it
+ * (`generateFailureLimit`), the prose repeated it, and nothing compared the two.
+ */
+const GENERATE_FAILURE_LIMIT = 20; // one-number: generateFailureLimit
 
 export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
   const [task, setTask] = useState(initialTask);
@@ -183,7 +189,7 @@ function GenerateHistory() {
         ))}
       </ul>
       <p className="note">
-        這些是沒有建立任何版本的那幾次，最多列最近 20 次。
+        這些是沒有建立任何版本的那幾次，最多列最近 {GENERATE_FAILURE_LIMIT} 次。
         <strong>這裡沒有記下你當時輸入的任務描述</strong>
         ——那份文字跟著它產生的 Skill 走，刪掉 Skill 就跟著刪掉；這份紀錄保存得更久，
         兩邊各留一份等於一個沒有人做過的保存承諾。

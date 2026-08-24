@@ -140,6 +140,7 @@ function DownloadActions({
   onAskDelete: () => void;
   onConfirmDelete: () => void;
 }) {
+  const client = useQueryClient();
   // The server's own predicate, not a copy of it (04 丙-29 ⑤). This read
   // `status === "available"` plus a locally derived expiry — two of the three things
   // download.go checks, missing the purge, which is not on this shape at all. So
@@ -149,7 +150,18 @@ function DownloadActions({
   return (
     <p>
       {artifact.servable ? (
-        <a href={downloadHref(artifact.artifact_id)}>下載</a>
+        <a
+          href={downloadHref(artifact.artifact_id)}
+          // The server writes a `download_records` row when it serves the bytes,
+          // and this list's `download_count` is computed from that table. A click
+          // unmounts nothing and `refetchOnWindowFocus` is off (api/queryClient),
+          // so without this the page kept saying 「還沒有人下載過這個檔案」 about a
+          // file the reader had just taken — and DownloadHistory's `enabled` guard
+          // reads the same stale 0, so opening the disclosure did not even ask.
+          onClick={() => void client.invalidateQueries({ queryKey: ["downloads"] })}
+        >
+          下載
+        </a>
       ) : (
         <span className="note">目前不提供下載。</span>
       )}

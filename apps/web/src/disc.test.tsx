@@ -673,6 +673,56 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
   }
 });
 
+test("DISC-009: a failed read on /compare says so at once, not after seven seconds of 載入中", async () => {
+  // `useQueries` here was the one place in the app without `retry: false`. Three
+  // retries keep `fetchStatus` at "fetching" for the whole backoff, so the page
+  // kept promising 「載入中…（2 個裡讀到 0 個）」 about two reads that had already
+  // failed — 設計 §2.1: the screen may say 未知, it may not claim progress that is
+  // not happening.
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/api/skills/search")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            ...EMPTY,
+            query: "pdf",
+            results: [
+              {
+                ...HIT_FACETS,
+                skill_id: "id-left",
+                name: "左邊的 Skill",
+                summary: "甲",
+                rank: 0.7,
+              },
+              {
+                ...HIT_FACETS,
+                skill_id: "id-right",
+                name: "右邊的 Skill",
+                summary: "乙",
+                rank: 0.6,
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      );
+    }
+    return Promise.resolve(new Response(`{"error":"boom"}`, { status: 500 }));
+  });
+
+  await render(<App />);
+  await submitSearch("pdf");
+  await pick(0);
+  await pick(1);
+  await act(async () => compareLink()!.click());
+
+  // Well inside the first retry delay (1s), which is the window the reader used
+  // to spend looking at nothing.
+  await waitFor(() => (container.textContent ?? "").includes("讀取失敗"), 300);
+  expect(container.textContent).toContain("有 2 個 Skill 讀取失敗");
+});
+
 test("DISC-004: an unreadable package is reported as unknown, never as a clean scan", async () => {
   await render(
     <RiskIndicator

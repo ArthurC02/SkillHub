@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
 import { EvaluationPanel } from "./pages/RunEvaluation";
+import { EVALUATION_POLL_MAX_404 } from "./api/evaluation";
 import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./api/evaluation";
 
 // 02:EVAL-001 / EVAL-002. Four assertions, one per rule the view exists to keep:
@@ -16,6 +17,12 @@ import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./api/ev
 
 let container: HTMLDivElement;
 let root: Root;
+
+function json(body: unknown, status = 200) {
+  return Promise.resolve(
+    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
+  );
+}
 
 beforeEach(() => {
   queryClient.clear();
@@ -483,3 +490,110 @@ test("EVAL-002 a suggestion that cannot be applied names the rule that blocked i
 
   expect(container.textContent).toContain("目標檔案已經和建議產生當時不同");
 });
+
+// --- the two things that used to run forever, and the one that never ran -----
+
+test("EVAL-001 an old run with no evaluation stops being asked about, and says so", async () => {
+  // The 404 poll had no bound: a March run nobody ever evaluated asked again
+  // every three seconds for as long as the tab stayed open, under a line
+  // promising 「結果會自己出現在這裡」. When the asking stops the sentence has to.
+  vi.useFakeTimers();
+  let calls = 0;
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+    if (url.includes("/evaluation")) calls++;
+    return json({ error: "not found" }, 404);
+  });
+
+  await act(async () => {
+    root = createRoot(container);
+    root.render(
+      <QueryClientProvider client={queryClient}>
+        <EvaluationPanel runId={RUN} runStatus="succeeded" />
+      </QueryClientProvider>,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  await act(async () => vi.advanceTimersByTimeAsync(0));
+  expect(calls).toBe(1);
+  expect(container.textContent).toContain("結果會自己出現在這裡");
+
+  // One short of the bound: still asking, still promising.
+  await act(async () => vi.advanceTimersByTimeAsync(3000 * (EVALUATION_POLL_MAX_404 - 2)));
+  expect(calls).toBe(EVALUATION_POLL_MAX_404 - 1);
+  expect(container.textContent).toContain("結果會自己出現在這裡");
+
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  expect(calls).toBe(EVALUATION_POLL_MAX_404);
+
+  // And it stays there however long the tab is left open.
+  await act(async () => vi.advanceTimersByTimeAsync(3000 * 100));
+  expect(calls).toBe(EVALUATION_POLL_MAX_404);
+
+  // 未評估 is still the answer — nothing failed. What changed is the promise.
+  expect(container.textContent).toContain("未評估");
+  expect(container.textContent).toContain("已經停止再查");
+  expect(container.textContent).not.toContain("結果會自己出現在這裡");
+});
+
+test("EVAL-002 a re-evaluation landing while the page is open brings the revision switcher with it", async () => {
+  // ADR-026 / 設計 §2.5: two verdicts have to be distinguishable. `useEvaluation`
+  // polls and the revision list did not, so the new verdict replaced the old
+  // content with nothing on screen saying which one was being read.
+  vi.useFakeTimers();
+  let evaluations = 0;
+  let revisionReads = 0;
+  const second = { ...evaluation, evaluation_id: "eval-2", summary: "重評之後的判定。" };
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/evaluation/revisions")) {
+      revisionReads++;
+      return json({
+        revisions:
+          evaluations >= 2
+            ? [revisionOf(second, null), revisionOf(evaluation, "2026-08-25T00:00:00Z")]
+            : [revisionOf(evaluation, null)],
+      });
+    }
+    if (url.includes("/evaluation")) {
+      evaluations++;
+      return json(evaluations === 1 ? { ...evaluation, status: "pending" } : second);
+    }
+    return json({ error: "not found" }, 404);
+  });
+
+  await act(async () => {
+    root = createRoot(container);
+    root.render(
+      <QueryClientProvider client={queryClient}>
+        <EvaluationPanel runId={RUN} runStatus="succeeded" />
+      </QueryClientProvider>,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  // One verdict, one revision: nothing to choose between, so no switcher.
+  expect(container.querySelector("#evaluation-revision")).toBeNull();
+  const readsBefore = revisionReads;
+
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  await act(async () => vi.advanceTimersByTimeAsync(0));
+
+  expect(container.textContent).toContain("重評之後的判定。");
+  expect(revisionReads).toBeGreaterThan(readsBefore);
+  const picker = container.querySelector<HTMLSelectElement>("#evaluation-revision");
+  expect(picker).not.toBeNull();
+  expect(picker!.querySelectorAll("option")).toHaveLength(3); // 目前的判定 + 兩版
+  expect(container.textContent).toContain("已被取代");
+});
+
+function revisionOf(source: Evaluation, supersededAt: string | null) {
+  return {
+    evaluation_id: source.evaluation_id,
+    judge_prompt_version: source.judge_prompt_version,
+    rubric_version: source.rubric_version,
+    overall: source.overall,
+    evaluated_at: source.evaluated_at,
+    superseded_at: supersededAt,
+  };
+}
