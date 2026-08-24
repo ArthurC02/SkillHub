@@ -1,21 +1,30 @@
 -- The core funnel of 01 §11.2, as one query (O11Y-004's "查詢" half, ADR-029
 -- 決策 6). Seven segments, run against the platform database:
 --
---   psql -v ON_ERROR_STOP=1 -v from="'2026-09-01'" -v to="'2026-09-15'" \
+--   psql -v ON_ERROR_STOP=1 \
+--        -v from="'2026-09-01T00:00:00Z'" -v to="'2026-09-15T00:00:00Z'" \
 --        -f tools/analytics/funnel.sql
+--
+-- The range is half-open, [from, to), and both bounds must name their zone. A
+-- bare date is resolved with the server's `TimeZone`, while every day bucket
+-- below is `AT TIME ZONE 'UTC'` — two reports run from two psql sessions would
+-- otherwise disagree by a few hours and neither would say so. Omit either `-v`
+-- and that side is unbounded; omit both and the report is all-time, which
+-- includes every integration-test row the database has ever seen.
 --
 -- A script and not a dashboard, and not an endpoint. ADR-029 決策 6 settled the
 -- read side as a back-office query: the beta cohort is twelve people, the report
 -- is read a handful of times, and a service nobody calls is a service somebody
 -- has to keep working. BETA-002's numbers come from here.
 --
--- **Analytics is never the source of truth** (ADR-029 決策 1). Four segments have
--- no domain table that can answer them — they happen before a login, or before
--- anything is written — and those four read `analytics_events`. Every segment
--- about a Run, an evaluation, a suggestion or a download reads the domain table
--- that owns the fact. Where both appear in one row, the numerator is always the
--- domain table's: `download_started` counts intentions, `download_records` counts
--- downloads, and only the second one is a fact.
+-- **Analytics is never the source of truth** (ADR-029 決策 1). Only what happens
+-- before a login — or before anything is written — reads `analytics_events`:
+-- segment 1 entirely, and segment 2's denominator. Every segment about a Run, an
+-- evaluation, a suggestion or a download reads the domain table that owns the
+-- fact, segment 7 included: 01 §11.2's seventh item asks who came back to run or
+-- re-verify, and a browser visit is not that. Where both appear in one row, the
+-- numerator is always the domain table's: `download_started` counts intentions,
+-- `download_records` counts downloads, and only the second one is a fact.
 --
 -- **Every row carries its own precision limit** (02:O11Y-004 last clause). Not a
 -- footnote in a document somebody may not have open: a percentage without its
@@ -33,23 +42,43 @@
 -- the login event and follow it forward — which is a product decision about
 -- identity, not a query change.
 
+-- `\set` is assignment, not defaulting: setting both unconditionally threw away
+-- whatever `-v` passed and made every report all-time (M5 audit, 2026-08-25).
 \set QUIET on
+\if :{?from}
+\else
 \set from '''-infinity'''
+\endif
+\if :{?to}
+\else
 \set to '''infinity'''
+\endif
 \set QUIET off
 
 WITH bounds AS (
     SELECT :from::timestamptz AS lo, :to::timestamptz AS hi
 ),
 
--- --- the analytics half: the four segments no domain table can answer ---------
+-- --- the analytics half: what happens before a domain row exists -------------
 searched AS (
     SELECT DISTINCT session_id FROM analytics_events, bounds
     WHERE event_name = 'search_performed' AND occurred_at >= lo AND occurred_at < hi
 ),
-viewed AS (
-    SELECT DISTINCT session_id FROM analytics_events, bounds
-    WHERE event_name = 'skill_detail_viewed' AND occurred_at >= lo AND occurred_at < hi
+-- Ordered, not a set intersection. 01 §11.2's first item is a detail view that
+-- happened *after* an intent: a session that opened a shared /skills/{id} link at
+-- 11:00, searched fruitlessly at 11:05 and left is not a conversion, and counting
+-- it as one moves the exact number the M5 exposure boundary is waiting on.
+viewed_after_search AS (
+    SELECT DISTINCT v.session_id FROM analytics_events v, bounds
+    WHERE v.event_name = 'skill_detail_viewed'
+      AND v.occurred_at >= lo AND v.occurred_at < hi
+      AND EXISTS (
+          SELECT 1 FROM analytics_events s
+          WHERE s.session_id = v.session_id
+            AND s.event_name = 'search_performed'
+            AND s.occurred_at <= v.occurred_at
+            AND s.occurred_at >= lo AND s.occurred_at < hi
+      )
 ),
 -- The workspaces that reached a detail page. NULL workspace_id is an anonymous
 -- view and is excluded here on purpose: segment 2 is about what somebody did
@@ -65,24 +94,6 @@ download_intents AS (
     WHERE event_name = 'download_started' AND workspace_id IS NOT NULL
       AND occurred_at >= lo AND occurred_at < hi
 ),
-session_workspaces AS (
-    SELECT DISTINCT session_id, workspace_id,
-           date_trunc('day', occurred_at AT TIME ZONE 'UTC') AS visit_day
-    FROM analytics_events, bounds
-    WHERE workspace_id IS NOT NULL AND occurred_at >= lo AND occurred_at < hi
-),
--- Segment 7 asks who came back. session_started is a best-effort browser visit
--- marker; a signed-in event maps only that same UTC visit-day to its workspace. A
--- browser that later changes account therefore cannot rewrite earlier visits.
-returning_workspaces AS (
-    SELECT sw.workspace_id FROM analytics_events e
-    JOIN session_workspaces sw ON sw.session_id = e.session_id
-      AND sw.visit_day = date_trunc('day', e.occurred_at AT TIME ZONE 'UTC'), bounds
-    WHERE e.event_name = 'session_started'
-      AND e.occurred_at >= lo AND e.occurred_at < hi
-    GROUP BY sw.workspace_id
-    HAVING count(DISTINCT date_trunc('day', e.occurred_at AT TIME ZONE 'UTC')) > 1
-),
 
 -- --- the domain half: every fact about a Run, a verdict or a file -------------
 forked AS (
@@ -92,6 +103,29 @@ forked AS (
 ran AS (
     SELECT DISTINCT workspace_id FROM runs, bounds
     WHERE created_at >= lo AND created_at < hi
+),
+-- Segment 6's denominator: 01 §11.2 says "完成試跑後", and a created Run is not a
+-- completed one. Same column as segment 3's numerator so the two rows agree about
+-- what "completed" means.
+succeeded_workspaces AS (
+    SELECT DISTINCT workspace_id FROM runs, bounds
+    WHERE status = 'succeeded' AND created_at >= lo AND created_at < hi
+),
+-- Segment 7 is a domain question, not a browser one: 01 §11.2 asks who came back
+-- to 「試跑或重新驗證」, so a day counts when a workspace created a Run or an
+-- evaluation. Opening the catalogue for one second on day two is not that, and
+-- the number is read as retention.
+activity_days AS (
+    SELECT workspace_id, date_trunc('day', created_at AT TIME ZONE 'UTC') AS day
+    FROM runs, bounds WHERE created_at >= lo AND created_at < hi
+    UNION
+    SELECT workspace_id, date_trunc('day', created_at AT TIME ZONE 'UTC')
+    FROM evaluations, bounds WHERE created_at >= lo AND created_at < hi
+),
+first_use_workspaces AS (SELECT DISTINCT workspace_id FROM activity_days),
+returning_workspaces AS (
+    SELECT workspace_id FROM activity_days
+    GROUP BY workspace_id HAVING count(DISTINCT day) > 1
 ),
 runs_created AS (
     SELECT count(*) AS n FROM runs, bounds WHERE created_at >= lo AND created_at < hi
@@ -124,10 +158,11 @@ downloaded AS (
 SELECT * FROM (
     VALUES
     (1, '輸入意圖後查看至少一個 Skill 詳情',
-     (SELECT count(*) FROM viewed WHERE session_id IN (SELECT session_id FROM searched)),
+     (SELECT count(*) FROM viewed_after_search),
      (SELECT count(*) FROM searched),
-     'analytics; per session. One person on two devices, or who cleared the cookie, ' ||
-     'counts twice, so this denominator is systematically high. Read as a magnitude.'),
+     'analytics; per session, and the detail view must come after the search. One ' ||
+     'person on two devices, or who cleared the cookie, counts twice, so this ' ||
+     'denominator is systematically high. Read as a magnitude.'),
 
     (2, '查看詳情後 Fork 或啟動試跑',
      (SELECT count(*) FROM viewing_workspaces w
@@ -154,20 +189,23 @@ SELECT * FROM (
      'suggestion is absent rather than counted as a rejection.'),
 
     (6, '完成試跑後打包下載',
-     (SELECT count(*) FROM downloaded), (SELECT count(*) FROM ran),
-     'domain numerator, domain denominator; per workspace. `download_started` is ' ||
+     (SELECT count(*) FROM succeeded_workspaces w
+      WHERE w.workspace_id IN (SELECT workspace_id FROM downloaded)),
+     (SELECT count(*) FROM succeeded_workspaces),
+     'domain numerator, domain denominator; per workspace, and the numerator is a ' ||
+     'subset of the denominator by construction. A workspace whose Run succeeded ' ||
+     'inside the window but downloaded after it closes counts as no download. ' ||
+     '`download_started` is ' ||
      'NOT used here — it records that somebody pressed the button, and the four ' ||
      'locks may still have refused. Compare the two to see refusals: ' ||
      (SELECT count(*) FROM download_intents)::text || ' workspaces started a download.'),
 
-    (7, '首次使用後再次回來',
+    (7, '首次使用後再次回來試跑或重新驗證',
      (SELECT count(*) FROM returning_workspaces),
-     (SELECT count(DISTINCT sw.workspace_id) FROM analytics_events e
-      JOIN session_workspaces sw ON sw.session_id = e.session_id
-        AND sw.visit_day = date_trunc('day', e.occurred_at AT TIME ZONE 'UTC'), bounds
-      WHERE e.event_name = 'session_started'
-        AND e.occurred_at >= lo AND e.occurred_at < hi),
-     'analytics; per workspace, "came back" = sessions on two distinct days. A ' ||
-     'cleared cookie makes one returning visitor look like two new ones, so this ' ||
-     'is a floor, not an estimate.')
+     (SELECT count(*) FROM first_use_workspaces),
+     'domain only; per workspace, "came back" = created a Run or an evaluation on ' ||
+     'two distinct UTC days. Re-opening the catalogue is deliberately NOT counted: ' ||
+     '01 §11.2 asks for a trial or a re-verification, and a browser-side "came ' ||
+     'back at all" number gets read as retention. A person whose second day fell ' ||
+     'outside the window is invisible here, so this is a floor.')
 ) AS f(segment, description, numerator, denominator, note);

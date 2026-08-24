@@ -421,6 +421,17 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 
 	// DISC-001: blank/incomprehensible queries don't create search.
 	if q == "" || !isComprehensible(q) {
+		// They do create a funnel event, though. 01 §11.2's first segment is a
+		// ratio of sessions that submitted an intent, and this path is where the
+		// intents the platform could not parse end up — a single Han character
+		// like 圖 is one of them. Dropping them made the denominator exclude
+		// exactly the sessions 01 §12 is about ("內容涵蓋不到使用者的任務"), which
+		// is the reading the M5 generation entry is waiting for, so segment 1 read
+		// systematically high (M5 audit, 2026-08-25).
+		//
+		// result_count 0 / has_results false is the truth: nothing was retrieved.
+		// No new attribute — the whitelist is the same five.
+		h.Svc.Analytics.SearchPerformed(r.Context(), q, 0, filters.active())
 		httpx.WriteJSON(w, http.StatusOK, searchResponse{
 			Query:           q,
 			Results:         []searchResult{},

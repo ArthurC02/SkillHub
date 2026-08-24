@@ -245,6 +245,9 @@ func (s *Service) DownloadStarted(ctx context.Context, workspace, artifactID pgt
 		WorkspaceID: workspace,
 		ArtifactID:  artifactID,
 	}
+	// `target` is not on the /policy/data-retention disclosure, because the one
+	// caller passes "" and this writes nothing. A caller that starts passing one
+	// has to add it back there in the same change (policy.go).
 	if target != "" {
 		p.Target = &target
 	}

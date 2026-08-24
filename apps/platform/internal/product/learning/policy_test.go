@@ -3,6 +3,8 @@ package analytics
 import (
 	"encoding/json"
 	"net/http/httptest"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -38,11 +40,80 @@ func TestDataRetentionIsHonestWhenNothingIsCollected(t *testing.T) {
 		if len(body.Events) != 4 {
 			t.Errorf("%s: disclosed %d events, want the closed set of 4", name, len(body.Events))
 		}
-		for _, e := range body.Events {
-			if len(e.Attributes) == 0 {
-				t.Errorf("%s: event %q discloses no attribute whitelist", name, e.Name)
+		// No per-event attribute check here: session_started adds nothing to the
+		// columns every row carries, and those are disclosed once in `note`. What
+		// each list may and may not contain is
+		// TestTheDisclosureNamesWhatIsStoredAndNothingElse.
+	}
+}
+
+// 02:O11Y-004 and ADR-029 決策 5 put a higher disclosure duty on this page than
+// anywhere else, and it runs in both directions: naming a column nobody fills is
+// as wrong as hiding one that is. Both were true before the M5 audit (2026-08-25)
+// — `download_started` declared a `target` no caller has ever passed, and
+// `session_id` was named for one event out of four although every row carries it.
+func TestTheDisclosureNamesWhatIsStoredAndNothingElse(t *testing.T) {
+	h := &Handler{Svc: &Service{Retention: 365 * 24 * time.Hour}}
+	w := httptest.NewRecorder()
+	h.DataRetention(w, httptest.NewRequest("GET", "/policy/data-retention", nil))
+
+	var body struct {
+		Events []struct {
+			Name       string   `json:"name"`
+			Attributes []string `json:"attributes"`
+		} `json:"events"`
+		Note string `json:"note"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+
+	// ADR-029 決策 2's fixed columns. They belong to every event, so a list that
+	// repeats one is describing the row rather than the event — which is how
+	// three of the four came to look as though they carried no session id.
+	fixed := []string{"event_id", "event_name", "occurred_at", "session_id", "workspace_id"}
+	for _, e := range body.Events {
+		for _, a := range e.Attributes {
+			if slices.Contains(fixed, a) {
+				t.Errorf("event %q lists %q among its own attributes; every row carries it", e.Name, a)
 			}
 		}
+		// DownloadStarted writes `target` only when non-empty and the one caller
+		// passes "" (feedback.go), so the column has never held a value. A caller
+		// that starts passing one has to put it back here in the same change.
+		if e.Name == EventDownloadStarted && slices.Contains(e.Attributes, "target") {
+			t.Error("download_started discloses `target`, which nothing stores")
+		}
+	}
+
+	for _, column := range fixed {
+		if !strings.Contains(body.Note, column) {
+			t.Errorf("the note does not name %q, and every row carries it", column)
+		}
+	}
+	// The one that matters: a reader who sees only "query_length" cannot tell
+	// that the row is stitched to the detail page they opened ten minutes later.
+	if !strings.Contains(body.Note, sessionCookie) {
+		t.Errorf("the note does not say session_id is the %s cookie", sessionCookie)
+	}
+}
+
+// `collecting: true` with `retention_days: 0` is two sentences that contradict
+// each other. Enabled() admits any window of a second or more, so integer
+// truncation produced exactly that for every staging window under a day.
+func TestARetentionWindowShorterThanADayIsNotReportedAsZero(t *testing.T) {
+	h := &Handler{Svc: &Service{Retention: 12 * time.Hour}}
+	w := httptest.NewRecorder()
+	h.DataRetention(w, httptest.NewRequest("GET", "/policy/data-retention", nil))
+
+	var body struct {
+		RetentionDays int `json:"retention_days"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.RetentionDays != 1 {
+		t.Errorf("retention_days = %d for a 12-hour window, want 1", body.RetentionDays)
 	}
 }
 

@@ -12,14 +12,17 @@ package apiserver_test
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 )
 
@@ -29,11 +32,13 @@ import (
 // tables — the same reason the packaging tests read contracts/packaging/profiles
 // instead of a fixture copy.
 //
-// psql meta-commands and its variables are stripped here; what is under test is
-// the query body, which is what a column rename breaks.
+// The psql meta-commands are interpreted here rather than stripped; psqlRender
+// says why that distinction cost us a bug.
 func TestTheFunnelQueryStillRunsAgainstTheSchema(t *testing.T) {
 	pool := requireDB(t)
-	sql := funnelQuery(t, "'-infinity'", "'infinity'")
+	// No -v at all: the all-time report, which is also the default branch of the
+	// file's own defaulting.
+	sql := psqlRender(t, readFunnel(t), nil)
 
 	rows, err := pool.Query(context.Background(), sql)
 	if err != nil {
@@ -65,27 +70,132 @@ func TestTheFunnelQueryStillRunsAgainstTheSchema(t *testing.T) {
 	}
 }
 
-func funnelQuery(t *testing.T, from, to string) string {
+// The range the operator passed has to survive the file. `\set` is assignment and
+// not defaulting, so the two unconditional `\set` lines this file opened with
+// until 2026-08-25 threw away every -v: BETA-002's "the two beta weeks" was
+// really "everything this database has ever held", M1–M4 integration residue
+// included, and no two reports were comparable because both were "so far".
+func TestTheFunnelKeepsTheRangeTheOperatorPassed(t *testing.T) {
+	raw := readFunnel(t)
+
+	bounded := psqlRender(t, raw, map[string]string{
+		"from": "'2026-09-01T00:00:00Z'", "to": "'2026-09-15T00:00:00Z'",
+	})
+	for _, want := range []string{"'2026-09-01T00:00:00Z'::timestamptz", "'2026-09-15T00:00:00Z'::timestamptz"} {
+		if !strings.Contains(bounded, want) {
+			t.Errorf("the funnel discarded the range it was given: %s is not in the query", want)
+		}
+	}
+	if strings.Contains(bounded, "infinity'::timestamptz") {
+		t.Error("the funnel overwrote the range it was given with an unbounded one")
+	}
+
+	// And with no -v it still runs, all-time, rather than failing on an unset
+	// variable — which is what makes the \if idiom the right one.
+	if unbounded := psqlRender(t, raw, nil); !strings.Contains(unbounded, "'-infinity'::timestamptz") {
+		t.Error("with no -v the funnel should fall back to an all-time range")
+	}
+}
+
+func readFunnel(t *testing.T) string {
 	t.Helper()
 	raw, err := os.ReadFile("../../../../../../tools/analytics/funnel.sql")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var body []string
-	for _, line := range strings.Split(string(raw), "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), `\`) {
-			continue
-		}
-		body = append(body, line)
-	}
-	return strings.NewReplacer(":from", from, ":to", to).Replace(strings.Join(body, "\n"))
+	return string(raw)
 }
 
-func TestReturningWorkspaceUsesSameUTCVisitDay(t *testing.T) {
+// psqlRender interprets the meta-commands funnel.sql actually uses — `\set` and
+// the `\if :{?var}` / `\else` / `\endif` defaulting idiom — with `vars` pre-set
+// the way `psql -v name=value` pre-sets them.
+//
+// Interpreting rather than deleting the `\` lines is the whole point. Stripping
+// them (what this helper did until 2026-08-25) meant the "we run the real file"
+// test ran a version of the file with no variable handling at all: the bug where
+// both bounds were unconditionally reassigned to ±infinity was 100% reproducible
+// and structurally invisible here.
+//
+// Not psql itself, which would be more faithful still: the tests below insert
+// their fixtures inside a transaction that is rolled back, and a psql in another
+// process cannot see uncommitted rows. Anything beyond these four commands fails
+// loudly rather than being skipped.
+func psqlRender(t *testing.T, raw string, vars map[string]string) string {
+	t.Helper()
+	set := map[string]string{}
+	for name, value := range vars {
+		set[name] = value
+	}
+	var body []string
+	inIf, skipping := false, false
+	for _, line := range strings.Split(raw, "\n") {
+		fields := strings.Fields(strings.TrimSpace(line))
+		if len(fields) == 0 || !strings.HasPrefix(fields[0], `\`) {
+			if !skipping {
+				body = append(body, line)
+			}
+			continue
+		}
+		switch fields[0] {
+		case `\if`:
+			if inIf {
+				t.Fatalf("nested \\if is not interpreted here: %q", line)
+			}
+			name, ok := strings.CutPrefix(fields[1], `:{?`)
+			if !ok || !strings.HasSuffix(name, "}") {
+				t.Fatalf("only \\if :{?var} is interpreted here: %q", line)
+			}
+			_, defined := set[strings.TrimSuffix(name, "}")]
+			inIf, skipping = true, !defined
+		case `\else`:
+			skipping = !skipping
+		case `\endif`:
+			inIf, skipping = false, false
+		case `\set`:
+			if !skipping && len(fields) == 3 {
+				set[fields[1]] = psqlValue(fields[2])
+			}
+		default:
+			t.Fatalf("funnel.sql uses a meta-command this test cannot interpret: %q", line)
+		}
+	}
+	var replacements []string
+	for name, value := range set {
+		replacements = append(replacements, ":"+name, value)
+	}
+	return strings.NewReplacer(replacements...).Replace(strings.Join(body, "\n"))
+}
+
+// psqlValue unwraps one level of psql quoting: the outer pair of single quotes
+// goes, and a doubled single quote inside becomes one. So the file's fallback for
+// :from is the eleven-character string -infinity WITH its quotes, which is what
+// makes the substituted :from a valid SQL literal.
+func psqlValue(s string) string {
+	if len(s) >= 2 && strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
+		return strings.ReplaceAll(s[1:len(s)-1], "''", "'")
+	}
+	return s
+}
+
+func funnelQuery(t *testing.T, from, to string) string {
+	t.Helper()
+	return psqlRender(t, readFunnel(t), map[string]string{"from": from, "to": to})
+}
+
+// 01 §11.2's seventh item is "再次回來試跑或重新驗證", so a return is a Run or an
+// evaluation on a second day — not a browser that reopened the catalogue for a
+// second, which is what the query counted until 2026-08-25. In a twelve-person
+// beta where seven people glance back and nobody runs anything again, the old
+// shape printed 58% and it would have been read as retention.
+//
+// The day is bucketed in UTC, and this proves the bucket is not the server's:
+// workspace A's two Runs are the same Los Angeles date on opposite sides of UTC
+// midnight, and the session below is deliberately in another zone.
+func TestTheFunnelCountsAReturnAsARunNotAVisit(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
-	workspaceA := a.login(t, "funnel-workspace-a").workspaceID
-	workspaceB := a.login(t, "funnel-workspace-b").workspaceID
+	workspaceA := newFixture(t, a, pool, "funnel-return-a")
+	workspaceB := newFixture(t, a, pool, "funnel-return-b")
 	ctx := context.Background()
 	tx, err := pool.Begin(ctx)
 	if err != nil {
@@ -95,50 +205,208 @@ func TestReturningWorkspaceUsesSameUTCVisitDay(t *testing.T) {
 	if _, err := tx.Exec(ctx, "SET LOCAL TIME ZONE 'America/Los_Angeles'"); err != nil {
 		t.Fatal(err)
 	}
-	insert := func(name, at string, workspace any) {
-		t.Helper()
+
+	seedRunAt(t, tx, workspaceA, "succeeded", "2040-08-19T23:30:00Z")
+	seedRunAt(t, tx, workspaceA, "succeeded", "2040-08-20T00:30:00Z")
+	seedRunAt(t, tx, workspaceB, "succeeded", "2040-08-21T12:00:00Z")
+	// B did come back with the browser, twice, and still has not run anything.
+	// That is precisely the visit the definition does not ask about.
+	for _, at := range []string{"2040-08-21T12:00:00Z", "2040-08-22T12:00:00Z"} {
 		if _, err := tx.Exec(ctx, `INSERT INTO analytics_events
-            (event_name, session_id, workspace_id, occurred_at) VALUES ($1, 'shared-browser', $2, $3)`,
-			name, workspace, at); err != nil {
+            (event_name, session_id, workspace_id, occurred_at)
+            VALUES ('session_started', 'funnel-return-browser', $1, $2)`,
+			mustUUID(t, workspaceB.workspaceID), at); err != nil {
 			t.Fatal(err)
 		}
 	}
-	// The anonymous day must not be retroactively assigned. A has two visits on
-	// opposite sides of UTC midnight (but the same Los Angeles date); B has one.
-	insert("session_started", "2040-08-18T12:00:00Z", nil)
-	for _, visit := range []struct{ at, workspace string }{
-		{"2040-08-19T23:30:00Z", workspaceA},
-		{"2040-08-20T00:30:00Z", workspaceA},
-		{"2040-08-21T12:00:00Z", workspaceB},
-	} {
-		insert("session_started", visit.at, nil)
-		insert("skill_detail_viewed", visit.at, mustUUID(t, visit.workspace))
+
+	segment := funnelSegment(t, tx, funnelQuery(t, "'2040-08-18T00:00:00Z'", "'2040-08-23T00:00:00Z'"), 7)
+	if segment.numerator != 1 || segment.denominator != 2 {
+		t.Errorf("returning workspaces = %d of %d, want A only: 1 of 2",
+			segment.numerator, segment.denominator)
 	}
-	rows, err := tx.Query(ctx, funnelQuery(t, "'2040-08-18T00:00:00Z'", "'2040-08-22T00:00:00Z'"))
+}
+
+// 01 §11.2's sixth item is "完成試跑後打包下載". The denominator was every workspace
+// that *created* a Run in the window and the numerator was every workspace that
+// downloaded in it, from a different time column — so the numerator was not even
+// a subset, and two workspaces of C's shape with one of B's printed 200%.
+func TestSegmentSixIsCompletedRunsAndTheirOwnDownloads(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	completed := newFixture(t, a, pool, "funnel-six-completed")
+	started := newFixture(t, a, pool, "funnel-six-started")
+	earlier := newFixture(t, a, pool, "funnel-six-earlier")
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// In the window and finished: the only workspace the definition asks about.
+	seedRunAt(t, tx, completed, "succeeded", "2040-09-03T10:00:00Z")
+	// In the window, never finished. Counted by `created_at` alone, which is what
+	// the denominator used to be.
+	seedRunAt(t, tx, started, "running", "2040-09-04T10:00:00Z")
+	// Ran and succeeded *before* the window, downloaded inside it. This is the
+	// row that used to reach the numerator without being in the denominator.
+	seedRunAt(t, tx, earlier, "succeeded", "2040-08-30T10:00:00Z")
+	seedDownloadAt(t, tx, earlier, "2040-09-02T10:00:00Z")
+
+	segment := funnelSegment(t, tx, funnelQuery(t, "'2040-09-01T00:00:00Z'", "'2040-09-15T00:00:00Z'"), 6)
+	if segment.numerator != 0 || segment.denominator != 1 {
+		t.Errorf("packaged after a completed run = %d of %d, want 0 of 1",
+			segment.numerator, segment.denominator)
+	}
+}
+
+// 01 §11.2's first item is a detail view *after* an intent. A bare intersection
+// counts the session that opened a shared /skills/{id} link, searched fruitlessly
+// afterwards and left — and that number is the one the M5 exposure boundary is
+// waiting on, so it may not be flattering by accident.
+func TestSegmentOneNeedsTheSearchToComeFirst(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	insert := func(name, session, at string) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, `INSERT INTO analytics_events
+            (event_name, session_id, occurred_at) VALUES ($1, $2, $3)`, name, session, at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The deep link, then a fruitless search: not a conversion.
+	insert("skill_detail_viewed", "funnel-one-deeplink", "2040-10-01T11:00:00Z")
+	insert("search_performed", "funnel-one-deeplink", "2040-10-01T11:05:00Z")
+	// The journey the segment is about.
+	insert("search_performed", "funnel-one-searcher", "2040-10-01T11:00:00Z")
+	insert("skill_detail_viewed", "funnel-one-searcher", "2040-10-01T11:05:00Z")
+
+	segment := funnelSegment(t, tx, funnelQuery(t, "'2040-10-01T00:00:00Z'", "'2040-10-02T00:00:00Z'"), 1)
+	if segment.numerator != 1 || segment.denominator != 2 {
+		t.Errorf("viewed a detail after searching = %d of %d, want 1 of 2",
+			segment.numerator, segment.denominator)
+	}
+}
+
+// The sessions that reach 01 §12's risk — an intent the platform could not parse
+// — used to write no row at all, because the handler answers "no results" before
+// the service that records the event ever runs. They are not a random sample of
+// the denominator: they are the whole reason the M5 generation entry exists, so
+// dropping them made segment 1 read systematically high.
+func TestASearchTheProductCannotParseIsStillASearch(t *testing.T) {
+	pool := requireDB(t)
+	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 180*24*time.Hour)
+	f := newFixture(t, a, pool, "alice-unparsed-intent")
+	session := f.analyticsSession(t)
+	if session == "" {
+		t.Fatal("no analytics session cookie was issued")
+	}
+
+	// A single Han character (isComprehensible wants two runes) and a blank
+	// query: both are intents somebody submitted.
+	for _, q := range []string{"圖", ""} {
+		if code := f.status(t, http.MethodGet, "/api/skills/search?q="+url.QueryEscape(q)); code != http.StatusOK {
+			t.Fatalf("public search for %q: got %d", q, code)
+		}
+	}
+
+	if n := betaCount(t, pool, `SELECT count(*) FROM analytics_events
+        WHERE event_name = 'search_performed' AND session_id = $1
+          AND result_count = 0 AND has_results = false`, session); n != 2 {
+		t.Errorf("search_performed rows for two unparseable intents: %d, want 2", n)
+	}
+}
+
+type funnelRow struct{ numerator, denominator int64 }
+
+// funnelSegment runs the whole report inside the caller's transaction and returns
+// one row. The whole report on purpose: a segment that stops parsing because
+// another segment's SQL broke is a failure this should show.
+func funnelSegment(t *testing.T, tx pgx.Tx, query string, want int) funnelRow {
+	t.Helper()
+	rows, err := tx.Query(context.Background(), query)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer rows.Close()
-	found := false
+	var found *funnelRow
 	for rows.Next() {
 		var segment int
 		var description, note string
-		var numerator, denominator int64
-		if err := rows.Scan(&segment, &description, &numerator, &denominator, &note); err != nil {
+		var row funnelRow
+		if err := rows.Scan(&segment, &description, &row.numerator, &row.denominator, &note); err != nil {
 			t.Fatal(err)
 		}
-		if segment == 7 {
-			found = true
-			if numerator != 1 || denominator != 2 {
-				t.Errorf("returning workspaces = %d of %d, want A only: 1 of 2", numerator, denominator)
-			}
+		if segment == want {
+			found = &row
 		}
 	}
 	if err := rows.Err(); err != nil {
 		t.Fatal(err)
 	}
-	if !found {
-		t.Fatal("funnel returned no segment 7")
+	if found == nil {
+		t.Fatalf("the funnel returned no segment %d", want)
+	}
+	return *found
+}
+
+// seedRunAt writes one run at a chosen instant, with the snapshot it needs.
+// Straight into the tables rather than through the API, for seedBetaRun's reason:
+// what is under test is what the report counts, and driving a real run to a
+// terminal state would need a sandbox provider.
+func seedRunAt(t *testing.T, tx pgx.Tx, f fixture, status, at string) {
+	t.Helper()
+	ctx := context.Background()
+	var snapshotID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO test_case_snapshots (workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
+		VALUES ($1, $2, 'do the thing', '[]'::jsonb, md5(random()::text))
+		RETURNING id::text`,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.testCaseID)).Scan(&snapshotID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider,
+		                  runtime_snapshot, policy_snapshot, status, created_at)
+		VALUES ($1, $2, $3, 'seed', '{}'::jsonb, '{}'::jsonb, $4, $5)`,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, snapshotID), status, at,
+	); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// seedDownloadAt writes the domain fact segment 6 counts: a package artifact, its
+// download_artifacts row and one download at a chosen instant.
+func seedDownloadAt(t *testing.T, tx pgx.Tx, f fixture, at string) {
+	t.Helper()
+	ctx := context.Background()
+	var artifactID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO artifacts (workspace_id, kind, file_name, content_type, size_bytes,
+		                       content_hash, object_key, expires_at)
+		VALUES ($1, 'download_package', 'package.zip', 'application/zip', 10,
+		        'deadbeef', 'downloads/' || md5(random()::text), $2)
+		RETURNING id::text`, mustUUID(t, f.workspaceID), at).Scan(&artifactID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO download_artifacts (artifact_id, workspace_id, skill_version_id, target,
+		                                profile_version, packager_version, manifest_hash, includes_test_cases)
+		VALUES ($1, $2, $3, 'claude-code', '1', '1', 'deadbeef', false)`,
+		mustUUID(t, artifactID), mustUUID(t, f.workspaceID), mustUUID(t, f.versionID)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO download_records (workspace_id, artifact_id, actor_user_id, downloaded_at)
+		VALUES ($1, $2, $3, $4)`,
+		mustUUID(t, f.workspaceID), mustUUID(t, artifactID), mustUUID(t, f.userID), at); err != nil {
+		t.Fatal(err)
 	}
 }
 

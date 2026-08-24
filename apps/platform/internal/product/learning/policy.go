@@ -28,16 +28,27 @@ import (
 func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 	days := 0
 	if h.Svc != nil {
+		// Rounded up, not truncated. A deployment with ANALYTICS_RETENTION=12h is
+		// collecting — Enabled() only asks for a second — and reporting
+		// `{"collecting": true, "retention_days": 0}` is two sentences that
+		// contradict each other. Production's 8760h never reaches this; a staging
+		// window shorter than a day does (M5 audit, 2026-08-25).
 		days = int(h.Svc.Retention / (24 * time.Hour))
+		if h.Svc.Retention%(24*time.Hour) != 0 {
+			days++
+		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"collecting":     h.Svc.Enabled(),
 		"retention_days": days,
 		// The closed set of four. Adding a fifth means answering first why no
 		// domain table can (ADR-029 決策 1), and the CHECK in 0029 enforces it.
-		// Each `attributes` list is the constructor signature in analytics.go,
-		// which is the whitelist itself: an attribute nobody declared cannot be
-		// passed, so it cannot be stored.
+		//
+		// Each `attributes` list is what that event adds *on top of* the five
+		// fixed columns every row carries (ADR-029 決策 2). It is not the row and
+		// it is not the constructor signature — the constructor's first field is
+		// the session id, which belongs to all four and is disclosed once in
+		// `note` rather than four times here (M5 audit, 2026-08-25).
 		"events": []map[string]any{
 			{
 				"name":         EventSearchPerformed,
@@ -48,24 +59,37 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 			{
 				"name":         EventSkillDetailViewed,
 				"when":         "a skill detail page is opened",
-				"attributes":   []string{"workspace_id", "skill_id", "arrival", "arrival_rank"},
+				"attributes":   []string{"skill_id", "arrival", "arrival_rank"},
 				"not_recorded": "arrival is one of two words and arrival_rank a small integer; both are clamped on the way in, never trusted from the link",
 			},
 			{
 				"name":         EventSessionStarted,
 				"when":         "a visit begins",
-				"attributes":   []string{"session_id", "occurred_at"},
-				"not_recorded": "session_id is an unrelated random cookie value — not the login session token, not a hash of it, and it cannot be resolved back to one",
+				"attributes":   []string{},
+				"not_recorded": "nothing beyond the columns every row carries: the visit is the whole of the event. session_id is an unrelated random cookie value — not the login session token, not a hash of it, and it cannot be resolved back to one",
 			},
+			// No target attribute: the only caller passes an empty one
+			// (feedback.go's route wrapper deliberately does not re-read the
+			// artifact row for it) and DownloadStarted writes the column only when
+			// it is non-empty, so it has never held a value. Naming it here told
+			// the reader we collect more than we do, and this page is the one
+			// ADR-029 決策 5 holds to a higher standard than any other.
 			{
 				"name":         EventDownloadStarted,
 				"when":         "a download is requested",
-				"attributes":   []string{"workspace_id", "artifact_id", "target"},
+				"attributes":   []string{"artifact_id"},
 				"not_recorded": "whether the bytes actually went out; that is download_records, a domain fact, and the split is why this event exists",
 			},
 		},
-		"note": "these four events are the whole of this data class. There is no " +
-			"free-text column anywhere in the table — not masked free text, none — " +
+		"note": "these four events are the whole of this data class. Every row also " +
+			"carries the five columns ADR-029 決策 2 fixes for all of them — event_id, " +
+			"event_name, occurred_at, session_id and workspace_id — on top of the " +
+			"attributes listed above. session_id is the sh_analytics cookie value: it " +
+			"is what links one visitor's searches and detail views into a single " +
+			"journey, and it is kept for the retention period above. workspace_id is " +
+			"null until that visitor signs in, and the two are never joined backwards. " +
+			"There is no free-text column anywhere in the table — not masked free " +
+			"text, none — " +
 			"so an attribute the schema does not declare is dropped by the writer " +
 			"rather than stored. Nothing is collected at all, cookie included, " +
 			"until a deployment sets a retention period.",
