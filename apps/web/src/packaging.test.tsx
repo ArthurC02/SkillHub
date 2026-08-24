@@ -447,7 +447,11 @@ test("WS-004 an expired package stays in the list, says it expired, and offers n
             label: "已過期,不再提供下載",
             note: "檔案已刪除,這筆紀錄保留。",
           },
-          expires_at: "2026-01-01T00:00:00Z",
+          // Deliberately in the future. Both the old client-side derivation and
+          // the server's word agreed while this date was in the past, so the
+          // fixture could not tell them apart — and the client-side one was the
+          // wrong predicate (M4 audit, 2026-08-24).
+          expires_at: "2099-01-01T00:00:00Z",
         },
         artifact,
       ],

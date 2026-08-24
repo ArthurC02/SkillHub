@@ -144,8 +144,10 @@ class GeneratedSkill(BaseModel):
 
 class GenerateSkillRequest(BaseModel):
     task_description: str = Field(
-        ..., min_length=8, max_length=4000
-    )  # one-number: generateMaxTaskRunes
+        ...,
+        min_length=8,
+        max_length=4000,  # one-number: generateMaxTaskRunes
+    )
 
     @field_validator("task_description")
     @classmethod

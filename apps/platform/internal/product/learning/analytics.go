@@ -15,7 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 // The four event names, matching the CHECK in 0029. Stable strings: they end up
@@ -80,15 +80,27 @@ func SessionID(ctx context.Context) string {
 }
 
 // Sessions is the middleware that gives every visitor an analytics session id and
-// emits a best-effort EventSessionStarted marker once per UTC day. Concurrent
-// first requests may emit duplicates; the funnel deliberately counts distinct
-// session/day pairs. The persistent analytics id ties visits together without
-// using an authentication credential.
+// emits a best-effort EventSessionStarted marker once per UTC day. The persistent
+// analytics id ties visits together without using an authentication credential.
 //
 // Wrapped around the whole mux rather than per route, because the funnel's first
 // segment happens on the public catalogue where there is no session middleware at
 // all — measuring only signed-in traffic would drop exactly the population the
 // funnel exists to study.
+//
+// A freshly minted id is NOT used for this request. It has been offered to the
+// browser and not yet accepted, and the browser is the arbiter: this server does
+// not serve the SPA's document, so a visitor's first API calls arrive together
+// and all of them are cold. Each would mint its own id, each would set its own
+// cookie, and the browser keeps exactly one — leaving the rest of the requests'
+// events attached to ids that no later request will ever carry. On a deep link
+// that means a search_performed stranded on an id that can never acquire a
+// skill_detail_viewed, which is 01 §11.2's first segment measured against a
+// denominator it cannot convert (04 丙-57, M4 audit 2026-08-24).
+//
+// The cost is that the first API request of a visit records nothing. That is a
+// dropped session rather than a distorted ratio, and 11.2's first segment is a
+// ratio.
 //
 // It is a no-op when collection is off, including the cookie: a deployment that
 // has not set a retention period sets nothing on a visitor's browser either.
@@ -97,10 +109,8 @@ func (s *Service) Sessions(next http.Handler) http.Handler {
 		return next
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := ""
-		if c, err := r.Cookie(sessionCookie); err == nil && len(c.Value) == 32 {
-			id = c.Value
-		} else {
+		c, err := r.Cookie(sessionCookie)
+		if err != nil || len(c.Value) != 32 {
 			raw := make([]byte, 16)
 			if _, err := rand.Read(raw); err != nil {
 				// No id, no event, request carries on. Analytics never fails a
@@ -108,13 +118,18 @@ func (s *Service) Sessions(next http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			id = hex.EncodeToString(raw)
 			http.SetCookie(w, &http.Cookie{
-				Name: sessionCookie, Value: id, Path: "/",
+				Name: sessionCookie, Value: hex.EncodeToString(raw), Path: "/",
 				MaxAge:   int(s.Retention / time.Second),
 				HttpOnly: true, Secure: s.Secure, SameSite: http.SameSiteLaxMode,
 			})
+			// No context id, so emit() drops anything this request would write,
+			// and no visit cookie either — otherwise the day would be marked as
+			// started by a request whose session_started was never recorded.
+			next.ServeHTTP(w, r)
+			return
 		}
+		id := c.Value
 		ctx := context.WithValue(r.Context(), ctxKey{}, id)
 		now := s.now()
 		if newVisit(r, now) {

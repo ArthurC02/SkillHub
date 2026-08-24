@@ -197,12 +197,22 @@ async function pickVersion(versionId: string) {
   });
 }
 
-function confirmButton(): HTMLButtonElement {
-  const button = Array.from(container.querySelectorAll("button")).find((b) =>
+function confirmButton(): HTMLButtonElement | undefined {
+  return Array.from(container.querySelectorAll("button")).find((b) =>
     b.textContent?.includes("開始 Run"),
   );
-  if (!button) throw new Error(`no confirm button; DOM was:\n${container.textContent}`);
-  return button;
+}
+
+/**
+ * The button does not exist until the permission summary has arrived, and
+ * renderLab() returns before it does. Every caller read the button straight
+ * afterwards and the suite lost that race about one run in three (2026-08-24).
+ * A flake is worse than an absent test: it teaches the next person to re-run
+ * rather than to read.
+ */
+async function clickConfirm() {
+  await waitFor(() => confirmButton() !== undefined);
+  await act(async () => confirmButton()!.click());
 }
 
 test("02:TEST-005 the summary discloses every required item before the run starts", async () => {
@@ -271,7 +281,7 @@ test("02:TEST-005 confirming sends the hash that was shown, then starts the run"
   const platform = stubPlatform();
   await renderLab();
 
-  await act(async () => confirmButton().click());
+  await clickConfirm();
 
   const confirm = platform.calls.find((c) => c.url.includes("/preflight/confirm"));
   expect(confirm?.body).toContain("hash-one");
@@ -288,7 +298,7 @@ test("02:TEST-005 a permission change forces a fresh confirmation instead of reu
   // now stale, and the confirmation built from it must not be accepted.
   platform.changePermissions();
 
-  await act(async () => confirmButton().click());
+  await clickConfirm();
   // The page says what it knows — nothing started — and hands over the
   // server's own sentence rather than inventing a cause. It used to report
   // every 422 as 「權限內容已變更」, which is a false statement for five of the
@@ -303,7 +313,7 @@ test("02:TEST-005 a permission change forces a fresh confirmation instead of reu
   expect(container.textContent).toContain("extra.csv");
 
   // Confirming the new summary sends the new hash, never the old one.
-  await act(async () => confirmButton().click());
+  await clickConfirm();
   const sent = platform.calls.filter((c) => c.url.endsWith("/runs")).map((c) => c.body ?? "");
   expect(sent).toHaveLength(1);
   expect(sent[0]).toContain("hash-two");
@@ -365,7 +375,7 @@ test("SEC-002 gate B: an exhausted allowance is not reported as a permission cha
     "5 runs a day is the limit; it resets 24 hours after your earliest run today",
   );
 
-  await act(async () => confirmButton().click());
+  await clickConfirm();
 
   expect(container.textContent).toContain("這次 Run 沒有開始");
   expect(container.textContent).toContain("resets 24 hours after");

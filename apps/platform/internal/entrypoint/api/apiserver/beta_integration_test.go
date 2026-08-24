@@ -478,6 +478,16 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 	if language != "latin" {
 		t.Errorf("query_language is %q, want latin", language)
 	}
+	// Exactly one. QueryRow above takes the first row and discards the rest, so
+	// without this a duplicated write is invisible here — and a duplicate is
+	// this event's whole failure mode: 01 §11.2's first segment is a ratio of
+	// sessions, so one search counted twice is a denominator that cannot
+	// convert (M4 audit, 2026-08-24).
+	if n := betaCount(t, pool,
+		`SELECT count(*) FROM analytics_events WHERE event_name = 'search_performed' AND session_id = $1`,
+		session); n != 1 {
+		t.Errorf("search_performed events for one search: %d, want 1", n)
+	}
 
 	// skill_detail_viewed, with the arrival attributes clamped to the whitelist.
 	if code := f.status(t, http.MethodGet, "/api/skills/"+f.skillID+"?from=search&rank=2"); code != http.StatusOK {
@@ -493,6 +503,12 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 	}
 	if arrival != "search" || rank != 2 {
 		t.Errorf("arrival is %q rank %d, want search/2", arrival, rank)
+	}
+	// Exactly one, for the same reason, on the other side of the same ratio.
+	if n := betaCount(t, pool,
+		`SELECT count(*) FROM analytics_events WHERE event_name = 'skill_detail_viewed' AND session_id = $1`,
+		session); n != 1 {
+		t.Errorf("skill_detail_viewed events for one detail read: %d, want 1", n)
 	}
 
 	// download_started is the *attempt*, recorded before the handler decides

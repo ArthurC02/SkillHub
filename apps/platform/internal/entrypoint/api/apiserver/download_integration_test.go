@@ -12,8 +12,10 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -155,6 +157,75 @@ func auditCount(t *testing.T, pool *pgxpool.Pool, action, resourceID string) int
 	return countRows(t, pool,
 		"SELECT count(*) FROM audit_events WHERE action = $1 AND resource_id = $2",
 		action, mustUUID(t, resourceID))
+}
+
+// Iron rule 9: the record and the audit event are one transaction, so neither
+// can exist without the other.
+//
+// The happy-path test below asserts both rows appear, which is equally true when
+// they are written independently - moving audit.Log's handle from `tx` to
+// `s.Pool` left the whole suite green (M4 audit, 2026-08-24). What that costs is
+// an audit event that survives a download the database refused, i.e. "who took a
+// copy of what" answered about a copy nobody took.
+//
+// The failure has to land at COMMIT, not before. Both handles fail the same way
+// on a statement error - the audit write returns, the handler returns, the defer
+// rolls the record back - so a plain trigger cannot tell them apart, which is
+// how the first version of this test passed the mutation too. A DEFERRABLE
+// INITIALLY DEFERRED constraint trigger on download_records fires at commit
+// instead, and only then does the pool-handled audit row have somewhere to
+// survive.
+//
+// Scoped to this test's workspace, and dropped on the way out whatever happens.
+func TestADownloadRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "downloader-atomic")
+	art := buildDownload(t, a, pool, c, "atomic-skill")
+	ctx := context.Background()
+
+	// c.workspaceID came out of the API as a uuid and goes back in as one; the
+	// quoting is belt and braces for a value that cannot go in as a parameter,
+	// because a function body is a literal.
+	if _, err := pool.Exec(ctx, fmt.Sprintf(`
+		CREATE OR REPLACE FUNCTION skillhub_test_refuse_record() RETURNS trigger AS $fn$
+		BEGIN
+			IF NEW.workspace_id = %s::uuid THEN
+				RAISE EXCEPTION 'refused at commit by test';
+			END IF;
+			RETURN NEW;
+		END;
+		$fn$ LANGUAGE plpgsql`, pgLiteral(c.workspaceID))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		CREATE CONSTRAINT TRIGGER skillhub_test_refuse_record
+		AFTER INSERT ON download_records DEFERRABLE INITIALLY DEFERRED
+		FOR EACH ROW EXECUTE FUNCTION skillhub_test_refuse_record()`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(ctx, "DROP TRIGGER IF EXISTS skillhub_test_refuse_record ON download_records")
+		_, _ = pool.Exec(ctx, "DROP FUNCTION IF EXISTS skillhub_test_refuse_record()")
+	})
+
+	resp, _ := c.fetchContent(t, art.ArtifactID)
+	if resp.StatusCode == http.StatusOK {
+		t.Fatal("bytes were served although the download could not be recorded")
+	}
+	if n := downloadRecordCount(t, pool, art.ArtifactID); n != 0 {
+		t.Errorf("download_records: got %d rows, want 0", n)
+	}
+	if n := auditCount(t, pool, "artifact.download", art.ArtifactID); n != 0 {
+		t.Errorf("audit_events: got %d rows for a download that never happened, want 0", n)
+	}
+}
+
+// pgLiteral quotes a value for the one place a parameter cannot go: the body of
+// a function definition. Only ever called with ids this test just received from
+// the API, and it doubles any quote regardless.
+func pgLiteral(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }
 
 // --- the happy path, and the two rows it owes --------------------------------

@@ -141,7 +141,7 @@ function DownloadActions({
   onConfirmDelete: () => void;
 }) {
   // The server's own predicate, not a copy of it (04 丙-29 ⑤). This read
-  // `status === "available" && !isExpired(...)` — two of the three things
+  // `status === "available"` plus a locally derived expiry — two of the three things
   // download.go checks, missing the purge, which is not on this shape at all. So
   // a purged artifact offered a link that was known to 404, which puts the
   // refusal in a new tab instead of on this page. The reason it is not stated

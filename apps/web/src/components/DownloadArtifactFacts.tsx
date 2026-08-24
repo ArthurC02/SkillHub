@@ -26,11 +26,6 @@ import type { DownloadArtifact } from "../api/packaging";
  *    of the shared component — they must not be able to disagree.
  */
 
-export function isExpired(artifact: DownloadArtifact, now = Date.now()): boolean {
-  const at = Date.parse(artifact.expires_at);
-  return Number.isFinite(at) && at <= now;
-}
-
 /**
  * The status word is the server's (04 丙-29 ⑤).
  *
@@ -55,7 +50,13 @@ function bytes(n: number): string {
 }
 
 export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact }) {
-  const expired = isExpired(artifact);
+  // The server's word, not this browser's clock. The status sentence beside it
+  // was already the server's, so deriving the badge from Date.now() put two
+  // clocks on one line: a viewer whose machine is set wrong, or in a timezone
+  // this page never sees, got 已過期 next to 可下載. Worse, `quarantined` plus a
+  // past expiry printed 已過期 over 檢查中 — breaking the priority rule stated at
+  // the top of this very file (M4 audit, 2026-08-24).
+  const expired = artifact.serve_state.value === "expired";
 
   return (
     <>
