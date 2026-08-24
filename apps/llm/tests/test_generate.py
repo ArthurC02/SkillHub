@@ -184,7 +184,11 @@ def test_an_empty_body_is_refused_not_packaged(capture):
 @pytest.mark.parametrize(
     "patch",
     [
-        {"files": [{"path": f"f{i}.md", "content": "x"} for i in range(generate.MAX_EXTRA_FILES + 1)]},
+        {
+            "files": [
+                {"path": f"f{i}.md", "content": "x"} for i in range(generate.MAX_EXTRA_FILES + 1)
+            ]
+        },
         {"files": [{"path": "p" * (generate.MAX_PATH_CHARS + 1), "content": "x"}]},
         {"files": [{"path": "big.txt", "content": "x" * (generate.MAX_FILE_CHARS + 1)}]},
     ],

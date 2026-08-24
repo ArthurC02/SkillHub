@@ -598,7 +598,11 @@ def test_one_unusable_proposal_does_not_discard_the_good_ones(capture):
             {
                 "suggestions": [
                     {**base, "problem": "這一項沒問題。"},
-                    {**base, "problem": "這一項超長。", "evidence": "x" * (evaluate.MAX_EVIDENCE + 1)},
+                    {
+                        **base,
+                        "problem": "這一項超長。",
+                        "evidence": "x" * (evaluate.MAX_EVIDENCE + 1),
+                    },
                     {**base, "category": "runtime", "problem": "這一項也沒問題。"},
                 ]
             }

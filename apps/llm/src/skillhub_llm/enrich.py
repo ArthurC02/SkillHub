@@ -17,6 +17,8 @@ from fastapi import APIRouter, HTTPException
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from skillhub_llm.gateway import gateway
+
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.enrich")
 
@@ -159,18 +161,8 @@ class EnrichSkillResponse(Enrichment):
 
 
 def _client() -> AsyncOpenAI:
-    """OpenAI-compatible client pointed at the LiteLLM gateway (Iron Rule 8).
-
-    No provider fallback: an unconfigured process must fail loudly rather than
-    reach a provider directly. Read at call time so import/startup never fails.
-    """
-    base_url = os.getenv("LITELLM_BASE_URL")
-    api_key = os.getenv("LITELLM_API_KEY")
-    if not base_url or not api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="LiteLLM gateway not configured: set LITELLM_BASE_URL and LITELLM_API_KEY",
-        )
+    """OpenAI-compatible client pointed at the LiteLLM gateway (Iron Rule 8)."""
+    base_url, api_key = gateway()
     return AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=LLM_TIMEOUT_SECONDS)
 
 

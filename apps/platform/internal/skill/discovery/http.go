@@ -615,21 +615,31 @@ func lastRune(s string) string {
 	return string(r[len(r)-1])
 }
 
-// isComprehensible does a minimal check that the query contains at least one
-// meaningful word or CJK character (DISC-001: incomprehensible queries don't
-// create search).
+// isComprehensible does a minimal check that the query carries at least two
+// letters or digits (DISC-001: incomprehensible queries don't create search).
+//
+// The rule has to bite, because a query that gets past it is not free:
+// PublicSearch answers it by buying an embedding from the gateway and writing a
+// search_performed funnel event. "!!", "、、" and two spaces are not searches.
+//
+// unicode.IsLetter rather than an ASCII-plus-0x4E00 range: the range spelled out
+// by hand covered Latin, digits and CJK ideographs, and silently excluded kana,
+// Cyrillic, Greek, Thai and every abugida - all of which are queries this catalog
+// is supposed to be able to receive. It was previously masked by an
+// `|| utf8.RuneCountInString(q) >= 2` clause that let everything of length two
+// through, which made the character rule dead code: replacing the whole body
+// with `return len(q) >= 2` kept 316 tests green (M1 audit, 2026-08-24).
 func isComprehensible(q string) bool {
-	if len(q) < 2 {
-		return false
-	}
-	wordChars := 0
+	letters := 0
 	for _, r := range q {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') ||
-			(r >= '0' && r <= '9') || r >= 0x4E00 {
-			wordChars++
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			letters++
+			if letters >= 2 {
+				return true
+			}
 		}
 	}
-	return wordChars >= 2 || utf8.RuneCountInString(q) >= 2
+	return false
 }
 
 // Search handles GET /skills/search?q=...&limit=N. Session-scoped to the

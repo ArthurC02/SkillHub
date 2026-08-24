@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from skillhub_llm.enrich import router as enrich_router
 from skillhub_llm.evaluate import router as evaluate_router
+from skillhub_llm.gateway import gateway
 from skillhub_llm.generate import router as generate_router
 
 service_bearer = HTTPBearer(auto_error=False)
@@ -65,9 +66,6 @@ async def request_validation_error(
     """Keep FastAPI's runtime 422 body aligned with the OpenAPI Error schema."""
     return JSONResponse(status_code=422, content={"detail": "request validation failed"})
 
-# LiteLLM gateway base URL (Iron Rule 8: all model calls via LiteLLM, never direct).
-LITELLM_BASE_URL = os.getenv("LITELLM_BASE_URL", "http://localhost:4000")
-LITELLM_API_KEY = os.getenv("LITELLM_API_KEY", "sk-1234")
 
 EMBED_MODEL = "text-embedding-3-small"
 MATCH_REASON_MODEL = os.getenv("MATCH_REASON_MODEL", "gpt-5.6-luna")
@@ -102,12 +100,14 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
     """
     import litellm
 
+    base_url, api_key = gateway()
+
     try:
         response = await litellm.aembedding(
             model=EMBED_MODEL,
             input=req.texts,
-            api_base=LITELLM_BASE_URL,
-            api_key=LITELLM_API_KEY,
+            api_base=base_url,
+            api_key=api_key,
         )
     except Exception as e:
         logger.exception("embedding call failed")
@@ -115,9 +115,8 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
 
     try:
         vectors = [item["embedding"] for item in response.data]
-        valid = (
-            len(vectors) == len(req.texts)
-            and all(isinstance(vector, list) and len(vector) == 1536 for vector in vectors)
+        valid = len(vectors) == len(req.texts) and all(
+            isinstance(vector, list) and len(vector) == 1536 for vector in vectors
         )
     except (AttributeError, KeyError, TypeError):
         valid = False
@@ -191,6 +190,8 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
         "Produce the match reasons."
     )
 
+    base_url, api_key = gateway()
+
     try:
         response = await litellm.acompletion(
             model=MATCH_REASON_MODEL,
@@ -198,8 +199,8 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            api_base=LITELLM_BASE_URL,
-            api_key=LITELLM_API_KEY,
+            api_base=base_url,
+            api_key=api_key,
             temperature=0.3,
             max_tokens=1024,
             response_format={
@@ -337,6 +338,8 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
         "Propose the acceptance criteria."
     )
 
+    base_url, api_key = gateway()
+
     try:
         response = await litellm.acompletion(
             model=SUGGEST_CRITERIA_MODEL,
@@ -344,8 +347,8 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            api_base=LITELLM_BASE_URL,
-            api_key=LITELLM_API_KEY,
+            api_base=base_url,
+            api_key=api_key,
             temperature=0.3,
             max_tokens=1024,
             response_format={

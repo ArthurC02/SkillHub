@@ -143,7 +143,9 @@ class GeneratedSkill(BaseModel):
 
 
 class GenerateSkillRequest(BaseModel):
-    task_description: str = Field(..., min_length=8, max_length=4000)  # one-number: generateMaxTaskRunes
+    task_description: str = Field(
+        ..., min_length=8, max_length=4000
+    )  # one-number: generateMaxTaskRunes
 
     @field_validator("task_description")
     @classmethod
@@ -269,15 +271,11 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
     # passed every check skillpkg has.
     if not skill.body.strip():
         logger.warning("generate-skill: model returned an empty body")
-        raise HTTPException(
-            status_code=502, detail="generate model returned malformed output"
-        )
+        raise HTTPException(status_code=502, detail="generate model returned malformed output")
 
     if over := _over_cap(skill):
         logger.warning("generate-skill: model output over the contract cap: %s", over)
-        raise HTTPException(
-            status_code=502, detail="generate model returned malformed output"
-        )
+        raise HTTPException(status_code=502, detail="generate model returned malformed output")
 
     return GenerateSkillResponse(
         skill=skill,

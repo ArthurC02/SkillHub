@@ -29,6 +29,8 @@ from fastapi import APIRouter, HTTPException
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from skillhub_llm.gateway import gateway
+
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.evaluate")
 
@@ -192,18 +194,12 @@ Answer only with the required JSON object. Every field is required."""
 def _client() -> AsyncOpenAI:
     """OpenAI-compatible client pointed at the LiteLLM gateway (Iron Rule 8).
 
-    No provider fallback: an unconfigured process must fail loudly rather than
-    reach a provider directly. Gateway/model failures surface as 502; the
-    service-level bearer guard reports its own missing configuration as 503.
-    Read at call time so import never fails.
+    Gateway and model failures surface as 502. A gateway this process was never
+    given an address for is not a failure of the gateway, and gateway() says so
+    with a 503 instead of aiming a placeholder key at a default address.
     """
-    return AsyncOpenAI(
-        base_url=os.getenv("LITELLM_BASE_URL", "http://localhost:4000"),
-        # AsyncOpenAI refuses to construct without one; a placeholder turns a
-        # missing key into a 502 from the gateway instead of a 500 from here.
-        api_key=os.getenv("LITELLM_API_KEY") or "unconfigured",
-        timeout=LLM_TIMEOUT_SECONDS,
-    )
+    base_url, api_key = gateway()
+    return AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=LLM_TIMEOUT_SECONDS)
 
 
 def _scrub(text: str) -> str:
@@ -317,7 +313,9 @@ class TraceDigest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     complete: bool
-    entries: list[TraceDigestEntry] = Field(default_factory=list, max_length=100)  # one-number: maxDigestCount
+    entries: list[TraceDigestEntry] = Field(
+        default_factory=list, max_length=100
+    )  # one-number: maxDigestCount
 
 
 class RubricItem(BaseModel):
@@ -347,10 +345,14 @@ class JudgeRunRequest(BaseModel):
     evaluation_id: str
     skill: JudgeSkill | None = None
     user_prompt: str = Field(..., min_length=1, max_length=40_000)
-    criteria: list[JudgeCriterion] = Field(..., min_length=1, max_length=20)  # one-number: maxCriteria
+    criteria: list[JudgeCriterion] = Field(
+        ..., min_length=1, max_length=20
+    )  # one-number: maxCriteria
     rubric: Rubric | None = None
     final_output: str = Field(..., max_length=40_000)  # one-number: maxFinalOutput
-    artifacts: list[JudgeArtifact] = Field(default_factory=list, max_length=500)  # one-number: maxArtifactRows
+    artifacts: list[JudgeArtifact] = Field(
+        default_factory=list, max_length=500
+    )  # one-number: maxArtifactRows
     trace_digest: TraceDigest
     truncation: list[str] = Field(default_factory=list, max_length=100)
 

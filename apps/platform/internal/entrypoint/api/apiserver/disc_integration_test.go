@@ -428,6 +428,49 @@ func TestZeroHitLegDoesNotParticipateInFusion(t *testing.T) {
 	}
 }
 
+// CORE-006 and iron rule 3: the public scope is fixed inside the retrieval SQL,
+// and the vector leg has to carry it too.
+//
+// Every scope test that existed ran against the degraded path — they were
+// written with no LLM configured, and FTS-only search is a different statement
+// with its own copy of the predicate. Deleting BOTH `AND w.is_catalog` clauses
+// from PublicHybridSearchSkills left the entire suite green (M1 audit,
+// 2026-08-24). That is an anonymous, unauthenticated read of every private
+// workspace in the database, one deleted line away.
+//
+// The private document is deliberately identical to the published one in name
+// and in embedding axis. If it differed in either, it could be excluded by
+// ranking rather than by scope and the test would pass for the wrong reason.
+func TestPublicHybridSearchDoesNotLeakPrivateWorkspaces(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+
+	curator := a.login(t, "curator-scope-hybrid")
+	markCatalog(t, pool, curator.workspaceID)
+	published := seedSkill(t, pool, curator.workspaceID, "borogove ledger reconciler")
+
+	owner := a.login(t, "owner-scope-hybrid") // not marked catalog
+	private := seedSkill(t, pool, owner.workspaceID, "borogove ledger reconciler")
+
+	seedEmbedding(t, pool, published, 7)
+	seedEmbedding(t, pool, private, 7)
+
+	hybrid := newAPIWithLLM(t, pool, stubLLM(t, 7, "because it fits"))
+	anon := &client{Client: http.DefaultClient, base: hybrid.URL}
+	body := anon.search(t, "/api/skills/search?q=borogove+ledger")
+	if body.Degraded {
+		t.Fatalf("meant to exercise the hybrid path, got the degraded one: %q", body.DegradedReason)
+	}
+
+	ids := body.ids()
+	if !contains(ids, published) {
+		t.Fatalf("the catalog document did not come back at all, so nothing was proved: %v", ids)
+	}
+	if contains(ids, private) {
+		t.Fatalf("public search answered an anonymous request with a private workspace's skill: %v", ids)
+	}
+}
+
 // golden-query-set.md §3.7: the BM25 leg widens the candidate set and nothing
 // more. Here the lexical leg's best hit is the vector leg's worst, so if the FTS
 // rank still carried any ordering weight — as it did under equal-weight RRF —

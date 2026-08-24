@@ -1,3 +1,4 @@
+import os
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
@@ -29,6 +30,32 @@ def test_service_fails_closed_when_authentication_is_not_configured():
             json={"texts": ["secret"]},
         )
     assert response.status_code == 503
+
+
+def test_model_calls_refuse_an_unconfigured_gateway(monkeypatch):
+    """Iron Rule 8: a process that was never told where the gateway is says so.
+
+    These three endpoints used to carry module-level defaults - the address
+    `http://localhost:4000` and the literal dev key `sk-1234` - read at import
+    time. A deployment with no gateway configured therefore produced a 502,
+    which Go cannot tell from a provider outage, and Go's answer to a provider
+    outage is to degrade search to FTS-only: silently, and for as long as the
+    misconfiguration lasts. enrich already answered 503; the other three did not
+    (M1 audit, 2026-08-24).
+
+    The empty-string case is the one that actually happens: .env.example ships
+    `LITELLM_API_KEY=` with no value, so the variable is set and a getenv
+    default never fires.
+    """
+    monkeypatch.setenv("LITELLM_API_KEY", "")
+    for path, payload in (
+        ("/embed", {"texts": ["one"]}),
+        ("/match-reasons", {"query": "read my invoices", "candidates": CANDIDATES}),
+        ("/suggest-criteria", SUGGEST_BODY),
+    ):
+        response = client.post(path, json=payload)
+        assert response.status_code == 503, path
+        assert "LITELLM_API_KEY" in response.json()["detail"], path
 
 
 def test_healthz_returns_ok():
@@ -257,7 +284,7 @@ def test_suggest_criteria_asks_the_gateway_for_the_shape_it_parses():
     assert fmt["json_schema"]["strict"] is True
     assert "criteria" in fmt["json_schema"]["schema"]["properties"]
     # Iron rule 8: the call goes to the LiteLLM gateway, on the mini tier.
-    assert kwargs["api_base"] == app_module.LITELLM_BASE_URL
+    assert kwargs["api_base"] == os.environ["LITELLM_BASE_URL"]
     assert kwargs["model"] == app_module.SUGGEST_CRITERIA_MODEL
 
 

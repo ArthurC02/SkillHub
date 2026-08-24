@@ -167,13 +167,38 @@ func TestTokenize(t *testing.T) {
 }
 
 // DISC-001: a blank or unusable query must not turn into a search.
+//
+// The negative cases are the point. Every one of them is two runes long, so a
+// rule that only counts runes admits all of them - and each admission costs a
+// gateway embedding and a funnel event that says a search happened.
 func TestIsComprehensible(t *testing.T) {
-	for _, q := range []string{"", " ", "a"} {
+	unsearchable := []string{
+		"", " ", "a", // blank, blank-ish, one character
+		"  ", // two spaces
+		"!!", // two ASCII punctuation marks
+		"、、", // two CJK punctuation marks, which are not CJK words
+		"—",  // an em dash
+		"你",  // a single ideograph is one unit, not two
+		"1",  // a single digit
+	}
+	for _, q := range unsearchable {
 		if isComprehensible(q) {
 			t.Errorf("%q should not be searchable", q)
 		}
 	}
-	for _, q := range []string{"pdf tables", "轉表格"} {
+
+	// Scripts this catalog can be searched in. The three non-Latin, non-CJK ones
+	// were rejected by the hand-written character range and only got through on
+	// the rune-count fallback that made the range meaningless.
+	searchable := []string{
+		"pdf tables", // Latin
+		"轉表格",        // CJK ideographs
+		"データ",        // Katakana
+		"데이터",        // Hangul
+		"данные",     // Cyrillic
+		"a1",         // one letter and one digit
+	}
+	for _, q := range searchable {
 		if !isComprehensible(q) {
 			t.Errorf("%q should be searchable", q)
 		}
