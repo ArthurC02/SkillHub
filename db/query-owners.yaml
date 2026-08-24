@@ -67,7 +67,6 @@ queries:
   # governance.sql：一個檔裝了三種治理動作，資料表分屬四個 context。
   DeleteExpiredAuditEvents: audit
   InsertAuditEvent: audit
-  ListAuditEventsByActor: audit
   ListWorkspaceAuditEvents: audit
   ListWorkspaceDatasetObjectKeys: testlab
   ListWorkspaceRunArtifactObjectKeys: run
@@ -173,7 +172,6 @@ queries:
 
   # trace.sql：trace_events 是 trace 的。
   InsertTraceEvent: trace
-  ListTraceEvents: trace
   ListTraceEventsAfter: trace
   ListEvaluationTraceEvents: trace
   GetTraceStreamHealth: trace

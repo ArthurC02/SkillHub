@@ -7,8 +7,6 @@ package gen
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -24,46 +22,6 @@ type CreateUserParams struct {
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.DisplayName)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.DisplayName,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeletedAt,
-		&i.DeletionRequestedAt,
-	)
-	return i, err
-}
-
-const getUser = `-- name: GetUser :one
-SELECT id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at FROM users
-WHERE id = $1 AND deleted_at IS NULL
-`
-
-func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
-	row := q.db.QueryRow(ctx, getUser, id)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Email,
-		&i.DisplayName,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeletedAt,
-		&i.DeletionRequestedAt,
-	)
-	return i, err
-}
-
-const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at FROM users
-WHERE lower(email) = lower($1::text) AND deleted_at IS NULL
-`
-
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,

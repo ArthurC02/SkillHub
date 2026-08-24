@@ -15,13 +15,10 @@ INSERT INTO trace_events (
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);
 
--- name: ListTraceEvents :many
--- The whole trace of one run, in the cross-producer order of TRACE-001 §7:
--- (occurred_at, emitted_by, seq). Producer clocks skew, so occurred_at only merges
--- the streams; seq is the authority inside one of them.
-SELECT * FROM trace_events
-WHERE run_id = $1 AND workspace_id = $2
-ORDER BY occurred_at, source, attempt, seq;
+-- ListTraceEvents (the whole trace in one read) was removed on 2026-08-25: it
+-- had no caller. Every reader takes ListTraceEventsAfter instead, which pages on
+-- the database-assigned ingest_seq and is therefore stable when producer clocks
+-- skew -- the property the removed one documented at length and did not have.
 
 -- name: ListTraceEventsAfter :many
 -- Incremental advanced-view read. ingest_seq is assigned by the database and is

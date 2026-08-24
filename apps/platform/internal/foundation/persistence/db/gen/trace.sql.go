@@ -503,59 +503,8 @@ func (q *Queries) ListEvaluationTraceEvents(ctx context.Context, arg ListEvaluat
 	return items, nil
 }
 
-const listTraceEvents = `-- name: ListTraceEvents :many
-SELECT id, workspace_id, run_id, seq, occurred_at, event_type, source, status, payload, payload_object_key, event_id, attempt, schema_version, masked, masked_fields, late, ingest_seq FROM trace_events
-WHERE run_id = $1 AND workspace_id = $2
-ORDER BY occurred_at, source, attempt, seq
-`
-
-type ListTraceEventsParams struct {
-	RunID       pgtype.UUID
-	WorkspaceID pgtype.UUID
-}
-
-// The whole trace of one run, in the cross-producer order of TRACE-001 §7:
-// (occurred_at, emitted_by, seq). Producer clocks skew, so occurred_at only merges
-// the streams; seq is the authority inside one of them.
-func (q *Queries) ListTraceEvents(ctx context.Context, arg ListTraceEventsParams) ([]TraceEvent, error) {
-	rows, err := q.db.Query(ctx, listTraceEvents, arg.RunID, arg.WorkspaceID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []TraceEvent
-	for rows.Next() {
-		var i TraceEvent
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.RunID,
-			&i.Seq,
-			&i.OccurredAt,
-			&i.EventType,
-			&i.Source,
-			&i.Status,
-			&i.Payload,
-			&i.PayloadObjectKey,
-			&i.EventID,
-			&i.Attempt,
-			&i.SchemaVersion,
-			&i.Masked,
-			&i.MaskedFields,
-			&i.Late,
-			&i.IngestSeq,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listTraceEventsAfter = `-- name: ListTraceEventsAfter :many
+
 SELECT id, workspace_id, run_id, seq, occurred_at, event_type, source, status, payload, payload_object_key, event_id, attempt, schema_version, masked, masked_fields, late, ingest_seq FROM trace_events
 WHERE run_id = $1 AND workspace_id = $2
   AND ingest_seq > $3
@@ -570,6 +519,10 @@ type ListTraceEventsAfterParams struct {
 	PageLimit      int32
 }
 
+// ListTraceEvents (the whole trace in one read) was removed on 2026-08-25: it
+// had no caller. Every reader takes ListTraceEventsAfter instead, which pages on
+// the database-assigned ingest_seq and is therefore stable when producer clocks
+// skew -- the property the removed one documented at length and did not have.
 // Incremental advanced-view read. ingest_seq is assigned by the database and is
 // therefore stable even when producer clocks skew or several streams reuse seq.
 func (q *Queries) ListTraceEventsAfter(ctx context.Context, arg ListTraceEventsAfterParams) ([]TraceEvent, error) {

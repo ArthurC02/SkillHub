@@ -7,11 +7,12 @@
 INSERT INTO audit_events (actor_user_id, workspace_id, action, resource_type, resource_id, metadata)
 VALUES ($1, $2, $3, $4, $5, $6);
 
--- name: ListAuditEventsByActor :many
-SELECT * FROM audit_events
-WHERE actor_user_id = $1
-ORDER BY created_at DESC, id DESC
-LIMIT $2;
+-- ListAuditEventsByActor was removed on 2026-08-25: it had no caller, and it
+-- carried a hand-written owner override in db/query-owners.yaml maintained for a
+-- query nobody called. The 0013 index it read (audit_events_actor_idx) stays:
+-- "what did this account do" during an incident is answered at a psql prompt,
+-- which is where NFR-001 expects an investigator to be, and that needs the index
+-- rather than a Go method.
 
 -- name: ListWorkspaceAuditEvents :many
 -- What happened in this workspace, most recent first (02:GEN-003 「可查」).

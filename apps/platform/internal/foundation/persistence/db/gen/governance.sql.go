@@ -229,47 +229,6 @@ func (q *Queries) ListAccountsPastGrace(ctx context.Context, arg ListAccountsPas
 	return items, nil
 }
 
-const listAuditEventsByActor = `-- name: ListAuditEventsByActor :many
-SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at FROM audit_events
-WHERE actor_user_id = $1
-ORDER BY created_at DESC, id DESC
-LIMIT $2
-`
-
-type ListAuditEventsByActorParams struct {
-	ActorUserID pgtype.UUID
-	Limit       int32
-}
-
-func (q *Queries) ListAuditEventsByActor(ctx context.Context, arg ListAuditEventsByActorParams) ([]AuditEvent, error) {
-	rows, err := q.db.Query(ctx, listAuditEventsByActor, arg.ActorUserID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []AuditEvent
-	for rows.Next() {
-		var i AuditEvent
-		if err := rows.Scan(
-			&i.ID,
-			&i.ActorUserID,
-			&i.WorkspaceID,
-			&i.Action,
-			&i.ResourceType,
-			&i.ResourceID,
-			&i.Metadata,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listSourcesToCheck = `-- name: ListSourcesToCheck :many
 SELECT id, workspace_id, source_url, unavailable_since FROM skill_sources
 WHERE source_type = 'git' AND source_url IS NOT NULL
@@ -315,6 +274,7 @@ func (q *Queries) ListSourcesToCheck(ctx context.Context, limit int32) ([]ListSo
 }
 
 const listWorkspaceAuditEvents = `-- name: ListWorkspaceAuditEvents :many
+
 SELECT id, actor_user_id, workspace_id, action, resource_type, resource_id, metadata, created_at FROM audit_events
 WHERE workspace_id = $1 AND action = ANY($3::text[])
 ORDER BY created_at DESC, id DESC
@@ -327,6 +287,12 @@ type ListWorkspaceAuditEventsParams struct {
 	Actions     []string
 }
 
+// ListAuditEventsByActor was removed on 2026-08-25: it had no caller, and it
+// carried a hand-written owner override in db/query-owners.yaml maintained for a
+// query nobody called. The 0013 index it read (audit_events_actor_idx) stays:
+// "what did this account do" during an incident is answered at a psql prompt,
+// which is where NFR-001 expects an investigator to be, and that needs the index
+// rather than a Go method.
 // What happened in this workspace, most recent first (02:GEN-003 「可查」).
 //
 // Workspace-scoped and not actor-scoped even though a personal workspace has one
