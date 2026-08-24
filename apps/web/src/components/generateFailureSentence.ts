@@ -40,7 +40,12 @@ export const FAILURE_SENTENCE: Record<GenerationFailure["failure"], (f: Generati
 
 export function failureSentence(f: GenerationFailure): string {
   if (f.truncated) return "模型的輸出超過一次生成的上限，已經停下。把任務拆小一點再試會有幫助。";
-  if (f.collision) return "工作區已經有一個同名的 Skill，而它不是生成的。改掉那一個的名字或刪掉它再試。";
+  // Not 「而它不是生成的」: since the guard widened (81ae767), the most common
+  // collision is a REGENERATION landing on the earlier generated skill — the
+  // model takes the same name from the same task. The sentence must be true
+  // for both kinds of neighbour.
+  if (f.collision)
+    return "工作區已經有一個同名的 Skill。刪掉它（或改掉它的名字）再生成一次——同一段描述通常會讓模型取到同一個名字。";
   // A value this build does not know falls to the "" sentence: the row
   // happened, the detail is unreadable to this build. Own-property, not a
   // bare lookup — a wire value of "constructor" must not reach the table's

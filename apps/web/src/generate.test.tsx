@@ -58,12 +58,22 @@ const NO_RESULTS = {
 };
 
 /** A logged-in session, with `features` present only when asked for. */
-function stubSession(features?: Record<string, boolean>, failures?: unknown[]) {
+function stubSession(
+  features?: Record<string, boolean>,
+  failures?: unknown[],
+  generateResult?: unknown,
+) {
   const posted: { path: string; body: string }[] = [];
+  const searchGets: string[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const path = String(input).replace(/^https?:\/\/[^/]+/, "").split("?")[0];
     if (init?.method === "POST") {
       posted.push({ path, body: String(init.body ?? "") });
+      if (path === "/skills/generate" && generateResult) {
+        return Promise.resolve(
+          new Response(JSON.stringify(generateResult), { status: 201 }),
+        );
+      }
       return Promise.resolve(
         new Response(JSON.stringify({ error: "not implemented in this stub" }), { status: 502 }),
       );
@@ -74,6 +84,7 @@ function stubSession(features?: Record<string, boolean>, failures?: unknown[]) {
       );
     }
     if (path.startsWith("/api/skills/search")) {
+      searchGets.push(path);
       return Promise.resolve(new Response(JSON.stringify(NO_RESULTS), { status: 200 }));
     }
     if (path === "/me") {
@@ -95,7 +106,7 @@ function stubSession(features?: Record<string, boolean>, failures?: unknown[]) {
     }
     return Promise.resolve(new Response(JSON.stringify({ skills: [] }), { status: 200 }));
   });
-  return posted;
+  return { posted, searchGets };
 }
 
 async function submitSearch(text: string) {
@@ -242,5 +253,51 @@ test("GEN-003: every failure value in the contract has a sentence", async () => 
     const sentence = FAILURE_SENTENCE[value as keyof typeof FAILURE_SENTENCE];
     expect(sentence, `no sentence for failure ${JSON.stringify(value)}`).toBeTypeOf("function");
   }
+});
+
+// fcc9238's fix without this had no teeth: success used to invalidate
+// ["skills"], which matched the active ["skills","search",…] query — re-running
+// the search and writing a second search_performed analytics event per success.
+// That is 01 §11.2's first funnel segment, the number with one chance and
+// twelve people. The assertion is on the SEARCH REQUEST COUNT, so flipping the
+// key back turns this red.
+test("GEN-008: a successful generation does not re-run the search behind it", async () => {
+  const { searchGets } = stubSession({ generate_skill: true }, [], {
+    skill_id: "sk-1",
+    version_number: 1,
+    attempts: 1,
+    generator_model: "stub",
+    generator_prompt_version: "stub/v1",
+  });
+  await render();
+  await submitSearch("沒有人做過的事");
+  const before = searchGets.length;
+
+  await act(async () => {
+    container
+      .querySelectorAll("button")
+      .forEach((b) => {
+        if (b.textContent === "生成一個 Skill") b.click();
+      });
+  });
+  await waitFor(() => (container.textContent ?? "").includes("已經產生一個 Skill"));
+
+  expect(searchGets.length).toBe(before);
+});
+
+// The collision sentence must be true for BOTH kinds of neighbour: since the
+// guard widened, the most common collision is a regeneration landing on the
+// earlier GENERATED skill, and the old sentence asserted the opposite
+// (「而它不是生成的」).
+test("GEN-003: the collision sentence does not claim the neighbour is not generated", async () => {
+  const { failureSentence } = await import("./components/generateFailureSentence");
+  const sentence = failureSentence({
+    occurred_at: "2026-08-24T01:00:00Z",
+    failure: "rejected",
+    attempts: 1,
+    collision: true,
+  });
+  expect(sentence).toContain("同名");
+  expect(sentence).not.toContain("不是生成的");
 });
 

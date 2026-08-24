@@ -147,6 +147,16 @@ func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	// The upload direction of the generated-name guard. Without this branch it
+	// fell into the 500 below — the user's own naming clash reported as the
+	// platform being broken, with no next step (§2.2: a refusal says what to do).
+	if errors.Is(err, ErrGeneratedNameCollision) {
+		httpx.WriteError(w, http.StatusUnprocessableEntity,
+			"這個工作區已經有一個同名的生成 Skill。"+
+				"請先刪除它（或改掉套件裡的 name）再匯入——"+
+				"平台不會把上傳的內容接在生成的 Skill 後面當成新版本。")
+		return
+	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "import failed")
 		return

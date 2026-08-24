@@ -3,6 +3,9 @@ package ingest
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -280,4 +283,20 @@ func mustUUIDForTest(t *testing.T, s string) pgtype.UUID {
 		t.Fatal(err)
 	}
 	return id
+}
+
+// The upload direction of the name guard, at the HTTP layer. It used to fall
+// into respond()'s generic 500 "import failed" — the user's own naming clash
+// reported as the platform being broken, with no next step. The service-level
+// refusal is covered by the apiserver integration test; this pins the mapping.
+func TestAnUploadCollidingWithAGeneratedSkillIsRefusedNotBroken(t *testing.T) {
+	rec := httptest.NewRecorder()
+	(&Handler{}).respond(rec, Result{}, fmt.Errorf("upload: %w", ErrGeneratedNameCollision))
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "同名") || strings.Contains(body, "import failed") {
+		t.Errorf("the refusal does not tell the user what happened: %s", body)
+	}
 }

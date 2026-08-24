@@ -454,8 +454,11 @@ paths:
           description: |
             The generation allowance could not be counted (the platform's own
             database, not the gateway). Refused before the model was called and
-            nothing was spent; the failure record says `unavailable`, not
-            `quota` — a healthy account is not told it ran out (d555564).
+            nothing was spent; the failure record's `failure` field says
+            `unavailable`, not `quota` — a healthy account is not told it
+            ran out (d555564). (Its `reason` field keeps the
+            `generate_quota_unavailable` metric prefix; the word to grep
+            the FAILURE by is `unavailable`.)
           content:
             application/json:
               schema:
