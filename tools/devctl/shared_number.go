@@ -86,7 +86,78 @@ type sharedNumberSite struct {
 	value string
 }
 
+// The invariants that are supposed to exist.
+//
+// Everything below is built from what the scan found, which means an invariant
+// whose markers ALL disappear produces no key, no loop iteration and no failure.
+// That is not hypothetical here: the comment above records a copy in
+// tools/eval-regression that stopped being counted because of where its marker
+// sat inside a comment — one more of those and the name is simply gone, silently
+// and permanently. "Only one site left" is caught; "no sites left" was not.
+//
+// So the names are a roster and the comparison runs both ways: a rostered name
+// with no sites fails, and a marked name that is not on the roster fails. The
+// second half is what keeps the roster honest — adding an invariant is an edit
+// here, in the same commit as the markers, which is the same discipline the
+// depguard deny lists and db/query-owners.yaml already ask for.
+var sharedNumberRoster = []string{
+	"excerptLimit",
+	"generateFailureLimit",
+	"generateMaxAttempts",
+	"generateMaxExtraFiles",
+	"generateMaxFileChars",
+	"generateMaxOutputTokens",
+	"generateMaxPathChars",
+	"generateMaxTaskRunes",
+	"judgeMaxCriterionResults",
+	"judgeMaxEvidenceRefs",
+	"judgeMaxQuote",
+	"judgeMaxReason",
+	"judgeMaxSummary",
+	"maxArtifactRows",
+	"maxCriteria",
+	"maxDigestCount",
+	"maxDigestEntry",
+	"maxFinalOutput",
+	// suggestCriteriaMaxItems, suggestMaxTargetFileChars and suggestMaxTargetFiles
+	// were marked in apps/llm on 2026-08-25 and have one site each so far; the
+	// existing "only one marked site" rule already says so.
+	"suggestCriteriaMaxItems",
+	"suggestMaxDigestChars",
+	"suggestMaxEvidence",
+	"suggestMaxExpectedImpact",
+	"suggestMaxFileTreeEntries",
+	"suggestMaxProblem",
+	"suggestMaxProposedContent",
+	"suggestMaxSuggestions",
+	"suggestMaxTargetFileChars",
+	"suggestMaxTargetFiles",
+	"suggestMaxTargetPath",
+}
+
+// sharedNumberOwnTest names the fixtures of this check's own tests, and nothing
+// else. Exact directory, exact suffix: `tools/devctl/*_test.go`.
+func sharedNumberOwnTest(relative string) bool {
+	relative = filepath.ToSlash(relative)
+	return strings.HasPrefix(relative, "tools/devctl/") &&
+		strings.HasSuffix(relative, "_test.go") &&
+		!strings.Contains(strings.TrimPrefix(relative, "tools/devctl/"), "/")
+}
+
 func sharedNumberProblems(root string) []string {
+	return sharedNumberProblemsFor(root, sharedNumberRoster)
+}
+
+func sharedNumberProblemsFor(root string, roster []string) []string {
+	found, problems := sharedNumberScan(root)
+	return append(problems, sharedNumberComparison(found, roster)...)
+}
+
+// sharedNumberScan is the walk, split out so a test can ask what it counted
+// rather than only what it complained about. A fixture that leaks into the real
+// scan without causing a disagreement is still a fixture voting on production,
+// and only the site list can see that.
+func sharedNumberScan(root string) (map[string][]sharedNumberSite, []string) {
 	found := map[string][]sharedNumberSite{}
 	var problems []string
 
@@ -108,6 +179,20 @@ func sharedNumberProblems(root string) []string {
 				}
 			}
 			if d.IsDir() {
+				return nil
+			}
+			// Not this package's own tests. shared_number_test.go writes marked
+			// lines with real invariant names to prove the comparison works, and
+			// counting them made this check argue with production about what
+			// maxDigestEntry is — the same trap the `<name>` placeholders in the
+			// comment above exist to avoid, arriving from the other direction.
+			//
+			// Deliberately NOT "every _test.go": a test asserting a duplicated
+			// limit is a legitimate copy, and an exclusion wide enough to drop it
+			// is the failure this file already records once, where the
+			// eval-regression copy stopped being counted. Same shape and same
+			// reason as doc_identifiers.go excluding exactly its own source.
+			if sharedNumberOwnTest(rel) {
 				return nil
 			}
 			switch filepath.Ext(path) {
@@ -143,12 +228,34 @@ func sharedNumberProblems(root string) []string {
 			problems = append(problems, fmt.Sprintf("%s: %v", tree, err))
 		}
 	}
+	return found, problems
+}
 
+func sharedNumberComparison(found map[string][]sharedNumberSite, roster []string) []string {
+	var problems []string
 	var names []string
 	for name := range found {
 		names = append(names, name)
 	}
 	sort.Strings(names)
+
+	expected := map[string]bool{}
+	for _, name := range roster {
+		expected[name] = true
+		if len(found[name]) == 0 {
+			problems = append(problems, fmt.Sprintf(
+				"one-number: %s is on the roster in tools/devctl/shared_number.go but no marked site was found; "+
+					"either every marker fell off (the value is still duplicated and nothing compares the copies) "+
+					"or the invariant is gone and the roster entry should go with it", name))
+		}
+	}
+	for _, name := range names {
+		if !expected[name] {
+			problems = append(problems, fmt.Sprintf(
+				"one-number: %s is marked at %d site(s) but is not on the roster in tools/devctl/shared_number.go; "+
+					"add it there so losing every marker later is a failure and not a silence", name, len(found[name])))
+		}
+	}
 
 	for _, name := range names {
 		sites := found[name]

@@ -23,27 +23,32 @@
 # 維護規則：
 #   - 新增 db/queries/*.sql 的 query 一定要在這裡登記，漏了 CI 會 FAIL。
 #   - 刪掉的 query 也要從這裡移除，殘留條目 CI 會 FAIL。
+#   - `files:` 的值**留空 ＝ 本檔沒有預設 owner**，每一條 query 都必須在 `queries:`
+#     具名。混合檔（governance／beta／reconcile／runs／trace）一律如此，漏掉 CI 會 FAIL。
+#     2026-08-25 之前這五個檔各有一個預設值，而「新增 query 漏登記 CI 會 FAIL」那句話
+#     因此是假的：新 query 靜默繼承檔案預設，`governance.sql` 的 24 條裡已有 17 條
+#     需要覆寫，正說明那個預設值有多不可信。
 #   - `allow:` 是**存量漂移**，不是擴充點。新的跨 context write 一律修程式，
 #     不准往下面加行；清除路徑見 ADR-033。
 
 # 每個 db/queries/*.sql 的預設 owner。
 files:
   auth.sql: identity
-  beta.sql: analytics
+  beta.sql:
   dispatch.sql: run
   evaluation.sql: eval
-  governance.sql: identity
+  governance.sql:
   packaging.sql: packaging
-  reconcile.sql: objreconcile
+  reconcile.sql:
   run_permissions.sql: run
-  runs.sql: run
+  runs.sql:
   search.sql: catalog
   skill_fork.sql: registry
   skill_import.sql: ingest
   skill_versions.sql: registry
   skills.sql: registry
   test_lab.sql: testlab
-  trace.sql: trace
+  trace.sql:
   users.sql: identity
   workspaces.sql: identity
 
@@ -116,6 +121,66 @@ queries:
   # trace.sql：Trace ingest 要先確認 run 存在。
   GetRunForTraceIngest: run
   CountRunsNeedingCleanup: run
+
+  # governance.sql：帳號刪除流程動的是 users／sessions／user_identities／workspaces。
+  RequestAccountDeletion: identity
+  CancelAccountDeletion: identity
+  ListAccountsPastGrace: identity
+  DeleteUserIdentities: identity
+  DeleteUserSessions: identity
+  AnonymizeWorkspacesByOwner: identity
+  AnonymizeUser: identity
+
+  # beta.sql：analytics_events 與 feedback_reports 是 analytics 自己的表。
+  InsertAnalyticsEvent: analytics
+  DetachWorkspaceAnalytics: analytics
+  DetachWorkspaceFeedback: analytics
+  InsertFeedbackReport: analytics
+  DeleteExpiredAnalyticsEvents: analytics
+
+  # reconcile.sql：object_reconcile_sightings 是 objreconcile 自己的表。
+  RecordObjectSighting: objreconcile
+  ClearObjectSighting: objreconcile
+  CountPersistentObjectSightings: objreconcile
+
+  # runs.sql：runs／run_attempts／run_status_transitions／artifacts(kind='run_output')／
+  # reconciler_orphan_sightings 都是 run 的。
+  CreateRun: run
+  GetRun: run
+  ListWorkspaceRuns: run
+  SoftDeleteRunArtifact: run
+  GetRunLinkage: run
+  TransitionRun: run
+  RequestRunCancel: run
+  SetRunProvider: run
+  ListActiveRuns: run
+  ListRunsNeedingCleanup: run
+  SetRunCleanupStatus: run
+  InsertRunStatusTransition: run
+  ListRunStatusTransitions: run
+  CreateRunAttempt: run
+  SetAttemptProviderRunID: run
+  FinishRunAttempt: run
+  GetRunAttemptForReconcile: run
+  ListRunAttempts: run
+  LockWorkspaceRunSlots: run
+  CountActiveRuns: run
+  InsertRunArtifact: run
+  ListRunArtifacts: run
+  RecordOrphanSighting: run
+  ForgetClearedOrphans: run
+  CountPersistentOrphans: run
+
+  # trace.sql：trace_events 是 trace 的。
+  InsertTraceEvent: trace
+  ListTraceEvents: trace
+  ListTraceEventsAfter: trace
+  ListEvaluationTraceEvents: trace
+  GetTraceStreamHealth: trace
+  GetTraceGeneralFold: trace
+  LockTraceIngestRun: trace
+  NextTraceSeq: trace
+  CountTraceMaskingInWindow: trace
 
 # 存量漂移：本檔導入時就已存在的跨 context write 呼叫。
 # **目前零條，維持零條**——ADR-033 記錄的 15 條已由 DDD-019／020／025／026

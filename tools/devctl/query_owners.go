@@ -59,7 +59,13 @@ func queryOwnerProblems(root string) []string {
 
 	for _, section := range []string{"files", "queries"} {
 		for _, key := range sortedKeys(sections[section]) {
-			if owner := sections[section][key]; !knownBoundaryID(identities, owner) {
+			owner := sections[section][key]
+			// An empty `files:` value is the "no default" declaration, read
+			// below; an empty `queries:` value is just a missing owner.
+			if section == "files" && owner == "" {
+				continue
+			}
+			if !knownBoundaryID(identities, owner) {
 				problems = append(problems, fmt.Sprintf(
 					"db/%s: %s.%s = %q is not a Boundary ID in ADR-032 §1", queryOwnersFile, section, key, owner))
 			}
@@ -88,13 +94,37 @@ func queryOwnerProblems(root string) []string {
 			problems = append(problems, fmt.Sprintf("db/%s: queries.%s is not a query in db/queries", queryOwnersFile, name))
 		}
 	}
+	// A file whose `files:` value is empty declares that it has NO default: every
+	// query in it must name its own owner.
+	//
+	// AGENTS.md rule 8 and this file's own header both promise "a new query
+	// without a declaration fails CI", and for a single-context file the default
+	// makes that true. For a mixed file it made the opposite true: a query added
+	// to governance.sql that touches only audit_events inherits `identity`, so
+	// `audit` calling its own query is reported as cross-context while `identity`
+	// calling somebody else's is legal — the ratchet pointing backwards, with
+	// nothing red anywhere. governance.sql needing 17 overrides for its 24
+	// queries is the measure of how little that default was worth.
+	for _, name := range sortedKeys(queries) {
+		file := queries[name].file
+		if _, hasFile := fileOwners[file]; !hasFile {
+			continue // already reported above as a file with no declaration at all
+		}
+		if _, declaredOwner := queryOwners[name]; declaredOwner || fileOwners[file] != "" {
+			continue
+		}
+		problems = append(problems, fmt.Sprintf(
+			"db/%s: queries.%s is undeclared and db/queries/%s has no default owner; "+
+				"name the context that owns its main table", queryOwnersFile, name, file))
+	}
+
 	names := map[string]bool{}
 	for name := range queries {
 		names[name] = true
 	}
-	calls, err := queryCallSites(filepath.Join(root, "apps", "platform", "internal"), names, identities)
+	calls, err := queryCallSites(filepath.Join(root, "apps", "platform"), names, identities)
 	if err != nil {
-		return append(problems, fmt.Sprintf("apps/platform/internal: %v", err))
+		return append(problems, fmt.Sprintf("apps/platform: %v", err))
 	}
 
 	owner := func(name string) string {
@@ -122,6 +152,9 @@ func queryOwnerProblems(root string) []string {
 		for _, name := range sortedKeys(queries) {
 			if queries[name].write != side.write {
 				continue
+			}
+			if owner(name) == "" {
+				continue // reported above; "owned by nobody" is not a cross-context call
 			}
 			allowed := map[string]bool{}
 			for _, id := range splitList(tolerated[name]) {
@@ -183,15 +216,32 @@ func queryOwnerProblems(root string) []string {
 // two sides are cross-checked below, and weakening either alone fails CI.
 func immutableTableProblems(root string, sections map[string]map[string]string, queries map[string]sqlQuery) []string {
 	declared, allow := sections["immutable"], sections["immutable_allow"]
-	if len(declared) == 0 {
-		return nil
-	}
 	frozen, err := frozenTables(filepath.Join(root, "db", "migrations"))
 	if err != nil {
 		return []string{fmt.Sprintf("db/migrations: %v", err)}
 	}
+	// Only when there is nothing on either side. `len(declared) == 0` alone made
+	// deleting the whole `immutable:` block the way to skip the check, which is
+	// the opposite of what the block above promises.
+	if len(declared) == 0 && len(frozen) == 0 {
+		return nil
+	}
 
 	var problems []string
+	// The reverse direction. The paragraph above says the two sides are
+	// cross-checked and that weakening either alone fails CI; walking `declared`
+	// only ever checked one of the two. Deleting `audit_events:` from the
+	// declaration left the 0013 trigger in place and the check green, and a
+	// `UPDATE audit_events` could then merge on a green PR and fail as a staging
+	// 500 — the exact arrival time this check exists to move earlier.
+	for _, table := range sortedKeys(frozen) {
+		if _, ok := declared[table]; !ok {
+			problems = append(problems, fmt.Sprintf(
+				"db/%s: db/migrations freezes %s with an unconditional enforce_immutable() trigger but immutable: does not declare it; "+
+					"declare it, or remove the trigger's migration first",
+				queryOwnersFile, table))
+		}
+	}
 	for _, table := range sortedKeys(declared) {
 		switch {
 		case strings.TrimSpace(declared[table]) == "":
@@ -414,7 +464,24 @@ func mutatedTables(body string) []string {
 	return tables
 }
 
-func queryCallSites(internal string, names map[string]bool, identities map[string]packageIdentity) (map[string][]callSite, error) {
+// apps/platform/cmd/<name> is a process root, not a package under internal/, so
+// ADR-032 §1 — whose key is an internal path — has no row that can name its
+// context. It still calls queries: cmd/reindex opens the sqlc package and runs
+// ReindexAll and PruneDeletedSearchDocuments, and a maintenance command is
+// exactly where reaching into another context's table is most tempting.
+//
+// rawSQLProblems has walked both `internal` and `cmd` since it was written and
+// its comment says of an undeclared package that "the ownership check would
+// complain first". It never would have: ownership stopped at internal/. So each
+// command that touches sqlc declares whose data access it performs, and one that
+// does not is an error rather than an exemption.
+var commandContexts = map[string]string{
+	// Phase 1 rebuilds the search projection through catalog's own two queries
+	// (search.sql); phase 2 goes through ingest.Service and calls none.
+	"reindex": "catalog",
+}
+
+func queryCallSites(platform string, names map[string]bool, identities map[string]packageIdentity) (map[string][]callSite, error) {
 	alternatives := make([]string, 0, len(names))
 	for name := range names {
 		alternatives = append(alternatives, regexp.QuoteMeta(name))
@@ -423,51 +490,74 @@ func queryCallSites(internal string, names map[string]bool, identities map[strin
 	callPattern := regexp.MustCompile(`\.(` + strings.Join(alternatives, "|") + `)\(`)
 
 	calls := map[string][]callSite{}
-	err := filepath.WalkDir(internal, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry.IsDir() {
-			return err
+	for _, tree := range []string{"internal", "cmd"} {
+		base := filepath.Join(platform, tree)
+		if _, err := os.Stat(base); err != nil {
+			continue // apps/platform/cmd does not exist in every fixture
 		}
-		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		text := string(data)
-		if !strings.Contains(text, genImportPath) {
-			return nil
-		}
-		relative, err := filepath.Rel(internal, path)
-		if err != nil {
-			return err
-		}
-		relative = filepath.ToSlash(relative)
-		directory := filepath.ToSlash(filepath.Dir(relative))
-		identity, known := resolveContextPath(directory, identities)
-		if !known {
-			return fmt.Errorf("apps/platform/internal/%s calls sqlc but has no architecture identity in ADR-032 §1", directory)
-		}
-		// One entry per query per file: the report names the file, and a second
-		// call on the next line adds nothing to it.
-		seen := map[string]bool{}
-		for _, match := range callPattern.FindAllStringSubmatch(text, -1) {
-			if seen[match[1]] {
-				continue
+		err := filepath.WalkDir(base, func(path string, entry os.DirEntry, err error) error {
+			if err != nil || entry.IsDir() {
+				return err
 			}
-			seen[match[1]] = true
-			calls[match[1]] = append(calls[match[1]], callSite{
-				boundary: identity.ID,
-				caller:   identity.ID,
-				path:     "apps/platform/internal/" + relative,
-			})
+			if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+				return nil
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			text := string(data)
+			if !strings.Contains(text, genImportPath) {
+				return nil
+			}
+			relative, err := filepath.Rel(base, path)
+			if err != nil {
+				return err
+			}
+			relative = filepath.ToSlash(relative)
+			directory := filepath.ToSlash(filepath.Dir(relative))
+			boundary, known := callerBoundary(tree, directory, identities)
+			if !known {
+				if tree == "cmd" {
+					return fmt.Errorf("apps/platform/cmd/%s calls sqlc but has no entry in commandContexts "+
+						"(tools/devctl/query_owners.go); name the context whose data it touches", directory)
+				}
+				return fmt.Errorf("apps/platform/internal/%s calls sqlc but has no architecture identity in ADR-032 §1", directory)
+			}
+			// One entry per query per file: the report names the file, and a second
+			// call on the next line adds nothing to it.
+			seen := map[string]bool{}
+			for _, match := range callPattern.FindAllStringSubmatch(text, -1) {
+				if seen[match[1]] {
+					continue
+				}
+				seen[match[1]] = true
+				calls[match[1]] = append(calls[match[1]], callSite{
+					boundary: boundary,
+					caller:   boundary,
+					path:     "apps/platform/" + tree + "/" + relative,
+				})
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
 	return calls, nil
+}
+
+func callerBoundary(tree, directory string, identities map[string]packageIdentity) (string, bool) {
+	if tree == "cmd" {
+		command, _, _ := strings.Cut(directory, "/")
+		boundary, ok := commandContexts[command]
+		if !ok || !knownBoundaryID(identities, boundary) {
+			return "", false
+		}
+		return boundary, true
+	}
+	identity, known := resolveContextPath(directory, identities)
+	return identity.ID, known
 }
 
 // ── 裸 SQL tripwire ────────────────────────────────────────────────────────
@@ -770,7 +860,10 @@ func contextMapProblems(root string) []string {
 		return append(problems, fmt.Sprintf("%s: %v", lintPath, err))
 	}
 	guarded := map[string]bool{}
-	for _, match := range depguardFilePattern.FindAllStringSubmatch(string(lint), -1) {
+	// Comments off first: the pattern runs over text, not over parsed YAML, so a
+	// path written in prose — or a rule commented out during debugging and never
+	// restored — would otherwise register as a guarded path.
+	for _, match := range depguardFilePattern.FindAllStringSubmatch(stripYAMLComments(string(lint)), -1) {
 		guarded[match[1]] = true
 	}
 

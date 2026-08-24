@@ -238,6 +238,119 @@ func TestQueryOwnerProblemsIgnoresTestsAndNonImporters(t *testing.T) {
 	}
 }
 
+// writeCommand drops a process root under apps/platform/cmd/<name>, importing
+// sqlc the way cmd/reindex does.
+func writeCommand(t *testing.T, root, name, body string) {
+	t.Helper()
+	path := filepath.Join(root, "apps", "platform", "cmd", name, "main.go")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	source := "package main\n\nimport \"github.com/ArthurC02/skillhub/apps/platform/" +
+		strings.TrimSuffix(genImportPath, "\"") + "\"\n\n" + body + "\n"
+	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// FIX 4: ownership scanning stopped at apps/platform/internal, so a maintenance
+// command could call any context's query and no check would ever see it -
+// including rawSQLProblems, whose comment says "the ownership check would
+// complain first" about exactly this.
+func TestQueryOwnerProblemsScansCommands(t *testing.T) {
+	t.Parallel()
+	const sql = "-- name: ReindexAll :execrows\nUPDATE search_documents SET stale = false;\n"
+	declaration := decl("files:\n  search.sql: catalog\nqueries:\nallow:\n")
+	adr := strings.Replace(queryOwnerADRFixture, "| eval | eval | EVAL |", "| catalog | skill/discovery | DISC |", 1)
+
+	t.Run("a declared command calling its own context's query is fine", func(t *testing.T) {
+		t.Parallel()
+		root := writeQueryOwnerFixtureWithADR(t, adr, declaration, map[string]string{"search.sql": sql}, nil)
+		writeCommand(t, root, "reindex", "func main() { q.ReindexAll(ctx) }")
+		if problems := queryOwnerProblems(root); len(problems) != 0 {
+			t.Fatalf("expected no problems, got %#v", problems)
+		}
+	})
+
+	t.Run("a command writing another context's table is blocked", func(t *testing.T) {
+		t.Parallel()
+		root := writeQueryOwnerFixtureWithADR(t, adr,
+			decl("files:\n  search.sql: registry\nqueries:\nallow:\n"),
+			map[string]string{"search.sql": sql}, nil)
+		writeCommand(t, root, "reindex", "func main() { q.ReindexAll(ctx) }")
+		problems := queryOwnerProblems(root)
+		if len(problems) != 1 || !strings.Contains(problems[0], `ReindexAll is owned by "registry" but "catalog" writes it`) {
+			t.Fatalf("expected the command's call to be attributed to catalog, got %#v", problems)
+		}
+	})
+
+	t.Run("a command nobody attributed is an error, not an exemption", func(t *testing.T) {
+		t.Parallel()
+		root := writeQueryOwnerFixtureWithADR(t, adr, declaration, map[string]string{"search.sql": sql}, nil)
+		writeCommand(t, root, "backfill", "func main() { q.ReindexAll(ctx) }")
+		problems := queryOwnerProblems(root)
+		if len(problems) != 1 || !strings.Contains(problems[0], "apps/platform/cmd/backfill calls sqlc but has no entry in commandContexts") {
+			t.Fatalf("an unattributed command was accepted: %#v", problems)
+		}
+	})
+}
+
+// FIX 5: "a new query without a declaration fails CI" was false. The file
+// default answered for every query in the file, so a query added to a mixed file
+// silently inherited an owner that is not its table's - and the ratchet then
+// pointed backwards, reporting the true owner as the intruder.
+func TestQueryOwnerProblemsRequireDeclarationWhereThereIsNoDefault(t *testing.T) {
+	t.Parallel()
+	const sql = "-- name: InsertAuditEvent :exec\nINSERT INTO audit_events (id) VALUES ($1);\n\n" +
+		"-- name: AnonymizeUser :exec\nUPDATE users SET name = 'gone' WHERE id = $1;\n"
+	adr := strings.Replace(queryOwnerADRFixture, "| eval | eval | EVAL |", "| audit | foundation/observability/audit | — |", 1)
+
+	t.Run("a file with no default needs every query declared", func(t *testing.T) {
+		t.Parallel()
+		root := writeQueryOwnerFixtureWithADR(t, adr,
+			decl("files:\n  governance.sql:\nqueries:\n  InsertAuditEvent: audit\nallow:\n"),
+			map[string]string{"governance.sql": sql}, nil)
+		problems := queryOwnerProblems(root)
+		if len(problems) != 1 || !strings.Contains(problems[0],
+			"queries.AnonymizeUser is undeclared and db/queries/governance.sql has no default owner") {
+			t.Fatalf("an undeclared query in a no-default file was accepted: %#v", problems)
+		}
+	})
+
+	t.Run("declaring every query in a no-default file is clean", func(t *testing.T) {
+		t.Parallel()
+		root := writeQueryOwnerFixtureWithADR(t, adr,
+			decl("files:\n  governance.sql:\nqueries:\n  InsertAuditEvent: audit\n  AnonymizeUser: registry\nallow:\n"),
+			map[string]string{"governance.sql": sql}, nil)
+		if problems := queryOwnerProblems(root); len(problems) != 0 {
+			t.Fatalf("expected no problems, got %#v", problems)
+		}
+	})
+
+	t.Run("an undeclared query is not also reported as a cross-context call", func(t *testing.T) {
+		t.Parallel()
+		root := writeQueryOwnerFixtureWithADR(t, adr,
+			decl("files:\n  governance.sql:\nqueries:\n  AnonymizeUser: registry\nallow:\n"),
+			map[string]string{"governance.sql": sql},
+			map[string]string{"registry": "func f(q Q) { q.InsertAuditEvent(ctx) }"})
+		problems := queryOwnerProblems(root)
+		if len(problems) != 1 || !strings.Contains(problems[0], "queries.InsertAuditEvent is undeclared") {
+			t.Fatalf("owned-by-nobody was reported as a cross-context call too: %#v", problems)
+		}
+	})
+
+	t.Run("a file that is not listed at all is still reported", func(t *testing.T) {
+		t.Parallel()
+		root := writeQueryOwnerFixtureWithADR(t, adr,
+			decl("files:\nqueries:\nallow:\n"),
+			map[string]string{"governance.sql": sql}, nil)
+		problems := queryOwnerProblems(root)
+		if len(problems) != 1 || !strings.Contains(problems[0], "db/queries/governance.sql has no default owner") {
+			t.Fatalf("an unlisted file stopped being reported: %#v", problems)
+		}
+	})
+}
+
 func TestImmutableTableProblems(t *testing.T) {
 	t.Parallel()
 
@@ -301,7 +414,7 @@ CREATE TRIGGER notes_immutable
 		{
 			name:    "declaring a table the database does not freeze is reported",
 			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
-			suffix:  "immutable:\n  notes: conditional, not a frozen table\nimmutable_allow:\n",
+			suffix:  frozen + "  notes: conditional, not a frozen table\nimmutable_allow:\n",
 			want:    "immutable.notes has no unconditional enforce_immutable() trigger",
 		},
 		{
@@ -309,6 +422,25 @@ CREATE TRIGGER notes_immutable
 			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
 			suffix:  "immutable:\n  skill_versions:\nimmutable_allow:\n",
 			want:    "immutable.skill_versions has no reason",
+		},
+		{
+			// The reverse direction. The declaration says the two sides are
+			// cross-checked and that weakening either alone fails CI; walking
+			// `declared` only ever checked one. Deleting the audit_events line
+			// while its 0013 trigger stayed put was green, and an `UPDATE
+			// audit_events` could then merge and fail as a staging 500.
+			name:    "a table the database freezes but nobody declared is reported",
+			queries: "-- name: CreateSkillVersion :one\nINSERT INTO skill_versions (id) VALUES ($1);\n",
+			suffix:  "immutable:\nimmutable_allow:\n",
+			want:    "db/migrations freezes skill_versions with an unconditional enforce_immutable() trigger but immutable: does not declare it",
+		},
+		{
+			// The same deletion at its cheapest: drop the whole section. The old
+			// early return read an empty declaration as "nothing to check".
+			name:    "deleting the whole immutable block does not skip the check",
+			queries: "-- name: TouchVersion :exec\nUPDATE skill_versions SET manifest = $2 WHERE id = $1;\n",
+			suffix:  "immutable:\nimmutable_allow:\n",
+			want:    "db/migrations freezes skill_versions",
 		},
 	}
 

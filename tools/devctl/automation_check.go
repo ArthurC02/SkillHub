@@ -78,13 +78,9 @@ func automationCheck(root string, out io.Writer) error {
 		}
 	}
 
-	problems = append(problems, driftMarkerProblems(root)...)
-	problems = append(problems, sharedNumberProblems(root)...)
-	problems = append(problems, queryOwnerProblems(root)...)
-	problems = append(problems, contextMapProblems(root)...)
-	problems = append(problems, docIdentifierProblems(root)...)
-	problems = append(problems, milestoneTallyProblems(root)...)
-	problems = append(problems, backlogTallyProblems(root)...)
+	for _, checker := range documentCheckers() {
+		problems = append(problems, checker.check(root)...)
+	}
 
 	if len(problems) > 0 {
 		for _, problem := range problems {
@@ -94,6 +90,34 @@ func automationCheck(root string, out io.Writer) error {
 	}
 	fmt.Fprintf(out, "automation contract: %d tasks documented; agent and generated ownership checks passed\n", len(tasks))
 	return nil
+}
+
+// The checkers automationCheck runs, as a roster rather than as one `append`
+// line each.
+//
+// The lines this replaced were the only wiring those checkers had, and nothing
+// could see them: every test in this package called a checker directly, so
+// deleting `problems = append(problems, queryOwnerProblems(root)...)` left
+// `go test ./...` entirely green while ADR-033's cross-context write ratchet
+// stopped running. Same for all seven. A roster is a value a test can walk, and
+// TestAutomationCheckRunsEveryChecker walks it: each entry must both produce a
+// problem on a broken tree and have that problem reach the report.
+type namedChecker struct {
+	name  string
+	check func(root string) []string
+}
+
+func documentCheckers() []namedChecker {
+	return []namedChecker{
+		{"drift-marker", driftMarkerProblems},
+		{"depguard-deny", depguardDenyProblems},
+		{"one-number", sharedNumberProblems},
+		{"query-owner", queryOwnerProblems},
+		{"context-map", contextMapProblems},
+		{"doc-identifier", docIdentifierProblems},
+		{"milestone-tally", milestoneTallyProblems},
+		{"backlog-tally", backlogTallyProblems},
+	}
 }
 
 // ADR-032 appendix A is the human-readable cross-context import whitelist and
