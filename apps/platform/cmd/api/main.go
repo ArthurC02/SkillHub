@@ -162,17 +162,11 @@ func main() {
 	// operator surface and the public port is internet-reachable (NFR-005).
 	go metrics.Serve(os.Getenv("METRICS_ADDR"))
 
-	// 03:SEC-012's automatic first action, for the one P1 criterion of 02:SEC-010
-	// that nothing inside the worker can report: 「Reconciler 停擺 > 10 分鐘」.
-	//
-	// This is the only periodic work the API process does, and it is here rather
-	// than beside the other timers in cmd/worker on purpose — the reconciler is a
-	// River periodic job, so a worker that has died takes every watchdog running
-	// inside it along with it. The API is the other process that is always up, it
-	// already reads this database, and it is one of the two entry points the halt
-	// stops (iron rule 7 is untouched: this observes and declares, it never works a
-	// job or dispatches one).
-	go app.RunSvc.WatchReconciler(ctx)
+	// The periodic work this process does for itself; the roster and the reason
+	// for it are on backgroundLoops below.
+	for _, loop := range backgroundLoops(app) {
+		go loop(ctx)
+	}
 
 	go func() {
 		slog.Info("api listening", "addr", srv.Addr)
@@ -188,6 +182,26 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("api shutdown", "error", err)
+	}
+}
+
+// backgroundLoops is every long-running loop this process starts for itself, as
+// a list rather than as bare `go` statements. Nothing here is I/O and nothing is
+// started — main starts them — so main_test.go can say which loops a deployment
+// is owed. A `go` statement inside main is deletable with nothing red, which is
+// the whole reason this is a function.
+//
+// WatchReconciler is 03:SEC-012's automatic first action, for the one P1
+// criterion of 02:SEC-010 that nothing inside the worker can report:
+// 「Reconciler 停擺 > 10 分鐘」. It runs here rather than beside the other timers
+// in cmd/worker on purpose — the reconciler is a River periodic job, so a worker
+// that has died takes every watchdog running inside it along with it. The API is
+// the other process that is always up, it already reads this database, and it is
+// one of the two entry points the halt stops (iron rule 7 is untouched: this
+// observes and declares, it never works a job or dispatches one).
+func backgroundLoops(app *apiserver.App) []func(context.Context) {
+	return []func(context.Context){
+		app.RunSvc.WatchReconciler,
 	}
 }
 
@@ -308,12 +322,20 @@ func rateLimitsFromEnv() *httpx.RateLimiter {
 // because the same build has to be able to serve a cohort that sees it and one
 // that does not.
 func generateExposedFromEnv() bool {
-	on := strings.EqualFold(os.Getenv("GENERATE_SKILL_EXPOSED"), "on")
-	if on {
+	raw := os.Getenv("GENERATE_SKILL_EXPOSED")
+	switch {
+	case strings.EqualFold(raw, "on"):
 		slog.Warn("GENERATE_SKILL_EXPOSED=on; the M5 generation entry point is visible. " +
 			"ADR-052 requires 01 §11.2's first funnel segment to have a reading first")
+		return true
+	case raw != "" && !strings.EqualFold(raw, "off"):
+		// `true`, `1`, `yes` and a stray space all mean off here, and silence
+		// would let somebody believe they had opened the entry point. RATE_LIMIT
+		// says so when it is turned off; this says so when it was not turned on.
+		slog.Warn("GENERATE_SKILL_EXPOSED is neither `on` nor `off`; the M5 generation entry point stays hidden",
+			"value", raw)
 	}
-	return on
+	return false
 }
 
 // analyticsRetentionFromEnv reads how long a funnel event is kept, and therefore

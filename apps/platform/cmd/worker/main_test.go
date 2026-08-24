@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
 // The wiring test this process did not have when it shipped without
@@ -159,8 +163,30 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildWorkers: %v", err)
 	}
-	if len(set.Scheduled) == 0 {
-		t.Fatal("no periodic job is scheduled; the supervisor and the outbox drain are not running")
+	// The roster, and not merely "some jobs are scheduled". The loop below is
+	// one-directional by construction — it can only complain about a kind that is
+	// there — so deleting a schedule() line left four jobs, each with a worker,
+	// and this test green. What goes with the supervisor line specifically is
+	// RUN-008's restart recovery, the hard timeout, the cleanup re-enqueue and
+	// detectMaskingStopped, which is NFR-002's only detector and rides that same
+	// sweep.
+	//
+	// The expectation lives here rather than beside the schedule() calls
+	// deliberately: a roster in main.go next to the calls is the same fact
+	// written twice in one file, and the edit that drops a job drops both halves
+	// without noticing. Here it takes a second, visible edit in a test file.
+	want := []string{
+		eval.RecoveryArgs{}.Kind(),
+		run.SuperviseArgs{}.Kind(),
+		run.OrphanScanArgs{}.Kind(),
+		outbox.PublishArgs{}.Kind(),
+		objreconcile.Args{}.Kind(),
+	}
+	got := slices.Clone(set.Scheduled)
+	slices.Sort(got)
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Errorf("scheduled periodic jobs are %v, want %v", got, want)
 	}
 	for _, kind := range set.Scheduled {
 		if !set.WorkerKinds[kind] {

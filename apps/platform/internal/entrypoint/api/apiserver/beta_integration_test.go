@@ -413,10 +413,50 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 		t.Errorf("POST run as an uninvited user: got %d, want 403", code)
 	}
 
+	// The other two gated routes, which this test's name has always claimed and
+	// its body never touched: packaging a version and taking the bytes away. Both
+	// could lose their RequireInvited in router.go with the whole suite green —
+	// the only other test that reads /downloads/{id}/content runs on a deployment
+	// with no invite list, where RequireInvited is a pass-through and therefore
+	// proves nothing about the gate.
+	//
+	// The artifact id is deliberately one that does not exist. The gate runs
+	// before the handler, so what it refuses must not depend on there being bytes
+	// to refuse — and alice's 404 on the same URL below is the other half of the
+	// argument: the route does reach its handler, so bob's 403 came from the gate.
+	const noSuchArtifact = "/downloads/00000000-0000-4000-8000-0000000000fe/content"
+	for _, gated := range []struct{ name, method, path, body string }{
+		{"POST packaging", http.MethodPost, packagingPath(bob.skillID, bob.versionID), `{"target":"claude-code"}`},
+		{"GET download content", http.MethodGet, noSuchArtifact, ""},
+	} {
+		code, body := bob.doJSON(t, gated.method, gated.path, gated.body)
+		if code != http.StatusForbidden {
+			t.Errorf("%s as an uninvited user: got %d, want 403", gated.name, code)
+		}
+		// The message and not just the status: 403 is also what several other
+		// refusals answer, and a test that accepts any of them would stay green
+		// on the day the admission gate is the one that stopped answering.
+		if msg, _ := body["error"].(string); !strings.Contains(msg, "closed beta") {
+			t.Errorf("%s refused an uninvited user for some other reason: %v", gated.name, body)
+		}
+	}
+
 	// And open to the invited: being on the list grants nothing extra, it only
 	// stops removing things.
 	if code, _ := alice.doJSON(t, http.MethodPost, "/skills/"+alice.skillID+"/fork", `{}`); code != http.StatusCreated {
 		t.Errorf("POST fork as an invited user: got %d, want 201", code)
+	}
+	// 404 and not 403: for somebody on the list the gate is not what answers, and
+	// the missing artifact is.
+	if code := alice.status(t, http.MethodGet, noSuchArtifact); code != http.StatusNotFound {
+		t.Errorf("GET download content as an invited user: got %d, want 404", code)
+	}
+	// Whatever the packaging plan decides about this version — it is a fixture
+	// whose redistribution has not been curated, so 422 — it must not be the
+	// admission gate that decides it.
+	if code, body := alice.doJSON(t, http.MethodPost,
+		packagingPath(alice.skillID, alice.versionID), `{"target":"claude-code"}`); code == http.StatusForbidden {
+		t.Errorf("POST packaging as an invited user: got 403 (%v); the gate refused somebody on the list", body)
 	}
 }
 
