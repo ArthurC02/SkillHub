@@ -220,7 +220,23 @@ jobs:
           docker run --rm --network host -v "$GITHUB_WORKSPACE:/workspace:ro" \
             docker.io/pgvector/pgvector:pg17@sha256:cf134a767f474095eeba57e0117be8e568e011a63f33fbf252f14c9b760f8e6f psql "$SKILLHUB_TEST_DATABASE_URL" \
             -v ON_ERROR_STOP=1 --single-transaction -f /workspace/db/tests/immutability_test.sql
-      - run: go test ./...
+      # Test output goes to the step summary on failure. Job logs need admin
+      # rights on the repository, so a leg that only fails on a machine nobody
+      # has -- gVisor, a Linux runner, an empty database -- is otherwise a red
+      # square with no way to read it. The summary is returned by the check-runs
+      # API to anyone who can see the repository, which is the difference
+      # between "it failed" and "here is what failed".
+      - name: Platform tests
+        run: |
+          set -o pipefail
+          if go test ./... 2>&1 | tee /tmp/testout.log; then exit 0; fi
+          {
+            echo '### Platform tests failed'
+            echo '```'
+            tail -c 60000 /tmp/testout.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
       - run: go build ./...
 
   # apps/sandbox is its own Go module (ADR-019, iron rule 2), so it needs
@@ -263,7 +279,23 @@ jobs:
       - run: golangci-lint run
       - run: golangci-lint fmt --diff
       - run: go vet ./...
-      - run: go test ./...
+      # Test output goes to the step summary on failure. Job logs need admin
+      # rights on the repository, so a leg that only fails on a machine nobody
+      # has -- gVisor, a Linux runner, an empty database -- is otherwise a red
+      # square with no way to read it. The summary is returned by the check-runs
+      # API to anyone who can see the repository, which is the difference
+      # between "it failed" and "here is what failed".
+      - name: Sandbox tests
+        run: |
+          set -o pipefail
+          if go test ./... 2>&1 | tee /tmp/testout.log; then exit 0; fi
+          {
+            echo '### Sandbox tests failed'
+            echo '```'
+            tail -c 60000 /tmp/testout.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
       - run: go build ./...
       - name: Build the runtime image (SBX-002)
         run: docker build -t skillhub/runtime-agent-sdk:ci infra/images/runtime-agent-sdk
@@ -292,8 +324,23 @@ jobs:
       # a runtime was explicitly asked for, which is what stops this step from
       # going green on a daemon that never heard of runsc — the same silent-zero
       # shape as 04 丙-36.
+      # This leg has never passed. It was written in 15a9dd7 and GitHub runs a
+      # push's workflow on the head commit only, so it did not execute then; the
+      # next push that touched this file (b255333) ran it for the first time and
+      # it went red. Until the output below is readable, nobody knows whether
+      # that is a runsc syscall gap -- the recurring cost ADR-015 names -- or
+      # something about the runner.
       - name: Sandbox driver tests on gVisor
-        run: go test ./internal/dockerdrv/... -count=1
+        run: |
+          set -o pipefail
+          if go test ./internal/dockerdrv/... -count=1 2>&1 | tee /tmp/gvisor.log; then exit 0; fi
+          {
+            echo '### gVisor leg failed (SEC-009 Suite 1)'
+            echo '```'
+            tail -c 60000 /tmp/gvisor.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
         env:
           SKILLHUB_SANDBOX_TEST_RUNTIME: runsc
 
