@@ -190,13 +190,26 @@ jobs:
         with:
           go-version-file: apps/platform/go.mod
           cache-dependency-path: apps/platform/go.sum
-      # v8 is the action line that speaks golangci-lint v2, which is what the
-      # `fmt` subcommand below needs. Both are pinned: an unpinned linter turns
-      # every upstream release into a red build on an untouched tree.
-      - uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8
-        with:
-          version: v2.13.1
-          working-directory: apps/platform
+      # golangci-lint-action installs a prebuilt binary, and a prebuilt binary
+      # refuses to load a config whose module targets a newer Go than the one it
+      # was itself built with:
+      #
+      #   can't load config: the Go language version (go1.26) used to build
+      #   golangci-lint is lower than the targeted Go version (1.27.0)
+      #
+      # 9e4fb84 raised the floor to 1.27.0 on 2026-08-21, the day after v2.13.1
+      # shipped, so this step has failed on every push since. The cost was not
+      # the lint: the five `- run:` steps below live in the same job, so go vet,
+      # the immutability SQL, `go test ./...` and `go build ./...` were skipped
+      # rather than run, for four days and eight commits. Every "the suite is
+      # green" in that window meant "it was green on someone's laptop".
+      #
+      # Building the pinned version with this job's own Go removes the coupling:
+      # whatever toolchain compiles the tree compiles the linter. Still pinned
+      # to v2.13.1 and still checksum-verified (module proxy + sumdb), so an
+      # upstream release still cannot turn an untouched tree red.
+      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
+      - run: golangci-lint run
       - run: golangci-lint fmt --diff
       - run: go vet ./...
       - name: Check database-only immutability constraints
@@ -242,10 +255,12 @@ jobs:
         with:
           go-version-file: apps/sandbox/go.mod
           cache-dependency-path: apps/sandbox/go.sum
-      - uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8
-        with:
-          version: v2.13.1
-          working-directory: apps/sandbox
+      # Same build-it-here reason as the platform job above; apps/sandbox
+      # carries the same 1.27.0 floor, so it holds the same landmine. It has not
+      # gone off only because this job is path-filtered and no sandbox file has
+      # changed since the bump.
+      - run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1
+      - run: golangci-lint run
       - run: golangci-lint fmt --diff
       - run: go vet ./...
       - run: go test ./...
@@ -309,6 +324,14 @@ jobs:
         with:
           go-version-file: tools/devctl/go.mod
           cache: false
+      # devctl carries six test files and until now no job ran one of them.
+      # automation-check proves the checks execute; it cannot prove they still
+      # detect anything -- a checker rewritten to `return nil` prints the same
+      # green line. That is AGENTS.md rule 9 one level up, on the code that is
+      # supposed to be this repo's immune system, so it runs before the checks
+      # whose output the rest of this job trusts.
+      - run: go -C tools/devctl vet ./...
+      - run: go -C tools/devctl test ./...
       - name: Agent automation contract
         run: go -C tools/devctl run . automation-check
       # devctl reads the pinned sqlc version from tools/toolchain.yaml, writes

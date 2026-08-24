@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 // DDD-018 left this command without a wiring test on the grounds that each

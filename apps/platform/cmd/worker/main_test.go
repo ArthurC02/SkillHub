@@ -8,8 +8,8 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 // The wiring test this process did not have when it shipped without

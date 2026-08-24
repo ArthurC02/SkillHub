@@ -8,7 +8,7 @@ package run
 import (
 	"testing"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 // ADR-022 X-04 §6a, with the worked examples the ADR itself gives: 「單節點 2 slot

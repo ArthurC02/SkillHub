@@ -11,7 +11,7 @@ import (
 	"slices"
 	"testing"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 // swapSuccessors installs a table for one test. Nothing here runs in parallel, and

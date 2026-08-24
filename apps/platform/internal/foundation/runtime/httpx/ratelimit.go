@@ -145,4 +145,3 @@ func clientKey(remoteAddr string) string {
 	}
 	return ip.Mask(net.CIDRMask(64, 128)).String() + "/64"
 }
-

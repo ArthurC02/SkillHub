@@ -175,7 +175,6 @@ func TestSpecValidationIsSeparateFromRuntimeCompatibility(t *testing.T) {
 	}
 }
 
-
 func hasDisclosure(list []disclosure, code string) bool {
 	for _, d := range list {
 		if d.Code == code {

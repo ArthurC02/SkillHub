@@ -527,7 +527,7 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 
 	// The provider recovers. Cleanup runs again and this time succeeds.
 	fake.DestroyStatus = 0
-	runRow := readRun(t, pool, f.client.workspaceID, created.RunID)
+	runRow := readRun(t, pool, f.workspaceID, created.RunID)
 	if err := svc.Cleanup(context.Background(), runRow); err != nil {
 		t.Fatalf("retrying a failed cleanup: %v", err)
 	}
@@ -544,7 +544,7 @@ func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T
 	// no 404), and the worker is what stops a redelivered job from paying for it.
 	settled := fake.Destroys()
 	job := &river.Job[run.CleanupArgs]{
-		Args: run.CleanupArgs{RunID: created.RunID, WorkspaceID: f.client.workspaceID},
+		Args: run.CleanupArgs{RunID: created.RunID, WorkspaceID: f.workspaceID},
 	}
 	if err := (&run.CleanupWorker{Svc: svc}).Work(context.Background(), job); err != nil {
 		t.Fatalf("a cleanup job for an already-cleaned run: %v", err)

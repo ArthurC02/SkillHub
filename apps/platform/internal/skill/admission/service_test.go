@@ -8,9 +8,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
-"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 // The PackageFS/PackageRoot tests that used to live here moved to

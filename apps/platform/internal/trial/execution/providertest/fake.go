@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 // Plan is how a dispatched run behaves as it is polled. Zero value: one poll

@@ -260,6 +260,11 @@ func writeZip(files []exportFile, prefix string) ([]byte, error) {
 		return flate.NewWriter(w, deflateLevel)
 	})
 	for _, f := range sorted {
+		// ModifiedDate is deprecated in favour of Modified, and Modified is not a
+		// drop-in here: setting it also writes an extended-timestamp extra field,
+		// which changes the archive bytes and so the hash ADR-027 pins. The legacy
+		// field is the one that can be held constant.
+		//nolint:staticcheck // SA1019: Modified would change the bytes; see above.
 		h := &zip.FileHeader{Name: prefix + f.path, Method: zip.Deflate, ModifiedDate: 33}
 		w, err := zw.CreateHeader(h)
 		if err != nil {

@@ -112,11 +112,11 @@ var licenseStatusDisplays = map[LicenseStatus]TrustDisplay{
 }
 
 var redistributionDisplays = map[Redistribution]TrustDisplay{
-	RedistributionAllowed: {Label: "可再散布", Note: "已確認這個 Skill 的授權允許再散布,平台可以產出下載套件。"},
-	RedistributionBlocked: {Label: "不可再散布", Note: "授權不允許再散布,平台不會產出任何下載套件。授權已人工確認不等於可以再散布。"},
-	RedistributionUnknown: {Label: "可散布性未確認", Note: "沒有人確認過這個 Skill 可不可以再散布。未確認一律當成不可散布處理,不會產出下載套件——這不是等待中的暫時狀態,是預設就擋。"},
+	RedistributionAllowed:      {Label: "可再散布", Note: "已確認這個 Skill 的授權允許再散布,平台可以產出下載套件。"},
+	RedistributionBlocked:      {Label: "不可再散布", Note: "授權不允許再散布,平台不會產出任何下載套件。授權已人工確認不等於可以再散布。"},
+	RedistributionUnknown:      {Label: "可散布性未確認", Note: "沒有人確認過這個 Skill 可不可以再散布。未確認一律當成不可散布處理,不會產出下載套件——這不是等待中的暫時狀態,是預設就擋。"},
 	RedistributionSelfSupplied: {Label: "你自己帶進來的內容", Note: "這份內容是這個工作區自己匯入的,平台把它交還給你不算再散布,所以可以打包下載。這不是對授權的判定——平台沒有、也無法替你確認它的授權允許你散布給別人。"},
-	RedistributionGenerated: {Label: "平台為你生成的內容", Note: "這份內容是平台依你的任務描述生成的,交還給你不算再散布,所以可以打包下載。**這不是對授權的判定**,也不是說它可以散布給別人——模型寫出來的東西歸誰,沒有人回答過這個問題。"},
+	RedistributionGenerated:    {Label: "平台為你生成的內容", Note: "這份內容是平台依你的任務描述生成的,交還給你不算再散布,所以可以打包下載。**這不是對授權的判定**,也不是說它可以散布給別人——模型寫出來的東西歸誰,沒有人回答過這個問題。"},
 }
 
 // Display returns the label/note copy for t.

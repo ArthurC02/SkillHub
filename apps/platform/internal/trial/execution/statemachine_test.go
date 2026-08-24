@@ -5,8 +5,8 @@ import (
 	"slices"
 	"testing"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 // The Run aggregate's rules, tested without a database: statemachine.go's top half

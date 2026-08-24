@@ -28,8 +28,8 @@ import (
 	"testing"
 	"time"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 )
 
 const (

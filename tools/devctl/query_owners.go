@@ -749,9 +749,9 @@ var (
 	// §1 的表格；下一個 `### ` 標題就是邊界。文件裡還有 §2、§5 與附錄 A 三張表，
 	// 抓錯一張會讓這道檢查對著關係列表比對套件名。
 	contextTableHeading = "### 1. Context 對照表"
-	contextTableHeader = []string{"產品／Bounded Context", "類型", "Boundary ID", "現行 internal path", "需求 ID 前綴"}
-	boundaryIDPattern  = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
-	contextPathPattern = regexp.MustCompile(`^[a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*(?:/\*)?$`)
+	contextTableHeader  = []string{"產品／Bounded Context", "類型", "Boundary ID", "現行 internal path", "需求 ID 前綴"}
+	boundaryIDPattern   = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
+	contextPathPattern  = regexp.MustCompile(`^[a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*(?:/\*)?$`)
 	// depguard 規則的 files: 清單，例如 `- "**/internal/trial/execution/**"`。
 	depguardFilePattern = regexp.MustCompile(`\*\*/internal/([a-z][a-z0-9_]*(?:/[a-z][a-z0-9_]*)*)/\*\*`)
 )
