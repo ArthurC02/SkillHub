@@ -193,7 +193,7 @@ func (s *Service) ListDatasets(ctx context.Context, ws identity.Workspace, testC
 // 前移除檔案，並可在執行後主動刪除"). The row is soft-deleted and the object is
 // removed; snapshots that referenced the file keep its name and content hash, so
 // a past run stays traceable even though it is no longer reproducible (ADR-003).
-func (s *Service) DeleteDataset(ctx context.Context, ws identity.Workspace, datasetID pgtype.UUID) (gen.Dataset, error) {
+func (s *Service) DeleteDataset(ctx context.Context, ws identity.Workspace, testCaseID, datasetID pgtype.UUID) (gen.Dataset, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return gen.Dataset{}, err
@@ -208,7 +208,15 @@ func (s *Service) DeleteDataset(ctx context.Context, ws identity.Workspace, data
 	if err != nil {
 		return gen.Dataset{}, err
 	}
-	if _, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: ds.TestCaseID, WorkspaceID: ws.ID}); errors.Is(err, pgx.ErrNoRows) {
+	// The URL names the parent, so the parent has to be the one that owns this
+	// row. Without this, DELETE /test-cases/<A>/datasets/<a file of B> deleted
+	// B's file and answered 200 — same workspace, so never a tenant crossing, but
+	// the path asserted a relationship nobody checked. DeleteCriterion next door
+	// has always located its parent by {id}; this is the same answer.
+	if ds.TestCaseID != testCaseID {
+		return gen.Dataset{}, ErrNotFound
+	}
+	if _, err := q.LockTestCase(ctx, gen.LockTestCaseParams{ID: testCaseID, WorkspaceID: ws.ID}); errors.Is(err, pgx.ErrNoRows) {
 		return gen.Dataset{}, ErrNotFound
 	} else if err != nil {
 		return gen.Dataset{}, err

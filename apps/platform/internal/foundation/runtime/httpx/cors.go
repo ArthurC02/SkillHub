@@ -36,7 +36,14 @@ func DevCORS(next http.Handler, origin string) http.Handler {
 			h.Set("Access-Control-Allow-Credentials", "true")
 			h.Add("Vary", "Origin")
 			if r.Method == http.MethodOptions {
-				h.Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+				// Every method apiserver.NewRouter registers, or the browser
+				// refuses the real request and the handler never runs. PUT and
+				// PATCH were missing, which took out PATCH /test-cases/{id},
+				// PUT /suggestions/{id}/decision and the three PUT /admin
+				// routes. Kept as one literal: a per-route Allow-Methods would
+				// need the route table in here, and the list is the same six
+				// for every path anyway.
+				h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 				h.Set("Access-Control-Allow-Headers", "Content-Type")
 				h.Set("Access-Control-Max-Age", "600")
 				w.WriteHeader(http.StatusNoContent)

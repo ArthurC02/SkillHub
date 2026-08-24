@@ -3,6 +3,7 @@ package httpx
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -78,5 +79,26 @@ func TestDevCORSAnswersPreflightWithoutReachingTheHandler(t *testing.T) {
 	get(h, http.MethodOptions, "http://evil.example")
 	if !reached {
 		t.Fatal("unknown-origin preflight was answered here instead of falling through")
+	}
+}
+
+// The header this file did not check for three tests. Deleting the
+// Allow-Methods line left every other assertion here green while the browser
+// refused every PATCH and PUT the SPA sends (testcases.ts, evaluation.ts).
+//
+// The list is what apiserver.NewRouter registers — GET, POST, PUT, PATCH,
+// DELETE — plus OPTIONS for the preflight itself. Not asserted by importing
+// that package: it imports httpx, so the test binary would not link.
+func TestDevCORSPreflightAllowsEveryMethodTheAPIServes(t *testing.T) {
+	w := get(DevCORS(okHandler(), devOrigin), http.MethodOptions, devOrigin)
+	allowed := w.Header().Get("Access-Control-Allow-Methods")
+	for _, method := range []string{
+		http.MethodGet, http.MethodPost, http.MethodPut,
+		http.MethodPatch, http.MethodDelete, http.MethodOptions,
+	} {
+		if !strings.Contains(allowed, method) {
+			t.Errorf("preflight omits %s; the browser refuses that request before it reaches a handler (allow-methods = %q)",
+				method, allowed)
+		}
 	}
 }

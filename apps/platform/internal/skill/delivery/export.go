@@ -252,14 +252,21 @@ var zipEpoch = time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
 func writeZip(files []exportFile, prefix string) ([]byte, error) {
 	sorted := make([]exportFile, len(files))
 	copy(sorted, files)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].path < sorted[j].path })
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].path < sorted[j].path })
 
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	zw.RegisterCompressor(zip.Deflate, func(w io.Writer) (io.WriteCloser, error) {
 		return flate.NewWriter(w, deflateLevel)
 	})
-	for _, f := range sorted {
+	for i, f := range sorted {
+		// Two entries under one name is not something a canonical writer may
+		// resolve quietly: unzip tools disagree about which one wins, and
+		// manifestHash keys by path, so one of the two would be in no hash at
+		// all. Sorted, so equal paths are adjacent and one comparison finds it.
+		if i > 0 && sorted[i-1].path == f.path {
+			return nil, fmt.Errorf("two files claim the path %q", f.path)
+		}
 		// ModifiedDate is deprecated in favour of Modified, and Modified is not a
 		// drop-in here: setting it also writes an extended-timestamp extra field,
 		// which changes the archive bytes and so the hash ADR-027 pins. The legacy

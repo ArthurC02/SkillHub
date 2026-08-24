@@ -523,11 +523,15 @@ func (h *Handler) DeleteDataset(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	id, ok := pathUUID(w, r, "id")
+	if !ok {
+		return
+	}
 	datasetID, ok := pathUUID(w, r, "datasetId")
 	if !ok {
 		return
 	}
-	ds, err := h.Svc.DeleteDataset(r.Context(), ws, datasetID)
+	ds, err := h.Svc.DeleteDataset(r.Context(), ws, id, datasetID)
 	if err != nil {
 		fail(w, err, "delete failed")
 		return

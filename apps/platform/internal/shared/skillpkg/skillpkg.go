@@ -6,6 +6,7 @@ package skillpkg
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"net/url"
 	"regexp"
@@ -106,7 +107,17 @@ type CategorizedFindings struct {
 	Infos    []Finding `json:"infos"`
 }
 
-// Categorize splits r.Findings by severity.
+// Categorize splits r.Findings by severity, each bucket ordered by
+// (Code, Path, Message).
+//
+// The sort is not cosmetic. Findings are raised while walking Go maps —
+// frontmatter fields, metadata entries — so two validations of the same bytes
+// append them in different orders. Everything that has to be reproducible flows
+// through here: skillhub-manifest.json carries these lists, and content_hash is
+// taken over the zip that carries the manifest, so an unsorted bucket made two
+// packagings of one input produce two different content_hash values and defeat
+// the reuse lookup that is supposed to stop a second set of bytes ever existing
+// (ADR-027 decisions 1 and 2).
 func (r Report) Categorize() CategorizedFindings {
 	c := CategorizedFindings{Errors: []Finding{}, Warnings: []Finding{}, Infos: []Finding{}}
 	for _, f := range r.Findings {
@@ -118,6 +129,18 @@ func (r Report) Categorize() CategorizedFindings {
 		default:
 			c.Infos = append(c.Infos, f)
 		}
+	}
+	for _, bucket := range [][]Finding{c.Errors, c.Warnings, c.Infos} {
+		sort.SliceStable(bucket, func(i, j int) bool {
+			a, b := bucket[i], bucket[j]
+			if a.Code != b.Code {
+				return a.Code < b.Code
+			}
+			if a.Path != b.Path {
+				return a.Path < b.Path
+			}
+			return a.Message < b.Message
+		})
 	}
 	return c
 }
@@ -887,12 +910,27 @@ func (r *Report) scanTree(fsys fs.FS) {
 			r.add(SeverityInfo, "dependency-file", path, "package declares external dependencies")
 		}
 
-		if info.Size() > maxScanBytes {
-			r.add(SeverityInfo, "file-not-scanned", path, "file exceeds the content-scan size cap")
-			return nil
+		// Read a bounded prefix rather than skipping an oversized file outright.
+		// Skipping disclosed the file and shipped it anyway: a 1.5 MB dump
+		// carrying a credential never reached secretPatterns, so possible-secret
+		// never fired and packaging's sourceBlocked never saw it. Disclosure is
+		// not exclusion (PACK-001 "must not be packaged" / NFR-002).
+		data, err := readCapped(fsys, path, maxScanBytes)
+		if err != nil {
+			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
 		}
-		data, err := fs.ReadFile(fsys, path)
-		if err != nil || isBinary(data) {
+		if info.Size() > maxScanBytes {
+			r.add(SeverityInfo, "file-not-scanned", path, fmt.Sprintf(
+				"file exceeds the %d byte content-scan cap; only its first %d bytes were scanned",
+				maxScanBytes, len(data)))
+		}
+		if isBinary(data) {
+			// A NUL early in the file means the text analyses below would
+			// describe something that is not text — but a credential is the same
+			// bytes whether or not they sit next to a NUL, so the patterns still
+			// run. This is the other half of the same hole: an .so or a .db with
+			// an AKIA key in it used to ship byte for byte.
+			r.scanSecrets(path, data)
 			return nil
 		}
 		content := string(data)
@@ -902,14 +940,7 @@ func (r *Report) scanTree(fsys fs.FS) {
 			h := urlHost(u)
 			urlsByHost[h] = append(urlsByHost[h], path+": "+u)
 		}
-		for _, pat := range secretPatterns {
-			if loc := pat.FindString(content); loc != "" {
-				// Never echo the matched value: findings end up in logs and
-				// the UI, and secrets must not (NFR-002).
-				r.add(SeverityError, CodePossibleSecret, path, "content matches a known credential pattern; remove it before importing")
-				break
-			}
-		}
+		r.scanSecrets(path, data)
 		return nil
 	})
 	deps.report(r)
@@ -1003,6 +1034,33 @@ func urlHost(raw string) string {
 		return strings.ToLower(u.Host)
 	}
 	return raw
+}
+
+// scanSecrets runs the credential patterns over raw bytes, so it applies equally
+// to text and to whatever a binary turns out to contain.
+//
+// The matched value is never echoed: findings end up in logs, in the manifest
+// and on screen, and secrets must not (NFR-002, TRACE-001).
+func (r *Report) scanSecrets(path string, data []byte) {
+	for _, pat := range secretPatterns {
+		if pat.Match(data) {
+			r.add(SeverityError, CodePossibleSecret, path,
+				"content matches a known credential pattern; remove it before importing")
+			return
+		}
+	}
+}
+
+// readCapped reads at most limit bytes of path. The cap is the point: an entry
+// declares its own size and the scan must not be talked into a larger read by
+// that declaration.
+func readCapped(fsys fs.FS, path string, limit int64) ([]byte, error) {
+	f, err := fsys.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(io.LimitReader(f, limit))
 }
 
 func isBinary(data []byte) bool {

@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -1451,5 +1452,137 @@ func TestTheTargetsEndpointServesTheDeploymentsOwnProfiles(t *testing.T) {
 	a.packaging.Profiles = packaging.Profiles{}
 	if code := getJSON(t, c.Client, c.base+"/packaging/targets", &out); code != http.StatusServiceUnavailable {
 		t.Errorf("with no profiles configured, GET /packaging/targets answered %d", code)
+	}
+}
+
+// --- 02:NFR-007 clause 3: one verdict, not two -------------------------------
+
+// The validation printed inside skillhub-manifest.json and the validation the
+// API hands the preview page have to be the same list. They came from two
+// different runs over two different file sets — `validate(files)` before
+// INSTALL.md and the manifest existed, and `Validate(produced)` over the
+// finished zip — so the document in the user's hands could name warnings the
+// screen did not, and the other way round.
+func TestTheManifestAndTheAPIAgreeOnTheValidation(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "one-verdict")
+	skillID, versionID := importFiles(t, a, pool, c, map[string]string{
+		"SKILL.md": "---\nname: one-verdict-skill\ndescription: Reports on one verdict.\n" +
+			"license: MIT\nmetadata:\n  version: 1\n  updated: 2026-01-01\n---\n\n" +
+			"Use [the script](scripts/run.py); docs at https://example.com/guide.\n",
+		"scripts/run.py":   "import requests\nprint('hello')\n",
+		"requirements.txt": "requests==2.31.0\n",
+		"reference.md":     "See https://example.org/spec for the details.\n",
+	})
+	allowRedistribution(t, pool, skillID)
+
+	ctx := context.Background()
+	ws, err := gen.New(pool).GetWorkspace(ctx, gen.GetWorkspaceParams{
+		ID: mustUUID(t, c.workspaceID), OwnerUserID: mustUUID(t, c.userID),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := a.packaging.Plan(ctx, publishedWorkspace(ws), mustUUID(t, skillID), mustUUID(t, versionID), "standard", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !plan.Allowed {
+		t.Fatalf("packaging was refused: %s", plan.BlockedReason)
+	}
+	var m struct {
+		Validation packaging.ManifestValidation `json:"validation"`
+	}
+	if err := json.Unmarshal(readFromZip(t, plan.Zip, "skillhub-manifest.json"), &m); err != nil {
+		t.Fatal(err)
+	}
+	inManifest, onScreen := findingLines(m.Validation), findingLines(plan.Validation)
+	if !reflect.DeepEqual(inManifest, onScreen) {
+		t.Errorf("the package says one thing and the API says another:\nmanifest: %v\napi:      %v",
+			inManifest, onScreen)
+	}
+}
+
+func findingLines(v packaging.ManifestValidation) []string {
+	out := []string{}
+	for _, group := range [][]packaging.ManifestFinding{v.Errors, v.Warnings, v.Infos} {
+		for _, f := range group {
+			out = append(out, f.Code+"|"+f.Path+"|"+f.Message+"|"+strings.Join(f.Details, ","))
+		}
+	}
+	return out
+}
+
+// --- ADR-027 decision 5: the manifest's name is the platform's ---------------
+
+// skillhub-manifest.json is read by someone outside this repository, so what it
+// says is a contract. Nothing on the import side guards the name, and the
+// exporter deduped the file list BEFORE appending the manifest — so a source
+// package that carried its own file by that name shipped two entries under one
+// name. Which of the two an unzip tool wrote to disk was undefined, the source's
+// copy was in no hash at all (manifestHash skips the name, not the entry), and
+// the re-validation resolved whichever one the reader picked.
+//
+// The forged file below claims a licence and a clean validation, which is the
+// shape that makes this worth blocking rather than tidying.
+func TestASourcePackagesOwnManifestDoesNotTravel(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "forger")
+	forged := `{"license":{"expression":"MIT"},"validation":{"blocked":false}}` + "\n"
+	skillID, versionID := importFiles(t, a, pool, c, map[string]string{
+		"SKILL.md":               packagingSKILLMD("forged-manifest-skill"),
+		"scripts/run.py":         "print('hello')\n",
+		"skillhub-manifest.json": forged,
+	})
+	allowRedistribution(t, pool, skillID)
+
+	code, body := postJSON(t, c, packagingPath(skillID, versionID), `{"target":"standard"}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST packaging: got %d, body %v", code, body)
+	}
+	hash, _ := body["content_hash"].(string)
+	var produced []byte
+	for key, candidate := range a.packages {
+		if strings.HasPrefix(key, "downloads/") && strings.HasSuffix(key, "/"+hash+".zip") {
+			produced = candidate
+			break
+		}
+	}
+	if produced == nil {
+		t.Fatalf("no object was stored for content hash %s", hash)
+	}
+
+	// Counted on the raw central directory: a map keyed by name is exactly the
+	// view that cannot see this bug.
+	zr, err := zip.NewReader(bytes.NewReader(produced), int64(len(produced)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, f := range zr.File {
+		if f.Name == "skillhub-manifest.json" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("the package carries %d entries named skillhub-manifest.json, want exactly 1", n)
+	}
+
+	// And the surviving one is the platform's account, not the author's claim.
+	got := readFromZip(t, produced, "skillhub-manifest.json")
+	if bytes.Equal(bytes.TrimSpace(got), bytes.TrimSpace([]byte(forged))) {
+		t.Fatal("the author's own file was shipped as the platform's manifest")
+	}
+	var m struct {
+		SchemaVersion string `json:"schema_version"`
+		ManifestHash  string `json:"manifest_hash"`
+	}
+	if err := json.Unmarshal(got, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.SchemaVersion == "" || m.ManifestHash == "" {
+		t.Fatalf("the surviving manifest is not the platform's: %s", got)
 	}
 }

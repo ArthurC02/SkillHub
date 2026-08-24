@@ -789,3 +789,90 @@ type archiveFS struct {
 }
 
 func (a archiveFS) ArchiveFindings() []Finding { return a.findings }
+
+// --- ADR-027 decisions 1 and 2: the same content, the same list --------------
+
+// Findings are raised while ranging over Go maps, so the order they are appended
+// in is the runtime's business, not the content's. Everything that has to
+// reproduce flows through Categorize: skillhub-manifest.json prints these lists,
+// and content_hash is taken over the zip that carries the manifest. Unsorted,
+// two packagings of one input produced two different content_hash values, the
+// reuse lookup missed, and the platform wrote a second object and a second row
+// for bytes it already had.
+//
+// Two warnings from one map (metadata.updated, metadata.version) is the smallest
+// fixture that can come out either way round; the repetition is what turns a
+// coin-flip into a certainty.
+func TestCategorizeOrdersFindingsTheSameWayEveryRun(t *testing.T) {
+	const twoWarnings = `---
+name: two-warnings
+description: Has two non-string metadata values.
+license: MIT
+metadata:
+  version: 1
+  updated: 2026-01-01
+---
+
+# Two Warnings
+`
+	want := lines(Validate(pkg(twoWarnings, nil)).Categorize().Warnings)
+	if len(want) != 2 {
+		t.Fatalf("fixture must produce exactly two warnings, got %v", want)
+	}
+	for i := range 50 {
+		got := lines(Validate(pkg(twoWarnings, nil)).Categorize().Warnings)
+		if strings.Join(got, "\n") != strings.Join(want, "\n") {
+			t.Fatalf("run %d ordered the warnings differently:\ngot  %v\nwant %v", i, got, want)
+		}
+	}
+}
+
+func lines(fs []Finding) []string {
+	out := make([]string, 0, len(fs))
+	for _, f := range fs {
+		out = append(out, f.Code+"|"+f.Path+"|"+f.Message)
+	}
+	return out
+}
+
+// --- NFR-002 / PACK-001: disclosure is not exclusion -------------------------
+
+// The two files the content scan used to walk past: one over the size cap, one
+// with an early NUL. Both were disclosed and both shipped, because the scan
+// returned before secretPatterns ran — so packaging's sourceBlocked never saw a
+// possible-secret and wrote the credential into a download byte for byte.
+func TestSecretsAreFoundInOversizedAndBinaryFiles(t *testing.T) {
+	const key = "AKIAIOSFODNN7EXAMPLE"
+	for _, tc := range []struct {
+		name, path, data string
+	}{
+		{"over the scan cap", "fixtures/dump.sql", "-- aws_access_key_id = " + key + "\n" +
+			strings.Repeat("x", maxScanBytes+1)},
+		{"binary", "bin/tool", "\x00\x01\x02ELF" + key + "\x00\x00"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := Validate(pkg(goodMD, map[string]string{tc.path: tc.data}))
+			if codes(r)[CodePossibleSecret] != SeverityError {
+				t.Fatalf("the credential in %s was not found: %+v", tc.path, r.Findings)
+			}
+			if !r.Blocked {
+				t.Fatal("a package carrying a credential must not be importable")
+			}
+		})
+	}
+}
+
+// The oversized file is still disclosed, and the disclosure now says what was
+// actually read rather than implying nothing was.
+func TestOversizedFileSaysHowMuchWasScanned(t *testing.T) {
+	r := Validate(pkg(goodMD, map[string]string{"big.txt": strings.Repeat("x", maxScanBytes+1)}))
+	for _, f := range r.Findings {
+		if f.Code == "file-not-scanned" {
+			if !strings.Contains(f.Message, fmt.Sprint(maxScanBytes)) {
+				t.Fatalf("the disclosure does not say what was read: %q", f.Message)
+			}
+			return
+		}
+	}
+	t.Fatalf("want file-not-scanned info: %+v", r.Findings)
+}

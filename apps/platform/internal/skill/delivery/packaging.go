@@ -475,7 +475,13 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws identity.Workspa
 	if err != nil {
 		return err
 	}
-	files = append(files, manifest)
+	// Deduped again, and for the same reason: skillhub-manifest.json is an
+	// outward-facing contract (ADR-027 decision 5), so a source package that
+	// carries a file by that name must not get it shipped alongside the
+	// platform's. Appending it before the dedupe rather than after is what makes
+	// the platform's copy the surviving one — and stops a real source file from
+	// being excluded from manifest_hash by a name it merely happens to share.
+	files = dedupeByPath(append(files, manifest))
 
 	zipped, err := writeZip(files, p.Profile.topLevelDir(skillName))
 	if err != nil {
@@ -494,19 +500,26 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws identity.Workspa
 		return fmt.Errorf("the produced package could not be re-opened: %w", err)
 	}
 	final := skillpkg.Validate(produced)
-	cat := final.Categorize()
-	p.Validation = ManifestValidation{
-		Blocked:  final.Blocked,
-		Errors:   toManifestFindings(cat.Errors),
-		Warnings: toManifestFindings(cat.Warnings),
-		Infos:    toManifestFindings(cat.Infos),
-	}
 	if final.Blocked {
+		p.Validation = carriedValidation(final)
 		p.BlockedReason = BlockedValidation
 		p.BlockedMessage = "the package these settings would produce does not pass the validation " +
 			"an import has to pass, so it must not be presented as a valid package"
 		return nil
 	}
+	// 02:NFR-007 clause 3: the account printed inside skillhub-manifest.json and
+	// the account the preview page shows are ONE list, from one run. `final` is
+	// the gate — it decides whether these bytes may be handed over at all — but
+	// it cannot also be the list, because it runs over a file set that includes
+	// the manifest, and the manifest quotes URLs out of its own findings. Copying
+	// final into the manifest would change the manifest, which would change
+	// final: measured, not assumed (see the agreement test).
+	//
+	// So the reported list is the one over the package's CONTENT. What it leaves
+	// out is INSTALL.md's own link and the manifest's echo of URLs already
+	// disclosed one line above — the platform's two files talking about
+	// themselves, which was never information about the Skill.
+	p.Validation = carriedValidation(report)
 
 	p.Allowed = true
 	p.Zip = zipped
@@ -564,6 +577,20 @@ func dedupeByPath(files []exportFile) []exportFile {
 	return out
 }
 
+// carriedValidation is the one validation account of a package: the block
+// printed inside skillhub-manifest.json and the block the API returns for the
+// preview. One function because two constructions of "the same list" is how the
+// document and the screen came to disagree.
+func carriedValidation(r skillpkg.Report) ManifestValidation {
+	cat := r.Categorize()
+	return ManifestValidation{
+		Blocked:  r.Blocked,
+		Errors:   toManifestFindings(cat.Errors),
+		Warnings: toManifestFindings(cat.Warnings),
+		Infos:    toManifestFindings(cat.Infos),
+	}
+}
+
 // buildManifest assembles skillhub-manifest.json. It is the last file added,
 // because manifest_hash covers every other file and not itself.
 func (s *Service) buildManifest(
@@ -608,12 +635,7 @@ func (s *Service) buildManifest(
 			SourceTier:  p.Version.LicenseSource,
 			Disclosures: licenseDisclosures(cat.Infos),
 		},
-		Validation: ManifestValidation{
-			Blocked:  false,
-			Errors:   []ManifestFinding{},
-			Warnings: toManifestFindings(cat.Warnings),
-			Infos:    toManifestFindings(cat.Infos),
-		},
+		Validation:        carriedValidation(report),
 		Compatibility:     compat,
 		IncludedTestCases: p.Included,
 		ExcludedTestCases: p.Excluded,
