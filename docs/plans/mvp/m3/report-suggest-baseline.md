@@ -12,7 +12,7 @@
 
 **基線跑出來是 0：26 筆提案，26 筆全被丟掉，`stored=0`。** 原因不是模型亂提，是**平台在強制一條沒有任何文件寫過的規則**——`suggestionEvidence` 要求 `evidence` 欄位**整個字串**是某段 excerpt 的子字串，而契約與 prompt 都只說「引自 digest」，於是模型寫的是「兩三段真引文 ＋ 自己的推理」，200～300 個字元，**永遠不可能整段命中**。
 
-修掉之後（`suggest-improvements/v2` ＋ 逐段引文比對）同一批重跑：**53 次評估、37 筆提案、24 筆存下（65%）**。存下來的裡面**每一筆 `ApplyPreview` 都是 `applicable: true`，`blocked_reason` 分布為空**（n=16）。
+修掉之後（`suggest-improvements/v2` ＋ 逐段引文比對）同一批重跑：**53 次評估、37 筆提案、24 筆存下（65%）**。存下來的裡面**每一筆 `ApplyPreview` 都是 `applicable: true`，`blocked_reason` 分布為空**（n=16）。<br>**2026-08-24 補記（不改本報告的數字與結論，只補一個對照）**：`ApplyPreview` 是本報告當時的稱呼，**程式與契約都沒有這個識別字**——對應的是 `improvement.Diff`（`apply.go`）與契約 schema `SuggestionDiff`。此名後來被 `04` 丙-38 與 ADR-046 各抄了一次，三處都已就地註明。
 
 閘道實付 **$3.4859**（84 次 judge ＋ 67 次 suggest）。
 

@@ -82,6 +82,7 @@ func automationCheck(root string, out io.Writer) error {
 	problems = append(problems, sharedNumberProblems(root)...)
 	problems = append(problems, queryOwnerProblems(root)...)
 	problems = append(problems, contextMapProblems(root)...)
+	problems = append(problems, docIdentifierProblems(root)...)
 
 	if len(problems) > 0 {
 		for _, problem := range problems {
