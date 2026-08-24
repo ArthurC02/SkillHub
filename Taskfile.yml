@@ -15,7 +15,12 @@ tasks:
     desc: Start core plus LiteLLM; requires model secrets and may enable paid calls
     cmds:
       - go -C tools/devctl run . profile-check model
-      - docker compose --profile model -f infra/compose/docker-compose.yml up -d
+      # --env-file is load-bearing: with -f, compose resolves ${...} from the
+      # compose file's OWN directory (infra/compose/, which has no .env), not
+      # from the repo root. Without it the gateway comes up with an EMPTY
+      # master key and every caller gets 401 "token not found in db" — found
+      # 2026-08-24 on the first real-gateway generation (04 丙-56).
+      - docker compose --env-file .env --profile model -f infra/compose/docker-compose.yml up -d
 
   dev:observability:
     desc: Start Prometheus so infra/observability/alerts.yml is actually evaluated
