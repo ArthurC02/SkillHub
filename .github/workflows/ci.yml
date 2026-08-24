@@ -227,16 +227,7 @@ jobs:
       # API to anyone who can see the repository, which is the difference
       # between "it failed" and "here is what failed".
       - name: Platform tests
-        run: |
-          set -o pipefail
-          if go test ./... 2>&1 | tee /tmp/testout.log; then exit 0; fi
-          {
-            echo '### Platform tests failed'
-            echo '```'
-            tail -c 60000 /tmp/testout.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform tests' go test ./...
       - run: go build ./...
 
   # apps/sandbox is its own Go module (ADR-019, iron rule 2), so it needs
@@ -286,16 +277,7 @@ jobs:
       # API to anyone who can see the repository, which is the difference
       # between "it failed" and "here is what failed".
       - name: Sandbox tests
-        run: |
-          set -o pipefail
-          if go test ./... 2>&1 | tee /tmp/testout.log; then exit 0; fi
-          {
-            echo '### Sandbox tests failed'
-            echo '```'
-            tail -c 60000 /tmp/testout.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox tests' go test ./...
       - run: go build ./...
       - name: Build the runtime image (SBX-002)
         run: docker build -t skillhub/runtime-agent-sdk:ci infra/images/runtime-agent-sdk
@@ -331,16 +313,7 @@ jobs:
       # that is a runsc syscall gap -- the recurring cost ADR-015 names -- or
       # something about the runner.
       - name: Sandbox driver tests on gVisor
-        run: |
-          set -o pipefail
-          if go test ./internal/dockerdrv/... -count=1 2>&1 | tee /tmp/gvisor.log; then exit 0; fi
-          {
-            echo '### gVisor leg failed (SEC-009 Suite 1)'
-            echo '```'
-            tail -c 60000 /tmp/gvisor.log
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit 1
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox driver tests on gVisor' go test ./internal/dockerdrv/... -count=1
         env:
           SKILLHUB_SANDBOX_TEST_RUNTIME: runsc
 
