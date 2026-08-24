@@ -17,7 +17,10 @@ import type { GenerationFailure } from "../api/types";
  * step. The rest say what happened and stop, because 「再試一次」 is the only
  * answer and it is already a button.
  */
-export const FAILURE_SENTENCE: Record<GenerationFailure["failure"], (f: GenerationFailure) => string> = {
+export const FAILURE_SENTENCE: Record<
+  GenerationFailure["failure"],
+  (f: GenerationFailure) => string
+> = {
   quota: () => "額度不足，沒有呼叫模型，也沒有花錢。",
   // Not "額度不足": the allowance could not be counted, and a healthy account
   // must not be told it ran out (d555564 fixed the 422; this is the same

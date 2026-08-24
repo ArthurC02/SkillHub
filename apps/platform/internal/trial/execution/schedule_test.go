@@ -13,7 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 // compatible is a provider that can run the platform's default request. Every
@@ -73,6 +73,15 @@ func TestMatchRefusesIncompatibleProviders(t *testing.T) {
 		{"runs as root", func(c *ProviderCapability) { c.Isolation.Rootless = false }, "unprivileged"},
 		{"no egress mode the request can use", func(c *ProviderCapability) {
 			c.Network.EgressModes = []string{"something_else"}
+		}, "egress"},
+		// A provider that declares no egress modes at all has not answered the
+		// question. The table tested only a non-empty wrong answer, so the
+		// no-answer case fell through a `len(offered) == 0: return true` that
+		// contradicted the function's own comment — egress was the one
+		// capability failing open while an undeclared resource ceiling is a hard
+		// refusal (M2 audit, 2026-08-24; ADR-022 做不到的一律 fail-closed).
+		{"declares no egress modes at all", func(c *ProviderCapability) {
+			c.Network.EgressModes = nil
 		}, "egress"},
 		{"different runtime", func(c *ProviderCapability) {
 			c.Runtimes[0].Runtime = "some_other_sdk"

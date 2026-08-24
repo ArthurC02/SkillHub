@@ -25,7 +25,10 @@ export function GeneratedNotice({ skillId }: { skillId?: string }) {
         {skillId ? (
           <>
             {" "}
-            <Link to="/lab/run" search={{ skill: skillId, version: undefined, test_case: undefined }}>
+            <Link
+              to="/lab/run"
+              search={{ skill: skillId, version: undefined, test_case: undefined }}
+            >
               先跑一次試跑
             </Link>
             ，才會有第一份證據。

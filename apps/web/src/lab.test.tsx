@@ -100,6 +100,7 @@ function summary(hash: string, files: string[]): PreflightResponse {
 function stubPlatform() {
   const calls: { url: string; body?: string }[] = [];
   let current = summary("hash-one", ["rows.csv"]);
+  let refusal = "";
   const json = (body: unknown, status = 200) =>
     Promise.resolve(
       new Response(JSON.stringify(body), {
@@ -120,6 +121,9 @@ function stubPlatform() {
     }
     if (url.includes("/runs/preflight")) return json(current);
     if (url.includes("/runs")) {
+      // Gate B answers 422 for six different refusals, not one. `refuseWith`
+      // lets a test be the server saying something other than "stale hash".
+      if (refusal) return json({ error: refusal }, 422);
       const sent = JSON.parse(String(init?.body)) as { confirmed_summary_hash: string };
       return sent.confirmed_summary_hash === current.summary_hash
         ? json({ run_id: "run-1", status: "queued", provider: "unassigned" }, 201)
@@ -132,6 +136,9 @@ function stubPlatform() {
     calls,
     changePermissions() {
       current = summary("hash-two", ["rows.csv", "extra.csv"]);
+    },
+    refuseWith(message: string) {
+      refusal = message;
     },
   };
 }
@@ -282,7 +289,15 @@ test("02:TEST-005 a permission change forces a fresh confirmation instead of reu
   platform.changePermissions();
 
   await act(async () => confirmButton().click());
-  expect(container.textContent).toContain("權限內容已變更");
+  // The page says what it knows — nothing started — and hands over the
+  // server's own sentence rather than inventing a cause. It used to report
+  // every 422 as 「權限內容已變更」, which is a false statement for five of the
+  // six refusals gate B answers with (M2 audit, 2026-08-24).
+  expect(container.textContent).toContain("這次 Run 沒有開始");
+  // The stale hash is caught one hop earlier than the run itself, so the
+  // sentence on screen is the confirm endpoint's — which is the point: it is
+  // the SERVER's, whichever hop refused.
+  expect(container.textContent).toContain("summary_hash does not match");
   expect(platform.calls.some((c) => c.url.endsWith("/runs"))).toBe(false);
   // The page re-read the summary, so the second file is now on screen.
   expect(container.textContent).toContain("extra.csv");
@@ -337,4 +352,22 @@ test("04 丙-14 with no version in the URL the page asks for one instead of dema
   await pickVersion(VERSION);
   await waitFor(() => (container.textContent ?? "").includes("資源上限"));
   expect(container.textContent).toContain("rows.csv");
+});
+
+// The refusal a beta participant will actually meet, and the one the blanket
+// message hid worst: an exhausted allowance carries the reset time precisely
+// because "come back later" without a time is unactionable, and that sentence
+// used to be thrown away and replaced with a claim about permissions.
+test("SEC-002 gate B: an exhausted allowance is not reported as a permission change", async () => {
+  const platform = stubPlatform();
+  await renderLab();
+  platform.refuseWith(
+    "5 runs a day is the limit; it resets 24 hours after your earliest run today",
+  );
+
+  await act(async () => confirmButton().click());
+
+  expect(container.textContent).toContain("這次 Run 沒有開始");
+  expect(container.textContent).toContain("resets 24 hours after");
+  expect(container.textContent).not.toContain("權限內容已變更");
 });

@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
-"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
 // PDM-004 (which runtimes and versions the SelfHostedProvider supports) is still
@@ -360,11 +360,21 @@ func (s *Service) pinProvider(
 // the request said.
 //
 // A provider that declares no egress modes at all has not answered the question,
-// which is treated the same way as an undeclared resource ceiling.
+// which is treated the same way as an undeclared resource ceiling: a refusal.
+// That sentence was here before the code did it — the switch below opened with
+// `len(offered) == 0: return true`, so egress was the one capability that failed
+// OPEN while an undeclared ceiling three functions up is a hard error, and
+// nothing noticed because schedule_test only ever passed a non-empty list
+// (M2 audit, 2026-08-24). ADR-022: 做不到的地方一律走 fail-closed.
+//
+// A run that names no egress mode is a different thing from a provider that
+// names none, and only the first is a pass.
 func egressSatisfied(offered []string, req Requirements) bool {
 	switch {
-	case req.EgressMode == "" || len(offered) == 0:
+	case req.EgressMode == "":
 		return true
+	case len(offered) == 0:
+		return false
 	case contains(offered, req.EgressMode):
 		return true
 	default:

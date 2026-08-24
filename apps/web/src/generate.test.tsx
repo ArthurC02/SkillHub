@@ -66,13 +66,13 @@ function stubSession(
   const posted: { path: string; body: string }[] = [];
   const searchGets: string[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
-    const path = String(input).replace(/^https?:\/\/[^/]+/, "").split("?")[0];
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
     if (init?.method === "POST") {
       posted.push({ path, body: String(init.body ?? "") });
       if (path === "/skills/generate" && generateResult) {
-        return Promise.resolve(
-          new Response(JSON.stringify(generateResult), { status: 201 }),
-        );
+        return Promise.resolve(new Response(JSON.stringify(generateResult), { status: 201 }));
       }
       return Promise.resolve(
         new Response(JSON.stringify({ error: "not implemented in this stub" }), { status: 502 }),
@@ -274,11 +274,9 @@ test("GEN-008: a successful generation does not re-run the search behind it", as
   const before = searchGets.length;
 
   await act(async () => {
-    container
-      .querySelectorAll("button")
-      .forEach((b) => {
-        if (b.textContent === "生成一個 Skill") b.click();
-      });
+    container.querySelectorAll("button").forEach((b) => {
+      if (b.textContent === "生成一個 Skill") b.click();
+    });
   });
   await waitFor(() => (container.textContent ?? "").includes("已經產生一個 Skill"));
 
@@ -306,9 +304,13 @@ test("GEN-003: the collision sentence does not claim the neighbour is not genera
 // version handed anonymous callers a link to a page they cannot open.
 test("IA-5: a visitor is told what login buys, not sent to a page they cannot open", async () => {
   vi.stubGlobal("fetch", (input: string) => {
-    const path = String(input).replace(/^https?:\/\/[^/]+/, "").split("?")[0];
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
     if (path === "/me") {
-      return Promise.resolve(new Response(JSON.stringify({ error: "no session" }), { status: 401 }));
+      return Promise.resolve(
+        new Response(JSON.stringify({ error: "no session" }), { status: 401 }),
+      );
     }
     if (path.startsWith("/api/skills/search")) {
       return Promise.resolve(new Response(JSON.stringify(NO_RESULTS), { status: 200 }));
@@ -325,4 +327,3 @@ test("IA-5: a visitor is told what login buys, not sent to a page they cannot op
   // wrong for a visitor — that is IA-6, which is open and not this fix.
   expect(text).not.toContain("直接匯入它");
 });
-

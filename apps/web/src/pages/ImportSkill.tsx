@@ -173,5 +173,3 @@ export function ImportSkill() {
     </section>
   );
 }
-
-

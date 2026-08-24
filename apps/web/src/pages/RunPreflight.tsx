@@ -163,9 +163,25 @@ export function RunPreflight() {
     },
     onError: async (err) => {
       if (err instanceof ApiError && err.status === 422) {
-        // The permissions moved between reading and confirming. Re-read and make
-        // the user agree to the new summary; nothing is retried automatically.
-        setMessage("權限內容已變更,請重新確認下方摘要後再開始 Run。");
+        // Gate B answers 422 for SIX different refusals (execution/http.go):
+        // a stale summary hash, a missing confirmation, an exhausted allowance,
+        // a blocking static scan, the workspace concurrency ceiling, and a
+        // capability mismatch. This branch used to report all of them as
+        // 「權限內容已變更」 and throw err.message away — so a user out of their
+        // daily allowance was told their permissions had moved, shown an
+        // identical summary, and sent round the loop again, while the server's
+        // own sentence (which carries the reset time, because entitlements
+        // deliberately puts it there — "come back later" without a time is
+        // unactionable) went in the bin. M2 audit, 2026-08-24.
+        //
+        // The server's sentence is the answer; this page says only what it
+        // knows, which is that nothing started. The refetch is right for all
+        // six: whatever moved, the summary below should be current.
+        setMessage(
+          err.message
+            ? `這次 Run 沒有開始：${err.message}`
+            : "這次 Run 沒有開始。下方摘要已重新讀取,請確認之後再試。",
+        );
         await preflight.refetch();
         return;
       }

@@ -115,12 +115,7 @@ export interface Labelled {
  * that one is rendered from the server's own sentences and has nothing to keep
  * in step.
  */
-export type Redistribution =
-  | "allowed"
-  | "blocked"
-  | "unknown"
-  | "self_supplied"
-  | "generated";
+export type Redistribution = "allowed" | "blocked" | "unknown" | "self_supplied" | "generated";
 
 export type FindingSeverity = "error" | "warning" | "info";
 

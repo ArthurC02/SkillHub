@@ -88,8 +88,8 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
     <section>
       <h2>沒有夠接近的？讓平台依你的描述做一個</h2>
       <p className="note">
-        平台會依你寫的任務描述產生一個 Skill 套件，放進你自己的工作區。
-        它<strong>不會進入公開目錄，也不會出現在搜尋結果裡</strong>——包括你自己搜尋的時候。
+        平台會依你寫的任務描述產生一個 Skill 套件，放進你自己的工作區。 它
+        <strong>不會進入公開目錄，也不會出現在搜尋結果裡</strong>——包括你自己搜尋的時候。
       </p>
 
       <label htmlFor="generate-task">任務描述</label>
@@ -176,9 +176,7 @@ function GenerateHistory() {
       <ul>
         {failures.map((f) => (
           <li key={f.occurred_at}>
-            <time dateTime={f.occurred_at}>
-              {new Date(f.occurred_at).toLocaleString("zh-TW")}
-            </time>
+            <time dateTime={f.occurred_at}>{new Date(f.occurred_at).toLocaleString("zh-TW")}</time>
             {" — "}
             {failureSentence(f)}
           </li>
@@ -193,7 +191,6 @@ function GenerateHistory() {
     </details>
   );
 }
-
 
 /**
  * Design system §2.12: an in-progress screen has to say which step it is on,
@@ -227,7 +224,13 @@ function GenerateInFlight() {
  * so there is no half-made version to clean up, and saying so is part of the
  * answer.
  */
-function GenerateFailed({ rejected, onRetry }: { rejected: GenerateRejected; onRetry: () => void }) {
+function GenerateFailed({
+  rejected,
+  onRetry,
+}: {
+  rejected: GenerateRejected;
+  onRetry: () => void;
+}) {
   return (
     <section role="alert">
       <h3>生成失敗：套件被擋下，沒有建立任何版本</h3>
@@ -247,8 +250,7 @@ function GenerateFailed({ rejected, onRetry }: { rejected: GenerateRejected; onR
       <p>
         <button type="button" onClick={onRetry}>
           再試一次
-        </button>
-        {" "}
+        </button>{" "}
         或者改寫上面的任務描述再送出——把要做什麼、輸入是什麼、預期產出是什麼寫得更具體，通常比重試有用。
       </p>
     </section>
