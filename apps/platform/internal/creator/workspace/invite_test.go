@@ -51,3 +51,40 @@ func TestAnUnreadableInviteListRefusesRatherThanAdmitting(t *testing.T) {
 			w.Code)
 	}
 }
+
+// The contract both callers depend on: an unreadable list is an error, never a
+// yes.
+//
+// RequireInvited turns that into a 503 (above). /me turns it into "do not
+// advertise this feature", which is the same failure ADR-052's flag exists to
+// prevent one scope down: an entry point drawn for somebody who types a task
+// description, waits, and is refused.
+//
+// What this does NOT cover, said plainly rather than implied: the `err == nil &&`
+// at the /me call site itself. Reaching it needs /me to survive a dead database,
+// and /me reads the caller's workspace first, so it cannot. Injecting a failure
+// into just the invite lookup would be machinery built for one display branch
+// whose worst outcome is a button that then refuses - the gate behind it is the
+// tested one.
+func TestAnUnreadableInviteListIsAnErrorAndNotAnAdmission(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(),
+		"postgres://nobody@127.0.0.1:1/nothing?sslmode=disable&connect_timeout=1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	h := &Handler{
+		Service: &Service{Pool: pool},
+		Invited: map[string]bool{"github-user-on-the-list": true},
+	}
+	user := User{ID: pgtype.UUID{Bytes: [16]byte{9}, Valid: true}, Email: "someone@example.com"}
+
+	invited, err := h.invited(context.Background(), user)
+	if err == nil {
+		t.Fatal("a lookup that never answered returned no error, so both callers would read it as a decision")
+	}
+	if invited {
+		t.Fatal("a lookup that never answered returned true")
+	}
+}

@@ -221,6 +221,75 @@ func TestADownloadRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
 	}
 }
 
+// The same pairing on the other write that makes one: a soft delete and its
+// audit event.
+//
+// DeleteDownload has the identical shape to the download path above - domain
+// write, audit.Log on the same tx, commit - and the same blind spot: the
+// happy-path delete test asserts both effects appear, which stays true when the
+// audit is written on its own connection. The test next door proved that
+// mutation survives everything except a failure at COMMIT, so this one provokes
+// the same way and for the same reason (SEC-006, iron rule 9).
+//
+// AFTER UPDATE, not INSERT: a delete here sets deleted_at rather than removing
+// the row. And on `artifacts`, which is the table the statement actually names
+// - `download_artifacts` is a real table as well, so a trigger placed there
+// is created successfully and then fires for nothing. The first version of
+// this test did exactly that and reported a green 204.
+func TestASoftDeleteRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "deleter-atomic")
+	art := buildDownload(t, a, pool, c, "atomic-delete-skill")
+	ctx := context.Background()
+
+	if _, err := pool.Exec(ctx, fmt.Sprintf(`
+		CREATE OR REPLACE FUNCTION skillhub_test_refuse_delete() RETURNS trigger AS $fn$
+		BEGIN
+			IF NEW.workspace_id = %s::uuid THEN
+				RAISE EXCEPTION 'refused at commit by test';
+			END IF;
+			RETURN NEW;
+		END;
+		$fn$ LANGUAGE plpgsql`, pgLiteral(c.workspaceID))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		CREATE CONSTRAINT TRIGGER skillhub_test_refuse_delete
+		AFTER UPDATE ON artifacts DEFERRABLE INITIALLY DEFERRED
+		FOR EACH ROW EXECUTE FUNCTION skillhub_test_refuse_delete()`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(ctx, "DROP TRIGGER IF EXISTS skillhub_test_refuse_delete ON artifacts")
+		_, _ = pool.Exec(ctx, "DROP FUNCTION IF EXISTS skillhub_test_refuse_delete()")
+	})
+
+	req, err := http.NewRequest(http.MethodDelete, c.base+"/downloads/"+art.ArtifactID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 400 {
+		t.Fatalf("DELETE reported %d although the delete could not be committed", resp.StatusCode)
+	}
+
+	if n := auditCount(t, pool, "artifact.delete", art.ArtifactID); n != 0 {
+		t.Errorf("audit_events: %d rows for a deletion that did not happen, want 0", n)
+	}
+	// And the artifact is still there, which is what makes the audit row a lie
+	// rather than merely early.
+	if n := countRows(t, pool,
+		"SELECT count(*) FROM artifacts WHERE id = $1 AND deleted_at IS NULL",
+		mustUUID(t, art.ArtifactID)); n != 1 {
+		t.Errorf("the artifact was deleted anyway: %d live rows, want 1", n)
+	}
+}
+
 // pgLiteral quotes a value for the one place a parameter cannot go: the body of
 // a function definition. Only ever called with ids this test just received from
 // the API, and it doubles any quote regardless.
