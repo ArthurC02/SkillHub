@@ -57,6 +57,23 @@ export function Home() {
     void navigate({ search: (prev) => ({ ...prev, ...next }), replace: true });
   }
 
+  /**
+   * Keeps the question, drops every filter — by replacing the search rather
+   * than merging over it.
+   *
+   * Written as a replacement because the enumerated version was wrong once
+   * already: it listed `script` and `validation`, submitSearch shallow-merges,
+   * and so `agent` stayed on the URL while the button announced a clearing it
+   * had not performed. Naming the filters here means the fourth DISC-003
+   * dimension reintroduces the same defect on the day it is added, and the test
+   * that enumerates three keys would not see it either (adversarial review,
+   * 2026-08-24).
+   */
+  function clearFilters() {
+    setSelected([]);
+    void navigate({ search: { q: search.q }, replace: true });
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     submitSearch({ q: draft.trim() });
@@ -147,9 +164,7 @@ export function Home() {
                 // URL. `agent` was left out, so 「清除所有篩選」 announced a
                 // clearing it did not perform and the results stayed filtered
                 // (M1 audit, 2026-08-24).
-                onClick={() =>
-                  submitSearch({ script: undefined, validation: undefined, agent: undefined })
-                }
+                onClick={clearFilters}
               >
                 清除所有篩選
               </button>

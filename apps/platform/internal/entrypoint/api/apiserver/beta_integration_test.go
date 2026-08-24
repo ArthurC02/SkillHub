@@ -511,6 +511,20 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 		t.Errorf("skill_detail_viewed events for one detail read: %d, want 1", n)
 	}
 
+	// And a read that says it is not a page view leaves the count alone. Two
+	// other surfaces answer from this endpoint - packaging and side-by-side
+	// comparison - and Compare read one skill per column, so a three-way
+	// comparison used to mint three of these from a table where no detail page
+	// was opened at all (adversarial review, 2026-08-24).
+	if code := f.status(t, http.MethodGet, "/api/skills/"+f.skillID+"?view=embedded"); code != http.StatusOK {
+		t.Fatalf("embedded skill read: got %d", code)
+	}
+	if n := betaCount(t, pool,
+		`SELECT count(*) FROM analytics_events WHERE event_name = 'skill_detail_viewed' AND session_id = $1`,
+		session); n != 1 {
+		t.Errorf("an embedded read was counted as opening a skill: %d events, want 1", n)
+	}
+
 	// download_started is the *attempt*, recorded before the handler decides
 	// anything — that is the whole reason it exists next to download_records, which
 	// only ever holds downloads that succeeded. An artifact that does not exist

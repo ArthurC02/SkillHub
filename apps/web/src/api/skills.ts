@@ -61,10 +61,38 @@ export function getSkillDetail(skillId: string) {
   return apiFetch<SkillDetail>(`/api/skills/${skillId}`);
 }
 
+/**
+ * The same data, read by a surface that is not the detail page.
+ *
+ * `view=embedded` tells the server this read is not a page view, so it records
+ * no `skill_detail_viewed`. Without it, opening 打包與下載 wrote a second event
+ * for a skill already counted, and 並排比較 wrote one per compared skill from a
+ * table where no detail page was opened at all — straight into 01 §11.2's first
+ * segment (adversarial review, 2026-08-24).
+ *
+ * Its own cache key, because two callers of one key with different queryFns is a
+ * race over which closure wins. The cost is one extra request when somebody
+ * opens both surfaces for the same skill; the alternative was a measurement that
+ * counts views nobody made.
+ */
+export function getEmbeddedSkillDetail(skillId: string) {
+  return apiFetch<SkillDetail>(`/api/skills/${skillId}?view=embedded`);
+}
+
+export const embeddedSkillKey = (skillId: string) => ["skills", skillId, "embedded"];
+
 export function useSkillDetail(skillId: string) {
   return useQuery({
     queryKey: ["skills", skillId],
     queryFn: () => getSkillDetail(skillId),
+    enabled: skillId.length > 0,
+  });
+}
+
+export function useEmbeddedSkillDetail(skillId: string) {
+  return useQuery({
+    queryKey: embeddedSkillKey(skillId),
+    queryFn: () => getEmbeddedSkillDetail(skillId),
     enabled: skillId.length > 0,
   });
 }

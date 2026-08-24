@@ -13,5 +13,8 @@ def litellm_gateway(monkeypatch: pytest.MonkeyPatch) -> None:
     Every model call now refuses a process that was never told where the gateway
     is (gateway.py). Tests that want that refusal delenv these two themselves.
     """
-    monkeypatch.setenv("LITELLM_BASE_URL", "http://litellm.test:4000")
+    # A literal address on the discard port: a test that forgot to patch its
+    # client fails instantly with connection refused, rather than paying for a
+    # DNS lookup first.
+    monkeypatch.setenv("LITELLM_BASE_URL", "http://127.0.0.1:9")
     monkeypatch.setenv("LITELLM_API_KEY", "sk-test-not-a-real-key")

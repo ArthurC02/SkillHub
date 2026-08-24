@@ -1,35 +1,32 @@
 import { QueryClient } from "@tanstack/react-query";
 
 /**
- * Defaults chosen for one reason: two GET handlers write funnel events.
+ * Two defaults, and a smaller claim than this file used to make.
  *
  * `search_performed` (skill/discovery/service.go) and `skill_detail_viewed`
  * (skill/discovery/detail.go) are written when the server answers the read, so
- * with React Query's defaults — `staleTime: 0` plus refetch on mount, on window
- * focus and on reconnect — the funnel counts alt-tabs. Measured shapes before
- * this: returning to a results tab wrote a second `search_performed` for the
- * same query in the same session; opening 打包與下載 from a skill wrote a second
- * `skill_detail_viewed` because Packaging calls useSkillDetail; and Compare's
- * useQueries over `["skills", id]` wrote one `skill_detail_viewed` per compared
- * skill, from a table where no detail page was opened (M4 audit, 2026-08-24 —
- * the same class as the M5 invalidate-key defect, but at the source).
+ * React Query's defaults - refetch on mount, on window focus and on reconnect -
+ * make the funnel count things the user did not do.
  *
- * 01 §11.2's first funnel segment has one chance with twelve people, so the
- * default is the conservative one and a query that genuinely needs freshness
- * says so locally — usePackagingPreview already does exactly that with
- * `staleTime: 0, gcTime: 0`.
+ * What these two flags remove is exactly one of those: the read nobody asked
+ * for. An alt-tab and a reconnect are not a search.
  *
- * `staleTime` is deliberately NOT raised. A global one would have made search
- * results stale for minutes after an import, which is a real cost paid for an
- * analytics problem; and it would not have fixed the funnel anyway, because the
- * aggregation counts distinct (session, day) pairs — a repeat of the same read
- * inside one session was never the thing inflating it. What these two flags
- * remove is the read the USER did not ask for: an alt-tab and a reconnect are
- * not a search.
+ * What they do NOT remove, and what this comment used to imply they did: the two
+ * mount-time duplicates. 打包與下載 and 並排比較 both read
+ * GET /api/skills/{id}, and `refetchOnMount` is untouched - deliberately,
+ * because a stale detail page after an import is a real cost to pay for an
+ * analytics problem. Those two are fixed at the source instead: both surfaces
+ * read with `?view=embedded`, the server records nothing for such a read
+ * (public.yaml), and the assertions live in disc.test.tsx and
+ * beta_integration_test.go rather than here.
  *
- * The duplicate that does inflate segment 1 is server-side and is not fixed
- * here: two concurrent cold requests each mint a different session id, so one
- * visitor becomes two sessions (04 丙-57).
+ * `staleTime` is deliberately NOT raised, for the same reason, and because it
+ * would not have helped anyway: the aggregation counts distinct (session, day)
+ * pairs, so a repeat inside one session was never what inflated it.
+ *
+ * The duplicate that did inflate segment 1 was server-side and is fixed: two
+ * concurrent cold requests each minted a session id, so one visitor became two
+ * sessions (04 丙-57).
  */
 export const queryClient = new QueryClient({
   defaultOptions: {

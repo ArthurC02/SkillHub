@@ -334,6 +334,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "503":
+          description: |
+            LiteLLM gateway is not configured for this process. Declared here
+            because generate borrows evaluate's client, which fails closed on a
+            missing LITELLM_BASE_URL or LITELLM_API_KEY rather than aiming a
+            placeholder key at a default address - so this endpoint has always
+            been able to answer 503 since that guard landed, and only the schema
+            did not say so. `gen --check` compares shapes, not status codes, so
+            nothing would have caught the omission.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /suggest-improvements:
     post:

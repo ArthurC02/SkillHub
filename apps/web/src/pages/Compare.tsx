@@ -1,7 +1,7 @@
 import { Link, useSearch } from "@tanstack/react-router";
 import { useQueries } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { getSkillDetail } from "../api/skills";
+import { embeddedSkillKey, getEmbeddedSkillDetail } from "../api/skills";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
@@ -267,13 +267,19 @@ export function Compare() {
     .filter(Boolean)
     .slice(0, MAX_COMPARE);
 
-  // useQueries, not a loop of useSkillDetail: the hook count has to stay stable
-  // and the id list changes with the URL. The key matches useSkillDetail's, so
-  // a detail page already visited is served from cache.
+  // useQueries, not a loop of a hook: the hook count has to stay stable and the
+  // id list changes with the URL.
+  //
+  // The embedded key, not the detail page's. Sharing it meant a comparison of
+  // three skills wrote three skill_detail_viewed events from a table where no
+  // detail page was opened — 01 §11.2's first segment counts sessions that opened
+  // a skill, and this was answering yes for sessions that had not. The cache
+  // sharing that used to buy is gone, and one extra request is the price
+  // (adversarial review, 2026-08-24).
   const results = useQueries({
     queries: skillIds.map((id) => ({
-      queryKey: ["skills", id],
-      queryFn: () => getSkillDetail(id),
+      queryKey: embeddedSkillKey(id),
+      queryFn: () => getEmbeddedSkillDetail(id),
     })),
   });
 

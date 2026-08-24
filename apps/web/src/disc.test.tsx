@@ -557,17 +557,22 @@ function detailFixture(overrides: Partial<SkillDetail>): SkillDetail {
 
 /** Answers the search call and GET /api/skills/{id} from fixtures. */
 function stubSearchAndDetails(search: PublicSearchResponse, details: Record<string, SkillDetail>) {
+  const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
+    calls.push(url);
     if (url.includes("/api/skills/search")) {
       return Promise.resolve(new Response(JSON.stringify(search), { status: 200 }));
     }
-    const id = url.match(/\/api\/skills\/([^/?]+)$/)?.[1];
+    // The id, whatever query string follows it: 並排比較 now reads with
+    // `?view=embedded` so the server does not count it as a page view.
+    const id = url.match(/\/api\/skills\/([^/?]+)(?:\?|$)/)?.[1];
     if (id && details[id]) {
       return Promise.resolve(new Response(JSON.stringify(details[id]), { status: 200 }));
     }
     return Promise.resolve(new Response(JSON.stringify({ error: "not found" }), { status: 404 }));
   });
+  return calls;
 }
 
 function compareRow(label: string) {
@@ -599,7 +604,7 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
     },
   });
   const right = detailFixture({ skill_id: "id-right", name: "右邊的 Skill" });
-  stubSearchAndDetails(
+  const calls = stubSearchAndDetails(
     {
       ...EMPTY,
       query: "pdf",
@@ -655,6 +660,17 @@ test("DISC-009: the table highlights differing rows and never invents a missing 
 
   // Evidence rows are present and honest about what was never verified.
   expect(compareRow("相容性（驗證證據）").textContent).toContain("未驗證");
+
+  // O11Y-004: comparing is not opening. Both reads are marked embedded, so the
+  // server records no skill_detail_viewed for them — 01 §11.2's first segment
+  // counts sessions that opened a skill detail, and this table opened none.
+  // Without the marker a three-way comparison minted three of those events
+  // (adversarial review, 2026-08-24).
+  const detailReads = calls.filter((url) => /\/api\/skills\/id-(left|right)/.test(url));
+  expect(detailReads.length).toBeGreaterThan(0);
+  for (const url of detailReads) {
+    expect([url, url.includes("view=embedded")]).toEqual([url, true]);
+  }
 });
 
 test("DISC-004: an unreadable package is reported as unknown, never as a clean scan", async () => {
@@ -780,12 +796,12 @@ test("DISC-003: 清除所有篩選 clears every filter, not the two somebody rem
   await act(async () => clear.click());
   await waitFor(() => !container.textContent?.includes("搜尋中…"));
 
-  const left = new URLSearchParams(window.location.search);
-  for (const key of ["script", "validation", "agent"]) {
-    expect([key, left.get(key)]).toEqual([key, null]);
-  }
-  // The query survives: clearing the filters is not abandoning the search.
-  expect(left.get("q")).toBe("pdf");
+  // Everything except the question, rather than a list of the filters that
+  // existed when this test was written — a list is what let `agent` survive the
+  // clear in the first place.
+  const left = [...new URLSearchParams(window.location.search).keys()];
+  expect(left).toEqual(["q"]);
+  expect(new URLSearchParams(window.location.search).get("q")).toBe("pdf");
 });
 
 test("DISC-003: filtered-to-empty and the no-results refusal never share copy", async () => {

@@ -2119,6 +2119,26 @@ func (s GetRunTraceOK) Validate() error {
 	}
 }
 
+func (s GetSkillDetailFrom) Validate() error {
+	switch s {
+	case "search":
+		return nil
+	case "direct":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s GetSkillDetailView) Validate() error {
+	switch s {
+	case "embedded":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s *Health) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer

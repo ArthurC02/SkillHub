@@ -1,4 +1,7 @@
+import pathlib
+
 import pytest
+import yaml
 from skillhub_api_stub.generated import models as generated
 from skillhub_api_stub.generated.models import EnrichSkillRequest
 
@@ -49,3 +52,35 @@ def test_runtime_transport_shape_matches_generated_contract(name: str) -> None:
 
     assert set(runtime.get("properties", {})) == set(contract.get("properties", {}))
     assert set(runtime.get("required", [])) == set(contract.get("required", []))
+
+
+CONTRACT = (
+    pathlib.Path(__file__).resolve().parents[3] / "contracts" / "openapi" / "llm-internal.yaml"
+)
+
+
+def _operations():
+    spec = yaml.safe_load(CONTRACT.read_text(encoding="utf-8"))
+    for path, methods in spec["paths"].items():
+        for method, op in methods.items():
+            if isinstance(op, dict) and "responses" in op:
+                yield f"{method.upper()} {path}", op["responses"]
+
+
+def test_every_endpoint_that_can_fail_on_the_gateway_declares_both_ways_it_can():
+    """502 and 503 come in a pair, and only one of them was being declared.
+
+    /v1/generate-skill borrows evaluate's client, so it answers 503 when
+    LITELLM_BASE_URL or LITELLM_API_KEY is missing - it has done since that guard
+    landed. The contract stopped at 502. Nothing caught it because `devctl gen
+    --check` compares schema shapes and never looks at status codes, and the six
+    older endpoints all happened to be right (adversarial review, 2026-08-24).
+
+    The invariant, stated so the next endpoint inherits it: an operation that can
+    fail because the gateway is broken can also fail because this process was
+    never told where the gateway is.
+    """
+    missing = [
+        name for name, responses in _operations() if "502" in responses and "503" not in responses
+    ]
+    assert missing == [], f"declare a 503 for: {missing}"

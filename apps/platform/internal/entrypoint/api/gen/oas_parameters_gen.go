@@ -2199,6 +2199,17 @@ func decodeGetRunTraceParams(args [1]string, argsEscaped bool, r *http.Request) 
 // GetSkillDetailParams is parameters of getSkillDetail operation.
 type GetSkillDetailParams struct {
 	ID uuid.UUID
+	// `embedded` marks a read that is NOT a detail-page view: a surface that needs the same data for its
+	// own purpose (packaging, side-by-side comparison). Such a read records no `skill_detail_viewed`,
+	// because 01 §11.2's first segment counts sessions in which somebody opened a skill, and Compare was
+	// minting that event for skills whose detail page was never opened (04 丙-57 follow-up).
+	View OptGetSkillDetailView `json:",omitempty,omitzero"`
+	// How the reader arrived. Anything other than `search` is recorded as `direct`; the value is never
+	// echoed back.
+	From OptGetSkillDetailFrom `json:",omitempty,omitzero"`
+	// The result position clicked, when `from=search`. Out of range or unparseable is recorded as 0,
+	// meaning unknown.
+	Rank OptInt `json:",omitempty,omitzero"`
 }
 
 func unpackGetSkillDetailParams(packed middleware.Parameters) (params GetSkillDetailParams) {
@@ -2209,10 +2220,38 @@ func unpackGetSkillDetailParams(packed middleware.Parameters) (params GetSkillDe
 		}
 		params.ID = packed[key].(uuid.UUID)
 	}
+	{
+		key := middleware.ParameterKey{
+			Name: "view",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.View = v.(OptGetSkillDetailView)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "from",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.From = v.(OptGetSkillDetailFrom)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "rank",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Rank = v.(OptInt)
+		}
+	}
 	return params
 }
 
 func decodeGetSkillDetailParams(args [1]string, argsEscaped bool, r *http.Request) (params GetSkillDetailParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
 	// Decode path: id.
 	if err := func() error {
 		param := args[0]
@@ -2255,6 +2294,184 @@ func decodeGetSkillDetailParams(args [1]string, argsEscaped bool, r *http.Reques
 		return params, &ogenerrors.DecodeParamError{
 			Name: "id",
 			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode query: view.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "view",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotViewVal GetSkillDetailView
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotViewVal = GetSkillDetailView(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.View.SetTo(paramsDotViewVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.View.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "view",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: from.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "from",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotFromVal GetSkillDetailFrom
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotFromVal = GetSkillDetailFrom(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.From.SetTo(paramsDotFromVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.From.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "from",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: rank.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "rank",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotRankVal int
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToInt(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotRankVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Rank.SetTo(paramsDotRankVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Rank.Get(); ok {
+					if err := func() error {
+						if err := (validate.Int{
+							MinSet:        true,
+							Min:           1,
+							MaxSet:        true,
+							Max:           1000,
+							MinExclusive:  false,
+							MaxExclusive:  false,
+							MultipleOfSet: false,
+							MultipleOf:    0,
+							Pattern:       nil,
+						}).Validate(int64(value)); err != nil {
+							return errors.Wrap(err, "int")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "rank",
+			In:   "query",
 			Err:  err,
 		}
 	}

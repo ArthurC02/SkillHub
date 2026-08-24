@@ -628,7 +628,11 @@ paths:
                 $ref: "#/components/schemas/PublicSearchResponse"
         "400":
           description: |
-            An oversized query, or an unusable filter. Either a query over 2,000
+            A missing `q`, an oversized query, or an unusable filter. `q` is
+            `required: true` above, which implies the first - but this list
+            enumerates the causes, and a cause missing from it is how a handler
+            and its contract drift apart (this one answered 200 to a request
+            with no `q` at all until 2026-08-24). Either a query over 2,000
             characters, a `script`/`validation`/`agent` value
             outside its enum, or one of the three 02:DISC-002 dimensions this
             build has no per-row data for — `category`, `tier`, `mcp`. (`agent`
@@ -675,6 +679,34 @@ paths:
           in: path
           required: true
           schema: { type: string, format: uuid }
+        # The three the handler reads. None of them changes what comes back;
+        # all three change what O11Y-004 records about the read, which is why
+        # they belong in the contract rather than in a client's habits.
+        - name: view
+          in: query
+          required: false
+          schema: { type: string, enum: [embedded] }
+          description: |
+            `embedded` marks a read that is NOT a detail-page view: a surface
+            that needs the same data for its own purpose (packaging, side-by-side
+            comparison). Such a read records no `skill_detail_viewed`, because
+            01 §11.2's first segment counts sessions in which somebody opened a
+            skill, and Compare was minting that event for skills whose detail
+            page was never opened (04 丙-57 follow-up).
+        - name: from
+          in: query
+          required: false
+          schema: { type: string, enum: [search, direct] }
+          description: |
+            How the reader arrived. Anything other than `search` is recorded as
+            `direct`; the value is never echoed back.
+        - name: rank
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 1000 }
+          description: |
+            The result position clicked, when `from=search`. Out of range or
+            unparseable is recorded as 0, meaning unknown.
       responses:
         "200":
           description: The skill as visible in the caller's widest scope.

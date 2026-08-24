@@ -36,7 +36,7 @@ floor (§4), reports `exact` / `normalized` / `not_checked` rather than a
 two-state accepted-or-not, and refuses to let an `artifact` citation satisfy a
 rubric item marked `evidence_required` (§3). This file followed ADR-049 and
 missed ADR-043 entirely: it has no normalisation, no reattribution, no third
-state, and the string `evidence_required` does not appear in it at all - while
+state, and no code in this file reads `evidence_required` at all - while
 rubric-content-007-writing-v1.json sets that flag on eighteen items.
 
 So: report-judge-regression.md's 90/90 is a measurement of judge-run/v2 under

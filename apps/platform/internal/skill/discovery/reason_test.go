@@ -197,6 +197,10 @@ func TestIsComprehensible(t *testing.T) {
 		"데이터",        // Hangul
 		"данные",     // Cyrillic
 		"a1",         // one letter and one digit
+		// Language and product names, which a Skill catalog gets asked about
+		// and which the first version of this fix refused outright by demanding
+		// two letters.
+		"C#", "C++", "F#", "R2",
 	}
 	for _, q := range searchable {
 		if !isComprehensible(q) {

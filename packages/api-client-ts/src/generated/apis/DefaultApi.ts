@@ -376,6 +376,9 @@ export interface GetRunTraceRequest {
 
 export interface GetSkillDetailRequest {
     id: string;
+    view?: GetSkillDetailViewEnum;
+    from?: GetSkillDetailFromEnum;
+    rank?: number;
 }
 
 export interface GetSkillFilesRequest {
@@ -1073,6 +1076,9 @@ export interface DefaultApiInterface {
      * Does not require authentication. Scope is resolved by the server and never by the request (CORE-006, ADR-011): the public catalog answers for every caller, and a caller with a session additionally sees skills in their own workspace. Anything outside both scopes answers 404, identical to a skill that does not exist, so the status code is not an existence oracle for someone else\'s private content (WS-006).  `summary` is always the package\'s own frontmatter description. Model-generated text lives under `enrichment` and is labelled there (ADR-013). `license` carries the ADR-021 two-axis answer — the expression and the provenance tier it was established at — and its status is `declared` at best: confirmation is a reviewer\'s act and nothing records one yet. `risk` reports a static scan of the stored package; the scan never executes anything (iron rule 1) and passing it is not a safety claim (NFR-001). `compatibility` keeps the three axes apart; the two that need a sandbox carry a measured verdict together with the `runtime_image` it holds for, and say `unverified` rather than being omitted when this (version, image) pair was never measured. 
      * @summary Skill detail, source, license, risk and compatibility (DISC-006, DISC-008)
      * @param {string} id 
+     * @param {'embedded'} [view] &#x60;embedded&#x60; marks a read that is NOT a detail-page view: a surface that needs the same data for its own purpose (packaging, side-by-side comparison). Such a read records no &#x60;skill_detail_viewed&#x60;, because 01 §11.2\&#39;s first segment counts sessions in which somebody opened a skill, and Compare was minting that event for skills whose detail page was never opened (04 丙-57 follow-up). 
+     * @param {'search' | 'direct'} [from] How the reader arrived. Anything other than &#x60;search&#x60; is recorded as &#x60;direct&#x60;; the value is never echoed back. 
+     * @param {number} [rank] The result position clicked, when &#x60;from&#x3D;search&#x60;. Out of range or unparseable is recorded as 0, meaning unknown. 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -3104,6 +3110,18 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         const queryParameters: any = {};
 
+        if (requestParameters['view'] != null) {
+            queryParameters['view'] = requestParameters['view'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = requestParameters['from'];
+        }
+
+        if (requestParameters['rank'] != null) {
+            queryParameters['rank'] = requestParameters['rank'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -4617,6 +4635,21 @@ export const GetRunTraceModeEnum = {
     Advanced: 'advanced'
 } as const;
 export type GetRunTraceModeEnum = typeof GetRunTraceModeEnum[keyof typeof GetRunTraceModeEnum];
+/**
+ * @export
+ */
+export const GetSkillDetailViewEnum = {
+    Embedded: 'embedded'
+} as const;
+export type GetSkillDetailViewEnum = typeof GetSkillDetailViewEnum[keyof typeof GetSkillDetailViewEnum];
+/**
+ * @export
+ */
+export const GetSkillDetailFromEnum = {
+    Search: 'search',
+    Direct: 'direct'
+} as const;
+export type GetSkillDetailFromEnum = typeof GetSkillDetailFromEnum[keyof typeof GetSkillDetailFromEnum];
 /**
  * @export
  */

@@ -517,6 +517,19 @@ func (h *Handler) recordDetailView(r *http.Request, skillID pgtype.UUID) {
 	if !h.Svc.Analytics.Enabled() {
 		return // no lookup, and above all no extra query, when nothing is collected
 	}
+	// An embedded read is not a page view. This endpoint answers three surfaces:
+	// the detail page, 打包與下載, and 並排比較 — and the last two were each
+	// minting a skill_detail_viewed of their own. Compare's is the one that makes
+	// the number false rather than merely large: it writes one event per compared
+	// skill, from a table where no detail page was opened at all, and 01 §11.2's
+	// first segment is "opened at least one skill detail" (adversarial review,
+	// 2026-08-24).
+	//
+	// Declared by the caller rather than guessed from a Referer, because a header
+	// the browser may omit is not a fact to base a measurement on.
+	if r.URL.Query().Get("view") == "embedded" {
+		return
+	}
 	var workspace pgtype.UUID
 	if user, ok := identity.SessionUser(r.Context()); ok {
 		if ws, err := h.Identity.PersonalWorkspace(r.Context(), user); err == nil {

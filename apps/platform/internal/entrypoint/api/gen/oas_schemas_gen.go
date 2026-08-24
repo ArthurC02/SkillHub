@@ -5337,6 +5337,47 @@ type GetRunUnauthorized Error
 
 func (*GetRunUnauthorized) getRunRes() {}
 
+type GetSkillDetailFrom string
+
+const (
+	GetSkillDetailFromSearch GetSkillDetailFrom = "search"
+	GetSkillDetailFromDirect GetSkillDetailFrom = "direct"
+)
+
+// AllValues returns all GetSkillDetailFrom values.
+func (GetSkillDetailFrom) AllValues() []GetSkillDetailFrom {
+	return []GetSkillDetailFrom{
+		GetSkillDetailFromSearch,
+		GetSkillDetailFromDirect,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s GetSkillDetailFrom) MarshalText() ([]byte, error) {
+	switch s {
+	case GetSkillDetailFromSearch:
+		return []byte(s), nil
+	case GetSkillDetailFromDirect:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *GetSkillDetailFrom) UnmarshalText(data []byte) error {
+	switch GetSkillDetailFrom(data) {
+	case GetSkillDetailFromSearch:
+		*s = GetSkillDetailFromSearch
+		return nil
+	case GetSkillDetailFromDirect:
+		*s = GetSkillDetailFromDirect
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type GetSkillDetailGone Error
 
 func (*GetSkillDetailGone) getSkillDetailRes() {}
@@ -5344,6 +5385,40 @@ func (*GetSkillDetailGone) getSkillDetailRes() {}
 type GetSkillDetailNotFound Error
 
 func (*GetSkillDetailNotFound) getSkillDetailRes() {}
+
+type GetSkillDetailView string
+
+const (
+	GetSkillDetailViewEmbedded GetSkillDetailView = "embedded"
+)
+
+// AllValues returns all GetSkillDetailView values.
+func (GetSkillDetailView) AllValues() []GetSkillDetailView {
+	return []GetSkillDetailView{
+		GetSkillDetailViewEmbedded,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s GetSkillDetailView) MarshalText() ([]byte, error) {
+	switch s {
+	case GetSkillDetailViewEmbedded:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *GetSkillDetailView) UnmarshalText(data []byte) error {
+	switch GetSkillDetailView(data) {
+	case GetSkillDetailViewEmbedded:
+		*s = GetSkillDetailViewEmbedded
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 type GetSkillFilesForbidden Error
 
@@ -6895,6 +6970,98 @@ func (o OptGetRunTraceMode) Get() (v GetRunTraceMode, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptGetRunTraceMode) Or(d GetRunTraceMode) GetRunTraceMode {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptGetSkillDetailFrom returns new OptGetSkillDetailFrom with value set to v.
+func NewOptGetSkillDetailFrom(v GetSkillDetailFrom) OptGetSkillDetailFrom {
+	return OptGetSkillDetailFrom{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGetSkillDetailFrom is optional GetSkillDetailFrom.
+type OptGetSkillDetailFrom struct {
+	Value GetSkillDetailFrom
+	Set   bool
+}
+
+// IsSet returns true if OptGetSkillDetailFrom was set.
+func (o OptGetSkillDetailFrom) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGetSkillDetailFrom) Reset() {
+	var v GetSkillDetailFrom
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGetSkillDetailFrom) SetTo(v GetSkillDetailFrom) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGetSkillDetailFrom) Get() (v GetSkillDetailFrom, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGetSkillDetailFrom) Or(d GetSkillDetailFrom) GetSkillDetailFrom {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptGetSkillDetailView returns new OptGetSkillDetailView with value set to v.
+func NewOptGetSkillDetailView(v GetSkillDetailView) OptGetSkillDetailView {
+	return OptGetSkillDetailView{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGetSkillDetailView is optional GetSkillDetailView.
+type OptGetSkillDetailView struct {
+	Value GetSkillDetailView
+	Set   bool
+}
+
+// IsSet returns true if OptGetSkillDetailView was set.
+func (o OptGetSkillDetailView) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGetSkillDetailView) Reset() {
+	var v GetSkillDetailView
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGetSkillDetailView) SetTo(v GetSkillDetailView) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGetSkillDetailView) Get() (v GetSkillDetailView, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGetSkillDetailView) Or(d GetSkillDetailView) GetSkillDetailView {
 	if v, ok := o.Get(); ok {
 		return v
 	}

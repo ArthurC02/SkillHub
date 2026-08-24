@@ -373,8 +373,8 @@ export function RunPreflight() {
           {ceiling(summary.resource_limits.memory_bytes)}、 磁碟{" "}
           {ceiling(summary.resource_limits.disk_bytes)}、 時間上限{" "}
           {limit(summary.resource_limits.wall_clock_hard_seconds, seconds)}、 Token{" "}
-          {limit(summary.resource_limits.token_budget.max_input_tokens, tokens)} 進 /{" "}
-          {limit(summary.resource_limits.token_budget.max_output_tokens, tokens)} 出
+          {limit(summary.resource_limits.token_budget?.max_input_tokens, tokens)} 進 /{" "}
+          {limit(summary.resource_limits.token_budget?.max_output_tokens, tokens)} 出
         </dd>
 
         {/*

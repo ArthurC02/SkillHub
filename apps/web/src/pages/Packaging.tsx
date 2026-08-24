@@ -14,7 +14,7 @@ import {
   type PackagingTarget,
   type PackagingTargetId,
 } from "../api/packaging";
-import { useSkillDetail } from "../api/skills";
+import { useEmbeddedSkillDetail } from "../api/skills";
 import { SkillVersionPicker } from "./RunPreflight";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
@@ -164,7 +164,9 @@ export function Packaging() {
   const { skillId } = useParams({ from: "/skills/$skillId/package" });
   const { version } = useSearch({ strict: false }) as PackagingSearch;
   const client = useQueryClient();
-  const skill = useSkillDetail(skillId);
+  // Embedded: this page needs the skill's facts, it is not somebody opening
+  // the skill (O11Y-004).
+  const skill = useEmbeddedSkillDetail(skillId);
   const targets = usePackagingTargets();
 
   const [chosen, setChosen] = useState<PackagingTargetId | "">("");

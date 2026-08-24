@@ -219,6 +219,18 @@ test("02:TEST-005 the summary discloses every required item before the run start
   stubPlatform();
   await renderLab();
 
+  // Units, not just numbers. The zeroed-ceiling test counts guards, and a
+  // guard says nothing about which formatter it wraps: giving vCPU the
+  // seconds formatter (「vCPU 2 秒」) left everything green (adversarial
+  // review, 2026-08-24).
+  const limits = container.textContent ?? "";
+  if (!/vCPU\s*2(?!\s*秒)/.test(limits)) {
+    throw new Error(`vCPU is not rendered as a bare count: ${limits}`);
+  }
+  if (!/時間上限\s*900\s*秒/.test(limits)) {
+    throw new Error(`the hard wall clock is not rendered in seconds: ${limits}`);
+  }
+
   const text = container.textContent ?? "";
   for (const label of [
     "Dataset",

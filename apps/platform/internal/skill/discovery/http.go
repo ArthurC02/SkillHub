@@ -639,14 +639,16 @@ func lastRune(s string) string {
 // `|| utf8.RuneCountInString(q) >= 2` clause that let everything of length two
 // through, which made the character rule dead code: replacing the whole body
 // with `return len(q) >= 2` kept 316 tests green (M1 audit, 2026-08-24).
+//
+// One letter, not two. The first version of this fix demanded two and refused
+// `C#`, `C++`, `F#` and `R` - single-letter-plus-symbol names, which are among
+// the likeliest queries a Skill catalog receives. The rune floor is what still
+// rejects a bare `1` or a single ideograph; the letter is what separates a name
+// from punctuation. `a.` gets through, and costs one embedding.
 func isComprehensible(q string) bool {
-	letters := 0
 	for _, r := range q {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			letters++
-			if letters >= 2 {
-				return true
-			}
+			return utf8.RuneCountInString(q) >= 2
 		}
 	}
 	return false
