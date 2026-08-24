@@ -4,10 +4,11 @@
     POST /suggest-improvements  - propose package changes from one evaluation (EVAL-002)
 
 A capability provider and nothing more (ADR-016 rule 6): structured request in,
-structured result out. No policy, no authorization, no state, no retry - Go owns
-all four. One gateway call per request, no tools, no LangGraph: "build the
-prompt, call, validate the schema" is a single call, and the endpoint that
-already has this shape is /v1/enrich-skill (evaluation-design §2.3).
+structured result out. No policy, no authorization, no state, and one attempt per
+request - the client is built with max_retries=0, so retry stays Go's. One
+gateway call per request, no tools, no LangGraph: "build the prompt, call,
+validate the schema" is a single call, and the endpoint that already has this
+shape is /v1/enrich-skill (evaluation-design §2.3).
 
 The judge is handed content that wants a good grade - the run's own output, the
 files it wrote, its trace. ADR-026 decision 3 gives four defences; two of them
@@ -29,7 +30,8 @@ from fastapi import APIRouter, HTTPException
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from skillhub_llm.gateway import gateway
+from skillhub_llm.gateway import client
+from skillhub_llm.untrusted import scrub
 
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.evaluate")
@@ -59,10 +61,12 @@ JUDGE_PROMPT_VERSION = "judge-run/v2"
 # measurements silently stop describing it (the judge-run/v2 reason).
 SUGGEST_IMPROVEMENTS_PROMPT_VERSION = "suggest-improvements/v3"
 
-# Socket ceiling only. The deadline that matters is Go's: it owns timeout and
-# cancellation policy, and a client disconnect cancels this at the HTTP layer
-# (ADR-016 rule 7). Higher than /v1/enrich-skill's because a judge request
-# carries up to ~120k characters of evidence.
+# The ceiling on a single gateway call, and the only one there is. Go's deadline
+# (judgeTimeout, trial/improvement/eval.go) is client-side: it stops Go waiting,
+# it does not reach the gateway and it does not stop the call or its bill. So
+# this number, times the client's attempt count, is what actually bounds the
+# work - which is why the client is built with max_retries=0. Higher than
+# /v1/enrich-skill's because a judge request carries ~120k characters of evidence.
 LLM_TIMEOUT_SECONDS = 120.0
 
 # Delimiter isolating untrusted content from instructions (ADR-026 defence 4).
@@ -212,13 +216,12 @@ def _client() -> AsyncOpenAI:
     given an address for is not a failure of the gateway, and gateway() says so
     with a 503 instead of aiming a placeholder key at a default address.
     """
-    base_url, api_key = gateway()
-    return AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=LLM_TIMEOUT_SECONDS)
+    return client(LLM_TIMEOUT_SECONDS)
 
 
 def _scrub(text: str) -> str:
     """Strip the closing delimiter so untrusted content cannot close its own block."""
-    return text.replace(f"</{DATA_TAG}>", "")
+    return scrub(DATA_TAG, text)
 
 
 def _clip(text: str, limit: int) -> str:
@@ -592,7 +595,7 @@ class TargetFile(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     path: str
-    content: str = Field(..., max_length=60_000)
+    content: str = Field(..., max_length=60_000)  # one-number: suggestMaxTargetFileChars
 
 
 class SuggestImprovementsRequest(BaseModel):
@@ -606,7 +609,10 @@ class SuggestImprovementsRequest(BaseModel):
         default_factory=list,
         max_length=500,  # one-number: suggestMaxFileTreeEntries
     )
-    target_files: list[TargetFile] = Field(default_factory=list, max_length=10)
+    target_files: list[TargetFile] = Field(
+        default_factory=list,
+        max_length=10,  # one-number: suggestMaxTargetFiles
+    )
 
 
 class ImprovementProposal(BaseModel):

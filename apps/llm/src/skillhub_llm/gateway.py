@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 
 from fastapi import HTTPException
+from openai import AsyncOpenAI
 
 
 def gateway() -> tuple[str, str]:
@@ -35,3 +36,17 @@ def gateway() -> tuple[str, str]:
             detail="LiteLLM gateway not configured: set LITELLM_BASE_URL and LITELLM_API_KEY",
         )
     return base_url, api_key
+
+
+def client(timeout: float) -> AsyncOpenAI:
+    """OpenAI-compatible client for the gateway, with one attempt and one ceiling.
+
+    `max_retries=0` is the load-bearing half. The SDK's default is 2 retries and
+    `timeout` applies PER ATTEMPT, so a client built without it has a real
+    ceiling of 3x `timeout` - and Go's budgets are sized so that this service's
+    ceiling surfaces as its own error rather than as Go's deadline
+    (foundation/integration/llmclient/client.go). Retry policy is Go's either
+    way (ADR-016 rule 6); this is the code saying so instead of a comment.
+    """
+    base_url, api_key = gateway()
+    return AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=timeout, max_retries=0)

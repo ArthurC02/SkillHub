@@ -5,7 +5,9 @@ plain-language summary, example task sentences, and input/output/tool/dependency
 tags. Trust, risk, safety and quality fields are deliberately absent - they are
 never model-derived.
 
-No retry logic here: retry and timeout policy live in Go (ADR-016 rule 6).
+One gateway call, one attempt: the client is built with max_retries=0, so the
+timeout below is the whole ceiling and not a third of it. Retry policy is Go's
+(ADR-016 rule 6).
 """
 
 from __future__ import annotations
@@ -17,7 +19,8 @@ from fastapi import APIRouter, HTTPException
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from skillhub_llm.gateway import gateway
+from skillhub_llm.gateway import client
+from skillhub_llm.untrusted import scrub
 
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.enrich")
@@ -51,8 +54,11 @@ ENRICH_MODEL = os.getenv("ENRICH_MODEL", "gpt-5.6-sol")
 # now would make the version string stop identifying which prompt wrote what.
 PROMPT_VERSION = "enrich-skill/v6"
 
-# Ceiling on a single gateway call. Client disconnect cancels the request at the
-# HTTP layer, which is how Go's cancellation propagates (ADR-016 rule 7).
+# The ceiling on a single gateway call, and the only one there is. Go's deadline
+# (75s, ingest/enrich.go) is client-side: abandoning the HTTP request does not
+# reach the gateway, does not stop the call and does not stop it being billed.
+# So this number, times the client's attempt count, is what actually bounds the
+# work - which is why the client is built with max_retries=0.
 LLM_TIMEOUT_SECONDS = 60.0
 
 # Delimiter isolating untrusted package content from instructions (TM-SCN-02).
@@ -162,13 +168,12 @@ class EnrichSkillResponse(Enrichment):
 
 def _client() -> AsyncOpenAI:
     """OpenAI-compatible client pointed at the LiteLLM gateway (Iron Rule 8)."""
-    base_url, api_key = gateway()
-    return AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=LLM_TIMEOUT_SECONDS)
+    return client(LLM_TIMEOUT_SECONDS)
 
 
 def _scrub(text: str) -> str:
     """Strip the closing delimiter so package content cannot escape its data block."""
-    return text.replace(f"</{DATA_TAG}>", "")
+    return scrub(DATA_TAG, text)
 
 
 def _user_message(req: EnrichSkillRequest) -> str:
