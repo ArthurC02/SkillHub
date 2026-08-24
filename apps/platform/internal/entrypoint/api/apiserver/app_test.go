@@ -55,6 +55,13 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 		if handler.Kind() != reflect.Pointer {
 			continue
 		}
+		// Pointer-typed configuration is skipped the way bools are: Deps.Limits
+		// is *httpx.RateLimiter and nil legitimately means "no limiting" (the
+		// state every test that is not about limiting runs in). Handlers are the
+		// things with routes, and every handler type here is named Handler.
+		if handler.Type().Elem().Name() != "Handler" {
+			continue
+		}
 		if handler.IsNil() {
 			t.Errorf("Deps.%s is nil: its routes are mounted on nothing", name)
 			continue

@@ -15,6 +15,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -91,6 +92,11 @@ type Config struct {
 	// segment measures whether search works, and that number has one chance with
 	// twelve people.
 	GenerateExposed bool
+	// RateLimits is NFR-001 clause 5's limiter for anonymous search and the two
+	// import endpoints. Nil = no limiting; cmd/api sets it unless RATE_LIMIT=off
+	// (unset = enforced with defaults, the RUN_QUOTA convention — a protection
+	// left unconfigured must not silently be absent).
+	RateLimits *httpx.RateLimiter
 }
 
 // App is the wired object graph. Deps is exposed so a test can adjust the
@@ -313,6 +319,7 @@ func NewApp(cfg Config) (*App, error) {
 			Packaging:       &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
 			Analytics:       &analytics.Handler{Svc: funnel, Identity: auth.Service},
 			GenerateExposed: cfg.GenerateExposed,
+			Limits:          cfg.RateLimits,
 		},
 		Auth:         auth,
 		RunSvc:       runSvc,

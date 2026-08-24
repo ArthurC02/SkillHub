@@ -23,6 +23,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
@@ -334,4 +336,32 @@ func TestTheRouteTableScanFindsAPlausibleTable(t *testing.T) {
 			t.Errorf("route %q is not a %q pattern; the scan is matching something else", p, "METHOD /path")
 		}
 	}
+}
+
+// NFR-001 clause 5, wired: the limiter sits on the three named routes and a
+// refusal surfaces as a 429 with Retry-After. Nil Limits — every other test —
+// means no limiting, which is why nothing else here ever trips it.
+func TestTheNamedEndpointsAreRateLimitedWhenALimiterIsConfigured(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+		d.Limits = httpx.NewRateLimiter(60, 2)
+	})
+	c := a.login(t, "ratelimit")
+
+	codes := []int{}
+	for i := 0; i < 4; i++ {
+		resp, err := c.Get(c.base + "/api/skills/search?q=x")
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		codes = append(codes, resp.StatusCode)
+		if resp.StatusCode == http.StatusTooManyRequests {
+			if resp.Header.Get("Retry-After") == "" {
+				t.Error("429 without Retry-After")
+			}
+			return
+		}
+	}
+	t.Fatalf("four requests against a burst of two never saw a 429: %v", codes)
 }

@@ -139,6 +139,7 @@ func main() {
 		Quota:           quotaFromEnv(),
 		GenerateQuota:   generateQuotaFromEnv(),
 		GenerateExposed: generateExposedFromEnv(),
+		RateLimits:      rateLimitsFromEnv(),
 	})
 	if err != nil {
 		slog.Error("api composition", "error", err)
@@ -275,6 +276,21 @@ func generateQuotaFromEnv() policy.QuotaLimits {
 		return policy.QuotaLimits{}
 	}
 	return policy.DefaultGenerateQuotaLimits()
+}
+
+// rateLimitsFromEnv builds NFR-001 clause 5's limiter.
+//
+// Unset = enforced with defaults, `off` = none — the RUN_QUOTA convention: a
+// protection left unconfigured must not silently be absent. The numbers are
+// operational tuning (nothing displays them, so 04 乙-2 does not bite): 60
+// requests a minute with a burst of 30, per client IP, across the three
+// endpoints the clause names — invisible to a person, a wall to a loop.
+func rateLimitsFromEnv() *httpx.RateLimiter {
+	if strings.EqualFold(os.Getenv("RATE_LIMIT"), "off") {
+		slog.Warn("RATE_LIMIT=off; anonymous search and the import endpoints have no rate limit (02:NFR-001 clause 5)")
+		return nil
+	}
+	return httpx.NewRateLimiter(60, 30)
 }
 
 // generateExposedFromEnv reads ADR-052's exposure flag.

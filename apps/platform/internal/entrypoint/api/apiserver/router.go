@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
@@ -39,6 +40,10 @@ type Deps struct {
 	// Analytics serves POST /feedback and carries the funnel-event writer the
 	// public handlers use (02:O11Y-004, BETA-003/004/005).
 	Analytics *analytics.Handler
+	// Limits rate-limits the three endpoints 02:NFR-001 clause 5 names (see
+	// httpx/ratelimit.go). Nil means no limiting — the state every test that is
+	// not about limiting runs in, so a loop in a test cannot trip it.
+	Limits *httpx.RateLimiter
 	// GenerateExposed decides whether POST /skills/generate is in the table at
 	// all (ADR-052). A field on Deps rather than a check inside the handler,
 	// because "the route does not exist" and "the route refuses" are different
@@ -64,8 +69,11 @@ func NewRouter(d Deps) http.Handler {
 	// below, so the reviewable AuthN/AuthZ matrix does not move into codegen.
 	mux.Handle("GET /healthz", newGeneratedHealthHandler())
 	auth.Mount(mux)
-	mux.HandleFunc("POST /skills/import/upload", auth.RequireSession(d.Importer.Upload))
-	mux.HandleFunc("POST /skills/import/url", auth.RequireSession(d.Importer.ImportURL))
+	// NFR-001 clause 5 names these two and anonymous search below. limited() is
+	// OUTSIDE RequireSession so the shield also covers the authentication path,
+	// and keying is by IP either way (one mechanism, volumetric abuse).
+	mux.HandleFunc("POST /skills/import/upload", limited(d, auth.RequireSession(d.Importer.Upload)))
+	mux.HandleFunc("POST /skills/import/url", limited(d, auth.RequireSession(d.Importer.ImportURL)))
 	// M5 generation (GEN-001, GEN-008). Mounted only where the exposure flag is
 	// on: ADR-052 放行了開工，沒有放行曝光. A beta participant who meets
 	// "搜不到 → 生成一個" changes what 01 §11.2's first funnel segment measures,
@@ -82,8 +90,10 @@ func NewRouter(d Deps) http.Handler {
 			auth.RequireSession(auth.RequireInvited(d.Importer.GenerateFailures)))
 	}
 
-	// DISC-001: public search works without login.
-	mux.HandleFunc("GET /api/skills/search", d.Search.PublicSearch)
+	// DISC-001: public search works without login — which made it the one
+	// endpoint NFR-001 clause 5 names that was genuinely open and unlimited,
+	// since M1 (04 丙-54's correction: the naked endpoint was never generation).
+	mux.HandleFunc("GET /api/skills/search", limited(d, d.Search.PublicSearch))
 	// DISC-006/007/008/010: public detail and file views, no login required.
 	// OptionalSession, not RequireSession: anonymous callers get the catalog and
 	// a signed-in caller additionally gets their own private skills through the
@@ -301,4 +311,12 @@ func NewRouter(d Deps) http.Handler {
 	// measure only signed-in traffic — precisely the population the funnel is not
 	// about. A pass-through, cookie included, when the deployment collects nothing.
 	return d.Analytics.Svc.Sessions(mux)
+}
+
+// limited applies the deployment's rate limiter where one is configured.
+func limited(d Deps, next http.HandlerFunc) http.HandlerFunc {
+	if d.Limits == nil {
+		return next
+	}
+	return d.Limits.Limit(next)
 }
