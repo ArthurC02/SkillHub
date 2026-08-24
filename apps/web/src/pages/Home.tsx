@@ -142,7 +142,14 @@ export function Home() {
               <p>放寬或清除下方的篩選條件即可看到它們。</p>
               <button
                 type="button"
-                onClick={() => submitSearch({ script: undefined, validation: undefined })}
+                // Every DISC-003 filter, because submitSearch shallow-merges over
+                // the current search: a key left out of this object stays on the
+                // URL. `agent` was left out, so 「清除所有篩選」 announced a
+                // clearing it did not perform and the results stayed filtered
+                // (M1 audit, 2026-08-24).
+                onClick={() =>
+                  submitSearch({ script: undefined, validation: undefined, agent: undefined })
+                }
               >
                 清除所有篩選
               </button>

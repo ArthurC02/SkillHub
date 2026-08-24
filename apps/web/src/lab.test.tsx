@@ -97,9 +97,9 @@ function summary(hash: string, files: string[]): PreflightResponse {
  * lists one file, and after `changePermissions()` it lists two and refuses the
  * old hash with 422 — which is exactly what the server does.
  */
-function stubPlatform() {
+function stubPlatform(initial: PreflightResponse = summary("hash-one", ["rows.csv"])) {
   const calls: { url: string; body?: string }[] = [];
-  let current = summary("hash-one", ["rows.csv"]);
+  let current = initial;
   let refusal = "";
   const json = (body: unknown, status = 200) =>
     Promise.resolve(
@@ -275,6 +275,48 @@ test("PDM-005 §5.3 the pre-run screen shows an estimated cost range, labelled a
   expect(text).toContain("估計值");
   expect(text).toContain("$0.01");
   expect(text).toContain("$0.30");
+});
+
+test("04 \u4e59-2 every resource ceiling is guarded, not only the four measured in bytes", async () => {
+  // A server reporting 0 for every ceiling. 0 is not a small limit; it is one no
+  // run could pass, so it is a limit nobody is being held to. Printed bare it is
+  // a number that satisfies every design-system rule sitting in front of somebody
+  // about to press \u6211\u78ba\u8a8d \u2014 \u986f\u793a\u4f46\u4e0d\u5f37\u5236 (\u8a2d\u8a08 \u00a72.2, 04 \u4e59-2).
+  //
+  // Seven of the eleven fields were unguarded, because ceiling() ended in a call
+  // to bytes() and so could only ever cover the byte-valued four (M2 audit,
+  // 2026-08-24).
+  const zeroed = summary("hash-zero", ["rows.csv"]);
+  zeroed.summary.resource_limits = {
+    vcpu: 0,
+    memory_bytes: 0,
+    disk_bytes: 0,
+    max_pids: 0,
+    max_open_files: 0,
+    wall_clock_soft_seconds: 0,
+    wall_clock_hard_seconds: 0,
+    artifact_total_bytes: 0,
+    artifact_file_bytes: 0,
+    token_budget: { max_input_tokens: 0, max_output_tokens: 0 },
+  };
+  stubPlatform(zeroed);
+  await renderLab();
+  await waitFor(() => (container.textContent ?? "").includes("\u8cc7\u6e90\u4e0a\u9650"));
+
+  // Open the disclosure: five of the twelve renderings live inside it, and a
+  // number nobody can see is not what is being tested.
+  const details = container.querySelector("details");
+  if (details) details.open = true;
+
+  // Twelve renderings of eleven fields \u2014 the hard wall clock is shown twice, in
+  // the summary line and again beside the soft one.
+  const text = container.textContent ?? "";
+  const refused = text.split("\u4f3a\u670d\u5668\u56de\u5831 0").length - 1;
+  if (refused !== 12) {
+    throw new Error(
+      `${refused} of 12 ceiling renderings refused a zero; the rest printed it.\nDOM: ${text}`,
+    );
+  }
 });
 
 test("02:TEST-005 confirming sends the hash that was shown, then starts the run", async () => {

@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
@@ -495,6 +496,94 @@ func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 	if !strings.Contains(view.StatusReason, "resume") {
 		t.Errorf("reason = %q, want it to say the attempt could not be resumed", view.StatusReason)
 	}
+}
+
+// RUN-007: a teardown the provider refused is recorded as failed, and running
+// the whole thing again afterwards is safe.
+//
+// Both halves were unasserted. `cleanup_status = 'failed'` appears nowhere in
+// any test in this repository, so turning that write into `'cleaned'` was green
+// — and O11Y-003's alert rules exist precisely to tell the two apart: a
+// `destroyed` is a leak that was contained, a `failed` is a leak still burning a
+// slot and the only one that needs a human. The early return on an
+// already-cleaned run had no test either, so deleting it was green as well,
+// which is the one thing iron rule 9 asks of this path (M2 audit, 2026-08-24).
+func TestARefusedTeardownIsRecordedAsFailedAndCleaningUpAgainIsSafe(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-cleanup-retry")
+	fake, svc := withProvider(t, a, pool, providertest.Plan{})
+
+	// The provider will not let go of this sandbox.
+	fake.DestroyStatus = http.StatusInternalServerError
+
+	created := f.start(t)
+	waitForStatus(t, f.client, created.RunID, string(gen.RunStatusSucceeded))
+
+	if got := waitForCleanupOutcome(t, f.client, created.RunID); got != "failed" {
+		t.Fatalf("cleanup_status = %q after the provider refused the teardown, want failed", got)
+	}
+	before := fake.Destroys()
+
+	// The provider recovers. Cleanup runs again and this time succeeds.
+	fake.DestroyStatus = 0
+	runRow := readRun(t, pool, f.client.workspaceID, created.RunID)
+	if err := svc.Cleanup(context.Background(), runRow); err != nil {
+		t.Fatalf("retrying a failed cleanup: %v", err)
+	}
+	if got := runCleanupStatus(t, pool, created.RunID); got != string(gen.RunCleanupStatusCleaned) {
+		t.Fatalf("cleanup_status = %q after a successful retry, want cleaned", got)
+	}
+	if after := fake.Destroys(); after <= before {
+		t.Fatalf("the retry never reached the provider: %d destroys before, %d after", before, after)
+	}
+
+	// And a third cleanup job over an already-cleaned run does nothing at all.
+	// Driven through CleanupWorker rather than Cleanup, because that is where the
+	// early return lives: Cleanup itself is safe to repeat by contract (DELETE has
+	// no 404), and the worker is what stops a redelivered job from paying for it.
+	settled := fake.Destroys()
+	job := &river.Job[run.CleanupArgs]{
+		Args: run.CleanupArgs{RunID: created.RunID, WorkspaceID: f.client.workspaceID},
+	}
+	if err := (&run.CleanupWorker{Svc: svc}).Work(context.Background(), job); err != nil {
+		t.Fatalf("a cleanup job for an already-cleaned run: %v", err)
+	}
+	if got := fake.Destroys(); got != settled {
+		t.Errorf("a cleaned run was torn down again: %d destroys, want %d", got, settled)
+	}
+}
+
+// readRun is the row Cleanup takes. Workspace-scoped like every other read of
+// it (iron rule 3), which is why the fixture's workspace comes along.
+func readRun(t *testing.T, pool *pgxpool.Pool, workspaceID, runID string) gen.Run {
+	t.Helper()
+	var id, ws pgtype.UUID
+	if err := id.Scan(runID); err != nil {
+		t.Fatal(err)
+	}
+	if err := ws.Scan(workspaceID); err != nil {
+		t.Fatal(err)
+	}
+	row, err := gen.New(pool).GetRun(context.Background(), gen.GetRunParams{ID: id, WorkspaceID: ws})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return row
+}
+
+func runCleanupStatus(t *testing.T, pool *pgxpool.Pool, runID string) string {
+	t.Helper()
+	var id pgtype.UUID
+	if err := id.Scan(runID); err != nil {
+		t.Fatal(err)
+	}
+	var status string
+	if err := pool.QueryRow(context.Background(),
+		"SELECT cleanup_status::text FROM runs WHERE id = $1", id).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	return status
 }
 
 // RUN-007 orphan scanning: a sandbox the platform has no live attempt for is

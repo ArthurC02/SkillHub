@@ -766,6 +766,28 @@ test("DISC-003: the filters the platform has no data for are disabled and say wh
   expect(text).toContain("不是因為所有 Skill 都不符合");
 });
 
+test("DISC-003: 清除所有篩選 clears every filter, not the two somebody remembered", async () => {
+  // Arrive with all three filters on the URL. The button's own copy is the
+  // claim under test: it says every filter, so every filter has to go.
+  window.history.pushState({}, "", "/?q=pdf&script=none&validation=validated&agent=native");
+  stubSearch({ ...EMPTY, query: "pdf", filtered_out: true });
+  await render(<App />);
+  await waitFor(() => (container.textContent ?? "").includes("清除所有篩選"));
+
+  const clear = Array.from(container.querySelectorAll("button")).find((b) =>
+    b.textContent?.includes("清除所有篩選"),
+  )!;
+  await act(async () => clear.click());
+  await waitFor(() => !container.textContent?.includes("搜尋中…"));
+
+  const left = new URLSearchParams(window.location.search);
+  for (const key of ["script", "validation", "agent"]) {
+    expect([key, left.get(key)]).toEqual([key, null]);
+  }
+  // The query survives: clearing the filters is not abandoning the search.
+  expect(left.get("q")).toBe("pdf");
+});
+
 test("DISC-003: filtered-to-empty and the no-results refusal never share copy", async () => {
   // The catalog had matches; the filters removed them. The fix is the filter.
   stubSearch({ ...EMPTY, query: "pdf", filtered_out: true });

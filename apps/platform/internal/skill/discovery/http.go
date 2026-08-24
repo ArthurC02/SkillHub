@@ -394,6 +394,16 @@ type searchResponse struct {
 // This is the DISC-001 public search endpoint: works without login.
 // Uses hybrid retrieval (ADR-013) when embeddings are available.
 func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
+	// `q` is required by public.yaml, and Query().Get cannot tell an absent
+	// parameter from an empty one. The distinction is not pedantic: `q=` is a
+	// blank search, which DISC-001 has an answer for (no results plus a prompt
+	// for what to add), while no `q` at all is a malformed request and answering
+	// it 200 made the handler looser than the contract every generated client
+	// is built from (M1 audit, 2026-08-24).
+	if !r.URL.Query().Has("q") {
+		httpx.WriteError(w, http.StatusBadRequest, "query parameter q is required")
+		return
+	}
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if utf8.RuneCountInString(q) > 2000 {
 		httpx.WriteError(w, http.StatusBadRequest, "query parameter q must be at most 2000 characters")

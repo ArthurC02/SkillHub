@@ -107,10 +107,29 @@ export function bytes(n: number): string {
  * applied only to them.
  */
 function ceiling(n: number | undefined): string {
+  return limit(n, bytes);
+}
+
+/**
+ * The same judgement for the ceilings that are not measured in bytes.
+ *
+ * `ceiling` grew a tail that called `bytes()`, so it could only ever guard the
+ * four byte-valued limits. The other seven on this page — vCPU, both wall
+ * clocks, both token budgets, pids and open files — printed
+ * `summary.resource_limits.x` raw, which means a server answering `0` or
+ * omitting the field put a bare `0` or a blank in front of somebody about to
+ * press 我確認. That is the 04 乙-2 shape the block above this describes, and it
+ * applied to seven of the eleven numbers on the screen (M2 audit, 2026-08-24).
+ */
+function limit(n: number | undefined, format: (n: number) => string): string {
   if (typeof n !== "number" || !Number.isFinite(n)) return "未回報";
   if (n <= 0) return `伺服器回報 ${n}——這不是有效的上限,請勿據此判斷這次 Run 的可用資源`;
-  return bytes(n);
+  return format(n);
 }
+
+const count = (n: number) => `${n}`;
+const seconds = (n: number) => `${n} 秒`;
+const tokens = (n: number) => `${n}`;
 
 const SCRIPT_LABEL: Record<PreflightSummary["scripts"]["status"], string> = {
   none: "無(靜態掃描未發現 Script 或內嵌程式碼)",
@@ -350,12 +369,12 @@ export function RunPreflight() {
 
         <dt>資源上限</dt>
         <dd>
-          vCPU {summary.resource_limits.vcpu}、記憶體{" "}
+          vCPU {limit(summary.resource_limits.vcpu, count)}、記憶體{" "}
           {ceiling(summary.resource_limits.memory_bytes)}、 磁碟{" "}
           {ceiling(summary.resource_limits.disk_bytes)}、 時間上限{" "}
-          {summary.resource_limits.wall_clock_hard_seconds} 秒、 Token{" "}
-          {summary.resource_limits.token_budget.max_input_tokens} 進 /{" "}
-          {summary.resource_limits.token_budget.max_output_tokens} 出
+          {limit(summary.resource_limits.wall_clock_hard_seconds, seconds)}、 Token{" "}
+          {limit(summary.resource_limits.token_budget.max_input_tokens, tokens)} 進 /{" "}
+          {limit(summary.resource_limits.token_budget.max_output_tokens, tokens)} 出
         </dd>
 
         {/*
@@ -370,15 +389,16 @@ export function RunPreflight() {
           <details>
             <summary>展開其餘一併確認的欄位</summary>
             <ul>
-              <li>行程數上限：{summary.resource_limits.max_pids}</li>
-              <li>開檔數上限：{summary.resource_limits.max_open_files}</li>
+              <li>行程數上限：{limit(summary.resource_limits.max_pids, count)}</li>
+              <li>開檔數上限：{limit(summary.resource_limits.max_open_files, count)}</li>
               <li>
                 產出檔案總量上限：{ceiling(summary.resource_limits.artifact_total_bytes)}、單檔{" "}
                 {ceiling(summary.resource_limits.artifact_file_bytes)}
               </li>
               <li>
-                軟性時間上限：{summary.resource_limits.wall_clock_soft_seconds} 秒（先要求收尾;硬性
-                上限 {summary.resource_limits.wall_clock_hard_seconds} 秒才是強制中止）
+                軟性時間上限：{limit(summary.resource_limits.wall_clock_soft_seconds, seconds)}
+                （先要求收尾; 硬性上限{" "}
+                {limit(summary.resource_limits.wall_clock_hard_seconds, seconds)}才是強制中止）
               </li>
               <li>Provider 是否 rootless：{summary.provider.rootless ? "是" : "否"}</li>
               {/* 未回報就寫未回報:沒有值不等於沒有 runtime。 */}

@@ -836,6 +836,19 @@ func TestBlankQueryReturnsNoResults(t *testing.T) {
 			t.Errorf("q=%q returned an empty list with no explanation", q)
 		}
 	}
+
+	// And no q at all is a different answer from a blank one. public.yaml marks
+	// q required; a 200 here made the handler looser than the contract every
+	// generated client is built from, and the difference between these two
+	// requests is the whole of this assertion.
+	resp, err := anon.Get(a.URL + "/api/skills/search")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("a search with no q parameter: got %d, want 400", resp.StatusCode)
+	}
 }
 
 // --- DISC-003: structured filters -------------------------------------------
