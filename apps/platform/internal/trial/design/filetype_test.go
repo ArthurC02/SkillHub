@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 // zipOf builds an in-memory archive with the given entries.
@@ -141,5 +142,25 @@ func TestSanitizeFileName(t *testing.T) {
 		if got := sanitizeFileName(in); got != want {
 			t.Errorf("sanitizeFileName(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// The length cap is by bytes, and every case above is ASCII — so deleting the
+// cap entirely left this test green (M2 audit, 2026-08-24), and so did the
+// original `name = name[:MaxNameBytes]`, which halves a rune on any name that
+// is not. The name reaches a text column, the permission summary and a snapshot
+// manifest; the first of those refuses an invalid byte sequence outright.
+func TestSanitizeFileNameCutsToBytesWithoutHalvingARune(t *testing.T) {
+	long := strings.Repeat("\u9577", MaxNameBytes) + ".csv"
+
+	got := sanitizeFileName(long)
+	if len(got) > MaxNameBytes {
+		t.Fatalf("name is %d bytes, over the %d cap", len(got), MaxNameBytes)
+	}
+	if !utf8.ValidString(got) {
+		t.Fatalf("sanitizeFileName produced invalid UTF-8: %q", got)
+	}
+	if got == "" {
+		t.Fatal("a long name became no name at all")
 	}
 }

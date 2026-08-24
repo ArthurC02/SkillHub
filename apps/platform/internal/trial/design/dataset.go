@@ -15,9 +15,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
-"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -265,8 +265,11 @@ func sanitizeFileName(name string) string {
 		}
 		return r
 	}, name)
+	// ToValidUTF8 because the cut is by bytes and the name is not ASCII: a bare
+	// slice can halve a rune, and this string goes into a text column, the
+	// permission summary and a snapshot manifest.
 	if len(name) > MaxNameBytes {
-		name = name[:MaxNameBytes]
+		name = strings.ToValidUTF8(name[:MaxNameBytes], "")
 	}
 	return name
 }

@@ -6,13 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -659,9 +660,18 @@ func orDefault(v, fallback string) string {
 	return v
 }
 
+// truncate bounds a status reason at reasonLimit bytes without splitting a rune.
+//
+// The cut is by bytes because the column's limit is, but a bare s[:n] can land
+// mid-sequence, and the result is not a Go problem - it is a Postgres one. Both
+// destinations (runs.status_reason and run_attempts.error_message) are text
+// columns in a UTF8 database, which refuse invalid byte sequences outright. The
+// write that fails is the one carrying the terminal state, so a Traditional
+// Chinese failure message long enough to be cut would leave the Run stuck in a
+// non-terminal state forever. Same fix as design.truncate.
 func truncate(s string) string {
 	if len(s) <= reasonLimit {
 		return s
 	}
-	return s[:reasonLimit] + "..."
+	return strings.ToValidUTF8(s[:reasonLimit], "") + "..."
 }

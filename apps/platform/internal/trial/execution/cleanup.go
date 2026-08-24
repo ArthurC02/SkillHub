@@ -20,13 +20,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
-"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
@@ -424,10 +425,21 @@ func (s *Service) isOrphan(ctx context.Context, entry ProviderRun, observed time
 		return s.orphanByAge(entry, observed, "provider run carries no platform attempt id")
 	}
 	attempt, err := s.queries().GetRunAttemptForReconcile(ctx, attemptID)
-	if err != nil {
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
 		// No such attempt: either a sandbox from a database that no longer exists,
-		// or one whose attempt row is younger than this snapshot.
+		// or one whose attempt row is younger than this snapshot. Both are judged
+		// by age below.
 		return s.orphanByAge(entry, observed, "no platform attempt for this sandbox")
+	case err != nil:
+		// The database could not answer. That is not the same statement as "there
+		// is no such run", and treating it as one is how a pool timeout during a
+		// busy period turns into a sweep that destroys every live sandbox older
+		// than the grace window - including the long Runs the grace window exists
+		// to protect. A verdict that could not be reached is not a verdict.
+		slog.Error("cannot judge sandbox: attempt lookup failed",
+			"run_id", entry.RunID, "error", err)
+		return false, ""
 	}
 	if IsTerminal(attempt.Status) {
 		return true, "the platform run is already finished"
