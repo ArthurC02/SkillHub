@@ -50,6 +50,18 @@ paths:
                 $ref: "#/components/schemas/EmbedResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: |
+            Request failed validation. Declared here because the service
+            really answers it -- FastAPI's RequestValidationError handler
+            turns the field constraints on this request into a 422, and
+            five tests assert it. It was missing while two sibling
+            endpoints declared it, so a generated client had no branch
+            for a status this endpoint returns.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "502":
           description: Embedding provider error (LiteLLM or upstream).
           content:
@@ -129,6 +141,18 @@ paths:
                 $ref: "#/components/schemas/MatchReasonsResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: |
+            Request failed validation. Declared here because the service
+            really answers it -- FastAPI's RequestValidationError handler
+            turns the field constraints on this request into a 422, and
+            five tests assert it. It was missing while two sibling
+            endpoints declared it, so a generated client had no branch
+            for a status this endpoint returns.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "502":
           description: LLM provider error.
           content:
@@ -661,7 +685,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SuggestedCriterion"
-          maxItems: 8
+          maxItems: 8  # one-number: suggestCriteriaMaxItems
           description: |
             Blank and duplicate texts are dropped by the service, and the list is
             cut at 8. Empty means no usable proposal - not that the task needs no
@@ -1125,7 +1149,7 @@ components:
           description: Path relative to the package root.
         content:
           type: string
-          maxLength: 60000
+          maxLength: 60000  # one-number: suggestMaxTargetFileChars
     GenerateSkillRequest:
       type: object
       required: [task_description]
@@ -1305,7 +1329,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TargetFile"
-          maxItems: 10
+          maxItems: 10  # one-number: suggestMaxTargetFiles
           default: []
     ImprovementProposal:
       type: object

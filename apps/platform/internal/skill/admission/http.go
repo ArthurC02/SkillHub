@@ -297,7 +297,7 @@ func (h *Handler) Generate(w http.ResponseWriter, r *http.Request) {
 // A ceiling and not a pager: 02:GEN-003 asks for a record that can be looked at,
 // and what a user looks for is "what happened the last few times". A page-two
 // control on a list nobody scrolls is a second thing to get right.
-const generateFailureLimit = 20
+const generateFailureLimit = 20 // one-number: generateFailureLimit
 
 // GenerateFailure is one refused generation, as the workspace reads it back.
 type GenerateFailure struct {

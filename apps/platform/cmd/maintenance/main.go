@@ -12,6 +12,8 @@
 //	maintenance purge-analytics    ADR-029 決策 5: remove funnel events older than
 //	                               ANALYTICS_RETENTION, including the ones sitting
 //	                               in the default partition. Needs DATABASE_URL.
+//	maintenance purge-audit        PDM-006 6: remove audit events older than
+//	                               AUDIT_RETENTION. Needs DATABASE_URL.
 //	maintenance check-sources      INGEST-010: probe recorded import source URLs
 //	                               and mark the ones that no longer resolve.
 //	                               Needs DATABASE_URL and network egress.
@@ -24,10 +26,17 @@
 // PURGE_GRACE (Go duration, default 720h) and MAINTENANCE_BATCH (default 100)
 // tune one run. A shortened grace applies to requests already in flight.
 //
-// TRACE_RETENTION and ANALYTICS_RETENTION have no defaults on purpose: both are
-// PDM-006 proposals that have not been ratified, and a default would make this
-// process enforce a retention nobody agreed to, by deleting. Unset means the job
-// refuses to start.
+// TRACE_RETENTION, ANALYTICS_RETENTION and AUDIT_RETENTION have no defaults on
+// purpose: all three are PDM-006 proposals that have not been ratified, and a
+// default would make this process enforce a retention nobody agreed to, by
+// deleting. Unset means the job refuses to start.
+//
+// AUDIT_RETENTION arrived last, on 2026-08-25, and the gap it closed was the
+// other direction: 0013's column comment, its index name and the DELETE branch
+// of enforce_immutable were all written for a 400 day sweep, and the sweep did
+// not exist. The consent document told a participant the row goes after 400
+// days; nothing deleted it, on the one table whose trigger makes deleting it
+// afterwards deliberately hard.
 //
 // This process has one composition root per subcommand — the function that runs
 // it — and that is the shape, not an oversight: each job builds the single
@@ -50,6 +59,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
@@ -81,6 +91,8 @@ func main() {
 		err = checkSources(ctx, pool)
 	case "purge-analytics":
 		err = purgeAnalytics(ctx, pool)
+	case "purge-audit":
+		err = purgeAudit(ctx, pool)
 	case "rotate-partitions":
 		err = rotatePartitions(ctx, pool)
 	default:
@@ -134,6 +146,24 @@ func rotatePartitions(ctx context.Context, pool *pgxpool.Pool) error {
 func logRotation(table string, report partition.Report) {
 	slog.Info("partitions rotated", "table", table,
 		"created", report.Created, "dropped", report.Dropped)
+}
+
+// purgeAudit is its own subcommand rather than a second sweep inside
+// purge-analytics, even though both are "delete rows past a retention window".
+// They answer to different promises with different numbers (365 days against
+// 400) and a deployment must be able to run one while the other is unset --
+// which is precisely what fail-closed means here, and what folding them
+// together would take away.
+func purgeAudit(ctx context.Context, pool *pgxpool.Pool) error {
+	retention, err := positiveDuration("AUDIT_RETENTION")
+	if err != nil {
+		return err
+	}
+	n, err := audit.PurgeExpired(ctx, pool, retention)
+	if err == nil {
+		slog.Info("audit purge complete", "events_removed", n)
+	}
+	return err
 }
 
 func purgeAnalytics(ctx context.Context, pool *pgxpool.Pool) error {

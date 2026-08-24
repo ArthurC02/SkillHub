@@ -77,6 +77,8 @@ import type {
   SandboxTraceEvent,
   SearchSkills200Response,
   SetEvaluationFeedbackRequest,
+  SetSkillRedistribution200Response,
+  SetSkillRedistributionRequest,
   SetSkillRestriction200Response,
   SetSkillRestrictionRequest,
   SkillDetail,
@@ -217,6 +219,10 @@ import {
     SearchSkills200ResponseToJSON,
     SetEvaluationFeedbackRequestFromJSON,
     SetEvaluationFeedbackRequestToJSON,
+    SetSkillRedistribution200ResponseFromJSON,
+    SetSkillRedistribution200ResponseToJSON,
+    SetSkillRedistributionRequestFromJSON,
+    SetSkillRedistributionRequestToJSON,
     SetSkillRestriction200ResponseFromJSON,
     SetSkillRestriction200ResponseToJSON,
     SetSkillRestrictionRequestFromJSON,
@@ -470,6 +476,11 @@ export interface SearchSkillsRequest {
 export interface SetEvaluationFeedbackOperationRequest {
     id: string;
     setEvaluationFeedbackRequest: SetEvaluationFeedbackRequest;
+}
+
+export interface SetSkillRedistributionOperationRequest {
+    id: string;
+    setSkillRedistributionRequest: SetSkillRedistributionRequest;
 }
 
 export interface SetSkillRestrictionOperationRequest {
@@ -1496,6 +1507,23 @@ export interface DefaultApiInterface {
      * Say whether the judgement was helpful (EVAL-001)
      */
     setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation>;
+
+    /**
+     * Operator only. Sets the redistribution verdict on one skill and records who changed it and why.  This gate and the `restriction` above block the same download, and until 2026-08-23 this was the one of the two with no route, no operator check and no audit event (`05` R-3c). It then spent a further two days with a route and no contract, which is the same gap one layer up: an operator tool generated from this file could set a hold and not release content.  Idempotent, for the same reason as `restriction`: writing the value a skill already has is a second audit event and no change to the row.  The column write and the audit event share one transaction (iron rule 9). This gate decides whether content leaves the platform, so \"released, and no record of who released it\" is the one outcome that must be impossible.  Cross-workspace like `restriction`, and for the same reason: the verdict is about a *source*, so it has to reach the catalogue entry and every fork alike. Nothing here reads workspace-private data. 
+     * @summary Set whether a skill\'s bytes may be handed back (SEC-011)
+     * @param {string} id 
+     * @param {SetSkillRedistributionRequest} setSkillRedistributionRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setSkillRedistributionRaw(requestParameters: SetSkillRedistributionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetSkillRedistribution200Response>>;
+
+    /**
+     * Operator only. Sets the redistribution verdict on one skill and records who changed it and why.  This gate and the `restriction` above block the same download, and until 2026-08-23 this was the one of the two with no route, no operator check and no audit event (`05` R-3c). It then spent a further two days with a route and no contract, which is the same gap one layer up: an operator tool generated from this file could set a hold and not release content.  Idempotent, for the same reason as `restriction`: writing the value a skill already has is a second audit event and no change to the row.  The column write and the audit event share one transaction (iron rule 9). This gate decides whether content leaves the platform, so \"released, and no record of who released it\" is the one outcome that must be impossible.  Cross-workspace like `restriction`, and for the same reason: the verdict is about a *source*, so it has to reach the catalogue entry and every fork alike. Nothing here reads workspace-private data. 
+     * Set whether a skill\'s bytes may be handed back (SEC-011)
+     */
+    setSkillRedistribution(requestParameters: SetSkillRedistributionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetSkillRedistribution200Response>;
 
     /**
      * Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold already in place, and records who did it and why.  Idempotent: applying the same code twice writes a second audit event and leaves the row as it was. An operator repeating an action is not an error, and answering 409 here would only invite retry loops.  The column and the audit event are written in one transaction (iron rule 9), so a hold can never be in force without the event that explains it, nor explained without being in force.  This is the only cross-workspace write in the API. A licensing question is about a *source*, so a hold has to reach the catalogue entry and every fork of it alike; being an operator is still not a widened workspace scope, and nothing here reads workspace-private data on the strength of it (SEC-011 最小權力原則). 
@@ -4154,6 +4182,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation> {
         const response = await this.setEvaluationFeedbackRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Operator only. Sets the redistribution verdict on one skill and records who changed it and why.  This gate and the `restriction` above block the same download, and until 2026-08-23 this was the one of the two with no route, no operator check and no audit event (`05` R-3c). It then spent a further two days with a route and no contract, which is the same gap one layer up: an operator tool generated from this file could set a hold and not release content.  Idempotent, for the same reason as `restriction`: writing the value a skill already has is a second audit event and no change to the row.  The column write and the audit event share one transaction (iron rule 9). This gate decides whether content leaves the platform, so \"released, and no record of who released it\" is the one outcome that must be impossible.  Cross-workspace like `restriction`, and for the same reason: the verdict is about a *source*, so it has to reach the catalogue entry and every fork alike. Nothing here reads workspace-private data. 
+     * Set whether a skill\'s bytes may be handed back (SEC-011)
+     */
+    async setSkillRedistributionRaw(requestParameters: SetSkillRedistributionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SetSkillRedistribution200Response>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling setSkillRedistribution().'
+            );
+        }
+
+        if (requestParameters['setSkillRedistributionRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setSkillRedistributionRequest',
+                'Required parameter "setSkillRedistributionRequest" was null or undefined when calling setSkillRedistribution().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/skills/{id}/redistribution`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetSkillRedistributionRequestToJSON(requestParameters['setSkillRedistributionRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SetSkillRedistribution200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Sets the redistribution verdict on one skill and records who changed it and why.  This gate and the `restriction` above block the same download, and until 2026-08-23 this was the one of the two with no route, no operator check and no audit event (`05` R-3c). It then spent a further two days with a route and no contract, which is the same gap one layer up: an operator tool generated from this file could set a hold and not release content.  Idempotent, for the same reason as `restriction`: writing the value a skill already has is a second audit event and no change to the row.  The column write and the audit event share one transaction (iron rule 9). This gate decides whether content leaves the platform, so \"released, and no record of who released it\" is the one outcome that must be impossible.  Cross-workspace like `restriction`, and for the same reason: the verdict is about a *source*, so it has to reach the catalogue entry and every fork alike. Nothing here reads workspace-private data. 
+     * Set whether a skill\'s bytes may be handed back (SEC-011)
+     */
+    async setSkillRedistribution(requestParameters: SetSkillRedistributionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SetSkillRedistribution200Response> {
+        const response = await this.setSkillRedistributionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

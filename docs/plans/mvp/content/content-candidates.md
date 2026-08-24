@@ -37,7 +37,7 @@
 | 1 | `brand-guidelines` | [anthropics/skills](https://github.com/anthropics/skills) | Apache-2.0（`LICENSE.txt` 存在） | curated 候選 | 需先過 CONTENT-004／006／007／008 才能真正標 curated |
 | 2 | `internal-comms` | anthropics/skills | Apache-2.0 | curated 候選 | 同上 |
 
-**已排除**：`doc-coauthoring`（anthropics/skills）——目錄無 `LICENSE.txt`，repo 根目錄亦無可繼承的 License 檔（[data-category-sourcing.md §1 發現 A](../m0/data-category-sourcing.md#發現-areadmemd-的免責條款適用全-repo)）。依精選標準第 1 項與「License 狀態預設未知」規則，暫不可索引為可下載/可精選候選，僅可標 `external` 供發現用。
+**已排除**：`doc-coauthoring`（anthropics/skills）——目錄無 `LICENSE.txt`，repo 根目錄亦無可繼承的 License 檔（[data-category-sourcing.md §1 發現 A](../m0/data-category-sourcing.md)）。依精選標準第 1 項與「License 狀態預設未知」規則，暫不可索引為可下載/可精選候選，僅可標 `external` 供發現用。
 
 **待補足**：同 `documents`，需另外執行回溯准入流程找足供給，本文件未執行。
 

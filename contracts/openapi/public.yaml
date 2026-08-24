@@ -1416,6 +1416,117 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/skills/{id}/redistribution:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      operationId: setSkillRedistribution
+      summary: Set whether a skill's bytes may be handed back (SEC-011)
+      description: |
+        Operator only. Sets the redistribution verdict on one skill and records
+        who changed it and why.
+
+        This gate and the `restriction` above block the same download, and until
+        2026-08-23 this was the one of the two with no route, no operator check
+        and no audit event (`05` R-3c). It then spent a further two days with a
+        route and no contract, which is the same gap one layer up: an operator
+        tool generated from this file could set a hold and not release content.
+
+        Idempotent, for the same reason as `restriction`: writing the value a
+        skill already has is a second audit event and no change to the row.
+
+        The column write and the audit event share one transaction (iron rule
+        9). This gate decides whether content leaves the platform, so "released,
+        and no record of who released it" is the one outcome that must be
+        impossible.
+
+        Cross-workspace like `restriction`, and for the same reason: the verdict
+        is about a *source*, so it has to reach the catalogue entry and every
+        fork alike. Nothing here reads workspace-private data.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value, note]
+              properties:
+                value:
+                  type: string
+                  enum: [allowed, blocked, unknown]
+                  description: |
+                    Only three of the column's five values are a verdict anyone
+                    can assert. `self_supplied` and `generated` record where the
+                    bytes came from, not a judgement about them, so this route
+                    refuses both by name rather than lumping them in with typos:
+                    a caller who tried one made a category error, and being told
+                    the list of valid values would not explain the omission.
+
+                    Setting a self-supplied or generated skill to `blocked` is
+                    allowed, and that direction is deliberate — content the owner
+                    uploaded, or the platform wrote, can still turn out to be
+                    something the platform must stop handing back.
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: |
+                    Why, in the operator's own words. Required and not
+                    satisfiable with whitespace, same rule and same validator as
+                    `restriction`: an operator action nobody can explain later is
+                    not a decision (02:SEC-011 理由必填).
+      responses:
+        "200":
+          description: |
+            The verdict is in force. The body echoes the sentence the public
+            detail view will now show, so the operator sees what a reader will
+            see without fetching the skill.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [skill_id, redistribution, previous_value]
+                properties:
+                  skill_id: { type: string, format: uuid }
+                  redistribution:
+                    type: object
+                    required: [value, label, note]
+                    properties:
+                      value:
+                        type: string
+                        enum: [allowed, blocked, unknown, self_supplied, generated]
+                      label: { type: string }
+                      note:
+                        type: string
+                        description: |
+                          The sentence a reader is shown. For the two provenance
+                          values it says explicitly that this is not a licensing
+                          judgement, because it is not one.
+                  previous_value:
+                    type: string
+                    enum: [allowed, blocked, unknown, self_supplied, generated]
+                    description: |
+                      The value in force before this call. A string rather than
+                      nullable: the column is NOT NULL with a default, so there
+                      is no "no verdict yet" state for null to mean.
+        "400":
+          description: |
+            Body is not JSON, `value` is blank, unknown, or one of the two
+            provenance values, or `note` is blank or over 1000 bytes. The
+            provenance case gets its own message explaining why that value is
+            not settable rather than the list of ones that are.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            The caller is not an operator, **or** no such skill — one answer, for
+            the reason spelled out under `restriction`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/dispatch:
     get:
       operationId: getDispatchStatus
@@ -1824,7 +1935,13 @@ paths:
         "422":
           description: |
             Well formed, the platform is working, and the run still may not
-            start. Three causes, and the message says which:
+            start. Six causes, and the message says which. The list read three
+            for a while, which is the drift this file warns about under
+            `/api/skills/search`: a cause missing from it is how a handler and
+            its contract come apart. The three that were missing are the last
+            three below, and one of them clears on its own in seconds while
+            another does not clear until tomorrow - a client that folded them
+            into a fallback branch told the user the wrong one.
 
             - No configured provider can satisfy the run's requirements
               (RUN-005); the message names the requirement each one failed.
@@ -1840,6 +1957,16 @@ paths:
               inserted the run and under the same advisory lock as the
               concurrency limit, so a refusal leaves no run behind (ADR-028
               決策 2). The counters are the same ones GET /me/quota reports.
+            - The workspace already has as many runs in flight as it may have
+              (SEC-002 gate B). Unlike the allowance above this one clears by
+              itself, in about as long as a run takes, so the message says wait
+              rather than come back tomorrow.
+            - The package's static scan blocks, or could not be performed
+              (SEC-002 gate B). Unperformable is refused as well as blocking:
+              a scan that did not run is not a scan that passed.
+            - The skill is under a licensing hold (0023, SEC-011). The request
+              is fine and the platform is fine; this content may not be copied
+              into a sandbox until the review concludes.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3898,8 +4025,9 @@ components:
           type: string
           enum: [allowed, blocked, unknown, self_supplied, generated]
           description: |
-            Whether a Download Artifact may be produced from this skill. Two of
-            its four values release and two refuse, so on the owner's own list
+            Whether a Download Artifact may be produced from this skill. Three
+            of its five values release and two refuse (`blocked` and `unknown`
+            are the two that refuse), so on the owner's own list
             this is the difference between a skill they can take away and one
             they cannot. It was already on the row and dropped in serialisation;
             surfacing it is 02:NFR-001 in the direction that says a limit which

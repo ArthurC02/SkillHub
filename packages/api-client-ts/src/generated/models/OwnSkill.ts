@@ -63,8 +63,9 @@ export interface OwnSkill {
      */
     summary: string;
     /**
-     * Whether a Download Artifact may be produced from this skill. Two of
-     * its four values release and two refuse, so on the owner's own list
+     * Whether a Download Artifact may be produced from this skill. Three
+     * of its five values release and two refuse (`blocked` and `unknown`
+     * are the two that refuse), so on the owner's own list
      * this is the difference between a skill they can take away and one
      * they cannot. It was already on the row and dropped in serialisation;
      * surfacing it is 02:NFR-001 in the direction that says a limit which

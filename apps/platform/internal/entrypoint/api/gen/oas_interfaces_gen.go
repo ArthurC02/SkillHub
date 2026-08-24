@@ -225,6 +225,10 @@ type SetEvaluationFeedbackRes interface {
 	setEvaluationFeedbackRes()
 }
 
+type SetSkillRedistributionRes interface {
+	setSkillRedistributionRes()
+}
+
 type SetSkillRestrictionRes interface {
 	setSkillRestrictionRes()
 }

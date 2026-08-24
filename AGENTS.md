@@ -23,7 +23,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 | `docs/plans/` | [產品基準](docs/plans/README.md)：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/04-backlog-and-handoffs.md)（活文件）、[待裁定清單](docs/plans/05-pending-rulings.md)（活文件）；`mvp/m0/`～`mvp/m5/` 為各里程碑凍結產出；`mvp/content/`／`mvp/governance/`／`mvp/gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/README.md](docs/plans/README.md) |
 | `docs/adr/` | 架構決策紀錄。**份數、狀態與取代關係見索引** | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
 | `docs/spikes/` | M0 spike code 已刪，只留墓碑與結論落點對照 | [docs/spikes/README.md](docs/spikes/README.md) |
-| `docs/design/` | **前端的兩把尺**：[system.md](docs/design/system.md) 管**一頁之內**（義務、原則、字級／間距／表面／狀態語彙、強制對照表），[information-architecture.md](docs/design/information-architecture.md) 管**一頁與一頁之間**（規則層 R1～R6、路由、導覽、可達性、網址狀態、旗標入口）。兩份都是活文件且各有機器測試。**注意 IA 的方向**：§0 的規則走在程式前面（不一致改程式），§1～§4 的盤點跟在程式後面 | [docs/design/system.md](docs/design/system.md)、[information-architecture.md](docs/design/information-architecture.md) |
+| `docs/design/` | **前端的兩把尺**：[system.md](docs/design/system.md) 管**一頁之內**（義務、原則、字級／間距／表面／狀態語彙、強制對照表），[information-architecture.md](docs/design/information-architecture.md) 管**一頁與一頁之間**（規則層 R1～R7、路由、導覽、可達性、網址狀態、旗標入口）。兩份都是活文件且各有機器測試。**注意 IA 的方向**：§0 的規則走在程式前面（不一致改程式），§1～§4 的盤點跟在程式後面 | [docs/design/system.md](docs/design/system.md)、[information-architecture.md](docs/design/information-architecture.md) |
 | `docs/runbooks/` | 值班當下照著做的操作程序（`02:SEC-010` 要求的形式）。與 `docs/development/` 的分別：那裡是開工前讀的手冊，這裡是出事時讀的 | [p1-dispatch-halt.md](docs/runbooks/p1-dispatch-halt.md)（P1 停止派送與解除） |
 
 Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納由 **ADR-031（Accepted）** 按產物角色定義；結構性偏離需先更新 ADR。
@@ -45,12 +45,12 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納由 **ADR-0
 | 層 | 選擇 | 依據 |
 | --- | --- | --- |
 | 前端 | React + TS（Vite、TanStack Router/Query），SPA 起步 | ADR-016 |
-| 平台後端 | Go：chi/echo 薄層、pgx + sqlc、River（Postgres 佇列） | ADR-016、014 |
+| 平台後端 | Go：chi/echo 薄層、pgx + sqlc、River（Postgres 佇列） | ADR-016、018（ADR-014 已 Superseded，核心結論由 018 延續） |
 | LLM 工作負載 | Python：FastAPI（uv 管理），內部服務（未採用 LangGraph） | ADR-016 |
 | 模型供應商 | OpenAI API（試跑預設 mini 級；Embedding `text-embedding-3-small`），一律經 LiteLLM 閘道 | PDM-003、ADR-017 |
 | 資料 | PostgreSQL 中心（交易、FTS + pgvector、佇列、Trace 分割表）＋受管 S3 相容物件儲存；核心元件容器化自架（E1） | ADR-018 |
 | 搜尋 | 混合檢索（向量腿承載跨語言召回，FTS＋RRF 為召回覆蓋）＋索引時 LLM 增強（摘要與任務範例句為必要項） | ADR-013 |
-| Agent Runtime | Claude Agent SDK，版本以 digest ＋ lockfile 釘選，**唯一來源是 `tools/toolchain.yaml`**；升級必須重跑四項實測，靜默失效不得以推理帶過 | ADR-023 |
+| Agent Runtime | Claude Agent SDK，版本以 digest ＋ lockfile 釘選，**最終事實來源是 image digest**（ADR-023 決策 1；版本字串釘在 `infra/images/runtime-agent-sdk/Dockerfile` 的 `ARG CLAUDE_AGENT_SDK_VERSION`，**不在 `tools/toolchain.yaml`**——那個檔沒有這一項）；升級必須重跑四項實測，靜默失效不得以推理帶過 | ADR-023 |
 | 身分與 Session | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | ADR-020 |
 | Sandbox 隔離 | gVisor 基線（`systrap` 平台，不需巢狀虛擬化），獨立 VM 池，沙箱層 nftables default-deny ＋固定 DNS（不部署 L7 Proxy） | ADR-015、005、022 |
 | Runtime Image | 自建映像發佈至 **GHCR**，SBOM 與漏洞掃描以 attestation 隨 digest 保存；過不了門檻的映像到不了 registry | ADR-022、`03` SBX-011 |

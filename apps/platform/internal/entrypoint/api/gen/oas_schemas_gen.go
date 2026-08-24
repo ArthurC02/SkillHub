@@ -4356,10 +4356,11 @@ type ForkSkillCreated struct {
 	SkillID uuid.UUID `json:"skill_id"`
 	Name    string    `json:"name"`
 	Summary string    `json:"summary"`
-	// Whether a Download Artifact may be produced from this skill. Two of its four values release and two
-	// refuse, so on the owner's own list this is the difference between a skill they can take away and one
-	// they cannot. It was already on the row and dropped in serialisation; surfacing it is 02:NFR-001 in
-	// the direction that says a limit which will block you has to be visible before you hit it.
+	// Whether a Download Artifact may be produced from this skill. Three of its five values release and
+	// two refuse (`blocked` and `unknown` are the two that refuse), so on the owner's own list this is the
+	// difference between a skill they can take away and one they cannot. It was already on the row and
+	// dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a limit which will
+	// block you has to be visible before you hit it.
 	//
 	// `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
 	// refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
@@ -4467,10 +4468,11 @@ func (s *ForkSkillCreated) SetVersionNumber(val int) {
 
 func (*ForkSkillCreated) forkSkillRes() {}
 
-// Whether a Download Artifact may be produced from this skill. Two of its four values release and two
-// refuse, so on the owner's own list this is the difference between a skill they can take away and one
-// they cannot. It was already on the row and dropped in serialisation; surfacing it is 02:NFR-001 in
-// the direction that says a limit which will block you has to be visible before you hit it.
+// Whether a Download Artifact may be produced from this skill. Three of its five values release and
+// two refuse (`blocked` and `unknown` are the two that refuse), so on the owner's own list this is the
+// difference between a skill they can take away and one they cannot. It was already on the row and
+// dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a limit which will
+// block you has to be visible before you hit it.
 //
 // `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
 // refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
@@ -8564,10 +8566,11 @@ type OwnSkill struct {
 	SkillID uuid.UUID `json:"skill_id"`
 	Name    string    `json:"name"`
 	Summary string    `json:"summary"`
-	// Whether a Download Artifact may be produced from this skill. Two of its four values release and two
-	// refuse, so on the owner's own list this is the difference between a skill they can take away and one
-	// they cannot. It was already on the row and dropped in serialisation; surfacing it is 02:NFR-001 in
-	// the direction that says a limit which will block you has to be visible before you hit it.
+	// Whether a Download Artifact may be produced from this skill. Three of its five values release and
+	// two refuse (`blocked` and `unknown` are the two that refuse), so on the owner's own list this is the
+	// difference between a skill they can take away and one they cannot. It was already on the row and
+	// dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a limit which will
+	// block you has to be visible before you hit it.
 	//
 	// `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
 	// refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
@@ -8677,10 +8680,11 @@ func (s *OwnSkill) SetVerification(val SkillVerification) {
 	s.Verification = val
 }
 
-// Whether a Download Artifact may be produced from this skill. Two of its four values release and two
-// refuse, so on the owner's own list this is the difference between a skill they can take away and one
-// they cannot. It was already on the row and dropped in serialisation; surfacing it is 02:NFR-001 in
-// the direction that says a limit which will block you has to be visible before you hit it.
+// Whether a Download Artifact may be produced from this skill. Three of its five values release and
+// two refuse (`blocked` and `unknown` are the two that refuse), so on the owner's own list this is the
+// difference between a skill they can take away and one they cannot. It was already on the row and
+// dropped in serialisation; surfacing it is 02:NFR-001 in the direction that says a limit which will
+// block you has to be visible before you hit it.
 //
 // `self_supplied` is what a user's own import carries since 0036. It was `unknown` before that, which
 // refused — so the answer to "may I download the Skill I just wrote" was permanently no, over a
@@ -13283,6 +13287,310 @@ func (s *SetEvaluationFeedbackReq) SetComment(val OptString) {
 type SetEvaluationFeedbackUnauthorized Error
 
 func (*SetEvaluationFeedbackUnauthorized) setEvaluationFeedbackRes() {}
+
+type SetSkillRedistributionBadRequest Error
+
+func (*SetSkillRedistributionBadRequest) setSkillRedistributionRes() {}
+
+type SetSkillRedistributionNotFound Error
+
+func (*SetSkillRedistributionNotFound) setSkillRedistributionRes() {}
+
+type SetSkillRedistributionOK struct {
+	SkillID        uuid.UUID                              `json:"skill_id"`
+	Redistribution SetSkillRedistributionOKRedistribution `json:"redistribution"`
+	// The value in force before this call. A string rather than nullable: the column is NOT NULL with a
+	// default, so there is no "no verdict yet" state for null to mean.
+	PreviousValue SetSkillRedistributionOKPreviousValue `json:"previous_value"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *SetSkillRedistributionOK) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetRedistribution returns the value of Redistribution.
+func (s *SetSkillRedistributionOK) GetRedistribution() SetSkillRedistributionOKRedistribution {
+	return s.Redistribution
+}
+
+// GetPreviousValue returns the value of PreviousValue.
+func (s *SetSkillRedistributionOK) GetPreviousValue() SetSkillRedistributionOKPreviousValue {
+	return s.PreviousValue
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *SetSkillRedistributionOK) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetRedistribution sets the value of Redistribution.
+func (s *SetSkillRedistributionOK) SetRedistribution(val SetSkillRedistributionOKRedistribution) {
+	s.Redistribution = val
+}
+
+// SetPreviousValue sets the value of PreviousValue.
+func (s *SetSkillRedistributionOK) SetPreviousValue(val SetSkillRedistributionOKPreviousValue) {
+	s.PreviousValue = val
+}
+
+func (*SetSkillRedistributionOK) setSkillRedistributionRes() {}
+
+// The value in force before this call. A string rather than nullable: the column is NOT NULL with a
+// default, so there is no "no verdict yet" state for null to mean.
+type SetSkillRedistributionOKPreviousValue string
+
+const (
+	SetSkillRedistributionOKPreviousValueAllowed      SetSkillRedistributionOKPreviousValue = "allowed"
+	SetSkillRedistributionOKPreviousValueBlocked      SetSkillRedistributionOKPreviousValue = "blocked"
+	SetSkillRedistributionOKPreviousValueUnknown      SetSkillRedistributionOKPreviousValue = "unknown"
+	SetSkillRedistributionOKPreviousValueSelfSupplied SetSkillRedistributionOKPreviousValue = "self_supplied"
+	SetSkillRedistributionOKPreviousValueGenerated    SetSkillRedistributionOKPreviousValue = "generated"
+)
+
+// AllValues returns all SetSkillRedistributionOKPreviousValue values.
+func (SetSkillRedistributionOKPreviousValue) AllValues() []SetSkillRedistributionOKPreviousValue {
+	return []SetSkillRedistributionOKPreviousValue{
+		SetSkillRedistributionOKPreviousValueAllowed,
+		SetSkillRedistributionOKPreviousValueBlocked,
+		SetSkillRedistributionOKPreviousValueUnknown,
+		SetSkillRedistributionOKPreviousValueSelfSupplied,
+		SetSkillRedistributionOKPreviousValueGenerated,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SetSkillRedistributionOKPreviousValue) MarshalText() ([]byte, error) {
+	switch s {
+	case SetSkillRedistributionOKPreviousValueAllowed:
+		return []byte(s), nil
+	case SetSkillRedistributionOKPreviousValueBlocked:
+		return []byte(s), nil
+	case SetSkillRedistributionOKPreviousValueUnknown:
+		return []byte(s), nil
+	case SetSkillRedistributionOKPreviousValueSelfSupplied:
+		return []byte(s), nil
+	case SetSkillRedistributionOKPreviousValueGenerated:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetSkillRedistributionOKPreviousValue) UnmarshalText(data []byte) error {
+	switch SetSkillRedistributionOKPreviousValue(data) {
+	case SetSkillRedistributionOKPreviousValueAllowed:
+		*s = SetSkillRedistributionOKPreviousValueAllowed
+		return nil
+	case SetSkillRedistributionOKPreviousValueBlocked:
+		*s = SetSkillRedistributionOKPreviousValueBlocked
+		return nil
+	case SetSkillRedistributionOKPreviousValueUnknown:
+		*s = SetSkillRedistributionOKPreviousValueUnknown
+		return nil
+	case SetSkillRedistributionOKPreviousValueSelfSupplied:
+		*s = SetSkillRedistributionOKPreviousValueSelfSupplied
+		return nil
+	case SetSkillRedistributionOKPreviousValueGenerated:
+		*s = SetSkillRedistributionOKPreviousValueGenerated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SetSkillRedistributionOKRedistribution struct {
+	Value SetSkillRedistributionOKRedistributionValue `json:"value"`
+	Label string                                      `json:"label"`
+	// The sentence a reader is shown. For the two provenance values it says explicitly that this is not a
+	// licensing judgement, because it is not one.
+	Note string `json:"note"`
+}
+
+// GetValue returns the value of Value.
+func (s *SetSkillRedistributionOKRedistribution) GetValue() SetSkillRedistributionOKRedistributionValue {
+	return s.Value
+}
+
+// GetLabel returns the value of Label.
+func (s *SetSkillRedistributionOKRedistribution) GetLabel() string {
+	return s.Label
+}
+
+// GetNote returns the value of Note.
+func (s *SetSkillRedistributionOKRedistribution) GetNote() string {
+	return s.Note
+}
+
+// SetValue sets the value of Value.
+func (s *SetSkillRedistributionOKRedistribution) SetValue(val SetSkillRedistributionOKRedistributionValue) {
+	s.Value = val
+}
+
+// SetLabel sets the value of Label.
+func (s *SetSkillRedistributionOKRedistribution) SetLabel(val string) {
+	s.Label = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetSkillRedistributionOKRedistribution) SetNote(val string) {
+	s.Note = val
+}
+
+type SetSkillRedistributionOKRedistributionValue string
+
+const (
+	SetSkillRedistributionOKRedistributionValueAllowed      SetSkillRedistributionOKRedistributionValue = "allowed"
+	SetSkillRedistributionOKRedistributionValueBlocked      SetSkillRedistributionOKRedistributionValue = "blocked"
+	SetSkillRedistributionOKRedistributionValueUnknown      SetSkillRedistributionOKRedistributionValue = "unknown"
+	SetSkillRedistributionOKRedistributionValueSelfSupplied SetSkillRedistributionOKRedistributionValue = "self_supplied"
+	SetSkillRedistributionOKRedistributionValueGenerated    SetSkillRedistributionOKRedistributionValue = "generated"
+)
+
+// AllValues returns all SetSkillRedistributionOKRedistributionValue values.
+func (SetSkillRedistributionOKRedistributionValue) AllValues() []SetSkillRedistributionOKRedistributionValue {
+	return []SetSkillRedistributionOKRedistributionValue{
+		SetSkillRedistributionOKRedistributionValueAllowed,
+		SetSkillRedistributionOKRedistributionValueBlocked,
+		SetSkillRedistributionOKRedistributionValueUnknown,
+		SetSkillRedistributionOKRedistributionValueSelfSupplied,
+		SetSkillRedistributionOKRedistributionValueGenerated,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SetSkillRedistributionOKRedistributionValue) MarshalText() ([]byte, error) {
+	switch s {
+	case SetSkillRedistributionOKRedistributionValueAllowed:
+		return []byte(s), nil
+	case SetSkillRedistributionOKRedistributionValueBlocked:
+		return []byte(s), nil
+	case SetSkillRedistributionOKRedistributionValueUnknown:
+		return []byte(s), nil
+	case SetSkillRedistributionOKRedistributionValueSelfSupplied:
+		return []byte(s), nil
+	case SetSkillRedistributionOKRedistributionValueGenerated:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetSkillRedistributionOKRedistributionValue) UnmarshalText(data []byte) error {
+	switch SetSkillRedistributionOKRedistributionValue(data) {
+	case SetSkillRedistributionOKRedistributionValueAllowed:
+		*s = SetSkillRedistributionOKRedistributionValueAllowed
+		return nil
+	case SetSkillRedistributionOKRedistributionValueBlocked:
+		*s = SetSkillRedistributionOKRedistributionValueBlocked
+		return nil
+	case SetSkillRedistributionOKRedistributionValueUnknown:
+		*s = SetSkillRedistributionOKRedistributionValueUnknown
+		return nil
+	case SetSkillRedistributionOKRedistributionValueSelfSupplied:
+		*s = SetSkillRedistributionOKRedistributionValueSelfSupplied
+		return nil
+	case SetSkillRedistributionOKRedistributionValueGenerated:
+		*s = SetSkillRedistributionOKRedistributionValueGenerated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SetSkillRedistributionReq struct {
+	// Only three of the column's five values are a verdict anyone can assert. `self_supplied` and
+	// `generated` record where the bytes came from, not a judgement about them, so this route refuses both
+	// by name rather than lumping them in with typos: a caller who tried one made a category error, and
+	// being told the list of valid values would not explain the omission.
+	//
+	// Setting a self-supplied or generated skill to `blocked` is allowed, and that direction is deliberate
+	// — content the owner uploaded, or the platform wrote, can still turn out to be something the
+	// platform must stop handing back.
+	Value SetSkillRedistributionReqValue `json:"value"`
+	// Why, in the operator's own words. Required and not satisfiable with whitespace, same rule and same
+	// validator as `restriction`: an operator action nobody can explain later is not a decision
+	// (02:SEC-011 理由必填).
+	Note string `json:"note"`
+}
+
+// GetValue returns the value of Value.
+func (s *SetSkillRedistributionReq) GetValue() SetSkillRedistributionReqValue {
+	return s.Value
+}
+
+// GetNote returns the value of Note.
+func (s *SetSkillRedistributionReq) GetNote() string {
+	return s.Note
+}
+
+// SetValue sets the value of Value.
+func (s *SetSkillRedistributionReq) SetValue(val SetSkillRedistributionReqValue) {
+	s.Value = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetSkillRedistributionReq) SetNote(val string) {
+	s.Note = val
+}
+
+// Only three of the column's five values are a verdict anyone can assert. `self_supplied` and
+// `generated` record where the bytes came from, not a judgement about them, so this route refuses both
+// by name rather than lumping them in with typos: a caller who tried one made a category error, and
+// being told the list of valid values would not explain the omission.
+//
+// Setting a self-supplied or generated skill to `blocked` is allowed, and that direction is deliberate
+// — content the owner uploaded, or the platform wrote, can still turn out to be something the
+// platform must stop handing back.
+type SetSkillRedistributionReqValue string
+
+const (
+	SetSkillRedistributionReqValueAllowed SetSkillRedistributionReqValue = "allowed"
+	SetSkillRedistributionReqValueBlocked SetSkillRedistributionReqValue = "blocked"
+	SetSkillRedistributionReqValueUnknown SetSkillRedistributionReqValue = "unknown"
+)
+
+// AllValues returns all SetSkillRedistributionReqValue values.
+func (SetSkillRedistributionReqValue) AllValues() []SetSkillRedistributionReqValue {
+	return []SetSkillRedistributionReqValue{
+		SetSkillRedistributionReqValueAllowed,
+		SetSkillRedistributionReqValueBlocked,
+		SetSkillRedistributionReqValueUnknown,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SetSkillRedistributionReqValue) MarshalText() ([]byte, error) {
+	switch s {
+	case SetSkillRedistributionReqValueAllowed:
+		return []byte(s), nil
+	case SetSkillRedistributionReqValueBlocked:
+		return []byte(s), nil
+	case SetSkillRedistributionReqValueUnknown:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetSkillRedistributionReqValue) UnmarshalText(data []byte) error {
+	switch SetSkillRedistributionReqValue(data) {
+	case SetSkillRedistributionReqValueAllowed:
+		*s = SetSkillRedistributionReqValueAllowed
+		return nil
+	case SetSkillRedistributionReqValueBlocked:
+		*s = SetSkillRedistributionReqValueBlocked
+		return nil
+	case SetSkillRedistributionReqValueUnknown:
+		*s = SetSkillRedistributionReqValueUnknown
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 type SetSkillRestrictionBadRequest Error
 

@@ -912,6 +912,30 @@ func (UnimplementedHandler) SetEvaluationFeedback(ctx context.Context, req *SetE
 	return r, ht.ErrNotImplemented
 }
 
+// SetSkillRedistribution implements setSkillRedistribution operation.
+//
+// Operator only. Sets the redistribution verdict on one skill and records who changed it and why.
+//
+// This gate and the `restriction` above block the same download, and until 2026-08-23 this was the one
+// of the two with no route, no operator check and no audit event (`05` R-3c). It then spent a further
+// two days with a route and no contract, which is the same gap one layer up: an operator tool
+// generated from this file could set a hold and not release content.
+//
+// Idempotent, for the same reason as `restriction`: writing the value a skill already has is a second
+// audit event and no change to the row.
+//
+// The column write and the audit event share one transaction (iron rule 9). This gate decides whether
+// content leaves the platform, so "released, and no record of who released it" is the one outcome that
+// must be impossible.
+//
+// Cross-workspace like `restriction`, and for the same reason: the verdict is about a source, so it
+// has to reach the catalogue entry and every fork alike. Nothing here reads workspace-private data.
+//
+// PUT /admin/skills/{id}/redistribution
+func (UnimplementedHandler) SetSkillRedistribution(ctx context.Context, req *SetSkillRedistributionReq, params SetSkillRedistributionParams) (r SetSkillRedistributionRes, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // SetSkillRestriction implements setSkillRestriction operation.
 //
 // Operator only. Sets the 0023 access restriction on one skill, or changes the reason of a hold

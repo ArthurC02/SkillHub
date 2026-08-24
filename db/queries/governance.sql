@@ -29,6 +29,21 @@ WHERE workspace_id = $1 AND action = ANY(@actions::text[])
 ORDER BY created_at DESC, id DESC
 LIMIT $2;
 
+-- name: DeleteExpiredAuditEvents :execrows
+-- The 400 day sweep PDM-006 6 promises and the consent document tells a
+-- participant about (gate-test/consent-and-data-policy.md 3).
+--
+-- It did not exist until 2026-08-25. The column comment in 0013 said "400 day
+-- retention", the index above it is named for the sweep, and the DELETE branch
+-- of enforce_immutable was opened for it -- three pieces of a mechanism whose
+-- fourth piece nobody wrote. What a participant was asked to sign said the row
+-- disappears after 400 days; what ran said never.
+--
+-- Requires SET LOCAL skillhub.purge = 'on' in the same transaction: the 0013
+-- trigger blocks every other DELETE on this table, which is the point of an
+-- audit trail and is not being relaxed here.
+DELETE FROM audit_events WHERE created_at < $1;
+
 -- name: RequestAccountDeletion :one
 -- Starts (or re-reads) the 30-day grace period. Idempotent: asking twice keeps
 -- the original start time rather than extending the wait.
