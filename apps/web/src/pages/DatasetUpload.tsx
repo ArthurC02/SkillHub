@@ -57,7 +57,12 @@ export function DatasetUpload() {
 
   return (
     <section className="page">
-      <h1>上傳 Dataset</h1>
+      {/*
+        IA-8 (R5): the address is a plural noun — a place — and the heading
+        used to be a verb (「上傳 Dataset」), two mental models for one page.
+        The page lists what exists and accepts uploads; the noun covers both.
+      */}
+      <h1>Dataset</h1>
 
       {limits.isPending && <Loading what="上傳規則" />}
       {limits.error && (

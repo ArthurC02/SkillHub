@@ -152,6 +152,20 @@ export function Home() {
               {/* DISC-005: the suggestion is the server's, not a hardcoded string. */}
               {data.query_suggestion && <p>{data.query_suggestion}</p>}
               {/*
+                IA-5's flag-off half: with generation unexposed this state had
+                no exit at all — both empty states asked for another search,
+                and /workspace/import's only way in was the nav bar (an
+                in-page inbound count of 0, §2.3). One sentence, one Link,
+                and deliberately NOT in filtered_out: there the matches
+                exist and clearing filters is the right advice — an import
+                link would send the user to build what the catalogue already
+                has.
+              */}
+              <p className="note">
+                手上已經有一個 Skill 套件的話，也可以
+                <Link to="/workspace/import">直接匯入它</Link>。
+              </p>
+              {/*
                 GEN-004's entry point, and only here — never in the
                 `filtered_out` branch above (widening a filter and describing a
                 task are opposite advice) and never beside the search box
