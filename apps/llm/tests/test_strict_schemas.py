@@ -67,6 +67,25 @@ MODEL_FACING = [
 ]
 
 
+def _refused_keywords(node: object) -> set[str]:
+    """Every refused keyword anywhere under a property, `anyOf` branches and
+    array `items` included."""
+    found: set[str] = set()
+    if isinstance(node, dict):
+        found |= REFUSED_KEYWORDS & set(node)
+        for key, value in node.items():
+            # `properties` belongs to a nested object, which _objects() visits
+            # in its own right; descending here would report it twice under a
+            # confusing name.
+            if key == "properties":
+                continue
+            found |= _refused_keywords(value)
+    elif isinstance(node, list):
+        for item in node:
+            found |= _refused_keywords(item)
+    return found
+
+
 def _objects(node: object) -> list[dict]:
     """Every object schema in the tree, `$defs` included."""
     found = []
@@ -98,7 +117,15 @@ def test_the_schema_is_legal_under_strict_json_schema(model: type[BaseModel]) ->
             f"got {obj.get('additionalProperties')!r}"
         )
         for name, prop in obj.get("properties", {}).items():
-            refused = REFUSED_KEYWORDS & set(prop)
+            # Recursive, not just the top level of the property dict. A nullable
+            # field renders as `anyOf: [{type: string, maxLength: N}, {type:
+            # null}]`, and a top-level scan reads only the anyOf key — so the
+            # refused keyword hides one level down. Nullable is not exotic here:
+            # strict REQUIRES an inapplicable field to be sent as null rather
+            # than omitted, which is why JudgeEvidenceRef has two of them. A
+            # guard against the M5 defect that could not see into anyOf was the
+            # M5 defect wearing a different hat (found by the M3 audit).
+            refused = _refused_keywords(prop)
             assert not refused, (
                 f"{model.__name__}.{title}.{name}: strict refuses {sorted(refused)}; "
                 "apply the cap to the answer instead"

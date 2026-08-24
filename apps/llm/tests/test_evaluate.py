@@ -544,21 +544,70 @@ def test_duplicate_proposals_collapse_without_dropping_supported_categories(capt
 @pytest.mark.parametrize(
     "change",
     [
-        {"category": "mcp"},
         {"target_path": ""},
         {"proposed_content": ""},
         {"target_path": "x" * (evaluate.MAX_TARGET_PATH + 1)},
         {"proposed_content": "x" * (evaluate.MAX_PROPOSED_CONTENT + 1)},
+        # The three fields the parametrize never covered until the M3 audit:
+        # each has a cap, none of the caps is in the prompt, and every one of
+        # them used to take the whole batch down.
+        {"problem": "x" * (evaluate.MAX_PROBLEM + 1)},
+        {"evidence": "x" * (evaluate.MAX_EVIDENCE + 1)},
+        {"expected_impact": "x" * (evaluate.MAX_EXPECTED_IMPACT + 1)},
     ],
 )
-def test_unapplicable_or_oversized_proposals_are_rejected_not_rewritten(capture, change):
+def test_unapplicable_or_oversized_proposals_are_dropped_not_rewritten(capture, change):
+    """Dropped, and not rewritten into something applicable.
+
+    It used to be the whole batch: any one bad field 502'd the answer after the
+    gateway had been paid. `rejected` still means `not stored`; it no longer
+    means `and neither is anything else the model said`.
+    """
     base = GOOD_PROPOSALS["suggestions"][0]
     capture(json.dumps({"suggestions": [{**base, **change}]}))
 
     response = client.post("/suggest-improvements", json=IMPROVE_REQUEST)
 
+    assert response.status_code == 200, response.text
+    assert response.json()["suggestions"] == []
+
+
+def test_a_category_outside_the_enum_is_still_the_whole_answer_failing(capture):
+    """The distinction the drop introduces. A cap is one bad row; a value
+    outside the schema means the ANSWER did not parse — pydantic validates the
+    list, so there is no good half to keep. Different failures, different
+    treatment, and the boundary is "did it parse".
+    """
+    base = GOOD_PROPOSALS["suggestions"][0]
+    capture(json.dumps({"suggestions": [{**base, "category": "mcp"}]}))
+
+    response = client.post("/suggest-improvements", json=IMPROVE_REQUEST)
+
     assert response.status_code == 502
     assert response.json()["detail"] == "suggestion model returned malformed output"
+
+
+def test_one_unusable_proposal_does_not_discard_the_good_ones(capture):
+    """The case the batch-502 made invisible: a paid answer that was mostly
+    usable reached the user as 「沒有提案」, which reads as "the model had
+    nothing to say" — the absence 02:EVAL-002 is measured on.
+    """
+    base = GOOD_PROPOSALS["suggestions"][0]
+    capture(
+        json.dumps(
+            {
+                "suggestions": [
+                    {**base, "problem": "這一項沒問題。"},
+                    {**base, "problem": "這一項超長。", "evidence": "x" * (evaluate.MAX_EVIDENCE + 1)},
+                    {**base, "category": "runtime", "problem": "這一項也沒問題。"},
+                ]
+            }
+        )
+    )
+
+    body = client.post("/suggest-improvements", json=IMPROVE_REQUEST).json()
+
+    assert [s["problem"] for s in body["suggestions"]] == ["這一項沒問題。", "這一項也沒問題。"]
 
 
 def test_suggestions_are_capped(capture):

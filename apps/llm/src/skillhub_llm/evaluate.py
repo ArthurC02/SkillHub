@@ -679,6 +679,21 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
     kept: list[ImprovementProposal] = []
     for s in parsed.suggestions:
         problem = s.problem.strip()
+        # One unusable proposal drops itself, and the rest of the batch stands.
+        #
+        # It used to 502 the whole answer, after the gateway had been paid, and
+        # a suggest call costs about 2.5x a judgement. Go turns that 502 into
+        # "evaluation suggestions unavailable" and stores nothing, so one
+        # over-long `evidence` field reached the user as 「沒有提案」 —
+        # indistinguishable from the model having had nothing to say, which is
+        # the absence 02:EVAL-002 is measured on. And the caps it trips are not
+        # in the prompt, so the model has no way to comply except by luck.
+        #
+        # Dropping is not rewriting: the rule
+        # test_unapplicable_or_oversized_proposals_are_rejected_not_rewritten
+        # pins is that a bad proposal must not be clipped into a good one, and
+        # EVAL-002's criteria are per-proposal ("每項建議至少包含…"), so keeping
+        # the complete ones satisfies it better than discarding them.
         if (
             not problem
             or len(problem) > MAX_PROBLEM
@@ -690,10 +705,11 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
             or not s.expected_impact.strip()
             or len(s.expected_impact) > MAX_EXPECTED_IMPACT
         ):
-            logger.warning("suggest-improvements: model returned an unapplicable proposal")
-            raise HTTPException(
-                status_code=502, detail="suggestion model returned malformed output"
+            logger.warning(
+                "suggest-improvements: dropping an unapplicable proposal",
+                extra={"target_path_len": len(s.target_path), "evidence_len": len(s.evidence)},
             )
+            continue
         key = (s.category, s.target_path, problem)
         if not problem or key in seen:
             continue
