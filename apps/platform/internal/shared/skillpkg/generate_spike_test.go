@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -123,21 +122,11 @@ func TestGenerateSpikeCensus(t *testing.T) {
 	t.Logf("summary json:\n%s", out)
 }
 
-// placeholderRe is what "格式正確的空殼" looks like in practice: a heading
-// followed by a slot the author was supposed to fill in.
-var placeholderRe = map[string]*regexp.Regexp{
-	"TODO":      regexp.MustCompile(`(?i)\bTODO\b`),
-	"FIXME":     regexp.MustCompile(`(?i)\bFIXME\b`),
-	"<angle>":   regexp.MustCompile(`<[a-z_ -]{3,30}>`),
-	"[bracket]": regexp.MustCompile(`\[(insert|your|описание|填|placeholder)[^\]]*\]`),
-	"ellipsis":  regexp.MustCompile(`(?m)^\s*(\.\.\.|…)\s*$`),
-	"xxx":       regexp.MustCompile(`(?i)\bxxx+\b`),
-}
-
 // bodyCensus returns the rune count of SKILL.md after its frontmatter, and
-// which placeholder shapes appear in it. The count is a proxy, not a verdict:
-// it separates "there are instructions here" from "there is a shape here",
-// and nothing beyond that.
+// which placeholder shapes appear in it — via skillpkg.PlaceholderShapes, the corrected
+// census (placeholder.go): the first version measured 0 true positives against
+// 2 false ones over the A round, and placeholder_test.go pins each recorded
+// false positive by name.
 func bodyCensus(fsys fs.FS) (int, []string) {
 	raw, err := fs.ReadFile(fsys, "SKILL.md")
 	if err != nil {
@@ -150,14 +139,7 @@ func bodyCensus(fsys fs.FS) (int, []string) {
 			text = text[3+i+4:]
 		}
 	}
-	var found []string
-	for label, re := range placeholderRe {
-		if re.MatchString(text) {
-			found = append(found, label)
-		}
-	}
-	sort.Strings(found)
-	return utf8.RuneCountInString(strings.TrimSpace(text)), found
+	return utf8.RuneCountInString(strings.TrimSpace(text)), skillpkg.PlaceholderShapes(text)
 }
 
 func countFiles(fsys fs.FS) int {
