@@ -227,6 +227,22 @@ func (s *Service) recordCleanup(ctx context.Context, run gen.Run, status gen.Run
 		return err
 	}
 
+	// The column is written on every pass — it has just been through `cleaning_up`
+	// and would otherwise stay there — but the trail and the event record the edges
+	// only, for the reason INGEST-010's source sweep records them:
+	// ListRunsNeedingCleanup keeps everything that is not `cleaned`, so a run whose
+	// sandbox can never be released (a provider dropped from the configuration is
+	// the usual way) is re-enqueued by the supervisor every 30 seconds, times
+	// River's five attempts. A row per pass is thousands of audit_events a day for
+	// one stuck run, in the table PDM-006 §6 keeps for 400 days, saying the same
+	// thing every time — and burying the two moments that do say something.
+	//
+	// `run` is the row the caller read before Cleanup marked it `cleaning_up`, so
+	// this compares against the previous *outcome*, not against that marker.
+	if run.CleanupStatus == status {
+		return tx.Commit(ctx)
+	}
+
 	meta := map[string]any{"cleanup_status": string(status)}
 	if len(failures) > 0 {
 		meta["failure_count"] = len(failures)

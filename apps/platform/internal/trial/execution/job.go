@@ -168,14 +168,50 @@ func (d *driver) execute(ctx context.Context) error {
 		return d.follow(ctx, *live)
 	case d.cur.Status == gen.RunStatusQueued || d.cur.Status == gen.RunStatusProvisioning:
 		return d.dispatch(ctx)
+	case d.cur.Status == gen.RunStatusEvaluating:
+		// The one state past dispatch that a restart can find with nothing actually
+		// wrong. settle() finishes the attempt *before* it walks the happy path, and
+		// each step of that walk is its own transaction: one blip between
+		// `evaluating` and `succeeded` leaves a run whose provider reported success
+		// and whose artifacts are written, with no live attempt (finished_at is set)
+		// for the branch below to find. Failing it would make runs.status say the
+		// execution failed when it did not, which is the one question ADR-025 says
+		// that column answers.
+		return d.resumeEvaluating(ctx)
 	default:
-		// RUN-008's other half: safe termination. The run is past dispatch with no
-		// attempt to resume, and the state machine has no way back to provisioning,
-		// so the honest outcome is a classified failure rather than a silent retry
-		// that would look like the original attempt.
-		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePlatform,
-			"no live provider attempt to resume after a restart")
+		return d.terminateUnresumable(ctx)
 	}
+}
+
+// resumeEvaluating finishes the happy-path walk settle() began, when the attempt
+// it settled is the one that reported success.
+//
+// "Reported success" is exactly "the attempt finished carrying no error class":
+// classifyResult writes a class for every other terminal outcome, and settle takes
+// all of those out through finish() without the run ever entering `evaluating`.
+// Anything else here is a run that arrived in this state some way the driver did
+// not put it, and gets the safe termination below rather than a walk to
+// `succeeded` on evidence nobody produced.
+func (d *driver) resumeEvaluating(ctx context.Context) error {
+	attempts, err := d.svc.queries().ListRunAttempts(ctx, gen.ListRunAttemptsParams{
+		RunID: d.cur.ID, WorkspaceID: d.cur.WorkspaceID,
+	})
+	if err != nil {
+		return err
+	}
+	if len(attempts) == 0 || attempts[len(attempts)-1].ErrorClass != nil {
+		return d.terminateUnresumable(ctx)
+	}
+	return d.walkHappyPath(ctx, attempts[len(attempts)-1].ID)
+}
+
+// terminateUnresumable is RUN-008's other half: safe termination. The run is past
+// dispatch with no attempt to resume, and the state machine has no way back to
+// provisioning, so the honest outcome is a classified failure rather than a silent
+// retry that would look like the original attempt.
+func (d *driver) terminateUnresumable(ctx context.Context) error {
+	return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failurePlatform,
+		"no live provider attempt to resume after a restart")
 }
 
 // dispatch selects a provider and hands it the run, retrying a bounded number of
@@ -417,18 +453,28 @@ func (d *driver) settle(ctx context.Context, attempt gen.RunAttempt, pr Provider
 	if status != gen.RunStatusSucceeded {
 		return d.finish(ctx, attempt.ID, status, failureClass, message)
 	}
-	// The happy path is the only one that has to walk the machine: `succeeded` is
-	// reachable from `evaluating` alone, while the three unhappy terminals are
-	// reachable from anywhere. Which successor is the happy one is the aggregate's
-	// answer to give (HappyPath), and the route is settled before the first
-	// transition is applied - a walk that cannot arrive is an error the job returns,
-	// not laps around a loop writing to the database.
+	return d.walkHappyPath(ctx, attempt.ID)
+}
+
+// walkHappyPath takes the run from where it is to `succeeded`, one transition at a
+// time.
+//
+// The happy path is the only one that has to walk the machine: `succeeded` is
+// reachable from `evaluating` alone, while the three unhappy terminals are
+// reachable from anywhere. Which successor is the happy one is the aggregate's
+// answer to give (HappyPath), and the route is settled before the first transition
+// is applied - a walk that cannot arrive is an error the job returns, not laps
+// around a loop writing to the database.
+//
+// Each step commits on its own, which is why resumeEvaluating exists: a walk that
+// is interrupted halfway is resumed from wherever it got to, not failed.
+func (d *driver) walkHappyPath(ctx context.Context, attemptID pgtype.UUID) error {
 	path, err := HappyPath(d.cur.Status)
 	if err != nil {
 		return err
 	}
 	for _, next := range path {
-		if err := d.advance(ctx, attempt.ID, next, successReason(next)); err != nil {
+		if err := d.advance(ctx, attemptID, next, successReason(next)); err != nil {
 			return err
 		}
 	}

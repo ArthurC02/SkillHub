@@ -498,6 +498,87 @@ func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 	}
 }
 
+// The other side of that branch, and the one it used to swallow: a run whose
+// provider reported success, interrupted between `evaluating` and `succeeded`.
+//
+// settle() finishes the attempt before it walks the happy path, and the walk is
+// one transaction per step. So a single database blip on the last step — or a
+// worker restart the supervisor then re-enqueues — comes back to a run that is
+// `evaluating`, non-terminal, with no *live* attempt to resume because
+// finished_at is already written. That is not a platform failure: the workload
+// ran, the artifacts are recorded, and rewriting it as failed/platform_error
+// would make runs.status answer a question ADR-025 gives to the evaluation.
+//
+// Both halves are here, because what separates them is the attempt's error class
+// and nothing else.
+func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	ctx := context.Background()
+
+	for _, tc := range []struct {
+		name        string
+		errorClass  *string
+		wantStatus  gen.RunStatus
+		wantFailure string
+	}{
+		{name: "alice-resume-evaluating", errorClass: nil,
+			wantStatus: gen.RunStatusSucceeded, wantFailure: ""},
+		// An attempt that ended badly never leaves the run in `evaluating` — settle
+		// takes those out through finish() — so this is the guard that keeps the
+		// resume from reviving something on evidence nobody produced.
+		{name: "alice-resume-refused", errorClass: strptr("execution_error"),
+			wantStatus: gen.RunStatusFailed, wantFailure: "platform_error"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t, a, pool, tc.name)
+			// No worker and no provider: this test drives the job itself, so the run
+			// stays exactly where it is put.
+			svc := &run.Service{Pool: pool}
+			created := f.start(t)
+			ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+
+			// The attempt as settle() left it: dispatched, finished, and carrying the
+			// class classifyResult wrote for its outcome.
+			if _, err := pool.Exec(ctx, `
+				INSERT INTO run_attempts (run_id, workspace_id, attempt_number, provider,
+				                          provider_run_id, started_at, finished_at, error_class)
+				VALUES ($1, $2, 1, 'fake_sandbox', 'sandbox-'||gen_random_uuid()::text, now(), now(), $3)`,
+				runID, ws, tc.errorClass); err != nil {
+				t.Fatal(err)
+			}
+			for _, step := range []struct{ from, to gen.RunStatus }{
+				{gen.RunStatusQueued, gen.RunStatusProvisioning},
+				{gen.RunStatusProvisioning, gen.RunStatusPreparing},
+				{gen.RunStatusPreparing, gen.RunStatusRunning},
+				{gen.RunStatusRunning, gen.RunStatusEvaluating},
+			} {
+				if _, err := svc.Transition(ctx, run.TransitionParams{
+					WorkspaceID: ws, RunID: runID, From: step.from, To: step.to, Reason: "by hand",
+				}); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			// The restart: the supervisor re-enqueues the run and the driver reads it
+			// back from `evaluating`.
+			if err := svc.Drive(ctx, ws, runID); err != nil {
+				t.Fatal(err)
+			}
+
+			_, view := f.getRun(t, created.RunID)
+			if view.Status != string(tc.wantStatus) {
+				t.Fatalf("status = %q (%s), want %s", view.Status, view.StatusReason, tc.wantStatus)
+			}
+			if view.FailureClass != tc.wantFailure {
+				t.Errorf("failure_class = %q, want %q", view.FailureClass, tc.wantFailure)
+			}
+		})
+	}
+}
+
+func strptr(s string) *string { return &s }
+
 // RUN-007: a teardown the provider refused is recorded as failed, and running
 // the whole thing again afterwards is safe.
 //

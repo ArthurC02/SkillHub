@@ -217,6 +217,97 @@ func TestCleanupOutcomeIsAudited(t *testing.T) {
 
 const cleanupAuditSQL = `SELECT count(*) FROM audit_events WHERE action = 'run.cleanup' AND resource_id = $1`
 
+// The same iron rule 9 gap on the cleanup side. TestCleanupOutcomeIsAudited above
+// asserts that the row and the event are both there on the success path, which
+// stays true whether the audit write rides the transaction or the pool — so it
+// could not fail when the handle was swapped, and neither could anything else in
+// the suite.
+//
+// recordCleanup writes its audit row last, so the failure has to be the commit
+// itself; failOutboxCommitFor (run_integration_test.go) is that failure.
+func TestACleanupThatFailsAfterItsAuditWriteLeavesNoAuditRow(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	_, svc := haltHarness(t, a, pool)
+	f := newFixture(t, a, pool, "alice-cleanup-atomicity")
+	ctx := context.Background()
+	ws := mustUUID(t, f.workspaceID)
+
+	finished := f.start(t)
+	if err := svc.Drive(ctx, ws, mustUUID(t, finished.RunID)); err != nil {
+		t.Fatalf("driving the run: %v", err)
+	}
+	// Installed after the run is driven, so only the cleanup's own transaction is
+	// the one that cannot commit.
+	runID := mustUUID(t, finished.RunID)
+	failOutboxCommitFor(t, pool, runID)
+
+	if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err == nil {
+		t.Fatal("cleanup reported success although its transaction could not commit")
+	}
+	if n := countRow(t, pool, cleanupAuditSQL, runID); n != 0 {
+		t.Errorf("%d run.cleanup audit rows outlived the transaction that wrote them", n)
+	}
+	if got := runCleanupStatus(t, pool, finished.RunID); got == string(gen.RunCleanupStatusCleaned) {
+		t.Error("cleanup_status says cleaned although the transaction that wrote it rolled back")
+	}
+}
+
+// A run that cannot be cleaned is put back on the supervisor's worklist every 30
+// seconds (supervisor.go, ListRunsNeedingCleanup keeps everything that is not
+// `cleaned`) and each cleanup job has five River attempts on top. A row per pass
+// is thousands of audit_events a day for one stuck run — in the table PDM-006 §6
+// keeps for 400 days, and for exactly the reason
+// TestSourceAvailabilityIsAuditedOnlyWhenItChanges gives above: they say nothing
+// new. The two moments that matter are the edges.
+func TestCleanupOutcomeIsAuditedOnlyWhenItChanges(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	fake, svc := haltHarness(t, a, pool)
+	f := newFixture(t, a, pool, "alice-cleanup-repeat-audit")
+	ctx := context.Background()
+	ws := mustUUID(t, f.workspaceID)
+
+	finished := f.start(t)
+	if err := svc.Drive(ctx, ws, mustUUID(t, finished.RunID)); err != nil {
+		t.Fatalf("driving the run: %v", err)
+	}
+	runID := mustUUID(t, finished.RunID)
+
+	// The provider will not let go of the sandbox, so every pass reaches the same
+	// outcome. The first one is news; the rest are the same sentence again.
+	fake.DestroyStatus = http.StatusInternalServerError
+	for pass := 1; pass <= 3; pass++ {
+		if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err == nil {
+			t.Fatalf("pass %d: a refused teardown reported success", pass)
+		}
+	}
+	if n := countRow(t, pool, cleanupAuditSQL, runID); n != 1 {
+		t.Errorf("run.cleanup audit rows = %d after three identical failures, want 1", n)
+	}
+	if n := countRow(t, pool, cleanupFailedOutboxSQL, runID); n != 1 {
+		t.Errorf("run.cleanup_failed outbox events = %d after three identical failures, want 1", n)
+	}
+	// The column still has to be current even on a pass that records nothing, or
+	// the run would sit in `cleaning_up` forever.
+	if got := runCleanupStatus(t, pool, finished.RunID); got != string(gen.RunCleanupStatusFailed) {
+		t.Errorf("cleanup_status = %q after the repeats, want failed", got)
+	}
+
+	// The teardown finally works. That IS new, so it is recorded — the edge this
+	// whole rule exists to keep.
+	fake.DestroyStatus = 0
+	if err := svc.Cleanup(ctx, mustRun(t, pool, f.workspaceID, finished.RunID)); err != nil {
+		t.Fatalf("the recovered teardown: %v", err)
+	}
+	if n := countRow(t, pool, cleanupAuditSQL, runID); n != 2 {
+		t.Errorf("run.cleanup audit rows = %d after the teardown succeeded, want 2", n)
+	}
+}
+
+const cleanupFailedOutboxSQL = `SELECT count(*) FROM outbox_events
+	WHERE event_type = 'run.cleanup_failed' AND aggregate_id = $1`
+
 // INGEST-010's two edges, and the repeats in between that must NOT be recorded.
 //
 // The sweep re-probes every source on a schedule, so a row per probe would bury

@@ -397,6 +397,88 @@ func TestFailedWritesLeaveNoOutboxEvent(t *testing.T) {
 	}
 }
 
+// failOutboxCommitFor makes any transaction that writes an outbox event for this
+// run fail at COMMIT, after every statement in it has already run.
+//
+// It exists because iron rule 9 is only provable by a failure that lands *after*
+// the write under test. outbox.Insert takes a pgx.Tx by type, so passing the pool
+// to it does not compile and the rule holds itself up there; audit.Log takes an
+// audit.DBTX, which *pgxpool.Pool satisfies as well as the transaction does, so
+// that handle can be swapped with nothing to notice. A pool write is its own
+// committed row and survives the rollback — which is the difference these tests
+// read, and the reason the injection has to be a deferred constraint trigger
+// rather than a plain one: in recordCleanup the audit write is the last statement
+// before the commit, so nothing earlier in the transaction could fail after it.
+//
+// Scoped to one run by the WHEN clause, and dropped again, because the whole
+// package shares one database with tests that need their events to land.
+func failOutboxCommitFor(t *testing.T, pool *pgxpool.Pool, aggregateID pgtype.UUID) {
+	t.Helper()
+	ctx := context.Background()
+	id := uuidText(aggregateID)
+	name := "test_fail_outbox_" + strings.ReplaceAll(id, "-", "")
+	if _, err := pool.Exec(ctx, `
+		CREATE OR REPLACE FUNCTION `+name+`() RETURNS trigger LANGUAGE plpgsql AS $$
+		BEGIN RAISE EXCEPTION 'injected: this transaction must not commit'; END $$`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		CREATE CONSTRAINT TRIGGER `+name+`
+		AFTER INSERT ON outbox_events DEFERRABLE INITIALLY DEFERRED
+		FOR EACH ROW WHEN (NEW.aggregate_id = '`+id+`'::uuid)
+		EXECUTE FUNCTION `+name+`()`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := pool.Exec(context.Background(), `DROP TRIGGER IF EXISTS `+name+` ON outbox_events`); err != nil {
+			t.Error(err)
+		}
+		if _, err := pool.Exec(context.Background(), `DROP FUNCTION IF EXISTS `+name+`()`); err != nil {
+			t.Error(err)
+		}
+	})
+}
+
+// Iron rule 9 on the half TestFailedWritesLeaveNoOutboxEvent cannot reach. Both
+// of its scenarios return before record() is ever called — one when LockDraft
+// refuses, one when TransitionRun matches no row — so together they prove that an
+// early refusal writes nothing, never that what record() already wrote rolls
+// back. Handing audit.Log the pool instead of the transaction left the whole
+// suite green.
+//
+// Here the transition gets all the way past its audit write and then cannot
+// commit, which is the only situation in which the two handles behave
+// differently.
+func TestATransitionThatFailsAfterItsAuditWriteLeavesNoAuditRow(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-audit-atomicity")
+	ctx := context.Background()
+
+	created := f.start(t)
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+	failOutboxCommitFor(t, pool, runID)
+
+	svc := &run.Service{Pool: pool}
+	if _, err := svc.Transition(ctx, run.TransitionParams{
+		WorkspaceID: ws, RunID: runID,
+		From: gen.RunStatusQueued, To: gen.RunStatusProvisioning, Reason: "cannot commit",
+	}); err == nil {
+		t.Fatal("the transition reported success although its transaction could not commit")
+	}
+
+	if n := countRow(t, pool,
+		"SELECT count(*) FROM audit_events WHERE action = 'run.transition' AND resource_id = $1",
+		runID); n != 0 {
+		t.Errorf("%d run.transition audit rows outlived the transaction that wrote them", n)
+	}
+	// The trail and the row have to agree: nothing was audited because nothing
+	// happened.
+	if _, view := f.getRun(t, created.RunID); view.Status != string(gen.RunStatusQueued) {
+		t.Errorf("status = %q, want queued: a transition that could not commit was applied", view.Status)
+	}
+}
+
 // ADR-008 「Poison Message 進入隔離佇列並告警，不無限制重送」. Before DDD-012 the
 // publisher stopped its pass on a failed delivery and started the next pass at the
 // same event, so one event a consumer could never accept held every event
