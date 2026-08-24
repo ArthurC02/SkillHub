@@ -105,9 +105,14 @@ type entry struct {
 	// secrets are the values this provider injected into the sandbox. Kept only
 	// to mask them out of workload output before it leaves the process (iron
 	// rule 11); never logged, never serialized.
-	secrets   []string
-	timedOut  bool
-	cancelled bool
+	secrets []string
+	// unmaskable marks an entry whose secrets are gone: an adopted attempt is
+	// rebuilt from container labels, and labels must never carry a Virtual Key
+	// or a pre-signed URL (D-05). Nothing can scrub what nothing knows, so the
+	// workload's output is withheld instead of shipped raw (iron rule 11).
+	unmaskable bool
+	timedOut   bool
+	cancelled  bool
 	// traceURL is this attempt's ingestion destination, credential included
 	// (TRACE-002). Empty means nothing is collecting and no draining happens.
 	traceURL string
@@ -390,6 +395,13 @@ func (m *Manager) finish(id string, out Outcome, re *RunError) {
 		e.run.State, res.Status = StateCompleted, ResultFailed
 		res.Error = &RunError{Class: ClassExecution, Message: fmt.Sprintf("workload exited with code %d", out.ExitCode)}
 	}
+	if e.unmaskable && res.AgentOutput != "" {
+		// Losing the tail of the output costs a user one debugging aid. Shipping
+		// it unmasked puts this run's Virtual Key and its pre-signed grant URL
+		// into stored, displayed text (NFR-002, TRACE-001), which costs everyone.
+		res.AgentOutput = ""
+		e.run.StateReason = "agent output withheld: its secrets could not be masked after a provider restart"
+	}
 	if !e.run.StartedAt.IsZero() {
 		res.Usage = &RunUsage{WallClockSeconds: now.Sub(e.run.StartedAt).Seconds()}
 	}
@@ -491,6 +503,10 @@ func (m *Manager) Adopt(ctx context.Context) error {
 	for _, a := range found {
 		e := &entry{
 			hash: a.RequestHash,
+			// The labels cannot rebuild the RunRequest, so this entry has no
+			// secrets list and never will: whatever the workload wrote cannot be
+			// masked and must not leave this process.
+			unmaskable: true,
 			run: ProviderRun{
 				RunID: a.RunID, RunAttemptID: a.RunAttemptID,
 				Provider: m.cfg.Provider, ProviderRunID: a.ProviderRunID,

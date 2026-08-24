@@ -79,8 +79,13 @@ type Config struct {
 	// In development the network is a Docker network with `internal: true` on
 	// which the LiteLLM gateway is the only reachable address - an allow list of
 	// one, enforced by what is on the wire rather than by a proxy. Production
-	// names the egress proxy's network here instead, and the proxy is what
-	// enforces the destination list, DNS pinning and destination logging.
+	// keeps that shape and changes only the enforcement: ADR-022 Q3 decided
+	// nftables default-deny plus a node-pinned DNS resolver and *no* proxy, so
+	// there is no proxy network to name here. What this names in production is
+	// the run's egress network; the destination list, the pinned IP and port,
+	// and the logging of refused attempts all live in the node's ruleset,
+	// rendered from infra/egress/allowlist.yaml at node build time and never
+	// edited on the node.
 	//
 	// Either way a run whose egress allows nothing gets no network, and object
 	// storage is never on this wire: the node moves those bytes itself.

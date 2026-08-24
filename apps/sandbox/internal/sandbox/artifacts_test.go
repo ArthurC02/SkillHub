@@ -8,10 +8,12 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -36,40 +38,90 @@ func tarOf(t *testing.T, files map[string][]byte) []byte {
 }
 
 func TestFilterArchiveEnforcesTheRunCeilings(t *testing.T) {
-	limits := ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 24}
-	raw := tarOf(t, map[string][]byte{
-		"artifacts/small.txt": []byte("ok"),
-		"artifacts/big.txt":   bytes.Repeat([]byte("x"), 32), // over the per-file ceiling
+	// One subtest per half of the condition, and each fixture is refused by its
+	// own half alone: a per-file case that stays under the run total, and a run
+	// total case whose files are each within the per-file ceiling. A fixture
+	// that trips both halves leaves one of them untested.
+	t.Run("per-file ceiling", func(t *testing.T) {
+		limits := ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 1 << 20}
+		raw := tarOf(t, map[string][]byte{
+			"artifacts/small.txt": []byte("ok"),
+			"artifacts/big.txt":   bytes.Repeat([]byte("x"), 32), // over the per-file ceiling, far under the run total
+		})
+
+		manifest, archive, err := filterArchive(raw, limits)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(manifest) != 1 || manifest[0].FileName != "small.txt" {
+			t.Fatalf("manifest = %#v, want only small.txt", manifest)
+		}
+		// A collection that lost something must say so, or the UI shows a partial
+		// result as complete.
+		if !manifest[0].Truncated {
+			t.Error("a dropped file did not mark the collection as truncated")
+		}
+		if manifest[0].SizeBytes != 2 || manifest[0].ContentHash == "" {
+			t.Errorf("manifest entry = %#v, want the real size and a hash", manifest[0])
+		}
+		// The uploaded archive must carry exactly the manifest: an entry whose bytes
+		// were never uploaded would be a manifest that lies.
+		names := map[string]bool{}
+		r := tar.NewReader(bytes.NewReader(archive))
+		for {
+			h, err := r.Next()
+			if err != nil {
+				break
+			}
+			names[h.Name] = true
+		}
+		if len(names) != 1 || !names["small.txt"] {
+			t.Errorf("uploaded archive holds %v, want only small.txt", names)
+		}
 	})
 
-	manifest, archive, err := filterArchive(raw, limits)
+	t.Run("run total ceiling", func(t *testing.T) {
+		// The real shape of this attack is many small files, not one big one:
+		// both of these pass the per-file ceiling and only their sum breaks the
+		// run's. Symmetric on purpose - tar entry order is map order here, and
+		// whichever lands second is the one that must be dropped.
+		limits := ResourceLimits{ArtifactFileBytes: 16, ArtifactTotalBytes: 12}
+		raw := tarOf(t, map[string][]byte{
+			"artifacts/a.txt": bytes.Repeat([]byte("a"), 8),
+			"artifacts/b.txt": bytes.Repeat([]byte("b"), 8),
+		})
+
+		manifest, _, err := filterArchive(raw, limits)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(manifest) != 1 {
+			t.Fatalf("manifest = %#v, want one file: 16 bytes do not fit in a 12 byte run ceiling", manifest)
+		}
+		if manifest[0].SizeBytes != 8 || !manifest[0].Truncated {
+			t.Errorf("manifest entry = %#v, want 8 bytes and the truncated mark", manifest[0])
+		}
+	})
+}
+
+// Bytes are not the only dimension a workload controls. Empty files cost
+// nothing against either byte ceiling and still take a manifest entry each, and
+// a manifest too large for the platform to read back loses the whole run
+// result - so the entry count is bounded too.
+func TestFilterArchiveBoundsTheNumberOfManifestEntries(t *testing.T) {
+	files := map[string][]byte{}
+	for i := range artifactMaxEntries + 5 {
+		files[fmt.Sprintf("artifacts/f%04d.txt", i)] = nil
+	}
+	manifest, _, err := filterArchive(tarOf(t, files), DefaultLimits)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(manifest) != 1 || manifest[0].FileName != "small.txt" {
-		t.Fatalf("manifest = %#v, want only small.txt", manifest)
+	if len(manifest) != artifactMaxEntries {
+		t.Fatalf("manifest holds %d entries, want the %d ceiling", len(manifest), artifactMaxEntries)
 	}
-	// A collection that lost something must say so, or the UI shows a partial
-	// result as complete.
 	if !manifest[0].Truncated {
-		t.Error("a dropped file did not mark the collection as truncated")
-	}
-	if manifest[0].SizeBytes != 2 || manifest[0].ContentHash == "" {
-		t.Errorf("manifest entry = %#v, want the real size and a hash", manifest[0])
-	}
-	// The uploaded archive must carry exactly the manifest: an entry whose bytes
-	// were never uploaded would be a manifest that lies.
-	names := map[string]bool{}
-	r := tar.NewReader(bytes.NewReader(archive))
-	for {
-		h, err := r.Next()
-		if err != nil {
-			break
-		}
-		names[h.Name] = true
-	}
-	if len(names) != 1 || !names["small.txt"] {
-		t.Errorf("uploaded archive holds %v, want only small.txt", names)
+		t.Error("entries were dropped but the collection is not marked truncated")
 	}
 }
 
@@ -77,6 +129,14 @@ func TestFilterArchiveRefusesNamesThatEscapeTheCollection(t *testing.T) {
 	raw := tarOf(t, map[string][]byte{
 		"artifacts/../../etc/passwd": []byte("no"),
 		"/absolute":                  []byte("no"),
+		// A name a downstream CLI would read as a flag rather than a file.
+		"artifacts/-rf": []byte("no"),
+		// Not path.Clean's own answer: a name that means one thing to the
+		// filter and another to whatever opens the archive later.
+		"artifacts/a//b.txt": []byte("no"),
+		// Backslashes are normalised to "/" before any of the checks run;
+		// without that, this escapes the collection as one long file name.
+		`artifacts\..\..\etc\passwd`: []byte("no"),
 		"artifacts/keep.txt":         []byte("yes"),
 	})
 	manifest, _, err := filterArchive(raw, DefaultLimits)
@@ -236,8 +296,16 @@ func TestAcceptChecksEveryDeclaredResourceCeiling(t *testing.T) {
 				Runtime:        RuntimeProfile{Runtime: "claude_agent_sdk", RuntimeVersion: "1"},
 				ResourceLimits: DefaultLimits, Egress: EgressPolicy{Mode: "none"},
 			}
-			if got := cfg.accept(req); got == nil || got.Class != ClassCapabilityMismatch {
+			// The class alone cannot tell the two guards apart: the requested
+			// DefaultLimits also exceed a zeroed ceiling, so the per-field
+			// comparison would answer with the same class and this table would
+			// pass with the omitted-ceiling guard deleted.
+			got := cfg.accept(req)
+			if got == nil || got.Class != ClassCapabilityMismatch {
 				t.Fatalf("provider omitted %s but accepted a bounded run: %v", name, got)
+			}
+			if !strings.Contains(got.Message, "must declare every resource ceiling") {
+				t.Fatalf("provider omitted %s and was refused for the wrong reason: %q", name, got.Message)
 			}
 		})
 	}

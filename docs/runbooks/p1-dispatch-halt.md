@@ -15,7 +15,11 @@
 - `provider = ''`（空字串）代表**整池**；填 provider 名字代表只停那一個節點池。
 - `source = 'p1_incident'`：人或偵測器宣告的 P1。**永遠不會自動解除。**
 - `source = 'orphan_threshold'`：ADR-022 X-04 的容量事件，Reconciler 連續 2 輪乾淨會**自己解除**。
-- 每個讀者都 fail-closed：有列在 → 建立 Run 直接回 `the execution environment is temporarily unavailable`，已排入的不派送，清理與遺留資源拆除**停手**（保留現場）。
+- **三個讀者都 fail-closed，但「有列在」對三者不是同一件事**（**2026-08-25 訂正**：原本這一行寫「有列在 → 建立 Run 直接回錯誤」，那句話只有在**停整池**時成立）：
+  - **建立 Run**（`requireDispatchable`）：只有 **`provider = ''`（整池）且 `source = 'p1_incident'`** 的列，才會直接回 `the execution environment is temporarily unavailable`；只停某一個 provider、或門檻類（`orphan_threshold`）的列，**Run 照常建立**。
+  - **派送已排入的 Run**（`dispatchPaused`）：整池的列（**不分 source**），或**所有已設定的 provider 各自都有列**時，Run 留在 `queued` 等；只要還有沒被停的 provider，就改派給它。
+  - **清理與遺留資源拆除**（`incidentHeld`）：只有 `source = 'p1_incident'` 才**停手**（保留現場）——整池的列擋全部，單一 provider 的列只擋那一個池；`orphan_threshold` **不停清理**，因為清理正是清掉觸發它的那些洩漏。
+- ⚠️ **單一 provider 部署（目前的形態）有一個會咬人的組合**：依 §2.3 填了那個唯一的 provider 名字停池 → **建立不被擋**（使用者拿不到那句話）、派送全停 → Run 沉在 `queued`，而 `p1_incident` **沒有自動解除**。**要讓使用者當場知道，就省略 `provider` 停整池。**
 
 使用者看到的那句話**不含任何事故細節**——開不了 Run 的人不是事故關於的人。
 

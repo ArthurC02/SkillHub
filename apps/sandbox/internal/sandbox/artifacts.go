@@ -38,6 +38,15 @@ const (
 	uploadTimeout = 2 * time.Minute
 	// artifactCollectTimeout bounds the whole read-filter-upload pass.
 	artifactCollectTimeout = 5 * time.Minute
+	// artifactMaxEntries bounds how many files one manifest can name. The byte
+	// ceilings do not bound this at all - an empty file costs no bytes and still
+	// costs a manifest entry, so a workload that touches 40k empty files makes a
+	// RunResult the platform cannot read back (its provider response is cut at
+	// 4 MiB) and loses its own run. 1000 entries is ~160 KB of manifest JSON,
+	// two orders of magnitude inside that cap, and more files than a test run of
+	// one skill has any reason to produce; the run's own bytes are still bounded
+	// by ArtifactTotalBytes.
+	artifactMaxEntries = 1000
 )
 
 // collect runs the collection handshake for one sandbox and reports whether it
@@ -127,6 +136,10 @@ func (m *Manager) collectArtifacts(ctx context.Context, id string, e *entry) []A
 // from both, because an entry in the manifest whose bytes were not uploaded
 // would be a manifest that lies.
 //
+// The count of entries is bounded as well as their bytes: the manifest is a
+// JSON document the platform has to read back, and it is the one dimension a
+// workload can inflate for free.
+//
 // `truncated` marks a run whose output was cut, so the UI never presents a
 // partial collection as complete.
 func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, error) {
@@ -159,6 +172,11 @@ func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, error
 		}
 		if header.Typeflag != tar.TypeReg {
 			continue // directories, links and devices carry no artifact bytes
+		}
+		if len(manifest) >= artifactMaxEntries {
+			// Everything after this is dropped, and `truncated` is what says so.
+			dropped = true
+			break
 		}
 		name := artifactName(header.Name)
 		if name == "" {

@@ -103,6 +103,8 @@
 1. **gVisor 的 `systrap` 平台是否真的不需巢狀虛擬化**（ADR-022 只說「待部署批第一台節點實測確認」）。**把「一台節點、跑通一個 Run」獨立成最小驗證，不要等其餘做完才發現節點跑不起來。**
 2. `infra/nodes/gvisor-baseline.txt` 必須填實際版本（**非 `unset`**），否則 `SEC-009` 的前置條件②不成立、整批判 unknown ＝ fail。
 
+- **`unset` 在兩個檔案裡都會安靜地通過**（2026-08-25 補記）：`infra/egress/allowlist.yaml` 的 `pinned_ip: unset` 與 `infra/nodes/gvisor-baseline.txt` 的 `unset` 都代表「還沒有節點」，兩者都 fail-closed（前者 render 不出任何 accept 規則，後者沒有可比對的基準），所以**節點會正常起來、Run 會安靜地到不了閘道**。`.github/workflows/egress-allowlist.yml` 只檢查 YAML 的不變式，**沒有任何檢查會說「這台活著的節點是用 `unset` 建的」**。因此：**節點建置後、跑第一個 Run 之前，在真機上確認 `nft list ruleset` 有指向閘道 IP:port 的 accept 規則、且 `runsc --version` 對得上 `gvisor-baseline.txt` 的實際版本；任一處仍是 `unset` 就停止建置**——不要用「Run 失敗」去發現它，那是部署日最難診斷的一種失敗。
+
 ### 2.2 Migration 套用（順序是硬的）
 
 **部署 schema 必須到目前 HEAD `0034`。** 下列十一份互相依賴；不要再以手抄的「缺幾份」判斷目前版本：

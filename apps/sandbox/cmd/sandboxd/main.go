@@ -39,8 +39,9 @@ func main() {
 
 	runtime := os.Getenv("SKILLHUB_SANDBOX_RUNTIME") // "runsc" in production
 	image := envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-3")
-	if runtime == "runsc" && !strings.Contains(image, "@sha256:") {
-		log.Error("SKILLHUB_SANDBOX_IMAGE must use an immutable digest with runsc")
+	allowDevCmd := os.Getenv("SKILLHUB_SANDBOX_DEV_CMD") == "1"
+	if err := refuseDevSettings(runtime, image, allowDevCmd); err != nil {
+		log.Error(err.Error())
 		os.Exit(1)
 	}
 	drv, err := dockerdrv.New(dockerdrv.Config{
@@ -50,7 +51,7 @@ func main() {
 		UID:          envInt("SKILLHUB_SANDBOX_UID", 65532),
 		GID:          envInt("SKILLHUB_SANDBOX_GID", 65532),
 		StorageQuota: os.Getenv("SKILLHUB_SANDBOX_STORAGE_QUOTA") == "1",
-		AllowDevCmd:  os.Getenv("SKILLHUB_SANDBOX_DEV_CMD") == "1",
+		AllowDevCmd:  allowDevCmd,
 	})
 	if err != nil {
 		log.Error("docker driver unavailable", "err", err)
@@ -119,9 +120,30 @@ func main() {
 	}
 }
 
+// refuseDevSettings fails a production node closed when it carries a
+// development setting. `runsc` is the only signal available this early that
+// this is production (ADR-015), and both of these switch off something a user
+// was already promised: an unpinned image means the run record cannot say what
+// actually ran (I-02), and a caller-chosen entrypoint replaces the image's own,
+// so run.mjs never starts - with it go the harness's token ceiling (PDM-005
+// 5.2a) and every TRACE-002 event, while the run's Virtual Key is injected as
+// usual. A systemd unit copied from a dev template is all it takes.
+func refuseDevSettings(runtime, image string, allowDevCmd bool) error {
+	if runtime != "runsc" {
+		return nil
+	}
+	switch {
+	case !strings.Contains(image, "@sha256:"):
+		return errors.New("SKILLHUB_SANDBOX_IMAGE must use an immutable digest with runsc")
+	case allowDevCmd:
+		return errors.New("SKILLHUB_SANDBOX_DEV_CMD must not be set with runsc: a caller-chosen entrypoint replaces the harness, and with it the run's token ceiling and its trace")
+	}
+	return nil
+}
+
 // egressModes reports what this deployment can actually offer. "none" is the
 // dev baseline and is stronger than default_deny, not weaker; a deployment with
-// an egress proxy network names it and gets both.
+// an egress network names it and gets both (ADR-022 Q3: nftables, no proxy).
 func egressModes(network string) []string {
 	if network == "" || network == "none" {
 		return []string{"none"}

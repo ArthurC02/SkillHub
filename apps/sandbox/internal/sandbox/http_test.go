@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -37,6 +38,8 @@ type fakeDriver struct {
 	// waiting to be collected, `released` counts how often it was let go.
 	done     map[string]bool
 	released map[string]int
+	// adopted is what a restarted provider finds still running on the node.
+	adopted []sandbox.Adopted
 }
 
 func newFakeDriver() *fakeDriver {
@@ -148,8 +151,17 @@ func (f *fakeDriver) appendRawTrace(id, raw string) {
 	f.trace[id] = append(f.trace[id], raw...)
 }
 
-func (f *fakeDriver) Adopt(context.Context) ([]sandbox.Adopted, error) { return nil, nil }
-func (f *fakeDriver) Healthy(context.Context) bool                     { return true }
+func (f *fakeDriver) Adopt(context.Context) ([]sandbox.Adopted, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	// The containers are there whether or not this process started them, so an
+	// adopted sandbox can be exited by a test exactly like a dispatched one.
+	for _, a := range f.adopted {
+		f.release[a.ProviderRunID] = make(chan sandbox.Outcome, 1)
+	}
+	return f.adopted, nil
+}
+func (f *fakeDriver) Healthy(context.Context) bool { return true }
 
 func (f *fakeDriver) exit(id string, out sandbox.Outcome) {
 	f.mu.Lock()
@@ -167,7 +179,12 @@ func (f *fakeDriver) count(m map[string]int, id string) int {
 func newServer(t *testing.T) (*fakeDriver, http.Handler) {
 	t.Helper()
 	drv := newFakeDriver()
-	m := sandbox.NewManager(drv, sandbox.Config{
+	m := newManager(drv)
+	return drv, (&sandbox.Server{M: m, Token: testToken}).Routes()
+}
+
+func newManager(drv sandbox.Driver) *sandbox.Manager {
+	return sandbox.NewManager(drv, sandbox.Config{
 		Provider:       "docker_dev",
 		Runtimes:       []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
 		MaxResources:   sandbox.DefaultLimits,
@@ -175,7 +192,6 @@ func newServer(t *testing.T) (*fakeDriver, http.Handler) {
 		EgressModes:    []string{"none"},
 		Slots:          2,
 	}, slog.New(slog.DiscardHandler))
-	return drv, (&sandbox.Server{M: m, Token: testToken}).Routes()
 }
 
 func runRequest() sandbox.RunRequest {
@@ -590,6 +606,41 @@ func TestWorkloadOutputIsScrubbedOfInjectedSecrets(t *testing.T) {
 	got := final.Result.AgentOutput
 	if got != "key=*** url=***" {
 		t.Errorf("agent_output = %q, want both injected secrets masked", got)
+	}
+}
+
+// The secrets list cannot survive a provider restart: an adopted attempt is
+// rebuilt from container labels, and a label is world-readable on the node, so
+// the Virtual Key was never in one. The output that comes back from such an
+// attempt is therefore unmaskable, and unmaskable output is withheld rather
+// than stored and displayed (iron rule 11, NFR-002).
+func TestAdoptedRunWithholdsOutputItCannotMask(t *testing.T) {
+	drv := newFakeDriver()
+	const id = "adopted-handle"
+	drv.adopted = []sandbox.Adopted{{
+		ProviderRunID: id,
+		RunID:         "11111111-1111-1111-1111-111111111111",
+		RunAttemptID:  "22222222-2222-2222-2222-222222222222",
+		Attempt:       1,
+		Running:       true,
+		HardDeadline:  time.Now().Add(time.Minute),
+	}}
+	m := newManager(drv)
+	h := (&sandbox.Server{M: m, Token: testToken}).Routes()
+	if err := m.Adopt(context.Background()); err != nil {
+		t.Fatalf("adopt: %v", err)
+	}
+
+	drv.exit(id, sandbox.Outcome{
+		ExitCode: 0,
+		Output:   "key=sk-run-supersecret url=https://store.example/pkg?sig=deadbeef",
+	})
+	final := waitForTerminal(t, h, id)
+	if final.Result.AgentOutput != "" {
+		t.Errorf("agent_output = %q, want it withheld: nothing here can mask the injected secrets", final.Result.AgentOutput)
+	}
+	if !strings.Contains(final.StateReason, "withheld") {
+		t.Errorf("state_reason = %q, want it to say the output was withheld and why", final.StateReason)
 	}
 }
 
