@@ -47,13 +47,37 @@ var placeholderRules = map[string]*regexp.Regexp{
 	"xxx":       regexp.MustCompile(`(?mi)^\s*(?:[-*>#]+\s+)?xxx+\b`),
 }
 
-var fencedBlock = regexp.MustCompile("(?ms)^```.*?^```\\s*$")
+// Code is stripped before scanning, and "code" is four shapes, not one: the
+// first version handled only a backtick fence starting in column 0 and left
+// tilde fences, list-indented fences, unclosed fences and four-space blocks in
+// the prose — where a `...` line, a `# TODO:` comment and an angle-bracketed
+// type all read as placeholders. Each is replaced by a marker rather than
+// deleted, because a section whose whole body is a code block is not empty.
+const codeMarker = "\u0000code\u0000"
+
+var codeShapes = []*regexp.Regexp{
+	// Fenced, either marker, optionally indented, closing fence optional so an
+	// unclosed one swallows to EOF rather than leaking its whole body.
+	regexp.MustCompile("(?ms)^[ \t]*(?:```|~~~).*?(?:^[ \t]*(?:```|~~~)[ \t]*$|\\z)"),
+	// Indented block: runs of lines starting with four spaces or a tab.
+	regexp.MustCompile(`(?m)^(?:(?:[ ]{4}|\t).*\n?)+`),
+}
+
 var headingLine = regexp.MustCompile(`(?m)^(#{1,6})\s+\S`)
+
+// stripCode replaces every code shape with a marker.
+func stripCode(body string) string {
+	out := body
+	for _, re := range codeShapes {
+		out = re.ReplaceAllString(out, codeMarker+"\n")
+	}
+	return out
+}
 
 // PlaceholderShapes reports which placeholder shapes a SKILL.md body carries,
 // sorted. body is the Markdown after the frontmatter.
 func PlaceholderShapes(body string) []string {
-	prose := fencedBlock.ReplaceAllString(body, "")
+	prose := stripCode(body)
 	var found []string
 	for label, re := range placeholderRules {
 		if re.MatchString(prose) {

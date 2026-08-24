@@ -45,6 +45,7 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 	// added to Deps without being wired in NewApp is caught by this test on the
 	// day it is added and not by whoever calls its route first.
 	deps := reflect.ValueOf(app.Deps)
+	checked := 0
 	for i := range deps.NumField() {
 		name := deps.Type().Field(i).Name
 		handler := deps.Field(i)
@@ -62,6 +63,7 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 		if handler.Type().Elem().Name() != "Handler" {
 			continue
 		}
+		checked++
 		if handler.IsNil() {
 			t.Errorf("Deps.%s is nil: its routes are mounted on nothing", name)
 			continue
@@ -72,6 +74,13 @@ func TestNewAppWiresEveryRouteAndService(t *testing.T) {
 				t.Errorf("Deps.%s was wired without %s", name, dep)
 			}
 		}
+	}
+	// A floor, because the skip above is a judgement: if the element-type name
+	// ever stops being "Handler", the loop would sweep nothing and pass green
+	// while checking no wiring at all. The number is deliberately loose — it is
+	// here to catch zero, not to be maintained.
+	if checked < 8 {
+		t.Errorf("the handler sweep checked %d fields; it is skipping things it should not", checked)
 	}
 
 	// The exposed handles must be the instances the routes actually use. A second

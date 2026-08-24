@@ -2,6 +2,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useSkillSearch } from "../api/skills";
 import { useGenerateEntryPoint } from "../api/generate";
+import { useMe } from "../api/me";
 import { GenerateSkill } from "../components/GenerateSkill";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { RiskSummary } from "../components/RiskIndicator";
@@ -28,6 +29,8 @@ export function Home() {
   const [draft, setDraft] = useState(search.q ?? "");
   const [selected, setSelected] = useState<string[]>([]);
   const generateExposed = useGenerateEntryPoint();
+  // DISC-001 serves this page to anyone; the exits below must not assume a session.
+  const loggedIn = !!useMe().data;
 
   const filters: SearchFilters = {
     script: search.script,
@@ -162,8 +165,18 @@ export function Home() {
                 has.
               */}
               <p className="note">
-                手上已經有一個 Skill 套件的話，也可以
-                <Link to="/workspace/import">直接匯入它</Link>。
+                {loggedIn ? (
+                  <>
+                    手上已經有一個 Skill 套件的話，也可以
+                    <Link to="/workspace/import">直接匯入它</Link>。
+                  </>
+                ) : (
+                  // A visitor is the emptiest case of all, and /workspace/import
+                  // needs a session — offering them that link would be an exit
+                  // to a page they cannot open (the shape IA-6 is about). Say
+                  // what login buys instead, the way ForkAction does.
+                  "手上已經有一個 Skill 套件的話，登入後可以把它匯入你自己的工作區。"
+                )}
               </p>
               {/*
                 GEN-004's entry point, and only here — never in the

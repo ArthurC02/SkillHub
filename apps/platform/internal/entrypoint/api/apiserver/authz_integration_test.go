@@ -217,8 +217,8 @@ type api struct {
 	// EVAL-001 test can produce a verdict with a fake judge (the API never does).
 	evaluations *eval.Service
 	// versions is the API's ingest service, exposed so a GEN-003 test can drive
-	// the generation pipeline against a stub LLM. There is no HTTP route for it
-	// yet — GEN-008 mounts one behind the exposure flag (ADR-052).
+	// the generation pipeline against a stub LLM directly. The HTTP routes exist
+	// too, behind ADR-052's exposure flag (see newAPIExposingGenerate).
 	versions *ingest.Service
 	// app is the whole composition root, exposed so a test can call the
 	// start-up work cmd/api does after NewApp — today that is AuditRosters,

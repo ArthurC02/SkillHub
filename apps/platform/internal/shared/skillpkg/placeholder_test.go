@@ -74,3 +74,45 @@ func TestAFullDocumentReportsNothing(t *testing.T) {
 		t.Errorf("a complete document was flagged: %v", got)
 	}
 }
+
+// The B round of review found the first version of the code stripper handled
+// exactly one of four shapes, and that stripping to nothing turned a section
+// whose whole body is a code block into an "empty" one — a false positive
+// introduced by the commit whose entire purpose was removing false positives.
+// One case per shape, plus the three rules that had no positive test at all.
+
+func TestASectionWhoseBodyIsCodeIsNotEmpty(t *testing.T) {
+	body := "# 用法\n\n## 執行\n\n```bash\nskillhub run\n```\n\n## 說明\n\n這一段有字。\n"
+	if got := PlaceholderShapes(body); len(got) != 0 {
+		t.Errorf("a section whose body is a code block was called empty: %v", got)
+	}
+}
+
+func TestEveryCodeShapeIsStripped(t *testing.T) {
+	for name, body := range map[string]string{
+		"tilde fence":     "# A\n\n~~~python\ndef f():\n    ...\n# TODO: fill in\n~~~\n\n收工。\n",
+		"indented fence":  "# A\n\n1. 執行：\n\n   ```bash\n   foo\n   ...\n   ```\n\n2. 完成。\n",
+		"unclosed fence":  "# A\n\n說明如下。\n\n```python\ndef f():\n    ...\n# TODO: fill me\n",
+		"four-space code": "# A\n\n說明如下。\n\n    def f():\n        ...\n    # TODO: later\n\n收工。\n",
+	} {
+		if got := PlaceholderShapes(body); len(got) != 0 {
+			t.Errorf("%s: code content counted as placeholders: %v", name, got)
+		}
+	}
+}
+
+func TestTheRulesWithNoPositiveCaseUntilNow(t *testing.T) {
+	for name, tc := range map[string]struct {
+		body string
+		want string
+	}{
+		"FIXME":     {"# 步驟\n\nFIXME 這裡要補\n", "FIXME"},
+		"xxx":       {"# 步驟\n\nxxx 待填\n", "xxx"},
+		"[bracket]": {"# 設定\n\n把 [your key] 填進去。\n", "[bracket]"},
+	} {
+		got := PlaceholderShapes(tc.body)
+		if len(got) != 1 || got[0] != tc.want {
+			t.Errorf("%s: got %v, want [%s] — the rule has no teeth", name, got, tc.want)
+		}
+	}
+}

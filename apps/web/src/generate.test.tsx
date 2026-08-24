@@ -301,3 +301,28 @@ test("GEN-003: the collision sentence does not claim the neighbour is not genera
   expect(sentence).not.toContain("不是生成的");
 });
 
+// IA-5's exit has to be true for the visitor too: DISC-001 serves this page
+// without a session, and /workspace/import needs one. Review found the first
+// version handed anonymous callers a link to a page they cannot open.
+test("IA-5: a visitor is told what login buys, not sent to a page they cannot open", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input).replace(/^https?:\/\/[^/]+/, "").split("?")[0];
+    if (path === "/me") {
+      return Promise.resolve(new Response(JSON.stringify({ error: "no session" }), { status: 401 }));
+    }
+    if (path.startsWith("/api/skills/search")) {
+      return Promise.resolve(new Response(JSON.stringify(NO_RESULTS), { status: 200 }));
+    }
+    return Promise.resolve(new Response(JSON.stringify({ skills: [] }), { status: 200 }));
+  });
+  await render();
+  await submitSearch("沒有人做過的事");
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("登入後可以把它匯入");
+  // The logged-in wording (which carries the link) must not be what a visitor
+  // gets. The nav bar's own /workspace/import link is still there and still
+  // wrong for a visitor — that is IA-6, which is open and not this fix.
+  expect(text).not.toContain("直接匯入它");
+});
+

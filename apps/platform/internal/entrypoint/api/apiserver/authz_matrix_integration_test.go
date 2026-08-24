@@ -343,25 +343,51 @@ func TestTheRouteTableScanFindsAPlausibleTable(t *testing.T) {
 // means no limiting, which is why nothing else here ever trips it.
 func TestTheNamedEndpointsAreRateLimitedWhenALimiterIsConfigured(t *testing.T) {
 	pool := requireDB(t)
-	a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
-		d.Limits = httpx.NewRateLimiter(60, 2)
-	})
-	c := a.login(t, "ratelimit")
 
-	codes := []int{}
-	for i := 0; i < 4; i++ {
-		resp, err := c.Get(c.base + "/api/skills/search?q=x")
-		if err != nil {
-			t.Fatal(err)
-		}
-		resp.Body.Close()
-		codes = append(codes, resp.StatusCode)
-		if resp.StatusCode == http.StatusTooManyRequests {
-			if resp.Header.Get("Retry-After") == "" {
-				t.Error("429 without Retry-After")
+	// All three routes NFR-001 clause 5 names, not just the one that is easy to
+	// call: review found limited() could be deleted from both import lines with
+	// the whole suite still green, because mountedPatterns() reads patterns and
+	// not middleware.
+	//
+	// A fresh API per subtest, because Deps is captured by value when the table
+	// is built — swapping Limits afterwards changes nothing — and because the
+	// buckets are per client IP and every subtest calls from the same one.
+	for _, route := range []struct {
+		name string
+		call func(*api, *client) (*http.Response, error)
+	}{
+		{"anonymous search", func(a *api, c *client) (*http.Response, error) {
+			return c.Get(c.base + "/api/skills/search?q=x")
+		}},
+		{"import upload", func(a *api, c *client) (*http.Response, error) {
+			return c.Post(c.base+"/skills/import/upload", "application/octet-stream", strings.NewReader("not a zip"))
+		}},
+		{"import url", func(a *api, c *client) (*http.Response, error) {
+			return c.Post(c.base+"/skills/import/url", "application/json",
+				strings.NewReader(`{"url":"https://example.invalid/x.zip"}`))
+		}},
+	} {
+		t.Run(route.name, func(t *testing.T) {
+			a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+				d.Limits = httpx.NewRateLimiter(60, 2)
+			})
+			c := a.login(t, "ratelimit-"+strings.ReplaceAll(route.name, " ", "-"))
+			codes := []int{}
+			for i := 0; i < 5; i++ {
+				resp, err := route.call(a, c)
+				if err != nil {
+					t.Fatal(err)
+				}
+				resp.Body.Close()
+				codes = append(codes, resp.StatusCode)
+				if resp.StatusCode == http.StatusTooManyRequests {
+					if resp.Header.Get("Retry-After") == "" {
+						t.Error("429 without Retry-After")
+					}
+					return
+				}
 			}
-			return
-		}
+			t.Fatalf("five requests against a burst of two never saw a 429: %v", codes)
+		})
 	}
-	t.Fatalf("four requests against a burst of two never saw a 429: %v", codes)
 }

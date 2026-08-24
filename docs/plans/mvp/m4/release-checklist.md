@@ -150,9 +150,12 @@ psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 | `TRACE_RETENTION` | **`maintenance rotate-partitions` 整個 job 拒絕執行**（兩個保存期在任何語句之前一起讀）⇒ **`trace_events` 與 `analytics_events` 的月分割既不會被預先建立，也不會被丟棄**。Trace 寫入本身不受影響，事件照收，只是全部落進 `trace_events_default`（§2.6） | **PDM-006 追認**（`0004` 註解寫的 90 天是提案，至今沒有任何東西在執行它） |
 | `BETA_ALLOWLIST` | 閘門關閉，**任何有 GitHub 帳號的人都能用** | PDM-009 追認後的 12 個 GitHub 帳號 |
 | `RUN_QUOTA` | 額度不強制，`GET /me/quota` **不掛載**，preflight 不帶配額區塊 | PDM-010 擇一後開啟 |
+| `RATE_LIMIT`（2026-08-24 新增） | **只有 `off` 會關掉它**；未設或填任何其他值（含填一個數字）都是啟用預設 60/min、burst 30。方向與上面幾列**相反**：未設＝有保護 | 保持未設 |
 | `OPERATOR_USER_IDS` | 沒有人能操作 `/admin/dispatch*`（P1 停派送只能改 DB） | 負責人自己 |
 | `SKILLHUB_MODEL_GATEWAY_*` | 沙箱被派到 `--network none`，Run 全部失敗 | 既有 |
 | 物件儲存設定 | `ErrNoStore` ⇒ 打包 503 | 既有 |
+
+**⚠️ 反向代理下速率限制會退化成「全體共用一個桶」**（2026-08-24，`04` 丙-54）：限制器以 `RemoteAddr` 分桶，**刻意不讀 `X-Forwarded-For`**（客戶端能設的標頭就是客戶端能選的桶）。所以只要前面擺了 TLS 終止層或任何代理，**十二位受測者共用 60/min、burst 30，而且是一起被 429**。部署時二選一：①在代理那一層做限制、②只在代理與 API 之間是可信網段時，才在代理上設定把真實來源 IP 傳進來並改讀它（**要先改程式，今天不讀**）。IPv6 已按 /64 分桶（單一配置有 2^64 個位址，按位址分桶等於沒有限制）。
 
 **兩個 roster 的 fail-closed 方向相反，部署時要各驗一次**：`operator.roster` 寫不成 ⇒ **不承認任何 operator**；`beta.roster` 寫不成 ⇒ **誰都進不來**。兩者都是啟動時寫一筆 audit event。
 
