@@ -20,7 +20,7 @@
 
 **第三輪（同日最後一批，用「懶惰資深工程師」的尺重審而不是找 bug）抓到的第一個，比前兩輪任何一個都嚴重：這條路徑對真實閘道從來沒有成功過一次。** 交給模型的 schema 是 `GeneratedSkill.model_json_schema()`，而 `strict: true` 下閘道**拒絕**它而不是放寬它——四個 default（每一個都把自己的 property 從 `required` 拿掉）、一個 `dict[str, str]`、六個長度與 pattern 約束，**任何一項都是每一次請求都 400**。**沒有任何東西看得到它**：這個端點的測試全部 monkeypatch 掉 client（那是它們該做的事），A／B 兩輪的 59 次量測走的是 spike 不是這個端點。**而答案就在三個檔案外**——`evaluate.py` 從 M3 起就帶著一行註解逐字寫著「strict `json_schema` rejects `maxLength` and `maxItems`」，另外四個交給模型的 schema 靠人手紀律一直是合法的，M5 是唯一破例的那一個。已修並補上 `tests/test_strict_schemas.py`（六個 schema 全覆蓋）；**修好之後也還沒對真實閘道跑過一次**（`04` 丙-56）。
 
-**08-24 再三輪對抗式審查（每輪各一位程式、一位文件審查者）：第一輪 29 項、第二輪 18 項、第三輪 27 項，全部處理**（`ba1a718`、`fcc9238`、本批）。最重的三件：同名生成→生成的碰撞會把第二次生成接成舊 Skill 的 version N、或以重複內容早退而**不計額度**；`packages/api-client-ts` 自 `838b1b4` 起建不起來（生成器對 `oneOf` 含 `Error` 少一個 import，CI 紅了一天沒人看到）；成功後 invalidate 錯的 query key 讓首頁**每次成功多記一筆 `search_performed`**——正是 ⛔ 邊界在保護的數字。M5 新增的檔案：`apps/llm/tests/test_strict_schemas.py`、`db/migrations/0038`、`apps/web/src/components/GeneratedNotice.tsx`、`generateFailureSentence.ts`、`GET /skills/generate/failures`（handler 在 `skill/admission/http.go`）。
+**08-24 起進入「建→對抗審→修」迴路（每輪一到兩位獨立審查者），發現數逐輪遞減（29 → 18 → 27 → 9 → 1），全部處理**（`ba1a718`／`fcc9238`／`81ae767`／`0f9e709`／其後——**此清單不再逐輪維護**，以 `fix(m5)` commit 系列為準）。最重的三件：同名生成→生成的碰撞會把第二次生成接成舊 Skill 的 version N、或以重複內容早退而**不計額度**；`packages/api-client-ts` 自 `838b1b4` 起建不起來（生成器對 `oneOf` 含 `Error` 少一個 import，CI 紅了一天沒人看到）；成功後 invalidate 錯的 query key 讓首頁**每次成功多記一筆 `search_performed`**——正是 ⛔ 邊界在保護的數字。M5 新增的檔案：`apps/llm/tests/test_strict_schemas.py`、`db/migrations/0038`、`apps/web/src/components/GeneratedNotice.tsx`、`generateFailureSentence.ts`、`GET /skills/generate/failures`（handler 在 `skill/admission/http.go`）。
 
 **同日（08-23）的兩輪對抗式稽核共抓到十二個缺陷。** 第一輪五個（逐條記在 `03` §19 的行內），第二輪七個程式面加十三處文件面。最嚴重的那個兩個方向都沒有症狀：`skills.redistribution` 是建立那一列時決定的、之後永不重算，而 `GEN-007` 的搜尋排除鎖的正是這一欄——**同名碰撞會讓生成物變成搜得到的（包括它自己的作者），或讓使用者自己上傳的東西從此搜不到**。處置是在 `importZip` 拒絕碰撞而不是合併。
 
@@ -77,7 +77,7 @@ ADR-046 的決策 3 與決策 6 各壓了一個經驗假設，而 `01` §7.3 把
 | `report-generate-spike.md` | A 輪：一次呼叫產出的套件過不過 `skillpkg.Validate`、是不是空殼、實付成本 |
 | `ask-5.md` | **問 5 個人：搜不到之後他們真的會想做一個嗎。** 腳本、禁止事項、記錄欄位與三段門檻——可直接拿去用 |
 | `README.md` | 本檔：計畫、狀態、檔案地圖 |
-| （無 `audit.md`） | **本里程碑沒有獨立的 audit.md**：兩天內的六輪稽核（08-23 三輪、08-24 三輪）逐條記在 `03` §19 各工作項的行內，因為每一條發現都改了某一項的勾選或狀態，拆成另一份檔會讓同一件事有兩份帳。骨架規則的意圖（稽核可查）由 `03` 行內滿足 |
+| （無 `audit.md`） | **本里程碑沒有獨立的 audit.md**：跨 08-23～08-24 的多輪對抗式稽核——**這裡刻意不寫輪數**：每落一輪這個數字就過期一次，前兩版（「五輪」「六輪」）都是這樣被抓的。輪次、發現數與逐條處置以 `git log --oneline` 的 `fix(m5)` 系列 commit 訊息為準逐條記在 `03` §19 各工作項的行內，因為每一條發現都改了某一項的勾選或狀態，拆成另一份檔會讓同一件事有兩份帳。骨架規則的意圖（稽核可查）由 `03` 行內滿足 |
 | `report-generate-baseline.md` | B 輪＋mini 對照：**失敗是不是隨機的**（不完全是）、**mini 夠不夠用**（更好且便宜 21 倍 → [ADR-051](../../../adr/ADR-051-the-cheaper-model-generated-better-packages.md)）、`possible-secret` 命中率（0／59） |
 
 量測 harness 在 [`apps/platform/internal/shared/skillpkg/generate_spike_test.go`](../../../../apps/platform/internal/shared/skillpkg/generate_spike_test.go)（env-gated，形狀照 `spec_census_test.go`）。生成端的腳本是一次性的，不進 repo——**跑那三輪的當下 `POST /v1/generate-skill` 還不存在**（`GEN-001`／`GEN-002` 同日稍晚才做完），腳本直接打閘道，逐字內容記在報告的附錄。**那也是那批數字不能直接當成端點的基線的原因**：它們量的是模型在一段自寫 prompt 下的表現，而端點交給模型的是型別化 schema——`GEN-001` 的說明寫了為什麼那個差別會改變失敗分布。
