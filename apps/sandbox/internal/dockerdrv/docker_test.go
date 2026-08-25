@@ -300,11 +300,37 @@ func TestPidsLimitStopsAForkBomb(t *testing.T) {
 	req.ResourceLimits.MaxPIDs = pidCeiling
 
 	_, out := startProbe(t, d, req)
-	if !strings.Contains(strings.ToLower(out.Output), "fork") {
-		t.Errorf("%d processes under a %d pid ceiling produced no fork failure, and a trivial "+
-			"workload did run under the same ceiling: the limit is not reaching guest tasks on "+
-			"this runtime. output:\n%s", spawnAttempts, pidCeiling, out.Output)
+	if !refusedToSpawn(out.Output) {
+		t.Errorf("%d processes under a %d pid ceiling were all created, and a trivial workload "+
+			"did run under the same ceiling: the limit is not reaching guest tasks on this "+
+			"runtime. output:\n%s", spawnAttempts, pidCeiling, out.Output)
 	}
+}
+
+// refusedToSpawn reports whether the shell was refused a process. The wording is
+// the runtime's, not the kernel's contract: runc surfaces EAGAIN and busybox
+// prints "can't fork", while gVisor's sentry answers the same refusal as ENOMEM
+// and busybox prints "Cannot allocate memory".
+//
+// Both are the ceiling doing its job, and asserting on "fork" alone said
+// otherwise — the gVisor leg reported "produced no fork failure" for a transcript
+// that read `sh: sleep: Cannot allocate memory`, which is the refusal it was
+// looking for, in the other runtime's words. Matching a list of wordings is worse
+// than matching an effect; it is here because the effect the shell exposes IS its
+// error line, and a wording this test does not know about fails loudly with the
+// transcript attached rather than passing quietly.
+func refusedToSpawn(output string) bool {
+	lower := strings.ToLower(output)
+	for _, refusal := range []string{
+		"fork",                             // runc + busybox: "can't fork"
+		"cannot allocate memory",           // runsc + busybox: the sentry answers ENOMEM
+		"resource temporarily unavailable", // EAGAIN spelled out
+	} {
+		if strings.Contains(lower, refusal) {
+			return true
+		}
+	}
+	return false
 }
 
 // C-15 end to end: the soft wall clock stops the workload, the attempt lands as
