@@ -341,6 +341,20 @@ type EventView struct {
 	Late         bool            `json:"late,omitempty"`
 	MaskedFields []string        `json:"masked_fields"`
 	Payload      json.RawMessage `json:"payload"`
+
+	// The same instant as OccurredAt, kept unformatted for sortEventViews.
+	// Unexported, so encoding/json leaves the wire contract alone.
+	//
+	// It exists because RFC3339Nano trims trailing zeros from the fraction,
+	// which makes the formatted strings sort differently from the instants they
+	// name whenever one fraction is a prefix of another: ".123Z" vs ".1234Z"
+	// compares 'Z' (0x5A) against '4' (0x34) at the fifth character and puts
+	// .1234 first. A whole second is worse -- the fraction is dropped entirely,
+	// so "45Z" vs "45.5Z" compares 'Z' against '.' and puts .5 before it.
+	// TestAdvancedViewNamesMissingEventsAndRefusesToLookComplete caught it as
+	// "events came back out of order: 3 then 1", which is a trace shown to a
+	// user in an order the run did not happen in.
+	occurredAt time.Time
 }
 
 // Summary is TRACE-006: the general mode. It answers "what happened, in
@@ -455,6 +469,7 @@ func eventViews(rows []gen.TraceEvent) []EventView {
 		events = append(events, EventView{
 			EventID: pgconv.UUIDString(row.EventID), Attempt: int(row.Attempt), Seq: row.Seq,
 			OccurredAt: row.OccurredAt.Time.UTC().Format(time.RFC3339Nano),
+			occurredAt: row.OccurredAt.Time.UTC(),
 			EmittedBy:  row.Source, Type: row.EventType, Status: status, Late: row.Late,
 			MaskedFields: fields, Payload: json.RawMessage(row.Payload),
 		})
@@ -477,6 +492,7 @@ func evaluationEventViews(rows []gen.ListEvaluationTraceEventsRow) []EventView {
 		events = append(events, EventView{
 			EventID: pgconv.UUIDString(row.EventID), Attempt: int(row.Attempt), Seq: row.Seq,
 			OccurredAt: row.OccurredAt.Time.UTC().Format(time.RFC3339Nano),
+			occurredAt: row.OccurredAt.Time.UTC(),
 			EmittedBy:  row.Source, Type: row.EventType, Status: status, Late: row.Late,
 			MaskedFields: fields, Payload: json.RawMessage(row.Payload),
 		})
@@ -486,8 +502,9 @@ func evaluationEventViews(rows []gen.ListEvaluationTraceEventsRow) []EventView {
 
 func sortEventViews(events []EventView) {
 	sort.Slice(events, func(i, j int) bool {
-		if events[i].OccurredAt != events[j].OccurredAt {
-			return events[i].OccurredAt < events[j].OccurredAt
+		// The instant, never the formatted string -- see EventView.occurredAt.
+		if !events[i].occurredAt.Equal(events[j].occurredAt) {
+			return events[i].occurredAt.Before(events[j].occurredAt)
 		}
 		if events[i].EmittedBy != events[j].EmittedBy {
 			return events[i].EmittedBy < events[j].EmittedBy

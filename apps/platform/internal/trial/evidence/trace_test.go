@@ -317,3 +317,51 @@ func TestSummaryKeepsUnreportedCostNil(t *testing.T) {
 		t.Errorf("input tokens = %d, want 27042", summary.Usage.InputTokens)
 	}
 }
+
+// The advanced view is ordered by the instant an event happened, and the
+// formatted timestamp is not a proxy for it.
+//
+// RFC3339Nano trims trailing zeros from the fraction, so the string order and
+// the chronological order disagree exactly when one fraction is a prefix of
+// another -- which is common, not exotic: it happens whenever an instant lands
+// on a round nanosecond. The integration test that first caught this
+// (TestAdvancedViewNamesMissingEventsAndRefusesToLookComplete) depends on the
+// real clock producing such a pair, so it fails perhaps half the time and had
+// never run on a developer machine at all -- it skips without a database. The
+// cases below are the disagreement itself, so they fail every time.
+func TestEventsSortByTheInstantAndNotItsFormattedString(t *testing.T) {
+	base := time.Date(2026, 8, 26, 12, 0, 45, 0, time.UTC)
+	// Each pair is (earlier, later) chronologically, and in each one the
+	// RFC3339Nano strings compare the other way round.
+	pairs := []struct {
+		name           string
+		earlier, later time.Time
+	}{
+		// ".123Z" vs ".1234Z": 'Z' (0x5A) beats '4' (0x34) at the 5th character.
+		{"a fraction that is a prefix of the other", base.Add(123 * time.Millisecond), base.Add(123400 * time.Microsecond)},
+		// "45Z" vs "45.5Z": the whole second has no fraction left to compare, so
+		// '.' (0x2E) beats 'Z' (0x5A) and the later event sorts first.
+		{"a whole second against a fraction of it", base, base.Add(500 * time.Millisecond)},
+	}
+	for _, p := range pairs {
+		t.Run(p.name, func(t *testing.T) {
+			view := func(at time.Time, seq int64) EventView {
+				return EventView{Seq: seq, OccurredAt: at.Format(time.RFC3339Nano), occurredAt: at, EmittedBy: "sandbox"}
+			}
+			// Guard the fixture: if these strings ever stop disagreeing with the
+			// instants, this test is measuring nothing and should be deleted
+			// rather than left green.
+			if !(p.earlier.Format(time.RFC3339Nano) > p.later.Format(time.RFC3339Nano)) {
+				t.Fatalf("fixture no longer disagrees: %q vs %q",
+					p.earlier.Format(time.RFC3339Nano), p.later.Format(time.RFC3339Nano))
+			}
+			events := []EventView{view(p.later, 3), view(p.earlier, 1)}
+			sortEventViews(events)
+			if events[0].Seq != 1 || events[1].Seq != 3 {
+				t.Errorf("got seq %d then %d, want the earlier event first (%q before %q)",
+					events[0].Seq, events[1].Seq,
+					p.earlier.Format(time.RFC3339Nano), p.later.Format(time.RFC3339Nano))
+			}
+		})
+	}
+}
