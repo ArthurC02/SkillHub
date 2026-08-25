@@ -33,6 +33,11 @@ jobs:
         run: |
           python3 -m pip install --quiet PyYAML==6.0.2
           python3 tools/ci/check_egress_allowlist.py
+          # The checker's own tests. They run here rather than in ci.yml because
+          # this is the workflow that owns the file they guard, and because a
+          # validation that is never exercised is how the pinned_ip rule came to
+          # accept a CIDR for as long as it did. No extra packages: pure asserts.
+          python3 tools/ci/test_check_egress_allowlist.py
 
       # ADR-022 Q3 change process, step 3. The threat model's own §3 says opening a
       # new egress destination requires updating it; this is that sentence with a

@@ -7,16 +7,42 @@
 #
 #   tier: sandbox  The T0 run container. Destinations are platform-owned, so the
 #                  rule is "accept to this pinned IP:port, drop everything else"
-#                  and `pinned_ip` is REQUIRED. MVP has exactly one entry — if a
-#                  second one appears, ADR-022 Q3's re-evaluation condition has
-#                  fired and an L7 proxy (Squid) has to be reconsidered before
-#                  the entry lands. CI asserts this; see egress-allowlist.yml.
+#                  and `pinned_ip` is REQUIRED — a single IPv4 host address, or
+#                  the literal `unset` (see below). `port` is REQUIRED too: the
+#                  accept rule's unit is IP:port, not IP, and T5-7 probes the
+#                  other ports on that same address. MVP has exactly one entry —
+#                  if a second one appears, ADR-022 Q3's re-evaluation condition
+#                  has fired and an L7 proxy (Squid) has to be reconsidered
+#                  before the entry lands. CI asserts all of this; see
+#                  egress-allowlist.yml and tools/ci/check_egress_allowlist.py.
 #
 #   tier: node     The T2 platform services on the node (sandboxd, dockerd).
 #                  Destinations are third parties with rotating IPs, so IP
 #                  pinning does not apply: default-deny plus FQDN matching, with
 #                  the node's resolver doing normal recursion for these names
-#                  only. `pinned_ip` MUST NOT be set here.
+#                  only. `pinned_ip` MUST NOT be set here, and `port` is
+#                  optional because the match is on the name, not on IP:port.
+#
+# A `pinned_ip` is ONE HOST ADDRESS. Not a CIDR, not a name. `0.0.0.0/0` and
+# `10.0.0.0/8` are both syntactically fine YAML and would each render an accept
+# rule the size of the network they name; a hostname renders whatever the
+# resolver happens to say on build day, which is the DNS-rebinding shape ADR-022
+# Q3 chose IP pinning to make impossible. The checker parses this field with
+# Python's `ipaddress.ip_address()`, which rejects all three for free.
+#
+# ADDRESS FAMILY — this file is IPv4-only, and that is a decision, not an
+# oversight. Every `pinned_ip` is an A record and renders into nftables' `ip`
+# table. The renderer MUST therefore leave the `ip6` table at `policy drop` with
+# NO accept exceptions, and the node resolver must not answer AAAA for any name
+# here. That obligation is on the renderer because nothing in this file can
+# express it, and nothing in ADR-022's acceptance suite would catch it missing:
+# T5's eight sub-items are all IPv4-shaped (169.254.169.254, RFC1918 /24 scans,
+# `pinned_ip` port probes), so a node with a locked-down `ip` table and an `ip6`
+# table at `policy accept` passes every one of them while a sandbox walks out
+# over v6. The alternative — carry a v6 pin per entry and grow T5 a v6 half — is
+# a bigger change than one platform-owned destination is worth. Until someone
+# does that work, a v6 `pinned_ip` here is a CI failure, on purpose: it would
+# read as coverage that the rendered ruleset does not have.
 #
 # N-07 has no exception path: no model provider domain may appear at any tier.
 # A new provider is added inside the LiteLLM gateway, never here (iron rule 8).
