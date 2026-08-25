@@ -5,7 +5,20 @@ on:
     branches: [main]
   push:
     branches: [main]
+  # Manual re-run, added 2026-08-25 because the cancellation below has no other
+  # exit. Two pushes close together on main killed the first run's `sandbox` and
+  # `images` jobs -- the two slowest, and the two whose legs (gVisor, image
+  # publication) cannot be reproduced locally -- and with no dispatch trigger the
+  # only way to run them again was to manufacture a commit touching their paths.
+  # A CI gate that can only be re-run by faking a change is one people stop
+  # re-running.
+  workflow_dispatch:
 
+# cancel-in-progress is right for a branch being pushed repeatedly: the older run
+# is testing code nobody will merge. On main it has a cost -- the superseding
+# push may not touch the paths the cancelled jobs covered, so those jobs neither
+# complete nor re-run, and the commit looks green because its own filters skipped
+# them. That is what workflow_dispatch above is for.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
