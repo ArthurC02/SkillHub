@@ -74,7 +74,7 @@
 //
 // Service.Sessions (the middleware, wrapped around the whole mux — the funnel's
 // first segment happens on the public catalogue where no session middleware
-// runs), SessionID, ArrivalFromRequest, the three recording methods, Enabled,
+// runs), SessionID, the three recording methods, Enabled,
 // PurgeExpired, PurgeWorkspace, and Handler.DownloadStartedOn.
 //
 // There is deliberately no read API. GET /policy/data-retention discloses what

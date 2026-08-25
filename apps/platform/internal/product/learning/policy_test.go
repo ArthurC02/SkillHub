@@ -84,6 +84,13 @@ func TestTheDisclosureNamesWhatIsStoredAndNothingElse(t *testing.T) {
 		if e.Name == EventDownloadStarted && slices.Contains(e.Attributes, "target") {
 			t.Error("download_started discloses `target`, which nothing stores")
 		}
+		// 0040 dropped `arrival` and `arrival_rank` (04 丙-59), so the skill is the
+		// whole of this event. Exact rather than "does not contain arrival": the
+		// duty here runs in both directions, and skill_id going missing is the
+		// half a blocklist would not catch.
+		if e.Name == EventSkillDetailViewed && !slices.Equal(e.Attributes, []string{"skill_id"}) {
+			t.Errorf("skill_detail_viewed discloses %v, want exactly [skill_id]", e.Attributes)
+		}
 	}
 
 	for _, column := range fixed {

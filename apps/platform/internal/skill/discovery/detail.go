@@ -37,7 +37,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
@@ -536,8 +535,11 @@ func (h *Handler) recordDetailView(r *http.Request, skillID pgtype.UUID) {
 			workspace = ws.ID
 		}
 	}
-	arrival, rank := analytics.ArrivalFromRequest(r)
-	h.Svc.Analytics.SkillDetailViewed(r.Context(), workspace, skillID, arrival, rank)
+	// No arrival dimension: `from`/`rank` were dropped with their columns in 0040
+	// (04 丙-59). The front end never sent them, and filling them would put the
+	// reader's result position into a copy-pasteable URL — a new public URL state,
+	// which 資訊架構 §0 has to rule on before, not after.
+	h.Svc.Analytics.SkillDetailViewed(r.Context(), workspace, skillID)
 }
 
 // SkillFiles handles GET /api/skills/{id}/files (DISC-007): the SKILL.md text

@@ -59,8 +59,8 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 			{
 				"name":         EventSkillDetailViewed,
 				"when":         "a skill detail page is opened",
-				"attributes":   []string{"skill_id", "arrival", "arrival_rank"},
-				"not_recorded": "arrival is one of two words and arrival_rank a small integer; both are clamped on the way in, never trusted from the link",
+				"attributes":   []string{"skill_id"},
+				"not_recorded": "how the page was reached — whether from a search result or a direct link, and the position it held in that result list. Both were columns until 0040 dropped them (04 丙-59); nothing records them now",
 			},
 			{
 				"name":         EventSessionStarted,

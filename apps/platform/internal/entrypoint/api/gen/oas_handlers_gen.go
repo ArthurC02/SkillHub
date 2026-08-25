@@ -6622,14 +6622,6 @@ func (s *Server) handleGetSkillDetailRequest(args [1]string, argsEscaped bool, w
 					Name: "view",
 					In:   "query",
 				}: params.View,
-				{
-					Name: "from",
-					In:   "query",
-				}: params.From,
-				{
-					Name: "rank",
-					In:   "query",
-				}: params.Rank,
 			},
 			Raw: r,
 		}

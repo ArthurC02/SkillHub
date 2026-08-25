@@ -529,20 +529,22 @@ func TestTheFourFunnelEventsAreEmitted(t *testing.T) {
 		t.Errorf("search_performed events for one search: %d, want 1", n)
 	}
 
-	// skill_detail_viewed, with the arrival attributes clamped to the whitelist.
-	if code := f.status(t, http.MethodGet, "/api/skills/"+f.skillID+"?from=search&rank=2"); code != http.StatusOK {
+	// skill_detail_viewed, carrying the skill that was opened. The arrival
+	// attributes were dropped with their columns in 0040 (04 丙-59) — nothing ever
+	// sent them, so every row said `direct` with no rank. The skill id is what is
+	// left, and it is what 01 §11.2's first segment actually counts.
+	if code := f.status(t, http.MethodGet, "/api/skills/"+f.skillID); code != http.StatusOK {
 		t.Fatalf("skill detail: got %d", code)
 	}
-	var arrival string
-	var rank int
+	var viewedSkill string
 	if err := pool.QueryRow(context.Background(), `
-		SELECT arrival, arrival_rank FROM analytics_events
+		SELECT skill_id FROM analytics_events
 		WHERE event_name = 'skill_detail_viewed' AND session_id = $1`, session,
-	).Scan(&arrival, &rank); err != nil {
+	).Scan(&viewedSkill); err != nil {
 		t.Fatalf("no skill_detail_viewed event: %v", err)
 	}
-	if arrival != "search" || rank != 2 {
-		t.Errorf("arrival is %q rank %d, want search/2", arrival, rank)
+	if viewedSkill != f.skillID {
+		t.Errorf("skill_detail_viewed records skill %q, want %q", viewedSkill, f.skillID)
 	}
 	// Exactly one, for the same reason, on the other side of the same ratio.
 	if n := betaCount(t, pool,

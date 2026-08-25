@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 	"unicode"
 
@@ -206,30 +205,27 @@ func (s *Service) SearchPerformed(ctx context.Context, query string, results int
 }
 
 // SkillDetailViewed records that a detail page was opened (funnel segment 1's
-// other half). arrival says how they got there and rank is their position in the
-// result list when they came from search; both come from the client, and both are
-// clamped to the whitelist here rather than trusted.
-func (s *Service) SkillDetailViewed(
-	ctx context.Context, workspace, skillID pgtype.UUID, arrival string, rank int,
-) {
+// other half). The skill is the whole of the event: which skill, in whose
+// workspace, stitched to the rest of the visit by session id.
+//
+// It used to carry `arrival` (search/direct) and `arrival_rank` too. 0040 dropped
+// both columns (04 丙-59): the front end never sent the parameters they were
+// derived from, so every row ever written said `direct` with no rank — a
+// dimension that distinguished nothing while looking alive. Bringing the
+// distinction back is not a matter of re-adding a column here: it needs the
+// detail page's URL to start carrying 「我在第幾名找到它」, which travels with every
+// copy-pasted link, and that is a new public URL state that has to clear
+// 資訊架構 §0 first. Do that first, or leave this alone.
+func (s *Service) SkillDetailViewed(ctx context.Context, workspace, skillID pgtype.UUID) {
 	if !s.Enabled() {
 		return
 	}
-	if arrival != "search" {
-		arrival = "direct"
-	}
-	p := gen.InsertAnalyticsEventParams{
+	s.emit(ctx, gen.InsertAnalyticsEventParams{
 		EventName:   EventSkillDetailViewed,
 		SessionID:   SessionID(ctx),
 		WorkspaceID: workspace,
 		SkillID:     skillID,
-		Arrival:     &arrival,
-	}
-	if arrival == "search" && rank >= 1 {
-		r := int32(rank)
-		p.ArrivalRank = &r
-	}
-	s.emit(ctx, p)
+	})
 }
 
 // DownloadStarted records that a download was requested (funnel segment 6's first
@@ -302,20 +298,4 @@ func queryScript(q string) string {
 	default:
 		return "other"
 	}
-}
-
-// ArrivalFromRequest reads how a visitor reached a detail page. Query parameters
-// because only the client knows, and clamped on the way in: `from` has to be one
-// of two words and `rank` has to be a small positive integer, so a crafted link
-// cannot write anything else into the table.
-func ArrivalFromRequest(r *http.Request) (string, int) {
-	arrival := r.URL.Query().Get("from")
-	if arrival != "search" {
-		return "direct", 0
-	}
-	rank, err := strconv.Atoi(r.URL.Query().Get("rank"))
-	if err != nil || rank < 1 || rank > 1000 {
-		rank = 0
-	}
-	return "search", rank
 }

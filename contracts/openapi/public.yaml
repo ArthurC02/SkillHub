@@ -770,9 +770,16 @@ paths:
           in: path
           required: true
           schema: { type: string, format: uuid }
-        # The three the handler reads. None of them changes what comes back;
-        # all three change what O11Y-004 records about the read, which is why
-        # they belong in the contract rather than in a client's habits.
+        # The one the handler reads. It does not change what comes back; it
+        # changes what O11Y-004 records about the read, which is why it belongs
+        # in the contract rather than in a client's habits.
+        #
+        # `from` and `rank` stood here until 0040 dropped their columns (04
+        # 丙-59). They are removed rather than deprecated because a declared
+        # parameter the server ignores is worse than an absent one: a client
+        # that sends `rank=3` would get a 200 and believe the position was
+        # recorded. Re-introducing the distinction means a new column AND the
+        # 資訊架構 §0 decision about putting it in a public URL.
         - name: view
           in: query
           required: false
@@ -784,20 +791,6 @@ paths:
             01 §11.2's first segment counts sessions in which somebody opened a
             skill, and Compare was minting that event for skills whose detail
             page was never opened (04 丙-57 follow-up).
-        - name: from
-          in: query
-          required: false
-          schema: { type: string, enum: [search, direct] }
-          description: |
-            How the reader arrived. Anything other than `search` is recorded as
-            `direct`; the value is never echoed back.
-        - name: rank
-          in: query
-          required: false
-          schema: { type: integer, minimum: 1, maximum: 1000 }
-          description: |
-            The result position clicked, when `from=search`. Out of range or
-            unparseable is recorded as 0, meaning unknown.
       responses:
         "200":
           description: The skill as visible in the caller's widest scope.

@@ -383,8 +383,6 @@ export interface GetRunTraceRequest {
 export interface GetSkillDetailRequest {
     id: string;
     view?: GetSkillDetailViewEnum;
-    from?: GetSkillDetailFromEnum;
-    rank?: number;
 }
 
 export interface GetSkillFilesRequest {
@@ -1088,8 +1086,6 @@ export interface DefaultApiInterface {
      * @summary Skill detail, source, license, risk and compatibility (DISC-006, DISC-008)
      * @param {string} id 
      * @param {'embedded'} [view] &#x60;embedded&#x60; marks a read that is NOT a detail-page view: a surface that needs the same data for its own purpose (packaging, side-by-side comparison). Such a read records no &#x60;skill_detail_viewed&#x60;, because 01 §11.2\&#39;s first segment counts sessions in which somebody opened a skill, and Compare was minting that event for skills whose detail page was never opened (04 丙-57 follow-up). 
-     * @param {'search' | 'direct'} [from] How the reader arrived. Anything other than &#x60;search&#x60; is recorded as &#x60;direct&#x60;; the value is never echoed back. 
-     * @param {number} [rank] The result position clicked, when &#x60;from&#x3D;search&#x60;. Out of range or unparseable is recorded as 0, meaning unknown. 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -3142,14 +3138,6 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             queryParameters['view'] = requestParameters['view'];
         }
 
-        if (requestParameters['from'] != null) {
-            queryParameters['from'] = requestParameters['from'];
-        }
-
-        if (requestParameters['rank'] != null) {
-            queryParameters['rank'] = requestParameters['rank'];
-        }
-
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -4719,14 +4707,6 @@ export const GetSkillDetailViewEnum = {
     Embedded: 'embedded'
 } as const;
 export type GetSkillDetailViewEnum = typeof GetSkillDetailViewEnum[keyof typeof GetSkillDetailViewEnum];
-/**
- * @export
- */
-export const GetSkillDetailFromEnum = {
-    Search: 'search',
-    Direct: 'direct'
-} as const;
-export type GetSkillDetailFromEnum = typeof GetSkillDetailFromEnum[keyof typeof GetSkillDetailFromEnum];
 /**
  * @export
  */

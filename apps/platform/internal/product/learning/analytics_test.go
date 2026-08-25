@@ -69,34 +69,6 @@ func TestQueryScriptBuckets(t *testing.T) {
 	}
 }
 
-// Both arrival attributes come from the client, so both are clamped rather than
-// trusted: a crafted link must not be able to write anything the schema did not
-// declare (0029's CHECK is the second half of the same rule).
-func TestArrivalIsClampedToTheWhitelist(t *testing.T) {
-	cases := []struct {
-		query       string
-		wantArrival string
-		wantRank    int
-	}{
-		{"", "direct", 0},
-		{"?from=direct", "direct", 0},
-		{"?from=newsletter&rank=3", "direct", 0}, // not in the whitelist
-		{"?from=search&rank=2", "search", 2},
-		{"?from=search", "search", 0},
-		{"?from=search&rank=0", "search", 0},
-		{"?from=search&rank=-1", "search", 0},
-		{"?from=search&rank=99999", "search", 0}, // out of range, dropped not stored
-		{"?from=search&rank=abc", "search", 0},
-	}
-	for _, tc := range cases {
-		r := httptest.NewRequest("GET", "/api/skills/x"+tc.query, nil)
-		arrival, rank := ArrivalFromRequest(r)
-		if arrival != tc.wantArrival || rank != tc.wantRank {
-			t.Errorf("%q -> (%q, %d), want (%q, %d)", tc.query, arrival, rank, tc.wantArrival, tc.wantRank)
-		}
-	}
-}
-
 // Nothing is collected until a retention period exists (NFR-002, ADR-029 決策 5),
 // and a nil service is one of the ways a deployment says so.
 func TestCollectionIsOffWithoutARetentionPeriod(t *testing.T) {
