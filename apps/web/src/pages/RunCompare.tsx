@@ -1,4 +1,6 @@
 import { Loading } from "../components/Loading";
+import { LoginRequired, ReadFailure, unauthenticated } from "../components/LoginRequired";
+import { useMe } from "../api/me";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useRunComparison, useVersionDiff } from "../api/evaluation";
@@ -55,6 +57,13 @@ export function RunCompare() {
   useEffect(() => setDraft(against), [against]);
   const navigate = useNavigate();
   const comparison = useRunComparison(runId, against);
+  // 資訊架構 §5 IA-6, the second deferred-rejection page: with `against` empty
+  // this screen fires no request at all, so nothing would have told a visitor
+  // anything until after they had found and pasted a 36-char run id. Same
+  // `useMe()` shape as ImportSkill and for the same reason — a resolved 401,
+  // never a pending one.
+  const me = useMe();
+  const loggedOut = unauthenticated(me.error);
 
   const pickForm = (
     <form
@@ -105,7 +114,11 @@ export function RunCompare() {
       {/* With a comparison on screen the picker is a "change it" affordance and
           its value is a 36-char uuid, so it folds (design §2.6). With nothing
           picked yet it is the only way forward and stays open. */}
-      {comparison.data ? (
+      {loggedOut ? (
+        // Replaced rather than disabled (§2.4): a control taken away has to say
+        // why, and 「比較」 needs both runs' evaluations, which are workspace data.
+        <LoginRequired what="Run 比較" />
+      ) : comparison.data ? (
         <details>
           <summary>換一個要比較的 Run</summary>
           {pickForm}
@@ -114,9 +127,11 @@ export function RunCompare() {
         pickForm
       )}
 
-      {against === "" && <p>輸入另一個 Run 的 ID 後開始比較。</p>}
+      {against === "" && !loggedOut && <p>輸入另一個 Run 的 ID 後開始比較。</p>}
       {comparison.isPending && against !== "" && <Loading what="比較" />}
-      {comparison.error && <p role="alert">無法比較：{comparison.error.message}</p>}
+      <ReadFailure error={comparison.error} what="比較結果">
+        <p role="alert">無法比較：{comparison.error?.message}</p>
+      </ReadFailure>
       {comparison.data && <ComparisonTables data={comparison.data} />}
 
       <p className="note">
@@ -358,7 +373,7 @@ function RerunCell({ side }: { side: ComparisonSide }) {
 function VersionDiff({ url }: { url: string }) {
   const diff = useVersionDiff(url);
   if (diff.isPending) return <Loading what="版本差異" />;
-  if (diff.error) return <p role="alert">無法讀取版本差異：{diff.error.message}</p>;
+  if (diff.error) return <ReadFailure error={diff.error} what="版本差異" />;
   if (diff.data.files.length === 0) return <p>兩個版本的檔案內容相同。</p>;
 
   return (

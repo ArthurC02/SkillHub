@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Findings } from "../components/Findings";
+import { LoginRequired, unauthenticated } from "../components/LoginRequired";
+import { useMe } from "../api/me";
 import { ApiError } from "../api/client";
 import {
   importSkillFromURL,
@@ -43,6 +45,17 @@ import {
  */
 export function ImportSkill() {
   const queryClient = useQueryClient();
+  // 資訊架構 §5 IA-6 called this page's shape the worst in the audit: radio
+  // buttons, a URL field, a file picker and an enabled 「開始匯入」 served to a
+  // visitor who is refused only after choosing a file. 設計系統 §2.2「顯示與強制
+  // 成對」and §2.4 both say the refusal has to be stated BEFORE the control is
+  // used, not after.
+  //
+  // WorkspaceAccount's `useMe()` precedent (the whole query object), not
+  // Home.tsx's `!!useMe().data`: that one reads 「還在問」 as 「沒登入」, which is
+  // harmless when it swaps one sentence inside a paragraph and is a flash of a
+  // false statement when it replaces a whole form. Only a resolved 401 does it.
+  const me = useMe();
   const [source, setSource] = useState<"url" | "upload">("url");
   const [url, setURL] = useState("");
   const [file, setFile] = useState<File>();
@@ -77,62 +90,68 @@ export function ImportSkill() {
     <section>
       <h1>匯入 Skill</h1>
       <p className="note">套件只會做靜態檢查；匯入期間不執行其中的 Script。</p>
-      <form onSubmit={submit}>
-        <fieldset>
-          <legend>來源</legend>
-          <label>
-            <input
-              type="radio"
-              name="skill-import-source"
-              checked={source === "url"}
-              onChange={() => setSource("url")}
-            />
-            GitHub 或允許的 URL
-          </label>{" "}
-          <label>
-            <input
-              type="radio"
-              name="skill-import-source"
-              checked={source === "upload"}
-              onChange={() => setSource("upload")}
-            />
-            上傳 zip
-          </label>
-        </fieldset>
-        {/*
+      {unauthenticated(me.error) ? (
+        // Replaced rather than disabled: §2.4's fourth shape is a control taken
+        // away with no reason given, and this sentence is the reason.
+        <LoginRequired what="匯入 Skill" />
+      ) : (
+        <form onSubmit={submit}>
+          <fieldset>
+            <legend>來源</legend>
+            <label>
+              <input
+                type="radio"
+                name="skill-import-source"
+                checked={source === "url"}
+                onChange={() => setSource("url")}
+              />
+              GitHub 或允許的 URL
+            </label>{" "}
+            <label>
+              <input
+                type="radio"
+                name="skill-import-source"
+                checked={source === "upload"}
+                onChange={() => setSource("upload")}
+              />
+              上傳 zip
+            </label>
+          </fieldset>
+          {/*
           `.field` rather than a bare `<p>`: an inline `<label> <input>` gets the
           UA's intrinsic ~180px on a 1126px page, so a GitHub URL was unreadable
           in the field you paste it into — the highest-stakes input in the app.
           Same defect index.css records fixing for the Home search box, and the
           class already exists for exactly this (design §4.5, checklist 8).
         */}
-        {source === "url" ? (
-          <p className="field">
-            <label htmlFor="skill-import-url">URL</label>
-            <input
-              id="skill-import-url"
-              type="url"
-              required
-              value={url}
-              onChange={(event) => setURL(event.target.value)}
-            />
-          </p>
-        ) : (
-          <p className="field">
-            <label htmlFor="skill-import-file">Skill zip</label>
-            <input
-              id="skill-import-file"
-              type="file"
-              required
-              accept=".zip,application/zip"
-              onChange={(event) => setFile(event.target.files?.[0])}
-            />
-          </p>
-        )}
-        <button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "匯入中…" : "開始匯入"}
-        </button>
-      </form>
+          {source === "url" ? (
+            <p className="field">
+              <label htmlFor="skill-import-url">URL</label>
+              <input
+                id="skill-import-url"
+                type="url"
+                required
+                value={url}
+                onChange={(event) => setURL(event.target.value)}
+              />
+            </p>
+          ) : (
+            <p className="field">
+              <label htmlFor="skill-import-file">Skill zip</label>
+              <input
+                id="skill-import-file"
+                type="file"
+                required
+                accept=".zip,application/zip"
+                onChange={(event) => setFile(event.target.files?.[0])}
+              />
+            </p>
+          )}
+          <button type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? "匯入中…" : "開始匯入"}
+          </button>
+        </form>
+      )}
 
       {/* A failure the server did not categorise: no findings to show, so the
           message is all there is. The categorised 422 renders below instead. */}

@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
@@ -127,7 +128,7 @@ export function TestCaseList() {
         </p>
       )}
       {testCases.isPending && <Loading what=" Test Case 清單" />}
-      {testCases.error && <p role="alert">無法讀取 Test Case：{testCases.error.message}</p>}
+      <ReadFailure error={testCases.error} what=" Test Case" />
       {testCases.data &&
         (rows.length === 0 ? (
           <p>{filter ? "這個 Skill 還沒有 Test Case。" : "還沒有 Test Case。"}</p>
@@ -165,7 +166,7 @@ export function TestCaseList() {
       )}
 
       <h2>建立新的 Test Case</h2>
-      {skills.error && <p role="alert">無法讀取你的 Skill 清單：{skills.error.message}</p>}
+      <ReadFailure error={skills.error} what="你的 Skill 清單" />
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -242,12 +243,12 @@ export function TestCaseDetail() {
 
   if (testCase.isPending) return <Loading what=" Test Case " />;
   if (testCase.error) {
-    const missing = testCase.error instanceof ApiError && testCase.error.status === 404;
-    return (
-      <p role="alert">
-        {missing ? "找不到這個 Test Case。" : `無法讀取 Test Case：${testCase.error.message}`}
-      </p>
-    );
+    // 404 stays this page's own answer — the id is wrong, and no login fixes
+    // that. Everything else goes through the shared 401 handling (資訊架構 IA-6).
+    if (testCase.error instanceof ApiError && testCase.error.status === 404) {
+      return <p role="alert">找不到這個 Test Case。</p>;
+    }
+    return <ReadFailure error={testCase.error} what=" Test Case" />;
   }
 
   const history = runs.data?.pages.flatMap((page) => page.runs) ?? [];
@@ -310,7 +311,7 @@ function RunHistory({
         ——後者只說工作負載跑完了沒有。逐條驗收結果在各自的 Run 頁面上。
       </p>
       {runs.isPending && <Loading what="執行歷史" />}
-      {runs.error && <p role="alert">無法讀取執行歷史：{runs.error.message}</p>}
+      <ReadFailure error={runs.error} what="執行歷史" />
       {runs.data &&
         (history.length === 0 ? (
           <p>尚無執行。這個 Test Case 還沒有跑過任何 Run。</p>
@@ -908,7 +909,7 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
         （上傳規則會在選檔前顯示）。
       </p>
       {datasets.isPending && <Loading what="檔案清單" />}
-      {datasets.error && <p role="alert">無法讀取檔案清單：{datasets.error.message}</p>}
+      <ReadFailure error={datasets.error} what="檔案清單" />
       {datasets.data &&
         (datasets.data.datasets.length === 0 ? (
           <p>還沒有上傳任何檔案。</p>

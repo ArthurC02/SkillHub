@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -48,7 +49,7 @@ export function Downloads() {
       </p>
 
       {downloads.isPending && <Loading what="下載紀錄" />}
-      {downloads.error && <p role="alert">無法讀取下載紀錄：{downloads.error.message}</p>}
+      <ReadFailure error={downloads.error} what="下載紀錄" />
       {message && <p role="status">{message}</p>}
 
       {downloads.data &&
@@ -110,7 +111,7 @@ function DownloadHistory({ artifact }: { artifact: DownloadArtifact }) {
               載入下載紀錄中…（共 {artifact.download_count} 筆）
             </p>
           )}
-          {records.error && <p role="alert">無法讀取逐筆下載紀錄：{records.error.message}</p>}
+          <ReadFailure error={records.error} what="逐筆下載紀錄" />
           {records.data && (
             <ul className="note">
               {records.data.records.map((r) => (

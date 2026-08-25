@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { ReadFailure } from "../components/LoginRequired";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
@@ -297,7 +298,7 @@ export function Packaging() {
 
           <h2>打包目標</h2>
           {targets.isPending && <Loading what="打包目標" />}
-          {targets.error && <p role="alert">無法讀取打包目標：{targets.error.message}</p>}
+          <ReadFailure error={targets.error} what="打包目標" />
           {targets.data && (
             <ul className="packaging-targets">
               {targets.data.targets.map((t) => (
@@ -331,7 +332,7 @@ export function Packaging() {
 
           <h2>打包預覽</h2>
           {preview.isPending && target !== "" && <p>計算這些設定會產生什麼…</p>}
-          {preview.error && <p role="alert">無法讀取打包預覽：{preview.error.message}</p>}
+          <ReadFailure error={preview.error} what="打包預覽" />
           {preview.data && <PreviewReport preview={preview.data} />}
 
           {message && <p role="alert">{message}</p>}

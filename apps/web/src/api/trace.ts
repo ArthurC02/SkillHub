@@ -102,6 +102,13 @@ export function useTrace<M extends TraceMode>(runId: string, mode: M, active?: b
         `/runs/${runId}/trace?mode=advanced&after=${after}`,
       ) as Promise<M extends "advanced" ? TraceAdvanced : TraceSummary>;
     },
+    // Same as every hook in api/: a failed read is shown as a failed read. With
+    // the default three retries `isLoading` stays false through the backoff
+    // while `isError` is not yet true, so a logged-out visitor watched
+    // 「載入執行紀錄中…」 for ~7 seconds before the 401 surfaced (資訊架構 IA-6).
+    // Orthogonal to `refetchInterval` below: polling resumes on its own, a
+    // retry only stretches the first failure.
+    retry: false,
     // A run in flight keeps producing events, and NFR-004 wants them on screen
     // within seconds of being produced. Polling rather than a stream: there is
     // no push channel, and one cheap request every few seconds is the whole

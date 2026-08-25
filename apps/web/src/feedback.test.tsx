@@ -73,6 +73,24 @@ const text = () => container.textContent ?? "";
 function stubPlatform(status = 204) {
   const calls: Array<{ url: string; body: unknown }> = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    // The session read is not what this file measures. `FeedbackEntry` reads
+    // `/me` so it can say 「回報問題需要登入。」 before somebody writes a paragraph
+    // (資訊架構 §5 IA-6); `expect(calls).toHaveLength(0)` below means 「沒有送出
+    // 任何一份回報」, which is a claim about POST /feedback and not about every
+    // request the component makes.
+    if (String(input).endsWith("/me")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            user_id: "u-1",
+            email: "tester@example.com",
+            display_name: "tester",
+            workspace_id: "ws-1",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    }
     calls.push({ url: String(input), body: JSON.parse(String(init?.body ?? "null")) });
     return Promise.resolve(
       status === 204

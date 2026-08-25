@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
@@ -177,7 +178,7 @@ function RunArtifacts({ runId }: { runId: string }) {
     <>
       <h2>這次 Run 的產出</h2>
       {artifacts.isPending && <Loading what="產出清單" />}
-      {artifacts.error && <p role="alert">無法讀取產出清單：{artifacts.error.message}</p>}
+      <ReadFailure error={artifacts.error} what="產出清單" />
       {message && <p role="status">{message}</p>}
 
       {artifacts.data &&
@@ -260,7 +261,15 @@ function IncompleteNotice({ complete }: { complete: boolean }) {
 function GeneralMode({ runId }: { runId: string }) {
   const { data, isPending, error } = useTrace(runId, "general");
   if (isPending) return <Loading what="執行紀錄" />;
-  if (error) return <p role="alert">無法讀取執行紀錄。</p>;
+  // The sentence for a real failure is unchanged and deliberately carries no
+  // server message: a Trace read that fails says nothing the reader can act on.
+  // 401 is not that state, and is not an error string (資訊架構 IA-6).
+  if (error)
+    return (
+      <ReadFailure error={error} what="執行紀錄">
+        <p role="alert">無法讀取執行紀錄。</p>
+      </ReadFailure>
+    );
   const trace = data as TraceSummary;
 
   return (
@@ -402,7 +411,12 @@ function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
   // `gcTime: 0` (api/trace.ts), so every return refetches. Saying which tab is
   // loading is what stops it reading as the page having hung.
   if (isPending) return <Loading what="原始事件（一頁最多 1,000 筆，資料量大）" />;
-  if (error) return <p role="alert">無法讀取執行紀錄。</p>;
+  if (error)
+    return (
+      <ReadFailure error={error} what="執行紀錄">
+        <p role="alert">無法讀取執行紀錄。</p>
+      </ReadFailure>
+    );
   const trace = data as TraceAdvanced;
 
   return (

@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { ReadFailure } from "../components/LoginRequired";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -73,11 +74,15 @@ export function DatasetUpload() {
       <h1>Dataset</h1>
 
       {limits.isPending && <Loading what="上傳規則" />}
-      {limits.error && (
-        // Fail-closed in the UI too: without the rules on screen the "顯示" step
-        // has not happened, so the file input is not offered.
-        <p role="alert">無法讀取上傳規則,因此暫時不能上傳:{limits.error.message}</p>
-      )}
+      {/*
+        Fail-closed in the UI too: without the rules on screen the "顯示" step has
+        not happened, so the file input is not offered. That holds for the 401 as
+        well — the login sentence replaces the rules, and `limits.data` is what
+        gates the input below (資訊架構 IA-6).
+      */}
+      <ReadFailure error={limits.error} what="上傳規則">
+        <p role="alert">無法讀取上傳規則,因此暫時不能上傳:{limits.error?.message}</p>
+      </ReadFailure>
 
       {limits.data && (
         <>

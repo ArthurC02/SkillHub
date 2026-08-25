@@ -285,19 +285,18 @@ export function Compare() {
     queries: skillIds.map((id) => ({
       queryKey: embeddedSkillKey(id),
       queryFn: () => getEmbeddedSkillDetail(id),
-      // Same as every hook in api/, and this was the only place without it. The
-      // default three retries keep `fetchStatus` at "fetching" through the whole
-      // backoff, so a read that had already failed went on rendering
-      // 「載入中…（2 個裡讀到 0 個）」 for about seven seconds before the page
-      // admitted it — a progress claim with nothing behind it, which is the same
-      // 設計 §2.1 rule as 未知不是空白. Retrying buys nothing here anyway: this is
-      // a plain GET of a skill the reader picked off a list.
+      // Same as every hook in api/ — and as of 2026-08-25 that sentence is
+      // finally true: it was written here while `api/skills.ts` (five hooks) and
+      // `api/trace.ts` still had none, so the line asserted a convention it was
+      // the only member of. 資訊架構 IA-6 closed the other six.
+      //
+      // The default three retries keep `fetchStatus` at "fetching" through the
+      // whole 1s+2s+4s backoff, so a read that had already failed went on
+      // rendering 「載入中…（2 個裡讀到 0 個）」 for about seven seconds before the
+      // page admitted it — a progress claim with nothing behind it, which is the
+      // same 設計 §2.1 rule as 未知不是空白. Retrying buys nothing here anyway:
+      // this is a plain GET of a skill the reader picked off a list.
       retry: false,
-      // Same as every hook in api/: a failed read is shown as a failed read.
-      // With the default three retries, `isLoading` is false during the backoff
-      // while `isError` is not yet true, so for ~7 seconds this page rendered its
-      // heading and nothing else — 設計 §2.1「未知不是空白」 is the shape that
-      // failure mode has a name for.
     })),
   });
 

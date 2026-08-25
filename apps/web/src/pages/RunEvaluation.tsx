@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { ReadFailure } from "../components/LoginRequired";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
@@ -291,9 +292,7 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
         </div>
       )}
 
-      {evaluation.error && !notEvaluated && (
-        <p role="alert">無法讀取評估結果：{evaluation.error.message}</p>
-      )}
+      {!notEvaluated && <ReadFailure error={evaluation.error} what="評估結果" />}
 
       {evaluation.data && (
         <EvaluationReport evaluation={evaluation.data} runId={runId} runStatus={runStatus} />
@@ -686,7 +685,7 @@ function SuggestionsPanel({ runId }: { runId: string }) {
   if (suggestions.isPending) return <Loading what="改善建議" />;
   if (notFound) return null;
   if (suggestions.error) {
-    return <p role="alert">無法讀取改善建議：{suggestions.error.message}</p>;
+    return <ReadFailure error={suggestions.error} what="改善建議" />;
   }
 
   const accepted = suggestions.data.suggestions.filter((s) => s.decision === "accepted");
@@ -802,7 +801,7 @@ function SuggestionItem({
 function SuggestionDiffView({ suggestionId }: { suggestionId: string }) {
   const diff = useSuggestionDiff(suggestionId, true);
   if (diff.isPending) return <Loading what="差異" />;
-  if (diff.error) return <p role="alert">無法讀取差異：{diff.error.message}</p>;
+  if (diff.error) return <ReadFailure error={diff.error} what="差異" />;
 
   return (
     <div>

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { LoginRequired, unauthenticated } from "./LoginRequired";
+import { useMe } from "../api/me";
 import {
   FEEDBACK_MAX_MESSAGE,
   feedbackPagePath,
@@ -29,6 +31,14 @@ import {
  * 3. **The two kinds are the reporter's choice, never inferred.** 「我卡住了」and
  *    「這裡沒有我要的東西」 are different reports (BETA-004 vs BETA-005) and the
  *    platform cannot tell them apart from the outside.
+ * 4. **It says a login is needed before somebody writes a paragraph.**
+ *    `POST /feedback` is `RequireSession` (`apiserver/router.go`), and this form
+ *    is in the layout — so it was on all 17 routes, including the two the
+ *    product deliberately serves to visitors (`/` and `/policy`). A visitor
+ *    could pick a kind, type a report and press 送出回報 to be told
+ *    「送不出去：not authenticated」. That is rule 2 above failing in its own
+ *    component, and the deferred-rejection shape 資訊架構 §5 IA-6 calls the worst
+ *    in the audit — this one on more pages than the two the ruling enumerated.
  */
 
 const KIND_LABEL: Record<FeedbackKind, string> = {
@@ -55,6 +65,7 @@ const KIND_NOTE: Record<FeedbackKind, string> = {
 };
 
 export function FeedbackEntry({ pathname }: { pathname: string }) {
+  const me = useMe();
   const [kind, setKind] = useState<FeedbackKind>("blocking_issue");
   const [message, setMessage] = useState("");
   const [invalid, setInvalid] = useState("");
@@ -96,69 +107,73 @@ export function FeedbackEntry({ pathname }: { pathname: string }) {
   return (
     <details className="feedback-entry">
       <summary>回報問題</summary>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <fieldset>
-          <legend>這是哪一種？</legend>
-          {(Object.keys(KIND_LABEL) as FeedbackKind[]).map((k) => (
-            <p key={k}>
-              <label>
-                <input
-                  type="radio"
-                  name="feedback-kind"
-                  value={k}
-                  checked={kind === k}
-                  onChange={() => setKind(k)}
-                />{" "}
-                {KIND_LABEL[k]}
-              </label>{" "}
-              <span className="note">{KIND_NOTE[k]}</span>
-            </p>
-          ))}
-        </fieldset>
+      {unauthenticated(me.error) ? (
+        <LoginRequired what="回報問題" />
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+        >
+          <fieldset>
+            <legend>這是哪一種？</legend>
+            {(Object.keys(KIND_LABEL) as FeedbackKind[]).map((k) => (
+              <p key={k}>
+                <label>
+                  <input
+                    type="radio"
+                    name="feedback-kind"
+                    value={k}
+                    checked={kind === k}
+                    onChange={() => setKind(k)}
+                  />{" "}
+                  {KIND_LABEL[k]}
+                </label>{" "}
+                <span className="note">{KIND_NOTE[k]}</span>
+              </p>
+            ))}
+          </fieldset>
 
-        <p>
-          <label htmlFor="feedback-message">發生了什麼事</label>
-          <br />
-          <textarea
-            id="feedback-message"
-            rows={4}
-            cols={60}
-            aria-describedby="feedback-context"
-            value={message}
-            onChange={(e) => {
-              setMessage(e.target.value);
-              setInvalid("");
-            }}
-          />
-          <br />
-          <span className="note">
-            {runes(message)}／{FEEDBACK_MAX_MESSAGE} 字
-          </span>
-        </p>
+          <p>
+            <label htmlFor="feedback-message">發生了什麼事</label>
+            <br />
+            <textarea
+              id="feedback-message"
+              rows={4}
+              cols={60}
+              aria-describedby="feedback-context"
+              value={message}
+              onChange={(e) => {
+                setMessage(e.target.value);
+                setInvalid("");
+              }}
+            />
+            <br />
+            <span className="note">
+              {runes(message)}／{FEEDBACK_MAX_MESSAGE} 字
+            </span>
+          </p>
 
-        <p className="note" id="feedback-context">
-          會跟著送出的只有這些：目前頁面 <code>{pagePath}</code>
-          {runID ? (
-            <>
-              、你正在看的 Run <code>{runID}</code>
-            </>
-          ) : (
-            ""
-          )}
-          。除此之外不會擷取任何東西——沒有截圖、沒有 console、沒有自動蒐集畫面內容。
-        </p>
+          <p className="note" id="feedback-context">
+            會跟著送出的只有這些：目前頁面 <code>{pagePath}</code>
+            {runID ? (
+              <>
+                、你正在看的 Run <code>{runID}</code>
+              </>
+            ) : (
+              ""
+            )}
+            。除此之外不會擷取任何東西——沒有截圖、沒有 console、沒有自動蒐集畫面內容。
+          </p>
 
-        <p>
-          <button type="submit" disabled={send.isPending}>
-            {send.isPending ? "送出中…" : "送出回報"}
-          </button>
-        </p>
-      </form>
+          <p>
+            <button type="submit" disabled={send.isPending}>
+              {send.isPending ? "送出中…" : "送出回報"}
+            </button>
+          </p>
+        </form>
+      )}
 
       {invalid && <p role="alert">{invalid}</p>}
       {send.error && (

@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -99,7 +100,7 @@ export function WorkspaceSkills() {
       {generateExposed && <GenerateSkill />}
 
       {skills.isPending && <Loading what="你的 Skill 清單" />}
-      {skills.error && <p role="alert">無法讀取你的 Skill 清單：{skills.error.message}</p>}
+      <ReadFailure error={skills.error} what="你的 Skill 清單" />
       {message && <p role="status">{message}</p>}
 
       {skills.data &&

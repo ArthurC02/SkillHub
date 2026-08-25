@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -55,12 +56,20 @@ export function WorkspaceAccount() {
       <h1>帳號</h1>
 
       {me.isPending && <Loading what="帳號資料" />}
-      {me.error && (
-        <p role="alert">
-          無法讀取帳號資料：{me.error.message}
-          。沒有登入的話，這一頁不會有東西可以看——那不是讀取失敗。
-        </p>
-      )}
+      {/*
+        資訊架構 §5 IA-6 listed eleven routes; this is the twelfth. The sentence
+        that used to sit here — 「沒有登入的話，這一頁不會有東西可以看——那不是讀取
+        失敗。」 — is cited in that ruling as one of the three precedents for
+        「由頁面自己說」, and it was right about the state. It was still printing
+        「無法讀取帳號資料：not authenticated」 in front of itself, and it named no
+        way to log in. The shared component says the same thing in the product's
+        own language and carries the action; the trailing clause is now the whole
+        message rather than a footnote to an English one.
+
+        A non-401 keeps 「無法讀取帳號資料：{message}」 and does NOT keep the login
+        clause: a 500 is not somebody being logged out.
+      */}
+      <ReadFailure error={me.error} what="帳號資料" />
       {message && <p role="status">{message}</p>}
 
       {me.data && (

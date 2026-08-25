@@ -1,4 +1,6 @@
 import { Loading } from "../components/Loading";
+import { LoginRequired, ReadFailure, unauthenticated } from "../components/LoginRequired";
+import { useMe } from "../api/me";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useSearch } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
@@ -64,11 +66,11 @@ export function SkillVersionPicker({
         ))}
       </select>{" "}
       {versions.isPending && <Loading what="版本清單" className="note" />}
-      {versions.error && (
+      <ReadFailure error={versions.error} what="版本清單">
         <span className="note" role="alert">
-          無法讀取版本清單：{versions.error.message}
+          無法讀取版本清單：{versions.error?.message}
         </span>
-      )}
+      </ReadFailure>
       {!versions.isPending && !versions.error && list.length === 0 && (
         <span className="note">
           這個工作區沒有這個 Skill 的任何版本可選——不代表這個 Skill 沒有版本，Fork
@@ -153,6 +155,11 @@ export function RunPreflight() {
   const [picked, setPicked] = useState("");
   const version = picked || linkedVersion;
   const ready = skill !== "" && testCase !== "";
+  // 資訊架構 IA-6: read the session, only so the two answers below come out in
+  // the right order. WorkspaceAccount's precedent — the whole query object, not
+  // Home's `!!useMe().data` — because 「還在問」 must not be rendered as 「沒登入」
+  // on a page whose entire body is at stake.
+  const me = useMe();
   const [message, setMessage] = useState("");
   const [runId, setRunId] = useState("");
   useEffect(() => {
@@ -210,6 +217,20 @@ export function RunPreflight() {
     },
   });
 
+  // Ordered before the missing-parameters branch on purpose. A logged-out
+  // visitor arriving at /lab/run was told 「這個頁面需要 ?skill=&test_case= 兩個
+  // ID」 — it sent someone with no session away to hunt for query parameters, an
+  // instruction that would not have helped even if they had followed it
+  // (資訊架構 §5 IA-6「一頁誤導」).
+  if (unauthenticated(me.error)) {
+    return (
+      <section>
+        <h1>執行前權限確認</h1>
+        <LoginRequired what="試跑與執行前權限確認" />
+      </section>
+    );
+  }
+
   if (!ready) {
     return (
       <section>
@@ -247,7 +268,11 @@ export function RunPreflight() {
   if (version === "") return shell(<p>請先在上面選一個 Skill Version,才有權限摘要可以看。</p>);
   if (preflight.isPending) return shell(<Loading what="權限摘要" />);
   if (preflight.error) {
-    return shell(<p role="alert">無法讀取權限摘要:{preflight.error.message}</p>);
+    return shell(
+      <ReadFailure error={preflight.error} what="權限摘要">
+        <p role="alert">無法讀取權限摘要:{preflight.error.message}</p>
+      </ReadFailure>,
+    );
   }
 
   const { summary, summary_hash: hash, estimated_cost: cost, quota, notes } = preflight.data;

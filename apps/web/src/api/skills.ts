@@ -19,6 +19,16 @@ import type {
  *
  * Once codegen is wired (ADR-019), replace this file's request plumbing with
  * the generated packages/api-client-ts client.
+ *
+ * **Every hook here is `retry: false`**, which is what the rest of `api/` has
+ * always been and what this file was the largest exception to. The default
+ * three retries keep `fetchStatus` at "fetching" through the whole 1s+2s+4s
+ * backoff, so `useSkillVersions` answering 401 to a logged-out visitor showed
+ * 「載入版本清單中…」 for about seven seconds before the page admitted it — seven
+ * seconds of a progress claim with nothing behind it (設計 §2.1). Nothing here
+ * is worth retrying anyway: these are plain GETs, and the one refusal that
+ * matters (401 from `RequireSession`) answers the same way however often it is
+ * asked (資訊架構 §5 IA-6).
  */
 
 export function searchSkills(query: string, filters: SearchFilters = {}, limit = 20) {
@@ -54,6 +64,7 @@ export function useSkillSearch(query: string, filters: SearchFilters, enabled: b
     ],
     queryFn: () => searchSkills(query, filters),
     enabled,
+    retry: false,
   });
 }
 
@@ -86,6 +97,7 @@ export function useSkillDetail(skillId: string) {
     queryKey: ["skills", skillId],
     queryFn: () => getSkillDetail(skillId),
     enabled: skillId.length > 0,
+    retry: false,
   });
 }
 
@@ -94,6 +106,7 @@ export function useEmbeddedSkillDetail(skillId: string) {
     queryKey: embeddedSkillKey(skillId),
     queryFn: () => getEmbeddedSkillDetail(skillId),
     enabled: skillId.length > 0,
+    retry: false,
   });
 }
 
@@ -106,6 +119,7 @@ export function useSkillFiles(skillId: string) {
     queryKey: ["skills", skillId, "files"],
     queryFn: () => getSkillFiles(skillId),
     enabled: skillId.length > 0,
+    retry: false,
   });
 }
 
@@ -125,6 +139,7 @@ export function useSkillVersions(skillId: string) {
     queryKey: ["skills", skillId, "versions"],
     queryFn: () => getSkillVersions(skillId),
     enabled: skillId.length > 0,
+    retry: false,
   });
 }
 

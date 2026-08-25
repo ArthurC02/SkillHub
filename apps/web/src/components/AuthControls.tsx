@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { API_BASE_URL, ApiError } from "../api/client";
+import { API_BASE_URL } from "../api/client";
+import { unauthenticated } from "./LoginRequired";
 import { logout, useMe } from "../api/me";
 
 export function AuthControls() {
@@ -12,7 +13,9 @@ export function AuthControls() {
     },
   });
 
-  if (me.error instanceof ApiError && me.error.status === 401) {
+  // The predicate now lives in LoginRequired, because every page needs the same
+  // question answered; this was the only place that asked it (資訊架構 IA-6).
+  if (unauthenticated(me.error)) {
     return <a href={`${API_BASE_URL}/auth/github/login`}>使用 GitHub 登入</a>;
   }
   if (!me.data) return null;

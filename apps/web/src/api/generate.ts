@@ -58,5 +58,6 @@ export function useGenerateFailures() {
   return useQuery({
     queryKey: ["generate", "failures"],
     queryFn: () => apiFetch<{ failures: GenerationFailure[] }>("/skills/generate/failures"),
+    retry: false,
   });
 }

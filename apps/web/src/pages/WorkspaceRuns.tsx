@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { ReadFailure } from "../components/LoginRequired";
 import { Link } from "@tanstack/react-router";
 import { useRuns, type RunListItem } from "../api/runs";
 import { RUN_STATUS_LABEL } from "./RunEvaluation";
@@ -33,7 +34,7 @@ export function WorkspaceRuns() {
       </p>
 
       {runs.isPending && <Loading what=" Run 歷史" />}
-      {runs.error && <p role="alert">無法讀取 Run 歷史：{runs.error.message}</p>}
+      <ReadFailure error={runs.error} what=" Run 歷史" />
 
       {runs.data &&
         (rows.length === 0 ? (
