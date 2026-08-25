@@ -298,6 +298,14 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	truncated := len(rows) > listSkillsLimit
+	// The count comes off the rows, so an empty list has none to read it from --
+	// and zero is the right answer there, not a missing field. Every row carries
+	// the same value (count(*) OVER () is constant across the window), so row 0
+	// is as good as any.
+	var total int64
+	if len(rows) > 0 {
+		total = rows[0].TotalMatches
+	}
 	if truncated {
 		rows = rows[:listSkillsLimit]
 	}
@@ -347,10 +355,15 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			Verification:  verificationOf(row),
 		})
 	}
+	// 設計系統 §4.3: a truncated list has to say 「共 N 筆，這裡顯示 M 筆，因為 X」.
+	// The reason half was already here; `total` is the count half. Until now this
+	// list could only say 「超過 100 個」, a lower bound a reader cannot tell 101
+	// from 10100 by.
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"skills":    out,
 		"limit":     listSkillsLimit,
 		"truncated": truncated,
+		"total":     total,
 	})
 }
 

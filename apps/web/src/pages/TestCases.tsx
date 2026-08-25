@@ -98,7 +98,7 @@ export function TestCaseList() {
   });
 
   return (
-    <section className="page">
+    <section>
       <h1>Test Case</h1>
       <p className="note">
         Test Case 是可編輯的草稿：User Prompt、測試資料與驗收條件。開始 Run 時，平台會把當下的
@@ -221,7 +221,7 @@ export function TestCaseDetail() {
 
   if (deleted) {
     return (
-      <section className="page">
+      <section>
         <h1>已刪除這個 Test Case</h1>
         {/* WS-002 「系統應說明刪除範圍」: the count is the server's, not a guess,
             and what survived is named as plainly as what went. */}
@@ -254,7 +254,7 @@ export function TestCaseDetail() {
   const lastVersion = history[0]?.skill_version_id;
 
   return (
-    <section className="page" key={testCaseId}>
+    <section key={testCaseId}>
       <h1>{testCase.data.name}</h1>
       <p className="note">
         <Link to="/lab/test-cases" search={{ skill: testCase.data.skill_id }}>

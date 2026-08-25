@@ -140,9 +140,16 @@ export function Home() {
             起來就是完整答案。與上面兩則刻意分開：那兩則說的是「我們看得夠不夠
             清楚」，這一則說的是「找到的東西有多少在這一頁上」。
           */}
+          {/*
+            設計系統 §4.3 wants 「共 N 筆，這裡顯示 M 筆，因為 X」. Until the server
+            grew `total` (2026-08-25) this said 「超過 N 個」 — a lower bound, and a
+            lower bound cannot say 共: a reader could not tell 21 from 2100 by it,
+            which is most of what they wanted to know. The reason half was
+            already here.
+          */}
           {data.truncated && (
             <p className="notice" role="status">
-              符合的 Skill 超過 {data.limit} 個，這裡只列出最接近的 {data.limit} 個。
+              符合的 Skill 共 {data.total} 個，這裡只列出最接近的 {data.limit} 個。
               目前沒有翻頁；縮小任務描述或加上篩選條件會讓排序更貼近你要的。
             </p>
           )}

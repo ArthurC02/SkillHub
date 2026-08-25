@@ -343,6 +343,7 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
       ],
       limit: 100,
       truncated: true,
+      total: 137,
     }),
   );
   // Wait on the summary, not the name: 「自己匯入的」 also appears in this page's
@@ -479,6 +480,26 @@ test("WS-004 the own-skills list links each row on to its files and packaging", 
   // header, because this is the page a reader lands on looking for "my stuff".
   expect(hrefs).toContain("/workspace/runs");
   expect(hrefs).toContain("/workspace/downloads");
+});
+
+test("IA-9 the empty own-skills list offers importing as a link, not as prose", async () => {
+  // 資訊架構 §0.1 R3 / §2.3: /workspace/import had exactly one in-page inbound
+  // edge (Home's no_results state) and this sentence had been naming importing
+  // in prose the whole time — a page that says what to do next and then makes
+  // you go find the nav to do it is what R3 counts as one way in.
+  //
+  // This state is only reachable with a session (GET /skills is RequireSession),
+  // which is why the link needs no visitor branch the way Home's exit does.
+  vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
+  await render(<WorkspaceSkills />, () => text().includes("還沒有任何 Skill"));
+
+  const hrefs = Array.from(container.querySelectorAll("a")).map(
+    (a) => a.getAttribute("href") ?? "",
+  );
+  expect(hrefs).toContain("/workspace/import");
+  // 設計 §2.1's strong form survives the link: the empty state still says what
+  // this empty is NOT.
+  expect(text()).toContain("不是清單讀取失敗");
 });
 
 // --- deleting a skill (WS-005, 04 丙-22 ①) ----------------------------------

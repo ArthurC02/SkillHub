@@ -233,7 +233,23 @@ SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.
        -- generated scan takes a plain string and blows up on the first row with
        -- no inheritable ancestor — which is most rows.
        COALESCE(inh.name, '') AS inherited_from_name,
-       inh.created_at AS inherited_verified_at
+       inh.created_at AS inherited_verified_at,
+       -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
+       -- 2026-08-25 this page said 「超過 N 個」 -- a LOWER BOUND, from which a
+       -- reader cannot tell 21 from 2100 -- because there was no count to say.
+       --
+       -- A window function and NOT a second COUNT query, deliberately. A parallel
+       -- count has to restate every predicate above, and the moment the two
+       -- restatements disagree the page reports a total that does not describe
+       -- the list under it -- which is worse than the lower bound it replaced.
+       -- count(*) OVER () is evaluated after this statement's own WHERE and
+       -- before its LIMIT, so it cannot drift from the rows it counts: there is
+       -- only one set of predicates.
+       --
+       -- Exact here: this statement has no candidate window, so the count is
+       -- every undeleted skill in the workspace, and LIMIT/OFFSET page through
+       -- exactly that many.
+       count(*) OVER ()::bigint AS total_matches
 FROM skills sk
 LEFT JOIN LATERAL (
     SELECT v.created_at, v.source_id, v.content_hash
@@ -270,6 +286,7 @@ type ListSkillsRow struct {
 	InheritedFromSkillID pgtype.UUID
 	InheritedFromName    string
 	InheritedVerifiedAt  pgtype.Timestamptz
+	TotalMatches         int64
 }
 
 // The owner's own skills, newest first, with the one measurement fact the list
@@ -334,6 +351,7 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 			&i.InheritedFromSkillID,
 			&i.InheritedFromName,
 			&i.InheritedVerifiedAt,
+			&i.TotalMatches,
 		); err != nil {
 			return nil, err
 		}

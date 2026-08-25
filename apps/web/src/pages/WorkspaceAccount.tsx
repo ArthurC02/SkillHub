@@ -51,7 +51,7 @@ export function WorkspaceAccount() {
   const refresh = () => client.invalidateQueries({ queryKey: ["me"] });
 
   return (
-    <section className="page">
+    <section>
       <h1>帳號</h1>
 
       {me.isPending && <Loading what="帳號資料" />}

@@ -135,6 +135,7 @@ const EMPTY: PublicSearchResponse = {
   filtered_out: false,
   limit: 20,
   truncated: false,
+  total: 0,
 };
 
 test("DISC-001: search hits the public endpoint, which needs no session", async () => {
@@ -253,6 +254,7 @@ test("DISC-002: a truncated result page says so, and says how many it is showing
     query: "pdf",
     limit: 20,
     truncated: true,
+    total: 47,
     results: [
       {
         ...HIT_FACETS,
@@ -267,6 +269,11 @@ test("DISC-002: a truncated result page says so, and says how many it is showing
   await submitSearch("pdf");
 
   expect(container.textContent).toContain("只列出最接近的 20 個");
+  // 設計系統 §4.3 wants 「共 N 筆，這裡顯示 M 筆，因為 X」. The population, and not
+  // the page size a second time: until 2026-08-25 this notice read 「超過 20 個」,
+  // which is the cap talking about itself. A reader could not tell 21 from 2100.
+  expect(container.textContent).toContain("共 47 個");
+  expect(container.textContent).not.toContain("超過");
   // Not the degraded copy: recall being lower and the page being cut are
   // different facts with different fixes.
   expect(container.textContent).not.toContain("召回率明顯較低");

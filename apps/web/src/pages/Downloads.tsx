@@ -41,7 +41,7 @@ export function Downloads() {
   });
 
   return (
-    <section className="page">
+    <section>
       <h1>下載紀錄</h1>
       <p className="note">
         這個工作區打包過的套件，新的在上面。到期的仍然列在這裡並標示已過期——那與「沒有這一筆」是兩個不同的答案。

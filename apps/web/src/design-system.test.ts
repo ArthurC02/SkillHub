@@ -156,10 +156,157 @@ test("ADR-039 §2.7: colour lives in tokens, and nothing multiplies it", () => {
  * the single stylesheet is what makes that true rather than lucky" — asserted
  * instead of observed. A second stylesheet, and every check above keeps passing
  * while covering less of the app.
+ *
+ * `recursive` because the first version of this was not: `readdirSync` on `src`
+ * alone sees the top level, so `src/components/foo.css` passed it in silence
+ * while covering none of it. §6 recorded that gap on 2026-08-25 as 「它是 `src/`
+ * 頂層的不變式，不是全 app 的」. Now the assertion is as wide as the sentence.
  */
 test("ADR-039 §4: index.css is still the only stylesheet", () => {
   expect(
-    readdirSync(import.meta.dirname).filter((f) => f.endsWith(".css")),
+    readdirSync(import.meta.dirname, { recursive: true })
+      .map((f) => String(f).replaceAll("\\", "/"))
+      .filter((f) => f.endsWith(".css"))
+      .sort(),
     "a second stylesheet — the scale guards above only read index.css",
   ).toEqual(["index.css"]);
+});
+
+/**
+ * §3 checklist item 16's fourth clause: 「markup 裡的 class 在 CSS 裡有規則」.
+ *
+ * That checklist counted it as one of four automated guards until 2026-08-25,
+ * when the count was corrected to three because nothing in `apps/web` asserted
+ * it. §6's row for it read 「沒有 — 一列都沒有」. This is that row.
+ *
+ * WHAT IT IS NOT. Not 「every class has a rule」 — that check is loud rather
+ * than useful, because eight classes in this app deliberately have none and the
+ * honest answers for them are two different answers:
+ *
+ *   - **a settled decision.** `badge-source-package` takes no `--accent-border`
+ *     on purpose (`index.css` above `.badge-source-model`): 作者原文 is a
+ *     settled fact, and tinting it as uncertain would make the colour
+ *     contradict the word. Plain `.badge` IS its visual.
+ *   - **a test hook.** A class is the only handle on a node, and a test selects
+ *     it. Inventing a rule for one would be inventing design; deleting one
+ *     would take a passing test with it.
+ *
+ * So the shape is `db/query-owners.yaml`'s again, and §5's: a named list of
+ * what is already off the rule, each entry saying which of those two it is.
+ * The value is not that the list is empty — it is that a NEW class now costs
+ * either a rule in `index.css` or a line here with a reason, instead of
+ * nothing. A class that is neither styled nor explained fails.
+ *
+ * WHAT IT CANNOT SEE. A class assembled from an interpolation —
+ * `` `badge badge-${kind}-${value.value}` `` in `LabelledBadge` — is dropped
+ * whole rather than guessed at, so the `badge-trust-*` / `badge-compat-*`
+ * family is out of reach. Only the used → defined direction is checked; dead
+ * rules in `index.css` are not, and cannot be while that family exists.
+ */
+const UNSTYLED: Record<string, string> = {
+  // Settled decision — the one entry that is not a test hook.
+  "badge-source-package":
+    "settled decision: index.css says 作者原文 is a settled fact, so this badge " +
+    "deliberately does not take --accent-border's 未知／未驗證 tint. Plain .badge is the visual.",
+
+  // Test hooks. Each is selected by a test named beside it.
+  "app-shell":
+    "test hook: disc.test.tsx and generate.test.tsx select .app-shell to tell 已掛載 apart from 還沒",
+  "feedback-entry":
+    "test hook: a11y.test.tsx selects .feedback-entry form and .feedback-entry [role=alert] (BETA-004)",
+  "risk-infos":
+    "test hook: disc.test.tsx selects details.risk-infos to assert the info findings stay collapsed",
+  "license-expression":
+    "test hook: disc.test.tsx asserts an unknown license shows no expression (DISC-008); the class is the only handle",
+  "badge-license-source":
+    "test hook: the other half of the same DISC-008 assertion in disc.test.tsx",
+  "badge-source-template":
+    "test hook: disc.test.tsx counts this selector to assert template copy does not borrow the model marker",
+};
+
+/**
+ * Every class token this app puts in the DOM, and the files that put it there.
+ *
+ * Read from `className=` positions only, not from every string in the file: a
+ * guard that collected all literals would report `title` copy and comparison
+ * operands as missing classes, which is the loud-not-useful failure mode again.
+ */
+function classesInMarkup(): Map<string, string[]> {
+  const used = new Map<string, string[]>();
+  for (const entry of readdirSync(import.meta.dirname, { recursive: true })) {
+    const file = String(entry).replaceAll("\\", "/");
+    if (!file.endsWith(".tsx") || file.includes(".test.")) continue;
+    const body = readFileSync(join(import.meta.dirname, file), "utf8");
+
+    for (const at of body.matchAll(/className=/g)) {
+      const start = at.index + at[0].length;
+      let expr: string;
+      if (body[start] === '"') {
+        expr = body.slice(start, body.indexOf('"', start + 1) + 1);
+      } else if (body[start] === "{") {
+        // Naive depth counting is enough: a `${` inside a template literal
+        // opens and closes its own brace, so it balances like any other.
+        let depth = 0;
+        let end = start;
+        while (end < body.length) {
+          if (body[end] === "{") depth++;
+          else if (body[end] === "}" && --depth === 0) break;
+          end++;
+        }
+        expr = body.slice(start, end + 1);
+      } else {
+        continue;
+      }
+
+      for (const lit of expr.matchAll(/"([^"]*)"|'([^']*)'|`([^`]*)`/g)) {
+        // `value === "scanned" ? "badge" : …` — the operand of a comparison is
+        // a value being tested, not a class being applied.
+        if (/[=!]==?\s*$/.test(expr.slice(0, lit.index))) continue;
+        // An interpolation is MARKED, not removed, so the token around it is
+        // dropped whole rather than leaving a half-name like `badge-source-`
+        // behind. Static tokens beside it are still checked.
+        const raw = (lit[1] ?? lit[2] ?? lit[3]).replace(/\$\{[^}]*\}/g, " ");
+        for (const token of raw.split(/\s+/)) {
+          if (!token || token.includes(" ")) continue;
+          if (!used.has(token)) used.set(token, []);
+          if (!used.get(token)!.includes(file)) used.get(token)!.push(file);
+        }
+      }
+    }
+  }
+  return used;
+}
+
+test("ADR-039 §3 第 16 條: every class in the markup has a rule, or a reason", () => {
+  const used = classesInMarkup();
+  // Sentinel, for the same reason §4.1's is: a parse that silently returns
+  // nothing would pass this file on any markup at all.
+  expect(used.size, "no class found in any .tsx — the className scan broke").toBeGreaterThan(40);
+
+  const defined = new Set(
+    [...css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/\.([a-zA-Z][\w-]*)/g)].map(([, c]) => c),
+  );
+
+  const unexplained = [...used.keys()].filter((c) => !defined.has(c) && !(c in UNSTYLED)).sort();
+  expect(
+    unexplained.map((c) => `${c} (${used.get(c)!.join(", ")})`),
+    "a class with no rule in index.css and no line in UNSTYLED — either give it a " +
+      "visual, or say there which of the two reasons it has for not having one",
+  ).toEqual([]);
+
+  // Shrink-only, like §5's deviation list. An entry leaves by getting a rule or
+  // by leaving the markup; a new one arriving is what this guard exists to stop.
+  expect(
+    Object.keys(UNSTYLED).length,
+    "the unstyled list may only get shorter; a new class belongs in index.css",
+  ).toBeLessThanOrEqual(7);
+
+  // And it may not rot: an entry whose class is gone, or which has since been
+  // given a rule, is a reason nobody needs to read any more.
+  expect(
+    Object.keys(UNSTYLED)
+      .filter((c) => defined.has(c) || !used.has(c))
+      .sort(),
+    "an entry that is now styled or no longer in the markup — delete the line",
+  ).toEqual([]);
 });

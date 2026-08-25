@@ -397,6 +397,17 @@ type searchResponse struct {
 	// we found is on the page.
 	Limit     int32 `json:"limit"`
 	Truncated bool  `json:"truncated"`
+	// Total is 設計系統 §4.3's other half: 「共 N 筆，這裡顯示 M 筆，因為 X」. Until
+	// 2026-08-25 the page could only say 「超過 N 個」, and a lower bound cannot say
+	// 共 -- a reader cannot tell 21 from 2100 by it. The reason half was already
+	// here in Truncated's copy; this is the count.
+	//
+	// It comes from count(*) OVER () inside the retrieval statement, so it is
+	// computed by the same WHERE that produced the rows and cannot drift from
+	// them. On the hybrid path it is bounded by the 50-per-leg candidate window
+	// (45 documents indexed, so exact today, and the SQL names the trigger for
+	// when it stops being); on the degraded lexical path it is exact.
+	Total int64 `json:"total"`
 	// NoResults distinguishes "we searched and nothing was close enough" from
 	// an empty list the caller has to interpret (DISC-001 清楚的無結果狀態).
 	// Also true for a query that was never searched at all — blank or
@@ -495,6 +506,7 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		FilteredOut:    out.FilteredOut,
 		Limit:          limit,
 		Truncated:      out.Truncated,
+		Total:          out.Total,
 	}
 	// Everything fell outside MaxCosineDistance (or the lexical floor matched
 	// nothing). Saying so explicitly is the point: a degraded empty answer still

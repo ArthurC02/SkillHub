@@ -78,6 +78,15 @@ type searchOutcome struct {
 	// being an available answer. Retrieval asks for one more row than it will
 	// return, which is the same trick GET /skills uses and costs one row.
 	Truncated bool
+	// Total is how many skills matched before the cap cut the page down --
+	// 設計系統 §4.3's 「共 N 筆」, the half the page could not say. Read off the
+	// rows rather than counted here: the retrieval statement computes it with
+	// count(*) OVER () under its own WHERE, so it cannot disagree with the list
+	// the way a second COUNT query eventually would.
+	//
+	// It counts the probe row too, and that is correct -- the probe is a match,
+	// it is simply one this page will not show.
+	Total int64
 }
 
 // Search runs the DISC-001/002/003 retrieval pipeline for an already-validated
@@ -119,22 +128,28 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 	} else if vec, err := s.embedQuery(ctx, query); err != nil {
 		slog.Warn("query embedding failed, falling back to FTS", "error", err)
 		out.DegradedReason = "embedding unavailable; lexical search only"
-	} else if hybridHits, err := s.hybridSearch(ctx, queries, query, vec, limit+1, filters); err != nil {
+	} else if hybridHits, total, err := s.hybridSearch(ctx, queries, query, vec, limit+1, filters); err != nil {
 		slog.Warn("hybrid search failed, falling back to FTS", "error", err)
 		out.DegradedReason = "hybrid search unavailable; lexical search only"
 	} else {
 		embedding = vec
 		out.Hits = hybridHits
+		out.Total = total
 	}
 
 	if out.DegradedReason != "" {
 		searchMode = "fts"
-		hits, err := s.ftsOnlySearch(ctx, queries, query, limit+1, filters)
+		hits, total, err := s.ftsOnlySearch(ctx, queries, query, limit+1, filters)
 		if err != nil {
 			slog.Error("lexical search failed", "error", err)
 			return searchOutcome{}, err
 		}
 		out.Hits = hits
+		// Overwrites whatever the failed hybrid attempt left, which is zero: this
+		// is now the page, so this is now the total. A degraded answer reporting
+		// the count of the answer it did not give would be the same class of
+		// mismatch a parallel COUNT query invites.
+		out.Total = total
 	}
 
 	if out.Hits == nil {
@@ -159,10 +174,13 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 			unfiltered []searchResult
 			err        error
 		)
+		// The probe's own total is discarded on purpose: it counts what WOULD have
+		// matched without the filters, and reporting that as this page's total
+		// would tell the reader their filtered page holds rows it does not.
 		if embedding != nil {
-			unfiltered, err = s.hybridSearch(ctx, queries, query, embedding, limit, searchFilters{})
+			unfiltered, _, err = s.hybridSearch(ctx, queries, query, embedding, limit, searchFilters{})
 		} else {
-			unfiltered, err = s.ftsOnlySearch(ctx, queries, query, limit, searchFilters{})
+			unfiltered, _, err = s.ftsOnlySearch(ctx, queries, query, limit, searchFilters{})
 		}
 		if err != nil {
 			slog.Error("unfiltered search probe failed", "error", err)
@@ -228,7 +246,7 @@ func (s *Service) embedQuery(ctx context.Context, query string) (*pgvector.Vecto
 // anonymous caller has no session to derive a scope from and must never supply
 // one. The filters are the only caller-supplied predicates, and they can only
 // ever narrow that scope.
-func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query string, embedding *pgvector.Vector, limit int32, filters searchFilters) ([]searchResult, error) {
+func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query string, embedding *pgvector.Vector, limit int32, filters searchFilters) ([]searchResult, int64, error) {
 	rows, err := queries.PublicHybridSearchSkills(ctx, gen.PublicHybridSearchSkillsParams{
 		Query:          query,
 		QueryEmbedding: embedding,
@@ -239,7 +257,14 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		AgentRuntime:   filters.AgentRuntime,
 	})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+
+	// Every row carries the same window count, so row 0 answers for all of them;
+	// no rows means no matches, and zero is the honest total rather than a gap.
+	var total int64
+	if len(rows) > 0 {
+		total = rows[0].TotalMatches
 	}
 
 	hits := make([]searchResult, 0, len(rows))
@@ -264,7 +289,7 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}
-	return hits, nil
+	return hits, total, nil
 }
 
 // ftsOnlySearch is the degradation path when the LLM service is unavailable.
@@ -274,7 +299,7 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 // Every row comes back with a null rank. The page is ordered by ts_rank_cd,
 // which the query no longer returns: it is an unbounded lexical score, and the
 // field it used to travel in is documented as a cosine similarity in 0..1.
-func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query string, limit int32, filters searchFilters) ([]searchResult, error) {
+func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query string, limit int32, filters searchFilters) ([]searchResult, int64, error) {
 	rows, err := queries.PublicSearchSkills(ctx, gen.PublicSearchSkillsParams{
 		Query:         query,
 		ResultLimit:   limit,
@@ -283,8 +308,15 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 		AgentRuntime:  filters.AgentRuntime,
 	})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
+	// Every row carries the same window count, so row 0 answers for all of them;
+	// no rows means no matches, and zero is the honest total rather than a gap.
+	var total int64
+	if len(rows) > 0 {
+		total = rows[0].TotalMatches
+	}
+
 	hits := make([]searchResult, 0, len(rows))
 	for _, row := range rows {
 		hit := searchResult{
@@ -298,7 +330,7 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}
-	return hits, nil
+	return hits, total, nil
 }
 
 // matchReasons calls the LLM service once for the top 10 hits — one batched

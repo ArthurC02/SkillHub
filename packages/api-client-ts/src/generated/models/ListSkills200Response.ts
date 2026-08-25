@@ -53,6 +53,26 @@ export interface ListSkills200Response {
      * @memberof ListSkills200Response
      */
     truncated: boolean;
+    /**
+     * How many skills the workspace holds, before `limit` cut the
+     * page down. 設計系統 §4.3 asks a truncated list for 「共 N 筆，
+     * 這裡顯示 M 筆，因為 X」; `truncated` above gave the reason and
+     * this is the count, added 2026-08-25. The page could
+     * previously say only 「超過 100 個」, and a lower bound cannot
+     * distinguish 101 from 10100.
+     * 
+     * Exact: computed by `count(*) OVER ()` inside the listing
+     * statement, so it is produced by the same predicate as the
+     * rows and equals `skills.length` whenever `truncated` is
+     * false. A second COUNT query would have to restate the
+     * workspace scope and the soft-delete predicate, and the day
+     * the two restatements disagreed the page would report a
+     * total that does not describe the list beneath it.
+     * 
+     * @type {number}
+     * @memberof ListSkills200Response
+     */
+    total: number;
 }
 
 /**
@@ -62,6 +82,7 @@ export function instanceOfListSkills200Response(value: object): value is ListSki
     if (!('skills' in value) || value['skills'] === undefined) return false;
     if (!('limit' in value) || value['limit'] === undefined) return false;
     if (!('truncated' in value) || value['truncated'] === undefined) return false;
+    if (!('total' in value) || value['total'] === undefined) return false;
     return true;
 }
 
@@ -78,6 +99,7 @@ export function ListSkills200ResponseFromJSONTyped(json: any, ignoreDiscriminato
         'skills': ((json['skills'] as Array<any>).map(OwnSkillFromJSON)),
         'limit': json['limit'],
         'truncated': json['truncated'],
+        'total': json['total'],
     };
 }
 
@@ -95,6 +117,7 @@ export function ListSkills200ResponseToJSONTyped(value?: ListSkills200Response |
         'skills': ((value['skills'] as Array<any>).map(OwnSkillToJSON)),
         'limit': value['limit'],
         'truncated': value['truncated'],
+        'total': value['total'],
     };
 }
 

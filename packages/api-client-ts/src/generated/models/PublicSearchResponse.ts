@@ -69,6 +69,39 @@ export interface PublicSearchResponse {
      */
     limit: number;
     /**
+     * How many skills matched, before `limit` cut the page down. 設計系統
+     * §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」 — 「共 N 筆，這裡
+     * 顯示 M 筆，因為 X」.
+     * 
+     * Added 2026-08-25. The page could previously only say 「超過 N 個」,
+     * which is a lower bound: a reader cannot tell 21 from 2100 from it,
+     * and the rule asks for 共, which a lower bound cannot say. The reason
+     * half was already there; this is the count half.
+     * 
+     * Computed by `count(*) OVER ()` inside the retrieval statement itself,
+     * not by a second COUNT query. A parallel count would have to restate
+     * every predicate, and the first time the two restatements disagreed
+     * the page would report a total that does not describe the list under
+     * it — worse than the bound it replaced.
+     * 
+     * **Its ceiling, stated because a total that quietly stops being one is
+     * the defect this field exists to fix:** on the hybrid path the two
+     * retrieval legs take 50 candidates each, so this counts what passed the
+     * filters out of at most 100. The indexed catalogue is 45 documents, so
+     * today it is exact for every query; past 100 candidates it becomes a
+     * lower bound again while still being called a total. The fix at that
+     * point is to push the filters into the candidate CTEs — the same change
+     * the ponytail note on those filters already asks for, on the same
+     * trigger. On the degraded lexical path there is no candidate window and
+     * the count is exact.
+     * 
+     * `total == len(results)` whenever `truncated` is false.
+     * 
+     * @type {number}
+     * @memberof PublicSearchResponse
+     */
+    total: number;
+    /**
      * True when the catalogue held more matches than this page shows. The
      * cap has always been here and result 21 simply did not exist as far as
      * a caller could tell; ADR-042 決策 3 makes that the defect it is —
@@ -146,6 +179,7 @@ export function instanceOfPublicSearchResponse(value: object): value is PublicSe
     if (!('results' in value) || value['results'] === undefined) return false;
     if (!('degraded' in value) || value['degraded'] === undefined) return false;
     if (!('limit' in value) || value['limit'] === undefined) return false;
+    if (!('total' in value) || value['total'] === undefined) return false;
     if (!('truncated' in value) || value['truncated'] === undefined) return false;
     if (!('partialIndex' in value) || value['partialIndex'] === undefined) return false;
     if (!('noResults' in value) || value['noResults'] === undefined) return false;
@@ -168,6 +202,7 @@ export function PublicSearchResponseFromJSONTyped(json: any, ignoreDiscriminator
         'degraded': json['degraded'],
         'degradedReason': json['degraded_reason'] == null ? undefined : json['degraded_reason'],
         'limit': json['limit'],
+        'total': json['total'],
         'truncated': json['truncated'],
         'partialIndex': json['partial_index'],
         'noResults': json['no_results'],
@@ -192,6 +227,7 @@ export function PublicSearchResponseToJSONTyped(value?: PublicSearchResponse | n
         'degraded': value['degraded'],
         'degraded_reason': value['degradedReason'],
         'limit': value['limit'],
+        'total': value['total'],
         'truncated': value['truncated'],
         'partial_index': value['partialIndex'],
         'no_results': value['noResults'],

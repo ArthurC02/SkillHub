@@ -74,7 +74,7 @@ export function ImportSkill() {
   };
 
   return (
-    <section className="page">
+    <section>
       <h1>匯入 Skill</h1>
       <p className="note">套件只會做靜態檢查；匯入期間不執行其中的 Script。</p>
       <form onSubmit={submit}>

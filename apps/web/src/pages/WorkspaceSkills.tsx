@@ -83,7 +83,7 @@ export function WorkspaceSkills() {
   });
 
   return (
-    <section className="page">
+    <section>
       <h1>我的 Skill</h1>
       <p className="note">
         這個工作區裡的 Skill：Fork 進來的、自己匯入的都在這裡，新的在上面。 公開目錄裡的 Skill
@@ -104,9 +104,24 @@ export function WorkspaceSkills() {
 
       {skills.data &&
         (skills.data.skills.length === 0 ? (
+          /*
+            IA-9 / 資訊架構 §0.1 R3: the second in-page inbound edge for
+            /workspace/import. The sentence already named importing and only
+            prose carried it — the page said what to do next and then made you
+            go find the nav to do it, which is the shape R3 calls one way in.
+            Here rather than anywhere else on this page because an empty
+            personal list IS the moment: nothing to Fork from, nothing to run.
+
+            No visitor branch, unlike Home.tsx's no_results exit: GET /skills is
+            RequireSession, so `skills.data` cannot exist without a session and
+            this state is unreachable for anyone the link would 401. The nav's
+            copy of the same link has no such guarantee — that is IA-6, and it
+            is not this edge's to answer.
+          */
           <p>
-            還沒有任何 Skill。到<Link to="/">首頁</Link>
-            搜尋一個再 Fork，或匯入自己的套件——這裡是空的代表你還沒有建立過，不是清單讀取失敗。
+            還沒有任何 Skill。到<Link to="/">首頁</Link>搜尋一個再 Fork，或
+            <Link to="/workspace/import">匯入自己的套件</Link>
+            ——這裡是空的代表你還沒有建立過，不是清單讀取失敗。
           </p>
         ) : (
           <ul className="search-results">
@@ -268,7 +283,7 @@ export function WorkspaceSkills() {
       */}
       {skills.data?.truncated && (
         <p className="notice" role="status">
-          這個工作區的 Skill 超過 {skills.data.limit} 個，上面只列出前 {skills.data.limit} 個。
+          這個工作區的 Skill 共 {skills.data.total} 個，上面只列出前 {skills.data.limit} 個。
           目前沒有翻頁，其餘的要用搜尋找。
         </p>
       )}

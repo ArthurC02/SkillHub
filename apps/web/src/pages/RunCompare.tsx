@@ -82,7 +82,7 @@ export function RunCompare() {
   );
 
   return (
-    <section className="page">
+    <section>
       <h1>Run 比較</h1>
 
       {/* Checklist 1: the page led with a uuid, then a form, then two columns

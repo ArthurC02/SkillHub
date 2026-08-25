@@ -64,7 +64,7 @@ export function DatasetUpload() {
   });
 
   return (
-    <section className="page">
+    <section>
       {/*
         IA-8 (R5): the address is a plural noun — a place — and the heading
         used to be a verb (「上傳 Dataset」), two mental models for one page.

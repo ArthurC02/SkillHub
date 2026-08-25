@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -278,6 +279,9 @@ type searchBody struct {
 	NoResults       bool           `json:"no_results"`
 	QuerySuggestion string         `json:"query_suggestion"`
 	FilteredOut     bool           `json:"filtered_out"`
+	Limit           int            `json:"limit"`
+	Truncated       bool           `json:"truncated"`
+	Total           int            `json:"total"`
 }
 
 func (c *client) search(t *testing.T, path string) searchBody {
@@ -1158,6 +1162,55 @@ func hasDisclosureCode(list []struct{ Code, Label, Note string }, code string) b
 		}
 	}
 	return false
+}
+
+// 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」 — 「共 N 筆，這裡顯示
+// M 筆，因為 X」. The reason half shipped with the truncation notice; the count
+// half could only manage 「超過 N 個」, a lower bound from which a reader cannot
+// tell 21 from 2100.
+//
+// The assertion that matters is the RELATIONSHIP, not the number. A total is only
+// worth printing if it describes the list printed under it, and the way that
+// breaks is drift: the count and the rows stop being produced by the same
+// predicates. So this pins both ends — an untruncated page must have total
+// exactly equal to its own length, and a truncated one must have strictly more —
+// which is precisely what a second COUNT query would eventually fail.
+func TestATruncatedSearchSaysHowManyMatchedAndNotJustThatThereWereMore(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+	curator := a.login(t, "curator-total")
+	markCatalog(t, pool, curator.workspaceID)
+	for i := range 5 {
+		seedSkill(t, pool, curator.workspaceID, fmt.Sprintf("uffish thing %d", i))
+	}
+
+	full := anon.search(t, "/api/skills/search?q=uffish&limit=100")
+	if full.Truncated {
+		t.Fatalf("five documents under a cap of 100 should not truncate: %+v", full)
+	}
+	if full.Total != len(full.Results) {
+		t.Errorf("an untruncated page must account for itself exactly: total=%d, rows=%d",
+			full.Total, len(full.Results))
+	}
+	if full.Total == 0 {
+		t.Fatal("nothing matched, so this test proves nothing about the count")
+	}
+
+	cut := anon.search(t, "/api/skills/search?q=uffish&limit=1")
+	if !cut.Truncated || len(cut.Results) != 1 {
+		t.Fatalf("limit=1 over %d matches should truncate to one row: %+v", full.Total, cut)
+	}
+	// The point of the field: the cut page reports the same population the full
+	// page did, rather than a bound derived from its own length.
+	if cut.Total != full.Total {
+		t.Errorf("the total describes the matches, not the page: cut=%d, full=%d",
+			cut.Total, full.Total)
+	}
+	if cut.Total <= len(cut.Results) {
+		t.Errorf("a truncated page reporting total=%d for %d rows says nothing was cut",
+			cut.Total, len(cut.Results))
+	}
 }
 
 // `limit` is the schema both search endpoints declare and, until 2026-08-25, the

@@ -6206,6 +6206,16 @@ type ListSkillsOK struct {
 	// skill 101 simply did not appear: a limit the platform enforces and the page cannot see is
 	// 02:NFR-001's other direction, and a list that is silently short reads as a complete answer.
 	Truncated bool `json:"truncated"`
+	// How many skills the workspace holds, before `limit` cut the page down. 設計系統 §4.3 asks a
+	// truncated list for 「共 N 筆， 這裡顯示 M 筆，因為 X」; `truncated` above gave the
+	// reason and this is the count, added 2026-08-25. The page could previously say only 「超過 100
+	// 個」, and a lower bound cannot distinguish 101 from 10100.
+	//
+	// Exact: computed by `count(*) OVER ()` inside the listing statement, so it is produced by the same
+	// predicate as the rows and equals `skills.length` whenever `truncated` is false. A second COUNT query
+	// would have to restate the workspace scope and the soft-delete predicate, and the day the two
+	// restatements disagreed the page would report a total that does not describe the list beneath it.
+	Total int `json:"total"`
 }
 
 // GetSkills returns the value of Skills.
@@ -6223,6 +6233,11 @@ func (s *ListSkillsOK) GetTruncated() bool {
 	return s.Truncated
 }
 
+// GetTotal returns the value of Total.
+func (s *ListSkillsOK) GetTotal() int {
+	return s.Total
+}
+
 // SetSkills sets the value of Skills.
 func (s *ListSkillsOK) SetSkills(val []OwnSkill) {
 	s.Skills = val
@@ -6236,6 +6251,11 @@ func (s *ListSkillsOK) SetLimit(val int) {
 // SetTruncated sets the value of Truncated.
 func (s *ListSkillsOK) SetTruncated(val bool) {
 	s.Truncated = val
+}
+
+// SetTotal sets the value of Total.
+func (s *ListSkillsOK) SetTotal(val int) {
+	s.Total = val
 }
 
 func (*ListSkillsOK) listSkillsRes() {}
@@ -9696,6 +9716,29 @@ type PublicSearchResponse struct {
 	// otherwise the default. Zero when nothing was retrieved at all, because naming a cap that never
 	// applied would be a number with no enforcement behind it (設計系統 §2.2).
 	Limit int `json:"limit"`
+	// How many skills matched, before `limit` cut the page down. 設計系統 §4.3:
+	// 「任何被截斷的清單都必須說出總數與截斷理由」 — 「共 N 筆，這裡 顯示
+	// M 筆，因為 X」.
+	//
+	// Added 2026-08-25. The page could previously only say 「超過 N 個」, which is a lower bound: a
+	// reader cannot tell 21 from 2100 from it, and the rule asks for 共, which a lower bound cannot say.
+	// The reason half was already there; this is the count half.
+	//
+	// Computed by `count(*) OVER ()` inside the retrieval statement itself, not by a second COUNT query. A
+	// parallel count would have to restate every predicate, and the first time the two restatements
+	// disagreed the page would report a total that does not describe the list under it — worse than the
+	// bound it replaced.
+	//
+	// Its ceiling, stated because a total that quietly stops being one is the defect this field exists to
+	// fix: on the hybrid path the two retrieval legs take 50 candidates each, so this counts what passed
+	// the filters out of at most 100. The indexed catalogue is 45 documents, so today it is exact for
+	// every query; past 100 candidates it becomes a lower bound again while still being called a total.
+	// The fix at that point is to push the filters into the candidate CTEs — the same change the
+	// ponytail note on those filters already asks for, on the same trigger. On the degraded lexical path
+	// there is no candidate window and the count is exact.
+	//
+	// `total == len(results)` whenever `truncated` is false.
+	Total int `json:"total"`
 	// True when the catalogue held more matches than this page shows. The cap has always been here and
 	// result 21 simply did not exist as far as a caller could tell; ADR-042 決策 3 makes that the defect
 	// it is — a truncated list must state that it was truncated, and "no limit at all" stopped being an
@@ -9758,6 +9801,11 @@ func (s *PublicSearchResponse) GetLimit() int {
 	return s.Limit
 }
 
+// GetTotal returns the value of Total.
+func (s *PublicSearchResponse) GetTotal() int {
+	return s.Total
+}
+
 // GetTruncated returns the value of Truncated.
 func (s *PublicSearchResponse) GetTruncated() bool {
 	return s.Truncated
@@ -9806,6 +9854,11 @@ func (s *PublicSearchResponse) SetDegradedReason(val OptString) {
 // SetLimit sets the value of Limit.
 func (s *PublicSearchResponse) SetLimit(val int) {
 	s.Limit = val
+}
+
+// SetTotal sets the value of Total.
+func (s *PublicSearchResponse) SetTotal(val int) {
+	s.Total = val
 }
 
 // SetTruncated sets the value of Truncated.

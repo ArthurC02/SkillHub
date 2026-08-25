@@ -219,6 +219,14 @@ export interface PublicSearchResponse {
    * this says how much of what it found is here (ADR-042 決策 3).
    */
   truncated: boolean;
+  /**
+   * How many matched, before `limit` cut the page down — 設計系統 §4.3's 「共 N
+   * 筆」. The page could previously only say 「超過 N 個」, and a lower bound
+   * cannot distinguish 21 from 2100. Equals `results.length` when `truncated`
+   * is false; computed by the retrieval statement itself, so it cannot drift
+   * from the rows it counts.
+   */
+  total: number;
   no_results: boolean;
   /**
    * The query matched skills and the active filters removed all of them.
@@ -582,6 +590,13 @@ export interface OwnSkills {
   skills: OwnSkill[];
   limit: number;
   truncated: boolean;
+  /**
+   * How many the workspace holds, before the cap — 設計系統 §4.3's 「共 N 筆」,
+   * added 2026-08-25. `truncated` gave the reason all along; this is the count,
+   * and 「超過 100 個」 was a lower bound that could not distinguish 101 from
+   * 10100. Exact: the listing statement counts its own rows.
+   */
+  total: number;
 }
 
 /**

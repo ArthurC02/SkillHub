@@ -212,7 +212,7 @@ export function RunPreflight() {
 
   if (!ready) {
     return (
-      <section className="page">
+      <section>
         <h1>執行前權限確認</h1>
         <p>
           這個頁面需要 <code>?skill=&amp;test_case=</code> 兩個 ID。Test Case 與 Dataset 請在{" "}
@@ -227,7 +227,7 @@ export function RunPreflight() {
   // it selects is loading — a picker that vanishes mid-load is one the reader
   // cannot use to get out of a version that fails to load.
   const shell = (children: ReactNode) => (
-    <section className="page">
+    <section>
       <h1>執行前權限確認</h1>
       <SkillVersionPicker
         skillId={skill}

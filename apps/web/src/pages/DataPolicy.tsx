@@ -36,7 +36,7 @@ export function DataPolicy() {
   });
 
   return (
-    <section className="page">
+    <section>
       <h1>資料保存政策</h1>
       <p className="note">
         這一頁講兩件事：平台在你沒有主動送出任何東西的情況下記了什麼，以及你要刪掉自己的東西時該去哪裡。

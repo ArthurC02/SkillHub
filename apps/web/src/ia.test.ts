@@ -236,3 +236,50 @@ test("IA §2.4: every feature-flagged entry point is documented", () => {
     ).toBe(true);
   }
 });
+
+// --- 7. the 375px sweep, and whether it still covers what it claims ----------
+
+/**
+ * §6's 「375px 不橫向溢出」 row, which both this document and system.md used to
+ * credit with 「全部 18 個位址」.
+ *
+ * `e2e/routes.ts` is a hand-written table, and until now nothing compared it to
+ * anything: a new route simply was not swept, and the row in both documents
+ * went on claiming it was. On 2026-08-25 both rows were corrected downwards to
+ * 「表上的 18 個位址」 — which is honest, and still leaves the table unmaintained.
+ *
+ * The pattern is already in this repo. `a11y.test.tsx` compares its scan list
+ * against `router.routesById` and fails when a route has no case; this is the
+ * same ratchet on the same kind of list, fastened here rather than in `e2e/`
+ * because Playwright's tier does not run on every change and a coverage ratchet
+ * that only fires in the slow suite is a ratchet nobody feels.
+ *
+ * Compared by SHAPE, not by address: the sweep visits real URLs carrying
+ * fixture ids and query strings, the router declares patterns with `$params`.
+ * Both sides collapse to `/skills/*`, so an address can carry whatever ids it
+ * needs while still being answerable for which route it covers. More than one
+ * address per route is fine and deliberate — `/` is swept twice, empty and with
+ * results.
+ */
+test("IA §6: every route in router.tsx is swept at 375px", () => {
+  const shape = (address: string) => address.split("?")[0].replace(/\$\{[^}]*\}|\$\w+/g, "*");
+  const routes = [...router.matchAll(/^\s*path: "([^"]+)"/gm)].map((m) => shape(m[1]));
+
+  const table = readFileSync(join(src, "..", "e2e", "routes.ts"), "utf8");
+  const swept = [...table.matchAll(/^\s*\["[^"]*",\s*(?:"([^"]*)"|`([^`]*)`)\],/gm)].map((m) =>
+    shape(m[1] ?? m[2]),
+  );
+  // Sentinel, tied to the other side rather than to a number: a formatting
+  // change that breaks the parse must fail here, and 「18」 in an assertion is
+  // one more copy of a fact to keep in step (§1's heading learned this already).
+  expect(
+    swept.length,
+    "e2e/routes.ts parsed fewer rows than there are routes — the parse broke, or the table did",
+  ).toBeGreaterThanOrEqual(routes.length);
+
+  expect(
+    [...new Set(routes)].sort(),
+    "a route with no address in e2e/routes.ts — add one, with fixture ids the " +
+      "shared stubs answer to. An unswept route is one nobody has ever seen at phone width",
+  ).toEqual([...new Set(swept)].sort());
+});

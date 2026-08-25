@@ -23,7 +23,7 @@ export function WorkspaceRuns() {
   const rows = runs.data?.pages.flatMap((page) => page.runs) ?? [];
 
   return (
-    <section className="page">
+    <section>
       <h1>Run 歷史</h1>
       <p className="note">
         這個工作區跑過的 Run，新的在上面。每一列有兩軸：

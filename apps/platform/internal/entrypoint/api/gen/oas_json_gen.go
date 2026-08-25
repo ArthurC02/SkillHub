@@ -16321,12 +16321,17 @@ func (s *ListSkillsOK) encodeFields(e *jx.Encoder) {
 		e.FieldStart("truncated")
 		e.Bool(s.Truncated)
 	}
+	{
+		e.FieldStart("total")
+		e.Int(s.Total)
+	}
 }
 
-var jsonFieldsNameOfListSkillsOK = [3]string{
+var jsonFieldsNameOfListSkillsOK = [4]string{
 	0: "skills",
 	1: "limit",
 	2: "truncated",
+	3: "total",
 }
 
 // Decode decodes ListSkillsOK from json.
@@ -16380,6 +16385,18 @@ func (s *ListSkillsOK) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"truncated\"")
 			}
+		case "total":
+			requiredBitSet[0] |= 1 << 3
+			if err := func() error {
+				v, err := d.Int()
+				s.Total = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"total\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -16390,7 +16407,7 @@ func (s *ListSkillsOK) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000111,
+		0b00001111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -20305,6 +20322,10 @@ func (s *PublicSearchResponse) encodeFields(e *jx.Encoder) {
 		e.Int(s.Limit)
 	}
 	{
+		e.FieldStart("total")
+		e.Int(s.Total)
+	}
+	{
 		e.FieldStart("truncated")
 		e.Bool(s.Truncated)
 	}
@@ -20328,17 +20349,18 @@ func (s *PublicSearchResponse) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfPublicSearchResponse = [10]string{
-	0: "query",
-	1: "results",
-	2: "degraded",
-	3: "degraded_reason",
-	4: "limit",
-	5: "truncated",
-	6: "partial_index",
-	7: "no_results",
-	8: "filtered_out",
-	9: "query_suggestion",
+var jsonFieldsNameOfPublicSearchResponse = [11]string{
+	0:  "query",
+	1:  "results",
+	2:  "degraded",
+	3:  "degraded_reason",
+	4:  "limit",
+	5:  "total",
+	6:  "truncated",
+	7:  "partial_index",
+	8:  "no_results",
+	9:  "filtered_out",
+	10: "query_suggestion",
 }
 
 // Decode decodes PublicSearchResponse from json.
@@ -20414,8 +20436,20 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"limit\"")
 			}
-		case "truncated":
+		case "total":
 			requiredBitSet[0] |= 1 << 5
+			if err := func() error {
+				v, err := d.Int()
+				s.Total = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"total\"")
+			}
+		case "truncated":
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				v, err := d.Bool()
 				s.Truncated = bool(v)
@@ -20427,7 +20461,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"truncated\"")
 			}
 		case "partial_index":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Bool()
 				s.PartialIndex = bool(v)
@@ -20439,7 +20473,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"partial_index\"")
 			}
 		case "no_results":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Bool()
 				s.NoResults = bool(v)
@@ -20451,7 +20485,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"no_results\"")
 			}
 		case "filtered_out":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				v, err := d.Bool()
 				s.FilteredOut = bool(v)
@@ -20483,7 +20517,7 @@ func (s *PublicSearchResponse) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b11110111,
-		0b00000001,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

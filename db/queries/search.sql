@@ -167,7 +167,22 @@ SELECT s.skill_id, s.name,
        COALESCE(cmp.capability, 'unverified') AS agent_capability,
        COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
-       cmp.measured_at AS agent_measured_at
+       cmp.measured_at AS agent_measured_at,
+       -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
+       -- 2026-08-25 this page said 「超過 N 個」 -- a LOWER BOUND, from which a
+       -- reader cannot tell 21 from 2100 -- because there was no count to say.
+       --
+       -- A window function and NOT a second COUNT query, deliberately. A parallel
+       -- count has to restate every predicate above, and the moment the two
+       -- restatements disagree the page reports a total that does not describe
+       -- the list under it -- which is worse than the lower bound it replaced.
+       -- count(*) OVER () is evaluated after this statement's own WHERE and
+       -- before its LIMIT, so it cannot drift from the rows it counts: there is
+       -- only one set of predicates.
+       --
+       -- Exact on this path: the lexical floor has no candidate window, so this
+       -- is every catalogue document the tsquery matched under the filters.
+       count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
 JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
 LEFT JOIN LATERAL (
@@ -282,7 +297,27 @@ SELECT c.skill_id, s.name,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
-       (c.distance IS NULL)::bool AS unranked
+       (c.distance IS NULL)::bool AS unranked,
+       -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
+       -- 2026-08-25 this page said 「超過 N 個」 -- a LOWER BOUND, from which a
+       -- reader cannot tell 21 from 2100 -- because there was no count to say.
+       --
+       -- A window function and NOT a second COUNT query, deliberately. A parallel
+       -- count has to restate every predicate above, and the moment the two
+       -- restatements disagree the page reports a total that does not describe
+       -- the list under it -- which is worse than the lower bound it replaced.
+       -- count(*) OVER () is evaluated after this statement's own WHERE and
+       -- before its LIMIT, so it cannot drift from the rows it counts: there is
+       -- only one set of predicates.
+       --
+       -- ponytail: bounded by the candidate window, not by the catalogue. The two
+       -- legs above take 50 rows each, so this counts what passed the filters out
+       -- of at most 100 candidates. With 45 documents indexed that is every
+       -- document and the number is exact; past 100 it silently becomes a lower
+       -- bound again, wearing the word 「共」. Push the predicates into the two
+       -- CTEs when the catalogue outgrows the window -- the same fix the ponytail
+       -- note on the filters below already asks for, and the same trigger.
+       count(*) OVER ()::bigint AS total_matches
 FROM candidates c
 JOIN search_documents s ON s.skill_id = c.skill_id
 LEFT JOIN LATERAL (
