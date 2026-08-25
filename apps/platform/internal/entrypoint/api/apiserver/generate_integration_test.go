@@ -585,17 +585,48 @@ func TestTheEntryPointIsNotAdvertisedToSomeoneWhoMayNotUseIt(t *testing.T) {
 	a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
 		d.GenerateExposed = true
 		d.Auth.Features = map[string]bool{"generate_skill": true}
-		// A cohort that exists and does not contain this test's user. The dev
-		// login mints provider ids from the name, so a literal nobody-id closes it.
-		d.Auth.Invited = map[string]bool{"a-provider-id-nobody-holds": true}
+		// A cohort that exists and does not contain gen-uninvited. The dev login
+		// mints provider ids from the login name, so naming gen-invited both closes
+		// the gate on the other account and gives this test somebody it is open to.
+		//
+		// A cohort that exists is the whole premise: with no BETA_ALLOWLIST
+		// configured RequireInvited is a pass-through, so a test written on such a
+		// deployment proves nothing about the gate — which is how five of these six
+		// routes came to be wrapped with nothing asserting it.
+		d.Auth.Invited = map[string]bool{"gen-invited": true}
 	})
 	c := a.login(t, "gen-uninvited")
 
 	if f := features(t, c); f != nil {
 		t.Errorf("/me advertised %v to an account the route refuses", f)
 	}
-	if code, _ := postJSON(t, c, "/skills/generate", `{"task_description":"把掃描的單據整理成表格。"}`); code != http.StatusForbidden {
-		t.Errorf("POST /skills/generate = %d, want 403 — the test's premise is that this caller is refused", code)
+	// Both halves of GEN-003's surface, not just the write. GET
+	// /skills/generate/failures is the sixth RequireInvited route in router.go and
+	// was the one with no negative test: it could lose its wrapper and every test
+	// here would stay green, because the only other tests that read it run as the
+	// workspace's own user on a deployment with no invite list.
+	for _, gated := range []struct{ name, method, path, body string }{
+		{"POST /skills/generate", http.MethodPost, "/skills/generate", `{"task_description":"把掃描的單據整理成表格。"}`},
+		{"GET /skills/generate/failures", http.MethodGet, "/skills/generate/failures", ""},
+	} {
+		code, body := c.doJSON(t, gated.method, gated.path, gated.body)
+		if code != http.StatusForbidden {
+			t.Errorf("%s = %d, want 403 — the test's premise is that this caller is refused", gated.name, code)
+		}
+		// The message and not just the status: several other refusals on this
+		// table also answer 403, and a status-only assertion stays green on the
+		// day the admission gate is not the one that stopped answering.
+		if msg, _ := body["error"].(string); !strings.Contains(msg, "closed beta") {
+			t.Errorf("%s refused an uninvited user for some other reason: %v", gated.name, body)
+		}
+	}
+
+	// The other half of the argument: for somebody on the list the same route
+	// answers, so the 403 above came from the gate and not from a route that is
+	// broken or absent for everybody.
+	invited := a.login(t, "gen-invited")
+	if code, _ := invited.doJSON(t, http.MethodGet, "/skills/generate/failures", ""); code != http.StatusOK {
+		t.Errorf("GET /skills/generate/failures as an invited user = %d, want 200", code)
 	}
 }
 

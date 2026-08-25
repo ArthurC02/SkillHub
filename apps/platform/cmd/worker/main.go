@@ -172,13 +172,15 @@ type workerSet struct {
 	Events      *outbox.Dispatcher
 	Objects     *objreconcile.Service
 	Queue       *river.Client[pgx.Tx]
-	// WorkerKinds is every job kind that has a worker registered, and Scheduled is
-	// every kind this process enqueues on a timer. Recorded while wiring because
-	// River's registry cannot be read back: a periodic job whose worker was
-	// dropped fails only when the insert is attempted, one interval into a
-	// deployment, and only in the log.
+	// WorkerKinds is every job kind that has a worker registered, and Scheduled
+	// maps every kind this process enqueues on a timer to its RunOnStart — the
+	// value, not merely the presence, because RunOnStart is the whole difference
+	// between recovering at a restart and recovering an interval later.
+	// Recorded while wiring because River's registry cannot be read back: a
+	// periodic job whose worker was dropped fails only when the insert is
+	// attempted, one interval into a deployment, and only in the log.
 	WorkerKinds map[string]bool
-	Scheduled   []string
+	Scheduled   map[string]bool
 }
 
 func packagingCandidates(list func(context.Context, int32) ([]packaging.ReconcileCandidate, error)) objreconcile.ListFunc {
@@ -214,7 +216,7 @@ func datasetCandidates(list func(context.Context, int32) ([]testlab.ReconcileCan
 // registration or a back-assignment, so the failure it exists to prevent — a
 // dependency nobody noticed was never set — is reachable from a test.
 func buildWorkers(pool *pgxpool.Pool, deps workerDeps) (*workerSet, error) {
-	set := &workerSet{WorkerKinds: map[string]bool{}}
+	set := &workerSet{WorkerKinds: map[string]bool{}, Scheduled: map[string]bool{}}
 	downloads := &packaging.Service{Pool: pool}
 	set.Packaging = downloads
 	registrySvc := &registry.Service{Pool: pool}
@@ -319,7 +321,7 @@ func buildWorkers(pool *pgxpool.Pool, deps workerDeps) (*workerSet, error) {
 	// recovery path (RUN-008) and not merely a watchdog.
 	var periodic []*river.PeriodicJob
 	schedule := func(args river.JobArgs, every time.Duration, runOnStart bool) {
-		set.Scheduled = append(set.Scheduled, args.Kind())
+		set.Scheduled[args.Kind()] = runOnStart
 		var opts *river.PeriodicJobOpts
 		if runOnStart {
 			opts = &river.PeriodicJobOpts{RunOnStart: true}

@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"slices"
+	"maps"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -163,7 +163,8 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildWorkers: %v", err)
 	}
-	// The roster, and not merely "some jobs are scheduled". The loop below is
+	// The roster WITH its RunOnStart, and not merely "some jobs are scheduled".
+	// The loop below is
 	// one-directional by construction — it can only complain about a kind that is
 	// there — so deleting a schedule() line left four jobs, each with a worker,
 	// and this test green. What goes with the supervisor line specifically is
@@ -175,20 +176,38 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 	// deliberately: a roster in main.go next to the calls is the same fact
 	// written twice in one file, and the edit that drops a job drops both halves
 	// without noticing. Here it takes a second, visible edit in a test file.
-	want := []string{
-		eval.RecoveryArgs{}.Kind(),
-		run.SuperviseArgs{}.Kind(),
-		run.OrphanScanArgs{}.Kind(),
-		outbox.PublishArgs{}.Kind(),
-		objreconcile.Args{}.Kind(),
+	//
+	// The value is RunOnStart, and it is not the same for all five — pinning a
+	// blanket `true` would be pinning a wish. Four recover from a restart and
+	// must therefore happen AT the restart:
+	//
+	//   - supervise: RUN-008's restart recovery is this and nothing else. Off,
+	//     a process that died mid-run leaves the hard timeout, the cleanup
+	//     re-enqueue and detectMaskingStopped (NFR-002's only detector) waiting
+	//     one full interval, and the recovery arrives late rather than never —
+	//     which is exactly the failure no assertion notices;
+	//   - eval recovery: an evaluation stranded by the restart that killed its
+	//     worker is a run with a verdict nobody will produce until it is picked
+	//     up again;
+	//   - orphan scan: a sandbox that outlived its process is billing and
+	//     holding a Virtual Key the whole time it waits;
+	//   - outbox publish: an evaluation waits on this drain, so a backlog left
+	//     by the restart costs the user a full interval of no verdict.
+	//
+	// The fifth is deliberately false: objreconcile is not recovering from
+	// anything, and on start it would re-probe every stored object on every
+	// rollout — a deploy loop turned into an object-store scan loop.
+	want := map[string]bool{
+		eval.RecoveryArgs{}.Kind():  true,
+		run.SuperviseArgs{}.Kind():  true,
+		run.OrphanScanArgs{}.Kind(): true,
+		outbox.PublishArgs{}.Kind(): true,
+		objreconcile.Args{}.Kind():  false,
 	}
-	got := slices.Clone(set.Scheduled)
-	slices.Sort(got)
-	slices.Sort(want)
-	if !slices.Equal(got, want) {
-		t.Errorf("scheduled periodic jobs are %v, want %v", got, want)
+	if !maps.Equal(set.Scheduled, want) {
+		t.Errorf("scheduled periodic jobs (kind -> RunOnStart) are %v, want %v", set.Scheduled, want)
 	}
-	for _, kind := range set.Scheduled {
+	for kind := range set.Scheduled {
 		if !set.WorkerKinds[kind] {
 			t.Errorf("periodic job %q is scheduled but no worker is registered for it", kind)
 		}
