@@ -136,6 +136,15 @@ if [ \$rc -ne 0 ]; then
   fail=2
 elif [ \$elapsed -lt \$(( \$SECS - 5 )) ]; then
   printf '  %-38s FAIL    returned after %ss, expected ~%ss\n' 'sentry did not crash' "\$elapsed" "\$SECS"
+elif [ \$elapsed -gt \$(( \$SECS + 120 )) ]; then
+  # Late is a finding too, and it did not used to be one. A 4x1800s run hung at
+  # 48 minutes with every sentry thread asleep; had it eventually returned, this
+  # block only looked for an EARLY return and would have printed PASS for a run
+  # that took two and a half times as long. The margin covers the last slice and
+  # the workers' final reports, which cost seconds, not minutes.
+  printf '  %-38s FAIL    returned after %ss, expected ~%ss -- something blocked\n' \
+    'the run kept its own clock' "\$elapsed" "\$SECS"
+  fail=2
   fail=2
 else
   printf '  %-38s PASS    survived %ss\n' 'sentry did not crash' "\$elapsed"
@@ -145,7 +154,7 @@ fi
 #    is satisfied by a fuzzer that never called anything.
 calls=\$(python3 -c "
 import json
-n=e=bad=seen=sl=cr=0
+n=e=bad=seen=sl=cr=kl=0
 for line in open('/tmp/fuzz.out', errors='replace'):
     line=line.strip()
     if not line.startswith('{'): continue
@@ -154,13 +163,13 @@ for line in open('/tmp/fuzz.out', errors='replace'):
     if 'calls' not in d: continue        # supervisor could not report; not a record
     seen+=1
     n+=d['calls']; e=max(e,d['distinct_errnos'])
-    sl+=d.get('slices',0); cr+=d.get('child_crashes',0)
+    sl+=d.get('slices',0); cr+=d.get('child_crashes',0); kl+=d.get('child_killed',0)
     if d['uid_after']!=d['uid_before'] or d['gid_after']!=d['gid_before']: bad+=1
-print(n,e,bad,seen,sl,cr)
+print(n,e,bad,seen,sl,cr,kl)
 " 2>/dev/null)
 set -- \$calls
 total=\${1:-0}; distinct=\${2:-0}; privchange=\${3:-x}; seen=\${4:-0}
-slices=\${5:-0}; crashes=\${6:-0}
+slices=\${5:-0}; crashes=\${6:-0}; killed=\${7:-0}
 # No worker records is not "nobody changed identity"; it is not knowing.
 [ "\$seen" -eq 0 ] && privchange=x
 
@@ -177,8 +186,8 @@ if [ "\$total" -ge "\$floor" ] && [ "\$distinct" -ge 5 ] && [ "\$seen" -eq "\$WO
   # it is the reason the supervisor exists at all. Printed so that a future run
   # reporting zero crashes cannot pass unnoticed: that would mean the children
   # had stopped fuzzing, not that they had become robust.
-  printf '  %-38s         %s slice(s), %s ended in a signal\n' \
-    '  (workload self-destruction)' "\$slices" "\$crashes"
+  printf '  %-38s         %s slice(s), %s ended in a signal, %s killed for hanging\n' \
+    '  (workload self-destruction)' "\$slices" "\$crashes" "\$killed"
 else
   printf '  %-38s FAIL    %s calls (floor %s), %s errnos, %s/%s workers\n' \
     'the fuzzer actually fuzzed' "\$total" "\$floor" "\$distinct" "\$seen" "\$WORKERS"

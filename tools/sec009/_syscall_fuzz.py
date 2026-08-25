@@ -50,6 +50,11 @@ MAX_SYSCALL = 452  # x86_64, roughly current upstream; overshooting is harmless.
 # does not dominate the run.
 SLICE_SECONDS = 1.0
 
+# How long past its own slice a child may take before the supervisor stops
+# waiting. Generous against a one-second slice: this is the difference between
+# "slow" and "never".
+SLICE_GRACE_SECONDS = 5.0
+
 # Calls that would end the fuzzer, wedge it, or destroy the thing it is
 # measuring. Kept short on purpose: every number here is surface T2 does not
 # cover, so each entry has to earn its place rather than be defensive.
@@ -137,6 +142,101 @@ def fuzz_slice(seconds, seed, result_path):
     os.close(fd)
 
 
+def reap(pid, budget):
+    """Collect one slice, and never wait longer than that slice's own budget.
+
+    os.waitpid(pid, 0) is the obvious call, and it is the one that hung a
+    4 x 1800s run at 48 minutes: every sentry thread asleep, runsc accumulating
+    zero CPU ticks over ten seconds, and no worker having reported anything.
+
+    A slice bounds itself with a 0.25s SIGALRM, and the fuzzer can reach the
+    syscalls that arm it -- one random rt_sigprocmask(SIG_BLOCK, ...) or
+    rt_sigaction(SIGALRM, SIG_IGN) and the timer stops arriving, so the next
+    blocking syscall never returns and the supervisor waits on it forever. That
+    is the same shape as the setuid case in DENY above: the fuzzer disabling the
+    instrument that measures it.
+
+    It is deliberately NOT fixed by adding those two syscalls to DENY. A
+    blocklist only covers the hangs somebody predicted, and each entry is fuzz
+    surface given up for good. SIGKILL cannot be blocked, ignored or handled, so
+    the supervisor holds the deadline instead and the fuzzer keeps every syscall.
+
+    Returns the wait status, or None if the child had to be killed -- a number
+    the caller reports rather than hides, for the same reason child_crashes is
+    reported: if it ever reaches the slice count, the workers are not fuzzing.
+    """
+    if _wait_until(pid, time.time() + budget) is not None:
+        return _last_status
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except OSError:
+        pass
+    # SIGKILL is delivered by the sentry, so this normally returns at once. Bound
+    # it anyway: a supervisor that hangs while cleaning up a hang has not fixed
+    # anything. A zombie left behind costs one process slot until the run ends.
+    _wait_until(pid, time.time() + SLICE_GRACE_SECONDS)
+    return None
+
+
+_last_status = 0
+
+
+def _wait_until(pid, deadline):
+    """Poll for pid until deadline. Returns pid on reap, None on timeout."""
+    global _last_status
+    while True:
+        done, status = os.waitpid(pid, os.WNOHANG)
+        if done == pid:
+            _last_status = status
+            return pid
+        if time.time() >= deadline:
+            return None
+        time.sleep(0.01)
+
+
+def self_check():
+    """Prove reap() ends a child that has disabled its own timeout.
+
+    The bug this closes is invisible in a passing run: reap is only exercised by
+    a child that hangs, and a child hangs only when the fuzzer happens to roll
+    the syscall that blocks SIGALRM. A 4 x 1800s run reached 48 minutes before
+    anyone noticed, and the next regression would be just as quiet -- the code
+    would simply wait forever again, and the run would look busy.
+
+    So the hang is manufactured here rather than waited for: the child blocks
+    SIGALRM exactly the way a random rt_sigprocmask does, then sleeps far past
+    any budget. A reap that returns None inside the budget is the fix working;
+    one that returns a status, or does not return, is not.
+    """
+    budget = 1.0
+    pid = os.fork()
+    if pid == 0:
+        try:
+            signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+            signal.setitimer(signal.ITIMER_REAL, 0.05)
+            time.sleep(600)
+        finally:
+            os._exit(0)
+    began = time.time()
+    status = reap(pid, budget)
+    took = time.time() - began
+    ok = status is None and took < budget + SLICE_GRACE_SECONDS + 2
+    print("  %-44s %s (returned %r after %.2fs, budget %.1fs)"
+          % ("a child that blocked SIGALRM is killed", "ok" if ok else "FAIL",
+             status, took, budget))
+
+    # The other direction, so "reap kills everything" cannot pass as a fix.
+    pid = os.fork()
+    if pid == 0:
+        os._exit(7)
+    status = reap(pid, budget)
+    exited7 = status is not None and os.WIFEXITED(status) and os.WEXITSTATUS(status) == 7
+    print("  %-44s %s (status %r)"
+          % ("a child that exits normally is reaped, not killed",
+             "ok" if exited7 else "FAIL", status))
+    return 0 if (ok and exited7) else 1
+
+
 def main():
     seconds = float(sys.argv[1])
     worker = int(sys.argv[2])
@@ -145,7 +245,7 @@ def main():
     uid_before, gid_before = os.getuid(), os.getgid()
     calls = 0
     errnos = set()
-    slices = crashes = 0
+    slices = crashes = killed = 0
     uid_after, gid_after = uid_before, gid_before
 
     deadline = time.time() + seconds
@@ -166,9 +266,11 @@ def main():
             finally:
                 os._exit(0)
 
-        _, status = os.waitpid(pid, 0)
+        status = reap(pid, remaining + SLICE_GRACE_SECONDS)
         slices += 1
-        if status != 0:
+        if status is None:
+            killed += 1
+        elif status != 0:
             crashes += 1
 
         try:
@@ -186,6 +288,7 @@ def main():
         "distinct_errnos": len(errnos),
         "slices": slices,
         "child_crashes": crashes,
+        "child_killed": killed,
         "uid_before": uid_before,
         "gid_before": gid_before,
         # From the last child that got far enough to report. The supervisor's own
@@ -196,4 +299,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if "--self-check" in sys.argv:
+        sys.exit(self_check())
     main()
