@@ -1010,3 +1010,132 @@ func strPtrTest(s string) *string { return &s }
 // same service type; a split would let the API serve a shape the worker never
 // writes.
 var _ = eval.Service{}
+
+// 02:EVAL-001's clause of 2026-08-23: "this run recorded no output" and "this
+// run's output is gone" are two judgement inputs and may not share a sentence.
+//
+// This is the first of the two, end to end: the manifest is empty because
+// nothing was ever written. It pins the sentence that the other state must not
+// borrow, and the flag that separates them — nothing is missing here, so the
+// evidence is complete, which is exactly what a removed output is not.
+func TestARunThatRecordedNoOutputSaysThatAndNotThatSomethingIsMissing(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-no-output")
+	skillID := seedSkill(t, pool, c.workspaceID, "dedupe")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	// The M2 shape (handoff 丙-5): succeeded, activated, complete trace, and the
+	// final reply is a question back to the user.
+	if _, err := pool.Exec(context.Background(),
+		`DELETE FROM artifacts WHERE run_id = $1`, mustUUID(t, runID)); err != nil {
+		t.Fatalf("clear manifest: %v", err)
+	}
+	seedFinalOutput(t, pool, c.workspaceID, runID, "Which column identifies a duplicate?")
+
+	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: "undetermined", Reason: "the run asked a question back"},
+			{CriterionID: "c2", Result: "failed", Reason: "the manifest carries no file"},
+		},
+		Overall: "not_met", Summary: "the run ended by asking a question",
+	}, "judge-run@2026-08-17")
+
+	if err := a.evaluations.Evaluate(context.Background(),
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatalf("evaluate: %v", err)
+	}
+	status, body := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	if status != http.StatusOK {
+		t.Fatalf("GET evaluation: got %d (%s)", status, body.Error)
+	}
+
+	said := ""
+	for _, f := range body.DeterministicFindings {
+		if strings.Contains(f.Message, "output file") || strings.Contains(f.Message, "cannot read") {
+			said += f.Message + " | "
+		}
+	}
+	if !strings.Contains(said, "no output files were recorded") {
+		t.Errorf("an empty manifest has to be said out loud, got %q", said)
+	}
+	if strings.Contains(said, "cannot read") {
+		t.Errorf("nothing was removed from this run; that is the other state's sentence: %q", said)
+	}
+	if !body.EvidenceComplete {
+		t.Error("nothing is missing here: a run that wrote nothing is complete evidence, " +
+			"and only a recorded-then-removed output is a hole")
+	}
+}
+
+// The other half of 02:EVAL-001's 2026-08-23 clause, and the half a user can
+// reach today: they delete one of their own outputs (WS-002 / SEC-006) and then
+// re-evaluate, which ADR-026 lets them do as often as they like.
+//
+// This test exists because the unit tests for the three states feed the absence
+// counts in directly, so they stay green with the database wiring removed --
+// verified by mutation before writing this: zeroing the deleted count in
+// read.go left every one of them passing. The path from a deleted row to a
+// sentence on the report had no test at all, which is the shape AGENTS.md rule 9
+// names and this repo has shipped three times.
+func TestAnOutputTheUserDeletedIsAHoleInTheEvidenceAndNotAnEmptyRun(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "eval-deleted-output")
+	skillID := seedSkill(t, pool, c.workspaceID, "dedupe")
+	runID, _ := seedEvaluatableRun(t, pool, c.workspaceID, skillID)
+	seedFinalOutput(t, pool, c.workspaceID, runID, "done")
+
+	// Soft-deleted, which is what DELETE /runs/{id}/artifacts/{name} does: the row
+	// stays so the list can still show it, and the bytes are gone.
+	tag, err := pool.Exec(context.Background(),
+		`UPDATE artifacts SET deleted_at = now()
+		 WHERE run_id = $1 AND kind = 'run_output'`, mustUUID(t, runID))
+	if err != nil {
+		t.Fatalf("delete an output: %v", err)
+	}
+	if tag.RowsAffected() == 0 {
+		t.Fatal("the fixture recorded no run output, so this test would prove nothing")
+	}
+
+	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
+		CriterionResults: []llmclient.CriterionVerdict{
+			{CriterionID: "c1", Result: "passed", Reason: "the transcript covers it"},
+			{CriterionID: "c2", Result: "passed", Reason: "the transcript covers it"},
+		},
+		Overall: "met", Summary: "both conditions look satisfied",
+	}, "judge-run@2026-08-17")
+
+	if err := a.evaluations.Evaluate(context.Background(),
+		mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {
+		t.Fatalf("evaluate: %v", err)
+	}
+	status, body := c.getEvaluation(t, "/runs/"+runID+"/evaluation")
+	if status != http.StatusOK {
+		t.Fatalf("GET evaluation: got %d (%s)", status, body.Error)
+	}
+
+	said := ""
+	for _, f := range body.DeterministicFindings {
+		if strings.Contains(f.Message, "output file") || strings.Contains(f.Message, "cannot read") {
+			said += f.Message + " | "
+		}
+	}
+	if !strings.Contains(said, "cannot read") {
+		t.Errorf("a deleted output has to be named as a hole in the evidence, got %q", said)
+	}
+	if strings.Contains(said, "no output files were recorded") {
+		t.Errorf("this run recorded output and then lost it; "+
+			"that sentence belongs to a run that produced nothing: %q", said)
+	}
+	if body.EvidenceComplete {
+		t.Error("evidence_complete stayed true while an output the run recorded " +
+			"could not be read: that is the claim 02:EVAL-001 forbids")
+	}
+	// The judge said passed on everything. A verdict resting on evidence the
+	// platform could not produce is what the downgrade exists to stop.
+	for _, r := range body.CriterionResults {
+		if r.Result == "passed" {
+			t.Errorf("criterion %s passed on incomplete evidence", r.CriterionID)
+		}
+	}
+}

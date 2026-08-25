@@ -864,3 +864,90 @@ func TestCostIsReportedAsALowerBoundAndUnreportedIsNotZero(t *testing.T) {
 		t.Errorf("handoff 丙-3 requires the total to be labelled a lower bound: %s", got[0].Message)
 	}
 }
+
+// --- the empty manifest (02:EVAL-001, clause added 2026-08-23) ----------------
+
+// Three states, not two. An artifact list that comes back empty means either
+// that the run wrote nothing, or that what it wrote is gone — deleted by the
+// workspace (02:WS-002, SEC-006) or past the retention stamped on it (NFR-002a)
+// — and those are opposite facts to hand a judge. The clause forbids the two
+// sharing one sentence, and forbids doing neither.
+//
+// Nothing here waits 30 days: absence is an input to this function, so the
+// expired case is the deleted case with the count in the other field.
+func TestAnEmptyManifestNeverReadsAsAnEmptyRun(t *testing.T) {
+	said := func(mutate func(*material)) string {
+		m, _ := fixtureMaterial(true)
+		m.run.Status = "succeeded"
+		mutate(&m)
+		parts := []string{}
+		for _, f := range artifactFindings(m) {
+			parts = append(parts, f.Message)
+		}
+		return strings.Join(parts, " | ")
+	}
+	states := map[string]string{
+		"present":        said(func(*material) {}),
+		"never recorded": said(func(m *material) { m.artifacts = nil }),
+		"deleted":        said(func(m *material) { m.artifacts, m.absent = nil, ArtifactAbsence{Deleted: 2} }),
+		"expired":        said(func(m *material) { m.artifacts, m.absent = nil, ArtifactAbsence{Expired: 2} }),
+		"one of each":    said(func(m *material) { m.absent = ArtifactAbsence{Deleted: 1} }),
+	}
+	seen := map[string]string{}
+	for name, sentence := range states {
+		if sentence == "" {
+			t.Fatalf("%s: no sentence at all is the silent judgement the clause forbids", name)
+		}
+		if other, dup := seen[sentence]; dup {
+			t.Errorf("%q and %q share one sentence: %s", name, other, sentence)
+		}
+		seen[sentence] = name
+	}
+
+	// Distinct is not enough; each has to say the true thing.
+	if strings.Contains(states["never recorded"], "cannot read") {
+		t.Errorf("a run that recorded nothing has nothing to have lost: %s", states["never recorded"])
+	}
+	for _, name := range []string{"deleted", "expired"} {
+		if strings.Contains(states[name], "no output files were recorded") {
+			t.Errorf("%s reads as a run that produced nothing: %s", name, states[name])
+		}
+	}
+	if !strings.Contains(states["deleted"], "deleted from this workspace") ||
+		strings.Contains(states["deleted"], "retention") {
+		t.Errorf("deleted has to name deletion and only deletion: %s", states["deleted"])
+	}
+	if !strings.Contains(states["expired"], "past the retention") ||
+		strings.Contains(states["expired"], "deleted") {
+		t.Errorf("expired has to name retention and only retention: %s", states["expired"])
+	}
+	if !strings.Contains(states["one of each"], "output.xlsx") ||
+		!strings.Contains(states["one of each"], "cannot read") {
+		t.Errorf("a manifest that is part readable says both halves: %s", states["one of each"])
+	}
+}
+
+// The report is one half. The other is that a re-evaluation must not judge on
+// the absence: what the judge is handed says the artifact list has a hole in it,
+// and a `passed` answered anyway is not recorded as one (ADR-026 defence 3).
+func TestUnreadableOutputsReachTheJudgeAndCannotSupportAPass(t *testing.T) {
+	s := &Service{}
+	m, digest := fixtureMaterial(true)
+	m.artifacts, m.absent = nil, ArtifactAbsence{Deleted: 1}
+
+	req, _, truncation, _ := s.buildRequest(m, gen.Evaluation{})
+	if !strings.Contains(strings.Join(req.Truncation, " "), "artifacts.unreadable") {
+		t.Fatalf("the judge got an empty artifact list with nothing said about it: %v", req.Truncation)
+	}
+
+	pass := llmclient.JudgeVerdict{CriterionResults: []llmclient.CriterionVerdict{
+		{CriterionID: "c1", Result: ResultPassed, Reason: "looks right",
+			EvidenceRefs: []llmclient.JudgeEvidenceRef{
+				{Kind: KindAgentOutput, Quote: "Removed 17 duplicate rows"},
+			}},
+	}}
+	got := s.merge(m, pass, digest, len(truncation) > 0)
+	if got[0].Result != ResultUndetermined {
+		t.Errorf("a pass judged with the run's outputs unreadable was stored as a pass: %+v", got[0])
+	}
+}

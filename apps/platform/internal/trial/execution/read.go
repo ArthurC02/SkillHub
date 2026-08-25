@@ -64,9 +64,25 @@ type EvaluationArtifact struct {
 
 // EvaluationInput is the Run-owned aggregate needed to evaluate one attempt.
 type EvaluationInput struct {
-	Run           EvaluationRun
-	Artifacts     []EvaluationArtifact
+	Run       EvaluationRun
+	Artifacts []EvaluationArtifact
+	// Absent is what the manifest has that Artifacts cannot carry: rows this
+	// run recorded and the evaluation cannot read. Without it a short
+	// Artifacts slice says "this run produced nothing", which is a different
+	// claim and the one 02:EVAL-001 forbids sharing a sentence with.
+	Absent        EvaluationArtifactAbsence
 	LatestAttempt int
+}
+
+// EvaluationArtifactAbsence counts the two ways a recorded output stops being
+// readable. Deleted is the user's own doing (WS-002 / SEC-006) and is reachable
+// today; Expired is the platform's, and counts a row whose retention has passed
+// even though nothing sweeps run outputs yet -- the column is the platform
+// saying it may no longer hold the bytes, and an evaluation that declines to
+// rely on them is the safe direction to be wrong in.
+type EvaluationArtifactAbsence struct {
+	Deleted int
+	Expired int
 }
 
 // TraceRun returns a workspace-scoped run fact for Trace.
@@ -145,7 +161,16 @@ func (s *Service) EvaluationInput(ctx context.Context, workspaceID, runID pgtype
 	if len(attempts) > 0 {
 		latestAttempt = int(attempts[len(attempts)-1].AttemptNumber)
 	}
-	rows, err := s.queries().ListRunArtifacts(ctx, gen.ListRunArtifactsParams{
+	rows, err := s.queries().ListReadableRunArtifacts(ctx, gen.ListReadableRunArtifactsParams{
+		RunID: runID, WorkspaceID: workspaceID,
+	})
+	if err != nil {
+		return EvaluationInput{}, false, err
+	}
+	// Counted rather than inferred from the two lengths: the readable query has
+	// already filtered its own gap away, so the difference between "recorded
+	// nothing" and "recorded something unreadable" only exists here.
+	absent, err := s.queries().CountUnreadableRunArtifacts(ctx, gen.CountUnreadableRunArtifactsParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
 	if err != nil {
@@ -158,7 +183,15 @@ func (s *Service) EvaluationInput(ctx context.Context, workspaceID, runID pgtype
 			SizeBytes: row.SizeBytes, ContentHash: row.ContentHash,
 		}
 	}
-	return EvaluationInput{Run: run, Artifacts: artifacts, LatestAttempt: latestAttempt}, true, nil
+	return EvaluationInput{
+		Run:       run,
+		Artifacts: artifacts,
+		Absent: EvaluationArtifactAbsence{
+			Deleted: int(absent.Deleted),
+			Expired: int(absent.Expired),
+		},
+		LatestAttempt: latestAttempt,
+	}, true, nil
 }
 
 func evaluationRun(row gen.Run) EvaluationRun {

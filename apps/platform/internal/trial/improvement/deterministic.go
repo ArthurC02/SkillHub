@@ -190,12 +190,38 @@ func executionFindings(m material) []Finding {
 // deterministic_findings carries no `source` field, so a rule-written `effect`
 // entry would read as a model verdict. Whether the task needed a file is the
 // judge's question; that a successful run wrote none is an execution fact.
+//
+// There are three states here and not two (02:EVAL-001, 2026-08-23). An empty
+// manifest can mean the run wrote nothing, or that what it wrote has since been
+// deleted or aged past its retention — and those are opposite facts about the
+// same run. The remedy taken is the clause's option ②: the second case is a
+// state of its own in the report, worded so it cannot be read as "no output".
+// In ADR-041 §2.9 terms it is 未測量-shaped and never `0`.
+//
+// Option ① (refuse the re-evaluation outright) was rejected: deletion is
+// irreversible and user-initiated, so refusing would mean a run whose one
+// deleted file of three permanently loses the append-only re-evaluation
+// ADR-026 grants — and it would answer "the evidence is thinner" by producing
+// no judgement at all, on criteria that may not depend on a file.
 func artifactFindings(m material) []Finding {
+	var out []Finding
+	if m.absent.Any() {
+		out = append(out, Finding{
+			Category: CategoryExecution, Severity: SeverityWarning,
+			Message: fmt.Sprintf("this run's output manifest has %d file(s) this evaluation cannot read (%s). "+
+				"The run recorded them, so this is not a run that produced nothing, and nothing below "+
+				"may be judged from their absence (02:EVAL-001, NFR-002a)",
+				m.absent.Deleted+m.absent.Expired, absenceReasons(m.absent)),
+			Evidence: []EvidenceRef{},
+		})
+	}
 	if len(m.artifacts) == 0 {
-		if m.run.Status != "succeeded" {
+		if m.absent.Any() || m.run.Status != "succeeded" {
 			// A run that did not finish has an obvious reason to have produced
-			// nothing, and saying so twice adds no information.
-			return nil
+			// nothing, and saying so twice adds no information. Neither does a
+			// run whose files were removed: the sentence above already says why
+			// the manifest reads empty, and this one would contradict it.
+			return out
 		}
 		return []Finding{{
 			Category: CategoryExecution, Severity: SeverityWarning,
@@ -210,11 +236,27 @@ func artifactFindings(m material) []Finding {
 		names = append(names, a.FileName)
 		evidence = append(evidence, artifactRef(a))
 	}
-	return []Finding{{
+	return append(out, Finding{
 		Category: CategoryExecution, Severity: SeverityInfo,
-		Message:  fmt.Sprintf("the run recorded %d output file(s): %s", len(names), strings.Join(names, ", ")),
+		Message:  fmt.Sprintf("the run recorded %d readable output file(s): %s", len(names), strings.Join(names, ", ")),
 		Evidence: evidence,
-	}}
+	})
+}
+
+// absenceReasons names why the rows cannot be read, in the two ways they differ
+// to a reader who has to act: one is the workspace's own deletion (02:WS-002)
+// and the other is retention running out (NFR-002a). Only reasons with a count
+// are named — a "0 expired" in the sentence would invite the reading that
+// something was checked and found intact.
+func absenceReasons(a ArtifactAbsence) string {
+	reasons := make([]string, 0, 2)
+	if a.Deleted > 0 {
+		reasons = append(reasons, fmt.Sprintf("%d deleted from this workspace", a.Deleted))
+	}
+	if a.Expired > 0 {
+		reasons = append(reasons, fmt.Sprintf("%d past the retention stamped on them", a.Expired))
+	}
+	return strings.Join(reasons, ", ")
 }
 
 // compatibilityFindings compares the measured (version, runtime image) pair of

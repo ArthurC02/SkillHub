@@ -43,6 +43,43 @@ func (q *Queries) CountPersistentOrphans(ctx context.Context, provider string) (
 	return count, err
 }
 
+const countUnreadableRunArtifacts = `-- name: CountUnreadableRunArtifacts :one
+SELECT
+  count(*) FILTER (WHERE deleted_at IS NOT NULL)::bigint AS deleted,
+  count(*) FILTER (WHERE deleted_at IS NULL
+                     AND (purged_at IS NOT NULL OR expires_at <= now()))::bigint AS expired
+FROM artifacts
+WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output'
+`
+
+type CountUnreadableRunArtifactsParams struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+type CountUnreadableRunArtifactsRow struct {
+	Deleted int64
+	Expired int64
+}
+
+// 02:EVAL-001 (2026-08-23): what an empty artifact list actually means. "The run
+// recorded output this evaluation cannot read" and "the run recorded none" are
+// two different judgement inputs, and only a count taken here tells them apart --
+// the readable list has already filtered away the evidence of its own gap.
+//
+// `expires_at <= now()` counts as unreadable even though nothing sweeps run
+// outputs yet, so the bytes are probably still in the store. That direction is
+// deliberate: the column is the platform's own statement that it may no longer
+// have the file, and an evaluation saying "I could not rely on this" when it
+// could have is safer than the reverse. The day a sweeper exists this predicate
+// stops over-reporting on its own.
+func (q *Queries) CountUnreadableRunArtifacts(ctx context.Context, arg CountUnreadableRunArtifactsParams) (CountUnreadableRunArtifactsRow, error) {
+	row := q.db.QueryRow(ctx, countUnreadableRunArtifacts, arg.RunID, arg.WorkspaceID)
+	var i CountUnreadableRunArtifactsRow
+	err := row.Scan(&i.Deleted, &i.Expired)
+	return i, err
+}
+
 const createRun = `-- name: CreateRun :one
 
 
@@ -547,6 +584,58 @@ func (q *Queries) ListOutboxEventsByAggregate(ctx context.Context, arg ListOutbo
 			&i.PublishedAt,
 			&i.DeliveryAttempts,
 			&i.DeadLetteredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReadableRunArtifacts = `-- name: ListReadableRunArtifacts :many
+SELECT id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at, purged_at FROM artifacts
+WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output'
+  AND deleted_at IS NULL AND purged_at IS NULL AND expires_at > now()
+ORDER BY file_name
+`
+
+type ListReadableRunArtifactsParams struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+// The evidence half, for evaluation. Deliberately not ListRunArtifacts: that one
+// serves WS-004's list, where an expired row must still be visible and still
+// deletable. Complementary to CountUnreadableRunArtifacts -- together the two
+// predicates partition kind = 'run_output', so a row can never be counted as
+// both readable evidence and a hole in it.
+func (q *Queries) ListReadableRunArtifacts(ctx context.Context, arg ListReadableRunArtifactsParams) ([]Artifact, error) {
+	rows, err := q.db.Query(ctx, listReadableRunArtifacts, arg.RunID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Artifact
+	for rows.Next() {
+		var i Artifact
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.RunID,
+			&i.Kind,
+			&i.FileName,
+			&i.ContentType,
+			&i.SizeBytes,
+			&i.ContentHash,
+			&i.ObjectKey,
+			&i.ScanStatus,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+			&i.DeletedAt,
+			&i.PurgedAt,
 		); err != nil {
 			return nil, err
 		}

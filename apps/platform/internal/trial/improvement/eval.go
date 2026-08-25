@@ -290,10 +290,34 @@ type ArtifactFacts struct {
 	ContentHash string
 }
 
+// ArtifactAbsence counts the output-manifest rows this run has that are no
+// longer readable: rows the workspace deleted (02:WS-002, SEC-006) and rows past
+// the retention `RecordRunArtifact` stamps on them.
+//
+// It is a second input and not a smaller Artifacts slice because 02:EVAL-001's
+// 2026-08-23 clause forbids the two absences sharing one sentence. "This run
+// wrote nothing" and "this run's outputs were removed" point the judge in
+// opposite directions, and the second is the shape 04 丙-13 needed a backfill to
+// undo — except a user reaches it themselves, by deleting one output and asking
+// for a re-evaluation (ADR-026 makes that append-only and user-triggerable).
+//
+// Zero here means "nothing was removed", never "nobody looked": the reader that
+// fills it is a query the run context owns, and a deployment whose reader is not
+// wired reads the same as one with nothing to report. That is the one honest
+// failure this type cannot express by itself.
+type ArtifactAbsence struct {
+	Deleted int
+	Expired int
+}
+
+// Any answers whether any output this run recorded has become unreadable.
+func (a ArtifactAbsence) Any() bool { return a.Deleted+a.Expired > 0 }
+
 // EvaluationInput is the Run-owned aggregate used by gather.
 type EvaluationInput struct {
 	Run           RunFacts
 	Artifacts     []ArtifactFacts
+	Absent        ArtifactAbsence
 	LatestAttempt int
 }
 
@@ -389,10 +413,13 @@ type material struct {
 	advanced  trace.AdvancedView
 	summary   trace.Summary
 	artifacts []ArtifactFacts
-	compat    *RuntimeCompatibility
-	report    skillpkg.Report
-	reportOK  bool
-	attempt   int
+	// absent is what artifacts cannot be: rows that exist and cannot be read.
+	// An empty artifacts slice alone cannot tell the two apart.
+	absent   ArtifactAbsence
+	compat   *RuntimeCompatibility
+	report   skillpkg.Report
+	reportOK bool
+	attempt  int
 }
 
 // Evaluate produces one evaluation for one finished run.
@@ -437,8 +464,11 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 
 	findings := s.deterministicFindings(ctx, m)
 	// 丙-1: a trace with holes cannot support a `passed`, so the fact travels with
-	// the verdict rather than being noticed by whoever reads it.
-	evidenceComplete := m.advanced.Complete
+	// the verdict rather than being noticed by whoever reads it. An output the
+	// run recorded and this evaluation cannot read is the same kind of hole in
+	// the same kind of evidence, so it is the same flag — including on the
+	// no-criteria and failed paths below, which never reach the judge.
+	evidenceComplete := m.advanced.Complete && !m.absent.Any()
 
 	if len(m.criteria) == 0 {
 		// Nothing was asked of this run, so there is nothing to have met. That is
@@ -573,6 +603,7 @@ func (s *Service) gather(ctx context.Context, workspaceID, runID pgtype.UUID) (m
 		return m, err
 	}
 	m.run, m.artifacts, m.attempt = input.Run, input.Artifacts, input.LatestAttempt
+	m.absent = input.Absent
 
 	if m.version, found, err = s.ReadVersion(ctx, workspaceID, m.run.SkillVersionID); !found && err == nil {
 		return m, ErrNotFound

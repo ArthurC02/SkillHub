@@ -190,6 +190,19 @@ func (s *Service) buildRequest(
 		})
 	}
 
+	// A manifest row this evaluation cannot read is a hole in what the judge was
+	// handed, which is what `truncation` means on this wire: a criterion that
+	// depends on a cut field may only be answered `undetermined`. It is named
+	// apart from the budget cut above because the two are not the same hole, and
+	// because an empty `artifacts` with nothing said about it is precisely what
+	// lets a judge answer every criterion believing the run produced nothing
+	// (02:EVAL-001 2026-08-23, 04 丙-13). Saying it here also attaches the two
+	// consequences the platform already gives a hole: the stored row's
+	// evidence_complete goes false, and merge() refuses to record a `passed`.
+	if m.absent.Any() {
+		truncation = append(truncation, "artifacts.unreadable")
+	}
+
 	entries, digest, cuts := buildDigest(m.advanced)
 	if m.advanced.EvaluationTruncated {
 		truncation = append(truncation, "trace_events")

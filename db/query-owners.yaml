@@ -166,6 +166,8 @@ queries:
   CountActiveRuns: run
   InsertRunArtifact: run
   ListRunArtifacts: run
+  ListReadableRunArtifacts: run
+  CountUnreadableRunArtifacts: run
   RecordOrphanSighting: run
   ForgetClearedOrphans: run
   CountPersistentOrphans: run

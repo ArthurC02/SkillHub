@@ -335,6 +335,36 @@ SELECT * FROM artifacts
 WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output' AND deleted_at IS NULL
 ORDER BY file_name;
 
+-- name: ListReadableRunArtifacts :many
+-- The evidence half, for evaluation. Deliberately not ListRunArtifacts: that one
+-- serves WS-004's list, where an expired row must still be visible and still
+-- deletable. Complementary to CountUnreadableRunArtifacts -- together the two
+-- predicates partition kind = 'run_output', so a row can never be counted as
+-- both readable evidence and a hole in it.
+SELECT * FROM artifacts
+WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output'
+  AND deleted_at IS NULL AND purged_at IS NULL AND expires_at > now()
+ORDER BY file_name;
+
+-- name: CountUnreadableRunArtifacts :one
+-- 02:EVAL-001 (2026-08-23): what an empty artifact list actually means. "The run
+-- recorded output this evaluation cannot read" and "the run recorded none" are
+-- two different judgement inputs, and only a count taken here tells them apart --
+-- the readable list has already filtered away the evidence of its own gap.
+--
+-- `expires_at <= now()` counts as unreadable even though nothing sweeps run
+-- outputs yet, so the bytes are probably still in the store. That direction is
+-- deliberate: the column is the platform's own statement that it may no longer
+-- have the file, and an evaluation saying "I could not rely on this" when it
+-- could have is safer than the reverse. The day a sweeper exists this predicate
+-- stops over-reporting on its own.
+SELECT
+  count(*) FILTER (WHERE deleted_at IS NOT NULL)::bigint AS deleted,
+  count(*) FILTER (WHERE deleted_at IS NULL
+                     AND (purged_at IS NOT NULL OR expires_at <= now()))::bigint AS expired
+FROM artifacts
+WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output';
+
 -- name: RecordOrphanSighting :one
 -- SBX-012 / ADR-022 X-03. One row per provider-side resource this round judged
 -- leaked; the returned count is how many consecutive rounds it has survived.
