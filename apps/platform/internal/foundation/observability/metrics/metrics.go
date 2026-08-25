@@ -135,6 +135,27 @@ var (
 		Name: "skillhub_run_token_usage_unreadable_total",
 		Help: "Token-ceiling checks that could not read the gateway and let the run continue (PDM-005 §5.2a-4).",
 	})
+
+	// OrphanObjectQueueDepth is `maintenance collect-objects`' worklist as it
+	// stood at the end of the last pass: package object keys whose skill rows are
+	// gone and whose bytes are therefore paid for and unreachable (04 丙-73).
+	//
+	// One series and not two. The obvious alternative is a counter of collection
+	// failures, and it answers the wrong question: it reads zero when the sweep
+	// is healthy AND when the sweep is not running at all -- an uninstalled cron
+	// entry, a job that dies before its first Remove, a store it cannot reach --
+	// which is the failure this whole mechanism exists to end, because the gap it
+	// closes was itself a job nobody had written. The depth is non-zero and
+	// growing in every one of those, so it separates "draining" from "stuck" the
+	// way CleanupBacklog does above and Cleanup{result="failed"} could not.
+	//
+	// A gauge published by the sweep, so it is only as fresh as the last run --
+	// an absent or stale series is itself the "nobody ran it" signal, and a rule
+	// wanting both reads it with absent().
+	OrphanObjectQueueDepth = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "skillhub_orphan_object_queue_depth",
+		Help: "Package object keys awaiting collection after the last sweep (04 丙-73).",
+	})
 )
 
 // ADR-008: the transactional outbox. One counter, and it is the one that means a

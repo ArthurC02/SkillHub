@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -687,5 +688,158 @@ func TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced(t *testing.T) 
 	}
 	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE id = $1", usedVer.ID); c != 1 {
 		t.Error("the version a run points at was taken by the second sweep")
+	}
+}
+
+// enqueueObjectKeys fills the worklist by hand.
+//
+// NOT a stand-in for the producer any more: the purge statements enqueue their
+// own keys in an `enqueued` CTE (04 丙-73), and the orphan below arrives that
+// way. What is left is the case the producer cannot reach -- an object orphaned
+// before 0039 existed, which no row in the database knows about. Filling the
+// queue by hand is the operator's only recovery path for those, so it is worth
+// having a test that proves the sweep honours entries it did not create.
+func enqueueObjectKeys(t *testing.T, pool *pgxpool.Pool, keys ...string) {
+	t.Helper()
+	for _, key := range keys {
+		if _, err := pool.Exec(context.Background(),
+			"INSERT INTO object_collection_queue (object_key) VALUES ($1) ON CONFLICT DO NOTHING",
+			key); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func queuedObjectKeys(t *testing.T, pool *pgxpool.Pool, key string) int {
+	t.Helper()
+	return countRow(t, pool,
+		"SELECT count(*) FROM object_collection_queue WHERE object_key = $1", key)
+}
+
+// 04 丙-73: package objects are content-addressed and shared with every fork, so
+// no delete path may take them at the moment it takes rows -- whether an object
+// may go is only knowable once the rows are gone. This sweep is what answers the
+// question afterwards, and all but one of the assertions below are about what it
+// must NOT touch.
+//
+// The asymmetry is the point. Leaving an object behind costs storage and can be
+// found again; taking one that a fork still reads destroys somebody else's bytes
+// with nothing left to restore them from, and that person never asked for
+// anything. So the three keys here are one that may go and two that may not, and
+// the two are on the worklist for the same reason a real one would be: a key
+// gets enqueued when *a* referencing row disappears, never when the last one
+// does, because nothing knows which was the last.
+func TestOrphanObjectCollectionTakesOnlyWhatNothingReferences(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+
+	alice := a.login(t, "alice-collect")
+	bob := a.login(t, "bob-collect")
+	makeCatalog(t, pool, alice.workspaceID)
+
+	// shared: forked through the real endpoint, so the two version rows point at
+	// one object because that is what a fork does (WS-001), not because the test
+	// arranged it.
+	shared := seedSkill(t, pool, alice.workspaceID, "collect-shared")
+	sharedVer := seedVersion(t, pool, alice.workspaceID, shared, "collect-shared-hash")
+	if status, _ := postJSON(t, bob, "/skills/"+shared+"/fork", "{}"); status != http.StatusCreated {
+		t.Fatalf("bob fork of alice's catalog skill: got %d", status)
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE package_object_key = $1",
+		sharedVer.PackageObjectKey); c != 2 {
+		t.Fatalf("fork left %d version rows on the shared object, want 2; the rest of this test asserts nothing", c)
+	}
+
+	// orphan: deleted through the endpoint and taken by the real grace purge, so
+	// the state the sweep reads is the state a purge actually leaves behind.
+	orphan := seedSkill(t, pool, alice.workspaceID, "collect-orphan")
+	orphanVer := seedVersion(t, pool, alice.workspaceID, orphan, "collect-orphan-hash")
+
+	// returned: enqueued while nothing referenced it, then re-imported. Identical
+	// bytes get the same content-addressed key, so the object is alive again and
+	// the worklist entry is stale -- which is why the decision is taken at sweep
+	// time and not at enqueue time.
+	returned := seedSkill(t, pool, alice.workspaceID, "collect-returned")
+	returnedKey := "packages/collect-returned-hash.zip"
+
+	enqueueObjectKeys(t, pool, sharedVer.PackageObjectKey, returnedKey)
+
+	if status, _ := deleteJSON(t, alice, "/skills/"+orphan); status != http.StatusOK {
+		t.Fatalf("DELETE /skills/%s: got %d", orphan, status)
+	}
+	if _, err := pool.Exec(ctx,
+		"UPDATE skills SET deleted_at = now() - interval '40 days' WHERE id = $1",
+		mustUUID(t, orphan)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (&registry.Service{Pool: pool}).PurgeDeletedSkills(ctx, 30*24*time.Hour, 100); err != nil {
+		t.Fatal(err)
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE package_object_key = $1",
+		orphanVer.PackageObjectKey); c != 0 {
+		t.Fatalf("the grace purge left the orphan's version rows; nothing below is testing collection")
+	}
+	// The producer, asserted on its own. Nobody enqueued this key: the purge did,
+	// in the same statement that deleted the rows holding it. Without this the
+	// sweep is a consumer of a queue that fills itself by magic -- and the queue
+	// staying empty forever is exactly the failure 丙-73 opened for, since an
+	// object nobody remembered is an object nobody can ever collect.
+	if queuedObjectKeys(t, pool, orphanVer.PackageObjectKey) != 1 {
+		t.Fatalf("the grace purge deleted the last rows holding %q without remembering the key; "+
+			"those bytes are paid for and now unreachable", orphanVer.PackageObjectKey)
+	}
+	seedVersion(t, pool, alice.workspaceID, returned, "collect-returned-hash")
+
+	store := &recordingStore{}
+	c, err := (&registry.Service{Pool: pool}).CollectOrphanObjects(ctx, store, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The one thing it is allowed to do.
+	if !slices.Contains(store.removed, orphanVer.PackageObjectKey) {
+		t.Errorf("the purged skill's object was not collected; its bytes are paid for and unreachable forever")
+	}
+	if queuedObjectKeys(t, pool, orphanVer.PackageObjectKey) != 0 {
+		t.Error("a collected object kept its worklist entry; the next pass will try to remove it again forever")
+	}
+
+	// The two it is not, one per reason.
+	for _, spared := range []struct{ key, why string }{
+		{sharedVer.PackageObjectKey, "a fork's version still references it"},
+		{returnedKey, "a new version brought the same content-addressed key back"},
+	} {
+		if slices.Contains(store.removed, spared.key) {
+			t.Errorf("the sweep removed a package object although %s", spared.why)
+		}
+		if queuedObjectKeys(t, pool, spared.key) != 0 {
+			t.Errorf("the entry stayed on the worklist although %s; a queue that never shrinks "+
+				"is indistinguishable from a sweep that has stopped", spared.why)
+		}
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE package_object_key = $1",
+		sharedVer.PackageObjectKey); c != 2 {
+		t.Error("the shared object's version rows changed; this sweep must not touch skill_versions at all")
+	}
+	if c.Collected < 1 || c.Dropped < 2 {
+		t.Errorf("collected=%d dropped=%d, want at least 1 and 2: the two counts are how an operator "+
+			"tells 'the keys came back' from 'the store will not take the delete'", c.Collected, c.Dropped)
+	}
+	if c.Depth != 0 {
+		t.Errorf("queue depth %d after a pass that reached every entry", c.Depth)
+	}
+
+	// Iron rule 9: the second pass finds nothing to do and takes nothing else.
+	// The sweep runs on a cron and a crash between the object and the queue row
+	// is the ordinary case, so "safe to repeat" is the normal path, not an edge.
+	before := len(store.removed)
+	again, err := (&registry.Service{Pool: pool}).CollectOrphanObjects(ctx, store, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Collected != 0 || len(store.removed) != before {
+		t.Errorf("the second pass removed %d more objects; it is taking things the first one spared",
+			len(store.removed)-before)
 	}
 }

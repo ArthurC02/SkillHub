@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -26,6 +27,10 @@ import (
 // function that opened its own would be refused by the database — which is a
 // pleasant way for ADR-034's "never open a transaction" rule to be enforced
 // twice, but not one to rely on: the other four steps have no such backstop.
+//
+// It still does not enqueue the package objects of the versions it deletes, so
+// their bytes outlive the last row that knew about them. See
+// [Service.CollectOrphanObjects] for why that could not be fixed from here.
 func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
 	q := gen.New(tx)
 	_, err := q.PurgeUnreferencedSkills(ctx, workspaceID)
@@ -65,6 +70,10 @@ type DeletionSweep struct {
 // TRACE_RETENTION and the other two are deployment variables: PDM-006 §6.1's 30
 // days is unratified, and a number compiled in would be this package inventing a
 // deadline on which to delete somebody's content.
+//
+// Like its sibling above it leaves the package objects of the versions it
+// deletes behind; [Service.CollectOrphanObjects] says why the enqueue is not
+// here yet.
 func (s *Service) PurgeDeletedSkills(ctx context.Context, grace time.Duration, limit int32) (DeletionSweep, error) {
 	if grace <= 0 {
 		// Fail closed. A zero window purges a skill deleted a second ago, and
@@ -98,4 +107,93 @@ func (s *Service) PurgeDeletedSkills(ctx context.Context, grace time.Duration, l
 		return DeletionSweep{}, err
 	}
 	return DeletionSweep{Purged: purged, Waiting: counts.Waiting, Kept: counts.Kept}, nil
+}
+
+// ObjectRemover is the slice of object storage the collector needs. Remove
+// only: a package object is content-addressed, so there is nothing to read and
+// nothing to look up by anything other than the key already on the worklist.
+type ObjectRemover interface {
+	Remove(ctx context.Context, key string) error
+}
+
+// Collection is what one pass of CollectOrphanObjects did. Three numbers for the
+// reason DeletionSweep has two: an operator who sees a queue that is not
+// shrinking has to tell "the keys came back" from "the store will not take the
+// delete" without reading this file. Dropped rising with Collected at zero is
+// the first; Depth standing still across passes is the second.
+type Collection struct {
+	Dropped   int64
+	Collected int
+	Depth     int64
+}
+
+// CollectOrphanObjects removes the package objects whose last referencing
+// skill_versions row is gone (04 丙-73, 0039).
+//
+// It is the second half of a mechanism whose first half is not written. The
+// queue is filled by EnqueueOrphanObjectCandidates, which has to run inside a
+// purge transaction and before the delete -- that is the only moment the keys
+// are still readable -- and neither purge can hand over the ids it is about to
+// take. Both are one statement whose `purgeable` CTE selects and deletes at
+// once, `:execrows`, no RETURNING, and no query anywhere lists the skills in
+// either purge's scope. Recomputing the set in Go would be a second definition
+// of "purgeable" sitting beside the DELETE's own, and the first thing a drift
+// between the two does is leak the keys the list missed, silently and forever.
+// So the enqueue belongs in those statements as a third CTE off the same
+// `purgeable`, which is a db/queries change, not a change here.
+//
+// **No retention window and no environment variable**, unlike every other
+// subcommand in cmd/maintenance, and that is not an omission. Those sweep on a
+// deadline somebody has to have signed; this one has no deadline at all. It
+// removes what is already unreferenced, and "unreferenced" is a fact the
+// database answers -- ListCollectableObjects's NOT EXISTS -- not a policy. A
+// fail-closed variable here would gate a job that deletes nothing anybody can
+// still reach on a number that would mean nothing.
+//
+// Order per key: object first, queue row second. The reverse loses the key on a
+// crash and the bytes become unfindable again, which is the whole failure this
+// table exists to prevent. Object-then-row is safe to repeat (iron rule 9):
+// removing an object twice succeeds, and a pass that died between the two steps
+// re-lists the same key and deletes an entry whose bytes are already gone.
+//
+// The one mistake that must never happen is deleting an object a fork still
+// reads. Nothing in this function decides that: the queue is candidates only,
+// and both the drop and the list ask the database, at sweep time, whether any
+// skill_versions row still names the key. A key that came back -- re-importing
+// identical bytes makes a new version with the same content-addressed key --
+// leaves the worklist with its object untouched.
+func (s *Service) CollectOrphanObjects(ctx context.Context, store ObjectRemover, limit int32) (Collection, error) {
+	if store == nil {
+		return Collection{}, errors.New("registry: object collection needs an object store")
+	}
+	q := gen.New(s.Pool)
+	dropped, err := q.DropReferencedCollectionEntries(ctx)
+	if err != nil {
+		return Collection{}, err
+	}
+	result := Collection{Dropped: dropped}
+
+	keys, err := q.ListCollectableObjects(ctx, limit)
+	if err != nil {
+		return result, err
+	}
+	for _, key := range keys {
+		if err := store.Remove(ctx, key); err != nil {
+			// Leave the row: the next pass tries the same key again. Dequeueing
+			// here would be recording a deletion that did not happen, and there
+			// is nothing left in the database to rediscover the key from.
+			slog.Warn("orphan package object not removed; will retry", "error", err)
+			continue
+		}
+		if err := q.DeleteObjectCollectionEntry(ctx, key); err != nil {
+			return result, err
+		}
+		result.Collected++
+	}
+
+	// Read after the pass, so the number describes what is left rather than what
+	// was there. A depth that does not move across passes is the sweep having
+	// stopped working.
+	result.Depth, err = q.CountCollectableObjects(ctx)
+	return result, err
 }

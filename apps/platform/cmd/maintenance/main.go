@@ -29,6 +29,10 @@
 //	                               SKILL_DELETION_GRACE, their frozen versions
 //	                               included. Needs DATABASE_URL and
 //	                               SKILL_DELETION_GRACE.
+//	maintenance collect-objects    04 丙-73: remove the package objects whose last
+//	                               referencing skill_versions row is gone. Needs
+//	                               DATABASE_URL and object storage, and no
+//	                               retention window at all — see below.
 //	maintenance check-sources      INGEST-010: probe recorded import source URLs
 //	                               and mark the ones that no longer resolve.
 //	                               Needs DATABASE_URL and network egress.
@@ -51,6 +55,13 @@
 // rows another statement still calls readable. Same shape as the download
 // package sweep: DOWNLOAD_ARTIFACT_RETENTION is read where the row is created,
 // never where it is swept.
+//
+// collect-objects reads no window either, and for a third reason again. The two
+// above are swept against a deadline written on the row; this one is swept
+// against no deadline at all. It removes package objects that no skill_versions
+// row references any more, which is a fact the database answers at sweep time,
+// not a policy anybody has to ratify — so there is no variable to fail closed
+// on and adding one would gate a job that deletes nothing anybody can reach.
 //
 // TRACE_RETENTION, ANALYTICS_RETENTION and AUDIT_RETENTION have no defaults on
 // purpose: all three are PDM-006 proposals that have not been ratified, and a
@@ -91,6 +102,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
@@ -106,8 +118,8 @@ import (
 func main() {
 	if len(os.Args) != 2 {
 		slog.Error("usage: maintenance purge-accounts|purge-analytics|purge-audit|" +
-			"purge-run-artifacts|purge-datasets|purge-deleted-skills|check-sources|" +
-			"rotate-partitions")
+			"purge-run-artifacts|purge-datasets|purge-deleted-skills|collect-objects|" +
+			"check-sources|rotate-partitions")
 		os.Exit(2)
 	}
 	ctx := context.Background()
@@ -133,6 +145,8 @@ func main() {
 		err = purgeDatasets(ctx, pool)
 	case "purge-deleted-skills":
 		err = purgeDeletedSkills(ctx, pool)
+	case "collect-objects":
+		err = collectObjects(ctx, pool)
 	case "rotate-partitions":
 		err = rotatePartitions(ctx, pool)
 	default:
@@ -324,6 +338,39 @@ func purgeDeletedSkills(ctx context.Context, pool *pgxpool.Pool) error {
 		slog.Info("deleted skill purge complete",
 			"skills_purged", sweep.Purged, "waiting", sweep.Waiting, "kept", sweep.Kept)
 	}
+	return err
+}
+
+// collectObjects is the other half of the grace purge above and of the account
+// purge: the bytes. Package objects are content-addressed and shared with every
+// fork, so no delete path may remove them at the moment it removes rows —
+// whether an object may go is only knowable after the rows are gone, and until
+// then a fork may still be reading it. `object_collection_queue` (0039) is what
+// carries the key across that gap and this is what drains it.
+//
+// This subcommand's composition root: one Service, one store, no window. The
+// missing variable is the point rather than an oversight — see the package
+// comment and registry.CollectOrphanObjects.
+//
+// It collects nothing today. The enqueue that fills the worklist has to run
+// inside each purge's own transaction and neither purge can name the skills it
+// is about to take, so the producer is still unwritten (04 丙-73); the sweep
+// lands first because everything it does — deciding what is unreferenced,
+// sparing a fork's bytes, surviving a re-run — is what has to be right before
+// anything is allowed to enqueue.
+func collectObjects(ctx context.Context, pool *pgxpool.Pool) error {
+	store, err := objstore.FromEnv()
+	if err != nil {
+		return err
+	}
+	c, err := (&registry.Service{Pool: pool}).CollectOrphanObjects(ctx, store, batch())
+	// Logged before the error is dealt with, like every other sweep here: a pass
+	// that failed part way still collected the rest. `depth` is the number that
+	// says whether to look — bounded by MAINTENANCE_BATCH, so a backlog draining
+	// over several runs is normal and a depth that never moves is not.
+	slog.Info("orphan object collection complete",
+		"objects_collected", c.Collected, "entries_dropped", c.Dropped, "queue_depth", c.Depth)
+	metrics.OrphanObjectQueueDepth.Set(float64(c.Depth))
 	return err
 }
 
