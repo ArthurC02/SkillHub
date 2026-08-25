@@ -3331,6 +3331,16 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: |
+            This deployment cannot package: no packaging target is configured, no
+            object store is wired in, or `DOWNLOAD_ARTIFACT_RETENTION` has no
+            ratified value (PDM-006). Never a verdict about the content - the
+            packaging call answers 503 for the same three, which is what keeps a
+            preview that says yes and a create that refuses from both happening.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/versions/{versionId}/packaging:
     post:
       operationId: createDownloadArtifact
@@ -3457,6 +3467,16 @@ paths:
                         $ref: "#/components/schemas/PackagingBlockedReason"
                       validation:
                         $ref: "#/components/schemas/PackageValidation"
+        "503":
+          description: |
+            This deployment cannot package: no packaging target is configured, no
+            object store is wired in, or `DOWNLOAD_ARTIFACT_RETENTION` has no
+            ratified value (PDM-006). Never a verdict about the content - the
+            packaging call answers 503 for the same three, which is what keeps a
+            preview that says yes and a create that refuses from both happening.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /downloads:
     get:
       operationId: listDownloadArtifacts
@@ -6554,7 +6574,7 @@ components:
       type: object
       required:
         [target, allowed, validation, dependencies, included_test_cases,
-         excluded_test_cases, excluded_files]
+         excluded_test_cases, excluded_files, retention_days]
       properties:
         target: { $ref: "#/components/schemas/PackagingTargetId" }
         allowed:
@@ -6661,6 +6681,33 @@ components:
                   (`blocked_reason: file_removed_by_packager`).
                   A reference that was already dangling on import is a different
                   fact and stays a warning — the platform did not break that one.
+        retention_days:
+          type: integer
+          minimum: 0
+          description: |
+            How long the package this preview describes would be kept, in whole
+            days, before the platform deletes it (03:PACK-011).
+
+            **On the preview and not on the packaging response, on purpose.**
+            02:NFR-001 asks that a limit which will affect the user be visible
+            before they hit it - the same reasoning that put `redistribution` on
+            the owner's list - and the packaging response arrives after the
+            decision it would be informing. It is not on GET /packaging/targets
+            either: retention is one deployment number, not a property of a
+            target, and three targets would put three copies of it on the wire.
+
+            It is the value the create call writes into the artifact's
+            `expires_at`, read from the same `DOWNLOAD_ARTIFACT_RETENTION` the
+            deployment configures. Clients render this number and never a
+            constant of their own (設計 §2.2 顯示與強制成對).
+
+            Required, because a deployment with no ratified period answers 503
+            for this whole endpoint rather than serving a preview with an unknown
+            one: no ratified number, no number on the screen, and no build
+            either. Truncated rather than rounded - the value is a promise about
+            how long the bytes survive, so the error falls on the side of
+            promising less. A deployment configured shorter than a day answers 0,
+            which 02:NFR-002a 第 1 條 already forbids.
     DownloadArtifact:
       description: |
         One built package (PACK-001). Immutable: re-packaging produces another

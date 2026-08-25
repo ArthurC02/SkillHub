@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -178,7 +179,32 @@ type previewView struct {
 	// inside the thing the user has not decided to download yet. An answer that
 	// only exists after the decision is not an answer to that decision.
 	ExcludedFiles []ExcludedFile `json:"excluded_files"`
+	// RetentionDays is how long the package would be kept, and it is on the
+	// PREVIEW rather than on the create response for exactly the reason above:
+	// 03:PACK-011 asks for it 「打包之前」, and the create response arrives after the
+	// decision it is supposed to inform. 02:NFR-001 是同一條理由——會影響你的上限要在
+	// 撞到之前看得見, which is what put `redistribution` on the owner's list too.
+	//
+	// It is not on GET /packaging/targets, the other pre-decision surface,
+	// because retention is one deployment number and not a property of a target:
+	// three targets would carry three copies of it on the wire.
+	//
+	// Always present and always positive — Plan refuses the whole preview when the
+	// deployment has no ratified period, so this never has to encode 「不知道」.
+	// That refusal is the disclosure's fail-closed half: no ratified number, no
+	// number on the screen, and no build either.
+	RetentionDays int `json:"retention_days"`
 }
+
+// retentionDays is the served period in whole days, truncated.
+//
+// Truncated and not rounded: the number is a promise about how long the bytes
+// survive, so the error has to fall on the side of promising less. Anything under
+// a day answers 0 and the page says 「不到 1 天」 rather than a rounded-up 1 —
+// a deployment configured that short is already violating 02:NFR-002a 第 1 條
+// (下載產物的保存期限 ≥ 當期觀察窗), and that should read as wrong rather than be
+// smoothed into a plausible-looking day.
+func retentionDays(d time.Duration) int { return int(d / (24 * time.Hour)) }
 
 // validationView and findingView are public.yaml's PackageValidation and
 // Finding: the manifest's own validation block with each finding's severity
@@ -274,6 +300,7 @@ func (h *Handler) Preview(w http.ResponseWriter, r *http.Request) {
 		IncludedTestCases: includedViews(p.Included),
 		ExcludedTestCases: excludedViews(p.Excluded),
 		ExcludedFiles:     p.ExcludedFiles,
+		RetentionDays:     retentionDays(p.Retention),
 	})
 }
 

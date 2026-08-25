@@ -208,6 +208,13 @@ type Plan struct {
 	BlockedReason    string
 	BlockedMessage   string
 
+	// Retention is how long the artifact this plan would produce is kept, read
+	// from the same policy.DownloadRetention that Create writes into expires_at.
+	// Always positive on a plan that was returned at all — Plan refuses when the
+	// deployment has no ratified period, so there is no "unset" to represent here
+	// (03:PACK-011).
+	Retention time.Duration
+
 	Validation ManifestValidation
 	Included   []IncludedTestCase
 	Excluded   []ExcludedTestCase
@@ -262,6 +269,22 @@ func (s *Service) Plan(
 	if s.Store == nil {
 		return nil, ErrNoStore
 	}
+	// Asked here and not only in Create (03:PACK-011). Two reasons, and the second
+	// is the one that made this a bug rather than a tidy-up:
+	//
+	//  1. The preview is where the retention gets DISCLOSED, and a number shown on
+	//     a screen has to be the number the server enforces (設計 §2.2 顯示與強制成
+	//     對). With no ratified period there is no number, so there is nothing to
+	//     disclose and the honest answer is the same 503 the create call gives.
+	//  2. Without it the preview answered `allowed: true` on a deployment where
+	//     POST .../packaging returns 503 — the exact "a preview that says yes and a
+	//     create that refuses cannot both happen" this file's header forbids.
+	//     ErrNoProfile and ErrNoStore were already checked here; retention was the
+	//     one deployment fault that was not.
+	retention, err := s.Retention.Period()
+	if err != nil {
+		return nil, err
+	}
 	if err := s.requireOwnerReads(); err != nil {
 		return nil, err
 	}
@@ -287,9 +310,9 @@ func (s *Service) Plan(
 
 	p := &Plan{
 		Skill: skill, Version: version, Profile: profile,
-		IncludeTestCases: includeTestCases,
-		Validation:       ManifestValidation{Errors: []ManifestFinding{}, Warnings: []ManifestFinding{}, Infos: []ManifestFinding{}},
-		Included:         []IncludedTestCase{}, Excluded: []ExcludedTestCase{},
+		IncludeTestCases: includeTestCases, Retention: retention,
+		Validation: ManifestValidation{Errors: []ManifestFinding{}, Warnings: []ManifestFinding{}, Infos: []ManifestFinding{}},
+		Included:   []IncludedTestCase{}, Excluded: []ExcludedTestCase{},
 		Dependencies: []string{},
 	}
 	if reason, msg := gate(skill); reason != "" {

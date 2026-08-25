@@ -158,6 +158,35 @@ export interface PackagingPreview {
      * @memberof PackagingPreview
      */
     excludedFiles: Array<PackagingPreviewExcludedFilesInner>;
+    /**
+     * How long the package this preview describes would be kept, in whole
+     * days, before the platform deletes it (03:PACK-011).
+     * 
+     * **On the preview and not on the packaging response, on purpose.**
+     * 02:NFR-001 asks that a limit which will affect the user be visible
+     * before they hit it - the same reasoning that put `redistribution` on
+     * the owner's list - and the packaging response arrives after the
+     * decision it would be informing. It is not on GET /packaging/targets
+     * either: retention is one deployment number, not a property of a
+     * target, and three targets would put three copies of it on the wire.
+     * 
+     * It is the value the create call writes into the artifact's
+     * `expires_at`, read from the same `DOWNLOAD_ARTIFACT_RETENTION` the
+     * deployment configures. Clients render this number and never a
+     * constant of their own (設計 §2.2 顯示與強制成對).
+     * 
+     * Required, because a deployment with no ratified period answers 503
+     * for this whole endpoint rather than serving a preview with an unknown
+     * one: no ratified number, no number on the screen, and no build
+     * either. Truncated rather than rounded - the value is a promise about
+     * how long the bytes survive, so the error falls on the side of
+     * promising less. A deployment configured shorter than a day answers 0,
+     * which 02:NFR-002a 第 1 條 already forbids.
+     * 
+     * @type {number}
+     * @memberof PackagingPreview
+     */
+    retentionDays: number;
 }
 
 
@@ -173,6 +202,7 @@ export function instanceOfPackagingPreview(value: object): value is PackagingPre
     if (!('includedTestCases' in value) || value['includedTestCases'] === undefined) return false;
     if (!('excludedTestCases' in value) || value['excludedTestCases'] === undefined) return false;
     if (!('excludedFiles' in value) || value['excludedFiles'] === undefined) return false;
+    if (!('retentionDays' in value) || value['retentionDays'] === undefined) return false;
     return true;
 }
 
@@ -195,6 +225,7 @@ export function PackagingPreviewFromJSONTyped(json: any, ignoreDiscriminator: bo
         'includedTestCases': ((json['included_test_cases'] as Array<any>).map(PackagingPreviewIncludedTestCasesInnerFromJSON)),
         'excludedTestCases': ((json['excluded_test_cases'] as Array<any>).map(PackagingPreviewExcludedTestCasesInnerFromJSON)),
         'excludedFiles': ((json['excluded_files'] as Array<any>).map(PackagingPreviewExcludedFilesInnerFromJSON)),
+        'retentionDays': json['retention_days'],
     };
 }
 
@@ -218,6 +249,7 @@ export function PackagingPreviewToJSONTyped(value?: PackagingPreview | null, ign
         'included_test_cases': ((value['includedTestCases'] as Array<any>).map(PackagingPreviewIncludedTestCasesInnerToJSON)),
         'excluded_test_cases': ((value['excludedTestCases'] as Array<any>).map(PackagingPreviewExcludedTestCasesInnerToJSON)),
         'excluded_files': ((value['excludedFiles'] as Array<any>).map(PackagingPreviewExcludedFilesInnerToJSON)),
+        'retention_days': value['retentionDays'],
     };
 }
 

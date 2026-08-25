@@ -124,6 +124,17 @@ export interface PackagingPreview {
   /** Empty when the caller did not ask for them — which is not "there are none". */
   included_test_cases: IncludedTestCase[];
   excluded_test_cases: ExcludedTestCase[];
+  /**
+   * 03:PACK-011 — how long this package would be kept, in whole days. Served so
+   * the page never carries its own copy of a deployment number (設計 §2.2
+   * 顯示與強制成對).
+   *
+   * Required: a deployment with no ratified `DOWNLOAD_ARTIFACT_RETENTION`
+   * answers 503 for the whole preview rather than serving one with an unknown
+   * period, so there is no state in which this is absent and the page still has
+   * something to draw.
+   */
+  retention_days: number;
 }
 
 export interface DownloadArtifact {

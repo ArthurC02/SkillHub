@@ -1334,6 +1334,10 @@ func (s *CreateDownloadArtifactReq) SetIncludeTestCases(val OptBool) {
 	s.IncludeTestCases = val
 }
 
+type CreateDownloadArtifactServiceUnavailable Error
+
+func (*CreateDownloadArtifactServiceUnavailable) createDownloadArtifactRes() {}
+
 type CreateDownloadArtifactUnauthorized Error
 
 func (*CreateDownloadArtifactUnauthorized) createDownloadArtifactRes() {}
@@ -8940,6 +8944,25 @@ type PackagingPreview struct {
 	// Empty for almost every package. It is not empty for the case that matters — a Skill that vendored
 	// its dependencies, or one whose `SKILL.md` points at something the exporter would not carry.
 	ExcludedFiles []PackagingPreviewExcludedFilesItem `json:"excluded_files"`
+	// How long the package this preview describes would be kept, in whole days, before the platform
+	// deletes it (03:PACK-011).
+	//
+	// On the preview and not on the packaging response, on purpose. 02:NFR-001 asks that a limit which
+	// will affect the user be visible before they hit it - the same reasoning that put `redistribution` on
+	// the owner's list - and the packaging response arrives after the decision it would be informing. It
+	// is not on GET /packaging/targets either: retention is one deployment number, not a property of a
+	// target, and three targets would put three copies of it on the wire.
+	//
+	// It is the value the create call writes into the artifact's `expires_at`, read from the same
+	// `DOWNLOAD_ARTIFACT_RETENTION` the deployment configures. Clients render this number and never a
+	// constant of their own (設計 §2.2 顯示與強制成對).
+	//
+	// Required, because a deployment with no ratified period answers 503 for this whole endpoint rather
+	// than serving a preview with an unknown one: no ratified number, no number on the screen, and no
+	// build either. Truncated rather than rounded - the value is a promise about how long the bytes
+	// survive, so the error falls on the side of promising less. A deployment configured shorter than a
+	// day answers 0, which 02:NFR-002a 第 1 條 already forbids.
+	RetentionDays int `json:"retention_days"`
 }
 
 // GetTarget returns the value of Target.
@@ -8987,6 +9010,11 @@ func (s *PackagingPreview) GetExcludedFiles() []PackagingPreviewExcludedFilesIte
 	return s.ExcludedFiles
 }
 
+// GetRetentionDays returns the value of RetentionDays.
+func (s *PackagingPreview) GetRetentionDays() int {
+	return s.RetentionDays
+}
+
 // SetTarget sets the value of Target.
 func (s *PackagingPreview) SetTarget(val PackagingTargetId) {
 	s.Target = val
@@ -9030,6 +9058,11 @@ func (s *PackagingPreview) SetExcludedTestCases(val []PackagingPreviewExcludedTe
 // SetExcludedFiles sets the value of ExcludedFiles.
 func (s *PackagingPreview) SetExcludedFiles(val []PackagingPreviewExcludedFilesItem) {
 	s.ExcludedFiles = val
+}
+
+// SetRetentionDays sets the value of RetentionDays.
+func (s *PackagingPreview) SetRetentionDays(val int) {
+	s.RetentionDays = val
 }
 
 func (*PackagingPreview) previewPackagingRes() {}
@@ -9592,6 +9625,10 @@ func (*PreviewPackagingBadRequest) previewPackagingRes() {}
 type PreviewPackagingNotFound Error
 
 func (*PreviewPackagingNotFound) previewPackagingRes() {}
+
+type PreviewPackagingServiceUnavailable Error
+
+func (*PreviewPackagingServiceUnavailable) previewPackagingRes() {}
 
 type PreviewPackagingUnauthorized Error
 

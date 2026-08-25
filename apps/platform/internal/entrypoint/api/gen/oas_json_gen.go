@@ -3402,6 +3402,44 @@ func (s *CreateDownloadArtifactReq) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes CreateDownloadArtifactServiceUnavailable as json.
+func (s *CreateDownloadArtifactServiceUnavailable) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes CreateDownloadArtifactServiceUnavailable from json.
+func (s *CreateDownloadArtifactServiceUnavailable) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreateDownloadArtifactServiceUnavailable to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = CreateDownloadArtifactServiceUnavailable(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CreateDownloadArtifactServiceUnavailable) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreateDownloadArtifactServiceUnavailable) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes CreateDownloadArtifactUnauthorized as json.
 func (s *CreateDownloadArtifactUnauthorized) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -18690,9 +18728,13 @@ func (s *PackagingPreview) encodeFields(e *jx.Encoder) {
 		}
 		e.ArrEnd()
 	}
+	{
+		e.FieldStart("retention_days")
+		e.Int(s.RetentionDays)
+	}
 }
 
-var jsonFieldsNameOfPackagingPreview = [9]string{
+var jsonFieldsNameOfPackagingPreview = [10]string{
 	0: "target",
 	1: "allowed",
 	2: "blocked_reason",
@@ -18702,6 +18744,7 @@ var jsonFieldsNameOfPackagingPreview = [9]string{
 	6: "included_test_cases",
 	7: "excluded_test_cases",
 	8: "excluded_files",
+	9: "retention_days",
 }
 
 // Decode decodes PackagingPreview from json.
@@ -18839,6 +18882,18 @@ func (s *PackagingPreview) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"excluded_files\"")
 			}
+		case "retention_days":
+			requiredBitSet[1] |= 1 << 1
+			if err := func() error {
+				v, err := d.Int()
+				s.RetentionDays = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"retention_days\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -18850,7 +18905,7 @@ func (s *PackagingPreview) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b11110011,
-		0b00000001,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -19982,6 +20037,44 @@ func (s *PreviewPackagingNotFound) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *PreviewPackagingNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes PreviewPackagingServiceUnavailable as json.
+func (s *PreviewPackagingServiceUnavailable) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes PreviewPackagingServiceUnavailable from json.
+func (s *PreviewPackagingServiceUnavailable) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode PreviewPackagingServiceUnavailable to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = PreviewPackagingServiceUnavailable(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *PreviewPackagingServiceUnavailable) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *PreviewPackagingServiceUnavailable) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

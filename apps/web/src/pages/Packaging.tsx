@@ -44,9 +44,20 @@ import type { Finding, Redistribution, SkillDetail } from "../api/types";
  *    about whether the agent picked it up, and neither is a statement about
  *    whether its scripts ran. Packaging changes none of the three, which is
  *    exactly why they must not be re-stated in the packager's own words.
+ * 6. **How long the package will be kept is said before the build, and the
+ *    number comes from the server** (03:PACK-011). See `RetentionNotice`.
  */
 
 type PackagingSearch = { version?: string };
+
+/**
+ * The preview plus 03:PACK-011's `retention_days`.
+ *
+ * Declared here as an intersection rather than on `PackagingPreview` because
+ * `api/packaging.ts` belongs to another change. Forward-compatible on purpose:
+ * when the field lands on `PackagingPreview` this type collapses to it and can be
+ * deleted without touching a call site.
+ */
 
 /**
  * One sentence per blocked reason, saying what it means for the reader — the
@@ -323,6 +334,8 @@ export function Packaging() {
 
           {message && <p role="alert">{message}</p>}
 
+          {preview.data?.allowed && <RetentionNotice preview={preview.data} />}
+
           <p>
             <button
               type="button"
@@ -365,6 +378,50 @@ export function Packaging() {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * 03:PACK-011 — 這包東西會保存多久，說在打包之前。
+ *
+ * Three things this had to get right:
+ *
+ * 1. **Before, not after.** `Downloads.tsx` marks an artifact expired once it is
+ *    one; the answer a person needs while deciding whether to build is 「我下週回
+ *    來還在不在」, and that has to arrive before the button. Same reasoning as
+ *    02:NFR-001's 「會影響你的上限要在撞到之前看得見」, which is why the number rides
+ *    on the preview rather than on the packaging response.
+ * 2. **The number is the server's.** `DOWNLOAD_ARTIFACT_RETENTION` is deployment
+ *    configuration; a `30` typed into this file would be a second definition that
+ *    nothing compares against the one that writes `expires_at` — 設計 §2.2
+ *    顯示與強制成對, and `04` 乙-2's 「顯示但不強制是兩者中最壞的一種」.
+ * 3. **No ratified value ⇒ no number.** The server fails the whole preview closed
+ *    when nobody has decided, so this branch should be unreachable in practice. It
+ *    is still written, because the alternative on an unexpected wire is rendering
+ *    「保留 undefined 天」, and a disclosure that quietly states a wrong period is
+ *    worse than one that admits it has none.
+ *
+ * The idempotence sentence is not decoration: it is the difference between
+ * 「你的東西會被刪掉」 and 「這份下載連結會過期」, and only the second one is true.
+ */
+function RetentionNotice({ preview }: { preview: PackagingPreview }) {
+  const days = preview.retention_days;
+  if (typeof days !== "number" || !Number.isFinite(days) || days < 0) {
+    return (
+      <p className="note" role="status">
+        這個部署沒有回答打包產物會保留多久，所以這裡不寫數字——
+        寫一個沒有人裁定過的期限，比不寫更糟。
+      </p>
+    );
+  }
+  return (
+    <p className="note" role="status">
+      <strong>保留期限</strong>：打包完成後，這份下載套件會保留{" "}
+      <strong>{days >= 1 ? `${days} 天` : "不到 1 天"}</strong>，到期後平台自動刪除它。
+      這個天數是這個部署設定的值，也是伺服器等一下寫進這份套件到期日的同一個值。
+      <strong>過期不等於做白工</strong>——打包是冪等的，回到這一頁用同一個版本、同一個目標再打一次，
+      得到的會是同一份內容。
+    </p>
   );
 }
 

@@ -399,6 +399,19 @@ func encodeCreateDownloadArtifactResponse(response CreateDownloadArtifactRes, w 
 
 		return nil
 
+	case *CreateDownloadArtifactServiceUnavailable:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(503)
+		span.SetStatus(codes.Error, http.StatusText(503))
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
 	default:
 		return errors.Errorf("unexpected response type: %T", response)
 	}
@@ -2437,6 +2450,19 @@ func encodePreviewPackagingResponse(response PreviewPackagingRes, w http.Respons
 	case *PreviewPackagingNotFound:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(404)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *PreviewPackagingServiceUnavailable:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(503)
+		span.SetStatus(codes.Error, http.StatusText(503))
 
 		e := new(jx.Encoder)
 		response.Encode(e)

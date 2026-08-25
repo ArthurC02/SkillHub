@@ -33,6 +33,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
@@ -1180,6 +1181,70 @@ func TestThePreviewCarriesTheDependenciesTheInstallInstructionsWillList(t *testi
 		if !bytes.Contains(install, []byte(line)) {
 			t.Errorf("INSTALL.md does not carry the preview's line %q", line)
 		}
+	}
+}
+
+// --- 03:PACK-011: how long this is kept, answered BEFORE packaging ------------
+
+// The preview says how long the package would be kept, and it refuses outright
+// when no deployment has decided.
+//
+// The second assertion is the one with teeth. 設計 §2.2（顯示與強制成對）and `04`
+// 乙-2 both say a number on a screen has to be the number the server enforces, so
+// the disclosed period is checked against the `expires_at` the create call
+// actually writes — never against a constant repeated in the test, which is the
+// same mistake as a `30` typed into Packaging.tsx.
+//
+// The third is the fail-closed half. `DOWNLOAD_ARTIFACT_RETENTION` unset has meant
+// "no artifact" since 0027; it now also means "no preview", because a screen that
+// silently states a period nobody ratified is worse than one that says nothing,
+// and because a preview answering `allowed: true` where POST returns 503 is the
+// preview/create disagreement delivery/http.go's header forbids.
+func TestThePreviewSaysHowLongThePackageIsKeptAndRefusesWhenNobodyDecided(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "retention-disclosure")
+	skillID, versionID := packagedSkill(t, a, pool, c, "kept-for-a-while")
+	a.packaging.Retention = policy.DownloadRetention(72 * time.Hour)
+
+	var preview struct {
+		Allowed       bool `json:"allowed"`
+		RetentionDays int  `json:"retention_days"`
+	}
+	previewURL := c.base + packagingPath(skillID, versionID) + "/preview?target=standard"
+	if code := getJSON(t, c.Client, previewURL, &preview); code != http.StatusOK {
+		t.Fatalf("GET preview: got %d", code)
+	}
+	if !preview.Allowed {
+		t.Fatal("the fixture package was refused")
+	}
+	if preview.RetentionDays != 3 {
+		t.Errorf("preview.retention_days = %d, want 3 for a 72h deployment", preview.RetentionDays)
+	}
+
+	code, body := postJSON(t, c, packagingPath(skillID, versionID), `{"target":"standard"}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST packaging: got %d, body %v", code, body)
+	}
+	expiresAt, ok := body["expires_at"].(string)
+	if !ok {
+		t.Fatalf("the created artifact carries no expires_at: %v", body)
+	}
+	expires, err := time.Parse(time.RFC3339, expiresAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	disclosed := time.Duration(preview.RetentionDays) * 24 * time.Hour
+	if left := time.Until(expires); left > disclosed+time.Hour || left < disclosed-time.Hour {
+		t.Errorf("the preview promised %s of retention but the artifact expires in %s", disclosed, left)
+	}
+
+	a.packaging.Retention = 0
+	if code := getJSON(t, c.Client, previewURL, &preview); code != http.StatusServiceUnavailable {
+		t.Errorf("GET preview with no ratified retention: got %d, want 503", code)
+	}
+	if code, _ := postJSON(t, c, packagingPath(skillID, versionID), `{"target":"standard"}`); code != http.StatusServiceUnavailable {
+		t.Errorf("POST packaging with no ratified retention: got %d, want 503", code)
 	}
 }
 
