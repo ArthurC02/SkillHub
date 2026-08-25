@@ -321,6 +321,12 @@ INSERT INTO artifacts (
     workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash,
     object_key, expires_at
 )
+-- The 30 days are PDM-006 §6 and consent §3, materialised into the row here and
+-- not read from the environment at sweep time: the deadline a participant was
+-- promised is a property of the file, and three statements (ListReadableRun-
+-- Artifacts, CountUnreadableRunArtifacts, ListRunOutputsPastRetention) read it
+-- back. `maintenance purge-run-artifacts` is what makes the column mean
+-- something.
 SELECT @workspace_id, @run_id, 'run_output', @file_name, @content_type, @size_bytes,
        @content_hash, @object_key, now() + interval '30 days'
 WHERE NOT EXISTS (
@@ -352,12 +358,13 @@ ORDER BY file_name;
 -- two different judgement inputs, and only a count taken here tells them apart --
 -- the readable list has already filtered away the evidence of its own gap.
 --
--- `expires_at <= now()` counts as unreadable even though nothing sweeps run
--- outputs yet, so the bytes are probably still in the store. That direction is
--- deliberate: the column is the platform's own statement that it may no longer
--- have the file, and an evaluation saying "I could not rely on this" when it
--- could have is safer than the reverse. The day a sweeper exists this predicate
--- stops over-reporting on its own.
+-- `expires_at <= now()` counts as unreadable. When this was written that was a
+-- deliberate over-report — nothing swept run outputs, so the bytes were probably
+-- still there, and an evaluation saying "I could not rely on this" when it could
+-- have was the safer direction. `maintenance purge-run-artifacts` now removes
+-- exactly these bytes (reconcile.sql ListRunOutputsPastRetention), so the
+-- predicate no longer over-reports: it names the rows whose object is gone or is
+-- one sweep away from being gone.
 SELECT
   count(*) FILTER (WHERE deleted_at IS NOT NULL)::bigint AS deleted,
   count(*) FILTER (WHERE deleted_at IS NULL

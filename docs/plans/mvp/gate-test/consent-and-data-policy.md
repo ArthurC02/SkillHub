@@ -113,7 +113,7 @@
 | 逐字稿與觀察紀錄（A-3／A-5） | ⬜⬜（**建議：閘門結論（D+10）後 12 個月**，且**去識別化後保留**） | 重測與結論覆核需要 |
 | 篩選問卷（A-6） | ⬜⬜（**建議：名單確定後刪除未錄取者的答案**） | 最小化 |
 | 上傳的 Dataset（B-4） | **90 天**，或使用者隨時自行刪除 | PDM-006（**此列尚未有對應的環境變數，仍是提案值**） |
-| Run Artifact | **30 天** | PDM-006（**此列尚未有對應的環境變數，仍是提案值**）。**已知後果**：它短於 Trace 的 90 天，第 31～90 天之間重評會拿到空的產出清單，處置見 `03:EVAL-014` |
+| Run Artifact | **30 天**（`maintenance purge-run-artifacts`） | PDM-006（**此列尚未有對應的環境變數，仍是提案值**——期限寫在 `artifacts.expires_at` 欄位上，由 Run 結算時寫入，與 Download Artifact 同一種形狀：讀環境變數的是**建立端**，掃描端只讀欄位。差別是 Download 的建立端有 `DOWNLOAD_ARTIFACT_RETENTION`，Run 的沒有）。**2026-08-25 訂正：在那天之前，這一列承諾的 30 天沒有任何東西在執行。** `reconcile.sql` 的保存期掃描只走 `download_package`，全 repo 沒有任何路徑刪過 `run_output` 的位元組——**與同表稽核事件那一格是同一種事故**（簽的是會消失，跑的是永不刪除），而且這一類資料是使用者自己產生、沒得選的。同日補上 `ListRunOutputsPastRetention` 與 `maintenance purge-run-artifacts`，物件與資料列的順序與 Download 那條共用同一份實作。<br>**已知後果（仍然成立）**：它短於 Trace 的 90 天，第 31～90 天之間重評會拿到空的產出清單，處置見 `03:EVAL-014`。該關係現在由 `devctl automation-check` 的 `retention-floor` 釘住：缺口不能長大、不能移動，也不能在沒有刪掉宣告的情況下被悄悄補上 |
 | Download Artifact（打包產物） | **30 天** | **2026-08-23 追認值**（`DOWNLOAD_ARTIFACT_RETENTION=720h`），**不是 PDM-006 提案的 90 天**。同日先訂為 7 天再修訂——7 天短於這場 14 天的研究，受測者會在研究途中失去自己的套件（`02:NFR-002a` 第 1 條）。打包是冪等的，過期後可重打 |
 | Trace 明細事件（B-6） | **90 天**，按月分割 `DROP PARTITION` | **2026-08-23 追認值**（`TRACE_RETENTION=2160h`），與 PDM-006 提案一致 |
 | Run metadata、狀態轉換、Evaluation 結果（B-3） | **永久**（去識別化後） | PDM-006；跨季度指標需要 |

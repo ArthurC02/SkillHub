@@ -101,6 +101,11 @@ queries:
   ListArtifactsClaimingObject: packaging
   ListDatasetsClaimingObject: testlab
   MarkDatasetObjectLost: testlab
+  # 同一張 artifacts 表的另一半（kind='run_output'）是 run 的。所以保存期掃描
+  # 是「兩條各自有 owner 的敘述」而不是「一條放寬 predicate」——放寬會讓
+  # packaging 的 UPDATE 寫到 run 的列，正是本檔要擋的跨 context write。
+  ListRunOutputsPastRetention: run
+  MarkRunOutputPurged: run
 
   # runs.sql：Outbox 表與 run 同檔（同交易寫入），但表是 outbox 的。
   InsertOutboxEvent: outbox

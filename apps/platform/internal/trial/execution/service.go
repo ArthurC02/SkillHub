@@ -569,7 +569,13 @@ func (s *Service) Artifacts(
 // The row is soft-deleted and the object removed after the commit, the order
 // DeleteDownload uses and for the same reason: object storage has no rollback, so
 // removing bytes a live row still points at is the failure that cannot be
-// repaired, while an orphan object is swept by retention.
+// repaired, while an orphan object costs storage and nothing else.
+//
+// This path owns the object of a deleted row outright. The retention sweep
+// (ExpiredArtifactCandidates) skips `deleted_at IS NOT NULL` on purpose: the
+// shared-key count below is what stops a delete taking a sibling row's bytes,
+// and the sweep does not have it. So a Remove that fails here leaves bytes
+// behind until the account purge lists the key — logged, not retried.
 func (s *Service) DeleteArtifact(
 	ctx context.Context, ws identity.Workspace, runID, artifactID pgtype.UUID,
 ) error {
@@ -618,10 +624,11 @@ func (s *Service) DeleteArtifact(
 		}
 		return nil
 	}
-	// Best effort: the row is gone either way, Remove is idempotent, and the
-	// retention sweep reaches the same key.
+	// Best effort: the row is gone either way and Remove is idempotent. Nothing
+	// retries it — the retention sweep does not read deleted rows — so the bytes
+	// wait for the account purge, which lists every key regardless of deleted_at.
 	if err := s.Store.Remove(ctx, row.ObjectKey); err != nil {
-		slog.Warn("run artifact object not removed; the retention sweep will retry",
+		slog.Warn("run artifact object not removed; the row is deleted and the bytes remain until the account purge",
 			"object_key", row.ObjectKey, "error", err)
 	}
 	return nil

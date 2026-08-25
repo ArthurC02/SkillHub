@@ -6,7 +6,10 @@
 //   - Retention. A download package past its expiry should not still be sitting
 //     in the bucket. The sweep removes the bytes and marks the row purged; the
 //     row itself stays readable, because "this expired" is a different answer to
-//     02:WS-002 than "this never existed" (0028).
+//     02:WS-002 than "this never existed" (0028). Run outputs get the same
+//     treatment from the same code — PurgeExpired — but driven by
+//     `maintenance purge-run-artifacts`, because `artifacts` has two owner
+//     contexts and neither may write the other's rows.
 //   - Existence. `RunInputsStillAvailable` answers from the platform's own
 //     deletion and expiry columns and never probes storage, which makes it an
 //     optimistic upper bound: the column says the file is there, the object is
@@ -148,40 +151,65 @@ func (s *Service) Sweep(ctx context.Context) error {
 	return s.publishGauge(ctx)
 }
 
-// purgeExpired is SEC-006's retention half for download packages: the bytes go,
-// the row stays and says it expired.
+// purgeExpired is SEC-006's retention half for download packages.
+func (s *Service) purgeExpired(ctx context.Context) error {
+	_, err := PurgeExpired(ctx, s.Pool, s.Store, s.ListExpiredArtifacts, s.RecordArtifactPurged, batch)
+	return err
+}
+
+// PurgeExpired is SEC-006's retention half for one owner's rows: the bytes go,
+// the row stays and says it expired. Returns how many rows were purged.
+//
+// The object is removed first and the row marked second, which is the only order
+// that fails safely: object storage has no rollback, so a row marked purged over
+// bytes that are still there is a lie nothing corrects, while bytes removed
+// under an unmarked row are found again next pass and removed again for free.
 //
 // Idempotent in both halves — Remove on an absent key succeeds and the mark is
 // guarded by its own predicate — so a sweep interrupted anywhere is safe to run
 // again (iron rule 9).
-func (s *Service) purgeExpired(ctx context.Context) error {
-	rows, err := s.ListExpiredArtifacts(ctx, batch)
-	if err != nil {
-		return err
+//
+// Exported and parameterised because two owners now need it and neither may
+// touch the other's rows (db/query-owners.yaml): the download packages this
+// Service sweeps hourly, and the run outputs `maintenance purge-run-artifacts`
+// sweeps on the deployment's cron. One implementation of the ordering above,
+// two worklists — a second one written beside it is where the two would drift.
+func PurgeExpired(
+	ctx context.Context, pool *pgxpool.Pool, store ObjectStore,
+	list ListFunc, mark MarkFunc, limit int32,
+) (int, error) {
+	if pool == nil || store == nil || list == nil || mark == nil {
+		return 0, errors.New("objreconcile: retention sweep is missing its pool, store or owner functions")
 	}
+	rows, err := list(ctx, limit)
+	if err != nil {
+		return 0, err
+	}
+	purged := 0
 	for _, row := range rows {
-		if err := s.Store.Remove(ctx, row.ObjectKey); err != nil {
-			// Leave the row unmarked: next hour tries the same key again. Marking
-			// it here would be recording a deletion that did not happen.
-			slog.Warn("expired download object not removed; will retry",
+		if err := store.Remove(ctx, row.ObjectKey); err != nil {
+			// Leave the row unmarked: the next pass tries the same key again.
+			// Marking it here would be recording a deletion that did not happen.
+			slog.Warn("expired object not removed; will retry",
 				"artifact_id", pgconv.UUIDString(row.ID), "error", err)
 			continue
 		}
-		if err := s.markExpired(ctx, row.ID); err != nil {
-			return err
+		if err := markPurged(ctx, pool, mark, row.ID); err != nil {
+			return purged, err
 		}
-		slog.Info("download artifact purged at retention", "artifact_id", pgconv.UUIDString(row.ID))
+		purged++
+		slog.Info("artifact purged at retention", "artifact_id", pgconv.UUIDString(row.ID))
 	}
-	return nil
+	return purged, nil
 }
 
-func (s *Service) markExpired(ctx context.Context, artifactID pgtype.UUID) error {
-	tx, err := s.Pool.Begin(ctx)
+func markPurged(ctx context.Context, pool *pgxpool.Pool, mark MarkFunc, artifactID pgtype.UUID) error {
+	tx, err := pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if err := s.RecordArtifactPurged(ctx, tx, artifactID); err != nil {
+	if err := mark(ctx, tx, artifactID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)

@@ -23,6 +23,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
@@ -824,4 +825,123 @@ type labelledJSON struct {
 	Value string `json:"value"`
 	Label string `json:"label"`
 	Note  string `json:"note"`
+}
+
+// --- retention (SEC-006, PDM-006 §6) ------------------------------------------
+
+// purgeRunOutputs runs the sweep behind `maintenance purge-run-artifacts`, wired
+// the way that subcommand wires it: run owns both the worklist and the row
+// write, because `artifacts` has two owner contexts and neither may write the
+// other's rows (ADR-033). Only the object-then-row ordering is shared with the
+// download half.
+func purgeRunOutputs(t *testing.T, pool *pgxpool.Pool, store objreconcile.ObjectStore) int {
+	t.Helper()
+	svc := &run.Service{Pool: pool}
+	n, err := objreconcile.PurgeExpired(context.Background(), pool, store,
+		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+			rows, err := svc.ExpiredArtifactCandidates(ctx, limit)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]objreconcile.Candidate, len(rows))
+			for i, row := range rows {
+				out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
+			}
+			return out, nil
+		},
+		svc.MarkRunOutputPurged, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+// seedRunOutput writes one run-output row with a chosen expiry and puts bytes
+// behind it. Straight into the table because the only producer of these rows is
+// a settling run, and a test that had to settle three runs to get three
+// artifacts would be testing the driver instead of the sweep.
+func seedRunOutput(
+	t *testing.T, pool *pgxpool.Pool, a *api, workspaceID, runID, fileName string,
+	expiresInHours int, deleted bool,
+) (pgtype.UUID, string) {
+	t.Helper()
+	key := "runs/" + runID + "/" + fileName
+	a.packages[key] = []byte("output bytes for " + fileName)
+	var deletedAt *time.Time
+	if deleted {
+		now := time.Now()
+		deletedAt = &now
+	}
+	var id pgtype.UUID
+	if err := pool.QueryRow(context.Background(), `
+		INSERT INTO artifacts (
+			workspace_id, run_id, kind, file_name, content_type, size_bytes,
+			content_hash, object_key, expires_at, deleted_at
+		) VALUES ($1, $2, 'run_output', $3, 'application/octet-stream', 12,
+		          'sha256-' || $3, $4, now() + make_interval(hours => $5), $6)
+		RETURNING id`,
+		mustUUID(t, workspaceID), mustUUID(t, runID), fileName, key,
+		expiresInHours, deletedAt,
+	).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return id, key
+}
+
+// PDM-006 §6 and the consent document §3 both tell a beta participant a Run
+// output is kept 30 days. Before this sweep, "expired" was a value in a column
+// and nothing else — the bytes stayed forever, on the one data class the
+// participant did not choose to upload.
+//
+// Three rows, because the two mistakes this sweep can make are opposite ones and
+// only the third row catches the second. Expired: bytes go, row stays, so WS-004
+// can still say "this expired" rather than "this never existed". Deleted: the
+// owner's own delete already dealt with the object, behind a shared-key count
+// this sweep does not have, so the sweep must not touch it. Live: inside its
+// window, and a sweep that took it would be deleting evidence a run is still
+// being judged on.
+func TestExpiredRunOutputsLoseTheirBytesAndNothingInsideItsWindowDoes(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "retainer")
+	runID := f.start(t).RunID
+
+	expired, expiredKey := seedRunOutput(t, pool, a, f.workspaceID, runID, "expired.txt", -24, false)
+	deletedID, deletedKey := seedRunOutput(t, pool, a, f.workspaceID, runID, "deleted.txt", -48, true)
+	liveID, liveKey := seedRunOutput(t, pool, a, f.workspaceID, runID, "live.txt", 24, false)
+
+	if n := purgeRunOutputs(t, pool, a.packages); n != 1 {
+		t.Fatalf("the sweep purged %d artifacts, want exactly the expired one", n)
+	}
+
+	if _, ok := a.packages[expiredKey]; ok {
+		t.Error("the expired object survived the sweep")
+	}
+	if n := countRows(t, pool,
+		"SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NOT NULL AND deleted_at IS NULL",
+		expired); n != 1 {
+		t.Error("the expired row was not marked purged, or it left the history")
+	}
+
+	if _, ok := a.packages[deletedKey]; !ok {
+		t.Error("the sweep removed the object of a row the user deleted; that object is DeleteArtifact's")
+	}
+	if _, ok := a.packages[liveKey]; !ok {
+		t.Error("the sweep removed an object still inside its retention window")
+	}
+	for name, id := range map[string]pgtype.UUID{"deleted": deletedID, "live": liveID} {
+		if n := countRows(t, pool,
+			"SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NULL", id); n != 1 {
+			t.Errorf("the %s row was marked purged; the sweep must not reach it", name)
+		}
+	}
+
+	// Iron rule 9: a second pass finds nothing left to do, and does not fail
+	// trying to remove an object that is already gone.
+	if n := purgeRunOutputs(t, pool, a.packages); n != 0 {
+		t.Errorf("the second sweep purged %d artifacts, want 0", n)
+	}
+	if _, ok := a.packages[liveKey]; !ok {
+		t.Error("the second sweep took the live object")
+	}
 }

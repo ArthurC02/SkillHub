@@ -14,10 +14,12 @@
 -- The retention worklist: download packages whose expiry has passed and whose
 -- bytes are still there. Bounded, because a sweep is not a migration.
 --
--- Only download packages. Run outputs carry their own expiry (0004: 30 days) and
--- nothing sweeps them yet; widening this predicate is how that gets fixed, but
--- doing it here would mean deleting run evidence as a side effect of shipping
--- the download surface.
+-- Only download packages, and it stays that way. Run outputs live in the same
+-- physical table but belong to the `run` context, and one statement cannot have
+-- two owners: widening this predicate would make packaging's read return run's
+-- rows and packaging's UPDATE write them, which is the cross-context write
+-- db/query-owners.yaml exists to refuse. ListRunOutputsPastRetention below is
+-- the same worklist for the other owner.
 SELECT id, workspace_id, object_key FROM artifacts
 WHERE kind = 'download_package'
   AND expires_at <= now()
@@ -31,6 +33,42 @@ LIMIT $1;
 -- is what lets the whole sweep be re-run safely (iron rule 9).
 UPDATE artifacts SET purged_at = now()
 WHERE id = $1 AND purged_at IS NULL;
+
+-- name: ListRunOutputsPastRetention :many
+-- The same worklist for run's half of `artifacts` (PDM-006 §6, consent §3: 30
+-- days). Deliberately a second statement rather than a wider predicate on the
+-- one above — see that comment for why the owner split forces it.
+--
+-- The cutoff is the row's own `expires_at` and never a window handed in by the
+-- caller. That column is what InsertRunArtifact wrote, what
+-- ListReadableRunArtifacts serves from and what CountUnreadableRunArtifacts
+-- counts against; a sweep taking its deadline from somewhere else would be a
+-- second definition of the same date, and the first thing a mismatch does is
+-- delete rows another statement still calls readable.
+--
+-- `deleted_at IS NULL` for the reason the download sweep has it, plus one that
+-- is specific to run outputs: the user's own delete already removed the object,
+-- and it did so behind a shared-key count this sweep does not have. Sweeping a
+-- deleted row would be removing bytes with that guard switched off.
+--
+-- Rows CAN share an object_key — one attempt's manifest is many rows over one
+-- archive — but they were written by one settle and expire together, so the pass
+-- that removes the object is the pass that marks all of them.
+SELECT id, workspace_id, object_key FROM artifacts
+WHERE kind = 'run_output'
+  AND expires_at <= now()
+  AND purged_at IS NULL
+  AND deleted_at IS NULL
+ORDER BY expires_at
+LIMIT $1;
+
+-- name: MarkRunOutputPurged :exec
+-- run's own copy of MarkArtifactPurged, because that one is packaging's and a
+-- cross-context write is refused. `kind = 'run_output'` is in the predicate for
+-- the reason SoftDeleteRunArtifact has it: a statement that could reach any kind
+-- is a statement that could destroy the wrong one. Idempotent by predicate.
+UPDATE artifacts SET purged_at = now()
+WHERE id = $1 AND kind = 'run_output' AND purged_at IS NULL;
 
 -- name: ListArtifactsClaimingObject :many
 -- What the download surface currently promises is downloadable. Anything the

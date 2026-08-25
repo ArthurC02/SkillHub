@@ -14,6 +14,11 @@
 //	                               in the default partition. Needs DATABASE_URL.
 //	maintenance purge-audit        PDM-006 6: remove audit events older than
 //	                               AUDIT_RETENTION. Needs DATABASE_URL.
+//	maintenance purge-run-artifacts
+//	                               PDM-006 6 / SEC-006: remove the bytes behind
+//	                               Run outputs whose expires_at has passed and
+//	                               mark the rows purged. Needs DATABASE_URL and
+//	                               object storage.
 //	maintenance check-sources      INGEST-010: probe recorded import source URLs
 //	                               and mark the ones that no longer resolve.
 //	                               Needs DATABASE_URL and network egress.
@@ -25,6 +30,17 @@
 //
 // PURGE_GRACE (Go duration, default 720h) and MAINTENANCE_BATCH (default 100)
 // tune one run. A shortened grace applies to requests already in flight.
+//
+// purge-run-artifacts is the one retention job here that reads no window at all,
+// and that is not an omission. The other three sweep tables with no per-row
+// deadline, so the window has to be handed in and "unset" honestly means nobody
+// decided. A Run output carries its own `expires_at`, written when the run
+// settled and already read back by ListReadableRunArtifacts and
+// CountUnreadableRunArtifacts; a window from the environment would be a second
+// definition of the same date, and the first thing a mismatch does is delete
+// rows another statement still calls readable. Same shape as the download
+// package sweep: DOWNLOAD_ARTIFACT_RETENTION is read where the row is created,
+// never where it is swept.
 //
 // TRACE_RETENTION, ANALYTICS_RETENTION and AUDIT_RETENTION have no defaults on
 // purpose: all three are PDM-006 proposals that have not been ratified, and a
@@ -61,6 +77,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/partition"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -73,7 +90,8 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		slog.Error("usage: maintenance purge-accounts|purge-analytics|check-sources|rotate-partitions")
+		slog.Error("usage: maintenance purge-accounts|purge-analytics|purge-audit|" +
+			"purge-run-artifacts|check-sources|rotate-partitions")
 		os.Exit(2)
 	}
 	ctx := context.Background()
@@ -93,6 +111,8 @@ func main() {
 		err = purgeAnalytics(ctx, pool)
 	case "purge-audit":
 		err = purgeAudit(ctx, pool)
+	case "purge-run-artifacts":
+		err = purgeRunArtifacts(ctx, pool)
 	case "rotate-partitions":
 		err = rotatePartitions(ctx, pool)
 	default:
@@ -163,6 +183,50 @@ func purgeAudit(ctx context.Context, pool *pgxpool.Pool) error {
 	if err == nil {
 		slog.Info("audit purge complete", "events_removed", n)
 	}
+	return err
+}
+
+// purgeRunArtifacts is SEC-006's retention half for Run outputs: the bytes of an
+// expired output go, the row stays and says it expired. PDM-006 §6 and the
+// consent document §3 both tell a beta participant 30 days; until this
+// subcommand existed the number lived only in a column nothing acted on — the
+// same shape of promise-without-a-sweeper that purge-audit closed on the audit
+// table, found the same way.
+//
+// This subcommand's composition root. The worklist and the row write are run's,
+// because `artifacts` has two owner contexts and neither may write the other's
+// rows (ADR-033); the object-then-row ordering is the generic sweep's, shared
+// with the download package half rather than written a second time here.
+//
+// Not folded into the hourly objreconcile sweep in cmd/worker, which already
+// does the download half: that Service is packaging's and testlab's by
+// construction, and a run-owned worklist bolted onto it would be a third
+// context's rows reached through their injection points. A cron subcommand is
+// also what the other three retention sweeps are.
+func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
+	store, err := objstore.FromEnv()
+	if err != nil {
+		return err
+	}
+	svc := &run.Service{Pool: pool}
+	n, err := objreconcile.PurgeExpired(ctx, pool, store,
+		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+			rows, err := svc.ExpiredArtifactCandidates(ctx, limit)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]objreconcile.Candidate, len(rows))
+			for i, row := range rows {
+				out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
+			}
+			return out, nil
+		},
+		svc.MarkRunOutputPurged, batch())
+	// Logged before the error is dealt with, like purgeAccounts: a pass that
+	// failed part way still purged the rest, and the count is what tells an
+	// operator which case this was. Bounded by MAINTENANCE_BATCH, so a backlog
+	// drains over several runs — a sweep is not a migration.
+	slog.Info("run artifact purge complete", "artifacts_purged", n)
 	return err
 }
 
