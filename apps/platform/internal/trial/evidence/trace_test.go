@@ -351,7 +351,7 @@ func TestEventsSortByTheInstantAndNotItsFormattedString(t *testing.T) {
 			// Guard the fixture: if these strings ever stop disagreeing with the
 			// instants, this test is measuring nothing and should be deleted
 			// rather than left green.
-			if !(p.earlier.Format(time.RFC3339Nano) > p.later.Format(time.RFC3339Nano)) {
+			if p.earlier.Format(time.RFC3339Nano) <= p.later.Format(time.RFC3339Nano) {
 				t.Fatalf("fixture no longer disagrees: %q vs %q",
 					p.earlier.Format(time.RFC3339Nano), p.later.Format(time.RFC3339Nano))
 			}
