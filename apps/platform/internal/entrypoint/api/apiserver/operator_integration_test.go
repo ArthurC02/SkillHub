@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -379,5 +380,68 @@ func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
 	}
 	if got := current(); got != "blocked" {
 		t.Fatalf("an unexplained verdict changed the row anyway: %q", got)
+	}
+}
+
+// The operator handlers' own session check, exercised the way RequireOperator
+// cannot exercise it: each handler is called directly, with no session in the
+// request context. That is the state a wrapper weakened to RequireSession would
+// leave behind — and the state a seventh operator route mounted without a
+// wrapper would be in from its first day.
+//
+// Until 2026-08-25 five of the six took `user, _` and carried on with a zero
+// UUID: the write went through and 02:SEC-011's 「誰做的」 was answered with a user
+// that does not exist, which is worse than refusing. The sixth read the fleet's
+// dispatch state without looking at the session at all. The matrix test next
+// door promises the reader this second line of defence exists
+// (authz_matrix_integration_test.go); this is the test that makes the promise
+// true.
+//
+// 404 and not 401: the second check must not disclose the endpoint the first one
+// hides.
+func TestOperatorHandlersRefuseWithoutAnOperatorSession(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	curator := a.login(t, "curator-operator-unwrapped")
+	markCatalog(t, pool, curator.workspaceID)
+	// A real skill: every restriction handler parses the path id before it looks
+	// at the session, so a made-up id would answer 404 for the wrong reason and
+	// the assertion below would hold with the fix reverted.
+	held := importPackage(t, pool, a.packages, curator, "vorpal-unwrapped-writer", false)
+
+	d := a.app.Deps
+	for _, tc := range []struct {
+		name    string
+		method  string
+		body    string
+		handler http.HandlerFunc
+	}{
+		{"SetRestriction", http.MethodPut, `{"reason":"license-review","note":"n"}`, d.Search.SetRestriction},
+		{"ClearRestriction", http.MethodDelete, `{"note":"n"}`, d.Search.ClearRestriction},
+		{"SetRedistribution", http.MethodPut, `{"value":"blocked","note":"n"}`, d.Search.SetRedistribution},
+		{"Halts", http.MethodGet, "", d.Runs.Halts},
+		{"DeclareHalt", http.MethodPut, `{"note":"n"}`, d.Runs.DeclareHalt},
+		{"LiftHalt", http.MethodDelete, `{"note":"n"}`, d.Runs.LiftHalt},
+	} {
+		req := httptest.NewRequest(tc.method, "/admin/skills/"+held+"/x", strings.NewReader(tc.body))
+		req.SetPathValue("id", held)
+		rec := httptest.NewRecorder()
+		tc.handler(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("%s with no session in the context: got %d, want 404 (%s)",
+				tc.name, rec.Code, strings.TrimSpace(rec.Body.String()))
+		}
+	}
+
+	// And the refusal really refused: an unauthenticated call must not have
+	// changed the gate it was aimed at.
+	if n := countRow(t, pool,
+		"SELECT count(*) FROM skills WHERE id = $1 AND access_restriction IS NOT NULL", mustUUID(t, held)); n != 0 {
+		t.Error("a handler reached without a session changed the hold anyway")
+	}
+	// By this test's own note, not by row count: dispatch_halts keeps lifted rows
+	// on purpose (an incident record), so other tests leave some behind.
+	if n := countRow(t, pool, "SELECT count(*) FROM dispatch_halts WHERE reason = 'n'"); n != 0 {
+		t.Error("a handler reached without a session halted the fleet anyway")
 	}
 }

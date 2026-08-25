@@ -434,10 +434,32 @@ type haltRequest struct {
 	Note     string `json:"note"`
 }
 
+// operatorUser is the dispatch handlers' own check that a session actually
+// reached them — the second line of defence the authz matrix says every private
+// handler has. Until 2026-08-25 the two writes below took `user, _` and carried
+// on with a zero UUID, so a wrapper weakened to RequireSession, or a new
+// operator route mounted without one, would not have refused the halt: it would
+// have stopped the fleet and recorded 02:SEC-011's 「誰做的」 as a user that does
+// not exist. The read did not look at the session at all.
+//
+// 404, the same answer RequireOperator gives everybody else, so the second check
+// does not disclose the endpoint the first one hides (SEC-011 不揭露端點存在).
+func operatorUser(w http.ResponseWriter, r *http.Request) (identity.User, bool) {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return user, false
+	}
+	return user, true
+}
+
 // Halts handles GET /admin/dispatch. 03:SEC-012's whole objection to two switches
 // is that 「現在到底有沒有在派送」 stops having a single answer; this is where that
 // answer is read.
 func (h *Handler) Halts(w http.ResponseWriter, r *http.Request) {
+	if _, ok := operatorUser(w, r); !ok {
+		return
+	}
 	state, err := h.Svc.activeHalts(r.Context())
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "dispatch halt lookup failed")
@@ -482,7 +504,10 @@ func (h *Handler) DeclareHalt(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	user, _ := identity.SessionUser(r.Context())
+	user, ok := operatorUser(w, r)
+	if !ok {
+		return
+	}
 	halt, err := h.Svc.DeclareHalt(r.Context(), body.Provider, HaltSourceIncident, body.Note, user.ID)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "dispatch halt failed")
@@ -511,7 +536,10 @@ func (h *Handler) LiftHalt(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	user, _ := identity.SessionUser(r.Context())
+	user, ok := operatorUser(w, r)
+	if !ok {
+		return
+	}
 	if _, _, err := h.Svc.LiftHalt(r.Context(), body.Provider, body.Note, user.ID,
 		[]string{HaltSourceIncident, HaltSourceOrphanThreshold}); err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "dispatch resume failed")

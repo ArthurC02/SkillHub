@@ -1159,3 +1159,48 @@ func hasDisclosureCode(list []struct{ Code, Label, Note string }, code string) b
 	}
 	return false
 }
+
+// `limit` is the schema both search endpoints declare and, until 2026-08-25, the
+// one violation of it they swallowed: `limit=0`, `limit=500` and `limit=abc` all
+// fell back to 20 in the same handler that answers 400 to an over-long `q` and to
+// an unusable filter value. One handler, two answers to "this violates the
+// schema".
+//
+// The cost was not pedantry. A caller who asked for 500 to page through the
+// catalogue got 20 rows and truncated=true, and read that as "the catalogue holds
+// a bit over 20" — ADR-042 決策 3 wants a truncation to declare itself, and what
+// declared itself there was a ceiling nobody asked for.
+//
+// Both endpoints, because both parse the same parameter from the same helper: a
+// fix on the public one alone would leave the private one answering the old way.
+func TestSearchLimitOutsideTheSchemaIsRefused(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "owner-search-limit")
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+
+	for _, ep := range []struct {
+		name string
+		path string
+		cl   *client
+	}{
+		{"public", "/api/skills/search?q=uffish", anon},
+		{"workspace", "/skills/search?q=uffish", owner},
+	} {
+		// minimum: 1, maximum: 100 are inclusive, and no `limit` at all is the
+		// declared default rather than an error.
+		for _, ok := range []string{"", "&limit=1", "&limit=100", "&limit=20"} {
+			if got := ep.cl.status(t, http.MethodGet, ep.path+ok); got != http.StatusOK {
+				t.Errorf("%s search%q: got %d, want 200", ep.name, ok, got)
+			}
+		}
+		// Below the minimum, above the maximum, not a number, and present but
+		// empty — `allowEmptyValue` is not set, so the last one is not an integer
+		// the schema describes either.
+		for _, bad := range []string{"&limit=0", "&limit=-1", "&limit=101", "&limit=500", "&limit=abc", "&limit=1.5", "&limit="} {
+			if got := ep.cl.status(t, http.MethodGet, ep.path+bad); got != http.StatusBadRequest {
+				t.Errorf("%s search%q: got %d, want 400", ep.name, bad, got)
+			}
+		}
+	}
+}

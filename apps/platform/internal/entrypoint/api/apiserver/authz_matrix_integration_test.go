@@ -202,9 +202,19 @@ func (tc anonCase) request() (method, path string) {
 // starts answering anonymous callers.
 //
 // It does not distinguish "wrapped in RequireSession" from "not wrapped": each
-// private handler re-checks SessionUser itself and returns the same 401, which is
-// deliberate defence in depth, not redundancy. The boundary is the assertion here,
-// not the mechanism that enforces it.
+// private handler re-checks SessionUser itself and refuses on its own, which is
+// deliberate defence in depth, not redundancy. The six operator handlers refuse
+// with 404 rather than 401 - RequireOperator's vocabulary, so the second check
+// does not disclose the endpoint the first one hides - and they are asserted
+// separately in TestOperatorHandlersRefuseWithoutAnOperatorSession, because a
+// wrapper is the only thing this table can reach them through.
+//
+// That sentence was false for those six until 2026-08-25: they took `user, _` and
+// wrote a zero UUID into audit_events.actor_user_id. A weakened wrapper would not
+// have produced a refusal or even an error - the mutation returned 200 and 204 -
+// but a completed write with a false answer to SEC-011's 「誰做的」.
+//
+// The boundary is the assertion here, not the mechanism that enforces it.
 func TestAnonymousCallersGetThePublicSurfaceAndNothingElse(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

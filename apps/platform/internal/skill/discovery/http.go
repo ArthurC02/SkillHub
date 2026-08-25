@@ -298,6 +298,34 @@ var unavailableFilters = map[string]string{
 	"mcp":      "是否需要 MCP 沒有任何來源資料:靜態掃描與 manifest 都沒有這項訊號,遠端 MCP 也不在 MVP 首發。",
 }
 
+// parseLimit reads the `limit` both search endpoints declare identically in
+// public.yaml: `{ type: integer, minimum: 1, maximum: 100, default: 20 }`.
+// Absent is the default; present is the schema or it is a 400.
+//
+// It used to be the one schema violation these handlers swallowed: `limit=0`,
+// `limit=500` and `limit=abc` all fell back to 20, in the same function that
+// answers 400 to an over-long `q` and to an unusable filter. What that cost the
+// caller is not pedantry — someone asking for 500 got 20 rows and
+// `truncated=true`, and read it as "the catalogue holds a bit over 20". ADR-042
+// 決策 3 requires a truncation to declare itself, and the thing declaring itself
+// there was a ceiling the caller never asked for (M1/M5 audit, 2026-08-25).
+//
+// Both bounds are inclusive, which is what JSON Schema's minimum/maximum mean:
+// 1 and 100 are accepted, 0 and 101 are not. `limit=` (present, empty) is
+// refused too — `allowEmptyValue` is not set on the parameter, so an empty
+// string is not one of the integers the schema describes.
+func parseLimit(r *http.Request) (int32, error) {
+	q := r.URL.Query()
+	if !q.Has("limit") {
+		return 20, nil
+	}
+	n, err := strconv.Atoi(q.Get("limit"))
+	if err != nil || n < 1 || n > 100 {
+		return 0, errors.New("query parameter limit must be a whole number between 1 and 100")
+	}
+	return int32(n), nil
+}
+
 // parseFilters reads the DISC-003 query parameters. An unrecognised value is an
 // error rather than a silent nil, for the same reason unavailableFilters is:
 // the caller has to be able to trust that a filtered page was filtered.
@@ -418,6 +446,13 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	// Same position and the same reason: a `limit` outside the schema is refused
+	// whatever the query says.
+	limit, err := parseLimit(r)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	// DISC-001: blank/incomprehensible queries don't create search.
 	if q == "" || !isComprehensible(q) {
@@ -443,13 +478,6 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 			Limit: 0,
 		})
 		return
-	}
-
-	limit := int32(20)
-	if v := r.URL.Query().Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 100 {
-			limit = int32(n)
-		}
 	}
 
 	out, err := h.Svc.Search(r.Context(), q, limit, filters)
@@ -684,11 +712,10 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "query parameter q is required")
 		return
 	}
-	limit := int32(20)
-	if v := r.URL.Query().Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 100 {
-			limit = int32(n)
-		}
+	limit, err := parseLimit(r)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	rows, err := h.Svc.SearchWorkspace(r.Context(), ws.ID, q, limit)

@@ -38,7 +38,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -106,7 +105,10 @@ func (h *Handler) SetRedistribution(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
 		return
 	}
-	user, _ := identity.SessionUser(r.Context())
+	user, ok := operatorUser(w, r)
+	if !ok {
+		return
+	}
 
 	previous, err := h.Svc.SetRedistribution(r.Context(), skillID, user.ID, body.Value, body.Note)
 	var inputErr restrictionInputError

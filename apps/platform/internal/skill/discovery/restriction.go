@@ -97,6 +97,24 @@ func (h *Handler) ClearRestriction(w http.ResponseWriter, r *http.Request) {
 	h.changeRestriction(w, r, nil, body.Note)
 }
 
+// operatorUser is the operator handlers' own check that a session actually
+// reached them — the second line of defence the authz matrix says every private
+// handler has. Until 2026-08-25 these handlers took `user, _` and carried on
+// with a zero UUID, so a wrapper weakened to RequireSession, or a new operator
+// route mounted without one, would not have refused the write: it would have
+// performed it and recorded 02:SEC-011's 「誰做的」 as a user that does not exist.
+//
+// 404, the same answer RequireOperator gives everybody else, so the second check
+// does not disclose the endpoint the first one hides (SEC-011 不揭露端點存在).
+func operatorUser(w http.ResponseWriter, r *http.Request) (identity.User, bool) {
+	user, ok := identity.SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return user, false
+	}
+	return user, true
+}
+
 // changeRestriction is the shared handler half: decode the route identity and
 // map the application result onto HTTP. The Service owns every restriction
 // invariant, including for callers that do not enter through HTTP.
@@ -106,7 +124,10 @@ func (h *Handler) changeRestriction(w http.ResponseWriter, r *http.Request, reas
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
 		return
 	}
-	user, _ := identity.SessionUser(r.Context())
+	user, ok := operatorUser(w, r)
+	if !ok {
+		return
+	}
 
 	var (
 		previous *string

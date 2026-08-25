@@ -639,7 +639,14 @@ paths:
             left that list when 0022 gave it per-row data.) Those are
             rejected rather than ignored: answering a filtered request with an
             unfiltered page would present the whole catalog as the filtered
-            subset. The error message names the dimension and why it is
+            subset. Also a `limit` outside its schema: it is
+            `minimum: 1, maximum: 100` above and both bounds are inclusive, so
+            `0`, `101`, a non-integer and a present-but-empty `limit=` are
+            refused rather than quietly replaced by the default 20. A caller who
+            asked for 500 and got 20 rows with `truncated=true` would read that
+            as the size of the catalogue, which is a ceiling they never asked for
+            declaring itself as a result count (ADR-042 決策 3). The error
+            message names the dimension and why it is
             unavailable, and the UI shows the same reason on a disabled control
             rather than offering a filter that does nothing.
           content:
@@ -825,7 +832,12 @@ paths:
                     items:
                       $ref: "#/components/schemas/SearchHit"
         "400":
-          description: Missing query.
+          description: |
+            A missing `q`, or a `limit` outside its schema —
+            `minimum: 1, maximum: 100`, both inclusive — which is refused
+            rather than replaced by the default 20. The same swallow lived on
+            both search endpoints and was fixed on both: leaving one would have
+            left an identical hole one route over.
           content:
             application/json:
               schema:
