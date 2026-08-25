@@ -130,11 +130,33 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"deleted":           true,
 		"versions_retained": res.VersionsRetained,
-		"note": "skill removed from your workspace, lists, and search; " +
-			"version snapshots are retained for the 30-day grace period, then purged; " +
-			"shared package objects referenced by forks are unaffected",
+		"note":              deletionNote,
 	})
 }
+
+// deletionNote is what the user is told, verbatim, at the moment their skill
+// goes away. It is a const so that a test can hold it to 02 §2.2 -- 不得顯示
+// 沒被強制的承諾 -- because until 2026-08-25 it did not keep that rule.
+//
+// It used to end "version snapshots are retained for the 30-day grace period,
+// then purged". Nothing purged them. The only hard delete of a skill in this
+// repo is PurgeUnreferencedSkills (purge.go), which takes a workspace id, has no
+// deleted_at predicate, and runs from account deletion alone; a skill deleted on
+// its own keeps deleted_at set and its rows forever. So the one sentence that
+// named a deadline was the one sentence with nothing behind it -- the same shape
+// as the audit-event and run-output rows of the consent table (04 丙-63).
+//
+// The deadline is not restored by writing the purge job, and that is the point:
+// the 30 days come from PDM-006 §6.1, which is still unratified, which is exactly
+// why the numeral was struck from /policy, /workspace/account and the confirm
+// text on /workspace/skills. Those three were scrubbed on the stated grounds
+// that the server's note was "where a grace period gets stated by something
+// that enforces it". It was not. Hard-deleting a user's content on a deadline
+// nobody has signed is worse than keeping it, so the claim goes and the job
+// waits for the signature.
+const deletionNote = "skill removed from your workspace, lists, and search; " +
+	"version snapshots stay frozen and are not removed by this deletion; " +
+	"shared package objects referenced by forks are unaffected"
 
 // Takedown handles POST /skills/{id}/takedown (INGEST-010). The caller must own
 // the workspace the skill lives in; see Service.Takedown for why that is the

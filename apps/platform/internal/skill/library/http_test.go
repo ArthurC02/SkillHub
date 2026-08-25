@@ -77,3 +77,31 @@ func TestVerificationDistinguishesForkFromImport(t *testing.T) {
 		}
 	}
 }
+
+// 02 §2.2: 不得顯示沒被強制的承諾. This one sentence is the whole user-facing
+// statement of what a deletion did, and for its entire life it ended with a
+// deadline -- "retained for the 30-day grace period, then purged" -- that no
+// code in this repo has ever carried out.
+//
+// The assertion is deliberately about the absence, not the presence. A test that
+// only checked the note mentions frozen snapshots would stay green the moment
+// somebody appends the deadline back, and appending it back is exactly the edit
+// that reintroduces the defect. So: if this note ever names a purge or a window
+// again, the purge job has to exist first, and this test has to be changed by
+// the person who wrote it -- which is the point at which they will read why.
+func TestTheDeletionNoteDoesNotPromiseAPurgeNothingPerforms(t *testing.T) {
+	for _, banned := range []string{"purge", "grace", "30-day", "30 day", "days"} {
+		if strings.Contains(strings.ToLower(deletionNote), banned) {
+			t.Errorf("the note claims a deletion deadline (%q) and nothing in this repo enforces one: %q",
+				banned, deletionNote)
+		}
+	}
+	// The other half: stripping the false promise must not leave the user with
+	// less than WS-005 requires, which is the scope of what just happened.
+	for _, required := range []string{"search", "frozen", "forks"} {
+		if !strings.Contains(deletionNote, required) {
+			t.Errorf("the note stopped saying what the deletion covers (%q missing): %q",
+				required, deletionNote)
+		}
+	}
+}

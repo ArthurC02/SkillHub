@@ -49,6 +49,9 @@ vi.mock("@tanstack/react-router", () => ({
   ),
   useParams: () => ({ runId: RUN }),
   useSearch: () => ({}),
+  // /runs/$runId carries `evaluation` and `events` now (資訊架構 §0.1 R4); this
+  // file renders that page for the artifact rows and never navigates.
+  useNavigate: () => () => Promise.resolve(),
 }));
 
 function json(body: unknown, status = 200) {
@@ -499,8 +502,16 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
 
   await act(async () => button("刪除")?.click());
   // 02:WS-002 第 3 條: the scope is on screen before the request, and it names
-  // the grace period and the forks it does not touch.
-  expect(text()).toContain("版本快照會先凍結保留一段期間再清除");
+  // what is kept and the forks it does not touch.
+  //
+  // It used to assert 「先凍結保留一段期間再清除」. That sentence was removed on
+  // 2026-08-25 because nothing clears them: the only hard delete of a skill in
+  // the repo runs from account deletion, so a skill deleted on its own keeps its
+  // rows forever. 02 §2.2 forbids showing a promise nothing enforces, and this
+  // page had already had the 30-day numeral struck for the same reason — the
+  // clause that outlived it was the one with no number in it.
+  expect(text()).toContain("版本快照會凍結保留");
+  expect(text()).not.toContain("再清除");
   expect(text()).toContain("別人 Fork 過的版本");
   expect(calls.some(([, method]) => method === "DELETE")).toBe(false);
 

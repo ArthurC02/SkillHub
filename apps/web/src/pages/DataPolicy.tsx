@@ -135,7 +135,7 @@ export function DataPolicy() {
       <ul className="risk-list">
         <li>
           <Link to="/workspace/skills">我的 Skill</Link>
-          ：刪掉一個 Skill。版本快照會先凍結保留一段期間再清除，誤刪在那之前還有救；別人 Fork
+          ：刪掉一個 Skill。版本快照會凍結保留，不隨這次刪除消失，誤刪還有救；別人 Fork
           過的版本不受影響。
         </li>
         <li>

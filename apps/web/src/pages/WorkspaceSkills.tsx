@@ -246,7 +246,7 @@ export function WorkspaceSkills() {
                           is where a grace period gets stated by something that
                           enforces it.
                         */}
-                        版本快照會先凍結保留一段期間再清除，所以誤刪在那之前還有救； 別人 Fork
+                        版本快照會凍結保留，不隨這次刪除消失，所以誤刪還有救； 別人 Fork
                         過的版本與歷史 Run 引用的內容不受影響——那是他們的溯源鏈，不是你的。
                         已經打包好的下載檔案要另外刪，在下載紀錄那一頁。
                       </>
