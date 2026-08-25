@@ -148,8 +148,8 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
           <span className="note">
             {" "}
             ——估計值，非報價。來源：2026-08-25 對真實閘道生成 10 次的實付分布（最小 US$0.0038、中位
-            US$0.0062、最大 US$0.0110，mini 級模型，皆為單次嘗試）。上緣按最多 {GENERATE_MAX_ATTEMPTS}{" "}
-            次嘗試放寬並上取整，因為 10 次不是一個界。
+            US$0.0062、最大 US$0.0110，mini 級模型，皆為單次嘗試）。上緣按最多{" "}
+            {GENERATE_MAX_ATTEMPTS} 次嘗試放寬並上取整，因為 10 次不是一個界。
             <strong>平台沒有為單次生成設定費用上限</strong>，所以這是估計不是保證。
           </span>
         </dd>
