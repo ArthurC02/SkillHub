@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
 import { EvaluationPanel } from "./pages/RunEvaluation";
-import { EVALUATION_POLL_MAX_404 } from "./api/evaluation";
+import { EVALUATION_POLL_MAX_404, EVALUATION_POLL_MAX_PENDING } from "./api/evaluation";
 import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./api/evaluation";
 
 // 02:EVAL-001 / EVAL-002. Four assertions, one per rule the view exists to keep:
@@ -535,6 +535,56 @@ test("EVAL-001 an old run with no evaluation stops being asked about, and says s
   expect(container.textContent).toContain("未評估");
   expect(container.textContent).toContain("已經停止再查");
   expect(container.textContent).not.toContain("結果會自己出現在這裡");
+});
+
+test("EVAL-001 a judge that never finishes stops being polled, and the promise stops with it", async () => {
+  // The other unbounded poll. A row stuck at `pending` — a worker that died, a
+  // job nobody will retry — was asked for every three seconds until the tab
+  // closed, under 「它會自己完成」. Counted on `dataUpdateCount`, because a pending
+  // read is a success and never moves the `errorUpdateCount` the 404 bound uses.
+  vi.useFakeTimers();
+  let calls = 0;
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+    if (url.includes("/evaluation")) {
+      calls++;
+      return json({ ...evaluation, status: "pending" });
+    }
+    return json({ error: "not found" }, 404);
+  });
+
+  await act(async () => {
+    root = createRoot(container);
+    root.render(
+      <QueryClientProvider client={queryClient}>
+        <EvaluationPanel runId={RUN} runStatus="succeeded" />
+      </QueryClientProvider>,
+    );
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  await act(async () => vi.advanceTimersByTimeAsync(0));
+  expect(calls).toBe(1);
+  expect(container.textContent).toContain("每 3 秒自己查一次");
+
+  // One short of the bound: still asking, still promising.
+  await act(async () => vi.advanceTimersByTimeAsync(3000 * (EVALUATION_POLL_MAX_PENDING - 2)));
+  expect(calls).toBe(EVALUATION_POLL_MAX_PENDING - 1);
+  expect(container.textContent).toContain("每 3 秒自己查一次");
+
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  expect(calls).toBe(EVALUATION_POLL_MAX_PENDING);
+
+  // And it stays there however long the tab is left open.
+  await act(async () => vi.advanceTimersByTimeAsync(3000 * 200));
+  expect(calls).toBe(EVALUATION_POLL_MAX_PENDING);
+
+  // 進行中 is still what the row says — this page just stopped watching it, and
+  // says which of the two stopped.
+  expect(container.textContent).toContain("評估進行中");
+  expect(container.textContent).toContain("已經停止再查");
+  expect(container.textContent).not.toContain("每 3 秒自己查一次");
+  expect(container.textContent).not.toContain("會自己完成");
 });
 
 test("EVAL-002 a re-evaluation landing while the page is open brings the revision switcher with it", async () => {

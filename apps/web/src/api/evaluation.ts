@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, apiFetch } from "./client";
 
 /**
@@ -223,23 +223,67 @@ export function getEvaluation(runId: string, revision?: string) {
 export const EVALUATION_POLL_MAX_404 = 20;
 
 /**
+ * The same bound for the other unbounded case, and deliberately **not** the same
+ * mechanism.
+ *
+ * They cannot share a counter: a `pending` read is a *success*, so it moves
+ * `dataUpdateCount` and never touches the `errorUpdateCount` the 404 branch
+ * counts. They also do not answer the same question — 404 is 「沒有人評過這個
+ * Run」, `pending` is 「有人開始了，而它卡住了」 — and the sentence each one gives
+ * up with is therefore a different sentence.
+ *
+ * 100 × 3s ≈ 五分鐘, taken from the server's own ceiling rather than from a feel:
+ * one attempt of `evaluate_run` is bounded by `judgeTimeout` + `suggestTimeout`
+ * (120s + 120s, apps/platform/internal/trial/improvement), and the second attempt
+ * marks that same revision `failed` instead of judging again. A row still saying
+ * `pending` well past that is a worker that died or a job nobody will retry: the
+ * verdict is not on its way, and asking for it every three seconds until the tab
+ * closes does not bring it.
+ */
+export const EVALUATION_POLL_MAX_PENDING = 100;
+
+function evaluationKey(runId: string, revision?: string) {
+  return ["evaluation", runId, revision ?? "current"];
+}
+
+/**
  * `retry: false` because 404 here means 「未評估」, which no amount of retrying
  * fixes and which the caller renders as a state rather than as a failure.
+ *
+ * Returns `pendingPollStopped` alongside the query because the view has to change
+ * its copy when the pending poll gives up, and nothing on a `UseQueryResult` can
+ * tell it that: `dataUpdateCount` lives on the query's state and is not part of
+ * the observer result, unlike the `errorUpdateCount` the 404 branch reuses. The
+ * spread is load-bearing too — reading every field marks them all tracked, and
+ * without that this component never re-renders at all while polling, because a
+ * `pending` payload is byte-identical every three seconds and query-core notifies
+ * only on tracked props that changed. The copy would then keep promising a
+ * re-check that had already stopped, which is the defect being fixed.
  */
 export function useEvaluation(runId: string, revision?: string, awaitCurrent = false) {
-  return useQuery({
-    queryKey: ["evaluation", runId, revision ?? "current"],
+  const client = useQueryClient();
+  const query = useQuery({
+    queryKey: evaluationKey(runId, revision),
     queryFn: () => getEvaluation(runId, revision),
     enabled: runId.length > 0,
     retry: false,
     refetchInterval: (query) => {
       if (revision || !awaitCurrent) return false;
-      if (query.state.data?.status === "pending") return 3000;
+      if (query.state.data?.status === "pending") {
+        return query.state.dataUpdateCount < EVALUATION_POLL_MAX_PENDING ? 3000 : false;
+      }
       const error = query.state.error;
       if (!(error instanceof ApiError) || error.status !== 404) return false;
       return query.state.errorUpdateCount < EVALUATION_POLL_MAX_404 ? 3000 : false;
     },
   });
+  const pendingPollStopped =
+    !revision &&
+    awaitCurrent &&
+    query.data?.status === "pending" &&
+    (client.getQueryState(evaluationKey(runId, revision))?.dataUpdateCount ?? 0) >=
+      EVALUATION_POLL_MAX_PENDING;
+  return { ...query, pendingPollStopped };
 }
 
 export function useEvaluationRevisions(runId: string) {

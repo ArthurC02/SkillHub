@@ -158,6 +158,22 @@ function DownloadActions({
           // so without this the page kept saying 「還沒有人下載過這個檔案」 about a
           // file the reader had just taken — and DownloadHistory's `enabled` guard
           // reads the same stale 0, so opening the disclosure did not even ask.
+          //
+          // The invalidate and the browser's own fetch race, and the invalidate
+          // can lose. **Decided: it loses, and that is the accepted outcome.**
+          // What a reader sees when it does is one number: 「誰下載過（2）」 on a
+          // file taken three times, correcting itself on the next visit to this
+          // page. Never 「還沒有人下載過」 — that needs a count of zero, and the
+          // losing refetch still overlaps the *previous* download's record.
+          //
+          // The two alternatives both cost more than that. A second refetch after
+          // a delay does not close the race, it shrinks it, and buys that with a
+          // number nobody can derive from anything (this repo has been bitten by
+          // those). Fetching the bytes here and saving a blob does close it, and
+          // pays with the whole file in memory and with the browser's own
+          // download UI — progress, resume, the save dialog — replaced by a page
+          // that appears to hang on a 200MB package. Neither is worth trading for
+          // a count that is briefly one behind.
           onClick={() => void client.invalidateQueries({ queryKey: ["downloads"] })}
         >
           下載
