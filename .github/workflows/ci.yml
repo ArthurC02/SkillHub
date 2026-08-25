@@ -328,12 +328,17 @@ jobs:
       # a runtime was explicitly asked for, which is what stops this step from
       # going green on a daemon that never heard of runsc — the same silent-zero
       # shape as 04 丙-36.
-      # This leg has never passed. It was written in 15a9dd7 and GitHub runs a
-      # push's workflow on the head commit only, so it did not execute then; the
-      # next push that touched this file (b255333) ran it for the first time and
-      # it went red. Until the output below is readable, nobody knows whether
-      # that is a runsc syscall gap -- the recurring cost ADR-015 names -- or
-      # something about the runner.
+      # It went red the first time it ever executed (b255333) and the reading
+      # was neither of the two guesses: not a runsc syscall gap and not the
+      # runner, but a pids ceiling that the sentry's own host threads sit
+      # inside. TestPidsLimitStopsAForkBomb carries that story. Green since.
+      #
+      # This step is where SEC-009 Suite 1's T3 lives (ADR-022 附錄 Part 3 and
+      # §4: Suite 1 on every apps/sandbox change, CI's job). The three
+      # enforcement tests added for C-11, C-12 and C-14 ride it, and they are
+      # behavioural on purpose -- the declarative half was already here and it
+      # reads back the fields the driver asked for, which on runsc is exactly
+      # the reading that came apart above.
       - name: Sandbox driver tests on gVisor
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox driver tests on gVisor' go test ./internal/dockerdrv/... -count=1
         env:

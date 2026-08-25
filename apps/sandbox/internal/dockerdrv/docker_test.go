@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -326,6 +327,137 @@ func TestPidsLimitStopsAForkBomb(t *testing.T) {
 			"reaching guest tasks on this runtime. output:\n%s",
 			spawnAttempts, pidCeiling, out.ExitCode, out.Output)
 	}
+}
+
+// The remaining three of T3's five enforcement behaviours (ADR-022 附錄 Part 3).
+// C-13 and C-15 already have theirs above and below; C-11, C-12 and C-14 had
+// only the declarative half in TestLiveSandboxMeetsTheIsolationBaseline, which
+// reads back the HostConfig fields the driver asked for. Asking is not
+// enforcing, and on runsc the two come apart in exactly the way C-13's comment
+// records: the field was set and the ceiling did not reach guest tasks.
+//
+// Each follows the two-probe discipline C-13 arrived at the hard way -- prove
+// something trivial runs under the same ceiling first, so "the limit did not
+// bite" stays distinguishable from "nothing ran".
+
+// C-11: asking for more memory than the ceiling does not get it, and the node
+// survives it.
+//
+// The ceiling is reached through the /work tmpfs rather than an anonymous
+// allocation, because tmpfs pages are charged to the container's memory cgroup
+// and dd is in busybox, whereas every portable way to allocate anonymous memory
+// from a shell goes through an interpreter whose own overhead is the thing being
+// measured. /work is sized well above the memory ceiling here so that memory is
+// what runs out first -- the mirror fixture in the C-12 test sizes it below, so
+// the tmpfs quota is what runs out first there.
+//
+// Two readings both count as enforced and the test accepts either, because
+// which one appears is a property of the runtime rather than of the control:
+// under runc the OOM killer takes dd and the shell survives to report a
+// non-zero status, and under gVisor the sentry itself can be the process that
+// dies, in which case the workload produces no completion line at all. What
+// must never appear is a completion line with status 0 -- that is a workload
+// that asked for twice its ceiling and was given it.
+func TestMemoryCeilingStopsAWorkloadThatExceedsIt(t *testing.T) {
+	d, _ := newDriver(t)
+
+	req := testRequest(`dd if=/dev/zero of=/work/ok bs=1M count=64 2>/dev/null; echo "completed rc=$?"`)
+	req.ResourceLimits.MemoryBytes = 256 << 20
+	req.ResourceLimits.DiskBytes = 1 << 30 // /work gets 3/4 of it, three times the memory ceiling
+	if _, out := startProbe(t, d, req); !strings.Contains(out.Output, "completed rc=0") {
+		t.Fatalf("a workload writing 64 MiB under a 256 MiB memory ceiling did not complete, "+
+			"so this runtime needs more headroom than that before C-11 can be measured at all. output:\n%s",
+			out.Output)
+	}
+
+	req.Extensions = map[string]any{"dev_cmd": []any{"sh", "-c",
+		`dd if=/dev/zero of=/work/hog bs=1M count=512 2>/dev/null; echo "completed rc=$?"`}}
+	_, out := startProbe(t, d, req)
+	if strings.Contains(out.Output, "completed rc=0") {
+		t.Errorf("a workload wrote 512 MiB into a sandbox with a 256 MiB memory ceiling and reported "+
+			"success: the ceiling is not reaching guest tasks on this runtime (C-11). output:\n%s",
+			out.Output)
+	}
+}
+
+// C-12: the scratch quota refuses the write rather than killing the run.
+//
+// The observable that distinguishes this from C-11 is not the error text --
+// busybox says different things on different runtimes, which is the trap the
+// C-13 comment records -- but the file: a quota that holds caps it at the tmpfs
+// size no matter how much was asked for. The run must also still finish and say
+// so, because ENOSPC is an error the workload is supposed to see and handle. A
+// dead sandbox here would be a different control failing.
+func TestScratchQuotaRefusesAWriteWithoutKillingTheRun(t *testing.T) {
+	d, _ := newDriver(t)
+
+	// testRequest's 64 MiB disk gives /work 48 MiB, three quarters of it.
+	const workBytes = 48 << 20
+
+	req := testRequest(`dd if=/dev/zero of=/work/small bs=1M count=8 2>/dev/null; echo "small rc=$?"`)
+	if _, out := startProbe(t, d, req); !strings.Contains(out.Output, "small rc=0") {
+		t.Fatalf("an 8 MiB write into a %d MiB scratch space failed, so the fixture is wrong and "+
+			"C-12 cannot be measured. output:\n%s", workBytes>>20, out.Output)
+	}
+
+	req.Extensions = map[string]any{"dev_cmd": []any{"sh", "-c",
+		`dd if=/dev/zero of=/work/fill bs=1M count=128 2>/dev/null; echo "fill rc=$?"; echo "size=$(wc -c < /work/fill)"`}}
+	_, out := startProbe(t, d, req)
+	if strings.Contains(out.Output, "fill rc=0") {
+		t.Errorf("a 128 MiB write into a %d MiB scratch space reported success: the quota is not "+
+			"enforced on this runtime (C-12). output:\n%s", workBytes>>20, out.Output)
+	}
+	var size int64
+	if _, err := fmt.Sscanf(sizeLine(out.Output), "size=%d", &size); err != nil {
+		t.Fatalf("the workload did not report the file size, so nothing was measured (C-12). output:\n%s", out.Output)
+	}
+	if size > workBytes {
+		t.Errorf("the file reached %d bytes in a %d byte scratch space: the quota did not hold (C-12)", size, workBytes)
+	}
+}
+
+// C-14: the open-file ceiling reaches guest tasks.
+//
+// Lowered well below the 1024 default so the loop ends in seconds and so the
+// ceiling is unambiguous -- 64 is generous for a shell and far under 200. Two
+// observables, and the first is not decoration: ulimit -n read from inside is
+// the guest kernel's own account of the rlimit, which under gVisor means the
+// sentry applied it to the task rather than merely receiving it in the config.
+func TestOpenFileCeilingReachesGuestTasks(t *testing.T) {
+	d, _ := newDriver(t)
+	const ceiling = 64
+
+	alive := testRequest(`echo alive`)
+	alive.ResourceLimits.MaxOpenFiles = ceiling
+	if _, out := startProbe(t, d, alive); !strings.Contains(out.Output, "alive") {
+		t.Fatalf("a workload that does nothing but echo produced no output under a %d fd ceiling, "+
+			"so this runtime needs more headroom than that before C-14 can be measured at all. output:\n%s",
+			ceiling, out.Output)
+	}
+
+	req := testRequest(`ulimit -n; i=3; while [ $i -lt 200 ]; do eval "exec $i<>/work/fdprobe"; i=$((i+1)); done; echo "opened-all-200"`)
+	req.ResourceLimits.MaxOpenFiles = ceiling
+	_, out := startProbe(t, d, req)
+	if !strings.Contains(out.Output, strconv.Itoa(ceiling)) {
+		t.Errorf("ulimit -n inside the sandbox did not report %d: the rlimit did not reach the guest "+
+			"task (C-14). output:\n%s", ceiling, out.Output)
+	}
+	if strings.Contains(out.Output, "opened-all-200") {
+		t.Errorf("a workload opened 200 files under a %d fd ceiling: the limit is not enforced on this "+
+			"runtime (C-14). output:\n%s", ceiling, out.Output)
+	}
+}
+
+// sizeLine picks the size report out of a transcript that also carries dd's own
+// chatter. Reading the last line would work today and break the moment anything
+// else prints after it.
+func sizeLine(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "size=") {
+			return strings.TrimSpace(line)
+		}
+	}
+	return ""
 }
 
 // C-15 end to end: the soft wall clock stops the workload, the attempt lands as

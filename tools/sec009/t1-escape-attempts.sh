@@ -60,8 +60,6 @@ set -uo pipefail
 IMAGE="${SMOKE_IMAGE:-ubuntu:24.04}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Fixed and not random: a leftover from a previous run is itself a finding.
-MARKER=/tmp/skillhub-sec009-t1-escaped
 
 PREPARE="$(cat "$HERE/_prepare-runsc.sh")"
 
@@ -81,14 +79,23 @@ NO_SANDBOX="${SEC009_NO_SANDBOX:-0}"
 # exits 0 — a green tick for a test that never ran, which is the exact failure
 # mode this directory exists to avoid producing. It happened on the first try.
 docker run --rm -i --privileged --cgroupns=private \
-  -e MARKER="$MARKER" -e NO_SANDBOX="$NO_SANDBOX" "$IMAGE" \
+  -e NO_SANDBOX="$NO_SANDBOX" "$IMAGE" \
   bash -s <<INNER
 $PREPARE
+
+# Fixed and not random: a leftover from a previous run is itself a finding.
+# Defined HERE rather than passed in with -e on purpose: a Git Bash host
+# rewrites /tmp/... into C:/Users/.../Temp/... on its way through docker run,
+# the plant below then fails, and the node-side row reports PASS having
+# measured nothing. The negative control dies with it -- unsandboxed the same
+# touch fails too, so that row had no input anywhere that could turn it red.
+MARKER=/tmp/skillhub-sec009-t1-escaped
 
 echo "runsc:         \$(runsc --version | head -1)"
 echo "host kernel:   \$(uname -sr)"
 echo
 
+set +e
 fail=0
 escaped=0
 
