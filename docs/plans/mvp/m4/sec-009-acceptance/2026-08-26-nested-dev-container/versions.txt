@@ -1,0 +1,24 @@
+SEC-009 Suite 1 partial -- nested developer container, NOT a node
+date: 2026-08-26
+
+[host]
+os:               Windows 11 Pro 10.0.26200 (Docker Desktop)
+docker server:    29.7.2
+vm kernel:        Linux 6.6.87.2-microsoft-standard-WSL2
+
+[sandbox runtime, inside the privileged container]
+runsc:            release-20260817.0  (downloaded per run, sha512 verified)
+sandbox kernel:   Linux 4.19.0-gvisor
+platform:         systrap  (no nested virtualization, no /dev/kvm)
+
+[repo]
+commit:           62c683c6130245436ac6b6fe4398bad15ae2bfda
+branch:           main
+
+[runtime image, from the T8 audit against GHCR]
+image:   ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-3
+digest:  sha256:740f71e23783b022ac546eb743b552778c950275d1f1f6be33c2ab23c497e9a7
+
+[what is NOT pinned here]
+infra/nodes/gvisor-baseline.txt:      unset
+infra/egress allowlist pinned_ip:     4 occurrence(s) of 'unset'

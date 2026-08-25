@@ -1,0 +1,56 @@
+image:   ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-3
+digest:  sha256:740f71e23783b022ac546eb743b552778c950275d1f1f6be33c2ab23c497e9a7
+{
+  "image_half": [
+    {
+      "id": "I-01",
+      "check": "versioned image published",
+      "status": "PASS",
+      "detail": "2026.08-3 -> sha256:740f71e23783b022ac546eb743b552778c950275d1f1f6be33c2ab23c497e9a7"
+    },
+    {
+      "id": "I-02",
+      "check": "base pinned by digest",
+      "status": "PASS",
+      "detail": "1 FROM line(s), all by digest"
+    },
+    {
+      "id": "I-03",
+      "check": "SBOM attestation",
+      "status": "PASS",
+      "detail": "SPDX 2.3 bundle sha256:d177708081b9"
+    },
+    {
+      "id": "I-04",
+      "check": "scan attestation in date",
+      "status": "PASS",
+      "detail": "scanned 2026-08-25T13:55:29Z, 0 day(s) old, expires 2026-09-24"
+    },
+    {
+      "id": "I-06",
+      "check": "no fixable Critical/High",
+      "status": "PASS",
+      "detail": "fixable Critical/High = 0 (of 322 findings: 8 Critical, 51 High, 17 Low, 132 Medium, 94 Negligible, 20 Unknown)"
+    }
+  ],
+  "preconditions": [
+    {
+      "id": "pre-1",
+      "check": "image on GHCR with SBOM + scan",
+      "status": "PASS",
+      "detail": "= I-01 and I-03 and I-04 above"
+    },
+    {
+      "id": "pre-2",
+      "check": "gvisor-baseline.txt filled",
+      "status": "FAIL",
+      "detail": "still `unset` -- no sandbox node has been provisioned, so gate A has nothing to compare `runsc --version` against"
+    },
+    {
+      "id": "pre-3",
+      "check": "sandbox-tier pinned_ip filled",
+      "status": "FAIL",
+      "detail": "still `unset` -- IaC renders no accept rule, which is fail-closed: a sandbox on such a node reaches nothing at all"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+t8 image half: PASS. Batch preconditions: NOT satisfied -- SEC-009 cannot start until the node exists.
+image:   ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-3
+digest:  sha256:740f71e23783b022ac546eb743b552778c950275d1f1f6be33c2ab23c497e9a7
+
+T8 image half (Suite 1 -- no node needed):
+  I-01  PASS    versioned image published -- 2026.08-3 -> sha256:740f71e23783b022ac546eb743b552778c950275d1f1f6be33c2ab23c497e9a7
+  I-02  PASS    base pinned by digest -- 1 FROM line(s), all by digest
+  I-03  PASS    SBOM attestation -- SPDX 2.3 bundle sha256:d177708081b9
+  I-04  PASS    scan attestation in date -- scanned 2026-08-25T13:55:29Z, 0 day(s) old, expires 2026-09-24
+  I-06  PASS    no fixable Critical/High -- fixable Critical/High = 0 (of 322 findings: 8 Critical, 51 High, 17 Low, 132 Medium, 94 Negligible, 20 Unknown)
+
+SEC-009 batch preconditions (ADR-022; any FAIL => the whole batch is unknown):
+  pre-1  PASS    image on GHCR with SBOM + scan -- = I-01 and I-03 and I-04 above
+  pre-2  FAIL    gvisor-baseline.txt filled -- still `unset` -- no sandbox node has been provisioned, so gate A has nothing to compare `runsc --version` against
+  pre-3  FAIL    sandbox-tier pinned_ip filled -- still `unset` -- IaC renders no accept rule, which is fail-closed: a sandbox on such a node reaches nothing at all
+

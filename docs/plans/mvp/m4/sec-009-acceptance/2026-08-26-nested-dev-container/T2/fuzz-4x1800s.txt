@@ -1,0 +1,25 @@
+T2 syscall fuzz: 4 worker(s) x 1800s
+
+runsc: OK
+runsc:         runsc version release-20260817.0
+host kernel:   Linux 6.6.87.2-microsoft-standard-WSL2
+
+fuzzing (one sandbox, 4 worker(s) inside it)...
+  sandbox exited 0 after 1801s
+
+T2 checks:
+  sentry did not crash                   PASS    survived 1801s
+  the fuzzer actually fuzzed             PASS    6115799 calls (floor 720000), 31 errnos
+    (workload self-destruction)                  6714 slice(s), 1689 ended in a signal, 43 killed for hanging
+  every worker survived to report        FAIL    3/4 reported to the end
+      last seen: 2:last-seen-at-1517014calls/1680slices
+      exit status: worker EXIT 3 0
+      exit status: worker EXIT 1 0
+      sandbox-side memory peak: 10278 MiB
+  no privileges gained (uid/gid)         PASS    uid/gid unchanged in every worker
+  T1 invariants still hold after         PASS    core_pattern, /dev/mem, docker.sock
+  no host kernel oops                    PASS    no new entries (baseline 3)
+
+T2: something failed or could not be checked
+
+t2: a check failed or could not be made

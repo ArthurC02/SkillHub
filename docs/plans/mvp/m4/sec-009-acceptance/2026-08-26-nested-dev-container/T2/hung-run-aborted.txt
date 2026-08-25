@@ -1,0 +1,9 @@
+T2 syscall fuzz: 4 worker(s) x 1800s
+
+runsc: OK
+runsc:         runsc version release-20260817.0
+host kernel:   Linux 6.6.87.2-microsoft-standard-WSL2
+
+fuzzing (one sandbox, 4 worker(s) inside it)...
+
+t2: a check failed or could not be made
