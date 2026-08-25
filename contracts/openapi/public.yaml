@@ -345,6 +345,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "429":
+          description: |
+            Too many requests from this address. Carries `Retry-After` in
+            seconds, and that header is the point of the refusal: this is the
+            one 4xx in this contract the caller is *expected* to retry, so a
+            client that treats it as an unknown error backs off wrongly or not
+            at all.
+
+            Documented here from 2026-08-25. The limiter has been on the route
+            since `RATE_LIMIT` shipped -- it is on unless a deployment sets
+            `RATE_LIMIT=off` -- and no operation in this file mentioned it, so
+            every generated client had a branch missing for the only answer that
+            tells it when to come back (02:NFR-001 clause 5).
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              required: true
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "413":
           description: Archive exceeds the upload size limit.
           content:
@@ -444,6 +465,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenerateSkillRefusal"
+        "429":
+          description: |
+            Too many requests from this address. Carries `Retry-After` in
+            seconds, and that header is the point of the refusal: this is the
+            one 4xx in this contract the caller is *expected* to retry, so a
+            client that treats it as an unknown error backs off wrongly or not
+            at all.
+
+            Documented here from 2026-08-25. The limiter has been on the route
+            since `RATE_LIMIT` shipped -- it is on unless a deployment sets
+            `RATE_LIMIT=off` -- and no operation in this file mentioned it, so
+            every generated client had a branch missing for the only answer that
+            tells it when to come back (02:NFR-001 clause 5).
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              required: true
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "502":
           description: The model gateway failed. Nothing was created.
           content:
@@ -545,6 +587,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "429":
+          description: |
+            Too many requests from this address. Carries `Retry-After` in
+            seconds, and that header is the point of the refusal: this is the
+            one 4xx in this contract the caller is *expected* to retry, so a
+            client that treats it as an unknown error backs off wrongly or not
+            at all.
+
+            Documented here from 2026-08-25. The limiter has been on the route
+            since `RATE_LIMIT` shipped -- it is on unless a deployment sets
+            `RATE_LIMIT=off` -- and no operation in this file mentioned it, so
+            every generated client had a branch missing for the only answer that
+            tells it when to come back (02:NFR-001 clause 5).
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              required: true
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "422":
           description: Package failed spec or static validation.
           content:
@@ -626,6 +689,27 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PublicSearchResponse"
+        "429":
+          description: |
+            Too many requests from this address. Carries `Retry-After` in
+            seconds, and that header is the point of the refusal: this is the
+            one 4xx in this contract the caller is *expected* to retry, so a
+            client that treats it as an unknown error backs off wrongly or not
+            at all.
+
+            Documented here from 2026-08-25. The limiter has been on the route
+            since `RATE_LIMIT` shipped -- it is on unless a deployment sets
+            `RATE_LIMIT=off` -- and no operation in this file mentioned it, so
+            every generated client had a branch missing for the only answer that
+            tells it when to come back (02:NFR-001 clause 5).
+          headers:
+            Retry-After:
+              description: Whole seconds to wait before retrying.
+              required: true
+              schema: { type: integer, minimum: 1 }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "400":
           description: |
             A missing `q`, an oversized query, or an unusable filter. `q` is
@@ -2286,6 +2370,18 @@ paths:
                 oneOf:
                   - $ref: "#/components/schemas/TraceSummary"
                   - $ref: "#/components/schemas/TraceAdvanced"
+        "400":
+          description: |
+            A `mode` outside its enum, or an `after` that is not a valid cursor.
+            Both are refused rather than replaced by their defaults, for the
+            reason the paging parameters elsewhere in this file are: a request
+            answered with a different view than the one asked for looks exactly
+            like a correct answer.
+
+            Added 2026-08-25 -- the handler has always returned it.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: No valid session.
           content:
@@ -3685,6 +3781,20 @@ paths:
           content:
             application/zip:
               schema: { type: string, format: binary }
+        "503":
+          description: |
+            No object store is wired into this deployment, so the bytes cannot be
+            served. Never a verdict about the artifact: the row is intact, the
+            caller is entitled to it, and the same request succeeds once storage
+            is back. Its two siblings on this store -- `previewPackaging` and
+            `createDownloadArtifact` -- have documented this condition all
+            along; the operation that actually serves the bytes did not, so a
+            client reading only this contract had 404 as its only not-served
+            answer and would tell the user their package was gone. Added
+            2026-08-25.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: No valid session.
           content:

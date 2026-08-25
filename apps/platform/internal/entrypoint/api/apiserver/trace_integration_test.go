@@ -202,6 +202,40 @@ func (c *client) advancedTraceAfter(t *testing.T, runID string, after int64) (in
 	return resp.StatusCode, out
 }
 
+// One endpoint, one answer to "this violates the schema".
+//
+// `after` used to be parsed inside the `advanced` arm of the mode switch, so
+// `?mode=general&after=-5` was answered with the general view and a 200 while
+// `?mode=advanced&after=-5` was a 400. Same parameter, same illegal value, two
+// different answers depending on a *different* parameter -- and the 200 is the
+// dangerous half, because a caller who paged wrongly got a page that looked
+// right. The table drives both modes on purpose: an implementation that fixed
+// only the reported case would pass a test that only asked about that case.
+func TestATraceCursorIsRefusedWhicheverViewWasAskedFor(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "trace-cursor")
+	runID := seedRun(t, pool, c.workspaceID, seedSkill(t, pool, c.workspaceID, "trace-cursor-skill"))
+
+	for _, mode := range []string{"", "general", "advanced"} {
+		for _, after := range []string{"-5", "not-a-number"} {
+			url := fmt.Sprintf("%s/runs/%s/trace?after=%s", c.base, runID, after)
+			if mode != "" {
+				url += "&mode=" + mode
+			}
+			resp, err := c.Get(url)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp.Body.Close()
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Errorf("after=%q mode=%q: got %d, want 400 -- an unusable cursor was answered with a page",
+					after, mode, resp.StatusCode)
+			}
+		}
+	}
+}
+
 func (c *client) generalTrace(t *testing.T, runID string) (int, generalView) {
 	t.Helper()
 	resp, err := c.Get(c.base + "/runs/" + runID + "/trace")

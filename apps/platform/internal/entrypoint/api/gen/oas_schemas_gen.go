@@ -3089,6 +3089,10 @@ func (s *DownloadArtifactContentOKHeaders) SetResponse(val DownloadArtifactConte
 
 func (*DownloadArtifactContentOKHeaders) downloadArtifactContentRes() {}
 
+type DownloadArtifactContentServiceUnavailable Error
+
+func (*DownloadArtifactContentServiceUnavailable) downloadArtifactContentRes() {}
+
 type DownloadArtifactContentUnauthorized Error
 
 func (*DownloadArtifactContentUnauthorized) downloadArtifactContentRes() {}
@@ -3176,6 +3180,37 @@ func (*Error) listSkillVersionsRes()      {}
 func (*Error) listSkillsRes()             {}
 func (*Error) publicSearchSkillsRes()     {}
 func (*Error) requestAccountDeletionRes() {}
+
+// ErrorHeaders wraps Error with response headers.
+type ErrorHeaders struct {
+	RetryAfter int
+	Response   Error
+}
+
+// GetRetryAfter returns the value of RetryAfter.
+func (s *ErrorHeaders) GetRetryAfter() int {
+	return s.RetryAfter
+}
+
+// GetResponse returns the value of Response.
+func (s *ErrorHeaders) GetResponse() Error {
+	return s.Response
+}
+
+// SetRetryAfter sets the value of RetryAfter.
+func (s *ErrorHeaders) SetRetryAfter(val int) {
+	s.RetryAfter = val
+}
+
+// SetResponse sets the value of Response.
+func (s *ErrorHeaders) SetResponse(val Error) {
+	s.Response = val
+}
+
+func (*ErrorHeaders) generateSkillRes()      {}
+func (*ErrorHeaders) importSkillFromURLRes() {}
+func (*ErrorHeaders) publicSearchSkillsRes() {}
+func (*ErrorHeaders) uploadSkillPackageRes() {}
 
 // One judgement of one run (EVAL-001), and a resource of its own because it answers a question `Run`
 // does not. `Run.status` records what happened during execution; `Evaluation.overall` records whether
@@ -5220,6 +5255,10 @@ func (*GetRunQuotaNotFound) getRunQuotaRes() {}
 type GetRunQuotaUnauthorized Error
 
 func (*GetRunQuotaUnauthorized) getRunQuotaRes() {}
+
+type GetRunTraceBadRequest Error
+
+func (*GetRunTraceBadRequest) getRunTraceRes() {}
 
 type GetRunTraceMode string
 
