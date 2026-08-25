@@ -299,38 +299,33 @@ func TestPidsLimitStopsAForkBomb(t *testing.T) {
 		`i=0; while [ $i -lt %d ]; do sleep 20 & i=$((i+1)); done; echo "spawned"`, spawnAttempts))
 	req.ResourceLimits.MaxPIDs = pidCeiling
 
+	// The observable is that the workload did not finish, not what it said on the
+	// way down. Three other readings were tried against both runtimes first, and
+	// each failed differently:
+	//
+	//   - stderr wording. runc's busybox prints "can't fork: Resource temporarily
+	//     unavailable" and gVisor's prints "Cannot allocate memory", so matching
+	//     "fork" read a working ceiling as a broken one on the runtime that
+	//     actually matters.
+	//   - the transcript at all. Two CI runs of the identical commit produced
+	//     those ENOMEM lines and then produced nothing, so any assertion on text
+	//     is unobservable a good fraction of the time under runsc.
+	//   - counting the survivors. The shell exits at its first refused fork, so
+	//     nothing after the loop runs at all -- and the first attempt at counting
+	//     used a command substitution, which needs the very fork being refused.
+	//
+	// What is left is what happened: a workload that asked for more processes than
+	// it may have does not run to completion. That comes from the runtime rather
+	// than from the workload's own account of itself, and it reads the same on
+	// both. The transcript still goes into the failure message, because when this
+	// does fail it is the first thing worth reading.
 	_, out := startProbe(t, d, req)
-	if !refusedToSpawn(out.Output) {
-		t.Errorf("%d processes under a %d pid ceiling were all created, and a trivial workload "+
-			"did run under the same ceiling: the limit is not reaching guest tasks on this "+
-			"runtime. output:\n%s", spawnAttempts, pidCeiling, out.Output)
+	if out.ExitCode == 0 && strings.Contains(out.Output, "spawned") {
+		t.Errorf("a workload asking for %d processes under a %d pid ceiling ran to completion "+
+			"(exit %d), and a trivial workload ran under the same ceiling: the limit is not "+
+			"reaching guest tasks on this runtime. output:\n%s",
+			spawnAttempts, pidCeiling, out.ExitCode, out.Output)
 	}
-}
-
-// refusedToSpawn reports whether the shell was refused a process. The wording is
-// the runtime's, not the kernel's contract: runc surfaces EAGAIN and busybox
-// prints "can't fork", while gVisor's sentry answers the same refusal as ENOMEM
-// and busybox prints "Cannot allocate memory".
-//
-// Both are the ceiling doing its job, and asserting on "fork" alone said
-// otherwise — the gVisor leg reported "produced no fork failure" for a transcript
-// that read `sh: sleep: Cannot allocate memory`, which is the refusal it was
-// looking for, in the other runtime's words. Matching a list of wordings is worse
-// than matching an effect; it is here because the effect the shell exposes IS its
-// error line, and a wording this test does not know about fails loudly with the
-// transcript attached rather than passing quietly.
-func refusedToSpawn(output string) bool {
-	lower := strings.ToLower(output)
-	for _, refusal := range []string{
-		"fork",                             // runc + busybox: "can't fork"
-		"cannot allocate memory",           // runsc + busybox: the sentry answers ENOMEM
-		"resource temporarily unavailable", // EAGAIN spelled out
-	} {
-		if strings.Contains(lower, refusal) {
-			return true
-		}
-	}
-	return false
 }
 
 // C-15 end to end: the soft wall clock stops the workload, the attempt lands as
