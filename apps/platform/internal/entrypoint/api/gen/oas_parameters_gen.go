@@ -3075,7 +3075,8 @@ type ListRunsParams struct {
 	// workspace with more runs than that will not see the older ones in a filtered list; the upgrade is a
 	// predicate on ListWorkspaceRuns.
 	TestCaseID OptUUID `json:",omitempty,omitzero"`
-	// Clamped server-side; an out-of-range value falls back to the default.
+	// Refused with a 400 when outside the schema, not clamped: both bounds are inclusive and an
+	// out-of-range value is not replaced by the default.
 	Limit  OptInt `json:",omitempty,omitzero"`
 	Offset OptInt `json:",omitempty,omitzero"`
 }

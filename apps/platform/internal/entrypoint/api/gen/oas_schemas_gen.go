@@ -3172,7 +3172,6 @@ func (*Error) getDispatchStatusRes()      {}
 func (*Error) getMeRes()                  {}
 func (*Error) listDownloadArtifactsRes()  {}
 func (*Error) listPackagingTargetsRes()   {}
-func (*Error) listRunsRes()               {}
 func (*Error) listSkillVersionsRes()      {}
 func (*Error) listSkillsRes()             {}
 func (*Error) publicSearchSkillsRes()     {}
@@ -6072,6 +6071,10 @@ type ListRunSuggestionsUnauthorized Error
 
 func (*ListRunSuggestionsUnauthorized) listRunSuggestionsRes() {}
 
+type ListRunsBadRequest Error
+
+func (*ListRunsBadRequest) listRunsRes() {}
+
 type ListRunsOK struct {
 	Runs []RunListItem `json:"runs"`
 }
@@ -6087,6 +6090,10 @@ func (s *ListRunsOK) SetRuns(val []RunListItem) {
 }
 
 func (*ListRunsOK) listRunsRes() {}
+
+type ListRunsUnauthorized Error
+
+func (*ListRunsUnauthorized) listRunsRes() {}
 
 type ListSkillVersionsOK struct {
 	Versions []ListSkillVersionsOKVersionsItem `json:"versions"`

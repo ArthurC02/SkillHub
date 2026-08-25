@@ -2281,7 +2281,19 @@ func encodeListRunsResponse(response ListRunsRes, w http.ResponseWriter, span tr
 
 		return nil
 
-	case *Error:
+	case *ListRunsBadRequest:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(400)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ListRunsUnauthorized:
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(401)
 

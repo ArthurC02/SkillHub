@@ -1326,7 +1326,7 @@ export interface DefaultApiInterface {
      * 02:WS-002 第 1 條\'s \"Run 歷史\". Workspace scoped from the session like every other run route (iron rule 3).  Each row carries what happened, to which skill, and when. The status transitions and the per-attempt provider ids stay on GET /runs/{id}: they are what a reader opens one run to see, and serving them for a page of runs would make the list the heaviest read in the API for information nobody reads a page of. 
      * @summary The workspace\'s run history, newest first (WS-004)
      * @param {string} [testCaseId] Only runs of this test case — the \&quot;執行歷史\&quot; of one draft, which is what closes the 建立 → 試跑 → 回來看 loop. Matched against the test case the run\&#39;s snapshot was frozen from, so a run stays in the list after the draft has been edited. Workspace scoped like the unfiltered list; another workspace\&#39;s id matches nothing (WS-006).  ponytail: the filter is applied over the newest 500 runs of the workspace rather than in the SQL. A workspace with more runs than that will not see the older ones in a filtered list; the upgrade is a predicate on ListWorkspaceRuns. 
-     * @param {number} [limit] Clamped server-side; an out-of-range value falls back to the default.
+     * @param {number} [limit] Refused with a 400 when outside the schema, not clamped: both bounds are inclusive and an out-of-range value is not replaced by the default. 
      * @param {number} [offset] 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
