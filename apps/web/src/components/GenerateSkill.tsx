@@ -47,6 +47,28 @@ import { failureSentence } from "./generateFailureSentence";
 const GENERATE_MAX_TASK_RUNES = 4000; // one-number: generateMaxTaskRunes
 const GENERATE_MAX_OUTPUT_TOKENS = 16000; // one-number: generateMaxOutputTokens
 const GENERATE_MAX_ATTEMPTS = 2; // one-number: generateMaxAttempts
+
+/**
+ * The estimate, in the one form 02:PDM-005 §5.3 accepts and RunPreflight already
+ * uses: a sourced range with a basis line, labelled an estimate rather than a
+ * quote. 04 乙-2 bars an unenforced number from the screen; this clears it the
+ * same way preflight.go's three constants do -- it says where it came from, it
+ * says it is not a price, and it is not part of any hash.
+ *
+ * Measured, not modelled: ten generations through this exact path (endpoint ->
+ * LiteLLM -> OpenAI, mini tier, strict schema) on 2026-08-25 gave min $0.0038,
+ * median $0.0062, max $0.0110, every one of them priced by the gateway rather
+ * than estimated (m5/report-generate-baseline.md §8.2).
+ *
+ * The published high end is wider than that sample, and deliberately: all ten
+ * were single-attempt, and GENERATE_MAX_ATTEMPTS is 2, so a retried generation
+ * pays twice. Ten calls is not a bound either. What it is NOT is a ceiling the
+ * platform enforces -- there is none for cost, which is why the sentence below
+ * says so instead of implying one.
+ */
+const GENERATE_COST_LOW_USD = 0.003;
+const GENERATE_COST_TYPICAL_USD = 0.006;
+const GENERATE_COST_HIGH_USD = 0.03;
 /**
  * The fourth number this component states, and until now the only one with no
  * machine behind it: how far back 最近沒有成功的生成 goes. The server decides it
@@ -121,10 +143,14 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
         </dd>
         <dt>預估成本</dt>
         <dd>
-          尚未定值
+          約 US${GENERATE_COST_LOW_USD.toFixed(3)}–${GENERATE_COST_HIGH_USD.toFixed(2)}
+          ，多數落在 US${GENERATE_COST_TYPICAL_USD.toFixed(3)} 上下
           <span className="note">
             {" "}
-            ——平台還沒有為單次生成設定費用上限，所以這裡不印一個沒有東西在保證的金額。
+            ——估計值，非報價。來源：2026-08-25 對真實閘道生成 10 次的實付分布（最小 US$0.0038、中位
+            US$0.0062、最大 US$0.0110，mini 級模型，皆為單次嘗試）。上緣按最多 {GENERATE_MAX_ATTEMPTS}{" "}
+            次嘗試放寬並上取整，因為 10 次不是一個界。
+            <strong>平台沒有為單次生成設定費用上限</strong>，所以這是估計不是保證。
           </span>
         </dd>
       </dl>

@@ -222,10 +222,17 @@ test("GEN-003: a workspace with no failures is shown no history section", async 
 });
 
 // GEN-008 / 02:GEN-001 「生成前顯示…」. Two things are asserted: that the three
-// enforced ceilings are on screen, and that the money position says 尚未定值
-// rather than printing the measured average — the latter is the 04 乙-2 shape
-// (a number with nothing behind it) and the former is its correction.
-test("GEN-008: the bounds the server enforces are stated before the button, and the cost says it is unset", async () => {
+// enforced ceilings are on screen, and that the money position now carries a
+// sourced range rather than 尚未定值.
+//
+// The cost half said 尚未定值 until 2026-08-25 because the only number available
+// was B round's mean, and printing a mean as an estimate is the 04 乙-2 shape.
+// Ten real-gateway generations gave a distribution (m5 report §8.2), which is the
+// form 02:PDM-005 §5.3 accepts. What is asserted here is not the number: it is
+// that the range is labelled an estimate, names where it came from, and still
+// says out loud that no ceiling is enforced. A range that quietly reads as a
+// promise would pass a test that only checked for digits.
+test("GEN-008: the bounds the server enforces are stated before the button, and the cost is a sourced estimate", async () => {
   stubSession({ generate_skill: true });
   await render();
   await submitSearch("沒有人做過的事");
@@ -235,9 +242,14 @@ test("GEN-008: the bounds the server enforces are stated before the button, and 
   expect(text).toContain("4,000 字");
   expect(text).toContain("推理加輸出合計 16,000 token");
   expect(text).toContain("最多嘗試 2 次");
-  expect(text).toContain("尚未定值");
-  // The measured average must not appear as a promise.
-  expect(text).not.toMatch(/\$0\.00/);
+  expect(text).not.toContain("尚未定值");
+  expect(text).toContain("約 US$0.003–$0.03");
+  expect(text).toContain("多數落在 US$0.006 上下");
+  // The three things that keep a range from reading as a quote. Losing any one
+  // of them turns a sourced estimate back into a number with nothing behind it.
+  expect(text).toContain("估計值，非報價");
+  expect(text).toContain("2026-08-25 對真實閘道生成 10 次的實付分布");
+  expect(text).toContain("平台沒有為單次生成設定費用上限");
   // And the textarea carries no maxLength: the browser's unit (UTF-16 code
   // units) is not the server's (runes), so one enforcer, and it is the server.
   expect(container.querySelector<HTMLTextAreaElement>("#generate-task")!.maxLength).toBe(-1);
