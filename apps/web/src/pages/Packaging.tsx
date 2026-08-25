@@ -51,15 +51,6 @@ import type { Finding, Redistribution, SkillDetail } from "../api/types";
 type PackagingSearch = { version?: string };
 
 /**
- * The preview plus 03:PACK-011's `retention_days`.
- *
- * Declared here as an intersection rather than on `PackagingPreview` because
- * `api/packaging.ts` belongs to another change. Forward-compatible on purpose:
- * when the field lands on `PackagingPreview` this type collapses to it and can be
- * deleted without touching a call site.
- */
-
-/**
  * One sentence per blocked reason, saying what it means for the reader — the
  * server's own `blocked_message` is displayed beside it and says what the
  * platform decided. Exported because the entry point on the skill page refuses

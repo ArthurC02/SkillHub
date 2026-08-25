@@ -181,8 +181,24 @@ function json(body: unknown, status = 200) {
   );
 }
 
-/** `blocked` drives the preview; `duplicate` drives what POST .../packaging answers. */
-function stubPlatform(options: { blocked?: boolean; duplicate?: boolean } = {}) {
+/**
+ * `blocked` drives the preview; `duplicate` drives what POST .../packaging
+ * answers; `retentionDays` is 03:PACK-011's served period — a number, or
+ * `"absent"` to send a preview without the field at all.
+ */
+function stubPlatform(
+  options: {
+    blocked?: boolean;
+    duplicate?: boolean;
+    retentionDays?: number | "absent";
+  } = {},
+) {
+  // 23 and never 30. 30 is what a deployment actually configures, so a mock
+  // saying 30 would be satisfied by a component that hardcoded 30 — which is the
+  // exact regression the server half was built to prevent (it compares the days
+  // the preview reported against the `expires_at` the create call wrote, rather
+  // than against a constant). Nobody hardcodes 23.
+  const retention = options.retentionDays === "absent" ? undefined : (options.retentionDays ?? 23);
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
     const url = String(input);
@@ -205,6 +221,8 @@ function stubPlatform(options: { blocked?: boolean; duplicate?: boolean } = {}) 
               excluded_test_cases: [
                 { test_case_id: "tc1", name: "我上傳的資料", reason: "user-uploaded dataset" },
               ],
+              excluded_files: [],
+              retention_days: retention,
             }
           : {
               target: "standard",
@@ -225,6 +243,8 @@ function stubPlatform(options: { blocked?: boolean; duplicate?: boolean } = {}) 
               ],
               included_test_cases: [],
               excluded_test_cases: [],
+              excluded_files: [],
+              retention_days: retention,
             },
       );
     }
@@ -427,6 +447,63 @@ test("PACK-002 an empty dependency list means two different things and is never 
 
   expect(text()).toContain("還沒有讀到套件內容");
   expect(text()).not.toContain("沒有宣告依賴檔");
+});
+
+// --- 03:PACK-011: how long the package will be kept -------------------------
+
+test("PACK-011 保留期限 is the server's number and it arrives before the build button", async () => {
+  // The mock says 23 days for the reason spelled out on `stubPlatform`: a test
+  // that asserts 「30 天」 against a mock that also says 30 passes just as happily
+  // against a component with 30 typed into it, and a second definition of a
+  // deployment number that nothing compares against the one writing `expires_at`
+  // is 設計 §2.2 顯示與強制成對 broken in the direction nobody notices.
+  stubPlatform({ retentionDays: 23 });
+  await render(<Packaging />, () => text().includes("這些設定可以打包"));
+
+  expect(text()).toContain("保留期限");
+  expect(text()).toContain("23 天");
+
+  // 打包之前, not after (03:PACK-011 / 02:NFR-001 的「會影響你的上限要在撞到之前
+  // 看得見」): the question is 「我下週回來還在不在」, and an answer that arrives
+  // after the button is an answer to a decision already spent.
+  const notice = Array.from(container.querySelectorAll("p")).find((p) =>
+    (p.textContent ?? "").includes("保留期限"),
+  )!;
+  expect(notice).toBeTruthy();
+  expect(
+    notice.compareDocumentPosition(button("建立下載套件")!) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+
+  // 過期 ≠ 做白工. Deleting the link is not deleting the user's work, and only
+  // one of those two sentences is true.
+  expect(text()).toContain("打包是冪等的");
+});
+
+test("PACK-011 a retention under one day says 不到 1 天 rather than 0 天", async () => {
+  // The server truncates instead of rounding (`retentionDays` in
+  // delivery/http.go) so that the error falls on the side of promising less, and
+  // anything under a day therefore arrives as 0. 「0 天」 reads as 「馬上就刪」 and
+  // an empty string reads as 「沒有期限」; both are wrong about the same number,
+  // and a deployment configured that short is already violating 02:NFR-002a — it
+  // should read as wrong, not be smoothed into a plausible-looking 1.
+  stubPlatform({ retentionDays: 0 });
+  await render(<Packaging />, () => text().includes("這些設定可以打包"));
+
+  expect(text()).toContain("不到 1 天");
+  expect(text()).not.toContain("0 天");
+});
+
+test("PACK-011 a preview with no retention_days admits it instead of writing 保留 undefined 天", async () => {
+  // Unreachable by contract — the server answers 503 for the whole preview when
+  // the deployment has no ratified DOWNLOAD_ARTIFACT_RETENTION, so no number and
+  // no build. Which is exactly why nothing else would catch this branch
+  // regressing into a rendered `undefined`.
+  stubPlatform({ retentionDays: "absent" });
+  await render(<Packaging />, () => text().includes("這些設定可以打包"));
+
+  expect(text()).toContain("沒有回答打包產物會保留多久");
+  expect(text()).not.toContain("undefined");
+  expect(text()).not.toContain("保留期限");
 });
 
 // --- the download history ---------------------------------------------------

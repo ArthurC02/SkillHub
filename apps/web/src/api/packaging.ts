@@ -102,6 +102,35 @@ export interface ExcludedTestCase {
   reason: string;
 }
 
+/**
+ * One source file the exporter removed from the author's own tree, and why
+ * (ADR-044, `contracts/packaging/download-manifest.schema.json`).
+ *
+ * On the preview as well as in the download manifest on purpose: the manifest
+ * is inside the thing the reader has not decided to download yet, so answering
+ * only there is not answering the decision.
+ *
+ * `label` and `note` are the server's words for the reason (設計系統 §4.4) —
+ * every note says how to fix it rather than restating the rule, because the
+ * reader is the author who is now missing a file. Never re-worded here: two
+ * surfaces wording one removal differently is how a reader ends up believing the
+ * platform did two different things.
+ */
+export interface ExcludedFile {
+  /** Package-relative path of the file that was removed. */
+  path: string;
+  reason: "excluded_dir" | "credential_file" | "not_a_regular_file" | "unsafe_path";
+  label: string;
+  note: string;
+  /**
+   * True when SKILL.md points at this path — the one combination the platform
+   * treats as its own fault rather than the author's, and the one that turns the
+   * whole preview into `file_removed_by_packager`. A reference that was already
+   * dangling at import is a different fact and stays a warning.
+   */
+  referenced_by_skill_md?: boolean;
+}
+
 export interface PackagingPreview {
   target: PackagingTargetId;
   allowed: boolean;
@@ -124,6 +153,14 @@ export interface PackagingPreview {
   /** Empty when the caller did not ask for them — which is not "there are none". */
   included_test_cases: IncludedTestCase[];
   excluded_test_cases: ExcludedTestCase[];
+  /**
+   * Files the packager removed — `.git/`, `node_modules/`, `.env`, symlinks.
+   * Required by the contract, so empty is the answer 「什麼都沒被拿掉」 and never
+   * 「沒有人回答」. Empty for almost every package; not empty for the one that
+   * matters, a Skill that vendored its dependencies or one whose SKILL.md points
+   * at something the exporter would not carry.
+   */
+  excluded_files: ExcludedFile[];
   /**
    * 03:PACK-011 — how long this package would be kept, in whole days. Served so
    * the page never carries its own copy of a deployment number (設計 §2.2
