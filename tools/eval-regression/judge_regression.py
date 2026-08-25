@@ -28,22 +28,29 @@ criterion whose references do not resolve downgraded to `undetermined`) and its
 truncation rule, because that is what a user would have seen. Downgrades are
 counted apart from wrong answers - a safe default is not an error.
 
-PINNED TO PRE-ADR-043 JUDGEMENT (noted 2026-08-24, M3 audit). The paragraph
-above stopped being true when ADR-043 landed: judge.go now re-verifies a
-citation's CONTENT and reattributes it to whichever source actually contains it
-(§1, §2), normalises quotes with NFC plus whitespace folding and a twelve-rune
-floor (§4), reports `exact` / `normalized` / `not_checked` rather than a
-two-state accepted-or-not, and refuses to let an `artifact` citation satisfy a
-rubric item marked `evidence_required` (§3). This file followed ADR-049 and
-missed ADR-043 entirely: it has no normalisation, no reattribution, no third
-state, and no code in this file reads `evidence_required` at all - while
-rubric-content-007-writing-v1.json sets that flag on eighteen items.
+ADR-043 MIRRORED HERE 2026-08-25 (M3 audit follow-up). Until that date this
+file followed ADR-049 and missed ADR-043 entirely, so it scored the Judge under
+rules judge.go had stopped using. The four behaviours are now here, each next to
+the Go function it mirrors: content re-verification with reattribution (§1, §2,
+`verify` / `find_quote`), NFC plus whitespace folding with a twelve-rune floor
+(§4, `normalize_quote` / `locate`), the three match states `exact` /
+`normalized` / `not_checked` in place of accepted-or-not (§4, `verified_quote`),
+and an `artifact` citation refused as evidence for a rubric item marked
+`evidence_required` (§3, `store`).
 
-So: report-judge-regression.md's 90/90 is a measurement of judge-run/v2 under
-the rules of its own day, and re-running this harness today will NOT reproduce
-it. It is historical evidence, not a live regression gate. Making it one again
-means mirroring those four behaviours here, at which point the recorded numbers
-have to be measured again rather than compared against.
+WHAT THAT DOES NOT DO IS RESTORE THE RECORDED NUMBERS.
+report-judge-regression.md §5.1's 90/90 was measured on the old ruler and is
+historical evidence: it is not a reading of the current harness and must not be
+compared against one. The next non-dry run is a re-measurement, and it lands as
+a new `regression_id` alongside the old segments like any other (§04 below).
+Nothing about the port changes what is already in results.jsonl.
+
+Known remaining divergence, stated rather than hidden: judge.go also downgrades
+a non-`undetermined` verdict that kept no verifiable evidence at all
+(`len(result.Evidence) == 0`). That rule is not ADR-043's and is not mirrored
+here - injection sample `inj-05` deliberately returns an empty `evidence_refs`
+and is scored `held`, so adopting it would silently rewrite §12.3's numbers on a
+question ADR-043 never asked.
 
 --rubric adds CONTENT-007's rubric to the run (writing-rubrics.md §5.1). The file
 names, per Skill, the extra acceptance criteria to judge and the rubric that
@@ -69,6 +76,7 @@ import json
 import os
 import subprocess
 import tarfile
+import unicodedata
 import urllib.parse
 import urllib.request
 import uuid
@@ -423,40 +431,195 @@ def trace_search_text(payload) -> str:
     return raw + "\0" + "\0".join(leaves) if leaves else raw
 
 
-def verify(ref, digest, artifacts, final_output) -> str:
-    """Empty string when the reference resolves, otherwise why it did not."""
+# ADR-043 §4's normalisation, and its bound is part of the criterion rather than
+# an implementation detail: NFC, whitespace runs folded to one space, structural
+# punctuation trimmed at the ends only. Nothing else - no lowercasing, no fuzzy
+# matching. Mirrors normalizeQuote / structuralPunctuation in judge.go.
+STRUCTURAL_PUNCTUATION = "}]),;\"'`「」『』 "
+
+# ADR-043 §4's floor, in code points because judge.go counts runes: below this a
+# quote is accepted on an exact hit only. Widened matching plus a short string is
+# an accidental hit - `"ok"}` finds itself in almost any payload.
+MIN_NORMALIZED_QUOTE = 12
+
+# The three match states. `not_checked` says a quote was verified against
+# nothing, which is a weaker and different claim from "we looked and it was
+# absent" - only an artifact citation can wear it, because artifact bytes are
+# never sent (evaluation-design §2.2).
+MATCH_EXACT = "exact"
+MATCH_NORMALIZED = "normalized"
+MATCH_NOT_CHECKED = "not_checked"
+
+
+def normalize_quote(s: str) -> str:
+    out: list[str] = []
+    pending = False
+    for ch in unicodedata.normalize("NFC", s):
+        if ch.isspace():
+            pending = True
+            continue
+        if pending and out:
+            out.append(" ")
+        pending = False
+        out.append(ch)
+    return "".join(out).strip(STRUCTURAL_PUNCTUATION)
+
+
+def verified_quote(match) -> bool:
+    """Whether this citation rests on a quote the platform actually found."""
+    return match in (MATCH_EXACT, MATCH_NORMALIZED)
+
+
+def locate(text: str, quote: str):
+    """(match state, index) for one text: the exact attempt before the normalized one."""
+    i = text.find(quote)
+    if i >= 0:
+        return MATCH_EXACT, i
+    nq = normalize_quote(quote)
+    if len(nq) < MIN_NORMALIZED_QUOTE:
+        return None, -1
+    if nq in normalize_quote(text):
+        return MATCH_NORMALIZED, -1
+    return None, -1
+
+
+def verifiable_sources(digest, final_output):
+    """(kind, event_id, searchable text) for every place a quote may honestly be.
+
+    Final output first, then the trace entries in digest order - which is trace
+    order, because build_request inserts them that way and dicts keep it. The same
+    evaluation has to reattribute to the same event twice running.
+
+    Artifact bytes are deliberately not a third source, and neither is the test
+    case input snapshot (ADR-043 open question 2).
+    """
+    out = []
+    if final_output:
+        out.append(("agent_output", None, final_output))
+    for event_id, event in digest.items():
+        out.append(("trace_event", event_id, trace_search_text(event["payload"])))
+    return out
+
+
+def find_quote(quote: str, sources):
+    """ADR-043 §2's content search: where is this quote, whatever it was filed as.
+
+    Two passes, exact across every source before normalized across any: an exact
+    hit in the last source is a stronger fact than a normalized hit in the first,
+    and the stronger fact is the one to record.
+    """
+    for kind, event_id, text in sources:
+        if text.find(quote) >= 0:
+            return kind, event_id, MATCH_EXACT
+    nq = normalize_quote(quote)
+    if len(nq) < MIN_NORMALIZED_QUOTE:
+        return None
+    for kind, event_id, text in sources:
+        if nq in normalize_quote(text):
+            return kind, event_id, MATCH_NORMALIZED
+    return None
+
+
+def verify(ref, digest, artifacts, final_output):
+    """(stored reference, why it did not resolve) - ADR-043's rule, mirrored.
+
+    One sentence, the same one judge.go implements: **a citation holds if and only
+    if its quote is findable in a verifiable source of this run.** `ref["kind"]` is
+    a hint from the model, not a credential; it is tried first because it is the
+    only path carrying a precise address, but when the named source cannot produce
+    the quote the platform looks in the others before concluding anything.
+
+    That one rule closes both halves of 04 乙-13 - G7 (an `artifact` citation waved
+    through with its quote compared to nothing) and G8 (a verbatim-correct quote
+    lost to a trailing `}],`) - which is why it is one rule and not two.
+    """
     kind = ref.get("kind")
+    named_failure = ""
+
     if kind == "trace_event":
-        event = digest.get(ref.get("trace_event_id") or "")
+        event_id = ref.get("trace_event_id") or ""
+        event = digest.get(event_id)
         if event is None:
-            return f"cited trace event {ref.get('trace_event_id')!r} was not in the digest"
-        if ref.get("quote") and ref["quote"] not in trace_search_text(event["payload"]):
-            return f"the quote cited from trace event {ref.get('trace_event_id')!r} is not in it"
-        return ""
+            if not ref.get("quote"):
+                # An id the digest does not carry, with no quote to look for, is a
+                # citation of nothing: there is no content to reattribute.
+                return None, f"cited trace event {event_id!r} was not in the digest"
+            named_failure = f"cited trace event {event_id!r} was not in the digest"
+        elif not ref.get("quote"):
+            # The citation is the event itself; the excerpt is the platform's own
+            # payload, so there is nothing in it a model could have invented.
+            return {**ref, "match": MATCH_EXACT, "reattributed_from": None}, ""
+        else:
+            match, _ = locate(trace_search_text(event["payload"]), ref["quote"])
+            if match:
+                return {**ref, "match": match, "reattributed_from": None}, ""
+            named_failure = f"the quote cited from trace event {event_id!r} is not in it"
+
+    elif kind == "agent_output":
+        if not ref.get("quote"):
+            return None, "an agent output reference was cited with no quote to locate"
+        match, _ = locate(final_output, ref["quote"])
+        if match:
+            return {**ref, "match": match, "reattributed_from": None}, ""
+        named_failure = "the quote cited from the agent's final output is not in it"
+
+    elif kind == "artifact":
+        # Nothing to try on the named source: no artifact bytes were sent, so an
+        # artifact citation goes straight to the content search and, failing that,
+        # proves existence and no more.
+        named_failure = "an artifact citation's quote is verified against nothing"
+
+    else:
+        return None, f"reference kind {kind!r} is not one this platform can resolve"
+
+    # The named source did not produce the quote. Before calling it fabricated,
+    # look where the quote could actually be (ADR-043 §2) - the step that tells
+    # mis-filed from invented. Every quote sampled from the A round's 6 `passed`
+    # verdicts resting on `artifact` citations was present verbatim in that run's
+    # trace_events: the model had read the trace and written the wrong label on it.
+    if ref.get("quote"):
+        hit = find_quote(ref["quote"], verifiable_sources(digest, final_output))
+        if hit:
+            src_kind, event_id, match = hit
+            out = {**ref, "kind": src_kind, "match": match, "reattributed_from": kind}
+            if src_kind == "trace_event":
+                out["trace_event_id"] = event_id
+            else:
+                out.pop("trace_event_id", None)
+            return out, ""
+
     if kind == "artifact":
         path = ref.get("artifact_path") or ""
         if any(a["path"] == path for a in artifacts):
-            return ""
-        return f"cited artifact {path!r} is not in this run's manifest"
-    if kind == "agent_output":
-        if not ref.get("quote"):
-            return "an agent output reference was cited with no quote to locate"
-        if ref["quote"] not in final_output:
-            return "the quote cited from the agent's final output is not in it"
-        return ""
-    return f"reference kind {kind!r} is not one this platform can resolve"
+            # Kept rather than thrown away: the path is what is checkable and the
+            # part a model cannot invent (§3). What it supports is "this file
+            # exists, this big", and `not_checked` says its quote, if it had one,
+            # was verified against nothing. store() is where that stops being
+            # enough for a rubric item that demands evidence.
+            return {**ref, "match": MATCH_NOT_CHECKED, "reattributed_from": None}, ""
+        return None, f"cited artifact {path!r} is not in this run's manifest"
+    return None, named_failure + ", and it is in no other verifiable source of this run"
 
 
 def store(verdict, request, digest, artifacts, final_output):
     """The stored criterion results: what the user would have been shown.
 
-    Two downgrades, both Go's and both deliberate. A criterion whose evidence
-    does not re-resolve is not a smaller verdict, it is an unverified one; and a
-    pass reached on cut or gapped material is not a pass. Neither is a wrong
-    answer, which is why they are recorded as their own reason.
+    Three downgrades, all Go's and all deliberate. A criterion whose evidence does
+    not re-resolve is not a smaller verdict, it is an unverified one; a rubric item
+    that asked for a quote is not answered by a citation whose quote was compared
+    to nothing (ADR-043 §3); and a pass reached on cut or gapped material is not a
+    pass. None of the three is a wrong answer, which is why each is recorded as its
+    own reason.
     """
     answers = {c["criterion_id"]: c for c in verdict["criterion_results"]}
     incomplete = not request["trace_digest"]["complete"] or bool(request["truncation"])
+    # ADR-043 §3's subjects. rubric-content-007-writing-v1.json sets this on
+    # eighteen of its twenty-two items, and before the port not one line here read
+    # it: every one of those items was scored under a rule production had dropped.
+    evidence_required = {
+        item["id"]: bool(item.get("evidence_required"))
+        for item in (request.get("rubric") or {}).get("items", [])
+    }
 
     results = []
     for c in request["criteria"]:
@@ -474,14 +637,27 @@ def store(verdict, request, digest, artifacts, final_output):
         # The refs are kept whole, rejection reason included: attributing a
         # difference to "the judge was wrong" versus "the judge was right and its
         # citation would not resolve" is the whole job of the report, and it
-        # cannot be done from a count.
-        evidence = [
-            {**ref, "rejected": verify(ref, digest, artifacts, final_output) or None}
-            for ref in answer["evidence_refs"]
-        ]
-        unverifiable = [e["rejected"] for e in evidence if e["rejected"]]
+        # cannot be done from a count. Go drops the rejected ones instead - it is
+        # storing a report, this is storing an audit trail.
+        evidence = []
+        unverifiable = []
+        for ref in answer["evidence_refs"]:
+            stored, why = verify(ref, digest, artifacts, final_output)
+            if why:
+                unverifiable.append(why)
+                evidence.append({**ref, "match": None, "reattributed_from": None,
+                                 "rejected": why})
+            else:
+                evidence.append({**stored, "rejected": None})
         downgrade = None
         if unverifiable and result != "undetermined":
+            result, downgrade = "undetermined", "evidence_unverifiable"
+        elif (evidence_required.get(c["id"]) and result != "undetermined"
+              and not any(verified_quote(e["match"]) for e in evidence)):
+            # ADR-043 §3. An artifact citation proves the file exists, not what is
+            # in it, so it cannot stand in for a quote somebody asked to see. Same
+            # downgrade label as defence 3 because it is the same statement to the
+            # reader: the evidence could not be verified, the judge was not unsure.
             result, downgrade = "undetermined", "evidence_unverifiable"
         elif result == "passed" and incomplete:
             result, downgrade = "undetermined", "incomplete_evidence"

@@ -310,11 +310,38 @@ func TestInstallInstructionsStateTheSupportStatusAndAtLeastOneCheck(t *testing.T
 	profiles := loadRealProfiles(t)
 	for _, p := range profiles.Ordered() {
 		out := renderInstall(p, "demo-skill", []string{"requirements.txt: package declares external dependencies"})
-		if p.SupportStatus == "unverified" && !strings.Contains(out, "Support status: unverified") {
-			t.Errorf("%s: an unverified target does not say so", p.ID)
+		// 02:PACK-002 第 2 條 is two clauses, and only the first was ever asserted:
+		// the status has to be shown AND it must not read as a promise that the
+		// package works. Both wordings carry a disclaimer, so both are named here
+		// — deleting either sentence used to leave this suite green.
+		switch p.SupportStatus {
+		case "unverified":
+			if !strings.Contains(out, "Support status: unverified") {
+				t.Errorf("%s: an unverified target does not say so", p.ID)
+			}
+			if !strings.Contains(out, "nothing here promises it will work") {
+				t.Errorf("%s: unverified is stated without disclaiming that it works:\n%s", p.ID, out)
+			}
+		case "verified":
+			if !strings.Contains(out, "Support status: verified") {
+				t.Errorf("%s: support status missing", p.ID)
+			}
+			// `verified` is the target, never the Skill. Without this the strongest
+			// word in the document would be the one with no boundary on it.
+			if !strings.Contains(out, "That is not a promise about this Skill") {
+				t.Errorf("%s: verified is stated without disclaiming what it covers:\n%s", p.ID, out)
+			}
+		default:
+			t.Errorf("%s: unknown support status %q", p.ID, p.SupportStatus)
 		}
-		if p.SupportStatus == "verified" && !strings.Contains(out, "Support status: verified") {
-			t.Errorf("%s: support status missing", p.ID)
+		// PACK-008's other half, and the one a reader's eye enforces: the status
+		// comes before any instruction. A document that says the same words at the
+		// bottom has told the installer after they installed it.
+		status := strings.Index(out, "**Support status:")
+		firstSection := strings.Index(out, "\n## ")
+		if status < 0 || firstSection < 0 || status > firstSection {
+			t.Errorf("%s: the support status is not before the first section (status at %d, "+
+				"first section at %d):\n%s", p.ID, status, firstSection, out)
 		}
 		if !strings.Contains(out, "Check that it worked") {
 			t.Errorf("%s: PACK-007 wants a post-install check", p.ID)
