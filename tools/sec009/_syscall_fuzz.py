@@ -194,6 +194,36 @@ def _wait_until(pid, deadline):
         time.sleep(0.01)
 
 
+def report(worker, calls, errnos, slices, crashes, killed,
+           uid_before, gid_before, uid_after, gid_after):
+    """The one shape a worker reports in, whether it finishes or is checkpointed."""
+    return {
+        "worker": worker,
+        "calls": calls,
+        "distinct_errnos": len(errnos),
+        "errnos": sorted(errnos),
+        "slices": slices,
+        "child_crashes": crashes,
+        "child_killed": killed,
+        "uid_before": uid_before,
+        "gid_before": gid_before,
+        # From the last child that got far enough to report. The supervisor's own
+        # uid is not the interesting one -- it never fuzzed.
+        "uid_after": uid_after,
+        "gid_after": gid_after,
+    }
+
+
+def write_json(path, payload):
+    """Replace path atomically enough that a reader never sees half a record."""
+    blob = json.dumps(payload).encode()
+    tmp = path + ".new"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.write(fd, blob)
+    os.close(fd)
+    os.rename(tmp, path)
+
+
 def self_check():
     """Prove reap() ends a child that has disabled its own timeout.
 
@@ -241,6 +271,13 @@ def main():
     seconds = float(sys.argv[1])
     worker = int(sys.argv[2])
     result_path = "/tmp/sec009-t2-worker-%d.json" % worker
+    # A supervisor that dies leaves nothing behind, and the run then reports
+    # "3/4 workers" with no way to say what happened to the fourth -- which is
+    # `unknown`, and ADR-022 §3 counts unknown as fail. The first full-scale run
+    # ended exactly there: empty stderr (so not a traceback) and no final line
+    # (so killed by a signal). Checkpointing costs one small write per slice,
+    # about one a second, and turns a silent loss into a last known position.
+    checkpoint_path = "/tmp/sec009-t2-checkpoint-%d.json" % worker
 
     uid_before, gid_before = os.getuid(), os.getgid()
     calls = 0
@@ -282,20 +319,13 @@ def main():
         except (OSError, ValueError, KeyError):
             pass  # the child died mid-slice; already counted as a crash
 
-    print(json.dumps({
-        "worker": worker,
-        "calls": calls,
-        "distinct_errnos": len(errnos),
-        "slices": slices,
-        "child_crashes": crashes,
-        "child_killed": killed,
-        "uid_before": uid_before,
-        "gid_before": gid_before,
-        # From the last child that got far enough to report. The supervisor's own
-        # uid is not the interesting one -- it never fuzzed.
-        "uid_after": uid_after,
-        "gid_after": gid_after,
-    }))
+        write_json(checkpoint_path, report(
+            worker, calls, errnos, slices, crashes, killed,
+            uid_before, gid_before, uid_after, gid_after))
+
+    print(json.dumps(report(
+        worker, calls, errnos, slices, crashes, killed,
+        uid_before, gid_before, uid_after, gid_after)))
 
 
 if __name__ == "__main__":

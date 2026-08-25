@@ -231,7 +231,11 @@ T1 的 `plant a file on the node` **每一次都判 ESCAPED**，而同一次執�
 
 ### T2:第一次 4 × 1800s 在 48 分鐘處卡死,而腳本原本會說它 PASS
 
-所有 sentry 執行緒在 S、`runsc` 十秒內累積 **0 個 CPU tick**。不是慢,是停了。
+**它為什麼是「卡住」而不是「慢」**:它跑了 48 分鐘,預算是 30 分鐘,而且沒有任何一個 worker 留下紀錄。
+
+**當時用來判定的兩個讀數是量錯的東西,寫在這裡免得下次再用**:「所有 sentry 執行緒在 S」與「`runsc` 程序十秒內 0 個 CPU tick」——後續一次**健康**的執行同樣是 21 個 `exe` 全在 S、`runsc` 父程序 0 ticks(它只是監督者,工作在 sentry 執行緒裡),而 `docker stats` 顯示 45% CPU、跨 `exe` 累計 112,278 ticks。**要看的是累計 ticks 或容器的 CPU%,不是父程序也不是執行緒狀態。**
+
+真正的證據來自修好之後那次全規模執行本身:**每個 worker 有 12～16 個切片超出預算被 `SIGKILL` 收掉**(4 × 60s 的程序試跑裡也已經有 4 個)。切片預算是 1 秒 ＋ 5 秒寬限,所以那個數字嚴格說是「超過六秒的切片」,不必然每一個都永不返回——**但 48 分鐘那次證明了至少有一次是無界的**,而在舊的 `os.waitpid(pid, 0)` 下,第一個這樣的切片就會讓那個 worker 停在那裡,而父程序的 `wait` 會跟著停。
 
 切片的時間上界靠 0.25s 的 `SIGALRM`,而 fuzzer 打得到武裝它的 syscall——一次隨機 `rt_sigprocmask(SIG_BLOCK, …)` 或 `rt_sigaction(SIGALRM, SIG_IGN)` 之後計時器就不再到達,下一個阻塞式 syscall 永不返回,監督者的 `os.waitpid(pid, 0)` 就永遠等下去。**與 DENY 裡那段 setuid 的註解同一個形狀:fuzzer 關掉量測自己的工具。**
 

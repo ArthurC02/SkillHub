@@ -115,6 +115,17 @@ fi
 # and easier question.
 echo "fuzzing (one sandbox, \$WORKERS worker(s) inside it)..."
 start=\$(date +%s)
+# Peak memory, sampled from outside the sandbox. The first full-scale run lost a
+# worker with empty stderr and no final line -- killed by a signal, and the only
+# candidate anyone could name was memory. A number beats a shrug.
+( peak=0
+  while :; do
+    cur=\$(awk '/^MemAvailable:/ {print \$2}' /proc/meminfo 2>/dev/null)
+    used=\$(( \$(awk '/^MemTotal:/ {print \$2}' /proc/meminfo) - \$cur ))
+    [ "\$used" -gt "\$peak" ] && { peak=\$used; echo "\$peak" > /tmp/mem.peak; }
+    sleep 5
+  done ) &
+sampler=\$!
 \$RUNSC sh -c '
   for i in \$(seq 1 '"\$WORKERS"'); do
     python3 /tmp/fuzz.py '"\$SECS"' \$i &
@@ -122,6 +133,7 @@ start=\$(date +%s)
   wait
 ' > /tmp/fuzz.out 2>/tmp/fuzz.err
 rc=\$?
+kill \$sampler 2>/dev/null
 elapsed=\$(( \$(date +%s) - start ))
 echo "  sandbox exited \$rc after \${elapsed}s"
 echo
@@ -153,23 +165,36 @@ fi
 # 2. The counts. This is the negative-control half: without it every check here
 #    is satisfied by a fuzzer that never called anything.
 calls=\$(python3 -c "
-import json
+import json, os
 n=e=bad=seen=sl=cr=kl=0
+finished=set()
 for line in open('/tmp/fuzz.out', errors='replace'):
     line=line.strip()
     if not line.startswith('{'): continue
     try: d=json.loads(line)
     except ValueError: continue
     if 'calls' not in d: continue        # supervisor could not report; not a record
-    seen+=1
+    seen+=1; finished.add(d.get('worker'))
     n+=d['calls']; e=max(e,d['distinct_errnos'])
     sl+=d.get('slices',0); cr+=d.get('child_crashes',0); kl+=d.get('child_killed',0)
     if d['uid_after']!=d['uid_before'] or d['gid_after']!=d['gid_before']: bad+=1
-print(n,e,bad,seen,sl,cr,kl)
+# A supervisor that was killed leaves no final line. Its last checkpoint says how
+# far it got, which is the difference between a finding and an 'unknown'.
+lost=[]
+for w in range(1, $WORKERS + 1):
+    if w in finished: continue
+    try:
+        with open('/tmp/sec009-t2-checkpoint-%d.json' % w) as fh: d=json.load(fh)
+    except (OSError, ValueError):
+        lost.append('%d:no-checkpoint' % w); continue
+    lost.append('%d:%dcalls/%dslices' % (w, d.get('calls',0), d.get('slices',0)))
+    n+=d.get('calls',0); e=max(e,d.get('distinct_errnos',0))
+    sl+=d.get('slices',0); cr+=d.get('child_crashes',0); kl+=d.get('child_killed',0)
+print(n,e,bad,seen,sl,cr,kl,','.join(lost) or '-')
 " 2>/dev/null)
 set -- \$calls
 total=\${1:-0}; distinct=\${2:-0}; privchange=\${3:-x}; seen=\${4:-0}
-slices=\${5:-0}; crashes=\${6:-0}; killed=\${7:-0}
+slices=\${5:-0}; crashes=\${6:-0}; killed=\${7:-0}; lost=\${8:--}
 # No worker records is not "nobody changed identity"; it is not knowing.
 [ "\$seen" -eq 0 ] && privchange=x
 
@@ -197,6 +222,12 @@ else
   head -5 /tmp/fuzz.out | sed 's/^/      /'
   echo '      --- worker stderr (first 5 lines) ---'
   head -5 /tmp/fuzz.err | sed 's/^/      /'
+  if [ "\$lost" != '-' ]; then
+    # Empty stderr and no final line means killed by a signal, not a traceback.
+    # The checkpoint says how far it got; the memory peak says what probably did it.
+    echo "      --- worker(s) with no final record: \$lost ---"
+    echo "      sandbox-side memory peak: \$(( \$(cat /tmp/mem.peak 2>/dev/null || echo 0) / 1024 )) MiB"
+  fi
   fail=2
 fi
 
