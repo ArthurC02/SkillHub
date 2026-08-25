@@ -1,0 +1,46 @@
+-- 0040_drop_arrival_dimension: remove `arrival` and `arrival_rank` from
+-- analytics_events (04 丙-59).
+--
+-- 0029 gave the columns two values each and the handler clamps them on the way
+-- in; `GET /policy/data-retention` lists them to the user; integration tests
+-- exercise them. The one thing that never happened is the front end sending
+-- them: `apps/web/src` has zero occurrences of `from=` or `rank=`, and the
+-- detail route has no `validateSearch`. So every row ever written says `direct`
+-- with rank 0.
+--
+-- That is not a misreport — `direct` really is what happened, and the disclosure
+-- never lied. It is worse in a quieter way: **a dimension that distinguishes
+-- nothing, while looking alive.** Anyone reading 0029, the policy page or the
+-- handler would reasonably believe the funnel can tell a searched arrival from a
+-- direct one. It cannot, and `tools/analytics/funnel.sql` never reads these
+-- columns anyway.
+--
+-- Dropped rather than filled, and the choice is recorded because it went the
+-- other way on cost. Filling it means the detail page's URL starts carrying
+-- 「我在第幾名找到它」, which travels with every copy-pasted link — a NEW public
+-- URL state, which per AGENTS.md has to clear 資訊架構 §0 first. That is a real
+-- price for a distinction nothing asks for: `02:O11Y-004`'s acceptance criteria
+-- name four events and an attribute allow-list, and `arrival` is an extra on
+-- that list rather than something it requires.
+--
+-- Nothing is lost with the columns: every value is the default. If a searched-vs-
+-- direct split is ever wanted, it comes back as a new column plus the URL-state
+-- decision it always needed — which is the honest order, and the order this
+-- table skipped the first time.
+--
+-- BEFORE APPLYING TO AN ENVIRONMENT THAT HOLDS REAL ROWS, run:
+--   SELECT arrival, count(*) FROM analytics_events
+--   WHERE event_name = 'skill_detail_viewed' GROUP BY 1;
+-- The claim above ("every row says `direct`") was established by grepping the
+-- front end, not by querying the data — and `contracts/openapi/public.yaml`
+-- publicly declared `from`/`rank`, so a client other than the SPA could have
+-- sent them. A dropped column cannot be queried afterwards. One row means the
+-- reasoning holds and there is now evidence for it; more than one means stop
+-- and reconsider.
+
+-- Applied migrations are immutable: fix forward with a new file, never edit this one.
+
+-- analytics_events is PARTITION BY RANGE (occurred_at); dropping a column on the
+-- parent cascades to every partition, including the default one.
+ALTER TABLE analytics_events DROP COLUMN arrival;
+ALTER TABLE analytics_events DROP COLUMN arrival_rank;

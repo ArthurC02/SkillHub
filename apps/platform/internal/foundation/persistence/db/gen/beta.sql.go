@@ -178,13 +178,17 @@ const insertAnalyticsEvent = `-- name: InsertAnalyticsEvent :exec
 INSERT INTO analytics_events (
     event_name, session_id, workspace_id,
     query_length, query_language, result_count, has_results, filters_applied,
-    skill_id, arrival, arrival_rank,
+    -- ` + "`" + `arrival` + "`" + ` and ` + "`" + `arrival_rank` + "`" + ` left this list with 0040 (04 丙-59). They were
+    -- written on every skill_detail_viewed row and always said the same thing,
+    -- because the front end never sent the parameters they were derived from —
+    -- a dimension that distinguished nothing while looking alive.
+    skill_id,
     artifact_id, target
 ) VALUES (
     $1, $2, $3,
     $4, $5, $6, $7, $8,
-    $9, $10, $11,
-    $12, $13
+    $9,
+    $10, $11
 )
 `
 
@@ -198,8 +202,6 @@ type InsertAnalyticsEventParams struct {
 	HasResults     *bool
 	FiltersApplied *bool
 	SkillID        pgtype.UUID
-	Arrival        *string
-	ArrivalRank    *int32
 	ArtifactID     pgtype.UUID
 	Target         *string
 }
@@ -224,8 +226,6 @@ func (q *Queries) InsertAnalyticsEvent(ctx context.Context, arg InsertAnalyticsE
 		arg.HasResults,
 		arg.FiltersApplied,
 		arg.SkillID,
-		arg.Arrival,
-		arg.ArrivalRank,
 		arg.ArtifactID,
 		arg.Target,
 	)

@@ -68,12 +68,16 @@ SELECT created_at FROM workspaces WHERE id = $1;
 INSERT INTO analytics_events (
     event_name, session_id, workspace_id,
     query_length, query_language, result_count, has_results, filters_applied,
-    skill_id, arrival, arrival_rank,
+    -- `arrival` and `arrival_rank` left this list with 0040 (04 丙-59). They were
+    -- written on every skill_detail_viewed row and always said the same thing,
+    -- because the front end never sent the parameters they were derived from —
+    -- a dimension that distinguished nothing while looking alive.
+    skill_id,
     artifact_id, target
 ) VALUES (
     @event_name, @session_id, @workspace_id,
     @query_length, @query_language, @result_count, @has_results, @filters_applied,
-    @skill_id, @arrival, @arrival_rank,
+    @skill_id,
     @artifact_id, @target
 );
 

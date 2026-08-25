@@ -76,6 +76,10 @@ queries:
   DeleteWorkspaceDownloadArtifacts: packaging
   PurgeUnreferencedSkills: registry
   PurgeSkillsPastDeletionGrace: registry
+  ListCollectableObjects: registry
+  DeleteObjectCollectionEntry: registry
+  DropReferencedCollectionEntries: registry
+  CountCollectableObjects: registry
   CountSkillsAwaitingDeletionGrace: registry
   PurgeUnreferencedSkillSources: ingest
   TakedownSkill: registry

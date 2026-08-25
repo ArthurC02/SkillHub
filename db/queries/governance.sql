@@ -126,6 +126,29 @@ purgeable AS (
       -- skill still holding them is out of scope for this statement.
       AND NOT EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
 ),
+enqueued AS (
+    -- The producer for object_collection_queue (0039, 04 丙-73), and it lives
+    -- HERE rather than in Go for one reason: it hangs off the same `purgeable`
+    -- the DELETE below uses. Recomputing that predicate on the Go side would put
+    -- a second definition of "which skills are going" next to the first, and the
+    -- day they drift the queue silently misses keys -- which is invisible,
+    -- because a key nothing enqueued is a key nothing will ever look for.
+    --
+    -- Same transaction as the delete, so iron rule 9 holds without ceremony: a
+    -- purge that rolls back takes its enqueue with it, and one that commits
+    -- cannot have lost it. Reads skill_versions before the sibling CTE deletes
+    -- from it -- every CTE sees the statement's snapshot, so the keys are still
+    -- there to read.
+    --
+    -- Candidates, not condemned objects: the key may still belong to a fork.
+    -- ListCollectableObjects decides that later, against the table.
+    INSERT INTO object_collection_queue (object_key)
+    SELECT DISTINCT v.package_object_key
+    FROM skill_versions v
+    WHERE v.skill_id IN (SELECT id FROM purgeable)
+      AND v.package_object_key <> ''
+    ON CONFLICT (object_key) DO NOTHING
+),
 versions AS (
     -- search_documents.skill_id cascades off the skills delete below.
     DELETE FROM skill_versions WHERE skill_id IN (SELECT id FROM purgeable)
@@ -157,12 +180,13 @@ DELETE FROM skills WHERE id IN (SELECT id FROM purgeable);
 -- and it would do so to punish the wrong person. A skill still holding test cases
 -- carries their retention, not this one's.
 --
--- **The package objects are not touched**, exactly as the account purge does not
--- touch them: they are content-addressed and shared with every fork, so removing
--- the bytes because one owner deleted their row would break readers who never
--- asked for anything. Nothing in this repo collects a package object whose last
--- referencing version is gone; that is a real gap and it is recorded rather than
--- solved here.
+-- **The package objects are not removed here**, exactly as the account purge does
+-- not remove them: they are content-addressed and shared with every fork, so
+-- taking the bytes because one owner deleted their row would break readers who
+-- never asked for anything. What this statement does instead is REMEMBER their
+-- keys, in the `enqueued` CTE below -- the last moment they are readable at all.
+-- `CollectOrphanObjects` takes it from there, and only for keys no version
+-- references any more.
 --
 -- Requires SET LOCAL skillhub.purge = 'on' in the same transaction: skill_versions
 -- is frozen by the 0005 trigger and the purge flag is the one exemption (0013).
@@ -187,6 +211,29 @@ purgeable AS (
       AND NOT EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
     ORDER BY sk.deleted_at
     LIMIT @row_limit::int
+),
+enqueued AS (
+    -- The producer for object_collection_queue (0039, 04 丙-73), and it lives
+    -- HERE rather than in Go for one reason: it hangs off the same `purgeable`
+    -- the DELETE below uses. Recomputing that predicate on the Go side would put
+    -- a second definition of "which skills are going" next to the first, and the
+    -- day they drift the queue silently misses keys -- which is invisible,
+    -- because a key nothing enqueued is a key nothing will ever look for.
+    --
+    -- Same transaction as the delete, so iron rule 9 holds without ceremony: a
+    -- purge that rolls back takes its enqueue with it, and one that commits
+    -- cannot have lost it. Reads skill_versions before the sibling CTE deletes
+    -- from it -- every CTE sees the statement's snapshot, so the keys are still
+    -- there to read.
+    --
+    -- Candidates, not condemned objects: the key may still belong to a fork.
+    -- ListCollectableObjects decides that later, against the table.
+    INSERT INTO object_collection_queue (object_key)
+    SELECT DISTINCT v.package_object_key
+    FROM skill_versions v
+    WHERE v.skill_id IN (SELECT id FROM purgeable)
+      AND v.package_object_key <> ''
+    ON CONFLICT (object_key) DO NOTHING
 ),
 versions AS (
     -- search_documents.skill_id cascades off the skills delete below. The row is
@@ -224,6 +271,45 @@ SELECT
     )::bigint AS kept
 FROM skills sk
 WHERE sk.deleted_at IS NOT NULL;
+
+-- name: ListCollectableObjects :many
+-- Queue entries whose key no longer appears on any skill_version anywhere.
+--
+-- The NOT EXISTS is the whole safety property, and it is checked at sweep time
+-- rather than at enqueue time on purpose: content-addressed keys can come BACK.
+-- Re-importing identical bytes creates a new version with the same key, and a
+-- decision made when the row was enqueued would delete an object that is being
+-- read again by then.
+--
+-- Not workspace scoped: a key is bytes, and the question "does any version still
+-- reference this" has no owner. That is also why 0039 stores no workspace id.
+SELECT object_key FROM object_collection_queue q
+WHERE NOT EXISTS (
+    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key
+)
+ORDER BY enqueued_at
+LIMIT @row_limit::int;
+
+-- name: DeleteObjectCollectionEntry :exec
+-- The bytes are gone, or the key came back and there is nothing to collect.
+-- Idempotent by predicate, so a sweep that died after Remove and before this can
+-- simply be re-run.
+DELETE FROM object_collection_queue WHERE object_key = $1;
+
+-- name: DropReferencedCollectionEntries :execrows
+-- Queue entries whose key is referenced again. Without this they would sit on the
+-- worklist forever being skipped, and a worklist that never shrinks is
+-- indistinguishable from a sweep that has stopped working — the same failure the
+-- token ceiling's fail-open counter exists to make visible.
+DELETE FROM object_collection_queue q
+WHERE EXISTS (
+    SELECT 1 FROM skill_versions v WHERE v.package_object_key = q.object_key
+);
+
+-- name: CountCollectableObjects :one
+-- The worklist's depth, for the same reason the deletion sweep reports two
+-- numbers: an operator needs to tell "draining" from "stuck".
+SELECT count(*)::bigint FROM object_collection_queue;
 
 -- name: PurgeUnreferencedSkillSources :execrows
 -- Import provenance of versions that are gone. Sources still backing a retained

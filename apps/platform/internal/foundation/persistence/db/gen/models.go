@@ -117,8 +117,6 @@ type AnalyticsEvent struct {
 	HasResults     *bool
 	FiltersApplied *bool
 	SkillID        pgtype.UUID
-	Arrival        *string
-	ArrivalRank    *int32
 	ArtifactID     pgtype.UUID
 	Target         *string
 }
@@ -299,6 +297,12 @@ type FeedbackReport struct {
 	PagePath    *string
 	RunID       pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
+}
+
+// Package object keys whose last referencing skill_versions row was deleted (04 丙-73). A key is removed from storage only when no skill_versions row references it, because the object is shared with every fork of the same content.
+type ObjectCollectionQueue struct {
+	ObjectKey  string
+	EnqueuedAt pgtype.Timestamptz
 }
 
 type ObjectReconcileSighting struct {
