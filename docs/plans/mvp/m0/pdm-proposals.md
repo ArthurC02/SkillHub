@@ -504,7 +504,7 @@ ADR-005 要求「MVP 只允許預先建置、版本化與掃描的 Runtime Image
 
 | 機制 | 職責 | 依據 |
 | --- | --- | --- |
-| **Go Worker 依閘道回報的 `input_tokens` 累計** | **token 上限（300K）的唯一強制點** | `input_tokens` 在 `/v1/messages` 上實測可用（缺的只有 cache 欄位） |
+| **Go Worker 依閘道回報的 `input_tokens` 累計** | **token 上限（300K）的唯一強制點** | `input_tokens` 在 `/v1/messages` 上實測可用（缺的只有 cache 欄位）。**2026-08-25 落地回填（`04` 丙-69）：這一列在寫下之後有一段時間不成立。** 唯一的實作是 `run.mjs` 的 `ceilingBreach`——**在它要限制的那個不受信任行程裡面**，而 `apps/platform` 一個 token 都沒累加過（同一份程式裡兩處註解對此互相矛盾：`gateway.go` 說「that is the worker counting」，`service.go` 說「the counting happens in the sandbox harness」）。工作負載自己拿著 `ANTHROPIC_AUTH_TOKEN`，繞過 `run.mjs` 直接打閘道時，實際上界只剩 `max_budget` 與 `tpm_limit`——**也就是本節自己算過的那個 2.4M，約為畫面上告訴使用者、而使用者按下確認的數字的八倍**。現由 driver 在既有的 2 秒輪詢上讀 LiteLLM 管理 API 的 `GET /spend/logs/v2`（以 `key_alias` 定址，所以 RUN-008 重啟後重新接上的 attempt 也問得到，且該端點刻意不回 `messages`／`response`），超過即走與 wall clock 完全相同的取消路徑。**`run.mjs` 的計數器保留**：合作的工作負載由它早一步、便宜地停下，不合作的由 Worker 停；兩邊都用嚴格大於，剛好停在上限的 Run 兩邊都放行。**檢查刻意 fail-open**（管理 API 不在沙箱網路上，為一次維運抖動殺掉健康的 Run 比較糟），所以它另立了一個 counter——一個沒有序列的 fail-open 守門，與一個正在運作的守門長得一模一樣，那正是本列曾經的狀態 |
 | `max_budget`（Virtual Key） | **花費**煞車，依**快取後實價**編列，非牌價反推 | 軟上限，非同步記帳 |
 | `tpm_limit`（Virtual Key） | 即時速率煞車，不依賴 spend flush | §6.3 |
 
@@ -543,7 +543,7 @@ Dataset 清單與總大小、將掛載的路徑、預計使用的 Runtime 版本
 | 10 分鐘對某些 `data` 類 Skill 太短 | 使用者感受「跑不完」 | Trace 明確標示「因逾時停止，已產生的結果保留」（`02:RUN-004` 允收準則）；蒐集逾時率（O11Y-001），若 > 10% 則調整而非降級功能。**注意調整逾時上限會直接放大 Sandbox 容量需求**（成本試算 §6.1） |
 | 100 MB 總量對真實資料分析偏小 | 精深者不滿 | 記錄為已知限制，M4 封測明確詢問（BETA-005）；提高上限是配置變更，不是架構變更 |
 | 並行 Run 上限 2 對「改善 → 重新試跑 → 比較」循環造成等待 | 漏斗中段體驗 | 該循環本質是序列的（改完才能重跑），2 已足夠；若封測觀察到排隊感，提高上限同樣是配置變更 |
-| Token 預算耗盡的失敗與模型錯誤難以區分 | `02:EVAL-002`「區分 Runtime 問題與 Skill 問題」 | LiteLLM 回傳的預算耗盡錯誤需映射為獨立的診斷碼（NFR-003），Trace 中標為 `budget_exhausted` 而非泛用失敗 |
+| Token 預算耗盡的失敗與模型錯誤難以區分 | `02:EVAL-002`「區分 Runtime 問題與 Skill 問題」 | LiteLLM 回傳的預算耗盡錯誤需映射為獨立的診斷碼（NFR-003），Trace 中標為 `budget_exhausted` 而非泛用失敗。**2026-08-25 回填**：`budget_exhausted` 一直都在 `sandbox-provider.yaml` 的 enum 裡，只是沒有人用——Worker 的 token 上限落地當天先報成 `execution`，**也就是本列逐字禁止的那個泛用失敗**，同日改為 `budget_exhausted` 並補上端對端斷言。`runs.failure_class` 維持 `workload_error` 不變，那一欄是重試決定（不得重試，重試只會再燒一次），`error_class` 才是診斷碼——兩欄各答一個問題 |
 | Skill 套件上限太嚴，含大量資產檔的 Skill 被擋 | 供給受限 | 上限是配置值不是架構；匯入失敗訊息需明確指出是哪一項超限，讓作者可自行修正 |
 
 ---

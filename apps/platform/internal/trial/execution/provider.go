@@ -59,8 +59,18 @@ const (
 	errClassExecution          = "execution"
 	errClassCleanup            = "cleanup"
 	errClassCapabilityMismatch = "capability_mismatch"
-	errClassTimeout            = "timeout"
-	errClassCancelled          = "cancelled"
+	// The platform's own ceiling, not the gateway's 429. The contract's enum
+	// glosses this as "gateway 429, distinct from a model 403", which was the only
+	// way it could be reached when that sentence was written -- the ceiling was
+	// enforced inside the sandbox and the control plane never decided anything
+	// about tokens. Since 2026-08-25 the worker enforces it (04 丙-69), so the
+	// platform is now the second thing that can produce this class, and PDM-005
+	// §5.2's risk row asks for exactly that: 「Trace 中標為 budget_exhausted 而非
+	// 泛用失敗」. It was reported as `execution` until this line existed, which is
+	// the generic failure that row forbids.
+	errClassBudgetExhausted = "budget_exhausted"
+	errClassTimeout         = "timeout"
+	errClassCancelled       = "cancelled"
 )
 
 // --- wire types --------------------------------------------------------------

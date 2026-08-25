@@ -13,6 +13,7 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/rivertype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
@@ -415,6 +416,17 @@ func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
 			return d.finish(ctx, attempt.ID, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
 		}
 
+		// PDM-005 5.2a-4's other ceiling, enforced the same way and for the same
+		// reason as the one above: the party being bounded cannot be the party
+		// counting. See tokenCeilingBreach.
+		if reason := d.tokenCeilingBreach(ctx, attempt); reason != "" {
+			if _, err := provider.Cancel(ctx, handle); err != nil {
+				slog.Warn("provider cancel on token ceiling failed", "run_id", pgconv.UUIDString(d.cur.ID), "error", err)
+			}
+			d.failAttempt(ctx, attempt, errClassBudgetExhausted, reason)
+			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureWorkload, reason)
+		}
+
 		select {
 		case <-ctx.Done():
 			// Shutdown, or the job's own timeout. The attempt stays live and
@@ -684,10 +696,9 @@ func (d *driver) cancelRequested(ctx context.Context) (bool, error) {
 // PDM-005 5.2's limit covers queue wait as well as execution, so a run can time
 // out before a sandbox ever exists.
 func hardDeadline(run gen.Run) time.Time {
-	seconds := DefaultResourceLimits().WallClockHardSeconds
-	var policy policySnapshot
-	if err := json.Unmarshal(run.PolicySnapshot, &policy); err == nil && policy.ResourceLimits.WallClockHardSeconds > 0 {
-		seconds = policy.ResourceLimits.WallClockHardSeconds
+	seconds := runLimits(run).WallClockHardSeconds
+	if seconds <= 0 {
+		seconds = DefaultResourceLimits().WallClockHardSeconds
 	}
 	if !run.CreatedAt.Valid {
 		return time.Time{}
@@ -701,6 +712,81 @@ func (d *driver) expired() bool {
 
 func (d *driver) timeoutReason() string {
 	return fmt.Sprintf("exceeded the hard wall clock limit; deadline was %s", d.deadline.UTC().Format(time.RFC3339))
+}
+
+// tokenCeilingBreach answers whether this attempt has spent more model tokens
+// than the run was sold, and returns the sentence the user reads if it has.
+//
+// PDM-005 5.2a-4 names the Go worker as the token ceiling's only enforcement
+// point, and this is it. The Virtual Key's max_budget cannot stand in for it:
+// prompt caching discounts the price and not the count, so $0.50 buys roughly
+// 2.4M input tokens rather than the 300K the pre-run permission summary showed
+// the user and they confirmed (02:TEST-005).
+//
+// The sandbox harness counts as well (infra/images/runtime-agent-sdk/run.mjs
+// breaks its own loop on the same numbers) and that duplication is deliberate,
+// not leftover: the harness stops a cooperating workload after one response too
+// many, cheaply and without a round trip, while this stops one that went around
+// it. The harness runs inside the process it bounds, holding that process's own
+// gateway credential, so on its own it is a lock on the inside of the door.
+// Deleting either half leaves a real gap - do not tidy this up. Both halves
+// breach on strictly greater than, so a run sitting exactly on its ceiling is
+// allowed by both and neither can contradict the other about it.
+//
+// Ceiling values come from the run's frozen policy_snapshot rather than today's
+// defaults, so a run is held to what its user agreed to (iron rule 4).
+//
+// Fail-open on a gateway that cannot be read, loudly. A management API that is
+// briefly unavailable is not evidence that a run misbehaved, and killing healthy
+// runs over it would be the worse failure; the wall clock and max_budget still
+// bound the run meanwhile. A silent gap is the part that must not happen, hence
+// the warning.
+func (d *driver) tokenCeilingBreach(ctx context.Context, attempt gen.RunAttempt) string {
+	limits := runLimits(d.cur).TokenBudget
+	if d.svc.Gateway == nil || (limits.MaxInputTokens <= 0 && limits.MaxOutputTokens <= 0) {
+		return ""
+	}
+	since := time.Now().UTC().Add(-time.Hour)
+	if attempt.CreatedAt.Valid {
+		since = attempt.CreatedAt.Time.UTC()
+	}
+	// One read per poll tick. At the default 2s interval that is a few hundred
+	// spend-log reads across a run's whole wall clock, which the gateway carries
+	// at beta scale; if it stops carrying it, give this its own slower interval
+	// rather than widening the ceiling.
+	used, err := d.svc.Gateway.AttemptTokens(ctx, pgconv.UUIDString(attempt.ID), since)
+	if err != nil {
+		// Counted, not just logged. This branch is the whole mechanism failing
+		// open, and a fail-open guard with no series is indistinguishable from a
+		// guard that is working -- which is the exact state 04 丙-69 found the
+		// token ceiling in.
+		metrics.RunTokenUsageUnreadable.Inc()
+		slog.Warn("could not read this attempt's token usage; the token ceiling is not being enforced for it",
+			"run_id", pgconv.UUIDString(d.cur.ID), "run_attempt_id", pgconv.UUIDString(attempt.ID), "error", err)
+		return ""
+	}
+	switch {
+	case limits.MaxInputTokens > 0 && used.InputTokens > limits.MaxInputTokens:
+		metrics.RunTokenCeilingBreached.Inc()
+		return fmt.Sprintf("reached this run's token ceiling: %d input tokens used, limit %d",
+			used.InputTokens, limits.MaxInputTokens)
+	case limits.MaxOutputTokens > 0 && used.OutputTokens > limits.MaxOutputTokens:
+		metrics.RunTokenCeilingBreached.Inc()
+		return fmt.Sprintf("reached this run's token ceiling: %d output tokens used, limit %d",
+			used.OutputTokens, limits.MaxOutputTokens)
+	}
+	return ""
+}
+
+// runLimits is the resource ceiling one run is actually held to: its frozen
+// policy_snapshot, falling back to today's defaults for a row written before the
+// field existed or one whose snapshot cannot be read.
+func runLimits(run gen.Run) ResourceLimits {
+	var policy policySnapshot
+	if err := json.Unmarshal(run.PolicySnapshot, &policy); err != nil {
+		return DefaultResourceLimits()
+	}
+	return policy.ResourceLimits
 }
 
 func orDefault(v, fallback string) string {

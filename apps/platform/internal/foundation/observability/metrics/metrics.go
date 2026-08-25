@@ -112,6 +112,29 @@ var (
 		Name: "skillhub_sandbox_destroy_failed_total",
 		Help: "Sandbox teardowns that failed during cleanup (SBX-012, ADR-022 X-03/X-04).",
 	}, []string{"provider"})
+
+	// PDM-005 §5.2a-(4)'s enforcement point, and the reason it needs two series
+	// rather than one. Kept apart for the same reason the two counters above are:
+	// the correct response to each is the opposite of the other.
+	//
+	// A breach is the ceiling WORKING. It should be rare, and a rise in it is a
+	// product signal -- runs are asking for more than 300K, so either the ceiling
+	// is wrong or the prompts are -- not an incident.
+	//
+	// A read failure is the ceiling NOT working, silently. The check is
+	// deliberately fail-open (a maintenance blip on the gateway's management API
+	// must not kill healthy runs, and the wall clock and max_budget still stand),
+	// which means the only evidence that enforcement has stopped is this counter.
+	// Without it, the failure mode of the whole mechanism is that it quietly does
+	// nothing -- which is precisely the state 丙-69 found it in.
+	RunTokenCeilingBreached = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "skillhub_run_token_ceiling_breached_total",
+		Help: "Runs the worker stopped for passing their token ceiling (PDM-005 §5.2a-4).",
+	})
+	RunTokenUsageUnreadable = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "skillhub_run_token_usage_unreadable_total",
+		Help: "Token-ceiling checks that could not read the gateway and let the run continue (PDM-005 §5.2a-4).",
+	})
 )
 
 // ADR-008: the transactional outbox. One counter, and it is the one that means a

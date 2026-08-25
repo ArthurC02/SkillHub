@@ -186,11 +186,14 @@ func DefaultResourceLimits() ResourceLimits {
 		ArtifactFileBytes:    25 << 20,
 	}
 	// Enforced, and not by the Virtual Key's max_budget - prompt caching decoupled
-	// spend from token count by 7-8x (PDM-005 5.2a). The counting happens in the
-	// sandbox harness, which is the only party that sees a per-response token
-	// count: RunUsage carries none back here. These numbers travel to it inside
-	// this same snapshot, so the ceiling that stops a run is the one the pre-run
-	// permission summary showed the user and they confirmed (02:TEST-005).
+	// spend from token count by 7-8x (PDM-005 5.2a). Two parties count, on either
+	// side of the sandbox boundary: the harness stops a cooperating workload from
+	// inside, and the worker reads the gateway's own spend log and terminates one
+	// that ignored it (job.go's tokenCeilingBreach). RunUsage still carries no
+	// number back here - it arrives at settlement, which is after the point of
+	// stopping anything. These limits travel to both counters inside this same
+	// snapshot, so the ceiling that stops a run is the one the pre-run permission
+	// summary showed the user and they confirmed (02:TEST-005).
 	l.TokenBudget.MaxInputTokens = 300_000
 	l.TokenBudget.MaxOutputTokens = 60_000
 	return l

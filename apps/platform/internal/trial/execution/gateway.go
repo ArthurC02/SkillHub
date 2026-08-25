@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -32,8 +33,11 @@ import (
 
 // Two brakes, not one (PDM-003 v5 / PDM-005 5.2a-5). max_budget stops a run that
 // burns money; tpm_limit stops one that burns it faster than the spend flush can
-// notice. Neither is the token ceiling - that is the worker counting reported
-// input_tokens, because prompt caching decoupled spend from token count by 7-8x.
+// notice. Neither is the token ceiling, and neither can be made into it: prompt
+// caching decoupled spend from token count by 7-8x, so $0.50 buys about 2.4M
+// input tokens rather than 300K, and tpm_limit is per minute rather than
+// cumulative. The token ceiling is the worker reading AttemptTokens below and
+// terminating the run itself (PDM-005 5.2a-4).
 //
 // The key's TTL is the caller's: it is the same grantSlack-extended wall clock
 // the object grants get, so the gateway expiring a key mid-run - which would
@@ -178,6 +182,87 @@ func (g *Gateway) Revoke(ctx context.Context, runAttemptID string) error {
 	return err
 }
 
+// TokenUsage is how many tokens one attempt has actually consumed, as counted by
+// the gateway that billed them.
+//
+// Cache-hit tokens are in InputTokens, which is what the 300K ceiling counts:
+// caching discounts the price, not the number (PDM-005 5.2a-3).
+type TokenUsage struct {
+	InputTokens  int
+	OutputTokens int
+}
+
+const (
+	// usagePageSize is how many of an attempt's model calls one read covers.
+	// LiteLLM caps page_size at 1000; 200 is already an order of magnitude past
+	// what a run inside its ceiling makes (~19.4K input tokens per call, so ~16
+	// calls reaches 300K - PDM-005 5.2a-2).
+	usagePageSize = 200
+	// maxUsagePages bounds the read. Five pages is 1000 model calls, i.e. tens of
+	// millions of input tokens: an attempt with more than that is over any
+	// conceivable ceiling long before the last page, so stopping early can only
+	// under-report a number that has already made the decision.
+	maxUsagePages = 5
+	// usageResponseLimit is the bound on one page of spend log. Bigger than the
+	// management-API bound because a page is a list of rows, each carrying its own
+	// metadata blob - but still a bound, for the same reason.
+	usageResponseLimit = 8 << 20
+	// usageDateFormat is what /spend/logs/v2 parses. UTC, and not RFC3339.
+	usageDateFormat = "2006-01-02 15:04:05"
+)
+
+// AttemptTokens is how many tokens this attempt has spent, according to the
+// gateway's own spend log.
+//
+// This is the only trustworthy token count the platform has. The sandbox harness
+// counts too (infra/images/runtime-agent-sdk/run.mjs) and stops itself when it
+// passes the ceiling, but it counts inside the process it is supposed to bound:
+// that process holds ANTHROPIC_AUTH_TOKEN and an interpreter, so a skill that
+// calls the gateway around the harness, or simply ignores it, is counted by
+// nobody. Here the counter sits on the other side of the credential.
+//
+// Addressed by key alias, like Revoke, so it needs nothing that was held in
+// memory - the re-attach path (RUN-008) can ask the same question after a
+// restart that lost the minted key.
+//
+// The window is the caller's: a start date is required by the endpoint, and one
+// that starts at the attempt keeps the gateway from scanning its whole history.
+func (g *Gateway) AttemptTokens(ctx context.Context, runAttemptID string, since time.Time) (TokenUsage, error) {
+	q := url.Values{}
+	q.Set("key_alias", keyAlias(runAttemptID))
+	q.Set("start_date", since.UTC().Format(usageDateFormat))
+	// A minute of slack: the gateway writes startTime from its own clock.
+	q.Set("end_date", time.Now().UTC().Add(time.Minute).Format(usageDateFormat))
+	q.Set("page_size", strconv.Itoa(usagePageSize))
+	// Oldest first, so page 1 is the attempt's first calls and the partial sum a
+	// bounded read produces is a prefix rather than an arbitrary sample.
+	q.Set("sort_by", "startTime")
+	q.Set("sort_order", "asc")
+
+	var total TokenUsage
+	for page := 1; page <= maxUsagePages; page++ {
+		q.Set("page", strconv.Itoa(page))
+		var out struct {
+			Data []struct {
+				PromptTokens     int `json:"prompt_tokens"`
+				CompletionTokens int `json:"completion_tokens"`
+			} `json:"data"`
+			TotalPages int `json:"total_pages"`
+		}
+		if err := g.get(ctx, "/spend/logs/v2?"+q.Encode(), &out); err != nil {
+			return TokenUsage{}, fmt.Errorf("read attempt token usage: %w", err)
+		}
+		for _, row := range out.Data {
+			total.InputTokens += row.PromptTokens
+			total.OutputTokens += row.CompletionTokens
+		}
+		if len(out.Data) == 0 || page >= out.TotalPages {
+			break
+		}
+	}
+	return total, nil
+}
+
 type gatewayError struct {
 	Status  int
 	Message string
@@ -203,11 +288,26 @@ func (g *Gateway) post(ctx context.Context, path string, body, out any) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, g.AdminBaseURL+path, bytes.NewReader(encoded))
+	// Bounded: the gateway is infrastructure, not a trusted narrator.
+	return g.do(ctx, http.MethodPost, path, encoded, out, 1<<20)
+}
+
+func (g *Gateway) get(ctx context.Context, path string, out any) error {
+	return g.do(ctx, http.MethodGet, path, nil, out, usageResponseLimit)
+}
+
+func (g *Gateway) do(ctx context.Context, method, path string, body []byte, out any, limit int64) error {
+	var reader io.Reader
+	if body != nil {
+		reader = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, g.AdminBaseURL+path, reader)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	req.Header.Set("Authorization", "Bearer "+g.adminKey)
 
 	client := g.HTTP
@@ -219,8 +319,7 @@ func (g *Gateway) post(ctx context.Context, path string, body, out any) error {
 		return err
 	}
 	defer resp.Body.Close()
-	// Bounded: the gateway is infrastructure, not a trusted narrator.
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, limit))
 	if err != nil {
 		return err
 	}

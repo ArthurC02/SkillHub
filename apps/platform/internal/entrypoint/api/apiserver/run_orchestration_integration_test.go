@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -367,6 +368,63 @@ func TestWorkloadFailureIsRecordedOnceAndNotRetried(t *testing.T) {
 		t.Errorf("the provider was dispatched to %d times after a workload failure", fake.Dispatches())
 	}
 	waitForCleanup(t, f.client, created.RunID)
+}
+
+// PDM-005 5.2a-4: the token ceiling is the worker's to enforce, and it has to be
+// able to enforce it against a workload that does not cooperate.
+//
+// The sandbox harness counts tokens too and stops itself, but it runs inside the
+// process it bounds and holds that process's gateway credential, so a skill that
+// calls the gateway around it is counted by nobody. That is what this fake is: a
+// provider whose workload never stops, and a gateway whose spend log says the
+// tokens were spent anyway. Nothing but the worker can end this run before its
+// wall clock, and the wall clock is eight times too late.
+func TestARunPastItsTokenCeilingIsStoppedByTheWorker(t *testing.T) {
+	pool := requireDB(t)
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/spend/logs") {
+			// One model call, already past the 300K the user confirmed - and well
+			// inside what the key's $0.50 max_budget would have allowed.
+			_, _ = w.Write([]byte(`{"data":[{"prompt_tokens":420000,"completion_tokens":900}],"total_pages":1}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"key":"sk-virtual-test"}`))
+	}))
+	defer gateway.Close()
+	t.Setenv("SKILLHUB_MODEL_GATEWAY_URL", gateway.URL)
+	t.Setenv("SKILLHUB_MODEL_GATEWAY_KEY", "sk-master-test")
+
+	a := newAPI(t, pool)
+	a.runs.Gateway = run.GatewayFromEnv()
+	f := newFixture(t, a, pool, "alice-token-ceiling")
+	fake, _ := withProvider(t, a, pool, providertest.Plan{StuckRunning: true})
+
+	created := f.start(t)
+	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusFailed))
+	// The workload burned the budget it was given; retrying burns it again to
+	// reach the same answer, which is what workload_error means (0018).
+	if final.FailureClass != "workload_error" {
+		t.Errorf("failure_class = %q, want workload_error", final.FailureClass)
+	}
+	// Not a generic failure: the user is told which ceiling stopped their run.
+	if !strings.Contains(final.StatusReason, "token ceiling") {
+		t.Errorf("reason = %q, want it to name the token ceiling", final.StatusReason)
+	}
+	// PDM-005 §5.2's risk row, verbatim: 「Trace 中標為 `budget_exhausted` 而非泛用
+	// 失敗」. failure_class above is the coarse retry decision and workload_error is
+	// the right one there; error_class is the diagnostic, and reporting `execution`
+	// for it -- which this did until 2026-08-25 -- is precisely the generic failure
+	// that row forbids. NFR-003 wants an internal code per terminal state, not a
+	// sentence somebody has to grep.
+	if cls := attemptErrorClass(t, pool, created.RunID); cls != "budget_exhausted" {
+		t.Errorf("error_class = %q, want budget_exhausted", cls)
+	}
+	// Same ending as a wall-clock breach: the workload is asked to stop and the
+	// sandbox is released by the cleanup the terminal transition schedules.
+	waitForCleanup(t, f.client, created.RunID)
+	if fake.Live() != 0 {
+		t.Errorf("%d sandboxes survived a run stopped at its token ceiling", fake.Live())
+	}
 }
 
 // RUN-006 wall clock, RUN-008 watchdog: a run whose deadline passed while nothing
@@ -1088,4 +1146,23 @@ func TestRunHistoryRefusesOutOfSchemaPaging(t *testing.T) {
 	if rows := f.runPage(t, "?offset=2"); len(rows) != 0 {
 		t.Errorf("offset past the end returned %d runs, want 0", len(rows))
 	}
+}
+
+// attemptErrorClass reads the diagnostic code off the run's newest attempt.
+// Straight from the table because that is where NFR-003's 內部診斷碼 lives: the
+// user-facing half is Run.status_reason, and a test that only read that would
+// pass on a run whose code said something else entirely.
+func attemptErrorClass(t *testing.T, pool *pgxpool.Pool, runID string) string {
+	t.Helper()
+	var class *string
+	if err := pool.QueryRow(context.Background(), `
+		SELECT error_class FROM run_attempts
+		WHERE run_id = $1 ORDER BY attempt_number DESC LIMIT 1`,
+		mustUUID(t, runID)).Scan(&class); err != nil {
+		t.Fatal(err)
+	}
+	if class == nil {
+		return ""
+	}
+	return *class
 }
