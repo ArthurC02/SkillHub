@@ -258,6 +258,48 @@ def test_empty_manifest_is_stated_rather_than_omitted(capture):
     assert "no artifact path to cite" in user
 
 
+def test_an_unreadable_manifest_is_never_told_to_the_judge_as_a_run_that_wrote_nothing(capture):
+    """03:EVAL-014's counter-evidence test, and the segment it exists to guard.
+
+    Go tells expired and deleted rows apart from rows that never existed and puts
+    the third state on the wire (`artifacts.unreadable`). Everything downstream of
+    that was already in place - the finding, evidence_complete, merge() refusing a
+    pass - except the prompt itself, which said "the run wrote no files" whatever
+    the reason the list came back empty. Run outputs are kept 30 days and traces
+    90, so from day 31 on that sentence is what every re-evaluation of every run
+    handed the judge, with no symptom anywhere: the report was right and the input
+    to the judgement was not (02:NFR-002a, 04 丙-13).
+    """
+    calls = capture(json.dumps(GOOD_VERDICT))
+    request = {**JUDGE_REQUEST, "artifacts": [], "truncation": ["artifacts.unreadable"]}
+
+    assert client.post("/judge-run", json=request).status_code == 200
+
+    user = calls[0]["messages"][1]["content"]
+    assert "the run wrote no files" not in user
+    assert "NOT because the run wrote nothing" in user
+    assert "no longer read them" in user
+    assert "`undetermined`" in user
+
+    # Partly readable is the same lie in a quieter place: rows are listed, so the
+    # empty-list branch never runs and the heading alone claims completeness.
+    calls.clear()
+    partly = {**JUDGE_REQUEST, "truncation": ["artifacts.unreadable"]}
+    assert client.post("/judge-run", json=partly).status_code == 200
+    assert "the complete list of files the run wrote" not in calls[0]["messages"][1]["content"]
+
+    # The other direction: the row-budget cut is also named `artifacts`, and a run
+    # that genuinely wrote nothing must keep saying so.
+    calls.clear()
+    assert (
+        client.post(
+            "/judge-run", json={**JUDGE_REQUEST, "artifacts": [], "truncation": ["artifacts"]}
+        ).status_code
+        == 200
+    )
+    assert "the run wrote no files" in calls[0]["messages"][1]["content"]
+
+
 def test_judge_call_is_strict_json_schema_and_carries_cost_metadata(capture):
     calls = capture(json.dumps(GOOD_VERDICT))
 

@@ -285,7 +285,7 @@ class JudgeRunRequest(BaseModel):
     trace_digest: TraceDigest
     truncation: Optional[List[str]] = Field(
         [],
-        description='Names of the fields that were cut, e.g. `final_output` or\n`artifacts[2].text_excerpt`. When this list is non-empty, any\ncriterion that depends on a cut field may be answered `undetermined`,\nand judging it `passed` without having seen the full text is not\nacceptable. `undetermined` under truncation is the correct answer, not\na failure to answer (evaluation-design §6.3).\n',
+        description='Names of the fields that were cut, e.g. `final_output` or\n`artifacts[2].text_excerpt`. When this list is non-empty, any\ncriterion that depends on a cut field may be answered `undetermined`,\nand judging it `passed` without having seen the full text is not\nacceptable. `undetermined` under truncation is the correct answer, not\na failure to answer (evaluation-design §6.3).\n\nOne value on this list is not a cut but a hole in the evidence, and\nboth sides read it by name: `artifacts.unreadable` means the run\nrecorded output files that this evaluation can no longer read -\ndeleted by the workspace, or past the retention stamped on them - so\nan empty `artifacts` alongside it must NOT be read as a run that\nwrote nothing (02:EVAL-001 過期分支, 02:NFR-002a 第 2 條; 03:EVAL-014).\nGo writes it (trial/improvement/judge.go) and the judge prompt\nbranches on it (skillhub_llm/evaluate.py); renaming it on one side\nonly silently restores the reading the clause forbids, with no\nsymptom on either side.\n',
         max_length=100,
     )
 

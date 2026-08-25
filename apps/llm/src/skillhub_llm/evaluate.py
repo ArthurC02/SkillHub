@@ -471,6 +471,18 @@ def _judge_user_message(req: JudgeRunRequest) -> str:
         "# The agent's final reply\n" + (_scrub(req.final_output) or "(the run produced no reply)")
     )
 
+    # 02:EVAL-001 / 03:EVAL-014. An empty manifest has three states, not two, and
+    # this is the last segment that can still keep them apart. Go already did the
+    # telling apart - the readable list has filtered its own gap away, so
+    # `artifacts` arrives equally empty whether the run wrote nothing or wrote
+    # files since deleted or aged past their retention - and it names the third
+    # state on the wire as `artifacts.unreadable` (improvement/judge.go). Without
+    # reading it here the section below states outright that the run wrote no
+    # files, which is the reading NFR-002a forbids; with run outputs kept 30 days
+    # against a 90-day trace, every re-evaluation from day 31 on lands in exactly
+    # this branch (04 丙-13). Exact membership and not a prefix: a plain
+    # `artifacts` on that list is the row-budget cut, a different hole.
+    unreadable = "artifacts.unreadable" in req.truncation
     if req.artifacts:
         rows = []
         for a in req.artifacts:
@@ -481,6 +493,12 @@ def _judge_user_message(req: JudgeRunRequest) -> str:
             if a.text_excerpt:
                 rows.append(f"    content: {_scrub(a.text_excerpt)}")
         artifacts = "\n".join(rows)
+    elif unreadable:
+        artifacts = (
+            "(no rows, and NOT because the run wrote nothing: this run recorded output "
+            "files and this evaluation can no longer read them. Judge no criterion on a "
+            "file being absent - one that needs a file is `undetermined`.)"
+        )
     else:
         # Meaningful, not empty: a run that reported success and wrote no file is
         # the case EVAL-001 exists to catch (handoff 丙-5). Worded so it cannot
@@ -488,7 +506,16 @@ def _judge_user_message(req: JudgeRunRequest) -> str:
         # produced an evidence reference citing an earlier placeholder as though
         # it were a path, which Go would then fail to resolve and downgrade.
         artifacts = "(empty: the run wrote no files, so there is no artifact path to cite)"
-    sections.append("# Artifact manifest - the complete list of files the run wrote\n" + artifacts)
+    sections.append(
+        (
+            "# Artifact manifest - the files the run wrote that are still readable; "
+            "it recorded others that are not readable here"
+            if unreadable
+            else "# Artifact manifest - the complete list of files the run wrote"
+        )
+        + "\n"
+        + artifacts
+    )
 
     # Header and body on separate lines, never glued with a `type: ` prefix. Go
     # verifies a trace_event quote by looking for it inside the event payload
