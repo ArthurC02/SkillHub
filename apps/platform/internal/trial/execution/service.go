@@ -106,6 +106,12 @@ type Service struct {
 	// Trace owns deployment-wide masking activity. It is injected by each root;
 	// a missing service returns an error instead of pretending the counts are zero.
 	Trace *trace.Service
+	// MaskerCanary overrides the masker liveness probe run at the end of every
+	// supervisor sweep (02:SEC-010's TraceMaskingStopped, asked directly rather
+	// than inferred from traffic). Nil means trace.MaskerCanary, the real one;
+	// only a test ever sets it, because a pure function over compiled-in rules has
+	// no other seam a test can break.
+	MaskerCanary func() []string
 	// TraceIngestBaseURL is the origin an execution node reaches the control
 	// plane on (SKILLHUB_TRACE_INGEST_URL). Empty has the same effect as a
 	// disabled signer.

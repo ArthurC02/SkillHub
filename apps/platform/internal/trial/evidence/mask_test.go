@@ -128,3 +128,63 @@ func TestMaskerLeavesQueryParameterNamesAloneOutsideAQueryString(t *testing.T) {
 		}
 	}
 }
+
+// The canary on an intact masker. If this is ever red in CI, the same call is
+// red in production and the fleet stops dispatching (02:SEC-010 P1, via
+// internal/run's sweep) — which is the point: the assertion and the production
+// detector are the same function.
+func TestMaskerCanaryPassesOnAnIntactMasker(t *testing.T) {
+	if survived := MaskerCanary(); len(survived) != 0 {
+		t.Errorf("the masker canary reports these shapes unredacted: %v", survived)
+	}
+}
+
+// Every pattern must be exercised by a canary sample, the same way
+// TestEveryPackageScannerPatternHasASampleHere holds the scanner's list and this
+// file's in step. Without it, a pattern added later is one the canary would never
+// notice the loss of — and a liveness probe that covers eight of nine rules
+// reports "alive" for a masker that is nine-tenths gone.
+func TestEveryMaskerPatternHasACanarySample(t *testing.T) {
+	for _, re := range secretPatterns {
+		matched := false
+		for _, shape := range canaryShapes {
+			if re.MatchString(shape.sample) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			t.Errorf("no canary sample exercises %s: add one, or the canary cannot tell if this rule is gone", re)
+		}
+	}
+	if len(canaryShapes) != len(secretPatterns) {
+		t.Errorf("%d canary samples for %d patterns: one each, or a sample is covering for a rule that has none",
+			len(canaryShapes), len(secretPatterns))
+	}
+}
+
+// The failure path, driven by deleting a rule — which is the regression AGENTS.md
+// rule 9 keeps catching in this repo (six placeholder rules, three with no positive
+// test, all deletable while the suite stayed green). The canary must name the shape
+// that stopped being redacted, and must name nothing else: its result is written
+// into a halt reason, an audit event and a log line, so a probe that echoed its own
+// inputs would put credential-shaped strings exactly where iron rule 11 keeps values
+// out of.
+func TestMaskerCanaryNamesTheShapeThatStoppedBeingRedacted(t *testing.T) {
+	original := secretPatterns
+	t.Cleanup(func() { secretPatterns = original })
+	secretPatterns = original[1:] // the vendor-key rule, gone
+
+	survived := MaskerCanary()
+	if len(survived) != 1 || survived[0] != canaryShapes[0].name {
+		t.Fatalf("with the %s rule deleted the canary reported %v, want exactly [%s]",
+			canaryShapes[0].name, survived, canaryShapes[0].name)
+	}
+	for _, reported := range survived {
+		for _, shape := range canaryShapes {
+			if strings.Contains(reported, shape.sample) {
+				t.Errorf("the canary reported a sample value, not a name: %s", shape.name)
+			}
+		}
+	}
+}

@@ -87,16 +87,22 @@ func (s *Service) Supervise(ctx context.Context) error {
 		}
 	}
 
-	// 03:SEC-012, the one P1 criterion of 02:SEC-010 that this process can conclude
-	// on its own. It rides the sweep rather than getting a timer of its own for the
-	// reason the file header gives: another leader-elected timer reading the same
-	// tables buys nothing. It never returns an error, same as
+	// 03:SEC-012, the P1 criterion of 02:SEC-010 that this process can conclude on
+	// its own, read two ways. It rides the sweep rather than getting a timer of its
+	// own for the reason the file header gives: another leader-elected timer reading
+	// the same tables buys nothing. Neither ever returns an error, same as
 	// EvaluateOrphanThresholds at the end of the orphan scan — a detector must not
 	// be able to fail the work it rides on.
+	//
+	// The canary asks the masker directly and needs no traffic; the traffic reading
+	// asks whether a whole window of real events went unredacted, which is the only
+	// way the ingestion path skipping the masker altogether becomes visible. Neither
+	// sees the other's failure — halt.go's detectMaskerCanaryFailed has the long version.
 	//
 	// The other criterion (Reconciler 停擺) is deliberately NOT here: this sweep is
 	// a River periodic job, and a stopped worker would take its own watchdog with
 	// it. That one lives in cmd/api (halt.go's WatchReconciler).
+	s.detectMaskerCanaryFailed(ctx)
 	s.detectMaskingStopped(ctx)
 	return nil
 }

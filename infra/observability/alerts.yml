@@ -341,13 +341,19 @@ groups:
             靜默失效，優先於一切其他告警處理。
             **本條的「停止派送」已經不是人的動作**：supervisor 每輪（30 秒）以本條
             的判準直接查 `trace_events`，命中即自行宣告 P1 並停整池派送
-            （`internal/run/halt.go` 的 `detectMaskingStopped`，02:SEC-010 P1 判準
-            之一）。**兩個門檻都照抄本條**——`[1h]` 的窗，加上 `for: 1h`（在 SQL 裡
+            （`internal/trial/execution/halt.go` 的 `detectMaskingStopped`，02:SEC-010
+            P1 判準之一）。**兩個門檻都照抄本條**——`[1h]` 的窗，加上 `for: 1h`（在 SQL 裡
             寫成「窗的兩端都要有事件、中間一個欄位都沒遮」）。`for` 不是給人的抑制而是
             門檻的一半：本條的前提「幾乎必然有東西被遮」是對流量說的，低流量的一個小時
             光靠 expr 就會成立，而那會用一次誤判停掉整池。因此本條與平台的動作幾乎同時
             發生；**響了而 `skillhub_dispatch_halted` 是 0，代表 supervisor 也沒在跑**。
             **解除一律是人的動作**，且要先走 02:SEC-010 §3 的遮罩失敗 runbook。
+            **同一條判準另有一個不看流量的偵測器**（2026-08-25）：同一輪 sweep 先跑
+            `detectMaskerCanaryFailed`，把平台自己造的每一種形狀的假 Secret 餵過 masker，
+            遮不掉就宣告 P1。**它沒有對應的 Prometheus 規則，也不需要**——本條靠流量統計
+            推論，而語料裡沒有可遮的東西時（dev 全庫 2,444 筆 sandbox 事件、遮罩 0）它
+            永遠推論不出東西；canary 是直接證據，且在零流量下同樣有效。兩者都留：canary
+            看不見「呼叫端不再呼叫 masker」，本條看不見「規則沒了但語料本來就乾淨」。
 
       - alert: TraceIngestionRejecting
         expr: sum(rate(skillhub_trace_ingest_rejected_total[15m])) > 0.1

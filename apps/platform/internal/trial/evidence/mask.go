@@ -28,7 +28,10 @@ package trace
 // nothing and removes a second list that could drift out of step with the schema.
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"sort"
 	"strconv"
@@ -161,4 +164,120 @@ func (m *Masker) redact(s string) string {
 // key containing a slash does not read as two path segments.
 func escapePointer(key string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(key, "~", "~0"), "/", "~1")
+}
+
+// --- the masker's own liveness ------------------------------------------------
+//
+// 02:SEC-010's `TraceMaskingStopped` was only ever measurable one way: watch real
+// traffic and conclude from a run of zero redactions that the rules stopped
+// matching. That inference needs traffic it does not have. The whole dev corpus is
+// 2,444 sandbox events with a masked total of zero (runbook §5) — synthetic data
+// carrying no secrets — so on the only corpus that exists, the premise the
+// inference rests on ("normal traffic almost certainly contains something worth
+// redacting") is false, and the criterion could not be evaluated at all until real
+// beta traffic arrived.
+//
+// A canary does not need anybody's traffic. Feed the masker a value the platform
+// made up on the spot and assert it came back redacted: a failure is direct
+// evidence rather than an inference, and it reads the same under zero traffic,
+// synthetic traffic and real traffic.
+
+// canaryShapes are synthetic, non-secret values — one per entry in
+// secretPatterns, held in step by TestEveryMaskerPatternHasACanarySample. None is
+// a credential: they are runs of one character behind a vendor prefix, assembled
+// from fragments at run time for the reason mask_test.go's scannerShapes are —
+// a literal vendor prefix sitting in the tree trains people to ignore secret
+// scans, and this file is not a test.
+var canaryShapes = []struct{ name, sample string }{
+	{"openai style key", "sk-" + "proj-" + strings.Repeat("A", 28)},
+	{"aws access key id", "AKIA" + strings.Repeat("Q", 16)},
+	{"github token", "gh" + "p_" + strings.Repeat("0", 36)},
+	{"slack token", "xox" + "b-" + strings.Repeat("0", 10) + "-notarealslacktoken"},
+	{"google api key", "AI" + "za" + strings.Repeat("0", 35)},
+	{"authorization header", "Bearer " + strings.Repeat("0", 32)},
+	{"credential assignment", "OPENAI_API_KEY=" + strings.Repeat("0", 32)},
+	{"credential query parameter", "https://example.invalid/o?X-Amz-Signature=" + strings.Repeat("0", 32)},
+	{"private key block", "-----BEGIN " + "RSA PRIVATE KEY-----"},
+}
+
+// canaryKnownName is the exact-match arm, which no pattern covers: it is how a
+// credential the platform issued (the ingestion token above all) gets redacted,
+// and a Masker whose Known pass stopped working would still pass every shape
+// above.
+const canaryKnownName = "platform-issued value"
+
+// MaskerCanary runs one synthetic secret of every shape through the real masker
+// and returns the names of the ones that survived. Empty means the masker is
+// intact.
+//
+// Names only. The samples are not secrets, but the value fed through the Known
+// arm is generated per call and this result is written to a halt reason, an audit
+// event and a log line — a probe that reports what it fed itself is a probe that
+// prints values into the places iron rule 11 exists to keep values out of.
+//
+// It goes through [Masker.Mask] rather than the unexported redact, because Mask
+// is what [Service.Ingest] calls: the walk, the pointer bookkeeping and
+// [Result.Fields] are all part of "the masker works", and Fields is what lands in
+// `masked_fields` — the column the traffic-based half of this criterion counts.
+//
+// No database, no model call, no Run. Nine regexes and one string replace, which
+// is why it can ride a 30-second sweep.
+func MaskerCanary() []string {
+	known, err := canaryKnownValue()
+	if err != nil {
+		return []string{canaryKnownName + " (no random value could be generated: " + err.Error() + ")"}
+	}
+	probes := make([]struct{ name, sample string }, 0, len(canaryShapes)+1)
+	probes = append(probes, canaryShapes...)
+	probes = append(probes, struct{ name, sample string }{canaryKnownName, known})
+
+	payload := make(map[string]string, len(probes))
+	for _, probe := range probes {
+		// Embedded in surrounding text, because that is how a secret reaches a
+		// trace: printed inside a command line or a log message, not alone in a
+		// field of its own.
+		payload[probe.name] = "canary " + probe.sample + " canary"
+	}
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return []string{"the canary payload could not be encoded: " + err.Error()}
+	}
+	result, err := (&Masker{Known: []string{known}}).Mask(encoded)
+	if err != nil {
+		return []string{"the masker returned an error: " + err.Error()}
+	}
+	var masked map[string]string
+	if err := json.Unmarshal(result.Payload, &masked); err != nil {
+		return []string{"the masker returned something that is no longer an object of strings: " + err.Error()}
+	}
+
+	survived := make([]string, 0)
+	for _, probe := range probes {
+		if strings.Contains(masked[probe.name], probe.sample) {
+			survived = append(survived, probe.name)
+		}
+	}
+	sort.Strings(survived)
+	// Redacting every probe while reporting none of them is the same failure one
+	// step later: `masked_fields` is what a reader is shown and what the
+	// traffic-based half of the criterion counts, so a masker that redacts
+	// silently has still stopped telling the truth about what it did.
+	if len(survived) == 0 && len(result.Fields) != len(probes) {
+		return []string{fmt.Sprintf("masked_fields (every probe was redacted but %d of %d were reported)",
+			len(result.Fields), len(probes))}
+	}
+	return survived
+}
+
+// canaryKnownValue is a fresh 32 hex characters. Random per call so no literal
+// that looks like a credential is ever committed, and hex so it cannot be
+// redacted by one of the patterns instead — this probe has to fail when the
+// exact-match arm alone is what broke. Comfortably over redact's 16-character
+// floor.
+func canaryKnownValue() (string, error) {
+	var buf [16]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(buf[:]), nil
 }

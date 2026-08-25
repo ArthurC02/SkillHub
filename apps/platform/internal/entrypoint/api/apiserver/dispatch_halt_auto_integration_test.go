@@ -14,6 +14,7 @@ package apiserver_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -256,5 +257,75 @@ func TestReconcilerStallHaltsDispatchWithoutAnOperator(t *testing.T) {
 	}
 	if got := haltAuditCount(t, pool, "dispatch.resumed") - resumesBefore; got != 0 {
 		t.Errorf("dispatch.resumed events = %d; no detector may lift a halt", got)
+	}
+}
+
+// 02:SEC-010's `TraceMaskingStopped`, concluded from the masker itself rather than
+// from a window of traffic.
+//
+// The traffic reading above needs two hours of events at both ends of a window to
+// say anything, and on the only corpus this deployment has ever had — 2,444 dev
+// sandbox events with a masked total of zero, all of it synthetic and carrying no
+// secrets — it says nothing at all. The canary needs no traffic: it hands the
+// masker a synthetic secret of every shape and stops the fleet if one comes back
+// intact. Same switch, same audit trail, same absence of an automatic lift.
+func TestAFailingMaskerCanaryHaltsDispatchWithoutAnOperator(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	_, svc := haltHarness(t, a, pool)
+	resetDetectionInputs(t, pool)
+	ctx := context.Background()
+	sweep := func() {
+		t.Helper()
+		if err := svc.Supervise(ctx); err != nil {
+			t.Fatalf("supervisor sweep: %v", err)
+		}
+	}
+	t.Cleanup(func() { svc.MaskerCanary = nil })
+
+	// The real probe, on this build's real masker. A sweep on a healthy platform is
+	// not allowed to stop it, and this is also the assertion that the wiring is not
+	// backwards: if the detector concluded on an intact masker, every deployment
+	// would halt itself 30 seconds after start-up.
+	sweep()
+	if source, _, _ := poolHalt(t, pool); source != "" {
+		t.Fatalf("dispatch halted with an intact masker (source=%q)", source)
+	}
+
+	// One shape stops being redacted. Nobody is asked.
+	haltsBefore := haltAuditCount(t, pool, "dispatch.halted")
+	svc.MaskerCanary = func() []string { return []string{"openai style key"} }
+	sweep()
+	source, reason, byPlatform := poolHalt(t, pool)
+	if source != "p1_incident" {
+		t.Fatalf("pool halt source = %q, want p1_incident", source)
+	}
+	if !strings.Contains(reason, "openai style key") {
+		t.Errorf("the halt reason does not name the shape that survived: %q", reason)
+	}
+	if !byPlatform {
+		t.Error("declared_by is set; a halt the platform concluded on its own has no human actor")
+	}
+	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+		t.Fatalf("dispatch.halted events = %d, want exactly 1", got)
+	}
+
+	// Idempotence, for the same reason the traffic reading needs it: a broken masker
+	// stays broken for as long as the investigation takes, and one audit event per
+	// 30 second sweep buries the declaration that mattered.
+	for i := 0; i < 3; i++ {
+		sweep()
+	}
+	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+		t.Errorf("dispatch.halted events after four sweeps = %d, want 1", got)
+	}
+
+	// 03:SEC-012 「解除不得是自動的」. A masker that started redacting again says
+	// nothing about the secrets already written while it was not, so the trigger
+	// does not get to decide when service comes back.
+	svc.MaskerCanary = func() []string { return nil }
+	sweep()
+	if source, _, _ := poolHalt(t, pool); source != "p1_incident" {
+		t.Fatalf("the halt lifted itself once the canary recovered (source=%q); the release must be a person", source)
 	}
 }

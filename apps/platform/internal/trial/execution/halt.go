@@ -668,6 +668,69 @@ func (s *Service) detectMaskingStopped(ctx context.Context) {
 		window.RecentEvents, maskingWindow))
 }
 
+// detectMaskerCanaryFailed is the same P1 criterion asked directly instead of
+// inferred: the platform makes up a secret of every shape the masker knows, runs
+// it through the masker, and stops the fleet if any of them came back intact.
+//
+// Why both this and detectMaskingStopped, rather than this one replacing it.
+// They are not two measurements of one thing — they fail in different places and
+// neither sees the other's failure:
+//
+//   - The canary reads the RULES, in this process, with no traffic. It is the only
+//     one of the two that works on the corpus this deployment actually has: 2,444
+//     sandbox events with a masked total of zero, because synthetic data carries no
+//     secrets (runbook §5). The traffic-based criterion has never been evaluable
+//     here and would not be until real beta traffic arrived, which is not a
+//     detector, it is a promise of one.
+//   - The traffic criterion reads the PATH, in production, over what really
+//     happened. The canary calls Masker.Mask itself, so it cannot see a caller that
+//     stopped calling the masker — and there are two such callers ([Service.Ingest]
+//     and RecordOrchestratorEvent, each constructing its own Masker), plus the
+//     grant of Known values that Ingest passes and the canary supplies for itself.
+//     Delete the mask step from an ingestion path and this canary stays green
+//     forever; only the count of redactions over real traffic falls to zero.
+//
+// So: the canary answers 「遮罩器還活著嗎」 and the traffic criterion answers
+// 「有一整批不該是零的東西是零嗎」. Removing the second one would trade a detector
+// that is currently unevaluable for no detector at all on the wiring, and the
+// thresholds it is measured with are 02:SEC-010's to change, not this file's.
+//
+// The failure is not rate-limited or retried: the masker is a pure function of
+// compiled-in rules, so it does not flake. One intact sample is a deployment
+// running with iron rule 11 partly disabled, and 02:SEC-010's escalation rule
+// (「不確定屬 P1 或 P2 時一律以 P1 處理」) settles the rest.
+func (s *Service) detectMaskerCanaryFailed(ctx context.Context) {
+	// The probe first, and the halt table only if it failed: this rides a 30 second
+	// sweep, and the healthy case must not cost a query. detectMaskingStopped can
+	// afford to check first because it has to read the database either way.
+	survived := s.maskerCanary()
+	if len(survived) == 0 {
+		return
+	}
+	if s.incidentAlreadyHeld(ctx) {
+		return
+	}
+	s.declareDetectedIncident(ctx, fmt.Sprintf(
+		"02:SEC-010 P1 (TraceMaskingStopped, canary): the trace masker was handed one synthetic secret of "+
+			"every shape it knows and returned these unredacted: %s. Nothing was inferred from traffic — this is "+
+			"the masker itself failing to redact, so anything a sandbox prints from here on lands in trace_events "+
+			"in the clear (NFR-002, iron rule 11)",
+		strings.Join(survived, ", ")))
+}
+
+// maskerCanary is trace.MaskerCanary, behind a field so an integration test can
+// simulate a masker that stopped — there is no other seam, because the real one is
+// a pure function over compiled-in rules and a test cannot break those from
+// outside the package. Nil means the real probe: a composition root that never
+// heard of this field still gets the detector, which is the direction a
+// fail-closed switch has to default in.
+func (s *Service) maskerCanary() []string {
+	if s.MaskerCanary != nil {
+		return s.MaskerCanary()
+	}
+	return trace.MaskerCanary()
+}
+
 func (s *Service) maskingActivity(ctx context.Context, recent, since time.Time) (trace.MaskingActivityFacts, error) {
 	if s.Trace == nil {
 		return trace.MaskingActivityFacts{}, errors.New("run: trace service not injected")
