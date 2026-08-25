@@ -47,6 +47,15 @@ jobs:
             web:
               - 'apps/web/**'
               - 'packages/api-client-ts/**'
+              # The two design rulers are POLICY, and the policy lives in these
+              # two documents: src/ia.test.ts and src/design-system.test.ts read
+              # them and hard-cap several of their tables (the deviation ledger,
+              # the type and space scales) as ratchets that may only shrink.
+              # Without this line a docs-only pull request skips the web job
+              # entirely -- so the one edit both test headers say somebody has to
+              # read, adding a fourth row to the deviation ledger or a twelfth
+              # type step, was the one edit CI did not run. Added 2026-08-25.
+              - 'docs/design/**'
               - '.github/workflows/ci.yml'
             platform:
               - 'apps/platform/**'
