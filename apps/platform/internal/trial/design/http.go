@@ -178,19 +178,49 @@ type testCaseListItem struct {
 	HasRubric         bool   `json:"has_rubric"`
 }
 
+// parseListLimit reads the `limit` GET /test-cases declares in public.yaml:
+// `{ type: integer, minimum: 1, maximum: 101, default: 51 }`. Absent is the
+// default; present is the schema or it is a 400.
+//
+// The 51/101 look like off-by-ones and are not: the web client asks for 51 to
+// get 50 rows plus the sentinel that tells it there is another page
+// (apps/web/src/api/testcases.ts), so the ceiling is the same trick at 100.
+// Code and contract agree on both bounds.
+//
+// What did not agree was the refusal. This was the third handler swallowing an
+// out-of-schema limit after both search endpoints were fixed (discovery's
+// parseLimit, 2026-08-25): `limit=0`, `limit=500` and `limit=abc` all quietly
+// became 51. A caller who asked for 500 and got 51 rows reads that as the size
+// of their library.
+func parseListLimit(r *http.Request) (int32, error) {
+	q := r.URL.Query()
+	if !q.Has("limit") {
+		return 51, nil
+	}
+	// Both bounds inclusive, as JSON Schema's minimum/maximum are; `limit=`
+	// (present, empty) is refused too, since allowEmptyValue is not set.
+	n, err := strconv.Atoi(q.Get("limit"))
+	if err != nil || n < 1 || n > 101 {
+		return 0, errors.New("query parameter limit must be a whole number between 1 and 101")
+	}
+	return int32(n), nil
+}
+
 // List handles GET /test-cases (TEST-001, WS-004). `skill_id` narrows it to one
-// skill; a malformed one is ignored rather than refused, the same as a malformed
-// limit — a filter the server could not read must not silently become "no
-// filter", so it is parsed strictly and only a valid UUID filters.
+// skill; a malformed one answers an empty list rather than the unfiltered one —
+// a filter the server could not read must not silently become "no filter", so it
+// is parsed strictly and only a valid UUID filters.
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
 		return
 	}
-	limit, offset := int32(51), int32(0)
-	if value, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && value >= 1 && value <= 101 {
-		limit = int32(value)
+	limit, err := parseListLimit(r)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
 	}
+	offset := int32(0)
 	if value, err := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32); err == nil && value >= 0 {
 		offset = int32(value)
 	}

@@ -159,7 +159,12 @@ func (s *Service) Cleanup(ctx context.Context, run gen.Run) error {
 			}
 		}
 		if attempt.ProviderRunID == nil {
-			continue // never dispatched: nothing was ever provisioned
+			// No handle to address a DELETE to. Usually because nothing was ever
+			// provisioned; occasionally because the handle was lost between the
+			// provider answering and the platform writing it down. This path cannot
+			// tell the two apart and cannot act on either - the orphan scan can, and
+			// isOrphan reclaims the second case by age.
+			continue
 		}
 		// The Virtual Key above is revoked either way, and that is deliberate: it is
 		// containment, not evidence. 02:SEC-010's own P1 runbook opens with 「撤銷該
@@ -459,6 +464,22 @@ func (s *Service) isOrphan(ctx context.Context, entry ProviderRun, observed time
 	}
 	if IsTerminal(attempt.Status) {
 		return true, "the platform run is already finished"
+	}
+	// The attempt exists and has no handle, yet here is the sandbox: it *was*
+	// dispatched and the write that records the handle did not land (job.go's
+	// SetAttemptProviderRunID failure path, where the immediate Destroy also
+	// failed). Nothing else reclaims this one. Cleanup skips a NULL
+	// provider_run_id as "never dispatched", and the run's own status is no help
+	// because the driver has already opened attempt 2 and carried on - so the
+	// sandbox would stand, billed and holding a slot, until the *run* reached a
+	// terminal state, which is up to the whole wall clock away.
+	//
+	// Judged by age like every other sandbox the platform cannot account for, and
+	// orphanGrace is the right window unchanged: the gap this must not catch is
+	// between the provider answering POST /runs and the platform's next statement,
+	// one UPDATE later. Five minutes of that gap is not a dispatch in flight.
+	if attempt.ProviderRunID == nil {
+		return s.orphanByAge(entry, observed, "the attempt never recorded this sandbox's handle")
 	}
 	return false, ""
 }

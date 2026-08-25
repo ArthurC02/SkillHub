@@ -700,6 +700,121 @@ func TestOrphanScanDestroysLeakedSandboxesButSparesFreshOnes(t *testing.T) {
 	}
 }
 
+// RUN-005 / ADR-003: runtime_snapshot freezes what the scheduler matched, so a
+// re-dispatch must not rewrite it.
+//
+// dispatch() is re-enterable — execute() routes a `queued`/`provisioning` run with
+// no live attempt straight back into it, which is where a job retried after
+// SetAttemptProviderRunID failed arrives — and pinProvider used to run
+// unconditionally on the way through. SetRunProvider overwrites the column in
+// place, so the runtime attempt 1 actually matched was gone the moment attempt 2
+// was scheduled, which is the one thing the column exists to prevent.
+func TestARedispatchDoesNotRewriteTheRuntimeItAlreadyPinned(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-runtime-pin")
+	_, svc := idleProvider(t, a, pool)
+	ctx := context.Background()
+
+	created := f.start(t)
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+
+	// The run as the first dispatch left it: a provider pinned, and a runtime
+	// snapshot naming a version this fleet no longer offers. That is exactly the
+	// case ADR-003 keeps the column for.
+	const pinned = `{"provider":"fake_sandbox","runtime":{"image_digest":"sha256:the-one-attempt-1-matched"}}`
+	if _, err := pool.Exec(ctx,
+		`UPDATE runs SET provider = 'fake_sandbox', runtime_snapshot = $2 WHERE id = $1`,
+		runID, pinned); err != nil {
+		t.Fatal(err)
+	}
+
+	// Re-enter dispatch: queued, no live attempt, exactly what a retried job finds.
+	if err := svc.Drive(ctx, ws, runID); err != nil {
+		t.Fatal(err)
+	}
+
+	var got string
+	if err := pool.QueryRow(ctx,
+		"SELECT runtime_snapshot::text FROM runs WHERE id = $1", runID).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "the-one-attempt-1-matched") {
+		t.Fatalf("the re-dispatch overwrote the runtime the first attempt matched: %s", got)
+	}
+}
+
+// idleProvider is withProvider without the worker: the test drives the service
+// itself, so a run stays exactly where it is put. Needed by anything that has to
+// observe a *non-terminal* run, which a running worker would not leave alone.
+func idleProvider(t *testing.T, a *api, pool *pgxpool.Pool) (*providertest.Fake, *run.Service) {
+	t.Helper()
+	clearRunBacklog(t, pool)
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	registry := run.NewRegistry(fake.Provider())
+	a.runs.Providers = registry
+	svc := *a.runs
+	svc.Providers = registry
+	svc.Store = a.packages
+	svc.PollInterval = 20 * time.Millisecond
+	return fake, &svc
+}
+
+// handlelessAttempt is job.go's SetAttemptProviderRunID failure as it is left on
+// disk: the attempt was dispatched and its provider_run_id is NULL.
+func handlelessAttempt(t *testing.T, pool *pgxpool.Pool, runID, ws pgtype.UUID, number int) string {
+	t.Helper()
+	var id pgtype.UUID
+	if err := pool.QueryRow(context.Background(), `
+		INSERT INTO run_attempts (run_id, workspace_id, attempt_number, provider, started_at)
+		VALUES ($1, $2, $3, 'fake_sandbox', now())
+		RETURNING id`, runID, ws, number).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return uuidText(id)
+}
+
+// RUN-007: a sandbox whose attempt exists but never recorded its handle is a
+// leak, and is reclaimed on age like any other.
+//
+// It used to stand until the *run* reached a terminal state, which is up to the
+// whole wall clock away: Cleanup skips a NULL provider_run_id as "never
+// dispatched", and isOrphan asked the run's status — non-terminal, because the
+// driver had already opened the next attempt and carried on. So the sandbox was
+// billed and holding a slot while the run it belonged to had moved on without it,
+// and nothing in this file noticed (M2/M5 audit, 2026-08-25).
+func TestOrphanScanReclaimsASandboxWhoseHandleWasNeverRecorded(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-orphan-unrecorded")
+	fake, svc := idleProvider(t, a, pool)
+	ctx := context.Background()
+
+	created := f.start(t) // no worker here, so it stays queued
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+	lost := handlelessAttempt(t, pool, runID, ws, 1)
+	inFlight := handlelessAttempt(t, pool, runID, ws, 2)
+
+	// The sandbox attempt 1's lost write was supposed to name, old enough that the
+	// one UPDATE between the provider's answer and the platform's record has had
+	// every chance to land...
+	leaked := fake.Seed(created.RunID, lost, time.Now().Add(-time.Hour))
+	// ...and one from a dispatch that genuinely is still in flight. Same missing
+	// handle, and it must survive: that is what orphanGrace is for.
+	fresh := fake.Seed(created.RunID, inFlight, time.Now())
+
+	if err := (&run.OrphanScanWorker{Svc: svc}).Work(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fake.Provider().GetRun(ctx, leaked); err == nil {
+		t.Error("a sandbox whose attempt never recorded its handle survived the scan")
+	}
+	if _, err := fake.Provider().GetRun(ctx, fresh); err != nil {
+		t.Errorf("the scan destroyed a dispatch that is still in flight: %v", err)
+	}
+}
+
 // SBX-012 / ADR-022 X-03: the in-flight orphan table, which is what makes
 // "同一筆連續 2 輪仍存在" a thing the platform can actually say.
 //

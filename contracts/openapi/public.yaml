@@ -2762,6 +2762,22 @@ paths:
                   test_cases:
                     type: array
                     items: { $ref: "#/components/schemas/TestCaseListItem" }
+        "400":
+          description: |
+            A `limit` outside its schema. It is `minimum: 1, maximum: 101` above
+            and both bounds are inclusive, so `0`, `102`, a non-integer and a
+            present-but-empty `limit=` are refused rather than quietly replaced by
+            the default 51. A caller who asked for 500 and got 51 rows would read
+            that as the size of their library, which is a ceiling they never asked
+            for presenting itself as a result count (ADR-042 決策 3).
+
+            The 51 and the 101 are not off-by-ones. The client asks for one row
+            more than it shows, so it can tell whether another page exists without
+            a second request; both the page size and the ceiling carry that extra
+            row.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: No valid session.
           content:

@@ -987,6 +987,43 @@ func TestTestCaseListFiltersBySkillAndCarriesItsAggregates(t *testing.T) {
 	}
 }
 
+// The third handler that swallowed an out-of-schema `limit`, after both search
+// endpoints were fixed. `{ minimum: 1, maximum: 101 }` with both bounds
+// inclusive, and anything else is a 400 rather than a quiet fall back to 51 — a
+// caller who asked for 500 and got 51 rows reads that as the size of their
+// library (ADR-042 決策 3, M5 audit 2026-08-25).
+func TestTestCaseListRefusesAnOutOfSchemaLimit(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, "alice-testcase-limit")
+	skillID, _ := newTestCase(t, pool, a, alice, "limit")
+	// A second draft, so `limit=1` has something to leave out and the accepted
+	// value is asserted to be honoured rather than merely tolerated.
+	if code, body := alice.doJSON(t, http.MethodPost, "/test-cases", fmt.Sprintf(
+		`{"skill_id":%q,"name":"limit-second","user_prompt":"Another prompt."}`, skillID),
+	); code != http.StatusCreated {
+		t.Fatalf("second draft: got %d, body %v", code, body)
+	}
+
+	for _, raw := range []string{"0", "102", "abc", "", "-1", "1.5"} {
+		if code, body := alice.doJSON(t, http.MethodGet, "/test-cases?limit="+raw, ""); code != http.StatusBadRequest {
+			t.Errorf("GET /test-cases?limit=%q: got %d, want 400 (body %v)", raw, code, body)
+		}
+	}
+	// Both ends of the schema are accepted, and so is a request that names none.
+	for _, path := range []string{"?limit=1", "?limit=101", "", "?skill_id=" + skillID + "&limit=101"} {
+		if code, body := alice.doJSON(t, http.MethodGet, "/test-cases"+path, ""); code != http.StatusOK {
+			t.Errorf("GET /test-cases%s: got %d, want 200 (body %v)", path, code, body)
+		}
+	}
+	// And the limit is honoured rather than merely accepted.
+	if code, body := alice.doJSON(t, http.MethodGet, "/test-cases?limit=1", ""); code == http.StatusOK {
+		if rows, _ := body["test_cases"].([]any); len(rows) != 1 {
+			t.Errorf("limit=1 returned %d rows", len(rows))
+		}
+	}
+}
+
 // WS-006 / iron rule 3: the filter is a narrowing of the caller's own workspace,
 // never a way to read into someone else's. Bob naming Alice's skill gets the same
 // empty answer as Bob naming an id that does not exist.

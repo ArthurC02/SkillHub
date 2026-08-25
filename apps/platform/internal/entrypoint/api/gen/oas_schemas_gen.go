@@ -3171,7 +3171,6 @@ func (*Error) listPackagingTargetsRes()   {}
 func (*Error) listRunsRes()               {}
 func (*Error) listSkillVersionsRes()      {}
 func (*Error) listSkillsRes()             {}
-func (*Error) listTestCasesRes()          {}
 func (*Error) publicSearchSkillsRes()     {}
 func (*Error) requestAccountDeletionRes() {}
 
@@ -6191,6 +6190,10 @@ func (s *ListSkillsOK) SetTruncated(val bool) {
 
 func (*ListSkillsOK) listSkillsRes() {}
 
+type ListTestCasesBadRequest Error
+
+func (*ListTestCasesBadRequest) listTestCasesRes() {}
+
 type ListTestCasesOK struct {
 	TestCases []TestCaseListItem `json:"test_cases"`
 }
@@ -6206,6 +6209,10 @@ func (s *ListTestCasesOK) SetTestCases(val []TestCaseListItem) {
 }
 
 func (*ListTestCasesOK) listTestCasesRes() {}
+
+type ListTestCasesUnauthorized Error
+
+func (*ListTestCasesUnauthorized) listTestCasesRes() {}
 
 // LogoutNoContent is response for Logout operation.
 type LogoutNoContent struct{}

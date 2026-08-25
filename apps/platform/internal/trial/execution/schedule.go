@@ -323,10 +323,33 @@ func (s *Service) buildRunRequest(
 	}, nil
 }
 
-// pinProvider records the scheduling decision on the run before the first dispatch.
+// pinProvider records the scheduling decision on the run before the first
+// dispatch — and only before the first one.
+//
+// dispatch() is re-enterable: execute() routes a `queued`/`provisioning` run with
+// no live attempt back here, which is where a job retried after
+// SetAttemptProviderRunID failed ends up. It used to call this every time, and
+// SetRunProvider overwrites runtime_snapshot in place, so a re-dispatch that
+// matched a different runtime version left attempt 1's unrecoverable. That column
+// exists precisely to freeze what was matched so a past run stays explicable after
+// provider capabilities change (RUN-005, ADR-003); overwriting it defeats the
+// column rather than serving it.
+//
+// The whole decision is skipped, not half of it: runs.provider and
+// runtime_snapshot are one statement about one scheduling decision, and a
+// provider name paired with another attempt's runtime would be worse than either.
+// Which provider each dispatch actually went to is on run_attempts.provider,
+// which is per attempt and is what cleanup and follow read.
+//
+// ponytail: the thorough answer is a runtime column on run_attempts, so attempt 2
+// records its own instead of inheriting silence. That is a migration; see the
+// report accompanying this change.
 func (s *Service) pinProvider(
 	ctx context.Context, run gen.Run, p *Provider, c ProviderCapability, profile RuntimeProfile,
 ) (gen.Run, error) {
+	if alreadyPinned(run) {
+		return run, nil
+	}
 	snapshot, err := json.Marshal(runtimeSnapshot{
 		Provider:       p.Name,
 		Runtime:        profile,
@@ -346,6 +369,15 @@ func (s *Service) pinProvider(
 		return run, err
 	}
 	return updated, nil
+}
+
+// alreadyPinned reports whether this run's scheduling decision has been recorded.
+// CreateRun writes `{}` and the column is NOT NULL, so "empty object" is the
+// unpinned state; parsed rather than string-compared because `{}` is what the
+// platform writes, not the only jsonb Postgres can hand back.
+func alreadyPinned(run gen.Run) bool {
+	var snapshot map[string]json.RawMessage
+	return json.Unmarshal(run.RuntimeSnapshot, &snapshot) == nil && len(snapshot) > 0
 }
 
 // egressSatisfied reads the two egress modes as ordered rather than as

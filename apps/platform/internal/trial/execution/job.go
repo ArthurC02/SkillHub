@@ -320,7 +320,11 @@ func (d *driver) dispatch(ctx context.Context) error {
 			// nothing will ever clean it up by attempt: release it now rather than
 			// leave it for the orphan scan to find five minutes from now.
 			if destroyErr := provider.Destroy(ctx, pr.ProviderRunID); destroyErr != nil {
-				slog.Error("leaked a sandbox: its mapping could not be recorded and it could not be destroyed",
+				// Not lost: isOrphan reclaims an attempt whose handle was never
+				// recorded once the sandbox is past orphanGrace, so the ceiling on
+				// this is a grace window plus a scan interval rather than the run's
+				// whole wall clock.
+				slog.Error("leaked a sandbox: its mapping could not be recorded and it could not be destroyed; the orphan scan will reclaim it",
 					"run_id", pgconv.UUIDString(d.cur.ID), "error", destroyErr)
 			}
 			return err
