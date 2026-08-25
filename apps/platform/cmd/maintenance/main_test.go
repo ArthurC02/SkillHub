@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -108,5 +109,27 @@ func TestRetentionWindowsHaveNoDefault(t *testing.T) {
 	t.Setenv("TRACE_RETENTION", "2160h")
 	if d, err := positiveDuration("TRACE_RETENTION"); err != nil || d != 2160*time.Hour {
 		t.Errorf("positiveDuration = %s, %v", d, err)
+	}
+}
+
+// The same fail-closed rule as above, asserted on the subcommand rather than on
+// the helper, because the mistake this catches is not "positiveDuration accepts
+// junk" -- it is a job that reads no window at all and sweeps with a compiled-in
+// 30 days. PDM-006 6.1's 30 days is unratified and what this one deletes is the
+// user's own content, so an unset variable has to stop it before any statement
+// runs. A nil pool proves it did: reaching the database would panic.
+func TestPurgeDeletedSkillsRefusesWithoutAGracePeriod(t *testing.T) {
+	for _, unusable := range []string{"", "30", "0s", "-720h", "thirty days"} {
+		t.Setenv("SKILL_DELETION_GRACE", unusable)
+		err := purgeDeletedSkills(context.Background(), nil)
+		if err == nil {
+			t.Errorf("SKILL_DELETION_GRACE=%q started the purge", unusable)
+			continue
+		}
+		// The operator's next action is to set it, so the variable has to be
+		// named in what they see.
+		if !strings.Contains(err.Error(), "SKILL_DELETION_GRACE") {
+			t.Errorf("SKILL_DELETION_GRACE=%q: error does not name the variable: %v", unusable, err)
+		}
 	}
 }

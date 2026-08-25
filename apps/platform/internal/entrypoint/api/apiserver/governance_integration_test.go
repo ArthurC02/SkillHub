@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,6 +20,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
 // recordingStore stands in for object storage: the purge has to reach it, and
@@ -538,5 +540,152 @@ func TestKeyOperationsLeaveAuditEvents(t *testing.T) {
 	if _, err := pool.Exec(ctx,
 		"DELETE FROM audit_events WHERE actor_user_id = $1", mustUUID(t, owner.userID)); err == nil {
 		t.Fatal("audit events are deletable outside the retention purge")
+	}
+}
+
+// WS-005 / PDM-006 §6.1 / 04 丙-63: the grace purge for a skill the user deleted
+// on its own. The assertions that matter here are the four about what the sweep
+// must NOT take: hard deleting a version another workspace forked, or that a run
+// points at, destroys a third party's provenance chain (DISC-003) and punishes
+// somebody who never asked for anything -- and unlike the row it deletes
+// correctly, that damage has no way back.
+//
+// Each retained skill is retained for exactly one reason: the test case is on
+// `tested` and the run is on `used`'s version, so a single exclusion breaking
+// shows up as a single failure rather than being covered by its neighbour.
+func TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced(t *testing.T) {
+	pool := requireDB(t)
+	ctx := context.Background()
+	a := newAPI(t, pool)
+
+	alice := a.login(t, "alice-skillgrace")
+	bob := a.login(t, "bob-skillgrace")
+	// Alice's workspace is the catalog one only so Bob has something he is
+	// allowed to fork; the fork is what makes a version referenced.
+	makeCatalog(t, pool, alice.workspaceID)
+
+	past := seedSkill(t, pool, alice.workspaceID, "grace-past")
+	seedVersion(t, pool, alice.workspaceID, past, "grace-past-hash")
+	recent := seedSkill(t, pool, alice.workspaceID, "grace-recent")
+	seedVersion(t, pool, alice.workspaceID, recent, "grace-recent-hash")
+	forked := seedSkill(t, pool, alice.workspaceID, "grace-forked")
+	seedVersion(t, pool, alice.workspaceID, forked, "grace-forked-hash")
+	used := seedSkill(t, pool, alice.workspaceID, "grace-used")
+	usedVer := seedVersion(t, pool, alice.workspaceID, used, "grace-used-hash")
+	tested := seedSkill(t, pool, alice.workspaceID, "grace-tested")
+	seedVersion(t, pool, alice.workspaceID, tested, "grace-tested-hash")
+
+	if status, _ := postJSON(t, bob, "/skills/"+forked+"/fork", "{}"); status != http.StatusCreated {
+		t.Fatalf("bob fork of alice's catalog skill: got %d", status)
+	}
+	var testCaseID, snapshotID, runID pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
+		VALUES ($1, $2, 'grace-tc', 'do the thing') RETURNING id`,
+		mustUUID(t, alice.workspaceID), mustUUID(t, tested)).Scan(&testCaseID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_case_snapshots
+			(workspace_id, test_case_id, user_prompt, acceptance_criteria, content_hash)
+		VALUES ($1, $2, 'do the thing', '[]'::jsonb, 'grace-snapshot') RETURNING id`,
+		mustUUID(t, alice.workspaceID), testCaseID).Scan(&snapshotID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider)
+		VALUES ($1, $2, $3, 'grace-test') RETURNING id`,
+		mustUUID(t, alice.workspaceID), usedVer.ID, snapshotID).Scan(&runID); err != nil {
+		t.Fatal(err)
+	}
+
+	// Deleted through the real endpoint, because the row state this sweep reads
+	// is whatever that endpoint leaves behind.
+	for _, id := range []string{past, recent, forked, used, tested} {
+		if status, _ := deleteJSON(t, alice, "/skills/"+id); status != http.StatusOK {
+			t.Fatalf("DELETE /skills/%s: got %d", id, status)
+		}
+	}
+	// Four of them are moved past any plausible grace period; `recent` is not,
+	// and that difference is the whole predicate.
+	for _, id := range []string{past, forked, used, tested} {
+		if _, err := pool.Exec(ctx,
+			"UPDATE skills SET deleted_at = now() - interval '40 days' WHERE id = $1",
+			mustUUID(t, id)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The same object cmd/maintenance builds for this job: one field, no
+	// projection writes, because the purge needs neither.
+	svc := &registry.Service{Pool: pool}
+
+	// Fail closed before anything else: an unset window must not mean "now".
+	if _, err := svc.PurgeDeletedSkills(ctx, 0, 100); err == nil {
+		t.Fatal("a zero grace period was accepted; every deletion would be purged instantly")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, recent)); c != 1 {
+		t.Fatal("the refused zero-grace sweep deleted rows anyway")
+	}
+
+	sweep, err := svc.PurgeDeletedSkills(ctx, 30*24*time.Hour, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Errorf and not Fatalf: when this number is wrong, the rows below say which
+	// way it was wrong, and that is the difference between "the sweep took
+	// nothing" and "the sweep took somebody's forked version".
+	if sweep.Purged != 1 {
+		t.Errorf("purged %d skills, want exactly the one past grace with nothing depending on it", sweep.Purged)
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, past)); c != 0 {
+		t.Error("a skill deleted long past the grace period survived the sweep")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE skill_id = $1", mustUUID(t, past)); c != 0 {
+		t.Error("the versions of a purged skill survived; the 0013 purge flag did not reach skill_versions")
+	}
+
+	// What must not go, one case per reason.
+	for _, keep := range []struct {
+		id, why string
+	}{
+		{recent, "deleted inside the grace period"},
+		{forked, "another workspace forked it"},
+		{used, "a run used one of its versions"},
+		{tested, "it still holds test cases"},
+	} {
+		if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, keep.id)); c != 1 {
+			t.Errorf("skill was purged although %s", keep.why)
+		}
+		if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE skill_id = $1", mustUUID(t, keep.id)); c != 1 {
+			t.Errorf("frozen versions were purged although %s", keep.why)
+		}
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM runs WHERE id = $1", runID); c != 1 {
+		t.Error("the run whose version the sweep had to spare is gone")
+	}
+
+	// The two counts the operator reads instead of guessing. Compared with >=
+	// rather than = because this database is shared with every other test in the
+	// package and several of them soft-delete skills too; what these assert is
+	// that the sweep classified this test's four survivors correctly -- three as
+	// kept forever by the provenance rule, one as still waiting out its grace.
+	if sweep.Kept < 3 {
+		t.Errorf("kept = %d, want at least the fork, the run and the test cases", sweep.Kept)
+	}
+	if sweep.Waiting < 1 {
+		t.Errorf("waiting = %d, want at least the skill deleted a moment ago", sweep.Waiting)
+	}
+
+	// Iron rule 9: running it again finds nothing left to do and takes nothing else.
+	again, err := svc.PurgeDeletedSkills(ctx, 30*24*time.Hour, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Purged != 0 {
+		t.Errorf("second sweep purged %d skills; the first one did not finish or the second took survivors", again.Purged)
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM skill_versions WHERE id = $1", usedVer.ID); c != 1 {
+		t.Error("the version a run points at was taken by the second sweep")
 	}
 }

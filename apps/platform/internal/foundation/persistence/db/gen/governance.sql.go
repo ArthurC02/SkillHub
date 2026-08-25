@@ -77,6 +77,48 @@ func (q *Queries) CancelAccountDeletion(ctx context.Context, id pgtype.UUID) (Us
 	return i, err
 }
 
+const countSkillsAwaitingDeletionGrace = `-- name: CountSkillsAwaitingDeletionGrace :one
+SELECT
+    count(*) FILTER (
+        WHERE sk.deleted_at > $1::timestamptz
+    )::bigint AS waiting,
+    count(*) FILTER (
+        WHERE sk.deleted_at <= $1::timestamptz
+          AND (
+            EXISTS (SELECT 1 FROM skill_versions v
+                    WHERE v.skill_id = sk.id
+                      AND (EXISTS (SELECT 1 FROM skills f
+                                   WHERE f.forked_from_version_id = v.id
+                                     AND f.workspace_id <> v.workspace_id)
+                           OR EXISTS (SELECT 1 FROM runs r WHERE r.skill_version_id = v.id)))
+            OR EXISTS (SELECT 1 FROM skills f
+                       WHERE f.forked_from_skill_id = sk.id
+                         AND f.workspace_id <> sk.workspace_id)
+            OR EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
+          )
+    )::bigint AS kept
+FROM skills sk
+WHERE sk.deleted_at IS NOT NULL
+`
+
+type CountSkillsAwaitingDeletionGraceRow struct {
+	Waiting int64
+	Kept    int64
+}
+
+// How many rows the sweep above is holding but cannot take yet, split by why.
+// Not decoration: the two numbers answer different questions when somebody asks
+// "did the purge work". `waiting` shrinking to zero is the job draining; `kept`
+// never shrinking is correct and is the provenance rule doing its work, so an
+// operator who sees a stubborn non-zero total needs to be able to tell which one
+// they are looking at without reading this file.
+func (q *Queries) CountSkillsAwaitingDeletionGrace(ctx context.Context, cutoff pgtype.Timestamptz) (CountSkillsAwaitingDeletionGraceRow, error) {
+	row := q.db.QueryRow(ctx, countSkillsAwaitingDeletionGrace, cutoff)
+	var i CountSkillsAwaitingDeletionGraceRow
+	err := row.Scan(&i.Waiting, &i.Kept)
+	return i, err
+}
+
 const deleteExpiredAuditEvents = `-- name: DeleteExpiredAuditEvents :execrows
 DELETE FROM audit_events WHERE created_at < $1
 `
@@ -480,6 +522,84 @@ type MarkSourceCheckedParams struct {
 func (q *Queries) MarkSourceChecked(ctx context.Context, arg MarkSourceCheckedParams) error {
 	_, err := q.db.Exec(ctx, markSourceChecked, arg.ID, arg.Available)
 	return err
+}
+
+const purgeSkillsPastDeletionGrace = `-- name: PurgeSkillsPastDeletionGrace :execrows
+WITH referenced AS (
+    SELECT DISTINCT v.skill_id
+    FROM skill_versions v
+    WHERE EXISTS (
+            SELECT 1 FROM skills f
+            WHERE f.forked_from_version_id = v.id AND f.workspace_id <> v.workspace_id
+          )
+       OR EXISTS (SELECT 1 FROM runs r WHERE r.skill_version_id = v.id)
+),
+purgeable AS (
+    SELECT sk.id FROM skills sk
+    WHERE sk.deleted_at IS NOT NULL
+      AND sk.deleted_at <= $1::timestamptz
+      AND NOT EXISTS (SELECT 1 FROM referenced ref WHERE ref.skill_id = sk.id)
+      AND NOT EXISTS (
+            SELECT 1 FROM skills f
+            WHERE f.forked_from_skill_id = sk.id AND f.workspace_id <> sk.workspace_id
+          )
+      AND NOT EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
+    ORDER BY sk.deleted_at
+    LIMIT $2::int
+),
+versions AS (
+    -- search_documents.skill_id cascades off the skills delete below. The row is
+    -- already out of every read path (Delete removes it in its own transaction),
+    -- so this is the bytes going, not the visibility.
+    DELETE FROM skill_versions WHERE skill_id IN (SELECT id FROM purgeable)
+)
+DELETE FROM skills WHERE id IN (SELECT id FROM purgeable)
+`
+
+type PurgeSkillsPastDeletionGraceParams struct {
+	Cutoff   pgtype.Timestamptz
+	RowLimit int32
+}
+
+// WS-005 / PDM-006 §6.1: the grace purge for a skill the user deleted on its own.
+//
+// Until 2026-08-25 this did not exist, and `DELETE /skills/{id}` told the user,
+// verbatim on the screen that confirmed the deletion, that snapshots were
+// "retained for the 30-day grace period, then purged". The only hard delete of a
+// skill in this repo was PurgeUnreferencedSkills, which takes a workspace id, has
+// no deleted_at predicate, and runs from account deletion alone -- so a skill
+// deleted on its own kept deleted_at set and its rows forever (04 丙-63).
+//
+// Not workspace scoped, and that is the one structural difference from its
+// sibling above: this is the control plane sweeping its own backlog on a clock,
+// not a user reading their own data (same exemption RUN-008's supervisor scan
+// has). The cutoff is the caller's, because the grace period is deployment
+// configuration that no row carries -- unlike `artifacts.expires_at`, where the
+// deadline is on the row and a caller-supplied window would be a second
+// definition of the same date.
+//
+// The three exclusions are PurgeUnreferencedSkills's, and they are not optional
+// politeness: a version somebody else forked or a run used is retained with its
+// owner de-identified instead, because hard deleting it would break a third
+// party's provenance chain (DISC-003) and the immutability rule (iron rule 4) --
+// and it would do so to punish the wrong person. A skill still holding test cases
+// carries their retention, not this one's.
+//
+// **The package objects are not touched**, exactly as the account purge does not
+// touch them: they are content-addressed and shared with every fork, so removing
+// the bytes because one owner deleted their row would break readers who never
+// asked for anything. Nothing in this repo collects a package object whose last
+// referencing version is gone; that is a real gap and it is recorded rather than
+// solved here.
+//
+// Requires SET LOCAL skillhub.purge = 'on' in the same transaction: skill_versions
+// is frozen by the 0005 trigger and the purge flag is the one exemption (0013).
+func (q *Queries) PurgeSkillsPastDeletionGrace(ctx context.Context, arg PurgeSkillsPastDeletionGraceParams) (int64, error) {
+	result, err := q.db.Exec(ctx, purgeSkillsPastDeletionGrace, arg.Cutoff, arg.RowLimit)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const purgeUnreferencedSkillSources = `-- name: PurgeUnreferencedSkillSources :execrows

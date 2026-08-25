@@ -23,6 +23,12 @@
 //	                               uploaded datasets whose expires_at has passed
 //	                               and mark the rows deleted. Needs DATABASE_URL
 //	                               and object storage.
+//	maintenance purge-deleted-skills
+//	                               WS-005 / PDM-006 6.1: hard delete the skills a
+//	                               user deleted themselves once they are past
+//	                               SKILL_DELETION_GRACE, their frozen versions
+//	                               included. Needs DATABASE_URL and
+//	                               SKILL_DELETION_GRACE.
 //	maintenance check-sources      INGEST-010: probe recorded import source URLs
 //	                               and mark the ones that no longer resolve.
 //	                               Needs DATABASE_URL and network egress.
@@ -50,6 +56,11 @@
 // purpose: all three are PDM-006 proposals that have not been ratified, and a
 // default would make this process enforce a retention nobody agreed to, by
 // deleting. Unset means the job refuses to start.
+//
+// SKILL_DELETION_GRACE joined them on 2026-08-25 and it is the sharpest case of
+// the four: PDM-006 6.1's 30 days is unratified, and what this one deletes on
+// that unsigned deadline is a user's own content. So the deployment has to say
+// the number out loud, and a deployment that has not is refused.
 //
 // AUDIT_RETENTION arrived last, on 2026-08-25, and the gap it closed was the
 // other direction: 0013's column comment, its index name and the DELETE branch
@@ -95,7 +106,8 @@ import (
 func main() {
 	if len(os.Args) != 2 {
 		slog.Error("usage: maintenance purge-accounts|purge-analytics|purge-audit|" +
-			"purge-run-artifacts|purge-datasets|check-sources|rotate-partitions")
+			"purge-run-artifacts|purge-datasets|purge-deleted-skills|check-sources|" +
+			"rotate-partitions")
 		os.Exit(2)
 	}
 	ctx := context.Background()
@@ -119,6 +131,8 @@ func main() {
 		err = purgeRunArtifacts(ctx, pool)
 	case "purge-datasets":
 		err = purgeDatasets(ctx, pool)
+	case "purge-deleted-skills":
+		err = purgeDeletedSkills(ctx, pool)
 	case "rotate-partitions":
 		err = rotatePartitions(ctx, pool)
 	default:
@@ -275,6 +289,41 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 	// operator which case this was. Bounded by MAINTENANCE_BATCH, so a backlog
 	// drains over several runs — a sweep is not a migration.
 	slog.Info("run artifact purge complete", "artifacts_purged", n)
+	return err
+}
+
+// purgeDeletedSkills is the sweep behind WS-005's grace period. Until
+// 2026-08-25 the screen that confirmed a deletion told the user, verbatim, that
+// version snapshots were "retained for the 30-day grace period, then purged",
+// and nothing purged them: the only hard delete of a skill took a workspace id
+// and ran from account deletion alone (04 丙-63). The sentence went; this is
+// what lets a deployment mean it again.
+//
+// Fail-closed on SKILL_DELETION_GRACE, and the reason is stronger here than for
+// the other three windows: those delete the platform's records about a user,
+// this one deletes the user's own content, on a deadline (PDM-006 6.1's 30 days)
+// that is still unratified. Unset therefore refuses rather than picking 30 days
+// -- the number has to come from whoever signed it.
+//
+// This subcommand's composition root: one Service, one field. The purge opens
+// its own transaction, because `SET LOCAL skillhub.purge = 'on'` -- the 0005
+// trigger's one exemption -- lasts exactly as long as the transaction it runs
+// in; see registry.PurgeDeletedSkills.
+func purgeDeletedSkills(ctx context.Context, pool *pgxpool.Pool) error {
+	grace, err := positiveDuration("SKILL_DELETION_GRACE")
+	if err != nil {
+		return err
+	}
+	sweep, err := (&registry.Service{Pool: pool}).PurgeDeletedSkills(ctx, grace, batch())
+	if err == nil {
+		// All three numbers, not just the one that changed. A purge of 0 is the
+		// normal case and says nothing on its own: `waiting` shrinking is the
+		// backlog draining, `kept` standing still is the provenance rule holding
+		// rows forever, correctly, and an operator asking "did it work" is asking
+		// which of those two they are looking at.
+		slog.Info("deleted skill purge complete",
+			"skills_purged", sweep.Purged, "waiting", sweep.Waiting, "kept", sweep.Kept)
+	}
 	return err
 }
 

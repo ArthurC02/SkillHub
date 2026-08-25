@@ -75,6 +75,8 @@ queries:
   DeleteWorkspaceRunArtifacts: run
   DeleteWorkspaceDownloadArtifacts: packaging
   PurgeUnreferencedSkills: registry
+  PurgeSkillsPastDeletionGrace: registry
+  CountSkillsAwaitingDeletionGrace: registry
   PurgeUnreferencedSkillSources: ingest
   TakedownSkill: registry
   LockSkillForOperatorWrite: registry
@@ -257,6 +259,11 @@ immutable_allow:
   # 所以旗標的作用範圍與本豁免都不變。ADR-034 已否決事件式自清，
   # 這條 CTE 沒有預定的消失時程；要移除它得先讓帳號刪除不再硬刪 skill_versions。
   PurgeUnreferencedSkills: skill_versions
+  # WS-005／PDM-006 §6.1 的寬限期清除（04 丙-63）。與上面同一個具名豁免、同一個
+  # 旗標，差別只在誰觸發：那一條是帳號刪除，這一條是使用者單獨刪掉一個 Skill。
+  # 這條豁免在 2026-08-25 之前不存在，因為那個 sweep 也不存在——而伺服器在刪除
+  # 完成的畫面上，逐字告訴使用者快照「30 天寬限期後清除」。
+  PurgeSkillsPastDeletionGrace: skill_versions
   # 稽核事件的 400 天保存期 sweep（PDM-006 §6，同意書 §3 對受測者宣告的那個數字）。
   # 與上面同一個形狀、同一個具名豁免：`audit.PurgeExpired` 自開的交易裡那句
   # `SET LOCAL skillhub.purge = 'on'`，0013 的 trigger 只認這個旗標，其餘
@@ -281,6 +288,7 @@ raw_sql_allow:
   apps/platform/internal/creator/workspace/service.go@signup: advisory lock serializes first-login creation for one provider identity
   apps/platform/internal/creator/workspace/purge.go@purgeAccount: SET LOCAL enables immutable-table purge only inside the account purge transaction
   apps/platform/internal/foundation/observability/audit/purge.go@PurgeExpired: SET LOCAL enables the 400 day audit retention sweep only inside its own transaction
+  apps/platform/internal/skill/library/purge.go@PurgeDeletedSkills: SET LOCAL enables the WS-005 deletion grace sweep only inside its own transaction
   apps/platform/internal/foundation/messaging/outbox/outbox.go@Publish: session advisory lock elects one publisher and must be explicitly unlocked on its connection
   apps/platform/internal/skill/delivery/packaging.go@persist: advisory lock serializes reusable download artifact persistence by content hash
   apps/platform/internal/trial/improvement/eval.go@begin: advisory lock serializes supersede-and-create for one run evaluation
