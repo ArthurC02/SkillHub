@@ -117,6 +117,7 @@ func documentCheckers() []namedChecker {
 		{"doc-identifier", docIdentifierProblems},
 		{"milestone-tally", milestoneTallyProblems},
 		{"backlog-tally", backlogTallyProblems},
+		{"retention-floor", retentionFloorProblems},
 	}
 }
 

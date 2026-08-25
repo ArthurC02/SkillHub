@@ -30,6 +30,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 	want := []string{
 		"drift-marker", "depguard-deny", "one-number", "query-owner",
 		"context-map", "doc-identifier", "milestone-tally", "backlog-tally",
+		"retention-floor",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {

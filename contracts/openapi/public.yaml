@@ -2035,7 +2035,9 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
-          description: Clamped server-side; an out-of-range value falls back to the default.
+          description: |
+            Refused with a 400 when outside the schema, not clamped: both bounds
+            are inclusive and an out-of-range value is not replaced by the default.
         - name: offset
           in: query
           required: false
@@ -2052,6 +2054,33 @@ paths:
                   runs:
                     type: array
                     items: { $ref: "#/components/schemas/RunListItem" }
+        "400":
+          description: |
+            A `limit` or an `offset` outside its schema. `limit` is
+            `minimum: 1, maximum: 200` above and `offset` is `minimum: 0`, both
+            with inclusive bounds, so `limit=0`, `limit=201`, `offset=-1`, a
+            non-integer and a present-but-empty `limit=` / `offset=` are refused
+            rather than quietly replaced by the defaults. A caller who asked for
+            500 and got 50 rows would read that as the size of their run history,
+            which is a ceiling they never asked for presenting itself as a result
+            count (ADR-042 決策 3).
+
+            A negative `offset` is refused rather than floored to 0. It arrives
+            from the same client-side page arithmetic a non-numeric one does, and
+            silently answering it with page 1 hands the caller rows they did not
+            ask for while looking exactly like a correct answer.
+
+            The schema names no maximum for `offset`, but 2147483647 is one: the
+            value reaches the statement as an int4 OFFSET, so a larger offset is
+            refused instead of wrapping.
+
+            Both parameters are judged before `test_case_id`, so an out-of-schema
+            page size is a 400 even when the filter is also unreadable - the empty
+            list an unreadable filter answers with must not become the answer to a
+            request whose paging was refused.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "401":
           description: No valid session.
           content:
@@ -2775,6 +2804,18 @@ paths:
             more than it shows, so it can tell whether another page exists without
             a second request; both the page size and the ceiling carry that extra
             row.
+
+            The same rule now covers `offset`. It is `minimum: 0` with no maximum,
+            so `0` is a legal value and `-1`, a non-integer and a present-but-empty
+            `offset=` are refused rather than becoming 0 - the half of this handler
+            that went on swallowing after `limit` had learned to refuse, which is
+            one endpoint giving two different answers to "this violates the schema".
+
+            A negative `offset` is refused rather than floored to 0: silently
+            answering it with page 1 hands the caller rows they did not ask for
+            while looking exactly like a correct answer. The schema names no
+            maximum, but 2147483647 is one - the value reaches the statement as an
+            int4 OFFSET.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }

@@ -1024,6 +1024,86 @@ func TestTestCaseListRefusesAnOutOfSchemaLimit(t *testing.T) {
 	}
 }
 
+// testCasePage is GET /test-cases with an arbitrary query string, for the paging
+// assertions. listTestCases only knows how to pass `skill_id`.
+func (c *client) testCasePage(t *testing.T, query string) []any {
+	t.Helper()
+	code, body := c.doJSON(t, http.MethodGet, "/test-cases"+query, "")
+	if code != http.StatusOK {
+		t.Fatalf("GET /test-cases%s: got %d, body %v", query, code, body)
+	}
+	rows, _ := body["test_cases"].([]any)
+	return rows
+}
+
+// The other half of the same handler. `limit` learned to refuse an out-of-schema
+// value; the `offset` beside it went on turning `abc`, `-1` and a present-but-
+// empty `offset=` into 0, so one handler gave two different answers to "this
+// violates the schema".
+//
+// public.yaml declares `{ type: integer, minimum: 0, default: 0 }`, so 0 is a
+// legal value and -1 is not. A negative offset is refused rather than floored:
+// it arrives from the same client-side page arithmetic a non-numeric one does,
+// and quietly serving page 1 to a caller who asked for offset -50 hands them
+// rows they did not ask for while looking like a correct answer.
+func TestTestCaseListRefusesAnOutOfSchemaOffset(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice := a.login(t, "alice-testcase-offset")
+	skillID, first := newTestCase(t, pool, a, alice, "offset")
+	// A second draft, so an offset has something to skip past: a handler that
+	// parsed the parameter and then dropped it would pass a one-row test.
+	code, body := alice.doJSON(t, http.MethodPost, "/test-cases", fmt.Sprintf(
+		`{"skill_id":%q,"name":"offset-second","user_prompt":"Another prompt."}`, skillID))
+	if code != http.StatusCreated {
+		t.Fatalf("second draft: got %d, body %v", code, body)
+	}
+
+	for _, raw := range []string{"-1", "abc", "", "1.5", "2147483648", "0x10"} {
+		if code, body := alice.doJSON(t, http.MethodGet, "/test-cases?offset="+raw, ""); code != http.StatusBadRequest {
+			t.Errorf("GET /test-cases?offset=%q: got %d, want 400 (body %v)", raw, code, body)
+		}
+	}
+	// 0 is the schema's minimum and therefore legal, the int32 ceiling is the last
+	// accepted value, and a request naming no offset at all still works.
+	for _, query := range []string{"", "?offset=0", "?offset=2147483647", "?limit=101&offset=0"} {
+		if code, body := alice.doJSON(t, http.MethodGet, "/test-cases"+query, ""); code != http.StatusOK {
+			t.Errorf("GET /test-cases%s: got %d, want 200 (body %v)", query, code, body)
+		}
+	}
+
+	// And the offset is honoured rather than merely accepted: it skips a row, the
+	// row it skipped is the one offset=0 leads with, and past the end it empties.
+	page := alice.testCasePage(t, "?offset=0")
+	if len(page) != 2 {
+		t.Fatalf("offset=0 returned %d drafts, want 2", len(page))
+	}
+	skipped := alice.testCasePage(t, "?offset=1")
+	if len(skipped) != 1 {
+		t.Fatalf("offset=1 returned %d drafts, want 1", len(skipped))
+	}
+	if idOf(t, skipped[0]) == idOf(t, page[0]) {
+		t.Errorf("offset=1 led with the same draft offset=0 did (%s), so it was ignored", idOf(t, page[0]))
+	}
+	if idOf(t, skipped[0]) != first {
+		t.Errorf("offset=1 returned draft %s, want the older one %s", idOf(t, skipped[0]), first)
+	}
+	if rows := alice.testCasePage(t, "?offset=2"); len(rows) != 0 {
+		t.Errorf("offset past the end returned %d drafts, want 0", len(rows))
+	}
+}
+
+// idOf reads the test_case_id out of one decoded list row.
+func idOf(t *testing.T, row any) string {
+	t.Helper()
+	m, ok := row.(map[string]any)
+	if !ok {
+		t.Fatalf("list row is not an object: %v", row)
+	}
+	id, _ := m["test_case_id"].(string)
+	return id
+}
+
 // WS-006 / iron rule 3: the filter is a narrowing of the caller's own workspace,
 // never a way to read into someone else's. Bob naming Alice's skill gets the same
 // empty answer as Bob naming an id that does not exist.

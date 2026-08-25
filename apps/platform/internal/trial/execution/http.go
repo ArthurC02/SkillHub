@@ -3,6 +3,7 @@ package run
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -305,6 +306,20 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// Paging is parsed before the filter, and ahead of the empty-list early
+	// return below: a `limit` or `offset` outside its schema is refused whatever
+	// the filter says, rather than being answered with a page the caller then
+	// reads as their whole history.
+	limit, err := parseLimit(r)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	offset, err := parseOffset(r)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	var testCaseID pgtype.UUID
 	if raw := r.URL.Query().Get("test_case_id"); raw != "" {
 		if err := testCaseID.Scan(raw); err != nil {
@@ -317,8 +332,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	limit := intParam(r, "limit")
-	rows, err := h.Svc.List(r.Context(), ws.ID, testCaseID, limit, intParam(r, "offset"))
+	rows, err := h.Svc.List(r.Context(), ws.ID, testCaseID, limit, offset)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "run list failed")
 		return
@@ -450,15 +464,59 @@ func pathUUID(w http.ResponseWriter, r *http.Request, name string) (id pgtype.UU
 	return id, true
 }
 
-// intParam reads a non-negative integer query parameter, or 0 when it is absent
-// or nonsense. The service clamps it; nothing here decides how much work a
-// request may ask for.
-func intParam(r *http.Request, name string) int32 {
-	v, err := strconv.Atoi(r.URL.Query().Get(name))
-	if err != nil || v < 0 || v > math.MaxInt32 {
-		return 0
+// parseLimit reads the `limit` GET /runs declares in public.yaml:
+// `{ type: integer, minimum: 1, maximum: 200, default: 50 }`, which is the same
+// pair Service.List clamps to. Absent is the default; present is the schema or
+// it is a 400. Both bounds are inclusive, as JSON Schema's minimum/maximum are,
+// and `limit=` (present, empty) is refused too since allowEmptyValue is not set.
+//
+// This is the fourth handler in the family that swallowed an out-of-schema
+// paging parameter (discovery's parseLimit and testlab's parseListLimit,
+// 2026-08-25). `limit=abc`, `limit=-1` and `limit=0` all became 0 here, which
+// Service.List then turned into 50. A caller who asked for 500 got 50 rows and
+// read that as the size of their run history — a ceiling they never asked for
+// presenting itself as a result count (ADR-042 決策 3).
+//
+// The bounds come from the service constants rather than repeating 1 and 200:
+// the clamp and the refusal have to agree, and one of them moving alone is how
+// a handler starts disagreeing with its own contract again.
+func parseLimit(r *http.Request) (int32, error) {
+	q := r.URL.Query()
+	if !q.Has("limit") {
+		return defaultRunPageSize, nil
 	}
-	return int32(v)
+	n, err := strconv.Atoi(q.Get("limit"))
+	if err != nil || n < 1 || n > maxRunPageSize {
+		return 0, fmt.Errorf("query parameter limit must be a whole number between 1 and %d", maxRunPageSize)
+	}
+	return int32(n), nil
+}
+
+// parseOffset reads the `offset` GET /runs declares:
+// `{ type: integer, minimum: 0, default: 0 }`. Same rule as parseLimit — absent
+// is the default, present is the schema or it is a 400.
+//
+// A negative offset is refused rather than floored to 0, and it is not a milder
+// mistake than `offset=abc`: both are values the schema does not describe, and
+// both arrive the same way, from client-side page arithmetic that went wrong.
+// Serving page 1 to a caller who asked for offset -50 hands them rows they did
+// not ask for while looking exactly like a correct answer, which is the failure
+// this whole family is about. `abc` at least cannot be mistaken for a page.
+//
+// The schema names no maximum, but int32 is a real ceiling here: the offset
+// reaches Postgres as the statement's int4 OFFSET. ParseInt with a 32-bit size
+// answers both the non-numeric and the too-large case in one call, so the
+// ceiling is enforced rather than silently wrapped.
+func parseOffset(r *http.Request) (int32, error) {
+	q := r.URL.Query()
+	if !q.Has("offset") {
+		return 0, nil
+	}
+	n, err := strconv.ParseInt(q.Get("offset"), 10, 32)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("query parameter offset must be a whole number between 0 and %d", math.MaxInt32)
+	}
+	return int32(n), nil
 }
 
 // Get handles GET /runs/{id} (RUN-002: current status and how it got there).

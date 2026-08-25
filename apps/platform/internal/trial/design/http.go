@@ -3,7 +3,9 @@ package testlab
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -206,6 +208,34 @@ func parseListLimit(r *http.Request) (int32, error) {
 	return int32(n), nil
 }
 
+// parseListOffset reads the `offset` GET /test-cases declares beside it:
+// `{ type: integer, minimum: 0, default: 0 }`. Same rule as parseListLimit —
+// absent is the default, present is the schema or it is a 400.
+//
+// It was the last half of the family left swallowing: `offset=abc`,
+// `offset=-1` and `offset=` all became 0 while the `limit` next to them had
+// already learned to refuse, so one handler gave two different answers to the
+// same question. A negative offset is not a milder mistake than a non-numeric
+// one — both are values the schema does not describe, and both arrive from
+// client-side page arithmetic that went wrong. Quietly serving page 1 to a
+// caller who asked for offset -50 hands them rows they did not ask for while
+// looking like a correct answer.
+//
+// The schema names no maximum; int32 is one anyway, because the value reaches
+// Postgres as the statement's int4 OFFSET. ParseInt with a 32-bit size answers
+// the non-numeric and the too-large case in one call.
+func parseListOffset(r *http.Request) (int32, error) {
+	q := r.URL.Query()
+	if !q.Has("offset") {
+		return 0, nil
+	}
+	n, err := strconv.ParseInt(q.Get("offset"), 10, 32)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("query parameter offset must be a whole number between 0 and %d", math.MaxInt32)
+	}
+	return int32(n), nil
+}
+
 // List handles GET /test-cases (TEST-001, WS-004). `skill_id` narrows it to one
 // skill; a malformed one answers an empty list rather than the unfiltered one —
 // a filter the server could not read must not silently become "no filter", so it
@@ -220,9 +250,10 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	offset := int32(0)
-	if value, err := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32); err == nil && value >= 0 {
-		offset = int32(value)
+	offset, err := parseListOffset(r)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
 	}
 	var skillID pgtype.UUID
 	if raw := r.URL.Query().Get("skill_id"); raw != "" {

@@ -1006,3 +1006,86 @@ func TestIncompatibleWorkIsRefusedBeforeItIsQueued(t *testing.T) {
 		t.Error("a refused run was still dispatched")
 	}
 }
+
+// runPage is GET /runs with an arbitrary query string, for the paging
+// assertions below. listRuns only knows how to ask for the whole history.
+func (c *client) runPage(t *testing.T, query string) []runListView {
+	t.Helper()
+	var out struct {
+		Runs []runListView `json:"runs"`
+	}
+	url := c.base + "/runs" + query
+	if code := getJSON(t, c.Client, url, &out); code != http.StatusOK {
+		t.Fatalf("GET %s: got %d", url, code)
+	}
+	return out.Runs
+}
+
+// The fourth and fifth members of the paging family, in one handler.
+//
+// GET /runs took `limit` and `offset` through one intParam that answered 0 for
+// anything it could not read, and Service.List then replaced the 0 with 50. So
+// `limit=abc`, `limit=-1`, `limit=0` and `limit=500` all produced the same
+// 50-row page: a caller who asked for 500 got 50 rows and read that as the size
+// of their run history — a ceiling they never asked for presenting itself as a
+// result count (ADR-042 決策 3). `offset` swallowed the same way, which meant a
+// client whose page arithmetic produced -50 silently got page 1.
+//
+// public.yaml declares limit `{ minimum: 1, maximum: 200, default: 50 }` and
+// offset `{ minimum: 0, default: 0 }`, both bounds inclusive.
+func TestRunHistoryRefusesOutOfSchemaPaging(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-run-paging")
+	// Two runs, so a limit and an offset each have something to leave out. A
+	// handler that parsed the parameter and then ignored it passes a one-run test.
+	// Two is also the workspace ceiling (MaxConcurrentRunsPerWorkspace).
+	f.start(t)
+	f.start(t)
+
+	for _, query := range []string{
+		"limit=0", "limit=201", "limit=abc", "limit=", "limit=-1", "limit=1.5",
+		"offset=-1", "offset=abc", "offset=", "offset=1.5", "offset=2147483648",
+		// Paging is judged ahead of the filter: an unreadable `test_case_id`
+		// answers an empty list, and that must not become the answer to a request
+		// whose page size was refused.
+		"test_case_id=not-a-uuid&limit=0",
+		"test_case_id=not-a-uuid&offset=-1",
+	} {
+		if code, body := f.doJSON(t, http.MethodGet, "/runs?"+query, ""); code != http.StatusBadRequest {
+			t.Errorf("GET /runs?%s: got %d, want 400 (body %v)", query, code, body)
+		}
+	}
+	// Both ends of both schemas, and the request that names neither parameter.
+	for _, query := range []string{
+		"", "?limit=1", "?limit=200", "?offset=0", "?offset=2147483647",
+		"?limit=200&offset=0",
+	} {
+		if code, body := f.doJSON(t, http.MethodGet, "/runs"+query, ""); code != http.StatusOK {
+			t.Errorf("GET /runs%s: got %d, want 200 (body %v)", query, code, body)
+		}
+	}
+
+	// Accepted is not the same as honoured, and status codes alone cannot tell the
+	// difference: these assert the values actually reached the query.
+	if rows := f.runPage(t, ""); len(rows) != 2 {
+		t.Fatalf("unfiltered history = %d runs, want 2", len(rows))
+	}
+	capped := f.runPage(t, "?limit=1")
+	if len(capped) != 1 {
+		t.Fatalf("limit=1 returned %d runs, want 1", len(capped))
+	}
+	skipped := f.runPage(t, "?offset=1")
+	if len(skipped) != 1 {
+		t.Fatalf("offset=1 returned %d runs, want 1", len(skipped))
+	}
+	// Not compared against a remembered creation order: the list is ordered by
+	// created_at and two runs a millisecond apart are not a fact worth asserting.
+	// That the second page is a *different* run is the whole claim.
+	if skipped[0].RunID == capped[0].RunID {
+		t.Errorf("offset=1 led with the same run limit=1 did (%s), so it was ignored", capped[0].RunID)
+	}
+	if rows := f.runPage(t, "?offset=2"); len(rows) != 0 {
+		t.Errorf("offset past the end returned %d runs, want 0", len(rows))
+	}
+}
