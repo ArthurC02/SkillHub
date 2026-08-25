@@ -199,6 +199,10 @@ func (m *Manager) flushTrace(id, url string) bool {
 			return true
 		}
 		offset := e.traceOffset
+		// Read under the same lock as the offset: the push error below is logged
+		// through this list, and it is the only place the run's own credentials
+		// can reach the host's log.
+		secrets := e.secrets
 		m.mu.Unlock()
 
 		raw, more, err := m.drv.ReadTrace(ctx, id, offset)
@@ -256,7 +260,15 @@ func (m *Manager) flushTrace(id, url string) bool {
 			if err := m.sink.Push(ctx, url, events); err != nil {
 				// Not advanced: the same events go again next tick, and the platform
 				// drops the ones it already has by event_id.
-				m.log.Warn("trace push failed", "provider_run_id", id, "err", err)
+				// Masked rather than unwrapped: a transport failure arrives as
+				// *url.Error, whose Error() reads `Post "<full URL>": <cause>`, and
+				// that URL's last path segment is this run's live ingestion token
+				// (2h TTL) - writing it to the host log hands anyone with log access
+				// the ability to append events to this run's timeline. Unwrapping
+				// would drop the URL but would also flatten the non-transport cases
+				// (a *RunError does not unwrap at all); masking is one call and holds
+				// for whatever shape the error arrives in.
+				m.log.Warn("trace push failed", "provider_run_id", id, "err", mask(err.Error(), secrets))
 				m.metrics.tracePush("error", 0)
 				return false
 			}

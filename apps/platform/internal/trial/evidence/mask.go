@@ -41,17 +41,41 @@ const Placeholder = "[REDACTED]"
 // secretPatterns are credential shapes, not field names. Each one is anchored on
 // something structural (a vendor prefix, an auth scheme, a signature parameter)
 // rather than on a word like "token", so ordinary prose does not trip it.
+//
+// This list is the floor under the package scanner's: internal/shared/skillpkg
+// blocks an *import* for a credential shape, and a trace carries the output of
+// code that already ran, so anything block-worthy there is leak-worthy here.
+// TestMaskerCoversEveryShapeThePackageScannerBlocks holds the two in step.
+//
+// ponytail: leaf-wise masking, so a secret split across two JSON values, or
+// base64-encoded before it was printed, is not reachable by any pattern here.
+// The known-values pass is what covers those for credentials the platform
+// issued; for a user's own key it is an accepted ceiling, not a gap to widen
+// the patterns for - decoding candidate blobs would cost false positives on
+// every checksum and id in the payload.
 var secretPatterns = []*regexp.Regexp{
 	// OpenAI and Anthropic style keys, including the project/admin variants.
 	// {20,} keeps it clear of "sk-" appearing in prose or a file name.
 	regexp.MustCompile(`sk-[A-Za-z0-9_-]{20,}`),
+	// Vendor prefixes with a fixed shape, all three high-confidence enough that
+	// the package scanner blocks an import on them.
+	regexp.MustCompile(`AKIA[0-9A-Z]{16}`),
+	regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{36,}`),
+	regexp.MustCompile(`xox[baprs]-[A-Za-z0-9-]{10,}`),
+	// Google API keys: a fixed 39-character shape that neither detector had, and
+	// the one a script dumping its own config is likeliest to print.
+	regexp.MustCompile(`AIza[A-Za-z0-9_-]{35}`),
 	// An HTTP Authorization value of any scheme, wherever it was printed.
 	regexp.MustCompile(`(?i)\b(bearer|basic|token)\s+[A-Za-z0-9._~+/=-]{16,}`),
-	// The gateway credential as the Agent SDK receives it, echoed as an env dump.
-	regexp.MustCompile(`(?i)\b(ANTHROPIC_AUTH_TOKEN|ANTHROPIC_API_KEY|OPENAI_API_KEY|SKILLHUB_TRACE_URL)=\S+`),
-	// Pre-signed object URLs: the signature is the secret, and it is always a
-	// query parameter of one of these names.
-	regexp.MustCompile(`(?i)[?&](X-Amz-Signature|X-Amz-Credential|Signature|token|api_key|access_token)=[^&\s"']+`),
+	// Credential-bearing assignments, as an env dump or a config line prints
+	// them. `[ \t]` rather than `\s` around the `=`: a bare NAME= at the end of a
+	// line must not swallow the next line's unrelated value.
+	regexp.MustCompile(`(?i)\b(ANTHROPIC_AUTH_TOKEN|ANTHROPIC_API_KEY|OPENAI_API_KEY|SKILLHUB_TRACE_URL|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)[ \t]*=[ \t]*\S+`),
+	// Pre-signed object URLs and anything else carrying a credential as a query
+	// value: the parameter name is the only structural anchor a URL offers, so
+	// this one is a name list by necessity. A false positive costs one query
+	// value reading [REDACTED] in the trace view, which is the cheap side.
+	regexp.MustCompile(`(?i)[?&](X-Amz-Signature|X-Amz-Credential|Signature|access_token|refresh_token|id_token|client_secret|api_key|apikey|api-key|password|passwd|token|secret|auth|sig|key)=[^&\s"']+`),
 	// A private key block pasted into a prompt or written by a script.
 	regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),
 }

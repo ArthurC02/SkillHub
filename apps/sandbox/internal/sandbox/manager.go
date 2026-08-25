@@ -397,8 +397,9 @@ func (m *Manager) finish(id string, out Outcome, re *RunError) {
 	}
 	if e.unmaskable && res.AgentOutput != "" {
 		// Losing the tail of the output costs a user one debugging aid. Shipping
-		// it unmasked puts this run's Virtual Key and its pre-signed grant URL
-		// into stored, displayed text (NFR-002, TRACE-001), which costs everyone.
+		// it unmasked puts this run's Virtual Key, its pre-signed grant URL and
+		// its trace ingestion token into stored, displayed text (NFR-002,
+		// TRACE-001), which costs everyone.
 		res.AgentOutput = ""
 		e.run.StateReason = "agent output withheld: its secrets could not be masked after a provider restart"
 	}
@@ -722,6 +723,19 @@ func secretsOf(req RunRequest) []string {
 	for _, g := range req.ObjectGrants {
 		if g.URL != "" {
 			out = append(out, g.URL)
+		}
+	}
+	// The trace ingestion URL is the third injected credential: the driver puts
+	// it in the workload's environment as SKILLHUB_TRACE_URL, so an `env` dump or
+	// a framework that prints its config on error carries it straight into
+	// out.Output. What is secret is the last path segment, not the whole URL
+	// (the platform mints base + "/internal/trace/" + token), so register the
+	// token: that redacts a bare token as well as one inside an echoed URL, it
+	// is the same value the platform's own masker treats as known, and it leaves
+	// the non-secret base in the output where it helps rather than hides.
+	if u := req.Trace.IngestionURL; u != "" {
+		if i := strings.LastIndex(u, "/"); i >= 0 && i < len(u)-1 {
+			out = append(out, u[i+1:])
 		}
 	}
 	return out

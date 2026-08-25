@@ -246,7 +246,15 @@ func RecordOrchestratorEvent(
 	}
 	// The control plane's own text still goes through the masker: a provider
 	// error message routinely quotes a URL that carries a signature (the schema
-	// marks error.message secret_bearing for exactly this reason).
+	// marks error.message secret_bearing for exactly this reason), and the
+	// query-parameter signatures in secretPatterns are the shape that catches.
+	//
+	// Patterns only, and that is a real limit rather than an oversight: no
+	// per-run credential is in scope inside another context's transaction - a
+	// run id cannot re-derive its own ingestion token, whose expiry is stamped
+	// at mint time - so Known is empty here, and a credential carried as a bare
+	// path segment is not redacted, because no pattern is positional. [Service.Ingest]
+	// is the one caller that holds that value, and it does pass it as Known.
 	masker := &Masker{}
 	masked, err := masker.Mask(encoded)
 	if err != nil {

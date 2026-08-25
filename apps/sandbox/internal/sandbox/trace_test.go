@@ -5,12 +5,14 @@ package sandbox_test
 // that nothing is lost and nothing is skipped.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	neturl "net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -180,6 +182,97 @@ func TestNoIngestionURLCollectsNothing(t *testing.T) {
 	if got := sink.received(); len(got) != 0 {
 		t.Errorf("pushed %d events with no destination configured", len(got))
 	}
+}
+
+// --- the ingestion credential (it is the URL's last path segment) ------------
+
+// liveToken is shaped like a real one: run id, attempt, expiry, signature.
+const liveToken = "11111111-1111-1111-1111-111111111111.1.99999999999.f2c1a0deadbeefcafe"
+
+const liveTraceURL = "http://platform:8080/internal/trace/" + liveToken
+
+// The driver injects the ingestion URL into the untrusted workload's
+// environment (SKILLHUB_TRACE_URL), so anything that dumps its environment puts
+// a live credential in the workload's output. It is an injected secret like the
+// Virtual Key and the grant URLs, and must be masked out of what ships back on
+// the provider's HTTP response (iron rule 11, NFR-002).
+func TestWorkloadOutputIsScrubbedOfTheTraceIngestionToken(t *testing.T) {
+	sink := &recordingSink{}
+	drv, h := newTracingServer(t, sink)
+	req := runRequest()
+	req.Trace = sandbox.TracePolicy{Level: "standard", IngestionURL: liveTraceURL}
+
+	_, run := do(t, h, "POST", "/runs", req, testToken)
+	drv.exit(run.ProviderRunID, sandbox.Outcome{
+		ExitCode: 0,
+		Output:   "config: SKILLHUB_TRACE_URL=" + liveTraceURL,
+	})
+	final := waitForTerminal(t, h, run.ProviderRunID)
+
+	if strings.Contains(final.Result.AgentOutput, liveToken) {
+		t.Fatalf("agent_output = %q, still carries the live ingestion token", final.Result.AgentOutput)
+	}
+	if want := "config: SKILLHUB_TRACE_URL=http://platform:8080/internal/trace/***"; final.Result.AgentOutput != want {
+		t.Errorf("agent_output = %q, want %q", final.Result.AgentOutput, want)
+	}
+}
+
+// urlErrorSink fails the way net/http fails: *url.Error, whose Error() quotes
+// the whole request URL - credential included.
+type urlErrorSink struct{}
+
+func (urlErrorSink) Push(_ context.Context, url string, _ []json.RawMessage) error {
+	return &neturl.Error{Op: "Post", URL: url, Err: errors.New("dial tcp 10.0.0.2:8080: connect: connection refused")}
+}
+
+// A control-plane restart, a DNS blip or the shutdown race on the final flush
+// all reach the same log line. Logging that error verbatim writes a live 2h
+// token to the sandbox host's log, and anyone who can read that log can then
+// append whatever they like to this run's trace timeline.
+func TestPushFailureDoesNotLogTheIngestionToken(t *testing.T) {
+	var logged safeBuffer
+	drv := newFakeDriver()
+	m := sandbox.NewManager(drv, sandbox.Config{
+		Provider:       "docker_dev",
+		Runtimes:       []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
+		MaxResources:   sandbox.DefaultLimits,
+		IsolationLevel: "container",
+		EgressModes:    []string{"none"},
+		Slots:          2,
+	}, slog.New(slog.NewTextHandler(&logged, nil))).WithTrace(urlErrorSink{}, nil)
+	h := (&sandbox.Server{M: m, Token: testToken}).Routes()
+
+	req := runRequest()
+	req.Trace = sandbox.TracePolicy{Level: "standard", IngestionURL: liveTraceURL}
+	_, run := do(t, h, "POST", "/runs", req, testToken)
+	drv.writeTrace(run.ProviderRunID, event(1))
+	drv.exit(run.ProviderRunID, sandbox.Outcome{ExitCode: 0})
+	waitForTerminal(t, h, run.ProviderRunID)
+
+	out := logged.String()
+	if !strings.Contains(out, "trace push failed") {
+		t.Fatalf("the failing push was never logged at all, so this proves nothing: %q", out)
+	}
+	if strings.Contains(out, liveToken) {
+		t.Errorf("the sandbox host's log carries a live ingestion token: %s", out)
+	}
+}
+
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *safeBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *safeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 func waitFor(t *testing.T, cond func() bool) {

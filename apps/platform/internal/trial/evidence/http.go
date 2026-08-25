@@ -110,19 +110,28 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// `after` is judged before the mode is, and that is the fix rather than an
+	// accident of ordering. It used to be parsed inside the `advanced` arm, so
+	// `?mode=general&after=-5` was answered with page one of the general view
+	// while `?mode=advanced&after=-5` was a 400 -- one endpoint giving two
+	// different answers to the same schema violation, which is the shape the
+	// limit/offset work removed from the paging endpoints on 2026-08-24. A cursor
+	// the caller cannot have meant is refused whichever view they asked for
+	// (corrected 2026-08-25).
+	after := int64(0)
+	if raw := r.URL.Query().Get("after"); raw != "" {
+		after, err = strconv.ParseInt(raw, 10, 64)
+		if err != nil || after < 0 {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid trace cursor")
+			return
+		}
+	}
+
 	var payload any
 	switch r.URL.Query().Get("mode") {
 	case "", "general":
 		payload, err = h.Svc.General(r.Context(), ws.ID, runID)
 	case "advanced":
-		after := int64(0)
-		if raw := r.URL.Query().Get("after"); raw != "" {
-			after, err = strconv.ParseInt(raw, 10, 64)
-			if err != nil || after < 0 {
-				httpx.WriteError(w, http.StatusBadRequest, "invalid trace cursor")
-				return
-			}
-		}
 		payload, err = h.Svc.Advanced(r.Context(), ws.ID, runID, after)
 	default:
 		httpx.WriteError(w, http.StatusBadRequest, "invalid trace mode")
