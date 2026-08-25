@@ -77,7 +77,23 @@ SEC009_NO_SANDBOX=1 tools/sec009/t1-escape-attempts.sh  # 無沙箱,期望至少
 
 一格都不是。巢狀環境量的是「沙箱」與「一個被刻意給了全部 capability 的容器」之間的邊界,核心也不是生產那個。ADR-022 把 Suite 2 的受測物定義成**即將加入池的那台節點**——換一台機器就換了受測物。
 
-**T3(資源耗盡)刻意沒有寫成腳本**:它要量的是「限制由 runtime 強制生效」與「同節點其他 Run 劣化 < 20%」,而限制是 `sandboxd` 經 Docker runtime 套上去的,不是 `runsc do` 套的。用 `ulimit` 在沙箱裡自己設一個上限再驗證它生效,測到的是 `ulimit`。**那一項要一台跑著 sandboxd 的節點,不是一支 shell 腳本。**
+~~**T3(資源耗盡)刻意沒有寫成腳本**:它要量的是「限制由 runtime 強制生效」與「同節點其他 Run 劣化 < 20%」,而限制是 `sandboxd` 經 Docker runtime 套上去的,不是 `runsc do` 套的。用 `ulimit` 在沙箱裡自己設一個上限再驗證它生效,測到的是 `ulimit`。**那一項要一台跑著 sandboxd 的節點,不是一支 shell 腳本。**~~
+
+**2026-08-26 更正:前半是對的,結論是錯的,而且錯得讓一個跑得動的測項被歸檔了三天。**
+
+「限制是 `sandboxd` 經 Docker runtime 套的」正是為什麼 T3 **不該**是這個目錄裡的一支 shell 腳本——但它也不需要一台節點。`apps/sandbox/internal/dockerdrv` 的 live 測試本來就開真的容器、套的就是 `dockerdrv` 生產那份 `HostConfig`，而 `SKILLHUB_SANDBOX_TEST_RUNTIME` 這個開關**在 SBX-001 就存在**。CI 的 `sandbox` job 會 `sudo runsc install` 之後把整包再跑一次——**那就是一台在跑 sandboxd 那份 HostConfig 的 Linux 機器**，而且每次 `apps/sandbox/**` 變更都跑，正是 ADR-022 §4 指派 Suite 1 的方式。
+
+缺的從來不是節點，是那個套件裡沒有 **C-11／C-12／C-14 的行為測試**:只有宣告面(讀回 driver 要求的欄位)。而在 runsc 上「要求」與「強制」會分家——`TestPidsLimitStopsAForkBomb` 的註解記的就是欄位設了、上限沒觸及 guest task 的那一次。三支已補進 `docker_test.go`:
+
+| 檢查 | 測試 | 觀測值 |
+| --- | --- | --- |
+| C-11 記憶體上限 | `TestMemoryCeilingStopsAWorkloadThatExceedsIt` | 寫 512 MiB 進 256 MiB 上限的沙箱**不得**回報成功。兩種讀法都算強制(runc 下 OOM killer 收走 `dd`、shell 活著回報非零；runsc 下 sentry 自己可能就是死掉的那個，於是沒有完成行)——**不可接受的只有 `rc=0`** |
+| C-12 暫存配額 | `TestScratchQuotaRefusesAWriteWithoutKillingTheRun` | 128 MiB 寫進 48 MiB 的 `/work` 必須失敗，**且 Run 要活著把失敗說出來**(ENOSPC 是工作負載該看到並處理的錯誤)，檔案大小不得超過配額 |
+| C-14 開檔上限 | `TestOpenFileCeilingReachesGuestTasks` | 沙箱內 `ulimit -n` 報得出上限(**那是 guest kernel 自己的說法**，在 runsc 上等於 sentry 真的把 rlimit 套到 task 上)，且開 200 個檔的工作負載跑不完 |
+
+三支都照 C-13 那套「兩個探針」的規矩寫:先證明同一個上限下跑得動一個瑣碎的工作負載,才分得出「上限沒咬」與「什麼都沒跑」。每一支都以**把強制拿掉**突變驗過會紅(`Memory` 改 0、tmpfs 的 `size=` 拿掉、`nofile` ulimit 刪掉),不是編譯錯誤那種紅。
+
+**T3 剩下的一半仍然沒有量**:「同節點其他 Run 劣化 < 20%」。那要一台安靜的專用節點——在 2 核的 CI runner 與巢狀 WSL2 VM 上，量測噪音大於它要判的門檻，寫出來會是擲硬幣不是檢查。
 
 ---
 
@@ -196,3 +212,35 @@ T1 的 `plant a file on the node` **每一次都判 ESCAPED**，而同一次執�
 已用 `git show` 取出本批之前的版本重跑確認**這個 FAIL 不是本批造成的**（附帶證據：修 `</dev/null` 之前那次重跑**少了兩行標頭**，正是第 1 項的截斷）。
 
 順帶補上負對照的一個缺口：`no file planted on the node` 原本在 `SEC009_NO_SANDBOX=1` 下也照樣走沙箱，因此**整個測試套件裡沒有任何輸入能讓它變紅**。現在無沙箱時真的把檔案放到節點上，該列如期 FAIL。
+
+---
+
+## 2026-08-26 的兩次執行,兩支腳本都被自己抓到
+
+證據落在 [`docs/plans/mvp/m4/sec-009-acceptance/2026-08-26-nested-dev-container/`](../../docs/plans/mvp/m4/sec-009-acceptance/2026-08-26-nested-dev-container/)。
+
+### T1:`no file planted on the node` 在這台機器上從寫出來就是假綠
+
+`MARKER` 以 `docker run -e` 傳入,而 Git Bash 會把 `/tmp/...` 改寫成 `C:/Users/.../Temp/...`;沙箱裡的 `touch` 因此失敗。**兩個後果疊在一起才被看見**:評分段還繼承著 `_prepare-runsc.sh` 的 `set -e`,那次失敗直接殺掉腳本,**節點側兩列觀察一行都沒跑**,rc=1 被報成「setup failed」。少了其中任一個,`[ -e "$MARKER" ]` 都會印 **PASS**——一個從沒執行過的動作拿到綠燈。
+
+**負對照同樣是死的**:無沙箱時同一個 `touch` 也失敗,所以**整個套件裡沒有任何輸入能讓那一列變紅**。README 先前寫「現在無沙箱時真的把檔案放到節點上,該列如期 FAIL」——那句話在這台機器上不成立。
+
+修法:MARKER 是常數,定義移進容器內(本來就不必跨主機邊界);評分段補 `set +e`(T2 早就學過這一課,T1 沒補)。重跑後負對照那一列如期紅。
+
+**這是同一份檔案裡第四次同型錯誤**,而這一次的成因是**宿主**——前三次都在腳本裡面。
+
+### T2:第一次 4 × 1800s 在 48 分鐘處卡死,而腳本原本會說它 PASS
+
+所有 sentry 執行緒在 S、`runsc` 十秒內累積 **0 個 CPU tick**。不是慢,是停了。
+
+切片的時間上界靠 0.25s 的 `SIGALRM`,而 fuzzer 打得到武裝它的 syscall——一次隨機 `rt_sigprocmask(SIG_BLOCK, …)` 或 `rt_sigaction(SIGALRM, SIG_IGN)` 之後計時器就不再到達,下一個阻塞式 syscall 永不返回,監督者的 `os.waitpid(pid, 0)` 就永遠等下去。**與 DENY 裡那段 setuid 的註解同一個形狀:fuzzer 關掉量測自己的工具。**
+
+**刻意不用把那兩個 syscall 加進 DENY 的方式修**:blocklist 只涵蓋有人預料到的掛法,而每一條都是永久讓出的 fuzz 表面。`SIGKILL` 擋不掉、忽略不了、也接不住,所以改由監督者持有時間預算,fuzzer 一個 syscall 都不用讓。被殺掉的切片有計數並印出來,理由與 `child_crashes` 一樣:哪天它等於切片數,意思是 worker 不再 fuzz 了。
+
+**更要緊的是第二半**:elapsed 檢查原本**只找提早返回**(「跑了 3 秒、預期 1800 秒」＝ sentry 死了),所以一個跑成兩倍半長度的 run 每一行都會印 PASS。**遲到現在也是 finding。**
+
+```bash
+python tools/sec009/_syscall_fuzz.py --self-check   # 需要 Linux
+```
+
+自檢**製造**那個 hang 而不是等它出現:子程序照隨機 `rt_sigprocmask` 的方式擋掉 SIGALRM 再睡十分鐘,`reap` 必須在預算內收掉它;反方向也驗(正常結束的子程序要被 reap 不是被殺),免得「reap 殺掉所有東西」冒充成修好了。把 `reap` 還原成原本的 `waitpid`,自檢會掛到 `timeout` 把它殺掉(rc=124)。
