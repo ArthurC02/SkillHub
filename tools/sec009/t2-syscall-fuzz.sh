@@ -126,9 +126,13 @@ start=\$(date +%s)
     sleep 5
   done ) &
 sampler=\$!
+# Each worker is wrapped so its exit status reaches the transcript. A supervisor
+# that dies otherwise leaves only an absence, and the classes call for opposite
+# investigations: 137 is the sandbox running out of something, 139 is the
+# supervisor corrupted by one of its own children.
 \$RUNSC sh -c '
   for i in \$(seq 1 '"\$WORKERS"'); do
-    python3 /tmp/fuzz.py '"\$SECS"' \$i &
+    ( python3 /tmp/fuzz.py '"\$SECS"' \$i; echo "EXIT \$i \$?" ) &
   done
   wait
 ' > /tmp/fuzz.out 2>/tmp/fuzz.err
@@ -165,32 +169,35 @@ fi
 # 2. The counts. This is the negative-control half: without it every check here
 #    is satisfied by a fuzzer that never called anything.
 calls=\$(python3 -c "
-import json, os
+import json
 n=e=bad=seen=sl=cr=kl=0
-finished=set()
+final={}; last={}
 for line in open('/tmp/fuzz.out', errors='replace'):
     line=line.strip()
     if not line.startswith('{'): continue
     try: d=json.loads(line)
-    except ValueError: continue
-    if 'calls' not in d: continue        # supervisor could not report; not a record
-    seen+=1; finished.add(d.get('worker'))
+    except ValueError: continue        # a torn line, itself worth knowing about
+    if 'calls' not in d or 'worker' not in d: continue
+    (last if d.get('progress') else final)[d['worker']]=d
+for d in final.values():
+    seen+=1
     n+=d['calls']; e=max(e,d['distinct_errnos'])
     sl+=d.get('slices',0); cr+=d.get('child_crashes',0); kl+=d.get('child_killed',0)
     if d['uid_after']!=d['uid_before'] or d['gid_after']!=d['gid_before']: bad+=1
-# A supervisor that was killed leaves no final line. Its last checkpoint says how
-# far it got, which is the difference between a finding and an 'unknown'.
+# A supervisor that dies leaves no final line. Its last progress line says how far
+# it got, which is the difference between a finding and an 'unknown'. It has to be
+# a line and not a file: 'runsc do' overlays the sandbox's filesystem, so nothing
+# written to /tmp inside survives -- a file-based version reported 'no checkpoint'
+# for every worker including the three that finished.
 lost=[]
-for w in range(1, $WORKERS + 1):
-    if w in finished: continue
-    try:
-        with open('/tmp/sec009-t2-checkpoint-%d.json' % w) as fh: d=json.load(fh)
-    except (OSError, ValueError):
-        lost.append('%d:no-checkpoint' % w); continue
-    lost.append('%d:%dcalls/%dslices' % (w, d.get('calls',0), d.get('slices',0)))
+for w in sorted(set(last) - set(final)):
+    d=last[w]
+    lost.append('%d:last-seen-at-%dcalls/%dslices' % (w, d.get('calls',0), d.get('slices',0)))
     n+=d.get('calls',0); e=max(e,d.get('distinct_errnos',0))
     sl+=d.get('slices',0); cr+=d.get('child_crashes',0); kl+=d.get('child_killed',0)
-print(n,e,bad,seen,sl,cr,kl,','.join(lost) or '-')
+for w in range(1, $WORKERS + 1):
+    if w not in final and w not in last: lost.append('%d:never-reported' % w)
+print(n,e,bad,seen,sl,cr,kl,','.join(sorted(lost)) or '-')
 " 2>/dev/null)
 set -- \$calls
 total=\${1:-0}; distinct=\${2:-0}; privchange=\${3:-x}; seen=\${4:-0}
@@ -204,9 +211,14 @@ slices=\${5:-0}; crashes=\${6:-0}; killed=\${7:-0}; lost=\${8:--}
 # reported, too -- one worker's output going missing is how the first run of
 # this script looked, and averaging over the survivors would have hidden it.
 floor=\$(( 100 * \$SECS * \$WORKERS ))
-if [ "\$total" -ge "\$floor" ] && [ "\$distinct" -ge 5 ] && [ "\$seen" -eq "\$WORKERS" ]; then
-  printf '  %-38s PASS    %s calls (floor %s), %s errnos, %s/%s workers\n' \
-    'the fuzzer actually fuzzed' "\$total" "\$floor" "\$distinct" "\$seen" "\$WORKERS"
+# Two facts, two lines, and they used to share one. A run where the fuzzer
+# issued eight times its floor but lost a worker printed
+# "the fuzzer actually fuzzed FAIL 971822 calls (floor 120000)" -- an accurate
+# verdict attached to a false statement. Both still set fail, so nothing is
+# waved through; the transcript just stops asserting the wrong thing.
+if [ "\$total" -ge "\$floor" ] && [ "\$distinct" -ge 5 ]; then
+  printf '  %-38s PASS    %s calls (floor %s), %s errnos\n' \
+    'the fuzzer actually fuzzed' "\$total" "\$floor" "\$distinct"
   # Not a verdict. The workload killing itself is what a syscall fuzzer does, and
   # it is the reason the supervisor exists at all. Printed so that a future run
   # reporting zero crashes cannot pass unnoticed: that would mean the children
@@ -214,20 +226,29 @@ if [ "\$total" -ge "\$floor" ] && [ "\$distinct" -ge 5 ] && [ "\$seen" -eq "\$WO
   printf '  %-38s         %s slice(s), %s ended in a signal, %s killed for hanging\n' \
     '  (workload self-destruction)' "\$slices" "\$crashes" "\$killed"
 else
-  printf '  %-38s FAIL    %s calls (floor %s), %s errnos, %s/%s workers\n' \
-    'the fuzzer actually fuzzed' "\$total" "\$floor" "\$distinct" "\$seen" "\$WORKERS"
+  printf '  %-38s FAIL    %s calls (floor %s), %s errnos\n' \
+    'the fuzzer actually fuzzed' "\$total" "\$floor" "\$distinct"
   # What the workers actually said. Without this the failure is a number with no
   # explanation, and every debugging round costs another full run.
   echo '      --- worker output (first 5 lines) ---'
   head -5 /tmp/fuzz.out | sed 's/^/      /'
   echo '      --- worker stderr (first 5 lines) ---'
   head -5 /tmp/fuzz.err | sed 's/^/      /'
-  if [ "\$lost" != '-' ]; then
-    # Empty stderr and no final line means killed by a signal, not a traceback.
-    # The checkpoint says how far it got; the memory peak says what probably did it.
-    echo "      --- worker(s) with no final record: \$lost ---"
-    echo "      sandbox-side memory peak: \$(( \$(cat /tmp/mem.peak 2>/dev/null || echo 0) / 1024 )) MiB"
-  fi
+  fail=2
+fi
+
+# Whether every worker lived to file a final record. Separate from the line
+# above because a run can fuzz hard and still lose a supervisor -- and because
+# a supervisor never fuzzes, so its death is not the workload self-destruction
+# that child_crashes counts. It is something ending a process that was only
+# forking and waiting.
+if [ "\$seen" -eq "\$WORKERS" ]; then
+  printf '  %-38s PASS    %s/%s reported to the end\n' 'every worker survived to report' "\$seen" "\$WORKERS"
+else
+  printf '  %-38s FAIL    %s/%s reported to the end\n' 'every worker survived to report' "\$seen" "\$WORKERS"
+  echo "      last seen: \$lost"
+  grep '^EXIT ' /tmp/fuzz.out | sed 's/^/      exit status: worker /'
+  echo "      sandbox-side memory peak: \$(( \$(cat /tmp/mem.peak 2>/dev/null || echo 0) / 1024 )) MiB"
   fail=2
 fi
 

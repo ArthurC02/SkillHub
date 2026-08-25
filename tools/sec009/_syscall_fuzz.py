@@ -45,7 +45,7 @@ import time
 
 MAX_SYSCALL = 452  # x86_64, roughly current upstream; overshooting is harmless.
 
-# How long one child fuzzes before checkpointing. Short enough that a segfault
+# How long one child fuzzes before reporting back to its supervisor. Short enough that a segfault
 # costs little (children die in seconds), long enough that fork/exec overhead
 # does not dominate the run.
 SLICE_SECONDS = 1.0
@@ -196,7 +196,7 @@ def _wait_until(pid, deadline):
 
 def report(worker, calls, errnos, slices, crashes, killed,
            uid_before, gid_before, uid_after, gid_after):
-    """The one shape a worker reports in, whether it finishes or is checkpointed."""
+    """The one shape a worker reports in, mid-run or at the end."""
     return {
         "worker": worker,
         "calls": calls,
@@ -214,14 +214,15 @@ def report(worker, calls, errnos, slices, crashes, killed,
     }
 
 
-def write_json(path, payload):
-    """Replace path atomically enough that a reader never sees half a record."""
-    blob = json.dumps(payload).encode()
-    tmp = path + ".new"
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    os.write(fd, blob)
-    os.close(fd)
-    os.rename(tmp, path)
+def emit(payload, progress=False):
+    """Write one record as a single line, in one write.
+
+    os.write of one pre-joined buffer rather than print(): four supervisors share
+    this stdout, and print() issues the text and the newline separately, which is
+    two chances for another worker's line to land in the middle of this one.
+    """
+    payload = dict(payload, progress=progress)
+    os.write(1, (json.dumps(payload) + chr(10)).encode())
 
 
 def self_check():
@@ -271,19 +272,25 @@ def main():
     seconds = float(sys.argv[1])
     worker = int(sys.argv[2])
     result_path = "/tmp/sec009-t2-worker-%d.json" % worker
-    # A supervisor that dies leaves nothing behind, and the run then reports
-    # "3/4 workers" with no way to say what happened to the fourth -- which is
-    # `unknown`, and ADR-022 §3 counts unknown as fail. The first full-scale run
-    # ended exactly there: empty stderr (so not a traceback) and no final line
-    # (so killed by a signal). Checkpointing costs one small write per slice,
-    # about one a second, and turns a silent loss into a last known position.
-    checkpoint_path = "/tmp/sec009-t2-checkpoint-%d.json" % worker
 
     uid_before, gid_before = os.getuid(), os.getgid()
     calls = 0
     errnos = set()
     slices = crashes = killed = 0
     uid_after, gid_after = uid_before, gid_before
+
+    # A supervisor that is killed leaves no final line, and the run then reports
+    # "3/4 workers" with no way to say what happened to the fourth -- which is
+    # `unknown`, and ADR-022 §3 counts unknown as fail.
+    #
+    # The progress line goes to STDOUT and not to a file, and that is the whole
+    # point: `runsc do` gives the sandbox an overlay, so nothing written inside
+    # /tmp is visible to the caller afterwards. A file-based checkpoint was
+    # tried first and reported "no checkpoint" for every worker including the
+    # three that finished -- an artifact that read exactly like a finding. The
+    # one channel out of this sandbox is the stdout it was handed.
+    emit(report(worker, 0, set(), 0, 0, 0, uid_before, gid_before, uid_after, gid_after),
+         progress=True)
 
     deadline = time.time() + seconds
     while time.time() < deadline:
@@ -319,13 +326,13 @@ def main():
         except (OSError, ValueError, KeyError):
             pass  # the child died mid-slice; already counted as a crash
 
-        write_json(checkpoint_path, report(
-            worker, calls, errnos, slices, crashes, killed,
-            uid_before, gid_before, uid_after, gid_after))
+        # Roughly every 30 slices, so about twice a minute at a one-second slice.
+        if slices % 30 == 0:
+            emit(report(worker, calls, errnos, slices, crashes, killed,
+                        uid_before, gid_before, uid_after, gid_after), progress=True)
 
-    print(json.dumps(report(
-        worker, calls, errnos, slices, crashes, killed,
-        uid_before, gid_before, uid_after, gid_after)))
+    emit(report(worker, calls, errnos, slices, crashes, killed,
+                uid_before, gid_before, uid_after, gid_after))
 
 
 if __name__ == "__main__":
