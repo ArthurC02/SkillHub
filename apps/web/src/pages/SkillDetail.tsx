@@ -155,7 +155,13 @@ export function SkillDetail() {
             <li>建立時間：{skill.version.created_at}</li>
           </ul>
         ) : (
-          <p>這個 Skill 還沒有已保存的版本內容。</p>
+          /* 設計 §2.9: 別人的 Skill 的版本清單回空陣列，而「沒有版本」與
+             「你看不到」是兩件事——前者會被讀成這個 Skill 是空的。表列詞是
+             「無權檢視」（ADR-011 的 Workspace scope）。 */
+          <p>
+            無權檢視——這個工作區看不到這個 Skill 的版本內容。別人的 Skill 要 Fork
+            之後才會有屬於你的版本；這不代表它沒有版本。
+          </p>
         )}
         {skill.derivation.forked_from_version_id && (
           <p>
@@ -254,7 +260,11 @@ function Redistribution({ skill }: { skill: SkillDetailModel }) {
           </Link>
         </p>
       ) : (
-        <p className="note">這個 Skill 還沒有已保存的版本內容，沒有東西可以打包。</p>
+        /* 同上，§2.9 的「無權檢視」。 */
+        <p className="note">
+          無權檢視——這個工作區看不到這個 Skill 的版本內容。別人的 Skill 要 Fork
+          之後才會有屬於你的版本；這不代表它沒有版本。沒有版本內容就沒有東西可以打包。
+        </p>
       )}
     </section>
   );

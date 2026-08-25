@@ -266,18 +266,39 @@ const datasetUploadRoute = createRoute({
  * run_id and nothing else: a provider's ephemeral id never appears in a URL
  * (iron rule 10). The general and advanced modes are component state rather than
  * a search param — the toggle is a reading preference, not something worth a
- * distinct shareable address.
+ * distinct shareable address (資訊架構 §0.1 R4, IA-4 的裁定).
  *
- * No search params at all. There used to be a `skill` one, because applying
- * improvement suggestions posts to /skills/{id}/versions/from-suggestions and
- * the run read carried no skill id; GET /runs/{id} answers `skill_id` now, so
- * the page works however it was reached rather than only via the one link that
- * remembered to pass it.
+ * The two params that ARE here are the other half of R4 — 「你在看哪一份東西」:
+ *
+ * - `evaluation` names one immutable `evaluation_id` out of this run's
+ *   revisions (ADR-003/026). Without it a superseded verdict could not be
+ *   linked or reloaded into, and the address snapped back to 目前的判定 — which
+ *   for a re-evaluated run is a DIFFERENT verdict from the one being discussed.
+ * - `events` is the advanced Trace's cursor stack, comma-joined, holding page 2
+ *   onwards (page 1 is the absent param). Trace is the screen most likely to be
+ *   mailed to somebody with 「你看，這裡少了三筆」 attached, and page 7 of the
+ *   event stream used to be unlinkable and lost on reload. Non-numeric junk is
+ *   dropped rather than passed through, like the home route's out-of-enum
+ *   filters: a hand-edited address lands on page 1, not on an error.
+ *
+ * There used to be a `skill` one, because applying improvement suggestions posts
+ * to /skills/{id}/versions/from-suggestions and the run read carried no skill
+ * id; GET /runs/{id} answers `skill_id` now, so the page works however it was
+ * reached rather than only via the one link that remembered to pass it.
  */
+export type RunSearch = { evaluation?: string; events?: string };
+
 const runTraceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/runs/$runId",
   component: RunTrace,
+  validateSearch: (search: Record<string, unknown>): RunSearch => ({
+    evaluation: typeof search.evaluation === "string" ? search.evaluation : undefined,
+    events:
+      typeof search.events === "string" && /^\d+(,\d+)*$/.test(search.events)
+        ? search.events
+        : undefined,
+  }),
 });
 
 /** 02:EVAL-003. The other run lives in the URL so a comparison is linkable. */

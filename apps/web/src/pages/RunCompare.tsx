@@ -44,7 +44,8 @@ function verdictCell(side: ComparisonSide) {
 }
 
 function usd(value: number | null): string {
-  return value === null ? "未回報" : `US$${value.toFixed(4)}`;
+  // 設計 §2.9 的表列詞;閘道沒有回報一個成本，不是 0。
+  return value === null ? "未測量" : `US$${value.toFixed(4)}`;
 }
 
 export function RunCompare() {

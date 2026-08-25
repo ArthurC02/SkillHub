@@ -1,7 +1,7 @@
 import { Loading } from "../components/Loading";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   createDownloadArtifact,
   downloadHref,
@@ -175,17 +175,21 @@ export function Packaging() {
   const [includeTestCases, setIncludeTestCases] = useState(false);
   const [built, setBuilt] = useState<CreatedDownloadArtifact | null>(null);
   const [message, setMessage] = useState("");
-  const [picked, setPicked] = useState("");
+  const navigate = useNavigate();
   useEffect(() => {
-    setPicked("");
     setBuilt(null);
     setMessage("");
   }, [skillId, version]);
 
-  // The version being packaged: the one the reader picked, else the one in the
-  // URL, else the skill's latest. Never invented — with none of the three, the
-  // page says so instead of guessing.
-  const versionId = picked || version || skill.data?.version?.version_id || "";
+  // The version being packaged: the one in the URL, else the skill's latest.
+  // Never invented — with neither, the page says so instead of guessing.
+  //
+  // 資訊架構 §0.1 R4:「你在看哪一份東西」進網址。The picker used to write to
+  // component state and that state WON over `?version=`, so opening
+  // …/package?version=A, picking B and copying the address handed the reader —
+  // and the sender, after a reload — A's preview. A lossy URL is bad; one that
+  // actively disagrees with the screen is worse.
+  const versionId = version || skill.data?.version?.version_id || "";
   const target = chosen || (targets.data?.targets[0]?.id ?? "");
   const preview = usePackagingPreview(skillId, versionId, target, includeTestCases);
 
@@ -228,7 +232,11 @@ export function Packaging() {
           : ""}
       </p>
       {versionId === "" ? (
-        <p role="alert">這個 Skill 還沒有已保存的版本內容，沒有東西可以打包。</p>
+        /* 設計 §2.9 的「無權檢視」，與 SkillDetail 的同一句話同一個理由。 */
+        <p role="alert">
+          無權檢視——這個工作區看不到這個 Skill 的版本內容。別人的 Skill 要 Fork
+          之後才會有屬於你的版本；這不代表它沒有版本。沒有版本內容就沒有東西可以打包。
+        </p>
       ) : (
         <>
           {/*
@@ -250,14 +258,17 @@ export function Packaging() {
             <SkillVersionPicker
               skillId={skillId}
               value={versionId}
-              onPick={(id) => {
-                setPicked(id);
-                // The built artifact belongs to the version it was built from;
-                // leaving it on screen beside another version's preview would
-                // offer bytes nobody asked for.
-                setBuilt(null);
-                setMessage("");
-              }}
+              // The built artifact belongs to the version it was built from;
+              // leaving it on screen beside another version's preview would
+              // offer bytes nobody asked for. The effect above clears it, since
+              // the pick now arrives as a change to `?version=`.
+              onPick={(id) =>
+                void navigate({
+                  to: "/skills/$skillId/package",
+                  params: { skillId },
+                  search: { version: id },
+                })
+              }
             />
             <p className="note">
               打包的是這一個不可變版本 <code>{versionId}</code>

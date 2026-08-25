@@ -159,7 +159,12 @@ const ROWS: CompareRow[] = [
               </a>
             </p>
           ) : (
-            <p className="note">沒有記錄來源網址。</p>
+            /* 設計 §2.1 給這一頁的詞是「未知」，而這一列的其他缺席都已經用
+               `.compare-unknown` 印它。「沒有記錄來源網址」是這一頁上唯一一句
+               自己發明的缺席措辭。 */
+            <p className="note">
+              來源網址：<span className="compare-unknown">未知</span>
+            </p>
           )}
           {skill.source.source_version && (
             <p className="note">

@@ -26,6 +26,8 @@ function json(body: unknown, status = 200) {
 
 beforeEach(() => {
   queryClient.clear();
+  setSearch({});
+  navigations.length = 0;
   container = document.createElement("div");
   document.body.appendChild(container);
 });
@@ -93,13 +95,39 @@ type LinkProps = {
 // Resolves the destination into an href so a test can assert where a link goes,
 // not merely that some link text rendered. EVAL-011 is entirely about the ids in
 // that destination, so a mock that dropped them would assert nothing.
+/*
+ * The address, standing in for the router. 資訊架構 §0.1 R4 puts the evaluation
+ * revision in it — a superseded verdict is a different verdict, not a way of
+ * looking at the same one.
+ *
+ * Reads come from `search`, which a test sets before it renders; writes are
+ * recorded rather than applied, because a switcher that keeps its choice in
+ * component state performs no navigation at all, and that is the thing that has
+ * to fail.
+ */
+let search: Record<string, string | undefined> = {};
+const navigations: Record<string, string | undefined>[] = [];
+
+function setSearch(next: Record<string, string | undefined>) {
+  search = next;
+}
+
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, params, search, children }: LinkProps) => {
+  Link: ({ to, params, search: linkSearch, children }: LinkProps) => {
     const path = Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to);
     const query = new URLSearchParams(
-      Object.entries(search ?? {}).filter((e): e is [string, string] => e[1] !== undefined),
+      Object.entries(linkSearch ?? {}).filter((e): e is [string, string] => e[1] !== undefined),
     ).toString();
     return <a href={query ? `${path}?${query}` : path}>{children as never}</a>;
+  },
+  useSearch: () => search,
+  useNavigate: () => (options: { search?: unknown }) => {
+    const next =
+      typeof options.search === "function"
+        ? (options.search as (prev: typeof search) => typeof search)(search)
+        : (options.search as typeof search);
+    navigations.push({ ...next });
+    return Promise.resolve();
   },
 }));
 
@@ -626,7 +654,14 @@ test("EVAL-002 a re-evaluation landing while the page is open brings the revisio
   expect(container.querySelector("#evaluation-revision")).toBeNull();
   const readsBefore = revisionReads;
 
-  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  // Bounded rather than exactly one tick: which fake-clock tick the poll lands
+  // on depends on how many renders happen before the interval is armed, and that
+  // count is not what this test is about. The assertion is still 「the second
+  // verdict arrives while the page is open」 — if it never arrives, this loop
+  // runs out and the expect below fails.
+  for (let i = 0; i < 4 && !container.textContent?.includes("重評之後的判定。"); i++) {
+    await act(async () => vi.advanceTimersByTimeAsync(3000));
+  }
   await act(async () => vi.advanceTimersByTimeAsync(0));
 
   expect(container.textContent).toContain("重評之後的判定。");
@@ -647,3 +682,52 @@ function revisionOf(source: Evaluation, supersededAt: string | null) {
     superseded_at: supersededAt,
   };
 }
+
+/*
+ * 資訊架構 §0.1 R4 — 「你在看哪一份東西」進網址.
+ *
+ * IA §4 records `/runs/$runId` as carrying no search params, and justifies that
+ * solely by the 一般／進階 reading-mode toggle (IA-4, 2026-08-23). The same page
+ * also chooses between immutable `evaluation_id`s (ADR-003 / ADR-026), and that
+ * control was never examined: a superseded verdict could not be linked or
+ * reloaded into, and the address always snapped back to 目前的判定 — which for a
+ * re-evaluated run is a DIFFERENT verdict from the one under discussion.
+ */
+test("R4: the evaluation revision comes from the address, and the switcher writes it back", async () => {
+  const superseded = { ...evaluation, evaluation_id: "eval-1", summary: "被取代的那一份判定。" };
+  const current = { ...evaluation, evaluation_id: "eval-2", summary: "重評之後的判定。" };
+  const asked: string[] = [];
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    asked.push(url);
+    if (url.includes("/evaluation/revisions")) {
+      return json({
+        revisions: [revisionOf(current, null), revisionOf(superseded, "2026-08-25T00:00:00Z")],
+      });
+    }
+    if (url.includes("/evaluation")) {
+      return json(url.includes(`revision=${superseded.evaluation_id}`) ? superseded : current);
+    }
+    return json({ error: "not found" }, 404);
+  });
+
+  // An address somebody was sent, naming the verdict being discussed.
+  setSearch({ evaluation: superseded.evaluation_id });
+  await render("succeeded");
+
+  // Read: the page opened on that revision rather than on 目前的判定.
+  expect(asked.some((url) => url.includes(`revision=${superseded.evaluation_id}`))).toBe(true);
+  expect(container.textContent).toContain("被取代的那一份判定。");
+  const picker = container.querySelector<HTMLSelectElement>("#evaluation-revision")!;
+  expect(picker.value).toBe(superseded.evaluation_id);
+
+  // Write: switching back to 目前的判定 clears the parameter rather than leaving
+  // the address naming a verdict nobody is reading.
+  const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(picker, "");
+    picker.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(navigations).toHaveLength(1);
+  expect(navigations[0].evaluation).toBeUndefined();
+});

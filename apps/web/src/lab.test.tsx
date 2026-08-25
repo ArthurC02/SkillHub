@@ -270,9 +270,9 @@ test("02:TEST-005 the fields inside summary_hash are all on screen, the quiet on
   expect(text).toContain("25.0 MB"); // artifact_file_bytes
   expect(text).toContain("600 秒"); // wall_clock_soft_seconds
   // provider.rootless is false here and says so; runtime is absent and is
-  // 未回報 rather than an empty gap that reads as "none".
+  // 未測量 (設計 §2.9 的表列詞) rather than an empty gap that reads as "none".
   expect(text).toContain("rootless：否");
-  expect(text).toContain("未回報");
+  expect(text).toContain("未測量");
 });
 
 // PDM-005 §5.3/§5.2a-6. Both ends of the range have to be on screen, and the word

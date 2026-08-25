@@ -102,7 +102,7 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
           <li>
             Manifest 雜湊（內容和上次一不一樣）：<code>{artifact.manifest_hash}</code>
           </li>
-          <li>打包器版本：{artifact.packager_version ?? "未回報"}</li>
+          <li>打包器版本：{artifact.packager_version ?? "未測量"}</li>
           <li>Profile 版本：{artifact.profile_version ?? "無（標準套件沒有 Profile）"}</li>
           <li>
             Skill Version ID：<code>{artifact.skill_version_id}</code>（v

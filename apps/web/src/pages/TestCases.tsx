@@ -142,7 +142,9 @@ export function TestCaseList() {
                   {/* Empty means the skill is no longer visible to the caller —
                       "we cannot name it", which is not a name and not a UUID. */}
                   Skill：
-                  {tc.skill_name === "" ? "未回報（這個 Skill 已不在你的可見範圍）" : tc.skill_name}
+                  {tc.skill_name === ""
+                    ? "無權檢視（這個 Skill 已不在你的可見範圍）"
+                    : tc.skill_name}
                 </p>
                 <p className="note">
                   驗收條件已確認 {tc.criteria_confirmed}/{tc.criteria_total} 條 · Rubric{" "}
@@ -334,7 +336,7 @@ function RunHistory({
                     不編一個理由出來——不渲染,而不是渲染成空白。 */}
                 {(run.status_reason || run.failure_class) && (
                   <p className="note">
-                    {run.status_reason ?? "伺服器未回報原因"}
+                    {run.status_reason ?? "未測量（伺服器沒有回報原因）"}
                     {run.failure_class && `（分類：${run.failure_class}）`}
                   </p>
                 )}
@@ -634,8 +636,19 @@ function CriterionRow({
         maxLength={2000}
       />
       <p className="note">狀態：{criterionState(criterion)}</p>
-      {edited && criterion.confirmed_at && (
-        <p className="note">改動文字後儲存會清除這一條的確認，因為當初確認的是舊的文字。</p>
+      {/*
+        設計 §2.4 — 停用要說原因，而且原因不能只活在 title 裡。這一句原本掛在
+        `edited && criterion.confirmed_at`，也就是只在「已確認」那一支渲染；而被
+        停用的是另一支的「確認」鈕。使用者在一條未確認的條件上打字、按鈕變灰、
+        畫面上沒有一個字說為什麼——正是 §2.4 命名的那個失效。兩支各有自己的話，
+        停用的那一支再以 aria-describedby 綁到按鈕上（§2.10 第 5 項：理由不折疊）。
+      */}
+      {edited && (
+        <p className="note" id={`criterion-edited-${criterion.id}`}>
+          {criterion.confirmed_at
+            ? "改動文字後儲存會清除這一條的確認，因為當初確認的是舊的文字。"
+            : "文字改了還沒儲存，所以現在不能確認——確認的必須是已經存下來的那一句。先按「儲存文字」。"}
+        </p>
       )}
       <p>
         <button
@@ -657,6 +670,7 @@ function CriterionRow({
           <button
             type="button"
             disabled={mutate.isPending || edited}
+            aria-describedby={edited ? `criterion-edited-${criterion.id}` : undefined}
             onClick={() => mutate.mutate("confirm")}
           >
             確認
@@ -937,10 +951,10 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
                     label="刪除這個檔案"
                     confirmLabel="確認刪除這個檔案"
                   />
-                  {/* TEST-002 的保存政策，落到這一個檔案上。沒回報就寫「未回報」,
-                      不編一個到期日出來。 */}
+                  {/* TEST-002 的保存政策，落到這一個檔案上。不編一個到期日出來；
+                      設計 §2.9 的表列詞是「未測量」（伺服器沒回報）。 */}
                   <p className="note">
-                    {d.expires_at ? `保存到 ${d.expires_at} 自動刪除` : "到期日未回報"}
+                    {d.expires_at ? `保存到 ${d.expires_at} 自動刪除` : "到期日未測量"}
                   </p>
                 </li>
               ))}

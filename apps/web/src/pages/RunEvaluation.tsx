@@ -1,7 +1,7 @@
 import { Loading } from "../components/Loading";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import {
   EVALUATION_POLL_MAX_404,
@@ -136,7 +136,8 @@ const BLOCKED_REASON_LABEL: Record<SuggestionBlockedReason, string> = {
 };
 
 function usd(value: number | null): string {
-  return value === null ? "未回報" : `US$${value.toFixed(4)}`;
+  // 設計 §2.9 的表列詞;閘道沒有回報一個成本，不是 0。
+  return value === null ? "未測量" : `US$${value.toFixed(4)}`;
 }
 
 /**
@@ -145,10 +146,20 @@ function usd(value: number | null): string {
  * query already holds it and the runs table is its only authority (iron rule 5).
  */
 export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus?: string }) {
-  const [revision, setRevision] = useState<string | undefined>(undefined);
+  /*
+   * 資訊架構 §0.1 R4. Which evaluation you are reading is 「你在看哪一份東西」,
+   * not a reading preference: the revisions are immutable `evaluation_id`s
+   * (ADR-003 / ADR-026), and a superseded verdict is a different verdict from
+   * 目前的判定. Held in component state, it could not be linked, could not
+   * survive a reload, and a colleague opening the address arrived on whatever
+   * the current judgement happens to be — for a re-evaluated run, not the one
+   * under discussion. IA §4 only ever examined this page's mode toggle; this
+   * control was never looked at.
+   */
+  const { evaluation: revision } = useSearch({ strict: false }) as { evaluation?: string };
+  const navigate = useNavigate();
   const seenEvaluationId = useRef<string | undefined>(undefined);
   useEffect(() => {
-    setRevision(undefined);
     seenEvaluationId.current = undefined;
   }, [runId]);
   // Hoisted out of the call because the banner below needs it too: it is what
@@ -299,7 +310,18 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
           <select
             id="evaluation-revision"
             value={revision ?? ""}
-            onChange={(e) => setRevision(e.target.value === "" ? undefined : e.target.value)}
+            onChange={(e) =>
+              void navigate({
+                to: "/runs/$runId",
+                params: { runId },
+                // Merged rather than replaced: the advanced Trace's page
+                // position lives on the same address.
+                search: (prev) => ({
+                  ...prev,
+                  evaluation: e.target.value === "" ? undefined : e.target.value,
+                }),
+              })
+            }
           >
             <option value="">目前的判定</option>
             {revisions.data.revisions.map((r) => (

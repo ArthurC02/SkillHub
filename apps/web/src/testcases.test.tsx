@@ -85,6 +85,8 @@ type Overrides = {
   runs?: unknown[];
   datasets?: unknown[];
   testCases?: unknown[];
+  /** The single test case GET /test-cases/{id} answers with. Defaults to `draft`. */
+  testCase?: TestCase;
 };
 
 function stubPlatform(over: Overrides = {}) {
@@ -112,7 +114,7 @@ function stubPlatform(over: Overrides = {}) {
     if (path === "/test-cases") return json({ test_cases: over.testCases ?? [] });
     if (init?.method === "DELETE" && path === `/test-cases/${TEST_CASE}`)
       return json({ deleted: true, datasets_deleted: 2, note: "server note" });
-    return json(draft);
+    return json(over.testCase ?? draft);
   });
 
   return calls;
@@ -427,4 +429,44 @@ test("設計 §2.4 the Rubric save button says why it cannot be pressed", async 
   await act(async () => setValue(version, "content-007/writing/v1"));
   expect(button("儲存 Rubric").disabled).toBe(false);
   expect(container.textContent).not.toContain("還不能儲存，因為 Rubric 版本是空的");
+});
+
+/*
+ * 設計 §2.4 — 停用要說原因，而且原因不能只活在 `title` 裡。
+ *
+ * 確認 is disabled by `mutate.isPending || edited`, and the sentence explaining
+ * an unsaved edit was gated on `edited && criterion.confirmed_at` — the OTHER
+ * branch, the one whose button is 取消確認 and is not disabled at all. So a user
+ * typing into an unconfirmed criterion watched the button grey out with nothing
+ * on the page saying why: the exact failure §2.4 is named after.
+ *
+ * The existing machine check (`a11y.test.tsx`) cannot see this. It asserts that
+ * a reason in a `title` is also in `aria-describedby`; a reason that is missing
+ * outright has no `title` for it to catch.
+ */
+test("設計 §2.4 a 確認 disabled by an unsaved edit says why, in visible text", async () => {
+  stubPlatform({
+    testCase: {
+      ...draft,
+      acceptance_criteria: [{ id: "c9", text: "輸出仍是 CSV", source: "user", confirmed_at: null }],
+    },
+  });
+  await render();
+
+  expect(button("確認").disabled).toBe(false);
+
+  await act(async () =>
+    setValue(container.querySelector<HTMLInputElement>("#criterion-c9")!, "輸出仍是 CSV 檔"),
+  );
+
+  expect(button("確認").disabled).toBe(true);
+  // Visible text, not a tooltip — and reachable from the control itself, since
+  // §2.10 第 5 項 keeps a disabled control's reason out of anything you have to
+  // open or hover to read.
+  const describedBy = button("確認").getAttribute("aria-describedby");
+  expect(describedBy, "the disabled 確認 points at no reason").toBeTruthy();
+  const reason = container.querySelector(`#${describedBy}`);
+  expect(reason).not.toBeNull();
+  expect(reason!.textContent ?? "").toContain("現在不能確認");
+  expect(reason!.getAttribute("title")).toBeNull();
 });

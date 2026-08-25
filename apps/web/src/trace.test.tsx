@@ -28,15 +28,50 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-// The page reads its run id from the router, which is not mounted here, so the
-// router surface it touches is stubbed rather than driving a full navigation for
-// one id. `Link` renders its children so the page's cross-links stay inspectable.
-vi.mock("@tanstack/react-router", () => ({
-  useParams: () => ({ runId: "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20" }),
-  useSearch: () => ({}),
-  useNavigate: () => () => Promise.resolve(),
-  Link: ({ children }: { children?: unknown }) => children,
-}));
+/*
+ * The page reads its run id from the router, which is not mounted here, so the
+ * router surface it touches is stubbed rather than driving a full navigation for
+ * one id. `Link` renders its children so the page's cross-links stay inspectable.
+ *
+ * The search half is a real (tiny) store rather than a constant `{}`: 資訊架構
+ * §0.1 R4 puts the advanced Trace's page position in the URL, so a `useNavigate`
+ * that swallowed the write would let a page that never leaves component state
+ * pass. Components re-read it through `useSyncExternalStore`, which is what
+ * makes a navigation land on screen the way a real one does.
+ */
+const searchListeners = new Set<() => void>();
+let search: Record<string, string | undefined> = {};
+
+function setSearch(next: Record<string, string | undefined>) {
+  search = next;
+  for (const listener of searchListeners) listener();
+}
+
+vi.mock("@tanstack/react-router", async () => {
+  const { useSyncExternalStore } = await import("react");
+  return {
+    useParams: () => ({ runId: "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20" }),
+    useSearch: () =>
+      useSyncExternalStore(
+        (listener: () => void) => {
+          searchListeners.add(listener);
+          return () => searchListeners.delete(listener);
+        },
+        () => search,
+      ),
+    useNavigate: () => (options: { search?: unknown }) => {
+      const next =
+        typeof options.search === "function"
+          ? (options.search as (prev: typeof search) => typeof search)(search)
+          : (options.search as typeof search);
+      setSearch({ ...next });
+      return Promise.resolve();
+    },
+    Link: ({ children }: { children?: unknown }) => children,
+  };
+});
+
+beforeEach(() => setSearch({}));
 
 function stubTrace(
   general: TraceSummary,
@@ -167,8 +202,9 @@ test("the general mode says the trace is incomplete and never shows an unreporte
 
   const text = container.textContent ?? "";
   expect(text).toContain("部分事件未送達");
-  // The gateway reported no cost. Rendering 0 would tell the user it was free.
-  expect(text).toContain("未回報");
+  // The gateway reported no cost. Rendering 0 would tell the user it was free,
+  // and 設計 §2.9's table has one word for it (「未回報」 was not on the table).
+  expect(text).toContain("未測量");
   expect(text).not.toContain("US$0.0000");
   // Status is whatever the runs table said, reason included (iron rule 5).
   expect(text).toContain("failed");
@@ -280,4 +316,58 @@ test("§2.12: the banner is gone once the run is terminal", async () => {
   await render();
 
   expect(container.textContent ?? "").not.toContain("會自己跑到結束");
+});
+
+/*
+ * 資訊架構 §0.1 R4 — 「你在看哪一份東西」進網址.
+ *
+ * The advanced Trace's page position was `useState([0])`, so page 7 of the
+ * event stream could not be linked and did not survive a reload — on the screen
+ * system.md §1.3 itself calls 「最需要把『你看，這裡少了三筆』寄給別人的畫面」.
+ *
+ * Both halves are asserted, because either one alone is passable by a wrong
+ * implementation: reading the address (an address somebody was sent opens on
+ * that page) and writing it (the page you paged to is the address you can send).
+ */
+test("R4: the advanced Trace opens on the page its address names, and paging writes it back", async () => {
+  const requested: string[] = [];
+  // The address of page 2: one cursor pushed onto the implicit page-1 zero.
+  setSearch({ events: "1" });
+  stubTrace(summary, (url) => {
+    requested.push(url);
+    return { ...advanced, has_more: true, next_after: 2 };
+  });
+  await render();
+
+  const advancedButton = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.getAttribute("aria-pressed") === "false",
+  );
+  await act(async () => advancedButton?.click());
+  await waitFor(() => container.querySelector('nav[aria-label="Trace event pages"]') !== null);
+
+  const pager = () =>
+    container.querySelector('nav[aria-label="Trace event pages"]')?.textContent ?? "";
+  // Read: the cursor came from the address, not from a stack that always starts
+  // empty. With the position in component state this asks the server for page 1.
+  expect(requested.some((url) => url.includes("after=1"))).toBe(true);
+  expect(pager()).toContain("第 2 頁");
+
+  // Write: paging on is a change of address, so the reader can send what they
+  // are looking at.
+  const next = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "下一頁",
+  );
+  await act(async () => next?.click());
+  expect(search.events).toBe("1,2");
+  // The new page is a fresh (heavy) request, so the pager leaves the DOM while
+  // it loads; wait for it back before driving it again.
+  await waitFor(() => container.querySelector('nav[aria-label="Trace event pages"]') !== null);
+
+  // And back again — the stack travels, because a cursor is a receive-order
+  // offset and page 2's position cannot be recomputed from page 3's.
+  const previous = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "上一頁",
+  );
+  await act(async () => previous?.click());
+  expect(search.events).toBe("1");
 });

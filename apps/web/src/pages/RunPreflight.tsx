@@ -122,7 +122,9 @@ function ceiling(n: number | undefined): string {
  * applied to seven of the eleven numbers on the screen (M2 audit, 2026-08-24).
  */
 function limit(n: number | undefined, format: (n: number) => string): string {
-  if (typeof n !== "number" || !Number.isFinite(n)) return "未回報";
+  // 設計 §2.9 的表是封閉的六個詞，而「未回報」不在上面——它是「未測量」的同義
+  // 詞，也就是「檢查沒有跑，或這個伺服器版本不回報」的那一格。
+  if (typeof n !== "number" || !Number.isFinite(n)) return "未測量";
   if (n <= 0) return `伺服器回報 ${n}——這不是有效的上限,請勿據此判斷這次 Run 的可用資源`;
   return format(n);
 }
@@ -263,17 +265,24 @@ export function RunPreflight() {
       <dl>
         {/* PDM-005 §5.3. A range, and labelled an estimate in the term itself —
             it is outside summary_hash, so it must not read like something the
-            user is agreeing to. Absent on an older server: rendered as nothing
-            rather than as a zero. */}
-        {cost && (
-          <>
-            <dt>預估成本（估計值）</dt>
-            <dd>
+            user is agreeing to.
+
+            Absent on an older server, this row used to render as NOTHING —
+            設計 §2.9 names this exact spot as a FAIL: it avoided the zero-fill
+            (right) and landed on a blank (wrong), and a blank in a cost row in
+            front of somebody about to press 我確認 reads as free. The word is
+            「未測量」:「這個伺服器版本不回報」. */}
+        <dt>預估成本（估計值）</dt>
+        <dd>
+          {cost ? (
+            <>
               {cost.currency} ${cost.low.toFixed(2)} – ${cost.high.toFixed(2)}（常見約 $
               {cost.typical.toFixed(2)}）<p>{cost.basis}</p>
-            </dd>
-          </>
-        )}
+            </>
+          ) : (
+            <>未測量——這個伺服器版本沒有回報預估成本，不代表這次 Run 不花錢。</>
+          )}
+        </dd>
         {/* PDM-010 / ADR-028: the display comes after the enforcement, never
             instead of it. These are the counters that refuse the run below, so
             the numbers are a report on a rule rather than the rule. A deployment
@@ -401,9 +410,9 @@ export function RunPreflight() {
                 {limit(summary.resource_limits.wall_clock_hard_seconds, seconds)}才是強制中止）
               </li>
               <li>Provider 是否 rootless：{summary.provider.rootless ? "是" : "否"}</li>
-              {/* 未回報就寫未回報:沒有值不等於沒有 runtime。 */}
-              <li>Runtime：{summary.provider.runtime ?? "未回報"}</li>
-              <li>Runtime 版本：{summary.provider.runtime_version ?? "未回報"}</li>
+              {/* 設計 §2.9 的「未測量」:沒有值不等於沒有 runtime。 */}
+              <li>Runtime：{summary.provider.runtime ?? "未測量"}</li>
+              <li>Runtime 版本：{summary.provider.runtime_version ?? "未測量"}</li>
             </ul>
           </details>
         </dd>

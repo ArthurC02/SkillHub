@@ -1,7 +1,7 @@
 import { Loading } from "../components/Loading";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { cancelRun, deleteRunArtifact, useRunArtifacts, type RunArtifact } from "../api/runs";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { InFlight } from "../components/InFlight";
@@ -289,7 +289,9 @@ function GeneralMode({ runId }: { runId: string }) {
 
       <h3>使用的 Skill</h3>
       {trace.skills.length === 0 ? (
-        <p>沒有記錄到 Skill 啟用事件。</p>
+        // 設計 §2.9: 這是真值的 0（Trace 收到了，裡面一個啟用事件都沒有），不是
+        // 「未測量」。事件遺失是另一件事，由上面的 IncompleteNotice 講。
+        <p>Skill 啟用事件 0 筆。</p>
       ) : (
         <ul>
           {trace.skills.map((skill, i) => (
@@ -340,8 +342,9 @@ function GeneralMode({ runId }: { runId: string }) {
           <li>
             成本：
             {/* null is "the gateway did not report it", which is not zero. */}
+            {/* 設計 §2.9 的表列詞:閘道沒有回報，不是 0。 */}
             {trace.usage.cost_usd === null
-              ? "未回報"
+              ? "未測量"
               : `US$${trace.usage.cost_usd.toFixed(4)}${
                   trace.usage.cost_source === "estimated" ? "（估算值）" : ""
                 }`}
@@ -355,15 +358,39 @@ function GeneralMode({ runId }: { runId: string }) {
           </li>
         </ul>
       ) : (
-        <p>沒有記錄到用量事件。</p>
+        // 設計 §2.9:整個用量區塊缺席＝「檢查沒有跑，或這個伺服器版本不回報」。
+        <p>用量：未測量。這一格不是 0——沒有量到不等於沒有花費。</p>
       )}
     </div>
   );
 }
 
 function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
-  const [cursors, setCursors] = useState([0]);
+  /*
+   * 資訊架構 §0.1 R4 / system.md §1.3: which page of the event stream you are
+   * looking at is 「你在看哪一份東西」, and this is the screen the design system
+   * itself calls 「最需要把『你看，這裡少了三筆』寄給別人的」. As component state,
+   * page 7 could not be linked and did not survive a reload.
+   *
+   * The whole cursor stack travels, not just the current cursor: 上一頁 needs
+   * the positions behind it, and a cursor is a platform receive-order offset,
+   * not a page number, so it cannot be recomputed. Page 1's stack is `[0]` and
+   * carries no param, so the plain address is still the plain address.
+   */
+  const { events } = useSearch({ strict: false }) as { events?: string };
+  const navigate = useNavigate();
+  // Page 1's implicit 0 is never in the URL; `events` holds page 2 onwards.
+  const pushed = events ? events.split(",").map(Number) : [];
+  const cursors = [0, ...pushed];
   const pageIndex = cursors.length - 1;
+  const goTo = (next: number[]) =>
+    void navigate({
+      to: "/runs/$runId",
+      params: { runId },
+      // Merged rather than replaced: the evaluation revision lives on the same
+      // address.
+      search: (prev) => ({ ...prev, events: next.length ? next.join(",") : undefined }),
+    });
   const { data, isPending, isFetching, error, refetch } = useTrace(
     runId,
     "advanced",
@@ -388,18 +415,14 @@ function AdvancedMode({ runId, active }: { runId: string; active: boolean }) {
         分頁依平台接收順序排列；每頁內依事件時間排序。這能讓執行中的 Trace 不漏掉較晚送達的事件。
       </p>
       <nav aria-label="Trace event pages">
-        <button
-          type="button"
-          disabled={pageIndex === 0}
-          onClick={() => setCursors((current) => current.slice(0, -1))}
-        >
+        <button type="button" disabled={pageIndex === 0} onClick={() => goTo(pushed.slice(0, -1))}>
           上一頁
         </button>
         <span>第 {pageIndex + 1} 頁</span>
         <button
           type="button"
           disabled={!trace.has_more}
-          onClick={() => setCursors((current) => [...current, trace.next_after])}
+          onClick={() => goTo([...pushed, trace.next_after])}
         >
           下一頁
         </button>

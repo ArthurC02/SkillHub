@@ -51,23 +51,58 @@ const VERSIONS = {
   ],
 };
 
-vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    to,
-    params,
-    children,
-  }: {
-    to: string;
-    params?: Record<string, string>;
-    children?: unknown;
-  }) => (
-    <a href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}>
-      {children as never}
-    </a>
-  ),
-  useParams: () => ({ skillId: SKILL }),
-  useSearch: () => ({ version: VERSION }),
-}));
+/*
+ * The address, standing in for the router. `?version=` is not a constant here
+ * because 資訊架構 §0.1 R4 makes it the thing the picker writes to: with a fixed
+ * `useSearch` and a swallowed `useNavigate`, a picker holding its choice in
+ * component state — which used to WIN over the URL — would pass every
+ * assertion. Components re-read through `useSyncExternalStore`.
+ */
+const searchListeners = new Set<() => void>();
+let search: Record<string, string | undefined> = { version: VERSION };
+
+function setSearch(next: Record<string, string | undefined>) {
+  search = next;
+  for (const listener of searchListeners) listener();
+}
+
+beforeEach(() => setSearch({ version: VERSION }));
+
+vi.mock("@tanstack/react-router", async () => {
+  const { useSyncExternalStore } = await import("react");
+  return {
+    Link: ({
+      to,
+      params,
+      children,
+    }: {
+      to: string;
+      params?: Record<string, string>;
+      children?: unknown;
+    }) => (
+      <a href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}>
+        {children as never}
+      </a>
+    ),
+    useParams: () => ({ skillId: SKILL }),
+    useSearch: () =>
+      useSyncExternalStore(
+        (listener: () => void) => {
+          searchListeners.add(listener);
+          return () => searchListeners.delete(listener);
+        },
+        () => search,
+      ),
+    useNavigate: () => (options: { search?: unknown }) => {
+      const next =
+        typeof options.search === "function"
+          ? (options.search as (prev: typeof search) => typeof search)(search)
+          : (options.search as typeof search);
+      setSearch({ ...next });
+      return Promise.resolve();
+    },
+  };
+});
 
 const skill = {
   skill_id: SKILL,
@@ -667,4 +702,37 @@ test("WS-004 the same link on the packaging page marks the download list stale t
   document.removeEventListener("click", stopNav, true);
 
   expect(queryClient.getQueryState(["downloads"])?.isInvalidated).toBe(true);
+});
+
+/*
+ * 資訊架構 §0.1 R4 — 「你在看哪一份東西」進網址.
+ *
+ * The picker used to write to `useState` and that state WON over `?version=`
+ * (`picked || version || …`). So: open …/package?version=A, pick B, copy the
+ * address, send it — the recipient got A's preview, and so did the sender after
+ * a reload. A lossy URL is bad; a URL that actively disagrees with the screen
+ * is worse, and this is the screen whose whole subject is which immutable
+ * version a set of bytes came from (ADR-003).
+ */
+test("R4: picking a version changes the address, so the packaging preview can be linked", async () => {
+  const calls = stubPlatform();
+  await render(<Packaging />, () => text().includes("這些設定可以打包"));
+
+  const select = container.querySelector<HTMLSelectElement>("select")!;
+  const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!;
+  await act(async () => {
+    setValue.call(select, OLDER_VERSION);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  // The pick landed in the address. Held in component state it did not, and
+  // nothing else on the page could tell the difference.
+  expect(search.version).toBe(OLDER_VERSION);
+
+  // And the address is what the page reads back: the preview it fetched belongs
+  // to the version the URL now names.
+  await waitFor(() =>
+    calls.some((u) => u.includes(`/versions/${OLDER_VERSION}/packaging/preview`)),
+  );
+  expect(select.value).toBe(OLDER_VERSION);
 });
