@@ -85,8 +85,13 @@ type Config struct {
 	MaxResources   ResourceLimits
 	IsolationLevel string // "container" for the dev DockerProvider, "gvisor" in production
 	EgressModes    []string
-	Slots          int
-	CancelGrace    time.Duration
+	// EgressAllow is what tools/egress/render.py rendered onto this node from
+	// infra/egress/allowlist.yaml: the destinations there is an nftables accept
+	// rule for. Empty means this node routes nowhere, and EgressModesFor turns
+	// that into a capability of `none` rather than a claim it cannot keep.
+	EgressAllow []EgressDestination
+	Slots       int
+	CancelGrace time.Duration
 }
 
 var (
@@ -679,7 +684,52 @@ func (c Config) accept(req RunRequest) *RunError {
 	case len(req.Egress.Allow) > 0 && !contains(c.EgressModes, "default_deny"):
 		return mismatch("this provider has no egress route, so it cannot allow %d destination(s)", len(req.Egress.Allow))
 	}
+
+	// ADR-022 A1-e. Every destination the request names has to be one this node
+	// actually rendered a rule for, and the check is on the address and the
+	// port, not on the purpose: a request naming any host at all while calling
+	// it `model_gateway` would otherwise be accepted.
+	//
+	// Refusing here rather than dispatching is the whole requirement. A run sent
+	// to a node with no route for its destination does not fail fast - it starts,
+	// the workload's first model call hangs, and it ends at the wall clock as a
+	// timeout, which reads as the skill being slow. The user was shown that
+	// destination and agreed to it (02:TEST-005); this is the first code that
+	// holds anything to it.
+	for _, want := range req.Egress.Allow {
+		routed := false
+		for _, have := range c.EgressAllow {
+			if have.routes(want) {
+				routed = true
+				break
+			}
+		}
+		if !routed {
+			host, port, ok := hostPort(want.URL)
+			if !ok {
+				return mismatch("egress destination %q for %s is not a URL naming a host and port, "+
+					"so no accept rule could match it", want.URL, want.Purpose)
+			}
+			return mismatch("this node renders no egress rule for %s at %s:%d; "+
+				"it routes to %s (ADR-022 A1-e)", want.Purpose, host, port, c.renderedSummary())
+		}
+	}
 	return nil
+}
+
+// renderedSummary names what this node does route to, so a capability_mismatch
+// is actionable without shell access to the node. Purpose and port only: the
+// address is in the node's own rendered file and repeating it here would put
+// the topology into every rejected dispatch's error.
+func (c Config) renderedSummary() string {
+	if len(c.EgressAllow) == 0 {
+		return "nothing (no destination has a pinned address)"
+	}
+	parts := make([]string, 0, len(c.EgressAllow))
+	for _, d := range c.EgressAllow {
+		parts = append(parts, fmt.Sprintf("%s:%d", d.Purpose, d.Port))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func contains(values []string, want string) bool {

@@ -59,6 +59,45 @@ func main() {
 	}
 	defer drv.Close()
 
+	// What this node routes to, rendered from infra/egress/allowlist.yaml by
+	// tools/egress/render.py in the same pass that produced its nftables ruleset
+	// and its resolver config. Loading it here is what lets accept() refuse a
+	// destination the ruleset has no rule for (ADR-022 A1-e) instead of
+	// dispatching the run and letting it time out.
+	//
+	// Required only when this node has an egress network at all. A node with no
+	// network already refuses every allow list on the older, coarser check, so
+	// demanding the file there would fail nodes that are correctly configured
+	// for `none`.
+	var egressAllow []sandbox.EgressDestination
+	network := os.Getenv("SKILLHUB_SANDBOX_NETWORK")
+	if network != "" && network != "none" {
+		path := os.Getenv("SKILLHUB_SANDBOX_EGRESS_ALLOW")
+		if path == "" {
+			// Fail closed at startup rather than at the first dispatch. A node
+			// with a network and no rendered list would advertise an egress
+			// route and refuse every destination sent to it, which the scheduler
+			// reads as a node to keep trying.
+			log.Error("SKILLHUB_SANDBOX_EGRESS_ALLOW is required when SKILLHUB_SANDBOX_NETWORK is set",
+				"network", network,
+				"hint", "render it: python3 tools/egress/render.py --out infra/egress/rendered")
+			os.Exit(1)
+		}
+		egressAllow, err = sandbox.LoadEgressAllow(path)
+		if err != nil {
+			log.Error("could not load the rendered egress allow list", "path", path, "err", err)
+			os.Exit(1)
+		}
+	}
+	modes := sandbox.EgressModesFor(network, egressAllow)
+	if len(egressAllow) == 0 && network != "" && network != "none" {
+		// Not an error: an allow-list whose pinned_ip is still `unset` renders
+		// no destination on purpose. But the node must not go on advertising a
+		// route it cannot take, so it declares `none` and says why once.
+		log.Warn("no egress destination is rendered, so this node declares no egress route",
+			"network", network, "modes", modes)
+	}
+
 	// The declared isolation level follows the runtime actually configured.
 	// Declaring gvisor on a machine running runc would be a claim the provider
 	// cannot keep, and RUN-005 dispatches on this answer.
@@ -75,7 +114,8 @@ func main() {
 		}},
 		MaxResources:   sandbox.DefaultLimits,
 		IsolationLevel: isolation,
-		EgressModes:    egressModes(os.Getenv("SKILLHUB_SANDBOX_NETWORK")),
+		EgressModes:    modes,
+		EgressAllow:    egressAllow,
 		Slots:          envInt("SKILLHUB_SANDBOX_SLOTS", 2),
 	}, log)
 
@@ -139,16 +179,6 @@ func refuseDevSettings(runtime, image string, allowDevCmd bool) error {
 		return errors.New("SKILLHUB_SANDBOX_DEV_CMD must not be set with runsc: a caller-chosen entrypoint replaces the harness, and with it the run's token ceiling and its trace")
 	}
 	return nil
-}
-
-// egressModes reports what this deployment can actually offer. "none" is the
-// dev baseline and is stronger than default_deny, not weaker; a deployment with
-// an egress network names it and gets both (ADR-022 Q3: nftables, no proxy).
-func egressModes(network string) []string {
-	if network == "" || network == "none" {
-		return []string{"none"}
-	}
-	return []string{"default_deny", "none"}
 }
 
 func envOr(key, fallback string) string {

@@ -242,10 +242,19 @@ func (d *Driver) networkFor(req sandbox.RunRequest) string {
 	if d.cfg.Network == "" || d.cfg.Network == "none" {
 		return "none"
 	}
-	for _, allow := range req.Egress.Allow {
-		if allow.Purpose == "model_gateway" {
-			return d.cfg.Network
-		}
+	// Any named destination attaches the network, and this used to test for the
+	// literal "model_gateway" instead. That was the only place in the repo that
+	// read `Egress.Allow` at all, and reading only the purpose meant a request
+	// naming any host while calling itself model_gateway got the network, while
+	// a legitimate second purpose silently got none.
+	//
+	// Neither is possible now: Config.accept refuses any destination this node
+	// has no rendered rule for (ADR-022 A1-e) and it runs before Create reaches
+	// Start, so by here every entry names a route this node actually has. The
+	// question left is the one this function is for -- attach the network or
+	// not -- and a run allowed to reach nothing still gets none.
+	if len(req.Egress.Allow) > 0 {
+		return d.cfg.Network
 	}
 	return "none"
 }

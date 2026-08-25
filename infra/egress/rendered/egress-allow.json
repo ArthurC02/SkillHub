@@ -1,0 +1,6 @@
+{
+  "source": "infra/egress/allowlist.yaml",
+  "generated_by": "tools/egress/render.py",
+  "note": "Destinations this node has an nftables accept rule for. An entry whose pinned_ip is unset is absent on purpose: sandboxd must refuse a run naming it (capability_mismatch) rather than dispatch it to a node with no route for it (ADR-022 A1-e).",
+  "destinations": []
+}
