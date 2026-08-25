@@ -282,6 +282,12 @@ func TestProviderContract(t *testing.T) {
 // policy, which is precisely the check that caught apps/sandbox declaring
 // `egress_modes: ["none"]` — every endpoint green, and not one run dispatchable.
 func TestSchedulerAcceptsTheTargetsRealCapability(t *testing.T) {
+	// The in-repo fake declares `container` — the honest name for what a developer
+	// machine runs — and the scheduler now accepts that only from a deployment that
+	// has declared itself an offline development one (ADR-020, ADR-015). This suite
+	// is that deployment. A real target pointed at by SKILLHUB_PROVIDER_CONTRACT_URL
+	// declares its own level and this changes nothing for it.
+	t.Setenv("DEV_LOGIN", "1")
 	tg := newTarget(t)
 	capability, err := tg.provider.Capability(context.Background())
 	if err != nil {

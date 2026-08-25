@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -28,9 +29,28 @@ const (
 	defaultAgentIntegration = "in_sandbox_sdk"
 	// Iron rule 1: untrusted skills never run in a plain process. gVisor is the
 	// production baseline (ADR-015); `container` is the dev provider's honest name
-	// for what a developer machine can do; `process` is refused outright.
+	// for what a developer machine can do, and is accepted only where the
+	// deployment says it is one; `process` is refused outright, everywhere.
 	forbiddenIsolation = "process"
+	// weakIsolation is what a provider declares when it is running workloads under
+	// the host kernel — plain runc, because SKILLHUB_SANDBOX_RUNTIME was unset or
+	// misspelled on that node. The declaration is honest and the sandbox does not
+	// lie about it; the gap was on this side, where `container` was neither ""
+	// nor `process` and so simply passed. A node that lost the variable ran every
+	// untrusted skill on a shared kernel and said so in one startup log line.
+	weakIsolation = "container"
 )
+
+// devDeployment reports whether this deployment has declared itself an offline
+// development one, which is the only kind that may dispatch to weakIsolation.
+//
+// DEV_LOGIN is that declaration and it already exists (ADR-020; cmd/api calls it
+// "never in production"), so this reuses it rather than adding a second variable
+// an operator could set correctly while getting this one wrong. There is
+// deliberately no production escape hatch: opting in to a shared kernel means
+// opting in to the offline login provider too, which no production deployment
+// can quietly do by accident. Read per call, like RunModel and GatewayURL.
+func devDeployment() bool { return os.Getenv("DEV_LOGIN") == "1" }
 
 // Requirements is what one run needs from a provider. Derived entirely from the
 // run's own frozen policy_snapshot, so scheduling matches against what the user
@@ -107,6 +127,10 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	}
 	if c.Isolation.Level == "" || c.Isolation.Level == forbiddenIsolation {
 		return RuntimeProfile{}, fmt.Errorf("%s does not isolate workloads strongly enough (isolation %q)", name, c.Isolation.Level)
+	}
+	if c.Isolation.Level == weakIsolation && !devDeployment() {
+		return RuntimeProfile{}, fmt.Errorf(
+			"%s isolates workloads with the host kernel (isolation %q), which this deployment does not accept", name, c.Isolation.Level)
 	}
 	if !c.Isolation.Rootless {
 		return RuntimeProfile{}, fmt.Errorf("%s does not run workloads unprivileged", name)

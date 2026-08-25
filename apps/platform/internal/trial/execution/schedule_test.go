@@ -118,6 +118,51 @@ func TestMatchRefusesIncompatibleProviders(t *testing.T) {
 	}
 }
 
+// ADR-015 makes gVisor the production baseline, and `container` is what a
+// provider declares when it is running plain runc — every untrusted skill on the
+// host kernel. The sandbox declares that honestly (SKILLHUB_SANDBOX_RUNTIME unset
+// or misspelled), so the only place it can be caught is here, and `container` used
+// to pass simply by being neither "" nor `process`.
+//
+// It is accepted where the deployment has declared itself an offline development
+// one (DEV_LOGIN, ADR-020) and refused everywhere else, so a production node whose
+// unit file lost the runtime variable is refused instead of quietly served.
+func TestMatchRefusesHostKernelIsolationUnlessTheDeploymentIsADevelopmentOne(t *testing.T) {
+	c := compatible()
+	c.Isolation.Level = "container"
+
+	// Explicit rather than inherited: a developer whose shell already exports
+	// DEV_LOGIN would otherwise never see this half fail.
+	t.Setenv("DEV_LOGIN", "")
+	_, err := Match(c, defaultRequirements())
+	if err == nil {
+		t.Fatal("a host-kernel provider was accepted by a deployment that never opted in")
+	}
+	if !strings.Contains(err.Error(), "test_provider") {
+		t.Errorf("reason = %q, want it to name the provider", err)
+	}
+	// The refusal has to read as "this deployment is misconfigured", not as "your
+	// run asked for too much" — nothing about the request changed.
+	if !strings.Contains(err.Error(), "deployment") {
+		t.Errorf("reason = %q, want it to say the deployment is what refuses this provider", err)
+	}
+
+	t.Setenv("DEV_LOGIN", "1")
+	if _, err := Match(c, defaultRequirements()); err != nil {
+		t.Errorf("a development deployment could not run its own sandbox: %v", err)
+	}
+
+	// The opt-in reaches `container` and nothing further: iron rule 1 is not for
+	// sale on a developer machine either.
+	for _, level := range []string{"process", ""} {
+		bare := compatible()
+		bare.Isolation.Level = level
+		if _, err := Match(bare, defaultRequirements()); err == nil {
+			t.Errorf("isolation %q was accepted by a development deployment", level)
+		}
+	}
+}
+
 // The two egress modes are ordered, not alternatives. A provider with no route
 // out at all is strictly stronger than one that denies by default and permits a
 // list — so it can carry a run allowed to reach nothing, and only that run. This

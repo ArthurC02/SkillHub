@@ -264,6 +264,15 @@ func newAPITuned(
 	t *testing.T, pool *pgxpool.Pool, llmBaseURL string, tune func(*apiserver.Deps),
 ) *api {
 	t.Helper()
+	// The fake provider these tests dispatch to declares isolation "container"
+	// (providertest.DefaultCapability), which is a shared host kernel. Since
+	// 2026-08-25 the scheduler refuses that unless the deployment has said it is
+	// a development one, and DEV_LOGIN is the signal it reads -- the same variable
+	// this harness already sets on the Config below. Setting it here rather than
+	// weakening the rule is the point: production is what these tests must NOT
+	// look like, and a harness able to dispatch to a runc sandbox without saying
+	// so would be testing a deployment nobody is allowed to run.
+	t.Setenv("DEV_LOGIN", "1")
 	// packageStore is the per-test object store: empty unless a test seeds a
 	// package into it, which is also the "stored package unreadable" path the
 	// detail view has to survive without claiming a clean scan.
