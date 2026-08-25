@@ -18,6 +18,7 @@ import (
 	apigen "github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	gen "github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	policy "github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
@@ -485,6 +486,54 @@ func TestAGeneratedNameCollisionIsRefusedInBothDirections(t *testing.T) {
 			t.Errorf("skill_sources counts %d generated rows, want 1", used)
 		}
 	})
+
+	// The fourth direction, and the one importZip's guard could never see:
+	// POST /skills/{id}/versions names the target by id, so there is no name to
+	// collide and no importZip on the path. SaveVersion hardcoded
+	// sourceMeta{Type: "upload"} and wrote the version, `skills.redistribution`
+	// stayed `generated` because it is decided at creation and never recomputed,
+	// and GEN-007's exclusion went on applying — to content the user wrote
+	// themselves. It succeeded, answered 201, and the skill was permanently
+	// unfindable with no symptom on any screen. http.go's refusal sentence
+	// promises the platform will not do this; until the guard moved down into
+	// persistVersion — which both writers share — that sentence was false.
+	t.Run("saving a version onto a generated skill", func(t *testing.T) {
+		stub := newGenerateStub(t, generatedSkill("pdf-extract", "# 內容\n\n1. 做這件事。\n"))
+		a := newAPIWithLLM(t, pool, stub.URL)
+		c := a.login(t, "gen-collide-d")
+		ws := workspaceOf(t, pool, c)
+		res, err := a.versions.GenerateSkill(context.Background(), ws, "抽出 PDF 文字。")
+		if err != nil {
+			t.Fatalf("GenerateSkill: %v", err)
+		}
+
+		_, err = a.versions.SaveVersion(context.Background(), ws, res.Skill.ID, zipOf(t, map[string]string{
+			"SKILL.md": "---\nname: pdf-extract\ndescription: My own second version.\n---\n\nI wrote this.\n",
+		}))
+		if !errors.Is(err, ingest.ErrGeneratedNameCollision) {
+			t.Fatalf("SaveVersion onto a generated skill: err = %v, want ErrGeneratedNameCollision", err)
+		}
+
+		// Nothing was written by the refusal: no second source row, and the
+		// generated skill still has exactly the one version 02:GEN-001 promises.
+		var sources, versions int64
+		if err := pool.QueryRow(context.Background(),
+			`SELECT count(*) FROM skill_sources WHERE workspace_id = $1`, ws.ID,
+		).Scan(&sources); err != nil {
+			t.Fatal(err)
+		}
+		if sources != 1 {
+			t.Errorf("skill_sources counts %d rows in the workspace, want 1 — the refused upload wrote one", sources)
+		}
+		if err := pool.QueryRow(context.Background(),
+			`SELECT count(*) FROM skill_versions WHERE skill_id = $1`, res.Skill.ID,
+		).Scan(&versions); err != nil {
+			t.Fatal(err)
+		}
+		if versions != 1 {
+			t.Errorf("the generated skill has %d versions, want 1", versions)
+		}
+	})
 }
 
 // The allowance could not be counted: 503 with a static sentence, not the 502
@@ -737,4 +786,48 @@ func TestEveryFailureValueIngestWritesIsInTheContract(t *testing.T) {
 			t.Errorf("ingest writes failure=%q, which the contract's GenerationFailure.failure enum does not list", v)
 		}
 	}
+}
+
+// 04 丙-54 was closed as if the limiter already covered generation. It did not:
+// limited() wrapped the two import routes and anonymous search, and a token
+// bucket is only debited by the handlers it wraps, so a loop that touched
+// nothing but POST /skills/generate spent no tokens at all. The three things
+// that look like they cover it do not — the single-slot gate is about
+// concurrency, GENERATE_QUOTA may be `off`, and a generation that fails
+// validation commits no skill_sources row and so never reaches the allowance,
+// having already paid for the gateway call on the shared static key.
+//
+// The caller here is outside the invited cohort, so every request that gets
+// past the limiter is refused by RequireInvited before any gateway call: what
+// this pins is that limited() is on the route AND outside the auth wrappers,
+// which is where the other three sit and why the shield covers the
+// authentication path too. A 403 five times over is the failure this asserts
+// against.
+func TestGenerationIsRateLimitedWhenALimiterIsConfigured(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPITuned(t, pool, "", func(d *apiserver.Deps) {
+		d.GenerateExposed = true
+		d.Auth.Features = map[string]bool{"generate_skill": true}
+		d.Auth.Invited = map[string]bool{"a-provider-id-nobody-holds": true}
+		d.Limits = httpx.NewRateLimiter(60, 2)
+	})
+	c := a.login(t, "gen-ratelimit")
+
+	codes := []int{}
+	for i := 0; i < 5; i++ {
+		resp, err := c.Post(c.base+"/skills/generate", "application/json",
+			strings.NewReader(`{"task_description":"把掃描的單據整理成一張表"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		codes = append(codes, resp.StatusCode)
+		if resp.StatusCode == http.StatusTooManyRequests {
+			if resp.Header.Get("Retry-After") == "" {
+				t.Error("429 without Retry-After")
+			}
+			return
+		}
+	}
+	t.Fatalf("five POSTs to /skills/generate against a burst of two never saw a 429: %v", codes)
 }

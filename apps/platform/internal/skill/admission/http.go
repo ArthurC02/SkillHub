@@ -150,11 +150,18 @@ func (h *Handler) respond(w http.ResponseWriter, res Result, err error) {
 	// The upload direction of the generated-name guard. Without this branch it
 	// fell into the 500 below — the user's own naming clash reported as the
 	// platform being broken, with no next step (§2.2: a refusal says what to do).
+	//
+	// Two doors reach this now: an import whose manifest name collides with a
+	// generated skill, and SaveVersion, where the caller picked the generated
+	// skill by id and no name collided at all. So the rule comes first and the
+	// remedy is named per door — telling the SaveVersion caller to 「改掉套件裡的
+	// name」 would send them to do something that cannot work.
 	if errors.Is(err, ErrGeneratedNameCollision) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity,
-			"這個工作區已經有一個同名的生成 Skill。"+
-				"請先刪除它（或改掉套件裡的 name）再匯入——"+
-				"平台不會把上傳的內容接在生成的 Skill 後面當成新版本。")
+			"平台不會把上傳的內容接在生成的 Skill 後面當成新版本——"+
+				"接上去的版本會沿用生成 Skill 的搜尋排除，連你自己都再也搜不到它。"+
+				"要為生成的內容加你自己的版本，請把它匯入成一個新的 Skill；"+
+				"如果是匯入時撞到同名的生成 Skill，請先刪除它，或改掉套件裡的 name。")
 		return
 	}
 	if err != nil {

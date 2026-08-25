@@ -69,9 +69,11 @@ func NewRouter(d Deps) http.Handler {
 	// below, so the reviewable AuthN/AuthZ matrix does not move into codegen.
 	mux.Handle("GET /healthz", newGeneratedHealthHandler())
 	auth.Mount(mux)
-	// NFR-001 clause 5 names these two and anonymous search below. limited() is
-	// OUTSIDE RequireSession so the shield also covers the authentication path,
-	// and keying is by IP either way (one mechanism, volumetric abuse).
+	// NFR-001 clause 5 names these two and anonymous search below; POST
+	// /skills/generate is limited() for a reason of its own, stated where it is
+	// mounted. limited() is OUTSIDE RequireSession so the shield also covers the
+	// authentication path, and keying is by IP either way (one mechanism,
+	// volumetric abuse).
 	mux.HandleFunc("POST /skills/import/upload", limited(d, auth.RequireSession(d.Importer.Upload)))
 	mux.HandleFunc("POST /skills/import/url", limited(d, auth.RequireSession(d.Importer.ImportURL)))
 	// M5 generation (GEN-001, GEN-008). Mounted only where the exposure flag is
@@ -81,7 +83,23 @@ func NewRouter(d Deps) http.Handler {
 	// exist and /me does not advertise it — the same pairing GET /me/quota uses,
 	// for the same reason: an entry point nobody enforces must not be drawable.
 	if d.GenerateExposed {
-		mux.HandleFunc("POST /skills/generate", auth.RequireSession(auth.RequireInvited(d.Importer.Generate)))
+		// limited(), and not because NFR-001 clause 5 names it — it does not.
+		// Generation is the only route on this table that spends money per call,
+		// on the deployment-wide static LITELLM_API_KEY, so a drained balance
+		// takes /embed, index enrichment and every LLM judge down with it. The
+		// three defences that look like they cover this do not: the single-slot
+		// gate stops concurrency and not rate, GENERATE_QUOTA may be `off`, and
+		// CountGeneratedSkills counts committed skill_sources rows — a generation
+		// that fails validation writes none and is invisible to the allowance
+		// while having already paid for the gateway call. That is the loop worth
+		// defending against, and only a limiter on THIS route spends tokens for
+		// it: a bucket is only debited by the handlers it wraps.
+		//
+		// GET /skills/generate/failures is deliberately NOT wrapped: it is a
+		// workspace-scoped read behind RequireSession+RequireInvited that costs
+		// one query and no model call, which is every other authenticated read on
+		// this table.
+		mux.HandleFunc("POST /skills/generate", limited(d, auth.RequireSession(auth.RequireInvited(d.Importer.Generate))))
 		// GEN-003's read half. Same flag and same RequireInvited as the write:
 		// a failure list is a generation surface, and a route that answers 200
 		// with an empty array is still an answer about a feature that must not

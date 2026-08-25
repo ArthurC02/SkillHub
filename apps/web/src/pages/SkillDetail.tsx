@@ -97,7 +97,18 @@ export function SkillDetail() {
 
       <Limitations limitations={skill.limitations} />
 
-      {skill.source?.type === "generated" && <GeneratedNotice skillId={skill.skill_id} />}
+      {/*
+        GEN-004 wants this on the detail page and on the workspace list, and the
+        two have to answer it the same way. This used to read the VERSION's
+        source (`skill.source.type`), which is `upload` for any version the user
+        saved themselves — so the moment a generated skill got a second version,
+        the detail page silently dropped the two absences while the list, which
+        reads the skill row, went on showing them. The skill row is the right
+        source: `redistribution` is what GEN-007's search exclusion keys on, so
+        it is exactly the set of skills the disclosure is about. Same expression
+        as WorkspaceSkills.tsx, one level deeper because detail sends a Labelled.
+      */}
+      {skill.redistribution?.value === "generated" && <GeneratedNotice skillId={skill.skill_id} />}
 
       <section>
         <h2>來源</h2>

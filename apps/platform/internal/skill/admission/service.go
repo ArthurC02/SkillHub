@@ -318,7 +318,20 @@ func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []b
 	// case was unreachable; now it is. The rule is one sentence: a generation
 	// never lands on a skill that already exists, whatever kind it is, and an
 	// upload never lands on a generated one.
-	if found && (skill.Redistribution == registry.RedistributionGenerated || src.Type == sourceGenerated) {
+	//
+	// Only the first half of that sentence is enforced here, because only this
+	// path can create the skills row and only this path knows whether it just
+	// did. The second half lives in persistVersion, which both entry points go
+	// through — this one and SaveVersion, which does not come through here and
+	// was letting exactly the second bullet above happen through
+	// POST /skills/{id}/versions with no symptom at all.
+	//
+	// This half is load-bearing beyond its own bullet: it is why every generation
+	// creates a NEW skills row, so VersionByContent below never matches and
+	// persistVersion's duplicate early-return is unreachable for a generation.
+	// That is what makes "one generation charges one unit" true. Widen it and
+	// that property goes with it.
+	if found && src.Type == sourceGenerated {
 		return Result{}, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, skill.Name)
 	}
 	res.Skill = skill
@@ -409,6 +422,27 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 	// would be exactly the outcome INGEST-009 exists to prevent.
 	if err := s.requireProjection(); err != nil {
 		return registry.Version{}, false, err
+	}
+	// The other half of importZip's generated/not-generated rule, at the point
+	// both writers share. `skills.redistribution` is decided when the row is
+	// created and never recomputed, and GEN-007's search exclusion keys on it, so
+	// a version of somebody's own writing attached to a generated skill can never
+	// be found again — by anyone, its author included, and with nothing on any
+	// screen to say so. importZip guarded that door; SaveVersion
+	// (POST /skills/{id}/versions) does not come through importZip and hardcoded
+	// source_type "upload", so it walked straight past. Guarding here rather than
+	// at the second door means the next writer gets it for free.
+	//
+	// Ahead of the duplicate early-return below on purpose: re-uploading the
+	// identical bytes is the same refusal, not a quiet 「已經有了」 success about a
+	// version the user will never find.
+	//
+	// A generation is not this case — it is how a generated skill legitimately
+	// gets its first version — and the `found` half of the rule stays in
+	// importZip, which is the only caller that can tell a new skills row from an
+	// existing one.
+	if skill.Redistribution == registry.RedistributionGenerated && src.Type != sourceGenerated {
+		return registry.Version{}, false, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, skill.Name)
 	}
 	q := gen.New(tx)
 	if existing, found, err := registry.VersionByContent(ctx, tx, skill.ID, p.contentHash); err != nil {

@@ -1170,3 +1170,68 @@ test("a licensing hold explains itself and takes the advanced link with it", asy
   // …and the door that would 403 is not shown as a door.
   expect(text).not.toContain("查看 SKILL.md 與檔案樹");
 });
+
+// 02:GEN-004 names two screens — the detail view and the workspace list — and
+// they have to agree. The detail page used to key the disclosure on the
+// VERSION's source (`source.type === "generated"`), which is `upload` for any
+// version the user saved themselves. So the first time somebody added their own
+// version 2 to a generated skill, the two absences vanished from the detail page
+// while the list, which reads the skill row's `redistribution`, went on showing
+// them — and `redistribution` is what GEN-007's search exclusion keys on, so the
+// skill was still the unreviewed, never-run, unfindable thing the sentence is
+// about. Both fixtures below are that skill; both must say so.
+test("GEN-004: the generated disclosure keys on the skill row, not on the version's source", async () => {
+  for (const source of [
+    {
+      type: "generated" as const,
+      content_hash: "sha256:aa",
+      trust: { value: "traceable", label: "來源可追溯", note: "已保存來源紀錄。" },
+    },
+    // The version a user uploaded onto their own generated skill.
+    {
+      type: "upload" as const,
+      content_hash: "sha256:bb",
+      trust: { value: "traceable", label: "來源可追溯", note: "已保存來源紀錄。" },
+    },
+  ]) {
+    const skill = detailFixture({
+      skill_id: "eeeeeeee-0000-0000-0000-000000000001",
+      name: "Generated Extractor",
+      redistribution: { value: "generated", label: "平台為你生成的內容", note: "平台生成。" },
+      source,
+    });
+    stubSearchAndDetails(EMPTY, { [skill.skill_id]: skill });
+    await render(<App />);
+    await act(async () => {
+      await router.navigate({ to: "/skills/$skillId", params: { skillId: skill.skill_id } });
+    });
+    await waitFor(() => (container.textContent ?? "").includes(skill.name));
+
+    const text = container.textContent ?? "";
+    expect(text).toContain("沒有經過任何人工檢視，沒有任何試跑證據");
+    expect(text).toContain("那不是品質、可用性或安全的結論");
+  }
+});
+
+// The other direction, so the criterion is not just "always true": an ordinary
+// uploaded skill must not be told it was written by a model.
+test("GEN-004: a self-supplied skill gets no generated disclosure", async () => {
+  const skill = detailFixture({
+    skill_id: "eeeeeeee-0000-0000-0000-000000000002",
+    name: "Hand Written",
+    redistribution: { value: "self_supplied", label: "你自己帶進來的", note: "自帶內容。" },
+    source: {
+      type: "upload",
+      content_hash: "sha256:cc",
+      trust: { value: "traceable", label: "來源可追溯", note: "已保存來源紀錄。" },
+    },
+  });
+  stubSearchAndDetails(EMPTY, { [skill.skill_id]: skill });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/skills/$skillId", params: { skillId: skill.skill_id } });
+  });
+  await waitFor(() => (container.textContent ?? "").includes(skill.name));
+
+  expect(container.textContent ?? "").not.toContain("沒有經過任何人工檢視");
+});
