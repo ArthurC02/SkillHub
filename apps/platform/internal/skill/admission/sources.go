@@ -180,15 +180,11 @@ func (f *URLFetcher) Probe(ctx context.Context, rawURL string) error {
 	u, _ := url.Parse(normalized)
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, u.String(), nil)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrFetch, err)
+		return fmt.Errorf("%w: invalid URL", ErrFetch)
 	}
-	client := *f.client()
-	client.CheckRedirect = func(req *http.Request, _ []*http.Request) error {
-		return f.checkURL(req.URL) // same allow list as download (SSRF)
-	}
-	resp, err := client.Do(req)
+	resp, err := f.do(req) // same allow list, redirect budget and dial guard as download
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrFetch, err)
+		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= http.StatusBadRequest {

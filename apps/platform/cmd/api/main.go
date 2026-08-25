@@ -223,6 +223,12 @@ func operatorIDs(raw string) map[string]bool {
 // importFetcherFromEnv builds the URL-import fetcher: GitHub by default,
 // extra hosts via IMPORT_EXTRA_HOSTS (comma-separated), plain http only when
 // IMPORT_ALLOW_INSECURE=1 (local stubs and E2E, never production).
+//
+// That flag now carries a second meaning, and it is the more dangerous one:
+// it also allows loopback and RFC1918 as destinations, because httptest and
+// compose both live there. The addresses that make SSRF worth defending
+// against -- link-local and its v6 mapping, CGNAT, broadcast, unspecified,
+// multicast -- stay blocked either way (03:INGEST-014).
 func importFetcherFromEnv() *ingest.URLFetcher {
 	f := &ingest.URLFetcher{
 		Allowed:       ingest.DefaultAllowedHosts(),

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"strings"
 	"testing"
@@ -138,5 +139,131 @@ func TestGitHubURLNormalization(t *testing.T) {
 	cands, _ = f.candidates(parse("https://codeload.github.com/o/r/zip/refs/heads/main"))
 	if len(cands) != 1 || cands[0].url != "https://codeload.github.com/o/r/zip/refs/heads/main" {
 		t.Fatalf("non-repo URL must pass through: %+v", cands)
+	}
+}
+
+// INGEST-014 / SEC-003: the allow list decides which host names may be asked
+// for; this decides which addresses may be connected to. Both spellings of the
+// metadata address answer to the same rule — netip's Is* methods say false for
+// every v4-mapped address, so blockedAddr unmaps before it asks.
+func TestBlockedAddrByFamily(t *testing.T) {
+	for _, tc := range []struct {
+		addr        string
+		strict, dev bool
+	}{
+		// Blocked everywhere, development included.
+		{"169.254.169.254", true, true},        // cloud metadata service
+		{"::ffff:169.254.169.254", true, true}, // the same host, spelled v6
+		{"fe80::1", true, true},                // v6 link-local
+		{"224.0.0.1", true, true},              // v4 multicast
+		{"ff02::1", true, true},                // v6 link-local multicast
+		{"ff01::1", true, true},                // v6 interface-local multicast
+		{"100.64.0.1", true, true},             // CGNAT
+		{"::ffff:100.64.0.1", true, true},      // and its v6 spelling
+		{"0.0.0.0", true, true},                // unspecified / "this network"
+		{"::", true, true},                     // v6 unspecified
+		{"0.1.2.3", true, true},                // 0.0.0.0/8
+		{"::ffff:0.1.2.3", true, true},
+		{"255.255.255.255", true, true}, // broadcast
+		{"::ffff:255.255.255.255", true, true},
+		// Local network: refused in a real deployment, reachable for httptest and
+		// the compose stack when IMPORT_ALLOW_INSECURE is on.
+		{"127.0.0.1", true, false},
+		{"::1", true, false},
+		{"::ffff:127.0.0.1", true, false},
+		{"10.0.0.5", true, false},
+		{"::ffff:10.0.0.5", true, false},
+		{"172.16.0.1", true, false},
+		{"192.168.1.1", true, false},
+		{"fd00::1", true, false}, // unique-local v6
+		// A normal external host is reachable in both modes.
+		{"140.82.121.4", false, false},
+		{"2606:2800:220:1:248:1893:25c8:1946", false, false},
+	} {
+		ip, err := netip.ParseAddr(tc.addr)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.addr, err)
+		}
+		if got := blockedAddr(ip, false); got != tc.strict {
+			t.Errorf("blockedAddr(%s, strict) = %v, want %v", tc.addr, got, tc.strict)
+		}
+		if got := blockedAddr(ip, true); got != tc.dev {
+			t.Errorf("blockedAddr(%s, dev) = %v, want %v", tc.addr, got, tc.dev)
+		}
+	}
+}
+
+// wantBlocked asserts the fetch was refused for the destination and that the
+// refusal says so without naming an address (SEC-003 錯誤訊息不洩漏內部資訊).
+func wantBlocked(t *testing.T, err error) {
+	t.Helper()
+	if !errors.Is(err, ErrFetch) {
+		t.Fatalf("want ErrFetch, got %v", err)
+	}
+	if got, want := err.Error(), "fetch failed: destination is not allowed"; got != want {
+		t.Fatalf("error = %q, want %q", got, want)
+	}
+}
+
+// A host name that resolves to loopback is refused after resolution and before
+// connect. Port 9 is closed: without the dial guard this fails too, but with a
+// connection error, which is why the assertion is on the category and not just
+// on ErrFetch.
+func TestFetchRefusesHostResolvingToLoopback(t *testing.T) {
+	f := &URLFetcher{Allowed: map[string]bool{"localhost:9": true}}
+	_, _, err := f.Fetch(context.Background(), "https://localhost:9/pkg.zip")
+	wantBlocked(t, err)
+	for _, leak := range []string{"127.0.0.1", "::1"} {
+		if strings.Contains(err.Error(), leak) {
+			t.Fatalf("error leaked the resolved address: %v", err)
+		}
+	}
+}
+
+// The metadata address is refused as an IP literal in both spellings. Neither
+// reaches the network: the refusal happens in the dialler's Control hook.
+func TestFetchRefusesMetadataAddressBothSpellings(t *testing.T) {
+	for _, host := range []string{"169.254.169.254", "[::ffff:169.254.169.254]"} {
+		f := &URLFetcher{Allowed: map[string]bool{host: true}}
+		_, _, err := f.Fetch(context.Background(), "https://"+host+"/latest/meta-data")
+		wantBlocked(t, err)
+	}
+}
+
+// A redirect into a blocked address is refused even though the redirect target
+// is on the host allow list — checking the original URL alone would have
+// followed it. Development mode, so the loopback source server is reachable and
+// the link-local target is still not.
+func TestFetchRefusesRedirectIntoBlockedAddress(t *testing.T) {
+	src := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://169.254.169.254/latest/meta-data", http.StatusFound)
+	}))
+	defer src.Close()
+	srcHost := strings.TrimPrefix(src.URL, "http://")
+
+	f := &URLFetcher{
+		Allowed:       map[string]bool{srcHost: true, "169.254.169.254": true},
+		AllowInsecure: true,
+	}
+	_, _, err := f.Fetch(context.Background(), src.URL+"/pkg.zip")
+	wantBlocked(t, err)
+}
+
+// Four hops offered, three followed (SEC-003 redirect 上限 3 跳).
+func TestFetchRedirectLimit(t *testing.T) {
+	var hops int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hops++
+		http.Redirect(w, r, "/next", http.StatusFound)
+	}))
+	defer srv.Close()
+	host := strings.TrimPrefix(srv.URL, "http://")
+	f := &URLFetcher{Allowed: map[string]bool{host: true}, AllowInsecure: true}
+	_, _, err := f.Fetch(context.Background(), srv.URL+"/pkg.zip")
+	if err == nil || err.Error() != "fetch failed: too many redirects" {
+		t.Fatalf("want the redirect budget to stop this, got %v", err)
+	}
+	if hops != 1+maxRedirects {
+		t.Fatalf("server saw %d requests, want %d", hops, 1+maxRedirects)
 	}
 }
