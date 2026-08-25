@@ -189,3 +189,69 @@ func TestOrdinaryPackagesGainNoArchiveLevelFindings(t *testing.T) {
 		t.Fatalf("legal package blocked: %+v", r.Findings)
 	}
 }
+
+// PDM-005 §5.1b's other three ceilings, none of which had a value before
+// 2026-08-25. Each is checked in the direction that matters: the ceiling refuses,
+// and one entry below it does not — a test that only proved the refusal would
+// stay green if the bound were set to zero.
+//
+// The ceilings are lowered for the test rather than built up to. A fixture that
+// has to declare 10 MB to reach maxEntryBytes is a fixture that makes the suite
+// slow enough to stop being run, which is its own kind of missing test.
+func TestTheArchiveCeilingsPDM005NamesAreEnforced(t *testing.T) {
+	t.Run("entry count", func(t *testing.T) {
+		defer swapInt(&maxArchiveEntries, 3)()
+		files := map[string]string{"SKILL.md": archiveSkillMD, "a": "1", "b": "2", "c": "3"}
+		if _, err := PackageFS(zipWithEntries(t, files)); !errors.Is(err, ErrBadArchive) {
+			t.Errorf("4 entries under a ceiling of 3: err = %v, want ErrBadArchive", err)
+		}
+		delete(files, "c")
+		if _, err := PackageFS(zipWithEntries(t, files)); err != nil {
+			t.Errorf("3 entries under a ceiling of 3 is at the bound, not over it: %v", err)
+		}
+	})
+
+	t.Run("one entry's size", func(t *testing.T) {
+		// Above archiveSkillMD's own size and below the oversized entry, so the
+		// fixture's own SKILL.md is not what trips the ceiling.
+		defer swapUint64(&maxEntryBytes, 100)()
+		// Well under the total cap, so only the per-entry ceiling can refuse it.
+		big := strings.Repeat("x", 200)
+		if _, err := PackageFS(zipWithEntries(t, map[string]string{
+			"SKILL.md": archiveSkillMD, "big.txt": big,
+		})); !errors.Is(err, ErrBadArchive) {
+			t.Errorf("a 200 byte entry under a 100 byte ceiling: err = %v, want ErrBadArchive", err)
+		}
+		if _, err := PackageFS(zipWithEntries(t, map[string]string{
+			"SKILL.md": archiveSkillMD, "small.txt": "x",
+		})); err != nil {
+			t.Errorf("a one byte entry was refused: %v", err)
+		}
+	})
+
+	t.Run("directory depth", func(t *testing.T) {
+		defer swapInt(&maxEntryDepth, 2)()
+		if _, err := PackageFS(zipWithEntries(t, map[string]string{
+			"SKILL.md": archiveSkillMD, "a/b/c/deep.txt": "x",
+		})); !errors.Is(err, ErrBadArchive) {
+			t.Errorf("three directories under a depth of 2: err = %v, want ErrBadArchive", err)
+		}
+		if _, err := PackageFS(zipWithEntries(t, map[string]string{
+			"SKILL.md": archiveSkillMD, "a/b/ok.txt": "x",
+		})); err != nil {
+			t.Errorf("two directories is at the bound, not over it: %v", err)
+		}
+	})
+}
+
+func swapInt(p *int, v int) func() {
+	old := *p
+	*p = v
+	return func() { *p = old }
+}
+
+func swapUint64(p *uint64, v uint64) func() {
+	old := *p
+	*p = v
+	return func() { *p = old }
+}
