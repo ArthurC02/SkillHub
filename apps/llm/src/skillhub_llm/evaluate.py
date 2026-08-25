@@ -723,7 +723,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
         # in the prompt, so the model has no way to comply except by luck.
         #
         # Dropping is not rewriting: the rule
-        # test_unapplicable_or_oversized_proposals_are_rejected_not_rewritten
+        # test_unapplicable_or_oversized_proposals_are_dropped_not_rewritten
         # pins is that a bad proposal must not be clipped into a good one, and
         # EVAL-002's criteria are per-proposal ("每項建議至少包含…"), so keeping
         # the complete ones satisfies it better than discarding them.
@@ -744,7 +744,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
             )
             continue
         key = (s.category, s.target_path, problem)
-        if not problem or key in seen:
+        if key in seen:
             continue
         seen.add(key)
         s.problem = problem
