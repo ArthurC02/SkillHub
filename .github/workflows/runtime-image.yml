@@ -241,11 +241,17 @@ jobs:
   # since it was built. The action is the same as any other I-06 failure: rebuild
   # with updated pins, which the push path above re-publishes and re-attests.
   rescan:
+    # `packages: write`, not `read`. This job re-attests the published digest with
+    # `push-to-registry: true`, which is a registry write, so `read` made
+    # `actions/attest` fail -- and it failed BEFORE the I-06 gate below, so both
+    # scheduled runs since this workflow was written died without ever checking the
+    # published image for new fixable Critical/High findings. I-04 treats a digest
+    # with no in-date scan as unscanned, and that is what it has been.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read
+      packages: write # the re-attestation is a registry write; see below
       id-token: write
       attestations: write
     steps:
