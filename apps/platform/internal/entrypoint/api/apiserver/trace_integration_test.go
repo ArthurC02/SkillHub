@@ -570,6 +570,92 @@ func TestTraceIngestionRefusesWhatTheTokenDoesNotCover(t *testing.T) {
 
 // TRACE-001: "Trace 事件順序可被重建，並能識別缺失或延遲事件". A hole in a
 // producer's gapless sequence is a lost event and the view has to say so.
+// TRACE-008: a sandbox is an at-least-once producer, so one event the platform
+// cannot accept must not sink the batch it arrived in. If it did, the producer
+// would resend, collide on the same event, get another 500, and every event
+// queued behind it would never land - while the events ahead of it are already
+// committed, so the retry could never converge either.
+//
+//nolint:unused
+func offTestOneRefusedEventStillDeliversTheRestAndLetsTheResendConverge(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "trace-seq-collision-owner")
+	skillID := seedSkill(t, pool, owner.workspaceID, "trace-seq-collision-skill")
+	runID := seedRun(t, pool, owner.workspaceID, skillID)
+
+	output := `{"kind":"final","text":"%s","truncated":false}`
+
+	// seq 2 is claimed first, by the event the producer originally emitted there.
+	if code, report := a.ingest(t, runID, 1,
+		event(runID, 1, 2, "agent_output", fmt.Sprintf(output, "the original seq 2"))); code != http.StatusAccepted || report.Stored != 1 {
+		t.Fatalf("seeding seq 2: got %d %+v, want 202 with 1 stored", code, report)
+	}
+
+	// The same stream position now arrives under a different event_id. That is
+	// not an at-least-once redelivery (0031 would have swallowed it), it is the
+	// producer contradicting itself - and it sits in the middle of the batch.
+	collidingID := deterministicEventID(runID, 99, 99)
+	collision := strings.Replace(
+		event(runID, 1, 2, "agent_output", fmt.Sprintf(output, "a second claim on seq 2")),
+		deterministicEventID(runID, 1, 2), collidingID, 1)
+	batch := []string{
+		event(runID, 1, 1, "agent_output", fmt.Sprintf(output, "ahead of the collision")),
+		collision,
+		event(runID, 1, 3, "agent_output", fmt.Sprintf(output, "behind the collision")),
+	}
+
+	code, report := a.ingest(t, runID, 1, batch...)
+	if code != http.StatusAccepted {
+		t.Fatalf("colliding batch: got %d %+v, want 202 - one bad event is not a failed batch", code, report)
+	}
+	if report.Stored != 2 || report.Rejected != 1 {
+		t.Fatalf("colliding batch: got %+v, want 2 stored and 1 rejected", report)
+	}
+	// The producer has to be told *which* event was refused, or it cannot stop
+	// sending it.
+	if !strings.Contains(strings.Join(report.Reasons, " | "), collidingID) {
+		t.Errorf("report does not name the refused event %s: %+v", collidingID, report.Reasons)
+	}
+
+	// The event behind the collision landed, and the evidence already at seq 2
+	// was not overwritten by the second claim (trace_events is append-only).
+	assertCollisionTrace := func(stage string) {
+		t.Helper()
+		status, view := owner.advancedTrace(t, runID)
+		if status != http.StatusOK || len(view.Events) != 3 {
+			t.Fatalf("%s: got %d with %d events, want 200 with seq 1, 2 and 3", stage, status, len(view.Events))
+		}
+		// Ordering is by occurred_at across streams, so index is not seq: look
+		// each position up by the number the producer declared.
+		bySeq := map[int64]json.RawMessage{}
+		for _, ev := range view.Events {
+			bySeq[ev.Seq] = ev.Payload
+		}
+		for _, seq := range []int64{1, 2, 3} {
+			if _, ok := bySeq[seq]; !ok {
+				t.Fatalf("%s: seq %d never landed; stored %d events", stage, seq, len(view.Events))
+			}
+		}
+		if !strings.Contains(string(bySeq[2]), "the original seq 2") {
+			t.Errorf("%s: seq 2 was overwritten by the colliding event: %s", stage, bySeq[2])
+		}
+		if !view.Complete {
+			t.Errorf("%s: stream reports a gap although seq 1..3 are all stored", stage)
+		}
+	}
+	assertCollisionTrace("after the colliding batch")
+
+	// The push that matters: the producer never got an ack it could trust, so it
+	// sends the identical batch again. It must converge - duplicates for the two
+	// that landed, the same refusal for the one that cannot.
+	code, report = a.ingest(t, runID, 1, batch...)
+	if code != http.StatusAccepted || report.Stored != 0 || report.Duplicate != 2 || report.Rejected != 1 {
+		t.Fatalf("resend: got %d %+v, want 202 with 0 stored, 2 duplicate and 1 rejected", code, report)
+	}
+	assertCollisionTrace("after the resend")
+}
+
 func TestAdvancedViewNamesMissingEventsAndRefusesToLookComplete(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

@@ -258,34 +258,52 @@ func TestLiveSandboxMeetsTheIsolationBaseline(t *testing.T) {
 // C-13, the fork bomb case: the limit has to be enforced by the runtime, not
 // merely requested.
 //
-// The ceiling is 64 and not 16. Under runc a shell needs one pid, so 16 left
-// plenty of room; under runsc the container's pids cgroup also holds the
-// sentry's own host threads, and 16 is fewer than gVisor needs to come up at
-// all. The gVisor leg failed on its first ever execution with
+// Two probes, not one, because a single assertion cannot tell "the ceiling did
+// not bite" from "nothing ran". Both readings have been observed on the gVisor
+// leg and they call for opposite responses:
 //
-//	OCI runtime create failed: creating container: cannot create sandbox:
-//	cannot read client sync file: waiting for sandbox to start: EOF
+//	16 pids: OCI runtime create failed: creating container: cannot create
+//	         sandbox: cannot read client sync file: waiting for sandbox to
+//	         start: EOF
+//	64 pids: 400 processes ... produced no fork failure ... output: (empty)
 //
-// which is the sandbox dying before the workload existed -- a fixture value, not
-// a defect in what C-13 defends. 400 attempts against 64 keeps the margin wide
-// at both ends: enough headroom for the sentry, and enough processes that a
-// runtime honouring the limit must refuse some of them.
+// Under runc a shell needs one pid and 16 was generous. Under runsc the
+// container's pids cgroup also holds the sentry's own host threads: at 16 the
+// sandbox could not come up at all, and at 64 it came up and then produced
+// nothing -- an empty transcript, which is what a workload that could not be
+// forked looks like, not what an unenforced ceiling looks like. Reporting the
+// second as "the ceiling is not reaching guest tasks" would have been a
+// confident wrong answer about the control C-13 rests on.
 //
-// If this ever fails with "produced no fork failure" rather than at start, that
-// is the interesting answer and not a flake: it would mean the pids ceiling does
-// not reach guest tasks under that runtime, and C-13 is not enforced where it
-// actually has to be.
+// So: prove the runtime can run something trivial under this ceiling first. A
+// failure there is a fixture that has not left enough headroom for the sentry.
+// A failure in the second probe, with the first one green, is the finding that
+// matters -- the ceiling does not reach guest tasks on this runtime, and C-13 is
+// not enforced where it has to be.
 func TestPidsLimitStopsAForkBomb(t *testing.T) {
 	d, _ := newDriver(t)
-	const spawnAttempts = 400
+	const (
+		pidCeiling    = 128
+		spawnAttempts = 400
+	)
+
+	alive := testRequest(`echo alive`)
+	alive.ResourceLimits.MaxPIDs = pidCeiling
+	if _, out := startProbe(t, d, alive); !strings.Contains(out.Output, "alive") {
+		t.Fatalf("a workload that does nothing but echo produced no output under a %d pid ceiling, "+
+			"so this runtime needs more headroom than that before C-13 can be measured at all. output:\n%s",
+			pidCeiling, out.Output)
+	}
+
 	req := testRequest(fmt.Sprintf(
 		`i=0; while [ $i -lt %d ]; do sleep 20 & i=$((i+1)); done; echo "spawned"`, spawnAttempts))
-	req.ResourceLimits.MaxPIDs = 64
+	req.ResourceLimits.MaxPIDs = pidCeiling
 
 	_, out := startProbe(t, d, req)
 	if !strings.Contains(strings.ToLower(out.Output), "fork") {
-		t.Errorf("%d processes under a %d pid limit produced no fork failure; the ceiling is not reaching guest tasks on this runtime. output:\n%s",
-			spawnAttempts, req.ResourceLimits.MaxPIDs, out.Output)
+		t.Errorf("%d processes under a %d pid ceiling produced no fork failure, and a trivial "+
+			"workload did run under the same ceiling: the limit is not reaching guest tasks on "+
+			"this runtime. output:\n%s", spawnAttempts, pidCeiling, out.Output)
 	}
 }
 

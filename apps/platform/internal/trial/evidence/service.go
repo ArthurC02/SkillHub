@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -191,6 +192,21 @@ func (s *Service) ingestOne(
 		Late:         late,
 	})
 	if err != nil {
+		// 23505 here means this stream position is already held by a *different*
+		// event: 0032's guard raises it for a repeated (run, attempt, source,
+		// seq), and 0019's index for a repeated event_id that somehow outran
+		// 0031. An ordinary at-least-once redelivery never reaches either -
+		// 0031's dedupe trigger consumes an equal event_id first and returns no
+		// rows - so this is a producer contradicting itself, one unacceptable
+		// event and not a failed batch. It is refused the way every other
+		// unacceptable event is: counted, named and stepped over. Aborting the
+		// batch instead would 500 the push, lose every event queued behind this
+		// one (TRACE-008), and hand the producer a retry that can never
+		// converge, because the events ahead of it are already committed.
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+			return fmt.Errorf("%w: event_id %s conflicts with an event already stored at seq %d of this stream",
+				ErrInvalid, event.EventID, event.Seq)
+		}
 		return err
 	}
 	if rows == 0 {
