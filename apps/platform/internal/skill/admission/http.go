@@ -12,6 +12,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
@@ -49,6 +50,30 @@ func NewUploadResult(res Result) UploadResult {
 	}
 }
 
+// writeTooLarge is the one place an upload refused for its size is worded, and
+// the one place it is counted (03:INGEST-016). Both upload doors reach it, so
+// the two do not drift into saying different things about the same ceiling.
+//
+// Two numbers, because the ceiling alone is not actionable: a creator told only
+// "over the limit" cannot tell 1 KB over from 10 MB over, and only one of those
+// is worth an afternoon. The actual size is the request's declared
+// Content-Length and is printed ONLY when that declaration is itself over the
+// ceiling — http.MaxBytesReader stops at limit+1 bytes and never learns how much
+// more there was, so a chunked upload, or one that under-declares and overruns
+// while being read, gets the ceiling and nothing else. A guessed number would be
+// worse than no number.
+//
+// Nothing the caller sent appears here (NFR-001): not the file name, not a path,
+// not a URL. Two integers the platform already knew, one of them a header field.
+func writeTooLarge(w http.ResponseWriter, r *http.Request) {
+	metrics.PackageSizeRefused.WithLabelValues(metrics.CeilingUpload).Inc()
+	msg := "套件超過平台的上傳上限 " + skillpkg.HumanMB(skillpkg.MaxZipBytes) + "。"
+	if r.ContentLength > skillpkg.MaxZipBytes {
+		msg += "這一次送出的是 " + skillpkg.HumanMB(r.ContentLength) + "。"
+	}
+	httpx.WriteError(w, http.StatusRequestEntityTooLarge, msg)
+}
+
 // Upload handles POST /skills/import/upload. Wrap with RequireSession; the
 // workspace is derived from the session, never from the client (iron rule 3).
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +92,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
-			httpx.WriteError(w, http.StatusRequestEntityTooLarge, "package exceeds the upload size limit")
+			writeTooLarge(w, r)
 			return
 		}
 		httpx.WriteError(w, http.StatusBadRequest, "could not read request body")
@@ -102,7 +127,7 @@ func (h *Handler) SaveVersion(w http.ResponseWriter, r *http.Request) {
 	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
-			httpx.WriteError(w, http.StatusRequestEntityTooLarge, "package exceeds the upload size limit")
+			writeTooLarge(w, r)
 			return
 		}
 		httpx.WriteError(w, http.StatusBadRequest, "could not read request body")

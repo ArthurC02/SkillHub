@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"strconv"
 	"strings"
 )
 
@@ -32,6 +33,15 @@ import (
 // all — see the block below. `03` §1 said PDM-005's numbers were 值已全數強制;
 // for §5.1b that was true of two of seven.
 const MaxZipBytes = 32 << 20 // 32 MiB
+
+// HumanMB renders a byte ceiling the way a refusal has to say it (03:INGEST-016).
+//
+// One decimal and not `n>>20`, because the two numbers a refusal prints are a
+// ceiling and an actual size, and truncation makes the interesting case unsayable:
+// 32.4 MB against a 32 MiB cap would print "over the 32 MB limit (this was 32 MB)".
+func HumanMB(n int64) string {
+	return strconv.FormatFloat(float64(n)/(1<<20), 'f', 1, 64) + " MB"
+}
 
 // maxUnpackedBytes caps total declared uncompressed size (zip bombs,
 // ADR-007 壓縮炸彈). Var only so tests can lower it.

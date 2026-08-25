@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
@@ -194,6 +195,78 @@ type LineageSource struct {
 	ContentHash string
 	FetchedAt   pgtype.Timestamptz
 }
+
+// checkProducedSize applies the produced ceiling.
+//
+// A function and not four lines inline because build() needs a transaction and a
+// store, and 「a package between the import ceiling and the produced ceiling is
+// ACCEPTED」 is the entire content of 03:PACK-012 — a claim that has to be
+// reachable by a test that does not need a 32 MiB fixture and a database.
+//
+// The refusal is counted apart from the two import ceilings (03:INGEST-016): a
+// package too big here is our packager having added more than the produced
+// ceiling allows, not a creator having sent something too big, and reading our
+// defect in the same series as their behaviour is how a wrong ceiling gets
+// blamed on users.
+func checkProducedSize(n int) error {
+	if n <= MaxProducedZipBytes {
+		return nil
+	}
+	metrics.PackageSizeRefused.WithLabelValues(metrics.CeilingProduced).Inc()
+	return fmt.Errorf("the produced package is %d bytes, over the %d byte limit", n, MaxProducedZipBytes)
+}
+
+// MaxProducedZipBytes caps the package the packager BUILDS. skillpkg.MaxZipBytes
+// caps what a creator HANDS US, and until 2026-08-25 this check used that one
+// (03:PACK-012).
+//
+// They cannot be the same number. Packaging always adds — INSTALL.md, the
+// manifest, and any test-cases/ that travel — so produced > source by
+// construction, and produced_cap == import_cap therefore leaves a dead zone at
+// ANY value of the import cap: a package sitting just under it imports, runs,
+// evaluates, and is then refused at the last step with every bit of the work
+// already done. That is independent of what 05 R-13 decides MaxZipBytes should
+// be, which is why this does not wait for it.
+//
+// Decoupling upward cannot refuse anything that succeeds today: every value
+// above MaxZipBytes is a strict relaxation of the check it replaces.
+//
+// It does not weaken PACK-009 either. That invariant is 「產出的位元組要能被匯入的
+// 方式重新打開」, asserted below by re-opening through skillpkg.PackageFS — which
+// checks entry count, per-entry size, depth and UNCOMPRESSED total, and not
+// compressed total. This constant is not an input to it.
+//
+// # Where the value comes from, and where it stops
+//
+// The upper bound "import cap + what packaging can add" does not close. Written
+// out rather than rounded away, because a picked number that looks derived is
+// worse than a picked number that says it was picked:
+//
+//   - The platform's own two files ARE bounded by the source. INSTALL.md is a
+//     fixed template plus dependency notes; the manifest lists findings,
+//     excluded files and external URLs — all drawn from an archive already under
+//     MaxZipBytes and holding at most 2,000 paths. 1 MiB is generous for both.
+//   - One test case's case.json IS bounded, by testlab's own caps: MaxNameBytes
+//     200 + MaxPromptBytes 32 KiB + MaxCriteria 50 × MaxCriterionBytes 2,000 +
+//     the rubric ≈ 150 KiB.
+//   - THE NUMBER OF TEST CASES PER SKILL IS NOT BOUNDED, and that is what stops
+//     the arithmetic. Nothing enforces a count — testlab's page() comment says
+//     the list is "already bounded by the per-skill test case count" and no such
+//     limit exists anywhere in the repo. PDM-005 §5.1 bounds one test case's
+//     files (20 files, 25 MiB each, 100 MiB total); it never bounds how many
+//     test cases a Skill may have, and §5.2 is Run resources, not this.
+//   - And the additions are not always text. 「不可散布的資料集會被排除」 holds for a
+//     creator's own workspace; for the CATALOG workspace selectTestCases ships
+//     the dataset bytes themselves (see testcase.go — the ws.IsCatalog branch),
+//     up to testlab.MaxTestCaseBytes per case.
+//
+// So: 1 MiB for the platform's two files plus roughly 48 test cases at their
+// text ceiling. 48 is the part with nothing behind it — a count nothing
+// enforces, put far past any plausible Skill and far under the 256 MiB
+// uncompressed ceiling PackageFS already puts on these same bytes. If this cap
+// is ever actually reached, the number to revisit is not this one: it is the
+// per-skill test case cap that does not exist.
+const MaxProducedZipBytes = skillpkg.MaxZipBytes + 8<<20
 
 // Plan is one answered packaging question, shared by the preview and the create
 // call. When Allowed is false, BlockedReason says which of the four gates closed
@@ -510,9 +583,8 @@ func (s *Service) build(ctx context.Context, q *gen.Queries, ws identity.Workspa
 	if err != nil {
 		return err
 	}
-	if len(zipped) > skillpkg.MaxZipBytes {
-		return fmt.Errorf("the produced package is %d bytes, over the %d byte limit",
-			len(zipped), skillpkg.MaxZipBytes)
+	if err := checkProducedSize(len(zipped)); err != nil {
+		return err
 	}
 
 	// The invariant of PACK-009, asserted on the bytes that would be handed out:

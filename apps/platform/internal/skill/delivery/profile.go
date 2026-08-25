@@ -239,6 +239,25 @@ func renderInstall(p Profile, skillName string, deps []string) string {
 		"No package you download from Skill Hub carries one.\n\n",
 		skillpkg.SpecRevision)
 
+	// 03:PACK-012. Said here and not only in a comment, because it is a fact the
+	// reader can walk into: the packager adds files the source did not have (this
+	// file, the manifest, any test cases), so a package can come out larger than
+	// the ceiling Skill Hub's own import accepts, and the round trip they would
+	// reasonably assume works then does not.
+	//
+	// This document rather than the download preview: it is the only surface that
+	// travels WITH the bytes, so it is still there when someone tries the
+	// re-import weeks later, and it needs no contract change to carry.
+	// Unconditional rather than "only when the package is actually over", because
+	// the size is not known until after this file has been written into the zip —
+	// and a sentence naming the number lets the reader check the file they are
+	// holding, which a conditional one they never see does not.
+	fmt.Fprintf(&b, "**Re-importing this into Skill Hub:** Skill Hub accepts packages up to %s on "+
+		"import. The packager adds files your source did not have, so a package it produces can be "+
+		"larger than that — if this one is, Skill Hub will not take it back. That is Skill Hub's own "+
+		"ceiling, not the specification's, and it changes nothing about installing the package.\n\n",
+		skillpkg.HumanMB(skillpkg.MaxZipBytes))
+
 	b.WriteString("## Where it goes\n\n")
 	if len(p.Install.Locations) == 0 {
 		b.WriteString("This is the standard Agent Skills package. It names no install location, " +

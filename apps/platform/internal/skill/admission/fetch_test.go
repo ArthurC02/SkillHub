@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -74,8 +75,20 @@ func TestFetchSizeCap(t *testing.T) {
 	defer srv.Close()
 	host := strings.TrimPrefix(srv.URL, "http://")
 	f := &URLFetcher{Allowed: map[string]bool{host: true}, AllowInsecure: true}
-	if _, _, err := f.Fetch(context.Background(), srv.URL+"/big.zip"); !errors.Is(err, ErrFetch) {
+	before := refusalCount(t, metrics.CeilingURL)
+	_, _, err := f.Fetch(context.Background(), srv.URL+"/big.zip")
+	if !errors.Is(err, ErrFetch) {
 		t.Fatalf("want ErrFetch for oversized package, got %v", err)
+	}
+	// 03:INGEST-016. The ceiling in the message, because this error reaches the
+	// creator verbatim (Handler.respond writes err.Error() for ErrFetch); and no
+	// actual size, because LimitReader abandoned the download one byte past the
+	// cap and nobody here knows how big the source was.
+	if !strings.Contains(err.Error(), skillpkg.HumanMB(skillpkg.MaxZipBytes)) {
+		t.Errorf("the refusal does not name the import ceiling: %v", err)
+	}
+	if got := refusalCount(t, metrics.CeilingURL) - before; got != 1 {
+		t.Errorf("url-fetch size refusals counted %v times, want 1", got)
 	}
 }
 

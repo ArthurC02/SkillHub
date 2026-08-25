@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -195,6 +196,14 @@ func (f *URLFetcher) checkURL(u *url.URL) error {
 		return fmt.Errorf("%w: only https URLs are supported", ErrFetch)
 	}
 	if !f.Allowed[strings.ToLower(u.Host)] {
+		// This one names the host, and reaches the caller verbatim through
+		// respond(). That is deliberate and it is not the thing SEC-003 forbids:
+		// the rule is that an error must not disclose an address the PLATFORM
+		// resolved, and this host is the caller's own input, echoed back before
+		// any DNS happened. Telling them which host was refused is the whole
+		// difference between a fixable refusal and a mystery. The resolved
+		// addresses are handled the other way -- see classify(), which swaps them
+		// for a category precisely so the internal network never leaks.
 		return fmt.Errorf("%w: host %q is not on the allowed source list", ErrFetch, u.Host)
 	}
 	if u.User != nil || u.RawQuery != "" || u.Fragment != "" {
@@ -308,7 +317,13 @@ func (f *URLFetcher) download(ctx context.Context, rawURL string) ([]byte, error
 		return nil, classify(err)
 	}
 	if len(data) > skillpkg.MaxZipBytes {
-		return nil, fmt.Errorf("%w: package exceeds %d bytes", ErrFetch, skillpkg.MaxZipBytes)
+		// The ceiling and no actual size, and that is the honest pair here
+		// (03:INGEST-016): LimitReader abandoned the download one byte past the
+		// cap, so nobody in this process knows how big the source really was.
+		// Content-Length is the remote's claim about bytes we chose not to read.
+		metrics.PackageSizeRefused.WithLabelValues(metrics.CeilingURL).Inc()
+		return nil, fmt.Errorf("%w: package from this source is over the %s import limit",
+			ErrFetch, skillpkg.HumanMB(skillpkg.MaxZipBytes))
 	}
 	return data, nil
 }

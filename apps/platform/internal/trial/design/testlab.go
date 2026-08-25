@@ -369,9 +369,19 @@ func (s *Service) ListTestCases(
 }
 
 // page applies the list's limit and offset in Go. Only the skill-filtered branch
-// needs it: ListTestCasesForSkill has no LIMIT of its own, and giving it one
-// would mean a new generated statement for a list that is already bounded by the
-// per-skill test case count.
+// needs it: ListTestCasesForSkill has no LIMIT of its own.
+//
+// It used to say that was fine because the list is "already bounded by the
+// per-skill test case count". THERE IS NO SUCH COUNT (2026-08-26, 03:TEST-013).
+// Nothing in this repo caps how many test cases a Skill may hold: PDM-005 §5.1
+// bounds one test case's files, §5.2 bounds Run resources, and neither bounds
+// how many. So every row is materialised before this function narrows it, and
+// the only thing keeping that small is that nobody has made many yet.
+//
+// The claim is corrected rather than the query, because the same statement feeds
+// packaging, which legitimately needs all of them (PACK-005); a LIMIT here would
+// silently truncate a download's test cases. The bound belongs where they are
+// created, and that number is nobody's to invent -- see 03:TEST-013.
 func page[T any](rows []T, limit, offset int32) []T {
 	if offset > 0 {
 		if int(offset) >= len(rows) {

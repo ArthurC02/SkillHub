@@ -158,6 +158,40 @@ var (
 	})
 )
 
+// 03:INGEST-016. The three size ceilings a package can die on, as one number a
+// rule can read. Today a package refused for being too big produces a 413 for
+// one creator and nothing else anywhere: 05 R-13 asks whether those ceilings are
+// set too tight, and without this the answer can only ever be an anecdote.
+//
+// One CounterVec and not three counters, because the question is always asked of
+// all three at once ("is anything bouncing off a size limit") and the label is
+// what makes the follow-up answerable. Splitting them is what the label does;
+// three names would additionally need three rules.
+//
+// `ceiling` is a closed three-value vocabulary, so no traffic can add a series:
+//
+//	upload   - a creator's own bytes, refused at MaxBytesReader. They can act:
+//	           trim the package. This is the one that means the ceiling may be wrong.
+//	url      - an imported source, refused mid-download. The creator did not
+//	           author those bytes and usually cannot trim them.
+//	produced - OUR packager's output, over MaxProducedZipBytes. Nobody sent
+//	           anything too big; this one means the packager added more than the
+//	           produced ceiling allows for, and it is a platform defect, not a
+//	           creator's problem. Reading it in the same series as `upload` would
+//	           be reading our bug as their behaviour.
+//
+// No label carries a workspace, a URL, a file name or a byte count (rule 1 above).
+const (
+	CeilingUpload   = "upload"
+	CeilingURL      = "url"
+	CeilingProduced = "produced"
+)
+
+var PackageSizeRefused = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "skillhub_package_size_refused_total",
+	Help: "Packages refused for exceeding a size ceiling, by which ceiling (03:INGEST-016, 05 R-13).",
+}, []string{"ceiling"})
+
 // ADR-008: the transactional outbox. One counter, and it is the one that means a
 // human has to look: an event the publisher gave up on is a domain fact that was
 // committed and never announced. `event_type` is the closed 11-value set of
