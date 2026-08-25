@@ -47,9 +47,38 @@ from dispatch_halts where lifted_at is null;
 
 ## 2. 分辨真事故與誤觸
 
-五條 P1 判準裡**只有兩條會自己翻開關**，而這兩條都可能誤觸。**先判斷是哪一條，再決定要不要調查。**
+五條 P1 判準裡**只有兩條會自己翻開關**（③ 與 ⑤），而③有兩個偵測器，共三個。**先判斷是哪一個翻的，再決定要不要調查**——三個裡有兩個可能誤觸，一個不會。
 
 ### 2.1 `TraceMaskingStopped`
+
+**這條判準有兩個偵測器，`reason` 的第一行就分得出來是哪一個。** 兩個都掛在 supervisor 每 30 秒那一輪的尾巴，都不會自動解除。
+
+| `reason` 開頭 | 偵測器 | 它憑什麼下結論 |
+| --- | --- | --- |
+| `TraceMaskingStopped, canary` | **canary**（`trace.MaskerCanary`） | 平台自己造一份**每一種形狀各一個**的假 Secret 餵過 masker，有任何一個沒被遮掉。**不看流量、不看資料庫、不打模型、不建 Run。** |
+| `TraceMaskingStopped:` | **流量判準** | 兩小時的 `source = 'sandbox'` 事件（窗的兩端都要有量）而 `masked_fields` 全空 |
+
+**先看是哪一個，因為要做的事不一樣。**
+
+#### 2.1a canary 失敗（`TraceMaskingStopped, canary`）
+
+`reason` 會直接點名哪幾種形狀沒被遮，例如 `openai style key`、`platform-issued value`。
+
+**這不是推論，是直接證據**：那幾個值是平台在那一瞬間自己造的，餵進去、沒遮出來。**沒有「誤觸」這個選項**——masker 是一個對編譯進去的規則做的純函數，不會抖動。
+
+1. 先在同一個 build 上重現（不需要資料庫）：
+
+   ```bash
+   go -C apps/platform test ./internal/trial/evidence/ -run TestMaskerCanaryPassesOnAnIntactMasker -count=1 -v
+   ```
+
+   **它會紅，而且紅的內容和 `reason` 一致**——測試呼叫的就是生產偵測器呼叫的那一個函數。
+
+2. 看 `apps/platform/internal/trial/evidence/mask.go` 的 `secretPatterns` 與 `redact` 的 Known 那一段：被點名 `platform-issued value` ＝ **精確比對那一臂**壞了（平台自己發出的憑證，例如 ingest token，不再被遮）；被點名某個形狀名 ＝ **對應的那條 pattern** 沒了或被改壞。
+3. **在修好並重新部署之前不要解除。** 解除等於讓不受信任的工作負載繼續把輸出寫進 `trace_events`，而遮罩少一條規則。
+4. 已經寫進去的東西照 [`02:SEC-010` §(3)](../plans/02-specifications-and-acceptance-criteria.md) 的遮罩失敗程序處理（撤銷 → 清除 → 通知 → 事後）。
+
+#### 2.1b 流量判準（`TraceMaskingStopped:`）
 
 `reason` 長這樣：
 
@@ -85,11 +114,11 @@ worker 停了就把 worker 起回來，確認掃描恢復（時間戳往前走�
 
 ### 2.3 另外三條：沒有東西會自動翻開關
 
-| 判準 | 為什麼是人工 |
+| 判準 | 為什麼是人工（2026-08-25 逐條查證，證據在右欄） |
 | --- | --- |
-| 逃逸疑慮 | 這是**判斷**，不是量測。沒有一個查詢能回答「這看起來像不像逃逸」 |
-| P-02 探針偵測到 Sandbox → 核心資料庫連線 | 探針在**本 process 之外**（節點側），它的訊號不經過控制平面 |
-| 隔離技術逃逸類 CVE 揭露 | 來自 `.github/workflows/gvisor-baseline.yml` 開的 issue，也在本 process 之外 |
+| ① 逃逸疑慮 | 這是**判斷**，不是量測。沒有一個查詢能回答「這看起來像不像逃逸」。**「疑慮」不是一個訊號**——真的量得到的那些形態（連上核心資料庫、遺留超標、Reconciler 停擺）各自已經是另外幾條判準；這一條剩下的正是**還沒有形態的那部分**，所以它沒有可接的線，不是漏接 |
+| ② P-02 探針偵測到 Sandbox → 核心資料庫連線 | **那個探針今天不存在**（`03:SBX-005` 未勾、[ADR-050](../adr/ADR-050-beta-runs-in-parallel-with-the-sandbox-acceptance.md) 明寫「P-02 常駐探針不存在」；`tools/sec009/` 只有 T1／T2／T8 三支，沒有 T10）。**就算它存在，訊號也沒有路徑進來**：沙箱契約是**單向的**——控制平面呼叫節點（`apps/sandbox/internal/sandbox/http.go` 六條路由全是被呼叫端），節點沒有任何往控制平面推的通道，唯一的反向入口 `POST /internal/trace/{token}` 是**單一 Run 範圍且由不受信任的沙箱送出**。要接就得改 `contracts/` 的 capability 契約，那是決策不是接線 |
+| ④ 隔離技術逃逸類 CVE 揭露 | 訊號來自 `.github/workflows/gvisor-baseline.yml`，而 **CI 看得到的東西到不了生產 DB**。該 workflow 自己把理由寫在檔案裡：要自己翻開關就得讓 CI 持有一把能停整池的平台憑證，**「a credential that can stop the fleet, held by CI, is a worse exposure than the minutes a person takes to paste one command」**。反方向（平台自己去拉 GitHub advisory feed）要為控制平面開對外網路出口，並讓派送能力取決於一個外部 feed 的可達性。兩者都是**部署期決策**。<br>順帶查證兩件事：`runsc` **不在任何 image 裡**（它是節點主機的執行檔，repo 內唯一的版本釘點是 `infra/nodes/gvisor-baseline.txt`，目前 `unset`），所以 `runtime-image.yml` 的 `rescan` 掃的是 Agent SDK image，**掃不到 gVisor**；`ProviderCapability` 也沒有回報 `runsc` 版本的欄位 |
 
 這三條**由人宣告**：
 
@@ -143,7 +172,7 @@ curl -s -b <cookie> -X DELETE http://<api>/admin/dispatch/halt \
 
 ## 5. 讀 `TraceMaskingStopped` 時要知道的一件事（量測邊界）
 
-判準的前提是 **「正常流量下 `tool_call` 的 arguments 與 `script_log` 的 message 幾乎必然有東西被遮」**。
+**流量判準**的前提是 **「正常流量下 `tool_call` 的 arguments 與 `script_log` 的 message 幾乎必然有東西被遮」**。
 
 **這個前提在目前唯一有資料的語料上不成立。** 2026-08-23 量過：dev 庫 **2,444 筆 `source = 'sandbox'` 的 trace 事件，遮罩總數是 0**。
 
@@ -151,7 +180,20 @@ curl -s -b <cookie> -X DELETE http://<api>/admin/dispatch/halt \
 
 - **「零遮罩」本身不是強證據**，在低流量或乾淨語料下它是常態。撐起這條判準的是「有量而且持續」，不是「零」。
 - 判準真正要抓的是**規則失效**（事件仍被標為 `masked` 而 `masked_fields` 空），`0019` 的 `CHECK (masked)` 讓「未遮罩就入庫」在資料庫層不可能，所以那是唯一剩下的失敗形態。
-- **要不要因此調門檻，是 `02:SEC-010` 的決定，不是這份 runbook 的。** 目前的做法是：照升級規則當 P1 處理，走 §2.1 分辨形態。
+- **要不要因此調門檻，是 `02:SEC-010` 的決定，不是這份 runbook 的。** 目前的做法是：照升級規則當 P1 處理，走 §2.1b 分辨形態。
+
+**2026-08-25：這個量測邊界不再是「等封測真實流量才知道」。** canary（§2.1a）從另一個方向問同一個問題，而且**在零流量、合成流量、真實流量下讀數一樣**：直接把一份平台自己造的假 Secret 餵過 masker，遮不掉就是壞了。上面那一整段仍然成立，但它現在只約束流量判準這一半。
+
+**兩個偵測器都留著，因為它們壞在不同的地方，而且誰都看不見對方的失敗**：
+
+| | canary | 流量判準 |
+| --- | --- | --- |
+| 它讀的是 | **規則**（本 process，無流量） | **路徑**（生產，真實事件） |
+| 抓得到 | pattern 被刪改、Known 精確比對那一臂壞掉 | 有人把 ingest 路徑上那一步 mask **整個拿掉**（呼叫端有兩個，各自 `new` 自己的 Masker） |
+| 抓不到 | 呼叫端根本沒呼叫 masker——canary 自己呼叫，所以它永遠是綠的 | 任何規則失效，只要語料裡本來就沒有可遮的東西（＝目前的處境） |
+| 在合成語料上 | 有效 | **無效** |
+
+刪掉流量判準會拿一個「目前量不到但唯一看得見接線的偵測器」換成「那一半沒有偵測器」。
 
 ---
 
@@ -159,4 +201,5 @@ curl -s -b <cookie> -X DELETE http://<api>/admin/dispatch/halt \
 
 - **遮罩失敗的實際處置**（撤銷 Virtual Key、以外洩值重掃、輪替 ingest secret）在 [`02:SEC-010` §(3)](../plans/02-specifications-and-acceptance-criteria.md)。
 - **節點 drain 與重建**在 [ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) P-03／X-04。
-- **`SEC-012` 仍未勾**：本需求的字面是「**偵測到** P1 判準即立即停止派送」，而五條裡只有兩條是自動的。這份 runbook 讓另外三條可被直接執行，**它不讓那三條變成自動的**。
+- **`SEC-012` 仍未勾**：本需求的字面是「**偵測到** P1 判準即立即停止派送」，而五條裡只有兩條是自動的（③⑤）。這份 runbook 讓另外三條可被直接執行，**它不讓那三條變成自動的**。
+- **2026-08-25 補**：③ 多了一個 canary 偵測器（§2.1a），但那是**同一條判準的第二個讀法**，不是第三條判準變自動。①②④ 一格都沒動——理由見 §2.3，三者的訊號都在本 process 之外。

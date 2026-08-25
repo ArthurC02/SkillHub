@@ -46,7 +46,7 @@
 | 免費額度強制 | `internal/run/quota.go`＋建立 Run 的同一交易 | 成本上限的唯一執行機制 |
 | 四個漏斗事件 | `internal/analytics` ＋ `0029` | `BETA-002` 的全部原料 |
 | `POST /feedback` | `analytics/feedback.go` ＋ `feedback_reports` | `BETA-003`／`004`／`005` 的管道（**缺前端入口**，見 §1.9） |
-| 停派送開關 | `internal/run/halt.go` ＋ `0030` ＋ `/admin/dispatch*` | P1 與 X-04 共用的同一個煞車 |
+| 停派送開關 | `internal/trial/execution/halt.go` ＋ `0030` ＋ `/admin/dispatch*` | P1 與 X-04 共用的同一個煞車 |
 
 ### 1.9 程式面尚缺（十二項，不需要任何新決策）
 
