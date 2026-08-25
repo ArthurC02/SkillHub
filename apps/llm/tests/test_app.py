@@ -262,6 +262,26 @@ def test_match_reasons_drops_ids_that_were_not_asked_about():
     assert response.json()["reasons"] == []
 
 
+def test_match_reasons_drops_a_candidate_whose_reason_is_blank():
+    """A blank reason is not a reason. It used to pass the `skill_id in wanted`
+    half of the same filter and reach Go, which labels whatever arrives here as
+    `model`-sourced (DISC-002 provenance) — an empty sentence shown to the user
+    as a recommendation the platform generated, when it generated nothing. Go's
+    template reason is the honest answer, and it only fires on an absence.
+    """
+    body = (
+        '{"reasons": [{"skill_id": "s1", "reason": ""}, '
+        '{"skill_id": "s2", "reason": "it cleans csv"}]}'
+    )
+    with _stub_chat(body):
+        response = client.post(
+            "/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES}
+        )
+
+    assert response.status_code == 200
+    assert [r["skill_id"] for r in response.json()["reasons"]] == ["s2"]
+
+
 def test_match_reasons_reports_provider_failure_as_502():
     """Go's degradation path keys off the status code, so it has to be 502."""
     with _raising_chat(RuntimeError("gateway down")):
@@ -458,7 +478,10 @@ def test_match_reasons_fences_package_supplied_summaries():
             "/match-reasons",
             json={
                 "query": "read my invoices",
-                "candidates": [{"skill_id": "s1", "name": "n", "summary": INJECTION}],
+                # Every one of the three is package-supplied, and only the
+                # summary had a test: the M-audit sweep deleted _scrub() from
+                # skill_id and name and all 126 stayed green.
+                "candidates": [{"skill_id": INJECTION, "name": INJECTION, "summary": INJECTION}],
             },
         )
 
@@ -487,3 +510,35 @@ def test_embed_success():
     assert body["model"] == "text-embedding-3-small"
     assert body["dimensions"] == 1536
     assert len(body["embeddings"]) == 2
+
+
+def test_embed_rejects_vectors_of_the_wrong_dimension():
+    """The right NUMBER of vectors at the wrong LENGTH is still malformed.
+
+    `len(vectors) == len(req.texts)` catches an empty envelope one clause
+    earlier, so the dimension clause had no test of its own: a provider that
+    quietly changes model or dimension would write 768-dimension vectors into a
+    1536-dimension pgvector column and degrade the search leg with no error
+    anywhere (ADR-013, PDM-003).
+    """
+    with _stub_embeddings([_embedding([0.1] * 768)]):
+        response = client.post("/embed", json={"texts": ["hello"]})
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "embedding provider returned malformed output"}
+
+
+def test_embed_rejects_an_item_with_no_embedding_field():
+    """A missing `.embedding` is a 502, not an uncaught 500.
+
+    The except clause is the only thing separating them, and nothing exercised
+    it: `data: []` never enters the comprehension and the happy path is
+    well-formed. Go degrades search to FTS-only on 502 and does not on 500, so
+    which status code this raises decides whether a broken provider envelope
+    degrades search gracefully or errors it.
+    """
+    with _stub_embeddings([SimpleNamespace(index=0)]):
+        response = client.post("/embed", json={"texts": ["hello"]})
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "embedding provider returned malformed output"}

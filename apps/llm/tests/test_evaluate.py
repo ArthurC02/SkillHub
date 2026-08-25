@@ -528,8 +528,11 @@ def test_duplicate_proposals_collapse_without_dropping_supported_categories(capt
         json.dumps(
             {
                 "suggestions": [
-                    base,
+                    # The padded one FIRST, so the kept proposal is the one that
+                    # arrived with whitespace: collapsing it into the clean copy
+                    # would have hidden whether the strip is written back.
                     {**base, "problem": f"  {base['problem']}  "},
+                    base,
                     {**base, "category": "runtime", "problem": "缺少 pandoc。"},
                 ]
             }
@@ -539,6 +542,9 @@ def test_duplicate_proposals_collapse_without_dropping_supported_categories(capt
     suggestions = client.post("/suggest-improvements", json=IMPROVE_REQUEST).json()["suggestions"]
 
     assert [s["category"] for s in suggestions] == ["skill", "runtime"]
+    # The strip decides the dedup key AND what the user reads; only the first
+    # of those was asserted, so dropping the write-back left the suite green.
+    assert suggestions[0]["problem"] == base["problem"]
 
 
 @pytest.mark.parametrize(
@@ -554,6 +560,12 @@ def test_duplicate_proposals_collapse_without_dropping_supported_categories(capt
         {"problem": "x" * (evaluate.MAX_PROBLEM + 1)},
         {"evidence": "x" * (evaluate.MAX_EVIDENCE + 1)},
         {"expected_impact": "x" * (evaluate.MAX_EXPECTED_IMPACT + 1)},
+        # 02:EVAL-002 「每項建議至少包含…」: every cap above had a negative
+        # case and no blank one did. A proposal whose expected_impact is
+        # whitespace reaches the user as an improvement that says nothing about
+        # what it improves.
+        {"expected_impact": "   "},
+        {"problem": "   "},
     ],
 )
 def test_unapplicable_or_oversized_proposals_are_dropped_not_rewritten(capture, change):
