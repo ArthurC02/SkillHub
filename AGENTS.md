@@ -51,7 +51,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019（Proposed）**，頂層收納由 **ADR-0
 | 資料 | PostgreSQL 中心（交易、FTS + pgvector、佇列、Trace 分割表）＋受管 S3 相容物件儲存；核心元件容器化自架（E1） | ADR-018 |
 | 搜尋 | 混合檢索（向量腿承載跨語言召回，FTS＋RRF 為召回覆蓋）＋索引時 LLM 增強（摘要與任務範例句為必要項） | ADR-013 |
 | Agent Runtime | Claude Agent SDK，版本以 digest ＋ lockfile 釘選，**最終事實來源是 image digest**（ADR-023 決策 1；版本字串釘在 `infra/images/runtime-agent-sdk/Dockerfile` 的 `ARG CLAUDE_AGENT_SDK_VERSION`，**不在 `tools/toolchain.yaml`**——那個檔沒有這一項）；升級必須重跑四項實測，靜默失效不得以推理帶過 | ADR-023 |
-| 身分與 Session | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | ADR-020 |
+| 身分與 Session | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | ADR-020（Proposed） |
 | Sandbox 隔離 | gVisor 基線（`systrap` 平台，不需巢狀虛擬化），獨立 VM 池，沙箱層 nftables default-deny ＋固定 DNS（不部署 L7 Proxy） | ADR-015、005、022 |
 | Runtime Image | 自建映像發佈至 **GHCR**，SBOM 與漏洞掃描以 attestation 隨 digest 保存；過不了門檻的映像到不了 registry | ADR-022、`03` SBX-011 |
 | 模型出口 | LiteLLM Proxy（唯一模型閘道，每 Run 短效 Virtual Key） | ADR-017 |

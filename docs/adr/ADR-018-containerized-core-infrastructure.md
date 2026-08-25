@@ -122,8 +122,8 @@ DOKS（控制平面免費）或自管 K8s，CNPG 管理 PostgreSQL primary + sta
 ## 待決策
 
 - **編排層取 docker compose 或 k3s 單機**（兩者皆在 E1 範圍內；k3s 較接近 E2 的遷移路徑，compose 較簡單）。
-- **是否採 Hetzner**——上方為主推，但濫用政策風險的接受與否是產品負責人決定；不接受則走 DO 退路。
+- ~~**是否採 Hetzner**——上方為主推，但濫用政策風險的接受與否是產品負責人決定；不接受則走 DO 退路。~~ → **已回填（2026-08-25 對帳查證，答案成立於 2026-08-16）**：[ADR-022](./ADR-022-sandbox-deployment-topology-and-security-thresholds.md)（Accepted）逐字寫著「**本 ADR 不重開 ADR-018 的平台選擇**……Hetzner Cloud 都是既有決策」，並以具體機型編列預算（強制條件 6 的 **CX33** $10.38／月那筆、驗收 Suite 2 要求的 **CCX23** 級節點）；[ADR-005](./ADR-005-self-hosted-sandbox-baseline.md) 待決策亦已回填為「平台由 ADR-018 **選定**（Hetzner Cloud）」。**兩份 Accepted ADR 都當它已定，而本行仍寫著它是開放的**——先落地在後續文件、才回頭補這一行，是本次更正的內容。上方第 2 節的 DO 退路**不刪除**：它自此是退出路徑，不是尚未挑完的選項。**仍缺的是形式不是實質**——沒有任何文件記下負責人對濫用政策風險的明示接受，決策是以「後續 ADR 直接花這筆錢」的方式成立的；要不要補一次簽署，屬 [`05` 待裁定清單](../plans/05-pending-rulings.md)，不在本 ADR 內回答。
 - **Hetzner Cloud Volume 單價**與 **DO Block Storage 單價**尚未逐項查證（影響 E2 的 CNPG PVC 成本試算）。
 - O11y 受管後端選擇與免費額度評估（自 ADR-014 承接，未回答）。
-- LiteLLM 與主 PostgreSQL 共用實例或獨立小實例（自 ADR-017 承接，未回答）。
+- ~~LiteLLM 與主 PostgreSQL 共用實例或獨立小實例（自 ADR-017 承接，未回答）。~~ → **已回填（2026-08-25 對帳查證）：取「共用實例、獨立邏輯 database」。** 承接來源 [ADR-017](./ADR-017-model-gateway-and-llm-observability.md) 待決策早已回填同一條答案，程式也在：`infra/compose/docker-compose.yml` 的 `litellm` 服務 `DATABASE_URL` 指向同一個 `postgres` 服務的 `litellm` database（理由逐字寫在該檔：migration 不得互相波及）。**「未回答」是承接當下的狀態，不是現況**——問題在來源那邊被回答時，承接它的這一份沒有跟著更新。
 - E1 的部署與設定管理方式（IaC 工具、機密注入路徑）——Sandbox 節點的 IaC 要求見 ADR-015，控制平面節點的對應作法尚未決定。

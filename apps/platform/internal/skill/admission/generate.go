@@ -150,19 +150,25 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 		return GenerateResult{}, ErrGenerateTooLong
 	}
 
-	// One generation per workspace at a time. It is the only brake that exists on
-	// how MANY generations a session can start: GENERATE_QUOTA is off, the invite
-	// list is empty in the shipped config, no rate limiter exists anywhere in this
-	// service, and the allowance — when it is on — reads a live count that
+	// One generation per workspace at a time. It bounds CONCURRENCY and not rate:
+	// GENERATE_QUOTA is `off` in the shipped config, the invite list is empty
+	// there too, and the allowance — when it is on — reads a live count that
 	// concurrent callers all see the same value of. Without this one session can
 	// hold an unbounded number of paid calls open at once, and they all draw on
 	// the SHARED gateway key: exhausting it stops search enrichment and every
 	// LLM judge too, because those use the same key.
 	//
+	// It is no longer the only brake, and this comment used to say it was: 403b385
+	// wrapped POST /skills/generate in limited() (router.go), so the sequential
+	// loop this could never stop is now stopped by the per-IP token bucket that
+	// the sentence here claimed did not exist anywhere in the service. Neither
+	// replaces the other — the bucket counts requests over time, this counts them
+	// at one instant, and a limiter can also be turned off with RATE_LIMIT=off.
+	//
 	// ponytail: in-process, so it bounds one API replica and not a fleet. That is
 	// the right size for today (one cmd/api) and the wrong size the day there are
-	// two; the durable version is a rate limit at the edge (NFR-001 clause 5),
-	// tracked in 04. It is a brake, not a quota — the quota is policy's.
+	// two; the durable version is a rate limit at the edge, tracked in 04. It is
+	// a brake, not a quota — the quota is policy's.
 	if !s.holdGenerateSlot(ws.ID) {
 		return GenerateResult{}, ErrGenerateInFlight
 	}
