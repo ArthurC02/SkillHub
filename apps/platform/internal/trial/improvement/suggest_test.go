@@ -10,12 +10,15 @@ package eval
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/json"
 	"io/fs"
+	"log/slog"
 	"strings"
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -312,5 +315,128 @@ func TestPatchingIsDeterministicForTheSameInput(t *testing.T) {
 	if !bytes.Equal(first, second) {
 		t.Error("two identical applications produced different archives, so INGEST-005's " +
 			"content-hash dedupe would never recognise a re-application")
+	}
+}
+
+// --- the proposal counters (04 丙-38) -------------------------------------------
+
+// stubSuggester answers with a fixed response, so a test can decide exactly what
+// the drop rules are given to chew on.
+type stubSuggester struct {
+	resp llmclient.SuggestImprovementsResponse
+}
+
+func (s stubSuggester) SuggestImprovements(
+	context.Context, llmclient.SuggestImprovementsRequest,
+) (*llmclient.SuggestImprovementsResponse, error) {
+	r := s.resp
+	return &r, nil
+}
+
+// captureLogs redirects the default logger for one test.
+func captureLogs(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &buf
+}
+
+// findRecord returns the one log record with this message, failing if there is
+// not exactly one.
+func findRecord(t *testing.T, buf *bytes.Buffer, msg string) map[string]any {
+	t.Helper()
+	var found []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		if line == "" {
+			continue
+		}
+		var rec map[string]any
+		if err := json.Unmarshal([]byte(line), &rec); err != nil {
+			t.Fatalf("log line is not JSON: %q", line)
+		}
+		if rec["msg"] == msg {
+			found = append(found, rec)
+		}
+	}
+	if len(found) != 1 {
+		t.Fatalf("want exactly one %q record, got %d in:\n%s", msg, len(found), buf.String())
+	}
+	return found[0]
+}
+
+// The counters have to be emitted on the all-clear too.
+//
+// This is the case the old code could not express: every drop was a slog.Warn
+// and nothing was logged when nothing was dropped, so "0 dropped" and "this
+// never ran" produced identical output — and EVAL-002's acceptance-rate baseline
+// needs the denominator, which is exactly what the silent case throws away.
+func TestTheProposalCountersAreEmittedEvenWhenNothingWasDropped(t *testing.T) {
+	const excerpt = "bash exited 1 while writing output.xlsx"
+	newVerdict := func() verdict {
+		return verdict{overall: OverallNotMet, findings: []Finding{{
+			Category: CategoryEffect, Severity: SeverityWarning, Message: "needs work",
+			Evidence: []EvidenceRef{{Kind: KindAgentOutput, Excerpt: excerpt, Available: true}},
+		}}}
+	}
+
+	for _, tc := range []struct {
+		name        string
+		suggestions []llmclient.ImprovementProposal
+		want        map[string]float64
+	}{{
+		// Nothing came back, so nothing was dropped. The line still has to say so.
+		name: "all clear",
+		want: map[string]float64{
+			"proposed": 0, "stored": 0, "dropped_no_evidence": 0,
+			"dropped_unstorable": 0, "dropped_write_failed": 0, "dropped_over_cap": 0,
+		},
+	}, {
+		// A cited proposal in a class this platform cannot act on: it clears the
+		// evidence rule and is refused by the value domain, which is the drop the
+		// counters must attribute correctly rather than lump together.
+		name: "one refused before storage",
+		suggestions: []llmclient.ImprovementProposal{{
+			Category: "mcp", Problem: "remote MCP would help", Evidence: excerpt,
+			TargetPath: "SKILL.md", ProposedContent: "new", ExpectedImpact: "better",
+		}},
+		want: map[string]float64{
+			"proposed": 1, "stored": 0, "dropped_no_evidence": 0,
+			"dropped_unstorable": 1, "dropped_write_failed": 0, "dropped_over_cap": 0,
+		},
+	}, {
+		// The 0823 shape: the model wrote prose the platform cannot find in any
+		// excerpt it minted.
+		name: "one uncitable",
+		suggestions: []llmclient.ImprovementProposal{{
+			Category: "skill", Problem: "the description is vague",
+			Evidence:   "the model is quite sure something went wrong somewhere",
+			TargetPath: "SKILL.md", ProposedContent: "new", ExpectedImpact: "better",
+		}},
+		want: map[string]float64{
+			"proposed": 1, "stored": 0, "dropped_no_evidence": 1,
+			"dropped_unstorable": 0, "dropped_write_failed": 0, "dropped_over_cap": 0,
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := captureLogs(t)
+			s := &Service{Suggester: stubSuggester{resp: llmclient.SuggestImprovementsResponse{
+				Suggestions: tc.suggestions, Model: "test", PromptVersion: "test",
+			}}}
+			s.suggest(context.Background(), material{}, gen.Evaluation{}, newVerdict())
+
+			rec := findRecord(t, buf, "improvement proposals")
+			for key, want := range tc.want {
+				got, ok := rec[key].(float64)
+				if !ok {
+					t.Errorf("%s is missing from the counters: %v", key, rec)
+					continue
+				}
+				if got != want {
+					t.Errorf("%s = %v, want %v", key, got, want)
+				}
+			}
+		})
 	}
 }

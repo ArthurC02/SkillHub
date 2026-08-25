@@ -65,6 +65,14 @@ func newGenerateStub(t *testing.T, answers ...map[string]any) *generateStub {
 			"skill":          stub.answers[i],
 			"model":          "gpt-5.4-mini",
 			"prompt_version": "generate-skill/v1",
+			// A priced call, because 04 丙-53 needs a sample of what generation
+			// costs and the successes are most of it. `cost_source` matters: only
+			// a gateway price is kept, so a stub that omitted it would exercise
+			// the discard branch and prove nothing.
+			"usage": map[string]any{
+				"prompt_tokens": 1200, "completion_tokens": 800,
+				"cost_usd": 0.0123, "cost_source": "gateway",
+			},
 		})
 	}))
 	t.Cleanup(stub.Close)
@@ -98,6 +106,22 @@ func TestGeneratedSkillLandsAsAVersionWithItsOwnProvenance(t *testing.T) {
 	}
 	if res.Attempts != 1 || stub.calls != 1 {
 		t.Errorf("attempts = %d, calls = %d, want 1 and 1", res.Attempts, stub.calls)
+	}
+
+	// 04 丙-53 asks what a generation costs before one is run, and the honest
+	// answer comes from a distribution of what past ones cost. Failures record
+	// theirs on the skill.generate.failed row; a SUCCESS has no row of its own by
+	// design (ADR: a generation that succeeds is one import, one history), so its
+	// cost rides on the skill.import row or evaporates. It evaporated until now.
+	var cost float64
+	if err := pool.QueryRow(context.Background(), `
+		SELECT (metadata->>'cost_usd')::float8 FROM audit_events
+		WHERE action = 'skill.import' AND resource_id = $1`, res.Version.ID,
+	).Scan(&cost); err != nil {
+		t.Fatalf("the successful generation's audit row carries no cost: %v", err)
+	}
+	if cost != 0.0123 {
+		t.Errorf("cost_usd = %v, want 0.0123 (what the gateway charged)", cost)
 	}
 
 	// The three columns 0037 added, read back from the row rather than from the

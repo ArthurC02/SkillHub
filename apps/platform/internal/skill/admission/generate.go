@@ -114,6 +114,47 @@ type GenerateResult struct {
 	// show provenance without re-reading the source row.
 	Model         string
 	PromptVersion string
+	// CostUSD is what the gateway charged for this generation, summed over its
+	// attempts, and nil when the gateway priced nothing.
+	//
+	// Nil is not zero. 02:GEN-001 wants a cost estimate before generation and
+	// 05 R-10 concluded that what it is waiting for is a batch of generations
+	// that each recorded their own cost — round B recorded an average, and
+	// 02:PDM-005 §2.2 forbids printing an average as an estimate because one
+	// long description can cost several times another. A zero written where the
+	// gateway reported nothing would enter that distribution as a real
+	// observation and drag it, which is worse than a gap.
+	CostUSD *float64
+	// PromptTokens and CompletionTokens are the same total in the unit that
+	// survives a deployment whose gateway prices nothing at all.
+	PromptTokens     int64
+	CompletionTokens int64
+}
+
+// addUsage folds one gateway call's reported usage into the generation's total.
+//
+// A generation is up to two calls (generateMaxAttempts), and what it cost is
+// what all of them cost — the retry is not free and must not be invisible.
+//
+// Cost is taken only when the gateway itself priced the call: `cost_source` is
+// how apps/llm says whether the number came from LiteLLM or from something it
+// worked out, and eval's suggest leg already drops a cost from any other source
+// before it stores one. Same rule here, so the two legs' numbers mean the same
+// thing when somebody puts them side by side.
+func (r *GenerateResult) addUsage(u *llmclient.GatewayUsage) {
+	if u == nil {
+		return
+	}
+	r.PromptTokens += u.PromptTokens
+	r.CompletionTokens += u.CompletionTokens
+	if u.CostUSD == nil || u.CostSource != "gateway" {
+		return
+	}
+	total := *u.CostUSD
+	if r.CostUSD != nil {
+		total += *r.CostUSD
+	}
+	r.CostUSD = &total
 }
 
 // GenerateSkill writes one Skill from a task description and imports it
@@ -186,7 +227,8 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 		if errors.Is(err, policy.ErrAllowanceUnavailable) {
 			failure = FailureUnavailable
 		}
-		s.auditGenerateFailure(ctx, ws, task, 0, map[string]any{
+		// GenerateResult{}: refused before the gateway, so no attempt and no cost.
+		s.auditGenerateFailure(ctx, ws, task, GenerateResult{}, map[string]any{
 			"failure": failure,
 			"reason":  reason,
 		})
@@ -194,6 +236,27 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 	}
 
 	var out GenerateResult
+	// One line per generation that reached the gateway, whatever became of it.
+	// The audit row below covers the failures; this covers the successes, which
+	// are the ones 04 丙-53's distribution is mostly made of and the ones that
+	// currently have nowhere durable to land (see auditGenerateFailure).
+	//
+	// Deferred rather than written at each return: there are five of them, and a
+	// counter that only some paths emit is the defect 04 丙-38 was about.
+	defer func() {
+		if out.Attempts == 0 {
+			return
+		}
+		attrs := []any{
+			"attempts", out.Attempts, "model", out.Model,
+			"prompt_tokens", out.PromptTokens, "completion_tokens", out.CompletionTokens,
+		}
+		// Omitted rather than logged as zero, for the reason CostUSD is a pointer.
+		if out.CostUSD != nil {
+			attrs = append(attrs, "cost_usd", *out.CostUSD)
+		}
+		slog.Info("generate: model usage", attrs...)
+	}()
 	for attempt := 1; attempt <= generateMaxAttempts; attempt++ {
 		out.Attempts = attempt
 
@@ -213,17 +276,20 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 			// the same answer (ADR-047 決策 2). Neither is a gateway refusal,
 			// for the reason SuggestImprovements already gives — a gateway that
 			// refused this input refuses it again.
-			s.auditGenerateFailure(ctx, ws, task, attempt, map[string]any{
+			s.auditGenerateFailure(ctx, ws, task, out, map[string]any{
 				"failure":   FailureGateway,
 				"truncated": errors.Is(err, llmclient.ErrGenerateTruncated),
 			})
 			return out, err
 		}
 		out.Model, out.PromptVersion = gen.Model, gen.PromptVersion
+		// Before anything downstream can fail: a call that came back was paid for
+		// whether or not what it returned can be packaged.
+		out.addUsage(gen.Usage)
 
 		data, err := buildGeneratedPackage(gen.Skill)
 		if err != nil {
-			s.auditGenerateFailure(ctx, ws, task, attempt, map[string]any{"failure": FailureUnpackageable})
+			s.auditGenerateFailure(ctx, ws, task, out, map[string]any{"failure": FailureUnpackageable})
 			return out, err
 		}
 
@@ -233,13 +299,18 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 			TaskDescription:        &desc,
 			GeneratorModel:         &model,
 			GeneratorPromptVersion: &promptVersion,
+			// Read after addUsage above, so a retried generation carries what
+			// both attempts cost rather than what the last one did.
+			CostUSD:          out.CostUSD,
+			PromptTokens:     out.PromptTokens,
+			CompletionTokens: out.CompletionTokens,
 		})
 		if err != nil {
 			// A refused generation is still a paid one, and 02:GEN-003 asks for a
 			// record of it. The name collision arrives here rather than as a
 			// blocked report, so without this the one failure a user can actually
 			// act on was the one that left nothing behind.
-			s.auditGenerateFailure(ctx, ws, task, attempt, map[string]any{
+			s.auditGenerateFailure(ctx, ws, task, out, map[string]any{
 				"failure":   FailureRejected,
 				"collision": errors.Is(err, ErrGeneratedNameCollision),
 			})
@@ -255,7 +326,7 @@ func (s *Service) GenerateSkill(ctx context.Context, ws identity.Workspace, task
 		// so there is no half-made version to clean up (02:GEN-003 「不得留下一個
 		// 半成品版本」).
 		if !shouldRetry(attempt, res.Report) {
-			s.auditGenerateFailure(ctx, ws, task, attempt, map[string]any{
+			s.auditGenerateFailure(ctx, ws, task, out, map[string]any{
 				"failure": FailureBlocked,
 				// Codes and nothing else. A finding's Message never carries the
 				// matched value (skillpkg.go:909) and this must not become the
@@ -426,9 +497,12 @@ func buildGeneratedPackage(g llmclient.GeneratedSkill) ([]byte, error) {
 // to the skill_sources row, under NFR-002 deletion; audit rows are kept for 400
 // days under a different rule, and one copy under each is a retention promise
 // nobody made (ADR-029 decision 3 draws the same line for analytics).
-func (s *Service) auditGenerateFailure(ctx context.Context, ws identity.Workspace, task string, attempt int, meta map[string]any) {
-	meta["attempts"] = attempt
+func (s *Service) auditGenerateFailure(
+	ctx context.Context, ws identity.Workspace, task string, out GenerateResult, meta map[string]any,
+) {
+	meta["attempts"] = out.Attempts
 	meta["task_description_chars"] = len([]rune(task))
+	usageMeta(meta, out.CostUSD, out.PromptTokens, out.CompletionTokens)
 	// WithoutCancel: the commonest failure is the gateway call running out of the
 	// caller's deadline, and that same dead ctx would take the record with it.
 	//
@@ -447,6 +521,34 @@ func (s *Service) auditGenerateFailure(ctx context.Context, ws identity.Workspac
 		Metadata:     meta,
 	}); err != nil {
 		slog.Error("generate: failure record not written", "error", err)
+	}
+}
+
+// usageMeta adds what a model call cost to an audit row's metadata.
+//
+// Admissible under iron rule 11 by the same reading its own package doc gives:
+// audit metadata carries identifiers and outcome, never package content, prompts
+// or secrets. A token count and a dollar amount are neither — they say nothing
+// about what the user asked for or what the model wrote, which is why
+// task_description_chars is already here and the description itself is not.
+//
+// It is the durable half of 04 丙-53, and it is deliberately the ONLY place the
+// rule lives. Both halves of the sample go through it: a failed generation via
+// auditGenerateFailure, a successful one via the ordinary skill.import row
+// importZip writes. Two copies of "absent means absent" would eventually
+// disagree, and the disagreement would look like a costing anomaly rather than
+// like the bug it is.
+//
+// An unreported cost leaves the key out. A row saying `cost_usd: 0` is a claim
+// that the call was free; a row with no such key is the absence it actually is,
+// and the reader of a distribution has to be able to tell those apart.
+func usageMeta(meta map[string]any, cost *float64, prompt, completion int64) {
+	if cost != nil {
+		meta["cost_usd"] = *cost
+	}
+	if prompt > 0 || completion > 0 {
+		meta["prompt_tokens"] = prompt
+		meta["completion_tokens"] = completion
 	}
 }
 

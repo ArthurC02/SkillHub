@@ -154,6 +154,18 @@ type sourceMeta struct {
 	TaskDescription        *string
 	GeneratorModel         *string
 	GeneratorPromptVersion *string
+	// What the generation cost, carried here only so the successful half has a
+	// durable home (04 丙-53). Until this existed the sample was made entirely
+	// of FAILURES — every priced success evaporated when generateOnce returned —
+	// and a cost estimate built from failures alone is biased in a direction
+	// nobody can correct for: a generation that failed unpackageable paid for
+	// one call, a success may have paid for two.
+	//
+	// Not persisted as a column: the audit row is the record (CORE-008), and a
+	// number on skill_sources would be a second copy that can disagree with it.
+	CostUSD          *float64
+	PromptTokens     int64
+	CompletionTokens int64
 }
 
 // UploadZip validates data as an Agent Skills package and, if it passes,
@@ -340,9 +352,12 @@ func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []b
 	if err != nil {
 		return Result{}, err
 	}
-	if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, map[string]any{
-		"source_type": src.Type,
-	}); err != nil {
+	importMeta := map[string]any{"source_type": src.Type}
+	// Absent for uploads and git imports, which cost nothing to admit. The same
+	// absence-is-not-zero rule the failure rows use, applied from one place so
+	// the two halves of the sample cannot drift apart.
+	usageMeta(importMeta, src.CostUSD, src.PromptTokens, src.CompletionTokens)
+	if err := auditVersion(ctx, tx, ws, audit.ActionSkillImport, res, importMeta); err != nil {
 		return Result{}, err
 	}
 	return res, tx.Commit(ctx)

@@ -300,3 +300,127 @@ func TestAnUploadCollidingWithAGeneratedSkillIsRefusedNotBroken(t *testing.T) {
 		t.Errorf("the refusal does not tell the user what happened: %s", body)
 	}
 }
+
+// --- what one generation cost (04 丙-53 / 05 R-10) -------------------------------
+
+// gatewayReturning serves one generate-skill response verbatim.
+func gatewayReturning(t *testing.T, body string) *Service {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	return &Service{LLM: &llmclient.Client{BaseURL: srv.URL}}
+}
+
+// The cost recorded for a generation is the cost the gateway reported, and an
+// unreported cost stays unreported.
+//
+// 05 R-10 says the estimate GEN-001 owes the user is waiting on a batch of
+// generations that each recorded their own cost — round B kept only an average,
+// and 02:PDM-005 §2.2 forbids printing an average as an estimate. A zero written
+// where the gateway said nothing would be the same defect wearing a number: it
+// would enter the distribution as an observation that a generation was free.
+func TestAGenerationRecordsTheCostTheGatewayReported(t *testing.T) {
+	const skill = `"skill":{"name":"a","description":"b","body":"c"},` +
+		`"model":"m","prompt_version":"v"`
+	cents := func(f float64) *float64 { return &f }
+
+	for _, tc := range []struct {
+		name       string
+		usage      string
+		wantCost   *float64
+		wantPrompt int64
+	}{{
+		name:       "priced by the gateway",
+		usage:      `,"usage":{"prompt_tokens":1200,"completion_tokens":800,"cost_usd":0.0123,"cost_source":"gateway"}`,
+		wantCost:   cents(0.0123),
+		wantPrompt: 1200,
+	}, {
+		// Nothing reported at all. The generation still happened and still cost
+		// something; what the platform knows about it is nothing, and nothing is
+		// what it must record.
+		name: "no usage reported",
+	}, {
+		// Tokens but no price: the deployment's gateway does not price calls. The
+		// tokens are still a real observation and are kept.
+		name:       "tokens without a price",
+		usage:      `,"usage":{"prompt_tokens":1200,"completion_tokens":800,"cost_usd":null,"cost_source":""}`,
+		wantPrompt: 1200,
+	}, {
+		// A number the gateway did not produce is dropped, the same rule eval's
+		// suggest leg applies before it stores a usage row — otherwise the two
+		// legs' costs mean different things in the same distribution.
+		name:       "priced by something other than the gateway",
+		usage:      `,"usage":{"prompt_tokens":1200,"completion_tokens":800,"cost_usd":0.0123,"cost_source":"estimated"}`,
+		wantPrompt: 1200,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := gatewayReturning(t, "{"+skill+tc.usage+"}")
+			resp, err := svc.generateOnce(context.Background(), "把掃描的單據整理成表格。")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var out GenerateResult
+			out.Attempts = 1
+			out.addUsage(resp.Usage)
+
+			switch {
+			case tc.wantCost == nil && out.CostUSD != nil:
+				t.Errorf("an unreported cost became %v; absence is not zero", *out.CostUSD)
+			case tc.wantCost != nil && out.CostUSD == nil:
+				t.Errorf("the gateway reported %v and nothing was recorded", *tc.wantCost)
+			case tc.wantCost != nil && *out.CostUSD != *tc.wantCost:
+				t.Errorf("cost = %v, want %v", *out.CostUSD, *tc.wantCost)
+			}
+			if out.PromptTokens != tc.wantPrompt {
+				t.Errorf("prompt_tokens = %d, want %d", out.PromptTokens, tc.wantPrompt)
+			}
+
+			// And what reaches the durable row says the same thing. A key that is
+			// absent is the only way an audit reader can tell "free" from
+			// "unknown", so an unpriced call must not leave a cost_usd behind.
+			meta := map[string]any{}
+			usageMeta(meta, out.CostUSD, out.PromptTokens, out.CompletionTokens)
+			got, present := meta["cost_usd"]
+			if (tc.wantCost != nil) != present {
+				t.Fatalf("cost_usd present = %v in %v, want %v", present, meta, tc.wantCost != nil)
+			}
+			if present && got != *tc.wantCost {
+				t.Errorf("audit cost_usd = %v, want %v", got, *tc.wantCost)
+			}
+		})
+	}
+}
+
+// A generation is up to two gateway calls, and what it cost is what both cost.
+// The retry is the difference ADR-047 決策 1 bought at a price, and a total that
+// counted only the last attempt would hide exactly that price.
+func TestARetriedGenerationCostsWhatBothAttemptsCost(t *testing.T) {
+	first := 0.01
+	second := 0.02
+	var out GenerateResult
+	out.addUsage(&llmclient.GatewayUsage{PromptTokens: 100, CompletionTokens: 50,
+		CostUSD: &first, CostSource: "gateway"})
+	out.addUsage(&llmclient.GatewayUsage{PromptTokens: 100, CompletionTokens: 50,
+		CostUSD: &second, CostSource: "gateway"})
+
+	if out.CostUSD == nil || *out.CostUSD != first+second {
+		t.Errorf("cost = %v, want %v", out.CostUSD, first+second)
+	}
+	if out.PromptTokens != 200 || out.CompletionTokens != 100 {
+		t.Errorf("tokens = %d/%d, want 200/100", out.PromptTokens, out.CompletionTokens)
+	}
+
+	// An attempt the gateway priced plus one it did not is still worth what the
+	// priced one cost. Dropping the total because one leg is unknown would throw
+	// away a real observation; adding a zero for it would invent one.
+	out.addUsage(&llmclient.GatewayUsage{PromptTokens: 100, CompletionTokens: 50})
+	if out.CostUSD == nil || *out.CostUSD != first+second {
+		t.Errorf("an unpriced attempt changed the total: %v", out.CostUSD)
+	}
+	if out.PromptTokens != 300 {
+		t.Errorf("prompt_tokens = %d, want 300", out.PromptTokens)
+	}
+}
