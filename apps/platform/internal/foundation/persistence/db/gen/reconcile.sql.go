@@ -197,6 +197,61 @@ func (q *Queries) ListDatasetsClaimingObject(ctx context.Context, limit int32) (
 	return items, nil
 }
 
+const listDatasetsPastRetention = `-- name: ListDatasetsPastRetention :many
+SELECT id, workspace_id, object_key FROM datasets
+WHERE deleted_at IS NULL
+  AND expires_at <= now()
+ORDER BY expires_at
+LIMIT $1
+`
+
+type ListDatasetsPastRetentionRow struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+}
+
+// The third worklist in this file, and the one that should have been the first:
+// 0004 built `datasets_expires_at_idx` for a "retention sweep" in the same
+// breath as the comment that names it, and the sweep was never written. So the
+// column, the index and the sentence explaining the design were all here, and
+// the part that runs was not -- the same four-parts-minus-one shape as the audit
+// events and the run outputs, and the third row of the consent table to be
+// caught in it (04 丙-64).
+//
+// The user is told 90 days before they upload (`retention_days` on the upload
+// screen, testlab.DatasetRetention) and again in the consent form. Until this
+// statement existed the only DELETE that ever reached `datasets` was account
+// deletion, so a participant who never closed their account kept every file
+// they ever uploaded, forever, against a number the screen had already quoted
+// them.
+//
+// Deliberately the mirror of ListDatasetsClaimingObject above: that one is the
+// rows still inside the window, this one is the rows past it, and the two
+// predicates are exact complements on `expires_at` so a row cannot be in both
+// or in neither. `deleted_at IS NULL` on both, because a row the user already
+// deleted has had its object removed by a path with guards this sweep does not
+// carry.
+func (q *Queries) ListDatasetsPastRetention(ctx context.Context, limit int32) ([]ListDatasetsPastRetentionRow, error) {
+	rows, err := q.db.Query(ctx, listDatasetsPastRetention, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDatasetsPastRetentionRow
+	for rows.Next() {
+		var i ListDatasetsPastRetentionRow
+		if err := rows.Scan(&i.ID, &i.WorkspaceID, &i.ObjectKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRunOutputsPastRetention = `-- name: ListRunOutputsPastRetention :many
 SELECT id, workspace_id, object_key FROM artifacts
 WHERE kind = 'run_output'
@@ -275,6 +330,22 @@ WHERE id = $1 AND deleted_at IS NULL
 // upper bound of 丙-9 needs no change on any read path at all.
 func (q *Queries) MarkDatasetObjectLost(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, markDatasetObjectLost, id)
+	return err
+}
+
+const markDatasetPurged = `-- name: MarkDatasetPurged :exec
+UPDATE datasets SET deleted_at = now()
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+// Body-identical to MarkDatasetObjectLost below, and a separate statement on
+// purpose: that one means "the object was not there", this one means "we removed
+// it because it expired". Same column because every read path already filters on
+// deleted_at, and one shared statement would leave the two causes indistinguish-
+// able in a file whose whole job is telling them apart. Idempotent by predicate,
+// which is what lets the sweep be re-run safely (iron rule 9).
+func (q *Queries) MarkDatasetPurged(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markDatasetPurged, id)
 	return err
 }
 

@@ -19,6 +19,10 @@
 //	                               Run outputs whose expires_at has passed and
 //	                               mark the rows purged. Needs DATABASE_URL and
 //	                               object storage.
+//	maintenance purge-datasets     PDM-006 6 / SEC-006: remove the bytes behind
+//	                               uploaded datasets whose expires_at has passed
+//	                               and mark the rows deleted. Needs DATABASE_URL
+//	                               and object storage.
 //	maintenance check-sources      INGEST-010: probe recorded import source URLs
 //	                               and mark the ones that no longer resolve.
 //	                               Needs DATABASE_URL and network egress.
@@ -91,7 +95,7 @@ import (
 func main() {
 	if len(os.Args) != 2 {
 		slog.Error("usage: maintenance purge-accounts|purge-analytics|purge-audit|" +
-			"purge-run-artifacts|check-sources|rotate-partitions")
+			"purge-run-artifacts|purge-datasets|check-sources|rotate-partitions")
 		os.Exit(2)
 	}
 	ctx := context.Background()
@@ -113,6 +117,8 @@ func main() {
 		err = purgeAudit(ctx, pool)
 	case "purge-run-artifacts":
 		err = purgeRunArtifacts(ctx, pool)
+	case "purge-datasets":
+		err = purgeDatasets(ctx, pool)
 	case "rotate-partitions":
 		err = rotatePartitions(ctx, pool)
 	default:
@@ -123,6 +129,48 @@ func main() {
 		slog.Error("maintenance job failed", "job", os.Args[1], "error", err)
 		os.Exit(1)
 	}
+}
+
+// purgeDatasets is purgeRunArtifacts for the other file the user put there
+// themselves, and it reads no window either, for the same reason: the deadline
+// is on the row. `datasets.expires_at` is stamped at upload from
+// testlab.DatasetRetention, so a sweep taking its cutoff from an environment
+// variable would be a second definition of a date the upload screen has already
+// quoted to the person uploading.
+//
+// That symmetry is why there is no DATASET_RETENTION to fail closed on, and it
+// is worth saying plainly rather than leaving as an apparent omission: this job
+// deletes, and the thing that decides what it deletes is a column written months
+// earlier by a screen that told the user the number.
+//
+// 0004 built the index for this sweep and named it in a comment. Nothing ran it
+// until 2026-08-25, so the 90 days the upload screen and the consent form both
+// promise had never once been carried out (04 丙-64) -- the third row of the
+// same consent table to be caught the same way inside two days.
+func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
+	store, err := objstore.FromEnv()
+	if err != nil {
+		return err
+	}
+	svc := &testlab.Service{Pool: pool}
+	n, err := objreconcile.PurgeExpired(ctx, pool, store,
+		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+			rows, err := svc.ExpiredDatasetCandidates(ctx, limit)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]objreconcile.Candidate, len(rows))
+			for i, row := range rows {
+				out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
+			}
+			return out, nil
+		},
+		svc.MarkDatasetPurged, batch())
+	// Logged before the error is dealt with, like every other sweep here: a pass
+	// that failed part way still purged the rest, and the count is what tells an
+	// operator which case this was.
+	slog.Info("dataset purge complete", "datasets_purged", n)
+	return err
 }
 
 // rotatePartitions is this subcommand's composition root. Both partitioned

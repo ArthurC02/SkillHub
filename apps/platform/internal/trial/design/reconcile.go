@@ -34,6 +34,54 @@ func (s *Service) ClaimedReconcileCandidates(ctx context.Context, limit int32) (
 	return out, nil
 }
 
+// ExpiredDatasetCandidates lists uploaded datasets whose retention elapsed --
+// the worklist behind `maintenance purge-datasets`.
+//
+// 0004 created datasets_expires_at_idx for a "retention sweep" and wrote the
+// design down in the comment above it ("scans for expired rows rather than
+// scheduling at creation time, so a shortened retention policy applies to
+// already-stored data"). The sweep was never written. So the column existed, the
+// index existed, the reasoning existed, and for the whole life of the table the
+// only statement that ever deleted a dataset was account deletion -- a
+// participant who kept their account kept every file they had ever uploaded,
+// against a 90-day figure the upload screen had already quoted them
+// (DatasetRetention, surfaced as `retention_days`) and the consent form repeats.
+//
+// Which rows qualify is testlab's decision and stays here; when to scan is the
+// sweep's. Soft-deleted rows are not in it, for the reason run's half gives:
+// DeleteDataset already removed those bytes, behind guards this path does not
+// have.
+func (s *Service) ExpiredDatasetCandidates(ctx context.Context, limit int32) ([]ReconcileCandidate, error) {
+	if s == nil || s.Pool == nil {
+		return nil, errPersistenceNotConfigured
+	}
+	rows, err := gen.New(s.Pool).ListDatasetsPastRetention(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ReconcileCandidate, len(rows))
+	for i, row := range rows {
+		out[i] = ReconcileCandidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
+	}
+	return out, nil
+}
+
+// MarkDatasetPurged records that an expired dataset's bytes are gone.
+//
+// Separate from MarkDatasetObjectLost even though both statements set the same
+// column: that one means the object was missing when we looked, this one means
+// we removed it because its retention ran out. Collapsing them would make a file
+// whose entire purpose is telling those two apart unable to tell them apart.
+//
+// Takes the caller transaction so the owner write commits with whatever the
+// generic sweep records alongside it (iron rule 9).
+func (s *Service) MarkDatasetPurged(ctx context.Context, tx pgx.Tx, datasetID pgtype.UUID) error {
+	if s == nil || tx == nil {
+		return errPersistenceNotConfigured
+	}
+	return gen.New(tx).MarkDatasetPurged(ctx, datasetID)
+}
+
 // MarkDatasetObjectLost stops a dataset row claiming a file that is not in
 // storage any more (04 丙-9). It marks the row deleted rather than adding a
 // column: every read path that cares already filters on deleted_at, so
