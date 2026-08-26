@@ -13,6 +13,10 @@ on:
     paths:
       - 'infra/egress/**'
       - '.github/workflows/egress-allowlist.yml'
+      # The renderer is named for the same reason: the files under
+      # infra/egress/rendered/ are its output, so a change to the code that
+      # writes them is a change to the ruleset a node loads.
+      - 'tools/egress/render.py'
       # The checker moved to tools/ci/ and is now named in the filter: a change to
       # the assertion that nothing re-runs is a change nobody has tested. Free to
       # add here, unlike runtime-image.yml, because this workflow publishes nothing.
@@ -39,6 +43,15 @@ jobs:
           # accept a CIDR for as long as it did. No extra packages: pure asserts.
           python3 tools/ci/test_check_egress_allowlist.py
 
+      # infra/egress/rendered/ is generated, and generated files nobody diffs
+      # against their source are how a node comes to load a ruleset the
+      # allow-list does not describe. Same shape as `task gen:check`: render
+      # again and compare, never hand-merge.
+      - name: The rendered ruleset still matches the allow-list
+        run: |
+          python3 tools/egress/render.py --self-check
+          python3 tools/egress/render.py --check
+
       # ADR-022 Q3 change process, step 3. The threat model's own §3 says opening a
       # new egress destination requires updating it; this is that sentence with a
       # red light attached.
@@ -57,6 +70,12 @@ jobs:
             RANGE="HEAD~1..HEAD"
           fi
           CHANGED=$(git diff --name-only "$RANGE")
-          echo "$CHANGED" | grep -q '^infra/egress/' || exit 0
+          # The SOURCE file, not the tree. infra/egress/rendered/ is output of
+          # this same allow-list, so regenerating it opens no destination and
+          # has no threat model to update -- and a gate that fires on it teaches
+          # people this red light means nothing. The rendered files are not left
+          # unguarded: hand-editing one to open a hole is drift from
+          # allowlist.yaml, and the render check above is what sees that.
+          echo "$CHANGED" | grep -q '^infra/egress/allowlist\.yaml$' || exit 0
           echo "$CHANGED" | grep -q '^docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md$' \
-            || { echo "::error::changing infra/egress/ requires updating docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md in the same change (ADR-022 Q3 change process; threat model §3)"; exit 1; }
+            || { echo "::error::changing infra/egress/allowlist.yaml requires updating docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md in the same change (ADR-022 Q3 change process; threat model §3)"; exit 1; }
