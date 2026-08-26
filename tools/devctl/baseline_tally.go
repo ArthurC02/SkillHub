@@ -37,6 +37,7 @@ const baselineOwner = "docs/plans/mvp/m0/threat-model-and-sandbox-baseline.md"
 // edit the ADR discipline forbids.
 var baselineQuoters = []string{
 	"docs/plans/02-specifications-and-acceptance-criteria.md",
+	"docs/plans/03-work-items.md",
 }
 
 var (
