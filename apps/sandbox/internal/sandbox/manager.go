@@ -151,6 +151,9 @@ type Manager struct {
 	// deployment with no ingestion URL gets anyway.
 	sink    TraceSink
 	metrics *Metrics
+	// p02 is the resident P-02 probe (ADR-022 T10). Nil on a manager built
+	// without one, which is what every test that is not about P-02 gets.
+	p02 *P02Probe
 
 	mu    sync.Mutex
 	runs  map[string]*entry // provider_run_id -> entry
@@ -208,7 +211,90 @@ func (m *Manager) Capability(ctx context.Context) ProviderCapability {
 			// URL", and a build with no sink cannot keep it.
 			EventStreaming: m.sink != nil,
 		},
-		Availability: &Availability{ConcurrentRunSlots: free, Healthy: m.drv.Healthy(ctx)},
+		Availability: &Availability{
+			ConcurrentRunSlots: free,
+			// A node that cannot vouch for its own P-02 block takes itself out
+			// of rotation. `fail` is a breach and `unknown` is a probe that did
+			// not complete; neither is a node the scheduler should be handed
+			// untrusted code for, and `healthy` is the switch RUN-005 already
+			// reads, so no new scheduling path is needed for either.
+			Healthy: m.drv.Healthy(ctx) && m.p02Healthy(),
+		},
+		Security: m.securityCapability(),
+	}
+}
+
+// p02Healthy reports whether the node's own P-02 reading allows it to serve.
+//
+// `not_configured` serves. That is deliberate and it is the local dev provider:
+// a node nobody gave a forbidden-address list to has not failed a check, it was
+// never given one. Production refuses to START in that state (main), which is
+// where the asymmetry belongs - a node that is already running is not made
+// safer by a capability field, and one that never starts cannot be dispatched to.
+func (m *Manager) p02Healthy() bool {
+	if m.p02 == nil {
+		return true
+	}
+	switch m.p02.Result().State {
+	case P02Fail, P02Unknown:
+		return false
+	default:
+		return true
+	}
+}
+
+func (m *Manager) securityCapability() *SecurityCapability {
+	if m.p02 == nil {
+		return nil
+	}
+	r := m.p02.Result()
+	return &SecurityCapability{P02Probe: &r}
+}
+
+// WithP02 attaches the resident P-02 probe (ADR-022 T10) and starts it.
+//
+// The breach action is here rather than in the probe because only the Manager
+// owns the runs. T10 says a detected connection terminates the run; the probe
+// is not a run and the breach is a property of the node's wiring, so every live
+// sandbox on it is reaching the same place. Destroying them is the one action
+// available that is proportionate to that.
+func (m *Manager) WithP02(ctx context.Context, probe *P02Probe) *Manager {
+	m.p02 = probe
+	if probe == nil {
+		return m
+	}
+	prober, _ := m.drv.(EgressProber)
+	m.wg.Add(1)
+	go func() {
+		defer m.wg.Done()
+		probe.Run(ctx, prober, m.terminateEveryRun, m.log)
+	}()
+	return m
+}
+
+// terminateEveryRun is the node's own first action on a P-02 breach. It does not
+// wait for the platform to notice: the platform learns about this by polling
+// GET /capability, and between two polls is exactly the window in which
+// untrusted code is talking to the core database.
+func (m *Manager) terminateEveryRun(r P02Result) {
+	m.mu.Lock()
+	ids := make([]string, 0, len(m.runs))
+	for id := range m.runs {
+		ids = append(ids, id)
+	}
+	m.mu.Unlock()
+	for _, id := range ids {
+		// Destroy, not Cancel: cancel is a cooperative stop with a grace period,
+		// and a workload that has a route to the database is not one to
+		// negotiate a shutdown window with.
+		if err := m.Destroy(context.Background(), id); err != nil && m.log != nil {
+			m.log.Error("could not destroy a run after a P-02 breach",
+				"provider_run_id", id, "error", err)
+		}
+	}
+	if m.log != nil {
+		m.log.Error("P-02 breach: terminated every live run on this node",
+			"runs", len(ids), "detail", r.Detail)
 	}
 }
 
@@ -221,6 +307,20 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	}
 	if re := m.cfg.accept(req); re != nil {
 		return ProviderRun{}, false, re
+	}
+	// A node in P-02 breach refuses work, and this is a belt rather than the
+	// braces: the capability response already reports itself unhealthy and the
+	// scheduler stops sending. But `healthy` is polled and cached (Registry has
+	// a TTL), so a dispatch decided before the last reading can still arrive,
+	// and the whole point of this state is that the window matters.
+	if m.p02 != nil {
+		if r := m.p02.Result(); r.State == P02Fail {
+			return ProviderRun{}, false, &RunError{
+				Class:     ClassProvision,
+				Message:   "this node is refusing work: its P-02 probe reached an address a sandbox must not (" + r.Detail + ")",
+				Retryable: true,
+			}
+		}
 	}
 	hash := HashRequest(req)
 	key := req.RunID + "|" + fmt.Sprint(req.Attempt)

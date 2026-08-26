@@ -103,6 +103,57 @@ type ProviderCapability struct {
 		// explicit false takes a provider out of rotation.
 		Healthy *bool `json:"healthy"`
 	} `json:"availability"`
+	// Security is the one block here that carries a measurement rather than a
+	// configuration claim, and it is on this response because the sandbox
+	// provider contract is one way: every operation in sandbox-provider.yaml is
+	// the control plane calling the node, and the node has no channel to push
+	// an alert back. Polling this is the path that already exists.
+	Security *SecurityCapability `json:"security,omitempty"`
+}
+
+// SecurityCapability mirrors ProviderCapability.security in
+// contracts/openapi/sandbox-provider.yaml. Named rather than anonymous because
+// a test has to be able to build one: this side and apps/sandbox are separate
+// modules that agree only through that file, so the assertion that they still
+// do is a test constructing this shape by hand.
+type SecurityCapability struct {
+	P02Probe *P02ProbeReading `json:"p02_probe,omitempty"`
+}
+
+// P02ProbeReading is a node's own last answer to threat model P-02 (ADR-022 T10).
+type P02ProbeReading struct {
+	// State is `pass`, `fail`, `unknown` or `not_configured`. `fail` means a
+	// connection SUCCEEDED from a sandbox's own network position to an address a
+	// sandbox must never reach - the architecture regression signal of
+	// 02:SEC-010's P1 row.
+	State string `json:"state"`
+	// CheckedAt is when the reading was taken, not when it was reported. A
+	// resident probe that stopped keeps answering `pass` with a timestamp that
+	// stops moving, and that is the only way to see it from here.
+	CheckedAt time.Time `json:"checked_at"`
+	// Detail on `fail` is which destination answered: an address and a port,
+	// never a payload or a credential (iron rule 11).
+	Detail string `json:"detail,omitempty"`
+}
+
+// P02Breach reports whether this node says a sandbox on it reached something it
+// must not. Only an explicit `fail` counts.
+//
+// `unknown` deliberately does not halt the fleet. ADR-022 §3 counts unknown as
+// fail for acceptance and that is the right rule for a signature on a release;
+// it is the wrong rule for a switch that stops every run in the pool, because a
+// node that has merely just booted has not taken a reading yet. A node in that
+// state removes itself from rotation with `healthy: false` instead, which the
+// scheduler already reads.
+func (c ProviderCapability) P02Breach() (bool, string) {
+	if c.Security == nil || c.Security.P02Probe == nil {
+		return false, ""
+	}
+	p := c.Security.P02Probe
+	if p.State != "fail" {
+		return false, ""
+	}
+	return true, p.Detail
 }
 
 // PackageRef, TestCaseSnapshotRef and friends carry only references and hashes.

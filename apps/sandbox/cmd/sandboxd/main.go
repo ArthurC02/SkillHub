@@ -119,12 +119,27 @@ func main() {
 		Slots:          envInt("SKILLHUB_SANDBOX_SLOTS", 2),
 	}, log)
 
+	// ADR-022 T10, the resident P-02 probe. The addresses come from node
+	// configuration and never from a RunRequest: the list of what must not be
+	// reachable cannot be supplied by the plane being tested.
+	probe := sandbox.NewP02Probe(
+		splitList(os.Getenv("SKILLHUB_SANDBOX_P02_TARGETS")),
+		time.Duration(envInt("SKILLHUB_SANDBOX_P02_INTERVAL_SECONDS", 300))*time.Second,
+		time.Duration(envInt("SKILLHUB_SANDBOX_P02_TIMEOUT_SECONDS", 30))*time.Second,
+	)
+	if err := refuseUnprobedProduction(runtime, probe); err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
+	probeCtx, stopProbe := context.WithCancel(context.Background())
+	defer stopProbe()
+
 	// TRACE-002: the sandbox has no network, so this process is what carries its
 	// trace events to the control plane. The destination is per run and arrives
 	// in the RunRequest; all that is configured here is the ability to push.
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-	m = m.WithTrace(&sandbox.HTTPTraceSink{}, sandbox.NewMetrics(registry))
+	m = m.WithTrace(&sandbox.HTTPTraceSink{}, sandbox.NewMetrics(registry)).WithP02(probeCtx, probe)
 
 	// Sandboxes outlive this process. Rebuilding from labels before serving
 	// keeps a restarted provider from answering 404 for live attempts and from
@@ -179,6 +194,41 @@ func refuseDevSettings(runtime, image string, allowDevCmd bool) error {
 		return errors.New("SKILLHUB_SANDBOX_DEV_CMD must not be set with runsc: a caller-chosen entrypoint replaces the harness, and with it the run's token ceiling and its trace")
 	}
 	return nil
+}
+
+// refuseUnprobedProduction fails a production node closed when nobody told it
+// which addresses a sandbox must never reach.
+//
+// Same shape and same signal as refuseDevSettings above: `runsc` is the only
+// thing available this early that says this is production (ADR-015). The
+// asymmetry with the capability field is deliberate - a node already serving is
+// not made safer by reporting `not_configured`, but one that never starts
+// cannot be dispatched to at all.
+//
+// P-02 is the check ADR-022 pulled out of the declarative audit precisely
+// because it has to be measured rather than configured. A production node with
+// no targets would report a state that is honest and useless, and 02:SEC-010
+// lists a P-02 detection as a P1 incident - a criterion nothing can ever raise
+// is not a criterion.
+func refuseUnprobedProduction(runtime string, probe *sandbox.P02Probe) error {
+	if runtime != "runsc" || probe.Configured() {
+		return nil
+	}
+	return errors.New("SKILLHUB_SANDBOX_P02_TARGETS must name the addresses a sandbox must not reach " +
+		"(host:port, comma separated) when running under runsc: ADR-022 T10 requires the P-02 block to be " +
+		"verified by a resident probe, and a node with no targets reports not_configured forever")
+}
+
+// splitList reads a comma-separated env var, dropping the empties a trailing
+// comma leaves behind.
+func splitList(v string) []string {
+	var out []string
+	for _, part := range strings.Split(v, ",") {
+		if part = strings.TrimSpace(part); part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
 }
 
 func envOr(key, fallback string) string {

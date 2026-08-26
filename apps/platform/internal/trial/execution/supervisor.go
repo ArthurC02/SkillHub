@@ -104,6 +104,12 @@ func (s *Service) Supervise(ctx context.Context) error {
 	// it. That one lives in cmd/api (halt.go's WatchReconciler).
 	s.detectMaskerCanaryFailed(ctx)
 	s.detectMaskingStopped(ctx)
+	// 02:SEC-010's P-02 row, which 03:SEC-012 recorded as unraisable because the
+	// signal was outside this process. It is inside it now: the node reports its
+	// own probe's last reading on GET /capability and this reads it. Same rules
+	// as its neighbours — never returns an error, idempotent while the incident
+	// is held, and never lifts itself.
+	s.detectP02Breach(ctx)
 	return nil
 }
 

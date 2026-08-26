@@ -44,8 +44,12 @@ const (
 	labelAttempt   = "skillhub.sandbox.attempt"
 	labelWorkspace = "skillhub.sandbox.workspace_id"
 	labelHandle    = "skillhub.sandbox.provider_run_id"
-	labelHash      = "skillhub.sandbox.request_hash"
-	labelDeadline  = "skillhub.sandbox.hard_deadline"
+	// labelProbe marks the P-02 probe container (ADR-022 T10). It is a
+	// different label from labelManaged on purpose: the probe is not a run, and
+	// Adopt() must not rebuild it as one.
+	labelProbe    = "skillhub.sandbox.probe"
+	labelHash     = "skillhub.sandbox.request_hash"
+	labelDeadline = "skillhub.sandbox.hard_deadline"
 
 	// logTailBytes bounds what a workload can push into the result. The full
 	// output belongs in Trace (TRACE-004), not in a provider answer.

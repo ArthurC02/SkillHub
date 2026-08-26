@@ -3,9 +3,16 @@
 // is asserted here is the half that has no person in it — two of 02:SEC-010's five
 // P1 criteria concluded by the platform and acted on without anybody being paged.
 //
-// The other three criteria (逃逸疑慮, the P-02 probe, the gVisor advisory cron) are
-// signals from outside this process and keep the operator endpoint as their entry
-// point, so there is nothing here to assert about them.
+// The P-02 probe joined them: the obstacle was never the wiring but the shape of
+// the contract - every operation in sandbox-provider.yaml is the control plane
+// calling the node, so a node that found a breach had nowhere to send it. It now
+// reports its own last reading on GET /capability, which the platform already
+// polls before every dispatch, and TestANodeReportingAP02BreachHaltsTheFleet...
+// drives that path.
+//
+// The remaining two (逃逸疑慮, the gVisor advisory cron) are signals from outside
+// this process and keep the operator endpoint as their entry point, so there is
+// nothing here to assert about them.
 //
 // Shared harness: authz_integration_test.go (TestMain, migrate, requireDB, newAPI,
 // login), run_integration_test.go (fixture), governance_integration_test.go
@@ -19,6 +26,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 )
 
 // resetDetectionInputs clears what both detectors read, so an assertion here is
@@ -328,4 +338,103 @@ func TestAFailingMaskerCanaryHaltsDispatchWithoutAnOperator(t *testing.T) {
 	if source, _, _ := poolHalt(t, pool); source != "p1_incident" {
 		t.Fatalf("the halt lifted itself once the canary recovered (source=%q); the release must be a person", source)
 	}
+}
+
+// 02:SEC-010's P-02 row, which 03:SEC-012 recorded as one of three P1 criteria
+// nothing could raise.
+//
+// The obstacle was structural rather than missing wiring: the sandbox provider
+// contract is one way, so a node that discovered a breach had nowhere to send
+// it. ADR-022 T10 asks for a resident probe, and a resident probe with no
+// channel is a light nobody can see. What changed is the contract - the node
+// reports its own last reading on GET /capability, which the platform already
+// polls before every dispatch - so this test drives the real path: a real
+// capability response, the real registry cache, the real sweep.
+func TestANodeReportingAP02BreachHaltsTheFleetWithoutAnOperator(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	fake, svc := haltHarness(t, a, pool)
+	resetDetectionInputs(t, pool)
+	// The capability answer is cached for scheduling; a detector that read a
+	// stale one would notice a breach minutes late and clear it just as late.
+	a.runs.Providers.TTL = time.Nanosecond
+	ctx := context.Background()
+	sweep := func() {
+		t.Helper()
+		if err := svc.Supervise(ctx); err != nil {
+			t.Fatalf("supervisor sweep: %v", err)
+		}
+	}
+
+	// A node whose probe is clean must not stop the fleet. This is also the
+	// assertion that the wiring is not backwards: if a `pass` concluded, every
+	// deployment would halt itself on its first sweep.
+	clean := providertest.DefaultCapability(fake.Name)
+	clean.Security = newP02Capability("pass", "2 destination(s) unreachable")
+	fake.Capability = &clean
+	sweep()
+	if source, _, _ := poolHalt(t, pool); source != "" {
+		t.Fatalf("dispatch halted on a clean P-02 reading (source=%q)", source)
+	}
+
+	// `unknown` is the absence of evidence, not evidence of a hole. A node that
+	// has just booted has taken no reading yet, and halting the fleet on that
+	// would mean a node restart stops every run everywhere. It removes itself
+	// from rotation with healthy:false instead, which the scheduler reads.
+	unknown := providertest.DefaultCapability(fake.Name)
+	unknown.Security = newP02Capability("unknown", "no reading taken yet")
+	fake.Capability = &unknown
+	sweep()
+	if source, _, _ := poolHalt(t, pool); source != "" {
+		t.Fatalf("an unknown P-02 reading halted the fleet (source=%q); a rebooting node would stop dispatch", source)
+	}
+
+	// A connection SUCCEEDED. Nobody is asked.
+	haltsBefore := haltAuditCount(t, pool, "dispatch.halted")
+	breached := providertest.DefaultCapability(fake.Name)
+	breached.Security = newP02Capability("fail", "reachable from a sandbox: db.internal:5432")
+	fake.Capability = &breached
+	sweep()
+	source, reason, byPlatform := poolHalt(t, pool)
+	if source != "p1_incident" {
+		t.Fatalf("pool halt source = %q, want p1_incident", source)
+	}
+	if !strings.Contains(reason, "db.internal:5432") {
+		t.Errorf("the halt reason does not name what was reachable: %q", reason)
+	}
+	if !byPlatform {
+		t.Error("declared_by is set; a halt the platform concluded on its own has no human actor")
+	}
+	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+		t.Fatalf("dispatch.halted events = %d, want exactly 1", got)
+	}
+
+	// Idempotence: a breach stays a breach for as long as the investigation
+	// takes, and one audit event per 30 second sweep buries the declaration.
+	for i := 0; i < 3; i++ {
+		sweep()
+	}
+	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+		t.Errorf("dispatch.halted events after four sweeps = %d, want 1", got)
+	}
+
+	// 03:SEC-012 「解除不得是自動的」. A node whose next probe comes back clean
+	// says nothing about what reached the database while it did not, so the
+	// trigger does not get to decide when service comes back.
+	fake.Capability = &clean
+	sweep()
+	if source, _, _ := poolHalt(t, pool); source != "p1_incident" {
+		t.Fatalf("the halt lifted itself once the node reported clean (source=%q); the release must be a person", source)
+	}
+}
+
+// newP02Capability builds the security block a node sends. Constructed by hand
+// rather than shared with apps/sandbox on purpose: the two sides are separate
+// modules that agree only through contracts/openapi/sandbox-provider.yaml, and
+// a shared Go type would hide a contract change from the test that should
+// catch it.
+func newP02Capability(state, detail string) *run.SecurityCapability {
+	return &run.SecurityCapability{P02Probe: &run.P02ProbeReading{
+		State: state, CheckedAt: time.Now().UTC(), Detail: detail,
+	}}
 }

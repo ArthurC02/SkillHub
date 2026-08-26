@@ -718,6 +718,55 @@ func (s *Service) detectMaskerCanaryFailed(ctx context.Context) {
 		strings.Join(survived, ", ")))
 }
 
+// detectP02Breach is 02:SEC-010's P-02 row, and 03:SEC-012 recorded it as one of
+// the three P1 criteria nothing could raise.
+//
+// The reason it could not be raised was structural rather than missing wiring:
+// the sandbox provider contract is one way. Every operation in
+// sandbox-provider.yaml is the control plane calling the node, so a node that
+// discovered a breach had nowhere to send it. ADR-022 T10 asks for a resident
+// probe, and a resident probe with no channel is a light nobody can see.
+//
+// What changed is the contract, not the plumbing: ProviderCapability now carries
+// the node's own last reading, and this reads it on the same sweep the other
+// detectors ride. There is still no reverse channel and this does not add one.
+//
+// The node has already acted by the time this runs - it terminates its live runs
+// and refuses new ones the moment its own probe comes back `fail`, because
+// between two polls of this loop is exactly the window in which untrusted code
+// is talking to the core database. This is the fleet-wide half: stop dispatching
+// anywhere until a person has looked, which is what a P1 halt is.
+func (s *Service) detectP02Breach(ctx context.Context) {
+	registry := s.providers()
+	var breached []string
+	for _, provider := range registry.Providers {
+		capability, err := registry.Capability(ctx, provider)
+		if err != nil {
+			// A node that cannot be reached has not reported a breach. It is
+			// already out of rotation for being unreachable, and treating
+			// "cannot ask" as "answered fail" would let one flaky node stop the
+			// fleet. That asymmetry is deliberate and it is the same one
+			// P02Breach draws around `unknown`.
+			continue
+		}
+		if ok, detail := capability.P02Breach(); ok {
+			breached = append(breached, provider.Name+": "+detail)
+		}
+	}
+	if len(breached) == 0 {
+		return
+	}
+	if s.incidentAlreadyHeld(ctx) {
+		return
+	}
+	s.declareDetectedIncident(ctx, fmt.Sprintf(
+		"02:SEC-010 P1 (P-02): a node's resident probe opened a connection from a sandbox's own network "+
+			"position to an address a sandbox must never reach — %s. ADR-022 T10 calls this an architecture "+
+			"regression signal: the isolation the whole execution plane rests on (iron rule 2) is not holding "+
+			"on that node, and every run it carried could have done the same thing",
+		strings.Join(breached, "; ")))
+}
+
 // maskerCanary is trace.MaskerCanary, behind a field so an integration test can
 // simulate a masker that stopped — there is no other seam, because the real one is
 // a pure function over compiled-in rules and a test cannot break those from

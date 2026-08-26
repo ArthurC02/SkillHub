@@ -251,6 +251,7 @@ type ProviderCapability struct {
 	Features     *Features           `json:"features,omitempty"`
 	Regions      []string            `json:"regions,omitempty"`
 	Availability *Availability       `json:"availability,omitempty"`
+	Security     *SecurityCapability `json:"security,omitempty"`
 }
 
 type RuntimeCapability struct {
@@ -282,4 +283,16 @@ type Features struct {
 type Availability struct {
 	ConcurrentRunSlots int  `json:"concurrent_run_slots"`
 	Healthy            bool `json:"healthy"`
+}
+
+// SecurityCapability is the one block in a capability response that reports a
+// measurement rather than a configuration claim.
+//
+// It lives on this response because the sandbox provider contract is one way:
+// every operation in sandbox-provider.yaml is the control plane calling the
+// node, and the node has no channel to push an alert back. Polling
+// GET /capability is the path that already exists, and RUN-005 already reads it
+// before every dispatch.
+type SecurityCapability struct {
+	P02Probe *P02Result `json:"p02_probe,omitempty"`
 }

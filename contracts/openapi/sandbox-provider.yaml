@@ -953,6 +953,76 @@ components:
                 to be paired with a live count to answer that at all. 0 means
                 full: dispatching anyway earns a 429.
             healthy: { type: boolean }
+        security:
+          type: object
+          description: |
+            What this node's own continuous checks currently say about itself.
+
+            A capability response is a claim, and every other field here is a
+            claim about configuration: what this node was *set up* to do. This
+            block is the one that reports a measurement, and it is here rather
+            than on a new endpoint for a structural reason — the sandbox
+            provider contract is one-way. Every operation in this file is the
+            control plane calling the node; the node has no channel to push an
+            alert back. Polling `GET /capability` is the only path that already
+            exists, and RUN-005 already reads it before every dispatch.
+          properties:
+            p02_probe:
+              type: object
+              description: |
+                Threat model P-02, and ADR-022 promotes it to its own acceptance
+                item T10 for a reason worth restating: every other P-zone check
+                is a declarative audit that a single snapshot satisfies, while
+                P-02 says in so many words that the block must be verified **by
+                a probe, not by reading configuration**, and verified
+                continuously. Reporting a one-time audit here would let a
+                snapshot impersonate resident monitoring.
+
+                The measurement is a connection attempt made from a sandbox's
+                own network position to the addresses a sandbox must never
+                reach. A node answering `pass` is saying it tried and could not
+                get through, as of `checked_at`.
+              required: [state, checked_at]
+              properties:
+                state:
+                  type: string
+                  enum: [pass, fail, unknown, not_configured]
+                  description: |
+                    `fail` means a connection SUCCEEDED — the probe reached
+                    something a sandbox must not reach. It is the architecture
+                    regression signal of `02:SEC-010`'s P1 row, so the platform
+                    halts dispatch on it without waiting for a human, and the
+                    node terminates its own live runs before answering.
+
+                    `unknown` is a probe that could not complete. ADR-022 §3
+                    counts unknown as fail for acceptance, but the two are not
+                    the same operationally and are not merged here: `fail` is
+                    evidence of a hole, `unknown` is the absence of evidence
+                    either way. A node reporting `unknown` takes itself out of
+                    rotation via `healthy: false`; it does not halt the fleet,
+                    because a node that has merely just booted would otherwise
+                    stop dispatch everywhere.
+
+                    `not_configured` is a node that was never given the
+                    addresses it must not reach. Honest rather than absent: a
+                    field that simply disappeared would read as `pass` to
+                    anything scanning for problems. Production nodes refuse to
+                    start in this state (the runtime is the signal, as with the
+                    image digest and the dev entrypoint); the local dev provider
+                    reports it and keeps serving.
+                checked_at:
+                  type: string
+                  format: date-time
+                  description: |
+                    When the reading was taken, not when it was reported. A
+                    resident probe that stopped running keeps answering `pass`
+                    with a `checked_at` that stops moving, and that is the only
+                    way to see it from outside.
+                detail:
+                  type: string
+                  description: |
+                    On `fail`, which destination answered. Never the payload,
+                    never a credential (iron rule 11) — an address and a port.
         cost_model:
           type: object
           properties:
