@@ -201,7 +201,7 @@ type LineageSource struct {
 // A function and not four lines inline because build() needs a transaction and a
 // store, and 「a package between the import ceiling and the produced ceiling is
 // ACCEPTED」 is the entire content of 03:PACK-012 — a claim that has to be
-// reachable by a test that does not need a 32 MiB fixture and a database.
+// reachable by a test that does not need a MaxZipBytes-sized fixture and a database.
 //
 // The refusal is counted apart from the two import ceilings (03:INGEST-016): a
 // package too big here is our packager having added more than the produced
@@ -262,7 +262,7 @@ func checkProducedSize(n int) error {
 //
 // So: 1 MiB for the platform's two files plus roughly 48 test cases at their
 // text ceiling. 48 is the part with nothing behind it — a count nothing
-// enforces, put far past any plausible Skill and far under the 256 MiB
+// enforces, put far past any plausible Skill and far under the 100 MB
 // uncompressed ceiling PackageFS already puts on these same bytes. If this cap
 // is ever actually reached, the number to revisit is not this one: it is the
 // per-skill test case cap that does not exist.

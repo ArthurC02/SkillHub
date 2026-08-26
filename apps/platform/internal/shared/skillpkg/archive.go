@@ -21,18 +21,29 @@ import (
 // (prepare → scan → enrich → tx), and M4's PACK-002 ruling requires 採納建議 to
 // reuse it rather than grow a second version-creation path (a second truth).
 
-// MaxZipBytes caps the uploaded archive.
+// MaxZipBytes caps the uploaded archive. PDM-005 §5.1b's number, ratified by the
+// product owner on 2026-08-27 (`05` R-13, `04` 乙-23).
 //
-// PDM-005 §5.1b says 10 MB and this says 32 MiB, and the difference is left
-// standing on purpose: lowering it rejects packages that import successfully
-// today, which is a product call and not a defect to be quietly fixed. The
-// same applies to maxUnpackedBytes below (§5.1b says 100 MB). Both are recorded
-// in 04 rather than changed here.
+// It was 32 MiB for months, and the comment standing here defended the gap:
+// lowering it 「rejects packages that import successfully today」. That reasoning
+// was sound and the premise was never measured. When it finally was: 45 package
+// objects, largest 0.156 MB, p95 0.066 MB, and ZERO between 10 MB and 32 MiB.
+// Nothing was rejected by this change. **A ceiling is a one-way door** — raising
+// it breaks nobody, lowering it breaks anyone already over — and the cost of
+// walking through the reversible side was zero today and stops being zero the
+// first time a beta user imports a Skill that ships a font or a notebook.
 //
-// What was a defect is that the other five ceilings §5.1b names had no value at
-// all — see the block below. `03` §1 said PDM-005's numbers were 值已全數強制;
-// for §5.1b that was true of two of seven.
-const MaxZipBytes = 32 << 20 // 32 MiB
+// The ratification also ended a three-way disagreement rather than just a
+// two-way one: `02:SEC-003`'s acceptance sentence says 10 MB and adds that both
+// import paths share one set of limits. Sharing was implemented (fetch and
+// upload read this same constant); the shared VALUE was not the stated one, so
+// `03:INGEST-014` was structurally unticklable however well the fetcher was
+// written.
+//
+// The other five ceilings §5.1b names had no value at all until 2026-08-25 —
+// see the block below. `03` §1 said PDM-005's numbers were 值已全數強制; for §5.1b
+// that was true of two of seven.
+const MaxZipBytes = 10 << 20 // 10 MB, PDM-005 §5.1b
 
 // HumanMB renders a byte ceiling the way a refusal has to say it (03:INGEST-016).
 //
@@ -44,8 +55,9 @@ func HumanMB(n int64) string {
 }
 
 // maxUnpackedBytes caps total declared uncompressed size (zip bombs,
-// ADR-007 壓縮炸彈). Var only so tests can lower it.
-var maxUnpackedBytes = uint64(256 << 20) // 256 MiB
+// ADR-007 壓縮炸彈). §5.1b's second number, ratified with the first. Var only so
+// tests can lower it.
+var maxUnpackedBytes = uint64(100 << 20) // 100 MB, PDM-005 §5.1b
 
 // The rest of PDM-005 §5.1b. Each of these was unbounded until 2026-08-25, and
 // unbounded is the wrong default for every one of them: this archive is opened

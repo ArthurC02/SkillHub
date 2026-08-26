@@ -255,3 +255,36 @@ func swapUint64(p *uint64, v uint64) func() {
 	*p = v
 	return func() { *p = old }
 }
+
+// The two ceilings PDM-005 §5.1b states by number, asserted as numbers.
+//
+// Every other test in this file reaches these through the symbol, so they stay
+// green at any value — which is exactly how the constant sat at 32 MiB for
+// months while §5.1b, `02:SEC-003` and PDM-005 all said 10 MB, and no test could
+// tell. The product owner ratified §5.1b's values on 2026-08-27 (`05` R-13), and
+// this is the assertion that makes drifting off them fail rather than pass.
+//
+// It is deliberately a literal comparison and not a reference to some shared
+// constant: a guard that reads the same variable it guards guards nothing. If
+// PDM-005 is ever amended, the amendment changes this line, and the diff shows
+// somebody decided rather than somebody adjusted.
+func TestTheImportCeilingsAreTheRatifiedOnes(t *testing.T) {
+	// §5.1b: 壓縮檔 10 MB. The codebase reads MB as MiB throughout (HumanMB
+	// divides by 1<<20), so this is the same convention the refusal message uses.
+	if MaxZipBytes != 10<<20 {
+		t.Errorf("MaxZipBytes = %d (%s), want 10 MB: PDM-005 §5.1b and 02:SEC-003 both state it, "+
+			"and 02:SEC-003 is an acceptance criterion — a different value makes 03:INGEST-014 "+
+			"unticklable no matter how well the fetcher is written", MaxZipBytes, HumanMB(MaxZipBytes))
+	}
+	// §5.1b: 解壓後 100 MB.
+	if maxUnpackedBytes != uint64(100<<20) {
+		t.Errorf("maxUnpackedBytes = %d, want 100 MB (PDM-005 §5.1b)", maxUnpackedBytes)
+	}
+	// The two import paths share one set of limits, and 02:SEC-003 asks for that
+	// in so many words. Sharing the SYMBOL is what makes it true; this test is
+	// here because sharing the symbol was already true while the value was wrong.
+	if HumanMB(MaxZipBytes) != "10.0 MB" {
+		t.Errorf("a refusal would print %q; the number a creator reads has to be §5.1b's",
+			HumanMB(MaxZipBytes))
+	}
+}
