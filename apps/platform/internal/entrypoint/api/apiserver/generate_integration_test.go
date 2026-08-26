@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -885,4 +886,77 @@ func TestGenerationIsRateLimitedWhenALimiterIsConfigured(t *testing.T) {
 		}
 	}
 	t.Fatalf("five POSTs to /skills/generate against a burst of two never saw a 429: %v", codes)
+}
+
+// The one generation with no fake on any leg (GEN-008, `04` 丙-53, `05` R-10).
+//
+// Every other test above queues its own `usage` block, so what they prove is
+// that Go stores whatever the internal service reports. They cannot prove the
+// internal service reports anything: apps/llm builds that block itself from the
+// gateway's response, and no test on either side of that boundary has ever seen
+// a real one.
+//
+// That gap had a consequence and it is why this exists. The C round of
+// 2026-08-25 -- the batch whose ten prices filled GEN-008's cost line and closed
+// `05` R-10 -- called `POST /v1/generate-skill` directly and read the price off
+// the reply. It never went through Go, so the durable half (usageMeta, the two
+// audit rows) recorded nothing during the only real generations this platform
+// has ever run. Anyone recomputing that distribution from `audit_events` -- the
+// obvious next step, and what R-9 would want for the quota numbers -- would be
+// reading a path no priced call had ever taken.
+//
+// It costs about US$0.006 and is gated on SKILLHUB_E2E_LLM_URL, so CI never runs
+// it. Running it:
+//
+//	task dev:model
+//	cd apps/llm && LITELLM_BASE_URL=http://localhost:4000 LITELLM_API_KEY=$LITELLM_MASTER_KEY \
+//	  uv run uvicorn skillhub_llm.app:app --port 8081
+//	SKILLHUB_E2E_LLM_URL=http://localhost:8081 SKILLHUB_TEST_DATABASE_URL=... \
+//	  go test ./internal/entrypoint/api/apiserver -run RealGatewayGeneration -v
+func TestARealGatewayGenerationRecordsWhatItActuallyCost(t *testing.T) {
+	base := os.Getenv("SKILLHUB_E2E_LLM_URL")
+	if base == "" {
+		t.Skip("set SKILLHUB_E2E_LLM_URL to a running apps/llm pointed at a real gateway; this test spends money")
+	}
+	pool := requireDB(t)
+	a := newAPIWithLLM(t, pool, base)
+	c := a.login(t, "gen-real-gateway")
+
+	res, err := a.versions.GenerateSkill(context.Background(), workspaceOf(t, pool, c),
+		"我每個月要把廠商寄來的掃描單據整理成一份表格交出去。")
+	if err != nil {
+		t.Fatalf("GenerateSkill against a real gateway: %v", err)
+	}
+
+	// Whether the model's answer passed validation is not what this test is
+	// about, and asserting on it would make a real model's off day look like a
+	// recording bug. What must hold either way is that the call was paid for and
+	// that the payment landed on exactly one durable row: the import row when the
+	// generation produced a version, the failure row when it did not.
+	//
+	// "Exactly one" matters as much as "positive". Both rows carrying a cost
+	// would double-count every blocked-then-retried generation in the
+	// distribution R-9 reads.
+	query := `SELECT (metadata->>'cost_usd')::float8 FROM audit_events
+		WHERE action = 'skill.import' AND resource_id = $1`
+	arg := any(res.Version.ID)
+	if res.Report.Blocked {
+		query = `SELECT (metadata->>'cost_usd')::float8 FROM audit_events
+			WHERE action = 'skill.generate_failed' AND actor_user_id = $1
+			ORDER BY occurred_at DESC LIMIT 1`
+		arg = mustUUID(t, c.userID)
+		t.Logf("the model's answer was blocked (%+v); the cost assertion below is the failure row",
+			res.Report.Findings)
+	}
+	var cost float64
+	if err := pool.QueryRow(context.Background(), query, arg).Scan(&cost); err != nil {
+		t.Fatalf("a real, paid generation left no cost on its durable row: %v\n"+
+			"this is the seam the stubbed tests above cannot see -- they supply the usage block "+
+			"that apps/llm is supposed to build from the gateway's reply", err)
+	}
+	if cost <= 0 {
+		t.Fatalf("cost_usd = %v; the gateway prices every call, so a zero here means the price was "+
+			"dropped somewhere between LiteLLM and the audit row", cost)
+	}
+	t.Logf("real gateway generation cost US$%.6f, attempts=%d", cost, res.Attempts)
 }

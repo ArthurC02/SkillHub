@@ -279,7 +279,11 @@ func newAPITuned(
 	packages := packageStore{}
 	var llm *llmclient.Client
 	if llmBaseURL != "" {
-		llm = &llmclient.Client{BaseURL: llmBaseURL}
+		// The token is empty for every stub in this package -- httptest servers
+		// check nothing -- and read from the environment for the one test that
+		// points at a real apps/llm, which refuses an unauthenticated caller with
+		// a 503 (app.py's LLM_SERVICE_TOKEN gate). Same variable cmd/api reads.
+		llm = &llmclient.Client{BaseURL: llmBaseURL, Token: os.Getenv("LLM_SERVICE_TOKEN")}
 	}
 	// The real profile files rather than fixtures: a copy would keep these tests
 	// green while a profile edit changed produced packages.
