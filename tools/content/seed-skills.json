@@ -1,5 +1,5 @@
 {
-  "$comment": "Skill Hub M1 seed import list (CONTENT-003 / CONTENT-004). Human-readable companion doc: docs/plans/mvp/content/curated-skill-list.md. JSON has no comments, so the field contract lives in the `schema` object below. Nothing here is a decision: `tier` is a proposal until CONTENT-005/006/007/008 close out, and no work item is checked. 2026-08-26: check 7 was flipped to pass for all 45 to match the doc, which has recorded it as pass since 2026-08-16 (45/45 automated review, m1/content-review-report.md). The doc and this file had disagreed for ten days, and CONTENT-003's tick condition is check 5 AND check 7 while CONTENT-003 also declares THIS file authoritative on conflict -- so the disagreement did not read as a disagreement, it read as check 7 still being pending. The `checks` object is not consumed by any importer; it is a record, which is exactly why nothing caught it.",
+  "$comment": "Skill Hub M1 seed import list (CONTENT-003 / CONTENT-004). Human-readable companion doc: docs/plans/mvp/content/curated-skill-list.md. JSON has no comments, so the field contract lives in the `schema` object below. Nothing here is a decision: `tier` is a proposal until CONTENT-005/006/007/008 close out, and no work item is checked. 2026-08-26: check 7 was flipped to pass for all 45 to match the doc, which has recorded it as pass since 2026-08-16 (45/45 automated review, m1/content-review-report.md). The doc and this file had disagreed for ten days, and CONTENT-003's tick condition is check 5 AND check 7 while CONTENT-003 also declares THIS file authoritative on conflict -- so the disagreement did not read as a disagreement, it read as check 7 still being pending. The `checks` object is not consumed by any importer; it is a record, which is exactly why nothing caught it. 2026-08-27: checks 4 and 5 recorded for the 15 curated entries from a line-by-line review of the pinned bytes (docs/plans/mvp/content/report-curated-checks-4-5.md). script_lines was wrong for TEN of the fifteen - it counted embedded blocks OR script files, never both - and the largest error was an under-count on the one entry that turns out to exceed the ceiling.",
   "version": "1.0.0",
   "generated_at": "2026-08-15",
   "verified_at": "2026-08-26",
@@ -42,9 +42,8 @@
     }
   },
   "checks_pending_owner": {
-    "4": "CONTENT-006 - line counts are measured, but line-by-line human review is not done.",
-    "5": "CONTENT-006 - secret scan and human confirmation not run.",
-        "8": "CONTENT-007 then CONTENT-008 - baseline trial run needs the platform to exist."
+    "4-fail": "data-analyst is 651 Script lines against 02:CONTENT-006's 300 ceiling (448 embedded in SKILL.md + 203 in scripts/data_ops.py; the old 203 counted only the file). It breaks none of the three prohibitions and was read line by line - it is simply too large to review, and reviewability is what the ceiling is for. Dropping it to indexed, raising the ceiling, or swapping the candidate is a curation call: 05 R-16.",
+            "8": "CONTENT-007 then CONTENT-008 - baseline trial run needs the platform to exist."
   },
   "sources": {
     "anthropic": {
@@ -213,8 +212,8 @@
       "deps": ["openpyxl"],
       "deps_runtime": "python",
       "network": false,
-      "script_lines": 180,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "script_lines": 140,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Insert rows/columns = creation, so documents rather than data under the PDM-001 boundary rule. SKILL.md is ~280-300 lines total with ~180 lines of embedded Python; no pip install text."
     },
     {
@@ -227,8 +226,8 @@
       "deps": ["openpyxl"],
       "deps_runtime": "python",
       "network": false,
-      "script_lines": 45,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "script_lines": 34,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Freeze/unfreeze panes = formatting, so documents. Smallest script footprint of the excel-* family."
     },
     {
@@ -241,8 +240,8 @@
       "deps": [],
       "deps_runtime": "none",
       "network": false,
-      "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "script_lines": 1,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Produces a portable markdown handoff document. Prompt-only, ~180 lines of instructions, zero dependencies - the lowest-risk documents pick."
     },
     {
@@ -256,7 +255,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 168,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Promoted to curated 2026-08-15 as the 4th documents pick. The earlier '~1600-1800 lines, check 4 fails' record was a MEASUREMENT ERROR: at the pinned commit SKILL.md is 262 lines / 9839 bytes / sha256 68dc7ce82d6b14bb967e691356c30fe148624cb011ecd7b7f67287c0f8ff85e0, with 168 lines of embedded Python - verified byte-identical via the codeload zip and raw.githubusercontent.com. No eval/exec, no dynamic download, no subprocess, no pip install text. pandas+numpy are used only on the COL_WIDTH='auto' branch; all three deps are in the PDM-004 whitelist. Check 4 stays pending only for the line-by-line human review (CONTENT-006), same convention as excel-insert/excel-freeze. SKILL.md wiki-links [[excel-safe-workflow]], a sibling skill not shipped inside the package; import raised no blocking error. Simplified Chinese - CONTENT-005 must rewrite the summary in zh-Hant. See curated-skill-list.md section 9.1."
     },
     {
@@ -357,7 +356,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Apache-2.0 confirmed by reading skills/brand-guidelines/LICENSE.txt on 2026-08-15. EVAL-001 requires a per-skill editable rubric for writing skills - CONTENT-007."
     },
     {
@@ -371,7 +370,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Apache-2.0. Same rubric requirement as brand-guidelines."
     },
     {
@@ -384,8 +383,8 @@
       "deps": [],
       "deps_runtime": "none",
       "network": false,
-      "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "script_lines": 68,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Removes AI-writing tells. Self-contained, no runtime scripts on the execution path; check 4 pending only because scripts/validate-package.py has not been read line by line."
     },
     {
@@ -399,7 +398,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Sentence-level polish without changing meaning. Frontmatter read on 2026-08-15: no network, no APIs, no MCP, no packages."
     },
     {
@@ -413,7 +412,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Checklist-based detection of mechanical AI tells. Overlaps humanizer in intent but differs in output (audit vs rewrite) - keep both, they make a useful comparison pair for 02:DISC-004."
     },
     {
@@ -497,8 +496,8 @@
       "deps": ["pandas", "openpyxl"],
       "deps_runtime": "python",
       "network": false,
-      "script_lines": 203,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "script_lines": 651,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "fail", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "scripts/data_ops.py, 203 lines, CSV/TSV/XLSX/JSON/JSONL. Zero dependency gaps. SKILL.md is Simplified Chinese - CONTENT-005 must rewrite the summary in Traditional Chinese."
     },
     {
@@ -511,8 +510,8 @@
       "deps": ["pandas", "openpyxl", "pyarrow", "chardet", "python-dateutil"],
       "deps_runtime": "python",
       "network": false,
-      "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "script_lines": 1,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Prompt-only, zero dependency risk."
     },
     {
@@ -525,8 +524,8 @@
       "deps": ["pandas"],
       "deps_runtime": "python",
       "network": false,
-      "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "script_lines": 1,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Output supports schema assertions - the highest acceptance-certainty candidate, best first target for CONTENT-007."
     },
     {
@@ -539,8 +538,8 @@
       "deps": ["pandas"],
       "deps_runtime": "python",
       "network": false,
-      "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "script_lines": 1,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Numeric assertions make acceptance deterministic."
     },
     {
@@ -553,8 +552,8 @@
       "deps": ["pandas", "openpyxl", "lxml"],
       "deps_runtime": "python",
       "network": false,
-      "script_lines": 140,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "script_lines": 138,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Directly matches the PDM-001 canonical task sentence 'drop the duplicate rows'. lxml is whitelisted as of 2026-08-14 so this is unconditional now. WATCH: the dependency section of SKILL.md contains 'pip install' text - all three packages are preinstalled so the branch is inert, but the wording tells the model to do something the runtime forbids, same shape as the M0 rejection of cabbage2000-lab/data-analysis-skills. CONTENT-006 must confirm or annotate."
     },
     {
@@ -567,8 +566,8 @@
       "deps": ["pandas", "openpyxl", "lxml"],
       "deps_runtime": "python",
       "network": false,
-      "script_lines": 253,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "script_lines": 36,
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Companion to excel-deduplicate (detect vs remove)."
     },
     {

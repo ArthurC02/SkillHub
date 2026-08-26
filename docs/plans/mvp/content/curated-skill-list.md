@@ -83,26 +83,26 @@
 
 | Skill | ① | ② | ③ | ④ | ⑤ | ⑥ | ⑦ | ⑧ | ⑨ |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| D-1 `excel-insert` | pass | pass | pass | **pending**¹ | pending² | pass | **pass**³ | pending⁴ | pass |
-| D-2 `excel-freeze` | pass | pass | pass | **pending**¹ | pending² | pass | **pass**³ | pending⁴ | pass |
-| D-3 `handoff` | pass | pass | pass | **pass**（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
-| **D-4** `excel-format` | pass | pass | pass | **pending**¹⁺⁶ | pending² | pass | **pass**³ | pending⁴ | pass |
-| W-1 `brand-guidelines` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
-| W-2 `internal-comms` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
-| W-3 `humanizer` | pass | pass | pass | **pending**¹ | pending² | pass | **pass**³ | pending⁴ | pass |
-| W-4 `line-edit` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
-| W-5 `ai-written-check` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
-| A-1 `data-analyst` | pass | pass | pass | **pending**¹ | pending² | pass | **pass**³ | pending⁴ | pass |
-| A-2 `data-cleanliness-scan` | pass | pass | pass | pass（無 Script） | pending² | **pass**⁷ | **pass**³ | pending⁴ | pass |
-| A-3 `csv-to-json` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
-| A-4 `text-to-numeric` | pass | pass | pass | pass（無 Script） | pending² | pass | **pass**³ | pending⁴ | pass |
-| A-5 `excel-deduplicate` | pass | pass | pass | **pending**¹⁺⁵ | pending² | pass | **pass**³ | pending⁴ | pass |
-| A-6 `excel-find-duplicates` | pass | pass | pass | **pending**¹ | pending² | pass | **pass**³ | pending⁴ | pass |
+| D-1 `excel-insert` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| D-2 `excel-freeze` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| D-3 `handoff` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| **D-4** `excel-format` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| W-1 `brand-guidelines` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| W-2 `internal-comms` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| W-3 `humanizer` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| W-4 `line-edit` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| W-5 `ai-written-check` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| A-1 `data-analyst` | pass | pass | pass | **FAIL**⁹ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| A-2 `data-cleanliness-scan` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | **pass**⁷ | **pass**³ | pending⁴ | pass |
+| A-3 `csv-to-json` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| A-4 `text-to-numeric` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| A-5 `excel-deduplicate` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| A-6 `excel-find-duplicates` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
 
 腳註：
 
-1. **④ 的行數已機械量測且全部落在 300 行上限內**，但**「人工逐行審過」一項尚未執行**（沿用 M0 的既有限制）。承接工作項：**CONTENT-006**。
-2. **⑤ 靜態掃描與人工 Secret 確認尚未執行。** 承接工作項：**CONTENT-006**。
+1. ~~**④ 的行數已機械量測且全部落在 300 行上限內**，但**「人工逐行審過」一項尚未執行**（沿用 M0 的既有限制）。~~ **2026-08-27：人工逐行審閱完成（見腳註 8／9），而同一批查出上一句的前半也不成立**——「全部落在 300 行上限內」是錯的，`data-analyst` 合計 651 行。承接工作項：**CONTENT-006**。
+2. ~~**⑤ 靜態掃描與人工 Secret 確認尚未執行。**~~ **2026-08-27 完成，15／15 pass，見腳註 10。** 承接工作項：**CONTENT-006**。
 3. ~~**⑦ 白話摘要：工序已建立，人工審核未完成，故仍記 `pending`。**~~ **⑦ 於 2026-08-16 改記 `pass`。** 承接工作項：**CONTENT-005**（已完成）。<br>**2026-08-26：`tools/content/seed-skills.json` 直到今天才跟上，而它跟這一格不一致了十天。** 該檔 45 筆的 `checks.7` 全部還是 `pending`，**而 `03:CONTENT-003` 定的規則是「兩處不一致時以 `seed-skills.json` 為準」**——所以那十天裡，照規則讀的人得到的答案是「⑦ 仍未完成」，也就是 `CONTENT-003` 的勾選條件（⑤∧⑦）還缺兩項而不是一項。**沒有任何機器會抓到它**：`checks` 這個物件沒有任何匯入器讀，它是紀錄——而紀錄正是最容易安靜過期的東西。
    **2026-08-16 審校結果**（[content-review-report.md](../m1/content-review-report.md)）：45 筆全量自動化審校，**45/45 通過**；精選 **15/15**。唯一主判準（非技術讀者可理解性）45/45，忠實性 890 條事實宣稱 0 條未支持，語言慣例與白名單皆 0 命中。首輪有 3 筆（含精選 `excel-format`、`internal-comms`）因把預設值寫成必填、為輸出加品質形容詞、能力外推而未通過，已由 `enrich-skill/v4` 加入三條轉述約束後重跑修正，**未下架任何一筆**。
    ⚠️ 一項判準範圍修正（KPI3 只掃 zh-Hant 欄位）影響 `excel-format` 的判定，**待負責人追認**；若不接受，該筆退回需修改、⑦ 一併退回 `pending`（報告 §9 第 2 條）。
@@ -111,9 +111,21 @@
    - ⚠️ 原註「`anthropics/skills` 免責條款需納入措辭考量」的處置：**不納入摘要**，改由詳情頁 License／來源區塊承接——該句屬信任／品質陳述，ADR-013 白名單明令模型產出不得包含。**此解讀待負責人確認**（content-summaries.md §3）。
    - ⑦ 改記 `pass` 的條件：精選 15 筆全數審核為「通過」，且 content-summaries.md §7 的待辦 2（7 筆補 `limitations`）與待辦 3 結案。**現況：三項條件皆已滿足（2026-08-16）。**
 4. **⑧ 平台基準試跑需要平台存在。** 承接工作項：**CONTENT-007（範例資料／Prompt／驗收條件）→ CONTENT-008（基準試跑）**。此項在隔離 Sandbox 內執行，符合鐵律 1。
-5. **`excel-deduplicate` 的 SKILL.md 於依賴段落出現 `pip install` 字樣。** 三個套件（`pandas`／`lxml`／`openpyxl`）全部在 PDM-004 白名單內，該分支在 Runtime Image 中不會觸發；但**「SKILL.md 文字教模型執行被禁止的動作」與 M0 否決 `cabbage2000-lab/data-analysis-skills` 的理由同型**。CONTENT-006 需人工確認措辭是否可接受，或於匯入時標註。
+5. **✅ 2026-08-27 已判定為可接受**（見腳註 8 與 [report-curated-checks-4-5.md §2.2](report-curated-checks-4-5.md)）——**判定的理由不是「依賴在白名單內」**（`02:499` 明文禁止那個理由），是①措辭宣告的是前置條件而非執行步驟，②平台在匯入時確實會標註，而這一筆走的是 `undeclared-dependency` 警告（該行是散文裡的行內程式碼，`deps.go` 的 `installRe` 只認獨立成行的安裝指令，所以 `lxml` 不會進 `declared` 集合，而內嵌程式碼確實 `from lxml import etree`）。**原文保留於下。**<br>**`excel-deduplicate` 的 SKILL.md 於依賴段落出現 `pip install` 字樣。** 三個套件（`pandas`／`lxml`／`openpyxl`）全部在 PDM-004 白名單內，該分支在 Runtime Image 中不會觸發；但**「SKILL.md 文字教模型執行被禁止的動作」與 M0 否決 `cabbage2000-lab/data-analysis-skills` 的理由同型**。CONTENT-006 需人工確認措辭是否可接受，或於匯入時標註。
 6. **D-4 `excel-format` 的 ④ 機械項於 2026-08-15 全部通過**：262 行全文／168 行內嵌 Python（≤300）、無 `eval`／`exec`、無動態下載、無 `subprocess`、無 `pip install` 字樣（不同於腳註 5 的 A-5）。**與 D-1／D-2 同樣只差「人工逐行審過」**，故仍記 pending 而非 pass。另 SKILL.md 以 `[[excel-safe-workflow]]` wiki-link 引用同 repo 的另一個 Skill，該檔不在套件內；匯入實測未觸發阻擋錯誤（③ pass），但 CONTENT-006 應決定此類跨 Skill 引用的呈現方式。
 7. **⑥ 的更正紀錄（2026-08-16，CONTENT-012）。** 判定值**不變**（`pass`），但原判定**在記錄當時沒有依據**，故補記更正而非改寫歷史。
+
+8. **④ pass（2026-08-27）：機械量測重做 ＋ 人工逐行審閱兩者都完成。** 逐筆證據見
+   [report-curated-checks-4-5.md](report-curated-checks-4-5.md)。三項禁止（`eval`／動態下載／外連 `subprocess`）命中為零；
+   「動態下載」的全部命中都是安裝指令，四筆逐條判定為可接受且**平台在匯入時確實標註**（`02:499` 的選言後半）。
+   **舊的 `script_lines` 十五筆裡有十筆不符**——它只算內嵌或只算檔案，從不相加。
+9. **④ FAIL（2026-08-27）：`data-analyst` 合計 651 行，是 300 行上限的 2.17 倍。** 內嵌 448 ＋ `scripts/data_ops.py` 203，
+   而舊紀錄的 203 只有後者。**它不違反任何一項禁止、人工也讀完了，問題只有「太大」**，
+   而 300 行要的是可審閱性。`02:497` 沒有寫機械量測 FAIL 的處置，因為寫的時候沒有人量到會有一筆 FAIL——
+   **這是策展決定不是實作工作**，見 [`05` R-16](../../05-pending-rulings.md)。
+10. **⑤ pass（2026-08-27，15／15）**：掃遍每一個會出貨的檔案（含無副檔名的 `LICENSE`、`.gitignore`），
+   憑證形態與內部路徑形態命中皆為 **0**；逐檔讀過後另可確認**沒有任何檔案帶寫死的絕對路徑**
+   （Excel 系一律用相對佔位檔名，`data_ops.py` 路徑取自 `sys.argv`，`validate-package.py` 相對於自身位置）。
 
    **原記 `pass` 憑什麼？** 憑一份抄漏的依賴清單。`seed-skills.json` 的 `deps` 當初是人工逐份讀 SKILL.md 抄出來的，而 **45 個 Skill 中有 13 個抄漏、合計漏 8 個套件**（`plans/mvp/m2/content-baseline-report.md` §13.4 與其後續）。⑥ 問的是「依賴在 Runtime Image 內」，拿一份漏抄的清單去比對，答案必然是 pass——**它不是錯的判斷，是沒有輸入的判斷**。
 
