@@ -1,8 +1,8 @@
 {
-  "$comment": "Skill Hub M1 seed import list (CONTENT-003 / CONTENT-004). Human-readable companion doc: docs/plans/mvp/content/curated-skill-list.md. JSON has no comments, so the field contract lives in the `schema` object below. Nothing here is a decision: `tier` is a proposal until CONTENT-005/006/007/008 close out, and no work item is checked.",
+  "$comment": "Skill Hub M1 seed import list (CONTENT-003 / CONTENT-004). Human-readable companion doc: docs/plans/mvp/content/curated-skill-list.md. JSON has no comments, so the field contract lives in the `schema` object below. Nothing here is a decision: `tier` is a proposal until CONTENT-005/006/007/008 close out, and no work item is checked. 2026-08-26: check 7 was flipped to pass for all 45 to match the doc, which has recorded it as pass since 2026-08-16 (45/45 automated review, m1/content-review-report.md). The doc and this file had disagreed for ten days, and CONTENT-003's tick condition is check 5 AND check 7 while CONTENT-003 also declares THIS file authoritative on conflict -- so the disagreement did not read as a disagreement, it read as check 7 still being pending. The `checks` object is not consumed by any importer; it is a record, which is exactly why nothing caught it.",
   "version": "1.0.0",
   "generated_at": "2026-08-15",
-  "verified_at": "2026-08-15",
+  "verified_at": "2026-08-26",
   "schema": {
     "sources": "Map of source_id -> repository record. Skills reference a source by key so repo metadata is stored once. An importer must join skills[].source_id against this map.",
     "sources.<id>.url": "Canonical repository URL. Content MUST be fetched from here, never from an awesome-list or marketplace page (PDM-002 backtracking admission rule).",
@@ -44,8 +44,7 @@
   "checks_pending_owner": {
     "4": "CONTENT-006 - line counts are measured, but line-by-line human review is not done.",
     "5": "CONTENT-006 - secret scan and human confirmation not run.",
-    "7": "CONTENT-005 - plain-language summary not written.",
-    "8": "CONTENT-007 then CONTENT-008 - baseline trial run needs the platform to exist."
+        "8": "CONTENT-007 then CONTENT-008 - baseline trial run needs the platform to exist."
   },
   "sources": {
     "anthropic": {
@@ -215,7 +214,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 180,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Insert rows/columns = creation, so documents rather than data under the PDM-001 boundary rule. SKILL.md is ~280-300 lines total with ~180 lines of embedded Python; no pip install text."
     },
     {
@@ -229,7 +228,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 45,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Freeze/unfreeze panes = formatting, so documents. Smallest script footprint of the excel-* family."
     },
     {
@@ -243,7 +242,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Produces a portable markdown handoff document. Prompt-only, ~180 lines of instructions, zero dependencies - the lowest-risk documents pick."
     },
     {
@@ -257,7 +256,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 168,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Promoted to curated 2026-08-15 as the 4th documents pick. The earlier '~1600-1800 lines, check 4 fails' record was a MEASUREMENT ERROR: at the pinned commit SKILL.md is 262 lines / 9839 bytes / sha256 68dc7ce82d6b14bb967e691356c30fe148624cb011ecd7b7f67287c0f8ff85e0, with 168 lines of embedded Python - verified byte-identical via the codeload zip and raw.githubusercontent.com. No eval/exec, no dynamic download, no subprocess, no pip install text. pandas+numpy are used only on the COL_WIDTH='auto' branch; all three deps are in the PDM-004 whitelist. Check 4 stays pending only for the line-by-line human review (CONTENT-006), same convention as excel-insert/excel-freeze. SKILL.md wiki-links [[excel-safe-workflow]], a sibling skill not shipped inside the package; import raised no blocking error. Simplified Chinese - CONTENT-005 must rewrite the summary in zh-Hant. See curated-skill-list.md section 9.1."
     },
     {
@@ -271,7 +270,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "fail", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "fail", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Check 4 fails on aggregate script size (9 files, process.py alone ~290 lines). Chinese official-document formatting (GB/T 9704-2012)."
     },
     {
@@ -285,7 +284,7 @@
       "deps_runtime": "node",
       "network": false,
       "script_lines": 1988,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "fail", "5": "pending", "6": "fail", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "fail", "5": "pending", "6": "fail", "7": "pass", "8": "pending", "9": "pass" },
       "excluded_files": ["skills/course-quiz-builder/scripts/browser-check.mjs"],
       "non_excludable_files": ["skills/course-quiz-builder/scripts/selftest.mjs", "skills/course-quiz-builder/scripts/publish-pages.mjs", "skills/course-quiz-builder/scripts/publish-selftest.mjs"],
       "notes": "Measured 2026-08-15; curated promotion REJECTED, stays indexed. Lines in skills/course-quiz-builder/scripts/: build-quiz.mjs 266, browser-check.mjs 257, selftest.mjs 341, publish-selftest.mjs 356, publish-pages.mjs 768 (1988 total). Check 4 FAILS: three files exceed the 300-line cap, and selftest.mjs uses new Function() to evaluate the template CORE region, which is eval-equivalent and explicitly barred. Check 6 FAILS: publish-pages.mjs is Pipeline step 7 in SKILL.md ('Skip only if the user asked for a local page') and needs GitHub API egress via fetch(), execFileSync of git and 'gh auth token', and a repo-write token - it is NOT excludable, and selftest.mjs is likewise mandatory under hard rule 2 ('Never ship without selftest.mjs printing PASS'). Only browser-check.mjs is excludable: SKILL.md marks it 'Optionally' and it skips cleanly when no browser is present. Its token resolution chain and exit-4 secret guard make it a SEC-005 / NFR-002 sample of interest. See curated-skill-list.md section 9.2."
@@ -301,7 +300,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "fail", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "fail", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Check 1 fails - source-available, not redistributable. No Download Artifact ever. Indexing itself is pending legal review, see sources.anthropic-sa."
     },
     {
@@ -315,7 +314,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "fail", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "fail", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Same source-available constraint as docx. Its scripts import a rendering and OCR stack the Runtime Image rejects at the admission bar (reportlab, pypdfium2, pdf2image which also needs the poppler binaries, pytesseract which also needs tesseract-ocr; reasons in infra/images/README.md dependency-set section), so the form-filling, page-rasterising and scanned-PDF paths cannot run here. The read/extract/merge path over pypdf + pdfplumber + pillow does run and is what produced the passing 2026-08-16 baseline (content-baseline-report.md section 13.2). SKILL.md also offers a Node path (pdf-lib, pdfjs-dist); the image preinstalls no third-party npm packages, so that one is unavailable too."
     },
     {
@@ -329,7 +328,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "fail", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "fail", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Same source-available constraint as docx."
     },
     {
@@ -343,7 +342,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "fail", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "fail", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Classified documents (create/format), not data, per the PDM-001 boundary rule. Same source-available constraint as docx."
     },
 
@@ -358,7 +357,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Apache-2.0 confirmed by reading skills/brand-guidelines/LICENSE.txt on 2026-08-15. EVAL-001 requires a per-skill editable rubric for writing skills - CONTENT-007."
     },
     {
@@ -372,7 +371,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Apache-2.0. Same rubric requirement as brand-guidelines."
     },
     {
@@ -386,7 +385,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Removes AI-writing tells. Self-contained, no runtime scripts on the execution path; check 4 pending only because scripts/validate-package.py has not been read line by line."
     },
     {
@@ -400,7 +399,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Sentence-level polish without changing meaning. Frontmatter read on 2026-08-15: no network, no APIs, no MCP, no packages."
     },
     {
@@ -414,7 +413,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Checklist-based detection of mechanical AI tells. Overlaps humanizer in intent but differs in output (audit vs rewrite) - keep both, they make a useful comparison pair for 02:DISC-004."
     },
     {
@@ -428,7 +427,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pending", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pending", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Indexed tier does not require the nine checks; per-skill SKILL.md not individually read, repo-level facts (MIT, prompt-only, no scripts) apply."
     },
     {
@@ -442,7 +441,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pending", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pending", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Same indexed-tier caveat as cringe-check."
     },
     {
@@ -456,7 +455,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pending", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pending", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Copyright basics, NOT legal advice. UI wording must follow the NFR-001 discipline (no 'safe', no 'official recommendation') and add a not-legal-advice qualifier."
     },
     {
@@ -470,7 +469,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pending", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pending", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Plain, reader-first business writing edit."
     },
     {
@@ -484,7 +483,7 @@
       "deps_runtime": "none",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pending", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pending", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "English variant only. The 5 other language variants (abbrevia, abrege, abrevia, escurca, kuerzen) are deliberately NOT seeded - near-duplicate semantics would blunt PDM-011 recall@5."
     },
 
@@ -499,7 +498,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 203,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "scripts/data_ops.py, 203 lines, CSV/TSV/XLSX/JSON/JSONL. Zero dependency gaps. SKILL.md is Simplified Chinese - CONTENT-005 must rewrite the summary in Traditional Chinese."
     },
     {
@@ -513,7 +512,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Prompt-only, zero dependency risk."
     },
     {
@@ -527,7 +526,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Output supports schema assertions - the highest acceptance-certainty candidate, best first target for CONTENT-007."
     },
     {
@@ -541,7 +540,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Numeric assertions make acceptance deterministic."
     },
     {
@@ -555,7 +554,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 140,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Directly matches the PDM-001 canonical task sentence 'drop the duplicate rows'. lxml is whitelisted as of 2026-08-14 so this is unconditional now. WATCH: the dependency section of SKILL.md contains 'pip install' text - all three packages are preinstalled so the branch is inert, but the wording tells the model to do something the runtime forbids, same shape as the M0 rejection of cabbage2000-lab/data-analysis-skills. CONTENT-006 must confirm or annotate."
     },
     {
@@ -569,7 +568,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 253,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "Companion to excel-deduplicate (detect vs remove)."
     },
     {
@@ -583,7 +582,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate, re-confirmed present on 2026-08-15."
     },
     {
@@ -597,7 +596,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate."
     },
     {
@@ -611,7 +610,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate."
     },
     {
@@ -625,7 +624,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate."
     },
     {
@@ -639,7 +638,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate."
     },
     {
@@ -653,7 +652,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate."
     },
     {
@@ -667,7 +666,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate."
     },
     {
@@ -681,7 +680,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate. SKILL.md instructs `from compact_rows import compact_xlsx`, and the package ships no compact_rows module - the scan raises undeclared-dependency on it. It is not a PyPI package and must not enter `deps`; it is a cross-skill reference to a sibling in the same repo (02:CONTENT-006 \"cross-Skill reference to a file outside the package\"), unresolved at the pinned commit."
     },
     {
@@ -695,7 +694,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate."
     },
     {
@@ -709,7 +708,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": null,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pending", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate."
     },
     {
@@ -723,7 +722,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate, prompt-only."
     },
     {
@@ -737,7 +736,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate, prompt-only."
     },
     {
@@ -751,7 +750,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate, prompt-only."
     },
     {
@@ -765,7 +764,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate, prompt-only."
     },
     {
@@ -779,7 +778,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate, prompt-only."
     },
     {
@@ -793,7 +792,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate, prompt-only."
     },
     {
@@ -807,7 +806,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate, prompt-only."
     },
     {
@@ -821,7 +820,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate. UI wording must not imply this is a compliance guarantee (NFR-001 discipline). SKILL.md's install line names presidio-analyzer/presidio-anonymizer, which the Runtime Image rejects (they pull spaCy plus a language model downloaded at first use, and the sandbox has no network) - so the detection actually available is the model's own reading plus the format validators phonenumbers and python-stdnum, which are installed. That gap makes the NFR-001 wording discipline more load-bearing, not less."
     },
     {
@@ -835,7 +834,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 0,
-      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pending", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pending", "4": "pass", "5": "pending", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "M0-verified candidate, prompt-only."
     }
   ],

@@ -103,7 +103,7 @@
 
 1. **④ 的行數已機械量測且全部落在 300 行上限內**，但**「人工逐行審過」一項尚未執行**（沿用 M0 的既有限制）。承接工作項：**CONTENT-006**。
 2. **⑤ 靜態掃描與人工 Secret 確認尚未執行。** 承接工作項：**CONTENT-006**。
-3. ~~**⑦ 白話摘要：工序已建立，人工審核未完成，故仍記 `pending`。**~~ **⑦ 於 2026-08-16 改記 `pass`。** 承接工作項：**CONTENT-005**（已完成）。
+3. ~~**⑦ 白話摘要：工序已建立，人工審核未完成，故仍記 `pending`。**~~ **⑦ 於 2026-08-16 改記 `pass`。** 承接工作項：**CONTENT-005**（已完成）。<br>**2026-08-26：`tools/content/seed-skills.json` 直到今天才跟上，而它跟這一格不一致了十天。** 該檔 45 筆的 `checks.7` 全部還是 `pending`，**而 `03:CONTENT-003` 定的規則是「兩處不一致時以 `seed-skills.json` 為準」**——所以那十天裡，照規則讀的人得到的答案是「⑦ 仍未完成」，也就是 `CONTENT-003` 的勾選條件（⑤∧⑦）還缺兩項而不是一項。**沒有任何機器會抓到它**：`checks` 這個物件沒有任何匯入器讀，它是紀錄——而紀錄正是最容易安靜過期的東西。
    **2026-08-16 審校結果**（[content-review-report.md](../m1/content-review-report.md)）：45 筆全量自動化審校，**45/45 通過**；精選 **15/15**。唯一主判準（非技術讀者可理解性）45/45，忠實性 890 條事實宣稱 0 條未支持，語言慣例與白名單皆 0 命中。首輪有 3 筆（含精選 `excel-format`、`internal-comms`）因把預設值寫成必填、為輸出加品質形容詞、能力外推而未通過，已由 `enrich-skill/v4` 加入三條轉述約束後重跑修正，**未下架任何一筆**。
    ⚠️ 一項判準範圍修正（KPI3 只掃 zh-Hant 欄位）影響 `excel-format` 的判定，**待負責人追認**；若不接受，該筆退回需修改、⑦ 一併退回 `pending`（報告 §9 第 2 條）。
    **2026-08-15 進度**：45 筆全部已有繁中白話摘要與雙語任務範例句（`gpt-5.6-sol`，全數走生產端點 `POST /v1/enrich-skill`；15 筆重用 golden set 既有產出、30 筆新呼叫）。產出見 [`tools/content/summaries.json`](../../../../tools/content/summaries.json)，**可審核紀錄與審核工序見 [content-summaries.md](content-summaries.md)**（誰審、判準、否決條件、狀態欄位；45 筆現皆為「待審」）。
@@ -184,6 +184,72 @@
 **同 repo 必須逐一排除、不可整包匯入者（danielrosehill，7 個需外網）**：`hf-dataset-push`、`vector-upsert`、`sql-load`、`api-loader`、`graph-database`、`database-guide`、`enrich-with-currency`。
 
 ---
+
+
+### 4.4 已索引層的依賴揭露（`CONTENT-013`，2026-08-26 補）
+
+**這一節是為了關掉一個真的缺口，不是為了完整。** §4.1／4.2／4.3 三張表只有 License 與 Tier，**沒有依賴欄**——
+所以 2026-08-16 的 deps 修正在已索引層**沒有可同步的欄位**，12 筆更正只活在 `tools/content/seed-skills.json`
+與 §3 的腳註 7 裡（`CONTENT-012` 當時就是這樣記的）。**一份只存在於腳註的更正，等於沒有更正。**
+
+**不改上面三張表而另開一節，理由是 §4.3 的形狀**：它是 10 筆一列的群組表，逐筆加欄要先把它拆開，
+而拆開會弄丟「這 10 個來自同一個 repo、同一個 pin」這個它現在說得很清楚的事。
+**允收的字面是「依賴欄**或等價揭露**」**，所以取後者。
+
+**值一律取自 [`tools/content/seed-skills.json`](../../../../tools/content/seed-skills.json)**，
+與 §3 腳註 7 同源；**兩處不一致時以該檔為準**（`03:CONTENT-003` 已定的規則）。
+`deps` 是套件證據所及的第三方依賴（`apps/platform/internal/shared/skillpkg/deps.go` 的 `package-dependencies` finding），
+**不是宣告值**——它掃的是實際 import。
+
+**「外網」欄不是依賴的一部分，但它在同一張表上有用**：需要外網的 Skill 在本平台的沙箱裡連不出去
+（default-deny，允許清單上只有模型閘道），所以那一欄同時是「這個 Skill 在這裡會缺什麼」。
+
+| Skill | 類別 | 依賴 | Runtime | 需外網 |
+| --- | --- | --- | --- | --- |
+| `course-quiz-builder` | documents | **無** | `node` | 否 |
+| `document-format-skills` | documents | `python-docx`、`pywin32` | `python` | 否 |
+| `docx` | documents | `python-docx`、`defusedxml`、`lxml` | `python` | 否 |
+| `pdf` | documents | `pypdf`、`pdfplumber`、`pillow`、`numpy`、`pandas`、`reportlab`、`pypdfium2`、`pdf2image`、`pytesseract`、`pdf-lib`、`pdfjs-dist` | `python` | 否 |
+| `pptx` | documents | `python-pptx`、`defusedxml`、`lxml`、`pillow` | `python` | 否 |
+| `xlsx` | documents | `openpyxl`、`defusedxml`、`lxml` | `python` | 否 |
+| `copyright-creative-work` | writing | **無** | `none` | 否 |
+| `cringe-check` | writing | **無** | `none` | 否 |
+| `full-review` | writing | **無** | `none` | 否 |
+| `shorten` | writing | **無** | `none` | 否 |
+| `sokrati` | writing | **無** | `none` | 否 |
+| `add-data-dictionary` | data | `pandas`、`openpyxl`、`pyarrow` | `python` | 否 |
+| `add-iso3166` | data | `pandas`、`pycountry`、`openpyxl`、`pyarrow` | `python` | 否 |
+| `data-comparability` | data | `pandas`、`pyarrow` | `python` | 否 |
+| `data-shape` | data | `pandas` | `python` | 否 |
+| `date-wrangling` | data | `pandas`、`python-dateutil`、`pytz` | `python` | 否 |
+| `excel-date-to-text` | data | `pandas`、`openpyxl`、`lxml` | `python` | 否 |
+| `excel-delete` | data | `pandas`、`openpyxl`、`lxml` | `python` | 否 |
+| `excel-filter` | data | `pandas`、`openpyxl`、`lxml` | `python` | 否 |
+| `excel-mapping-replace` | data | `pandas`、`openpyxl`、`lxml` | `python` | 否 |
+| `excel-merge` | data | `pandas`、`openpyxl`、`lxml` | `python` | 否 |
+| `excel-regex-clean` | data | `pandas`、`openpyxl`、`lxml` | `python` | 否 |
+| `excel-scout` | data | `pandas`、`openpyxl`、`lxml` | `python` | 否 |
+| `excel-sort` | data | `pandas`、`openpyxl`、`lxml` | `python` | 否 |
+| `excel-split` | data | `pandas`、`openpyxl`、`lxml` | `python` | 否 |
+| `excel-validate` | data | `pandas`、`openpyxl`、`lxml`、`numpy` | `python` | 否 |
+| `json-restructure` | data | `pandas` | `python` | 否 |
+| `pii-flag` | data | `pandas`、`phonenumbers`、`python-stdnum`、`presidio-analyzer`、`presidio-anonymizer` | `python` | 否 |
+| `standardise-country-names` | data | `pandas`、`pycountry` | `python` | 否 |
+| `unicode-consistency` | data | `pandas`、`ftfy`、`charset-normalizer`、`confusable-homoglyphs` | `python` | 否 |
+
+**逐筆核對**：30 筆已索引，其中 6 筆無第三方依賴、0 筆需要外網。
+
+**這一節不是使用者看得到的那個揭露，而那一個已經另有出處——查證之後，不是缺口。**
+`03:CONTENT-013` 寫著「使用者看得到的依賴揭露最終仍應由 `DISC-003` 的詳情頁承接」，
+而 `02:DISC-003` 的「一般模式顯示……依賴」**是由索引時的 LLM 增強承接的**（`SkillDetail.dependencies`，
+與輸入／輸出／工具分桶，`apps/web/src/api/types.ts` 的註解逐字寫著「一份扁平清單說不出哪個是哪個」）。
+**所以詳情頁上的「依賴」有值，它只是不來自這一節的靜態掃描。**
+
+**兩者是不同的東西，混為一談會做錯事**：增強值是**模型讀 `SKILL.md` 說出來的**，這一節的 `deps` 是
+**掃描器讀實際 import 得到的**。後者在詳情頁上只以計數出現（`package-dependencies: 1`）——
+`discovery/detail.go` 刻意把 info 級 finding 收斂成 `InfoCounts[code]++`，理由寫在該檔：
+一個 seed 套件曾產生 321 筆 URL finding，逐條列出會把該看的埋掉。
+**要不要讓靜態掃描的清單也上詳情頁，是 `DISC-003` 的取捨，不是本項的**，而它今天沒有欠任何一條允收。
 
 ## 5. License 合規總表（CONTENT-004）
 
