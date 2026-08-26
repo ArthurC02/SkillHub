@@ -62,7 +62,7 @@ INSERT INTO skill_sources (
     task_description, generator_model, generator_prompt_version
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since, task_description, generator_model, generator_prompt_version
+RETURNING id, workspace_id, source_type, source_url, source_ref, content_hash, fetched_at, created_at, last_checked_at, unavailable_since, task_description, generator_model, generator_prompt_version, content_changed_at
 `
 
 type CreateSkillSourceParams struct {
@@ -106,6 +106,7 @@ func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourcePa
 		&i.TaskDescription,
 		&i.GeneratorModel,
 		&i.GeneratorPromptVersion,
+		&i.ContentChangedAt,
 	)
 	return i, err
 }

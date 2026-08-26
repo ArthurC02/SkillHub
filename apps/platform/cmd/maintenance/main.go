@@ -441,11 +441,11 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 
 func checkSources(ctx context.Context, pool *pgxpool.Pool) error {
 	svc := &ingest.Service{Pool: pool, Fetcher: &ingest.URLFetcher{Allowed: ingest.DefaultAllowedHosts()}}
-	checked, unavailable, err := svc.CheckSources(ctx, batch())
+	checked, unavailable, changed, err := svc.CheckSources(ctx, batch())
 	if err != nil {
 		return err
 	}
-	slog.Info("source check complete", "checked", checked, "unavailable", unavailable)
+	slog.Info("source check complete", "checked", checked, "unavailable", unavailable, "changed", changed)
 	return nil
 }
 

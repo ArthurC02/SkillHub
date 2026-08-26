@@ -422,7 +422,12 @@ WHERE id = $1 AND deleted_at IS NULL;
 -- repeat of the same answer: a probe that fails again is not news, the one that
 -- first fails, or first succeeds again, is. workspace_id rides along so that
 -- event can be scoped to the workspace whose content changed availability.
-SELECT id, workspace_id, source_url, unavailable_since FROM skill_sources
+-- content_hash and content_changed_at ride along for the second question this
+-- sweep answers (0041): the stored hash is what a re-fetch is compared against,
+-- and the timestamp is how the caller tells the first sweep that saw a
+-- difference from every sweep after it.
+SELECT id, workspace_id, source_url, unavailable_since, content_hash, content_changed_at
+FROM skill_sources
 WHERE source_type = 'git' AND source_url IS NOT NULL
 ORDER BY last_checked_at NULLS FIRST
 LIMIT $1;
@@ -431,10 +436,20 @@ LIMIT $1;
 -- unavailable_since records when the source *started* failing, not the latest
 -- failure, so "gone for two weeks" stays distinguishable from a blip. A source
 -- that answers again clears it.
+--
+-- content_changed_at is the opposite shape and that is deliberate: it is set on
+-- the first sweep that hashes differently and never cleared. content_hash is the
+-- snapshot this workspace holds and iron rule 4 makes it immutable, so upstream
+-- coming back is not an event this row can express -- only a re-import is, and a
+-- re-import writes a new row.
 UPDATE skill_sources
 SET last_checked_at = now(),
     unavailable_since = CASE
         WHEN sqlc.arg(available)::bool THEN NULL
         ELSE coalesce(unavailable_since, now())
+    END,
+    content_changed_at = CASE
+        WHEN sqlc.arg(content_changed)::bool THEN coalesce(content_changed_at, now())
+        ELSE content_changed_at
     END
 WHERE id = $1;

@@ -21,6 +21,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -319,10 +320,16 @@ func TestSourceAvailabilityIsAuditedOnlyWhenItChanges(t *testing.T) {
 	c := a.login(t, "alice-source-audit")
 
 	reachable := true
+	// The body is stable and its hash is what the row records, so the content leg
+	// added in 0041 finds nothing and this test keeps measuring exactly one thing:
+	// the availability edges. TestSourceContentChangeIsAuditedOnceAndOnlyOnAChange
+	// below is the other leg.
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		if !reachable {
 			w.WriteHeader(http.StatusNotFound)
+			return
 		}
+		_, _ = w.Write([]byte(unchangedUpstreamBody))
 	}))
 	t.Cleanup(upstream.Close)
 	host := mustHost(t, upstream.URL)
@@ -330,8 +337,8 @@ func TestSourceAvailabilityIsAuditedOnlyWhenItChanges(t *testing.T) {
 	var sourceID pgtype.UUID
 	if err := pool.QueryRow(context.Background(), `
 		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at)
-		VALUES ($1, 'git', $2, 'hash-source-audit', now()) RETURNING id`,
-		mustUUID(t, c.workspaceID), upstream.URL).Scan(&sourceID); err != nil {
+		VALUES ($1, 'git', $2, $3, now()) RETURNING id`,
+		mustUUID(t, c.workspaceID), upstream.URL, unchangedUpstreamHash).Scan(&sourceID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -342,7 +349,7 @@ func TestSourceAvailabilityIsAuditedOnlyWhenItChanges(t *testing.T) {
 		t.Helper()
 		// A bound well above one row: other tests in this package import packages of
 		// their own, and this sweep is deliberately not filtered to one workspace.
-		if _, unavailable, err := svc.CheckSources(context.Background(), 200); err != nil {
+		if _, unavailable, _, err := svc.CheckSources(context.Background(), 200); err != nil {
 			t.Fatal(err)
 		} else if unavailable < wantUnavailable {
 			t.Fatalf("sweep reported %d unavailable sources, want at least %d", unavailable, wantUnavailable)
@@ -410,4 +417,171 @@ func mustHost(t *testing.T, rawURL string) string {
 		t.Fatal(err)
 	}
 	return u.Host
+}
+
+// The bytes a stable upstream serves in the availability test above, and their
+// sha256 — the value a row records at import time (prepare() hashes the raw
+// archive). Kept as constants so the two tests cannot drift into disagreeing
+// about what "unchanged" means.
+const unchangedUpstreamBody = "the bytes this workspace imported\n"
+
+const unchangedUpstreamHash = "adb6702943faee64f69f8375dabd058539d636b8aa4bef3e1674cc20d86ea966"
+
+// 02:SEC-007 第 2 條, 02:CONTENT-009 and INGEST-010 all delegate detection to one
+// sentence: 「以重抓並與保存的內容雜湊比對進行」. Until 2026-08-26 the sweep sent one
+// HEAD, so an upstream that was rewritten — or relicensed — answered 200 and was
+// recorded as healthy. That is the case this test is about, and the reason it
+// cannot be folded into the availability test above: the URL never stops
+// resolving.
+func TestSourceContentChangeIsAuditedOnceAndOnlyOnAChange(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "alice-source-content")
+
+	body := unchangedUpstreamBody
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// HEAD stays 200 throughout: the whole point is that availability never
+		// changes, so anything this test detects had to come from the bytes.
+		if r.Method == http.MethodHead {
+			return
+		}
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(upstream.Close)
+	host := mustHost(t, upstream.URL)
+
+	var sourceID pgtype.UUID
+	if err := pool.QueryRow(context.Background(), `
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at)
+		VALUES ($1, 'git', $2, $3, now()) RETURNING id`,
+		mustUUID(t, c.workspaceID), upstream.URL, unchangedUpstreamHash).Scan(&sourceID); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := &ingest.Service{Pool: pool, Fetcher: &ingest.URLFetcher{
+		Allowed: map[string]bool{host: true}, AllowInsecure: true,
+	}}
+	sweep := func(t *testing.T) {
+		t.Helper()
+		if _, _, _, err := svc.CheckSources(context.Background(), 200); err != nil {
+			t.Fatal(err)
+		}
+	}
+	events := func(t *testing.T) int {
+		t.Helper()
+		return countRow(t, pool,
+			"SELECT count(*) FROM audit_events WHERE action = 'import_source.changed' AND resource_id = $1",
+			sourceID)
+	}
+	changedAt := func(t *testing.T) *time.Time {
+		t.Helper()
+		var at *time.Time
+		if err := pool.QueryRow(context.Background(),
+			"SELECT content_changed_at FROM skill_sources WHERE id = $1", sourceID).Scan(&at); err != nil {
+			t.Fatal(err)
+		}
+		return at
+	}
+
+	// Two sweeps against bytes that match: nothing to say.
+	sweep(t)
+	sweep(t)
+	if n := events(t); n != 0 {
+		t.Fatalf("%d change events for an upstream that served the same bytes", n)
+	}
+	if at := changedAt(t); at != nil {
+		t.Fatalf("content_changed_at = %v for an unchanged source", *at)
+	}
+
+	// It is rewritten. The URL still answers, so a HEAD-only sweep would see
+	// nothing at all here — this assertion is the whole point of the change.
+	body = "somebody rewrote this upstream, and relicensed it while they were there\n"
+	sweep(t)
+	if n := events(t); n != 1 {
+		t.Fatalf("import_source.changed events = %d after a rewrite, want 1; "+
+			"the URL still resolves, so availability probing cannot see this", n)
+	}
+	first := changedAt(t)
+	if first == nil {
+		t.Fatal("content_changed_at is still null after a detected rewrite")
+	}
+
+	// It stays rewritten, and it is rewritten AGAIN. Neither is news: the edge has
+	// been taken, and content_hash is the hash of an immutable snapshot that does
+	// not become current again (iron rule 4). A row per sweep would bury the one
+	// that matters, which is the same argument unavailable_since already settled.
+	sweep(t)
+	body = "and again, differently\n"
+	sweep(t)
+	if n := events(t); n != 1 {
+		t.Errorf("import_source.changed events = %d after three more sweeps, want the original 1", n)
+	}
+	if at := changedAt(t); at == nil || !at.Equal(*first) {
+		t.Errorf("content_changed_at moved from %v to %v; it records when it FIRST stopped matching", first, at)
+	}
+
+	// The event is workspace-scoped and actor-less, like its availability
+	// siblings: the sweep found this, nobody asked for it.
+	var ws, actor string
+	if err := pool.QueryRow(context.Background(), `
+		SELECT workspace_id::text, coalesce(actor_user_id::text, '') FROM audit_events
+		WHERE action = 'import_source.changed' AND resource_id = $1`, sourceID).Scan(&ws, &actor); err != nil {
+		t.Fatal(err)
+	}
+	if ws != c.workspaceID {
+		t.Errorf("event workspace = %s, want %s", ws, c.workspaceID)
+	}
+	if actor != "" {
+		t.Errorf("event names actor %s; the source sweep is platform-initiated", actor)
+	}
+}
+
+// A fetch that fails is not a finding. "We could not look" entering the record as
+// "it changed" would be permanent — the mark is written once and never cleared —
+// and it is the failure mode this whole leg is most likely to hit, because the
+// re-fetch is a full download on a schedule.
+func TestASourceThatCannotBeRefetchedIsNotRecordedAsChanged(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "alice-source-refetch")
+
+	// HEAD succeeds, GET does not: exactly the shape a rate limit or a
+	// partial outage produces, and the one that must stay silent.
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			return
+		}
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	t.Cleanup(upstream.Close)
+	host := mustHost(t, upstream.URL)
+
+	var sourceID pgtype.UUID
+	if err := pool.QueryRow(context.Background(), `
+		INSERT INTO skill_sources (workspace_id, source_type, source_url, content_hash, fetched_at)
+		VALUES ($1, 'git', $2, $3, now()) RETURNING id`,
+		mustUUID(t, c.workspaceID), upstream.URL, unchangedUpstreamHash).Scan(&sourceID); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := &ingest.Service{Pool: pool, Fetcher: &ingest.URLFetcher{
+		Allowed: map[string]bool{host: true}, AllowInsecure: true,
+	}}
+	if _, _, _, err := svc.CheckSources(context.Background(), 200); err != nil {
+		t.Fatal(err)
+	}
+	if n := countRow(t, pool,
+		"SELECT count(*) FROM audit_events WHERE action = 'import_source.changed' AND resource_id = $1",
+		sourceID); n != 0 {
+		t.Errorf("%d change events for a source that could not be downloaded at all", n)
+	}
+	var at *time.Time
+	if err := pool.QueryRow(context.Background(),
+		"SELECT content_changed_at FROM skill_sources WHERE id = $1", sourceID).Scan(&at); err != nil {
+		t.Fatal(err)
+	}
+	if at != nil {
+		t.Errorf("content_changed_at = %v after a failed re-fetch; this mark is never cleared, "+
+			"so writing it on a failure is permanent", *at)
+	}
 }

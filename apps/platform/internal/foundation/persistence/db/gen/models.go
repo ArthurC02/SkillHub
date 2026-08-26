@@ -462,6 +462,8 @@ type SkillSource struct {
 	GeneratorModel *string
 	// Generator prompt revision, e.g. generate-skill/v1. NULL for git and upload. Together with task_description and generator_model this is what lets someone re-derive the package (ADR-047 決策 1).
 	GeneratorPromptVersion *string
+	// First sweep on which a re-fetch hashed differently from content_hash. NULL means every check so far matched, or no check has compared content yet. Never cleared: the snapshot we hold does not become current again.
+	ContentChangedAt pgtype.Timestamptz
 }
 
 type SkillVersion struct {

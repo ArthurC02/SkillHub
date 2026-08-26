@@ -148,6 +148,16 @@ const (
 	// metadata field to filter on. Actor-less; the probe is platform-initiated.
 	ActionSourceUnavailable = "import_source.unavailable"
 	ActionSourceRestored    = "import_source.restored"
+	// The third thing a sweep can find, and the one 02:SEC-007 第 2 條 is actually
+	// about: the URL still answers and no longer holds what we imported. A rewrite
+	// and a licence change both look like this and nothing else does.
+	//
+	// It has no restored twin, unlike the pair above. `unavailable_since` is a
+	// state that can end; this is an edge that cannot, because the value it
+	// contradicts is the hash of an immutable snapshot (iron rule 4). Upstream
+	// matching again would mean upstream was reverted, and even then the honest
+	// record is "it changed once".
+	ActionSourceChanged = "import_source.changed"
 	// 02:SEC-010's P1 first action and ADR-022 X-04's drain/suspend, which are one
 	// switch (03:SEC-012). Both triggers write both events: an operator declaring a
 	// P1 carries an actor, the reconciler crossing a threshold carries none, and the
