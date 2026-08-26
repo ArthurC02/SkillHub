@@ -47,7 +47,7 @@ from dispatch_halts where lifted_at is null;
 
 ## 2. 分辨真事故與誤觸
 
-五條 P1 判準裡**只有兩條會自己翻開關**（③ 與 ⑤），而③有兩個偵測器，共三個。**先判斷是哪一個翻的，再決定要不要調查**——三個裡有兩個可能誤觸，一個不會。
+~~五條 P1 判準裡**只有兩條會自己翻開關**（③ 與 ⑤），而③有兩個偵測器，共三個。~~**2026-08-26 更新：三條會自己翻開關（②③⑤），共四個偵測器。** ② 的探針在該日落地（見 2.3 的補記）。**先判斷是哪一個翻的，再決定要不要調查**——四個裡有兩個可能誤觸（`TraceMaskingStopped` 的流量判準、Reconciler 停擺），兩個不會（masker canary、P-02）。**不會誤觸的那兩個要當成真的**：canary 讀的是規則本身，P-02 讀的是一次真的連上了。
 
 ### 2.1 `TraceMaskingStopped`
 
@@ -112,12 +112,30 @@ select max(coalesce(finalized_at, attempted_at)) from river_job where kind = 'ru
 
 worker 停了就把 worker 起回來，確認掃描恢復（時間戳往前走）之後再解除。**掃描沒恢復就解除，等於把看門狗關掉繼續開門。**
 
-### 2.3 另外三條：沒有東西會自動翻開關
+### 2.2a `P-02 探針回報 fail`（2026-08-26 新增）
+
+**這一個不會誤觸，所以不要先找誤觸。** 它翻開關的條件是**一個沙箱真的連上了它不該連的位址**，而不是「探針掛了」——探針跑不完是 `unknown`，`unknown` 只讓該節點退出輪替，不停整池。
+
+節點在讀到 `fail` 的當下就已經 `Destroy` 掉自己所有在跑的 Run 並拒收新工作，**所以現場在節點上不在平台上**。
+
+```sql
+-- 哪一個節點、什麼時候、碰到了什麼（detail 只有位址與 port，沒有酬載）
+select provider, source, reason, declared_at from dispatch_halts
+where lifted_at is null and source = 'p1_incident' order by declared_at desc;
+```
+
+**解除前要回答的是「那條規則為什麼放行了」，不是「探針還會不會再叫」**——把探針關掉或把節點重開機都會讓它安靜，而兩者都沒有改變放行的那條規則。
+
+**⚠️ 這個探針到今天為止從未在生產節點上跑過**（`03:SEC-008`／甲-3）。第一次在真節點上亮之前，綠燈只證明程式會動，不證明那台機器的網路政策成立。
+
+### 2.3 另外~~三~~**兩**條：沒有東西會自動翻開關
+
+> **2026-08-26：②（P-02）離開這一節，改為自動。** 下表的 ② 那一列原樣保留在下面（劃掉），因為它記的是當時的查證，而那次查證**對的是障礙、錯的是結論**——見該列的補記。**本節現在只剩 ① 與 ④ 需要人宣告。**
 
 | 判準 | 為什麼是人工（2026-08-25 逐條查證，證據在右欄） |
 | --- | --- |
 | ① 逃逸疑慮 | 這是**判斷**，不是量測。沒有一個查詢能回答「這看起來像不像逃逸」。**「疑慮」不是一個訊號**——真的量得到的那些形態（連上核心資料庫、遺留超標、Reconciler 停擺）各自已經是另外幾條判準；這一條剩下的正是**還沒有形態的那部分**，所以它沒有可接的線，不是漏接 |
-| ② P-02 探針偵測到 Sandbox → 核心資料庫連線 | **那個探針今天不存在**（`03:SBX-005` 未勾、[ADR-050](../adr/ADR-050-beta-runs-in-parallel-with-the-sandbox-acceptance.md) 明寫「P-02 常駐探針不存在」；`tools/sec009/` 只有 T1／T2／T8 三支，沒有 T10）。**就算它存在，訊號也沒有路徑進來**：沙箱契約是**單向的**——控制平面呼叫節點（`apps/sandbox/internal/sandbox/http.go` 六條路由全是被呼叫端），節點沒有任何往控制平面推的通道，唯一的反向入口 `POST /internal/trace/{token}` 是**單一 Run 範圍且由不受信任的沙箱送出**。要接就得改 `contracts/` 的 capability 契約，那是決策不是接線 |
+| ~~② P-02 探針偵測到 Sandbox → 核心資料庫連線~~ **已自動（2026-08-26）** | ~~**那個探針今天不存在**（`03:SBX-005` 未勾、[ADR-050](../adr/ADR-050-beta-runs-in-parallel-with-the-sandbox-acceptance.md) 明寫「P-02 常駐探針不存在」；`tools/sec009/` 只有 T1／T2／T8 三支，沒有 T10）。**就算它存在，訊號也沒有路徑進來**：沙箱契約是**單向的**——控制平面呼叫節點（`apps/sandbox/internal/sandbox/http.go` 六條路由全是被呼叫端），節點沒有任何往控制平面推的通道，唯一的反向入口 `POST /internal/trace/{token}` 是**單一 Run 範圍且由不受信任的沙箱送出**。要接就得改 `contracts/` 的 capability 契約，那是決策不是接線~~<br>**上面那段的第一層是對的（探針當時確實不存在），第二層的結論錯了。** 「節點沒有往控制平面推的通道」是真的，**但不需要推**——控制平面本來就在輪詢 `GET /capability`。所以做法不是開一條反向通道（那會把 DoS 手把交給不受信任工作負載，該顧慮成立），而是讓節點在既有的被呼叫端多報一個欄位：`ProviderCapability.security.p02_probe` 帶它自己的最後一次讀數。**契約仍然單向，推的仍然是控制平面。**<br>**現在的行為**：節點自己起一個與 Run 同組態的一次性容器去撥號，讀到 `fail` 就地 `Destroy` 所有在跑的 Run 並拒新工作；平台端 `detectP02Breach` 掛在既有 sweep 的尾巴，冪等、不自動 lift。**三個邊界要記在值班的地方**：①**節點聯絡不上不等於 fail**（那是節點健康問題，翻成 P1 會讓一次網路抖動停掉整池）；②**`unknown` 不停整池**，只讓該節點退出輪替——剛開機還沒讀數的節點不該停掉全池；③**節點自己恢復不會自動解除**，解除仍只有 operator 一條路。<br>**⚠️ 值班時要知道的一件事**：這個探針量的是**那台節點的網路政策**，而它**從未在生產節點上跑過**（`03:SEC-008`／甲-3）。第一次在真節點上亮之前，它的讀數只證明程式會動 |
 | ④ 隔離技術逃逸類 CVE 揭露 | 訊號來自 `.github/workflows/gvisor-baseline.yml`，而 **CI 看得到的東西到不了生產 DB**。該 workflow 自己把理由寫在檔案裡：要自己翻開關就得讓 CI 持有一把能停整池的平台憑證，**「a credential that can stop the fleet, held by CI, is a worse exposure than the minutes a person takes to paste one command」**。反方向（平台自己去拉 GitHub advisory feed）要為控制平面開對外網路出口，並讓派送能力取決於一個外部 feed 的可達性。兩者都是**部署期決策**。<br>順帶查證兩件事：`runsc` **不在任何 image 裡**（它是節點主機的執行檔，repo 內唯一的版本釘點是 `infra/nodes/gvisor-baseline.txt`，目前 `unset`），所以 `runtime-image.yml` 的 `rescan` 掃的是 Agent SDK image，**掃不到 gVisor**；`ProviderCapability` 也沒有回報 `runsc` 版本的欄位 |
 
 這三條**由人宣告**：

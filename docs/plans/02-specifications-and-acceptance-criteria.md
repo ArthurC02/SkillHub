@@ -731,7 +731,7 @@ queued → provisioning → preparing → running → evaluating
 
   **量測落地狀態**：I-03／I-04 的落點已由 **GHCR** 定案（ADR-019 待決策 1 已回填）解決，但**發佈流水線接 GHCR push ＋ attestation（`03` SBX-011）尚未實作**；X-03／X-04 的「連續 2 輪」與分項計數器**需新指標（`03` SBX-012）**。兩者完成前該三項不得記為自動通過。
 - ~~**勾選前提**：節點編排方案、節點是否單租戶、Egress Proxy 實作與允許清單管理流程（Q1～Q3）已有答案。~~ → **已成立（2026-08-16）**：Q1 節點編排採 compose-per-VM（一節點一個 `sandboxd`，不裝叢集排程器）；Q2 節點為**執行平面單租戶**（節點只承載不受信任工作負載，不與應用混排；同節點多 Run 併存，橫向風險為明示的殘餘風險）；Q3 沙箱層 egress 採 nftables default-deny ＋節點固定 DNS 解析器，允許清單存於 `infra/egress/allowlist.yaml` 並有變更、複審與記錄流程。三者見 [ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第一部分。
-- **定值與有答案 ≠ 46 項全過。** 本需求仍未完全符合：閘門 B 的四項額外阻擋只落地兩項（靜態掃描等級判斷缺，根因為威脅模型 Q7；Workspace 並行上限強制缺），且 46 項基線尚未經 SEC-009 全數驗證。
+- **定值與有答案 ≠ 46 項全過。** 本需求仍未完全符合，**但不勾的理由只剩一個**：46 項基線尚未經 SEC-009 全數驗證。<br>**2026-08-26 訂正前半**：原句寫「閘門 B 的四項額外阻擋只落地兩項（靜態掃描等級判斷缺；Workspace 並行上限強制缺）」，**兩項都已落地**——`apps/platform/internal/trial/execution/gateb.go` 的檔頭逐條列出四項並指名落點：權限摘要未確認在 `preflight.go`、能力超出 Provider 在 `schedule.go`，而**這一句說缺的那兩項就在該檔裡**（`requireScanNotBlocking` 會重新掃描套件位元組、`requireRunSlot` 取並行上限），兩者都 fail-closed。**留著這句話的代價不是文件難看**：它是 `SEC-002` 的允收段，讀的人會照它去補一個已經存在的東西，或以為閘門 B 有一半是空的。
 
 ### SEC-003：Skill 匯入與執行前靜態掃描政策
 
@@ -778,7 +778,7 @@ queued → provisioning → preparing → running → evaluating
 - Secrets 不寫入映像層、不寫入持久磁碟、不出現在啟動參數的持久記錄中。
 - Run 終止（含成功、失敗、取消、逾時）後，Virtual Key 與所有短效授權被撤銷。
 - Secrets、Token、密碼與受保護欄位在保存及顯示前完成遮罩（`TRACE-001`、NFR-002）。
-- **未涵蓋（待決策）**：Virtual Key 注入 Sandbox 的機制（環境變數或設定檔）尚未定案，兩者對 Script 的可讀性差異顯著；遮罩失敗後的補救流程（撤銷、清除已存事件、通知）目前只有偵測指標、無回應程序，建議併入 `SEC-010`。
+- ~~**未涵蓋（待決策）**：Virtual Key 注入 Sandbox 的機制（環境變數或設定檔）尚未定案……遮罩失敗後的補救流程……建議併入 `SEC-010`。~~<br>**2026-08-26：兩項都不再未定，而註銷它們的同時查出第 3 條允收其實不成立。**<br>**①注入機制已定為環境變數**，定它的是程式不是這一頁：`apps/sandbox/internal/dockerdrv/docker.go` 的 `env()` 逐字寫著 Virtual Key 以 `ANTHROPIC_AUTH_TOKEN` 傳遞，**因為 Claude Agent SDK 原生讀這個變數**（PDM-003），並自陳「它對工作負載可見，所以預算與 TTL 才是真正的控制」（ADR-017）。原句擔心的「對 Script 的可讀性差異」**在這個選擇下是已知且被接受的**，不是未評估的。威脅模型 **Q11** 同步註銷。<br>**②遮罩失敗的補救流程已於 2026-08-16 隨負責人核可落地**，就在本文件 `SEC-010` 的 §(3)（撤銷 → 清除 → 通知 → 事後，含必補回歸測試）。這一句自那天起就過期了。<br>**⚠️ 但第 3 條允收「不出現在啟動參數的持久記錄中」目前不成立，這是 2026-08-26 才被指出的。** 環境變數是容器的**啟動參數**，Docker daemon 會把它寫進該容器的設定並保存到容器被移除為止——**實測**：`docker run -e ANTHROPIC_AUTH_TOKEN=… ; docker stop ; docker inspect` 在**程序已結束**之後仍原樣讀得到該值。**現有的補償控制是真的**（每 Run 專屬、TTL、`max_budget`、teardown 撤銷、容器移除），**但補償控制不等於這一條允收成立**——它寫的是「不出現」。**因此 `SEC-005` 不勾，且不勾的理由從「兩項待決策」換成「第 3 條對模型憑證不成立」**；處置見 [`04` 丙-74](04-backlog-and-handoffs.md)。
 
 ### SEC-006：Dataset、Trace 與 Artifact 的保存及刪除政策
 
@@ -787,7 +787,7 @@ queued → provisioning → preparing → running → evaluating
 - 使用者可主動刪除 Run 輸入與 Artifact；刪除工作具可追蹤狀態，完成後不再出現在一般存取介面（NFR-002）。
 - Run 終止後暫存空間被銷毀，且清理狀態被記錄，不以最終回應成功取代清理確認。
 - Artifact 上傳授權限定目的地、大小與有效期。
-- **未涵蓋（待決策）**：Run、Dataset、Trace 與 Artifact 的保存期限尚未定值（NFR-002 自陳此缺口），未定值前相關威脅無法轉成可測試要求；LLM 觀測平台的保存期限、遮罩範圍與 Prompt 出境的使用者揭露義務亦未定案。
+- ~~**未涵蓋（待決策）**：Run、Dataset、Trace 與 Artifact 的保存期限尚未定值……~~<br>**2026-08-26 縮小**：這句話寫的時候四個都沒有值，**現在多數有了**——`.env.example` 帶 `DOWNLOAD_ARTIFACT_RETENTION=720h`、`ANALYTICS_RETENTION=8760h`、`AUDIT_RETENTION=9600h`、`TRACE_RETENTION=2160h`（2026-08-23 追認），Dataset **刻意沒有**單一變數（逐列 `expires_at`，理由在 `apps/platform/cmd/maintenance/main.go`）。**仍然開著的是三件，逐條**：①**Run 本身**沒有保存期限值；②**Run Artifact 的 30 天違反 `NFR-002a` 第 2 條**（下界是可重評窗＝Trace 的 90 天），那是 [`05` R-11](05-pending-rulings.md) 要裁的，**且它是唯一一個不決定也會自己發生的**；③**LLM 觀測平台**（威脅模型 Q10）——但那一項今天沒有標的，Langfuse 沒有接在這個 repo 的任何一條路徑上。<br>**三條允收本身都已成立**（`CORE-007` 已勾且涵蓋可追蹤狀態、`cleanup_status` 是 Run 列表的一等欄位、`SBX-008` 已勾且授權分型別帶 TTL），**所以 `SEC-006` 不勾的理由不是缺實作，是 ② 那個下界仍被違反**。
 
 ### SEC-007：來源、License 與下架處理政策
 
@@ -826,7 +826,7 @@ queued → provisioning → preparing → running → evaluating
 允收準則：
 
 - 存在一鍵停用 `SelfHostedProvider` 的流程：停止派送新 Run、排空節點池、保留現場供調查。
-- 觸發條件至少包含：逃逸疑慮、隔離技術的高風險 CVE 揭露、遺留資源持續超標、清理長期失敗。
+- 觸發條件至少包含：逃逸疑慮、隔離技術的高風險 CVE 揭露、遺留資源持續超標、清理長期失敗。<br>**2026-08-26 訂正這一句與下方核可分級表的衝突**：本句把**清理長期失敗**列為「一鍵停用」的觸發條件，而 §(1) 分級表把**清理連續失敗**放在 **P2**，動作逐字是「依 ADR-022 各項既有動作（drain／暫停整池／阻擋發佈），**不停整個平台**」。**以分級表為準**——它是 2026-08-16 經負責人核可、成為本需求允收準則的那一份，本句寫在它之前。[runbook §2.3](../runbooks/p1-dispatch-halt.md) 的五條 P1 判準同樣不含清理失敗，程式裡也沒有任何路徑因清理失敗而翻停派送開關；**三處一致，只有這一句不是**。
 - 流程以 runbook 形式產出，可被值班人員直接執行。
 - 隔離技術「安全基準版本」的維護者與 CVE 應變 SLA **已定（[ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分 P-04，2026-08-16）**：維護者為平台維運負責人，基準檔 `infra/nodes/gvisor-baseline.txt`；逃逸類 CVE **24 h 內全池換版，做不到即依本需求停用 Provider**（此即本需求「觸發條件含隔離技術高風險 CVE 揭露」的具體判準），High 7 天，Medium 以下隨每月例行更新；24 h 自 `.github/workflows/gvisor-baseline.yml` 開出 issue 起算。
 - ~~**未涵蓋（待決策）**：安全事件的嚴重度分級與值班責任歸屬（誰接最高等級告警）尚未定案~~ **已定案（2026-08-16）**：下方提案經負責人核可，自即日起為本需求的允收準則；值班輪替的討論待團隊有第二人時重開。
