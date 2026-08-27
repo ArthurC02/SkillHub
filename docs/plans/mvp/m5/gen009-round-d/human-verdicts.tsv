@@ -1,0 +1,25 @@
+# GEN-009 ④ — 2026-08-28，專案負責人逐份判定
+# 材料：本目錄 skills/ 的二十份 SKILL.md；形式：留／不留／不確定
+# 19/20 已標，OUT-6 未標（原文即如此，不補；理由見報告 §10.3(c)）
+# 留 15 / 不留 1 / 不確定 3
+id	skill_name	verdict
+DAT-1	csv-to-ndjson-converter	留
+DAT-2	client-list-pii-check	留
+DAT-3	inspect-tabular-file	留
+DAT-4	dedupe-mailing-list-spreadsheet	不確定
+DOC-1	word-outline-to-docx	不確定
+DOC-2	scan-table-batch-extraction-and-merge	留
+DOC-3	project-update-storytelling	留
+DOC-4	spreadsheet-keep-headers-and-formatting-consistent	留
+WRI-1	brand-style-application	留
+WRI-2	write-staff-announcement-for-system-change	不確定
+WRI-3	prose-style-diagnostic	留
+WRI-4	guest-post-authorship-read	不留
+X-1	travel-booking-planner	留
+X-2	timing-belt-replacement-overview	留
+OUT-1	math-wrong-question-clustering	留
+OUT-2	cafe-shift-scheduling-method	留
+OUT-3	react-preflight-checklist	留
+OUT-4	medication-schedule-poster	留
+OUT-5	board-game-selector	留
+OUT-6	three-way-reconciliation	—

@@ -654,5 +654,7 @@ and is not decided by renaming it」。**缺的一直是「它多常發生」，
 而**那段比率與任務難度正相關**——受測者會看到「越認真的題目越評不出來」。
 這件事在封測開始之後才發現，就沒有時間改了。
 
+**2026-08-28 補一項證據，方向與「保守是安全的」相反**：那三段被沉默掉的評估，其中**兩段（`DAT-3`／`DOC-2`）的文件經負責人逐份看過後判定「留」**（[報告 §10.2](mvp/m5/report-generate-baseline.md)；第三段 `OUT-6` 未標）。**這條規則沉默的是長 Run，而長 Run 通常是模型多做了事——它沉默掉的不是壞東西。**
+
 **決定之後**：改 `judge.go` 的 `merge()`；`02:EVAL-*` 的截斷句補一行說明降級的粒度；
 [m5/report-generate-baseline.md §9.3](mvp/m5/report-generate-baseline.md) 的發生率是重測的基準線。
