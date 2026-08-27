@@ -1,5 +1,5 @@
 {
-  "$comment": "Skill Hub M1 seed import list (CONTENT-003 / CONTENT-004). Human-readable companion doc: docs/plans/mvp/content/curated-skill-list.md. JSON has no comments, so the field contract lives in the `schema` object below. Nothing here is a decision: `tier` is a proposal until CONTENT-005/006/007/008 close out, and no work item is checked. 2026-08-26: check 7 was flipped to pass for all 45 to match the doc, which has recorded it as pass since 2026-08-16 (45/45 automated review, m1/content-review-report.md). The doc and this file had disagreed for ten days, and CONTENT-003's tick condition is check 5 AND check 7 while CONTENT-003 also declares THIS file authoritative on conflict -- so the disagreement did not read as a disagreement, it read as check 7 still being pending. The `checks` object is not consumed by any importer; it is a record, which is exactly why nothing caught it. 2026-08-27: checks 4 and 5 recorded for the 15 curated entries from a line-by-line review of the pinned bytes (docs/plans/mvp/content/report-curated-checks-4-5.md). script_lines was wrong for TEN of the fifteen - it counted embedded blocks OR script files, never both - and the largest error was an under-count on the one entry that turns out to exceed the ceiling.",
+  "$comment": "Skill Hub M1 seed import list (CONTENT-003 / CONTENT-004). Human-readable companion doc: docs/plans/mvp/content/curated-skill-list.md. JSON has no comments, so the field contract lives in the `schema` object below. Nothing here is a decision: `tier` is a proposal until CONTENT-005/006/007/008 close out, and no work item is checked. 2026-08-26: check 7 was flipped to pass for all 45 to match the doc, which has recorded it as pass since 2026-08-16 (45/45 automated review, m1/content-review-report.md). The doc and this file had disagreed for ten days, and CONTENT-003's tick condition is check 5 AND check 7 while CONTENT-003 also declares THIS file authoritative on conflict -- so the disagreement did not read as a disagreement, it read as check 7 still being pending. The `checks` object is not consumed by any importer; it is a record, which is exactly why nothing caught it. 2026-08-27: checks 4 and 5 recorded for the 15 curated entries from a line-by-line review of the pinned bytes (docs/plans/mvp/content/report-curated-checks-4-5.md). script_lines was wrong for TEN of the fifteen - it counted embedded blocks OR script files, never both - and the largest error was an under-count on the one entry that turns out to exceed the ceiling. That entry, data-analyst, keeps check 4 as pass: 2026-08-27 02:497 was amended so 300 lines is a review TRIGGER, not an admission bar - over 300 the line-by-line review must land in a named document and be linked from the curated list, which it did. The three prohibitions did not move.",
   "version": "1.0.0",
   "generated_at": "2026-08-15",
   "verified_at": "2026-08-26",
@@ -42,8 +42,7 @@
     }
   },
   "checks_pending_owner": {
-    "4-fail": "data-analyst is 651 Script lines against 02:CONTENT-006's 300 ceiling (448 embedded in SKILL.md + 203 in scripts/data_ops.py; the old 203 counted only the file). It breaks none of the three prohibitions and was read line by line - it is simply too large to review, and reviewability is what the ceiling is for. Dropping it to indexed, raising the ceiling, or swapping the candidate is a curation call: 05 R-16.",
-            "8": "CONTENT-007 then CONTENT-008 - baseline trial run needs the platform to exist."
+                "8": "CONTENT-007 then CONTENT-008 - baseline trial run needs the platform to exist."
   },
   "sources": {
     "anthropic": {
@@ -497,7 +496,7 @@
       "deps_runtime": "python",
       "network": false,
       "script_lines": 651,
-      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "fail", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
+      "checks": { "1": "pass", "2": "pass", "3": "pass", "4": "pass", "5": "pass", "6": "pass", "7": "pass", "8": "pending", "9": "pass" },
       "notes": "scripts/data_ops.py, 203 lines, CSV/TSV/XLSX/JSON/JSONL. Zero dependency gaps. SKILL.md is Simplified Chinese - CONTENT-005 must rewrite the summary in Traditional Chinese."
     },
     {

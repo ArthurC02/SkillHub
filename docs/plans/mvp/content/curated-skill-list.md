@@ -64,7 +64,7 @@
 
 | # | Skill | 來源 repo | pin commit | SKILL.md 路徑 | License | 依賴 | 外網 | Script 規模 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| A-1 | `data-analyst` | [nqumich/data-analyst-skill](https://github.com/nqumich/data-analyst-skill) | `0ba9d17ed275b341df713db6a10b44eb32bf6eb1` | `SKILL.md`（repo 根） | MIT（實查 `LICENSE`） | `pandas`、`openpyxl` ✅ | 不需 | `scripts/data_ops.py` 203 行 ✅ |
+| A-1 | `data-analyst`（**651 行，走審閱觸發線**⁹） | [nqumich/data-analyst-skill](https://github.com/nqumich/data-analyst-skill) | `0ba9d17ed275b341df713db6a10b44eb32bf6eb1` | `SKILL.md`（repo 根） | MIT（實查 `LICENSE`） | `pandas`、`openpyxl` ✅ | 不需 | `scripts/data_ops.py` 203 行 ✅ |
 | A-2 | `data-cleanliness-scan` | [danielrosehill/Claude-Data-Wrangler-plugin](https://github.com/danielrosehill/Claude-Data-Wrangler-plugin) | `b12805a62307021e024626616119b505e015f5a9` | `skills/data-cleanliness-scan/SKILL.md` | MIT | ~~prompt-only（`pandas`／`numpy`）✅~~ → **更正⁷**：`pandas`、`openpyxl`、`chardet`、`python-dateutil` ✅、`pyarrow` ⛔（拒收） | 不需 | 0 行（無 Script ≠ 無依賴，見⁷） |
 | A-3 | `csv-to-json` | danielrosehill/Claude-Data-Wrangler-plugin | 同上 | `skills/csv-to-json/SKILL.md` | MIT | ~~prompt-only ✅~~ → **更正⁷**：`pandas` ✅ | 不需 | 0 行（無 Script） |
 | A-4 | `text-to-numeric` | danielrosehill/Claude-Data-Wrangler-plugin | 同上 | `skills/text-to-numeric/SKILL.md` | MIT | ~~prompt-only ✅~~ → **更正⁷**：`pandas` ✅ | 不需 | 0 行（無 Script） |
@@ -92,7 +92,7 @@
 | W-3 `humanizer` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
 | W-4 `line-edit` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
 | W-5 `ai-written-check` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
-| A-1 `data-analyst` | pass | pass | pass | **FAIL**⁹ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
+| A-1 `data-analyst` | pass | pass | pass | **pass**⁹ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
 | A-2 `data-cleanliness-scan` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | **pass**⁷ | **pass**³ | pending⁴ | pass |
 | A-3 `csv-to-json` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
 | A-4 `text-to-numeric` | pass | pass | pass | **pass**⁸ | **pass**¹⁰ | pass | **pass**³ | pending⁴ | pass |
@@ -119,10 +119,13 @@
    [report-curated-checks-4-5.md](report-curated-checks-4-5.md)。三項禁止（`eval`／動態下載／外連 `subprocess`）命中為零；
    「動態下載」的全部命中都是安裝指令，四筆逐條判定為可接受且**平台在匯入時確實標註**（`02:499` 的選言後半）。
    **舊的 `script_lines` 十五筆裡有十筆不符**——它只算內嵌或只算檔案，從不相加。
-9. **④ FAIL（2026-08-27）：`data-analyst` 合計 651 行，是 300 行上限的 2.17 倍。** 內嵌 448 ＋ `scripts/data_ops.py` 203，
-   而舊紀錄的 203 只有後者。**它不違反任何一項禁止、人工也讀完了，問題只有「太大」**，
-   而 300 行要的是可審閱性。`02:497` 沒有寫機械量測 FAIL 的處置，因為寫的時候沒有人量到會有一筆 FAIL——
-   **這是策展決定不是實作工作**，見 [`05` R-16](../../05-pending-rulings.md)。
+9. **④ pass（2026-08-27，走 `02:497` 的審閱觸發線）：`data-analyst` 合計 651 行，超過 300 行。** 內嵌 448 ＋ `scripts/data_ops.py` 203，
+   而舊紀錄的 203 只有後者。**它不違反任何一項禁止**（`eval`／動態下載／外連 `subprocess` 命中皆為零），
+   **人工也真的逐行讀完了**，逐筆結果在 [report-curated-checks-4-5.md](report-curated-checks-4-5.md)。
+   **2026-08-27 裁定（[`05` R-16](../../05-pending-rulings.md)）：300 行改為審閱觸發線而不是准入線**——
+   超過 300 行者，逐行審閱的結果必須落成具名文件並在此連結，否則維持 `pending`。本筆滿足該條件，故記 `pass`。
+   **換掉的是代理指標不是目的**：那個數字買的一直是「一個人讀得完」，而這一筆是被讀完的；
+   三項禁止一格沒動，300 行以下的路徑也一格沒放寬。
 10. **⑤ pass（2026-08-27，15／15）**：掃遍每一個會出貨的檔案（含無副檔名的 `LICENSE`、`.gitignore`），
    憑證形態與內部路徑形態命中皆為 **0**；逐檔讀過後另可確認**沒有任何檔案帶寫死的絕對路徑**
    （Excel 系一律用相對佔位檔名，`data_ops.py` 路徑取自 `sys.argv`，`validate-package.py` 相對於自身位置）。
