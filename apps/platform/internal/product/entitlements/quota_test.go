@@ -32,18 +32,21 @@ func TestQuotaEnforcedOnlyWithARealCeiling(t *testing.T) {
 	}
 }
 
-// The proposed values, asserted so that changing one is a deliberate edit to a
-// test as well as to a constant. All four are 待追認 — PDM-010 asks the owner to
-// choose the first-window value explicitly rather than let an implementation
-// infer it, and 20 is the proposal's own recommendation of the two.
+// The values, asserted so that changing one is a deliberate edit to a test as
+// well as to a constant. All four were ratified 2026-08-27 exactly as proposed
+// (m0/pdm-proposals.md §9.1, 05 R-1b), including the one PDM-010 refused to let
+// an implementation infer: the first window is min(20,30) = 20, not 20+30 = 50.
+// So the second assertion below is no longer guarding a gap in the proposal —
+// it is guarding a ruling, which is the stronger reason to keep it.
 func TestDefaultsAreThePDM010Proposal(t *testing.T) {
 	l := DefaultQuotaLimits()
 	if l.FirstWindow != 20 || l.Window != 30 || l.Daily != 5 || l.WindowDays != 30 {
 		t.Errorf("defaults drifted from PDM-010 §8.1: %+v", l)
 	}
-	// The alternative reading PDM-010 names and refuses to pick for us.
+	// The alternative reading, ruled against on 2026-08-27 — the comment moved,
+	// the assertion and its message did not.
 	if l.FirstWindow == l.Window+20 {
-		t.Error("the first window is the 20+30 reading; PDM-010 asks the owner to choose explicitly")
+		t.Error("the first window is the 20+30 reading; the 2026-08-27 ruling took min(20,30) = 20")
 	}
 }
 

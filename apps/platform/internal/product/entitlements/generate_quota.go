@@ -33,29 +33,37 @@ import (
 // they actually ran out of.
 var ErrGenerateQuotaExceeded = errors.New("this workspace has used its free generation allowance")
 
-// 待追認 — every one of them.
+// Ratified 2026-08-27, all four, exactly as proposed. The signature is recorded
+// in 05-pending-rulings.md R-9 and in m0/pdm-proposals.md §9.1; no value here
+// moved when it was signed.
 //
 // PDM-010 §8.1 gives numbers for runs and says nothing about generation, because
-// generation did not exist when it was written. ADR-028 決策 4 permits exactly
-// this: the enforcement point may be built before the numbers are ratified,
-// because it does not depend on them. What may not happen before ratification is
-// putting an unratified number on a screen — so until PDM signs these, a
-// deployment that shows a generation allowance is showing a guess (04 乙-22).
+// generation did not exist when it was written. ADR-028 決策 4 permitted exactly
+// this: the enforcement point could be built before the numbers were ratified,
+// because it does not depend on them. What it forbade until ratification was
+// putting an unratified number on a screen (04 乙-22) — and that is the ban the
+// ratification lifts.
 //
-// Where the guesses come from, so that ratifying them is a review and not a
-// fresh start: a generation measured $0.00553 with the default mini model and
-// $0.1186 with the flagship (m5/report-generate-baseline.md). That is cheaper
-// than the $0.0382 median gateway spend of a Run, and a user who does not like
-// what came back will rewrite the task description and go again — so the daily
-// number is higher than the Run's five, and the window number is not.
+// It lifts a ban, not a switch. GENERATE_QUOTA=off (ADR-056) has not changed, so
+// there is still no allowance to display today; 02:GEN-001's "本次將消耗的額度"
+// stays empty because nothing is being enforced, which is 04 乙-2's rule and not
+// a leftover of the ratification. When somebody turns the switch on, the numbers
+// are already signed.
+//
+// Where they came from, so that ratifying them was a review and not a fresh
+// start: a generation measured $0.00553 with the default mini model and $0.1186
+// with the flagship (m5/report-generate-baseline.md). That is cheaper than the
+// $0.0382 median gateway spend of a Run, and a user who does not like what came
+// back will rewrite the task description and go again — so the daily number is
+// higher than the Run's five, and the window number is not.
 const (
-	generateDaily       = 10 // per rolling 24 hours — 待追認
-	generateWindow      = 30 // per rolling window thereafter — 待追認
-	generateFirstWindow = 20 // a workspace's first window — 待追認
-	generateWindowDays  = 30 // the rolling window's length — 待追認
+	generateDaily       = 10 // per rolling 24 hours — ratified 2026-08-27
+	generateWindow      = 30 // per rolling window thereafter — ratified 2026-08-27
+	generateFirstWindow = 20 // a workspace's first window — ratified 2026-08-27
+	generateWindowDays  = 30 // the rolling window's length — ratified 2026-08-27
 )
 
-// DefaultGenerateQuotaLimits is the unratified proposal above. The zero value —
+// DefaultGenerateQuotaLimits is the ratified proposal above. The zero value —
 // what a deployment gets by turning the allowance off — enforces nothing and
 // displays nothing, exactly as QuotaLimits.Enforced already defines.
 func DefaultGenerateQuotaLimits() QuotaLimits {

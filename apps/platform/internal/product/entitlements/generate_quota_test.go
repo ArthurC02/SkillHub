@@ -113,3 +113,31 @@ func TestAnUncountableAllowanceRefusesWithoutClaimingItRanOut(t *testing.T) {
 		})
 	}
 }
+
+// The generation allowance's four numbers, asserted the way the run allowance's
+// four are next door.
+//
+// It is here because until 2026-08-27 they were the only ratified numbers in this
+// package with nothing holding them: quota_test.go has guarded PDM-010's four
+// since they were a proposal, and these had no counterpart — a signature with no
+// teeth. That asymmetry was found while ratifying them, not by a review.
+//
+// The literals are repeated rather than read back through the constants on
+// purpose. A test that reaches the value through the symbol it guards passes at
+// every value, which is exactly how a 32 MiB import ceiling survived for months
+// against three documents saying 10 MB (04 乙-23).
+func TestGenerateDefaultsAreTheRatifiedNumbers(t *testing.T) {
+	l := DefaultGenerateQuotaLimits()
+	if l.Daily != 10 || l.Window != 30 || l.FirstWindow != 20 || l.WindowDays != 30 {
+		t.Errorf("generation allowance drifted from the 2026-08-27 ratification "+
+			"(m0/pdm-proposals.md §9.1, 05 R-9): %+v", l)
+	}
+	// Higher than the run allowance's daily five, and that ordering is the
+	// reasoning ratified with the numbers: a user who does not like what came
+	// back rewrites the task description and goes again, and a generation costs
+	// about a seventh of a run at the gateway.
+	if l.Daily <= DefaultQuotaLimits().Daily {
+		t.Errorf("generation daily = %d, run daily = %d; the ratified numbers put generation higher",
+			l.Daily, DefaultQuotaLimits().Daily)
+	}
+}

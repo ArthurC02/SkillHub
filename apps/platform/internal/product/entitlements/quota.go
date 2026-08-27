@@ -65,10 +65,12 @@ var ErrQuotaExceeded = errors.New("this workspace has used its free run allowanc
 // which is what an outage is, and never err.Error().
 var ErrAllowanceUnavailable = errors.New("the allowance could not be counted")
 
-// PDM-010 §8.1's proposed numbers.
+// PDM-010 §8.1's numbers.
 //
-// 待追認 — every one of them, in the sense that PDM-010 is still a proposal and
-// the owner has not signed the figures.
+// Ratified 2026-08-27, all four, exactly as proposed — the signature is recorded
+// in docs/plans/mvp/m0/pdm-proposals.md §9.1 and in 05-pending-rulings.md R-1b.
+// Nothing here changed when it was signed, and that is the point: what was
+// missing was a signature, not a behaviour.
 //
 // The one thing that was genuinely undecided is not: PDM-010 named a choice the
 // implementation must not infer — whether the first window is min(20,30) = 20 or
@@ -82,16 +84,27 @@ var ErrAllowanceUnavailable = errors.New("the allowance could not be counted")
 // month larger, not smaller — the ruling rests on beta testers not being organic
 // signups).
 //
-// ADR-028 決策 4 permits exactly this split: the enforcement point may be built
-// before the numbers are ratified, because it does not depend on them — what may
-// not happen before ratification is putting an unratified number on a screen. A
-// deployment that does not want to show one leaves the allowance unconfigured,
-// and then nothing is enforced and nothing is displayed (see QuotaLimits.Enforced).
+// ADR-028 決策 4 permitted building the enforcement point before the numbers were
+// ratified, because it does not depend on them; what it forbade until then was
+// putting an unratified number on a screen. The 2026-08-27 ratification lifts
+// that ban for these four, and lifts nothing else — RUN_QUOTA=off (ADR-055) is a
+// separate switch and is still off, so this deployment still displays no
+// allowance. A ban and a switch, and only the ban moved.
+//
+// A deployment that does not want one passes the zero QuotaLimits, and then
+// nothing is enforced and nothing is displayed (see QuotaLimits.Enforced).
+// "Unconfigured" is deliberately not the way to say that: an unset RUN_QUOTA
+// means enforced with the numbers above, not unenforced. That asymmetry is
+// stated where it is decided (quotaFromEnv / generateQuotaFromEnv in
+// cmd/api/main.go) and it survives ratification unchanged — an unset retention
+// means data is not collected, which is safe; an unset allowance would mean the
+// only real cost ceiling is off, which is not. 05 R-1a recorded it backwards
+// once and ADR-055 had to correct it.
 const (
-	quotaFirstWindowRuns = 20 // first 30 days, min(20,30) per PDM-010 — 待追認
-	quotaWindowRuns      = 30 // per rolling window thereafter — 待追認
-	quotaDailyRuns       = 5  // all the time, first window included — 待追認
-	quotaWindowDays      = 30 // the rolling window's length — 待追認
+	quotaFirstWindowRuns = 20 // first 30 days, min(20,30) per PDM-010 — ratified 2026-08-27
+	quotaWindowRuns      = 30 // per rolling window thereafter — ratified 2026-08-27
+	quotaDailyRuns       = 5  // all the time, first window included — ratified 2026-08-27
+	quotaWindowDays      = 30 // the rolling window's length — ratified 2026-08-27
 )
 
 // QuotaLimits is the allowance as a deployment configures it. The zero value
@@ -110,8 +123,8 @@ type QuotaLimits struct {
 	WindowDays int
 }
 
-// DefaultQuotaLimits is PDM-010 §8.1 as proposed. See the constants above for why
-// every number in it is marked 待追認.
+// DefaultQuotaLimits is PDM-010 §8.1 as proposed and, since 2026-08-27, as
+// ratified. See the constants above for where that signature is recorded.
 func DefaultQuotaLimits() QuotaLimits {
 	return QuotaLimits{
 		Daily:       quotaDailyRuns,
