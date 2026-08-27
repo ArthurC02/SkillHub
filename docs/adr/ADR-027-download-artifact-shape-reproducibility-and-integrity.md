@@ -109,6 +109,7 @@ manifest 另必須記 ADR-012「可重現性」列舉的六項（來源 Skill Ve
 ## 待決策
 
 - **PDM-006 的 Download Artifact 保存期限（提案 90 天）尚未追認。** 本 ADR 不代為定值；`expires_at` 的值放部署設定並在建立時計算，migration 只留註解指向 PDM-006（把「已定值」與「已被追認」分開，是 `03` §1 整節存在的理由）。
-- **`redistribution` 的寫入端**（operator 端點或策展腳本）與其 audit 形式：M4 首發只需回填與讀取，寫入端點屬 `SEC-011` 的窮舉清單擴充，屆時另議。
+- ~~**`redistribution` 的寫入端**（operator 端點或策展腳本）與其 audit 形式：M4 首發只需回填與讀取，寫入端點屬 `SEC-011` 的窮舉清單擴充，屆時另議。~~
+  → **已決，分兩次**：形式於 2026-08-23 補上（`PUT /admin/skills/{id}/redistribution`，operator-only、`note` 必填、欄位與 audit 同交易，[`05` R-3c](../plans/05-pending-rulings.md)）；**誰能改與要什麼證據**於 2026-08-27 由 [ADR-057](./ADR-057-releasing-content-takes-named-evidence-not-a-button.md) 裁定（operator-only ＋ 具名來源層級證據且必須與凍結快照相符）。**本項當時寫「屆時另議」是對的**——先補的是紀錄，後補的才是判準，而兩者之間那四天的路由刻意取窄，就是為了讓後面這一次不必收回任何東西。
 - **對外輸出 SPDX／SBOM 文件的時點與欄位映射**（承 ADR-021 待決策最後一項）：本 ADR 的 manifest 是平台自訂格式而非 SPDX，兩者的映射在需求出現時再定。
 - **簽章的重開訊號**見決策 3；出現任一即新增 ADR，不在本 ADR 內就地改寫。

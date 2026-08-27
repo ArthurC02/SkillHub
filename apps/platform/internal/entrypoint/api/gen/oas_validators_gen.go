@@ -4737,10 +4737,43 @@ func (s *SetSkillRedistributionReq) Validate() error {
 			Error: err,
 		})
 	}
+	if err := func() error {
+		if value, ok := s.LicenseSource.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "license_source",
+			Error: err,
+		})
+	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
+}
+
+func (s SetSkillRedistributionReqLicenseSource) Validate() error {
+	switch s {
+	case "manifest":
+		return nil
+	case "manifest-referenced-file":
+		return nil
+	case "package-license-file":
+		return nil
+	case "repo-license-file":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
 }
 
 func (s SetSkillRedistributionReqValue) Validate() error {

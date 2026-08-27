@@ -63,3 +63,37 @@ func SetRedistribution(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, valu
 		WorkspaceID: before.WorkspaceID, Redistribution: before.Redistribution,
 	}, nil
 }
+
+// LicenseEvidence is the licence claim recorded on a skill's newest version.
+//
+// It exists so that releasing a skill can be contradicted. `05` R-3b's ruling is
+// that moving a skill to `allowed` must carry the evidence it relied on rather
+// than a confirmation box, and the only evidence the platform holds is what the
+// importer read out of the package and froze into the version row (ADR-021 決策
+// 1). An operator naming a pair the snapshot does not record is looking at
+// something other than the bytes a download would hand over.
+//
+// Empty strings mean the version records no licence at all, which is a distinct
+// answer from "records a different one" and the caller says so differently. A
+// skill with no versions returns ErrNotFound, same as a skill that is not there:
+// there is nothing to release either way.
+//
+// Takes the caller's transaction so the read, the write and the audit event see
+// one state. Reading the evidence outside the transaction that acts on it would
+// let a new version land in between and release a licence nobody reviewed.
+func LicenseEvidence(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID) (expression, source string, err error) {
+	row, err := gen.New(tx).GetLatestVersionLicense(ctx, skillID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", ErrNotFound
+	}
+	if err != nil {
+		return "", "", err
+	}
+	if row.LicenseExpression != nil {
+		expression = *row.LicenseExpression
+	}
+	if row.LicenseSource != nil {
+		source = *row.LicenseSource
+	}
+	return expression, source, nil
+}

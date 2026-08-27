@@ -7998,6 +7998,52 @@ func (o OptRunQuota) Or(d RunQuota) RunQuota {
 	return d
 }
 
+// NewOptSetSkillRedistributionReqLicenseSource returns new OptSetSkillRedistributionReqLicenseSource with value set to v.
+func NewOptSetSkillRedistributionReqLicenseSource(v SetSkillRedistributionReqLicenseSource) OptSetSkillRedistributionReqLicenseSource {
+	return OptSetSkillRedistributionReqLicenseSource{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSetSkillRedistributionReqLicenseSource is optional SetSkillRedistributionReqLicenseSource.
+type OptSetSkillRedistributionReqLicenseSource struct {
+	Value SetSkillRedistributionReqLicenseSource
+	Set   bool
+}
+
+// IsSet returns true if OptSetSkillRedistributionReqLicenseSource was set.
+func (o OptSetSkillRedistributionReqLicenseSource) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSetSkillRedistributionReqLicenseSource) Reset() {
+	var v SetSkillRedistributionReqLicenseSource
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSetSkillRedistributionReqLicenseSource) SetTo(v SetSkillRedistributionReqLicenseSource) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSetSkillRedistributionReqLicenseSource) Get() (v SetSkillRedistributionReqLicenseSource, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSetSkillRedistributionReqLicenseSource) Or(d SetSkillRedistributionReqLicenseSource) SetSkillRedistributionReqLicenseSource {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptSkillAccessRestriction returns new OptSkillAccessRestriction with value set to v.
 func NewOptSkillAccessRestriction(v SkillAccessRestriction) OptSkillAccessRestriction {
 	return OptSkillAccessRestriction{
@@ -13570,6 +13616,31 @@ type SetSkillRedistributionReq struct {
 	// validator as `restriction`: an operator action nobody can explain later is not a decision
 	// (02:SEC-011 理由必填).
 	Note string `json:"note"`
+	// Required when `value` is `allowed`, ignored otherwise, and that asymmetry is the ruling (`05` R-3b,
+	// ADR-057): `allowed` is the only value that releases anything, so it is the only one that has to
+	// carry the evidence it relied on. Asking for a licensing judgement in order to block would charge for
+	// refusing to make one.
+	//
+	// The value must be the SPDX expression the importer froze onto the skill's newest version. A claim
+	// the snapshot does not record is refused, and the refusal says what is recorded — an operator who
+	// cannot name it is describing a package other than the one a download would hand over.
+	//
+	// Compared trimmed and case-insensitively: SPDX identifiers are defined case-insensitively, and
+	// refusing `mit` against `MIT` would teach operators to paste rather than read.
+	LicenseExpression OptString `json:"license_expression"`
+	// Required when `value` is `allowed`. The ADR-021 provenance tier the operator relied on, named
+	// separately from the expression because ADR-021 決策 1 is that the two are one claim: frontmatter
+	// `MIT` and a repo-root `MIT` are not the same assertion, and ADR-021 §5.3 records two repositories
+	// whose valid MIT `LICENSE` covered content that was not theirs — an error in the releasing
+	// direction.
+	//
+	// It lands in the audit event alongside the verdict, which is what makes "every skill released on
+	// `repo-license-file` evidence" one SQL query instead of a manual trawl.
+	//
+	// `curated-declared` is absent because ADR-021 決策 2 does not implement it: it is the one tier
+	// whose evidence does not travel inside the package, so nobody holding the bytes could re-verify a
+	// release made on it.
+	LicenseSource OptSetSkillRedistributionReqLicenseSource `json:"license_source"`
 }
 
 // GetValue returns the value of Value.
@@ -13582,6 +13653,16 @@ func (s *SetSkillRedistributionReq) GetNote() string {
 	return s.Note
 }
 
+// GetLicenseExpression returns the value of LicenseExpression.
+func (s *SetSkillRedistributionReq) GetLicenseExpression() OptString {
+	return s.LicenseExpression
+}
+
+// GetLicenseSource returns the value of LicenseSource.
+func (s *SetSkillRedistributionReq) GetLicenseSource() OptSetSkillRedistributionReqLicenseSource {
+	return s.LicenseSource
+}
+
 // SetValue sets the value of Value.
 func (s *SetSkillRedistributionReq) SetValue(val SetSkillRedistributionReqValue) {
 	s.Value = val
@@ -13590,6 +13671,83 @@ func (s *SetSkillRedistributionReq) SetValue(val SetSkillRedistributionReqValue)
 // SetNote sets the value of Note.
 func (s *SetSkillRedistributionReq) SetNote(val string) {
 	s.Note = val
+}
+
+// SetLicenseExpression sets the value of LicenseExpression.
+func (s *SetSkillRedistributionReq) SetLicenseExpression(val OptString) {
+	s.LicenseExpression = val
+}
+
+// SetLicenseSource sets the value of LicenseSource.
+func (s *SetSkillRedistributionReq) SetLicenseSource(val OptSetSkillRedistributionReqLicenseSource) {
+	s.LicenseSource = val
+}
+
+// Required when `value` is `allowed`. The ADR-021 provenance tier the operator relied on, named
+// separately from the expression because ADR-021 決策 1 is that the two are one claim: frontmatter
+// `MIT` and a repo-root `MIT` are not the same assertion, and ADR-021 §5.3 records two repositories
+// whose valid MIT `LICENSE` covered content that was not theirs — an error in the releasing
+// direction.
+//
+// It lands in the audit event alongside the verdict, which is what makes "every skill released on
+// `repo-license-file` evidence" one SQL query instead of a manual trawl.
+//
+// `curated-declared` is absent because ADR-021 決策 2 does not implement it: it is the one tier
+// whose evidence does not travel inside the package, so nobody holding the bytes could re-verify a
+// release made on it.
+type SetSkillRedistributionReqLicenseSource string
+
+const (
+	SetSkillRedistributionReqLicenseSourceManifest               SetSkillRedistributionReqLicenseSource = "manifest"
+	SetSkillRedistributionReqLicenseSourceManifestReferencedFile SetSkillRedistributionReqLicenseSource = "manifest-referenced-file"
+	SetSkillRedistributionReqLicenseSourcePackageLicenseFile     SetSkillRedistributionReqLicenseSource = "package-license-file"
+	SetSkillRedistributionReqLicenseSourceRepoLicenseFile        SetSkillRedistributionReqLicenseSource = "repo-license-file"
+)
+
+// AllValues returns all SetSkillRedistributionReqLicenseSource values.
+func (SetSkillRedistributionReqLicenseSource) AllValues() []SetSkillRedistributionReqLicenseSource {
+	return []SetSkillRedistributionReqLicenseSource{
+		SetSkillRedistributionReqLicenseSourceManifest,
+		SetSkillRedistributionReqLicenseSourceManifestReferencedFile,
+		SetSkillRedistributionReqLicenseSourcePackageLicenseFile,
+		SetSkillRedistributionReqLicenseSourceRepoLicenseFile,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SetSkillRedistributionReqLicenseSource) MarshalText() ([]byte, error) {
+	switch s {
+	case SetSkillRedistributionReqLicenseSourceManifest:
+		return []byte(s), nil
+	case SetSkillRedistributionReqLicenseSourceManifestReferencedFile:
+		return []byte(s), nil
+	case SetSkillRedistributionReqLicenseSourcePackageLicenseFile:
+		return []byte(s), nil
+	case SetSkillRedistributionReqLicenseSourceRepoLicenseFile:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SetSkillRedistributionReqLicenseSource) UnmarshalText(data []byte) error {
+	switch SetSkillRedistributionReqLicenseSource(data) {
+	case SetSkillRedistributionReqLicenseSourceManifest:
+		*s = SetSkillRedistributionReqLicenseSourceManifest
+		return nil
+	case SetSkillRedistributionReqLicenseSourceManifestReferencedFile:
+		*s = SetSkillRedistributionReqLicenseSourceManifestReferencedFile
+		return nil
+	case SetSkillRedistributionReqLicenseSourcePackageLicenseFile:
+		*s = SetSkillRedistributionReqLicenseSourcePackageLicenseFile
+		return nil
+	case SetSkillRedistributionReqLicenseSourceRepoLicenseFile:
+		*s = SetSkillRedistributionReqLicenseSourceRepoLicenseFile
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Only three of the column's five values are a verdict anyone can assert. `self_supplied` and

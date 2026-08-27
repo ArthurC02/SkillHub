@@ -1553,6 +1553,15 @@ paths:
         Cross-workspace like `restriction`, and for the same reason: the verdict
         is about a *source*, so it has to reach the catalogue entry and every
         fork alike. Nothing here reads workspace-private data.
+
+        Operator-only is now a ruling rather than a holding position (2026-08-27,
+        `05` R-3a, ADR-057). The route was written narrow while the question was
+        open, on the grounds that widening later adds callers where narrowing
+        later takes something away; the ruling kept it there, because ADR-021
+        §5.3's false positive was made by people who audit licences for a living.
+
+        Releasing a skill also has to carry evidence now — see
+        `license_expression` and `license_source` (`05` R-3b).
       requestBody:
         required: true
         content:
@@ -1584,6 +1593,46 @@ paths:
                     satisfiable with whitespace, same rule and same validator as
                     `restriction`: an operator action nobody can explain later is
                     not a decision (02:SEC-011 理由必填).
+                license_expression:
+                  type: string
+                  description: |
+                    Required when `value` is `allowed`, ignored otherwise, and
+                    that asymmetry is the ruling (`05` R-3b, ADR-057): `allowed`
+                    is the only value that releases anything, so it is the only
+                    one that has to carry the evidence it relied on. Asking for a
+                    licensing judgement in order to *block* would charge for
+                    refusing to make one.
+
+                    The value must be the SPDX expression the importer froze onto
+                    the skill's newest version. A claim the snapshot does not
+                    record is refused, and the refusal says what is recorded —
+                    an operator who cannot name it is describing a package other
+                    than the one a download would hand over.
+
+                    Compared trimmed and case-insensitively: SPDX identifiers are
+                    defined case-insensitively, and refusing `mit` against `MIT`
+                    would teach operators to paste rather than read.
+                license_source:
+                  type: string
+                  enum:
+                    [manifest, manifest-referenced-file, package-license-file, repo-license-file]
+                  description: |
+                    Required when `value` is `allowed`. The ADR-021 provenance
+                    tier the operator relied on, named separately from the
+                    expression because ADR-021 決策 1 is that the two are one
+                    claim: frontmatter `MIT` and a repo-root `MIT` are not the
+                    same assertion, and ADR-021 §5.3 records two repositories
+                    whose valid MIT `LICENSE` covered content that was not theirs
+                    — an error in the releasing direction.
+
+                    It lands in the audit event alongside the verdict, which is
+                    what makes "every skill released on `repo-license-file`
+                    evidence" one SQL query instead of a manual trawl.
+
+                    `curated-declared` is absent because ADR-021 決策 2 does not
+                    implement it: it is the one tier whose evidence does not
+                    travel inside the package, so nobody holding the bytes could
+                    re-verify a release made on it.
       responses:
         "200":
           description: |

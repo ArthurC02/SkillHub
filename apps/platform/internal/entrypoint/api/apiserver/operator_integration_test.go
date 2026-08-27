@@ -285,9 +285,9 @@ func TestOperatorRosterIsAudited(t *testing.T) {
 // changed with no route, no role check and no audit event — the weaker reason
 // was the governed one. This is the parity test.
 //
-// It deliberately does not test who *should* be allowed to call it or what
-// evidence a release should require: `05` R-3a and R-3b are still open, and a
-// test asserting a guess at them would make the guess expensive to revisit.
+// Since 2026-08-27 it tests the other two questions as well, because they have
+// answers: operator-only (`05` R-3a) and evidence rather than a confirmation box
+// (R-3b), both in ADR-057. Step 5 is the second one.
 func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -380,6 +380,107 @@ func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
 	}
 	if got := current(); got != "blocked" {
 		t.Fatalf("an unexplained verdict changed the row anyway: %q", got)
+	}
+
+	// 5. Releasing has to carry the evidence it relied on (`05` R-3b, ADR-057).
+	//    ADR-021 §5.3: two repositories carried a valid MIT LICENSE covering
+	//    content that was not theirs, so "the repo root says MIT" was wrong in
+	//    the releasing direction. A button cannot be wrong in a way anyone can
+	//    check; a named expression and tier can be, and this is where it is.
+	for _, tc := range []struct {
+		name string
+		body string
+	}{
+		{"no evidence at all", `{"value":"allowed","note":"reviewed"}`},
+		{"tier only", `{"value":"allowed","note":"reviewed","license_source":"manifest"}`},
+		{"expression only", `{"value":"allowed","note":"reviewed","license_expression":"MIT"}`},
+		{"an expression the snapshot does not record",
+			`{"value":"allowed","note":"reviewed","license_expression":"Apache-2.0","license_source":"manifest"}`},
+		{"the right expression from the wrong tier",
+			`{"value":"allowed","note":"reviewed","license_expression":"MIT","license_source":"repo-license-file"}`},
+	} {
+		code, body = operatorCall(t, operator, http.MethodPut, path, tc.body)
+		if code != http.StatusBadRequest {
+			t.Errorf("release with %s: got %d, want 400 (%v)", tc.name, code, body)
+		}
+		if got := current(); got != "blocked" {
+			t.Fatalf("a release refused for %s changed the row anyway: %q", tc.name, got)
+		}
+	}
+
+	//    The package really does declare MIT in its frontmatter, so this is the
+	//    claim the importer froze — and it is accepted.
+	code, body = operatorCall(t, operator, http.MethodPut, path,
+		`{"value":"allowed","note":"MIT in the frontmatter, package carries no other licence",`+
+			`"license_expression":"mit","license_source":"MANIFEST"}`)
+	if code != http.StatusOK {
+		t.Fatalf("release with the recorded evidence: got %d, want 200 (%v)", code, body)
+	}
+	if got := current(); got != "allowed" {
+		t.Fatalf("redistribution = %q, want allowed", got)
+	}
+	//    Case-insensitively, because SPDX identifiers are: refusing `mit` against
+	//    `MIT` would teach operators to paste rather than read.
+
+	//    The tier lands in the audit trail, which is the point of naming it
+	//    separately: "every skill released on repo-license-file evidence" — the
+	//    exact shape of the §5.3 mistake — has to be one query, not a trawl.
+	var releasedOn *string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT metadata->>'license_source' FROM audit_events
+		 WHERE action = 'skill.redistribution_set' AND resource_id = $1
+		   AND metadata->>'after' = 'allowed'`, mustUUID(t, skillID)).Scan(&releasedOn); err != nil {
+		t.Fatal(err)
+	}
+	if deref(releasedOn) != "manifest" {
+		t.Errorf("audit license_source = %q, want manifest", deref(releasedOn))
+	}
+
+	//    And a skill whose newest version records no licence cannot be released
+	//    at all — there is nothing to rely on. ADR-021 §5 refuses to backfill a
+	//    tier onto such a row, because writing one would be inventing the
+	//    evidence rather than reading it, so the only way out is a re-import.
+	//
+	//    The unlicensed state arrives as a *new version* and not as an edit: the
+	//    first draft of this test tried the edit and the database refused it
+	//    ("row in public.skill_versions is immutable"), which is iron rule 4
+	//    enforced where it cannot be argued with. A newer version carrying no
+	//    licence is also the realistic shape — versions are what the importer
+	//    appends, and the newest one is what a download hands over.
+	bare := importPackage(t, pool, a.packages, curator, "manxome-redist-unlicensed", false)
+	if _, err := pool.Exec(context.Background(),
+		`INSERT INTO skill_versions
+		     (workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest)
+		 SELECT workspace_id, skill_id, source_id, version_number + 1, content_hash || '-unlicensed',
+		        package_object_key, manifest
+		 FROM skill_versions WHERE skill_id = $1
+		 ORDER BY version_number DESC LIMIT 1`,
+		mustUUID(t, bare)); err != nil {
+		t.Fatal(err)
+	}
+	code, body = operatorCall(t, operator, http.MethodPut, "/admin/skills/"+bare+"/redistribution",
+		`{"value":"allowed","note":"looks fine to me","license_expression":"MIT","license_source":"manifest"}`)
+	if code != http.StatusBadRequest {
+		t.Errorf("release of a skill with no recorded licence: got %d, want 400 (%v)", code, body)
+	}
+	//    The assertion is on the sentence and not only on the 400, and that is
+	//    not thoroughness for its own sake: deleting this branch leaves the
+	//    mismatch branch to refuse the same call (a named licence never equals
+	//    an unrecorded one), so a status-code assertion stays green with the rule
+	//    gone. What the branch actually delivers is the one thing the operator
+	//    cannot fix by typing more carefully — and that is what is tested.
+	if msg, _ := body["error"].(string); !strings.Contains(msg, "records no licence") {
+		t.Errorf("refusal said %q; a skill with nothing recorded has to be told that, not that it "+
+			"mismatched — the second reads like something a better guess would fix", msg)
+	}
+
+	//    Blocking it, on the other hand, needs no evidence: charging for a
+	//    licensing judgement as the price of refusing to make one would push the
+	//    error in the direction ADR-021 §5.3 says it must not fall.
+	code, body = operatorCall(t, operator, http.MethodPut, "/admin/skills/"+bare+"/redistribution",
+		`{"value":"blocked","note":"no licence recorded"}`)
+	if code != http.StatusOK {
+		t.Fatalf("blocking a skill with no recorded licence: got %d, want 200 (%v)", code, body)
 	}
 }
 

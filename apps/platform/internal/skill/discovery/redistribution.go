@@ -10,19 +10,30 @@ package catalog
 // event, and the second had none of it — changing it meant running UPDATE by
 // hand, leaving no record of who decided or why.
 //
-// The weaker reason was the governed one. That is the asymmetry this closes, and
-// closing it does not depend on the two questions still open next to it: who may
-// call this (`05` R-3a) and what evidence a release requires (R-3b). Whatever
-// those answers turn out to be, the change should leave a record — so the record
-// is not worth waiting for them.
+// The weaker reason was the governed one. That is the asymmetry the route closed
+// on 2026-08-23, before either of the two questions beside it had an answer.
 //
-// WHAT IT DELIBERATELY DOES NOT DECIDE. The route is operator-only, which is the
-// narrower of R-3a's two options and therefore the one that cannot foreclose the
-// other: widening it later adds callers, where starting wide and narrowing later
-// would take something away. And the request carries a free-text note, exactly
-// like a restriction change — NOT the source-tier evidence R-3b may come to
-// require. Encoding a guess at that ruling here would be the more expensive
-// mistake, because a half-enforced evidence rule reads like an enforced one.
+// BOTH OF THOSE ARE NOW ANSWERED (2026-08-27, `05` R-3a and R-3b, ADR-057).
+//
+// R-3a — who may call this — is settled as operator-only, which is what the route
+// already did while waiting. The reason is not caution: ADR-021 §5.3 records that
+// two repositories carried a valid MIT `LICENSE` covering content that was not
+// theirs, so "the repo root says MIT" was wrong in the releasing direction. A
+// judgement that people who audited it got wrong does not become more accurate
+// when it is handed to whoever happens to own the skill.
+//
+// R-3b — what a release must carry — is settled as evidence rather than a
+// confirmation box, and that is the part with teeth here: moving a skill to
+// `allowed` must name the licence expression and the ADR-021 provenance tier it
+// relied on, and this refuses the write when the version's frozen snapshot
+// records something else, or records nothing at all. An operator who cannot name
+// what the importer read has not looked at the bytes a download would hand over.
+//
+// It stays a claim about the newest version rather than a per-version verdict,
+// because the column is on the skill. What the check buys is that the claim can
+// be contradicted, and that the tier relied on lands in the audit event — so
+// "every skill released on repo-license-file evidence", the exact shape of the
+// §5.3 mistake, is one SQL query rather than a manual trawl.
 //
 // Lives in this package for the reason the file next door gives: the sentences a
 // reader sees for each value are here (trust.go, redistributionDisplays), and a
@@ -33,9 +44,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
@@ -80,12 +93,30 @@ var provenanceRedistribution = map[string]string{
 }
 
 // redistributionRequest is the body of PUT /admin/skills/{id}/redistribution.
-// Both fields are required: an operator action nobody can explain later is not
-// a decision (02:SEC-011's rule for the neighbouring route, applied here for the
-// same reason).
+//
+// `value` and `note` are always required: an operator action nobody can explain
+// later is not a decision (02:SEC-011's rule for the neighbouring route, applied
+// here for the same reason).
+//
+// The two licence fields are required only for `allowed`, and only there because
+// that is the only value that releases anything. Demanding evidence in order to
+// block, or to un-decide, would be asking for a licensing judgement as the price
+// of refusing to make one — and those are the directions ADR-021 §5.3 says a
+// mistake is allowed to fall in.
 type redistributionRequest struct {
-	Value string `json:"value"`
-	Note  string `json:"note"`
+	Value             string `json:"value"`
+	Note              string `json:"note"`
+	LicenseExpression string `json:"license_expression"`
+	LicenseSource     string `json:"license_source"`
+}
+
+// LicenseClaim is what an operator asserts they read before releasing a skill:
+// the SPDX expression and the ADR-021 tier it came from, together, because
+// ADR-021 決策 1 is that the two are one claim — and flattening them into a
+// single string is how a repository's MIT came to be read as a subdirectory's.
+type LicenseClaim struct {
+	Expression string
+	Source     string
 }
 
 // SetRedistribution handles PUT /admin/skills/{id}/redistribution.
@@ -110,7 +141,8 @@ func (h *Handler) SetRedistribution(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	previous, err := h.Svc.SetRedistribution(r.Context(), skillID, user.ID, body.Value, body.Note)
+	previous, err := h.Svc.SetRedistribution(r.Context(), skillID, user.ID, body.Value, body.Note,
+		LicenseClaim{Expression: body.LicenseExpression, Source: body.LicenseSource})
 	var inputErr restrictionInputError
 	if errors.As(err, &inputErr) {
 		httpx.WriteError(w, http.StatusBadRequest, inputErr.Error())
@@ -143,7 +175,9 @@ func (h *Handler) SetRedistribution(w http.ResponseWriter, r *http.Request) {
 // SetRedistribution validates the verdict and the explanation, then writes both
 // the column and the event that accounts for it. Every invariant is here rather
 // than in the handler so a non-HTTP caller cannot skip one.
-func (s *Service) SetRedistribution(ctx context.Context, skillID, actor pgtype.UUID, value, note string) (string, error) {
+func (s *Service) SetRedistribution(
+	ctx context.Context, skillID, actor pgtype.UUID, value, note string, claim LicenseClaim,
+) (string, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return "", restrictionInputError("value is required")
@@ -170,6 +204,16 @@ func (s *Service) SetRedistribution(ctx context.Context, skillID, actor pgtype.U
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// The evidence check runs inside the transaction that writes, so a version
+	// landing in between cannot release a licence nobody read.
+	var verified LicenseClaim
+	if value == string(RedistributionAllowed) {
+		verified, err = checkLicenseEvidence(ctx, tx, skillID, claim)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	before, err := registry.SetRedistribution(ctx, tx, skillID, value)
 	if errors.Is(err, registry.ErrNotFound) {
 		return "", errSkillNotFound
@@ -190,11 +234,7 @@ func (s *Service) SetRedistribution(ctx context.Context, skillID, actor pgtype.U
 		Action:       audit.ActionSkillRedistribution,
 		ResourceType: audit.ResourceSkill,
 		ResourceID:   skillID,
-		Metadata: map[string]any{
-			"before": before.Redistribution,
-			"after":  value,
-			"note":   note,
-		},
+		Metadata:     redistributionMetadata(before.Redistribution, value, note, verified),
 	}); err != nil {
 		return "", err
 	}
@@ -202,4 +242,72 @@ func (s *Service) SetRedistribution(ctx context.Context, skillID, actor pgtype.U
 		return "", err
 	}
 	return before.Redistribution, nil
+}
+
+// checkLicenseEvidence refuses a release the frozen snapshot does not support
+// (`05` R-3b, ADR-057).
+//
+// Three refusals, and they are three different sentences on purpose. Nothing
+// named at all is an operator who skipped a field; nothing recorded is a skill
+// with no evidence to rely on, which no amount of typing will fix; a mismatch is
+// an operator describing a package other than this one. Collapsing them into
+// "invalid licence evidence" would leave the middle case reading like a form
+// error, and it is the one that must not be worked around.
+//
+// Comparison is trimmed and case-insensitive. SPDX identifiers are defined
+// case-insensitively, and refusing a release over `mit` against `MIT` would teach
+// operators to paste rather than read — the opposite of what the rule is for.
+// It returns the snapshot's own values, not the operator's, and the difference
+// is not cosmetic: the two are equal here only up to case and whitespace, and the
+// query this feeds — which releases leaned on which tier — has to match a tier
+// name exactly. A trail recording `MANIFEST` because that is what somebody typed
+// is a row that audit misses. (It did, on the first run of the test below.)
+func checkLicenseEvidence(
+	ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, claim LicenseClaim,
+) (LicenseClaim, error) {
+	claim.Expression = strings.TrimSpace(claim.Expression)
+	claim.Source = strings.TrimSpace(claim.Source)
+	if claim.Expression == "" || claim.Source == "" {
+		return LicenseClaim{}, restrictionInputError(
+			"releasing a skill requires the licence evidence it relies on: license_expression and " +
+				"license_source, as recorded on the skill's newest version (05 R-3b: a confirmation " +
+				"box is not evidence)")
+	}
+
+	expression, source, err := registry.LicenseEvidence(ctx, tx, skillID)
+	if errors.Is(err, registry.ErrNotFound) {
+		return LicenseClaim{}, errSkillNotFound
+	}
+	if err != nil {
+		return LicenseClaim{}, err
+	}
+	if expression == "" || source == "" {
+		return LicenseClaim{}, restrictionInputError(
+			"this skill's newest version records no licence, so there is no evidence to rely on; " +
+				"re-import it if the package carries one (ADR-021 §5: writing a tier onto an existing " +
+				"row would be inventing the evidence rather than reading it)")
+	}
+	if !strings.EqualFold(expression, claim.Expression) || !strings.EqualFold(source, claim.Source) {
+		return LicenseClaim{}, restrictionInputError(fmt.Sprintf(
+			"licence evidence does not match what this skill's newest version records (recorded: "+
+				"%s from %s); releasing it would assert a licence the platform never read",
+			expression, source))
+	}
+	return LicenseClaim{Expression: expression, Source: source}, nil
+}
+
+// redistributionMetadata records the evidence beside the verdict, and only beside
+// the verdict that used it.
+//
+// The two fields are absent rather than empty for `blocked` and `unknown`,
+// because an empty licence beside a block would read as "released on no evidence"
+// to whoever queries this table later — and the query this shape exists to serve
+// is exactly that one: which releases leaned on which tier (ADR-021 §5.3).
+func redistributionMetadata(before, after, note string, verified LicenseClaim) map[string]any {
+	m := map[string]any{"before": before, "after": after, "note": note}
+	if after == string(RedistributionAllowed) {
+		m["license_expression"] = verified.Expression
+		m["license_source"] = verified.Source
+	}
+	return m
 }

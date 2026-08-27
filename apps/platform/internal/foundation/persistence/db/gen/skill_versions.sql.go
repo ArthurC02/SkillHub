@@ -64,6 +64,41 @@ func (q *Queries) CreateSkillVersion(ctx context.Context, arg CreateSkillVersion
 	return i, err
 }
 
+const getLatestVersionLicense = `-- name: GetLatestVersionLicense :one
+SELECT license_expression, license_source
+FROM skill_versions
+WHERE skill_id = $1
+ORDER BY version_number DESC
+LIMIT 1
+`
+
+type GetLatestVersionLicenseRow struct {
+	LicenseExpression *string
+	LicenseSource     *string
+}
+
+// The licence claim recorded on a skill's newest version: the expression and the
+// tier it was read from, never one without the other (ADR-021 決策 1 — frontmatter
+// `MIT` and a repo-root `MIT` are not the same assertion, and flattening them into
+// one string is what ADR-021 §5.3's false positive was made of).
+//
+// Read by the redistribution route so that releasing a skill has to name the
+// evidence it relied on and be contradicted when that evidence is not what the
+// snapshot records (05 R-3b). Newest version rather than a named one: the verdict
+// is on the skill, and the bytes a download would hand over come from its newest
+// version.
+//
+// No workspace scope, for the same reason the route itself is cross-workspace: a
+// redistribution verdict is about a source, so it has to reach the catalogue entry
+// and every fork alike. What comes back is an SPDX expression and which file it was
+// read from — nothing workspace-private.
+func (q *Queries) GetLatestVersionLicense(ctx context.Context, skillID pgtype.UUID) (GetLatestVersionLicenseRow, error) {
+	row := q.db.QueryRow(ctx, getLatestVersionLicense, skillID)
+	var i GetLatestVersionLicenseRow
+	err := row.Scan(&i.LicenseExpression, &i.LicenseSource)
+	return i, err
+}
+
 const getSkillRuntimeCompatibility = `-- name: GetSkillRuntimeCompatibility :one
 SELECT capability, runtime, runtime_image, measured_at
 FROM skill_runtime_compatibility

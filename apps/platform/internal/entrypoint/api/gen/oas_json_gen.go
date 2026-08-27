@@ -17936,6 +17936,39 @@ func (s *OptRunQuota) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes SetSkillRedistributionReqLicenseSource as json.
+func (o OptSetSkillRedistributionReqLicenseSource) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes SetSkillRedistributionReqLicenseSource from json.
+func (o *OptSetSkillRedistributionReqLicenseSource) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptSetSkillRedistributionReqLicenseSource to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptSetSkillRedistributionReqLicenseSource) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptSetSkillRedistributionReqLicenseSource) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes SkillAccessRestriction as json.
 func (o OptSkillAccessRestriction) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -27760,11 +27793,25 @@ func (s *SetSkillRedistributionReq) encodeFields(e *jx.Encoder) {
 		e.FieldStart("note")
 		e.Str(s.Note)
 	}
+	{
+		if s.LicenseExpression.Set {
+			e.FieldStart("license_expression")
+			s.LicenseExpression.Encode(e)
+		}
+	}
+	{
+		if s.LicenseSource.Set {
+			e.FieldStart("license_source")
+			s.LicenseSource.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfSetSkillRedistributionReq = [2]string{
+var jsonFieldsNameOfSetSkillRedistributionReq = [4]string{
 	0: "value",
 	1: "note",
+	2: "license_expression",
+	3: "license_source",
 }
 
 // Decode decodes SetSkillRedistributionReq from json.
@@ -27797,6 +27844,26 @@ func (s *SetSkillRedistributionReq) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"note\"")
+			}
+		case "license_expression":
+			if err := func() error {
+				s.LicenseExpression.Reset()
+				if err := s.LicenseExpression.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"license_expression\"")
+			}
+		case "license_source":
+			if err := func() error {
+				s.LicenseSource.Reset()
+				if err := s.LicenseSource.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"license_source\"")
 			}
 		default:
 			return d.Skip()
@@ -27850,6 +27917,50 @@ func (s *SetSkillRedistributionReq) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *SetSkillRedistributionReq) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes SetSkillRedistributionReqLicenseSource as json.
+func (s SetSkillRedistributionReqLicenseSource) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes SetSkillRedistributionReqLicenseSource from json.
+func (s *SetSkillRedistributionReqLicenseSource) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SetSkillRedistributionReqLicenseSource to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch SetSkillRedistributionReqLicenseSource(v) {
+	case SetSkillRedistributionReqLicenseSourceManifest:
+		*s = SetSkillRedistributionReqLicenseSourceManifest
+	case SetSkillRedistributionReqLicenseSourceManifestReferencedFile:
+		*s = SetSkillRedistributionReqLicenseSourceManifestReferencedFile
+	case SetSkillRedistributionReqLicenseSourcePackageLicenseFile:
+		*s = SetSkillRedistributionReqLicenseSourcePackageLicenseFile
+	case SetSkillRedistributionReqLicenseSourceRepoLicenseFile:
+		*s = SetSkillRedistributionReqLicenseSourceRepoLicenseFile
+	default:
+		*s = SetSkillRedistributionReqLicenseSource(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SetSkillRedistributionReqLicenseSource) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SetSkillRedistributionReqLicenseSource) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

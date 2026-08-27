@@ -11357,6 +11357,14 @@ func (s *Server) handleSetEvaluationFeedbackRequest(args [1]string, argsEscaped 
 // Cross-workspace like `restriction`, and for the same reason: the verdict is about a source, so it
 // has to reach the catalogue entry and every fork alike. Nothing here reads workspace-private data.
 //
+// Operator-only is now a ruling rather than a holding position (2026-08-27, `05` R-3a, ADR-057). The
+// route was written narrow while the question was open, on the grounds that widening later adds
+// callers where narrowing later takes something away; the ruling kept it there, because ADR-021
+// §5.3's false positive was made by people who audit licences for a living.
+//
+// Releasing a skill also has to carry evidence now — see `license_expression` and `license_source`
+// (`05` R-3b).
+//
 // PUT /admin/skills/{id}/redistribution
 func (s *Server) handleSetSkillRedistributionRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
 	statusWriter := &codeRecorder{ResponseWriter: w}
