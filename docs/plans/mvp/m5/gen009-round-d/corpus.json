@@ -1,0 +1,102 @@
+[
+  {
+    "id": "DOC-1",
+    "group": "in_category",
+    "description": "你在一個小團隊裡負責整理會議。今天的會議你已經在筆記軟體裡列好一份分層的大綱：三個主題，每個主題下面有幾條決議和待辦事項。\n\n主管要的是一份可以直接寄出去的 Word 檔——有標題階層、有目錄。你手上只有那份大綱。"
+  },
+  {
+    "id": "DOC-2",
+    "group": "in_category",
+    "description": "廠商每個月會寄一疊單據給你。那些是掃描器掃出來的檔案，不是可以直接複製文字的那種，每一份裡面都有一張表格。\n\n月底你要把這些表格的內容整理成一份東西交出去。你想先把表格裡的內容取出來，再把好幾份合成一份。"
+  },
+  {
+    "id": "DOC-3",
+    "group": "in_category",
+    "description": "下週一你要跟老闆和幾個部門主管交代一個做了三個月的專案。\n\n你手上有一堆過程記錄，但你不想站在那邊照著唸「我們做了什麼、然後又做了什麼」。你希望講完之後，他們記得住重點。時間 15 分鐘。"
+  },
+  {
+    "id": "DOC-4",
+    "group": "in_category",
+    "description": "You keep a stock sheet with around 900 rows. Every time you scroll down, the header row disappears and you lose track of which column is which.\n\nThe columns are also all over the place — different widths, some numbers left-aligned, some right. You want the sheet to stay readable while you scroll, and to look consistent throughout."
+  },
+  {
+    "id": "WRI-1",
+    "group": "in_category",
+    "description": "你們公司剛做完一次品牌調整。設計師給了你一份新的用色、字型和語氣說明。\n\n接下來每個人寫出去的東西——電子報、社群貼文、提案——都要照這份走。你希望以後不用每次都人工對一遍。"
+  },
+  {
+    "id": "WRI-2",
+    "group": "in_category",
+    "description": "公司下個月要換一套請假系統，你被指派寫一封給全體同仁的公告。\n\n要說清楚為什麼換、什麼時候換、他們自己要做什麼，而且不能寫得像法律條文讓大家直接跳過。"
+  },
+  {
+    "id": "WRI-3",
+    "group": "in_category",
+    "description": "你上週交了一篇稿子，編輯回你一句「這讀起來怪怪的，很平」。\n\n你自己再看一次，覺得每一句都沒錯，但整篇就是沒有人味。你想找東西幫你看看問題在哪裡，順一順。"
+  },
+  {
+    "id": "WRI-4",
+    "group": "in_category",
+    "description": "Someone sent you a guest post for your site. Before you publish it, you want to know whether it was actually written by a person or generated.\n\nYou are not trying to rewrite it — you just want a read on it."
+  },
+  {
+    "id": "DAT-1",
+    "group": "in_category",
+    "description": "你手上有一份匯出的 CSV。同事那邊的程式只吃「一行一筆、每一筆是一個物件」的那種檔案。\n\n你要把這份 CSV 換成他要的樣子，欄位名稱不能跑掉。"
+  },
+  {
+    "id": "DAT-2",
+    "group": "in_category",
+    "description": "你要把一份客戶名單寄給外部的合作廠商。\n\n寄出去之前，你想先確認裡面有沒有不該外流的東西——身分證字號、手機、地址那類的。你希望有人幫你標出來在哪幾欄。"
+  },
+  {
+    "id": "DAT-3",
+    "group": "in_category",
+    "description": "有人丟給你一份檔案，只說了一句「你先看一下」。\n\n你打開，幾千列、二十幾欄。你完全不知道要從哪裡開始，也不知道這份東西到底在講什麼。你想先弄清楚它長什麼樣子。"
+  },
+  {
+    "id": "DAT-4",
+    "group": "in_category",
+    "description": "Your mailing list spreadsheet grew by merging three separate exports. The same person now shows up two or three times.\n\nYou want one row per person, and you do not want the formatting of the surviving rows to change."
+  },
+  {
+    "id": "X-1",
+    "group": "not_skill_shaped",
+    "description": "下個月你要去日本七天，想把機票和租車一起處理掉。預算有限，時間排得很滿。"
+  },
+  {
+    "id": "X-2",
+    "group": "not_skill_shaped",
+    "description": "Your car has started making a noise once you get up to highway speed. Someone told you it might be the timing belt.\n\nYou want to know what is actually involved in changing it."
+  },
+  {
+    "id": "OUT-1",
+    "group": "out_of_category",
+    "description": "我在補習班帶國中數學。每次小考後我會把學生錯的題目抄在筆記本上，一學期下來一本都是零散的題號。我想把這些錯題按照觀念分類，看出哪一個觀念是整班都在錯的，下次上課先講那一個。"
+  },
+  {
+    "id": "OUT-2",
+    "group": "out_of_category",
+    "description": "我開一間咖啡店，五個工讀生，每個人每週能上的時段都不一樣，還會臨時換班。我現在是用紙本排的，每次排完都會有人抱怨連上兩天早班。我想要一個排班的方法，把每個人的可上時段和公平性一起考慮進去。"
+  },
+  {
+    "id": "OUT-3",
+    "group": "out_of_category",
+    "description": "我們團隊寫 React，每次有人送出程式碼之前，我都要提醒同樣那幾件事：有沒有忘記處理載入中的狀態、有沒有把錯誤吞掉、元件有沒有大到該拆。我想把這份提醒變成一份送出前自己會走一遍的清單。"
+  },
+  {
+    "id": "OUT-4",
+    "group": "out_of_category",
+    "description": "我爸有三種慢性病的藥，早中晚的組合都不一樣，有兩種不能一起吃。他常常忘記自己吃過沒有。我想幫他整理出一份一看就懂的用藥時間表，貼在冰箱上。"
+  },
+  {
+    "id": "OUT-5",
+    "group": "out_of_category",
+    "description": "我們家每個月會約朋友來玩桌遊，人數從四人到九人不等，有時候有小孩。每次都要花二十分鐘決定玩什麼。我想根據人數、時間長度和玩家熟不熟悉規則，快速挑出幾個合適的選擇。"
+  },
+  {
+    "id": "OUT-6",
+    "group": "out_of_category",
+    "description": "我同時管三個帳：銀行對帳單、記帳軟體匯出的表格，還有一份手寫的收據本。月底我要確認這三邊對得起來，現在是一筆一筆用眼睛比對，常常漏掉。我想有個方法把三邊的差額找出來。"
+  }
+]

@@ -1,0 +1,322 @@
+[
+  {
+    "id": "DOC-1",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "word-outline-to-docx",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "partially_met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "failed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "failed"
+    }
+  },
+  {
+    "id": "DOC-2",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "scan-table-batch-extraction-and-merge",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "undetermined",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "undetermined",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "undetermined",
+      "最終回覆說明了這次產出哪些檔案。": "undetermined"
+    }
+  },
+  {
+    "id": "DOC-3",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "project-update-storytelling",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "DOC-4",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "spreadsheet-keep-headers-and-formatting-consistent",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "WRI-1",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "brand-style-application",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "WRI-2",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "write-staff-announcement-for-system-change",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "partially_met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "undetermined",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "failed"
+    }
+  },
+  {
+    "id": "WRI-3",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "prose-style-diagnostic",
+    "attempts": 2,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "WRI-4",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "guest-post-authorship-read",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "not_met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "failed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "undetermined",
+      "最終回覆說明了這次產出哪些檔案。": "failed"
+    }
+  },
+  {
+    "id": "DAT-1",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "csv-to-ndjson-converter",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "partially_met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "failed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "failed"
+    }
+  },
+  {
+    "id": "DAT-2",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "client-list-pii-check",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "DAT-3",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "inspect-tabular-file",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "undetermined",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "undetermined",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "undetermined",
+      "最終回覆說明了這次產出哪些檔案。": "undetermined"
+    }
+  },
+  {
+    "id": "DAT-4",
+    "group": "in_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "dedupe-mailing-list-spreadsheet",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "partially_met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "undetermined",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "failed"
+    }
+  },
+  {
+    "id": "X-1",
+    "group": "not_skill_shaped",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "travel-booking-planner",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "X-2",
+    "group": "not_skill_shaped",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "timing-belt-replacement-overview",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "OUT-1",
+    "group": "out_of_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "math-wrong-question-clustering",
+    "attempts": 2,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "OUT-2",
+    "group": "out_of_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "cafe-shift-scheduling-method",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "OUT-3",
+    "group": "out_of_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "react-preflight-checklist",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "OUT-4",
+    "group": "out_of_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "medication-schedule-poster",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "OUT-5",
+    "group": "out_of_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "board-game-selector",
+    "attempts": 1,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "met",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "passed",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "passed",
+      "最終回覆說明了這次產出哪些檔案。": "passed"
+    }
+  },
+  {
+    "id": "OUT-6",
+    "group": "out_of_category",
+    "generated": true,
+    "blocked": false,
+    "skill_name": "three-way-reconciliation",
+    "attempts": 2,
+    "run_status": "succeeded",
+    "eval_status": "completed",
+    "overall": "undetermined",
+    "criteria": {
+      "/out/artifacts/ 至少產出一個檔案。": "undetermined",
+      "trace 中出現對指定 Skill 的 skill_activation 事件。": "undetermined",
+      "最終回覆說明了這次產出哪些檔案。": "undetermined"
+    }
+  }
+]

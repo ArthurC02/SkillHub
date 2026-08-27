@@ -169,3 +169,97 @@ monkeypatch 掉 client。**於是端點與閘道之間那一段，在今天之�
 - **n=10，且全部是單次嘗試**。重試會讓實付變兩倍，8.2 的分布**不含**任何一次重試。
 - 十段裡九段是閘門情境卡（與 A／B 輪同一份語料），繼承 A 輪 §6 記的同一個偏差。
 - `cost_usd` 取自閘道**逐次回報**的 `usage`，不是時間窗切分的 `/spend/logs`——這一輪不需要 §7 第三條那種隔離。
+
+## 9. D 輪：③ 生成物完成第一次試跑後的評估判定分布（2026-08-27／28，`03` GEN-009 ③）
+
+- 日期：2026-08-27 跑批、2026-08-28 記錄
+- Harness：[`gen009_baseline_test.go`](../../../../apps/platform/internal/entrypoint/api/apiserver/gen009_baseline_test.go)（**與 A／B／C 輪不是同一支**——那三輪停在生成，這一輪要一路走到判定）
+- 一條迴圈，每一段都是真的：任務描述 → `apps/llm` 生成 → 套件進真實物件儲存 → 建測試案例 → 真沙箱執行（`runc`，經 LiteLLM 閘道）→ 真評審回判定
+- 實付：**Run 端 $0.8701／19 筆有回報**（平均 $0.0458，最大 $0.2407）、**評審端 $0.4183／20 筆**；評審模型 `gpt-5.6-terra`，Run 模型 `gpt-5.4-mini`
+- **尺是精選那批的三條通用判準**（`tools/content/seed_testcases.py` 的 `BASELINE_CRITERIA`，逐字複製），**由負責人於 2026-08-28 選定**
+
+### 9.0 一句話
+
+**20 段全部生成成功、全部跑起來、全部拿到判定；`met` 12、`partially_met` 4、`undetermined` 3、`not_met` 1。**
+**而這個分布的主要解釋不是生成品質**——見 §9.2，那是本節最重要的一段。
+
+### 9.1 三個數字
+
+| 階段 | 結果 |
+| --- | --- |
+| 生成 | **20／20 產出套件**，其中 **17 段第一次就過 `skillpkg.Validate`、3 段用掉第二次嘗試**（`GEN-009` ① 的第三次觀察，與 A 輪 16／20 同量級） |
+| 試跑 | **20／20 `succeeded`**，無一次失敗或逾時（單次 13～268 秒，中位約 52 秒） |
+| 評估 | **20／20 `completed`**，判定分布如下 |
+
+| 判定 | 全體 | 情境卡（12） | 干擾卡（2） | 非本類（6） |
+| --- | --- | --- | --- | --- |
+| `met` | **12** | 5 | 2 | 5 |
+| `partially_met` | **4** | 4 | 0 | 0 |
+| `undetermined` | **3** | 2 | 0 | 1 |
+| `not_met` | **1** | 1 | 0 | 0 |
+
+逐條判準：**啟用** 16 passed／4 undetermined／0 failed；**產出檔案** 12／5／3；**回覆說明檔案** 12／3／5。
+
+### 9.2 分組差異的原因不是生成品質，是**我沒有給輸入檔**
+
+照表面讀會得到一個結論：情境卡那一組表現最差（12 段裡 5 段拿到 `met`），非本類那一組最好（6 段裡 5 段）。
+**那個讀法是錯的，而錯的原因在 harness 不在生成器。**
+
+**五段拿到 `partially_met`／`not_met` 的，全部是 0 個產出檔案；十五段有檔案的，全部是 `met` 或 `undetermined`。**
+換句話說這把尺實際上只在量一件事：**跑完之後 `/out/artifacts/` 裡有沒有東西**。
+
+而那五段裡有四段（`DOC-1`／`WRI-4`／`DAT-1`／`DAT-4`）的卡片逐字寫著「你手上有一份匯出的 CSV」
+「你手上只有那份大綱」「Someone sent you a guest post」——**那些檔案從來沒有被交給沙箱**。
+`seedGen009TestCase` 只送任務描述，工作區是空的。**一個把 CSV 轉成 NDJSON 的 Skill，在沒有 CSV 的房間裡，
+正確的行為就是產不出檔案。**
+
+非本類那六段之所以好看，是因為它們要的是**方法、清單、模板**（排班方法、React 送出前清單、用藥時間表），
+**那種東西不需要輸入就寫得出來**。這不是生成器對它們比較擅長，是**題目的形狀不同**。
+
+**唯一一段可以歸給行為缺陷的是 `WRI-2`**（寫一封系統更換公告）：它不需要任何輸入檔，
+提示詞也逐字要求「把產出的檔案寫到 `/out/artifacts/`」，**而它把公告寫在回覆裡沒有落檔**。
+
+所以 ③ 這個數字的誠實形式是：**在有東西可做的十六段裡，十五段做出了檔案**；
+**在沒有東西可做的四段裡，四段都沒有——那是對的。**
+
+### 9.3 一個真的缺陷：**截斷一次，整份判定歸零**
+
+三段（`DOC-2`／`DAT-3`／`OUT-6`）全部三條判準都是 `undetermined`，而**原因對三段完全相同**：
+
+> the material sent for judgement was truncated (`trace_digest.entries[].excerpt`);
+> criteria depending on it are undetermined rather than passed
+
+`judge.go` 的規則是：只要 `truncation` 非空，**任何 `passed` 一律降成 `undetermined`**（失敗不降）。
+`truncated` 是一個**整批的布林值**，不分判準。
+
+**代價可以逐項看見**：這三段的 `deterministic_findings` 裡，
+平台自己用 exact match 找到了 `skill_activation` 事件、也逐檔列出了產出的檔案
+（`OUT-6` 有 5 個、另外兩段各 1 個）；**評審自己的 summary 三段都寫著「三項驗收條件都有可驗證的證據」**。
+也就是說，**兩條判準的答案是平台機械查出來的、根本不依賴那段被剪掉的 trace 摘錄，卻一起被降成不確定。**
+
+**發生率 4／20**（其中 3 段因此失去全部判定，第 4 段 `WRI-4` 三條都是 fail 所以規則沒有觸發）。
+**而四段全部是長 Run**——`OUT-6` 跑了 296 秒、用掉 284,705 input token。
+**這條規則系統性地拒絕評分最難的那些 Run。**
+
+`judge.go` 那段的註解自己寫著這是未決的：「whether a trimmed tail deserves the same conservatism as a
+missing event is a judgement about 丙-1's rule and is not decided by renaming it」。
+**這一輪給了它一個發生率。** 裁定請求記在 [`05` R-18](../../05-pending-rulings.md)。
+
+### 9.4 兩個順手量到的
+
+- **`license-unknown` 20／20**：生成器產出的 `SKILL.md` **一次都沒有宣告授權**。今天不擋任何事
+  （`skills.redistribution` 預設就不是 `allowed`），但依 [ADR-057](../../../adr/ADR-057-releasing-content-takes-named-evidence-not-a-button.md)，
+  **一個沒有授權欄位的生成物永遠拿不到 `manifest` 這一級的證據**。要不要讓生成器寫入授權，是 M5 自己的題目。
+- **5／20 的 Run 成功但零產出**：`the run reported success and no output files were recorded for it`——
+  這條 finding 存在且說得清楚，**它就是 §9.2 那個分組差異的機械對應物**。
+
+### 9.5 邊界（這一節的數字不能拿去回答什麼）
+
+- **這把尺量的是「載入了並且產出了東西」，不是「做對了事」。** 選它是為了與精選那批（`CONTENT-008`）同軸可比，
+  代價逐字寫在 harness 的檔頭。**沒有任何一段的判定代表那個 Skill 好用。**
+- **那六段非本類描述不是 A／B 輪用的原文**。A／B 輪的六段從未進 repo（spike 的生成腳本是一次性的），
+  這裡是**同樣六個題材、重寫的文字**。十四段情境卡則與 A／B 輪逐字相同。
+- **每段只跑一次。** ADR-047 的 (甲)「每段至少兩次」是對 ①② 的要求，這一輪沒有對 ③ 重複——
+  判定的變異數因此未知。
+- **runtime 是 `runc` 不是 `runsc`**，這一輪不構成 `SEC-009` 的任何一項。
+- **④ 仍然沒有數字。** 「人看了會不會留著」要人，`GEN-009` 整列因此維持不勾。
