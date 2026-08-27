@@ -1,6 +1,6 @@
 # ADR-020:身分驗證與 Session 模式(GitHub OAuth＋Postgres Session)
 
-- 狀態:Proposed
+- 狀態:Accepted(2026-08-27 升格;決策內容一個字都沒有改動,見文末「狀態升格」)
 - 日期:2026-08-14
 - 決策者:產品負責人、架構規劃
 
@@ -83,3 +83,14 @@ CORE-005(基本登入、登出與工作區存取控制)是 M1 私有功能(Fork�
 - 第二身分供應商(Google)的啟用訊號與時點。
 - 封閉測試(BETA-001)是否需要邀請碼/白名單閘門疊在 OAuth 之上。→ **已決，見 [ADR-028](./ADR-028-beta-admission-and-quota-enforcement-points.md) 決策 1**：採**允許清單疊在 OAuth 之上**(比照 SEC-011 的 `OPERATOR_USER_IDS` 前例,不做 DB 角色表、不做邀請碼);未在清單內仍可搜尋與看詳情、不可 Fork/Run/下載,且看到的是說明加需求訊號入口而不是 404。同一份 ADR 另定配額的強制點(平台自己的計數器,不是閘道的 `max_budget`/`tpm_limit`/並行數)。
 - Local Runner 配對憑證是否重用 Session 機制(後 MVP,ADR-006)。
+
+
+## 狀態升格（2026-08-27）
+
+`Proposed` → `Accepted`。**決策內容一個字都沒有改動**——`AGENTS.md` 的「不可原地改寫」管的是決策，這裡改的是狀態欄，兩者不是同一件事，所以不新開 ADR。
+
+**升格的理由是它描述的東西早就全部在跑**：`03:CORE-005` 已勾（GitHub OAuth ＋ Postgres session ＋ `DEV_LOGIN` 離線 provider ＋伺服器端撤銷），`DEV_LOGIN` 是 `cmd/api/main.go` 裡的 production 分支而不是 spike 遺留，而 `AGENTS.md` 開發自動化紅線第 6 條要求逐條套上的 `RequireSession`／`RequireOperator`／`OptionalSession`——**整套 AuthZ 都建在這份 ADR 上**。
+
+**它不是文書工作，這一點值得寫下來**：下一個人（人或 Agent）查一條授權路徑的依據時，會落在一份標著「等待評審」的文件上，然後只有兩種反應——不敢引用它，或引用了而不知道自己引用的是提案。**第二種已經發生過**：`AGENTS.md` 那張標題為「已定案的技術棧速覽」的表把它列在裡面，2026-08-25 補上 `（Proposed）` 標記**讓矛盾看得見，沒有讓它消失**。
+
+裁定見 [`05` R-12](../plans/05-pending-rulings.md)。**同批升格 ADR-019**，理由相同。

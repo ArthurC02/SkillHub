@@ -1,6 +1,6 @@
 # ADR-019：Monorepo 目錄結構與 CI/CD
 
-- 狀態：Proposed
+- 狀態：Accepted（2026-08-27 升格；決策內容一個字都沒有改動，見文末「狀態升格」）
 - 日期：2026-08-14
 - 決策者：產品負責人、架構規劃
 - 後續修訂：§1 先由 [ADR-024](./ADR-024-top-level-repository-layout.md) 修訂，現由 [ADR-031](./ADR-031-artifact-role-repository-layout.md) 取代其頂層收納語意與路徑
@@ -179,3 +179,12 @@ skillhub/
 3. **CI runner**：GitHub-hosted runner 足以跑 job 1～5，但 M2 的 gVisor／`runsc` 隔離測試（SBX-010、SEC-009）需要巢狀虛擬化，可能得改用 self-hosted runner。要在 M2 前確認，或接受該類測試只在部署平台的節點上手動執行？→ **範圍已縮小（2026-08-16）**：[ADR-022](./ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第三部分 §0 指出 **`runsc` 的預設 `systrap` 平台不需巢狀虛擬化**（只有 `--platform=kvm` 才需要 `/dev/kvm`），因此計算隔離、資源耗盡、Runtime 相容性與映像供應鏈測項（Suite 1）在 `ubuntu-latest` 即可跑；只有節點與網路面（Suite 2）需要真實節點。**本問題因此不再需要 self-hosted runner，但該前提須由部署批的第一台節點實測確認後才視為回答。**
 4. **前端套件管理器**：pnpm 或 npm（影響 lockfile 與 CI 快取設定，無架構後果，指定即可）。 **→ 已解決**：npm。`apps/web` 與 `packages/api-client-ts` 各有 `package-lock.json`，CI 用 `cache: npm` ＋ `npm ci`，全 repo 無 pnpm 痕跡。
 5. ~~**`spikes/` 的長期處置**：M1 後保留為歷史紀錄，或在 M0 文件完成引用後移除？目前提案是保留且不進 CI。~~ → **已回填（2026-08-16）：移除**。負責人指示刪除，M0 文件的引用已完成，結論分別沉澱於 m0 兩份 spike 報告、[ADR-013](./ADR-013-intent-search-architecture.md)、[ADR-023](./ADR-023-agent-sdk-version-pinning-and-behaviour-revalidation.md) §2 四項行為重驗清單與 `tools/goldenset/`。目錄只留墓碑（`docs/spikes/README.md`），內含還原用的 commit hash 與逐項結論落點。
+
+
+## 狀態升格（2026-08-27）
+
+`Proposed` → `Accepted`，與 [ADR-020](./ADR-020-authentication-and-session-model.md) 同批，理由相同：**決策內容一個字都沒有改動**，改的是狀態欄。
+
+本 ADR 描述的東西同樣早就在跑——`apps/`／`packages/`／`contracts/`／`db/`／`infra/`／`tools/`／`docs/` 的收納語意是 [ADR-031](./ADR-031-top-level-directory-semantics.md) 依本 ADR 展開的，`.github/workflows/ci.yml` 的 job 切分、`changes` 前置與釘死 SHA 的紀律都是它，而 `devctl automation-check` 每一次執行都在對這份結構對帳。
+
+**全 repo 原本只有兩份 ADR 還是 `Proposed`，就是這兩份，而兩份都描述著已經在跑的東西**——所以這不是任何一份自己的事，值得一次看兩列。裁定見 [`05` R-12](../plans/05-pending-rulings.md)。
