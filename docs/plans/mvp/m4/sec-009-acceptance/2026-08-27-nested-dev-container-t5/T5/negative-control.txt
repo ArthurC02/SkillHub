@@ -18,6 +18,9 @@ T5 network egress (NEGATIVE CONTROL: no ruleset loaded, everything should be rea
 
 node kernel:              Linux 6.6.87.2-microsoft-standard-WSL2
 nft:                      nftables v1.0.6 (Lester Gooch #5)
-bridge-nf-call-iptables:  1
+bridge-nf-call-iptables:  1  (loaded or enabled by the lab: no)
+NODE REQUIREMENT (T5-4):  br_netfilter loaded and bridge-nf-call-iptables=1.
+                          Without it that rule counts zero forever and two
+                          runs on one node reach each other.
 NEGATIVE CONTROL OK: 11 attempt(s) reached their destination unruled, so these probes can see a failure
 t5 network egress: procedure executed, all refused — NOT the SEC-009 acceptance

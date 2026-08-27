@@ -1,3 +1,7 @@
+a8ac7f6c67ab: Download complete
+a8ac7f6c67ab: Pull complete
+Digest: sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
+Status: Downloaded newer image for debian:12-slim
 egress render: 3 file(s) into /work/rendered; 1 reachable destination(s)
   committed ruleset loads                 PASS    (0 accept rules, fail-closed)
 
@@ -5,25 +9,23 @@ T5 network egress (rendered ruleset loaded):
   T5-1 DNS to an outside resolver        PASS    refused, dns counted it (0 -> 2)
   T5-2 internal scan (RFC1918)           PASS    refused, rfc1918 counted it (0 -> 2)
   T5-3 metadata service                  PASS    refused, metadata counted it (0 -> 2)
-  T5-4 east-west to another run          PASS    refused, eastwest counted it (0 -> 2)
+  T5-4 east-west to another run          FAIL    the attempt succeeded
   T5-5 node loopback                     PASS    refused, and no nftables rule saw it (measured)
   T5-5 sandboxd port on the bridge       PASS    refused, inbound counted it (0 -> 2)
   T5-6 provider domain direct (N-07)     PASS    refused, default counted it (0 -> 2)
   T5-7 gateway address, Postgres port    PASS    refused, default counted it (2 -> 4)
   T5-7 gateway address, sandboxd port    PASS    refused, sandboxd counted it (0 -> 2)
   T5-7 gateway address, platform API     PASS    refused, default counted it (4 -> 6)
-  T5-9 IPv6 bypass to the gateway        PASS    refused, v6 counted it (32 -> 36)
+  T5-9 IPv6 bypass to the gateway        PASS    refused, v6 counted it (21 -> 23)
   T5-8 inbound to :9000, other source    PASS    refused, inbound counted it (2 -> 4)
 
   reverse check: gateway reachable       PASS    the pinned IP:port is reachable
   reverse check: :9000 from control plane PASS    the rendered control-plane source is admitted
   T5-1 resolver answers NXDOMAIN         PASS    NXDOMAIN
 
-node kernel:              Linux 6.6.87.2-microsoft-standard-WSL2
+node kernel:              Linux 6.17.0-1022-azure
 nft:                      nftables v1.0.6 (Lester Gooch #5)
-bridge-nf-call-iptables:  1  (loaded or enabled by the lab: no)
-NODE REQUIREMENT (T5-4):  br_netfilter loaded and bridge-nf-call-iptables=1.
-                          Without it that rule counts zero forever and two
-                          runs on one node reach each other.
-T5: every attempt refused by the rule meant to refuse it; the pinned destination reachable
-t5 network egress: procedure executed, all refused — NOT the SEC-009 acceptance
+bridge-nf-call-iptables:  absent
+T5: something was not refused, was refused by the wrong rule, or could not be checked
+t5 network egress: FAILURES above
+##[error]Process completed with exit code 2.

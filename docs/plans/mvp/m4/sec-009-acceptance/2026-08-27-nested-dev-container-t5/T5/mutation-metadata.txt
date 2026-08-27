@@ -22,6 +22,9 @@ T5 network egress (rendered ruleset loaded):
 
 node kernel:              Linux 6.6.87.2-microsoft-standard-WSL2
 nft:                      nftables v1.0.6 (Lester Gooch #5)
-bridge-nf-call-iptables:  1
+bridge-nf-call-iptables:  1  (loaded or enabled by the lab: no)
+NODE REQUIREMENT (T5-4):  br_netfilter loaded and bridge-nf-call-iptables=1.
+                          Without it that rule counts zero forever and two
+                          runs on one node reach each other.
 T5: something was not refused, was refused by the wrong rule, or could not be checked
 t5 network egress: FAILURES above

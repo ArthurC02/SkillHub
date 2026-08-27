@@ -64,7 +64,7 @@ reached=0
 
 apt-get -qq update >/dev/null 2>&1
 apt-get -qq install -y nftables iproute2 iputils-ping netcat-openbsd \
-  dnsmasq bind9-dnsutils python3 python3-yaml >/dev/null 2>&1 || {
+  dnsmasq bind9-dnsutils python3 python3-yaml kmod >/dev/null 2>&1 || {
     echo "setup: package install failed" >&2; exit 1; }
 
 # ---------------------------------------------------------------- the ruleset
@@ -109,16 +109,33 @@ nft flush ruleset
 echo 1 > /proc/sys/net/ipv4/ip_forward
 echo 1 > /proc/sys/net/ipv6/conf/all/forwarding
 
-# T5-4 depends on this sysctl and nothing in the repo says so. Two sandboxes on
-# one bridge in one subnet talk over layer 2; the `ip` forward hook never sees
+# T5-4 depends on br_netfilter, and nothing in the repo says so. Two sandboxes
+# on one bridge in one subnet talk over layer 2; the `ip` forward hook never sees
 # those frames unless bridged IPv4 traffic is passed through it. The rule reads
 # like it protects east-west on its own. It does not.
+#
+# HOW THIS WAS FOUND, because the order matters. The first version of this script
+# wrote 1 to the sysctl during setup and never mentioned it. On the developer
+# machine the module was already loaded, so T5-4 went green and the dependency
+# stayed invisible: the setup step was quietly repairing the hole the probe was
+# meant to look for. CI's ubuntu-latest kernel does NOT have br_netfilter loaded,
+# and there T5-4 read `the attempt succeeded` — one sandbox reached another
+# sandbox on the same node, the cross-run path that needs no escape at all.
+#
+# So the lab now does what a node's IaC will have to do, and says so out loud
+# instead of in a variable nobody reads. A green T5-4 below means "the rule works
+# once the node is configured this way", never "the node is safe".
 BRNF=/proc/sys/net/bridge/bridge-nf-call-iptables
+BRNF_BY_LAB=no
+if [ ! -f "$BRNF" ]; then
+  modprobe br_netfilter 2>/dev/null && BRNF_BY_LAB=yes
+fi
 if [ -f "$BRNF" ]; then
+  [ "$(cat "$BRNF")" = 1 ] || BRNF_BY_LAB=yes
   echo 1 > "$BRNF"
-  BRNF_STATE="$(cat "$BRNF")"
+  BRNF_STATE="$(cat "$BRNF")  (loaded or enabled by the lab: ${BRNF_BY_LAB})"
 else
-  BRNF_STATE="absent"
+  BRNF_STATE="absent - br_netfilter would not load, so east-west is NOT filtered here"
 fi
 
 ip link add skillhub-sbx type bridge
@@ -375,6 +392,12 @@ echo
 echo "node kernel:              $(uname -sr)"
 echo "nft:                      $(nft --version)"
 echo "bridge-nf-call-iptables:  ${BRNF_STATE}"
+# A node requirement, printed as a result rather than a footnote: it is the
+# condition under which T5-4's line above means anything, and the node's IaC
+# owns it. The ruleset cannot carry this one.
+echo "NODE REQUIREMENT (T5-4):  br_netfilter loaded and bridge-nf-call-iptables=1."
+echo "                          Without it that rule counts zero forever and two"
+echo "                          runs on one node reach each other."
 
 if [ "$NO_NFT" = 1 ]; then
   if [ "$reached" -gt 0 ] && [ $fail -eq 0 ]; then

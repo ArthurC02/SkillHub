@@ -1,0 +1,21 @@
+P-04 -- version comparison:
+  ok   node newer than baseline                       want PASS    got PASS   
+  ok   node equal to baseline                         want PASS    got PASS   
+  ok   node older than baseline                       want FAIL    got FAIL   
+  ok   same date, higher patch                        want PASS    got PASS   
+  ok   same date, lower patch                         want FAIL    got FAIL   
+  ok   baseline is `unset`                            want FAIL    got FAIL   
+  ok   baseline file unreadable                       want UNKNOWN got UNKNOWN
+  ok   runsc not installed                            want UNKNOWN got UNKNOWN
+  ok   runsc printed something else                   want UNKNOWN got UNKNOWN
+P-03 -- node age:
+  ok   one day old                                    want PASS    got PASS   
+  ok   6.9 days -- inside the cycle                   want PASS    got PASS   
+  ok   7.1 days -- past the cycle                     want FAIL    got FAIL   
+  ok   15 days names the drain                        want FAIL    got FAIL   
+  ok   no timestamp                                   want UNKNOWN got UNKNOWN
+  ok   unparseable timestamp                          want UNKNOWN got UNKNOWN
+  ok   timestamp in the future                        want UNKNOWN got UNKNOWN
+  ok   timestamp == probe's own clock                 want UNKNOWN got UNKNOWN
+self-check: all grading cases behave
+rc=0

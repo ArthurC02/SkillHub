@@ -1,0 +1,16 @@
+t8 node probe: at least one item failed or could not be measured; `unknown` counts as fail (ADR-022 T8), so this node is not admitted
+node:     <no node facts>
+iac:      <unknown>
+facts:    /etc/skillhub/node.json does not exist -- IaC/cloud-init wrote no node facts here
+
+T8 node half (Suite 2 -- gate A admission probe):
+  C-01a  UNKNOWN runsc registered as a docker runtime -- cannot read `docker info`, so we cannot see which runtimes dockerd offers
+  C-01b  UNKNOWN no host path shared writable into a container -- cannot list containers, so their mounts were not inspected
+  C-01c  UNKNOWN each Run gets its own scratch, Runs share none -- NOT MEASURABLE FROM A SNAPSHOT OF ONE NODE. C-01's runtime half is a statement about two concurrent Runs; this probe photographs an idle node. That half is covered by SBX-005's integration tests, not by this script. Reported as unknown rather than omitted, because omitting it would let a green gate A imply C-01 was checked in full
+  P-01a  UNKNOWN declared role is the execution pool -- /etc/skillhub/node.json does not exist -- IaC/cloud-init wrote no node facts here
+  P-01b  UNKNOWN only sandbox + platform containers run here -- cannot read the container list, so co-scheduled workloads would be invisible: docker is not installed on this node
+  P-03   UNKNOWN rebuilt within the 7-day cycle -- /etc/skillhub/node.json does not exist -- IaC/cloud-init wrote no node facts here
+  P-04   FAIL    gVisor at or above the baseline -- baseline file says `unset`: the baseline itself has no value, so there is nothing to compare against. ADR-022 §2 makes P-04 blocking -- an unset baseline admits no node, and that is fail-closed, not a probe defect
+  P-05   PASS    no long-lived core-DB / secrets credential -- scanned every readable /proc/<pid>/environ; /etc/skillhub; /etc/environment; /etc/default; /run/secrets; /opt/skillhub for the names SKILLHUB_DATABASE_URL, DATABASE_URL, PGPASSWORD, SKILLHUB_SECRETS_TOKEN and for postgres:// URLs (values deliberately not printed)
+
+rc=2

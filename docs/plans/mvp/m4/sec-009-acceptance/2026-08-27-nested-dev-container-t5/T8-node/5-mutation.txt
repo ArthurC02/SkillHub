@@ -1,0 +1,59 @@
+AGENTS.md rule 9: a grader that has never been red grades nothing.
+Each mutation below breaks one rule the probe enforces; the self-check must go red.
+
+== baseline: unmutated ==
+  ok   timestamp in the future                        want UNKNOWN got UNKNOWN
+  ok   timestamp == probe's own clock                 want UNKNOWN got UNKNOWN
+self-check: all grading cases behave
+
+== mutation 1: P-04 comparison flipped, "got >= want" -> "got <= want" ==
+  ok   baseline is `unset`                            want FAIL    got FAIL   
+  ok   baseline file unreadable                       want UNKNOWN got UNKNOWN
+  ok   runsc not installed                            want UNKNOWN got UNKNOWN
+  ok   runsc printed something else                   want UNKNOWN got UNKNOWN
+P-03 -- node age:
+  ok   one day old                                    want PASS    got PASS   
+  ok   6.9 days -- inside the cycle                   want PASS    got PASS   
+  ok   7.1 days -- past the cycle                     want FAIL    got FAIL   
+  ok   15 days names the drain                        want FAIL    got FAIL   
+  ok   no timestamp                                   want UNKNOWN got UNKNOWN
+  ok   unparseable timestamp                          want UNKNOWN got UNKNOWN
+  ok   timestamp in the future                        want UNKNOWN got UNKNOWN
+  ok   timestamp == probe's own clock                 want UNKNOWN got UNKNOWN
+self-check: 4 case(s) wrong
+
+== mutation 2: REBUILD_DAYS 7 -> 700 (the 7-day cycle stops being enforced) ==
+  ok   runsc printed something else                   want UNKNOWN got UNKNOWN
+P-03 -- node age:
+  ok   one day old                                    want PASS    got PASS   
+  ok   6.9 days -- inside the cycle                   want PASS    got PASS   
+  BAD  7.1 days -- past the cycle                     want FAIL    got PASS   
+  ok   15 days names the drain                        want FAIL    got FAIL   
+  ok   no timestamp                                   want UNKNOWN got UNKNOWN
+  ok   unparseable timestamp                          want UNKNOWN got UNKNOWN
+  ok   timestamp in the future                        want UNKNOWN got UNKNOWN
+  ok   timestamp == probe's own clock                 want UNKNOWN got UNKNOWN
+self-check: 1 case(s) wrong
+
+== mutation 3: SELF_REPORT_TOLERANCE_SECONDS 2 -> 0 (self-reported now becomes a PASS) ==
+  ok   unparseable timestamp                          want UNKNOWN got UNKNOWN
+  ok   timestamp in the future                        want UNKNOWN got UNKNOWN
+  BAD  timestamp == probe's own clock                 want UNKNOWN got PASS   
+self-check: 1 case(s) wrong
+
+== mutation 4: `unset` baseline downgraded from FAIL to UNKNOWN-and-move-on ==
+  ok   runsc not installed                            want UNKNOWN got UNKNOWN
+  ok   runsc printed something else                   want UNKNOWN got UNKNOWN
+P-03 -- node age:
+  ok   one day old                                    want PASS    got PASS   
+  ok   6.9 days -- inside the cycle                   want PASS    got PASS   
+  ok   7.1 days -- past the cycle                     want FAIL    got FAIL   
+  ok   15 days names the drain                        want FAIL    got FAIL   
+  ok   no timestamp                                   want UNKNOWN got UNKNOWN
+  ok   unparseable timestamp                          want UNKNOWN got UNKNOWN
+  ok   timestamp in the future                        want UNKNOWN got UNKNOWN
+  ok   timestamp == probe's own clock                 want UNKNOWN got UNKNOWN
+self-check: 1 case(s) wrong
+
+== restored ==
+file identical to pre-mutation copy

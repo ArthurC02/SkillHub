@@ -1,0 +1,43 @@
+== synthetic node facts (fabricated for this run) ==
+{
+  "node_id": "lab-sbx-00",
+  "role": "sandbox-exec",
+  "node_created_at": "2026-08-24T11:12:49Z",
+  "iac_commit": "c860c64"
+}
+== fake runsc shim (fabricated: no gVisor is installed in this container) ==
+runsc version release-20260817.0
+spec: 1.1.0-rc.1
+
+t8 node probe: at least one item failed or could not be measured; `unknown` counts as fail (ADR-022 T8), so this node is not admitted
+node:     lab-sbx-00
+iac:      c860c64
+facts:    /etc/skillhub/node.json
+
+T8 node half (Suite 2 -- gate A admission probe):
+  C-01a  FAIL    runsc registered as a docker runtime -- `docker info` lists io.containerd.runc.v2 nvidia runc -- no runsc, so sandboxd's Runtime:"runsc" would fail to start rather than silently fall back, but this node cannot host Runs
+  C-01b  FAIL    no host path shared writable into a container -- read `docker inspect .Mounts` on 5 container(s); a Type=bind mount with RW=true is a writable host path (dockerdrv keeps Binds and Mounts empty on purpose -- C-05/C-07) -- funny_hoover:/c/Users/a8022/OneDrive/Desktop/SkillHub/docs/plans/mvp/m4/sec-009-acceptance/2026-08-27-nested-dev-container-t5/T8-node(rw), skillhub-api:C:\Users\a8022\OneDrive\Desktop\SkillHub(rw)
+  C-01c  UNKNOWN each Run gets its own scratch, Runs share none -- NOT MEASURABLE FROM A SNAPSHOT OF ONE NODE. C-01's runtime half is a statement about two concurrent Runs; this probe photographs an idle node. That half is covered by SBX-005's integration tests, not by this script. Reported as unknown rather than omitted, because omitting it would let a green gate A imply C-01 was checked in full
+  P-01a  PASS    declared role is the execution pool -- node facts declare role='sandbox-exec' (read from /etc/skillhub/node.json, written by IaC)
+  P-01b  FAIL    only sandbox + platform containers run here -- read `docker ps`; a container counts as expected only if it carries the skillhub.sandbox.managed label (dockerdrv puts it on every Run) or is sandboxd itself -- 5 of 5 containers are neither: funny_hoover (docker:cli), skillhub-api (golang:1.25), skillhub-postgres-1 (pgvector/pgvector:pg17), skillhub-seaweedfs-1 (chrislusf/seaweedfs:3.80), springaitest-appdb-1 (pgvector/pgvector:pg17@sha256:7ae6051efd0e60444282c27c7e141af07f322ce033300e727a49c3dd11075e38)
+  P-03   PASS    rebuilt within the 7-day cycle -- built 2026-08-24T11:12:49Z, 3 day(s) old (limit 7)
+  P-04   FAIL    gVisor at or above the baseline -- baseline file says `unset`: the baseline itself has no value, so there is nothing to compare against. ADR-022 §2 makes P-04 blocking -- an unset baseline admits no node, and that is fail-closed, not a probe defect
+  P-05   PASS    no long-lived core-DB / secrets credential -- scanned every readable /proc/<pid>/environ; /etc/skillhub; /etc/environment; /etc/default; /run/secrets; /opt/skillhub for the names SKILLHUB_DATABASE_URL, DATABASE_URL, PGPASSWORD, SKILLHUB_SECRETS_TOKEN and for postgres:// URLs (values deliberately not printed)
+
+rc=2
+
+== probe.json written (ADR-022 section 5's node-side raw output) ==
+{
+  "probe": "t8-node-probe",
+  "adr": "ADR-022 part three, T8 node half (gate A)",
+  "ran_at": "2026-08-27T15:12:50.569422+00:00",
+  "node_facts_path": "/etc/skillhub/node.json",
+  "node_facts": {
+    "node_id": "lab-sbx-00",
+    "role": "sandbox-exec",
+    "node_created_at": "2026-08-24T11:12:49Z",
+    "iac_commit": "c860c64"
+  },
+  "node_facts_error": null,
+  "gvisor_baseline_path": "/src/infra/nodes/gvisor-baseline.txt",
+  "checks": [
