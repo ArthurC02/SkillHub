@@ -280,3 +280,67 @@ python tools/sec009/_syscall_fuzz.py --self-check   # 需要 Linux
 ### 它仍然不是 SEC-009 的驗收
 
 ADR-022 把 T5 歸在 Suite 2，而 Suite 2 的受測物是**即將入池的那台節點**。這裡是 Windows → WSL2 VM → privileged 容器 → 三個 netns，目的地是假的、`pinned_ip` 是實驗室填的、閘道是一個 python listener。**N-01～N-08 的判定一格都沒有改。**
+
+---
+
+## T8 的節點半（2026-08-27 新增）
+
+[`t8-node-probe.py`](t8-node-probe.py)——ADR-022 第三部分 T8 裡**需要節點**的那一半，也就是 ADR-022 反覆提到但此前不存在的那支**「閘門 A 節點准入探針」**：C-01、P-01、P-03～P-05。
+
+```bash
+python tools/sec009/t8-node-probe.py               # 實測
+python tools/sec009/t8-node-probe.py --json        # ADR-022 §5 的 probe.json
+python tools/sec009/t8-node-probe.py --self-check  # 離線，不碰節點也不碰 docker
+```
+
+證據：[`docs/plans/mvp/m4/sec-009-acceptance/2026-08-27-nested-dev-container-t5/T8-node/`](../../docs/plans/mvp/m4/sec-009-acceptance/2026-08-27-nested-dev-container-t5/T8-node/)。
+
+### 它有一個輸入契約，而那份契約同時是給部署批的需求
+
+**節點事實不是探針推斷出來的，是 IaC／cloud-init 寫下來的。** 探針讀 `/etc/skillhub/node.json`（可用 `SKILLHUB_NODE_FACTS` 覆寫路徑，實驗室用）：
+
+```json
+{ "node_id": "sbx-01", "role": "sandbox-exec",
+  "node_created_at": "2026-08-25T04:11:07Z", "iac_commit": "c860c64" }
+```
+
+`node_created_at` 有兩個性質是它存在的全部理由，部署批兩個都要保住：**①由 cloud-init 在建置時寫入一次**（ADR-022 §1 明文「非節點自報的當下時間」），**②跨重開機不變**（那是建置時戳，不是開機時戳）。一台每次開機都幫自己蓋章的節點，年齡永遠是零，**7 天重建這條規則會安靜地停止存在**。
+
+**檔案不存在 ⇒ 相關項目全部 `unknown` ⇒ fail。** 那是設計，不是缺陷：一台說不出自己是誰的機器不進池。
+
+### 每一項是怎麼量的，以及哪一項刻意不量
+
+| 檢查 | 怎麼量 |
+| --- | --- |
+| **C-01a** | `docker info` 的 runtime 清單裡有沒有 `runsc` |
+| **C-01b** | `docker inspect .Mounts`：任何 `Type=bind` 且 `RW=true` 就是一條可寫的 host 路徑（`dockerdrv` 刻意讓 `Binds`／`Mounts` 保持空的——C-05／C-07） |
+| **C-01c** | **刻意不量，印 `unknown`**。見下 |
+| **P-01a** | node facts 的 `role` 必須等於 `sandbox-exec` |
+| **P-01b** | `docker ps`：每個容器要嘛帶 `skillhub.sandbox.managed` label（`dockerdrv` 給每個 Run 都加），要嘛是 `sandboxd` 自己；其餘逐一具名 fail |
+| **P-03** | node facts 的 `node_created_at` 年齡對 7 天；> 14 天在 detail 裡點名值班依 SEC-010 手動 drain |
+| **P-04** | `runsc --version` 對 `infra/nodes/gvisor-baseline.txt`，以 `(release 日期, patch)` tuple 比大小 |
+| **P-05** | 掃 `/proc/*/environ` 與 `/etc/skillhub`、`/etc/environment`、`/etc/default`、`/run/secrets`、`/opt/skillhub`，找 `SKILLHUB_DATABASE_URL`／`DATABASE_URL`／`PGPASSWORD`／`SKILLHUB_SECRETS_TOKEN` 這些名字與 `postgres://` 形態的值。**命中只印位置與樣式名，絕不印值** |
+
+**`unset` 的基線判 `fail` 而不是 `unknown`**，而且訊息說的是「基準本身沒有值，所以沒有東西可以比對，而 ADR-022 §2 把 P-04 列為阻擋級」。這兩者的差別在部署日很要緊：`unknown` 聽起來像「再查一下」，`fail` 說的是「這台機器不進池，去把那個檔填了」。
+
+### 第一次跑抓到什麼
+
+在一個 `python:3.12-slim` 容器裡跑（沒有 facts、沒有 `runsc`、沒有 docker），八列有**六列 `unknown`**、P-04 `fail`、P-05 `pass`，rc=2。**那六個 `unknown` 就是 fail-closed 的正向證明。**
+
+第二次給了合成的 facts、一支印版本字串的假 `runsc` shim，並把宿主的 docker socket 唯讀掛進去。**假 shim 測的是探針的邏輯，不是節點**——而它騙不過 C-01a，因為 C-01a 問的是 dockerd 註冊了什麼，不是 `$PATH` 上有什麼。三件真的量到的事：
+
+1. **C-01a `FAIL`**：這台 dockerd 只有 `io.containerd.runc.v2 nvidia runc`，**沒有 `runsc`**。
+2. **P-01b `FAIL`**：5 個容器沒有一個帶 sandbox label，其中兩個是 Postgres。**這台開發機確實是一台混排工作負載的機器**，而 P-01 禁止的正是這個——受測物是假的，這一格的判定卻是真的。
+3. **C-01b `FAIL`**：`skillhub-api` 把 repo 根目錄可寫掛進容器，**而探針容器自己也被抓到**（它為了寫 `probe.json` 掛了 `/out`）。自指，但它證明這條檢查不會放過執行它的那個容器。
+
+**P-05 在第一次是 `PASS`，而那是這張表上最弱的一格**：一個幾乎空的容器裡當然找不到憑證。所以另外跑了一次負對照，種兩個假憑證進去——P-05 如期轉 `FAIL`、指出位置與樣式，而對輸出 `grep -c` 那個假密碼的結果是 **`0`**。**一支會把找到的憑證印進 log 的洩漏偵測器，本身就是那個洩漏**（鐵律 11）。
+
+`--self-check` 用 17 組案例離線驅動 P-04 的版本比較與 P-03 的年齡判定，理由和 T8 映像半的 I-04 一樣：**這兩條規則都只在它們真的該擋的那一天被行使一次**。四次突變全部讓它變紅，其中最值得看的是把 `SELF_REPORT_TOLERANCE_SECONDS` 歸零——**拿掉之後每一次實測都會更好看**（P-03 從 `unknown` 變 `PASS`），而這種突變不會有人在 code review 抓到。
+
+### 它仍然不是 SEC-009 的驗收
+
+**沒有節點、沒有 gVisor、沒有 cloud-init。** C-01、P-01、P-03～P-05 的判定一格都沒有改。
+
+而且這一支比 T1／T2／T5 離驗收更遠：那三支至少在真的核心上量真的邊界，**這一支在第二次執行裡連受測物都是我自己寫進 `/etc/skillhub/node.json` 的**。它證明的是「這支探針拿到事實時會怎麼判」，不是「有一台節點通過了」。
+
+**還有一件事需要 ADR-022 回答，不該由腳本自己決定**：C-01c 永遠是 `unknown`，所以這支探針**在一台完全正確的節點上也會 exit 2**。C-01 的後半是關於兩個並行 Run 的敘述，閘門 A 拍的是一台閒置節點的照片；那半邊由 SBX-005 的整合測試覆蓋。探針選擇印 `unknown` 而不是省略（省略會讓綠燈看起來像 C-01 被整條檢查過了），代價是**一個永遠紅的閘門會被值班的人關掉**。ADR-022 §4 的覆蓋表把 C-01 整條指派給 T8，那需要一次裁定。

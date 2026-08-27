@@ -51,9 +51,14 @@ set -uo pipefail
 IMAGE="${T5_IMAGE:-debian:12-slim}"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# /lib/modules is mounted read-only because modprobe inside a container reads
+# the CONTAINER's module tree: without it br_netfilter cannot be loaded on a
+# host whose kernel has it as a module rather than built in, which is what
+# ubuntu-latest did on the first two CI runs of this script.
 docker run --rm -i --privileged \
   -e "SEC009_NO_NFT=${SEC009_NO_NFT:-0}" \
   -e "SEC009_T5_DROP_RULE=${SEC009_T5_DROP_RULE:-}" \
+  -v "/lib/modules:/lib/modules:ro" \
   -v "${REPO}/tools:/src/tools:ro" \
   -v "${REPO}/infra:/src/infra:ro" \
   "$IMAGE" bash -s <<'INNER'
