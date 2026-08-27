@@ -21,6 +21,10 @@ on:
       # the assertion that nothing re-runs is a change nobody has tested. Free to
       # add here, unlike runtime-image.yml, because this workflow publishes nothing.
       - 'tools/ci/check_egress_allowlist.py'
+      # The lab that loads the rendered ruleset into a kernel. Named for the
+      # same reason as the renderer: a change to the thing that grades the
+      # rules is a change nobody has run.
+      - 'tools/sec009/t5-network-egress.sh'
 
 permissions:
   contents: read
@@ -51,6 +55,27 @@ jobs:
         run: |
           python3 tools/egress/render.py --self-check
           python3 tools/egress/render.py --check
+
+      # ...and the ruleset the renderer produces has to be one a kernel accepts,
+      # doing what its comments claim. `--check` compares bytes against the
+      # allow-list; it cannot tell you nft would load the file, and a ruleset
+      # that fails to load leaves a node with NO rules at all — the direction
+      # that fails open.
+      #
+      # ADR-022 puts T5 in Suite 2 (the node about to join the pool) and this is
+      # NOT that: it is namespaces on a fake uplink inside one privileged
+      # container, so it grades the rules, not the node. What it does buy is
+      # that every future edit to the allow-list or the renderer is executed
+      # before it reaches a node, instead of first meeting a kernel during a
+      # deployment.
+      #
+      # Both directions run. The negative control (no ruleset) is what caught
+      # three probes grading a closed port as a policy drop on 2026-08-27, and
+      # a probe that cannot see a failure is not evidence when it passes.
+      - name: T5 network egress against a real kernel (ADR-022, not Suite 2)
+        run: |
+          bash tools/sec009/t5-network-egress.sh
+          SEC009_NO_NFT=1 bash tools/sec009/t5-network-egress.sh
 
       # ADR-022 Q3 change process, step 3. The threat model's own §3 says opening a
       # new egress destination requires updating it; this is that sentence with a

@@ -1,0 +1,23 @@
+egress render: 3 file(s) into /work/rendered; 1 reachable destination(s)
+  committed ruleset loads                 PASS    (0 accept rules, fail-closed)
+
+T5 network egress (NEGATIVE CONTROL: no ruleset loaded, everything should be reachable):
+  T5-1 DNS to an outside resolver        PASS    reached, as an unruled node should
+  T5-2 internal scan (RFC1918)           PASS    reached, as an unruled node should
+  T5-3 metadata service                  PASS    reached, as an unruled node should
+  T5-4 east-west to another run          PASS    reached, as an unruled node should
+  T5-5 node loopback                     PASS    unreachable with no rules either — refused by the stack, not by policy
+  T5-5 sandboxd port on the bridge       PASS    reached, as an unruled node should
+  T5-6 provider domain direct (N-07)     PASS    reached, as an unruled node should
+  T5-7 gateway address, Postgres port    PASS    reached, as an unruled node should
+  T5-7 gateway address, sandboxd port    PASS    reached, as an unruled node should
+  T5-7 gateway address, platform API     PASS    reached, as an unruled node should
+  T5-9 IPv6 bypass to the gateway        PASS    reached, as an unruled node should
+  T5-8 inbound to :9000, other source    PASS    reached, as an unruled node should
+
+
+node kernel:              Linux 6.6.87.2-microsoft-standard-WSL2
+nft:                      nftables v1.0.6 (Lester Gooch #5)
+bridge-nf-call-iptables:  1
+NEGATIVE CONTROL OK: 11 attempt(s) reached their destination unruled, so these probes can see a failure
+t5 network egress: procedure executed, all refused — NOT the SEC-009 acceptance

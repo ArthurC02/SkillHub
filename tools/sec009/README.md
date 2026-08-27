@@ -248,3 +248,35 @@ python tools/sec009/_syscall_fuzz.py --self-check   # 需要 Linux
 ```
 
 自檢**製造**那個 hang 而不是等它出現:子程序照隨機 `rt_sigprocmask` 的方式擋掉 SIGALRM 再睡十分鐘,`reap` 必須在預算內收掉它;反方向也驗(正常結束的子程序要被 reap 不是被殺),免得「reap 殺掉所有東西」冒充成修好了。把 `reap` 還原成原本的 `waitpid`,自檢會掛到 `timeout` 把它殺掉(rc=124)。
+
+## T5 的網路外洩（2026-08-27 新增）
+
+[`t5-network-egress.sh`](t5-network-egress.sh) 在一個 privileged 容器裡把節點的網路形狀搭出來——一張 `skillhub-sbx` bridge、兩個當成 Run 的 netns、一條假上行後面放著 T5 點名的每一個目的地——然後**把 `tools/egress/render.py` 渲出來的 ruleset 真的 `nft -f` 進去**，跑 T5-1～T5-9 與 ADR-022 要求的兩個反向驗證。
+
+證據：[`docs/plans/mvp/m4/sec-009-acceptance/2026-08-27-nested-dev-container-t5/`](../../docs/plans/mvp/m4/sec-009-acceptance/2026-08-27-nested-dev-container-t5/)。
+
+### 為什麼要在沒有節點的時候先寫
+
+**在這一天之前，`infra/egress/rendered/nftables.conf` 沒有被任何核心載入過。** CI 有的是 `render.py --check`，它證明「檔案與 allow-list 一致」，**證明不了 nft 收不收得下這個檔**——而一個載入失敗的 ruleset 留給節點的是一條規則都沒有，那是失效**開放**的方向。
+
+### 每一個 drop 都由「本來該擋它的那條規則」的計數器判定
+
+不是由「連線失敗」判定。**沒有路由也會讓連線失敗**，而分不出這兩者的測試，在一台完全沒有網路的節點上一樣全綠。腳本因此在每次嘗試前後讀該規則的 counter，只有計數真的動了才算 PASS——這正是 ADR-022 T5 的判準（「沒有記錄 ＝ N-06 未成立，即使流量確實被擋」）。
+
+### 它有一個負對照，而負對照當場抓到三個假綠
+
+`SEC009_NO_NFT=1` 不載入任何規則，期望反轉：每一項都該到得了。第一次跑，三列是 `unreachable even with no rules`——DNS、東西向、入站三個目標**根本沒有人在聽**，所以「被 DROP」與「連接埠關著」對 `nc -z` 是同一件事。三者在正向那一輪全都是綠的。補上 listener 之後負對照才成立（11 項到達）。
+
+### 它還有一個突變開關，因為沒紅過的評分器不算評分器
+
+`SEC009_T5_DROP_RULE=metadata` 在載入前把該條規則拿掉，對應的探針必須轉 FAIL。實測：`T5-3 ... FAIL refused, but skillhub-drop-metadata counted nothing`——**流量仍然被擋**（policy drop 接住了），紅的是歸因。這正是這支腳本與「連線失敗就算過」的差別。
+
+### 三件量到的事實，寫在證據目錄裡，這裡只列標題
+
+1. **T5-4 的東西向阻擋依賴 `net.bridge.bridge-nf-call-iptables=1`**，而 repo 裡沒有任何地方寫著這件事。設成 `0` 的節點上，那條規則的計數永遠是零，兩個 Run 不需要逃逸就互通。
+2. **T5-5 的三個半邊由三個不同的地方擋下**：轉送流量由 forward 鏈、節點自己的位址由 input 鏈、**節點 loopback 由核心路由層——在 nftables 之前，一筆紀錄都不留**。forward 鏈裡那條 `ip daddr 127.0.0.0/8` 對這個方向永遠不會觸發。節點版的判定表要為這一項寫具名例外，否則它會永遠停在 `unknown`。
+3. **實驗室測的是 ruleset，不是節點**：`dockerdrv` 今天不指定 netns 也不指定 DNS，所以每 Run 一個 netns 這件事**是實驗室自己建的，不是產品程式建的**。
+
+### 它仍然不是 SEC-009 的驗收
+
+ADR-022 把 T5 歸在 Suite 2，而 Suite 2 的受測物是**即將入池的那台節點**。這裡是 Windows → WSL2 VM → privileged 容器 → 三個 netns，目的地是假的、`pinned_ip` 是實驗室填的、閘道是一個 python listener。**N-01～N-08 的判定一格都沒有改。**

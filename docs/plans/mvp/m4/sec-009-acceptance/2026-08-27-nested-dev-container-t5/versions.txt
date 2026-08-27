@@ -1,0 +1,29 @@
+SEC-009 T5 lab -- nested developer container, NOT a node and NOT Suite 2
+date: 2026-08-27
+
+[host]
+os:               Windows 11 Pro 10.0.26200 (Docker Desktop)
+docker server:    29.7.2
+vm kernel:        Linux 6.6.87.2-microsoft-standard-WSL2
+
+[where the rules ran]
+container:        debian:12-slim, --privileged, own network namespace
+nft:              nftables v1.0.6 (Lester Gooch #5)
+kernel:           Linux 6.6.87.2-microsoft-standard-WSL2  (the WSL2 VM's, not a node's)
+bridge-nf-call-iptables: 1   <- T5-4 depends on this and nothing in the repo said so
+
+[what was loaded]
+committed ruleset:  infra/egress/rendered/nftables.conf  (loads; 0 accept rules, fail-closed)
+ruleset under test: rendered in-container by tools/egress/render.py from a lab
+                    allow-list whose model_gateway pinned_ip is 198.51.100.10,
+                    --resolver 10.77.0.1 --control-plane 198.51.100.30
+                    (the committed allow-list pins nothing, so the ruleset it
+                    renders passes all of T5 by reaching nothing at all)
+
+[repo]
+commit:           c860c649808851aafcd6042ec11bd10add4b015e
+branch:           main
+
+[what is NOT pinned here]
+infra/nodes/gvisor-baseline.txt:      unset
+infra/egress allowlist pinned_ip:     1 occurrence(s) of 'unset'
