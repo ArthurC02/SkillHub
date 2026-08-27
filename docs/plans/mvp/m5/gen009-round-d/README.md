@@ -6,6 +6,7 @@
 | 檔案 | 內容 |
 | --- | --- |
 | `corpus.json` | 20 段任務描述。**14 段逐字取自 [`gate-test/task-cards.md`](../../gate-test/task-cards.md)**（12 情境卡＋2 干擾卡），**6 段（`OUT-*`）是這一輪新寫的**——A／B 輪用的那六段從未進 repo（spike 的生成腳本是一次性的），這裡是同樣六個題材、重寫的文字 |
+| `skills/` | **二十份生成出來的 `SKILL.md`**，檔名即 Skill 名。**每個套件就只有這一個檔案**——生成器沒有產出過 script 或 reference。**這是 ④「人看了會不會留著」要看的東西**，留在 repo 的理由是它們原本只存在於一個會被下一次測試 `DROP SCHEMA` 掉的資料庫與物件儲存裡 |
 | `results.json` | 每段一列：生成是否成功、嘗試次數、Skill 名、Run 狀態、評估狀態、`overall`、逐條判準結果 |
 
 **重跑**（會花錢，約 $1.3／20 段）：harness 是

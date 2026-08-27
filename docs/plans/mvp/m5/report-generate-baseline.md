@@ -250,6 +250,8 @@ missing event is a judgement about 丙-1's rule and is not decided by renaming i
 - **`license-unknown` 20／20**：生成器產出的 `SKILL.md` **一次都沒有宣告授權**。今天不擋任何事
   （`skills.redistribution` 預設就不是 `allowed`），但依 [ADR-057](../../../adr/ADR-057-releasing-content-takes-named-evidence-not-a-button.md)，
   **一個沒有授權欄位的生成物永遠拿不到 `manifest` 這一級的證據**。要不要讓生成器寫入授權，是 M5 自己的題目。
+- **20／20 的套件裡只有一個檔案，就是 `SKILL.md`**：生成器**從來沒有產出過 script 或 reference**。
+  這一輪沒有量它好不好，只記下形狀——**這是 ④ 那個人要看的東西的全部**，二十份都在 `gen009-round-d/skills/`。
 - **5／20 的 Run 成功但零產出**：`the run reported success and no output files were recorded for it`——
   這條 finding 存在且說得清楚，**它就是 §9.2 那個分組差異的機械對應物**。
 
