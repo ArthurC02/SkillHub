@@ -176,6 +176,75 @@ maxDigestEntry  = 8000 // one-number: maxDigestEntry
 1. **死掉的名字不要穿反引號。** 反引號的意思是「這是一個真的符號」；訂正句裡提到一個從來不存在的名字時寫成純文字，檢查就不會命中，而讀者看到的資訊完全一樣。
 2. **`declared` 是「這個字出現在任何一個程式檔裡」，不是「這個符號有宣告」。** 便宜、不需要 parser，代價是**一個被刪掉但名字還留在某段註解裡的函式會溜過去**。寫這個檢查的當天就踩到了：它自己的說明註解引用了三個要抓的名字，於是把它們全部漂白——所以掃描時跳過 `doc_identifiers.go` 自己。
 
+## 跑一次真實的端到端 Run（2026-08-27 實測重寫）
+
+**成本：一次約 $0.017（mini 級）。會真的花錢。**
+
+`m2/README.md` 有一份「跑一個 Skill 的最短路徑」，那是里程碑時點的證據、已凍結，而**照它今天逐字做會得到一個沒有網路的 Run**——2026-08-26 之後 sandboxd 多了一個 fail-closed 的前置，那份文件寫的時候還不存在。下面是 2026-08-27 實際跑通的版本，`gateway-reported cost for this run: $0.016671`。
+
+### 今天多出來的那一步：沒有渲染過的允許清單，就沒有網路
+
+`SKILLHUB_SANDBOX_NETWORK` 一旦設了非 `none` 的值，`SKILLHUB_SANDBOX_EGRESS_ALLOW` 就**必填**，而且**committed 的 `infra/egress/rendered/egress-allow.json` 是空的**（`allowlist.yaml` 的 `pinned_ip` 仍是 `unset`，那是生產的正確預設）。空清單 ⇒ sandboxd 宣告 `none` ⇒ 沙箱被派到沒有網路的容器 ⇒ Agent SDK 對閘道空等到逾時。
+
+所以 dev 要**另外渲一份**，不要動 committed 的那一份（動它會踩 `egress-allowlist.yml` 的「同 PR 必須改威脅模型」閘門）：
+
+```bash
+cp -r tools infra /tmp/devsrc/            # 一份可改的副本
+sed -i 's/pinned_ip: unset/pinned_ip: <litellm 在 skillhub_egress 上的 IP>/; \
+        s/fqdn: litellm.internal/fqdn: litellm/' /tmp/devsrc/infra/egress/allowlist.yaml
+python3 /tmp/devsrc/tools/egress/render.py --out /tmp/dev-egress
+```
+
+比對的規則是 **purpose ＋ port ＋（FQDN 或 pinned IP）**（`sandbox/egress.go` 的 `routes`），所以 `fqdn: litellm` 就夠——平台送的 `url` 是 `http://litellm:4000`。
+
+### 三個程序
+
+```bash
+task dev:model                                   # postgres + seaweedfs + litellm
+GOOS=linux GOARCH=amd64 go -C apps/sandbox build -o /tmp/sandboxd ./cmd/sandboxd
+docker run -d --name skillhub-sandboxd --network skillhub_default --network-alias sandboxd \
+  -v /tmp/sandboxd:/usr/local/bin/sandboxd:ro \
+  -v /tmp/dev-egress/egress-allow.json:/etc/skillhub/egress-allow.json:ro \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e SKILLHUB_SANDBOX_TOKEN=devsandboxtoken \
+  -e SKILLHUB_SANDBOX_NETWORK=skillhub_egress \
+  -e SKILLHUB_SANDBOX_EGRESS_ALLOW=/etc/skillhub/egress-allow.json \
+  -e SKILLHUB_SANDBOX_IMAGE=skillhub/runtime-agent-sdk:2026.08-3 \
+  debian:12-slim /usr/local/bin/sandboxd
+```
+
+**交叉編譯而不是在容器裡 `go run`**：這個 repo 的 module 目標版本比多數 `golang:` 映像新，而在容器裡下載 toolchain 只是為了跑一個已經編得出來的二進位。
+
+### 測試程序要跑在容器裡，而且要與 postgres 共用網路命名空間
+
+`TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` 有一道守門：**`SKILLHUB_TEST_DATABASE_URL` 必須指向 localhost**，因為它會 `DROP SCHEMA public`。而測試同時需要用服務名解析 `seaweedfs`／`litellm`／`sandboxd`——在 Windows 主機上兩者不能同時成立。
+
+**`--network container:skillhub-postgres-1` 一次解決兩邊**：`localhost:5432` 就是那個 postgres（守門的用意完全成立，不是繞過），而 DNS 仍然是 `skillhub_default` 的，服務名照樣解析得到。sandboxd 要推 trace 回來，所以 `SKILLHUB_E2E_PUBLIC_HOST=postgres`——測試的 httptest server 綁在同一個命名空間裡。
+
+```bash
+GOOS=linux GOARCH=amd64 go -C apps/platform test -c -o /tmp/e2e.test \
+  ./internal/entrypoint/api/apiserver
+docker run --rm --network container:skillhub-postgres-1 \
+  -v "$PWD:/src" -v /tmp/e2e.test:/usr/local/bin/e2e.test:ro \
+  -w /src/apps/platform/internal/entrypoint/api/apiserver \
+  -e SKILLHUB_TEST_DATABASE_URL="postgres://skillhub:skillhub@localhost:5432/skillhub_test?sslmode=disable" \
+  -e OBJSTORE_ENDPOINT=seaweedfs:8333 -e OBJSTORE_ACCESS_KEY=skillhubdev \
+  -e OBJSTORE_SECRET_KEY=skillhubdevsecret -e OBJSTORE_BUCKET=skillhub -e OBJSTORE_SSL=0 \
+  -e SKILLHUB_E2E_SANDBOX_URL=http://sandboxd:9000 -e SKILLHUB_E2E_SANDBOX_TOKEN=devsandboxtoken \
+  -e SKILLHUB_MODEL_GATEWAY_URL=http://litellm:4000 -e SKILLHUB_MODEL_GATEWAY_KEY="$LITELLM_MASTER_KEY" \
+  -e SKILLHUB_RUN_MODEL=gpt-5.4-mini -e SKILLHUB_E2E_PUBLIC_HOST=postgres \
+  debian:12-slim /usr/local/bin/e2e.test \
+  -test.run TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey -test.v -test.timeout 20m
+```
+
+**`-w` 那一行是必要的**：測試以相對路徑 `../../../../../../db/migrations` 找 migration。
+
+### 它證明了什麼、沒證明什麼
+
+**證明**：套件進物件儲存 → preflight → 確認 → 派送 → sandboxd → 容器跑 Agent SDK → 每 Run 短效 Virtual Key 經閘道呼叫模型 → trace 回推 → artifact 收集 → 金鑰撤銷，**整條在今天仍然是通的**。
+
+**沒證明**：這一輪的 runtime 是 `runc` 不是 `runsc`，所以它不是 SEC-009 的任何一項；`--network skillhub_egress` 是 Docker 網路隔離，**不是** ADR-022 Q3 的 nftables 強制層（那條路的實驗室在 `tools/sec009/t5-network-egress.sh`）。
+
 ## 完成判準
 
 一次 automation 變更至少通過：
