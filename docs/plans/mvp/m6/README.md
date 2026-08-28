@@ -1,8 +1,8 @@
 # M6：在不能安裝東西的機器上跑起來
 
-- 狀態：**進行中（九項完成一項）**——`PORT-004`（讓跳過出聲）已於 2026-08-28 完成並在 CI 生效；**它是九項裡唯一不依賴受限環境任何答案的一項**。其餘八項仍未開工。本目錄先於開工存在，理由與 M5 相同：它已經有一份量測（[report-inmemory-postgres.md](report-inmemory-postgres.md)），而那份量測決定了 [ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 在兩個候選之間怎麼選
+- 狀態：**進行中（十一項完成兩項）**——`PORT-004`（讓跳過出聲）已於 2026-08-28 完成並在 CI 生效；**它是九項裡唯一不依賴受限環境任何答案的一項**。其餘八項仍未開工。本目錄先於開工存在，理由與 M5 相同：它已經有一份量測（[report-inmemory-postgres.md](report-inmemory-postgres.md)），而那份量測決定了 [ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 在兩個候選之間怎麼選
 - 決策：[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)（Proposed）
-- 規格：[`02` §4.10](../../02-specifications-and-acceptance-criteria.md)（`PORT-001`～`PORT-009`）
+- 規格：[`02` §4.10](../../02-specifications-and-acceptance-criteria.md)（`PORT-001`～`PORT-010`）
 - 工作項：[`03` §20](../../03-work-items.md)
 - **不計入 MVP 完成度**（同 M5 的先例，`01` §7.3）——**但這一條有一個待裁定的例外**，見下方 §待裁定
 
@@ -91,7 +91,7 @@ db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執�
 ## 不在 M6 範圍內的
 
 - **正式環境的任何東西**——Hetzner 節點、cloud-init、SEC-009 的 45 項門檻。那些是 Pitch 過關之後第一週要打開的資料夾（相關調查已完成，見 `05` 與 `04` 的對應列）。
-- **在受限機器上執行 Skill**（`02:PORT-006` 已明文：開始一次 Run 屬清單外）。**這一條 2026-08-28 補上了它的根據**：[report-sandbox-options.md](report-sandbox-options.md) 逐項查過，**結論是「沒有」，而且卡住的不是隔離技術的品質，是把隔離器放上去的縫**——白名單管的是哪顆 PE 能執行，所以任何要你自己帶一顆 `.exe` 的方案都在門口出局。剩下兩條縫（瀏覽器分頁內的 WASM、以及唯一通得出去的那條網路），代價分別是「能力大幅縮水」與「邊界不歸你管、資料離開機構」。**而報告的建議是先問一個行政問題**：防火牆能不能多開一個網域——有了它就能把 Run 送回自己的 gVisor 節點，隔離與生產一模一樣。<br>**⚠️ 順帶查到一件與此直接相關的事**：隔離等級的閘門是**黑名單**，`gvsior`（打錯字）與 `gvisor` 待遇完全相同。今天沒有路徑產得出未知值（宣告值是程式裡的兩路分支），**但加任何新 Provider 型態之前要先改成白名單**——同一段程式的註解記著一次形狀一模一樣的事故。
+- **在受限機器上執行不受信任的 Skill**（`02:PORT-006`）。**2026-08-28 訂正了這一條的措辭**：擋的是**內容的來源**不是動作本身——策展過的展示素材可以在 `PORT-010` 的本機 Driver 上真的跑完一次生命週期（[ADR-059](../../../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)，[report-local-driver.md](report-local-driver.md)）。**不受信任的內容仍然一律不行，由派送閘門強制。****這一條 2026-08-28 補上了它的根據**：[report-sandbox-options.md](report-sandbox-options.md) 逐項查過，**結論是「沒有」，而且卡住的不是隔離技術的品質，是把隔離器放上去的縫**——白名單管的是哪顆 PE 能執行，所以任何要你自己帶一顆 `.exe` 的方案都在門口出局。剩下兩條縫（瀏覽器分頁內的 WASM、以及唯一通得出去的那條網路），代價分別是「能力大幅縮水」與「邊界不歸你管、資料離開機構」。**而報告的建議是先問一個行政問題**：防火牆能不能多開一個網域——有了它就能把 Run 送回自己的 gVisor 節點，隔離與生產一模一樣。<br>**⚠️ 順帶查到一件與此直接相關的事**：隔離等級的閘門是**黑名單**，`gvsior`（打錯字）與 `gvisor` 待遇完全相同。今天沒有路徑產得出未知值（宣告值是程式裡的兩路分支），**但加任何新 Provider 型態之前要先改成白名單**——同一段程式的註解記著一次形狀一模一樣的事故。
 - **在沒有安裝限制的機器上的最佳解**。那條路是「裝一份原生 PostgreSQL 17 ＋ pgvector」：十分鐘、零程式碼、解鎖 281 支。**它與 M6 不互斥，而且該先做**——但它在受限環境裡不成立，所以不是 M6 的答案。
 - **`SBX-008` 短效授權的測試覆蓋**。平台測試裡沒有任何一行 fetch 過 presigned URL，所以「過期即失效」「簽章不可竄改」「GET 的票不能用來 PUT」三個性質今天**零覆蓋**。**這個缺口不是「沒有 Docker」造成的**，做一個檔案系統版物件儲存補不上它，**用一個不驗簽的假 S3 更會讓它從「零覆蓋」變成「看起來有覆蓋」**（[報告](report-object-storage.md) §3 的四個突變）。→ 已記為 [`04` 丙-81](../../04-backlog-and-handoffs.md)；`PORT-009` 只負責**不讓替身假裝證明了它**，補上證據是丙-81 的事。
 
@@ -107,6 +107,7 @@ db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執�
 | --- | --- |
 | `README.md` | 本檔。計畫、狀態、邊界、檔案地圖 |
 | [report-inmemory-postgres.md](report-inmemory-postgres.md) | 2026-08-28 的前期量測：SQLite 0/42、PGlite 42/42、逐項行為驗證（含不可變性 trigger 真的擋人）、wire protocol 與單連線死鎖、兩個被排除的候選及根據 |
+| [report-local-driver.md](report-local-driver.md) | 2026-08-28 的前期量測（本機執行 Driver）：**沒有值得加的相依**。逐一裁決十三個候選，含一個 1027★、README 承諾三平台、而 Windows 端是空殼的套件；**實測**只 kill 父行程會留下存活的孫行程，改用 Job Object 歸零。含動工前該知道的三件事（`Adopt()` 回空、資源上限兩平台不對稱、grace 不是合作式窗口） |
 | [report-sandbox-options.md](report-sandbox-options.md) | 2026-08-28 的前期量測（沙箱那一半）：**沒有 PGlite 等價物，而原因不是隔離技術不夠好**。Windows 原生隔離（AppContainer 不需管理員，但需要一顆過不了白名單的 launcher）、瀏覽器內 WASM（Pyodide 沒有 subprocess／pip／原生套件）、WASM 裡模擬 x86（最強邊界，44 倍慢，網路出不去）、託管沙箱（真 Debian，但邊界不歸你管且資料離開機構）；含三個「看起來像答案但不是沙箱」的逐條拒絕，以及隔離閘門是黑名單這個順帶發現 |
 | [report-object-storage.md](report-object-storage.md) | 2026-08-28 的前期量測（物件儲存那一半）：in-process 假 S3 七方法十項全過，**但突變顯示它什麼都不驗**——竄改／無簽章／已過期／GET 的票做 PUT，四種都回 200。含 `SBX-008` 的證據該從哪來、瀏覽器端 `blob:` 與 presigned 的三個差別、業界避免假真分歧的三種手法 |
 

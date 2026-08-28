@@ -83,6 +83,7 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-056](./ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md) | 生成額度是**第二個開關** `GENERATE_QUOTA`（一個開關關掉兩個額度＝ADR-047 決策 5 裁掉的共用池換套衣服），語意與 `RUN_QUOTA` 逐字相同：未設＝強制、`off`＝不強制且不顯示；四個數（每日 10／每窗 30／首窗 20／30 天）**全部待追認**，依 ADR-028 決策 4「先建點、後追認」，**追認前不得畫在畫面上**。依同日「額度先不限制」的裁示設為 `off`。**與 Run 不同的兩點寫進表**：一次生成 $0.0055 便宜一個量級，且**失敗天生不計費**——計數是數 `skill_sources` 的列，沒有餘額可以扣就沒有東西會扣錯 | Accepted |
 | [ADR-057](./ADR-057-releasing-content-takes-named-evidence-not-a-button.md) | 把**別人的**內容標成可散布（ADR-045 之後只剩這一半）：**誰能改＝只有 operator**，理由不是保守而是 ADR-021 §5.3——那兩份合法的 MIT 涵蓋了不屬於作者的內容，**連做過查核的人都判錯，交給按鈕的人不會更準**；**要什麼證據＝具名的 `license_expression` ＋ `license_source`，且必須與最新版本凍結的快照相符**，不符就當場否定。**買到的不是「證明」是「可以被反駁」**。三種拒絕刻意是三句話（沒填／快照沒記／填了不符——中間那一個不能靠再猜一次繞過）；只有 `allowed` 要證據（為了「擋」而先做判定＝對拒絕做判定收費）；**稽核記快照的值不是操作者打的字**（第一次跑就以 `MANIFEST` 進了 trail，而查詢要對的正是那一格） | Accepted |
 | [ADR-058](./ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) | 乾淨測試模式用**真** PostgreSQL（PGlite，實測 42/42 且不可變性 trigger 真的擋人），不用任何形式的假資料層（SQLite 實測 0/42）；**Adapter 畫在 `apiFetch` 不畫在資料庫層**——衝突不在 SQL 而在連線數。判準一：任何候選必須能讓 `UPDATE skill_versions` 失敗 | Proposed |
+| [ADR-059](./ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md) | 乾淨測試模式的執行 Driver 宣告 `isolation.level = "clean"`——**那個名字的意思是「沒有邊界」不是「比較弱的邊界」**，開關是自己的變數不是 `DEV_LOGIN`；**派送閘門從黑名單改成白名單**（舊寫法讓 `gvsior` 與 `gvisor` 待遇相同）；**不引入第三方行程管理相依**——沒有真正跨平台的成熟選項，而最像的那一個在 Windows 上是空殼（實測只殺父行程會留下存活的孫行程） | Proposed |
 
 ## 整體架構摘要
 
