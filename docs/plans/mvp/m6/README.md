@@ -1,6 +1,6 @@
 # M6：在不能安裝東西的機器上跑起來
 
-- 狀態：**未開工（提案）**——本目錄先於開工存在，理由與 M5 相同：它已經有一份量測（[report-inmemory-postgres.md](report-inmemory-postgres.md)），而那份量測決定了 [ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 在兩個候選之間怎麼選
+- 狀態：**進行中（九項完成一項）**——`PORT-004`（讓跳過出聲）已於 2026-08-28 完成並在 CI 生效；**它是九項裡唯一不依賴受限環境任何答案的一項**。其餘八項仍未開工。本目錄先於開工存在，理由與 M5 相同：它已經有一份量測（[report-inmemory-postgres.md](report-inmemory-postgres.md)），而那份量測決定了 [ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 在兩個候選之間怎麼選
 - 決策：[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)（Proposed）
 - 規格：[`02` §4.10](../../02-specifications-and-acceptance-criteria.md)（`PORT-001`～`PORT-009`）
 - 工作項：[`03` §20](../../03-work-items.md)
@@ -76,7 +76,7 @@ db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執�
 
 **判準三：跳過要出聲。**
 
-今天 287 筆靜默消失、畫面全綠。**但要小心界線**：現在的跳過本身是誠實的（訊息明說環境變數未設）；**任何讓畫面更綠、卻沒有真的執行斷言的改動，都比現狀更糟**。要的是讓「我這台跑不了什麼」變成可見的事實，不是讓它變綠。
+**（2026-08-28：本判準已由 `PORT-004` 實作，見 `03` §20。）** 今天 287 筆靜默消失、畫面全綠。**但要小心界線**：現在的跳過本身是誠實的（訊息明說環境變數未設）；**任何讓畫面更綠、卻沒有真的執行斷言的改動，都比現狀更糟**。要的是讓「我這台跑不了什麼」變成可見的事實，不是讓它變綠。
 
 ## 啟動條件
 
