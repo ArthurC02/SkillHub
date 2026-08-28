@@ -180,7 +180,7 @@ db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執�
 | # | 條件 | 現況 |
 | --- | --- | --- |
 | 1 | ADR-058 由 `Proposed` 轉 `Accepted` | **未定**。它動的是測試可信度的定義，不只是工具選擇 |
-| 2 | 受限環境的白名單內容已知（Node 在不在上面） | **未取得**。這是 B 半的前置，**不擋 A 半** |
+| 2 | 受限環境的白名單內容已知（Node 在不在上面） | **未取得，而且它現在擋住的比原本記的多**。資料庫那一軸的**兩條候選路都跑在 Node 裡**（PGlite 與 pgmock 都是 npm 套件），所以 Q1 是「否」的話 A 半也要重新設計。**已備妥可直接交出去的清單：[environment-probe.md](environment-probe.md)**——五個問題、十分鐘、全部唯讀、不安裝任何東西、不做任何繞過 |
 | 3 | Pitch 的日期與形式已定 | **未知**。A 半的優先序完全取決於它——如果 Pitch 還有很久，`01` §11 那些從未被問過的問題比 M6 更急 |
 
 **條件 3 是這個里程碑最該被質疑的地方，所以寫在這裡而不是藏在別處**：`01` §11 的成功指標到今天**一個數字都沒有**，因為沒有跟任何一個真人說過話。而 Pitch 一定會被問「有人要嗎」。[ask-5](../m5/ask-5.md)（5 人 × 8 分鐘）與 M1 閘門（材料 2026-08-16 已備妥，只等 D 日）加起來不到兩天，**而它們是唯一能把「機器說它可以」翻譯成「人說他要」的東西**。M6 讓 demo 跑得起來，但它不產生任何一個那樣的數字。
@@ -204,6 +204,7 @@ db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執�
 | --- | --- |
 | `README.md` | 本檔。計畫、狀態、邊界、檔案地圖 |
 | [report-inmemory-postgres.md](report-inmemory-postgres.md) | 2026-08-28 的前期量測：SQLite 0/42、PGlite 42/42、逐項行為驗證（含不可變性 trigger 真的擋人）、wire protocol 與單連線死鎖、兩個被排除的候選及根據 |
+| [environment-probe.md](environment-probe.md) | **要交出去給坐在那台機器前面的人的清單**：Node 在不在白名單、使用者目錄的未簽章執行檔跑不跑得起來（以 `go test` 當探針）、實際生效的政策與是否只開稽核、Edge 開不開得了本機 HTML、對外通得到哪些網域。**每一項都是唯讀，且刻意不做任何繞過** |
 | [report-local-driver.md](report-local-driver.md) | 2026-08-28 的前期量測（本機執行 Driver）：**沒有值得加的相依**。逐一裁決十三個候選，含一個 1027★、README 承諾三平台、而 Windows 端是空殼的套件；**實測**只 kill 父行程會留下存活的孫行程，改用 Job Object 歸零。含動工前該知道的三件事（`Adopt()` 回空、資源上限兩平台不對稱、grace 不是合作式窗口） |
 | [report-sandbox-options.md](report-sandbox-options.md) | 2026-08-28 的前期量測（沙箱那一半）：**沒有 PGlite 等價物，而原因不是隔離技術不夠好**。Windows 原生隔離（AppContainer 不需管理員，但需要一顆過不了白名單的 launcher）、瀏覽器內 WASM（Pyodide 沒有 subprocess／pip／原生套件）、WASM 裡模擬 x86（最強邊界，44 倍慢，網路出不去）、託管沙箱（真 Debian，但邊界不歸你管且資料離開機構）；含三個「看起來像答案但不是沙箱」的逐條拒絕，以及隔離閘門是黑名單這個順帶發現 |
 | [report-object-storage.md](report-object-storage.md) | 2026-08-28 的前期量測（物件儲存那一半）：in-process 假 S3 七方法十項全過，**但突變顯示它什麼都不驗**——竄改／無簽章／已過期／GET 的票做 PUT，四種都回 200。含 `SBX-008` 的證據該從哪來、瀏覽器端 `blob:` 與 presigned 的三個差別、業界避免假真分歧的三種手法 |
