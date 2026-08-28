@@ -294,6 +294,124 @@ func TestSegmentOneNeedsTheSearchToComeFirst(t *testing.T) {
 	}
 }
 
+// 01 §11.2's second item is a fork or a trial that followed the detail view, and
+// the query was a set intersection: a workspace that forked at 09:00 and opened a
+// detail page at 17:00 counted as a conversion. Both halves of the OR are checked
+// here, because a set intersection on either half is the same bug.
+func TestSegmentTwoNeedsTheDetailViewToComeFirst(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	ran := newFixture(t, a, pool, "funnel-two-ran")
+	ranFirst := newFixture(t, a, pool, "funnel-two-ran-first")
+	forked := newFixture(t, a, pool, "funnel-two-forked")
+	forkedFirst := newFixture(t, a, pool, "funnel-two-forked-first")
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	view := func(f fixture, at string) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, `INSERT INTO analytics_events
+            (event_name, session_id, workspace_id, occurred_at)
+            VALUES ('skill_detail_viewed', 'funnel-two', $1, $2)`,
+			mustUUID(t, f.workspaceID), at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fork := func(f fixture, name, at string) {
+		t.Helper()
+		if _, err := tx.Exec(ctx, `INSERT INTO skills
+            (workspace_id, name, forked_from_skill_id, created_at) VALUES ($1, $2, $3, $4)`,
+			mustUUID(t, f.workspaceID), name, mustUUID(t, f.skillID), at); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The two journeys the segment is about.
+	view(ran, "2040-11-01T10:00:00Z")
+	seedRunAt(t, tx, ran, "succeeded", "2040-11-01T11:00:00Z")
+	view(forked, "2040-11-01T10:00:00Z")
+	fork(forked, "funnel-two-forked-copy", "2040-11-01T11:00:00Z")
+	// The same two facts in the other order: nothing followed the view.
+	seedRunAt(t, tx, ranFirst, "succeeded", "2040-11-01T10:00:00Z")
+	view(ranFirst, "2040-11-01T11:00:00Z")
+	fork(forkedFirst, "funnel-two-forked-first-copy", "2040-11-01T10:00:00Z")
+	view(forkedFirst, "2040-11-01T11:00:00Z")
+
+	segment := funnelSegment(t, tx, funnelQuery(t, "'2040-11-01T00:00:00Z'", "'2040-11-02T00:00:00Z'"), 2)
+	if segment.numerator != 2 || segment.denominator != 4 {
+		t.Errorf("acted after a detail view = %d of %d, want the two ordered journeys: 2 of 4",
+			segment.numerator, segment.denominator)
+	}
+}
+
+// 01 §11.2's sixth item is "完成試跑後打包下載", and the numerator only asked whether
+// the workspace downloaded somewhere in the window — so downloading in the
+// morning and succeeding in the afternoon read as a conversion.
+func TestSegmentSixNeedsTheDownloadToFollowTheRun(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "funnel-six-order")
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Both inside the window, wrong way round. seedRunAt leaves finished_at NULL,
+	// which is why the query compares against COALESCE(finished_at, created_at).
+	seedDownloadAt(t, tx, f, "2040-12-01T09:00:00Z")
+	seedRunAt(t, tx, f, "succeeded", "2040-12-01T15:00:00Z")
+
+	segment := funnelSegment(t, tx, funnelQuery(t, "'2040-12-01T00:00:00Z'", "'2040-12-02T00:00:00Z'"), 6)
+	if segment.numerator != 0 || segment.denominator != 1 {
+		t.Errorf("packaged after a completed run = %d of %d, want 0 of 1",
+			segment.numerator, segment.denominator)
+	}
+}
+
+// 01 §11.2's fourth item is "完成 Run 後認為結果有幫助". The denominator was the
+// evaluations that got an answer, which measures how the people who bothered to
+// reply felt — a different and much more flattering quantity than the one asked
+// for, and BETA-002 prints it as the funnel.
+func TestSegmentFourCountsCompletedRunsNotAnsweredQuestionnaires(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "funnel-four")
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	seedRunAt(t, tx, f, "succeeded", "2041-01-01T09:00:00Z")
+	seedRunAt(t, tx, f, "succeeded", "2041-01-01T10:00:00Z")
+	// Only the first run's owner ever answered. The second is silence, which the
+	// old denominator dropped instead of counting.
+	var runID string
+	if err := tx.QueryRow(ctx, `SELECT id::text FROM runs WHERE workspace_id = $1 AND created_at = $2`,
+		mustUUID(t, f.workspaceID), "2041-01-01T09:00:00Z").Scan(&runID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO evaluations
+        (workspace_id, run_id, status, overall, evidence_complete, feedback_helpful, created_at)
+        VALUES ($1, $2, 'completed', 'met', true, true, $3)`,
+		mustUUID(t, f.workspaceID), mustUUID(t, runID), "2041-01-01T11:00:00Z"); err != nil {
+		t.Fatal(err)
+	}
+
+	segment := funnelSegment(t, tx, funnelQuery(t, "'2041-01-01T00:00:00Z'", "'2041-01-02T00:00:00Z'"), 4)
+	if segment.numerator != 1 || segment.denominator != 2 {
+		t.Errorf("found the result helpful = %d of %d, want 1 of 2 completed runs",
+			segment.numerator, segment.denominator)
+	}
+}
+
 // The sessions that reach 01 §12's risk — an intent the platform could not parse
 // — used to write no row at all, because the handler answers "no results" before
 // the service that records the event ever runs. They are not a random sample of

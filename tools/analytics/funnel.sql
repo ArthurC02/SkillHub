@@ -89,6 +89,27 @@ viewing_workspaces AS (
     WHERE event_name = 'skill_detail_viewed' AND workspace_id IS NOT NULL
       AND occurred_at >= lo AND occurred_at < hi
 ),
+-- Ordered, for segment 1's reason: 01 §11.2's second item is a fork or a trial
+-- that followed the detail view. A workspace that forked at 09:00 and opened a
+-- detail page at 17:00 did nothing "next", and a set intersection counts it.
+acted_after_view AS (
+    SELECT DISTINCT v.workspace_id FROM analytics_events v, bounds
+    WHERE v.event_name = 'skill_detail_viewed' AND v.workspace_id IS NOT NULL
+      AND v.occurred_at >= lo AND v.occurred_at < hi
+      AND (EXISTS (
+              SELECT 1 FROM skills s
+              WHERE s.workspace_id = v.workspace_id
+                AND s.forked_from_skill_id IS NOT NULL
+                AND s.created_at >= v.occurred_at
+                AND s.created_at >= lo AND s.created_at < hi
+          )
+        OR EXISTS (
+              SELECT 1 FROM runs r
+              WHERE r.workspace_id = v.workspace_id
+                AND r.created_at >= v.occurred_at
+                AND r.created_at >= lo AND r.created_at < hi
+          ))
+),
 download_intents AS (
     SELECT DISTINCT workspace_id FROM analytics_events, bounds
     WHERE event_name = 'download_started' AND workspace_id IS NOT NULL
@@ -96,14 +117,6 @@ download_intents AS (
 ),
 
 -- --- the domain half: every fact about a Run, a verdict or a file -------------
-forked AS (
-    SELECT DISTINCT workspace_id FROM skills, bounds
-    WHERE forked_from_skill_id IS NOT NULL AND created_at >= lo AND created_at < hi
-),
-ran AS (
-    SELECT DISTINCT workspace_id FROM runs, bounds
-    WHERE created_at >= lo AND created_at < hi
-),
 -- Segment 6's denominator: 01 §11.2 says "完成試跑後", and a created Run is not a
 -- completed one. Same column as segment 3's numerator so the two rows agree about
 -- what "completed" means.
@@ -141,7 +154,17 @@ evaluations_current AS (
     WHERE e.superseded_at IS NULL AND e.created_at >= lo AND e.created_at < hi
 ),
 feedback_given AS (SELECT count(*) AS n FROM evaluations_current WHERE feedback_helpful IS NOT NULL),
-feedback_helpful AS (SELECT count(*) AS n FROM evaluations_current WHERE feedback_helpful),
+-- 01 §11.2's fourth item counts completed Runs, not answered questionnaires. The
+-- denominator was the answers, which measured "of the people who bothered to
+-- reply, how many were happy" — a different quantity, and a flattering one.
+helpful_runs AS (
+    SELECT count(*) AS n FROM runs r, bounds
+    WHERE r.status = 'succeeded' AND r.created_at >= lo AND r.created_at < hi
+      AND EXISTS (
+          SELECT 1 FROM evaluations_current e
+          WHERE e.run_id = r.id AND e.feedback_helpful
+      )
+),
 suggestions_decided AS (
     SELECT count(*) AS n FROM evaluation_suggestions, bounds
     WHERE decision <> 'pending' AND created_at >= lo AND created_at < hi
@@ -150,9 +173,19 @@ suggestions_accepted AS (
     SELECT count(*) AS n FROM evaluation_suggestions, bounds
     WHERE decision = 'accepted' AND created_at >= lo AND created_at < hi
 ),
-downloaded AS (
-    SELECT DISTINCT workspace_id FROM download_records, bounds
-    WHERE downloaded_at >= lo AND downloaded_at < hi
+-- 01 §11.2's sixth item is 「完成試跑後打包下載」, so the download has to follow the
+-- Run. COALESCE is not caution: `runs.finished_at` is nullable and no CHECK ties
+-- it to `status = 'succeeded'`, so a succeeded run with no finish time would
+-- otherwise drop out of the numerator entirely.
+downloaded_after_success AS (
+    SELECT DISTINCT r.workspace_id FROM runs r, bounds
+    WHERE r.status = 'succeeded' AND r.created_at >= lo AND r.created_at < hi
+      AND EXISTS (
+          SELECT 1 FROM download_records d
+          WHERE d.workspace_id = r.workspace_id
+            AND d.downloaded_at >= COALESCE(r.finished_at, r.created_at)
+            AND d.downloaded_at >= lo AND d.downloaded_at < hi
+      )
 )
 
 SELECT * FROM (
@@ -165,11 +198,10 @@ SELECT * FROM (
      'denominator is systematically high. Read as a magnitude.'),
 
     (2, '查看詳情後 Fork 或啟動試跑',
-     (SELECT count(*) FROM viewing_workspaces w
-      WHERE w.workspace_id IN (SELECT workspace_id FROM forked)
-         OR w.workspace_id IN (SELECT workspace_id FROM ran)),
+     (SELECT count(*) FROM acted_after_view),
      (SELECT count(*) FROM viewing_workspaces),
-     'analytics denominator, domain numerator; per workspace. Anonymous detail ' ||
+     'analytics denominator, domain numerator; per workspace, and the fork or the ' ||
+     'Run must come after the detail view. Anonymous detail ' ||
      'views are excluded because nothing they did next is visible — so this ' ||
      'denominator is lower than segment 1''s and the two do not chain arithmetically.'),
 
@@ -179,9 +211,12 @@ SELECT * FROM (
      'that finished and produced nothing useful is counted here as a success.'),
 
     (4, '完成 Run 後認為結果有幫助',
-     (SELECT n FROM feedback_helpful), (SELECT n FROM feedback_given),
-     'domain only; denominator is evaluations that got any answer, not all ' ||
-     'evaluations. Volunteered feedback skews to the two extremes.'),
+     (SELECT n FROM helpful_runs), (SELECT n FROM runs_succeeded),
+     'domain only; per completed Run, which is what 01 §11.2 asks for — so a Run ' ||
+     'whose owner never answered sits in the denominator and this is a floor, not ' ||
+     'a satisfaction rate. Volunteered feedback skews to the two extremes. For ' ||
+     'contrast, ' || (SELECT n FROM feedback_given)::text ||
+     ' evaluations got an answer of any kind.'),
 
     (5, '改善建議被採用',
      (SELECT n FROM suggestions_accepted), (SELECT n FROM suggestions_decided),
@@ -189,10 +224,10 @@ SELECT * FROM (
      'suggestion is absent rather than counted as a rejection.'),
 
     (6, '完成試跑後打包下載',
-     (SELECT count(*) FROM succeeded_workspaces w
-      WHERE w.workspace_id IN (SELECT workspace_id FROM downloaded)),
+     (SELECT count(*) FROM downloaded_after_success),
      (SELECT count(*) FROM succeeded_workspaces),
-     'domain numerator, domain denominator; per workspace, and the numerator is a ' ||
+     'domain numerator, domain denominator; per workspace, the download must come ' ||
+     'after the Run finished, and the numerator is a ' ||
      'subset of the denominator by construction. A workspace whose Run succeeded ' ||
      'inside the window but downloaded after it closes counts as no download. ' ||
      '`download_started` is ' ||
