@@ -2,7 +2,7 @@
 
 - 狀態：**未開工（提案）**——本目錄先於開工存在，理由與 M5 相同：它已經有一份量測（[report-inmemory-postgres.md](report-inmemory-postgres.md)），而那份量測決定了 [ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 在兩個候選之間怎麼選
 - 決策：[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)（Proposed）
-- 規格：[`02` §4.10](../../02-specifications-and-acceptance-criteria.md)（`PORT-001`～`PORT-008`）
+- 規格：[`02` §4.10](../../02-specifications-and-acceptance-criteria.md)（`PORT-001`～`PORT-009`）
 - 工作項：[`03` §20](../../03-work-items.md)
 - **不計入 MVP 完成度**（同 M5 的先例，`01` §7.3）——**但這一條有一個待裁定的例外**，見下方 §待裁定
 
@@ -23,6 +23,8 @@ MVP 的 Pitch 在**金融機構環境**進行。那台機器：
 ## 這個里程碑有兩半，難度差一個數量級
 
 ### A. 乾淨測試模式（有解，且比預期小）
+
+> **A 半有兩個承載，形狀不同**：資料庫（[報告](report-inmemory-postgres.md)）與物件儲存（[報告](report-object-storage.md)）。**後者不是「測試跑不起來」的原因**——那 287 筆不需要物件儲存，它們用的是行程內的 `map[string][]byte`；物件儲存是**系統跑起來**的需求。兩件事不要混為一談。
 
 那 287 筆靜默跳過的測試，[逐條查證的結果](report-inmemory-postgres.md)是：**外部依賴只有 PostgreSQL 一項**。物件儲存已經是行程內的 `map[string][]byte`、模型服務為 nil 是合法部署、`apiFetch` 是單一出入口。
 
@@ -48,6 +50,14 @@ MVP 的 Pitch 在**金融機構環境**進行。那台機器：
 | 單連線（瀏覽器內剛好合適） | 併發語意 |
 
 **右欄必須出現在畫面上**，不是寫在程式註解裡。沙箱的先例是：假 Provider 宣告 `container` 而不謊稱 `gvisor`，由 `Match` 決定它能不能用——**那個保證由既有程式碼提供，不靠任何人記得**。資料層的 Adapter 應該照抄那個紀律。
+
+> **⛔ 第二條邊界（2026-08-28 補入）：物件儲存的替身不是 `SBX-008` 的證據。**
+>
+> in-process 的假 S3 讓七個方法十項全過，**而突變測試顯示它什麼都不驗**——簽章被竄改、簽章整個拿掉、已過期三秒、拿「讀」的票去「寫」，**四種都回 HTTP 200，最後一種還真的覆寫了物件**。
+>
+> **今天的基線是零覆蓋**（平台測試裡沒有任何一行 fetch 過 presigned URL）。**引入一個不驗簽的替身，會把「零覆蓋」變成「看起來有覆蓋」——那比零覆蓋更糟。** 短效授權的證明只能來自一次對真 S3 的執行，且該測試要被明文標記為不可 skip（`02:PORT-009`）。
+>
+> **這一條是自己抓到的**：本里程碑的物件儲存報告第一版差點以相反的結論收尾，抓到它的方式是對自己的實驗做突變。
 
 ## 三個必須守住的判準
 
@@ -82,7 +92,7 @@ db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執�
 
 - **正式環境的任何東西**——Hetzner 節點、cloud-init、SEC-009 的 45 項門檻、跨平台沙箱選型。那些是 Pitch 過關之後第一週要打開的資料夾（相關調查已完成，見 `05` 與 `04` 的對應列）。
 - **在沒有安裝限制的機器上的最佳解**。那條路是「裝一份原生 PostgreSQL 17 ＋ pgvector」：十分鐘、零程式碼、解鎖 281 支。**它與 M6 不互斥，而且該先做**——但它在受限環境裡不成立，所以不是 M6 的答案。
-- **`SBX-008` 短效授權的測試覆蓋**。量測過程中查到平台測試裡沒有任何一行 fetch 過那個 presigned URL，所以那兩個性質今天沒有自動測試在證明。**這個缺口不是「沒有 Docker」造成的**，做一個檔案系統版物件儲存也補不上它——已另記於 `04`。
+- **`SBX-008` 短效授權的測試覆蓋**。平台測試裡沒有任何一行 fetch 過 presigned URL，所以「過期即失效」「簽章不可竄改」「GET 的票不能用來 PUT」三個性質今天**零覆蓋**。**這個缺口不是「沒有 Docker」造成的**，做一個檔案系統版物件儲存補不上它，**用一個不驗簽的假 S3 更會讓它從「零覆蓋」變成「看起來有覆蓋」**（[報告](report-object-storage.md) §3 的四個突變）。→ 已記為 [`04` 丙-81](../../04-backlog-and-handoffs.md)；`PORT-009` 只負責**不讓替身假裝證明了它**，補上證據是丙-81 的事。
 
 ## 待裁定
 
@@ -96,5 +106,6 @@ db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執�
 | --- | --- |
 | `README.md` | 本檔。計畫、狀態、邊界、檔案地圖 |
 | [report-inmemory-postgres.md](report-inmemory-postgres.md) | 2026-08-28 的前期量測：SQLite 0/42、PGlite 42/42、逐項行為驗證（含不可變性 trigger 真的擋人）、wire protocol 與單連線死鎖、兩個被排除的候選及根據 |
+| [report-object-storage.md](report-object-storage.md) | 2026-08-28 的前期量測（物件儲存那一半）：in-process 假 S3 七方法十項全過，**但突變顯示它什麼都不驗**——竄改／無簽章／已過期／GET 的票做 PUT，四種都回 200。含 `SBX-008` 的證據該從哪來、瀏覽器端 `blob:` 與 presigned 的三個差別、業界避免假真分歧的三種手法 |
 
 **尚未存在**：`audit.md`（里程碑完結時才產出，同 M3 起的骨架規定）、`report-*` 的其餘報告。
