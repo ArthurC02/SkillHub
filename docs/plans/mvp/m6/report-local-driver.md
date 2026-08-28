@@ -96,3 +96,33 @@ OpenProcess / CloseHandle    PROCESS_SET_QUOTA / PROCESS_TERMINATE
 - **未量**：Job Object 的記憶體／CPU 上限對 Node 的實際效果，以及 `CreateProcess`→assign 競態窗口的實際寬度。
 - **未查證**：「Job Object 不需要 admin」在微軟文件裡是**負面證據**（文件沒說要）＋本報告第 2 節那次一般使用者身分的成功執行。**沒有找到明文的「不需要」。**
 - **不主張**：本報告不主張現在就動工。它主張的是**這件事沒有值得加的相依**，以及第 4 節那三件要先知道。
+
+## 6. 訂正（2026-08-29，實作時查出）：§2 那個實測是對的，但它證明的東西比我寫的窄
+
+`PORT-010b` 動工時照鐵律 9 做突變——把 `terminate()` 還原成只殺父行程，預期測試變紅。**它沒有紅。**
+
+追下去的原因是：**Windows 上 Node 會把自己非 detached 的子行程放進 Node 自己的 Job Object**，所以 `node.exe` 被殺掉時（不論是誰殺的），它自己的 job handle 隨行程結束一起關閉，**連帶把子孫殺光**。這與本套件的 Job Object 完全無關——純 PowerShell `Start-Process` 加一個**不帶 `/T`** 的 `taskkill` 就能重現，Go 沒有介入。
+
+**也就是說，那支測試量到的是 Node 的保證，不是我們的。**
+
+把孫行程改成 `detached: true`（脫離 Node 自己那張網）之後，同一個突變才真的紅：
+
+```
+grandchild survived Stop: heartbeat grew from 42 to 140 bytes after the driver
+reported the sandbox stopped — only the direct child was reaped, not the whole tree
+--- FAIL: TestReapsWholeProcessTree
+```
+
+並且活下來的孫行程鎖住工作目錄，讓 `t.TempDir()` 的清理也一起失敗——**額外一條佐證，說明洩漏是真的**。
+
+**所以 §2 的敘事要收窄。** 這個 Job Object 買到的**不是**「Windows 上父行程死了子行程不會死」——一般情況下 Node 自己就處理掉了。它買到的是：**一個刻意 detach 或背景化自己的行程逃得掉 Node 那張網**，而那正是有敵意或粗心的工作負載會產生的東西。§2 的 `leaked=1` 讀數本身沒有錯（那支探針的孫行程就是 detached 的），錯的是我從它推出的那句話的範圍。
+
+**`go-cmd/cmd` 的裁決不變**：它的 Windows 端仍然是空殼，只是它會壞在哪一種情況，比 §0 寫的更精確。
+
+## 7. 同時查出一個不在本報告範圍、但擋住 `PORT-010` 端到端的東西
+
+`infra/images/runtime-agent-sdk/run.mjs` 有**三個寫死的 POSIX 外部程式**：`/bin/sleep`（`:145`、`:176`）與 `unzip`（`:199`）。**Windows 主機上三者都不存在**，`execFileSync` 直接丟未捕捉例外；而本機 Driver 的 `pushInputs` 在行程啟動**之後**才寫 `ready` marker，所以工作負載一定會先進到那個等待迴圈。
+
+**§1 那句「第二個實作 spawn 的是完全相同的東西，只是把 `/work`、`/out` 換成主機目錄」對 Linux 主機成立，對 Windows 主機不成立**——而 M6 的目標機器是後者。
+
+已記為 [`04` 丙-82](../../04-backlog-and-handoffs.md)。**本次的測試 fixture 用 `Atomics.wait` 繞開它**，而那個繞開正是問題本身：**在容器裡永遠不會發現這件事，因為映像裡三個都在。**

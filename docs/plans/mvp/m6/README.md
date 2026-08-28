@@ -1,6 +1,6 @@
 # M6：在不能安裝東西的機器上跑起來
 
-- 狀態：**進行中（十一項工作項：完成兩項、撤回兩項、剩七項）**——`PORT-004`（讓跳過出聲）與 `PORT-010a`（派送閘門改白名單）已於 2026-08-28 完成。勾選數以 [`03` §20](../../03-work-items.md) 的 checkbox 為準，本檔不複述
+- 狀態：**進行中（十一項工作項：完成四項、撤回兩項、剩五項）**——2026-08-28 完成 `PORT-004`（讓跳過出聲）與 `PORT-010a`（派送閘門改白名單）；2026-08-29 完成 `PORT-008`（禁令核對＋補上守它的機器）與 `PORT-009`（物件儲存承載）。**`PORT-003` 與 `PORT-010b` 的程式落地了但刻意不勾**，各缺一段接線，逐項理由見 [`03` §20](../../03-work-items.md)。勾選數以那裡的 checkbox 為準，本檔不複述
 - 決策：**[ADR-060](../../../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md)（Proposed）**——淨測試模式是**同一套產品程式以旗標切換三個實作**；[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 已被它取代（決策 1／4／5 延續，量測全部仍有效）、**[ADR-059](../../../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)（Proposed）**（沙箱那一軸）
 - 規格：[`02` §4.10](../../02-specifications-and-acceptance-criteria.md)（`PORT-001`～`PORT-010`）
 - 工作項：[`03` §20](../../03-work-items.md)
@@ -115,6 +115,16 @@ JOB WORKED n=42, and 2 plain queries were served meanwhile
 | 成熟度 | 活躍 | npm 最後發版 2024-05，18 個 open issue |
 
 **不採 `pgmock` 的理由不是它做不到，是它剩下的缺口大小未知**：沒有 pgvector，而 guest 裡沒有編譯器；補上它要在別的機器為 i686-musl 編一顆共享函式庫，**而 pgvector 在 32-bit 有 runtime 失敗前科**。**它記在這裡而不是被刪掉**，是因為若單行程形狀在實作中垮掉，它是唯一已知還站著的替代品（[ADR-060](../../../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 決策 3）。
+
+## 2026-08-29 動工批查到的三件事，兩件是「文件說有、實際沒有」
+
+**① 突變第一次是綠的，而綠的原因不是程式對。** `PORT-010b` 的整棵行程樹回收，把 `terminate()` 還原成只殺父行程之後測試**照樣過**——因為 **Windows 上 Node 自己會把非 detached 的子行程放進 Node 自己的 Job Object**。那支測試量到的是 Node 的保證，不是我們的。孫行程改成 detached 之後才真的紅。**所以這個 Job Object 買到的比 [report-local-driver.md](report-local-driver.md) §2 原本寫的窄**：它防的是一個**刻意 detach 自己**的行程，不是一般情況。訂正見該報告 §6。
+
+**② 工作負載腳本在沒有容器的 Windows 主機上跑不起來。** `run.mjs` 有三個寫死的 POSIX 外部程式（`/bin/sleep` ×2、`unzip` ×1）。**M6 的目標機器正是「Windows 而且沒有容器」**，所以「spawn 完全相同的東西、只換兩個目錄」這句話在目標平台上不成立。**在容器裡永遠不會發現它，因為映像裡三個都在。** → [`04` 丙-82](../../04-backlog-and-handoffs.md)
+
+**③ `PORT-007` 的來源清單有兩份不能用。** `m2/content-baseline-report.md`（45 筆逐筆試跑）**只有結論**——它的逐筆原始資料在 scratchpad、未入庫，只存在於當時某台開發機的資料庫裡；策展的 45 筆**位元組刻意不進 git**（4 筆授權不可再散布），而 `PORT-005` 要求相依離線可帶。**repo 內真 trace 事件今天是 0 列**，唯一合法的取得路徑是接線後真的跑一次。逐項見 `03` §20。
+
+**三件的共同形狀，與本 repo 反覆記載的那一種相同**：一句讀起來已經成立的話，而沒有任何機器會反駁它。**三件都不是 code review 找到的**——①是突變找到的，②是寫測試被迫繞開時撞到的，③是逐份去開檔案才看見的。
 
 ## 三個必須守住的判準
 
