@@ -86,6 +86,21 @@ MVP 的 Pitch 在**金融機構環境**進行。那台機器：
 
 → 已記為 [ADR-058 待決策](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)。**在它有答案之前，`PORT-010b` 動工的前提是「走三軸形狀」，而那還沒被簽。**
 
+### 續（2026-08-28 稍晚）：形狀 2 被資料庫擋住，而且擋住它的比 River 更前面
+
+把「三軸 Strategy」實際攤開之後，卡點不需要實測 River 就能定出來——**它是行程數對連線數**：
+
+- `cmd/api` 與 `cmd/worker` 是**兩個獨立的二進位，各自 `pgxpool.New`**（`api/main.go:45`、`worker/main.go:47`）。
+- **要真的跑完一次 Run 就需要 worker**：API 只建立 Run，派送與清理在 worker（River 在那裡，不在 API）。
+- 而 **PGlite 的 socket 一次只收一個 client**（實測：第二條連線被直接踢掉），**開 multiplexer 則讓 advisory lock 安靜失效**（實測：兩條連線同時拿到同一把鎖）。
+
+**兩個行程對一條連線，怎麼配都不成立**：不開 multiplexer 就有一個行程連不上，開了就沒有互斥。River 的 LISTEN 只是同一件事的第二個實例，**不是它自己的問題**。
+
+**所以三條軸裡，沙箱那條有答案（ADR-059），資料庫那條沒有。** 擋住「在受限機器上真的跑完一次 Run」的不是隔離，是**沒有一個那台機器跑得動、又能同時接受兩個行程的 PostgreSQL**。
+
+**還沒被排除的一種形狀**：把 api 與 worker 合成單一行程只在淨測試模式用。**但那是第三個二進位**，而且 River 的 notifier 仍會以 LISTEN 長期佔住那唯一的連線，HTTP 那側就沒得用了——**這一項仍未實測**，寫在這裡是因為它是選項 2 唯一剩下的路，不是因為它看起來會成。
+
+
 ## 三個必須守住的判準
 
 **判準一：任何取代 PostgreSQL 的候選，必須能讓 `UPDATE skill_versions` 失敗。**
