@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -209,6 +211,15 @@ func TestDriverLifecycle(t *testing.T) {
 // docs/plans/mvp/m6/report-local-driver.md §2 measured — a plain kill of the
 // direct child leaves the grandchild running (leaked=1 there); this test fails
 // the same way if this driver's tree.terminate ever regresses to that.
+//
+// It checks two grandchildren, because the platforms differ on exactly one of
+// them. The ordinary one must die everywhere. The detached one is checked
+// against Reaping().Detached rather than against a wish: where the driver says
+// it cannot reach such a process, this asserts it really cannot — so a platform
+// that starts reaping it turns this red and forces the declaration to be
+// corrected, instead of the two quietly drifting apart. That is not a
+// hypothetical: tree_unix.go had the setsid caveat written down correctly while
+// this test asserted the opposite, and Linux CI is what said so.
 func TestReapsWholeProcessTree(t *testing.T) {
 	nodeBin := requireNode(t)
 	base := t.TempDir()
@@ -223,14 +234,17 @@ func TestReapsWholeProcessTree(t *testing.T) {
 	}
 
 	_, outDir := d.paths(id)
-	heartbeat := filepath.Join(outDir, "heartbeat.log")
+	ordinary := filepath.Join(outDir, "ordinary.log")
+	detached := filepath.Join(outDir, "detached.log")
 
-	// Wait for the grandchild to prove it is alive at all, so a failure below
-	// means reaping did not work rather than the fixture never having started.
+	// Wait for both grandchildren to prove they are alive at all, so a failure
+	// below means reaping did not work rather than the fixture never having
+	// started.
 	deadline := time.Now().Add(10 * time.Second)
-	for fileSize(t, heartbeat) == 0 {
+	for fileSize(t, ordinary) == 0 || fileSize(t, detached) == 0 {
 		if time.Now().After(deadline) {
-			t.Fatal("grandchild heartbeat never started")
+			t.Fatalf("grandchild heartbeats never started (ordinary=%d detached=%d bytes)",
+				fileSize(t, ordinary), fileSize(t, detached))
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
@@ -243,18 +257,62 @@ func TestReapsWholeProcessTree(t *testing.T) {
 	// to actually land, and any heartbeat write already in flight time to
 	// finish, before taking the "at rest" baseline.
 	time.Sleep(300 * time.Millisecond)
-	atStop := fileSize(t, heartbeat)
+	ordinaryAtStop, detachedAtStop := fileSize(t, ordinary), fileSize(t, detached)
 	time.Sleep(700 * time.Millisecond)
-	afterWait := fileSize(t, heartbeat)
+	ordinaryAfter, detachedAfter := fileSize(t, ordinary), fileSize(t, detached)
 
-	if afterWait > atStop {
-		t.Fatalf("grandchild survived Stop: heartbeat grew from %d to %d bytes after the driver "+
-			"reported the sandbox stopped — only the direct child was reaped, not the whole tree "+
-			"(report §2's leaked=1 case)", atStop, afterWait)
+	// The ordinary grandchild must be gone on every platform. This is the
+	// assertion that still has teeth where Reaping().Detached is false: without
+	// it, a terminate() that did nothing at all would stay green there.
+	if ordinaryAfter > ordinaryAtStop {
+		t.Fatalf("ordinary grandchild survived Stop: heartbeat grew from %d to %d bytes after the "+
+			"driver reported the sandbox stopped — only the direct child was reaped, not the tree "+
+			"(report §2's leaked=1 case)", ordinaryAtStop, ordinaryAfter)
+	}
+
+	grew := detachedAfter > detachedAtStop
+	switch {
+	case d.Reaping().Detached && grew:
+		t.Fatalf("detached grandchild survived Stop: heartbeat grew from %d to %d bytes, but this "+
+			"platform declares Reaping().Detached — the job object no longer holds a process that "+
+			"opted out of Node's own cleanup", detachedAtStop, detachedAfter)
+	case !d.Reaping().Detached && !grew:
+		t.Fatalf("detached grandchild was reaped (heartbeat stopped at %d bytes) on a platform that "+
+			"declares it cannot reach one — 02:PORT-010 requires the declaration to reflect what was "+
+			"detected, so fix Reaping() rather than this assertion", detachedAtStop)
+	}
+	if grew {
+		// A declared miss, not a leak this test gets to ignore: nothing else
+		// will end it, and on Windows a survivor holds the TempDir open and
+		// breaks t.Cleanup's own removal.
+		killByPIDFile(t, detached+".pid")
 	}
 
 	if err := d.Remove(ctx, id); err != nil {
 		t.Fatalf("Remove: %v", err)
+	}
+}
+
+// killByPIDFile ends a process this test deliberately left running because the
+// driver declares it cannot reach it. Reading the pid from the fixture's own
+// file is the only handle available: the process left its parent's group, so
+// there is nothing else that still knows about it.
+func killByPIDFile(t *testing.T, path string) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("declared-miss cleanup: reading %s: %v", path, err)
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(raw)))
+	if err != nil {
+		t.Fatalf("declared-miss cleanup: %s does not hold a pid: %v", path, err)
+	}
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		t.Fatalf("declared-miss cleanup: finding pid %d: %v", pid, err)
+	}
+	if err := proc.Kill(); err != nil {
+		t.Fatalf("declared-miss cleanup: killing pid %d: %v", pid, err)
 	}
 }
 

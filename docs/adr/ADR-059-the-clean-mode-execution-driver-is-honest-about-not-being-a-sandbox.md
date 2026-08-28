@@ -41,11 +41,15 @@ Driver 向 `Match` 宣告 `isolation.level = "clean"`。**這不是一個比較�
 
 `golang.org/x/sys` **已經在相依樹裡**（indirect），且已出好 Job Object 全套 API；缺的只有 `OpenJobObject`、`IsProcessInJob` 與 CPU rate 的結構。參考實作是 Buildkite Agent 的 `internal/process`（MIT，`internal/` 不可 import 但可複製）。tar 那一半用標準庫 `archive/tar` 約 40 行。
 
-### 決策 5：三個「做不到」寫在介面上，不寫在註解裡
+### 決策 5：四個「做不到」寫在介面上，不寫在註解裡
 
 1. **`Adopt()` 在乾淨模式回空。** `KILL_ON_JOB_CLOSE` 的語義是「最後一個 handle 關閉即殺光」，所以**服務重啟＝跑到一半的 Run 全部跟著死**。要讓它們活過重啟得改用具名 job 並放棄那個旗標，代價是被硬殺時留下孤兒樹。**本 ADR 選擇前者**：乾淨模式是展示與開發用途，留下孤兒行程樹比丟掉一次 Run 糟。
 2. **資源上限兩個平台不對稱。** Windows 的 Job Object 可設記憶體、行程數與 CPU 上限且不需管理員；**Linux 無 root 時沒有等價物**——Go 的 `SysProcAttr` **沒有 RLimit 欄位**，可用的是 `UseCgroupFD`／`CgroupFD`（Go 1.20 起）而那要 systemd 有委派 memory controller，**必須 runtime 偵測後降級**。最省的共同底線是 `node --max-old-space-size`。**能力宣告要照實反映實際偵測到的結果，不是照實反映意圖。**
-3. **`Stop(grace)` 的 grace 在兩個平台都不是合作式窗口，而這是既有行為不是新引入的。** `run.mjs` **沒有任何訊號 handler**（`grep process.on` 零筆），而 `dockerdrv.Stop` 走 `ContainerStop`（SIGTERM 後 SIGKILL）——**今天就沒有人在聽**。真正的收集窗口是 `WorkloadDone`／marker 檔那個機制，本機 Driver 照做即可。
+3. **Linux 回收不到一個刻意 detach 自己的子孫，Windows 回收得到。**（**2026-08-29 補入，本項由 CI 加上去的**——`tree_unix.go` 把 `setsid()` 這個缺口正確地寫進了註解，而 `TestReapsWholeProcessTree` 仍然無條件斷言整棵樹被回收，於是 Linux CI 紅了。**一個測試不知道的限制，等於沒有人在守。**）<br>
+**兩個平台差的正好是這個 Driver 存在的那個案例**：Job Object 不問子孫願不願意就擁有它們；POSIX 的行程群組是子孫呼叫 `setsid()` 就能離開的東西。**所以「刻意脫離的那個行程」——正常工作負載不會產生、有敵意或粗心的會——在 Windows 上被回收，在 Linux 上不會。**<br>
+**沒有繞過，是因為每條繞法都比這個 Driver 的用途貴**：`PR_SET_CHILD_SUBREAPER` 加 `/proc` 掃描會在一個本套件並不擁有的二進位上設行程層級的全域狀態；PID namespace 走 user namespace 會改變工作負載看到的世界，還要賭 unprivileged userns 有開。**M6 的目標機器是 Windows，生產的 Linux 用 gVisor 走 `dockerdrv`，而本 Driver 在兩個平台都不承載不受信任的內容**——所以誠實的「不行」是代價最小且什麼都沒藏的答案。<br>
+**形式**：`Driver.Reaping()` 回 `{Descendants, Detached}`，Windows `{true, true}`、Linux `{true, false}`，而**測試按這個宣告斷言**——宣告說不行的平台，測試就斷言它真的不行，所以哪天有人把 Linux 修好了，紅的是宣告而不是沉默。
+4. **`Stop(grace)` 的 grace 在兩個平台都不是合作式窗口，而這是既有行為不是新引入的。** `run.mjs` **沒有任何訊號 handler**（`grep process.on` 零筆），而 `dockerdrv.Stop` 走 `ContainerStop`（SIGTERM 後 SIGKILL）——**今天就沒有人在聽**。真正的收集窗口是 `WorkloadDone`／marker 檔那個機制，本機 Driver 照做即可。
 
 ## 評估選項
 

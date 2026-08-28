@@ -83,3 +83,20 @@ func (t *pgroupTree) release() error { return nil }
 func resourceEnforcement() ResourceEnforcement {
 	return ResourceEnforcement{}
 }
+
+// reaping: kill(-pgid) reaches everything still in the group, which is every
+// ordinary descendant — and nothing that called setsid(), because setsid()
+// creates a new session and a new process group, and the pid this driver
+// signals is no longer that process's group leader.
+//
+// This is a limitation of process-group reaping in general, not of this
+// implementation, and it is deliberately reported rather than worked around.
+// The unprivileged ways out are real but each costs more than this driver's
+// purpose is worth: PR_SET_CHILD_SUBREAPER plus a /proc descendant sweep sets
+// process-wide state on a binary this package does not own, and a PID
+// namespace via user namespaces changes what the workload sees and depends on
+// unprivileged userns being enabled at all. M6's target machine is Windows
+// (m6/README), production Linux isolates with gVisor through dockerdrv, and
+// this driver never carries untrusted content on either — so the honest "no"
+// is the answer that costs least and hides nothing.
+func reaping() Reaping { return Reaping{Descendants: true, Detached: false} }

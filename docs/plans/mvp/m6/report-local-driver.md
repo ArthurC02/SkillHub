@@ -126,3 +126,32 @@ reported the sandbox stopped — only the direct child was reaped, not the whole
 **§1 那句「第二個實作 spawn 的是完全相同的東西，只是把 `/work`、`/out` 換成主機目錄」對 Linux 主機成立，對 Windows 主機不成立**——而 M6 的目標機器是後者。
 
 已記為 [`04` 丙-82](../../04-backlog-and-handoffs.md)。**本次的測試 fixture 用 `Atomics.wait` 繞開它**，而那個繞開正是問題本身：**在容器裡永遠不會發現這件事，因為映像裡三個都在。**
+
+## 8. 第二次訂正（2026-08-29，CI 加上去的）：Linux 那一半不是「未實測」，是「實測不過」
+
+§5 寫著「Linux 側的 process group 收法**沒有跑過**」。**推上去之後 Linux CI 跑了，而它紅了**：
+
+```
+--- FAIL: TestReapsWholeProcessTree
+    grandchild survived Stop: heartbeat grew from 56 to 154 bytes after the driver
+    reported the sandbox stopped — only the direct child was reaped, not the whole tree
+```
+
+**而失敗的原因，`tree_unix.go` 的檔頭註解已經正確寫下來了**：測試的孫行程用 `detached: true` 起，那在 POSIX 上就是 `setsid()`——**新的 session、新的行程群組**，`kill(-pgid)` 打不到它。
+
+**所以這一次的教訓不是「Linux 那半寫錯了」，是「一個測試不知道的限制等於沒有人在守」。** 註解寫對了，斷言沒有跟上，於是同一份程式在兩個平台上宣稱同一件事。
+
+**訂正後的形狀**（`Driver.Reaping()`）：
+
+| | 一般子孫 | 刻意 detach 的子孫 |
+| --- | --- | --- |
+| Windows（Job Object） | ✅ | ✅ |
+| Linux（process group） | ✅ | ❌ **宣告為做不到** |
+
+**而測試按宣告斷言**：宣告說做得到的平台，斷言孫行程真的消失；**宣告說做不到的平台，斷言它真的還活著**——所以哪天有人把 Linux 修好，紅的是宣告，不是沉默。這與 `PORT-009` 那份物件儲存承載「斷言自己不安全」是同一個手法。
+
+**每個平台各留一條有牙的斷言**：fixture 現在起**兩個**孫行程，一般的那個在兩個平台都必須死——**那是 Linux 上唯一還有牙的斷言**，少了它，一個什麼都不做的 `terminate()` 在 Linux 上會全綠。
+
+**兩次突變都紅**：①把 `terminate()` 還原成只殺父行程 → `detached grandchild survived Stop… but this platform declares Reaping().Detached`；②把 Windows 的宣告改成 `Detached: false` → `detached grandchild was reaped … so fix Reaping() rather than this assertion`。
+
+**沒有去修 Linux，理由寫在 [ADR-059](../../../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md) 決策 5 第 3 項**：兩條無特權的繞法（`PR_SET_CHILD_SUBREAPER` 加 `/proc` 掃描、user namespace 裡的 PID namespace）都比這個 Driver 的用途貴，而 M6 的目標機器是 Windows。

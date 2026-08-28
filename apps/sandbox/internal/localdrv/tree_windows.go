@@ -144,3 +144,12 @@ func (t *jobTree) release() error {
 func resourceEnforcement() ResourceEnforcement {
 	return ResourceEnforcement{Memory: true, Processes: true}
 }
+
+// reaping: a Job Object created without JOB_OBJECT_LIMIT_BREAKAWAY_OK holds
+// every process assigned to it and every process those go on to create, and it
+// holds them whether or not they asked to be held. There is no Windows
+// equivalent of setsid() that walks a process out of a job it was assigned to,
+// so both answers here are yes — and the detached one is the answer this
+// package exists for (see the fixture note in testdata/reaper.mjs for why the
+// ordinary case is already covered by Node itself on this platform).
+func reaping() Reaping { return Reaping{Descendants: true, Detached: true} }

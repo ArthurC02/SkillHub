@@ -41,3 +41,26 @@ type treeLimits struct {
 	MemoryBytes  int64
 	MaxProcesses int64
 }
+
+// Reaping is what this driver's Stop actually ends on this platform, as
+// detected rather than as intended. It exists because the two platforms differ
+// on precisely the case this driver was built for, and 2026-08-29's CI run is
+// what forced it out of a comment and onto the type: tree_unix.go had written
+// the setsid caveat down correctly, TestReapsWholeProcessTree asserted
+// whole-tree reaping unconditionally anyway, and Linux CI failed. A limitation
+// a test does not know about is a limitation nobody is holding.
+//
+// The asymmetry is not cosmetic. A Windows Job Object owns every descendant
+// whether or not it wants to be owned; a POSIX process group is something a
+// descendant leaves by calling setsid(). So the deliberately-detached
+// process — the one an unmodified workload does not produce, and a hostile or
+// careless one does — is reaped on Windows and is not reaped on Linux.
+type Reaping struct {
+	// Descendants: ordinary children and grandchildren, the ones that stayed
+	// in the group or job they were started in. True on both platforms.
+	Descendants bool
+	// Detached: a descendant that deliberately left — setsid() on POSIX,
+	// which Node spells `detached: true`. A Job Object still holds it; a
+	// process group no longer contains it.
+	Detached bool
+}

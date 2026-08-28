@@ -344,6 +344,15 @@ func (d *Driver) ResourceEnforcement() ResourceEnforcement {
 	return resourceEnforcement()
 }
 
+// Reaping reports what Stop actually ends on this platform. Like
+// ResourceEnforcement it is a detection, not an intention, and it is on the
+// type rather than in a comment for the reason ADR-059 decision 5 gives: a
+// thing this driver cannot do belongs somewhere a caller and a test can both
+// read it. See the Reaping type in tree.go for why the two platforms differ.
+func (d *Driver) Reaping() Reaping {
+	return reaping()
+}
+
 // tailWriter keeps only the last limit bytes written to it, matching
 // dockerdrv's own bound on how much of a workload's stdout/stderr rides back in
 // the result (TRACE-004 is where the rest belongs). Docker can ask its daemon

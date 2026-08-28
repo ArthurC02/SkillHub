@@ -26,11 +26,27 @@ import { dirname, join } from "node:path";
 const outDir = process.env.SKILLHUB_OUTDIR;
 const here = dirname(fileURLToPath(import.meta.url));
 
-const child = spawn(process.execPath, [join(here, "heartbeat.mjs"), join(outDir, "heartbeat.log")], {
+// Two grandchildren, because the two platforms fail differently and each one
+// needs an assertion with teeth (see Reaping in tree.go):
+//
+//   detached  - opts out of Node's own cleanup. Windows' job object still holds
+//               it; a POSIX process group does not. This is the one that made
+//               Linux CI fail on 2026-08-29, and the one the Windows mutation
+//               test catches.
+//   ordinary  - stays in the group/job. Reaped on both platforms, so it is the
+//               assertion that still has teeth on Linux, where the detached one
+//               is a declared miss and would stay green through a terminate()
+//               that did nothing at all.
+const detached = spawn(
+  process.execPath,
+  [join(here, "heartbeat.mjs"), join(outDir, "detached.log")],
+  { stdio: "ignore", detached: true },
+);
+detached.unref();
+
+spawn(process.execPath, [join(here, "heartbeat.mjs"), join(outDir, "ordinary.log")], {
   stdio: "ignore",
-  detached: true,
 });
-child.unref();
 
 // Keep this process (and the event loop) alive until the driver kills it.
 setInterval(() => {}, 1000);

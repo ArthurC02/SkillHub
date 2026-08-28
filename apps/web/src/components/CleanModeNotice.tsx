@@ -35,9 +35,7 @@ export function CleanModeNotice() {
 
   return (
     <>
-      <p className="badge badge-unverified">
-        淨測試模式：沒有隔離、不驗簽章、只有一條連線
-      </p>
+      <p className="badge badge-unverified">淨測試模式：沒有隔離、不驗簽章、只有一條連線</p>
       <p className="note">
         沙箱沒有隔離——不是比較弱的隔離，是沒有邊界。這個模式只跑策展過的展示素材。
       </p>
