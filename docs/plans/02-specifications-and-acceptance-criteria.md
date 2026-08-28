@@ -637,6 +637,7 @@ queued → provisioning → preparing → running → evaluating
 - `db/migrations/` 的**全部** migration 在該模式下**一字不改**套用成功；任一支失敗即不成立。**不得為此模式修改任何 migration**（migration 已套用即不可變，且改它等於改生產 schema）。
 - 套用之後，下列由資料庫強制的行為**必須仍然成立**，逐條有可執行的檢查：①`UPDATE skill_versions` 被拒絕並回報 ADR-003；②`DELETE` 同上；③`trace_events` 為 RANGE 分割表；④pgvector 的距離運算子算得出值；⑤generated `tsvector` 欄位有定義。
 - **判準一（不可協商）**：任何取代 PostgreSQL 的候選，**必須能讓 `UPDATE skill_versions` 失敗**。這是鐵律 4 由資料庫強制的形式，也是最便宜的真偽測試。
+- **判準一之二（2026-08-28 新增，不可協商）**：**兩條獨立連線對同一把 advisory lock，第二條必須拿不到。**<br>上面那五條由資料庫強制的行為**全部是單連線性質**，一條連線就驗得完——**所以它們全過，也不代表互斥還在**。實測 `pglite-socket` 的 multiplexer（`maxConnections > 1`）讓 N 個 client 共用同一個 Postgres session：`pg_backend_pid()` 兩邊同為 42、**兩邊同時拿到同一把 `pg_try_advisory_lock` 且無任何錯誤**、互相看得見 temp table。PostgreSQL 官方文件寫明「session 已持有某 advisory lock 時其後續請求一律成功」——併成一個 session，這句話就從保護變成漏洞。<br>**本專案有三處產品程式靠它互斥**（`creator/workspace` 的 `pg_advisory_xact_lock`、outbox 的單一 publisher 保證、`runs`），在該組態下它們會**全綠而毫無保證**。<br>**因此 `maxConnections > 1` 是禁用組態，不是效能取捨**；本條的檢查必須實際開兩條連線，不得以「設定檔寫了 1」代替。依據見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md) §5.2。
 - 該模式**不得要求安裝軟體、不得要求管理員權限、不得下載並執行外來二進位**——三者任一成立即不符合本需求的目的。
 - 版本釘選：所使用的 PostgreSQL 主版本必須與 CI 同一個 major；WASM 發行版與 pgvector 套件版本釘進 `tools/toolchain.yaml` 並納入 `devctl doctor` 的對帳。
 
@@ -671,6 +672,7 @@ queued → provisioning → preparing → running → evaluating
 
 - 交付物**必須能在沒有網路、沒有本機伺服器、沒有安裝的情況下開啟**；以瀏覽器開啟本機檔案即可運作。
 - 不得依賴任何外部網域（字型、CDN、遙測皆然）；資源一律內嵌。
+- **必須在 Chromium 系瀏覽器（Chrome／Edge）驗證，不得只驗 Firefox。**（2026-08-28 實測）`file://` 下兩者行為不同：一個 `<script type="module">` 只要 `import` 另一個檔案，Chromium 就以 CORS 擋下（`origin 'null'`），畫面停在未執行狀態；Firefox 則正常載入。**而 Vite 的產出正是外部 module script**，所以預設建置在 Chromium 下開本機檔案會是一片空白。<br>同一次實測確認可用的形式：inline classic script、外部 classic script、**沒有 `import` 的 inline module**。**因此交付形式必須是全部內嵌的單檔**，且不得依賴 `import` 或 `fetch()` 取得任何同目錄檔案。<br>**受限環境的瀏覽器極可能只有 Edge**——這一條若只在 Firefox 上驗過，等於沒驗。依據見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md) §9。
 - 不得依賴 `localhost` 上的任何服務。
 
 #### PORT-006：端點範圍與誠實的缺席

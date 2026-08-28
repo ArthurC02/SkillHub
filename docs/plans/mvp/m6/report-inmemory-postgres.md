@@ -169,6 +169,30 @@ B pg_try_advisory_lock(4242) = true       （真 PostgreSQL 應為 FALSE）
 - **單連線對 Adapter B 沒有影響**（瀏覽器一頁一連線），對 socket 模式有。兩者不要混為一談。
 - **`@electric-sql/pglite-pgvector` 是 0.0.9。** 極新。本報告的所有 pgvector 結論都綁在這個版本上。
 
+## 9. 補測（2026-08-28）：`file://` 下的交付形式，Chromium 與 Firefox 不一樣
+
+`PORT-005` 要的是「以瀏覽器開啟本機檔案即可運作」，而本報告第一版**完全沒有量過瀏覽器**。補測結果推翻了那個假設可以無條件成立：
+
+以 playwright 開同一個本機 HTML，一個 inline module 內含 `import { x } from "./mod.js"`：
+
+```
+chromium  #out = "NOT RUN"        error = Access to script at 'file:///…' blocked by CORS policy (origin 'null')
+firefox   #out = "module loaded"  error = none
+```
+
+第二輪確認可用的形式（兩個瀏覽器都通過）：
+
+```
+chromium  classic inline ok | classic external ok | inline module ok
+firefox   classic inline ok | classic external ok | inline module ok
+```
+
+**所以界線不在「module 不能用」，在「不能 `import`」。** 一個沒有 import 的 inline module 是可以的；只要去抓同目錄的另一個檔案，Chromium 就以 opaque origin 擋下。
+
+**這對本專案是直接的**：Vite 的產出是 `<script type="module" src="/assets/index-*.js">`——**外部 module，必掛**。而受限環境的瀏覽器極可能只有 Edge（Chromium 系）。**交付形式因此必須是全部內嵌的單一檔案**，不能只是「把 dist 資料夾拷過去」。
+
+**尚未量到、而且是下一個該量的**：PGlite 自己在 `file://` 下能不能起來。它要載入約 3.7 MB 的 WASM 與一份檔案系統映像，若其載入路徑用的是 `fetch()`，會撞上同一道牆；繞法是全部以 base64 內嵌（體積 +33%）。**這一項目前是推導，不是實測。**
+
 ## 8. 可重跑
 
 實驗腳本置於 scratchpad，未進 repo（它們依賴 npm 套件且只是一次性驗證）。要重跑的話，四支各自的形狀是：
@@ -177,3 +201,5 @@ B pg_try_advisory_lock(4242) = true       （真 PostgreSQL 應為 FALSE）
 2. **PGlite**：Node ESM，`new PGlite({ extensions: { vector } })`，同樣逐支 `db.exec`。
 3. **行為驗證**：接續 2，逐條查 `pg_indexes`／`pg_class.relkind`／`pg_inherits`，並實際 `INSERT` 一列 `skill_versions` 後嘗試 `UPDATE` 與 `DELETE`（**種子資料需要 `users(email, display_name)` 與 `workspaces(owner_user_id, name)`**，我第一次漏了 `owner_user_id`，那次的紅是我的測試寫錯不是 trigger 沒擋）。
 4. **wire protocol**：`PGLiteSocketServer({ db, port, host })`，另一側用 pgx 連。
+5. **session 共用**（§5.2）：同上但加 `maxConnections: 10`，用**兩條獨立的 pgx 連線**各查 `pg_backend_pid()`、各要一次 `pg_try_advisory_lock(4242)`、其中一條建 temp table 另一條讀它。**兩條都拿到鎖就代表互斥已經不存在。**
+6. **`file://`**（§9）：playwright 分別以 chromium 與 firefox `goto("file:///…/index.html")`，頁內放四種 script 形式，比對哪一種真的執行。
