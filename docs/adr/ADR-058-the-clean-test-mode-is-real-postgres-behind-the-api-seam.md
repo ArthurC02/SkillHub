@@ -156,6 +156,39 @@ db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執�
 
 **還沒被排除的一種形狀**：把 api 與 worker 合成單一行程只在淨測試模式用。**但那是第三個二進位**，而且 River 的 notifier 仍會以 LISTEN 長期佔住那唯一的連線，HTTP 那側就沒得用了——**這一項仍未實測**，寫在這裡是因為它是選項 2 唯一剩下的路，不是因為它看起來會成。
 
+### 訂正（2026-08-28 稍晚，同日）：形狀 2 沒有被擋住，而擋住它的那個理由是我沒去試
+
+上一段把「api 與 worker 合成單一行程」寫成「唯一剩下的路，不是因為它看起來會成」，理由是 River 的 notifier 會以 LISTEN 佔住那唯一的連線。**那句話是推論，而推論錯了。**
+
+**River 有 `PollOnly`，而且它的文件就是為這個情況寫的**（`client.go:309`）：
+
+> PollOnly starts the client in "poll only" mode, which avoids issuing `LISTEN` statements… The upside is that it makes River compatible with systems where listen/notify isn't available. **For example, PgBouncer in transaction pooling mode.**
+
+**實測**（單一行程、`pool_max_conns=1`、PGlite 的 multiplexer **關閉**、`PollOnly: true`）：
+
+```
+pool max conns = 1
+river schema applied
+river started in PollOnly mode on a one-connection pool
+job inserted
+JOB WORKED n=42, and 2 plain queries were served meanwhile
+```
+
+**River 的 schema 套用成功、client 起得來、工作被領走並執行完、而且「HTTP 那一側」在同一條連線上同時查得到資料。** 沒有餓死，沒有死鎖。
+
+**突變驗證**（把 `PollOnly` 改成 `false`，其餘不動）：
+
+```
+start: failed to connect to `user=postgres database=skillhub_test`: … An established
+connection was aborted by the software in your host machine.
+```
+
+**紅得正是預期的原因**——River 去要第二條連線做 LISTEN，而 PGlite 只收一個 client。兩邊對上了。
+
+**所以要更正的結論是**：資料庫**沒有**擋住形狀 2。擋住的是「兩個二進位」這個部署形狀，而那是可以改的——**淨測試模式把 api 與 worker 收在同一個行程裡，River 走 poll-only，一條連線就夠**。這與 multiplexer 那條路不同：**這裡真的只有一個 session，所以互斥是自然成立而不是被偽造的**。
+
+**仍然沒有量到的，逐條**：完整的 API server 沒有起來過（本次只跑了 queue 這一層）；派送到沙箱那一段沒有走過；沒有做長時間或多使用者的壓力；`pool_max_conns=1` 之下真實請求量的延遲未知。**這一段證明的是「那個阻礙不存在」，不是「這條路已經可行」。**
+
 
 - **M6 是否計入 MVP 完成度。** M5 的先例是不計（`01` §7.3）。M6 是開發者體驗與測試可信度，不是產品功能——**但它改變「綠燈是什麼意思」，而那是允收的一部分**。→ `05` 待裁定。
 - **受限環境的白名單內容**（Node 在不在上面）。這是一個要向 IT 取得的事實，不是一個可以設計的東西；三種答案會導出三份不同的計畫。
