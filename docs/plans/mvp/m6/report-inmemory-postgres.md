@@ -210,6 +210,73 @@ firefox   classic inline ok | classic external ok | inline module ok
 
 **這一段仍未量到的**：PGlite 有沒有官方支援的 bytes 注入路徑；以及全部內嵌之後單檔的實際大小與首次載入時間。
 
+## 10. 補測（2026-08-29）：pgmock 給得出 PGlite 給不出的那一件事
+
+**先更正一筆自己的讀數。** [report-sandbox-options.md](report-sandbox-options.md) 曾寫「`pgmock` 在本機 10 分鐘沒有開起來」，並據此把 x86-on-WASM 這一類歸為「量級不可用」。**那個讀數是錯的**：
+
+```
+import done  0.5s
+create done  1.014s
+LISTENING on postgresql://…@localhost:54329 at 1.017s
+```
+
+**第一次為什麼卡住至今未查明。** 記在這裡是因為**把一次失敗的執行當成一項性質，是本報告犯過的錯**，不是因為它不重要。
+
+### 10.1 它給得出多 session，而這正是 PGlite 的死穴
+
+同一支 pgx 探針，兩邊結果相反：
+
+| 探針項目 | PGlite（開 multiplexer） | **pgmock** |
+| --- | --- | --- |
+| 兩條連線的 `pg_backend_pid()` | **42 / 42**（同一個 session） | **1600 / 1603**（真的兩個 backend） |
+| 兩邊同時 `pg_try_advisory_lock(4242)` | **true / true——互斥失效** | **true / false——真的互斥** |
+| B 看得見 A 的 TEMP TABLE | **是**（隔離消失） | **否**（正確） |
+
+**這是真的 postmaster 在 fork**：v86 模擬一顆 x86 CPU，裡面跑一個未修改的 PostgreSQL。**兩個獨立的 OS 行程各自拿到自己的 backend**——`04`／ADR-058 記的「兩個行程對一條連線」那個限制，在它身上不存在。
+
+### 10.2 42 支 migration：37 過，5 敗，全部只敗在 pgvector
+
+```
+PostgreSQL 14.5 on i686-buildroot-linux-musl … 32-bit
+
+FAIL 0001_init.sql              could not open extension control file ".../vector.control"
+FAIL 0007_search.sql            type "vector" does not exist
+FAIL 0009_search_vector_index.sql   relation "search_documents" does not exist   ← 0007 的連鎖
+FAIL 0011_search_enrichment.sql     relation "search_documents" does not exist   ← 連鎖
+FAIL 0015_search_result_facets.sql  relation "search_documents" does not exist   ← 連鎖
+=== applied 37/42, failed 5, 229s ===
+```
+
+**零個 PG14-vs-PG17 的語法失敗。** 真正失敗的只有兩支（0001、0007），其餘三支是連鎖。**所以「必須 PostgreSQL 17」對今天這份 schema 而言不成立，門檻只有一個向量外掛。**
+
+### 10.3 判準一：過，而且錯誤訊息帶著 ADR 編號
+
+```
+rows in skill_versions = 1   (0 would make the test below prove nothing)
+UPDATE skill_versions   blocked: row in public.skill_versions is immutable and cannot be updated (ADR-003)
+DELETE skill_versions   blocked: row in public.skill_versions is immutable and cannot be deleted (ADR-003)
+```
+
+**第一次跑這個測試又是我的種子資料寫錯**（少了 `package_object_key`，於是 UPDATE 打在空集合上「成功」）——**與第一次測 PGlite 時犯的錯完全相同**，所以這一版先印出列數，讓「證明不了任何事」的情況說得出口。
+
+### 10.4 缺口與代價
+
+| | 現況 |
+| --- | --- |
+| **缺口** | **只有 pgvector**。隨附映像是 PG 14.5 且沒有 `vector.so`；guest 裡**沒有編譯器**（`gcc`／`make`／`pg_config` 皆無），但 `pkglibdir` 可寫 |
+| **速度** | 42 支 migration 229 秒。**但可以只付一次**——跑完之後存快照當新的初始狀態，之後回到 1 秒開機且 DB 已 migrate 完 |
+| **版本** | PostgreSQL **14.5**，i686，32-bit |
+| **成熟度** | npm 最後發版 2024-05-25，18 個 open issue；`destroy()` 在 Windows 上會讓 Node 崩潰（用 `process.exit()` 迴避） |
+
+**要補上 pgvector 有兩條路，都不在這台機器上做**：①在別處為 i686-musl／PG14 ABI 編一顆 `vector.so` 塞進去——**風險是 pgvector 在 32-bit 有 runtime 失敗前科（pgvector issue #131），而 `ivfflat` 是 C 寫的 index access method，沒有 SQL shim 的可能**；②自建映像（PG 17 ＋ pgvector）存成初始狀態——那個入口在 `boot.ts` 是現成的，成本是一次映像 build。
+
+### 10.5 沒有量到的
+
+- **pgvector 沒有補上去過**，所以「補了就會過」是推論不是實測。
+- **沒有把完整的 API server 指向它跑過**，也沒有做長時間或多使用者壓力。
+- **229 秒的快照加速沒有實作過**。
+- **第一次 10 分鐘未啟動的成因未查明**，所以「它一定會 1 秒開好」同樣不能當成性質。
+
 ## 8. 可重跑
 
 實驗腳本置於 scratchpad，未進 repo（它們依賴 npm 套件且只是一次性驗證）。要重跑的話，四支各自的形狀是：

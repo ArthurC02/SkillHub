@@ -133,6 +133,28 @@ connection was aborted by the software in your host machine.
 
 **仍然沒有量到的，逐條**：完整的 API server 沒有起來過（本次只跑了 queue 這一層）；派送到沙箱那一段沒有走過；沒有做長時間或多使用者的壓力；`pool_max_conns=1` 之下真實請求量的延遲未知。**這一段證明的是「那個阻礙不存在」，不是「這條路已經可行」。**
 
+### 續（2026-08-29）：多連線這個限制，`pgmock` 身上不存在
+
+上面把「兩個行程對一條連線」寫成資料庫這一軸的結構性限制。**那是對 PGlite 成立，不是對所有候選成立。**
+
+`pgmock`（v86 模擬 x86，裡面跑未修改的 postmaster）實測：**兩條獨立的 pgx 連線拿到不同的 backend（1600／1603）、`pg_try_advisory_lock` 一真一假、temp table 互不可見**；42 支 migration **37 過，5 支全部只敗在 pgvector，零個版本語法失敗**；**判準一過**（UPDATE 與 DELETE 都被擋，訊息帶 ADR-003）。逐項見 [m6/report-inmemory-postgres.md](../plans/mvp/m6/report-inmemory-postgres.md) §10。
+
+**同時要更正一筆自己的讀數**：本 repo 先前記過「`pgmock` 在本機 10 分鐘沒有開起來」，並據此把這一類技術歸為量級不可用。**重跑是 1.017 秒**，第一次為什麼卡住未查明。
+
+**所以候選集比本 ADR 評估時多了一個，而它的形狀不同**：
+
+| | PGlite | pgmock |
+| --- | --- | --- |
+| 多 session | ❌（multiplexer 會偽造互斥） | ✅ 真的 fork |
+| 42 支 migration | 42/42 | 37/42（缺口只有 pgvector） |
+| 判準一 | ✅ | ✅ |
+| 版本 | PostgreSQL 18.3 | PostgreSQL **14.5**，i686 |
+| 開機／套用 | 快 | 1 秒開機，但 migration 229 秒（可存快照只付一次） |
+| 成熟度 | 活躍 | npm 最後發版 2024-05，18 個 open issue |
+
+**這不改變本 ADR 的決策，但它改變「不決定的代價」**：形狀 2（三軸 Strategy、Go 後端真的跑起來）現在有**兩條**可能的路——單行程＋PollOnly＋PGlite（已實測可行），或多行程＋pgmock（多 session 已實測，缺 pgvector）。**兩條都還沒走完，而選哪一條決定 `PORT-010b` 要不要寫。**
+
+
 
 ## 三個必須守住的判準
 
