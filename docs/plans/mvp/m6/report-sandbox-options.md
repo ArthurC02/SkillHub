@@ -39,7 +39,7 @@ pip3 install pandas numpy openpyxl lxml python-docx python-pptx pypdf pdfplumber
 | **Windows Sandbox** | ❌ 需 admin 開選用功能 | — | ✅ | 拿不到 |
 | **Win32 App Isolation** | ❌ 需 MSIX 安裝 | — | ✅ | 拿不到 |
 
-**一個反直覺的事實值得記下來**：`CreateAppContainerProfile` **不需要管理員**——微軟文件的 Remarks 只說「為目前使用者建立 profile」，Chromium 的沙箱設計文件也逐字寫著「The user does not need to be an administrator in order for the sandbox to operate correctly」。**所以擋住這條路的不是權限，是那顆你必須自己帶上去的 launcher。**
+**一個反直覺的事實值得記下來**：Windows 建立 AppContainer profile 的那個 API **不需要管理員**——微軟文件的 Remarks 只說「為目前使用者建立 profile」，Chromium 的沙箱設計文件也逐字寫著「The user does not need to be an administrator in order for the sandbox to operate correctly」。**所以擋住這條路的不是權限，是那顆你必須自己帶上去的 launcher。**
 
 同一份 Chromium 文件也給了必須照抄的分辨：「The token and the job object define a security boundary」，而整合性等級「don't define a security boundary in the strict sense」。**Low IL 與單用的 Job Object 因此不得被稱為沙箱。**
 
