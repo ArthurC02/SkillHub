@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { FeedbackEntry } from "./components/FeedbackEntry";
 import { AuthControls } from "./components/AuthControls";
+import { CleanModeNotice } from "./components/CleanModeNotice";
 import { Compare } from "./pages/Compare";
 import { DataPolicy } from "./pages/DataPolicy";
 import { DatasetUpload } from "./pages/DatasetUpload";
@@ -67,6 +68,15 @@ function RootLayout() {
         <AuthControls />
       </header>
       <main>
+        {/*
+          PORT-003. First child of <main>, not before it: system.md §3
+          checklist 第 1 條 wants the headline to be the first thing in the
+          first screen, and a banner outside <main> would queue ahead of it on
+          every page. Renders nothing unless the deployment has declared
+          SKILLHUB_CLEAN_MODE (see CleanModeNotice.tsx's header for what this
+          does and does not disclose for a signed-out visitor).
+        */}
+        <CleanModeNotice />
         <Outlet />
       </main>
       <footer className="app-footer">

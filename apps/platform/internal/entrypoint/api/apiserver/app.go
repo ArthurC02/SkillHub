@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"os"
 	"sort"
 	"time"
 
@@ -568,6 +569,13 @@ func features(cfg Config) map[string]bool {
 	f := map[string]bool{}
 	if cfg.GenerateExposed {
 		f["generate_skill"] = true
+	}
+	// clean_mode — PORT-003. Read from the environment directly rather than a
+	// new Config field, the same convention execution/schedule.go:75 already
+	// uses for the same variable: this is a deployment declaration, not
+	// per-request wiring, and cmd/api/main.go has no reason to know its name.
+	if os.Getenv("SKILLHUB_CLEAN_MODE") == "1" {
+		f["clean_mode"] = true
 	}
 	return f
 }

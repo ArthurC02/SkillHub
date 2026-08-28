@@ -30,7 +30,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 	want := []string{
 		"drift-marker", "depguard-deny", "one-number", "query-owner",
 		"context-map", "doc-identifier", "milestone-tally", "backlog-tally",
-		"baseline-tally", "retention-floor", "sdk-version",
+		"baseline-tally", "retention-floor", "sdk-version", "single-data-layer",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {
@@ -66,6 +66,49 @@ func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 	// present and disagreeing gives it one thing to say.
 	write("apps/platform/.golangci.yml", "# drift: DDD-005 (run -> eval)\n")
 	write("docs/adr/"+contextMapADR, "# ADR-032\n\n沒有 §1 表格，也沒有附錄 A。\n")
+	// single-data-layer needs something to compare against and something that
+	// looks like a replica of it. Three methods, name and signature both
+	// copied verbatim from the shape db/gen actually generates, is the
+	// smallest tree that gives the checker something to say.
+	write(genDirRelative+"/fake.sql.go", `package gen
+
+import "context"
+
+type Queries struct{}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	return User{}, nil
+}
+func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
+	return User{}, nil
+}
+func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
+	return nil
+}
+
+type CreateUserParams struct{ Email string }
+type User struct{ ID int64 }
+`)
+	write("apps/platform/internal/fake/mem.go", `package fake
+
+import (
+	"context"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+)
+
+type memQueries struct{}
+
+func (m *memQueries) CreateUser(ctx context.Context, arg gen.CreateUserParams) (gen.User, error) {
+	return gen.User{}, nil
+}
+func (m *memQueries) GetUser(ctx context.Context, id int64) (gen.User, error) {
+	return gen.User{}, nil
+}
+func (m *memQueries) DeleteUser(ctx context.Context, id int64) error {
+	return nil
+}
+`)
 
 	var out bytes.Buffer
 	if err := automationCheck(root, &out); err == nil {

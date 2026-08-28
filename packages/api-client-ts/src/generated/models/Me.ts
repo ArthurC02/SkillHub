@@ -50,8 +50,14 @@ export interface Me {
      * 
      * It exists because a route that is simply not mounted cannot be
      * discovered without a request that fails, and a feature discovered by
-     * a failed request has already been drawn on somebody's screen. Today
-     * the only key is `generate_skill` (ADR-052).
+     * a failed request has already been drawn on somebody's screen.
+     * 
+     * Two keys today. `generate_skill` (ADR-052) is an entry point: it
+     * says a route exists. `clean_mode` (ADR-060) is not — it says this
+     * deployment swapped its sandbox, object store and database for
+     * substitutes that do not isolate, do not verify signatures and hold
+     * one connection, and the screen must say so. A client that treats
+     * `clean_mode` as something to unlock has read it backwards.
      * 
      * @type {{ [key: string]: boolean; }}
      * @memberof Me

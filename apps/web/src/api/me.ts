@@ -12,6 +12,19 @@ export function useMe() {
 }
 
 /**
+ * Whether this deployment is running in 淨測試模式 (PORT-003), the same
+ * flag-from-`/me` shape `useGenerateEntryPoint` in api/generate.ts uses for
+ * ADR-052 and for the same reason: a build-time constant cannot serve one
+ * cohort that sees the disclosure and one that does not, and `false` while
+ * `me` has not resolved yet is the correct default — there is nothing to
+ * disclose before the flag is known.
+ */
+export function useCleanMode(): boolean {
+  const me = useMe();
+  return me.data?.features?.clean_mode === true;
+}
+
+/**
  * DELETE /me — CORE-007. Starts a 30-day grace period; it deletes nothing yet,
  * which is why the account screen can show the request as a state to be followed
  * rather than as a farewell.

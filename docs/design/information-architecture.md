@@ -175,6 +175,9 @@ GeneratedNotice ► /lab/run                    （同上）
 | 旗標 | 來源 | 出現在 | 不出現在 |
 | --- | --- | --- | --- |
 | `generate_skill` | `GET /me` 的 `features`（[`useGenerateEntryPoint`](../../apps/web/src/api/generate.ts)） | 搜尋的 `no_results` 空狀態、`/workspace/skills` 清單 | **搜尋框旁邊**——ADR-046 決策 7 把「先搜尋、搜不到再生成」定為產品主張，一個等重的入口說的是相反的話 |
+| `clean_mode` | `GET /me` 的 `features`（[`useCleanMode`](../../apps/web/src/api/me.ts)） | 每一頁 `<main>` 的第一個元素（[`CleanModeNotice`](../../apps/web/src/components/CleanModeNotice.tsx)，掛在 `router.tsx` 的 `RootLayout`） | 匿名訪客的畫面——`GET /me` 要求 session，`/` 與 `/skills/$id` 未登入可見，PORT-003 今天只對已登入者成立（ADR-060 待決策 1 待敲定） |
+
+**`clean_mode` 這一列是揭露不是入口**：它不帶使用者去任何新地方，只是在已經看得到的畫面上多說一句「這個部署沒有什麼」——上面 `generate_skill` 那一列的「出現在／不出現在」欄位問的是「使用者能不能從這裡走到一個新功能」，這一列的欄位問的是「使用者能不能看到這句話」，兩者是不同的問題，讀這張表時不要用入口的規矩讀這一列。
 
 **旗標從 `GET /me` 讀，不是 build 時的常數**，而這是 ADR-052 那條邊界唯一守得住的形狀：同一份 build 要同時服務看得到與看不到的兩群人。理由寫在 `generate.ts` 的檔頭——**封測受測者一旦遇到「搜不到 → 生成一個」，`01` §11.2 漏斗第一段量到的就是另一件事，而那個數字只有一次機會、十二個人。**
 

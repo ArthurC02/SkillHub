@@ -6257,7 +6257,11 @@ type Me struct {
 	//
 	// It exists because a route that is simply not mounted cannot be discovered without a request that
 	// fails, and a feature discovered by a failed request has already been drawn on somebody's screen.
-	// Today the only key is `generate_skill` (ADR-052).
+	//
+	// Two keys today. `generate_skill` (ADR-052) is an entry point: it says a route exists. `clean_mode`
+	// (ADR-060) is not — it says this deployment swapped its sandbox, object store and database for
+	// substitutes that do not isolate, do not verify signatures and hold one connection, and the screen
+	// must say so. A client that treats `clean_mode` as something to unlock has read it backwards.
 	Features OptMeFeatures `json:"features"`
 	// What the purge will and will not destroy, in the server's own words, or null when no deletion is
 	// pending. The same sentence DELETE /me returns — and it is required here because a client that only
@@ -6362,7 +6366,11 @@ func (*Me) getMeRes() {}
 //
 // It exists because a route that is simply not mounted cannot be discovered without a request that
 // fails, and a feature discovered by a failed request has already been drawn on somebody's screen.
-// Today the only key is `generate_skill` (ADR-052).
+//
+// Two keys today. `generate_skill` (ADR-052) is an entry point: it says a route exists. `clean_mode`
+// (ADR-060) is not — it says this deployment swapped its sandbox, object store and database for
+// substitutes that do not isolate, do not verify signatures and hold one connection, and the screen
+// must say so. A client that treats `clean_mode` as something to unlock has read it backwards.
 type MeFeatures map[string]bool
 
 func (s *MeFeatures) init() MeFeatures {

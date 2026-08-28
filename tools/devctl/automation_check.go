@@ -126,6 +126,7 @@ func documentCheckers() []namedChecker {
 		{"baseline-tally", baselineTallyProblems},
 		{"retention-floor", retentionFloorProblems},
 		{"sdk-version", sdkVersionProblems},
+		{"single-data-layer", secondDataLayerProblems},
 	}
 }
 
