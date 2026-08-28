@@ -30,8 +30,21 @@ const (
 	// Iron rule 1: untrusted skills never run in a plain process. gVisor is the
 	// production baseline (ADR-015); `container` is the dev provider's honest name
 	// for what a developer machine can do, and is accepted only where the
-	// deployment says it is one; `process` is refused outright, everywhere.
-	forbiddenIsolation = "process"
+	// deployment says it is one. `process` no longer needs a constant of its own:
+	// it is refused because it is not in the switch below, along with every other
+	// value nobody wrote down.
+	//
+	// productionIsolation is the only level a deployment accepts without opting
+	// in to something weaker. Adding a second one — a MicroVM baseline, say — is
+	// a deliberate edit here, which is the point: see the switch in Match.
+	productionIsolation = "gvisor"
+	// cleanIsolation is the clean test mode's honest name for having no boundary
+	// at all: a spawned process on the host, reaped by process group or job
+	// object. It is not a sandbox and must never carry untrusted content; what it
+	// carries is curated demo material (02:PORT-007) on a machine that cannot run
+	// a container. Gated by its own variable rather than by DEV_LOGIN, so an
+	// existing development machine does not silently acquire it.
+	cleanIsolation = "clean"
 	// weakIsolation is what a provider declares when it is running workloads under
 	// the host kernel — plain runc, because SKILLHUB_SANDBOX_RUNTIME was unset or
 	// misspelled on that node. The declaration is honest and the sandbox does not
@@ -51,6 +64,15 @@ const (
 // opting in to the offline login provider too, which no production deployment
 // can quietly do by accident. Read per call, like RunModel and GatewayURL.
 func devDeployment() bool { return os.Getenv("DEV_LOGIN") == "1" }
+
+// cleanTestMode reports whether this deployment has declared itself the clean
+// test mode (02:PORT-001..009) — a machine that cannot install a container
+// runtime, running curated content for a demo.
+//
+// Deliberately not DEV_LOGIN. `clean` is weaker than `container`: it is no
+// boundary at all. Reusing the development opt-in would hand it to every
+// machine that already has DEV_LOGIN exported, which is most of them.
+func cleanTestMode() bool { return os.Getenv("SKILLHUB_CLEAN_MODE") == "1" }
 
 // Requirements is what one run needs from a provider. Derived entirely from the
 // run's own frozen policy_snapshot, so scheduling matches against what the user
@@ -125,12 +147,28 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	if c.Availability.Healthy != nil && !*c.Availability.Healthy {
 		return RuntimeProfile{}, fmt.Errorf("%s reports itself unhealthy", name)
 	}
-	if c.Isolation.Level == "" || c.Isolation.Level == forbiddenIsolation {
+	// An allow list, not a deny list. The deny list refused "", `process` and
+	// `container` and let everything else through, so a provider declaring
+	// `gvsior` was dispatched to exactly as if it had said gvisor. That never
+	// happened, because sandboxd derives the value from a two-way branch — but
+	// the shape is the one that already caused an incident here once, and the
+	// fix that time was to add one more value to the deny list rather than to
+	// invert it. A new level now has to be written down before it can run
+	// anything.
+	switch c.Isolation.Level {
+	case productionIsolation:
+	case weakIsolation:
+		if !devDeployment() {
+			return RuntimeProfile{}, fmt.Errorf(
+				"%s isolates workloads with the host kernel (isolation %q), which this deployment does not accept", name, c.Isolation.Level)
+		}
+	case cleanIsolation:
+		if !cleanTestMode() {
+			return RuntimeProfile{}, fmt.Errorf(
+				"%s does not isolate workloads at all (isolation %q), which this deployment does not accept", name, c.Isolation.Level)
+		}
+	default:
 		return RuntimeProfile{}, fmt.Errorf("%s does not isolate workloads strongly enough (isolation %q)", name, c.Isolation.Level)
-	}
-	if c.Isolation.Level == weakIsolation && !devDeployment() {
-		return RuntimeProfile{}, fmt.Errorf(
-			"%s isolates workloads with the host kernel (isolation %q), which this deployment does not accept", name, c.Isolation.Level)
 	}
 	if !c.Isolation.Rootless {
 		return RuntimeProfile{}, fmt.Errorf("%s does not run workloads unprivileged", name)

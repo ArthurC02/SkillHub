@@ -331,3 +331,63 @@ func TestHardDeadlineComesFromTheRunsOwnFrozenPolicy(t *testing.T) {
 		t.Errorf("deadline without a policy = %s, want the default %s", got, want)
 	}
 }
+
+// TestMatchIsAnAllowListSoAnUnknownIsolationLevelIsRefused pins the shape, not
+// the values. The previous deny list refused "", `process` and `container` and
+// passed everything else, so `gvsior` — one transposition away from the
+// production baseline — was dispatched to as if it were gvisor. No code path
+// produced such a value, but the same shape already caused one incident here,
+// and the fix that time was to extend the deny list rather than invert it.
+func TestMatchIsAnAllowListSoAnUnknownIsolationLevelIsRefused(t *testing.T) {
+	t.Setenv("DEV_LOGIN", "")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "")
+	for _, level := range []string{"gvsior", "banana", "hosted-vm", "GVISOR", "gvisor "} {
+		c := compatible()
+		c.Isolation.Level = level
+		if _, err := Match(c, defaultRequirements()); err == nil {
+			t.Errorf("isolation %q was accepted; only levels written down here may run anything", level)
+		}
+	}
+	// The baseline itself still runs, or the allow list has eaten production.
+	c := compatible()
+	c.Isolation.Level = "gvisor"
+	if _, err := Match(c, defaultRequirements()); err != nil {
+		t.Errorf("the production isolation baseline was refused: %v", err)
+	}
+}
+
+// TestMatchAcceptsCleanOnlyUnderItsOwnOptIn covers the level that has no
+// boundary at all. Its gate must be a variable of its own: reusing DEV_LOGIN
+// would give it to every machine that already exports it.
+func TestMatchAcceptsCleanOnlyUnderItsOwnOptIn(t *testing.T) {
+	c := compatible()
+	c.Isolation.Level = "clean"
+
+	t.Setenv("DEV_LOGIN", "")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "")
+	if _, err := Match(c, defaultRequirements()); err == nil {
+		t.Fatal("a provider with no isolation was accepted by a deployment that never opted in")
+	}
+
+	// A development machine is not a clean-test machine. This is the assertion
+	// that fails if somebody later "simplifies" the two gates into one.
+	t.Setenv("DEV_LOGIN", "1")
+	if _, err := Match(c, defaultRequirements()); err == nil {
+		t.Error("DEV_LOGIN alone accepted a provider that does not isolate at all")
+	}
+
+	t.Setenv("DEV_LOGIN", "")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+	if _, err := Match(c, defaultRequirements()); err != nil {
+		t.Errorf("the clean test mode could not dispatch to its own driver: %v", err)
+	}
+
+	// And the clean opt-in reaches `clean` and nothing further.
+	for _, level := range []string{"process", ""} {
+		bare := compatible()
+		bare.Isolation.Level = level
+		if _, err := Match(bare, defaultRequirements()); err == nil {
+			t.Errorf("isolation %q was accepted by a clean-test deployment", level)
+		}
+	}
+}
