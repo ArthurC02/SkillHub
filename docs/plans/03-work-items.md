@@ -397,13 +397,13 @@
 - [x] GEN-010 資料保存政策補上生成這一類資料：任務描述原文的保存期限與刪除行為。（**任務描述是使用者主動提交的自由文字**，與 `O11Y-004` 的分析事件「不記查詢原文」是兩件事，不得互相援引）（允收：`02:GEN-002`、`SEC-006`）<br>**2026-08-23 完成**：[`02` §4.9 GEN-002](02-specifications-and-acceptance-criteria.md) 新增一條準則，[gate-test/consent-and-data-policy.md §3](mvp/gate-test/consent-and-data-policy.md) 的保存期限表新增一列並附說明。<br>**裁定的值是「沒有自己的天數」**：任務描述與它生成出來的那個 Skill Version **同壽**。給它一個獨立的期限，會產出一個**還在、但說不出自己從哪來的生成 Skill**——而生成物沒有上游，那份文字**就是**它全部的來源紀錄，`02:GEN-002` 又明文禁止把它顯示為未知來源。<br>**刪除不新增機制**：走既有的 `PurgeUnreferencedSkillSources`（不再被任何版本引用的來源列即刪）。**一個版本要在帳號刪除後存活，唯一的方式是有別人的 Fork 指著它**，而生成物不進目錄也不進搜尋索引（`GEN-007`），除了本人沒有人看得到——**所以生成物的任務描述在帳號刪除時是實體刪除**，落在既有那張表的「私有內容實體刪除」那一半，不是「去識別化保留」那一半。<br>**同批寫下一條禁止互相援引的邊界**：分析事件**從不記錄查詢原文**（`O11Y-004`），保存 365 天的是計數與時間戳；任務描述是使用者主動提交的自由文字，受 NFR-002 刪除管轄。**兩者剛好都關於「使用者打了什麼字」而規則相反**，把其中一條的理由借給另一條，兩次都會借錯方向。
 - [x] GEN-011 生成物可作為 `WS-001` Fork 的來源，Fork 後的版本逐字繼承 `redistribution = generated`（[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 4）。**不寫阻擋規則**——Fork 對工作區自己的內容本來就通，擋它才要新增規則、錯誤碼與一句解釋。**要有一支具名測試**：繼承若失效，值退回 `unknown` 會把下載鎖回去，而那個失效沒有任何症狀（同 ADR-045 決策 3 的 `TestAnUploadIntoTheCatalogueIsNotSelfSupplied` 是同一類）。（允收：`02:GEN-002`）<br>**2026-08-23 完成**：`TestAForkOfAGeneratedSkillStaysGenerated`（`apiserver/generate_integration_test.go`），走真實的生成路徑（stub 模型服務）＋真實的 `POST /skills/{id}/fork`，再從 `skills` 讀回值。<br>**沒有寫任何程式**，如本項原文所料——`CreateSkill` 已經逐欄複製 `redistribution`（0036 需要它）。**這正是它需要一支具名測試的理由**：那個複製哪天被拿掉，值退回 `unknown`、下載鎖回去，而**除了使用者以外沒有任何東西會失敗**。
 
-## 20. 受限環境下的可攜執行（M6，**未開工**）
+## 20. 受限環境下的可攜執行（M6，**進行中**）
 
-> **2026-08-28 新增。** 依據 [ADR-058](../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)（Proposed），允收準則見 [`02` §4.10](02-specifications-and-acceptance-criteria.md)（`PORT-001`～`008`），計畫與邊界見 [m6/README.md](mvp/m6/README.md)，前期量測見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md)。本節**不在 MVP 的完成度計算內**（同 M5 先例，`01` §7.3），惟該判定本身待裁定。
+> **2026-08-28 新增，2026-08-29 依 ADR-060 改寫。** 依據 [ADR-060](../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md)（Proposed，取代 [ADR-058](../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 的決策 2／3）與 [ADR-059](../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)（Proposed），允收準則見 [`02` §4.10](02-specifications-and-acceptance-criteria.md)（`PORT-001`～`010`），計畫與邊界見 [m6/README.md](mvp/m6/README.md)，前期量測見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md)。本節**不在 MVP 的完成度計算內**（同 M5 先例，`01` §7.3），惟該判定本身待裁定。
 >
 > **觸發它的是一個部署環境的事實，不是一個願望**：Pitch 在金融機構環境進行，那台機器只能執行白名單內的程式、不能安裝軟體、對外網路只保證得到模型供應商。今天的系統在那台機器上一行都跑不起來。
 >
-> **⛔ 一條邊界**：Adapter 不是產品，而且**它要自己在畫面上說出來**（`PORT-003`）。形式與 `02:GEN-004` 對生成物的要求同源，理由也一樣——一個看起來像產品的東西，如果不說自己是什麼，就會被當成產品，而這一次的觀眾是金融機構。
+> **⛔ 一條邊界**：這個模式**要自己在畫面上說出它不是什麼**（`PORT-003`）——**三條軸各一句**：沙箱沒有隔離、物件儲存不驗 presigned URL、資料庫只有一條連線。形式與 `02:GEN-004` 對生成物的要求同源，理由也一樣——一個看起來像產品的東西，如果不說自己是什麼，就會被當成產品，而這一次的觀眾是金融機構。<br>**注意這不是「Adapter 不是產品」那句舊話**：淨測試模式跑的是**真的 Go 後端**，授權、政策、狀態機與評估判定全部都在，要揭露的只有上面那三項。
 >
 > **⛔ 判準一（不可協商）**：任何取代 PostgreSQL 的候選，**必須能讓 `UPDATE skill_versions` 失敗**。那是鐵律 4 由資料庫強制的形式，也是最便宜的真偽測試。手寫的假資料層與 SQLite 都過不了這一關，而它們會**照樣全綠**。
 >

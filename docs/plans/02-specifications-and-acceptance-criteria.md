@@ -624,11 +624,13 @@ queued → provisioning → preparing → running → evaluating
 
 ### 4.10 受限環境下的可攜執行（M6）
 
-本節於 **2026-08-28 新增**。修訂依據：[ADR-058](../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)、量測見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md)。
+本節於 **2026-08-28 新增**，**2026-08-29 依 [ADR-060](../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 改寫**。修訂依據：ADR-060（取代 [ADR-058](../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 的決策 2／3）、[ADR-059](../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)（沙箱那一軸）；量測見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md)。
+
+**淨測試模式是同一套產品程式以旗標切換三個實作**（資料庫存取、檔案存取、沙箱），**旗標未設時行為與今天完全相同**——不是第二個系統、不是瀏覽器裡的單機版本。本節每一條都要照這個形狀讀。
 
 **觸發本節的不是一個願望，是一個部署環境的事實**：MVP 的 Pitch 在金融機構環境進行，該機器**只能執行白名單內的程式、不能安裝軟體、對外網路只保證得到模型供應商**。今天的系統在那台機器上一行都跑不起來，而「Pitch 過關才有機會做正式環境」意味著這是上線前置條件的前置條件。
 
-**里程碑**：`PORT-001`～`PORT-008` 為 **M6**；**不計入 MVP 完成度**（同 M5 先例，`01` §7.3），惟該判定本身待裁定（`05`）。
+**里程碑**：`PORT-001`～`PORT-010` 為 **M6**（`PORT-002` 與 `PORT-006` 已於 2026-08-29 撤回，原文保留）；**不計入 MVP 完成度**（同 M5 先例，`01` §7.3），惟該判定本身待裁定（`05`）。
 
 #### PORT-001：乾淨測試模式的資料庫
 
@@ -658,8 +660,9 @@ queued → provisioning → preparing → running → evaluating
 
 允收準則：
 
-- Adapter **必須宣告自己是什麼**，形式比照沙箱 Provider 的 `isolation.level`（宣告實況而非期望，由消費端決定能不能用）。
-- 下列**必須出現在使用者看得到的畫面上**，不得只寫在程式註解或文件裡：①這不是完整產品；②授權、政策、狀態機與評估判定**不在其中**；③可操作的是讀取路徑與既有證據。
+- 每一條被換掉的實作**必須宣告自己是什麼**，形式比照沙箱 Provider 的 `isolation.level`（宣告實況而非期望，由消費端決定能不能用）。
+- **（2026-08-29 改寫，[ADR-060](../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 決策 5）** 下列**必須出現在使用者看得到的畫面上**，不得只寫在程式註解或文件裡——**三條軸各一句**：①**沙箱沒有隔離**（不是比較弱的隔離），本模式只跑策展素材；②**物件儲存不驗證 presigned URL**；③**資料庫只有一條連線，併發語意與生產不同**。
+- **舊版的第②項已作廢，不得沿用**：它寫的是「授權、政策、狀態機與評估判定不在其中」，而那屬於已被推翻的瀏覽器單機形狀。**淨測試模式跑的是真的 Go 後端，那四樣全部都在**——沿用舊句會讓讀者以為授權是假的，然後去修一個沒有壞的東西。
 - 措辭比照 `GEN-004`：**說出它沒有什麼，而不是強調它有什麼**。不得使用「完整」「等同」「與正式環境一致」等字樣。
 - 該揭露以**共用元件**實作並掛在所有適用畫面上，不得逐頁各寫一份（理由同 `GEN-004`：三份文案裡總有一份日後會變成安慰話）。
 
@@ -681,9 +684,7 @@ queued → provisioning → preparing → running → evaluating
 - **旗標未設時，行為必須與今天完全相同。** 這是「平行、不干擾」的可檢驗形式，**要有測試在守**——一個只在旗標設了才改變行為的開關，和一個總是改變行為的開關，在畫面上看起來一樣。
 - 啟動不得依賴外部網域（套件下載、字型、CDN、遙測皆然）；**所需相依必須能離線帶上機器**。
 - **啟動失敗必須說出缺的是什麼**（例如 Node 不在、連接埠被占），不得只回報「啟動失敗」。
-- 不得依賴任何外部網域（字型、CDN、遙測皆然）；資源一律內嵌。
-- **必須在 Chromium 系瀏覽器（Chrome／Edge）驗證，不得只驗 Firefox。**（2026-08-28 實測）`file://` 下兩者行為不同：一個 `<script type="module">` 只要 `import` 另一個檔案，Chromium 就以 CORS 擋下（`origin 'null'`），畫面停在未執行狀態；Firefox 則正常載入。**而 Vite 的產出正是外部 module script**，所以預設建置在 Chromium 下開本機檔案會是一片空白。<br>同一次實測確認可用的形式：inline classic script、外部 classic script、**沒有 `import` 的 inline module**。**因此交付形式必須是全部內嵌的單檔**，且不得依賴 `import` 或 `fetch()` 取得任何同目錄檔案。<br>**受限環境的瀏覽器極可能只有 Edge**——這一條若只在 Firefox 上驗過，等於沒驗。依據見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md) §9。
-- 不得依賴 `localhost` 上的任何服務。
+- **前端在 Chromium 系瀏覽器（Chrome／Edge）驗證，不得只驗 Firefox。** 受限環境的瀏覽器極可能只有 Edge。<br>**（2026-08-29 收斂）** 本條原本要求的是「`file://` 下開啟全部內嵌的單檔」，屬於已被推翻的形狀；**那批實測結論不作廢**（`file://` 下 Chromium 以 CORS 擋掉 module 的 `import`、Firefox 不擋、`WebAssembly.instantiate(bytes)` 兩者皆可），**它們移交給任何未來的離線交付提案**，見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md) §9。
 
 #### ~~PORT-006：端點範圍與誠實的缺席~~（2026-08-29 撤回）
 
@@ -718,7 +719,8 @@ queued → provisioning → preparing → running → evaluating
 - **必須明文記載它不驗證 presigned URL**（若採用的替身確實不驗）。實測依據見 [m6/report-object-storage.md](mvp/m6/report-object-storage.md) §3：竄改簽章、拿掉簽章、已過期、以 GET 的票做 PUT——**四種都回 HTTP 200，第四種還真的覆寫了物件**。
 - **不得以該替身作為 `SBX-008` 的證據。** 短效授權的三個性質（過期即失效、簽章不可竄改、GET 的票不能用來 PUT）**必須由一次對真 S3 相容服務的執行證明**，而該測試**必須被明文標記為不可 skip**——理由是這一類測試最常見的死法不是變紅，是在某次 CI 調整裡被安靜跳過（`restic` 的 `RESTIC_TEST_DISALLOW_SKIP` 是同一個問題的既有解法）。
 - presigned URL 的**生成與解析**可用純單元測試對字串斷言（效期參數、method、endpoint 覆寫），**不需要任何 server**；這一半與上一條是兩件事，不得互相取代。
-- 瀏覽器模式下**不得聲稱提供短效授權**。`blob:` URL 沒有到期時間、綁在建立它的 document、沒有簽章也沒有方法區分——**能演示的是「按下去有檔案出來」，不是「短效授權」**，而這句話受 `PORT-003` 的揭露義務約束。
+- **淨測試模式下不得聲稱提供短效授權。**（**2026-08-29 改寫**：本條原本講的是瀏覽器自行產生 `blob:` URL 的形狀，[ADR-060](../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 之後不再適用——瀏覽器拿到的是真後端發的 URL。）
+  **但風險反而更隱蔽**：那個 URL **長得像 presigned 而承載不驗它**，所以「按下去有檔案出來」在該模式下不構成任何授權性質的證明。**這句話受 `PORT-003` 的揭露義務約束**，且它是上一條「不得作為 `SBX-008` 證據」在使用者介面上的同一件事。
 
 #### PORT-010：乾淨模式的執行 Driver，以及它宣告自己不是什麼
 

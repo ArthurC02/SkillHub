@@ -3,7 +3,7 @@
 - 日期：2026-08-29
 - 為什麼存在：M6 的每一條路都掛在**同一個沒有人去問的事實**上——那台機器到底准跑什麼。[`m6/README`](README.md) 的啟動條件 2 從 2026-08-28 起就是「未取得」。
 - 誰跑：**任何一個能坐在那台機器前面的人。** 不需要開發環境、不需要管理員、全部唯讀，不安裝任何東西。
-- 結果回填到：[`m6/README`](README.md) 啟動條件 2 與 [ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 的待決策。
+- 結果回填到：[`m6/README`](README.md) 啟動條件 2 與 [ADR-060](../../../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 的待決策。
 
 > **這份清單不做任何繞過。** 每一項都是「問系統它允不允許」，不是「試著讓它允許」。任何一項失敗都是有價值的答案，**不要想辦法讓它過**。
 
@@ -51,7 +51,7 @@ Get-WinEvent -LogName "Microsoft-Windows-AppLocker/EXE and DLL" -MaxEvents 20
 
 ## Q4：Edge 開得開本機 HTML 嗎
 
-**為什麼問**：`02:PORT-005` 的交付形式掛在這上面。**實測過的界線是「不能 `import`」不是「不能用 module」**（[report-inmemory-postgres.md](report-inmemory-postgres.md) §9）。
+**為什麼問**：`02:PORT-005` 要求前端在 Edge 上驗過。**實測過的界線是「不能 `import`」不是「不能用 module」**（[report-inmemory-postgres.md](report-inmemory-postgres.md) §9）。<br>**注意這一題的權重 2026-08-29 降了**：ADR-060 之後前端是由 localhost 上的服務供應，不是 `file://` 開的單檔，所以「否」不再讓交付形式重新設計——但它仍然是唯一能事先知道企業瀏覽器政策有多嚴的一題。
 
 把下面存成 `probe.html` 放桌面，用 Edge 打開：
 
@@ -71,7 +71,7 @@ Get-WinEvent -LogName "Microsoft-Windows-AppLocker/EXE and DLL" -MaxEvents 20
 | 結果 | 意思 |
 | --- | --- |
 | 三段都出現 | ✅ 交付形式可行（**前提是全部內嵌成單檔**） |
-| 停在 `NOT RUN` 或少一段 | ❌ 企業瀏覽器政策比預設更嚴，`PORT-005` 要重新設計 |
+| 停在 `NOT RUN` 或少一段 | ⚠️ 企業瀏覽器政策比預設更嚴。**不擋 `PORT-005`**（前端由 localhost 供應），但要在該機器上重驗一次前端 |
 
 ## Q5：對外到底通得到哪裡
 
@@ -96,4 +96,4 @@ foreach ($h in "api.openai.com","github.com","registry.npmjs.org","proxy.golang.
 | Q4 Edge 本機檔案 | | | |
 | Q5 對外連線 | | | |
 
-**答完之後才動工。** 目前 M6 的九項未完工作項裡，有七項的形狀取決於 Q1 與 Q4 的答案——**先寫的風險是白寫**。
+**Q1 是唯一一題會改變設計的。** 資料庫那一軸的兩條候選路都跑在 Node 裡，Q1 若為「否」，A 半要重新設計。**其餘四題不擋動工**：Q2／Q3 決定 B 半（受限環境內的 Go 測試）有沒有機會，Q4 決定前端要在哪裡重驗，Q5 決定相依要不要離線打包。

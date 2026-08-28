@@ -1,7 +1,7 @@
 # M6：在不能安裝東西的機器上跑起來
 
-- 狀態：**進行中（十一項：完成兩項、撤回兩項、剩七項）**——`PORT-004`（讓跳過出聲）已於 2026-08-28 完成並在 CI 生效；**它是九項裡唯一不依賴受限環境任何答案的一項**。其餘八項仍未開工。本目錄先於開工存在，理由與 M5 相同：它已經有一份量測（[report-inmemory-postgres.md](report-inmemory-postgres.md)），而那份量測決定了 [ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 在兩個候選之間怎麼選
-- 決策：**[ADR-060](../../../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md)（Proposed）**——淨測試模式是**同一套產品程式以旗標切換三個實作**；[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 已被它取代（決策 1／4／5 延續，量測全部仍有效）、[ADR-059](../../../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)（沙箱那一軸）
+- 狀態：**進行中（十一項工作項：完成兩項、撤回兩項、剩七項）**——`PORT-004`（讓跳過出聲）與 `PORT-010a`（派送閘門改白名單）已於 2026-08-28 完成。勾選數以 [`03` §20](../../03-work-items.md) 的 checkbox 為準，本檔不複述
+- 決策：**[ADR-060](../../../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md)（Proposed）**——淨測試模式是**同一套產品程式以旗標切換三個實作**；[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 已被它取代（決策 1／4／5 延續，量測全部仍有效）、**[ADR-059](../../../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)（Proposed）**（沙箱那一軸）
 - 規格：[`02` §4.10](../../02-specifications-and-acceptance-criteria.md)（`PORT-001`～`PORT-010`）
 - 工作項：[`03` §20](../../03-work-items.md)
 - **不計入 MVP 完成度**（同 M5 的先例，`01` §7.3）——**但這一條有一個待裁定的例外**，見下方 §待裁定
@@ -39,17 +39,21 @@ MVP 的 Pitch 在**金融機構環境**進行。那台機器：
 
 **B 半刻意不給時程。** 在那個事實到手之前，任何時程都是猜的——而這份 repo 在 2026-08-28 這一天已經因為未確認的環境前提改過兩次計畫。
 
-## ⛔ 邊界：Adapter B 不是產品，而且它要自己說出來
+## ⛔ 邊界：這個模式要自己說出它不是什麼
 
-[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 決策 4。**這一條的形式與 `02:GEN-004` 對生成物的要求同源**，理由也一樣：一個看起來像產品的東西，如果不說自己是什麼，就會被當成產品——而這一次的觀眾是金融機構。
+[ADR-060](../../../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 決策 5（延續 [ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 決策 4）。**這一條的形式與 `02:GEN-004` 對生成物的要求同源**，理由也一樣：一個看起來像產品的東西，如果不說自己是什麼，就會被當成產品——而這一次的觀眾是金融機構。
 
-| Adapter B 有 | Adapter B 沒有 |
-| --- | --- |
-| 真 schema、真 trigger、真 FTS、真向量排序 | **Go 那一側的商業邏輯**：授權、政策、狀態機、評估判定 |
-| 讀取路徑（搜尋、詳情、既有 Run 的 trace 與評估） | 需要真正執行的東西（開一個 Run、打包下載） |
-| 單連線（瀏覽器內剛好合適） | 併發語意 |
+**三條軸各有自己要宣告的東西**：
 
-**右欄必須出現在畫面上**，不是寫在程式註解裡。沙箱的先例是：假 Provider 宣告 `container` 而不謊稱 `gvisor`，由 `Match` 決定它能不能用——**那個保證由既有程式碼提供，不靠任何人記得**。資料層的 Adapter 應該照抄那個紀律。
+| 軸 | 在淨測試模式下不是真的 | 宣告形式 |
+| --- | --- | --- |
+| **沙箱** | **沒有隔離**（不是「比較弱的隔離」） | `isolation.level = "clean"`，由白名單閘門強制（ADR-059；`PORT-010a` 已完成） |
+| **檔案存取** | **不驗證 presigned URL** | 明文記載，且**不得作為 `SBX-008` 的證據**（`02:PORT-009`） |
+| **資料庫存取** | **併發語意**——只有一條連線 | 明文記載。**它是真的 PostgreSQL**，schema、trigger、FTS、向量排序全是真的，要說的只有這一項 |
+
+**中欄那三項必須出現在畫面上**，不是寫在程式註解裡（`02:PORT-003`）。沙箱的先例是：假 Provider 宣告 `container` 而不謊稱 `gvisor`，由 `Match` 決定它能不能用——**那個保證由既有程式碼提供，不靠任何人記得**。另外兩條軸應該照抄那個紀律。
+
+> **⚠️ 這張表 2026-08-29 換過內容，而舊版留著比刪掉危險。** 舊表寫的是「Adapter B 沒有 Go 那一側的商業邏輯：授權、政策、狀態機、評估判定」——**那在新形狀下不成立**：淨測試模式跑的是真的 Go 後端，那些全部都在。相信舊句的讀者會以為淨測試模式下的授權是假的，然後去「修好」一個沒有壞的東西。
 
 > **⛔ 第二條邊界（2026-08-28 補入）：物件儲存的替身不是 `SBX-008` 的證據。**
 >
@@ -59,56 +63,27 @@ MVP 的 Pitch 在**金融機構環境**進行。那台機器：
 >
 > **這一條是自己抓到的**：本里程碑的物件儲存報告第一版差點以相反的結論收尾，抓到它的方式是對自己的實驗做突變。
 
-## 這個模式是平行的，不是取代（2026-08-28 負責人定調）
+## 這個模式是平行的，不是取代（2026-08-28 負責人定調，2026-08-29 形狀定案）
 
-**淨測試模式不取代原有系統的任何能力。** 它是一個**平行、不干擾**的模式，以旗標切換，**原模式隨時可以照常運行**。因此 M6 在三條軸上各是一個 Strategy：**資料庫存取、檔案存取、沙箱**。
+**淨測試模式不取代原有系統的任何能力。** 它是一個**平行、不干擾**的模式，以旗標切換，**原模式隨時可以照常運行**；**旗標未設時行為與今天逐位元相同**，而那正是「不干擾」的可檢驗形式（`02:PORT-005` 要求有測試在守）。決策見 [ADR-060](../../../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md)。
 
-**這個定調照出一件事：三條軸今天不在同一層，而且成熟度差很多。**
+| 軸 | Port | 生產實作 | 淨測試實作 | 今天缺什麼 |
+| --- | --- | --- | --- | --- |
+| **檔案存取** | `apiserver.ObjectStore` 介面（由四個 context 的切片組成） | S3 相容（SeaweedFS） | in-process 承載（`02:PORT-009`） | **選擇點**。`objstore.FromEnv()` **永遠回傳真的 S3 client，沒有分支**；今天只有測試會注入別的 |
+| **沙箱** | `sandbox.Driver`（11 個方法） | `dockerdrv`（gVisor） | 本機行程 Driver（`PORT-010b`、ADR-059） | **第二個實作**與選擇點。`sandboxd` 目前寫死 `dockerdrv` |
+| **資料庫存取** | 連線字串（同一個 `*pgxpool.Pool`） | 原生 PostgreSQL | **PGlite，`pool_max_conns=1`** | **啟動形式**：api 與 worker 要收在同一個行程裡 |
 
-| 軸 | 接縫在哪 | 是不是 Strategy | 缺什麼 |
-| --- | --- | --- | --- |
-| **檔案存取** | `apiserver.ObjectStore` 介面（由四個 context 的切片組成） | ✅ **是**——整合測試已經在替換它 | **選擇點**。`cmd/api` 呼叫的 `objstore.FromEnv()` **永遠回傳真的 S3 client，沒有分支**；今天只有測試會注入別的 |
-| **沙箱** | `sandbox.Driver`（11 個方法） | ✅ **是** | **第二個實作**（`PORT-010b`）與選擇點。`sandboxd` 目前寫死 `dockerdrv` |
-| **資料庫存取** | **沒有接縫** | ❌ **不是**——`Config.Pool` 是具體的 `*pgxpool.Pool`，不是介面 | 整條軸 |
+**三條軸裡有兩條的介面今天就在**，缺的是第二個實作與選擇點。**第三條軸不需要介面**——它換的是連線字串，不是型別。
 
-**兩條軸是「介面已經在了，缺第二個實作和一個旗標」；第三條軸連介面都沒有。**
+### 資料庫那一軸的形狀，以及它曾經被判成不可能
 
-### 而資料庫那一條與 ADR-058 的形狀不一致，這要裁定
+**這一段記的是一次自己推翻自己的過程，因為推翻它的方法比結論更值得留著。**
 
-[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 決策 2 把資料庫的 Adapter 畫在 **`apiFetch`**——也就是**瀏覽器**那一層，而不是 Go 行程內。理由是實測的：衝突不在 SQL 而在**連線數**，PGlite 是單連線。
+先前的判定是：**兩個行程對一條連線，怎麼配都不成立**。`cmd/api` 與 `cmd/worker` 是兩個獨立的二進位、各自 `pgxpool.New`（`api/main.go:45`、`worker/main.go:47`），而要真的跑完一次 Run 就需要 worker（派送與清理在那裡）；PGlite 的 socket 一次只收一個 client（實測：第二條連線被直接踢掉）；**開 multiplexer 則讓 advisory lock 安靜失效**（實測：兩條連線同時拿到同一把鎖）。而「把 api 與 worker 合成單一行程」這條路被寫成「唯一剩下的路，不是因為它看起來會成」，理由是 River 的 notifier 會以 `LISTEN` 長期佔住那唯一的連線。
 
-**但那代表資料庫那一條軸與另外兩條不在同一個地方**：檔案與沙箱是 Go 行程內的 Strategy，資料庫是「瀏覽器繞過整個後端」。**一個旗標切三條軸**的形狀，與 ADR-058 目前的決策**不是同一件事**。
+**最後那句話是推論，而推論錯了。** River 有 poll-only 模式，而它的文件正是為這個情況寫的（`client.go:309`）：它避免發出 `LISTEN`，用途寫明是「for example, PgBouncer in transaction pooling mode」。
 
-**兩者要對齊，而對齊的方向沒有被裁定過**：
-
-- **走 ADR-058 的形狀**：淨測試模式是**瀏覽器單機模式**，沒有 Go 後端。那另外兩條軸的 Strategy 在該模式下**根本不會被用到**——包含 `PORT-010b` 那個本機 Driver。
-- **走三軸 Strategy 的形狀**：Go 後端在那台機器上真的跑起來，三條軸各換一個實作。**那資料庫要有一個 Go 用得了的實作，而目前沒有候選通過**：PGlite 單連線（實測死鎖），multiplexer 會讓 advisory lock 安靜失效（實測），原生二進位過不了白名單。<br>**一個未量到的可能**：`pool_max_conns=1` 且**不開** multiplexer 是誠實的序列化（只有一件事在跑，互斥自然成立）。**但 River 的 notifier 會長期握住一條連線做 LISTEN**，而池子只有一條——**這一項沒有實測過，它決定第二條路成不成立。**
-
-→ 已記為 [ADR-058 待決策](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)。**在它有答案之前，`PORT-010b` 動工的前提是「走三軸形狀」，而那還沒被簽。**
-
-### 續（2026-08-28 稍晚）：形狀 2 被資料庫擋住，而且擋住它的比 River 更前面
-
-把「三軸 Strategy」實際攤開之後，卡點不需要實測 River 就能定出來——**它是行程數對連線數**：
-
-- `cmd/api` 與 `cmd/worker` 是**兩個獨立的二進位，各自 `pgxpool.New`**（`api/main.go:45`、`worker/main.go:47`）。
-- **要真的跑完一次 Run 就需要 worker**：API 只建立 Run，派送與清理在 worker（River 在那裡，不在 API）。
-- 而 **PGlite 的 socket 一次只收一個 client**（實測：第二條連線被直接踢掉），**開 multiplexer 則讓 advisory lock 安靜失效**（實測：兩條連線同時拿到同一把鎖）。
-
-**兩個行程對一條連線，怎麼配都不成立**：不開 multiplexer 就有一個行程連不上，開了就沒有互斥。River 的 LISTEN 只是同一件事的第二個實例，**不是它自己的問題**。
-
-**所以三條軸裡，沙箱那條有答案（ADR-059），資料庫那條沒有。** 擋住「在受限機器上真的跑完一次 Run」的不是隔離，是**沒有一個那台機器跑得動、又能同時接受兩個行程的 PostgreSQL**。
-
-**還沒被排除的一種形狀**：把 api 與 worker 合成單一行程只在淨測試模式用。**但那是第三個二進位**，而且 River 的 notifier 仍會以 LISTEN 長期佔住那唯一的連線，HTTP 那側就沒得用了——**這一項仍未實測**，寫在這裡是因為它是選項 2 唯一剩下的路，不是因為它看起來會成。
-
-### 訂正（2026-08-28 稍晚，同日）：形狀 2 沒有被擋住，而擋住它的那個理由是我沒去試
-
-上一段把「api 與 worker 合成單一行程」寫成「唯一剩下的路，不是因為它看起來會成」，理由是 River 的 notifier 會以 LISTEN 佔住那唯一的連線。**那句話是推論，而推論錯了。**
-
-**River 有 `PollOnly`，而且它的文件就是為這個情況寫的**（`client.go:309`）：
-
-> PollOnly starts the client in "poll only" mode, which avoids issuing `LISTEN` statements… The upside is that it makes River compatible with systems where listen/notify isn't available. **For example, PgBouncer in transaction pooling mode.**
-
-**實測**（單一行程、`pool_max_conns=1`、PGlite 的 multiplexer **關閉**、`PollOnly: true`）：
+**實測**（單一行程、`pool_max_conns=1`、PGlite 的 multiplexer **關閉**、poll-only 開啟）：
 
 ```
 pool max conns = 1
@@ -118,43 +93,28 @@ job inserted
 JOB WORKED n=42, and 2 plain queries were served meanwhile
 ```
 
-**River 的 schema 套用成功、client 起得來、工作被領走並執行完、而且「HTTP 那一側」在同一條連線上同時查得到資料。** 沒有餓死，沒有死鎖。
+**突變驗證**（只把 poll-only 關掉，其餘不動）：River 去要第二條連線做 LISTEN，PGlite 拒絕，`Start` 直接失敗——**紅得正是預期的原因**。兩邊對上了。
 
-**突變驗證**（把 `PollOnly` 改成 `false`，其餘不動）：
-
-```
-start: failed to connect to `user=postgres database=skillhub_test`: … An established
-connection was aborted by the software in your host machine.
-```
-
-**紅得正是預期的原因**——River 去要第二條連線做 LISTEN，而 PGlite 只收一個 client。兩邊對上了。
-
-**所以要更正的結論是**：資料庫**沒有**擋住形狀 2。擋住的是「兩個二進位」這個部署形狀，而那是可以改的——**淨測試模式把 api 與 worker 收在同一個行程裡，River 走 poll-only，一條連線就夠**。這與 multiplexer 那條路不同：**這裡真的只有一個 session，所以互斥是自然成立而不是被偽造的**。
+**所以擋住形狀的不是資料庫，是「兩個二進位」這個部署形狀，而那是可以改的。** 這與 multiplexer 那條路有本質差別：**那裡是 N 個 client 假裝成 N 個 session，互斥被偽造；這裡真的只有一個 session，互斥因為是真的才成立。**
 
 **仍然沒有量到的，逐條**：完整的 API server 沒有起來過（本次只跑了 queue 這一層）；派送到沙箱那一段沒有走過；沒有做長時間或多使用者的壓力；`pool_max_conns=1` 之下真實請求量的延遲未知。**這一段證明的是「那個阻礙不存在」，不是「這條路已經可行」。**
 
-### 續（2026-08-29）：多連線這個限制，`pgmock` 身上不存在
+### 備援：多連線這個限制，`pgmock` 身上不存在
 
-上面把「兩個行程對一條連線」寫成資料庫這一軸的結構性限制。**那是對 PGlite 成立，不是對所有候選成立。**
-
-`pgmock`（v86 模擬 x86，裡面跑未修改的 postmaster）實測：**兩條獨立的 pgx 連線拿到不同的 backend（1600／1603）、`pg_try_advisory_lock` 一真一假、temp table 互不可見**；42 支 migration **37 過，5 支全部只敗在 pgvector，零個版本語法失敗**；**判準一過**（UPDATE 與 DELETE 都被擋，訊息帶 ADR-003）。逐項見 [m6/report-inmemory-postgres.md](../plans/mvp/m6/report-inmemory-postgres.md) §10。
+`pgmock`（v86 模擬 x86，裡面跑未修改的 postmaster）實測：**兩條獨立的 pgx 連線拿到不同的 backend（1600／1603）、`pg_try_advisory_lock` 一真一假、temp table 互不可見**；42 支 migration **37 過，5 支全部只敗在 pgvector，零個版本語法失敗**；**判準一過**（UPDATE 與 DELETE 都被擋，訊息帶 ADR-003）。逐項見 [report-inmemory-postgres.md](report-inmemory-postgres.md) §10。
 
 **同時要更正一筆自己的讀數**：本 repo 先前記過「`pgmock` 在本機 10 分鐘沒有開起來」，並據此把這一類技術歸為量級不可用。**重跑是 1.017 秒**，第一次為什麼卡住未查明。
 
-**所以候選集比本 ADR 評估時多了一個，而它的形狀不同**：
-
-| | PGlite | pgmock |
+| | PGlite（採用） | pgmock（備援） |
 | --- | --- | --- |
 | 多 session | ❌（multiplexer 會偽造互斥） | ✅ 真的 fork |
 | 42 支 migration | 42/42 | 37/42（缺口只有 pgvector） |
 | 判準一 | ✅ | ✅ |
 | 版本 | PostgreSQL 18.3 | PostgreSQL **14.5**，i686 |
-| 開機／套用 | 快 | 1 秒開機，但 migration 229 秒（可存快照只付一次） |
+| 開機／套用 | 快 | 1 秒開機，migration 229 秒（可存快照只付一次） |
 | 成熟度 | 活躍 | npm 最後發版 2024-05，18 個 open issue |
 
-**這不改變本 ADR 的決策，但它改變「不決定的代價」**：形狀 2（三軸 Strategy、Go 後端真的跑起來）現在有**兩條**可能的路——單行程＋PollOnly＋PGlite（已實測可行），或多行程＋pgmock（多 session 已實測，缺 pgvector）。**兩條都還沒走完，而選哪一條決定 `PORT-010b` 要不要寫。**
-
-
+**不採 `pgmock` 的理由不是它做不到，是它剩下的缺口大小未知**：沒有 pgvector，而 guest 裡沒有編譯器；補上它要在別的機器為 i686-musl 編一顆共享函式庫，**而 pgvector 在 32-bit 有 runtime 失敗前科**。**它記在這裡而不是被刪掉**，是因為若單行程形狀在實作中垮掉，它是唯一已知還站著的替代品（[ADR-060](../../../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 決策 3）。
 
 ## 三個必須守住的判準
 
@@ -162,14 +122,15 @@ connection was aborted by the software in your host machine.
 
 那是鐵律 4 由資料庫強制的形式，也是最便宜的真偽測試。手寫的假資料層與 SQLite 都過不了這一關——而它們會**照樣全綠**，因為要被擋的那道門已經不在了。**這個 repo 已經三度被同一種缺陷咬過**（invalidate 用錯 query key、六條 placeholder 規則零正面測試、兩條速率限制包裝被無聲刪除），M6 不再造第四個。
 
-**判準二：SQL 只有一份。**
+**判準一之二：兩條獨立連線對同一把 advisory lock，第二條必須拿不到。**
 
-```
-db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執行）
-                         └─→ 抽出 const 字串 → sql.ts（瀏覽器執行）
-```
+上面那條與其他由資料庫強制的行為**全部是單連線性質**，一條連線就驗得完——**所以它們全過，也不代表互斥還在**。`maxConnections > 1` 是**禁用組態不是效能取捨**，而檢查必須實際開兩條連線，不得以「設定檔寫了 1」代替（`02:PORT-001`）。
 
-`db/queries/*.sql` 帶 `sqlc.arg`／`sqlc.narg`、**不是合法 SQL**；生成的 Go 檔內是**最終 SQL 含 `$1, $2`**。抽取從生成碼取字串，**所以不存在第二份查詢**，且抽取掛在既有的 `task gen:check` 上，漂移由機器抓。
+**判準二：不得有第二份資料層。**
+
+**（2026-08-29 改寫。）** 舊版的判準二是「SQL 只有一份」，附一張把 sqlc 生成碼抽成瀏覽器可執行字串的圖——**那屬於已被推翻的形狀**（`02:PORT-002` 已撤回）。淨測試模式下**瀏覽器對話的是真的本機後端**，SQL 只在 Go 那一側執行，**沒有第二個消費端，所以也沒有漂移的可能**。
+
+**留下來的是禁令那一半**（`02:PORT-008`）：不得出現第二個實作 `db/gen` 那批查詢方法的型別，也不得引入第二套 schema 定義。依據是 `coder/coder` 於 2024-11 移除 `dbmem` 的紀錄（PR #15291）。
 
 **判準三：跳過要出聲。**
 
@@ -179,7 +140,7 @@ db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執�
 
 | # | 條件 | 現況 |
 | --- | --- | --- |
-| 1 | ADR-058 由 `Proposed` 轉 `Accepted` | **未定**。它動的是測試可信度的定義，不只是工具選擇 |
+| 1 | ADR-059 與 ADR-060 由 `Proposed` 轉 `Accepted` | **未定**。ADR-060 動的是測試可信度的定義與部署形狀，不只是工具選擇；ADR-059 動的是派送閘門的語意 |
 | 2 | 受限環境的白名單內容已知（Node 在不在上面） | **未取得，而且它現在擋住的比原本記的多**。資料庫那一軸的**兩條候選路都跑在 Node 裡**（PGlite 與 pgmock 都是 npm 套件），所以 Q1 是「否」的話 A 半也要重新設計。**已備妥可直接交出去的清單：[environment-probe.md](environment-probe.md)**——五個問題、十分鐘、全部唯讀、不安裝任何東西、不做任何繞過 |
 | 3 | Pitch 的日期與形式已定 | **未知**。A 半的優先序完全取決於它——如果 Pitch 還有很久，`01` §11 那些從未被問過的問題比 M6 更急 |
 
@@ -188,14 +149,15 @@ db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執�
 ## 不在 M6 範圍內的
 
 - **正式環境的任何東西**——Hetzner 節點、cloud-init、SEC-009 的 45 項門檻。那些是 Pitch 過關之後第一週要打開的資料夾（相關調查已完成，見 `05` 與 `04` 的對應列）。
-- **在受限機器上執行不受信任的 Skill**（`02:PORT-006`）。**2026-08-28 訂正了這一條的措辭**：擋的是**內容的來源**不是動作本身——策展過的展示素材可以在 `PORT-010` 的本機 Driver 上真的跑完一次生命週期（[ADR-059](../../../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)，[report-local-driver.md](report-local-driver.md)）。**不受信任的內容仍然一律不行，由派送閘門強制。****這一條 2026-08-28 補上了它的根據**：[report-sandbox-options.md](report-sandbox-options.md) 逐項查過，**結論是「沒有」，而且卡住的不是隔離技術的品質，是把隔離器放上去的縫**——白名單管的是哪顆 PE 能執行，所以任何要你自己帶一顆 `.exe` 的方案都在門口出局。剩下兩條縫（瀏覽器分頁內的 WASM、以及唯一通得出去的那條網路），代價分別是「能力大幅縮水」與「邊界不歸你管、資料離開機構」。**而報告的建議是先問一個行政問題**：防火牆能不能多開一個網域——有了它就能把 Run 送回自己的 gVisor 節點，隔離與生產一模一樣。<br>**⚠️ 順帶查到一件與此直接相關的事**：隔離等級的閘門是**黑名單**，`gvsior`（打錯字）與 `gvisor` 待遇完全相同。今天沒有路徑產得出未知值（宣告值是程式裡的兩路分支），**但加任何新 Provider 型態之前要先改成白名單**——同一段程式的註解記著一次形狀一模一樣的事故。
+- **在受限機器上執行不受信任的 Skill**。**擋的是內容的來源不是動作本身**——策展過的展示素材可以在 `PORT-010` 的本機 Driver 上真的跑完一次生命週期（[ADR-059](../../../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)、[report-local-driver.md](report-local-driver.md)），**不受信任的內容仍然一律不行，由派送閘門強制**（`02:PORT-010`）。<br>**這一條的根據**：[report-sandbox-options.md](report-sandbox-options.md) 逐項查過，**結論是「沒有 PGlite 等價物」，而且卡住的不是隔離技術的品質，是把隔離器放上去的縫**——白名單管的是哪顆 PE 能執行，所以任何要你自己帶一顆 `.exe` 的方案都在門口出局。剩下兩條縫（瀏覽器分頁內的 WASM、以及唯一通得出去的那條網路），代價分別是「能力大幅縮水」與「邊界不歸你管、資料離開機構」。**而報告的建議是先問一個行政問題**：防火牆能不能多開一個網域——有了它就能把 Run 送回自己的 gVisor 節點，隔離與生產一模一樣（`05` R-23）。
 - **在沒有安裝限制的機器上的最佳解**。那條路是「裝一份原生 PostgreSQL 17 ＋ pgvector」：十分鐘、零程式碼、解鎖 281 支。**它與 M6 不互斥，而且該先做**——但它在受限環境裡不成立，所以不是 M6 的答案。
 - **`SBX-008` 短效授權的測試覆蓋**。平台測試裡沒有任何一行 fetch 過 presigned URL，所以「過期即失效」「簽章不可竄改」「GET 的票不能用來 PUT」三個性質今天**零覆蓋**。**這個缺口不是「沒有 Docker」造成的**，做一個檔案系統版物件儲存補不上它，**用一個不驗簽的假 S3 更會讓它從「零覆蓋」變成「看起來有覆蓋」**（[報告](report-object-storage.md) §3 的四個突變）。→ 已記為 [`04` 丙-81](../../04-backlog-and-handoffs.md)；`PORT-009` 只負責**不讓替身假裝證明了它**，補上證據是丙-81 的事。
 
 ## 待裁定
 
-- **M6 是否計入 MVP 完成度。** M5 的先例是不計（`01` §7.3）。M6 是開發者體驗與測試可信度，不是產品功能——**但它改變「綠燈是什麼意思」，而那是允收的一部分**。→ [`05`](../../05-pending-rulings.md)
-- **Adapter B 的端點範圍**：只涵蓋展示路徑，或涵蓋全部讀取端點。**範圍越大，⛔ 邊界那張表越容易被忽略。**
+- **M6 是否計入 MVP 完成度。** M5 的先例是不計（`01` §7.3）。M6 是開發者體驗與測試可信度，不是產品功能——**但它改變「綠燈是什麼意思」，而那是允收的一部分**。→ [`05` R-22](../../05-pending-rulings.md)
+- **ADR-060 的三項待決策**：①**合併入口是第三個二進位還是既有二進位的旗標**；②**淨測試模式的 Run 要不要進正式的 Run 歷史**（它們是真的 Run，但跑在沒有隔離的地方）；③**`objstore` 的選擇點放哪裡**（`FromEnv()` 內部分支最省，但那讓「生產永遠拿到真的 client」不再是型別層面的保證）。
+- **ADR-059 的三項待決策**：①工作負載的環境變數契約抽到共用套件還是複製一份（**ADR 的建議是抽出來**）；②與上一條的②同一個問題；③`Adopt()` 回空要不要在畫面上說（服務重啟會殺掉跑到一半的 Run）。
 - **受限環境的白名單內容**（見啟動條件 2）。這是要取得的事實，不是要做的決定。
 
 ## 檔案地圖
@@ -203,10 +165,10 @@ db/queries/*.sql ──sqlc──┬─→ gen/*.sql.go        （Go 後端執�
 | 檔案 | 內容 |
 | --- | --- |
 | `README.md` | 本檔。計畫、狀態、邊界、檔案地圖 |
-| [report-inmemory-postgres.md](report-inmemory-postgres.md) | 2026-08-28 的前期量測：SQLite 0/42、PGlite 42/42、逐項行為驗證（含不可變性 trigger 真的擋人）、wire protocol 與單連線死鎖、兩個被排除的候選及根據 |
+| [report-inmemory-postgres.md](report-inmemory-postgres.md) | 2026-08-28 起的前期量測：SQLite 0/42、PGlite 42/42、逐項行為驗證（含不可變性 trigger 真的擋人）、wire protocol 與單連線死鎖、兩個被排除的候選及根據；§9 是 `file://` 的瀏覽器界線、§10 是 `pgmock` 的多 session 實測。**本報告是時點證據，其中屬於已被推翻形狀的段落保留原樣不回溯改寫** |
 | [environment-probe.md](environment-probe.md) | **要交出去給坐在那台機器前面的人的清單**：Node 在不在白名單、使用者目錄的未簽章執行檔跑不跑得起來（以 `go test` 當探針）、實際生效的政策與是否只開稽核、Edge 開不開得了本機 HTML、對外通得到哪些網域。**每一項都是唯讀，且刻意不做任何繞過** |
 | [report-local-driver.md](report-local-driver.md) | 2026-08-28 的前期量測（本機執行 Driver）：**沒有值得加的相依**。逐一裁決十三個候選，含一個 1027★、README 承諾三平台、而 Windows 端是空殼的套件；**實測**只 kill 父行程會留下存活的孫行程，改用 Job Object 歸零。含動工前該知道的三件事（`Adopt()` 回空、資源上限兩平台不對稱、grace 不是合作式窗口） |
-| [report-sandbox-options.md](report-sandbox-options.md) | 2026-08-28 的前期量測（沙箱那一半）：**沒有 PGlite 等價物，而原因不是隔離技術不夠好**。Windows 原生隔離（AppContainer 不需管理員，但需要一顆過不了白名單的 launcher）、瀏覽器內 WASM（Pyodide 沒有 subprocess／pip／原生套件）、WASM 裡模擬 x86（最強邊界，44 倍慢，網路出不去）、託管沙箱（真 Debian，但邊界不歸你管且資料離開機構）；含三個「看起來像答案但不是沙箱」的逐條拒絕，以及隔離閘門是黑名單這個順帶發現 |
+| [report-sandbox-options.md](report-sandbox-options.md) | 2026-08-28 的前期量測（沙箱那一半）：**沒有 PGlite 等價物，而原因不是隔離技術不夠好**。Windows 原生隔離（不需管理員，但需要一顆過不了白名單的 launcher）、瀏覽器內 WASM（沒有 subprocess／pip／原生套件）、WASM 裡模擬 x86（最強邊界，44 倍慢，網路出不去）、託管沙箱（真 Debian，但邊界不歸你管且資料離開機構）；含三個「看起來像答案但不是沙箱」的逐條拒絕，以及隔離閘門是黑名單這個順帶發現（**已於同日修掉，見 `PORT-010a`**） |
 | [report-object-storage.md](report-object-storage.md) | 2026-08-28 的前期量測（物件儲存那一半）：in-process 假 S3 七方法十項全過，**但突變顯示它什麼都不驗**——竄改／無簽章／已過期／GET 的票做 PUT，四種都回 200。含 `SBX-008` 的證據該從哪來、瀏覽器端 `blob:` 與 presigned 的三個差別、業界避免假真分歧的三種手法 |
 
 **尚未存在**：`audit.md`（里程碑完結時才產出，同 M3 起的骨架規定）、`report-*` 的其餘報告。
