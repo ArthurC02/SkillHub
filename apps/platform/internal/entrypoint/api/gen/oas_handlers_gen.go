@@ -10517,6 +10517,10 @@ func (s *Server) handlePublicSearchSkillsRequest(args [0]string, argsEscaped boo
 					Name: "agent",
 					In:   "query",
 				}: params.Agent,
+				{
+					Name: "tier",
+					In:   "query",
+				}: params.Tier,
 			},
 			Raw: r,
 		}

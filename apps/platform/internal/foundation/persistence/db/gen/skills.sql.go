@@ -28,7 +28,7 @@ const createSkill = `-- name: CreateSkill :one
 INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id,
                     access_restriction, redistribution)
 VALUES ($1, $2, $3, $4, $5, $6, coalesce($7::text, 'unknown'))
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id
 `
 
 type CreateSkillParams struct {
@@ -79,12 +79,14 @@ func (q *Queries) CreateSkill(ctx context.Context, arg CreateSkillParams) (Skill
 		&i.TakedownReason,
 		&i.AccessRestriction,
 		&i.Redistribution,
+		&i.CurationTier,
+		&i.CuratedVersionID,
 	)
 	return i, err
 }
 
 const getCatalogSkill = `-- name: GetCatalogSkill :one
-SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution FROM skills sk
+SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, sk.curation_tier, sk.curated_version_id FROM skills sk
 JOIN workspaces w ON w.id = sk.workspace_id AND w.is_catalog
 WHERE sk.id = $1 AND sk.deleted_at IS NULL
 `
@@ -111,12 +113,14 @@ func (q *Queries) GetCatalogSkill(ctx context.Context, id pgtype.UUID) (Skill, e
 		&i.TakedownReason,
 		&i.AccessRestriction,
 		&i.Redistribution,
+		&i.CurationTier,
+		&i.CuratedVersionID,
 	)
 	return i, err
 }
 
 const getSkill = `-- name: GetSkill :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id FROM skills
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 `
 
@@ -142,6 +146,8 @@ func (q *Queries) GetSkill(ctx context.Context, arg GetSkillParams) (Skill, erro
 		&i.TakedownReason,
 		&i.AccessRestriction,
 		&i.Redistribution,
+		&i.CurationTier,
+		&i.CuratedVersionID,
 	)
 	return i, err
 }
@@ -227,7 +233,7 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 }
 
 const listSkills = `-- name: ListSkills :many
-SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, ver.created_at AS verified_at, ver.source_id AS verified_source_id,
+SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.forked_from_version_id, sk.created_at, sk.updated_at, sk.deleted_at, sk.takedown_at, sk.takedown_reason, sk.access_restriction, sk.redistribution, sk.curation_tier, sk.curated_version_id, ver.created_at AS verified_at, ver.source_id AS verified_source_id,
        inh.skill_id AS inherited_from_skill_id,
        -- COALESCEd for the reason search.sql spells out: sqlc reads the table's
        -- NOT NULL and cannot see that an outer-joined column is nullable, so the
@@ -347,6 +353,8 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 			&i.Skill.TakedownReason,
 			&i.Skill.AccessRestriction,
 			&i.Skill.Redistribution,
+			&i.Skill.CurationTier,
+			&i.Skill.CuratedVersionID,
 			&i.VerifiedAt,
 			&i.VerifiedSourceID,
 			&i.InheritedFromSkillID,
@@ -367,7 +375,7 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 const softDeleteSkill = `-- name: SoftDeleteSkill :one
 UPDATE skills SET deleted_at = now(), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id
 `
 
 type SoftDeleteSkillParams struct {
@@ -395,6 +403,8 @@ func (q *Queries) SoftDeleteSkill(ctx context.Context, arg SoftDeleteSkillParams
 		&i.TakedownReason,
 		&i.AccessRestriction,
 		&i.Redistribution,
+		&i.CurationTier,
+		&i.CuratedVersionID,
 	)
 	return i, err
 }

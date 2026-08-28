@@ -115,10 +115,18 @@ export interface SkillDetail {
      */
     scope: SkillDetailScopeEnum;
     /**
-     * curated | indexed | external. Always `indexed` today: curation is a
-     * recorded human review (PDM-002) and CONTENT-003's promotion workflow
-     * is what would record one. Catalog membership is not that review, and
-     * labelling it 精選 would be the endorsement PDM-002 warns against.
+     * `curated` | `indexed`. Recorded by migration 0042; before it, this
+     * was always `indexed` because curation is a recorded human review and
+     * nothing recorded one — the fifteen entries that had passed PDM-002's
+     * nine checks were indistinguishable from the thirty that had not.
+     * 
+     * `curated` requires both halves: the verdict, and that the version it
+     * examined is still the newest. A new version drops the skill back to
+     * `indexed` with no operator action, because five of the nine checks
+     * are about specific bytes. Catalog membership is still not a review.
+     * 
+     * `external` is declared by DISC-002 but never returned here: an
+     * external result has not been imported, so it has no detail view.
      * 
      * @type {Labelled}
      * @memberof SkillDetail

@@ -434,6 +434,10 @@ type Skill struct {
 	AccessRestriction *string
 	// May a Download Artifact be produced from this skill? 'allowed' (a verdict about the licence), 'self_supplied' (this workspace brought the bytes) and 'generated' (the platform wrote them for this workspace) release; 'unknown' and 'blocked' refuse. license_status = Confirmed must never set this on its own (CONTENT-002). Copied onto forks at fork time, like access_restriction — a fork of a generated skill stays 'generated' (ADR-047 決策 4). See 0027, 0036 and 0037.
 	Redistribution string
+	// PDM-002 curation verdict for this skill: curated | indexed. Default indexed. Not copied onto forks. See 0042.
+	CurationTier string
+	// The skill_version the curation review examined. 精選 is shown only while this is still the newest version. See 0042.
+	CuratedVersionID pgtype.UUID
 }
 
 type SkillRuntimeCompatibility struct {

@@ -168,6 +168,7 @@ SELECT s.skill_id, s.name,
        COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
+       COALESCE(cur.tier, 'indexed') AS curation_tier,
        -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
        -- 2026-08-25 this page said 「超過 N 個」 -- a LOWER BOUND, from which a
        -- reader cannot tell 21 from 2100 -- because there was no count to say.
@@ -199,6 +200,24 @@ LEFT JOIN LATERAL (
     ORDER BY c.measured_at DESC
     LIMIT 1
 ) cmp ON true
+LEFT JOIN LATERAL (
+    -- 02:CONTENT-001 tier, resolved here rather than stored. It is a verdict
+    -- about specific bytes, so it belongs beside the version it judged, exactly
+    -- like the compatibility row above -- and for the same reason it is joined
+    -- rather than projected into search_documents: 0015 keeps that table for
+    -- things derivable from the package, and a human review is not one.
+    --
+    -- 精選 only while the reviewed version is still the newest. A new version
+    -- silently drops the row back to 已索引 with no job and no operator action;
+    -- see 0042. A ('curated', NULL) row -- reachable only when the reviewed
+    -- version was purged -- lands in the ELSE, which is the fail-closed answer.
+    SELECT CASE
+        WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
+        THEN 'curated' ELSE 'indexed'
+    END AS tier
+    FROM skills sk
+    WHERE sk.id = s.skill_id
+) cur ON true
 WHERE s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
   AND (
     sqlc.narg(has_script)::bool IS NULL
@@ -213,6 +232,10 @@ WHERE s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
   AND (
     sqlc.narg(agent_runtime)::text IS NULL
     OR COALESCE(cmp.runtime, 'unverified') = sqlc.narg(agent_runtime)::text
+  )
+  AND (
+    sqlc.narg(curation_tier)::text IS NULL
+    OR COALESCE(cur.tier, 'indexed') = sqlc.narg(curation_tier)::text
   )
 ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
 LIMIT sqlc.arg(result_limit);
@@ -296,6 +319,7 @@ SELECT c.skill_id, s.name,
        COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
+       COALESCE(cur.tier, 'indexed') AS curation_tier,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
        (c.distance IS NULL)::bool AS unranked,
        -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
@@ -334,6 +358,24 @@ LEFT JOIN LATERAL (
     ORDER BY sc.measured_at DESC
     LIMIT 1
 ) cmp ON true
+LEFT JOIN LATERAL (
+    -- 02:CONTENT-001 tier, resolved here rather than stored. It is a verdict
+    -- about specific bytes, so it belongs beside the version it judged, exactly
+    -- like the compatibility row above -- and for the same reason it is joined
+    -- rather than projected into search_documents: 0015 keeps that table for
+    -- things derivable from the package, and a human review is not one.
+    --
+    -- 精選 only while the reviewed version is still the newest. A new version
+    -- silently drops the row back to 已索引 with no job and no operator action;
+    -- see 0042. A ('curated', NULL) row -- reachable only when the reviewed
+    -- version was purged -- lands in the ELSE, which is the fail-closed answer.
+    SELECT CASE
+        WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
+        THEN 'curated' ELSE 'indexed'
+    END AS tier
+    FROM skills sk
+    WHERE sk.id = c.skill_id
+) cur ON true
 WHERE (c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::float8)
   -- DISC-003 filters, applied after candidate generation.
   --
@@ -354,6 +396,10 @@ WHERE (c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::float8)
   AND (
     sqlc.narg(agent_runtime)::text IS NULL
     OR COALESCE(cmp.runtime, 'unverified') = sqlc.narg(agent_runtime)::text
+  )
+  AND (
+    sqlc.narg(curation_tier)::text IS NULL
+    OR COALESCE(cur.tier, 'indexed') = sqlc.narg(curation_tier)::text
   )
 ORDER BY c.distance ASC NULLS LAST
 LIMIT sqlc.arg(result_limit);

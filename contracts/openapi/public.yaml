@@ -682,6 +682,24 @@ paths:
             skill in the catalogue came back `activated` (45/45 in the M2
             baseline), so a control on it separates nothing; it becomes a filter
             when a `not_activated` row exists and not before.
+        - name: tier
+          in: query
+          required: false
+          schema: { type: string, enum: [curated, indexed] }
+          description: |
+            DISC-002's 來源層級 dimension, live since migration 0042. Absent =
+            not filtered.
+
+            `curated` means the PDM-002 nine-item review passed **and** the
+            version it examined is still the newest one; a curated skill whose
+            content has moved on answers `indexed` here, because five of those
+            nine checks are about specific bytes. So `indexed` is not "never
+            reviewed" — it is "not currently carrying a review of what you are
+            looking at", which is the question a reader is actually asking.
+
+            `external` is not accepted. An external result was never imported and
+            has no row, so it is a state of the search rather than a value this
+            filter can select.
       responses:
         "200":
           description: Ranked matches with match reasons, or empty list.
@@ -717,10 +735,11 @@ paths:
             enumerates the causes, and a cause missing from it is how a handler
             and its contract drift apart (this one answered 200 to a request
             with no `q` at all until 2026-08-24). Either a query over 2,000
-            characters, a `script`/`validation`/`agent` value
-            outside its enum, or one of the three 02:DISC-002 dimensions this
-            build has no per-row data for — `category`, `tier`, `mcp`. (`agent`
-            left that list when 0022 gave it per-row data.) Those are
+            characters, a `script`/`validation`/`agent`/`tier` value
+            outside its enum, or one of the two 02:DISC-002 dimensions this
+            build has no per-row data for — `category`, `mcp`. (`agent` left
+            that list when 0022 gave it per-row data; `tier` left it when 0042
+            gave the catalogue a second value.) Those are
             rejected rather than ignored: answering a filtered request with an
             unfiltered page would present the whole catalog as the filtered
             subset. Also a `limit` outside its schema: it is
@@ -4597,9 +4616,10 @@ components:
           allOf:
             - $ref: "#/components/schemas/Labelled"
           description: |
-            Collection tier (DISC-002 來源層級). Always `indexed` here for the
-            same reason as on the detail view: curation is a recorded human
-            review and nothing records one yet.
+            Collection tier (DISC-002 來源層級): `curated` | `indexed`, resolved
+            per row against the skill's newest version — see the `tier` query
+            parameter for what `indexed` does and does not mean. `external` never
+            appears here: a result in this list was imported by definition.
         risk:
           $ref: "#/components/schemas/SearchResultRisk"
         dependencies:
@@ -5011,10 +5031,18 @@ components:
           allOf:
             - $ref: "#/components/schemas/Labelled"
           description: |
-            curated | indexed | external. Always `indexed` today: curation is a
-            recorded human review (PDM-002) and CONTENT-003's promotion workflow
-            is what would record one. Catalog membership is not that review, and
-            labelling it 精選 would be the endorsement PDM-002 warns against.
+            `curated` | `indexed`. Recorded by migration 0042; before it, this
+            was always `indexed` because curation is a recorded human review and
+            nothing recorded one — the fifteen entries that had passed PDM-002's
+            nine checks were indistinguishable from the thirty that had not.
+
+            `curated` requires both halves: the verdict, and that the version it
+            examined is still the newest. A new version drops the skill back to
+            `indexed` with no operator action, because five of the nine checks
+            are about specific bytes. Catalog membership is still not a review.
+
+            `external` is declared by DISC-002 but never returned here: an
+            external result has not been imported, so it has no detail view.
         enrichment:
           $ref: "#/components/schemas/SkillEnrichment"
         version:

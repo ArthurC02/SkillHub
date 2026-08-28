@@ -7768,6 +7768,52 @@ func (o OptPublicSearchSkillsScript) Or(d PublicSearchSkillsScript) PublicSearch
 	return d
 }
 
+// NewOptPublicSearchSkillsTier returns new OptPublicSearchSkillsTier with value set to v.
+func NewOptPublicSearchSkillsTier(v PublicSearchSkillsTier) OptPublicSearchSkillsTier {
+	return OptPublicSearchSkillsTier{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPublicSearchSkillsTier is optional PublicSearchSkillsTier.
+type OptPublicSearchSkillsTier struct {
+	Value PublicSearchSkillsTier
+	Set   bool
+}
+
+// IsSet returns true if OptPublicSearchSkillsTier was set.
+func (o OptPublicSearchSkillsTier) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPublicSearchSkillsTier) Reset() {
+	var v PublicSearchSkillsTier
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPublicSearchSkillsTier) SetTo(v PublicSearchSkillsTier) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPublicSearchSkillsTier) Get() (v PublicSearchSkillsTier, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPublicSearchSkillsTier) Or(d PublicSearchSkillsTier) PublicSearchSkillsTier {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptPublicSearchSkillsValidation returns new OptPublicSearchSkillsValidation with value set to v.
 func NewOptPublicSearchSkillsValidation(v PublicSearchSkillsValidation) OptPublicSearchSkillsValidation {
 	return OptPublicSearchSkillsValidation{
@@ -9876,8 +9922,9 @@ type PublicSearchResult struct {
 	Rank NilFloat64 `json:"rank"`
 	// Why `rank` is null and what ordered the page instead. Present only when `rank` is null.
 	RankNote OptString `json:"rank_note"`
-	// Collection tier (DISC-002 來源層級). Always `indexed` here for the same reason as on the detail
-	// view: curation is a recorded human review and nothing records one yet.
+	// Collection tier (DISC-002 來源層級): `curated` | `indexed`, resolved per row against the skill's
+	// newest version — see the `tier` query parameter for what `indexed` does and does not mean.
+	// `external` never appears here: a result in this list was imported by definition.
 	Tier Labelled         `json:"tier"`
 	Risk SearchResultRisk `json:"risk"`
 	// Dependency tags from the index-time enrichment (DISC-002 依賴). Model-extracted from what the
@@ -10217,6 +10264,47 @@ func (s *PublicSearchSkillsScript) UnmarshalText(data []byte) error {
 		return nil
 	case PublicSearchSkillsScriptNo:
 		*s = PublicSearchSkillsScriptNo
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PublicSearchSkillsTier string
+
+const (
+	PublicSearchSkillsTierCurated PublicSearchSkillsTier = "curated"
+	PublicSearchSkillsTierIndexed PublicSearchSkillsTier = "indexed"
+)
+
+// AllValues returns all PublicSearchSkillsTier values.
+func (PublicSearchSkillsTier) AllValues() []PublicSearchSkillsTier {
+	return []PublicSearchSkillsTier{
+		PublicSearchSkillsTierCurated,
+		PublicSearchSkillsTierIndexed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PublicSearchSkillsTier) MarshalText() ([]byte, error) {
+	switch s {
+	case PublicSearchSkillsTierCurated:
+		return []byte(s), nil
+	case PublicSearchSkillsTierIndexed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PublicSearchSkillsTier) UnmarshalText(data []byte) error {
+	switch PublicSearchSkillsTier(data) {
+	case PublicSearchSkillsTierCurated:
+		*s = PublicSearchSkillsTierCurated
+		return nil
+	case PublicSearchSkillsTierIndexed:
+		*s = PublicSearchSkillsTierIndexed
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -14049,9 +14137,16 @@ type SkillDetail struct {
 	Summary string `json:"summary"`
 	// Which read answered — the public catalog, or the caller's own workspace.
 	Scope SkillDetailScope `json:"scope"`
-	// Curated | indexed | external. Always `indexed` today: curation is a recorded human review (PDM-002)
-	// and CONTENT-003's promotion workflow is what would record one. Catalog membership is not that
-	// review, and labelling it 精選 would be the endorsement PDM-002 warns against.
+	// `curated` | `indexed`. Recorded by migration 0042; before it, this was always `indexed` because
+	// curation is a recorded human review and nothing recorded one — the fifteen entries that had passed
+	// PDM-002's nine checks were indistinguishable from the thirty that had not.
+	//
+	// `curated` requires both halves: the verdict, and that the version it examined is still the newest. A
+	// new version drops the skill back to `indexed` with no operator action, because five of the nine
+	// checks are about specific bytes. Catalog membership is still not a review.
+	//
+	// `external` is declared by DISC-002 but never returned here: an external result has not been
+	// imported, so it has no detail view.
 	Tier       Labelled        `json:"tier"`
 	Enrichment SkillEnrichment `json:"enrichment"`
 	// The latest version. Absent for a skill with no saved content yet.

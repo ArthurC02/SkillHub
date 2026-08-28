@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -27,6 +28,27 @@ import (
 const embedDims = 1536
 
 // --- helpers ---------------------------------------------------------------
+
+// requireInterfaceLanguage asserts that a string the page renders verbatim
+// actually reaches the wire in the interface language. The front end lays these
+// out and translates nothing (WorkspaceRuns.tsx:65-83), so an English string
+// here is an English string on a Traditional Chinese search page.
+//
+// It is a Han check rather than a text match because the wording is expected to
+// change and the language is not. Every other assertion on this copy in this
+// file tests `!= ""`, which is how three English sentences survived M1: a
+// non-empty check cannot tell the two languages apart. The unit-level twin,
+// with the stricter no-Latin-prose rule, is in
+// internal/skill/discovery/reason_test.go.
+func requireInterfaceLanguage(t *testing.T, what, s string) {
+	t.Helper()
+	if s == "" {
+		t.Fatalf("%s is empty", what)
+	}
+	if !strings.ContainsFunc(s, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+		t.Fatalf("%s is not in the interface language: %q", what, s)
+	}
+}
 
 func markCatalog(t *testing.T, pool *pgxpool.Pool, workspaceID string) {
 	t.Helper()
@@ -547,9 +569,7 @@ func TestOffTopicQueryIsRefusedWithASuggestion(t *testing.T) {
 	if !body.NoResults {
 		t.Fatal("empty result set was not reported as no_results")
 	}
-	if body.QuerySuggestion == "" {
-		t.Fatal("no-results answer carries no suggestion to refine the query")
-	}
+	requireInterfaceLanguage(t, "the no-results query suggestion", body.QuerySuggestion)
 	// It is a real answer, not a broken one: the vector leg ran fine.
 	if body.Degraded {
 		t.Fatalf("a refusal was reported as a degradation: %q", body.DegradedReason)
@@ -813,9 +833,10 @@ func TestMatchReasonsAreLabelledByProvenance(t *testing.T) {
 	if got := body.Results[0].MatchReasonSource; got != "template" {
 		t.Fatalf("match_reason_source = %q, want template", got)
 	}
-	if body.Results[0].MatchReason == "" {
-		t.Fatal("template fallback produced no reason")
-	}
+	// The template is the platform's own sentence, so the platform owns its
+	// language too — unlike the model-written reason above, which is whatever
+	// the LLM returned.
+	requireInterfaceLanguage(t, "the template match reason", body.Results[0].MatchReason)
 }
 
 // DISC-001: a blank or unusable query is not a search, and it must not become
@@ -1005,9 +1026,10 @@ func TestFilteredToEmptyIsNotTheNoResultsRefusal(t *testing.T) {
 	// Same filter, a query nothing matches: now it really is no_results, and
 	// filtered_out must not be claimed — there was nothing for a filter to remove.
 	refused := anon.search(t, "/api/skills/search?q=whiffling&script=no")
-	if !refused.NoResults || refused.QuerySuggestion == "" {
-		t.Fatalf("an unmatched query was not refused with a suggestion: %+v", refused)
+	if !refused.NoResults {
+		t.Fatalf("an unmatched query was not refused: %+v", refused)
 	}
+	requireInterfaceLanguage(t, "the query suggestion on the unmatched-query refusal", refused.QuerySuggestion)
 	if refused.FilteredOut {
 		t.Fatal("a query that matched nothing blamed the filters for the empty page")
 	}
@@ -1016,8 +1038,13 @@ func TestFilteredToEmptyIsNotTheNoResultsRefusal(t *testing.T) {
 // 02:DISC-002 names six filter dimensions and this build has per-row data for
 // two. The other four are rejected rather than ignored: a shared or hand-edited
 // URL asking for one must not come back as the whole catalog looking like a
-// filtered subset. The UI shows the same four as disabled controls with the
+// filtered subset. The UI shows the remaining ones as disabled controls with the
 // reason, so nothing about them is hidden — only refused.
+//
+// `tier` left this list on 2026-08-28: migration 0042 gave the catalogue a
+// second value, so the dimension can now separate something. What replaces it
+// here is `tier=external`, which is a different refusal — the dimension is live
+// but that value is not a row anything can hold, exactly like `agent=claude`.
 func TestFilterDimensionsWithoutDataAreRejectedNotIgnored(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -1029,11 +1056,12 @@ func TestFilterDimensionsWithoutDataAreRejectedNotIgnored(t *testing.T) {
 
 	for _, q := range []string{
 		"&category=documents", // curation-only, never persisted
-		"&tier=curated",       // one value across the whole catalog
 		"&agent=claude",       // the dimension is live (0022), this value is not
-		"&mcp=no",             // no signal exists anywhere
-		"&script=maybe",       // outside the enum
-		"&validation=failed",  // spec validation is never reported as failed
+		"&tier=external",      // the dimension is live (0042), this value is not
+		//                        a row: an external result was never imported
+		"&mcp=no",            // no signal exists anywhere
+		"&script=maybe",      // outside the enum
+		"&validation=failed", // spec validation is never reported as failed
 	} {
 		if got := anon.status(t, http.MethodGet, "/api/skills/search?q=beamish"+q); got != http.StatusBadRequest {
 			t.Errorf("%s: got %d, want 400 — an unusable filter must not be silently dropped", q, got)

@@ -3707,6 +3707,16 @@ type PublicSearchSkillsParams struct {
 	// `activated` (45/45 in the M2 baseline), so a control on it separates nothing; it becomes a filter
 	// when a `not_activated` row exists and not before.
 	Agent OptPublicSearchSkillsAgent `json:",omitempty,omitzero"`
+	// DISC-002's 來源層級 dimension, live since migration 0042. Absent = not filtered.
+	//
+	// `curated` means the PDM-002 nine-item review passed and the version it examined is still the newest
+	// one; a curated skill whose content has moved on answers `indexed` here, because five of those nine
+	// checks are about specific bytes. So `indexed` is not "never reviewed" — it is "not currently
+	// carrying a review of what you are looking at", which is the question a reader is actually asking.
+	//
+	// `external` is not accepted. An external result was never imported and has no row, so it is a state
+	// of the search rather than a value this filter can select.
+	Tier OptPublicSearchSkillsTier `json:",omitempty,omitzero"`
 }
 
 func unpackPublicSearchSkillsParams(packed middleware.Parameters) (params PublicSearchSkillsParams) {
@@ -3751,6 +3761,15 @@ func unpackPublicSearchSkillsParams(packed middleware.Parameters) (params Public
 		}
 		if v, ok := packed[key]; ok {
 			params.Agent = v.(OptPublicSearchSkillsAgent)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "tier",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Tier = v.(OptPublicSearchSkillsTier)
 		}
 	}
 	return params
@@ -4049,6 +4068,62 @@ func decodePublicSearchSkillsParams(args [0]string, argsEscaped bool, r *http.Re
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "agent",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: tier.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "tier",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotTierVal PublicSearchSkillsTier
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotTierVal = PublicSearchSkillsTier(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Tier.SetTo(paramsDotTierVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Tier.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "tier",
 			In:   "query",
 			Err:  err,
 		}

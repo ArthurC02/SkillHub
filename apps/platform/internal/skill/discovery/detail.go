@@ -411,7 +411,9 @@ func (s *Service) SkillDetail(ctx context.Context, skill registry.Skill) (skillD
 	out := skillDetail{
 		SkillID:     pgconv.UUIDString(skill.ID),
 		Name:        skill.Name,
-		Tier:        tierLabel(),
+		// Indexed until the version is resolved: the verdict is about a specific
+		// version, so it cannot be answered before we know which one this is.
+		Tier:        tierLabel(TierIndexed),
 		Limitations: []limitation{},
 		Derivation:  derivation(skill),
 		License:     licenseInfo{Status: statusLabel(LicenseStatusUnknown)},
@@ -464,6 +466,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill registry.Skill) (skillD
 		CreatedAt:     timeString(ver.CreatedAt),
 	}
 	out.License = licenseFrom(ver)
+	out.Tier = tierLabel(curationTier(skill, ver.ID))
 
 	// DISC-002「Agent 相容」. Absent is the normal state for anything nobody has
 	// run yet, and it leaves the two axes on unverified rather than failing the
@@ -798,14 +801,37 @@ func (s *Service) scanPackage(ctx context.Context, key string) (skillpkg.Report,
 
 // --- assembly --------------------------------------------------------------
 
-// tierLabel is TierIndexed for everything this endpoint can return. Curation is
-// a recorded human review (PDM-002 nine-item checklist) and nothing records it
-// yet — CONTENT-003's promotion workflow is what would. Membership of a catalog
-// workspace is not that review, and labelling it 精選 would be the endorsement
-// PDM-002 explicitly warns against.
-func tierLabel() labelled {
-	d := TierIndexed.Display()
-	return labelled{Value: string(TierIndexed), Label: d.Badge, Note: d.TrustIndicator}
+// tierLabel renders one tier. It used to take no argument and return
+// TierIndexed for everything, because curation is a recorded human review and
+// nothing recorded it — the fifteen entries that passed PDM-002's nine checks
+// looked exactly like the thirty that never went through them. 0042 is that
+// record, and curationTier below is what reads it.
+func tierLabel(t Tier) labelled {
+	d := t.Display()
+	return labelled{Value: string(t), Label: d.Badge, Note: d.TrustIndicator}
+}
+
+// curationTier is the verdict as it applies to the version being shown.
+//
+// 精選 survives only while the reviewed version is still the newest one. Five of
+// PDM-002's nine checks are about specific bytes — script line count, no likely
+// secrets, a valid spec — so carrying the badge onto a version nobody read would
+// be exactly the endorsement PDM-002 warns against. A new version therefore
+// drops the skill back to 已索引 with no operator action and no job.
+//
+// Membership of a catalog workspace is still not a review, and neither is a
+// tier written in a seed file: the only thing this trusts is the column.
+func curationTier(skill registry.Skill, latestVersionID pgtype.UUID) Tier {
+	if skill.CurationTier != string(TierCurated) {
+		return TierIndexed
+	}
+	if !skill.CuratedVersionID.Valid || !latestVersionID.Valid {
+		return TierIndexed
+	}
+	if skill.CuratedVersionID.Bytes != latestVersionID.Bytes {
+		return TierIndexed
+	}
+	return TierCurated
 }
 
 func statusLabel(s LicenseStatus) labelled {

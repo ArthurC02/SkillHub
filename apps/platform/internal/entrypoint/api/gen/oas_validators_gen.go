@@ -3351,6 +3351,17 @@ func (s PublicSearchSkillsScript) Validate() error {
 	}
 }
 
+func (s PublicSearchSkillsTier) Validate() error {
+	switch s {
+	case "curated":
+		return nil
+	case "indexed":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s PublicSearchSkillsValidation) Validate() error {
 	switch s {
 	case "passed":

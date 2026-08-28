@@ -112,6 +112,7 @@ export type HomeSearch = {
   script?: "yes" | "no";
   validation?: "passed" | "unverified";
   agent?: AgentRuntime;
+  tier?: "curated" | "indexed";
 };
 
 const AGENT_RUNTIMES: AgentRuntime[] = ["native", "transpiled", "failed", "unverified"];
@@ -130,6 +131,9 @@ const indexRoute = createRoute({
     agent: AGENT_RUNTIMES.includes(search.agent as AgentRuntime)
       ? (search.agent as AgentRuntime)
       : undefined,
+    // `external` is deliberately not accepted: it means "never imported", so
+    // the server refuses it too (curationTierValues in discovery/http.go).
+    tier: search.tier === "curated" || search.tier === "indexed" ? search.tier : undefined,
   }),
 });
 

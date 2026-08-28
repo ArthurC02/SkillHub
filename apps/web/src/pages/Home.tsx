@@ -36,6 +36,7 @@ export function Home() {
     script: search.script,
     validation: search.validation,
     agent: search.agent,
+    tier: search.tier,
   };
   // `undefined` = nothing submitted yet, so no request. `""` is a blank submit,
   // which the server answers with no_results plus the suggestion copy (DISC-005);
@@ -258,32 +259,29 @@ export function Home() {
  * DISC-003 (spec 02:DISC-002「使用者可依類別、來源層級、Agent、是否包含 Script、
  * 是否需要 MCP 與驗證狀態篩選」).
  *
- * Three of the six dimensions have per-row data in this build and are live
- * controls. The other three are rendered as disabled controls carrying the
+ * Four of the six dimensions have per-row data in this build and are live
+ * controls. The other two are rendered as disabled controls carrying the
  * reason, rather than being hidden or — far worse — offered as controls that
- * accept a value and narrow nothing. The server rejects those three with 400 for
+ * accept a value and narrow nothing. The server rejects those two with 400 for
  * the same reason, so a hand-edited URL cannot get an unfiltered page that looks
  * filtered.
  *
  * The wording of each reason is the honest one, not a "coming soon": MCP has no
- * source of truth anywhere in the pipeline, and 類別/來源層級 are curation data
- * the platform never stored.
+ * source of truth anywhere in the pipeline, and 類別 is curation data the
+ * platform never stored.
  *
  * Agent 相容 became live with the M2 baseline measurements (0022): 45 skills,
  * one sandbox Run each. Only its runtime axis is a filter — every measured skill
- * came back `activated`, so a capability filter would separate nothing, which is
- * exactly why 來源層級 is still disabled.
+ * came back `activated`, so a capability filter would separate nothing.
+ * 來源層級 became live with migration 0042, which is the first time a reviewed
+ * skill was distinguishable from an unreviewed one in a column rather than in a
+ * spreadsheet.
  */
 const UNAVAILABLE_FILTERS: Array<{ key: string; label: string; reason: string }> = [
   {
     key: "category",
     label: "類別",
     reason: "類別目前只存在於策展清單，沒有存進平台，匯入流程也不收這個欄位，因此無法篩選。",
-  },
-  {
-    key: "tier",
-    label: "來源層級",
-    reason: "目前目錄內每一個 Skill 都是「已索引」層級，人工精選審查尚未開始，篩了也分不出東西。",
   },
   {
     key: "mcp",
@@ -374,9 +372,46 @@ function FilterBar({
         </select>
       </label>
 
+      {/*
+        DISC-002 來源層級, live since migration 0042 stored `skills.curation_tier`.
+        The badge on each row (LabelledBadge kind="tier") is the server's own
+        copy and is unchanged; this control only narrows, and its option text is
+        the same two badge strings so a filter and a badge cannot disagree.
+
+        Two options, not three: `external` means "not imported at all", so no row
+        can carry it — offering it would be a control promising a page that
+        cannot exist (server: curationTierValues in discovery/http.go).
+      */}
+      <label>
+        來源層級
+        <select
+          value={filters.tier ?? ""}
+          disabled={disabled}
+          aria-describedby={`${whyDisabled ? `${whyDisabled} ` : ""}filter-why-tier`}
+          onChange={(event) =>
+            onChange({ tier: (event.target.value || undefined) as SearchFilters["tier"] })
+          }
+        >
+          <option value="">不限</option>
+          <option value="curated">精選</option>
+          <option value="indexed">已索引</option>
+        </select>
+        {/*
+          「已索引」 is emphatically not 「沒被審查過」: 精選 needs the nine-item
+          review to have passed *and* the reviewed version to still be the newest
+          one, so publishing a new version drops a curated skill back to 已索引
+          on its own. Copy that said 未經人工審查 would be false for exactly those
+          rows (server: discovery/detail.go, tier resolution).
+        */}
+        <span id="filter-why-tier" className="note">
+          「精選」是這一版通過九項人工審查的 Skill；「已索引」是目前這一版沒有帶著人工審查結論——
+          包含出了新版本、審查還沒跟上的那些，不等於從沒被審過。
+        </span>
+      </label>
+
       {disabled && (
         <p className="note" id="filter-why-query">
-          先描述一次任務，才會有結果可以篩：上面三項在第一次搜尋之後才能使用。
+          先描述一次任務，才會有結果可以篩：上面四項在第一次搜尋之後才能使用。
         </p>
       )}
 
@@ -394,11 +429,11 @@ function FilterBar({
 
       {/*
         DISC-003 honesty note, sitting with the controls rather than in a help
-        page: a filter bar with four dead controls has to say why on the spot,
+        page: a filter bar with dead controls has to say why on the spot,
         or it reads as a broken UI instead of an absent capability.
       */}
       <p className="note">
-        篩選條件只會用平台真的有的資料。上面標為「無法篩選」的三項，是因為平台目前沒有這些資料，
+        篩選條件只會用平台真的有的資料。上面標為「無法篩選」的兩項，是因為平台目前沒有這些資料，
         不是因為所有 Skill 都不符合。
       </p>
     </div>

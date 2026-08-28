@@ -105,9 +105,10 @@ export interface PublicSearchResult {
      */
     rankNote?: string;
     /**
-     * Collection tier (DISC-002 來源層級). Always `indexed` here for the
-     * same reason as on the detail view: curation is a recorded human
-     * review and nothing records one yet.
+     * Collection tier (DISC-002 來源層級): `curated` | `indexed`, resolved
+     * per row against the skill's newest version — see the `tier` query
+     * parameter for what `indexed` does and does not mean. `external` never
+     * appears here: a result in this list was imported by definition.
      * 
      * @type {Labelled}
      * @memberof PublicSearchResult

@@ -21,6 +21,11 @@ type Skill struct {
 	TakedownAt          pgtype.Timestamptz
 	AccessRestriction   *string
 	Redistribution      string
+	// CurationTier is the PDM-002 verdict and CuratedVersionID is the version it
+	// examined (0042). Both travel together on purpose: the verdict alone cannot
+	// say whether it is still about the bytes a reader is looking at.
+	CurationTier     string
+	CuratedVersionID pgtype.UUID
 }
 
 // Version is Registry's immutable version fact.
@@ -220,6 +225,7 @@ func skillDTO(row gen.Skill) Skill {
 		ForkedFromSkillID: row.ForkedFromSkillID, ForkedFromVersionID: row.ForkedFromVersionID,
 		TakedownAt: row.TakedownAt, AccessRestriction: row.AccessRestriction,
 		Redistribution: row.Redistribution,
+		CurationTier:   row.CurationTier, CuratedVersionID: row.CuratedVersionID,
 	}
 }
 

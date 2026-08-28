@@ -39,6 +39,7 @@ export function searchSkills(query: string, filters: SearchFilters = {}, limit =
   if (filters.script) params.set("script", filters.script);
   if (filters.validation) params.set("validation", filters.validation);
   if (filters.agent) params.set("agent", filters.agent);
+  if (filters.tier) params.set("tier", filters.tier);
   return apiFetch<PublicSearchResponse>(`/api/skills/search?${params.toString()}`);
 }
 
@@ -61,6 +62,7 @@ export function useSkillSearch(query: string, filters: SearchFilters, enabled: b
       filters.script ?? "",
       filters.validation ?? "",
       filters.agent ?? "",
+      filters.tier ?? "",
     ],
     queryFn: () => searchSkills(query, filters),
     enabled,

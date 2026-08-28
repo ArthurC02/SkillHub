@@ -112,7 +112,7 @@ func (q *Queries) CreateSkillSource(ctx context.Context, arg CreateSkillSourcePa
 }
 
 const getSkillByName = `-- name: GetSkillByName :one
-SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution FROM skills
+SELECT id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id FROM skills
 WHERE workspace_id = $1 AND name = $2 AND deleted_at IS NULL
 `
 
@@ -138,6 +138,8 @@ func (q *Queries) GetSkillByName(ctx context.Context, arg GetSkillByNameParams) 
 		&i.TakedownReason,
 		&i.AccessRestriction,
 		&i.Redistribution,
+		&i.CurationTier,
+		&i.CuratedVersionID,
 	)
 	return i, err
 }

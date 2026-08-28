@@ -818,25 +818,90 @@ test("DISC-003: the filters the platform has no data for are disabled and say wh
   await render(<App />);
   await submitSearch("pdf");
 
-  // The three dimensions with per-row data are usable. Agent 相容 joined them
-  // with the M2 baseline measurements (0022); the assertion below is what would
-  // catch it silently reverting to a dead control.
+  // The four dimensions with per-row data are usable. Agent 相容 joined them
+  // with the M2 baseline measurements (0022) and 來源層級 with migration 0042;
+  // the assertions below are what would catch either silently reverting to a
+  // dead control.
   expect(filterSelect("是否包含 Script").disabled).toBe(false);
   expect(filterSelect("驗證狀態").disabled).toBe(false);
   expect(filterSelect("Agent 相容").disabled).toBe(false);
+  expect(filterSelect("來源層級").disabled).toBe(false);
 
-  // The three without are present, disabled, and each states its own reason —
+  // The two without are present, disabled, and each states its own reason —
   // not hidden, and never offered as a control that accepts a value and
   // narrows nothing.
-  for (const label of ["類別", "來源層級", "需要 MCP"]) {
+  for (const label of ["類別", "需要 MCP"]) {
     expect(filterSelect(label).disabled).toBe(true);
   }
   const text = container.querySelector(".filter-bar")!.textContent ?? "";
   expect(text).toContain("只存在於策展清單");
-  expect(text).toContain("人工精選審查尚未開始");
   expect(text).toContain("沒有記錄是否需要 MCP");
+  // 來源層級 is no longer one of them: its old excuse must be gone from the
+  // bar, not merely outvoted by a live control sitting next to it.
+  expect(text).not.toContain("人工精選審查尚未開始");
   // The reason a dimension is dead must not read as "nothing matched".
   expect(text).toContain("不是因為所有 Skill 都不符合");
+});
+
+// DISC-002 來源層級, live since migration 0042 gave `skills.curation_tier` a
+// second value. Same contract as the three filters above.
+test("DISC-003: the 來源層級 filter reaches the request and the shareable URL", async () => {
+  const calls = stubSearch({ ...EMPTY, query: "pdf", no_results: true });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  await chooseFilter("來源層級", "curated");
+  expect(calls[calls.length - 1]).toContain("tier=curated");
+  expect(new URLSearchParams(window.location.search).get("tier")).toBe("curated");
+
+  await chooseFilter("來源層級", "");
+  expect(new URLSearchParams(window.location.search).has("tier")).toBe(false);
+  expect(calls[calls.length - 1]).not.toContain("tier=");
+});
+
+test("DISC-003: 來源層級 offers the two tiers a row can carry, and says what 已索引 means", async () => {
+  stubSearch({ ...EMPTY, query: "pdf", no_results: true });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  // `external` means "never imported", so no row carries it and it must not be
+  // offered — a third option would promise a page that cannot exist.
+  const options = Array.from(filterSelect("來源層級").options).map((o) => o.value);
+  expect(options).toEqual(["", "curated", "indexed"]);
+
+  // 精選 survives only while the reviewed version is still the newest one, so a
+  // curated skill drops back to 已索引 on its next release. Copy calling 已索引
+  // "never reviewed" would be false for exactly those rows.
+  const text = container.querySelector("#filter-why-tier")!.textContent ?? "";
+  expect(text).toContain("沒有帶著人工審查結論");
+  expect(text).not.toContain("未經人工審查");
+});
+
+test("DISC-002: the tier badge is the server's value, not a front-end guess", async () => {
+  stubSearch({
+    ...EMPTY,
+    query: "pdf",
+    results: [
+      {
+        ...HIT_FACETS,
+        // The only row on this page that is not the fixture's 已索引 default.
+        tier: { value: "curated", label: "精選", note: "已完成人工檢視。" },
+        skill_id: "11111111-1111-1111-1111-111111111111",
+        name: "PDF Summariser",
+        summary: "把 PDF 轉成摘要",
+        rank: 0.82,
+        match_reason: null,
+        match_reason_source: null,
+      },
+    ],
+  });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  const badge = container.querySelector(".search-result .result-facets")!.textContent ?? "";
+  expect(badge).toContain("精選");
+  // The fixture default, which is what a hardcoded tierLabel() would still print.
+  expect(badge).not.toContain("已收錄");
 });
 
 test("DISC-003: 清除所有篩選 clears every filter, not the two somebody remembered", async () => {

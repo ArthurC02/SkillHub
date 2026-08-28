@@ -1,8 +1,10 @@
 package catalog
 
 import (
+	"regexp"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
@@ -102,7 +104,7 @@ func TestTemplateMatchReason(t *testing.T) {
 		},
 	}
 
-	const noOverlap = "No shared keywords"
+	const noOverlap = "沒有共同的關鍵字"
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := templateMatchReason(tc.skill, tc.summary, tc.query)
@@ -205,6 +207,56 @@ func TestIsComprehensible(t *testing.T) {
 	for _, q := range searchable {
 		if !isComprehensible(q) {
 			t.Errorf("%q should be searchable", q)
+		}
+	}
+}
+
+// latinProse is a run of Latin letters long enough to be a word of English
+// rather than a term quoted back from the user's own query ("pdf", "csv") or a
+// product name. Three is the tokenizer's own floor for "this is a word".
+var latinProse = regexp.MustCompile(`[A-Za-z]{3,}`)
+
+// The interface is Traditional Chinese and the front end renders these strings
+// verbatim — it keeps no translation table (WorkspaceRuns.tsx:65-83), so the
+// server's words are the user's words.
+//
+// This test exists because nothing else held the line. Every assertion on this
+// copy — here and in disc_integration_test.go — checked only that the string
+// was non-empty, so three English sentences shipped on a Chinese search page
+// and no test went red for it. Non-empty is not a language.
+func TestUserFacingSearchCopySpeaksTheInterfaceLanguage(t *testing.T) {
+	cases := []struct {
+		what string
+		got  string
+	}{
+		{"noResultsSuggestion", noResultsSuggestion},
+		// The no-overlap reason: no query terms can leak into it by definition.
+		{"templateMatchReason (no overlap)", templateMatchReason("csv-cleaner", "Normalises tabular files", "把發票裡的數字抓出來")},
+		// The overlap reason, with a CJK query so the quoted term is not Latin
+		// either and the whole sentence must be Chinese.
+		{"templateMatchReason (overlap)", templateMatchReason("資料分析助手", "產生報表", "我要做資料分析")},
+	}
+	for _, tc := range cases {
+		if !strings.ContainsFunc(tc.got, func(r rune) bool { return unicode.Is(unicode.Han, r) }) {
+			t.Errorf("%s has no Han characters at all, so it is not the interface language: %q", tc.what, tc.got)
+		}
+		if w := latinProse.FindString(tc.got); w != "" {
+			t.Errorf("%s reads as English prose (%q): %q", tc.what, w, tc.got)
+		}
+	}
+
+	// GEN-004 anchors the generation entry point on the page's own
+	// "沒有夠接近的 Skill。" (Home.tsx). The server's suggestion sits directly
+	// under it, so repeating the sentence would give the anchor two candidates
+	// and the user the same line twice.
+	if strings.Contains(noResultsSuggestion, "沒有夠接近的 Skill") {
+		t.Errorf("the suggestion repeats the page's own no-results line: %q", noResultsSuggestion)
+	}
+
+	// DISC-001 條 3 wants all three, not the two the English copy asked for.
+	for _, want := range []string{"任務", "輸入", "輸出"} {
+		if !strings.Contains(noResultsSuggestion, want) {
+			t.Errorf("DISC-001 asks the user for 任務/輸入/輸出; the suggestion never says %q: %q", want, noResultsSuggestion)
 		}
 	}
 }

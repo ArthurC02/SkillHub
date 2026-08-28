@@ -244,15 +244,21 @@ export interface PublicSearchResponse {
  * result page is linkable. `undefined` is "this dimension is not filtered",
  * which is a third state distinct from `no`/`unverified`.
  *
- * Only the two dimensions with per-row data are here. 類別／來源層級／Agent
- * 相容／MCP are rejected by the server with the reason why (see
- * UNAVAILABLE_FILTERS in Home.tsx) and are rendered as disabled controls.
+ * Only the dimensions with per-row data are here. 類別 and MCP are rejected by
+ * the server with the reason why (see UNAVAILABLE_FILTERS in Home.tsx) and are
+ * rendered as disabled controls.
  */
 export interface SearchFilters {
   script?: "yes" | "no";
   validation?: "passed" | "unverified";
   /** DISC-002 Agent dimension, runtime axis (02:DISC-002 篩選維度的允收階段: M2). */
   agent?: AgentRuntime;
+  /**
+   * DISC-002 來源層級, since migration 0042 stored `skills.curation_tier`.
+   * `external` is not a value: it means "never imported", so no row carries it
+   * and there is nothing to filter (server: curationTierValues in http.go).
+   */
+  tier?: "curated" | "indexed";
 }
 
 // ---- GET /api/skills/{id} (DISC-006, DISC-008) ----

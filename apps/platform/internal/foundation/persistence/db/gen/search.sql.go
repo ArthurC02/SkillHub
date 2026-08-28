@@ -194,19 +194,19 @@ func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context) (int64, error
 
 const publicHybridSearchSkills = `-- name: PublicHybridSearchSkills :many
 WITH vec AS (
-    SELECT s.skill_id, s.embedding <=> $6::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $7::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
     WHERE s.embedding IS NOT NULL
-    ORDER BY s.embedding <=> $6::vector ASC
+    ORDER BY s.embedding <=> $7::vector ASC
     LIMIT 50
 ),
 fts AS (
-    SELECT s.skill_id, s.embedding <=> $6::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $7::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE s.tsv @@ websearch_to_tsquery('english', $7::text)
-    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $7::text)) DESC
+    WHERE s.tsv @@ websearch_to_tsquery('english', $8::text)
+    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $8::text)) DESC
     LIMIT 50
 ),
 candidates AS (
@@ -228,6 +228,7 @@ SELECT c.skill_id, s.name,
        COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
+       COALESCE(cur.tier, 'indexed') AS curation_tier,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
        (c.distance IS NULL)::bool AS unranked,
        -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
@@ -266,6 +267,24 @@ LEFT JOIN LATERAL (
     ORDER BY sc.measured_at DESC
     LIMIT 1
 ) cmp ON true
+LEFT JOIN LATERAL (
+    -- 02:CONTENT-001 tier, resolved here rather than stored. It is a verdict
+    -- about specific bytes, so it belongs beside the version it judged, exactly
+    -- like the compatibility row above -- and for the same reason it is joined
+    -- rather than projected into search_documents: 0015 keeps that table for
+    -- things derivable from the package, and a human review is not one.
+    --
+    -- 精選 only while the reviewed version is still the newest. A new version
+    -- silently drops the row back to 已索引 with no job and no operator action;
+    -- see 0042. A ('curated', NULL) row -- reachable only when the reviewed
+    -- version was purged -- lands in the ELSE, which is the fail-closed answer.
+    SELECT CASE
+        WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
+        THEN 'curated' ELSE 'indexed'
+    END AS tier
+    FROM skills sk
+    WHERE sk.id = c.skill_id
+) cur ON true
 WHERE (c.distance IS NULL OR c.distance <= $1::float8)
   -- DISC-003 filters, applied after candidate generation.
   --
@@ -287,8 +306,12 @@ WHERE (c.distance IS NULL OR c.distance <= $1::float8)
     $4::text IS NULL
     OR COALESCE(cmp.runtime, 'unverified') = $4::text
   )
+  AND (
+    $5::text IS NULL
+    OR COALESCE(cur.tier, 'indexed') = $5::text
+  )
 ORDER BY c.distance ASC NULLS LAST
-LIMIT $5
+LIMIT $6
 `
 
 type PublicHybridSearchSkillsParams struct {
@@ -296,6 +319,7 @@ type PublicHybridSearchSkillsParams struct {
 	HasScript      *bool
 	SpecValidated  *bool
 	AgentRuntime   *string
+	CurationTier   *string
 	ResultLimit    int32
 	QueryEmbedding *pgvector.Vector
 	Query          string
@@ -313,6 +337,7 @@ type PublicHybridSearchSkillsRow struct {
 	AgentRuntime      string
 	AgentRuntimeImage string
 	AgentMeasuredAt   pgtype.Timestamptz
+	CurationTier      string
 	Rank              float64
 	Unranked          bool
 	TotalMatches      int64
@@ -367,6 +392,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 		arg.HasScript,
 		arg.SpecValidated,
 		arg.AgentRuntime,
+		arg.CurationTier,
 		arg.ResultLimit,
 		arg.QueryEmbedding,
 		arg.Query,
@@ -390,6 +416,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 			&i.AgentRuntime,
 			&i.AgentRuntimeImage,
 			&i.AgentMeasuredAt,
+			&i.CurationTier,
 			&i.Rank,
 			&i.Unranked,
 			&i.TotalMatches,
@@ -426,6 +453,7 @@ SELECT s.skill_id, s.name,
        COALESCE(cmp.runtime, 'unverified') AS agent_runtime,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
+       COALESCE(cur.tier, 'indexed') AS curation_tier,
        -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
        -- 2026-08-25 this page said 「超過 N 個」 -- a LOWER BOUND, from which a
        -- reader cannot tell 21 from 2100 -- because there was no count to say.
@@ -457,6 +485,24 @@ LEFT JOIN LATERAL (
     ORDER BY c.measured_at DESC
     LIMIT 1
 ) cmp ON true
+LEFT JOIN LATERAL (
+    -- 02:CONTENT-001 tier, resolved here rather than stored. It is a verdict
+    -- about specific bytes, so it belongs beside the version it judged, exactly
+    -- like the compatibility row above -- and for the same reason it is joined
+    -- rather than projected into search_documents: 0015 keeps that table for
+    -- things derivable from the package, and a human review is not one.
+    --
+    -- 精選 only while the reviewed version is still the newest. A new version
+    -- silently drops the row back to 已索引 with no job and no operator action;
+    -- see 0042. A ('curated', NULL) row -- reachable only when the reviewed
+    -- version was purged -- lands in the ELSE, which is the fail-closed answer.
+    SELECT CASE
+        WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
+        THEN 'curated' ELSE 'indexed'
+    END AS tier
+    FROM skills sk
+    WHERE sk.id = s.skill_id
+) cur ON true
 WHERE s.tsv @@ websearch_to_tsquery('english', $1::text)
   AND (
     $2::bool IS NULL
@@ -472,8 +518,12 @@ WHERE s.tsv @@ websearch_to_tsquery('english', $1::text)
     $4::text IS NULL
     OR COALESCE(cmp.runtime, 'unverified') = $4::text
   )
+  AND (
+    $5::text IS NULL
+    OR COALESCE(cur.tier, 'indexed') = $5::text
+  )
 ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $1::text)) DESC
-LIMIT $5
+LIMIT $6
 `
 
 type PublicSearchSkillsParams struct {
@@ -481,6 +531,7 @@ type PublicSearchSkillsParams struct {
 	HasScript     *bool
 	SpecValidated *bool
 	AgentRuntime  *string
+	CurationTier  *string
 	ResultLimit   int32
 }
 
@@ -496,6 +547,7 @@ type PublicSearchSkillsRow struct {
 	AgentRuntime      string
 	AgentRuntimeImage string
 	AgentMeasuredAt   pgtype.Timestamptz
+	CurationTier      string
 	TotalMatches      int64
 }
 
@@ -564,6 +616,7 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 		arg.HasScript,
 		arg.SpecValidated,
 		arg.AgentRuntime,
+		arg.CurationTier,
 		arg.ResultLimit,
 	)
 	if err != nil {
@@ -585,6 +638,7 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 			&i.AgentRuntime,
 			&i.AgentRuntimeImage,
 			&i.AgentMeasuredAt,
+			&i.CurationTier,
 			&i.TotalMatches,
 		); err != nil {
 			return nil, err

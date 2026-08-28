@@ -74,10 +74,21 @@ const (
 const MaxCosineDistance = 0.75
 
 // noResultsSuggestion is the DISC-001 prompt to refine. It asks for the three
-// things the golden set found missing from the queries that failed: the format,
-// the input in hand, and the wanted output.
-const noResultsSuggestion = "No skill in the catalog is close enough to this task. " +
-	"Try naming the file format you have, the input you are starting from, and the output you want."
+// things the golden set found missing from the queries that failed: the task
+// itself, the input in hand, and the wanted output. DISC-001 條 3 names those
+// three; the earlier wording opened on the file format and left the task
+// implicit, which is two and a half of them.
+//
+// It no longer restates "沒有夠接近的 Skill" either. That sentence is rendered
+// by the page above this one (Home.tsx) and is GEN-004's anchor for the
+// generation entry point, so repeating it here would put it on screen twice and
+// give the anchor two candidates.
+//
+// Written in the interface language because the front end renders this string
+// verbatim and keeps no translation table of its own (the reasoning is recorded
+// at WorkspaceRuns.tsx:65-83): whatever the server sends is what the user reads.
+const noResultsSuggestion = "試著補充三件事:你想完成的任務、你手上已經有的輸入," +
+	"以及你預期得到的輸出。"
 
 // searchResult is the public JSON shape for each search hit (DISC-002: name,
 // plain summary, source tier, agent compatibility, dependencies, risk hint and
@@ -152,8 +163,10 @@ const (
 // resultFacets fills the DISC-002 columns that are the same for every row of
 // every page, and the ones read straight out of the projection.
 //
-// Tier is TierIndexed unconditionally, for the reason tierLabel() gives: nothing
-// records a curation review yet, and index membership is not one.
+// Tier arrives already resolved from SQL: the query compares the skill's
+// curated_version_id against its newest version, so a curated skill whose
+// content moved on comes back as 已索引 without anything here having to know
+// the rule. See 0042 and the `cur` lateral in search.sql.
 //
 // spec_validation is `passed` whenever the row has a saved version. That is not
 // an assumption — skillpkg.Validate blocks the import on any error-level
@@ -167,8 +180,8 @@ const (
 // field reads as "fine". The runtime image travels with them: the verdict is
 // about a (version, image) pair, and the same package answers differently on an
 // image with a different set of interpreters.
-func resultFacets(r *searchResult, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz, compat compatibility) {
-	r.Tier = tierLabel()
+func resultFacets(r *searchResult, tier string, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz, compat compatibility) {
+	r.Tier = tierLabel(Tier(tier))
 	r.Dependencies = dependencyTags(tagsJSON)
 	r.Risk = riskHint(scanJSON)
 	r.VerifiedAt = timeString(verifiedAt)
@@ -254,10 +267,22 @@ type searchFilters struct {
 	// "not native" would otherwise silently mean "transpiled, failed, or never
 	// measured", which are three different things to a reader choosing a skill.
 	AgentRuntime *string
+	// CurationTier is matched against the resolved verdict, so `indexed` asks
+	// for everything that is not currently curated — including a skill whose
+	// curated version has been superseded. That is the honest reading: the
+	// question a filter answers is "what am I looking at now".
+	CurationTier *string
 }
 
 func (f searchFilters) active() bool {
-	return f.HasScript != nil || f.SpecValidated != nil || f.AgentRuntime != nil
+	return f.HasScript != nil || f.SpecValidated != nil || f.AgentRuntime != nil ||
+		f.CurationTier != nil
+}
+
+// curationTierValues are the values ?tier= accepts. TierExternal is not one of
+// them: an external result was never imported, so it has no row to filter.
+var curationTierValues = map[string]bool{
+	string(TierCurated): true, string(TierIndexed): true,
 }
 
 // agentRuntimeValues are the values ?agent= accepts — the runtime axis of
@@ -284,17 +309,16 @@ var agentRuntimeValues = map[string]bool{
 //     in tools/content/seed-skills.json. Nothing persists them: the import path
 //     takes a package, not a category, and a user-imported skill would have none
 //     at all. Storing them is CONTENT-003 curation work, not search work.
-//   - tier — every indexed row is TierIndexed and nothing records a curation
-//     review yet (see tierLabel), so the dimension has exactly one value and
-//     filtering on it cannot separate anything.
 //   - mcp — no MCP signal is captured anywhere in the scan or the manifest;
 //     remote MCP is out of the MVP first release (AGENTS.md 範圍注意).
 //
 // `agent` left this map when 0022 gave it per-row data (02:DISC-002 篩選維度的
-// 允收階段 lists it as M2, 依 Sandbox 實測).
+// 允收階段 lists it as M2, 依 Sandbox 實測). `tier` left it when 0042 gave the
+// catalogue a second value — until then the note here was true, and it is worth
+// remembering that it stayed true for twelve days after the review that would
+// have made it false had already been recorded somewhere else.
 var unavailableFilters = map[string]string{
 	"category": "類別尚未存入平台:目前只存在於策展清單,匯入流程不收此欄位(CONTENT-003)。",
-	"tier":     "來源層級目前全目錄同為「已索引」,沒有可區分的值(PDM-002 人工精選審查尚未開始)。",
 	"mcp":      "是否需要 MCP 沒有任何來源資料:靜態掃描與 manifest 都沒有這項訊號,遠端 MCP 也不在 MVP 首發。",
 }
 
@@ -349,6 +373,12 @@ func parseFilters(r *http.Request) (searchFilters, error) {
 			return searchFilters{}, errors.New(`agent must be "native", "transpiled", "failed" or "unverified"`)
 		}
 		out.AgentRuntime = &v
+	}
+	if v := q.Get("tier"); v != "" {
+		if !curationTierValues[v] {
+			return searchFilters{}, errors.New(`tier must be "curated" or "indexed"`)
+		}
+		out.CurationTier = &v
 	}
 	return out, nil
 }
@@ -572,11 +602,17 @@ func applyMatchReasons(hits []searchResult, query string, reasons []llmclient.Ma
 // the query anyway (what this used to do) produced a sentence that looked like
 // a reason and contained none, which is worse than admitting the ranking came
 // from semantic similarity.
+//
+// Both sentences are in the interface language for the reason given at
+// noResultsSuggestion: they are rendered verbatim. Only the interpolated terms
+// are in whatever script the query and the document happened to share.
 func templateMatchReason(name, summary, query string) string {
 	if terms := overlapTerms(query, name+" "+summary); len(terms) > 0 {
-		return "Matches your query on: " + strings.Join(terms, ", ") + "."
+		return "查詢與文件共同出現：" + strings.Join(terms, "、") + "。"
 	}
-	return "No shared keywords — ranked by semantic similarity to your task description."
+	// Deliberately not "以語意找到的結果": there is no lexical evidence to show,
+	// so this states what ordered the row and stops short of claiming it fits.
+	return "沒有共同的關鍵字,這一列是以語意相似度靠近你的任務描述而排進來的,未必真的合用。"
 }
 
 // overlapTerms returns the tokens the query and the document share, in query
