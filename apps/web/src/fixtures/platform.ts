@@ -296,6 +296,30 @@ export const RUNS = {
       created_at: "2026-08-17T00:00:00Z",
       finished_at: "2026-08-17T00:04:00Z",
     },
+    // 同一個 Test Case 的第二次 Run。存在的理由是比較頁的候選清單:只有一列時,
+    // 「候選裡沒有自己」與「候選清單根本沒渲染」看起來一模一樣。
+    {
+      run_id: OTHER_RUN,
+      status: "failed",
+      skill_id: SKILL,
+      skill_name: "PDF Summariser",
+      skill_version_id: VERSION,
+      test_case_id: TEST_CASE,
+      provider: "self-hosted",
+      status_reason: "沙箱在第 3 步逾時。",
+      cleanup_status: {
+        value: "cleaned",
+        label: "已清理",
+        note: "沙箱已拆除。",
+      },
+      evaluation: {
+        value: "not_met",
+        label: "不符合",
+        note: "依這個 Run 當時的驗收條件判定為不符合。",
+      },
+      created_at: "2026-08-16T00:00:00Z",
+      finished_at: "2026-08-16T00:02:00Z",
+    },
   ],
 };
 

@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useRunComparison, useVersionDiff } from "../api/evaluation";
 import type { ComparisonSide, RunComparison } from "../api/evaluation";
+import { useRun, useRuns } from "../api/runs";
+import { RunVerdict } from "../components/RunVerdict";
 import { CRITERION_LABEL, OVERALL_LABEL, RUN_STATUS_LABEL } from "./RunEvaluation";
 
 /**
@@ -65,29 +67,79 @@ export function RunCompare() {
   const me = useMe();
   const loggedOut = unauthenticated(me.error);
 
+  /*
+   * The door handle. This screen was complete except that using it began with
+   * finding a 36-char uuid on another page and pasting it in — so the candidates
+   * are read here instead: the runs of the same Test Case this run was frozen
+   * from (GET /runs?test_case_id=, WS-004).
+   *
+   * Everything below is still a read. Picking a candidate changes which existing
+   * run is fetched and nothing else; there is deliberately no re-run here, for
+   * the reason the comparison handler's own header gives — a second way to start
+   * a run is a way around the permission confirmation of TEST-009.
+   */
+  const self = useRun(runId);
+  const testCaseId = self.data?.test_case_id;
+  const siblings = useRuns(testCaseId);
+  // Self-comparison is a 400 from the server, so this side is not a candidate.
+  // Gated on `testCaseId` as well: until it resolves the list is the whole
+  // workspace's history, which is not the same question.
+  const candidates = testCaseId
+    ? (siblings.data?.pages.flatMap((p) => p.runs) ?? []).filter((r) => r.run_id !== runId)
+    : [];
+
+  // The selection lives in the URL so a comparison is linkable, the same rule
+  // the Explorer's compare screen follows — the picker only writes it.
+  const pick = (id: string) =>
+    void navigate({ to: "/runs/$runId/compare", params: { runId }, search: { against: id } });
+
   const pickForm = (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        // The selection lives in the URL so a comparison is linkable, the same
-        // rule the Explorer's compare screen follows.
-        void navigate({
-          to: "/runs/$runId/compare",
-          params: { runId },
-          search: { against: draft },
-        });
-      }}
-    >
-      <label htmlFor="against">要比較的另一個 Run ID</label>{" "}
-      <input
-        id="against"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        size={40}
-        placeholder="另一個 Run 的平台 run_id"
-      />{" "}
-      <button type="submit">比較</button>
-    </form>
+    <>
+      {candidates.length > 0 ? (
+        // Same two axes and the same order as the other two run histories
+        // (WorkspaceRuns, TestCases): 任務判定 first, 執行狀態 second, time last.
+        // No uuid on the row — not showing one is the entire point of this list.
+        <ul className="download-list">
+          {candidates.map((r) => (
+            <li key={r.run_id} className="download-item">
+              <p className="badge-row">
+                <RunVerdict verdict={r.evaluation} />
+              </p>
+              <p className="badge-row">
+                <span className="badge">執行狀態：{RUN_STATUS_LABEL[r.status] ?? r.status}</span>
+              </p>
+              {r.status_reason && <p className="note">{r.status_reason}</p>}
+              <p>
+                <button type="button" onClick={() => pick(r.run_id)}>
+                  與這一次比較（建立於 {r.created_at}）
+                </button>
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        // §2.4: a control that is gone has to say why. The paste box stays either
+        // way — it is the only route to a run of another Test Case or Skill.
+        <p>這個 Test Case 目前只有這一次 Run，沒有同一個 Test Case 的其他 Run 可選。</p>
+      )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          pick(draft);
+        }}
+      >
+        <label htmlFor="against">要比較的另一個 Run ID</label>{" "}
+        <input
+          id="against"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          size={40}
+          placeholder="另一個 Run 的平台 run_id"
+        />{" "}
+        <button type="submit">比較</button>
+        <p className="note">要比較別的 Test Case 或別的 Skill 的 Run 時，貼上它的 ID。</p>
+      </form>
+    </>
   );
 
   return (
@@ -127,7 +179,13 @@ export function RunCompare() {
         pickForm
       )}
 
-      {against === "" && !loggedOut && <p>輸入另一個 Run 的 ID 後開始比較。</p>}
+      {against === "" &&
+        !loggedOut &&
+        (candidates.length > 0 ? (
+          <p>從上面選一個同一個 Test Case 的 Run，或輸入另一個 Run 的 ID 後開始比較。</p>
+        ) : (
+          <p>輸入另一個 Run 的 ID 後開始比較。</p>
+        ))}
       {comparison.isPending && against !== "" && <Loading what="比較" />}
       <ReadFailure error={comparison.error} what="比較結果">
         <p role="alert">無法比較：{comparison.error?.message}</p>
