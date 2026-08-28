@@ -191,7 +191,24 @@ firefox   classic inline ok | classic external ok | inline module ok
 
 **這對本專案是直接的**：Vite 的產出是 `<script type="module" src="/assets/index-*.js">`——**外部 module，必掛**。而受限環境的瀏覽器極可能只有 Edge（Chromium 系）。**交付形式因此必須是全部內嵌的單一檔案**，不能只是「把 dist 資料夾拷過去」。
 
-**尚未量到、而且是下一個該量的**：PGlite 自己在 `file://` 下能不能起來。它要載入約 3.7 MB 的 WASM 與一份檔案系統映像，若其載入路徑用的是 `fetch()`，會撞上同一道牆；繞法是全部以 base64 內嵌（體積 +33%）。**這一項目前是推導，不是實測。**
+### 9.1 續測：WASM 本身沒問題，被擋的是「去抓旁邊的檔案」
+
+上一段把 PGlite 能否在 `file://` 下起來列為推導。續測把機制量清楚了：
+
+| 動作 | Chromium | Firefox |
+| --- | --- | --- |
+| `fetch("./檔案")` | **擋**（`Fetch API cannot load file:///…`） | OK 200 |
+| `fetch("data:…")` | OK | OK |
+| `WebAssembly.instantiate(bytes)` | **OK**（回傳 42） | OK |
+| `WebAssembly.instantiateStreaming(fetch("./x.wasm"))` | **擋** | **擋**（Firefox 也擋） |
+
+**所以 WASM 不是障礙**——把 bytes 直接交給它，兩個瀏覽器都執行得好好的。障礙只有一個：**取得那些 bytes**。
+
+而 `@electric-sql/pglite` 的 `dist/index.js` 裡，`fetch(`、`new URL(…, import.meta.url)` 與 `WebAssembly.instantiateStreaming` **三者都在**（各 4／7／2 處）——**正好是被擋的那三條路**。
+
+**因此 `PORT-005` 需要一個尚不存在的建置步驟**：把 PGlite 的 WASM 與檔案系統映像以 base64（或 `Uint8Array` 字面值）內嵌，並繞開 `instantiateStreaming`。**這一步沒有做過，也沒有查證 PGlite 是否提供注入 bytes 的入口。** 已知的成本是體積：3.7 MB 的 WASM 以 base64 內嵌約 +33%，加上檔案系統映像。
+
+**這一段仍未量到的**：PGlite 有沒有官方支援的 bytes 注入路徑；以及全部內嵌之後單檔的實際大小與首次載入時間。
 
 ## 8. 可重跑
 
