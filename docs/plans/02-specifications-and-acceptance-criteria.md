@@ -640,8 +640,13 @@ queued → provisioning → preparing → running → evaluating
 - **判準一之二（2026-08-28 新增，不可協商）**：**兩條獨立連線對同一把 advisory lock，第二條必須拿不到。**<br>上面那五條由資料庫強制的行為**全部是單連線性質**，一條連線就驗得完——**所以它們全過，也不代表互斥還在**。實測 `pglite-socket` 的 multiplexer（`maxConnections > 1`）讓 N 個 client 共用同一個 Postgres session：`pg_backend_pid()` 兩邊同為 42、**兩邊同時拿到同一把 `pg_try_advisory_lock` 且無任何錯誤**、互相看得見 temp table。PostgreSQL 官方文件寫明「session 已持有某 advisory lock 時其後續請求一律成功」——併成一個 session，這句話就從保護變成漏洞。<br>**本專案有三處產品程式靠它互斥**（`creator/workspace` 的 `pg_advisory_xact_lock`、outbox 的單一 publisher 保證、`runs`），在該組態下它們會**全綠而毫無保證**。<br>**因此 `maxConnections > 1` 是禁用組態，不是效能取捨**；本條的檢查必須實際開兩條連線，不得以「設定檔寫了 1」代替。依據見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md) §5.2。
 - 該模式**不得要求安裝軟體、不得要求管理員權限、不得下載並執行外來二進位**——三者任一成立即不符合本需求的目的。
 - 版本釘選：所使用的 PostgreSQL 主版本必須與 CI 同一個 major；WASM 發行版與 pgvector 套件版本釘進 `tools/toolchain.yaml` 並納入 `devctl doctor` 的對帳。
+- **（2026-08-29 新增，[ADR-060](../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 決策 2）承載的形狀是定義的一部分**：**單一行程**（api 與 worker 合併）、`pool_max_conns=1`、**PGlite 的 multiplexer 關閉**、River 走它的 poll-only 模式。<br>**這四項不是調校參數**：關掉 multiplexer 是因為它會讓兩條連線同時拿到同一把 advisory lock（實測）；poll-only 是因為 River 的 notifier 會去要第二條連線（實測：關掉它即失敗）。<br>**單連線的併發語意與生產不同，而這是永久性質不是暫時缺陷**——必須明文記載，且任何「在淨測試模式下沒重現」的結論都要先排除它。
 
-#### PORT-002：SQL 單一來源
+#### ~~PORT-002：SQL 單一來源~~（2026-08-29 撤回）
+
+**撤回理由**：[ADR-060](../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 決策 4。淨測試模式下瀏覽器對話的是**真的本機後端**，SQL 只在 Go 那一側執行——**沒有第二個消費端，所以也沒有漂移的可能**。本條原本要防的整類風險隨形狀改變而消失，不是被判定為不重要。
+
+**以下為原文，保留不刪**：
 
 允收準則：
 
@@ -666,16 +671,25 @@ queued → provisioning → preparing → running → evaluating
 - 提供一個開關（例如 `SKILLHUB_REQUIRE_DB=1`）令跳過**改為失敗**，並在 CI 啟用。
 - **不得以任何讓畫面更綠、卻沒有真的執行斷言的方式滿足本條**。現行的跳過訊息本身是誠實的（明說環境變數未設）；本需求要的是讓「這一台跑不了什麼」變成可見的事實。
 
-#### PORT-005：離線交付形式
+#### PORT-005：啟動形式（2026-08-29 改寫）
+
+**改寫理由**：[ADR-060](../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 決策 4。本模式**依賴 localhost 上的一個服務**——那正是被換掉三個實作的系統本身。原本「以瀏覽器開啟本機檔案、不得依賴 localhost」的要求屬於已被推翻的形狀。<br>**原本那批 `file://` 的實測結論不作廢**（Chromium 擋掉 module 的 `import`、`WebAssembly.instantiate(bytes)` 兩個瀏覽器都可跑），它們移交給任何未來的離線交付提案，見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md) §9。
 
 允收準則：
 
-- 交付物**必須能在沒有網路、沒有本機伺服器、沒有安裝的情況下開啟**；以瀏覽器開啟本機檔案即可運作。
+- **必須能以一個指令碼啟動**，不得要求安裝軟體、不得要求管理員權限、不得下載並執行外來二進位。
+- **旗標未設時，行為必須與今天完全相同。** 這是「平行、不干擾」的可檢驗形式，**要有測試在守**——一個只在旗標設了才改變行為的開關，和一個總是改變行為的開關，在畫面上看起來一樣。
+- 啟動不得依賴外部網域（套件下載、字型、CDN、遙測皆然）；**所需相依必須能離線帶上機器**。
+- **啟動失敗必須說出缺的是什麼**（例如 Node 不在、連接埠被占），不得只回報「啟動失敗」。
 - 不得依賴任何外部網域（字型、CDN、遙測皆然）；資源一律內嵌。
 - **必須在 Chromium 系瀏覽器（Chrome／Edge）驗證，不得只驗 Firefox。**（2026-08-28 實測）`file://` 下兩者行為不同：一個 `<script type="module">` 只要 `import` 另一個檔案，Chromium 就以 CORS 擋下（`origin 'null'`），畫面停在未執行狀態；Firefox 則正常載入。**而 Vite 的產出正是外部 module script**，所以預設建置在 Chromium 下開本機檔案會是一片空白。<br>同一次實測確認可用的形式：inline classic script、外部 classic script、**沒有 `import` 的 inline module**。**因此交付形式必須是全部內嵌的單檔**，且不得依賴 `import` 或 `fetch()` 取得任何同目錄檔案。<br>**受限環境的瀏覽器極可能只有 Edge**——這一條若只在 Firefox 上驗過，等於沒驗。依據見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md) §9。
 - 不得依賴 `localhost` 上的任何服務。
 
-#### PORT-006：端點範圍與誠實的缺席
+#### ~~PORT-006：端點範圍與誠實的缺席~~（2026-08-29 撤回）
+
+**撤回理由**：[ADR-060](../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 決策 4。跑的是真的後端，**端點就是端點**，不存在「清單外」這個概念。<br>**但本條的第二句仍然有效，已移交 `PORT-003`**：**不受信任內容的執行**仍然不行，由派送閘門強制（`02:PORT-010`、ADR-059）。
+
+**以下為原文，保留不刪**：
 
 允收準則：
 

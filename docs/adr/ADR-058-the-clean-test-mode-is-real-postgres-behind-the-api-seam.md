@@ -1,6 +1,7 @@
 # ADR-058：乾淨測試模式用真 PostgreSQL（PGlite），Adapter 畫在 API 接縫而不是資料庫層
 
-- 狀態：Proposed
+- 狀態：**Superseded by [ADR-060](./ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md)**（2026-08-29）
+  <br>**決策 2（Adapter 畫在 `apiFetch`）與決策 3（SQL 抽出來給瀏覽器執行）被推翻**——負責人定調淨測試模式是「同一個系統換三個實作、旗標切換」，而擋住那個形狀的技術理由（單連線）已由「單行程 ＋ River poll-only」實測解掉。<br>**決策 1（PGlite 而非假資料層，含判準一）、決策 4（Adapter 必須在畫面上宣告自己是什麼）、決策 5（受限環境內的 Go 測試不在承諾範圍）由 ADR-060 逐字延續。**<br>**本檔的量測（SQLite 0/42、PGlite 42/42、不可變性 trigger、單連線死鎖、multiplexer 讓互斥失效、pgmock）全部仍然有效**，它們是 ADR-060 的依據。
 - 日期：2026-08-28
 - 決策者：產品負責人、架構規劃
 - 相關：[ADR-018](./ADR-018-data-platform-and-storage.md)（PostgreSQL 中心）、[ADR-016](./ADR-016-language-split-and-cross-language-contracts.md)（語言分工與契約）、[ADR-003](./ADR-003-immutable-versions-and-snapshots.md)（不可變版本，鐵律 4 的來源）、[ADR-030](./ADR-030-portable-developer-automation-and-contract-code-generation.md)（可攜開發自動化）、[ADR-006](./ADR-006-provider-port-and-runtime-adapters.md)（Provider Port 與 Adapter）

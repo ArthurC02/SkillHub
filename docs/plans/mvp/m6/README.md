@@ -1,7 +1,7 @@
 # M6：在不能安裝東西的機器上跑起來
 
-- 狀態：**進行中（十一項完成兩項）**——`PORT-004`（讓跳過出聲）已於 2026-08-28 完成並在 CI 生效；**它是九項裡唯一不依賴受限環境任何答案的一項**。其餘八項仍未開工。本目錄先於開工存在，理由與 M5 相同：它已經有一份量測（[report-inmemory-postgres.md](report-inmemory-postgres.md)），而那份量測決定了 [ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 在兩個候選之間怎麼選
-- 決策：[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)（Proposed）
+- 狀態：**進行中（十一項：完成兩項、撤回兩項、剩七項）**——`PORT-004`（讓跳過出聲）已於 2026-08-28 完成並在 CI 生效；**它是九項裡唯一不依賴受限環境任何答案的一項**。其餘八項仍未開工。本目錄先於開工存在，理由與 M5 相同：它已經有一份量測（[report-inmemory-postgres.md](report-inmemory-postgres.md)），而那份量測決定了 [ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 在兩個候選之間怎麼選
+- 決策：**[ADR-060](../../../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md)（Proposed）**——淨測試模式是**同一套產品程式以旗標切換三個實作**；[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 已被它取代（決策 1／4／5 延續，量測全部仍有效）、[ADR-059](../../../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)（沙箱那一軸）
 - 規格：[`02` §4.10](../../02-specifications-and-acceptance-criteria.md)（`PORT-001`～`PORT-010`）
 - 工作項：[`03` §20](../../03-work-items.md)
 - **不計入 MVP 完成度**（同 M5 的先例，`01` §7.3）——**但這一條有一個待裁定的例外**，見下方 §待裁定
