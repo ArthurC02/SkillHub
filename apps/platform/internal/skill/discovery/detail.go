@@ -409,8 +409,8 @@ func (s *Service) SkillDetail(ctx context.Context, skill registry.Skill) (skillD
 	q := gen.New(s.Pool)
 
 	out := skillDetail{
-		SkillID:     pgconv.UUIDString(skill.ID),
-		Name:        skill.Name,
+		SkillID: pgconv.UUIDString(skill.ID),
+		Name:    skill.Name,
 		// Indexed until the version is resolved: the verdict is about a specific
 		// version, so it cannot be answered before we know which one this is.
 		Tier:        tierLabel(TierIndexed),

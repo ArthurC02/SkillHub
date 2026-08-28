@@ -890,8 +890,10 @@ test("DISC-002: the tier badge is the server's value, not a front-end guess", as
         name: "PDF Summariser",
         summary: "把 PDF 轉成摘要",
         rank: 0.82,
-        match_reason: null,
-        match_reason_source: null,
+        // Absent, not null: the contract marks both optional, and `null` is a
+        // third thing the type does not admit.
+        match_reason: undefined,
+        match_reason_source: undefined,
       },
     ],
   });
