@@ -58,7 +58,7 @@
 `electric-sql/pglite` ＋ `@electric-sql/pglite-pgvector`。
 
 - 優點：**它不是相容實作，它就是 PostgreSQL**（自報 `PostgreSQL 18.3 (PGlite 0.5.8) on wasm32-unknown-emscripten`）。**實測 42/42 乾淨套用**，且逐項驗證通過：pgvector `<=>` 算得出距離、`ivfflat` 索引真的建起、`trace_events` 是真的 RANGE 分割表（`relkind='p'`，2 個分割）、generated `tsvector` 欄位成立、advisory lock 三種形式全支援，**而且不可變性 trigger 真的擋下 UPDATE 與 DELETE**（`row in public.skill_versions is immutable and cannot be updated (ADR-003)`）。3.7 MB，**原生棲息地是瀏覽器**——零安裝、零網路、無需任何白名單以外的程式。
-- 缺點：**單連線**。經 `@electric-sql/pglite-socket` 以 Postgres wire protocol 對外時，pgx 連得上，但 Go 測試套件的 `TestMain` 會**死鎖**——`lockTestSchema` 握著一條連線持 advisory lock、再向只有一條的池子要第二條跑 migration。這不是缺功能（advisory lock 完全支援），是**這段程式假設「握著一條、再開一條」**。此外前一個連線異常結束會讓伺服器進入不可用狀態。
+- 缺點：**單連線**。經 `@electric-sql/pglite-socket` 以 Postgres wire protocol 對外時，pgx 連得上，但 Go 測試套件的 `TestMain` 會**死鎖**——`lockTestSchema` 握著一條連線持 advisory lock、再向只有一條的池子要第二條跑 migration。這不是缺功能（advisory lock 完全支援），是**這段程式假設「握著一條、再開一條」**。此外前一個連線異常結束會讓伺服器進入不可用狀態。<br>**2026-08-28 補測，兩項**：①那個死鎖**不是天花板**——不長期握住連線之後，同一包從整包死鎖變成 16 passed（實驗修改已還原）；②該套件的 multiplexer（`maxConnections > 1`）讓 N 個 client **共用同一個 Postgres session**，實測兩條連線的 `pg_backend_pid()` 同為 42、**同時持有同一把 advisory lock 且無任何錯誤**、且互相看得見 temp table。**本專案有三處產品程式靠 advisory lock 互斥，在該組態下會全綠而毫無保證——所以 `maxConnections > 1` 是禁用組態，不是效能取捨。** 逐項見報告 §5.1、§5.2。
 
 ### 選項 F：DoltgreSQL（Go 寫的 PostgreSQL 相容資料庫）
 

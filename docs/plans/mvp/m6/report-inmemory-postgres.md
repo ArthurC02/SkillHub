@@ -121,6 +121,38 @@ goroutine 1 [running]:
 
 加上 `pool_max_conns=1` 之後不再 panic（進步），但改為死鎖 238 秒。
 
+### 5.1 補測（2026-08-28）：死鎖不是天花板，是這段測試程式的寫法
+
+本報告第一版把那個死鎖當成「Go 這條路沒有解」。**那是錯的，而且是把量測結果當成了不可能。** 把 `lockTestSchema` 改成不長期握住連線（其餘一字未改），同一包從**整包死鎖**變成：
+
+```
+library  16 passed, 3 failed      （失敗三支全是 prepared statement 快取，不是鎖）
+```
+
+實驗用的修改**已還原**，`git diff` 為空。真正需要多於一條連線的是 6 支用 goroutine 併發的測試檔，不是整個套件。
+
+### 5.2 補測（2026-08-28）：打開 multiplexer 之後，鎖安靜地不再是鎖
+
+`pglite-socket` 預設 `maxConnections: 1`——第二條連線**直接被踢掉**（實測：`An existing connection was forcibly closed`）。這是誠實的失敗。
+
+但它有一個 multiplexer，設 `maxConnections: 10` 就會收下 N 個 client。**它不是連線池**：N 個 client 共用**同一個 Postgres session**。兩條獨立 pgx 連線實測：
+
+```
+backend pid A=42  B=42                    ← 同一個 session
+A pg_try_advisory_lock(4242) = true       （預期 true）
+B pg_try_advisory_lock(4242) = true       （真 PostgreSQL 應為 FALSE）
+>>> 兩邊同時持有同一把鎖，互斥消失，沒有任何錯誤訊息
+>>> B 看得見 A 的 TEMP TABLE
+```
+
+（走 extended protocol 時 B 會先撞上 `prepared statement "stmtcache_…" already exists`——prepared statement 在真 PostgreSQL 是 session-local，撞名本身就是同一 session 的證據。）
+
+**這正是本 repo 反覆記載的那種缺陷的教科書形式**：不是「不支援」而報錯，是**看起來支援、而保證是假的**。PostgreSQL 官方文件寫明「若 session 已持有某 advisory lock，它後續的請求一律成功」——multiplexer 讓所有 client 變成同一個 session，於是這句話從保護變成漏洞。
+
+**對本專案特別致命**，因為產品程式有三處靠 advisory lock 互斥：`creator/workspace/service.go`（`pg_advisory_xact_lock`）、`foundation/messaging/outbox`（publisher 單一化）、`db/gen/runs.sql.go`。它們的測試會在這個組態下**全綠而毫無保證**。
+
+**所以 `maxConnections > 1` 在本專案是禁用組態，不是效能取捨。**
+
 **另一個要記住的操作性質**：前一個連線異常結束會讓伺服器進入不可用狀態，下一次連線得到 `An established connection was aborted`。本報告的實驗中出現過兩次，兩次都要重啟才能繼續。
 
 ## 6. 兩個被排除的候選，以及排除的根據
