@@ -82,6 +82,14 @@ var aggregatePool *pgxpool.Pool
 func TestMain(m *testing.M) {
 	dsn := os.Getenv(aggregateDBURLEnv)
 	if dsn == "" {
+		// 02:PORT-004. Without this, an unset or misspelled URL is indistinguishable
+		// from a passing run: every database test removes itself and go test still
+		// prints ok. CI sets SKILLHUB_REQUIRE_DB=1 so the service failing to come up
+		// is a red build rather than a quiet one.
+		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
+			fmt.Fprintf(os.Stderr, "SKILLHUB_REQUIRE_DB=1 but %s is unset; this run would have skipped every database test and still reported success\n", aggregateDBURLEnv)
+			os.Exit(1)
+		}
 		os.Exit(m.Run()) // every database test skips; see requireRegistryDB
 	}
 	if err := validateDestructiveRegistryDatabaseURL(dsn); err != nil {

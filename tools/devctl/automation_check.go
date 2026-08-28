@@ -82,6 +82,12 @@ func automationCheck(root string, out io.Writer) error {
 		problems = append(problems, checker.check(root)...)
 	}
 
+	// 02:PORT-004: a database-gated package that ignores SKILLHUB_REQUIRE_DB
+	// reports success when the database never came up.
+	if err := requireDBGuardCheck(root); err != nil {
+		problems = append(problems, err.Error())
+	}
+
 	if len(problems) > 0 {
 		for _, problem := range problems {
 			fmt.Fprintln(out, "FAIL", problem)

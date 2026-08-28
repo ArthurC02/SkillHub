@@ -206,6 +206,11 @@ jobs:
           --health-retries 10
     env:
       SKILLHUB_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/skillhub_test?sslmode=disable
+      # 02:PORT-004. The service above is what makes the tenancy tests run at
+      # all, and until now nothing checked that it came up: a typo in the URL
+      # or a dropped env block would skip 281 assertions and still print ok.
+      # With this set, an unset database URL fails the package instead.
+      SKILLHUB_REQUIRE_DB: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5

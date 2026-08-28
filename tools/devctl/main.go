@@ -23,6 +23,7 @@ Usage:
 	devctl profile-check model  verify a profile's required variables without printing values
 	devctl gen [--check] [--scope=sql|openapi|all]  regenerate or check committed output
 	devctl automation-check  verify Task, Agent docs and generated ownership markers
+	devctl test-report dir [go test args]  run the suite and report what skipped and why
 `
 
 type checkResult struct {
@@ -70,6 +71,15 @@ func main() {
 		if err := automationCheck(root, os.Stdout); err != nil {
 			fatal(err)
 		}
+	case "test-report":
+		if len(os.Args) < 3 {
+			fatal(errors.New("usage: devctl test-report dir [go test args]"))
+		}
+		code, err := testReport(root, filepath.Join(root, os.Args[2]), os.Args[3:], os.Stdout)
+		if err != nil {
+			fatal(err)
+		}
+		os.Exit(code)
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:

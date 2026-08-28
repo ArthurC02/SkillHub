@@ -20,6 +20,13 @@ From the repository root:
 - `go -C tools/devctl run . gen --check` compares temporary output with the
   committed tree and never modifies tracked files. It writes only transient
   files under the gitignored `.devctl/` directory. CI uses this exact path.
+- `go -C tools/devctl run . test-report <dir> [go test args]` runs `go test` in
+  a module and adds what the plain summary omits: how many tests skipped and
+  the reason each one gave, grouped. It echoes output only for failures, and
+  exits with go test's own code. Reporting only — the switch that turns a
+  database skip into a failure is `SKILLHUB_REQUIRE_DB=1`, read by each
+  affected `TestMain` and enforced across packages by `automation-check`
+  (02:PORT-004).
 
 Taskfile wraps the same commands for normal use. The direct Go form is the
 fallback on a new machine where Task is not installed yet. Generator versions
