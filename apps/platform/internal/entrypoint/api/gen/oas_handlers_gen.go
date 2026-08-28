@@ -12726,6 +12726,237 @@ func (s *Server) handleTakedownSkillRequest(args [1]string, argsEscaped bool, w 
 	}
 }
 
+// handleTakedownSkillAsOperatorRequest handles takedownSkillAsOperator operation.
+//
+// Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search
+// document and records who did it and why.
+//
+// The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws
+// content from the workspace they own. What had no path at all until 2026-08-28 was the other case —
+// an abuse report or a DMCA notice about a fork sitting in somebody else's workspace. `registry.go`
+// carried a comment saying so, and saying exactly how to fix it, since the method was written (`04`
+// 丙-80).
+//
+// Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410
+// Gone answers the detail view and the same predicate keeps it out of search — neither read asks who
+// set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes
+// that structural rather than a rule to remember.
+//
+// Not idempotent, unlike `restriction` and `redistribution` beside it. Those write a value; this
+// records an event that happened at a time, and letting a repeat move `takedown_at` would move the
+// date a review is going to ask about. A second call answers 409, the same as the scoped route.
+//
+// There is no restore route, here or on the scoped path. Clearing the flag is the easy half; putting
+// the search document back is not, because the projection would come back carrying only name and
+// summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to
+// clear the column and run `maintenance reindex`. Recorded rather than half-built (`04` 丙-80).
+//
+// The column write, the search removal and the audit event share one transaction (iron rule 9):
+// content that is down in the registry and still listed in search is the outcome that must be
+// impossible.
+//
+// The reason is recorded in the audit event as well as on the row, which is where this differs from
+// the scoped route's identifiers-only event. 02:SEC-011 requires an operator action to record a
+// non-empty reason; an operator's own sentence about why they acted is not package content.
+//
+// PUT /admin/skills/{id}/takedown
+func (s *Server) handleTakedownSkillAsOperatorRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("takedownSkillAsOperator"),
+		semconv.HTTPRequestMethodKey.String("PUT"),
+		semconv.HTTPRouteKey.String("/admin/skills/{id}/takedown"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), TakedownSkillAsOperatorOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(attrs...)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: TakedownSkillAsOperatorOperation,
+			ID:   "takedownSkillAsOperator",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securitySessionCookie(ctx, TakedownSkillAsOperatorOperation, r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "SessionCookie",
+					Err:              err,
+				}
+				defer recordError("Security:SessionCookie", err)
+				s.cfg.ErrorHandler(ctx, w, r, err)
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			defer recordError("Security", err)
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+	}
+	params, err := decodeTakedownSkillAsOperatorParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeTakedownSkillAsOperatorRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response TakedownSkillAsOperatorRes
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    TakedownSkillAsOperatorOperation,
+			OperationSummary: "Withdraw a skill from anywhere on the platform (SEC-011 action 1)",
+			OperationID:      "takedownSkillAsOperator",
+			Body:             request,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "id",
+					In:   "path",
+				}: params.ID,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = *TakedownSkillAsOperatorReq
+			Params   = TakedownSkillAsOperatorParams
+			Response = TakedownSkillAsOperatorRes
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackTakedownSkillAsOperatorParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.TakedownSkillAsOperator(ctx, request, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.TakedownSkillAsOperator(ctx, request, params)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeTakedownSkillAsOperatorResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleUpdateAcceptanceCriterionRequest handles updateAcceptanceCriterion operation.
 //
 // Edit and confirmation are one statement because they are one decision: confirming means agreeing to

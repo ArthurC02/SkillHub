@@ -100,6 +100,7 @@ var operationRolesSessionCookie = map[string][]string{
 	SubmitFeedbackOperation:                    []string{},
 	SuggestAcceptanceCriteriaOperation:         []string{},
 	TakedownSkillOperation:                     []string{},
+	TakedownSkillAsOperatorOperation:           []string{},
 	UpdateAcceptanceCriterionOperation:         []string{},
 	UpdateTestCaseOperation:                    []string{},
 	UploadDatasetOperation:                     []string{},

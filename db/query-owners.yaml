@@ -86,6 +86,7 @@ queries:
   LockSkillForOperatorWrite: registry
   SetSkillAccessRestriction: registry
   SetSkillRedistribution: registry
+  SetSkillTakedown: registry
   ListSourcesToCheck: ingest
   MarkSourceChecked: ingest
 

@@ -142,6 +142,8 @@ export * from './SubmitFeedbackRequest';
 export * from './SuggestionBlockedReason';
 export * from './SuggestionDiff';
 export * from './TakedownSkill200Response';
+export * from './TakedownSkillAsOperator200Response';
+export * from './TakedownSkillAsOperatorRequest';
 export * from './TakedownSkillRequest';
 export * from './TestCase';
 export * from './TestCaseListItem';

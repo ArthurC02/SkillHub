@@ -22,6 +22,9 @@ var (
 		"DELETE": "Content-Type",
 		"PUT":    "Content-Type",
 	}
+	rn93AllowedHeaders = map[string]string{
+		"PUT": "Content-Type",
+	}
 	rn40AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
@@ -37,7 +40,7 @@ var (
 	rn46AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
-	rn93AllowedHeaders = map[string]string{
+	rn95AllowedHeaders = map[string]string{
 		"POST": "Content-Type",
 	}
 	rn62AllowedHeaders = map[string]string{
@@ -230,9 +233,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							break
 						}
 						switch elem[0] {
-						case '/': // Prefix: "/re"
+						case '/': // Prefix: "/"
 
-							if l := len("/re"); len(elem) >= l && elem[0:l] == "/re" {
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 								elem = elem[l:]
 							} else {
 								break
@@ -242,9 +245,81 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								break
 							}
 							switch elem[0] {
-							case 'd': // Prefix: "distribution"
+							case 'r': // Prefix: "re"
 
-								if l := len("distribution"); len(elem) >= l && elem[0:l] == "distribution" {
+								if l := len("re"); len(elem) >= l && elem[0:l] == "re" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									break
+								}
+								switch elem[0] {
+								case 'd': // Prefix: "distribution"
+
+									if l := len("distribution"); len(elem) >= l && elem[0:l] == "distribution" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch r.Method {
+										case "PUT":
+											s.handleSetSkillRedistributionRequest([1]string{
+												args[0],
+											}, elemIsEscaped, w, r)
+										default:
+											s.notAllowed(w, r, notAllowedParams{
+												allowedMethods: "PUT",
+												allowedHeaders: rn85AllowedHeaders,
+												acceptPost:     "",
+												acceptPatch:    "",
+											})
+										}
+
+										return
+									}
+
+								case 's': // Prefix: "striction"
+
+									if l := len("striction"); len(elem) >= l && elem[0:l] == "striction" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch r.Method {
+										case "DELETE":
+											s.handleClearSkillRestrictionRequest([1]string{
+												args[0],
+											}, elemIsEscaped, w, r)
+										case "PUT":
+											s.handleSetSkillRestrictionRequest([1]string{
+												args[0],
+											}, elemIsEscaped, w, r)
+										default:
+											s.notAllowed(w, r, notAllowedParams{
+												allowedMethods: "DELETE,PUT",
+												allowedHeaders: rn11AllowedHeaders,
+												acceptPost:     "",
+												acceptPatch:    "",
+											})
+										}
+
+										return
+									}
+
+								}
+
+							case 't': // Prefix: "takedown"
+
+								if l := len("takedown"); len(elem) >= l && elem[0:l] == "takedown" {
 									elem = elem[l:]
 								} else {
 									break
@@ -254,44 +329,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 									// Leaf node.
 									switch r.Method {
 									case "PUT":
-										s.handleSetSkillRedistributionRequest([1]string{
+										s.handleTakedownSkillAsOperatorRequest([1]string{
 											args[0],
 										}, elemIsEscaped, w, r)
 									default:
 										s.notAllowed(w, r, notAllowedParams{
 											allowedMethods: "PUT",
-											allowedHeaders: rn85AllowedHeaders,
-											acceptPost:     "",
-											acceptPatch:    "",
-										})
-									}
-
-									return
-								}
-
-							case 's': // Prefix: "striction"
-
-								if l := len("striction"); len(elem) >= l && elem[0:l] == "striction" {
-									elem = elem[l:]
-								} else {
-									break
-								}
-
-								if len(elem) == 0 {
-									// Leaf node.
-									switch r.Method {
-									case "DELETE":
-										s.handleClearSkillRestrictionRequest([1]string{
-											args[0],
-										}, elemIsEscaped, w, r)
-									case "PUT":
-										s.handleSetSkillRestrictionRequest([1]string{
-											args[0],
-										}, elemIsEscaped, w, r)
-									default:
-										s.notAllowed(w, r, notAllowedParams{
-											allowedMethods: "DELETE,PUT",
-											allowedHeaders: rn11AllowedHeaders,
+											allowedHeaders: rn93AllowedHeaders,
 											acceptPost:     "",
 											acceptPatch:    "",
 										})
@@ -1396,7 +1440,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 									default:
 										s.notAllowed(w, r, notAllowedParams{
 											allowedMethods: "POST",
-											allowedHeaders: rn93AllowedHeaders,
+											allowedHeaders: rn95AllowedHeaders,
 											acceptPost:     "application/zip",
 											acceptPatch:    "",
 										})
@@ -2402,9 +2446,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							break
 						}
 						switch elem[0] {
-						case '/': // Prefix: "/re"
+						case '/': // Prefix: "/"
 
-							if l := len("/re"); len(elem) >= l && elem[0:l] == "/re" {
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 								elem = elem[l:]
 							} else {
 								break
@@ -2414,34 +2458,82 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								break
 							}
 							switch elem[0] {
-							case 'd': // Prefix: "distribution"
+							case 'r': // Prefix: "re"
 
-								if l := len("distribution"); len(elem) >= l && elem[0:l] == "distribution" {
+								if l := len("re"); len(elem) >= l && elem[0:l] == "re" {
 									elem = elem[l:]
 								} else {
 									break
 								}
 
 								if len(elem) == 0 {
-									// Leaf node.
-									switch method {
-									case "PUT":
-										r.name = SetSkillRedistributionOperation
-										r.summary = "Set whether a skill's bytes may be handed back (SEC-011)"
-										r.operationID = "setSkillRedistribution"
-										r.operationGroup = ""
-										r.pathPattern = "/admin/skills/{id}/redistribution"
-										r.args = args
-										r.count = 1
-										return r, true
-									default:
-										return
+									break
+								}
+								switch elem[0] {
+								case 'd': // Prefix: "distribution"
+
+									if l := len("distribution"); len(elem) >= l && elem[0:l] == "distribution" {
+										elem = elem[l:]
+									} else {
+										break
 									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch method {
+										case "PUT":
+											r.name = SetSkillRedistributionOperation
+											r.summary = "Set whether a skill's bytes may be handed back (SEC-011)"
+											r.operationID = "setSkillRedistribution"
+											r.operationGroup = ""
+											r.pathPattern = "/admin/skills/{id}/redistribution"
+											r.args = args
+											r.count = 1
+											return r, true
+										default:
+											return
+										}
+									}
+
+								case 's': // Prefix: "striction"
+
+									if l := len("striction"); len(elem) >= l && elem[0:l] == "striction" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch method {
+										case "DELETE":
+											r.name = ClearSkillRestrictionOperation
+											r.summary = "Lift the licensing hold on a skill (SEC-011)"
+											r.operationID = "clearSkillRestriction"
+											r.operationGroup = ""
+											r.pathPattern = "/admin/skills/{id}/restriction"
+											r.args = args
+											r.count = 1
+											return r, true
+										case "PUT":
+											r.name = SetSkillRestrictionOperation
+											r.summary = "Put the licensing hold on a skill (SEC-011)"
+											r.operationID = "setSkillRestriction"
+											r.operationGroup = ""
+											r.pathPattern = "/admin/skills/{id}/restriction"
+											r.args = args
+											r.count = 1
+											return r, true
+										default:
+											return
+										}
+									}
+
 								}
 
-							case 's': // Prefix: "striction"
+							case 't': // Prefix: "takedown"
 
-								if l := len("striction"); len(elem) >= l && elem[0:l] == "striction" {
+								if l := len("takedown"); len(elem) >= l && elem[0:l] == "takedown" {
 									elem = elem[l:]
 								} else {
 									break
@@ -2450,21 +2542,12 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								if len(elem) == 0 {
 									// Leaf node.
 									switch method {
-									case "DELETE":
-										r.name = ClearSkillRestrictionOperation
-										r.summary = "Lift the licensing hold on a skill (SEC-011)"
-										r.operationID = "clearSkillRestriction"
-										r.operationGroup = ""
-										r.pathPattern = "/admin/skills/{id}/restriction"
-										r.args = args
-										r.count = 1
-										return r, true
 									case "PUT":
-										r.name = SetSkillRestrictionOperation
-										r.summary = "Put the licensing hold on a skill (SEC-011)"
-										r.operationID = "setSkillRestriction"
+										r.name = TakedownSkillAsOperatorOperation
+										r.summary = "Withdraw a skill from anywhere on the platform (SEC-011 action 1)"
+										r.operationID = "takedownSkillAsOperator"
 										r.operationGroup = ""
-										r.pathPattern = "/admin/skills/{id}/restriction"
+										r.pathPattern = "/admin/skills/{id}/takedown"
 										r.args = args
 										r.count = 1
 										return r, true

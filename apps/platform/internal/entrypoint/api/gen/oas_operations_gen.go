@@ -73,6 +73,7 @@ const (
 	SubmitFeedbackOperation                    OperationName = "SubmitFeedback"
 	SuggestAcceptanceCriteriaOperation         OperationName = "SuggestAcceptanceCriteria"
 	TakedownSkillOperation                     OperationName = "TakedownSkill"
+	TakedownSkillAsOperatorOperation           OperationName = "TakedownSkillAsOperator"
 	UpdateAcceptanceCriterionOperation         OperationName = "UpdateAcceptanceCriterion"
 	UpdateTestCaseOperation                    OperationName = "UpdateTestCase"
 	UploadDatasetOperation                     OperationName = "UploadDataset"

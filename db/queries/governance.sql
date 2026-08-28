@@ -378,7 +378,14 @@ RETURNING *;
 -- the same reason (the value returned becomes an audit event's before-state),
 -- and a second FOR UPDATE of the same row would be a second place to get the
 -- scoping wrong. Each writer reads the column it owns off the same result.
-SELECT id, workspace_id, access_restriction, redistribution FROM skills
+--
+-- 2026-08-28: `takedown_at` joins them, and it is read for a second reason as
+-- well as the first. As a before-state it is what an operator takedown records;
+-- as a precondition it is how SetSkillTakedown tells "already down" from "not
+-- there", which the workspace-scoped path answers with a second scoped read it
+-- cannot make here (there is no workspace to scope to). One statement, two
+-- questions, still one lock.
+SELECT id, workspace_id, access_restriction, redistribution, takedown_at FROM skills
 WHERE id = $1 AND deleted_at IS NULL
 FOR UPDATE;
 
@@ -415,6 +422,32 @@ WHERE id = $1 AND deleted_at IS NULL;
 -- is touched — a hold is not a takedown and not an edit of anybody's content.
 UPDATE skills SET access_restriction = $2, updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: SetSkillTakedown :exec
+-- The platform-wide half of INGEST-010 人工下架 (02:SEC-011 動作 ①).
+--
+-- This is the second query registry.go's ponytail note asked for, written the
+-- way it asked: "a second query without the workspace predicate behind that
+-- role, not a change to this one". TakedownSkill above is unchanged and still
+-- carries `workspace_id = $2`, because an owner taking down their own content
+-- is a different authorization from an operator answering an abuse report.
+--
+-- Until this existed, a DMCA notice or an abuse report about content in
+-- somebody else's workspace had no path at all — registry.go said so in a
+-- comment and nothing else did. 02:SEC-011 has specified the actor since
+-- 2026-08-16; what was missing was one statement.
+--
+-- Unscoped for the same reason as the three statements above, and it writes the
+-- same two columns the scoped path writes. 02:533 forbids a second takedown
+-- flow for operators, and this is why that holds structurally rather than by
+-- discipline: same `takedown_at`, so the same 410 Gone and the same search
+-- exclusion answer it, whoever set it.
+--
+-- The `takedown_at IS NULL` guard stays, so a second takedown of the same skill
+-- affects no row. The caller has already read that column under the lock and
+-- refuses before reaching here; the guard is the belt to that pair of braces.
+UPDATE skills SET takedown_at = now(), takedown_reason = $2, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL AND takedown_at IS NULL;
 
 -- name: ListSourcesToCheck :many
 -- Least-recently-probed first, so repeated bounded runs sweep the whole table.

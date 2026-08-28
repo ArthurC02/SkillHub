@@ -160,6 +160,14 @@ func NewRouter(d Deps) http.Handler {
 	// and, until 2026-08-23, was the only one of the two with no route, no
 	// operator check and no audit event (`05` R-3c).
 	mux.HandleFunc("PUT /admin/skills/{id}/redistribution", auth.RequireOperator(d.Search.SetRedistribution))
+	// 02:SEC-011 動作 ① reaching content the operator does not own. The route
+	// above it withdraws a skill's *materials*; this one withdraws the skill.
+	// An abuse report or a DMCA notice about a fork in somebody else's
+	// workspace had no path at all before 2026-08-28 — registry.go said so in a
+	// comment and nothing else did (`04` 丙-80). It writes the same
+	// `takedown_at` the owner-scoped POST below does, so one 410 Gone and one
+	// search exclusion answer both (02:533「不得為 operator 另開第二套」).
+	mux.HandleFunc("PUT /admin/skills/{id}/takedown", auth.RequireOperator(d.Search.Takedown))
 
 	// 03:SEC-012's operator surface: 02:SEC-010's P1 first action, and the one place
 	// 「現在到底有沒有在派送」 is answered. Same RequireOperator and therefore the same

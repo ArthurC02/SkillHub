@@ -245,6 +245,10 @@ type SuggestAcceptanceCriteriaRes interface {
 	suggestAcceptanceCriteriaRes()
 }
 
+type TakedownSkillAsOperatorRes interface {
+	takedownSkillAsOperatorRes()
+}
+
 type TakedownSkillRes interface {
 	takedownSkillRes()
 }

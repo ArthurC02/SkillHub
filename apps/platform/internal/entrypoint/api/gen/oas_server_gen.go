@@ -847,6 +847,41 @@ type Handler interface {
 	//
 	// POST /skills/{id}/takedown
 	TakedownSkill(ctx context.Context, req *TakedownSkillReq, params TakedownSkillParams) (TakedownSkillRes, error)
+	// TakedownSkillAsOperator implements takedownSkillAsOperator operation.
+	//
+	// Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search
+	// document and records who did it and why.
+	//
+	// The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws
+	// content from the workspace they own. What had no path at all until 2026-08-28 was the other case —
+	// an abuse report or a DMCA notice about a fork sitting in somebody else's workspace. `registry.go`
+	// carried a comment saying so, and saying exactly how to fix it, since the method was written (`04`
+	// 丙-80).
+	//
+	// Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410
+	// Gone answers the detail view and the same predicate keeps it out of search — neither read asks who
+	// set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes
+	// that structural rather than a rule to remember.
+	//
+	// Not idempotent, unlike `restriction` and `redistribution` beside it. Those write a value; this
+	// records an event that happened at a time, and letting a repeat move `takedown_at` would move the
+	// date a review is going to ask about. A second call answers 409, the same as the scoped route.
+	//
+	// There is no restore route, here or on the scoped path. Clearing the flag is the easy half; putting
+	// the search document back is not, because the projection would come back carrying only name and
+	// summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to
+	// clear the column and run `maintenance reindex`. Recorded rather than half-built (`04` 丙-80).
+	//
+	// The column write, the search removal and the audit event share one transaction (iron rule 9):
+	// content that is down in the registry and still listed in search is the outcome that must be
+	// impossible.
+	//
+	// The reason is recorded in the audit event as well as on the row, which is where this differs from
+	// the scoped route's identifiers-only event. 02:SEC-011 requires an operator action to record a
+	// non-empty reason; an operator's own sentence about why they acted is not package content.
+	//
+	// PUT /admin/skills/{id}/takedown
+	TakedownSkillAsOperator(ctx context.Context, req *TakedownSkillAsOperatorReq, params TakedownSkillAsOperatorParams) (TakedownSkillAsOperatorRes, error)
 	// UpdateAcceptanceCriterion implements updateAcceptanceCriterion operation.
 	//
 	// Edit and confirmation are one statement because they are one decision: confirming means agreeing to

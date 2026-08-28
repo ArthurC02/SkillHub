@@ -543,7 +543,7 @@ func (q *Queries) ListWorkspaceRunArtifactObjectKeys(ctx context.Context, worksp
 }
 
 const lockSkillForOperatorWrite = `-- name: LockSkillForOperatorWrite :one
-SELECT id, workspace_id, access_restriction, redistribution FROM skills
+SELECT id, workspace_id, access_restriction, redistribution, takedown_at FROM skills
 WHERE id = $1 AND deleted_at IS NULL
 FOR UPDATE
 `
@@ -553,6 +553,7 @@ type LockSkillForOperatorWriteRow struct {
 	WorkspaceID       pgtype.UUID
 	AccessRestriction *string
 	Redistribution    string
+	TakedownAt        pgtype.Timestamptz
 }
 
 // The read half of an operator's licensing-hold change (02:SEC-011 追加小節,
@@ -581,6 +582,13 @@ type LockSkillForOperatorWriteRow struct {
 // the same reason (the value returned becomes an audit event's before-state),
 // and a second FOR UPDATE of the same row would be a second place to get the
 // scoping wrong. Each writer reads the column it owns off the same result.
+//
+// 2026-08-28: `takedown_at` joins them, and it is read for a second reason as
+// well as the first. As a before-state it is what an operator takedown records;
+// as a precondition it is how SetSkillTakedown tells "already down" from "not
+// there", which the workspace-scoped path answers with a second scoped read it
+// cannot make here (there is no workspace to scope to). One statement, two
+// questions, still one lock.
 func (q *Queries) LockSkillForOperatorWrite(ctx context.Context, id pgtype.UUID) (LockSkillForOperatorWriteRow, error) {
 	row := q.db.QueryRow(ctx, lockSkillForOperatorWrite, id)
 	var i LockSkillForOperatorWriteRow
@@ -589,6 +597,7 @@ func (q *Queries) LockSkillForOperatorWrite(ctx context.Context, id pgtype.UUID)
 		&i.WorkspaceID,
 		&i.AccessRestriction,
 		&i.Redistribution,
+		&i.TakedownAt,
 	)
 	return i, err
 }
@@ -894,6 +903,43 @@ type SetSkillRedistributionParams struct {
 // brought the bytes (0036) and not a verdict anyone can assert on their behalf.
 func (q *Queries) SetSkillRedistribution(ctx context.Context, arg SetSkillRedistributionParams) error {
 	_, err := q.db.Exec(ctx, setSkillRedistribution, arg.ID, arg.Redistribution)
+	return err
+}
+
+const setSkillTakedown = `-- name: SetSkillTakedown :exec
+UPDATE skills SET takedown_at = now(), takedown_reason = $2, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL AND takedown_at IS NULL
+`
+
+type SetSkillTakedownParams struct {
+	ID             pgtype.UUID
+	TakedownReason *string
+}
+
+// The platform-wide half of INGEST-010 人工下架 (02:SEC-011 動作 ①).
+//
+// This is the second query registry.go's ponytail note asked for, written the
+// way it asked: "a second query without the workspace predicate behind that
+// role, not a change to this one". TakedownSkill above is unchanged and still
+// carries `workspace_id = $2`, because an owner taking down their own content
+// is a different authorization from an operator answering an abuse report.
+//
+// Until this existed, a DMCA notice or an abuse report about content in
+// somebody else's workspace had no path at all — registry.go said so in a
+// comment and nothing else did. 02:SEC-011 has specified the actor since
+// 2026-08-16; what was missing was one statement.
+//
+// Unscoped for the same reason as the three statements above, and it writes the
+// same two columns the scoped path writes. 02:533 forbids a second takedown
+// flow for operators, and this is why that holds structurally rather than by
+// discipline: same `takedown_at`, so the same 410 Gone and the same search
+// exclusion answer it, whoever set it.
+//
+// The `takedown_at IS NULL` guard stays, so a second takedown of the same skill
+// affects no row. The caller has already read that column under the lock and
+// refuses before reaching here; the guard is the belt to that pair of braces.
+func (q *Queries) SetSkillTakedown(ctx context.Context, arg SetSkillTakedownParams) error {
+	_, err := q.db.Exec(ctx, setSkillTakedown, arg.ID, arg.TakedownReason)
 	return err
 }
 

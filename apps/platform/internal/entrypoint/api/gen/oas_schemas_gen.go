@@ -15763,6 +15763,62 @@ func (s *SuggestionDiff) SetBlockedReason(val OptSuggestionBlockedReason) {
 
 func (*SuggestionDiff) getSuggestionDiffRes() {}
 
+type TakedownSkillAsOperatorBadRequest Error
+
+func (*TakedownSkillAsOperatorBadRequest) takedownSkillAsOperatorRes() {}
+
+type TakedownSkillAsOperatorConflict Error
+
+func (*TakedownSkillAsOperatorConflict) takedownSkillAsOperatorRes() {}
+
+type TakedownSkillAsOperatorNotFound Error
+
+func (*TakedownSkillAsOperatorNotFound) takedownSkillAsOperatorRes() {}
+
+type TakedownSkillAsOperatorOK struct {
+	SkillID   uuid.UUID `json:"skill_id"`
+	TakenDown bool      `json:"taken_down"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *TakedownSkillAsOperatorOK) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetTakenDown returns the value of TakenDown.
+func (s *TakedownSkillAsOperatorOK) GetTakenDown() bool {
+	return s.TakenDown
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *TakedownSkillAsOperatorOK) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetTakenDown sets the value of TakenDown.
+func (s *TakedownSkillAsOperatorOK) SetTakenDown(val bool) {
+	s.TakenDown = val
+}
+
+func (*TakedownSkillAsOperatorOK) takedownSkillAsOperatorRes() {}
+
+type TakedownSkillAsOperatorReq struct {
+	// Why this was taken down, in the operator's own words. Required and may not be blank — 02:SEC-011
+	// says an empty reason does not constitute one, and a takedown nobody can account for later is the row
+	// an abuse review cannot close.
+	Reason string `json:"reason"`
+}
+
+// GetReason returns the value of Reason.
+func (s *TakedownSkillAsOperatorReq) GetReason() string {
+	return s.Reason
+}
+
+// SetReason sets the value of Reason.
+func (s *TakedownSkillAsOperatorReq) SetReason(val string) {
+	s.Reason = val
+}
+
 type TakedownSkillBadRequest Error
 
 func (*TakedownSkillBadRequest) takedownSkillRes() {}

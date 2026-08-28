@@ -1542,6 +1542,100 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/skills/{id}/takedown:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      operationId: takedownSkillAsOperator
+      summary: Withdraw a skill from anywhere on the platform (SEC-011 action 1)
+      description: |
+        Operator only. Marks one skill taken down regardless of which workspace
+        holds it, drops its search document and records who did it and why.
+
+        The workspace-scoped `POST /skills/{id}/takedown` has existed since
+        INGEST-010: a curator withdraws content from the workspace they own.
+        What had no path at all until 2026-08-28 was the other case — an abuse
+        report or a DMCA notice about a fork sitting in somebody else's
+        workspace. `registry.go` carried a comment saying so, and saying exactly
+        how to fix it, since the method was written (`04` 丙-80).
+
+        Not a second mechanism. It writes the same `takedown_at` the scoped
+        route writes, so the same 410 Gone answers the detail view and the same
+        predicate keeps it out of search — neither read asks who set it.
+        02:SEC-011 forbids operators a second takedown flow, and sharing the
+        column is what makes that structural rather than a rule to remember.
+
+        **Not idempotent**, unlike `restriction` and `redistribution` beside it.
+        Those write a value; this records an event that happened at a time, and
+        letting a repeat move `takedown_at` would move the date a review is
+        going to ask about. A second call answers 409, the same as the scoped
+        route.
+
+        **There is no restore route**, here or on the scoped path. Clearing the
+        flag is the easy half; putting the search document back is not, because
+        the projection would come back carrying only name and summary and would
+        silently lose the enrichment, the embedding and the scan. Today the
+        answer is to clear the column and run `maintenance reindex`. Recorded
+        rather than half-built (`04` 丙-80).
+
+        The column write, the search removal and the audit event share one
+        transaction (iron rule 9): content that is down in the registry and
+        still listed in search is the outcome that must be impossible.
+
+        The reason is recorded in the audit event as well as on the row, which
+        is where this differs from the scoped route's identifiers-only event.
+        02:SEC-011 requires an operator action to record a non-empty reason; an
+        operator's own sentence about why they acted is not package content.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  maxLength: 1000
+                  description: |
+                    Why this was taken down, in the operator's own words.
+                    Required and may not be blank — 02:SEC-011 says an empty
+                    reason does not constitute one, and a takedown nobody can
+                    account for later is the row an abuse review cannot close.
+      responses:
+        "200":
+          description: The skill is taken down.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [skill_id, taken_down]
+                properties:
+                  skill_id: { type: string, format: uuid }
+                  taken_down: { type: boolean }
+        "400":
+          description: The body is not JSON, or the reason is missing, blank or over 1000 bytes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: |
+            No such skill — or the caller is not an operator. The two answer
+            identically on purpose (SEC-008's non-disclosure rule): an endpoint
+            that can withdraw anybody's content is one whose existence is worth
+            not advertising.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Already taken down. See the idempotency note above.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /admin/skills/{id}/redistribution:
     parameters:
       - name: id

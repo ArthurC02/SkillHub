@@ -87,6 +87,8 @@ import type {
   SubmitFeedbackRequest,
   SuggestionDiff,
   TakedownSkill200Response,
+  TakedownSkillAsOperator200Response,
+  TakedownSkillAsOperatorRequest,
   TakedownSkillRequest,
   TestCase,
   TraceIngestReport,
@@ -239,6 +241,10 @@ import {
     SuggestionDiffToJSON,
     TakedownSkill200ResponseFromJSON,
     TakedownSkill200ResponseToJSON,
+    TakedownSkillAsOperator200ResponseFromJSON,
+    TakedownSkillAsOperator200ResponseToJSON,
+    TakedownSkillAsOperatorRequestFromJSON,
+    TakedownSkillAsOperatorRequestToJSON,
     TakedownSkillRequestFromJSON,
     TakedownSkillRequestToJSON,
     TestCaseFromJSON,
@@ -503,6 +509,11 @@ export interface SuggestAcceptanceCriteriaRequest {
 export interface TakedownSkillOperationRequest {
     id: string;
     takedownSkillRequest: TakedownSkillRequest;
+}
+
+export interface TakedownSkillAsOperatorOperationRequest {
+    id: string;
+    takedownSkillAsOperatorRequest: TakedownSkillAsOperatorRequest;
 }
 
 export interface UpdateAcceptanceCriterionOperationRequest {
@@ -1619,6 +1630,23 @@ export interface DefaultApiInterface {
      * Withdraw a skill from the public surface (INGEST-010)
      */
     takedownSkill(requestParameters: TakedownSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TakedownSkill200Response>;
+
+    /**
+     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. What had no path at all until 2026-08-28 was the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace. `registry.go` carried a comment saying so, and saying exactly how to fix it, since the method was written (`04` 丙-80).  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  **There is no restore route**, here or on the scoped path. Clearing the flag is the easy half; putting the search document back is not, because the projection would come back carrying only name and summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to clear the column and run `maintenance reindex`. Recorded rather than half-built (`04` 丙-80).  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
+     * @summary Withdraw a skill from anywhere on the platform (SEC-011 action 1)
+     * @param {string} id 
+     * @param {TakedownSkillAsOperatorRequest} takedownSkillAsOperatorRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    takedownSkillAsOperatorRaw(requestParameters: TakedownSkillAsOperatorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TakedownSkillAsOperator200Response>>;
+
+    /**
+     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. What had no path at all until 2026-08-28 was the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace. `registry.go` carried a comment saying so, and saying exactly how to fix it, since the method was written (`04` 丙-80).  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  **There is no restore route**, here or on the scoped path. Clearing the flag is the easy half; putting the search document back is not, because the projection would come back carrying only name and summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to clear the column and run `maintenance reindex`. Recorded rather than half-built (`04` 丙-80).  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
+     * Withdraw a skill from anywhere on the platform (SEC-011 action 1)
+     */
+    takedownSkillAsOperator(requestParameters: TakedownSkillAsOperatorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TakedownSkillAsOperator200Response>;
 
     /**
      * Edit and confirmation are one statement because they are one decision: confirming means agreeing to the text as it stands. Changing the text of a confirmed criterion therefore clears the confirmation — the agreement applied to the old words. 
@@ -4479,6 +4507,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async takedownSkill(requestParameters: TakedownSkillOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TakedownSkill200Response> {
         const response = await this.takedownSkillRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. What had no path at all until 2026-08-28 was the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace. `registry.go` carried a comment saying so, and saying exactly how to fix it, since the method was written (`04` 丙-80).  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  **There is no restore route**, here or on the scoped path. Clearing the flag is the easy half; putting the search document back is not, because the projection would come back carrying only name and summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to clear the column and run `maintenance reindex`. Recorded rather than half-built (`04` 丙-80).  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
+     * Withdraw a skill from anywhere on the platform (SEC-011 action 1)
+     */
+    async takedownSkillAsOperatorRaw(requestParameters: TakedownSkillAsOperatorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TakedownSkillAsOperator200Response>> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling takedownSkillAsOperator().'
+            );
+        }
+
+        if (requestParameters['takedownSkillAsOperatorRequest'] == null) {
+            throw new runtime.RequiredError(
+                'takedownSkillAsOperatorRequest',
+                'Required parameter "takedownSkillAsOperatorRequest" was null or undefined when calling takedownSkillAsOperator().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/skills/{id}/takedown`;
+        urlPath = urlPath.replace(`{${"id"}}`, encodeURIComponent(String(requestParameters['id'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: TakedownSkillAsOperatorRequestToJSON(requestParameters['takedownSkillAsOperatorRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TakedownSkillAsOperator200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Marks one skill taken down regardless of which workspace holds it, drops its search document and records who did it and why.  The workspace-scoped `POST /skills/{id}/takedown` has existed since INGEST-010: a curator withdraws content from the workspace they own. What had no path at all until 2026-08-28 was the other case — an abuse report or a DMCA notice about a fork sitting in somebody else\'s workspace. `registry.go` carried a comment saying so, and saying exactly how to fix it, since the method was written (`04` 丙-80).  Not a second mechanism. It writes the same `takedown_at` the scoped route writes, so the same 410 Gone answers the detail view and the same predicate keeps it out of search — neither read asks who set it. 02:SEC-011 forbids operators a second takedown flow, and sharing the column is what makes that structural rather than a rule to remember.  **Not idempotent**, unlike `restriction` and `redistribution` beside it. Those write a value; this records an event that happened at a time, and letting a repeat move `takedown_at` would move the date a review is going to ask about. A second call answers 409, the same as the scoped route.  **There is no restore route**, here or on the scoped path. Clearing the flag is the easy half; putting the search document back is not, because the projection would come back carrying only name and summary and would silently lose the enrichment, the embedding and the scan. Today the answer is to clear the column and run `maintenance reindex`. Recorded rather than half-built (`04` 丙-80).  The column write, the search removal and the audit event share one transaction (iron rule 9): content that is down in the registry and still listed in search is the outcome that must be impossible.  The reason is recorded in the audit event as well as on the row, which is where this differs from the scoped route\'s identifiers-only event. 02:SEC-011 requires an operator action to record a non-empty reason; an operator\'s own sentence about why they acted is not package content. 
+     * Withdraw a skill from anywhere on the platform (SEC-011 action 1)
+     */
+    async takedownSkillAsOperator(requestParameters: TakedownSkillAsOperatorOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TakedownSkillAsOperator200Response> {
+        const response = await this.takedownSkillAsOperatorRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
