@@ -269,9 +269,15 @@ type RuntimeCapability struct {
 }
 
 type Isolation struct {
-	Level                    string `json:"level"`
-	Rootless                 bool   `json:"rootless"`
-	DedicatedWorkspacePerRun bool   `json:"dedicated_workspace_per_run"`
+	Level string `json:"level"`
+	// Rootless: whether workloads actually run without administrative
+	// privilege on this node. A detection the Driver reports (Driver.Rootless),
+	// not a constant - it was a literal `true` for both drivers until
+	// 2026-08-29, which was a guarantee dockerdrv makes in New() and a claim
+	// nobody had checked on a host process. The dispatch gate refuses a
+	// provider that answers false, which is the point of the field.
+	Rootless                 bool `json:"rootless"`
+	DedicatedWorkspacePerRun bool `json:"dedicated_workspace_per_run"`
 	// ReapsDetachedDescendants: whether ending a run also ends a descendant
 	// that deliberately left the process group or job it started in. Separate
 	// from Level because one driver's two platforms differ on it: a Windows job

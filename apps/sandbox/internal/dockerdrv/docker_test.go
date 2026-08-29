@@ -49,11 +49,35 @@ const testLabel = "skillhub.sandbox.test"
 // hundreds of megabytes of Node and is built and scanned by its own pipeline;
 // pulling it here would make every test run wait on that for no extra coverage,
 // since none of these assertions are about its contents.
+//
+// Pinned by digest for the same reason SKILLHUB_SANDBOX_IMAGE is (I-02): a tag
+// is a moving target, and these tests assert on what a container does, so "the
+// suite went red" and "busybox published a new 1.37" must not be the same
+// event. The tag is kept beside it for a human reading the file.
 func testImage() string {
 	if v := os.Getenv("SKILLHUB_SANDBOX_TEST_IMAGE"); v != "" {
 		return v
 	}
-	return "busybox:1.37"
+	return "busybox:1.37@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0"
+}
+
+// requireDocker is set in CI (SKILLHUB_REQUIRE_DOCKER=1) and turns every skip
+// below into a failure. The skips exist so the suite still runs on a developer
+// machine with no daemon; on a machine that is supposed to have one, a skipped
+// Docker test is a green run that measured nothing, which is the exact shape
+// the platform's own SKILLHUB_REQUIRE_DB guard exists to refuse.
+func requireDocker() bool { return os.Getenv("SKILLHUB_REQUIRE_DOCKER") == "1" }
+
+// skipOrFail is the one place that decides between the two. The message is the
+// same either way, so the reason a test did not run reads identically whether
+// it was skipped or failed.
+func skipOrFail(t *testing.T, format string, args ...any) {
+	t.Helper()
+	if requireDocker() {
+		t.Fatalf("SKILLHUB_REQUIRE_DOCKER=1 but "+format+
+			"; this run would have skipped every Docker test and still reported success", args...)
+	}
+	t.Skipf(format, args...)
 }
 
 // testRuntime is empty on a developer machine (the daemon's default runtime) and
@@ -62,24 +86,35 @@ func testImage() string {
 // hold on the runtime the product actually deploys on.
 func testRuntime() string { return os.Getenv("SKILLHUB_SANDBOX_TEST_RUNTIME") }
 
-func newDriver(t *testing.T) (*dockerdrv.Driver, *client.Client) {
+// dockerClient connects to the daemon or gives up loudly. Split out of
+// newDriver so a test that needs the daemon but builds its own driver (the
+// P-02 probe, which needs a network and a different image) makes the same
+// skip-or-fail decision rather than a second, quieter one.
+func dockerClient(t *testing.T) *client.Client {
 	t.Helper()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		t.Skipf("no docker client: %v", err)
+		skipOrFail(t, "no docker client: %v", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if _, err := cli.Ping(ctx); err != nil {
-		t.Skipf("no docker daemon reachable: %v", err)
+		skipOrFail(t, "no docker daemon reachable: %v", err)
 	}
+	t.Cleanup(func() { _ = cli.Close() })
+	return cli
+}
+
+func newDriver(t *testing.T) (*dockerdrv.Driver, *client.Client) {
+	t.Helper()
+	cli := dockerClient(t)
 
 	pullCtx, pullCancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer pullCancel()
 	if _, err := cli.ImageInspect(pullCtx, testImage()); err != nil {
 		rc, err := cli.ImagePull(pullCtx, testImage(), image.PullOptions{})
 		if err != nil {
-			t.Skipf("cannot pull %s: %v", testImage(), err)
+			skipOrFail(t, "cannot pull %s: %v", testImage(), err)
 		}
 		_, _ = io.Copy(io.Discard, rc)
 		_ = rc.Close()
@@ -98,7 +133,6 @@ func newDriver(t *testing.T) (*dockerdrv.Driver, *client.Client) {
 		t.Fatalf("driver: %v", err)
 	}
 	t.Cleanup(func() { _ = d.Close() })
-	t.Cleanup(func() { _ = cli.Close() })
 	return d, cli
 }
 

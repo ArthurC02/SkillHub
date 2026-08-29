@@ -4,10 +4,12 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -20,10 +22,20 @@ import (
 // failing it: this package's own logic does not need node to compile or to be
 // exercised for its host-directory and marker-file bookkeeping, but the
 // end-to-end tests below spawn a real process through it.
+//
+// Except where the environment says node is supposed to be there. Almost every
+// test in this file goes through here, so on a machine with no node the package
+// reports ok having asserted nothing at all — the same shape the platform's own
+// SKILLHUB_REQUIRE_DB guard exists to refuse, and the same variable CI uses to
+// insist the Docker tests really ran (SKILLHUB_REQUIRE_DOCKER).
 func requireNode(t *testing.T) string {
 	t.Helper()
 	bin, err := exec.LookPath("node")
 	if err != nil {
+		if os.Getenv("SKILLHUB_REQUIRE_DOCKER") == "1" {
+			t.Fatalf("SKILLHUB_REQUIRE_DOCKER=1 but node is not on PATH (%v); this run would have "+
+				"skipped every localdrv end-to-end test and still reported success", err)
+		}
 		t.Skip("node not found on PATH; skipping localdrv end-to-end tests")
 	}
 	return bin
@@ -323,4 +335,208 @@ func fileSize(t *testing.T, path string) int64 {
 		return 0
 	}
 	return info.Size()
+}
+
+// TestWorkloadEnvironmentIsAnAllowlist is 04 稽核 D2's assertion, made from the
+// workload's side of the fence: clean mode's sandboxd is started by
+// tools/cleanmode/start.mjs with DATABASE_URL and SKILLHUB_SANDBOX_TOKEN in its
+// own environment, and env() used to start from os.Environ(), so both reached
+// the workload — where `env` is one Bash tool call away from a trace event that
+// no mask pattern knows those two names to redact (iron rule 11).
+//
+// It asserts on what the child process can actually read, not on the []string
+// env() returns: the slice would only prove intent, and cmd.Env is what decides.
+func TestWorkloadEnvironmentIsAnAllowlist(t *testing.T) {
+	nodeBin := requireNode(t)
+	// Not real credentials — the point is only that a name of this shape does
+	// not travel, so the values are literals a grep for a secret will not hit.
+	t.Setenv("DATABASE_URL", "postgres://not-a-real-dsn/skillhub")
+	t.Setenv("SKILLHUB_SANDBOX_TOKEN", "not-a-real-token")
+	t.Setenv("FOO_SECRET", "not-a-real-secret")
+
+	d, err := New(Config{NodeBin: nodeBin, RunnerScript: testdataScript(t, "envdump.mjs"), BaseDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	const id = "envdump-1"
+	if err := d.Start(ctx, id, minimalRequest(id)); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Remove(context.Background(), id) })
+
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		done, err := d.WorkloadDone(ctx, id)
+		if err != nil {
+			t.Fatalf("WorkloadDone: %v", err)
+		}
+		if done {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("envdump workload never signalled WorkloadDone")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	raw, err := d.ReadArtifacts(ctx, id)
+	if err != nil {
+		t.Fatalf("ReadArtifacts: %v", err)
+	}
+	body := artifactNamed(t, raw, "env.json")
+	var got map[string]string
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("env dump is not JSON: %v (%s)", err, body)
+	}
+
+	for _, forbidden := range []string{"DATABASE_URL", "SKILLHUB_SANDBOX_TOKEN", "FOO_SECRET"} {
+		if v, ok := got[forbidden]; ok {
+			t.Errorf("%s reached the workload (=%q): env() must build from an allowlist, not from os.Environ()", forbidden, v)
+		}
+	}
+	// The allowlist has to actually let node run, which is the half a denylist
+	// gets for free and this one has to earn: a workload that cannot find its
+	// own interpreter's dependents never gets far enough to fail the check above.
+	if pathOf(got) == "" {
+		t.Errorf("PATH did not reach the workload; env() = %v", got)
+	}
+	if got["SKILLHUB_RUN_ID"] != id {
+		t.Errorf("SKILLHUB_RUN_ID = %q, want %q: the driver's own keys must still be set", got["SKILLHUB_RUN_ID"], id)
+	}
+}
+
+// pathOf reads PATH under either spelling: Windows reports it as `Path`, and
+// this driver passes the host's own name through unchanged.
+func pathOf(env map[string]string) string {
+	for k, v := range env {
+		if strings.EqualFold(k, "PATH") {
+			return v
+		}
+	}
+	return ""
+}
+
+// artifactNamed pulls one file out of the tar ReadArtifacts returns.
+func artifactNamed(t *testing.T, raw []byte, name string) []byte {
+	t.Helper()
+	tr := tar.NewReader(bytes.NewReader(raw))
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			t.Fatalf("artifact %q not found in the collected tar", name)
+		}
+		if err != nil {
+			t.Fatalf("reading artifact tar: %v", err)
+		}
+		if hdr.Name == name {
+			body, err := io.ReadAll(tr)
+			if err != nil {
+				t.Fatalf("reading artifact %q: %v", name, err)
+			}
+			return body
+		}
+	}
+}
+
+// TestReadArtifactsSkipsNonRegularEntries: one unusable entry must cost the run
+// that entry, not every artifact it produced.
+//
+// Before this, a symlink in the artifacts directory made tar.FileInfoHeader
+// write a header whose Size was the link target's *string length* while the
+// copy that followed it read the pointed-at file's contents, so tar.Writer
+// returned ErrWriteTooLong and ReadArtifacts failed as a whole. The manager
+// logs that at Warn and returns a nil manifest, and the run still reports
+// success — so the user sees a finished run with no output and no reason, with
+// the explanation only in a node log they cannot read. dockerdrv skips the same
+// entry and collects the rest; two drivers behind one interface must not
+// disagree about that.
+func TestReadArtifactsSkipsNonRegularEntries(t *testing.T) {
+	nodeBin := requireNode(t)
+	base := t.TempDir()
+	d, err := New(Config{NodeBin: nodeBin, RunnerScript: testdataScript(t, "workload.mjs"), BaseDir: base})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	const id = "nonregular-1"
+	if err := d.Start(ctx, id, minimalRequest(id)); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	t.Cleanup(func() { _ = d.Remove(context.Background(), id) })
+
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		done, err := d.WorkloadDone(ctx, id)
+		if err != nil {
+			t.Fatalf("WorkloadDone: %v", err)
+		}
+		if done {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("workload never signalled WorkloadDone")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	// workload.mjs has already written the one regular file; add the entry a
+	// hostile or careless workload could have written beside it.
+	_, outDir := d.paths(id)
+	makeNonRegularEntry(t, outDir)
+
+	raw, err := d.ReadArtifacts(ctx, id)
+	if err != nil {
+		t.Fatalf("ReadArtifacts failed on a directory holding one non-regular entry: %v; "+
+			"the entry must be skipped, not turn the whole collection into nothing", err)
+	}
+	var names []string
+	tr := tar.NewReader(bytes.NewReader(raw))
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("reading artifact tar: %v", err)
+		}
+		names = append(names, hdr.Name)
+	}
+	if len(names) != 1 || names[0] != "result.txt" {
+		t.Fatalf("collected %v, want exactly [result.txt]", names)
+	}
+}
+
+// makeNonRegularEntry puts one entry that is neither a regular file nor a
+// directory into the run's artifacts directory, by whatever means the platform
+// allows an unprivileged process.
+//
+// A POSIX symlink is the direct case. Windows refuses one without
+// SeCreateSymbolicLinkPrivilege, which an ordinary account does not have — but
+// a directory junction needs no privilege and Go's WalkDir reports it as
+// irregular (neither IsDir nor IsRegular), which is the same branch. That
+// matters here rather than being a curiosity: Windows is the platform this
+// driver was written for, so this assertion must have teeth there.
+func makeNonRegularEntry(t *testing.T, outDir string) {
+	t.Helper()
+	dir := artifactDir(outDir)
+	link := filepath.Join(dir, "link")
+	target := filepath.Join(outDir, "target")
+	if err := os.WriteFile(target, []byte("pointed at, not collected\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, link); err == nil {
+		return
+	}
+	if runtime.GOOS != "windows" {
+		t.Skipf("cannot create a symlink in %s and this is not Windows", dir)
+	}
+	junctionTarget := filepath.Join(outDir, "junction-target")
+	if err := os.MkdirAll(junctionTarget, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	out, err := exec.Command("cmd", "/c", "mklink", "/J", link, junctionTarget).CombinedOutput()
+	if err != nil {
+		t.Skipf("no symlink privilege and mklink /J failed (%v): %s", err, out)
+	}
 }

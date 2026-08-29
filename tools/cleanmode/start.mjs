@@ -211,11 +211,15 @@ console.log(`[launcher] database carrier ready on ${PGLITE_PORT}`);
 // means a demo cannot accidentally ship with a token someone else knows.
 const sandboxToken = randomUUID();
 
+// DATABASE_URL is deliberately not in `shared`: sandboxd holds no database
+// connection and needs none (apps/sandbox/cmd/sandboxd/main.go), and the
+// driver's workload env is an allowlist precisely so a DSN never reaches a
+// skill. Handing it to sandboxd anyway would put the control plane's key one
+// hop from the workload for no reason.
 const shared = {
   SKILLHUB_CLEAN_MODE: "1",
   DEV_LOGIN: "1",
   COOKIE_INSECURE: "1",
-  DATABASE_URL: dsn,
   APP_URL: `http://127.0.0.1:${API_PORT}`,
   API_ADDR: `127.0.0.1:${API_PORT}`,
 };
@@ -223,6 +227,7 @@ const shared = {
 start("api", "go", ["-C", "apps/platform", "run", "./cmd/api"], {
   env: {
     ...shared,
+    DATABASE_URL: dsn,
     SKILLHUB_SANDBOX_PROVIDERS: `self_hosted=http://127.0.0.1:${SANDBOX_PORT}`,
     SKILLHUB_SANDBOX_TOKEN_SELF_HOSTED: sandboxToken,
   },

@@ -3,8 +3,10 @@ package dockerdrv
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -47,11 +49,17 @@ func (d *Driver) ProbeEgress(ctx context.Context, targets []string) ([]string, e
 		return nil, nil
 	}
 
-	script := probeScript(targets)
+	script, err := probeScript(targets)
+	if err != nil {
+		return nil, err
+	}
 	cfg := &container.Config{
 		Image: d.cfg.Image,
 		// The image's own entrypoint is the agent harness. This is not a run.
-		Entrypoint: strslice.StrSlice{"/bin/sh", "-c"},
+		// `node -e` rather than a shell: node is the one interpreter the
+		// Runtime Image is guaranteed to carry (it is what run.mjs runs on),
+		// and it removes the shell from the probe path entirely.
+		Entrypoint: strslice.StrSlice{"node", "-e"},
 		Cmd:        strslice.StrSlice{script},
 		User:       fmt.Sprintf("%d:%d", d.cfg.UID, d.cfg.GID),
 		// Deliberately NOT labelManaged. Adopt() rebuilds runs from that label
@@ -154,29 +162,76 @@ func (d *Driver) probeLogs(ctx context.Context, id string) (string, error) {
 // clean pass, and the clean pass is the common case. So the caller can tell the
 // difference: no REACHED lines and a completed container is a pass, and a
 // container that did not complete is an error the probe reports as `unknown`.
-func probeScript(targets []string) string {
-	var b strings.Builder
-	// -w 2: a target that is filtered rather than refused hangs, and the probe
-	// has a whole-round timeout it must not spend on one address.
+//
+// This used to be `nc -z -w 2 ... && echo REACHED ...` under /bin/sh, and it
+// was the failure shape the paragraph above describes, arriving by the one
+// route it could not tell from a pass: the Runtime Image has no `nc` (it is
+// node:22-bookworm-slim plus python3; `command -v nc` finds nothing), so the
+// `&&` short-circuited, nothing was echoed, and the probe reported a clean
+// pass on every round - on the first node that ever has an egress network,
+// which is the only node this check exists for. Installing netcat was the
+// other way out and is the wrong one: a network tool inside a sandbox is
+// attack surface, for the same reason this image dropped unzip.
+//
+// So the probe now dials from node itself, which the image is guaranteed to
+// carry. The targets are marshalled as JSON data rather than interpolated into
+// source, so nothing about the value can change what the script does - the
+// shell-quoting this replaced was defending against the same thing.
+func probeScript(targets []string) (string, error) {
+	type target struct {
+		Label string `json:"t"`
+		Host  string `json:"h"`
+		Port  int    `json:"p"`
+	}
+	var list []target
 	for _, t := range targets {
-		host, port, ok := strings.Cut(t, ":")
-		if !ok {
+		// Last colon, so an IPv6 literal's own colons stay with the host.
+		i := strings.LastIndex(t, ":")
+		if i <= 0 {
 			continue
 		}
-		fmt.Fprintf(&b, "nc -z -w 2 %s %s 2>/dev/null && echo REACHED %s:%s\n",
-			shellQuote(host), shellQuote(port), host, port)
+		port, err := strconv.Atoi(t[i+1:])
+		if err != nil || port <= 0 || port > 65535 {
+			continue
+		}
+		list = append(list, target{Label: t, Host: t[:i], Port: port})
 	}
-	b.WriteString("exit 0\n")
-	return b.String()
+	encoded, err := json.Marshal(list)
+	if err != nil {
+		return "", fmt.Errorf("encode p02 targets: %w", err)
+	}
+	// probeDialTimeoutMS mirrors `nc -w 2`: a target that is filtered rather
+	// than refused never answers at all, and the probe has a whole-round
+	// timeout it must not spend on one address.
+	return fmt.Sprintf(probeSource, encoded, probeDialTimeoutMS), nil
 }
 
-// shellQuote is single-quote wrapping, and the targets come from node
-// configuration rather than from a RunRequest - but this string is assembled
-// into a shell command, so it is quoted at the boundary regardless of who wrote
-// the value.
-func shellQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+const probeDialTimeoutMS = 2000
+
+// probeSource takes the target list as %s (a JSON array) and the per-target
+// dial timeout as %d. Each socket settles exactly once - a destroy() after a
+// connect can still raise an error event, and counting it twice would end the
+// script while other dials were still open, which reads as a pass.
+const probeSource = `
+const net = require("node:net");
+const targets = %s;
+let pending = targets.length;
+const finish = () => { if (--pending <= 0) process.exit(0); };
+if (pending === 0) process.exit(0);
+for (const t of targets) {
+  let settled = false;
+  const done = () => { if (!settled) { settled = true; finish(); } };
+  const socket = net.connect({ host: t.h, port: t.p });
+  const timer = setTimeout(() => { socket.destroy(); done(); }, %d);
+  socket.on("connect", () => {
+    process.stdout.write("REACHED " + t.t + "\n");
+    clearTimeout(timer);
+    socket.destroy();
+    done();
+  });
+  socket.on("error", () => { clearTimeout(timer); done(); });
 }
+`
 
 // parseProbeOutput keeps only the targets the probe actually named, so a
 // workload-shaped surprise in the transcript cannot invent a breach.

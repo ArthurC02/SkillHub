@@ -20,7 +20,7 @@
 #         (SBX-011). Thresholds are settled in ADR-022 §2.
 #
 # Build:
-#   docker build -t skillhub/runtime-agent-sdk:2026.08-3 infra/images/runtime-agent-sdk
+#   docker build -t skillhub/runtime-agent-sdk:2026.08-5 infra/images/runtime-agent-sdk
 FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
 
 # The SDK version is pinned, not floated: it is the runtime_version the
@@ -32,9 +32,14 @@ ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 # an in-place edit of an existing one (I-05, README "Digest 更新程序"). The
 # runtime-image workflow reads it straight out of this file so the tag it pushes
 # to GHCR and the tag written here cannot drift apart.
-# 2026.08-3 closes the gap between the catalog's `deps` field and what the
-# packages actually import (content-baseline-report.md §13.4).
-ARG IMAGE_VERSION=2026.08-4
+# 2026.08-4 removed `unzip` and moved its refusals into run.mjs's own zip parser
+# (04 丙-82). 2026.08-5 bounds that parser: a declared-size ceiling per entry, a
+# declared-total ceiling, and an entry-count ceiling, so a decompression bomb is
+# refused rather than absorbed — which mattered the moment this workload started
+# running on a host process with no cgroup behind it. Both are behaviour
+# changes inside the image, so both are ADR-023 upgrades and both are written up
+# in UPGRADES.md.
+ARG IMAGE_VERSION=2026.08-5
 
 # Non-root from the image on up (C-02). The provider also passes --user, but an
 # image whose only account is root is one bad flag away from running as root.

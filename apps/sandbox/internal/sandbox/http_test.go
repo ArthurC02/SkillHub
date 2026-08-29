@@ -40,6 +40,10 @@ type fakeDriver struct {
 	released map[string]int
 	// adopted is what a restarted provider finds still running on the node.
 	adopted []sandbox.Adopted
+	// rootless is what this driver reports about the account its workloads run
+	// as. Settable so a test can drive the false answer, which is the one a
+	// dispatch gate acts on.
+	rootless bool
 }
 
 func newFakeDriver() *fakeDriver {
@@ -52,6 +56,7 @@ func newFakeDriver() *fakeDriver {
 		artifacts: map[string][]byte{},
 		done:      map[string]bool{},
 		released:  map[string]int{},
+		rootless:  true,
 	}
 }
 
@@ -162,6 +167,7 @@ func (f *fakeDriver) Adopt(context.Context) ([]sandbox.Adopted, error) {
 	return f.adopted, nil
 }
 func (f *fakeDriver) Healthy(context.Context) bool { return true }
+func (f *fakeDriver) Rootless() bool               { return f.rootless }
 
 func (f *fakeDriver) exit(id string, out sandbox.Outcome) {
 	f.mu.Lock()
@@ -673,4 +679,26 @@ func waitForTerminal(t *testing.T, h http.Handler, id string) sandbox.ProviderRu
 	}
 	t.Fatalf("run %s never reached a terminal state", id)
 	return sandbox.ProviderRun{}
+}
+
+// TestCapabilityReportsTheDriversRootlessDetection: isolation.rootless is what
+// the dispatch gate refuses a provider on (schedule.go: "does not run workloads
+// unprivileged"), and it used to be the literal `true` written into every
+// capability response by both drivers. localdrv has no second account to drop
+// to, so on a clean-mode node that constant was a claim about the operator's
+// own login that nothing had checked.
+//
+// Both directions are asserted: a driver saying false has to reach the wire, or
+// the gate has nothing to act on.
+func TestCapabilityReportsTheDriversRootlessDetection(t *testing.T) {
+	for _, rootless := range []bool{true, false} {
+		drv := newFakeDriver()
+		drv.rootless = rootless
+		got := newManager(drv).Capability(context.Background())
+		if got.Isolation.Rootless != rootless {
+			t.Errorf("Capability().Isolation.Rootless = %v with a driver reporting %v: "+
+				"the field must carry the driver's detection, not a constant",
+				got.Isolation.Rootless, rootless)
+		}
+	}
 }

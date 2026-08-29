@@ -186,6 +186,39 @@ function fail(category, code, message) {
 // passes on one platform and not the other is exactly the kind of gap a
 // crafted package would be built to find.
 
+// Bounds on the *input* direction. The output direction has had these since
+// SBX-008 (artifactMaxEntries = 1000 and the per-file/per-run byte ceilings in
+// apps/sandbox/internal/sandbox/artifacts.go); the input direction had none,
+// and this is the code that opens the first untrusted bytes in the whole system
+// (iron rule 1).
+//
+// It matters more here than it did under `unzip`, which had no compression-ratio
+// guard either: in a container the blast radius was a cgroup memory ceiling and
+// an OOM the driver reports as an execution failure, but clean mode runs this on
+// a host process where Linux enforces nothing and Windows' Job Object kills the
+// whole job — a run with no trace, no artifacts and no stated reason. Taking
+// over a security boundary is the moment to bound it, not a later one.
+//
+// MAX_PACKAGE_ENTRIES mirrors artifactMaxEntries for the reason its comment
+// gives: an empty file costs no bytes and still costs a filesystem entry, so a
+// byte ceiling alone is not a bound. 1000 is the same number on both sides so
+// that a package a run could not have produced is also one it cannot consume.
+//
+// MAX_PACKAGE_TOTAL_BYTES is 256 MiB: comfortably above any real skill package
+// (the largest in the M2 catalog is under 2 MiB) and comfortably below the
+// smallest memory ceiling any deployment gives this process, so the refusal
+// arrives as a message rather than as an OOM kill.
+//
+// The total is checked against what the central directory *declares*, before a
+// single byte is inflated or written — a running total of what came out would
+// only notice after a quarter of a gigabyte was already on disk. Declaring less
+// than the truth is not a way around it, because the two checks compose: a
+// deflated entry cannot exceed its own declared size (maxOutputLength in
+// readEntryData) and a stored entry's two sizes must be equal (checked there
+// too), so the declared total is an upper bound on what actually lands.
+const MAX_PACKAGE_ENTRIES = 1000;
+const MAX_PACKAGE_TOTAL_BYTES = 256 * 1024 * 1024;
+
 const EOCD_SIGNATURE = 0x06054b50;
 const CENTRAL_DIR_SIGNATURE = 0x02014b50;
 const LOCAL_FILE_SIGNATURE = 0x04034b50;
@@ -248,11 +281,15 @@ function readCentralDirectory(buf) {
   if (totalEntries === 0xffff || cdSize === 0xffffffff || cdOffset === 0xffffffff) {
     throw new Error("unsupported zip feature: zip64 archive");
   }
+  if (totalEntries > MAX_PACKAGE_ENTRIES) {
+    throw new Error(`refusing oversized skill package: ${totalEntries} entries exceeds the ${MAX_PACKAGE_ENTRIES} entry limit`);
+  }
   if (eocdOffset >= 4 && buf.readUInt32LE(eocdOffset - 4) === ZIP64_EOCD_LOCATOR_SIGNATURE) {
     throw new Error("unsupported zip feature: zip64 archive");
   }
 
   const entries = [];
+  let declaredBytes = 0;
   let pos = cdOffset;
   for (let i = 0; i < totalEntries; i += 1) {
     if (buf.readUInt32LE(pos) !== CENTRAL_DIR_SIGNATURE) {
@@ -288,7 +325,13 @@ function readCentralDirectory(buf) {
       throw new Error(`refusing non-regular zip entry: ${name}`);
     }
 
-    entries.push({ name, method, compressedSize, localHeaderOffset });
+    entries.push({ name, method, compressedSize, uncompressedSize, localHeaderOffset });
+    declaredBytes += uncompressedSize;
+    if (declaredBytes > MAX_PACKAGE_TOTAL_BYTES) {
+      throw new Error(
+        `refusing oversized skill package: declared ${declaredBytes} bytes exceeds the ${MAX_PACKAGE_TOTAL_BYTES} byte limit`,
+      );
+    }
     pos += 46 + nameLen + extraLen + commentLen;
   }
   return entries;
@@ -307,7 +350,32 @@ function readEntryData(buf, entry) {
   const extraLen = buf.readUInt16LE(lh + 28);
   const dataStart = lh + 30 + nameLen + extraLen;
   const compressed = buf.subarray(dataStart, dataStart + entry.compressedSize);
-  return entry.method === 8 ? inflateRawSync(compressed) : Buffer.from(compressed);
+  if (entry.method !== 8) {
+    // "Stored" means the two sizes are the same number. Checking it is what
+    // makes the declared total above an honest bound for this branch as well:
+    // without it an entry could declare one byte and carry a hundred megabytes.
+    if (entry.compressedSize !== entry.uncompressedSize) {
+      throw new Error(
+        `malformed zip: stored entry declares ${entry.uncompressedSize} bytes but carries ${entry.compressedSize} (${entry.name})`,
+      );
+    }
+    return Buffer.from(compressed);
+  }
+  // The entry's own declared uncompressed size is the bound. An archive that
+  // says 100 bytes and inflates to 10 MB is lying about itself, and this is
+  // where the lie stops being free — the central directory's size field was
+  // read already and until now was only checked for the zip64 sentinel.
+  // maxOutputLength must be at least 1, so a legitimately empty entry gets 1.
+  try {
+    return inflateRawSync(compressed, { maxOutputLength: Math.max(1, entry.uncompressedSize) });
+  } catch (err) {
+    if (err?.code === "ERR_BUFFER_TOO_LARGE") {
+      throw new Error(
+        `refusing zip entry that inflates past its declared size of ${entry.uncompressedSize} bytes: ${entry.name}`,
+      );
+    }
+    throw err;
+  }
 }
 
 // extractPackage is the whole of what `unzip -q -o <archivePath> -d <destDir>`

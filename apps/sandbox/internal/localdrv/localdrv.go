@@ -330,9 +330,30 @@ func (d *Driver) Healthy(ctx context.Context) bool {
 // a sandbox.Config.MaxResources must not declare a ceiling stronger than what
 // this returns: 02:PORT-010's acceptance criterion is that the capability
 // declaration reflects what was detected, not what was intended.
+//
+// Every field here is one ResourceLimits ceiling, and cmd/sandboxd's
+// unenforcedCeilings turns "no field claims it" into the name the capability
+// declares as unheld. So a ceiling this struct does not mention is reported as
+// unenforced, which is the direction that makes an omission loud: the three
+// added on 2026-08-29 (CPU, Disk, OpenFiles) had been unenforced on both
+// platforms since this package existed, and were declared as walls because
+// nothing here said otherwise.
 type ResourceEnforcement struct {
 	Memory    bool // an OS-enforced memory ceiling
 	Processes bool // an OS-enforced process-count ceiling
+	// CPU: false on both platforms. Windows would need a second, separate
+	// SetInformationJobObject call with JOBOBJECT_CPU_RATE_CONTROL_INFORMATION
+	// (tree_windows.go says so and this is where that sentence becomes
+	// machine-readable); POSIX has no unprivileged equivalent this package
+	// attempts.
+	CPU bool
+	// Disk: false on both platforms. This driver's per-run directory is an
+	// os.MkdirAll on the host filesystem with no quota behind it, where
+	// dockerdrv gets a real wall from a tmpfs `size=`.
+	Disk bool
+	// OpenFiles: false on both platforms. dockerdrv passes a `nofile` ulimit to
+	// the daemon; nothing here sets an rlimit on the child.
+	OpenFiles bool
 }
 
 // ResourceEnforcement is answered per-platform in tree_windows.go / tree_unix.go
@@ -390,14 +411,23 @@ func (w *tailWriter) String() string {
 // package — until it does, dockerdrv/docker.go's env() is the reference this
 // one must be kept in step with by hand.
 //
-// One deliberate difference from dockerdrv: this starts from the host's own
-// environment (os.Environ()) rather than a fixed, minimal list. A container has
-// no environment until Config.Env gives it one, so dockerdrv keeps that list
-// short on purpose (C-04 and friends). A host process already has an
-// environment — PATH to find node's own dependents, SystemRoot on Windows for
-// crypto and networking internals node needs to even start — and replacing it
-// wholesale would not add any isolation this driver does not already lack; it
-// would just break node.
+// Like dockerdrv, this builds the environment rather than inheriting one. It
+// used to start from os.Environ() and override only its own keys, on the
+// reasoning that a driver with no isolation gains none by trimming a variable
+// list. That reasoning was wrong about what it was trimming: sandboxd is
+// started by tools/cleanmode/start.mjs, which hands it DATABASE_URL (the
+// control plane's own connection string) and SKILLHUB_SANDBOX_TOKEN (the
+// provider port's bearer credential) — so os.Environ() was not "the host's
+// ambient environment", it was a set of keys to the control plane, handed to
+// an unsandboxed workload that has `env` in its allowed tools. ADR-059 signed
+// off on "clean has no boundary"; it did not sign off on handing the workload
+// the credentials, and iron rule 11 forbids them reaching a trace at all.
+//
+// So the host side is an allowlist: exactly what node needs to start on either
+// platform, and nothing else. A denylist was the other option and is the wrong
+// one for the same reason ADR-059 decision 3's own incident was a denylist —
+// its next hole is the next variable somebody adds. Matching is
+// case-insensitive because Windows environment names are (`Path`, not `PATH`).
 func env(req sandbox.RunRequest, workDir, outDir string) []string {
 	type kv struct{ k, v string }
 	pairs := []kv{
@@ -452,11 +482,17 @@ func env(req sandbox.RunRequest, workDir, outDir string) []string {
 	for _, p := range pairs {
 		set[p.k] = true
 	}
-	out := make([]string, 0, len(pairs)+len(os.Environ()))
+	out := make([]string, 0, len(pairs)+len(hostEnvAllowlist))
 	for _, raw := range os.Environ() {
 		k, _, ok := strings.Cut(raw, "=")
-		if ok && set[k] {
-			continue // overridden below, not duplicated
+		if !ok || k == "" {
+			continue // Windows' "=C:=C:\..." drive-cwd entries have no name
+		}
+		if set[k] {
+			continue // this driver sets it below; the host's value is not carried
+		}
+		if !hostEnvAllowed(k) {
+			continue
 		}
 		out = append(out, raw)
 	}
@@ -465,3 +501,50 @@ func env(req sandbox.RunRequest, workDir, outDir string) []string {
 	}
 	return out
 }
+
+// hostEnvAllowlist is every host variable a workload inherits: the ones node
+// itself needs to start and to find a temporary directory, on Windows and on
+// POSIX. Names are upper-cased because Windows' are case-insensitive and Go
+// reports them however the process block spells them.
+//
+// Nothing here carries a credential or a destination. Adding a name is a
+// decision about what an unsandboxed workload gets to read, so it belongs in a
+// diff somebody reviews rather than in whatever the operator's shell happened
+// to export.
+var hostEnvAllowlist = map[string]bool{
+	"PATH":        true, // find node's own dependents; on Windows, its DLLs
+	"PATHEXT":     true, // Windows: which extensions count as executable
+	"COMSPEC":     true, // Windows: child_process.exec's shell
+	"SYSTEMROOT":  true, // Windows: node will not start without it (crypto, winsock)
+	"WINDIR":      true, // Windows: older spelling of the same thing
+	"SYSTEMDRIVE": true, // Windows: path resolution for drive-relative paths
+	"TEMP":        true, // os.tmpdir() on Windows
+	"TMP":         true, // os.tmpdir() on Windows
+	"TMPDIR":      true, // os.tmpdir() on POSIX
+	"HOME":        true, // POSIX; overridden by this driver to the run's workDir
+	"USERPROFILE": true, // Windows os.homedir()
+	"LANG":        true, // locale for anything the workload shells out to
+	"LC_ALL":      true,
+}
+
+// hostEnvAllowed also lets through the rest of the LC_* family, which is a
+// family rather than a list (LC_CTYPE, LC_NUMERIC, and a platform's own
+// additions) and carries nothing but locale names.
+func hostEnvAllowed(name string) bool {
+	upper := strings.ToUpper(name)
+	return hostEnvAllowlist[upper] || strings.HasPrefix(upper, "LC_")
+}
+
+// Rootless reports whether this driver's workloads run without administrative
+// privilege, which for a host process means: whether sandboxd itself does.
+// There is no separate account to drop to — Start does not set
+// SysProcAttr.Credential and has no privilege to drop with — so the honest
+// answer is a detection of the current process, made per-platform in
+// tree_unix.go / tree_windows.go (rootless()).
+//
+// Answering false takes the node out of dispatch rotation
+// (schedule.go refuses a provider that does not run workloads unprivileged),
+// and that is the intended outcome, not a bug to work around: a clean-mode
+// node running elevated is one where an untrusted workload would have the
+// administrator's own reach.
+func (d *Driver) Rootless() bool { return rootless() }

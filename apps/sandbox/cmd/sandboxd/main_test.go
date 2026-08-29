@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -19,18 +21,30 @@ func TestRefuseDevSettingsOnAProductionRuntime(t *testing.T) {
 	const digest = "ghcr.io/skillhub/runtime-agent-sdk@sha256:" +
 		"0000000000000000000000000000000000000000000000000000000000000000"
 
-	if err := refuseDevSettings("runsc", "skillhub/runtime-agent-sdk:2026.08-3", false); err == nil {
+	if err := refuseDevSettings("runsc", "skillhub/runtime-agent-sdk:2026.08-3", false, false); err == nil {
 		t.Error("a tag-pinned image was accepted with runsc: the run record cannot say what ran")
 	}
-	if err := refuseDevSettings("runsc", digest, true); err == nil {
+	if err := refuseDevSettings("runsc", digest, true, false); err == nil {
 		t.Error("SKILLHUB_SANDBOX_DEV_CMD was accepted with runsc: dev_cmd replaces the harness that enforces the token ceiling")
 	}
-	// The dev machine keeps both: it is the runtime, not the variable, that says
-	// which node this is.
-	if err := refuseDevSettings("", "skillhub/runtime-agent-sdk:2026.08-3", true); err != nil {
+	// The third one is not a dev convenience but a configuration that cannot be
+	// true: driverKind lets clean win, so a production node that also carries
+	// SKILLHUB_CLEAN_MODE=1 drops from gVisor to no boundary and keeps passing
+	// every other check in this file. resolveIsolation's comment used to call
+	// that combination impossible; this is what makes it so.
+	err := refuseDevSettings("runsc", digest, false, true)
+	if err == nil {
+		t.Fatal("SKILLHUB_CLEAN_MODE was accepted with runsc: a runsc node would silently run with no isolation at all")
+	}
+	if !strings.Contains(err.Error(), "SKILLHUB_CLEAN_MODE") || !strings.Contains(err.Error(), "runsc") {
+		t.Errorf("the refusal must name both variables so an operator can find the copied file; got %q", err)
+	}
+	// The dev machine keeps all of them: it is the runtime, not the variable,
+	// that says which node this is.
+	if err := refuseDevSettings("", "skillhub/runtime-agent-sdk:2026.08-3", true, true); err != nil {
 		t.Errorf("a development node was refused: %v", err)
 	}
-	if err := refuseDevSettings("runsc", digest, false); err != nil {
+	if err := refuseDevSettings("runsc", digest, false, false); err != nil {
 		t.Errorf("a production node with production settings was refused: %v", err)
 	}
 }
@@ -131,26 +145,85 @@ func TestCleanModeMaxResourcesReflectsDetection(t *testing.T) {
 // field existed the only honest signal was a log line, which is the same shape
 // as the incident ADR-059 decision 3 records: a node whose declaration and
 // reality diverged where only the log knew.
+//
+// It compares against a set derived from the contract type, never against a
+// written-out list. The list version was green while three ceilings nobody
+// enforces (vcpu, disk_bytes, max_open_files) were declared as walls — a
+// hard-coded expectation cannot notice a name that is missing from both sides
+// of the comparison, which is the whole failure this test is for.
 func TestUnenforcedCeilingsMirrorsDetection(t *testing.T) {
+	names := resourceLimitNames()
+	if len(names) == 0 {
+		t.Fatal("resourceLimitNames() read no fields off sandbox.ResourceLimits")
+	}
+
+	// Every ceiling the contract declares is classified: either an OS ceiling
+	// with a detection behind it, or one something else holds. An unclassified
+	// field is reported as unenforced, which is the safe direction — but it is
+	// still a decision somebody has to make, so it fails here rather than
+	// appearing in a capability response nobody expected it in.
+	claims := osCeilings(localdrv.ResourceEnforcement{})
+	for _, name := range names {
+		if !heldElsewhere[name] {
+			if _, ok := claims[name]; !ok {
+				t.Errorf("ResourceLimits field %q is classified neither as an OS ceiling "+
+					"(osCeilings) nor as held elsewhere (heldElsewhere)", name)
+			}
+		}
+	}
+	// And nothing is classified twice, or classified as a ceiling the contract
+	// does not have.
+	for name := range claims {
+		if heldElsewhere[name] {
+			t.Errorf("%q is claimed both as an OS ceiling and as held elsewhere", name)
+		}
+		if !slices.Contains(names, name) {
+			t.Errorf("osCeilings names %q, which sandbox.ResourceLimits does not have", name)
+		}
+	}
+
+	// Every field of ResourceEnforcement has to reach osCeilings, or a
+	// platform that starts enforcing something would keep declaring it
+	// unenforced with nothing to say so.
+	if got, want := len(claims), reflect.TypeOf(localdrv.ResourceEnforcement{}).NumField(); got != want {
+		t.Errorf("osCeilings covers %d ceilings but ResourceEnforcement has %d fields: "+
+			"a detection nothing reads is a detection nobody is holding", got, want)
+	}
+
 	for _, tc := range []struct {
 		name string
 		enf  localdrv.ResourceEnforcement
-		want []string
 	}{
-		{name: "windows job object holds both", enf: localdrv.ResourceEnforcement{Memory: true, Processes: true}},
-		{name: "unprivileged linux holds neither", enf: localdrv.ResourceEnforcement{}, want: []string{"memory_bytes", "max_pids"}},
-		{name: "memory only", enf: localdrv.ResourceEnforcement{Memory: true}, want: []string{"max_pids"}},
+		{name: "windows job object holds memory and pids only", enf: localdrv.ResourceEnforcement{Memory: true, Processes: true}},
+		{name: "unprivileged linux holds nothing", enf: localdrv.ResourceEnforcement{}},
+		{name: "a platform that held every ceiling", enf: localdrv.ResourceEnforcement{
+			Memory: true, Processes: true, CPU: true, Disk: true, OpenFiles: true,
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := unenforcedCeilings(tc.enf)
-			if len(got) != len(tc.want) {
-				t.Fatalf("unenforcedCeilings(%+v) = %v, want %v", tc.enf, got, tc.want)
-			}
-			for i := range got {
-				if got[i] != tc.want[i] {
-					t.Fatalf("unenforcedCeilings(%+v) = %v, want %v", tc.enf, got, tc.want)
+			held := osCeilings(tc.enf)
+			var want []string
+			for _, name := range names {
+				if !heldElsewhere[name] && !held[name] {
+					want = append(want, name)
 				}
 			}
+			if got := unenforcedCeilings(tc.enf); !slices.Equal(got, want) {
+				t.Fatalf("unenforcedCeilings(%+v) = %v, want %v", tc.enf, got, want)
+			}
 		})
+	}
+
+	// The two ends of the range, spelled out, so this test also says what the
+	// derivation is supposed to produce rather than only that it agrees with
+	// itself.
+	if got := unenforcedCeilings(localdrv.ResourceEnforcement{}); !slices.Equal(got,
+		[]string{"vcpu", "memory_bytes", "disk_bytes", "max_pids", "max_open_files"}) {
+		t.Errorf("a platform that enforces nothing declared %v", got)
+	}
+	if got := unenforcedCeilings(localdrv.ResourceEnforcement{
+		Memory: true, Processes: true, CPU: true, Disk: true, OpenFiles: true,
+	}); len(got) != 0 {
+		t.Errorf("a platform that enforces every ceiling still declared %v unenforced", got)
 	}
 }

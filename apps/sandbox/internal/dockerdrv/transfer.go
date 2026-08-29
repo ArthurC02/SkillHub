@@ -250,7 +250,7 @@ func fetchWithLimit(ctx context.Context, url string, limit int64) ([]byte, error
 	if err != nil {
 		return nil, errors.New("grant URL is not usable")
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := sandbox.GrantHTTPClient.Do(req)
 	if err != nil {
 		return nil, errors.New("object storage could not be reached")
 	}

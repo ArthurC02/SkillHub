@@ -310,3 +310,31 @@ func TestAcceptChecksEveryDeclaredResourceCeiling(t *testing.T) {
 		})
 	}
 }
+
+// TestUploadRefusesToFollowARedirect covers the third caller of
+// GrantHTTPClient — the artifact upload, the one direction that carries the
+// run's own output. A PUT that followed a 302 would replay the body at
+// whatever address the storage endpoint named.
+func TestUploadRefusesToFollowARedirect(t *testing.T) {
+	var elsewhereHits int
+	elsewhere := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		elsewhereHits++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer elsewhere.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, elsewhere.URL, http.StatusFound)
+	}))
+	defer srv.Close()
+
+	err := upload(context.Background(), srv.URL+"/signed", []byte("artifact bytes"))
+	if err == nil {
+		t.Fatal("a redirected upload grant was followed")
+	}
+	if !strings.Contains(err.Error(), "302") {
+		t.Errorf("the refusal should report the redirect status it saw; got %v", err)
+	}
+	if elsewhereHits != 0 {
+		t.Errorf("the redirect target received %d request(s); a pre-signed PUT must not be replayed elsewhere", elsewhereHits)
+	}
+}

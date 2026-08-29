@@ -44,6 +44,10 @@ function buildZip(entries) {
     const generalFlag = e.generalFlag ?? 0;
     const externalAttr = e.externalAttr ?? 0;
     const compressedSizeField = e.compressedSizeLie ?? compressed.length;
+    // `uncompressedSizeLie` is how the decompression-bomb fixture is built: the
+    // central directory claims a small size while the deflate stream expands to
+    // something far larger, which is the whole shape of the attack.
+    const uncompressedSizeField = e.uncompressedSizeLie ?? data.length;
 
     const localOffset = offset;
     const lh = Buffer.alloc(30);
@@ -55,7 +59,7 @@ function buildZip(entries) {
     lh.writeUInt16LE(0, 12); // mod date
     lh.writeUInt32LE(0, 14); // crc32 — unchecked
     lh.writeUInt32LE(compressedSizeField, 18);
-    lh.writeUInt32LE(data.length, 22);
+    lh.writeUInt32LE(uncompressedSizeField, 22);
     lh.writeUInt16LE(nameBuf.length, 26);
     lh.writeUInt16LE(0, 28); // extra length
     const localRecord = Buffer.concat([lh, nameBuf, compressed]);
@@ -71,7 +75,7 @@ function buildZip(entries) {
     ch.writeUInt16LE(0, 14);
     ch.writeUInt32LE(0, 16); // crc32
     ch.writeUInt32LE(compressedSizeField, 20);
-    ch.writeUInt32LE(data.length, 24);
+    ch.writeUInt32LE(uncompressedSizeField, 24);
     ch.writeUInt16LE(nameBuf.length, 28);
     ch.writeUInt16LE(0, 30); // extra length
     ch.writeUInt16LE(0, 32); // comment length
@@ -213,6 +217,109 @@ test("preserves the directory tree and extracts content byte-for-byte", () => {
     assert.equal(readFileSync(join(destDir, "pkg", "SKILL.md"), "utf8"), skillMd);
     assert.equal(readFileSync(join(destDir, "pkg", "scripts", "run.sh"), "utf8"), "#!/bin/sh\necho hi\n");
     assert.deepEqual(readFileSync(join(destDir, "pkg", "assets", "data.bin")), binaryContent);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// --- 5. decompression bombs and entry-count floods ---------------------------
+//
+// The seven refusals above are all about *where* an entry lands. These two are
+// about *how much* of it there is, which nothing checked until 2026-08-29: the
+// central directory's uncompressed size was read and used only for the zip64
+// sentinel, and `inflateRawSync` was called with no ceiling at all. Under
+// dockerdrv a cgroup caught the result; clean mode runs this in a host process
+// where nothing does.
+
+test("refuses an entry that inflates far past its declared size", () => {
+  // 10 MB of zeroes deflates to a few kilobytes, and the central directory
+  // claims 100 bytes. Every other check in this file passes it.
+  const bomb = Buffer.alloc(10 * 1024 * 1024, 0);
+  const { archivePath, destDir, root } = stageZip([
+    { name: "bomb.bin", data: bomb, method: 8, uncompressedSizeLie: 100 },
+  ]);
+  try {
+    assert.throws(
+      () => extractPackage(archivePath, destDir),
+      /inflates past its declared size of 100 bytes/,
+    );
+    // And nothing was written: the refusal has to come before the file lands.
+    assert.deepEqual(readdirSync(destDir), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("accepts an entry that deflates honestly, so the bound is not just a wall", () => {
+  // The same 10 MB, declared truthfully. It must extract — a bound that
+  // rejected this would be a size limit, not a bomb check, and the previous
+  // test would pass for the wrong reason.
+  const honest = Buffer.alloc(10 * 1024 * 1024, 7);
+  const { archivePath, destDir, root } = stageZip([{ name: "big.bin", data: honest, method: 8 }]);
+  try {
+    extractPackage(archivePath, destDir);
+    assert.equal(readFileSync(join(destDir, "big.bin")).length, honest.length);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("refuses a package with more entries than the limit", () => {
+  // 1001 empty files: no bytes at all, and still 1001 filesystem entries.
+  // artifactMaxEntries on the collection side carries the same number for the
+  // same reason (artifacts.go: "an empty file costs no bytes and still costs a
+  // manifest entry").
+  const entries = Array.from({ length: 1001 }, (_, i) => ({ name: `f${i}`, data: Buffer.alloc(0) }));
+  const { archivePath, destDir, root } = stageZip(entries);
+  try {
+    assert.throws(() => extractPackage(archivePath, destDir), /1001 entries exceeds the 1000 entry limit/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("accepts a package at exactly the entry limit", () => {
+  const entries = Array.from({ length: 1000 }, (_, i) => ({ name: `f${i}`, data: Buffer.alloc(0) }));
+  const { archivePath, destDir, root } = stageZip(entries);
+  try {
+    extractPackage(archivePath, destDir);
+    assert.equal(readdirSync(destDir).length, 1000);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("refuses a package whose declared sizes add up past the total limit", () => {
+  // Three entries, each declaring 100 MiB and carrying nothing: 300 MiB
+  // declared, past the 256 MiB bound. Nothing is inflated and nothing is
+  // written — the refusal comes off the central directory alone, which is the
+  // point of bounding the declaration rather than the running output.
+  const hundredMiB = 100 * 1024 * 1024;
+  const entries = Array.from({ length: 3 }, (_, i) => ({
+    name: `part${i}.bin`,
+    data: Buffer.alloc(0),
+    method: 8,
+    uncompressedSizeLie: hundredMiB,
+  }));
+  const { archivePath, destDir, root } = stageZip(entries);
+  try {
+    assert.throws(() => extractPackage(archivePath, destDir), /declared \d+ bytes exceeds the 268435456 byte limit/);
+    assert.deepEqual(readdirSync(destDir), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("refuses a stored entry whose two sizes disagree", () => {
+  // Method 0 means the compressed and uncompressed sizes are the same number.
+  // An entry that declares one byte and carries a megabyte would otherwise slip
+  // under the declared-total bound while landing a megabyte on disk.
+  const payload = Buffer.alloc(1024 * 1024, 3);
+  const { archivePath, destDir, root } = stageZip([
+    { name: "stored.bin", data: payload, method: 0, uncompressedSizeLie: 1 },
+  ]);
+  try {
+    assert.throws(() => extractPackage(archivePath, destDir), /stored entry declares 1 bytes but carries 1048576/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

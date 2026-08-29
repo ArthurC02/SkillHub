@@ -130,3 +130,103 @@ trace 完整性：7 個事件、`seq` 1..7 **無缺口**（`tool_call` ×2、`ag
   0022 的鍵不接受「極可能」。約 $2.2（§13.6 實測基準），已列 `03` 工作項。
 - **被拒收依賴的影響未做行為量測**：`pdf`／`pii-flag`／`document-format-skills` 失去哪些
   支路是由靜態掃描推得，非實跑；三筆在 `2026.08-2` 上皆判「符合」（走可用子集）。
+
+---
+
+## `2026.08-3` → `2026.08-5`（2026-08-29）— **四項實測未跑，不得合併到 main**
+
+> **這一節為什麼跨兩版**：`-4` 在 2026-08-29 隨 04 丙-82 落地（拿掉 `unzip`、`run.mjs`
+> 自寫 ZIP 解析器），**但本檔當時沒有補節**——`.github/workflows/runtime-image.yml`
+> 只檢查「Dockerfile 內容變了就要有 `ARG IMAGE_VERSION=` 的 diff」，沒有任何 job 檢查
+> UPGRADES.md 有沒有跟上，也沒有任何 job 檢查四項實測有沒有跑（稽核 04 D3）。
+> `-5` 在同一批補上解壓上界。兩次變更之間**沒有任何映像被建置或發佈**，所以這裡合成
+> 一節，並把 `-4` 的內容誠實列在變更欄裡，而不是假裝它當時被記錄過。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更（`-4`） | `Dockerfile`：移除 `unzip`。`run.mjs`：`extractPackage` 改為自寫 ZIP 解析器（中央目錄 + local header），逐條拒絕絕對路徑／`..` 路徑段（含反斜線變體）／非一般檔（symlink・device・fifo，以 external_attr 判）／zip64／加密／不支援的壓縮法 |
+| 變更（`-5`） | `run.mjs`：解壓炸彈上界三道——①每個 deflate 條目以中央目錄宣告的 `uncompressedSize` 當 `inflateRawSync` 的 `maxOutputLength`；②中央目錄宣告總量上界 `MAX_PACKAGE_TOTAL_BYTES = 256 MiB`，**在解壓與寫檔之前**就拒；③條目數上界 `MAX_PACKAGE_ENTRIES = 1000`（與 `artifacts.go` 的 `artifactMaxEntries` 同值同理由）。附帶：stored（method 0）條目的兩個 size 欄位必須相等，否則拒——這是讓①②對 stored 分支也成立的那一條 |
+| 為什麼 `-5` 是升級而不是整理 | `unzip` 對壓縮比同樣沒有防護，所以這不是回歸；但 `-4` 把這道邊界搬到了**沒有 cgroup 接住的平台**（clean mode 是主機行程：Linux 無 root 時零資源強制，Windows 的 Job Object 會直接終結整個 job，Run 變成沒有 trace、沒有產出、沒有原因的失敗）。接手一道邊界的時機就是加上界的時機 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
+| 映像 digest | **未建置**（見下方「四項實測待跑」） |
+| 依賴集 | **未變**（`-3` 的 17 個 Python 套件，0 增 0 減） |
+| commit | 待填（本節與程式同批） |
+| CI | 待填 |
+
+### 新增的可執行證據（不是四項清單，但已經跑過）
+
+`run.test.mjs` 由 13 支加到 19 支，新增的 6 支全部針對本次的上界，且每一支都做過突變驗證
+（把修正那一行拿掉、確認變紅、再改回來）：
+
+| 測試 | 斷言 |
+| --- | --- |
+| `refuses an entry that inflates far past its declared size` | 中央目錄宣告 100 bytes、實際 deflate 出 10 MB → 拒，且 `destDir` 為空（拒在寫檔之前） |
+| `accepts an entry that deflates honestly, so the bound is not just a wall` | 同樣 10 MB、誠實宣告 → 正常解出。**沒有這一支，上一支會因為「任何大檔都被拒」而假綠** |
+| `refuses a package with more entries than the limit` | 1001 個空檔 → 拒（空檔不佔位元組，只佔條目，所以位元組上界單獨不成立） |
+| `accepts a package at exactly the entry limit` | 1000 個 → 通過（邊界值不歪一格） |
+| `refuses a package whose declared sizes add up past the total limit` | 3 × 100 MiB 宣告 → 拒，且沒有任何條目被解壓或寫入 |
+| `refuses a stored entry whose two sizes disagree` | method 0、宣告 1 byte 實載 1 MiB → 拒 |
+
+執行方式：`node --test infra/images/runtime-agent-sdk/run.test.mjs`（19/19 通過，不需要
+容器、不需要金鑰、不花錢）。
+
+### `schema_version` 未動：仍是 `1.1`
+
+稽核 04 D2 記錄了「`run.mjs` 宣告 1.1 而 schema 已到 1.2」。查過
+`contracts/events/README.md` §「版本宣告的規則」後**確認不改**：producer 宣告的是它
+「照哪一版契約寫」，1.2 新增的是 `evaluation_started`／`evaluation_completed` 兩個型別，
+且兩者的 `emitted_by` 限 `orchestrator`——沙箱 harness 永遠不會發它們。harness 會寫
+`usage.token_source`（1.1 新增），所以 `1.1` 正是規則要它宣告的那一版。改成 `1.2` 會宣告
+一個這個 producer 不寫的版本，是把一致性做壞而不是做好。
+
+### ⚠️ 四項實測待跑（需要閘道費用，約 $0.02）— 未跑前不得合併到 main
+
+ADR-023 §1 的定義：**任何會改變 image digest 的變更都是升級**，§2 的四項清單要在**新
+digest 上實跑**，§3 明文禁止以推理或既有證據代替。本次改的是 `run.mjs`，而 `run.mjs` 是
+`COPY` 進映像的（`Dockerfile:141`），所以 digest 會變，四項一項都不能省。
+
+尤其不能省的是**測項 1**：`-4`／`-5` 改的正是 skill 套件解壓，也就是「Skill 載入條件」的
+**上游**。`04` 丙-82 做過的差分（同一個 zip 兩種解法逐位元組相同）是**針對解壓行為**的
+證明，不是四項；ADR-023 §3 禁止的就是拿它頂替。
+
+跑法（比照 `-3` 那一節的煙霧規模：單一 Run、`gpt-5.4-mini`、實測 $0.0202，上限 $0.3）：
+
+```bash
+# 0. 建映像並記下 digest（digest 才是事實來源，ADR-023 決策 1）
+docker build -t skillhub/runtime-agent-sdk:2026.08-5 infra/images/runtime-agent-sdk
+docker image inspect skillhub/runtime-agent-sdk:2026.08-5 --format '{{.Id}}'
+
+# 1. 依賴集沒變，但仍以新 digest 跑一次 import 檢查（與 -3 節同一條）
+docker run --rm --network none --user 65532:65532 --entrypoint python3 skillhub/runtime-agent-sdk:2026.08-5 -c 'import pandas, numpy, openpyxl, lxml, dateutil, docx, pptx, pypdf, pdfplumber, pycountry, chardet, defusedxml, ftfy, confusable_homoglyphs, pytz, phonenumbers, stdnum; print("OK")'
+
+# 2. 起模型棧（會產生費用，必須由負責人執行，不得由唯讀 SubAgent 啟動）
+task dev:model
+
+# 3. 測項 3／4（usage 發出條件、caching 欄位與對帳）＋ trace 管線，跑在真映像上
+export SKILLHUB_SANDBOX_TEST_IMAGE=skillhub/runtime-agent-sdk:2026.08-5
+go -C apps/sandbox test ./internal/dockerdrv/ -count=1 -v -run 'TestHarnessReportsUsageForACompletedTurn|TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage|TestTraceEventsReachTheCollectorFromARealContainer'
+
+# 3b. 測項 1（Skill 載入條件）今天沒有可執行形式，是人手跑的：掛一個最小 Skill 套件
+#     （SKILL.md ＋ 一支 scripts/check.py），確認 trace 有 skill_activation
+#     {"decision":"activated"}，且 script_log 顯示套件內的腳本真的被執行過（不是模型
+#     轉譯的重寫）。這一項是本次變更的直接下游，最不能省。比照 -3 節「實測：ADR-023
+#     四項」那張表逐項記下輸出。
+
+# 4. 測項 2（全數經閘道；金鑰撤銷後回 401）的既有可執行形式
+go -C apps/platform test ./internal/entrypoint/api/apiserver/ -count=1 -v -run TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey
+```
+
+跑完要回填的欄位：映像 digest、commit、CI run、以及上方四項的逐項實測輸出（比照 `-3`
+那一節的表格形式：斷言／實測輸出／判定）。**在那之前這一節就是紅燈**，`-5` 不得合併。
+
+### 本次未涵蓋的（明說）
+
+- **`apps/sandbox/cmd/sandboxd/main.go:45` 的預設映像仍是 `2026.08-3`**，本批**沒有**改。
+  理由是 `-5` 的映像還沒被建置，把預設指向一個本機與 registry 都不存在的 tag，會把
+  「文件落後」換成「非 runsc 節點一啟動就拉不到映像」。這一項的處置與 digest 一起做：
+  建好 `-5`、跑完四項、再同批改預設值（或依稽核 04 D1 的建議改成「沒有預設，未設就退出」）。
+- **UPGRADES.md 與 `ARG IMAGE_VERSION` 的機械對帳仍不存在**。稽核 04 D3 的建議①
+  （`devctl automation-check` 讀 Dockerfile 的版本字串、斷言本檔有同名章節，形式比照
+  `isolation_levels.go`）**本批未做**——`tools/` 不在本次的可寫範圍內。這一節是人手補的，
+  下一次漏掉時仍然沒有機器會說話。

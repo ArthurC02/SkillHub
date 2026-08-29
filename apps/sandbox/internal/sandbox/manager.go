@@ -53,6 +53,18 @@ type Driver interface {
 	Adopt(ctx context.Context) ([]Adopted, error)
 	// Healthy reports whether the driver can reach its backend.
 	Healthy(ctx context.Context) bool
+	// Rootless reports whether workloads actually run unprivileged on this
+	// driver, on this host, right now. It is a detection and not a policy: the
+	// dispatch gate refuses a provider that answers false, and that refusal is
+	// the point of the field. Same shape as localdrv.Reaping() and
+	// ResourceEnforcement() — a thing a driver cannot promise belongs somewhere
+	// a caller and a test can both read, not in a constant.
+	//
+	// It used to be a literal `true` written into Capability, which was true of
+	// dockerdrv (New refuses uid/gid 0) and unchecked on localdrv, where the
+	// workload runs as whatever account sandboxd runs as — very possibly a
+	// local administrator on M6's target machine.
+	Rootless() bool
 }
 
 // Outcome is how a workload ended, on its own terms.
@@ -209,7 +221,7 @@ func (m *Manager) Capability(ctx context.Context) ProviderCapability {
 		MaxResourcesUnenforced: m.cfg.MaxResourcesUnenforced,
 		Isolation: Isolation{
 			Level:                    m.cfg.IsolationLevel,
-			Rootless:                 true,
+			Rootless:                 m.drv.Rootless(),
 			DedicatedWorkspacePerRun: true,
 			ReapsDetachedDescendants: m.cfg.ReapsDetachedDescendants,
 		},

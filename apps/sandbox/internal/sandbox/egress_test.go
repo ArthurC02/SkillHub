@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -181,6 +182,14 @@ func TestLoadEgressAllowRefusesWhatItCannotEnforce(t *testing.T) {
 // and this is the only code that reads it; a field renamed on either side would
 // otherwise show up as a node that routes nowhere, which is a state the file is
 // also allowed to be in legitimately.
+//
+// That last sentence is why this test used to prove nothing. It compared
+// len(loaded) against len(raw destinations) — and the rendered list is empty by
+// design today (every allowlist entry still has `pinned_ip: unset`), so the
+// comparison was 0 != 0, false forever, on an assertion whose whole purpose was
+// to notice a rename. Everything below is chosen to have teeth *while the list
+// is empty*, because that is the state the file is in and will stay in until
+// `05` R-23 is signed.
 func TestTheCommittedRenderedListIsReadableByTheNode(t *testing.T) {
 	path := filepath.Join("..", "..", "..", "..", "infra", "egress", "rendered", "egress-allow.json")
 	raw, err := os.ReadFile(path)
@@ -191,21 +200,80 @@ func TestTheCommittedRenderedListIsReadableByTheNode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("the committed rendered list does not load: %v", err)
 	}
-	// It is legitimately empty today (`pinned_ip: unset`), so the assertion is
-	// not on the count. What must hold is that the reader and the writer still
-	// agree on the shape: the key the destinations live under, and the fields.
-	var doc struct {
-		Source       string            `json:"source"`
-		Destinations []json.RawMessage `json:"destinations"`
-	}
+
+	var doc map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &doc); err != nil {
 		t.Fatal(err)
 	}
-	if doc.Source != "infra/egress/allowlist.yaml" {
-		t.Errorf("rendered from %q, want infra/egress/allowlist.yaml", doc.Source)
+	if got := string(doc["source"]); got != `"infra/egress/allowlist.yaml"` {
+		t.Errorf("rendered from %s, want \"infra/egress/allowlist.yaml\"", got)
 	}
-	if len(dests) != len(doc.Destinations) {
+
+	// 1. The key the destinations live under has to be the key the loader reads.
+	// This is the rename the old assertion claimed to catch and could not: a
+	// renderer that started writing `allow` instead of `destinations` would make
+	// LoadEgressAllow return an empty list, and an empty list is a legitimate
+	// state, so nothing downstream would ever say so. Unmarshalling into a map
+	// is what makes "the key is absent" distinguishable from "the key is there
+	// and holds nothing".
+	rawDests, ok := doc["destinations"]
+	if !ok {
+		t.Fatalf("the rendered file has no `destinations` key (it has %v); the loader reads that "+
+			"name, so a rename here reaches the node as a silent \"this node routes nowhere\"", keysOf(doc))
+	}
+	var listed []json.RawMessage
+	if err := json.Unmarshal(rawDests, &listed); err != nil {
+		t.Fatalf("`destinations` is not a list: %v", err)
+	}
+
+	// 2. The field names on the reader's side, pinned. json.Marshal round-trips
+	// the struct tags LoadEgressAllow decodes with, so renaming one — the other
+	// half of the same rename risk — goes red here immediately, with or without
+	// a destination in the file.
+	encoded, err := json.Marshal(EgressDestination{
+		Purpose: "model_gateway", FQDN: "gw", PinnedIP: "10.0.0.1", Port: 4000, Protocol: "tcp",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(encoded, &fields); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"fqdn", "pinned_ip", "port", "protocol", "purpose"}
+	if got := keysOf(fields); !slices.Equal(got, want) {
+		t.Errorf("EgressDestination encodes as %v, want %v: these are the names tools/egress/render.py "+
+			"writes, and a renamed tag drops the field to its zero value rather than failing to parse", got, want)
+	}
+
+	// 3. Whatever the file does carry has to survive the loader intact.
+	if len(dests) != len(listed) {
 		t.Errorf("the loader kept %d of %d destinations: a field was renamed on one side",
-			len(dests), len(doc.Destinations))
+			len(dests), len(listed))
 	}
+
+	// 4. And the tripwire for the reason (3) is vacuous. The empty list is
+	// correct today and this test must not go red for it — but it must also not
+	// keep reporting a pass for a comparison that compares nothing. So the
+	// emptiness itself is the assertion: the day render.py emits a destination,
+	// this fails and whoever made that happen has to come back and turn (3) into
+	// the real check it was always meant to be. Same shape as Reaping() in
+	// localdrv: assert what is true today so a change cannot pass silently.
+	if len(listed) != 0 {
+		t.Fatalf("the rendered list now has %d destination(s), so the round-trip check above is "+
+			"finally measuring something — delete this branch and assert on the fields of dests[0] "+
+			"(purpose/fqdn/pinned_ip/port/protocol) instead. It was empty because every allowlist "+
+			"entry had `pinned_ip: unset` (05 R-23); that is evidently no longer true", len(listed))
+	}
+}
+
+// keysOf is the sorted key set of a decoded JSON object, so a failure message
+// names what was actually there rather than what was missing.
+func keysOf(m map[string]json.RawMessage) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	slices.Sort(out)
+	return out
 }

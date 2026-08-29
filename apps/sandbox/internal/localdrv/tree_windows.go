@@ -153,3 +153,10 @@ func resourceEnforcement() ResourceEnforcement {
 // package exists for (see the fixture note in testdata/reaper.mjs for why the
 // ordinary case is already covered by Node itself on this platform).
 func reaping() Reaping { return Reaping{Descendants: true, Detached: true} }
+
+// rootless: Windows has no uid to compare, so the equivalent question is
+// whether this process's token is elevated — an administrator running with a
+// filtered token is not, and one that accepted the UAC prompt is. Both come
+// from golang.org/x/sys/windows, which this file already uses; the pseudo-token
+// GetCurrentProcessToken returns must not be closed, and is not.
+func rootless() bool { return !windows.GetCurrentProcessToken().IsElevated() }

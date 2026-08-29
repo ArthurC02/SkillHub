@@ -536,3 +536,11 @@ func devCmd(req sandbox.RunRequest) ([]string, bool) {
 	}
 	return cmd, len(cmd) > 0
 }
+
+// Rootless: New refuses a Config whose uid or gid is 0 (baseline C-02), and
+// every container is created with User set from those two, so this is a
+// restatement of a guarantee this driver already makes rather than a new
+// check. It is a method rather than a constant because the Driver interface
+// asks every driver the same question, and the other implementation's answer
+// depends on the host.
+func (d *Driver) Rootless() bool { return d.cfg.UID != 0 && d.cfg.GID != 0 }

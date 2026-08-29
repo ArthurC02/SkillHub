@@ -23,6 +23,7 @@ package localdrv
 // the Windows one this package was built to avoid, where an *ordinary*
 // grandchild survives a plain kill of just the parent.
 import (
+	"os"
 	"os/exec"
 	"sync"
 	"syscall"
@@ -100,3 +101,8 @@ func resourceEnforcement() ResourceEnforcement {
 // this driver never carries untrusted content on either — so the honest "no"
 // is the answer that costs least and hides nothing.
 func reaping() Reaping { return Reaping{Descendants: true, Detached: false} }
+
+// rootless: a host process runs with whatever privilege the process that
+// spawned it had, so this asks about sandboxd itself. euid rather than uid,
+// because a setuid binary's effective identity is the one the kernel checks.
+func rootless() bool { return os.Geteuid() != 0 }

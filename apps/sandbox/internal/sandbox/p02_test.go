@@ -36,7 +36,13 @@ func (d *p02Driver) Remove(_ context.Context, id string) error {
 	return nil
 }
 func (d *p02Driver) WorkloadDone(context.Context, string) (bool, error) { return false, nil }
-func (d *p02Driver) ReleaseWorkload(context.Context, string) error      { return nil }
+
+// Rootless: Capability() asks the driver, and these tests read Capability() for
+// its P-02 fields. Not part of the embedded panic, because a nil answer here
+// would be a panic about something the test is not measuring.
+func (d *p02Driver) Rootless() bool { return true }
+
+func (d *p02Driver) ReleaseWorkload(context.Context, string) error { return nil }
 func (d *p02Driver) ReadTrace(context.Context, string, int64) ([]byte, bool, error) {
 	return nil, false, nil
 }

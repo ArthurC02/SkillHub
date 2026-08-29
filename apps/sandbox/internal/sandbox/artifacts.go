@@ -247,7 +247,7 @@ func upload(ctx context.Context, url string, body []byte) error {
 	}
 	req.ContentLength = int64(len(body))
 	req.Header.Set("Content-Type", "application/x-tar")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := GrantHTTPClient.Do(req)
 	if err != nil {
 		return errors.New("object storage could not be reached")
 	}
@@ -257,4 +257,25 @@ func upload(ctx context.Context, url string, body []byte) error {
 		return fmt.Errorf("object storage answered %d", resp.StatusCode)
 	}
 	return nil
+}
+
+// GrantHTTPClient is the one client every object-storage call on a node goes
+// through: the two drivers' grant downloads and the artifact upload below.
+//
+// It refuses redirects. Grant URLs are pre-signed by the control plane and name
+// exactly one object, so a 3xx from the storage endpoint is never something to
+// follow — and Go's default client follows up to ten of them. sandboxd runs on
+// the node with the node's own network reach (ADR-022 §127 puts the node layer
+// outside the sandbox's N-01..N-07 rules), so a compromised or misconfigured
+// storage endpoint answering `302 http://169.254.169.254/...` would be asking
+// this process to fetch that on its behalf. Narrow, but the cost of closing it
+// is one field.
+//
+// http.ErrUseLastResponse rather than an error: the redirect response comes
+// back as-is, so the caller's own status check reports "object storage answered
+// 302" instead of a transport error that says nothing about what happened.
+// Having its own client also keeps this connection pool separate from whatever
+// else in the process uses http.DefaultClient.
+var GrantHTTPClient = &http.Client{
+	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 }

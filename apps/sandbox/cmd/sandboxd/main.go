@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -44,10 +45,6 @@ func main() {
 	runtime := os.Getenv("SKILLHUB_SANDBOX_RUNTIME") // "runsc" in production
 	image := envOr("SKILLHUB_SANDBOX_IMAGE", "skillhub/runtime-agent-sdk:2026.08-3")
 	allowDevCmd := os.Getenv("SKILLHUB_SANDBOX_DEV_CMD") == "1"
-	if err := refuseDevSettings(runtime, image, allowDevCmd); err != nil {
-		log.Error(err.Error())
-		os.Exit(1)
-	}
 	// SKILLHUB_CLEAN_MODE is the one flag ADR-060 decision 6 allows for this
 	// axis: it swaps the whole execution strategy, not a capability, and there
 	// is deliberately no second env var for it. localdrv.Config resolves its
@@ -56,13 +53,19 @@ func main() {
 	// the repo layout (cleanModeRunnerScript), not per-node policy the way
 	// dockerdrv.Config.Image is.
 	cleanMode := os.Getenv("SKILLHUB_CLEAN_MODE") == "1"
+	if err := refuseDevSettings(runtime, image, allowDevCmd, cleanMode); err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
 
 	var (
 		drv          sandbox.Driver
 		closer       func() error
 		maxResources = sandbox.DefaultLimits
 		// Zero values are the production answer: dockerdrv enforces every
-		// ceiling it declares, and a container holds a descendant that detaches.
+		// ceiling it declares (cgroups, a tmpfs size= and a nofile ulimit -
+		// all five of the OS ceilings osCeilings names), and a container holds
+		// a descendant that detaches.
 		unenforced    []string
 		reapsDetached = true
 	)
@@ -227,11 +230,22 @@ func main() {
 // so run.mjs never starts - with it go the harness's token ceiling (PDM-005
 // 5.2a) and every TRACE-002 event, while the run's Virtual Key is injected as
 // usual. A systemd unit copied from a dev template is all it takes.
-func refuseDevSettings(runtime, image string, allowDevCmd bool) error {
+func refuseDevSettings(runtime, image string, allowDevCmd, cleanMode bool) error {
 	if runtime != "runsc" {
 		return nil
 	}
 	switch {
+	case cleanMode:
+		// resolveIsolation's doc comment used to defend clean winning over the
+		// runsc branch with "a clean-mode node is never also a runsc node".
+		// That was an assumption, and nothing enforced it: a node configured
+		// correctly for production (runsc, digest image, P-02 targets) that
+		// also picked up SKILLHUB_CLEAN_MODE=1 from a shell profile or a
+		// copied EnvironmentFile would silently drop from gVisor to no
+		// boundary at all and go on passing every other check here. This is
+		// the line that turns the assumption into a refusal.
+		return errors.New("SKILLHUB_CLEAN_MODE must not be set with runsc: a runsc node is never a clean node, " +
+			"and both being set means some configuration was copied from a machine this is not")
 	case !strings.Contains(image, "@sha256:"):
 		return errors.New("SKILLHUB_SANDBOX_IMAGE must use an immutable digest with runsc")
 	case allowDevCmd:
@@ -280,8 +294,10 @@ func driverKind(cleanMode bool) string {
 // of main for the same reason as driverKind: clean must not read as a weaker
 // gvisor or container (ADR-059 decision 1 - the name means no boundary, not a
 // smaller one), and that has to be a claim a test checks, not one a reader
-// takes on faith. clean wins over the runsc check because a clean-mode node is
-// never also a runsc node.
+// takes on faith. clean wins over the runsc check, which used to be defended
+// here with "a clean-mode node is never also a runsc node" - an assumption
+// nothing held. refuseDevSettings now refuses that combination outright, so
+// this branch only ever sees a configuration where it is true.
 func resolveIsolation(cleanMode bool, runtime string) string {
 	switch {
 	case cleanMode:
@@ -328,18 +344,18 @@ func runnerScriptUnder(repoRoot string) (string, error) {
 // declaration must reflect what was detected, not what was intended - for the
 // two ceilings localdrv.ResourceEnforcement can actually speak to.
 //
-// It still returns sandbox.DefaultLimits' memory_bytes and max_pids even when
-// enf reports false for them. That is a deliberate compromise, not a silent
-// one: sandbox.Config.accept() (apps/sandbox/internal/sandbox, outside this
-// file's allowlist) rejects any MaxResources field that is <= 0, and the
-// frozen capability contract (contract.go) has no field for "declared but not
-// OS-enforced" - only a positive ceiling or none at all. Zeroing either field
-// on an unprivileged Linux host would not make the declaration more honest,
-// it would make clean mode unable to accept a single run there, which is not
-// what ADR-059 decision 5②'s "runtime detects and degrades" asked for. What
-// this function can do honestly within the existing contract is say so
-// loudly, once, at startup, so an operator reading logs sees the gap that the
-// JSON capability response has no field to carry.
+// It still returns sandbox.DefaultLimits' numbers even when enf reports false
+// for them. That is a deliberate compromise, not a silent one:
+// sandbox.Config.accept() rejects any MaxResources field that is <= 0, so
+// zeroing a ceiling on an unprivileged host would not make the declaration
+// more honest - it would make clean mode unable to accept a single run there,
+// which is not what ADR-059 decision 5②'s "runtime detects and degrades"
+// asked for.
+//
+// The gap the log line used to be the only record of now has a field:
+// MaxResourcesUnenforced carries the names (unenforcedCeilings below, 04
+// 丙-83). The warning stays because it is what an operator watching a node
+// start sees, but it is no longer the only place the honest signal exists.
 func cleanModeMaxResources(enf localdrv.ResourceEnforcement, log *slog.Logger) sandbox.ResourceLimits {
 	limits := sandbox.DefaultLimits
 	if !enf.Memory {
@@ -380,6 +396,38 @@ func envInt(key string, fallback int) int {
 	return v
 }
 
+// osCeilings maps each ResourceLimits field that an operating system could
+// hold a process to onto the localdrv detection that says whether this one
+// does. Splitting it out of unenforcedCeilings is what lets a test check the
+// mapping covers every field rather than trusting that it does.
+func osCeilings(enf localdrv.ResourceEnforcement) map[string]bool {
+	return map[string]bool{
+		"vcpu":           enf.CPU,
+		"memory_bytes":   enf.Memory,
+		"disk_bytes":     enf.Disk,
+		"max_pids":       enf.Processes,
+		"max_open_files": enf.OpenFiles,
+	}
+}
+
+// heldElsewhere names the ResourceLimits fields that are not OS ceilings at
+// all, so "unenforced" would be the wrong word for them: the Manager holds
+// both wall clocks and both artifact bounds itself, and the harness holds the
+// token budget (contract.go says so where TokenBudget is declared).
+//
+// Naming these rather than naming the OS ones is deliberate. Anything new in
+// ResourceLimits that nobody has classified falls through to "unenforced",
+// which over-declares the gap instead of hiding it — the first version of
+// unenforcedCeilings was a hard-coded two-name list, and three ceilings that
+// nothing enforces were declared as walls for exactly as long as it stood.
+var heldElsewhere = map[string]bool{
+	"wall_clock_soft_seconds": true,
+	"wall_clock_hard_seconds": true,
+	"artifact_total_bytes":    true,
+	"artifact_file_bytes":     true,
+	"token_budget":            true,
+}
+
 // unenforcedCeilings turns the driver's own detection into the names the
 // capability declares as not held by the OS. It is the machine-readable half of
 // what cleanModeMaxResources can only say in a log line: the numbers stay,
@@ -387,12 +435,29 @@ func envInt(key string, fallback int) int {
 // and this says which of those numbers are a statement of intent rather than a
 // wall (02:PORT-010, 04 丙-83).
 func unenforcedCeilings(enf localdrv.ResourceEnforcement) []string {
+	held := osCeilings(enf)
 	var out []string
-	if !enf.Memory {
-		out = append(out, "memory_bytes")
+	for _, name := range resourceLimitNames() {
+		if heldElsewhere[name] || held[name] {
+			continue
+		}
+		out = append(out, name)
 	}
-	if !enf.Processes {
-		out = append(out, "max_pids")
+	return out
+}
+
+// resourceLimitNames is every JSON field of sandbox.ResourceLimits, in
+// declaration order, read off the contract type itself rather than copied into
+// a list here — a copy is what goes stale the next time the contract grows a
+// ceiling.
+func resourceLimitNames() []string {
+	t := reflect.TypeOf(sandbox.DefaultLimits)
+	out := make([]string, 0, t.NumField())
+	for i := range t.NumField() {
+		tag, _, _ := strings.Cut(t.Field(i).Tag.Get("json"), ",")
+		if tag != "" && tag != "-" {
+			out = append(out, tag)
+		}
 	}
 	return out
 }

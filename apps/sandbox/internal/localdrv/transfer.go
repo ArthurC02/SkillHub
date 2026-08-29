@@ -154,7 +154,7 @@ func fetch(ctx context.Context, url string) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("grant URL is not usable")
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := sandbox.GrantHTTPClient.Do(req)
 	if err != nil {
 		return nil, errors.New("object storage could not be reached")
 	}
@@ -223,6 +223,25 @@ func (d *Driver) ReadArtifacts(ctx context.Context, id string) ([]byte, error) {
 		// nobody should unpack, and dockerdrv makes the same choice with
 		// `-C /out artifacts`.
 		rel = filepath.ToSlash(rel)
+		// Symlinks, fifos, sockets and devices are skipped, not refused. Both
+		// halves of that matter and neither used to hold:
+		//
+		//   - tar.FileInfoHeader builds a symlink header whose Size is the
+		//     length of the link *target string*, and the os.Open below follows
+		//     the link and copies the pointed-at file's contents instead. The
+		//     two disagree, tar.Writer returns ErrWriteTooLong, and the whole
+		//     collection fails — so one stray link cost the run every artifact
+		//     it produced while the run itself still reported success.
+		//   - os.Open on a POSIX fifo blocks until somebody opens the other
+		//     end, which nobody does, so collection burned its whole timeout.
+		//
+		// dockerdrv already behaves this way: /bin/tar stores a symlink as a
+		// symlink and filterArchive drops every entry that is not TypeReg. Two
+		// drivers behind one Driver interface must not turn "one unusable file"
+		// into "a file missing" on one and "nothing collected" on the other.
+		if !de.IsDir() && !de.Type().IsRegular() {
+			return nil
+		}
 		fi, err := de.Info()
 		if err != nil {
 			return err
