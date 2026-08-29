@@ -52,7 +52,13 @@ export async function startHarness(opts = {}) {
   const server = new PGLiteSocketServer({ db, port, host, maxConnections });
   await server.start();
   const address = server.getServerConn(); // "host:port" once bound
-  const connectionString = `postgres://postgres@${address}/postgres`;
+  // sslmode=disable is part of the address, not a caller's choice: this socket
+  // speaks no TLS, and a client that probes for it first - pgx does - sends an
+  // SSLRequest, gets a refusal it does not expect, and the disconnect that
+  // follows wedges the carrier for every later connection (see the recovery
+  // note in bin/serve.mjs). Handing out a DSN that cannot trigger that is
+  // cheaper than documenting it.
+  const connectionString = `postgres://postgres@${address}/postgres?sslmode=disable`;
 
   let stopped = false;
   const stop = async () => {

@@ -37,7 +37,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // Counts the 2026-08-29 inventory fixed (docs/plans/03-work-items.md §20). A
@@ -178,14 +180,40 @@ func seedCleanDevLogin(client *http.Client, api string) error {
 	return nil
 }
 
+// seedCleanUpload waits out the import rate limiter rather than counting its
+// refusals as failures. The limiter is not an obstacle to route around: it is
+// NFR-001's brake on the two import endpoints, and this command sends fifty-one
+// uploads back to back, which is exactly the shape it exists to slow down.
+//
+// This was found by running the seeder against a live deployment for the first
+// time: 30 of 51 landed and 21 came back 429. No unit test would have shown it,
+// because the httptest server the tests use has no limiter in front of it.
 func seedCleanUpload(client *http.Client, api string, zipBytes []byte) (status int, body string, err error) {
-	resp, err := client.Post(api+"/skills/import/upload", "application/zip", bytes.NewReader(zipBytes))
-	if err != nil {
-		return 0, "", err
+	const maxAttempts = 6
+	for attempt := 1; ; attempt++ {
+		resp, err := client.Post(api+"/skills/import/upload", "application/zip", bytes.NewReader(zipBytes))
+		if err != nil {
+			return 0, "", err
+		}
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 2000))
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusTooManyRequests || attempt == maxAttempts {
+			return resp.StatusCode, string(b), nil
+		}
+		time.Sleep(retryAfter(resp.Header.Get("Retry-After"), attempt))
 	}
-	defer func() { _ = resp.Body.Close() }()
-	b, _ := io.ReadAll(io.LimitReader(resp.Body, 2000))
-	return resp.StatusCode, string(b), nil
+}
+
+// retryAfter honours the server's own number when it sends one; the fallback
+// grows so a deployment whose limiter says nothing still gets backed off rather
+// than hammered.
+func retryAfter(header string, attempt int) time.Duration {
+	if seconds, err := strconv.Atoi(strings.TrimSpace(header)); err == nil && seconds > 0 {
+		// One second past what was asked for: the limiter's window and this
+		// client's clock are not the same clock.
+		return time.Duration(seconds)*time.Second + time.Second
+	}
+	return time.Duration(attempt) * time.Second
 }
 
 // seedClean is the entry point for `devctl seed-clean [--dry-run]`.
