@@ -34,7 +34,7 @@ ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 # to GHCR and the tag written here cannot drift apart.
 # 2026.08-3 closes the gap between the catalog's `deps` field and what the
 # packages actually import (content-baseline-report.md §13.4).
-ARG IMAGE_VERSION=2026.08-3
+ARG IMAGE_VERSION=2026.08-4
 
 # Non-root from the image on up (C-02). The provider also passes --user, but an
 # image whose only account is root is one bad flag away from running as root.
@@ -43,8 +43,15 @@ RUN groupadd --gid 65532 sandbox \
 
 # Skill packages are stored as zip archives (ingest writes packages/<hash>.zip),
 # and the sandbox is where they are unpacked — never the control plane, which
-# must not open untrusted bytes (iron rule 1). node:22-bookworm-slim carries tar
-# but not unzip, so unzip is added here.
+# must not open untrusted bytes (iron rule 1).
+#
+# unzip used to be installed here for exactly that. It is not any more (2026-08-29,
+# 04 丙-82): run.mjs unpacks with node:zlib and its own parser, because the machine
+# M6 targets is Windows with no container and /bin/sleep and unzip are not there.
+# Dropping it is not tidying. This image runs untrusted content, and an extractor
+# nothing calls is still an extractor a workload can call — the refusal of
+# absolute and ../ entries that used to be unzip's now lives in extractPackage,
+# where a test can hold it to it.
 #
 # python3 is the second addition, and it is not a convenience: 33 of the 45
 # catalog skills declare their worked examples in Python, and the M2 baseline
@@ -53,7 +60,7 @@ RUN groupadd --gid 65532 sandbox \
 # product with no field in the catalog saying so
 # (docs/plans/mvp/m2/content-baseline-report.md §6.3).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends unzip python3 python3-pip \
+    && apt-get install -y --no-install-recommends python3 python3-pip \
     && rm -rf /var/lib/apt/lists/* \
     # Skills write `python foo.py` as often as `python3 foo.py`; Debian ships
     # only the versioned name. One symlink, or a whole class of skills fails on
