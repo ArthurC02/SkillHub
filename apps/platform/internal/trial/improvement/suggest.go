@@ -49,14 +49,17 @@ var suggestionCategories = map[string]bool{
 // evaluation-design §6.3's reasoning: the cost of these calls is almost entirely
 // input, so it is bounded by cutting rather than by hoping.
 const (
-	suggestTimeout      = 120 * time.Second
-	maxDigestChars      = 20000 // one-number: suggestMaxDigestChars
-	maxFileTreeEntries  = 500   // one-number: suggestMaxFileTreeEntries
-	maxTargetFiles      = 5     // contract allows 10; five files is what one round of advice needs
-	maxTargetFileChars  = 60000 // one-number: suggestMaxProposedContent
-	maxStoredEvidence   = 2     // evidence refs carried onto one stored suggestion
-	maxDigestEvidence   = 8     // refs quoted into the digest, and the set the above draws from
-	maxSuggestionsStore = 10    // one-number: suggestMaxSuggestions
+	// Above apps/llm's socket ceiling rather than equal to it, so the upstream's
+	// limit arrives as its own 502 rather than as this deadline. See eval.go's
+	// judgeTimeout for the long version.
+	suggestTimeout      = 135 * time.Second // budget-over: evaluate.LLM_TIMEOUT_SECONDS
+	maxDigestChars      = 20000             // one-number: suggestMaxDigestChars
+	maxFileTreeEntries  = 500               // one-number: suggestMaxFileTreeEntries
+	maxTargetFiles      = 5                 // contract allows 10; five files is what one round of advice needs
+	maxTargetFileChars  = 60000             // one-number: suggestMaxProposedContent
+	maxStoredEvidence   = 2                 // evidence refs carried onto one stored suggestion
+	maxDigestEvidence   = 8                 // refs quoted into the digest, and the set the above draws from
+	maxSuggestionsStore = 10                // one-number: suggestMaxSuggestions
 )
 
 // Suggester is the improvement-proposal leg. One implementation (llmclient.Client)
@@ -108,7 +111,7 @@ func (s *Service) suggest(ctx context.Context, m material, ev gen.Evaluation, v 
 		resp.Usage.CostUSD = nil
 		resp.Usage.CostSource = ""
 	}
-	if err := s.recordModelUsage(ctx, ev.ID, ev.WorkspaceID, "suggest",
+	if err := s.recordModelUsage(ctx, s.queries(), ev.ID, ev.WorkspaceID, "suggest",
 		resp.Model, resp.PromptVersion, resp.Usage); err != nil {
 		slog.Warn("evaluation suggestion usage not stored",
 			"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)

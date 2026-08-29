@@ -173,6 +173,20 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 	if !c.Isolation.Rootless {
 		return RuntimeProfile{}, fmt.Errorf("%s does not run workloads unprivileged", name)
 	}
+	// A ceiling the node names here is a number in max_resources with nothing
+	// holding it - unbounded, whatever the declaration says. 02:PORT-010 asks the
+	// declaration to reflect what was actually detected, and the point of asking
+	// was so a gate could refuse; a field only the node's own log reads is the
+	// defect ADR-059 decision 3 recorded, not the fix for it.
+	//
+	// Same shape as the isolation branches above: refused everywhere except the
+	// deployment that has opted into having no boundary at all, where "the CPU
+	// ceiling is not enforced either" is not news.
+	if len(c.MaxResourcesUnenforced) > 0 && !cleanTestMode() {
+		return RuntimeProfile{}, fmt.Errorf(
+			"%s declares resource ceilings it does not enforce (%s), which this deployment does not accept",
+			name, strings.Join(c.MaxResourcesUnenforced, ", "))
+	}
 	if !egressSatisfied(c.Network.EgressModes, req) {
 		if req.EgressAllowed > 0 {
 			return RuntimeProfile{}, fmt.Errorf(

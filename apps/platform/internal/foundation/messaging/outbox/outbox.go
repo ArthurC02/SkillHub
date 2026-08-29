@@ -118,47 +118,18 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 		return 0, err
 	}
 
-	// One publisher owns the list/deliver/mark window. At-least-once still means
-	// a crash after delivery may redeliver, but two healthy workers must not both
-	// deliver the same unpublished snapshot concurrently.
-	conn, err := w.Pool.Acquire(ctx)
-	if err != nil {
-		return 0, err
-	}
-	defer conn.Release()
-	var locked bool
-	if err := conn.QueryRow(ctx,
-		"SELECT pg_try_advisory_lock(hashtextextended('skillhub:outbox-publisher', 0))",
-	).Scan(&locked); err != nil {
-		return 0, err
-	}
-	if !locked {
-		return 0, nil
-	}
-	defer func() {
-		_, _ = conn.Exec(context.WithoutCancel(ctx),
-			"SELECT pg_advisory_unlock(hashtextextended('skillhub:outbox-publisher', 0))")
-	}()
-
-	q := gen.New(conn)
-
-	// Retention first, and on every pass rather than only after a delivery: an
-	// idle system still has last week's rows to drop, and "we publish nothing, so
-	// nothing gets cleaned" is how a buffer quietly becomes an archive. The DELETE
-	// is index-covered and touches only rows past the window, so a pass that finds
-	// nothing costs one index probe.
-	cutoff := pgtype.Timestamptz{Time: time.Now().Add(-w.retention()), Valid: true}
-	if _, err := q.DeleteOutboxEventsPublishedBefore(ctx, cutoff); err != nil {
-		return 0, err
-	}
-
-	events, err := q.ListUnpublishedOutboxEvents(ctx, publishBatch)
+	events, err := w.claim(ctx)
 	if err != nil {
 		return 0, err
 	}
 	if len(events) == 0 {
 		return 0, nil
 	}
+
+	// Past this point the advisory lock is released and the pool connection it
+	// was held on is back. Everything below talks to the pool, and that is the
+	// whole point: see claim's comment for what holding it cost.
+	q := gen.New(w.Pool)
 
 	// Delivered one at a time, marked in one batch. A failure stops the pass: the
 	// events behind it stay unpublished and get re-delivered, which is the
@@ -200,6 +171,81 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	return len(ids), failure
+}
+
+// claim takes the publisher lock, does the pass's housekeeping, and returns the
+// batch to hand on — then gives the connection back BEFORE anything is
+// delivered.
+//
+// That last clause is the reason this is a separate function. The lock is a
+// session lock, so it lives on one connection and holding it means holding that
+// connection; the previous version held it across the whole pass, delivery
+// included. In every deployment with a pool of one — which is clean mode, and
+// clean mode by definition also runs the consumers in this same process
+// (ADR-060 決策 6) — the first thing a consumer does is ask that same pool for a
+// connection, and there is none: the publisher is holding it and is waiting for
+// the consumer. m6/report-inmemory-postgres.md had already measured this exact
+// shape at 238 seconds before it grew back here, one package over.
+//
+// What releasing the lock early gives up, stated rather than hidden: two
+// publishers can now list overlapping batches and deliver the same event twice.
+// That is not a regression, it is the contract this package's doc comment opens
+// with — delivery is at-least-once and every consumer dedupes on event_id
+// (ADR-008). The lock still does the job it is genuinely needed for, which is
+// keeping two publishers from interleaving the retention DELETE and the list.
+// The alternative — a second connection reserved for delivery — buys exactly
+// nothing the consumers do not already provide, and buys it by requiring a
+// second connection, which is the resource clean mode does not have.
+func (w *Worker) claim(ctx context.Context) ([]gen.OutboxEvent, error) {
+	conn, err := w.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Release()
+	var locked bool
+	if err := conn.QueryRow(ctx,
+		"SELECT pg_try_advisory_lock(hashtextextended('skillhub:outbox-publisher', 0))",
+	).Scan(&locked); err != nil {
+		return nil, err
+	}
+	if !locked {
+		return nil, nil
+	}
+	defer func() {
+		_, _ = conn.Exec(context.WithoutCancel(ctx),
+			"SELECT pg_advisory_unlock(hashtextextended('skillhub:outbox-publisher', 0))")
+	}()
+
+	q := gen.New(conn)
+
+	// Republished every pass, on the connection that already holds the publisher
+	// lock, so exactly one process reports it and the series does not flap
+	// between workers. It is a level and not a rate: a dead-lettered event is a
+	// committed domain fact nobody will ever be told about, and it stays in the
+	// table until a human decides what to do, so what an operator needs to see is
+	// that it is still there (see metrics.OutboxDeadLetteredCurrent).
+	//
+	// A read failure leaves the gauge alone rather than zeroing it: "we could not
+	// count" must never render as "there is nothing in quarantine". The pass
+	// carries on, because the count is bookkeeping and draining the backlog is
+	// the job.
+	if n, err := q.CountDeadLetteredOutboxEvents(ctx); err != nil {
+		slog.Warn("outbox: dead-letter count unavailable; the gauge keeps its last value", "error", err)
+	} else {
+		metrics.OutboxDeadLetteredCurrent.Set(float64(n))
+	}
+
+	// Retention first, and on every pass rather than only after a delivery: an
+	// idle system still has last week's rows to drop, and "we publish nothing, so
+	// nothing gets cleaned" is how a buffer quietly becomes an archive. The DELETE
+	// is index-covered and touches only rows past the window, so a pass that finds
+	// nothing costs one index probe.
+	cutoff := pgtype.Timestamptz{Time: time.Now().Add(-w.retention()), Valid: true}
+	if _, err := q.DeleteOutboxEventsPublishedBefore(ctx, cutoff); err != nil {
+		return nil, err
+	}
+
+	return q.ListUnpublishedOutboxEvents(ctx, publishBatch)
 }
 
 // delivery picks the destination, or refuses to run without one. Separate from

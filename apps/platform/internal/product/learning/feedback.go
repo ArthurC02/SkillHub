@@ -18,9 +18,12 @@ package analytics
 // same session identifier.
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -38,6 +41,17 @@ const maxFeedbackMessage = 2000
 type Handler struct {
 	Svc      *Service
 	Identity *identity.Service
+	// FeedbackRetention is how long a report lives, for GET
+	// /policy/data-retention to disclose. Deployment configuration
+	// (FEEDBACK_RETENTION), injected rather than read here, and zero is the
+	// honest "nobody has set one" the disclosure prints as such.
+	//
+	// It is not enforced on this side: `maintenance purge-feedback` does the
+	// deleting, and this field only says what that sweep is configured to do.
+	// The alternative — the page computing a number of its own — is how a
+	// promise and a sweep drift apart, which is the failure PDM-006 6 has
+	// already had four times.
+	FeedbackRetention time.Duration
 }
 
 // DownloadStartedOn wraps the download-content route and records funnel segment
@@ -142,4 +156,30 @@ func (h *Handler) Feedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// PurgeExpiredFeedback removes the reports older than `retention` and returns how
+// many went. `maintenance purge-feedback` is the only caller; the window is the
+// deployment's and is passed in rather than read here, like every other retention
+// number in this repository.
+//
+// It sits next to the handler that writes these rows, deliberately: the write
+// side is what makes the deadline necessary, and every previous instance of this
+// bug in this repository — audit events, datasets, deleted skills — was a table
+// whose writer and whose sweeper lived far enough apart that nobody noticed one
+// of them was missing. Here they are eighty lines apart.
+//
+// Analytics' own retention is not here and no longer exists as a bulk statement:
+// analytics_events is dropped a partition at a time (0029 said so in as many
+// words), which is `maintenance rotate-partitions`. feedback_reports is not
+// partitioned, so it needs this.
+func (s *Service) PurgeExpiredFeedback(ctx context.Context, retention time.Duration) (int64, error) {
+	if s == nil || s.Pool == nil {
+		return 0, errors.New("feedback purge requires a database pool")
+	}
+	if retention <= 0 {
+		return 0, errors.New("feedback purge requires a positive retention period")
+	}
+	return gen.New(s.Pool).DeleteExpiredFeedbackReports(ctx,
+		pgtype.Timestamptz{Time: s.now().Add(-retention), Valid: true})
 }

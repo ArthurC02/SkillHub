@@ -31,11 +31,27 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 )
+
+// errProvenanceNotRecorded is the honest half-success: the new version exists and
+// is usable, and the record of which suggestions produced it does not. Both facts
+// are in the sentence because a caller told only "it failed" would retry, and a
+// caller told only "it worked" would never look.
+var errProvenanceNotRecorded = errors.New(
+	"the new skill version was created, but the record of which improvement suggestions produced it was not written; " +
+		"the version is usable and its provenance is missing")
+
+// actionSuggestionProvenanceLost names the event above.
+//
+// ponytail: declared here rather than in audit.go's vocabulary because this is
+// the only writer. Move it there when a second one appears — that file is where
+// the audited vocabulary is meant to live.
+const actionSuggestionProvenanceLost = "evaluation.provenance_not_recorded"
 
 // The reasons a suggestion cannot be applied (public.yaml SuggestionBlockedReason).
 // Fixed vocabulary: the preview and the apply call answer from these and nothing
@@ -585,14 +601,47 @@ func (s *Service) ApplySuggestions(
 		return out, nil
 	}
 
-	// EVAL-002 clause 4: each applied suggestion points at the new version. A
-	// separate statement from SaveVersion's transaction, so a failure here leaves a
-	// version whose provenance is not recorded; re-applying is safe because
-	// identical content returns the same version (INGEST-005) and re-runs this.
+	// EVAL-002 clause 4: each applied suggestion points at the new version.
+	//
+	// This is a separate statement from SaveVersion's transaction, and that is a
+	// real gap, not a tidy one. The version is already committed when this runs, so
+	// a failure here leaves a version whose provenance is not recorded — and
+	// `packaging` reads exactly this table (ListSuggestionsAppliedToVersion) to
+	// write a download package's provenance, so the version would be packaged as
+	// one no improvement suggestion ever touched.
+	//
+	// The comment that used to sit here argued the gap away with "re-applying is
+	// safe because identical content returns the same version (INGEST-005)". True,
+	// and irrelevant: nothing re-applies. This is a synchronous HTTP path, the
+	// error goes straight back to the handler, the user sees a 500, and the version
+	// exists. So the failure is now said out loud in both directions a person can
+	// read — the caller gets an error naming what did and did not happen, and the
+	// audit trail gets a durable row, because "user content lost a property without
+	// the user asking" is what the trail is for.
+	//
+	// ponytail: this is the interim. The real fix is one transaction, which needs
+	// an ingest SaveVersion variant that accepts a pgx.Tx — ingest's context, not
+	// this one. Until that exists, an announced failure beats a silent one.
 	if _, err := s.queries().MarkSuggestionsApplied(ctx, gen.MarkSuggestionsAppliedParams{
 		SkillVersionID: res.Version.ID, Ids: applied, WorkspaceID: ws.ID,
 	}); err != nil {
-		return out, err
+		if auditErr := audit.Log(ctx, s.Pool, audit.Event{
+			Actor:        ws.OwnerUserID,
+			Workspace:    ws.ID,
+			Action:       actionSuggestionProvenanceLost,
+			ResourceType: audit.ResourceVersion,
+			ResourceID:   res.Version.ID,
+			Metadata: map[string]any{
+				"evaluation_id":  pgconv.UUIDString(evaluationID),
+				"skill_id":       pgconv.UUIDString(skillID),
+				"suggestions":    len(applied),
+				"version_exists": true,
+			},
+		}); auditErr != nil {
+			// Both writes failed. Say so rather than replacing one loss with another.
+			return out, fmt.Errorf("%w: the audit record of it also failed: %w", errProvenanceNotRecorded, auditErr)
+		}
+		return out, fmt.Errorf("%w: %w", errProvenanceNotRecorded, err)
 	}
 	out.Created, out.Version = true, ingest.NewUploadResult(res)
 	return out, nil

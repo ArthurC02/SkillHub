@@ -8,6 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -51,7 +53,7 @@ type Service struct {
 	// the ownership check matches call sites textually, and a field named after
 	// the query would read as registry still calling it.
 	IndexSkill      func(ctx context.Context, tx pgx.Tx, projection SkillProjection) error
-	RemoveFromIndex func(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID) error
+	RemoveFromIndex func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) error
 	// SkillRisks reads back what those writes projected: the scan block for a
 	// page of this workspace's skills, keyed by skill id, already serialised.
 	// Injected for the same reason and by the same root as the two writes above.
@@ -128,9 +130,21 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 		return gen.Skill{}, gen.SkillVersion{}, err
 	}
 
+	// WS-001 says a signed-in user may fork a skill into their workspace. It
+	// does not say once. Try-and-run (`x-fork`, then `x-fork-2`, `x-fork-3`)
+	// rather than a fixed suffix, because the second fork is the ordinary shape
+	// of the work — 試跑、改、再試一份 — and what it used to get was a 409 with
+	// no suggested next step. Bounded: past the limit the caller gets the same
+	// ErrNameTaken as before, which is the honest answer to 「你已經有很多份了」.
+	// Still racy against a concurrent fork, and deliberately: the unique index is
+	// what actually decides, and it is still the thing that returns ErrNameTaken.
+	name, err := s.forkName(ctx, tx, ws.ID, src.Name)
+	if err != nil {
+		return gen.Skill{}, gen.SkillVersion{}, err
+	}
 	fork, err := q.CreateSkill(ctx, gen.CreateSkillParams{
 		WorkspaceID:         ws.ID,
-		Name:                src.Name + "-fork",
+		Name:                name,
 		Summary:             src.Summary,
 		ForkedFromSkillID:   src.ID,
 		ForkedFromVersionID: srcVer.ID,
@@ -227,7 +241,7 @@ func (s *Service) Delete(ctx context.Context, ws identity.Workspace, skillID pgt
 	if err != nil {
 		return DeleteResult{}, err
 	}
-	if err := s.RemoveFromIndex(ctx, tx, skill.ID); err != nil {
+	if err := s.RemoveFromIndex(ctx, tx, skill.WorkspaceID, skill.ID); err != nil {
 		return DeleteResult{}, err
 	}
 	n, err := q.CountSkillVersions(ctx, skill.ID)
@@ -292,7 +306,7 @@ func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID p
 	// registry but still listed in search. The removal is catalog's write on
 	// catalog's table; it stays inside this transaction because it is injected
 	// rather than fetched from a service that would open its own (ADR-034).
-	if err := s.RemoveFromIndex(ctx, tx, skill.ID); err != nil {
+	if err := s.RemoveFromIndex(ctx, tx, skill.WorkspaceID, skill.ID); err != nil {
 		return gen.Skill{}, err
 	}
 	if err := audit.Log(ctx, tx, audit.Event{
@@ -312,4 +326,50 @@ func (s *Service) Takedown(ctx context.Context, ws identity.Workspace, skillID p
 func isUniqueViolation(err error) bool {
 	pgErr, ok := errors.AsType[*pgconn.PgError](err)
 	return ok && pgErr.Code == "23505"
+}
+
+// maxForkAttempts bounds the suffix search. Ten is not a rule about how many
+// forks anybody may have; it is the point past which "pick the next free name"
+// stops being a convenience and starts being a loop nobody watches.
+const maxForkAttempts = 10
+
+// forkName is the first free name in the series `x-fork`, `x-fork-2`, … in this
+// workspace, or ErrNameTaken when the series is used up.
+//
+// A fork of a fork therefore becomes `x-fork-2` and not `x-fork-fork`: the
+// suffix is appended to the source name only when the source is not already one
+// of ours, so the series stays flat instead of growing a word per generation.
+func (s *Service) forkName(
+	ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID, sourceName string,
+) (string, error) {
+	base := strings.TrimSuffix(sourceName, "-fork")
+	if trimmed, _, ok := cutForkOrdinal(base); ok {
+		base = trimmed
+	}
+	for i := 1; i <= maxForkAttempts; i++ {
+		name := base + "-fork"
+		if i > 1 {
+			name += "-" + strconv.Itoa(i)
+		}
+		if _, found, err := SkillByName(ctx, tx, workspaceID, name); err != nil {
+			return "", err
+		} else if !found {
+			return name, nil
+		}
+	}
+	return "", ErrNameTaken
+}
+
+// cutForkOrdinal splits `x-fork-3` into `x` and 3. It reports false for anything
+// else, `x-fork` included — that one is handled by the plain suffix trim.
+func cutForkOrdinal(name string) (string, int, bool) {
+	base, ordinal, found := strings.Cut(name, "-fork-")
+	if !found || base == "" {
+		return name, 0, false
+	}
+	n, err := strconv.Atoi(ordinal)
+	if err != nil || n < 2 {
+		return name, 0, false
+	}
+	return base, n, true
 }

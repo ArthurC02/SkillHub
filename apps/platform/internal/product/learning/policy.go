@@ -24,6 +24,21 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
+// feedbackDays renders FeedbackRetention the way retention_days is rendered
+// above, and -1 for "no window is set". A negative number rather than 0 because
+// 0 is a real answer for a sub-day window, and the two must not collapse: one
+// says "kept for less than a day", the other says nobody has decided.
+func feedbackDays(retention time.Duration) int {
+	if retention <= 0 {
+		return -1
+	}
+	days := int(retention / (24 * time.Hour))
+	if retention%(24*time.Hour) != 0 {
+		days++
+	}
+	return days
+}
+
 // DataRetention handles GET /policy/data-retention.
 func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 	days := 0
@@ -38,9 +53,41 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 			days++
 		}
 	}
+	// BETA-003/004/005's reports, and the reason this endpoint needed a second
+	// class at all. `note` below declares "there is no free-text column anywhere
+	// in the table" — true of analytics_events, and a reader had no way to know
+	// there is another table. What a participant types about where they got stuck
+	// is the most sensitive thing this deployment holds, and it was the one
+	// collected class this page did not mention.
+	//
+	// The window is FEEDBACK_RETENTION, the same value `maintenance
+	// purge-feedback` refuses to run without, read from configuration rather than
+	// written here — the rule the four events above already follow, and the
+	// reason the number on this page cannot promise a sweep nobody performs.
+	feedback := map[string]any{
+		"what":                "a report submitted at POST /feedback by a signed-in participant (BETA-003/004/005)",
+		"collected":           []string{"kind", "message", "page_path", "run_id", "workspace_id", "user_id"},
+		"free_text":           "message is free text, up to 2000 characters, in the participant's own words. It is the only free-text column this deployment stores, and it is not masked, summarised or truncated",
+		"kind":                []string{"blocking_issue", "need_signal"},
+		"page_path":           "the route they were on, never a full URL: a query string can carry personal data and this is not that channel",
+		"run_id":              "the run they were looking at, when there was one, and only after it was verified to be their own",
+		"on_account_deletion": "de-identified rather than deleted: workspace_id and user_id are set to NULL and the words are kept (ADR-029 決策 5 rests a scope review on what people said, so a deleted account must not silently withdraw a report the review already counted)",
+	}
+	if fd := feedbackDays(h.FeedbackRetention); fd >= 0 {
+		feedback["retention_days"] = fd
+	} else {
+		// Said plainly rather than omitted. This is the honest state of a
+		// deployment that has not set the variable, and it is the one a reader
+		// most needs to see: PDM-006 has ratified no window for this class, so
+		// nothing deletes these rows and they are kept until somebody decides.
+		feedback["retention_days"] = nil
+		feedback["note"] = "no retention period is configured for this deployment (FEEDBACK_RETENTION is unset), so these reports are kept indefinitely until one is set and `maintenance purge-feedback` is run"
+	}
+
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"collecting":     h.Svc.Enabled(),
 		"retention_days": days,
+		"feedback":       feedback,
 		// The closed set of four. Adding a fifth means answering first why no
 		// domain table can (ADR-029 決策 1), and the CHECK in 0029 enforces it.
 		//
@@ -81,7 +128,9 @@ func (h *Handler) DataRetention(w http.ResponseWriter, _ *http.Request) {
 				"not_recorded": "whether the bytes actually went out; that is download_records, a domain fact, and the split is why this event exists",
 			},
 		},
-		"note": "these four events are the whole of this data class. Every row also " +
+		"note": "these four events are the whole of the analytics data class \u2014 " +
+			"the `feedback` block above is the other class this deployment collects. " +
+			"Every row also " +
 			"carries the five columns ADR-029 決策 2 fixes for all of them — event_id, " +
 			"event_name, occurred_at, session_id and workspace_id — on top of the " +
 			"attributes listed above. session_id is the sh_analytics cookie value: it " +

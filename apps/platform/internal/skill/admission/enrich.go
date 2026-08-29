@@ -29,8 +29,15 @@ const (
 // (iron rule 6); the enrich budget sits just above the LLM service's own 60s
 // ceiling so its error surfaces here instead of our deadline.
 const (
+	// budget-over: enrich.LLM_TIMEOUT_SECONDS
 	enrichTimeout = 75 * time.Second
-	embedTimeout  = 20 * time.Second
+	// 25s, above app.EMBED_TIMEOUT_SECONDS (20s). Equal before, and equal is not
+	// good enough: the two deadlines start at different instants — Go's before the
+	// request is written, Python's after it is received — so an equal pair means
+	// Go's fires first every time, and the failure is then attributed to the
+	// caller instead of to the ceiling that actually stopped the work.
+	// budget-over: app.EMBED_TIMEOUT_SECONDS
+	embedTimeout = 25 * time.Second
 )
 
 // enrichment is what the search projection stores for one skill version.

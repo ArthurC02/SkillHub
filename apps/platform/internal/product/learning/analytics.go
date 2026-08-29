@@ -2,7 +2,6 @@ package analytics
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -166,18 +165,6 @@ func visitLifetimeSeconds(now time.Time, retention time.Duration) int {
 		return 1
 	}
 	return seconds
-}
-
-// PurgeExpired enforces the configured analytics retention window.
-func (s *Service) PurgeExpired(ctx context.Context) (int64, error) {
-	if s == nil || s.Pool == nil {
-		return 0, errors.New("analytics purge requires a database pool")
-	}
-	if s.Retention <= 0 {
-		return 0, errors.New("analytics purge requires a positive retention period")
-	}
-	return gen.New(s.Pool).DeleteExpiredAnalyticsEvents(ctx,
-		pgtype.Timestamptz{Time: s.now().Add(-s.Retention), Valid: true})
 }
 
 // SearchPerformed records that an intent was submitted (funnel segment 1).

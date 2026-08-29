@@ -80,7 +80,7 @@ func TestRegistryTransactionalReadFaceKeepsScopeAndUncommittedVisibility(t *test
 		RETURNING id`, ownerID, skillID).Scan(&versionID); err != nil {
 		t.Fatal(err)
 	}
-	version, found, err := registry.VersionByContent(ctx, tx, skillID, "sha256:transaction-visible")
+	version, found, err := registry.VersionByContent(ctx, tx, ownerID, skillID, "sha256:transaction-visible")
 	if err != nil || !found || version.ID != versionID || version.VersionNumber != 1 {
 		t.Fatalf("duplicate read of uncommitted version = %+v, found=%v, err=%v", version, found, err)
 	}

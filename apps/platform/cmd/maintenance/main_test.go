@@ -133,3 +133,24 @@ func TestPurgeDeletedSkillsRefusesWithoutAGracePeriod(t *testing.T) {
 		}
 	}
 }
+
+// Same shape as the grace-period test above, and asserted on the subcommand for
+// the same reason: what has to be impossible is not "positiveDuration accepts
+// junk", it is purge-feedback running with a compiled-in window. This one deletes
+// a beta participant's own 2000-character description of where the product failed
+// them, on a number PDM-006 has not ratified, so an unset variable has to stop it
+// before any statement runs. A nil pool proves it did — reaching the database
+// would panic.
+func TestPurgeFeedbackRefusesWithoutARetentionWindow(t *testing.T) {
+	for _, unusable := range []string{"", "180", "0s", "-4320h", "six months"} {
+		t.Setenv("FEEDBACK_RETENTION", unusable)
+		err := purgeFeedback(context.Background(), nil)
+		if err == nil {
+			t.Errorf("FEEDBACK_RETENTION=%q started the purge", unusable)
+			continue
+		}
+		if !strings.Contains(err.Error(), "FEEDBACK_RETENTION") {
+			t.Errorf("FEEDBACK_RETENTION=%q: error does not name the variable: %v", unusable, err)
+		}
+	}
+}

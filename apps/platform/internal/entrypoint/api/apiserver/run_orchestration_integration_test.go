@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -991,7 +992,29 @@ func TestOutboxPublisherIsAtLeastOnceAndIdempotent(t *testing.T) {
 	}
 }
 
-func TestConcurrentOutboxPublishersDoNotDeliverTheSameSnapshot(t *testing.T) {
+// Two publishers running at once, and what the publisher lock does and does not
+// promise them.
+//
+// This test used to assert that a second publisher saw NOTHING while the first
+// was inside a delivery, because the first held the advisory lock — and the
+// connection under it — for the whole pass. That is the shape 2026-08-29 found
+// to be a deadlock in clean mode: one pool connection, held by the publisher,
+// while the consumer it just called asks the same pool for a second one
+// (m6/report-inmemory-postgres.md measured the identical shape at 238 seconds).
+// The publisher now releases the lock after it claims a batch and delivers on
+// the pool, so the old assertion is not merely obsolete — asserting it again
+// would be asserting the deadlock back.
+//
+// What is given up is stated in outbox.claim and it is inside the contract this
+// package opens with: delivery is at-least-once and every consumer dedupes on
+// event_id (ADR-008). So two publishers may hand the same event on twice.
+//
+// What must still hold, and is what this pins:
+//   - nothing is lost: the backlog ends fully published;
+//   - marking is idempotent: MarkOutboxEventsPublished's published_at IS NULL
+//     guard means the second publisher cannot un-publish or double-count;
+//   - neither publisher fails because the other was working.
+func TestConcurrentOutboxPublishersAreAtLeastOnceAndNeverLoseAnEvent(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	f := newFixture(t, a, pool, "alice-outbox-concurrent")
@@ -1004,7 +1027,9 @@ func TestConcurrentOutboxPublishersDoNotDeliverTheSameSnapshot(t *testing.T) {
 	started := make(chan struct{}, 1)
 	release := make(chan struct{})
 	result := make(chan error, 1)
+	var firstDeliveries int64
 	first := &outbox.Worker{Pool: pool, Deliver: func(context.Context, outbox.Event) error {
+		atomic.AddInt64(&firstDeliveries, 1)
 		select {
 		case started <- struct{}{}:
 		default:
@@ -1018,23 +1043,37 @@ func TestConcurrentOutboxPublishersDoNotDeliverTheSameSnapshot(t *testing.T) {
 	}()
 	<-started
 
-	secondDeliveries := 0
+	// The second publisher runs while the first is stuck inside a delivery. It
+	// must not error, and — the point of the change — it must not be blocked
+	// waiting for a connection the first one is sitting on.
+	var secondDeliveries int64
 	second := &outbox.Worker{Pool: pool, Deliver: func(context.Context, outbox.Event) error {
-		secondDeliveries++
+		atomic.AddInt64(&secondDeliveries, 1)
 		return nil
 	}}
-	if n, err := second.Publish(context.Background()); err != nil || n != 0 {
-		t.Fatalf("concurrent publisher published %d events (err %v), want 0", n, err)
-	}
-	if secondDeliveries != 0 {
-		t.Fatalf("concurrent publisher delivered %d events, want 0", secondDeliveries)
+	if _, err := second.Publish(context.Background()); err != nil {
+		t.Fatalf("a second publisher failed while the first was delivering: %v", err)
 	}
 	close(release)
 	if err := <-result; err != nil {
 		t.Fatal(err)
 	}
+
+	if got := atomic.LoadInt64(&firstDeliveries) + atomic.LoadInt64(&secondDeliveries); got < int64(backlog) {
+		t.Errorf("%d deliveries for a backlog of %d; at-least-once means at least once", got, backlog)
+	}
 	if after := unpublishedCount(t, pool); after != 0 {
-		t.Fatalf("first publisher left %d of %d events unpublished", after, backlog)
+		t.Fatalf("%d of %d events are still unpublished after both publishers finished", after, backlog)
+	}
+	// Idempotent marking: a third pass finds nothing and delivers nothing, so
+	// neither publisher left a row half-marked.
+	var third int64
+	trailing := &outbox.Worker{Pool: pool, Deliver: func(context.Context, outbox.Event) error {
+		atomic.AddInt64(&third, 1)
+		return nil
+	}}
+	if n, err := trailing.Publish(context.Background()); err != nil || n != 0 || third != 0 {
+		t.Errorf("a pass after the backlog drained published %d and delivered %d (err %v), want 0 and 0", n, third, err)
 	}
 }
 

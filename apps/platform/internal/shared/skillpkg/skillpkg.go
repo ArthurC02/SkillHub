@@ -178,19 +178,74 @@ type ArchiveSource interface {
 	ArchiveFindings() []Finding
 }
 
-// entryPathEscape is one code for both shapes of the same rule: an entry name
-// that is not a path inside the package. Same severity, same remedy — the
-// message carries which shape it was.
-const entryPathEscape = "entry-path-escape"
+// The content-disclosure codes: what a package was found to *contain*, as
+// opposed to whether it validates. They are the vocabulary the search row and
+// the detail view turn into words, which is why they are constants and exported
+// — the surface that renders them used to keep its own hand-written list, and
+// what a hand-written list does is fall behind the scanner. It fell behind by
+// five: symlink-entry, undeclared-dependency, file-not-scanned,
+// package-dependencies and entry-path-escape were all being found and none of
+// them had a word (04 丙-29 ④, 稽核 01).
+//
+// [DisclosureCodes] below is the whole set, and catalog asserts against it.
+// Adding a code here without a catalogue entry turns that test red, which is the
+// only reason this list exists as a list.
+//
+// Deliberately NOT here: the spec, frontmatter and licence verdicts
+// (`name-missing`, `license-unknown`, `file-ref-missing`, …). Those say whether
+// the package is well formed, not what is inside it, and they have their own
+// surfaces. Widening this set to "every code" would put "frontmatter has no
+// closing ---" on a risk badge.
+const (
+	// CodeEntryPathEscape is one code for both shapes of the same rule: an entry
+	// name that is not a path inside the package. Same severity, same remedy —
+	// the message carries which shape it was.
+	CodeEntryPathEscape = "entry-path-escape"
+	// CodePossibleSecret is the one blocking code that reads file *content*
+	// rather than package structure. Exported since before the rest because the
+	// generation path has to tell it apart from the other eleven: those are
+	// formatting slips a second attempt at the same prompt usually fixes, and a
+	// model writing a credential-shaped line is a writing habit that reproduces
+	// (ADR-048). A string literal in the other package would have made that
+	// distinction silently wrong the day this one was renamed.
+	CodePossibleSecret = "possible-secret"
+	// CodeScriptFile: the package carries a script file. Never executed here.
+	CodeScriptFile = "script-file"
+	// CodeEmbeddedScript: runnable code written into SKILL.md itself, which no
+	// file list can show (SKILL-003, CONTENT-006).
+	CodeEmbeddedScript = "embedded-script"
+	// CodeUnlabelledCodeBlock: a long fenced block with no language tag. Not
+	// embedded-script, because nothing here can tell what it is — which is the
+	// disclosure. Dropping five characters used to make a block invisible to
+	// both the size check and dependency extraction.
+	CodeUnlabelledCodeBlock = "unlabelled-code-block"
+	// CodeExternalURL: package content points at addresses outside the platform.
+	CodeExternalURL = "external-url"
+	// CodeBinaryFile: a non-text file, whose contents static scanning cannot read.
+	CodeBinaryFile = "binary-file"
+	// CodeDependencyFile: the package ships a dependency manifest.
+	CodeDependencyFile = "dependency-file"
+	// CodePackageDependencies: the dependencies the scan could name.
+	CodePackageDependencies = "package-dependencies"
+	// CodeUndeclaredDependency: imported but declared nowhere in the package.
+	CodeUndeclaredDependency = "undeclared-dependency"
+	// CodeSymlinkEntry: an entry that is a link rather than a file.
+	CodeSymlinkEntry = "symlink-entry"
+	// CodeFileNotScanned: a file over maxScanBytes, of which only the first
+	// megabyte was read. The secret scan therefore did not see the rest.
+	CodeFileNotScanned = "file-not-scanned"
+)
 
-// CodePossibleSecret is the one blocking code that reads file *content* rather
-// than package structure. Exported because the generation path has to tell it
-// apart from the other eleven: those are formatting slips a second attempt at
-// the same prompt usually fixes, and a model writing a credential-shaped line is
-// a writing habit that reproduces (ADR-048). A string literal in the other
-// package would have made that distinction silently wrong the day this one was
-// renamed.
-const CodePossibleSecret = "possible-secret"
+// DisclosureCodes is every content-disclosure code, so a renderer can assert it
+// has words for all of them instead of discovering a gap from a support ticket.
+// Order is the declaration order above and carries no meaning; the display order
+// belongs to whoever renders them.
+var DisclosureCodes = []string{
+	CodeEntryPathEscape, CodePossibleSecret, CodeScriptFile, CodeEmbeddedScript,
+	CodeUnlabelledCodeBlock, CodeExternalURL, CodeBinaryFile, CodeDependencyFile,
+	CodePackageDependencies, CodeUndeclaredDependency, CodeSymlinkEntry,
+	CodeFileNotScanned,
+}
 
 // ArchiveEntryFinding checks one raw archive entry name — the name as the
 // archive declares it — and returns the finding to record when that name is not
@@ -212,12 +267,12 @@ func ArchiveEntryFinding(name string) (Finding, bool) {
 	clean := strings.ReplaceAll(name, `\`, "/")
 	switch {
 	case strings.HasPrefix(clean, "/"), hasDriveLetter(clean):
-		return Finding{Severity: SeverityError, Code: entryPathEscape, Path: name,
+		return Finding{Severity: SeverityError, Code: CodeEntryPathEscape, Path: name,
 			Message: "archive entry declares an absolute path, which is not a location inside the package; " +
 				"the extracted tree would not be the tree this archive declares"}, true
 	case clean == "..", strings.HasPrefix(clean, "../"),
 		strings.Contains(clean, "/../"), strings.HasSuffix(clean, "/.."):
-		return Finding{Severity: SeverityError, Code: entryPathEscape, Path: name,
+		return Finding{Severity: SeverityError, Code: CodeEntryPathEscape, Path: name,
 			Message: "archive entry walks out of the package with ..; " +
 				"the extracted tree would not be the tree this archive declares"}, true
 	}
@@ -749,21 +804,43 @@ var runnableFences = map[string]string{
 // is a fenced Python block was being presented as containing no scripts.
 func (r *Report) checkEmbeddedCode(body string) {
 	var (
-		blocks  int
-		longest int
-		total   int
-		byLang  = map[string]int{}
+		blocks   int
+		longest  int
+		total    int
+		byLang   = map[string]int{}
+		untagged struct{ blocks, lines, longest int }
 	)
-	forEachRunnableFence(body, func(lang, code string) {
+	forEachFence(body, func(lang, tag, code string) {
 		lines := strings.Count(code, "\n")
 		if lines == 0 {
 			return
+		}
+		// No tag at all is its own disclosure, below. Deliberately not folded into
+		// the embedded-script count: that finding names the languages it found, and
+		// this is exactly the case where there is no language to name.
+		if tag == "" {
+			untagged.blocks++
+			untagged.lines += lines
+			untagged.longest = max(untagged.longest, lines)
+			return
+		}
+		if lang == "" {
+			return // tagged with something nothing here runs: json, text, output …
 		}
 		blocks++
 		total += lines
 		longest = max(longest, lines)
 		byLang[lang] += lines
 	})
+	// SKILL-003 依語言標記判定，所以刪掉五個字元本來就整段規避——連依賴抽取一起漏掉。
+	// 判定不改（那要改規格），只補揭露：平台說出「這裡有一段它讀不懂的程式碼」。
+	if untagged.longest > maxEmbeddedBlockLines {
+		r.add(SeverityInfo, CodeUnlabelledCodeBlock, "SKILL.md", fmt.Sprintf(
+			"SKILL.md contains %d unlabelled fenced block(s) totalling %d lines; longest %d lines. "+
+				"With no language tag the platform cannot tell what this code is, so it is "+
+				"neither counted as embedded script nor read for dependencies.",
+			untagged.blocks, untagged.lines, untagged.longest))
+	}
 	if longest <= maxEmbeddedBlockLines && total <= maxEmbeddedTotalLines {
 		return
 	}
@@ -773,22 +850,30 @@ func (r *Report) checkEmbeddedCode(body string) {
 		langs = append(langs, fmt.Sprintf("%s: %d", l, n))
 	}
 	sort.Strings(langs)
-	r.add(SeverityWarning, "embedded-script", "SKILL.md", fmt.Sprintf(
+	r.add(SeverityWarning, CodeEmbeddedScript, "SKILL.md", fmt.Sprintf(
 		"SKILL.md embeds %d lines of runnable code in %d code block(s) (%s); longest block %d lines. "+
 			"This code is never executed during import or scan, but the package's file list does not show it.",
 		total, blocks, strings.Join(langs, ", "), longest))
 }
 
-// forEachRunnableFence calls fn once per fenced code block whose language tag
-// names something runnable, with the canonical language and the block's body.
-// Blocks with no language, or one that is not runnable, are skipped.
+// forEachFence calls fn once per fenced code block with the canonical runnable
+// language (empty when the tag names nothing this package can run), the raw tag
+// as written (empty when the fence carries none), and the block's body.
+//
+// It opens on *every* fence, tagged or not. Until 2026-08-29 an untagged fence
+// did not open a block at all, so its contents were walked as though they were
+// prose: neither the size check nor dependency extraction ever saw them, and
+// deleting five characters was a complete bypass of SKILL-003. The caller that
+// wants only runnable blocks filters on lang; the one that discloses untagged
+// blocks filters on tag.
 //
 // Shared by the embedded-code size check and dependency extraction: two walks
 // would eventually disagree about what counts as a code block, and then the size
 // warning and the dependency list would be describing different packages.
-func forEachRunnableFence(body string, fn func(lang, code string)) {
+func forEachFence(body string, fn func(lang, tag, code string)) {
 	var (
-		lang  string // non-empty while inside a runnable fence
+		lang  string // canonical runnable language, "" if none
+		tag   string // the fence's raw language tag, "" if untagged
 		fence string // the delimiter that opened the current block
 		code  strings.Builder
 		open  bool
@@ -798,14 +883,13 @@ func forEachRunnableFence(body string, fn func(lang, code string)) {
 		switch {
 		case !open && fenceDelimiter(trimmed) != "":
 			fence = fenceDelimiter(trimmed)
-			lang = runnableFences[strings.ToLower(strings.Fields(strings.TrimLeft(trimmed, "`~"))[0])]
+			tag = fenceTag(trimmed)
+			lang = runnableFences[strings.ToLower(tag)]
 			code.Reset()
 			open = true
 		case open && strings.HasPrefix(trimmed, fence) && strings.Trim(trimmed, string(fence[0])) == "":
-			if lang != "" {
-				fn(lang, code.String())
-			}
-			open, fence, lang = false, "", ""
+			fn(lang, tag, code.String())
+			open, fence, lang, tag = false, "", "", ""
 		case open:
 			code.WriteString(line)
 			code.WriteByte('\n')
@@ -814,11 +898,23 @@ func forEachRunnableFence(body string, fn func(lang, code string)) {
 }
 
 // fenceDelimiter returns the opening fence marker of line, or "".
+//
+// It no longer requires a language tag: requiring one meant an untagged fence
+// was not a code block at all, which is what made deleting five characters a
+// complete bypass of the SKILL-003 disclosure.
 func fenceDelimiter(line string) string {
 	for _, f := range []string{"```", "~~~"} {
-		if strings.HasPrefix(line, f) && len(strings.Fields(strings.TrimLeft(line, "`~"))) > 0 {
+		if strings.HasPrefix(line, f) {
 			return f
 		}
+	}
+	return ""
+}
+
+// fenceTag is the raw language token on an opening fence line, or "".
+func fenceTag(line string) string {
+	if fields := strings.Fields(strings.TrimLeft(line, "`~")); len(fields) > 0 {
+		return fields[0]
 	}
 	return ""
 }
@@ -887,7 +983,7 @@ func (r *Report) scanTree(fsys fs.FS) {
 		// bit, and without this the scan never says the package contains a link at
 		// all (04 丙-15 D-3).
 		if info.Mode()&fs.ModeSymlink != 0 {
-			r.add(SeverityWarning, "symlink-entry", path, symlinkMessage(fsys, path, info.Size()))
+			r.add(SeverityWarning, CodeSymlinkEntry, path, symlinkMessage(fsys, path, info.Size()))
 			return nil
 		}
 		deps.note(path)
@@ -903,11 +999,11 @@ func (r *Report) scanTree(fsys fs.FS) {
 
 		switch {
 		case scriptExts[ext]:
-			r.add(SeverityInfo, "script-file", path, "package contains a script; it is never executed during import or scan")
+			r.add(SeverityInfo, CodeScriptFile, path, "package contains a script; it is never executed during import or scan")
 		case binaryExts[ext]:
-			r.add(SeverityWarning, "binary-file", path, "package contains a compiled binary; contents cannot be reviewed as text")
+			r.add(SeverityWarning, CodeBinaryFile, path, "package contains a compiled binary; contents cannot be reviewed as text")
 		case dependencyFiles[base]:
-			r.add(SeverityInfo, "dependency-file", path, "package declares external dependencies")
+			r.add(SeverityInfo, CodeDependencyFile, path, "package declares external dependencies")
 		}
 
 		// Read a bounded prefix rather than skipping an oversized file outright.
@@ -920,7 +1016,7 @@ func (r *Report) scanTree(fsys fs.FS) {
 			return nil //nolint:nilerr // unreadable entries are skipped, not fatal
 		}
 		if info.Size() > maxScanBytes {
-			r.add(SeverityInfo, "file-not-scanned", path, fmt.Sprintf(
+			r.add(SeverityInfo, CodeFileNotScanned, path, fmt.Sprintf(
 				"file exceeds the %d byte content-scan cap; only its first %d bytes were scanned",
 				maxScanBytes, len(data)))
 		}
@@ -1022,7 +1118,7 @@ func (r *Report) addURLDisclosures(byHost map[string][]string) {
 			msg += fmt.Sprintf(", and %d more distinct URL(s)", shown-len(examples))
 		}
 		r.Findings = append(r.Findings, Finding{
-			Severity: SeverityInfo, Code: "external-url", Message: msg, Details: refs,
+			Severity: SeverityInfo, Code: CodeExternalURL, Message: msg, Details: refs,
 		})
 	}
 }

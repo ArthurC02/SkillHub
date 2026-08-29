@@ -110,7 +110,7 @@ func (d *depScan) observe(p, content string) {
 		// need: three of them named pycountry and chardet on an install line
 		// while the catalog recorded only pandas.
 		d.observeInstallLines(content)
-		forEachRunnableFence(content, func(lang, body string) {
+		forEachFence(content, func(lang, _, body string) {
 			switch lang {
 			case "python":
 				d.observePython(body)
@@ -210,7 +210,7 @@ func (d *depScan) report(r *Report) {
 	// value CONTENT-003 fills `deps` from, and a consumer should not have to
 	// parse a message to get it (same reason external-url carries its URLs).
 	r.Findings = append(r.Findings, Finding{
-		Severity: SeverityInfo, Code: "package-dependencies", Path: "SKILL.md",
+		Severity: SeverityInfo, Code: CodePackageDependencies, Path: "SKILL.md",
 		Message: fmt.Sprintf(
 			"package evidences %d third-party dependency/dependencies: %s. "+
 				"Read from import statements and install lines, never by running anything; "+
@@ -227,7 +227,7 @@ func (d *depScan) report(r *Report) {
 		return
 	}
 	r.Findings = append(r.Findings, Finding{
-		Severity: SeverityWarning, Code: "undeclared-dependency", Path: "SKILL.md",
+		Severity: SeverityWarning, Code: CodeUndeclaredDependency, Path: "SKILL.md",
 		Message: fmt.Sprintf(
 			"code imports %d package(s) the package never declares — no dependency manifest, "+
 				"and no install line names %s. Whoever installs the runtime cannot learn of "+

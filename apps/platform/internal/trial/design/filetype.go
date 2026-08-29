@@ -105,10 +105,17 @@ var archiveExts = map[string]bool{
 // file count and size budget applied to the unpacked content, since that is what
 // the sandbox will mount.
 //
-// The unpack budget is skipped for OOXML containers (.docx/.xlsx/.pptx). Those
+// The FILE COUNT limit is skipped for OOXML containers (.docx/.xlsx/.pptx). Those
 // are single documents that happen to be zips; a normal .xlsx carries well over
 // 20 internal parts, and counting them as 20 user files would reject every
 // spreadsheet ever uploaded.
+//
+// The unpacked-BYTES limit is not skipped, and used to be. An entry named
+// [Content_Types].xml turned off both budgets, so the whole PDM-005 §5.1 unpack
+// allowance for a zip dataset came off one filename - and the only remaining
+// upper bound was MaxFileBytes on the compressed side, which deflate turns into
+// several GB of declared content. A real .xlsx is nowhere near 100 MB unpacked,
+// so keeping this limit costs the case it was skipped for nothing.
 //
 // Declared sizes from the central directory are enough here: the file is never
 // unpacked on this side (it is unpacked inside the sandbox, ADR-005), so this is
@@ -145,10 +152,7 @@ func inspectZip(data []byte) error {
 		files++
 		unpacked += f.UncompressedSize64
 	}
-	if ooxml {
-		return nil
-	}
-	if files > MaxFilesPerTestCase {
+	if files > MaxFilesPerTestCase && !ooxml {
 		return fmt.Errorf("%w: archive holds more than %d files", ErrLimitExceeded, MaxFilesPerTestCase)
 	}
 	if unpacked > uint64(MaxTestCaseBytes) {

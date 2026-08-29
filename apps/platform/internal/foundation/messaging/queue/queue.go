@@ -9,6 +9,8 @@ package queue
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -40,4 +42,38 @@ func EnsureSchema(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	_, err = m.Migrate(ctx, rivermigrate.DirectionUp, nil)
 	return err
+}
+
+// StopTimeout bounds a graceful shutdown before it is escalated to cancellation.
+//
+// Thirty seconds is long enough for a dispatching run to finish the HTTP call it
+// is in and short enough to sit inside every default container termination grace
+// period, so the escalation below happens while the process is still allowed to
+// run its deferred closers.
+const StopTimeout = 30 * time.Second
+
+// Stop shuts a client down, then takes it. Both composition roots call this
+// rather than river's Stop directly, because "wait for jobs to notice the
+// cancelled context" has no bound of its own: a job blocked acquiring a
+// connection from an exhausted pool never reaches a cancellation check at all,
+// and an unbounded wait means SIGTERM never completes, the orchestrator sends
+// SIGKILL after its grace period, and SIGKILL runs no defer — so the connection
+// pool and the object store are torn down by the kernel instead of by us.
+//
+// context.Background() and not the process context: the context the jobs were
+// given is already cancelled, and the deadline here is the bound.
+func Stop(client *river.Client[pgx.Tx]) {
+	ctx, cancel := context.WithTimeout(context.Background(), StopTimeout)
+	defer cancel()
+	if err := client.Stop(ctx); err == nil {
+		return
+	} else {
+		slog.Warn("queue did not stop gracefully; cancelling the jobs still running",
+			"error", err, "waited", StopTimeout)
+	}
+	cancelCtx, cancelStop := context.WithTimeout(context.Background(), StopTimeout)
+	defer cancelStop()
+	if err := client.StopAndCancel(cancelCtx); err != nil {
+		slog.Error("queue stop", "error", err)
+	}
 }

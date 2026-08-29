@@ -115,21 +115,82 @@ func MaintainMonthly(ctx context.Context, pool *pgxpool.Pool, table string, now 
 		report.Dropped = append(report.Dropped, name)
 	}
 
+	created, err := createUpcoming(ctx, pool, table, existing, now)
+	report.Created = created
+	return report, err
+}
+
+// CreateUpcoming is MaintainMonthly's first half and only its first half: it
+// creates the current month and [monthsAhead] after it, and drops nothing.
+//
+// It exists so the "when" of the two halves can differ, because they are not the
+// same kind of decision. Iron rule 6 keeps deletion's schedule outside the code
+// and that is right — a job that removes user content on a deadline needs a
+// human to have set the deadline, which is why every retention variable in this
+// platform is fail-closed. Making next month's drawer is not that. Nobody has to
+// sign for it, it needs no retention window as input, and it is idempotent.
+//
+// The asymmetry in the consequences is the actual argument. Miss the drop and
+// data is kept too long, visibly, and the next run fixes it. Miss the create
+// twice and rows start landing in <table>_default — which no partition drop can
+// ever reach (see expiredMonths), so the retention promise silently stops
+// applying to them, and recovering needs the ACCESS EXCLUSIVE drain createMonth's
+// 23514 branch spells out. That failure is delayed, invisible and expensive, and
+// it is the one a periodic job in the worker prevents outright.
+//
+// So: this half is registered as a River periodic job (entrypoint/worker), the
+// dropping half stays in `maintenance rotate-partitions` behind its fail-closed
+// retention variable.
+//
+// No retention parameter, deliberately. It is not that the argument would be
+// unused — there is nothing here for it to mean, and a function that accepted
+// one could grow a drop later without its call sites noticing.
+func CreateUpcoming(ctx context.Context, pool *pgxpool.Pool, table string, now time.Time) (Report, error) {
+	var report Report
+	if !identifierPattern.MatchString(table) {
+		return report, fmt.Errorf("partition: %q is not a bare lower-case table identifier", table)
+	}
+	now = now.UTC()
+
+	existing, err := childPartitions(ctx, pool, table)
+	if err != nil {
+		return report, err
+	}
+	created, err := createUpcoming(ctx, pool, table, existing, now)
+	report.Created = created
+	return report, err
+}
+
+// createUpcoming is the creation half both entry points run, so there is one
+// copy of "which months must exist" rather than two that can drift.
+//
+// A private helper and not a bool on MaintainMonthly: a flag would put the
+// retention window on a code path that does not use it, and MaintainMonthly’s
+// retention<=0 refusal is the fail-closed guard that stops "expired" from
+// meaning "everything up to now". That guard has to stay unbypassable, and a
+// caller passing skipDrops=true would be bypassing it.
+//
+// Returns the names created so both callers report the same way; existing is
+// passed in because MaintainMonthly has already read it to decide what to drop.
+func createUpcoming(
+	ctx context.Context, pool *pgxpool.Pool, table string, existing []string, now time.Time,
+) ([]string, error) {
 	present := make(map[string]bool, len(existing))
 	for _, name := range existing {
 		present[name] = true
 	}
+	var created []string
 	for _, start := range upcomingMonths(now) {
 		name := monthName(table, start)
 		if present[name] {
 			continue
 		}
 		if err := createMonth(ctx, pool, table, name, start); err != nil {
-			return report, err
+			return created, err
 		}
-		report.Created = append(report.Created, name)
+		created = append(created, name)
 	}
-	return report, nil
+	return created, nil
 }
 
 // childPartitions names every partition currently attached to table, including

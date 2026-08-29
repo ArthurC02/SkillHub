@@ -10,7 +10,6 @@ package eval
 // The sixth class, `effect`, is in judge.go. It is the only one no rule can answer.
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -22,7 +21,7 @@ import (
 
 // deterministicFindings runs all five rule checks. Order is the order EVAL-001
 // clause 1 lists the classes in, so the report reads the way the spec does.
-func (s *Service) deterministicFindings(_ context.Context, m material) []Finding {
+func (s *Service) deterministicFindings(m material) []Finding {
 	out := []Finding{}
 	out = append(out, specFindings(m)...)
 	out = append(out, activationFindings(m)...)

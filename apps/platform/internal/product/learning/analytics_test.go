@@ -35,19 +35,6 @@ func TestVisitCookieNeverOutlivesTheAnalyticsSession(t *testing.T) {
 	}
 }
 
-func TestPurgeExpiredRejectsMissingConfiguration(t *testing.T) {
-	for name, svc := range map[string]*Service{
-		"nil service": nil,
-		"nil pool":    {Retention: time.Hour},
-		"zero window": {},
-		"negative":    {Retention: -time.Hour},
-	} {
-		if _, err := svc.PurgeExpired(context.Background()); err == nil {
-			t.Errorf("%s: purge reported success", name)
-		}
-	}
-}
-
 // The one thing a search event records about the words themselves. A bucket, not
 // a locale and not the text: ADR-013's vector leg is meant to carry cross-script
 // intent, and this is the coarsest signal that can tell whether it is being asked

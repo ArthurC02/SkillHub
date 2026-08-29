@@ -101,6 +101,15 @@ const MaxResponseBytes = 8 << 20
 // EmbedRequest is the request body for POST /embed.
 type EmbedRequest struct {
 	Texts []string `json:"texts"`
+	// TimeoutSeconds asks apps/llm to stop waiting on the gateway sooner than its
+	// own ceiling. Omitted when zero, which is what leaves the service on
+	// app.EMBED_TIMEOUT_SECONDS — the service takes min(ceiling, this), so a
+	// caller can only ever ask for less.
+	//
+	// It matters because a Go context deadline reaches nothing: the HTTP call is
+	// abandoned and the gateway request behind it keeps running and keeps being
+	// billed. Only a number the service itself honours actually stops the work.
+	TimeoutSeconds float64 `json:"timeout_seconds,omitempty"`
 }
 
 // EmbedResponse is the response body from POST /embed.
@@ -110,9 +119,29 @@ type EmbedResponse struct {
 	Dimensions int         `json:"dimensions"`
 }
 
-// Embed calls the LLM service to generate embeddings for the given texts.
+// Embed calls the LLM service to generate embeddings for the given texts, on the
+// service's own timeout (app.EMBED_TIMEOUT_SECONDS). This is the indexing path:
+// a backfill or an import has no user waiting on it, so the longest ceiling is
+// the right one.
 func (c *Client) Embed(ctx context.Context, texts []string) (*EmbedResponse, error) {
 	return post[EmbedRequest, EmbedResponse](ctx, c, "/embed", EmbedRequest{Texts: texts})
+}
+
+// EmbedWithin is Embed with a shorter server-side ceiling, for the path where
+// somebody is watching a spinner.
+//
+// A method rather than an options struct because there is one knob and one
+// caller: search. Adding the second is what would make an option type earn its
+// place.
+//
+// seconds <= 0 sends nothing and is exactly Embed. The service clamps to
+// min(app.EMBED_TIMEOUT_SECONDS, seconds), so this can only ever shorten.
+func (c *Client) EmbedWithin(ctx context.Context, texts []string, seconds float64) (*EmbedResponse, error) {
+	req := EmbedRequest{Texts: texts}
+	if seconds > 0 {
+		req.TimeoutSeconds = seconds
+	}
+	return post[EmbedRequest, EmbedResponse](ctx, c, "/embed", req)
 }
 
 // TaskExample is one example task sentence, given in both catalogue languages.

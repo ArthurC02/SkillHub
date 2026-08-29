@@ -40,6 +40,15 @@ const (
 	ExcludedUserUploadedDataset = "user_uploaded_dataset"
 	ExcludedNotCurated          = "not_curated"
 	ExcludedUserOptedOut        = "user_opted_out"
+	// ExcludedUnsafeDatasetFileName: a dataset on this case has a stored file
+	// name that cannot be written as a direct child of data/. The name is not
+	// repaired — a path that had to be fixed is not the path anybody recorded,
+	// and the user unpacks this to their disk — so the case cannot travel
+	// complete, and a case.json listing fewer datasets than the case has is a
+	// quieter lie than leaving the case out. Until 2026-08-29 the dataset was
+	// dropped and nothing anywhere said so, which is the one thing every other
+	// exclusion in this file exists to prevent.
+	ExcludedUnsafeDatasetFileName = "unsafe_dataset_file_name"
 )
 
 // IncludedTestCase and ExcludedTestCase are what the manifest and the preview
@@ -126,6 +135,12 @@ func (s *Service) selectTestCases(
 				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name, Reason: ExcludedNotCurated,
 			})
 			continue
+		case unsafeDatasetName(datasets):
+			excluded = append(excluded, ExcludedTestCase{
+				TestCaseID: pgconv.UUIDString(tc.ID), Name: tc.Name,
+				Reason: ExcludedUnsafeDatasetFileName,
+			})
+			continue
 		}
 
 		slug := testCaseSlug(tc.Name, pgconv.UUIDString(tc.ID))
@@ -165,10 +180,11 @@ func (s *Service) portableFiles(
 	for _, ds := range datasets {
 		name := dataFileName(ds.FileName)
 		if name == "" {
-			// A stored file name that cannot be written as a direct child of
-			// data/ is skipped rather than repaired: a path that had to be fixed
-			// is not the path anybody recorded, and the user unpacks this to disk.
-			continue
+			// Unreachable: selectTestCases excludes the whole case before it gets
+			// here. Fail closed rather than skip, because the silent skip is what
+			// this pair of changes was made to remove — a package missing a file
+			// nobody was told about is worse than a packaging request that failed.
+			return nil, fmt.Errorf("test case %s: dataset file name %q cannot be packaged", slug, ds.FileName)
 		}
 		data, err := s.Store.Get(ctx, ds.ObjectKey)
 		if err != nil {
@@ -234,6 +250,17 @@ func testCaseSlug(name, id string) string {
 // dataFileName reduces a stored file name to a direct child of data/, or ""
 // when it cannot be one. The contract constrains this path because the user
 // unpacks it to their own disk (portable-test-case.schema.json).
+// unsafeDatasetName reports whether any of these datasets has a stored file name
+// that cannot become a direct child of data/.
+func unsafeDatasetName(datasets []testlab.Dataset) bool {
+	for _, ds := range datasets {
+		if dataFileName(ds.FileName) == "" {
+			return true
+		}
+	}
+	return false
+}
+
 func dataFileName(name string) string {
 	name = strings.TrimSpace(name)
 	if name == "" || name == "." || name == ".." ||

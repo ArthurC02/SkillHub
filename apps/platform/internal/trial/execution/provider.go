@@ -88,10 +88,30 @@ type ProviderCapability struct {
 	Provider     string           `json:"provider"`
 	Runtimes     []RuntimeSupport `json:"runtimes"`
 	MaxResources ResourceLimits   `json:"max_resources"`
-	Isolation    struct {
+	// MaxResourcesUnenforced names the ceilings the provider carries a number for
+	// in MaxResources but does not have the operating system hold to. Empty means
+	// every declared ceiling is enforced, which is what a production node must be
+	// able to say.
+	//
+	// It is decoded here because a declaration nobody reads is the same defect it
+	// was added to fix: ADR-059 decision 3's incident was a node whose declaration
+	// and reality diverged with only a startup log line knowing. Match() is the
+	// consumer.
+	MaxResourcesUnenforced []string `json:"max_resources_unenforced,omitempty"`
+	Isolation              struct {
 		Level                    string `json:"level"`
 		Rootless                 bool   `json:"rootless"`
 		DedicatedWorkspacePerRun bool   `json:"dedicated_workspace_per_run"`
+		// ReapsDetachedDescendants: whether ending a run also ends a descendant
+		// that deliberately left its process group or job object. Pointer for the
+		// same reason as Availability.Healthy - an omitted field is "did not say",
+		// which is not the same claim as false.
+		//
+		// It does not gate dispatch: the two platforms of one driver legitimately
+		// differ on it, and refusing on it would take the clean test mode out on a
+		// fact that is disclosure-shaped rather than refusal-shaped. It reaches
+		// the user through ProviderSummary instead (02:PORT-003, TEST-008).
+		ReapsDetachedDescendants *bool `json:"reaps_detached_descendants,omitempty"`
 	} `json:"isolation"`
 	Network struct {
 		EgressModes    []string `json:"egress_modes"`
@@ -566,9 +586,15 @@ func (r *Registry) Capability(ctx context.Context, p *Provider) (ProviderCapabil
 	if ttl == 0 {
 		ttl = capabilityTTL
 	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if entry, ok := r.cached[p.Name]; ok && time.Since(entry.at) < ttl {
+	// The lock covers the map, not the network. Holding it across p.Capability -
+	// a 30 second client timeout - serialised every scheduling decision and every
+	// preflight screen in the process behind one unreachable node, so a single
+	// black-holed provider stopped the API's pre-run summary for everybody.
+	//
+	// ponytail: double-checked, not singleflight. Two callers racing the same cold
+	// provider both fetch; the ceiling is one duplicate probe per provider per TTL
+	// window, which is cheaper than the dependency and far cheaper than the lock.
+	if entry, ok := r.freshCapability(p.Name, ttl); ok {
 		return entry.capability, entry.err
 	}
 	capability, err := p.Capability(ctx)
@@ -584,11 +610,27 @@ func (r *Registry) Capability(ctx context.Context, p *Provider) (ProviderCapabil
 	default:
 		metrics.ProviderCapability.WithLabelValues(p.Name, "ok").Inc()
 	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if r.cached == nil {
 		r.cached = map[string]cachedCapability{}
 	}
 	r.cached[p.Name] = cachedCapability{capability: capability, at: time.Now(), err: err}
 	return capability, err
+}
+
+// freshCapability is the read half of the double check: it takes the lock only
+// for the map lookup. ok reports whether the entry was there and still inside the
+// TTL - failures are cached on the same terms, which is what stops a down
+// provider from being re-probed once per scheduling decision.
+func (r *Registry) freshCapability(name string, ttl time.Duration) (cachedCapability, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	entry, ok := r.cached[name]
+	if !ok || time.Since(entry.at) >= ttl {
+		return cachedCapability{}, false
+	}
+	return entry, true
 }
 
 // Refresh drops the cache, so the next scheduling decision re-reads every

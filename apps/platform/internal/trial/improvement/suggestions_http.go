@@ -131,8 +131,28 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := make([]suggestionView, 0, len(rows))
+	sets := make([][]EvidenceRef, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, toSuggestionView(row))
+		v := toSuggestionView(row)
+		out = append(out, v)
+		sets = append(sets, v.Evidence)
+	}
+	// The same read-time answer the evaluation report gets (ADR-026 decision 2,
+	// doc.go invariant 9). This list used to send `evaluation_suggestions.evidence`
+	// straight back out of the database, so every citation on it kept whatever
+	// `available` it was written with — and this is the page a user reads BEFORE
+	// adopting a suggestion, so a deleted output or an expired trace partition was
+	// invisible at exactly the moment it mattered.
+	//
+	// A failure here fails the request rather than degrading to the stored value:
+	// the stored value is the claim this is here to stop making.
+	live, err := h.Svc.resolveEvidence(r.Context(), ws.ID, runID, sets...)
+	if err != nil {
+		httpx.WriteError(w, http.StatusInternalServerError, "evidence availability lookup failed")
+		return
+	}
+	for _, refs := range sets {
+		markAvailability(refs, live)
 	}
 	httpx.WriteJSON(w, http.StatusOK, struct {
 		EvaluationID string           `json:"evaluation_id"`
@@ -299,6 +319,14 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, ErrNotAccepted) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error()+
 			"; not accepted: "+join(res.NotAccepted))
+		return
+	}
+	// The half-success. "The new version could not be created" is the one sentence
+	// that must not be said here, because the version WAS created — a user told
+	// that would retry and get a duplicate-content answer for a version they
+	// already have, and would never learn that its provenance is missing.
+	if errors.Is(err, errProvenanceNotRecorded) {
+		httpx.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if err != nil {

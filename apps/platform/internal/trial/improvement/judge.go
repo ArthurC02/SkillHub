@@ -96,11 +96,6 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 		resp.Usage.CostUSD = nil
 		resp.Usage.CostSource = ""
 	}
-	if err := s.recordModelUsage(ctx, ev.ID, ev.WorkspaceID, "judge",
-		resp.Model, resp.PromptVersion, resp.Usage); err != nil {
-		return verdict{}, err
-	}
-
 	results := s.merge(m, resp.Verdict, digest, len(truncation) > 0)
 	v := verdict{
 		overall:          overallFrom(results),
@@ -122,6 +117,10 @@ func (s *Service) judge(ctx context.Context, m material, ev gen.Evaluation) (ver
 	if resp.Usage != nil {
 		v.costUSD, v.costSource = resp.Usage.CostUSD, resp.Usage.CostSource
 	}
+	// Carried, not written. The usage row is the bill for this judgement and
+	// belongs in the transaction that records the judgement (eval.go's complete);
+	// writing it here put it on the pool, before that transaction existed.
+	v.usage = resp.Usage
 	// A rubric item addressed to a criterion that was not sent has nowhere for its
 	// verdict to be stored — merge() drops any id it did not ask about, exactly as
 	// /match-reasons drops an unrequested skill_id. Silently dropping it would

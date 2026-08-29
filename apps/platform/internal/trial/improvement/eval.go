@@ -196,7 +196,13 @@ type ObjectStore interface {
 // judgeTimeout bounds one /judge-run call. Longer than the other LLM calls
 // because the judge reads far more input, and the only deadline the internal call
 // has (llmclient carries none of its own, iron rule 7).
-const judgeTimeout = 120 * time.Second
+//
+// It must exceed apps/llm's own socket ceiling, not equal it. Equal meant Go's
+// context expired first every time, so the caller got `context deadline exceeded`
+// instead of `llmclient: /judge-run returned 502` and could not tell a broken
+// gateway from a slow one - and Go giving up does not cancel the upstream, so the
+// call was billed and thrown away (llmclient/client.go records that measurement).
+const judgeTimeout = 135 * time.Second // budget-over: evaluate.LLM_TIMEOUT_SECONDS
 
 // Service evaluates finished runs.
 type Service struct {
@@ -341,14 +347,33 @@ func (s *Service) HasCurrentEvaluation(ctx context.Context, workspaceID, runID p
 	return err == nil, err
 }
 
+// recordModelUsage writes one row of `evaluation_model_usage`, through whichever
+// Queries the caller hands it.
+//
+// q is a parameter and not s.queries() because the judge's row belongs INSIDE the
+// verdict's transaction. It used to be written on the pool, before complete()
+// opened its own, and `evaluation_model_usage` is an `immutable:` table in
+// db/query-owners.yaml — the model usage as of the judgement. Two writes, two
+// transactions, two ways to end up with half of it:
+//
+//   - the gateway answered, the usage row committed, then complete() failed: a
+//     bill in the database with no completed judgement to explain it;
+//   - the usage write failed, so judge() returned the error and the evaluation was
+//     recorded as failed: the money was spent and nothing recorded it at all.
+//
+// ON CONFLICT (evaluation_id, operation) DO NOTHING solves re-delivery, not
+// cross-transaction atomicity. The suggestion leg keeps passing the pool: it is a
+// separate operation written after the verdict has already committed, with its own
+// failure story (suggest.go says why a failed accounting write must not discard
+// paid proposals).
 func (s *Service) recordModelUsage(
-	ctx context.Context, evaluationID, workspaceID pgtype.UUID, operation string,
+	ctx context.Context, q *gen.Queries, evaluationID, workspaceID pgtype.UUID, operation string,
 	model, promptVersion string, usage *llmclient.GatewayUsage,
 ) error {
 	if usage == nil {
 		return nil
 	}
-	return s.queries().RecordEvaluationModelUsage(ctx, gen.RecordEvaluationModelUsageParams{
+	return q.RecordEvaluationModelUsage(ctx, gen.RecordEvaluationModelUsageParams{
 		EvaluationID:     evaluationID,
 		WorkspaceID:      workspaceID,
 		Operation:        operation,
@@ -462,7 +487,7 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 		return err
 	}
 
-	findings := s.deterministicFindings(ctx, m)
+	findings := s.deterministicFindings(m)
 	// 丙-1: a trace with holes cannot support a `passed`, so the fact travels with
 	// the verdict rather than being noticed by whoever reads it. An output the
 	// run recorded and this evaluation cannot read is the same kind of hole in
@@ -549,7 +574,7 @@ func (s *Service) recoverEvaluation(
 	if err != nil {
 		return err
 	}
-	findings := s.deterministicFindings(ctx, m)
+	findings := s.deterministicFindings(m)
 	return s.fail(ctx, m, current, findings, m.advanced.Complete,
 		errors.New("the previous evaluation attempt was interrupted before its verdict committed"))
 }
@@ -584,6 +609,10 @@ type verdict struct {
 	rubricVersion    string
 	costUSD          *float64
 	costSource       string
+	// usage is the gateway's own accounting for the judge call, carried here so
+	// that complete() can write it in the same transaction as the verdict rather
+	// than judge() writing it in a transaction of its own. See recordModelUsage.
+	usage *llmclient.GatewayUsage
 }
 
 // gather reads every input under the run's own workspace.
@@ -747,6 +776,14 @@ func (s *Service) complete(ctx context.Context, m material, ev gen.Evaluation, v
 	}); errors.Is(err, pgx.ErrNoRows) {
 		return errEvaluationSettled
 	} else if err != nil {
+		return err
+	}
+
+	// Same transaction as the verdict it is the bill for. A judgement that does not
+	// commit does not leave an invoice behind, and one that does commit always has
+	// its invoice.
+	if err := s.recordModelUsage(ctx, q, ev.ID, ev.WorkspaceID, "judge",
+		v.model, v.promptVersion, v.usage); err != nil {
 		return err
 	}
 

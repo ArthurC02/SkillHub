@@ -167,6 +167,19 @@ const (
 	// one action name would make it a metadata field to filter on.
 	ActionDispatchHalt   = "dispatch.halted"
 	ActionDispatchResume = "dispatch.resumed"
+	// A signed-in account that is not on the operator roster reached an operator
+	// route. The same argument ActionRunRefused makes above, applied to the one
+	// surface where the refusal is invisible by design: RequireOperator answers
+	// 404 so the endpoint's existence is not disclosed (02:SEC-011), which means
+	// probing it left no trace anywhere — not outside, where the 404 is the
+	// point, and not inside either. "Has anybody tried to halt dispatch" had no
+	// answer.
+	//
+	// Only the attributable half. A caller with no session, or one whose cookie
+	// does not resolve, writes nothing: there is no actor to name, and a row per
+	// unauthenticated 404 would turn any path scanner into an amplifier against
+	// the trail's own 400-day retention.
+	ActionOperatorRefused = "operator.refused"
 )
 
 // Resource types the actions above refer to.
@@ -186,7 +199,10 @@ const (
 	// ResourceOperatorRoster and ResourceBetaRoster have no resource_id: a roster
 	// is the deployment's configuration, not a row anything can point at.
 	ResourceOperatorRoster = "operator_roster"
-	ResourceBetaRoster     = "beta_roster"
+	// The route itself, not the roster: what ActionOperatorRefused records is an
+	// attempt on an endpoint, and the roster is what said no.
+	ResourceOperatorRoute = "operator_route"
+	ResourceBetaRoster    = "beta_roster"
 	// ResourceFeatureFlags has no resource_id for the same reason the two rosters
 	// above have none: a deployment's flag set is configuration, not a row.
 	ResourceFeatureFlags = "feature_flags"

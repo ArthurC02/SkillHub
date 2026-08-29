@@ -714,11 +714,26 @@ func (d *driver) timeoutReason() string {
 	return fmt.Sprintf("exceeded the hard wall clock limit; deadline was %s", d.deadline.UTC().Format(time.RFC3339))
 }
 
+// tokenCeilingRoundsHint is 02:276-284's rule applied to the one place this
+// package shows a user the token ceiling: 「凡是對使用者呈現這個上限的地方(權限摘要、
+// 錯誤訊息、文件),都必須讓讀者看得出這件事依賴每輪工具呼叫次數」. A bare "limit
+// 300000" reads as a fixed amount of work; the same 300K is about 15 conversational
+// rounds and about 5 tool-heavy ones, because every tool result resends the whole
+// prefix. The permission summary carries the three-row table (preflight.go's
+// notes); an abort message gets the one clause that stops the number being read
+// as a promise.
+const tokenCeilingRoundsHint = "。此上限可跑的輪數取決於每輪的工具呼叫次數:純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪"
+
 // tokenCeilingBreach answers whether this attempt has spent more model tokens
 // than the run was sold, and returns the sentence the user reads if it has.
 //
-// PDM-005 5.2a-4 names the Go worker as the token ceiling's only enforcement
-// point, and this is it. The Virtual Key's max_budget cannot stand in for it:
+// PDM-005 5.2a-4 names the Go worker as an enforcement point for the token
+// ceiling, and this is it. It is one of two, not the only one - the sandbox
+// harness is the other, and the paragraph below says why deleting either leaves
+// a gap. (This comment used to say "only", which was the same mistake 02:285
+// makes from the other side: two documents each naming a different single
+// enforcement point for one ceiling that has two.)
+// The Virtual Key's max_budget cannot stand in for it:
 // prompt caching discounts the price and not the count, so $0.50 buys roughly
 // 2.4M input tokens rather than the 300K the pre-run permission summary showed
 // the user and they confirmed (02:TEST-005).
@@ -768,12 +783,12 @@ func (d *driver) tokenCeilingBreach(ctx context.Context, attempt gen.RunAttempt)
 	switch {
 	case limits.MaxInputTokens > 0 && used.InputTokens > limits.MaxInputTokens:
 		metrics.RunTokenCeilingBreached.Inc()
-		return fmt.Sprintf("reached this run's token ceiling: %d input tokens used, limit %d",
-			used.InputTokens, limits.MaxInputTokens)
+		return fmt.Sprintf("reached this run's token ceiling: %d input tokens used, limit %d%s",
+			used.InputTokens, limits.MaxInputTokens, tokenCeilingRoundsHint)
 	case limits.MaxOutputTokens > 0 && used.OutputTokens > limits.MaxOutputTokens:
 		metrics.RunTokenCeilingBreached.Inc()
-		return fmt.Sprintf("reached this run's token ceiling: %d output tokens used, limit %d",
-			used.OutputTokens, limits.MaxOutputTokens)
+		return fmt.Sprintf("reached this run's token ceiling: %d output tokens used, limit %d%s",
+			used.OutputTokens, limits.MaxOutputTokens, tokenCeilingRoundsHint)
 	}
 	return ""
 }

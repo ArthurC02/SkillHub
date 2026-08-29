@@ -25,6 +25,14 @@ func TestNodeAndPoolThresholds(t *testing.T) {
 		{"4 slots at 50%", 4, 2},
 		{"early growth node, 8 slots at 50%", 8, 4},
 		{"an undeclared or unreachable node falls back to the floor", 0, 1},
+		// The one row the ceiling division survives on. Every other row here is
+		// either an exact division or gets caught by the floor, so floor division
+		// answers all of them identically and the mutation lived. 3 slots at 50%
+		// is 1.5: ceiling 2, floor division 1, and the node floor of 1 cannot
+		// rescue it. Without this row, ADR-022 X-04's 「≥25%／≥50%」 could quietly
+		// become "one whole resource later" on every fleet size that does not
+		// divide evenly.
+		{"3 slots at 50% rounds up, and the floor of 1 cannot hide it", 3, 2},
 	} {
 		if got := haltThreshold(tc.slots, 1, 2, 1); got != tc.want {
 			t.Errorf("node threshold, %s: got %d, want %d", tc.what, got, tc.want)

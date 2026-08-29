@@ -136,6 +136,31 @@ func (h haltState) dispatchPaused(registry *Registry) bool {
 	return true
 }
 
+// incidentPaused is dispatchPaused restricted to incident halts: nothing may be
+// dispatched, AND the reason is a P1 rather than a threshold pause.
+//
+// It exists because the two halt levels meet in one deployment shape. A P1 raised
+// against the only configured provider (`PUT /admin/dispatch/halt` with
+// {"provider":"self_hosted"}) is operationally identical to a pool halt — nothing
+// can move — but it is written on a different row, so a check that only reads the
+// pool row sees an open gate. The run is then accepted, sits `queued`, and dies of
+// the hard deadline fifteen minutes later without one string anywhere mentioning
+// an incident.
+func (h haltState) incidentPaused(registry *Registry) bool {
+	if h.incidentHeld(haltPool) {
+		return true
+	}
+	if len(registry.Providers) == 0 {
+		return false
+	}
+	for _, p := range registry.Providers {
+		if !h.incidentHeld(p.Name) {
+			return false
+		}
+	}
+	return true
+}
+
 // activeHalts reads the switch.
 //
 // Fail-closed, and the direction is chosen rather than inherited: 02:SEC-002 says
@@ -187,13 +212,19 @@ func (s *Service) haltsFailClosed(ctx context.Context) haltState {
 //
 // The difference is read off the halt's own source column. It is not a second
 // switch: the same row, the same release path, and dispatch stops either way.
+//
+// What it refuses for is "an incident is holding everything this deployment could
+// dispatch to", not "the pool row says so". On the single-provider fleet that
+// SKILLHUB_SANDBOX_PROVIDERS actually describes in production, those two are the
+// same fact written on different rows, and reading only the pool row let a P1 on
+// the one node accept runs into a queue that cannot move.
 func (s *Service) requireDispatchable(ctx context.Context) error {
 	state, err := s.activeHalts(ctx)
 	if err != nil {
 		slog.Error("dispatch halt state unreadable; refusing run creation", "error", err)
 		return ErrDispatchHalted
 	}
-	if halt, ok := state.active(haltPool); ok && halt.Source == HaltSourceIncident {
+	if state.incidentPaused(s.providers()) {
 		return ErrDispatchHalted
 	}
 	return nil
@@ -434,17 +465,25 @@ type haltRequest struct {
 	Note     string `json:"note"`
 }
 
-// operatorUser is the dispatch handlers' own check that a session actually
-// reached them — the second line of defence the authz matrix says every private
-// handler has. Until 2026-08-25 the two writes below took `user, _` and carried
-// on with a zero UUID, so a wrapper weakened to RequireSession, or a new
-// operator route mounted without one, would not have refused the halt: it would
-// have stopped the fleet and recorded 02:SEC-011's 「誰做的」 as a user that does
-// not exist. The read did not look at the session at all.
+// sessionActor is the dispatch handlers' check that a session actually reached
+// them, and that is the whole of it. Until 2026-08-25 the two writes below took
+// `user, _` and carried on with a zero UUID, so a wrapper weakened to
+// RequireSession, or a new operator route mounted without one, would not have
+// refused the halt: it would have stopped the fleet and recorded 02:SEC-011's
+// 「誰做的」 as a user that does not exist. The read did not look at the session
+// at all.
+//
+// It is NOT the "second line of defence" the authz matrix describes: the
+// operator roster (OPERATOR_USER_IDS) lives on identity's HTTP Handler, which
+// this package never sees, so the role check is entirely `auth.RequireOperator`
+// in router.go, one wrapper per route. A route mounted without it would reach
+// these handlers and this function would let it through. Same finding and same
+// wording as skill/discovery's sessionActor (稽核 01 D1); making either real
+// needs the roster injected from the composition root (04 丙-94).
 //
 // 404, the same answer RequireOperator gives everybody else, so the second check
 // does not disclose the endpoint the first one hides (SEC-011 不揭露端點存在).
-func operatorUser(w http.ResponseWriter, r *http.Request) (identity.User, bool) {
+func sessionActor(w http.ResponseWriter, r *http.Request) (identity.User, bool) {
 	user, ok := identity.SessionUser(r.Context())
 	if !ok {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
@@ -457,7 +496,7 @@ func operatorUser(w http.ResponseWriter, r *http.Request) (identity.User, bool) 
 // is that 「現在到底有沒有在派送」 stops having a single answer; this is where that
 // answer is read.
 func (h *Handler) Halts(w http.ResponseWriter, r *http.Request) {
-	if _, ok := operatorUser(w, r); !ok {
+	if _, ok := sessionActor(w, r); !ok {
 		return
 	}
 	state, err := h.Svc.activeHalts(r.Context())
@@ -504,7 +543,7 @@ func (h *Handler) DeclareHalt(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	user, ok := operatorUser(w, r)
+	user, ok := sessionActor(w, r)
 	if !ok {
 		return
 	}
@@ -536,7 +575,7 @@ func (h *Handler) LiftHalt(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	user, ok := operatorUser(w, r)
+	user, ok := sessionActor(w, r)
 	if !ok {
 		return
 	}

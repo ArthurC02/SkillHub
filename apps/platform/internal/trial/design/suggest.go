@@ -31,7 +31,11 @@ var ErrSuggestUnavailable = errors.New("acceptance criteria suggestions are unav
 const (
 	// suggestTimeout bounds the internal call to the Python service. Go owns the
 	// timeout and the cancellation, not Python (iron rule 7).
-	suggestTimeout = 30 * time.Second
+	//
+	// Above apps/llm's own ceiling for this route, not equal to it: equal makes
+	// Go's deadline fire first every time, which turns a gateway failure into an
+	// indistinguishable timeout and bills a call nobody reads.
+	suggestTimeout = 40 * time.Second // budget-over: app.SUGGEST_CRITERIA_TIMEOUT_SECONDS
 	// maxSkillSummaryBytes trims the skill description handed to the model. A
 	// summary is a paragraph; anything longer is a document that wandered into the
 	// column, and paying to send it buys nothing.

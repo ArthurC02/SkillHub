@@ -3,6 +3,9 @@ package worker
 import (
 	"context"
 	"maps"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -215,12 +218,26 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 	// The fifth is deliberately false: objreconcile is not recovering from
 	// anything, and on start it would re-probe every stored object on every
 	// rollout — a deploy loop turned into an object-store scan loop.
+	//
+	// The sixth and seventh arrived on 2026-08-29 and split the same way:
+	//
+	//   - partition_create: RunOnStart TRUE, and it is the reason the job exists
+	//     rather than a nicety. A deployment brought up on the 29th must have
+	//     next month’s partitions before the month turns; one interval later can
+	//     be too late, and being late writes rows into <table>_default where no
+	//     partition drop can ever reach them;
+	//   - enrichment_backfill: RunOnStart FALSE, for objreconcile’s reason with
+	//     a price tag. Each pending document costs one enrichment call on the
+	//     deployment-wide LiteLLM key, so a rollout must not become a burst of
+	//     them.
 	want := map[string]bool{
-		eval.RecoveryArgs{}.Kind():  true,
-		run.SuperviseArgs{}.Kind():  true,
-		run.OrphanScanArgs{}.Kind(): true,
-		outbox.PublishArgs{}.Kind(): true,
-		objreconcile.Args{}.Kind():  false,
+		eval.RecoveryArgs{}.Kind():      true,
+		run.SuperviseArgs{}.Kind():      true,
+		run.OrphanScanArgs{}.Kind():     true,
+		outbox.PublishArgs{}.Kind():     true,
+		objreconcile.Args{}.Kind():      false,
+		PartitionCreateArgs{}.Kind():    true,
+		EnrichmentBackfillArgs{}.Kind(): false,
 	}
 	if !maps.Equal(set.Scheduled, want) {
 		t.Errorf("scheduled periodic jobs (kind -> RunOnStart) are %v, want %v", set.Scheduled, want)
@@ -230,4 +247,50 @@ func TestEveryScheduledJobHasAWorker(t *testing.T) {
 			t.Errorf("periodic job %q is scheduled but no worker is registered for it", kind)
 		}
 	}
+}
+
+// The create-only half must never drop, and that is the whole reason it is a
+// separate function from MaintainMonthly rather than a flag on it: a job in the
+// worker that could drop a partition would put the WHEN of a deletion back
+// inside the code, which is the one thing iron rule 6 keeps out.
+//
+// Asserted on the source rather than against a database: what can go wrong is
+// somebody “unifying” the two halves back together, and that edit is textual.
+func TestThePartitionJobNeverDrops(t *testing.T) {
+	src, err := os.ReadFile(filepath.Join(
+		"..", "..", "foundation", "persistence", "partition", "partition.go"))
+	if err != nil {
+		t.Fatalf("read partition.go: %v", err)
+	}
+	body := functionBody(t, string(src), "func CreateUpcoming(")
+	for _, forbidden := range []string{"DROP", "expiredMonths"} {
+		if strings.Contains(body, forbidden) {
+			t.Errorf("CreateUpcoming mentions %q; the create-only half must never remove a partition", forbidden)
+		}
+	}
+	// And the half that does drop is still there, so this test cannot pass by
+	// the two having been merged into one create-only function.
+	if !strings.Contains(string(src), "func MaintainMonthly(") ||
+		!strings.Contains(functionBody(t, string(src), "func MaintainMonthly("), "DROP TABLE") {
+		t.Error("MaintainMonthly no longer drops; the retention half of partition rotation has gone missing")
+	}
+}
+
+// functionBody returns one function’s source: from its declaration to
+// the first line that is exactly a closing brace.
+func functionBody(t *testing.T, src, decl string) string {
+	t.Helper()
+	i := strings.Index(src, decl)
+	if i < 0 {
+		t.Fatalf("%q not found", decl)
+	}
+	var body []string
+	for _, line := range strings.Split(src[i:], "\n") {
+		body = append(body, line)
+		if len(body) > 1 && line == "}" {
+			return strings.Join(body, "\n")
+		}
+	}
+	t.Fatalf("no closing brace for %q", decl)
+	return ""
 }

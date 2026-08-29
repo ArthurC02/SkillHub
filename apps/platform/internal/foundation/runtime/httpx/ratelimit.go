@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 )
 
 // Rate limiting for the endpoints 02:NFR-001 clause 5 names: anonymous search
@@ -115,10 +117,18 @@ func (l *RateLimiter) allow(key string) (bool, time.Duration) {
 // reads the body. No request content is inspected and nothing is logged here —
 // a limiter that logs every refusal is itself a write amplifier under the load
 // it exists to shed.
-func (l *RateLimiter) Limit(next http.HandlerFunc) http.HandlerFunc {
+//
+// It is counted, though, which is a different claim: one atomic increment on a
+// closed label set is not a write amplifier, and without it a working limiter
+// and an absent one look identical from outside (see metrics.RateLimited).
+// `route` must be one of the metrics.Route* constants — the label's whole
+// cardinality argument is that it comes from the route table and never from a
+// request.
+func (l *RateLimiter) Limit(route string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ok, wait := l.allow(clientKey(r.RemoteAddr))
 		if !ok {
+			metrics.RateLimited.WithLabelValues(route).Inc()
 			secs := int(wait.Seconds()) + 1
 			w.Header().Set("Retry-After", fmt.Sprintf("%d", secs))
 			WriteError(w, http.StatusTooManyRequests,

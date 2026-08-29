@@ -460,7 +460,7 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 		return registry.Version{}, false, fmt.Errorf("%w: %q", ErrGeneratedNameCollision, skill.Name)
 	}
 	q := gen.New(tx)
-	if existing, found, err := registry.VersionByContent(ctx, tx, skill.ID, p.contentHash); err != nil {
+	if existing, found, err := registry.VersionByContent(ctx, tx, ws.ID, skill.ID, p.contentHash); err != nil {
 		return registry.Version{}, false, err
 	} else if found {
 		// INGEST-005: identical content never overwrites or duplicates.

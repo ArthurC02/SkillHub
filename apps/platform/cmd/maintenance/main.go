@@ -9,11 +9,11 @@
 //	                               accounts past their 30-day grace period and
 //	                               de-identify what has to be retained. Needs
 //	                               DATABASE_URL and object storage.
-//	maintenance purge-analytics    ADR-029 決策 5: remove funnel events older than
-//	                               ANALYTICS_RETENTION, including the ones sitting
-//	                               in the default partition. Needs DATABASE_URL.
 //	maintenance purge-audit        PDM-006 6: remove audit events older than
 //	                               AUDIT_RETENTION. Needs DATABASE_URL.
+//	maintenance purge-feedback     BETA-003/004/005: remove the free-text feedback
+//	                               reports older than FEEDBACK_RETENTION. Needs
+//	                               DATABASE_URL and FEEDBACK_RETENTION.
 //	maintenance purge-run-artifacts
 //	                               PDM-006 6 / SEC-006: remove the bytes behind
 //	                               Run outputs whose expires_at has passed and
@@ -63,10 +63,18 @@
 // not a policy anybody has to ratify — so there is no variable to fail closed
 // on and adding one would gate a job that deletes nothing anybody can reach.
 //
-// TRACE_RETENTION, ANALYTICS_RETENTION and AUDIT_RETENTION have no defaults on
-// purpose: all three are PDM-006 proposals that have not been ratified, and a
-// default would make this process enforce a retention nobody agreed to, by
-// deleting. Unset means the job refuses to start.
+// TRACE_RETENTION, ANALYTICS_RETENTION, AUDIT_RETENTION and FEEDBACK_RETENTION
+// have no defaults on purpose: all four are PDM-006 proposals that have not been
+// ratified, and a default would make this process enforce a retention nobody
+// agreed to, by deleting. Unset means the job refuses to start.
+//
+// FEEDBACK_RETENTION arrived on 2026-08-29 with purge-feedback, and it is the
+// same gap AUDIT_RETENTION closed, found a fourth time: 0029 built
+// feedback_reports for a participant's own 2000-character description of where
+// they got stuck, and nothing in this repository had ever deleted one. It was
+// also the only collected data class absent from GET /policy/data-retention,
+// whose text declares there is no free-text column anywhere — true of the table
+// it describes, and the reader has no way to know there is another.
 //
 // SKILL_DELETION_GRACE joined them on 2026-08-25 and it is the sharpest case of
 // the four: PDM-006 6.1's 30 days is unratified, and what this one deletes on
@@ -117,7 +125,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		slog.Error("usage: maintenance purge-accounts|purge-analytics|purge-audit|" +
+		slog.Error("usage: maintenance purge-accounts|purge-audit|purge-feedback|" +
 			"purge-run-artifacts|purge-datasets|purge-deleted-skills|collect-objects|" +
 			"check-sources|rotate-partitions")
 		os.Exit(2)
@@ -135,8 +143,8 @@ func main() {
 		err = purgeAccounts(ctx, pool)
 	case "check-sources":
 		err = checkSources(ctx, pool)
-	case "purge-analytics":
-		err = purgeAnalytics(ctx, pool)
+	case "purge-feedback":
+		err = purgeFeedback(ctx, pool)
 	case "purge-audit":
 		err = purgeAudit(ctx, pool)
 	case "purge-run-artifacts":
@@ -244,12 +252,12 @@ func logRotation(table string, report partition.Report) {
 		"created", report.Created, "dropped", report.Dropped)
 }
 
-// purgeAudit is its own subcommand rather than a second sweep inside
-// purge-analytics, even though both are "delete rows past a retention window".
-// They answer to different promises with different numbers (365 days against
-// 400) and a deployment must be able to run one while the other is unset --
-// which is precisely what fail-closed means here, and what folding them
-// together would take away.
+// purgeAudit is its own subcommand rather than a second sweep inside another
+// one, even though several here are "delete rows past a retention window". They
+// answer to different promises with different numbers (400 days against
+// feedback's, against the partition rotation's 365) and a deployment must be able
+// to run one while the other is unset -- which is precisely what fail-closed
+// means here, and what folding them together would take away.
 func purgeAudit(ctx context.Context, pool *pgxpool.Pool) error {
 	retention, err := positiveDuration("AUDIT_RETENTION")
 	if err != nil {
@@ -374,14 +382,32 @@ func collectObjects(ctx context.Context, pool *pgxpool.Pool) error {
 	return err
 }
 
-func purgeAnalytics(ctx context.Context, pool *pgxpool.Pool) error {
-	retention, err := positiveDuration("ANALYTICS_RETENTION")
+// purgeFeedback is the retention sweep for BETA-003/004/005's qualitative
+// reports, and it is the only place in this process that deletes something a
+// participant typed in their own words.
+//
+// Fail-closed on FEEDBACK_RETENTION, exactly like AUDIT_RETENTION and for the
+// stronger of the two reasons: no window has been ratified for this class at all,
+// so "unset" here does not mean "keep forever by default", it means nobody has
+// decided — and a default would have this process delete a beta tester's own
+// account of where the product failed them on a deadline nobody signed.
+//
+// Not folded into purge-audit despite both being "delete rows past a window", for
+// the reason purge-audit is not folded into anything either: two promises, two
+// numbers, and a deployment has to be able to run one while the other is unset.
+//
+// Deletion and not de-identification, and analytics owns both: account deletion
+// already de-identifies these rows in place (DetachWorkspaceFeedback), because
+// ADR-029 決策 5 rests a scope review on what people said. That answers a
+// different question from this one, which is how long the words themselves live.
+func purgeFeedback(ctx context.Context, pool *pgxpool.Pool) error {
+	retention, err := positiveDuration("FEEDBACK_RETENTION")
 	if err != nil {
 		return err
 	}
-	n, err := (&analytics.Service{Pool: pool, Retention: retention}).PurgeExpired(ctx)
+	n, err := (&analytics.Service{Pool: pool}).PurgeExpiredFeedback(ctx, retention)
 	if err == nil {
-		slog.Info("analytics purge complete", "events_removed", n)
+		slog.Info("feedback purge complete", "reports_removed", n)
 	}
 	return err
 }

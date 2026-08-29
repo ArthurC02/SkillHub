@@ -28,9 +28,13 @@ import (
 // pleasant way for ADR-034's "never open a transaction" rule to be enforced
 // twice, but not one to rely on: the other four steps have no such backstop.
 //
-// It still does not enqueue the package objects of the versions it deletes, so
-// their bytes outlive the last row that knew about them. See
-// [Service.CollectOrphanObjects] for why that could not be fixed from here.
+// The package objects of the versions it deletes are enqueued for collection,
+// and the enqueue is not in this file: PurgeUnreferencedSkills does it in an
+// `enqueued` CTE hanging off the same `purgeable` set the DELETE uses, in the
+// same statement and therefore the same transaction. It has to be there — that
+// is the only moment the keys are still readable, and a second definition of
+// "which skills are going" written in Go would silently miss keys the day the
+// two drifted. [Service.CollectOrphanObjects] is the consumer.
 func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
 	q := gen.New(tx)
 	_, err := q.PurgeUnreferencedSkills(ctx, workspaceID)
@@ -71,9 +75,10 @@ type DeletionSweep struct {
 // days is unratified, and a number compiled in would be this package inventing a
 // deadline on which to delete somebody's content.
 //
-// Like its sibling above it leaves the package objects of the versions it
-// deletes behind; [Service.CollectOrphanObjects] says why the enqueue is not
-// here yet.
+// Like its sibling above, the objects of the versions it deletes are enqueued by
+// the statement itself — PurgeSkillsPastDeletionGrace carries the same `enqueued`
+// CTE off the same `purgeable` — and collected later by
+// [Service.CollectOrphanObjects].
 func (s *Service) PurgeDeletedSkills(ctx context.Context, grace time.Duration, limit int32) (DeletionSweep, error) {
 	if grace <= 0 {
 		// Fail closed. A zero window purges a skill deleted a second ago, and
@@ -130,17 +135,25 @@ type Collection struct {
 // CollectOrphanObjects removes the package objects whose last referencing
 // skill_versions row is gone (04 丙-73, 0039).
 //
-// It is the second half of a mechanism whose first half is not written. The
-// queue is filled by EnqueueOrphanObjectCandidates, which has to run inside a
-// purge transaction and before the delete -- that is the only moment the keys
-// are still readable -- and neither purge can hand over the ids it is about to
-// take. Both are one statement whose `purgeable` CTE selects and deletes at
-// once, `:execrows`, no RETURNING, and no query anywhere lists the skills in
-// either purge's scope. Recomputing the set in Go would be a second definition
-// of "purgeable" sitting beside the DELETE's own, and the first thing a drift
-// between the two does is leak the keys the list missed, silently and forever.
-// So the enqueue belongs in those statements as a third CTE off the same
-// `purgeable`, which is a db/queries change, not a change here.
+// It is the second half of a two-part mechanism, and the first half is in SQL:
+// both purges (PurgeUnreferencedSkills and PurgeSkillsPastDeletionGrace) carry
+// an `enqueued` CTE that inserts into object_collection_queue off the same
+// `purgeable` set their DELETE takes, in one statement.
+//
+// That is where it has to be. Each purge is one statement whose `purgeable` CTE
+// selects and deletes at once, `:execrows`, no RETURNING, and no query anywhere
+// else lists the skills in either purge's scope — so nothing can hand this
+// function the ids it is about to take, and recomputing the set in Go would put
+// a second definition of "purgeable" beside the DELETE's own. The first thing a
+// drift between two such definitions does is leak the keys the list missed,
+// silently and forever.
+//
+// Until 2026-08-29 these three comments said the enqueue was NOT written, long
+// after it was. Anyone reading this file concluded that deleting a skill leaves
+// its bytes on the store for good, and might have built the mechanism a second
+// time; meanwhile the questions actually worth checking — is
+// CollectOrphanObjects scheduled anywhere, is ListCollectableObjects' NOT EXISTS
+// right — were behind that sentence.
 //
 // **No retention window and no environment variable**, unlike every other
 // subcommand in cmd/maintenance, and that is not an omission. Those sweep on a

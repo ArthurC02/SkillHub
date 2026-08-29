@@ -391,3 +391,77 @@ func TestMatchAcceptsCleanOnlyUnderItsOwnOptIn(t *testing.T) {
 		}
 	}
 }
+
+// A ceiling the node declares a number for but does not enforce is unbounded,
+// whatever `max_resources` says. 02:PORT-010 asks the declaration to reflect what
+// was actually detected — and the reason it asks (ADR-059 decision 3's incident:
+// a node that ran every untrusted skill on the shared kernel, and said so only in
+// a startup log) is only answered if something refuses on it. Until this, the two
+// honesty fields were decoded nowhere on the platform side and the signal was
+// still log-only.
+func TestMatchRefusesAProviderThatDoesNotEnforceWhatItDeclares(t *testing.T) {
+	t.Setenv("DEV_LOGIN", "")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "")
+
+	c := compatible()
+	c.MaxResourcesUnenforced = []string{"vcpu", "disk_bytes"}
+	_, err := Match(c, defaultRequirements())
+	if err == nil {
+		t.Fatal("a provider naming ceilings it does not enforce was dispatched to")
+	}
+	// The reason names which ones: an operator reading it has to be able to tell
+	// "the CPU limit is decorative" from "this node is down".
+	for _, want := range []string{"test_provider", "vcpu", "disk_bytes"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("reason = %q, want it to mention %q", err, want)
+		}
+	}
+
+	// The clean test mode is the one deployment where this is not news: it has
+	// already opted into having no boundary at all, so refusing it for an
+	// unenforced CPU ceiling would take out the only mode that can run there.
+	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+	clean := compatible()
+	clean.Isolation.Level = "clean"
+	clean.MaxResourcesUnenforced = []string{"vcpu"}
+	if _, err := Match(clean, defaultRequirements()); err != nil {
+		t.Errorf("the clean test mode could not dispatch to its own driver: %v", err)
+	}
+}
+
+// reaps_detached_descendants is disclosed, not refused. The two platforms of one
+// driver legitimately differ on it (a Windows job object holds every descendant;
+// a POSIX process group does not hold one that called setsid), so a gate would
+// refuse a node for its operating system. 02:PORT-003 asks instead that "the
+// sandbox does not hold this" reaches somewhere the user can read, which is the
+// pre-run permission summary.
+func TestAProviderThatCannotReapDetachedDescendantsRunsButSaysSo(t *testing.T) {
+	t.Setenv("DEV_LOGIN", "")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+
+	no, yes := false, true
+	c := compatible()
+	c.Isolation.Level = "clean"
+	c.Isolation.ReapsDetachedDescendants = &no
+	if _, err := Match(c, defaultRequirements()); err != nil {
+		t.Fatalf("a clean provider was refused for a disclosure-shaped fact: %v", err)
+	}
+
+	// Three states, three summaries: said no (disclose), said yes (nothing to
+	// say), did not say (also nothing to say — an absent field is not a claim,
+	// and rendering it as "descendants survive" would be inventing one).
+	for _, tc := range []struct {
+		what  string
+		reaps *bool
+		want  bool
+	}{
+		{"declared false", &no, true},
+		{"declared true", &yes, false},
+		{"not declared at all", nil, false},
+	} {
+		c.Isolation.ReapsDetachedDescendants = tc.reaps
+		if got := detachedDescendantsSurvive(c); got != tc.want {
+			t.Errorf("%s: summary would say descendants survive = %v, want %v", tc.what, got, tc.want)
+		}
+	}
+}

@@ -59,7 +59,7 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
 		return
 	}
-	user, ok := operatorUser(w, r)
+	user, ok := sessionActor(w, r)
 	if !ok {
 		return
 	}
@@ -112,7 +112,7 @@ func (s *Service) Takedown(ctx context.Context, skillID, actor pgtype.UUID, reas
 	// Same transaction as the flag, so the content can never be down in the
 	// registry and still listed in search. This is catalog's own table, so
 	// unlike the owner-scoped path there is nothing to inject.
-	if err := RemoveSkillFromIndex(ctx, tx, skillID); err != nil {
+	if err := RemoveSkillFromIndex(ctx, tx, before.WorkspaceID, skillID); err != nil {
 		return err
 	}
 	// The reason travels in the metadata as well as onto the row, which is where

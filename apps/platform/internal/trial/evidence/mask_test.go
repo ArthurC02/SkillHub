@@ -98,6 +98,13 @@ func TestMaskerRedactsShapesNeitherDetectorHad(t *testing.T) {
 	for _, sample := range []string{
 		"AI" + "za" + strings.Repeat("0", 35),
 		"AWS_SESSION_TOKEN=" + strings.Repeat("0", 40),
+		// The platform's own two, in the spellings deployments actually use:
+		// the sandbox bearer token is suffixed with the provider name, and the
+		// Postgres URL carries its password in the authority.
+		"SKILLHUB_SANDBOX_TOKEN_SELF_HOSTED=" + strings.Repeat("0", 40),
+		"SKILLHUB_SANDBOX_TOKEN=" + strings.Repeat("0", 40),
+		"DATABASE_URL=postgres://skillhub:hunter2@db:5432/skillhub?sslmode=disable",
+		"SKILLHUB_TEST_DATABASE_URL=postgres://skillhub:hunter2@db:5432/skillhub_test",
 		"https://example.test/o?key=notarealsignature",
 		"https://example.test/o?apikey=notarealsignature",
 		"https://example.test/o?api-key=notarealsignature",
@@ -120,6 +127,11 @@ func TestMaskerRedactsShapesNeitherDetectorHad(t *testing.T) {
 func TestMaskerLeavesQueryParameterNamesAloneOutsideAQueryString(t *testing.T) {
 	for _, sample := range []string{
 		"the api_key field is required",
+		// The two names added above are only credentials in an assignment. A
+		// sentence naming one must stay readable, or the trace view fills with
+		// [REDACTED] where the prose was and people stop opening it.
+		"set DATABASE_URL before starting the worker",
+		"SKILLHUB_SANDBOX_TOKEN_SELF_HOSTED is missing for this provider",
 		"sorted by key=name descending",
 		"auth=basic is not supported for this endpoint",
 	} {

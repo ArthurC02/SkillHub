@@ -237,6 +237,33 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 		mustUUID(t, alice.workspaceID), runID); err != nil {
 		t.Fatal(err)
 	}
+	// The download package's two detail rows, the way packaging.persist writes them
+	// (CreateDownloadArtifactRow then CreateDownloadArtifactDetail, one transaction,
+	// and a download_records row the first time anybody fetches the bytes).
+	//
+	// Until 2026-08-29 this fixture stopped at the artifacts row above, so the
+	// account purge's `DELETE FROM artifacts ... kind = 'download_package'` never
+	// met the composite foreign keys 0027 hangs off it and this test was green on a
+	// purge that raises 23503 on every workspace that ever produced a package —
+	// which, downloads being funnel segment 6, is exactly the participants who
+	// walked the whole beta. Not an assertion that was too weak: a world that was
+	// missing the table. Removing these two statements makes the test pass again
+	// and puts the bug back, so they are the assertion.
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO download_artifacts (artifact_id, workspace_id, skill_version_id, target,
+		                                profile_version, packager_version, manifest_hash,
+		                                includes_test_cases)
+		SELECT id, workspace_id, $2, 'standard', '1', 'pkg-test', 'sha256-manifest', false
+		FROM artifacts WHERE workspace_id = $1 AND kind = 'download_package'`,
+		mustUUID(t, alice.workspaceID), sharedVer.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO download_records (workspace_id, artifact_id, actor_user_id)
+		SELECT workspace_id, artifact_id, $2 FROM download_artifacts WHERE workspace_id = $1`,
+		mustUUID(t, alice.workspaceID), mustUUID(t, alice.userID)); err != nil {
+		t.Fatal(err)
+	}
 
 	if status, _ := deleteJSON(t, alice, "/me"); status != http.StatusOK {
 		t.Fatalf("DELETE /me: got %d", status)
@@ -270,6 +297,7 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	if c := countRow(t, pool, "SELECT count(*) FROM artifacts WHERE workspace_id = $1", mustUUID(t, alice.workspaceID)); c != 0 {
 		t.Fatal("artifact rows survived the purge")
 	}
+	assertPurgedWorkspaceIsGone(t, pool, mustUUID(t, alice.workspaceID))
 	// By name and not by row count. Three owners list their own keys, and identity
 	// de-duplicates them before removal: the run output and download package above
 	// deliberately share one content-addressed key.
@@ -575,10 +603,34 @@ func TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced(t *testing.T) 
 	usedVer := seedVersion(t, pool, alice.workspaceID, used, "grace-used-hash")
 	tested := seedSkill(t, pool, alice.workspaceID, "grace-tested")
 	seedVersion(t, pool, alice.workspaceID, tested, "grace-tested-hash")
+	// The packaging exclusion, added 2026-08-29. download_artifacts.skill_version_id
+	// is NO ACTION (0027:66) and deliberately not CASCADE, so a version somebody
+	// packaged cannot be deleted while its detail row stands -- and the account
+	// purge is not in front of this sweep to have removed it first.
+	packaged := seedSkill(t, pool, alice.workspaceID, "grace-packaged")
+	packagedVer := seedVersion(t, pool, alice.workspaceID, packaged, "grace-packaged-hash")
 
 	if status, _ := postJSON(t, bob, "/skills/"+forked+"/fork", "{}"); status != http.StatusCreated {
 		t.Fatalf("bob fork of alice's catalog skill: got %d", status)
 	}
+	var packagedArtifact pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO artifacts (workspace_id, run_id, kind, file_name, content_type,
+		                       size_bytes, content_hash, object_key, expires_at)
+		VALUES ($1, NULL, 'download_package', 'grace.zip', 'application/zip', 10, 'grace-h',
+		        'artifacts/grace.zip', now() + interval '90 days') RETURNING id`,
+		mustUUID(t, alice.workspaceID)).Scan(&packagedArtifact); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO download_artifacts (artifact_id, workspace_id, skill_version_id, target,
+		                                profile_version, packager_version, manifest_hash,
+		                                includes_test_cases)
+		VALUES ($1, $2, $3, 'standard', '1', 'pkg-grace', 'sha256-grace', false)`,
+		packagedArtifact, mustUUID(t, alice.workspaceID), packagedVer.ID); err != nil {
+		t.Fatal(err)
+	}
+
 	var testCaseID, snapshotID, runID pgtype.UUID
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
@@ -602,14 +654,14 @@ func TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced(t *testing.T) 
 
 	// Deleted through the real endpoint, because the row state this sweep reads
 	// is whatever that endpoint leaves behind.
-	for _, id := range []string{past, recent, forked, used, tested} {
+	for _, id := range []string{past, recent, forked, used, tested, packaged} {
 		if status, _ := deleteJSON(t, alice, "/skills/"+id); status != http.StatusOK {
 			t.Fatalf("DELETE /skills/%s: got %d", id, status)
 		}
 	}
 	// Four of them are moved past any plausible grace period; `recent` is not,
 	// and that difference is the whole predicate.
-	for _, id := range []string{past, forked, used, tested} {
+	for _, id := range []string{past, forked, used, tested, packaged} {
 		if _, err := pool.Exec(ctx,
 			"UPDATE skills SET deleted_at = now() - interval '40 days' WHERE id = $1",
 			mustUUID(t, id)); err != nil {
@@ -654,6 +706,7 @@ func TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced(t *testing.T) 
 		{forked, "another workspace forked it"},
 		{used, "a run used one of its versions"},
 		{tested, "it still holds test cases"},
+		{packaged, "somebody packaged one of its versions for download"},
 	} {
 		if c := countRow(t, pool, "SELECT count(*) FROM skills WHERE id = $1", mustUUID(t, keep.id)); c != 1 {
 			t.Errorf("skill was purged although %s", keep.why)
@@ -671,8 +724,8 @@ func TestDeletedSkillPurgeTakesOnlyWhatIsPastGraceAndUnreferenced(t *testing.T) 
 	// package and several of them soft-delete skills too; what these assert is
 	// that the sweep classified this test's four survivors correctly -- three as
 	// kept forever by the provenance rule, one as still waiting out its grace.
-	if sweep.Kept < 3 {
-		t.Errorf("kept = %d, want at least the fork, the run and the test cases", sweep.Kept)
+	if sweep.Kept < 4 {
+		t.Errorf("kept = %d, want at least the fork, the run, the test cases and the package", sweep.Kept)
 	}
 	if sweep.Waiting < 1 {
 		t.Errorf("waiting = %d, want at least the skill deleted a moment ago", sweep.Waiting)
@@ -841,5 +894,85 @@ func TestOrphanObjectCollectionTakesOnlyWhatNothingReferences(t *testing.T) {
 	if again.Collected != 0 || len(store.removed) != before {
 		t.Errorf("the second pass removed %d more objects; it is taking things the first one spared",
 			len(store.removed)-before)
+	}
+}
+
+// purgeKeepsWorkspaceRows names every table that still holds rows for a purged
+// workspace on purpose, with the reason. Anything not on this list must be empty
+// after the sweep.
+//
+// It is an explicit-exception list rather than a list of tables to check, and
+// that inversion is the whole point. The per-table `count(*)` assertions above
+// are a whitelist, and a whitelist can only ever assert the tables somebody
+// remembered: download_artifacts and download_records were not on it, so the
+// account purge raised a foreign key violation on every workspace that had ever
+// produced a package while this test stayed green for months. A new table with a
+// workspace_id and no purge step now fails here on the day it is added, and the
+// failure names the table.
+var purgeKeepsWorkspaceRows = map[string]string{
+	"workspaces": "the workspace row is anonymised in place, not deleted (PDM-006 §6.1) -- " +
+		"deleting it would take the foreign keys of everything retained with it",
+	"skills": "content a third party forked is retained with its owner de-identified " +
+		"(DISC-003 provenance, iron rule 4); the unreferenced ones are asserted gone above",
+	"skill_versions":         "same rule as skills: a version somebody forked or ran is a third party's provenance chain",
+	"test_cases":             "snapshots that retained runs point at resolve through these rows (0017)",
+	"test_case_snapshots":    "the frozen inputs of a retained run; deleting them makes that run's history lie (ADR-003)",
+	"runs":                   "retained with the versions above, de-identified rather than deleted",
+	"run_status_transitions": "ADR-008 append-only history of a retained run",
+	"audit_events":           "NFR-001: the trail records that the purge happened, and outlives it by 400 days",
+	"search_documents": "the search projection of a skill that was retained above; it cascades off the " +
+		"skills delete, so a row here means a skill row, and DISC-003 keeps that one for the fork's sake",
+}
+
+// assertPurgedWorkspaceIsGone asks information_schema which tables carry a
+// workspace_id at all, then asserts none of them still names this workspace.
+func assertPurgedWorkspaceIsGone(t *testing.T, pool *pgxpool.Pool, workspaceID pgtype.UUID) {
+	t.Helper()
+	ctx := context.Background()
+	rows, err := pool.Query(ctx, `
+		SELECT table_name FROM information_schema.columns
+		WHERE table_schema = 'public' AND column_name = 'workspace_id'
+		  -- Partitions repeat their parent's columns; the parent covers them.
+		  AND table_name IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public')
+		  AND table_name NOT IN (SELECT c.relname FROM pg_class c
+		                         JOIN pg_inherits i ON i.inhrelid = c.oid)
+		ORDER BY table_name`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tables []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			t.Fatal(err)
+		}
+		tables = append(tables, name)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	// Zero tables would make every assertion below vacuous, which is the failure
+	// mode this repository keeps finding: a check that lost its subject and went
+	// green. The schema has dozens.
+	if len(tables) < 10 {
+		t.Fatalf("information_schema returned %d tables with a workspace_id; the query lost its subject", len(tables))
+	}
+	for _, table := range tables {
+		if _, kept := purgeKeepsWorkspaceRows[table]; kept {
+			// Only one direction is checked, deliberately. The obvious second
+			// half — "an exception whose table came back empty is stale, delete
+			// it" — was written first and removed: it fired on audit_events and
+			// run_status_transitions, both of which are empty here because this
+			// fixture never wrote one, not because the purge took them. That
+			// check cannot tell "the purge now handles this" from "the fixture
+			// does not reach it", so it demands every exception be exercised by
+			// this one test, and its failures are the kind that get muted.
+			continue
+		}
+		if c := countRow(t, pool, "SELECT count(*) FROM "+table+" WHERE workspace_id = $1", workspaceID); c != 0 {
+			t.Errorf("%s still holds %d row(s) for the purged workspace; "+
+				"either give it a purge step or add it to purgeKeepsWorkspaceRows with the reason", table, c)
+		}
 	}
 }

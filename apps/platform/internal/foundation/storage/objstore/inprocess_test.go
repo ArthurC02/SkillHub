@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -202,4 +203,109 @@ func assertStatus(t *testing.T, label, method, url string, body io.Reader, want 
 	if resp.StatusCode != want {
 		t.Fatalf("%s: status = %d, want %d (unenforced, as documented on inProcessBackend)", label, resp.StatusCode, want)
 	}
+}
+
+// The three ceilings clean mode needs, because in clean mode this backend is not
+// a test double: cmd/api serves it as the deployment's real object store, on a
+// loopback listener any other local process can reach.
+
+// A chunk header is a number the caller chose, and it used to be passed straight
+// to make([]byte, size). "7fffffffffffffff" asks for 8 exabytes in one
+// allocation.
+func TestAnOversizedChunkHeaderIsRefusedRatherThanAllocated(t *testing.T) {
+	client, stop, err := NewInProcess("test-bucket")
+	if err != nil {
+		t.Fatalf("NewInProcess: %v", err)
+	}
+	defer stop()
+	if err := client.EnsureBucket(context.Background()); err != nil {
+		t.Fatalf("EnsureBucket: %v", err)
+	}
+	endpoint, key := inProcessEndpoint(t, client)
+
+	body := "7fffffffffffffff;chunk-signature=0\r\n"
+	req, err := http.NewRequest(http.MethodPut, endpoint+"/test-bucket/huge.bin", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("X-Amz-Content-Sha256", streamingSignAlgorithm)
+	req.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential="+key+"/x")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("PUT: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("a chunk header of 8 EB answered %d, want 400", resp.StatusCode)
+	}
+}
+
+// Not authentication -- nothing here verifies a signature, and the doc comment
+// says so -- but a caller now has to HOLD the key this process generated.
+// Without it, every object on the machine was readable and writable by anything
+// that could guess a key.
+func TestARequestWithoutTheProcessKeyIsRefused(t *testing.T) {
+	client, stop, err := NewInProcess("test-bucket")
+	if err != nil {
+		t.Fatalf("NewInProcess: %v", err)
+	}
+	defer stop()
+	ctx := context.Background()
+	if err := client.EnsureBucket(ctx); err != nil {
+		t.Fatalf("EnsureBucket: %v", err)
+	}
+	if err := client.Put(ctx, "secret.txt", []byte("private")); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	endpoint, _ := inProcessEndpoint(t, client)
+
+	for _, tc := range []struct{ name, auth string }{
+		{name: "no Authorization at all", auth: ""},
+		{name: "a made-up key", auth: "AWS4-HMAC-SHA256 Credential=inprocess/x"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, endpoint+"/test-bucket/secret.txt", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.auth != "" {
+				req.Header.Set("Authorization", tc.auth)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("GET: %v", err)
+			}
+			defer func() { _ = resp.Body.Close() }()
+			if resp.StatusCode == http.StatusOK {
+				t.Error("a caller with no process key read an object")
+			}
+		})
+	}
+
+	// The real client, which does hold the key, must be unaffected.
+	if got, err := client.Get(ctx, "secret.txt"); err != nil || string(got) != "private" {
+		t.Fatalf("the configured client can no longer read its own object: %q %v", got, err)
+	}
+}
+
+// inProcessEndpoint recovers the listener address and the key from the wired
+// client, so a test can speak to the backend the way another local process
+// would. Both come out of a presigned URL, which is the only place the client
+// exposes either.
+func inProcessEndpoint(t *testing.T, c *Client) (endpoint, key string) {
+	t.Helper()
+	raw, err := c.PresignGet(context.Background(), "probe", time.Minute)
+	if err != nil {
+		t.Fatalf("PresignGet: %v", err)
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		t.Fatalf("parse presigned URL: %v", err)
+	}
+	cred := u.Query().Get("X-Amz-Credential")
+	key, _, _ = strings.Cut(cred, "/")
+	if key == "" {
+		t.Fatalf("no X-Amz-Credential in %q", raw)
+	}
+	return u.Scheme + "://" + u.Host, key
 }

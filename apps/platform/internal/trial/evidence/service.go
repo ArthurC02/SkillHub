@@ -169,7 +169,19 @@ func (s *Service) ingestOne(
 		return err
 	}
 
-	metrics.TraceIngestLag.Observe(time.Since(event.OccurredAt).Seconds())
+	// Clamped, because OccurredAt is the sandbox's clock and the sandbox is
+	// untrusted (event.go's Validate only checks it is non-zero). NFR-004's 3
+	// second gap series feeds alerts.yml, and an unclamped subtraction lets one
+	// workload with a drifted - or chosen - clock write any value it likes into
+	// it, including a negative one. The bound is the trace token's own lifetime:
+	// beyond that the event could not have been ingested at all, so a larger
+	// reading is a clock artefact rather than a lag measurement.
+	//
+	// The same limitation is argued and accepted for CountTraceMaskingInWindow in
+	// db/queries/trace.sql; this is the same producer timestamp, bounded.
+	lag := time.Since(event.OccurredAt)
+	lag = min(max(lag, 0), DefaultTTL)
+	metrics.TraceIngestLag.Observe(lag.Seconds())
 
 	rows, err := s.queries().InsertTraceEvent(ctx, gen.InsertTraceEventParams{
 		EventID:     eventID,
@@ -694,137 +706,6 @@ func (s *Service) traceStreamHealth(ctx context.Context, workspaceID, runID pgty
 		})
 	}
 	return out, nil
-}
-
-// fold accumulates one event into the summary. Payload decoding is best effort:
-// a payload that does not match its type is a producer bug, and it must not stop
-// the rest of the trace from being summarised.
-func (s *Summary) fold(row gen.TraceEvent) {
-	switch row.EventType {
-	case TypeSkillActivation:
-		var p struct {
-			SkillName string `json:"skill_name"`
-			Decision  string `json:"decision"`
-			Reason    string `json:"reason"`
-		}
-		if json.Unmarshal(row.Payload, &p) == nil {
-			s.Skills = append(s.Skills, SkillUse{Name: p.SkillName, Decision: p.Decision, Reason: p.Reason})
-		}
-	case TypeResourceRead:
-		s.ResourceRead++
-	case TypeToolCall:
-		var p struct {
-			ToolName   string `json:"tool_name"`
-			Outcome    string `json:"outcome"`
-			DurationMS int64  `json:"duration_ms"`
-		}
-		if json.Unmarshal(row.Payload, &p) != nil {
-			return
-		}
-		s.ToolCalls.Total++
-		if p.Outcome == "succeeded" {
-			s.ToolCalls.Succeeded++
-		} else {
-			s.ToolCalls.Failed++
-		}
-		s.ToolCalls.TotalMS += p.DurationMS
-		if p.DurationMS > s.ToolCalls.SlowestMS {
-			s.ToolCalls.SlowestMS, s.ToolCalls.SlowestName = p.DurationMS, p.ToolName
-		}
-	case TypeError:
-		var p ErrorSummary
-		if json.Unmarshal(row.Payload, &p) == nil {
-			s.Errors = append(s.Errors, p)
-		}
-	case TypeAgentOutput:
-		var p struct {
-			Kind string `json:"kind"`
-			Text string `json:"text"`
-		}
-		if json.Unmarshal(row.Payload, &p) == nil && p.Kind == "final" {
-			s.FinalOutput = p.Text
-		}
-	case TypeUsage:
-		var p struct {
-			Scope        string   `json:"scope"`
-			Model        string   `json:"model"`
-			InputTokens  int64    `json:"input_tokens"`
-			OutputTokens int64    `json:"output_tokens"`
-			CostUSD      *float64 `json:"cost_usd"`
-			CostSource   string   `json:"cost_source"`
-		}
-		if json.Unmarshal(row.Payload, &p) != nil {
-			return
-		}
-		if s.Usage == nil {
-			s.Usage = &UsageSummary{}
-		}
-		s.Usage.Model = p.Model
-		s.Usage.CostSource = p.CostSource
-		if p.Scope == "run_total" {
-			s.Usage.InputTokens, s.Usage.OutputTokens, s.Usage.CostUSD = p.InputTokens, p.OutputTokens, p.CostUSD
-			return
-		}
-		s.Usage.InputTokens += p.InputTokens
-		s.Usage.OutputTokens += p.OutputTokens
-		if p.CostUSD != nil {
-			total := p.CostUSD
-			if s.Usage.CostUSD != nil {
-				sum := *s.Usage.CostUSD + *p.CostUSD
-				total = &sum
-			}
-			s.Usage.CostUSD = total
-		}
-	}
-}
-
-// streamHealth reconstructs each (attempt, emitted_by) stream and reports its
-// holes. seq is gapless from 1 by contract, so "1..max minus what arrived" is
-// exactly the set of lost events - no heuristic, no timeout, no guessing.
-func streamHealth(rows []gen.TraceEvent) []StreamHealth {
-	type key struct {
-		attempt int
-		source  string
-	}
-	seen := map[key]map[int64]bool{}
-	health := map[key]*StreamHealth{}
-	for _, row := range rows {
-		k := key{int(row.Attempt), row.Source}
-		if health[k] == nil {
-			health[k] = &StreamHealth{Attempt: k.attempt, EmittedBy: k.source}
-			seen[k] = map[int64]bool{}
-		}
-		h := health[k]
-		h.Received++
-		if row.Late {
-			h.LateEvents++
-		}
-		if row.Seq > h.HighestSeq {
-			h.HighestSeq = row.Seq
-		}
-		seen[k][row.Seq] = true
-	}
-
-	out := make([]StreamHealth, 0, len(health))
-	const maxMissingSeqReport = 1_000
-	for k, h := range health {
-		for n := int64(1); n <= h.HighestSeq; n++ {
-			if !seen[k][n] {
-				h.MissingCount++
-				if len(h.MissingSeq) < maxMissingSeqReport {
-					h.MissingSeq = append(h.MissingSeq, n)
-				}
-			}
-		}
-		out = append(out, *h)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Attempt != out[j].Attempt {
-			return out[i].Attempt < out[j].Attempt
-		}
-		return out[i].EmittedBy < out[j].EmittedBy
-	})
-	return out
 }
 
 // newUUID is a version 4 UUID for an orchestrator-produced event_id. The

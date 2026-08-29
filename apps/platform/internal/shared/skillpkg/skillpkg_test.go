@@ -756,7 +756,7 @@ func TestArchiveFindingsSurviveAPackageWithNoSkillMD(t *testing.T) {
 		t.Fatalf("a traversal entry must be an error-level finding, got %+v / %v", f, ok)
 	}
 	r := Validate(archiveFS{FS: pkg("", nil), findings: []Finding{f}})
-	if !r.Blocked || codes(r)[entryPathEscape] != SeverityError {
+	if !r.Blocked || codes(r)[CodeEntryPathEscape] != SeverityError {
 		t.Fatalf("want the archive finding and skill-md-missing, got %+v", r.Findings)
 	}
 	if codes(r)["skill-md-missing"] != SeverityError {
@@ -875,4 +875,59 @@ func TestOversizedFileSaysHowMuchWasScanned(t *testing.T) {
 		}
 	}
 	t.Fatalf("want file-not-scanned info: %+v", r.Findings)
+}
+
+// SKILL-003 judges by the language tag, so until 2026-08-29 the whole rule could
+// be evaded by deleting five characters: an untagged fence did not open a code
+// block at all, so its lines reached neither the size check nor dependency
+// extraction. The verdict still keys on the tag — narrowing it is a spec
+// change — but the reader is now told the block is there.
+func TestUnlabelledFencedCodeIsDisclosed(t *testing.T) {
+	untagged := "```\n" + strings.Repeat("import os\nos.system('rm -rf /')\n", 90) + "```\n"
+
+	r := Validate(pkg(goodMD+untagged, nil))
+	f := findingByCode(r, CodeUnlabelledCodeBlock)
+	if f == nil || f.Severity != SeverityInfo || f.Path != "SKILL.md" {
+		t.Fatalf("a 180-line untagged fence must be disclosed: %+v", r.Findings)
+	}
+	if !strings.Contains(f.Message, "180") {
+		t.Errorf("the disclosure must carry the line count, got %q", f.Message)
+	}
+	if r.Blocked {
+		t.Error("a disclosure must not block")
+	}
+	// Not embedded-script: that finding names the languages it found, and here
+	// there is none to name. Reporting it as one would be inventing a language.
+	if findingByCode(r, CodeEmbeddedScript) != nil {
+		t.Error("an untagged block must not be counted as embedded script")
+	}
+
+	// A short untagged snippet stays quiet, on the same threshold as its tagged
+	// sibling: a finding on every SKILL.md is a finding nobody reads.
+	short := goodMD + "```\n" + strings.Repeat("$ ls\n", 5) + "```\n"
+	if f := findingByCode(Validate(pkg(short, nil)), CodeUnlabelledCodeBlock); f != nil {
+		t.Errorf("a 5-line untagged fence must stay quiet: %+v", f)
+	}
+}
+
+// Every code the scanner can put on a package has to be a code some surface can
+// turn into words. The list is here rather than in a comment because a code
+// added without an entry in catalog's disclosure catalogue is invisible on both
+// screens, which is how symlink-entry, undeclared-dependency, file-not-scanned,
+// package-dependencies and entry-path-escape were all being found and none of
+// them said anything (稽核 01).
+func TestEveryDisclosureCodeIsDistinctAndNonEmpty(t *testing.T) {
+	seen := map[string]bool{}
+	for _, c := range DisclosureCodes {
+		if c == "" {
+			t.Fatal("empty disclosure code")
+		}
+		if seen[c] {
+			t.Errorf("duplicate disclosure code %q", c)
+		}
+		seen[c] = true
+	}
+	if len(DisclosureCodes) == 0 {
+		t.Fatal("DisclosureCodes is empty; the catalogue assertion would pass vacuously")
+	}
 }

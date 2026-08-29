@@ -280,3 +280,24 @@ func TestFetchRedirectLimit(t *testing.T) {
 		t.Fatalf("server saw %d requests, want %d", hops, 1+maxRedirects)
 	}
 }
+
+// SEC-003's model is that the allow list decides which names may be asked for.
+// candidates() rewrites github.com/owner/repo into a codeload.github.com archive
+// URL from a constant string, and download() used to send that without checking
+// it: only the URL the user typed ever met the list. DefaultAllowedHosts happens
+// to contain codeload, so a default deployment could not see the difference — a
+// deployment that narrowed the list could, and would still have made the request.
+func TestFetchRefusesAnArchiveHostTheAllowListDoesNotName(t *testing.T) {
+	f := &URLFetcher{Allowed: map[string]bool{"github.com": true}}
+	_, _, err := f.Fetch(context.Background(), "https://github.com/o/r")
+	if !errors.Is(err, ErrFetch) {
+		t.Fatalf("want ErrFetch for a rewrite onto an off-list host, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "codeload.github.com") {
+		t.Errorf("the refusal must name the host it refused, got %q", err)
+	}
+	// No positive half here on purpose: the default list does name codeload, so
+	// asserting it gets through means letting the request leave the machine, and
+	// a test that needs the internet is a test that goes red for the wrong reason.
+	// checkURL's accept path is covered by every other fetch test in this file.
+}

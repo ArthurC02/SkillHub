@@ -211,6 +211,11 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		RecordDatasetLost:    testlabSvc.MarkDatasetObjectLost,
 	}
 	addWorker(set, workers, &objreconcile.Worker{Svc: set.Objects})
+	// The two platform-maintenance jobs (periodic.go): making next month’s
+	// partitions, and catching up the enrichment an import left pending. Neither
+	// deletes anything, which is what lets their schedule live in code at all.
+	addWorker(set, workers, &PartitionCreateWorker{Pool: pool})
+	addWorker(set, workers, &EnrichmentBackfillWorker{Svc: newBackfillService(pool, deps)})
 
 	// Periodic jobs run on the elected leader only, so several worker processes
 	// do not each sweep. RunOnStart is what makes the supervisor the restart
@@ -236,6 +241,14 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	// restart, and a deploy loop would otherwise re-probe every stored object on
 	// every rollout. An hour late is on time here.
 	schedule(objreconcile.Args{}, objreconcile.Interval, false)
+	// RunOnStart, and that is the point rather than a nicety: a deployment brought
+	// up in the last days of a month must have next month’s partitions before the
+	// month turns, not one interval later. Idempotent, and one catalog query when
+	// there is nothing to do, so a deploy loop costs nothing.
+	schedule(PartitionCreateArgs{}, PartitionCreateInterval, true)
+	// No RunOnStart: the backlog is not caused by the restart and each document
+	// costs a model call, so a rollout must not turn into a burst of them.
+	schedule(EnrichmentBackfillArgs{}, EnrichmentBackfillInterval, false)
 
 	client, err := queue.New(pool, riverConfig(workers, periodic, deps.PollOnly))
 	if err != nil {

@@ -50,8 +50,23 @@ var tierDisplays = map[Tier]TierDisplay{
 	},
 }
 
-// Display returns the badge/trust-indicator copy for t. The zero
-// TierDisplay is returned for a Tier value outside the three defined above.
+// Display returns the badge/trust-indicator copy for t. A value nobody
+// recognises keeps its raw value as the badge rather than rendering blank, which
+// is what axis() does two files over and what Redistribution.Display does one
+// file over. It used to return the zero value, and a test locked that in.
+//
+// Blank is the worse of the two outcomes: a badge with no text is a result row
+// that says nothing about how much review it has had, and NFR-001's whole point
+// is that a reader must never be able to read silence as reassurance. A word
+// they have to look up at least sends them looking. Unreachable today — the
+// query coalesces to one of two values — which is exactly why it is the kind of
+// thing that gets discovered by the fourth tier, on the screen, in production.
 func (t Tier) Display() TierDisplay {
-	return tierDisplays[t]
+	if d, ok := tierDisplays[t]; ok {
+		return d
+	}
+	return TierDisplay{
+		Badge:          string(t),
+		TrustIndicator: "這個平台版本沒有這個層級的說明,值照原樣顯示,不猜測它的意思。",
+	}
 }

@@ -192,6 +192,36 @@ var PackageSizeRefused = promauto.NewCounterVec(prometheus.CounterOpts{
 	Help: "Packages refused for exceeding a size ceiling, by which ceiling (03:INGEST-016, 05 R-13).",
 }, []string{"ceiling"})
 
+// NFR-001 clause 5's limiter, which since ADR-055/056 turned both allowances off
+// is the last thing standing between a loop and the deployment-wide LiteLLM
+// balance — and was the only protection on the platform with no observable
+// surface at all. A refusal by the run gate writes both a metric and an audit
+// row; a refusal by the limiter wrote neither, so "the limiter refused three
+// thousand calls today", "RATE_LIMIT=off" and "clientKey is broken and every
+// request gets its own bucket" were the same picture from outside.
+//
+// A counter and not a log line: ratelimit.go's reason for logging nothing ("a
+// limiter that logs every refusal is itself a write amplifier under the load it
+// exists to shed") is correct about logs and does not transfer to an atomic
+// increment.
+//
+// `route` is a closed four-value vocabulary — the routes limited() wraps — so
+// no traffic can add a series. No IP, no workspace, no path (rule 1 above): the
+// question this answers is "is the limiter working and is anything hitting it",
+// and naming who is a job for the edge, which is also where the durable limiter
+// belongs.
+const (
+	RouteImportUpload = "skills_import_upload"
+	RouteImportURL    = "skills_import_url"
+	RouteGenerate     = "skills_generate"
+	RoutePublicSearch = "public_search"
+)
+
+var RateLimited = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "skillhub_rate_limited_total",
+	Help: "Requests refused with 429 by the per-IP token bucket, by route (02:NFR-001 clause 5).",
+}, []string{"route"})
+
 // ADR-008: the transactional outbox. One counter, and it is the one that means a
 // human has to look: an event the publisher gave up on is a domain fact that was
 // committed and never announced. `event_type` is the closed 11-value set of
@@ -201,6 +231,24 @@ var OutboxDeadLettered = promauto.NewCounterVec(prometheus.CounterOpts{
 	Name: "skillhub_outbox_dead_lettered_total",
 	Help: "Domain events isolated after repeated delivery failure (ADR-008 Poison Message).",
 }, []string{"event_type"})
+
+// OutboxDeadLetteredCurrent is how many isolated events are sitting in the table
+// right now, republished by the publisher on every pass.
+//
+// The counter above says an event WAS isolated, once, at the moment it happened;
+// it goes back to reading zero increase as soon as the hour passes, and the row
+// is still there. Nothing here replays or clears a dead-lettered event on
+// purpose (outbox.recordFailure: "Isolation is loud and is not a repair"), so
+// the thing an operator actually needs to know — is there still something in
+// quarantine that nobody has dealt with — is a level, not a rate. The same
+// distinction OrphanObjectQueueDepth draws for the same kind of worklist.
+//
+// No event_type label: the counter carries that for the moment of isolation,
+// and this one answers a yes/no about a backlog.
+var OutboxDeadLetteredCurrent = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "skillhub_outbox_dead_lettered",
+	Help: "Domain events currently sitting isolated in the outbox, awaiting a human (ADR-008).",
+})
 
 // O11Y-002: provider health. `provider` comes from SKILLHUB_SANDBOX_PROVIDERS,
 // which is deployment-static, so its cardinality is the size of the fleet.

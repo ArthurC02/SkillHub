@@ -114,8 +114,10 @@ func IndexSkillEnriched(ctx context.Context, tx pgx.Tx, projection EnrichedSkill
 // RemoveSkillFromIndex drops a skill's document. Called for both soft delete
 // and takedown: in either case the content must stop being discoverable now,
 // while the version snapshots it owns stay frozen (iron rule 4).
-func RemoveSkillFromIndex(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID) error {
-	return gen.New(tx).DeleteSearchDocument(ctx, skillID)
+func RemoveSkillFromIndex(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) error {
+	return gen.New(tx).DeleteSearchDocument(ctx, gen.DeleteSearchDocumentParams{
+		SkillID: skillID, WorkspaceID: workspaceID,
+	})
 }
 
 // SkillRisks answers the projected risk block for a page of skills in one

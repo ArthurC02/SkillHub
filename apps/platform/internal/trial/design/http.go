@@ -342,20 +342,40 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if body.UserPrompt != nil {
 		prompt = *body.UserPrompt
 	}
+	// The rubric is decoded AND validated before anything is written. Both writes
+	// are their own transaction (UpdateTestCase, then SetRubric), so a rubric
+	// rejected after the first one had already committed left the user with a 400
+	// and a changed name — a request refused that nonetheless moved the data, and
+	// resending it unchanged does not put it back.
+	//
+	// SetRubric validates again under its own row lock and that one stays
+	// authoritative: it reads the criteria as they are at write time, which is the
+	// only reading that closes a concurrent criterion deletion. This is the same
+	// pure check run early, against the criteria this handler already read, so the
+	// bad-rubric case is refused before the first write instead of between them.
+	var rubric *Rubric
+	if len(body.Rubric) > 0 && strings.TrimSpace(string(body.Rubric)) != "null" {
+		rubric = &Rubric{}
+		if err := json.Unmarshal(body.Rubric, rubric); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "rubric must be an object with a version and items")
+			return
+		}
+		criteria, err := DecodeCriteria(current.AcceptanceCriteria)
+		if err != nil {
+			fail(w, err, "read failed")
+			return
+		}
+		if _, err := validateRubric(*rubric, criteria); err != nil {
+			fail(w, err, "rubric update failed")
+			return
+		}
+	}
 	tc, err := h.Svc.UpdateTestCase(r.Context(), ws, id, name, prompt)
 	if err != nil {
 		fail(w, err, "update failed")
 		return
 	}
 	if len(body.Rubric) > 0 {
-		var rubric *Rubric
-		if raw := strings.TrimSpace(string(body.Rubric)); raw != "null" {
-			rubric = &Rubric{}
-			if err := json.Unmarshal(body.Rubric, rubric); err != nil {
-				httpx.WriteError(w, http.StatusBadRequest, "rubric must be an object with a version and items")
-				return
-			}
-		}
 		if tc, err = h.Svc.SetRubric(r.Context(), ws, id, rubric); err != nil {
 			fail(w, err, "rubric update failed")
 			return

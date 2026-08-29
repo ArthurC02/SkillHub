@@ -368,6 +368,7 @@ func shouldRetry(attempt int, r skillpkg.Report) bool {
 // the upstream's limit has to surface as its error rather than as our deadline,
 // or the work is billed and thrown away. Per ATTEMPT, so the retry does not
 // inherit what the first attempt spent.
+// budget-over: generate.LLM_TIMEOUT_SECONDS
 const generateTimeout = 130 * time.Second
 
 func (s *Service) generateOnce(ctx context.Context, task string) (*llmclient.GenerateSkillResponse, error) {

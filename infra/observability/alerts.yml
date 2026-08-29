@@ -380,3 +380,131 @@ groups:
         annotations:
           summary: "Trace 事件從產生到入庫的 p95 超過 3 秒"
           description: "sandboxd 的收集 ticker 是 2 秒；超標通常是批次過大或平台端寫入變慢。"
+
+  # --- Foundation 層：建好了、但沒有人會知道 -----------------------------------
+  #
+  # 這一組的五條規則補的是同一個缺口：foundation 有七個「為了被告警而建」的
+  # metric，2026-08-29 稽核逐一 grep，在本檔的出現次數全部是 0。它們的定義處
+  # 都寫了「這是唯一的證據來源」，而唯一的消費者是 slog——本 repo 自己的判準是
+  # 「slog is sampled and thrown away」（audit/audit.go、objreconcile.go 都這樣寫）。
+  #
+  # 缺口不是均勻的：cleanup、orphan、dispatch、trace 都有規則，缺的正好是
+  # 這一層。四條規則的形式逐條照抄各 metric 定義處註解自己指定的寫法。
+  - name: skillhub-foundation-signals
+    rules:
+      - alert: OutboxEventDeadLettered
+        # ADR-008 Poison Message：一個**已經 commit 的領域事實，永遠不會被宣告**。
+        # outbox.go 的 recordFailure 說得很直接：「Isolation is loud and is not a
+        # repair. The row is left in place for a human」——而在本條之前，那個
+        # 「for a human」沒有任何通知這個人的路徑。
+        #
+        # 具體後果：run.succeeded 被隔離 = 那次 Run 永遠不會被評估，使用者看到
+        # 「跑完了但沒有報告」，日誌裡只有一行 slog.Error。
+        #
+        # >0 就 page，不設 for：一筆就要人。event_type 是 DB CHECK 管住的 11 值
+        # 封閉集合，序列數由目錄決定而非流量。
+        expr: increase(skillhub_outbox_dead_lettered_total[1h]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "領域事件被隔離（event_type={{ $labels.event_type }}）：已 commit 但永遠不會被宣告"
+          description: >-
+            查 `SELECT * FROM outbox_events WHERE dead_lettered_at IS NOT NULL`。
+            **不要直接清掉那一列**：隔離不是修復，它保留在原地就是為了讓人判斷
+            那個事實該不該被補做。若是 `run.succeeded` / `run.failed`，代表該次
+            Run 沒有評估——重放的方式是把 `dead_lettered_at` 與 `delivery_attempts`
+            清成 NULL/0，但**先確認 consumer 已經修好**，否則只是再燒十次重試。
+
+      - alert: OutboxDeadLetterBacklogUncleared
+        # 上一條看的是「發生的那一刻」，本條看的是「還在那裡」。兩者都要：
+        # increase() 一小時後就歸零，而那一列還在——outbox 刻意不重放、不清除
+        # （recordFailure：「Isolation is loud and is not a repair」），所以「隔離區
+        # 裡還有沒有東西沒人處理」是一個 level 不是 rate。
+        #
+        # 由 publisher 每輪在持鎖的那條連線上重新發佈，所以只有一個行程在報。
+        expr: skillhub_outbox_dead_lettered > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox 隔離區裡還有 {{ $value }} 筆事件沒有被處理"
+          description: >-
+            與 OutboxEventDeadLettered 是同一件事的兩個時態。那一條響過之後這一條
+            會持續響到有人處理為止，這是刻意的：沒有任何自動路徑會清掉那些列。
+
+      - alert: StoredObjectsMissing
+        # 04 丙-9。metrics.go 對這個 gauge 的說法逐字是「Above zero means user
+        # content was lost」——不是「檢查失敗」：objreconcile 的 Exists 只把明確
+        # 404 當成「沒有」，儲存不可達完全不計 sighting，所以這個數字動了就是
+        # 位元組真的不見了，而且已經連續兩輪。
+        expr: max by (resource_kind) (skillhub_storage_objects_missing) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.resource_kind }} 有使用者內容遺失（連續兩輪確認不存在）"
+          description: >-
+            列已被標記為不再宣稱持有物件，audit 有 storage.object_missing 的列可查。
+            打包產物是冪等的、可以重打；資料集不行。**先查是不是 bucket 生命週期
+            或誤刪**，再決定要不要告知受測者（RELEASE-009 的解讀依賴這一條）。
+
+      - alert: OrphanObjectSweepMissingOrBacklogged
+        # metrics.go 對這個 gauge 自己指定了寫法：「an absent or stale series is
+        # itself the "nobody ran it" signal, and a rule wanting both reads it with
+        # absent()」。所以 absent() 那一半不是保險，是規格。
+        #
+        # 兩種狀態一條規則，因為要人做的事一樣：去看那個 cron 有沒有在跑。
+        # 3 小時：sweep 是部署期的 cron（m4/release-checklist 的未勾項），一個
+        # 小時的空窗可能只是排程抖動。
+        expr: absent(skillhub_orphan_object_queue_depth) or skillhub_orphan_object_queue_depth > 0
+        for: 3h
+        labels:
+          severity: warning
+        annotations:
+          summary: "孤兒物件清理沒有在跑，或積壓沒有下降"
+          description: >-
+            series 不存在 = `maintenance collect-objects` 從未跑過或已經停了
+            （**這正是這個機制當初補的那個洞：一個沒有人寫的 job**）。
+            數字持續 >0 = 跑了但收不完。兩者都先查部署的 cron。付的是無法觸及的
+            物件儲存費用，不是資料遺失。
+
+      - alert: RunTokenCeilingNotEnforced
+        # PDM-005 §5.2a-4 的天花板檢查是**刻意 fail-open** 的（閘道管理 API 抖一下
+        # 不該殺掉健康的 Run），metrics.go 因此寫著「the only evidence that
+        # enforcement has stopped is this counter」。
+        #
+        # 這條看的是**檢查壞了**，不是**天花板被撞到**。後者
+        # （skillhub_run_token_ceiling_breached_total）是產品訊號不是事故，
+        # 刻意不設規則——照 metrics.go 自己的分法。
+        expr: increase(skillhub_run_token_usage_unreadable_total[30m]) > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Token 上限檢查讀不到閘道，強制已經停止（fail-open）"
+          description: >-
+            Run 仍在跑，硬牆鐘與 max_budget 仍然生效，但 300K 的上限現在不生效。
+            先查 LiteLLM 管理 API 是否可達。持續超過一個小時應考慮暫停派送——
+            成本上界此刻只剩鐘。
+
+      - alert: RateLimiterRefusingHeavily
+        # 02:NFR-001 clause 5 的 in-process token bucket。RUN_QUOTA 與
+        # GENERATE_QUOTA 在 ADR-055/056 之後都是 off，所以這個限制器是「有人用
+        # 一個迴圈把整個部署的 LiteLLM 餘額燒光」的最後一道；燒光的後果是
+        # /embed、索引增強與每一個 LLM judge 一起停。
+        #
+        # 在 skillhub_rate_limited_total 之前，「今天擋了三千次」「RATE_LIMIT=off」
+        # 與「clientKey 壞了、每個連線一個 bucket」從外面看完全相同。
+        #
+        # 門檻是**首發預設**，不是實測校準值：預設每分鐘 60、burst 30，一個人
+        # 點不到，15 分鐘 100 次拒絕代表有東西在跑迴圈。
+        expr: sum by (route) (increase(skillhub_rate_limited_total[15m])) > 100
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.route }} 的速率限制在 15 分鐘內拒絕超過 100 次"
+          description: >-
+            route=skills_generate 最要緊：那是這張表上唯一每次呼叫都花錢的路由。
+            **也要看反方向**：這個 series 長期完全不存在，而部署沒有設
+            RATE_LIMIT=off，代表限制器根本沒有被套上去（04 丙-54 記過一次同型缺陷）。
+            **鍵是 IP，代理後面會失準**：TLS 終端前面沒有帶正確 client IP 時整個
+            cohort 共用一個 bucket，那是部署期的事（release-checklist），不是這裡。

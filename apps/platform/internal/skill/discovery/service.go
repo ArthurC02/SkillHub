@@ -221,10 +221,30 @@ func (s *Service) Search(ctx context.Context, query string, limit int32, filters
 // measured with a real gateway; adding it before that measurement would be
 // spending the latency budget blind.
 func (s *Service) embedQuery(ctx context.Context, query string) (*pgvector.Vector, error) {
-	embedCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	// 25s, against app.EMBED_TIMEOUT_SECONDS (20s). It was 10s, which is below
+	// it, and below is the one relation that must not hold: Go's deadline fired
+	// first, so the caller saw a context deadline and could not tell a broken
+	// gateway from a slow one — while the abandoned call kept running and kept
+	// being billed, because a client-side deadline reaches nothing.
+	//
+	// This is a ceiling, not a target. NFR-004's p95 is a statement about how
+	// long search usually takes; this is a statement about when to stop waiting
+	// for the pathological case. Setting the ceiling to the p95 would abandon
+	// every call in the tail — the calls that were going to succeed.
+	// budget-over: app.EMBED_TIMEOUT_SECONDS
+	embedCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
 	defer cancel()
 
-	embedResp, err := s.LLM.Embed(embedCtx, []string{query})
+	// Ten seconds, sent to the service rather than only held here. The 25s above
+	// is deliberately OVER the service's own ceiling and stays that way — it is
+	// the backstop for "apps/llm never answered at all". What it cannot do is
+	// stop the work: a Go deadline abandons the HTTP call while the gateway
+	// request behind it runs on and is billed. Only a number apps/llm honours
+	// does that, and this is the path with somebody watching a spinner.
+	//
+	// The indexing path keeps the service default (Embed, no number): a backfill
+	// has no one waiting, and the longest ceiling is the right one there.
+	embedResp, err := s.LLM.EmbedWithin(embedCtx, []string{query}, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -351,7 +371,15 @@ func (s *Service) matchReasons(ctx context.Context, query string, hits []searchR
 		}
 	}
 
-	reasonCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	// 13s, against app.MATCH_REASONS_TIMEOUT_SECONDS (8s). Exactly equal
+	// before, which is a race the Go side wins about half the time and then
+	// reports as its own timeout rather than the gateway's. The 5s floor
+	// devctl's timeout-budget check enforces is not padding for its own sake:
+	// Go's clock starts before the request is written and Python's after it is
+	// received, and everything between — connection setup, request body,
+	// scheduling — is time only the Go side is counting.
+	// budget-over: app.MATCH_REASONS_TIMEOUT_SECONDS
+	reasonCtx, cancel := context.WithTimeout(ctx, 13*time.Second)
 	defer cancel()
 
 	resp, err := s.LLM.MatchReasons(reasonCtx, query, candidates)

@@ -30,9 +30,39 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
+// cleanModeRefusal is why this process will not start under
+// SKILLHUB_CLEAN_MODE=1, or the empty string when it may.
+//
+// ADR-060 決策 6 defines clean mode as a single process: cmd/api runs the worker
+// set in-process, on the one connection the PGlite socket behind it can serve.
+// A second binary carrying the same flag is therefore never a clean-mode
+// deployment — it is a production worker that inherited a copied environment,
+// and the flag changes what it will dispatch to (execution/schedule.go accepts a
+// provider declaring isolation `clean`, which is no isolation at all). Refusing
+// is cheaper than the alternative: the API would show the disclosure or not
+// depending on its own environment, while this process quietly ran untrusted
+// skills on a shared kernel.
+//
+// A function rather than an inline `if` so the refusal is testable without
+// exiting the test binary.
+func cleanModeRefusal() string {
+	if os.Getenv("SKILLHUB_CLEAN_MODE") != "1" {
+		return ""
+	}
+	return "SKILLHUB_CLEAN_MODE=1 in cmd/worker: clean mode is a single process " +
+		"(ADR-060 決策 6) and cmd/api runs the worker set itself, so a separate " +
+		"worker carrying this flag is a copied configuration, not a clean-mode " +
+		"deployment. Unset it here, or run only cmd/api."
+}
+
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	if reason := cleanModeRefusal(); reason != "" {
+		slog.Error("worker refuses to start", "reason", reason)
+		os.Exit(1)
+	}
 
 	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
@@ -127,10 +157,9 @@ func main() {
 
 	<-ctx.Done()
 
-	// Stop waits for jobs already running to finish; the context they were given
-	// is already cancelled, so a job that respects cancellation exits promptly.
-	if err := set.Queue.Stop(context.Background()); err != nil {
-		slog.Error("queue stop", "error", err)
-	}
+	// Bounded: Stop waits for jobs already running to notice the cancelled
+	// context, and one that cannot notice would otherwise hold SIGTERM open until
+	// the orchestrator SIGKILLs this process past every deferred closer.
+	queue.Stop(set.Queue)
 	slog.Info("worker stopped")
 }

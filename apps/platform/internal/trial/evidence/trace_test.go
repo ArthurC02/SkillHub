@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 )
 
 func TestRunReadersFailClosedAndHideMissingRuns(t *testing.T) {
@@ -194,57 +192,12 @@ func TestMaskerIgnoresShortKnownValues(t *testing.T) {
 	}
 }
 
-// TRACE-008: a hole in a producer's sequence is a lost event, and the read side
-// has to be able to say so rather than present a shorter timeline as complete.
-func TestStreamHealthNamesTheMissingSequenceNumbers(t *testing.T) {
-	rows := []gen.TraceEvent{
-		traceRow(1, SourceSandbox, 1, false),
-		traceRow(1, SourceSandbox, 2, false),
-		// 3 never arrived.
-		traceRow(1, SourceSandbox, 4, false),
-		traceRow(1, SourceOrchestr, 1, true),
-		// A second attempt is its own stream and starts again at 1.
-		traceRow(2, SourceSandbox, 1, false),
-	}
-	health := streamHealth(rows)
-	if len(health) != 3 {
-		t.Fatalf("got %d streams, want 3 (two producers on attempt 1, one on attempt 2)", len(health))
-	}
-	// Streams are ordered (attempt, emitted_by), so attempt 1's orchestrator
-	// stream comes before its sandbox stream.
-	if health[0].EmittedBy != SourceOrchestr || health[0].LateEvents != 1 {
-		t.Errorf("late event was not counted on its own stream: %+v", health[0])
-	}
-	if !reflect.DeepEqual(health[1].MissingSeq, []int64{3}) {
-		t.Errorf("attempt 1 sandbox stream missing = %v, want [3]", health[1].MissingSeq)
-	}
-	if len(health[2].MissingSeq) != 0 {
-		t.Errorf("attempt 2's own stream reported holes from attempt 1: %v", health[2].MissingSeq)
-	}
-}
-
-func TestStreamHealthBoundsTheMissingSequenceSample(t *testing.T) {
-	health := streamHealth([]gen.TraceEvent{
-		traceRow(1, SourceSandbox, 1, false),
-		traceRow(1, SourceSandbox, maxTraceSeq, false),
-	})
-	if len(health) != 1 {
-		t.Fatalf("got %d streams, want 1", len(health))
-	}
-	if health[0].MissingCount != maxTraceSeq-2 {
-		t.Fatalf("missing_count = %d, want %d", health[0].MissingCount, maxTraceSeq-2)
-	}
-	if len(health[0].MissingSeq) != 1_000 {
-		t.Fatalf("missing sample has %d entries, want 1000", len(health[0].MissingSeq))
-	}
-}
-
-func traceRow(attempt int32, source string, seq int64, late bool) gen.TraceEvent {
-	return gen.TraceEvent{
-		Attempt: attempt, Source: source, Seq: seq, Late: late,
-		Payload: []byte("{}"), MaskedFields: []byte("[]"),
-	}
-}
+// The two unit tests that used to sit here (TestStreamHealthNamesTheMissingSequenceNumbers,
+// TestStreamHealthBoundsTheMissingSequenceSample) exercised a Go fold that the read
+// path stopped calling when TRACE-008 moved into GetTraceStreamHealth. Breaking that
+// SQL left both of them green, which is the failure mode AGENTS.md 開發自動化 §9 is
+// about. Their cases now live against the real query, in
+// apiserver/trace_fold_a4_integration_test.go.
 
 // Envelope validation is the trust boundary: a sandbox is untrusted input, and
 // each of these is a way it could poison the timeline.
@@ -299,24 +252,10 @@ func TestValidateAcceptsAdditiveMinorVersions(t *testing.T) {
 	}
 }
 
-// TRACE-006 must render a cost the gateway never reported as unreported, not as
-// zero: showing 0 would tell the user their run was free (contract README §5).
-func TestSummaryKeepsUnreportedCostNil(t *testing.T) {
-	var summary Summary
-	summary.fold(gen.TraceEvent{
-		EventType: TypeUsage, MaskedFields: []byte("[]"),
-		Payload: []byte(`{"scope":"run_total","model":"gpt-5-mini","input_tokens":27042,"output_tokens":1180,"cost_usd":null}`),
-	})
-	if summary.Usage == nil {
-		t.Fatal("usage event did not reach the summary")
-	}
-	if summary.Usage.CostUSD != nil {
-		t.Errorf("cost_usd = %v, want nil (unreported)", *summary.Usage.CostUSD)
-	}
-	if summary.Usage.InputTokens != 27042 {
-		t.Errorf("input tokens = %d, want 27042", summary.Usage.InputTokens)
-	}
-}
+// TestSummaryKeepsUnreportedCostNil used to sit here, over (*Summary).fold - the
+// same dead code as above, replaced by GetTraceGeneralFold's usage CASEs. Its case,
+// and the two branches it never covered (run_total vs last-usage), are in
+// apiserver/trace_fold_a4_integration_test.go.
 
 // The advanced view is ordered by the instant an event happened, and the
 // formatted timestamp is not a proxy for it.

@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"os"
 	"sort"
 	"time"
 
@@ -98,6 +97,19 @@ type Config struct {
 	// (unset = enforced with defaults, the RUN_QUOTA convention — a protection
 	// left unconfigured must not silently be absent).
 	RateLimits *httpx.RateLimiter
+	// FeedbackRetention is how long BETA-003/004/005's free-text reports live,
+	// for GET /policy/data-retention to disclose (FEEDBACK_RETENTION; the same
+	// value `maintenance purge-feedback` refuses to run without). Zero means no
+	// window has been set, which the endpoint says out loud rather than omitting.
+	FeedbackRetention time.Duration
+	// CleanMode is ADR-060 決策 6's deployment declaration, injected rather than
+	// read here. features() used to call os.Getenv("SKILLHUB_CLEAN_MODE") itself,
+	// which made this Config blind to the one axis that decides whether the user
+	// is shown 02:PORT-003's disclosure at all — a deployment input like every
+	// other field of this struct (GenerateExposed is the exact shape to copy).
+	// cmd/api reads the variable once and hands the bool down; a test sets the
+	// field instead of the process environment.
+	CleanMode bool
 }
 
 // App is the wired object graph. Deps is exposed so a test can adjust the
@@ -156,12 +168,13 @@ func NewApp(cfg Config) (*App, error) {
 			RunArtifactObjectKeys:      runPurgeSvc.WorkspaceObjectKeys,
 			DownloadArtifactObjectKeys: packagingPurgeSvc.WorkspaceObjectKeys,
 		},
-		Secure:    cfg.Secure,
-		AppURL:    cfg.AppURL,
-		DevLogin:  cfg.DevLogin,
-		Operators: cfg.Operators,
-		Invited:   cfg.Invited,
-		Features:  features(cfg),
+		Secure:      cfg.Secure,
+		AppURL:      cfg.AppURL,
+		DevLogin:    cfg.DevLogin,
+		Operators:   cfg.Operators,
+		Invited:     cfg.Invited,
+		Features:    entryPointFeatures(cfg),
+		Disclosures: disclosureFeatures(cfg),
 	}
 
 	// Insert-only queue client: the API enqueues run jobs in the same transaction
@@ -314,13 +327,16 @@ func NewApp(cfg Config) (*App, error) {
 				Svc:      testlabSvc,
 				Identity: auth.Service,
 			},
-			Runs:            &run.Handler{Svc: runSvc, Identity: auth.Service},
-			Trace:           &trace.Handler{Svc: traceSvc, Identity: auth.Service},
-			Eval:            &eval.Handler{Svc: evalSvc, Identity: auth.Service},
-			Packaging:       &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
-			Analytics:       &analytics.Handler{Svc: funnel, Identity: auth.Service},
+			Runs:      &run.Handler{Svc: runSvc, Identity: auth.Service},
+			Trace:     &trace.Handler{Svc: traceSvc, Identity: auth.Service},
+			Eval:      &eval.Handler{Svc: evalSvc, Identity: auth.Service},
+			Packaging: &packaging.Handler{Svc: packagingSvc, Identity: auth.Service},
+			Analytics: &analytics.Handler{
+				Svc: funnel, Identity: auth.Service, FeedbackRetention: cfg.FeedbackRetention,
+			},
 			GenerateExposed: cfg.GenerateExposed,
 			Limits:          cfg.RateLimits,
+			AppURL:          cfg.AppURL,
 		},
 		Auth:         auth,
 		RunSvc:       runSvc,
@@ -523,10 +539,16 @@ func (a *App) AuditRosters(ctx context.Context) {
 // statement somebody will need, and an absent row cannot make it — it is equally
 // consistent with a build that predates the flag.
 func (a *App) logFeatureFlags(ctx context.Context) error {
-	on := make([]string, 0, len(a.Auth.Features))
-	for name, enabled := range a.Auth.Features {
-		if enabled {
-			on = append(on, name)
+	// Both maps: the audit answer to "what was on in this process" does not care
+	// which of them a flag is served from, and a record that listed only the
+	// entry points would have nothing to say about the deployment shape a
+	// participant was actually handed.
+	on := make([]string, 0, len(a.Auth.Features)+len(a.Auth.Disclosures))
+	for _, m := range []map[string]bool{a.Auth.Features, a.Auth.Disclosures} {
+		for name, enabled := range m {
+			if enabled {
+				on = append(on, name)
+			}
 		}
 	}
 	sort.Strings(on)
@@ -561,20 +583,44 @@ func suggesterOrNil(c *llmclient.Client) testlab.CriteriaSuggester {
 	return c
 }
 
-// features is what /me tells the web about this deployment's optional entry
-// points. Only true ones are listed, and the map is absent entirely when there
+// The two halves of /me's `features` map, split because they answer different
+// questions and public.yaml says so in as many words: "generate_skill (ADR-052)
+// is an entry point: it says a route exists. clean_mode (ADR-060) is not — it
+// says this deployment... A client that treats clean_mode as something to unlock
+// has read it backwards."
+//
+// The server was doing exactly what that sentence warns against. /me handed the
+// whole map out only to callers past the BETA-001 invite check, so a signed-in
+// visitor outside the cohort, on a clean-mode deployment, was not told that the
+// environment has no sandbox isolation and verifies no signature. A disclosure
+// gated on an entitlement is not a disclosure.
+//
+// Only true ones are listed, and the merged map is absent entirely when there
 // are none — a client that has to distinguish "off" from "this build predates
 // the flag" is a client that will get one of them wrong.
-func features(cfg Config) map[string]bool {
+
+// entryPointFeatures are the optional routes this deployment mounts. Gated per
+// caller at /me, because drawing an entry point for somebody the route will
+// refuse is the failure ADR-052's flag exists to prevent, one scope down.
+func entryPointFeatures(cfg Config) map[string]bool {
 	f := map[string]bool{}
 	if cfg.GenerateExposed {
 		f["generate_skill"] = true
 	}
-	// clean_mode — PORT-003. Read from the environment directly rather than a
-	// new Config field, the same convention execution/schedule.go:75 already
-	// uses for the same variable: this is a deployment declaration, not
-	// per-request wiring, and cmd/api/main.go has no reason to know its name.
-	if os.Getenv("SKILLHUB_CLEAN_MODE") == "1" {
+	return f
+}
+
+// disclosureFeatures are the facts about this deployment that every signed-in
+// caller is owed regardless of what they may use. Ungated at /me for that
+// reason.
+//
+// clean_mode — PORT-003. A Config field and not an os.Getenv here: the flag is
+// a deployment declaration, and reading it in this process's presentation layer
+// put a fourth independent reader on a variable whose own comment in
+// cmd/api/main.go promises "read exactly once, right here".
+func disclosureFeatures(cfg Config) map[string]bool {
+	f := map[string]bool{}
+	if cfg.CleanMode {
 		f["clean_mode"] = true
 	}
 	return f

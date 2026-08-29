@@ -140,3 +140,74 @@ func TestDataRetentionReportsTheConfiguredWindow(t *testing.T) {
 		t.Errorf("retention_days = %d, want 180", body.RetentionDays)
 	}
 }
+
+// The second data class, and the reason this endpoint needed one. Until
+// 2026-08-29 the response listed four analytics events and declared "There is no
+// free-text column anywhere in the table" — true of analytics_events, and a
+// reader had no way to know feedback_reports exists. That table holds the most
+// sensitive thing this deployment collects: a participant's own account, in
+// their own words, of where the product failed them.
+func TestDataRetentionDisclosesTheFeedbackClass(t *testing.T) {
+	h := &Handler{Svc: &Service{Retention: 180 * 24 * time.Hour}, FeedbackRetention: 90 * 24 * time.Hour}
+	w := httptest.NewRecorder()
+	h.DataRetention(w, httptest.NewRequest("GET", "/policy/data-retention", nil))
+
+	var body struct {
+		Feedback struct {
+			Collected         []string `json:"collected"`
+			FreeText          string   `json:"free_text"`
+			Kind              []string `json:"kind"`
+			RetentionDays     *int     `json:"retention_days"`
+			OnAccountDeletion string   `json:"on_account_deletion"`
+		} `json:"feedback"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	// Every column of feedback_reports a person could recognise themselves in.
+	for _, column := range []string{"kind", "message", "page_path", "run_id", "workspace_id", "user_id"} {
+		if !slices.Contains(body.Feedback.Collected, column) {
+			t.Errorf("the disclosure omits the %q column", column)
+		}
+	}
+	if !strings.Contains(body.Feedback.FreeText, "2000") {
+		t.Error("the disclosure does not say how much free text a report can carry")
+	}
+	if !slices.Contains(body.Feedback.Kind, "blocking_issue") || !slices.Contains(body.Feedback.Kind, "need_signal") {
+		t.Errorf("the disclosed kinds %v are not the two the handler accepts", body.Feedback.Kind)
+	}
+	if body.Feedback.RetentionDays == nil || *body.Feedback.RetentionDays != 90 {
+		t.Errorf("feedback retention_days = %v, want 90 (from FEEDBACK_RETENTION, not typed into the page)", body.Feedback.RetentionDays)
+	}
+	// ADR-029 決策 5: an account deletion de-identifies these rows rather than
+	// removing them, and a reader deciding whether to write one is owed that.
+	if !strings.Contains(body.Feedback.OnAccountDeletion, "de-identified") {
+		t.Errorf("the disclosure does not say what account deletion does to a report: %q", body.Feedback.OnAccountDeletion)
+	}
+}
+
+// The honest answer for a deployment PDM-006 has given no number to. Omitting
+// the key would let a reader conclude the four events are the whole story, which
+// is the exact mistake this whole block exists to stop.
+func TestDataRetentionSaysSoWhenFeedbackHasNoWindow(t *testing.T) {
+	h := &Handler{Svc: &Service{Retention: time.Hour}} // FeedbackRetention unset
+	w := httptest.NewRecorder()
+	h.DataRetention(w, httptest.NewRequest("GET", "/policy/data-retention", nil))
+
+	var body struct {
+		Feedback map[string]any `json:"feedback"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := body.Feedback["retention_days"]; !present {
+		t.Fatal("the feedback block has no retention_days key at all; silence reads as 'not collected'")
+	}
+	if body.Feedback["retention_days"] != nil {
+		t.Errorf("retention_days = %v with FEEDBACK_RETENTION unset, want null", body.Feedback["retention_days"])
+	}
+	note, _ := body.Feedback["note"].(string)
+	if !strings.Contains(note, "FEEDBACK_RETENTION") || !strings.Contains(note, "indefinitely") {
+		t.Errorf("the note does not say the reports are kept indefinitely and which variable would change that: %q", note)
+	}
+}

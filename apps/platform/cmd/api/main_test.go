@@ -462,10 +462,21 @@ func TestCleanModeHandlerLeavesProductionAlone(t *testing.T) {
 	}
 }
 
-// clean=true must route the two static paths to static and leave everything
-// else — including a path an anonymous deep link could hit, like /skills/{id}
-// — going to api, per cleanModeHandler's doc comment on the collision
-// DEV_CORS_ORIGIN's comment in main() also describes.
+// clean=true must route the two static paths to static and everything else to
+// the API first.
+//
+// "Everything else" used to mean "and it stays there", including a browser
+// pasting /skills/{id} — this test pinned that, and the comment beside it
+// conceded a deep link therefore answered with JSON. It no longer does: an
+// unrouted GET that asked for text/html now falls back to index.html
+// (spaFallback, and TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets
+// below, which is where that case moved to).
+//
+// What this test still pins is the routing, which is unchanged and is the half
+// the fallback must not disturb: the fake API answers 200 to everything, so
+// nothing here is unrouted, and no request below asks for HTML. Both are the
+// point — the fallback triggers on a 404 AND on Accept, so a test that varies
+// neither is testing the table.
 func TestCleanModeHandlerRoutesStaticOnlyWhenClean(t *testing.T) {
 	var apiHit, staticHit []string
 	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -531,4 +542,155 @@ func TestBackgroundLoopsWatchTheReconciler(t *testing.T) {
 // expression the compiler checks, not as a string somebody keeps in step.
 func loopName(f func(context.Context)) string {
 	return runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+}
+
+// --- 5. the refusals and the roster ------------------------------------------
+
+// DEV_LOGIN=1 mounts POST /auth/dev/login, where any name is a signed-in account
+// with no credential. Three comments in this repository say "never in
+// production" and none of them was executable; this is the one machine-decidable
+// contradiction, and it costs an if.
+func TestDevLoginRefusal(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		devLogin, https bool
+		refuses         bool
+	}{
+		{name: "production: neither", devLogin: false, https: true},
+		{name: "local dev: dev login on plain http", devLogin: true, https: false},
+		{name: "dev login with secure cookies", devLogin: true, https: true, refuses: true},
+		{name: "no dev login on plain http", devLogin: false, https: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reason := devLoginRefusal(tc.devLogin, tc.https)
+			if (reason != "") != tc.refuses {
+				t.Fatalf("devLoginRefusal(%v, %v) = %q, want refusal=%v", tc.devLogin, tc.https, reason, tc.refuses)
+			}
+			if tc.refuses && !strings.Contains(reason, "COOKIE_INSECURE") {
+				t.Errorf("the refusal does not say how to resolve it: %q", reason)
+			}
+		})
+	}
+}
+
+// The same treatment backgroundLoops got, for the same reason and after the same
+// near-miss: app.AuditRosters(ctx) was one line in main that nothing watched.
+// Deleting it leaves the whole suite green while 02:SEC-011's roster record stops
+// being written — and because AuditRosters fails the operator list closed when it
+// cannot record it, the deletion turns a fail-closed guarantee into a fail-open
+// one silently.
+func TestStartupTasksAuditTheRosters(t *testing.T) {
+	pool, err := pgxpool.New(context.Background(), "postgres://skillhub@127.0.0.1:1/skillhub")
+	if err != nil {
+		t.Fatalf("pgxpool.New: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	app, err := apiserver.NewApp(apiserver.Config{Pool: pool, Secure: true})
+	if err != nil {
+		t.Fatalf("NewApp: %v", err)
+	}
+
+	got := make([]string, 0, 1)
+	for _, task := range startupTasks(app) {
+		got = append(got, loopName(task))
+	}
+	want := []string{loopName((&apiserver.App{}).AuditRosters)}
+	if !slices.Equal(got, want) {
+		t.Errorf("the API's start-up tasks are %v, want %v", got, want)
+	}
+}
+
+// --- 6. the SPA fallback ------------------------------------------------------
+
+// This test used to pin the opposite: /skills/abc-123 had to reach the API, and
+// the comment beside it conceded that a pasted deep link therefore answered a
+// browser with JSON, calling it out of scope. In clean mode it is not out of
+// scope — the portable bundle IS the deployment, there is no proxy underneath to
+// push it to, and handing somebody a link is how a portable bundle gets opened.
+// Worse, the JSON page carries no window.__SKILLHUB_CLEAN_MODE__, so 02:PORT-003's
+// disclosure never loads either.
+//
+// So the expectation is flipped for exactly one case: a GET that asked for HTML
+// and that the API has no route for. Every other case is unchanged, and the rows
+// below say which is which.
+func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
+	// An API that answers 404 for a path it has no route for — which is what a
+	// ServeMux does, and the condition the fallback reads.
+	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/me" || r.URL.Path == "/auth/github/callback" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"api":true}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":"not found"}`))
+	})
+	static := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte("<html>index for " + r.URL.Path + "</html>"))
+	})
+	handler := cleanModeHandler(api, true, static)
+
+	for _, tc := range []struct {
+		name, method, path, accept string
+		wantCode                   int
+		wantHTML                   bool
+	}{
+		{
+			name: "a pasted deep link loads the app", method: http.MethodGet,
+			path: "/skills/abc-123", accept: "text/html,application/xhtml+xml",
+			wantCode: http.StatusOK, wantHTML: true,
+		},
+		{
+			// The half the flip must not break: a route the API DOES have is
+			// still the API's, and this one is a browser navigation the API has
+			// to handle itself or login stops working.
+			name: "the OAuth callback still reaches the API", method: http.MethodGet,
+			path: "/auth/github/callback", accept: "text/html",
+			wantCode: http.StatusOK,
+		},
+		{
+			// fetch() sends */* or application/json. A 404 must stay a 404 for
+			// it, or a client cannot tell "no such run" from a page.
+			name: "a fetch for a missing resource still gets 404", method: http.MethodGet,
+			path: "/skills/abc-123", accept: "application/json",
+			wantCode: http.StatusNotFound,
+		},
+		{
+			name: "a write is never answered with a page", method: http.MethodPost,
+			path: "/skills/abc-123", accept: "text/html",
+			wantCode: http.StatusNotFound,
+		},
+		{
+			name: "an API route the caller can reach is untouched", method: http.MethodGet,
+			path: "/me", accept: "application/json",
+			wantCode: http.StatusOK,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, tc.path, nil)
+			req.Header.Set("Accept", tc.accept)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			if rec.Code != tc.wantCode {
+				t.Fatalf("%s %s -> %d, want %d", tc.method, tc.path, rec.Code, tc.wantCode)
+			}
+			isHTML := strings.Contains(rec.Header().Get("Content-Type"), "text/html")
+			if isHTML != tc.wantHTML {
+				t.Errorf("%s %s answered Content-Type %q; want HTML=%v",
+					tc.method, tc.path, rec.Header().Get("Content-Type"), tc.wantHTML)
+			}
+			if tc.wantHTML && !strings.Contains(rec.Body.String(), "index for /") {
+				// The index, not the deep link's own path: the SPA routes it
+				// client-side, and serving a file per path is a different thing.
+				t.Errorf("the fallback served %q, want index.html", rec.Body.String())
+			}
+			if !tc.wantHTML && strings.Contains(rec.Body.String(), "<html>") {
+				t.Errorf("a non-browser caller was handed a page: %q", rec.Body.String())
+			}
+		})
+	}
 }

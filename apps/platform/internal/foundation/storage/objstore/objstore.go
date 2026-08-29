@@ -64,15 +64,52 @@ func (c *Client) EnsureBucket(ctx context.Context) error {
 	return nil
 }
 
+// MaxObjectBytes bounds what Get will read into memory.
+//
+// 128 MiB is the largest object any writer in this platform is allowed to
+// produce plus room to spare: testlab.MaxTestCaseBytes caps a dataset at 100
+// MiB and run.Limits.ArtifactTotalBytes caps a run's outputs at the same, and
+// every other ceiling is far below them (delivery.MaxProducedZipBytes is 18 MiB,
+// skillpkg.MaxZipBytes 10 MB). The number is repeated here rather than imported
+// because this package is generic and must not import a context (ADR-032 §1);
+// what it is derived FROM is named above so the derivation is checkable.
+//
+// Why a bound at all when the write side already has one: nine contexts call
+// Get on a request path, one of them in a loop, and "the writers cap it" is a
+// transitive argument across several packages. It stops being true the moment
+// anything reaches the store another way — clean mode's in-process backend
+// takes a PUT from any local process, and llmclient set exactly this bound for
+// exactly this reason ("internal is not trusted", MaxResponseBytes).
+const MaxObjectBytes = 128 << 20
+
 func (c *Client) Get(ctx context.Context, key string) ([]byte, error) {
 	obj, err := c.mc.GetObject(ctx, c.bucket, key, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("objstore get %s: %w", key, err)
 	}
 	defer func() { _ = obj.Close() }()
-	data, err := io.ReadAll(obj)
+	data, err := readCapped(obj, MaxObjectBytes)
 	if err != nil {
 		return nil, fmt.Errorf("objstore get %s: %w", key, err)
+	}
+	return data, nil
+}
+
+// readCapped reads r whole, or fails rather than truncating.
+//
+// The +1 is the whole trick and the reason this is a function shared with the
+// in-process backend instead of two inline LimitReaders: io.ReadAll on a plain
+// LimitReader returns a SHORT object and no error, so an over-sized object would
+// come back as a corrupt package or a hash mismatch somewhere downstream with
+// nothing saying why. Reading one byte past the ceiling makes "exactly at the
+// limit" legal and "over" loud.
+func readCapped(r io.Reader, max int) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, int64(max)+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > max {
+		return nil, fmt.Errorf("object is larger than the %d byte ceiling", max)
 	}
 	return data, nil
 }

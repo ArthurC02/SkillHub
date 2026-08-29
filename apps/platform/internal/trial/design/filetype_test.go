@@ -120,10 +120,67 @@ func TestInspectZipAppliesUnpackBudget(t *testing.T) {
 	}
 
 	// The same entry count inside an OOXML container is one document, not 21
-	// user files: a real .xlsx routinely carries more parts than that.
+	// user files: a real .xlsx routinely carries more parts than that. The FILE
+	// COUNT is the only budget that entry turns off - see the byte-budget test
+	// below, which is the half that used to be turned off with it.
 	entries["[Content_Types].xml"] = "<Types/>"
 	if _, err := detectContentType(zipOf(t, entries)); err != nil {
 		t.Fatalf("rejected an OOXML document for its internal part count: %v", err)
+	}
+}
+
+// zipDeclaring builds a zip whose central directory declares the given unpacked
+// sizes without carrying the bytes. That is the shape inspectZip actually reads
+// (it never unpacks - the sandbox does, ADR-005), and it is also the shape of the
+// attack: deflate lets a 25 MB upload declare gigabytes.
+func zipDeclaring(t *testing.T, entries map[string]uint64) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, size := range entries {
+		w, err := zw.CreateRaw(&zip.FileHeader{
+			Name:               name,
+			Method:             zip.Deflate,
+			CompressedSize64:   2,
+			UncompressedSize64: size,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte{0x03, 0x00}); err != nil { // an empty deflate stream
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+// TestInspectZipKeepsTheUnpackBudgetForOOXML: [Content_Types].xml switches off
+// the file-count limit and nothing else.
+//
+// It used to switch off the byte budget as well, which put the whole PDM-005 §5.1
+// unpack allowance for a zip dataset behind one filename - and the only remaining
+// upper bound was the 25 MB compressed-side limit, which deflate turns into
+// several GB of content the sandbox would be asked to mount.
+func TestInspectZipKeepsTheUnpackBudgetForOOXML(t *testing.T) {
+	bomb := zipDeclaring(t, map[string]uint64{
+		"[Content_Types].xml":      32,
+		"xl/worksheets/sheet1.xml": uint64(MaxTestCaseBytes) + 1,
+	})
+	if _, err := detectContentType(bomb); !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("accepted an OOXML-named archive declaring more than %s unpacked: err = %v",
+			humanMB(MaxTestCaseBytes), err)
+	}
+
+	// And a real spreadsheet's shape still passes: many parts, small total.
+	ok := zipDeclaring(t, map[string]uint64{
+		"[Content_Types].xml":      32,
+		"xl/worksheets/sheet1.xml": 4096,
+	})
+	if _, err := detectContentType(ok); err != nil {
+		t.Fatalf("rejected an ordinary OOXML document: %v", err)
 	}
 }
 

@@ -59,9 +59,14 @@ func (s *Service) Supervise(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// Collected, not returned: the detectors below are the P1 half of this sweep,
+	// and one wedged run must not be able to switch them off. Returning on the
+	// first supervise error did exactly that — and a stuck run coexisting with a
+	// security incident is the moment the detectors are worth the most.
+	var errs []error
 	for _, run := range active {
 		if err := s.superviseRun(ctx, run); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
 
@@ -74,7 +79,7 @@ func (s *Service) Supervise(ctx context.Context) error {
 
 	stale, err := s.queries().ListRunsNeedingCleanup(ctx, superviseBatch)
 	if err != nil {
-		return err
+		errs = append(errs, err)
 	}
 	for _, run := range stale {
 		if s.Queue == nil {
@@ -83,7 +88,7 @@ func (s *Service) Supervise(ctx context.Context) error {
 		if _, err := s.Queue.Insert(ctx, CleanupArgs{
 			RunID: pgconv.UUIDString(run.ID), WorkspaceID: pgconv.UUIDString(run.WorkspaceID),
 		}, cleanupInsertOpts()); err != nil {
-			return err
+			errs = append(errs, err)
 		}
 	}
 
@@ -110,7 +115,9 @@ func (s *Service) Supervise(ctx context.Context) error {
 	// as its neighbours — never returns an error, idempotent while the incident
 	// is held, and never lifts itself.
 	s.detectP02Breach(ctx)
-	return nil
+	// Last, so that the retry River schedules carries every failure this sweep saw
+	// and none of them decided whether the detectors got to look.
+	return errors.Join(errs...)
 }
 
 // superviseRun decides what one still-moving run needs.

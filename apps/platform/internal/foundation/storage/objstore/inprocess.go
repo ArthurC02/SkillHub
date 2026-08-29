@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -48,6 +49,20 @@ type inProcessBackend struct {
 	bucket        string
 	bucketCreated bool
 	objects       map[string]storedObject
+	// accessKey is a per-process random string every request must carry, in the
+	// Authorization header (minio-go signs each call) or in a presigned URL's
+	// X-Amz-Credential (the sandbox hits those with a plain HTTP client).
+	//
+	// This is NOT authentication and the doc comment above still stands: nothing
+	// verifies a signature, so a caller holding the key can do anything. What it
+	// buys is that a caller must HOLD it. The listener is on loopback with no
+	// credential at all, and in clean mode it is a real deployment — every skill
+	// package, dataset, run artifact and download bundle on that machine was
+	// readable and writable by any other local process that could guess a key,
+	// including a script in a browser tab the demo has open (IMPORT_ALLOW_INSECURE
+	// is almost certainly on there too, which puts loopback back on the import
+	// fetcher's reachable set).
+	accessKey string
 }
 
 type storedObject struct {
@@ -62,7 +77,16 @@ type storedObject struct {
 // EnsureBucket (or Client.mc.MakeBucket) against the returned client, just
 // like every other environment.
 func NewInProcess(bucket string) (*Client, func(), error) {
-	backend := &inProcessBackend{bucket: bucket, objects: make(map[string]storedObject)}
+	// crypto/rand, not a fixed string: the point of the key is that a process
+	// which was not handed it cannot guess it.
+	var seed [16]byte
+	if _, err := rand.Read(seed[:]); err != nil {
+		return nil, nil, fmt.Errorf("objstore inprocess key: %w", err)
+	}
+	accessKey := "inprocess" + hex.EncodeToString(seed[:])
+	backend := &inProcessBackend{
+		bucket: bucket, objects: make(map[string]storedObject), accessKey: accessKey,
+	}
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -71,7 +95,7 @@ func NewInProcess(bucket string) (*Client, func(), error) {
 	srv := &http.Server{Handler: backend}
 	go func() { _ = srv.Serve(ln) }()
 
-	client, err := New(ln.Addr().String(), "inprocess", "inprocess", bucket, false)
+	client, err := New(ln.Addr().String(), accessKey, accessKey, bucket, false)
 	if err != nil {
 		_ = srv.Close()
 		return nil, nil, err
@@ -81,6 +105,10 @@ func NewInProcess(bucket string) (*Client, func(), error) {
 }
 
 func (b *inProcessBackend) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !b.carriesKey(r) {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
 	parts := strings.SplitN(strings.TrimPrefix(r.URL.Path, "/"), "/", 2)
 	if len(parts) == 0 || parts[0] != b.bucket {
 		w.WriteHeader(http.StatusNotFound)
@@ -91,6 +119,21 @@ func (b *inProcessBackend) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b.serveObject(w, r, parts[1])
+}
+
+// carriesKey reports whether the request presents this process's access key at
+// all. Signed requests carry it inside the Authorization header's Credential
+// field; presigned URLs carry it as X-Amz-Credential. Either is enough — see
+// the accessKey field for why "holds the key" and not "proved the signature" is
+// the bar here.
+func (b *inProcessBackend) carriesKey(r *http.Request) bool {
+	if b.accessKey == "" {
+		return true // a zero-value backend in a unit test; no key was ever issued
+	}
+	if strings.Contains(r.Header.Get("Authorization"), b.accessKey) {
+		return true
+	}
+	return strings.HasPrefix(r.URL.Query().Get("X-Amz-Credential"), b.accessKey)
 }
 
 func (b *inProcessBackend) serveBucket(w http.ResponseWriter, r *http.Request) {
@@ -189,8 +232,19 @@ func readObjectBody(r *http.Request) ([]byte, error) {
 	if r.Header.Get("X-Amz-Content-Sha256") == streamingSignAlgorithm {
 		return decodeAWSChunked(r.Body)
 	}
-	return io.ReadAll(r.Body)
+	return readCapped(r.Body, MaxObjectBytes)
 }
+
+// maxChunkBytes caps one aws-chunked frame. minio-go's StreamingReader writes
+// chunks far below this (its default part size is 16 MiB), so no legitimate PUT
+// comes near it; the number exists because the size is read out of the request.
+//
+// Before this, `chunk := make([]byte, size)` allocated whatever the caller's hex
+// header asked for: a PUT declaring `7fffffffffffffff;chunk-signature=x` asked
+// for 8 EB in one allocation, and in clean mode — where this backend is the
+// real object store and the listener takes requests from any local process --
+// that is the demo machine going down mid-demonstration.
+const maxChunkBytes = 64 << 20
 
 // decodeAWSChunked strips the aws-chunked framing minio-go's StreamingReader
 // writes: a sequence of "<hex-size>;chunk-signature=<sig>\r\n<data>\r\n"
@@ -214,6 +268,12 @@ func decodeAWSChunked(r io.Reader) ([]byte, error) {
 		}
 		if size == 0 {
 			break
+		}
+		if size < 0 || size > maxChunkBytes {
+			return nil, fmt.Errorf("aws-chunked: chunk of %d bytes is over the %d byte limit", size, maxChunkBytes)
+		}
+		if int64(out.Len())+size > MaxObjectBytes {
+			return nil, fmt.Errorf("aws-chunked: body is larger than the %d byte ceiling", MaxObjectBytes)
 		}
 		chunk := make([]byte, size)
 		if _, err := io.ReadFull(br, chunk); err != nil {

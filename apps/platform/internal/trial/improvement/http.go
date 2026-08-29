@@ -292,15 +292,19 @@ func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev gen.Eval
 		}
 	}
 
-	live, err := s.liveTraceEvents(ctx, workspaceID, ev.RunID, results, findings)
+	sets := make([][]EvidenceRef, 0, len(results)+len(findings))
+	for i := range results {
+		sets = append(sets, results[i].Evidence)
+	}
+	for i := range findings {
+		sets = append(sets, findings[i].Evidence)
+	}
+	live, err := s.resolveEvidence(ctx, workspaceID, ev.RunID, sets...)
 	if err != nil {
 		return evaluationView{}, err
 	}
-	for i := range results {
-		markAvailability(results[i].Evidence, live)
-	}
-	for i := range findings {
-		markAvailability(findings[i].Evidence, live)
+	for _, refs := range sets {
+		markAvailability(refs, live)
 	}
 
 	view := evaluationView{
@@ -331,59 +335,127 @@ func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev gen.Eval
 	return view, nil
 }
 
-// liveTraceEvents is the set of cited trace events that still resolve.
-func (s *Service) liveTraceEvents(
-	ctx context.Context, workspaceID, runID pgtype.UUID,
-	results []CriterionResult, findings []Finding,
-) (map[string]bool, error) {
-	ids := map[string]bool{}
-	collect := func(refs []EvidenceRef) {
+// liveEvidence is the answer to 「can this citation still be followed」 for both
+// kinds of reference, gathered once per report rather than once per reference.
+type liveEvidence struct {
+	traceEvents map[string]bool
+	artifacts   map[string]bool
+	// finalOutput answers the third kind. An `agent_output` citation quotes
+	// m.summary.FinalOutput, which is itself folded out of trace events - so when
+	// the trace goes, the thing that citation points at goes with it, and it was
+	// the last of the three still shipping a frozen `true`.
+	finalOutput bool
+}
+
+// resolveEvidence re-answers availability for every reference in sets.
+//
+// ADR-026 decision 2 and doc.go's invariant 9 both say `available` is answered at
+// READ time, and the reason is that a reference outlives the evidence it points
+// at: trace_events is dropped by partition, and WS-002 clause 3 lets a user delete
+// a run output whenever they like. A value read back from the stored JSON is
+// therefore a claim about the past presented as a claim about now.
+//
+// All three kinds, because only one of them was ever answered. Artifact references
+// were written `Available: true` by deterministic.go and never revisited, so a
+// report went on citing a file the user had deleted as though it were still there;
+// `agent_output` references were written the same way by judge.go's outputRef.
+//
+// The artifact half asks execution's own injected read (ReadEvaluationInput,
+// backed by ListReadableRunArtifacts) rather than a query of its own: run outputs
+// are execution's rows, and eval reaching into them directly is what ADR-033 is
+// about.
+func (s *Service) resolveEvidence(
+	ctx context.Context, workspaceID, runID pgtype.UUID, sets ...[]EvidenceRef,
+) (liveEvidence, error) {
+	live := liveEvidence{traceEvents: map[string]bool{}, artifacts: map[string]bool{}}
+	var wantArtifacts, wantOutput bool
+	for _, refs := range sets {
 		for _, ref := range refs {
-			if ref.Kind == KindTraceEvent && ref.TraceEventID != "" {
-				ids[ref.TraceEventID] = false
+			switch {
+			case ref.Kind == KindTraceEvent && ref.TraceEventID != "":
+				live.traceEvents[ref.TraceEventID] = false
+			case ref.Kind == KindArtifact && ref.ArtifactPath != "":
+				wantArtifacts = true
+			case ref.Kind == KindAgentOutput:
+				wantOutput = true
 			}
 		}
 	}
-	for _, r := range results {
-		collect(r.Evidence)
-	}
-	for _, f := range findings {
-		collect(f.Evidence)
-	}
-	if len(ids) == 0 {
-		return ids, nil
-	}
 
-	uuids := make([]pgtype.UUID, 0, len(ids))
-	for id := range ids {
-		var u pgtype.UUID
-		if u.Scan(id) == nil {
-			uuids = append(uuids, u)
+	if len(live.traceEvents) > 0 {
+		uuids := make([]pgtype.UUID, 0, len(live.traceEvents))
+		for id := range live.traceEvents {
+			var u pgtype.UUID
+			if u.Scan(id) == nil {
+				uuids = append(uuids, u)
+			}
+		}
+		rows, err := s.Trace.LiveEvents(ctx, workspaceID, runID, uuids)
+		if err != nil {
+			return liveEvidence{}, err
+		}
+		for _, u := range rows {
+			live.traceEvents[pgconv.UUIDString(u)] = true
 		}
 	}
-	rows, err := s.Trace.LiveEvents(ctx, workspaceID, runID, uuids)
-	if err != nil {
-		return nil, err
+
+	if wantArtifacts {
+		if s.ReadEvaluationInput == nil {
+			// Refuse rather than fall back to the stored value. Both composition
+			// roots inject this, and the fallback is the exact claim this function
+			// exists to stop making.
+			return liveEvidence{}, errRunReaderNotConfigured
+		}
+		// found == false is a run that is gone, which makes every output gone with
+		// it; the empty set below is the right answer and not an error.
+		input, _, err := s.ReadEvaluationInput(ctx, workspaceID, runID)
+		if err != nil {
+			return liveEvidence{}, err
+		}
+		for _, a := range input.Artifacts {
+			live.artifacts[a.FileName] = true
+		}
 	}
-	for _, u := range rows {
-		ids[pgconv.UUIDString(u)] = true
+
+	if wantOutput {
+		// The same read the evaluation itself used to quote from (gather's
+		// m.summary), asked again now. An empty final output means the events it
+		// was folded from are gone.
+		summary, err := s.Trace.General(ctx, workspaceID, runID)
+		if err != nil {
+			return liveEvidence{}, err
+		}
+		live.finalOutput = summary.FinalOutput != ""
 	}
-	return ids, nil
+	return live, nil
 }
 
 // markAvailability tells the reader whether each citation can still be followed.
 // A stale one keeps its excerpt and is labelled: never blanked out, and never
 // presented as though the original were still there (ADR-009).
-func markAvailability(refs []EvidenceRef, live map[string]bool) {
+func markAvailability(refs []EvidenceRef, live liveEvidence) {
 	for i := range refs {
-		if refs[i].Kind == KindTraceEvent && refs[i].TraceEventID != "" {
-			refs[i].Available = live[refs[i].TraceEventID]
+		switch {
+		case refs[i].Kind == KindTraceEvent && refs[i].TraceEventID != "":
+			refs[i].Available = live.traceEvents[refs[i].TraceEventID]
+		case refs[i].Kind == KindArtifact && refs[i].ArtifactPath != "":
+			refs[i].Available = live.artifacts[refs[i].ArtifactPath]
+		case refs[i].Kind == KindAgentOutput:
+			refs[i].Available = live.finalOutput
 		}
 	}
 }
 
 func costViewOf(ev gen.Evaluation) costView {
-	v := costView{Source: "estimated"}
+	// "unreported", not "estimated". eval.go's costSource() writes a source only
+	// when the gateway reported one, and judge.go says it in as many words: the
+	// internal contract has no estimated source, and an unrecognised label is
+	// unreported accounting rather than permission to relabel it as an estimate.
+	// The default used to be "estimated", so every evaluation without a gateway
+	// figure came out of here as {"evaluation_usd": null, "source": "estimated"}
+	// - a field claiming the platform estimated something next to a note saying
+	// it has no figure at all (NFR-001: the UI must not mislead).
+	v := costView{Source: "unreported"}
 	if ev.CostSource != nil {
 		v.Source = *ev.CostSource
 	}

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -164,12 +165,10 @@ func webStaticHandlerUnder(distDir string) (http.Handler, error) {
 // pinned for the connection pool: a static-serving overlay that only turns on
 // when a flag is set and one that is always on look identical in a screenshot.
 //
-// Only "GET /" and "GET /assets/" are routed to static; everything else,
-// including a direct load of a deep link like /skills/$id, still reaches the
-// API unchanged. That is the same collision DEV_CORS_ORIGIN's comment above
-// describes (the SPA's page route and the API's REST route share a path) —
-// this does not resolve it, it only has to get an anonymous visitor to the
-// first screen, where client-side navigation takes over.
+// "GET /" and "GET /assets/" go straight to static. Everything else goes to the
+// API first and falls back to the SPA only where the API has no route — see
+// spaFallback, which is what makes a pasted deep link like /skills/$id load the
+// application instead of answering a browser with JSON.
 func cleanModeHandler(api http.Handler, clean bool, static http.Handler) http.Handler {
 	if !clean {
 		return api
@@ -177,8 +176,110 @@ func cleanModeHandler(api http.Handler, clean bool, static http.Handler) http.Ha
 	mux := http.NewServeMux()
 	mux.Handle("GET /assets/", static)
 	mux.Handle("GET /{$}", static)
-	mux.Handle("/", api)
+	mux.Handle("/", spaFallback(api, static))
 	return mux
+}
+
+// spaFallback answers a browser navigation the API has no route for with
+// index.html, so /skills/$id pasted into an address bar loads the application.
+//
+// Clean mode is the one deployment shape where nothing else can do this. Its
+// whole point is a portable bundle handed to somebody else to open on their own
+// machine, and opening things includes pasting a link; there is no reverse proxy
+// underneath to push the problem to, because this process IS the deployment.
+// Without it a deep link produced a page of JSON — and, worse, no
+// window.__SKILLHUB_CLEAN_MODE__, so 02:PORT-003's disclosure never loaded
+// either.
+//
+// The condition is "the API said 404", not a copy of the route table. A
+// hand-maintained list of API prefixes is exactly what apiserver/router.go's
+// package comment records being burned by, and the mux already knows the
+// answer: a pattern like "GET /skills" does not match /skills/abc, so an
+// unrouted path arrives here as a 404 with nothing written. Routes that DO
+// match are untouched, which is what keeps GET /auth/github/callback — a
+// browser navigation the API must handle itself — working.
+//
+// Only GET, and only for a caller that asked for text/html. Every client of this
+// API is fetch(), which sends */* or application/json; a browser address bar is
+// the only thing that says text/html. A 404 for either of the other two stays a
+// 404, so a script cannot mistake "no such run" for a page.
+func spaFallback(api, static http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || !strings.Contains(r.Header.Get("Accept"), "text/html") {
+			api.ServeHTTP(w, r)
+			return
+		}
+		catcher := &notFoundCatcher{ResponseWriter: w}
+		api.ServeHTTP(catcher, r)
+		if !catcher.notFound {
+			return
+		}
+		// The API's headers (Content-Type: application/json, and whatever the
+		// error writer added) were never flushed, so they are still ours to
+		// drop before the HTML goes out.
+		clear(w.Header())
+		index := r.Clone(r.Context())
+		index.URL = &url.URL{Path: "/"}
+		index.RequestURI = "/"
+		static.ServeHTTP(w, index)
+	})
+}
+
+// notFoundCatcher swallows a 404 and its body so the caller can answer
+// differently. Nothing else is buffered: a 200 streams through untouched, which
+// matters because one of the routes underneath serves download bytes.
+type notFoundCatcher struct {
+	http.ResponseWriter
+	notFound bool
+	wrote    bool
+}
+
+func (c *notFoundCatcher) WriteHeader(code int) {
+	if c.wrote {
+		return
+	}
+	c.wrote = true
+	if code == http.StatusNotFound {
+		c.notFound = true
+		return
+	}
+	c.ResponseWriter.WriteHeader(code)
+}
+
+func (c *notFoundCatcher) Write(b []byte) (int, error) {
+	if !c.wrote {
+		c.WriteHeader(http.StatusOK)
+	}
+	if c.notFound {
+		return len(b), nil // discarded; the SPA answers instead
+	}
+	return c.ResponseWriter.Write(b)
+}
+
+// devLoginRefusal is why this process will not start with the offline login
+// provider mounted, or the empty string when the combination is coherent.
+//
+// DEV_LOGIN=1 mounts POST /auth/dev/login, where any name is a signed-in account
+// with no credential (ADR-020, creator/workspace/http.go). Secure cookies mean
+// the deployment is served over https, which is a deployment somebody put a
+// certificate on. Wanting both is a contradiction a machine can settle: nobody
+// terminates TLS in front of a platform they also want anyone to log into as
+// anyone. Three comments say "never in production" and none of them was
+// executable; this one is.
+//
+// COOKIE_INSECURE=1 (the .env.example default for plain-http local dev) is what
+// makes Secure false, so the local demo and the E2E suite are untouched.
+//
+// A function rather than an inline if, so the refusal is reachable from a test
+// without exiting the test binary.
+func devLoginRefusal(devLogin, secure bool) string {
+	if !devLogin || !secure {
+		return ""
+	}
+	return "DEV_LOGIN=1 with secure session cookies: the offline login provider " +
+		"lets anybody sign in as any name without a credential (ADR-020), and a " +
+		"deployment that terminates TLS is not a deployment that wants it. Unset " +
+		"DEV_LOGIN, or set COOKIE_INSECURE=1 if this really is plain-http local dev."
 }
 
 func main() {
@@ -270,6 +371,22 @@ func main() {
 	// never dispatches one).
 	providers := run.NewRegistryFromEnv()
 
+	// ADR-020's offline provider. Both halves are here rather than inside NewApp:
+	// whether this deployment may exist at all is the process's question, and the
+	// warning is the shape RATE_LIMIT=off, RUN_QUOTA=off and
+	// GENERATE_SKILL_EXPOSED=on already use — until now the one switch that
+	// bypasses authentication entirely was the one that said nothing.
+	secure := os.Getenv("COOKIE_INSECURE") != "1" // 1 only for plain-http local dev
+	devLogin := os.Getenv("DEV_LOGIN") == "1"
+	if reason := devLoginRefusal(devLogin, secure); reason != "" {
+		slog.Error("refusing to start", "reason", reason)
+		os.Exit(1)
+	}
+	if devLogin {
+		slog.Warn("DEV_LOGIN=1; POST /auth/dev/login is mounted and anybody can sign in " +
+			"as any name without a credential (ADR-020). Never in production")
+	}
+
 	app, err := apiserver.NewApp(apiserver.Config{
 		Pool:               pool,
 		Store:              store,
@@ -279,14 +396,15 @@ func main() {
 		Profiles:           profiles,
 		DownloadRetention:  retentionFromEnv(),
 		AnalyticsRetention: analyticsRetention,
+		FeedbackRetention:  feedbackRetentionFromEnv(),
 		OAuth: &identity.GitHubOAuth{
 			ClientID:     os.Getenv("GITHUB_CLIENT_ID"),
 			ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
 			RedirectURL:  os.Getenv("OAUTH_REDIRECT_URL"),
 		},
-		Secure:    os.Getenv("COOKIE_INSECURE") != "1", // 1 only for plain-http local dev
+		Secure:    secure,
 		AppURL:    os.Getenv("APP_URL"),
-		DevLogin:  os.Getenv("DEV_LOGIN") == "1", // offline dev provider; never in production
+		DevLogin:  devLogin,
 		Operators: operatorIDs(os.Getenv("OPERATOR_USER_IDS")),
 		// BETA-001's admission list (ADR-028 決策 1), read exactly like the operator
 		// roster above and keyed by provider_user_id. Unset — the shipped default —
@@ -297,12 +415,19 @@ func main() {
 		GenerateQuota:   generateQuotaFromEnv(),
 		GenerateExposed: generateExposedFromEnv(),
 		RateLimits:      rateLimitsFromEnv(),
+		// The same `clean` bool every other consequence below is gated on. It
+		// travels as a Config field so features() does not read the variable a
+		// second time: cleanModeFromEnv's comment promises one choice point, and
+		// the promise is only true if nothing downstream reads the name.
+		CleanMode: clean,
 	})
 	if err != nil {
 		slog.Error("api composition", "error", err)
 		os.Exit(1)
 	}
-	app.AuditRosters(ctx)
+	for _, task := range startupTasks(app) {
+		task(ctx)
+	}
 
 	// Clean mode's third and last consequence: the worker runs inside this same
 	// process instead of cmd/worker's own (see the package doc above and ADR-060
@@ -371,15 +496,26 @@ func main() {
 		go loop(ctx)
 	}
 
+	// The listener's failure travels on a channel instead of calling os.Exit from
+	// inside the goroutine. An os.Exit there skips every defer this function has
+	// registered — pool.Close and stopStore among them — so a port already in
+	// use used to leak the connection pool and the in-process store on the way
+	// out.
+	serveErr := make(chan error, 1)
 	go func() {
 		slog.Info("api listening", "addr", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("api stopped", "error", err)
-			os.Exit(1)
+			serveErr <- err
 		}
 	}()
 
-	<-ctx.Done()
+	failed := false
+	select {
+	case <-ctx.Done():
+	case err := <-serveErr:
+		slog.Error("api stopped", "error", err)
+		failed = true
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -387,11 +523,16 @@ func main() {
 		slog.Error("api shutdown", "error", err)
 	}
 	if cleanWorker != nil {
-		// context.Background(), matching cmd/worker's own shutdown: the context
-		// jobs were given is already cancelled, Stop just waits for them to notice.
-		if err := cleanWorker.Queue.Stop(context.Background()); err != nil {
-			slog.Error("clean mode: queue stop", "error", err)
+		queue.Stop(cleanWorker.Queue)
+	}
+	if failed {
+		// After the two closers above have had their turn, which is the whole
+		// reason the goroutine no longer does this itself.
+		pool.Close()
+		if stopStore != nil {
+			stopStore()
 		}
+		os.Exit(1)
 	}
 }
 
@@ -409,6 +550,24 @@ func main() {
 // the other process that is always up, it already reads this database, and it is
 // one of the two entry points the halt stops (iron rule 7 is untouched: this
 // observes and declares, it never works a job or dispatches one).
+// startupTasks is the work this process does once, after NewApp and before it
+// serves, as a list rather than as bare calls — the same treatment and the same
+// reason as backgroundLoops below: a call inside main is deletable with nothing
+// red.
+//
+// AuditRosters is the whole list today, and it is the one that could least
+// afford to be a bare call. It carries 02:SEC-011's "granting or revoking the
+// operator role is itself an audit event" and it fails closed in both
+// directions — an operator roster it cannot record is emptied, an invite list
+// it cannot record is replaced with one nobody holds. Delete the call and the
+// roster keeps working while nothing records it, which turns a fail-closed
+// guarantee into a fail-open one with the whole suite green.
+func startupTasks(app *apiserver.App) []func(context.Context) {
+	return []func(context.Context){
+		app.AuditRosters,
+	}
+}
+
 func backgroundLoops(app *apiserver.App) []func(context.Context) {
 	return []func(context.Context){
 		app.RunSvc.WatchReconciler,
@@ -552,6 +711,29 @@ func generateExposedFromEnv() bool {
 			"value", raw)
 	}
 	return false
+}
+
+// feedbackRetentionFromEnv reads how long BETA-003/004/005's free-text reports
+// are kept, for GET /policy/data-retention to disclose. The same variable
+// `maintenance purge-feedback` refuses to run without, read here only to say
+// what that sweep is configured to do: this process deletes nothing.
+//
+// Unset is zero and the endpoint prints it as "no retention period is
+// configured... kept indefinitely", which is the truthful answer for a
+// deployment PDM-006 has not given a number to. Deliberately NOT a default —
+// feedback is a participant's own account of where the product failed them, and
+// a default would put a deadline on it that nobody signed.
+func feedbackRetentionFromEnv() time.Duration {
+	raw := os.Getenv("FEEDBACK_RETENTION")
+	if raw == "" {
+		return 0
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil || d <= 0 {
+		slog.Warn("FEEDBACK_RETENTION is not a positive duration; /policy/data-retention will report that feedback is kept indefinitely", "value", raw)
+		return 0
+	}
+	return d
 }
 
 // analyticsRetentionFromEnv reads how long a funnel event is kept, and therefore

@@ -267,3 +267,35 @@ func TestParseFiltersAgentRuntime(t *testing.T) {
 		t.Fatalf("absent agent filter did not stay absent: %+v (%v)", f, err)
 	}
 }
+
+// DISC-004: a field with no data says unknown and is never read as passed. The
+// unavailable branch used to report `level: none` — the lowest rung of a
+// three-value ladder — while ScanStatus and Note both said there was no scan.
+// A client that reads only `level`, or a reader who only sees the colour, was
+// being told the opposite of what the other two fields said.
+func TestAnUnavailableScanIsUnknownAndNotTheLowestRisk(t *testing.T) {
+	for name, scan := range map[string][]byte{
+		"no scan at all":     nil,
+		"empty":              {},
+		"not parseable JSON": []byte("{not json"),
+	} {
+		got := riskHint(scan)
+		if got.ScanStatus != "unavailable" {
+			t.Errorf("%s: scan_status = %q, want unavailable", name, got.ScanStatus)
+		}
+		if got.Level != riskLevelUnknown {
+			t.Errorf("%s: level = %q, want %q", name, got.Level, riskLevelUnknown)
+		}
+		if got.Level == riskLevelNone {
+			t.Errorf("%s: 「沒有掃描紀錄」 must not share a value with 「掃過了,沒事」", name)
+		}
+		if got.Disclosures == nil {
+			t.Errorf("%s: disclosures must serialise as [] rather than null", name)
+		}
+	}
+	// The contrast that gives the value its meaning: a real scan that found
+	// nothing to disclose still says `none`, and that is a different statement.
+	if got := riskHint(scanJSON(t, 0, "license-from-manifest-reference")); got.Level != riskLevelNone {
+		t.Errorf("a scan that found nothing to disclose = %q, want %q", got.Level, riskLevelNone)
+	}
+}

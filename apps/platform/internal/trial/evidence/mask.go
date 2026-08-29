@@ -70,10 +70,21 @@ var secretPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`AIza[A-Za-z0-9_-]{35}`),
 	// An HTTP Authorization value of any scheme, wherever it was printed.
 	regexp.MustCompile(`(?i)\b(bearer|basic|token)\s+[A-Za-z0-9._~+/=-]{16,}`),
+	// SKILLHUB_SANDBOX_TOKEN* and *DATABASE_URL are here for the same reason
+	// SKILLHUB_TRACE_URL is: they are this platform's own credentials, they carry
+	// no vendor shape any pattern above would catch, and a script that dumps its
+	// environment prints them exactly like this. The sandbox token is the control
+	// plane's bearer credential for a node; a Postgres URL carries its password in
+	// the authority. Either one in a trace is iron rule 11 broken.
+	//
+	// Written as the families they are rather than the one spelling in
+	// .env.example: the token is SKILLHUB_SANDBOX_TOKEN_<PROVIDER> in every real
+	// deployment (provider.go's NewRegistryFromEnv builds the name), and the URL
+	// appears as both DATABASE_URL and SKILLHUB_TEST_DATABASE_URL.
 	// Credential-bearing assignments, as an env dump or a config line prints
 	// them. `[ \t]` rather than `\s` around the `=`: a bare NAME= at the end of a
 	// line must not swallow the next line's unrelated value.
-	regexp.MustCompile(`(?i)\b(ANTHROPIC_AUTH_TOKEN|ANTHROPIC_API_KEY|OPENAI_API_KEY|SKILLHUB_TRACE_URL|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)[ \t]*=[ \t]*\S+`),
+	regexp.MustCompile(`(?i)\b(ANTHROPIC_AUTH_TOKEN|ANTHROPIC_API_KEY|OPENAI_API_KEY|SKILLHUB_TRACE_URL|SKILLHUB_SANDBOX_TOKEN[A-Z_]*|[A-Z_]*DATABASE_URL|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN)[ \t]*=[ \t]*\S+`),
 	// Pre-signed object URLs and anything else carrying a credential as a query
 	// value: the parameter name is the only structural anchor a URL offers, so
 	// this one is a name list by necessity. A false positive costs one query

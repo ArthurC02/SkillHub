@@ -23,8 +23,10 @@ func testProjection(s *Service) *Service {
 			Name: projection.Name, Summary: projection.Summary,
 		})
 	}
-	s.RemoveFromIndex = func(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID) error {
-		return gen.New(tx).DeleteSearchDocument(ctx, skillID)
+	s.RemoveFromIndex = func(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) error {
+		return gen.New(tx).DeleteSearchDocument(ctx, gen.DeleteSearchDocumentParams{
+			SkillID: skillID, WorkspaceID: workspaceID,
+		})
 	}
 	return s
 }

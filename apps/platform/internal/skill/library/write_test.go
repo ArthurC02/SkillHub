@@ -54,3 +54,32 @@ func TestVersionLicenseKeepsProvenanceTier(t *testing.T) {
 		t.Errorf("source = %v", source)
 	}
 }
+
+// WS-001 lets a user fork a skill; it does not say once. The fixed `-fork`
+// suffix meant the second fork hit the unique index and the user got a 409 with
+// no next step — for what is the ordinary shape of the work (試跑、改、再試一份).
+//
+// The suffix series is also what keeps a fork of a fork from becoming
+// `x-fork-fork`: the base is the source name with any existing fork suffix
+// trimmed off, so the series stays flat.
+func TestForkOrdinalParsingKeepsTheSeriesFlat(t *testing.T) {
+	for _, tc := range []struct {
+		in       string
+		wantBase string
+		wantOK   bool
+	}{
+		{"tidy-csv-fork-2", "tidy-csv", true},
+		{"tidy-csv-fork-10", "tidy-csv", true},
+		{"tidy-csv-fork", "tidy-csv-fork", false}, // handled by the plain trim
+		{"tidy-csv", "tidy-csv", false},
+		{"tidy-csv-fork-0", "tidy-csv-fork-0", false}, // not an ordinal we write
+		{"tidy-csv-fork-1", "tidy-csv-fork-1", false}, // nor is 1: that name is `-fork`
+		{"tidy-csv-fork-x", "tidy-csv-fork-x", false}, // somebody's own name
+		{"-fork-2", "-fork-2", false},                 // no base to keep
+	} {
+		base, _, ok := cutForkOrdinal(tc.in)
+		if base != tc.wantBase || ok != tc.wantOK {
+			t.Errorf("cutForkOrdinal(%q) = (%q, %v), want (%q, %v)", tc.in, base, ok, tc.wantBase, tc.wantOK)
+		}
+	}
+}

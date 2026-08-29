@@ -69,8 +69,8 @@ const (
 //     distribution, so turning rewriting on needs either two cut-offs or one
 //     union of both.
 //
-// It is also bound to text-embedding-3-small at 1536 dimensions; a different
-// embedding model invalidates it outright (ADR-013).
+// It is also bound to text-embedding-3-small at 1536 dimensions // one-number: embeddingDimensions
+// — a different embedding model invalidates it outright (ADR-013).
 const MaxCosineDistance = 0.75
 
 // noResultsSuggestion is the DISC-001 prompt to refine. It asks for the three
@@ -137,7 +137,13 @@ type searchRisk struct {
 	// carries no scan for this row, which is reported as unknown and never as
 	// clean (DISC-004 不得自行推定為通過).
 	ScanStatus string `json:"scan_status"`
-	// Level is none | disclosed | warning. There is no "safe" level (NFR-001).
+	// Level is unknown | none | disclosed | warning. There is no "safe" level
+	// (NFR-001), and `unknown` exists because `none` was being used for two
+	// different facts: "the scan found nothing to disclose" and "there is no scan".
+	// `none` is the lowest rung of a three-value ladder, so a client that reads
+	// only this field — or a reader who only sees the colour — read 「沒有掃描紀錄」
+	// as 「掃過了，沒事」, which is exactly what DISC-004 forbids. ScanStatus and
+	// Note were telling the truth the whole time; this field was contradicting them.
 	Level    string `json:"level"`
 	Warnings int    `json:"warnings"`
 
@@ -150,6 +156,9 @@ type searchRisk struct {
 }
 
 const (
+	// riskLevelUnknown is not a rung on the ladder: it means the ladder does
+	// not apply because nothing was measured. Never rendered as a low risk.
+	riskLevelUnknown   = "unknown"
 	riskLevelNone      = "none"
 	riskLevelDisclosed = "disclosed"
 	riskLevelWarning   = "warning"
@@ -228,7 +237,7 @@ func riskHint(scanJSON []byte) searchRisk {
 	if len(scanJSON) == 0 || json.Unmarshal(scanJSON, &f) != nil {
 		return searchRisk{
 			ScanStatus:  "unavailable",
-			Level:       riskLevelNone,
+			Level:       riskLevelUnknown,
 			Disclosures: []disclosure{},
 			Note:        searchRiskUnknown,
 		}
@@ -474,8 +483,8 @@ func (h *Handler) PublicSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	if utf8.RuneCountInString(q) > 2000 {
-		httpx.WriteError(w, http.StatusBadRequest, "query parameter q must be at most 2000 characters")
+	if msg := queryTooLong(q); msg != "" {
+		httpx.WriteError(w, http.StatusBadRequest, msg)
 		return
 	}
 
@@ -732,6 +741,20 @@ func lastRune(s string) string {
 // the likeliest queries a Skill catalog receives. The rune floor is what still
 // rejects a bare `1` or a single ideograph; the letter is what separates a name
 // from punctuation. `a.` gets through, and costs one embedding.
+// maxQueryRunes caps what may be called a query at all. Shared by both search
+// routes: DISC-001 是對「搜尋」這個行為說的，不是對某一條路由說的，and until
+// 2026-08-29 only the public route had it — so a 2 MB `q` went straight into
+// websearch_to_tsquery on the workspace route.
+const maxQueryRunes = 2000
+
+// queryTooLong returns the 400 message for an over-long query, or "".
+func queryTooLong(q string) string {
+	if utf8.RuneCountInString(q) > maxQueryRunes {
+		return "query parameter q must be at most 2000 characters"
+	}
+	return ""
+}
+
 func isComprehensible(q string) bool {
 	for _, r := range q {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
@@ -755,9 +778,23 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := r.URL.Query().Get("q")
+	// The same three rules the public route applies, because they are rules
+	// about a query and not about a route (DISC-001 空白或無法理解的查詢不得建立
+	// 搜尋). What differs is only the answer: this route has no funnel segment to
+	// record and no model call to protect, so an unusable query is a 400 rather
+	// than the public route's no-results state.
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	if q == "" {
 		httpx.WriteError(w, http.StatusBadRequest, "query parameter q is required")
+		return
+	}
+	if msg := queryTooLong(q); msg != "" {
+		httpx.WriteError(w, http.StatusBadRequest, msg)
+		return
+	}
+	if !isComprehensible(q) {
+		httpx.WriteError(w, http.StatusBadRequest,
+			"query parameter q must contain at least two characters, one of them a letter or a digit")
 		return
 	}
 	limit, err := parseLimit(r)

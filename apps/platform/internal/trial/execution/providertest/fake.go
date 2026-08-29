@@ -121,7 +121,7 @@ func (f *Fake) Provider() *run.Provider { return run.NewProvider(f.Name, f.URL, 
 // DefaultCapability is a provider that can run everything the platform asks for
 // by default. Tests that need a mismatch narrow a copy of it.
 func DefaultCapability(name string) run.ProviderCapability {
-	healthy := true
+	healthy, reaps := true, true
 	c := run.ProviderCapability{
 		Provider: name,
 		Runtimes: []run.RuntimeSupport{{
@@ -134,6 +134,14 @@ func DefaultCapability(name string) run.ProviderCapability {
 	c.Isolation.Level = "container" // honest name for a fake on a developer machine
 	c.Isolation.Rootless = true
 	c.Isolation.DedicatedWorkspacePerRun = true
+	// Declared explicitly, both of them, because the default this fake stands for
+	// is a provider that answers honestly: every ceiling it names it enforces, and
+	// it does end a descendant that left its process group. A test that wants the
+	// dishonest shape narrows a copy - which is the point of these two fields
+	// being here at all, since the platform side had no consumer for either until
+	// Match() and ProviderSummary grew one.
+	c.MaxResourcesUnenforced = nil
+	c.Isolation.ReapsDetachedDescendants = &reaps
 	c.Network.EgressModes = []string{"default_deny"}
 	c.Availability.ConcurrentRunSlots = 4
 	c.Availability.Healthy = &healthy

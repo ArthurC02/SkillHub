@@ -293,9 +293,16 @@ func writeZip(files []exportFile, prefix string) ([]byte, error) {
 // Two exclusions, both load-bearing. Zip metadata — entry order, mtime, external
 // attributes, compression method — because it moves without the content moving,
 // which is the whole reason a second hash exists. And the manifest itself,
-// because the manifest carries this value and carries `packaged_at`: including
-// it would make two byte-identical builds hash differently, which is the exact
-// question this answers independently of.
+// because the manifest carries this very value: a hash over a document that
+// contains the hash is not a thing that can be computed.
+//
+// The reason used to be 「the manifest carries packaged_at」, and that half no
+// longer holds: packaged_at is the source version's creation time, which is
+// deterministic (packaging.go's PackagedAt, and the schema says so in as many
+// words). Two byte-identical builds of the same version already agree on it. The
+// self-reference is the whole of the argument, and it is enough on its own.
+// Whether the field should be called packaged_at at all is a naming question
+// held open elsewhere — it is not what this exclusion rests on.
 //
 // encoding/json is the canonicalisation: it sorts map keys and writes no
 // insignificant whitespace, which is the serialisation $defs/manifestHashInput

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -297,6 +298,19 @@ func (s *Service) CleanupExpiredSessions(ctx context.Context) (int64, error) {
 }
 
 // PersonalWorkspace returns the user's single personal workspace (ADR-011).
+//
+// More than one is an error and not a choice. This function is where every
+// workspace scope in the platform comes from (iron rule 3): /me, feedback, the
+// download funnel. ListWorkspacesByOwner orders by created_at with no
+// tie-breaker, so two rows for one owner would make "the first" whichever
+// Postgres returned — a request's scope, non-deterministic and silent.
+//
+// The state is unreachable today and this branch is defence behind the thing
+// that makes it so: db/migrations/0002 creates workspaces_owner_user_id_key, a
+// unique index, and TestOneAccountCannotHaveTwoWorkspaces asserts it. The two
+// lines stay because the index is the load-bearing half and this file cannot see
+// it — picking ws[0] would be how the wrong workspace's rows get served on the
+// day somebody relaxes that index for an org feature.
 func (s *Service) PersonalWorkspace(ctx context.Context, user User) (Workspace, error) {
 	ws, err := s.queries().ListWorkspacesByOwner(ctx, user.ID)
 	if err != nil {
@@ -304,6 +318,11 @@ func (s *Service) PersonalWorkspace(ctx context.Context, user User) (Workspace, 
 	}
 	if len(ws) == 0 {
 		return Workspace{}, errors.New("user has no workspace")
+	}
+	if len(ws) > 1 {
+		return Workspace{}, fmt.Errorf(
+			"user has %d workspaces; ADR-011 gives each account exactly one and every workspace scope is derived from this answer, so there is no safe one to pick",
+			len(ws))
 	}
 	return workspaceDTO(ws[0]), nil
 }

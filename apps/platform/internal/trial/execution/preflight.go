@@ -132,6 +132,17 @@ type ProviderSummary struct {
 	Rootless       bool   `json:"rootless"`
 	Runtime        string `json:"runtime,omitempty"`
 	RuntimeVersion string `json:"runtime_version,omitempty"`
+	// DetachedDescendantsSurvive is TEST-008's disclosure of the one honesty
+	// signal the dispatch gate deliberately does not refuse on: a node that
+	// cannot end a descendant which deliberately left its process group. Match()
+	// accepts such a node (the two platforms of one driver differ on it), so the
+	// fact has to arrive somewhere a user can read it, which 02:PORT-003 requires
+	// of anything of the form "the sandbox does not hold this".
+	//
+	// True only when the provider explicitly said false. An absent field is "did
+	// not say", and rendering that as "descendants survive" would be a claim the
+	// platform has not got.
+	DetachedDescendantsSurvive bool `json:"detached_descendants_survive,omitempty"`
 }
 
 // PermissionSummary is the whole answer: the hashed body, its hash, and the
@@ -319,14 +330,35 @@ func (s *Service) permissionSummaryFor(
 		Hash:          hex.EncodeToString(sum[:]),
 		EstimatedCost: defaultCostEstimate(),
 		Quota:         quota,
-		Notes: []string{
-			"預估成本是區間估計值,不是報價;實際費用以模型閘道記錄的實付金額為準。",
-			"MVP 不支援 MCP Server,因此工具清單只有 Sandbox 內建的檔案與 Shell 存取。",
-			"Secrets 只顯示注入項目的名稱;實際值是每個 Run 專屬的短效憑證,不會出現在任何畫面、Log 或 Trace。",
-			"網路為預設封鎖,允許清單為空表示 Sandbox 不能連出任何位址。",
-			"以上任何一項變更(例如換一份 Dataset)都會產生新的摘要,必須重新確認才能開始 Run。",
-		},
+		Notes:         permissionSummaryNotes,
 	}, nil
+}
+
+// permissionSummaryNotes is the display-only half of the pre-run summary. Outside
+// summary_hash, all of it: rewording a sentence, or recalibrating a measurement,
+// must not silently revoke every confirmation a user has outstanding.
+//
+// A package-level value rather than a literal inside the builder so that the one
+// note carrying an acceptance criterion with a number in it — the token rounds
+// conversion, 02:276-284 — can be asserted without a database.
+var permissionSummaryNotes = []string{
+	"預估成本是區間估計值,不是報價;實際費用以模型閘道記錄的實付金額為準。",
+	// 02:276-284 (PDM-005 §5.2a-2): 「Token 上限必須連同輪數換算表一起呈現,
+	// 不得只寫「300K」」, and the permission summary is the first of the three
+	// places that rule names. The numbers are the measured ones - ~19.4K
+	// input tokens of fixed harness overhead per API call, resent in full on
+	// every tool result - so the same 300K is 15 rounds or 5 depending on
+	// what the run does.
+	//
+	// Outside summary_hash, same reason as the cost estimate: recalibrating a
+	// measurement must not revoke every confirmation in flight, and this is a
+	// statement about what the ceiling means rather than about what the run
+	// may touch.
+	"Token 上限可跑的輪數取決於每輪的工具呼叫次數(每次工具結果都會重送整個前綴):純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪。",
+	"MVP 不支援 MCP Server,因此工具清單只有 Sandbox 內建的檔案與 Shell 存取。",
+	"Secrets 只顯示注入項目的名稱;實際值是每個 Run 專屬的短效憑證,不會出現在任何畫面、Log 或 Trace。",
+	"網路為預設封鎖,允許清單為空表示 Sandbox 不能連出任何位址。",
+	"以上任何一項變更(例如換一份 Dataset)都會產生新的摘要,必須重新確認才能開始 Run。",
 }
 
 // scriptSummary re-scans the stored package. A package that cannot be read does
@@ -372,12 +404,21 @@ func (s *Service) providerSummary(ctx context.Context, policy policySnapshot) Pr
 		return ProviderSummary{Name: providerUnassigned}
 	}
 	return ProviderSummary{
-		Name:           p.Name,
-		IsolationLevel: capability.Isolation.Level,
-		Rootless:       capability.Isolation.Rootless,
-		Runtime:        profile.Runtime,
-		RuntimeVersion: profile.RuntimeVersion,
+		Name:                       p.Name,
+		IsolationLevel:             capability.Isolation.Level,
+		Rootless:                   capability.Isolation.Rootless,
+		Runtime:                    profile.Runtime,
+		RuntimeVersion:             profile.RuntimeVersion,
+		DetachedDescendantsSurvive: detachedDescendantsSurvive(capability),
 	}
+}
+
+// detachedDescendantsSurvive answers the disclosure from a three-state field.
+// Only an explicit `false` is a disclosure: an absent reaps_detached_descendants
+// is "did not say", and turning that into "descendants survive" would put a claim
+// on the confirmation screen that no provider made.
+func detachedDescendantsSurvive(c ProviderCapability) bool {
+	return c.Isolation.ReapsDetachedDescendants != nil && !*c.Isolation.ReapsDetachedDescendants
 }
 
 // ConfirmPermissions records the user's agreement to the summary they were shown.

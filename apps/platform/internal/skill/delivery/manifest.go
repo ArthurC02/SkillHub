@@ -26,7 +26,13 @@ import (
 
 // ManifestSchemaVersion is the contract version these structs write. Minor bumps
 // are additive and an older manifest stays a valid instance of a newer minor.
-const ManifestSchemaVersion = "1.0"
+//
+// 1.1 since 2026-08-29: `origin.import.source_type` and `rootSource.source_type`
+// gained `generated` (0037), and a producer declares the version it writes to,
+// not the version of the fields it happens to use this time. Widening an enum is
+// additive, so README §5 makes this a minor bump and every 1.0 manifest is still
+// a valid 1.1 instance.
+const ManifestSchemaVersion = "1.1"
 
 // unavailable is what a deleted lineage hop records. Omitting it is not an
 // option: a gap reads as "there was no upstream", which is a different and false

@@ -74,6 +74,11 @@ type Handler struct {
 	// `generate_skill` means (ADR-032), and the alternative — one named boolean
 	// per feature — puts every future flag through this file.
 	Features map[string]bool
+	// Disclosures is the other half of the same wire key, and the reason the two
+	// are separate fields: what /me returns here is not gated on the invite list,
+	// because a fact about the deployment is not a permission. See the merge in
+	// the /me handler for what went wrong while they shared one map.
+	Disclosures map[string]bool
 }
 
 // Mount registers the auth routes on mux.
@@ -268,11 +273,45 @@ func (h *Handler) RequireOperator(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		user, err := h.Service.UserForToken(r.Context(), c.Value)
-		if err != nil || !h.Operators[pgconv.UUIDString(user.ID)] {
+		if err != nil {
+			// No attributable actor, so nothing is recorded: see
+			// audit.ActionOperatorRefused for why that asymmetry is deliberate.
+			httpx.WriteError(w, http.StatusNotFound, "not found")
+			return
+		}
+		if !h.Operators[pgconv.UUIDString(user.ID)] {
+			h.logOperatorRefusal(r, user)
 			httpx.WriteError(w, http.StatusNotFound, "not found")
 			return
 		}
 		next(w, r.WithContext(context.WithValue(r.Context(), ctxKey{}, user)))
+	}
+}
+
+// logOperatorRefusal records one authenticated account being turned away from an
+// operator route (02:SEC-011, audit.ActionOperatorRefused).
+//
+// Logged, never returned: the caller's answer is 404 either way, and an audit
+// write that could change the response would make the trail part of the
+// authorization decision. A failure to record is loud in the process log and
+// nowhere else.
+//
+// The metadata is the route's PATTERN and not the URL. A pattern is the closed
+// vocabulary of the route table; a path carries whatever identifiers the caller
+// typed, and this row exists for probes, which is precisely the traffic whose
+// path is attacker-chosen (iron rule 11).
+func (h *Handler) logOperatorRefusal(r *http.Request, user User) {
+	pattern := r.Pattern
+	if pattern == "" {
+		pattern = r.Method + " (unrouted)"
+	}
+	if err := audit.Log(r.Context(), h.Service.Pool, audit.Event{
+		Actor:        user.ID,
+		Action:       audit.ActionOperatorRefused,
+		ResourceType: audit.ResourceOperatorRoute,
+		Metadata:     map[string]any{"route": pattern},
+	}); err != nil {
+		slog.Error("operator refusal not audited", "error", err)
 	}
 }
 
@@ -443,19 +482,39 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	// client to treat a missing key as false somewhere and a present-but-false key
 	// as something else somewhere.
 	//
-	// Per CALLER, not per deployment. The flag is deployment-wide but the
-	// permission behind it is not: POST /skills/generate is RequireInvited, so a
-	// signed-in account outside the beta cohort was being shown the entry point,
-	// typing a description, waiting, and getting a 403 with an English paragraph
-	// on a Chinese page. An entry point drawn for someone who may not use it is
-	// the same failure ADR-052's flag exists to prevent, one scope down.
+	// Two maps, one key, and the difference is what the key is FOR.
+	//
+	// Features are entry points, and they are per CALLER rather than per
+	// deployment. The flag is deployment-wide but the permission behind it is
+	// not: POST /skills/generate is RequireInvited, so a signed-in account
+	// outside the beta cohort was being shown the entry point, typing a
+	// description, waiting, and getting a 403 with an English paragraph on a
+	// Chinese page. An entry point drawn for someone who may not use it is the
+	// same failure ADR-052's flag exists to prevent, one scope down.
 	//
 	// Fail closed on a lookup error, like the gate itself: an unanswerable invite
 	// question is not a yes.
+	//
+	// Disclosures are not entry points and are never gated. public.yaml says it
+	// literally about the one there is: "clean_mode (ADR-060) is not [an entry
+	// point]... A client that treats clean_mode as something to unlock has read
+	// it backwards." Sending them through the invite check was doing precisely
+	// that — an uninvited visitor on a clean-mode deployment was not told the
+	// environment has no isolation and verifies no signature, which is the one
+	// thing they are owed whether or not they may run anything.
+	merged := map[string]bool{}
+	for name, on := range h.Disclosures {
+		merged[name] = on
+	}
 	if len(h.Features) > 0 {
 		if invited, err := h.invited(r.Context(), user); err == nil && invited {
-			out["features"] = h.Features
+			for name, on := range h.Features {
+				merged[name] = on
+			}
 		}
+	}
+	if len(merged) > 0 {
+		out["features"] = merged
 	}
 	if user.DeletionRequestedAt.Valid {
 		at := user.DeletionRequestedAt.Time.UTC()

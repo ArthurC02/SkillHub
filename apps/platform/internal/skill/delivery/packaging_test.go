@@ -24,6 +24,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
 // realProfilesDir is the shipped configuration, not a copy of it. Reading the
@@ -498,16 +499,51 @@ func TestGeneratedReleasesThePackagingGate(t *testing.T) {
 	}
 }
 
-// The other half: releasing is not the same as being `allowed`, and the two
-// must stay distinguishable. A publish-to-catalogue path has to be able to
-// tell "somebody established this may be copied" from "a model wrote it and
-// nobody has said who owns it" (ADR-047 決策 4).
-func TestGeneratedIsNotAllowed(t *testing.T) {
-	if RedistributionGenerated == RedistributionAllowed {
-		t.Fatal("generated must stay a distinct value from allowed")
-	}
-	if RedistributionGenerated == RedistributionSelfSupplied {
-		t.Fatal("generated must stay a distinct value from self_supplied: they leave different questions open")
+// Every redistribution value, with and without a hold, against the one function
+// that decides whether bytes leave the platform.
+//
+// It replaces a test that compared two different string constants for equality —
+// an assertion the compiler settles, which can only go red if somebody edits one
+// constant to be the other. What was actually untested was three of gateFlags'
+// five branches: `self_supplied` releasing, `blocked` and the fail-closed
+// `default` refusing. Those were covered only by the integration tests, which
+// skip on a machine with no SKILLHUB_TEST_DATABASE_URL — so on such a machine
+// replacing the default branch with `return "", ""` turned nothing red at all.
+func TestTheDownloadGateAnswersEveryRedistributionValue(t *testing.T) {
+	hold := "license-review"
+	for _, tc := range []struct {
+		name           string
+		redistribution string
+		wantReason     string
+	}{
+		{"allowed releases", RedistributionAllowed, ""},
+		{"self_supplied releases: retrieval, not redistribution", RedistributionSelfSupplied, ""},
+		{"generated releases: no upstream author for a licence to protect", RedistributionGenerated, ""},
+		{"blocked refuses", RedistributionBlocked, BlockedNotRedistributable},
+		// The two that share the fail-closed default. `unknown` is where every
+		// skill starts, so this branch is the commonest refusal in the product;
+		// the sixth value is a stand-in for whatever the column grows next, and
+		// it must land here rather than release.
+		{"unknown refuses", "unknown", BlockedLicenseUnknown},
+		{"a value nobody has written yet refuses", "value-added-next-year", BlockedLicenseUnknown},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			reason, message := gateFlags(nil, tc.redistribution)
+			if reason != tc.wantReason {
+				t.Errorf("gateFlags(nil, %q) reason = %q, want %q", tc.redistribution, reason, tc.wantReason)
+			}
+			// A refusal with no sentence is a screen that says 「不能下載」 and
+			// nothing else; a release with one is a message nobody will see.
+			if (message == "") != (tc.wantReason == "") {
+				t.Errorf("gateFlags(nil, %q) = (%q, %q): a reason needs a message and a release needs none",
+					tc.redistribution, reason, message)
+			}
+			// The hold outranks all five, which is the ordering ADR-041 states and
+			// the one a new case placed above the access-restriction check breaks.
+			if reason, _ := gateFlags(&hold, tc.redistribution); reason != BlockedLicenseHold {
+				t.Errorf("a hold over %q gave %q, want %q", tc.redistribution, reason, BlockedLicenseHold)
+			}
+		})
 	}
 }
 
@@ -520,5 +556,35 @@ func TestAccessRestrictionStillOutranksGenerated(t *testing.T) {
 	reason, _ := gateFlags(&hold, RedistributionGenerated)
 	if reason != BlockedLicenseHold {
 		t.Fatalf("a hold must outrank generated, got %q", reason)
+	}
+}
+
+// The dataset names that cannot become a direct child of data/. They used to be
+// dropped from the package with nothing recording it — the only silent removal
+// left in a file whose every other branch exists to say what was left out. Now
+// the whole Test Case is excluded with a reason, so this predicate decides
+// whether a case travels, which is why it is worth its own test.
+func TestADatasetNameThatCannotBeWrittenExcludesTheCase(t *testing.T) {
+	for _, name := range []string{
+		"", "   ", ".", "..",
+		"nested/file.csv", `windows\file.csv`, "C:file.csv",
+	} {
+		if !unsafeDatasetName([]testlab.Dataset{{FileName: name}}) {
+			t.Errorf("%q must be refused as a data/ child", name)
+		}
+	}
+	for _, name := range []string{"rows.csv", "input.json", ".hidden", "a b.txt", "資料.csv"} {
+		if unsafeDatasetName([]testlab.Dataset{{FileName: name}}) {
+			t.Errorf("%q is a perfectly good file name and must travel", name)
+		}
+	}
+	// One bad name in a set of good ones still stops the case: a case.json that
+	// lists fewer datasets than the case has is the quieter lie.
+	mixed := []testlab.Dataset{{FileName: "rows.csv"}, {FileName: "../escape.csv"}}
+	if !unsafeDatasetName(mixed) {
+		t.Error("a single unusable name must exclude the whole case")
+	}
+	if unsafeDatasetName(nil) {
+		t.Error("a case with no datasets has nothing unsafe about it")
 	}
 }

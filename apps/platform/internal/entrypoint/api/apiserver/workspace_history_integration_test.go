@@ -23,7 +23,6 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 )
 
 // O11Y-004's second half is the word "查詢", and the funnel query is a psql
@@ -525,36 +524,6 @@ func seedDownloadAt(t *testing.T, tx pgx.Tx, f fixture, at string) {
 		VALUES ($1, $2, $3, $4)`,
 		mustUUID(t, f.workspaceID), mustUUID(t, artifactID), mustUUID(t, f.userID), at); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestAnalyticsPurgeHonorsTheExactCutoff(t *testing.T) {
-	pool := requireDB(t)
-	ctx := context.Background()
-	sessionID := "purge-cutoff-fixture"
-	t.Cleanup(func() {
-		_, _ = pool.Exec(context.Background(), "DELETE FROM analytics_events WHERE session_id = $1", sessionID)
-	})
-	// Keep the cutoff far behind every normal test row. Purge is intentionally a
-	// deployment-wide operation, so a future cutoff would erase sibling fixtures.
-	now := time.Date(2000, 1, 11, 0, 0, 0, 0, time.UTC)
-	cutoff := now.Add(-10 * 24 * time.Hour)
-	for _, at := range []time.Time{cutoff.Add(-time.Second), cutoff, cutoff.Add(time.Second)} {
-		if _, err := pool.Exec(ctx, `INSERT INTO analytics_events
-            (event_name, session_id, occurred_at) VALUES ('session_started', $1, $2)`, sessionID, at); err != nil {
-			t.Fatal(err)
-		}
-	}
-	svc := &analytics.Service{Pool: pool, Retention: 10 * 24 * time.Hour, Now: func() time.Time { return now }}
-	removed, err := svc.PurgeExpired(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if removed != 1 {
-		t.Errorf("purge removed %d rows, want only the row before the cutoff", removed)
-	}
-	if n := countRows(t, pool, "SELECT count(*) FROM analytics_events WHERE session_id = $1", sessionID); n != 2 {
-		t.Errorf("%d cutoff fixture rows remain, want the cutoff and newer rows", n)
 	}
 }
 

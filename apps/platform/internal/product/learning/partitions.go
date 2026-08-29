@@ -19,13 +19,20 @@ const PartitionedTable = "analytics_events"
 // drops the months past `retention`. db/migrations/0029 gave this table the
 // shape trace_events already had and named the same missing job.
 //
-// It does not replace PurgeExpired, and the two are not the same sweep. Rows
-// that landed in analytics_events_default — every row written outside a declared
-// month, which before this job existed meant everything from 2026-09 onwards —
-// are unreachable by a partition drop and are removed by PurgeExpired's bulk
-// statement. Rows in a real monthly partition are removed by whichever runs
-// first. Running both is correct and neither is redundant; running only this one
-// would leave the default growing forever.
+// It is now the only sweep this table has. The bulk DELETE that used to run
+// beside it (analytics.PurgeExpired / `maintenance purge-analytics`) is gone:
+// 0029 chose partitioning so that "retention becomes DROP PARTITION rather than
+// a bulk DELETE", and the DELETE had no supporting index, so on the one place it
+// was actually needed — the default partition — it was a full scan of exactly
+// the rows partition pruning cannot help with.
+//
+// What that leaves uncovered is worth stating rather than hiding: rows that
+// landed in analytics_events_default are still unreachable by a partition drop,
+// and nothing removes them now. This job is what stops them accumulating in the
+// first place — miss it for two consecutive months and writes start landing in
+// the default — and 0019's drain is the operator procedure for a deployment that
+// already has some (see foundation/persistence/partition, createMonth's 23514
+// branch).
 //
 // The window is the same ANALYTICS_RETENTION the writer already gates on: unset
 // means this deployment collects nothing at all (ADR-029 決策 5 proposes 180 days

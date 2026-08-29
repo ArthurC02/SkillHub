@@ -77,9 +77,10 @@ type EvaluationInput struct {
 // EvaluationArtifactAbsence counts the two ways a recorded output stops being
 // readable. Deleted is the user's own doing (WS-002 / SEC-006) and is reachable
 // today; Expired is the platform's, and counts a row whose retention has passed
-// even though nothing sweeps run outputs yet -- the column is the platform
-// saying it may no longer hold the bytes, and an evaluation that declines to
-// rely on them is the safe direction to be wrong in.
+// -- the column is the platform saying it may no longer hold the bytes, and an
+// evaluation that declines to rely on them is the safe direction to be wrong in.
+// The sweep that acts on it is reconcile.go's ExpiredArtifactCandidates, driven
+// by `maintenance purge-run-artifacts`.
 type EvaluationArtifactAbsence struct {
 	Deleted int
 	Expired int

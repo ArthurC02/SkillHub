@@ -301,6 +301,20 @@ func (f *URLFetcher) download(ctx context.Context, rawURL string) ([]byte, error
 	if err != nil {
 		return nil, fmt.Errorf("%w: invalid URL", ErrFetch)
 	}
+	// The allow list decides which names may be ASKED FOR (02:SEC-003), and until
+	// 2026-08-29 it only ever saw the URL the user typed. do() re-checks redirect
+	// hops but not the URL it is handed, and candidates() rewrites a github.com
+	// repo URL into a codeload.github.com archive URL from a constant string — so a
+	// deployment that narrowed the list to github.com alone still sent requests to
+	// codeload. Not a hole today (the dialler's address check is unchanged and the
+	// target is a constant), but it meant the list was no longer the only authority
+	// on outbound hosts, which is the entire point of having one.
+	//
+	// Here rather than in candidates(): every URL this fetcher requests goes through
+	// this function, so one check covers the rewrite and whatever the next one is.
+	if err := f.checkURL(req.URL); err != nil {
+		return nil, err
+	}
 	resp, err := f.do(req)
 	if err != nil {
 		return nil, err

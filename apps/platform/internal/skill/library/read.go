@@ -96,9 +96,16 @@ func SkillByID(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID)
 
 // VersionByContent returns an existing immutable version in the same
 // transaction used to create a replacement when no duplicate exists.
-func VersionByContent(ctx context.Context, tx pgx.Tx, skillID pgtype.UUID, contentHash string) (Version, bool, error) {
+//
+// workspaceID is taken even though skill_id already narrows the row to one
+// skill: the query file this reads from states that every read there is
+// workspace scoped, and a read that only happens to be safe because of who
+// calls it today is the cross-tenant read waiting for its second caller.
+func VersionByContent(
+	ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID, contentHash string,
+) (Version, bool, error) {
 	row, err := gen.New(tx).GetVersionBySkillAndHash(ctx, gen.GetVersionBySkillAndHashParams{
-		SkillID: skillID, ContentHash: contentHash,
+		WorkspaceID: workspaceID, SkillID: skillID, ContentHash: contentHash,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Version{}, false, nil

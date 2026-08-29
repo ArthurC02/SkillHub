@@ -97,16 +97,30 @@ func (h *Handler) ClearRestriction(w http.ResponseWriter, r *http.Request) {
 	h.changeRestriction(w, r, nil, body.Note)
 }
 
-// operatorUser is the operator handlers' own check that a session actually
-// reached them — the second line of defence the authz matrix says every private
-// handler has. Until 2026-08-25 these handlers took `user, _` and carried on
-// with a zero UUID, so a wrapper weakened to RequireSession, or a new operator
-// route mounted without one, would not have refused the write: it would have
-// performed it and recorded 02:SEC-011's 「誰做的」 as a user that does not exist.
+// sessionActor is the operator handlers' check that a session actually reached
+// them, and that is the whole of it. Until 2026-08-25 these handlers took
+// `user, _` and carried on with a zero UUID, so a wrapper weakened to
+// RequireSession, or a new operator route mounted without one, would have
+// performed the write and recorded 02:SEC-011's 「誰做的」 as a user that does
+// not exist. This stops that and nothing else.
+//
+// **It does not check the operator roster.** It used to be called operatorUser
+// and to describe itself as 「the second line of defence the authz matrix says
+// every private handler has」, and that sentence was false: the roster
+// (OPERATOR_USER_IDS) lives on identity's HTTP Handler as `Operators`, and this
+// package is handed identity's *Service*, which cannot see it. The role check is
+// entirely `auth.RequireOperator` in router.go — one wrapper per route, hand
+// applied, on the only cross-workspace writes in the table. A route mounted
+// without it would reach these handlers and this function would let it through.
+// Renamed rather than left describing a defence that is not here, because a
+// comment claiming a check nobody wrote is worse than the missing check: it is
+// the reason nobody looks for it (稽核 01 D1). Making it real needs the roster
+// injected into this Handler from the composition root — a change in app.go,
+// which is not this file's to make.
 //
 // 404, the same answer RequireOperator gives everybody else, so the second check
 // does not disclose the endpoint the first one hides (SEC-011 不揭露端點存在).
-func operatorUser(w http.ResponseWriter, r *http.Request) (identity.User, bool) {
+func sessionActor(w http.ResponseWriter, r *http.Request) (identity.User, bool) {
 	user, ok := identity.SessionUser(r.Context())
 	if !ok {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
@@ -124,7 +138,7 @@ func (h *Handler) changeRestriction(w http.ResponseWriter, r *http.Request, reas
 		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
 		return
 	}
-	user, ok := operatorUser(w, r)
+	user, ok := sessionActor(w, r)
 	if !ok {
 		return
 	}
