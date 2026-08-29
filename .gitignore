@@ -30,3 +30,7 @@ dist/
 
 # Embedding caches (float arrays keyed by text hash; regenerable, no secrets)
 tools/**/embeddings_cache.json
+
+# Clean test mode's offline dependency bundle (tools/cleanmode/bundle.mjs).
+# It is a populated npm cache, ~9 MB, rebuilt from the lockfile on demand.
+.cleanmode-bundle/

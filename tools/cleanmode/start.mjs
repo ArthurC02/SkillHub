@@ -69,7 +69,7 @@ async function preflight() {
   if (!existsSync(carrierDeps)) {
     fail(
       `the database carrier's dependencies are not installed (${carrierDeps} does not exist)`,
-      "run `npm install` in tools/pglite; it needs the npm registry the first time, which is what 02:PORT-005's offline requirement is still about",
+      "with a registry: `npm ci --prefix tools/pglite`. Without one: build the bundle on a machine that has a registry (`node tools/cleanmode/bundle.mjs <dir>`), copy that directory here, and run `npm ci --offline --cache <dir> --prefix tools/pglite`",
     );
   }
   const dist = join(repoRoot, "apps", "web", "dist", "index.html");
