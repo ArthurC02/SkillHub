@@ -102,6 +102,26 @@ jobs:
             | grep -Eq '^[+-]ARG IMAGE_VERSION=' \
             || { echo "::error file=infra/images/runtime-agent-sdk/Dockerfile::Runtime image content changed; bump ARG IMAGE_VERSION."; exit 1; }
 
+      # ADR-023 §4's other half. The step above forces the version to MOVE when
+      # the image content changes; nothing forced anyone to write down what
+      # moved, and the tree proved it -- IMAGE_VERSION reached 2026.08-4 while
+      # UPGRADES.md stopped at 2026.08-3. This image's failure mode is silent:
+      # an Agent SDK that stops emitting the tool events the trace depends on
+      # does not crash, it produces a run whose trace is thinner. A grep is
+      # enough here; devctl's image-version check does the same comparison on
+      # every push so it is not only enforced on an image build.
+      - name: The new IMAGE_VERSION must have an UPGRADES.md section (ADR-023 §4)
+        run: |
+          set -euo pipefail
+          VERSION=$(awk -F= '/^ARG IMAGE_VERSION=/{gsub(/"/,"",$2); print $2}' infra/images/runtime-agent-sdk/Dockerfile)
+          # An empty VERSION would make the grep below match any heading, so it is
+          # a failure and not a fall-through.
+          [ -n "$VERSION" ] || { echo "::error file=infra/images/runtime-agent-sdk/Dockerfile::no ARG IMAGE_VERSION= found"; exit 1; }
+          grep -q "^#.*$VERSION" infra/images/runtime-agent-sdk/UPGRADES.md || {
+            echo "::error file=infra/images/runtime-agent-sdk/UPGRADES.md::IMAGE_VERSION is $VERSION and no section heading mentions it. ADR-023 §4 wants the four measurements re-run and written down, or a sentence saying which were carried over and why."
+            exit 1
+          }
+
       # I-02. Cheapest gate first: a FROM that resolves through a tag means the
       # bytes this job scanned are not the bytes a later build would get, so
       # everything below it would be describing an image that no longer exists.

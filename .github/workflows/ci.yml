@@ -48,6 +48,8 @@ jobs:
       platform: ${{ steps.filter.outputs.platform }}
       llm: ${{ steps.filter.outputs.llm }}
       sandbox: ${{ steps.filter.outputs.sandbox }}
+      qa002: ${{ steps.filter.outputs.qa002 }}
+      pglite: ${{ steps.filter.outputs.pglite }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
@@ -84,12 +86,41 @@ jobs:
               - 'apps/sandbox/**'
               - 'contracts/**'
               - 'infra/images/**'
+              # The Go reader of infra/egress/rendered/egress-allow.json lives in
+              # apps/sandbox and is the only code that reads it, so a change to
+              # the renderer's output format used to run the Python half
+              # (egress-allowlist.yml) and never the Go half -- the two filters
+              # were disjoint over exactly the file they share. Added 2026-08-29.
+              - 'infra/egress/**'
+              - '.github/workflows/ci.yml'
+            qa002:
+              - 'apps/platform/internal/skill/admission/**'
+              - 'apps/platform/internal/shared/skillpkg/**'
+              - 'tools/qa/**'
+              - '.github/workflows/ci.yml'
+            pglite:
+              - 'tools/pglite/**'
+              - 'tools/cleanmode/**'
               - '.github/workflows/ci.yml'
 
+  # The Windows leg runs the 224 vitest tests and nothing else.
+  #
+  # web-browser below already has a windows-latest entry, but it only runs
+  # Playwright chromium -- so until now every unit test in this repository, in
+  # every language, ran only on Linux, while 01 §10 names a locked-down Windows
+  # host as M6's target machine. jsdom needs no browser download, so this costs
+  # about a minute.
+  #
+  # Lint, format and build stay on Linux only: they are platform-independent by
+  # construction and running them twice buys a second opinion about prettier.
   web:
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: apps/web
@@ -102,18 +133,25 @@ jobs:
           cache-dependency-path: |
             apps/web/package-lock.json
             packages/api-client-ts/package-lock.json
+      # The generated client is a workspace dependency of the tests, so both
+      # legs install and build it.
       - run: npm ci
         working-directory: packages/api-client-ts
-      - run: npm run typecheck
+      - if: runner.os == 'Linux'
+        run: npm run typecheck
         working-directory: packages/api-client-ts
       - run: npm run build
         working-directory: packages/api-client-ts
       - run: npm ci
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm run typecheck
+      - if: runner.os == 'Linux'
+        run: npm run format:check
+      - if: runner.os == 'Linux'
+        run: npm run lint
+      - if: runner.os == 'Linux'
+        run: npm run typecheck
       - run: npm test
-      - run: npm run build
+      - if: runner.os == 'Linux'
+        run: npm run build
 
   # ADR-036 / 03:QA-008. A separate job, not extra steps on `web`: this one
   # downloads three browser engines and the tier above answers in under a
@@ -253,8 +291,35 @@ jobs:
       # square with no way to read it. The summary is returned by the check-runs
       # API to anyone who can see the repository, which is the difference
       # between "it failed" and "here is what failed".
+      # -count=1: the two steps above and below this one already carry it, and
+      # these results depend on the state of a PostgreSQL service container --
+      # an input Go's test cache cannot see, so a cached "ok" would be about a
+      # different database. Three `go test` invocations in one file with two of
+      # them pinned said the author knew; this is the largest one catching up.
       - name: Platform tests
-        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform tests' go test ./...
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform tests' go test -count=1 ./...
+      # The race detector, over the trees that do not need the database.
+      #
+      # Eight test files here start goroutines, and what they assert is that the
+      # RESULT of two goroutines is right -- one account row, one artifact, one
+      # winner for the last quota slot. Every one of those stays green with a
+      # live data race under it, because the race is in the map or the counter
+      # and not in the row count. httpx.RateLimiter's per-IP bucket map is
+      # touched by every request and has no concurrent test at all.
+      #
+      # A LIST, not `./...`, and the list is the trees whose tests need no
+      # database (measured: they skip nothing when SKILLHUB_TEST_DATABASE_URL is
+      # unset, except the three partition tests, which are cheap). The reason is
+      # cost, not correctness: -race over the 267 apiserver integration tests
+      # would multiply the slowest job in this file. Adding a package outside
+      # these trees means adding it here -- or moving it under one of them.
+      #
+      # cgo is required by -race and is present on ubuntu-latest; it is NOT
+      # available on the machine this was written on, which is why this leg
+      # exists in CI rather than in Taskfile.yml.
+      - name: Platform tests (race detector, database-free packages)
+        run: |
+          bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform race tests'             go test -race -count=1               ./cmd/...               ./internal/creator/...               ./internal/entrypoint/worker/...               ./internal/foundation/...               ./internal/product/...               ./internal/trial/evidence/...               ./internal/trial/execution/...
       - run: go build ./...
 
   # apps/sandbox is its own Go module (ADR-019, iron rule 2), so it needs
@@ -283,12 +348,30 @@ jobs:
     defaults:
       run:
         working-directory: apps/sandbox
+    env:
+      # 02:PORT-004's other half. dockerdrv's harness calls t.Skipf when it
+      # cannot reach a Docker client, ping the daemon or pull the image, and
+      # those eight tests are the whole of SEC-009 Suite 1. A broken socket or a
+      # rate-limited Docker Hub therefore prints `ok` over zero coverage --
+      # exactly the shape that removed 287 platform tests behind a green screen
+      # (6e8a253), still standing on this side because the lesson was only
+      # applied to the database. With this set the harness fails instead.
+      SKILLHUB_REQUIRE_DOCKER: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: apps/sandbox/go.mod
           cache-dependency-path: apps/sandbox/go.sum
+      # BEFORE `go test ./...`, not after. localdrv's seven tests skip when node
+      # is not on PATH, and until now they ran against whatever Node the runner
+      # image happened to ship rather than the one this job installs -- so a
+      # runner image that dropped its preinstalled Node would have deleted seven
+      # tests silently. Node is also the clean-mode driver's only dependency, so
+      # this is the platform 02:PORT-010 is about.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
       # Same build-it-here reason as the platform job above; apps/sandbox
       # carries the same 1.27.0 floor, so it holds the same landmine. It has not
       # gone off only because this job is path-filtered and no sandbox file has
@@ -304,14 +387,17 @@ jobs:
       # API to anyone who can see the repository, which is the difference
       # between "it failed" and "here is what failed".
       - name: Sandbox tests
-        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox tests' go test ./...
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox tests' go test -count=1 ./...
+      # internal/sandbox's Manager is a mutex, a goroutine, a wall-clock timer
+      # and a trace collector in one object, its 45 tests call t.Parallel() zero
+      # times, and the fakeDriver they run against is itself a mutex and a
+      # channel. Nothing here needs Docker, so the race detector is cheap.
+      - name: Sandbox tests (race detector)
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox race tests' go test -race -count=1 ./internal/sandbox/... ./cmd/...
       # The workload script the drivers spawn, tested here rather than in `web`:
       # it belongs to the sandbox, and this job is already the one filtered on
       # infra/images/**. Its zip extractor replaced unzip's refusal of absolute
       # and ../ entries with its own (04 丙-82), so those refusals need a machine.
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 22
       - name: Runtime workload script tests
         working-directory: ${{ github.workspace }}
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Runtime workload script tests' node --test infra/images/runtime-agent-sdk/run.test.mjs
@@ -359,6 +445,42 @@ jobs:
         env:
           SKILLHUB_SANDBOX_TEST_RUNTIME: runsc
 
+  # M6's target machine, compiled for the first time.
+  #
+  # apps/sandbox has tree_windows.go, and 01 §10 says the trigger for M6 is a
+  # pitch on a locked-down Windows host that cannot install software. That file
+  # has never been through a compiler in CI: every Go job here is ubuntu, so the
+  # GOOS=windows half of the build tags was checked by nobody. 01 §10 also
+  # records what that costs -- the local driver's first mutation came back GREEN
+  # because Node on Windows reaps non-detached descendants itself, so the test
+  # was measuring Node's guarantee and not ours, and a person had to find that by
+  # hand on a Windows box.
+  #
+  # Deliberately narrow: build, vet, and localdrv only. The dockerdrv tests need
+  # a Linux Docker daemon and gVisor, so they stay where they are; this leg is
+  # about the platform, not about duplicating the suite.
+  sandbox-windows:
+    needs: changes
+    if: needs.changes.outputs.sandbox == 'true'
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/sandbox
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: apps/sandbox/go.mod
+          cache-dependency-path: apps/sandbox/go.sum
+      # localdrv spawns node, so it needs one on PATH here for the same reason
+      # the Linux job installs one before its tests rather than after.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test ./internal/localdrv/... -count=1
+
   llm:
     needs: changes
     if: needs.changes.outputs.llm == 'true'
@@ -393,7 +515,12 @@ jobs:
       # supposed to be this repo's immune system, so it runs before the checks
       # whose output the rest of this job trusts.
       - run: go -C tools/devctl vet ./...
-      - run: go -C tools/devctl test ./...
+      # -race here first, and -count=1 with it. This package has 73 t.Parallel()
+      # calls -- several checkers walking one tree at once -- which makes it both
+      # the cheapest place in the repo to run the detector (pure CPU, no service,
+      # no Docker) and the one where a shared map would actually be found. It is
+      # also the code this job's own comment calls the repo's immune system.
+      - run: go -C tools/devctl test -race -count=1 ./...
       - name: Agent automation contract
         run: go -C tools/devctl run . automation-check
       # devctl reads the pinned sqlc version from tools/toolchain.yaml, writes
@@ -433,12 +560,108 @@ jobs:
       - name: Packaging contracts (contracts/packaging)
         run: python tools/contracts/validate_packaging.py
 
+      # ADR-043's four behaviours, which had no machine.
+      #
+      # tools/eval-regression/README.md filed this under the same 「不進 CI」
+      # rule as judge_regression.py, and for that one the rule is right: it needs
+      # a database, an object store and real model spend. This file needs none of
+      # them -- it is twelve pure-function tests that run in under a second, and
+      # its own header records that each was reverted once and confirmed red
+      # (AGENTS.md rule 9). A cheap guard was tied to the cost of the expensive
+      # thing it guards. Added 2026-08-29; the README now says which half is in.
+      - name: Judge evidence-citation regression (ADR-043)
+        run: python tools/eval-regression/test_judge_regression.py
+
+  # 03:QA-002's negative half, which has never executed anywhere.
+  #
+  # 45 pinned packages prove skillpkg does not FALSELY block. Proving it BLOCKS
+  # needs samples that must be blocked, and the 21 breaking variants exist --
+  # tools/qa/skillpkg-corpus/ -- behind a t.Skip on QA002_CORPUS that no job has
+  # ever set. So the twelve blocking codes, which are the whole of the import
+  # trust boundary's refusal logic, are today guarded by zero automated runs
+  # while 03:QA-002 sits ticked.
+  #
+  # The stated reason for staying out was network budget for three pinned
+  # archives. That reason does not survive the same file: contracts-drift runs
+  # `npx --yes` and `pip install`, and the sandbox job downloads a gVisor release
+  # and builds a Debian image. Its own job so the cost lands on the two trees
+  # that can invalidate it, not on every push.
+  qa002:
+    needs: changes
+    if: needs.changes.outputs.qa002 == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: apps/platform/go.mod
+          cache-dependency-path: apps/platform/go.sum
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+        with:
+          python-version: '3.12'
+      # Offline first: --selftest checks the mutators themselves (including that
+      # no complete credential string exists in the source, which is what lets
+      # this corpus be committed at all). If the mutators are broken, the corpus
+      # below would be 21 files that assert nothing, and the run would be green.
+      - name: Corpus generator self-test (offline)
+        run: python tools/qa/skillpkg-corpus/generate.py --selftest
+      - name: Build the QA-002 breaking corpus
+        run: python tools/qa/skillpkg-corpus/generate.py --out "$RUNNER_TEMP/qa002"
+      # -count=1 because the corpus is outside the tree Go hashes for its test
+      # cache: a cached pass would be about a corpus that no longer exists.
+      - name: QA-002 corpus
+        working-directory: apps/platform
+        env:
+          QA002_CORPUS: ${{ runner.temp }}/qa002
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'QA-002 corpus' go test -count=1 ./internal/skill/admission -run QA002 -v
+
+  # 02:PORT-001's acceptance checks, and the two mutations that give them teeth.
+  #
+  # tools/pglite/verify.mjs is a well-built harness that no job ran: none of the
+  # four path filters covered tools/pglite/** or tools/cleanmode/**, and `task
+  # test` does not aggregate it. Its own header offers two mutations for a human
+  # to run by hand, which is the same as not having them.
+  #
+  # The mutations are the point of this job rather than a bonus. Under the
+  # shipping maxConnections=1 the advisory-lock check ALWAYS takes the
+  # "B never got a session" branch and reports PASS, so its teeth live entirely
+  # in --mutate=multiplexer. Asserting that the mutated runs exit non-zero is
+  # what turns "this check passed" into "this check can fail".
+  tools-pglite:
+    needs: changes
+    if: needs.changes.outputs.pglite == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/pglite/package-lock.json
+      - run: npm ci --prefix tools/pglite
+      - name: PORT-001 acceptance checks
+        run: node tools/pglite/verify.mjs
+      # AGENTS.md rule 9, as a step. Each mutation must make the harness exit
+      # non-zero; a mutation that still passes means the check it belongs to is
+      # not looking at anything. `if ... then exit 1` rather than `!` so the
+      # message says which mutation stayed green.
+      - name: The acceptance checks must be able to fail
+        run: |
+          set -uo pipefail
+          for mutation in multiplexer missing-row; do
+            if node tools/pglite/verify.mjs "--mutate=$mutation"; then
+              echo "::error::verify.mjs --mutate=$mutation exited 0; the check that mutation breaks is not asserting anything"
+              exit 1
+            fi
+            echo "ok: --mutate=$mutation failed as it must"
+          done
+
   # Registry is still open (ADR-019 open question 1) and infra/images/ has no
   # Dockerfiles yet, so this job only records the intended shape.
   images:
     # Filtered-out upstream jobs are skipped, not failed, so gate on !failure().
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !failure() && !cancelled()
-    needs: [web, platform, llm, sandbox, contracts-drift]
+    needs: [web, platform, llm, sandbox, sandbox-windows, contracts-drift, qa002, tools-pglite]
     runs-on: ubuntu-latest
     steps:
       - name: Build and push service images

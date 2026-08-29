@@ -30,6 +30,19 @@ dist/
 
 # Embedding caches (float arrays keyed by text hash; regenerable, no secrets)
 tools/**/embeddings_cache.json
+# ... except the golden set's, which is FROZEN GATE EVIDENCE and not regenerable.
+#
+# results_v2_enriched.txt's `recall@5 = 48/48` is what gate-test/README.md §3.1
+# marks as the quantitative prerequisite's green tick. Re-deriving it needs this
+# cache or a paid re-embed, and a paid re-embed does not reproduce it either:
+# `text-embedding-3-small` is a name whose snapshot the provider replaces, so the
+# vectors would be different vectors. Ignoring the file made the gate's own
+# evidence unavailable to everyone who did not run it -- the README promised
+# 「留著是為了重跑不必再付費」 while .gitignore threw it away.
+#
+# 4.5 MB, 153 entries, every key a sha256 and every value 1536 floats. No corpus
+# text, no keys, nothing to mask.
+!tools/goldenset/embeddings_cache.json
 
 # Clean test mode's offline dependency bundle (tools/cleanmode/bundle.mjs).
 # It is a populated npm cache, ~9 MB, rebuilt from the lockfile on demand.

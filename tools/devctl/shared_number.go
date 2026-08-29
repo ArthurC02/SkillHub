@@ -101,6 +101,10 @@ type sharedNumberSite struct {
 // here, in the same commit as the markers, which is the same discipline the
 // depguard deny lists and db/query-owners.yaml already ask for.
 var sharedNumberRoster = []string{
+	// The pgvector column width. Its third copy is db/migrations/0007_search.sql,
+	// which cannot carry a marker because an applied migration is history; the
+	// embedding-dims check reads that one and compares it with these.
+	"embeddingDimensions",
 	"excerptLimit",
 	"generateFailureLimit",
 	"generateMaxAttempts",

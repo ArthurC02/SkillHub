@@ -82,17 +82,6 @@ func automationCheck(root string, out io.Writer) error {
 		problems = append(problems, checker.check(root)...)
 	}
 
-	// 02:PORT-004: a database-gated package that ignores SKILLHUB_REQUIRE_DB
-	// reports success when the database never came up.
-	if err := requireDBGuardCheck(root); err != nil {
-		problems = append(problems, err.Error())
-	}
-
-	// The dispatch gate's allow list and the provider contract's isolation enum
-	// are the same set in two languages, and this provider's capability is
-	// hand-written rather than generated, so nothing else compares them.
-	problems = append(problems, isolationLevelProblems(root)...)
-
 	if len(problems) > 0 {
 		for _, problem := range problems {
 			fmt.Fprintln(out, "FAIL", problem)
@@ -132,6 +121,31 @@ func documentCheckers() []namedChecker {
 		{"retention-floor", retentionFloorProblems},
 		{"sdk-version", sdkVersionProblems},
 		{"single-data-layer", secondDataLayerProblems},
+		// The last two arrivals of the hole this roster exists to close. Both
+		// were wired by a bare `append` line below the loop, so
+		// TestAutomationCheckRunsEveryChecker walked past them: the audit of
+		// 2026-08-29 unwired BOTH and the whole package stayed green. They were
+		// the two highest-value checks on the list — 02:PORT-004's silence
+		// guard and the cross-language isolation set — and they sat outside the
+		// only assertion that watches for exactly this.
+		//
+		// requireDBGuardCheck returns an error rather than a list because it has
+		// one thing to say; two lines of adapter is cheaper than a signature
+		// change that would touch its own tests.
+		{"require-db-guard", func(root string) []string {
+			if err := requireDBGuardCheck(root); err != nil {
+				return []string{err.Error()}
+			}
+			return nil
+		}},
+		{"isolation-level", isolationLevelProblems},
+		{"route-table", routeTableProblems},
+		{"requirement-refs", requirementRefProblems},
+		{"purge-schedule", purgeScheduleProblems},
+		{"timeout-budget", timeoutBudgetProblems},
+		{"image-version", imageVersionProblems},
+		{"embedding-dims", embeddingDimsProblems},
+		{"goldenset-mirror", goldensetMirrorProblems},
 	}
 }
 

@@ -21,6 +21,16 @@ func writeTally(t *testing.T, owner string, satellites map[string]string) string
 			t.Fatal(err)
 		}
 	}
+	// Both subjects live in the same owner document, so a fixture that carries
+	// only one of them makes the other report a lost subject. Callers who are
+	// testing RELEASE pass their own §18 block in `owner`; everyone else gets
+	// this one, which is simply "not the thing under test".
+	if !strings.Contains(owner, "RELEASE-") {
+		owner += "\n## 18. 封測准入\n\n- [x] RELEASE-007 描述\n- [ ] RELEASE-008 描述\n"
+	}
+	if !strings.Contains(owner, "GEN-") {
+		owner += "\n## 19. M5\n\n本節共 1 項已勾、1 項 ◐。\n\n- [x] GEN-001 描述\n- [ ] GEN-009 描述\n"
+	}
 	write(tallyOwner, owner)
 	for relative, contents := range satellites {
 		write(relative, contents)
@@ -88,14 +98,73 @@ func TestMilestoneTallyRejectsTheThreeWaysTheNumberHasHadFiveAuthors(t *testing.
 	}
 }
 
+// M4's RELEASE-001～010: ten literal checkboxes in `03` §18, and `01` §10 has
+// been contradicting them since 2026-08-28 (「十項全部不勾」 against two ticked).
+// The M5 rule generalised, with the two things that make M4 different: the count
+// is written in Chinese numerals, and the same satellite line carries a SECOND
+// count — 「49 項中 16 勾」 — about a set defined in prose that no machine can
+// confirm. Flagging that one is how a check loses its readers, so it must stay
+// quiet about it while speaking about the other.
+func TestMilestoneTallyCoversTheReleaseCheckboxesToo(t *testing.T) {
+	t.Parallel()
+	const owner = "## 18. 封測准入\n\n- [x] RELEASE-007 描述\n- [x] RELEASE-008 描述\n" +
+		"- [ ] RELEASE-009 描述\n- [ ] RELEASE-010 描述\n"
+	for _, tc := range []struct {
+		name, satellite, want string
+	}{{
+		name:      "a satellite states the tally in Chinese numerals",
+		satellite: "| M4 | **封測未開始**。`RELEASE-001`～`010` **十項全部不勾** |\n",
+		want:      `states M4 的封測准入（RELEASE-001～010）'s tally ("十項全部不勾") while docs/plans/03-work-items.md counts 2 ticked and 2 open`,
+	}, {
+		name:      "a satellite states it in digits",
+		satellite: "| M4 | `RELEASE-001`～`010` 目前 3 項已勾 |\n",
+		want:      "states M4 的封測准入",
+	}, {
+		name:      "a satellite that carries the narrative and points at the owner",
+		satellite: "| M4 | **封測未開始**。`RELEASE-001`～`010` 的勾選數以 `03` §18 為準；共同的阻擋是甲類四項 |\n",
+		want:      "",
+	}, {
+		name: "the 49-item M4 count, which no machine can confirm, is left alone",
+		// Far enough from any RELEASE mention that the neighbourhood test does
+		// not claim it — the same distance the real 01 §10 row has.
+		satellite: "| M4 打包與封閉測試 | **已收斂**（m4 對帳，49 項中 16 勾／33 誠實不勾）。" +
+			strings.Repeat("補述。", 120) + " |\n",
+		want: "",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root := writeTally(t, owner, map[string]string{
+				"docs/plans/01-goals-and-plan.md": tc.satellite,
+			})
+			problems := milestoneTallyProblems(root)
+			if tc.want == "" {
+				if len(problems) != 0 {
+					t.Fatalf("expected no problems, got %v", problems)
+				}
+				return
+			}
+			if len(problems) != 1 || !strings.Contains(problems[0], tc.want) {
+				t.Fatalf("want exactly one problem containing %q, got %v", tc.want, problems)
+			}
+		})
+	}
+}
+
 // The tally is derived from the checkboxes, so a document with no checkboxes has
 // nothing to derive from. Both of these are green under a naive implementation.
 func TestMilestoneTallySaysSoWhenItHasLostItsSubject(t *testing.T) {
 	t.Parallel()
 	t.Run("no GEN items", func(t *testing.T) {
-		root := writeTally(t, "## 19. M5\n\n本節共 3 項已勾、2 項 ◐。\n", nil)
+		root := writeTally(t, "## 19. M5\n\n本節共 3 項已勾、2 項 ◐。GEN- 的清單搬走了。\n", nil)
 		if problems := milestoneTallyProblems(root); len(problems) == 0 {
 			t.Fatal("an owner document with no GEN checkboxes was accepted")
+		}
+	})
+	t.Run("no RELEASE items", func(t *testing.T) {
+		root := writeTally(t, "## 18. 封測准入\n\n十項全部不勾。RELEASE-001～010 的清單搬走了。\n", nil)
+		problems := milestoneTallyProblems(root)
+		if len(problems) == 0 || !strings.Contains(strings.Join(problems, "\n"), "RELEASE-") {
+			t.Fatalf("an owner document with no RELEASE checkboxes was accepted: %v", problems)
 		}
 	})
 	t.Run("no owner document", func(t *testing.T) {

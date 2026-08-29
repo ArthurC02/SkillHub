@@ -11,30 +11,45 @@ import (
 	"time"
 )
 
-// 02:NFR-002a rule 2, which had no machine.
+// 02:NFR-002a's three floors, which had no machine but one.
 //
-// The clause, verbatim: 「**Run Artifact 的保存期限 ≥ 可重評窗。** 可重評窗指
-// Trace 的保存期限（評估的證據來源）。…兩者不相等時，見 `EVAL-001` 的過期分
-// 支。」 and, closing the section, 「三條都是下界，不是建議值。」 So: a floor,
-// not a suggestion, with a named mitigation for the case where the floor is not
-// met — the mitigation does not raise the floor.
+// The clause closes with 「三條都是下界，不是建議值。」 — floors, not
+// suggestions. Until 2026-08-29 only rule 2 was checked, and the audit noted
+// what that costs: 「只有第 2 條有機器；另外兩條改值不會撞到任何東西」. All
+// three are now here, and they are not equally strong, which is stated per rule
+// rather than averaged into one confident-looking check.
 //
-// The two numbers live in different worlds and nothing has ever compared them:
+//	rule 1  Download artifact retention >= the current observation window.
+//	        BOTH sides are read: DOWNLOAD_ARTIFACT_RETENTION from .env.example,
+//	        and the window from the closed-beta section heading in
+//	        gate-test/consent-and-data-policy.md. This one was violated once
+//	        already — 7 days was set, then corrected to 30 the same day, because
+//	        a 7-day package expires in the middle of a 14-day study and the
+//	        funnel's last segment ("came back and downloaded") then measures the
+//	        expiry rather than the behaviour.
+//	rule 2  Run artifact retention >= the re-evaluation window (TRACE_RETENTION).
+//	        Both sides read: a SQL literal that ships, and the deployment
+//	        variable's only stated value.
 //
-//	artifact side  a SQL literal that ships — `now() + interval '30 days'` on the
-//	               INSERT that records a run's output manifest
-//	trace side     TRACE_RETENTION, a deployment variable with no code default,
-//	               whose only stated value is the one in .env.example
+//	        THIS ONE USED TO BE A DECLARED SHORTFALL. Until R-11 was signed on
+//	        2026-08-29, runs.sql stamped 30 days against a 90-day
+//	        TRACE_RETENTION, so days 31-90 of a re-evaluation read an empty
+//	        artifact manifest and the judge decided on it — and this file pinned
+//	        that exact pair of numbers so the gap could not grow, move or be
+//	        forgotten. R-11 raised the literal to 90 days, 03:EVAL-014 closed
+//	        with it, and the pin is gone: what is left is a plain comparison,
+//	        which is what a floor should have been all along. A declared
+//	        shortfall is a debt, not a design, and this one is paid.
+//	rule 3  Analytics retention >= one complete funnel. PINNED, not derived —
+//	        see analyticsFunnelFloor.
 //
-// WHAT THIS PROVES AND WHAT IT DOES NOT. It proves that the two numbers THIS
-// REPOSITORY STATES are consistent with the rule this repository wrote. It does
-// not prove that any deployment satisfies 02:NFR-002a rule 2, and it cannot:
-// .env.example is a template, not a deployment, so an operator who sets
-// TRACE_RETENTION=4000h violates the floor and nothing here will ever see it.
-// The only thing that could is an assertion where the two values meet, and they
-// never meet — one is compiled into a Postgres statement, the other is read by
-// cmd/maintenance out of its own environment. What is checkable from the
-// repository is the pair of stated values, and that is exactly what this checks.
+// WHAT THIS PROVES AND WHAT IT DOES NOT. It proves that the numbers THIS
+// REPOSITORY STATES satisfy the rules this repository wrote. It does not prove
+// that any deployment satisfies them, and it cannot: .env.example is a template,
+// not a deployment, so an operator who sets TRACE_RETENTION=4000h violates rule
+// 2 and nothing here will ever see it. The only thing that could is an assertion
+// where the values meet, and they never meet — one is compiled into a Postgres
+// statement, the others are read by cmd/maintenance out of its own environment.
 //
 // The failure mode this is built against is the repo's own recurring one: a
 // check that stops finding its subject and passes anyway. The subject has
@@ -55,8 +70,6 @@ var (
 	// The shape it takes if it becomes a deployment variable: `now() + @retention`,
 	// `now() + $9`, `now() + sqlc.arg(retention)`.
 	sqlRetentionParam = regexp.MustCompile(`now\(\)\s*\+\s*(@\w+|\$\d+|sqlc\.arg\([^)]*\))`)
-	// `TRACE_RETENTION=2160h`, on its own line, uncommented.
-	envTraceRetention = regexp.MustCompile(`^\s*TRACE_RETENTION\s*=\s*(\S*)`)
 )
 
 // Postgres interval units with a fixed length. `month` and `year` are missing on
@@ -75,81 +88,111 @@ var sqlIntervalUnits = map[string]time.Duration{
 	"week":   7 * 24 * time.Hour,
 }
 
-// The one shortfall this repository has already found, argued about and written
-// down, pinned to the exact pair of numbers that produce it.
+// analyticsFunnelFloor is rule 3's right-hand side, PINNED rather than derived,
+// and this comment is the whole reason it is allowed to be.
 //
-// THIS IS NOT THE RULE BEING SATISFIED. As the tree stands, Run Artifact
-// retention (30 days) is SHORTER than the re-evaluation window (TRACE_RETENTION
-// 2160h = 90 days), so 02:NFR-002a rule 2 is violated, and days 31-90 of a
-// re-evaluation read an empty artifact manifest — the shape 04 丙-13 needed a
-// backfill to undo. 03:EVAL-014 is the open work item for it and names both
-// exits: implement 02:EVAL-001's expired branch, or raise the SQL literal to 90
-// days, at which point that work item disappears.
+// Rules 1 and 2 compare two numbers this repository states. Rule 3's right-hand
+// side is 「一次完整漏斗」 — one complete funnel — and the funnel's last segment
+// is 「首次使用後再回來」, which crosses months and has no stated length
+// anywhere. There is no number to parse, so a checker either invents one or
+// leaves the rule unenforced. Unenforced is what it was.
 //
-// It is recorded here rather than tolerated silently for the reason
-// db/query-owners.yaml gives for its own `allow:` list: 存量漂移清單，不是擴充
-// 點. Because both numbers are pinned, the gap cannot grow, cannot move and
-// cannot be forgotten — changing either number turns this red, and CLOSING the
-// gap turns it red too, because a declared shortfall that no longer exists is
-// the same lost-subject failure arriving from the other direction.
-//
-// When runs.sql says 90 days: set this to nil in the same commit.
-var nfr002aKnownShortfall = &retentionShortfall{
-	artifact: 30 * 24 * time.Hour,
-	trace:    2160 * time.Hour,
-	tracked:  "03:EVAL-014",
-}
+// SET BY: A8, 2026-08-29, during the CI/devctl hardening pass, as 180 days —
+// ADR-029 決策 5's own proposed analytics retention, chosen because it is the
+// only number anyone in this repository has ever argued for as "long enough to
+// see a funnel". It is a FLOOR and the ratified value (ANALYTICS_RETENTION=8760h
+// = 365 days) is twice it, so this is not currently binding anything; it exists
+// so that LOWERING the ratified value hits a rule instead of a user. Nobody has
+// measured a funnel, so if measurement ever says otherwise, change this line and
+// say who said so.
+const analyticsFunnelFloor = 180 * 24 * time.Hour
 
-type retentionShortfall struct {
-	artifact time.Duration
-	trace    time.Duration
-	tracked  string
-}
+// The observation window, read from the document that defines it rather than
+// copied. `### 8.2 B 版：封閉測試（14 天，自己使用）` — the length of the study
+// that rule 1's download retention must outlive.
+const observationWindowDoc = "docs/plans/mvp/gate-test/consent-and-data-policy.md"
+
+var observationWindowHeading = regexp.MustCompile(`(?m)^#{2,4}\s.*封閉測試（(\d+)\s*天`)
 
 func retentionFloorProblems(root string) []string {
-	return retentionFloorProblemsFor(root, nfr002aKnownShortfall)
+	var problems []string
+
+	// Rule 2. Both sides parsed; a failure to find either is loud.
+	sqlProblems, artifact, artifactWhere := runArtifactRetention(root)
+	problems = append(problems, sqlProblems...)
+	traceProblems, trace := envRetention(root, "TRACE_RETENTION")
+	problems = append(problems, traceProblems...)
+	if len(sqlProblems) == 0 && len(traceProblems) == 0 && artifact < trace {
+		problems = append(problems, fmt.Sprintf(
+			"retention-floor: 02:NFR-002a rule 2 requires Run Artifact retention >= the re-evaluation "+
+				"window (TRACE_RETENTION), but %s stamps %s while %s states TRACE_RETENTION=%s — %s "+
+				"short. A re-evaluation inside that gap reads an EMPTY artifact manifest and the judge "+
+				"decides on it, so the wrong thing is not a sentence in a report, it is the input to an "+
+				"append-only verdict (04 丙-13). Raise the literal or lower TRACE_RETENTION",
+			artifactWhere, artifact, envExampleDoc, trace, trace-artifact))
+	}
+
+	// Rule 1.
+	windowProblems, window := observationWindow(root)
+	problems = append(problems, windowProblems...)
+	downloadProblems, download := envRetention(root, "DOWNLOAD_ARTIFACT_RETENTION")
+	problems = append(problems, downloadProblems...)
+	if len(windowProblems) == 0 && len(downloadProblems) == 0 && download < window {
+		problems = append(problems, fmt.Sprintf(
+			"retention-floor: 02:NFR-002a rule 1 requires download retention >= the current observation "+
+				"window, but %s states DOWNLOAD_ARTIFACT_RETENTION=%s while %s runs for %s — %s short. "+
+				"A participant who comes back inside the study and finds their package gone makes 01 "+
+				"§11.2's last funnel segment measure the expiry instead of the behaviour; this exact "+
+				"value was set to 7 days and corrected the same day for that reason",
+			envExampleDoc, download, observationWindowDoc, window, window-download))
+	}
+
+	// Rule 3.
+	analyticsProblems, analytics := envRetention(root, "ANALYTICS_RETENTION")
+	problems = append(problems, analyticsProblems...)
+	if len(analyticsProblems) == 0 && analytics < analyticsFunnelFloor {
+		problems = append(problems, fmt.Sprintf(
+			"retention-floor: 02:NFR-002a rule 3 requires analytics retention >= one complete funnel, "+
+				"and the floor pinned in tools/devctl/retention_floor.go is %s (ADR-029 決策 5's own "+
+				"proposal). %s states ANALYTICS_RETENTION=%s. The funnel's last segment is "+
+				"「首次使用後再回來」 and it crosses months, so a shorter window collects events that "+
+				"can never be joined into an answer",
+			analyticsFunnelFloor, envExampleDoc, analytics))
+	}
+
+	sort.Strings(problems)
+	return problems
 }
 
-// retentionFloorProblemsFor takes the declared shortfall as an argument so a
-// test can drive both halves of it — the roster in shared_number.go is checked
-// the same way and for the same reason: a constant nothing can vary is a
-// constant nothing can test.
-func retentionFloorProblemsFor(root string, declared *retentionShortfall) []string {
-	problems, artifact, artifactWhere := runArtifactRetention(root)
-	traceProblems, trace := traceRetention(root)
-	problems = append(problems, traceProblems...)
-	if len(problems) > 0 {
-		sort.Strings(problems)
-		return problems
+// observationWindow reads the length of the study rule 1 measures against out of
+// the document that defines it. Parsed, not copied: the study length is a
+// product decision that has already changed once, and a copied 14 would go stale
+// silently in the direction that violates the rule.
+func observationWindow(root string) ([]string, time.Duration) {
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(observationWindowDoc)))
+	if err != nil {
+		return []string{fmt.Sprintf("retention-floor: %v", err)}, 0
 	}
-
-	if artifact >= trace {
-		if declared != nil {
-			return []string{fmt.Sprintf(
-				"retention-floor: %s stamps %s and %s states TRACE_RETENTION=%s, so 02:NFR-002a rule 2 is "+
-					"now MET, but tools/devctl/retention_floor.go still declares the shortfall tracked as "+
-					"%s; set nfr002aKnownShortfall to nil in the commit that closed the gap",
-				artifactWhere, artifact, envExampleDoc, trace, declared.tracked)}
-		}
-		return nil
+	matches := observationWindowHeading.FindAllStringSubmatch(string(data), -1)
+	switch len(matches) {
+	case 1:
+	case 0:
+		return []string{fmt.Sprintf(
+			"retention-floor: %s no longer has a 封閉測試（N 天） section heading; it is the only stated "+
+				"length of the observation window 02:NFR-002a rule 1 measures against, so this check has "+
+				"lost half its subject", observationWindowDoc)}, 0
+	default:
+		return []string{fmt.Sprintf(
+			"retention-floor: %s declares the closed-beta length %d times; the observation window cannot "+
+				"have two lengths", observationWindowDoc, len(matches))}, 0
 	}
-
-	if declared != nil && declared.artifact == artifact && declared.trace == trace {
-		return nil
+	days, err := strconv.Atoi(matches[0][1])
+	if err != nil || days <= 0 {
+		return []string{fmt.Sprintf(
+			"retention-floor: %s states a closed-beta length of %q days, which is not a positive number",
+			observationWindowDoc, matches[0][1])}, 0
 	}
-	pinned := "no shortfall is declared in tools/devctl/retention_floor.go"
-	if declared != nil {
-		pinned = fmt.Sprintf(
-			"the only shortfall declared in tools/devctl/retention_floor.go is artifact=%s trace=%s (%s)",
-			declared.artifact, declared.trace, declared.tracked)
-	}
-	return []string{fmt.Sprintf(
-		"retention-floor: 02:NFR-002a rule 2 requires Run Artifact retention >= the re-evaluation window "+
-			"(TRACE_RETENTION), but %s stamps %s while %s states TRACE_RETENTION=%s — %s short, and %s. "+
-			"A re-evaluation inside that gap reads an empty artifact manifest and the judge decides on it "+
-			"(04 丙-13). Raise the literal, lower TRACE_RETENTION, or pin the new pair here and record in "+
-			"05 which work item carries it",
-		artifactWhere, artifact, envExampleDoc, trace, trace-artifact, pinned)}
+	return nil, time.Duration(days) * 24 * time.Hour
 }
 
 // runArtifactRetention finds the retention the run-output manifest INSERT stamps
@@ -254,15 +297,22 @@ func runArtifactRetention(root string) (problems []string, retention time.Durati
 
 // traceRetention reads the re-evaluation window's only stated value. Two
 // assignments mean two answers, which is worse than none.
-func traceRetention(root string) (problems []string, retention time.Duration) {
+// envRetention reads one retention variable's only stated value. Two
+// assignments mean two answers, which is worse than none.
+//
+// One function for all three rules rather than one per variable: the failure
+// shapes are identical (missing, duplicated, unparseable, non-positive) and
+// three copies of them is three places for one of the four to be forgotten.
+func envRetention(root, name string) (problems []string, retention time.Duration) {
 	data, err := os.ReadFile(filepath.Join(root, envExampleDoc))
 	if err != nil {
 		return []string{fmt.Sprintf("retention-floor: cannot read %s: %v", envExampleDoc, err)}, 0
 	}
+	pattern := regexp.MustCompile(`^\s*` + regexp.QuoteMeta(name) + `\s*=\s*(\S*)`)
 	var values []string
 	var lines []int
 	for i, line := range strings.Split(string(data), "\n") {
-		if m := envTraceRetention.FindStringSubmatch(line); m != nil {
+		if m := pattern.FindStringSubmatch(line); m != nil {
 			values = append(values, m[1])
 			lines = append(lines, i+1)
 		}
@@ -271,26 +321,24 @@ func traceRetention(root string) (problems []string, retention time.Duration) {
 	case 1:
 	case 0:
 		return []string{fmt.Sprintf(
-			"retention-floor: %s no longer assigns TRACE_RETENTION; it is the only stated value of the "+
-				"re-evaluation window 02:NFR-002a rule 2 measures against, so this check has lost half "+
-				"its subject", envExampleDoc)}, 0
+			"retention-floor: %s no longer assigns %s; it is the only stated value 02:NFR-002a measures "+
+				"against, so this check has lost half a floor's subject", envExampleDoc, name)}, 0
 	default:
 		return []string{fmt.Sprintf(
-			"retention-floor: %s assigns TRACE_RETENTION %d times (lines %v); the re-evaluation window "+
-				"cannot have two values", envExampleDoc, len(values), lines)}, 0
+			"retention-floor: %s assigns %s %d times (lines %v); a retention window cannot have two values",
+			envExampleDoc, name, len(values), lines)}, 0
 	}
 
 	parsed, err := time.ParseDuration(values[0])
 	if err != nil {
 		return []string{fmt.Sprintf(
-			"retention-floor: %s:%d TRACE_RETENTION=%q is not a Go duration (%v); cmd/maintenance is "+
-				"fail-closed on it, so rotate-partitions is already refusing to run",
-			envExampleDoc, lines[0], values[0], err)}, 0
+			"retention-floor: %s:%d %s=%q is not a Go duration (%v); cmd/maintenance is fail-closed on "+
+				"these, so the sweep that reads it is already refusing to run",
+			envExampleDoc, lines[0], name, values[0], err)}, 0
 	}
 	if parsed <= 0 {
 		return []string{fmt.Sprintf(
-			"retention-floor: %s:%d TRACE_RETENTION=%q is not positive",
-			envExampleDoc, lines[0], values[0])}, 0
+			"retention-floor: %s:%d %s=%q is not positive", envExampleDoc, lines[0], name, values[0])}, 0
 	}
 	return nil, parsed
 }

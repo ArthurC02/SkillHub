@@ -31,6 +31,12 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"drift-marker", "depguard-deny", "one-number", "query-owner",
 		"context-map", "doc-identifier", "milestone-tally", "backlog-tally",
 		"baseline-tally", "retention-floor", "sdk-version", "single-data-layer",
+		// The two that were wired by a bare `append` below the loop until
+		// 2026-08-29, so this roster walked past them and unwiring BOTH left the
+		// package green. They were the highest-value pair on the list.
+		"require-db-guard", "isolation-level",
+		"route-table", "requirement-refs", "purge-schedule", "timeout-budget",
+		"image-version", "embedding-dims", "goldenset-mirror",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {
@@ -107,6 +113,31 @@ func (m *memQueries) GetUser(ctx context.Context, id int64) (gen.User, error) {
 }
 func (m *memQueries) DeleteUser(ctx context.Context, id int64) error {
 	return nil
+}
+`)
+
+	// timeout-budget is the one checker with nothing to say about an absent
+	// tree: no markers means no pairs and no complaint. A one-sided marker is
+	// what it exists to catch, so that is what the fixture gives it.
+	write("apps/platform/budgets.go",
+		"package x\n\nconst t = 135 * time.Second // budget-over: nothing.PAIRS_WITH_THIS\n")
+
+	// require-db-guard needs a package that gates itself on the database URL and
+	// hands straight to m.Run(). Without one it has nothing to say, and the
+	// wiring assertion below would be vacuously true for the checker whose
+	// absence 02:PORT-004 was written about.
+	write("apps/platform/internal/fake/main_test.go", `package fake
+
+import (
+	"os"
+	"testing"
+)
+
+func TestMain(m *testing.M) {
+	if os.Getenv("SKILLHUB_TEST_DATABASE_URL") == "" {
+		return
+	}
+	os.Exit(m.Run())
 }
 `)
 

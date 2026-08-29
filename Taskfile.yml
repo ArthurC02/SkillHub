@@ -57,7 +57,7 @@ tasks:
 
   test:
     desc: Run all test suites
-    deps: [test:platform, test:sandbox, test:llm, test:web, test:api-client, test:devctl, test:runtime-script]
+    deps: [test:platform, test:sandbox, test:llm, test:web, test:api-client, test:devctl, test:runtime-script, test:judge-rubric]
 
   test:platform:
     desc: Run Go platform tests and report how many skipped and why; DB integration requires its explicit test URL
@@ -78,6 +78,10 @@ tasks:
     # resolver and dies on Windows (measured on Node 25), which is exactly the
     # platform 04 丙-82 exists for.
     cmd: node --test infra/images/runtime-agent-sdk/run.test.mjs
+
+  test:judge-rubric:
+    desc: Run ADR-043's evidence-citation regression; pure functions, no model, no database
+    cmd: python tools/eval-regression/test_judge_regression.py
 
   test:llm:
     desc: Run mocked Python LLM tests without live provider calls

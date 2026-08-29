@@ -13,10 +13,13 @@ on:
     paths:
       - 'infra/egress/**'
       - '.github/workflows/egress-allowlist.yml'
-      # The renderer is named for the same reason: the files under
+      # The renderer is here for the same reason: the files under
       # infra/egress/rendered/ are its output, so a change to the code that
-      # writes them is a change to the ruleset a node loads.
-      - 'tools/egress/render.py'
+      # writes them is a change to the ruleset a node loads. The whole directory
+      # rather than render.py alone, because test_render.py pins the writer's
+      # json keys against the reader's -- and a filter naming only the code would
+      # skip the one change that weakens the assertion about it.
+      - 'tools/egress/**'
       # The checker moved to tools/ci/ and is now named in the filter: a change to
       # the assertion that nothing re-runs is a change nobody has tested. Free to
       # add here, unlike runtime-image.yml, because this workflow publishes nothing.
@@ -55,6 +58,14 @@ jobs:
         run: |
           python3 tools/egress/render.py --self-check
           python3 tools/egress/render.py --check
+          # The writer's half of a two-language contract. apps/sandbox pins the
+          # READER's json tags; until now nothing pinned what render.py emits, so
+          # renaming a key here kept every test in the repo green while the node's
+          # admission list stopped being readable by its only reader -- and the
+          # symptom, a node refusing every run that names a destination, is
+          # indistinguishable from fail-closed working. Same runner and same
+          # zero-dependency shape as the checker's tests above.
+          python3 tools/egress/test_render.py
 
       # ...and the ruleset the renderer produces has to be one a kernel accepts,
       # doing what its comments claim. `--check` compares bytes against the

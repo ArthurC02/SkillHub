@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | [`skillpkg-corpus/`](skillpkg-corpus/) | `QA-002` | Agent Skills 規格驗證的**刻意破壞變體**與其期望 finding；合法樣本那一半是既有的 45 個 pin commit 套件 |
 
-同 `tools/content`：**驗證工具，不是產品程式碼**——不進 CI、不被服務引用。差別在期望清單是給 Go 測試讀的資料檔，不是留給人看的快照。
+同 `tools/content`：**驗證工具，不是產品程式碼**——不被服務引用。差別在期望清單是給 Go 測試讀的資料檔，不是留給人看的快照。**但它進 CI 了**（2026-08-29，`ci.yml` 的 `qa002` job）：見下方〈怎麼跑〉的修訂。
 
 ## `skillpkg-corpus`
 
@@ -31,7 +31,16 @@ cd apps/platform
 QA002_CORPUS=/tmp/corpus go test ./internal/skill/admission -run QA002 -v
 ```
 
-**沒有 `QA002_CORPUS` 就跳過**，形式比照 `SKILLHUB_TEST_DATABASE_URL` 的既有前例——生成要抓三個 pin commit repo 壓縮檔，CI job 沒有那個網路預算。生成一次可重複使用；`--cache` 與 `import_seed.py` 共用。
+**沒有 `QA002_CORPUS` 就跳過**，形式比照 `SKILLHUB_TEST_DATABASE_URL` 的既有前例。生成一次可重複使用；`--cache` 與 `import_seed.py` 共用。
+
+**2026-08-29 訂正：CI 現在會跑它。** 這一段原本寫「CI job 沒有那個網路預算」，而同一份 workflow 的
+`contracts-drift` 會 `npx --yes` 與 `pip install`、`sandbox` 會下載 gVisor release 並 `docker build` 一個 Debian
+映像——網路預算從來不是限制因素，只是沒有人回頭改這句話。`ci.yml` 的 `qa002` job 依序跑
+`generate.py --selftest`（離線，驗變體產生器自己）、`generate.py --out`、再帶 `QA002_CORPUS` 跑 harness，
+路徑過濾在 `internal/skill/admission/**`、`internal/shared/skillpkg/**` 與 `tools/qa/**`。
+
+**在此之前，十二條 blocking code 的負向半邊由零個自動化執行守著，而 `03:QA-002` 是已勾的。**
+上面紀律二那三列帶 `gap` 的格子（`zip-path-traversal`／`zip-absolute-path`／`zip-symlink-escape`）現在也終於有機器盯著不再退步。
 
 ### 覆蓋的破壞類型
 

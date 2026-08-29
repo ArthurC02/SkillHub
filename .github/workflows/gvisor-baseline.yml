@@ -28,7 +28,21 @@ jobs:
           set -euo pipefail
           BASELINE=$(awk '!/^#/ && NF {print $1; exit}' infra/nodes/gvisor-baseline.txt)
           if [ "$BASELINE" = unset ]; then
-            echo "::notice::baseline is unset — no sandbox node provisioned yet, nothing to compare"
+            # A warning and not a notice, and a line in the summary, because the
+            # job goes GREEN here and a green check named "gVisor baseline" reads
+            # as "the baseline is current". It has never compared anything. The
+            # exit code stays 0 on purpose -- 04 甲-1 has no node yet, and a red
+            # daily cron for a node nobody has provisioned is noise that gets
+            # muted, taking the real signal with it when the node arrives.
+            echo "::warning::gVisor baseline is unset — this check has never compared anything. It will stay green until infra/nodes/gvisor-baseline.txt names a version (04 甲-1)."
+            {
+              echo '### gVisor baseline: NOT CHECKED'
+              echo
+              echo '`infra/nodes/gvisor-baseline.txt` is `unset`, so neither the'
+              echo 'N/N-1 comparison nor the escape-class advisory scan ran.'
+              echo 'This job is green because there is no sandbox node to reconcile'
+              echo 'against yet (04 甲-1), **not** because the baseline is current.'
+            } >> "$GITHUB_STEP_SUMMARY"
             echo "SKIP=1" >> "$GITHUB_ENV"
             exit 0
           fi

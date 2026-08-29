@@ -25,14 +25,40 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
 
-const (
-	isolationGoFile       = "apps/platform/internal/trial/execution/schedule.go"
-	isolationContractFile = "contracts/openapi/sandbox-provider.yaml"
-)
+const isolationGoFile = "apps/platform/internal/trial/execution/schedule.go"
+
+// EVERY contract that spells the set, not just the first one found.
+//
+// The first version of this check compared the gate against
+// sandbox-provider.yaml alone, and the audit of 2026-08-29 found the same drift
+// still open one file over: public.yaml's RunPermissionSummaryContent carried
+// `isolation_level` as a free string whose description listed four levels in
+// PROSE — no `clean`. That field is what TEST-008's preflight screen shows a
+// user before their run starts ("how strongly will this be isolated"), so the
+// contract that was wrong is the one facing outward, and a prose list is
+// something no checker can read. The enum landed in 331bd90; this is what keeps
+// it a set rather than a sentence.
+//
+// Each entry names the key the enum hangs under, because the two contracts spell
+// the same field differently: sandbox-provider has `isolation: { level: … }`,
+// public.yaml has a flat `isolation_level:`.
+var isolationContractFiles = []struct{ path, marker string }{
+	{"contracts/openapi/sandbox-provider.yaml", "isolation:"},
+	{"contracts/openapi/public.yaml", "isolation_level:"},
+}
+
+// The key line, anchored so that a mention inside a description cannot be
+// mistaken for the schema key. Exactly one match is required per file: zero
+// means the field moved, more than one means this check would be picking a
+// winner between two schemas.
+func isolationMarkerPattern(marker string) *regexp.Regexp {
+	return regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(marker) + `\s*$`)
+}
 
 // isolationConstSuffix is what makes a constant part of the set rather than a
 // list this checker has to be told about: the gate names its levels
@@ -55,16 +81,25 @@ func isolationLevelProblems(root string) []string {
 		return []string{fmt.Sprintf("isolation levels: %s declares no *%s constant; either the gate moved or this check is now looking at the wrong file",
 			isolationGoFile, isolationConstSuffix)}
 	}
-	admitted, err := contractIsolationEnum(filepath.Join(root, isolationContractFile))
-	if err != nil {
-		return []string{fmt.Sprintf("isolation levels: %v", err)}
-	}
 	var problems []string
-	for name, level := range declared {
-		if !admitted[level] {
+	for _, contract := range isolationContractFiles {
+		admitted, err := contractIsolationEnum(filepath.Join(root, filepath.FromSlash(contract.path)), contract.marker)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("isolation levels: %v", err))
+			continue
+		}
+		var names []string
+		for name := range declared {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			if admitted[declared[name]] {
+				continue
+			}
 			problems = append(problems, fmt.Sprintf(
-				"isolation level %q (%s in %s) is not in %s's isolation.level enum; a dispatch gate that accepts a level the contract does not admit is a capability nothing validates",
-				level, name, isolationGoFile, isolationContractFile))
+				"isolation level %q (%s in %s) is not in %s's %s enum; a dispatch gate that accepts a level the contract does not admit is a capability nothing validates",
+				declared[name], name, isolationGoFile, contract.path, strings.TrimSuffix(contract.marker, ":")))
 		}
 	}
 	return problems
@@ -109,19 +144,26 @@ func gateIsolationLevels(path string) (map[string]string, error) {
 	return levels, nil
 }
 
-func contractIsolationEnum(path string) (map[string]bool, error) {
+func contractIsolationEnum(path, marker string) (map[string]bool, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	text := string(raw)
-	marker := strings.Index(text, "isolation:")
-	if marker < 0 {
-		return nil, fmt.Errorf("%s has no isolation schema", path)
+	at := isolationMarkerPattern(marker).FindAllStringIndex(text, -1)
+	switch len(at) {
+	case 1:
+	case 0:
+		return nil, fmt.Errorf("%s has no `%s` schema key; the field moved and this comparison has lost its subject", path, marker)
+	default:
+		return nil, fmt.Errorf("%s declares `%s` %d times; this check would be picking a winner between two schemas", path, marker, len(at))
 	}
-	match := isolationEnumPattern.FindStringSubmatch(text[marker:])
+	match := isolationEnumPattern.FindStringSubmatch(text[at[0][0]:])
 	if match == nil {
-		return nil, fmt.Errorf("%s: no isolation.level enum found after the isolation schema", path)
+		return nil, fmt.Errorf(
+			"%s: no enum found under `%s`; a prose list of levels is not something a checker can read, "+
+				"and that is exactly how `clean` was emitted here for a day with nothing noticing (2026-08-29)",
+			path, marker)
 	}
 	admitted := map[string]bool{}
 	for _, value := range strings.Split(match[1], ",") {

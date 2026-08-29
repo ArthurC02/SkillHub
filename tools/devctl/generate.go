@@ -33,7 +33,7 @@ type generationOutput struct {
 	target string
 }
 
-func generate(root string, args []string, out io.Writer) error {
+func generate(root string, args []string, out io.Writer) (err error) {
 	check := false
 	scope := "all"
 	for _, arg := range args {
@@ -65,7 +65,18 @@ func generate(root string, args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(scratch)
+	// Removed on success, KEPT on failure. The scratch tree is the only copy of
+	// what the generator actually produced, and the failures worth debugging are
+	// exactly the ones where the committed output and the generated output
+	// differ — "run it again and look" is not available for a container that has
+	// already exited. On a green run it is noise in .devctl/, so it goes.
+	defer func() {
+		if err != nil {
+			fmt.Fprintf(out, "generation failed; scratch kept at %s\n", scratch)
+			return
+		}
+		_ = os.RemoveAll(scratch)
+	}()
 
 	var outputs []generationOutput
 	images, err := parseManifestSection(filepath.Join(root, "tools", "toolchain.yaml"), "images")
