@@ -92,7 +92,10 @@ func main() {
 		}
 		drv, closer = d, d.Close
 	}
-	defer closer()
+	// The error is dropped on purpose: this runs during shutdown, after the
+	// server has stopped serving, and there is nobody left to act on a failure
+	// to release a docker client or a job handle.
+	defer func() { _ = closer() }()
 
 	// What this node routes to, rendered from infra/egress/allowlist.yaml by
 	// tools/egress/render.py in the same pass that produced its nftables ruleset

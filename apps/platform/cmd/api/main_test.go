@@ -267,7 +267,7 @@ func TestCleanModeFromEnv(t *testing.T) {
 		{name: "unset (the shipped default)", unset: true},
 		{name: "empty", value: ""},
 		{name: "0", value: "0"},
-		{name: "true", value: "true"},  // not accepted; only the literal "1" is
+		{name: "true", value: "true"}, // not accepted; only the literal "1" is
 		{name: "TRUE", value: "TRUE"},
 		{name: "1", value: "1", want: true},
 	} {
