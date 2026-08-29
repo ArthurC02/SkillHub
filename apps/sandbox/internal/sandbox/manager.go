@@ -84,7 +84,17 @@ type Config struct {
 	Runtimes       []RuntimeCapability
 	MaxResources   ResourceLimits
 	IsolationLevel string // "container" for the dev DockerProvider, "gvisor" in production
-	EgressModes    []string
+	// MaxResourcesUnenforced names the ceilings in MaxResources that this
+	// deployment carries a number for but the operating system does not hold it
+	// to. Empty is what a production node must be able to say. Without it a
+	// driver that detected it enforces nothing could only lie in MaxResources or
+	// refuse to run, because every ceiling there is required to be present.
+	MaxResourcesUnenforced []string
+	// ReapsDetachedDescendants: whether ending a run also ends a descendant that
+	// left the process group or job it started in. False is a real answer, not a
+	// missing one - see Isolation.ReapsDetachedDescendants.
+	ReapsDetachedDescendants bool
+	EgressModes              []string
 	// EgressAllow is what tools/egress/render.py rendered onto this node from
 	// infra/egress/allowlist.yaml: the destinations there is an nftables accept
 	// rule for. Empty means this node routes nowhere, and EgressModesFor turns
@@ -193,13 +203,15 @@ func (m *Manager) Capability(ctx context.Context) ProviderCapability {
 		free = 0
 	}
 	return ProviderCapability{
-		Provider:     m.cfg.Provider,
-		Runtimes:     m.cfg.Runtimes,
-		MaxResources: m.cfg.MaxResources,
+		Provider:               m.cfg.Provider,
+		Runtimes:               m.cfg.Runtimes,
+		MaxResources:           m.cfg.MaxResources,
+		MaxResourcesUnenforced: m.cfg.MaxResourcesUnenforced,
 		Isolation: Isolation{
 			Level:                    m.cfg.IsolationLevel,
 			Rootless:                 true,
 			DedicatedWorkspacePerRun: true,
+			ReapsDetachedDescendants: m.cfg.ReapsDetachedDescendants,
 		},
 		Network: &NetworkCapability{EgressModes: m.cfg.EgressModes, PrivateNetwork: true},
 		Features: &Features{

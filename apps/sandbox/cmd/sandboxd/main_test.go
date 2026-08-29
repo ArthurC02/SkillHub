@@ -125,3 +125,32 @@ func TestCleanModeMaxResourcesReflectsDetection(t *testing.T) {
 			"and the only honest signal is the log warning", notEnforced, got)
 	}
 }
+
+// TestUnenforcedCeilingsMirrorsDetection is the machine-readable half of
+// 02:PORT-010's "the declaration must reflect what was detected". Before this
+// field existed the only honest signal was a log line, which is the same shape
+// as the incident ADR-059 decision 3 records: a node whose declaration and
+// reality diverged where only the log knew.
+func TestUnenforcedCeilingsMirrorsDetection(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		enf  localdrv.ResourceEnforcement
+		want []string
+	}{
+		{name: "windows job object holds both", enf: localdrv.ResourceEnforcement{Memory: true, Processes: true}},
+		{name: "unprivileged linux holds neither", enf: localdrv.ResourceEnforcement{}, want: []string{"memory_bytes", "max_pids"}},
+		{name: "memory only", enf: localdrv.ResourceEnforcement{Memory: true}, want: []string{"max_pids"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := unenforcedCeilings(tc.enf)
+			if len(got) != len(tc.want) {
+				t.Fatalf("unenforcedCeilings(%+v) = %v, want %v", tc.enf, got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("unenforcedCeilings(%+v) = %v, want %v", tc.enf, got, tc.want)
+				}
+			}
+		})
+	}
+}

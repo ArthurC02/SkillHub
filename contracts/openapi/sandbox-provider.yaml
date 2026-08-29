@@ -908,22 +908,77 @@ components:
                 items: { type: string, enum: [in_sandbox_sdk, provider_hosted_agent] }
         max_resources:
           $ref: "#/components/schemas/ResourceLimits"
+        max_resources_unenforced:
+          type: array
+          items:
+            type: string
+            enum:
+              [vcpu, memory_bytes, disk_bytes, max_pids, max_open_files,
+               artifact_total_bytes, artifact_file_bytes]
+          description: |
+            Ceilings this provider carries a number for in `max_resources` but
+            does not have the operating system hold to. Empty or absent means
+            every declared ceiling is enforced, which is what a production
+            provider must be able to say.
+
+            This field exists because ResourceLimits' own description says a
+            provider that cannot enforce a ceiling "must not declare support for
+            it" - and its `required` list makes obeying that impossible, since
+            every ceiling must be present. The result was a declaration that
+            could only ever claim enforcement, so a provider that detected it
+            had none could either lie in the field or refuse to run at all.
+
+            It is not a demo concession. The incident ADR-059 decision 3 records
+            has this exact shape: a node whose declaration and reality diverged,
+            where the only thing that knew was a line in a startup log.
+
+            A consumer must treat a named ceiling as unbounded. Dispatching
+            untrusted work to a provider that names any ceiling here is a
+            decision a deployment has to make on purpose, not a default.
         isolation:
           type: object
           required: [level]
           properties:
             level:
               type: string
-              enum: [gvisor, container, vm, process]
+              enum: [gvisor, container, vm, process, clean]
               description: |
                 gvisor is the production baseline (ADR-015). `container` exists
                 for the local dev provider only - gVisor needs Linux, and this
                 is the honest name for what a developer machine actually runs.
                 `process` is not acceptable for untrusted skills (iron rule 1).
+
+                `clean` means **no boundary at all** - not a weaker one (ADR-059
+                decision 1). It exists for a machine that can install nothing,
+                carries only curated demo material, and needs its own opt-in at
+                the dispatch gate, which is an allow list: an unlisted level,
+                including a typo, is refused (ADR-059 decision 3).
+
+                This value was added to the enum on 2026-08-29, after the code
+                had been emitting it since 2026-08-28. Nothing failed in the
+                meantime because this provider serves the capability from
+                hand-written structs, not from generated types - which is
+                exactly why the drift was invisible.
             rootless:
               type: boolean
               description: Workload runs unprivileged and non-root (RUN-003).
             dedicated_workspace_per_run: { type: boolean }
+            reaps_detached_descendants:
+              type: boolean
+              description: |
+                Whether ending a run also ends a descendant that deliberately
+                left the process group or job it was started in - `setsid()` on
+                POSIX, which Node spells `detached: true`.
+
+                It is a separate field from the isolation level because the two
+                platforms of one driver can differ on it: a Windows job object
+                holds every descendant whether or not it wants to be held, while
+                a POSIX process group is something a descendant walks out of.
+                A provider that cannot reach such a process declares false here
+                rather than leaving the difference in a comment.
+
+                Absent means not declared, which a consumer must read as "no",
+                not as "unknown but probably fine".
         network:
           type: object
           properties:

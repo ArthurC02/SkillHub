@@ -88,6 +88,11 @@ func automationCheck(root string, out io.Writer) error {
 		problems = append(problems, err.Error())
 	}
 
+	// The dispatch gate's allow list and the provider contract's isolation enum
+	// are the same set in two languages, and this provider's capability is
+	// hand-written rather than generated, so nothing else compares them.
+	problems = append(problems, isolationLevelProblems(root)...)
+
 	if len(problems) > 0 {
 		for _, problem := range problems {
 			fmt.Fprintln(out, "FAIL", problem)

@@ -170,7 +170,7 @@ func seedCleanDevLogin(client *http.Client, api string) error {
 	if err != nil {
 		return fmt.Errorf("seed-clean: dev login: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusNoContent {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 500))
 		return fmt.Errorf("seed-clean: dev login failed (%d): %s — is DEV_LOGIN=1 set on the target deployment?", resp.StatusCode, firstLine(string(b)))
@@ -183,7 +183,7 @@ func seedCleanUpload(client *http.Client, api string, zipBytes []byte) (status i
 	if err != nil {
 		return 0, "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	b, _ := io.ReadAll(io.LimitReader(resp.Body, 2000))
 	return resp.StatusCode, string(b), nil
 }

@@ -61,6 +61,10 @@ func main() {
 		drv          sandbox.Driver
 		closer       func() error
 		maxResources = sandbox.DefaultLimits
+		// Zero values are the production answer: dockerdrv enforces every
+		// ceiling it declares, and a container holds a descendant that detaches.
+		unenforced    []string
+		reapsDetached = true
 	)
 	switch driverKind(cleanMode) {
 	case "local":
@@ -76,6 +80,8 @@ func main() {
 		}
 		drv, closer = d, d.Close
 		maxResources = cleanModeMaxResources(d.ResourceEnforcement(), log)
+		unenforced = unenforcedCeilings(d.ResourceEnforcement())
+		reapsDetached = d.Reaping().Detached
 	default:
 		d, err := dockerdrv.New(dockerdrv.Config{
 			Image:        image,
@@ -148,11 +154,13 @@ func main() {
 			Versions:         []string{envOr("SKILLHUB_SANDBOX_RUNTIME_VERSION", "0.3.233")},
 			AgentIntegration: []string{"in_sandbox_sdk"},
 		}},
-		MaxResources:   maxResources,
-		IsolationLevel: isolation,
-		EgressModes:    modes,
-		EgressAllow:    egressAllow,
-		Slots:          envInt("SKILLHUB_SANDBOX_SLOTS", 2),
+		MaxResources:             maxResources,
+		MaxResourcesUnenforced:   unenforced,
+		IsolationLevel:           isolation,
+		ReapsDetachedDescendants: reapsDetached,
+		EgressModes:              modes,
+		EgressAllow:              egressAllow,
+		Slots:                    envInt("SKILLHUB_SANDBOX_SLOTS", 2),
 	}, log)
 
 	// ADR-022 T10, the resident P-02 probe. The addresses come from node
@@ -370,4 +378,21 @@ func envInt(key string, fallback int) int {
 		return fallback
 	}
 	return v
+}
+
+// unenforcedCeilings turns the driver's own detection into the names the
+// capability declares as not held by the OS. It is the machine-readable half of
+// what cleanModeMaxResources can only say in a log line: the numbers stay,
+// because ResourceLimits requires them and the orchestrator matches on them,
+// and this says which of those numbers are a statement of intent rather than a
+// wall (02:PORT-010, 04 丙-83).
+func unenforcedCeilings(enf localdrv.ResourceEnforcement) []string {
+	var out []string
+	if !enf.Memory {
+		out = append(out, "memory_bytes")
+	}
+	if !enf.Processes {
+		out = append(out, "max_pids")
+	}
+	return out
 }

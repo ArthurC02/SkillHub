@@ -171,7 +171,7 @@ func TestSeedCleanUploadsEveryEntry(t *testing.T) {
 		case r.Method == http.MethodPost && r.URL.Path == "/skills/import/upload":
 			atomic.AddInt32(&uploads, 1)
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte(`{"skill_id":"stub"}`))
+			_, _ = w.Write([]byte(`{"skill_id":"stub"}`))
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
@@ -205,7 +205,7 @@ func TestSeedCleanFailsOnUploadError(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		case r.URL.Path == "/skills/import/upload":
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Write([]byte(`{"errors":[{"code":"bad"}]}`))
+			_, _ = w.Write([]byte(`{"errors":[{"code":"bad"}]}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

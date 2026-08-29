@@ -246,12 +246,20 @@ type ProviderCapability struct {
 	Provider     string              `json:"provider"`
 	Runtimes     []RuntimeCapability `json:"runtimes"`
 	MaxResources ResourceLimits      `json:"max_resources"`
-	Isolation    Isolation           `json:"isolation"`
-	Network      *NetworkCapability  `json:"network,omitempty"`
-	Features     *Features           `json:"features,omitempty"`
-	Regions      []string            `json:"regions,omitempty"`
-	Availability *Availability       `json:"availability,omitempty"`
-	Security     *SecurityCapability `json:"security,omitempty"`
+	// MaxResourcesUnenforced names the ceilings carried in MaxResources that
+	// the operating system does not actually hold this provider to. Empty is
+	// what a production provider must be able to say. It exists because
+	// ResourceLimits requires every ceiling to be present, which made the
+	// contract's own "a provider that cannot enforce one of these must not
+	// declare support for it" impossible to obey - the declaration could only
+	// ever claim enforcement.
+	MaxResourcesUnenforced []string            `json:"max_resources_unenforced,omitempty"`
+	Isolation              Isolation           `json:"isolation"`
+	Network                *NetworkCapability  `json:"network,omitempty"`
+	Features               *Features           `json:"features,omitempty"`
+	Regions                []string            `json:"regions,omitempty"`
+	Availability           *Availability       `json:"availability,omitempty"`
+	Security               *SecurityCapability `json:"security,omitempty"`
 }
 
 type RuntimeCapability struct {
@@ -264,6 +272,12 @@ type Isolation struct {
 	Level                    string `json:"level"`
 	Rootless                 bool   `json:"rootless"`
 	DedicatedWorkspacePerRun bool   `json:"dedicated_workspace_per_run"`
+	// ReapsDetachedDescendants: whether ending a run also ends a descendant
+	// that deliberately left the process group or job it started in. Separate
+	// from Level because one driver's two platforms differ on it: a Windows job
+	// object holds a descendant whether or not it wants to be held, a POSIX
+	// process group is something setsid() walks out of. Absent reads as no.
+	ReapsDetachedDescendants bool `json:"reaps_detached_descendants"`
 }
 
 type NetworkCapability struct {
