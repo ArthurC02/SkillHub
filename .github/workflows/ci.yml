@@ -357,12 +357,28 @@ jobs:
       # (6e8a253), still standing on this side because the lesson was only
       # applied to the database. With this set the harness fails instead.
       SKILLHUB_REQUIRE_DOCKER: "1"
+      # The P-02 probe test (dockerdrv/p02_docker_test.go probeImage) measures
+      # what the Runtime Image can dial, so it refuses to run against busybox and,
+      # under SKILLHUB_REQUIRE_DOCKER=1, fails rather than skips when the image is
+      # absent -- which it always is on a fresh runner (2026-08-29, f3f8bb0 went
+      # red exactly there). Pull the published copy and give it the local name
+      # the test defaults to. Not SKILLHUB_SANDBOX_TEST_IMAGE: docker_test.go
+      # reads that too, and it would move every dockerdrv test off busybox. When
+      # a new IMAGE_VERSION has passed ADR-023's four measured tests, move the
+      # tag below and the test's constant together.
+      RUNTIME_IMAGE_FOR_PROBE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-3
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: apps/sandbox/go.mod
           cache-dependency-path: apps/sandbox/go.sum
+      # Public package; no login needed. Pulled explicitly so a registry outage
+      # is its own red step with its own message, not a probe-test failure.
+      - name: Pull the Runtime Image the P-02 probe dials from
+        run: |
+          docker pull "$RUNTIME_IMAGE_FOR_PROBE"
+          docker tag "$RUNTIME_IMAGE_FOR_PROBE" skillhub/runtime-agent-sdk:2026.08-3
       # BEFORE `go test ./...`, not after. localdrv's seven tests skip when node
       # is not on PATH, and until now they ran against whatever Node the runner
       # image happened to ship rather than the one this job installs -- so a
