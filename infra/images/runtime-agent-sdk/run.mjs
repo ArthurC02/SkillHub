@@ -36,11 +36,18 @@
 // posted anywhere from in here: the only address this container can reach is the
 // model gateway (SBX-007), so sandboxd reads the file out and pushes it. The
 // same asymmetry is why the run's inputs arrive as files rather than as URLs.
-import { execFileSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { join } from "node:path";
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { dirname, join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { inflateRawSync } from "node:zlib";
+// Loaded dynamically, only inside the isMain-guarded entrypoint block below,
+// rather than as a static top-level import: a static import is resolved
+// before any of this module's own code runs, which would make extractPackage
+// impossible to unit-test without the SDK installed in the test environment
+// too. The container image installs it (Dockerfile); nothing else here needs
+// it, and this changes nothing about what runs when SKILLHUB_* is the
+// entrypoint.
 
 const workDir = process.env.SKILLHUB_WORKDIR ?? "/work";
 const outDir = process.env.SKILLHUB_OUTDIR ?? "/out";
@@ -126,6 +133,18 @@ function finish(status, extra = {}, exitCode = status === "succeeded" ? 0 : 1) {
   process.exit(exitCode);
 }
 
+// Atomics.wait blocks the calling call stack without spawning anything, unlike
+// the "/bin/sleep" this used to shell out to — which does not exist on the
+// Windows host this file must also run on now (04 丙-82) and would throw
+// uncaught there. Both busy-wait loops below need genuinely synchronous
+// blocking (see each one's own comment for why an event-based wait will not
+// do), and Atomics.wait on a throwaway SharedArrayBuffer is the stdlib's way
+// to get that: the calling frame does not return until the timeout elapses,
+// no callback and no event-loop turn involved.
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
 // waitToBeCollected is the second half of the collection handshake, and the run
 // is not finished without it: /out is a tmpfs, so the tail of the trace and
 // every artifact vanish the instant this process exits. Announcing completion
@@ -142,7 +161,7 @@ function waitToBeCollected() {
   }
   const deadline = Date.now() + 60_000;
   while (!existsSync(collected) && Date.now() < deadline) {
-    execFileSync("/bin/sleep", ["0.2"]);
+    sleepSync(200);
   }
 }
 
@@ -154,6 +173,170 @@ function fail(category, code, message) {
   finish("failed", { error: clipped.value });
 }
 
+// --- package extraction (no `unzip` — see extractPackage below) -------------
+//
+// This used to be the one external call in this file that was also a security
+// boundary: `unzip -q -o`'s own refusal of absolute paths and `../` entries
+// was what bounded a hostile skill package (iron rule 1 — this is the first
+// code in the whole system that opens one). `unzip` does not exist on the
+// Windows host this file must now also run on (04 丙-82), so that refusal has
+// to be reimplemented by hand, entry by entry, using nothing but the
+// standard library — and it has to be the *same* reimplementation on both
+// platforms, not two hand-tuned approximations of it, because a check that
+// passes on one platform and not the other is exactly the kind of gap a
+// crafted package would be built to find.
+
+const EOCD_SIGNATURE = 0x06054b50;
+const CENTRAL_DIR_SIGNATURE = 0x02014b50;
+const LOCAL_FILE_SIGNATURE = 0x04034b50;
+const ZIP64_EOCD_LOCATOR_SIGNATURE = 0x07064b50;
+
+// The end-of-central-directory record carries a variable-length comment (0 to
+// 65535 bytes), so its offset cannot be read directly and is found by
+// scanning backward for the signature instead.
+function findEndOfCentralDirectory(buf) {
+  const minPos = Math.max(0, buf.length - 22 - 65535);
+  for (let i = buf.length - 22; i >= minPos; i -= 1) {
+    if (buf.readUInt32LE(i) === EOCD_SIGNATURE) return i;
+  }
+  throw new Error("not a zip file: end of central directory record not found");
+}
+
+// A path segment is checked against both "/" and "\": POSIX only treats "/"
+// as a separator, so a "..\\x" entry looks like one harmless filename there —
+// but Node's own path.join treats "\\" as a separator on Windows, so the same
+// bytes become a real parent-directory escape the moment this file runs on
+// the Windows target this task exists for. Both platforms run this same
+// check, so both refuse the same entries regardless of which one is doing the
+// unzipping today.
+function isUnsafeEntryName(name) {
+  if (name === "") return true;
+  if (name.startsWith("/") || name.startsWith("\\")) return true; // posix-absolute or UNC
+  if (/^[a-zA-Z]:/.test(name)) return true; // Windows drive-absolute, e.g. "C:\..." or "C:foo"
+  return name.split(/[/\\]+/).some((segment) => segment === "..");
+}
+
+// Unix file-type bits live in the top 16 bits of external_attr. A symlink
+// pointing outside the staging directory is the second escape route past the
+// path check above (unzip would create it as a symlink, faithfully, and
+// whatever reads through it later reads through it wherever it points); a
+// device, fifo, or socket entry has no business inside a skill package
+// either. A package built with no unix mode bits at all — external_attr's top
+// 16 bits all zero, the ordinary case for a deflate-only zip made by a tool
+// that never set them — is not rejected by this check.
+const S_IFMT = 0xf000;
+const S_IFREG = 0x8000;
+const S_IFDIR = 0x4000;
+
+function isUnsafeFileType(externalAttr) {
+  const fileType = (externalAttr >>> 16) & S_IFMT;
+  return fileType !== 0 && fileType !== S_IFREG && fileType !== S_IFDIR;
+}
+
+// Reads and validates every central directory entry. Anything this parser
+// does not implement — Zip64 (large-archive) records, encrypted entries, a
+// compression method other than store or deflate — is refused loudly here
+// rather than misread: a parser that silently skips bytes it does not
+// understand is a parser that can be made to disagree with itself about where
+// an entry's data actually starts.
+function readCentralDirectory(buf) {
+  const eocdOffset = findEndOfCentralDirectory(buf);
+  const totalEntries = buf.readUInt16LE(eocdOffset + 10);
+  const cdSize = buf.readUInt32LE(eocdOffset + 12);
+  const cdOffset = buf.readUInt32LE(eocdOffset + 16);
+
+  if (totalEntries === 0xffff || cdSize === 0xffffffff || cdOffset === 0xffffffff) {
+    throw new Error("unsupported zip feature: zip64 archive");
+  }
+  if (eocdOffset >= 4 && buf.readUInt32LE(eocdOffset - 4) === ZIP64_EOCD_LOCATOR_SIGNATURE) {
+    throw new Error("unsupported zip feature: zip64 archive");
+  }
+
+  const entries = [];
+  let pos = cdOffset;
+  for (let i = 0; i < totalEntries; i += 1) {
+    if (buf.readUInt32LE(pos) !== CENTRAL_DIR_SIGNATURE) {
+      throw new Error("malformed zip: central directory entry signature mismatch");
+    }
+    const generalFlag = buf.readUInt16LE(pos + 8);
+    const method = buf.readUInt16LE(pos + 10);
+    const compressedSize = buf.readUInt32LE(pos + 20);
+    const uncompressedSize = buf.readUInt32LE(pos + 24);
+    const nameLen = buf.readUInt16LE(pos + 28);
+    const extraLen = buf.readUInt16LE(pos + 30);
+    const commentLen = buf.readUInt16LE(pos + 32);
+    const externalAttr = buf.readUInt32LE(pos + 38);
+    const localHeaderOffset = buf.readUInt32LE(pos + 42);
+    const name = buf.toString("utf8", pos + 46, pos + 46 + nameLen);
+
+    if (compressedSize === 0xffffffff || uncompressedSize === 0xffffffff || localHeaderOffset === 0xffffffff) {
+      throw new Error(`unsupported zip feature: zip64 entry (${name})`);
+    }
+    // Bit 0 of the general-purpose flag is the encryption bit (traditional or
+    // strong encryption); this parser holds no keys and must not treat cipher
+    // bytes as if they were the plaintext they are not.
+    if (generalFlag & 0x1) {
+      throw new Error(`unsupported zip feature: encrypted entry (${name})`);
+    }
+    if (method !== 0 && method !== 8) {
+      throw new Error(`unsupported zip feature: compression method ${method} (${name})`);
+    }
+    if (isUnsafeEntryName(name)) {
+      throw new Error(`refusing unsafe zip entry path: ${name}`);
+    }
+    if (isUnsafeFileType(externalAttr)) {
+      throw new Error(`refusing non-regular zip entry: ${name}`);
+    }
+
+    entries.push({ name, method, compressedSize, localHeaderOffset });
+    pos += 46 + nameLen + extraLen + commentLen;
+  }
+  return entries;
+}
+
+// The local file header repeats (and can disagree in length with) the name
+// and extra field from the central directory, so the entry's actual data
+// offset can only be computed by reading the local header, not assumed from
+// the central directory alone.
+function readEntryData(buf, entry) {
+  const lh = entry.localHeaderOffset;
+  if (buf.readUInt32LE(lh) !== LOCAL_FILE_SIGNATURE) {
+    throw new Error(`malformed zip: local file header signature mismatch (${entry.name})`);
+  }
+  const nameLen = buf.readUInt16LE(lh + 26);
+  const extraLen = buf.readUInt16LE(lh + 28);
+  const dataStart = lh + 30 + nameLen + extraLen;
+  const compressed = buf.subarray(dataStart, dataStart + entry.compressedSize);
+  return entry.method === 8 ? inflateRawSync(compressed) : Buffer.from(compressed);
+}
+
+// extractPackage is the whole of what `unzip -q -o <archivePath> -d <destDir>`
+// did: every entry's tree position is preserved — `unzip -j`'s flattening is
+// exactly what would break the directory layout the Agent Skills spec depends
+// on — and a file already at the destination is silently replaced, matching
+// `-o`. What it adds is the entry-by-entry refusal above, running as the same
+// code on every platform this file executes on instead of leaning on a binary
+// that exists on only one of them.
+export function extractPackage(archivePath, destDir) {
+  const buf = readFileSync(archivePath);
+  const entries = readCentralDirectory(buf);
+  for (const entry of entries) {
+    const destPath = join(destDir, entry.name);
+    if (entry.name.endsWith("/")) {
+      mkdirSync(destPath, { recursive: true });
+      continue;
+    }
+    mkdirSync(dirname(destPath), { recursive: true });
+    writeFileSync(destPath, readEntryData(buf, entry));
+  }
+}
+
+// True only when this module is the process entrypoint (`node run.mjs`), not
+// when it is imported — which is what lets run.test.mjs import extractPackage
+// without also running the sandbox workload it decorates below.
+const isMain = process.argv[1] ? pathToFileURL(process.argv[1]).href === import.meta.url : false;
+
+if (isMain) {
 if (!prompt) {
   fail("execution", "missing_prompt", "SKILLHUB_USER_PROMPT is required");
 }
@@ -173,7 +356,7 @@ while (!existsSync(readyPath)) {
   }
   // Busy-wait on a tmpfs path: there is no event to subscribe to across the
   // exec boundary, and the wait is normally a few hundred milliseconds.
-  execFileSync("/bin/sleep", ["0.2"]);
+  sleepSync(200);
 }
 
 // Unpack the skill package, which ingest stored as a zip. The hash is verified
@@ -182,9 +365,9 @@ while (!existsSync(readyPath)) {
 // proves nothing anyway.
 //
 // This is the first thing in the whole system that opens the package, and it is
-// deliberately the least privileged place there is (iron rule 1). `unzip -j`
-// would flatten the tree the Agent Skills spec depends on, so the tree is kept
-// and unzip's own refusal of absolute paths and `../` entries is what bounds it.
+// deliberately the least privileged place there is (iron rule 1). extractPackage
+// (defined above) is what bounds it now — see its own comment block for why it
+// exists instead of a shell-out to `unzip`.
 //
 // It unpacks into <skillDir>/<name>/, not into <skillDir>: the Agent SDK
 // discovers one directory per skill, so a package emptied straight into the
@@ -196,7 +379,7 @@ const skillArchive = join(inputDir, "skill.zip");
 if (existsSync(skillArchive)) {
   const staging = join(inputDir, "package");
   mkdirSync(staging, { recursive: true });
-  execFileSync("unzip", ["-q", "-o", skillArchive, "-d", staging], { stdio: "inherit" });
+  extractPackage(skillArchive, staging);
 
   let name = "skill";
   try {
@@ -475,6 +658,7 @@ let output = "";
 let breach = null;
 const startedAt = Date.now();
 try {
+  const { query } = await import("@anthropic-ai/claude-agent-sdk");
   for await (const msg of query({
     prompt,
     options: {
@@ -564,3 +748,4 @@ if (breach) {
 await emitUsage(totals(), "accumulated");
 
 finish("succeeded", { agent_output: output, message_types: messages });
+} // isMain

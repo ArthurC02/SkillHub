@@ -24,6 +24,7 @@ Usage:
 	devctl gen [--check] [--scope=sql|openapi|all]  regenerate or check committed output
 	devctl automation-check  verify Task, Agent docs and generated ownership markers
 	devctl test-report dir [go test args]  run the suite and report what skipped and why
+	devctl seed-clean [--dry-run]  upload PORT-007's real, traceable demo skills into a clean-mode deployment
 `
 
 type checkResult struct {
@@ -80,6 +81,10 @@ func main() {
 			fatal(err)
 		}
 		os.Exit(code)
+	case "seed-clean":
+		if err := seedClean(root, os.Args[2:], os.Stdout); err != nil {
+			fatal(err)
+		}
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:

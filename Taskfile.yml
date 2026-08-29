@@ -57,7 +57,7 @@ tasks:
 
   test:
     desc: Run all test suites
-    deps: [test:platform, test:sandbox, test:llm, test:web, test:api-client, test:devctl]
+    deps: [test:platform, test:sandbox, test:llm, test:web, test:api-client, test:devctl, test:runtime-script]
 
   test:platform:
     desc: Run Go platform tests and report how many skipped and why; DB integration requires its explicit test URL
@@ -71,6 +71,13 @@ tasks:
     desc: Run portable developer automation unit tests
     dir: tools/devctl
     cmd: go test ./...
+
+  test:runtime-script:
+    desc: Run the sandbox workload script's own tests, including its zip extractor's refusals
+    # An explicit file, not the directory: `node --test <dir>` walks with the CJS
+    # resolver and dies on Windows (measured on Node 25), which is exactly the
+    # platform 04 丙-82 exists for.
+    cmd: node --test infra/images/runtime-agent-sdk/run.test.mjs
 
   test:llm:
     desc: Run mocked Python LLM tests without live provider calls

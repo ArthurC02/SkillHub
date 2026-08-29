@@ -305,6 +305,16 @@ jobs:
       # between "it failed" and "here is what failed".
       - name: Sandbox tests
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Sandbox tests' go test ./...
+      # The workload script the drivers spawn, tested here rather than in `web`:
+      # it belongs to the sandbox, and this job is already the one filtered on
+      # infra/images/**. Its zip extractor replaced unzip's refusal of absolute
+      # and ../ entries with its own (04 丙-82), so those refusals need a machine.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Runtime workload script tests
+        working-directory: ${{ github.workspace }}
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Runtime workload script tests' node --test infra/images/runtime-agent-sdk/run.test.mjs
       - run: go build ./...
       - name: Build the runtime image (SBX-002)
         run: docker build -t skillhub/runtime-agent-sdk:ci infra/images/runtime-agent-sdk
