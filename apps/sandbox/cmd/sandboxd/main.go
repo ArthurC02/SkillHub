@@ -10,10 +10,13 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -23,6 +26,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/dockerdrv"
+	"github.com/ArthurC02/skillhub/apps/sandbox/internal/localdrv"
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
 
@@ -44,20 +48,51 @@ func main() {
 		log.Error(err.Error())
 		os.Exit(1)
 	}
-	drv, err := dockerdrv.New(dockerdrv.Config{
-		Image:        image,
-		Runtime:      runtime,
-		Network:      envOr("SKILLHUB_SANDBOX_NETWORK", "none"),
-		UID:          envInt("SKILLHUB_SANDBOX_UID", 65532),
-		GID:          envInt("SKILLHUB_SANDBOX_GID", 65532),
-		StorageQuota: os.Getenv("SKILLHUB_SANDBOX_STORAGE_QUOTA") == "1",
-		AllowDevCmd:  allowDevCmd,
-	})
-	if err != nil {
-		log.Error("docker driver unavailable", "err", err)
-		os.Exit(1)
+	// SKILLHUB_CLEAN_MODE is the one flag ADR-060 decision 6 allows for this
+	// axis: it swaps the whole execution strategy, not a capability, and there
+	// is deliberately no second env var for it. localdrv.Config resolves its
+	// node binary via PATH and its scratch directory on its own; the only
+	// thing this process supplies is where run.mjs lives, which is fixed by
+	// the repo layout (cleanModeRunnerScript), not per-node policy the way
+	// dockerdrv.Config.Image is.
+	cleanMode := os.Getenv("SKILLHUB_CLEAN_MODE") == "1"
+
+	var (
+		drv          sandbox.Driver
+		closer       func() error
+		maxResources = sandbox.DefaultLimits
+	)
+	switch driverKind(cleanMode) {
+	case "local":
+		script, err := cleanModeRunnerScript()
+		if err != nil {
+			log.Error(err.Error())
+			os.Exit(1)
+		}
+		d, err := localdrv.New(localdrv.Config{RunnerScript: script})
+		if err != nil {
+			log.Error("local driver unavailable", "err", err)
+			os.Exit(1)
+		}
+		drv, closer = d, d.Close
+		maxResources = cleanModeMaxResources(d.ResourceEnforcement(), log)
+	default:
+		d, err := dockerdrv.New(dockerdrv.Config{
+			Image:        image,
+			Runtime:      runtime,
+			Network:      envOr("SKILLHUB_SANDBOX_NETWORK", "none"),
+			UID:          envInt("SKILLHUB_SANDBOX_UID", 65532),
+			GID:          envInt("SKILLHUB_SANDBOX_GID", 65532),
+			StorageQuota: os.Getenv("SKILLHUB_SANDBOX_STORAGE_QUOTA") == "1",
+			AllowDevCmd:  allowDevCmd,
+		})
+		if err != nil {
+			log.Error("docker driver unavailable", "err", err)
+			os.Exit(1)
+		}
+		drv, closer = d, d.Close
 	}
-	defer drv.Close()
+	defer closer()
 
 	// What this node routes to, rendered from infra/egress/allowlist.yaml by
 	// tools/egress/render.py in the same pass that produced its nftables ruleset
@@ -83,6 +118,7 @@ func main() {
 				"hint", "render it: python3 tools/egress/render.py --out infra/egress/rendered")
 			os.Exit(1)
 		}
+		var err error
 		egressAllow, err = sandbox.LoadEgressAllow(path)
 		if err != nil {
 			log.Error("could not load the rendered egress allow list", "path", path, "err", err)
@@ -98,13 +134,10 @@ func main() {
 			"network", network, "modes", modes)
 	}
 
-	// The declared isolation level follows the runtime actually configured.
+	// The declared isolation level follows the driver actually wired up.
 	// Declaring gvisor on a machine running runc would be a claim the provider
 	// cannot keep, and RUN-005 dispatches on this answer.
-	isolation := "container"
-	if runtime == "runsc" {
-		isolation = "gvisor"
-	}
+	isolation := resolveIsolation(cleanMode, runtime)
 	m := sandbox.NewManager(drv, sandbox.Config{
 		Provider: envOr("SKILLHUB_SANDBOX_PROVIDER", "self_hosted"),
 		Runtimes: []sandbox.RuntimeCapability{{
@@ -112,7 +145,7 @@ func main() {
 			Versions:         []string{envOr("SKILLHUB_SANDBOX_RUNTIME_VERSION", "0.3.233")},
 			AgentIntegration: []string{"in_sandbox_sdk"},
 		}},
-		MaxResources:   sandbox.DefaultLimits,
+		MaxResources:   maxResources,
 		IsolationLevel: isolation,
 		EgressModes:    modes,
 		EgressAllow:    egressAllow,
@@ -217,6 +250,96 @@ func refuseUnprobedProduction(runtime string, probe *sandbox.P02Probe) error {
 	return errors.New("SKILLHUB_SANDBOX_P02_TARGETS must name the addresses a sandbox must not reach " +
 		"(host:port, comma separated) when running under runsc: ADR-022 T10 requires the P-02 block to be " +
 		"verified by a resident probe, and a node with no targets reports not_configured forever")
+}
+
+// driverKind reports which sandbox.Driver implementation main should wire up
+// for a given SKILLHUB_CLEAN_MODE reading. "docker" is the answer whenever
+// cleanMode is false, unchanged from before this axis existed - the single
+// branch point ADR-060 decision 6 asks for, pulled out of main so the flag
+// being unset keeping today's driver is something a test asserts rather than
+// something a reader has to trust.
+func driverKind(cleanMode bool) string {
+	if cleanMode {
+		return "local"
+	}
+	return "docker"
+}
+
+// resolveIsolation is the capability declaration's isolation.level, pulled out
+// of main for the same reason as driverKind: clean must not read as a weaker
+// gvisor or container (ADR-059 decision 1 - the name means no boundary, not a
+// smaller one), and that has to be a claim a test checks, not one a reader
+// takes on faith. clean wins over the runsc check because a clean-mode node is
+// never also a runsc node.
+func resolveIsolation(cleanMode bool, runtime string) string {
+	switch {
+	case cleanMode:
+		return "clean"
+	case runtime == "runsc":
+		return "gvisor"
+	default:
+		return "container"
+	}
+}
+
+// cleanModeRunnerScript locates run.mjs relative to this source file instead
+// of a new environment variable. ADR-060 decision 6 forbids a second env var
+// for this axis, and unlike dockerdrv.Config.Image (a registry reference that
+// varies by deployment), the script's location is fixed by this repo's own
+// layout - there is nothing for a node operator to configure.
+// It returns an error rather than a bare path because the path is derived from
+// the *build* machine's source layout: runtime.Caller reports where this file
+// was compiled, so a binary built in the repo and copied somewhere else points
+// at a directory that does not exist there. That is a supported way to be
+// wrong, and 02:PORT-005 requires a startup failure to name what is missing
+// rather than to surface later as a run that will not start.
+func cleanModeRunnerScript() (string, error) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("clean mode cannot locate run.mjs: this binary carries no source path, so it was not built from this repository")
+	}
+	// apps/sandbox/cmd/sandboxd/main.go -> repo root is four directories up.
+	return runnerScriptUnder(filepath.Join(filepath.Dir(thisFile), "..", "..", "..", ".."))
+}
+
+// runnerScriptUnder is split out so the missing-script failure is reachable
+// from a test without moving this binary to another machine. A test that
+// rebuilt the message itself would assert nothing about this code.
+func runnerScriptUnder(repoRoot string) (string, error) {
+	script := filepath.Join(repoRoot, "infra", "images", "runtime-agent-sdk", "run.mjs")
+	if _, err := os.Stat(script); err != nil {
+		return "", fmt.Errorf("clean mode cannot find the workload script at %s (derived from this binary's build path): %w", script, err)
+	}
+	return script, nil
+}
+
+// cleanModeMaxResources answers 02:PORT-010's literal requirement - the
+// declaration must reflect what was detected, not what was intended - for the
+// two ceilings localdrv.ResourceEnforcement can actually speak to.
+//
+// It still returns sandbox.DefaultLimits' memory_bytes and max_pids even when
+// enf reports false for them. That is a deliberate compromise, not a silent
+// one: sandbox.Config.accept() (apps/sandbox/internal/sandbox, outside this
+// file's allowlist) rejects any MaxResources field that is <= 0, and the
+// frozen capability contract (contract.go) has no field for "declared but not
+// OS-enforced" - only a positive ceiling or none at all. Zeroing either field
+// on an unprivileged Linux host would not make the declaration more honest,
+// it would make clean mode unable to accept a single run there, which is not
+// what ADR-059 decision 5②'s "runtime detects and degrades" asked for. What
+// this function can do honestly within the existing contract is say so
+// loudly, once, at startup, so an operator reading logs sees the gap that the
+// JSON capability response has no field to carry.
+func cleanModeMaxResources(enf localdrv.ResourceEnforcement, log *slog.Logger) sandbox.ResourceLimits {
+	limits := sandbox.DefaultLimits
+	if !enf.Memory {
+		log.Warn("clean mode: memory_bytes is declared for contract compatibility but is not OS-enforced on this platform (node --max-old-space-size only)",
+			"memory_bytes", limits.MemoryBytes)
+	}
+	if !enf.Processes {
+		log.Warn("clean mode: max_pids is declared for contract compatibility but is not OS-enforced on this platform",
+			"max_pids", limits.MaxPIDs)
+	}
+	return limits
 }
 
 // splitList reads a comma-separated env var, dropping the empties a trailing

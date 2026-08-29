@@ -47,6 +47,14 @@ type Deps struct {
 	// LLM is the internal Python service. Nil is a working deployment with no
 	// judge and no suggester.
 	LLM *llmclient.Client
+	// PollOnly starts the River client without issuing LISTEN, so it never asks
+	// the pool for a second connection just to notify. The zero value (false)
+	// is cmd/worker's own behaviour and must stay that way — cmd/worker never
+	// sets this field, so its LISTEN-based low-latency dispatch is unchanged.
+	// The one caller that sets it true is cmd/api's clean test mode, where a
+	// single pool_max_conns=1 connection is all there is and a second LISTEN
+	// connection is not available to ask for (ADR-060 決策 6).
+	PollOnly bool
 }
 
 // Set is the wired graph this process runs. Exposed field by field rather
@@ -229,16 +237,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	// every rollout. An hour late is on time here.
 	schedule(objreconcile.Args{}, objreconcile.Interval, false)
 
-	client, err := queue.New(pool, &river.Config{
-		Workers: workers,
-		Queues: map[string]river.QueueConfig{
-			// One queue until there is a measured reason for more. Concurrency is
-			// bounded well below the per-workspace limit of 2 concurrent runs
-			// (PDM-005 §5.2); real capacity planning lands with the first load test.
-			river.QueueDefault: {MaxWorkers: min(runtime.NumCPU(), 4)},
-		},
-		PeriodicJobs: periodic,
-	})
+	client, err := queue.New(pool, riverConfig(workers, periodic, deps.PollOnly))
 	if err != nil {
 		return nil, fmt.Errorf("queue client: %w", err)
 	}
@@ -334,6 +333,24 @@ func evalRunFacts(facts run.EvaluationRun) eval.RunFacts {
 		SkillVersionID: facts.SkillVersionID, TestCaseSnapshotID: facts.TestCaseSnapshotID,
 		Status: facts.Status, StatusReason: facts.StatusReason, RuntimeSnapshot: facts.RuntimeSnapshot,
 		StartedAt: facts.StartedAt, FinishedAt: facts.FinishedAt, FailureClass: facts.FailureClass,
+	}
+}
+
+// riverConfig is queue.New's argument, split out from BuildWorkers so the
+// PollOnly wiring is something a test can read back (river.Client keeps no
+// exported accessor for the *river.Config it was built with, so this is the
+// only point after which the value stops being observable).
+func riverConfig(workers *river.Workers, periodic []*river.PeriodicJob, pollOnly bool) *river.Config {
+	return &river.Config{
+		Workers: workers,
+		Queues: map[string]river.QueueConfig{
+			// One queue until there is a measured reason for more. Concurrency is
+			// bounded well below the per-workspace limit of 2 concurrent runs
+			// (PDM-005 §5.2); real capacity planning lands with the first load test.
+			river.QueueDefault: {MaxWorkers: min(runtime.NumCPU(), 4)},
+		},
+		PeriodicJobs: periodic,
+		PollOnly:     pollOnly,
 	}
 }
 

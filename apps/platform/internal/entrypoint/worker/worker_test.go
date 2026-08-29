@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/riverqueue/river"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
@@ -151,6 +152,23 @@ func TestOutboxDispatchAccountsForEveryEventType(t *testing.T) {
 	}
 	if err := set.Events.Validate(); err != nil {
 		t.Errorf("outbox dispatch leaves part of the catalogue unaccounted for: %v", err)
+	}
+}
+
+// cmd/worker's own Deps literal never sets PollOnly, so BuildWorkers must keep
+// treating the zero value as "issue LISTEN" (river.Config.PollOnly == false) —
+// that is what lets cmd/worker's low-latency dispatch stay untouched by
+// cmd/api's clean test mode, the one caller that sets this field true
+// (ADR-060 決策 6). river.Client keeps no exported way to read the *river.Config
+// a running client was built with, so this asserts the value one step
+// earlier, on riverConfig itself, which is BuildWorkers' only caller of
+// queue.New and therefore the only place the wiring can go missing.
+func TestRiverConfigPollOnlyDefaultsToListenMode(t *testing.T) {
+	if got := riverConfig(river.NewWorkers(), nil, false).PollOnly; got {
+		t.Error("PollOnly defaulted to true; cmd/worker never sets Deps.PollOnly and depends on this staying false")
+	}
+	if got := riverConfig(river.NewWorkers(), nil, true).PollOnly; !got {
+		t.Error("PollOnly:true did not reach river.Config; cmd/api's clean test mode needs this to avoid a second LISTEN connection")
 	}
 }
 

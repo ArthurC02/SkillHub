@@ -26,7 +26,9 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -38,21 +40,71 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
+// SKILLHUB_CLEAN_MODE is the one flag ADR-060 決策 6 grants this process, read
+// exactly once, right here — everything it changes is downstream of this
+// single bool, and nothing downstream reads the variable itself (⛔ single
+// choice point). Unset (the shipped default) must leave every line below
+// behaving exactly as it did before this flag existed; that is 02:PORT-005's
+// literal acceptance test, in main_test.go.
+func cleanModeFromEnv() bool {
+	return os.Getenv("SKILLHUB_CLEAN_MODE") == "1"
+}
+
+// applyCleanModePool is clean mode's first consequence: a single database
+// connection, because the PGlite socket behind it serves one client at a time
+// and this same process is about to also run the worker (see the package doc
+// on cmd/api and ADR-060 決策 6 for why the two share a pool instead of two).
+// Left alone, cfg keeps whatever pgxpool.ParseConfig derived from
+// DATABASE_URL on its own — the same value pgxpool.New would have produced,
+// which is what main_test.go pins for the flag-unset case.
+func applyCleanModePool(cfg *pgxpool.Config, clean bool) {
+	if clean {
+		cfg.MaxConns = 1
+	}
+}
+
+// newStore is clean mode's second consequence: production talks to whatever
+// OBJSTORE_* points at (objstore.FromEnv), clean mode talks to an in-process
+// stand-in that speaks the same S3 wire protocol so every caller downstream
+// gets the same *objstore.Client either way (objstore.NewInProcess). The stop
+// func is non-nil only for the path that started a server to shut down, which
+// is what main_test.go checks for the flag-unset case — the two *Client
+// values have no exported field a test could otherwise compare.
+func newStore(clean bool) (*objstore.Client, func(), error) {
+	if !clean {
+		store, err := objstore.FromEnv()
+		return store, nil, err
+	}
+	store, stop, err := objstore.NewInProcess(envx.Or("OBJSTORE_BUCKET", "skillhub"))
+	return store, stop, err
+}
+
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+	clean := cleanModeFromEnv()
+
+	poolCfg, err := pgxpool.ParseConfig(os.Getenv("DATABASE_URL"))
+	if err != nil {
+		slog.Error("database pool: DATABASE_URL is not a valid connection string", "error", err)
+		os.Exit(1)
+	}
+	applyCleanModePool(poolCfg, clean)
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		slog.Error("database pool", "error", err)
 		os.Exit(1)
 	}
 	defer pool.Close()
 
-	store, err := objstore.FromEnv()
+	store, stopStore, err := newStore(clean)
 	if err != nil {
 		slog.Error("object store", "error", err)
 		os.Exit(1)
+	}
+	if stopStore != nil {
+		defer stopStore()
 	}
 	if err := store.EnsureBucket(ctx); err != nil {
 		slog.Error("object store bucket", "error", err)
@@ -110,6 +162,12 @@ func main() {
 		slog.Warn("ANALYTICS_RETENTION not set; the BETA-002 funnel is not being measured")
 	}
 
+	// Shared with the clean-mode worker below when clean is set — in every other
+	// deployment this registry is read here and nowhere else in this process
+	// (iron rule 7: the API refuses a run no configured provider can carry, it
+	// never dispatches one).
+	providers := run.NewRegistryFromEnv()
+
 	app, err := apiserver.NewApp(apiserver.Config{
 		Pool:               pool,
 		Store:              store,
@@ -131,11 +189,8 @@ func main() {
 		// BETA-001's admission list (ADR-028 決策 1), read exactly like the operator
 		// roster above and keyed by provider_user_id. Unset — the shipped default —
 		// means no closed beta is running and every signed-in user is admitted.
-		Invited: operatorIDs(os.Getenv("BETA_ALLOWLIST")),
-		// The API needs the provider registry for one thing only: refusing a run no
-		// configured provider can carry, before it is queued (RUN-005, ADR-004). It
-		// never dispatches — that is the worker's job (iron rule 7).
-		Providers:       run.NewRegistryFromEnv(),
+		Invited:         operatorIDs(os.Getenv("BETA_ALLOWLIST")),
+		Providers:       providers,
 		Quota:           quotaFromEnv(),
 		GenerateQuota:   generateQuotaFromEnv(),
 		GenerateExposed: generateExposedFromEnv(),
@@ -146,6 +201,37 @@ func main() {
 		os.Exit(1)
 	}
 	app.AuditRosters(ctx)
+
+	// Clean mode's third and last consequence: the worker runs inside this same
+	// process instead of cmd/worker's own (see the package doc above and ADR-060
+	// 決策 6). PollOnly:true is required, not cosmetic — with pool_max_conns=1
+	// there is no second connection for River to LISTEN on, and without
+	// PollOnly the queue client fails to start rather than falling back.
+	var cleanWorker *worker.Set
+	if clean {
+		if err := queue.EnsureSchema(ctx, pool); err != nil {
+			slog.Error("clean mode: queue schema", "error", err)
+			os.Exit(1)
+		}
+		cleanWorker, err = worker.BuildWorkers(pool, worker.Deps{
+			Providers:          providers,
+			Store:              store,
+			Gateway:            run.GatewayFromEnv(),
+			TraceSigner:        traceSigner,
+			TraceIngestBaseURL: os.Getenv("SKILLHUB_TRACE_INGEST_URL"),
+			LLM:                llm,
+			PollOnly:           true,
+		})
+		if err != nil {
+			slog.Error("clean mode: worker composition", "error", err)
+			os.Exit(1)
+		}
+		if err := cleanWorker.Queue.Start(ctx); err != nil {
+			slog.Error("clean mode: queue start", "error", err)
+			os.Exit(1)
+		}
+		slog.Info("clean mode: worker started in-process")
+	}
 
 	// DEV_CORS_ORIGIN is the local Vite dev server (http://localhost:5173) and
 	// nothing else. Unset in production, where the SPA is same-origin with the
@@ -182,6 +268,13 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		slog.Error("api shutdown", "error", err)
+	}
+	if cleanWorker != nil {
+		// context.Background(), matching cmd/worker's own shutdown: the context
+		// jobs were given is already cancelled, Stop just waits for them to notice.
+		if err := cleanWorker.Queue.Stop(context.Background()); err != nil {
+			slog.Error("clean mode: queue stop", "error", err)
+		}
 	}
 }
 

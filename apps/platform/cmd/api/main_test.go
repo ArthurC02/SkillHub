@@ -248,6 +248,93 @@ func TestImportFetcherHostsFromEnv(t *testing.T) {
 	}
 }
 
+// --- X. SKILLHUB_CLEAN_MODE (ADR-060 決策 6) ----------------------------------
+//
+// One flag, one branch, one choice point — so what needs pinning is exactly
+// two things: the flag reads as expected, and the flag *off* reproduces
+// today's behaviour bit for bit. That second half is 02:PORT-005's literal
+// acceptance test; the mutation this whole section exists for is someone
+// widening the branch's condition (e.g. defaulting to clean) or hard-coding
+// its consequence instead of gating it on `clean`.
+
+func TestCleanModeFromEnv(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		value string
+		unset bool
+		want  bool
+	}{
+		{name: "unset (the shipped default)", unset: true},
+		{name: "empty", value: ""},
+		{name: "0", value: "0"},
+		{name: "true", value: "true"},  // not accepted; only the literal "1" is
+		{name: "TRUE", value: "TRUE"},
+		{name: "1", value: "1", want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			setenv(t, "SKILLHUB_CLEAN_MODE", tc.value, tc.unset)
+			if got := cleanModeFromEnv(); got != tc.want {
+				t.Errorf("SKILLHUB_CLEAN_MODE=%q -> clean mode %v, want %v", tc.value, got, tc.want)
+			}
+		})
+	}
+}
+
+// The literal 02:PORT-005 acceptance test: flag unset must leave the pool
+// config exactly where pgxpool.ParseConfig itself put it — not pinned to a
+// particular number (that number is pgx's default and not this file's to
+// own), just untouched by this file.
+func TestApplyCleanModePoolLeavesProductionAlone(t *testing.T) {
+	cfg, err := pgxpool.ParseConfig("postgres://skillhub@127.0.0.1:1/skillhub")
+	if err != nil {
+		t.Fatalf("pgxpool.ParseConfig: %v", err)
+	}
+	before := cfg.MaxConns
+
+	applyCleanModePool(cfg, false)
+	if cfg.MaxConns != before {
+		t.Errorf("clean=false changed MaxConns from %d to %d; the flag being unset must not touch the pool config", before, cfg.MaxConns)
+	}
+
+	applyCleanModePool(cfg, true)
+	if cfg.MaxConns != 1 {
+		t.Errorf("clean=true left MaxConns at %d, want 1 (a single PGlite-backed connection, ADR-060 決策 6)", cfg.MaxConns)
+	}
+}
+
+// The other half of the literal acceptance test: flag unset takes the
+// objstore.FromEnv path, not objstore.NewInProcess. The two *objstore.Client
+// values have no exported field a test can compare, so this checks the one
+// externally visible difference between the two paths instead: NewInProcess
+// starts a server and hands back a non-nil stop func to shut it down again,
+// FromEnv touches no network and has nothing to stop.
+func TestNewStoreTakesFromEnvPathWhenNotClean(t *testing.T) {
+	store, stopFn, err := newStore(false)
+	if err != nil {
+		t.Fatalf("newStore(false): %v", err)
+	}
+	if store == nil {
+		t.Error("newStore(false) returned a nil store")
+	}
+	if stopFn != nil {
+		t.Error("newStore(false) returned a non-nil stop func; that only happens on the in-process path, so clean=false took the wrong branch")
+	}
+}
+
+func TestNewStoreTakesInProcessPathWhenClean(t *testing.T) {
+	store, stopFn, err := newStore(true)
+	if err != nil {
+		t.Fatalf("newStore(true): %v", err)
+	}
+	if store == nil {
+		t.Fatal("newStore(true) returned a nil store")
+	}
+	if stopFn == nil {
+		t.Fatal("newStore(true) returned a nil stop func; the in-process backend it should have started is now unreachable to shut down")
+	}
+	stopFn()
+}
+
 // --- 4. the background loops -------------------------------------------------
 
 // 03:SEC-012's automatic first action: the reconciler-stall watchdog, which is
