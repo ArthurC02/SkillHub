@@ -27,7 +27,7 @@ import type { Redistribution } from "../api/types";
  * rendered a red 授權未知，不能打包 next to a download the server would have
  * produced. A missing key is now a compile error rather than a wrong verdict.
  */
-const REDISTRIBUTION_BADGE: Record<Redistribution, { text: string; danger?: true }> = {
+export const REDISTRIBUTION_BADGE: Record<Redistribution, { text: string; danger?: true }> = {
   allowed: { text: "可打包下載" },
   self_supplied: { text: "可下載（你自己帶進來的）" },
   generated: { text: "可下載（平台為你生成的）" },

@@ -294,7 +294,10 @@ test("§2.12: a run in flight says which step, that it ends by itself, and that 
   // The two facts a spinner cannot carry: something that moves, and how long
   // since it moved.
   expect(text).toContain("目前已記錄");
-  expect(text).toContain("2026-08-22T10:04:00Z");
+  expect(container.querySelector('time[datetime="2026-08-22T10:04:00Z"]')).not.toBeNull();
+  // 設計 §2.12 第 3 條's 「多久沒動了」 is now a quantity a reader can act on
+  // rather than a UTC string they have to subtract in their head.
+  expect(text).toMatch(/（\d+ (秒|分鐘|小時|天|週|個月|年)前）|（剛剛）/);
 });
 
 test("§2.12: no events yet is a named state, never 0 秒前 and never a blank", async () => {

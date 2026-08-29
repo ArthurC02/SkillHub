@@ -8,6 +8,10 @@ import { RunTrace } from "./pages/RunTrace";
 import { WorkspaceAccount } from "./pages/WorkspaceAccount";
 import { WorkspaceRuns } from "./pages/WorkspaceRuns";
 import { WorkspaceSkills } from "./pages/WorkspaceSkills";
+import { SkillDetail } from "./pages/SkillDetail";
+import { ImportSkill } from "./pages/ImportSkill";
+import { CancelRunControl } from "./pages/RunTrace";
+import { SKILL_VERSIONS, VERSION_DIFF, skillDetail } from "./fixtures/platform";
 import { useForkSkill } from "./api/skills";
 
 // 02:WS-002 第 1 條 / WS-004 — the workspace's own lists, plus 第 3 條's delete
@@ -47,7 +51,7 @@ vi.mock("@tanstack/react-router", () => ({
       {children as never}
     </a>
   ),
-  useParams: () => ({ runId: RUN }),
+  useParams: () => ({ runId: RUN, skillId: SKILL }),
   useSearch: () => ({}),
   // /runs/$runId carries `evaluation` and `events` now (資訊架構 §0.1 R4); this
   // file renders that page for the artifact rows and never navigates.
@@ -502,6 +506,145 @@ test("IA-9 the empty own-skills list offers importing as a link, not as prose", 
   expect(text()).toContain("不是清單讀取失敗");
 });
 
+// --- WS-001 第 4 條: version history and the diff between any two ------------
+
+/**
+ * `SkillDetail` with the two session-scoped reads it now makes: the public
+ * detail, the version list, and — once a row is expanded — the diff.
+ *
+ * `calls` is the point of the harness: 第 4 條's endpoint is
+ * `GET /skills/{id}/diff?from=&to=`, and the two ids have to be the RIGHT two,
+ * in the right direction. A diff that renders is not evidence it compared the
+ * pair the reader asked for.
+ */
+function stubSkillDetailPage(versions: unknown = SKILL_VERSIONS, versionsStatus = 200) {
+  const calls: string[] = [];
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input).replace(/^https?:\/\/[^/]+/, "");
+    calls.push(url);
+    const path = url.split("?")[0];
+    if (path.endsWith("/versions")) return json(versions, versionsStatus);
+    if (path.endsWith("/diff")) return json(VERSION_DIFF);
+    if (path.startsWith("/api/skills/")) return json(skillDetail(SKILL, "PDF Summariser"));
+    return json({ error: "not found" }, 404);
+  });
+  return calls;
+}
+
+test("WS-001 the detail page lists the versions, newest first, with the oldest saying why it has no comparison", async () => {
+  stubSkillDetailPage();
+  await render(<SkillDetail />, () => text().includes("版本歷史"));
+  await waitFor(() => text().includes("v1"));
+
+  expect(text()).toContain("v2");
+  expect(text()).toContain("v1");
+  // ADR-003: the reason the history exists at all. 採用改善建議 makes a new
+  // version and never rewrites the old one.
+  expect(text()).toContain("版本不可變");
+  // §2.4: the oldest row has no 「與上一版比較」 and says so rather than leaving
+  // a gap where every other row has a control.
+  expect(text()).toContain("這是最早的版本，沒有上一版可以比較");
+  // The instant is machine-readable, not an ISO string glued into a sentence.
+  expect(container.querySelector('time[datetime="2026-08-17T00:00:00Z"]')).not.toBeNull();
+});
+
+test("WS-001 第 4 條 比較 asks the contract's endpoint for the right two versions", async () => {
+  const calls = stubSkillDetailPage();
+  await render(<SkillDetail />, () => text().includes("版本歷史"));
+  await waitFor(() => button("與上一版比較") !== undefined);
+
+  expect(calls.some((u) => u.includes("/diff"))).toBe(false);
+  await act(async () => button("與上一版比較")?.click());
+  // Not on 「SKILL.md」: this page already says 查看 SKILL.md 與檔案樹, so that
+  // wait resolves before the diff arrives and the assertions below then run
+  // against a half-drawn page.
+  await waitFor(() => text().includes("assets/logo.png"));
+
+  // from = the OLDER version, to = the row's own. Reversed, the diff renders
+  // just as happily and describes the opposite change.
+  const diff = calls.find((u) => u.includes("/diff"));
+  expect(diff).toBe(
+    `/skills/${SKILL}/diff?from=22222222-2222-2222-2222-111111111111&to=22222222-2222-2222-2222-222222222222`,
+  );
+  // The shared VersionDiff component's own output, so the two callers of
+  // `GET .../diff` cannot start rendering the same document differently —
+  // including 設計 §2.9's named absence for a file it cannot diff.
+  expect(text()).toContain("assets/logo.png");
+  expect(text()).toContain("（二進位或過大，不顯示差異）");
+});
+
+test("WS-001 a version list that fails to read says so, and 401 says to log in", async () => {
+  stubSkillDetailPage({ error: "not authenticated" }, 401);
+  await render(<SkillDetail />, () => text().includes("版本歷史"));
+  await waitFor(() => text().includes("需要登入"));
+
+  // ReadFailure's 401 branch, not a swallowed error and not an empty list:
+  // 「沒有版本」 and 「你沒登入」 are different answers (設計 §2.9).
+  expect(text()).toContain("版本歷史需要登入");
+  expect(text()).not.toContain("not authenticated");
+  expect(text()).not.toContain("這是最早的版本");
+});
+
+// --- ⛔ the M5 exposure boundary, on this page's half of it -------------------
+
+/**
+ * `/me` plus one skill row, so the page renders its list rather than an error.
+ *
+ * `features` is present only when asked for, exactly as generate.test.tsx's
+ * `stubSession` does it: a deployment that has not turned ADR-052's flag on
+ * answers `/me` with no `features` object at all, and that default is the state
+ * every beta deployment is in.
+ */
+function stubOwnSkillsWithFeatures(features?: Record<string, boolean>) {
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me")
+      return json({
+        user_id: "u-1",
+        email: "t@example.com",
+        display_name: "tester",
+        workspace_id: "ws-1",
+        deletion_requested_at: null,
+        purge_after: null,
+        deletion_scope: null,
+        ...(features ? { features } : {}),
+      });
+    return json({
+      skills: [{ skill_id: SKILL, name: "CSV 清理", summary: "整理 CSV。", ...SCANNED }],
+      limit: 100,
+      truncated: false,
+      total: 1,
+    });
+  });
+}
+
+// The pair generate.test.tsx has for the search's no_results state, for the
+// OTHER mount. Both entry points are named in 資訊架構 §2.4, only one of them
+// was ever asserted, and `{generateExposed && …}` here could have been changed
+// to `{true && …}` with all 224 tests still green. The failure has no symptom:
+// the page looks right, and what breaks is the meaning of 01 §11.2's first
+// funnel segment — twelve people, one chance.
+test("GEN-008 ⛔ with the flag off, /workspace/skills has no generation entry point", async () => {
+  stubOwnSkillsWithFeatures();
+  await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
+
+  // The list itself is still drawn — otherwise this passes because the page
+  // failed rather than because the boundary held.
+  expect(text()).toContain("CSV 清理");
+  expect(container.querySelector("#generate-task")).toBeNull();
+  expect(text()).not.toContain("讓平台依你的描述做一個");
+});
+
+test("GEN-008 with the flag on, /workspace/skills does show it", async () => {
+  stubOwnSkillsWithFeatures({ generate_skill: true });
+  await render(<WorkspaceSkills />, () => container.querySelector("#generate-task") !== null);
+
+  expect(container.querySelector("#generate-task")).not.toBeNull();
+  expect(text()).toContain("CSV 清理");
+});
+
 // --- deleting a skill (WS-005, 04 丙-22 ①) ----------------------------------
 
 test("WS-005 deleting a skill says what survives it before anything is destroyed", async () => {
@@ -604,7 +747,7 @@ test("CORE-007 a pending deletion is a state with a date and a way out, not a re
 
   // A user who closed the tab after asking has no other place to find either of
   // these, which is what 02:SEC-006「刪除工作具可追蹤狀態」 is asking for.
-  expect(text()).toContain("2026-09-17T00:00:00Z");
+  expect(container.querySelector('time[datetime="2026-09-17T00:00:00Z"]')).not.toBeNull();
   expect(text()).toContain("再按一次刪除不會提早");
   // 04 丙-30. Nothing in this test ever calls DELETE /me: this is the reload
   // case, and the scope sentence used to exist only in that one response, so it
@@ -687,7 +830,7 @@ test("WS-004 the download history answers 誰 and 何時 per download, not just 
   await waitFor(() => text().includes("tester"));
 
   expect(urls.some((u) => u.includes(`/downloads/${ARTIFACT}/records`))).toBe(true);
-  expect(text()).toContain("2026-08-17T09:00:00Z");
+  expect(container.querySelector('time[datetime="2026-08-17T09:00:00Z"]')).not.toBeNull();
   // A purged account leaves the row de-identified rather than removing it:
   // "somebody, at this time" is still true.
   expect(text()).toContain("deleted user");
@@ -812,4 +955,133 @@ test("WS-004 a fork invalidates the list it writes to, and does not touch the se
 
   expect(queryClient.getQueryState(["own-skills"])?.isInvalidated).toBe(true);
   expect(queryClient.getQueryState(["skills", "search", "pdf"])?.isInvalidated).toBe(false);
+});
+
+// --- 04 丙: the invalidations nobody was asserting ---------------------------
+
+/**
+ * 24 `invalidateQueries` sites, 4 of them with a direct assertion.
+ *
+ * The harness is the fork test's, above: seed the cache with the key the
+ * mutation is supposed to reach AND a key it must not, run the mutation, read
+ * `isInvalidated` on both. It is worth copying rather than abstracting because
+ * the second half — the key that must NOT move — is different every time and is
+ * where 事故 #1 lived: success used to invalidate `["skills"]`, which also
+ * matches `["skills","search",…]`, so every write re-ran the search behind it
+ * and made the server write a second `search_performed` event. That is 01
+ * §11.2's first funnel segment: twelve people, one chance.
+ *
+ * The three below are the writes whose staleness a user actually meets — an
+ * import that does not appear in 我的 Skill, a cancel whose page still says
+ * 執行中, an account that still says 刪除申請中 after the request was withdrawn.
+ */
+
+test("SKILL-002 an import invalidates 我的 Skill, and does not re-run the search", async () => {
+  vi.stubGlobal("fetch", () =>
+    json(
+      {
+        skill_id: SKILL,
+        version_id: "v1",
+        version_number: 1,
+        content_hash: "sha256:aaaa",
+        duplicate: false,
+        findings: { errors: [], warnings: [], infos: [] },
+      },
+      201,
+    ),
+  );
+  queryClient.setQueryData(["own-skills"], { skills: [] });
+  queryClient.setQueryData(["skills", "search", "pdf"], { results: [] });
+
+  await render(<ImportSkill />, () => text().includes("匯入 Skill"));
+  const input = container.querySelector<HTMLInputElement>('input[type="url"]')!;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.bind(
+      input,
+    );
+    setter("https://github.com/example/skill");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    container
+      .querySelector("form")!
+      .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  // Settles on something true of BOTH the working and the broken page — the
+  // import succeeded either way. Waiting on `isInvalidated` itself makes the
+  // red a `waitFor timed out`, which is the toothless shape 資訊架構 §5 IA-6
+  // records this repo shipping once already.
+  await waitFor(() => text().includes("匯入完成"));
+
+  expect(
+    queryClient.getQueryState(["own-skills"])?.isInvalidated,
+    "an import that does not invalidate 我的 Skill leaves the list without the skill just added",
+  ).toBe(true);
+  expect(queryClient.getQueryState(["skills", "search", "pdf"])?.isInvalidated).toBe(false);
+});
+
+test("RUN-005 cancelling a run invalidates its trace and its row, not every trace", async () => {
+  vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+    if (init?.method === "POST") return json({ note: "已送出取消要求。" }, 202);
+    return json({ error: "not found" }, 404);
+  });
+  queryClient.setQueryData(["trace", RUN, "general", 0], { status: "running" });
+  queryClient.setQueryData(["run", RUN], { run_id: RUN });
+  // A different run's trace, which a broader key would sweep up: the advanced
+  // view has `gcTime: 0` and refetches on return anyway, so invalidating other
+  // runs buys nothing and costs a request per cached page.
+  queryClient.setQueryData(["trace", "other-run", "general", 0], { status: "running" });
+
+  await render(
+    <CancelRunControl runId={RUN} status="running" />,
+    () => button("取消這個 Run") !== undefined,
+  );
+  await act(async () => button("取消這個 Run")?.click());
+  await act(async () => button("確認取消")?.click());
+  await waitFor(() => text().includes("已送出取消要求"));
+
+  expect(queryClient.getQueryState(["trace", RUN, "general", 0])?.isInvalidated).toBe(true);
+  expect(queryClient.getQueryState(["run", RUN])?.isInvalidated).toBe(true);
+  expect(queryClient.getQueryState(["trace", "other-run", "general", 0])?.isInvalidated).toBe(
+    false,
+  );
+});
+
+test("CORE-007 cancelling a deletion request invalidates /me, so the badge goes away", async () => {
+  // The one whose staleness is worst: the page would go on showing 刪除申請中
+  // with a purge date, for an account that is no longer being deleted.
+  //
+  // Asserted on the REFETCH, not on `isInvalidated`: an invalidated query with
+  // an observer refetches immediately and the flag is back to false by the time
+  // anything can read it. What the user meets is the second GET — and its
+  // absence is exactly the bug.
+  // Spied rather than read off `isInvalidated`: an invalidated query with a
+  // live observer refetches at once and the flag is false again by the time
+  // anything can look, and counting `/me` reads passes on a page that never
+  // refreshes (this test's first version did, with the line deleted).
+  const invalidated = vi.spyOn(queryClient, "invalidateQueries");
+  vi.stubGlobal("fetch", (_input: string, init?: RequestInit) => {
+    if (init?.method === "DELETE") return json({ cancelled: true });
+    return json({
+      user_id: "u-1",
+      email: "t@example.com",
+      display_name: "tester",
+      workspace_id: "ws-1",
+      deletion_requested_at: "2026-08-18T00:00:00Z",
+      purge_after: "2026-09-17T00:00:00Z",
+      deletion_scope: "purging destroys skills, versions, runs and downloads",
+    });
+  });
+  await render(<WorkspaceAccount />, () => text().includes("刪除申請中"));
+  invalidated.mockClear();
+
+  await act(async () => button("取消刪除申請")?.click());
+  await waitFor(() => text().includes("已取消"));
+
+  expect(
+    invalidated.mock.calls.map(([arg]) => arg?.queryKey),
+    "cancelling a deletion did not invalidate /me — the page goes on showing 刪除申請中 " +
+      "with a purge date for an account that is no longer being deleted",
+  ).toContainEqual(["me"]);
+  invalidated.mockRestore();
 });

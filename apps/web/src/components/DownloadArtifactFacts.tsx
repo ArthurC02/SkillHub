@@ -1,4 +1,5 @@
 import type { DownloadArtifact } from "../api/packaging";
+import { Timestamp } from "./Timestamp";
 
 /**
  * What one built package is, shared by the page that just built it and the
@@ -65,6 +66,7 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
         <span className="badge" title={TARGET_NOTE}>
           {artifact.target}
         </span>{" "}
+        <span className="note">{TARGET_NOTE}</span>{" "}
         <span className="badge">
           {artifact.includes_test_cases ? "含 Test Case" : "不含 Test Case"}
         </span>{" "}
@@ -81,16 +83,21 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
       </p>
       <p className="note">
         {bytes(artifact.size_bytes)}｜狀態：{artifact.serve_state.label}｜建立於{" "}
-        {artifact.created_at}｜已下載 {artifact.download_count} 次
+        <Timestamp at={artifact.created_at} />
+        ｜已下載 {artifact.download_count} 次
       </p>
       <p className="note">
         {expired ? (
           <>
-            已於 {artifact.expires_at} 到期，檔案已刪除，這筆紀錄保留。
+            已於 <Timestamp at={artifact.expires_at} /> 到期，檔案已刪除，這筆紀錄保留。
             「已過期」與「沒有這一筆」不是同一件事。要再拿到同樣的內容，回到該版本重新打包一次即可。
           </>
         ) : (
-          <>到期時間：{artifact.expires_at}（到期後檔案刪除，同一版本隨時可以再打包一次）</>
+          <>
+            到期時間：
+            <Timestamp at={artifact.expires_at} />
+            （到期後檔案刪除，同一版本隨時可以再打包一次）
+          </>
         )}
       </p>
       <details>

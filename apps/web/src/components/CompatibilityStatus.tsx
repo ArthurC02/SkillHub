@@ -1,4 +1,5 @@
 import type { SkillCompatibility } from "../api/types";
+import { Timestamp } from "./Timestamp";
 
 /**
  * The three DISC-008 axes, kept apart because they answer different questions
@@ -26,7 +27,7 @@ import type { SkillCompatibility } from "../api/types";
  * Keyed by `value`, which is the half of `Labelled` that stays stable. The tint
  * is presentation and belongs here; the words do not.
  */
-const BADGE_TINT: Record<string, string> = {
+export const BADGE_TINT: Record<string, string> = {
   unverified: "unverified",
   not_activated: "failed",
   failed: "failed",
@@ -81,7 +82,13 @@ export function CompatibilityStatus({ compatibility }: { compatibility: SkillCom
       {compatibility.runtime_image && (
         <p className="note">
           實測環境：<code>{compatibility.runtime_image}</code>
-          {compatibility.measured_at ? `（${compatibility.measured_at}）` : ""}
+          {compatibility.measured_at ? (
+            <>
+              （<Timestamp at={compatibility.measured_at} />）
+            </>
+          ) : (
+            ""
+          )}
         </p>
       )}
       <p className="note">{compatibility.note}</p>

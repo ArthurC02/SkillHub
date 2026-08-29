@@ -310,3 +310,208 @@ test("ADR-039 §3 第 16 條: every class in the markup has a rule, or a reason"
     "an entry that is now styled or no longer in the markup — delete the line",
   ).toEqual([]);
 });
+
+/**
+ * The markup scans below share one reader, and it is deliberately crude.
+ *
+ * `classesInMarkup` above already established the shape: read the non-test
+ * `.tsx` under `src/`, look at what the JSX actually writes, and compare it
+ * against a shrink-only list of what is allowed to be off the rule. None of
+ * these parse TypeScript — a real parser here would be a dependency and a
+ * second thing to keep working, and every one of these rules is about a string
+ * that is either in the file or is not.
+ */
+function componentFiles(): Array<[string, string]> {
+  const files: Array<[string, string]> = [];
+  for (const entry of readdirSync(import.meta.dirname, { recursive: true })) {
+    const file = String(entry).replaceAll("\\", "/");
+    if (!file.endsWith(".tsx") || file.includes(".test.")) continue;
+    files.push([file, readFileSync(join(import.meta.dirname, file), "utf8")]);
+  }
+  return files;
+}
+
+/**
+ * §2.4 第 3 項 and §2.11(c): **a qualification may be in a tooltip; it may not
+ * be ONLY in a tooltip.**
+ *
+ * The only machine that ever looked at `title` was `a11y.test.tsx`'s
+ * `[disabled][title]` rule, and not one of the app's fourteen `title=` sites
+ * was on a disabled control — so the rule that mattered most had no gate at
+ * all. The clearest instance was named in `system.md` by component: the search
+ * row's tier badge carried 「收錄不等於精選。」, a sentence whose only job is to
+ * stop the badge reading as an endorsement, in a tooltip that does not exist on
+ * a touch device.
+ *
+ * THE RULE. For a `title=` on an element that is not `[disabled]`, the same
+ * text must be reachable as visible text in the same file — either the literal
+ * appears twice, or the expression is rendered as a child somewhere.
+ *
+ * WHAT IT CANNOT SEE. Whether the visible copy is in the same block, or on
+ * screen at the same time. It compares strings in a file, so a component that
+ * renders its `title` text inside a closed `<details>` passes. §2.10 is the
+ * rule for that, and §6 records it as having no machine.
+ */
+const TOOLTIP_ONLY: Record<string, string> = {
+  "pages/Home.tsx: title={reason}":
+    "the disabled filter's own reason, rendered as visible .note text by the same map " +
+    "(UNAVAILABLE_FILTERS) two lines below — the scan cannot follow one identifier to two uses",
+
+  // Five provenance markers on a search row, explained once above the list
+  // rather than five times on every card — 設計 §0: 順位低的規則讓步時，讓的是
+  // 形式，內容一個字都不能少. The wording differs from these tooltips because it
+  // covers all five in one sentence, which is why the scan cannot match it.
+  'pages/Home.tsx: title="這段摘要由模型改寫，不是套件作者寫的；你的 Agent 讀的是套件自己的 description"':
+    "explained in the 標記說明 line above the results list (pages/Home.tsx)",
+  'pages/Home.tsx: title="套件自己的 frontmatter description"':
+    "explained in the 標記說明 line above the results list",
+  'pages/Home.tsx: title="伺服器沒有回報這段摘要的來源"':
+    "explained in the 標記說明 line above the results list",
+  'pages/Home.tsx: title="這段說明由模型產生，未經人工核對"':
+    "explained in the 標記說明 line above the results list",
+  'pages/Home.tsx: title="依查詢與文件的關鍵字重疊組出"':
+    "explained in the 標記說明 line above the results list",
+
+  'pages/SkillFiles.tsx: title="此檔案為可執行 Script"':
+    "the file tree states it below the list in a longer sentence that also gives the count " +
+    "and says the platform never runs them — the visible text 設計 §3 第 4 條 asks for",
+};
+
+test("ADR-039 §2.4/§2.11(c): a title is never the only place a qualification exists", () => {
+  const offenders: string[] = [];
+  let scanned = 0;
+
+  for (const [file, body] of componentFiles()) {
+    for (const at of body.matchAll(/title=(?:"([^"]*)"|\{([^}]*)\})/g)) {
+      // A disabled control is the one case `a11y.test.tsx` already covers, with
+      // a stricter rule than this one (it demands `aria-describedby`).
+      const element = body.slice(Math.max(0, body.lastIndexOf("<", at.index)), at.index);
+      if (element.includes("disabled")) continue;
+      scanned++;
+
+      const literal = at[1];
+      const expression = at[2];
+      const visible = literal
+        ? // The same words somewhere else in the file, as a JSX child.
+          body.split(literal).length > 2
+        : // `title={x.note}` is visible when `{x.note}` is also rendered — the
+          // brace form with no `title=` in front of it.
+          new RegExp(
+            `(?<!title=)\\{\\s*${expression.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\}`,
+          ).test(body);
+      const key = `${file}: ${at[0]}`;
+      if (!visible && !(key in TOOLTIP_ONLY)) offenders.push(key);
+    }
+  }
+
+  // Sentinel, like every other scan in this file: a parse that finds no `title`
+  // would pass on markup that is nothing but tooltips.
+  expect(scanned, "no title= found at all — the scan broke").toBeGreaterThan(8);
+  expect(
+    offenders.sort(),
+    "a qualification that exists only in a tooltip. Render it as visible text " +
+      "(the tooltip may stay), or add a line to TOOLTIP_ONLY saying where the " +
+      "reader actually meets it",
+  ).toEqual([]);
+
+  // Shrink-only, and it may not rot.
+  expect(Object.keys(TOOLTIP_ONLY).length, "the list may only get shorter").toBeLessThanOrEqual(7);
+});
+
+/**
+ * §2.12 第 3 條 and 設計 §3 第 14 條: **the server's ISO 8601 UTC string is not
+ * a time a reader can act on.**
+ *
+ * Twenty-nine places interpolated `created_at` and its siblings straight into a
+ * Chinese sentence — 「建立於 2026-08-17T00:00:00Z」 — in somebody else's
+ * timezone, with no `<time dateTime>` anywhere in the app and four different
+ * spellings of the one fact. `components/Timestamp.tsx` is the one wording now.
+ *
+ * THE RULE. A `_at`-suffixed value may not be rendered directly. Two shapes are
+ * flagged, and only two, because they are the ones that put the raw string on
+ * screen: a bare `{x.y_at}` as a JSX child, and `${x.y_at}` inside a template
+ * literal. A guard (`{x.y_at && …}`), a comparison and a sort key all keep more
+ * syntax inside the braces and are not flagged — they are not renders.
+ */
+const RAW_TIMESTAMP: Record<string, string> = {
+  "components/Timestamp.tsx: ${at}":
+    "the component itself: `<time dateTime={at}>` is where the exact instant belongs",
+  "pages/Compare.tsx: ${skill.version.created_at}":
+    "a row's `signature`, which is the comparison key the 有差異 highlight is computed from. " +
+    "Never rendered — the cell beside it uses <Timestamp>",
+  "pages/Downloads.tsx: ${r.downloaded_at}":
+    "a React `key`, not a child. The same row renders the instant with <Timestamp>",
+};
+
+test("ADR-039 §2.12: no page prints a raw server timestamp", () => {
+  const bare = /(?<![=$])\{\s*[A-Za-z0-9_.?[\]]*[A-Za-z0-9_]+_at\s*\}/g;
+  const interpolated = /\$\{[A-Za-z0-9_.?[\]]*[A-Za-z0-9_]+_at\}/g;
+
+  const offenders: string[] = [];
+  for (const [file, body] of componentFiles()) {
+    for (const m of [...body.matchAll(bare), ...body.matchAll(interpolated)]) {
+      const key = `${file}: ${m[0]}`;
+      if (!(key in RAW_TIMESTAMP)) offenders.push(key);
+    }
+  }
+
+  expect(
+    offenders.sort(),
+    "a server timestamp rendered as-is. Use <Timestamp at={…} /> (or formatAt for " +
+      "an <option> label), so the reader gets their own clock and the DOM keeps the instant",
+  ).toEqual([]);
+  expect(Object.keys(RAW_TIMESTAMP).length, "the list may only get shorter").toBeLessThanOrEqual(3);
+});
+
+/**
+ * 資訊架構 §5 IA-6 的棘輪，也就是那條裁定自己說它缺的東西。
+ *
+ * §6 records it verbatim: 「**新頁面仍然沒有棘輪**——沒有任何東西阻止下一個人在新
+ * 頁面直接印 `error.message`；要那個得再加一條像 `design-system.test.ts` 第 16 條
+ * 那樣掃 markup 的守衛」. This is that condition, met.
+ *
+ * THE RULE. A file that renders `role="alert"` with 失敗 in it must import
+ * `ReadFailure` — because a read that failed has a 401 case, and a page that
+ * writes its own sentence has almost always dropped it. The exceptions are the
+ * failures that are not reads: a mutation the user just triggered, a sign-out,
+ * a generation that ran and refused.
+ */
+const OWN_FAILURE_COPY: Record<string, string> = {
+  "components/AuthControls.tsx":
+    "a sign-out mutation, not a read — a 401 here means it already worked",
+  "components/GenerateSkill.tsx":
+    "POST /skills/generate: a mutation the user just pressed, and its refusals are the " +
+    "contract's own GenerationFailure values (generateFailureSentence.ts), not read failures",
+  "pages/ImportSkill.tsx":
+    "POST /skills/import/*: a mutation, and the rejection body is the acceptance criterion " +
+    "(CategorizedFindings). LoginRequired covers this page's signed-out arrival before the form",
+};
+
+test("IA-6: a page that writes its own read-failure sentence has to be listed", () => {
+  const offenders: string[] = [];
+  let scanned = 0;
+
+  for (const [file, body] of componentFiles()) {
+    for (const at of body.matchAll(/role="alert"/g)) {
+      // The rendered text of that one alert, up to whatever closes it.
+      const rest = body.slice(at.index, at.index + 400);
+      const text = rest.slice(0, Math.max(rest.indexOf("</p>"), rest.indexOf("</h")));
+      if (!text.includes("失敗")) continue;
+      scanned++;
+      if (body.includes("ReadFailure")) continue;
+      if (file in OWN_FAILURE_COPY) continue;
+      offenders.push(file);
+    }
+  }
+
+  expect(scanned, "no failure alert found at all — the scan broke").toBeGreaterThan(4);
+  expect(
+    [...new Set(offenders)].sort(),
+    "a read failure worded by hand. Use <ReadFailure error={…} what={…} /> so a 401 says " +
+      "「需要登入」 and every other status keeps the server's own message; if this failure " +
+      "is a mutation rather than a read, add a line to OWN_FAILURE_COPY saying which",
+  ).toEqual([]);
+  expect(Object.keys(OWN_FAILURE_COPY).length, "the list may only get shorter").toBeLessThanOrEqual(
+    3,
+  );
+});

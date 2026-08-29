@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { Loading } from "../components/Loading";
+import { ReadFailure } from "../components/LoginRequired";
+import { Timestamp } from "../components/Timestamp";
+import { VersionDiff } from "./RunCompare";
 import { Link, useParams } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
-import { useForkSkill, useSkillDetail } from "../api/skills";
+import { useForkSkill, useSkillDetail, useSkillVersions, skillDiffUrl } from "../api/skills";
 import { useMe } from "../api/me";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { GeneratedNotice } from "../components/GeneratedNotice";
@@ -35,7 +39,12 @@ export function SkillDetail() {
   if (error instanceof ApiError && error.status === 410) {
     return <p role="alert">這個 Skill 已從目錄下架，內容不再提供。</p>;
   }
-  if (error || !skill) return <p role="alert">找不到這個 Skill，或載入失敗。</p>;
+  // Everything else through the shared component (資訊架構 §5 IA-6): a 401 says
+  // to log in, and every other status keeps the server's own message instead of
+  // being flattened into 「找不到這個 Skill，或載入失敗。」 — which answered a 500
+  // with 「找不到」, i.e. with the wrong fact.
+  if (error) return <ReadFailure error={error} what="這個 Skill" />;
+  if (!skill) return <p role="alert">找不到這個 Skill。</p>;
 
   return (
     <article>
@@ -48,7 +57,6 @@ export function SkillDetail() {
           {skill.source && <LabelledBadge kind="trust" value={skill.source.trust} />}
           <LicenseBadge license={skill.license} />
         </div>
-        <p className="note">{skill.tier.note}</p>
       </header>
 
       {/*
@@ -141,6 +149,8 @@ export function SkillDetail() {
         )}
       </section>
 
+      <VersionHistory skillId={skillId} />
+
       <details>
         <summary>進階資訊（版本與識別碼）</summary>
         {skill.version ? (
@@ -152,7 +162,10 @@ export function SkillDetail() {
             <li>
               內容雜湊：<code>{skill.version.content_hash}</code>
             </li>
-            <li>建立時間：{skill.version.created_at}</li>
+            <li>
+              建立時間：
+              <Timestamp at={skill.version.created_at} />
+            </li>
           </ul>
         ) : (
           /* 設計 §2.9: 別人的 Skill 的版本清單回空陣列，而「沒有版本」與
@@ -208,6 +221,108 @@ export function SkillDetail() {
 }
 
 /**
+ * 02:WS-001 第 4 條「使用者可查看任兩版本的內容差異」, and the version list it needs
+ * to stand on.
+ *
+ * Neither existed anywhere in the app. `useSkillVersions` had one call site —
+ * `RunPreflight`'s 「要跑哪一版」 picker — and the detail page printed only the
+ * CURRENT version's four fields, so the product's own loop ended blind: 採用改善
+ * 建議 creates a new immutable version (iron rule 4, `createVersionFromSuggestions`)
+ * and nothing could show what it changed. `WorkspaceSkills.tsx`'s header claimed
+ * the history was 「reachable only through its detail page and the diff route」 —
+ * a path nobody had laid.
+ *
+ * **NO NEW ROUTE**, on purpose, and it is 資訊架構 §0.1 that says so rather than
+ * frugality: R2 puts a single item at `/skills/$id`, and a version of a skill is
+ * that skill at a moment, not a second object with its own address. R3 would
+ * then want two ways into whatever address was invented, and there is one place
+ * that produces the context (this page). R1 is satisfied too — the page answers
+ * 「這個 Skill 可不可信」 and a version's diff is evidence for it, the same way
+ * 風險揭露 above is.
+ *
+ * A CHILD COMPONENT, not inlined: the page returns early on loading and on 410,
+ * so a hook added to `SkillDetail` itself would change hook order between
+ * renders.
+ *
+ * `useSkillVersions` is session-scoped, and the list of somebody else's skill is
+ * empty rather than forbidden — so the two absences are worded apart the way
+ * §2.9 requires, and `ReadFailure` carries 401 to 「需要登入」 without swallowing
+ * any other status.
+ */
+function VersionHistory({ skillId }: { skillId: string }) {
+  const versions = useSkillVersions(skillId);
+  // The pair being compared, or nothing. Not in the URL: 資訊架構 §0.1 R4 —
+  // 「你在看哪一份東西」 is the skill, and which two of its versions are expanded
+  // is 「你偏好怎麼看」, the same call IA-4 made for the Trace reading mode.
+  const [pair, setPair] = useState<{ from: string; to: string } | null>(null);
+
+  const list = versions.data?.versions ?? [];
+
+  return (
+    <section>
+      <h2>版本歷史</h2>
+      {versions.isPending && <Loading what="版本歷史" />}
+      <ReadFailure error={versions.error} what="版本歷史" />
+
+      {versions.data &&
+        (list.length === 0 ? (
+          /* §2.9 again: an empty list here is 無權檢視, not 「這個 Skill 沒有
+             版本」. Every skill has at least one — the one that was imported. */
+          <p>
+            無權檢視——這個工作區看不到這個 Skill 的版本內容。別人的 Skill 要 Fork
+            之後才會有屬於你的版本；這不代表它沒有版本。
+          </p>
+        ) : (
+          <>
+            <ul className="search-results">
+              {list.map((version, index) => {
+                // Newest first (the endpoint's order), so 「上一版」 is the NEXT
+                // element. The oldest row has none, and says why rather than
+                // rendering a control that would compare a version with itself
+                // (§2.4: a missing control owes a reason too).
+                const previous = list[index + 1];
+                const open = pair?.to === version.version_id;
+                return (
+                  <li key={version.version_id} className="search-result">
+                    <p>
+                      <strong>v{version.version_number}</strong>
+                      <span className="note">
+                        建立時間：
+                        <Timestamp at={version.created_at} />
+                      </span>
+                    </p>
+                    {previous ? (
+                      <p>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPair(
+                              open ? null : { from: previous.version_id, to: version.version_id },
+                            )
+                          }
+                        >
+                          {open ? "收起與上一版的比較" : "與上一版比較"}
+                        </button>
+                      </p>
+                    ) : (
+                      <p className="note">這是最早的版本，沒有上一版可以比較。</p>
+                    )}
+                    {open && <VersionDiff url={skillDiffUrl(skillId, pair.from, pair.to)} />}
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="note">
+              版本不可變（ADR-003）：採用改善建議會建立新的一版，舊的一版原封不動留著。
+              差異比對的是兩版套件檔案的內容，不是它們的試跑結果。
+            </p>
+          </>
+        ))}
+    </section>
+  );
+}
+
+/**
  * 02:SEC-007 / ADR-027 決策 4 — the three-state redistribution answer, and the
  * packaging entry point that depends on it.
  *
@@ -234,7 +349,6 @@ function Redistribution({ skill }: { skill: SkillDetailModel }) {
           <p>
             <LabelledBadge kind="redistribution" value={skill.redistribution} />
           </p>
-          <p className="note">{skill.redistribution.note}</p>
         </>
       ) : (
         <p className="note">平台沒有回報這個 Skill 的可散布性判定。</p>
@@ -358,12 +472,21 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
 
   return (
     <section>
-      <h2>
-        白話摘要
+      {/*
+        The marker is beside the heading, not inside it. Inside, it joined the
+        accessible name — `__outlines__/skills-skillId.txt` recorded the result
+        as `h2 白話摘要AI 產生`, which is both the glued rendering §3 item 15
+        forbids and a heading that names two things. A `.badge-row` is the
+        surface this app already uses for a badge that qualifies the block
+        below it (the header above does the same with three of them).
+      */}
+      <h2>白話摘要</h2>
+      <p className="badge-row">
         <span className="badge badge-source-model" title="由模型產生，未經人工核對">
           AI 產生
         </span>
-      </h2>
+        <span className="note">由模型產生，未經人工核對</span>
+      </p>
       {enrichment.summary && <p>{enrichment.summary}</p>}
 
       {enrichment.task_examples && enrichment.task_examples.length > 0 && (
@@ -450,7 +573,12 @@ function SourceBlock({ source }: { source: SkillSource }) {
           來源版本／Commit：<code>{source.source_version}</code>
         </p>
       )}
-      {source.fetched_at && <p>擷取時間：{source.fetched_at}</p>}
+      {source.fetched_at && (
+        <p>
+          擷取時間：
+          <Timestamp at={source.fetched_at} />
+        </p>
+      )}
 
       {/*
         The probe's two facts stay apart: "gone since when" is the one that
@@ -462,12 +590,15 @@ function SourceBlock({ source }: { source: SkillSource }) {
           來源已失效，自 {source.unavailable_since} 起無法取得。目前顯示的是失效前保存的內容。
         </p>
       ) : source.last_checked_at ? (
-        <p className="note">最近一次來源可用性檢查：{source.last_checked_at}（當時可取得）。</p>
+        <p className="note">
+          最近一次來源可用性檢查：
+          <Timestamp at={source.last_checked_at} />
+          （當時可取得）。
+        </p>
       ) : (
         <p className="note">尚未檢查過來源是否仍可取得。</p>
       )}
 
-      <p className="note">{source.trust.note}</p>
       {source.content_hash && (
         <details>
           <summary>內容雜湊</summary>
@@ -493,14 +624,18 @@ function GeneratedSourceBlock({ source }: { source: SkillSource }) {
   return (
     <>
       <p>來源：由平台依你的任務描述生成</p>
-      <p className="note">{source.trust.note}</p>
       {source.task_description && (
         <details>
           <summary>你當時輸入的任務描述</summary>
           <p>{source.task_description}</p>
         </details>
       )}
-      {source.fetched_at && <p>生成時間：{source.fetched_at}</p>}
+      {source.fetched_at && (
+        <p>
+          生成時間：
+          <Timestamp at={source.fetched_at} />
+        </p>
+      )}
       {source.generator_model && (
         <p>
           模型：<code>{source.generator_model}</code>

@@ -19,7 +19,7 @@ import type { Labelled } from "../api/types";
  * the unknown tint because there are two tints and four states; §5.3 records
  * that trade rather than inventing a third colour.
  */
-const VERDICT_BADGE: Record<string, string> = {
+export const VERDICT_BADGE: Record<string, string> = {
   met: "badge",
   not_met: "badge badge-danger",
 };

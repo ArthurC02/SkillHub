@@ -3,9 +3,20 @@ import type { CategorizedFindings, ImportResult } from "./import";
 // Hand-written mirror of `components.schemas` in contracts/openapi/public.yaml.
 //
 // That file is the single source of truth for the contract (implementation
-// rule 12). Codegen into packages/api-client-ts is not wired yet (ADR-019 §1),
-// so these interfaces are transcribed by hand and carry a standing sync
-// obligation: when public.yaml changes, change this file in the same commit.
+// rule 12). Codegen IS wired — `packages/api-client-ts/src/generated/` is built
+// by `task gen:openapi` and by CI on every run — and these interfaces are still
+// transcribed by hand, deliberately: the generated client is camelCase with a
+// runtime conversion layer, and moving to it is a migration, not a fix.
+//
+// What this file used to say instead was 「Codegen into packages/api-client-ts is
+// not wired yet」, which stopped being true in M2 and misled whoever read it
+// next. And the obligation it stated — 「a standing sync obligation」 — was a
+// promise, not a gate: 04 丙-43 records what that costs, a contract value that
+// reached the generated client and not the hand-written union, and a screen that
+// printed 「不能打包：」 followed by nothing.
+//
+// `contract.test.ts` is the gate now: field sets and optionality against the
+// generated models, and every enum→label table against its generated enum.
 //
 // Optionality here mirrors the schema's `required` list, not what the server
 // happens to send today. A field the spec does not require stays `?` even if
@@ -160,8 +171,21 @@ export type MatchReasonSource = "model" | "template";
 export interface SearchResultRisk {
   /** `unavailable` = the projection holds no scan; never a clean scan. */
   scan_status: "scanned" | "unavailable";
-  /** Highest severity recorded. Errors block import, so they never appear. */
-  level: "none" | "disclosed" | "warning";
+  /**
+   * Highest severity recorded. Errors block import, so they never appear.
+   *
+   * `unknown` is the fourth value and the only one that is not a finding: the
+   * server sends it when the scan could not be read at all. **The generated
+   * `SearchResultRiskLevelEnum` has three values today** — this union is
+   * deliberately ahead of it, because the UI must not render an unrecognised
+   * fourth value as a clean row, and being ahead is the safe direction here
+   * (the value renders as 未掃描 or not at all; it can never render as 通過). It exists because
+   * the other three are all answers to 「掃過了，結果是什麼」 and there was no
+   * word for 「沒掃」 — 02:DISC-004 缺少資料的欄位顯示未知，**不得自行推定為通過**,
+   * and 設計 §4.4 規則 1 wants 未執行 to be its own badge rather than sharing a
+   * visual with 通過.
+   */
+  level: "none" | "disclosed" | "warning" | "unknown";
   warnings: number;
   /** What the scan found declared, server-worded. Empty is not 「安全」. */
   disclosures: Disclosure[];
@@ -374,6 +398,10 @@ export interface SeverityCounts {
 export interface SkillRisk {
   /** `unavailable` = the package could not be read; never a clean scan. */
   scan_status: "scanned" | "unavailable";
+  // No `level` here. `SearchResultRisk` has one and this shape does not — that
+  // is the contract's shape, not an omission, and `contract.test.ts` caught an
+  // attempt to add one on 2026-08-29. `scan_status: "unavailable"` is how this
+  // shape says 沒掃, and RiskIndicator words it.
   counts: SeverityCounts;
   /** Every error- and warning-level finding, verbatim. */
   highlights: Finding[];
@@ -580,8 +608,17 @@ export interface Skill {
    * `unknown`, which refused (ADR-045).
    */
   redistribution: Redistribution;
-  /** Reason code for a licensing hold, `null` when there is none. */
-  access_restriction: string | null;
+  /**
+   * Reason code for a licensing hold, `null` when there is none.
+   *
+   * Optional, because `Skill.required` in `public.yaml` is
+   * `[skill_id, name, summary, redistribution]` and this is not on it — which
+   * is exactly what this file's header means by 「Optionality here mirrors the
+   * schema's `required` list, not what the server happens to send today」. It
+   * was `string | null` (required) until `contract.test.ts` compared the two,
+   * on its first run.
+   */
+  access_restriction?: string | null;
   forked_from_skill_id?: string;
   forked_from_version_id?: string;
 }

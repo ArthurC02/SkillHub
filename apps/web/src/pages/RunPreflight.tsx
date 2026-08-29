@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { Timestamp } from "../components/Timestamp";
 import { LoginRequired, ReadFailure, unauthenticated } from "../components/LoginRequired";
 import { useMe } from "../api/me";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -135,7 +136,7 @@ const count = (n: number) => `${n}`;
 const seconds = (n: number) => `${n} 秒`;
 const tokens = (n: number) => `${n}`;
 
-const SCRIPT_LABEL: Record<PreflightSummary["scripts"]["status"], string> = {
+export const SCRIPT_LABEL: Record<PreflightSummary["scripts"]["status"], string> = {
   none: "無(靜態掃描未發現 Script 或內嵌程式碼)",
   present: "有",
   // Never rendered as 無: a package that could not be read is not a clean one.
@@ -328,7 +329,7 @@ export function RunPreflight() {
                 機制的說法對多數新帳號是假的,日期不是,所以只留日期,並且只主張
                 它是下界。
               */}
-              額度下一次增加不會早於 {quota.window_resets_at}。
+              額度下一次增加不會早於 <Timestamp at={quota.window_resets_at} />。
               <p className="note">
                 上限：每日 {quota.limits.daily} 次、每 {quota.limits.window_days} 天{" "}
                 {quota.limits.window} 次、同時進行 {quota.limits.concurrent} 個。 這些數字就是建立
@@ -409,6 +410,19 @@ export function RunPreflight() {
           {limit(summary.resource_limits.wall_clock_hard_seconds, seconds)}、 Token{" "}
           {limit(summary.resource_limits.token_budget?.max_input_tokens, tokens)} 進 /{" "}
           {limit(summary.resource_limits.token_budget?.max_output_tokens, tokens)} 出
+          {/*
+            02:RUN-003「Token 上限必須連同輪數換算表一起呈現，不得只寫『300K』」
+            (PDM-005 §5.2a-2), and 02:TEST-005 記著這條義務在三個落點一處都沒有
+            實作過。它不是排版偏好：`300000` 對讀者不可讀，而同一個 300K 在工具
+            密集的 Run 只夠約 5 輪、純對話夠約 15 輪——**差三倍**，而那正是他按下
+            「我確認」時唯一需要判斷的東西（設計 §2.2：會擋住人的限制要在他撞上
+            之前看得見）。伺服器自己的說法走 `notes[]`；這一句**無條件**印，
+            因為 fail-open 到什麼都不說正是這一格原本的狀態。
+          */}
+          <p className="note">
+            Token 上限能跑幾輪，取決於每一輪的工具呼叫次數——每次工具結果回填都要重送整個前綴，
+            所以同樣的 300K input，工具密集的 Run 大約只夠 5 輪，純對話大約夠 15 輪。
+          </p>
         </dd>
 
         {/*

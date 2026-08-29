@@ -180,7 +180,11 @@ async function scan(where: string) {
     .map((h) => `${h.tagName.toLowerCase()} ${h.textContent?.trim().slice(0, 60)}`)
     .join("\n");
   await expect(outline).toMatchFileSnapshot(
-    `./__outlines__/${where.replace(/[^\w一-鿿]+/g, "-").replace(/^-|-$/g, "")}.txt`,
+    // `|| "index"` because `/` sanitises to the empty string, and the snapshot
+    // for the home page was therefore checked in as `__outlines__/.txt` — a
+    // dotfile, which `git status` shows and most file listings do not, on the
+    // one route this suite scans twice.
+    `./__outlines__/${where.replace(/[^\w一-鿿]+/g, "-").replace(/^-|-$/g, "") || "index"}.txt`,
   );
 }
 
@@ -604,4 +608,76 @@ test("NFR-007: 沒選檔案就按上傳，說的是下一步而不是錯誤碼",
   await keyboardActivate("上傳", byText("上傳"));
   const alert = container.querySelector('[role="alert"]');
   expect(alert?.textContent).toContain("請先選擇一個檔案");
+}, 30000);
+
+// --- three states that are not 「有資料的成功態」 -------------------------------
+
+/**
+ * Every scan above renders the busy, successful page — deliberately, and
+ * `fixtures/platform.ts` says why: an empty page has no badges, no disclosures,
+ * no tables and no form controls, so scanning it proves nothing about the
+ * markup a real reader meets.
+ *
+ * That reasoning is right about the EMPTY page and wrong about the other three.
+ * A read failure is not an absence of markup: it is a `role="alert"`, a
+ * `role="status"`, a login link and a form that has been taken away — new
+ * interactive markup, of exactly the kind where accessibility defects grow (a
+ * live region with the wrong role, a focus that lands on `<body>`, an alert
+ * with no accessible name). `Loading` has 24 call sites and `ReadFailure` /
+ * `LoginRequired` appear in 13 files, and until now axe had never seen either.
+ *
+ * Three representatives rather than 17×4: a 401, a load, and an empty list. The
+ * point is to cover the three SHAPES, and `system.md` §6's coverage cell now
+ * says so rather than implying the sweep covers every screen.
+ */
+
+test("QA-009: 我的 Skill（未登入）", async () => {
+  // `RequireSession`'s literal body, the way session.test.tsx sends it.
+  vi.stubGlobal("fetch", () => json({ error: "not authenticated" }, 401));
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/workspace/skills" });
+  });
+  await waitFor(has("需要登入"));
+
+  // The state under test is really there — otherwise this scans a blank page
+  // and passes for the wrong reason.
+  expect(container.textContent).not.toContain("not authenticated");
+  await scan("/workspace/skills 401");
+}, 30000);
+
+test("QA-009: 執行前權限確認（載入中）", async () => {
+  // A fetch that never settles, which is the state every `Loading` renders and
+  // the one no scan had ever been pointed at.
+  vi.stubGlobal("fetch", () => new Promise(() => {}));
+  await mount();
+  await act(async () => {
+    await router.navigate({
+      to: "/lab/run",
+      search: { skill: SKILL, version: undefined, test_case: TEST_CASE },
+    });
+  });
+  await waitFor(() => container.querySelector("[data-loading]") !== null);
+
+  await scan("/lab/run loading");
+}, 30000);
+
+test("QA-009: Run 歷史（空的）", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    if (
+      String(input)
+        .replace(/^https?:\/\/[^/]+/, "")
+        .split("?")[0] === "/runs"
+    )
+      return json({ runs: [] });
+    const { body, status } = platformResponse(String(input));
+    return json(body, status);
+  });
+  await mount();
+  await act(async () => {
+    await router.navigate({ to: "/workspace/runs" });
+  });
+  await waitFor(has("代表沒有發生過"));
+
+  await scan("/workspace/runs empty");
 }, 30000);

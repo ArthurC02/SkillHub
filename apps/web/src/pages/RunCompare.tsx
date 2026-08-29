@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { Timestamp } from "../components/Timestamp";
 import { LoginRequired, ReadFailure, unauthenticated } from "../components/LoginRequired";
 import { useMe } from "../api/me";
 import { useEffect, useState } from "react";
@@ -7,7 +8,7 @@ import { useRunComparison, useVersionDiff } from "../api/evaluation";
 import type { ComparisonSide, RunComparison } from "../api/evaluation";
 import { useRun, useRuns } from "../api/runs";
 import { RunVerdict } from "../components/RunVerdict";
-import { CRITERION_LABEL, OVERALL_LABEL, RUN_STATUS_LABEL } from "./RunEvaluation";
+import { CRITERION_LABEL, OVERALL_LABEL, runStatusLabel } from "./RunEvaluation";
 
 /**
  * 02:EVAL-003 — two runs side by side.
@@ -106,12 +107,12 @@ export function RunCompare() {
                 <RunVerdict verdict={r.evaluation} />
               </p>
               <p className="badge-row">
-                <span className="badge">執行狀態：{RUN_STATUS_LABEL[r.status] ?? r.status}</span>
+                <span className="badge">執行狀態：{runStatusLabel(r.status)}</span>
               </p>
               {r.status_reason && <p className="note">{r.status_reason}</p>}
               <p>
                 <button type="button" onClick={() => pick(r.run_id)}>
-                  與這一次比較（建立於 {r.created_at}）
+                  與這一次比較（建立於 <Timestamp at={r.created_at} />）
                 </button>
               </p>
             </li>
@@ -261,7 +262,7 @@ function ComparisonTables({ data }: { data: RunComparison }) {
               <th scope="row">執行狀態</th>
               {sides.map((s) => (
                 <td key={s.run_id}>
-                  {RUN_STATUS_LABEL[s.status] ?? s.status}（<code>{s.status}</code>）
+                  {runStatusLabel(s.status)}（<code>{s.status}</code>）
                 </td>
               ))}
             </tr>
@@ -428,7 +429,16 @@ function RerunCell({ side }: { side: ComparisonSide }) {
   );
 }
 
-function VersionDiff({ url }: { url: string }) {
+/**
+ * One version diff, wherever its address came from.
+ *
+ * Exported since 2026-08-29 for `SkillDetail`'s 版本歷史 (WS-001 第 4 條): the
+ * two callers are the same document — a `files[]` of `FileDiff` — reached by
+ * two addresses, one the server hands over in `version_diff_url` and one built
+ * from `/skills/{id}/diff` (`api/skills.ts`'s `skillDiffUrl`). A second copy
+ * would be a second set of loading and failure states for one answer.
+ */
+export function VersionDiff({ url }: { url: string }) {
   const diff = useVersionDiff(url);
   if (diff.isPending) return <Loading what="版本差異" />;
   if (diff.error) return <ReadFailure error={diff.error} what="版本差異" />;

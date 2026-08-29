@@ -1,5 +1,6 @@
 import { Loading } from "../components/Loading";
 import { ReadFailure } from "../components/LoginRequired";
+import { Timestamp } from "../components/Timestamp";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -116,7 +117,7 @@ function DownloadHistory({ artifact }: { artifact: DownloadArtifact }) {
             <ul className="note">
               {records.data.records.map((r) => (
                 <li key={`${r.downloaded_at}-${r.actor}`}>
-                  {r.downloaded_at}｜{r.actor}
+                  <Timestamp at={r.downloaded_at} />｜{r.actor}
                 </li>
               ))}
             </ul>

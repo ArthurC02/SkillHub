@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { Timestamp } from "../components/Timestamp";
 import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -160,10 +161,15 @@ function PendingDeletion({
   return (
     <>
       <p role="status">
-        <span className="badge badge-danger">刪除申請中</span> 申請於 {requestedAt}。
-        {purgeAfter
-          ? `寬限期在 ${purgeAfter} 結束，之後才會真的刪除。`
-          : "伺服器沒有回報寬限期結束的日期——那不表示沒有期限，是這一頁問不到它。"}
+        <span className="badge badge-danger">刪除申請中</span> 申請於 <Timestamp at={requestedAt} />
+        。
+        {purgeAfter ? (
+          <>
+            寬限期在 <Timestamp at={purgeAfter} /> 結束，之後才會真的刪除。
+          </>
+        ) : (
+          "伺服器沒有回報寬限期結束的日期——那不表示沒有期限，是這一頁問不到它。"
+        )}
       </p>
       {/*
        * 設計 §2.8: the scope sentence is the whole disclosure, and §2.10 puts it

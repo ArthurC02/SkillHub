@@ -49,7 +49,15 @@ export interface PreflightSummary {
     wall_clock_hard_seconds: number;
     artifact_total_bytes: number;
     artifact_file_bytes: number;
-    token_budget: { max_input_tokens: number; max_output_tokens: number };
+    /**
+     * The server's sentence about what this ceiling depends on travels in
+     * `notes[]` (execution/preflight.go `permissionSummaryNotes`), not here;
+     * `RunPreflight`'s token cell states the dependency itself (02:RUN-003).
+     */
+    token_budget: {
+      max_input_tokens: number;
+      max_output_tokens: number;
+    };
   };
 }
 

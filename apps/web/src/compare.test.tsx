@@ -125,7 +125,12 @@ test("EVAL-003 到站時就有同一個 Test Case 的候選,而且認得出它�
 
   // 判定與時間——WorkspaceRuns / TestCases 兩份執行歷史用的同一組軸。
   expect(text()).toContain("任務判定：不符合");
-  expect(candidateButtons()[0].textContent).toContain("2026-08-16T00:00:00Z");
+  // The instant moved from the sentence into the element that carries it:
+  // `<time dateTime>` is machine-readable and the rendered text is the
+  // reader's own clock (components/Timestamp.tsx).
+  expect(
+    candidateButtons()[0].querySelector('time[datetime="2026-08-16T00:00:00Z"]'),
+  ).not.toBeNull();
 
   // 候選來自同一個 Test Case:別的 Test Case 的 Run 不得出現。
   expect(text()).not.toContain("這是別的 Test Case 的 Run。");

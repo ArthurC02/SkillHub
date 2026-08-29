@@ -222,16 +222,20 @@ GeneratedNotice ► /lab/run                    （同上）
 
 **判準（現行實作實際遵守的）**：一個狀態值得進網址，當它是**「你在看哪一份東西」**；不進網址，當它是**「你偏好怎麼看」**。
 
+**這張表由 [`ia.test.ts`](../../apps/web/src/ia.test.ts) 雙向比對 `router.tsx` 的 `validateSearch`**（2026-08-29 補），所以第二欄要逐個列全、不能用刪節號。多一個參數沒補列會 FAIL，刪了參數沒改表也會。
+
 | 位址 | search param | 進網址的理由（取自 `router.tsx`） |
 | --- | --- | --- |
-| `/` | `q`、`script`、`validation`… | 搜尋條件即所看之物；不在列舉內的值直接丟掉，讓手改的網址落在未篩選清單而不是錯誤頁 |
+| `/` | `q`、`script`、`validation`、`agent`、`tier` | 搜尋條件即所看之物；不在列舉內的值直接丟掉，讓手改的網址落在未篩選清單而不是錯誤頁 |
 | `/compare` | `ids` | DISC-009：比較要能被連結、能撐過重新整理 |
 | `/skills/$id/package` | `version` | PACK-001／002：版本是路徑之外的另一個「哪一份」 |
 | `/lab/run` | `skill`、`version`、`test_case` | TEST-008／009：三個 id 都可從網址帶入；只有 `version` 另有選單，另外兩個由擁有它們的畫面選 |
 | `/lab/datasets` | `test_case` | 同上；目前沒有選單（DESIGN-007） |
 | `/lab/test-cases` | `skill`（須為 UUID） | 「此 Skill 的 Test Case」那條連結要的東西 |
 | `/runs/$id/compare` | `against` | EVAL-003：對照的另一次 Run 在網址裡，比較才能被連結 |
-| `/runs/$id` | **無** | 檔頭寫明：一般／進階模式是 component state，「閱讀偏好，不值得一個可分享的位址」 |
+| `/runs/$id` | `evaluation`、`events` | ~~**無**~~ **（2026-08-29 訂正：這一格從來沒有更新過。）** 一般／進階模式確實不在網址上（IA-4 的裁定，R4），但那不代表這一條路由沒有 search param——它有兩個，而且兩個都是 R4 的另一半「你在看哪一份東西」：`evaluation` 指名這次 Run 的某一份不可變判定（ADR-003／026；沒有它，被取代的舊判定連不出去，而重新評估過的 Run 的「目前判定」是另一個判定），`events` 是進階 Trace 的游標堆疊，讓事件流的第 7 頁貼得出去也撐得過重新整理。<br>**這一格是本節在 2026-08-29 補上機器的直接原因**：文件說「無」，程式說「兩個」，而在那之前沒有任何東西會 FAIL |
+
+**其餘十條路由沒有 `validateSearch`**（`/skills/$id`、`/skills/$id/files`、四條 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 
 **永遠不進網址的一項**：Provider 的臨時 id。平台的 `run_id` 是唯一識別（鐵律 10）。
 

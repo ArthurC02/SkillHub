@@ -29,6 +29,15 @@ import type { DataRetentionPolicy } from "../api/types";
  * as product copy would turn an unratified proposal into a promise.
  */
 export function DataPolicy() {
+  // A `useQuery` in a page rather than a hook in `api/`, and deliberately, for
+  // all three of the app's page-local reads (this one, `DatasetUpload`'s limits,
+  // `RunPreflight`'s summary): each has exactly one call site and its own
+  // options — `RunPreflight` needs `staleTime: 0`/`gcTime: 0` because a cached
+  // permission summary would be confirmed against a hash the server has already
+  // stopped accepting. A hook per single caller is an abstraction with one
+  // implementation. What `api/` actually owns is the convention, and all three
+  // follow it: `retry: false` (資訊架構 §5 IA-6), and no request built anywhere
+  // but `apiFetch`.
   const policy = useQuery({
     queryKey: ["policy", "data-retention"],
     queryFn: () => apiFetch<DataRetentionPolicy>("/policy/data-retention"),

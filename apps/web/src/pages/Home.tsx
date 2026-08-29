@@ -1,6 +1,7 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { useSkillSearch } from "../api/skills";
+import { ReadFailure } from "../components/LoginRequired";
 import { useGenerateEntryPoint } from "../api/generate";
 import { useMe } from "../api/me";
 import { GenerateSkill } from "../components/GenerateSkill";
@@ -42,7 +43,7 @@ export function Home() {
   // which the server answers with no_results plus the suggestion copy (DISC-005);
   // duplicating that copy here is exactly what the acceptance criteria stopped
   // asking for.
-  const { data, isFetching, isError } = useSkillSearch(
+  const { data, isFetching, error } = useSkillSearch(
     search.q ?? "",
     filters,
     search.q !== undefined,
@@ -114,7 +115,11 @@ export function Home() {
       />
 
       {isFetching && <p role="status">搜尋中…</p>}
-      {isError && <p role="alert">搜尋失敗，請稍後再試。</p>}
+      {/* DISC-001 serves this page to anyone, so a 401 here is not the ordinary
+          case — but `/api/skills/search` is the one read that can answer one
+          anyway, and 「搜尋失敗，請稍後再試。」 told a reader to retry something
+          retrying cannot fix, while throwing away what the server said. */}
+      <ReadFailure error={error} what="搜尋結果" />
 
       {data && (
         <>
@@ -235,6 +240,23 @@ export function Home() {
               */}
               <p role="status" className="note">
                 找到 {data.results.length} 個 Skill。
+              </p>
+              {/*
+                設計 §2.4 第 3 項: the five provenance markers on each row below
+                (AI 改寫／作者原文／來源未標示／AI 產生／規則產生) carried their
+                qualification in `title=` only, and a tooltip does not exist on
+                a touch device. Once per list rather than once per row, for the
+                reason §0 gives: 「順位低的規則讓步時，讓的是形式」 — five extra
+                sentences on every card would push the first result past the
+                fold that 義務 §1.2 is about, and the content is not reduced by
+                being stated once. Same shape as `SkillFiles`'s file-tree
+                sentence and `SkillDetail`'s 「AI 產生」 explanation.
+              */}
+              <p className="note">
+                標記說明：「AI 改寫」與「AI 產生」由模型寫成，未經人工核對——你的 Agent
+                讀到的是套件自己的 description，不是這裡的改寫；「作者原文」是套件的 frontmatter
+                description；「規則產生」依查詢與文件的關鍵字重疊組出；
+                「來源未標示」代表伺服器沒有回報這段摘要的來源。
               </p>
               <ul className="search-results" aria-label="搜尋結果">
                 {data.results.map((hit) => (

@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { Timestamp, formatAt } from "../components/Timestamp";
 import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -21,7 +22,7 @@ import {
 import { useRuns, type RunListItem } from "../api/runs";
 import { RunVerdict } from "../components/RunVerdict";
 import { ConfirmDelete } from "../components/ConfirmDelete";
-import { RUN_STATUS_LABEL } from "./RunEvaluation";
+import { runStatusLabel } from "./RunEvaluation";
 // One byte formatter for the app, not a third copy of the same four lines.
 import { bytes } from "./RunPreflight";
 import type { AcceptanceCriterion, RubricItem, TestCase } from "../api/testcases";
@@ -76,7 +77,7 @@ function CreateValidation({
 }
 
 function criterionState(c: AcceptanceCriterion): string {
-  if (c.confirmed_at) return `已確認（${c.confirmed_at}）`;
+  if (c.confirmed_at) return `已確認（${formatAt(c.confirmed_at)}）`;
   return c.source === "suggested" ? "系統建議，尚未確認" : "尚未確認";
 }
 
@@ -149,7 +150,7 @@ export function TestCaseList() {
                 </p>
                 <p className="note">
                   驗收條件已確認 {tc.criteria_confirmed}/{tc.criteria_total} 條 · Rubric{" "}
-                  {tc.has_rubric ? "有" : "無"} · 最後修改 {tc.updated_at}
+                  {tc.has_rubric ? "有" : "無"} · 最後修改 <Timestamp at={tc.updated_at} />
                 </p>
               </li>
             ))}
@@ -321,16 +322,14 @@ function RunHistory({
               <li key={run.run_id} className="download-item">
                 <p>
                   <Link to="/runs/$runId" params={{ runId: run.run_id }}>
-                    {run.created_at}
+                    <Timestamp at={run.created_at} />
                   </Link>
                 </p>
                 <p className="badge-row">
                   <RunVerdict verdict={run.evaluation} />
                 </p>
                 <p className="badge-row">
-                  <span className="badge">
-                    執行狀態：{RUN_STATUS_LABEL[run.status] ?? run.status}
-                  </span>
+                  <span className="badge">執行狀態：{runStatusLabel(run.status)}</span>
                 </p>
                 {/* 義務 §1.1: 這兩個欄位一直在 RunListItem 裡而從來沒有被畫
                     出來,所以一列「執行失敗」講不出為什麼失敗。伺服器沒給就
@@ -343,7 +342,13 @@ function RunHistory({
                 )}
                 <p className="note">
                   Skill Version <code>{run.skill_version_id}</code>
-                  {run.finished_at ? `｜結束於 ${run.finished_at}` : "｜尚未結束"}
+                  {run.finished_at ? (
+                    <>
+                      ｜結束於 <Timestamp at={run.finished_at} />
+                    </>
+                  ) : (
+                    "｜尚未結束"
+                  )}
                 </p>
               </li>
             ))}
@@ -955,7 +960,13 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
                   {/* TEST-002 的保存政策，落到這一個檔案上。不編一個到期日出來；
                       設計 §2.9 的表列詞是「未測量」（伺服器沒回報）。 */}
                   <p className="note">
-                    {d.expires_at ? `保存到 ${d.expires_at} 自動刪除` : "到期日未測量"}
+                    {d.expires_at ? (
+                      <>
+                        保存到 <Timestamp at={d.expires_at} /> 自動刪除
+                      </>
+                    ) : (
+                      "到期日未測量"
+                    )}
                   </p>
                 </li>
               ))}

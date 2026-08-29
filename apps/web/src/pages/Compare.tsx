@@ -5,7 +5,9 @@ import { embeddedSkillKey, getEmbeddedSkillDetail } from "../api/skills";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
+import { ReadFailure } from "../components/LoginRequired";
 import { RiskIndicator } from "../components/RiskIndicator";
+import { Timestamp } from "../components/Timestamp";
 import type { SkillDetail, SkillTags } from "../api/types";
 
 /**
@@ -95,9 +97,12 @@ const ROWS: CompareRow[] = [
           <li key={limit.text}>
             {limit.text}
             {limit.source === "model" && (
-              <span className="badge badge-source-model" title="由模型整理，未經人工核對">
-                AI 產生
-              </span>
+              <>
+                <span className="badge badge-source-model" title="由模型整理，未經人工核對">
+                  AI 產生
+                </span>
+                <span className="note">由模型整理，未經人工核對</span>
+              </>
             )}
           </li>
         ))}
@@ -209,7 +214,10 @@ const ROWS: CompareRow[] = [
       skill.version && (
         <>
           <p>v{skill.version.version_number}</p>
-          <p className="note">建立時間：{skill.version.created_at}</p>
+          <p className="note">
+            建立時間：
+            <Timestamp at={skill.version.created_at} />
+          </p>
         </>
       ),
   },
@@ -218,49 +226,60 @@ const ROWS: CompareRow[] = [
 /** The table itself, taking already-loaded skills. */
 function CompareTable({ skills }: { skills: SkillDetail[] }) {
   return (
-    <div className="table-scroll" tabIndex={0}>
-      <table className="compare-table">
-        <caption>並排比較 {skills.length} 個 Skill 的靜態資料（匯入時記錄與掃描結果）</caption>
-        <thead>
-          <tr>
-            <th scope="col">比較項目</th>
-            {skills.map((skill) => (
-              <th key={skill.skill_id} scope="col">
-                <Link to="/skills/$skillId" params={{ skillId: skill.skill_id }}>
-                  {skill.name}
-                </Link>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {ROWS.map((row) => {
-            const signatures = skills.map(row.signature);
-            // 未知 is its own value here: one skill declaring MIT and another
-            // declaring nothing is a difference, and the sentinel keeps it from
-            // colliding with a genuine empty-ish signature.
-            const differs = new Set(signatures.map((value) => value ?? "\u0000未知")).size > 1;
-            return (
-              <tr key={row.label} className={differs ? "compare-differs" : undefined}>
-                <th scope="row">
-                  {row.label}
-                  {differs && <span className="badge badge-differs">有差異</span>}
+    <>
+      {/*
+        §3 item 9: the most important block on this page had only a `<caption>`,
+        so the outline was 「h1 並排比較」 and nothing else — the answer was on
+        screen with no heading marking it as the answer. `RunCompare` already
+        fixed the same defect with an `<h2>` above its matrix; this is that.
+        The caption stays: it says what the table's data IS (static, from
+        import), which is a different sentence from what the section is.
+      */}
+      <h2>逐項比較</h2>
+      <div className="table-scroll" tabIndex={0}>
+        <table className="compare-table">
+          <caption>並排比較 {skills.length} 個 Skill 的靜態資料（匯入時記錄與掃描結果）</caption>
+          <thead>
+            <tr>
+              <th scope="col">比較項目</th>
+              {skills.map((skill) => (
+                <th key={skill.skill_id} scope="col">
+                  <Link to="/skills/$skillId" params={{ skillId: skill.skill_id }}>
+                    {skill.name}
+                  </Link>
                 </th>
-                {skills.map((skill, index) => (
-                  <td key={skill.skill_id}>
-                    {signatures[index] === undefined ? (
-                      <span className="compare-unknown">未知</span>
-                    ) : (
-                      (row.render?.(skill) ?? signatures[index])
-                    )}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ROWS.map((row) => {
+              const signatures = skills.map(row.signature);
+              // 未知 is its own value here: one skill declaring MIT and another
+              // declaring nothing is a difference, and the sentinel keeps it from
+              // colliding with a genuine empty-ish signature.
+              const differs = new Set(signatures.map((value) => value ?? "\u0000未知")).size > 1;
+              return (
+                <tr key={row.label} className={differs ? "compare-differs" : undefined}>
+                  <th scope="row">
+                    {row.label}
+                    {differs && <span className="badge badge-differs">有差異</span>}
+                  </th>
+                  {skills.map((skill, index) => (
+                    <td key={skill.skill_id}>
+                      {signatures[index] === undefined ? (
+                        <span className="compare-unknown">未知</span>
+                      ) : (
+                        (row.render?.(skill) ?? signatures[index])
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -302,6 +321,9 @@ export function Compare() {
 
   const skills = results.flatMap((result) => (result.data ? [result.data] : []));
   const failed = results.filter((result) => result.isError).length;
+  // One representative error for the shared component. All three reads are the
+  // same endpoint with the same session, so a 401 on one is a 401 on all.
+  const firstError = results.find((result) => result.error)?.error;
 
   return (
     <section>
@@ -321,7 +343,19 @@ export function Compare() {
           載入中…（{skillIds.length} 個裡讀到 {skills.length} 個）
         </p>
       )}
-      {failed > 0 && <p role="alert">有 {failed} 個 Skill 讀取失敗，未列入下表。</p>}
+      {/*
+        The count stays — it is the fact this page owes the reader, and no
+        single-error component can say 「2 of 3」. What is added under it is the
+        first failure's own answer through the shared component: a page that
+        said only 「讀取失敗」 to a logged-out visitor told them to retry a read
+        that will refuse every time (資訊架構 §5 IA-6).
+      */}
+      {failed > 0 && (
+        <>
+          <p role="alert">有 {failed} 個 Skill 讀取失敗，未列入下表。</p>
+          <ReadFailure error={firstError} what="這些 Skill" />
+        </>
+      )}
 
       {skills.length >= 2 && <CompareTable skills={skills} />}
 

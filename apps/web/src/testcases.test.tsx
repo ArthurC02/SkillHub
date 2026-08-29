@@ -333,7 +333,7 @@ test("執行歷史 lists this test case's runs and links to each one", async () 
   expect(
     calls.some((c) => c.url.includes(`/runs?`) && c.url.includes(`test_case_id=${TEST_CASE}`)),
   ).toBe(true);
-  expect(container.textContent).toContain("2026-08-18T00:00:00Z");
+  expect(container.querySelector('time[datetime="2026-08-18T00:00:00Z"]')).not.toBeNull();
   expect(container.textContent).toContain(VERSION);
   // ADR-025: worded as execution, never as a pass.
   expect(container.textContent).toContain("執行完成");

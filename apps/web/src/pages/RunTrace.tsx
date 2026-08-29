@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { Timestamp } from "../components/Timestamp";
 import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,9 +7,9 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { cancelRun, deleteRunArtifact, useRunArtifacts, type RunArtifact } from "../api/runs";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { InFlight } from "../components/InFlight";
-import { useTrace } from "../api/trace";
+import { useTrace, IN_FLIGHT_RUN_STATUSES } from "../api/trace";
 import type { TraceAdvanced, TraceEvent, TraceSummary } from "../api/trace";
-import { EvaluationPanel, RUN_STATUS_LABEL } from "./RunEvaluation";
+import { EvaluationPanel, runStatusLabel } from "./RunEvaluation";
 
 /**
  * TRACE-006 and TRACE-007: the two modes of the run trace.
@@ -94,7 +95,10 @@ export function RunTrace() {
   );
 }
 
-const CANCELLABLE = new Set(["queued", "provisioning", "preparing", "running", "evaluating"]);
+// Was a second hand-written copy of the same five values. `api/trace.ts`
+// owns the list now, and `TERMINAL_RUN_STATUSES` is its complement — so
+// 「還能取消」 and 「還沒結束」 cannot answer differently about one status.
+const CANCELLABLE = IN_FLIGHT_RUN_STATUSES;
 
 export function CancelRunControl({ runId, status }: { runId: string; status?: string }) {
   const queryClient = useQueryClient();
@@ -226,10 +230,14 @@ function RunArtifactFacts({ artifact }: { artifact: RunArtifact }) {
         )}
       </p>
       <p className="note">
-        {artifact.size_bytes} bytes｜建立於 {artifact.created_at}
-        {artifact.expires_at
-          ? `｜到期時間 ${artifact.expires_at}`
-          : "｜保存期限：尚未設定（平台還沒有為 Run 產出定下保存期限，這不表示它會永久保留）"}
+        {artifact.size_bytes} bytes｜建立於 <Timestamp at={artifact.created_at} />
+        {artifact.expires_at ? (
+          <>
+            ｜到期時間 <Timestamp at={artifact.expires_at} />
+          </>
+        ) : (
+          "｜保存期限：尚未設定（平台還沒有為 Run 產出定下保存期限，這不表示它會永久保留）"
+        )}
       </p>
       {artifact.purged && (
         <p className="note">
@@ -285,8 +293,8 @@ function GeneralMode({ runId }: { runId: string }) {
           and is worded as execution: `succeeded` says the workload finished, not
           that the task was done (ADR-025). The task verdict is above. */}
       <p role="status">
-        執行狀態：<strong>{RUN_STATUS_LABEL[trace.status] ?? trace.status}</strong>（
-        <code>{trace.status}</code>）{trace.status_reason ? `（${trace.status_reason}）` : null}
+        執行狀態：<strong>{runStatusLabel(trace.status)}</strong>（<code>{trace.status}</code>）
+        {trace.status_reason ? `（${trace.status_reason}）` : null}
       </p>
 
       <h3>進度</h3>
@@ -509,7 +517,8 @@ function TraceEventRow({ event }: { event: TraceEvent }) {
   return (
     <li>
       <p>
-        <code>#{event.seq}</code> {event.occurred_at} · {event.emitted_by} · {event.type}
+        <code>#{event.seq}</code> <Timestamp at={event.occurred_at} /> · {event.emitted_by} ·{" "}
+        {event.type}
         {event.status ? ` · ${event.status}` : null}
         {event.late ? " · 遲到" : null}
         {(event.masked_fields?.length ?? 0) > 0

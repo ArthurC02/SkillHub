@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { Timestamp, formatAt } from "../components/Timestamp";
 import { ReadFailure } from "../components/LoginRequired";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +17,7 @@ import {
   useSuggestionDiff,
 } from "../api/evaluation";
 import { useRun } from "../api/runs";
+import type { RunStatus } from "../api/trace";
 import type {
   CriterionResult,
   DeterministicFinding,
@@ -50,8 +52,17 @@ import type {
  *    with the fact that the original is gone (ADR-026 決策 2).
  */
 
-/** Execution wording for a run's terminal state. Never a pass/fail of the task. */
-export const RUN_STATUS_LABEL: Record<string, string> = {
+/**
+ * Execution wording for a run's terminal state. Never a pass/fail of the task.
+ *
+ * `Record<RunStatus, …>` and no longer `Record<string, string>`: keyed on the
+ * union, a value added to the contract stops this file compiling instead of
+ * printing its English enum into a Chinese sentence (02:NFR-007 第 3 條 — the
+ * failure `WorkspaceRuns.tsx`'s header already records happening once).
+ * `runStatusLabel` below is what the seven `string`-typed call sites use, so the
+ * fallback lives in one place rather than being re-typed as `?? x` at each.
+ */
+export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
   queued: "排隊中",
   provisioning: "環境準備中",
   preparing: "準備中",
@@ -62,6 +73,11 @@ export const RUN_STATUS_LABEL: Record<string, string> = {
   cancelled: "已取消",
   timed_out: "執行逾時",
 };
+
+/** The label for a status the compiler only knows as a `string`. */
+export function runStatusLabel(status: string): string {
+  return RUN_STATUS_LABEL[status as RunStatus] ?? status;
+}
 
 /**
  * Exported for `RunCompare.tsx`, which used to keep its own `Record<string,
@@ -98,13 +114,13 @@ function isEvidenceUnverifiable(c: CriterionResult): boolean {
   return c.result === "undetermined" && c.reason.startsWith(EVIDENCE_UNVERIFIABLE_PREFIX);
 }
 
-const SOURCE_LABEL: Record<CriterionResult["source"], string> = {
+export const SOURCE_LABEL: Record<CriterionResult["source"], string> = {
   rule: "規則判定（平台自己的紀錄）",
   model: "模型評估（不是確定事實）",
   user: "使用者判定",
 };
 
-const FINDING_CATEGORY_LABEL: Record<DeterministicFinding["category"], string> = {
+export const FINDING_CATEGORY_LABEL: Record<DeterministicFinding["category"], string> = {
   spec: "規格",
   activation: "啟用",
   execution: "執行",
@@ -113,13 +129,13 @@ const FINDING_CATEGORY_LABEL: Record<DeterministicFinding["category"], string> =
   cost: "成本",
 };
 
-const SEVERITY_LABEL: Record<DeterministicFinding["severity"], string> = {
+export const SEVERITY_LABEL: Record<DeterministicFinding["severity"], string> = {
   error: "錯誤",
   warning: "警告",
   info: "資訊",
 };
 
-const SUGGESTION_CATEGORY_LABEL: Record<ImprovementSuggestion["category"], string> = {
+export const SUGGESTION_CATEGORY_LABEL: Record<ImprovementSuggestion["category"], string> = {
   skill: "Skill 內容問題",
   runtime: "Runtime 問題",
   mcp: "MCP 問題",
@@ -128,7 +144,7 @@ const SUGGESTION_CATEGORY_LABEL: Record<ImprovementSuggestion["category"], strin
 };
 
 /** One sentence per value, so no blocked suggestion is refused without a reason. */
-const BLOCKED_REASON_LABEL: Record<SuggestionBlockedReason, string> = {
+export const BLOCKED_REASON_LABEL: Record<SuggestionBlockedReason, string> = {
   path_out_of_bounds: "建議的目標路徑指到套件外面，不能套用。",
   target_changed: "目標檔案已經和建議產生當時不同，這項建議是針對舊內容寫的，不能套用。",
   validation_blocked: "套用後套件會出現阻擋級的規格問題，不能套用。",
@@ -325,7 +341,8 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
             <option value="">目前的判定</option>
             {revisions.data.revisions.map((r) => (
               <option key={r.evaluation_id} value={r.evaluation_id}>
-                {r.evaluated_at}｜{OVERALL_LABEL[r.overall]}｜prompt {r.judge_prompt_version}
+                {formatAt(r.evaluated_at)}｜{OVERALL_LABEL[r.overall]}｜prompt{" "}
+                {r.judge_prompt_version}
                 {r.rubric_version ? `｜rubric ${r.rubric_version}` : ""}
                 {r.superseded_at ? "（已被取代）" : ""}
               </option>
@@ -350,7 +367,7 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
 function ExecutionState({ runStatus }: { runStatus: string }) {
   return (
     <p className="note">
-      執行狀態：{RUN_STATUS_LABEL[runStatus] ?? runStatus}（<code>{runStatus}</code>）。
+      執行狀態：{runStatusLabel(runStatus)}（<code>{runStatus}</code>）。
       這說的是工作負載跑完了沒有，不是任務達成了沒有。
     </p>
   );
@@ -369,9 +386,11 @@ function EvaluationReport({
 
   return (
     <div>
-      {superseded && (
+      {/* Narrowed on the field, not on the boolean above it: `strict` is on
+          now, and `Boolean(x)` does not tell the compiler `x` is a string. */}
+      {evaluation.superseded_at && (
         <p className="notice">
-          你正在看歷史判定，它已於 {evaluation.superseded_at} 被較新的評估取代。
+          你正在看歷史判定，它已於 <Timestamp at={evaluation.superseded_at} /> 被較新的評估取代。
         </p>
       )}
 
@@ -451,7 +470,10 @@ function EvaluationReport({
           <li>Judge 模型：{evaluation.judge_model || "未使用模型"}</li>
           <li>Judge prompt 版本：{evaluation.judge_prompt_version}</li>
           <li>Rubric 版本：{evaluation.rubric_version ?? "無 rubric（不是採用預設 rubric）"}</li>
-          <li>評估時間：{evaluation.evaluated_at}</li>
+          <li>
+            評估時間：
+            <Timestamp at={evaluation.evaluated_at} />
+          </li>
         </ul>
       </details>
 
@@ -523,7 +545,7 @@ function CriterionItem({ criterion: c }: { criterion: CriterionResult }) {
  * written before the field existed have no answer, and rendering silence as a
  * pass is exactly the failure ADR-043 was written about.
  */
-const MATCH_NOTE: Record<EvidenceMatch, string> = {
+export const MATCH_NOTE: Record<EvidenceMatch, string> = {
   exact: "引文已逐字回驗。",
   normalized:
     "引文已回驗——需要正規化後才比對得上（全形半形、空白、頭尾標點）。原文與引用有細微差異，內容相同。",
@@ -532,7 +554,7 @@ const MATCH_NOTE: Record<EvidenceMatch, string> = {
     "只證明這個檔案存在（路徑、大小、雜湊都在 manifest 上），沒有回驗任何引文——平台不會打開產物內容。",
 };
 
-const KIND_WORD: Record<EvidenceRef["kind"], string> = {
+export const KIND_WORD: Record<EvidenceRef["kind"], string> = {
   trace_event: "Trace 事件",
   artifact: "Artifact",
   agent_output: "Agent 輸出",
@@ -631,7 +653,8 @@ function FeedbackForm({
       {evaluation.feedback && (
         <p className="note">
           你先前的回答：{evaluation.feedback.helpful ? "有幫助" : "沒幫助"}（
-          {evaluation.feedback.submitted_at}）。可以改。
+          <Timestamp at={evaluation.feedback.submitted_at} />
+          ）。可以改。
         </p>
       )}
       <label htmlFor="feedback-comment">補充說明（選填）</label>

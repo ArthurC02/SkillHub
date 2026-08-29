@@ -90,6 +90,35 @@ export function ImportSkill() {
     <section>
       <h1>匯入 Skill</h1>
       <p className="note">套件只會做靜態檢查；匯入期間不執行其中的 Script。</p>
+
+      {/*
+        設計 §2.2「強制但不顯示」, which that section calls the second worst of the
+        three and names this page as its instance: the platform enforces five
+        things here and this screen had **not one number and not one rule** on
+        it. 「GitHub 或允許的 URL」 below points at a whitelist and then does not
+        show it. A user meets all five in a 4xx.
+        <br />
+        WHAT IS AND IS NOT STATED, and why the split is where it is:
+        - **The rules are here**, because they are product decisions (PDM-002
+          makes GitHub the first-batch source) rather than tunable values, so
+          stating them creates no second copy that can drift.
+        - **The numbers are not**, and their absence is stated rather than left
+          blank (§2.9). There is no `GET /skills/import/limits` in
+          `contracts/openapi/public.yaml` — `pages/DatasetUpload.tsx` has exactly
+          that endpoint and does this properly, fail-closed, with a `<dl>` before
+          the file input. Copying 10 MB / 100 MB / 1 MiB into this file would be
+          the failure 04 乙-2 rules on from the other direction: a number the page
+          asserts and nothing keeps true. Handed off; until it lands, the honest
+          sentence.
+      */}
+      <ul className="note">
+        <li>來源限 GitHub（PDM-002 的首批來源），其他網域一律拒絕。</li>
+        <li>網址必須是 https，而且不得帶帳號密碼、查詢字串或錨點。</li>
+        <li>
+          大小上限見拒絕訊息——平台強制 zip 與解壓後的兩個上限，但這一頁還讀不到它們的值，
+          所以這裡不印一個沒有來源的數字。
+        </li>
+      </ul>
       {unauthenticated(me.error) ? (
         // Replaced rather than disabled: §2.4's fourth shape is a control taken
         // away with no reason given, and this sentence is the reason.

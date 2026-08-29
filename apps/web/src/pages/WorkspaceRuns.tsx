@@ -1,8 +1,9 @@
 import { Loading } from "../components/Loading";
+import { Timestamp } from "../components/Timestamp";
 import { ReadFailure } from "../components/LoginRequired";
 import { Link } from "@tanstack/react-router";
 import { useRuns, type RunListItem } from "../api/runs";
-import { RUN_STATUS_LABEL } from "./RunEvaluation";
+import { runStatusLabel } from "./RunEvaluation";
 import { RunVerdict } from "../components/RunVerdict";
 
 /**
@@ -83,7 +84,7 @@ export function WorkspaceRuns() {
  * is the fact and the tint is the second channel (§2.3); presentation is this
  * side's job, wording is not.
  */
-const CLEANUP_BADGE: Record<string, string> = {
+export const CLEANUP_BADGE: Record<string, string> = {
   pending: "badge badge-unverified",
   cleaning_up: "badge badge-unverified",
   cleaned: "badge",
@@ -115,7 +116,7 @@ function RunRow({ run }: { run: RunListItem }) {
         <RunVerdict verdict={run.evaluation} />
       </p>
       <p className="badge-row">
-        <span className="badge">執行狀態：{RUN_STATUS_LABEL[run.status] ?? run.status}</span>{" "}
+        <span className="badge">執行狀態：{runStatusLabel(run.status)}</span>{" "}
         {/* §2.1: 已清理 used to render as nothing at all, so the majority case —
             the sandbox was torn down, which is a security fact the owner wants —
             was indistinguishable from a field that was never rendered. This
@@ -127,7 +128,12 @@ function RunRow({ run }: { run: RunListItem }) {
           title={run.cleanup_status.note}
         >
           清理狀態：{run.cleanup_status.label}
-        </span>
+        </span>{" "}
+        {/* The server's own qualifier, visible rather than `title`-only
+            (設計 §2.4 第 3 項). 清理狀態 is a security fact about a sandbox that
+            may or may not still exist, and 「已清理」 alone does not say what was
+            torn down. */}
+        <span className="note">{run.cleanup_status.note}</span>
       </p>
       {run.status_reason ? (
         <p className="note">{run.status_reason}</p>
@@ -137,8 +143,15 @@ function RunRow({ run }: { run: RunListItem }) {
         )
       )}
       <p className="note">
-        建立於 {run.created_at}
-        {run.finished_at ? `｜結束於 ${run.finished_at}` : "｜尚未結束"}｜Provider {run.provider}
+        建立於 <Timestamp at={run.created_at} />
+        {run.finished_at ? (
+          <>
+            ｜結束於 <Timestamp at={run.finished_at} />
+          </>
+        ) : (
+          "｜尚未結束"
+        )}
+        ｜Provider {run.provider}
         {run.failure_class
           ? `｜失敗類別 ${run.failure_class}`
           : run.status === "failed"

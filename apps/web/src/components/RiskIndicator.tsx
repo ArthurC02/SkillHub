@@ -36,17 +36,56 @@ import type { Disclosure, SearchResultRisk, SkillRisk } from "../api/types";
  * own sentence with different punctuation, so that row said the same thing twice
  * in two spellings.
  */
+/**
+ * 設計 §4.4 規則 1: a check produces 通過 / 未通過 / **未執行**, and 未執行 has to
+ * say which check did not run.
+ *
+ * `level` gained a fourth value, `unknown`, for the case where the scan could
+ * not be read. It is the one value that is not a finding, so it is the one that
+ * must not fall through to the untinted 「no warnings」 shape — an unscanned
+ * package rendering exactly like a scanned clean one is the OpenSSF-empty-repo
+ * failure §2.11(a) is built around. `badge-unverified` carries
+ * `--accent-border`, which §4.4 assigns to 未知／未驗證／未檢查; deliberately not
+ * `--danger`, because 「沒掃」 is not 「不通過」.
+ */
+function RiskLevel({ risk }: { risk: { level?: string } }) {
+  if (risk.level !== "unknown") return null;
+  return (
+    <>
+      <span className="badge badge-unverified">未掃描</span>
+      {/* §4.4 規則 1: 未執行 has to say WHICH check did not run — 「未掃描」 alone
+          is a state without a subject, and a reader can only act on the
+          difference between 「掃過了，沒事」 and 「沒掃」 if the second one names
+          itself. Not `--danger`: 沒掃 is not 不通過. */}
+      <span className="note">
+        這個版本沒有靜態掃描結果可讀，所以這裡沒有任何發現可以顯示——那不是「掃過了、沒發現」。
+      </span>
+    </>
+  );
+}
+
 export function RiskSummary({ risk }: { risk: SearchResultRisk }) {
   const flags = risk.disclosures;
   return (
     <>
+      <RiskLevel risk={risk} />
       {risk.scan_status === "scanned" && (
         <>
           {risk.warnings > 0 && <span className="badge badge-risk">警告 {risk.warnings}</span>}
           {flags.length > 0
             ? flags.map((d: Disclosure) => (
-                <span key={d.code} className="badge badge-risk-flag" title={d.note}>
-                  {d.label}
+                <span key={d.code}>
+                  <span className="badge badge-risk-flag" title={d.note}>
+                    {d.label}
+                  </span>
+                  {/* Visible, not `title`-only. This file's own header used to
+                      argue 「a compact row has nowhere to put it」; 設計 §0 puts
+                      安全與不誤導 above 版面, and §0 also says the way a lower
+                      rule gives way is 改變揭露的形狀，不是刪掉內容. The note here
+                      is the server's 「平台不曾執行它們——這是靜態掃描的結果，不是
+                      行為分析。」, which is precisely the sentence that stops the
+                      flag reading as a behavioural finding. */}
+                  {d.note && <span className="note">{d.note}</span>}
                 </span>
               ))
             : risk.warnings === 0 && (
@@ -60,6 +99,9 @@ export function RiskSummary({ risk }: { risk: SearchResultRisk }) {
 }
 
 export function RiskIndicator({ risk }: { risk: SkillRisk }) {
+  // No `level` branch here: `SkillRisk` carries no such field in the contract,
+  // and this shape already has a word for 沒掃 — `scan_status: "unavailable"`,
+  // spelled out in the sentence below.
   if (risk.scan_status === "unavailable") {
     return (
       <div>
@@ -94,9 +136,11 @@ export function RiskIndicator({ risk }: { risk: SkillRisk }) {
       {flags.length > 0 && (
         <ul className="risk-list">
           {/* The note is visible here, not a `title` — §2.4: an explanation that
-              only exists in a tooltip does not exist on touch. The row above
-              keeps it in `title` because a compact row has nowhere to put it,
-              and this is the view a reader opens to find out more. */}
+              only exists in a tooltip does not exist on touch. The compact row
+              above renders it too as of 2026-08-29; the sentence that used to
+              be here (「a compact row has nowhere to put it」) was a layout
+              argument against a §0 priority-1 rule, which is the one trade §0
+              does not allow. */}
           {flags.map((d: Disclosure) => (
             <li key={d.code} className="badge badge-risk-flag">
               {d.label}

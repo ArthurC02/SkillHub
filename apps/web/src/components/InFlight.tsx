@@ -1,6 +1,7 @@
 import { TERMINAL_RUN_STATUSES } from "../api/trace";
+import { Timestamp } from "./Timestamp";
 import type { TraceSummary } from "../api/trace";
-import { RUN_STATUS_LABEL } from "../pages/RunEvaluation";
+import { runStatusLabel } from "../pages/RunEvaluation";
 
 /**
  * 設計 §2.12: 進行中是第三軸，不是判定的一個值。
@@ -35,7 +36,7 @@ export function InFlight({ summary }: { summary: TraceSummary }) {
   return (
     <div className="notice" role="status">
       <p>
-        <strong>進行中：{RUN_STATUS_LABEL[summary.status] ?? summary.status}</strong>
+        <strong>進行中：{runStatusLabel(summary.status)}</strong>
         ——這個 Run 會自己跑到結束，不需要你回來按任何東西。
       </p>
       <p className="note">
@@ -49,9 +50,13 @@ export function InFlight({ summary }: { summary: TraceSummary }) {
           還沒產生任何事件，那是狀態不是缺值——而印「0 秒前」會是三者裡最糟的
           一個，它把「還沒開始」講成「剛剛才動過」。
         */}
-        {summary.last_event_at
-          ? `｜最後一件於 ${summary.last_event_at}`
-          : "｜還沒有任何事件送達（環境仍在準備，不是紀錄遺失）"}
+        {summary.last_event_at ? (
+          <>
+            ｜最後一件於 <Timestamp at={summary.last_event_at} relative />
+          </>
+        ) : (
+          "｜還沒有任何事件送達（環境仍在準備，不是紀錄遺失）"
+        )}
       </p>
     </div>
   );

@@ -17,8 +17,12 @@ import type {
  * (DISC-001, DISC-010); scope is resolved server-side and no request parameter
  * can widen it (CORE-006, ADR-011).
  *
- * Once codegen is wired (ADR-019), replace this file's request plumbing with
- * the generated packages/api-client-ts client.
+ * Codegen has been wired since M2 (`packages/api-client-ts/src/generated/`), and
+ * this file still hand-rolls its request plumbing on purpose — the generated
+ * client is camelCase with a runtime conversion layer, so adopting it is a
+ * migration rather than a tidy-up. The line that used to be here said 「Once
+ * codegen is wired…」, which had been false for months; `contract.test.ts` is
+ * what actually keeps `api/types.ts` and the contract in step.
  *
  * **Every hook here is `retry: false`**, which is what the rest of `api/` has
  * always been and what this file was the largest exception to. The default
@@ -143,6 +147,30 @@ export function useSkillVersions(skillId: string) {
     enabled: skillId.length > 0,
     retry: false,
   });
+}
+
+/**
+ * GET /skills/{id}/diff?from=&to= (`diffSkillVersions`, 02:WS-001 第 4 條
+ * 「使用者可查看任兩版本的內容差異」).
+ *
+ * The endpoint has existed in `contracts/openapi/public.yaml` since M2 with
+ * nothing in `apps/web/src` referencing it — the 尺-1 shape 04 乙-7 rules on:
+ * the criterion's subject is 使用者可查看, so a route with no screen has not met
+ * it. The loop it closes is the product's own: 採用改善建議 creates a new
+ * immutable version (iron rule 4) and until now nothing could show what
+ * changed.
+ *
+ * A URL builder rather than a hook, deliberately. `useVersionDiff`
+ * (api/evaluation.ts) already fetches this exact response shape — a `files[]`
+ * of `FileDiff` — with `retry: false` and the 401 semantics every read here
+ * has, because `RunComparison.version_diff_url` is the same document reached by
+ * a server-supplied address. A second hook would be a second cache key and a
+ * second set of states for one answer; what did NOT belong in a page is the
+ * contract's path, and that is what lives here now.
+ */
+export function skillDiffUrl(skillId: string, from: string, to: string) {
+  const params = new URLSearchParams({ from, to });
+  return `/skills/${skillId}/diff?${params.toString()}`;
 }
 
 /**

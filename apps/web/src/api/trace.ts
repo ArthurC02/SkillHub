@@ -86,7 +86,54 @@ export type TraceAdvanced = {
   has_more: boolean;
 };
 
-export const TERMINAL_RUN_STATUSES = new Set(["succeeded", "failed", "cancelled", "timed_out"]);
+/**
+ * The contract's `RunStatus`, once.
+ *
+ * There used to be FOUR hand-written subsets of it and no assertion tying any
+ * of them together: `RUN_STATUS_LABEL` (9 values), `CANCELLABLE` (5),
+ * `TERMINAL_RUN_STATUSES` (4) and `REASON_EXPECTED` (3). Today their union is
+ * right by coincidence, and the consequence of a tenth status is not one bug
+ * but a chain: the label table prints English into a Chinese sentence, this set
+ * says the run never ended, `CANCELLABLE` says it cannot be cancelled — so
+ * `InFlight` never disappears and `useTrace` polls every three seconds forever,
+ * with all three tables green.
+ *
+ * So: one list, and the terminal set is **the complement of the in-flight one**
+ * rather than a second hand-written list. A status added to the contract and to
+ * `RUN_STATUSES` but not to `IN_FLIGHT_RUN_STATUSES` becomes terminal, which is
+ * the safe direction — polling stops. `contract.test.ts` compares this list
+ * against the generated `RunStatusEnum` so the list itself cannot drift.
+ */
+export const RUN_STATUSES = [
+  "queued",
+  "provisioning",
+  "preparing",
+  "running",
+  "evaluating",
+  "succeeded",
+  "failed",
+  "cancelled",
+  "timed_out",
+] as const;
+
+export type RunStatus = (typeof RUN_STATUSES)[number];
+
+/**
+ * Still going. These are exactly the states a Run can be cancelled from
+ * (`RunTrace.tsx` used to keep its own copy of this under the name
+ * `CANCELLABLE`) and exactly the ones that are not terminal.
+ */
+export const IN_FLIGHT_RUN_STATUSES = new Set<string>([
+  "queued",
+  "provisioning",
+  "preparing",
+  "running",
+  "evaluating",
+]);
+
+export const TERMINAL_RUN_STATUSES = new Set<string>(
+  RUN_STATUSES.filter((status) => !IN_FLIGHT_RUN_STATUSES.has(status)),
+);
 
 export function useTrace<M extends TraceMode>(runId: string, mode: M, active?: boolean, after = 0) {
   const queryKey = ["trace", runId, mode, mode === "advanced" ? after : 0] as const;

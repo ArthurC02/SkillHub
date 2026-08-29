@@ -13,7 +13,7 @@ import { LabelledBadge } from "./LabelledBadge";
  * (License 未知) — never a license name, never anything implying the skill is
  * free to modify or redistribute.
  */
-const SOURCE_LABELS: Record<string, string> = {
+export const SOURCE_LABELS: Record<string, string> = {
   manifest: "來源：套件 frontmatter 宣告",
   "manifest-referenced-file": "來源：frontmatter 指向的套件內檔案",
   "package-license-file": "來源：套件內 LICENSE 檔",
@@ -45,7 +45,9 @@ export function LicenseBadge({ license }: { license: SkillLicense }) {
 export function LicenseNotes({ license }: { license: SkillLicense }) {
   return (
     <>
-      <p className="note">{license.status.note}</p>
+      {/* `license.status.note` is not repeated here: `LabelledBadge` renders it
+          beside the badge itself since 2026-08-29, and this block used to be
+          the only place it appeared as text. */}
       {license.source_note && <p className="note">{license.source_note}</p>}
       {!license.source && license.expression && (
         <p className="note">此版本未記錄 License 的取得來源，無法判斷宣告的涵蓋範圍。</p>

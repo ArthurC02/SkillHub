@@ -435,3 +435,27 @@ test("SEC-002 gate B: an exhausted allowance is not reported as a permission cha
   expect(container.textContent).toContain("resets 24 hours after");
   expect(container.textContent).not.toContain("權限內容已變更");
 });
+
+/**
+ * 02:RUN-003 / PDM-005 §5.2a-2: 「Token 上限必須連同輪數換算表一起呈現，不得只寫
+ * 『300K』」.
+ *
+ * 02:TEST-005 records that this obligation had **three landing places and zero
+ * implementations** — a search for 「輪」 or 「工具呼叫次數」 across `apps/web`,
+ * `apps/platform` and `infra/images` returned nothing, while `03:TEST-011` and
+ * `03:SBX-013` were both ticked. This is the permission-summary one.
+ *
+ * It is not formatting. `300000` is not readable, and the same 300K is ~5 rounds
+ * for a tool-heavy run and ~15 for a conversational one — a factor of three, and
+ * the only thing the reader is actually judging when they press 我確認.
+ */
+test("02:RUN-003 the token ceiling says what it depends on, not just a number", async () => {
+  stubPlatform();
+  await renderLab();
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("300000");
+  expect(text).toContain("取決於每一輪的工具呼叫次數");
+  expect(text).toContain("5 輪");
+  expect(text).toContain("15 輪");
+});

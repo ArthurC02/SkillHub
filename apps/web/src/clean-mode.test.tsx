@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -90,7 +92,7 @@ async function renderNotice() {
   });
 }
 
-test("PORT-003: with clean_mode on, the notice states its three absences", async () => {
+test("PORT-003: with clean_mode on, the notice states its four absences", async () => {
   stubMe({ clean_mode: true });
   await renderNotice();
   await waitFor(() => (container.textContent?.length ?? 0) > 0);
@@ -99,6 +101,9 @@ test("PORT-003: with clean_mode on, the notice states its three absences", async
   expect(text).toContain("沙箱沒有隔離");
   expect(text).toContain("不驗證 presigned URL");
   expect(text).toContain("只有一條連線");
+  // The fourth: an in-memory object store. Its failure has no symptom until a
+  // restart, so it is the one absence a reader cannot infer from the screen.
+  expect(text).toContain("物件儲存只在記憶體裡，行程結束即消失。");
   expect(text).not.toContain("完整");
   expect(text).not.toContain("等同");
   expect(text).not.toContain("與正式環境一致");
@@ -146,4 +151,24 @@ test("PORT-003: without the injected flag, a signed-out visitor (401 from /me) s
   });
 
   expect(container.textContent).toBe("");
+});
+
+/**
+ * 02:PORT-003 的匿名揭露，其實只是一行位元組。
+ *
+ * `cmd/api`'s `cleanModeStaticHandler` (apps/platform/cmd/api/main.go) swaps
+ * this exact comment for a `<script>` that sets `window.__SKILLHUB_CLEAN_MODE__`,
+ * and it matches the bytes. Every test above stubs that window flag or `/me`,
+ * so all four pass on an `index.html` that no longer carries the placeholder at
+ * all — the disclosure would then be dead for exactly the readers it was added
+ * for (signed-out visitors on `/` and `/skills/$id`), with nothing red.
+ *
+ * So this one reads the real file. Not a rendering assertion: the substitution
+ * happens in Go, and the only thing this side owns is that the target string is
+ * still there, verbatim, for the handler to find. `.prettierignore` carries the
+ * other half — a formatter that reflows the comment breaks the same match.
+ */
+test("PORT-003: index.html still carries the exact placeholder cmd/api rewrites", () => {
+  const html = readFileSync(join(import.meta.dirname, "..", "index.html"), "utf8");
+  expect(html).toContain("<!--SKILLHUB_CLEAN_MODE_FLAG-->");
 });

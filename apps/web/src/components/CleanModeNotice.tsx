@@ -37,6 +37,14 @@ export function CleanModeNotice() {
       <p className="note">
         資料庫只有一條連線，併發語意與生產不同。「在這個模式下沒重現」不是一個結論。
       </p>
+      {/*
+        The fourth absence, and the one with no visible symptom at all: the
+        object store is an in-process map, so a download that worked a minute
+        ago works until the process exits and never afterwards. A reader who is
+        not told this reads a gone artifact as a platform bug — and 設計 §2.9
+        says an absence needs a word, not a blank.
+      */}
+      <p className="note">物件儲存只在記憶體裡，行程結束即消失。</p>
     </>
   );
 }

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { StrictMode, act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -240,7 +242,11 @@ test("DISC-002: a summary with no stated source says so rather than crediting th
   await submitSearch("pdf");
 
   expect(container.querySelectorAll(".badge-source-unknown")).toHaveLength(1);
-  expect(container.textContent ?? "").not.toContain("作者原文");
+  // On the BADGE, not on the page: 2026-08-29 added a 標記說明 line above the
+  // list that names all five markers once as visible text (設計 §2.4 第 3 項
+  // — they were `title=` only), so 「作者原文」 appears there legitimately. The
+  // fact under test is that this row is not badged with it.
+  expect(container.querySelectorAll(".badge-source-package")).toHaveLength(0);
 });
 
 test("DISC-002: a truncated result page says so, and says how many it is showing", async () => {
@@ -728,6 +734,47 @@ test("DISC-009: a failed read on /compare says so at once, not after seven secon
   // to spend looking at nothing.
   await waitFor(() => (container.textContent ?? "").includes("讀取失敗"), 300);
   expect(container.textContent).toContain("有 2 個 Skill 讀取失敗");
+});
+
+/**
+ * `level: "unknown"` — the fourth value, and the only one that is not a finding.
+ *
+ * The other three answer 「掃過了，結果是什麼」. `unknown` answers 「沒掃」, and
+ * without a word of its own it falls through to the shape a scanned-clean row
+ * uses — which is the OpenSSF-empty-repo failure 設計 §2.11(a) is built around
+ * and what 02:DISC-004「不得自行推定為通過」 forbids. 未掃描 takes
+ * `--accent-border` (§4.4's 未知／未驗證／未檢查) and deliberately not `--danger`:
+ * 沒掃 is not 不通過.
+ */
+test("DISC-004: a risk level of unknown reads as 未掃描, not as a clean row", async () => {
+  const { RiskSummary } = await import("./components/RiskIndicator");
+  await act(async () => {
+    root = createRoot(container);
+    root.render(
+      <RiskSummary
+        risk={{
+          scan_status: "unavailable",
+          level: "unknown",
+          warnings: 0,
+          disclosures: [],
+          note: "尚無掃描紀錄，狀態未知——不代表已通過檢查。",
+        }}
+      />,
+    );
+  });
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("未掃描");
+  // §4.4 規則 1: 未執行 names the check that did not run. A bare 「未掃描」 is a
+  // state with no subject.
+  expect(text).toContain("沒有靜態掃描結果可讀");
+  expect(text).toContain("那不是「掃過了、沒發現」");
+  // The sentence the untinted clean-scan branch prints. It must not appear: a
+  // package nobody scanned did not fail to find warnings, it was never looked at.
+  expect(text).not.toContain("靜態掃描未發現警告");
+  // Not green: the badge carries the 未知 tint, never the plain `.badge`.
+  expect(container.querySelector(".badge-unverified")).not.toBeNull();
+  expect(container.querySelector(".badge-risk")).toBeNull();
 });
 
 test("DISC-004: an unreadable package is reported as unknown, never as a clean scan", async () => {
@@ -1308,4 +1355,99 @@ test("GEN-004: a self-supplied skill gets no generated disclosure", async () => 
   await waitFor(() => (container.textContent ?? "").includes(skill.name));
 
   expect(container.textContent ?? "").not.toContain("沒有經過任何人工檢視");
+});
+
+/**
+ * 04 丙-29 ④ / 設計 §4.4: **all twelve disclosure codes reach the screen, and
+ * the words are the server's.**
+ *
+ * `skillpkg.DisclosureCodes` (apps/platform/internal/shared/skillpkg/skillpkg.go)
+ * is the whole set and it went 6 → 12: `symlink-entry`,
+ * `undeclared-dependency`, `file-not-scanned`, `package-dependencies` and
+ * `entry-path-escape` were all being found by the scanner and none of them had
+ * a word. The Go side asserts its catalogue covers the list; this is the same
+ * assertion on the renderer.
+ *
+ * WHAT IS BEING ASSERTED, and it is not what it would have been a month ago.
+ * There is **no code→中文 map in `apps/web`** any more: `RiskIndicator` renders
+ * `disclosure.label`, from one catalogue both endpoints read (设计 §4.4 records
+ * the merge, and the two divergent client-side lists it replaced — one of which
+ * silently dropped 「可執行」, a smaller claim rather than a shorter label). The
+ * property that buys is that **a code this build has never seen still renders**,
+ * which no `keyof` union can have — and that property had no test. This is it.
+ *
+ * So the failure this catches is a regression to a client-side subset: reinstate
+ * a local map, filter on a known-codes list, drop `label` for `note`, and this
+ * goes red with the codes that vanished named in the diff.
+ *
+ * The list is READ FROM THE GO SOURCE, not copied: a copy here would be the
+ * thirteenth hand-written list in a finding whose whole history is hand-written
+ * lists falling behind the scanner.
+ */
+function disclosureCodes(): string[] {
+  const go = readFileSync(
+    join(
+      import.meta.dirname,
+      "..",
+      "..",
+      "platform",
+      "internal",
+      "shared",
+      "skillpkg",
+      "skillpkg.go",
+    ),
+    "utf8",
+  );
+  // `Code<Name> = "kebab-case"` — the constants, which is what the exported
+  // `DisclosureCodes` slice is spelled in terms of. Taken from the slice's own
+  // body so a constant that exists but is deliberately NOT a disclosure (the
+  // spec and licence verdicts, which the Go header enumerates) stays out.
+  const slice = /var DisclosureCodes = \[\]string\{([\s\S]*?)\n\}/.exec(go);
+  expect(slice, "skillpkg.go has no DisclosureCodes slice — the parse broke").toBeTruthy();
+  const names = [...slice![1].matchAll(/\b(Code\w+)\b/g)].map((m) => m[1]);
+  return names.map((name) => {
+    const decl = new RegExp(`\\b${name}\\s*=\\s*"([^"]+)"`).exec(go);
+    expect(decl, `skillpkg.go declares ${name} in DisclosureCodes but nowhere else`).toBeTruthy();
+    return decl![1];
+  });
+}
+
+test("04 丙-29 ④: every disclosure code the scanner can emit reaches the screen", async () => {
+  const codes = disclosureCodes();
+  // Sentinel tied to the finding: the set went 6 → 12, so a parse that returns
+  // fewer than twelve is a broken parse rather than a shrunken catalogue.
+  expect(codes.length, "fewer than twelve disclosure codes parsed").toBeGreaterThanOrEqual(12);
+
+  await act(async () => {
+    root = createRoot(container);
+    root.render(
+      <RiskIndicator
+        risk={{
+          scan_status: "scanned",
+          counts: { errors: 0, warnings: 0, infos: 0 },
+          highlights: [],
+          info_counts: {},
+          // The server's wording, one entry per code. The labels below are this
+          // test's own strings on purpose: what is under test is that the
+          // renderer prints what it was given, for every code, not that it
+          // agrees with a second copy of the catalogue.
+          disclosures: codes.map((code) => ({
+            code,
+            label: `標籤：${code}`,
+            note: `但書：${code}`,
+          })),
+          note: "來自匯入時的靜態掃描。",
+        }}
+      />,
+    );
+  });
+
+  const text = container.textContent ?? "";
+  for (const code of codes) {
+    expect(text, `no label rendered for disclosure code ${code}`).toContain(`標籤：${code}`);
+    // 設計 §2.4 第 3 項: the qualifier is visible text here, not a tooltip.
+    expect(text, `no visible note rendered for disclosure code ${code}`).toContain(`但書：${code}`);
+  }
+  // And the clean-scan sentence is absent: twelve disclosures is not 「未發現」.
+  expect(text).not.toContain("靜態掃描未發現錯誤或警告");
 });

@@ -6,7 +6,10 @@
        they run in the browser; node because the config reads process.env. */
     "lib": ["ES2023", "DOM"],
     "module": "esnext",
-    "types": ["node"],
+    /* vite/client too, since 2026-08-29: `src/fixtures/platform.ts` now carries
+       `satisfies` against `api/types.ts`, so this project compiles the app's own
+       modules — and `api/client.ts` reads `import.meta.env`. */
+    "types": ["node", "vite/client"],
     "skipLibCheck": true,
 
     /* Bundler mode */
@@ -17,6 +20,7 @@
     "noEmit": true,
 
     /* Linting */
+    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,

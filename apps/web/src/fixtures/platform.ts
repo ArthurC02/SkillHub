@@ -11,6 +11,33 @@
  * uses `page.route`, and both ask `platformResponse` the same question.
  */
 
+/**
+ * `satisfies`, not `:`.
+ *
+ * This file had no type annotation of any kind (`grep -n "satisfies\|import
+ * type"` was empty) and had already fallen two required fields behind the
+ * contract: `SEARCH` had no `total` — the field 設計 §4.3 spent a whole
+ * paragraph adding so a truncated list could say 「共 N 筆」 instead of a lower
+ * bound — and `/me` had no `deletion_scope`, the sentence 資訊架構 records as
+ * having to survive a reload. Both drifts were invisible: every assertion that
+ * reads them reads `container.textContent`.
+ *
+ * `satisfies` rather than `const X: T = …` so the literal keeps its narrow type
+ * — the tests index into these objects and a widened `string` would take the
+ * exactness with it. Applied to the five whose shape `api/types.ts` names; the
+ * rest answer endpoints whose types live in `api/packaging.ts`,
+ * `api/evaluation.ts` and `api/lab.ts`, and pulling those in here is a separate
+ * pass. `contract.test.ts` is what keeps `api/types.ts` itself honest.
+ */
+import type {
+  Me,
+  PublicSearchResponse,
+  PublicSearchResult,
+  SkillDetail,
+  SkillFiles,
+  SkillVersions,
+} from "../api/types";
+
 export const SKILL = "11111111-1111-1111-1111-111111111111";
 export const SKILL_B = "aaaaaaaa-2222-2222-2222-222222222222";
 export const VERSION = "22222222-2222-2222-2222-222222222222";
@@ -48,7 +75,14 @@ export const HIT_FACETS = {
     note: "尚未試跑。",
   },
   verified_at: "2026-08-01T10:00:00Z",
-};
+  // The facets every hit carries, checked against the one row type — and the
+  // reason `scan_status`/`level` stay narrow rather than widening to `string`:
+  // `satisfies` types the literals contextually, which `const X: T =` and a
+  // bare object literal both fail to do here.
+} satisfies Pick<
+  PublicSearchResult,
+  "tier" | "risk" | "dependencies" | "compatibility" | "verified_at"
+>;
 
 export const SEARCH = {
   query: "pdf 摘要",
@@ -80,11 +114,17 @@ export const SEARCH = {
   partial_index: true,
   limit: 20,
   truncated: false,
+  // Required by the contract since 設計 §4.3's 「共 N 筆」 landed, and absent
+  // here until `satisfies` was put on this object. `truncated: false`, so it
+  // must equal `results.length` — that equality is the assertion pinning the
+  // field against drift, and this fixture was silently violating it by having
+  // no field at all.
+  total: 2,
   no_results: false,
   filtered_out: false,
-};
+} satisfies PublicSearchResponse;
 
-export function skillDetail(id: string, name: string) {
+export function skillDetail(id: string, name: string): SkillDetail {
   return {
     skill_id: id,
     name,
@@ -176,7 +216,7 @@ export const FILES = {
   ],
   embedded_script_note: "SKILL.md 內含可執行程式碼。",
   note: "tree 為套件內檔案清單與大小。",
-};
+} satisfies SkillFiles;
 
 export const TARGETS = {
   targets: [
@@ -618,6 +658,32 @@ export const COMPARISON = {
   version_diff_url: `/skills/${SKILL}/versions/diff?from=v1&to=v2`,
 };
 
+/**
+ * WS-001: the version history `SkillDetail` renders, newest first.
+ *
+ * Two entries and not one, deliberately — the busy state again: one row can
+ * compare with the one below it and one cannot, so the fixture covers both the
+ * 「與上一版比較」 control and the 「這是最早的版本」 sentence that replaces it.
+ * The newer id is `VERSION`, which is the version every other fixture here
+ * names.
+ */
+export const SKILL_VERSIONS = {
+  versions: [
+    {
+      version_id: VERSION,
+      version_number: 2,
+      content_hash: "sha256:bbbb",
+      created_at: "2026-08-17T00:00:00Z",
+    },
+    {
+      version_id: "22222222-2222-2222-2222-111111111111",
+      version_number: 1,
+      content_hash: "sha256:aaaa",
+      created_at: "2026-08-01T10:00:00Z",
+    },
+  ],
+} satisfies SkillVersions;
+
 export const VERSION_DIFF = {
   files: [
     { path: "SKILL.md", status: "modified", diff: "@@ -1 +1 @@\n-old\n+new" },
@@ -656,7 +722,14 @@ export function platformResponse(input: string): { body: unknown; status: number
       workspace_id: "ws-1",
       deletion_requested_at: "2026-08-17T00:00:00Z",
       purge_after: "2026-09-16T00:00:00Z",
-    });
+      // Required by the contract and missing here until this file was typed.
+      // It is the sentence 資訊架構 §5 records as having to survive a reload —
+      // 「刪除範圍句現在活得過一次重新整理」 — and this shared platform was
+      // answering `/me` without it, which is the one shape the account screen
+      // cannot render.
+      deletion_scope:
+        "purging the account destroys its skills, versions, runs, traces, evaluations and packaged downloads; audit records of the deletion itself are retained",
+    } satisfies Me);
   if (path === "/policy/data-retention") return ok(RETENTION_POLICY);
   if (path === "/packaging/targets") return ok(TARGETS);
   if (path.endsWith("/packaging/preview")) return ok(PREVIEW);
@@ -734,6 +807,12 @@ export function platformResponse(input: string): { body: unknown; status: number
       truncated: false,
     });
   if (path.includes("/versions/diff")) return ok(VERSION_DIFF);
+  // WS-001 第 4 條's own endpoint, `GET /skills/{id}/diff?from=&to=`, as
+  // distinct from the `version_diff_url` the run comparison hands over above.
+  // Same response shape (`files[]` of FileDiff), which is why one component
+  // renders both.
+  if (path.endsWith("/diff")) return ok(VERSION_DIFF);
+  if (path.endsWith("/versions")) return ok(SKILL_VERSIONS);
   if (path.endsWith("/runs/preflight")) return ok(PREFLIGHT);
 
   if (path.endsWith("/trace")) return ok(url.includes("advanced") ? TRACE_ADVANCED : TRACE_GENERAL);

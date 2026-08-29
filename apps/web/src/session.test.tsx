@@ -303,6 +303,31 @@ test("IA-6 the site-wide feedback form says it before a paragraph is written", a
 
 // --- 3. the two precedents the ruling rests on, which had no test at all -----
 
+/**
+ * 設計 §2.2「強制但不顯示」, and this page is the section's named instance.
+ *
+ * The platform enforces five things at this door — the one door third-party
+ * code enters the platform through — and the screen carried not one of them.
+ * The numbers still are not here (there is no `GET /skills/import/limits` in the
+ * contract, and copying the Go constants would be a second source of truth for
+ * a value nothing keeps in step), but their absence is now stated rather than
+ * blank, which is the §2.9 half.
+ */
+test("SEC/§2.2 the import screen states the rules it is enforced by, before the form", async () => {
+  vi.stubGlobal("fetch", () => json({ user_id: "u-1", workspace_id: "ws-1" }));
+  await render(<ImportSkill />, () => text().includes("匯入 Skill"));
+
+  expect(text()).toContain("來源限 GitHub");
+  expect(text()).toContain("必須是 https");
+  expect(text()).toContain("不得帶帳號密碼");
+  // §2.9: the size ceilings exist and are enforced; not knowing their values is
+  // said out loud rather than left as a gap the reader reads as 「沒有上限」.
+  expect(text()).toContain("大小上限見拒絕訊息");
+  // And no invented number: a figure this page cannot source is worse than none.
+  expect(text()).not.toContain("10 MB");
+  expect(text()).not.toContain("100 MB");
+});
+
 test("IA-6 precedent: ForkAction tells a visitor what logging in buys (SkillDetail)", async () => {
   loggedOutPlatform();
   await render(<SkillDetail />, () => text().includes("Fork"));

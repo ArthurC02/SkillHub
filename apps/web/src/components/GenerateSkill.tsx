@@ -8,6 +8,7 @@ import type { GenerateRejected } from "../api/types";
 import { Findings } from "./Findings";
 import { GeneratedNotice } from "./GeneratedNotice";
 import { failureSentence } from "./generateFailureSentence";
+import { Timestamp } from "./Timestamp";
 
 /**
  * GEN-004's entry point: describe the task, get a Skill package (GEN-001).
@@ -208,7 +209,7 @@ function GenerateHistory() {
       <ul>
         {failures.map((f) => (
           <li key={f.occurred_at}>
-            <time dateTime={f.occurred_at}>{new Date(f.occurred_at).toLocaleString("zh-TW")}</time>
+            <Timestamp at={f.occurred_at} />
             {" — "}
             {failureSentence(f)}
           </li>

@@ -351,6 +351,19 @@ main {
   margin: 8px 0;
 }
 
+/* A badge that FOLLOWS text inside a flow element has nothing between it and
+   the last word: `.risk-list` is a column, so its rows inherit no gap, and a
+   limitation rendered as 「只處理文字型 PDFAI 產生」 — §3 item 15's 「兩段文字
+   之間有間距嗎」, which that checklist notes happened at 1280px and not only on
+   a phone. `.badge-differs` carried its own `margin-left: 8px` for exactly
+   this; stating it once for every caller is the same rule with one copy.
+
+   `.badge-row` and `.tag-list` are untouched: they are flex containers with
+   their own `gap`, and neither is in the selector below. */
+:is(li, p, h2, h3, h4, td, th) > .badge:not(:first-child) {
+  margin-left: 8px;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -685,7 +698,6 @@ summary {
 }
 
 .badge-differs {
-  margin-left: 8px;
   border-color: var(--accent-border);
 }
 

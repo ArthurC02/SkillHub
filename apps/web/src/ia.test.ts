@@ -56,6 +56,14 @@ function section(heading: string): string {
   return end === -1 ? rest : rest.slice(0, end);
 }
 
+/**
+ * One address, collapsed so a router pattern and a real URL compare equal:
+ * query string dropped, `$skillId` and `${SKILL}` both becoming `*`.
+ */
+function shapePath(address: string): string {
+  return address.split("?")[0].replace(/\$\{[^}]*\}|\$\w+/g, "*");
+}
+
 /** Every `` `/…` `` in a stretch of markdown, deduplicated and sorted. */
 function paths(markdown: string): string[] {
   return [...new Set([...markdown.matchAll(/`(\/[^`]*)`/g)].map((m) => m[1]))].sort();
@@ -237,6 +245,97 @@ test("IA §2.4: every feature-flagged entry point is documented", () => {
   }
 });
 
+/**
+ * §2.4's other half: the flag is documented, and SOMEBODY IS TESTING IT OFF.
+ *
+ * The test above proves a flag is named in the IA document. It does not prove
+ * a single line of code still honours it. `WorkspaceSkills.tsx` mounted the M5
+ * generation entry point behind `generateExposed` for days with no assertion
+ * anywhere: `generate.test.tsx` covered the search's `no_results` mount and
+ * `workspace.test.tsx` had no `generate` in it at all, so changing that mount
+ * to `{true && <GenerateSkill />}` left all 224 tests green.
+ *
+ * That is the ⛔ boundary AGENTS.md names — 開工不等於曝光 — and its failure has
+ * no symptom. The page looks correct. What breaks is the meaning of 01 §11.2's
+ * first funnel segment, which has one chance and twelve people.
+ *
+ * SHAPE, same as `db/query-owners.yaml` and system.md §5: a named roster that
+ * may only get shorter. A render site absent from it fails; an entry whose file
+ * is no longer a render site fails too, so the list cannot rot into a record of
+ * mounts somebody already deleted.
+ *
+ * WHAT IT CANNOT SEE: whether the named test really asserts the off state. That
+ * sentence is a human's to read — the roster's value is that a NEW mount now
+ * costs a line here and a test somebody has to write, instead of nothing.
+ */
+const FLAG_OFF_ASSERTED: Record<string, string> = {
+  "pages/Home.tsx":
+    "generate.test.tsx — 「the generate entry point is absent until /me says the flag is on」",
+  "pages/WorkspaceSkills.tsx":
+    "workspace.test.tsx — 「⛔ with the flag off, /workspace/skills has no generation entry point」",
+  "components/CleanModeNotice.tsx":
+    "clean-mode.test.tsx — 「without the flag, the notice renders nothing」",
+};
+
+/** The hooks in `api/` that answer a `GET /me` feature flag, by name. */
+function flagHooks(): Set<string> {
+  const hooks = new Set<string>();
+  for (const file of readdirSync(join(src, "api"))) {
+    if (!/\.tsx?$/.test(file) || file.includes(".test.")) continue;
+    const body = readFileSync(join(src, "api", file), "utf8");
+    // Split at each `export function`, so the flag read is attributed to the
+    // one it is inside. A brace-counting regex would not do: `useCleanMode`
+    // has an early `return` in a block before its `features?.` line.
+    const chunks = body.split(/export function (\w+)/);
+    for (let i = 1; i < chunks.length; i += 2) {
+      if (/features[?][.]\w+/.test(chunks[i + 1] ?? "")) hooks.add(chunks[i]);
+    }
+  }
+  return hooks;
+}
+
+test("IA §2.4 / ADR-052: every flagged mount is on the roster of ones tested with the flag off", () => {
+  const hooks = flagHooks();
+  expect(
+    hooks.size,
+    "no flag hook found in api/ — the parse broke, and this file would then pass on any mount at all",
+  ).toBeGreaterThan(0);
+
+  const sites: string[] = [];
+  for (const dir of ["pages", "components"]) {
+    for (const file of readdirSync(join(src, dir))) {
+      if (!file.endsWith(".tsx") || file.includes(".test.")) continue;
+      const body = readFileSync(join(src, dir, file), "utf8");
+      // A call, not a mention: the two components the flag *gates* name the
+      // hook in their headers without reading it, and they are not the mount.
+      if ([...hooks].some((h) => body.includes(`${h}()`))) sites.push(`${dir}/${file}`);
+    }
+  }
+  expect(sites.length, "no flagged mount found at all — the scan broke").toBeGreaterThan(0);
+
+  expect(
+    sites.filter((f) => !(f in FLAG_OFF_ASSERTED)).sort(),
+    "a mount behind a /me feature flag with no line on the roster. Write the flag-off " +
+      "assertion first, then name the test here — a mount nobody tests off is the ⛔ " +
+      "boundary failing with no symptom (ADR-052).",
+  ).toEqual([]);
+
+  // It may not rot: an entry whose file no longer mounts anything behind a flag
+  // is a promise about a test nobody can find any more.
+  expect(
+    Object.keys(FLAG_OFF_ASSERTED)
+      .filter((f) => !sites.includes(f))
+      .sort(),
+    "a roster entry that is no longer a flagged mount — delete the line",
+  ).toEqual([]);
+
+  // Shrink-only, like §0.2's ledger above.
+  expect(
+    Object.keys(FLAG_OFF_ASSERTED).length,
+    "the roster may only get shorter",
+  ).toBeLessThanOrEqual(3);
+});
+
 // --- 7. the 375px sweep, and whether it still covers what it claims ----------
 
 /**
@@ -262,12 +361,11 @@ test("IA §2.4: every feature-flagged entry point is documented", () => {
  * results.
  */
 test("IA §6: every route in router.tsx is swept at 375px", () => {
-  const shape = (address: string) => address.split("?")[0].replace(/\$\{[^}]*\}|\$\w+/g, "*");
-  const routes = [...router.matchAll(/^\s*path: "([^"]+)"/gm)].map((m) => shape(m[1]));
+  const routes = [...router.matchAll(/^\s*path: "([^"]+)"/gm)].map((m) => shapePath(m[1]));
 
   const table = readFileSync(join(src, "..", "e2e", "routes.ts"), "utf8");
   const swept = [...table.matchAll(/^\s*\["[^"]*",\s*(?:"([^"]*)"|`([^`]*)`)\],/gm)].map((m) =>
-    shape(m[1] ?? m[2]),
+    shapePath(m[1] ?? m[2]),
   );
   // Sentinel, tied to the other side rather than to a number: a formatting
   // change that breaks the parse must fail here, and 「18」 in an assertion is
@@ -282,4 +380,90 @@ test("IA §6: every route in router.tsx is swept at 375px", () => {
     "a route with no address in e2e/routes.ts — add one, with fixture ids the " +
       "shared stubs answer to. An unswept route is one nobody has ever seen at phone width",
   ).toEqual([...new Set(swept)].sort());
+});
+
+// --- 8. §4, the state the URL carries ---------------------------------------
+
+/**
+ * §4's table against `router.tsx`'s `validateSearch`, both ways.
+ *
+ * §4 is a 盤點 — the code wins — and it had gone stale in the way this whole
+ * file exists to catch: the `/runs/$id` row read **無**, while the route had
+ * carried `evaluation` and `events` for weeks, each with a paragraph in
+ * `router.tsx` explaining why it belongs in the URL. Nothing failed. The `/`
+ * row was worse than stale, it was unfinishable: 「`q`、`script`、`validation`…」,
+ * and an ellipsis cannot be compared to anything.
+ *
+ * This is the same ratchet as §1's and §2.1's, on the one table in this
+ * document that describes something a reader can act on — a URL they are about
+ * to paste to somebody else.
+ *
+ * WHAT IT CANNOT SEE. Whether a param SHOULD be in the URL. That is R4, and
+ * §6 records R4 as having no machine: 「你在看哪一份東西」 versus 「你偏好怎麼看」
+ * is a judgement, and IA-4 is the argument it produced.
+ */
+test("IA §4: every route's search params are the ones the document lists", () => {
+  // Each `createRoute({…})` block, paired with its path and its validateSearch
+  // keys. Split rather than brace-matched: the blocks are top level and the
+  // path line is the second or third of each.
+  const actual = new Map<string, string[]>();
+  for (const block of router.split("createRoute({").slice(1)) {
+    const path = /^\s*(?:getParentRoute:[^\n]*\n)?\s*path: "([^"]+)"/m.exec(block);
+    if (!path) continue;
+    const at = block.indexOf("validateSearch:");
+    if (at === -1) continue;
+
+    // The returned object literal, brace-matched from the `({` of `=> ({`.
+    const open = block.indexOf("({", at) + 1;
+    let depth = 0;
+    let end = open;
+    while (end < block.length) {
+      if (block[end] === "{") depth++;
+      else if (block[end] === "}" && --depth === 0) break;
+      end++;
+    }
+    const body = block.slice(open + 1, end);
+
+    // Keys at depth 0 of that literal. A value may itself be a ternary spanning
+    // lines, so depth is counted rather than assuming one key per line.
+    const keys: string[] = [];
+    let nest = 0;
+    for (const line of body.split("\n")) {
+      const key = /^\s*(\w+):/.exec(line);
+      if (nest === 0 && key) keys.push(key[1]);
+      for (const ch of line) {
+        if (ch === "{" || ch === "[" || ch === "(") nest++;
+        else if (ch === "}" || ch === "]" || ch === ")") nest--;
+      }
+    }
+    actual.set(shapePath(path[1]), keys.sort());
+  }
+
+  // Sentinel: a parse that finds no route with params would compare two empty
+  // maps and pass on any drift at all.
+  expect(actual.size, "no validateSearch parsed — the scan broke").toBeGreaterThanOrEqual(7);
+
+  const documented = new Map<string, string[]>();
+  for (const line of section("4.").split("\n")) {
+    if (!line.startsWith("| `/")) continue;
+    const cells = line.split("|").map((c) => c.trim());
+    const address = paths(cells[1])[0];
+    // Only the SECOND cell: the reason cell names params in prose too, and a
+    // row-wide scan would read those as if they were declared.
+    const params = [...cells[2].matchAll(/`(\w+)`/g)].map((m) => m[1]).sort();
+    documented.set(shapePath(address), params);
+  }
+
+  expect(
+    [...documented.keys()].sort(),
+    "§4 lists a route that has no validateSearch, or omits one that has — the table " +
+      "is an inventory of what `router.tsx` actually accepts",
+  ).toEqual([...actual.keys()].sort());
+
+  for (const [address, params] of actual) {
+    expect(
+      documented.get(address),
+      `${address}: §4 and router.tsx disagree about which search params this address carries`,
+    ).toEqual(params);
+  }
 });

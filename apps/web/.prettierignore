@@ -6,3 +6,10 @@ package-lock.json
 test-results/
 playwright-report/
 blob-report/
+
+# 02:PORT-003. cmd/api's cleanModeStaticHandler rewrites the exact byte string
+# `<!--SKILLHUB_CLEAN_MODE_FLAG-->` in this file; Prettier is free to reflow a
+# comment across lines, and a reflowed placeholder is a substitution that
+# silently stops happening. clean-mode.test.tsx asserts the bytes; this keeps
+# the formatter from being the thing that breaks them.
+index.html

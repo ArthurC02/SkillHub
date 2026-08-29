@@ -1,4 +1,5 @@
 import { Loading } from "../components/Loading";
+import { ReadFailure } from "../components/LoginRequired";
 import { Link, useParams } from "@tanstack/react-router";
 import { ApiError } from "../api/client";
 import { useSkillFiles } from "../api/skills";
@@ -50,8 +51,12 @@ export function SkillFiles() {
         here is a second thing to keep in step.
       */}
       {error instanceof ApiError && error.status === 403 && <p role="status">{error.message}</p>}
-      {error && !(error instanceof ApiError && (error.status === 410 || error.status === 403)) && (
-        <p role="alert">載入檔案失敗。</p>
+      {/* 410 and 403 above keep their own sentences — they are facts about this
+          listing, not read failures. Everything else goes through the shared
+          component so a 401 says to log in and a 500 still says what broke;
+          「載入檔案失敗。」 said neither. */}
+      {!(error instanceof ApiError && (error.status === 410 || error.status === 403)) && (
+        <ReadFailure error={error} what="套件檔案清單" />
       )}
 
       {data && (

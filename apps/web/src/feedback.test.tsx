@@ -192,6 +192,11 @@ test("BETA-004 a failed submit keeps the words and says what to do next", async 
     "Fork 之後找不到我 Fork 出來的東西。",
   );
   expect(text()).toContain("可以稍後再按一次");
+  // 設計 §2.2 第三向: the copy used to say 「請直接寫信給我們」 and no address
+  // exists anywhere in the product — an out that does not exist is worse than
+  // saying there is none. 「沒有下一步」 is a legal answer; a fictional one is not.
+  expect(text()).toContain("目前沒有第二條回報管道");
+  expect(text()).not.toContain("寫信");
   expect(text()).not.toContain("已收到");
 });
 
