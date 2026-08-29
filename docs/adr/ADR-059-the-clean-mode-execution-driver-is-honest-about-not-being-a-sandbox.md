@@ -3,7 +3,7 @@
 - 狀態：Proposed
 - 日期：2026-08-28
 - 決策者：產品負責人、架構規劃
-- 相關：[ADR-015](./ADR-015-sandbox-isolation-baseline.md)（gVisor 基線）、[ADR-022](./ADR-022-sandbox-deployment-topology-and-security-thresholds.md)（安全門檻定值）、[ADR-006](./ADR-006-provider-port-and-runtime-adapters.md)（Provider Port 與 Adapter）、[ADR-058](./ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)（乾淨測試模式的資料庫那一半）、[ADR-004](./ADR-004-run-lifecycle-and-provider-contract.md)（Run 生命週期與 Provider 契約）
+- 相關：[ADR-015](./ADR-015-sandbox-isolation-technology.md)（gVisor 基線）、[ADR-022](./ADR-022-sandbox-deployment-topology-and-security-thresholds.md)（安全門檻定值）、[ADR-006](./ADR-006-local-runner-for-local-resources.md)（Provider Port 與 Adapter）、[ADR-058](./ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)（乾淨測試模式的資料庫那一半）、[ADR-004](./ADR-004-provider-neutral-run-orchestration.md)（Run 生命週期與 Provider 契約）
 
 ## 背景
 
@@ -67,6 +67,22 @@ Driver 向 `Match` 宣告 `isolation.level = "clean"`。**這不是一個比較�
 - **不可以**在那上面執行不受信任的內容——由 `Match` 強制，不靠任何人記得。
 - **多一個實作要跟著契約走**。工作負載的環境變數契約目前寫死在 `dockerdrv` 裡，兩個實作要嘛共用一份、要嘛分岔——**`02:PORT-008` 的禁令是同一個形狀**。
 - **`02:PORT-006` 的範圍要改**：執行不再一律屬清單外，改為「不受信任內容的執行屬清單外」。
+
+## 退場條件（2026-08-29 追記）
+
+本 Driver 存在的理由是**一台不能安裝任何東西的機器**。所以它應該有一個退場條件，而不是靠沒有人想起它而永久存在。
+
+**它原本有一條最短的退場路徑，而那條路今天關了**：[`05` R-23](../plans/05-pending-rulings.md) 的選項 (b)——**向機構爭取防火牆多開一個網域**，把 Run 送回自己的 gVisor 節點。若 (b) 成立，本 Driver 與 `clean` 等級**整批不需要存在**：隔離與生產一模一樣、資料不離開機構、不生第二套安全論述。**2026-08-29 負責人答覆：無法多開網域，(b) 否決。** 所以這條退場路徑是關的，記在這裡是為了下一個人不必再問一次。
+
+**同日答覆的另外三個事實，方向與 (b) 相反且對本 ADR 有利**：機構內**前後端所需套件都取得得到**、**OpenAI API 打得通**、網頁搜尋大部分可達。前者讓離線 bundle 的重要性下降，後者讓**本機起一個模型閘道成為可能**——**但要不要做、怎麼做，本 ADR 不決定**（`PORT-007`／`PORT-011` 的規劃事實登錄在 [m6/README](../plans/mvp/m6/README.md)）。
+
+**仍然有效的退場條件（滿足任一即應評估移除本 Driver 與 `clean` 等級）**
+
+1. **Demo 之後不再需要在受限機器上跑 Run。** Demo 排在 2026 年 9 月中下旬；**M6 真正完成後凍結新功能**（負責人 2026-08-29 裁定）。凍結不等於移除，但它是重新問這個問題的自然時點。
+2. **那台機器的白名單接受任何一顆我們可以自帶的 launcher。** 那時真的隔離器就放得上去，而 `clean`「沒有邊界」這個等級失去理由（[m6/report-sandbox-options.md](../plans/mvp/m6/report-sandbox-options.md)）。
+3. **`02:PORT-010` 第 5 條的內容來源限制取得真正的強制點。** 今天它**沒有強制點**（見該條 2026-08-29 的補記）；一旦平台側有了那道判準，`clean` 的風險面才第一次是被機器界定的而不是被操作習慣界定的。
+
+**退場的成本是低的，而這是刻意的**：本 Driver 沒有第二條派送路徑、沒有第三方相依、白名單少一個字串就整條路關閉。**移除它不需要一份新的 ADR，只需要這一節被引用一次。**
 
 ## 待決策
 

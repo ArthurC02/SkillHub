@@ -84,6 +84,26 @@
 - 比較內容至少包含能力、輸入輸出、依賴、權限、相容性、來源、License 與驗證證據。
 - 缺少資料的欄位顯示未知，不得自行推定為通過。
 
+#### DISC-005：意圖分析與查詢改寫（2026-08-29 新增）
+
+**這一節是負責人 2026-08-29 的裁定**：`01` §6.1 步驟 2「系統分析輸入、輸出、工具、資料與環境需求」**留在核心旅程，因此補需求 ID 與允收準則**（另一個選項是把它從十六步裡刪掉，未採用）。**在此之前它是十六步裡唯一一步連半邊都沒有的**——沒有端點、沒有畫面、`02` 沒有 ID，而 `04` 丙-76 自陳它「到今天為止沒有被任何一份清單數到過」。
+
+**為什麼值得一個 ID 而不是一句敘述**：M1 的驗證閘門（D 日 2026-09-11）量的是「真人打的字找不找得到東西」，**而閘門的數字只有一次機會**。如果不通過，沒有人分得出來它敗在搜尋品質、還是敗在一個從未實作的步驟——**一個不可歸因的閘門結果，比沒有結果更貴。**
+
+里程碑：**M1 的補件**（承接工作項 `03:DISC-011`）。**本節的每一個數字都必須有強制點或測試**；沒有強制點也沒有測試的數字，不得寫進畫面（`NFR-001`「UI 不得誤導」的同一條紀律）。
+
+允收準則：
+
+- **①結構化意圖**：Given 一段任務描述，When 送出搜尋，Then 系統產出一份**結構化意圖**，欄位至少涵蓋 `01` §6.1 步驟 2 逐字列的五類——**輸入、輸出、工具、資料、環境**。每一欄位有值或明確為「未提及」，**不得以空字串或推定值填充**（缺席詞彙適用 [ADR-041](../adr/ADR-041-trust-signal-vocabulary-typed-absence-and-rule-precedence.md)）。
+- **②改寫成檢索輸入**：結構化意圖轉換為**關鍵詞集合 ＋ 篩選條件**（[ADR-013](../adr/ADR-013-intent-search-architecture.md) §2「查詢改寫」），篩選條件的值域**限於 `DISC-002` 已實作的維度**，不得產生一個搜尋端點不接受的篩選（產生了即視為改寫失敗，走 ④）。
+- **③改寫是可解釋的**：使用者看得到系統把他的句子理解成什麼，並可**推翻或修正**它再搜一次。這一條與 `DISC-001` 的「結果應保留原始查詢」是同一條紀律的兩半——**原句要留著，理解要看得見**。
+- **④降級路徑不得繞過向量腿**：改寫失敗、逾時或模型不可用時，**降級為「以原句直接做向量檢索」**，而**不得**降級為「以原句直接做 FTS」。理由逐字在 PDM-003／ADR-013：跨語言召回由向量腿承載，FTS 是召回覆蓋不是召回主體；**以原句做 FTS 是提案明文禁止的那一種降級**。<br>**這一條要有一支具名反證測試**：把改寫器換成永遠失敗，斷言查詢仍然走得到向量腿且結果非空。**沒有這支測試，降級路徑會在某次重構裡安靜地變成 FTS-only，而那個失效沒有症狀**——它只在中文查詢上顯現，而 CI 的語料是英文的。
+- **⑤中文查詢在 FTS 腿上要有一個下界，而今天沒有**：FTS 腿寫死 `websearch_to_tsquery('english', …)`，**自家量到中文查詢只答對 20%**（golden query set）。這是一個介面全繁體中文的產品。<br>**本條要求一個明文決定，二選一，不得留白**：<br>&nbsp;&nbsp;**(a) 給 FTS 腿一個中文可用的設定**——`pg_bigm`、`pgroonga` 或 `pg_trgm` 三選一，並在 `02` 記下所選方案與**它在 golden query set 上的實測命中率**（下界：不低於今天英文腿的水準，且必須高於 20%）；三者都是 PostgreSQL 擴充，**選型要先確認自架 Postgres 映像裝得上**（ADR-018 的 E1 容器化自架）。<br>&nbsp;&nbsp;**(b) 明文寫下「中文查詢只走向量腿」**——那麼 ④ 的降級路徑就是中文的**唯一**路徑，FTS 腿對中文的貢獻正式記為零，且畫面上不得暗示有第二條腿在保護它。<br>**(a) 與 (b) 都成立，「不決定」不成立**：今天的狀態是既沒有 (a) 的擴充、也沒有 (b) 的明文，於是一個中文使用者在向量腿失效時得到的是接近空的結果，而沒有任何一份文件說過這件事。
+- **⑥數字要被強制或被測試**：本節若引入任何上限（改寫的 token 上限、逾時秒數、關鍵詞數量上限、命中率下界），**每一個都必須有強制點或斷言**，並套用既有的 `one-number` 機械對帳（同 `GEN-001` 三個上限的處理）。**寫得出來但沒有機器守著的數字，本節一律不接受。**
+- **⑦成本與呼叫紀律**：改寫是一次模型呼叫，**走 LiteLLM 閘道**（鐵律 8），提示詞版本可識別（同 `judge-run`／`suggest-improvements` 的版本化紀律）。**未登入搜尋也會觸發它**，因此它落在 `NFR-001` 第 5 條點名的速率限制範圍內。
+
+**未涵蓋（本節不主張）**：意圖分析的**品質**門檻。「理解得對不對」今天沒有標註資料，而 golden query set 量的是召回不是理解。**要量它需要一組帶標註的任務描述**，那是 M1 閘門之後的事；本節只要求「這一步存在、可解釋、可推翻、降級不會靜默壞掉」。
+
 ### 4.2 匯入、驗證與個人工作區
 
 #### SKILL-001：Skill 匯入
@@ -220,6 +240,7 @@ PDM-005 §5.3 指定的欄位清單從未回寫本節，因此上一條的字面
 - **「預估成本區間」必須是區間，不得是單值**（PDM-005 §5.2a-6）：首次與後續 Run 的單位成本差約 8 倍——prompt caching 保留 24 小時、harness 前綴跨 Run 完全相同，第二次以後的 Run 直接命中前一次留下的快取。以單值呈現會讓其中一種情境的使用者看到一個必然錯誤的數字。
 - **現況（2026-08-20 更新）**：`預估成本區間` 已由 `03` `TEST-011` 實作並在 preflight 畫面渲染（`RunPreflight.tsx`，區間呈現、absent 不渲染為 0）；本節先前的「完全不存在」註記寫於實作前，已過時。現行契約證據以 [`contracts/openapi/public.yaml`](../../contracts/openapi/public.yaml) 的 `RunPermissionSummary`／`RunCostEstimate` 與 [`03` `TEST-011`](03-work-items.md) 為準；兩者宣告與前端 `CostEstimate` 逐欄一致，無鐵律 12 違規。
 - Token 預算欄位的呈現另受 `RUN-003` 的約束：強制未成立前不得呈現為「平台會執行的上限」。
+- **輪數換算表是這一格的義務，不是排版偏好**（`RUN-003` 定值表下方那三列）：`300000` 這個數字對使用者不可讀，同一個 300K 在工具密集的 Run 只夠約 5 輪、純對話夠約 15 輪，**差三倍**，而那正是他按下「我確認」時唯一需要判斷的東西。<br>**2026-08-29 現況**：三個落點（權限摘要畫面、中止時的錯誤訊息、文件）在此之前**一處都沒有實作**——以「輪」／「工具呼叫次數」搜 `apps/web`、`apps/platform`、`infra/images` 為零筆命中，而 `03:TEST-011` 與 `03:SBX-013` 都已勾選。**落地與否以那兩項的行內註記為準**，本節不代為宣告；若判定不做，這一條要改寫成它實際成立的形式，而不是留著一條沒人守的「必須」。
 
 ### 4.4 Run Orchestrator 與 Sandbox
 
@@ -237,10 +258,16 @@ PDM-005 §5.3 指定的欄位清單從未回寫本節，因此上一條的字面
 Run 至少支援：
 
 ```text
-queued → provisioning → preparing → running → evaluating
-→ succeeded | failed | cancelled | timed_out
-→ cleaning_up
+狀態機（runs.status）：
+  queued → provisioning → preparing → running → evaluating
+         → succeeded | failed | cancelled | timed_out（終止狀態，之後不再轉移）
+
+清理（runs.cleanup_status，獨立的一軸）：
+  pending → cleaning_up → cleaned | failed
+  在 Run 進入終止狀態之後才推進。
 ```
+
+**2026-08-29 圖示訂正（兩行拆成兩軸，語意不變）**：原圖把 `cleaning_up` 接在終止狀態後面的同一條鏈上，讀起來像 Run 會離開 `succeeded` 再進入第九個狀態。實際上它是 `runs.cleanup_status` 這一欄的值，與 `runs.status` 是**兩個獨立的軸**——Run 列表把兩者並列顯示（`03:WS-004`），而「`succeeded` 但 `cleanup_status` 不是 `cleaned`」是一個會真的出現、且必須看得見的組合。
 
 允收準則：
 
@@ -270,7 +297,7 @@ queued → provisioning → preparing → running → evaluating
 | 程序數 ／ 檔案描述符 | 256 ／ 1024 | 已強制（`03` SBX-006） |
 | Wall clock | 軟上限 **10 分鐘**（進入 `timed_out`）／硬上限 **15 分鐘**（強制銷毀） | 已強制（`03` SBX-006、RUN-006） |
 | Artifact 輸出總量 | ≤ 100 MB，單檔 ≤ 25 MB，超過即截斷並在 Trace 標記 | 已強制（`03` SBX-008） |
-| 同一 Workspace 並行 Run | **2** | **未強制**——`ConcurrentRunSlots` 是 Provider 側容量，不是 Workspace 配額；`SEC-002` 閘門 B 已把它列為阻擋條件 |
+| 同一 Workspace 並行 Run | **2** | ~~**未強制**~~ **已強制**（**2026-08-29 訂正**）——`trial/execution/gateb.go` 的 `requireRunSlot` 先取 advisory lock（`LockWorkspaceRunSlots`）再 `CountActiveRuns`，超過即 `refused("workspace_concurrency", …)`，fail-closed，四支具名測試押著。`ConcurrentRunSlots` 是 Provider 側容量、與這個 Workspace 配額不是同一個量（`gateb.go` 的註解逐字說明）；`SEC-002` 閘門 B 仍把它列為阻擋條件。**保留原字於刪除線，因為這一列本身是證據**：同一份文件的 `SEC-002` 節早在 2026-08-26 就訂正為「已落地、fail-closed」，而這一列沒有跟上——**訂正只改了一處**是本文件反覆發生的失敗模式 |
 | 模型 Token | 每 Run ≤ **300K input ／ 60K output** | 已強制（`03` SBX-013）——強制點為沙箱 harness 的逐回應累計 |
 
 - **Token 上限必須連同輪數換算表一起呈現，不得只寫「300K」**（PDM-005 §5.2a-2）。harness 固定開銷實測約 **19.4K input tokens／次 API 呼叫**，而每一次工具結果回填都要重送整個前綴，因此每輪 input ≈ 19.4K ×（1 ＋ 該輪工具呼叫次數）：
@@ -282,9 +309,9 @@ queued → provisioning → preparing → running → evaluating
   | 每輪 2 次工具呼叫 | ~58.5K（外推） | **約 5 輪** |
 
   單一輪數在此沒有意義：同一個 300K，工具密集的 Run 只夠 5 輪，純對話夠 15 輪。凡是對使用者呈現這個上限的地方（權限摘要、錯誤訊息、文件），都必須讓讀者看得出這件事依賴每輪工具呼叫次數。
-- **Token 上限的強制點只有一個：沙箱 harness 逐則模型回應累計，跨越上限即中止該 Run。** `max_budget`（金額）與 `tpm_limit`（速率）**都不是 token 上限的代理**——prompt caching 命中的 token 一樣計入 `input_tokens`，快取省的是錢不是 token，兩者因此脫鉤約 7～8 倍（PDM-005 §5.2a-3／-4）。三者職責不同、須併用：token 累計管上限、`max_budget` 管花費、`tpm_limit` 管速率。
+- ~~**Token 上限的強制點只有一個：沙箱 harness 逐則模型回應累計，跨越上限即中止該 Run。**~~ **2026-08-29 訂正：強制點是兩個，而且刪掉任何一半都會留下一個真的缺口。** ①**沙箱 harness** 逐則模型回應累計，跨越上限即中止該 Run；②**Go Worker**（`trial/execution/job.go` 的 `tokenCeilingBreach`）每個輪詢週期讀閘道的 per-attempt spend log，跨越即中止，讀不到用量時 fail-open 並記 `RunTokenUsageUnreadable` 指標。**兩者以同一份 `policy_snapshot` 為上限來源、都以「嚴格大於」判定**；①擋合作式失控的 agent 迴圈，②擋繞過 harness 的。`job.go` 的註解逐字寫著「Deleting either half leaves a real gap - do not tidy this up」，而 `execution/service.go` 寫的是「Two parties count, on either side of the sandbox boundary」。**原句與 `job.go` 另一段自稱「唯一強制點」的註解，是同一個錯誤的兩面。** `max_budget`（金額）與 `tpm_limit`（速率）**都不是 token 上限的代理**——prompt caching 命中的 token 一樣計入 `input_tokens`，快取省的是錢不是 token，兩者因此脫鉤約 7～8 倍（PDM-005 §5.2a-3／-4）。三者職責不同、須併用：token 累計管上限、`max_budget` 管花費、`tpm_limit` 管速率。
   - **2026-08-16 強制點修正**：PDM-005 §5.2a 原本指定 Go Worker 依閘道回報的 `input_tokens` 累計。**按字面做不出來**——`RunResult.usage` 不回傳 token 數（`contracts/openapi/sandbox-provider.yaml` 的 `RunUsage` 已誠實記載此缺口），而從 Trace 事後重建發生在錢已經花完之後。看得到「每一次模型回應用了多少 token」的地方只有沙箱內的 harness，強制點因此改在那裡；PDM-005 的**上限值、語意與三層併用的結論全部不變**，改的只是誰數數。實作與證據見 `03` SBX-013。
-  - 強制的性質要講清楚：這是**合作式**停止，與 `wall_clock_soft_seconds` 同一類，擋的是失控的 agent 迴圈。非合作式的煞車仍在沙箱之外（Virtual Key 的 `max_budget`／`tpm_limit`、硬牆鐘的強制銷毀）。跨越上限的那一次回應已經付過錢，中止擋的是下一次呼叫。
+  - 強制的性質要講清楚：這是**合作式**停止，與 `wall_clock_soft_seconds` 同一類，擋的是失控的 agent 迴圈。非合作式的煞車仍在沙箱之外（Virtual Key 的 `max_budget`／`tpm_limit`、硬牆鐘的強制銷毀）。**2026-08-29 補**：這一句原本漏了**唯一一個真的以 token 為單位、又在沙箱之外的煞車**——上一條的強制點②。依原句做威脅評估的人會結論「沙箱外沒有 token 煞車」，而那不成立。跨越上限的那一次回應已經付過錢，中止擋的是下一次呼叫。
   - Provider 若無法強制此上限，**不得**在 `ProviderCapability.max_resources` 宣告 `token_budget`；宣告了才會被派到需要它的工作。這是「顯示但不強制」在 Provider 層的同一個禁令。
 - **`TokenBudget` 呈現給使用者的前提是它真的會被執行**（NFR-001「UI 不得誤導」）。它被寫進 `policy_snapshot`、顯示於執行前權限摘要並要求使用者確認；**中止時所用的上限與摘要顯示的是同一份 `policy_snapshot`**（`internal/run.defaultPolicy` 是唯一寫入處，harness 的上限由 `RunRequest.resource_limits.token_budget` 傳入），所以確認畫面上的數字就是會停住 Run 的數字。
 
@@ -574,9 +601,9 @@ queued → provisioning → preparing → running → evaluating
 - Given 登入使用者輸入一段任務描述，When 送出生成，Then 系統產生一個符合 [ADR-044](../adr/ADR-044-agent-skills-specification-conformance.md) 釘選規格的 Skill 套件，並在該使用者的個人工作區建立第一個版本。
 - 生成**不以任何既有 Skill 版本為輸入**。以既有版本為起點的改寫是 `EVAL-002` 的範圍，兩者不共用端點（ADR-046 決策 3）。
 - 空白或無法理解的任務描述不得建立生成工作，並應提示使用者補充任務、輸入或預期輸出（與 `DISC-001` 同一條紀律）。
-- 生成前顯示預估成本與本次將消耗的額度，並套用 [ADR-028](../adr/ADR-028-beta-admission-and-quota-enforcement-points.md) 的既有配額強制點；額度不足時**在呼叫模型之前**拒絕，不得先花錢再說。
+- 生成前顯示預估成本與本次將消耗的額度，並套用 [ADR-028](../adr/ADR-028-beta-admission-and-quota-enforcement-points.md) 的既有配額強制點；額度不足時**在呼叫模型之前**拒絕，不得先花錢再說。<br>**2026-08-29 條件化（形式同 `RUN-003` 對 `TokenBudget` 欄位的既有處理）**：**「本次將消耗的額度」這一半，只在 `GENERATE_QUOTA` 為強制時適用。** 出貨值依 [ADR-056](../adr/ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md) 是 `off`，此時畫面上**刻意不顯示任何額度數字**——`04` 乙-2 的裁定是「顯示但不強制是兩者中最壞的一種」，畫一個沒被強制的數字就是那個缺陷（`GenerateSkill.tsx` 的註解逐字記著這個理由）。**開關一旦轉為強制，這一格要跟著出現**，落點是 `GenerateSkill.tsx` 的同一個 `<dl>`。成本那一半無條件適用且已落地（`03:GEN-008`）。
 - 模型呼叫走 LiteLLM 閘道（鐵律 8）；生成的提示詞版本可識別，與 `judge-run`／`suggest-improvements` 同一套版本化紀律。
-- 系統保存生成當下的任務描述原文、提示詞版本與模型識別，作為該版本的來源紀錄（`GEN-002`）。**該紀錄必須重現得出工作區裡的那份套件**——平台不得在中間修改模型交出的位元組（[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 1）。
+- 系統保存生成當下的任務描述原文、提示詞版本與模型識別，作為該版本的來源紀錄（`GEN-002`）。**該紀錄必須重現得出工作區裡的那份套件**——平台不得在中間修改模型交出的位元組（[ADR-047](../adr/ADR-047-generation-path-rulings-retry-truncation-and-quota.md) 決策 1）。<br>**2026-08-29 範圍澄清（實作與本句的字面不同，而偏離有量測依據）**：**frontmatter 由平台序列化，模型只交出結構化欄位**（`skill/admission/generate.go` 的 `buildGeneratedPackage`）。所以「不得修改模型交出的位元組」的正確範圍是**本文（body）**，不是整個檔案。理由記在 `03:GEN-001`：六個觀測到的失敗有四個因此不可能再發生（鍵名壞掉、欄位順序、引號、規格外欄位）。**本句原本讀起來像連 frontmatter 都要原樣落盤**，而那與實作直接牴觸——這是「一次修訂只改了一處」的又一例，故就地補而不改寫決策。
 - 輸出上限為 **16000** token；`finish_reason` 為 `length` 時視為失敗，**不重試**，並告訴使用者這件事的內容超過一次生成的上限（ADR-047 決策 2）。
 - **額度以「一次生成」為單位扣抵，不以閘道呼叫次數扣抵**；`GEN-003` 的重試不額外扣，**生成失敗一律不扣**（ADR-047 決策 2）。
 - **生成的額度與 Run 的額度分開計數**，不共用同一個餘額（ADR-047 決策 5）。
@@ -613,7 +640,7 @@ queued → provisioning → preparing → running → evaluating
 
 允收準則：
 
-- 生成的入口出現在搜尋的無結果狀態（`DISC-005` 既有的「沒有夠接近的 Skill」）與工作區的 Skill 列表；**首頁不提供與搜尋對等的生成入口**（ADR-046 決策 7：先搜尋、搜不到再生成，這個順序本身是產品意見）。
+- 生成的入口出現在搜尋的無結果狀態（**`03:DISC-005`** 既有的「沒有夠接近的 Skill」；**2026-08-29 引用訂正**：那是 `03` 的工作項編號，照原字面在本文件內查不到——而 `02` 自 2026-08-29 起另有一個 `DISC-005`（§4.1「意圖分析與查詢改寫」），**兩者不是同一件事**。同型訂正 `02:GEN-002` 已於 2026-08-25 做過一次，這一處是那批漏掉的）與工作區的 Skill 列表；**首頁不提供與搜尋對等的生成入口**（ADR-046 決策 7：先搜尋、搜不到再生成，這個順序本身是產品意見）。
 - 生成物在詳情與列表上必須帶一句說明它**沒有經過任何人工檢視、沒有任何試跑證據**，並指向試跑；該說明的措辭適用 [ADR-041](../adr/ADR-041-trust-signal-vocabulary-typed-absence-and-rule-precedence.md) 的缺席詞彙，不得以「新建立」這類中性詞取代。
 - 生成物在完成第一次試跑前，執行狀態維持「尚未試跑」（`02` §3 既有值），**不得因為它是平台生成的而預設為任何較好的狀態**。**這一條有一個具體的實測理由**：B 輪出現過一份 **38 個字元**的 SKILL.md——語法正確、本文完全是空的（[m5/report-generate-baseline.md §2.3](mvp/m5/report-generate-baseline.md)）。它那次是因為鍵名也壞了才被擋；**鍵名如果對，它會通過每一道檢查（**08-24 補記：apps/llm 現在把空 body 當 malformed 直接拒絕，`test_an_empty_body_is_refused_not_packaged` 押著；這句描述的是那道檢查為什麼存在**）**。
 - 使用者可刪除自己生成的 Skill 與其版本，刪除範圍的說明與 `WS-002` 相同。
@@ -732,7 +759,7 @@ queued → provisioning → preparing → running → evaluating
 - **必須向派送閘門宣告 `isolation.level = "clean"`**，而該等級的意思是**沒有邊界**，不是「比較弱的邊界」。宣告要照實反映**實際偵測到的**能力（例如 Linux 上 cgroup 委派不成立時，資源上限就不得宣告為已強制）。
 - **派送閘門必須是白名單**：只有明文列出的等級可以派工，未列出的（含打錯字）一律拒絕。依據見 [ADR-059](../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md) 決策 3 與其實測。
 - **`clean` 的開關必須是自己的環境變數，不得沿用 `DEV_LOGIN`**，且要有測試斷言「光有 `DEV_LOGIN` 不夠」。
-- **不得承載不受信任的內容。** 該模式只跑 `PORT-007` 允許的策展素材。
+- **不得承載不受信任的內容。** 該模式只跑 `PORT-007` 允許的策展素材。<br>**⚠️ 2026-08-29：本條在 `PORT-010b` 完成前沒有強制點，由操作者承擔。** 三份文件（`02:PORT-006` 的撤回段、`03:PORT-006`、`apps/sandbox/internal/localdrv/localdrv.go` 的檔頭）互相指認對方是強制點，**而沒有一個是**：派送閘門（`trial/execution/schedule.go` 的 `Match()`）讀的是 `isolation.level` 與 `SKILLHUB_CLEAN_MODE`，**它沒有任何一個分支讀 skill、version、workspace、`redistribution` 或內容來源**——從設計上就看不到後者。今天實際成立的保護是「操作者在自己的機器上開這個模式，而他不會去 Fork 一個陌生的 Skill 再按試跑」，**那是一個操作習慣，不是一道閘門**。<br>**要補的是平台側的一行判準，不是 Driver**（兩者在不同 context、不同 repo 位置）：`SKILLHUB_CLEAN_MODE=1` 時，派送前檢查該 Skill 的 workspace 是否 `is_catalog`、或其 `curation_tier` 是否 `curated`，否則拒絕並說明。判準與 `PORT-007`「只用策展素材」同源，欄位在 migration `0042` 已存在。承接見 `04` 丙-85。
 - **回收必須涵蓋整棵行程樹**，而不只是被 spawn 的那一個。Windows 上僅終止父行程會留下存活的子孫（實測見 [m6/report-local-driver.md](mvp/m6/report-local-driver.md) §2），**因此本條的檢查必須實際製造一個孫行程並確認它也消失**——只斷言父行程結束的測試不算滿足本條。
 - **下列三項「做不到」必須明文記載**，不得只寫在程式註解裡：①服務重啟會殺掉跑到一半的 Run（`Adopt()` 回空）；②資源上限在 Windows 與 Linux 不對稱，Linux 無 root 時可能完全沒有；③`Stop` 的 grace 不是合作式窗口。
 - **不得為本條引入第三方行程管理相依。** 依據見報告 §3：沒有成熟且真正跨平台的選項，而最像的那一個在 Windows 上是空殼。
@@ -765,7 +792,7 @@ queued → provisioning → preparing → running → evaluating
 允收準則：
 
 - **下載產物的保存期限 ≥ 當期觀察窗。** 觀察窗指封測、閘門或任何正在進行的使用者研究的長度。**理由是漏斗**：`01` §11.2 的最後一段量「完成試跑後打包下載的比例」，而受測者在觀察期內回來卻找不到自己的套件，量到的就不是那個比例。
-- **Run Artifact 的保存期限 ≥ 可重評窗。** 可重評窗指 Trace 的保存期限（評估的證據來源）。**理由是丙-13**：Artifact 清單為空時，Judge 會在「這個 Run 沒有任何產出」的前提下逐條判定，而評估是 append-only——**錯的不是報告上的一句話，是判定本身的輸入**。兩者不相等時，見 `EVAL-001` 的過期分支。
+- **Run Artifact 的保存期限 ≥ 可重評窗。** 可重評窗指 Trace 的保存期限（評估的證據來源）。**理由是丙-13**：Artifact 清單為空時，Judge 會在「這個 Run 沒有任何產出」的前提下逐條判定，而評估是 append-only——**錯的不是報告上的一句話，是判定本身的輸入**。~~兩者不相等時，見 `EVAL-001` 的過期分支。~~<br>**✅ 2026-08-29 裁定（[`05` R-11](05-pending-rulings.md)）：兩者統一為 90 天，本條從此成立。** Run Artifact 的 `expires_at` 由 30 天改為 90 天，與 `TRACE_RETENTION=2160h` 齊平。**這一句原本是本節唯一一條被違反的下界**，而它當時的處置（`EVAL-001` 的過期分支）只是緩解——本節第 4 條自己寫過「緩解不提高下界」。<br>**同批必須一起動的四處，缺一即紅或即說謊**：①`db/queries/runs.sql` 的期限字面；②`devctl automation-check` 的 `retention-floor` 釘著這個缺口的宣告要移除——**那個檢查是雙向的，缺口關閉而宣告還在也會 FAIL**（刻意的）；③[同意書 §3](mvp/gate-test/consent-and-data-policy.md) 的「試跑產出的檔案 30 天」那一列，**改期限就要重走一次法務確認**（`04` 乙-16、[`05` R-4](05-pending-rulings.md)）；④`03:EVAL-014`。
 - **分析事件的保存期限 ≥ 一次完整漏斗。** 漏斗有七段且最後一段是「首次使用後再回來」，跨月。**短於一次完整漏斗的分析保存期限，等於收集了永遠算不出來的東西。**
 - **三條都是下界，不是建議值。** 上界由隱私決定（NFR-002 其餘各條），而**下界一旦被違反，那類資料就不再服務它被收集的理由**。任何一個值的變更必須同時對這三條檢查一次，並在 `05` 記錄檢查結果。
 
@@ -806,7 +833,7 @@ queued → provisioning → preparing → running → evaluating
 
 ## 6. 安全需求（SEC）
 
-本節於 **2026-08-15 新增**，關閉威脅模型的開放問題 **Q19**（`02` 沒有 SEC-* 需求 ID 與允收準則，`03` 第 16 節的十個工作項因此無正式判準）。位置依 Q19 的建議置於非功能需求之後。以下準則**取自 [m0/threat-model-and-sandbox-baseline.md](mvp/m0/threat-model-and-sandbox-baseline.md)（v2）已落地的 32 條威脅與 45 項基線檢查**，不新增安全要求；該文件未定的門檻值一律標為未涵蓋，不在此處代為定值。
+本節於 **2026-08-15 新增**，關閉威脅模型的開放問題 **Q19**（`02` 沒有 SEC-* 需求 ID 與允收準則，`03` 第 16 節的十個工作項因此無正式判準）。位置依 Q19 的建議置於非功能需求之後。以下準則**取自 [m0/threat-model-and-sandbox-baseline.md](mvp/m0/threat-model-and-sandbox-baseline.md)（v2）已落地的 32 條威脅與 ~~45~~ **46 項基線檢查**（**2026-08-29 訂正**：N-08 於 2026-08-25 加入，本文件 `SEC-002`／`SEC-009` 另外三處早已寫 46，只有本句與下方 `SEC-009` 的通過判準停在 45）**，不新增安全要求；該文件未定的門檻值一律標為未涵蓋，不在此處代為定值。
 
 標註「後 MVP」者不在 MVP 首發範圍，其允收準則於對應功能啟動時生效。
 
@@ -833,8 +860,8 @@ queued → provisioning → preparing → running → evaluating
 - 檢查本身無法執行時（例如政策服務不可用）視同未通過（fail-closed），不得因檢查機制故障而放行。
 - gVisor 是額外一層，不替代任何一項檢查。
 - 節點池中無合格節點時，新 Run 停留在 `queued` 並顯示「執行環境暫時不可用」；不得降級排到一般應用節點。
-- 除基線檢查外，閘門 B 另阻擋：使用者未確認或未重新確認執行前權限摘要（`TEST-005`）、Skill Version 靜態掃描結果為阻擋級（依 `SEC-003` 政策）、超出 Workspace 並行或額度上限、請求能力超出 Provider 宣告能力（`RUN-001`）。
-- 每一項檢查都被第 5.6 節的測試類型覆蓋；**M1 結束前不要求全數通過，M2 的 SelfHostedProvider 驗收必須全數通過**。
+- 除基線檢查外，閘門 B 另阻擋：使用者未確認或未重新確認執行前權限摘要（`TEST-005`）、Skill Version 靜態掃描結果為阻擋級（依 `SEC-003` 政策）、超出 Workspace 並行或額度上限、請求能力超出 Provider 宣告能力（`RUN-001`）。<br>**2026-08-29 補：「並行或額度」這兩半的強制程度不同，而本句讀起來像兩半都無條件成立。** 並行那一半無條件成立（`requireRunSlot`，見 `RUN-003` 的定值表）；**額度那一半由部署設定 `RUN_QUOTA` 控制**——`trial/execution/quota.go` 的 `requireQuota` 只在 `Quota.Enforced()` 為真時有效，而封測期的出貨值依 [ADR-055](../adr/ADR-055-the-run-allowance-is-turned-off-and-that-took-an-action.md) 是 `off`，**所以照今天的 `.env.example`，Run 的次數沒有上限**（生成端是另一個開關 `GENERATE_QUOTA`，[ADR-056](../adr/ADR-056-the-generation-allowance-is-its-own-switch-and-it-is-off.md)，同樣為 `off`）。這不是「沒做」，是「做了但被一個裁定關掉」，而那個裁定在今天之前沒有回寫到本文件的任何一處（全文對 ADR-055／056 的命中數曾經是 0）。**把一條安全準則的一半描述成無條件成立，與 `RUN-003` 對 `TokenBudget` 立過的紀律（呈現給使用者的前提是它真的會被執行）正好相反。**
+- 每一項檢查都被 [m0/threat-model-and-sandbox-baseline.md](mvp/m0/threat-model-and-sandbox-baseline.md) **§5.6「基線的驗證方式」**的測試類型覆蓋（~~第 5.6 節~~ **2026-08-29 引用訂正**：本文件的 §5 是非功能需求，其下沒有 5.6，照原字面這條允收**不可判定**——讀者無從知道要對照哪一組測試類型）；**M1 結束前不要求全數通過，M2 的 SelfHostedProvider 驗收必須全數通過**。
 - 六項門檻**已定值（來源 [ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分，定案日 2026-08-16）**，每項的完整依據、量測點與違反時動作見該 ADR：
 
   | 檢查 | 值 | 量測點 | 違反時 |
@@ -904,7 +931,7 @@ queued → provisioning → preparing → running → evaluating
 - 使用者可主動刪除 Run 輸入與 Artifact；刪除工作具可追蹤狀態，完成後不再出現在一般存取介面（NFR-002）。
 - Run 終止後暫存空間被銷毀，且清理狀態被記錄，不以最終回應成功取代清理確認。
 - Artifact 上傳授權限定目的地、大小與有效期。
-- ~~**未涵蓋（待決策）**：Run、Dataset、Trace 與 Artifact 的保存期限尚未定值……~~<br>**2026-08-26 縮小**：這句話寫的時候四個都沒有值，**現在多數有了**——`.env.example` 帶 `DOWNLOAD_ARTIFACT_RETENTION=720h`、`ANALYTICS_RETENTION=8760h`、`AUDIT_RETENTION=9600h`、`TRACE_RETENTION=2160h`（2026-08-23 追認），Dataset **刻意沒有**單一變數（逐列 `expires_at`，理由在 `apps/platform/cmd/maintenance/main.go`）。**仍然開著的是三件，逐條**：①**Run 本身**沒有保存期限值；②**Run Artifact 的 30 天違反 `NFR-002a` 第 2 條**（下界是可重評窗＝Trace 的 90 天），那是 [`05` R-11](05-pending-rulings.md) 要裁的，**且它是唯一一個不決定也會自己發生的**；③**LLM 觀測平台**（威脅模型 Q10）——但那一項今天沒有標的，Langfuse 沒有接在這個 repo 的任何一條路徑上。<br>**三條允收本身都已成立**（`CORE-007` 已勾且涵蓋可追蹤狀態、`cleanup_status` 是 Run 列表的一等欄位、`SBX-008` 已勾且授權分型別帶 TTL），**所以 `SEC-006` 不勾的理由不是缺實作，是 ② 那個下界仍被違反**。
+- ~~**未涵蓋（待決策）**：Run、Dataset、Trace 與 Artifact 的保存期限尚未定值……~~<br>**2026-08-26 縮小**：這句話寫的時候四個都沒有值，**現在多數有了**——`.env.example` 帶 `DOWNLOAD_ARTIFACT_RETENTION=720h`、`ANALYTICS_RETENTION=8760h`、`AUDIT_RETENTION=9600h`、`TRACE_RETENTION=2160h`（2026-08-23 追認），Dataset **刻意沒有**單一變數（逐列 `expires_at`，理由在 `apps/platform/cmd/maintenance/main.go`）。**仍然開著的是三件，逐條**：①**Run 本身**沒有保存期限值；~~②**Run Artifact 的 30 天違反 `NFR-002a` 第 2 條**（下界是可重評窗＝Trace 的 90 天），那是 [`05` R-11](05-pending-rulings.md) 要裁的，**且它是唯一一個不決定也會自己發生的**~~ **✅ 2026-08-29 裁定：統一為 90 天**（[`05` R-11](05-pending-rulings.md)），SQL 字面同批改，`NFR-002a` 第 2 條從此成立；③**LLM 觀測平台**（威脅模型 Q10）——但那一項今天沒有標的，Langfuse 沒有接在這個 repo 的任何一條路徑上。<br>**三條允收本身都已成立**（`CORE-007` 已勾且涵蓋可追蹤狀態、`cleanup_status` 是 Run 列表的一等欄位、`SBX-008` 已勾且授權分型別帶 TTL），**所以 `SEC-006` 不勾的理由不是缺實作，是 ② 那個下界仍被違反**。<br>**2026-08-29：② 已裁定關閉，因此本項不勾的理由只剩 ①（Run 本身沒有保存期限值）與 ③（LLM 觀測平台今天沒有標的——Langfuse 一行都沒實作，見 [`05` R-24](05-pending-rulings.md)）。** 兩者都不是本次能關掉的，故**本項維持不勾**，只換不勾的理由。
 
 ### SEC-007：來源、License 與下架處理政策
 
@@ -934,7 +961,7 @@ queued → provisioning → preparing → running → evaluating
 - 設定與供應鏈項目以**宣告式稽核**（節點准入探針、映像發佈流水線斷言）驗證，不以滲透測試代替。
 - 每次擴充 Runtime 時重跑 Runtime 相容性測試。
 - **M1 結束前不要求全數通過；M2 的 SelfHostedProvider 驗收必須全數通過。** 隔離技術 ADR 由 `Proposed` 轉 `Accepted` 的條件包含逃逸測試通過與 Runtime 相容性驗證通過。
-- **可執行的驗收程序見 [ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第三部分（2026-08-16 定案）**：測試環境需求（Suite 1 一般 Linux runner／Suite 2 生產同規格節點；**gVisor 的 `systrap` 平台不需巢狀虛擬化**，待部署批第一台節點實測確認）、**10 個測項**與 45 項基線的覆蓋核對、通過判準（**45 項全數 pass、0 項 unknown**，任一 fail 或 unknown 即不得開放外部使用者提交 Skill 執行，無例外流程）、執行者與時機、證據存放於 `plans/mvp/m4/sec-009-acceptance/<日期>-<節點>/`（判定表與 `versions.txt` 進 repo，原始輸出留 CI artifact 並附連結）並保存 ≥ 1 年。
+- **可執行的驗收程序見 [ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第三部分（2026-08-16 定案）**：測試環境需求（Suite 1 一般 Linux runner／Suite 2 生產同規格節點；**gVisor 的 `systrap` 平台不需巢狀虛擬化**，待部署批第一台節點實測確認）、**10 個測項**與 ~~45~~ **46 項**基線的覆蓋核對、通過判準（~~45 項全數 pass~~ **46 項全數 pass、0 項 unknown**——**2026-08-29 訂正**：照原字面執行，一次驗收可以在漏掉 N-08 的情況下宣告通過，而那正是最新、最沒被跑過的一項，任一 fail 或 unknown 即不得開放外部使用者提交 Skill 執行，無例外流程）、執行者與時機、證據存放於 `plans/mvp/m4/sec-009-acceptance/<日期>-<節點>/`（判定表與 `versions.txt` 進 repo，原始輸出留 CI artifact 並附連結）並保存 ≥ 1 年。
 - **前置條件（缺一即判 `unknown` ＝ fail）**：受測 Runtime Image 已發佈至 **GHCR 且附 SBOM 與掃描 attestation**；`infra/nodes/gvisor-baseline.txt` 已填實際版本；`infra/egress/allowlist.yaml` 的 `tier: sandbox` 條目已填實際 `pinned_ip`，且該位址**不是控制平面節點**。
 - **程序定案不等於測試通過**：本項於 M2 結束時仍未達成，維持未勾。
 
@@ -948,7 +975,9 @@ queued → provisioning → preparing → running → evaluating
 - 隔離技術「安全基準版本」的維護者與 CVE 應變 SLA **已定（[ADR-022](../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 第二部分 P-04，2026-08-16）**：維護者為平台維運負責人，基準檔 `infra/nodes/gvisor-baseline.txt`；逃逸類 CVE **24 h 內全池換版，做不到即依本需求停用 Provider**（此即本需求「觸發條件含隔離技術高風險 CVE 揭露」的具體判準），High 7 天，Medium 以下隨每月例行更新；24 h 自 `.github/workflows/gvisor-baseline.yml` 開出 issue 起算。
 - ~~**未涵蓋（待決策）**：安全事件的嚴重度分級與值班責任歸屬（誰接最高等級告警）尚未定案~~ **已定案（2026-08-16）**：下方提案經負責人核可，自即日起為本需求的允收準則；值班輪替的討論待團隊有第二人時重開。
 
-#### SEC-010 事件嚴重度分級與回應（2026-08-16 提案，**同日經負責人核可生效**）
+#### 事件嚴重度分級與回應（`SEC-010` §(1)，2026-08-16 提案，**同日經負責人核可生效**）
+
+> **2026-08-29 標題訂正**：本小節原本的標題逐字是「`SEC-010` 事件嚴重度分級與回應」，於是 `02` 出現**兩個 `SEC-010` 標題**。語意上沒有歧義（後者是前者的子節），但需求 ID 的唯一性在這份文件裡一直沒有機器在守，而 `devctl automation-check` 的 `requirement-refs` 把「`02` 的標題 ID 不得重複」列為 FAIL 條件。**改的是子節標題；需求 ID 與內容一個字都沒動。**
 
 **設計前提：團隊是一個人。** 沒有輪班、沒有交接、沒有 follow-the-sun。因此分級的用途不是「派給誰」而是「該不該現在把服務停掉」，且 **P1 的第一個動作必須是自動的**——等人接的最高等級告警，在單人團隊等於沒有 SLA。
 

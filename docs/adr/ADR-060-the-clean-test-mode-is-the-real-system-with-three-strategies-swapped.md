@@ -4,7 +4,7 @@
 - 日期：2026-08-29
 - 決策者：產品負責人、架構規劃
 - 取代：[ADR-058](./ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)（其決策 1／4／5 由本 ADR 延續，決策 2／3 被推翻）
-- 相關：[ADR-059](./ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)（沙箱那一軸）、[ADR-006](./ADR-006-provider-port-and-runtime-adapters.md)（Provider Port）、[ADR-016](./ADR-016-language-split-and-cross-language-contracts.md)（語言分工）、[ADR-018](./ADR-018-data-platform-and-storage.md)（PostgreSQL 中心）、[ADR-003](./ADR-003-immutable-versions-and-snapshots.md)（鐵律 4 的來源）
+- 相關：[ADR-059](./ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)（沙箱那一軸）、[ADR-006](./ADR-006-local-runner-for-local-resources.md)（Provider Port）、[ADR-016](./ADR-016-language-and-framework-selection.md)（語言分工）、[ADR-018](./ADR-018-containerized-core-infrastructure.md)（PostgreSQL 中心）、[ADR-003](./ADR-003-data-ownership-and-storage.md)（鐵律 4 的來源）
 
 ## 背景
 
@@ -119,3 +119,15 @@ JOB WORKED n=42, and 2 plain queries were served meanwhile
 1. ~~**合併入口是第三個二進位還是既有二進位的旗標。**~~ **2026-08-29 裁定：既有二進位加旗標**，見決策 6。
 2. **淨測試模式的 Run 要不要進正式的 Run 歷史。** 它們是真的 Run，但跑在沒有隔離的地方。
 3. ~~**`objstore` 的選擇點放哪裡。**~~ **2026-08-29 隨決策 6 一併回答：在 composition root，不在 `FromEnv()` 內部**——後者是在一個 Generic 套件裡挖洞，而它的四個呼叫端有三個與本模式無關。
+
+## 補記（2026-08-29）：Outbox 的連線持有形狀，在淨測試模式下會死鎖
+
+**不改寫上方任何一段決策文字。狀態維持 `Proposed`。**
+
+**稽核發現，修正中（本節在 A3 的修正落地並回報之前，只記錄問題本身）**：淨測試模式下 Outbox publisher **握著那唯一一條連線去要第二條**。這正是本 ADR 決策段自己量到、並寫進定義的那個限制——`pool_max_conns=1`、multiplexer 關閉、River poll-only——的第四個受害者，而前三個（`lockTestSchema`、25 處拿具體連線池的程式、River 的領取迴圈）都在決策時被找出來了。**這一個沒有。**
+
+**為什麼它值得記在 ADR 而不只是殘項**：本 ADR 的判準一（任何取代 PostgreSQL 的候選必須能讓 `UPDATE skill_versions` 失敗）是**行為判準**，而這一條是**資源判準**——「這段程式在只有一條連線時還成不成立」。決策段已經把後者寫成本模式的定義的一部分（「握一條、再開一條」的假設是那批量測的主題），**但沒有任何機器在對整個 repo 執行它**。M6 的 `verify.mjs` 真的開兩條連線去試 advisory lock，那是對的做法；**它沒有覆蓋 outbox 這條路**。
+
+**這一項不改變本 ADR 的任何決策**，它是決策 3（單行程 ＋ River poll-only）的一個已知後果被漏掉的實例。修正落地後，本節要補上「修法是什麼、以及有沒有一支會紅的測試」——**沒有那支測試，同一個假設會再長回來，而它的症狀是掛住不是報錯**。
+
+**承接**：`04` 丙-88；`03` §20 的 `PORT-*` 不因本節改變勾選。

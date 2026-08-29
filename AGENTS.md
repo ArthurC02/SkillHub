@@ -49,14 +49,14 @@ Monorepo 的 CI/CD 基線見 **ADR-019**，頂層收納由 **ADR-031（Accepted�
 | LLM 工作負載 | Python：FastAPI（uv 管理），內部服務（未採用 LangGraph） | ADR-016 |
 | 模型供應商 | OpenAI API（試跑預設 mini 級；Embedding `text-embedding-3-small`），一律經 LiteLLM 閘道 | PDM-003、ADR-017 |
 | 資料 | PostgreSQL 中心（交易、FTS + pgvector、佇列、Trace 分割表）＋受管 S3 相容物件儲存；核心元件容器化自架（E1） | ADR-018 |
-| 搜尋 | 混合檢索（向量腿承載跨語言召回，FTS＋RRF 為召回覆蓋）＋索引時 LLM 增強（摘要與任務範例句為必要項） | ADR-013 |
+| 搜尋 | 混合檢索（向量腿承載跨語言召回，**FTS 腿為召回覆蓋：`UNION` 候選擴充，不做 RRF**——見 ADR-013 定案調整 4）＋索引時 LLM 增強（摘要與任務範例句為必要項） | ADR-013 |
 | Agent Runtime | Claude Agent SDK，版本以 digest ＋ lockfile 釘選，**最終事實來源是 image digest**（ADR-023 決策 1；版本字串釘在 `infra/images/runtime-agent-sdk/Dockerfile` 的 `ARG CLAUDE_AGENT_SDK_VERSION`，**不在 `tools/toolchain.yaml`**——那個檔沒有這一項）；升級必須重跑四項實測，靜默失效不得以推理帶過 | ADR-023 |
 | 身分與 Session | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | ADR-020 |
 | Sandbox 隔離 | gVisor 基線（`systrap` 平台，不需巢狀虛擬化），獨立 VM 池，沙箱層 nftables default-deny ＋固定 DNS（不部署 L7 Proxy） | ADR-015、005、022 |
 | Runtime Image | 自建映像發佈至 **GHCR**，SBOM 與漏洞掃描以 attestation 隨 digest 保存；過不了門檻的映像到不了 registry | ADR-022、`03` SBX-011 |
 | 模型出口 | LiteLLM Proxy（唯一模型閘道，每 Run 短效 Virtual Key） | ADR-017 |
-| LLM 觀測 | Langfuse Cloud（工程調優專用，非事實來源） | ADR-017 |
-| 契約 | OpenAPI-first，Go 為 spec 來源，codegen 產 TS/Python stub | ADR-016 |
+| LLM 觀測 | Langfuse Cloud（工程調優專用，非事實來源；**MVP 未實作——零依賴、零設定、零工作項，見 [`05` R-24](docs/plans/05-pending-rulings.md)**） | ADR-017 |
+| 契約 | OpenAPI-first，**`contracts/openapi/public.yaml` 為 spec 來源**（~~Go 為 spec 來源~~ 2026-08-29 訂正：Go 是下游），codegen 產 Go／TS／Python；**Go 側是 models-only，handler 手寫並逐條對齊**（見 `devctl` 的 route-table 檢查與 ADR-030 的 2026-08-29 補記） | ADR-016 |
 
 範圍注意：**Local Runner 與遠端 MCP 已移出 MVP 首發**（架構決策保留於 ADR-006 與相關規格，實作依需求訊號啟動）。
 

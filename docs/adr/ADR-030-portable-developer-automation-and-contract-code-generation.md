@@ -152,3 +152,15 @@ Agent-specific 指引只能引用上述權威來源，不複製一份會漂移�
 ## 待決策
 
 無。實作若推翻 generator 選型、共享工作樹模式或 OpenAPI 3.1 保留決策，新增 ADR，不原地改寫本文。
+
+## 補記（2026-08-29）：Go pilot 的停止條件觸發了，Go 維持 models-only
+
+**不改寫上方任何一段決策文字。**
+
+本 ADR 為 `ogen` 的 Go pilot 訂了一條停止條件（enum coercion 語意必須先以 golden test 固定）。**該條件已觸發**：generated server 的 AuthZ 行為與 `router.go` 逐條套用的 `RequireSession`／`RequireOperator`／`OptionalSession` 不是同一份語意，而 `AGENTS.md` 開發自動化紅線第 6 條把它寫成硬邊界——ogen server 只在精確的 `GET /healthz` pattern 之後，**不得整批 mount**。
+
+**結論：Go 側維持 models-only。** codegen 產 TS／Python stub 與 Go **model**，handler 由人寫並逐條對齊 `public.yaml`（`devctl` 的 route-table 檢查在守這件事）。**這不是失敗，是停止條件按設計運作了一次。**
+
+**還沒做的那一件事，明確記為待辦而不是已完成**：把 generated server 的多餘部分裁掉、讓 `packages/api-*` 只輸出 models。**今天沒有做**，落點是 `04` 丙-89。在裁掉之前，repo 裡存在一份**沒有任何人 mount 的 generated server**——它不會壞事，但它會讓下一個人以為那條路是通的。
+
+**同批訂正一句寫在 `AGENTS.md` 技術棧表裡的事實**：spec 的來源是 `contracts/openapi/public.yaml`，**Go 是下游不是來源**（原文寫「Go 為 spec 來源」）。鐵律 12「先寫 OpenAPI schema 再實作」講的一直是這件事，只有速覽表那一列把方向寫反了。

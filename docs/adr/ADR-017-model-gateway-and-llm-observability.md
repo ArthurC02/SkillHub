@@ -84,3 +84,23 @@ flowchart LR
 - LiteLLM 與主 Postgres 共用實例或獨立小實例。 **→ 已解決**：取「共用實例、獨立邏輯 database」——LiteLLM 的 `DATABASE_URL` 指向同一個 postgres 服務的 `litellm` database，`infra/compose/docker-compose.yml` 的註解逐字寫明理由（migration 不得互相波及）。
 - Langfuse 保存期限與遮罩範圍的具體政策（隨 SEC-006）。
 - Sandbox 內 Agent Runtime 注入 Virtual Key 的具體機制（環境變數 vs 設定檔，隨 PDM-003 Runtime 確認）。 **→ 已解決**：取環境變數。sandboxd 以 `ANTHROPIC_BASE_URL`／`ANTHROPIC_AUTH_TOKEN` 注入容器，平台側 preflight 以同一組名稱對使用者揭露，Trace 遮罩也以這兩個名稱為 pattern——三處同名，所以揭露、注入與遮罩不會各講各的。
+
+## 補記（2026-08-29）：Langfuse 那一半在 MVP 沒有實作，而沒有任何一份清單記著它
+
+**不改寫上方任何一段決策文字。** 本節只記錄一個事實與一個待簽。
+
+**事實（逐項查證）**
+
+- 本 ADR 決策段指定「Python 服務以 Langfuse SDK 埋點，LiteLLM 閘道以原生回呼補齊；一律附 `run_id` 關聯」，並規劃了 Prompt Management。
+- `apps/llm/pyproject.toml` 的依賴是 `fastapi`／`uvicorn`／`litellm`／`openai`——**沒有 langfuse**；`apps/llm/src` 全樹沒有任何 langfuse import。
+- `infra/compose/litellm-config.yaml` 的 `litellm_settings` 只有 `drop_params: true`，**沒有 `success_callback: ["langfuse"]`**；`docker-compose.yml` 全檔沒有任何 `LANGFUSE_*`。
+- 四份活文件（`01`／`03`／`04`／`05`）對「Langfuse」的命中數在 2026-08-29 之前**各是 0**。`03` 的 `O11Y-001`～`004` 全部是 Prometheus 與產品分析事件，**沒有一項承接 LLM 可觀測性**。
+- `AGENTS.md`「已定案的技術棧速覽」仍把它列為定案（同日已就地標註）。
+
+**這不是安全問題。** 本 ADR 的邊界守則 2 已經把 Langfuse 排除在事實來源之外，而**確實沒有任何一行程式把它當真相讀**——逐檔確認過，這一點是乾淨的。問題是形狀：**一份 `Accepted` 的 ADR、一列技術棧、零個工作項、零個殘項**，也就是 `AGENTS.md` 開頭那句「一個事實好幾份定義」的完整版本。
+
+**待負責人裁定 → [`05` R-24](../plans/05-pending-rulings.md)「Langfuse：做／不做／縮限」。** 三個選項與各自的代價寫在那裡；**不在本 ADR 代為選擇**，因為那會是原地改寫決策。
+
+**裁定之後**：選「做」→ `03` 要有一個承接工作項；選「不做」或「縮限」→ **新增一份 ADR 取代或縮限本 ADR 觀測那一半**（號碼 ＝ [索引](README.md)最大號 ＋ 1），本文件原文不動、狀態不動。
+
+**它承接的能力今天沒有替代品，值得記在旁邊**：本 ADR 指定 golden query set 與 Judge 品質回歸「可用 Langfuse Datasets/Evals 承載」，實際上那兩件事靠 `tools/eval-regression` 的一次性腳本與人工讀報告；而同期稽核抓到的「沒有任何一次模型呼叫釘住 temperature 或 seed」，正是這類工具最省事的用途。

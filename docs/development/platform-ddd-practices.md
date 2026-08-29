@@ -59,6 +59,27 @@ DDD 在這裡首先是**產品事實與規則的 owner boundary**，不是把每
 
 完整拓撲理由、禁止把所有共用碼塞入 Shared Kernel 的原因，見 ADR-040。不要為了外觀再建立技術三層目錄；這不會強化 owner boundary，反而擴大 Go export surface 與 cycle 風險。
 
+### 第一層目錄 → 底下有哪些 package → 它們是什麼邊界（2026-08-29 新增）
+
+上面四段是規則，這張表是**規則的當前實例**——`apps/platform/internal/` 的七個第一層目錄，一列一個。**寫它的理由是稽核指出的一件事**：一個新來的人（或 Agent）要判斷「我這支檔案該放哪」時，讀到的是四段散文加一份 ADR 的十九列對照表，而**兩者之間沒有一個「先看目錄」的入口**。
+
+| 第一層目錄 | 底下的 package | 邊界類型 | 這一層的判準（一句話） |
+| --- | --- | --- | --- |
+| `creator/` | `workspace` | **Core Context** | 帳戶與工作區的身分與歸屬。**Workspace Scope 是這裡定義的**，其他 context 只是遵守它（鐵律 3） |
+| `skill/` | `admission`、`discovery`、`library`、`delivery` | **Core Context**（四個，各自是 owner 邊界） | Skill 這個資產的一生：**進來**（接納與信任）、**被找到**（探索）、**被保存**（版本歷史，不可變）、**被帶走**（打包與安裝）。**四者不共用 owner**——`skill/` 只是路徑前綴，不是一個邊界 |
+| `trial/` | `design`、`execution`、`improvement`、`evidence` | **Core Context** ×3 ＋ **Supporting** ×1（`evidence`） | 「跑一次」的一生：**設計情境**、**執行與狀態機**（唯一事實來源，鐵律 5）、**判定與改善**、**留下證據**。`evidence` 是 Supporting——它服務前三個，不定義它們 |
+| `product/` | `entitlements`、`learning` | **Supporting Context** | 使用者的權益與資料生命週期、以及產品自己的學習（分析與漏斗）。**Supporting 的意思是它們可以晚一步、也可以被換掉**，Core 不可以 |
+| `shared/` | `skillpkg` | **Shared Kernel（唯一一個）** | 共同領域語言的**純函式**。**新增第二個 Shared Kernel 要先改 ADR-032／040**——把共用碼往這裡塞是這份文件明文禁止的那條路 |
+| `foundation/` | `persistence`、`messaging`、`observability`、`storage`、`integration`、`runtime` | **Generic** | 機制不是政策。**不得承載領域規則，不得反向 import domain**——這一條由 depguard ＋ `devctl automation-check` 兩道守著 |
+| `entrypoint/` | `api`、`worker` | **組裝，不是邊界** | 只做 composition：`api` 是 HTTP 與 generated transport，`worker` 是佇列消費者（鐵律 7）。**兩者不擁有任何產品規則**；領域 Service 一律由 `apiserver.NewApp` 注入，**禁止在方法內現場建構其他 context 的 Service** |
+
+**這張表怎麼用，以及它怎麼會過期**
+
+- **它是導覽，不是事實來源。** 逐 package 的 Boundary ID、需求 ID 前綴與跨 context 例外清單以 **[ADR-032](../adr/ADR-032-ddd-bounded-context-governance-for-platform.md) §1 為準**，那一份受 `devctl automation-check` 機械對帳；**這一張表沒有機器在守**。兩者不一致時，以 ADR-032 為準並回來修這一張。
+- **新增一個 package 的順序是硬的**：先在 ADR-032 §1 登記 → 再建目錄。反過來做的話 CI 會在你寫第一行程式之前就紅。
+- **跨 context 的新 import 要同一個 commit 改兩處**：ADR-032 附錄 A 與 `apps/platform/.golangci.yml` 的 depguard 規則。
+- **一個好用的自我檢查**：如果你正在想「這支檔案放 `foundation/` 比較方便」，先問它有沒有一個**領域**的理由會讓它變。**會變的東西不屬於 Generic**——那正是這一層與 Supporting 的分界。
+
 ## 新增、搬遷或改變 Context 的 checklist
 
 1. 以產品語言寫出使用者成果、owner facts、不變量與不擁有的事；確認需求 ID 與計畫文件的允收準則。

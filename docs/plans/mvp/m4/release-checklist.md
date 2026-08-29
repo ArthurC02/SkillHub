@@ -20,6 +20,16 @@
 
 **三段之間的順序是硬的**：§1.9 與 §2 可並行 → §3 的前四項（乙-13、乙-14、PDM 追認、D 日）必須在 §2 完成之前就開始 → §4 是最後一道。
 
+**✅ 2026-08-29：這份文件第一次有日期了。**
+
+| 日期 | 是什麼 | 對這份文件的意思 |
+| --- | --- | --- |
+| **2026-09-11** | **M1 閘門 D 日**（負責人宣告，[`05` R-5](../../05-pending-rulings.md)）；**同時是本輪夯實工作的最後期限** | §3 的 H-8 有值了。**先閘門、再封測**那條 ⛔ 邊界不變，所以封測的 B 日在 D 日 ＋ 10 天之後 |
+| **2026 年 9 月中下旬** | **Demo**（M6 的 Pitch） | 它不在這份文件的範圍內（這裡是封測），但它與 §2 搶同一台真機與同一個人 |
+| **M6 真正完成之後** | **凍結新功能** | 「真正完成」＝ `03` §20 的十一項全部收束，不是「程式面收斂」。凍結後只接受修既有缺陷的變更 |
+
+**這三個日期改變的是排序而不是內容**：§2「一段都沒開始」這件事，從今天起有一個會到期的東西在旁邊。[`05` §0.1](../../05-pending-rulings.md) 那句話仍然是這條路線上投報率最高的一件事——**「把『一台節點、跑通一個 Run』獨立成最小驗證，不要等其餘做完才發現節點跑不起來」，而它不等任何人的簽名。**
+
 ---
 
 ## 1. 程式面已完成（可作為前提的十一項）
@@ -153,7 +163,9 @@ psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 | `BETA_ALLOWLIST` | 閘門關閉，**任何有 GitHub 帳號的人都能用** | PDM-009 追認後的 12 個 GitHub 帳號 |
 | `RUN_QUOTA` | 額度不強制，`GET /me/quota` **不掛載**，preflight 不帶配額區塊 | PDM-010 擇一後開啟 |
 | `RATE_LIMIT`（2026-08-24 新增） | **只有 `off` 會關掉它**；未設或填任何其他值（含填一個數字）都是啟用預設 60/min、burst 30。方向與上面幾列**相反**：未設＝有保護 | 保持未設 |
+| `FEEDBACK_RETENTION`（2026-08-29 新增） | **fail-closed，比照 `AUDIT_RETENTION`**：未設或非法時 `maintenance purge-feedback` 拒絕啟動 ⇒ `feedback_reports` 的自由文字**沒有保存期、沒有清除**。這是本 repo 唯一一個「在收、卻沒有期限也沒有 sweep」的資料類別，而它收的是受測者用自己的話寫的東西 | **PDM-006 追認**（與其餘保存期同一批） |
 | `OPERATOR_USER_IDS` | 沒有人能操作 `/admin/dispatch*`（P1 停派送只能改 DB） | 負責人自己 |
+| `LITELLM_API_KEY` | **這裡放的必須是一把由 master key 簽發的 Virtual Key，帶 `max_budget` 與模型白名單；放 master key 是部署缺陷。** master key 不只是「一把預算很大的 key」，它是閘道**管理 API 的管理員憑證**——可以簽發 Virtual Key、讀取全部 key 的 spend、（`STORE_MODEL_IN_DB` 開啟時）改動模型路由。把它交給 `apps/llm`，等於讓一個處理**不受信任套件內容與使用者 prompt** 的行程持有整個模型出口的管理權，而 ADR-017 決策段逐字寫著「Python 服務與 Sandbox 只持有 Virtual Key」。**repo 裡每一份記錄過實跑的文件都是直接把 master key 填進來的**（m3 的兩份報告、`generate_integration_test.go` 的重現指令、`04` 丙-56），所以這一列是**部署期一定要撞到的一件事**，不是提醒 | 部署時由 master key 簽發；`LITELLM_MASTER_KEY` 只留在閘道那一側 |
 | `SKILLHUB_MODEL_GATEWAY_*` | 沙箱被派到 `--network none`，Run 全部失敗 | 既有 |
 | 物件儲存設定 | `ErrNoStore` ⇒ 打包 503 | 既有 |
 
@@ -180,12 +192,21 @@ psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 
 ### 2.6 對帳器與排程
 
+> **2026-08-29：這一節少了五行，而少掉的那五行是同意書上寫給受測者看的承諾。** `cmd/maintenance` 有七個保存期子命令，此前只有兩個（`purge-accounts`、`rotate-partitions`）在這份文件裡接上排程；其餘五個在整份檢查表裡**零命中**。Trace 與分析事件靠分割表輪替、帳號刪除有自己的 cron，**剩下的位元組在部署上沒有任何東西會去刪它們**——而畫面已經會把過期的那一列標成「檔案已刪除，這筆紀錄保留」。**畫面說的話會比事實更乾淨，那正是本專案反覆記載的那種缺陷。**<br>**`devctl automation-check` 的 `purge-schedule` 自 2026-08-29 起機械對帳**：`main.go` 的 dispatch switch 裡每多一個 `purge-*`，這一節就要多一行含它名字與 `cron` 的句子，否則 CI FAIL。**一個沒有排程的 purge 子命令，就是一句沒有人執行的保存政策。**
+
 - [ ] `cmd/maintenance purge-accounts` 接上 cron（**程式刻意不自帶 scheduler**）；`PURGE_GRACE` 預設 720h
+- [ ] `cmd/maintenance purge-run-artifacts` 接上**每日** cron。承諾對象：同意書 §3「試跑產出的檔案」（**2026-08-29 起為 90 天**，[`05` R-11](../../05-pending-rulings.md)）。**驗一次真的刪掉了位元組，不只是標了欄位**——`expires_at` 到期只會讓畫面標示過期，位元組要這個 job 才會走
+- [ ] `cmd/maintenance purge-datasets` 接上**每日** cron。承諾對象：同意書 §3「上傳的 Dataset 90 天」。逐列 `expires_at`，**刻意沒有單一環境變數**（理由在 `cmd/maintenance/main.go`）。**同樣要驗位元組**
+- [ ] `cmd/maintenance purge-audit` 接上**每週** cron；`AUDIT_RETENTION` fail-closed（未設即拒絕啟動）。承諾對象：同意書 §3「稽核 400 天」。**這一類是 2026-08-25 才補上 job 的**——在那之前同意書從第一版就宣告了 400 天而那個 job 不存在
+- [ ] `cmd/maintenance purge-feedback` 接上**每週** cron；`FEEDBACK_RETENTION` fail-closed（比照 `AUDIT_RETENTION`，見 §2.3）。承諾對象：`feedback_reports` 的自由文字——**受測者用自己的話描述他們卡在哪**，是三類裡最敏感的一種。**同批要驗 `GET /policy/data-retention` 真的把 feedback 列出來**：那個端點今天只列四個 analytics 事件，並逐字宣告「表裡沒有任何自由文字欄位」，那句話對 `analytics_events` 為真、對這個部署為假
+- [ ] `cmd/maintenance purge-deleted-skills` 接上**每日** cron。**⚠️ 紅字：模板留空 ⇒ 承諾未執行。** `.env.example` 的 `SKILL_DELETION_GRACE=` 是**刻意的空值**（fail-closed，理由硬：那個 job 刪的是使用者自己的內容），後果是**照著模板部署的環境從來沒有執行過它**，而刪除畫面上逐字寫著「30 天寬限期後清除」。**這一列不是待辦，是一個正在對使用者說謊的狀態**：值由負責人簽 PDM-006 §6.1 的 30 天（§3），簽之前這句承諾在畫面上要能被關掉或改寫
+- [ ] **⏱ `cmd/maintenance rotate-partitions` 要在 2026-09-01 之前手動先跑一次**（**在接上 cron 之前**）。理由在下一行的「default 分割抽乾」那一項：9 月 1 日之後寫入的 trace 事件會落進 `trace_events_default`，而事後再建當月分割會被 Postgres 的 `23514` 拒絕——**先跑一次的成本是一個指令，事後補救的成本是一次抽乾**。**D 日是 2026-09-11，所以這一項比整個 §2 的其餘部分更早到期。**
 - [ ] `cmd/maintenance rotate-partitions` **接上每月 cron**（DDD-032 新增；需要 `DATABASE_URL`）：一次執行同時處理 `trace_events` 與 `analytics_events`——建立**當月與其後兩個月**的分割，並丟棄超過保存期的月份。**`TRACE_RETENTION` 與 `ANALYTICS_RETENTION` 皆無預設，兩者在任何語句之前一起讀，任一未設即整個 job 拒絕執行**（H-5 的 PDM-006 追認之前設不了值 ⇒ **分割不會被丟棄，也不會被預先建立**）。**排程至少每月一次**：預建兩個月是給「連續漏跑一次」的餘裕，連漏兩次就會開始寫進 default，而 default 是分割丟棄永遠碰不到的地方
 - [ ] 驗**第一次執行時 default 分割的抽乾**：2026-09-01 至該 job 首次執行之間寫入的 trace 事件都在 `trace_events_default`，`CREATE TABLE ... PARTITION OF` 會因此被 Postgres 的 `23514` 拒絕。**錯誤訊息本身就是操作步驟**（detach／建月份／搬列／re-attach／重跑），程式刻意不自動抽乾——這是一次性動作，不是每月動作（`0019` 早已預告）。**`analytics_events` 現在不需要抽乾但可能需要**：`ANALYTICS_RETENTION` 未設之前一列都不寫，所以 `analytics_events_default` 是空的；**若先設了它才接 cron**，事件就會落進 default 而重演同一件事——設定與接 cron 請同一次做完
 - [ ] 驗一次**重跑**：同一個月再跑一次應該印出 `created=[] dropped=[]`（`slog` 的 `partitions rotated`）。job 是冪等的，cron 觸發兩次不是故障；哪天它不再是空的，就是有事發生了
 - [ ] 物件存在性對帳器一小時一輪且**刻意沒有 `RunOnStart`** ⇒ **部署後第一小時是空窗**，知道就好
 - [ ] 驗對帳器要兩輪才標記（`object_reconcile_sightings`），且無法連線的儲存產生**零次觀測**而不是一次假的
+- [ ] **一個新端點要有一次真實閘道呼叫的紀錄。** 任何新增或改動模型呼叫路徑的端點，上線前要有一次對真實 LiteLLM 閘道的呼叫並把結果落檔（時間、端點、HTTP 狀態、實付金額、落點文件）。**理由是 `04` 丙-56**：M5 的生成路徑寫完之後**對真實閘道一次都沒有成功過**，schema 在 `strict` 下不合法、**每一次請求都會 400**，而那件事是在寫完之後很久才被一次付費呼叫查出來的。**單元測試與整合測試都不會發現它**——它們打的是替身。成本是一次呼叫（M5 那次是 $0.02 級）
 
 ### 2.7 上線後的第一次真實驗證
 
@@ -215,7 +236,7 @@ psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 | H-5 | 負責人 | **PDM-006 追認**：保存期限分級表 ＋ §6.1 的帳號刪除分類 | `DOWNLOAD_ARTIFACT_RETENTION`、`ANALYTICS_RETENTION` 與 `TRACE_RETENTION` 三者都有值（第三個是 DDD-032 新增，未設時分割輪替整個停擺，見 §2.3／§2.6）＋ 同意書 §3 的 ⬜ 填完 | `SEC-006`、`RELEASE-005`、**整個 `BETA-002`**（未定值前一列都不收） |
 | H-6 | 負責人 | **PDM-008 追認**：打包目標清單與對外措辭。~~**「2 個已驗證 Profile」目前只成立 1 個**，追認時要決定改口徑還是等 H-9~~ **2026-08-23：H-9 已完成，這個數字現在是真的，追認時不必再處理它**；追認本身仍缺 | `m0/pdm-proposals.md` §9.1 該列打勾 | `PACK-006` 的決策依據 |
 | H-7 | 負責人 | **PDM-004／005 的定案紀錄**（值實質已定，缺追認；PDM-005 另有「兩份文件對是否已定案說法不一致」要裁一個，乙-9） | 同上 | `03` §1、乙-9 |
-| H-8 | 負責人 | **M1 閘門 D 日宣告**與其後 10 天（1 場 pilot ＋ 9 場正式 ＋ 分析）。**先閘門、再封測**，三個理由見 [README.md §5.3](README.md)<br>**⏳ 2026-08-23：有一個 PDM 暫時放行，本列不在它的範圍內。** 那個放行只解除 [`m5/README.md` §啟動條件](../m5/README.md) 的第 2 列，讓 M5 的**規劃**不必等閘門讀數。**本列一個字都沒被放行**——D 日仍要宣告、10 天仍要跑、`gate-test/analysis.md` 仍是本列的證據。範圍見 [`04` 乙-10](../../04-backlog-and-handoffs.md)。**若有人拿那個放行來主張封測可以開始，那是誤讀**：M5 是 MVP 之外的里程碑，封測是 MVP 之內的閘門，兩者共用「D 日」這三個字而已。<br>**同日稍晚放行擴大到 M5 的三個啟動條件全部**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)），**其中一項逐字就是「MVP 封測結束」**——但它被放行的是「阻擋 M5 開工」這個效力，**不是封測本身**。封測仍未開始，本列仍是它的前置。**這一條現在比擴大放行前更容易被誤讀，所以講第三次**：放行讓 M5 動得了，不讓封測動得了 | `gate-test/analysis.md` 的閘門結論 | **封測不能與閘門並行**；`CONTENT-011` 的解凍也等它 |
+| H-8 | 負責人 | **✅ 2026-08-29 已宣告：D 日 ＝ 2026-09-11。** 本列從「要一個日期」變成「要照那個日期做完」——**10 天的排程、9 位受測者的行事曆、以及在那之前必須簽完的同意書（H-11 ＋ [`05` R-11](../../05-pending-rulings.md) 的保存期改動要重走法務確認）**。⚠️ **這是本次唯一一個新的關鍵路徑風險**：R-11 把同意書 §3 的一列從 30 天改成 90 天，而那份文件自己立的規則是保存期限再變動就要重新確認一次。<br>~~**M1 閘門 D 日宣告**~~與其後 10 天（1 場 pilot ＋ 9 場正式 ＋ 分析）。**先閘門、再封測**，三個理由見 [README.md §5.3](README.md)<br>**⏳ 2026-08-23：有一個 PDM 暫時放行，本列不在它的範圍內。** 那個放行只解除 [`m5/README.md` §啟動條件](../m5/README.md) 的第 2 列，讓 M5 的**規劃**不必等閘門讀數。**本列一個字都沒被放行**——D 日仍要宣告、10 天仍要跑、`gate-test/analysis.md` 仍是本列的證據。範圍見 [`04` 乙-10](../../04-backlog-and-handoffs.md)。**若有人拿那個放行來主張封測可以開始，那是誤讀**：M5 是 MVP 之外的里程碑，封測是 MVP 之內的閘門，兩者共用「D 日」這三個字而已。<br>**同日稍晚放行擴大到 M5 的三個啟動條件全部**（[ADR-052](../../../adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md)），**其中一項逐字就是「MVP 封測結束」**——但它被放行的是「阻擋 M5 開工」這個效力，**不是封測本身**。封測仍未開始，本列仍是它的前置。**這一條現在比擴大放行前更容易被誤讀，所以講第三次**：放行讓 M5 動得了，不讓封測動得了 | `gate-test/analysis.md` 的閘門結論 | **封測不能與閘門並行**；`CONTENT-011` 的解凍也等它 |
 | ~~H-9~~ **✅ 2026-08-23 完成** | 負責人 | ~~**一次本機安裝**：套件放進 `~/.claude/skills/`、`/skills` 看得到、跑一次驗證 Prompt；落檔後把 `claude-code.json` 的 `support_status` 改 `verified` 並進 `version` 版號~~ **三步全部走完**：平台經真實 HTTP 路徑產出的 `claude-code` 套件（`content_hash 6be1065…`）→ 解進 `~/.claude/skills/` → `/skills` **同一個 session** 就列出（使用者與 agent 兩邊各自確認）→ 以 profile 的 `verification_prompt` 叫用，載入成功、回出約定 marker、讀到 SKILL.md 旁的 `reference.md` | `claude-code.json` `support_status=verified`、`version` 1.1.0，落點與**不成立的部分**同寫在 `known_limitations[0]`（一個套件／一個 OS／純提示型／未裝依賴未執行腳本） | `PACK-009` **已勾**、PDM-008 的「2 個已驗證」**現在是真的** |
 | H-10 | 負責人＋法務 | **`anthropics/skills` 法務終判**（乙-10）；並在寄詢問信前**擇一 4A／4B** 且**實測那四筆真的打不出包**（不得以政策文件代替實際試過） | 終判紀錄 ＋ 寄出的信 | `CONTENT-003`／`004`、`RELEASE-003` |
 | H-11 | 負責人＋法務 | **同意書定稿**：[`../gate-test/consent-and-data-policy.md` §9](../gate-test/consent-and-data-policy.md) 的待填清單全部有值 ＋ 法務確認用語與法域 ＋ 未成年受測者的處理（草稿未涵蓋） | §9 十一項全勾 | **招募寄確認信時沒有東西可簽**；`BETA-001`；乙-16 |
