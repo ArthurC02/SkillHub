@@ -1,4 +1,4 @@
-package main
+package worker
 
 import (
 	"context"
@@ -24,9 +24,9 @@ import (
 // process, specifically, sets them.
 //
 // No database and no object storage are touched: pgxpool.New does not dial (it
-// opens connections lazily) and buildWorkers is a pile of struct literals.
+// opens connections lazily) and BuildWorkers is a pile of struct literals.
 
-func testDeps(t *testing.T) (*pgxpool.Pool, workerDeps) {
+func testDeps(t *testing.T) (*pgxpool.Pool, Deps) {
 	t.Helper()
 	// A parseable DSN nothing listens on. River refuses a client with queues and
 	// no pool, so the pool has to exist; it is never queried.
@@ -39,7 +39,7 @@ func testDeps(t *testing.T) (*pgxpool.Pool, workerDeps) {
 	if err != nil {
 		t.Fatalf("objstore.New: %v", err)
 	}
-	return pool, workerDeps{
+	return pool, Deps{
 		Providers:          &run.Registry{},
 		Store:              store,
 		TraceSigner:        &trace.Signer{Secret: []byte("test")},
@@ -50,9 +50,9 @@ func testDeps(t *testing.T) (*pgxpool.Pool, workerDeps) {
 
 func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 	pool, deps := testDeps(t)
-	set, err := buildWorkers(pool, deps)
+	set, err := BuildWorkers(pool, deps)
 	if err != nil {
-		t.Fatalf("buildWorkers: %v", err)
+		t.Fatalf("BuildWorkers: %v", err)
 	}
 
 	// The run service dispatches, so it needs the fleet, the bytes, the trace
@@ -130,9 +130,9 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 func TestBuildWorkersLeavesTheJudgeUnsetWithoutAnLLM(t *testing.T) {
 	pool, deps := testDeps(t)
 	deps.LLM = nil
-	set, err := buildWorkers(pool, deps)
+	set, err := BuildWorkers(pool, deps)
 	if err != nil {
-		t.Fatalf("buildWorkers: %v", err)
+		t.Fatalf("BuildWorkers: %v", err)
 	}
 	if set.Evaluations.Judge != nil || set.Evaluations.Suggester != nil {
 		t.Error("no LLM service configured, yet the evaluation service holds a judge or a suggester")
@@ -140,14 +140,14 @@ func TestBuildWorkersLeavesTheJudgeUnsetWithoutAnLLM(t *testing.T) {
 }
 
 // Validate is what makes a dropped consumer a boot failure instead of events
-// marked published that nobody acted on. buildWorkers already calls it; asserting
+// marked published that nobody acted on. BuildWorkers already calls it; asserting
 // it here names the failure, so an event type added to the catalogue without a
 // decision about this process fails in a test rather than in a deploy.
 func TestOutboxDispatchAccountsForEveryEventType(t *testing.T) {
 	pool, deps := testDeps(t)
-	set, err := buildWorkers(pool, deps)
+	set, err := BuildWorkers(pool, deps)
 	if err != nil {
-		t.Fatalf("buildWorkers: %v", err)
+		t.Fatalf("BuildWorkers: %v", err)
 	}
 	if err := set.Events.Validate(); err != nil {
 		t.Errorf("outbox dispatch leaves part of the catalogue unaccounted for: %v", err)
@@ -159,9 +159,9 @@ func TestOutboxDispatchAccountsForEveryEventType(t *testing.T) {
 // line per interval forever.
 func TestEveryScheduledJobHasAWorker(t *testing.T) {
 	pool, deps := testDeps(t)
-	set, err := buildWorkers(pool, deps)
+	set, err := BuildWorkers(pool, deps)
 	if err != nil {
-		t.Fatalf("buildWorkers: %v", err)
+		t.Fatalf("BuildWorkers: %v", err)
 	}
 	// The roster WITH its RunOnStart, and not merely "some jobs are scheduled".
 	// The loop below is

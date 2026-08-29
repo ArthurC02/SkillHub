@@ -989,8 +989,23 @@ func contextTablePackages(path, relative string) (map[string]packageIdentity, []
 	return declared, problems
 }
 
+// architectureNeedsDepguard exempts the composition roots and the generated
+// transport. A composition root has to import every bounded context by
+// definition, so a deny list for it can only be empty — and an empty rule is
+// worse than no rule: it reads as coverage while forbidding nothing, which is
+// the exact shape this repository keeps recording. The protection that does
+// apply to them runs the other way and is a real deny list: no context may
+// import a composition root (see the apiserver and entrypoint/worker entries
+// under every context's deny in .golangci.yml).
 func architectureNeedsDepguard(identity packageIdentity) bool {
-	return identity.Kind != architectureGeneric || (identity.ID != "apiserver" && identity.ID != "api")
+	if identity.Kind != architectureGeneric {
+		return true
+	}
+	switch identity.ID {
+	case "apiserver", "api", "worker":
+		return false
+	}
+	return true
 }
 
 func knownBoundaryID(identities map[string]packageIdentity, id string) bool {
