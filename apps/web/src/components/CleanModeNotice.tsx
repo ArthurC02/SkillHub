@@ -8,26 +8,18 @@ import { useCleanMode } from "../api/me";
  * language for "here is what this build is not" is how one of them starts
  * reading as the exception rather than the rule.
  *
- * No props. `useCleanMode` reads `GET /me`'s `features.clean_mode`
- * (ADR-052's flag mechanism, reused rather than a build-time constant, for the
- * same reason generate.ts gives: the flag is a deployment fact, not a page's).
- * Off, or not yet resolved, renders nothing — never a flash of the notice
- * before the flag is known.
+ * No props. `useCleanMode` (api/me.ts) checks
+ * `window.__SKILLHUB_CLEAN_MODE__` first and `GET /me`'s `features.clean_mode`
+ * (ADR-052's flag mechanism) second. The first is injected by cmd/api's
+ * clean-mode static handler straight into the served HTML, which is what
+ * makes this reachable without a session — `GET /me` alone never was, and `/`
+ * and `/skills/$id` are both reachable signed out. Off, or not yet resolved,
+ * renders nothing — never a flash of the notice before either source answers.
  *
  * Mounted once, in router.tsx's RootLayout, inside `<main>` as the first
  * child: system.md §3 checklist 第 1 條 wants the headline to be the first
  * thing in the first screen, and a banner living outside `<main>` would queue
  * ahead of it on every page.
- *
- * KNOWN GAP, not something to fix here: `GET /me` requires a session, and `/`
- * and `/skills/$id` are reachable signed out. An anonymous visitor therefore
- * never sees this notice, so PORT-003's 「必須出現在使用者看得到的畫面上」 is
- * only met for signed-in users today. The real fix needs ADR-060 待決策 1 (a
- * merged entry point that serves its own build and can inject the flag for an
- * anonymous request) settled first — that binary does not exist yet, and
- * bolting an anonymous escape hatch onto `/me` or the invite gate ahead of
- * that decision is exactly the kind of local patch this repo keeps finding
- * out was the wrong place to put the knowledge.
  */
 export function CleanModeNotice() {
   const cleanMode = useCleanMode();

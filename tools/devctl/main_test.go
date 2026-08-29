@@ -114,6 +114,53 @@ func TestProfileCheckNamesMissingVariablesWithoutValues(t *testing.T) {
 	}
 }
 
+func TestCheckPgliteInstallReconcilesAgainstToolchainPin(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writePackageJSON := func(module, version string) {
+		dir := filepath.Join(root, "tools", "pglite", "node_modules", module)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		body := []byte(`{"name":"` + module + `","version":"` + version + `"}`)
+		if err := os.WriteFile(filepath.Join(dir, "package.json"), body, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writePackageJSON("@electric-sql/pglite", "0.4.6")
+	writePackageJSON("@electric-sql/pglite-socket", "0.1.6")
+
+	toolchain := map[string]string{"pglite": "0.4.6", "pglite_socket": "0.1.6"}
+	results := checkPgliteInstall(root, toolchain)
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d: %#v", len(results), results)
+	}
+	for _, r := range results {
+		if r.status != "PASS" {
+			t.Errorf("%s: expected PASS, got %s (%s)", r.name, r.status, r.detail)
+		}
+	}
+
+	// Mutation: drift the pin away from what's actually installed. This
+	// must FAIL, not warn or silently pass -- a version mismatch is an
+	// environment diagnosis, not something to skip past (02:PORT-001).
+	drifted := map[string]string{"pglite": "9.9.9", "pglite_socket": "0.1.6"}
+	driftedResults := checkPgliteInstall(root, drifted)
+	if driftedResults[0].status != "FAIL" || !driftedResults[0].required {
+		t.Fatalf("expected required FAIL on version drift, got %#v", driftedResults[0])
+	}
+
+	// Not installed yet: WARN (optional, not a hard prerequisite), never a
+	// silent PASS.
+	emptyRoot := t.TempDir()
+	notInstalled := checkPgliteInstall(emptyRoot, toolchain)
+	for _, r := range notInstalled {
+		if r.status != "WARN" || r.required {
+			t.Fatalf("expected optional WARN when not installed, got %#v", r)
+		}
+	}
+}
+
 func TestProfileCheckAcceptsEnvironmentOverrides(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "secret-one")
 	t.Setenv("LITELLM_MASTER_KEY", "secret-two")

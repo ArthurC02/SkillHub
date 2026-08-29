@@ -1,0 +1,21 @@
+{
+  "name": "@skillhub/pglite-harness",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "02:PORT-001 repeatable PGlite (real PostgreSQL compiled to WASM) harness for the clean test mode database axis.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "serve": "node bin/serve.mjs",
+    "verify": "node verify.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.4.6",
+    "@electric-sql/pglite-socket": "0.1.6"
+  },
+  "devDependencies": {
+    "pg": "8.16.3"
+  }
+}

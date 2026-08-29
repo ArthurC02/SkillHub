@@ -12,12 +12,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -50,6 +54,24 @@ func cleanModeFromEnv() bool {
 	return os.Getenv("SKILLHUB_CLEAN_MODE") == "1"
 }
 
+// cleanModeFlagPlaceholder marks the exact spot in apps/web/index.html that
+// carries the anonymous half of 02:PORT-003. GET /me's features.clean_mode
+// (ADR-052's flag mechanism, already read by useCleanMode in
+// apps/web/src/api/me.ts) requires a session, so / and /skills/$id — both
+// reachable signed out — never resolved it. This placeholder is what lets
+// cleanModeStaticHandler answer the question before any session exists: it is
+// inert HTML everywhere it is not rewritten, which is every build except this
+// one flag.
+var cleanModeFlagPlaceholder = []byte("<!--SKILLHUB_CLEAN_MODE_FLAG-->")
+
+// cleanModeFlagScript replaces the placeholder above, once, at process
+// startup (not per request — see webStaticHandlerUnder). It only ever adds a
+// disclosure; it must never carry `false`, because an injected `false` could
+// read as "checked and clean" to useCleanMode's fallback onto GET /me and
+// quiet a disclosure GET /me would otherwise still show once a session
+// exists (⛔ boundary: the flag may only turn the notice on).
+var cleanModeFlagScript = []byte(`<script>window.__SKILLHUB_CLEAN_MODE__=true;</script>`)
+
 // applyCleanModePool is clean mode's first consequence: a single database
 // connection, because the PGlite socket behind it serves one client at a time
 // and this same process is about to also run the worker (see the package doc
@@ -77,6 +99,86 @@ func newStore(clean bool) (*objstore.Client, func(), error) {
 	}
 	store, stop, err := objstore.NewInProcess(envx.Or("OBJSTORE_BUCKET", "skillhub"))
 	return store, stop, err
+}
+
+// cleanModeStaticHandler is clean mode's fourth consequence, and the one that
+// makes 02:PORT-003's disclosure reachable signed out: it serves apps/web's
+// built assets and index.html (with cleanModeFlagScript burned in) from this
+// same process, so the flag reaches the browser without a session.
+//
+// The build's location is derived from this binary's own build path, the way
+// cleanModeRunnerScript in apps/sandbox/cmd/sandboxd/main.go derives run.mjs:
+// ADR-060 決策 6 forbids a second env var for this axis, and unlike a
+// registry reference that varies by deployment, this repo's own layout is
+// nothing a node operator configures.
+func cleanModeStaticHandler() (http.Handler, error) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		return nil, errors.New("clean mode cannot locate the web build: this binary carries no source path, so it was not built from this repository")
+	}
+	// apps/platform/cmd/api/main.go -> repo root is four directories up.
+	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..")
+	return webStaticHandlerUnder(filepath.Join(repoRoot, "apps", "web", "dist"))
+}
+
+// webStaticHandlerUnder is split out so the missing-build and
+// missing-placeholder failures are reachable from a test without moving this
+// binary to another machine (mirrors sandboxd's runnerScriptUnder for the
+// same reason). 02:PORT-005 requires a startup failure to name what is
+// missing rather than surface later as a page that never got the flag.
+//
+// index.html is read and rewritten once, here, rather than per request: the
+// file is small and static for the life of the process, and reading it once
+// means the handler either exists with the flag already burned in or main()
+// has already exited — there is no request-time path where the injection can
+// silently not happen.
+func webStaticHandlerUnder(distDir string) (http.Handler, error) {
+	indexPath := filepath.Join(distDir, "index.html")
+	raw, err := os.ReadFile(indexPath)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"clean mode cannot find the web build at %s (derived from this binary's build path; run `npm --prefix apps/web run build` first): %w",
+			indexPath, err)
+	}
+	injected := bytes.Replace(raw, cleanModeFlagPlaceholder, cleanModeFlagScript, 1)
+	if bytes.Equal(injected, raw) {
+		return nil, fmt.Errorf(
+			"clean mode: %s has no %q placeholder to inject into; 02:PORT-003's disclosure would not reach a signed-out visitor",
+			indexPath, cleanModeFlagPlaceholder)
+	}
+
+	mux := http.NewServeMux()
+	// Vite's default build output; distDir/assets/<hashed file>.
+	mux.Handle("GET /assets/", http.FileServer(http.Dir(distDir)))
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(injected)
+	})
+	return mux, nil
+}
+
+// cleanModeHandler wires the static overlay above the API's own handler when
+// clean is true, and returns api itself — untouched — when it is not. That
+// second half is 02:PORT-005's literal acceptance test for this axis, pinned
+// by TestCleanModeHandlerLeavesProductionAlone the way applyCleanModePool is
+// pinned for the connection pool: a static-serving overlay that only turns on
+// when a flag is set and one that is always on look identical in a screenshot.
+//
+// Only "GET /" and "GET /assets/" are routed to static; everything else,
+// including a direct load of a deep link like /skills/$id, still reaches the
+// API unchanged. That is the same collision DEV_CORS_ORIGIN's comment above
+// describes (the SPA's page route and the API's REST route share a path) —
+// this does not resolve it, it only has to get an anonymous visitor to the
+// first screen, where client-side navigation takes over.
+func cleanModeHandler(api http.Handler, clean bool, static http.Handler) http.Handler {
+	if !clean {
+		return api
+	}
+	mux := http.NewServeMux()
+	mux.Handle("GET /assets/", static)
+	mux.Handle("GET /{$}", static)
+	mux.Handle("/", api)
+	return mux
 }
 
 func main() {
@@ -233,6 +335,21 @@ func main() {
 		slog.Info("clean mode: worker started in-process")
 	}
 
+	// Clean mode's fourth and last consequence: the built web app is served
+	// from this same process so 02:PORT-003's disclosure reaches a signed-out
+	// visitor (see cleanModeHandler and cleanModeStaticHandler above). Flag
+	// unset takes handler := app.Handler() and nothing past this block runs.
+	handler := app.Handler()
+	if clean {
+		static, err := cleanModeStaticHandler()
+		if err != nil {
+			slog.Error("clean mode: web assets", "error", err)
+			os.Exit(1)
+		}
+		handler = cleanModeHandler(handler, clean, static)
+		slog.Info("clean mode: serving the web build with the 02:PORT-003 disclosure flag injected")
+	}
+
 	// DEV_CORS_ORIGIN is the local Vite dev server (http://localhost:5173) and
 	// nothing else. Unset in production, where the SPA is same-origin with the
 	// API (ADR-018 E1) and no CORS header is wanted at all. See httpx.DevCORS for
@@ -240,7 +357,7 @@ func main() {
 	// API's /skills/{id} routes collide, so no path-prefix rule separates them.
 	srv := &http.Server{
 		Addr:              envx.Or("API_ADDR", ":8080"),
-		Handler:           httpx.DevCORS(app.Handler(), os.Getenv("DEV_CORS_ORIGIN")),
+		Handler:           httpx.DevCORS(handler, os.Getenv("DEV_CORS_ORIGIN")),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -145,6 +146,7 @@ func doctor(root string, out io.Writer) error {
 	results = append(results, checkDockerDaemon())
 	results = append(results, checkPython(pythonVersion))
 	results = append(results, checkEnv(root))
+	results = append(results, checkPgliteInstall(root, toolchain)...)
 
 	failed := false
 	for _, result := range results {
@@ -229,6 +231,79 @@ func checkEnv(root string) checkResult {
 		return checkResult{name: ".env", status: "PASS", detail: "present (values intentionally not inspected)", required: false}
 	}
 	return checkResult{name: ".env", status: "WARN", detail: "missing; run task env:init", required: false}
+}
+
+// checkPgliteInstall reconciles 02:PORT-001's clean test mode database
+// carrier (tools/pglite) against its pins in tools/toolchain.yaml. It reads
+// the version actually installed under tools/pglite/node_modules, not just
+// what package.json declares as a range -- a version mismatch is a real
+// environment drift and must FAIL, not be silently skipped because the
+// package happens to be present.
+//
+// pgvector is intentionally not checked here: at the pinned pglite version
+// it ships bundled inside the @electric-sql/pglite package itself (subpath
+// "@electric-sql/pglite/vector"), not as a separately installed npm
+// package, so there is nothing under node_modules to reconcile against
+// beyond the pglite version already checked.
+func checkPgliteInstall(root string, toolchain map[string]string) []checkResult {
+	packages := []struct {
+		checkName    string
+		toolchainKey string
+		nodeModule   string
+	}{
+		{"pglite", "pglite", "@electric-sql/pglite"},
+		{"pglite-socket", "pglite_socket", "@electric-sql/pglite-socket"},
+	}
+
+	results := make([]checkResult, 0, len(packages))
+	for _, pkg := range packages {
+		want := toolchain[pkg.toolchainKey]
+		pkgJSON := filepath.Join(root, "tools", "pglite", "node_modules", filepath.FromSlash(pkg.nodeModule), "package.json")
+		got, err := readNodePackageVersion(pkgJSON)
+		switch {
+		case err != nil:
+			results = append(results, checkResult{
+				name:     pkg.checkName,
+				status:   "WARN",
+				detail:   fmt.Sprintf("not installed under tools/pglite (run npm install there); toolchain.yaml pins %q", want),
+				required: false,
+			})
+		case want == "":
+			results = append(results, checkResult{
+				name:     pkg.checkName,
+				status:   "WARN",
+				detail:   fmt.Sprintf("installed %s but tools/toolchain.yaml has no %s pin", got, pkg.toolchainKey),
+				required: false,
+			})
+		case got != want:
+			results = append(results, checkResult{
+				name:     pkg.checkName,
+				status:   "FAIL",
+				detail:   fmt.Sprintf("installed %s; tools/toolchain.yaml pins %s", got, want),
+				required: true,
+			})
+		default:
+			results = append(results, checkResult{name: pkg.checkName, status: "PASS", detail: got, required: true})
+		}
+	}
+	return results
+}
+
+func readNodePackageVersion(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	var meta struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &meta); err != nil {
+		return "", fmt.Errorf("%s: %w", path, err)
+	}
+	if meta.Version == "" {
+		return "", fmt.Errorf("%s has no version field", path)
+	}
+	return meta.Version, nil
 }
 
 func bootstrap(root string, out io.Writer) error {

@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -333,6 +337,159 @@ func TestNewStoreTakesInProcessPathWhenClean(t *testing.T) {
 		t.Fatal("newStore(true) returned a nil stop func; the in-process backend it should have started is now unreachable to shut down")
 	}
 	stopFn()
+}
+
+// --- X.5 the web build overlay (02:PORT-003 anonymous disclosure) -----------
+//
+// `GET /me`'s features.clean_mode never reached a signed-out visitor —
+// RequireSession answers 401 before the flag is ever read, and `/` and
+// `/skills/$id` are both reachable signed out. webStaticHandlerUnder and
+// cleanModeHandler are what let cmd/api serve the flag on the response
+// itself, so what needs pinning mirrors the section above: the injection
+// happens and is reachable, the missing-build and missing-placeholder cases
+// name what is wrong (02:PORT-005), and — the acceptance test for this whole
+// axis — clean=false leaves the API's own handler completely untouched.
+
+// writeCleanModeFixture lays out a directory shaped like apps/web/dist: an
+// index.html carrying the placeholder plus caller-supplied padding (to prove
+// the replacement only touches the placeholder bytes, nothing around them),
+// and one static asset under assets/.
+func writeCleanModeFixture(t *testing.T, indexBody string) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte(indexBody), 0o644); err != nil {
+		t.Fatalf("write index.html: %v", err)
+	}
+	assetsDir := filepath.Join(dir, "assets")
+	if err := os.MkdirAll(assetsDir, 0o755); err != nil {
+		t.Fatalf("mkdir assets: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(assetsDir, "app.js"), []byte("console.log('fixture')"), 0o644); err != nil {
+		t.Fatalf("write assets/app.js: %v", err)
+	}
+	return dir
+}
+
+// The literal injection: the placeholder is gone, the script (and nothing
+// but the script) is there in its place, and the surrounding bytes this test
+// put around the placeholder on purpose are untouched.
+func TestWebStaticHandlerUnderInjectsTheFlag(t *testing.T) {
+	dir := writeCleanModeFixture(t, "<html><head><title>t</title>\n<!--SKILLHUB_CLEAN_MODE_FLAG-->\n</head><body></body></html>")
+
+	handler, err := webStaticHandlerUnder(dir)
+	if err != nil {
+		t.Fatalf("webStaticHandlerUnder: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /: status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, "SKILLHUB_CLEAN_MODE_FLAG") {
+		t.Error("GET / still carries the raw placeholder; it was not replaced")
+	}
+	if !strings.Contains(body, "window.__SKILLHUB_CLEAN_MODE__=true") {
+		t.Errorf("GET / does not carry the injected flag; body = %q", body)
+	}
+	if !strings.Contains(body, "<title>t</title>") || !strings.Contains(body, "<body></body>") {
+		t.Errorf("injection touched more than the placeholder; body = %q", body)
+	}
+}
+
+// The one route this handler adds beyond "/": Vite's build output directory.
+func TestWebStaticHandlerUnderServesAssets(t *testing.T) {
+	dir := writeCleanModeFixture(t, "<html><head><!--SKILLHUB_CLEAN_MODE_FLAG--></head></html>")
+
+	handler, err := webStaticHandlerUnder(dir)
+	if err != nil {
+		t.Fatalf("webStaticHandlerUnder: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/assets/app.js", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /assets/app.js: status = %d, want 200", rec.Code)
+	}
+	if rec.Body.String() != "console.log('fixture')" {
+		t.Errorf("GET /assets/app.js body = %q, want the fixture file's content", rec.Body.String())
+	}
+}
+
+// 02:PORT-005: a missing build must name the path it looked for, not just say
+// "failed" — this is the case a deployment hits when nobody ran the web build
+// before setting SKILLHUB_CLEAN_MODE=1.
+func TestWebStaticHandlerUnderNamesTheMissingBuild(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "does-not-exist")
+
+	_, err := webStaticHandlerUnder(dir)
+	if err == nil {
+		t.Fatal("webStaticHandlerUnder on a missing directory returned no error")
+	}
+	wantPath := filepath.Join(dir, "index.html")
+	if !strings.Contains(err.Error(), wantPath) {
+		t.Errorf("error %q does not name the path it looked for (%s)", err.Error(), wantPath)
+	}
+}
+
+// A build with no placeholder is the case a stale or hand-edited index.html
+// produces: the response would be served with no way to ever carry the flag,
+// silently failing the exact thing this handler exists for.
+func TestWebStaticHandlerUnderRequiresThePlaceholder(t *testing.T) {
+	dir := writeCleanModeFixture(t, "<html><head><title>no placeholder here</title></head></html>")
+
+	_, err := webStaticHandlerUnder(dir)
+	if err == nil {
+		t.Fatal("webStaticHandlerUnder on an index.html with no placeholder returned no error")
+	}
+	if !strings.Contains(err.Error(), "placeholder") {
+		t.Errorf("error %q does not say what is missing", err.Error())
+	}
+}
+
+// The 02:PORT-005 acceptance test for this axis: clean=false must return api
+// completely untouched, not merely "behaving the same" — a same-origin
+// pointer comparison is what a mutation that wraps unconditionally cannot
+// pass, the way TestApplyCleanModePoolLeavesProductionAlone pins the pool.
+func TestCleanModeHandlerLeavesProductionAlone(t *testing.T) {
+	api := http.NewServeMux()
+	static := http.NewServeMux()
+
+	got := cleanModeHandler(api, false, static)
+	if got != http.Handler(api) {
+		t.Error("cleanModeHandler(api, false, static) did not return api unchanged; the flag being unset must not touch the handler")
+	}
+}
+
+// clean=true must route the two static paths to static and leave everything
+// else — including a path an anonymous deep link could hit, like /skills/{id}
+// — going to api, per cleanModeHandler's doc comment on the collision
+// DEV_CORS_ORIGIN's comment in main() also describes.
+func TestCleanModeHandlerRoutesStaticOnlyWhenClean(t *testing.T) {
+	var apiHit, staticHit []string
+	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiHit = append(apiHit, r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})
+	static := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		staticHit = append(staticHit, r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := cleanModeHandler(api, true, static)
+	for _, path := range []string{"/", "/assets/app.js", "/skills/abc-123", "/me"} {
+		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, path, nil))
+	}
+
+	wantStatic := []string{"/", "/assets/app.js"}
+	if !slices.Equal(staticHit, wantStatic) {
+		t.Errorf("static handler saw %v, want %v", staticHit, wantStatic)
+	}
+	wantAPI := []string{"/skills/abc-123", "/me"}
+	if !slices.Equal(apiHit, wantAPI) {
+		t.Errorf("api handler saw %v, want %v", apiHit, wantAPI)
+	}
 }
 
 // --- 4. the background loops -------------------------------------------------

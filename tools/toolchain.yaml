@@ -17,6 +17,20 @@ tools:
   ogen: "1.24.0"
   openapi_generator: "7.19.0"
   datamodel_code_generator: "0.35.0"
+  # 02:PORT-001 clean test mode database carrier (tools/pglite). Pinned to
+  # the last @electric-sql/pglite release built on PostgreSQL 17 so its
+  # major version matches CI's postgres service (.github/workflows/ci.yml
+  # uses pgvector/pgvector:pg17); 0.5.x and later ship PostgreSQL 18 and
+  # are NOT a drop-in replacement here even though they are newer.
+  pglite: "0.4.6"
+  # Peer-locked to pglite 0.4.6 (its own package.json pins this exact pair).
+  pglite_socket: "0.1.6"
+  # pgvector ships bundled inside @electric-sql/pglite (subpath import
+  # "@electric-sql/pglite/vector"), not as the separate
+  # @electric-sql/pglite-pgvector npm package -- that package's releases
+  # only target pglite 0.5.x. This is the extension version PGlite 0.4.6
+  # reports via `SELECT extversion FROM pg_extension WHERE extname='vector'`.
+  pglite_pgvector_extension: "0.8.1"
 
 images:
   sqlc: "sqlc/sqlc:1.31.1@sha256:70f53171d27b2424e9358869975455a6e955a5aa8e58a998a270a6e34e525537"

@@ -26,6 +26,7 @@ afterEach(async () => {
   await act(async () => root?.unmount());
   container.remove();
   vi.unstubAllGlobals();
+  delete window.__SKILLHUB_CLEAN_MODE__;
 });
 
 /** A logged-in `/me`, with `features` present only when asked for. */
@@ -53,6 +54,17 @@ function stubMe(features?: Record<string, boolean>) {
     }
     return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
   });
+}
+
+/**
+ * A signed-out visitor: `GET /me` answers 401, the way it does for anyone
+ * without a session — `/` and `/skills/$id` are both reachable in this state,
+ * which is exactly what the old `/me`-only flag could never disclose to.
+ */
+function stubAnonymous() {
+  vi.stubGlobal("fetch", () =>
+    Promise.resolve(new Response(JSON.stringify({ error: "unauthenticated" }), { status: 401 })),
+  );
 }
 
 async function waitFor(done: () => boolean, timeoutMs = 2000) {
@@ -100,6 +112,35 @@ test("PORT-003: without the flag, the notice renders nothing", async () => {
   await renderNotice();
   // Give the /me query a chance to resolve; the assertion must hold either
   // way, but this rules out the test passing only because nothing has loaded.
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+
+  expect(container.textContent).toBe("");
+});
+
+// The gap this change closes: cmd/api's clean-mode static handler
+// (apps/platform/cmd/api/main.go, cleanModeStaticHandler) injects
+// `window.__SKILLHUB_CLEAN_MODE__ = true` into the HTML it serves itself, so
+// the notice reaches a visitor `GET /me` (session-gated) never could.
+test("PORT-003: the injected flag alone shows the notice to a signed-out visitor, before /me resolves", async () => {
+  stubAnonymous();
+  window.__SKILLHUB_CLEAN_MODE__ = true;
+  await renderNotice();
+  await waitFor(() => (container.textContent?.length ?? 0) > 0);
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("沙箱沒有隔離");
+  expect(text).toContain("不驗證 presigned URL");
+  expect(text).toContain("只有一條連線");
+});
+
+// The other half: a signed-out visitor whose page was not served by the
+// clean-mode static handler (so nothing injected the flag) must not see the
+// notice either — the same 401 as above, but with no window flag set.
+test("PORT-003: without the injected flag, a signed-out visitor (401 from /me) sees nothing", async () => {
+  stubAnonymous();
+  await renderNotice();
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
   });

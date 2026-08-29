@@ -287,3 +287,26 @@ DELETE skill_versions   blocked: row in public.skill_versions is immutable and c
 4. **wire protocol**：`PGLiteSocketServer({ db, port, host })`，另一側用 pgx 連。
 5. **session 共用**（§5.2）：同上但加 `maxConnections: 10`，用**兩條獨立的 pgx 連線**各查 `pg_backend_pid()`、各要一次 `pg_try_advisory_lock(4242)`、其中一條建 temp table 另一條讀它。**兩條都拿到鎖就代表互斥已經不存在。**
 6. **`file://`**（§9）：playwright 分別以 chromium 與 firefox `goto("file:///…/index.html")`，頁內放四種 script 形式，比對哪一種真的執行。
+
+## 訂正（2026-08-29，`PORT-001` 動工時查出）：本報告量的是對不上 CI 的那個版本
+
+本報告全篇以 **PGlite 0.5.8 = PostgreSQL 18.3** 為對象，並把「真 PostgreSQL 18.3」當成賣點寫在結論裡。
+
+**而 `02:PORT-001` 自己的允收寫著**：
+
+> 版本釘選：所使用的 PostgreSQL 主版本**必須與 CI 同一個 major**。
+
+**CI 跑的是 `docker.io/pgvector/pgvector:pg17`。** 18 ≠ 17。
+
+**所以承載改用 PGlite 0.4.6**，實測回報：
+
+```
+PostgreSQL 17.5 on wasm32-unknown-linux-gnu, compiled by emcc ... 32-bit
+pgvector extension: 0.8.1
+```
+
+**42/42 migration 照樣乾淨套用**，六條由資料庫強制的行為與判準一之二全部通過（`tools/pglite/verify.mjs`）。**本報告其餘的量測結論不受影響**——它們量的是「PGlite 這條路成不成立」，而那個答案沒有變。
+
+**要記住的是這次訂正的形狀**：一個**更新的版本**被當成**更好的版本**，而允收要的從來不是新，是**對得上**。這個錯誤不會有任何測試抓到，因為兩個版本都會讓 42 支 migration 通過——**分岔會發生在某天某個 18 才有的行為上，而那天沒有人會想起這份報告**。
+
+**一個順帶的形狀差異**：0.4.6 的 pgvector 是**內建**在 PGlite 裡（子路徑 `@electric-sql/pglite/vector`），不是獨立的 npm 套件——0.5.x 才拆開。所以 `tools/toolchain.yaml` 沒有「pgvector 套件版本」可釘，釘的是 extension 版本 0.8.1。

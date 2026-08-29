@@ -28,7 +28,7 @@ MVP 的 Pitch 在**金融機構環境**進行。那台機器：
 
 那 287 筆靜默跳過的測試，[逐條查證的結果](report-inmemory-postgres.md)是：**外部依賴只有 PostgreSQL 一項**。物件儲存已經是行程內的 `map[string][]byte`、模型服務為 nil 是合法部署、`apiFetch` 是單一出入口。
 
-而「在不能安裝的機器上得到一個真 PostgreSQL」有答案：**PGlite——真 PostgreSQL 18.3 編譯成 WASM，3.7 MB，42/42 乾淨套用，而且不可變性 trigger 真的會擋人**。
+而「在不能安裝的機器上得到一個真 PostgreSQL」有答案：**PGlite——真 PostgreSQL 17.5 編譯成 WASM，42/42 乾淨套用，而且不可變性 trigger 真的會擋人**。<br>**⚠️ 版本 2026-08-29 訂正過，而訂正它的是本項自己的允收**：前期量測用的是 PGlite 0.5.8（PostgreSQL **18.3**），而 `02:PORT-001` 明文要求「所使用的 PostgreSQL 主版本必須與 CI 同一個 major」，**CI 跑的是 `pgvector/pgvector:pg17`**。改用 PGlite 0.4.6（實測回報 `PostgreSQL 17.5 on wasm32`，pgvector 0.8.1 內建）。**一個看起來更新更好的版本，不等於一個對得上的版本。**
 
 ### B. 受限環境內的 Go 測試（沒有承諾）
 
@@ -110,7 +110,7 @@ JOB WORKED n=42, and 2 plain queries were served meanwhile
 | 多 session | ❌（multiplexer 會偽造互斥） | ✅ 真的 fork |
 | 42 支 migration | 42/42 | 37/42（缺口只有 pgvector） |
 | 判準一 | ✅ | ✅ |
-| 版本 | PostgreSQL 18.3 | PostgreSQL **14.5**，i686 |
+| 版本 | PostgreSQL **17.5**（與 CI 的 pg17 同 major） | PostgreSQL **14.5**，i686 |
 | 開機／套用 | 快 | 1 秒開機，migration 229 秒（可存快照只付一次） |
 | 成熟度 | 活躍 | npm 最後發版 2024-05，18 個 open issue |
 

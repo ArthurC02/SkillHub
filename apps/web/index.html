@@ -7,6 +7,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Skill Hub</title>
+    <!-- 02:PORT-003 anonymous disclosure (ADR-060 決策 6). cmd/api's
+         cleanModeStaticHandler (apps/platform/cmd/api/main.go) rewrites the
+         line below into a script tag only when it serves this file itself
+         with SKILLHUB_CLEAN_MODE=1; every other build, and every other way of
+         serving this file, leaves it as an inert HTML comment. Do not reflow
+         or reformat the placeholder line — the replacement matches its bytes
+         exactly. -->
+    <!--SKILLHUB_CLEAN_MODE_FLAG-->
   </head>
   <body>
     <div id="root"></div>

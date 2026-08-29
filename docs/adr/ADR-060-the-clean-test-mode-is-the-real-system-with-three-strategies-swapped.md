@@ -24,7 +24,7 @@
 
 | 軸 | Port | 生產實作 | 淨測試實作 |
 | --- | --- | --- | --- |
-| 資料庫存取 | 連線字串（同一個 `*pgxpool.Pool`） | 原生 PostgreSQL | **PGlite over socket，`pool_max_conns=1`** |
+| 資料庫存取 | 連線字串（同一個 `*pgxpool.Pool`） | 原生 PostgreSQL | **PGlite over socket，`pool_max_conns=1`**（承載在 `tools/pglite`，PGlite **0.4.6 = PostgreSQL 17.5**，與 CI 的 pg17 同 major——**2026-08-29 訂正，前期量測用的 0.5.8 是 18.3 而本 ADR 的允收要求對得上 CI**） |
 | 檔案存取 | `apiserver.ObjectStore`（**介面已存在**） | S3 相容（SeaweedFS） | **in-process 承載**（`02:PORT-009`） |
 | 沙箱 | `sandbox.Driver`（**介面已存在**） | `dockerdrv`（gVisor） | **本機行程 Driver**（[ADR-059](./ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)、`02:PORT-010`） |
 
