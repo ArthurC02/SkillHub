@@ -125,7 +125,9 @@ export const TraceEventTypeEnum = {
     AgentOutput: 'agent_output',
     Error: 'error',
     Usage: 'usage',
-    RunLifecycle: 'run_lifecycle'
+    RunLifecycle: 'run_lifecycle',
+    EvaluationStarted: 'evaluation_started',
+    EvaluationCompleted: 'evaluation_completed'
 } as const;
 export type TraceEventTypeEnum = typeof TraceEventTypeEnum[keyof typeof TraceEventTypeEnum];
 

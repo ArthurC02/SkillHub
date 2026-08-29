@@ -4150,6 +4150,17 @@ func (s *RunPermissionSummaryContent) Validate() error {
 		})
 	}
 	if err := func() error {
+		if err := s.Provider.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "provider",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		if err := s.ResourceLimits.Validate(); err != nil {
 			return err
 		}
@@ -4187,6 +4198,53 @@ func (s *RunPermissionSummaryContentNetwork) Validate() error {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
+}
+
+func (s *RunPermissionSummaryContentProvider) Validate() error {
+	if s == nil {
+		return validate.ErrNilPointer
+	}
+
+	var failures []validate.FieldError
+	if err := func() error {
+		if value, ok := s.IsolationLevel.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "isolation_level",
+			Error: err,
+		})
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+	return nil
+}
+
+func (s RunPermissionSummaryContentProviderIsolationLevel) Validate() error {
+	switch s {
+	case "gvisor":
+		return nil
+	case "container":
+		return nil
+	case "vm":
+		return nil
+	case "process":
+		return nil
+	case "clean":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
 }
 
 func (s *RunPermissionSummaryContentScripts) Validate() error {
@@ -4477,6 +4535,10 @@ func (s SandboxTraceEventType) Validate() error {
 	case "usage":
 		return nil
 	case "run_lifecycle":
+		return nil
+	case "evaluation_started":
+		return nil
+	case "evaluation_completed":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)

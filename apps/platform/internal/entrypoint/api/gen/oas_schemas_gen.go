@@ -8006,6 +8006,52 @@ func (o OptRunComparisonRunsItemEvaluation) Or(d RunComparisonRunsItemEvaluation
 	return d
 }
 
+// NewOptRunPermissionSummaryContentProviderIsolationLevel returns new OptRunPermissionSummaryContentProviderIsolationLevel with value set to v.
+func NewOptRunPermissionSummaryContentProviderIsolationLevel(v RunPermissionSummaryContentProviderIsolationLevel) OptRunPermissionSummaryContentProviderIsolationLevel {
+	return OptRunPermissionSummaryContentProviderIsolationLevel{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptRunPermissionSummaryContentProviderIsolationLevel is optional RunPermissionSummaryContentProviderIsolationLevel.
+type OptRunPermissionSummaryContentProviderIsolationLevel struct {
+	Value RunPermissionSummaryContentProviderIsolationLevel
+	Set   bool
+}
+
+// IsSet returns true if OptRunPermissionSummaryContentProviderIsolationLevel was set.
+func (o OptRunPermissionSummaryContentProviderIsolationLevel) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptRunPermissionSummaryContentProviderIsolationLevel) Reset() {
+	var v RunPermissionSummaryContentProviderIsolationLevel
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptRunPermissionSummaryContentProviderIsolationLevel) SetTo(v RunPermissionSummaryContentProviderIsolationLevel) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptRunPermissionSummaryContentProviderIsolationLevel) Get() (v RunPermissionSummaryContentProviderIsolationLevel, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptRunPermissionSummaryContentProviderIsolationLevel) Or(d RunPermissionSummaryContentProviderIsolationLevel) RunPermissionSummaryContentProviderIsolationLevel {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptRunQuota returns new OptRunQuota with value set to v.
 func NewOptRunQuota(v RunQuota) OptRunQuota {
 	return OptRunQuota{
@@ -12282,11 +12328,14 @@ func (s *RunPermissionSummaryContentNetwork) SetAllow(val []string) {
 type RunPermissionSummaryContentProvider struct {
 	// `unassigned` when no provider could be resolved right now.
 	Name string `json:"name"`
-	// Gvisor | container | vm | process (ADR-015). Absent when unassigned.
-	IsolationLevel OptString `json:"isolation_level"`
-	Rootless       bool      `json:"rootless"`
-	Runtime        OptString `json:"runtime"`
-	RuntimeVersion OptString `json:"runtime_version"`
+	// The provider's declared isolation level (ADR-015; `clean` is ADR-059's "no boundary at all" level,
+	// admitted only under SKILLHUB_CLEAN_MODE). Absent when unassigned. Kept as an enum, not prose, so
+	// devctl's isolation-level check can reconcile it with the dispatch gate and sandbox-provider.yaml —
+	// the prose form let `clean` be emitted here for a day without anything noticing (2026-08-29).
+	IsolationLevel OptRunPermissionSummaryContentProviderIsolationLevel `json:"isolation_level"`
+	Rootless       bool                                                 `json:"rootless"`
+	Runtime        OptString                                            `json:"runtime"`
+	RuntimeVersion OptString                                            `json:"runtime_version"`
 }
 
 // GetName returns the value of Name.
@@ -12295,7 +12344,7 @@ func (s *RunPermissionSummaryContentProvider) GetName() string {
 }
 
 // GetIsolationLevel returns the value of IsolationLevel.
-func (s *RunPermissionSummaryContentProvider) GetIsolationLevel() OptString {
+func (s *RunPermissionSummaryContentProvider) GetIsolationLevel() OptRunPermissionSummaryContentProviderIsolationLevel {
 	return s.IsolationLevel
 }
 
@@ -12320,7 +12369,7 @@ func (s *RunPermissionSummaryContentProvider) SetName(val string) {
 }
 
 // SetIsolationLevel sets the value of IsolationLevel.
-func (s *RunPermissionSummaryContentProvider) SetIsolationLevel(val OptString) {
+func (s *RunPermissionSummaryContentProvider) SetIsolationLevel(val OptRunPermissionSummaryContentProviderIsolationLevel) {
 	s.IsolationLevel = val
 }
 
@@ -12337,6 +12386,72 @@ func (s *RunPermissionSummaryContentProvider) SetRuntime(val OptString) {
 // SetRuntimeVersion sets the value of RuntimeVersion.
 func (s *RunPermissionSummaryContentProvider) SetRuntimeVersion(val OptString) {
 	s.RuntimeVersion = val
+}
+
+// The provider's declared isolation level (ADR-015; `clean` is ADR-059's "no boundary at all" level,
+// admitted only under SKILLHUB_CLEAN_MODE). Absent when unassigned. Kept as an enum, not prose, so
+// devctl's isolation-level check can reconcile it with the dispatch gate and sandbox-provider.yaml —
+// the prose form let `clean` be emitted here for a day without anything noticing (2026-08-29).
+type RunPermissionSummaryContentProviderIsolationLevel string
+
+const (
+	RunPermissionSummaryContentProviderIsolationLevelGvisor    RunPermissionSummaryContentProviderIsolationLevel = "gvisor"
+	RunPermissionSummaryContentProviderIsolationLevelContainer RunPermissionSummaryContentProviderIsolationLevel = "container"
+	RunPermissionSummaryContentProviderIsolationLevelVM        RunPermissionSummaryContentProviderIsolationLevel = "vm"
+	RunPermissionSummaryContentProviderIsolationLevelProcess   RunPermissionSummaryContentProviderIsolationLevel = "process"
+	RunPermissionSummaryContentProviderIsolationLevelClean     RunPermissionSummaryContentProviderIsolationLevel = "clean"
+)
+
+// AllValues returns all RunPermissionSummaryContentProviderIsolationLevel values.
+func (RunPermissionSummaryContentProviderIsolationLevel) AllValues() []RunPermissionSummaryContentProviderIsolationLevel {
+	return []RunPermissionSummaryContentProviderIsolationLevel{
+		RunPermissionSummaryContentProviderIsolationLevelGvisor,
+		RunPermissionSummaryContentProviderIsolationLevelContainer,
+		RunPermissionSummaryContentProviderIsolationLevelVM,
+		RunPermissionSummaryContentProviderIsolationLevelProcess,
+		RunPermissionSummaryContentProviderIsolationLevelClean,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s RunPermissionSummaryContentProviderIsolationLevel) MarshalText() ([]byte, error) {
+	switch s {
+	case RunPermissionSummaryContentProviderIsolationLevelGvisor:
+		return []byte(s), nil
+	case RunPermissionSummaryContentProviderIsolationLevelContainer:
+		return []byte(s), nil
+	case RunPermissionSummaryContentProviderIsolationLevelVM:
+		return []byte(s), nil
+	case RunPermissionSummaryContentProviderIsolationLevelProcess:
+		return []byte(s), nil
+	case RunPermissionSummaryContentProviderIsolationLevelClean:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *RunPermissionSummaryContentProviderIsolationLevel) UnmarshalText(data []byte) error {
+	switch RunPermissionSummaryContentProviderIsolationLevel(data) {
+	case RunPermissionSummaryContentProviderIsolationLevelGvisor:
+		*s = RunPermissionSummaryContentProviderIsolationLevelGvisor
+		return nil
+	case RunPermissionSummaryContentProviderIsolationLevelContainer:
+		*s = RunPermissionSummaryContentProviderIsolationLevelContainer
+		return nil
+	case RunPermissionSummaryContentProviderIsolationLevelVM:
+		*s = RunPermissionSummaryContentProviderIsolationLevelVM
+		return nil
+	case RunPermissionSummaryContentProviderIsolationLevelProcess:
+		*s = RunPermissionSummaryContentProviderIsolationLevelProcess
+		return nil
+	case RunPermissionSummaryContentProviderIsolationLevelClean:
+		*s = RunPermissionSummaryContentProviderIsolationLevelClean
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // Whether the package carries runnable code, answered by re-scanning the stored package rather than by
@@ -13072,15 +13187,17 @@ func (s *SandboxTraceEventStatus) UnmarshalText(data []byte) error {
 type SandboxTraceEventType string
 
 const (
-	SandboxTraceEventTypeSkillActivation SandboxTraceEventType = "skill_activation"
-	SandboxTraceEventTypeResourceRead    SandboxTraceEventType = "resource_read"
-	SandboxTraceEventTypeToolCall        SandboxTraceEventType = "tool_call"
-	SandboxTraceEventTypeMcpCall         SandboxTraceEventType = "mcp_call"
-	SandboxTraceEventTypeScriptLog       SandboxTraceEventType = "script_log"
-	SandboxTraceEventTypeAgentOutput     SandboxTraceEventType = "agent_output"
-	SandboxTraceEventTypeError           SandboxTraceEventType = "error"
-	SandboxTraceEventTypeUsage           SandboxTraceEventType = "usage"
-	SandboxTraceEventTypeRunLifecycle    SandboxTraceEventType = "run_lifecycle"
+	SandboxTraceEventTypeSkillActivation     SandboxTraceEventType = "skill_activation"
+	SandboxTraceEventTypeResourceRead        SandboxTraceEventType = "resource_read"
+	SandboxTraceEventTypeToolCall            SandboxTraceEventType = "tool_call"
+	SandboxTraceEventTypeMcpCall             SandboxTraceEventType = "mcp_call"
+	SandboxTraceEventTypeScriptLog           SandboxTraceEventType = "script_log"
+	SandboxTraceEventTypeAgentOutput         SandboxTraceEventType = "agent_output"
+	SandboxTraceEventTypeError               SandboxTraceEventType = "error"
+	SandboxTraceEventTypeUsage               SandboxTraceEventType = "usage"
+	SandboxTraceEventTypeRunLifecycle        SandboxTraceEventType = "run_lifecycle"
+	SandboxTraceEventTypeEvaluationStarted   SandboxTraceEventType = "evaluation_started"
+	SandboxTraceEventTypeEvaluationCompleted SandboxTraceEventType = "evaluation_completed"
 )
 
 // AllValues returns all SandboxTraceEventType values.
@@ -13095,6 +13212,8 @@ func (SandboxTraceEventType) AllValues() []SandboxTraceEventType {
 		SandboxTraceEventTypeError,
 		SandboxTraceEventTypeUsage,
 		SandboxTraceEventTypeRunLifecycle,
+		SandboxTraceEventTypeEvaluationStarted,
+		SandboxTraceEventTypeEvaluationCompleted,
 	}
 }
 
@@ -13118,6 +13237,10 @@ func (s SandboxTraceEventType) MarshalText() ([]byte, error) {
 	case SandboxTraceEventTypeUsage:
 		return []byte(s), nil
 	case SandboxTraceEventTypeRunLifecycle:
+		return []byte(s), nil
+	case SandboxTraceEventTypeEvaluationStarted:
+		return []byte(s), nil
+	case SandboxTraceEventTypeEvaluationCompleted:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -13153,6 +13276,12 @@ func (s *SandboxTraceEventType) UnmarshalText(data []byte) error {
 		return nil
 	case SandboxTraceEventTypeRunLifecycle:
 		*s = SandboxTraceEventTypeRunLifecycle
+		return nil
+	case SandboxTraceEventTypeEvaluationStarted:
+		*s = SandboxTraceEventTypeEvaluationStarted
+		return nil
+	case SandboxTraceEventTypeEvaluationCompleted:
+		*s = SandboxTraceEventTypeEvaluationCompleted
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

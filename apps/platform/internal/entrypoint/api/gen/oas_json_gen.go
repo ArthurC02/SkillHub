@@ -17903,6 +17903,39 @@ func (s *OptRunComparisonRunsItemEvaluation) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes RunPermissionSummaryContentProviderIsolationLevel as json.
+func (o OptRunPermissionSummaryContentProviderIsolationLevel) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	e.Str(string(o.Value))
+}
+
+// Decode decodes RunPermissionSummaryContentProviderIsolationLevel from json.
+func (o *OptRunPermissionSummaryContentProviderIsolationLevel) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptRunPermissionSummaryContentProviderIsolationLevel to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptRunPermissionSummaryContentProviderIsolationLevel) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptRunPermissionSummaryContentProviderIsolationLevel) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes RunQuota as json.
 func (o OptRunQuota) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -24919,6 +24952,52 @@ func (s *RunPermissionSummaryContentProvider) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes RunPermissionSummaryContentProviderIsolationLevel as json.
+func (s RunPermissionSummaryContentProviderIsolationLevel) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes RunPermissionSummaryContentProviderIsolationLevel from json.
+func (s *RunPermissionSummaryContentProviderIsolationLevel) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode RunPermissionSummaryContentProviderIsolationLevel to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch RunPermissionSummaryContentProviderIsolationLevel(v) {
+	case RunPermissionSummaryContentProviderIsolationLevelGvisor:
+		*s = RunPermissionSummaryContentProviderIsolationLevelGvisor
+	case RunPermissionSummaryContentProviderIsolationLevelContainer:
+		*s = RunPermissionSummaryContentProviderIsolationLevelContainer
+	case RunPermissionSummaryContentProviderIsolationLevelVM:
+		*s = RunPermissionSummaryContentProviderIsolationLevelVM
+	case RunPermissionSummaryContentProviderIsolationLevelProcess:
+		*s = RunPermissionSummaryContentProviderIsolationLevelProcess
+	case RunPermissionSummaryContentProviderIsolationLevelClean:
+		*s = RunPermissionSummaryContentProviderIsolationLevelClean
+	default:
+		*s = RunPermissionSummaryContentProviderIsolationLevel(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s RunPermissionSummaryContentProviderIsolationLevel) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *RunPermissionSummaryContentProviderIsolationLevel) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *RunPermissionSummaryContentScripts) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -26391,6 +26470,10 @@ func (s *SandboxTraceEventType) Decode(d *jx.Decoder) error {
 		*s = SandboxTraceEventTypeUsage
 	case SandboxTraceEventTypeRunLifecycle:
 		*s = SandboxTraceEventTypeRunLifecycle
+	case SandboxTraceEventTypeEvaluationStarted:
+		*s = SandboxTraceEventTypeEvaluationStarted
+	case SandboxTraceEventTypeEvaluationCompleted:
+		*s = SandboxTraceEventTypeEvaluationCompleted
 	default:
 		*s = SandboxTraceEventType(v)
 	}

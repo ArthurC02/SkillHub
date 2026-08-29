@@ -30,11 +30,17 @@ export interface RunPermissionSummaryContentProvider {
      */
     name: string;
     /**
-     * gvisor | container | vm | process (ADR-015). Absent when unassigned.
+     * The provider's declared isolation level (ADR-015; `clean` is ADR-059's
+     * "no boundary at all" level, admitted only under SKILLHUB_CLEAN_MODE).
+     * Absent when unassigned. Kept as an enum, not prose, so devctl's
+     * isolation-level check can reconcile it with the dispatch gate and
+     * sandbox-provider.yaml — the prose form let `clean` be emitted here
+     * for a day without anything noticing (2026-08-29).
+     * 
      * @type {string}
      * @memberof RunPermissionSummaryContentProvider
      */
-    isolationLevel?: string;
+    isolationLevel?: RunPermissionSummaryContentProviderIsolationLevelEnum;
     /**
      * 
      * @type {boolean}
@@ -54,6 +60,20 @@ export interface RunPermissionSummaryContentProvider {
      */
     runtimeVersion?: string;
 }
+
+
+/**
+ * @export
+ */
+export const RunPermissionSummaryContentProviderIsolationLevelEnum = {
+    Gvisor: 'gvisor',
+    Container: 'container',
+    Vm: 'vm',
+    Process: 'process',
+    Clean: 'clean'
+} as const;
+export type RunPermissionSummaryContentProviderIsolationLevelEnum = typeof RunPermissionSummaryContentProviderIsolationLevelEnum[keyof typeof RunPermissionSummaryContentProviderIsolationLevelEnum];
+
 
 /**
  * Check if a given object implements the RunPermissionSummaryContentProvider interface.
