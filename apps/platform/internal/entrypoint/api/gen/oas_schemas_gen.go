@@ -13371,8 +13371,10 @@ type SearchResultRisk struct {
 	ScanStatus SearchResultRiskScanStatus `json:"scan_status"`
 	// Highest severity the scan recorded. `warning` = at least one warning-level finding. `disclosed` = no
 	// warnings, but the package declares something the reader should know about (scripts, external URLs,
-	// binaries, dependency manifests). `none` = neither. Error-level findings never appear: they block the
-	// import, so nothing carrying one is in the index at all.
+	// binaries, dependency manifests). `none` = neither. `unknown` = `scan_status` is `unavailable`: no
+	// scan exists for this row, so no level can be claimed — it is never `none`, because `none` is a
+	// clean-scan verdict and this row has no verdict (DISC-004). Error-level findings never appear: they
+	// block the import, so nothing carrying one is in the index at all.
 	Level SearchResultRiskLevel `json:"level"`
 	// Warning-level finding count.
 	Warnings int `json:"warnings"`
@@ -13434,11 +13436,14 @@ func (s *SearchResultRisk) SetNote(val string) {
 
 // Highest severity the scan recorded. `warning` = at least one warning-level finding. `disclosed` = no
 // warnings, but the package declares something the reader should know about (scripts, external URLs,
-// binaries, dependency manifests). `none` = neither. Error-level findings never appear: they block the
-// import, so nothing carrying one is in the index at all.
+// binaries, dependency manifests). `none` = neither. `unknown` = `scan_status` is `unavailable`: no
+// scan exists for this row, so no level can be claimed — it is never `none`, because `none` is a
+// clean-scan verdict and this row has no verdict (DISC-004). Error-level findings never appear: they
+// block the import, so nothing carrying one is in the index at all.
 type SearchResultRiskLevel string
 
 const (
+	SearchResultRiskLevelUnknown   SearchResultRiskLevel = "unknown"
 	SearchResultRiskLevelNone      SearchResultRiskLevel = "none"
 	SearchResultRiskLevelDisclosed SearchResultRiskLevel = "disclosed"
 	SearchResultRiskLevelWarning   SearchResultRiskLevel = "warning"
@@ -13447,6 +13452,7 @@ const (
 // AllValues returns all SearchResultRiskLevel values.
 func (SearchResultRiskLevel) AllValues() []SearchResultRiskLevel {
 	return []SearchResultRiskLevel{
+		SearchResultRiskLevelUnknown,
 		SearchResultRiskLevelNone,
 		SearchResultRiskLevelDisclosed,
 		SearchResultRiskLevelWarning,
@@ -13456,6 +13462,8 @@ func (SearchResultRiskLevel) AllValues() []SearchResultRiskLevel {
 // MarshalText implements encoding.TextMarshaler.
 func (s SearchResultRiskLevel) MarshalText() ([]byte, error) {
 	switch s {
+	case SearchResultRiskLevelUnknown:
+		return []byte(s), nil
 	case SearchResultRiskLevelNone:
 		return []byte(s), nil
 	case SearchResultRiskLevelDisclosed:
@@ -13470,6 +13478,9 @@ func (s SearchResultRiskLevel) MarshalText() ([]byte, error) {
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (s *SearchResultRiskLevel) UnmarshalText(data []byte) error {
 	switch SearchResultRiskLevel(data) {
+	case SearchResultRiskLevelUnknown:
+		*s = SearchResultRiskLevelUnknown
+		return nil
 	case SearchResultRiskLevelNone:
 		*s = SearchResultRiskLevelNone
 		return nil

@@ -4592,6 +4592,8 @@ func (s *SearchResultRisk) Validate() error {
 
 func (s SearchResultRiskLevel) Validate() error {
 	switch s {
+	case "unknown":
+		return nil
 	case "none":
 		return nil
 	case "disclosed":

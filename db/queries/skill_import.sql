@@ -15,8 +15,12 @@ WHERE workspace_id = $1 AND name = $2 AND deleted_at IS NULL;
 -- name: GetVersionBySkillAndHash :one
 -- Duplicate-content detection (SKILL-001, INGEST-005): same content on the
 -- same skill returns the existing immutable version instead of a new row.
+--
+-- Workspace scoped even though the caller reached skill_id through an already
+-- scoped read, for the reason skills.sql:139-141 spells out: an unscoped read
+-- sitting in a query file is a cross-tenant read waiting for its second caller.
 SELECT * FROM skill_versions
-WHERE skill_id = $1 AND content_hash = $2;
+WHERE skill_id = $1 AND content_hash = $2 AND workspace_id = $3;
 
 -- name: CountGeneratedSkills :one
 -- The generation allowance's counter (GEN-004, ADR-047 決策 5).

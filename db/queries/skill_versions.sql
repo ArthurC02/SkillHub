@@ -12,12 +12,29 @@ INSERT INTO skill_versions (
 RETURNING *;
 
 -- name: GetSkillVersion :one
+-- The live-skill test is here rather than in the handler because both readers of
+-- this query (the version picker's diff and the packaging screen) took a version
+-- id from the URL and never read the skill row: a soft-deleted skill's versions
+-- kept answering after the delete confirmation had said the skill was gone from
+-- lists and search (02:WS-005, SEC-006). EXISTS rather than a JOIN so the row
+-- type stays skill_versions and no caller has to learn a new struct.
 SELECT * FROM skill_versions
-WHERE id = $1 AND workspace_id = $2;
+WHERE skill_versions.id = $1 AND skill_versions.workspace_id = $2
+  AND EXISTS (
+      SELECT 1 FROM skills sk
+      WHERE sk.id = skill_versions.skill_id AND sk.deleted_at IS NULL
+  );
 
 -- name: ListSkillVersions :many
+-- Same live-skill test as GetSkillVersion above, and for the same reason: the
+-- deletion note the server writes says the skill leaves the reader's lists, and
+-- a version history is a list.
 SELECT * FROM skill_versions
-WHERE workspace_id = $1 AND skill_id = $2
+WHERE skill_versions.workspace_id = $1 AND skill_versions.skill_id = $2
+  AND EXISTS (
+      SELECT 1 FROM skills sk
+      WHERE sk.id = skill_versions.skill_id AND sk.deleted_at IS NULL
+  )
 ORDER BY version_number DESC;
 
 -- name: GetSkillRuntimeCompatibility :one

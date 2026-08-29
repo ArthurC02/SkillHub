@@ -180,6 +180,36 @@ UPDATE artifacts SET deleted_at = now()
 WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package' AND deleted_at IS NULL
 RETURNING id, object_key, purged_at;
 
+-- name: DeleteWorkspaceDownloadRecords :execrows
+-- CORE-007, first of the three statements the account purge needs from this
+-- context, and the order between them is the foreign keys' and not a preference.
+--
+-- 0027 hung download_records on download_artifacts and download_artifacts on
+-- artifacts, both with composite keys and neither with ON DELETE, so packaging's
+-- purge step deleting only the `artifacts` row (governance.sql's
+-- DeleteWorkspaceDownloadArtifacts) raised 23503 on any workspace that had ever
+-- produced one package — and the whole account purge rolled back with it, every
+-- sweep, forever. See delivery/purge.go for why that stayed invisible.
+--
+-- Not ON DELETE CASCADE, deliberately: a cascade would also fire on a delete
+-- nobody meant, and these two tables are frozen by 0027 precisely because "you
+-- downloaded this on that date" is not editable state. The delete happens here,
+-- in daylight, under the purge flag, or it does not happen.
+--
+-- Requires SET LOCAL skillhub.purge = 'on' in the same transaction (0013);
+-- identity/purge.go already sets it before any context's step runs.
+DELETE FROM download_records WHERE workspace_id = $1;
+
+-- name: DeleteWorkspaceDownloadArtifactDetails :execrows
+-- The middle row of the same three. Named "…Details" and not
+-- "DeleteWorkspaceDownloadArtifacts" because sqlc's namespace is flat and that
+-- name is already taken — by the statement in governance.sql that deletes the
+-- `artifacts` parent, which is the confusion that let the missing statement look
+-- present for as long as it did.
+--
+-- Same purge flag as the record above (0027's trigger on this table too).
+DELETE FROM download_artifacts WHERE workspace_id = $1;
+
 -- name: CountArtifactsSharingObject :one
 -- Whether anybody else still needs these bytes, asked after the row above is
 -- already soft-deleted so it does not count itself.

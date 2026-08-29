@@ -35,6 +35,13 @@ paths:
         Generates text-embedding-3-small embeddings (1536 dims) via LiteLLM
         gateway (Iron Rule 8). Used by Go to build query embeddings for hybrid
         search and by the index-time enrichment pipeline.
+
+        Every call carries `metadata.operation` to the gateway, so its spend is
+        separable from the other five endpoints' at the gateway's own ledger.
+        Until that was added the whole service billed into one bucket under one
+        static key, and the two costs that scale - one per search, one per
+        indexed Skill Version - could not be told apart from each other or from
+        a judgement (ADR-017 Run 成本歸因).
       requestBody:
         required: true
         content:
@@ -69,7 +76,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "503":
-          $ref: "#/components/responses/AuthUnavailable"
+          $ref: "#/components/responses/Unavailable"
   /v1/enrich-skill:
     post:
       operationId: enrichSkill
@@ -113,11 +120,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "503":
-          description: LiteLLM gateway is not configured for this process.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "#/components/responses/Unavailable"
   /match-reasons:
     post:
       operationId: matchReasons
@@ -160,7 +163,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "503":
-          $ref: "#/components/responses/AuthUnavailable"
+          $ref: "#/components/responses/Unavailable"
   /suggest-criteria:
     post:
       operationId: suggestCriteria
@@ -208,7 +211,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "503":
-          $ref: "#/components/responses/AuthUnavailable"
+          $ref: "#/components/responses/Unavailable"
   /judge-run:
     post:
       operationId: judgeRun
@@ -275,7 +278,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "503":
-          $ref: "#/components/responses/AuthUnavailable"
+          $ref: "#/components/responses/Unavailable"
   /v1/generate-skill:
     post:
       operationId: generateSkill
@@ -359,18 +362,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "503":
-          description: |
-            LiteLLM gateway is not configured for this process. Declared here
-            because generate borrows evaluate's client, which fails closed on a
-            missing LITELLM_BASE_URL or LITELLM_API_KEY rather than aiming a
-            placeholder key at a default address - so this endpoint has always
-            been able to answer 503 since that guard landed, and only the schema
-            did not say so. `gen --check` compares shapes, not status codes, so
-            nothing would have caught the omission.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+          $ref: "#/components/responses/Unavailable"
 
   /suggest-improvements:
     post:
@@ -419,7 +411,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "503":
-          $ref: "#/components/responses/AuthUnavailable"
+          $ref: "#/components/responses/Unavailable"
 components:
   responses:
     Unauthorized:
@@ -428,8 +420,28 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
-    AuthUnavailable:
-      description: The service workload token is not configured.
+    Unavailable:
+      description: |
+        The service cannot take the request, for one of two reasons, and the
+        caller has to tell them apart from `detail`:
+
+        - **workload token not configured** - LLM_SERVICE_TOKEN is unset, so this
+          process cannot authenticate its caller. Go fails closed on the same
+          variable at startup (cmd/api/main.go), so this is a deployment that
+          lost a variable both sides know about.
+        - **gateway not configured** - LITELLM_BASE_URL or LITELLM_API_KEY is
+          unset, so there is no gateway to reach and no default address to fall
+          back to (Iron Rule 8). Only this process knows this one, and its
+          symptom on the Go side is search degrading to FTS-only for as long as
+          the misconfiguration lasts - which is why it must not arrive as a 502.
+
+        This used to be one response called `AuthUnavailable`, describing only
+        the first cause, referenced by five endpoints that all answer it for the
+        second as well. The M1 audit's whole conclusion was that those two
+        failures need telling apart, and the contract stated half of it (M-audit,
+        2026-08-29). They are one response object rather than two because
+        OpenAPI gives a status code exactly one, and both causes reach every
+        model-backed endpoint.
       content:
         application/json:
           schema:
@@ -463,6 +475,27 @@ components:
             type: string
           minItems: 1
           maxItems: 64
+        timeout_seconds:
+          type: number
+          exclusiveMinimum: 0
+          description: |
+            A ceiling this caller wants, honoured only when it is BELOW the
+            service's own (the handler takes `min()` of the two). It cannot buy
+            a longer call.
+
+            It exists because one endpoint has two callers with different
+            deadlines: index-time enrichment allows 20s, search allows 10 - and
+            the service's single 20s ceiling meant Go's search deadline always
+            expired first. The caller then could not tell "the gateway is
+            broken" from "I stopped waiting", and Go's answer to the first is to
+            degrade search to FTS-only; meanwhile the abandoned gateway call
+            still ran and was still billed (M1's three 30s timeouts, every one
+            of them charged).
+
+            Which caller gets which deadline stays a Go decision (Iron Rule 6).
+            What this field carries is not policy: it is a number this service
+            agrees to honour when it is the smaller one, so that the error
+            arrives as this service's 502 rather than as Go's deadline.
     EmbedResponse:
       type: object
       required: [embeddings, model, dimensions]
@@ -477,6 +510,17 @@ components:
           type: string
         dimensions:
           type: integer
+        usage:
+          $ref: "#/components/schemas/GatewayUsage"
+          description: |
+            What this batch cost at the gateway. Optional and absent when the
+            gateway reported nothing usable - never zero-filled.
+
+            An embeddings response has no completion half, so
+            `completion_tokens` is 0 as a fact rather than as an absence. This
+            is the highest-volume model call the platform makes (64 texts a
+            call, once per search and once per indexed Skill Version) and it was
+            the one with no bill at all.
     EnrichSkillRequest:
       type: object
       required: [skill_name, skill_md]
@@ -564,6 +608,32 @@ components:
         prompt_version:
           type: string
           description: Prompt revision, so stale enrichments can be rebuilt.
+        temperature:
+          type: number
+          description: |
+            The sampling temperature this service asked for - 0, pinned by the
+            service and never chosen by the caller.
+
+            Recorded for the reason `model` and `prompt_version` are recorded.
+            Under the provider default the same prompt version, the same model
+            and the same input could answer differently, and nothing stored
+            explained it: ADR-026 makes a verdict name its own ruler, and
+            sampling was the part of the ruler nobody wrote down. Optional
+            because it is additive - absent means a build that predates the
+            pinning, not a call that was unpinned by choice.
+        seed:
+          type: ["integer", "null"]
+          description: |
+            The seed this service asked for. Best-effort at every provider and
+            dropped by the gateway for models that do not take it, so it
+            identifies the REQUEST, not a promise that two calls match.
+        usage:
+          $ref: "#/components/schemas/GatewayUsage"
+          description: |
+            What this enrichment cost at the gateway. Optional, same rule as
+            JudgeRunResponse.usage. Enrichment runs once per Skill Version on
+            the flagship tier, so this is the platform's own spend that grows
+            with the catalogue rather than with usage.
     SkillCandidate:
       type: object
       required: [skill_id, name, summary]
@@ -690,6 +760,11 @@ components:
             Blank and duplicate texts are dropped by the service, and the list is
             cut at 8. Empty means no usable proposal - not that the task needs no
             criteria.
+        usage:
+          $ref: "#/components/schemas/GatewayUsage"
+          description: |
+            What the proposal cost at the gateway. Optional, same rule as
+            JudgeRunResponse.usage.
     MatchReasonsResponse:
       description: |
         Reasons the model actually produced, for requested skill_ids only. It
@@ -705,6 +780,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MatchReason"
+        usage:
+          $ref: "#/components/schemas/GatewayUsage"
+          description: |
+            What the batch cost at the gateway. Optional, same rule as
+            JudgeRunResponse.usage. Reported even when `reasons` is empty: an
+            answer the service could not use was still a paid call.
 
     # --- /judge-run (EVAL-001 task-effect leg) ---
 
@@ -1137,6 +1218,25 @@ components:
             Judge prompt revision, stored as `evaluations.judge_prompt_version`.
             A re-evaluation under a newer prompt is a new row, so this is what
             says which prompt produced which verdict (evaluation-design §3.2).
+        temperature:
+          type: number
+          description: |
+            The sampling temperature this service asked for - 0, pinned by the
+            service and never chosen by the caller.
+
+            Recorded for the reason `model` and `prompt_version` are recorded.
+            Under the provider default the same prompt version, the same model
+            and the same input could answer differently, and nothing stored
+            explained it: ADR-026 makes a verdict name its own ruler, and
+            sampling was the part of the ruler nobody wrote down. Optional
+            because it is additive - absent means a build that predates the
+            pinning, not a call that was unpinned by choice.
+        seed:
+          type: ["integer", "null"]
+          description: |
+            The seed this service asked for. Best-effort at every provider and
+            dropped by the gateway for models that do not take it, so it
+            identifies the REQUEST, not a promise that two calls match.
         usage:
           $ref: "#/components/schemas/GatewayUsage"
           description: |
@@ -1303,6 +1403,25 @@ components:
           type: string
         prompt_version:
           type: string
+        temperature:
+          type: number
+          description: |
+            The sampling temperature this service asked for - 0, pinned by the
+            service and never chosen by the caller.
+
+            Recorded for the reason `model` and `prompt_version` are recorded.
+            Under the provider default the same prompt version, the same model
+            and the same input could answer differently, and nothing stored
+            explained it: ADR-026 makes a verdict name its own ruler, and
+            sampling was the part of the ruler nobody wrote down. Optional
+            because it is additive - absent means a build that predates the
+            pinning, not a call that was unpinned by choice.
+        seed:
+          type: ["integer", "null"]
+          description: |
+            The seed this service asked for. Best-effort at every provider and
+            dropped by the gateway for models that do not take it, so it
+            identifies the REQUEST, not a promise that two calls match.
         usage:
           $ref: "#/components/schemas/GatewayUsage"
           description: |
@@ -1420,6 +1539,25 @@ components:
           type: string
         prompt_version:
           type: string
+        temperature:
+          type: number
+          description: |
+            The sampling temperature this service asked for - 0, pinned by the
+            service and never chosen by the caller.
+
+            Recorded for the reason `model` and `prompt_version` are recorded.
+            Under the provider default the same prompt version, the same model
+            and the same input could answer differently, and nothing stored
+            explained it: ADR-026 makes a verdict name its own ruler, and
+            sampling was the part of the ruler nobody wrote down. Optional
+            because it is additive - absent means a build that predates the
+            pinning, not a call that was unpinned by choice.
+        seed:
+          type: ["integer", "null"]
+          description: |
+            The seed this service asked for. Best-effort at every provider and
+            dropped by the gateway for models that do not take it, so it
+            identifies the REQUEST, not a promise that two calls match.
         usage:
           $ref: "#/components/schemas/GatewayUsage"
           description: |

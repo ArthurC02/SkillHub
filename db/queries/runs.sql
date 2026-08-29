@@ -279,7 +279,40 @@ WHERE published_at IS NOT NULL
 UPDATE outbox_events SET published_at = now()
 WHERE event_id = ANY(@event_ids::uuid[]) AND published_at IS NULL;
 
+-- name: CountDeadLetteredOutboxEvents :one
+-- ADR-008's other half. 0035 gave a poison message a column, an index that
+-- excludes it and a comment saying "the row is then left alone for a human" —
+-- and then nothing listed, counted or alerted on it, so the ADR's 「進入隔離佇列
+-- **並告警**」 shipped as the isolation without the alarm. A quarantine nobody is
+-- told about differs from dropping the message only in forensics.
+--
+-- One number, deliberately, and not a listing: the payload of a poisoned event is
+-- somebody's domain data and the operator's question is "is there anything in
+-- there", which a count answers. Same shape as CountCollectableObjects and
+-- CountSkillsAwaitingDeletionGrace — both exist so an operator can tell draining
+-- from stuck, and this is the third of those, arriving last.
+--
+-- Not workspace scoped, like the rest of the outbox: this table is the transport
+-- buffer (see the file header) and the reader is the publisher, not a user.
+SELECT count(*)::bigint FROM outbox_events WHERE dead_lettered_at IS NOT NULL;
+
 -- name: ListOutboxEventsByAggregate :many
+-- The only outbox read with neither a workspace predicate nor, until now, a word
+-- about why — and it returns whole payloads for any aggregate whose type and id
+-- the caller can name.
+--
+-- Its scope is the aggregate, and that is the honest reason rather than a
+-- retrofit: the caller has to already hold the aggregate's uuid, which it can
+-- only have got from a workspace-scoped read, and the outbox has no user-facing
+-- endpoint to reach this through. Left unscoped because adding a workspace
+-- parameter would be a predicate no caller can supply from anything the outbox
+-- itself knows — outbox_events.workspace_id is nullable by design (0016), so half
+-- the rows would be unreachable through it.
+--
+-- The load-bearing fact is the caller list, so it is written down: as of
+-- 2026-08-29 the only caller is run_integration_test.go. The day a request path
+-- calls this, it needs the workspace predicate, and this paragraph is where that
+-- decision was deferred, not where it was made.
 SELECT * FROM outbox_events
 WHERE aggregate_type = $1 AND aggregate_id = $2
 ORDER BY occurred_at, event_id;
@@ -321,14 +354,24 @@ INSERT INTO artifacts (
     workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash,
     object_key, expires_at
 )
--- The 30 days are PDM-006 §6 and consent §3, materialised into the row here and
+-- The 90 days are PDM-006 §6 and consent §3, materialised into the row here and
 -- not read from the environment at sweep time: the deadline a participant was
 -- promised is a property of the file, and three statements (ListReadableRun-
 -- Artifacts, CountUnreadableRunArtifacts, ListRunOutputsPastRetention) read it
 -- back. `maintenance purge-run-artifacts` is what makes the column mean
 -- something.
+--
+-- It said 30 days until R-11 was signed on 2026-08-29. 02:NFR-002a rule 2 makes
+-- Run Artifact retention a FLOOR under the re-evaluation window, and the
+-- re-evaluation window is TRACE_RETENTION (90 days), so 30 meant days 31-90 of a
+-- re-evaluation read an empty artifact manifest — a violated floor that
+-- EVAL-014's third state made visible but never closed, because a mitigation
+-- does not raise a floor. R-11 unified the two numbers at 90; the two exits that
+-- clause named are now one number, and tools/devctl/retention_floor.go's
+-- declared shortfall has to go in the same change or it fails on the gap it can
+-- no longer find.
 SELECT @workspace_id, @run_id, 'run_output', @file_name, @content_type, @size_bytes,
-       @content_hash, @object_key, now() + interval '30 days'
+       @content_hash, @object_key, now() + interval '90 days'
 WHERE NOT EXISTS (
     SELECT 1 FROM artifacts
     WHERE run_id = @run_id AND kind = 'run_output' AND file_name = @file_name

@@ -123,6 +123,7 @@ queries:
   DeleteOutboxEventsPublishedBefore: outbox
   MarkOutboxEventsPublished: outbox
   ListOutboxEventsByAggregate: outbox
+  CountDeadLetteredOutboxEvents: outbox
 
   # skill_import.sql：匯入流程要先查 registry 的既有 Skill／版本。
   GetSkillByName: registry
@@ -149,7 +150,7 @@ queries:
   DetachWorkspaceAnalytics: analytics
   DetachWorkspaceFeedback: analytics
   InsertFeedbackReport: analytics
-  DeleteExpiredAnalyticsEvents: analytics
+  DeleteExpiredFeedbackReports: analytics
 
   # reconcile.sql：object_reconcile_sightings 是 objreconcile 自己的表。
   RecordObjectSighting: objreconcile
@@ -276,6 +277,17 @@ immutable_allow:
   # 這條豁免在 2026-08-25 之前不存在，因為那個 sweep 也不存在：0013 為它寫了
   # 欄位註解、以它命名索引、為它打開 DELETE 分支，四塊零件裡缺的正是會跑的那塊。
   DeleteExpiredAuditEvents: audit_events
+  # 帳號刪除的下載明細（CORE-007，2026-08-29）。與 PurgeUnreferencedSkills 同一個
+  # 旗標、同一個交易——identity/purge.go 的 `SET LOCAL skillhub.purge = 'on'` 在
+  # packaging 這一步之前就已經生效。
+  #
+  # 這兩條在 2026-08-29 之前不存在，而後果不是「少刪了兩張表」：0027 的複合外鍵沒有
+  # ON DELETE，所以帳號刪除刪 `artifacts` 那一句會拿到 23503，**整個帳號刪除交易
+  # rollback**，該帳號每一輪 sweep 都失敗。凡是產生過一次下載套件的 workspace 都刪不掉，
+  # 而下載正是封測漏斗第 6 段——走完主流程的受測者剛好是註定刪不掉的那一群。
+  # 整合測試當時是綠的，因為它的 fixture 只插了母列（見 governance_integration_test.go）。
+  DeleteWorkspaceDownloadRecords: download_records
+  DeleteWorkspaceDownloadArtifactDetails: download_artifacts
 
 # 裸 SQL 的具名豁免（ADR-033 2026-08-20 追加；DDD-058 2026-08-22 強化）
 #
@@ -294,7 +306,7 @@ raw_sql_allow:
   apps/platform/internal/creator/workspace/purge.go@purgeAccount: SET LOCAL enables immutable-table purge only inside the account purge transaction
   apps/platform/internal/foundation/observability/audit/purge.go@PurgeExpired: SET LOCAL enables the 400 day audit retention sweep only inside its own transaction
   apps/platform/internal/skill/library/purge.go@PurgeDeletedSkills: SET LOCAL enables the WS-005 deletion grace sweep only inside its own transaction
-  apps/platform/internal/foundation/messaging/outbox/outbox.go@Publish: session advisory lock elects one publisher and must be explicitly unlocked on its connection
+  apps/platform/internal/foundation/messaging/outbox/outbox.go@claim: session advisory lock elects one publisher and must be explicitly unlocked on its connection
   apps/platform/internal/skill/delivery/packaging.go@persist: advisory lock serializes reusable download artifact persistence by content hash
   apps/platform/internal/trial/improvement/eval.go@begin: advisory lock serializes supersede-and-create for one run evaluation
   apps/platform/internal/trial/execution/halt.go@DetectReconcilerStall: reads River-owned river_job state that is outside SkillHub migrations and sqlc

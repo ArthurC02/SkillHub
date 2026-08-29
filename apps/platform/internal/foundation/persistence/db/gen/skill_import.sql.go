@@ -146,18 +146,23 @@ func (q *Queries) GetSkillByName(ctx context.Context, arg GetSkillByNameParams) 
 
 const getVersionBySkillAndHash = `-- name: GetVersionBySkillAndHash :one
 SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source FROM skill_versions
-WHERE skill_id = $1 AND content_hash = $2
+WHERE skill_id = $1 AND content_hash = $2 AND workspace_id = $3
 `
 
 type GetVersionBySkillAndHashParams struct {
 	SkillID     pgtype.UUID
 	ContentHash string
+	WorkspaceID pgtype.UUID
 }
 
 // Duplicate-content detection (SKILL-001, INGEST-005): same content on the
 // same skill returns the existing immutable version instead of a new row.
+//
+// Workspace scoped even though the caller reached skill_id through an already
+// scoped read, for the reason skills.sql:139-141 spells out: an unscoped read
+// sitting in a query file is a cross-tenant read waiting for its second caller.
 func (q *Queries) GetVersionBySkillAndHash(ctx context.Context, arg GetVersionBySkillAndHashParams) (SkillVersion, error) {
-	row := q.db.QueryRow(ctx, getVersionBySkillAndHash, arg.SkillID, arg.ContentHash)
+	row := q.db.QueryRow(ctx, getVersionBySkillAndHash, arg.SkillID, arg.ContentHash, arg.WorkspaceID)
 	var i SkillVersion
 	err := row.Scan(
 		&i.ID,

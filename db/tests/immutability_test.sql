@@ -353,5 +353,31 @@ SELECT must_fail($$UPDATE download_records SET downloaded_at = now() - interval 
 SELECT must_fail($$DELETE FROM download_records
                    WHERE artifact_id = 'f1111111-1111-4111-8111-111111111111'$$);
 
+-- 9e. ...and the one door out, for the same two tables. CORE-007 has to be able
+-- to delete these rows, or an account that ever produced a download package
+-- cannot be deleted at all — which is exactly what happened until 2026-08-29,
+-- because packaging's purge step deleted only the `artifacts` parent and 0027's
+-- composite foreign keys refused it with 23503.
+--
+-- Both directions are asserted, and the pair is the point: 9c/9d above prove the
+-- rows are frozen, and a purge path that stopped working would leave those two
+-- green while the account deletion silently rolled back every night. The flag is
+-- what separates "frozen" from "sealed"; only the account purge transaction sets
+-- it (identity/purge.go), and it is scoped to that transaction by SET LOCAL.
+SET LOCAL skillhub.purge = 'on';
+DELETE FROM download_records WHERE workspace_id = '22222222-2222-2222-2222-222222222222';
+DELETE FROM download_artifacts WHERE workspace_id = '22222222-2222-2222-2222-222222222222';
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM download_artifacts
+               WHERE workspace_id = '22222222-2222-2222-2222-222222222222')
+       OR EXISTS (SELECT 1 FROM download_records
+                  WHERE workspace_id = '22222222-2222-2222-2222-222222222222') THEN
+        RAISE EXCEPTION 'the purge flag did not open the download tables for deletion';
+    END IF;
+END;
+$$;
+SET LOCAL skillhub.purge = 'off';
+
 \echo 'immutability_test: OK'
 ROLLBACK;

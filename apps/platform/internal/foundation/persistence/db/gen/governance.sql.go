@@ -98,15 +98,20 @@ SELECT
     count(*) FILTER (
         WHERE sk.deleted_at <= $1::timestamptz
           AND (
+            -- One predicate per exclusion in ` + "`" + `purgeable` + "`" + ` above, negated. They are
+            -- written out rather than shared because a CTE cannot be, and the two
+            -- have to be read side by side: a reason that keeps a skill from the
+            -- sweep and is missing here makes that skill count as neither
+            -- ` + "`" + `waiting` + "`" + ` nor ` + "`" + `kept` + "`" + `, and the operator sees a total that does not
+            -- add up on the exact day they are asking why the purge is stuck.
             EXISTS (SELECT 1 FROM skill_versions v
                     WHERE v.skill_id = sk.id
                       AND (EXISTS (SELECT 1 FROM skills f
-                                   WHERE f.forked_from_version_id = v.id
-                                     AND f.workspace_id <> v.workspace_id)
-                           OR EXISTS (SELECT 1 FROM runs r WHERE r.skill_version_id = v.id)))
-            OR EXISTS (SELECT 1 FROM skills f
-                       WHERE f.forked_from_skill_id = sk.id
-                         AND f.workspace_id <> sk.workspace_id)
+                                   WHERE f.forked_from_version_id = v.id)
+                           OR EXISTS (SELECT 1 FROM runs r WHERE r.skill_version_id = v.id)
+                           OR EXISTS (SELECT 1 FROM download_artifacts da
+                                      WHERE da.skill_version_id = v.id)))
+            OR EXISTS (SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id)
             OR EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
           )
     )::bigint AS kept
@@ -651,11 +656,29 @@ purgeable AS (
     WHERE sk.deleted_at IS NOT NULL
       AND sk.deleted_at <= $1::timestamptz
       AND NOT EXISTS (SELECT 1 FROM referenced ref WHERE ref.skill_id = sk.id)
+      -- The skill-level half of the same rule. Dropping the ` + "`" + `<> workspace_id` + "`" + ` on
+      -- 2026-08-29 with its version-level sibling below, and measured rather than
+      -- assumed: with only the version-level exclusion in place, a same-workspace
+      -- fork still fails on skills_forked_from_skill_id_fkey first. The two
+      -- columns are written together by registry.Fork today, so either exclusion
+      -- alone happens to cover both -- and "happens to" is the word that makes it
+      -- worth writing both down.
+      AND NOT EXISTS (
+            SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id
+          )
+      -- The three exclusions PurgeUnreferencedSkills carries, verbatim and for
+      -- the same reasons; the argument for each is written out there.
+      AND NOT EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
       AND NOT EXISTS (
             SELECT 1 FROM skills f
-            WHERE f.forked_from_skill_id = sk.id AND f.workspace_id <> sk.workspace_id
+            JOIN skill_versions v ON v.id = f.forked_from_version_id
+            WHERE v.skill_id = sk.id
           )
-      AND NOT EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
+      AND NOT EXISTS (
+            SELECT 1 FROM download_artifacts da
+            JOIN skill_versions v ON v.id = da.skill_version_id
+            WHERE v.skill_id = sk.id
+          )
     ORDER BY sk.deleted_at
     LIMIT $2::int
 ),
@@ -768,13 +791,72 @@ purgeable AS (
     SELECT sk.id FROM skills sk
     WHERE sk.workspace_id = $1
       AND NOT EXISTS (SELECT 1 FROM referenced ref WHERE ref.skill_id = sk.id)
+      -- The skill-level half of the same rule. Dropping the ` + "`" + `<> workspace_id` + "`" + ` on
+      -- 2026-08-29 with its version-level sibling below, and measured rather than
+      -- assumed: with only the version-level exclusion in place, a same-workspace
+      -- fork still fails on skills_forked_from_skill_id_fkey first. The two
+      -- columns are written together by registry.Fork today, so either exclusion
+      -- alone happens to cover both -- and "happens to" is the word that makes it
+      -- worth writing both down.
       AND NOT EXISTS (
-            SELECT 1 FROM skills f
-            WHERE f.forked_from_skill_id = sk.id AND f.workspace_id <> sk.workspace_id
+            SELECT 1 FROM skills f WHERE f.forked_from_skill_id = sk.id
           )
       -- Test cases carry their own retention and snapshots runs point at; a
       -- skill still holding them is out of scope for this statement.
+      --
+      -- Deliberately NOT ` + "`" + `AND tc.deleted_at IS NULL` + "`" + `, and that is a measured
+      -- result rather than an oversight. 0017 soft-deletes test cases and never
+      -- removes the row, so as written a test case the user deleted months ago
+      -- pins its skill here for the rest of time, and both this sweep and the
+      -- grace sweep below skip it forever. That is a real defect. But adding the
+      -- predicate on its own does not fix it, it relocates it: test_cases.skill_id
+      -- is NOT NULL REFERENCES skills (id) with NO ACTION (0004:9), so the skill
+      -- becomes purgeable while its soft-deleted rows still name it and the DELETE
+      -- below fails with
+      --   23503 ... "skills" violates foreign key "test_cases_skill_id_fkey"
+      -- taking the whole account purge down with it. Measured 2026-08-29 against a
+      -- real database, not reasoned about.
+      --
+      -- The missing piece is one layer up: testlab's account-purge step deletes
+      -- ` + "`" + `datasets` + "`" + ` and nothing else (trial/design/purge.go), so test_cases, the
+      -- table holding TEST-001's user_prompt and therefore the user's own words,
+      -- has no delete path anywhere in this repository. Once that step removes the
+      -- soft-deleted rows this predicate needs no change at all, because there
+      -- will be no row left for it to find. Whether those rows MAY go is a real
+      -- question and not a coding one: a frozen test_case_snapshot may point at
+      -- one (0005), and then it has to stay.
       AND NOT EXISTS (SELECT 1 FROM test_cases tc WHERE tc.skill_id = sk.id)
+      -- Nothing may be forked from a skill that is about to go, whatever
+      -- workspace the fork is in. ` + "`" + `referenced` + "`" + ` above already spares the
+      -- cross-workspace case; this is the same rule for a fork of your own skill,
+      -- which Fork allows (registry.Fork reads the caller's own workspace first).
+      -- Without it the ancestor's skill_versions rows go while a surviving fork
+      -- still names one, and 0003's forked_from_version_id — NO ACTION, and
+      -- deliberately not CASCADE, because a cascade would take the fork lineage
+      -- with it — raises 23503 and rolls the whole account purge back.
+      --
+      -- Any fork counts, not only a surviving one. Deciding "the fork is going
+      -- too, so the ancestor may go" is self-referential (the fork's own fate is
+      -- what this CTE is computing) and would need a recursive fixed point for a
+      -- case worth two rows; keeping the ancestor instead is the same treatment
+      -- ` + "`" + `referenced` + "`" + ` already gives, its owner is de-identified either way, and it
+      -- cannot fail.
+      AND NOT EXISTS (
+            SELECT 1 FROM skills f
+            JOIN skill_versions v ON v.id = f.forked_from_version_id
+            WHERE v.skill_id = sk.id
+          )
+      -- Same shape for the packaging side: download_artifacts.skill_version_id is
+      -- NO ACTION too (0027), so a version somebody packaged cannot be deleted
+      -- while its detail row stands. In the account purge packaging's own step has
+      -- already removed this workspace's rows by the time this runs, which is why
+      -- this line looks redundant there and is not: the grace purge below shares
+      -- this predicate and has no such step in front of it.
+      AND NOT EXISTS (
+            SELECT 1 FROM download_artifacts da
+            JOIN skill_versions v ON v.id = da.skill_version_id
+            WHERE v.skill_id = sk.id
+          )
 ),
 enqueued AS (
     -- The producer for object_collection_queue (0039, 04 丙-73), and it lives

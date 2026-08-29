@@ -11,6 +11,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PositiveFloat,
     confloat,
     conint,
     constr,
@@ -31,12 +32,10 @@ class Error(BaseModel):
 
 class EmbedRequest(BaseModel):
     texts: List[str] = Field(..., max_length=64, min_length=1)
-
-
-class EmbedResponse(BaseModel):
-    embeddings: List[List[float]]
-    model: str
-    dimensions: int
+    timeout_seconds: Optional[PositiveFloat] = Field(
+        None,
+        description='A ceiling this caller wants, honoured only when it is BELOW the\nservice\'s own (the handler takes `min()` of the two). It cannot buy\na longer call.\n\nIt exists because one endpoint has two callers with different\ndeadlines: index-time enrichment allows 20s, search allows 10 - and\nthe service\'s single 20s ceiling meant Go\'s search deadline always\nexpired first. The caller then could not tell "the gateway is\nbroken" from "I stopped waiting", and Go\'s answer to the first is to\ndegrade search to FTS-only; meanwhile the abandoned gateway call\nstill ran and was still billed (M1\'s three 30s timeouts, every one\nof them charged).\n\nWhich caller gets which deadline stays a Go decision (Iron Rule 6).\nWhat this field carries is not policy: it is a number this service\nagrees to honour when it is the smaller one, so that the error\narrives as this service\'s 502 rather than as Go\'s deadline.\n',
+    )
 
 
 class EnrichSkillRequest(BaseModel):
@@ -66,23 +65,6 @@ class SkillTags(BaseModel):
     outputs: List[str]
     tools: List[str]
     dependencies: List[str]
-
-
-class EnrichSkillResponse(BaseModel):
-    summary: str = Field(
-        ...,
-        description='Plain-language, task-oriented summary covering the document body.',
-    )
-    task_examples: List[TaskExample]
-    tags: SkillTags
-    limitations: List[str] = Field(
-        ...,
-        description='What the document itself states the Skill does not do, or requires\nin order to work (DISC-003 一般模式「限制」). Restatement only: it\nstays inside the ADR-013 whitelist because it reports what the\ncontent says, exactly like `summary` does. A limitation the model\ninfers, and any judgement of risk, safety or quality, is out of\nscope and belongs to the static scan or to a human reviewer. Empty\nwhen the document states none.\n',
-    )
-    model: str = Field(..., description='Model that generated the fields above.')
-    prompt_version: str = Field(
-        ..., description='Prompt revision, so stale enrichments can be rebuilt.'
-    )
 
 
 class SkillCandidate(BaseModel):
@@ -141,21 +123,6 @@ class SuggestedCriterion(BaseModel):
         extra='forbid',
     )
     text: str
-
-
-class SuggestCriteriaResponse(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    criteria: List[SuggestedCriterion] = Field(
-        ...,
-        description='Blank and duplicate texts are dropped by the service, and the list is\ncut at 8. Empty means no usable proposal - not that the task needs no\ncriteria.\n',
-        max_length=8,
-    )
-
-
-class MatchReasonsResponse(BaseModel):
-    reasons: List[MatchReason]
 
 
 class JudgeCriterion(BaseModel):
@@ -391,6 +358,14 @@ class JudgeRunResponse(BaseModel):
         ...,
         description='Judge prompt revision, stored as `evaluations.judge_prompt_version`.\nA re-evaluation under a newer prompt is a new row, so this is what\nsays which prompt produced which verdict (evaluation-design §3.2).\n',
     )
+    temperature: Optional[float] = Field(
+        None,
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: ADR-026 makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n',
+    )
+    seed: Optional[int] = Field(
+        None,
+        description='The seed this service asked for. Best-effort at every provider and\ndropped by the gateway for models that do not take it, so it\nidentifies the REQUEST, not a promise that two calls match.\n',
+    )
     usage: Optional[GatewayUsage] = Field(
         None,
         description="What this judgement cost at the gateway. Omitted when the gateway\nreported nothing usable - which is why it is optional rather than\nzero-filled. Go stores it as `evaluations.cost_usd` /\n`cost_source`, kept in its own column apart from the Run's own cost:\none is what the user's workload spent, the other what the platform's\nverdict spent, and they are never added into one number (丙-3).\n",
@@ -477,9 +452,79 @@ class SuggestImprovementsResponse(BaseModel):
     )
     model: str
     prompt_version: str
+    temperature: Optional[float] = Field(
+        None,
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: ADR-026 makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n',
+    )
+    seed: Optional[int] = Field(
+        None,
+        description='The seed this service asked for. Best-effort at every provider and\ndropped by the gateway for models that do not take it, so it\nidentifies the REQUEST, not a promise that two calls match.\n',
+    )
     usage: Optional[GatewayUsage] = Field(
         None,
         description="What producing these proposals cost at the gateway. Same shape and\nsame optionality as JudgeRunResponse.usage: generating suggestions is\na second charged call on the judge tier, so it is reported rather than\nsilently folded into the judgement's cost.\n",
+    )
+
+
+class EmbedResponse(BaseModel):
+    embeddings: List[List[float]]
+    model: str
+    dimensions: int
+    usage: Optional[GatewayUsage] = Field(
+        None,
+        description='What this batch cost at the gateway. Optional and absent when the\ngateway reported nothing usable - never zero-filled.\n\nAn embeddings response has no completion half, so\n`completion_tokens` is 0 as a fact rather than as an absence. This\nis the highest-volume model call the platform makes (64 texts a\ncall, once per search and once per indexed Skill Version) and it was\nthe one with no bill at all.\n',
+    )
+
+
+class EnrichSkillResponse(BaseModel):
+    summary: str = Field(
+        ...,
+        description='Plain-language, task-oriented summary covering the document body.',
+    )
+    task_examples: List[TaskExample]
+    tags: SkillTags
+    limitations: List[str] = Field(
+        ...,
+        description='What the document itself states the Skill does not do, or requires\nin order to work (DISC-003 一般模式「限制」). Restatement only: it\nstays inside the ADR-013 whitelist because it reports what the\ncontent says, exactly like `summary` does. A limitation the model\ninfers, and any judgement of risk, safety or quality, is out of\nscope and belongs to the static scan or to a human reviewer. Empty\nwhen the document states none.\n',
+    )
+    model: str = Field(..., description='Model that generated the fields above.')
+    prompt_version: str = Field(
+        ..., description='Prompt revision, so stale enrichments can be rebuilt.'
+    )
+    temperature: Optional[float] = Field(
+        None,
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: ADR-026 makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n',
+    )
+    seed: Optional[int] = Field(
+        None,
+        description='The seed this service asked for. Best-effort at every provider and\ndropped by the gateway for models that do not take it, so it\nidentifies the REQUEST, not a promise that two calls match.\n',
+    )
+    usage: Optional[GatewayUsage] = Field(
+        None,
+        description="What this enrichment cost at the gateway. Optional, same rule as\nJudgeRunResponse.usage. Enrichment runs once per Skill Version on\nthe flagship tier, so this is the platform's own spend that grows\nwith the catalogue rather than with usage.\n",
+    )
+
+
+class SuggestCriteriaResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    criteria: List[SuggestedCriterion] = Field(
+        ...,
+        description='Blank and duplicate texts are dropped by the service, and the list is\ncut at 8. Empty means no usable proposal - not that the task needs no\ncriteria.\n',
+        max_length=8,
+    )
+    usage: Optional[GatewayUsage] = Field(
+        None,
+        description='What the proposal cost at the gateway. Optional, same rule as\nJudgeRunResponse.usage.\n',
+    )
+
+
+class MatchReasonsResponse(BaseModel):
+    reasons: List[MatchReason]
+    usage: Optional[GatewayUsage] = Field(
+        None,
+        description='What the batch cost at the gateway. Optional, same rule as\nJudgeRunResponse.usage. Reported even when `reasons` is empty: an\nanswer the service could not use was still a paid call.\n',
     )
 
 
@@ -518,6 +563,14 @@ class GenerateSkillResponse(BaseModel):
     skill: GeneratedSkill
     model: str
     prompt_version: str
+    temperature: Optional[float] = Field(
+        None,
+        description='The sampling temperature this service asked for - 0, pinned by the\nservice and never chosen by the caller.\n\nRecorded for the reason `model` and `prompt_version` are recorded.\nUnder the provider default the same prompt version, the same model\nand the same input could answer differently, and nothing stored\nexplained it: ADR-026 makes a verdict name its own ruler, and\nsampling was the part of the ruler nobody wrote down. Optional\nbecause it is additive - absent means a build that predates the\npinning, not a call that was unpinned by choice.\n',
+    )
+    seed: Optional[int] = Field(
+        None,
+        description='The seed this service asked for. Best-effort at every provider and\ndropped by the gateway for models that do not take it, so it\nidentifies the REQUEST, not a promise that two calls match.\n',
+    )
     usage: Optional[GatewayUsage] = Field(
         None,
         description='What the generation cost at the gateway. Measured median for a mini\ngeneration is about $0.0055; the quota is charged per generation and\nnot per call, so a retry does not double it and a failure costs the\nuser nothing (ADR-047 決策 2).\n',

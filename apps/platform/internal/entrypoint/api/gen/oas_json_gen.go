@@ -26962,6 +26962,8 @@ func (s *SearchResultRiskLevel) Decode(d *jx.Decoder) error {
 	}
 	// Try to use constant string.
 	switch SearchResultRiskLevel(v) {
+	case SearchResultRiskLevelUnknown:
+		*s = SearchResultRiskLevelUnknown
 	case SearchResultRiskLevelNone:
 		*s = SearchResultRiskLevelNone
 	case SearchResultRiskLevelDisclosed:

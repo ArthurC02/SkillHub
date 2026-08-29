@@ -13,11 +13,22 @@ import (
 )
 
 const deleteSearchDocument = `-- name: DeleteSearchDocument :exec
-DELETE FROM search_documents WHERE skill_id = $1
+DELETE FROM search_documents WHERE skill_id = $1 AND workspace_id = $2
 `
 
-func (q *Queries) DeleteSearchDocument(ctx context.Context, skillID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteSearchDocument, skillID)
+type DeleteSearchDocumentParams struct {
+	SkillID     pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+// Workspace scoped even though skill_id is the primary key of this table, on the
+// same rule the reads next door follow (iron rule 3): the id arrives from another
+// context's row, and a delete keyed on a caller-supplied id alone is the
+// cross-tenant write the scope exists to stop. Both callers already hold the
+// skill's workspace — soft delete from its own transaction, takedown from the row
+// it just flagged — so nothing widens to supply it.
+func (q *Queries) DeleteSearchDocument(ctx context.Context, arg DeleteSearchDocumentParams) error {
+	_, err := q.db.Exec(ctx, deleteSearchDocument, arg.SkillID, arg.WorkspaceID)
 	return err
 }
 

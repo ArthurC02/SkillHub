@@ -109,9 +109,10 @@
             "enum": [
               "user_uploaded_dataset",
               "not_curated",
-              "user_opted_out"
+              "user_opted_out",
+              "unsafe_dataset_file_name"
             ],
-            "description": "`user_uploaded_dataset` - it references bytes the user uploaded, whose licence the platform cannot judge, so it is never packaged and no opt-in is offered (packaging-design.md §5.1). `not_curated` - the Test Case was not produced by platform curation. `user_opted_out` - the packaging request set include_test_cases=false."
+            "description": "`user_uploaded_dataset` - it references bytes the user uploaded, whose licence the platform cannot judge, so it is never packaged and no opt-in is offered (packaging-design.md §5.1). `not_curated` - the Test Case was not produced by platform curation. `user_opted_out` - the packaging request set include_test_cases=false. `unsafe_dataset_file_name` - a dataset on this case has a stored file name that cannot be written as a direct child of `data/`; the name is not repaired, because a path that had to be fixed is not the path anybody recorded, so the case is left out whole rather than shipped with a dataset silently missing."
           }
         }
       }
@@ -212,8 +213,10 @@
               "type": "string",
               "enum": [
                 "git",
-                "upload"
-              ]
+                "upload",
+                "generated"
+              ],
+              "description": "Mirrors the `skill_sources.source_type` CHECK (0037 added `generated`). A generated source has no `source_url` — the platform wrote the bytes, so there is nothing upstream to name — but it does have `fetched_at` and `content_hash`, which is why it needs no branch of its own here: `fetched_at` is when the generation landed."
             },
             "source_url": {
               "type": [
@@ -387,8 +390,10 @@
               "type": "string",
               "enum": [
                 "git",
-                "upload"
-              ]
+                "upload",
+                "generated"
+              ],
+              "description": "Mirrors the `skill_sources.source_type` CHECK (0037 added `generated`). A generated source has no `source_url` — the platform wrote the bytes, so there is nothing upstream to name — but it does have `fetched_at` and `content_hash`, which is why it needs no branch of its own here: `fetched_at` is when the generation landed."
             },
             "source_url": {
               "type": [

@@ -79,12 +79,34 @@ func (q *Queries) CountQuotaRuns(ctx context.Context, arg CountQuotaRunsParams) 
 	return i, err
 }
 
-const deleteExpiredAnalyticsEvents = `-- name: DeleteExpiredAnalyticsEvents :execrows
-DELETE FROM analytics_events WHERE occurred_at < $1
+const deleteExpiredFeedbackReports = `-- name: DeleteExpiredFeedbackReports :execrows
+DELETE FROM feedback_reports WHERE created_at < $1
 `
 
-func (q *Queries) DeleteExpiredAnalyticsEvents(ctx context.Context, occurredAt pgtype.Timestamptz) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteExpiredAnalyticsEvents, occurredAt)
+// FEEDBACK_RETENTION, and it is the fourth time this repository has found the
+// same shape: a data class being collected with nothing that ever removes it.
+// 0029 gave feedback_reports a table, a 2000-character message column and a
+// de-identification statement (DetachWorkspaceFeedback above) — and no DELETE, no
+// sweep, and no line in GET /policy/data-retention, whose text meanwhile declares
+// there is no free-text column anywhere. That sentence is true of
+// analytics_events and false of this deployment.
+//
+// Deleting rather than de-identifying, and the two are not in tension.
+// DetachWorkspaceFeedback answers "this person closed their account" and keeps
+// the words, because ADR-029 決策 5 rests a scope review on them. This answers
+// "the words are older than the window anyone agreed to keep them for", which no
+// amount of de-identification satisfies: a 2000-character free-text field a
+// participant wrote about where they got stuck is exactly the kind of content
+// NFR-002 says must have a ratified deadline before it is collected at all.
+//
+// The cutoff is the caller's, like every other retention sweep here: the window
+// is deployment configuration, fail-closed on an unset FEEDBACK_RETENTION
+// (cmd/maintenance purge-feedback), because a default here would be this process
+// enforcing a retention nobody signed, by deleting.
+//
+// No immutability trigger on this table (0029 gave it none), so no purge flag.
+func (q *Queries) DeleteExpiredFeedbackReports(ctx context.Context, createdAt pgtype.Timestamptz) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredFeedbackReports, createdAt)
 	if err != nil {
 		return 0, err
 	}

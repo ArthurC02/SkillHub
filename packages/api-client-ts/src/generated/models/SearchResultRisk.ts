@@ -46,7 +46,10 @@ export interface SearchResultRisk {
      * Highest severity the scan recorded. `warning` = at least one
      * warning-level finding. `disclosed` = no warnings, but the package
      * declares something the reader should know about (scripts, external
-     * URLs, binaries, dependency manifests). `none` = neither. Error-level
+     * URLs, binaries, dependency manifests). `none` = neither. `unknown`
+     * = `scan_status` is `unavailable`: no scan exists for this row, so no
+     * level can be claimed — it is never `none`, because `none` is a
+     * clean-scan verdict and this row has no verdict (DISC-004). Error-level
      * findings never appear: they block the import, so nothing carrying one
      * is in the index at all.
      * 
@@ -91,6 +94,7 @@ export type SearchResultRiskScanStatusEnum = typeof SearchResultRiskScanStatusEn
  * @export
  */
 export const SearchResultRiskLevelEnum = {
+    Unknown: 'unknown',
     None: 'none',
     Disclosed: 'disclosed',
     Warning: 'warning'
