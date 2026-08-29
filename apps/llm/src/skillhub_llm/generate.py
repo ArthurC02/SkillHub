@@ -36,10 +36,11 @@ import logging
 import os
 
 from fastapi import APIRouter, HTTPException
-from openai import OpenAIError
+from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from skillhub_llm.evaluate import GatewayUsage, _client, _metadata, _usage
+from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client
+from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
 logger = logging.getLogger("skillhub_llm.generate")
 
@@ -59,6 +60,24 @@ GENERATE_SKILL_MODEL = os.getenv("GENERATE_SKILL_MODEL", "gpt-5.4-mini")
 # must reproduce the package; a prompt that changed under an unchanged version
 # string is a record that says one thing and did another.
 GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v2"
+
+# This endpoint's own ceiling, not the judge's. It borrowed evaluate's `_client`
+# and with it evaluate's 120s, a number sized for ~120k characters of judge
+# evidence - so raising the judge's ceiling silently raised this one and ate the
+# 10s margin Go's generateTimeout (admission/generate.go) is built on, with no
+# test anywhere able to see it. 4000 runes in, 16000 tokens out: the same 120s
+# is right for a different reason, and it is now stated as that reason.
+# budget-ceiling: generate.LLM_TIMEOUT_SECONDS
+LLM_TIMEOUT_SECONDS = 120.0
+
+# Delimiter isolating the user's own task text from the instructions (TM-SCN-02).
+DATA_TAG = "untrusted_task_description"
+
+
+def _client() -> AsyncOpenAI:
+    """OpenAI-compatible client pointed at the LiteLLM gateway (Iron Rule 8)."""
+    return client(LLM_TIMEOUT_SECONDS)
+
 
 # ADR-047 決策 2, corrected by the B round: the cap covers reasoning *plus*
 # output, and reasoning varies far more than output does. The one round-A
@@ -177,6 +196,12 @@ class GenerateSkillResponse(BaseModel):
     skill: GeneratedSkill
     model: str
     prompt_version: str
+    # Part of the provenance record 02:GEN-001 says must reproduce the package,
+    # for the same reason `model` and `prompt_version` are: an unpinned sampler
+    # makes "reproduce" unachievable even in approximation. `seed` is what was
+    # asked for; the provider honours it best-effort.
+    temperature: float | None = None
+    seed: int | None = None
     usage: GatewayUsage | None = None
 
 
@@ -208,7 +233,17 @@ Write in the language of the task description.
 If the task is not something a Skill can do - it needs live network access, a
 purchase, a physical action, or a login you were not given - say so plainly in
 `body` and keep the skill to what an agent CAN do: the checklist, the questions
-to ask, the information to gather."""
+to ask, the information to gather.
+
+""" + data_block_rules(DATA_TAG, "the user's own description of what they want done")
+# The threat model here is the mildest of the six - the text is the user's own
+# and the package it produces is visible to nobody else (02:GEN-002) - so the
+# worst outcome of an injection is a user getting the odd package they asked
+# for. It is fenced anyway because everything the prompt actually enforces
+# lives in the prompt: the name format, the "no YAML frontmatter" rule and
+# ADR-046 決策 5's licence prohibition are prose, and unfenced user text is the
+# easiest place to rewrite prose from. Being the one exception was itself the
+# argument for closing it.
 
 
 @router.post("/v1/generate-skill", response_model=GenerateSkillResponse)
@@ -225,9 +260,15 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
             model=GENERATE_SKILL_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": req.task_description},
+                {
+                    "role": "user",
+                    "content": fence(DATA_TAG, scrub(DATA_TAG, req.task_description))
+                    + "\n\nWrite the Skill for the task described in the block above.",
+                },
             ],
             max_tokens=MAX_OUTPUT_TOKENS,
+            temperature=TEMPERATURE,
+            seed=SEED,
             response_format={
                 "type": "json_schema",
                 "json_schema": {
@@ -241,7 +282,7 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
         completion = raw.parse()
     except OpenAIError as e:
         logger.exception("generate-skill: gateway call failed")
-        raise HTTPException(status_code=502, detail=f"generate gateway error: {e}") from e
+        raise HTTPException(status_code=502, detail="gateway error") from e
 
     # Truncation is a different failure from a malformed answer and must not be
     # retried at the same cap: the cap covers reasoning plus output, so a second
@@ -283,5 +324,7 @@ async def generate_skill(req: GenerateSkillRequest) -> GenerateSkillResponse:
         skill=skill,
         model=GENERATE_SKILL_MODEL,
         prompt_version=GENERATE_SKILL_PROMPT_VERSION,
+        temperature=TEMPERATURE,
+        seed=SEED,
         usage=_usage(completion, raw.headers),
     )

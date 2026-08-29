@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from openai import APIConnectionError
 
-from skillhub_llm import enrich
+from skillhub_llm import enrich, gateway
 from skillhub_llm.app import app
 
 client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
@@ -36,14 +36,28 @@ REQUEST = {
 
 
 def _fake_client(content: str, capture: list | None = None):
-    """Stand-in for AsyncOpenAI whose completion returns `content`."""
+    """Stand-in for AsyncOpenAI whose completion returns `content`.
+
+    Answers `with_raw_response`, as test_evaluate's does: the gateway reports
+    what a call cost in a header and never in the body.
+    """
 
     async def create(**kwargs):
         if capture is not None:
             capture.append(kwargs)
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
+        completion = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
+            usage=SimpleNamespace(prompt_tokens=4000, completion_tokens=600),
+        )
+        return SimpleNamespace(
+            parse=lambda: completion, headers={"x-litellm-response-cost": "0.0210"}
+        )
 
-    return SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    return SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
 
 
 @pytest.fixture
@@ -75,6 +89,9 @@ def test_enrich_returns_whitelist_fields(gateway_env, monkeypatch):
         "limitations",
         "model",
         "prompt_version",
+        "temperature",
+        "seed",
+        "usage",
     }
 
 
@@ -114,6 +131,45 @@ def test_untrusted_content_is_isolated_and_disclaimed(gateway_env, monkeypatch):
     assert "Ignore previous instructions" in user["content"]  # kept as data, not stripped
 
 
+def test_enrich_pins_its_sampling_and_reports_what_it_pinned(gateway_env, monkeypatch):
+    """Enrichment feeds a primary retrieval field and is rebuilt when the prompt
+    version moves. Under the provider default (1.0) two rebuilds of one prompt
+    version could disagree and nothing stored would say why - the same hole
+    ADR-026 closes for the judge with judge_prompt_version and judge_model.
+
+    Asserted on the call AND on the answer: pinning it without reporting it
+    leaves the stored enrichment unable to name the sampling that wrote it.
+    """
+    capture: list = []
+    monkeypatch.setattr(enrich, "_client", lambda: _fake_client(json.dumps(GOOD_PAYLOAD), capture))
+
+    body = client.post("/v1/enrich-skill", json=REQUEST).json()
+
+    assert capture[0]["temperature"] == 0
+    assert capture[0]["seed"] == gateway.SEED
+    assert body["temperature"] == 0
+    assert body["seed"] == gateway.SEED
+
+
+def test_enrich_tags_and_reports_its_own_cost(gateway_env, monkeypatch):
+    """Index-time enrichment runs once per Skill Version on the flagship tier and
+    had no bill at all: no per-call reading here and no `operation` tag at the
+    gateway, so the one platform cost that grows with the catalogue appeared in
+    no ledger (ADR-017 Run 成本歸因, 04 丙-53)."""
+    capture: list = []
+    monkeypatch.setattr(enrich, "_client", lambda: _fake_client(json.dumps(GOOD_PAYLOAD), capture))
+
+    body = client.post("/v1/enrich-skill", json=REQUEST).json()
+
+    assert capture[0]["extra_body"] == {"metadata": {"operation": "enrich-skill"}}
+    assert body["usage"] == {
+        "prompt_tokens": 4000,
+        "completion_tokens": 600,
+        "cost_usd": 0.021,
+        "cost_source": "gateway",
+    }
+
+
 def test_malformed_model_json_is_502(gateway_env, monkeypatch):
     monkeypatch.setattr(enrich, "_client", lambda: _fake_client("not json at all"))
 
@@ -130,17 +186,29 @@ def test_schema_violating_model_json_is_502(gateway_env, monkeypatch):
     assert client.post("/v1/enrich-skill", json=REQUEST).status_code == 502
 
 
-def test_gateway_error_is_502(gateway_env, monkeypatch):
+def test_gateway_error_is_502_without_quoting_the_exception(gateway_env, monkeypatch):
+    """The detail is a fixed string. The SDK exception carries the response body
+    and LiteLLM's error bodies routinely quote the request payload back - here
+    the package's own SKILL.md - and Go copies the first KiB of the detail into
+    its error string (llmclient/client.go:73). The same module refuses to echo
+    model OUTPUT for exactly this reason; the exception path was the looser of
+    the two standards on the more sensitive half. `logger.exception` still has
+    it.
+    """
     failing = SimpleNamespace(
         chat=SimpleNamespace(
             completions=SimpleNamespace(
-                create=AsyncMock(side_effect=APIConnectionError(request=None))
+                with_raw_response=SimpleNamespace(
+                    create=AsyncMock(side_effect=APIConnectionError(request=None))
+                )
             )
         )
     )
     monkeypatch.setattr(enrich, "_client", lambda: failing)
 
-    assert client.post("/v1/enrich-skill", json=REQUEST).status_code == 502
+    response = client.post("/v1/enrich-skill", json=REQUEST)
+    assert response.status_code == 502
+    assert response.json() == {"detail": "gateway error"}
 
 
 def test_missing_gateway_env_is_503(monkeypatch):

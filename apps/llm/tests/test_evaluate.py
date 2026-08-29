@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from openai import APIConnectionError
 
-from skillhub_llm import evaluate
+from skillhub_llm import evaluate, gateway
 from skillhub_llm.app import app
 
 client = TestClient(app, headers={"Authorization": "Bearer test-service-token"})
@@ -149,7 +149,14 @@ def test_judge_returns_verdict_with_model_and_prompt_version(capture):
 
     assert response.status_code == 200
     body = response.json()
-    assert set(body) == {"verdict", "model", "prompt_version", "usage"}
+    assert set(body) == {
+        "verdict",
+        "model",
+        "prompt_version",
+        "temperature",
+        "seed",
+        "usage",
+    }
     assert body["model"] == evaluate.JUDGE_MODEL
     assert body["prompt_version"] == evaluate.JUDGE_PROMPT_VERSION
     assert [c["criterion_id"] for c in body["verdict"]["criterion_results"]] == ["c1", "c2"]
@@ -319,6 +326,47 @@ def test_judge_call_is_strict_json_schema_and_carries_cost_metadata(capture):
     # Single-shot: no tools, no second call.
     assert "tools" not in call
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "path, body",
+    [("/judge-run", JUDGE_REQUEST), ("/suggest-improvements", IMPROVE_REQUEST)],
+)
+def test_the_judge_pins_its_sampling_and_reports_what_it_pinned(capture, path, body):
+    """ADR-026 決策 1 makes a stored verdict name its own ruler - prompt version,
+    rubric version, model - so that "passed last week, not today" can be
+    attributed to a named change. Sampling was the part of the ruler nobody
+    wrote down: under the provider default the same prompt version, the same
+    model and the same evidence could answer differently, and no column in
+    `evaluations` explained it. report-judge-regression.md's two rounds (45 and
+    5) and ADR-051's 19/20-vs-16/20 model choice both sit on that unmeasured
+    noise floor.
+
+    Asserted on the call AND on the answer: pinning without recording leaves the
+    stored verdict unable to say what produced it.
+    """
+    calls = capture(json.dumps(GOOD_VERDICT if path == "/judge-run" else GOOD_PROPOSALS))
+
+    answer = client.post(path, json=body).json()
+
+    assert calls[0]["temperature"] == 0
+    assert calls[0]["seed"] == gateway.SEED
+    assert answer["temperature"] == 0
+    assert answer["seed"] == gateway.SEED
+
+
+def test_a_gateway_exception_does_not_travel_back_in_the_detail(capture, monkeypatch):
+    """Fixed string, exception kept in the log. The SDK message carries the
+    response body, LiteLLM quotes the request payload in its error bodies, and a
+    judge payload is the user's task text plus the run's own output. Go copies
+    the first KiB of the detail into its error string (llmclient/client.go:73).
+    """
+    monkeypatch.setattr(evaluate, "_client", _fake_gateway_failure)
+
+    response = client.post("/judge-run", json=JUDGE_REQUEST)
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "gateway error"}
 
 
 def test_usage_reports_tokens_from_the_body_and_cost_from_the_header(capture):

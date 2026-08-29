@@ -2,6 +2,9 @@ import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import anyio
+import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from skillhub_llm import app as app_module
@@ -90,7 +93,11 @@ def test_match_reasons_rejects_malformed_provider_envelope():
         "_client",
         lambda timeout: SimpleNamespace(
             chat=SimpleNamespace(
-                completions=SimpleNamespace(create=_returns(SimpleNamespace(choices=[])))
+                completions=SimpleNamespace(
+                    with_raw_response=SimpleNamespace(
+                        create=_returns(SimpleNamespace(choices=[], usage=None))
+                    )
+                )
             )
         ),
     ):
@@ -127,6 +134,16 @@ def test_match_reasons_rejects_empty_candidates():
     assert response.status_code == 422
 
 
+COST_HEADERS = {"x-litellm-response-cost": "0.0004"}
+
+
+def _raw(completion, headers=None):
+    """The shape `with_raw_response.create` answers: parse() plus headers."""
+    return SimpleNamespace(
+        parse=lambda: completion, headers=COST_HEADERS if headers is None else headers
+    )
+
+
 def _stub_chat(content: str, capture: list | None = None):
     """Patch the endpoint's client with one whose completion returns `content`.
 
@@ -134,26 +151,45 @@ def _stub_chat(content: str, capture: list | None = None):
     own entry point onto the AsyncOpenAI client every other module uses, so that
     they carry an explicit timeout and so that a `gemini/...` in MATCH_REASON_MODEL
     can no longer pick a different provider handler behind gateway()'s back.
+
+    It answers `with_raw_response` because the gateway reports what a call cost
+    in a header and never in the body, so a plain `create` cannot see the bill.
     """
 
     async def create(**kwargs):
         if capture is not None:
             capture.append(kwargs)
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
+        return _raw(
+            SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
+                usage=SimpleNamespace(prompt_tokens=800, completion_tokens=120),
+            )
+        )
 
-    stub = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    stub = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
     return patch.object(app_module, "_client", lambda timeout: stub)
 
 
-def _stub_embeddings(data, error: Exception | None = None):
+def _stub_embeddings(data, error: Exception | None = None, capture: list | None = None):
     """Patch the endpoint's client with one whose embeddings call returns `data`."""
 
     async def create(**kwargs):
+        if capture is not None:
+            capture.append(kwargs)
         if error is not None:
             raise error
-        return SimpleNamespace(data=data)
+        # An embeddings response has a `usage` with no completion half at all.
+        return _raw(
+            SimpleNamespace(data=data, usage=SimpleNamespace(prompt_tokens=64, total_tokens=64))
+        )
 
-    stub = SimpleNamespace(embeddings=SimpleNamespace(create=create))
+    stub = SimpleNamespace(
+        embeddings=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+    )
     return patch.object(app_module, "_client", lambda timeout: stub)
 
 
@@ -163,7 +199,7 @@ def _embedding(vector):
 
 def _returns(value):
     async def create(**kwargs):
-        return value
+        return _raw(value)
 
     return create
 
@@ -174,7 +210,11 @@ def _raising_chat(error: Exception):
     async def create(**kwargs):
         raise error
 
-    stub = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    stub = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
     return patch.object(app_module, "_client", lambda timeout: stub)
 
 
@@ -339,9 +379,17 @@ def test_suggest_criteria_asks_the_gateway_for_the_shape_it_parses():
 
     async def create(**kwargs):
         sent.append(kwargs)
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=body))])
+        return _raw(
+            SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content=body))], usage=None
+            )
+        )
 
-    stub = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    stub = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
 
     def build(timeout):
         # The real client, built the way the endpoint asks for it - constructing
@@ -430,13 +478,23 @@ def test_every_endpoint_asks_for_its_own_ceiling():
     it has to reach the client, which is what this asserts and what
     test_gateway_client.py cannot see."""
     asked: list[float] = []
-    completion = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="{}"))])
+    completion = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="{}"))], usage=None
+    )
 
     def build(timeout):
         asked.append(timeout)
         return SimpleNamespace(
-            embeddings=SimpleNamespace(create=_returns(SimpleNamespace(data=[]))),
-            chat=SimpleNamespace(completions=SimpleNamespace(create=_returns(completion))),
+            embeddings=SimpleNamespace(
+                with_raw_response=SimpleNamespace(
+                    create=_returns(SimpleNamespace(data=[], usage=None))
+                )
+            ),
+            chat=SimpleNamespace(
+                completions=SimpleNamespace(
+                    with_raw_response=SimpleNamespace(create=_returns(completion))
+                )
+            ),
         )
 
     with patch.object(app_module, "_client", build):
@@ -528,6 +586,123 @@ def test_embed_rejects_vectors_of_the_wrong_dimension():
     assert response.json() == {"detail": "embedding provider returned malformed output"}
 
 
+def test_embed_honours_a_lower_ceiling_from_the_caller_and_never_a_higher_one():
+    """One endpoint, two callers, two deadlines - and the wrong one was fixed here.
+
+    Index-time enrichment allows 20s; search allows 10 (discovery/service.go),
+    under NFR-004's 2s p95. With a single 20s ceiling on this side, Go's search
+    deadline always expired first: the caller got `context deadline exceeded`
+    instead of this service's 502, could not tell a broken gateway from a slow
+    one, and degraded search to FTS-only either way - while the abandoned
+    gateway call ran on and was billed.
+
+    A cap the caller may LOWER only. Raising it here would be this service
+    taking a policy decision that is Go's (Iron Rule 6), and it would restore
+    the same inversion in the other direction.
+    """
+    asked: list[float] = []
+
+    def build(timeout):
+        asked.append(timeout)
+        return SimpleNamespace(
+            embeddings=SimpleNamespace(
+                with_raw_response=SimpleNamespace(
+                    create=_returns(SimpleNamespace(data=[], usage=None))
+                )
+            )
+        )
+
+    with patch.object(app_module, "_client", build):
+        client.post("/embed", json={"texts": ["one"], "timeout_seconds": 10})
+        client.post("/embed", json={"texts": ["one"], "timeout_seconds": 600})
+        client.post("/embed", json={"texts": ["one"]})
+
+    assert asked == [10, app_module.EMBED_TIMEOUT_SECONDS, app_module.EMBED_TIMEOUT_SECONDS]
+
+
+def test_embed_rejects_a_ceiling_of_zero_or_less():
+    """`min()` would accept 0 and time the call out before it started."""
+    for bad in (0, -1):
+        r = client.post("/embed", json={"texts": ["one"], "timeout_seconds": bad})
+        assert r.status_code == 422, bad
+
+
+@pytest.mark.parametrize(
+    "path, payload",
+    [
+        ("/embed", {"texts": ["one"]}),
+        ("/match-reasons", {"query": "read my invoices", "candidates": CANDIDATES}),
+        ("/suggest-criteria", SUGGEST_BODY),
+    ],
+)
+def test_every_call_tells_the_gateway_which_operation_it_is(path, payload):
+    """ADR-017 Run 成本歸因 needs a label on the spend, and these three had none.
+
+    All six endpoints bill into one bucket under one static key. Without
+    `metadata.operation` the two costs that scale on their own - one embedding
+    per search, one enrichment per indexed Skill Version - cannot be separated
+    from each other or from a judgement at the gateway's own ledger, which is
+    the only ledger there is (04 丙-53).
+    """
+    sent: list = []
+    stub = _stub_embeddings([], capture=sent) if path == "/embed" else _stub_chat("{}", sent)
+    with stub:
+        client.post(path, json=payload)
+
+    operation = path.lstrip("/")
+    assert sent[0]["extra_body"] == {"metadata": {"operation": operation}}
+
+
+def test_embed_reports_what_the_batch_cost():
+    """The 64-text batch was the biggest model call with no bill of any kind.
+
+    `completion_tokens` is 0 because an embeddings response has no completion
+    half - a fact, not an absent reading, which is why the shared `_usage`
+    (which reports nothing when the count is missing) cannot be used here.
+    """
+    with _stub_embeddings([_embedding([0.1] * 1536)]):
+        body = client.post("/embed", json={"texts": ["hello"]}).json()
+
+    assert body["usage"] == {
+        "prompt_tokens": 64,
+        "completion_tokens": 0,
+        "cost_usd": 0.0004,
+        "cost_source": "gateway",
+    }
+
+
+def test_a_paid_call_the_service_could_not_use_still_reports_its_cost():
+    """An off-schema answer is still a charge. Reporting nothing here is how the
+    endpoints that fail most quietly become the ones that look free."""
+    with _stub_chat('{"skills": []}'):
+        body = client.post(
+            "/match-reasons", json={"query": "read my invoices", "candidates": CANDIDATES}
+        ).json()
+
+    assert body["reasons"] == []
+    assert body["usage"]["cost_usd"] == 0.0004
+
+
+def test_the_gateway_exception_does_not_travel_back_in_the_detail():
+    """The SDK's message carries the response body, and LiteLLM's error bodies
+    routinely quote the request payload - which for these endpoints is the
+    user's own query text. Go copies the first KiB of this detail into its own
+    error string (llmclient/client.go:73), so it crosses two processes and lands
+    in a log. The same file takes the opposite line on model OUTPUT ("never
+    echoed back"), and the looser of the two standards was on the more sensitive
+    half.
+
+    The exception is not lost: `logger.exception` above the raise still has it.
+    """
+    with _raising_chat(RuntimeError("400 on prompt: 'my private task text'")):
+        r = client.post(
+            "/match-reasons", json={"query": "my private task text", "candidates": CANDIDATES}
+        )
+
+    assert r.status_code == 502
+    assert r.json() == {"detail": "gateway error"}
+
+
 def test_embed_rejects_an_item_with_no_embedding_field():
     """A missing `.embedding` is a 502, not an uncaught 500.
 
@@ -542,3 +717,63 @@ def test_embed_rejects_an_item_with_no_embedding_field():
 
     assert response.status_code == 502
     assert response.json() == {"detail": "embedding provider returned malformed output"}
+
+
+# --- what happens when the caller stops waiting (Iron Rule 7's Python half) ---
+
+
+def test_a_caller_that_stops_waiting_gets_no_answer(monkeypatch):
+    """The only test in this suite where a call actually runs out of time.
+
+    Everything else asserts that the ceiling is BUILT correctly:
+    test_gateway_client.py checks `timeout` and `max_retries` on the client,
+    test_every_endpoint_asks_for_its_own_ceiling checks the number reaches
+    `_client()`. Nothing checked what happens when the ceiling is reached, and
+    evaluate.py's own comment says the interesting part is exactly there: "Go's
+    deadline is client-side: it stops Go waiting, it does not reach the gateway
+    and it does not stop the call or its bill."
+
+    OBSERVED, and stated as an observation rather than as a guarantee: over an
+    in-process ASGI transport, cancelling the caller's task cancels the handler
+    with it, so the stub's gateway call never returns and the caller gets no
+    response at all - not a 200, and not the 500 that Go cannot tell from a
+    provider outage. That is the transport's doing, not this service's: the
+    handler holds no `request.is_disconnected()` check and nothing here
+    propagates cancellation to the gateway. Under uvicorn, a disconnected
+    client does NOT reliably cancel a task already inside a handler, so the
+    real deployment can still finish and pay for a call nobody is waiting for.
+    Closing that is Go's side of Iron Rule 7 plus a gateway that honours
+    cancellation; this test pins the half that is observable here.
+    """
+    reached_the_answer: list[bool] = []
+
+    async def create(**kwargs):
+        await anyio.sleep(30)
+        reached_the_answer.append(True)
+        raise AssertionError("the stub was allowed to finish")
+
+    stub = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
+
+    async def scenario():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://llm",
+            headers={"Authorization": "Bearer test-service-token"},
+        ) as caller:
+            with anyio.move_on_after(0.25):
+                return await caller.post(
+                    "/match-reasons",
+                    json={"query": "read my invoices", "candidates": CANDIDATES},
+                )
+        return None
+
+    with patch.object(app_module, "_client", lambda timeout: stub):
+        answer = anyio.run(scenario)
+
+    assert answer is None, f"the caller walked away and still got {answer!r}"
+    assert reached_the_answer == []

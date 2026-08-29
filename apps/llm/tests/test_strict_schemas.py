@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel
 
-from skillhub_llm.app import MatchReasonsResponse, SuggestCriteriaResponse
+from skillhub_llm.app import MatchReasons, SuggestedCriteria
 from skillhub_llm.enrich import Enrichment
 from skillhub_llm.evaluate import ImprovementProposals, JudgeVerdict
 from skillhub_llm.generate import GeneratedSkill
@@ -57,9 +57,15 @@ REFUSED_KEYWORDS = {
     "uniqueItems",
 }
 
+# The model-facing halves only. `MatchReasonsResponse` and
+# `SuggestCriteriaResponse` are their WIRE subclasses and carry `usage`, which
+# is exactly what must not be in a schema the model answers - and which strict
+# would refuse anyway, GatewayUsage having defaults and a `minimum`. Listing the
+# subclass here would make this file report that the pair is illegal while the
+# real call is fine.
 MODEL_FACING = [
-    MatchReasonsResponse,
-    SuggestCriteriaResponse,
+    MatchReasons,
+    SuggestedCriteria,
     Enrichment,
     JudgeVerdict,
     ImprovementProposals,

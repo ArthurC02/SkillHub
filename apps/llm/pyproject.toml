@@ -10,9 +10,19 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.32",
-    "litellm>=1.40",
     "openai>=1.60",
+    # Imported directly by every module in src/. It used to arrive only as
+    # fastapi's transitive dependency, which is a version this project does not
+    # control and would not notice losing.
+    "pydantic>=2",
 ]
+# litellm was declared here and imported nowhere. app.py argues at length why
+# its entry point is deliberately NOT used - it picks a provider handler from
+# the model name prefix, so a `gemini/...` in an env var reroutes the call
+# behind gateway()'s back, which is a way around Iron Rule 8 - so the largest
+# dependency in this service was the one tool for evading its main rule. Its
+# only remaining effect was feeding PyYAML to the test suite by accident;
+# PyYAML is now declared where it is used.
 
 [tool.uv.sources]
 skillhub-api-stub = { path = "../../packages/api-stub-py", editable = true }
@@ -21,6 +31,7 @@ skillhub-api-stub = { path = "../../packages/api-stub-py", editable = true }
 dev = [
     "httpx>=0.28",
     "pytest>=8.3",
+    "pyyaml>=6",  # tests/test_generated_contract.py reads the contract itself
     "ruff>=0.8",
     "skillhub-api-stub",
 ]

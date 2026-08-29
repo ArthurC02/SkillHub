@@ -30,7 +30,12 @@ model_list:
       model: openai/gpt-5.6-terra
       api_key: os.environ/OPENAI_API_KEY
       additional_drop_params: ["reasoning_effort", "thinking"]
-  - model_name: gpt-5.6-luna # search rewrite and match-reason tier
+  # match-reason tier (search rewrite not implemented, see 04 丙-76). ADR-013
+  # 決策 §2 specifies a light LLM query rewrite and quantifies it (Top-1 80% ->
+  # 100%); apps/llm has six endpoints and none of them is it, so /match-reasons
+  # is the only caller of this group. Named here so the next reader of this file
+  # does not conclude from the comment that the rewrite exists.
+  - model_name: gpt-5.6-luna # match-reason tier
     litellm_params:
       model: openai/gpt-5.6-luna
       api_key: os.environ/OPENAI_API_KEY

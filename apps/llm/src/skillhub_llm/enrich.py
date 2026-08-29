@@ -19,7 +19,7 @@ from fastapi import APIRouter, HTTPException
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from skillhub_llm.gateway import client
+from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client
 from skillhub_llm.untrusted import scrub
 
 router = APIRouter()
@@ -59,6 +59,7 @@ PROMPT_VERSION = "enrich-skill/v6"
 # reach the gateway, does not stop the call and does not stop it being billed.
 # So this number, times the client's attempt count, is what actually bounds the
 # work - which is why the client is built with max_retries=0.
+# budget-ceiling: enrich.LLM_TIMEOUT_SECONDS
 LLM_TIMEOUT_SECONDS = 60.0
 
 # Delimiter isolating untrusted package content from instructions (TM-SCN-02).
@@ -164,6 +165,17 @@ class Enrichment(BaseModel):
 class EnrichSkillResponse(Enrichment):
     model: str
     prompt_version: str
+    # Reported for the same reason `prompt_version` is. Enrichment feeds a
+    # primary retrieval field and gets rebuilt when the prompt moves; an
+    # unpinned sampler means two rebuilds of one version can disagree with
+    # nothing recorded saying why.
+    temperature: float | None = None
+    seed: int | None = None
+    # Index-time enrichment runs once per Skill Version on the flagship tier and
+    # had no bill of any kind: neither a per-call reading here nor an
+    # `operation` tag at the gateway, so the catalogue's own model spend was the
+    # one cost that grew with the catalogue and appeared in no ledger.
+    usage: GatewayUsage | None = None
 
 
 def _client() -> AsyncOpenAI:
@@ -192,7 +204,9 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
     client = _client()
     system = SYSTEM_PROMPT.format(tag=DATA_TAG, language=req.language)
     try:
-        completion = await client.chat.completions.create(
+        # Raw response, because the cost of the call is in a header
+        # (`x-litellm-response-cost`) and never in the body.
+        raw = await client.chat.completions.with_raw_response.create(
             model=ENRICH_MODEL,
             messages=[
                 {"role": "system", "content": system},
@@ -206,10 +220,20 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
                     "schema": Enrichment.model_json_schema(),
                 },
             },
+            temperature=TEMPERATURE,
+            seed=SEED,
+            extra_body=_metadata(operation="enrich-skill"),
         )
+        completion = raw.parse()
     except OpenAIError as e:
         logger.exception("enrich-skill: gateway call failed")
-        raise HTTPException(status_code=502, detail=f"enrichment gateway error: {e}") from e
+        # Fixed string: the SDK's exception message carries the response body,
+        # and LiteLLM's error bodies routinely quote the request payload back -
+        # which here is the package's own SKILL.md. Go puts the first KiB of
+        # this into its error string (llmclient/client.go), so the detail is a
+        # cross-process channel. The exception itself stays in the log line
+        # above, where debugging actually reads it.
+        raise HTTPException(status_code=502, detail="gateway error") from e
 
     try:
         enrichment = Enrichment.model_validate_json(completion.choices[0].message.content or "")
@@ -221,5 +245,10 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
         ) from e
 
     return EnrichSkillResponse(
-        **enrichment.model_dump(), model=ENRICH_MODEL, prompt_version=PROMPT_VERSION
+        **enrichment.model_dump(),
+        model=ENRICH_MODEL,
+        prompt_version=PROMPT_VERSION,
+        temperature=TEMPERATURE,
+        seed=SEED,
+        usage=_usage(completion, raw.headers),
     )

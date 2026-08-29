@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from skillhub_llm.enrich import router as enrich_router
 from skillhub_llm.evaluate import router as evaluate_router
+from skillhub_llm.gateway import GatewayUsage, _embedding_usage, _metadata, _usage
 from skillhub_llm.gateway import client as _client
 from skillhub_llm.generate import router as generate_router
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
@@ -81,8 +82,18 @@ SUGGEST_CRITERIA_MODEL = os.getenv("SUGGEST_CRITERIA_MODEL", "gpt-5.4-mini")
 # request and took search down with it. Go's deadline does not help - it is
 # client-side, and abandoning the HTTP request neither stops the gateway call
 # nor stops it being billed.
-EMBED_TIMEOUT_SECONDS = 20.0  # admission/enrich.go embedTimeout; discovery allows 10s
+#
+# The marker pairs each of these with the Go budget that has to exceed it
+# (`// budget-over:` on the Go side). Five of the six pairs used to be exactly
+# equal and the search one was inverted - Go allowed 10s where this allowed 20 -
+# so Go's deadline fired first, the caller could not tell a broken gateway from
+# a slow one, and the abandoned call was billed anyway. Nothing could go red:
+# the two numbers lived in two languages and nothing compared them.
+# budget-ceiling: app.EMBED_TIMEOUT_SECONDS
+EMBED_TIMEOUT_SECONDS = 20.0  # admission/enrich.go embedTimeout; search asks for less
+# budget-ceiling: app.MATCH_REASONS_TIMEOUT_SECONDS
 MATCH_REASONS_TIMEOUT_SECONDS = 8.0  # discovery/service.go reasonCtx
+# budget-ceiling: app.SUGGEST_CRITERIA_TIMEOUT_SECONDS
 SUGGEST_CRITERIA_TIMEOUT_SECONDS = 30.0  # trial/design/suggest.go suggestTimeout
 
 # Delimiter isolating untrusted content from instructions, as /v1/enrich-skill
@@ -108,12 +119,24 @@ def healthz() -> dict[str, str]:
 
 class EmbedRequest(BaseModel):
     texts: list[str] = Field(..., min_length=1, max_length=64)
+    # One endpoint, two callers with different deadlines: index-time enrichment
+    # allows 20s, search allows 10 (NFR-004's 2s p95 sits under it). A single
+    # ceiling cannot be right for both, and the one that was wrong was search's
+    # - Go gave up at 10s while this waited to 20, so Go's deadline always fired
+    # first and the 502 that says "the gateway is broken" could never arrive.
+    #
+    # A cap the caller may LOWER, never raise: the handler takes min() with the
+    # module's own ceiling, so this cannot buy a longer call. The policy - which
+    # caller gets which deadline - stays in Go (Iron Rule 6); what arrives here
+    # is a number this service agrees to honour if it is the smaller one.
+    timeout_seconds: float | None = Field(None, gt=0)
 
 
 class EmbedResponse(BaseModel):
     embeddings: list[list[float]]
     model: str
     dimensions: int
+    usage: GatewayUsage | None = None
 
 
 @app.post("/embed", response_model=EmbedResponse, dependencies=protected)
@@ -128,18 +151,31 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
     handler runs and what `api_base` means - a route around Iron Rule 8 that
     gateway() cannot see. `base_url` on a client has no such prefix.
     """
-    client = _client(EMBED_TIMEOUT_SECONDS)
+    ceiling = EMBED_TIMEOUT_SECONDS
+    if req.timeout_seconds is not None:
+        ceiling = min(EMBED_TIMEOUT_SECONDS, req.timeout_seconds)
+    client = _client(ceiling)
 
     try:
-        response = await client.embeddings.create(model=EMBED_MODEL, input=req.texts)
+        raw = await client.embeddings.with_raw_response.create(
+            model=EMBED_MODEL,
+            input=req.texts,
+            extra_body=_metadata(operation="embed"),
+        )
+        response = raw.parse()
     except Exception as e:
         logger.exception("embedding call failed")
-        raise HTTPException(status_code=502, detail=f"embedding provider error: {e}") from e
+        # Fixed string, exception kept in the log line above: the SDK's message
+        # carries the response body, LiteLLM's error bodies routinely quote the
+        # request payload back - here the user's own query text - and Go copies
+        # the first KiB of this into its error string (llmclient/client.go).
+        raise HTTPException(status_code=502, detail="gateway error") from e
 
     try:
         vectors = [item.embedding for item in response.data]
         valid = len(vectors) == len(req.texts) and all(
-            isinstance(vector, list) and len(vector) == 1536 for vector in vectors
+            isinstance(vector, list) and len(vector) == 1536  # one-number: embeddingDimensions
+            for vector in vectors
         )
     except (AttributeError, KeyError, TypeError):
         valid = False
@@ -147,8 +183,13 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
     if not valid:
         logger.warning("embedding provider returned a malformed envelope")
         raise HTTPException(status_code=502, detail="embedding provider returned malformed output")
-    dims = 1536
-    return EmbedResponse(embeddings=vectors, model=EMBED_MODEL, dimensions=dims)
+    dims = 1536  # one-number: embeddingDimensions
+    return EmbedResponse(
+        embeddings=vectors,
+        model=EMBED_MODEL,
+        dimensions=dims,
+        usage=_embedding_usage(response, raw.headers),
+    )
 
 
 # --- Match-reasons endpoint (DISC-002) ---
@@ -172,14 +213,28 @@ class MatchReason(BaseModel):
     reason: str
 
 
-class MatchReasonsResponse(BaseModel):
-    """Also the JSON schema handed to the model, so the wire shape and the shape
-    the prompt asks for cannot drift apart again (import-report.md §6.1 bug 3).
+class MatchReasons(BaseModel):
+    """The JSON schema handed to the model, and the shape parsed back out of it,
+    so the prompt and the parser cannot drift apart again (import-report.md
+    6.1 bug 3).
     """
 
     model_config = ConfigDict(extra="forbid")
 
     reasons: list[MatchReason]
+
+
+class MatchReasonsResponse(MatchReasons):
+    """The wire shape: what the model wrote, plus what the call cost.
+
+    A subclass, and that is the whole reason these are two classes now: `usage`
+    must not appear in the schema handed to the model (a judged run must not
+    write its own bill - the rule GatewayUsage carries), and strict
+    `json_schema` would refuse it anyway, since GatewayUsage has defaults and a
+    `minimum`. The parent is what the model is shown.
+    """
+
+    usage: GatewayUsage | None = None
 
 
 @app.post("/match-reasons", response_model=MatchReasonsResponse, dependencies=protected)
@@ -224,7 +279,7 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
     client = _client(MATCH_REASONS_TIMEOUT_SECONDS)
 
     try:
-        response = await client.chat.completions.create(
+        raw = await client.chat.completions.with_raw_response.create(
             model=MATCH_REASON_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -237,35 +292,38 @@ async def match_reasons(req: MatchReasonsRequest) -> MatchReasonsResponse:
                 "json_schema": {
                     "name": "match_reasons",
                     "strict": True,
-                    "schema": MatchReasonsResponse.model_json_schema(),
+                    "schema": MatchReasons.model_json_schema(),
                 },
             },
+            extra_body=_metadata(operation="match-reasons"),
         )
+        response = raw.parse()
     except Exception as e:
         logger.exception("match-reasons LLM call failed")
-        raise HTTPException(status_code=502, detail=f"match-reasons provider error: {e}") from e
+        raise HTTPException(status_code=502, detail="gateway error") from e
 
     try:
-        raw = (response.choices[0].message.content or "").strip()
+        content = (response.choices[0].message.content or "").strip()
     except (AttributeError, IndexError, TypeError):
         logger.warning("match-reasons provider returned a malformed envelope")
         raise HTTPException(
             status_code=502, detail="match-reasons provider returned malformed output"
         ) from None
     try:
-        parsed = MatchReasonsResponse.model_validate_json(raw)
+        parsed = MatchReasons.model_validate_json(content)
     except ValidationError:
         # A gateway that ignores the schema can still hand back another shape
         # (the observed one was {"skills": [...]}). Returning nothing is the
         # honest answer: Go then shows template reasons, labelled as template.
         logger.warning("match-reasons: model output did not match the schema")
-        return MatchReasonsResponse(reasons=[])
+        return MatchReasonsResponse(reasons=[], usage=_usage(response, raw.headers))
 
     # Only answer for what was asked about: a hallucinated skill_id would be
     # dropped by Go anyway, and dropping it here keeps the response auditable.
     wanted = {c.skill_id for c in req.candidates}
     return MatchReasonsResponse(
-        reasons=[r for r in parsed.reasons if r.skill_id in wanted and r.reason]
+        reasons=[r for r in parsed.reasons if r.skill_id in wanted and r.reason],
+        usage=_usage(response, raw.headers),
     )
 
 
@@ -313,14 +371,21 @@ class SuggestedCriterion(BaseModel):
     text: str
 
 
-class SuggestCriteriaResponse(BaseModel):
-    """Also the JSON schema handed to the model, so the wire shape and the shape
-    the prompt asks for cannot drift apart (same rule as MatchReasonsResponse).
+class SuggestedCriteria(BaseModel):
+    """The JSON schema handed to the model, and the shape parsed back out of it
+    (same rule as MatchReasons).
     """
 
     model_config = ConfigDict(extra="forbid")
 
     criteria: list[SuggestedCriterion]
+
+
+class SuggestCriteriaResponse(SuggestedCriteria):
+    """The wire shape: the proposals, plus what the call cost. `usage` stays out
+    of the parent for the reason MatchReasonsResponse states."""
+
+    usage: GatewayUsage | None = None
 
 
 @app.post("/suggest-criteria", response_model=SuggestCriteriaResponse, dependencies=protected)
@@ -376,7 +441,7 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
     client = _client(SUGGEST_CRITERIA_TIMEOUT_SECONDS)
 
     try:
-        response = await client.chat.completions.create(
+        raw = await client.chat.completions.with_raw_response.create(
             model=SUGGEST_CRITERIA_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -389,20 +454,23 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
                 "json_schema": {
                     "name": "suggested_criteria",
                     "strict": True,
-                    "schema": SuggestCriteriaResponse.model_json_schema(),
+                    "schema": SuggestedCriteria.model_json_schema(),
                 },
             },
+            extra_body=_metadata(operation="suggest-criteria"),
         )
+        response = raw.parse()
     except Exception as e:
         logger.exception("suggest-criteria LLM call failed")
-        raise HTTPException(status_code=502, detail=f"suggest-criteria provider error: {e}") from e
+        raise HTTPException(status_code=502, detail="gateway error") from e
 
-    raw = (response.choices[0].message.content or "").strip()
+    content = (response.choices[0].message.content or "").strip()
+    usage = _usage(response, raw.headers)
     try:
-        parsed = SuggestCriteriaResponse.model_validate_json(raw)
+        parsed = SuggestedCriteria.model_validate_json(content)
     except ValidationError:
         logger.warning("suggest-criteria: model output did not match the schema")
-        return SuggestCriteriaResponse(criteria=[])
+        return SuggestCriteriaResponse(criteria=[], usage=usage)
 
     seen: set[str] = set()
     kept: list[SuggestedCriterion] = []
@@ -414,4 +482,4 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
         kept.append(SuggestedCriterion(text=text))
         if len(kept) == MAX_SUGGESTED_CRITERIA:
             break
-    return SuggestCriteriaResponse(criteria=kept)
+    return SuggestCriteriaResponse(criteria=kept, usage=usage)

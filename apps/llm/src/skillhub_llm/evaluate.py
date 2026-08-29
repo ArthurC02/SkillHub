@@ -21,7 +21,6 @@ resolve. None of them is a guarantee on its own, which is why there are four.
 from __future__ import annotations
 
 import logging
-import math
 import os
 from datetime import datetime
 from typing import Literal
@@ -30,7 +29,7 @@ from fastapi import APIRouter, HTTPException
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from skillhub_llm.gateway import client
+from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client
 from skillhub_llm.untrusted import scrub
 
 router = APIRouter()
@@ -67,6 +66,7 @@ SUGGEST_IMPROVEMENTS_PROMPT_VERSION = "suggest-improvements/v3"
 # this number, times the client's attempt count, is what actually bounds the
 # work - which is why the client is built with max_retries=0. Higher than
 # /v1/enrich-skill's because a judge request carries ~120k characters of evidence.
+# budget-ceiling: evaluate.LLM_TIMEOUT_SECONDS
 LLM_TIMEOUT_SECONDS = 120.0
 
 # Delimiter isolating untrusted content from instructions (ADR-026 defence 4).
@@ -228,68 +228,6 @@ def _clip(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[:limit]
 
 
-def _metadata(**pairs: str) -> dict:
-    """Gateway metadata so the spend lands on the right Run (ADR-017).
-
-    Correlation, never authority: this service has no database to look an id up
-    in and no workspace to scope it to.
-    """
-    return {"metadata": {k: v for k, v in pairs.items() if v}}
-
-
-class GatewayUsage(BaseModel):
-    """What the gateway charged for one call, as the gateway reported it.
-
-    Outside every model-facing schema on purpose: a judged run must not get to
-    write its own bill. Token counts come from the response body, cost from
-    LiteLLM's `x-litellm-response-cost` header - the body carries no cost field.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    prompt_tokens: int = Field(..., ge=0)
-    completion_tokens: int = Field(..., ge=0)
-    cost_usd: float | None = Field(None, ge=0)
-    # Only ever `gateway`: this service does not price calls itself, so it has no
-    # `estimated` to report.
-    cost_source: Literal["gateway"] | None = None
-
-
-def _usage(completion, headers) -> GatewayUsage | None:
-    """The call's cost, or None when the gateway reported nothing usable.
-
-    Omitted rather than zero-filled: an absent reading means unreported, and a
-    zero here would be read downstream as a free call (same rule as the trace
-    usage event's `cost_usd`).
-    """
-    reported = getattr(completion, "usage", None)
-    if reported is None:
-        return None
-    prompt_tokens = getattr(reported, "prompt_tokens", None)
-    completion_tokens = getattr(reported, "completion_tokens", None)
-    if (
-        not isinstance(prompt_tokens, int)
-        or isinstance(prompt_tokens, bool)
-        or prompt_tokens < 0
-        or not isinstance(completion_tokens, int)
-        or isinstance(completion_tokens, bool)
-        or completion_tokens < 0
-    ):
-        return None
-    try:
-        cost = float(headers["x-litellm-response-cost"])
-    except (KeyError, TypeError, ValueError):
-        cost = None
-    if cost is not None and (not math.isfinite(cost) or cost < 0):
-        cost = None
-    return GatewayUsage(
-        prompt_tokens=prompt_tokens,
-        completion_tokens=completion_tokens,
-        cost_usd=cost,
-        cost_source="gateway" if cost is not None else None,
-    )
-
-
 # --- /judge-run (EVAL-001 task-effect leg) -----------------------------------
 
 
@@ -437,6 +375,13 @@ class JudgeRunResponse(BaseModel):
     verdict: JudgeVerdict
     model: str
     prompt_version: str
+    # What was asked of the sampler, reported for the same reason `model` and
+    # `prompt_version` are: without it two runs of one prompt version on one
+    # model can differ and nothing recorded says why (ADR-026 決策 1's fourth
+    # thing, which was never stored). `seed` is what was requested; the provider
+    # honours it best-effort, so it identifies the request, not the answer.
+    temperature: float | None = None
+    seed: int | None = None
     usage: GatewayUsage | None = None
 
 
@@ -580,6 +525,8 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
                     "schema": JudgeVerdict.model_json_schema(),
                 },
             },
+            temperature=TEMPERATURE,
+            seed=SEED,
             extra_body=_metadata(
                 run_id=req.run_id, evaluation_id=req.evaluation_id, operation="judge"
             ),
@@ -587,7 +534,7 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
         completion = raw.parse()
     except OpenAIError as e:
         logger.exception("judge-run: gateway call failed")
-        raise HTTPException(status_code=502, detail=f"judge gateway error: {e}") from e
+        raise HTTPException(status_code=502, detail="gateway error") from e
 
     try:
         verdict = JudgeVerdict.model_validate_json(completion.choices[0].message.content or "")
@@ -611,6 +558,8 @@ async def judge_run(req: JudgeRunRequest) -> JudgeRunResponse:
         verdict=verdict,
         model=JUDGE_MODEL,
         prompt_version=JUDGE_PROMPT_VERSION,
+        temperature=TEMPERATURE,
+        seed=SEED,
         usage=_usage(completion, raw.headers),
     )
 
@@ -670,6 +619,13 @@ class ImprovementProposals(BaseModel):
 class SuggestImprovementsResponse(ImprovementProposals):
     model: str
     prompt_version: str
+    # What was asked of the sampler, reported for the same reason `model` and
+    # `prompt_version` are: without it two runs of one prompt version on one
+    # model can differ and nothing recorded says why (ADR-026 決策 1's fourth
+    # thing, which was never stored). `seed` is what was requested; the provider
+    # honours it best-effort, so it identifies the request, not the answer.
+    temperature: float | None = None
+    seed: int | None = None
     usage: GatewayUsage | None = None
 
 
@@ -718,12 +674,14 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
                     "schema": ImprovementProposals.model_json_schema(),
                 },
             },
+            temperature=TEMPERATURE,
+            seed=SEED,
             extra_body=_metadata(evaluation_id=req.evaluation_id, operation="suggest"),
         )
         completion = raw.parse()
     except OpenAIError as e:
         logger.exception("suggest-improvements: gateway call failed")
-        raise HTTPException(status_code=502, detail=f"suggestion gateway error: {e}") from e
+        raise HTTPException(status_code=502, detail="gateway error") from e
 
     try:
         parsed = ImprovementProposals.model_validate_json(
@@ -783,5 +741,7 @@ async def suggest_improvements(req: SuggestImprovementsRequest) -> SuggestImprov
         suggestions=kept,
         model=JUDGE_MODEL,
         prompt_version=SUGGEST_IMPROVEMENTS_PROMPT_VERSION,
+        temperature=TEMPERATURE,
+        seed=SEED,
         usage=_usage(completion, raw.headers),
     )
