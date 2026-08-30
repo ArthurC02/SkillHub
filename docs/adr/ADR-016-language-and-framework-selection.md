@@ -33,6 +33,28 @@ MVP 進入實作前需選定語言與框架。決策驅動因素：
 
 ## 決策
 
+> **更正（2026-08-22 查證，2026-08-30 複驗並補上依賴現況）**：下面兩張表與跨語言守則第 1 條都把
+> **LangGraph** 寫成已採用的選型，**它從未被採用過**。決策表本身不改寫——它是決策當下的紀錄——
+> 但讀它的人要知道實際落地的是什麼。
+>
+> **2026-08-30 逐項複驗**：`apps/llm/pyproject.toml` 的直接依賴只有 **`fastapi`／`uvicorn`／`openai`／`pydantic`** 四項，
+> `uv.lock` 裡 `langgraph`／`langchain` 皆 **0 筆**；七個端點（`/embed`、`/match-reasons`、`/suggest-criteria`、
+> `/v1/enrich-skill`、`/judge-run`、`/suggest-improvements`、`/v1/generate-skill`）**各一次閘道呼叫，共 7 次，
+> 沒有任何迴圈包著呼叫**；client 以 `max_retries=0` 建構，重試留在 Go（守則 3）。
+> `evaluate.py` 檔頭與 `contracts/openapi/llm-internal.yaml` 都逐字寫著 `no LangGraph`。
+>
+> **2026-08-22 那份更正當時把依賴記成 `fastapi`／`uvicorn`／`litellm`／`openai`，其中 `litellm` 之後被移除**
+> （它被宣告卻未被 import，而它的進入點會依模型名前綴自選供應商 handler，等於繞過鐵律 8 的一條路；
+> 理由寫在 `app.py`），`pydantic` 則由 transitive 升為直接依賴。
+>
+> **不引入的裁定不在本 ADR，而在 [m3/evaluation-design.md §2.3](../plans/mvp/m3/evaluation-design.md)**：
+> 本 ADR 提到 LangGraph 是**選型層級的授權，不是每個端點都得用它的義務**，
+> 而「組 prompt → 呼叫 → 驗 schema」是單次呼叫。若改善建議生成日後真的需要多步，
+> 那時再引入並把理由寫進該批的交付摘要。
+>
+> **守則第 1 條要照樣讀**：它用 LangGraph 的 checkpoint 當例子說明「Python 側的程序內狀態不得成為第二個持久化工作流層」。
+> **那條規則不依賴 LangGraph 存在**——今天 Python 側根本沒有任何跨請求狀態，所以它是被滿足到底，不是被繞過。
+
 | 平面 | 語言 | 範圍 |
 | --- | --- | --- |
 | 體驗平面 | TypeScript（React） | Web UI、進度串流、Trace 檢視 |
@@ -77,4 +99,4 @@ MVP 進入實作前需選定語言與框架。決策驅動因素：
 
 - Go↔Python 內部通訊維持 REST 或改 gRPC（流量與串流需求確認後）。
 - 公開 Skill 頁面的 SEO 需求與 SSR 時點。
-- LangGraph checkpoint 在長時評估中的暫存策略（單 Job 內重試恢復）。 **→ 前提消失（2026-08-22 查證）：LangGraph 從未被採用。** `apps/llm/pyproject.toml` 的依賴只有 `fastapi`／`uvicorn`／`litellm`／`openai`，`evaluate.py` 檔頭逐字寫「no tools, no LangGraph」，兩個 endpoint 都是單次閘道呼叫。**所以這條待決策不存在受詞。** AGENTS.md 的技術棧表與鐵律 5 曾以它為條文，已同批更正。
+- LangGraph checkpoint 在長時評估中的暫存策略（單 Job 內重試恢復）。 **→ 前提消失（2026-08-22 查證）：LangGraph 從未被採用。** `apps/llm/pyproject.toml` 的依賴只有 `fastapi`／`uvicorn`／`litellm`／`openai`（**2026-08-30 訂正：`litellm` 已移除、`pydantic` 已升為直接依賴，現為四項**），`evaluate.py` 檔頭逐字寫「no tools, no LangGraph」，兩個 endpoint 都是單次閘道呼叫（**2026-08-30 複驗：全服務七個端點、七次呼叫、零迴圈**）。**所以這條待決策不存在受詞。** AGENTS.md 的技術棧表與鐵律 5 曾以它為條文，已同批更正。
