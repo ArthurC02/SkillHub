@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -345,5 +346,84 @@ func TestSeedCleanFailsOnUploadError(t *testing.T) {
 	var out strings.Builder
 	if err := seedClean(root, nil, &out); err == nil {
 		t.Fatal("expected an error when every upload is rejected, got nil")
+	}
+}
+
+// The launcher must refuse to start when the harness cannot import its own
+// runtime, and it must derive the fix from the Dockerfile rather than repeat it.
+//
+// 2026-08-30: clean test mode had never executed a workload and could not have.
+// run.mjs is COPY'd into the runtime image, where the Dockerfile npm-installs
+// the Agent SDK beside it; clean mode runs that same script from the repo, which
+// carries no node_modules there. Every Run reached `running` and then died with
+// `Cannot find package '@anthropic-ai/claude-agent-sdk'` — a fact the launcher
+// could have stated before printing its first line, and 02:PORT-005 asks exactly
+// that of every preflight failure. The four checks it did have were all about
+// getting the processes up.
+//
+// Pinned here rather than by running the launcher because the paths it checks
+// are derived from its own location: there is no repo root to point a test at.
+// What this can hold is that the three files still agree, which is the drift
+// that would silently un-cover the check.
+func TestTheLauncherRefusesToStartWithoutTheHarnessRuntime(t *testing.T) {
+	t.Parallel()
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := func(parts ...string) string {
+		b, err := os.ReadFile(filepath.Join(append([]string{root}, parts...)...))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	launcher := read("tools", "cleanmode", "start.mjs")
+	harness := read("infra", "images", "runtime-agent-sdk", "run.mjs")
+
+	// The assertions below are scoped to preflight()'s own body, not to the file.
+	// The first version of this test searched the whole file and stayed green
+	// when the entire check was deleted, because the package name still appeared
+	// in a helper's comment further down. A test that passes with the code
+	// removed is the defect it was written to prevent.
+	start := strings.Index(launcher, "async function preflight() {")
+	if start < 0 {
+		t.Fatal("tools/cleanmode/start.mjs no longer defines preflight(); this test cannot tell what it checks")
+	}
+	end := strings.Index(launcher[start:], "\n}\n")
+	if end < 0 {
+		t.Fatal("could not find the end of preflight() in tools/cleanmode/start.mjs")
+	}
+	preflight := launcher[start : start+end]
+
+	// The package run.mjs actually imports. If it is renamed and the launcher is
+	// not, the check goes on passing while covering nothing.
+	pkg := regexp.MustCompile(`import\("(@[^"]+/[^"]+)"\)`).FindStringSubmatch(harness)
+	if pkg == nil {
+		t.Fatal("run.mjs no longer dynamically imports a scoped package; this test can no longer tell what the launcher must check for")
+	}
+	if !strings.Contains(preflight, pkg[1]) {
+		t.Fatalf("run.mjs imports %q but preflight() never checks for it: clean mode would accept a Run and fail it after dispatch (04 丙-100)", pkg[1])
+	}
+	if !strings.Contains(preflight, "node_modules") {
+		t.Fatal("preflight() no longer checks for an installed dependency tree beside run.mjs")
+	}
+
+	// ADR-023 決策 1: the Dockerfile's ARG is where that version is written down.
+	// A literal here would let clean mode rehearse a different runtime than the
+	// image, which is the one thing this mode exists to avoid.
+	if !strings.Contains(launcher, "CLAUDE_AGENT_SDK_VERSION") {
+		t.Fatal("tools/cleanmode/start.mjs no longer reads CLAUDE_AGENT_SDK_VERSION from the Dockerfile; a second copy of that version is how clean mode stops rehearsing the image (ADR-023 決策 1)")
+	}
+	if !strings.Contains(preflight, "agentSdkVersion(") {
+		t.Fatal("preflight() no longer builds its hint from the Dockerfile's pinned version, so the fix it prints can name a runtime the image does not have")
+	}
+	version := regexp.MustCompile(`(?m)^ARG\s+CLAUDE_AGENT_SDK_VERSION\s*=\s*"?([^"\s]+)"?\s*$`).
+		FindStringSubmatch(read("infra", "images", "runtime-agent-sdk", "Dockerfile"))
+	if version == nil {
+		t.Fatal("the Dockerfile no longer declares ARG CLAUDE_AGENT_SDK_VERSION")
+	}
+	if strings.Contains(launcher, version[1]) {
+		t.Fatalf("tools/cleanmode/start.mjs hard-codes the SDK version %q instead of reading it from the Dockerfile", version[1])
 	}
 }

@@ -16,7 +16,7 @@
 // tells the person in front of it nothing they can act on.
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
@@ -60,6 +60,20 @@ function portFree(port) {
   });
 }
 
+// agentSdkVersion reads the pinned Agent SDK version out of the runtime image's
+// Dockerfile, which ADR-023 決策 1 makes the only place that version is written
+// down. Returns null rather than guessing: a wrong version in the hint is worse
+// than no version, because it produces a clean mode that runs a different
+// runtime than the image it claims to rehearse.
+function agentSdkVersion(dockerfile) {
+  try {
+    const m = readFileSync(dockerfile, "utf8").match(/^ARG\s+CLAUDE_AGENT_SDK_VERSION\s*=\s*"?([^"\s]+)"?\s*$/m);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 async function preflight() {
   const [major] = process.versions.node.split(".").map(Number);
   if (major < 20) {
@@ -78,6 +92,36 @@ async function preflight() {
       "with a registry: `npm ci --prefix tools/pglite`. Without one: build the bundle on a machine that has a registry (`node tools/cleanmode/bundle.mjs <dir>`), copy that directory here, and run `npm ci --offline --cache <dir> --prefix tools/pglite`",
     );
   }
+  // The harness's own runtime. This is the check whose absence made every other
+  // check pointless: the mode started, accepted a run, dispatched it and failed
+  // it twelve seconds later with `Cannot find package
+  // '@anthropic-ai/claude-agent-sdk'` — a fact this process could have known
+  // before it printed its first line.
+  //
+  // run.mjs is COPY'd into the runtime image, where the Dockerfile npm-installs
+  // the SDK beside it at build time. Clean mode runs that same script from the
+  // repo (ADR-060: the same workload, a different driver), and the repo carries
+  // no package.json and no node_modules there, so the import cannot resolve on
+  // any machine, ever. 02:PORT-005 asks every preflight failure to name what is
+  // missing and how to get it; this one had no check at all, and the operator
+  // met it as a failed Run instead.
+  //
+  // The version comes from the Dockerfile's ARG rather than from a constant
+  // here. ADR-023 決策 1 makes that the version's single source of truth, and a
+  // second copy in this file is exactly how a clean-mode run would silently
+  // stop being a rehearsal of the image.
+  const harnessDir = join(repoRoot, "infra", "images", "runtime-agent-sdk");
+  const sdkDir = join(harnessDir, "node_modules", "@anthropic-ai", "claude-agent-sdk");
+  if (!existsSync(sdkDir)) {
+    const version = agentSdkVersion(join(harnessDir, "Dockerfile"));
+    fail(
+      `the run harness's Agent SDK is not installed (${sdkDir} does not exist), so every Run would fail with "Cannot find package '@anthropic-ai/claude-agent-sdk'"`,
+      version
+        ? `run \`npm install --no-save --prefix infra/images/runtime-agent-sdk @anthropic-ai/claude-agent-sdk@${version}\` — the version is the one the runtime image pins (ARG CLAUDE_AGENT_SDK_VERSION), and a different one is a different runtime than the image being rehearsed`
+        : "install @anthropic-ai/claude-agent-sdk under infra/images/runtime-agent-sdk at the version the Dockerfile's ARG CLAUDE_AGENT_SDK_VERSION pins",
+    );
+  }
+
   const dist = join(repoRoot, "apps", "web", "dist", "index.html");
   if (!existsSync(dist)) {
     fail(
