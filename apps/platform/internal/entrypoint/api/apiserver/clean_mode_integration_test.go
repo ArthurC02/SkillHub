@@ -38,6 +38,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objstore"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/providertest"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
@@ -171,5 +173,49 @@ func TestCleanModeDrainsTheOutboxOnOneConnection(t *testing.T) {
 				"A finished run in clean mode gets no verdict: the publisher holds the pool's only "+
 				"connection across delivery, and the consumer's first act is to ask the same pool for one",
 			published, dead)
+	}
+}
+
+// The other half of the crossing above, and the half that was never crossed.
+//
+// TestCleanModeDrainsTheOutboxOnOneConnection asks whether a FINISHED run
+// reaches its evaluation. Nothing asked whether a run can be STARTED at all,
+// and on 2026-08-30 the answer turned out to be no: POST /skills/{id}/runs
+// never returns in clean mode. It was invisible for two reasons that reinforced
+// each other. RUN-005 refused every clean-mode dispatch earlier in the chain
+// until 04 丙-98 was fixed, so nothing ever reached this code; and every other
+// test of this endpoint runs on the shared pool, where a second connection is
+// always available and the deadlock cannot form.
+//
+// A deadlock is what this fails as - a context deadline, not a wrong value - so
+// the assertion is the deadline itself. Ten seconds is far longer than one
+// insert needs and far shorter than any timeout inside the request path.
+func TestCleanModeCanStartARunOnOneConnection(t *testing.T) {
+	requireDB(t)
+	pool := cleanModePool(t)
+
+	a := newAPI(t, pool)
+	fake := providertest.New("clean_mode_fake", "test-token")
+	t.Cleanup(fake.Close)
+	a.runs.Providers = run.NewRegistry(fake.Provider())
+	f := newFixture(t, a, pool, "clean-mode-start")
+
+	hash := f.confirmPermissions(t)
+	done := make(chan int, 1)
+	go func() {
+		code, _ := f.postJSON(t, "/skills/"+f.skillID+"/runs",
+			`{"version_id":"`+f.versionID+`","test_case_id":"`+f.testCaseID+
+				`","confirmed_summary_hash":"`+hash+`"}`)
+		done <- code
+	}()
+
+	select {
+	case code := <-done:
+		if code != http.StatusCreated {
+			t.Fatalf("POST run: got %d, want 201", code)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("POST /skills/{id}/runs never returned on a single-connection pool: " +
+			"clean test mode cannot start a run at all (04 丙-99)")
 	}
 }

@@ -241,15 +241,45 @@ func (s *Service) PermissionSummaryFor(
 	return s.permissionSummaryFor(ctx, workspaceID, skillID, versionID, testCaseID, nil)
 }
 
+// heldInputs are the rows a caller that is already inside a transaction has read
+// on its own connection, handed in so this function does not read them again.
+//
+// It is not an optimisation. Create holds a transaction while it calls this, and
+// every read here goes to the pool rather than to that transaction - so on a
+// deployment whose pool has one connection, the request waits for a connection
+// its own transaction is holding and never returns. Clean test mode is exactly
+// that deployment (ADR-060 決策 2, pool_max_conns=1), and POST /skills/{id}/runs
+// hung there from the day the mode existed: nothing reached this code, because
+// RUN-005 refused every clean-mode dispatch earlier in the chain until 04 丙-98
+// was fixed, and every test of this endpoint runs on a pool with room to spare
+// (04 丙-99).
+//
+// The draft half of this already existed for the other reason - Create locks the
+// draft and must summarise the row it locked, not a fresh read of it. The
+// version half is the same shape and was missing.
+type heldInputs struct {
+	draft   testlab.Draft
+	version VersionFacts
+}
+
 func (s *Service) permissionSummaryFor(
-	ctx context.Context, workspaceID, skillID, versionID, testCaseID pgtype.UUID, locked *testlab.Draft,
+	ctx context.Context, workspaceID, skillID, versionID, testCaseID pgtype.UUID, held *heldInputs,
 ) (PermissionSummary, error) {
-	version, found, err := s.ReadVersion(ctx, workspaceID, versionID)
-	if !found && err == nil {
-		return PermissionSummary{}, ErrNotFound
-	}
-	if err != nil {
-		return PermissionSummary{}, err
+	var version VersionFacts
+	if held != nil {
+		version = held.version
+	} else {
+		var (
+			found bool
+			err   error
+		)
+		version, found, err = s.ReadVersion(ctx, workspaceID, versionID)
+		if !found && err == nil {
+			return PermissionSummary{}, ErrNotFound
+		}
+		if err != nil {
+			return PermissionSummary{}, err
+		}
 	}
 	// Same guard as Create: the version must belong to the skill in the URL, or a
 	// summary could be produced for a pairing the run itself would refuse.
@@ -261,8 +291,8 @@ func (s *Service) permissionSummaryFor(
 	// The dataset order — and therefore the hash over it — is testlab's guarantee,
 	// stated once at ReadDraft rather than restated here.
 	var draft testlab.Draft
-	if locked != nil {
-		draft = *locked
+	if held != nil {
+		draft = held.draft
 	} else {
 		var err error
 		draft, err = s.TestLab.ReadDraft(ctx, workspaceID, testCaseID)
@@ -317,8 +347,15 @@ func (s *Service) permissionSummaryFor(
 	// allowance to reach the hashed body (TEST-011's rule for estimated_cost). A
 	// failure here does not fail the screen: the summary's job is to say what the
 	// run may touch, and that answer does not depend on how many runs are left.
+	//
+	// Skipped entirely for a caller inside a transaction. It is another pool read
+	// (see heldInputs), it sits outside the hash, and Create looks at nothing but
+	// the hash - so on a one-connection pool this was the second place the same
+	// request could deadlock, immediately after the first was fixed.
 	var quota *policy.QuotaView
-	if state, enforced, err := s.QuotaFor(ctx, workspaceID); err != nil {
+	if held != nil {
+		quota = nil
+	} else if state, enforced, err := s.QuotaFor(ctx, workspaceID); err != nil {
 		slog.Warn("quota unavailable for the pre-run summary", "error", err)
 	} else if enforced {
 		view := state.View()
@@ -466,8 +503,9 @@ func (s *Service) ConfirmPermissions(
 // Rebuilding rather than trusting the request is the whole mechanism: a dataset
 // added after the confirmation changes the hash here, the old agreement no longer
 // matches, and the run is refused until the user has seen the new summary.
-func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Queries, p CreateParams, draft testlab.Draft) error {
-	summary, err := s.permissionSummaryFor(ctx, p.WorkspaceID, p.SkillID, p.VersionID, p.TestCaseID, &draft)
+func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Queries, p CreateParams, draft testlab.Draft, version VersionFacts) error {
+	summary, err := s.permissionSummaryFor(ctx, p.WorkspaceID, p.SkillID, p.VersionID, p.TestCaseID,
+		&heldInputs{draft: draft, version: version})
 	if err != nil {
 		return err
 	}

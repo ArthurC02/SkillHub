@@ -462,7 +462,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 	if testCase.SkillID != p.SkillID {
 		return gen.Run{}, ErrNotFound
 	}
-	if err := s.requirePermissionConfirmation(ctx, q, p, testCase); err != nil {
+	if err := s.requirePermissionConfirmation(ctx, q, p, testCase, version); err != nil {
 		return gen.Run{}, err
 	}
 
