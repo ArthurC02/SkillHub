@@ -133,14 +133,20 @@ trace 完整性：7 個事件、`seq` 1..7 **無缺口**（`tool_call` ×2、`ag
 
 ---
 
-## `2026.08-3` → `2026.08-5`（2026-08-29；2026-08-30 建置）— **映像已建，四項實測完成 1/4，不得合併到 main**
+## `2026.08-3` → `2026.08-5`（2026-08-29；2026-08-30 實測完成）— **四項實測全跑，跑在 GHCR 上的那個 digest**
 
 > **這一節為什麼跨兩版**：`-4` 在 2026-08-29 隨 04 丙-82 落地（拿掉 `unzip`、`run.mjs`
 > 自寫 ZIP 解析器），**但本檔當時沒有補節**——`.github/workflows/runtime-image.yml`
 > 只檢查「Dockerfile 內容變了就要有 `ARG IMAGE_VERSION=` 的 diff」，沒有任何 job 檢查
 > UPGRADES.md 有沒有跟上，也沒有任何 job 檢查四項實測有沒有跑（稽核 04 D3）。
-> `-5` 在同一批補上解壓上界。兩次變更之間**沒有任何映像被建置或發佈**，所以這裡合成
-> 一節，並把 `-4` 的內容誠實列在變更欄裡，而不是假裝它當時被記錄過。
+> `-5` 在同一批補上解壓上界。所以這裡合成一節，並把 `-4` 的內容誠實列在變更欄裡，
+> 而不是假裝它當時被記錄過。
+>
+> **2026-08-30 訂正一句**：上一段原本寫「兩次變更之間**沒有任何映像被建置或發佈**」。
+> 那是**推理，不是查證**——`runtime-image.yml` 由 `infra/images/` 的 diff 觸發，`-4` 與
+> `-5` 都改了 `run.mjs`，所以它跑了，而且成功發佈了。`-5` 從 2026-08-29 起就在 GHCR 上。
+> 這句錯話直接造成隔天的兩個誤動作：四項實測先跑在一份本機建置上（等於白跑），
+> 而 `main.go` 的預設映像被留在 `-3`，理由是「`-5` 拉不到」——它一直拉得到。
 
 | 欄位 | 值 |
 | --- | --- |
@@ -149,10 +155,10 @@ trace 完整性：7 個事件、`seq` 1..7 **無缺口**（`tool_call` ×2、`ag
 | 為什麼 `-5` 是升級而不是整理 | `unzip` 對壓縮比同樣沒有防護，所以這不是回歸；但 `-4` 把這道邊界搬到了**沒有 cgroup 接住的平台**（clean mode 是主機行程：Linux 無 root 時零資源強制，Windows 的 Job Object 會直接終結整個 job，Run 變成沒有 trace、沒有產出、沒有原因的失敗）。接手一道邊界的時機就是加上界的時機 |
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | `sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436`（**未變**） |
-| 映像 digest | `sha256:37c08f48413f1c0c3cbc50730fef83c108d20e618c0b5ce9a9ededf333139eac`（本機建置 2026-08-30；**尚未推上 GHCR**） |
+| 映像 digest | `sha256:ba2bc95e5ff65510369a7b366f96eed629a8128e1c585bd5d1db168eceb7d13e`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-5`，由 [runtime-image #33258533387](https://github.com/ArthurC02/SkillHub/actions/runs/33258533387) 於 2026-08-29 隨 `f3f8bb0` 發佈）。<br>**2026-08-30 訂正**：本節原記為「本機建置、尚未推上 GHCR」，`sha256:37c08f48…`。那句是錯的，而且錯得有代價——**registry 一直有這個 tag**，是 `-4`／`-5` 的 `run.mjs` 變更觸發了 `runtime-image.yml`。四項實測當天先跑在本機那份上，發現之後**整組重跑在上面這個 digest 上**，因為 ADR-023 決策 1 說事實來源是 digest，而沒有人會去 `docker run` 一台開發機上的建置產物。兩份不可能位元組相同（本專案的映像不是可重現建置），所以「本機跑過」不算數。 |
 | 依賴集 | **未變**（`-3` 的 17 個 Python 套件，0 增 0 減） |
-| commit | 待填（本節與程式同批） |
-| CI | 待填 |
+| commit | `-4`／`-5` 的 `run.mjs` 在 2026-08-29 之前的批次落地；本節的實測紀錄與 `main.go`／`ci.yml` 的預設值調整同批 |
+| CI | [runtime-image #33258533387](https://github.com/ArthurC02/SkillHub/actions/runs/33258533387)（`publish` **success**；`rescan`／`review` skipped） |
 
 ### 新增的可執行證據（不是四項清單，但已經跑過）
 
@@ -171,82 +177,55 @@ trace 完整性：7 個事件、`seq` 1..7 **無缺口**（`tool_call` ×2、`ag
 執行方式：`node --test infra/images/runtime-agent-sdk/run.test.mjs`（19/19 通過，不需要
 容器、不需要金鑰、不花錢）。
 
-### 2026-08-30：映像建好了，四項實測跑了第一項
+### 2026-08-30：ADR-023 §2 四項，全部跑在 `sha256:ba2bc95e…` 上
+
+跑法與 `-3` 那一節同規模（單一 Run、`gpt-5.4-mini`、每次 $0.01～0.03）。**環境**：本機
+LiteLLM（`task dev:model`）＋ `skillhub_egress` ＋ 主機上的 `sandboxd`
+（`SKILLHUB_SANDBOX_IMAGE=ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-5`）。
 
 | 項次 | 狀態 | 實測輸出 / 判定 |
 | --- | --- | --- |
-| **1. 依賴集以新 digest 跑 import 檢查** | ✅ **通過** | `docker run --rm --network none --user 65532:65532 --entrypoint python3 skillhub/runtime-agent-sdk:2026.08-5 -c 'import pandas, …, stdnum; print("OK")'` → `OK`（exit 0）。17 個套件全數 import 成功，**在無網路、非 root 下**。 |
-| **2. 全數經閘道；金鑰撤銷後回 401** | ⛔ **未跑** | 需要模型棧（`task dev:model`），會產生費用。 |
-| **3. usage 發出條件、caching 欄位與對帳＋trace 管線** | ⛔ **未跑** | 同上。 |
-| **4. Skill 載入條件（人手跑）** | ⛔ **未跑** | 同上，且本項無可執行形式。 |
+| **1. 依賴集以新 digest 跑 import 檢查** | ✅ **通過** | `docker run --rm --network none --user 65532:65532 --entrypoint python3 ghcr.io/…:2026.08-5 -c 'import pandas, …, stdnum'` → `OK 17/17`（exit 0）。**在無網路、非 root 下**。 |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS：真套件進 SeaweedFS → preflight → 確認 → 派送 → 沙箱容器上 `skillhub_egress`（唯一可達位址是閘道）→ `cost_source=gateway`、`cost_usd=$0.022106` → artifact 收回 → `cleanup_status=cleaned`。<br>撤銷單獨量了一次：同法鑄的金鑰在撤銷前 `/key/info` **200**，撤銷後 `/key/info` 與 `/v1/messages` 皆 **401**。 |
+| **3. usage 發出條件、caching 欄位與對帳** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（`in=16408 out=25 token_source=result cost=0.01277925/gateway`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（撞上限仍回報 `in=16408 out=28 cost=0.025572`）。<br>**對帳逐分錢一致**：閘道 `LiteLLM_SpendLogs` 該金鑰四列合計 **$0.02557200**＝harness 回報值。<br>**caching 欄位仍全為 `null`**（不是 0），與 `-3` 同；PDM-005 §5.2a-7 的假設在這一版依然不成立。 |
+| **4. Skill 載入條件（含套件內腳本真的被執行）** | ✅ **通過** | trace：`skill_activation {"skill_name":"run-marker","decision":"activated"}` → `tool_call` `Skill` → `script_log {"stream":"stdout","message":"SKILLHUB-SCRIPT-RAN py3.11"}` → `tool_call` `Bash` `cd /work/.claude/skills/run-marker && python3 scripts/check.py` → 兩次 `Write` → `agent_output` final `DONE`。**套件是兩個條目、第二個在子目錄下**，所以這一項同時走過 `-5` 改的那段 ZIP 讀取。 |
 
-**另外兩項不在四項清單上、但這次一併量了，因為它們是別處的前提**：
+**本項自 2026-08-30 起有可執行形式**，這是 `-5` 這一節與前幾節最大的差別。以前第 4 項
+逐版都記著「人手跑」，於是它逐版都靠一個人記得去跑。現在
+`e2e_gateway_integration_test.go` 的 `e2eSkillPackage` 帶了一支 `scripts/check.py`，
+測試斷言封存裡出現 `SKILLHUB-SCRIPT-RAN py3.`——**版本尾巴是關鍵**，那個字串只有真的執行
+過映像自己的直譯器才生得出來，讀原始碼抄不出來。**做過突變**：把 SKILL.md 那三行指令
+拿掉重跑，該斷言變紅（`the archive carries no output from the package's own script`），
+marker 那一半仍綠，然後改回來。
+
+**另外兩項不在四項清單上、但一併量了**：
 
 | 量了什麼 | 結果 | 為什麼要量 |
 | --- | --- | --- |
-| `command -v nc` | **`NO_NC`** | 2026-08-29 的稽核記載 P-02 探針曾經用 `nc`，而這個映像**從來沒有 `nc`**——探針因此永遠回報通過。`-5` 沒有把它加回來，所以 A1 改用 `node -e` 的那個修法在這一版仍然必要且成立。 |
-| `node --version` | `v22.23.2` | 上一格那個修法的前提。 |
+| `command -v nc` | **`NO_NC`** | 這個映像從來沒有 `nc`，所以 P-02 探針改用 `node -e` 的修法在這一版仍然必要且成立。 |
+| `node --version` / `python3 --version` | `v22.23.2` / `3.11.2` | 上一格那個修法的前提，以及第 4 項那個版本尾巴的來源。 |
 
-**這一節仍然是紅燈，`-5` 仍然不得合併到 main**：四項裡跑完的是最便宜的一項，而**它證明的是依賴集沒壞，不是這次變更（解壓上界）在真實執行下沒有回歸**。剩下三項都要模型棧。
+### 同批修好的一件事：那兩支付費測試從 A1-e 落地之日起就跑不動
 
-**`apps/sandbox/cmd/sandboxd/main.go:45` 的預設映像仍是 `2026.08-3`，`.github/workflows/ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE` 也仍是 `-3`。** 兩處要與 digest、剩下三項實測同批改——`-5` 今天只存在於一台開發機上，registry 沒有它。
+`harness_token_e2e_test.go` 建 `sandbox.Manager` 時**沒有給 `EgressAllow`**。ADR-022 A1-e
+之後，沒有 rendered destination 的節點會在任何容器啟動之前就拒絕派送
+（`capability_mismatch: … it routes to nothing (no destination has a pinned address)`）。
+**而這件事一直沒有人看見，因為沒設那兩個 gateway 變數時這兩支會 skip，而 skip 長得像 pass。**
+現在 destination 由受測的 URL 推導出來，不是寫死的。
 
-### `schema_version` 未動：仍是 `1.1`
+### 預設映像同批從 `-3` 移到 `-5`
 
-稽核 04 D2 記錄了「`run.mjs` 宣告 1.1 而 schema 已到 1.2」。查過
-`contracts/events/README.md` §「版本宣告的規則」後**確認不改**：producer 宣告的是它
-「照哪一版契約寫」，1.2 新增的是 `evaluation_started`／`evaluation_completed` 兩個型別，
-且兩者的 `emitted_by` 限 `orchestrator`——沙箱 harness 永遠不會發它們。harness 會寫
-`usage.token_source`（1.1 新增），所以 `1.1` 正是規則要它宣告的那一版。改成 `1.2` 會宣告
-一個這個 producer 不寫的版本，是把一致性做壞而不是做好。
-
-### ⚠️ 四項實測待跑（需要閘道費用，約 $0.02）— 未跑前不得合併到 main
-
-ADR-023 §1 的定義：**任何會改變 image digest 的變更都是升級**，§2 的四項清單要在**新
-digest 上實跑**，§3 明文禁止以推理或既有證據代替。本次改的是 `run.mjs`，而 `run.mjs` 是
-`COPY` 進映像的（`Dockerfile:141`），所以 digest 會變，四項一項都不能省。
-
-尤其不能省的是**測項 1**：`-4`／`-5` 改的正是 skill 套件解壓，也就是「Skill 載入條件」的
-**上游**。`04` 丙-82 做過的差分（同一個 zip 兩種解法逐位元組相同）是**針對解壓行為**的
-證明，不是四項；ADR-023 §3 禁止的就是拿它頂替。
-
-跑法（比照 `-3` 那一節的煙霧規模：單一 Run、`gpt-5.4-mini`、實測 $0.0202，上限 $0.3）：
-
-```bash
-# 0. 建映像並記下 digest（digest 才是事實來源，ADR-023 決策 1）
-docker build -t skillhub/runtime-agent-sdk:2026.08-5 infra/images/runtime-agent-sdk
-docker image inspect skillhub/runtime-agent-sdk:2026.08-5 --format '{{.Id}}'
-
-# 1. 依賴集沒變，但仍以新 digest 跑一次 import 檢查（與 -3 節同一條）
-docker run --rm --network none --user 65532:65532 --entrypoint python3 skillhub/runtime-agent-sdk:2026.08-5 -c 'import pandas, numpy, openpyxl, lxml, dateutil, docx, pptx, pypdf, pdfplumber, pycountry, chardet, defusedxml, ftfy, confusable_homoglyphs, pytz, phonenumbers, stdnum; print("OK")'
-
-# 2. 起模型棧（會產生費用，必須由負責人執行，不得由唯讀 SubAgent 啟動）
-task dev:model
-
-# 3. 測項 3／4（usage 發出條件、caching 欄位與對帳）＋ trace 管線，跑在真映像上
-export SKILLHUB_SANDBOX_TEST_IMAGE=skillhub/runtime-agent-sdk:2026.08-5
-go -C apps/sandbox test ./internal/dockerdrv/ -count=1 -v -run 'TestHarnessReportsUsageForACompletedTurn|TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage|TestTraceEventsReachTheCollectorFromARealContainer'
-
-# 3b. 測項 1（Skill 載入條件）今天沒有可執行形式，是人手跑的：掛一個最小 Skill 套件
-#     （SKILL.md ＋ 一支 scripts/check.py），確認 trace 有 skill_activation
-#     {"decision":"activated"}，且 script_log 顯示套件內的腳本真的被執行過（不是模型
-#     轉譯的重寫）。這一項是本次變更的直接下游，最不能省。比照 -3 節「實測：ADR-023
-#     四項」那張表逐項記下輸出。
-
-# 4. 測項 2（全數經閘道；金鑰撤銷後回 401）的既有可執行形式
-go -C apps/platform test ./internal/entrypoint/api/apiserver/ -count=1 -v -run TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey
-```
-
-跑完要回填的欄位：映像 digest、commit、CI run、以及上方四項的逐項實測輸出（比照 `-3`
-那一節的表格形式：斷言／實測輸出／判定）。**在那之前這一節就是紅燈**，`-5` 不得合併。
+`apps/sandbox/cmd/sandboxd/main.go` 的預設、`.github/workflows/ci.yml` 的
+`RUNTIME_IMAGE_FOR_PROBE` 與它 `docker tag` 出來的名字、以及
+`p02_docker_test.go` 的 `runtimeImage` 常數——**四處同批**。第三與第四處必須一起動：CI 拉下
+映像後改的那個 tag，就是 P-02 探針測試 inspect 的那個名字，只改一邊探針會退回 busybox，
+而 busybox 有 `nc`，正是這支測試存在的理由。
 
 ### 本次未涵蓋的（明說）
 
-- **`apps/sandbox/cmd/sandboxd/main.go:45` 的預設映像仍是 `2026.08-3`**，本批**沒有**改。
-  理由是 `-5` 的映像還沒被建置，把預設指向一個本機與 registry 都不存在的 tag，會把
-  「文件落後」換成「非 runsc 節點一啟動就拉不到映像」。這一項的處置與 digest 一起做：
-  建好 `-5`、跑完四項、再同批改預設值（或依稽核 04 D1 的建議改成「沒有預設，未設就退出」）。
-- **UPGRADES.md 與 `ARG IMAGE_VERSION` 的機械對帳仍不存在**。稽核 04 D3 的建議①
-  （`devctl automation-check` 讀 Dockerfile 的版本字串、斷言本檔有同名章節，形式比照
-  `isolation_levels.go`）**本批未做**——`tools/` 不在本次的可寫範圍內。這一節是人手補的，
-  下一次漏掉時仍然沒有機器會說話。
+- **UPGRADES.md 與 `ARG IMAGE_VERSION` 的機械對帳已經存在**（`devctl automation-check` 的
+  `image-version`，讀 Dockerfile 的版本字串、斷言本檔有同名章節）。它**只查得出章節在不在**，
+  查不出四項有沒有真的跑——`image_version.go` 自己的檔頭就寫著這一點。本節上面那張表是人手填的。
+- **四項實測本身仍然沒有機器會催**。要讓它有，得有一支像 `test_gateway_live.py` 那樣的付費
+  opt-in 測試，把四項串成一次 `go test`；今天第 1、2、3、4 項各自有可執行形式，但**沒有一個
+  入口把它們綁在一起**，所以下一次仍然靠一個人記得。

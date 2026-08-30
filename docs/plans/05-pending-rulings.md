@@ -473,6 +473,62 @@ PDM-001／002／003／003×011／004／005／008（兩列）：**值都已經在
 
 **決定之後**：(a) 動一行 `description`（`contracts/` 由主 Agent 序列化）；(b) 要同一批動 schema、`manifest.go` 的 struct tag、`packaging.go` 的賦值與 golden test，**並且要一支斷言舊名不再出現的測試**。
 
+## R-31｜三個 judge／旗艦層的取樣事實上沒有被釘住，而 ADR-026 的前提建立在它被釘住
+
+**2026-08-30 新增。實測發現，同批已修好「打不通」那一半；留在這裡的是「打通之後代表什麼」。**
+
+**要決定什麼**：`gpt-5.6-sol`／`gpt-5.6-terra`／`gpt-5.6-luna` **只接受供應商預設的 temperature**。閘道現在把 `temperature` 丟掉（`additional_drop_params`），呼叫因此成功，但**取樣是供應商的預設（1），不是我們送的 0.0**。ADR-026 讓一筆判定指得出產生它的尺（`judge_model`／`judge_prompt_version`／`rubric_version`），而取樣是那把尺的一部分。要 (a) 承認並記錄、(b) 改判斷方式、還是 (c) 換模型？
+
+**已查到的事實**
+
+- **量到的**：`temperature=0.0` 對這三層一律 400——`Unsupported value: 'temperature' does not support 0.0 with this model. Only the default (1) value is supported.`。**只有 `gpt-5.4-mini` 接受**，而試跑走的正是 mini。
+- **所以在 2026-08-30 之前，索引時增強、LLM Judge、Skill 生成與 match-reason 從來沒有一次成功地穿過真閘道。** `apps/llm` 的 148 支測試全綠，因為每一支都 mock 閘道——**被 mock 的閘道不會拒絕供應商會拒絕的參數**。
+- **`gateway.py` 的長註解已經替 `SEED` 寫過同一句話**：「閘道會為不吃它的模型丟掉，所以它是**被要求的值**，不是兩次呼叫會一致的承諾。」**temperature 現在也是這種東西了**，而 ADR-026 不是為 SEED 寫的，是為 temperature 寫的。
+- **`evaluations` 沒有一欄記「實際生效的取樣」**，只記被要求的值。所以今天的判定紀錄看起來仍然宣稱取樣被釘住。
+
+| 選項 | 內容 | 代價 |
+| --- | --- | --- |
+| **(a) 承認，並讓紀錄說實話**（建議） | ADR-026 補一則：**取樣只在接受它的模型上被釘住**；判定紀錄改成記「要求值 ＋ 是否生效」，而不是只記要求值 | 一次 ADR 補記 ＋ 一個欄位。**代價是必須放棄「同一把尺兩次結果一致」這句話**——但那句話今天本來就不成立，差別只在有沒有寫下來 |
+| (b) 把 judge 換成接受 temperature 的模型 | 取樣真的被釘住 | **要重跑 ADR-051 那次模型選擇的整批量測**（19/20 vs 16/20），而那批量測的噪音底線本來就沒被量過。**成本遠大於 (a)** |
+| (c) 什麼都不做 | — | 最糟：一筆判定的紀錄**宣稱**了一個不成立的性質，而下一個人會拿它去解釋「上週過、今天不過」 |
+
+**建議**：**(a)**。這不是可以靠花錢或改設定解決的事——供應商就是不讓釘。**唯一能做對的是不要宣稱釘住了。**
+
+**不決定的代價**：中。判定會繼續產生，紀錄會繼續帶著一個假的性質，而**它會在第一次「同樣的東西給出不同判定」的爭議裡被引用**——那正是 ADR-026 存在的場合。
+
+**決定之後**：(a) 一則 ADR-026 補記 ＋ `evaluations` 加一欄（`db/migrations` 由主 Agent 序列化）＋ `apps/llm` 回報實際生效值 ＋ 一支斷言「被丟掉時不得記成生效」的測試。
+
+**已經有的機器**：`apps/llm/tests/test_gateway_live.py`（`SKILLHUB_LIVE_GATEWAY=1` 才跑，CI 不跑）。它從 `litellm-config.yaml` 讀 model_list、用這個服務真的會送的參數逐層打一次，**所以下一次有人加一層模型或改 `additional_drop_params` 時，這件事有一支測試會說話**——這是本項唯一已經完成的部分。
+
+---
+
+## R-32｜淨測試模式的節點該怎麼宣告自己的出口（今天它只能說謊或不跑）
+
+**2026-08-30 新增。它擋著 demo 的 Trace 那一段（`04` 丙-98），而且擋的方式是對的——所以這是一個決定，不是一個 bug。**
+
+**要決定什麼**：`localdrv`（淨測試模式）是主機行程，**對網路沒有任何限制**。`ProviderCapability` 的 `egress_modes` 只有 `none`（沒有出口）與 `default_deny`（只到允許清單），**兩個都描述不了「什麼都通」**。而只要配了模型閘道，`defaultPolicy()` 就會放一條 `model_gateway` 進 allow list，`accept()` 就要求 `default_deny`。結果：**淨測試模式跑不了任何需要模型的 Run**（422）。
+
+**已查到的事實**
+
+- **實測 422**，逐字：`no configured sandbox provider can run this request: self_hosted cannot enforce default_deny network egress with an allow list`。
+- **把 `SKILLHUB_SANDBOX_NETWORK` 隨便設一個值就會過**——`EgressModesFor` 只看它非空。**那是 ADR-022 A1-e 要防的事本身**：一個宣告了自己守不住的能力的節點。所以「補個環境變數」不是修法。
+- **同一個問題已經被解過一次，就在同一個檔案裡**：資源上限。淨測試模式報得出上限但強制不了，於是它用 `max_resources_unenforced` **把「報得出、強制不了」說出來**（`cleanModeMaxResources()` ＋ `unenforcedCeilings()`）。egress 缺的是同一個形狀。
+- **這不影響正式部署**：production 是 runsc ＋ nftables，`default_deny` 在那裡是真的。本項只影響淨測試模式，也就是 demo 與離線試跑。
+
+| 選項 | 內容 | 代價 |
+| --- | --- | --- |
+| **(a) 抄資源上限那個形狀**（建議） | `ProviderCapability` 加 `egress_unenforced`（或等價欄位）；淨測試模式宣告 `default_deny` **並同時宣告它沒有強制**；`accept()` 照舊放行，平台在 preflight 摘要與 Run 詳情上**照 `PORT-003` 說出來** | **契約變更**（`contracts/openapi/sandbox-provider.yaml`）＋ 一則 ADR ＋ 前端一句話。**在新功能凍結期間，這是「修既有缺陷」還是「新功能」需要負責人先判**|
+| (b) demo 當天改用 docker sandboxd | 不動契約 | **與 `PORT-005`（不需要 Docker）直接相牴**，而淨測試模式的存在理由就是那一條 |
+| (c) 不做，demo 的 Trace 段落用「畫面誠實地說它沒有」帶過 | 零成本 | demo 少一段。**跨語言那一段不受影響，已經可以展示** |
+
+**建議**：**(c) 到 demo 之前，(a) 之後**。理由是 D 日 2026-09-11 已經很近，而 (a) 動的是跨程序契約——那是本專案明文列為「主 Agent 序列化、不平行處理」的高衝突區。**(c) 不是逃避**：畫面本來就會誠實地說「本模式尚未執行過 Run」，那句話是 `PORT-003` 要求的，不是遮羞布。
+
+**不決定的代價**：低而明確。demo 沒有真 Trace 可看；`02:PORT-007` 允許的唯一 trace 來源仍然拿不到，所以 repo 內真 trace 事件維持 0 列。
+
+**決定之後**：(a) 契約 → sandboxd 宣告 → `accept()` → preflight 摘要 → 一支「宣告未強制時不得顯示成已強制」的測試。
+
+---
+
 ---
 
 ## R-2｜封測報酬預算金額，以及受測者簽署（`04` 乙-15）
