@@ -146,3 +146,66 @@ func TestEmbedSendsATimeoutOnlyWhenOneIsAskedFor(t *testing.T) {
 		})
 	}
 }
+
+// A field the service sends and this client drops is the defect this repository
+// has now paid for three times: `agent_output` on a run result, `run_lifecycle`
+// and `llm_service` in the trace schema — each declared in a contract, each read
+// by nothing, each discovered by somebody wondering why the system had nothing
+// to say. `checks` is decoded, so this holds that it stays decoded.
+//
+// The findings are the enrichment service's own deterministic disagreements with
+// the document it was given (05 R-34): a runtime the source needs that the
+// limitations never mention, an appraisal the source never made, CJK inside an
+// English example sentence.
+func TestEnrichSkillDecodesTheServicesOwnFindings(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{
+			"summary": "s",
+			"task_examples": [],
+			"tags": {"inputs": [], "outputs": [], "tools": [], "dependencies": []},
+			"limitations": [],
+			"model": "m",
+			"prompt_version": "enrich-skill/v6",
+			"checks": [
+				{"rule": "runtime_not_in_limitations", "field": "limitations", "token": "python", "severity": "warning"},
+				{"rule": "non_english_in_en_example", "field": "task_examples[0].en"}
+			]
+		}`))
+	}))
+	defer srv.Close()
+
+	c := &Client{BaseURL: srv.URL, Token: "t"}
+	resp, err := c.EnrichSkill(context.Background(), EnrichSkillRequest{SkillName: "x", SkillMD: "y"})
+	if err != nil {
+		t.Fatalf("EnrichSkill: %v", err)
+	}
+	if len(resp.Checks) != 2 {
+		t.Fatalf("Checks = %+v, want the two the service sent", resp.Checks)
+	}
+	if resp.Checks[0].Rule != "runtime_not_in_limitations" || resp.Checks[0].Token != "python" {
+		t.Errorf("first finding = %+v, want the runtime rule naming python", resp.Checks[0])
+	}
+	// Severity is optional on the wire; a finding without one is still a finding.
+	if resp.Checks[1].Field != "task_examples[0].en" {
+		t.Errorf("second finding = %+v, want the English-example rule with its field path", resp.Checks[1])
+	}
+}
+
+// An enrichment that passes every deterministic rule sends no findings, and that
+// must stay distinguishable from a build that never checked. Empty, not absent,
+// is what a passing check looks like.
+func TestEnrichSkillWithoutFindingsIsNotAnError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"summary":"s","task_examples":[],"tags":{"inputs":[],"outputs":[],"tools":[],"dependencies":[]},"limitations":[],"model":"m","prompt_version":"v"}`))
+	}))
+	defer srv.Close()
+
+	resp, err := (&Client{BaseURL: srv.URL, Token: "t"}).
+		EnrichSkill(context.Background(), EnrichSkillRequest{SkillName: "x", SkillMD: "y"})
+	if err != nil {
+		t.Fatalf("EnrichSkill: %v", err)
+	}
+	if len(resp.Checks) != 0 {
+		t.Errorf("Checks = %+v, want none", resp.Checks)
+	}
+}

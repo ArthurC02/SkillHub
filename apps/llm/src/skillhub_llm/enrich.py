@@ -22,6 +22,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from skillhub_llm.gateway import SEED, TEMPERATURE, GatewayUsage, _metadata, _usage, client
 from skillhub_llm.untrusted import scrub
 
+from .enrich_checks import Finding, check_enrichment
+
 router = APIRouter()
 logger = logging.getLogger("skillhub_llm.enrich")
 
@@ -176,6 +178,12 @@ class EnrichSkillResponse(Enrichment):
     # `operation` tag at the gateway, so the catalogue's own model spend was the
     # one cost that grew with the catalogue and appeared in no ledger.
     usage: GatewayUsage | None = None
+    # Deterministic findings on this enrichment, from enrich_checks (05 R-34).
+    # Advisory: this service reports, Go decides what a finding costs a field
+    # (iron rule 6). Empty means every rule that can be checked without a model
+    # passed - not that the enrichment is right, because the rules that need one
+    # are not attempted here.
+    checks: list[Finding] = Field(default_factory=list)
 
 
 def _client() -> AsyncOpenAI:
@@ -246,6 +254,19 @@ async def enrich_skill(req: EnrichSkillRequest) -> EnrichSkillResponse:
 
     return EnrichSkillResponse(
         **enrichment.model_dump(),
+        checks=check_enrichment(
+            skill_md=req.skill_md,
+            file_tree=req.file_tree,
+            summary=enrichment.summary,
+            limitations=enrichment.limitations,
+            task_examples_en=[e.en for e in enrichment.task_examples],
+            tags_flat=(
+                enrichment.tags.inputs
+                + enrichment.tags.outputs
+                + enrichment.tags.tools
+                + enrichment.tags.dependencies
+            ),
+        ),
         model=ENRICH_MODEL,
         prompt_version=PROMPT_VERSION,
         temperature=TEMPERATURE,

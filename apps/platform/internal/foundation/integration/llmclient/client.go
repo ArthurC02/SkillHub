@@ -180,6 +180,28 @@ type EnrichSkillResponse struct {
 	Limitations   []string `json:"limitations"`
 	Model         string   `json:"model"`
 	PromptVersion string   `json:"prompt_version"`
+	// Checks are the enrichment service's own deterministic findings against the
+	// document it was given (05 R-34): a runtime the source needs and the
+	// limitations never mention, an appraisal the source never made, CJK inside
+	// an English example. Advisory - the service reports and this side decides
+	// (ADR-016 rule 2), and today deciding means saying so in the log, because
+	// nothing stores a per-field annotation yet.
+	//
+	// Decoded rather than ignored on purpose. This repository has three fields
+	// that were declared in a contract and read by nothing, and each one cost
+	// somebody a day; a fourth is not being added deliberately.
+	Checks []EnrichCheck `json:"checks,omitempty"`
+}
+
+// EnrichCheck is one deterministic finding. It carries no text from the model:
+// `Token` comes from the checker's own fixed vocabulary and `Field` is a path
+// built from a literal and an index, so logging one cannot leak package content
+// (TM-SCN-02).
+type EnrichCheck struct {
+	Rule     string `json:"rule"`
+	Field    string `json:"field"`
+	Token    string `json:"token,omitempty"`
+	Severity string `json:"severity,omitempty"`
 }
 
 // EnrichSkill runs the ADR-013 index-time enhancement for one skill version.

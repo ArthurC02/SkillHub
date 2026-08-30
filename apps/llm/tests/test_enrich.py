@@ -82,6 +82,13 @@ def test_enrich_returns_whitelist_fields(gateway_env, monkeypatch):
     # ADR-013: enrichment must never carry trust/risk judgements. `limitations`
     # is inside the whitelist because it restates the document, exactly as
     # `summary` does; the prompt forbids inferring one or judging risk.
+    #
+    # `checks` joined this set on 2026-08-30 (05 R-34) and had to argue its way
+    # in past this assertion, which is what the assertion is for. It carries no
+    # judgement OF the Skill: it reports where this service's own output
+    # disagrees with the document it was handed - a fact about the enrichment,
+    # not about the package. A finding never quotes the model, so it cannot
+    # smuggle one either (test_enrich_checks.py holds that separately).
     assert set(body) == {
         "summary",
         "task_examples",
@@ -92,7 +99,11 @@ def test_enrich_returns_whitelist_fields(gateway_env, monkeypatch):
         "temperature",
         "seed",
         "usage",
+        "checks",
     }
+    # The fixture's document supports nothing it claims, so silence here would
+    # mean the checker is wired in name only.
+    assert isinstance(body["checks"], list)
 
 
 def test_limitations_prompt_forbids_inference_and_judgement(gateway_env, monkeypatch):

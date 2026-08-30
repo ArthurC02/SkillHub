@@ -67,6 +67,35 @@ class SkillTags(BaseModel):
     dependencies: List[str]
 
 
+class Rule(Enum):
+    runtime_not_in_limitations = 'runtime_not_in_limitations'
+    unsupported_appraisal = 'unsupported_appraisal'
+    non_english_in_en_example = 'non_english_in_en_example'
+
+
+class Severity(Enum):
+    warning = 'warning'
+
+
+class Check(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    rule: Rule = Field(
+        ...,
+        description='Which prompt rule the finding is about.\n`runtime_not_in_limitations` is prompt v5, measured at 11 of\n33 Python-dependent Skills naming the runtime in `tags` and\nnot in `limitations`. `unsupported_appraisal` is prompt rule\n2. `non_english_in_en_example` is owed to prompt v7\n(content-review-report 12.4 b).\n',
+    )
+    field: constr(max_length=64) = Field(
+        ...,
+        description='Dotted path into this enrichment - `limitations`,\n`task_examples[2].en`. Built from an index and a literal, so\nit carries no model output.\n',
+    )
+    token: Optional[constr(max_length=64)] = Field(
+        None,
+        description="Which instance fired, from the checker's own fixed vocabulary\n- a runtime name, an appraisal word. Never a span of the\nmodel's text: the enrichment is derived from untrusted package\ncontent (TM-SCN-02), and a finding that quoted it back would\nbe a channel out of the data block.\n",
+    )
+    severity: Optional[Severity] = None
+
+
 class SkillCandidate(BaseModel):
     skill_id: str
     name: str
@@ -477,6 +506,10 @@ class EmbedResponse(BaseModel):
 
 
 class EnrichSkillResponse(BaseModel):
+    checks: Optional[List[Check]] = Field(
+        None,
+        description="Deterministic findings on this enrichment, checked against the\nsource document without a model call (05 R-34).\n\nAdvisory. This service reports; whether a finding blocks an index,\ndowngrades a field or merely annotates it is the control plane's\ndecision (ADR-016 rule 2). An empty array means every rule that can\nbe checked without a model passed - NOT that the enrichment is\nright, because the rules that need one (restated modality,\nneighbouring capabilities, composing two stated facts, the locale\ngloss) are not attempted here and are still carried by the prompt\nalone.\n\nAdditive: absent means a build that predates these checks, not an\nenrichment that passed them.\n",
+    )
     summary: str = Field(
         ...,
         description='Plain-language, task-oriented summary covering the document body.',

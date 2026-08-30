@@ -128,6 +128,20 @@ func (s *Service) enrichPackage(ctx context.Context, p preparedPackage) enrichme
 	e.tags = marshalTags(resp.Tags)
 	e.limitations = joinLines(resp.Limitations)
 	e.model, e.promptVersion = &resp.Model, &resp.PromptVersion
+	// 05 R-34: the enrichment service checked its own output against the
+	// document without spending a model call, and this is where that answer
+	// stops being a field nobody reads. It does not block the index - a
+	// restatement that overstates by one adjective is worth less than no
+	// enrichment at all - so the disposition is to say it, once per finding,
+	// with the rule and the field named.
+	//
+	// Nothing here quotes the model: rule, field and token all come from the
+	// checker's fixed vocabulary (TM-SCN-02).
+	for _, c := range resp.Checks {
+		slog.Warn("enrichment disagrees with its own source document",
+			"skill", p.report.Manifest.Name, "rule", c.Rule, "field", c.Field, "token", c.Token,
+			"prompt_version", resp.PromptVersion)
+	}
 
 	embedCtx, cancelEmbed := context.WithTimeout(ctx, embedTimeout)
 	defer cancelEmbed()
