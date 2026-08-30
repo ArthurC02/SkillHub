@@ -612,7 +612,8 @@ components:
           type: number
           description: |
             The sampling temperature this service asked for - 0, pinned by the
-            service and never chosen by the caller.
+            service and never chosen by the caller. It identifies the REQUEST,
+            the same way `seed` below does, and for the same reason.
 
             Recorded for the reason `model` and `prompt_version` are recorded.
             Under the provider default the same prompt version, the same model
@@ -621,6 +622,17 @@ components:
             sampling was the part of the ruler nobody wrote down. Optional
             because it is additive - absent means a build that predates the
             pinning, not a call that was unpinned by choice.
+
+            MEASURED 2026-08-30, and it narrows the paragraph above: the
+            flagship, judge and match-reason tiers REFUSE any temperature but
+            their own default (400, "Unsupported value: 'temperature' does not
+            support 0.0 with this model"). The gateway now drops the parameter
+            for those three models, so what they sample at is the provider's
+            default and this field says what was asked for, not what was used.
+            Sampling is pinned on the mini tier and nowhere else. Which tiers
+            drop it is the gateway's answer, not this service's guess -
+            `GET /model/info` returns each model's `additional_drop_params` to
+            any Virtual Key. See ADR-026's 2026-08-30 addendum and 05 R-31.
         seed:
           type: ["integer", "null"]
           description: |
@@ -1222,7 +1234,8 @@ components:
           type: number
           description: |
             The sampling temperature this service asked for - 0, pinned by the
-            service and never chosen by the caller.
+            service and never chosen by the caller. It identifies the REQUEST,
+            the same way `seed` below does, and for the same reason.
 
             Recorded for the reason `model` and `prompt_version` are recorded.
             Under the provider default the same prompt version, the same model
@@ -1231,6 +1244,17 @@ components:
             sampling was the part of the ruler nobody wrote down. Optional
             because it is additive - absent means a build that predates the
             pinning, not a call that was unpinned by choice.
+
+            MEASURED 2026-08-30, and it narrows the paragraph above: the
+            flagship, judge and match-reason tiers REFUSE any temperature but
+            their own default (400, "Unsupported value: 'temperature' does not
+            support 0.0 with this model"). The gateway now drops the parameter
+            for those three models, so what they sample at is the provider's
+            default and this field says what was asked for, not what was used.
+            Sampling is pinned on the mini tier and nowhere else. Which tiers
+            drop it is the gateway's answer, not this service's guess -
+            `GET /model/info` returns each model's `additional_drop_params` to
+            any Virtual Key. See ADR-026's 2026-08-30 addendum and 05 R-31.
         seed:
           type: ["integer", "null"]
           description: |
@@ -1407,7 +1431,8 @@ components:
           type: number
           description: |
             The sampling temperature this service asked for - 0, pinned by the
-            service and never chosen by the caller.
+            service and never chosen by the caller. It identifies the REQUEST,
+            the same way `seed` below does, and for the same reason.
 
             Recorded for the reason `model` and `prompt_version` are recorded.
             Under the provider default the same prompt version, the same model
@@ -1416,6 +1441,17 @@ components:
             sampling was the part of the ruler nobody wrote down. Optional
             because it is additive - absent means a build that predates the
             pinning, not a call that was unpinned by choice.
+
+            MEASURED 2026-08-30, and it narrows the paragraph above: the
+            flagship, judge and match-reason tiers REFUSE any temperature but
+            their own default (400, "Unsupported value: 'temperature' does not
+            support 0.0 with this model"). The gateway now drops the parameter
+            for those three models, so what they sample at is the provider's
+            default and this field says what was asked for, not what was used.
+            Sampling is pinned on the mini tier and nowhere else. Which tiers
+            drop it is the gateway's answer, not this service's guess -
+            `GET /model/info` returns each model's `additional_drop_params` to
+            any Virtual Key. See ADR-026's 2026-08-30 addendum and 05 R-31.
         seed:
           type: ["integer", "null"]
           description: |
@@ -1543,7 +1579,8 @@ components:
           type: number
           description: |
             The sampling temperature this service asked for - 0, pinned by the
-            service and never chosen by the caller.
+            service and never chosen by the caller. It identifies the REQUEST,
+            the same way `seed` below does, and for the same reason.
 
             Recorded for the reason `model` and `prompt_version` are recorded.
             Under the provider default the same prompt version, the same model
@@ -1552,6 +1589,17 @@ components:
             sampling was the part of the ruler nobody wrote down. Optional
             because it is additive - absent means a build that predates the
             pinning, not a call that was unpinned by choice.
+
+            MEASURED 2026-08-30, and it narrows the paragraph above: the
+            flagship, judge and match-reason tiers REFUSE any temperature but
+            their own default (400, "Unsupported value: 'temperature' does not
+            support 0.0 with this model"). The gateway now drops the parameter
+            for those three models, so what they sample at is the provider's
+            default and this field says what was asked for, not what was used.
+            Sampling is pinned on the mini tier and nowhere else. Which tiers
+            drop it is the gateway's answer, not this service's guess -
+            `GET /model/info` returns each model's `additional_drop_params` to
+            any Virtual Key. See ADR-026's 2026-08-30 addendum and 05 R-31.
         seed:
           type: ["integer", "null"]
           description: |

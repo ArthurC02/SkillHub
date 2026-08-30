@@ -85,6 +85,50 @@ Judge 是**平台工作負載**：走平台側金鑰，不用 Run 的短效 Virt
 - 第 4 條的模型層比 mini 級貴約一個量級；控制手段是截斷政策，不是換模型。
 - 四條防線降低而非消除 Prompt Injection 的成功率，這一點寫在契約文字裡，不寫成保證。
 
+## 2026-08-30 補記：取樣沒有被釘住，而本 ADR 的可歸因性建立在它被釘住
+
+**這一節不推翻任何決策，它訂正一個前提。** 決策 1 與決策 2 讓一筆判定指得出產生它的尺——
+`judge_model`、`judge_prompt_version`、`rubric_version`。後來加進來的第四把尺是**取樣**：
+`apps/llm` 的 `TEMPERATURE = 0.0` 與 `SEED`，理由逐字寫在 `gateway.py`，也就是
+「同一個 prompt 版本、同一個模型、同一份證據，在供應商預設下可能給出不同答案，而沒有任何一欄
+解釋得了它」。
+
+**2026-08-30 實測：那把尺從來沒有裝上去過，而且裝不上去。**
+
+| 量到的 | 結果 |
+| --- | --- |
+| `gpt-5.6-terra`（judge 層）帶 `temperature=0.0` | **400** `Unsupported value: 'temperature' does not support 0.0 with this model. Only the default (1) value is supported.` |
+| `gpt-5.6-sol`（索引時增強）、`gpt-5.6-luna`（match-reason） | 同上，一律 400 |
+| `gpt-5.4-mini`（試跑預設） | 通過 |
+| LiteLLM 全域 `drop_params: true` | **接不住**——它的 supported-params 表說這些模型吃 temperature |
+
+也就是說：**在 2026-08-30 之前，走 judge 層的每一次呼叫都是 400**，沒有任何一份 LLM 判定
+是透過真實閘道產生的；而 `apps/llm` 的 148 支測試全綠，因為**每一支都 mock 閘道，而被 mock 的
+閘道不會拒絕供應商會拒絕的參數**。
+
+**處置**：`infra/compose/litellm-config.yaml` 的三個 `gpt-5.6-*` 在 `additional_drop_params`
+加上 `temperature`（同檔案已為 `reasoning_effort` 用過同一個逃生口）。呼叫因此成功，**代價是
+那三層的取樣是供應商的預設（1），不是我們送的 0**。
+
+**所以本 ADR 的可歸因性要這樣讀，逐字**：
+
+1. **取樣只在接受它的模型上被釘住。** 今天那是 mini 層，而 judge 不在 mini 層。**一筆 judge
+   判定的取樣沒有被釘住**，「上週過、這週不過」在換模型、換 prompt 版本、換 rubric 之外，
+   **多了一個永遠無法排除的解釋**。
+2. **`temperature` 這個欄位是「要求值」，不是「生效值」**，與 `seed` 同一種東西；契約的四處
+   描述已於同日訂正。
+3. **不新增資料欄位，這是刻意的。** 一筆判定的取樣是 `judge_model` 與**當時的閘道設定**
+   的函數，而閘道設定在 git 裡。存一欄等於存一個當下恆定的值，而**真正會漂移的是設定不是判定**。
+   守著設定的是 `apps/llm/tests/test_gateway_live.py`：它從 `litellm-config.yaml` 讀 model_list、
+   用這個服務真的會送的參數逐層打一次真閘道（`SKILLHUB_LIVE_GATEWAY=1` 才跑，CI 不跑）。
+   **哪一層會被丟掉是閘道的答案不是我們的猜測**——`GET /model/info` 對任何 Virtual Key 都回傳
+   每個模型的 `additional_drop_params`。
+   <br>**若日後判定量大到要做跨期比較**，這個決定要重看：那時候「當時的設定是什麼」會變成
+   一次考古而不是一次 `git log`，見 `05` R-31。
+4. **決策 4（judge 用 `gpt-5.6-terra`）不變。** 換一個接受 temperature 的模型可以真的釘住取樣，
+   但那要重跑 ADR-051 那次選型的整批量測，而那批量測的雜訊底線本來就沒有被量過——
+   **用一個沒有量過雜訊的方法去換取一個可量測的雜訊來源，不是改善。**
+
 ## 待決策
 
 - **PDM-006 的保存期限定值**（Run／Trace／Artifact）：本 ADR 讓「證據過期」成為可顯示狀態，但不代為定值。定值後可能調整 `excerpt` 的長度上限。
