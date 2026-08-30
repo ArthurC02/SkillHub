@@ -179,8 +179,16 @@ const CAPABILITIES = [
   {
     name: "跨語言意圖搜尋、匯入增強",
     needs: ["LLM_SERVICE_URL"],
+    // Not just "smaller": this one is an ORDERING constraint, and getting it
+    // wrong is not recoverable here. Enrichment and the embedding happen at
+    // import time; without the service the search document stays `pending`, and
+    // the only backfill (cmd/reindex phase 2) reads packages through
+    // objstore.FromEnv() while clean mode's store lives inside the API process.
+    // So a catalogue seeded in this state cannot be fixed by starting the
+    // service afterwards — the carrier is in-memory too, so there is nothing to
+    // restart into. Measured 2026-08-30 (04 丙-108).
     off: "只剩 FTS：非英語的查詢多半回 0 筆（畫面會標 degraded）",
-    how: "另起 apps/llm（uv run fastapi dev），再設成它的位址",
+    how: "另起 apps/llm 再設成它的位址，**並且要在 seed 之前**——種進去的內容不會事後補索引，補救路徑在淨測試模式下到不了",
   },
   {
     name: "試跑（模型出口）",
@@ -201,9 +209,14 @@ const CAPABILITIES = [
     how: "這個值刻意沒有預設——它是一句對使用者的保存期承諾，不是參數（GOV-RETENTION-001）。定了幾天就寫幾天，例如 2160h",
   },
   {
-    name: "可散布性放行（operator）",
+    // The account exists (this launch made the seed importer an operator); what
+    // is still a person's action is USING it. Seeded content is all
+    // `redistribution = unknown` and packaging refuses every one of it until
+    // somebody establishes a licence with named evidence (ADR-057), so this row
+    // says so even when it is ticked.
+    name: `可散布性放行（operator 帳號＝${SEED_IMPORTER}；種子內容仍全部是 unknown，放行前打包一律 422）`,
     needs: ["OPERATOR_USER_IDS"],
-    off: "沒有人能放行，而種子內容全部是 unknown，所以每一個 Skill 的打包都會 422（04 丙-105）",
+    off: "沒有人能放行，所以每一個 Skill 的打包都會 422（04 丙-105）",
     how: "設成要當 operator 的 user id（逗號分隔）",
   },
   {
@@ -374,10 +387,10 @@ async function grantCatalogWorkspace(dsn) {
          SELECT id, 'dev', $1 FROM u
          RETURNING user_id
        )
-       SELECT (SELECT id FROM w) AS workspace_id`,
+       SELECT (SELECT id FROM w) AS workspace_id, (SELECT user_id FROM i) AS user_id`,
       [SEED_IMPORTER],
     );
-    return rows[0].workspace_id;
+    return { workspaceId: rows[0].workspace_id, userId: rows[0].user_id };
   } finally {
     // end() sends the wire-protocol Terminate. A socket dropped mid-protocol
     // instead leaves the carrier refusing every later connection (the known
@@ -514,9 +527,9 @@ console.log(`[launcher] database carrier ready on ${PGLITE_PORT}`);
 
 // Fail-closed: a launch that skipped this would come up looking healthy and
 // then seed fifty skills nobody can find, which is the failure 04 丙-84 ① is.
-let catalogWorkspaceId;
+let seedImporter;
 try {
-  catalogWorkspaceId = await grantCatalogWorkspace(dsn);
+  seedImporter = await grantCatalogWorkspace(dsn);
 } catch (err) {
   console.error(
     `\nclean mode cannot start: the demo importer's catalog workspace could not be created: ${err.message}`,
@@ -528,11 +541,38 @@ try {
   throw err;
 }
 console.log(
-  `[launcher] demo importer "${SEED_IMPORTER}" owns workspace ${catalogWorkspaceId}, workspaces.is_catalog = true`,
+  `[launcher] demo importer "${SEED_IMPORTER}" owns workspace ${seedImporter.workspaceId}, workspaces.is_catalog = true`,
 );
 console.log(
   `[launcher]   this is what makes \`devctl seed-clean\`'s uploads visible to GET /api/skills/search (04 丙-84 ①)`,
 );
+
+// The operator roster, for the same reason the workspace flag above is set here
+// and not left to somebody: OPERATOR_USER_IDS is read by cmd/api at start-up, and
+// the id it needs does not exist until the statement above has run. The carrier
+// is in-memory (tools/pglite/lib/harness.mjs constructs PGlite with no dataDir),
+// so it cannot be looked up in one launch and supplied to the next either — the
+// database that held it is gone. Without this, no account on a clean-mode
+// deployment can ever reach an operator route, and 02:PACK-001's last step stays
+// unreachable: every seeded skill is `redistribution = unknown`, packaging
+// answers 422 for all fifty, and the only endpoint that can change that is
+// behind RequireOperator (04 丙-105).
+//
+// Category 1 like the rest: this script creates the account AND spawns the
+// process that reads the roster, so there is nothing here for an operator to
+// configure. It fills a gap and never overrides — a launch that named its own
+// roster keeps it.
+//
+// Safe only because of what clean mode already is: DEV_LOGIN is on, so anybody
+// can already sign in as anybody (the launcher says so, loudly). This grants no
+// authority that mode did not already hand out. It would be wrong in any
+// deployment where DEV_LOGIN is off, and this file only ever runs with it on.
+if (!process.env.OPERATOR_USER_IDS) {
+  process.env.OPERATOR_USER_IDS = seedImporter.userId;
+  console.log(
+    `[launcher]   and is this launch's operator, so 可散布性 can be established at all (04 丙-105)`,
+  );
+}
 
 // DEV_LOGIN is set because clean mode has no GitHub OAuth to reach, and
 // COOKIE_INSECURE because it is plain http on loopback. Both are what
