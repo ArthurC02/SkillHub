@@ -249,6 +249,19 @@ func Match(c ProviderCapability, req Requirements) (RuntimeProfile, error) {
 			"%s declares resource ceilings it does not enforce (%s), which this deployment does not accept",
 			name, strings.Join(c.MaxResourcesUnenforced, ", "))
 	}
+	// The egress half of the branch above, and it has to be its own check rather
+	// than a clause in that one: a node can enforce every resource ceiling and
+	// still filter no traffic, and the two are read by different parts of the
+	// deployment's threat model. Same gate, same reason - accepted only where
+	// having no boundary at all was already accepted (04 丙-98, 05 R-32).
+	//
+	// Ordered before egressSatisfied on purpose. Both would refuse a clean node
+	// in production, and the error a person reads should name the reason that
+	// will still be true after they fix their allow list.
+	if c.Network.EgressUnenforced && !cleanTestMode() {
+		return RuntimeProfile{}, fmt.Errorf(
+			"%s declares egress modes it does not enforce, which this deployment does not accept", name)
+	}
 	if !egressSatisfied(c.Network.EgressModes, req) {
 		if req.EgressAllowed > 0 {
 			return RuntimeProfile{}, fmt.Errorf(

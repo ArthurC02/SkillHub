@@ -114,8 +114,15 @@ type ProviderCapability struct {
 		ReapsDetachedDescendants *bool `json:"reaps_detached_descendants,omitempty"`
 	} `json:"isolation"`
 	Network struct {
-		EgressModes    []string `json:"egress_modes"`
-		PrivateNetwork bool     `json:"private_network"`
+		EgressModes []string `json:"egress_modes"`
+		// EgressUnenforced: the declared mode is intent, not a boundary - the
+		// workload reaches whatever the node's host reaches. Decoded here for
+		// the same reason MaxResourcesUnenforced is: Match() has to be able to
+		// refuse it, or the field is another declaration only a startup log
+		// reads. True is accepted in exactly one deployment, the same one that
+		// accepts `isolation.level: clean`.
+		EgressUnenforced bool `json:"egress_unenforced"`
+		PrivateNetwork   bool `json:"private_network"`
 	} `json:"network"`
 	Availability struct {
 		ConcurrentRunSlots int `json:"concurrent_run_slots"`

@@ -1,7 +1,9 @@
 package sandbox
 
 import (
+	"context"
 	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -276,4 +278,47 @@ func keysOf(m map[string]json.RawMessage) []string {
 	}
 	slices.Sort(out)
 	return out
+}
+
+// A node that filters nothing accepts every destination, and says so in the
+// capability rather than in its own log.
+//
+// This is the inverse of the case above, and the two together are the point.
+// A1-e refuses a destination the node has no route to, because the alternative
+// is a run that starts, hangs on its first model call and ends at the wall
+// clock looking like a slow skill. A host process has a route to everything,
+// so there is no destination it would hang on - refusing one would be the false
+// answer here, not the safe one.
+//
+// What such a node cannot promise is the other half: that the workload reaches
+// ONLY the destinations named. Before 2026-08-30 there was no field for that, so
+// clean mode declared `none`, and every run carrying a model gateway grant was
+// unschedulable - the demo could not produce one real trace event (04 丙-98).
+func TestANodeThatEnforcesNothingAcceptsEveryDestinationAndDeclaresThat(t *testing.T) {
+	cfg := routedConfig()
+	cfg.EgressAllow = nil // a host process renders no nftables rule at all
+	cfg.EgressUnenforced = true
+
+	// The destination this node renders nothing for, and would refuse if it
+	// claimed enforcement (the test above).
+	if re := cfg.accept(routedRequest(EgressAllowEntry{Purpose: "model_gateway", URL: "http://litellm.internal:4000"})); re != nil {
+		t.Fatalf("a node that filters nothing refused a destination it can reach: %v", re)
+	}
+
+	// The exemption is not a blanket one: everything accept() checks before the
+	// destination loop still applies, including the mode itself.
+	req := routedRequest(EgressAllowEntry{Purpose: "model_gateway", URL: "http://litellm.internal:4000"})
+	req.Egress.Mode = "none"
+	if re := cfg.accept(req); re == nil {
+		t.Error("egress mode none with an allow list was accepted because enforcement was off")
+	}
+
+	// And the capability has to carry it. A node that behaves this way while
+	// declaring `default_deny` and nothing else is precisely the divergence
+	// ADR-022 A1-e and ADR-059 decision 3 both exist to make impossible; the
+	// platform's gate reads this field and nothing else.
+	m := NewManager(&p02Driver{}, cfg, slog.New(slog.DiscardHandler))
+	if got := m.Capability(context.Background()).Network; got == nil || !got.EgressUnenforced {
+		t.Errorf("capability network = %+v, want egress_unenforced true", got)
+	}
 }

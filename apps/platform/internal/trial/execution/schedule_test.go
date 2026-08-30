@@ -431,6 +431,46 @@ func TestMatchRefusesAProviderThatDoesNotEnforceWhatItDeclares(t *testing.T) {
 	}
 }
 
+// The same gate for the other half of a node's declaration, and it needs its own
+// test because it needs its own branch: a node can hold every resource ceiling
+// and still filter no traffic. Until 2026-08-30 there was no field for it at
+// all, so a clean node declared `none` and RUN-005 refused every run carrying a
+// model gateway grant - the demo's Trace screen had nothing to show and the
+// reason was recorded as "needs money" (04 丙-96, 丙-98, 05 R-32).
+func TestMatchRefusesAProviderThatDeclaresEgressItDoesNotEnforce(t *testing.T) {
+	t.Setenv("DEV_LOGIN", "")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "")
+
+	c := compatible()
+	c.Network.EgressUnenforced = true
+	_, err := Match(c, defaultRequirements())
+	if err == nil {
+		t.Fatal("a provider that filters nothing was dispatched to in a deployment that requires a boundary")
+	}
+	// It has to name the node and the reason. This refusal is easy to mistake for
+	// the allow-list mismatch right below it in Match, and an operator who reads
+	// it that way goes off to edit a rendered file that would not have helped.
+	for _, want := range []string{"test_provider", "egress"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("reason = %q, want it to mention %q", err, want)
+		}
+	}
+
+	// And the one deployment that has already accepted having no boundary can
+	// dispatch to its own driver - with a destination, which is the whole point:
+	// no model gateway grant means no model call, and no model call means no
+	// trace worth showing.
+	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+	clean := compatible()
+	clean.Isolation.Level = "clean"
+	clean.Network.EgressUnenforced = true
+	req := defaultRequirements()
+	req.EgressMode, req.EgressAllowed = "default_deny", 1
+	if _, err := Match(clean, req); err != nil {
+		t.Errorf("the clean test mode could not take a run that names a destination: %v", err)
+	}
+}
+
 // reaps_detached_descendants is disclosed, not refused. The two platforms of one
 // driver legitimately differ on it (a Windows job object holds every descendant;
 // a POSIX process group does not hold one that called setsid), so a gate would

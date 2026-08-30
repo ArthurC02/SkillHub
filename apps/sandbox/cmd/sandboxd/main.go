@@ -146,6 +146,34 @@ func main() {
 			"network", network, "modes", modes)
 	}
 
+	// Clean mode's answer to the same question the resource ceilings answer
+	// below: declare what a caller needs to dispatch, and declare separately
+	// that nothing holds the workload to it.
+	//
+	// localdrv is a host process with no network namespace of its own, so it is
+	// neither `none` (it routes everywhere) nor `default_deny` (it filters
+	// nothing). Until 2026-08-30 that left it declaring `none`, which made every
+	// run carrying a model gateway grant unschedulable - RUN-005 refused them
+	// all, and the demo could not produce a single real trace event (04 丙-98).
+	//
+	// This is not a hole in ADR-022 A1-e. A1-e stops a node advertising a route
+	// it does not have; the hole was the opposite one, a node with every route
+	// and no vocabulary for saying it enforces none of them. The platform
+	// accepts `egress_unenforced` in exactly one deployment - the same one that
+	// accepts `isolation.level: clean` - and refuses it everywhere else
+	// (trial/execution/schedule.go).
+	//
+	// Deliberately NOT driven by SKILLHUB_SANDBOX_NETWORK: setting that variable
+	// on a clean node would make EgressModesFor return `default_deny` with no
+	// qualifier at all, which is the lie this field exists to replace.
+	egressUnenforced := false
+	if cleanMode {
+		egressUnenforced = true
+		modes = []string{"default_deny", "none"}
+		log.Warn("clean mode: egress modes are declared so runs can be scheduled, but this driver enforces none of them; " +
+			"the workload reaches whatever this host reaches, and the run's allow list is what the user agreed to, not a boundary")
+	}
+
 	// The declared isolation level follows the driver actually wired up.
 	// Declaring gvisor on a machine running runc would be a claim the provider
 	// cannot keep, and RUN-005 dispatches on this answer.
@@ -163,6 +191,7 @@ func main() {
 		ReapsDetachedDescendants: reapsDetached,
 		EgressModes:              modes,
 		EgressAllow:              egressAllow,
+		EgressUnenforced:         egressUnenforced,
 		Slots:                    envInt("SKILLHUB_SANDBOX_SLOTS", 2),
 	}, log)
 

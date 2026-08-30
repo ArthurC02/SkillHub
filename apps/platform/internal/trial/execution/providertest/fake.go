@@ -143,6 +143,11 @@ func DefaultCapability(name string) run.ProviderCapability {
 	c.MaxResourcesUnenforced = nil
 	c.Isolation.ReapsDetachedDescendants = &reaps
 	c.Network.EgressModes = []string{"default_deny"}
+	// The third field in that same family, and explicit for the same reason:
+	// this fake stands for a node whose declaration is a boundary. A test that
+	// wants a node declaring an egress mode it does not enforce sets it on a
+	// copy.
+	c.Network.EgressUnenforced = false
 	c.Availability.ConcurrentRunSlots = 4
 	c.Availability.Healthy = &healthy
 	return c

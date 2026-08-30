@@ -287,8 +287,15 @@ type Isolation struct {
 }
 
 type NetworkCapability struct {
-	EgressModes    []string `json:"egress_modes,omitempty"`
-	PrivateNetwork bool     `json:"private_network,omitempty"`
+	EgressModes []string `json:"egress_modes,omitempty"`
+	// EgressUnenforced is true when the declared mode is a statement of intent
+	// rather than a boundary: the workload can reach whatever the host can.
+	// Same shape and same reason as MaxResourcesUnenforced above - `none` and
+	// `default_deny` are the only two modes, a host process is neither, and
+	// before this field a clean-mode node had to either claim an enforcement it
+	// did not have or refuse every run that named a destination (04 丙-98).
+	EgressUnenforced bool `json:"egress_unenforced,omitempty"`
+	PrivateNetwork   bool `json:"private_network,omitempty"`
 }
 
 type Features struct {

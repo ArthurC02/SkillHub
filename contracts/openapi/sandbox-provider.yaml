@@ -983,6 +983,36 @@ components:
           type: object
           properties:
             egress_modes: { type: array, items: { type: string, enum: [default_deny, none] } }
+            egress_unenforced:
+              type: boolean
+              description: |
+                True when this provider declares an egress mode that nothing
+                holds the workload to. Absent or false means the declared mode
+                is enforced, which is what a production provider must be able
+                to say.
+
+                It exists for the same reason `max_resources_unenforced` does,
+                and for the same provider. `egress_modes` has exactly two
+                values: `none` (no route out) and `default_deny` (a route to
+                the rendered allow list and nowhere else). A host process with
+                no network namespace of its own is neither - it reaches
+                everything - and until 2026-08-30 there was no way to say so.
+                The consequence was not a wrong declaration but no run at all:
+                any request carrying a model gateway needs `default_deny`, a
+                clean-mode node could not honestly claim it, and RUN-005
+                refused every such dispatch (04 丙-98).
+
+                A consumer must treat this as "the allow list the user agreed
+                to is a statement of intent, not a boundary". The workload can
+                reach anything the host can. Dispatching to such a provider
+                anyway is a deployment decision, and it is the same decision as
+                accepting `isolation.level: clean` - the platform gates both on
+                the same switch rather than inventing a second one.
+
+                The asymmetry with `max_resources_unenforced` is deliberate:
+                that field NAMES which ceilings are loose, because some can be
+                enforced while others are not. Egress has nothing to enumerate.
+                Either the node filters the workload's traffic or it does not.
             private_network: { type: boolean }
         features:
           type: object

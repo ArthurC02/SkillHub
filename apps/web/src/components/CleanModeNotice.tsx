@@ -45,6 +45,18 @@ export function CleanModeNotice() {
         says an absence needs a word, not a blank.
       */}
       <p className="note">物件儲存只在記憶體裡，行程結束即消失。</p>
+      {/*
+        The fifth, added 2026-08-30 with the capability field that made runs
+        possible here at all (04 丙-98). It is the one absence a user can be
+        actively misled about rather than merely uninformed of: 試跑前的權限摘要
+        prints a specific egress allow list and asks them to agree to it, and in
+        this mode nothing holds the run to it. 設計 §2.2 ranks 「顯示但不強制」
+        as the worst of the four states — so it gets a sentence naming the screen
+        it contradicts, not a general note about networking.
+      */}
+      <p className="note">
+        試跑前那份「可連往哪裡」的清單，在這個模式下不被強制——沒有任何東西擋著沙箱連別的地方。
+      </p>
     </>
   );
 }

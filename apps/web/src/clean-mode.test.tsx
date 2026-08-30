@@ -92,7 +92,7 @@ async function renderNotice() {
   });
 }
 
-test("PORT-003: with clean_mode on, the notice states its four absences", async () => {
+test("PORT-003: with clean_mode on, the notice states its five absences", async () => {
   stubMe({ clean_mode: true });
   await renderNotice();
   await waitFor(() => (container.textContent?.length ?? 0) > 0);
@@ -104,6 +104,12 @@ test("PORT-003: with clean_mode on, the notice states its four absences", async 
   // The fourth: an in-memory object store. Its failure has no symptom until a
   // restart, so it is the one absence a reader cannot infer from the screen.
   expect(text).toContain("物件儲存只在記憶體裡，行程結束即消失。");
+  // The fifth, and the only one the user can be actively misled about rather
+  // than merely uninformed of: 試跑前的權限摘要 prints an egress allow list and
+  // asks them to agree to it, and in this mode nothing holds the run to it
+  // (04 丙-98). 設計 §2.2 ranks 「顯示但不強制」 as the worst of the four states,
+  // so the sentence has to name that screen rather than talk about networking.
+  expect(text).toContain("試跑前那份「可連往哪裡」的清單，在這個模式下不被強制");
   expect(text).not.toContain("完整");
   expect(text).not.toContain("等同");
   expect(text).not.toContain("與正式環境一致");

@@ -112,8 +112,15 @@ type Config struct {
 	// rule for. Empty means this node routes nowhere, and EgressModesFor turns
 	// that into a capability of `none` rather than a claim it cannot keep.
 	EgressAllow []EgressDestination
-	Slots       int
-	CancelGrace time.Duration
+	// EgressUnenforced says this node filters nothing: the workload reaches
+	// whatever the host reaches, so EgressAllow describes what the user agreed
+	// to rather than what anything holds the run to. Set only by a driver that
+	// has no network boundary at all (localdrv, ADR-059); a node that renders
+	// nftables rules leaves it false and accept() holds every destination to
+	// them.
+	EgressUnenforced bool
+	Slots            int
+	CancelGrace      time.Duration
 }
 
 var (
@@ -225,7 +232,11 @@ func (m *Manager) Capability(ctx context.Context) ProviderCapability {
 			DedicatedWorkspacePerRun: true,
 			ReapsDetachedDescendants: m.cfg.ReapsDetachedDescendants,
 		},
-		Network: &NetworkCapability{EgressModes: m.cfg.EgressModes, PrivateNetwork: true},
+		Network: &NetworkCapability{
+			EgressModes:      m.cfg.EgressModes,
+			EgressUnenforced: m.cfg.EgressUnenforced,
+			PrivateNetwork:   true,
+		},
 		Features: &Features{
 			ToolCalls: true,
 			Scripts:   true,
@@ -820,6 +831,20 @@ func (c Config) accept(req RunRequest) *RunError {
 	// timeout, which reads as the skill being slow. The user was shown that
 	// destination and agreed to it (02:TEST-005); this is the first code that
 	// holds anything to it.
+	//
+	// A node that enforces nothing is exempt, and the exemption is not a
+	// loophole in A1-e - it is the same requirement read correctly. A1-e refuses
+	// a destination the node has no ROUTE to, because accepting it would end in
+	// a timeout that reads as a slow skill. A host process routes to everything,
+	// so there is no destination it would time out on, and refusing here would
+	// be the false statement rather than the true one. What it cannot promise is
+	// the other half - that the workload reaches ONLY these - and that is what
+	// EgressUnenforced puts in the capability response for the platform to gate
+	// on (04 丙-98), instead of being silently absent as it was until
+	// 2026-08-30.
+	if c.EgressUnenforced {
+		return nil
+	}
 	for _, want := range req.Egress.Allow {
 		routed := false
 		for _, have := range c.EgressAllow {
