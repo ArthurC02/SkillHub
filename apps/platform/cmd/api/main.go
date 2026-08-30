@@ -345,13 +345,29 @@ func main() {
 	// release. A deployment with no directory gets no targets and says so on every
 	// packaging route — never a hard-coded fallback, which would be the second
 	// truth the endpoint exists to avoid.
-	profiles, err := packaging.LoadProfiles(envx.Or("PACKAGING_PROFILES_DIR", "contracts/packaging/profiles"))
+	profileDir := envx.Or("PACKAGING_PROFILES_DIR", "contracts/packaging/profiles")
+	profiles, err := packaging.LoadProfiles(profileDir)
 	if err != nil {
 		slog.Error("packaging profiles unreadable; packaging is unavailable", "error", err)
 		profiles = nil
 	}
 	if len(profiles) == 0 {
-		slog.Warn("no packaging profiles configured; PACK-001 routes will answer 503")
+		// Which of the two, and the path as this process resolved it (04 丙-102 ③).
+		// The default above is relative, so it resolves from THIS process's working
+		// directory — which is not the repository root under `go -C apps/platform
+		// run`, and was not on the clean-mode launch measured on 2026-08-30. The
+		// operator saw "no packaging profiles configured", which reads as a choice
+		// this deployment made, and packaging answered 503 for the rest of the day.
+		//
+		// The user-facing 503 stays as it is: from a member's side "this deployment
+		// cannot package" is true either way, and a filesystem path is not theirs to
+		// see. It is the operator who needs the two told apart.
+		resolved, absErr := filepath.Abs(profileDir)
+		if absErr != nil {
+			resolved = profileDir
+		}
+		slog.Warn("no packaging profiles configured; PACK-001 routes will answer 503",
+			"reason", profileDirReason(profileDir), "dir", profileDir, "resolved", resolved)
 	}
 
 	// 02:O11Y-004 / ADR-029. ANALYTICS_RETENTION unset means this deployment
@@ -619,6 +635,18 @@ func importFetcherFromEnv() *ingest.URLFetcher {
 func retentionFromEnv() time.Duration {
 	raw := os.Getenv("DOWNLOAD_ARTIFACT_RETENTION")
 	if raw == "" {
+		// Said out loud, because this was the only one of the deployment settings
+		// that produced no start-up line at all: the deployment came up looking
+		// healthy and answered 503 on the last click of the core journey, with
+		// nothing anywhere connecting the two (04 丙-102 ②).
+		//
+		// The message says why there is no default rather than just naming the
+		// variable. A default here would be this process choosing a retention
+		// period on the owner's behalf, and that period is quoted to users in the
+		// consent form — it is a promise, not a parameter.
+		slog.Warn("DOWNLOAD_ARTIFACT_RETENTION is unset; building a download package will answer 503. " +
+			"This value has no default on purpose: it is the retention promise shown to users, and PDM-006's " +
+			"proposed 90 days is not ratified (GOV-RETENTION-001)")
 		return 0
 	}
 	d, err := time.ParseDuration(raw)
@@ -627,6 +655,22 @@ func retentionFromEnv() time.Duration {
 		return 0
 	}
 	return d
+}
+
+// profileDirReason says WHICH of the two ways a deployment ends up with no
+// packaging targets, because the operator's next action for them is opposite: a
+// missing directory is a path to fix, an empty one is a deployment that has not
+// been given any profiles yet.
+//
+// LoadProfiles deliberately does not distinguish them — a missing directory is
+// an empty set there, so that packaging refuses rather than inventing a target.
+// That is right for the caller that serves the route and wrong for the caller
+// that writes the start-up line, which is this one.
+func profileDirReason(dir string) string {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return "the directory does not exist; note that a relative path resolves from this process's working directory, not from the repository root"
+	}
+	return "the directory exists but holds no *.json profile"
 }
 
 // quotaFromEnv reads the PDM-010 free run allowance (ADR-028 決策 2).

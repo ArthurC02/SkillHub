@@ -365,6 +365,88 @@ func TestSeedCleanFailsOnUploadError(t *testing.T) {
 // are derived from its own location: there is no repo root to point a test at.
 // What this can hold is that the three files still agree, which is the drift
 // that would silently un-cover the check.
+// 04 丙-102, and the reason it is a test rather than a comment: every one of
+// these settings was missing on 2026-08-30's measured launch, and the mode came
+// up looking healthy. A launcher that asks for a value it can derive is how the
+// value ends up unset, and a launcher that stays silent about the ones it cannot
+// derive is how the operator meets them one 503 at a time.
+//
+// Scoped to the functions that do the work, for the reason the test below is:
+// the words appear in this file's own comments, so a whole-file search would
+// pass with the code deleted.
+func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
+	t.Parallel()
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(root, "tools", "cleanmode", "start.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	launcher := string(raw)
+
+	body := func(header string) string {
+		start := strings.Index(launcher, header)
+		if start < 0 {
+			t.Fatalf("tools/cleanmode/start.mjs no longer defines %q; this test cannot tell what it does", header)
+		}
+		end := strings.Index(launcher[start:], "\n}\n")
+		if end < 0 {
+			t.Fatalf("could not find the end of %q in tools/cleanmode/start.mjs", header)
+		}
+		return launcher[start : start+end]
+	}
+
+	// Category 1: derived here because this script owns both ends. Each of these
+	// was being asked for, and each was missing on the measured launch.
+	owned := body("function ownedSettings() {")
+	for name, cost := range map[string]string{
+		"SKILLHUB_TRACE_INGEST_SECRET": "a failed run says only `workload exited with code 1`",
+		"SKILLHUB_TRACE_INGEST_URL":    "the sandbox posts no trace events at all",
+		"PACKAGING_PROFILES_DIR":       "the platform's default resolves from the wrong cwd and packaging reports itself unconfigured",
+	} {
+		if !strings.Contains(owned, name) {
+			t.Errorf("ownedSettings() no longer supplies %s; without it %s", name, cost)
+		}
+	}
+	// It fills gaps rather than overriding: an operator who set one keeps it.
+	applied := body("function applyOwnedSettings() {")
+	if !strings.Contains(applied, "if (!process.env[name])") {
+		t.Error("applyOwnedSettings() no longer leaves an operator's own value alone")
+	}
+
+	// Category 3 is reported, never filled in. A default for the retention would
+	// be this script deciding a promise on the owner's behalf
+	// (GOV-RETENTION-001), so it must appear in the report and NOT in the
+	// derived settings.
+	if strings.Contains(owned, "DOWNLOAD_ARTIFACT_RETENTION") {
+		t.Error("ownedSettings() invents a DOWNLOAD_ARTIFACT_RETENTION: that value is a retention promise quoted to " +
+			"users in the consent form, and GOV-RETENTION-001 leaves it unset on purpose")
+	}
+	table := launcher[strings.Index(launcher, "const CAPABILITIES = ["):]
+	if end := strings.Index(table, "\n];\n"); end > 0 {
+		table = table[:end]
+	}
+	for _, name := range []string{
+		"DOWNLOAD_ARTIFACT_RETENTION", "LLM_SERVICE_URL",
+		"SKILLHUB_MODEL_GATEWAY_URL", "SKILLHUB_MODEL_GATEWAY_KEY", "OPERATOR_USER_IDS",
+	} {
+		if !strings.Contains(table, name) {
+			t.Errorf("the capability report no longer names %s, so a launch missing it says nothing", name)
+		}
+	}
+
+	// The one refusal. Everything else is a smaller deployment that says so;
+	// this one is incoherent, and it kills every run a minute after it starts.
+	preflight := body("async function preflight() {")
+	if !strings.Contains(preflight, "SKILLHUB_RUN_MODEL") ||
+		!strings.Contains(preflight, "SKILLHUB_MODEL_GATEWAY_URL") {
+		t.Error("preflight() no longer refuses a gateway with no SKILLHUB_RUN_MODEL: the Agent SDK then asks for its " +
+			"own default model, which the gateway does not serve, and every run dies on `400 Invalid model name`")
+	}
+}
+
 func TestTheLauncherRefusesToStartWithoutTheHarnessRuntime(t *testing.T) {
 	t.Parallel()
 	root, err := findRepoRoot()

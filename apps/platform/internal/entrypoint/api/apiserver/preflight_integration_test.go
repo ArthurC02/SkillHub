@@ -101,6 +101,49 @@ func (f fixture) startWithHash(t *testing.T, hash string) (int, runView) {
 			`","confirmed_summary_hash":"`+hash+`"}`)
 }
 
+// The other half of the pairing above: with a gateway configured the summary
+// names both secrets, and names ONLY their names.
+//
+// Split from the test above rather than folded into it because the two cases
+// assert opposite things about the same field, and the deployment-shaped
+// difference between them (a gateway, therefore a grant) is the whole point.
+// Iron rule 11: a Virtual Key is minted per attempt at dispatch and has no
+// business in a screen the user reads before the run exists.
+func TestPreflightNamesTheInjectedSecretsAndNeverTheirValues(t *testing.T) {
+	pool := requireDB(t)
+	t.Setenv("SKILLHUB_MODEL_GATEWAY_URL", "http://gateway.invalid:4000")
+	t.Setenv("SKILLHUB_MODEL_GATEWAY_KEY", "sk-not-a-real-key-for-this-test")
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-preflight-secrets")
+
+	code, view := f.preflight(t)
+	if code != http.StatusOK {
+		t.Fatalf("GET preflight: got %d (%s)", code, view.Error)
+	}
+	s := view.Summary
+
+	if len(s.Network.Allow) == 0 {
+		t.Fatal("a configured gateway must appear in the egress allow list; without it this test proves nothing")
+	}
+	if len(s.InjectedSecrets) == 0 {
+		t.Fatal("a gateway grant injects secrets, and the user has to be told which")
+	}
+	raw, _ := json.Marshal(view)
+	for _, name := range s.InjectedSecrets {
+		if name == "" {
+			t.Error("an injected secret was disclosed with no name")
+		}
+		if strings.Contains(string(raw), name+"=") {
+			t.Errorf("the summary carries a value for %s, not just its name", name)
+		}
+	}
+	// The master key this test set. If it ever reaches the summary the run's own
+	// key would too, and this is the screen a user reads before anything exists.
+	if strings.Contains(string(raw), "sk-not-a-real-key-for-this-test") {
+		t.Error("the deployment's gateway key reached the pre-run summary")
+	}
+}
+
 // --- TEST-008: the summary itself --------------------------------------------
 
 // Every item 02:TEST-005 requires to be shown before a run: Dataset, Script,
@@ -143,21 +186,22 @@ func TestPreflightSummaryDisclosesEveryRequiredItem(t *testing.T) {
 	if s.Network.Mode != "default_deny" || len(s.Network.Allow) != 0 {
 		t.Errorf("network = %+v, want default_deny with an empty allow list", s.Network)
 	}
-	// Iron rule 11: the names of what gets injected, and nothing that looks like a
-	// value for them. A key is minted per attempt at dispatch and has no business
-	// in a screen the user reads before the run exists.
-	if len(s.InjectedSecrets) == 0 {
-		t.Fatal("no secret disclosure at all")
+	// This deployment has no model gateway — the empty allow list two lines up is
+	// the same fact — so nothing is injected, and the disclosure says so.
+	//
+	// This assertion used to be `len(s.InjectedSecrets) == 0 -> Fatal`, i.e. it
+	// REQUIRED the summary to name two secrets on a deployment it had just
+	// asserted has no egress at all. The list was a constant, and the test
+	// encoded the constant rather than the property (04 丙-104). The pairing is
+	// the property: secrets are named when, and only when, the grant that carries
+	// them exists.
+	if len(s.InjectedSecrets) != 0 {
+		t.Errorf("no gateway grant, so nothing is injected, but the summary names %v", s.InjectedSecrets)
+	}
+	if s.InjectedSecrets == nil {
+		t.Error("the row must still render as an empty list; an omitted one reads as a question never asked")
 	}
 	raw, _ := json.Marshal(view)
-	for _, name := range s.InjectedSecrets {
-		if name == "" {
-			t.Error("an injected secret was disclosed with no name")
-		}
-		if strings.Contains(string(raw), name+"=") {
-			t.Errorf("the summary carries a value for %s, not just its name", name)
-		}
-	}
 	if strings.Contains(string(raw), "sk-") {
 		t.Error("the summary body contains something shaped like an API key")
 	}

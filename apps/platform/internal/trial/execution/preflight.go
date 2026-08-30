@@ -59,10 +59,39 @@ type ObjectStore interface {
 	Remove(ctx context.Context, key string) error
 }
 
-// Secrets the platform injects into every sandbox (SBX-008, PDM-003). Names only:
-// the value is a per-run Virtual Key minted at dispatch and never leaves the
-// gateway boundary, and iron rule 11 keeps it out of anything a user can read.
+// Secrets the platform injects into a sandbox that has a model gateway grant
+// (SBX-008, PDM-003). Names only: the value is a per-run Virtual Key minted at
+// dispatch and never leaves the gateway boundary, and iron rule 11 keeps it out
+// of anything a user can read.
 var injectedSecretNames = []string{"ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN"}
+
+// injectedSecretsFor names what this run will ACTUALLY receive, which is not a
+// constant (04 丙-104).
+//
+// The driver injects those two only when a grant exists, and a deployment with
+// no gateway is legal - GatewayFromEnv returns nil for it deliberately. The list
+// was written as a constant anyway, so on such a deployment the one screen
+// SEC-002 exists for told every reader that two secrets would be injected while
+// none were: a disclosure false in the direction that makes the run look more
+// capable than it is. Measured 2026-08-30 on a clean-mode launch with no
+// gateway configured.
+//
+// Derived from the same policy snapshot the egress allow list comes from, never
+// from a second read of the environment. defaultPolicy's own comment says why:
+// every reader goes through it, because a second copy is how the screen a user
+// confirms drifts away from what the run is held to.
+//
+// Empty comes back as an empty list and not nil, for the reason MCPServers does:
+// a row shown as empty is the honest disclosure, and an omitted row lets a
+// reader assume the question was never asked.
+func injectedSecretsFor(snap policySnapshot) []string {
+	for _, a := range snap.Egress.Allow {
+		if a.Purpose == "model_gateway" {
+			return injectedSecretNames
+		}
+	}
+	return []string{}
+}
 
 // PermissionSummaryContent is the hashed body. A struct, not a map, so field
 // order — and therefore the hash — is fixed by the type and not by the encoder
@@ -332,7 +361,7 @@ func (s *Service) permissionSummaryFor(
 		// a user assume the question was never asked.
 		MCPServers:      []string{},
 		Network:         NetworkSummary{Mode: snap.Egress.Mode, Allow: egressAllowLines(snap.Egress.Allow)},
-		InjectedSecrets: injectedSecretNames,
+		InjectedSecrets: injectedSecretsFor(snap),
 		Provider:        s.providerSummary(ctx, snap),
 		ResourceLimits:  snap.ResourceLimits,
 	}

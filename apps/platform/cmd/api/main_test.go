@@ -694,3 +694,32 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 		})
 	}
 }
+
+// 04 丙-102 ③. The two ways a deployment has no packaging targets look identical
+// on every screen and are opposite jobs for an operator.
+//
+// This is the shape 丙-91 was: a fault described as a policy. The start-up line
+// said "no packaging profiles configured", the operator read it as a choice this
+// deployment had made, and the real cause was a relative default resolving from
+// a working directory that is not the repository root — measured on a clean-mode
+// launch on 2026-08-30, where packaging answered 503 for the whole session.
+func TestTheTwoWaysPackagingHasNoTargetsAreToldApart(t *testing.T) {
+	missing := profileDirReason(filepath.Join(t.TempDir(), "no-such-dir"))
+	if !strings.Contains(missing, "does not exist") {
+		t.Errorf("a missing directory must say so, got %q", missing)
+	}
+	// The sentence has to carry the thing that actually bit, not just the fact:
+	// the path was relative and the working directory was not what its author
+	// assumed.
+	if !strings.Contains(missing, "working directory") {
+		t.Errorf("the missing-directory reason no longer explains how a relative path resolves, got %q", missing)
+	}
+
+	empty := profileDirReason(t.TempDir())
+	if !strings.Contains(empty, "holds no") {
+		t.Errorf("an existing but empty directory must say so, got %q", empty)
+	}
+	if missing == empty {
+		t.Error("both causes produce the same sentence again, which is the defect this test exists for")
+	}
+}

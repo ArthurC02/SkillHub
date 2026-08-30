@@ -32,3 +32,41 @@ func TestEgressAllowIsRenderedAsPurposeAndURL(t *testing.T) {
 		t.Errorf("empty allow list rendered as %#v, want an empty slice", got)
 	}
 }
+
+// 04 丙-104. The permission summary is the whole of SEC-002's disclosure, and it
+// named two secrets unconditionally while a gateway-less deployment injects
+// none. Measured on a clean-mode launch: the screen said ANTHROPIC_BASE_URL and
+// ANTHROPIC_AUTH_TOKEN would be injected, the driver injected neither, and the
+// run went on to report success without ever reaching a model.
+//
+// The direction matters and is why this is a test: the lie made the run look
+// MORE capable than it was, so nothing downstream could contradict it.
+func TestInjectedSecretsFollowTheGrantAndNotAConstant(t *testing.T) {
+	withGateway := policySnapshot{Egress: EgressPolicy{
+		Mode:  "default_deny",
+		Allow: []egressAllow{{Purpose: "model_gateway", URL: "http://gateway.invalid"}},
+	}}
+	if got := injectedSecretsFor(withGateway); len(got) != 2 {
+		t.Errorf("a run with a gateway grant receives both secrets, got %v", got)
+	}
+
+	none := policySnapshot{Egress: EgressPolicy{Mode: "default_deny", Allow: []egressAllow{}}}
+	got := injectedSecretsFor(none)
+	if len(got) != 0 {
+		t.Errorf("no gateway means no secrets are injected, but the summary claims %v", got)
+	}
+	// Empty, not nil: the row has to render as an empty list rather than vanish.
+	if got == nil {
+		t.Error("an empty disclosure must still be a list; a missing row reads as a question never asked")
+	}
+
+	// A destination that is not the gateway must not carry the secrets either -
+	// the grant is what injects them, not the presence of any allowed egress.
+	other := policySnapshot{Egress: EgressPolicy{
+		Mode:  "default_deny",
+		Allow: []egressAllow{{Purpose: "something_else", URL: "http://elsewhere.invalid"}},
+	}}
+	if got := injectedSecretsFor(other); len(got) != 0 {
+		t.Errorf("only a model_gateway grant injects these, got %v", got)
+	}
+}

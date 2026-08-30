@@ -99,9 +99,16 @@ func (p Profiles) Ordered() []Profile {
 }
 
 // LoadProfiles reads every *.json in dir as a packaging profile. A missing
-// directory is not an error the caller has to distinguish: it comes back as an
+// directory is not an error THIS caller has to distinguish: it comes back as an
 // empty set, and every packaging route then answers "not configured" rather than
 // inventing a target.
+//
+// One caller does have to distinguish it, and that is cmd/api's start-up line
+// (profileDirReason): "nobody configured any profiles" and "the path I resolved
+// does not exist" are the same 503 to a member and opposite actions to an
+// operator. Collapsing them here is right; collapsing them there cost a day of
+// packaging answering 503 while the start-up log called it a deployment choice
+// (04 丙-102 ③).
 func LoadProfiles(dir string) (Profiles, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {

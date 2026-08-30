@@ -67,17 +67,176 @@ function portFree(port) {
 // runtime than the image it claims to rehearse.
 function agentSdkVersion(dockerfile) {
   try {
-    const m = readFileSync(dockerfile, "utf8").match(/^ARG\s+CLAUDE_AGENT_SDK_VERSION\s*=\s*"?([^"\s]+)"?\s*$/m);
+    const m = readFileSync(dockerfile, "utf8").match(
+      /^ARG\s+CLAUDE_AGENT_SDK_VERSION\s*=\s*"?([^"\s]+)"?\s*$/m,
+    );
     return m ? m[1] : null;
   } catch {
     return null;
   }
 }
 
+// --- deployment preconditions (02:PORT-005, 04 丙-102) -----------------------
+//
+// 02:PORT-005 asks every preflight failure to name what is missing and how to
+// get it. Until now this preflight checked node, go, the carrier's modules, the
+// harness runtime, the frontend build and three ports - and not one deployment
+// setting. A launch with none of them set came up looking healthy and then
+// failed one feature per click: every run refused by the gateway, packaging 503,
+// cross-language search empty, and the trace that would have explained any of it
+// switched off.
+//
+// Settings split three ways, and the split is the whole design:
+//
+//   1. THIS SCRIPT OWNS BOTH ENDS. The value only means anything inside this
+//      launch and nobody cares what it is. Asking for it is how it ends up
+//      missing. sandboxToken below has always been handled this way ("nothing
+//      for an operator to configure and nothing to leave behind on disk"); the
+//      trace secret, the trace URL and the profile directory are the same shape
+//      and were being asked for anyway.
+//   2. ONLY A PERSON KNOWS IT. It points at something outside this machine.
+//      Reported, with the variable and where its value comes from.
+//   3. IT IS A PROMISE, NOT A PARAMETER. A default here would be this script
+//      deciding something on the owner's behalf. DOWNLOAD_ARTIFACT_RETENTION is
+//      the one: GOV-RETENTION-001 leaves it unset ON PURPOSE because PDM-006's
+//      90 days is not ratified, and the consent form quotes whatever it says.
+//      Reported with WHY it has no default - never filled in.
+//
+// Only one combination is refused outright, because only one is incoherent
+// rather than reduced: a gateway with no SKILLHUB_RUN_MODEL. The Agent SDK then
+// asks for its own default model, the gateway does not serve that name, and
+// every run dies on `400 Invalid model name`. Everything else produces a
+// deployment that is smaller than the demo and honest about it - a run with no
+// model exit is refused by the platform with a reason, packaging with no
+// retention answers 503, search with no embedding service says it is degraded.
+//
+// ponytail: this list is the launcher's, and the ruled deployment capability
+// table (05 R-36) will be the platform's. When that lands this block should read
+// it rather than keep a second copy - two lists of the same preconditions is the
+// drift this repository keeps finding.
+
+// ownedSettings are category 1: derived here, never asked for. An operator who
+// set one anyway keeps their value - this fills gaps, it does not override.
+function ownedSettings() {
+  return {
+    // Minted per launch like sandboxToken, and for the same reason: the API
+    // both signs and verifies these tokens, so the value never leaves this
+    // process tree and there is nothing to coordinate.
+    SKILLHUB_TRACE_INGEST_SECRET: randomUUID(),
+    // The address the sandbox posts trace events back to. This script already
+    // computed it for APP_URL; not passing it here is what left every failed
+    // run saying only "workload exited with code 1".
+    SKILLHUB_TRACE_INGEST_URL: `http://127.0.0.1:${API_PORT}`,
+    // The platform's default for this is repo-root relative while the API runs
+    // with cwd apps/platform, so the default resolves to a directory that does
+    // not exist and packaging reports itself unconfigured. This script knows
+    // the repo root.
+    PACKAGING_PROFILES_DIR: join(
+      repoRoot,
+      "contracts",
+      "packaging",
+      "profiles",
+    ),
+  };
+}
+
+function applyOwnedSettings() {
+  const filled = [];
+  for (const [name, value] of Object.entries(ownedSettings())) {
+    if (!process.env[name]) {
+      process.env[name] = value;
+      filled.push(name);
+    }
+  }
+  return filled;
+}
+
+// gatewayModels reads the model names the gateway actually serves, so the
+// refusal below can list them instead of telling somebody to go and look. Same
+// rule as agentSdkVersion: read the one file that defines them, never a second
+// copy that can drift.
+function gatewayModels() {
+  try {
+    const text = readFileSync(
+      join(repoRoot, "infra", "compose", "litellm-config.yaml"),
+      "utf8",
+    );
+    return [...text.matchAll(/^\s*-\s*model_name:\s*(\S+)/gm)].map((m) => m[1]);
+  } catch {
+    return [];
+  }
+}
+
+// CAPABILITIES is what the operator is handed. One row per thing a visitor can
+// try, what it needs, and what they will meet if it is not there - because the
+// failure they would otherwise meet is a 503, an empty result list or a refused
+// run, three screens that do not say which variable is missing.
+const CAPABILITIES = [
+  {
+    name: "目錄搜尋（關鍵字）",
+    needs: [],
+  },
+  {
+    name: "跨語言意圖搜尋、匯入增強",
+    needs: ["LLM_SERVICE_URL"],
+    off: "只剩 FTS：非英語的查詢多半回 0 筆（畫面會標 degraded）",
+    how: "另起 apps/llm（uv run fastapi dev），再設成它的位址",
+  },
+  {
+    name: "試跑（模型出口）",
+    needs: ["SKILLHUB_MODEL_GATEWAY_URL", "SKILLHUB_MODEL_GATEWAY_KEY"],
+    off: "沒有模型出路，平台會擋下派送並說明（05 R-35）",
+    how: "起 infra/compose 的 litellm，URL 指向它，KEY 用該部署的 master key",
+  },
+  {
+    name: "評估判定（Judge）",
+    needs: ["LLM_SERVICE_URL"],
+    off: "Run 跑得完，但判定是 undetermined：沒有 judge 服務",
+    how: "同上，judge 在 Python 側",
+  },
+  {
+    name: "打包下載",
+    needs: ["DOWNLOAD_ARTIFACT_RETENTION"],
+    off: "打包一律 503",
+    how: "這個值刻意沒有預設——它是一句對使用者的保存期承諾，不是參數（GOV-RETENTION-001）。定了幾天就寫幾天，例如 2160h",
+  },
+  {
+    name: "可散布性放行（operator）",
+    needs: ["OPERATOR_USER_IDS"],
+    off: "沒有人能放行，而種子內容全部是 unknown，所以每一個 Skill 的打包都會 422（04 丙-105）",
+    how: "設成要當 operator 的 user id（逗號分隔）",
+  },
+  {
+    name: "漏斗量測",
+    needs: ["ANALYTICS_RETENTION"],
+    off: "不收集任何漏斗事件",
+    how: "設一個保存期，例如 4320h",
+  },
+];
+
+function reportCapabilities(filled) {
+  console.log(
+    `[launcher] 這次啟動自己補上的設定（不必也不該由人提供）：${filled.join("、") || "無"}`,
+  );
+  console.log("[launcher] 這個部署現在有什麼、缺什麼：");
+  for (const c of CAPABILITIES) {
+    const missing = c.needs.filter((n) => !process.env[n]);
+    if (missing.length === 0) {
+      console.log(`[launcher]   ✓ ${c.name}`);
+      continue;
+    }
+    console.log(`[launcher]   ✗ ${c.name} — ${c.off}`);
+    console.log(`[launcher]       缺 ${missing.join("、")}；${c.how}`);
+  }
+}
+
 async function preflight() {
   const [major] = process.versions.node.split(".").map(Number);
   if (major < 20) {
-    fail(`node ${process.versions.node} is too old`, "this mode needs Node 20 or newer");
+    fail(
+      `node ${process.versions.node} is too old`,
+      "this mode needs Node 20 or newer",
+    );
   }
   if (!(await has("go"))) {
     fail(
@@ -111,7 +270,12 @@ async function preflight() {
   // second copy in this file is exactly how a clean-mode run would silently
   // stop being a rehearsal of the image.
   const harnessDir = join(repoRoot, "infra", "images", "runtime-agent-sdk");
-  const sdkDir = join(harnessDir, "node_modules", "@anthropic-ai", "claude-agent-sdk");
+  const sdkDir = join(
+    harnessDir,
+    "node_modules",
+    "@anthropic-ai",
+    "claude-agent-sdk",
+  );
   if (!existsSync(sdkDir)) {
     const version = agentSdkVersion(join(harnessDir, "Dockerfile"));
     fail(
@@ -141,6 +305,24 @@ async function preflight() {
       );
     }
   }
+
+  // The only combination refused rather than reported: a model exit with no
+  // model named. The SDK falls back to its own default, the gateway does not
+  // serve that name, and every run dies on `400 Invalid model name passed in
+  // model=...` after about a minute of looking like it is working (04 丙-102 ①).
+  // Measured 2026-08-30; naming the model turned the same run green.
+  if (
+    process.env.SKILLHUB_MODEL_GATEWAY_URL &&
+    !process.env.SKILLHUB_RUN_MODEL
+  ) {
+    const models = gatewayModels();
+    fail(
+      "a model gateway is configured but SKILLHUB_RUN_MODEL is not, so every run would be refused by the gateway with `400 Invalid model name` about a minute after it starts",
+      models.length
+        ? `set SKILLHUB_RUN_MODEL to one of the names that gateway config serves: ${models.join(", ")}`
+        : "set SKILLHUB_RUN_MODEL to a model name your gateway serves (the run tier is the mini one, PDM-003 v5)",
+    );
+  }
 }
 
 // grantCatalogWorkspace writes the three rows Service.signup would have written
@@ -169,7 +351,9 @@ async function preflight() {
 async function grantCatalogWorkspace(dsn) {
   // `pg` lives in the carrier's node_modules, which preflight has already
   // checked for; resolve it from there rather than from this directory.
-  const requirePglite = createRequire(join(repoRoot, "tools", "pglite", "package.json"));
+  const requirePglite = createRequire(
+    join(repoRoot, "tools", "pglite", "package.json"),
+  );
   const { Client } = requirePglite("pg");
   const client = new Client({ connectionString: dsn });
   await client.connect();
@@ -233,7 +417,9 @@ function start(label, cmd, args, opts = {}) {
   echo(child.stderr, label);
   child.on("exit", (code) => {
     if (shuttingDown) return;
-    console.error(`\n[${label}] exited with code ${code}; shutting the rest down`);
+    console.error(
+      `\n[${label}] exited with code ${code}; shutting the rest down`,
+    );
     shutdown(code ?? 1);
   });
   return child;
@@ -247,7 +433,12 @@ function waitFor(child, pattern, timeoutMs, whatWasWaitedFor) {
   return new Promise((resolve, reject) => {
     let seen = "";
     const timer = setTimeout(
-      () => reject(new Error(`${whatWasWaitedFor} within ${timeoutMs}ms; last output was: ${seen.slice(-300) || "(nothing)"}`)),
+      () =>
+        reject(
+          new Error(
+            `${whatWasWaitedFor} within ${timeoutMs}ms; last output was: ${seen.slice(-300) || "(nothing)"}`,
+          ),
+        ),
       timeoutMs,
     );
     const onData = (b) => {
@@ -275,7 +466,9 @@ function killTree({ label, child }) {
   if (child.pid === undefined) return;
   try {
     if (process.platform === "win32") {
-      spawn("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+      spawn("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+        stdio: "ignore",
+      });
     } else {
       // Negative pid signals the group; the children were started detached so
       // there is a group to signal.
@@ -296,12 +489,21 @@ function shutdown(code = 0) {
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 
+const filledSettings = applyOwnedSettings();
 await preflight();
 
-const carrier = start("pglite", process.execPath, [join(repoRoot, "tools", "pglite", "bin", "serve.mjs"), `--port=${PGLITE_PORT}`]);
+const carrier = start("pglite", process.execPath, [
+  join(repoRoot, "tools", "pglite", "bin", "serve.mjs"),
+  `--port=${PGLITE_PORT}`,
+]);
 let dsn;
 try {
-  const match = await waitFor(carrier, /PGLITE_READY (\S+)/, 120_000, "the database carrier never reported ready");
+  const match = await waitFor(
+    carrier,
+    /PGLITE_READY (\S+)/,
+    120_000,
+    "the database carrier never reported ready",
+  );
   dsn = match[1];
 } catch (err) {
   console.error(`\nclean mode cannot start: ${err.message}`);
@@ -316,13 +518,21 @@ let catalogWorkspaceId;
 try {
   catalogWorkspaceId = await grantCatalogWorkspace(dsn);
 } catch (err) {
-  console.error(`\nclean mode cannot start: the demo importer's catalog workspace could not be created: ${err.message}`);
-  console.error("  if `pg` is missing, run `npm ci --prefix tools/pglite` (it is a devDependency there and `--omit=dev` skips it)");
+  console.error(
+    `\nclean mode cannot start: the demo importer's catalog workspace could not be created: ${err.message}`,
+  );
+  console.error(
+    "  if `pg` is missing, run `npm ci --prefix tools/pglite` (it is a devDependency there and `--omit=dev` skips it)",
+  );
   shutdown(1);
   throw err;
 }
-console.log(`[launcher] demo importer "${SEED_IMPORTER}" owns workspace ${catalogWorkspaceId}, workspaces.is_catalog = true`);
-console.log(`[launcher]   this is what makes \`devctl seed-clean\`'s uploads visible to GET /api/skills/search (04 丙-84 ①)`);
+console.log(
+  `[launcher] demo importer "${SEED_IMPORTER}" owns workspace ${catalogWorkspaceId}, workspaces.is_catalog = true`,
+);
+console.log(
+  `[launcher]   this is what makes \`devctl seed-clean\`'s uploads visible to GET /api/skills/search (04 丙-84 ①)`,
+);
 
 // DEV_LOGIN is set because clean mode has no GitHub OAuth to reach, and
 // COOKIE_INSECURE because it is plain http on loopback. Both are what
@@ -366,5 +576,10 @@ start("sandboxd", "go", ["-C", "apps/sandbox", "run", "./cmd/sandboxd"], {
 
 console.log(`\n[launcher] clean test mode is starting.`);
 console.log(`[launcher]   open http://127.0.0.1:${API_PORT}/`);
-console.log(`[launcher]   the page says what this mode is not: no isolation, no signature checks, one connection.`);
+console.log(
+  `[launcher]   the page says what this mode is not: no isolation, no signature checks, one connection.`,
+);
 console.log(`[launcher] ctrl-c stops all three.\n`);
+
+// Last, so it is the block still on screen when somebody starts clicking.
+reportCapabilities(filledSettings);
