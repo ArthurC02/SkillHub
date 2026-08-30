@@ -409,7 +409,17 @@ PDM-001／002／003／003×011／004／005／008（兩列）：**值都已經在
 
 ---
 
-## R-29｜使用者自己寫的 Prompt 沒有任何刪除路徑，連帳號刪除都沒有
+## ~~R-29~~｜使用者自己寫的 Prompt 沒有任何刪除路徑，連帳號刪除都沒有 — ✅ **已裁定 2026-08-30：(a) 可以硬刪，條件 `NOT EXISTS` 快照**
+
+> **✅ 2026-08-30 裁定並落地。** 負責人選 (a)。`db/queries/governance.sql` 的 `DeleteWorkspaceTestCases` （owner `testlab`）加進 `design.PurgeWorkspace`，位置不必動——`identity.purgeSteps` 裡 testlab 本來就排在 registry 之前。
+>
+> **一處刻意的放寬，記在這裡而不是靜靜地做**：裁定文字寫的是「soft-deleted Test Case」，而落地的查詢**沒有帶那個述詞**。理由是**帳號刪除時，一筆未軟刪的 Test Case 持有的是同一個人的同一段原話**；只刪軟刪的那些，會讓本項自己寫的「不決定的代價——寫過 Test Case 的帳號無法被乾淨清除」原封不動留在原地。「soft-deleted」是稽核當初**發現它的那個場景**（一筆軟刪的 case 把一個軟刪的 Skill 釘住），不是帳號刪除這個場景的條件。<br>**那個場景本身沒有一併處理**：`library.PurgeDeletedSkills` 的寬限期掃描仍然會被軟刪的 test case 擋住。它現在**有解了**（這條 DELETE 的形狀可以照抄），但它不在本次裁定的範圍內，留在 `04`。
+>
+> **兩次突變各自紅在不同的地方，而那正是本項預言的**：①拿掉整個刪除 → `a test case no snapshot references survived the purge; the user's own prompt is still on disk`；②拿掉 `NOT EXISTS` → `violates foreign key constraint "test_case_snapshots_test_case_id_fkey" (SQLSTATE 23503)`——**整個帳號刪除失敗**，也就是本項警告的「症狀換位置」。一支只斷言「刪掉了」的測試對第二種是綠的。
+>
+> **同批落地的第三件**：同意書 §3 新增一列。在此之前這類資料**連揭露都沒有**——而受測者被告知的是「你可以要求刪除你的資料」。該列同時說清楚被跑過的 Test Case 其文字會以快照形式留下、但不再指向本人。**本列與 Run Artifact、回饋兩列同一批，需要重新走一次法務確認。**
+
+
 
 **2026-08-29 新增，由 DB 稽核（A2）逐條追出來。這一項的性質與 R-11 相同：不決定也會自己發生，只是方向相反——R-11 是會刪掉不該刪的，這一項是刪不掉該刪的。**
 
