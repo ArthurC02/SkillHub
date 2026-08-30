@@ -249,8 +249,35 @@ jobs:
       # or a dropped env block would skip 281 assertions and still print ok.
       # With this set, an unset database URL fails the package instead.
       SKILLHUB_REQUIRE_DB: "1"
+      # 02:PORT-009, the same pair for the object store. The endpoint is what
+      # makes SBX-008's grant tests run against a store that verifies
+      # signatures; the switch is what makes a store that never came up a
+      # failure instead of a skip. Credentials are the committed local dev
+      # identity in infra/compose/seaweedfs-s3.json, which the test defaults to.
+      SKILLHUB_TEST_OBJSTORE_ENDPOINT: 127.0.0.1:8333
+      SKILLHUB_REQUIRE_OBJSTORE: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # Not a `services:` entry: service containers start before checkout, and
+      # this one must mount the S3 identity file. That mount is the whole point
+      # -- an anonymous bucket answers all three of the attacks below with 200,
+      # which is the exact false green 02:PORT-009 was reopened for.
+      - name: Start SeaweedFS (credentialed S3, for the SBX-008 grant tests)
+        run: |
+          docker run -d --name seaweedfs --network host \
+            -v "$GITHUB_WORKSPACE/infra/compose/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro" \
+            docker.io/chrislusf/seaweedfs:3.80@sha256:1055999e08eed1789b0ae45d235126e4495e23d3fb9d6396293fd42539b1ae6a \
+            server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
+          # /status is the S3 gateway's own health endpoint. Measured at 16s on
+          # the machine this was written on, so the ceiling is generous on
+          # purpose: a flaky wait here would look like a signature failure.
+          for _ in $(seq 60); do
+            if curl -fs -o /dev/null http://127.0.0.1:8333/status; then exit 0; fi
+            sleep 1
+          done
+          echo "SeaweedFS never became ready"
+          docker logs seaweedfs
+          exit 1
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: apps/platform/go.mod

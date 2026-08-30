@@ -34,7 +34,12 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		// The two that were wired by a bare `append` below the loop until
 		// 2026-08-29, so this roster walked past them and unwiring BOTH left the
 		// package green. They were the highest-value pair on the list.
-		"require-db-guard", "isolation-level",
+		"require-db-guard",
+		// 02:PORT-009's twin of require-db-guard, and the only reason SBX-008's
+		// short-lived authorization is proven anywhere: it watches both the
+		// switch and the existence of the test file.
+		"require-objstore-guard",
+		"isolation-level",
 		"route-table", "requirement-refs", "purge-schedule", "timeout-budget",
 		"image-version", "embedding-dims", "goldenset-mirror",
 	}

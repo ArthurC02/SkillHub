@@ -138,6 +138,7 @@ func documentCheckers() []namedChecker {
 			}
 			return nil
 		}},
+		{"require-objstore-guard", requireObjstoreGuardProblems},
 		{"isolation-level", isolationLevelProblems},
 		{"route-table", routeTableProblems},
 		{"requirement-refs", requirementRefProblems},
