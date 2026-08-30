@@ -10,6 +10,13 @@ package main
 //   - docs/plans/mvp/m5/gen009-round-d/skills/*.md — 20 generated SKILL.md
 //   - tools/goldenset/corpus/**/*.md               — 31 curated SKILL.md
 //
+// Of those 51, one is excluded from upload and named on every run — see
+// seedExclusions. After the uploads it asks the public catalog search whether
+// any of what it just sent can be found, because the first real run put fifty
+// packages into the database that the demo's own screen could not see
+// (04 丙-84); the flag that decides that is granted by tools/cleanmode/start.mjs
+// before the API starts, which is the only moment anything can write it.
+//
 // Two other candidates were ruled out and must not be added back here: a
 // report whose per-run data only ever lived in a developer's local database,
 // and a curated list whose bytes are deliberately not committed (4 of them
@@ -34,6 +41,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -53,8 +61,71 @@ const (
 	goldensetCorpusRelDir  = "tools/goldenset/corpus"
 	goldensetExpectedCount = 31
 
+	// seedDevLoginUser is also the account tools/cleanmode/start.mjs pre-creates
+	// with workspaces.is_catalog = true; the two must stay equal, and
+	// TestTheLauncherGrantsTheSeedImporterACatalogWorkspace fails if they drift.
 	seedDevLoginUser = "seed-importer" // same default as tools/content/import_seed.py
 )
+
+// seedExclusions names source files that live inside a PORT-007 batch and still
+// cannot be uploaded, with the reason, keyed by repo-relative path.
+//
+// The one entry is goldenset retrieval corpus first and a package second: its
+// frontmatter carries `triggers`, a key the Agent Skills spec does not define,
+// so the platform's own spec validator refuses the upload with 422. That
+// refusal is the validator doing its job (04 丙-84 ②), not a defect to route
+// around, and the file is deliberately left byte-for-byte alone: it is the
+// input to a measured retrieval batch, and editing it — or shipping a
+// "corrected" copy whose provenance points at bytes that are not the source —
+// would move those numbers.
+//
+// So the file is dropped, and the drop is loud. 02:PORT-007's 「指不回去的即不得
+// 使用」 cuts both ways: a demo that is quietly one entry shorter than the
+// inventory it cites is the same failure as one that invents an entry.
+var seedExclusions = map[string]string{
+	"tools/goldenset/corpus/documents/minimax-docx.md": "frontmatter declares `triggers`, which the Agent Skills spec does not define; the platform's spec validator rejects the package with 422 (04 丙-84 ②). Left unedited on purpose: it is goldenset retrieval corpus, and changing it would move that batch's measurements.",
+}
+
+// seedExpectedUploads is how many packages actually go over the wire: every
+// file the inventory recorded, minus the named exclusions.
+func seedExpectedUploads() int {
+	return gen009ExpectedCount + goldensetExpectedCount - len(seedExclusions)
+}
+
+// partitionSeedEntries splits the collected batches into what is uploaded and
+// what is excluded. An exclusion that matches nothing is an error, not a
+// no-op: a stale entry here would silently stop excluding the day the path
+// changes, and nothing else would notice.
+func partitionSeedEntries(all []seedEntry) (upload, excluded []seedEntry, err error) {
+	seen := map[string]bool{}
+	for _, e := range all {
+		if _, ok := seedExclusions[e.provenance]; ok {
+			seen[e.provenance] = true
+			excluded = append(excluded, e)
+			continue
+		}
+		upload = append(upload, e)
+	}
+	for path := range seedExclusions {
+		if !seen[path] {
+			return nil, nil, fmt.Errorf(
+				"seed-clean: exclusion %s matched no collected file — the path moved or the batch changed; "+
+					"fix or remove the entry rather than leaving one that excludes nothing", path)
+		}
+	}
+	if len(upload) != seedExpectedUploads() {
+		return nil, nil, fmt.Errorf("seed-clean: %d entries to upload, want %d", len(upload), seedExpectedUploads())
+	}
+	return upload, excluded, nil
+}
+
+// writeSeedExclusions prints every dropped entry with its reason, on both the
+// dry run and the real one. Silence here is the thing 02:PORT-007 forbids.
+func writeSeedExclusions(out io.Writer, excluded []seedEntry) {
+	for _, e := range excluded {
+		fmt.Fprintf(out, "excluded: %s\n          %s\n", e.provenance, seedExclusions[e.provenance])
+	}
+}
 
 type seedEntry struct {
 	name       string // skill name, for logging only
@@ -216,6 +287,77 @@ func retryAfter(header string, attempt int) time.Duration {
 	return time.Duration(attempt) * time.Second
 }
 
+// seedCatalogSearch asks the public catalog search one question and returns the
+// `total` it answers with. Anonymous by contract; the session cookie this
+// client already carries changes nothing about the scope.
+func seedCatalogSearch(client *http.Client, api, q string) (int, error) {
+	const maxAttempts = 4
+	target := api + "/api/skills/search?limit=1&q=" + url.QueryEscape(q)
+	for attempt := 1; ; attempt++ {
+		resp, err := client.Get(target)
+		if err != nil {
+			return 0, err
+		}
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4000))
+		_ = resp.Body.Close()
+		if resp.StatusCode == http.StatusTooManyRequests && attempt < maxAttempts {
+			time.Sleep(retryAfter(resp.Header.Get("Retry-After"), attempt))
+			continue
+		}
+		if resp.StatusCode != http.StatusOK {
+			return 0, fmt.Errorf("GET /api/skills/search answered %d: %s", resp.StatusCode, firstLine(string(b)))
+		}
+		var body struct {
+			Total int `json:"total"`
+		}
+		if err := json.Unmarshal(b, &body); err != nil {
+			return 0, fmt.Errorf("GET /api/skills/search: %w", err)
+		}
+		return body.Total, nil
+	}
+}
+
+// seedVerifyProbes is how many uploaded names are tried before the catalog is
+// declared invisible. More than one because a single name can miss for a
+// lexical reason (the vector leg is off in a deployment with no embedding
+// service, and `websearch_to_tsquery` is the whole of what is left); few
+// enough that this stays a check and not a search benchmark.
+const seedVerifyProbes = 5
+
+// verifyCatalogVisible is this command's answer to 04 丙-84 ①: uploading is not
+// the same as being findable. Fifty packages landed in the database on the
+// first real run and `GET /api/skills/search` — the screen the demo is about —
+// returned `total: 0`, because the importer's workspace was a private one and
+// the catalog search joins `workspaces.is_catalog`.
+//
+// It asks the real question rather than checking that some write happened: a
+// query goes to the public endpoint and something has to come back.
+func verifyCatalogVisible(client *http.Client, api string, uploaded []seedEntry, out io.Writer) error {
+	probes := uploaded
+	if len(probes) > seedVerifyProbes {
+		probes = probes[:seedVerifyProbes]
+	}
+	tried := make([]string, 0, len(probes))
+	for _, e := range probes {
+		total, err := seedCatalogSearch(client, api, e.name)
+		if err != nil {
+			return fmt.Errorf("seed-clean: catalog visibility check: %w", err)
+		}
+		tried = append(tried, fmt.Sprintf("%q→total=%d", e.name, total))
+		if total > 0 {
+			fmt.Fprintf(out, "catalog check: GET /api/skills/search?q=%s returns total=%d — the seeded skills are visible on the demo's own screen\n", e.name, total)
+			return nil
+		}
+	}
+	return fmt.Errorf(
+		"seed-clean: %d package(s) uploaded, but the public catalog search finds none of them (%s).\n"+
+			"  GET /api/skills/search returns only workspaces with `is_catalog = true`, and no HTTP endpoint sets that flag.\n"+
+			"  tools/cleanmode/start.mjs grants it to %q before the API starts; a deployment seeded some other way needs\n"+
+			"    UPDATE workspaces SET is_catalog = true WHERE name = '%s';\n"+
+			"  and then `devctl seed-clean` again. Leaving the data in place unseen is what 04 丙-84 ① recorded",
+		len(uploaded), strings.Join(tried, ", "), seedDevLoginUser, seedDevLoginUser)
+}
+
 // seedClean is the entry point for `devctl seed-clean [--dry-run]`.
 func seedClean(root string, args []string, out io.Writer) error {
 	dryRun := false
@@ -226,7 +368,11 @@ func seedClean(root string, args []string, out io.Writer) error {
 		dryRun = true
 	}
 
-	entries, err := collectSeedEntries(root)
+	all, err := collectSeedEntries(root)
+	if err != nil {
+		return err
+	}
+	entries, excluded, err := partitionSeedEntries(all)
 	if err != nil {
 		return err
 	}
@@ -236,6 +382,7 @@ func seedClean(root string, args []string, out io.Writer) error {
 		for i, e := range entries {
 			fmt.Fprintf(out, "  [%3d] %-55s source=%s\n", i+1, e.name, e.provenance)
 		}
+		writeSeedExclusions(out, excluded)
 		return nil
 	}
 
@@ -270,9 +417,10 @@ func seedClean(root string, args []string, out io.Writer) error {
 			fmt.Fprintf(out, "          %s\n", firstLine(body))
 		}
 	}
-	fmt.Fprintf(out, "\nimported=%d failed=%d\n", imported, failed)
+	fmt.Fprintf(out, "\nimported=%d failed=%d excluded=%d\n", imported, failed, len(excluded))
+	writeSeedExclusions(out, excluded)
 	if failed > 0 {
 		return fmt.Errorf("seed-clean: %d of %d upload(s) failed", failed, len(entries))
 	}
-	return nil
+	return verifyCatalogVisible(client, api, entries, out)
 }

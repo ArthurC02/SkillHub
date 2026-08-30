@@ -17,6 +17,7 @@
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
+import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,6 +28,11 @@ const repoRoot = join(here, "..", "..");
 const API_PORT = Number(process.env.CLEAN_MODE_API_PORT ?? 8080);
 const SANDBOX_PORT = Number(process.env.CLEAN_MODE_SANDBOX_PORT ?? 8081);
 const PGLITE_PORT = Number(process.env.CLEAN_MODE_PGLITE_PORT ?? 5433);
+
+// The account `devctl seed-clean` logs in as. It must equal seedDevLoginUser in
+// tools/devctl/seed_clean.go; TestTheLauncherGrantsTheSeedImporterACatalogWorkspace
+// there fails if the two ever drift apart.
+const SEED_IMPORTER = "seed-importer";
 
 const children = [];
 let shuttingDown = false;
@@ -90,6 +96,66 @@ async function preflight() {
         `stop whatever holds it, or set ${name === "the API" ? "CLEAN_MODE_API_PORT" : name === "the sandbox daemon" ? "CLEAN_MODE_SANDBOX_PORT" : "CLEAN_MODE_PGLITE_PORT"}`,
       );
     }
+  }
+}
+
+// grantCatalogWorkspace writes the three rows Service.signup would have written
+// on the seed importer's first dev login, with workspaces.is_catalog already
+// true — so that the skills `devctl seed-clean` uploads land somewhere
+// GET /api/skills/search can see them.
+//
+// Why this is needed: the public catalog search joins `workspaces.is_catalog`
+// (db/queries/search.sql), and nothing in the public API sets that flag — it is
+// set by SQL when a catalog is built (tools/content/seed_testcases.py's
+// docstring says the same). 04 丙-84 ① recorded what happens without it: fifty
+// skills in the database and `total: 0` on the screen the demo is about.
+//
+// Why HERE and not in the seeder, which is the natural home for it: the carrier
+// serves exactly one client. maxConnections=1 is ADR-060 decision 2 (opening the
+// multiplexer makes pg_try_advisory_lock lie), Node's net.Server enforces it by
+// dropping the second socket outright, and cmd/api pins pgxpool to MaxConns=1 to
+// match. Once the API starts it holds that one connection for the rest of the
+// run, so `devctl seed-clean` cannot open a second one — this window, after the
+// carrier reports ready and before the API is spawned, is the only moment any
+// SQL can run at all.
+//
+// Why it is not the second data layer 02:PORT-008 forbids: it defines no schema
+// and implements none of db/gen's query methods. It is one statement, it names
+// the rows it writes, and if it fails the launch fails with it.
+async function grantCatalogWorkspace(dsn) {
+  // `pg` lives in the carrier's node_modules, which preflight has already
+  // checked for; resolve it from there rather than from this directory.
+  const requirePglite = createRequire(join(repoRoot, "tools", "pglite", "package.json"));
+  const { Client } = requirePglite("pg");
+  const client = new Client({ connectionString: dsn });
+  await client.connect();
+  try {
+    // The field values are exactly what devLogin builds for this name
+    // (internal/creator/workspace/http.go), so LoginOrSignup finds this identity
+    // and reuses the account instead of creating a private one beside it.
+    const { rows } = await client.query(
+      `WITH u AS (
+         INSERT INTO users (email, display_name) VALUES ($1 || '@dev.local', $1)
+         RETURNING id
+       ), w AS (
+         INSERT INTO workspaces (owner_user_id, name, is_catalog)
+         SELECT id, $1, true FROM u
+         RETURNING id
+       ), i AS (
+         INSERT INTO user_identities (user_id, provider, provider_user_id)
+         SELECT id, 'dev', $1 FROM u
+         RETURNING user_id
+       )
+       SELECT (SELECT id FROM w) AS workspace_id`,
+      [SEED_IMPORTER],
+    );
+    return rows[0].workspace_id;
+  } finally {
+    // end() sends the wire-protocol Terminate. A socket dropped mid-protocol
+    // instead leaves the carrier refusing every later connection (the known
+    // limitation in tools/pglite/bin/serve.mjs), which would take the API down
+    // with it before it ever started.
+    await client.end();
   }
 }
 
@@ -199,6 +265,20 @@ try {
   throw err;
 }
 console.log(`[launcher] database carrier ready on ${PGLITE_PORT}`);
+
+// Fail-closed: a launch that skipped this would come up looking healthy and
+// then seed fifty skills nobody can find, which is the failure 04 丙-84 ① is.
+let catalogWorkspaceId;
+try {
+  catalogWorkspaceId = await grantCatalogWorkspace(dsn);
+} catch (err) {
+  console.error(`\nclean mode cannot start: the demo importer's catalog workspace could not be created: ${err.message}`);
+  console.error("  if `pg` is missing, run `npm ci --prefix tools/pglite` (it is a devDependency there and `--omit=dev` skips it)");
+  shutdown(1);
+  throw err;
+}
+console.log(`[launcher] demo importer "${SEED_IMPORTER}" owns workspace ${catalogWorkspaceId}, workspaces.is_catalog = true`);
+console.log(`[launcher]   this is what makes \`devctl seed-clean\`'s uploads visible to GET /api/skills/search (04 丙-84 ①)`);
 
 // DEV_LOGIN is set because clean mode has no GitHub OAuth to reach, and
 // COOKIE_INSECURE because it is plain http on loopback. Both are what

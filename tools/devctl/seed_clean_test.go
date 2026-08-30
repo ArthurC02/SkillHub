@@ -139,17 +139,18 @@ func TestSeedCleanDryRunSendsNoRequests(t *testing.T) {
 	if got := atomic.LoadInt32(&requests); got != 0 {
 		t.Fatalf("--dry-run sent %d request(s); want 0", got)
 	}
-	want := fmt.Sprintf("%d skill(s)", gen009ExpectedCount+goldensetExpectedCount)
+	want := fmt.Sprintf("%d skill(s)", seedExpectedUploads())
 	if !strings.Contains(out.String(), want) {
 		t.Fatalf("dry-run output does not report the count: %q", out.String())
 	}
-	// Every printed line must carry a provenance= marker so a reader can trace
-	// each planned upload back to its source file without running anything.
+	// Every planned upload must carry a provenance= marker so a reader can trace
+	// it back to its source file without running anything; the exclusions follow,
+	// two lines each (the path, then why it is not going).
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	if len(lines) != 1+gen009ExpectedCount+goldensetExpectedCount {
-		t.Fatalf("got %d output lines; want a header plus one per entry", len(lines))
+	if len(lines) != 1+seedExpectedUploads()+2*len(seedExclusions) {
+		t.Fatalf("got %d output lines; want a header, one per entry and two per exclusion", len(lines))
 	}
-	for _, l := range lines[1:] {
+	for _, l := range lines[1 : 1+seedExpectedUploads()] {
 		if !strings.Contains(l, "source=") {
 			t.Fatalf("line missing source= provenance marker: %q", l)
 		}
@@ -163,20 +164,7 @@ func TestSeedCleanUploadsEveryEntry(t *testing.T) {
 	}
 
 	var logins, uploads int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/auth/dev/login":
-			atomic.AddInt32(&logins, 1)
-			w.WriteHeader(http.StatusNoContent)
-		case r.Method == http.MethodPost && r.URL.Path == "/skills/import/upload":
-			atomic.AddInt32(&uploads, 1)
-			w.WriteHeader(http.StatusCreated)
-			_, _ = w.Write([]byte(`{"skill_id":"stub"}`))
-		default:
-			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+	server := httptest.NewServer(http.HandlerFunc(seedStubHandler(t, &logins, &uploads, 1)))
 	defer server.Close()
 	t.Setenv("SKILLHUB_API", server.URL)
 
@@ -187,9 +175,150 @@ func TestSeedCleanUploadsEveryEntry(t *testing.T) {
 	if got := atomic.LoadInt32(&logins); got != 1 {
 		t.Fatalf("dev login called %d time(s); want 1", got)
 	}
-	want := int32(gen009ExpectedCount + goldensetExpectedCount)
+	want := int32(seedExpectedUploads())
 	if got := atomic.LoadInt32(&uploads); got != want {
 		t.Fatalf("uploads = %d; want %d", got, want)
+	}
+}
+
+// seedStubHandler stands in for the platform: dev login, uploads, and the
+// public catalog search answering with searchTotal.
+func seedStubHandler(t *testing.T, logins, uploads *int32, searchTotal int) http.HandlerFunc {
+	t.Helper()
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/auth/dev/login":
+			atomic.AddInt32(logins, 1)
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPost && r.URL.Path == "/skills/import/upload":
+			atomic.AddInt32(uploads, 1)
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"skill_id":"stub"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/skills/search":
+			if r.URL.Query().Get("q") == "" {
+				t.Errorf("catalog check sent no q")
+			}
+			_, _ = fmt.Fprintf(w, `{"query":%q,"results":[],"total":%d}`, r.URL.Query().Get("q"), searchTotal)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}
+}
+
+// 04 丙-84 ①: fifty packages landed and the demo's own screen showed nothing.
+// A seed that cannot be found is a failed seed, not a quiet success.
+func TestSeedCleanFailsWhenTheCatalogSearchFindsNothing(t *testing.T) {
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var logins, uploads int32
+	server := httptest.NewServer(http.HandlerFunc(seedStubHandler(t, &logins, &uploads, 0)))
+	defer server.Close()
+	t.Setenv("SKILLHUB_API", server.URL)
+
+	var out strings.Builder
+	err = seedClean(root, nil, &out)
+	if err == nil {
+		t.Fatal("expected an error when the catalog search finds nothing, got nil")
+	}
+	if !strings.Contains(err.Error(), "is_catalog") {
+		t.Fatalf("error does not name the flag that decides visibility: %v", err)
+	}
+	if got := atomic.LoadInt32(&uploads); got != int32(seedExpectedUploads()) {
+		t.Fatalf("uploads = %d; want %d — the check must run after a full upload, not instead of one", got, seedExpectedUploads())
+	}
+}
+
+// 04 丙-84 ②: the one file the platform's spec validator refuses. It must be
+// left alone, it must not be uploaded, and its absence must be said out loud.
+func TestSeedCleanExcludesTheUnvalidatablePackageAndSaysWhy(t *testing.T) {
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	all, err := collectSeedEntries(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upload, excluded, err := partitionSeedEntries(all)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(excluded) != len(seedExclusions) {
+		t.Fatalf("excluded %d entries; want %d", len(excluded), len(seedExclusions))
+	}
+	if len(upload)+len(excluded) != len(all) {
+		t.Fatalf("partition lost entries: %d + %d != %d", len(upload), len(excluded), len(all))
+	}
+	for _, e := range upload {
+		if _, ok := seedExclusions[e.provenance]; ok {
+			t.Fatalf("%s is excluded but still in the upload set", e.provenance)
+		}
+	}
+
+	var out strings.Builder
+	if err := seedClean(root, []string{"--dry-run"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	for path, reason := range seedExclusions {
+		if !strings.Contains(out.String(), path) {
+			t.Fatalf("output never names the excluded file %s: %q", path, out.String())
+		}
+		if !strings.Contains(out.String(), reason) {
+			t.Fatalf("output never gives the reason %s is excluded", path)
+		}
+	}
+}
+
+// An exclusion that matches nothing has stopped excluding anything, and only a
+// failure says so.
+func TestPartitionSeedEntriesRejectsAStaleExclusion(t *testing.T) {
+	_, _, err := partitionSeedEntries([]seedEntry{{name: "x", provenance: "tools/goldenset/corpus/moved.md"}})
+	if err == nil {
+		t.Fatal("expected an error for an exclusion that matched nothing, got nil")
+	}
+	if !strings.Contains(err.Error(), "matched no collected file") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// The flag this whole command depends on is granted by the clean-mode launcher,
+// in the one window where anything can write it (the carrier serves a single
+// client, ADR-060 決策 2). Nothing in Go can reach that code, so what is pinned
+// here is that it is still there and still talking about this account.
+func TestTheLauncherGrantsTheSeedImporterACatalogWorkspace(t *testing.T) {
+	t.Parallel()
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	launcher, err := os.ReadFile(filepath.Join(root, "tools", "cleanmode", "start.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(launcher)
+	for _, needle := range []string{seedDevLoginUser, "is_catalog"} {
+		if !strings.Contains(src, needle) {
+			t.Fatalf("tools/cleanmode/start.mjs no longer mentions %q — without it seed-clean uploads land where the catalog search cannot see them (04 丙-84 ①)", needle)
+		}
+	}
+	// Defining the grant is not calling it, and calling it late is not calling
+	// it: once the API is spawned it holds the carrier's single connection, so
+	// the SQL has nowhere left to run.
+	grant := strings.Index(src, "await grantCatalogWorkspace(")
+	api := strings.Index(src, `start("api"`)
+	if grant < 0 {
+		t.Fatal("tools/cleanmode/start.mjs never calls grantCatalogWorkspace — the seed importer's workspace stays private (04 丙-84 ①)")
+	}
+	if api < 0 {
+		t.Fatal(`tools/cleanmode/start.mjs no longer starts the API with start("api"; this check can no longer tell whether the grant happens first`)
+	}
+	if grant > api {
+		t.Fatal("tools/cleanmode/start.mjs grants the catalog workspace after starting the API; by then the API holds the carrier's only connection (ADR-060 決策 2) and the statement cannot run")
 	}
 }
 
