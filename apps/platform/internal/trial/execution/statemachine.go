@@ -7,8 +7,16 @@ package run
 // outcome and task verdict are different facts) — read both first.
 //
 // Iron rule 5: this Postgres state machine is the single source of truth for run
-// state. Nothing else — not a provider, not a LangGraph checkpoint — may decide
-// where a run is. Nothing outside this file may write runs.status.
+// state. Nothing else — not a provider, not any in-process state on the Python
+// side — may decide where a run is.
+//
+// ADR-016 rule 1 words that second example as "a LangGraph checkpoint", and this
+// comment quoted it until 2026-08-30. LangGraph was never adopted (ADR-016's
+// dated correction; uv.lock carries no such row), and a Go reader has no way to
+// know that — so the sentence read as if those checkpoints exist here and are
+// merely outranked. The rule does not depend on the example: Python owns no
+// cross-request state at all today, which satisfies it outright rather than
+// narrowly. Nothing outside this file may write runs.status.
 //
 // The top half is pure rules: no context, no database, no clock, so the legality
 // of a move can be asserted without either. The bottom half is the one write path

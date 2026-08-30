@@ -27,8 +27,16 @@
 //	             in halt.go and preflight.go) — transport only.
 //
 // Iron rule 5: this Postgres state machine is the single source of truth for run
-// state. Nothing else — not a provider, not a LangGraph checkpoint — may decide
-// where a run is.
+// state. Nothing else — not a provider, not any in-process state on the Python
+// side — may decide where a run is.
+//
+// ADR-016 rule 1 words that second example as "a LangGraph checkpoint", and this
+// comment quoted it until 2026-08-30. LangGraph was never adopted (ADR-016's
+// dated correction; uv.lock carries no such row), and a Go reader has no way to
+// know that — so the sentence read as if those checkpoints exist here and are
+// merely outranked. The rule does not depend on the example: Python owns no
+// cross-request state at all today, which satisfies it outright rather than
+// narrowly.
 //
 // The data contract this domain hands to a provider is
 // contracts/openapi/sandbox-provider.yaml (iron rule 12). No provider exists yet;
