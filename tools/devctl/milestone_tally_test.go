@@ -31,6 +31,10 @@ func writeTally(t *testing.T, owner string, satellites map[string]string) string
 	if !strings.Contains(owner, "GEN-") {
 		owner += "\n## 19. M5\n\n本節共 1 項已勾、1 項 ◐。\n\n- [x] GEN-001 描述\n- [ ] GEN-009 描述\n"
 	}
+	if !strings.Contains(owner, "PORT-") {
+		owner += "\n## 20. M6（完成 1 項、撤回 1 項、剩 1 項）\n\n" +
+			"- [x] PORT-001 描述\n- [~] ~~PORT-002 描述~~\n- [ ] PORT-007 描述\n"
+	}
 	write(tallyOwner, owner)
 	for relative, contents := range satellites {
 		write(relative, contents)
@@ -135,6 +139,57 @@ func TestMilestoneTallyCoversTheReleaseCheckboxesToo(t *testing.T) {
 			t.Parallel()
 			root := writeTally(t, owner, map[string]string{
 				"docs/plans/01-goals-and-plan.md": tc.satellite,
+			})
+			problems := milestoneTallyProblems(root)
+			if tc.want == "" {
+				if len(problems) != 0 {
+					t.Fatalf("expected no problems, got %v", problems)
+				}
+				return
+			}
+			if len(problems) != 1 || !strings.Contains(problems[0], tc.want) {
+				t.Fatalf("want exactly one problem containing %q, got %v", tc.want, problems)
+			}
+		})
+	}
+}
+
+// M6 is the third subject and the first with a retracted state. The count it
+// has to get right is 「完成 N 項、撤回 N 項、剩 N 項」, and the real defect this
+// subject was added for is the middle row of this table: a satellite that kept
+// counting after the owner un-ticked an item.
+func TestMilestoneTallyCoversTheM6CheckboxesToo(t *testing.T) {
+	t.Parallel()
+	const boxes = "- [x] PORT-001 描述\n- [~] ~~PORT-002 描述~~\n- [~] ~~PORT-006 描述~~\n" +
+		"- [ ] PORT-007 描述\n- [ ] PORT-009 描述\n"
+	const goodOwner = "## 20. 可攜執行（M6，完成 1 項、撤回 2 項、剩 2 項）\n\n" + boxes
+	for _, tc := range []struct {
+		name, owner, satellite, want string
+	}{{
+		name:      "the owner's header counts the retracted items too",
+		owner:     goodOwner,
+		satellite: "M6 的三條軸見 `PORT-003`；勾選數以 `03` §20 為準，本檔不複述。\n",
+		want:      "",
+	}, {
+		name:      "a satellite keeps its own copy of the count",
+		owner:     goodOwner,
+		satellite: "| M6 | **進行中：完成七項、撤回兩項、剩兩項**，`PORT-009` 見下 |\n",
+		want:      `states M6's tally ("完成七項")`,
+	}, {
+		name:      "the owner's header forgets that an item was retracted",
+		owner:     "## 20. 可攜執行（M6，完成 1 項、撤回 0 項、剩 2 項）\n\n" + boxes,
+		satellite: "M6 的勾選數以 `03` §20 為準。\n",
+		want:      `must say "完成 1 項、撤回 2 項、剩 2 項" and does not`,
+	}, {
+		name:      "a count far from any M6 mention is not claimed",
+		owner:     goodOwner,
+		satellite: "| M2 | 策展完成 45 項 |" + strings.Repeat("補述。", 120) + "\n",
+		want:      "",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root := writeTally(t, tc.owner, map[string]string{
+				"docs/plans/mvp/m6/README.md": tc.satellite,
 			})
 			problems := milestoneTallyProblems(root)
 			if tc.want == "" {

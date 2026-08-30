@@ -33,6 +33,14 @@ var (
 	// satellites are checked against this; the owner is checked against the
 	// counts.
 	tallyInProse = regexp.MustCompile(`[\d一二三四五六七八九十]+\s*(?:項)?\s*(?:全部)?\s*(?:已勾|不勾|勾)|\d+\s*項\s*◐`)
+
+	// M6 counts itself in a different vocabulary — "完成七項、撤回兩項、剩兩項"
+	// — which the pattern above does not match, because it names the states
+	// rather than the checkbox. Given its own pattern instead of widening the
+	// shared one: that pattern is already load-bearing for two subjects, and a
+	// rule wide enough to catch a new phrasing is wide enough to flag correct
+	// sentences elsewhere, which is how a check loses its readers.
+	portTallyInProse = regexp.MustCompile(`(?:完成|撤回|剩下|剩)\s*[\d一二三四五六七八九十]+\s*項`)
 )
 
 // A milestone whose ticked/unticked count is derived from checkboxes `03` owns.
@@ -58,7 +66,10 @@ type tallySubject struct {
 	// carries a narrative of which items were re-judged and when, not a count,
 	// and inventing a count sentence for it would put a second derived number in
 	// the document that is supposed to be the only author of the first.
-	ownerSentence func(ticked, open int) string
+	ownerSentence func(ticked, open, retracted int) string
+	// prose is the pattern that recognises this milestone's count in a
+	// satellite. Zero value means tallyInProse.
+	prose *regexp.Regexp
 	// satellites may describe the milestone but may not state its count.
 	satellites []string
 	// nearby is what has to appear within a few lines of a prose count for it to
@@ -70,7 +81,7 @@ func tallySubjects() []tallySubject {
 	return []tallySubject{{
 		prefix: "GEN-",
 		what:   "M5",
-		ownerSentence: func(ticked, open int) string {
+		ownerSentence: func(ticked, open, _ int) string {
 			return fmt.Sprintf("%d 項已勾、%d 項 ◐", ticked, open)
 		},
 		satellites: []string{
@@ -85,6 +96,26 @@ func tallySubjects() []tallySubject {
 		what:       "M4 的封測准入（RELEASE-001～010）",
 		satellites: []string{"docs/plans/01-goals-and-plan.md"},
 		nearby:     []string{"RELEASE-", "§18"},
+	}, {
+		// The same failure, a third time, found while closing M6 out: `01` §10
+		// and m6/README both said 「完成七項、撤回兩項、剩兩項」 while §20's boxes
+		// had said 6/2/3 since PORT-009 was un-ticked on 2026-08-29. m6/README
+		// even carries the sentence 「勾選數以那裡的 checkbox 為準，本檔不複述」
+		// directly above its own copy of the number.
+		//
+		// M6 is the first subject with a third state: `- [~]` for an item ADR-060
+		// withdrew (PORT-002, PORT-006). Counting only ticked and open would make
+		// the milestone's own header wrong for a reason that is not progress, so
+		// the retracted boxes are counted too and the header states all three.
+		// That also makes the total (11) derived rather than asserted.
+		prefix: "PORT-",
+		what:   "M6",
+		ownerSentence: func(ticked, open, retracted int) string {
+			return fmt.Sprintf("完成 %d 項、撤回 %d 項、剩 %d 項", ticked, retracted, open)
+		},
+		prose:      portTallyInProse,
+		satellites: []string{"docs/plans/01-goals-and-plan.md", "docs/plans/mvp/m6/README.md", "docs/plans/mvp/README.md", "AGENTS.md"},
+		nearby:     []string{"PORT-", "§20", "M6"},
 	}}
 }
 
@@ -103,8 +134,14 @@ func milestoneTallyProblems(root string) []string {
 func (s tallySubject) problems(root, owner string) []string {
 	checked := regexp.MustCompile(`(?m)^- \[x\] ` + s.prefix)
 	unchecked := regexp.MustCompile(`(?m)^- \[ \] ` + s.prefix)
+	withdrawn := regexp.MustCompile(`(?m)^- \[~\] ~~` + s.prefix)
 	ticked := len(checked.FindAllString(owner, -1))
 	open := len(unchecked.FindAllString(owner, -1))
+	retracted := len(withdrawn.FindAllString(owner, -1))
+	prose := s.prose
+	if prose == nil {
+		prose = tallyInProse
+	}
 	if ticked+open == 0 {
 		return []string{fmt.Sprintf(
 			"milestone-tally: %s has no `- [x] %s` / `- [ ] %s` items; this check has lost %s's subject",
@@ -114,7 +151,7 @@ func (s tallySubject) problems(root, owner string) []string {
 	var problems []string
 	// The owner must state what its own boxes say.
 	if s.ownerSentence != nil {
-		want := s.ownerSentence(ticked, open)
+		want := s.ownerSentence(ticked, open, retracted)
 		if !strings.Contains(owner, want) {
 			problems = append(problems, fmt.Sprintf(
 				"milestone-tally: %s has %d ticked and %d open %s items, so its section header must say %q and does not",
@@ -129,7 +166,7 @@ func (s tallySubject) problems(root, owner string) []string {
 			continue
 		}
 		text := string(body)
-		for _, loc := range tallyInProse.FindAllStringIndex(text, -1) {
+		for _, loc := range prose.FindAllStringIndex(text, -1) {
 			lo := loc[0] - 240
 			if lo < 0 {
 				lo = 0
