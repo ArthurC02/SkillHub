@@ -715,7 +715,7 @@ Run 至少支援：
 
 #### ~~PORT-006：端點範圍與誠實的缺席~~（2026-08-29 撤回）
 
-**撤回理由**：[ADR-060](../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 決策 4。跑的是真的後端，**端點就是端點**，不存在「清單外」這個概念。<br>**但本條的第二句仍然有效，已移交 `PORT-003`**：**不受信任內容的執行**仍然不行，由派送閘門強制（`02:PORT-010`、ADR-059）。
+**撤回理由**：[ADR-060](../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 決策 4。跑的是真的後端，**端點就是端點**，不存在「清單外」這個概念。<br>**但本條的第二句仍然有效，已移交 `PORT-003`**：**不受信任內容的執行**仍然不行，由派送閘門強制（`02:PORT-010`、ADR-059）。<br>**2026-08-30 訂正**：上一句的「由派送閘門強制」在寫下時**不成立**——隔離白名單沒有任何分支看得到內容來源。真正的強制點自 2026-08-30 起是 `PORT-010` 第 5 條所指的 `requireCuratedContent()`。
 
 **以下為原文，保留不刪**：
 
@@ -759,7 +759,7 @@ Run 至少支援：
 - **必須向派送閘門宣告 `isolation.level = "clean"`**，而該等級的意思是**沒有邊界**，不是「比較弱的邊界」。宣告要照實反映**實際偵測到的**能力（例如 Linux 上 cgroup 委派不成立時，資源上限就不得宣告為已強制）。
 - **派送閘門必須是白名單**：只有明文列出的等級可以派工，未列出的（含打錯字）一律拒絕。依據見 [ADR-059](../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md) 決策 3 與其實測。
 - **`clean` 的開關必須是自己的環境變數，不得沿用 `DEV_LOGIN`**，且要有測試斷言「光有 `DEV_LOGIN` 不夠」。
-- **不得承載不受信任的內容。** 該模式只跑 `PORT-007` 允許的策展素材。<br>**⚠️ 2026-08-29：本條在 `PORT-010b` 完成前沒有強制點，由操作者承擔。** 三份文件（`02:PORT-006` 的撤回段、`03:PORT-006`、`apps/sandbox/internal/localdrv/localdrv.go` 的檔頭）互相指認對方是強制點，**而沒有一個是**：派送閘門（`trial/execution/schedule.go` 的 `Match()`）讀的是 `isolation.level` 與 `SKILLHUB_CLEAN_MODE`，**它沒有任何一個分支讀 skill、version、workspace、`redistribution` 或內容來源**——從設計上就看不到後者。今天實際成立的保護是「操作者在自己的機器上開這個模式，而他不會去 Fork 一個陌生的 Skill 再按試跑」，**那是一個操作習慣，不是一道閘門**。<br>**要補的是平台側的一行判準，不是 Driver**（兩者在不同 context、不同 repo 位置）：`SKILLHUB_CLEAN_MODE=1` 時，派送前檢查該 Skill 的 workspace 是否 `is_catalog`、或其 `curation_tier` 是否 `curated`，否則拒絕並說明。判準與 `PORT-007`「只用策展素材」同源，欄位在 migration `0042` 已存在。承接見 `04` 丙-85。
+- **不得承載不受信任的內容。** 該模式只跑 `PORT-007` 允許的策展素材。<br>**⚠️ 2026-08-29：本條在 `PORT-010b` 完成前沒有強制點，由操作者承擔。** 三份文件（`02:PORT-006` 的撤回段、`03:PORT-006`、`apps/sandbox/internal/localdrv/localdrv.go` 的檔頭）互相指認對方是強制點，**而沒有一個是**：派送閘門（`trial/execution/schedule.go` 的 `Match()`）讀的是 `isolation.level` 與 `SKILLHUB_CLEAN_MODE`，**它沒有任何一個分支讀 skill、version、workspace、`redistribution` 或內容來源**——從設計上就看不到後者。今天實際成立的保護是「操作者在自己的機器上開這個模式，而他不會去 Fork 一個陌生的 Skill 再按試跑」，**那是一個操作習慣，不是一道閘門**。<br>**要補的是平台側的一行判準，不是 Driver**（兩者在不同 context、不同 repo 位置）：`SKILLHUB_CLEAN_MODE=1` 時，派送前檢查該 Skill 的 workspace 是否 `is_catalog`、或其 `curation_tier` 是否 `curated`，否則拒絕並說明。判準與 `PORT-007`「只用策展素材」同源，欄位在 migration `0042` 已存在。承接見 `04` 丙-85。<br>**✅ 2026-08-30 訂正（保留上面那段原文，因為它記的是一個真實存在過的狀態）**：強制點補上了，本條不再由操作者的習慣承擔。它是 `apps/platform/internal/trial/execution/schedule.go` 的 **`requireCuratedContent()`**，由 `job.go` 的 `dispatch()` 在**選 provider 之前**呼叫（不在 `Match()`——那是 provider capability 的函式，看不到內容）。**通過條件兩個分支**：`workspaces.is_catalog`，**或**（`skills.curation_tier = 'curated'` **且** `skills.curated_version_id` 正是要跑的那一版——只看 tier 會放過「精選之後又推了一版沒人看過的」）。讀取函式未注入／讀取失敗／找不到一律**拒絕**；**非淨測試模式下連讀取都不呼叫**。兩個組合根都注入（`apiserver/app.go` 與 `entrypoint/worker/worker.go`，**後者才是真正派送的那一個**），`worker_test.go` 的接線斷言會在漏接時變紅。
 - **回收必須涵蓋整棵行程樹**，而不只是被 spawn 的那一個。Windows 上僅終止父行程會留下存活的子孫（實測見 [m6/report-local-driver.md](mvp/m6/report-local-driver.md) §2），**因此本條的檢查必須實際製造一個孫行程並確認它也消失**——只斷言父行程結束的測試不算滿足本條。
 - **下列三項「做不到」必須明文記載**，不得只寫在程式註解裡：①服務重啟會殺掉跑到一半的 Run（`Adopt()` 回空）；②資源上限在 Windows 與 Linux 不對稱，Linux 無 root 時可能完全沒有；③`Stop` 的 grace 不是合作式窗口。
 - **不得為本條引入第三方行程管理相依。** 依據見報告 §3：沒有成熟且真正跨平台的選項，而最像的那一個在 Windows 上是空殼。

@@ -1,6 +1,6 @@
 # M6：在不能安裝東西的機器上跑起來
 
-- 狀態：**進行中（十一項工作項：完成七項、撤回兩項、剩兩項）**——2026-08-28 完成 `PORT-004`（讓跳過出聲）與 `PORT-010a`（派送閘門改白名單）；2026-08-29 完成 `PORT-008`（禁令核對＋補上守它的機器）與 `PORT-009`（物件儲存承載）。**`PORT-003` 與 `PORT-010b` 的程式落地了但刻意不勾**，各缺一段接線，逐項理由見 [`03` §20](../../03-work-items.md)。勾選數以那裡的 checkbox 為準，本檔不複述
+- 狀態：**✅ 2026-08-30 收束**（十一項全部勾選或撤回；勾選數以 [`03` §20](../../03-work-items.md) 的 checkbox 為準，本檔不複述）。**這觸發了 2026-08-29 裁定 4 的新功能凍結。** 最後三項是 `PORT-010b`（內容來源閘門，`04` 丙-85）、`PORT-009`（短效授權對真 S3 的覆蓋）、`PORT-007`（展示資料在展示畫面上看得到，`04` 丙-84）。**未竟而合規的一項**：真 trace 事件仍是 0 列，畫面依 `DISC-002` 誠實顯示「尚未試跑」；要真 trace 需在旁邊起本機 LiteLLM 並真的跑一次 Run（會產生模型費用，負責人動作）——2026-08-28 完成 `PORT-004`（讓跳過出聲）與 `PORT-010a`（派送閘門改白名單）；2026-08-29 完成 `PORT-008`（禁令核對＋補上守它的機器）與 `PORT-009`（物件儲存承載）。**`PORT-003` 與 `PORT-010b` 的程式落地了但刻意不勾**，各缺一段接線，逐項理由見 [`03` §20](../../03-work-items.md)。勾選數以那裡的 checkbox 為準，本檔不複述
 - 決策：**[ADR-060](../../../adr/ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md)（Proposed）**——淨測試模式是**同一套產品程式以旗標切換三個實作**；[ADR-058](../../../adr/ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) 已被它取代（決策 1／4／5 延續，量測全部仍有效）、**[ADR-059](../../../adr/ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md)（Proposed）**（沙箱那一軸）
 - 規格：[`02` §4.10](../../02-specifications-and-acceptance-criteria.md)（`PORT-001`～`PORT-010`）
 - 工作項：[`03` §20](../../03-work-items.md)

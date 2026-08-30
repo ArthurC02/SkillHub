@@ -1,6 +1,12 @@
 # ADR-059：乾淨測試模式的執行 Driver 自己宣告「不是沙箱」，派送閘門改為白名單
 
-- 狀態：Proposed
+- 狀態：**Accepted**（2026-08-28 Proposed → **2026-08-30 Accepted**）
+
+> **落地與驗證（2026-08-30 補記，不改動以下任何決策內容）。** 本 ADR 的決策由 M6 的 `PORT-010a`／`PORT-010b`／`PORT-009` 實作並實測證實，`03` §20 十一項全部收束。三點值得記在狀態旁邊：
+>
+> 1. **決策 3（派送閘門改白名單）成立，但它擋的比這份 ADR 當時以為的少。** 白名單決定「能派給哪個 Driver」，它**沒有任何分支看得到 skill、version、workspace 或內容來源**——所以「本模式只跑策展素材」這條規格在 2026-08-30 之前**沒有強制點**，三份文件互相指認對方是強制點而沒有一個是（`04` 丙-85）。真正的閘門是同日補上的 `trial/execution/schedule.go` 的 `requireCuratedContent()`，由 `dispatch()` 在選 provider 之前呼叫。
+> 2. **決策 5 的三項「做不到」全部照實落地並被機器押著**：`Reaping()` 宣告 `{一般子孫, 刻意 detach 的子孫}`，Windows `{✅, ✅}`、Linux `{✅, ❌}`，而**測試按宣告斷言**——哪天有人把 Linux 修好，紅的是宣告不是沉默。
+> 3. **待決策 1 已裁（2026-08-29，環境變數契約複製一份）；待決策 3 仍然開著**——`Adopt()` 回空（服務重啟會殺掉跑到一半的 Run）要不要在畫面上說。**它不擋 `02:PORT-010` 的允收**：那條要的是「明文記載，不得只寫在程式註解裡」，已由本 ADR 決策 5 與 [m6/report-local-driver.md](../plans/mvp/m6/report-local-driver.md) §2 滿足；「上畫面」是另一件事。
 - 日期：2026-08-28
 - 決策者：產品負責人、架構規劃
 - 相關：[ADR-015](./ADR-015-sandbox-isolation-technology.md)（gVisor 基線）、[ADR-022](./ADR-022-sandbox-deployment-topology-and-security-thresholds.md)（安全門檻定值）、[ADR-006](./ADR-006-local-runner-for-local-resources.md)（Provider Port 與 Adapter）、[ADR-058](./ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md)（乾淨測試模式的資料庫那一半）、[ADR-004](./ADR-004-provider-neutral-run-orchestration.md)（Run 生命週期與 Provider 契約）
