@@ -233,6 +233,42 @@ func (q *Queries) DeleteWorkspaceRunArtifacts(ctx context.Context, workspaceID p
 	return result.RowsAffected(), nil
 }
 
+const deleteWorkspaceTestCases = `-- name: DeleteWorkspaceTestCases :execrows
+DELETE FROM test_cases
+WHERE test_cases.workspace_id = $1
+  AND NOT EXISTS (
+      SELECT 1 FROM test_case_snapshots s WHERE s.test_case_id = test_cases.id
+  )
+`
+
+// Hard-deletes the workspace's test cases, except the ones a snapshot froze.
+//
+// 05 R-29, signed 2026-08-30. test_cases holds `user_prompt` — the user's own
+// words describing what they wanted (02:TEST-001) — and until this query it had
+// no deletion path anywhere in the repository, account deletion included, while
+// every other class of user-submitted free text had one. 02:SEC-006 asks that a
+// deletion be a deletion.
+//
+// The NOT EXISTS is not an optimisation and not defensive: test_case_snapshots
+// carries an FK to this table, so deleting a referenced row fails outright, and
+// the frozen snapshot IS a run's record of what it was given (iron rule 4,
+// 0005_immutability.sql). A referenced case therefore stays, its owner
+// de-identified with the workspace like everything else that has to be kept.
+//
+// The ruling's wording says "soft-deleted", which is the shape the audit found
+// it in (a soft-deleted case pinning a soft-deleted skill). This query does not
+// carry that predicate, because at ACCOUNT deletion a live test case holds the
+// same person's prompt as a soft-deleted one, and keeping it would leave the
+// cost the ruling calls unacceptable exactly where it was. Written down rather
+// than done quietly: 04 乙-31 and 05 R-29 both say so.
+func (q *Queries) DeleteWorkspaceTestCases(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteWorkspaceTestCases, workspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const dropReferencedCollectionEntries = `-- name: DropReferencedCollectionEntries :execrows
 DELETE FROM object_collection_queue q
 WHERE EXISTS (

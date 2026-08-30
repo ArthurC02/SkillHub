@@ -213,6 +213,21 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 		mustUUID(t, alice.workspaceID), testCaseID); err != nil {
 		t.Fatal(err)
 	}
+	// 05 R-29. A second test case, identical to the one above except that no
+	// snapshot ever froze it — so it is nothing but this person's own words, and
+	// the account deletion has to take it. Both cases exist because a test that
+	// only asserts "the prompt is gone" stays green when somebody drops the
+	// NOT EXISTS: it would then also delete the referenced one, which the
+	// snapshot's foreign key would refuse, and the whole purge would fail
+	// instead — a different bug wearing the same green tick. The pair is the
+	// assertion.
+	var unreferencedCaseID pgtype.UUID
+	if err := pool.QueryRow(ctx, `
+		INSERT INTO test_cases (workspace_id, skill_id, name, user_prompt)
+		VALUES ($1, $2, 'tc-never-run', 'my own words, never run') RETURNING id`,
+		mustUUID(t, alice.workspaceID), mustUUID(t, shared)).Scan(&unreferencedCaseID); err != nil {
+		t.Fatal(err)
+	}
 	var snapshotID, runID pgtype.UUID
 	if err := pool.QueryRow(ctx, `
 		INSERT INTO test_case_snapshots
@@ -312,6 +327,17 @@ func TestAccountPurgeHardDeletesPrivateContentAndDeIdentifiesTheRest(t *testing.
 	}
 	if len(store.removed) != 2 {
 		t.Fatalf("object storage keys removed: %v, want exactly the dataset and the artifact", store.removed)
+	}
+
+	// 05 R-29, both halves. The unreferenced case is the user's own words with
+	// nothing depending on them, so it goes; the referenced one is a retained
+	// run's frozen input, so it stays (iron rule 4) and its owner is
+	// de-identified with the workspace instead.
+	if c := countRow(t, pool, "SELECT count(*) FROM test_cases WHERE id = $1", unreferencedCaseID); c != 0 {
+		t.Fatal("a test case no snapshot references survived the purge; the user's own prompt is still on disk (05 R-29)")
+	}
+	if c := countRow(t, pool, "SELECT count(*) FROM test_cases WHERE id = $1", testCaseID); c != 1 {
+		t.Fatal("the test case a retained run's snapshot points at was deleted; that run's record of its own input now dangles (iron rule 4)")
 	}
 
 	// Referenced content stays intact for the third party who depends on it.
