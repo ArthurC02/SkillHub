@@ -24,12 +24,12 @@ model_list:
     litellm_params:
       model: openai/gpt-5.6-sol
       api_key: os.environ/OPENAI_API_KEY
-      additional_drop_params: ["reasoning_effort", "thinking"]
+      additional_drop_params: ["reasoning_effort", "thinking", "temperature"]
   - model_name: gpt-5.6-terra # judge tier, separated from the generating model
     litellm_params:
       model: openai/gpt-5.6-terra
       api_key: os.environ/OPENAI_API_KEY
-      additional_drop_params: ["reasoning_effort", "thinking"]
+      additional_drop_params: ["reasoning_effort", "thinking", "temperature"]
   # match-reason tier (search rewrite not implemented, see 04 丙-76). ADR-013
   # 決策 §2 specifies a light LLM query rewrite and quantifies it (Top-1 80% ->
   # 100%); apps/llm has six endpoints and none of them is it, so /match-reasons
@@ -39,7 +39,7 @@ model_list:
     litellm_params:
       model: openai/gpt-5.6-luna
       api_key: os.environ/OPENAI_API_KEY
-      additional_drop_params: ["reasoning_effort", "thinking"]
+      additional_drop_params: ["reasoning_effort", "thinking", "temperature"]
   - model_name: text-embedding-3-small
     litellm_params:
       model: openai/text-embedding-3-small

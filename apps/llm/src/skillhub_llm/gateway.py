@@ -46,6 +46,25 @@ logger = logging.getLogger("skillhub_llm.gateway")
 # Reported back next to `model` and `prompt_version` rather than kept here,
 # because a record that reproduces a package (02:GEN-001) has to name the
 # sampling that produced it.
+#
+# ⚠️ MEASURED 2026-08-30, and it undoes the paragraph above for three of the four
+# tiers. `gpt-5.6-sol`, `gpt-5.6-terra` and `gpt-5.6-luna` reject any temperature
+# but their default: the provider answers 400 "Unsupported value: 'temperature'
+# does not support 0.0 with this model". LiteLLM's global `drop_params: true`
+# does NOT catch it - its supported-params map says these models take
+# temperature - so until that day every enrichment, every LLM judgement, every
+# generation and every match-reason call through the real gateway failed with a
+# 400, and nothing in the repository had ever called them through one. The three
+# entries in infra/compose/litellm-config.yaml now carry `temperature` in
+# `additional_drop_params`, the same escape hatch already used there for
+# `reasoning_effort`.
+#
+# So for those three tiers this value is *asked for and dropped*, and the
+# provider samples at its own default. Sampling is pinned only on the mini tier.
+# It is still reported as what was asked - the same rule SEED already states
+# below - but ADR-026's premise that a stored verdict names the sampling that
+# produced it now holds for no judge model. That consequence is a decision, not a
+# comment: see 05 R-31.
 TEMPERATURE = 0.0
 # Arbitrary, and only its stability matters. Best-effort at every provider - the
 # gateway drops it for models that do not take it (`drop_params: true`) - so it
