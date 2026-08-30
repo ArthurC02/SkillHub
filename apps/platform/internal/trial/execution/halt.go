@@ -481,6 +481,13 @@ type haltRequest struct {
 // wording as skill/discovery's sessionActor (稽核 01 D1); making either real
 // needs the roster injected from the composition root (04 丙-94).
 //
+// Where that leaves the guarantee is written down rather than left to comments:
+// 02:SEC-011's 2026-08-30 note says the wrapper is the only role check, that the
+// requirement never asked for a second one, and what an in-handler check would
+// have to do to be safe (injected, fail closed when unwired, reading the live
+// roster — AuditRosters empties it on a failed start-up). 04 丙-94 closed on
+// that, both halves together.
+//
 // 404, the same answer RequireOperator gives everybody else, so the second check
 // does not disclose the endpoint the first one hides (SEC-011 不揭露端點存在).
 func sessionActor(w http.ResponseWriter, r *http.Request) (identity.User, bool) {

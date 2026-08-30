@@ -207,8 +207,10 @@ func (tc anonCase) request() (method, path string) {
 // deliberate defence in depth, not redundancy. The six operator handlers refuse
 // with 404 rather than 401 - RequireOperator's vocabulary, so the second check
 // does not disclose the endpoint the first one hides - and they are asserted
-// separately in TestOperatorHandlersRefuseWithoutAnOperatorSession, because a
-// wrapper is the only thing this table can reach them through.
+// separately in TestOperatorHandlersRefuseWithoutASession, because a wrapper is
+// the only thing this table can reach them through. What those handlers re-check
+// is the SESSION and never the operator roster, which they cannot see; the role
+// check is this wrapper alone (02:SEC-011's 2026-08-30 note, 04 丙-94).
 //
 // That sentence was false for those six until 2026-08-25: they took `user, _` and
 // wrote a zero UUID into audit_events.actor_user_id. A weakened wrapper would not

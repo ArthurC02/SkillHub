@@ -493,14 +493,28 @@ func TestOperatorRedistributionVerdictIsGovernedLikeTheHold(t *testing.T) {
 // Until 2026-08-25 five of the six took `user, _` and carried on with a zero
 // UUID: the write went through and 02:SEC-011's 「誰做的」 was answered with a user
 // that does not exist, which is worse than refusing. The sixth read the fleet's
-// dispatch state without looking at the session at all. The matrix test next
-// door promises the reader this second line of defence exists
-// (authz_matrix_integration_test.go); this is the test that makes the promise
-// true.
+// dispatch state without looking at the session at all.
 //
-// 404 and not 401: the second check must not disclose the endpoint the first one
-// hides.
-func TestOperatorHandlersRefuseWithoutAnOperatorSession(t *testing.T) {
+// What this does NOT check, said here because this comment used to claim it and
+// the name used to as well (04 丙-94): whether the caller is on the operator
+// roster. These handlers cannot ask - OPERATOR_USER_IDS lives on identity's HTTP
+// Handler and these packages hold identity's Service - so the role check is
+// entirely RequireOperator in router.go, one hand-applied wrapper per route.
+// This comment previously said "the matrix test next door promises the reader
+// this second line of defence exists", and the matrix test promises no such
+// thing; nor does 02:SEC-011, which asks for separate endpoints, 404, audit and
+// a fail-closed roster, and never for an in-handler check. A sentence invented
+// in one comment and then cited by another as the specification's promise is how
+// a repository ends up defending a check nobody wrote, so 02:SEC-011 now states
+// where the role check actually lives.
+//
+// The wrapper going missing is caught by authz_matrix_integration_test.go, which
+// reads router.go's own table: an unlisted route, or a listed one whose
+// anonymous answer is wrong, is a red test. That is the machine here; this is
+// not one.
+//
+// 404 and not 401: this check must not disclose the endpoint the wrapper hides.
+func TestOperatorHandlersRefuseWithoutASession(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	curator := a.login(t, "curator-operator-unwrapped")
