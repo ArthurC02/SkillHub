@@ -29,7 +29,10 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"net"
+	neturl "net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -82,12 +85,39 @@ func gatewayHarness(t *testing.T) (*sandbox.Manager, sandbox.RunRequest, *collec
 	}
 	t.Cleanup(func() { _ = d.Close() })
 
+	// The node has to render the destination it is about to be asked for, or
+	// accept() refuses the dispatch before any container starts (ADR-022 A1-e).
+	// Left out until 2026-08-30, which made both tests in this file unrunnable
+	// from the day A1-e landed — and invisibly so, because without the two
+	// gateway variables they skip and a skip looks like a pass. Derived from the
+	// URL under test rather than hard-coded, so a gateway addressed by IP is
+	// described by the same rule as one addressed by name.
+	gwURL, err := neturl.Parse(url)
+	if err != nil {
+		t.Fatalf("SKILLHUB_E2E_GATEWAY_URL %q does not parse: %v", url, err)
+	}
+	gwHost, gwPortStr, err := net.SplitHostPort(gwURL.Host)
+	if err != nil {
+		t.Fatalf("SKILLHUB_E2E_GATEWAY_URL %q must carry an explicit port: %v", url, err)
+	}
+	gwPort, err := strconv.Atoi(gwPortStr)
+	if err != nil {
+		t.Fatalf("SKILLHUB_E2E_GATEWAY_URL %q has a non-numeric port: %v", url, err)
+	}
+	dest := sandbox.EgressDestination{Purpose: "model_gateway", Port: gwPort, Protocol: "tcp"}
+	if net.ParseIP(gwHost) != nil {
+		dest.PinnedIP = gwHost
+	} else {
+		dest.FQDN = gwHost
+	}
+
 	m := sandbox.NewManager(d, sandbox.Config{
 		Provider:       "docker_dev",
 		Runtimes:       []sandbox.RuntimeCapability{{Runtime: "claude_agent_sdk", Versions: []string{"0.3.233"}, AgentIntegration: []string{"in_sandbox_sdk"}}},
 		MaxResources:   sandbox.DefaultLimits,
 		IsolationLevel: "container",
 		EgressModes:    []string{"default_deny"},
+		EgressAllow:    []sandbox.EgressDestination{dest},
 		Slots:          1,
 	}, slog.New(slog.DiscardHandler)).WithTrace(&sandbox.HTTPTraceSink{}, nil)
 

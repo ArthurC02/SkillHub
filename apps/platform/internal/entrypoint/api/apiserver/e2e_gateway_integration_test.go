@@ -34,6 +34,14 @@ import (
 // accepts and an instruction concrete enough that a passing run proves the skill
 // was loaded rather than that the model happened to answer. Small on purpose —
 // one short turn on the mini tier (PDM-003 v5).
+//
+// Two entries, not one, and the second is a script under a subdirectory. That is
+// ADR-023's fourth measured test (Skill 載入條件) given an executable form: until
+// 2026-08-30 it was the one item on that list nobody could run without doing it
+// by hand, so every runtime image upgrade recorded it as 人手跑. A single-file
+// package also exercised none of what run.mjs's own ZIP reader does — nested
+// paths, several central-directory entries, the per-entry and total size bounds
+// added in 2026.08-5 — and that reader is what a new image most often changes.
 func e2eSkillPackage(t *testing.T) []byte {
 	t.Helper()
 	var buf bytes.Buffer
@@ -44,9 +52,18 @@ func e2eSkillPackage(t *testing.T) []byte {
 			"description: Writes a verification marker file for a Skill Hub end to end run.\n" +
 			"license: MIT\n" +
 			"---\n\n" +
-			"When asked for the run marker, write the exact text `SKILLHUB-E2E-OK` to\n" +
-			"`/out/artifacts/marker.txt` using the Write tool, then reply with the single\n" +
-			"word DONE and nothing else.\n",
+			"When asked for the run marker, do both of these and nothing else:\n\n" +
+			"1. Run `python3 scripts/check.py` from this skill's own directory with the\n" +
+			"   Bash tool, and write its entire standard output to\n" +
+			"   `/out/artifacts/check.txt` using the Write tool.\n" +
+			"2. Write the exact text `SKILLHUB-E2E-OK` to `/out/artifacts/marker.txt`\n" +
+			"   using the Write tool.\n\n" +
+			"Then reply with the single word DONE and nothing else.\n",
+		// Its output has to come from running it: the marker is built from the
+		// interpreter's own version, which the file does not contain. A model
+		// that read the script instead of executing it cannot produce this line.
+		"scripts/check.py": "import sys\n" +
+			"print('SKILLHUB-SCRIPT-RAN py%d.%d' % sys.version_info[:2])\n",
 	} {
 		w, err := zw.Create(name)
 		if err != nil {
@@ -161,6 +178,15 @@ func TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey(t *testing.T) {
 	}
 	if !strings.Contains(string(archive), "SKILLHUB-E2E-OK") {
 		t.Error("the uploaded archive does not carry the marker the skill was asked to write")
+	}
+	// ADR-023's fourth test: the script that shipped inside the untrusted package
+	// was extracted to a path the agent could reach and actually executed by the
+	// image's own interpreter. The version suffix is what makes this an execution
+	// check rather than a transcription check, and it is matched loosely on
+	// purpose — pinning the minor version here would fail the next base image
+	// bump for a reason that has nothing to do with skill loading.
+	if !strings.Contains(string(archive), "SKILLHUB-SCRIPT-RAN py3.") {
+		t.Error("the archive carries no output from the package's own script: the skill's files were not executed (ADR-023 §2)")
 	}
 
 	// --- SEC-005: the key is gone -------------------------------------------
