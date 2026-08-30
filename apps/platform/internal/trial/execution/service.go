@@ -47,6 +47,26 @@ type VersionFacts struct {
 	PackageObjectKey string
 }
 
+// ContentSource is where one Skill Version's material came from, in the only
+// terms 02:PORT-007 recognises as curated: the public catalogue, or a PDM-002
+// curation verdict that examined these exact bytes.
+//
+// Facts only. Whether they add up to "may run here" is a deployment policy and
+// stays in this context (requireCuratedContent in schedule.go) - a composition
+// root that decided it would be a second place the rule is written down, and
+// the two would drift.
+type ContentSource struct {
+	// WorkspaceIsCatalog: the skill lives in a public catalogue workspace.
+	WorkspaceIsCatalog bool
+	// CurationTier is the skill's PDM-002 verdict (`curated` or `indexed`, 0042).
+	CurationTier string
+	// CuratedVersionIsThisOne: the verdict above examined the version about to
+	// run. `curated` alone cannot say that - the column it travels with,
+	// skills.curated_version_id, is what says it, and a newer version pushed on
+	// top of a curated one inherits the tier without inheriting the review.
+	CuratedVersionIsThisOne bool
+}
+
 // providerUnassigned is the provider of a run that has not been scheduled yet.
 // The scheduler overwrites it the moment it picks one (RUN-005); runs.provider is
 // NOT NULL, and naming the gap is better than defaulting to whichever provider
@@ -63,6 +83,16 @@ type Service struct {
 	// ReadSkill and ReadVersion are Registry owner reads adapted by each root.
 	ReadSkill   func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
 	ReadVersion func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error)
+	// ReadContentSource answers 02:PORT-010's content-source question for one
+	// Skill Version (workspace, version). It is a Registry owner read like the
+	// two above and is injected the same way: `skills.curation_tier` and
+	// `workspaces.is_catalog` belong to other contexts, and reaching into their
+	// queries from here is what ADR-033 forbids.
+	//
+	// Nil is not "no opinion". The one gate that reads it refuses when it cannot
+	// ask, because the deployment it guards has no isolation boundary at all -
+	// see requireCuratedContent.
+	ReadContentSource func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
 	// RunVerdicts is eval's owner read of the standing verdict for a page of
 	// runs, injected by the composition root (ADR-034, 04 丙-32). A JOIN to
 	// `evaluations` from a query in this context would pass CI — the ownership

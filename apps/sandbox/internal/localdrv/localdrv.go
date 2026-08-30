@@ -7,9 +7,23 @@
 // (ADR-059 background).
 //
 // `clean` is not a weaker sandbox, it is no sandbox at all. What stops this
-// driver from ever being handed untrusted content is SKILLHUB_CLEAN_MODE and
-// the platform's isolation whitelist (ADR-059 decision 3), not anything in
-// this package. What this package is honest about is narrower and is a
+// driver from ever being handed untrusted content is the platform's content
+// gate — trial/execution/schedule.go's requireCuratedContent, called by
+// dispatch() before a provider is even chosen, which passes only material in a
+// catalogue workspace or curated at exactly the version being run — not
+// anything in this package.
+//
+// Until 2026-08-30 this sentence named SKILLHUB_CLEAN_MODE and the isolation
+// whitelist (ADR-059 decision 3) instead, and that was wrong in a way worth
+// recording: the whitelist decides which DRIVER may be dispatched to and has no
+// branch that can see a skill, a version or a workspace. Three documents each
+// named one of the others as the enforcement point and none of them was one
+// (02:PORT-010, 04 丙-85). What actually held was that an operator running this
+// on their own machine would not fork a stranger's skill and press run — a
+// habit, not a gate. The gate exists now; this comment points at it rather than
+// at a neighbour.
+//
+// What this package is honest about is narrower and is a
 // lifecycle guarantee, not a containment one: spawn, wait, collect, and reap
 // the *entire* process tree when told to stop — which a bare
 // os/exec.Cmd.Process.Kill() does not do. Measured in

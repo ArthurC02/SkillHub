@@ -74,6 +74,68 @@ func devDeployment() bool { return os.Getenv("DEV_LOGIN") == "1" }
 // machine that already has DEV_LOGIN exported, which is most of them.
 func cleanTestMode() bool { return os.Getenv("SKILLHUB_CLEAN_MODE") == "1" }
 
+// curatedTier is the one value of skills.curation_tier (0042) that means a
+// human went through PDM-002 on this material. The other one is `indexed`,
+// which means nothing more than "it is in the database".
+const curatedTier = "curated"
+
+// ErrContentNotCurated is 02:PORT-010's fifth acceptance criterion, which until
+// now had no enforcement point anywhere: 「不得承載不受信任的內容。該模式只跑
+// PORT-007 允許的策展素材。」
+//
+// Three documents each named a different one of the others as the gate and none
+// of them was one (04 丙-85). The reason it could not be here in Match is worth
+// keeping: Match is a function of a *provider capability*, and content is a
+// property of the run. No amount of reading isolation.level can see a skill.
+var ErrContentNotCurated = errors.New("the clean test mode only runs curated material")
+
+// requireCuratedContent refuses to hand uncurated material to a driver that has
+// no isolation boundary at all (02:PORT-010, 02:PORT-007).
+//
+// Only in the clean test mode. Every other deployment runs untrusted skills for
+// a living behind gVisor (ADR-015), and applying this there would break the
+// product; the branch below is the whole of its effect on the normal path.
+//
+// Fail-closed on every unknown, unlike the ordinary registry reads: the cost of
+// a wrong "no" is a demo that will not start, and the cost of a wrong "yes" is
+// somebody else's code running on the operator's laptop as the operator.
+func (s *Service) requireCuratedContent(ctx context.Context, run gen.Run) error {
+	if !cleanTestMode() {
+		return nil
+	}
+	if s.ReadContentSource == nil {
+		return fmt.Errorf("%w, and this deployment cannot tell where this material came from "+
+			"(the content-source read is not configured)", ErrContentNotCurated)
+	}
+	source, found, err := s.ReadContentSource(ctx, run.WorkspaceID, run.SkillVersionID)
+	if err != nil {
+		return fmt.Errorf("%w, and where this material came from could not be read: %w", ErrContentNotCurated, err)
+	}
+	if !found {
+		return fmt.Errorf("%w, and this version's skill could not be found to check", ErrContentNotCurated)
+	}
+	if source.WorkspaceIsCatalog || (source.CurationTier == curatedTier && source.CuratedVersionIsThisOne) {
+		return nil
+	}
+	// What was refused and what would pass, because the operator reading this is
+	// the person who has to fix it. Identifiers and the tier only - never the
+	// skill's name or anything out of the package (iron rule 11).
+	return fmt.Errorf("%w: this one is %s. A skill in the public catalogue, or one whose "+
+		"curation_tier is %q on the exact version being run, may run here; anything else needs a "+
+		"deployment with a real sandbox",
+		ErrContentNotCurated, describeContentSource(source), curatedTier)
+}
+
+// describeContentSource says which half of the test failed, in the fewest words
+// that still distinguish "never reviewed" from "reviewed, but not these bytes".
+// The second is the one that would otherwise look like a bug.
+func describeContentSource(source ContentSource) string {
+	if source.CurationTier == curatedTier {
+		return "curated at a different version than the one being run"
+	}
+	return fmt.Sprintf("outside the public catalogue with curation_tier %q", source.CurationTier)
+}
+
 // Requirements is what one run needs from a provider. Derived entirely from the
 // run's own frozen policy_snapshot, so scheduling matches against what the user
 // was shown before starting, not against today's defaults (ADR-003).

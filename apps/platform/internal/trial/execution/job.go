@@ -247,6 +247,14 @@ func (d *driver) dispatch(ctx context.Context) error {
 		return nil
 	}
 
+	// 02:PORT-010: in the clean test mode there is no isolation boundary, so the
+	// content is the only thing left to check. Before provider selection, because
+	// this refusal is about what is being run rather than about what is available
+	// to run it on — and because it must not depend on which node answered.
+	if err := d.svc.requireCuratedContent(ctx, d.cur); err != nil {
+		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusFailed, failureNoProvider, err.Error())
+	}
+
 	// SEC-012 action ②: a drained node is not offered work. Its running sandboxes
 	// are left to finish — that is what drain means, and destroying them would be
 	// the opposite of 「保留現場」 for the incident case.

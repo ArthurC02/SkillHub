@@ -75,6 +75,11 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 		t.Error("run service has no packaging artifact reference counter")
 	case set.Runs.ReadSkill == nil || set.Runs.ReadVersion == nil:
 		t.Error("run service has no Registry owner reads")
+	case set.Runs.ReadContentSource == nil:
+		// This root dispatches, so an unwired gate is not a missing disclosure:
+		// clean mode refuses every run with "the content-source read is not
+		// configured" (02:PORT-010, 04 丙-85).
+		t.Error("run service has no content-source read: clean mode would refuse every dispatch")
 	case set.Runs.TestLab == nil:
 		t.Error("run service has no Test Lab owner reads")
 	case set.Runs.Trace == nil:

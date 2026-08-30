@@ -6,7 +6,9 @@ package run
 // refused or a failure blamed on the wrong party.
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -463,5 +465,158 @@ func TestAProviderThatCannotReapDetachedDescendantsRunsButSaysSo(t *testing.T) {
 		if got := detachedDescendantsSurvive(c); got != tc.want {
 			t.Errorf("%s: summary would say descendants survive = %v, want %v", tc.what, got, tc.want)
 		}
+	}
+}
+
+// ── 02:PORT-010 / 04 丙-85: the content-source gate ─────────────────────────
+//
+// The clean test mode's driver has no isolation boundary at all, so the only
+// thing left between it and somebody else's code is where the material came
+// from. Until this gate the acceptance criterion 「不得承載不受信任的內容」 had
+// no enforcement point anywhere: three documents named each other and the one
+// they all pointed at (Match) is a function of a provider capability, which
+// cannot see a skill.
+
+func contentSourceRun() gen.Run {
+	return gen.Run{
+		WorkspaceID:    mustTestUUID("11111111-1111-1111-1111-111111111111"),
+		SkillVersionID: mustTestUUID("22222222-2222-2222-2222-222222222222"),
+	}
+}
+
+func mustTestUUID(s string) pgtype.UUID {
+	var id pgtype.UUID
+	if err := id.Scan(s); err != nil {
+		panic(err)
+	}
+	return id
+}
+
+func curatedSource() ContentSource {
+	return ContentSource{CurationTier: curatedTier, CuratedVersionIsThisOne: true}
+}
+
+// The normal path must not acquire a new way to fail. Nil reader, uncurated
+// content, a read that explodes — none of it may matter when the deployment has
+// a real sandbox, and this is the assertion that fails if the env check is ever
+// "simplified" out of requireCuratedContent.
+func TestTheContentSourceGateDoesNothingOutsideTheCleanTestMode(t *testing.T) {
+	t.Setenv("DEV_LOGIN", "1")
+	t.Setenv("SKILLHUB_CLEAN_MODE", "")
+
+	called := false
+	svc := &Service{ReadContentSource: func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error) {
+		called = true
+		return ContentSource{CurationTier: "indexed"}, true, nil
+	}}
+	if err := svc.requireCuratedContent(t.Context(), contentSourceRun()); err != nil {
+		t.Fatalf("a production deployment was refused by the clean-mode content gate: %v", err)
+	}
+	if called {
+		t.Error("the content-source read ran outside the clean test mode; it must cost the normal path nothing")
+	}
+	// Not even without a reader wired: an unconfigured field is a refusal only
+	// where the refusal protects something.
+	if err := (&Service{}).requireCuratedContent(t.Context(), contentSourceRun()); err != nil {
+		t.Errorf("an unwired reader refused a run on a deployment that has a sandbox: %v", err)
+	}
+}
+
+func TestTheCleanTestModeOnlyRunsCuratedMaterial(t *testing.T) {
+	for _, tc := range []struct {
+		what     string
+		read     func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error)
+		wantPass bool
+		wantSaid []string
+	}{
+		{
+			what:     "a skill in the public catalogue",
+			read:     stubContentSource(ContentSource{WorkspaceIsCatalog: true, CurationTier: "indexed"}, true, nil),
+			wantPass: true,
+		},
+		{
+			what:     "a curated verdict on the exact version being run",
+			read:     stubContentSource(curatedSource(), true, nil),
+			wantPass: true,
+		},
+		{
+			what: "a curated verdict on some other version",
+			read: stubContentSource(ContentSource{CurationTier: curatedTier}, true, nil),
+			// The one refusal that would otherwise read as a bug, so it gets its
+			// own sentence: the tier is right and the bytes are not the reviewed
+			// ones (skills.curated_version_id, 0042).
+			wantSaid: []string{"different version"},
+		},
+		{
+			what:     "an ordinary imported skill",
+			read:     stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil),
+			wantSaid: []string{"indexed", "catalogue", curatedTier, "sandbox"},
+		},
+		{
+			what:     "a version whose skill is gone",
+			read:     stubContentSource(ContentSource{}, false, nil),
+			wantSaid: []string{"could not be found"},
+		},
+		{
+			what:     "a read that failed",
+			read:     stubContentSource(ContentSource{}, false, errors.New("connection refused")),
+			wantSaid: []string{"could not be read", "connection refused"},
+		},
+		{
+			what:     "no reader wired at all",
+			read:     nil,
+			wantSaid: []string{"not configured"},
+		},
+	} {
+		t.Run(tc.what, func(t *testing.T) {
+			t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+			err := (&Service{ReadContentSource: tc.read}).requireCuratedContent(t.Context(), contentSourceRun())
+			if tc.wantPass {
+				if err != nil {
+					t.Fatalf("curated material was refused: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("uncurated material was handed to a driver with no isolation boundary")
+			}
+			if !errors.Is(err, ErrContentNotCurated) {
+				t.Errorf("error = %v, want it to wrap ErrContentNotCurated so the caller can classify it", err)
+			}
+			for _, want := range tc.wantSaid {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("reason = %q, want it to mention %q", err, want)
+				}
+			}
+		})
+	}
+}
+
+// The gate must ask about the run in front of it. Passing the wrong workspace
+// would check somebody else's material; passing the wrong version would check
+// the wrong bytes of the right skill.
+func TestTheContentSourceGateAsksAboutThisRunsOwnVersion(t *testing.T) {
+	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+	run := contentSourceRun()
+
+	var gotWorkspace, gotVersion pgtype.UUID
+	svc := &Service{ReadContentSource: func(_ context.Context, workspaceID, versionID pgtype.UUID) (ContentSource, bool, error) {
+		gotWorkspace, gotVersion = workspaceID, versionID
+		return curatedSource(), true, nil
+	}}
+	if err := svc.requireCuratedContent(t.Context(), run); err != nil {
+		t.Fatalf("curated material was refused: %v", err)
+	}
+	if gotWorkspace != run.WorkspaceID {
+		t.Errorf("asked about workspace %v, want the run's own %v", gotWorkspace, run.WorkspaceID)
+	}
+	if gotVersion != run.SkillVersionID {
+		t.Errorf("asked about version %v, want the run's own %v", gotVersion, run.SkillVersionID)
+	}
+}
+
+func stubContentSource(source ContentSource, found bool, err error) func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error) {
+	return func(context.Context, pgtype.UUID, pgtype.UUID) (ContentSource, bool, error) {
+		return source, found, err
 	}
 }

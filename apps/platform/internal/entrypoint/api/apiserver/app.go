@@ -245,6 +245,7 @@ func NewApp(cfg Config) (*App, error) {
 				PackageObjectKey: version.PackageObjectKey,
 			}, found, err
 		},
+		ReadContentSource: readContentSource(registrySvc),
 	}
 	funnel.RunBelongsToWorkspace = runSvc.BelongsToWorkspace
 	traceSvc := newTraceService(cfg.Pool, cfg.TraceSigner, runSvc)
@@ -395,6 +396,38 @@ func wireEvaluationRunReaders(service *eval.Service, runs *run.Service) {
 				Expired: input.Absent.Expired,
 			},
 		}, found, err
+	}
+}
+
+// readContentSource adapts Registry's reads into the two facts 02:PORT-010's
+// content gate needs (04 丙-85). Named rather than written inline because
+// entrypoint/worker carries a line-for-line twin of it, and the two roots must
+// not answer this differently — the worker is the one that dispatches, so this
+// copy is the API's half and that one is the gate's.
+//
+// Three reads and not one query: `curation_tier` and `is_catalog` sit in two
+// tables owned by two contexts, and the composition root is not allowed to
+// JOIN past either owner (ADR-033). CatalogSkill is Registry's existing
+// catalogue-scoped read; `found` there is exactly `workspaces.is_catalog`.
+func readContentSource(registryService *registry.Service) func(context.Context, pgtype.UUID, pgtype.UUID) (run.ContentSource, bool, error) {
+	return func(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.ContentSource, bool, error) {
+		version, found, err := registryService.WorkspaceVersion(ctx, workspaceID, versionID)
+		if err != nil || !found {
+			return run.ContentSource{}, found, err
+		}
+		skill, found, err := registryService.WorkspaceSkill(ctx, workspaceID, version.SkillID)
+		if err != nil || !found {
+			return run.ContentSource{}, found, err
+		}
+		_, inCatalogue, err := registryService.CatalogSkill(ctx, version.SkillID)
+		if err != nil {
+			return run.ContentSource{}, false, err
+		}
+		return run.ContentSource{
+			WorkspaceIsCatalog:      inCatalogue,
+			CurationTier:            skill.CurationTier,
+			CuratedVersionIsThisOne: skill.CuratedVersionID == versionID,
+		}, true, nil
 	}
 }
 
