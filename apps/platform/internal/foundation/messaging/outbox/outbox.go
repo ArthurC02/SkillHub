@@ -196,6 +196,12 @@ func (w *Worker) Publish(ctx context.Context) (int, error) {
 // The alternative — a second connection reserved for delivery — buys exactly
 // nothing the consumers do not already provide, and buys it by requiring a
 // second connection, which is the resource clean mode does not have.
+//
+// The test that goes red without the early release is
+// TestCleanModeDrainsTheOutboxOnOneConnection, in entrypoint/api/apiserver. It
+// fails by timing out rather than by asserting a wrong value, which is the only
+// way a deadlock ever fails, and it needs the whole process shape to see it — so
+// it is over there with the composition root and not in this package (04 丙-88).
 func (w *Worker) claim(ctx context.Context) ([]gen.OutboxEvent, error) {
 	conn, err := w.Pool.Acquire(ctx)
 	if err != nil {
