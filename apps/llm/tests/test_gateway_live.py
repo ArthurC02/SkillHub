@@ -56,9 +56,7 @@ def chat_models() -> list[str]:
     """
     doc = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
     return [
-        entry["model_name"]
-        for entry in doc["model_list"]
-        if "embedding" not in entry["model_name"]
+        entry["model_name"] for entry in doc["model_list"] if "embedding" not in entry["model_name"]
     ]
 
 
