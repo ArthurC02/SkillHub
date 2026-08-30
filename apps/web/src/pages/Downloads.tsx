@@ -148,7 +148,7 @@ function DownloadActions({
   // download.go checks, missing the purge, which is not on this shape at all. So
   // a purged artifact offered a link that was known to 404, which puts the
   // refusal in a new tab instead of on this page. The reason it is not stated
-  // here twice: `serve_state.label` above already says which of the four it is.
+  // here twice: `serve_state.label` above already says which of the five it is.
   return (
     <p>
       {artifact.servable ? (

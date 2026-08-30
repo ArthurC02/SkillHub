@@ -159,12 +159,22 @@ export interface CreateDownloadArtifact201Response {
     servable: boolean;
     /**
      * The one sentence for the composite above — 「可下載」, 「檢查中」,
-     * 「已拒絕」, 「已過期，不再提供下載」. `value` is the state that decided
-     * it, which is `status` except when an `available` artifact has expired
-     * or been purged, where it is `expired` or `purged` — **two values that
-     * do not appear in `status` at all**, which is why a label on `status`
-     * alone would have fought the word on the screen instead of settling it
+     * 「已拒絕」, 「已過期，不再提供下載」, 「檔案遺失，不再提供下載」. `value`
+     * is the state that decided it, which is `status` except when an
+     * `available` artifact has expired, been purged, or been found missing,
+     * where it is `expired`, `purged` or `lost` — **values that do not
+     * appear in `status` at all**, which is why a label on `status` alone
+     * would have fought the word on the screen instead of settling it
      * (設計系統 §2.2 顯示但不強制).
+     * 
+     * `lost` is separated from `expired` on purpose (04 丙-91). Both mean
+     * the bytes are gone and both are answered by packaging the same
+     * version again, but expiry is the retention promise being kept while
+     * loss is the platform dropping something inside that promise. Telling
+     * an owner their file expired when it was lost is a true sentence
+     * about the wrong cause, and it removes the one reason they had to
+     * report it. The server decides which; a client must not re-derive it,
+     * and must not print retention copy beside `lost`.
      * 
      * @type {Labelled}
      * @memberof CreateDownloadArtifact201Response

@@ -580,6 +580,44 @@ test("WS-004 an expired package stays in the list, says it expired, and offers n
   expect(links).toHaveLength(1);
 });
 
+test("04 丙-91 a lost package is not told the retention story", async () => {
+  vi.stubGlobal("fetch", () =>
+    json({
+      downloads: [
+        {
+          ...artifact,
+          artifact_id: "lost-1",
+          servable: false,
+          serve_state: {
+            value: "lost",
+            label: "檔案遺失,不再提供下載",
+            note: "這不是保存期到期——檔案在保存期內就不見了,是平台這一側的問題。同一版本重新打包一次可以拿回同樣的內容;如果再次發生,請回報。",
+          },
+          // In the future, and that is the point: the bytes are already gone
+          // while the promise about them has not come due. This row rendered
+          // 「到期後檔案刪除」 — a future tense about a past event — because the
+          // component had one branch for expiry and none for loss.
+          expires_at: "2099-01-01T00:00:00Z",
+        },
+      ],
+    }),
+  );
+  await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
+
+  expect(text()).toContain("是平台這一側的問題");
+  expect(text()).toContain("請回報");
+  // The two sentences that would describe this as normal, neither of which is
+  // true here.
+  expect(text()).not.toContain("到期後檔案刪除");
+  expect(text()).not.toContain("這筆紀錄保留");
+  // No link to bytes that are not there.
+  expect(
+    Array.from(container.querySelectorAll("a")).filter((a) =>
+      (a.getAttribute("href") ?? "").includes("/content"),
+    ),
+  ).toHaveLength(0);
+});
+
 test("WS-002 an empty history says nothing was ever downloaded, not that records were cleared", async () => {
   vi.stubGlobal("fetch", () => json({ downloads: [] }));
   await render(<Downloads />, () => text().includes("還沒有打包過任何套件"));

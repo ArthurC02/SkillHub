@@ -25,6 +25,13 @@ import { Timestamp } from "./Timestamp";
  *    platform enforces against is the 顯示但不強制 shape §2.2 names as the worst
  *    of the options. Both surfaces read this one derivation, which is the point
  *    of the shared component — they must not be able to disagree.
+ * 5. **「已過期」 and 「檔案遺失」 are different answers too** (04 丙-91). Expiry is
+ *    the promise being kept and the file comes back by packaging again; loss is
+ *    the platform having dropped something inside the period it promised. This
+ *    file used to have one branch for both, so a lost package was shown its own
+ *    future expiry date — 「到期後檔案刪除」 about bytes that were already gone.
+ *    The server decides which sentence (`serve_state`); this only stops the
+ *    expiry copy being printed over it.
  */
 
 /**
@@ -58,6 +65,9 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
   // past expiry printed 已過期 over 檢查中 — breaking the priority rule stated at
   // the top of this very file (M4 audit, 2026-08-24).
   const expired = artifact.serve_state.value === "expired";
+  // Not folded into `expired`: everything below that used the flag would then
+  // tell a lost package the retention story, which is the whole of 04 丙-91.
+  const lost = artifact.serve_state.value === "lost";
 
   return (
     <>
@@ -70,7 +80,9 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
         <span className="badge">
           {artifact.includes_test_cases ? "含 Test Case" : "不含 Test Case"}
         </span>{" "}
-        {expired && <span className="badge badge-expired">已過期</span>}
+        {(expired || lost) && (
+          <span className="badge badge-expired">{lost ? "檔案遺失" : "已過期"}</span>
+        )}
       </p>
       {/* 04 丙-42: this row used to name its version only as a uuid, folded inside
           a disclosure. 「我下載的是不是最新調整好的那一版」 is the question WS-002
@@ -87,7 +99,12 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
         ｜已下載 {artifact.download_count} 次
       </p>
       <p className="note">
-        {expired ? (
+        {lost ? (
+          // The server's own sentence, not a copy — the wording of a fault is
+          // one place's job (設計系統 §4.4), and this surface has no way to know
+          // it was a fault other than by being told.
+          artifact.serve_state.note
+        ) : expired ? (
           <>
             已於 <Timestamp at={artifact.expires_at} /> 到期，檔案已刪除，這筆紀錄保留。
             「已過期」與「沒有這一筆」不是同一件事。要再拿到同樣的內容，回到該版本重新打包一次即可。

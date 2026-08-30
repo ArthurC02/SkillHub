@@ -199,10 +199,18 @@ export interface DownloadArtifact {
    */
   servable: boolean;
   /**
-   * The one sentence for the composite above. `value` is `status` except when an
-   * `available` artifact has expired or been purged — two values that do not
-   * appear in `status` at all, which is why a label on `status` alone would have
-   * fought the word on the screen instead of settling it.
+   * The one sentence for the composite above. `value` is `status` except when
+   * an `available` artifact has expired, been purged, or been found missing by
+   * the object reconciler, which is where `expired`, `purged` and `lost` come
+   * from - values that do not appear in `status` at all, which is why a label on
+   * `status` alone would have fought the word on the screen instead of settling
+   * it.
+   *
+   * `lost` is not a shade of `expired` (04 丙-91): expiry is the retention
+   * promise being kept, loss is the platform dropping the bytes inside it. The
+   * server picks the word AND writes the sentence for it; a surface that prints
+   * its own retention copy beside `lost` tells the owner a failure was policy,
+   * and the one person who could have reported it stops having a reason to.
    */
   serve_state: Labelled;
   /** Which version these bytes are (04 丙-42). The uuid identifies the row; this identifies the content. */

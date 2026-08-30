@@ -803,9 +803,9 @@ type labelled struct {
 //
 // Order is deliberate. `quarantined` and `rejected` already say the bytes are not
 // on offer and overwriting them would lose *why* — one is over, one is not.
-// Expiry outranks purge because expiry is the reason and the purge is its
-// consequence; a purge with no expiry is the reconciler having found the object
-// missing, which is a different sentence and gets one.
+// Expiry outranks the purge it caused, because expiry is the reason and that
+// purge is its consequence. A purge expiry did NOT cause outranks both — see the
+// `lost` case, which is also where the row's own timestamps say which is which.
 // withVersionState answers "am I looking at the newest content", which is a
 // different question from withServeState's "can I have these bytes" and is kept
 // on its own axis for that reason (設計系統 §2.12). A superseded package is still
@@ -827,7 +827,26 @@ func (a Artifact) withVersionState() Artifact {
 	return a
 }
 
-func (a Artifact) withServeState(expiresAt time.Time, purged bool) Artifact {
+func (a Artifact) withServeState(expiresAt, purgedAt time.Time) Artifact {
+	purged := !purgedAt.IsZero()
+	// Which of the two purge writers stamped this row, asked of the row itself
+	// (04 丙-91). `purged_at` is written by retention and by the reconciler, and
+	// nothing recorded which — so this used to be inferred from the ABSENCE of
+	// an expiry, and the inference expired with the row: a package the platform
+	// lost in June was retold as 「已過期」 in September, which is a failure
+	// described to its owner as policy.
+	//
+	// The timestamps already separate them and keep separating them. Retention
+	// only ever selects rows whose `expires_at` has passed
+	// (ListArtifactsPastRetention), so a retention purge is always stamped at or
+	// after the deadline; the reconciler only ever acts on rows still claiming
+	// to be downloadable (ListArtifactsClaimingObject requires `expires_at >
+	// now()`), so a loss is stamped before it. A purge before the deadline
+	// therefore has exactly one possible author, and the comparison keeps that
+	// answer after the deadline goes by. The one row this misreads is one that
+	// expires between the sweep listing it and the sweep writing — it reads as
+	// expired, in the same second it was going to be.
+	lost := purged && !expiresAt.IsZero() && purgedAt.Before(expiresAt)
 	switch {
 	case a.Status == "quarantined":
 		a.ServeState = labelled{"quarantined", "檢查中(尚未可下載)",
@@ -835,6 +854,17 @@ func (a Artifact) withServeState(expiresAt time.Time, purged bool) Artifact {
 	case a.Status == "rejected":
 		a.ServeState = labelled{"rejected", "已拒絕(打包後未通過驗證)",
 			"這一份不會被提供。要再拿到同樣的內容,回到該版本重新打包一次。"}
+	// Above expiry on purpose. A row can be both, and once it is, 「已過期」 is
+	// the true sentence that answers the wrong question: it tells the owner this
+	// was expected and asks nothing of them, while the platform is the party
+	// that lost something. NFR-002 3 wants the deletion traceable; a state that
+	// names the wrong cause is worse than no state, because the person who could
+	// have reported it now has no reason to.
+	case lost:
+		a.ServeState = labelled{"lost", "檔案遺失,不再提供下載",
+			"這不是保存期到期——檔案在保存期內就不見了,是平台這一側的問題。" +
+				"同一版本重新打包一次可以拿回同樣的內容(打包是冪等的);" +
+				"如果再次發生,請回報。"}
 	case !expiresAt.IsZero() && !expiresAt.After(time.Now()):
 		a.ServeState = labelled{"expired", "已過期,不再提供下載",
 			"檔案已刪除,這筆紀錄保留。「已過期」與「沒有這一筆」不是同一件事。" +
@@ -1010,7 +1040,7 @@ func (s *Service) persist(
 		ProfileVersion:      p.Profile.Version,
 		VersionNumber:       p.Version.VersionNumber,
 		LatestVersionNumber: detail.LatestVersionNumber,
-	}.withVersionState().withServeState(row.ExpiresAt.Time, false)}, nil
+	}.withVersionState().withServeState(row.ExpiresAt.Time, time.Time{})}, nil
 }
 
 func reusedArtifact(skillID pgtype.UUID, row gen.FindReusableDownloadArtifactRow) Artifact {
@@ -1034,5 +1064,5 @@ func reusedArtifact(skillID pgtype.UUID, row gen.FindReusableDownloadArtifactRow
 		LatestVersionNumber: row.LatestVersionNumber,
 		// FindReusableDownloadArtifact filters `purged_at IS NULL`, so a reused row
 		// is by construction not purged — the query is where that is enforced.
-	}.withVersionState().withServeState(row.ExpiresAt.Time, false)
+	}.withVersionState().withServeState(row.ExpiresAt.Time, time.Time{})
 }

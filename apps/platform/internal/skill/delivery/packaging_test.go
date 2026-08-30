@@ -461,7 +461,7 @@ func TestManifestOriginRefusesWithoutOwnerReaders(t *testing.T) {
 // version it was.
 func TestVersionStateIsSeparateFromServeState(t *testing.T) {
 	stale := Artifact{Status: "available", VersionNumber: 2, LatestVersionNumber: 5}.
-		withVersionState().withServeState(time.Now().Add(time.Hour), false)
+		withVersionState().withServeState(time.Now().Add(time.Hour), time.Time{})
 	if stale.VersionState.Value != "superseded" {
 		t.Errorf("version_state = %q, want superseded", stale.VersionState.Value)
 	}
@@ -476,13 +476,120 @@ func TestVersionStateIsSeparateFromServeState(t *testing.T) {
 	}
 
 	newest := Artifact{Status: "available", VersionNumber: 5, LatestVersionNumber: 5}.
-		withVersionState().withServeState(time.Now().Add(-time.Hour), false)
+		withVersionState().withServeState(time.Now().Add(-time.Hour), time.Time{})
 	if newest.VersionState.Value != "current" {
 		t.Errorf("version_state = %q, want current", newest.VersionState.Value)
 	}
 	if newest.ServeState.Value != "expired" {
 		t.Errorf("expiry still decides serving on its own axis: %+v", newest)
 	}
+}
+
+// 04 丙-91. The two writers of `purged_at` are retention and the reconciler, and
+// the row has to keep saying which — including after the expiry that would
+// otherwise absorb the answer.
+//
+// Why this is worth a test rather than a comment: 「已過期」 on a lost package is
+// TRUE, so nothing downstream can catch it. The screen reads correctly, the
+// owner is told the retention policy did what it says, and the one person who
+// could report that the platform lost a file has just been given a reason not
+// to.
+func TestALostPackageIsNotDescribedAsExpired(t *testing.T) {
+	expiry := time.Now().Add(-24 * time.Hour)
+
+	// Purged a week before the deadline: only the reconciler writes that, and the
+	// deadline has since passed, which is exactly when this used to flip.
+	lost := Artifact{Status: "available"}.
+		withServeState(expiry, expiry.Add(-7*24*time.Hour))
+	if lost.ServeState.Value != "lost" {
+		t.Errorf("serve_state = %q, want lost", lost.ServeState.Value)
+	}
+	if lost.Servable {
+		t.Error("a lost package is not servable")
+	}
+	// The note has to say the two things the reader acts on: this was not the
+	// policy, and the content is still reachable by packaging again.
+	for _, want := range []string{"不是保存期到期", "重新打包", "回報"} {
+		if !strings.Contains(lost.ServeState.Note, want) {
+			t.Errorf("note %q is missing %q", lost.ServeState.Note, want)
+		}
+	}
+
+	// Purged at the deadline, which is the only time retention purges. Still
+	// 「已過期」, because it is.
+	retired := Artifact{Status: "available"}.withServeState(expiry, expiry.Add(time.Minute))
+	if retired.ServeState.Value != "expired" {
+		t.Errorf("serve_state = %q, want expired", retired.ServeState.Value)
+	}
+
+	// Lost and not yet expired: the sentence is the same one, which is the point
+	// of deriving it from the pair rather than from the absence of an expiry.
+	fresh := Artifact{Status: "available"}.
+		withServeState(time.Now().Add(24*time.Hour), time.Now())
+	if fresh.ServeState.Value != "lost" {
+		t.Errorf("serve_state = %q, want lost", fresh.ServeState.Value)
+	}
+
+	// A rejected package that is also missing keeps saying rejected: the bytes
+	// were never on offer, and losing them changes nothing the reader can act on.
+	rejected := Artifact{Status: "rejected"}.
+		withServeState(expiry, expiry.Add(-time.Hour))
+	if rejected.ServeState.Value != "rejected" {
+		t.Errorf("serve_state = %q, want rejected", rejected.ServeState.Value)
+	}
+}
+
+// The `lost` derivation above reads one column and depends on two statements it
+// cannot see, so this is the machine for the sentence in withServeState: the two
+// writers of `purged_at` are separated by the retention deadline, and stay
+// separated.
+//
+// Widen either predicate and the derivation goes quietly wrong in the direction
+// that hurts — a reconciler allowed to mark expired rows would stamp losses at
+// or after the deadline, and every one of them would read as 「已過期」 again,
+// which is the defect 丙-91 is. Nothing else would fail: the column is set, the
+// row is unservable, and the sentence is grammatical.
+//
+// Read as text and not as behaviour because behaviour needs a database. That is
+// weaker on purpose and stated rather than hidden: it proves the shipped
+// statements still say this, not that Postgres agrees.
+func TestTheTwoWritersOfPurgedAtStaySeparatedByTheDeadline(t *testing.T) {
+	sql, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "..", "db", "queries", "reconcile.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ query, predicate, why string }{
+		{"ListArtifactsPastRetention", "expires_at <= now()",
+			"retention must only ever purge rows whose deadline has passed; without this a " +
+				"retention purge could be stamped before the deadline and read as a loss"},
+		{"ListArtifactsClaimingObject", "expires_at > now()",
+			"the reconciler must only ever mark rows that are still claiming to be downloadable; " +
+				"without this a loss could be stamped after the deadline and read as an expiry"},
+	} {
+		body, ok := namedQuery(string(sql), tc.query)
+		if !ok {
+			t.Errorf("-- name: %s is gone from reconcile.sql; the `lost` derivation "+
+				"in withServeState has lost half its subject", tc.query)
+			continue
+		}
+		if !strings.Contains(body, tc.predicate) {
+			t.Errorf("%s no longer has `%s`: %s", tc.query, tc.predicate, tc.why)
+		}
+	}
+}
+
+// namedQuery returns one sqlc statement's text, from its `-- name:` line to the
+// next one.
+func namedQuery(sql, name string) (string, bool) {
+	start := strings.Index(sql, "-- name: "+name+" ")
+	if start < 0 {
+		return "", false
+	}
+	rest := sql[start+1:]
+	if next := strings.Index(rest, "-- name: "); next >= 0 {
+		return rest[:next], true
+	}
+	return rest, true
 }
 
 // gateFlags must release for `generated`, and the way this breaks is the
