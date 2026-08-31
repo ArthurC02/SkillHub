@@ -197,25 +197,17 @@ export function SkillDetail() {
         </nav>
       )}
 
-      {/*
-        「這個 Skill 我寫過哪些 Test Case」 had no route until the list grew a
-        `skill_id` filter. Signed-in only, for the same reason the fork action
-        is: a Test Case belongs to a workspace, and a link to an empty list is
-        what an anonymous reader would get.
-      */}
-      {me && (
-        <section>
-          <h2>試跑</h2>
-          <p>
-            <Link to="/lab/test-cases" search={{ skill: skillId }}>
-              此 Skill 的 Test Case
-            </Link>
-          </p>
-          <p className="note">Test Case 是試跑用的草稿：User Prompt、測試資料與驗收條件。</p>
-        </section>
-      )}
+      <TrialEntry skillId={skillId} isLoggedIn={!!me} />
 
-      <ForkAction skillId={skillId} isLoggedIn={!!me} />
+      <section>
+        {/*
+          丙-116 的另一半：這個動作以前是整頁唯一沒有標題的區塊。它對非擁有者
+          是**唯一**能往前的東西，卻不在 12 個 h2 裡，所以按標題導覽的人找不到
+          它——而 axe 不會說話，沒有標題不是違規。
+        */}
+        <h2>Fork 到你的工作區</h2>
+        <ForkAction skillId={skillId} isLoggedIn={!!me} />
+      </section>
     </article>
   );
 }
@@ -653,6 +645,86 @@ function GeneratedSourceBlock({ source }: { source: SkillSource }) {
         </details>
       )}
     </>
+  );
+}
+
+/**
+ * 「試跑」, which until 丙-116 rendered for anybody signed in with no ownership
+ * test at all — the condition was `me &&` and nothing else.
+ *
+ * What that produced was a corridor of three screens, each individually right:
+ * the link went to `/lab/test-cases?skill=<id>`, where the filter banner names
+ * the skill from `rows[0]?.skill_name` and so fell back to the literal 「這一個
+ * Skill」 because there are no rows; the empty state read as an invitation; and
+ * the create form's picker is `GET /skills`, so **the skill the reader had just
+ * come from was structurally absent from it**. Nothing on the way said the one
+ * thing that was true: this one is not yours yet.
+ *
+ * The signal was already on this page and already worded correctly in three
+ * other places: `GET /skills/{id}/versions` is workspace-scoped and answers an
+ * empty list for somebody else's skill (ADR-011). Measured 2026-09-01 against a
+ * live catalogue skill: 0 rows for a stranger, 1 for its owner.
+ *
+ * **`skill.version` is NOT the signal**, and it is the one a reader of this file
+ * would reach for first: `GET /api/skills/{id}` carries `version` for every
+ * caller, catalogue included, so keying off it calls every visitor an owner.
+ *
+ * A child component, not inlined, for the same reason `VersionHistory` is one:
+ * the page returns early on loading and on 410, so a hook added to `SkillDetail`
+ * itself would change hook order between renders. `useSkillVersions` is already
+ * called by `VersionHistory`, and React Query dedupes on the key — this is the
+ * same request, not a second one.
+ */
+function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: boolean }) {
+  const versions = useSkillVersions(skillId);
+
+  // Anonymous readers never reach the ownership question: the version list is
+  // session-scoped, so asking it would only produce a 401 to explain. The fork
+  // section below already tells a visitor what logging in buys (資訊架構 IA-6).
+  if (!isLoggedIn) return null;
+
+  if (versions.isPending)
+    return (
+      <section>
+        <h2>試跑</h2>
+        <Loading what="這個 Skill 在你工作區的版本" />
+      </section>
+    );
+  if (versions.error)
+    return (
+      <section>
+        <h2>試跑</h2>
+        <ReadFailure error={versions.error} what="這個 Skill 的版本" />
+      </section>
+    );
+
+  const inMyWorkspace = (versions.data?.versions.length ?? 0) > 0;
+
+  return (
+    <section>
+      <h2>試跑</h2>
+      {inMyWorkspace ? (
+        <>
+          <p>
+            <Link to="/lab/test-cases" search={{ skill: skillId }}>
+              此 Skill 的 Test Case
+            </Link>
+          </p>
+          <p className="note">Test Case 是試跑用的草稿：User Prompt、測試資料與驗收條件。</p>
+        </>
+      ) : (
+        // 設計 §2.2「顯示與強制成對」: said before the reader spends three
+        // screens finding out, and it names both consequences rather than only
+        // the first — the list AND the picker, because the picker is where the
+        // corridor actually ended.
+        <p>
+          這個 Skill 不在你的工作區。Test Case 屬於工作區，所以 Test Case
+          清單裡看不到它、建立表單的 Skill 選單也選不到它——
+          <strong>要先 Fork 一份</strong>，才會有屬於你的版本可以試跑。下方的「Fork
+          到你的工作區」就是那一步。
+        </p>
+      )}
+    </section>
   );
 }
 

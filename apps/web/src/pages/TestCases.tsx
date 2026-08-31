@@ -91,6 +91,14 @@ export function TestCaseList() {
   const [prompt, setPrompt] = useState("");
   const [message, setMessage] = useState("");
   const rows = testCases.data?.pages.flatMap((page) => page.test_cases) ?? [];
+  // 丙-116. `?skill=` accepts any UUID (router.tsx only checks the shape), while
+  // the create form below only accepts what `GET /skills` returns — so the two
+  // halves of this page could disagree about what 「這個 Skill」 means with
+  // nothing on screen saying so. The answer costs no request: `useOwnSkills` is
+  // already loaded, for the picker. Only decided once that read has landed —
+  // before it, `notMine` would be true for every skill including your own.
+  const ownedSkill = skills.data?.skills.find((s) => s.skill_id === filter);
+  const notMine = Boolean(filter) && Boolean(skills.data) && !ownedSkill;
 
   const create = useMutation({
     mutationFn: () => createTestCase(skillId, name, prompt),
@@ -119,20 +127,44 @@ export function TestCaseList() {
         list that silently shows a subset reads as "this is everything".
         The skill is named from the rows rather than from a second request —
         every row of a filtered list carries the same `skill_name`.
+
+        丙-116: with no rows there is no `skill_name`, and the fallback used to
+        be 「這一個 Skill」 — a filter announcing itself while unable to name what
+        it filtered by. `ownedSkill` closes the common half of that (an own skill
+        with no test cases yet now gets its real name) and the notice below
+        closes the other half, which is the one that mattered: the id belongs to
+        a skill outside this workspace, so the list cannot show it AND the picker
+        below cannot offer it.
       */}
       {filter && (
         <p className="note" role="status">
-          只顯示 <strong>{rows[0]?.skill_name || "這一個 Skill"}</strong> 的 Test Case。{" "}
+          只顯示 <strong>{rows[0]?.skill_name || ownedSkill?.name || "某一個 Skill"}</strong>{" "}
+          的 Test Case。{" "}
           <Link to="/lab/test-cases" search={{ skill: undefined }}>
             顯示全部
           </Link>
+        </p>
+      )}
+      {notMine && (
+        <p className="notice" role="status">
+          這個 Skill 不在你的工作區。Test Case 屬於工作區，所以這裡沒有東西可以顯示，
+          下面建立表單的 Skill 選單也選不到它——
+          <Link to="/skills/$skillId" params={{ skillId: filter as string }}>
+            先把它 Fork 一份
+          </Link>
+          ，才會有屬於你的版本可以建立 Test Case。
         </p>
       )}
       {testCases.isPending && <Loading what=" Test Case 清單" />}
       <ReadFailure error={testCases.error} what=" Test Case" />
       {testCases.data &&
         (rows.length === 0 ? (
-          <p>{filter ? "這個 Skill 還沒有 Test Case。" : "還沒有 Test Case。"}</p>
+          // Not when the skill is somebody else's: the notice above already said
+          // why this is empty, and 「還沒有」 there would read as an invitation to
+          // create one — the exact sentence that ended the corridor.
+          notMine ? null : (
+            <p>{filter ? "這個 Skill 還沒有 Test Case。" : "還沒有 Test Case。"}</p>
+          )
         ) : (
           <ul className="search-results">
             {rows.map((tc) => (

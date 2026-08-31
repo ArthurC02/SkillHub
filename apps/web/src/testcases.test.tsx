@@ -470,3 +470,49 @@ test("設計 §2.4 a 確認 disabled by an unsaved edit says why, in visible tex
   expect(reason!.textContent ?? "").toContain("現在不能確認");
   expect(reason!.getAttribute("title")).toBeNull();
 });
+
+// --- 丙-116: the two halves of this page disagreed about 「這個 Skill」 --------
+
+/**
+ * `?skill=` accepts any UUID (`router.tsx` only checks the shape), while the
+ * create form below only accepts what `GET /skills` returns. Arriving from a
+ * catalogue skill's 「試跑」 link, a reader got: a filter banner that announced
+ * itself while unable to name what it filtered by, an empty state that read as
+ * an invitation, and a picker in which the skill they had just come from was
+ * structurally absent — with nothing on the page saying why.
+ *
+ * `stubPlatform`'s `GET /skills` answers exactly one skill, so a different id is
+ * a skill outside this workspace by construction.
+ */
+const NOT_MINE = "44444444-4444-4444-4444-444444444444";
+
+test("丙-116 a list filtered to a skill outside the workspace says so, and stops inviting", async () => {
+  listSearch = { skill: NOT_MINE };
+  stubPlatform({ testCases: [] });
+  await renderList();
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("這個 Skill 不在你的工作區");
+  // The half that mattered — the picker — named as a consequence rather than
+  // left for the reader to discover by scrolling.
+  expect(text).toContain("選單也選不到它");
+  // A filter cannot claim to name what it filtered by when it has no rows and
+  // no owned skill to read the name from.
+  expect(text).not.toContain("這一個 Skill");
+  // And the sentence that ended the corridor is gone: 「還沒有」 reads as "go
+  // make one" on the one screen where making one is impossible.
+  expect(text).not.toContain("還沒有 Test Case");
+});
+
+test("丙-116 a list filtered to your OWN empty skill keeps the invitation, and can now name it", async () => {
+  listSearch = { skill: SKILL };
+  stubPlatform({ testCases: [] });
+  await renderList();
+
+  const text = container.textContent ?? "";
+  expect(text).not.toContain("這個 Skill 不在你的工作區");
+  expect(text).toContain("這個 Skill 還沒有 Test Case");
+  // Read from the picker's own list rather than from rows there are none of —
+  // this case used to fall back to the literal 「這一個 Skill」 too.
+  expect(text).toContain("去重複工具");
+});

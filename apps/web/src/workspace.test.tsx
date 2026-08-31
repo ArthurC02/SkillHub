@@ -1085,3 +1085,78 @@ test("CORE-007 cancelling a deletion request invalidates /me, so the badge goes 
   ).toContainEqual(["me"]);
   invalidated.mockRestore();
 });
+
+// --- 丙-116: 「試跑」 knew nothing about whose skill it was --------------------
+
+/**
+ * The corridor this closes: `h2 試跑` rendered for anybody signed in — the
+ * condition was `me &&` and nothing else — and linked to
+ * `/lab/test-cases?skill=<id>`, a list whose filter banner cannot name a skill
+ * it has no rows for, whose empty state reads as an invitation, and whose create
+ * form is fed by `GET /skills`. Three screens, each individually right, none of
+ * them able to say the one true thing: this skill is not yours yet.
+ *
+ * The deciding signal was already on the page and already worded correctly three
+ * sections up: the version list is workspace-scoped and answers an empty array
+ * for somebody else's skill (ADR-011). Measured 2026-09-01 against a live
+ * catalogue skill in clean mode — 0 rows for a stranger, 1 for its owner.
+ *
+ * `/me` is stubbed here and deliberately NOT in `stubSkillDetailPage`: the three
+ * tests above render this page signed out, which is why they never saw any of
+ * this.
+ */
+function stubDetailAsSignedIn(versions: unknown) {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input).replace(/^https?:\/\/[^/]+/, "");
+    const path = url.split("?")[0];
+    if (path === "/me") return json({ user_id: "u-1", workspace_id: "ws-1" });
+    if (path.endsWith("/versions")) return json(versions);
+    if (path.startsWith("/api/skills/")) return json(skillDetail(SKILL, "PDF Summariser"));
+    return json({ error: "not found" }, 404);
+  });
+}
+
+/**
+ * True in BOTH the fixed and the broken shape, on purpose. Settling on the
+ * sentence being tested would make a reverted fix time out instead of fail an
+ * assertion, and a timeout is not evidence that anything was measured — that is
+ * the exact way this repo's IA-6 tests were toothless on their first pass.
+ */
+const trialSectionAnswered = () =>
+  text().includes("此 Skill 的 Test Case") || text().includes("這個 Skill 不在你的工作區");
+
+test("丙-116 試跑 on a skill in your own workspace still links to its Test Cases", async () => {
+  stubDetailAsSignedIn(SKILL_VERSIONS);
+  await render(<SkillDetail />, trialSectionAnswered);
+
+  expect(text()).toContain("此 Skill 的 Test Case");
+  expect(text()).not.toContain("這個 Skill 不在你的工作區");
+});
+
+test("丙-116 試跑 on somebody else's skill says so BEFORE the corridor, not after it", async () => {
+  stubDetailAsSignedIn({ versions: [] });
+  await render(<SkillDetail />, trialSectionAnswered);
+
+  expect(text()).toContain("這個 Skill 不在你的工作區");
+  // Both consequences, because the second one is where the corridor actually
+  // ended: the create form's picker is GET /skills and could never have offered
+  // this skill, however long the reader looked for it.
+  expect(text()).toContain("選單也選不到它");
+  // The entrance is gone. Leaving the link and adding a warning beside it would
+  // still spend the reader's next three screens.
+  expect(text()).not.toContain("此 Skill 的 Test Case");
+});
+
+test("丙-116 the one action that does work is a named section, not a bare button", async () => {
+  // It was the only unnamed block on a twelve-h2 page, and for a non-owner it is
+  // the ONLY thing that moves them forward — so it was absent from the outline
+  // snapshot and from heading navigation. axe has nothing to say about this: a
+  // button without a heading is not a violation.
+  stubDetailAsSignedIn({ versions: [] });
+  await render(<SkillDetail />, trialSectionAnswered);
+
+  const headings = Array.from(container.querySelectorAll("h2")).map((h) => h.textContent);
+  expect(headings).toContain("Fork 到你的工作區");
+  // And it is still the real control, not a heading over nothing.
+  expect(button("Fork 這個 Skill")).not.toBeUndefined();
+});
