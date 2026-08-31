@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
@@ -721,5 +722,84 @@ func TestTheTwoWaysPackagingHasNoTargetsAreToldApart(t *testing.T) {
 	}
 	if missing == empty {
 		t.Error("both causes produce the same sentence again, which is the defect this test exists for")
+	}
+}
+
+// TestCleanModeEmptiesTheSessionItInheritsOnConnect is the half of
+// applyCleanModePool that MaxConns cannot express.
+//
+// The carrier clean mode runs on puts every new TCP connection into the same
+// Postgres session, so a pool that retires a connection and opens another one
+// arrives in a session that still holds the retired connection's prepared
+// statements. pgx's cache is per-connection and now empty, so it prepares those
+// names again, gets 42P05, and the recovery it attempts desyncs the protocol
+// for good. pgxpool retires connections after an hour by default; clean mode
+// was measured dying at exactly that mark on 2026-08-31.
+//
+// Asserting AfterConnect is non-nil would pass for a hook that does nothing, so
+// this dirties a real session the way a retired connection leaves it and checks
+// the hook actually empties it.
+func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
+	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping the database-backed half")
+	}
+	ctx := context.Background()
+
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatalf("pgxpool.ParseConfig: %v", err)
+	}
+	applyCleanModePool(cfg, false)
+	if cfg.AfterConnect != nil {
+		t.Fatal("clean=false installed an AfterConnect hook; the flag being unset must not touch the pool config (02:PORT-005)")
+	}
+	applyCleanModePool(cfg, true)
+	if cfg.AfterConnect == nil {
+		t.Fatal("clean=true left AfterConnect nil, so a retired connection's prepared statements survive into the next one and wedge the carrier")
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		t.Fatalf("pgxpool.NewWithConfig: %v", err)
+	}
+	defer pool.Close()
+
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		t.Fatalf("acquire: %v", err)
+	}
+	defer conn.Release()
+
+	// Simple protocol on purpose. DEALLOCATE ALL empties the server's session
+	// but cannot reach pgx's per-connection cache, so a counting query that
+	// went through that cache would be measuring with an instrument the thing
+	// under test has just invalidated (it fails 26000 on the second call).
+	// That is only a hazard for this test, which calls the hook mid-life:
+	// pgxpool runs AfterConnect on a connection whose cache is still empty,
+	// which is the only place DEALLOCATE ALL is safe to issue.
+	count := func(where string) int {
+		var n int
+		row := conn.QueryRow(ctx, "SELECT count(*)::int FROM pg_prepared_statements", pgx.QueryExecModeSimpleProtocol)
+		if err := row.Scan(&n); err != nil {
+			t.Fatalf("count prepared statements (%s): %v", where, err)
+		}
+		return n
+	}
+
+	// Exactly what a retired connection leaves behind for the next one.
+	if _, err := conn.Exec(ctx, "PREPARE skillhub_reconnect_probe AS SELECT 1"); err != nil {
+		t.Fatalf("dirty the session: %v", err)
+	}
+	if n := count("after dirtying"); n == 0 {
+		t.Fatal("the probe left no prepared statement behind, so this test is not measuring what it claims to")
+	}
+
+	// What the next connection runs on arrival.
+	if err := cfg.AfterConnect(ctx, conn.Conn()); err != nil {
+		t.Fatalf("AfterConnect on an inherited session: %v", err)
+	}
+	if n := count("after AfterConnect"); n != 0 {
+		t.Errorf("the session still carries %d prepared statement(s) after AfterConnect; the next connection will collide with them and take the carrier down with it", n)
 	}
 }

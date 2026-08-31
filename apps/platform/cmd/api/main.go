@@ -27,6 +27,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
@@ -81,8 +82,40 @@ var cleanModeFlagScript = []byte(`<script>window.__SKILLHUB_CLEAN_MODE__=true;</
 // DATABASE_URL on its own — the same value pgxpool.New would have produced,
 // which is what main_test.go pins for the flag-unset case.
 func applyCleanModePool(cfg *pgxpool.Config, clean bool) {
-	if clean {
-		cfg.MaxConns = 1
+	if !clean {
+		return
+	}
+	cfg.MaxConns = 1
+	// The second consequence of that single connection, and the one that is
+	// not a performance note: reconnecting to this carrier is fatal, and
+	// pgxpool reconnects on a schedule nobody set.
+	//
+	// The PGlite socket puts every new TCP connection into the SAME Postgres
+	// session (measured: `pg_backend_pid()` is unchanged across a clean
+	// Terminate and reconnect). pgx's statement cache is per-connection and
+	// starts empty, so the fresh connection prepares names the old one left
+	// behind, gets 42P05, and tries to DEALLOCATE its whole cache to recover.
+	// That recovery desyncs the pipeline, and from there the carrier answers
+	// nobody -- not this pool, not a new process. It is not a stall that
+	// clears.
+	//
+	// pgxpool's MaxConnLifetime defaults to one hour, so an untouched clean
+	// mode dies exactly sixty minutes after it starts. Observed 2026-08-31:
+	// started 23:49:56, first 42P05 at 00:49:56, everything after it a
+	// connection error -- while GET /healthz went on answering 200, because
+	// it is a constant (04 丙-110).
+	//
+	// Raising the lifetime would only move the funeral. Emptying the session
+	// on arrival is what makes a reconnect survivable, whenever it happens
+	// and whatever triggers it. Exec with no arguments goes over the simple
+	// protocol (pgx conn.go: "Always use simple protocol when there are no
+	// arguments"), so this statement cannot itself be the one that collides.
+	// Against a real PostgreSQL a fresh session has nothing to deallocate and
+	// this is a no-op, which is why it is safe to state unconditionally here
+	// rather than guessing which reconnects are the dangerous ones.
+	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		_, err := conn.Exec(ctx, "DEALLOCATE ALL")
+		return err
 	}
 }
 
