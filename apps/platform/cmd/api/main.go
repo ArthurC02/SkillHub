@@ -224,13 +224,15 @@ func cleanModeHandler(api http.Handler, clean bool, static http.Handler) http.Ha
 // window.__SKILLHUB_CLEAN_MODE__, so 02:PORT-003's disclosure never loaded
 // either.
 //
-// The condition is "the API said 404", not a copy of the route table. A
+// The condition is what the API answered, not a copy of the route table. A
 // hand-maintained list of API prefixes is exactly what apiserver/router.go's
-// package comment records being burned by, and the mux already knows the
-// answer: a pattern like "GET /skills" does not match /skills/abc, so an
-// unrouted path arrives here as a 404 with nothing written. Routes that DO
-// match are untouched, which is what keeps GET /auth/github/callback — a
-// browser navigation the API must handle itself — working.
+// package comment records being burned by, and the response already carries
+// the answer: 404 (no route), 405 (a route, but no GET), or a JSON body (a
+// route that answered with data, which is not what a navigation asked for).
+// See navigationCatcher for why those three and no others. Routes that answer
+// a navigation properly are untouched, which is what keeps GET
+// /auth/github/callback — a browser navigation the API must handle itself —
+// working, and what keeps a download's bytes streaming.
 //
 // Only GET, and only for a caller that asked for text/html. Every client of this
 // API is fetch(), which sends */* or application/json; a browser address bar is
@@ -242,9 +244,9 @@ func spaFallback(api, static http.Handler) http.Handler {
 			api.ServeHTTP(w, r)
 			return
 		}
-		catcher := &notFoundCatcher{ResponseWriter: w}
+		catcher := &navigationCatcher{ResponseWriter: w}
 		api.ServeHTTP(catcher, r)
-		if !catcher.notFound {
+		if !catcher.swallowed {
 			return
 		}
 		// The API's headers (Content-Type: application/json, and whatever the
@@ -258,32 +260,66 @@ func spaFallback(api, static http.Handler) http.Handler {
 	})
 }
 
-// notFoundCatcher swallows a 404 and its body so the caller can answer
-// differently. Nothing else is buffered: a 200 streams through untouched, which
-// matters because one of the routes underneath serves download bytes.
-type notFoundCatcher struct {
+// navigationCatcher swallows the answers that cannot be what a browser
+// navigation asked for, so spaFallback can serve the application instead. It
+// only ever sees requests that already passed that gate — GET, Accept:
+// text/html — so "what the caller asked for" is a page, and these three
+// answers are each a way of not being one:
+//
+//   - 404: the API has no route. The original case.
+//   - 405: the API has the path but no GET. That is /skills/{id}, which
+//     spaFallback's own comment names as its motivating example and which it
+//     did not actually handle: DELETE /skills/{id} and friends make the mux
+//     match the path and refuse the method, so the 404 never happens. Measured
+//     2026-08-31 — a pasted or refreshed skill detail link answered
+//     `405 method not allowed` in plain text (04 丙-111).
+//   - a successful JSON body: the API answered, correctly, with data. GET
+//     /runs/{id} is a real route AND the address of the run detail page, so
+//     refreshing the Trace screen — the demo's centrepiece — printed the run's
+//     JSON into the browser. This is the dangerous one, because it is a
+//     success: nothing in the status code says anything went wrong.
+//
+// Two deliberate narrowings on that last case.
+//
+// Content-Type, not status, is what separates it from a download: a 2xx that
+// is not JSON streams through untouched, which is what keeps the package bytes
+// flowing when a browser navigates to a download link (Accept: text/html,
+// response application/zip).
+//
+// 2xx, not any status, is what keeps a failure legible. GET
+// /auth/github/callback succeeds with a 302 and fails with a JSON 401 or 500
+// ("oauth state mismatch", "login failed"). Swallowing those would turn a
+// broken login into a page that loads and quietly does nothing, which is the
+// harder fault to diagnose of the two. An error the browser can read is worth
+// more than a tidy page.
+//
+// The decision is made in WriteHeader, where the API's Content-Type is already
+// set and no body has been written, so nothing is buffered either way.
+type navigationCatcher struct {
 	http.ResponseWriter
-	notFound bool
-	wrote    bool
+	swallowed bool
+	wrote     bool
 }
 
-func (c *notFoundCatcher) WriteHeader(code int) {
+func (c *navigationCatcher) WriteHeader(code int) {
 	if c.wrote {
 		return
 	}
 	c.wrote = true
-	if code == http.StatusNotFound {
-		c.notFound = true
+	okJSON := code >= 200 && code < 300 &&
+		strings.Contains(c.Header().Get("Content-Type"), "application/json")
+	if code == http.StatusNotFound || code == http.StatusMethodNotAllowed || okJSON {
+		c.swallowed = true
 		return
 	}
 	c.ResponseWriter.WriteHeader(code)
 }
 
-func (c *notFoundCatcher) Write(b []byte) (int, error) {
+func (c *navigationCatcher) Write(b []byte) (int, error) {
 	if !c.wrote {
 		c.WriteHeader(http.StatusOK)
 	}
-	if c.notFound {
+	if c.swallowed {
 		return len(b), nil // discarded; the SPA answers instead
 	}
 	return c.ResponseWriter.Write(b)

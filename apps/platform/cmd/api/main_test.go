@@ -615,18 +615,50 @@ func TestStartupTasksAuditTheRosters(t *testing.T) {
 // and that the API has no route for. Every other case is unchanged, and the rows
 // below say which is which.
 func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
-	// An API that answers 404 for a path it has no route for — which is what a
-	// ServeMux does, and the condition the fallback reads.
+	// The four answers the real router actually gives, because the version of
+	// this stand-in that only ever said 404 is why two of them went unnoticed
+	// for as long as they did: a fake API that cannot produce an answer cannot
+	// fail a test about it (04 丙-111).
 	api := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/me" || r.URL.Path == "/auth/github/callback" {
+		switch {
+		case r.URL.Path == "/me":
+			// A route the SPA's own fetch calls.
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"api":true}`))
-			return
+		case r.URL.Path == "/auth/github/callback":
+			// The real one redirects on success (workspace/http.go finishLogin).
+			// Location and status without http.Redirect's courtesy HTML body,
+			// so the row below can assert on who answered rather than on a
+			// Content-Type that says "html" for a reason unrelated to the SPA.
+			w.Header().Set("Location", "/")
+			w.WriteHeader(http.StatusFound)
+		case r.URL.Path == "/auth/github/callback/fail":
+			// ...and answers JSON on failure, which must stay readable.
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":"oauth state mismatch"}`))
+		case r.URL.Path == "/runs/real-id":
+			// A real GET route whose address is ALSO a page in the SPA.
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"run":"real-id"}`))
+		case r.URL.Path == "/downloads/pkg":
+			// Bytes a browser navigation is supposed to receive.
+			w.Header().Set("Content-Type", "application/zip")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("PK\x03\x04zipbytes"))
+		case r.URL.Path == "/skills/abc-123" && r.Method == http.MethodGet:
+			// What ServeMux does when DELETE /skills/{id} exists and GET does
+			// not: the path matches, the method does not.
+			w.Header().Set("Allow", "DELETE")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			_, _ = w.Write([]byte("Method Not Allowed\n"))
+		default:
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"not found"}`))
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"error":"not found"}`))
 	})
 	static := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -640,8 +672,23 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 		wantHTML                   bool
 	}{
 		{
+			// The motivating example, and — until 2026-08-31 — the one case
+			// that did not work. It is not an unrouted path: DELETE
+			// /skills/{id} makes the mux match and refuse the method, so the
+			// 404 the fallback was watching for never came, and a refreshed or
+			// pasted skill detail link answered `405 method not allowed` in
+			// plain text.
 			name: "a pasted deep link loads the app", method: http.MethodGet,
 			path: "/skills/abc-123", accept: "text/html,application/xhtml+xml",
+			wantCode: http.StatusOK, wantHTML: true,
+		},
+		{
+			// The worse half of the same defect, because it succeeded. The run
+			// detail page and the run's API resource are the same URL, so
+			// refreshing the Trace screen printed the run's JSON into the
+			// browser with a 200.
+			name: "refreshing a page whose address is also an API resource", method: http.MethodGet,
+			path: "/runs/real-id", accept: "text/html,application/xhtml+xml",
 			wantCode: http.StatusOK, wantHTML: true,
 		},
 		{
@@ -650,13 +697,28 @@ func TestCleanModeFallsBackToTheSPAOnlyForUnroutedBrowserGets(t *testing.T) {
 			// to handle itself or login stops working.
 			name: "the OAuth callback still reaches the API", method: http.MethodGet,
 			path: "/auth/github/callback", accept: "text/html",
+			wantCode: http.StatusFound,
+		},
+		{
+			// A failure has to stay readable. Swallowing it would turn a broken
+			// login into a page that loads and quietly does nothing.
+			name: "a failed OAuth callback still says why", method: http.MethodGet,
+			path: "/auth/github/callback/fail", accept: "text/html",
+			wantCode: http.StatusUnauthorized,
+		},
+		{
+			// Content-Type is what separates a page from bytes. A browser
+			// navigating to a download sends exactly the same Accept header as
+			// one navigating to a page.
+			name: "a download's bytes still reach the browser", method: http.MethodGet,
+			path: "/downloads/pkg", accept: "text/html,application/xhtml+xml",
 			wantCode: http.StatusOK,
 		},
 		{
 			// fetch() sends */* or application/json. A 404 must stay a 404 for
 			// it, or a client cannot tell "no such run" from a page.
 			name: "a fetch for a missing resource still gets 404", method: http.MethodGet,
-			path: "/skills/abc-123", accept: "application/json",
+			path: "/skills/no-such-skill", accept: "application/json",
 			wantCode: http.StatusNotFound,
 		},
 		{
