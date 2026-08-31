@@ -906,6 +906,20 @@ func TestCleanModeSurvivesAQueryErrorInsteadOfDyingOfOne(t *testing.T) {
 		if n != 7 {
 			t.Fatalf("%s: SELECT 7 returned %d", when, n)
 		}
+		// A jsonb parameter, because changing how pgx executes must not change
+		// what it sends. The first version of this fix used QueryExecModeExec,
+		// which assumes parameter types from the Go type instead of asking the
+		// server, so every jsonb argument went out as text: the operator roster
+		// and the feature-flag audit both failed with SQLSTATE 22P02 three
+		// seconds into a real boot. This test passed anyway, because an int is
+		// the one type that guess gets right.
+		var out string
+		if err := pool.QueryRow(ctx, "SELECT ($1::jsonb)->>'k'", []byte(`{"k":"v"}`)).Scan(&out); err != nil {
+			t.Fatalf("%s: a jsonb parameter did not survive the query mode: %v", when, err)
+		}
+		if out != "v" {
+			t.Fatalf("%s: jsonb round trip returned %q, want \"v\"", when, out)
+		}
 	}
 
 	alive("before the error")

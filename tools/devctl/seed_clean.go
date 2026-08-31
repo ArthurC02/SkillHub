@@ -290,13 +290,13 @@ func retryAfter(header string, attempt int) time.Duration {
 // seedCatalogSearch asks the public catalog search one question and returns the
 // `total` it answers with. Anonymous by contract; the session cookie this
 // client already carries changes nothing about the scope.
-func seedCatalogSearch(client *http.Client, api, q string) (total int, partialIndex bool, err error) {
+func seedCatalogSearch(client *http.Client, api, q string) (int, error) {
 	const maxAttempts = 4
 	target := api + "/api/skills/search?limit=1&q=" + url.QueryEscape(q)
 	for attempt := 1; ; attempt++ {
 		resp, err := client.Get(target)
 		if err != nil {
-			return 0, false, err
+			return 0, err
 		}
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4000))
 		_ = resp.Body.Close()
@@ -305,21 +305,15 @@ func seedCatalogSearch(client *http.Client, api, q string) (total int, partialIn
 			continue
 		}
 		if resp.StatusCode != http.StatusOK {
-			return 0, false, fmt.Errorf("GET /api/skills/search answered %d: %s", resp.StatusCode, firstLine(string(b)))
+			return 0, fmt.Errorf("GET /api/skills/search answered %d: %s", resp.StatusCode, firstLine(string(b)))
 		}
 		var body struct {
 			Total int `json:"total"`
-			// Index coverage, not a query-side outage: true when a result on
-			// this page has no embedding (enrichment_status 'pending'). That is
-			// the deployment saying it imported without enriching, which is the
-			// exact state 04 丙-108 is about and the one no later command can
-			// undo here.
-			PartialIndex bool `json:"partial_index"`
 		}
 		if err := json.Unmarshal(b, &body); err != nil {
-			return 0, false, fmt.Errorf("GET /api/skills/search: %w", err)
+			return 0, fmt.Errorf("GET /api/skills/search: %w", err)
 		}
-		return body.Total, body.PartialIndex, nil
+		return body.Total, nil
 	}
 }
 
@@ -338,20 +332,46 @@ func seedCatalogSearch(client *http.Client, api, q string) (total int, partialIn
 // Called after the first upload rather than at the end, because the cost of
 // being wrong is the whole seed: ten minutes and a model bill.
 //
-// A total of 0 is not an answer to this question — the name may simply have
-// missed lexically — so it stays quiet and lets the end-of-run visibility check
-// speak. Only a result that came back AND came back unranked is a verdict.
-func verifyEnrichmentReached(client *http.Client, api, name string, out io.Writer) error {
-	total, partial, err := seedCatalogSearch(client, api, name)
-	if err != nil || total == 0 {
+// It asks the skill's own detail view, not the search page. The first version
+// of this check read `partial_index` off a search and could never have fired:
+// that flag is set from the hybrid leg only ("on the FTS-only path nothing was
+// ranked at all and Degraded already says so" — discovery.anyUnranked), and a
+// deployment with no working embedding call has no hybrid leg. So in the exact
+// situation this exists for, partial_index is false forever. It passed its test
+// because the stub returned a value the real platform cannot return there —
+// which is 04 丙-111's lesson, committed one commit after 丙-111.
+//
+// enrichment.status is the direct reading: 'pending' means this document has no
+// model summary, no task examples and no embedding, and it says so whatever the
+// query side is doing.
+func verifyEnrichmentReached(client *http.Client, api, name, skillID string, out io.Writer) error {
+	if skillID == "" {
 		return nil
 	}
-	if !partial {
-		fmt.Fprintf(out, "index check: the first package came back ranked — this deployment is enriching, so intent search will work\n")
+	resp, err := client.Get(api + "/api/skills/" + url.PathEscape(skillID))
+	if err != nil {
+		return nil
+	}
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 20000))
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+	var body struct {
+		Enrichment struct {
+			Status string `json:"status"`
+		} `json:"enrichment"`
+	}
+	if err := json.Unmarshal(b, &body); err != nil {
+		return nil
+	}
+	if body.Enrichment.Status != "pending" {
+		fmt.Fprintf(out, "index check: the first package came back enriched (status %q) — intent search will work\n",
+			body.Enrichment.Status)
 		return nil
 	}
 	return fmt.Errorf(
-		"seed-clean: the first package imported but was left unindexed (partial_index on a search for %q).\n"+
+		"seed-clean: the first package imported but was left unindexed (enrichment.status is \"pending\" for %q).\n"+
 			"  The deployment accepted the upload and skipped enrichment, so its search document has no summary,\n"+
 			"  no task examples and no embedding: keyword search will find it, an intent query in any language will not.\n"+
 			"  This is not fixable after the fact here. `cmd/reindex` reads the object store through OBJSTORE_*, and clean\n"+
@@ -384,7 +404,7 @@ func verifyCatalogVisible(client *http.Client, api string, uploaded []seedEntry,
 	}
 	tried := make([]string, 0, len(probes))
 	for _, e := range probes {
-		total, _, err := seedCatalogSearch(client, api, e.name)
+		total, err := seedCatalogSearch(client, api, e.name)
 		if err != nil {
 			return fmt.Errorf("seed-clean: catalog visibility check: %w", err)
 		}
@@ -471,7 +491,11 @@ func seedClean(root string, args []string, out io.Writer) error {
 			continue
 		}
 		if imported == 1 && !allowUnindexed {
-			if err := verifyEnrichmentReached(client, api, e.name, out); err != nil {
+			var created struct {
+				SkillID string `json:"skill_id"`
+			}
+			_ = json.Unmarshal([]byte(body), &created)
+			if err := verifyEnrichmentReached(client, api, e.name, created.SkillID, out); err != nil {
 				return err
 			}
 		}

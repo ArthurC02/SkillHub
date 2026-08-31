@@ -140,18 +140,44 @@ func applyCleanModePool(cfg *pgxpool.Config, clean bool) {
 	// gone. Reproduced in isolation: a healthy pool, one 22021, and the next
 	// query fails with "failed to deallocate cached statement(s)" (04 丙-112).
 	//
-	// QueryExecModeExec keeps the extended protocol — typed parameters, server
-	// -inferred result types, the same values the cached path returns — and
-	// drops only the named server-side statement. With nothing named, nothing
-	// can be invalidated, so the Deallocate that breaks this carrier is never
-	// sent. What it costs is a Parse per query against an in-process database
-	// this mode already accepts as slower than production (ADR-060 決策 2).
+	// The mode below was chosen by measuring all five against this carrier --
+	// one fresh carrier each, a jsonb round trip before, one 22021, then three
+	// more attempts (2026-08-31):
+	//
+	//	mode              jsonb   after one query error
+	//	cache_statement   ok      carrier dead, permanently   <- the default
+	//	cache_describe    ok      clean on the first attempt  <- chosen
+	//	describe_exec     ok      next query fails once, then recovers
+	//	exec              22P02   survives
+	//	simple            22P02   survives
+	//
+	// Only cache_describe is right in both columns, and the table is here
+	// because two of the four wrong answers look right from one angle each.
+	//
+	// It works for the same reason exec and simple do -- no NAMED server-side
+	// statement, so pgx has nothing to invalidate and never sends the pipelined
+	// Deallocate this carrier chokes on -- and it stays correct because it
+	// still takes its parameter OIDs from a real statement description instead
+	// of guessing them from the Go type. That guess is what exec and simple do,
+	// and it is why they put every jsonb argument on the wire as text.
+	//
+	// QueryExecModeExec was the first attempt here and stood for about an hour.
+	// It took the operator roster and the feature-flag audit down with 22P02
+	// three seconds into a real boot. Two things let it through: this file's own
+	// test asserted the pool survives an error while passing nothing but an int
+	// -- the one type the guess gets right -- and the other 689 tests in this
+	// module build their own pools and never call this function. The mode that
+	// fixes the protocol must not change what the protocol carries (04 丙-112).
+	//
+	// pgx's caveat for this mode is that a cached description goes stale if the
+	// schema changes underneath it. Clean mode applies all migrations before
+	// this process starts and never migrates while running.
 	//
 	// The input is fixed at the boundary too (discovery.isComprehensible now
 	// refuses bytes that are not text), and that is the fix for the 500. This
 	// is the fix for the amplification: the next unhandled error must cost a
 	// response, not the deployment.
-	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeExec
+	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeCacheDescribe
 }
 
 // newStore is clean mode's second consequence: production talks to whatever

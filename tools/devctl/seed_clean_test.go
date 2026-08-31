@@ -195,6 +195,10 @@ func seedStubHandler(t *testing.T, logins, uploads *int32, searchTotal int) http
 			atomic.AddInt32(uploads, 1)
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"skill_id":"stub"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/skills/stub":
+			// The enrichment check's detail view. Enriched, so these tests stay
+			// about what they were about.
+			_, _ = fmt.Fprint(w, `{"skill_id":"stub","enrichment":{"status":"enriched"}}`)
 		case r.Method == http.MethodGet && r.URL.Path == "/api/skills/search":
 			if r.URL.Query().Get("q") == "" {
 				t.Errorf("catalog check sent no q")
@@ -538,10 +542,20 @@ func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"skill_id":"stub"}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/skills/search":
-			// Found, and unranked: the shape an import-without-enrichment
-			// leaves behind.
-			_, _ = fmt.Fprintf(w, `{"query":%q,"results":[],"total":1,"partial_index":true}`,
-				r.URL.Query().Get("q"))
+			_, _ = fmt.Fprintf(w, `{"query":%q,"results":[],"total":1}`, r.URL.Query().Get("q"))
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/skills/"):
+			// The detail view of the package just uploaded, in the state an
+			// import-without-enrichment leaves it: no model summary, no task
+			// examples, no embedding.
+			//
+			// Deliberately NOT partial_index on a search. The first version of
+			// this stub returned that, and it was a value the real platform
+			// cannot return in this situation -- partial_index is set from the
+			// hybrid leg, and a deployment with no embedding call has no hybrid
+			// leg, so it reads false forever exactly here. The check passed its
+			// test and could never have fired in production (04 丙-111 again,
+			// one commit later).
+			_, _ = fmt.Fprint(w, `{"skill_id":"stub","enrichment":{"status":"pending"}}`)
 		default:
 			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
