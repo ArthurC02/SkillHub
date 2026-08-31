@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 )
@@ -268,4 +269,36 @@ func contains(ss []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// 04 丙-112. `q` arrives as whatever bytes percent-decoding produced, and Go
+// strings do not validate them, so a query can reach this gate holding
+// something that is not text at all.
+//
+// The three cases below are the ones that got through: ranging over a malformed
+// string yields utf8.RuneError for the bad bytes only, so a single letter beside
+// them satisfied "two runes, one of them a letter". PostgreSQL then answered
+// SQLSTATE 22021 and the anonymous endpoint answered 500 -- and in clean mode
+// that error took the whole deployment with it.
+//
+// The valid strings are here so the fix cannot be "reject anything unusual":
+// every script the test above admits still has to pass.
+func TestIsComprehensibleRefusesBytesThatAreNotText(t *testing.T) {
+	notText := map[string]string{
+		"a lone Big5 lead byte beside a letter": "\xa7A",
+		"a truncated UTF-8 sequence":            "pdf \xe4\xb8",
+		"a raw byte in the middle of a word":    "sp\xffreadsheet",
+	}
+	for name, q := range notText {
+		if isComprehensible(q) {
+			t.Errorf("%s (%q) was accepted as a query; it reaches websearch_to_tsquery as invalid UTF-8", name, q)
+		}
+	}
+
+	// The regression this must not cause.
+	for _, q := range []string{"pdf tables", "轉表格", "データ", "데이터", "данные", "C++", "🎉 party"} {
+		if !isComprehensible(q) && utf8.ValidString(q) {
+			t.Errorf("%q is valid text and stopped being searchable", q)
+		}
+	}
 }

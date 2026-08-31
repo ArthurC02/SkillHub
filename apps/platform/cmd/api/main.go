@@ -113,10 +113,45 @@ func applyCleanModePool(cfg *pgxpool.Config, clean bool) {
 	// Against a real PostgreSQL a fresh session has nothing to deallocate and
 	// this is a no-op, which is why it is safe to state unconditionally here
 	// rather than guessing which reconnects are the dangerous ones.
+	//
+	// Kept after the exec-mode line below, which stops THIS process from
+	// naming statements at all: the session on the other side is shared with
+	// whatever else opens the carrier, and arriving in a clean one should not
+	// depend on every other client's choice of protocol.
 	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
 		_, err := conn.Exec(ctx, "DEALLOCATE ALL")
 		return err
 	}
+	// Third consequence, and the one that closes the class rather than a
+	// member of it.
+	//
+	// The recovery above is aimed at a reconnect, but a reconnect is not the
+	// only thing that sends pgx down that path. ANY error on a cached
+	// statement invalidates the cache entry, and pgx clears it with a
+	// PIPELINED Deallocate — which this carrier answers with an unexpected
+	// ReadyForQuery, desyncing the protocol exactly as the 42P05 recovery did.
+	// The blast radius is identical: the carrier stops answering everyone,
+	// permanently.
+	//
+	// Measured 2026-08-31, and the trigger needs no privilege at all: GET
+	// /api/skills/search is anonymous, its `q` reaches PostgreSQL as raw bytes,
+	// and one query string that is not valid UTF-8 earns SQLSTATE 22021 —
+	// an ordinary, recoverable query error. One second later the deployment was
+	// gone. Reproduced in isolation: a healthy pool, one 22021, and the next
+	// query fails with "failed to deallocate cached statement(s)" (04 丙-112).
+	//
+	// QueryExecModeExec keeps the extended protocol — typed parameters, server
+	// -inferred result types, the same values the cached path returns — and
+	// drops only the named server-side statement. With nothing named, nothing
+	// can be invalidated, so the Deallocate that breaks this carrier is never
+	// sent. What it costs is a Parse per query against an in-process database
+	// this mode already accepts as slower than production (ADR-060 決策 2).
+	//
+	// The input is fixed at the boundary too (discovery.isComprehensible now
+	// refuses bytes that are not text), and that is the fix for the 500. This
+	// is the fix for the amplification: the next unhandled error must cost a
+	// response, not the deployment.
+	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeExec
 }
 
 // newStore is clean mode's second consequence: production talks to whatever

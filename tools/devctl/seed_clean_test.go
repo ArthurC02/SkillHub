@@ -509,3 +509,70 @@ func TestTheLauncherRefusesToStartWithoutTheHarnessRuntime(t *testing.T) {
 		t.Fatalf("tools/cleanmode/start.mjs hard-codes the SDK version %q instead of reading it from the Dockerfile", version[1])
 	}
 }
+
+// 04 丙-108's unlanded half. A deployment that imports without enriching answers
+// every upload with 201 and leaves each search document `pending`, so the loop
+// finishes with `imported=50 failed=0` over a catalogue that cannot answer a
+// single intent query — and nothing here can repair it afterwards, because
+// cmd/reindex reads the object store through OBJSTORE_* and clean mode's store
+// lives inside the API process.
+//
+// Two assertions, and the second is the point: it must refuse, and it must
+// refuse after ONE upload. Discovering this at the end costs the whole seed —
+// ten minutes and a model bill — for an answer available after the first
+// package.
+func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var logins, uploads int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/auth/dev/login":
+			atomic.AddInt32(&logins, 1)
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPost && r.URL.Path == "/skills/import/upload":
+			atomic.AddInt32(&uploads, 1)
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"skill_id":"stub"}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/skills/search":
+			// Found, and unranked: the shape an import-without-enrichment
+			// leaves behind.
+			_, _ = fmt.Fprintf(w, `{"query":%q,"results":[],"total":1,"partial_index":true}`,
+				r.URL.Query().Get("q"))
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("SKILLHUB_API", server.URL)
+
+	var out strings.Builder
+	err = seedClean(root, nil, &out)
+	if err == nil {
+		t.Fatal("seed-clean accepted a deployment that imported without enriching; the catalogue it just built cannot answer an intent query and cannot be repaired")
+	}
+	// 02:PORT-005: name what is missing and how to get it.
+	for _, want := range []string{"LLM_SERVICE_URL", "--allow-unindexed"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal never mentions %q, so it does not say how to recover: %v", want, err)
+		}
+	}
+	if got := atomic.LoadInt32(&uploads); got != 1 {
+		t.Errorf("uploads = %d; want 1 — the verdict is available after the first package, and every one after it is spent for nothing", got)
+	}
+
+	// The same deployment with the escape hatch typed: a keyword-only catalogue
+	// is a shape the launcher's capability table already supports.
+	atomic.StoreInt32(&uploads, 0)
+	out.Reset()
+	if err := seedClean(root, []string{"--allow-unindexed"}, &out); err != nil {
+		t.Fatalf("--allow-unindexed still refused: %v", err)
+	}
+	if got, want := atomic.LoadInt32(&uploads), int32(seedExpectedUploads()); got != want {
+		t.Errorf("uploads = %d; want %d", got, want)
+	}
+}

@@ -290,13 +290,13 @@ func retryAfter(header string, attempt int) time.Duration {
 // seedCatalogSearch asks the public catalog search one question and returns the
 // `total` it answers with. Anonymous by contract; the session cookie this
 // client already carries changes nothing about the scope.
-func seedCatalogSearch(client *http.Client, api, q string) (int, error) {
+func seedCatalogSearch(client *http.Client, api, q string) (total int, partialIndex bool, err error) {
 	const maxAttempts = 4
 	target := api + "/api/skills/search?limit=1&q=" + url.QueryEscape(q)
 	for attempt := 1; ; attempt++ {
 		resp, err := client.Get(target)
 		if err != nil {
-			return 0, err
+			return 0, false, err
 		}
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4000))
 		_ = resp.Body.Close()
@@ -305,16 +305,61 @@ func seedCatalogSearch(client *http.Client, api, q string) (int, error) {
 			continue
 		}
 		if resp.StatusCode != http.StatusOK {
-			return 0, fmt.Errorf("GET /api/skills/search answered %d: %s", resp.StatusCode, firstLine(string(b)))
+			return 0, false, fmt.Errorf("GET /api/skills/search answered %d: %s", resp.StatusCode, firstLine(string(b)))
 		}
 		var body struct {
 			Total int `json:"total"`
+			// Index coverage, not a query-side outage: true when a result on
+			// this page has no embedding (enrichment_status 'pending'). That is
+			// the deployment saying it imported without enriching, which is the
+			// exact state 04 丙-108 is about and the one no later command can
+			// undo here.
+			PartialIndex bool `json:"partial_index"`
 		}
 		if err := json.Unmarshal(b, &body); err != nil {
-			return 0, fmt.Errorf("GET /api/skills/search: %w", err)
+			return 0, false, fmt.Errorf("GET /api/skills/search: %w", err)
 		}
-		return body.Total, nil
+		return body.Total, body.PartialIndex, nil
 	}
+}
+
+// verifyEnrichmentReached is verifyCatalogVisible's sibling, one rung further
+// in: being findable is not the same as being indexed.
+//
+// 04 丙-108's unlanded half. A deployment whose API has no LLM_SERVICE_URL — or
+// has one pointing at nothing — imports every package happily and leaves each
+// search document `pending`: no summary, no task examples, no embedding. The
+// upload loop reports `imported=50 failed=0`, and that green number is entirely
+// compatible with a catalogue that cannot answer a single intent query. The
+// remedy (cmd/reindex) cannot reach clean mode's in-process object store, and
+// the carrier is in-memory, so there is no path from here to a working
+// catalogue except starting over with the LLM service up first.
+//
+// Called after the first upload rather than at the end, because the cost of
+// being wrong is the whole seed: ten minutes and a model bill.
+//
+// A total of 0 is not an answer to this question — the name may simply have
+// missed lexically — so it stays quiet and lets the end-of-run visibility check
+// speak. Only a result that came back AND came back unranked is a verdict.
+func verifyEnrichmentReached(client *http.Client, api, name string, out io.Writer) error {
+	total, partial, err := seedCatalogSearch(client, api, name)
+	if err != nil || total == 0 {
+		return nil
+	}
+	if !partial {
+		fmt.Fprintf(out, "index check: the first package came back ranked — this deployment is enriching, so intent search will work\n")
+		return nil
+	}
+	return fmt.Errorf(
+		"seed-clean: the first package imported but was left unindexed (partial_index on a search for %q).\n"+
+			"  The deployment accepted the upload and skipped enrichment, so its search document has no summary,\n"+
+			"  no task examples and no embedding: keyword search will find it, an intent query in any language will not.\n"+
+			"  This is not fixable after the fact here. `cmd/reindex` reads the object store through OBJSTORE_*, and clean\n"+
+			"  mode's store lives inside the API process, so it cannot see these packages; the PGlite carrier is in-memory,\n"+
+			"  so a restart loses them too.\n"+
+			"  Start apps/llm, point the API's LLM_SERVICE_URL at it, restart clean mode and seed again — in that order.\n"+
+			"  To seed a keyword-only catalogue on purpose, pass --allow-unindexed (04 丙-108)",
+		name)
 }
 
 // seedVerifyProbes is how many uploaded names are tried before the catalog is
@@ -339,7 +384,7 @@ func verifyCatalogVisible(client *http.Client, api string, uploaded []seedEntry,
 	}
 	tried := make([]string, 0, len(probes))
 	for _, e := range probes {
-		total, err := seedCatalogSearch(client, api, e.name)
+		total, _, err := seedCatalogSearch(client, api, e.name)
 		if err != nil {
 			return fmt.Errorf("seed-clean: catalog visibility check: %w", err)
 		}
@@ -360,12 +405,20 @@ func verifyCatalogVisible(client *http.Client, api string, uploaded []seedEntry,
 
 // seedClean is the entry point for `devctl seed-clean [--dry-run]`.
 func seedClean(root string, args []string, out io.Writer) error {
-	dryRun := false
+	dryRun, allowUnindexed := false, false
 	for _, a := range args {
-		if a != "--dry-run" {
-			return fmt.Errorf("seed-clean: unknown argument %q (only --dry-run is accepted)", a)
+		switch a {
+		case "--dry-run":
+			dryRun = true
+		case "--allow-unindexed":
+			// Deliberately seeding a keyword-only catalogue. The launcher's
+			// capability table already treats "no LLM service" as a supported
+			// degraded mode, so refusing it outright would block a shape this
+			// repo says is allowed — but it has to be typed, not defaulted.
+			allowUnindexed = true
+		default:
+			return fmt.Errorf("seed-clean: unknown argument %q (only --dry-run and --allow-unindexed are accepted)", a)
 		}
-		dryRun = true
 	}
 
 	all, err := collectSeedEntries(root)
@@ -415,6 +468,12 @@ func seedClean(root string, args []string, out io.Writer) error {
 		fmt.Fprintf(out, "[%3d/%d] %-55s source=%-60s -> %d\n", i+1, len(entries), e.name, e.provenance, status)
 		if !ok {
 			fmt.Fprintf(out, "          %s\n", firstLine(body))
+			continue
+		}
+		if imported == 1 && !allowUnindexed {
+			if err := verifyEnrichmentReached(client, api, e.name, out); err != nil {
+				return err
+			}
 		}
 	}
 	fmt.Fprintf(out, "\nimported=%d failed=%d excluded=%d\n", imported, failed, len(excluded))

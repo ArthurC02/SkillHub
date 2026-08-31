@@ -756,6 +756,22 @@ func queryTooLong(q string) string {
 }
 
 func isComprehensible(q string) bool {
+	// Bytes that are not text are not a query, and this is the gate both
+	// routes already pass through, so it is the one place that has to say so.
+	//
+	// Ranging over a malformed string yields utf8.RuneError, which is neither a
+	// letter nor a digit — but only for the bad bytes. `0xa7` followed by `A`
+	// counted as two runes with a letter among them and went through, straight
+	// into websearch_to_tsquery, where PostgreSQL answered SQLSTATE 22021 and
+	// the handler turned that into a 500 on an endpoint that needs no login.
+	//
+	// Percent-decoding produces raw bytes and Go strings do not validate them,
+	// so this is reachable from any client: a pasted Big5 fragment, a browser
+	// with a legacy encoding, one crafted request. In clean mode it was worse
+	// than a 500 (04 丙-112).
+	if !utf8.ValidString(q) {
+		return false
+	}
 	for _, r := range q {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			return utf8.RuneCountInString(q) >= 2

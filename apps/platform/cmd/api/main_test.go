@@ -865,3 +865,58 @@ func TestCleanModeEmptiesTheSessionItInheritsOnConnect(t *testing.T) {
 		t.Errorf("the session still carries %d prepared statement(s) after AfterConnect; the next connection will collide with them and take the carrier down with it", n)
 	}
 }
+
+// 04 丙-112, the amplification rather than the input.
+//
+// Any error on a cached statement makes pgx invalidate the entry and clear it
+// with a pipelined Deallocate, which this carrier answers with an unexpected
+// ReadyForQuery -- and from there it answers nobody. So an ordinary, recoverable
+// query error is not recoverable here: it costs the deployment.
+//
+// SQLSTATE 22021 is the one that actually happened, from a `q` on the anonymous
+// search endpoint that was not valid UTF-8. The boundary now refuses that input
+// (discovery.isComprehensible), but the amplification is the part that must not
+// depend on having enumerated every bad input, so this asserts the property
+// directly: an error, then the pool still works.
+func TestCleanModeSurvivesAQueryErrorInsteadOfDyingOfOne(t *testing.T) {
+	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping the database-backed half")
+	}
+	ctx := context.Background()
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatalf("pgxpool.ParseConfig: %v", err)
+	}
+	applyCleanModePool(cfg, true)
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		t.Fatalf("pgxpool.NewWithConfig: %v", err)
+	}
+	defer pool.Close()
+
+	alive := func(when string) {
+		t.Helper()
+		var n int
+		// Arguments present, so this is the path that uses a cached statement
+		// when one is in use at all -- the path the failure runs through.
+		if err := pool.QueryRow(ctx, "SELECT $1::int", 7).Scan(&n); err != nil {
+			t.Fatalf("%s: the deployment is gone, not just this query: %v", when, err)
+		}
+		if n != 7 {
+			t.Fatalf("%s: SELECT 7 returned %d", when, n)
+		}
+	}
+
+	alive("before the error")
+
+	// Exactly what the anonymous endpoint handed PostgreSQL: bytes that are not
+	// valid UTF-8. A query error, and nothing more than that.
+	var s string
+	if err := pool.QueryRow(ctx, "SELECT $1::text", string([]byte{0xa7, 'A'})).Scan(&s); err == nil {
+		t.Fatal("PostgreSQL accepted invalid UTF-8; this test is not producing the error it is named for")
+	}
+
+	alive("after one query error")
+	alive("after one query error, second call")
+}
