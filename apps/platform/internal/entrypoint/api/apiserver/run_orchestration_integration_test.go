@@ -163,15 +163,20 @@ func TestRunWalksTheStateMachineAndIsCleanedUp(t *testing.T) {
 	if strings.Join(path, ",") != strings.Join(want, ",") {
 		t.Errorf("transition path = %v, want %v", path, want)
 	}
-	if final.FailureClass != "" {
-		t.Errorf("a successful run carries failure_class %q", final.FailureClass)
+	if final.FailureClass.Value != "" {
+		t.Errorf("a successful run carries failure_class %q", final.FailureClass.Value)
 	}
 	// ADR-025: the terminal reason is execution language and nothing more. It used
 	// to promise an evaluator that would come back and decide `succeeded` versus
 	// `failed`; that TODO was overturned, and `succeeded` must not read as a task
 	// verdict on any surface.
-	if !strings.Contains(final.StatusReason, "separate judgement") {
-		t.Errorf("success reason = %q, want it to keep execution and task verdict apart", final.StatusReason)
+	// The clause moved language on 2026-09-01 (04 丙-115 ①); what it has to say
+	// did not. Both halves are named, because the sentence is only doing its job
+	// when it says the verdict is elsewhere AND says where.
+	if !strings.Contains(final.StatusReason, "另一個判斷") ||
+		!strings.Contains(final.StatusReason, "評估") {
+		t.Errorf("success reason = %q, want it to keep execution and task verdict apart "+
+			"and to point at the evaluation", final.StatusReason)
 	}
 	if strings.Contains(final.StatusReason, "EVAL-001") {
 		t.Errorf("the overturned TODO's wording is still here: %q", final.StatusReason)
@@ -286,8 +291,8 @@ func TestCancelReachesTheProviderAndStopsTheRun(t *testing.T) {
 	}
 
 	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusCancelled))
-	if final.FailureClass != "cancelled" {
-		t.Errorf("failure_class = %q, want cancelled", final.FailureClass)
+	if final.FailureClass.Value != "cancelled" {
+		t.Errorf("failure_class = %q, want cancelled", final.FailureClass.Value)
 	}
 	waitForCleanup(t, f.client, created.RunID)
 	if fake.Live() != 0 {
@@ -339,8 +344,8 @@ func TestRetriesAreBoundedAndClassifiedAsProviderFailure(t *testing.T) {
 
 	created := f.start(t)
 	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusFailed))
-	if final.FailureClass != "provider_error" {
-		t.Errorf("failure_class = %q, want provider_error", final.FailureClass)
+	if final.FailureClass.Value != "provider_error" {
+		t.Errorf("failure_class = %q, want provider_error", final.FailureClass.Value)
 	}
 	if len(final.Attempts) != 2 {
 		t.Errorf("attempts = %d, want the configured ceiling of 2", len(final.Attempts))
@@ -359,8 +364,8 @@ func TestWorkloadFailureIsRecordedOnceAndNotRetried(t *testing.T) {
 
 	created := f.start(t)
 	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusFailed))
-	if final.FailureClass != "workload_error" {
-		t.Errorf("failure_class = %q, want workload_error", final.FailureClass)
+	if final.FailureClass.Value != "workload_error" {
+		t.Errorf("failure_class = %q, want workload_error", final.FailureClass.Value)
 	}
 	if len(final.Attempts) != 1 {
 		t.Errorf("attempts = %d, want 1: a workload failure is not retried", len(final.Attempts))
@@ -404,8 +409,8 @@ func TestARunPastItsTokenCeilingIsStoppedByTheWorker(t *testing.T) {
 	final := waitForStatus(t, f.client, created.RunID, string(gen.RunStatusFailed))
 	// The workload burned the budget it was given; retrying burns it again to
 	// reach the same answer, which is what workload_error means (0018).
-	if final.FailureClass != "workload_error" {
-		t.Errorf("failure_class = %q, want workload_error", final.FailureClass)
+	if final.FailureClass.Value != "workload_error" {
+		t.Errorf("failure_class = %q, want workload_error", final.FailureClass.Value)
 	}
 	// Not a generic failure: the user is told which ceiling stopped their run.
 	if !strings.Contains(final.StatusReason, "token ceiling") {
@@ -457,11 +462,13 @@ func TestSupervisorTimesOutARunThatOutlivedItsWallClock(t *testing.T) {
 	if view.Status != string(gen.RunStatusTimedOut) {
 		t.Fatalf("status = %q, want timed_out", view.Status)
 	}
-	if view.FailureClass != "timeout" {
-		t.Errorf("failure_class = %q, want timeout", view.FailureClass)
+	if view.FailureClass.Value != "timeout" {
+		t.Errorf("failure_class = %q, want timeout", view.FailureClass.Value)
 	}
-	if !strings.Contains(view.StatusReason, "wall clock") {
-		t.Errorf("reason = %q, want it to name the wall clock", view.StatusReason)
+	// 「超過硬性時間上限」 — the same claim as the English it replaced: this run was
+	// stopped by a clock, not by anything it did.
+	if !strings.Contains(view.StatusReason, "時間上限") {
+		t.Errorf("reason = %q, want it to name the wall clock limit", view.StatusReason)
 	}
 }
 
@@ -549,8 +556,8 @@ func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 	if view.Status != string(gen.RunStatusFailed) {
 		t.Fatalf("status = %q, want failed", view.Status)
 	}
-	if view.FailureClass != "platform_error" {
-		t.Errorf("failure_class = %q, want platform_error", view.FailureClass)
+	if view.FailureClass.Value != "platform_error" {
+		t.Errorf("failure_class = %q, want platform_error", view.FailureClass.Value)
 	}
 	if !strings.Contains(view.StatusReason, "resume") {
 		t.Errorf("reason = %q, want it to say the attempt could not be resumed", view.StatusReason)
@@ -629,8 +636,8 @@ func TestARunInterruptedBetweenEvaluatingAndSucceededResumes(t *testing.T) {
 			if view.Status != string(tc.wantStatus) {
 				t.Fatalf("status = %q (%s), want %s", view.Status, view.StatusReason, tc.wantStatus)
 			}
-			if view.FailureClass != tc.wantFailure {
-				t.Errorf("failure_class = %q, want %q", view.FailureClass, tc.wantFailure)
+			if view.FailureClass.Value != tc.wantFailure {
+				t.Errorf("failure_class = %q, want %q", view.FailureClass.Value, tc.wantFailure)
 			}
 		})
 	}

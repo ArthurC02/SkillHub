@@ -183,7 +183,12 @@ type generalView struct {
 		InputTokens int64    `json:"input_tokens"`
 		CostUSD     *float64 `json:"cost_usd"`
 	} `json:"usage"`
-	Steps []string `json:"steps"`
+	// Two fields since 2026-09-01, not one pre-joined "<status>: <reason>"
+	// string (04 丙-115 ①): writing a status for a reader is the surface's job.
+	Steps []struct {
+		Status string `json:"status"`
+		Reason string `json:"reason"`
+	} `json:"steps"`
 }
 
 func (c *client) advancedTrace(t *testing.T, runID string) (int, advancedView) {
@@ -846,6 +851,14 @@ func TestGeneralModeSummarisesTheRunWithoutRawEvents(t *testing.T) {
 	}
 	if len(view.Steps) == 0 {
 		t.Error("progress steps are empty although the run has a transition history")
+	}
+	// The status has to survive as its own field. Asserting only on the count
+	// would pass just as happily against a list of empty objects, which is what
+	// a decode against the old string shape silently produces.
+	for i, st := range view.Steps {
+		if st.Status == "" {
+			t.Errorf("progress step %d carries no status: %+v", i, st)
+		}
 	}
 }
 

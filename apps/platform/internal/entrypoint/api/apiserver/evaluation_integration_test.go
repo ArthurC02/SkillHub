@@ -327,7 +327,7 @@ func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testin
 
 	// ADR-025: the run is untouched. Both the status and its reason.
 	_, runBody := c.getRun(t, runID)
-	if runBody.Status != "succeeded" || runBody.FailureClass != "" {
+	if runBody.Status != "succeeded" || runBody.FailureClass.Value != "" {
 		t.Errorf("an evaluation must not write back to the run, got %+v", runBody)
 	}
 

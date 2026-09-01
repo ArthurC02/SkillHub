@@ -51,13 +51,18 @@ func seedTestCase(t *testing.T, pool *pgxpool.Pool, workspaceID, skillID string)
 // --- HTTP helpers ------------------------------------------------------------
 
 type runView struct {
-	RunID         string       `json:"run_id"`
-	Status        string       `json:"status"`
-	StatusReason  string       `json:"status_reason"`
-	SkillID       string       `json:"skill_id"`
-	TestCaseID    string       `json:"test_case_id"`
-	Provider      string       `json:"provider"`
-	FailureClass  string       `json:"failure_class"`
+	RunID        string `json:"run_id"`
+	Status       string `json:"status"`
+	StatusReason string `json:"status_reason"`
+	SkillID      string `json:"skill_id"`
+	TestCaseID   string `json:"test_case_id"`
+	Provider     string `json:"provider"`
+	// `{value,label,note}` since 2026-09-01 (04 丙-115 ②). Decoding it as a
+	// string does not error — encoding/json leaves the field at "" — so every
+	// assertion below silently compared "" against the class it wanted. That is
+	// how CI caught this change and a local `go test ./...` did not: these tests
+	// need a database and skip without one.
+	FailureClass  labelledJSON `json:"failure_class"`
 	CleanupStatus labelledJSON `json:"cleanup_status"`
 	Error         string       `json:"error"`
 	Transitions   []struct {
@@ -296,8 +301,8 @@ func TestRunFailsImmediatelyWhenNoProviderIsConfigured(t *testing.T) {
 
 	// RUN-006: classified, so the funnel can tell "we had nowhere to run it" from
 	// "the skill failed".
-	if final.FailureClass != "capability_mismatch" {
-		t.Errorf("failure_class = %q, want capability_mismatch", final.FailureClass)
+	if final.FailureClass.Value != "capability_mismatch" {
+		t.Errorf("failure_class = %q, want capability_mismatch", final.FailureClass.Value)
 	}
 
 	// RUN-002: every state change recorded, in order, with its reason.

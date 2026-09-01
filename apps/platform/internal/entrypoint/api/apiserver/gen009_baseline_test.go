@@ -214,7 +214,7 @@ func TestGeneratedSkillsRunAndAreJudged(t *testing.T) {
 			}
 			final := waitForTerminalSoft(t, f.client, view.RunID, 8*time.Minute)
 			row.RunStatus = final.Status
-			row.FailureClass = final.FailureClass
+			row.FailureClass = final.FailureClass.Value
 
 			ev := waitForEvaluation(t, f.client, view.RunID, 4*time.Minute)
 			row.EvalStatus = ev.Status

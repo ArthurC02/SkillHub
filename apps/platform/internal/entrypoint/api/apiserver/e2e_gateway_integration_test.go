@@ -149,7 +149,7 @@ func TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey(t *testing.T) {
 	view := f.start(t)
 	final := waitForTerminal(t, f.client, view.RunID, 6*time.Minute)
 	if final.Status != "succeeded" {
-		t.Fatalf("run ended %s (%s / %s)", final.Status, final.FailureClass, final.StatusReason)
+		t.Fatalf("run ended %s (%s / %s)", final.Status, final.FailureClass.Value, final.StatusReason)
 	}
 
 	// --- TRACE-004: the cost came from the gateway ---------------------------
