@@ -295,8 +295,39 @@ func TestIsComprehensibleRefusesBytesThatAreNotText(t *testing.T) {
 		}
 	}
 
-	// The regression this must not cause.
-	for _, q := range []string{"pdf tables", "轉表格", "データ", "데이터", "данные", "C++", "🎉 party"} {
+	// 04 丙-119: a NUL is VALID UTF-8, so the gate above waves it through, and
+	// PostgreSQL cannot hold one in a text value — the same 500 on the same
+	// unauthenticated endpoint, found by a monkey pass on 2026-09-01, the day
+	// after the invalid-UTF-8 half closed.
+	//
+	// Measured rather than assumed: the deployment SURVIVED, which is 丙-112's
+	// second layer doing its job, but the request AFTER the hostile one answered
+	// 500 as well before recovering. One bad request, two broken responses, and
+	// the second one lands on somebody else.
+	//
+	// Every C0 control goes with it, not just NUL: none of them is something a
+	// person typing a task description produces.
+	controls := map[string]string{
+		"a NUL between letters": "a\x00b",
+		"a NUL after a word":    "pdf\x00",
+		"an escape character":   "pdf\x1b[0m",
+		"a form feed":           "pdf\x0ctables",
+		"a vertical tab":        "pdf\x0btables",
+		"a delete character":    "pdf\x7f",
+	}
+	for name, q := range controls {
+		if isComprehensible(q) {
+			t.Errorf("%s (%q) was accepted as a query", name, q)
+		}
+	}
+
+	// The regression this must not cause. The last two are why the C0 refusal
+	// has exceptions: a pasted two-line task description is an ordinary query,
+	// and tab/newline/carriage return are whitespace to the tokenizer.
+	for _, q := range []string{
+		"pdf tables", "轉表格", "データ", "데이터", "данные", "C++", "🎉 party",
+		"把投影片\n轉成文件", "read my\tinvoices\r\nand summarise",
+	} {
 		if !isComprehensible(q) && utf8.ValidString(q) {
 			t.Errorf("%q is valid text and stopped being searchable", q)
 		}

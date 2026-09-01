@@ -180,11 +180,26 @@ export function TestCaseList() {
                   {tc.name}
                 </Link>
                 <p className="note">
-                  {/* Empty means the skill is no longer visible to the caller —
-                      "we cannot name it", which is not a name and not a UUID. */}
+                  {/*
+                    Empty means the server could not name it — not a name and
+                    not a UUID.
+
+                    It used to say 無權檢視（已不在你的可見範圍）, and that is the
+                    one cause that cannot happen here (04 丙-121). This list is
+                    workspace-scoped and a test case's skill was checked to be in
+                    the same workspace when it was created, so the lookup behind
+                    this field is asking about the caller's OWN skill. It comes
+                    back empty when that skill is gone from the list — deleted,
+                    or taken down — which is a thing the reader did or had done to
+                    them, not a permission they lack.
+
+                    Both causes are named because this side genuinely cannot tell
+                    them apart: 設計 §2.9 wants the absence worded, and inventing
+                    the more specific of two answers is what the old copy did.
+                  */}
                   Skill：
                   {tc.skill_name === ""
-                    ? "無權檢視（這個 Skill 已不在你的可見範圍）"
+                    ? "這個 Skill 已經不在你的清單裡（已刪除，或已下架）"
                     : tc.skill_name}
                 </p>
                 <p className="note">

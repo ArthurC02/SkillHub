@@ -772,6 +772,32 @@ func isComprehensible(q string) bool {
 	if !utf8.ValidString(q) {
 		return false
 	}
+	// A NUL is valid UTF-8, so the gate above waves it through — and PostgreSQL
+	// cannot hold one in a text value at all, so `a\x00b` reached
+	// websearch_to_tsquery and came back as the same 500 on the same
+	// unauthenticated endpoint (04 丙-119, found by a monkey pass 2026-09-01,
+	// the day after 丙-112 closed the invalid-UTF-8 half).
+	//
+	// Measured, because the two layers behave differently and only one of them
+	// was doing its job: the deployment SURVIVED — that is 丙-112's second layer,
+	// the exec mode with no server-side named statements — but the request after
+	// the hostile one answered 500 as well before it recovered. One bad request,
+	// two broken responses, and the second lands on somebody else.
+	//
+	// Every C0 control is refused, not just NUL. NUL is the one PostgreSQL
+	// rejects outright, and the rest — a bare CR, a form feed, an escape
+	// character — are not something a person typing a task description produces
+	// either. \t \n \r are the exception: they arrive from a paste, they are
+	// ordinary whitespace to the tokenizer, and refusing them would turn a
+	// two-line paste into 「看不懂的查詢」.
+	for _, r := range q {
+		if r < 0x20 && r != '\t' && r != '\n' && r != '\r' {
+			return false
+		}
+		if r == 0x7f {
+			return false
+		}
+	}
 	for _, r := range q {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			return utf8.RuneCountInString(q) >= 2

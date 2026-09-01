@@ -523,3 +523,31 @@ test("丙-116 a list filtered to your OWN empty skill keeps the invitation, and 
   // this case used to fall back to the literal 「這一個 Skill」 too.
   expect(text).toContain("去重複工具");
 });
+
+/**
+ * 04 丙-121. The row for a test case whose skill the server could not name said
+ * 「無權檢視（這個 Skill 已不在你的可見範圍）」 — a permissions reason, and the one
+ * cause that cannot happen here.
+ *
+ * This list is workspace-scoped, and a test case's skill was checked to be in
+ * the same workspace when it was created, so the lookup behind `skill_name` is
+ * asking about the caller's own skill. It comes back empty when that skill is
+ * gone from the list — deleted, or taken down. Reached without any race at all:
+ * create a test case, then delete the skill, which is the ordinary way a person
+ * tidies up.
+ */
+test("丙-121 a test case whose skill is gone says it is gone, not that you may not see it", async () => {
+  listSearch = {};
+  stubPlatform({ testCases: [{ ...LIST_ROW, skill_name: "" }] });
+  await renderList();
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("這個 Skill 已經不在你的清單裡");
+  // Both causes, because this side cannot tell them apart and the old copy
+  // invented the more specific of two answers.
+  expect(text).toContain("已刪除");
+  expect(text).toContain("已下架");
+  expect(text).not.toContain("無權檢視");
+  // And the id is still not what a reader is shown in place of a name.
+  expect(text).not.toContain(SKILL);
+});
