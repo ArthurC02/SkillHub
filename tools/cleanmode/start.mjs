@@ -16,9 +16,10 @@
 // tells the person in front of it nothing they can act on.
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -137,7 +138,53 @@ function ownedSettings() {
       "packaging",
       "profiles",
     ),
+    // 05 R-37 (c) / ADR-061: where the operator writes the Skill Versions they
+    // have deliberately released to run with no isolation boundary.
+    //
+    // Filled in here, and seeded with its own instructions below, because a
+    // switch nobody can find is the same as no switch — and this one cannot be
+    // named at launch: the version being released does not exist until somebody
+    // has uploaded it, which on this machine happens after all three processes
+    // are already up.
+    //
+    // Outside the repo (a demo must not leave a file in `git status`) and
+    // outside the carrier (that database is in-memory and gone at shutdown, so
+    // a release recorded in it would have to be re-typed every launch).
+    SKILLHUB_CLEAN_MODE_RELEASES: RELEASES_FILE,
   };
+}
+
+// RELEASES_FILE is stable across launches on purpose: the ids in it are not,
+// so a line left over from a previous demo simply never matches anything — the
+// wrong direction to fail is the safe one here.
+const RELEASES_FILE = join(tmpdir(), "skillhub-clean-mode-releases.txt");
+
+// seedReleaseFile writes the empty list once, with the format and the risk in
+// it. The header is not decoration: this file is the whole of the audit trail
+// for a decision that turns a protection off (the log line at use is the other
+// half, and it is in this launcher's own terminal), so the person editing it
+// should be reading what they are accepting while they type the reason.
+function seedReleaseFile() {
+  if (existsSync(RELEASES_FILE)) return;
+  writeFileSync(
+    RELEASES_FILE,
+    [
+      "# Clean test mode — versions released to run WITHOUT ANY ISOLATION (05 R-37, ADR-061).",
+      "#",
+      "# One release per line:   <skill_version_id> <why you are allowing it>",
+      "#",
+      "# The reason is required. A line with an id and nothing after it is not a",
+      "# release, because the reason is the only thing this switch actually records.",
+      "#",
+      "# What you are accepting: this mode runs workloads as a plain process on this",
+      "# machine, as you. Releasing a version means somebody else's code runs with",
+      "# your account's reach. Release only content you have read.",
+      "#",
+      "# Takes effect on the next run — no restart. Delete a line to withdraw it.",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
 }
 
 function applyOwnedSettings() {
@@ -493,6 +540,7 @@ process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
 
 const filledSettings = applyOwnedSettings();
+seedReleaseFile();
 await preflight();
 
 const carrier = start("pglite", process.execPath, [
@@ -608,6 +656,12 @@ console.log(`\n[launcher] clean test mode is starting.`);
 console.log(`[launcher]   open http://127.0.0.1:${API_PORT}/`);
 console.log(
   `[launcher]   the page says what this mode is not: no isolation, no signature checks, one connection.`,
+);
+console.log(
+  `[launcher]   only curated material runs here (02:PORT-010). To run something else,`,
+);
+console.log(
+  `[launcher]   add \`<skill_version_id> <why>\` to ${RELEASES_FILE} — the refusal names the id.`,
 );
 console.log(`[launcher] ctrl-c stops all three.\n`);
 

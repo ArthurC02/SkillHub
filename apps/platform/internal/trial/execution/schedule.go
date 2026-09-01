@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -117,13 +119,114 @@ func (s *Service) requireCuratedContent(ctx context.Context, run gen.Run) error 
 	if source.WorkspaceIsCatalog || (source.CurationTier == curatedTier && source.CuratedVersionIsThisOne) {
 		return nil
 	}
-	// What was refused and what would pass, because the operator reading this is
-	// the person who has to fix it. Identifiers and the tier only - never the
+	versionID := pgconv.UUIDString(run.SkillVersionID)
+	if reason, released := operatorReleased(versionID); released {
+		// The one thing this line buys that the curation branches do not: a person
+		// took an action naming these exact bytes and said why. It is not evidence
+		// the content is safe - nothing here can be - so it is logged every single
+		// time it is used, at Warn, next to what it disabled (ADR-061 決策 3).
+		slog.Warn("clean mode: an operator released this version to run with no isolation boundary",
+			"run_id", pgconv.UUIDString(run.ID),
+			"skill_version_id", versionID,
+			"reason", reason)
+		return nil
+	}
+	// What was refused, what would pass, and - since 05 R-37 - the one action that
+	// would let this exact version through, because the operator reading this is
+	// the person who has to decide. Identifiers and the tier only, never the
 	// skill's name or anything out of the package (iron rule 11).
 	return fmt.Errorf("%w: this one is %s. A skill in the public catalogue, or one whose "+
 		"curation_tier is %q on the exact version being run, may run here; anything else needs a "+
-		"deployment with a real sandbox",
-		ErrContentNotCurated, describeContentSource(source), curatedTier)
+		"deployment with a real sandbox — or %s",
+		ErrContentNotCurated, describeContentSource(source), curatedTier, howToRelease(versionID))
+}
+
+// cleanModeReleaseFile names the file an operator writes to release one Skill
+// Version to run in the clean test mode without being curated (05 R-37 (c),
+// ADR-061). Unset is the shipped default and it means nothing is released.
+//
+// A file and not an operator route, which is the part worth reading twice.
+// 02:SEC-011 already answered this exact question for the operator roster and
+// its answer is in workspace/http.go: a grant mechanism inside the product
+// "would exist to let one account promote itself", so 「granting is editing the
+// deployment's environment and restarting, which nobody who cannot already
+// deploy can do」. Here that argument is not merely available, it is forced:
+// clean mode runs with DEV_LOGIN=1, so **anybody who can reach the page can
+// sign in as anybody**, operator included (tools/cleanmode/start.mjs says so in
+// its own comment before it hands the roster to the demo importer). A button in
+// that UI reading 「run this without a sandbox」 would be pressable by the person
+// who just uploaded the skill — which is precisely the hand this gate exists to
+// stop. The keyboard the launcher was started from is the only authority that
+// mode still has, so that is where the switch lives.
+const cleanModeReleaseFile = "SKILLHUB_CLEAN_MODE_RELEASES"
+
+// operatorReleased reports whether the operator has released this exact Skill
+// Version, and the reason they wrote down.
+//
+// Per version, never per skill: 「curated at a different version than the one
+// being run」 is a case this gate already distinguishes, and a release that
+// carried over to the next push would be a release of bytes nobody looked at.
+//
+// A line is `<skill_version_id> <reason>`; blank lines and `#` comments are
+// skipped, and so is a line naming a version with no reason after it — **the
+// named reason is the whole of the control**, so a nameless line is not a
+// release, and saying nothing about it would look like the switch is broken.
+//
+// Every failure here lands on the refusing side (no file, no read, no match =
+// not released), so this cannot fail open and needs no fail-closed branch of
+// its own. Read per call, like RunModel and GatewayURL above it, because the
+// version being released does not exist until the user has uploaded it — a
+// value read once at start-up could only ever release content from the
+// previous launch.
+func operatorReleased(versionID string) (string, bool) {
+	path := os.Getenv(cleanModeReleaseFile)
+	if path == "" || versionID == "" {
+		return "", false
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		// Not fatal and not a refusal of its own: an unreadable list is an empty
+		// list, and the run is refused a few lines below with the reason the
+		// operator can act on. Logged because a typo'd path otherwise looks
+		// exactly like a switch that does not work.
+		if !errors.Is(err, fs.ErrNotExist) {
+			slog.Warn("clean mode: the operator release list could not be read",
+				"path", path, "error", err)
+		}
+		return "", false
+	}
+	for i, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		id, reason, _ := strings.Cut(line, " ")
+		if id != versionID {
+			continue
+		}
+		if reason = strings.TrimSpace(reason); reason == "" {
+			slog.Warn("clean mode: a release line with no reason is not a release",
+				"path", path, "line", i+1, "skill_version_id", id)
+			return "", false
+		}
+		return reason, true
+	}
+	return "", false
+}
+
+// howToRelease is the second half of a refusal that would otherwise end in a
+// dead end on the one machine where there is no other deployment to move to.
+// It names the version because the operator cannot look it up anywhere else in
+// that mode, and it is only ever reached inside the clean test mode.
+func howToRelease(versionID string) string {
+	path := os.Getenv(cleanModeReleaseFile)
+	if path == "" {
+		return fmt.Sprintf("an operator may release this exact version by pointing %s at a file "+
+			"and putting `%s <why>` in it (05 R-37); this deployment has not set that variable, "+
+			"so nothing is released", cleanModeReleaseFile, versionID)
+	}
+	return fmt.Sprintf("an operator may release this exact version by adding `%s <why>` to %s "+
+		"(05 R-37) — a line with no reason after the id is not a release", versionID, path)
 }
 
 // describeContentSource says which half of the test failed, in the fewest words

@@ -85,6 +85,7 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-058](./ADR-058-the-clean-test-mode-is-real-postgres-behind-the-api-seam.md) | 乾淨測試模式用**真** PostgreSQL（PGlite，實測 42/42 且不可變性 trigger 真的擋人），不用任何形式的假資料層（SQLite 實測 0/42）；**Adapter 畫在 `apiFetch` 不畫在資料庫層**——衝突不在 SQL 而在連線數。判準一：任何候選必須能讓 `UPDATE skill_versions` 失敗。**決策 2／3 已由 ADR-060 推翻，決策 1／4／5 延續；本檔的量測全部仍然有效** | **Superseded by ADR-060** |
 | [ADR-059](./ADR-059-the-clean-mode-execution-driver-is-honest-about-not-being-a-sandbox.md) | 乾淨測試模式的執行 Driver 宣告 `isolation.level = "clean"`——**那個名字的意思是「沒有邊界」不是「比較弱的邊界」**，開關是自己的變數不是 `DEV_LOGIN`；**派送閘門從黑名單改成白名單**（舊寫法讓 `gvsior` 與 `gvisor` 待遇相同）；**不引入第三方行程管理相依**——沒有真正跨平台的成熟選項，而最像的那一個在 Windows 上是空殼（實測只殺父行程會留下存活的孫行程） | Accepted |
 | [ADR-060](./ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) | **取代 ADR-058 的決策 2／3**：淨測試模式是**同一套產品程式以旗標切換三個實作**（資料庫、檔案、沙箱），不是瀏覽器裡的另一個系統——旗標未設時行為與今天逐位元相同。讓它成立的是**單行程 ＋ River `PollOnly`**（實測：一條連線上工作被領走、查詢同時服務；關掉 PollOnly 即紅）。隨之撤回 `PORT-002`／`PORT-006`、改寫 `PORT-005`。`pgmock` 記為備援（多 session 已實測，缺口是 32-bit pgvector） | Accepted |
+| [ADR-061](./ADR-061-the-clean-mode-release-lives-on-the-keyboard-not-in-the-product.md) | 淨測試模式下**放行一個未策展版本的開關，長在啟動 launcher 的鍵盤上而不在產品 UI 裡**：該模式跑在 `DEV_LOGIN=1` 上，**任何到得了頁面的人都能以任何身分登入（含 operator）**，所以一個「允許不經沙箱執行」的按鈕按得動它的人包含剛上傳那個 Skill 的人——`02:SEC-011` 對單人團隊的 operator 名冊已經給過同一個答案（授予＝改部署環境）。**逐 version 不逐 skill**（否則下一次推版自動放行沒人看過的位元組）；**沒有具名理由的那一行不算放行**（理由就是控制本身）；紀錄是檔案＋每次使用的 `slog.Warn`，**刻意不寫 DB audit**（該模式的載體是記憶體內 PGlite，關機即失）。隨之改寫 `02:PORT-010` 第 5 條——「只跑策展素材」自此不再逐字為真 | Accepted |
 
 ## 整體架構摘要
 
