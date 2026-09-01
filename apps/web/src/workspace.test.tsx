@@ -1137,8 +1137,13 @@ test("丙-116 試跑 on somebody else's skill says so BEFORE the corridor, not a
   stubDetailAsSignedIn({ versions: [] });
   await render(<SkillDetail />, trialSectionAnswered);
 
-  expect(text()).toContain("這個 Skill 不在你的工作區");
-  // Both consequences, because the second one is where the corridor actually
+  // Pinned whole for the same reason as the sibling assertion in
+  // testcases.test.tsx: JSX joins Prettier-wrapped lines with one space, so
+  // where the break lands decides whether a full-width comma grows a space
+  // after it. Every space in this string sits beside a Latin token.
+  expect(text()).toContain(
+    "這個 Skill 不在你的工作區。Test Case 屬於工作區，所以 Test Case 清單裡看不到它、建立表單的 Skill 選單也選不到它——要先 Fork 一份，才會有屬於你的版本可以試跑。下方的「Fork 到你的工作區」就是那一步。",
+  ); // Both consequences, because the second one is where the corridor actually
   // ended: the create form's picker is GET /skills and could never have offered
   // this skill, however long the reader looked for it.
   expect(text()).toContain("選單也選不到它");

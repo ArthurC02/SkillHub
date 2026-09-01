@@ -492,7 +492,14 @@ test("丙-116 a list filtered to a skill outside the workspace says so, and stop
   await renderList();
 
   const text = container.textContent ?? "";
-  expect(text).toContain("這個 Skill 不在你的工作區");
+  // Pinned whole, whitespace included. Prettier chooses where this paragraph
+  // wraps and JSX joins wrapped lines with one space, so a break after a
+  // full-width comma renders as 「顯示， 下面」 — which is what the first version
+  // of this copy actually shipped. Nothing else in the suite reads spacing, and
+  // a reflow leaves no other trace.
+  expect(text).toContain(
+    "這個 Skill 不在你的工作區。Test Case 屬於工作區，所以這裡看不到它，建立表單的 Skill 選單也選不到它——先把它 Fork 一份，才會有屬於你的版本可以建立 Test Case。",
+  );
   // The half that mattered — the picker — named as a consequence rather than
   // left for the reader to discover by scrolling.
   expect(text).toContain("選單也選不到它");

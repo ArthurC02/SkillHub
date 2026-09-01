@@ -147,8 +147,15 @@ export function TestCaseList() {
       )}
       {notMine && (
         <p className="notice" role="status">
-          這個 Skill 不在你的工作區。Test Case 屬於工作區，所以這裡沒有東西可以顯示， 下面建立表單的
-          Skill 選單也選不到它——
+          {/*
+            Every line break in this paragraph has to land beside a Latin token.
+            JSX joins wrapped text lines with one space, so a break after a
+            full-width comma renders as 「顯示， 下面」 — and Prettier chooses the
+            break, not the author. The rendered string is pinned in
+            testcases.test.tsx for exactly that reason.
+          */}
+          這個 Skill 不在你的工作區。Test Case 屬於工作區，所以這裡看不到它，建立表單的 Skill
+          選單也選不到它——
           <Link to="/skills/$skillId" params={{ skillId: filter as string }}>
             先把它 Fork 一份
           </Link>
