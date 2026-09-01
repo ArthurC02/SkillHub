@@ -718,8 +718,8 @@ function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
         // the first — the list AND the picker, because the picker is where the
         // corridor actually ended.
         <p>
-          這個 Skill 不在你的工作區。Test Case 屬於工作區，所以 Test Case
-          清單裡看不到它、建立表單的 Skill 選單也選不到它——
+          這個 Skill 不在你的工作區。Test Case 屬於工作區，所以 Test Case 清單裡看不到它、建立表單的
+          Skill 選單也選不到它——
           <strong>要先 Fork 一份</strong>，才會有屬於你的版本可以試跑。下方的「Fork
           到你的工作區」就是那一步。
         </p>

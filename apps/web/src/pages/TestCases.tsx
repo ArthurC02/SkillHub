@@ -138,8 +138,8 @@ export function TestCaseList() {
       */}
       {filter && (
         <p className="note" role="status">
-          只顯示 <strong>{rows[0]?.skill_name || ownedSkill?.name || "某一個 Skill"}</strong>{" "}
-          的 Test Case。{" "}
+          只顯示 <strong>{rows[0]?.skill_name || ownedSkill?.name || "某一個 Skill"}</strong> 的
+          Test Case。{" "}
           <Link to="/lab/test-cases" search={{ skill: undefined }}>
             顯示全部
           </Link>
@@ -147,8 +147,8 @@ export function TestCaseList() {
       )}
       {notMine && (
         <p className="notice" role="status">
-          這個 Skill 不在你的工作區。Test Case 屬於工作區，所以這裡沒有東西可以顯示，
-          下面建立表單的 Skill 選單也選不到它——
+          這個 Skill 不在你的工作區。Test Case 屬於工作區，所以這裡沒有東西可以顯示， 下面建立表單的
+          Skill 選單也選不到它——
           <Link to="/skills/$skillId" params={{ skillId: filter as string }}>
             先把它 Fork 一份
           </Link>
