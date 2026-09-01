@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "id": "claude-code",
   "kind": "profile",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "display_name": "Claude Code",
   "support_status": "verified",
   "install": {
@@ -10,12 +10,12 @@
       {
         "scope": "user",
         "path": "~/.claude/skills/<name>/",
-        "description": "Personal level: available in every project you open with Claude Code. Unzip the package here so that SKILL.md ends up at ~/.claude/skills/<name>/SKILL.md."
+        "description": "個人層級：你用 Claude Code 打開的每一個專案都能用。把套件解壓縮在這裡，讓 SKILL.md 最後落在 ~/.claude/skills/<name>/SKILL.md。（原文：Personal level: available in every project you open with Claude Code. Unzip the package here so that SKILL.md ends up at ~/.claude/skills/<name>/SKILL.md.）"
       },
       {
         "scope": "project",
         "path": ".claude/skills/<name>/",
-        "description": "Project level: available only in the directory tree you start Claude Code in, and committable alongside the repository so your team gets it too. Claude Code also looks in .claude/skills/ of parent directories up to the repository root, so a monorepo can keep a Skill next to the package that needs it."
+        "description": "專案層級：只在你啟動 Claude Code 的那個目錄樹底下可用，而且可以跟著 repository 一起 commit，讓你的團隊也拿得到。Claude Code 還會往上找到 repository 根層為止的每一層 .claude/skills/，所以 monorepo 可以把一個 Skill 放在需要它的那個套件旁邊。（原文：Project level: available only in the directory tree you start Claude Code in, and committable alongside the repository so your team gets it too. Claude Code also looks in .claude/skills/ of parent directories up to the repository root, so a monorepo can keep a Skill next to the package that needs it.）"
       }
     ],
     "top_level_dir": "<name>"
@@ -24,20 +24,20 @@
   "env_vars": [],
   "verification_prompt": "List the skills you can use, and say whether <name> is among them.",
   "verification_steps": [
-    "Run /skills in Claude Code and confirm <name> is listed.",
-    "If it is not listed and you created the .claude/skills/ directory during this session, restart Claude Code: it only watches directories that already existed when the session started. Changes inside a directory it is already watching are picked up without a restart.",
-    "Read INSTALL.md's dependency list. A Skill whose scripts need a package you do not have will be found and offered, then fail when it runs - which looks like a broken Skill and is a missing dependency."
+    "在 Claude Code 裡執行 /skills，確認 <name> 出現在清單上。（原文：Run /skills in Claude Code and confirm <name> is listed.）",
+    "如果它沒有出現，而且 .claude/skills/ 這個目錄是你在這次 session 期間才建立的，請重啟 Claude Code：它只監看 session 開始時就已經存在的目錄。已經在監看的目錄，裡面的變動不需要重啟就會被看到。（原文：If it is not listed and you created the .claude/skills/ directory during this session, restart Claude Code: it only watches directories that already existed when the session started. Changes inside a directory it is already watching are picked up without a restart.）",
+    "讀 INSTALL.md 的相依清單。一個 Script 需要你沒有的套件的 Skill，仍然會被找到、被提出來用，然後在執行時失敗——那看起來像壞掉的 Skill，實際上是缺一個相依套件。（原文：Read INSTALL.md's dependency list. A Skill whose scripts need a package you do not have will be found and offered, then fail when it runs - which looks like a broken Skill and is a missing dependency.）"
   ],
   "mcp_config": null,
   "known_limitations": [
-    "Verified on 2026-08-23 on Windows 11 with Claude Code: a claude-code package built by this platform (content_hash 6be106520dec72b588ee764f96e472d7f208484d12d7259609ee7b9b6e00931a) was unzipped into ~/.claude/skills/, appeared in /skills without restarting the session, loaded when invoked, and read a file that sits beside SKILL.md. What that does NOT establish: it was one package on one operating system, the Skill was prompt-only, and no dependency was installed or script executed. `verified` here means the install path works, which is what this field has always meant (PACK-008) - it is not a statement that any given Skill runs.",
-    "The install path is the same as the Claude Agent SDK target's. The difference is not the path, it is the scope and the check: here it is a directory Claude Code watches for you (personal or project level, chosen by which one you unzip into), there it is resolved from the cwd your own script passes to query(). Picking either one here gets you the same files on disk.",
-    "Skills that arrive through a plugin or are synced from claude.ai live somewhere else (<plugin>/skills/, ~/.claude/skills/synced/) and plugin skills are namespaced. A package you install by hand is neither of those, so it appears under its own name and is not managed or updated by anything.",
-    "Skill Hub does not install dependencies and does not modify SKILL.md's existing frontmatter for this target - it only adds files. If the Skill needs Python packages, you install them."
+    "2026-08-23 在 Windows 11 上以 Claude Code 驗證過：一個由本平台建出來的 claude-code 套件（content_hash 6be106520dec72b588ee764f96e472d7f208484d12d7259609ee7b9b6e00931a）解壓縮進 ~/.claude/skills/ 之後，沒有重啟 session 就出現在 /skills 裡，被叫用時載入了，並讀到了與 SKILL.md 放在一起的一個檔案。這件事「沒有」建立的是：那是一個作業系統上的一個套件、那個 Skill 只有 Prompt、沒有安裝任何相依套件、也沒有執行任何 Script。這裡的 `verified` 意思是「安裝路徑會通」，那也一直是這個欄位的意思（PACK-008）——它不是在說任何一個 Skill 跑得起來。（原文：Verified on 2026-08-23 on Windows 11 with Claude Code: a claude-code package built by this platform (content_hash 6be106520dec72b588ee764f96e472d7f208484d12d7259609ee7b9b6e00931a) was unzipped into ~/.claude/skills/, appeared in /skills without restarting the session, loaded when invoked, and read a file that sits beside SKILL.md. What that does NOT establish: it was one package on one operating system, the Skill was prompt-only, and no dependency was installed or script executed. `verified` here means the install path works, which is what this field has always meant (PACK-008) - it is not a statement that any given Skill runs.）",
+    "安裝路徑與 Claude Agent SDK 目標的相同。差別不在路徑，而在範圍與檢查方式：這裡是一個 Claude Code 替你監看的目錄（個人層級或專案層級，由你解壓縮進哪一個決定），那裡則是由你自己的程式傳給 query() 的 cwd 解析出來的。在這裡選哪一個，落在磁碟上的檔案都一樣。（原文：The install path is the same as the Claude Agent SDK target's. The difference is not the path, it is the scope and the check: here it is a directory Claude Code watches for you (personal or project level, chosen by which one you unzip into), there it is resolved from the cwd your own script passes to query(). Picking either one here gets you the same files on disk.）",
+    "透過 plugin 進來、或從 claude.ai 同步下來的 Skill 住在別的地方（<plugin>/skills/、~/.claude/skills/synced/），而且 plugin 的 Skill 帶命名空間。你手動安裝的套件兩者都不是，所以它以自己的名字出現，也不會被任何東西管理或更新。（原文：Skills that arrive through a plugin or are synced from claude.ai live somewhere else (<plugin>/skills/, ~/.claude/skills/synced/) and plugin skills are namespaced. A package you install by hand is neither of those, so it appears under its own name and is not managed or updated by anything.）",
+    "對這個目標，Skill Hub 不安裝相依套件，也不修改 SKILL.md 既有的 frontmatter——它只加檔案。如果那個 Skill 需要 Python 套件，由你自己安裝。（原文：Skill Hub does not install dependencies and does not modify SKILL.md's existing frontmatter for this target - it only adds files. If the Skill needs Python packages, you install them.）"
   ],
   "notes": [
-    "Install locations follow Claude Code's documented Skill discovery: personal level ~/.claude/skills/, project level .claude/skills/, plus .claude/skills/ in parent directories up to the repository root.",
-    "The zip carries a single top-level directory named after the Skill, so unzipping inside ~/.claude/skills/ or .claude/skills/ produces the right layout in one step.",
-    "The claim in verification_steps that an already-watched directory picks up a new Skill without a restart was documentation until 2026-08-23; it was confirmed on that install (~/.claude/skills/ already existed, the Skill appeared in the same session)."
+    "安裝位置依照 Claude Code 文件所寫的 Skill 探索規則：個人層級 ~/.claude/skills/、專案層級 .claude/skills/，再加上往上到 repository 根層為止每一層的 .claude/skills/。（原文：Install locations follow Claude Code's documented Skill discovery: personal level ~/.claude/skills/, project level .claude/skills/, plus .claude/skills/ in parent directories up to the repository root.）",
+    "壓縮檔裡帶著一個以 Skill 命名的最上層目錄，所以在 ~/.claude/skills/ 或 .claude/skills/ 裡面解壓縮，一步就得到正確的版面。（原文：The zip carries a single top-level directory named after the Skill, so unzipping inside ~/.claude/skills/ or .claude/skills/ produces the right layout in one step.）",
+    "verification_steps 裡「已經被監看的目錄不必重啟就會看到新 Skill」這句話，在 2026-08-23 之前只是文件；那一次安裝確認了它（~/.claude/skills/ 本來就存在，Skill 在同一個 session 裡就出現了）。（原文：The claim in verification_steps that an already-watched directory picks up a new Skill without a restart was documentation until 2026-08-23; it was confirmed on that install (~/.claude/skills/ already existed, the Skill appeared in the same session).）"
   ]
 }

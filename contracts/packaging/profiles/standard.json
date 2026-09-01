@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "id": "standard",
   "kind": "standard_package",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "display_name": "Standard Agent Skill package",
   "support_status": "unverified",
   "install": {
@@ -12,20 +12,20 @@
   "frontmatter_additions": {},
   "env_vars": [],
   "verification_steps": [
-    "Unzip the package. SKILL.md must be at the root of the archive, not inside a wrapper directory.",
-    "Open skillhub-manifest.json and read the `validation` block: `blocked` is false and `errors` is empty. That is the spec validation Skill Hub re-ran on these exact bytes before releasing them, not a check it ran on the source months ago.",
-    "Compare `source.content_hash` in the manifest with the content hash shown on the Skill version's page. They name the same source bytes.",
-    "Optional, and the only check that needs Skill Hub: import the package back after deleting the platform-added files (skillhub-manifest.json, INSTALL.md, and test-cases/ if present). It must import with no blocking finding. It will NOT reproduce `source.content_hash` - that hash covers the archive bytes you originally uploaded, and re-zipping produces different bytes for the same files. What is reproduced is the content: every file outside those three is byte for byte the source version's, and Skill Hub asserts exactly that on the bytes it hands you before releasing them."
+    "解壓縮套件。SKILL.md 必須位於壓縮檔的根層，不能包在一層外層資料夾裡面。（原文：Unzip the package. SKILL.md must be at the root of the archive, not inside a wrapper directory.）",
+    "打開 skillhub-manifest.json，讀 `validation` 區塊：`blocked` 是 false、`errors` 是空的。那是 Skill Hub 在放行之前、對「這一份位元組」重跑過的規格驗證，不是幾個月前對來源跑過的那一次。（原文：Open skillhub-manifest.json and read the `validation` block: `blocked` is false and `errors` is empty. That is the spec validation Skill Hub re-ran on these exact bytes before releasing them, not a check it ran on the source months ago.）",
+    "把 manifest 裡的 `source.content_hash` 與 Skill 版本頁上顯示的內容雜湊比對。兩者指的是同一份來源位元組。（原文：Compare `source.content_hash` in the manifest with the content hash shown on the Skill version's page. They name the same source bytes.）",
+    "選用，也是唯一需要用到 Skill Hub 的檢查：刪掉平台加進去的檔案（skillhub-manifest.json、INSTALL.md，以及若有的 test-cases/）之後，把套件匯入回來。它必須匯入成功且沒有任何阻擋性發現。它「不會」重現 `source.content_hash`——那個雜湊涵蓋的是你當初上傳的壓縮檔位元組，而同樣的檔案重新壓縮會產生不同的位元組。被重現的是「內容」：那三個檔案以外的每一個檔案，都與來源版本逐位元組相同，而 Skill Hub 在放行之前，就是對它交給你的那份位元組斷言了這一件事。（原文：Optional, and the only check that needs Skill Hub: import the package back after deleting the platform-added files (skillhub-manifest.json, INSTALL.md, and test-cases/ if present). It must import with no blocking finding. It will NOT reproduce `source.content_hash` - that hash covers the archive bytes you originally uploaded, and re-zipping produces different bytes for the same files. What is reproduced is the content: every file outside those three is byte for byte the source version's, and Skill Hub asserts exactly that on the bytes it hands you before releasing them.）"
   ],
   "mcp_config": null,
   "known_limitations": [
-    "Skill Hub has not verified this package on any Agent, and this target names no Agent. It is valid against the Agent Skills spec; that is a statement about the format, not a promise that it installs or runs in your tool.",
-    "It names no install location on purpose. This package is the evidence that Skill Hub is not bound to one Agent, so it does not claim to know where your Agent keeps its Skills. If your Agent is Claude Code or the Claude Agent SDK, use those targets instead - they carry a path and a verification step.",
-    "Dependencies are not installed by this package. INSTALL.md lists what the package declares and what its scripts import without declaring; whether your environment provides them is yours to check. It says nothing about Skill Hub's own runtime image - what that image carries is a fact about trial runs here, not about installing this package on your machine.",
-    "Behaviour compatibility in the manifest is the record of one measurement on one runtime image, or `unverified`. It is never extrapolated from another version or another image, so `unverified` there means nobody measured it - not that it failed."
+    "Skill Hub 沒有在任何 Agent 上驗證過這個套件，而這個目標也不指名任何 Agent。它通過 Agent Skills 規格的驗證；那是一句關於「格式」的陳述，不是它裝得進你的工具、或跑得起來的承諾。（原文：Skill Hub has not verified this package on any Agent, and this target names no Agent. It is valid against the Agent Skills spec; that is a statement about the format, not a promise that it installs or runs in your tool.）",
+    "它刻意不指定安裝位置。這個套件本身就是「Skill Hub 不綁定單一 Agent」的證據，所以它不假裝知道你的 Agent 把 Skill 放在哪裡。如果你的 Agent 是 Claude Code 或 Claude Agent SDK，請改用那兩個目標——它們帶著路徑，也帶著一個驗證步驟。（原文：It names no install location on purpose. This package is the evidence that Skill Hub is not bound to one Agent, so it does not claim to know where your Agent keeps its Skills. If your Agent is Claude Code or the Claude Agent SDK, use those targets instead - they carry a path and a verification step.）",
+    "這個套件不會安裝任何相依套件。INSTALL.md 列出的是套件自己宣告的，以及它的 Script 沒有宣告卻 import 的；你的環境有沒有提供它們，要由你自己確認。它完全沒有在說 Skill Hub 自己的 runtime 映像——那個映像裡有什麼，是關於「在這裡試跑」的事實，不是關於「把這個套件裝到你的機器上」的事實。（原文：Dependencies are not installed by this package. INSTALL.md lists what the package declares and what its scripts import without declaring; whether your environment provides them is yours to check. It says nothing about Skill Hub's own runtime image - what that image carries is a fact about trial runs here, not about installing this package on your machine.）",
+    "manifest 裡的行為相容性，是「一次」在「一個」runtime 映像上的量測紀錄，否則就是 `unverified`。它永遠不會從另一個版本或另一個映像推斷而來，所以那裡的 `unverified` 代表沒有人量過——不是量了失敗。（原文：Behaviour compatibility in the manifest is the record of one measurement on one runtime image, or `unverified`. It is never extrapolated from another version or another image, so `unverified` there means nobody measured it - not that it failed.）"
   ],
   "notes": [
-    "SKILL.md is copied byte for byte from the source version. The platform adds exactly three things: skillhub-manifest.json, INSTALL.md, and an optional test-cases/ directory.",
-    "The zip root is the Skill root, which is the exact inverse of Skill Hub's import path. That is what makes 'unzip and re-validate' a defined operation rather than a hope (PACK-009)."
+    "SKILL.md 是從來源版本逐位元組複製過來的。平台只加三樣東西：skillhub-manifest.json、INSTALL.md，以及一個選用的 test-cases/ 目錄。（原文：SKILL.md is copied byte for byte from the source version. The platform adds exactly three things: skillhub-manifest.json, INSTALL.md, and an optional test-cases/ directory.）",
+    "壓縮檔的根層就是 Skill 的根層，而那正是 Skill Hub 匯入路徑的反向操作。「解壓縮再驗證一次」因此是一個有定義的操作，而不是一個期望（PACK-009）。（原文：The zip root is the Skill root, which is the exact inverse of Skill Hub's import path. That is what makes 'unzip and re-validate' a defined operation rather than a hope (PACK-009).）"
   ]
 }

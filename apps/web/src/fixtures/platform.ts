@@ -226,8 +226,12 @@ export const TARGETS = {
       version: "1.0.0",
       display_name: "標準 Agent Skill 套件",
       support_status: "unverified",
-      verification_steps: ["Unzip the package. SKILL.md must be at the root of the archive."],
-      notes: ["Any spec-compliant agent may try it; Skill Hub has not tried it on yours."],
+      verification_steps: [
+        "解壓縮套件。SKILL.md 必須位於壓縮檔的根層。（原文：Unzip the package. SKILL.md must be at the root of the archive.）",
+      ],
+      notes: [
+        "任何符合規格的 Agent 都可以試，Skill Hub 沒有在你的 Agent 上試過。（原文：Any spec-compliant agent may try it; Skill Hub has not tried it on yours.）",
+      ],
       env_vars: [],
     },
     {
@@ -238,13 +242,16 @@ export const TARGETS = {
       install_location: ".claude/skills/<name>/ (working directory)",
       support_status: "verified",
       verification_prompt: "List the skills you can use.",
-      verification_steps: ["Set cwd to the directory holding .claude/skills/."],
+      verification_steps: [
+        "把 cwd 設成放著 .claude/skills/ 的那個目錄。（原文：Set cwd to the directory holding .claude/skills/.）",
+      ],
       notes: [],
       env_vars: [
         {
           name: "ANTHROPIC_API_KEY",
           required: true,
-          description: "The SDK reads the key from your own environment.",
+          description:
+            "SDK 從你自己的環境讀取這個金鑰。（原文：The SDK reads the key from your own environment.）",
           example: "<your own key>",
         },
       ],

@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "id": "claude-agent-sdk",
   "kind": "profile",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "display_name": "Claude Agent SDK",
   "support_status": "verified",
   "install": {
@@ -10,7 +10,7 @@
       {
         "scope": "agent_working_dir",
         "path": ".claude/skills/<name>/",
-        "description": "Relative to the cwd you pass to query(), not to where your script file lives. The SDK also looks in .claude/skills/ of the parent directories of that cwd. If you run the snippet below with cwd \"./workdir\", the Skill belongs at ./workdir/.claude/skills/<name>/SKILL.md."
+        "description": "相對於你傳給 query() 的 cwd，不是相對於你的程式檔案所在的位置。SDK 也會找那個 cwd 的每一層上層目錄裡的 .claude/skills/。如果你用 cwd \"./workdir\" 執行下面那段程式，Skill 應該放在 ./workdir/.claude/skills/<name>/SKILL.md。（原文：Relative to the cwd you pass to query(), not to where your script file lives. The SDK also looks in .claude/skills/ of the parent directories of that cwd. If you run the snippet below with cwd \"./workdir\", the Skill belongs at ./workdir/.claude/skills/<name>/SKILL.md.）"
       }
     ],
     "top_level_dir": "<name>"
@@ -20,26 +20,26 @@
     {
       "name": "ANTHROPIC_API_KEY",
       "required": true,
-      "description": "Read by the SDK from your own environment. Skill Hub never ships a key inside a package and never asks you for one; set it the way you set any other credential.",
+      "description": "由 SDK 從你自己的環境讀取。Skill Hub 從不把金鑰放進套件裡，也從不向你索取；請照你設定其他憑證的方式設定它。（原文：Read by the SDK from your own environment. Skill Hub never ships a key inside a package and never asks you for one; set it the way you set any other credential.）",
       "example": "<your-api-key>"
     }
   ],
   "verification_prompt": "List the skills you can use, and say whether <name> is among them.",
   "verification_steps": [
-    "Run the snippet with your own cwd and read the first message the SDK emits: its skill list must contain <name>.",
-    "If the list is empty, the cause is almost always one of the four conditions in the snippet's comments. None of them raises an error, so an empty list is the only symptom you get."
+    "用你自己的 cwd 執行下面那段程式，讀 SDK 送出的第一則訊息：它的 skill 清單裡必須有 <name>。（原文：Run the snippet with your own cwd and read the first message the SDK emits: its skill list must contain <name>.）",
+    "如果清單是空的，原因幾乎一定是那段程式註解裡的四個條件之一。四個都不會拋出錯誤，所以「清單是空的」是你唯一拿得到的症狀。（原文：If the list is empty, the cause is almost always one of the four conditions in the snippet's comments. None of them raises an error, so an empty list is the only symptom you get.）"
   ],
   "snippet": "// Measured against @anthropic-ai/claude-agent-sdk 0.3.233, the version Skill Hub\n// pins. Four conditions decide whether the Skill is loaded and every one of them\n// fails silently: a run that loaded zero Skills still answers plausibly and still\n// reports success.\n//   1. cwd is the directory that holds .claude/skills/ - not where this file is.\n//   2. settingSources (setting_sources in the Python package) is OMITTED. On\n//      0.3.233 passing [\"project\"] discovered no project Skill at all, while\n//      leaving the option out discovered it. That is the reverse of 0.2.137 and\n//      of how the documentation reads, so treat it as bound to this version.\n//   3. skills: \"all\" - 0.3.x moved Skill enablement out of allowedTools, where\n//      passing \"Skill\" is deprecated.\n//   4. allowedTools still has to name the tools the Skill's own steps use.\nimport { query } from \"@anthropic-ai/claude-agent-sdk\";\n\nfor await (const message of query({\n  prompt: \"List the skills you can use, and say whether <name> is among them.\",\n  options: {\n    cwd: \"./workdir\",\n    skills: \"all\",\n    allowedTools: [\"Skill\", \"Read\", \"Write\", \"Bash\"],\n  },\n})) {\n  console.log(message);\n}",
   "mcp_config": null,
   "known_limitations": [
-    "Leaving settingSources out means the SDK uses its default setting sources, and those include your personal ~/.claude. Skill Hub measured this where HOME was an empty per-run tmpfs, so there was nothing else to pick up; on your own machine your personal settings and Skills load as well.",
-    "This behaviour is bound to the SDK version. It already reversed once between 0.2.137 and 0.3.233 with no error and no warning, so after an SDK upgrade it has to be measured again rather than reasoned about (ADR-023).",
-    "Only the TypeScript package @anthropic-ai/claude-agent-sdk 0.3.233 was measured. The Python package claude-agent-sdk exposes the same options under snake_case names (cwd, setting_sources, skills), but Skill Hub has not run it, so the omission rule above is not carried over to it as a promise.",
-    "What Skill Hub measured is a Skill package mounted at <cwd>/.claude/skills/<name>/ and discovered by the SDK. It has not measured a package produced by this profile with its manifest and INSTALL.md alongside; those are extra files next to SKILL.md, which the loader does not read.",
-    "Skill Hub does not install dependencies and does not rewrite SKILL.md's existing frontmatter for this target - it only adds files."
+    "把 settingSources 留空不傳，代表 SDK 會使用它預設的設定來源，而那些來源包含你個人的 ~/.claude。Skill Hub 是在 HOME 為每次執行都全新且空白的 tmpfs 的情況下量測的，所以那裡沒有別的東西會被撿起來；在你自己的機器上，你個人的設定與 Skill 也會一起載入。（原文：Leaving settingSources out means the SDK uses its default setting sources, and those include your personal ~/.claude. Skill Hub measured this where HOME was an empty per-run tmpfs, so there was nothing else to pick up; on your own machine your personal settings and Skills load as well.）",
+    "這個行為綁在 SDK 版本上。它已經在 0.2.137 與 0.3.233 之間反轉過一次，沒有錯誤也沒有警告，所以 SDK 升級之後必須重新量一次，不能用推理帶過（ADR-023）。（原文：This behaviour is bound to the SDK version. It already reversed once between 0.2.137 and 0.3.233 with no error and no warning, so after an SDK upgrade it has to be measured again rather than reasoned about (ADR-023).）",
+    "被量測過的只有 TypeScript 套件 @anthropic-ai/claude-agent-sdk 0.3.233。Python 套件 claude-agent-sdk 以 snake_case 提供同樣的選項（cwd、setting_sources、skills），但 Skill Hub 沒有跑過它，所以上面那條「省略」規則不會被當成對它的承諾延伸過去。（原文：Only the TypeScript package @anthropic-ai/claude-agent-sdk 0.3.233 was measured. The Python package claude-agent-sdk exposes the same options under snake_case names (cwd, setting_sources, skills), but Skill Hub has not run it, so the omission rule above is not carried over to it as a promise.）",
+    "Skill Hub 量測的，是一個掛在 <cwd>/.claude/skills/<name>/ 並被 SDK 探索到的 Skill 套件。它沒有量測過由這個 profile 產生、帶著 manifest 與 INSTALL.md 的套件；那兩個是放在 SKILL.md 旁邊的額外檔案，載入器不會讀它們。（原文：What Skill Hub measured is a Skill package mounted at <cwd>/.claude/skills/<name>/ and discovered by the SDK. It has not measured a package produced by this profile with its manifest and INSTALL.md alongside; those are extra files next to SKILL.md, which the loader does not read.）",
+    "對這個目標，Skill Hub 不安裝相依套件，也不改寫 SKILL.md 既有的 frontmatter——它只加檔案。（原文：Skill Hub does not install dependencies and does not rewrite SKILL.md's existing frontmatter for this target - it only adds files.）"
   ],
   "notes": [
-    "Verified means the target Agent was measured, not that this exact package was: on 2026-08-16 a Skill mounted at <cwd>/.claude/skills/ under SDK 0.3.233 was discovered, activated and had its own scripts executed, and the same load conditions carried all 45 catalogue Skills through the M2 baseline.",
-    "The zip carries a single top-level directory named after the Skill, so unzipping inside <cwd>/.claude/skills/ produces the right layout in one step."
+    "「已驗證」的意思是那個目標 Agent 被量測過，不是這一個套件被量測過：2026-08-16，一個掛在 <cwd>/.claude/skills/ 的 Skill 在 SDK 0.3.233 底下被探索到、被啟用，而且它自己的 Script 也被執行了；同一組載入條件帶著全部 45 個目錄 Skill 通過了 M2 基準。（原文：Verified means the target Agent was measured, not that this exact package was: on 2026-08-16 a Skill mounted at <cwd>/.claude/skills/ under SDK 0.3.233 was discovered, activated and had its own scripts executed, and the same load conditions carried all 45 catalogue Skills through the M2 baseline.）",
+    "壓縮檔裡帶著一個以 Skill 命名的最上層目錄，所以在 <cwd>/.claude/skills/ 裡面解壓縮，一步就得到正確的版面。（原文：The zip carries a single top-level directory named after the Skill, so unzipping inside <cwd>/.claude/skills/ produces the right layout in one step.）"
   ]
 }

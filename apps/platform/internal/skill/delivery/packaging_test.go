@@ -21,6 +21,7 @@ import (
 	"testing"
 	"testing/fstest"
 	"time"
+	"unicode"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
@@ -693,5 +694,66 @@ func TestADatasetNameThatCannotBeWrittenExcludesTheCase(t *testing.T) {
 	}
 	if unsafeDatasetName(nil) {
 		t.Error("a case with no datasets has nothing unsafe about it")
+	}
+}
+
+// The prose a reader has to comprehend is the product's, and this product's
+// interface language is Traditional Chinese — `apps/web/index.html` declares
+// `lang="zh-Hant"` and says in as many words that every string the app renders
+// is Traditional Chinese.
+//
+// That claim was false here (04 丙-115). These fields are served verbatim to the
+// packaging screen — the last screen of the whole journey — and copied verbatim
+// into the INSTALL.md inside every download, and all of them were English. No
+// test caught it because nothing in this repository read for language: the web
+// fixtures faithfully contained the English, so even the doubles were honest.
+//
+// Both halves are asserted, because either alone permits the wrong thing:
+// Chinese without the original silently discards a review of wording that was
+// reviewed (`verified` and `unverified` mean exactly what these paragraphs say
+// they mean, and nothing else), and the original without Chinese is where this
+// started.
+//
+// Machine-facing strings are deliberately NOT here: `verification_prompt` and
+// `snippet` are things a reader pastes into a tool rather than reads, the
+// snippet's comments document behaviour bound to one SDK version, and paths and
+// scopes are identifiers.
+func TestShippedProfilesSpeakTheInterfaceLanguageAndKeepTheReviewedOriginal(t *testing.T) {
+	const original = "（原文："
+
+	hasHan := func(s string) bool {
+		for _, r := range s {
+			if unicode.Is(unicode.Han, r) {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, p := range loadRealProfiles(t).Ordered() {
+		prose := map[string][]string{
+			"verification_steps": p.VerificationSteps,
+			"known_limitations":  p.KnownLimitations,
+			"notes":              p.Notes,
+		}
+		for _, v := range p.EnvVars {
+			prose["env_vars["+v.Name+"].description"] = []string{v.Description}
+		}
+		for _, loc := range p.Install.Locations {
+			prose["install.locations["+loc.Scope+"].description"] = []string{loc.Description}
+		}
+
+		for field, items := range prose {
+			for i, s := range items {
+				if !hasHan(s) {
+					t.Errorf("%s %s[%d] has no Chinese, so the packaging screen and the\n"+
+						"downloaded INSTALL.md show a reader English on a zh-Hant page:\n%s", p.ID, field, i, s)
+				}
+				if !strings.Contains(s, original) {
+					t.Errorf("%s %s[%d] dropped the reviewed original. The English wording is what\n"+
+						"was reviewed; a translation that replaces it deletes that review:\n%s", p.ID, field, i, s)
+				}
+			}
+		}
 	}
 }
