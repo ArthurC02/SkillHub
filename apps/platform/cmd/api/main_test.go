@@ -377,7 +377,7 @@ func writeCleanModeFixture(t *testing.T, indexBody string) string {
 func TestWebStaticHandlerUnderInjectsTheFlag(t *testing.T) {
 	dir := writeCleanModeFixture(t, "<html><head><title>t</title>\n<!--SKILLHUB_CLEAN_MODE_FLAG-->\n</head><body></body></html>")
 
-	handler, err := webStaticHandlerUnder(dir)
+	handler, err := webStaticHandlerUnder(dir, false)
 	if err != nil {
 		t.Fatalf("webStaticHandlerUnder: %v", err)
 	}
@@ -399,11 +399,60 @@ func TestWebStaticHandlerUnderInjectsTheFlag(t *testing.T) {
 	}
 }
 
+// The offline sign-in flag rides the same placeholder, and it is the answer to a
+// different question than the disclosure beside it: clean_mode says 「this
+// deployment swapped its sandbox」, this one says 「a sign-in route exists here」.
+//
+// It matters because the app's only sign-in affordance has always been a link to
+// GitHub, and on the machine 02:PORT-005 is about that link leaves the product
+// entirely — so everything behind a session was unreachable from the browser
+// even though POST /auth/dev/login was mounted and working the whole time.
+//
+// Both directions are asserted, because only one of them is a security property:
+// the flag must be ABSENT when the route is not mounted. A screen offering a
+// sign-in that answers 404 is worse than one offering none.
+func TestWebStaticHandlerUnderInjectsTheOfflineSignInFlagOnlyWhenTheRouteExists(t *testing.T) {
+	const page = "<html><head><!--SKILLHUB_CLEAN_MODE_FLAG--></head><body></body></html>"
+
+	for _, tc := range []struct {
+		name     string
+		devLogin bool
+		want     bool
+	}{
+		{"DEV_LOGIN off", false, false},
+		{"DEV_LOGIN on", true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler, err := webStaticHandlerUnder(writeCleanModeFixture(t, page), tc.devLogin)
+			if err != nil {
+				t.Fatalf("webStaticHandlerUnder: %v", err)
+			}
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+			body := rec.Body.String()
+
+			if got := strings.Contains(body, "window.__SKILLHUB_DEV_LOGIN__=true"); got != tc.want {
+				t.Errorf("offline sign-in flag present = %v, want %v; body = %q", got, tc.want, body)
+			}
+			// Never as `false`: the same boundary the disclosure flag carries. An
+			// injected `false` is a value a reader can mistake for a measurement.
+			if strings.Contains(body, "__SKILLHUB_DEV_LOGIN__=false") {
+				t.Error("the flag was written as false; it may only ever be written as true")
+			}
+			// The disclosure is unaffected either way — the two share a placeholder,
+			// not a meaning.
+			if !strings.Contains(body, "window.__SKILLHUB_CLEAN_MODE__=true") {
+				t.Errorf("the clean-mode disclosure went missing; body = %q", body)
+			}
+		})
+	}
+}
+
 // The one route this handler adds beyond "/": Vite's build output directory.
 func TestWebStaticHandlerUnderServesAssets(t *testing.T) {
 	dir := writeCleanModeFixture(t, "<html><head><!--SKILLHUB_CLEAN_MODE_FLAG--></head></html>")
 
-	handler, err := webStaticHandlerUnder(dir)
+	handler, err := webStaticHandlerUnder(dir, false)
 	if err != nil {
 		t.Fatalf("webStaticHandlerUnder: %v", err)
 	}
@@ -424,7 +473,7 @@ func TestWebStaticHandlerUnderServesAssets(t *testing.T) {
 func TestWebStaticHandlerUnderNamesTheMissingBuild(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "does-not-exist")
 
-	_, err := webStaticHandlerUnder(dir)
+	_, err := webStaticHandlerUnder(dir, false)
 	if err == nil {
 		t.Fatal("webStaticHandlerUnder on a missing directory returned no error")
 	}
@@ -440,7 +489,7 @@ func TestWebStaticHandlerUnderNamesTheMissingBuild(t *testing.T) {
 func TestWebStaticHandlerUnderRequiresThePlaceholder(t *testing.T) {
 	dir := writeCleanModeFixture(t, "<html><head><title>no placeholder here</title></head></html>")
 
-	_, err := webStaticHandlerUnder(dir)
+	_, err := webStaticHandlerUnder(dir, false)
 	if err == nil {
 		t.Fatal("webStaticHandlerUnder on an index.html with no placeholder returned no error")
 	}

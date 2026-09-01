@@ -26,6 +26,7 @@ export function useMe() {
 declare global {
   interface Window {
     __SKILLHUB_CLEAN_MODE__?: true;
+    __SKILLHUB_DEV_LOGIN__?: true;
   }
 }
 
@@ -50,6 +51,38 @@ export function useCleanMode(): boolean {
     return true;
   }
   return me.data?.features?.clean_mode === true;
+}
+
+/**
+ * 這個部署有沒有掛上離線登入（`POST /auth/dev/login`，ADR-020）。
+ *
+ * **刻意不從 `useCleanMode()` 推導**，即使今天的啟動器兩個一起設：`clean_mode` 在
+ * `public.yaml` 裡是一句**揭露**，而且那份契約逐字寫著把它當成「可以解鎖什麼」的
+ * 客戶端是**讀反了**。這一個問的是完全不同的問題——**一條路由在不在**——所以它
+ * 是 `generate_skill` 那個形狀的入口旗標，各自獨立。
+ *
+ * 沒有 `/me` 的後備，而這正是重點：需要它的人**還沒有 session**，`GET /me` 對他
+ * 回 401，所以答案只可能來自 cmd/api 注入的那一行。注入端永遠不寫 `false`（同
+ * `__SKILLHUB_CLEAN_MODE__` 的 ⛔ 邊界，理由更硬：畫一個按下去 404 的登入，比不
+ * 畫還糟）。
+ */
+export function useDevLogin(): boolean {
+  return typeof window !== "undefined" && window.__SKILLHUB_DEV_LOGIN__ === true;
+}
+
+/**
+ * 以離線 provider 登入。名字任意；空字串由伺服器預設為 `dev`。
+ *
+ * 淨測試模式的示範身分是 `seed-importer`——**目錄工作區就是它的工作區**，所以只有
+ * 它能直接對策展 Skill 建 Test Case 並跑起來（`04` 丙-114）。其他名字一樣登得進
+ * 去，但自建內容在這個模式下仍然被派送閘門擋著（`02:PORT-010`），那是另一件事。
+ */
+export function devLogin(user: string) {
+  return apiFetch<void>("/auth/dev/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user }),
+  });
 }
 
 /**

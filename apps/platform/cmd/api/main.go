@@ -74,6 +74,30 @@ var cleanModeFlagPlaceholder = []byte("<!--SKILLHUB_CLEAN_MODE_FLAG-->")
 // exists (⛔ boundary: the flag may only turn the notice on).
 var cleanModeFlagScript = []byte(`<script>window.__SKILLHUB_CLEAN_MODE__=true;</script>`)
 
+// devLoginFlagScript is the same mechanism for a different question, and the
+// difference matters: clean_mode is a DISCLOSURE (public.yaml says outright that
+// a client treating it as something to unlock 「has read it backwards」), while
+// this one is an ENTRY POINT in the `generate_skill` sense — it says a route
+// exists. They are injected together because they are needed at the same moment,
+// by the same signed-out visitor, and answered by nothing else.
+//
+// Why it had to exist at all: the only sign-in affordance the app has ever had
+// is `<a href=…/auth/github/login>使用 GitHub 登入</a>`, in AuthControls and in
+// LoginRequired. On the machine 02:PORT-005 is about — no software may be
+// installed and the only reachable network is the model provider — that link
+// leaves the product and lands on a browser network error. DEV_LOGIN=1 is set by
+// tools/cleanmode/start.mjs and POST /auth/dev/login is mounted and working, so
+// the offline path existed the whole time; nothing on any screen called it.
+// Everything behind a session — 匯入、fork、Test Case、試跑、打包、工作區 — was
+// therefore unreachable from the browser, including 04 丙-114's recorded demo
+// instruction (「以 seed-importer 的身分展示」), which names an identity only that
+// endpoint can produce.
+//
+// Same ⛔ boundary as the flag above and for a stricter reason: it is written
+// only when the route is really mounted, never as `false`. A screen offering a
+// sign-in that 404s is worse than one offering none.
+var devLoginFlagScript = []byte(`<script>window.__SKILLHUB_DEV_LOGIN__=true;</script>`)
+
 // applyCleanModePool is clean mode's first consequence: a single database
 // connection, because the PGlite socket behind it serves one client at a time
 // and this same process is about to also run the worker (see the package doc
@@ -206,14 +230,14 @@ func newStore(clean bool) (*objstore.Client, func(), error) {
 // ADR-060 決策 6 forbids a second env var for this axis, and unlike a
 // registry reference that varies by deployment, this repo's own layout is
 // nothing a node operator configures.
-func cleanModeStaticHandler() (http.Handler, error) {
+func cleanModeStaticHandler(devLogin bool) (http.Handler, error) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		return nil, errors.New("clean mode cannot locate the web build: this binary carries no source path, so it was not built from this repository")
 	}
 	// apps/platform/cmd/api/main.go -> repo root is four directories up.
 	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..")
-	return webStaticHandlerUnder(filepath.Join(repoRoot, "apps", "web", "dist"))
+	return webStaticHandlerUnder(filepath.Join(repoRoot, "apps", "web", "dist"), devLogin)
 }
 
 // webStaticHandlerUnder is split out so the missing-build and
@@ -227,7 +251,7 @@ func cleanModeStaticHandler() (http.Handler, error) {
 // means the handler either exists with the flag already burned in or main()
 // has already exited — there is no request-time path where the injection can
 // silently not happen.
-func webStaticHandlerUnder(distDir string) (http.Handler, error) {
+func webStaticHandlerUnder(distDir string, devLogin bool) (http.Handler, error) {
 	indexPath := filepath.Join(distDir, "index.html")
 	raw, err := os.ReadFile(indexPath)
 	if err != nil {
@@ -235,7 +259,11 @@ func webStaticHandlerUnder(distDir string) (http.Handler, error) {
 			"clean mode cannot find the web build at %s (derived from this binary's build path; run `npm --prefix apps/web run build` first): %w",
 			indexPath, err)
 	}
-	injected := bytes.Replace(raw, cleanModeFlagPlaceholder, cleanModeFlagScript, 1)
+	flags := cleanModeFlagScript
+	if devLogin {
+		flags = append(append([]byte{}, flags...), devLoginFlagScript...)
+	}
+	injected := bytes.Replace(raw, cleanModeFlagPlaceholder, flags, 1)
 	if bytes.Equal(injected, raw) {
 		return nil, fmt.Errorf(
 			"clean mode: %s has no %q placeholder to inject into; 02:PORT-003's disclosure would not reach a signed-out visitor",
@@ -630,7 +658,7 @@ func main() {
 	// unset takes handler := app.Handler() and nothing past this block runs.
 	handler := app.Handler()
 	if clean {
-		static, err := cleanModeStaticHandler()
+		static, err := cleanModeStaticHandler(devLogin)
 		if err != nil {
 			slog.Error("clean mode: web assets", "error", err)
 			os.Exit(1)

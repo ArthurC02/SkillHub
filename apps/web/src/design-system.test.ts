@@ -485,6 +485,10 @@ const OWN_FAILURE_COPY: Record<string, string> = {
   "pages/ImportSkill.tsx":
     "POST /skills/import/*: a mutation, and the rejection body is the acceptance criterion " +
     "(CategorizedFindings). LoginRequired covers this page's signed-out arrival before the form",
+  "components/SignIn.tsx":
+    "POST /auth/dev/login: a sign-IN mutation, the mirror of the sign-out entry above. A 401 " +
+    "here cannot mean 「需要登入」 — that is what the user just tried to do — so ReadFailure " +
+    "would render the one sentence that is certainly wrong",
 };
 
 test("IA-6: a page that writes its own read-failure sentence has to be listed", () => {
@@ -511,7 +515,15 @@ test("IA-6: a page that writes its own read-failure sentence has to be listed", 
       "「需要登入」 and every other status keeps the server's own message; if this failure " +
       "is a mutation rather than a read, add a line to OWN_FAILURE_COPY saying which",
   ).toEqual([]);
+  // 3 -> 4 on 2026-09-02, and the reason has to survive here or the ratchet has
+  // been loosened rather than moved: the fourth entry is not a read-failure that
+  // leaked past ReadFailure, it is a NEW mutation surface that did not exist —
+  // offline sign-in, added because the app's only sign-in affordance was a
+  // GitHub link that goes nowhere on the machine 02:PORT-005 is about. It sits
+  // in the same category as the sign-out entry it mirrors. The bound may still
+  // only move when a genuinely new mutation appears; a read-failure worded by
+  // hand is still an offender, which is what the assertion above enforces.
   expect(Object.keys(OWN_FAILURE_COPY).length, "the list may only get shorter").toBeLessThanOrEqual(
-    3,
+    4,
   );
 });

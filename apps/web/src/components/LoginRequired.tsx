@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { API_BASE_URL, ApiError } from "../api/client";
+import { ApiError } from "../api/client";
+import { SignInAction } from "./SignIn";
 
 /**
  * 資訊架構 §5 IA-6（2026-08-25 裁定）：**登出狀態不由 router 守衛，由 401 這個
@@ -43,7 +44,8 @@ export function unauthenticated(error: unknown): boolean {
 export function LoginRequired({ what }: { what: string }) {
   return (
     <p role="status">
-      {what}需要登入。<a href={`${API_BASE_URL}/auth/github/login`}>使用 GitHub 登入</a>
+      {what}需要登入。
+      <SignInAction />
     </p>
   );
 }
