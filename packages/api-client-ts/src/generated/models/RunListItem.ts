@@ -68,6 +68,15 @@ export interface RunListItem {
     status: RunListItemStatusEnum;
     /**
      * Why the run entered this status. Masked and safe to display.
+     * 
+     * Two kinds of sentence arrive here and the difference matters. Most
+     * are the platform's own, and those are served in the interface
+     * language. Some are relayed verbatim from the provider that ran the
+     * workload (`state_reason` on the provider contract), and the platform
+     * does not rewrite another system's words — so a reader can meet an
+     * English sentence here, and that is the mark of a relayed one
+     * (04 丙-115 ①).
+     * 
      * @type {string}
      * @memberof RunListItem
      */
@@ -109,11 +118,31 @@ export interface RunListItem {
      */
     provider: string;
     /**
+     * Why the run failed, in the platform's own six-value vocabulary,
+     * fixed by a CHECK constraint in db/migrations/0018_run_scheduling.sql:
+     * `provider_error` (the provider could not carry the attempt),
+     * `workload_error` (the workload ran and reported failure), `timeout`,
+     * `cancelled` (the user asked), `capability_mismatch` (no configured
+     * provider can run this request) and `platform_error` (the control
+     * plane's own fault).
      * 
-     * @type {string}
+     * **Not the provider's ten `class` values** — those are
+     * sandbox-provider.yaml's, and they live per attempt on
+     * `run_attempts.error_class`. The vocabulary here is narrow because the
+     * retry rule is written against it: only `provider_error` is the
+     * platform's to retry.
+     * 
+     * `Labelled` and not a bare enum, for the reason `cleanup_status`
+     * below records having learned: a client-side enum→中文 table fails by
+     * rendering a value it has no word for, and it fails silently. This
+     * was a bare enum until 2026-09-01, and every screen that showed it
+     * interpolated the raw token into a Chinese sentence —「失敗類別
+     * capability_mismatch」(04 丙-115 ②).
+     * 
+     * @type {Labelled}
      * @memberof RunListItem
      */
-    failureClass?: string;
+    failureClass?: Labelled;
     /**
      * `value` is the database type run_cleanup_status
      * (0004_test_lab_and_runs.sql): `pending`, `cleaning_up`, `cleaned`,
@@ -205,7 +234,7 @@ export function RunListItemFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'skillVersionId': json['skill_version_id'],
         'testCaseId': json['test_case_id'] == null ? undefined : json['test_case_id'],
         'provider': json['provider'],
-        'failureClass': json['failure_class'] == null ? undefined : json['failure_class'],
+        'failureClass': json['failure_class'] == null ? undefined : LabelledFromJSON(json['failure_class']),
         'cleanupStatus': LabelledFromJSON(json['cleanup_status']),
         'createdAt': (new Date(json['created_at'])),
         'startedAt': json['started_at'] == null ? undefined : (new Date(json['started_at'])),
@@ -233,7 +262,7 @@ export function RunListItemToJSONTyped(value?: RunListItem | null, ignoreDiscrim
         'skill_version_id': value['skillVersionId'],
         'test_case_id': value['testCaseId'],
         'provider': value['provider'],
-        'failure_class': value['failureClass'],
+        'failure_class': LabelledToJSON(value['failureClass']),
         'cleanup_status': LabelledToJSON(value['cleanupStatus']),
         'created_at': value['createdAt'].toISOString(),
         'started_at': value['startedAt'] == null ? value['startedAt'] : value['startedAt'].toISOString(),

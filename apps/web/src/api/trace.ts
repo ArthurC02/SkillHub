@@ -44,7 +44,21 @@ export type TraceSummary = {
     cost_usd: number | null;
     cost_source?: string;
   };
-  steps: string[];
+  /**
+   * The run's progress, from the authoritative transition history.
+   *
+   * Two fields rather than one pre-joined `"<status>: <reason>"` string since
+   * 2026-09-01: the server was writing a status for a reader, which is this
+   * app's job and always was — `runStatusLabel` sits four lines above the
+   * progress list on the same screen, so it showed 「執行完成」 and `succeeded:`
+   * at once (04 丙-115 ①).
+   *
+   * `reason` is not always the platform's own words: some are relayed verbatim
+   * from the provider that ran the workload, and some are a Go error's own text.
+   * Neither can be translated here, and neither is invented — an English
+   * sentence in this field is the mark of a relayed one.
+   */
+  steps: { status: string; reason?: string }[];
   /**
    * When this run last produced anything. Absent means nothing has arrived yet —
    * a real state for a run still being provisioned, not a missing field, and it

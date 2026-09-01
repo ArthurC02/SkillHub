@@ -152,12 +152,24 @@ function RunRow({ run }: { run: RunListItem }) {
           "｜尚未結束"
         )}
         ｜Provider {run.provider}
+        {/* The server's own words (04 丙-115 ②). This read
+            「｜失敗類別 capability_mismatch」 — a raw enum inside a Chinese
+            sentence, on the screen a reader opens to find out what went wrong. */}
         {run.failure_class
-          ? `｜失敗類別 ${run.failure_class}`
+          ? `｜失敗類別 ${run.failure_class.label}`
           : run.status === "failed"
             ? "｜失敗類別未記錄"
             : ""}
       </p>
+      {/*
+        Visible, not a `title` — 設計 §2.4 第 3 項, the same call the cleanup
+        note above makes, and design-system.test.ts refuses the tooltip-only
+        shape outright. The note is where the class stops being read wrong:
+        `workload_error` is the Skill failing at its own job and reads as a
+        platform fault, `capability_mismatch` is a refusal before anything ran
+        and reads as a crash.
+      */}
+      {run.failure_class && <p className="note">{run.failure_class.note}</p>}
       {/* The per-row restatement is gone: it said what the verdict badge above
           it now says, and 設計 §3 第 14 條 counts a fact worded twice on one row
           as a defect rather than as emphasis. */}

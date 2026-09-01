@@ -298,9 +298,21 @@ function GeneralMode({ runId }: { runId: string }) {
       </p>
 
       <h3>進度</h3>
+      {/*
+        `runStatusLabel`, the same call this page makes four lines above for
+        `trace.status`. The server used to pre-join 「<status>: <reason>」 into one
+        string, so this list printed the raw enum — 「queued: …」、「succeeded: …」 —
+        beside a heading that had just written the same status as 「執行完成」
+        (04 丙-115 ①). The reason is printed as it arrives: some are the
+        platform's own, some are relayed verbatim from the provider, and nothing
+        here invents words for the second kind.
+      */}
       <ol>
         {trace.steps.map((step, i) => (
-          <li key={`${i}-${step}`}>{step}</li>
+          <li key={`${i}-${step.status}`}>
+            <strong>{runStatusLabel(step.status)}</strong>
+            {step.reason ? `：${step.reason}` : null}
+          </li>
         ))}
       </ol>
 

@@ -65,7 +65,16 @@ export type RunListItem = {
   /** The editable draft a re-run would start from. Absent when it no longer resolves. */
   test_case_id?: string;
   provider: string;
-  failure_class?: string;
+  /**
+   * `{value, label, note}` since 2026-09-01, and served rather than mapped here
+   * for the reason `cleanup_status` below records (04 丙-29 ②).
+   *
+   * It was a bare enum, and both screens that showed it interpolated the raw
+   * token into a Chinese sentence — 「失敗類別 capability_mismatch」 and
+   * 「（分類：capability_mismatch）」. `RUN_STATUS_LABEL` covers `status`; this
+   * field never had anything (04 丙-115 ②).
+   */
+  failure_class?: Labelled;
   /**
    * `{value, label, note}`, not a bare enum (04 丙-29 ②).
    *

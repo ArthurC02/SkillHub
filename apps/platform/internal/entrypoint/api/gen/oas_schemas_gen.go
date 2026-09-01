@@ -319,6 +319,12 @@ type CancelRunAccepted struct {
 	// (執行完成 / 執行失敗) and must not present it as a pass.
 	Status CancelRunAcceptedStatus `json:"status"`
 	// Why the run entered this status. Masked and safe to display.
+	//
+	// Two kinds of sentence arrive here and the difference matters. Most are the platform's own, and those
+	// are served in the interface language. Some are relayed verbatim from the provider that ran the
+	// workload (`state_reason` on the provider contract), and the platform does not rewrite another
+	// system's words — so a reader can meet an English sentence here, and that is the mark of a relayed
+	// one (04 丙-115 ①).
 	StatusReason OptString `json:"status_reason"`
 	// The skill the version belongs to. Served rather than left to the client to work out: applying
 	// improvement suggestions posts to POST /skills/{id}/versions/from-suggestions, and a run page that
@@ -344,6 +350,13 @@ type CancelRunAccepted struct {
 	TestCaseID OptUUID `json:"test_case_id"`
 	// `unassigned` until provider selection lands (RUN-005).
 	Provider string `json:"provider"`
+	// The same field, the same values and the same words as `RunListItem.failure_class` — see there.
+	//
+	// Declared here on 2026-09-01, having been served long before. `GET /runs/{id}` returned it while this
+	// schema did not mention it, so every generated client was missing the one field that says why a run
+	// failed — and nothing could notice: the Go side is models-only with hand-written handlers
+	// (ADR-030's 2026-08-29 note), so a handler can serve what the contract never declared.
+	FailureClass OptLabelled `json:"failure_class"`
 	// Tracked apart from the run outcome, and still writable after a terminal state. Idempotent cleanup is
 	// RUN-007. `value` is the database enum; see RunListItem.cleanup_status for why it is served with its
 	// words.
@@ -400,6 +413,11 @@ func (s *CancelRunAccepted) GetTestCaseID() OptUUID {
 // GetProvider returns the value of Provider.
 func (s *CancelRunAccepted) GetProvider() string {
 	return s.Provider
+}
+
+// GetFailureClass returns the value of FailureClass.
+func (s *CancelRunAccepted) GetFailureClass() OptLabelled {
+	return s.FailureClass
 }
 
 // GetCleanupStatus returns the value of CleanupStatus.
@@ -480,6 +498,11 @@ func (s *CancelRunAccepted) SetTestCaseID(val OptUUID) {
 // SetProvider sets the value of Provider.
 func (s *CancelRunAccepted) SetProvider(val string) {
 	s.Provider = val
+}
+
+// SetFailureClass sets the value of FailureClass.
+func (s *CancelRunAccepted) SetFailureClass(val OptLabelled) {
+	s.FailureClass = val
 }
 
 // SetCleanupStatus sets the value of CleanupStatus.
@@ -7176,6 +7199,52 @@ func (o OptInt64) Or(d int64) int64 {
 	return d
 }
 
+// NewOptLabelled returns new OptLabelled with value set to v.
+func NewOptLabelled(v Labelled) OptLabelled {
+	return OptLabelled{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptLabelled is optional Labelled.
+type OptLabelled struct {
+	Value Labelled
+	Set   bool
+}
+
+// IsSet returns true if OptLabelled was set.
+func (o OptLabelled) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptLabelled) Reset() {
+	var v Labelled
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptLabelled) SetTo(v Labelled) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptLabelled) Get() (v Labelled, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptLabelled) Or(d Labelled) Labelled {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptMeFeatures returns new OptMeFeatures with value set to v.
 func NewOptMeFeatures(v MeFeatures) OptMeFeatures {
 	return OptMeFeatures{
@@ -10571,6 +10640,12 @@ type Run struct {
 	// (執行完成 / 執行失敗) and must not present it as a pass.
 	Status RunStatus `json:"status"`
 	// Why the run entered this status. Masked and safe to display.
+	//
+	// Two kinds of sentence arrive here and the difference matters. Most are the platform's own, and those
+	// are served in the interface language. Some are relayed verbatim from the provider that ran the
+	// workload (`state_reason` on the provider contract), and the platform does not rewrite another
+	// system's words — so a reader can meet an English sentence here, and that is the mark of a relayed
+	// one (04 丙-115 ①).
 	StatusReason OptString `json:"status_reason"`
 	// The skill the version belongs to. Served rather than left to the client to work out: applying
 	// improvement suggestions posts to POST /skills/{id}/versions/from-suggestions, and a run page that
@@ -10596,6 +10671,13 @@ type Run struct {
 	TestCaseID OptUUID `json:"test_case_id"`
 	// `unassigned` until provider selection lands (RUN-005).
 	Provider string `json:"provider"`
+	// The same field, the same values and the same words as `RunListItem.failure_class` — see there.
+	//
+	// Declared here on 2026-09-01, having been served long before. `GET /runs/{id}` returned it while this
+	// schema did not mention it, so every generated client was missing the one field that says why a run
+	// failed — and nothing could notice: the Go side is models-only with hand-written handlers
+	// (ADR-030's 2026-08-29 note), so a handler can serve what the contract never declared.
+	FailureClass OptLabelled `json:"failure_class"`
 	// Tracked apart from the run outcome, and still writable after a terminal state. Idempotent cleanup is
 	// RUN-007. `value` is the database enum; see RunListItem.cleanup_status for why it is served with its
 	// words.
@@ -10651,6 +10733,11 @@ func (s *Run) GetTestCaseID() OptUUID {
 // GetProvider returns the value of Provider.
 func (s *Run) GetProvider() string {
 	return s.Provider
+}
+
+// GetFailureClass returns the value of FailureClass.
+func (s *Run) GetFailureClass() OptLabelled {
+	return s.FailureClass
 }
 
 // GetCleanupStatus returns the value of CleanupStatus.
@@ -10726,6 +10813,11 @@ func (s *Run) SetTestCaseID(val OptUUID) {
 // SetProvider sets the value of Provider.
 func (s *Run) SetProvider(val string) {
 	s.Provider = val
+}
+
+// SetFailureClass sets the value of FailureClass.
+func (s *Run) SetFailureClass(val OptLabelled) {
+	s.FailureClass = val
 }
 
 // SetCleanupStatus sets the value of CleanupStatus.
@@ -11755,6 +11847,12 @@ type RunListItem struct {
 	Evaluation Labelled          `json:"evaluation"`
 	Status     RunListItemStatus `json:"status"`
 	// Why the run entered this status. Masked and safe to display.
+	//
+	// Two kinds of sentence arrive here and the difference matters. Most are the platform's own, and those
+	// are served in the interface language. Some are relayed verbatim from the provider that ran the
+	// workload (`state_reason` on the provider contract), and the platform does not rewrite another
+	// system's words — so a reader can meet an English sentence here, and that is the mark of a relayed
+	// one (04 丙-115 ①).
 	StatusReason OptString `json:"status_reason"`
 	SkillID      uuid.UUID `json:"skill_id"`
 	// Joined into the row rather than resolved per item by the client: a history page is the one place
@@ -11763,9 +11861,23 @@ type RunListItem struct {
 	SkillVersionID uuid.UUID `json:"skill_version_id"`
 	// The editable test case the run's snapshot was frozen from, so a re-run can be started from a history
 	// row. Not permission to re-run — that is preflight's answer (TEST-009).
-	TestCaseID   OptUUID   `json:"test_case_id"`
-	Provider     string    `json:"provider"`
-	FailureClass OptString `json:"failure_class"`
+	TestCaseID OptUUID `json:"test_case_id"`
+	Provider   string  `json:"provider"`
+	// Why the run failed, in the platform's own six-value vocabulary, fixed by a CHECK constraint in
+	// db/migrations/0018_run_scheduling.sql: `provider_error` (the provider could not carry the attempt),
+	// `workload_error` (the workload ran and reported failure), `timeout`, `cancelled` (the user asked),
+	// `capability_mismatch` (no configured provider can run this request) and `platform_error` (the
+	// control plane's own fault).
+	//
+	// Not the provider's ten `class` values — those are sandbox-provider.yaml's, and they live per
+	// attempt on `run_attempts.error_class`. The vocabulary here is narrow because the retry rule is
+	// written against it: only `provider_error` is the platform's to retry.
+	//
+	// `Labelled` and not a bare enum, for the reason `cleanup_status` below records having learned: a
+	// client-side enum→中文 table fails by rendering a value it has no word for, and it fails
+	// silently. This was a bare enum until 2026-09-01, and every screen that showed it interpolated the
+	// raw token into a Chinese sentence —「失敗類別 capability_mismatch」(04 丙-115 ②).
+	FailureClass OptLabelled `json:"failure_class"`
 	// `value` is the database type run_cleanup_status (0004_test_lab_and_runs.sql): `pending`,
 	// `cleaning_up`, `cleaned`, `failed`. The handler puts that value on the wire unmapped.
 	//
@@ -11827,7 +11939,7 @@ func (s *RunListItem) GetProvider() string {
 }
 
 // GetFailureClass returns the value of FailureClass.
-func (s *RunListItem) GetFailureClass() OptString {
+func (s *RunListItem) GetFailureClass() OptLabelled {
 	return s.FailureClass
 }
 
@@ -11897,7 +12009,7 @@ func (s *RunListItem) SetProvider(val string) {
 }
 
 // SetFailureClass sets the value of FailureClass.
-func (s *RunListItem) SetFailureClass(val OptString) {
+func (s *RunListItem) SetFailureClass(val OptLabelled) {
 	s.FailureClass = val
 }
 
@@ -16899,7 +17011,13 @@ type TraceSummary struct {
 	Usage       OptTraceSummaryUsage `json:"usage"`
 	// Progress, taken from run_status_transitions - the authoritative history - and never reconstructed by
 	// replaying run_lifecycle events (iron rule 5).
-	Steps []string `json:"steps"`
+	//
+	// Two fields and not one pre-joined sentence, since 2026-09-01. This was `array of string`, each item
+	// built server-side as `"<status>: <reason>"`, which put a decision that belongs to the surface —
+	// how to write a status for a reader — in the one place that cannot make it: the client already owns
+	// that mapping and used it four lines higher on the same screen, so `/runs/{id}` showed
+	// 「執行完成」and`succeeded:`at once (04 丙-115 ①).
+	Steps []TraceSummaryStepsItem `json:"steps"`
 }
 
 // GetRunID returns the value of RunID.
@@ -16973,7 +17091,7 @@ func (s *TraceSummary) GetUsage() OptTraceSummaryUsage {
 }
 
 // GetSteps returns the value of Steps.
-func (s *TraceSummary) GetSteps() []string {
+func (s *TraceSummary) GetSteps() []TraceSummaryStepsItem {
 	return s.Steps
 }
 
@@ -17048,7 +17166,7 @@ func (s *TraceSummary) SetUsage(val OptTraceSummaryUsage) {
 }
 
 // SetSteps sets the value of Steps.
-func (s *TraceSummary) SetSteps(val []string) {
+func (s *TraceSummary) SetSteps(val []TraceSummaryStepsItem) {
 	s.Steps = val
 }
 
@@ -17256,6 +17374,35 @@ func (s *TraceSummaryStatus) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+type TraceSummaryStepsItem struct {
+	// The status entered, as the database enum. The words for it are the reader's surface to choose, the
+	// same way it chooses them for `Run.status`.
+	Status string `json:"status"`
+	// Why, when the history recorded one. Absent rather than empty when it did not — see
+	// `Run.status_reason` for the two kinds of sentence that arrive here.
+	Reason OptString `json:"reason"`
+}
+
+// GetStatus returns the value of Status.
+func (s *TraceSummaryStepsItem) GetStatus() string {
+	return s.Status
+}
+
+// GetReason returns the value of Reason.
+func (s *TraceSummaryStepsItem) GetReason() OptString {
+	return s.Reason
+}
+
+// SetStatus sets the value of Status.
+func (s *TraceSummaryStepsItem) SetStatus(val string) {
+	s.Status = val
+}
+
+// SetReason sets the value of Reason.
+func (s *TraceSummaryStepsItem) SetReason(val OptString) {
+	s.Reason = val
 }
 
 type TraceSummaryToolCalls struct {

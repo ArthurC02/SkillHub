@@ -507,7 +507,13 @@ export const TRACE_GENERAL = {
   errors: [{ category: "provision", code: "provider_error", message: "no slot" }],
   final_output: "Removed 17 duplicate rows.",
   usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_usd: null },
-  steps: ["queued: run requested", "failed: the provider could not carry the attempt"],
+  steps: [
+    // One of each kind the field carries, which is what the server now
+    // produces: the platform's own sentence, in the interface language, and
+    // one relayed verbatim from the provider, which nothing translates.
+    { status: "queued", reason: "已收到這次 Run 的請求" },
+    { status: "failed", reason: "the provider could not carry the attempt" },
+  ],
 };
 
 export const TRACE_ADVANCED = {

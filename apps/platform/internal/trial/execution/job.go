@@ -151,7 +151,7 @@ func (d *driver) execute(ctx context.Context) error {
 	// RUN-004: a cancel that arrived before anything was dispatched is the one case
 	// the control plane can honour on its own - there is no sandbox to stop.
 	if d.cur.CancelRequestedAt.Valid && d.cur.Status == gen.RunStatusQueued {
-		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusCancelled, failureCancelled, "cancelled before dispatch")
+		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusCancelled, failureCancelled, "派送之前就被取消")
 	}
 	if d.expired() {
 		return d.finish(ctx, pgtype.UUID{}, gen.RunStatusTimedOut, failureTimeout, d.timeoutReason())
@@ -274,7 +274,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 	d.cur = pinned
 
 	if d.cur.Status == gen.RunStatusQueued {
-		if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "provider selected: "+provider.Name); err != nil {
+		if err := d.advance(ctx, pgtype.UUID{}, gen.RunStatusProvisioning, "已選定 Provider:"+provider.Name); err != nil {
 			return err
 		}
 	}
@@ -290,7 +290,7 @@ func (d *driver) dispatch(ctx context.Context) error {
 		if cancelled, err := d.cancelRequested(ctx); err != nil {
 			return err
 		} else if cancelled {
-			return d.finish(ctx, lastAttemptID, gen.RunStatusCancelled, failureCancelled, "cancelled while dispatching")
+			return d.finish(ctx, lastAttemptID, gen.RunStatusCancelled, failureCancelled, "派送進行中被取消")
 		}
 
 		// One attempt row per dispatch, so a retry adds a mapping instead of
@@ -371,7 +371,7 @@ func (d *driver) follow(ctx context.Context, attempt gen.RunAttempt) error {
 	}
 	d.provider = provider
 	if attempt.ProviderRunID == nil {
-		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failurePlatform, "attempt has no provider handle")
+		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failurePlatform, "這次嘗試沒有 Provider 的 handle")
 	}
 	handle := *attempt.ProviderRunID
 
@@ -453,16 +453,16 @@ func (d *driver) mapState(ctx context.Context, attempt gen.RunAttempt, pr Provid
 	switch pr.State {
 	case ProviderStateCreating:
 		if d.cur.Status == gen.RunStatusProvisioning {
-			return d.advance(ctx, attempt.ID, gen.RunStatusPreparing, orDefault(reason, "provider is creating the sandbox"))
+			return d.advance(ctx, attempt.ID, gen.RunStatusPreparing, orDefault(reason, "Provider 正在建立沙箱"))
 		}
 	case ProviderStateRunning:
 		if d.cur.Status == gen.RunStatusProvisioning {
-			if err := d.advance(ctx, attempt.ID, gen.RunStatusPreparing, "provider acknowledged the dispatch"); err != nil {
+			if err := d.advance(ctx, attempt.ID, gen.RunStatusPreparing, "Provider 已接下這次派送"); err != nil {
 				return err
 			}
 		}
 		if d.cur.Status == gen.RunStatusPreparing {
-			return d.advance(ctx, attempt.ID, gen.RunStatusRunning, orDefault(reason, "workload started"))
+			return d.advance(ctx, attempt.ID, gen.RunStatusRunning, orDefault(reason, "工作負載已開始執行"))
 		}
 	}
 	return nil
@@ -516,14 +516,14 @@ func (d *driver) walkHappyPath(ctx context.Context, attemptID pgtype.UUID) error
 func successReason(to gen.RunStatus) string {
 	switch to {
 	case gen.RunStatusPreparing:
-		return "provider acknowledged the dispatch"
+		return "Provider 已接下這次派送"
 	case gen.RunStatusRunning:
-		return "workload started"
+		return "工作負載已開始執行"
 	case gen.RunStatusEvaluating:
-		return "workload completed; collecting the result"
+		return "工作負載已結束,正在收集結果"
 	default:
-		return "workload ran to its own end and reported success; " +
-			"whether the task was achieved is a separate judgement (see this run's evaluation)"
+		return "工作負載自己跑到結束並回報成功;任務究竟有沒有達成是另一個判斷" +
+			"(見這次 Run 的評估)"
 	}
 }
 
@@ -719,7 +719,7 @@ func (d *driver) expired() bool {
 }
 
 func (d *driver) timeoutReason() string {
-	return fmt.Sprintf("exceeded the hard wall clock limit; deadline was %s", d.deadline.UTC().Format(time.RFC3339))
+	return fmt.Sprintf("超過硬性時間上限;期限是 %s", d.deadline.UTC().Format(time.RFC3339))
 }
 
 // tokenCeilingRoundsHint is 02:276-284's rule applied to the one place this

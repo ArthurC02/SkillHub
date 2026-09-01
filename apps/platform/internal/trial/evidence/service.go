@@ -375,6 +375,25 @@ type EventView struct {
 // Run status is NOT derived from run_lifecycle events. The only authority on run
 // state is the runs table (iron rule 5), so it is read from there and the trace
 // contributes only what the trace knows.
+// ProgressStep is one entry of the run's progress, taken from
+// run_status_transitions - the authoritative history - and never reconstructed
+// by replaying run_lifecycle events (iron rule 5).
+//
+// Two fields and not one pre-joined sentence. This used to be a string built
+// here as `status + ": " + reason`, which put a decision that belongs to the
+// surface - how to write a status for a reader - in the one place that cannot
+// make it. The web app has owned that mapping all along (RUN_STATUS_LABEL) and
+// used it four lines above the progress list on the same screen, so
+// /runs/{id} showed 「執行完成」 and `succeeded:` at once (04 丙-115 ①).
+//
+// Reason is empty when the history recorded none, and is NOT always the
+// platform's own words: some are relayed verbatim from the provider, and some
+// are a Go error's own text. See public.yaml's Run.status_reason.
+type ProgressStep struct {
+	Status string `json:"status"`
+	Reason string `json:"reason,omitempty"`
+}
+
 type Summary struct {
 	RunID        string          `json:"run_id"`
 	Status       string          `json:"status"`
@@ -389,7 +408,7 @@ type Summary struct {
 	Truncated    bool            `json:"summary_truncated"`
 	FinalOutput  string          `json:"final_output,omitempty"`
 	Usage        *UsageSummary   `json:"usage,omitempty"`
-	Steps        []string        `json:"steps"`
+	Steps        []ProgressStep  `json:"steps"`
 	// LastEventAt is when this run last produced anything (設計系統 §2.12). Empty
 	// means no event has arrived yet — a real state for a run still being
 	// provisioned, and the caller words it rather than rendering a blank or, far
@@ -640,7 +659,7 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 		Complete: true,
 		Skills:   []SkillUse{},
 		Errors:   []ErrorSummary{},
-		Steps:    []string{},
+		Steps:    []ProgressStep{},
 	}
 	if run.StatusReason != nil {
 		summary.StatusReason = *run.StatusReason
@@ -666,9 +685,9 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 		return Summary{}, err
 	}
 	for _, t := range transitions {
-		step := t.ToStatus
+		step := ProgressStep{Status: t.ToStatus}
 		if t.Reason != nil && *t.Reason != "" {
-			step += ": " + *t.Reason
+			step.Reason = *t.Reason
 		}
 		summary.Steps = append(summary.Steps, step)
 	}

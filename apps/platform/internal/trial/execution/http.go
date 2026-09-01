@@ -53,7 +53,7 @@ type runResponse struct {
 	TestCaseSnapshot  string           `json:"test_case_snapshot_id"`
 	TestCaseID        string           `json:"test_case_id,omitempty"`
 	Provider          string           `json:"provider"`
-	FailureClass      string           `json:"failure_class,omitempty"`
+	FailureClass      *labelled        `json:"failure_class,omitempty"`
 	CleanupStatus     labelled         `json:"cleanup_status"`
 	CancelRequestedAt string           `json:"cancel_requested_at,omitempty"`
 	CreatedAt         string           `json:"created_at"`
@@ -105,6 +105,52 @@ func cleanupWord(v string) labelled {
 	}
 }
 
+// failureClassWords is `runs.failure_class` in words — the platform's own
+// six-value vocabulary, fixed by a CHECK constraint in
+// db/migrations/0018_run_scheduling.sql. NOT the provider's ten `class` values,
+// which are per attempt on run_attempts.error_class.
+//
+// Served with its words for the reason `cleanupWords` above exists (04 丙-29 ②),
+// and because this field spent its whole life being interpolated raw into
+// Chinese sentences on four screens — 「失敗類別 capability_mismatch」 and
+// 「（分類：capability_mismatch）」 (04 丙-115 ②). `RUN_STATUS_LABEL` in the web app
+// covers `status`; nothing ever covered this one.
+//
+// Each note says what the class does NOT mean, because that is where the four
+// screens showing it get read wrong: a workload_error is the skill failing at
+// its own job and reads as a platform fault, and a capability_mismatch is a
+// refusal before anything ran and reads as a crash.
+var failureClassWords = map[string][2]string{
+	"provider_error": {"Provider 錯誤",
+		"執行沙箱的那一側沒能承載這次嘗試。這不是 Skill 的問題,也是唯一一類平台會自己重試的失敗。"},
+	"workload_error": {"工作負載失敗",
+		"工作負載跑起來了,而且自己回報失敗。這是 Skill 在它自己的工作上失敗,不是平台故障;重試只會再花一次錢得到同一個答案。"},
+	"timeout": {"逾時",
+		"Provider 回報的軟性上限,或平台看門狗的硬性上限。工作到哪裡為止見執行紀錄。"},
+	"cancelled": {"已取消",
+		"是使用者要求停止的,不是失敗。"},
+	"capability_mismatch": {"沒有能跑這個請求的環境",
+		"在任何東西被執行之前就被拒絕了——沒有一個已設定的 Provider 能承接這個請求。這不是崩潰,沙箱從來沒有被建立。"},
+	"platform_error": {"平台自己的錯誤",
+		"控制平面這一側的問題,不是 Skill 也不是 Provider 的問題。"},
+}
+
+// failureClassWord wraps the raw value in its words, keeping the raw value as
+// the label when it is unrecognised — the same call cleanupWord makes, for the
+// same reason: a word the reader has to look up beats a blank.
+func failureClassWord(v string) *labelled {
+	if v == "" {
+		return nil
+	}
+	if w, ok := failureClassWords[v]; ok {
+		return &labelled{Value: v, Label: w[0], Note: w[1]}
+	}
+	return &labelled{
+		Value: v, Label: v,
+		Note: "這個平台版本沒有這個失敗類別的說明,值照原樣顯示,不猜測它的意思。",
+	}
+}
+
 type transitionView struct {
 	From       string `json:"from_status,omitempty"`
 	To         string `json:"to_status"`
@@ -133,7 +179,7 @@ func toRunResponse(run gen.Run) runResponse {
 		SkillVersionID:    pgconv.UUIDString(run.SkillVersionID),
 		TestCaseSnapshot:  pgconv.UUIDString(run.TestCaseSnapshotID),
 		Provider:          run.Provider,
-		FailureClass:      deref(run.FailureClass),
+		FailureClass:      failureClassWord(deref(run.FailureClass)),
 		CleanupStatus:     cleanupWord(string(run.CleanupStatus)),
 		CancelRequestedAt: pgconv.RFC3339(run.CancelRequestedAt),
 		CreatedAt:         pgconv.RFC3339(run.CreatedAt),
@@ -277,19 +323,19 @@ func (h *Handler) Quota(w http.ResponseWriter, r *http.Request) {
 // serving the transitions and attempts of fifty runs would make the list the
 // heaviest read in the API for information nobody reads fifty of.
 type runListItem struct {
-	RunID          string   `json:"run_id"`
-	Status         string   `json:"status"`
-	StatusReason   string   `json:"status_reason,omitempty"`
-	SkillID        string   `json:"skill_id"`
-	SkillName      string   `json:"skill_name"`
-	SkillVersionID string   `json:"skill_version_id"`
-	TestCaseID     string   `json:"test_case_id,omitempty"`
-	Provider       string   `json:"provider"`
-	FailureClass   string   `json:"failure_class,omitempty"`
-	CleanupStatus  labelled `json:"cleanup_status"`
-	CreatedAt      string   `json:"created_at"`
-	StartedAt      string   `json:"started_at,omitempty"`
-	FinishedAt     string   `json:"finished_at,omitempty"`
+	RunID          string    `json:"run_id"`
+	Status         string    `json:"status"`
+	StatusReason   string    `json:"status_reason,omitempty"`
+	SkillID        string    `json:"skill_id"`
+	SkillName      string    `json:"skill_name"`
+	SkillVersionID string    `json:"skill_version_id"`
+	TestCaseID     string    `json:"test_case_id,omitempty"`
+	Provider       string    `json:"provider"`
+	FailureClass   *labelled `json:"failure_class,omitempty"`
+	CleanupStatus  labelled  `json:"cleanup_status"`
+	CreatedAt      string    `json:"created_at"`
+	StartedAt      string    `json:"started_at,omitempty"`
+	FinishedAt     string    `json:"finished_at,omitempty"`
 	// The second axis (ADR-025, 設計系統 §2.5, 04 丙-32). Never omitempty: a run
 	// with no evaluation carries 未評估, and an absent field is the one rendering
 	// §2.9 forbids — an empty column beside 「執行完成」 reads as a pass.
@@ -366,7 +412,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			SkillVersionID: pgconv.UUIDString(row.SkillVersionID),
 			TestCaseID:     pgconv.UUIDString(row.TestCaseID),
 			Provider:       row.Provider,
-			FailureClass:   deref(row.FailureClass),
+			FailureClass:   failureClassWord(deref(row.FailureClass)),
 			CleanupStatus:  cleanupWord(string(row.CleanupStatus)),
 			CreatedAt:      pgconv.RFC3339(row.CreatedAt),
 			StartedAt:      pgconv.RFC3339(row.StartedAt),

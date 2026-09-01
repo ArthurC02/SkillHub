@@ -41,6 +41,13 @@ import {
     TraceSummaryErrorsInnerToJSON,
     TraceSummaryErrorsInnerToJSONTyped,
 } from './TraceSummaryErrorsInner';
+import type { TraceSummaryStepsInner } from './TraceSummaryStepsInner';
+import {
+    TraceSummaryStepsInnerFromJSON,
+    TraceSummaryStepsInnerFromJSONTyped,
+    TraceSummaryStepsInnerToJSON,
+    TraceSummaryStepsInnerToJSONTyped,
+} from './TraceSummaryStepsInner';
 
 /**
  * TRACE-006's general mode: what happened, in language a non-technical user
@@ -152,10 +159,18 @@ export interface TraceSummary {
      * history - and never reconstructed by replaying run_lifecycle events
      * (iron rule 5).
      * 
-     * @type {Array<string>}
+     * **Two fields and not one pre-joined sentence, since 2026-09-01.**
+     * This was `array of string`, each item built server-side as
+     * `"<status>: <reason>"`, which put a decision that belongs to the
+     * surface — how to write a status for a reader — in the one place that
+     * cannot make it: the client already owns that mapping and used it four
+     * lines higher on the same screen, so `/runs/{id}` showed
+     * 「執行完成」and`succeeded:`at once (04 丙-115 ①).
+     * 
+     * @type {Array<TraceSummaryStepsInner>}
      * @memberof TraceSummary
      */
-    steps: Array<string>;
+    steps: Array<TraceSummaryStepsInner>;
 }
 
 
@@ -218,7 +233,7 @@ export function TraceSummaryFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'lastEventAt': json['last_event_at'] == null ? undefined : (new Date(json['last_event_at'])),
         'finalOutput': json['final_output'] == null ? undefined : json['final_output'],
         'usage': json['usage'] == null ? undefined : TraceSummaryUsageFromJSON(json['usage']),
-        'steps': json['steps'],
+        'steps': ((json['steps'] as Array<any>).map(TraceSummaryStepsInnerFromJSON)),
     };
 }
 
@@ -247,7 +262,7 @@ export function TraceSummaryToJSONTyped(value?: TraceSummary | null, ignoreDiscr
         'last_event_at': value['lastEventAt'] == null ? value['lastEventAt'] : value['lastEventAt'].toISOString(),
         'final_output': value['finalOutput'],
         'usage': TraceSummaryUsageToJSON(value['usage']),
-        'steps': value['steps'],
+        'steps': ((value['steps'] as Array<any>).map(TraceSummaryStepsInnerToJSON)),
     };
 }
 

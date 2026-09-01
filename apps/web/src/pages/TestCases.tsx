@@ -376,7 +376,8 @@ function RunHistory({
                 {(run.status_reason || run.failure_class) && (
                   <p className="note">
                     {run.status_reason ?? "未測量（伺服器沒有回報原因）"}
-                    {run.failure_class && `（分類：${run.failure_class}）`}
+                    {/* 04 丙-115 ②: this printed 「（分類：capability_mismatch）」. */}
+                    {run.failure_class && `（分類：${run.failure_class.label}）`}
                   </p>
                 )}
                 <p className="note">

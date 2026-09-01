@@ -69,6 +69,15 @@ export interface Run {
     status: RunStatusEnum;
     /**
      * Why the run entered this status. Masked and safe to display.
+     * 
+     * Two kinds of sentence arrive here and the difference matters. Most
+     * are the platform's own, and those are served in the interface
+     * language. Some are relayed verbatim from the provider that ran the
+     * workload (`state_reason` on the provider contract), and the platform
+     * does not rewrite another system's words — so a reader can meet an
+     * English sentence here, and that is the mark of a relayed one
+     * (04 丙-115 ①).
+     * 
      * @type {string}
      * @memberof Run
      */
@@ -125,6 +134,21 @@ export interface Run {
      * @memberof Run
      */
     provider: string;
+    /**
+     * The same field, the same values and the same words as
+     * `RunListItem.failure_class` — see there.
+     * 
+     * **Declared here on 2026-09-01, having been served long before.**
+     * `GET /runs/{id}` returned it while this schema did not mention it, so
+     * every generated client was missing the one field that says why a run
+     * failed — and nothing could notice: the Go side is models-only with
+     * hand-written handlers (ADR-030's 2026-08-29 note), so a handler can
+     * serve what the contract never declared.
+     * 
+     * @type {Labelled}
+     * @memberof Run
+     */
+    failureClass?: Labelled;
     /**
      * Tracked apart from the run outcome, and still writable after a
      * terminal state. Idempotent cleanup is RUN-007. `value` is the
@@ -230,6 +254,7 @@ export function RunFromJSONTyped(json: any, ignoreDiscriminator: boolean): Run {
         'testCaseSnapshotId': json['test_case_snapshot_id'],
         'testCaseId': json['test_case_id'] == null ? undefined : json['test_case_id'],
         'provider': json['provider'],
+        'failureClass': json['failure_class'] == null ? undefined : LabelledFromJSON(json['failure_class']),
         'cleanupStatus': LabelledFromJSON(json['cleanup_status']),
         'cancelRequestedAt': json['cancel_requested_at'] == null ? undefined : (new Date(json['cancel_requested_at'])),
         'createdAt': (new Date(json['created_at'])),
@@ -259,6 +284,7 @@ export function RunToJSONTyped(value?: Run | null, ignoreDiscriminator: boolean 
         'test_case_snapshot_id': value['testCaseSnapshotId'],
         'test_case_id': value['testCaseId'],
         'provider': value['provider'],
+        'failure_class': LabelledToJSON(value['failureClass']),
         'cleanup_status': LabelledToJSON(value['cleanupStatus']),
         'cancel_requested_at': value['cancelRequestedAt'] == null ? value['cancelRequestedAt'] : value['cancelRequestedAt'].toISOString(),
         'created_at': value['createdAt'].toISOString(),

@@ -160,7 +160,13 @@ const summary: TraceSummary = {
   summary_truncated: false,
   final_output: "Removed 17 duplicate rows.",
   usage: { model: "gpt-5-mini", input_tokens: 27042, output_tokens: 1180, cost_usd: null },
-  steps: ["queued: run requested", "failed: the provider could not carry the attempt"],
+  steps: [
+    // One of each kind the field carries, which is what the server now
+    // produces: the platform's own sentence, in the interface language, and
+    // one relayed verbatim from the provider, which nothing translates.
+    { status: "queued", reason: "已收到這次 Run 的請求" },
+    { status: "failed", reason: "the provider could not carry the attempt" },
+  ],
 };
 
 const advanced: TraceAdvanced = {
@@ -373,4 +379,32 @@ test("R4: the advanced Trace opens on the page its address names, and paging wri
   );
   await act(async () => previous?.click());
   expect(search.events).toBe("1");
+});
+
+/**
+ * 04 丙-115 ①. The progress list printed whatever the server had pre-joined,
+ * which was `"<status>: <reason>"` — so this page wrote the same status two ways
+ * within four lines: 「執行完成」 in the status paragraph, `succeeded:` in the list
+ * underneath it. The server now sends the two fields apart and the mapping this
+ * app already owns does the writing.
+ *
+ * The reason is asserted to arrive UNCHANGED, both kinds. That half is not
+ * decoration: this field also carries sentences relayed verbatim from the
+ * provider and the text of Go errors, and a surface that translated what it
+ * recognised while silently rewriting the rest would be inventing words for a
+ * system whose words it does not have.
+ */
+test("丙-115 進度 writes the status in this app's own words and relays the reason untouched", async () => {
+  stubTrace(summary, advanced);
+  await render();
+  const steps = Array.from(container.querySelectorAll("ol li")).map((li) => li.textContent ?? "");
+  const progress = steps.filter((t) => t.includes("已收到") || t.includes("could not carry"));
+
+  expect(progress).toEqual([
+    "排隊中：已收到這次 Run 的請求",
+    "執行失敗：the provider could not carry the attempt",
+  ]);
+  // The raw enum is gone from the list. `queued` as a bare token was the defect.
+  expect(progress.join("")).not.toContain("queued");
+  expect(progress.join("")).not.toContain("failed:");
 });

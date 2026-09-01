@@ -155,6 +155,7 @@ export * from './TraceStream';
 export * from './TraceSummary';
 export * from './TraceSummaryErrorsInner';
 export * from './TraceSummarySkillsInner';
+export * from './TraceSummaryStepsInner';
 export * from './TraceSummaryToolCalls';
 export * from './TraceSummaryUsage';
 export * from './UpdateAcceptanceCriterionRequest';

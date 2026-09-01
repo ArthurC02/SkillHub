@@ -4254,11 +4254,34 @@ components:
             cost_source: { type: string, enum: [gateway, estimated] }
         steps:
           type: array
-          items: { type: string }
           description: |
             Progress, taken from run_status_transitions - the authoritative
             history - and never reconstructed by replaying run_lifecycle events
             (iron rule 5).
+
+            **Two fields and not one pre-joined sentence, since 2026-09-01.**
+            This was `array of string`, each item built server-side as
+            `"<status>: <reason>"`, which put a decision that belongs to the
+            surface — how to write a status for a reader — in the one place that
+            cannot make it: the client already owns that mapping and used it four
+            lines higher on the same screen, so `/runs/{id}` showed
+            「執行完成」and`succeeded:`at once (04 丙-115 ①).
+          items:
+            type: object
+            required: [status]
+            properties:
+              status:
+                type: string
+                description: |
+                  The status entered, as the database enum. The words for it are
+                  the reader's surface to choose, the same way it chooses them
+                  for `Run.status`.
+              reason:
+                type: string
+                description: |
+                  Why, when the history recorded one. Absent rather than empty
+                  when it did not — see `Run.status_reason` for the two kinds of
+                  sentence that arrive here.
     Me:
       type: object
       required:
@@ -5968,7 +5991,16 @@ components:
             [queued, provisioning, preparing, running, evaluating, succeeded, failed, cancelled, timed_out]
         status_reason:
           type: string
-          description: Why the run entered this status. Masked and safe to display.
+          description: |
+            Why the run entered this status. Masked and safe to display.
+
+            Two kinds of sentence arrive here and the difference matters. Most
+            are the platform's own, and those are served in the interface
+            language. Some are relayed verbatim from the provider that ran the
+            workload (`state_reason` on the provider contract), and the platform
+            does not rewrite another system's words — so a reader can meet an
+            English sentence here, and that is the mark of a relayed one
+            (04 丙-115 ①).
         skill_id: { type: string, format: uuid }
         skill_name:
           type: string
@@ -5985,7 +6017,29 @@ components:
             re-run can be started from a history row. Not permission to re-run —
             that is preflight's answer (TEST-009).
         provider: { type: string }
-        failure_class: { type: string }
+        failure_class:
+          $ref: "#/components/schemas/Labelled"
+          description: |
+            Why the run failed, in the platform's own six-value vocabulary,
+            fixed by a CHECK constraint in db/migrations/0018_run_scheduling.sql:
+            `provider_error` (the provider could not carry the attempt),
+            `workload_error` (the workload ran and reported failure), `timeout`,
+            `cancelled` (the user asked), `capability_mismatch` (no configured
+            provider can run this request) and `platform_error` (the control
+            plane's own fault).
+
+            **Not the provider's ten `class` values** — those are
+            sandbox-provider.yaml's, and they live per attempt on
+            `run_attempts.error_class`. The vocabulary here is narrow because the
+            retry rule is written against it: only `provider_error` is the
+            platform's to retry.
+
+            `Labelled` and not a bare enum, for the reason `cleanup_status`
+            below records having learned: a client-side enum→中文 table fails by
+            rendering a value it has no word for, and it fails silently. This
+            was a bare enum until 2026-09-01, and every screen that showed it
+            interpolated the raw token into a Chinese sentence —「失敗類別
+            capability_mismatch」(04 丙-115 ②).
         cleanup_status:
           $ref: "#/components/schemas/Labelled"
           description: |
@@ -6058,7 +6112,16 @@ components:
             not present it as a pass.
         status_reason:
           type: string
-          description: Why the run entered this status. Masked and safe to display.
+          description: |
+            Why the run entered this status. Masked and safe to display.
+
+            Two kinds of sentence arrive here and the difference matters. Most
+            are the platform's own, and those are served in the interface
+            language. Some are relayed verbatim from the provider that ran the
+            workload (`state_reason` on the provider contract), and the platform
+            does not rewrite another system's words — so a reader can meet an
+            English sentence here, and that is the mark of a relayed one
+            (04 丙-115 ①).
         skill_id:
           type: string
           format: uuid
@@ -6097,6 +6160,18 @@ components:
         provider:
           type: string
           description: '`unassigned` until provider selection lands (RUN-005).'
+        failure_class:
+          $ref: "#/components/schemas/Labelled"
+          description: |
+            The same field, the same values and the same words as
+            `RunListItem.failure_class` — see there.
+
+            **Declared here on 2026-09-01, having been served long before.**
+            `GET /runs/{id}` returned it while this schema did not mention it, so
+            every generated client was missing the one field that says why a run
+            failed — and nothing could notice: the Go side is models-only with
+            hand-written handlers (ADR-030's 2026-08-29 note), so a handler can
+            serve what the contract never declared.
         cleanup_status:
           $ref: "#/components/schemas/Labelled"
           description: |

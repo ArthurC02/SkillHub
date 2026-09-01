@@ -491,7 +491,7 @@ func (s *Service) create(ctx context.Context, p CreateParams) (gen.Run, error) {
 		return gen.Run{}, err
 	}
 
-	if err := s.record(ctx, q, tx, run, nil, pgtype.UUID{}, "run requested", p.Actor, audit.ActionRunCreate); err != nil {
+	if err := s.record(ctx, q, tx, run, nil, pgtype.UUID{}, "已收到這次 Run 的請求", p.Actor, audit.ActionRunCreate); err != nil {
 		return gen.Run{}, err
 	}
 
