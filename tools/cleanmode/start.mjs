@@ -167,79 +167,69 @@ function gatewayModels() {
   }
 }
 
-// CAPABILITIES is what the operator is handed. One row per thing a visitor can
-// try, what it needs, and what they will meet if it is not there - because the
-// failure they would otherwise meet is a 503, an empty result list or a refused
-// run, three screens that do not say which variable is missing.
-const CAPABILITIES = [
-  {
-    name: "目錄搜尋（關鍵字）",
-    needs: [],
-  },
-  {
-    name: "跨語言意圖搜尋、匯入增強",
-    needs: ["LLM_SERVICE_URL"],
-    // Not just "smaller": this one is an ORDERING constraint, and getting it
-    // wrong is not recoverable here. Enrichment and the embedding happen at
-    // import time; without the service the search document stays `pending`, and
-    // the only backfill (cmd/reindex phase 2) reads packages through
-    // objstore.FromEnv() while clean mode's store lives inside the API process.
-    // So a catalogue seeded in this state cannot be fixed by starting the
-    // service afterwards — the carrier is in-memory too, so there is nothing to
-    // restart into. Measured 2026-08-30 (04 丙-108).
-    off: "只剩 FTS：非英語的查詢多半回 0 筆（畫面會標 degraded）",
-    how: "另起 apps/llm 再設成它的位址，**並且要在 seed 之前**——種進去的內容不會事後補索引，補救路徑在淨測試模式下到不了",
-  },
-  {
-    name: "試跑（模型出口）",
-    needs: ["SKILLHUB_MODEL_GATEWAY_URL", "SKILLHUB_MODEL_GATEWAY_KEY"],
-    off: "沒有模型出路，平台會擋下派送並說明（05 R-35）",
-    how: "起 infra/compose 的 litellm，URL 指向它，KEY 用該部署的 master key",
-  },
-  {
-    name: "評估判定（Judge）",
-    needs: ["LLM_SERVICE_URL"],
-    off: "Run 跑得完，但判定是 undetermined：沒有 judge 服務",
-    how: "同上，judge 在 Python 側",
-  },
-  {
-    name: "打包下載",
-    needs: ["DOWNLOAD_ARTIFACT_RETENTION"],
-    off: "打包一律 503",
-    how: "這個值刻意沒有預設——它是一句對使用者的保存期承諾，不是參數（GOV-RETENTION-001）。定了幾天就寫幾天，例如 2160h",
-  },
-  {
-    // The account exists (this launch made the seed importer an operator); what
-    // is still a person's action is USING it. Seeded content is all
-    // `redistribution = unknown` and packaging refuses every one of it until
-    // somebody establishes a licence with named evidence (ADR-057), so this row
-    // says so even when it is ticked.
-    name: `可散布性放行（operator 帳號＝${SEED_IMPORTER}；種子內容仍全部是 unknown，放行前打包一律 422）`,
-    needs: ["OPERATOR_USER_IDS"],
-    off: "沒有人能放行，所以每一個 Skill 的打包都會 422（04 丙-105）",
-    how: "設成要當 operator 的 user id（逗號分隔）",
-  },
-  {
-    name: "漏斗量測",
-    needs: ["ANALYTICS_RETENTION"],
-    off: "不收集任何漏斗事件",
-    how: "設一個保存期，例如 4320h",
-  },
-];
+// The capability table used to live here, as a list of variables this script
+// checked with `!process.env[n]`. It is now the platform's (05 R-36 第二段,
+// apps/platform/cmd/api/capabilities.go) and this asks for it.
+//
+// R-36's hard condition is why the old list is gone rather than kept in sync:
+// two lists of the same preconditions is the drift this repository keeps
+// finding. And this script's copy was the one that could not do better than
+// guess — it owns no process it could ask, so "the variable is set" was the
+// most it could ever say.
+//
+// What that cost, measured 2026-09-01 (04 丙-118): LLM_SERVICE_URL pointing at a
+// service that had been restarted without its credential still printed
+// ✓ 跨語言意圖搜尋 here, while that service answered 503 on every capability
+// endpoint. The platform's table probes it instead, with this deployment's own
+// token, so the same state now prints ✗ with the reason.
+const READINESS_LABEL = {
+  ready: "✓ 量到了，可以用",
+  // Printed differently from ✓ on purpose: this is the state every green tick
+  // the old list printed was really in.
+  unmeasured: "? 前提齊全，但沒有人量過它",
+  unavailable: "✗ 缺前提",
+  broken: "✗ 前提齊全，但量到它壞的",
+};
 
-function reportCapabilities(filled) {
+async function reportCapabilities(filled) {
   console.log(
     `[launcher] 這次啟動自己補上的設定（不必也不該由人提供）：${filled.join("、") || "無"}`,
   );
-  console.log("[launcher] 這個部署現在有什麼、缺什麼：");
-  for (const c of CAPABILITIES) {
-    const missing = c.needs.filter((n) => !process.env[n]);
-    if (missing.length === 0) {
-      console.log(`[launcher]   ✓ ${c.name}`);
-      continue;
+  let body;
+  try {
+    const response = await fetch(`http://127.0.0.1:${API_PORT}/readyz`, {
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) throw new Error(`GET /readyz -> ${response.status}`);
+    body = await response.json();
+  } catch (error) {
+    // Not fatal and not silent. The processes are up; what failed is the report
+    // about them, and saying so beats printing a table this script made up.
+    console.log(
+      `[launcher] 問不到平台的能力表（${error.message}）。三個行程都起來了，` +
+        `但「這個部署現在有什麼」這一題現在沒有答案——直接開 http://127.0.0.1:${API_PORT}/readyz 再試一次。`,
+    );
+    return;
+  }
+  console.log(
+    `[launcher] 這個部署現在有什麼、缺什麼（平台的答案，GET /readyz 是同一張表）：`,
+  );
+  for (const c of body.capabilities ?? []) {
+    console.log(`[launcher]   ${READINESS_LABEL[c.readiness] ?? c.readiness} ${c.name}`);
+    if (c.detail) console.log(`[launcher]       ${c.detail}`);
+    if (c.missing?.length) console.log(`[launcher]       缺 ${c.missing.join("、")}`);
+    if (c.readiness !== "ready" && c.without) {
+      console.log(`[launcher]       沒有它會怎樣：${c.without}`);
     }
-    console.log(`[launcher]   ✗ ${c.name} — ${c.off}`);
-    console.log(`[launcher]       缺 ${missing.join("、")}；${c.how}`);
+    if (c.readiness === "unavailable" && c.fix) {
+      console.log(`[launcher]       怎麼補：${c.fix}`);
+    }
+  }
+  if (!body.ready) {
+    console.log(
+      `[launcher] 上面不是每一列都量到可以用。這不一定是壞掉——一個比較小的部署也長這樣——` +
+        `但「設定齊全」和「它會動」是兩件事，只有 ✓ 那一行是量出來的。`,
+    );
   }
 }
 
@@ -621,5 +611,6 @@ console.log(
 );
 console.log(`[launcher] ctrl-c stops all three.\n`);
 
-// Last, so it is the block still on screen when somebody starts clicking.
-reportCapabilities(filledSettings);
+// Last, so it is the block still on screen when somebody starts clicking, and
+// after the API is up because it is the API that answers it now.
+await reportCapabilities(filledSettings);

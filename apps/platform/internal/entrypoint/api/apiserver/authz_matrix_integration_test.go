@@ -70,6 +70,21 @@ var anonymousRoutes = []anonCase{
 
 	// --- public surface (DISC-001/006/007/008/010, O11Y-004) --------------------
 	{pattern: "GET /healthz", want: http.StatusOK},
+	// Public for the same reason /healthz is, and the reason is load-bearing: the
+	// launcher that has to read this answer holds no session, and 05 R-36's hard
+	// condition is that it reads THIS one rather than keeping a second list of
+	// the same preconditions.
+	//
+	// 200 whatever the table says. A readiness endpoint that answered 503 for an
+	// OPTIONAL capability being off would make "packaging is not configured"
+	// indistinguishable from "the process is broken" — two facts sharing one
+	// signal, which is the defect this endpoint exists to undo (04 丙-110/118).
+	//
+	// What it discloses without a session is names, never values, and outside
+	// clean test mode not even those: readiness.go withholds missing/detail/
+	// without/fix, because a list of what a deployment has not configured is
+	// reconnaissance.
+	{pattern: "GET /readyz", want: http.StatusOK},
 	{pattern: "GET /api/skills/search", query: "?q=anything", want: http.StatusOK},
 	// OptionalSession: no session is not an error here, an unknown id is.
 	{pattern: "GET /api/skills/{id}", want: http.StatusNotFound},

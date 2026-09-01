@@ -30,6 +30,81 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+  /readyz:
+    get:
+      operationId: getReadiness
+      summary: Deployment capability table — what this deployment can do right now
+      description: |
+        The question people ask `/healthz`. That one is a liveness probe and a
+        constant, which is correct and was never the defect; the defect was that
+        it was the only endpoint that looked like it answered this one (05 R-36
+        第二段, 04 丙-110/118).
+
+        **`ready` is reachable only by measurement.** A capability whose
+        variables are all present and which nothing probed reports `unmeasured`,
+        a distinct value — configuration is not function, and every green tick
+        the launcher used to print was really this state. On 2026-09-01 three
+        greens in a row (a launcher that tested only whether a variable was set,
+        this platform's `/healthz`, and apps/llm's own `/healthz`) sat over a
+        service that could perform none of its four jobs.
+
+        Always `200`, whatever the table says: a readiness endpoint that answered
+        503 because an OPTIONAL capability is off would make "packaging is not
+        configured" indistinguishable from "the process is broken", which is the
+        collapsing of two facts into one signal that this endpoint exists to undo.
+
+        Unauthenticated, because the launcher that has to read it holds no
+        session — and R-36's hard condition is that the launcher reads THIS
+        answer rather than keeping a second list of the same preconditions.
+        Outside clean test mode the per-row detail is withheld: a list of what a
+        deployment has not configured is reconnaissance, so `missing`, `detail`,
+        `without` and `fix` are served only in clean test mode, where the reader
+        is the operator on that machine.
+      security: []
+      responses:
+        "200":
+          description: The capability table. Read `ready` for the whole-deployment answer.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ready, capabilities]
+                properties:
+                  ready:
+                    type: boolean
+                    description: |
+                      Every capability was measured and works. `unmeasured` is
+                      deliberately not enough — a caller asking this wants to
+                      know whether the deployment works, and "nobody looked" is
+                      not an answer to that.
+                  detail: { type: string }
+                  capabilities:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, readiness]
+                      properties:
+                        id:
+                          type: string
+                          description: Stable machine key; the launcher and this endpoint both use it.
+                        name: { type: string }
+                        readiness:
+                          type: string
+                          enum: [ready, unmeasured, unavailable, broken]
+                          description: |
+                            `ready` — probed and working. `unmeasured` — every
+                            precondition present and nothing measured it.
+                            `unavailable` — a precondition is missing; `missing`
+                            names which. `broken` — probed and it failed;
+                            `detail` says how.
+                        missing:
+                          type: array
+                          items: { type: string }
+                          description: Variable NAMES, never values. Clean test mode only.
+                        detail: { type: string, description: Clean test mode only. }
+                        without: { type: string, description: What a user meets without it. Clean test mode only. }
+                        fix: { type: string, description: How to supply it. Clean test mode only. }
+                        measured_for: { type: string, description: How long the probe took. }
   /auth/github/login:
     get:
       operationId: startGithubLogin

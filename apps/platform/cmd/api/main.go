@@ -413,6 +413,17 @@ func devLoginRefusal(devLogin, secure bool) string {
 }
 
 func main() {
+	// `--capabilities` prints the declared table and exits, before anything is
+	// read or dialled. `devctl automation-check` runs this to compare the table
+	// against .env.example without standing a deployment up (05 R-36's checker).
+	if len(os.Args) > 1 && os.Args[1] == "--capabilities" {
+		if err := printCapabilitiesJSON(os.Stdout); err != nil {
+			slog.Error("print capabilities", "error", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -533,8 +544,15 @@ func main() {
 			"as any name without a credential (ADR-020). Never in production")
 	}
 
+	// One table, built once, read by three callers: the boot print below,
+	// GET /readyz, and (through that endpoint) the launcher — which is R-36's
+	// hard condition, that no second list of the same preconditions exists.
+	capabilities := capabilityTable(pool)
+	reportCapabilities(ctx, capabilities)
+
 	app, err := apiserver.NewApp(apiserver.Config{
 		Pool:               pool,
+		Readiness:          capabilities,
 		Store:              store,
 		LLM:                llm,
 		Fetcher:            importFetcherFromEnv(),

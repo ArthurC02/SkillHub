@@ -5465,6 +5465,148 @@ func (s *Server) handleGetMeRequest(args [0]string, argsEscaped bool, w http.Res
 	}
 }
 
+// handleGetReadinessRequest handles getReadiness operation.
+//
+// The question people ask `/healthz`. That one is a liveness probe and a constant, which is correct
+// and was never the defect; the defect was that it was the only endpoint that looked like it answered
+// this one (05 R-36 第二段, 04 丙-110/118).
+//
+// `ready` is reachable only by measurement. A capability whose variables are all present and which
+// nothing probed reports `unmeasured`, a distinct value — configuration is not function, and every
+// green tick the launcher used to print was really this state. On 2026-09-01 three greens in a row (a
+// launcher that tested only whether a variable was set, this platform's `/healthz`, and apps/llm's own
+// `/healthz`) sat over a service that could perform none of its four jobs.
+//
+// Always `200`, whatever the table says: a readiness endpoint that answered 503 because an OPTIONAL
+// capability is off would make "packaging is not configured" indistinguishable from "the process is
+// broken", which is the collapsing of two facts into one signal that this endpoint exists to undo.
+//
+// Unauthenticated, because the launcher that has to read it holds no session — and R-36's hard
+// condition is that the launcher reads THIS answer rather than keeping a second list of the same
+// preconditions. Outside clean test mode the per-row detail is withheld: a list of what a deployment
+// has not configured is reconnaissance, so `missing`, `detail`, `without` and `fix` are served only in
+// clean test mode, where the reader is the operator on that machine.
+//
+// GET /readyz
+func (s *Server) handleGetReadinessRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	otelAttrs := []attribute.KeyValue{
+		otelogen.OperationID("getReadiness"),
+		semconv.HTTPRequestMethodKey.String("GET"),
+		semconv.HTTPRouteKey.String("/readyz"),
+	}
+	// Add attributes from config.
+	otelAttrs = append(otelAttrs, s.cfg.Attributes...)
+
+	// Start a span for this request.
+	ctx, span := s.cfg.Tracer.Start(r.Context(), GetReadinessOperation,
+		trace.WithAttributes(otelAttrs...),
+		serverSpanKind,
+	)
+	defer span.End()
+
+	// Add Labeler to context.
+	labeler := &Labeler{attrs: otelAttrs}
+	ctx = contextWithLabeler(ctx, labeler)
+
+	// Run stopwatch.
+	startTime := time.Now()
+	defer func() {
+		elapsedDuration := time.Since(startTime)
+
+		attrSet := labeler.AttributeSet()
+		attrs := attrSet.ToSlice()
+		code := statusWriter.status
+		if code != 0 {
+			codeAttr := semconv.HTTPResponseStatusCode(code)
+			attrs = append(attrs, codeAttr)
+			span.SetAttributes(attrs...)
+		}
+		attrOpt := metric.WithAttributes(attrs...)
+
+		// Increment request counter.
+		s.requests.Add(ctx, 1, attrOpt)
+
+		// Use floating point division here for higher precision (instead of Millisecond method).
+		s.duration.Record(ctx, float64(elapsedDuration)/float64(time.Millisecond), attrOpt)
+	}()
+
+	var (
+		recordError = func(stage string, err error) {
+			span.RecordError(err)
+
+			// https://opentelemetry.io/docs/specs/semconv/http/http-spans/#status
+			// Span Status MUST be left unset if HTTP status code was in the 1xx, 2xx or 3xx ranges,
+			// unless there was another error (e.g., network error receiving the response body; or 3xx codes with
+			// max redirects exceeded), in which case status MUST be set to Error.
+			code := statusWriter.status
+			if code < 100 || code >= 500 {
+				span.SetStatus(codes.Error, stage)
+			}
+
+			attrSet := labeler.AttributeSet()
+			attrs := attrSet.ToSlice()
+			if code != 0 {
+				attrs = append(attrs, semconv.HTTPResponseStatusCode(code))
+			}
+
+			s.errors.Add(ctx, 1, metric.WithAttributes(attrs...))
+		}
+		err error
+	)
+
+	var rawBody []byte
+
+	var response *GetReadinessOK
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    GetReadinessOperation,
+			OperationSummary: "Deployment capability table — what this deployment can do right now",
+			OperationID:      "getReadiness",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params:           middleware.Parameters{},
+			Raw:              r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = struct{}
+			Response = *GetReadinessOK
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			nil,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.GetReadiness(ctx)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.GetReadiness(ctx)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeGetReadinessResponse(response, w, span); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleGetRunRequest handles getRun operation.
 //
 // `id` is the platform `run_id` and always will be: a provider's ephemeral id is never part of a URL

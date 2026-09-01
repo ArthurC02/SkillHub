@@ -777,3 +777,54 @@ def test_a_caller_that_stops_waiting_gets_no_answer(monkeypatch):
 
     assert answer is None, f"the caller walked away and still got {answer!r}"
     assert reached_the_answer == []
+
+
+# --- /readyz: the endpoint /healthz could not be (04 丙-118) --------------------
+#
+# The defect this closes: on 2026-09-01 this service answered /healthz 200 while
+# LLM_SERVICE_TOKEN was unset, which makes every capability endpoint 503. Three
+# green lights in a row (the launcher's env check, the platform's /healthz, this
+# service's /healthz) sat over a service that could do none of its four jobs.
+
+
+def test_readyz_reports_ready_when_the_gateway_is_configured():
+    response = client.get("/readyz")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ready"
+    assert body["gateway_configured"] is True
+    assert body["missing"] == []
+
+
+def test_readyz_names_what_is_missing_rather_than_reporting_ready(monkeypatch):
+    # A configured-but-useless service is the state that has to be visible: the
+    # process is alive, its credential matches, and it still cannot call a model.
+    monkeypatch.delenv("LITELLM_API_KEY", raising=False)
+    response = client.get("/readyz")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "not_ready"
+    assert body["gateway_configured"] is False
+    assert body["missing"] == ["LITELLM_API_KEY"]
+
+
+def test_readyz_is_behind_the_service_token_so_one_request_measures_three_things():
+    # Reachability, credential match and configuration. The platform's probe
+    # calls this with the token it holds, so a token that no longer matches --
+    # the exact 2026-09-01 accident -- answers here instead of surfacing later as
+    # an empty search that reads like an empty catalogue.
+    assert TestClient(app).get("/readyz").status_code == 401
+    assert (
+        TestClient(app, headers={"Authorization": "Bearer wrong"}).get("/readyz").status_code == 401
+    )
+
+
+def test_readyz_answers_503_when_this_service_has_no_credential_configured(monkeypatch):
+    # The accident itself: started from a shell with no credentials. /healthz
+    # said 200; this says the deployment is not usable, with the reason.
+    monkeypatch.delenv("LLM_SERVICE_TOKEN", raising=False)
+    response = client.get("/readyz")
+    assert response.status_code == 503
+    assert "authentication is not configured" in response.json()["detail"]
+    # And liveness is unchanged, because it was never wrong: the process IS alive.
+    assert TestClient(app).get("/healthz").status_code == 200

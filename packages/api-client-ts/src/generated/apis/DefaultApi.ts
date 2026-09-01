@@ -50,6 +50,7 @@ import type {
   GenerateSkillResult,
   GenerationFailures,
   GetDispatchStatus200Response,
+  GetReadiness200Response,
   GetRunTrace200Response,
   Health,
   ImportSkillFromURLRequest,
@@ -167,6 +168,8 @@ import {
     GenerationFailuresToJSON,
     GetDispatchStatus200ResponseFromJSON,
     GetDispatchStatus200ResponseToJSON,
+    GetReadiness200ResponseFromJSON,
+    GetReadiness200ResponseToJSON,
     GetRunTrace200ResponseFromJSON,
     GetRunTrace200ResponseToJSON,
     HealthFromJSON,
@@ -1008,6 +1011,21 @@ export interface DefaultApiInterface {
      * Current user and personal workspace, resolved from the session
      */
     getMe(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Me>;
+
+    /**
+     * The question people ask `/healthz`. That one is a liveness probe and a constant, which is correct and was never the defect; the defect was that it was the only endpoint that looked like it answered this one (05 R-36 第二段, 04 丙-110/118).  **`ready` is reachable only by measurement.** A capability whose variables are all present and which nothing probed reports `unmeasured`, a distinct value — configuration is not function, and every green tick the launcher used to print was really this state. On 2026-09-01 three greens in a row (a launcher that tested only whether a variable was set, this platform\'s `/healthz`, and apps/llm\'s own `/healthz`) sat over a service that could perform none of its four jobs.  Always `200`, whatever the table says: a readiness endpoint that answered 503 because an OPTIONAL capability is off would make \"packaging is not configured\" indistinguishable from \"the process is broken\", which is the collapsing of two facts into one signal that this endpoint exists to undo.  Unauthenticated, because the launcher that has to read it holds no session — and R-36\'s hard condition is that the launcher reads THIS answer rather than keeping a second list of the same preconditions. Outside clean test mode the per-row detail is withheld: a list of what a deployment has not configured is reconnaissance, so `missing`, `detail`, `without` and `fix` are served only in clean test mode, where the reader is the operator on that machine. 
+     * @summary Deployment capability table — what this deployment can do right now
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    getReadinessRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetReadiness200Response>>;
+
+    /**
+     * The question people ask `/healthz`. That one is a liveness probe and a constant, which is correct and was never the defect; the defect was that it was the only endpoint that looked like it answered this one (05 R-36 第二段, 04 丙-110/118).  **`ready` is reachable only by measurement.** A capability whose variables are all present and which nothing probed reports `unmeasured`, a distinct value — configuration is not function, and every green tick the launcher used to print was really this state. On 2026-09-01 three greens in a row (a launcher that tested only whether a variable was set, this platform\'s `/healthz`, and apps/llm\'s own `/healthz`) sat over a service that could perform none of its four jobs.  Always `200`, whatever the table says: a readiness endpoint that answered 503 because an OPTIONAL capability is off would make \"packaging is not configured\" indistinguishable from \"the process is broken\", which is the collapsing of two facts into one signal that this endpoint exists to undo.  Unauthenticated, because the launcher that has to read it holds no session — and R-36\'s hard condition is that the launcher reads THIS answer rather than keeping a second list of the same preconditions. Outside clean test mode the per-row detail is withheld: a list of what a deployment has not configured is reconnaissance, so `missing`, `detail`, `without` and `fix` are served only in clean test mode, where the reader is the operator on that machine. 
+     * Deployment capability table — what this deployment can do right now
+     */
+    getReadiness(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetReadiness200Response>;
 
     /**
      * `id` is the platform `run_id` and always will be: a provider\'s ephemeral id is never part of a URL (iron rule 10). It appears in the response only as an attribute of the attempt that owns it. 
@@ -2926,6 +2944,37 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async getMe(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Me> {
         const response = await this.getMeRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * The question people ask `/healthz`. That one is a liveness probe and a constant, which is correct and was never the defect; the defect was that it was the only endpoint that looked like it answered this one (05 R-36 第二段, 04 丙-110/118).  **`ready` is reachable only by measurement.** A capability whose variables are all present and which nothing probed reports `unmeasured`, a distinct value — configuration is not function, and every green tick the launcher used to print was really this state. On 2026-09-01 three greens in a row (a launcher that tested only whether a variable was set, this platform\'s `/healthz`, and apps/llm\'s own `/healthz`) sat over a service that could perform none of its four jobs.  Always `200`, whatever the table says: a readiness endpoint that answered 503 because an OPTIONAL capability is off would make \"packaging is not configured\" indistinguishable from \"the process is broken\", which is the collapsing of two facts into one signal that this endpoint exists to undo.  Unauthenticated, because the launcher that has to read it holds no session — and R-36\'s hard condition is that the launcher reads THIS answer rather than keeping a second list of the same preconditions. Outside clean test mode the per-row detail is withheld: a list of what a deployment has not configured is reconnaissance, so `missing`, `detail`, `without` and `fix` are served only in clean test mode, where the reader is the operator on that machine. 
+     * Deployment capability table — what this deployment can do right now
+     */
+    async getReadinessRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GetReadiness200Response>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/readyz`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => GetReadiness200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * The question people ask `/healthz`. That one is a liveness probe and a constant, which is correct and was never the defect; the defect was that it was the only endpoint that looked like it answered this one (05 R-36 第二段, 04 丙-110/118).  **`ready` is reachable only by measurement.** A capability whose variables are all present and which nothing probed reports `unmeasured`, a distinct value — configuration is not function, and every green tick the launcher used to print was really this state. On 2026-09-01 three greens in a row (a launcher that tested only whether a variable was set, this platform\'s `/healthz`, and apps/llm\'s own `/healthz`) sat over a service that could perform none of its four jobs.  Always `200`, whatever the table says: a readiness endpoint that answered 503 because an OPTIONAL capability is off would make \"packaging is not configured\" indistinguishable from \"the process is broken\", which is the collapsing of two facts into one signal that this endpoint exists to undo.  Unauthenticated, because the launcher that has to read it holds no session — and R-36\'s hard condition is that the launcher reads THIS answer rather than keeping a second list of the same preconditions. Outside clean test mode the per-row detail is withheld: a list of what a deployment has not configured is reconnaissance, so `missing`, `detail`, `without` and `fix` are served only in clean test mode, where the reader is the operator on that machine. 
+     * Deployment capability table — what this deployment can do right now
+     */
+    async getReadiness(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GetReadiness200Response> {
+        const response = await this.getReadinessRaw(initOverrides);
         return await response.value();
     }
 

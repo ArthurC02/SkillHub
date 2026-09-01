@@ -428,16 +428,40 @@ func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
 		t.Error("ownedSettings() invents a DOWNLOAD_ARTIFACT_RETENTION: that value is a retention promise quoted to " +
 			"users in the consent form, and GOV-RETENTION-001 leaves it unset on purpose")
 	}
-	table := launcher[strings.Index(launcher, "const CAPABILITIES = ["):]
-	if end := strings.Index(table, "\n];\n"); end > 0 {
-		table = table[:end]
+	// The capability table moved to the platform on 2026-09-01 (05 R-36 第二段),
+	// so this asserts the same property in its new home, plus the hard condition
+	// that made it move.
+	//
+	// The condition first, because a future edit is most likely to undo it by
+	// "just adding a quick check here": there must be no second list. The
+	// launcher's copy could never do better than read an environment variable —
+	// it owns no process it could ask — and that inference printed a green tick
+	// over a service that could do none of its four jobs (04 丙-118).
+	if strings.Contains(launcher, "const CAPABILITIES = [") {
+		t.Error("the launcher holds a capability list again. 05 R-36's hard condition is that it reads the " +
+			"platform's answer; two lists of the same preconditions is the drift this repo keeps finding")
+	}
+	if !strings.Contains(launcher, "/readyz") {
+		t.Error("the launcher no longer asks the platform what this deployment can do")
+	}
+	// Asking is not enough if it throws the answer away: every state has to reach
+	// the operator, and `unmeasured` is the one that used to be a tick.
+	for _, state := range []string{"unmeasured", "unavailable", "broken", "ready"} {
+		if !strings.Contains(launcher, state) {
+			t.Errorf("the launcher does not render the %q state, so it collapses back into the others", state)
+		}
+	}
+	// And the variables themselves, asserted against the table that owns them now.
+	table, err := os.ReadFile(filepath.Join(root, "apps", "platform", "cmd", "api", "capabilities.go"))
+	if err != nil {
+		t.Fatal(err)
 	}
 	for _, name := range []string{
 		"DOWNLOAD_ARTIFACT_RETENTION", "LLM_SERVICE_URL",
 		"SKILLHUB_MODEL_GATEWAY_URL", "SKILLHUB_MODEL_GATEWAY_KEY", "OPERATOR_USER_IDS",
 	} {
-		if !strings.Contains(table, name) {
-			t.Errorf("the capability report no longer names %s, so a launch missing it says nothing", name)
+		if !strings.Contains(string(table), name) {
+			t.Errorf("the capability table no longer names %s, so a launch missing it says nothing", name)
 		}
 	}
 

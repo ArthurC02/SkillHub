@@ -111,7 +111,47 @@ def _scrub(text: str) -> str:
 
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
+    """Liveness: this process is running. It says nothing about capability.
+
+    That is correct for a liveness probe and it is also how this service spent
+    2026-09-01 answering 200 while unable to perform a single one of its four
+    jobs: with LLM_SERVICE_TOKEN unset, `require_service_token` answers 503 on
+    every capability endpoint, and nothing here knew. `/readyz` below is the
+    endpoint that knows (04 丙-118).
+    """
     return {"status": "ok"}
+
+
+@app.get("/readyz", dependencies=[Depends(require_service_token)])
+def readyz() -> dict[str, object]:
+    """Readiness: can this service actually do its work, and for this caller.
+
+    Deliberately BEHIND the service token, which makes one request measure three
+    things the platform otherwise has to assume separately: that this process is
+    reachable, that its credential matches the caller's, and that it is
+    configured to reach the gateway. A mismatched or missing token answers 401 or
+    503 here rather than surfacing later as an empty search that looks like an
+    empty catalogue.
+
+    Cheap and free on purpose: /readyz is polled, so it reads configuration and
+    calls no model. Whether the gateway ANSWERS is the platform's own probe to
+    run — this one would only be repeating a claim it cannot check either.
+    """
+    base_url = os.getenv("LITELLM_BASE_URL", "")
+    api_key = os.getenv("LITELLM_API_KEY", "")
+    missing = [
+        name
+        for name, value in (("LITELLM_BASE_URL", base_url), ("LITELLM_API_KEY", api_key))
+        if not value
+    ]
+    return {
+        "status": "ready" if not missing else "not_ready",
+        # Named so the platform can say which capability is out rather than
+        # reporting the whole service as down: every endpoint here needs the
+        # gateway except this one.
+        "gateway_configured": not missing,
+        "missing": missing,
+    }
 
 
 # --- Embedding endpoint (DISC-001) ---

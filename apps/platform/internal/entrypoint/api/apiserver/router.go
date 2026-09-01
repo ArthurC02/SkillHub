@@ -12,6 +12,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
@@ -55,6 +56,13 @@ type Deps struct {
 	// because "the route does not exist" and "the route refuses" are different
 	// answers to a probe, and only the first one keeps the entry point invisible.
 	GenerateExposed bool
+	// Readiness is the deployment capability table (05 R-36 第二段). Nil mounts
+	// /readyz anyway and has it say so — a build that measured nothing must not
+	// answer the readiness question with silence, which is the shape 04 丙-118 is.
+	Readiness *envx.Registry
+	// CleanMode decides how much of that table /readyz discloses without a
+	// session. See readiness.go.
+	CleanMode bool
 }
 
 // NewRouter returns the API route table. Callers wrap it as needed — cmd/api
@@ -74,6 +82,13 @@ func NewRouter(d Deps) http.Handler {
 	// router. Every authenticated/operator route remains explicitly mounted
 	// below, so the reviewable AuthN/AuthZ matrix does not move into codegen.
 	mux.Handle("GET /healthz", newGeneratedHealthHandler())
+	// GET /readyz answers the question people ask GET /healthz. Beside it and
+	// not instead of it: liveness and readiness are different facts, and this
+	// item exists because they were sharing one signal (04 丙-110/118).
+	// Unauthenticated for the same reason /healthz is — the launcher that has to
+	// read it holds no session, and R-36's hard condition is that it read THIS
+	// answer rather than keep a second list.
+	mux.HandleFunc("GET /readyz", readinessHandler(d.Readiness, d.CleanMode))
 	auth.Mount(mux)
 	// NFR-001 clause 5 names these two and anonymous search below; POST
 	// /skills/generate is limited() for a reason of its own, stated where it is

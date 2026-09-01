@@ -343,6 +343,30 @@ type Handler interface {
 	//
 	// GET /me
 	GetMe(ctx context.Context) (GetMeRes, error)
+	// GetReadiness implements getReadiness operation.
+	//
+	// The question people ask `/healthz`. That one is a liveness probe and a constant, which is correct
+	// and was never the defect; the defect was that it was the only endpoint that looked like it answered
+	// this one (05 R-36 第二段, 04 丙-110/118).
+	//
+	// `ready` is reachable only by measurement. A capability whose variables are all present and which
+	// nothing probed reports `unmeasured`, a distinct value — configuration is not function, and every
+	// green tick the launcher used to print was really this state. On 2026-09-01 three greens in a row (a
+	// launcher that tested only whether a variable was set, this platform's `/healthz`, and apps/llm's own
+	// `/healthz`) sat over a service that could perform none of its four jobs.
+	//
+	// Always `200`, whatever the table says: a readiness endpoint that answered 503 because an OPTIONAL
+	// capability is off would make "packaging is not configured" indistinguishable from "the process is
+	// broken", which is the collapsing of two facts into one signal that this endpoint exists to undo.
+	//
+	// Unauthenticated, because the launcher that has to read it holds no session — and R-36's hard
+	// condition is that the launcher reads THIS answer rather than keeping a second list of the same
+	// preconditions. Outside clean test mode the per-row detail is withheld: a list of what a deployment
+	// has not configured is reconnaissance, so `missing`, `detail`, `without` and `fix` are served only in
+	// clean test mode, where the reader is the operator on that machine.
+	//
+	// GET /readyz
+	GetReadiness(ctx context.Context) (*GetReadinessOK, error)
 	// GetRun implements getRun operation.
 	//
 	// `id` is the platform `run_id` and always will be: a provider's ephemeral id is never part of a URL

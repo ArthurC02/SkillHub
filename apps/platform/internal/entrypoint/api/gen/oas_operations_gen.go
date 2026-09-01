@@ -35,6 +35,7 @@ const (
 	GetDownloadArtifactOperation               OperationName = "GetDownloadArtifact"
 	GetHealthOperation                         OperationName = "GetHealth"
 	GetMeOperation                             OperationName = "GetMe"
+	GetReadinessOperation                      OperationName = "GetReadiness"
 	GetRunOperation                            OperationName = "GetRun"
 	GetRunEvaluationOperation                  OperationName = "GetRunEvaluation"
 	GetRunPreflightOperation                   OperationName = "GetRunPreflight"

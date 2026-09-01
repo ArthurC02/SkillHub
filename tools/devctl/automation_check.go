@@ -147,6 +147,8 @@ func documentCheckers() []namedChecker {
 		{"image-version", imageVersionProblems},
 		{"embedding-dims", embeddingDimsProblems},
 		{"goldenset-mirror", goldensetMirrorProblems},
+		// 05 R-36: a deployment variable that does not say what it blocks.
+		{"capability-table", capabilityTableProblems},
 	}
 }
 

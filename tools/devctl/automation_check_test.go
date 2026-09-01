@@ -42,6 +42,8 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"isolation-level",
 		"route-table", "requirement-refs", "purge-schedule", "timeout-budget",
 		"image-version", "embedding-dims", "goldenset-mirror",
+		// 05 R-36 第二段: every deployment variable says what it blocks.
+		"capability-table",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {

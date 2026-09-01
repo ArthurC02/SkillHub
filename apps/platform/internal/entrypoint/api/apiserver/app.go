@@ -15,6 +15,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/envx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
@@ -65,10 +66,15 @@ type Config struct {
 	DownloadRetention  time.Duration
 	AnalyticsRetention time.Duration
 
-	OAuth    *identity.GitHubOAuth
-	Secure   bool
-	AppURL   string
-	DevLogin bool
+	// Readiness is the deployment capability table (05 R-36 第二段), built by the
+	// entrypoint because that is where the probes' dependencies live. Nil is a
+	// working deployment whose /readyz says it measured nothing, which is the one
+	// answer that must never be rounded up to "ready" (04 丙-118).
+	Readiness *envx.Registry
+	OAuth     *identity.GitHubOAuth
+	Secure    bool
+	AppURL    string
+	DevLogin  bool
 	// Operators is the 02:SEC-011 roster; Invited is the BETA-001 admission list
 	// (ADR-028 決策 1). Empty Operators grants nothing; empty Invited admits
 	// everybody, which is why AuditRosters fails them closed in opposite
@@ -311,8 +317,10 @@ func NewApp(cfg Config) (*App, error) {
 
 	return &App{
 		Deps: Deps{
-			Auth:     auth,
-			Importer: &ingest.Handler{Svc: versions, Identity: auth.Service},
+			Auth:      auth,
+			Readiness: cfg.Readiness,
+			CleanMode: cfg.CleanMode,
+			Importer:  &ingest.Handler{Svc: versions, Identity: auth.Service},
 			Search: &catalog.Handler{
 				Svc:      catalogSvc,
 				Identity: auth.Service,

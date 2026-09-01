@@ -5263,6 +5263,202 @@ type GetDownloadArtifactUnauthorized Error
 
 func (*GetDownloadArtifactUnauthorized) getDownloadArtifactRes() {}
 
+type GetReadinessOK struct {
+	// Every capability was measured and works. `unmeasured` is deliberately not enough — a caller asking
+	// this wants to know whether the deployment works, and "nobody looked" is not an answer to that.
+	Ready        bool                             `json:"ready"`
+	Detail       OptString                        `json:"detail"`
+	Capabilities []GetReadinessOKCapabilitiesItem `json:"capabilities"`
+}
+
+// GetReady returns the value of Ready.
+func (s *GetReadinessOK) GetReady() bool {
+	return s.Ready
+}
+
+// GetDetail returns the value of Detail.
+func (s *GetReadinessOK) GetDetail() OptString {
+	return s.Detail
+}
+
+// GetCapabilities returns the value of Capabilities.
+func (s *GetReadinessOK) GetCapabilities() []GetReadinessOKCapabilitiesItem {
+	return s.Capabilities
+}
+
+// SetReady sets the value of Ready.
+func (s *GetReadinessOK) SetReady(val bool) {
+	s.Ready = val
+}
+
+// SetDetail sets the value of Detail.
+func (s *GetReadinessOK) SetDetail(val OptString) {
+	s.Detail = val
+}
+
+// SetCapabilities sets the value of Capabilities.
+func (s *GetReadinessOK) SetCapabilities(val []GetReadinessOKCapabilitiesItem) {
+	s.Capabilities = val
+}
+
+type GetReadinessOKCapabilitiesItem struct {
+	// Stable machine key; the launcher and this endpoint both use it.
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// `ready` — probed and working. `unmeasured` — every precondition present and nothing measured it.
+	// `unavailable` — a precondition is missing; `missing` names which. `broken` — probed and it
+	// failed; `detail` says how.
+	Readiness GetReadinessOKCapabilitiesItemReadiness `json:"readiness"`
+	// Variable NAMES, never values. Clean test mode only.
+	Missing []string `json:"missing"`
+	// Clean test mode only.
+	Detail OptString `json:"detail"`
+	// What a user meets without it. Clean test mode only.
+	Without OptString `json:"without"`
+	// How to supply it. Clean test mode only.
+	Fix OptString `json:"fix"`
+	// How long the probe took.
+	MeasuredFor OptString `json:"measured_for"`
+}
+
+// GetID returns the value of ID.
+func (s *GetReadinessOKCapabilitiesItem) GetID() string {
+	return s.ID
+}
+
+// GetName returns the value of Name.
+func (s *GetReadinessOKCapabilitiesItem) GetName() string {
+	return s.Name
+}
+
+// GetReadiness returns the value of Readiness.
+func (s *GetReadinessOKCapabilitiesItem) GetReadiness() GetReadinessOKCapabilitiesItemReadiness {
+	return s.Readiness
+}
+
+// GetMissing returns the value of Missing.
+func (s *GetReadinessOKCapabilitiesItem) GetMissing() []string {
+	return s.Missing
+}
+
+// GetDetail returns the value of Detail.
+func (s *GetReadinessOKCapabilitiesItem) GetDetail() OptString {
+	return s.Detail
+}
+
+// GetWithout returns the value of Without.
+func (s *GetReadinessOKCapabilitiesItem) GetWithout() OptString {
+	return s.Without
+}
+
+// GetFix returns the value of Fix.
+func (s *GetReadinessOKCapabilitiesItem) GetFix() OptString {
+	return s.Fix
+}
+
+// GetMeasuredFor returns the value of MeasuredFor.
+func (s *GetReadinessOKCapabilitiesItem) GetMeasuredFor() OptString {
+	return s.MeasuredFor
+}
+
+// SetID sets the value of ID.
+func (s *GetReadinessOKCapabilitiesItem) SetID(val string) {
+	s.ID = val
+}
+
+// SetName sets the value of Name.
+func (s *GetReadinessOKCapabilitiesItem) SetName(val string) {
+	s.Name = val
+}
+
+// SetReadiness sets the value of Readiness.
+func (s *GetReadinessOKCapabilitiesItem) SetReadiness(val GetReadinessOKCapabilitiesItemReadiness) {
+	s.Readiness = val
+}
+
+// SetMissing sets the value of Missing.
+func (s *GetReadinessOKCapabilitiesItem) SetMissing(val []string) {
+	s.Missing = val
+}
+
+// SetDetail sets the value of Detail.
+func (s *GetReadinessOKCapabilitiesItem) SetDetail(val OptString) {
+	s.Detail = val
+}
+
+// SetWithout sets the value of Without.
+func (s *GetReadinessOKCapabilitiesItem) SetWithout(val OptString) {
+	s.Without = val
+}
+
+// SetFix sets the value of Fix.
+func (s *GetReadinessOKCapabilitiesItem) SetFix(val OptString) {
+	s.Fix = val
+}
+
+// SetMeasuredFor sets the value of MeasuredFor.
+func (s *GetReadinessOKCapabilitiesItem) SetMeasuredFor(val OptString) {
+	s.MeasuredFor = val
+}
+
+// `ready` — probed and working. `unmeasured` — every precondition present and nothing measured it.
+// `unavailable` — a precondition is missing; `missing` names which. `broken` — probed and it
+// failed; `detail` says how.
+type GetReadinessOKCapabilitiesItemReadiness string
+
+const (
+	GetReadinessOKCapabilitiesItemReadinessReady       GetReadinessOKCapabilitiesItemReadiness = "ready"
+	GetReadinessOKCapabilitiesItemReadinessUnmeasured  GetReadinessOKCapabilitiesItemReadiness = "unmeasured"
+	GetReadinessOKCapabilitiesItemReadinessUnavailable GetReadinessOKCapabilitiesItemReadiness = "unavailable"
+	GetReadinessOKCapabilitiesItemReadinessBroken      GetReadinessOKCapabilitiesItemReadiness = "broken"
+)
+
+// AllValues returns all GetReadinessOKCapabilitiesItemReadiness values.
+func (GetReadinessOKCapabilitiesItemReadiness) AllValues() []GetReadinessOKCapabilitiesItemReadiness {
+	return []GetReadinessOKCapabilitiesItemReadiness{
+		GetReadinessOKCapabilitiesItemReadinessReady,
+		GetReadinessOKCapabilitiesItemReadinessUnmeasured,
+		GetReadinessOKCapabilitiesItemReadinessUnavailable,
+		GetReadinessOKCapabilitiesItemReadinessBroken,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s GetReadinessOKCapabilitiesItemReadiness) MarshalText() ([]byte, error) {
+	switch s {
+	case GetReadinessOKCapabilitiesItemReadinessReady:
+		return []byte(s), nil
+	case GetReadinessOKCapabilitiesItemReadinessUnmeasured:
+		return []byte(s), nil
+	case GetReadinessOKCapabilitiesItemReadinessUnavailable:
+		return []byte(s), nil
+	case GetReadinessOKCapabilitiesItemReadinessBroken:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *GetReadinessOKCapabilitiesItemReadiness) UnmarshalText(data []byte) error {
+	switch GetReadinessOKCapabilitiesItemReadiness(data) {
+	case GetReadinessOKCapabilitiesItemReadinessReady:
+		*s = GetReadinessOKCapabilitiesItemReadinessReady
+		return nil
+	case GetReadinessOKCapabilitiesItemReadinessUnmeasured:
+		*s = GetReadinessOKCapabilitiesItemReadinessUnmeasured
+		return nil
+	case GetReadinessOKCapabilitiesItemReadinessUnavailable:
+		*s = GetReadinessOKCapabilitiesItemReadinessUnavailable
+		return nil
+	case GetReadinessOKCapabilitiesItemReadinessBroken:
+		*s = GetReadinessOKCapabilitiesItemReadinessBroken
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type GetRunEvaluationNotFound Error
 
 func (*GetRunEvaluationNotFound) getRunEvaluationRes() {}
