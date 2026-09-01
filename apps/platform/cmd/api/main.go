@@ -547,7 +547,7 @@ func main() {
 	// One table, built once, read by three callers: the boot print below,
 	// GET /readyz, and (through that endpoint) the launcher — which is R-36's
 	// hard condition, that no second list of the same preconditions exists.
-	capabilities := capabilityTable(pool)
+	capabilities := capabilityTable(pool, len(profiles))
 	reportCapabilities(ctx, capabilities)
 
 	app, err := apiserver.NewApp(apiserver.Config{

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"net/http"
 	"strconv"
@@ -283,6 +284,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
+		// auditRefusal deliberately files nothing for an infrastructure error
+		// (「those are what slog and the error counters are for」), so this is the
+		// only place the cause can still reach anyone. Discarding it here is what
+		// made the ErrNoProvider case invisible from both sides at once: the user
+		// got five words and the operator got an empty log.
+		slog.Error("run creation failed", "error", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "run creation failed")
 		return
 	}

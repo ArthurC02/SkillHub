@@ -42,7 +42,11 @@ import (
 // its four jobs (04 丙-118).
 //
 // Every probe here is free and read-only: /readyz is polled.
-func capabilityTable(pool *pgxpool.Pool) *envx.Registry {
+//
+// packagingTargets is how many profiles LoadProfiles actually returned. It is a
+// count and not a bool because zero is the only interesting value and the reader
+// of a broken row deserves to know it was zero rather than "some".
+func capabilityTable(pool *pgxpool.Pool, packagingTargets int) *envx.Registry {
 	client := &http.Client{Timeout: 2 * time.Second}
 	return envx.NewRegistry([]envx.Capability{
 		{
@@ -89,6 +93,26 @@ func capabilityTable(pool *pgxpool.Pool) *envx.Registry {
 			Needs:   []string{"DOWNLOAD_ARTIFACT_RETENTION"},
 			Without: "打包一律 503",
 			Fix:     "這個值刻意沒有預設——它是一句對使用者的保存期承諾，不是參數（GOV-RETENTION-001）",
+			// The retention value is a promise about how long an artifact lives; it
+			// says nothing about whether one can be produced. The thing that actually
+			// stops packaging is an empty profile directory, and PACKAGING_PROFILES_DIR
+			// defaults to a RELATIVE path — so running the binary from anywhere but the
+			// repository root loads zero targets and every PACK-001 route answers 503
+			// (04 丙-102 ③).
+			//
+			// Measured on 2026-09-02 by exploratory testing: with zero profiles and
+			// with three, this row read `unmeasured` both times. A row that is identical
+			// whether the capability works or is completely dead carries no information,
+			// which is the exact defect this table was built to remove — and this file's
+			// own header says so: 「A probe measures the thing that actually breaks.」
+			Probe: func(context.Context) error {
+				if packagingTargets == 0 {
+					return errors.New(
+						"沒有載入任何打包目標（PACKAGING_PROFILES_DIR 是相對路徑，" +
+							"從 repo 根目錄以外的地方啟動就會是空的）；打包路由一律 503")
+				}
+				return nil
+			},
 		},
 		{
 			ID:      "redistribution_release",
@@ -237,7 +261,7 @@ func printCapabilitiesJSON(w io.Writer) error {
 		Name  string   `json:"name"`
 		Needs []string `json:"needs"`
 	}
-	reg := capabilityTable(nil)
+	reg := capabilityTable(nil, 0)
 	out := make([]row, 0, len(reg.Capabilities()))
 	for _, c := range reg.Capabilities() {
 		out = append(out, row{ID: c.ID, Name: c.Name, Needs: c.Needs})
