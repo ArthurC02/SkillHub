@@ -211,3 +211,54 @@ func TestTheReleaseListIsNeverEvenReadOutsideTheCleanTestMode(t *testing.T) {
 		t.Errorf("the release list was consulted outside the clean test mode: %q", logged.String())
 	}
 }
+
+// 探索性測試（2026-09-02）找到的四種寫法，四種都曾經「不放行而且一個字都不說」。
+//
+// 這一組不是在測 parser 的寬容度，是在測**這個開關會不會看起來像壞掉的**。操作者當時
+// 的處境是：他手上有一行看起來完全正確的內容，而畫面上的拒絕訊息正在叫他去加那一行。
+// 四種寫法都不是打錯字，是不同工具的預設行為——而第三種是這個系統自己的訊息招來的。
+func TestTheReleaseSurvivesTheWayPeopleActuallyTypeIt(t *testing.T) {
+	for _, tc := range []struct {
+		what string
+		line string
+		why  string
+	}{
+		{"a tab between the id and the reason", releasedVersion + "\tdemo", "對齊兩欄時手會去按 Tab"},
+		{"CRLF line endings", releasedVersion + " demo\r\n", "這個模式的目標機器是 Windows"},
+		{"a UTF-8 BOM at the top of the file", "\ufeff" + releasedVersion + " demo", "記事本新建檔案時就是這樣存的"},
+		{"backticks pasted along with the id", "`" + releasedVersion + "` demo", "拒絕訊息把 id 放在反引號裡"},
+		{"a list marker in front", "- " + releasedVersion + " demo", "貼進檔案的時候順手當成清單"},
+		{"the id in upper case", strings.ToUpper(releasedVersion) + " demo", "UUID 依 RFC 4122 不分大小寫"},
+	} {
+		t.Run(tc.what, func(t *testing.T) {
+			t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+			t.Setenv(cleanModeReleaseFile, writeReleases(t, tc.line))
+			svc := &Service{ReadContentSource: stubContentSource(ContentSource{CurationTier: "indexed"}, true, nil)}
+			if err := svc.requireCuratedContent(t.Context(), contentSourceRun()); err != nil {
+				t.Fatalf("a release written this way was ignored (%s): %v", tc.why, err)
+			}
+		})
+	}
+}
+
+// The one that cannot be parsed away: a line that mentions the version but does
+// not name it first. Being tolerant has a floor, and below that floor the only
+// honest thing left is to say out loud that the line was seen and not counted —
+// otherwise the operator edits the file, nothing changes, and no output anywhere
+// distinguishes that from a switch that does not work.
+func TestALineThatLooksLikeAReleaseAndIsNotSaysSo(t *testing.T) {
+	t.Setenv("SKILLHUB_CLEAN_MODE", "1")
+	t.Setenv(cleanModeReleaseFile, writeReleases(t, "release "+releasedVersion+" for the demo\n"))
+
+	var logged bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, &slog.HandlerOptions{Level: slog.LevelWarn})))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	if _, released := operatorReleased(releasedVersion); released {
+		t.Fatal("a line whose first token is not the version id released it anyway")
+	}
+	if !strings.Contains(logged.String(), "does not release it") {
+		t.Errorf("log = %q, want it to say the line was seen and did not count", logged.String())
+	}
+}

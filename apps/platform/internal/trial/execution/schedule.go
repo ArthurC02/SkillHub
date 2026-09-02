@@ -195,24 +195,57 @@ func operatorReleased(versionID string) (string, bool) {
 		}
 		return "", false
 	}
-	for i, line := range strings.Split(string(raw), "\n") {
-		line = strings.TrimSpace(line)
+	// A BOM is not a typo, it is what Notepad writes when somebody creates this
+	// file themselves on the machine this whole mode exists for. Stripped here
+	// rather than per line: it can only ever be the first bytes of the file.
+	text := strings.TrimPrefix(string(raw), "\ufeff")
+	for i, line := range strings.Split(text, "\n") {
+		// A list marker is stripped before anything else because the refusal that
+		// sent the operator here is prose, and prose gets pasted into a file as a
+		// bullet. Same reason for the quoting characters in releaseToken.
+		line = strings.Trim(strings.TrimLeft(strings.TrimSpace(line), "-*• \t"), " \t\r")
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		id, reason, _ := strings.Cut(line, " ")
-		if id != versionID {
+		// Fields and not Cut(line, " "): a person lining up two columns reaches
+		// for Tab, and Cut would have handed the whole line back as the id and
+		// then said nothing at all.
+		parts := strings.Fields(line)
+		id := releaseToken(parts[0])
+		// EqualFold because a UUID is case-insensitive by definition (RFC 4122),
+		// and this cannot widen anything: a fold still has to match this exact
+		// version's id.
+		if !strings.EqualFold(id, versionID) {
+			// The line names this version somewhere but not as its first token —
+			// so the operator is looking at a line that reads like a release while
+			// the run is being refused with a message telling them to add one.
+			// **Silence here is the whole defect this switch was built to avoid.**
+			if strings.Contains(strings.ToLower(line), strings.ToLower(versionID)) {
+				slog.Warn("clean mode: a line mentions this version but does not release it; "+
+					"a release is the version id first, then the reason",
+					"path", path, "line", i+1, "skill_version_id", versionID)
+			}
 			continue
 		}
-		if reason = strings.TrimSpace(reason); reason == "" {
+		reason := strings.TrimSpace(strings.Join(parts[1:], " "))
+		if reason == "" {
 			slog.Warn("clean mode: a release line with no reason is not a release",
-				"path", path, "line", i+1, "skill_version_id", id)
+				"path", path, "line", i+1, "skill_version_id", versionID)
 			return "", false
 		}
 		return reason, true
 	}
 	return "", false
 }
+
+// releaseToken strips what a copy-paste carries in around the id. The refusal
+// message renders the id inside backticks, so backticks are the first thing an
+// operator pastes; quotes and a trailing comma are the same accident in other
+// editors.
+//
+// Deliberately not a general-purpose forgiving parser: nothing here can make a
+// *different* version match, only the exact one the operator meant.
+func releaseToken(s string) string { return strings.Trim(s, "`'\"“”‘’,;:") }
 
 // howToRelease is the second half of a refusal that would otherwise end in a
 // dead end on the one machine where there is no other deployment to move to.
