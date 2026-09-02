@@ -49,7 +49,23 @@ export function parseDotEnv(text) {
       .trim();
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
     let value = trimmed.slice(eq + 1).trim();
-    if (value.length > 1 && /^(".*"|'.*')$/.test(value)) value = value.slice(1, -1);
+    if (value.length > 1 && /^(".*"|'.*')$/.test(value)) {
+      value = value.slice(1, -1);
+    } else {
+      // A trailing comment on an unquoted value, which is what every dotenv
+      // implementation does and what a person writing `GENERATE_SKILL_EXPOSED=on
+      // # 只在 demo 開` means. Without this the value is `on # 只在 demo 開`, the
+      // flag stays off, and the operator gets **the exact silence this file was
+      // written to remove** — the header's own example. On a model name it is
+      // worse: `SKILLHUB_RUN_MODEL=gpt-5.4-mini # mini 層` reaches the gateway as
+      // a name it does not serve, which is the one combination preflight refuses
+      // outright.
+      //
+      // Whitespace before the `#` is required, again as every implementation
+      // does it: `p#ss` is a password, not a comment. So `X=0# note` is still a
+      // value containing a hash, and that spelling is the user's to fix.
+      value = value.replace(/\s+#.*$/, "").trim();
+    }
     out[key] = value;
   }
   return out;
@@ -67,7 +83,18 @@ export function readDotEnv(path) {
  * agrees on: an explicit export is the more immediate instruction.
  */
 export function resolve(dotEnv, shellEnv, name) {
-  return shellEnv[name] ?? dotEnv[name] ?? "";
+  // `||` and not `??`, so an exported-but-empty shell variable falls through to
+  // the file. This is the same argument childOverlay already makes about a blank
+  // line in .env — 「an empty value carries no information」 — applied in the
+  // direction it was missing. Measured 2026-09-02: with `OPERATOR_USER_IDS=`
+  // exported and a roster written in .env, `??` returned "", start.mjs read that
+  // as "nobody supplied one" and overwrote the roster with this launch's seed
+  // importer — **which is the exact thing the comment at that call site says it
+  // must not do**.
+  //
+  // What it costs: `export X=` is no longer a way to unset a line in .env.
+  // Commenting the line out is, and it says so where the value lives.
+  return shellEnv[name] || dotEnv[name] || "";
 }
 
 /**
@@ -83,7 +110,29 @@ export function resolve(dotEnv, shellEnv, name) {
  * would land on top of the minted value and switch tracing off silently.
  */
 export function childOverlay(dotEnv, shellEnv) {
+  // `!shellEnv[k]` rather than `=== undefined`, for the same reason resolve()
+  // uses `||`: an exported-but-empty shell variable is not an instruction, and
+  // treating it as one dropped the .env value here **and** made resolve() answer
+  // "" — so the launcher both discarded what the file said and believed nobody
+  // had said it. The two halves have to agree or the child env and the
+  // launcher's own decisions describe different deployments.
   return Object.fromEntries(
-    Object.entries(dotEnv).filter(([k, v]) => shellEnv[k] === undefined && v !== ""),
+    Object.entries(dotEnv).filter(([k, v]) => !shellEnv[k] && v !== ""),
   );
+}
+
+/**
+ * Which release list this launch actually reads (05 R-37, ADR-061).
+ *
+ * Here rather than in start.mjs for the reason at the top of this file: it is a
+ * branch, and a wrong branch here is silent. `ownedSettings` fills the variable
+ * only when nothing else supplied it, so an operator who named a path in .env
+ * keeps it — and the launcher would still have seeded and announced its own
+ * tmpdir file. They would then edit a file nobody reads, the refusal would keep
+ * arriving unchanged, and the terminal would be pointing at the wrong path
+ * while doing it. That is the same silent-switch failure the release mechanism
+ * exists to remove, reintroduced one layer up.
+ */
+export function releasePath(dotEnv, shellEnv, fallback) {
+  return resolve(dotEnv, shellEnv, "SKILLHUB_CLEAN_MODE_RELEASES") || fallback;
 }

@@ -22,7 +22,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { childOverlay, readDotEnv, resolve } from "./env.mjs";
+import { childOverlay, readDotEnv, releasePath, resolve } from "./env.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..", "..");
@@ -174,15 +174,31 @@ function ownedSettings() {
 // wrong direction to fail is the safe one here.
 const RELEASES_FILE = join(tmpdir(), "skillhub-clean-mode-releases.txt");
 
+/**
+ * The list this launch will actually read, which is not always the one above.
+ *
+ * `ownedSettings` fills the variable only when nothing else supplied it, so an
+ * operator who named their own path in .env keeps it — and then the API child
+ * reads THAT file while everything below would still have seeded and announced
+ * the tmpdir one. The operator edits a file nobody reads, the refusal keeps
+ * coming, and nothing anywhere says why: the same silent-switch failure this
+ * whole mechanism exists to remove. Called after applyOwnedSettings(), so it
+ * answers the same value the child was given in both cases.
+ */
+function releasesFile() {
+  return releasePath(dotEnv, process.env, RELEASES_FILE);
+}
+
 // seedReleaseFile writes the empty list once, with the format and the risk in
 // it. The header is not decoration: this file is the whole of the audit trail
 // for a decision that turns a protection off (the log line at use is the other
 // half, and it is in this launcher's own terminal), so the person editing it
 // should be reading what they are accepting while they type the reason.
 function seedReleaseFile() {
-  if (existsSync(RELEASES_FILE)) return;
+  const path = releasesFile();
+  if (existsSync(path)) return;
   writeFileSync(
-    RELEASES_FILE,
+    path,
     [
       "# Clean test mode — versions released to run WITHOUT ANY ISOLATION (05 R-37, ADR-061).",
       "#",
@@ -693,7 +709,7 @@ console.log(
   `[launcher]   only curated material runs here (02:PORT-010). To run something else,`,
 );
 console.log(
-  `[launcher]   add \`<skill_version_id> <why>\` to ${RELEASES_FILE} — the refusal names the id.`,
+  `[launcher]   add \`<skill_version_id> <why>\` to ${releasesFile()} — the refusal names the id.`,
 );
 console.log(`[launcher] ctrl-c stops all three.\n`);
 

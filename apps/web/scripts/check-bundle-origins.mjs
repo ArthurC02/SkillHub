@@ -54,21 +54,46 @@ const STOCK = [
   "http://localhost",
 ];
 
+// A protocol-relative origin is the same failure wearing two fewer characters.
+// `fetch("//api.example.com/skills")` leaves this deployment exactly like an
+// `https://` one does; all the browser supplies is the scheme. The scan below
+// it cannot see one, because that pattern starts at `http` — measured
+// 2026-09-02 by building with VITE_API_BASE_URL=//api.example.com, which
+// produced `` $a=`//api.example.com` `` in the bundle and a check that exited 0.
+//
+// Anchored on the opening quote of a string literal rather than on `//` alone:
+// minified JavaScript is full of `//` inside regexes, comments that survived,
+// and paths. A *string that begins* with `//` followed by a hostname is the
+// shape nothing legitimate in this bundle has — measured on the same day, the
+// clean build matches this zero times.
+//
+// No allowlist for this one on purpose. STOCK exists because libraries really
+// do emit absolute URLs (XML namespaces, a docs link); nothing emits a
+// protocol-relative origin, so an entry here would only ever be somebody's API
+// address being waved through.
+const relativeOrigin = /["'`](\/\/[A-Za-z0-9][A-Za-z0-9._-]*(?::\d+)?)(?=[/"'`?#])/g;
+
 const origins = new Set();
+const relative = new Set();
 for (const file of readdirSync(distAssets).filter((f) => f.endsWith(".js"))) {
   const text = readFileSync(join(distAssets, file), "utf8");
   for (const match of text.matchAll(/https?:\/\/[^"'`,)\s]*/g)) {
     origins.add(match[0]);
   }
+  for (const match of text.matchAll(relativeOrigin)) {
+    relative.add(match[1]);
+  }
 }
 
-const unexpected = [...origins].filter((o) => !STOCK.includes(o));
+const unexpected = [...origins].filter((o) => !STOCK.includes(o)).concat([...relative]);
 if (unexpected.length > 0) {
   console.error(
     [
       "",
       "這個 build 裡有預期之外的絕對網址：",
       ...unexpected.map((o) => `  ${o}`),
+      "",
+      "（`//` 開頭的也算：瀏覽器只補上通訊協定，請求一樣離開這個部署。）",
       "",
       "如果它是 API 的位址，這個 build 會把每一個請求送出這個部署——",
       "畫面照常顯示，第一個症狀是搜尋回 Failed to fetch，中間沒有任何紅燈。",
