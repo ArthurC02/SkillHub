@@ -92,6 +92,52 @@ var secretPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)[?&](X-Amz-Signature|X-Amz-Credential|Signature|access_token|refresh_token|id_token|client_secret|api_key|apikey|api-key|password|passwd|token|secret|auth|sig|key)=[^&\s"']+`),
 	// A private key block pasted into a prompt or written by a script.
 	regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),
+	// A JSON Web Token, which is a bearer credential whose whole value is the
+	// string. Three base64url segments separated by dots, opening with the `eyJ`
+	// that is base64 for `{"` — specific enough that ordinary base64 in a tool
+	// result does not trip it, because that has no reason to carry two dots with
+	// base64url on both sides.
+	//
+	// The platform issues none of these (sessions are rows in Postgres), so this
+	// is category 2 above in its purest form: somebody else's credential, pasted
+	// into a prompt or printed by a tool that authenticated with it.
+	regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}`),
+}
+
+// urlUserInfo is the other half of a URL, and it was missing while the query
+// half above was covered.
+//
+// Found by exploratory testing 2026-09-02: `postgres://user:password@host/db`,
+// `https://token@github.com/x/y.git` and `amqp://user:secret@broker/` all went
+// through untouched. The gap matters most where this package is least able to
+// help itself — [Service.RecordOrchestratorEvent] masks with **patterns only**
+// (no per-run Known values, argued at that call site), and its own comment says
+// a provider error message routinely quotes a URL. A DSN quoted in a connection
+// error is this platform's own credential, which is iron rule 11 broken by the
+// control plane rather than by a workload.
+//
+// Replaced through a template rather than with the bare placeholder, unlike
+// every pattern above: `postgres://[REDACTED]@localhost:5432/skillhub` still
+// tells the person reading the trace which service failed and where, and the
+// part that is removed is exactly the part that is a credential. A whole-match
+// replacement would take the scheme and host with it and turn a diagnosable
+// error into an unreadable one.
+//
+// False positives need an `@` before the first `/` after `://`, so a link to
+// `https://example.com/a@b` is untouched; scp-style `git@github.com:x/y` has no
+// `://` and carries no credential anyway.
+var urlUserInfo = regexp.MustCompile(`([A-Za-z][A-Za-z0-9+.-]*://)[^\s/@]+@`)
+
+// allPatterns is every rule redact applies. The canary and its guard walk this
+// rather than secretPatterns, because a rule kept in its own variable so it can
+// carry a replacement template would otherwise be a rule the liveness probe
+// cannot see the loss of — and this probe is what stops the fleet dispatching
+// (02:SEC-010 P1). One rule outside the list is how a canary starts covering
+// nine tenths of a masker and reporting "alive".
+func allPatterns() []*regexp.Regexp {
+	out := make([]*regexp.Regexp, 0, len(secretPatterns)+1)
+	out = append(out, secretPatterns...)
+	return append(out, urlUserInfo)
 }
 
 // Masker redacts one event. Known holds the exact values this run was issued;
@@ -168,7 +214,9 @@ func (m *Masker) redact(s string) string {
 	for _, re := range secretPatterns {
 		s = re.ReplaceAllString(s, Placeholder)
 	}
-	return s
+	// Last, and with its own replacement: see urlUserInfo for why this one keeps
+	// the scheme and the host.
+	return urlUserInfo.ReplaceAllString(s, "${1}"+Placeholder+"@")
 }
 
 // escapePointer applies RFC 6901: `~` becomes `~0` and `/` becomes `~1`, so a
@@ -209,6 +257,11 @@ var canaryShapes = []struct{ name, sample string }{
 	{"credential assignment", "OPENAI_API_KEY=" + strings.Repeat("0", 32)},
 	{"credential query parameter", "https://example.invalid/o?X-Amz-Signature=" + strings.Repeat("0", 32)},
 	{"private key block", "-----BEGIN " + "RSA PRIVATE KEY-----"},
+	{"json web token", "ey" + "J" + strings.Repeat("A", 12) + "." + strings.Repeat("B", 12) + "." + strings.Repeat("C", 12)},
+	// Not a credential either: `example.invalid` cannot resolve and the userinfo
+	// is a run of one character. What it exercises is the half of a URL the
+	// query-parameter rule above never sees.
+	{"credential in a url authority", "postgres://" + strings.Repeat("u", 8) + ":" + strings.Repeat("p", 8) + "@example.invalid:5432/db"},
 }
 
 // canaryKnownName is the exact-match arm, which no pattern covers: it is how a

@@ -157,7 +157,7 @@ func TestMaskerCanaryPassesOnAnIntactMasker(t *testing.T) {
 // notice the loss of — and a liveness probe that covers eight of nine rules
 // reports "alive" for a masker that is nine-tenths gone.
 func TestEveryMaskerPatternHasACanarySample(t *testing.T) {
-	for _, re := range secretPatterns {
+	for _, re := range allPatterns() {
 		matched := false
 		for _, shape := range canaryShapes {
 			if re.MatchString(shape.sample) {
@@ -169,9 +169,9 @@ func TestEveryMaskerPatternHasACanarySample(t *testing.T) {
 			t.Errorf("no canary sample exercises %s: add one, or the canary cannot tell if this rule is gone", re)
 		}
 	}
-	if len(canaryShapes) != len(secretPatterns) {
+	if len(canaryShapes) != len(allPatterns()) {
 		t.Errorf("%d canary samples for %d patterns: one each, or a sample is covering for a rule that has none",
-			len(canaryShapes), len(secretPatterns))
+			len(canaryShapes), len(allPatterns()))
 	}
 }
 
@@ -197,6 +197,58 @@ func TestMaskerCanaryNamesTheShapeThatStoppedBeingRedacted(t *testing.T) {
 			if strings.Contains(reported, shape.sample) {
 				t.Errorf("the canary reported a sample value, not a name: %s", shape.name)
 			}
+		}
+	}
+}
+
+// 探索性測試（2026-09-02）：URL 的另外一半。
+//
+// The query half of a URL was covered and the authority half was not, so
+// `postgres://user:password@host/db` went into a trace verbatim. That is the
+// shape a DSN takes, and RecordOrchestratorEvent masks with patterns only —
+// its own comment says a provider error routinely quotes a URL. A connection
+// error quoting the platform's own DSN is iron rule 11 broken by the control
+// plane, not by a workload.
+func TestMaskerRedactsCredentialsInAUrlAuthorityAndKeepsTheRest(t *testing.T) {
+	for _, tc := range []struct{ what, in, want string }{
+		{
+			"a postgres DSN in a connection error",
+			"failed to connect to postgres://skillhub:hunter2@localhost:5432/skillhub?sslmode=disable",
+			"failed to connect to postgres://" + Placeholder + "@localhost:5432/skillhub?sslmode=disable",
+		},
+		{
+			"a token in the userinfo of a clone url",
+			"cloning https://sometokenvalue@github.com/x/y.git",
+			"cloning https://" + Placeholder + "@github.com/x/y.git",
+		},
+		{
+			"a broker url",
+			"amqp://user:s3cr3t@broker:5672/",
+			"amqp://" + Placeholder + "@broker:5672/",
+		},
+	} {
+		t.Run(tc.what, func(t *testing.T) {
+			// The scheme and host survive on purpose: a trace that says only
+			// [REDACTED] tells the person reading it nothing about which service
+			// failed, and the diagnostic half of the string is not the credential.
+			if got := (&Masker{}).redact(tc.in); got != tc.want {
+				t.Errorf("redact(%q)\n = %q\nwant %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+// The other direction, which is what keeps the rule above from making the trace
+// unreadable: a URL with no credential in it must come through untouched.
+func TestMaskerLeavesOrdinaryUrlsAlone(t *testing.T) {
+	for _, sample := range []string{
+		"fetched https://example.invalid/skills/a@b/manifest.json",
+		"see http://127.0.0.1:8080/runs/1234",
+		"git@github.com:owner/repo.git",
+		"mailto:someone@example.invalid",
+	} {
+		if masked := (&Masker{}).redact(sample); masked != sample {
+			t.Errorf("an ordinary URL was redacted: %q became %q", sample, masked)
 		}
 	}
 }
