@@ -246,7 +246,7 @@ marker 那一半仍綠，然後改回來。
 | 為什麼是升級而不是整理 | 它改變**每一次 Run 的模型輸入**。在此之前 agent 收到的 system prompt 是空的;之後是一段文字。M2 的 45 筆基準 Run 與 M3 的評估都是在**空的**那一版下產生的,重跑同一批可能得到不同的產出位置與敘述——**那是預期中的改善,不是回歸,但它使「與基準逐字比對」不再是同一個實驗** |
 | SDK 版本 | `0.3.233`(**未變**) |
 | 基底 digest | **未變** |
-| 映像 digest | **待填**——`runtime-image.yml` 由 `infra/images/` 的 diff 觸發,所以推上去就會建並發佈;**四項實測必須跑在那個 digest 上**,不是本機建置(`-5` 那次的教訓逐字在上一節) |
+| 映像 digest | `sha256:df4f4dc1fd7b11c604497399474b1a16860b60a12a36d66a3b09f40dcfa495bd`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-6`，由 [runtime-image #33577170901](https://github.com/ArthurC02/SkillHub/actions/runs/33577170901) 於 2026-09-02 隨 `a450945` 發佈，同時打上 `sha-a4509456d757`）。**四項實測必須跑在這個 digest 上**，不是本機建置——`runtime-image.yml` 由 `infra/images/` 的 diff 觸發,所以推上去就會建並發佈;**四項實測必須跑在那個 digest 上**,不是本機建置(`-5` 那次的教訓逐字在上一節) |
 | 依賴集 | **未變**(0 增 0 減) |
 | 預設映像 | **刻意仍是 `-5`**:`sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`、`p02_docker_test.go` 的常數三處都沒有動。移到 `-6` 是四項實測通過之後的動作,不是這一批的 |
 
