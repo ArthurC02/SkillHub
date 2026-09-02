@@ -22,6 +22,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { childOverlay, readDotEnv, resolve } from "./env.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..", "..");
@@ -29,6 +30,19 @@ const repoRoot = join(here, "..", "..");
 const API_PORT = Number(process.env.CLEAN_MODE_API_PORT ?? 8080);
 const SANDBOX_PORT = Number(process.env.CLEAN_MODE_SANDBOX_PORT ?? 8081);
 const PGLITE_PORT = Number(process.env.CLEAN_MODE_PGLITE_PORT ?? 5433);
+
+// The repository's .env. Precedence, lowest first: .env, then the shell, then
+// what this launcher owns — the launcher wins because the values it sets are
+// ones it also acts on (it prints the URL it chose, so a .env that renamed
+// API_ADDR would produce a launch whose own instructions are wrong). The rules
+// and the reasons for each live in env.mjs, which is where they can be tested.
+const dotEnv = readDotEnv(join(repoRoot, ".env"));
+
+/** A deployment variable as this launch sees it. */
+const deployment = (name) => resolve(dotEnv, process.env, name);
+
+/** What .env contributes to the API child, and to nothing else. */
+const dotEnvForApi = childOverlay(dotEnv, process.env);
 
 // The account `devctl seed-clean` logs in as. It must equal seedDevLoginUser in
 // tools/devctl/seed_clean.go; TestTheLauncherGrantsTheSeedImporterACatalogWorkspace
@@ -111,10 +125,11 @@ function agentSdkVersion(dockerfile) {
 // model exit is refused by the platform with a reason, packaging with no
 // retention answers 503, search with no embedding service says it is degraded.
 //
-// ponytail: this list is the launcher's, and the ruled deployment capability
-// table (05 R-36) will be the platform's. When that lands this block should read
-// it rather than keep a second copy - two lists of the same preconditions is the
-// drift this repository keeps finding.
+// The list this paragraph described was the launcher's own, and it is gone:
+// 05 R-36 第二段 landed on 2026-09-01 and reportCapabilities() now asks the
+// platform (GET /readyz) instead of keeping a second copy. What survives here
+// is the settings SPLIT above — which category a value falls into is still this
+// script's decision, because it is the one minting and passing them.
 
 // ownedSettings are category 1: derived here, never asked for. An operator who
 // set one anyway keeps their value - this fills gaps, it does not override.
@@ -190,7 +205,11 @@ function seedReleaseFile() {
 function applyOwnedSettings() {
   const filled = [];
   for (const [name, value] of Object.entries(ownedSettings())) {
-    if (!process.env[name]) {
+    // deployment(), not process.env: this block's own contract is "fills gaps,
+    // it does not override", and a value an operator wrote in .env is one they
+    // supplied. Reading only process.env would mint over it and the launch
+    // would then run on a secret nobody chose.
+    if (!deployment(name)) {
       process.env[name] = value;
       filled.push(name);
     }
@@ -241,6 +260,13 @@ const READINESS_LABEL = {
 async function reportCapabilities(filled) {
   console.log(
     `[launcher] 這次啟動自己補上的設定（不必也不該由人提供）：${filled.join("、") || "無"}`,
+  );
+  // Names, never values: .env holds secrets and this print is a terminal and a
+  // log. Printed even when empty, because "nothing was picked up" is the answer
+  // somebody debugging a setting that did nothing needs to see.
+  const fromFile = Object.keys(dotEnvForApi).sort();
+  console.log(
+    `[launcher] 從 repo 的 .env 讀進來、交給 API 的變數（只列名字）：${fromFile.join("、") || "無"}`,
   );
   let body;
   try {
@@ -361,10 +387,7 @@ async function preflight() {
   // serve that name, and every run dies on `400 Invalid model name passed in
   // model=...` after about a minute of looking like it is working (04 丙-102 ①).
   // Measured 2026-08-30; naming the model turned the same run green.
-  if (
-    process.env.SKILLHUB_MODEL_GATEWAY_URL &&
-    !process.env.SKILLHUB_RUN_MODEL
-  ) {
+  if (deployment("SKILLHUB_MODEL_GATEWAY_URL") && !deployment("SKILLHUB_RUN_MODEL")) {
     const models = gatewayModels();
     fail(
       "a model gateway is configured but SKILLHUB_RUN_MODEL is not, so every run would be refused by the gateway with `400 Invalid model name` about a minute after it starts",
@@ -605,7 +628,10 @@ console.log(
 // can already sign in as anybody (the launcher says so, loudly). This grants no
 // authority that mode did not already hand out. It would be wrong in any
 // deployment where DEV_LOGIN is off, and this file only ever runs with it on.
-if (!process.env.OPERATOR_USER_IDS) {
+// deployment(), not process.env: a roster set in .env is one somebody wrote
+// down, and overwriting it with this launch's seed importer would silently
+// unmake their choice.
+if (!deployment("OPERATOR_USER_IDS")) {
   process.env.OPERATOR_USER_IDS = seedImporter.userId;
   console.log(
     `[launcher]   and is this launch's operator, so 可散布性 can be established at all (04 丙-105)`,
@@ -636,8 +662,14 @@ const shared = {
   API_ADDR: `127.0.0.1:${API_PORT}`,
 };
 
+// dotEnvForApi first, so everything after it wins: the shell already won by
+// being filtered out of that object, and what follows is what this launcher
+// owns and acts on. DATABASE_URL is the sharpest case — .env names the compose
+// Postgres and this launch runs on the carrier it just started, so the line
+// below must be the one that survives.
 start("api", "go", ["-C", "apps/platform", "run", "./cmd/api"], {
   env: {
+    ...dotEnvForApi,
     ...shared,
     DATABASE_URL: dsn,
     SKILLHUB_SANDBOX_PROVIDERS: `self_hosted=http://127.0.0.1:${SANDBOX_PORT}`,

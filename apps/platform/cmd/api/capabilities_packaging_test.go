@@ -27,7 +27,7 @@ func packagingRow(t *testing.T, targets int) envx.Status {
 	// Every precondition present, so nothing here is measuring a missing variable:
 	// the only difference between the two calls below is the profile count.
 	env := func(name string) string { return "set" }
-	for _, s := range capabilityTable(nil, targets).Report(context.Background(), env) {
+	for _, s := range capabilityTable(nil, targets, false).Report(context.Background(), env) {
 		if s.ID == "packaging_download" {
 			return s
 		}

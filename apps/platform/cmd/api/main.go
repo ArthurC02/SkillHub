@@ -231,13 +231,27 @@ func newStore(clean bool) (*objstore.Client, func(), error) {
 // registry reference that varies by deployment, this repo's own layout is
 // nothing a node operator configures.
 func cleanModeStaticHandler(devLogin bool) (http.Handler, error) {
+	distDir, err := webDistDir()
+	if err != nil {
+		return nil, err
+	}
+	return webStaticHandlerUnder(distDir, devLogin)
+}
+
+// webDistDir locates apps/web/dist from this binary's own build path.
+//
+// One derivation, two readers: the handler above, which serves the build, and
+// the web_app capability probe in capabilities.go, which measures it. A second
+// copy of this path arithmetic would be free to drift from the first, and the
+// symptom would be a probe reporting a directory nobody serves.
+func webDistDir() (string, error) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
-		return nil, errors.New("clean mode cannot locate the web build: this binary carries no source path, so it was not built from this repository")
+		return "", errors.New("cannot locate the web build: this binary carries no source path, so it was not built from this repository")
 	}
 	// apps/platform/cmd/api/main.go -> repo root is four directories up.
 	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..")
-	return webStaticHandlerUnder(filepath.Join(repoRoot, "apps", "web", "dist"), devLogin)
+	return filepath.Join(repoRoot, "apps", "web", "dist"), nil
 }
 
 // webStaticHandlerUnder is split out so the missing-build and
@@ -575,7 +589,7 @@ func main() {
 	// One table, built once, read by three callers: the boot print below,
 	// GET /readyz, and (through that endpoint) the launcher — which is R-36's
 	// hard condition, that no second list of the same preconditions exists.
-	capabilities := capabilityTable(pool, len(profiles))
+	capabilities := capabilityTable(pool, len(profiles), clean)
 	reportCapabilities(ctx, capabilities)
 
 	app, err := apiserver.NewApp(apiserver.Config{

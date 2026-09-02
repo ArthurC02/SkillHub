@@ -57,7 +57,7 @@ tasks:
 
   test:
     desc: Run all test suites
-    deps: [test:platform, test:sandbox, test:llm, test:web, test:api-client, test:devctl, test:runtime-script, test:judge-rubric]
+    deps: [test:platform, test:sandbox, test:llm, test:web, test:api-client, test:devctl, test:runtime-script, test:judge-rubric, test:cleanmode]
 
   test:platform:
     desc: Run Go platform tests and report how many skipped and why; DB integration requires its explicit test URL
@@ -71,6 +71,11 @@ tasks:
     desc: Run portable developer automation unit tests
     dir: tools/devctl
     cmd: go test ./...
+
+  test:cleanmode:
+    desc: Run the clean-mode launcher's deployment-variable rules; no processes started, no ports bound
+    # Same explicit-file reason as test:runtime-script below.
+    cmd: node --test tools/cleanmode/env.test.mjs
 
   test:runtime-script:
     desc: Run the sandbox workload script's own tests, including its zip extractor's refusals

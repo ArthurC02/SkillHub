@@ -415,8 +415,14 @@ func TestTheLauncherSuppliesWhatItOwnsAndNamesWhatItCannot(t *testing.T) {
 		}
 	}
 	// It fills gaps rather than overriding: an operator who set one keeps it.
+	//
+	// The needle is deployment(), not process.env, since 2026-09-02: the
+	// launcher now also reads the repository's .env (04 丙-129), and a value
+	// written there was supplied by somebody just as an export was. Reading
+	// only process.env would mint over it, and the launch would then run on a
+	// trace secret nobody chose. deployment() is the accessor that sees both.
 	applied := body("function applyOwnedSettings() {")
-	if !strings.Contains(applied, "if (!process.env[name])") {
+	if !strings.Contains(applied, "if (!deployment(name))") {
 		t.Error("applyOwnedSettings() no longer leaves an operator's own value alone")
 	}
 

@@ -70,6 +70,17 @@ on `cmd/api`: the two are separate origins in development and same-origin in
 production, so the allowance is opt-in per process and unset everywhere else.
 `httpx.DevCORS` explains why this is not a Vite dev-server proxy.
 
+That arrangement has a second half, on the web side, and it is a file rather
+than a flag: [`apps/web/.env.development`](apps/web/.env.development) points the
+client at `http://localhost:8080` for `npm run dev` only. `vite build` runs in
+production mode and never reads it, so a built bundle calls same-origin paths —
+the shape a production deployment and the clean test mode both serve. The
+default lives that way round because `API_BASE_URL` is resolved at BUILD time:
+whichever value it takes when nobody sets one is the one every artifact carries.
+`npm run build` refuses a bundle that talks to an absolute origin
+([`scripts/check-bundle-origins.mjs`](apps/web/scripts/check-bundle-origins.mjs));
+deleting the `.env.development` file breaks `npm run dev` and nothing else.
+
 ## Before you write code
 
 Read [AGENTS.md](AGENTS.md) for the implementation rules, and

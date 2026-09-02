@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -46,9 +48,14 @@ import (
 // packagingTargets is how many profiles LoadProfiles actually returned. It is a
 // count and not a bool because zero is the only interesting value and the reader
 // of a broken row deserves to know it was zero rather than "some".
-func capabilityTable(pool *pgxpool.Pool, packagingTargets int) *envx.Registry {
+// servesWeb says this process hands the browser the SPA (clean mode; every
+// other deployment puts the build behind something else, ADR-018 E1). The
+// web_app row is added only then, because a capability this process cannot
+// serve is not one it should report on — Unavailable and Broken are both
+// wrong answers to "somebody else serves it".
+func capabilityTable(pool *pgxpool.Pool, packagingTargets int, servesWeb bool) *envx.Registry {
 	client := &http.Client{Timeout: 2 * time.Second}
-	return envx.NewRegistry([]envx.Capability{
+	caps := []envx.Capability{
 		{
 			ID:      "catalogue_search",
 			Name:    "目錄搜尋（關鍵字）",
@@ -128,7 +135,73 @@ func capabilityTable(pool *pgxpool.Pool, packagingTargets int) *envx.Registry {
 			Without: "不收集任何漏斗事件",
 			Fix:     "設一個保存期，例如 4320h",
 		},
-	})
+	}
+	if servesWeb {
+		caps = append(caps, envx.Capability{
+			ID:   "web_app",
+			Name: "網頁介面（這個行程送出的 SPA）",
+			// No Needs: nothing in .env.example gates this. The build is an
+			// artifact, not a variable, and that is exactly why it had no row
+			// until now — every other mechanism in this repository measures the
+			// process and its environment, and an artifact is neither.
+			Without: "index.html 送得出去，但它引用的 JavaScript 不在——瀏覽器拿到一個空白頁，" +
+				"伺服器這邊每一條路由都還是 200",
+			Fix: "重新 `task build:web`，然後**重啟這個行程**：index.html 在啟動時就讀進記憶體並烙上旗標，" +
+				"而 asset 檔名帶 build hash，重建卻不重啟就會指向一個已經不存在的檔案",
+			Probe: func(context.Context) error {
+				distDir, err := webDistDir()
+				if err != nil {
+					return err
+				}
+				return probeWebAssetsUnder(distDir)
+			},
+		})
+	}
+	return envx.NewRegistry(caps)
+}
+
+// assetRef matches the build's own asset references in index.html. Vite emits
+// them as absolute site paths (`/assets/<name>-<hash>.<ext>`), and the hash is
+// the point: it changes on every rebuild, so a stale index.html names files
+// that are no longer there.
+var assetRef = regexp.MustCompile(`/assets/[A-Za-z0-9._-]+`)
+
+// probeWebAssetsUnder measures what this process actually hands a browser.
+//
+// The failure it names happened on 2026-09-02: `task build:web` while the
+// process was up left index.html in memory pointing at the previous hash, so
+// every asset request answered 404 and the page rendered nothing — with
+// /healthz still 200 and every capability row still green, because none of them
+// looks at the build.
+//
+// It deliberately does NOT re-check what the bundle talks to. That rule lives
+// in apps/web/scripts/check-bundle-origins.mjs, which runs inside
+// `npm run build` so no caller can produce a bundle without it, and it carries
+// a named allowlist of the origins libraries legitimately emit. A second copy
+// of that allowlist here, in another language, is the drift this repository
+// keeps finding — R-36's own hard condition was that no second list exists.
+//
+// Split from its caller for the reason webStaticHandlerUnder is: the failures
+// have to be reachable from a test with a temporary directory.
+func probeWebAssetsUnder(distDir string) error {
+	index, err := os.ReadFile(filepath.Join(distDir, "index.html"))
+	if err != nil {
+		return fmt.Errorf("讀不到這個行程要送出的 index.html：%w", err)
+	}
+	refs := assetRef.FindAllString(string(index), -1)
+	if len(refs) == 0 {
+		return errors.New("index.html 沒有引用任何 /assets/ 檔案——這不是一個 production build")
+	}
+	for _, ref := range refs {
+		info, err := os.Stat(filepath.Join(distDir, filepath.FromSlash(strings.TrimPrefix(ref, "/"))))
+		if err != nil {
+			return fmt.Errorf("index.html 指向 %s，但那個檔案不在這個 build 裡（重建之後沒有重啟？）", ref)
+		}
+		if info.Size() == 0 {
+			return fmt.Errorf("index.html 指向的 %s 是空的", ref)
+		}
+	}
+	return nil
 }
 
 // probeLLMService asks apps/llm whether it can work, with this deployment's own
@@ -261,7 +334,11 @@ func printCapabilitiesJSON(w io.Writer) error {
 		Name  string   `json:"name"`
 		Needs []string `json:"needs"`
 	}
-	reg := capabilityTable(nil, 0)
+	// servesWeb false: this prints the DECLARED table for the R-36 checker,
+	// which reconciles Needs against .env.example. web_app declares no
+	// variables, so its presence would change nothing there — and this path
+	// stands no deployment up, so it has no build to speak for either.
+	reg := capabilityTable(nil, 0, false)
 	out := make([]row, 0, len(reg.Capabilities()))
 	for _, c := range reg.Capabilities() {
 		out = append(out, row{ID: c.ID, Name: c.Name, Needs: c.Needs})
