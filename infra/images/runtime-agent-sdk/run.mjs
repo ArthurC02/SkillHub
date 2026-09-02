@@ -399,6 +399,72 @@ export function extractPackage(archivePath, destDir) {
   }
 }
 
+// --- what the agent is told about where output goes -------------------------
+//
+// Until 2026-09-02 the agent was told nothing, and `/out` was a convention that
+// existed only in the collector. What that cost, measured on 2026-08-31 (04
+// 丙-106): given a task that had to produce a file, the agent ran
+// `Get-ChildItem /out` (failed: `Cannot find path 'C:\out'`), then wrote to
+// `/out/announcement.md` (succeeded), then said it had created the file — while
+// `GET /runs/{id}/artifacts` came back empty and the host had gained a stray
+// `C:\outnnouncement.md`.
+//
+// The Windows host is only where it became visible. Both drivers collect
+// **<outDir>/artifacts** and nothing else (localdrv/transfer.go walks
+// artifactDir; dockerdrv runs `tar -C /out artifacts`), so a file written to
+// `/out` directly, or to the working directory, was never going to be handed
+// back on any platform — a container just made the write succeed quietly.
+//
+// So this is not a clean-mode patch: it is the machine behind a convention that
+// never had one. The agent gets the absolute path of the directory that is
+// actually collected, on whichever platform it is running.
+//
+// **This is a change to every run, not only the clean test mode**, and it is
+// the only steering this harness does beyond the user's own prompt. Kept to
+// file placement on purpose: the sentence about not changing anything else is
+// there because a system prompt is the one input that silently competes with
+// the user's, and 02:TEST-* judges runs on what the user asked for.
+export function outputContract(dir) {
+  return [
+    "Files you create are delivered back to the person who started this run only if they are inside this directory:",
+    "",
+    `  ${dir}`,
+    "",
+    "Anything written anywhere else, including your working directory, is discarded when this run ends and nobody is told. If the task calls for producing a file, write it there, using that absolute path.",
+    "",
+    "This concerns where files go and nothing else. It does not change how you answer, what language you answer in, or how you approach the task.",
+  ].join("\n");
+}
+
+// agentOptions is every option the SDK turn is given, in one place a test can
+// read. It exists because of the header's own warning: each of these fails
+// **silently** — the wrong settingSources loads no skills, a missing
+// includePartialMessages reports every token count as zero — and until now
+// there was nothing asserting any of them was still there.
+//
+// systemPrompt is passed as a **string**, and that is a measured choice rather
+// than a stylistic one. In 0.3.233 the SDK maps the option like this:
+// `if (s === undefined) p = ""` — so omitting it, which is what this file did
+// until now, sends an explicitly empty system prompt, not Claude Code's preset.
+// A string replaces that empty one and changes nothing else. The
+// `{ type: "preset", preset: "claude_code", append }` form would instead switch
+// the run to the **whole** Claude Code system prompt, which is a different
+// product's behaviour arriving as a side effect of naming a directory.
+export function agentOptions(dir) {
+  return {
+    cwd: workDir,
+    // settingSources deliberately omitted — see the header.
+    skills: "all",
+    allowedTools: ["Skill", "Read", "Write", "Edit", "Glob", "Grep", "Bash"],
+    model: process.env.SKILLHUB_MODEL,
+    permissionMode: "bypassPermissions",
+    systemPrompt: outputContract(dir),
+    // The only source of per-response token counts — see the accounting
+    // section. Without it a turn that produces no result reports nothing.
+    includePartialMessages: true,
+  };
+}
+
 // True only when this module is the process entrypoint (`node run.mjs`), not
 // when it is imported — which is what lets run.test.mjs import extractPackage
 // without also running the sandbox workload it decorates below.
@@ -727,20 +793,7 @@ let breach = null;
 const startedAt = Date.now();
 try {
   const { query } = await import("@anthropic-ai/claude-agent-sdk");
-  for await (const msg of query({
-    prompt,
-    options: {
-      cwd: workDir,
-      // settingSources deliberately omitted — see the header.
-      skills: "all",
-      allowedTools: ["Skill", "Read", "Write", "Edit", "Glob", "Grep", "Bash"],
-      model: process.env.SKILLHUB_MODEL,
-      permissionMode: "bypassPermissions",
-      // The only source of per-response token counts — see the accounting
-      // section. Without it a turn that produces no result reports nothing.
-      includePartialMessages: true,
-    },
-  })) {
+  for await (const msg of query({ prompt, options: agentOptions(artifactDir) })) {
     // Token counting first: a stream_event carries nothing else this loop wants,
     // and it is the only message type that carries a usage figure that is not
     // zero. It is also not recorded in message_types, which would otherwise be

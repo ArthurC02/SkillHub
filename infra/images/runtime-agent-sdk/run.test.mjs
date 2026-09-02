@@ -20,7 +20,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { deflateRawSync } from "node:zlib";
-import { extractPackage } from "./run.mjs";
+import { agentOptions, extractPackage, outputContract } from "./run.mjs";
 
 // --- fixture builder ---------------------------------------------------------
 //
@@ -323,4 +323,53 @@ test("refuses a stored entry whose two sizes disagree", () => {
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+// --- what the agent is told (04 丙-106) --------------------------------------
+//
+// The defect these pin is the one this repository keeps meeting: a convention
+// with nothing behind it. `/out` was real in the collector and nowhere else, so
+// an agent that produced a file said it had done so, the run reported
+// `succeeded`, and the artifact list was empty. On a Windows host the write
+// even landed outside the run (`C:\outnnouncement.md`).
+
+test("the agent is told the directory that is actually collected", () => {
+  const dir = join("C:", "runs", "abc", "out", "artifacts");
+  const text = outputContract(dir);
+  assert.ok(text.includes(dir), "the absolute path the platform collects has to appear verbatim");
+  // Naming the directory is only half of it. Without this the agent has no
+  // reason to think its usual habit — writing next to the working directory —
+  // costs anything, and that is the habit that produced an empty artifact list.
+  assert.match(text, /discarded/);
+});
+
+test("the output contract does not steer anything except where files go", () => {
+  const text = outputContract("/out/artifacts");
+  // The system prompt is the one input that competes with the user's own, and
+  // runs are judged on what the user asked for (02:TEST-*). If this ever grows
+  // instructions about tone, format or language, that judgement stops being
+  // about the user's prompt — so the disclaimer is part of the contract.
+  assert.match(text, /does not change how you answer/);
+});
+
+test("the agent turn still carries every option that fails silently", () => {
+  const options = agentOptions("/out/artifacts");
+
+  // Measured against the pinned SDK (0.3.233), not reasoned about: it maps
+  // `systemPrompt === undefined` to `p = ""`, so a preset object here would not
+  // be "the same prompt plus a line" — it would switch the run to the entire
+  // Claude Code system prompt. A string is the minimal delta from the empty one
+  // this file used to send.
+  assert.equal(typeof options.systemPrompt, "string");
+  assert.ok(options.systemPrompt.includes("/out/artifacts"));
+
+  // The header lists these as the Skill-load conditions, each of which fails
+  // silently — the wrong settingSources discovers no skill at all, a missing
+  // includePartialMessages reports every token count as zero. Until this test
+  // nothing asserted any of them survived an edit.
+  assert.equal(options.skills, "all");
+  assert.equal(options.includePartialMessages, true);
+  assert.equal(options.permissionMode, "bypassPermissions");
+  assert.ok(!("settingSources" in options), "settingSources must stay omitted; passing it loads no skills");
+  assert.deepEqual(options.allowedTools, ["Skill", "Read", "Write", "Edit", "Glob", "Grep", "Bash"]);
 });

@@ -20,7 +20,7 @@
 #         (SBX-011). Thresholds are settled in ADR-022 §2.
 #
 # Build:
-#   docker build -t skillhub/runtime-agent-sdk:2026.08-5 infra/images/runtime-agent-sdk
+#   docker build -t skillhub/runtime-agent-sdk:2026.08-6 infra/images/runtime-agent-sdk
 FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
 
 # The SDK version is pinned, not floated: it is the runtime_version the
@@ -39,7 +39,7 @@ ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 # running on a host process with no cgroup behind it. Both are behaviour
 # changes inside the image, so both are ADR-023 upgrades and both are written up
 # in UPGRADES.md.
-ARG IMAGE_VERSION=2026.08-5
+ARG IMAGE_VERSION=2026.08-6
 
 # Non-root from the image on up (C-02). The provider also passes --user, but an
 # image whose only account is root is one bad flag away from running as root.

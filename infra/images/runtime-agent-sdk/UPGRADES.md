@@ -229,3 +229,51 @@ marker 那一半仍綠，然後改回來。
 - **四項實測本身仍然沒有機器會催**。要讓它有，得有一支像 `test_gateway_live.py` 那樣的付費
   opt-in 測試，把四項串成一次 `go test`；今天第 1、2、3、4 項各自有可執行形式，但**沒有一個
   入口把它們綁在一起**，所以下一次仍然靠一個人記得。
+
+## `2026.08-5` → `2026.08-6`（2026-09-02）— **四項實測尚未跑;預設映像刻意留在 `-5`**
+
+> **這一節的狀態與上一節相反,而那正是要寫清楚的地方**:`-5` 是「實測全跑完才寫」,
+> 本節是「變更已合、實測還沒跑」。ADR-023 §3 明文禁止以推理或既有證據代替新 digest
+> 上的實測,所以本節不主張任何一項通過,並在 [`04` 丙-125](../../../docs/plans/04-backlog-and-handoffs.md) 開一列等人做。
+>
+> **為什麼還是合了**:這次改的是 `run.mjs` 的 agent 選項,而**淨測試模式不經過映像**
+> ——`localdrv` 直接以主機路徑執行 repo 裡的 `run.mjs`(`Config.RunnerScript`),所以
+> demo 那條路徑立刻拿到修正,不必等映像。容器那條路徑等本節的四項。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `run.mjs`:新增 `outputContract()` 與 `agentOptions()`,並把 SDK turn 的 `systemPrompt` 從**隱含的空字串**改成一段**只講產出目錄**的文字。修的是 [`04` 丙-106](../../../docs/plans/04-backlog-and-handoffs.md):兩個 driver 都只收 `<outDir>/artifacts`,而**從來沒有人告訴 agent 這件事** |
+| 為什麼是升級而不是整理 | 它改變**每一次 Run 的模型輸入**。在此之前 agent 收到的 system prompt 是空的;之後是一段文字。M2 的 45 筆基準 Run 與 M3 的評估都是在**空的**那一版下產生的,重跑同一批可能得到不同的產出位置與敘述——**那是預期中的改善,不是回歸,但它使「與基準逐字比對」不再是同一個實驗** |
+| SDK 版本 | `0.3.233`(**未變**) |
+| 基底 digest | **未變** |
+| 映像 digest | **待填**——`runtime-image.yml` 由 `infra/images/` 的 diff 觸發,所以推上去就會建並發佈;**四項實測必須跑在那個 digest 上**,不是本機建置(`-5` 那次的教訓逐字在上一節) |
+| 依賴集 | **未變**(0 增 0 減) |
+| 預設映像 | **刻意仍是 `-5`**:`sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`、`p02_docker_test.go` 的常數三處都沒有動。移到 `-6` 是四項實測通過之後的動作,不是這一批的 |
+
+### 為什麼 `systemPrompt` 是字串而不是 `preset` + `append`
+
+**量出來的,不是推的**——SDK `0.3.233` 自己的映射是
+`if (s === undefined) p = ""; else if (typeof s === "string") p = s; else if (s.type === "preset") { f = s.append }`。
+所以:
+
+- **省略 = 送出一個空的 system prompt**,不是 Claude Code 的預設提示詞。這是本檔案自
+  2026-08 以來每一次 Run 的實況。
+- **字串 = 用一段文字取代那個空字串**,其他一律不變。這是最小的差。
+- **`{ type: "preset", preset: "claude_code", append }` = 把整份 Claude Code 系統提示詞
+  接上**。那是另一個產品的行為,以「順便講一下產出目錄」的名義進來,連 token 帳都會變。
+
+### 已經跑過的(不是四項清單,但先記著)
+
+**2026-09-02,對本機 LiteLLM 的 `gpt-5.4-mini` 各跑一次真的 Run**,同一個任務
+(「建立 announcement.md」)、同一份 harness、只差 `systemPrompt` 一行:
+
+| | 檔案落點 | `GET /runs/{id}/artifacts` 會拿到 | Run 狀態 |
+| --- | --- | --- | --- |
+| **有** `outputContract` | `…\out\artifacts\announcement.md` | 一個檔 | `succeeded` |
+| **沒有**(還原成今天的映像) | `…\work\announcement.md`(cwd) | **空的** | `succeeded` |
+
+**下面那一列就是 `-5` 映像今天的行為**,而它**不是 Windows 專屬**:agent 用的是工作目錄,
+在容器裡那是 `/work`,一樣不會被收走。丙-106 記成「`/out` 只在容器裡成立」是對的但不夠——
+**真正的洞是產出目錄從來沒有被告訴任何人**,而 Windows 只是讓它現形。
+
+**這兩次跑不算四項實測**:它們跑在**主機的 `run.mjs`** 上,不是新 digest 的容器裡。
