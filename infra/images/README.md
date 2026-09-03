@@ -314,6 +314,15 @@ tag 移過去，一份寫在文件裡的「現行 digest」保證會過期，而
 # 版本從 Dockerfile 讀，不從這份文件抄
 IMAGE_VERSION=$(sed -n 's/^ARG IMAGE_VERSION=//p' infra/images/runtime-agent-sdk/Dockerfile)
 docker buildx imagetools inspect "ghcr.io/arthurc02/skillhub-runtime-agent-sdk:${IMAGE_VERSION}"
+
+> **建置指令請照同一個方式取 tag，不要手抄。** `Dockerfile` 檔頭那行 `docker build -t …:2026.08-6` 是**第二份**版本字串，而它已經漂過一次（ARG 是 `2026.08-7` 時它還寫 `-6`）。
+> **但那一行刻意不改**：`runtime-image.yml` 的 I-05 守門把 `infra/images/runtime-agent-sdk/` 底下**除 `*.md` 以外**的任何變更都當成映像內容變更，要求同批 diff 到 `ARG IMAGE_VERSION=`——**改一行註解也會觸發**。為了一行註解去 bump 版本，等於宣告一個需要重跑 ADR-023 四項實測的新映像，那比註解過期更糟。
+> 所以正確的用法寫在這裡（`.md` 是該守門唯一放行的路徑）：
+> ```bash
+> IMAGE_VERSION=$(sed -n 's/^ARG IMAGE_VERSION=//p' infra/images/runtime-agent-sdk/Dockerfile)
+> docker build -t "skillhub/runtime-agent-sdk:${IMAGE_VERSION}" infra/images/runtime-agent-sdk
+> ```
+> 〔2026-09-03：這一段原本被寫進 Dockerfile 的註解裡，CI 當場擋下並且是對的——已還原成原樣，改記於此。〕
 ```
 
 > **注意這裡有兩個不同的問題，答案也不同**：「registry 上最新的是哪一版」看 `ARG IMAGE_VERSION`；

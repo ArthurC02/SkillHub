@@ -19,11 +19,8 @@
 #         attestations on the GHCR digest so node admission can query them
 #         (SBX-011). Thresholds are settled in ADR-022 §2.
 #
-# Build. The tag is read out of ARG IMAGE_VERSION below rather than typed here:
-# a second copy of the version string in a comment drifts silently, and this one
-# already did (it said 2026.08-6 while the ARG said 2026.08-7).
-#   V=$(sed -n 's/^ARG IMAGE_VERSION=//p' infra/images/runtime-agent-sdk/Dockerfile)
-#   docker build -t "skillhub/runtime-agent-sdk:$V" infra/images/runtime-agent-sdk
+# Build:
+#   docker build -t skillhub/runtime-agent-sdk:2026.08-6 infra/images/runtime-agent-sdk
 FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
 
 # The SDK version is pinned, not floated: it is the runtime_version the

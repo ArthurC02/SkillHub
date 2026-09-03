@@ -33,6 +33,10 @@ func TestDocLinkProblems(t *testing.T) {
 		// Percent-encoded space: the file exists, the raw link does not look
 		// like it does.
 		"[空格](./有 空格.md)",
+		// AGENTS.md's ADR-reference rule, verbatim. The parentheses are a blank
+		// to fill in, and Windows resolves `...` while Linux does not — this
+		// line is the one that turned a green local run into a red CI run.
+		"回填 → [ADR-xxx](...) 引用",
 	}, "\n")+"\n")
 	write("docs/plans/有 空格.md", "x\n")
 	// Generated trees and the frozen golden-set corpus are not walked.
@@ -49,5 +53,21 @@ func TestDocLinkProblems(t *testing.T) {
 	}
 	if !strings.Contains(problems[0], "ADR-011-workspace-scope-and-tenancy.md") {
 		t.Fatalf("problem does not name the target: %s", problems[0])
+	}
+}
+
+// The `(...)` above cannot be judged by asking the filesystem: Windows resolves
+// `...` and Linux does not, so the fixture test passes on this machine with or
+// without the guard, and CI is where you find out. Assert on the decision
+// itself, which has no operating system.
+func TestDocLinkTargetIgnoresProsePlaceholders(t *testing.T) {
+	t.Parallel()
+	for _, raw := range []string{"...", ".", ".."} {
+		if _, ok := docLinkTarget(raw); ok {
+			t.Fatalf("%q was accepted as a path; it is AGENTS.md's fill-in-the-blank for an ADR reference", raw)
+		}
+	}
+	if _, ok := docLinkTarget("./x.md"); !ok {
+		t.Fatal("a real relative target was rejected")
 	}
 }

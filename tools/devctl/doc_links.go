@@ -123,5 +123,17 @@ func docLinkTarget(raw string) (string, bool) {
 	if target == "" || path.IsAbs(target) {
 		return "", false
 	}
+	// A target that is nothing but dots is a placeholder in prose, not a path.
+	// The one in this repo is AGENTS.md's rule for writing an ADR reference,
+	// `→ [ADR-xxx](...)`, where the parentheses are the blank to fill in.
+	//
+	// It is also the reason this checker's first CI run failed while every local
+	// run passed: Windows resolves `...` and Linux does not, so a false positive
+	// that is invisible on the development machine is a hard failure in CI. Any
+	// checker that asks the filesystem a question has this asymmetry; this one
+	// now answers it before asking.
+	if strings.Trim(target, ".") == "" {
+		return "", false
+	}
 	return target, true
 }
