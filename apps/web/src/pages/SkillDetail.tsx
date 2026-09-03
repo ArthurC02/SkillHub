@@ -279,11 +279,10 @@ export function SkillDetail() {
             ) : (
               /* 設計 §2.9: 別人的 Skill 的版本清單回空陣列，而「沒有版本」與
                  「你看不到」是兩件事——前者會被讀成這個 Skill 是空的。表列詞是
-                 「無權檢視」（ADR-011 的 Workspace scope）。 */
-              <p>
-                無權檢視——這個工作區看不到這個 Skill 的版本內容。別人的 Skill 要 Fork
-                之後才會有屬於你的版本；這不代表它沒有版本。
-              </p>
+                 「無權檢視」（ADR-011 的 Workspace scope）。
+                 2026-09-03（丙-142）：型別詞留著（§2.10 第 10 項），解釋只在上面的
+                 〈版本〉區塊講一次——這一格與那一格同時渲染，字一模一樣。 */
+              <p>無權檢視——這個工作區看不到這個 Skill 的版本內容（原因見上面的〈版本〉）。</p>
             )}
             {skill.derivation.forked_from_version_id && (
               <p>
@@ -464,9 +463,12 @@ function VersionHistory({ skillId }: { skillId: string }) {
                   );
                 })}
               </ul>
+              {/* 2026-09-03（丙-142）：這一段與 `SkillFiles` 的折疊區各講了一次同一條
+                  全站規則。留下的是這一頁真的要用到的兩件事——為什麼會有第二版（不然
+                  這份清單沒有理由存在），以及這個按鈕比的是什麼。「舊的一版原封不動
+                  留著」與「兩版套件檔案的」是同一句話的兩次說法。 */}
               <p className="note">
-                版本不可變（ADR-003）：採用改善建議會建立新的一版，舊的一版原封不動留著。
-                差異比對的是兩版套件檔案的內容，不是它們的試跑結果。
+                版本不可變：採用改善建議會建立新的一版。差異比對的是套件內容，不是試跑結果。
               </p>
             </details>
           </>
@@ -536,10 +538,17 @@ function Redistribution({ skill, isLoggedIn }: { skill: SkillDetailModel; isLogg
       ) : skill.version ? (
         <PackagingEntry skill={skill} isLoggedIn={isLoggedIn} />
       ) : (
-        /* 同上，§2.9 的「無權檢視」。 */
+        /*
+          §2.9 的「無權檢視」。2026-09-03（丙-142）：同一段解釋在這一頁上出現三次
+          （這裡、〈版本〉區塊、〈進階資訊〉折疊區），逐位元相同。**型別詞留在三處**
+          （§2.10 第 10 項：缺席是哪一型不可折、不可省），連同這一格自己的後果——
+          「沒有東西可以打包」是這個控制項不在的原因（§2.4）。搬走的只有那段對每一格
+          都一樣的解釋（要 Fork 才會有屬於你的版本、這不代表它沒有版本），它現在只在
+          下面的〈版本〉區塊講一次。
+        */
         <p className="note">
-          無權檢視——這個工作區看不到這個 Skill 的版本內容。別人的 Skill 要 Fork
-          之後才會有屬於你的版本；這不代表它沒有版本。沒有版本內容就沒有東西可以打包。
+          無權檢視——這個工作區看不到這個 Skill
+          的版本內容，所以沒有東西可以打包（原因見下面的〈版本〉）。
         </p>
       )}
 
@@ -620,6 +629,11 @@ function PackagingEntry({ skill, isLoggedIn }: { skill: SkillDetailModel; isLogg
  * Stated per marker actually present, so the page never explains a label it did
  * not render.
  *
+ * 2026-09-03（丙-142）：兩顆徽章的 `title` 拿掉了。它們與底下那兩句可見文字**逐字
+ * 相同**，而 §2.13 去重第 2 條把「`title=` 與可見 `.note` 同字」算成同一句講了兩次，
+ * §2.4 的補句逐字寫著「原因搬出 `title` 之後，`title` 要拿掉」。第一訊號（可見文字）
+ * 一個字都沒有動——消失的是那份在觸控裝置上本來就不存在的複本。
+ *
  * 2026-09-03：h2 → h3，因為它現在住在〈它能做什麼〉裡面（§3 第 9 條）。一個字都沒改，
  * 也沒有進 `<details>`——空清單那一句是 §2.10 第 10 項。
  */
@@ -640,13 +654,9 @@ function Limitations({ limitations }: { limitations: SkillLimitation[] }) {
             <li key={`${limitation.source}-${limitation.text}`}>
               {limitation.text}
               {limitation.source === "model" ? (
-                <span className="badge badge-source-model" title="由模型重述套件內容，未經人工核對">
-                  AI 產生
-                </span>
+                <span className="badge badge-source-model">AI 產生</span>
               ) : (
-                <span className="badge badge-source-template" title="由匯入時的靜態掃描結果推得">
-                  掃描推得
-                </span>
+                <span className="badge badge-source-template">掃描推得</span>
               )}
             </li>
           ))}
@@ -707,11 +717,18 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
         surface this app already uses for a badge that qualifies the block
         below it (the header above does the same with three of them).
       */}
+      {/*
+        2026-09-03（丙-142）：「這段是模型寫的、沒有人核對」在這一頁曾經有四份可見複本
+        （合計 47 字）加兩個 `title`。留下來的是說得最完整的那兩份，而且兩份都在這個
+        `<section>`〈它能做什麼〉裡面，也就是 §2.11(c) 要的「同一個區塊」：
+          - 這個區塊底下伺服器那句 `enrichment.note`（它不只說「模型寫的」，還說了
+            你的 Agent 讀的不是這一段），與
+          - 〈限制〉那句「『AI 產生』的項目由模型重述套件內容，未經人工核對。」——
+            它同時解釋徽章的語意與涵蓋範圍，所以它是留下來的那一份。
+        拿掉的是這一列自己那份 12 字的複述與同字的 `title`（§2.13 去重第 2 條）。
+      */}
       <p className="badge-row">
-        <span className="badge badge-source-model" title="由模型產生，未經人工核對">
-          AI 產生
-        </span>
-        <span className="note">由模型產生，未經人工核對</span>
+        <span className="badge badge-source-model">AI 產生</span>
       </p>
       {enrichment.summary && <p>{enrichment.summary}</p>}
 
@@ -824,20 +841,32 @@ function SourceBlock({ source }: { source: SkillSource }) {
           來源已失效，自 <Timestamp at={source.unavailable_since} />{" "}
           起無法取得。目前顯示的是失效前保存的內容。
         </p>
-      ) : source.last_checked_at ? (
-        <p className="note">
-          最近一次來源可用性檢查：
-          <Timestamp at={source.last_checked_at} />
-          （當時可取得）。
-        </p>
-      ) : (
+      ) : !source.last_checked_at ? (
+        /* 「從來沒探測過」是 §2.9 的缺席型別詞，留在外面（§2.10 第 10 項）。 */
         <p className="note">尚未檢查過來源是否仍可取得。</p>
-      )}
+      ) : null}
 
-      {(source.source_version || source.content_hash) && (
+      {(source.source_version ||
+        source.content_hash ||
+        (!source.unavailable_since && source.last_checked_at)) && (
         <details>
           <summary>識別碼</summary>
           <ul>
+            {/*
+              2026-09-03（丙-142）：「最近一次來源可用性檢查：… （當時可取得）」收進
+              這裡。它是一個**通過**的探測，也就是「這份東西有多舊」那條軸上的推導細節
+              （§2.6／§2.13 的 F 類），不是判斷依據——它成立時畫面上什麼都不必改變。
+              **`unavailable_since` 那一句沒有跟進來**：那是 §2.10 第 9 項的平台降級
+              自述，永不折疊，而且它渲染時這一列不渲染（它們互斥），所以折疊區裡不會
+              出現一句與外面那句互相矛盾的「當時可取得」。
+            */}
+            {!source.unavailable_since && source.last_checked_at && (
+              <li>
+                最近一次來源可用性檢查：
+                <Timestamp at={source.last_checked_at} />
+                （當時可取得）
+              </li>
+            )}
             {source.source_version && (
               <li>
                 來源版本／Commit：<code>{source.source_version}</code>

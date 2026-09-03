@@ -30,6 +30,13 @@ import type { SkillFileEntry } from "../api/types";
 export function SkillFiles() {
   const { skillId } = useParams({ from: "/skills/$skillId/files" });
   const { data, isLoading, error } = useSkillFiles(skillId);
+  // 設計 §4.3 的硬規則：被截斷的清單（這裡是一份被截斷的**文件**，同一條）要說出
+  // 「共 N，這裡顯示 M，因為 X」。伺服器沒有回一個 `skill_md_bytes` 欄位，但它回了
+  // 檔案樹，而 SKILL.md 是樹裡的一列——`fileTree` 走的是套件內每一個檔案，`Size`
+  // 取自 zip entry 的未壓縮大小（discovery/detail.go）。所以總量是**伺服器送的**，
+  // 不是這裡估的；讀者也看得到同一個數字長在下面的檔案樹上。
+  // 找不到那一列時不編一個數字：退回原本只說理由的那句話。
+  const skillMdBytes = data?.tree.find((entry) => entry.path === "SKILL.md")?.size;
 
   return (
     <article>
@@ -96,17 +103,20 @@ export function SkillFiles() {
                 Skill ID：<code>{data.skill_id}</code>
               </li>
             </ul>
-            <p className="note">
-              這一頁顯示的內容屬於上面這一個不可變版本。版本不會被原地修改，所以同一個版本 ID
-              永遠對應同一份內容。
-            </p>
+            {/* 設計 §2.13（丙-142）：後半句「版本不會被原地修改，所以同一個版本 ID
+                永遠對應同一份內容」是**全站規則**（ADR-003），不是這一頁的事實，而且
+                `SkillDetail` 的版本清單也講了一次同樣的規則。留下來的是這一頁自己的
+                那一句：螢幕上這些位元組屬於上面那一個版本。 */}
+            <p className="note">這一頁顯示的內容屬於上面這一個不可變版本。</p>
           </details>
 
           <section>
             <h2>SKILL.md</h2>
             {data.skill_md_truncated && (
               <p className="notice" role="status">
-                內容過長，以下只顯示前 1 MiB。
+                {skillMdBytes === undefined
+                  ? "內容過長，以下只顯示前 1 MiB。"
+                  : `共 ${skillMdBytes} bytes，這裡只顯示前 1 MiB，因為這個端點的單次上限是 1 MiB。`}
               </p>
             )}
             <pre className="skill-md">{data.skill_md}</pre>
@@ -115,7 +125,10 @@ export function SkillFiles() {
           <section>
             <h2>檔案樹</h2>
             <FileTree entries={data.tree} />
-            <p className="note">{data.note}</p>
+            {/* 伺服器的 `note`（「tree 為套件內檔案清單與大小；…」）在這裡只是把上面
+                那個 h2 用一句話再講一次——它描述的是這一區塊**是什麼**，而標題已經
+                說了，每一列自己也寫著大小。設計 §2.13（丙-142）。它的後半句（單檔內容
+                讀取端點尚未實作）講的是一個這一頁沒有提供、讀者也沒有在找的控制項。 */}
           </section>
         </>
       )}
@@ -147,11 +160,17 @@ function FileTree({ entries }: { entries: SkillFileEntry[] }) {
         §3 item 4: the marker's meaning was only in a `title`. Stated for both
         answers — 「沒有 Script」 is a fact about this package and printing it is
         the difference between a scanned package and an unstated one (§2.1).
+
+        2026-09-03（丙-142）：句尾那半句「那由版本號旁邊的那一句負責，它兩種答案都會
+        說出來」刪掉了。它是**指路**——它要讀者去看同一頁上方的另一段文字，而那段文字
+        本來就無條件渲染（有 finding 印徽章，沒有就印「靜態掃描沒有在 SKILL.md 裡找到
+        內嵌的程式碼」）。範圍限定那一句（「不包括 SKILL.md 內嵌的程式碼」）是 §2.11(c)
+        的但書，**留著**：它說的是這一句話不涵蓋什麼。
       */}
       <p className="note">
         {scripts > 0
           ? `標成 Script 的 ${scripts} 個檔案是可執行 Script：它們會在你自己的環境裡執行。Skill Hub 的匯入與掃描階段不執行套件內的任何程式碼。`
-          : "這個清單裡沒有可執行 Script 檔案。這只說明檔案樹，不包括 SKILL.md 內嵌的程式碼——那由版本號旁邊的那一句負責，它兩種答案都會說出來。"}
+          : "這個清單裡沒有可執行 Script 檔案。這只說明檔案樹，不包括 SKILL.md 內嵌的程式碼。"}
       </p>
     </>
   );

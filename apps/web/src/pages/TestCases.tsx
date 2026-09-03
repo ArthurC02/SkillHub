@@ -120,10 +120,13 @@ export function TestCaseList() {
   return (
     <section>
       <h1>Test Case</h1>
-      <p className="note">
-        Test Case 是可編輯的草稿：User Prompt、測試資料與驗收條件。開始 Run 時，平台會把當下的
-        Prompt 與驗收條件凍結成快照，之後再改都不會動到已經跑過的 Run。
-      </p>
+      {/*
+        設計 §2.13（ADR-065）第 2 條：快照規則原本在 Test Case 的兩個畫面上講了三次
+        ——這裡、詳情頁的「驗收條件」、詳情頁的 Rubric。留在「驗收條件」那一份：規則
+        的後果（改了不會動到已經跑過的 Run）只有在**正在編輯**的地方才決定得了任何
+        事，而這一頁不能編輯任何一條。內容一個字都沒有改寫，只是不再印第二、三次。
+      */}
+      <p className="note">Test Case 是可編輯的草稿：User Prompt、測試資料與驗收條件。</p>
 
       {/*
         設計 checklist 1 / 義務 §1.2: 這一頁要回答的是「我有哪些 Test Case」,而
@@ -390,14 +393,13 @@ function RunHistory({
     <>
       <h2>執行歷史</h2>
       {/*
-        設計 §2.5 / ADR-025 說兩軸,判定排在前面。這份清單一直只有一軸,因為
-        `RunListItem` 沒有判定欄位——那是契約缺口不是排版問題,已於 04 丙-32
-        補上。這句話留著:順序本身教不會任何人兩軸的差別。
+        設計 §2.5 / ADR-025 說兩軸,判定排在前面,而這份清單的每一列現在真的有兩列
+        （04 丙-32 補上判定欄位之後）。這裡原本再講一次兩軸的**定義**,/workspace/runs
+        的頂端還有第二份;§2.5 要的是「兩列、判定在前」這個版面事實,而那個事實由每一列
+        自己的兩個徽章帶著主詞說出來（任務判定：／執行狀態：）。兩列一個字都沒有動,
+        少掉的只有那段定義（§2.13,D 類）。
       */}
-      <p className="note">
-        每一列兩軸：<strong>任務判定在前，執行狀態在後</strong>
-        ——後者只說工作負載跑完了沒有。逐條驗收結果在各自的 Run 頁面上。
-      </p>
+      <p className="note">逐條驗收結果在各自的 Run 頁面上。</p>
       {runs.isPending && <Loading what="執行歷史" />}
       <ReadFailure error={runs.error} what="執行歷史" />
       {runs.data &&
@@ -429,15 +431,24 @@ function RunHistory({
                   </p>
                 )}
                 <p className="note">
-                  Skill Version <code>{run.skill_version_id}</code>
                   {run.finished_at ? (
                     <>
-                      ｜結束於 <Timestamp at={run.finished_at} />
+                      結束於 <Timestamp at={run.finished_at} />
                     </>
                   ) : (
-                    "｜尚未結束"
+                    "尚未結束"
                   )}
                 </p>
+                {/*
+                  設計 §2.6 與 §3 第 8 條 — 識別符折疊。這一列平鋪過一個 36 字的
+                  UUID,是整份清單最長的一段字,而沒有人是靠它決定要點哪一次 Run:
+                  要它的人是去貼進 issue、或去跟 Run 頁面對照的人,那是一次點開的
+                  成本。§2.10 的十項一項都沒有進來,判定與執行狀態仍在上面平鋪。
+                */}
+                <details>
+                  <summary>Skill Version</summary>
+                  <code>{run.skill_version_id}</code>
+                </details>
               </li>
             ))}
           </ul>
@@ -618,9 +629,15 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
   return (
     <>
       <h2>驗收條件</h2>
+      {/*
+        設計 §2.13 第 2 條 — 快照規則在 Test Case 的兩個畫面上有三份（清單頁抬頭、
+        這裡、下面的 Rubric）。留這一份:這是**正在編輯**的地方,規則的後果（改了不會
+        動到已經跑過的 Run）只有在這裡決定得了事情。主詞從「這裡」放寬成「這一頁」,
+        因為被凍結的是 Prompt、驗收條件與 rubric,而那正是被刪掉的兩份各自涵蓋的。
+      */}
       <p className="note">
         每一條都會被逐項判定為通過／未通過／無法判斷。 開始 Run
-        時，這裡的內容會被凍結成快照：之後修改只影響<strong>下一次</strong>
+        時，這一頁的內容會被凍結成快照：之後修改只影響<strong>下一次</strong>
         Run，不會改寫任何已經完成的 Run 或已經寫好的評估。
       </p>
 
@@ -659,7 +676,9 @@ function CriteriaSection({ testCase }: { testCase: TestCase }) {
             的人」這個限定。 */}
         {text.trim() === "" && (
           <span className="note" role="status" id="criterion-add-why">
-            還不能新增，因為左邊的欄位是空的。
+            {/* §2.4 要的是「原因是看得見的文字」,不是一句完整的話;主詞在按鈕上
+                （新增）與 aria-describedby 上,不必在原因裡再講一次（§2.13）。 */}
+            欄位是空的
           </span>
         )}
       </p>
@@ -731,11 +750,10 @@ function CriterionRow({
   // is also what makes `aria-describedby` conditional in the same place the
   // sentence is chosen — the previous shape had the reason in one branch and the
   // button in another, which is how they drifted apart.
-  const saveReason = !edited
-    ? "「儲存文字」現在不能按，因為文字和已儲存的內容一樣，沒有變更要存。"
-    : draft.trim() === ""
-      ? "「儲存文字」現在不能按，因為驗收條件不能是空白。"
-      : null;
+  // 措辭是 §2.13 的:按鈕上已經寫著「儲存文字」,而這一句是 aria-describedby 指向
+  // 的那一段,所以主詞不必再講一次。八條驗收條件就是同一句話印八次,句子縮短是唯一
+  // 不動 §2.4／§2.10 第 5 項的省法——原因仍然是平鋪的可見文字,仍然接在控制項上。
+  const saveReason = !edited ? "沒有變更要存" : draft.trim() === "" ? "驗收條件不能是空白" : null;
 
   return (
     <li className="criterion">
@@ -919,8 +937,7 @@ function RubricSection({ testCase }: { testCase: TestCase }) {
       <p className="note">
         Rubric 是驗收條件的<strong>加強說法</strong>，不是另一套判定：每一條都掛在上面某一條驗收
         條件上，只是額外說明「做到什麼程度算過」以及「要不要引原文」。權重只是給模型看的相對
-        重要性，平台不拿它算分。開始 Run 時 rubric 會跟驗收條件一起凍結成快照，之後修改只影響
-        <strong>下一次</strong> Run。
+        重要性，平台不拿它算分。
       </p>
       {testCase.acceptance_criteria.length === 0 ? (
         <p>要先有驗收條件才能寫 rubric——rubric 的每一條都是掛在某一條驗收條件上的。</p>

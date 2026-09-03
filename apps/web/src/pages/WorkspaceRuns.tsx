@@ -27,12 +27,12 @@ export function WorkspaceRuns() {
   return (
     <section>
       <h1>Run 歷史</h1>
-      <p className="note">
-        這個工作區跑過的 Run，新的在上面。每一列有兩軸：
-        <strong>任務判定在前，執行狀態在後</strong>
-        ——前者說任務有沒有做到，後者只說工作負載跑完了沒有（ADR-025）。逐條驗收結果在各自的 Run
-        頁面上。
-      </p>
+      {/*
+        設計 §2.13,D 類。這裡原本用 94 字重講一次 ADR-025 的定義,而 §2.5 要的是
+        「兩列、判定在前」這個**版面事實**——那由每一列自己的兩個徽章帶著主詞說出來
+        （任務判定：／執行狀態：）,不是由這段字說出來。兩列一個字都沒有動。
+      */}
+      <p className="note">這個工作區跑過的 Run，新的在上面。</p>
 
       {runs.isPending && <Loading what=" Run 歷史" />}
       <ReadFailure error={runs.error} what=" Run 歷史" />
@@ -109,9 +109,9 @@ function RunRow({ run }: { run: RunListItem }) {
         </Link>{" "}
       </p>
       {/* §2.5 wants both axes and the verdict first. It was a footnote under the
-          list until 04 丙-32 landed the field — the note above still says what
-          the two axes are, because the order alone does not teach anyone the
-          difference. */}
+          list until 04 丙-32 landed the field. Each badge carries its own subject
+          （任務判定：／執行狀態：）, which is what makes the two rows readable
+          without the paragraph that used to define them above the list (§2.13). */}
       <p className="badge-row">
         <RunVerdict verdict={run.evaluation} />
       </p>
@@ -123,16 +123,18 @@ function RunRow({ run }: { run: RunListItem }) {
             file's own header argues cleanup belongs on the row because hiding it
             would make the list a prettier answer than the truth; the guard was
             hiding it for exactly the runs where the answer is good. */}
-        <span
-          className={CLEANUP_BADGE[run.cleanup_status.value] ?? "badge badge-unverified"}
-          title={run.cleanup_status.note}
-        >
+        <span className={CLEANUP_BADGE[run.cleanup_status.value] ?? "badge badge-unverified"}>
           清理狀態：{run.cleanup_status.label}
         </span>{" "}
         {/* The server's own qualifier, visible rather than `title`-only
             (設計 §2.4 第 3 項). 清理狀態 is a security fact about a sandbox that
             may or may not still exist, and 「已清理」 alone does not say what was
-            torn down. */}
+            torn down.
+
+            The badge above carried the SAME string as a `title=` as well, which
+            is 設計 §2.13 第 2 條's named instance: §2.4 says the reason may not
+            live only in a tooltip, not that it must exist twice. The visible copy
+            is the one that survives a touch device, so the `title` went. */}
         <span className="note">{run.cleanup_status.note}</span>
       </p>
       {run.status_reason ? (

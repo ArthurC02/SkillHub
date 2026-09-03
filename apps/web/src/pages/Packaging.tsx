@@ -322,13 +322,19 @@ export function Packaging() {
             only the part that is this page's own: packaging changes none of
             them and infers none of them from another.
           */}
+          {/*
+            2026-09-03（丙-142）：前兩句刪了。「三軸分開看，來源各自不同（上面每一軸都
+            寫著自己是量到的還是推出來的）」是**複述**——它要讀者去看上面每一軸自己已經
+            印出來的那一句，而那一句就在同一個區塊裡；「打包不會改變其中任何一項，也不會
+            把其中一項推論成另一項」講的是同一件事的抽象版本。留下的是這一頁自己的但書
+            （C 類，§2.11(c)）：一個徽章不涵蓋什麼，用讀者會犯的那個錯來說。
+          */}
           <p className="note">
-            三軸分開看，來源各自不同（上面每一軸都寫著自己是量到的還是推出來的）。
-            打包不會改變其中任何一項，也不會把其中一項推論成另一項——
             <strong>「規格驗證通過」不等於「裝得起來」，更不等於「腳本跑得動」</strong>。
           </p>
 
           <h2>打包目標</h2>
+          <p className="note">每個目標的安裝說明也隨套件內的 INSTALL.md 一起下載。</p>
           {targets.isPending && <Loading what="打包目標" />}
           <ReadFailure error={targets.error} what="打包目標" />
           {targets.data && (
@@ -405,6 +411,19 @@ export function Packaging() {
                   : "套件已建立。"}
               </p>
               <DownloadArtifactFacts artifact={built} />
+              {/*
+                這句但書以前住在 `DownloadArtifactFacts` 的折疊區裡，也就是跟著下載紀錄
+                的每一列印一次（丙-142 把它提到清單層級）。這一頁只有一列，所以「印一次」
+                就是印在這裡——C 類（§2.11(c)：徽章與證據要說出自己不涵蓋什麼）一個字都
+                不能因為搬家而消失，而兩串 64 個十六進位字元正是最會被讀得比它主張更大的
+                東西（ADR-027 決策 3 逐字要求下載面不得暗示平台背書）。
+              */}
+              <p className="note">
+                上面折起來的那兩串是雜湊，不是簽章。
+                <strong>MVP 的套件不帶數位簽章，平台也不驗簽</strong>
+                （ADR-027 決策 3 是明文的「不做」）——它們證明得了「位元組沒有被改過」，
+                證明不了「這份東西是誰做的」。
+              </p>
               <p>
                 {/* Same reason as Downloads.tsx: the download record is written
                     when the server serves the bytes, so the list this page just
@@ -462,13 +481,18 @@ function RetentionNotice({ preview }: { preview: PackagingPreview }) {
       </p>
     );
   }
+  // 2026-09-03（丙-142）：中間那句「這個天數是這個部署設定的值，也是伺服器等一下
+  // 寫進這份套件到期日的同一個值」刪了。它是**這個數字怎麼來的**（F 類推導），而
+  // §2.2 要的是「指得出強制它的那一行」，那是這個元件的檔頭與伺服器在做的事，不是
+  // 讀者在這一格要作的判斷；天數本身（H 類）與自動刪除（A 類）一個字未動。
+  // 冪等那一句的後半也收短了：「回到這一頁用同一個版本、同一個目標再打一次」與建立
+  // 成功後那句「同一個版本、同一個目標、同一個 Test Case 選項先前就打過」是同一句話
+  // 在同一頁講兩次（§2.13 去重第 2 條）。
   return (
     <p className="note" role="status">
       <strong>保留期限</strong>：打包完成後，這份下載套件會保留{" "}
       <strong>{days >= 1 ? `${days} 天` : "不到 1 天"}</strong>，到期後平台自動刪除它。
-      這個天數是這個部署設定的值，也是伺服器等一下寫進這份套件到期日的同一個值。
-      <strong>過期不等於做白工</strong>——打包是冪等的，回到這一頁用同一個版本、同一個目標再打一次，
-      得到的會是同一份內容。
+      <strong>過期不等於做白工</strong>——打包是冪等的，再打一次得到的是同一份內容。
     </p>
   );
 }
@@ -619,7 +643,10 @@ function Verification({ target }: { target: PackagingTarget }) {
           ))}
         </ol>
       )}
-      <p className="note">同一份說明也隨套件內的 INSTALL.md 一起下載。</p>
+      {/* 2026-09-03（丙-142，設計 §2.13 去重 1）：這一句以前印在每一個打包目標的
+          `<details>` 尾端，而它對每個目標一字不差——它講的是這份清單的事，不是這一個
+          目標的事。提到 `<h2>打包目標</h2>` 底下講一次；每個目標自己的步驟、環境變數與
+          「Skill Hub 沒有把套件裝進這個目標跑過」的但書一個字都沒動。 */}
     </details>
   );
 }
@@ -628,7 +655,9 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
   return (
     <>
       {preview.allowed ? (
-        <p>這些設定可以打包。以下是打包前重新跑一次規格驗證的結果。</p>
+        // 後半句「以下是打包前重新跑一次規格驗證的結果」由下面那個 h3〈打包後的規格
+        // 驗證〉自己說（丙-142）。
+        <p>這些設定可以打包。</p>
       ) : preview.blocked_reason ? (
         <BlockedNotice reason={preview.blocked_reason} message={preview.blocked_message} />
       ) : (
@@ -640,10 +669,11 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
 
       <h3>會一起打包的 Test Case</h3>
       {preview.included_test_cases.length === 0 ? (
-        <p className="note">
-          沒有 Test Case 會進包。這不代表這個 Skill 沒有 Test
-          Case——下面那份清單說明哪些被排除、為什麼。
-        </p>
+        /* 句尾「——下面那份清單說明哪些被排除、為什麼」刪了（丙-142）：它是**指路**，
+           而它指的那份清單（〈不會進包的 Test Case〉）就在同一頁下面兩個 h3 之後。
+           「這不代表這個 Skill 沒有 Test Case」留著——那是 §2.1 的強形式（空狀態要
+           說出這個空**不是**什麼），不是說明。 */
+        <p className="note">沒有 Test Case 會進包。這不代表這個 Skill 沒有 Test Case。</p>
       ) : (
         <ul className="risk-list">
           {preview.included_test_cases.map((tc) => (
@@ -724,8 +754,12 @@ function Dependencies({ preview }: { preview: PackagingPreview }) {
               <li key={d}>{d}</li>
             ))}
           </ul>
+          {/* 2026-09-03（丙-142）：開頭「同一份清單會寫進套件內的 INSTALL.md。」刪了
+              ——每一個打包目標各自已經說過同一件事（`Verification` 的「同一份說明也隨
+              套件內的 INSTALL.md 一起下載。」）。留下的兩句都不是說明：平台不替你安裝
+              是強制者歸屬（§2.2 第三向），不執行任何程式碼是掃描的但書。 */}
           <p className="note">
-            同一份清單會寫進套件內的 INSTALL.md。Skill Hub 不會替你安裝這些，
+            Skill Hub 不會替你安裝這些，
             打包與掃描階段也不執行套件內的任何程式碼——你的環境有沒有這些依賴，要你自己確認。
           </p>
         </>

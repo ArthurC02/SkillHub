@@ -230,6 +230,80 @@ async function scan(where: string) {
     `${where}: the same qualifier stated more than once on one screen (§3 第 14 條)`,
   ).toEqual([]);
 
+  // 設計 §2.13 去重 1（ADR-065）— the half the checker above is blind to, by
+  // construction. That one excludes `li/td/th` because twenty cards each
+  // carrying 「未測量」 is twenty facts, and that reasoning is right. But the
+  // exclusion also hides the defect §2.13 was written for: a sentence that is
+  // **byte-identical down a whole list** is not that row's fact, it is the
+  // list's. Counted on 2026-09-03, four of them were printed once per row on a
+  // 45-row home page — about 8,500 characters that could not change any
+  // reader's decision from the second row on, because they did not distinguish
+  // one row from another.
+  //
+  // Scoped to one list at a time, and the scope IS the rule. The same sentence
+  // on two different lists can be two subjects; the same sentence on two rows
+  // of ONE list cannot.
+  //
+  // WHAT IT CANNOT JUDGE, and why the exemption list exists: whether the
+  // sentence is liftable at all. W1 found this by mutation — 「已掃描」 and
+  // 「從未掃描」 share one field, and a never-scanned row wears no badge, so
+  // hoisting both sentences leaves the reader unable to tell which row is
+  // which, and a §2.9 typed absence is lost. A sentence may only leave the row
+  // when **every row still wears a word that maps back to it** (設計 §2.13).
+  // A repeat that fails that test belongs here, named, with the reason.
+  // Named, reasoned, shrink-only — the same shape as every other list here.
+  // **Known weakness**: these are exact strings, and two of them contain values
+  // that come from the fixture, so a fixture edit rots the entry silently. That
+  // is tolerable only because the list is this short; if it grows, it needs the
+  // "every entry was met" ratchet that TOOLTIP_ONLY got on the same day.
+  const LIST_NOTE_REPEATS: string[] = [
+    // Belongs to the RISK FLAG, not to the row. Two rows print it because both
+    // happen to carry `script-file`; a row with a different disclosure prints a
+    // different sentence, and a row with none prints nothing. Hoisting it would
+    // state a flag's meaning for rows that do not have that flag. It is also
+    // the qualifier `e2e/rendered.spec.ts` proves is rendered per row and in its
+    // own colour (that assertion fails on zero, by design).
+    "平台不曾執行它們——這是靜態掃描的結果,不是行為分析。",
+    // Not a qualifier at all: it is this artifact's version, identical only
+    // because two downloads came from the same one. A third from another
+    // version prints something else.
+    "版本：v2（最新）",
+  ];
+  const listRepeats: string[] = [];
+  for (const list of container.querySelectorAll("ul, ol")) {
+    const perList = new Map<string, number>();
+    for (const item of list.querySelectorAll(":scope > li")) {
+      // Per row, not per node: one row printing the same sentence twice is the
+      // checker above's business, not this one's.
+      const inThisRow = new Set<string>();
+      for (const note of item.querySelectorAll(".note")) {
+        if (note.closest("ul, ol") !== list) continue; // a nested list owns it
+        // A `<label>` is a control's NAME, never a qualifier. It is `.note` here
+        // only for the type step, and it repeats down a list of fields because
+        // each field needs its own — lifting it would leave the inputs unnamed.
+        if (note.tagName === "LABEL") continue;
+        const text = (note.textContent ?? "").replace(/\s+/g, " ").trim();
+        if (text.length < 8) continue;
+        inThisRow.add(text);
+      }
+      for (const text of inThisRow) perList.set(text, (perList.get(text) ?? 0) + 1);
+    }
+    for (const [text, n] of perList) {
+      if (n > 1 && !LIST_NOTE_REPEATS.includes(text)) {
+        listRepeats.push(`x${n} 「${text.slice(0, 44)}」`);
+      }
+    }
+  }
+  // Joined into one string rather than compared as an array: an array of long
+  // Chinese sentences is elided in the runner's diff exactly when there is more
+  // than one of them, which is the case you most need to read.
+  expect(
+    listRepeats.sort().join("\n"),
+    `${where}: one sentence repeated on every row of a list (§2.13 去重 1). ` +
+      `Print it once above the list — but only if every row still wears a word ` +
+      `that maps back to it; otherwise add it to LIST_NOTE_REPEATS with the reason`,
+  ).toBe("");
+
   // system.md §3 item 6 / §6 — the one rule with a known defect and no gate.
   // axe fails a *skipped* level, never a level that should have gone down and
   // didn't, so eight wrong `h2` in RunTrace lived for weeks. This does not

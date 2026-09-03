@@ -76,8 +76,15 @@ export function WorkspaceAccount() {
       {me.data && (
         <>
           <p className="note">
-            {me.data.display_name}（{me.data.email}）｜工作區 <code>{me.data.workspace_id}</code>
+            {me.data.display_name}（{me.data.email}）
           </p>
+          {/* 設計 §2.6／§3 第 8 條 — 識別符折疊。工作區的 UUID 平鋪在帳號名旁邊,
+              而它回答不了這一頁的任何問題（這一頁的問題是「刪不刪」）;要它的人是去
+              回報問題或對帳的人,那是一次點開的成本。 */}
+          <details>
+            <summary>工作區識別碼</summary>
+            <code>{me.data.workspace_id}</code>
+          </details>
 
           <h2>刪除帳號</h2>
           {me.data.deletion_requested_at ? (
@@ -127,11 +134,13 @@ export function WorkspaceAccount() {
             </p>
           )}
 
+          {/*
+            設計 §2.13 第 2 條 — 這是「東西要去哪裡刪」的第二份地圖,四份措辭全不同。
+            留 /policy 那一份:它是 02:O11Y-004 的揭露義務所在,也是四份裡唯一寫了
+            「刪不掉的東西會留下什麼」的。這裡指過去,而不是再寫一次逐項的落點。
+          */}
           <p className="note">
-            只想刪掉某幾樣東西，不想刪帳號？打包好的檔案在
-            <Link to="/workspace/downloads">下載紀錄</Link>，一次跑的產出在該次
-            <Link to="/workspace/runs">Run</Link> 的頁面，Skill 本身在
-            <Link to="/workspace/skills">我的 Skill</Link>。 各類資料保存多久見
+            只想刪掉某幾樣東西，不想刪帳號？哪一樣刪在哪裡、刪掉之後什麼會留下，見
             <Link to="/policy">資料保存政策</Link>。
           </p>
         </>

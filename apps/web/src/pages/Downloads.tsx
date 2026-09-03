@@ -70,20 +70,43 @@ export function Downloads() {
             要打包，先從 <Link to="/workspace/skills">我的 Skill</Link> 挑一個。
           </p>
         ) : (
-          <ul className="download-list">
-            {downloads.data.downloads.map((artifact) => (
-              <li key={artifact.artifact_id} className="download-item">
-                <DownloadArtifactFacts artifact={artifact} />
-                <DownloadHistory artifact={artifact} />
-                <DownloadActions
-                  artifact={artifact}
-                  pending={remove.isPending}
-                  onAskDelete={() => setMessage("")}
-                  onConfirmDelete={() => remove.mutate(artifact.artifact_id)}
-                />
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="download-list">
+              {downloads.data.downloads.map((artifact) => (
+                <li key={artifact.artifact_id} className="download-item">
+                  <DownloadArtifactFacts artifact={artifact} />
+                  <DownloadHistory artifact={artifact} />
+                  <DownloadActions
+                    artifact={artifact}
+                    pending={remove.isPending}
+                    onAskDelete={() => setMessage("")}
+                    onConfirmDelete={() => remove.mutate(artifact.artifact_id)}
+                  />
+                </li>
+              ))}
+            </ul>
+            {/*
+              設計 §2.13 去重第 1 條（丙-142 第一批）。這三段以前跟著**每一列**印，
+              逐位元相同：一句在十列上完全一樣的話，讀者從第 2 列起不可能因為它而作出
+              不同判斷，所以它是這份清單的事實。搬的只有與列無關的那一句——每一列自己
+              的日期、狀態詞與過期／遺失的說法一個字都沒有動（§2.10）。
+              位置在清單下方而不是上方：它們是讀完一列之後才成立的限定語，而 §2.11(c)
+              要的是「同一個區塊」，不是「在它前面」。
+            */}
+            <p className="note">
+              每一列的徽章是打包目標；安裝說明在套件內的 INSTALL.md。到期後檔案刪除，
+              同一版本隨時可以再打包一次。
+            </p>
+            <p className="note">
+              每一列折疊起來的那兩串是雜湊，不是簽章。
+              <strong>MVP 的套件不帶數位簽章，平台也不驗簽</strong>
+              （ADR-027 決策 3 是明文的「不做」）——它們證明得了「位元組沒有被改過」，
+              證明不了「這份東西是誰做的」。
+            </p>
+            <p className="note">
+              這是給你自己看的下載紀錄，與稽核事件是兩份不同的紀錄——保存期限與可見範圍都不一樣。
+            </p>
+          </>
         ))}
     </section>
   );
@@ -135,9 +158,8 @@ function DownloadHistory({ artifact }: { artifact: DownloadArtifact }) {
               ))}
             </ul>
           )}
-          <p className="note">
-            這是給你自己看的下載紀錄，與稽核事件是兩份不同的紀錄——保存期限與可見範圍都不一樣。
-          </p>
+          {/* 「與稽核事件是兩份不同的紀錄」搬到清單層級：它對每一列都成立，而且它
+              以前只在 `download_count > 0` 的列上出現，也就是最需要它的那些列。 */}
         </>
       )}
     </details>
@@ -160,8 +182,13 @@ function DownloadActions({
   // `status === "available"` plus a locally derived expiry — two of the three things
   // download.go checks, missing the purge, which is not on this shape at all. So
   // a purged artifact offered a link that was known to 404, which puts the
-  // refusal in a new tab instead of on this page. The reason it is not stated
-  // here twice: `serve_state.label` above already says which of the five it is.
+  // refusal in a new tab instead of on this page.
+  //
+  // 2026-09-03（丙-142）：這裡以前寫的是「目前不提供下載。」——**只說結果，不說原因**，
+  // 而原因（`serve_state.label`，例如「已過期,不再提供下載」）隔著幾行在另一段文字裡。
+  // 設計 §2.4 第 2 型逐字管的就是這個形狀：控制項被**拿掉**而不是停用，替代文字只說
+  // 「目前不提供」不說為什麼。修法是引用同一個 `serve_state.label`，不是另外寫一句——
+  // 兩份措辭會漂移，而漂移的方向會是後改的那一份（04 丙-29 ⑤ 的同一條理由）。
   return (
     <p>
       {artifact.servable ? (
@@ -198,7 +225,7 @@ function DownloadActions({
           下載
         </a>
       ) : (
-        <span className="note">目前不提供下載。</span>
+        <span className="note">{artifact.serve_state.label}</span>
       )}
       {" ｜ "}
       <Link to="/skills/$skillId" params={{ skillId: artifact.skill_id }}>

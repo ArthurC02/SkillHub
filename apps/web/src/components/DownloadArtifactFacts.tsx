@@ -49,7 +49,22 @@ import { Timestamp } from "./Timestamp";
  * the bytes are not on offer, and overwriting them with 已過期 would lose why.
  */
 
-const TARGET_NOTE = "打包目標；安裝說明在套件內的 INSTALL.md。";
+/*
+ * 設計 §2.13 去重第 1 條（2026-09-03，丙-142 第一批）。這個元件渲染的是**一列**，
+ * 而它以前帶著四句與這一列無關的話：打包目標的說明（同一字串又掛在徽章的 `title`
+ * 上，§2.13 去重第 2 條算兩次）、保存期限的通則、過期列裡與頁層開場白同義的那句、
+ * 以及雜湊那一族的「不是簽章」。四句在十列上逐位元相同，讀者從第 2 列起不可能因為
+ * 它們而作出不同判斷——所以它們是**清單的事實**，不是列的事實。
+ *
+ * 搬去哪裡（兩個呼叫點各自負責，因為「清單層級」在兩邊是不同的東西）：
+ *  - `pages/Downloads.tsx`：清單下方一次，涵蓋每一列。
+ *  - `pages/Packaging.tsx`：那裡只有一列（剛打好的那一份），所以「印一次」就是印在
+ *    它旁邊；保留期限與冪等由同頁的 `RetentionNotice` 說，打包目標由上方的
+ *    〈打包目標〉區塊說，所以那兩句在那一頁不必再說第三次。
+ *
+ * **沒有被搬走的**：日期本身（§2.2 的期限）、`serve_state` 的狀態詞與它的 note、
+ * 過期列前半的「已於 X 到期、檔案已刪除、這筆紀錄保留」（A 類，§2.10）。
+ */
 
 function bytes(n: number): string {
   if (n >= 1 << 20) return `${(n / (1 << 20)).toFixed(1)} MB`;
@@ -72,11 +87,7 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
   return (
     <>
       <p>
-        <strong>{artifact.file_name}</strong>{" "}
-        <span className="badge" title={TARGET_NOTE}>
-          {artifact.target}
-        </span>{" "}
-        <span className="note">{TARGET_NOTE}</span>{" "}
+        <strong>{artifact.file_name}</strong> <span className="badge">{artifact.target}</span>{" "}
         <span className="badge">
           {artifact.includes_test_cases ? "含 Test Case" : "不含 Test Case"}
         </span>{" "}
@@ -107,13 +118,11 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
         ) : expired ? (
           <>
             已於 <Timestamp at={artifact.expires_at} /> 到期，檔案已刪除，這筆紀錄保留。
-            「已過期」與「沒有這一筆」不是同一件事。要再拿到同樣的內容，回到該版本重新打包一次即可。
           </>
         ) : (
           <>
             到期時間：
             <Timestamp at={artifact.expires_at} />
-            （到期後檔案刪除，同一版本隨時可以再打包一次）
           </>
         )}
       </p>
@@ -129,6 +138,9 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
             「不得暗示套件帶有平台背書或完整性保證」，而兩串看起來很像簽章的東西
             旁邊一句話都沒有，讀者會把它讀得比它主張的大（設計 §2.11(c)）。
             那句「不簽也不驗」是 components/Findings.tsx 已經寫好的同一句。
+            **2026-09-03（丙-142）：那一句本身搬到呼叫點**——它在每一列上逐位元相同，
+            所以它是清單的但書而不是這一列的但書（§2.13 去重第 1 條）。C 類一個字都
+            沒有少：`Downloads` 印在清單下方一次，`Packaging` 印在它唯一那一列旁邊。
           */}
           <li>
             內容雜湊（SHA-256，對整包 zip 的位元組算的；下載回去對檔案算一次 SHA-256
@@ -139,11 +151,6 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
             自己；用來判斷內容和上次一不一樣）：<code>{artifact.manifest_hash}</code>
           </li>
           <li>打包器版本：{artifact.packager_version ?? "未測量"}</li>
-          <li>
-            這兩串是雜湊，不是簽章。<strong>MVP 的套件不帶數位簽章，平台也不驗簽</strong>
-            （ADR-027 決策 3 是明文的「不做」）——它們證明得了「位元組沒有被改過」，
-            證明不了「這份東西是誰做的」。
-          </li>
           <li>Profile 版本：{artifact.profile_version ?? "無（標準套件沒有 Profile）"}</li>
           <li>
             Skill Version ID：<code>{artifact.skill_version_id}</code>（v

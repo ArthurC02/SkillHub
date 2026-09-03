@@ -87,10 +87,9 @@ export function WorkspaceSkills() {
   return (
     <section>
       <h1>我的 Skill</h1>
-      <p className="note">
-        這個工作區裡的 Skill：Fork 進來的、自己匯入的都在這裡，新的在上面。 公開目錄裡的 Skill
-        不會出現在這裡，除非你 Fork 過它。
-      </p>
+      {/* §2.13,D 類:兩句講的是同一件事的正反面,而反面（公開目錄的不在）才是讀者
+          會弄錯的那半。合成一句,沒有任何新的宣稱。 */}
+      <p className="note">Fork 與匯入的都在這裡；公開目錄的不在。</p>
 
       {/*
         建立一個 Skill — the three ways in, gathered above the list instead of
@@ -109,6 +108,29 @@ export function WorkspaceSkills() {
       {skills.isPending && <Loading what="你的 Skill 清單" />}
       <ReadFailure error={skills.error} what="你的 Skill 清單" />
       {message && <p role="status">{message}</p>}
+
+      {/*
+        Still true and still needed, narrowed to what is genuinely not here.
+        Compatibility is not a contract gap: nothing in the product writes
+        `skill_runtime_compatibility` at all — only the catalogue seeding tool
+        does — so a compatibility column on this list could say 未測量 and nothing
+        else, which is a facet that looks like evidence and can never carry any.
+        **Do not delete this sentence to make room for one.**
+
+        設計 §2.13 第 1 條 (2026-09-03): it used to print on EVERY row, byte for
+        byte. A sentence that is identical on 100 rows is not a fact about a row,
+        it is a fact about the list — from row 2 on, no reader can tell two rows
+        apart by it. So it moved up here and is printed once. It is still flat
+        text, still visible with no interaction: §2.9's typed absence does not
+        care how many times it is repeated, only that it is legible without
+        opening anything.
+      */}
+      {skills.data && skills.data.skills.length > 0 && (
+        <p className="note">
+          相容性驗證（Agent 是否載入、Runtime 是否齊備）不在這份清單的資料裡，
+          平台目前也不會為你自己的 Skill 量測它。要看某一個的逐項掃描結果，請開它的頁面。
+        </p>
+      )}
 
       {skills.data &&
         (skills.data.skills.length === 0 ? (
@@ -212,19 +234,6 @@ export function WorkspaceSkills() {
                   say it.
                 */}
                 {s.redistribution === "generated" && <GeneratedNotice skillId={s.skill_id} />}
-                {/*
-                  Still true and still needed, narrowed to what is genuinely not
-                  here. Compatibility is not a contract gap: nothing in the
-                  product writes `skill_runtime_compatibility` at all — only the
-                  catalogue seeding tool does — so a compatibility column on this
-                  list could say 未測量 and nothing else, which is a facet that
-                  looks like evidence and can never carry any. **Do not delete
-                  this sentence to make room for one.**
-                */}
-                <p className="note">
-                  相容性驗證（Agent 是否載入、Runtime 是否齊備）不在這份清單的資料裡，
-                  平台目前也不會為你自己的 Skill 量測它。要看逐項掃描結果，請開這個 Skill 的頁面。
-                </p>
                 <p className="note">
                   <Link to="/skills/$skillId/files" params={{ skillId: s.skill_id }}>
                     檔案
@@ -309,23 +318,32 @@ export function WorkspaceSkills() {
         </p>
       )}
 
+      {/*
+        設計 §2.13 第 2 條 — 「東西要去哪裡刪」在這個 app 裡有四份地圖,措辭全不同:
+        這裡、/workspace/account、/policy 與頁尾。留 /policy 那一份,因為它是
+        02:O11Y-004 的揭露義務所在,也是四份裡唯一寫了「刪不掉的東西會留下什麼」的;
+        其餘三處指過去。連結本身一條都沒有少（`ia.test.ts` 的 §2.3 可達性表數的是
+        連結,不是句子）,少掉的是四句各自複述一次「那一頁裝什麼」的說明。
+      */}
       <h2>這個工作區的其他清單</h2>
       <ul className="risk-list">
         <li>
-          <Link to="/lab/test-cases">Test Case</Link>：這個工作區的 Test Case 與驗收條件。
+          <Link to="/lab/test-cases">Test Case</Link>
         </li>
         <li>
-          <Link to="/workspace/downloads">下載紀錄</Link>：打包過的套件，含已到期的。
+          <Link to="/workspace/downloads">下載紀錄</Link>
         </li>
         <li>
-          <Link to="/workspace/runs">Run 歷史</Link>：這個工作區跑過的 Run，含執行狀態與清理狀態。
+          <Link to="/workspace/runs">Run 歷史</Link>
         </li>
         <li>
           <Link to="/workspace/account">帳號</Link>
-          ：刪除整個帳號，以及刪除之後哪些東西會留下。逐項的保存期限見
-          <Link to="/policy">資料保存政策</Link>。
         </li>
       </ul>
+      <p className="note">
+        要刪掉哪一樣東西、以及刪掉之後什麼會留下，一份寫在
+        <Link to="/policy">資料保存政策</Link>。
+      </p>
     </section>
   );
 }

@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "./api/queryClient";
-import { EvaluationPanel } from "./pages/RunEvaluation";
+import { EvaluationPanel, MATCH_NOTE } from "./pages/RunEvaluation";
 import { EVALUATION_POLL_MAX_404, EVALUATION_POLL_MAX_PENDING } from "./api/evaluation";
 import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./api/evaluation";
 
@@ -170,6 +170,16 @@ const evaluation: Evaluation = {
           excerpt: "已移除 email 欄位",
           excerpt_truncated: false,
         },
+        // A second `normalized` citation, and the whole point of it: 設計
+        // §2.13 去重 1 says the explanation belongs to the list. With one of
+        // each kind the dedup assertion below would pass on either shape.
+        {
+          kind: "agent_output",
+          match: "normalized",
+          available: true,
+          excerpt: "欄位：name, phone",
+          excerpt_truncated: false,
+        },
         // The manifest row. Proves the file is there and nothing about what is
         // in it — the archive is never opened in the control plane.
         {
@@ -203,13 +213,43 @@ const evaluation: Evaluation = {
         "The judge's own reasoning was: the report quotes the body in full.",
       evidence: [],
     },
+    // The fourth criterion, and the second `model` one: 設計 §2.13 hoists
+    // 判定來源 only when it would otherwise be printed more than once, so a
+    // three-row fixture could not tell the hoist from the row-by-row version.
+    {
+      criterion_id: "c4",
+      text: "輸出是 UTF-8",
+      result: "passed",
+      source: "model",
+      reason: "檔頭沒有 BOM，內容可解碼。",
+      evidence: [
+        {
+          kind: "agent_output",
+          match: "exact",
+          available: true,
+          excerpt: "encoding: utf-8",
+          excerpt_truncated: false,
+        },
+      ],
+    },
   ],
   deterministic_findings: [
     {
       category: "activation",
       severity: "warning",
       message: "沒有出現 Skill 啟用事件。",
-      evidence: [],
+      // §2.9 / §2.10 第 10 項: an absence whose type word may not be folded
+      // away. It lives on the finding list so the criterion list's legend and
+      // this one are two different sets, computed rather than shared.
+      evidence: [
+        {
+          kind: "trace_event",
+          match: "not_found",
+          available: true,
+          excerpt: "skill_activated",
+          excerpt_truncated: false,
+        },
+      ],
     },
   ],
   judge_model: "gpt-5.6-terra",
@@ -227,6 +267,18 @@ const suggestion: ImprovementSuggestion = {
   evidence: [],
   target_path: "SKILL.md",
   expected_impact: "模型會照著列出的欄位輸出。",
+  decision: "pending",
+};
+
+/** A second suggestion, for the same reason c4 exists: 設計 §2.13 去重 1 is
+ *  about a sentence printed N times, and N=1 proves nothing. */
+const suggestion2: ImprovementSuggestion = {
+  suggestion_id: "s2",
+  category: "runtime",
+  problem: "宣告的 runtime 版本與實際不符。",
+  evidence: [],
+  target_path: "SKILL.md",
+  expected_impact: "Agent 會在正確的 runtime 上啟用這個 Skill。",
   decision: "pending",
 };
 
@@ -288,7 +340,10 @@ function stubPlatform(options: {
     if (url.includes("/suggestions"))
       return json({
         evaluation_id: "eval-1",
-        suggestions: [options.accepted ? { ...suggestion, decision: "accepted" } : suggestion],
+        suggestions: [
+          options.accepted ? { ...suggestion, decision: "accepted" } : suggestion,
+          suggestion2,
+        ],
       });
     return json({ error: "not found" }, 404);
   });
@@ -380,7 +435,12 @@ test("§2.12 a judge still running is 進行中, not a verdict — and says you 
   expect(text).toContain("評估進行中");
   // The three sentences §2.12 asks for.
   expect(text).toContain("會自己完成");
-  expect(text).toContain("可以關掉這一頁");
+  // 設計 §2.13: 「會變的量永遠平鋪，不會變的理由才可以折」. The permission stays
+  // flat and in the wording `components/InFlight.tsx` uses for the same queue on
+  // the same page; the River/worker derivation behind it is D 類 and is gone
+  // rather than said twice.
+  expect(text).toContain("可以關掉這一頁（平台在跑，不是你的瀏覽器）");
+  expect(text).not.toContain("evaluate_run");
   // And the one it cannot answer, said rather than faked: a judge returns a
   // verdict or fails, so there is no intermediate count to report.
   expect(text).toContain("沒有進度可以報");
@@ -430,12 +490,99 @@ test("ADR-043 a citation says whether its quote was verified, and where it was f
   // glance at this line instead of a regression report.
   expect(text).toContain("正規化後才比對得上");
   // An artifact citation proves the file exists. Saying 「找不到」 would be an
-  // accusation about a quote nobody ever checked.
+  // accusation about a quote nobody ever checked — so the assertion is on that
+  // row's own badge, not on the page's text: 找不到 IS on this page now, on the
+  // finding that has it, and a page-wide `not.toContain` would only prove the
+  // fixture had no such citation anywhere.
   expect(text).toContain("沒有回驗任何引文");
-  expect(text).not.toContain("在本次 Run 的可回驗來源裡找不到");
+  expect(rowFor("out/cleaned.csv")?.querySelector(".badge")?.textContent).toBe("未回驗引文");
   // The trace citation in this fixture predates the field entirely. Silence is
   // not a pass: it says the report cannot answer.
   expect(text).toContain("還沒有記錄引文回驗結果");
+});
+
+/** The `.evidence-list` row whose citation quotes `needle`. */
+function rowFor(needle: string): Element | undefined {
+  return Array.from(container.querySelectorAll(".evidence-list > li")).find((li) =>
+    (li.textContent ?? "").includes(needle),
+  );
+}
+
+/*
+ * 設計 §2.13 — 丙-142 第一批②. Measured 2026-09-03: 232 characters, 19% of this
+ * page, were eight citations each carrying one of five fixed paragraphs about
+ * re-verification. The result is a STATE, so it is a badge with a word in it,
+ * and the paragraph is the LIST's fact.
+ *
+ * Both halves have to hold at once, which is why this is one test: the words
+ * alone must still tell the five results apart (§2.3 — colour is the second
+ * channel and these five share three tints), and the paragraph must be printed
+ * once for the list however many citations carry it.
+ */
+test("§2.13 引文回驗結果是徽章，解釋在清單層級只印一次", async () => {
+  stubPlatform({ evaluated: true });
+  await render("succeeded");
+
+  // §2.10 第 10 項: 缺席「是哪一型」不可折 — every citation carries its own word,
+  // in document order, and the two absences are among them.
+  const criteria = container.querySelector("ul.criterion-list")!;
+  expect(
+    Array.from(criteria.querySelectorAll(".evidence-list > li > .note > .badge")).map(
+      (b) => b.textContent,
+    ),
+  ).toEqual(["回驗結果未記錄", "正規化後比對", "正規化後比對", "未回驗引文", "已逐字回驗"]);
+  expect(rowFor("skill_activated")?.querySelector(".badge")?.textContent).toBe("找不到");
+
+  // …and the sentence behind each word is printed once for the whole list. Two
+  // `normalized` citations, one explanation — that is the 232 characters.
+  const text = container.textContent ?? "";
+  expect(occurrences(text, "需要正規化後才比對得上")).toBe(1);
+  expect(occurrences(text, "沒有回驗任何引文")).toBe(1);
+  expect(occurrences(text, "還沒有記錄引文回驗結果")).toBe(1);
+
+  // Counted from the data and not written down: the finding list holds exactly
+  // one kind of citation, so its legend is one line — a hard-coded legend would
+  // explain four cases that list does not contain. The same page has shipped
+  // that mistake once already (§0 的分類計數).
+  const findingLegend = container.querySelector(
+    "ul.note + ul.finding-list",
+  )!.previousElementSibling;
+  expect(Array.from(findingLegend!.querySelectorAll("li")).map((li) => li.textContent)).toEqual([
+    `找不到 ${MATCH_NOTE.not_found}`,
+  ]);
+});
+
+function occurrences(haystack: string, needle: string): number {
+  return haystack.split(needle).length - 1;
+}
+
+/*
+ * 設計 §2.13 去重 1, and `components/RunVerdict.tsx` is the precedent its own
+ * comment states: 「On a page of fifty rows a sentence per row is noise」.
+ */
+test("§2.13 判定來源在清單上方講一次，只有來源不同的那一條在列上覆寫", async () => {
+  stubPlatform({ evaluated: true });
+  await render("succeeded");
+  const text = container.textContent ?? "";
+
+  // Two of the three judged criteria are the model's, so that sentence is the
+  // list's — once, above it.
+  expect(occurrences(text, "模型評估（不是確定事實）")).toBe(1);
+  // And the rule-sourced one still says so on its own row, because it differs.
+  const uncertain = Array.from(container.querySelectorAll("li.criterion")).find((li) =>
+    (li.textContent ?? "").includes("沒有刪掉原始列"),
+  );
+  expect(uncertain?.textContent).toContain("規則判定");
+  // The row that agrees with the list does not repeat it.
+  const passed = Array.from(container.querySelectorAll("li.criterion")).find((li) =>
+    (li.textContent ?? "").includes("輸出是 UTF-8"),
+  );
+  expect(passed?.textContent).not.toContain("判定來源");
+
+  // 預期影響's parenthesis is the same shape: C 類, so not a word of it goes —
+  // but it belongs to the list of two suggestions, not to each of them.
+  await waitFor(() => text.length > 0 && (container.textContent ?? "").includes("預期影響"));
+  expect(occurrences(container.textContent ?? "", "模型的預測，不是量測結果")).toBe(1);
 });
 
 test("EVAL-002 the apply action is offered on a run reached without a skill in its URL", async () => {

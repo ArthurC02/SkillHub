@@ -64,7 +64,23 @@ function RiskLevel({ risk }: { risk: { level?: string } }) {
   );
 }
 
-export function RiskSummary({ risk }: { risk: SearchResultRisk }) {
+export function RiskSummary({
+  risk,
+  noteInRow = true,
+}: {
+  risk: SearchResultRisk;
+  /**
+   * 設計 §2.13 去重 1（ADR-065）. False when the LIST already prints `risk.note`
+   * once above the rows. **Only `risk.note` moves**: it is the one sentence here
+   * that is the server's fixed 「what a static scan is」 copy (`searchRiskNote`
+   * / `searchRiskUnknown`), byte-identical on every row of a page, so from the
+   * second row it cannot change what a reader decides. The disclosure notes, the
+   * 未掃描 sentence and the clean-scan sentence all vary per row and stay put.
+   *
+   * Defaults to today's behaviour — `WorkspaceSkills` is unchanged.
+   */
+  noteInRow?: boolean;
+}) {
   const flags = risk.disclosures;
   return (
     <>
@@ -75,9 +91,10 @@ export function RiskSummary({ risk }: { risk: SearchResultRisk }) {
           {flags.length > 0
             ? flags.map((d: Disclosure) => (
                 <span key={d.code}>
-                  <span className="badge badge-risk-flag" title={d.note}>
-                    {d.label}
-                  </span>
+                  {/* No `title=`: `{d.note}` is the visible line directly below,
+                      so the tooltip only made a screen reader announce the same
+                      sentence twice (設計 §2.13 去重 2, ADR-065). */}
+                  <span className="badge badge-risk-flag">{d.label}</span>
                   {/* Visible, not `title`-only. This file's own header used to
                       argue 「a compact row has nowhere to put it」; 設計 §0 puts
                       安全與不誤導 above 版面, and §0 also says the way a lower
@@ -93,7 +110,7 @@ export function RiskSummary({ risk }: { risk: SearchResultRisk }) {
               )}
         </>
       )}
-      <span className="note">{risk.note}</span>
+      {noteInRow && <span className="note">{risk.note}</span>}
     </>
   );
 }

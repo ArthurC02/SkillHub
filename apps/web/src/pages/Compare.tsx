@@ -108,9 +108,12 @@ const ROWS: CompareRow[] = [
             {limit.text}
             {limit.source === "model" && (
               <>
-                <span className="badge badge-source-model" title="由模型整理，未經人工核對">
-                  AI 產生
-                </span>
+                {/* No `title=`: the identical sentence is the visible `.note`
+                    on the next line, inside this same `<li>`. 設計 §2.13 去重 2
+                    counts a `title` that duplicates visible text as the same
+                    fact said twice, and the machine that watches §3 第 14 條
+                    reads `.note` nodes only, so this pair was invisible to it. */}
+                <span className="badge badge-source-model">AI 產生</span>
                 <span className="note">由模型整理，未經人工核對</span>
               </>
             )}

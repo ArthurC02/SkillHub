@@ -512,6 +512,150 @@ test("設計 §0: the catalogue lands with the filter bar shut, at every width",
   ).toBe(false);
 });
 
+/** Every `.note` string on the page, whitespace-collapsed, in DOM order. */
+function noteTexts(): string[] {
+  return [...container.querySelectorAll(".note")].map((n) => (n.textContent ?? "").trim());
+}
+
+/**
+ * 設計 §2.13 去重 1（ADR-065）—— 四句逐列複述，一份清單講一次，**而且只有逐位元
+ * 相同的那幾句可以搬**。
+ *
+ * `tier.note`／`category.note`／`compatibility.note`／`risk.note` 是伺服器的固定文案，
+ * 每一列渲染一份；目錄那 45 列上 `risk.note` 一句就印了 45 次。一句在 45 列上完全
+ * 相同的話，讀者從第 2 列起不可能因為它而作出不同判斷——它是那份清單的事實，不是那
+ * 一列的。
+ *
+ * **這一支押的是兩個方向，而第二個方向才是難的那一半。** `SHELF_ROWS` 混著精選與
+ * 已索引，所以 `tier.note` 在這份清單上有兩種值——那兩種值正在說「這一列跟那一列不
+ * 一樣」，把它們一起提到清單層級會同時印出兩句而讀者分不出哪一列是哪一句，也就是把
+ * 一個判斷依據弄丟。所以 tier 必須**留在每一列上**，另外三個（在這份清單上完全相同）
+ * 才搬。把 `liftedNotes` 的 `distinct.size === 1` 拿掉，下半段就紅。
+ */
+test("設計 §2.13: 逐位元相同的 note 提到清單層級，會分辨列的留在列上", async () => {
+  stubCategoryCatalog(SHELF_ROWS);
+  await browseCatalogue();
+
+  // 期望值從 fixture 數出來，不是抄的：哪幾個 facet 在這份清單上只有一種值。
+  const distinct = (pick: (r: PublicSearchResult) => string | undefined) =>
+    new Set(SHELF_ROWS.map((r) => pick(r) ?? ""));
+  expect(distinct((r) => r.tier.note).size, "the fixture must span two tier notes").toBe(2);
+  const rows = [...container.querySelectorAll(".search-result")];
+  expect(rows).toHaveLength(SHELF_ROWS.length);
+  /** Every `.note` inside one row's facet list, as text. */
+  const rowNotes = (row: Element) =>
+    [...row.querySelectorAll(".result-facets .note")].map((n) => (n.textContent ?? "").trim());
+
+  for (const [label, pick] of [
+    ["類別", (r: PublicSearchResult) => r.category.note],
+    ["相容狀態", (r: PublicSearchResult) => r.compatibility.note],
+    ["風險提示", (r: PublicSearchResult) => r.risk.note],
+  ] as const) {
+    expect(distinct(pick).size, `${label} must be byte-identical across the fixture`).toBe(1);
+    const sentence = pick(SHELF_ROWS[0])!;
+    const line = `${label}：${sentence}`;
+    expect(
+      noteTexts().filter((n) => n === line),
+      `「${line}」 is not stated exactly once for the whole list`,
+    ).toHaveLength(1);
+    // 提到清單層級**而且從列上拿掉**。Stating it in both places is not
+    // deduplication, it is one more copy — and it is what a half-applied version
+    // of this change looks like (the lists render `FacetNotes` and the rows keep
+    // their own copies), which is a state a 「once at the top」 assertion alone
+    // reads as correct.
+    for (const row of rows) {
+      expect(rowNotes(row), `「${sentence}」 is still repeated on a row`).not.toContain(sentence);
+    }
+  }
+
+  // 來源層級 has two values here, so it is NOT one line — it is one line per
+  // value, each keyed by the word the matching rows wear on their badge. That
+  // keying is what keeps the caveat attributable after it leaves the row, and it
+  // is the only reason a varying note may be lifted at all: 風險提示 has no such
+  // word (a `scan_status: "unavailable"` row can carry no mark), which is why
+  // 「a result row carries all seven columns」 keeps it per row.
+  for (const tier of new Set(SHELF_ROWS.map((r) => r.tier.label))) {
+    const note = SHELF_ROWS.find((r) => r.tier.label === tier)!.tier.note;
+    const line = `來源層級「${tier}」：${note}`;
+    expect(noteTexts().filter((n) => n === line), `「${line}」 is not stated once`).toHaveLength(1);
+  }
+  expect(new Set(SHELF_ROWS.map((r) => r.tier.label)).size).toBe(2);
+
+  for (const [i, row] of rows.entries()) {
+    // The order the shelf renders is curated first, which is the fixture's order.
+    // The lifted sentence is gone from the row, and the WORD that picks its line
+    // out of the block above is still on it — that is the whole attribution.
+    expect(rowNotes(row), "a lifted tier note is still repeated on a row").not.toContain(
+      SHELF_ROWS[i].tier.note,
+    );
+    // §2.10 第 1／2／3 項: the badges themselves never left any row.
+    const tierBadge = row.querySelector(".result-facets [class*='badge-tier-']");
+    expect(tierBadge?.textContent).toBe(SHELF_ROWS[i].tier.label);
+    expect(row.querySelector(".result-facets [class*='badge-category-']")?.textContent).toBe(
+      SHELF_ROWS[i].category.label,
+    );
+  }
+});
+
+/**
+ * 那條 e2e 斷言的 jsdom 半邊，因為它會 FAIL-on-zero 而這一批正是在拿走 `.note`。
+ *
+ * `e2e/rendered.spec.ts` 的「a fact and its qualifier are not the same colour」掃
+ * `.search-result .result-facets dd` 底下的 `.note` 比對顏色，**一個都找不到時它主動
+ * 失敗**（`checked === 0`）——那是 §2.11(c) 的證據，不是可以順手改的東西。搬走清單層級
+ * 那四句之後，剩下來撐住它的是**逐列不同**的那幾種：風險揭露逐則的 `note`、依賴的
+ * 「未測量——」、時間戳那一格。這一支押的就是那個「還剩下的」不是空的。
+ */
+test("設計 §2.11(c): 去重之後，每一列的 facet 仍然帶著逐列不同的但書", async () => {
+  // The shape the e2e fixture has: every row scanned, every row disclosing, so
+  // `risk.note` IS byte-identical and does get lifted — which is exactly the run
+  // in which the per-row qualifier could have gone to zero.
+  const disclosed = {
+    scan_status: "scanned" as const,
+    level: "disclosed" as const,
+    warnings: 0,
+    disclosures: [
+      { code: "script-file", label: "含可執行 Script 檔案", note: "平台不曾執行它們。" },
+    ],
+    note: "來自匯入時的靜態掃描。",
+  };
+  stubSearch({
+    ...EMPTY,
+    query: "pdf",
+    results: [
+      {
+        ...HIT_FACETS,
+        skill_id: "99999999-9999-9999-9999-999999999999",
+        name: "PDF Summariser",
+        summary: "把 PDF 整理成摘要",
+        rank: 0.82,
+        risk: disclosed,
+      },
+      {
+        ...HIT_FACETS,
+        skill_id: "99999999-9999-9999-9999-999999999998",
+        name: "PDF Splitter",
+        summary: "切分 PDF",
+        rank: 0.6,
+        risk: disclosed,
+      },
+    ],
+  });
+  await render(<App />);
+  await submitSearch("pdf");
+
+  const withNote = [...container.querySelectorAll(".search-result .result-facets dd")].filter(
+    (dd) => dd.querySelector(".note"),
+  );
+  expect(
+    withNote.length,
+    "no facet row carries a qualifier any more — e2e's `checked === 0` would fail",
+  ).toBeGreaterThan(0);
+  // 而且留下來的那一句是**這一列的**，不是那句被搬走的清單事實。
+  expect(withNote.map((dd) => dd.textContent ?? "").join("")).toContain("平台不曾執行它們。");
+  expect(container.textContent).toContain("風險提示：來自匯入時的靜態掃描。");
+});
+
 test("DISC-006: an empty catalog is distinct from a failed catalog read", async () => {
   stubCatalog({ results: [], limit: 20, total: 0, truncated: false });
   await render(<App />);
@@ -943,18 +1087,37 @@ test("DISC-004: the ranking rule is explained on demand and matches the pipeline
   expect(text).toContain("只能用關鍵字比對時");
   expect(text).toContain("還沒建立語意索引");
   // ...but nothing claims one of them is happening.
-  expect(text).not.toContain("目前這次搜尋就是這個狀態");
-  expect(text).not.toContain("這頁就有這種結果");
+  expect(text).not.toContain("目前只用關鍵字比對搜尋");
+  expect(text).not.toContain("部分 Skill 尚未建立語意索引");
 });
 
-test("DISC-004: a degraded answer marks the exception that is actually in force", async () => {
+/**
+ * 設計 §2.10 第 9 項 ＋ §2.13 去重 2 —— 降級自述不住在關起來的 `<details>` 裡。
+ *
+ * 以前這一格押的是 `<details>` 裡那顆「目前這次搜尋就是這個狀態」徽章。**那顆徽章
+ * 本身就是缺陷**：平台的降級自述是 §2.10 第 9 項，不得折疊，而它掛在一個預設關閉的
+ * disclosure 的第六個 `<li>` 上。合格的那一份一直都在——結果清單之前的兩則 `.notice`
+ * ，平鋪、不必互動。所以徽章刪掉，而這一支改押那兩則：**降級要說得出來，而且要說在
+ * 外面。**
+ *
+ * 把 `data.degraded &&` 那一則 notice 拿掉，這支就紅。
+ */
+test("DISC-004: 降級自述在 details 外面平鋪，不在裡面當徽章", async () => {
   stubSearch({ ...TWO_HITS, degraded: true, degraded_reason: "embedding unavailable" });
   await render(<App />);
   await submitSearch("pdf");
 
-  const text = container.querySelector("details.ranking-explainer")?.textContent ?? "";
-  expect(text).toContain("目前這次搜尋就是這個狀態");
-  expect(text).not.toContain("這頁就有這種結果");
+  const notices = [...container.querySelectorAll(".notice")].map((n) => n.textContent ?? "");
+  expect(
+    notices.some((n) => n.includes("目前只用關鍵字比對搜尋")),
+    "the degraded self-report is not stated in the flat, always-visible layer",
+  ).toBe(true);
+  // …and not a second time inside the collapsed explainer.
+  const explainer = container.querySelector<HTMLDetailsElement>("details.ranking-explainer")!;
+  expect(explainer.open, "the explainer is the collapsed layer this fact may not live in").toBe(
+    false,
+  );
+  expect(explainer.textContent ?? "").not.toContain("目前只用關鍵字比對搜尋");
 });
 
 // ---- DISC-009: selecting 2–3 candidates, then comparing them side by side ----
@@ -1499,8 +1662,33 @@ test("DISC-003: the filters the platform has no data for are disabled and say wh
   // 來源層級 is no longer one of them: its old excuse must be gone from the
   // bar, not merely outvoted by a live control sitting next to it.
   expect(text).not.toContain("人工精選審查尚未開始");
-  // The reason a dimension is dead must not read as "nothing matched".
-  expect(text).toContain("不是因為所有 Skill 都不符合");
+
+  // 設計 §2.10 第 5 項, and it is asserted on the CONTROL rather than on the
+  // page's text. A general paragraph at the bottom of the bar used to carry the
+  // 「不是因為所有 Skill 都不符合」 half; 設計 §2.13 去重 2 removed it as a
+  // restatement of the per-dimension reason two nodes up. That is only true
+  // while every dead control still points at its own visible reason, which the
+  // deleted paragraph could never have done — so this is what replaces it, and
+  // it is the assertion that would go red if a seventh dimension arrived dead
+  // and silent.
+  const deadSelects = [...container.querySelectorAll<HTMLSelectElement>(".filter-bar select")].filter(
+    (s) => s.disabled,
+  );
+  expect(deadSelects.length, "no dead control to check a reason on").toBeGreaterThan(0);
+  for (const select of deadSelects) {
+    const id = select.getAttribute("aria-describedby");
+    const reason = id ? container.querySelector(`#${id}`) : null;
+    // Visible text (`.note`), not a `title` — 設計 §2.4 第 3 項 — and a real
+    // sentence rather than a word: 「目前不提供」 is the shape §2.4 第 2 項 names
+    // as a failure, and it would pass a mere non-empty check.
+    expect(reason?.className, "the reason is not visible text").toContain("note");
+    expect(
+      (reason?.textContent ?? "").replace(/\s+/g, "").length,
+      `a disabled filter whose stated reason is too short to be one`,
+    ).toBeGreaterThan(15);
+    // …and it says the platform has no such data, never that nothing matched.
+    expect(reason?.textContent ?? "").toContain("平台");
+  }
 });
 
 /**

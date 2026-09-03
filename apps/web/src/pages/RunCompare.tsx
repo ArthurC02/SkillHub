@@ -48,6 +48,22 @@ function verdictCell(side: ComparisonSide) {
   return OVERALL_LABEL[side.evaluation.overall] ?? side.evaluation.overall;
 }
 
+/**
+ * 設計 §2.13 去重 1 ＋ §4.3：**表格裡的但書屬於欄／列，不屬於格。**
+ *
+ * 這一句在左右兩格逐位元相同地印了兩次，而一句在每一格上都一樣的話，讀者從第二格起
+ * 不可能因為它而作出不同判斷——它講的是這一列（Run 成本）是什麼，不是這一格是什麼。
+ * 所以它搬到列首，那裡已經寫著「Run 成本（下界）」。
+ *
+ * 兩側**真的不同**時規則不觸發（不同的權威來源，或只有一側是下界），這時每一格各自
+ * 留著自己的那一句——那才是能區分這一格與那一格的事實，§2.10 保護的正是它。
+ */
+function costNote(side: ComparisonSide): string {
+  return `${side.cost.is_lower_bound ? "這是下界，不是總額。" : ""}權威來源：${
+    side.cost.authoritative_source
+  }`;
+}
+
 function usd(value: number | null): string {
   // 設計 §2.9 的表列詞;閘道沒有回報一個成本，不是 0。
   return value === null ? "未測量" : `US$${value.toFixed(4)}`;
@@ -148,7 +164,16 @@ export function RunCompare() {
           placeholder="另一個 Run 的平台 run_id"
         />{" "}
         <button type="submit">比較</button>
-        <p className="note">要比較別的 Test Case 或別的 Skill 的 Run 時，貼上它的 ID。</p>
+        {/*
+          設計 §2.13 去重 2（同頁同義句）：挑另一個 Run 這件事以前在同一屏上講三次——
+          這裡一次、清單底下的「從上面選一個…」一次、沒有候選時的「輸入另一個 Run 的
+          ID…」一次。三句合成一句，留在它描述的那個控制項旁邊；候選清單存在時才多出
+          「從上面選一個」那半句，因為那半句在沒有候選時是假的。
+        */}
+        <p className="note">
+          {(candidates.length > 0 ? "從上面選一個同一個 Test Case 的 Run，或" : "") +
+            "輸入另一個 Run 的 ID 後開始比較。別的 Test Case 或別的 Skill 的 Run 也可以。"}
+        </p>
       </form>
     </>
   );
@@ -161,7 +186,15 @@ export function RunCompare() {
           headed by 36-char ids, and no sentence anywhere said what differed.
           Both verdicts were already computed; now they are the headline. */}
       {comparison.data && <ComparisonLead data={comparison.data} />}
-      <p className="note">比較只是讀取，不會改動任何一個 Run 的歷史資料。</p>
+      {/*
+        以前這裡有一句「比較只是讀取，不會改動任何一個 Run 的歷史資料。」，2026-09-03
+        依設計 §2.13 移除：這一頁沒有任何寫入控制項，那句話回答的是沒有人問的問題。
+        §2.4 管的是**被停用或被拿掉的控制項**要說原因——這裡沒有這樣的控制項，「不能
+        改」不是一個缺席的功能，是這一頁本來的形狀。真正需要說原因的那一處仍然在：
+        RerunCell 說得出為什麼沒有「重跑」按鈕。改成 h1 旁一個「（唯讀）」也不誠實——
+        那個字讀起來像「你沒有寫入權限」，而不變的是 Run 快照本身（鐵律 4），跟看的
+        人是誰無關。檔頭的 "A read and nothing else" 仍然是維護者要看的那份紀錄。
+      */}
 
       {/* Design §2.6: the two run ids are identifiers, not the answer. */}
       <details>
@@ -190,13 +223,6 @@ export function RunCompare() {
         pickForm
       )}
 
-      {against === "" &&
-        !loggedOut &&
-        (candidates.length > 0 ? (
-          <p>從上面選一個同一個 Test Case 的 Run，或輸入另一個 Run 的 ID 後開始比較。</p>
-        ) : (
-          <p>輸入另一個 Run 的 ID 後開始比較。</p>
-        ))}
       {comparison.isPending && against !== "" && <Loading what="比較" />}
       <ReadFailure error={comparison.error} what="比較結果">
         <p role="alert">無法比較：{comparison.error?.message}</p>
@@ -238,6 +264,7 @@ const SIDE_LABEL = ["這一邊", "另一邊"];
 function ComparisonTables({ data }: { data: RunComparison }) {
   const [left, right] = data.runs;
   const sides = [left, right];
+  const sharedCostNote = costNote(left) === costNote(right) ? costNote(left) : null;
 
   return (
     <>
@@ -323,23 +350,26 @@ function ComparisonTables({ data }: { data: RunComparison }) {
               ))}
             </tr>
             <tr>
-              <th scope="row">Run 成本（下界）</th>
+              <th scope="row">
+                Run 成本（下界）
+                {sharedCostNote && <p className="note">{sharedCostNote}</p>}
+              </th>
               {sides.map((s) => (
                 <td key={s.run_id}>
                   {usd(s.cost.usd)}
-                  <p className="note">
-                    {s.cost.is_lower_bound ? "這是下界，不是總額。" : ""}
-                    權威來源：{s.cost.authoritative_source}
-                  </p>
+                  {sharedCostNote ? null : <p className="note">{costNote(s)}</p>}
                 </td>
               ))}
             </tr>
             <tr>
-              <th scope="row">評估成本</th>
+              <th scope="row">
+                評估成本
+                {/* 每一格都一樣的一句話，而且它講的是這一列與上一列的關係——列首。 */}
+                <p className="note">與上一列分開列，不相加。</p>
+              </th>
               {sides.map((s) => (
                 <td key={s.run_id}>
                   {s.evaluation ? usd(s.evaluation.cost.evaluation_usd) : "未評估"}
-                  <p className="note">與上一列分開列，不相加。</p>
                 </td>
               ))}
             </tr>
@@ -434,7 +464,10 @@ function RerunCell({ side }: { side: ComparisonSide }) {
       >
         以相同的 Test Case 與版本重新試跑
       </Link>
-      ：連過去的是執行前權限確認畫面，仍須在那裡確認一次才會開始 Run。
+      {/* §2.4 要的是「這個控制項在／不在的原因」，那是前面的「仍在。」與 inputs_available
+          為假時的那一句；連過去之後還要再確認一次是**目的地的事實**，一句話說得完
+          （設計 §2.13）。權限摘要本身不在這一頁上，它在那個畫面上逐項可見。 */}
+      （會先經過權限確認）
     </>
   );
 }

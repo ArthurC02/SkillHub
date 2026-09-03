@@ -391,7 +391,7 @@ export function Home() {
 
           {data.results.length > 0 && (
             <>
-              <RankingExplainer degraded={data.degraded} partialIndex={data.partial_index} />
+              <RankingExplainer />
               <CompareBar selected={selected} />
               {/*
                 The count is the live region, not the list: a list of result
@@ -412,6 +412,7 @@ export function Home() {
                 找到 {data.results.length} 個 Skill。
               </p>
               <MarkerLegend />
+              <FacetNotes hits={data.results} />
               <ul className="search-results" aria-labelledby="results-heading">
                 {data.results.map((hit) => (
                   <SearchResultRow
@@ -420,6 +421,7 @@ export function Home() {
                     checked={selected.includes(hit.skill_id)}
                     atLimit={selected.length >= MAX_COMPARE}
                     onToggle={toggleSelected}
+                    lifted={liftedNotes(data.results)}
                   />
                 ))}
               </ul>
@@ -492,6 +494,11 @@ function Catalog({
          explanation）; this page states it once, which is the 標記說明
          precedent above and §0's 「數量留在外面，段落收進去」. */
       rankNoteInList={false}
+      /* 同一條規則的另外四句，見 `FacetNotes`——目錄是全 app 最長的一份清單，
+         這四句在 45 列上逐位元相同。判斷用的是**整份 `results`**（不是這個書架的
+         那一半），因為那一句也印在 `<section>` 的 `MarkerLegend` 旁邊、兩個書架
+         共同的區塊層級上；拆成精選／其餘之後仍然只講一次，判準也只有一份。 */
+      lifted={liftedNotes(results)}
     />
   );
 
@@ -528,6 +535,7 @@ function Catalog({
               : `目錄共 ${total} 個 Skill，全部列在下面。`}
           </p>
           <MarkerLegend />
+          <FacetNotes hits={results} />
           {shelved ? (
             <>
               {/*
@@ -958,16 +966,18 @@ function FilterControls({
       ))}
 
       {/*
-        DISC-003 honesty note, sitting with the controls rather than in a help
-        page: a filter bar with dead controls has to say why on the spot,
-        or it reads as a broken UI instead of an absent capability.
+        設計 §2.13 去重 2（同頁同義句）. 這裡本來還有一段通則——「篩選條件只會用
+        平台真的有的資料。上面標為『無法篩選』的項目，是因為平台目前沒有這些資料，
+        不是因為所有 Skill 都不符合。」——而它是上面 `UNAVAILABLE_FILTERS` 逐項那份
+        的複述：那一份逐字寫著「平台沒有這項資料可以篩」，也就是同一句話。
+
+        §2.10 第 5 項（停用控制項的原因）留在逐項那一份，而且那一份才是對的形狀：
+        它跟著它解釋的那個控制項、被那個控制項的 `aria-describedby` 指到，第七個維度
+        加進來的那天也會跟著長。通則那一份做不到這兩件事的任何一件。
+
+        數字也不打在這裡，理由不變：上面那句 summary 已經數過一次（`LIVE_FILTERS`
+        就是為了這個被釘住的）。
       */}
-      {/* 數字不打在這裡：上面那句 summary 已經數過一次，而同一個數字寫兩處，
-          第二處遲早會停在舊的值上（`LIVE_FILTERS` 就是為了這個被釘住的）。 */}
-      <p className="note">
-        篩選條件只會用平台真的有的資料。上面標為「無法篩選」的項目，是因為平台目前沒有這些資料，
-        不是因為所有 Skill 都不符合。
-      </p>
     </div>
   );
 }
@@ -982,15 +992,16 @@ function FilterControls({
  * after golden-query-set.md §10.7 measured equal-weight RRF costing 15 of 48
  * queries their Top-1). The two exceptions are the two states the response
  * already flags, and they are listed whether or not they apply right now —
- * the rule is what is being explained — with the live one marked.
+ * the rule is what is being explained.
+ *
+ * **「這一次是不是那個例外」不在這裡回答，而那是 §2.10 的要求，不是版面偏好.**
+ * 兩顆徽章（「目前這次搜尋就是這個狀態」「這頁就有這種結果」）本來掛在下面兩個
+ * `<li>` 上，也就是平台的降級自述——§2.10 第 9 項——住在一個**預設關閉的**
+ * `<details>` 裡。同一件事上面已經有兩則 `.notice` 平鋪講過（`degraded` 與
+ * `partial_index` 各一則，就在結果清單之前、不必互動就看得見），所以刪掉徽章同時
+ * 修好 §2.10 與 §2.13 去重 2：降級自述只剩平鋪的那一份，而它本來就是合格的那一份。
  */
-function RankingExplainer({
-  degraded,
-  partialIndex,
-}: {
-  degraded: boolean;
-  partialIndex: boolean;
-}) {
+function RankingExplainer() {
   return (
     <details className="ranking-explainer">
       <summary>排序依據（為什麼是這個順序？）</summary>
@@ -1037,14 +1048,12 @@ function RankingExplainer({
           <strong>例外一：只能用關鍵字比對時。</strong>
           語意服務不可用的話，整頁改用關鍵字分數排序。那個分數不是相似度、沒有固定範圍，上面那個
           門檻也不生效；這時不顯示相似度，改在每個結果旁註明原因。篩選條件在這個狀態下照樣生效。
-          {degraded && <span className="badge">目前這次搜尋就是這個狀態</span>}
         </li>
         <li>
           <strong>例外二：還沒建立語意索引的 Skill。</strong>
           這些 Skill
           算不出相似度，只能靠關鍵字被找到，固定排在最後，門檻也沒有判斷過它們；畫面上不顯示
           相似度，改註明原因。
-          {partialIndex && <span className="badge">這頁就有這種結果</span>}
         </li>
       </ul>
     </details>
@@ -1093,7 +1102,14 @@ function CompareBar({ selected }: { selected: string[] }) {
  * 尚未試跑 rather than left out — an absent row reads as "fine" (NFR-001).
  */
 
-function ResultFacets({ hit }: { hit: PublicSearchResult }) {
+function ResultFacets({
+  hit,
+  lifted,
+}: {
+  hit: PublicSearchResult;
+  /** 見 `FacetNotes`：列在裡面的那幾句由清單層級講一次，徽章與標籤照樣留在這一列。 */
+  lifted: LiftedNotes;
+}) {
   const untested =
     hit.compatibility.capability.value === "unverified" &&
     hit.compatibility.runtime.value === "unverified";
@@ -1102,7 +1118,7 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
     <dl className="result-facets">
       <dt>來源層級</dt>
       <dd>
-        <LabelledBadge kind="tier" value={hit.tier} />
+        <LabelledBadge kind="tier" value={hit.tier} noteInRow={!lifted.tier} />
       </dd>
 
       {/*
@@ -1115,7 +1131,7 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
       */}
       <dt>類別</dt>
       <dd>
-        <LabelledBadge kind="category" value={hit.category} />
+        <LabelledBadge kind="category" value={hit.category} noteInRow={!lifted.category} />
       </dd>
 
       {/*
@@ -1131,7 +1147,7 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
         規格驗證：{hit.compatibility.spec_validation.label}
         {/* DISC-002: 沒有驗證證據的 Skill 必須明確標記「尚未試跑」. */}
         {untested && <span className="badge badge-untested">尚未試跑</span>}
-        <span className="note">{hit.compatibility.note}</span>
+        {!lifted.compatibility && <span className="note">{hit.compatibility.note}</span>}
       </dd>
 
       <dt>依賴</dt>
@@ -1145,7 +1161,7 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
 
       <dt>風險提示</dt>
       <dd>
-        <RiskSummary risk={hit.risk} />
+        <RiskSummary risk={hit.risk} noteInRow={!lifted.risk} />
       </dd>
 
       <dt>最近驗證時間</dt>
@@ -1183,6 +1199,132 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
  * 預設狀態**上退回成只有 `title=`——也就是手機上不存在。§0 把這一族排在順位 1
  * （安全與不誤導），所以它不能只在其中一種狀態下成立。
  */
+/**
+ * 設計 §2.13 去重 1（ADR-065）—— 四句逐列複述，提到清單層級講一次。
+ *
+ * **一份清單裡逐位元相同的一句話不是那一列的事實，是那份清單的事實。** 這四個
+ * facet 的 `note` 是伺服器的固定文案（`tier.go` 的 `TrustIndicator`、`category.go`
+ * 的 `Note`、`http.go` 的 `searchRiskNote`、`detail.go` 的 `compatUnverifiedNote`），
+ * 每一列渲染一份：目錄那 45 列上，`risk.note` 一句就印了 45 次。從第 2 列起，讀者
+ * 不可能因為它而對這一列與那一列作出不同判斷。
+ *
+ * **搬走的只有句子，徽章與它的標籤一個字都沒動**，所以 §2.10 第 1／2／3 項（風險、
+ * 驗證狀態、來源層級）仍然逐列、不必互動就看得見；§2.11(c) 也仍然成立——一份清單
+ * 就是一個區塊，但書還在同一個區塊裡而且是平鋪的可見文字，不是 `title`、不是
+ * `<details>`。ADR-065 決策 2 明文允許這個形狀。
+ *
+ * **行是數出來的，不是寫死的。** `tier.note` 有兩種值（精選／已索引）、
+ * `category.note` 有四種、`compatibility.note` 有兩種（跑過／沒跑過）、`risk.note`
+ * 有兩種（掃過／無掃描紀錄），而哪幾種出現在**這一份**清單上只有資料知道。寫死一句
+ * 「收錄不等於精選」的那一天，一頁全是精選的目錄就會印一句與底下每一列都不符的話
+ * ——與分類 chip 的計數同一條原則（`CategoryNav` 的註解，以及 `disc.test.tsx` 把
+ * 數字釘在實際渲染的列上的那幾支）。
+ */
+type FacetKey = "tier" | "category" | "compatibility" | "risk";
+
+const FACET_NOTES: Array<{
+  key: FacetKey;
+  label: string;
+  note: (hit: PublicSearchResult) => string | undefined;
+  /**
+   * The word every row already wears for the value this note belongs to, when
+   * there is one — see `facetNoteLines` for why that decides whether a note that
+   * VARIES down the list may be lifted at all.
+   */
+  by?: (hit: PublicSearchResult) => string;
+}> = [
+  { key: "tier", label: "來源層級", note: (hit) => hit.tier.note, by: (hit) => hit.tier.label },
+  {
+    key: "category",
+    label: "類別",
+    note: (hit) => hit.category.note,
+    by: (hit) => hit.category.label,
+  },
+  // 相容狀態 and 風險提示 have no `by`: neither renders a badge whose text is a
+  // total function of the value its note comes from. 相容狀態 shows the spec axis
+  // plus a 尚未試跑 badge on a DIFFERENT predicate (both sandbox axes unverified,
+  // where the note switches on whether a runtime image was recorded), and a
+  // scan_status of `unavailable` with no `level: "unknown"` renders no mark at
+  // all. So these two lift only when they are byte-identical on every row.
+  { key: "compatibility", label: "相容狀態", note: (hit) => hit.compatibility.note },
+  { key: "risk", label: "風險提示", note: (hit) => hit.risk.note },
+];
+
+/** 這一份清單上，哪幾個 facet 的 note 已經被提到清單層級講過了。 */
+export type LiftedNotes = Partial<Record<FacetKey, boolean>>;
+
+/**
+ * 一份清單的 facet 但書，去重之後該印的那幾行。
+ *
+ * **一句話可以搬到清單層級，若且唯若讀者搬完之後仍然分得出它在講哪一列。** 兩種
+ * 情況滿足它，而它們是這個函式的兩個分支：
+ *
+ * 1. **這一句在整份清單上逐位元相同**——那它從第 2 列起就不可能改變任何判斷，講一次
+ *    就是全部。§2.13 去重 1 的字面。
+ * 2. **這一句有幾種值，但每一列都戴著挑出自己那一行的那個詞**——`tier` 與 `category`
+ *    的每一列都渲染 `LabelledBadge`，而 badge 上的 `label` 與 note 來自同一個
+ *    `Labelled`，所以「來源層級「精選」：…」指得回它限定的那些列。同型前例就在同一
+ *    個檔案裡：精選書架那段話一次講完兩個層級（「下面 N 個是『已索引』…」），也是靠
+ *    列上的那個詞完成歸屬的。
+ *
+ * **沒有那個詞就不准搬，這條是承重的。** `risk.note` 有兩種值——「掃過了」與「尚無
+ * 掃描紀錄」——而 `scan_status: "unavailable"` 配 `level: "none"` 的那一列身上**一個
+ * 標記都沒有**。兩句一起提到上面，畫面會同時印出兩句而讀者分不出哪一列是哪一句：
+ * 那不是去重，是把 §2.9 的型別詞弄丟（`disc.test.tsx` 的「a result row carries all
+ * seven columns」在這個版本第一次寫錯時就是這樣紅的）。
+ *
+ * 一列的清單也不搬：那時候沒有複述可去，搬走只是把但書推離它限定的那顆徽章。
+ * 任何一列的 note 是空的也不搬——那一列沒有東西被講到，剩下的列會被代表。
+ */
+function facetNoteLines(hits: PublicSearchResult[]): Array<{ key: FacetKey; text: string }> {
+  if (hits.length < 2) return [];
+  const lines: Array<{ key: FacetKey; text: string }> = [];
+  for (const { key, label, note, by } of FACET_NOTES) {
+    // note → the row-visible words carrying it, in first-seen order.
+    const byNote = new Map<string, Set<string>>();
+    let complete = true;
+    for (const hit of hits) {
+      const text = note(hit);
+      if (!text) {
+        complete = false;
+        break;
+      }
+      const words = byNote.get(text) ?? new Set<string>();
+      if (by) words.add(by(hit));
+      byNote.set(text, words);
+    }
+    if (!complete) continue;
+    if (byNote.size === 1) {
+      lines.push({ key, text: `${label}：${[...byNote.keys()][0]}` });
+    } else if (by) {
+      for (const [text, words] of byNote) {
+        lines.push({ key, text: `${label}「${[...words].join("、")}」：${text}` });
+      }
+    }
+  }
+  return lines;
+}
+
+function liftedNotes(hits: PublicSearchResult[]): LiftedNotes {
+  const lifted: LiftedNotes = {};
+  for (const { key } of facetNoteLines(hits)) lifted[key] = true;
+  return lifted;
+}
+
+function FacetNotes({ hits }: { hits: PublicSearchResult[] }) {
+  // 依 ResultFacets 的欄位順序，帶著 facet 名稱——與 `CompatibilityStatus` 逐軸註記
+  // 同一個寫法（`{label}：{note}`）。沒有新元件、沒有新 class、沒有新字級。
+  return (
+    <>
+      {facetNoteLines(hits).map(({ text }) => (
+        <p key={text} className="note">
+          {text}
+        </p>
+      ))}
+    </>
+  );
+}
+
 function MarkerLegend() {
   return (
     <p className="note">
@@ -1200,11 +1342,19 @@ function SearchResultRow({
   atLimit,
   onToggle,
   rankNoteInList = true,
+  lifted = {},
 }: {
   hit: PublicSearchResult;
   checked: boolean;
   atLimit: boolean;
   onToggle: (skillId: string) => void;
+  /**
+   * Which facet notes the LIST already stated once above the rows — see
+   * `FacetNotes`. The badges and their labels never leave the row; only a
+   * sentence that is byte-identical down the whole list does. Defaults to
+   * 「none of them」, which is today's behaviour for any other caller.
+   */
+  lifted?: LiftedNotes;
   /**
    * False when the list already states, once, why nothing here has a
    * similarity. Only the catalogue does: on a search page the reason is
@@ -1293,7 +1443,7 @@ function SearchResultRow({
           )}
         </p>
       )}
-      <ResultFacets hit={hit} />
+      <ResultFacets hit={hit} lifted={lifted} />
       {/*
         DISC-004: every candidate shows the score the order was built from.
         `rank` is null exactly when there is no similarity to show — the whole

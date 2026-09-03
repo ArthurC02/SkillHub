@@ -246,10 +246,18 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
               ? "——這一筆評估說自己還在做，但這一頁已經停止再查了。"
               : "——判定還在做。它會自己完成，不需要你回來按任何東西。"}
           </p>
-          <p className="note">
-            可以關掉這一頁。評估是平台佇列裡的一個工作（`evaluate_run`），由 worker
-            執行，瀏覽器不在那條路徑上；回到這個網址就會看到當時的結果。
-          </p>
+          {/*
+            §2.12 第 2 條的第三件事（能不能離開），and 設計 §2.13: the SENTENCE
+            stays flat, the DERIVATION does not. 「評估是平台佇列裡的一個工作
+            （evaluate_run），由 worker 執行，瀏覽器不在那條路徑上」 is D 類 —
+            a reader who has seen it once does not press anything different the
+            second time — and `components/InFlight.tsx` carries the same
+            reasoning about the same queue eighty characters longer, on the same
+            page while a run is executing. The two now say one thing in one
+            wording; the Tip that the derivation belongs in does not exist yet
+            (§1.3 第四種機制, 丙-142 第二批).
+          */}
+          <p className="note">可以關掉這一頁（平台在跑，不是你的瀏覽器）</p>
           {/*
             §2.12 asks for a changing quantity, and this one honestly has none:
             a judge either returns a verdict or fails, and there is no
@@ -430,36 +438,35 @@ function EvaluationReport({
       {evaluation.criterion_results.length === 0 ? (
         <p>這次評估沒有逐條結果。</p>
       ) : (
-        <ul className="criterion-list">
-          {evaluation.criterion_results.map((c) => (
-            <CriterionItem key={c.criterion_id} criterion={c} />
-          ))}
-        </ul>
+        <CriterionSection results={evaluation.criterion_results} />
       )}
 
       <h3>這個 Run 的問題（六類）</h3>
       {evaluation.deterministic_findings.length === 0 ? (
         <p>沒有列出問題。這不等於一切正常，只表示這些檢查沒有產生發現。</p>
       ) : (
-        <ul className="finding-list">
-          {evaluation.deterministic_findings.map((f, i) => (
-            // Design §4.3: a finding carries its own category, severity, message
-            // and evidence — a thing that can be believed or dismissed on its
-            // own — so it is the card every other such list uses, and not a
-            // fifth style. Same defect commit 90ade82 fixed for Test Case rows,
-            // sitting directly under the .criterion cards it was unlike.
-            <li className="criterion" key={`${f.category}-${i}`}>
-              <p>
-                <span className="badge">{FINDING_CATEGORY_LABEL[f.category]}</span>{" "}
-                <span className={`badge badge-severity-${f.severity}`}>
-                  {SEVERITY_LABEL[f.severity]}
-                </span>{" "}
-                {f.message}
-              </p>
-              <EvidenceList evidence={f.evidence} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <MatchLegend evidence={evaluation.deterministic_findings.flatMap((f) => f.evidence)} />
+          <ul className="finding-list">
+            {evaluation.deterministic_findings.map((f, i) => (
+              // Design §4.3: a finding carries its own category, severity, message
+              // and evidence — a thing that can be believed or dismissed on its
+              // own — so it is the card every other such list uses, and not a
+              // fifth style. Same defect commit 90ade82 fixed for Test Case rows,
+              // sitting directly under the .criterion cards it was unlike.
+              <li className="criterion" key={`${f.category}-${i}`}>
+                <p>
+                  <span className="badge">{FINDING_CATEGORY_LABEL[f.category]}</span>{" "}
+                  <span className={`badge badge-severity-${f.severity}`}>
+                    {SEVERITY_LABEL[f.severity]}
+                  </span>{" "}
+                  {f.message}
+                </p>
+                <EvidenceList evidence={f.evidence} />
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       <h3>評估本身的成本</h3>
@@ -492,6 +499,55 @@ function EvaluationReport({
 }
 
 /**
+ * 設計 §2.13 去重 1, and `components/RunVerdict.tsx` is the shape it copies:
+ * 「On a page of fifty rows a sentence per row is noise」. Four criteria all
+ * judged by the model printed 判定來源：模型評估（不是確定事實） four times, and
+ * from the second row on that sentence cannot make a reader decide anything
+ * different — it is the LIST's fact, not the row's.
+ *
+ * So the source most of the list shares is stated once above it and the rows
+ * that differ restate their own (`CriterionItem` below). Two conditions, both
+ * load-bearing:
+ *
+ *  - **Counted from the data, never assumed.** 「模型評估」 hard-coded here would
+ *    be a lie the first time a rule verdict arrives, which is the same defect
+ *    §4.4 records `Home.tsx` shipping with `spec_validation`.
+ *  - **Two rows minimum.** Hoisting a sentence that would only have been printed
+ *    once ADDS text, and on a list of two disagreeing criteria there is nothing
+ *    to deduplicate. Ties go to the first source seen (`Map` keeps insertion
+ *    order), so the choice does not depend on how the object was built.
+ *
+ * Downgraded rows (04 丙-10) are excluded from the tally: they render the
+ * platform's own sentence instead of `SOURCE_LABEL`, so counting them would let
+ * a list where every verdict was thrown away hoist a source no row uses.
+ */
+function listSource(results: CriterionResult[]): CriterionResult["source"] | undefined {
+  const tally = new Map<CriterionResult["source"], number>();
+  for (const c of results) {
+    if (isEvidenceUnverifiable(c)) continue;
+    tally.set(c.source, (tally.get(c.source) ?? 0) + 1);
+  }
+  let best: CriterionResult["source"] | undefined;
+  for (const [source, n] of tally) if (n > (best ? (tally.get(best) ?? 0) : 1)) best = source;
+  return best;
+}
+
+function CriterionSection({ results }: { results: CriterionResult[] }) {
+  const shared = listSource(results);
+  return (
+    <>
+      {shared && <p className="note">判定來源：{SOURCE_LABEL[shared]}；不同的會在該條標出。</p>}
+      <MatchLegend evidence={results.flatMap((c) => c.evidence)} />
+      <ul className="criterion-list">
+        {results.map((c) => (
+          <CriterionItem key={c.criterion_id} criterion={c} listSource={shared} />
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/**
  * One acceptance criterion's verdict.
  *
  * The downgraded case (04 丙-10) is told apart on two channels, never on colour
@@ -499,7 +555,13 @@ function EvaluationReport({
  * decided. The border style differs as a third, and it is the only one a reader
  * could miss without losing the fact.
  */
-function CriterionItem({ criterion: c }: { criterion: CriterionResult }) {
+function CriterionItem({
+  criterion: c,
+  listSource: shared,
+}: {
+  criterion: CriterionResult;
+  listSource?: CriterionResult["source"];
+}) {
   const downgraded = isEvidenceUnverifiable(c);
 
   return (
@@ -521,7 +583,7 @@ function CriterionItem({ criterion: c }: { criterion: CriterionResult }) {
           ——那一種會顯示為「無法判斷」。這一條要查的是引用為什麼回驗不過，不是模型有沒有把握。
         </p>
       ) : (
-        <p className="note">判定來源：{SOURCE_LABEL[c.source]}</p>
+        c.source !== shared && <p className="note">判定來源：{SOURCE_LABEL[c.source]}</p>
       )}
       {/* Untrusted when source is `model`: plain text, never markup. */}
       {c.reason && <p>{c.reason}</p>}
@@ -554,14 +616,101 @@ function CriterionItem({ criterion: c }: { criterion: CriterionResult }) {
  * written before the field existed have no answer, and rendering silence as a
  * pass is exactly the failure ADR-043 was written about.
  */
-export const MATCH_NOTE: Record<EvidenceMatch, string> = {
+/**
+ * `undefined` is a fifth answer, not a missing fourth one — see the note above.
+ * It is keyed here rather than left to a fallback expression so that the badge,
+ * the sentence and the ordering all read it from one table.
+ */
+export type MatchKey = EvidenceMatch | "unrecorded";
+
+export const MATCH_NOTE: Record<MatchKey, string> = {
   exact: "引文已逐字回驗。",
   normalized:
     "引文已回驗——需要正規化後才比對得上（全形半形、空白、頭尾標點）。原文與引用有細微差異，內容相同。",
   not_found: "這段引文在本次 Run 的可回驗來源裡找不到，因此不作為證據。",
   not_checked:
     "只證明這個檔案存在（路徑、大小、雜湊都在 manifest 上），沒有回驗任何引文——平台不會打開產物內容。",
+  unrecorded: "這份報告產生時還沒有記錄引文回驗結果，無法判斷這段引文是否被回驗過。",
 };
+
+/**
+ * 設計 §2.13「標籤與圖示」: the re-verification result is a STATE, so it is a
+ * badge with a word in it and not a sentence per citation. Measured 2026-09-03,
+ * the sentence版 was 232 characters — 19% of this page — because eight citations
+ * each carried one of five fixed paragraphs.
+ *
+ * **The words carry the whole distinction** (§2.3: colour is the second channel,
+ * and these five are three tints). 已逐字回驗 and 正規化後比對 are both 回驗過,
+ * and they are NOT one word: ADR-043 exists because two correct `failed`
+ * verdicts were lost to a trailing `}],`, and 「which of the two」 is exactly the
+ * fact that would have shown it. 找不到 and 未回驗引文 are further apart still —
+ * one is an accusation about a quote, the other says no quote was ever opened.
+ *
+ * **All five stay on the row.** 找不到／未回驗引文／回驗結果未記錄 are §2.9
+ * absences and §2.10 第 10 項 is explicit: 缺席的「為什麼」可以折，缺席「是哪一型」
+ * 不可折. What moves to the list is the explanation, never the type word.
+ */
+export const MATCH_WORD: Record<MatchKey, string> = {
+  exact: "已逐字回驗",
+  normalized: "正規化後比對",
+  not_found: "找不到",
+  not_checked: "未回驗引文",
+  unrecorded: "回驗結果未記錄",
+};
+
+/**
+ * §4.4 / §4.6.3: outline only, never a fill — a filled badge reads as an
+ * endorsement. 找不到 is the one that stops a citation counting as evidence
+ * (`--danger`, 這件事不通過); the two that were never verified take
+ * `--accent-border`'s 未知／未檢查 tint; a citation that DID re-verify is 通過,
+ * and §4.4 says a plain `.badge` is exactly that ("這是合法的").
+ */
+const MATCH_BADGE: Record<MatchKey, string> = {
+  exact: "badge",
+  normalized: "badge",
+  not_found: "badge badge-danger",
+  not_checked: "badge badge-unverified",
+  unrecorded: "badge badge-unverified",
+};
+
+/** Print order for the legend. Stable, so two reports do not shuffle it. */
+const MATCH_ORDER: MatchKey[] = ["exact", "normalized", "not_found", "not_checked", "unrecorded"];
+
+function matchKey(e: EvidenceRef): MatchKey {
+  return e.match ?? "unrecorded";
+}
+
+/**
+ * 設計 §2.13 去重 1 — the explanations, stated once for the list that contains
+ * the citations rather than once per citation.
+ *
+ * **Which list, and why not the citation's own `<ul>`.** A criterion usually
+ * cites once, so a legend above each `.evidence-list` would print the same
+ * sentence exactly as many times as the rows did and add eight badges on top of
+ * it — deduplication that removes nothing. The list where the repetition
+ * actually lives is 逐條驗收條件 / 這個 Run 的問題 / 改善建議: one legend above
+ * each, covering every citation under it. That keeps §2.11(c)'s 「同一個區塊」 —
+ * the block is the section, which is also how `Home.tsx` states its five
+ * provenance markers once above the results list.
+ *
+ * **Counted, not written down.** Only the kinds actually present print, so a
+ * report whose citations all verified exactly does not carry a paragraph about
+ * a case it does not contain. The same page has already shipped the hard-coded
+ * version of this mistake once (§0 的分類計數).
+ */
+function MatchLegend({ evidence }: { evidence: EvidenceRef[] }) {
+  const kinds = MATCH_ORDER.filter((k) => evidence.some((e) => matchKey(e) === k));
+  if (kinds.length === 0) return null;
+  return (
+    <ul className="note">
+      {kinds.map((k) => (
+        <li key={k}>
+          <span className={MATCH_BADGE[k]}>{MATCH_WORD[k]}</span> {MATCH_NOTE[k]}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export const KIND_WORD: Record<EvidenceRef["kind"], string> = {
   trace_event: "Trace 事件",
@@ -569,31 +718,17 @@ export const KIND_WORD: Record<EvidenceRef["kind"], string> = {
   agent_output: "Agent 輸出",
 };
 
-function EvidenceMatchNote({ e }: { e: EvidenceRef }) {
-  return (
-    <>
-      {e.reattributed_from && (
-        <p className="note">
-          Judge 原本標為「{KIND_WORD[e.reattributed_from]}」，實際出處是「{KIND_WORD[e.kind]}」，
-          已更正。標錯來源與捏造引文是兩件不同的事，這一筆是前者。
-        </p>
-      )}
-      <p className="note">
-        {e.match
-          ? MATCH_NOTE[e.match]
-          : "這份報告產生時還沒有記錄引文回驗結果，無法判斷這段引文是否被回驗過。"}
-      </p>
-    </>
-  );
-}
-
 function EvidenceList({ evidence }: { evidence: EvidenceRef[] }) {
   if (evidence.length === 0) return <p className="note">沒有附上證據引用。</p>;
   return (
     <ul className="evidence-list">
       {evidence.map((e, i) => (
         <li key={`${e.kind}-${i}`}>
+          {/* §2.11(c): the badge is the first signal and it is on the row, not
+              in the legend — a reader who never reaches the legend still knows
+              which of the five this citation is. */}
           <p className="note">
+            <span className={MATCH_BADGE[matchKey(e)]}>{MATCH_WORD[matchKey(e)]}</span>{" "}
             {e.kind === "trace_event" && "Trace 事件"}
             {e.kind === "artifact" &&
               `Artifact ${e.artifact_path ?? ""}${
@@ -604,6 +739,12 @@ function EvidenceList({ evidence }: { evidence: EvidenceRef[] }) {
                 e.char_range ? `（字元 ${e.char_range.start}–${e.char_range.end}）` : ""
               }`}
           </p>
+          {e.reattributed_from && (
+            <p className="note">
+              Judge 原本標為「{KIND_WORD[e.reattributed_from]}」，實際出處是「{KIND_WORD[e.kind]}
+              」， 已更正。標錯來源與捏造引文是兩件不同的事，這一筆是前者。
+            </p>
+          )}
           {/* Design §2.6: the excerpt is the evidence; the event's uuid is an
               identifier and folds. A missing id says so rather than rendering
               as the blank §2.1 forbids — this line used to end in one. */}
@@ -620,7 +761,6 @@ function EvidenceList({ evidence }: { evidence: EvidenceRef[] }) {
           {!e.available && (
             <p className="note">原始資料已過期或已刪除，以下是評估當時保存的摘要。</p>
           )}
-          <EvidenceMatchNote e={e} />
           {/* Crossed the trust boundary: inert text, never interpreted. */}
           <pre>{e.excerpt}</pre>
           {e.excerpt_truncated && <p className="note">（摘要已截斷，不是全文）</p>}
@@ -732,11 +872,19 @@ function SuggestionsPanel({ runId }: { runId: string }) {
       {suggestions.data.suggestions.length === 0 ? (
         <p>這份評估沒有產生改善建議。</p>
       ) : (
-        <ul className="suggestion-list">
-          {suggestions.data.suggestions.map((s) => (
-            <SuggestionItem key={s.suggestion_id} suggestion={s} runId={runId} />
-          ))}
-        </ul>
+        <>
+          {/* 設計 §2.13 去重 1. The qualification is C 類 (§2.11(c): what the
+              number does NOT cover) so not a word of it may go — but it does
+              not change per suggestion, so it is the list's sentence and not
+              the row's. Same move as 判定來源 above. */}
+          <p className="note">「預期影響」是模型的預測，不是量測結果。</p>
+          <MatchLegend evidence={suggestions.data.suggestions.flatMap((s) => s.evidence)} />
+          <ul className="suggestion-list">
+            {suggestions.data.suggestions.map((s) => (
+              <SuggestionItem key={s.suggestion_id} suggestion={s} runId={runId} />
+            ))}
+          </ul>
+        </>
       )}
 
       {suggestions.data.suggestions.length > 0 && (
@@ -791,7 +939,7 @@ function SuggestionItem({
       </p>
       {/* Model-written text. Escaped, never markup. */}
       <p>{suggestion.problem}</p>
-      <p className="note">預期影響（模型的預測，不是量測結果）：{suggestion.expected_impact}</p>
+      <p className="note">預期影響：{suggestion.expected_impact}</p>
       <EvidenceList evidence={suggestion.evidence} />
 
       <p>

@@ -246,6 +246,80 @@ test("r2 A1: 套件宣告可用的工具排在模型寫的那一段之前", asyn
   expect(headings.indexOf("套件宣告可用的工具")).toBeLessThan(headings.indexOf("它能做什麼"));
 });
 
+// --- 04 丙-142 第一批：同一句話一頁講一次（§2.13） ---------------------------
+
+/**
+ * 「這段是模型寫的、沒有人核對」在這一頁曾經有四份可見複本（合計 47 字）加兩個
+ * `title`。留下的是說得最完整的那一份（〈限制〉那一句同時解釋徽章語意與涵蓋範圍），
+ * 加上伺服器自己那句 `enrichment.note`——它不只說「模型寫的」，還說了你的 Agent 讀的
+ * 不是這一段，所以它不是同一句話。
+ *
+ * 押的是**次數**：`toContain` 對一句印四遍的話永遠是綠的。
+ */
+test("§2.13: 「模型寫的、沒有人核對」在這一頁只講一次，而且不在 title 裡", async () => {
+  stubOwner();
+  await render(<SkillDetail />, settledAsOwner);
+
+  // 這一列自己那份 12 字的複述。留下的兩份各自多說了一件這一份沒說的事，所以它們
+  // 不是同一句話；這一份是純粹的第三次。
+  expect(text(), "同一句但書在一頁上印了不只一次（§2.13 去重第 1／2 條）").not.toContain(
+    "由模型產生，未經人工核對",
+  );
+  // §2.4 的補句：原因搬出 `title` 之後，`title` 要拿掉——一句只活在 tooltip 裡的話
+  // 在觸控裝置上不存在，留著就是同一句話的第二份。
+  // （只問這一頁自己畫的那兩顆。`LabelledBadge` 與 `RiskIndicator` 今天仍然把伺服器
+  // 的 `note` 同時放進 `title` 與可見文字，那是同一條規則的另外兩個呼叫點，記在丙-142
+  // 的回報裡，不由這一支押。）
+  expect(
+    container.querySelector(".badge-source-model[title], .badge-source-template[title]"),
+  ).toBeNull();
+  // 第一訊號（可見文字）沒有跟著不見：徽章與它的但書都還在。
+  expect(text()).toContain("AI 產生");
+  expect(text()).toContain("「AI 產生」的項目由模型重述套件內容，未經人工核對。");
+});
+
+/**
+ * §2.6／§2.13 的 F 類：一個**通過**的可用性探測是「這份東西有多舊」那條軸上的推導
+ * 細節，不是判斷依據——它成立時畫面上什麼都不必改變。折進〈識別碼〉。
+ *
+ * 邊界在另一半：`unavailable_since`（「來源已失效，自 … 起」）是 §2.10 第 9 項的平台
+ * 降級自述，永不折疊。兩者互斥，所以折疊區裡不會出現一句與外面矛盾的「當時可取得」。
+ */
+test("§2.6: 通過的來源可用性探測折進識別碼，降級自述不跟著進去", async () => {
+  stubOwner();
+  await render(<SkillDetail />, settledAsOwner);
+
+  const probe = elementSaying("最近一次來源可用性檢查");
+  expect(probe.closest("details"), "這一句以前平鋪在「它從哪裡來」的第一層").not.toBeNull();
+  // 這個 fixture 的來源還活著，所以降級自述本來就不渲染——押的是它沒有被搬進去。
+  expect(container.querySelector("details")?.textContent).not.toContain("來源已失效");
+});
+
+/**
+ * §2.9／§2.10 第 10 項：缺席的**型別詞**三處都要留；搬走的是那段對三處都一樣的解釋。
+ *
+ * 這個 stub 是一個**登入了、但這不是他的 Skill、而且平台連版本內容都沒有回**的讀者：
+ * 三個「無權檢視」同時渲染，那正是它們互為複本的那一格。
+ */
+test("§2.13: 「無權檢視」三處都在，但那段解釋只講一次", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me") return json({ user_id: "u-1", workspace_id: "ws-1" });
+    if (path.endsWith("/versions")) return json({ versions: [] });
+    if (path.startsWith("/api/skills/")) return json({ ...detailBody(), version: undefined });
+    return json({ error: "not found" }, 404);
+  });
+  await render(<SkillDetail />, () => text().includes("這個 Skill 不在你的工作區"));
+
+  const count = (needle: string) => text().split(needle).length - 1;
+  expect(count("無權檢視"), "型別詞是封閉清單上的東西，三處一處都不能少").toBe(3);
+  expect(count("這不代表它沒有版本"), "同一段解釋在一頁上講了不只一次").toBe(1);
+  // 每一格自己的後果留在自己那一格（§2.4：控制項不在的原因）。
+  expect(text()).toContain("沒有東西可以打包");
+});
+
 // --- r4 B1／B2：右欄的兩個建立動作 -------------------------------------------
 
 test("r4 B2: Fork 那顆按鈕說得出它產生什麼", async () => {

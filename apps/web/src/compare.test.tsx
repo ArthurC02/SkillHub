@@ -6,6 +6,8 @@ import { queryClient } from "./api/queryClient";
 import { RunCompare } from "./pages/RunCompare";
 import { CompareTable } from "./pages/Compare";
 import {
+  COMPARISON,
+  comparisonSide,
   OTHER_RUN,
   RUN,
   RUNS,
@@ -45,6 +47,7 @@ let root: Root;
 
 beforeEach(() => {
   queryClient.clear();
+  search = {};
   container = document.createElement("div");
   document.body.appendChild(container);
 });
@@ -58,10 +61,16 @@ afterEach(async () => {
 
 const navigations: { search?: { against?: string } }[] = [];
 
+/**
+ * 到站狀態是 `against` 空的（RunTrace 連過來時的樣子），而它以前是寫死的——所以
+ * 這個檔案渲染不出比較表本身，2026-09-03 丙-142 對 `RunCompare` 的四項改動因此
+ * 一支測試都沒有。改成可變的之後，`beforeEach` 會把它復位，預設行為不變。
+ */
+let search: { against?: string } = {};
+
 vi.mock("@tanstack/react-router", () => ({
   useParams: () => ({ runId: RUN }),
-  // 到站狀態:`against` 是空的,也就是 RunTrace 連過來時的樣子。
-  useSearch: () => ({}),
+  useSearch: () => search,
   useNavigate: () => (options: { search?: { against?: string } }) => {
     navigations.push(options);
     return Promise.resolve();
@@ -281,4 +290,82 @@ test("EVAL-003 候選歷史讀取失敗不會冒充空歷史", async () => {
 
   expect(text()).toContain("無法讀取可比較的 Run");
   expect(text()).not.toContain("這個 Test Case 目前只有這一次 Run");
+});
+
+/**
+ * 2026-09-03（丙-142，設計 §2.13）：`RunCompare` 的四項去重以前一支測試都沒有——
+ * 這個檔案的 `useSearch` 是寫死的空物件，所以比較表本身從來沒有被渲染過。
+ *
+ * 押的是**次數**不是「有沒有這句話」：一句印在左右兩格的話對 `toContain` 永遠是綠的，
+ * 把它搬回格子裡也是綠的。
+ */
+const occurrences = (needle: string) => text().split(needle).length - 1;
+
+const COST_NOTE = "這是下界，不是總額。權威來源：模型閘道 per-key 實付";
+
+test("§2.13 去重 1：兩側相同的成本但書印在列首，一次", async () => {
+  stubPlatform();
+  search = { against: OTHER_RUN };
+  await render(<RunCompare />);
+  await waitFor(() => text().includes("Run 成本"));
+
+  expect(occurrences(COST_NOTE), "同一句但書在左右兩格各印了一次").toBe(1);
+  expect(occurrences("與上一列分開列，不相加。")).toBe(1);
+
+  // 而且它在列首，不是在某一格裡——這一條分辨「搬對了」與「剛好只有一格有值」。
+  const heads = Array.from(container.querySelectorAll("th[scope=row]")).map(
+    (th) => th.textContent ?? "",
+  );
+  expect(heads.some((h) => h.includes(COST_NOTE))).toBe(true);
+  expect(heads.some((h) => h.includes("與上一列分開列，不相加。"))).toBe(true);
+});
+
+test("§2.13 去重 1：兩側的權威來源不同時，每一格各自留著自己的那一句", async () => {
+  const mine = comparisonSide(RUN, true);
+  const theirs = comparisonSide(OTHER_RUN, false);
+  const differing = {
+    ...COMPARISON,
+    runs: [mine, { ...theirs, cost: { ...theirs.cost, authoritative_source: "另一個閘道的帳單" } }],
+  };
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (pathOf(url) === "/runs") {
+      return json(url.includes(`test_case_id=${TEST_CASE}`) ? RUNS : { runs: [FOREIGN_RUN] });
+    }
+    if (pathOf(url).endsWith("/comparison")) return json(differing);
+    const { body, status } = platformResponse(url);
+    return json(body, status);
+  });
+  search = { against: OTHER_RUN };
+  await render(<RunCompare />);
+  await waitFor(() => text().includes("Run 成本"));
+
+  // 這一支才是「一律搬到列首」那個錯誤實作的照妖鏡：兩句不一樣時它們必須留在格子裡。
+  expect(text()).toContain("權威來源：模型閘道 per-key 實付");
+  expect(text()).toContain("權威來源：另一個閘道的帳單");
+  const heads = Array.from(container.querySelectorAll("th[scope=row]")).map(
+    (th) => th.textContent ?? "",
+  );
+  expect(heads.some((h) => h.includes("權威來源："))).toBe(false);
+});
+
+test("§2.13：回答沒有人問的問題那一句刪了；重跑的但書縮了", async () => {
+  stubPlatform();
+  search = { against: OTHER_RUN };
+  await render(<RunCompare />);
+  await waitFor(() => text().includes("Run 成本"));
+
+  // 這一頁沒有任何寫入控制項，所以「不會改動歷史資料」回答的是沒有人問的問題。
+  expect(text()).not.toContain("比較只是讀取");
+  // 前半（仍在／不在）是 §2.4 的原因，留著；後半的敘述縮成一個括號。
+  expect(text()).not.toContain("仍須在那裡確認一次才會開始 Run");
+  expect(text()).toContain("（會先經過權限確認）");
+});
+
+test("§3 第 14 條：挑另一個 Run 的說明在同一屏上只有一段", async () => {
+  stubPlatform();
+  await render(<RunCompare />);
+  await waitFor(() => candidateButtons().length > 0);
+
+  expect(occurrences("後開始比較")).toBe(1);
 });

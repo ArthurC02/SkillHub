@@ -333,6 +333,84 @@ test("§2.12: no events yet is a named state, never 0 秒前 and never a blank",
   expect(text).not.toContain("0 秒前");
 });
 
+/**
+ * 設計 §2.13 去重 1 — 逐列複述。
+ *
+ * 「平台不提供這個檔案的下載連結…」與保存期限的「為什麼缺」以前掛在**每一則產出**上，
+ * 而它們每一列逐位元相同：一句在第 2 列之後不可能讓讀者作出不同判斷的話，講的不是那
+ * 一列，是那份清單。三則產出就是 96＋96 個字元說同一件事兩遍。
+ *
+ * 兩個方向都要斷言，因為各自都可以被錯的實作通過：**搬走的搬乾淨了**（清單層級一次），
+ * 而**沒搬的一列都沒少**——`尚未定值` 是 §2.10 第 10 項的型別詞，不可折也不可搬，
+ * 只有括號裡的「為什麼」可以（那一項逐字這樣寫）。
+ */
+test("設計 §2.13：產出清單上每一列都一樣的那兩句，整份清單只講一次", async () => {
+  const artifact = (id: string, name: string) => ({
+    artifact_id: id,
+    file_name: name,
+    content_type: "text/csv",
+    size_bytes: 2048,
+    content_hash: `sha256:${id}`,
+    created_at: "2026-08-17T00:03:00Z",
+    purged: false,
+  });
+  const json = (body: unknown, status = 200) =>
+    Promise.resolve(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.includes("/artifacts"))
+      return json({
+        artifacts: [
+          artifact("a1", "one.csv"),
+          artifact("a2", "two.csv"),
+          artifact("a3", "three.csv"),
+        ],
+      });
+    if (url.includes("/evaluation") || url.includes("/suggestions"))
+      return json({ error: "not found" }, 404);
+    return json(summary);
+  });
+  await render();
+  await waitFor(() => (container.textContent ?? "").includes("three.csv"));
+
+  const text = container.textContent ?? "";
+  const times = (needle: string) => text.split(needle).length - 1;
+  expect(times("控制平面不打開它")).toBe(1);
+  expect(times("這不表示它會永久保留")).toBe(1);
+  // §2.10 第 10 項：型別詞留在它描述的那一列上，三列就是三次。
+  expect(times("保存期限：尚未定值")).toBe(3);
+});
+
+/**
+ * 設計 §2.13 — 說明可以移形，判斷不可以，套在 §2.12 那段橫幅上。
+ *
+ * 留下的是**事實**（可以關掉這一頁）與**強制者**（平台在跑，不是你的瀏覽器，§2.2 第三
+ * 向）；離開的是 worker／沙箱／不經過瀏覽器那段推導（D 類：同一個人第二次來看，它不
+ * 改變他這次要按什麼），以及指向下一行那顆取消按鈕的一句話。
+ *
+ * 措辭是逐字釘住的：`RunEvaluation` 的同義句同批改成同一句，兩個畫面講同一件事就該用
+ * 同一個措辭（§3 第 14 條）。
+ */
+test("設計 §2.13：進行中留下事實與強制者，推導與指路句不再平鋪", async () => {
+  stubTrace({ ...summary, status: "running", last_event_at: "2026-08-22T10:04:00Z" }, advanced);
+  await render();
+
+  const text = container.textContent ?? "";
+  expect(text).toContain("可以關掉這一頁（平台在跑，不是你的瀏覽器）");
+  expect(text).not.toContain("不經過瀏覽器");
+  expect(text).not.toContain("要提前停止");
+  // §2.12 的三件事與兩個量一件都沒有少。
+  expect(text).toContain("進行中：執行中");
+  expect(text).toContain("會自己跑到結束");
+  expect(text).toContain("目前已記錄");
+  expect(container.querySelector('time[datetime="2026-08-22T10:04:00Z"]')).not.toBeNull();
+});
+
 test("§2.12: the banner is gone once the run is terminal", async () => {
   // A finished run already answers with a verdict and an execution state; a
   // third answer about waiting would be one fact worded twice (§3 第 14 條).

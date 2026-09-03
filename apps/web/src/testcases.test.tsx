@@ -372,6 +372,20 @@ test("執行歷史 lists this test case's runs and links to each one", async () 
   ).toBe(true);
   expect(container.querySelector('time[datetime="2026-08-18T00:00:00Z"]')).not.toBeNull();
   expect(container.textContent).toContain(VERSION);
+  // 設計 §2.6／§3 第 8 條 — the id is still on the page and is no longer flat: a
+  // 36-character UUID on every row was the longest thing in this list and the
+  // one thing nobody chooses a run by. `toContain(VERSION)` above passes either
+  // way (a `<details>`'s content is in the DOM), so the teeth are here: it is
+  // behind a disclosure, and it is NOT in any of the row's paragraphs.
+  const fold = Array.from(container.querySelectorAll("details")).find((d) =>
+    (d.querySelector("summary")?.textContent ?? "").includes("Skill Version"),
+  );
+  expect(fold, "the Skill Version id is not behind a disclosure").toBeTruthy();
+  expect(fold!.textContent).toContain(VERSION);
+  const flat = Array.from(container.querySelectorAll(".download-item p"))
+    .map((p) => p.textContent ?? "")
+    .join("");
+  expect(flat, "the version id is flat on the row again").not.toContain(VERSION);
   // ADR-025: worded as execution, never as a pass.
   expect(container.textContent).toContain("執行完成");
   // Two axes with the verdict first (ADR-025, 04 丙-32). The old assertion was

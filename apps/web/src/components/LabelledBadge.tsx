@@ -20,20 +20,44 @@ import type { Labelled } from "../api/types";
  * evidence of the npm provenance badge that carried no such sentence while a
  * worm shipped 84 signed malicious versions. §0 ranks 安全與不誤導 first.
  *
- * `title` stays as well: the rule is 「可以在 tooltip 裡，不可以只在 tooltip 裡」.
+ * ~~`title` stays as well: the rule is 「可以在 tooltip 裡，不可以只在 tooltip 裡」.~~
+ * **2026-09-03 (設計 §2.13 去重 2, ADR-065): the `title` is gone.** That rule
+ * permitted the tooltip; it did not ask for it, and by the time the sentence is
+ * visible the tooltip only makes a screen reader say it twice. It also became
+ * actively wrong the moment `noteInRow` existed: on a row whose note has been
+ * lifted to the list, a surviving `title` would be the row's ONLY copy — which
+ * is 設計 §2.4 第 3 項, the exact defect this component was written to fix, and
+ * `design-system.test.ts` could not see it (it matches strings within one file,
+ * and `{value.note}` is still rendered here on the other branch).
  *
  * A `<span>` rather than a `<p>`: this renders inside `<dd>`, `<td>`, `<p>` and
  * another `<span>` (LicenseBadge), and a `<p>` is invalid in the last two.
  * Callers that printed the same string themselves have stopped — the same fact
  * twice on one screen is 設計 §3 第 14 條.
  */
-export function LabelledBadge({ kind, value }: { kind: string; value: Labelled }) {
+export function LabelledBadge({
+  kind,
+  value,
+  noteInRow = true,
+}: {
+  kind: string;
+  value: Labelled;
+  /**
+   * 設計 §2.13 去重 1（ADR-065）. False when the LIST this badge sits in already
+   * prints this `note` once, above the rows — which is only ever true when the
+   * sentence is byte-identical down the whole list, and so cannot be what tells
+   * one row from another. The badge and its label never move; only the sentence
+   * does. Defaults to today's behaviour, so the four other callers
+   * (Compare／SkillDetail／WorkspaceSkills／Packaging) are untouched.
+   *
+   * Same shape and same reason as `Home.tsx`'s `rankNoteInList`.
+   */
+  noteInRow?: boolean;
+}) {
   return (
     <>
-      <span className={`badge badge-${kind}-${value.value}`} title={value.note}>
-        {value.label}
-      </span>
-      {value.note && <span className="note">{value.note}</span>}
+      <span className={`badge badge-${kind}-${value.value}`}>{value.label}</span>
+      {noteInRow && value.note && <span className="note">{value.note}</span>}
     </>
   );
 }

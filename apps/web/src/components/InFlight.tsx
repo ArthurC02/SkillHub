@@ -19,6 +19,15 @@ import { runStatusLabel } from "../pages/RunEvaluation";
  *    by the sandbox. The browser is in neither path, so closing this page cannot
  *    stop the run or lose its record. §2.2 wants the line that enforces a claim;
  *    that is the line.
+ *
+ *    **設計 §2.13（2026-09-03）：the derivation is no longer on screen, the claim
+ *    and its enforcer are.** 「可以關掉這一頁（平台在跑，不是你的瀏覽器）」 keeps the
+ *    fact (G) and the enforcer attribution (§2.2 第三向); the worker/sandbox
+ *    walk-through above is D — a reason that never changes and never changes
+ *    what the reader presses — so it belongs in a Tip (§1.3), which does not
+ *    exist yet (丙-142 第二批). Until then it lives here, not in the banner.
+ *    The pointer to 「取消這個 Run」 went with it: that button is the very next
+ *    thing on the page, deliberately placed under this banner (see RunTrace).
  *  - **一個會變的量** — events so far, which moves while the poll runs.
  *  - **多久沒動了** — the last event's time. A counter alone cannot tell working
  *    from wedged, because a wedged run's counter just stops, and stopping looks
@@ -40,8 +49,7 @@ export function InFlight({ summary }: { summary: TraceSummary }) {
         ——這個 Run 會自己跑到結束，不需要你回來按任何東西。
       </p>
       <p className="note">
-        可以關掉這一頁。執行在平台的 worker 上進行，紀錄由沙箱直接回報，兩者都不經過瀏覽器；
-        回到這個網址就會看到當下的進度。要提前停止，用下面的「取消這個 Run」。
+        可以關掉這一頁（平台在跑，不是你的瀏覽器）；回到這個網址就會看到當下的進度。
       </p>
       <p className="note">
         目前已記錄 {moved} 件事（工具呼叫、Skill 載入與錯誤合計）

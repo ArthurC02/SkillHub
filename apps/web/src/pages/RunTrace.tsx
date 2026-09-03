@@ -251,30 +251,44 @@ function RunArtifacts({ runId }: { runId: string }) {
               : "這次 Run 沒有留下任何檔案產出。"}
           </p>
         ) : (
-          <ul className="download-list">
-            {artifacts.data.artifacts.map((artifact) => (
-              <li key={artifact.artifact_id} className="download-item">
-                <RunArtifactFacts artifact={artifact} />
-                <p>
-                  <ConfirmDelete
-                    scopeId={`run-artifact-scope-${artifact.artifact_id}`}
-                    pending={remove.isPending}
-                    onAsk={() => setMessage("")}
-                    onConfirm={() => remove.mutate(artifact.artifact_id)}
-                    scope={
-                      <>
-                        刪除的是這個檔案本身，這個 Run
-                        的執行紀錄與評估判定都會保留。沒有回收桶也沒有保留期，這一頁沒有還原的地方，
-                        刪了就取不回這個檔案。引用過這個檔案的評估不會被改寫，
-                        它會顯示證據已不存在——那是當時真的看過的東西，判定不因為檔案被刪就變得不成立。
-                        重複刪除不算失敗。
-                      </>
-                    }
-                  />
-                </p>
-              </li>
-            ))}
-          </ul>
+          <>
+            {/*
+              設計 §2.13 去重 1：這兩句在每一則產出上逐位元相同，所以它們不是那一列的
+              事實，是這份清單的事實——提到清單層級講一次。§2.11(c) 仍然滿足（一份清單
+              就是一個區塊）；§2.4 不適用，因為沒有任何控制項被停用——那個下載連結從來
+              不存在。保存期限的型別詞 `尚未定值` 仍然逐列印（§2.10 第 10 項不可折也不
+              可搬），搬走的只有括號裡的「為什麼缺」，而第 10 項逐字寫著那個可以折。
+            */}
+            <p className="note">
+              這些檔案平台都不提供下載連結：每一個都是沙箱的產出，控制平面不打開它。
+              {artifacts.data.artifacts.some((a) => !a.expires_at) &&
+                "「尚未定值」是平台還沒有為 Run 產出定下保存期限，這不表示它會永久保留。"}
+            </p>
+            <ul className="download-list">
+              {artifacts.data.artifacts.map((artifact) => (
+                <li key={artifact.artifact_id} className="download-item">
+                  <RunArtifactFacts artifact={artifact} />
+                  <p>
+                    <ConfirmDelete
+                      scopeId={`run-artifact-scope-${artifact.artifact_id}`}
+                      pending={remove.isPending}
+                      onAsk={() => setMessage("")}
+                      onConfirm={() => remove.mutate(artifact.artifact_id)}
+                      scope={
+                        <>
+                          刪除的是這個檔案本身，這個 Run
+                          的執行紀錄與評估判定都會保留。沒有回收桶也沒有保留期，這一頁沒有還原的地方，
+                          刪了就取不回這個檔案。引用過這個檔案的評估不會被改寫，
+                          它會顯示證據已不存在——那是當時真的看過的東西，判定不因為檔案被刪就變得不成立。
+                          重複刪除不算失敗。
+                        </>
+                      }
+                    />
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </>
         ))}
     </>
   );
@@ -303,7 +317,10 @@ function RunArtifactFacts({ artifact }: { artifact: RunArtifact }) {
           // 呈現即 FAIL」，而該節逐字點名了這一格：「Run 產出的保存期限因為 PDM-006
           // 未追認而不能印數字，正解是 `尚未定值`」。同一個檔案在成本那兩處都用對了
           // 「未測量」，只有這一處自創了詞。
-          "｜保存期限：尚未定值（平台還沒有為 Run 產出定下保存期限，這不表示它會永久保留）"
+          //
+          // 型別詞留在這一列（§2.10 第 10 項）；括號裡的「為什麼缺」在每一列上逐位元
+          // 相同，所以依 §2.13 去重 1 提到清單層級印一次，見上面的 RunArtifacts。
+          "｜保存期限：尚未定值"
         )}
       </p>
       {artifact.purged && (
@@ -315,7 +332,6 @@ function RunArtifactFacts({ artifact }: { artifact: RunArtifact }) {
         <summary>內容雜湊</summary>
         <code>{artifact.content_hash}</code>
       </details>
-      <p className="note">平台不提供這個檔案的下載連結：它是沙箱的產出，控制平面不打開它。</p>
     </>
   );
 }

@@ -209,6 +209,17 @@ test("WS-004 a run whose sandbox was not cleaned up says so on the row", async (
 
   expect(text()).toContain("the provider could not carry the attempt");
   expect(text()).toContain("清理失敗");
+  // 設計 §2.13 第 2 條: the cleanup badge used to carry the server's note BOTH as
+  // a `title=` and as the visible `.note` beside it — the same sentence twice on
+  // one row. §2.4 forbids a reason that lives only in a tooltip; it does not ask
+  // for two copies, and the tooltip is the copy that does not exist on a touch
+  // device. The visible one stays and is asserted here so the pair cannot come
+  // back as "belt and braces".
+  expect(text()).toContain("平台會重試。");
+  expect(
+    Array.from(container.querySelectorAll("[title]")).map((e) => e.getAttribute("title")),
+    "a `title=` is back on this page, duplicating text that is already visible",
+  ).toEqual([]);
   // 設計系統 §2.1: 已清理 is a fact the owner wants — the sandbox was torn down —
   // and rendering nothing for it made the majority case indistinguishable from a
   // field that was never rendered at all.
@@ -379,6 +390,17 @@ test("WS-004 the own-skills row says whether this skill can be taken away", asyn
   // §2.2: the 100-row cap was enforced and invisible, so a workspace past it got
   // a short list that read as the whole list.
   expect(text()).toContain("只列出前 100 個");
+
+  // 設計 §2.13 第 1 條. The 89-character absence notice — compatibility is not in
+  // this list's data and the platform does not measure it for your own skills —
+  // used to print byte-for-byte on EVERY row. It is a fact about the list, so it
+  // is printed once, above it: still flat text, still readable with nothing to
+  // open, which is all §2.9 asks of a typed absence. Four rows in this fixture,
+  // so a per-row copy scores 4 here.
+  expect(
+    text().split("相容性驗證").length - 1,
+    "the compatibility absence is printed once per row again",
+  ).toBe(1);
 });
 
 test("WS-004 a forked row says the scan happened somewhere else, not that it passed", async () => {
@@ -837,6 +859,28 @@ test("CORE-007 requesting account deletion starts a grace period and shows the s
   await act(async () => button("確認開始刪除")?.click());
   await waitFor(() => text().includes("Your account stays usable"));
   expect(calls.find(([, m]) => m === "DELETE")?.[0]).toContain("/me");
+});
+
+test("設計 §2.6 the workspace UUID is behind a disclosure, not flat beside the account name", async () => {
+  // §3 第 8 條. This page answers one question — 「要不要開始刪這個帳號」 — and a
+  // 36-character identifier answers none of it. It is still on the page for the
+  // reader who is reporting a problem; it is one click away rather than in the
+  // first line. Asserted from both ends because the id stays in `textContent`
+  // either way: it IS in the fold, and it is NOT in any paragraph.
+  vi.stubGlobal("fetch", () => json(ME));
+  await render(<WorkspaceAccount />, () => text().includes("刪除我的帳號"));
+
+  const fold = Array.from(container.querySelectorAll("details")).find((d) =>
+    (d.querySelector("summary")?.textContent ?? "").includes("工作區識別碼"),
+  );
+  expect(fold, "the workspace id is not behind a disclosure").toBeTruthy();
+  expect(fold!.textContent).toContain("ws-1");
+  const flat = Array.from(container.querySelectorAll("p"))
+    .map((p) => p.textContent ?? "")
+    .join("");
+  expect(flat, "the workspace id is flat on the page again").not.toContain("ws-1");
+  // The name and the address are what this line is for, and they stay flat.
+  expect(text()).toContain("tester@example.com");
 });
 
 test("CORE-007 a pending deletion is a state with a date and a way out, not a receipt", async () => {

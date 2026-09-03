@@ -35,10 +35,9 @@ export function CreateHub({ generateExposed }: { generateExposed: boolean }) {
        points at `/workspace/skills#create`. */
     <section className="create-hub" id="create" aria-labelledby="create-heading">
       <h2 id="create-heading">建立一個 Skill</h2>
-      <p className="note">
-        不管從哪一條路進來，做出來的都是同一種東西：一個放在這個工作區、可以試跑、打包、下載的 Skill
-        版本。
-      </p>
+      {/* 設計 §2.13,D 類:這一段說「三條路的結果一樣」,而三張卡的標題已經說了三條路
+          各是什麼,標題本身也已經在 h2「建立一個 Skill」底下。第二次來看的人不會因為
+          這一段而改按哪一張卡,所以它整段走。 */}
 
       {/*
         §4.3: `.download-item` is this app's universal card family — 「修法一律是
@@ -48,10 +47,11 @@ export function CreateHub({ generateExposed }: { generateExposed: boolean }) {
       <ul className="create-cards">
         <li className="download-item">
           <h3>匯入現成的套件</h3>
-          <p className="note">
-            貼一個 GitHub URL，或上傳一個 zip。平台會做規格驗證與靜態掃描， 不會執行套件裡的任何
-            Script。
-          </p>
+          {/* 「不會執行套件裡的任何 Script」 走了,不是因為它不重要,而是因為它在
+              /workspace/import 上有一份逐字的同義句（「套件只會做靜態檢查；匯入期間
+              不執行其中的 Script。」）,而那一頁才是撞上這件事的地方——這張卡是通往
+              那一頁的門,門上與門後講同一句話,讀者只讀得到第二次（§2.13 第 2 條）。 */}
+          <p className="note">貼一個 GitHub URL，或上傳一個 zip。平台會做規格驗證與靜態掃描。</p>
           {/*
             The one filled action on this page (§4.6.3 一頁至多一個). It was zero
             before, so this adds a row to that table rather than competing with
@@ -67,8 +67,9 @@ export function CreateHub({ generateExposed }: { generateExposed: boolean }) {
         <li className="download-item">
           <h3>從目錄挑一個來改</h3>
           <p className="note">
-            先找到接近你要的 Skill，用「以這個 Skill 為起點建立我自己的」複製到你的工作區，
-            再把改過的套件上傳成它的新版本。
+            {/* §2.13,D 類:三步驟的教學縮成一句。按鈕上的字（「以這個 Skill 為起點
+                建立我自己的」）在目錄那一頁就看得到,不必在門上先背一次。 */}
+            從目錄複製一份到你的工作區，再上傳改過的版本。
             {/*
               §2.2 第三向: the restriction is real, it is stated before the user
               walks into it, and it names who enforces it. Fork is

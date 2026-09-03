@@ -379,6 +379,7 @@ const TOOLTIP_ONLY: Record<string, string> = {
 
 test("ADR-039 §2.4/§2.11(c): a title is never the only place a qualification exists", () => {
   const offenders: string[] = [];
+  const seen = new Set<string>();
   let scanned = 0;
 
   for (const [file, body] of componentFiles()) {
@@ -400,13 +401,25 @@ test("ADR-039 §2.4/§2.11(c): a title is never the only place a qualification e
             `(?<!title=)\\{\\s*${expression.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\}`,
           ).test(body);
       const key = `${file}: ${at[0]}`;
+      seen.add(key);
       if (!visible && !(key in TOOLTIP_ONLY)) offenders.push(key);
     }
   }
 
-  // Sentinel, like every other scan in this file: a parse that finds no `title`
-  // would pass on markup that is nothing but tooltips.
-  expect(scanned, "no title= found at all — the scan broke").toBeGreaterThan(8);
+  // Sentinel. It used to be `scanned > 8`, and that number went stale the day
+  // 設計 §2.13 去重 2 (ADR-065) started removing tooltips that only repeated
+  // visible text: five came off on 2026-09-03 and a healthy scan legitimately
+  // finds fewer. A count cannot tell "the parse broke" from "the app has fewer
+  // tooltips", so assert the thing that is actually invariant — **every
+  // exemption on the list was met**. A broken parse meets none of them, and an
+  // entry that stops matching is a rotted exemption, which is the same ratchet
+  // KNOWN_DEVIATIONS and SCANNED_ROUTES carry and this list did not.
+  expect(
+    Object.keys(TOOLTIP_ONLY).filter((key) => !seen.has(key)),
+    "an exemption on TOOLTIP_ONLY was never encountered: either the scan broke, " +
+      "or that title is gone and the line must go with it",
+  ).toEqual([]);
+  expect(scanned, "no title= found at all — the scan broke").toBeGreaterThan(0);
   expect(
     offenders.sort(),
     "a qualification that exists only in a tooltip. Render it as visible text " +

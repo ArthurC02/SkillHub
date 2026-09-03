@@ -343,6 +343,15 @@ function button(text: string): HTMLButtonElement | undefined {
 
 const text = () => container.textContent ?? "";
 
+/**
+ * 設計 §2.13 去重第 1 條要的是一個**次數**，不是「有沒有這句話」：一段跟著每一列
+ * 逐位元相同印出來的文字，`toContain` 對它永遠是綠的——搬回列上也是綠的。所以這一支
+ * 用數的。
+ */
+function occurrences(needle: string): number {
+  return text().split(needle).length - 1;
+}
+
 // --- the redistribution gate ------------------------------------------------
 
 test("ADR-027 only `allowed` opens the packaging entry, and unknown is refused like blocked", () => {
@@ -547,9 +556,11 @@ test("PACK-002 依賴需求 shows the same lines the package's INSTALL.md will c
 
   expect(text()).toContain("pandas");
   expect(text()).toContain("openpyxl");
-  // Served, not derived here: the page and the packaged document read one list.
-  expect(text()).toContain("同一份清單會寫進套件內的 INSTALL.md");
+  // 丙-142：「同一份清單會寫進套件內的 INSTALL.md」搬掉了——每一個打包目標各自已經
+  // 說過同一件事，而那句話在這一頁上出現過的次數是「目標數 + 1」。強制者歸屬那一句
+  // （§2.2 第三向）留著，它不是說明。
   expect(text()).toContain("Skill Hub 不會替你安裝這些");
+  expect(text()).toContain("隨套件內的 INSTALL.md 一起下載");
 });
 
 test("PACK-002 an empty dependency list means two different things and is never printed as one", async () => {
@@ -648,7 +659,11 @@ test("WS-004 an expired package stays in the list, says it expired, and offers n
   await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
 
   expect(text()).toContain("已過期");
-  expect(text()).toContain("「已過期」與「沒有這一筆」不是同一件事");
+  // 這一列自己的那一半（A 類，§2.10）：到期的時刻、檔案已刪除、紀錄仍在。
+  expect(text()).toContain("檔案已刪除，這筆紀錄保留");
+  // 「已過期」與「沒有這一筆」是兩個答案這件事，在這一頁上**只講一次**（丙-142）：
+  // 頁層開場白就是在講它，而每一列再講一次是同一句話印 N 遍。
+  expect(occurrences("沒有這一筆")).toBe(1);
   // One row is servable and one is not, so exactly one download link exists.
   const links = Array.from(container.querySelectorAll("a")).filter((a) =>
     (a.getAttribute("href") ?? "").includes("/content"),
@@ -684,9 +699,83 @@ test("04 丙-91 a lost package is not told the retention story", async () => {
   expect(text()).toContain("請回報");
   // The two sentences that would describe this as normal, neither of which is
   // true here.
-  expect(text()).not.toContain("到期後檔案刪除");
-  expect(text()).not.toContain("這筆紀錄保留");
+  //
+  // 丙-142：問的是**這一列**，不是整頁。保存期限的通則（「到期後檔案刪除，同一版本
+  // 隨時可以再打包一次」）現在印在清單層級一次，它對這份清單是真的；這一支要擋的是
+  // 它回到列上、變成對一個**在保存期內就不見了**的檔案說的話。
+  const row = container.querySelector(".download-item")!;
+  expect(row.textContent).not.toContain("到期後檔案刪除");
+  expect(row.textContent).not.toContain("這筆紀錄保留");
+  expect(row.textContent).not.toContain("到期時間");
   // No link to bytes that are not there.
+  expect(
+    Array.from(container.querySelectorAll("a")).filter((a) =>
+      (a.getAttribute("href") ?? "").includes("/content"),
+    ),
+  ).toHaveLength(0);
+});
+
+/**
+ * 設計 §2.13 去重第 1 條（04 丙-142 第一批）。
+ *
+ * 四段文字以前跟著**每一列**渲染，逐位元相同：打包目標的說明（同一字串又掛在徽章的
+ * `title` 上，去重第 2 條算兩次）、保存期限的通則、雜湊那一族的「不是簽章」、以及
+ * 「這份紀錄與稽核事件不是同一份」。§2.10 保護的是**能區分這一列與那一列的事實**，
+ * 而一句在每一列上完全相同的話，讀者從第 2 列起不可能因為它而作出不同判斷。
+ *
+ * 兩列，因為一列證明不了任何事：一列上「印一次」與「每列印一次」是同一個畫面。
+ */
+test("丙-142 逐列複述提到清單層級：兩列，但那四句話各只印一次", async () => {
+  vi.stubGlobal("fetch", () =>
+    json({
+      downloads: [artifact, { ...artifact, artifact_id: "second-1", file_name: "csv-v1.zip" }],
+    }),
+  );
+  await render(<Downloads />, () => text().includes("csv-v1.zip"));
+
+  expect(container.querySelectorAll(".download-item")).toHaveLength(2);
+  expect(occurrences("打包目標；安裝說明在套件內的 INSTALL.md")).toBe(1);
+  expect(occurrences("到期後檔案刪除")).toBe(1);
+  expect(occurrences("不是簽章")).toBe(1);
+  expect(occurrences("與稽核事件是兩份不同的紀錄")).toBe(1);
+
+  // 搬走的只有與列無關的那一句。每一列自己的期限（§2.2）、狀態詞與雜湊還在，兩份。
+  expect(occurrences("到期時間")).toBe(2);
+  expect(occurrences("狀態：可下載")).toBe(2);
+  expect(occurrences("sha256:bbbb")).toBe(2);
+  // 而且徽章的 `title` 沒有偷偷留著同一句話（§2.4 的補句：搬出去之後要拿掉）。
+  expect(container.querySelector('[title*="INSTALL.md"]')).toBeNull();
+});
+
+/**
+ * 設計 §2.4 第 2 型：控制項被**拿掉**而不是停用時，替代文字只說「目前不提供」不說
+ * 為什麼——那正是這裡以前寫的八個字，而原因（`serve_state.label`）隔著幾行在另一段
+ * 文字裡。這一支押的是那個位置說得出**哪一道**，不是說得出「不行」。
+ */
+test("§2.4 不能下載的那一列，在連結原本的位置說出是哪一種不能", async () => {
+  vi.stubGlobal("fetch", () =>
+    json({
+      downloads: [
+        {
+          ...artifact,
+          servable: false,
+          serve_state: {
+            value: "quarantined",
+            label: "檢查中,尚未提供下載",
+            note: "這一份還在掃描,掃完才會開放。",
+          },
+        },
+      ],
+    }),
+  );
+  await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
+
+  expect(text()).not.toContain("目前不提供下載");
+  // 伺服器的措辭，不是這裡另外寫的一份（04 丙-29 ⑤：兩份措辭會漂移）。
+  const row = container.querySelector(".download-item")!;
+  const paragraphs = Array.from(row.children).filter((el) => el.tagName === "P");
+  const actions = paragraphs[paragraphs.length - 1];
+  expect(actions.textContent).toContain("檢查中,尚未提供下載");
   expect(
     Array.from(container.querySelectorAll("a")).filter((a) =>
       (a.getAttribute("href") ?? "").includes("/content"),
