@@ -61,6 +61,7 @@ func TestHarnessRejectsARoleWithoutAModel(t *testing.T) {
 		"absent":  "---\nname: x\ndescription: y\n---\n\nBody.\n",
 		"inherit": "---\nname: x\nmodel: inherit\n---\n\nBody.\n",
 		"fable":   "---\nname: x\nmodel: claude-fable-5-1\n---\n\nBody.\n",
+		"sol":     "---\nname: x\nmodel: sol\n---\n\nBody.\n",
 		// A `model:` in the body is prose, not frontmatter.
 		"in the body": "---\nname: x\n---\n\nmodel: opus\n",
 	} {

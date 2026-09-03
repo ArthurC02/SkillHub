@@ -22,7 +22,7 @@ package main
 //
 // Whether a skill is actually generic; only that it names nothing local. Whether
 // the model named is a good choice; only that one is named and it is not the
-// two values the rule forbids. Whether the rules' `paths:` globs match anything;
+// values the rule forbids (fable, sol, inherit). Whether the rules' `paths:` globs match anything;
 // that needs a session, not a file. Whether a skill's frontmatter is a valid
 // Agent Skills manifest: the product's own validator does that, in
 // apps/platform/internal/shared/skillpkg/repo_skills_test.go.
@@ -110,9 +110,9 @@ func harnessAgentProblems(root string) []string {
 			problems = append(problems, fmt.Sprintf(
 				"harness: %s names no `model:`; a role that inherits the session's model is the one "+
 					"thing this repo's subagent rule forbids", relative))
-		case strings.EqualFold(m[1], "inherit"), strings.Contains(strings.ToLower(m[1]), "fable"):
+		case strings.EqualFold(m[1], "inherit"), strings.Contains(strings.ToLower(m[1]), "fable"), strings.Contains(strings.ToLower(m[1]), "sol"):
 			problems = append(problems, fmt.Sprintf(
-				"harness: %s sets `model: %s`; subagents must name a model and it must not be fable "+
+				"harness: %s sets `model: %s`; subagents must name a model and it must not be fable, sol "+
 					"or inherit", relative, m[1]))
 		}
 	}

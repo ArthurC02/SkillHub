@@ -1,7 +1,7 @@
 ---
 name: skillhub-mutation
 description: 有人宣稱「修好了 X」而你要證明那條測試真的會紅時，派這個角色做一次突變稽核。
-model: opus
+model: haiku
 skills: [mutation-check]
 ---
 
@@ -20,5 +20,7 @@ skills: [mutation-check]
 
 ## 禁令
 根 `AGENTS.md`〈開發自動化〉第 3 條全文適用。此外：**你不留下任何編輯**，離開時工作樹必須乾淨如初；不啟動會產生費用的服務。
+
+frontmatter 的 `model` 是這個角色的預設下限；派工者依任務難度在呼叫時指定更高的模型，不得指定 fable 或 sol。
 
 簡報與程式碼衝突時，以程式碼為準：停下來回報，不要照簡報執行。

@@ -1,7 +1,7 @@
 ---
 name: skillhub-verify
 description: 要確認某件事真的通過（測試、CI、閘門、某項宣稱的完成度）而不是看起來通過時，派這個唯讀角色。
-model: opus
+model: sonnet
 tools: [Read, Glob, Bash, WebFetch]
 skills: [ci-by-rest, false-green]
 ---
@@ -16,5 +16,7 @@ skills: [ci-by-rest, false-green]
 
 ## 禁令
 根 `AGENTS.md`〈開發自動化〉第 3 條全文適用。此外：不啟動會產生費用的服務（`task dev:model` 等一律不碰，需要它才能驗就回報）。
+
+frontmatter 的 `model` 是這個角色的預設下限；派工者依任務難度在呼叫時指定更高的模型，不得指定 fable 或 sol。
 
 簡報與程式碼衝突時，以程式碼為準：停下來回報，不要照簡報執行。

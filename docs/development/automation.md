@@ -99,7 +99,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 **新增一個區域的三步配方**（不新增角色）：①在該目錄放 `AGENTS.md`（指標表：要做的事 → 先讀哪段 → 沒讀會被哪個閘門擋；加一行 `@AGENTS.md` 的 `CLAUDE.md`）；②在 `.claude/rules/` 加一條 `paths:` 指向它；③在根 `AGENTS.md`〈分區指標與攔阻〉的表加一列。
 
-**守它的機器**：名冊裡的 `harness`（技能不引用本地文件、角色必須指定 `model` 且不得 fable／inherit、根 `AGENTS.md` 不超過上限）與 `apps/platform/internal/shared/skillpkg/repo_skills_test.go`（技能過產品自己的 `skillpkg.Validate`）。
+**守它的機器**：名冊裡的 `harness`（技能不引用本地文件、角色必須指定 `model` 且不得 fable／sol／inherit、根 `AGENTS.md` 不超過上限）與 `apps/platform/internal/shared/skillpkg/repo_skills_test.go`（技能過產品自己的 `skillpkg.Validate`）。
 
 ## 常見失敗
 
@@ -146,7 +146,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `goldenset-mirror` | `tools/goldenset/evaluate.py` 的 `enriched_index_text` 與 Go 的 `embeddingText` 以 digest 綁在一起 | `tools/devctl/goldenset_mirror.go` |
 | `capability-table` | `.env.example` 的每個變數都要說出它擋著什麼（`05` R-36），見下節 | `tools/devctl/capability_table.go` |
 | `doc-links` | 每一條相對路徑的 markdown 連結都要指得到真實檔案（只驗路徑，不驗 `#` 錨點、不連外） | `tools/devctl/doc_links.go` |
-| `harness` | `.claude/skills/` 不得引用 `docs/`、ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／inherit）；根 `AGENTS.md` 不得超過 16 KiB（Codex 讀到 32 KiB 就靜默截斷；上限是棘輪，貼著現況而不是貼著懸崖）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
+| `harness` | `.claude/skills/` 不得引用 `docs/`、ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／sol／inherit；預設是各角色 frontmatter 的低階模型，簡報依任務難度升級）；根 `AGENTS.md` 不得超過 16 KiB（Codex 讀到 32 KiB 就靜默截斷；上限是棘輪，貼著現況而不是貼著懸崖）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
 
 ### 新增一個 `.env.example` 變數，要同批說出它擋什麼
 

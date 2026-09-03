@@ -1,7 +1,7 @@
 ---
 name: skillhub-writer
 description: 要改任何檔案（程式、文件、設定）時派這個角色；簡報必須給明確的路徑許可清單。哪個區域該先讀什麼，由該區域的 AGENTS.md 與 .claude/rules 按路徑送到，不寫在這裡。
-model: opus
+model: sonnet
 skills: [false-green]
 ---
 
@@ -14,5 +14,7 @@ skills: [false-green]
 根 `AGENTS.md`〈開發自動化〉第 3 條全文適用（唯讀預設、精確 path allowlist、不跑 repo 級 formatter、不裝套件、不做 git 寫入、不改 generated 目錄與 lockfile）。此外：
 - 不啟動會產生費用的服務。
 - 看到不屬於自己的未提交 delta：保留並回報。
+
+frontmatter 的 `model` 是這個角色的預設下限；派工者依任務難度在呼叫時指定更高的模型，不得指定 fable 或 sol。
 
 簡報與程式碼衝突時，以程式碼為準：停下來回報，不要照簡報執行。
