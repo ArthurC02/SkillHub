@@ -6,7 +6,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 
 ## 目前狀態
 
-**M0～M4 的程式面已收斂，M5 的程式面亦已收斂**（**~~◐ 的只剩 `GEN-009`~~ 2026-08-28：`GEN-009` 的 ③④ 補完，M5 已無 ◐**（`GEN-008` 已於 2026-08-25 改判勾選，該句 2026-08-26 才跟上）；勾選數以 [`03` §19](docs/plans/03-work-items.md) 的 checkbox 為準，本檔不複述**——那個數字曾經同時存在於五份文件並三度彼此不符）。**「程式面收斂」不等於「MVP 完成」——剩下的是部署期與負責人動作，不是程式。** M4 與 M5 同時未完結（[ADR-052](docs/adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md) 明示接受）。
+**M0～M4 的程式面已收斂，M5 的程式面亦已收斂**（**~~◐ 的只剩 `GEN-009`~~ 2026-08-28：`GEN-009` 的 ③④ 補完，M5 已無 ◐**（`GEN-008` 已於 2026-08-25 改判勾選，該句 2026-08-26 才跟上）；勾選數以 [`03` §19](docs/plans/03-work-items.md) 的 checkbox 為準，本檔不複述**——那個數字曾經同時存在於五份文件並三度彼此不符）。**「程式面收斂」不等於「MVP 完成」——剩下的是部署期與負責人動作，不是程式。** M4 與 M5 同時未完結（[ADR-052](docs/adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md) 明示接受）。<br>**M6（在不能安裝東西的機器上跑起來）已於 2026-08-30 收束，並因此觸發 2026-08-29 裁定 4 的新功能凍結**——凍結之後只接受修既有缺陷的變更，**逐次放行紀錄記在 [`01` §10](docs/plans/01-goals-and-plan.md) 的裁定表，本檔不複述**。M6 同樣不計入 MVP 完成度（同 M5 先例，`01` §7.3；是否計入仍有一項待裁定，見 `05` R-22）。
 
 **⛔ 硬邊界：開工不等於曝光**——M5 的生成入口不得對封測使用者出現，直到漏斗第一段有讀數為止。三條仍然生效的邊界逐條見 `01` §10。
 
@@ -20,7 +20,7 @@ Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然
 
 | 目錄 | 內容 | 入口 |
 | --- | --- | --- |
-| `docs/plans/` | [產品基準](docs/plans/README.md)：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/04-backlog-and-handoffs.md)（活文件）、[待裁定清單](docs/plans/05-pending-rulings.md)（活文件）；`mvp/m0/`～`mvp/m5/` 為各里程碑凍結產出；`mvp/content/`／`mvp/governance/`／`mvp/gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/README.md](docs/plans/README.md) |
+| `docs/plans/` | [產品基準](docs/plans/README.md)：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/04-backlog-and-handoffs.md)（活文件）、[待裁定清單](docs/plans/05-pending-rulings.md)（活文件）；`mvp/m0/`～`mvp/m6/` 為各里程碑凍結產出；`mvp/content/`／`mvp/governance/`／`mvp/gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/README.md](docs/plans/README.md) |
 | `docs/adr/` | 架構決策紀錄。**份數、狀態與取代關係見索引** | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
 | `docs/spikes/` | M0 spike code 已刪，只留墓碑與結論落點對照 | [docs/spikes/README.md](docs/spikes/README.md) |
 | `docs/design/` | **前端的兩把尺**：[system.md](docs/design/system.md) 管**一頁之內**（義務、原則、字級／間距／表面／狀態語彙、強制對照表），[information-architecture.md](docs/design/information-architecture.md) 管**一頁與一頁之間**（規則層 R1～R7、路由、導覽、可達性、網址狀態、旗標入口）。兩份都是活文件且各有機器測試。**注意 IA 的方向**：§0 的規則走在程式前面（不一致改程式），§1～§4 的盤點跟在程式後面 | [docs/design/system.md](docs/design/system.md)、[information-architecture.md](docs/design/information-architecture.md) |
@@ -91,7 +91,7 @@ Monorepo 的 CI/CD 基線見 **ADR-019**，頂層收納由 **ADR-031（Accepted�
 - 文件語言：繁體中文（保留 Run、Workspace、Provider 等英文術語不硬翻）。程式碼、識別字、commit message：英文。
 - **每次回覆的最後一段，是給沒有讀過這份程式碼的人看的白話摘要**：一段連貫的敘述，講「做了什麼、發現了什麼、還缺什麼」，可以用比喻，**不要條列破碎的技術片段、不要堆檔名與識別字**。技術細節寫在它前面或寫進文件裡；那一段本身要能單獨被讀懂。<br>**理由**：本專案的判斷全靠「這件事到底成立到什麼程度」，而一份讀不懂的摘要會讓負責人只能相信結論——**看不懂的綠燈與看不懂的紅燈一樣沒有用**。
 - 多人／多 agent 共用同一工作樹平行作業時：只以明確 pathspec stage 自己的檔案、push 前 `git pull --rebase`；**禁止 `git stash`**（stash 會連他人未提交與未追蹤的工作一起收走，本專案已三度因此出事）；暫存產物放 scratchpad，不放 repo 根目錄。
-- 里程碑：M0 基線 → M1 Explorer（結尾有驗證閘門，不通過不進 M2）→ M2 Lab → M3 評估 → M4 打包與封測 → M5 從任務描述生成 Skill（ADR-046／052／054）。**M5 不在 MVP 完成度內**（`01` §7.3）；各里程碑現況見 `01` §10。
+- 里程碑：M0 基線 → M1 Explorer（結尾有驗證閘門，不通過不進 M2）→ M2 Lab → M3 評估 → M4 打包與封測 → M5 從任務描述生成 Skill（ADR-046／052／054）→ **M6 淨測試模式**（在不能安裝東西的機器上跑起來，ADR-059／060）。**M5 與 M6 都不在 MVP 完成度內**（`01` §7.3）；**M6 收束觸發的新功能凍結自 2026-08-30 生效**；各里程碑現況與放行紀錄見 `01` §10。
 - 需求 ID 前綴：DISC／SKILL／WS／TEST／RUN／SBX／TRACE／EVAL／PACK／GEN／NFR／PDM／SEC 等，見 `docs/plans/02`、`03`。（`02` 與 `03` 各自編號，同前綴不同號。）
 
 ## 開發自動化（Agent 開工先讀）

@@ -2,7 +2,7 @@
 
 ## ⛔ 這份文件不是 SEC-009 的驗收，而且不可能是
 
-`02:SEC-009` 的判準是[基線全數 `pass`、0 項 `unknown`](../../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md)（ADR-022 §3），且明文「部分通過**不得**以其餘項目風險低為由放行」。
+`02:SEC-009` 的判準是[基線全數 `pass`、0 項 `unknown`](../../../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md)（ADR-022 §3），且明文「部分通過**不得**以其餘項目風險低為由放行」。
 
 **本次 46 項裡有 17 項有機器證據、4 項部分、25 項沒有任何證據。** 這份目錄記錄的是「哪幾項第一次有了可查的東西」，不是驗收表。ADR-022 §5 要求的正式證據目錄命名為 `YYYY-MM-DD-<node-id>/`；這裡的名字刻意不是 node-id，因為**沒有節點**。
 
@@ -81,7 +81,7 @@ worker 2 三次都是同一個編號,曾經看起來像種子問題(種子是 `1
 
 ## 46 項逐列
 
-判定欄的語意是**「本次是否產生了機器可查的證據」**，不是 SEC-009 的 pass／fail。檢查內容不在此複製——唯一來源是[威脅模型 §4](../../m0/threat-model-and-sandbox-baseline.md)。
+判定欄的語意是**「本次是否產生了機器可查的證據」**，不是 SEC-009 的 pass／fail。檢查內容不在此複製——唯一來源是[威脅模型 §4](../../../m0/threat-model-and-sandbox-baseline.md)。
 
 | 檢查 | ADR-022 測項 | 本次證據 | 判定 |
 | --- | --- | --- | --- |
@@ -136,7 +136,7 @@ worker 2 三次都是同一個編號,曾經看起來像種子問題(種子是 `1
 
 ## T4 為什麼沒跑
 
-T4 的判準是「終態與 runc 基準**逐筆一致**」，基準是 M2 那 45 個 Run（[content-baseline-report.md](../../m2/content-baseline-report.md)），實測成本約 $3.4。
+T4 的判準是「終態與 runc 基準**逐筆一致**」，基準是 M2 那 45 個 Run（[content-baseline-report.md](../../../m2/content-baseline-report.md)），實測成本約 $3.4。
 
 要在這台機器上跑，得先讓 `sandboxd` 連到一個註冊了 `runsc` 的 Docker daemon——本機 Docker Desktop 沒有，得起 DinD。那會**同時換掉 runtime 與 daemon 環境**，而 ADR-022 明文「任何不一致必須逐筆歸因，且**不得**歸因於 gVisor syscall 不相容」。一次乾淨的全過仍會是證據；但一旦不一致，在巢狀環境裡多半歸因不到，正是那條判準禁止的結局。
 

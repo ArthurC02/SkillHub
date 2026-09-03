@@ -36,7 +36,7 @@ git checkout bcd5817 -- docs/spikes
 | 原檔 | 結論落點 |
 | --- | --- |
 | `README.md`、`run_spike.py`、`results.txt`、`results-embedding.txt` | [`docs/plans/mvp/m0/pdm-011-spike-report.md`](../plans/mvp/m0/pdm-011-spike-report.md)（含第 9 節真 Embedding 與 RRF 增益的補跑）；定案與四項實證調整見 [ADR-013](../adr/ADR-013-intent-search-architecture.md)「定案紀錄」 |
-| `samples/`（12 份取自 `github.com/anthropics/skills` 的公開 `SKILL.md`） | **未被任何工具引用，隨 spike 一併刪除。** 正式的評估語料是 [`tools/goldenset/`](../../tools/goldenset/)（33 份 Skill ＋ 增強後的 `corpus_enriched/`），它自成一套、從不讀 spike 的 `samples/` |
+| `samples/`（12 份取自 `github.com/anthropics/skills` 的公開 `SKILL.md`） | **未被任何工具引用，隨 spike 一併刪除。** 正式的評估語料是 [`tools/goldenset/`](../../tools/goldenset/)（31 份 Skill ＋ 增強後的 `corpus_enriched/`），它自成一套、從不讀 spike 的 `samples/` |
 
 ## 為什麼不留程式碼
 

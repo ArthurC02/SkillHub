@@ -185,6 +185,6 @@ skillhub/
 
 `Proposed` → `Accepted`，與 [ADR-020](./ADR-020-authentication-and-session-model.md) 同批，理由相同：**決策內容一個字都沒有改動**，改的是狀態欄。
 
-本 ADR 描述的東西同樣早就在跑——`apps/`／`packages/`／`contracts/`／`db/`／`infra/`／`tools/`／`docs/` 的收納語意是 [ADR-031](./ADR-031-top-level-directory-semantics.md) 依本 ADR 展開的，`.github/workflows/ci.yml` 的 job 切分、`changes` 前置與釘死 SHA 的紀律都是它，而 `devctl automation-check` 每一次執行都在對這份結構對帳。
+本 ADR 描述的東西同樣早就在跑——`apps/`／`packages/`／`contracts/`／`db/`／`infra/`／`tools/`／`docs/` 的收納語意是 [ADR-031](./ADR-031-artifact-role-repository-layout.md) 依本 ADR 展開的，`.github/workflows/ci.yml` 的 job 切分、`changes` 前置與釘死 SHA 的紀律都是它，而 `devctl automation-check` 每一次執行都在對這份結構對帳。
 
 **全 repo 原本只有兩份 ADR 還是 `Proposed`，就是這兩份，而兩份都描述著已經在跑的東西**——所以這不是任何一份自己的事，值得一次看兩列。裁定見 [`05` R-12](../plans/05-pending-rulings.md)。

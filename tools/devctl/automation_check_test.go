@@ -44,6 +44,8 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"image-version", "embedding-dims", "goldenset-mirror",
 		// 05 R-36 第二段: every deployment variable says what it blocks.
 		"capability-table",
+		// 2026-09-03 巡視: every relative markdown link resolves to a file.
+		"doc-links",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {
@@ -73,7 +75,11 @@ func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 	write("Taskfile.yml", "version: \"3\"\ntasks:\n")
 	// doc-identifier only speaks when a live document names something no file
 	// declares, so give it one.
-	write("AGENTS.md", "AGENTS 導覽：`NoSuchSymbolAnywhere` 早就被刪掉了。\n")
+	// The link is doc-links' input, and it is the real defect in miniature: a
+	// filename that describes ADR-011 correctly and is not what the file is
+	// called. Reading it tells you nothing; resolving it tells you everything.
+	write("AGENTS.md", "AGENTS 導覽：`NoSuchSymbolAnywhere` 早就被刪掉了。\n"+
+		"見 [ADR-011](./docs/adr/ADR-011-workspace-scope-and-tenancy.md)。\n")
 	// drift-marker returns on the first unreadable file and reads its two sources
 	// out of a map, so with both missing its message depends on map order. Both
 	// present and disagreeing gives it one thing to say.

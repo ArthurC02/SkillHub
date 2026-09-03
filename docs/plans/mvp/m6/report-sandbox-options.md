@@ -2,7 +2,7 @@
 
 - 日期：2026-08-28
 - 姊妹報告：[report-inmemory-postgres.md](report-inmemory-postgres.md)（資料庫）、[report-object-storage.md](report-object-storage.md)（物件儲存）
-- 相關：`02:PORT-006`（執行路徑屬清單外）、[ADR-015](../../../adr/ADR-015-sandbox-isolation-baseline.md)、[ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md)
+- 相關：`02:PORT-006`（執行路徑屬清單外）、[ADR-015](../../../adr/ADR-015-sandbox-isolation-technology.md)、[ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md)
 
 ## 0. 這份報告最重要的一句話
 

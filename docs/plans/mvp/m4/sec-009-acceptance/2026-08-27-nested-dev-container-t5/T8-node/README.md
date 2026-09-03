@@ -2,7 +2,7 @@
 
 ## ⛔ 這不是驗收，而且這一次連「受測物」都是假的
 
-[ADR-022 §T8](../../../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 把 T8 的節點半（**C-01、P-01、P-03～P-05**）歸在 **Suite 2**，受測物是**即將加入池的那一台節點**。
+[ADR-022 §T8](../../../../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 把 T8 的節點半（**C-01、P-01、P-03～P-05**）歸在 **Suite 2**，受測物是**即將加入池的那一台節點**。
 
 本次的「節點」是 Windows → Docker Desktop 的 WSL2 VM → 一個 `python:3.12-slim`／`docker:cli` 容器。**沒有節點、沒有 gVisor、沒有 cloud-init。** 第 2 次執行裡的 node facts 是我用 heredoc 寫出來的，`runsc` 是一支 `echo` 兩行字的 shim。
 

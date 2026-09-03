@@ -22,7 +22,7 @@
 | --- | --- |
 | `node:22-bookworm-slim`（digest pin） | PDM-003／ADR-015 選定的 Agent SDK 執行環境 |
 | `@anthropic-ai/claude-agent-sdk`（版本 pin） | 工作負載本體；版本即 `runtime_version`（I-05） |
-| `unzip` | Skill 套件是 zip，解壓縮只能發生在沙箱內（鐵律 1） |
+| ~~`unzip`~~ ——**現為：不在裡面**（`2026.08-4`，2026-08-29 移除） | 原本的理由是「Skill 套件是 zip，解壓縮只能發生在沙箱內（鐵律 1）」。**現在解壓由 `run.mjs` 自帶的 ZIP 解析器做**，絕對路徑／`..` 路徑段／非普通檔的拒絕規則一併移進該解析器（`2026.08-7` 起函式名為 `provisionPackage`），因此本映像的 `apt-get install` 只剩 `python3 python3-pip`。理由與逐條拒絕規則見 [`runtime-agent-sdk/Dockerfile`](runtime-agent-sdk/Dockerfile) 的註解與 [`UPGRADES.md`](runtime-agent-sdk/UPGRADES.md) 的 `-4`／`-5`／`-7` 三節 |
 | **`python3` ＋ 下表 17 個套件** | 見下節 |
 | **不在裡面**：`npm`／`npx`／`corepack`／`pip` | 執行期不載入、沙箱無網路，套件管理器留在沙箱裡只是負債 |
 
@@ -71,7 +71,7 @@ Dataset 上真的走到了 `ModuleNotFoundError`；其餘的沒被那組資料�
 1. **修資料**：`tools/content/seed-skills.json` 的 `deps` 依靜態掃描重新推導（13 筆修正）。
 2. **修規則**：聯集不再無條件全裝，加**准入門檻**；擋下的逐項具名在下方，不靜默丟棄。
 3. **修流程**：CONTENT-003 策展檢查表加一條可機械驗證的準則，掃描器補
-   `package-dependencies`／`undeclared-dependency` 兩個 finding（`apps/platform/internal/skillpkg/deps.go`），
+   `package-dependencies`／`undeclared-dependency` 兩個 finding（`apps/platform/internal/shared/skillpkg/deps.go`），
    使同一個錯誤下次由匯入時的掃描指出，而不是由半年後的一次基準試跑。
 
 ### 准入門檻
@@ -304,14 +304,22 @@ CI artifact `runtime-agent-sdk-scan-<sha>`（保留 90 天，含 `sbom.spdx.json
 
 ### 已發佈的 digest 與孤兒清單
 
-**現行 digest ＝ `ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-3` 當下解析到的那個。**
+**現行 digest ＝ `ghcr.io/arthurc02/skillhub-runtime-agent-sdk:<最新版本>` 當下解析到的那個。**
 這裡不抄它——build 不是位元可重現的，所以每一次跑到發佈步驟都會產生**新的 digest** 並把版本
 tag 移過去，一份寫在文件裡的「現行 digest」保證會過期，而過期的那份看起來跟正確的一模一樣。
-要拿當下的值：
+**版本字串同理不抄**（原文寫死 `2026.08-3`，2026-09-03 訂正）：唯一來源是 Dockerfile 的
+`ARG IMAGE_VERSION`，`runtime-image.yml` 的發佈步驟與 `rescan` job 讀的也是它。要拿當下的值：
 
 ```bash
-docker buildx imagetools inspect ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-3
+# 版本從 Dockerfile 讀，不從這份文件抄
+IMAGE_VERSION=$(sed -n 's/^ARG IMAGE_VERSION=//p' infra/images/runtime-agent-sdk/Dockerfile)
+docker buildx imagetools inspect "ghcr.io/arthurc02/skillhub-runtime-agent-sdk:${IMAGE_VERSION}"
 ```
+
+> **注意這裡有兩個不同的問題，答案也不同**：「registry 上最新的是哪一版」看 `ARG IMAGE_VERSION`；
+> 「部署實際會跑哪一版」看 `apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設。
+> **兩者刻意可以不同**——移動預設是 ADR-023 四項實測通過之後的動作。2026-09-03 當下前者是
+> `2026.08-7`、後者是 `2026.08-5`（`-6` 與 `-7` 的四項實測未跑，見 `UPGRADES.md` 該兩節與 `04` 丙-125）。
 
 **升版不會製造孤兒，同版重建才會。** workflow 的發佈步驟從 Dockerfile 的 `ARG IMAGE_VERSION`
 讀 tag（[runtime-image.yml](../../.github/workflows/runtime-image.yml) 第 175 行），所以

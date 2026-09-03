@@ -3,7 +3,7 @@
 - 狀態：Accepted
 - 日期：2026-08-22
 - 決策者：產品負責人、架構規劃
-- 相關：[ADR-016](./ADR-016-language-and-framework-selection.md)（前端選型）、[ADR-036](./ADR-036-real-browser-verification-tier.md)（真實瀏覽器驗證層＝本 ADR 多數規則的實際把關者）、[ADR-025](./ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)（執行狀態與評估判定分離）、[ADR-038](./ADR-038-platform-product-domain-language-and-value-stream-navigation.md)（價值流詞彙）、[`01` §2.1／§3／§5](../plans/01-goals-and-plan.md)、[`02:NFR-001`／`NFR-007`／`DISC-004`](../plans/02-specifications-and-acceptance-criteria.md)、[`04` 乙-2](../plans/04-backlog-and-handoffs.md)
+- 相關：[ADR-016](./ADR-016-language-and-framework-selection.md)（前端選型）、[ADR-036](./ADR-036-real-browser-verification-tier.md)（真實瀏覽器驗證層＝本 ADR 多數規則的實際把關者）、[ADR-025](./ADR-025-run-terminal-state-and-evaluation-verdict-separation.md)（執行狀態與評估判定分離）、[ADR-038](./ADR-038-platform-product-domain-language-and-value-stream-navigation.md)（價值流詞彙）、[`01` §2.1／§3／§5](../plans/01-goals-and-plan.md)、[`02:NFR-001`／`NFR-007`／`DISC-004`](../plans/02-specifications-and-acceptance-criteria.md)、[`04` 乙-2](../plans/04-backlog-and-handoffs.md)、[ADR-064](./ADR-064-the-visual-layer-is-hierarchy-carried-by-tokens.md)（視覺層＝層級；**本 ADR 的決策全部延續、不 Superseded**，064 只是把「怎麼分出主次」補成 token）
 - 操作手冊（活文件）：[docs/design/system.md](../design/system.md)
 
 ## 背景
@@ -126,5 +126,5 @@
    **模板只列沒有機器在看的那九條**（3、4、7、10、11、12、13、14、15、17），機器已經在看的（§6 四項守門、標題樹快照、對比、axe、`design-system.test.ts`）刻意不列——**要人再勾一次機器已經會 FAIL 的東西，是把勾選訓練成無意義的動作**，而那會連帶弄壞旁邊真的要人看的九條。
 
    **誠實的限制：模板是提示不是閘門**，勾了不代表走過，沒勾也擋不住合併。這一條要的是「有沒有一個固定關卡」，而在單人 repo 上能立起來的最強形式就是這個；要更強得先有第二個審查者，那不是 ADR 能生出來的東西。
-4. **要不要有 `--danger` 版的 notice。** 目前阻斷性訊息（`Packaging.tsx` 的「不能打包」）與非阻斷的降級說明共用同一個外觀，靠文字分辨（NFR-007 允許）。這是 §4.3 那張表講不清楚的一格。
+4. **要不要有 `--danger` 版的 notice。** 目前阻斷性訊息（`Packaging.tsx` 的「不能打包」）與非阻斷的降級說明共用同一個外觀，靠文字分辨（NFR-007 允許）。這是 §4.3 那張表講不清楚的一格。 **→ 已回答（[ADR-064](./ADR-064-the-visual-layer-is-hierarchy-carried-by-tokens.md) 決策 2）**：要，新增 `--danger-bg`（`#fdecec`／暗 `#3b1a1a`）專供阻斷性 notice，並讓 `role="alert"` 有第二訊號；ADR-064 的凍結分類表把這一項列在「修缺陷」桶而不是新功能，理由是「靠文字分辨」對讀不到文字的人不成立。
 5. **偏離清單的兩個「待收」值（2px 與 6px）怎麼收。** 6px 出現在六條規則上，實質是一條沒登記的「緊密清單間距」——登記成尺度的一階，或收成 4px／8px，二選一；繼續兩邊都不是，是這份文件最容易先爛掉的地方。 **→ 已解決（ADR-041 決策 6 的「兩處才成階」當場裁掉兩個）**：`6px` 有八處但 `8px` 蓋得住（收掉）、`2px` 只有三處且無推導（收掉），偏離清單由五條縮到兩條，剩 `5px`／`10px` 且都有推導。

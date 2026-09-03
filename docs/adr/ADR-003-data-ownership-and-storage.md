@@ -101,7 +101,7 @@ MVP 尚未確定具體天數；實作前必須將保存期限轉成 Policy 設�
 
 ## 待決策
 
-- 關聯式資料庫、物件儲存與 Secrets 的實際產品選型。→ [ADR-014](./ADR-014-core-infrastructure-selection.md)
-- Trace 初期使用關聯式分割表、物件事件檔或專用事件儲存。→ [ADR-014](./ADR-014-core-infrastructure-selection.md)（分割表＋大型 Payload 進物件儲存）
+- 關聯式資料庫、物件儲存與 Secrets 的實際產品選型。→ [ADR-014](./ADR-014-core-infrastructure-selection.md)（**已 Superseded，現行選型見 [ADR-018](./ADR-018-containerized-core-infrastructure.md)**：ADR-014 取受管 PostgreSQL ＋受管 S3，ADR-018 改為容器化自架 E1）
+- Trace 初期使用關聯式分割表、物件事件檔或專用事件儲存。→ [ADR-014](./ADR-014-core-infrastructure-selection.md)（分割表＋大型 Payload 進物件儲存；**該 ADR 已 Superseded，承載改為 [ADR-018](./ADR-018-containerized-core-infrastructure.md)，分割表這個形狀本身不變**）
 - 搜尋初期使用資料庫全文／向量能力或獨立搜尋引擎。→ [ADR-013](./ADR-013-intent-search-architecture.md)（Postgres FTS＋pgvector）
 

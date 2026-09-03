@@ -93,5 +93,5 @@ Driver 向 `Match` 宣告 `isolation.level = "clean"`。**這不是一個比較�
 ## 待決策
 
 1. **工作負載的環境變數契約要抽到共用套件、還是在新 Driver 複製一份。** 抽出來要動 `dockerdrv`（測試很密，漂移會被抓到）；複製等於兩份契約，而它們一定會分岔。**建議抽出來。**
-2. **乾淨模式的 Run 要不要寫進正式的 Run 歷史。** 它們是真的 Run 但跑在沒有邊界的地方；混進同一張表會讓「歷史 Run 可追溯 Provider 與 Runtime」這句話多一種讀法。
+2. **乾淨模式的 Run 要不要寫進正式的 Run 歷史。** 它們是真的 Run 但跑在沒有邊界的地方；混進同一張表會讓「歷史 Run 可追溯 Provider 與 Runtime」這句話多一種讀法。 **→ 2026-09-03 註記：已由 [ADR-060](./ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) 待決策 2 逐字承接**（兩份的措辭幾乎相同且互不引用）。**答案只留在 ADR-060 那一處**——兩邊各自被回答就會分岔。
 3. **`Adopt()` 回空是否需要在畫面上說。** 服務重啟會殺掉跑到一半的 Run——展示途中重啟會看到什麼，未定義。

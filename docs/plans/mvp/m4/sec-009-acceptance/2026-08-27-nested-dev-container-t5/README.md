@@ -2,7 +2,7 @@
 
 ## ⛔ 這不是驗收，而且比 08-26 那一份離驗收更遠
 
-[ADR-022 §2](../../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 把 **T5 歸在 Suite 2**，而 Suite 2 的受測物有一個定義：**即將加入池的那一台節點**，由生產同一份 IaC 建置、已套用生產的 nftables 與 dnsmasq。本次的「節點」是 Windows → Docker Desktop 的 WSL2 VM → 一個 privileged 容器，「沙箱」是三個 network namespace，「目的地」是一條假上行後面的第四個 namespace。
+[ADR-022 §2](../../../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) 把 **T5 歸在 Suite 2**，而 Suite 2 的受測物有一個定義：**即將加入池的那一台節點**，由生產同一份 IaC 建置、已套用生產的 nftables 與 dnsmasq。本次的「節點」是 Windows → Docker Desktop 的 WSL2 VM → 一個 privileged 容器，「沙箱」是三個 network namespace，「目的地」是一條假上行後面的第四個 namespace。
 
 **所以本目錄不是 `YYYY-MM-DD-<node-id>/`**（ADR-022 §5 給正式證據的命名），名字裡刻意寫著 `nested-dev-container`：沒有節點。
 
@@ -23,7 +23,7 @@ CI 有的是 `render.py --check`，它證明的是「這個檔案與 allow-list 
 | [`T5/mutation-metadata.txt`](T5/mutation-metadata.txt) | 載入前拿掉 `skillhub-drop-metadata` 那一條 | **T5-3 轉 FAIL** ⇒ 這個評分器會紅 |
 | [`T5/ci-ubuntu-latest-first-run.txt`](T5/ci-ubuntu-latest-first-run.txt) | **同一支腳本第一次在 CI 的 `ubuntu-latest` 上跑**（核心 `6.17.0-1022-azure`） | **T5-4 `the attempt succeeded`** ⇒ 見下方 ⑤ |
 
-執行環境見 [`versions.txt`](versions.txt)。腳本：[`tools/sec009/t5-network-egress.sh`](../../../../../tools/sec009/t5-network-egress.sh)，自 2026-08-27 起由 `egress-allowlist.yml` 每次觸發時在 CI 上跑（正向與負對照各一次）。
+執行環境見 [`versions.txt`](versions.txt)。腳本：[`tools/sec009/t5-network-egress.sh`](../../../../../../tools/sec009/t5-network-egress.sh)，自 2026-08-27 起由 `egress-allowlist.yml` 每次觸發時在 CI 上跑（正向與負對照各一次）。
 
 ## 這一次量到而此前沒有人知道的五件事
 

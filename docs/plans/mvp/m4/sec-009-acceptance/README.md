@@ -1,6 +1,6 @@
 # SEC-009 驗收證據
 
-[ADR-022](../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) §5 指定的證據落點。每次執行一個 `YYYY-MM-DD-<node-id>/` 子目錄，內含 45 列（**現為 46 列**，見 ADR-022 §2 的 2026-08-26 補記）判定表、`versions.txt` 與各測項輸出。保存期 ≥ 1 年。
+[ADR-022](../../../../adr/ADR-022-sandbox-deployment-topology-and-security-thresholds.md) §5 指定的證據落點。每次執行一個 `YYYY-MM-DD-<node-id>/` 子目錄，內含 45 列（**現為 46 列**，見 ADR-022 §2 的 2026-08-26 補記）判定表、`versions.txt` 與各測項輸出。保存期 ≥ 1 年。
 
 ## 這個目錄現在有什麼
 

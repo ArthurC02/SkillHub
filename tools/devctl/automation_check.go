@@ -149,6 +149,9 @@ func documentCheckers() []namedChecker {
 		{"goldenset-mirror", goldensetMirrorProblems},
 		// 05 R-36: a deployment variable that does not say what it blocks.
 		{"capability-table", capabilityTableProblems},
+		// 2026-09-03: a markdown link that points at nothing. Sixteen of them
+		// were live that morning and every one of them read correctly.
+		{"doc-links", docLinkProblems},
 	}
 }
 

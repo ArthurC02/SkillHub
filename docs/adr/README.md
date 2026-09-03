@@ -76,7 +76,7 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-049](./ADR-049-citation-verification-matches-the-stored-value-not-its-encoding.md) | 引用回驗的比對對象從「payload 的原始 JSON 文字」擴為「原始文字**加上**其中每個字串值解碼後的內容」——`EVAL-013` B 輪量到 5／22 個 rubric 項被降級,原因全是同一個:Judge 讀到 `\n` 就寫成真換行,而 payload 裡它是兩個字元,**同一個事實的兩種呈現,看的和驗的不是同一份**。解碼後的值不是新材料,所以這不是放寬;欄位間以 NUL 相接,跨欄位命中結構上不可能。**刻意不改「一則壞引用拖垮整條準則」**——支持放寬的證據(那 5 筆的壞引用其實不是捏造)在放寬之前就被本 ADR 移除了 | Accepted |
 | [ADR-050](./ADR-050-beta-runs-in-parallel-with-the-sandbox-acceptance.md) | 負責人裁定**甲類四項不是封測 D 日的阻擋項,封測與 SEC-009／SBX-010 驗收並行**,縮小 ADR-015 定案紀錄「未通過不得開放外部使用者提交 Skill 執行」那一句的適用範圍(ADR-015 其餘不變、不 Superseded)。**這是接受一個風險不是解決一個問題**:在甲類通過前,不受信任程式碼會在逃逸邊界尚未驗證的節點上執行,45 項覆蓋此時 0 項 pass、`gvisor-baseline.txt` 仍是 `unset`、P-02 常駐探針不存在。刻意寫下三件事:①這個裁定**沒有**授權把封測擴大為公開註冊(12 位具名受邀者是它敢下的理由之一);②**Suite 1 只要 Linux＋Docker＋runsc,在那台節點跑一次是一天的事**,「全部到期」與「什麼都不做」之間不是只有兩個選項;③同意書必須據實說明執行環境尚未完成逃逸驗收。**待決策留了三條,其中第一條沒有答案就等於「否」** | Accepted |
 | [ADR-051](./ADR-051-the-cheaper-model-generated-better-packages.md) | 便宜 21 倍的那個模型產出更好——生成的預設改為 mini（修訂 ADR-047 決策 5，該決策自己寫好了解鎖條件）：實測 mini 通過 **19／20** 對 flagship 的 16／20，每次 $0.00553 對 $0.1186；機制是失敗全落在 frontmatter 鍵名的字元級瑕疵上，而 mini 少寫 3.5 倍的 token，暴露面較小。**同批記下兩件不假裝知道的事**：mini 一次腳本都沒寫（哪一種更有用要靠試跑與人），以及重試後仍有 10% 殘餘失敗、UI 不得承諾成功率 | Accepted |
-| [ADR-052](./ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md) | M5 與未完成的 MVP 並行——三個啟動條件全部暫時放行（與 ADR-050 同型：**一個被明示接受的風險，不是一個被解決的問題**）。被移除的是「阻擋」這個效力，三項的事實一件都沒改變。**唯一的硬邊界是「開工不等於曝光」**：生成入口不得對封測使用者出現，否則 `01` §11.2 第一段量到的就不再是搜尋好不好，而那個數字只有一次機會、封測只有 12 個人。ADR 自承旗標靠預設值與紀律、**沒有任何機制會告訴我們它被誤開過** | Accepted |
+| [ADR-052](./ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md) | M5 與未完成的 MVP 並行——三個啟動條件全部暫時放行（與 ADR-050 同型：**一個被明示接受的風險，不是一個被解決的問題**）。被移除的是「阻擋」這個效力，三項的事實一件都沒改變。**唯一的硬邊界是「開工不等於曝光」**：生成入口不得對封測使用者出現，否則 `01` §11.2 第一段量到的就不再是搜尋好不好，而那個數字只有一次機會、封測只有 12 個人。ADR 原本自承旗標靠預設值與紀律、沒有任何機制會告訴我們它被誤開過——**該項已於 2026-08-23 在 ADR-052 內回填答案：有，而且已經在跑**（`audit.ActionFeatureFlags` / `feature_flags.roster`，每次 API 啟動寫一次，everything-off 也寫）。**紀律那一半沒有變**：稽核事件記的是「這個部署的設定是什麼」，不擋任何人把旗標打開 | Accepted |
 | [ADR-053](./ADR-053-the-assumption-under-m5-gets-its-own-five-people.md) | ADR-046 底下那個零證據的假設（搜不到的人會想要一個被做出來）**脫離 D 日單獨問 5 個人**，並成為 M5 的投入上限：ADR-052 放行了開工，而曝光旗標擋得住「使用者看得到」、**擋不住投入**——這是路線圖上唯一一個「越晚知道越貴」的風險。訊號前只做丟得掉的部分（契約 schema、`redistribution` 值域、量測），管線與 UI 暫停；三段門檻（0／1～2／3+）**寫在問之前** | Accepted |
 | [ADR-054](./ADR-054-the-cap-was-lifted-by-authorisation-not-by-evidence.md) | ADR-053 的投入上限解除、M5 全面開工——**但解除它的是授權不是證據**：該 ADR 訂的解除條件是「5 人中 3 人自發說要做一個」，而那 5 個人一次都沒被問過，**ADR-046 底下那個假設今天的證據量仍然是零**。`ask-5` 從 gate 變成 check（0／5 的後果從「停在契約層」變成「重開 ADR-046 並且知道要丟」），曝光旗標不受影響 | Accepted |
 | [ADR-055](./ADR-055-the-run-allowance-is-turned-off-and-that-took-an-action.md) | 免費 Run 額度關閉——**而「不限制」不是維持現狀，是一個動作**：`RUN_QUOTA` 未設是**用提案值強制**（未設的保存期限代表不蒐集是安全的；未設的額度代表唯一成本上限是開的，不安全），`off` 才是關。被關掉的是**次數**不是每次的成本——每 Run 仍有 `max_budget $0.50` 與 300K／60K token 上限，所以暴險是「次數無上限 × 每次 $0.50」；顯示與強制一起關（乙-2），同意書裡那句「額度用完會擋下」已改掉 | Accepted |
@@ -92,10 +92,12 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 
 ## 整體架構摘要
 
+> **2026-09-03 訂正**：這張圖是**目標架構**，不是今天跑著的系統。兩處以現在式畫了 MVP 首發不含的東西，已在節點名稱上標明：**Local Runner**（AGENTS.md：「Local Runner 與遠端 MCP 已移出 MVP 首發」，決策保留於 ADR-006）與 **MCP Proxy**（ADR-022 Q3 決定沙箱層採 nftables default-deny ＋固定 DNS，**不部署 L7 Proxy**）。圖的其餘部分不變。
+
 ```mermaid
 flowchart TB
     User["個人創作者"] --> UI["Web UI / API Edge"]
-    Runner["Local Runner"] --> RunnerGateway["Runner Gateway"]
+    Runner["Local Runner（MVP 首發不含，ADR-006）"] --> RunnerGateway["Runner Gateway（同上）"]
 
     subgraph Control["控制平面"]
         App["模組化應用核心"]
@@ -119,7 +121,7 @@ flowchart TB
     subgraph Execution["不受信任執行平面"]
         Provider["Sandbox Provider"]
         Sandbox["Self-hosted Sandbox"]
-        Egress["Controlled Egress / MCP Proxy"]
+        Egress["Controlled Egress（nftables default-deny ＋固定 DNS；L7/MCP Proxy 不部署，ADR-022 Q3）"]
     end
 
     UI --> App

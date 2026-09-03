@@ -112,7 +112,9 @@ Web UI 可透過 Server-Sent Events、WebSocket 或輪詢接收進度，但即�
 
 ## 待決策
 
-- MVP Queue／Event Transport 的產品選型。→ [ADR-014](./ADR-014-core-infrastructure-selection.md)（Postgres 佇列，Outbox 同庫）
-- Workflow 採自建狀態機或 Durable Workflow Engine。→ [ADR-014](./ADR-014-core-infrastructure-selection.md)（自建狀態機起步）
-- Trace 高頻事件是否使用與領域事件不同的傳輸通道。→ [ADR-014](./ADR-014-core-infrastructure-selection.md)（批次寫入分割表，與領域事件分離）
+> **2026-09-03 訂正**：下列三條的 `→` 全部指向 [ADR-014](./ADR-014-core-infrastructure-selection.md)，而**它已被 [ADR-018](./ADR-018-containerized-core-infrastructure.md) Superseded**。三個答案的形狀（Postgres 佇列、自建狀態機、Trace 走分割表）都沒有被推翻，被換掉的是「受管服務 vs 容器化自架」那一層；佇列實作見 ADR-016 的 River。沿著舊連結走會落在一份標著「不再是現行決策」的檔案上，因此逐條補後繼指標。
+
+- MVP Queue／Event Transport 的產品選型。→ [ADR-014](./ADR-014-core-infrastructure-selection.md)（Postgres 佇列，Outbox 同庫）→ 現行承載 [ADR-018](./ADR-018-containerized-core-infrastructure.md)＋[ADR-016](./ADR-016-language-and-framework-selection.md)（River）
+- Workflow 採自建狀態機或 Durable Workflow Engine。→ [ADR-014](./ADR-014-core-infrastructure-selection.md)（自建狀態機起步）→ 現行承載 [ADR-018](./ADR-018-containerized-core-infrastructure.md)
+- Trace 高頻事件是否使用與領域事件不同的傳輸通道。→ [ADR-014](./ADR-014-core-infrastructure-selection.md)（批次寫入分割表，與領域事件分離）→ 現行承載 [ADR-018](./ADR-018-containerized-core-infrastructure.md)
 
