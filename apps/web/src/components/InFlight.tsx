@@ -41,7 +41,7 @@ export function InFlight({ summary }: { summary: TraceSummary }) {
       </p>
       <p className="note">
         可以關掉這一頁。執行在平台的 worker 上進行，紀錄由沙箱直接回報，兩者都不經過瀏覽器；
-        回到這個網址就會看到當下的進度。要提前停止，用上面的「取消這個 Run」。
+        回到這個網址就會看到當下的進度。要提前停止，用下面的「取消這個 Run」。
       </p>
       <p className="note">
         目前已記錄 {moved} 件事（工具呼叫、Skill 載入與錯誤合計）

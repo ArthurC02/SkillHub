@@ -118,6 +118,19 @@ export function ImportSkill() {
           大小上限見拒絕訊息——平台強制 zip 與解壓後的兩個上限，但這一頁還讀不到它們的值，
           所以這裡不印一個沒有來源的數字。
         </li>
+        {/*
+          設計 §2.2 第二向「強制但不顯示」，checklist 第 11 條「會擋住人的限制在他撞上
+          之前看得見嗎」。上面兩條規則只管 URL；切到「上傳 zip」時它們都不適用，而**套件
+          本身的結構要求在送出之前一個字都沒有**——第一次的人是在 422 裡才讀到
+          `skill-md-missing: SKILL.md not found at package root`。
+          這一條不撞上 §2.2 的另一半（不得印沒有來源的數字）：它不是數字，是產品決策，
+          正是這一頁在上面幾行寫下的「rules are here, numbers are not」的同一側。
+        */}
+        <li>
+          zip 的最上層（或單一頂層資料夾）要有 <code>SKILL.md</code>，而且它的 frontmatter 要有{" "}
+          <code>name</code> 與 <code>description</code>——名稱、描述與 License 都從那裡讀，
+          不必在這一頁手打。
+        </li>
       </ul>
       {unauthenticated(me.error) ? (
         // Replaced rather than disabled: §2.4's fourth shape is a control taken
@@ -179,6 +192,22 @@ export function ImportSkill() {
           <button type="submit" disabled={mutation.isPending}>
             {mutation.isPending ? "匯入中…" : "開始匯入"}
           </button>
+          {/*
+            設計 §2.12 第 2 條：進行中的畫面要說出在哪一步、會不會自己結束、能不能離開。
+            在此之前這一整段的變化只有按鈕上的四個字，而 URL 匯入這段時間平台正在
+            GitHub 那一端抓一個最大 32 MB 的 zip、解壓、逐檔靜態掃描，**而且它是同步
+            請求——關掉分頁就等於取消**。旗標後面的生成入口對同一個事實寫了一整塊
+            `GenerateInFlight`；MVP 真正要用的這條路沒有。
+            刻意不寫耗時數字：生成那塊敢寫「十幾秒到一分鐘」是因為量過十次，匯入沒有
+            同等的量測，而 §2.2 不准印一個沒有來源的數字。
+          */}
+          {mutation.isPending && (
+            <p role="status" className="note">
+              正在取得套件並逐檔用靜態檢查看過它——這一步會自己結束，不需要你再按任何東西。
+              <strong>請先不要關掉這個分頁</strong>：匯入是一個同步請求，關掉等於取消，
+              而取消不會在你的工作區留下半成品版本。
+            </p>
+          )}
         </form>
       )}
 

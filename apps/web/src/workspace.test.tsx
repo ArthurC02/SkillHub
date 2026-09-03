@@ -445,7 +445,12 @@ test("WS-004 a fork of identical bytes shows the source's scan, attributed and d
   // The source's import time, older than the fork. An inherited scan showing the
   // fork's own timestamp would read as 「剛剛掃過」, which is the failure the whole
   // named-state design exists to prevent.
-  expect(text()).toContain("2026-07-01");
+  // 押在 `<time dateTime>` 上。這一格以前是伺服器 UTC 字串的 `.slice(0, 10)`，
+  // 讀者看到的是別人時區的日期、輔助科技拿到的只是散文；現在走 <Timestamp>，
+  // 人看到自己的時鐘、機器看到原值，而原值才是這條斷言真正在乎的東西。
+  expect(
+    Array.from(container.querySelectorAll("time")).map((t) => t.getAttribute("dateTime")),
+  ).toContain("2026-07-01T09:00:00Z");
   // The disclosures come across with it, because they are facts about the bytes.
   expect(text()).toContain("含可執行 Script 檔案");
   // Attribution has to be reachable, not just stated.

@@ -23,6 +23,19 @@ export type Run = {
   test_case_snapshot_id: string;
   /** Absent when the draft no longer resolves; a re-run needs it, so guard on it. */
   test_case_id?: string;
+  /**
+   * Why a failed run failed, in the server's own words — the same field, values
+   * and wording as `RunListItem.failure_class`.
+   *
+   * Declared in `public.yaml` on 2026-09-01, **having been served long before**;
+   * this hand-written type never grew it, so the run's OWN page showed strictly
+   * less than the list page did. A reader who saw 「失敗類別 能力不符」 plus a
+   * sentence on /workspace/runs and clicked through for detail got 「執行失敗
+   * (failed)」 and nothing else. The distinction is the whole next step:
+   * `workload_error` is the Skill failing at its own job, `capability_mismatch`
+   * is the platform refusing before anything ran.
+   */
+  failure_class?: Labelled;
 };
 
 export function useRun(runId: string) {

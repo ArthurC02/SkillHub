@@ -76,9 +76,24 @@ beforeEach(() => setSearch({}));
 function stubTrace(
   general: TraceSummary,
   advanced: TraceAdvanced | ((url: string) => TraceAdvanced),
+  /**
+   * `GET /runs/{id}`. Answered with the trace body until now — every field the
+   * page read off it happened to exist there too, so nothing noticed that this
+   * endpoint was never really stubbed, and `failure_class` (the one field that
+   * says WHY a run failed) could go unrendered without a single test caring.
+   */
+  run?: Record<string, unknown>,
 ) {
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
+    if (run && /\/runs\/[^/?]+$/.test(url.split("?")[0])) {
+      return Promise.resolve(
+        new Response(JSON.stringify(run), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }
     // This run was never evaluated: the server answers 404, which the page
     // renders as 未評估 rather than as a pass (ADR-025).
     // This run produced no files. The artifacts section is not what these two
@@ -338,6 +353,38 @@ test("§2.12: the banner is gone once the run is terminal", async () => {
  * implementation: reading the address (an address somebody was sent opens on
  * that page) and writing it (the page you paged to is the address you can send).
  */
+/**
+ * 設計 §3 checklist 第 4 條逐字寫的失效形狀——「型別裡有、伺服器送了、頁面丟掉」。
+ *
+ * `/workspace/runs` 的每一列都印著「失敗類別 能力不符」外加一整句解釋，而使用者點進
+ * 這一頁想知道細節，得到的是**更少**：只有「執行狀態：執行失敗（failed）」。
+ * `failure_class` 從頭到尾沒有在這一頁出現過，因為 `api/runs.ts` 的手寫 `Run` 型別
+ * 漏了它——contract 在 2026-09-01 才補上宣告，而伺服器**早就在送**（那段 description
+ * 逐字寫著這件事，以及為什麼沒有機器發現：Go 側是 models-only、handler 手寫，所以
+ * handler 送得出 contract 沒宣告的東西）。
+ *
+ * 這個差別就是下一步本身：`workload_error` 是 Skill 自己做不到，`capability_mismatch`
+ * 是平台在跑之前就拒絕。
+ */
+test("設計 §3 第 4 條：失敗的 Run 在自己的頁面上要說出失敗類別，不能比清單頁說得少", async () => {
+  stubTrace(summary, advanced, {
+    run_id: "r-1",
+    skill_id: "s-1",
+    skill_version_id: "v-1",
+    test_case_snapshot_id: "snap-1",
+    failure_class: {
+      value: "capability_mismatch",
+      label: "能力不符",
+      note: "平台在跑之前就拒絕了這次 Run，不是 Skill 執行到一半失敗。",
+    },
+  });
+  await render();
+
+  expect(container.textContent).toContain("能力不符");
+  expect(container.textContent).toContain("平台在跑之前就拒絕了這次 Run");
+  expect(container.textContent).not.toContain("失敗類別：未記錄");
+});
+
 test("R4: the advanced Trace opens on the page its address names, and paging writes it back", async () => {
   const requested: string[] = [];
   // The address of page 2: one cursor pushed onto the implicit page-1 zero.
@@ -348,11 +395,18 @@ test("R4: the advanced Trace opens on the page its address names, and paging wri
   });
   await render();
 
-  const advancedButton = Array.from(container.querySelectorAll("button")).find(
-    (button) => button.getAttribute("aria-pressed") === "false",
-  );
-  await act(async () => advancedButton?.click());
+  // 沒有「先按一下進階模式」這一步了，而它的消失就是這一批修掉的東西：`?events=`
+  // 早就是網址狀態，但初始 mode 硬編成 general，所以收到連結的人打開之後看到的是
+  // 一般模式的摘要——位置參數不作用、畫面上也沒有一個字提到它存在，他得先自己猜到
+  // 要按「進階模式」。這支測試以前**自己按了那顆按鈕**，也就是它驗的是「按了之後
+  // 讀不讀網址」，而不是它自己註解裡寫的「an address somebody was sent opens on
+  // that page」。
   await waitFor(() => container.querySelector('nav[aria-label="Trace event pages"]') !== null);
+  expect(
+    Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent === "進階模式")
+      ?.getAttribute("aria-pressed"),
+  ).toBe("true");
 
   const pager = () =>
     container.querySelector('nav[aria-label="Trace event pages"]')?.textContent ?? "";

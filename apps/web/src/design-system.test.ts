@@ -444,12 +444,28 @@ const RAW_TIMESTAMP: Record<string, string> = {
 };
 
 test("ADR-039 §2.12: no page prints a raw server timestamp", () => {
-  const bare = /(?<![=$])\{\s*[A-Za-z0-9_.?[\]]*[A-Za-z0-9_]+_at\s*\}/g;
-  const interpolated = /\$\{[A-Za-z0-9_.?[\]]*[A-Za-z0-9_]+_at\}/g;
+  // `_at|_since` and not `_at`: `SkillSource.unavailable_since` is a
+  // `format: date-time` field like every other, and it printed
+  // 「來源已失效，自 2026-08-01T18:00:00Z 起無法取得」 two lines from a sibling
+  // sentence that used <Timestamp> — while this ratchet, matching only `_at`,
+  // watched it go past.
+  const bare = /(?<![=$])\{\s*[A-Za-z0-9_.?[\]]*[A-Za-z0-9_]+_(at|since)\s*\}/g;
+  const interpolated = /\$\{[A-Za-z0-9_.?[\]]*[A-Za-z0-9_]+_(at|since)\}/g;
+  // The other way past this gate, and the one that was actually used: slice the
+  // string. `{hit.verified_at.slice(0, 10)}` is not `{…_at}`, so the two regexes
+  // above never saw it — and it shipped on EVERY search and catalogue row, the
+  // app's highest-traffic timestamp, under-reporting a day for UTC+8 readers
+  // and carrying no `<time dateTime>` for assistive technology. Cutting a
+  // timestamp up by hand is the defect, whatever the cut looks like.
+  const sliced = /[A-Za-z0-9_]+_(at|since)\s*\.\s*(slice|substring|substr|split)\s*\(/g;
 
   const offenders: string[] = [];
   for (const [file, body] of componentFiles()) {
-    for (const m of [...body.matchAll(bare), ...body.matchAll(interpolated)]) {
+    for (const m of [
+      ...body.matchAll(bare),
+      ...body.matchAll(interpolated),
+      ...body.matchAll(sliced),
+    ]) {
       const key = `${file}: ${m[0]}`;
       if (!(key in RAW_TIMESTAMP)) offenders.push(key);
     }
@@ -502,7 +518,19 @@ test("IA-6: a page that writes its own read-failure sentence has to be listed", 
       const text = rest.slice(0, Math.max(rest.indexOf("</p>"), rest.indexOf("</h")));
       if (!text.includes("失敗")) continue;
       scanned++;
-      if (body.includes("ReadFailure")) continue;
+      // **附近**，不是整個檔案。這一行以前是 `body.includes("ReadFailure")`：
+      // 一個檔案只要在**任何地方**提過正確做法，它裡面每一句自己寫的失敗文案就
+      // 全部放行。兩處實際的缺陷就是這樣溜過去的——`SkillDetail.tsx` 第 3 行
+      // import 了 ReadFailure，所以它的 Fork 失敗那一行（把封測 403、名稱衝突
+      // 409、session 過期全講成「請稍後再試」）從來沒有被這支測試看過；
+      // `Packaging.tsx` 同理，它用一句「找不到這個 Skill，或載入失敗」回答包含
+      // 410 在內的每一種狀態，而那正是 IA-6 判掉的那一句。
+      // `ReadFailure` 包住一則 alert 時，開標籤就在它前面幾行。
+      // 前後都看：共用元件可以包住這則 alert（開標籤在前），也可以緊跟在它後面
+      // ——`Compare.tsx` 就是後者，那一句是**計數**（「3 個裡有 2 個讀取失敗」，
+      // 沒有任何單一錯誤元件說得出來），底下才接 `ReadFailure` 交出第一個失敗的
+      // 真正答案。相鄰就是相鄰，不分方向。
+      if (body.slice(Math.max(0, at.index - 300), at.index + 700).includes("ReadFailure")) continue;
       if (file in OWN_FAILURE_COPY) continue;
       offenders.push(file);
     }

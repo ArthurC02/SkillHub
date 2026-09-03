@@ -4,7 +4,13 @@ import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { cancelRun, deleteRunArtifact, useRunArtifacts, type RunArtifact } from "../api/runs";
+import {
+  cancelRun,
+  deleteRunArtifact,
+  useRun,
+  useRunArtifacts,
+  type RunArtifact,
+} from "../api/runs";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { InFlight } from "../components/InFlight";
 import { useTrace, IN_FLIGHT_RUN_STATUSES } from "../api/trace";
@@ -30,7 +36,16 @@ import { EvaluationPanel, runStatusLabel } from "./RunEvaluation";
 
 export function RunTrace() {
   const { runId } = useParams({ from: "/runs/$runId" });
-  const [mode, setMode] = useState<"general" | "advanced">("general");
+  // `?events=` 已經是網址狀態（AdvancedMode 把分頁位置寫進去，理由是「最需要把
+  // 『你看，這裡少了三筆』寄給別人的畫面」），但初始 mode 硬編成 general，所以那個
+  // 網址**打開之後看不到它指的東西**：收到連結的人看到一般模式的摘要，位置參數不
+  // 作用、畫面上也沒有一個字提到它存在。這不是把 mode 放上網址（IA-4 已裁定維持
+  // 現狀），是**讀已經在網址上的那個狀態**。
+  const { events: linkedEvents } = useSearch({ strict: false }) as { events?: string };
+  const [mode, setMode] = useState<"general" | "advanced">(linkedEvents ? "advanced" : "general");
+  // 同一個 query key 與 SuggestionsPanel 用的一樣，去重、不是第二個請求。這一頁
+  // 以前只在評估完成時才發它，所以**失敗的 Run 連問都沒問過**。
+  const run = useRun(runId);
   // Same query key as the general mode below, so this is one request, not two.
   // The runs table is the only authority on run state (iron rule 5).
   const general = useTrace(runId, "general");
@@ -45,6 +60,20 @@ export function RunTrace() {
         Only the title said otherwise.
       */}
       <h1>Run 結果</h1>
+      {/*
+        這一頁以前是一條死路：整頁唯一的頁內去向是「與另一個 Run 比較」，而指向
+        Skill 或打包的連結只長在 `AppliedResult` 裡——只有在使用者採納了改善建議並
+        建立新版本之後才渲染。一個判定通過、沒有建議的 Run，看完之後畫面上沒有任何
+        下一步；頁面也沒有說這是哪一個 Skill 的 Run，而 /workspace/runs 的每一列都
+        說了。從別人那裡收到 Run 連結的人沒有「上一頁」可以按。
+      */}
+      {run.data && (
+        <p className="note">
+          <Link to="/skills/$skillId" params={{ skillId: run.data.skill_id }}>
+            回到這個 Run 的 Skill
+          </Link>
+        </p>
+      )}
 
       {/* EVAL-001 / design §4.3: the first thing on the page is the task
           judgement, not the run's terminal state. */}
@@ -62,7 +91,13 @@ export function RunTrace() {
           heading levels. 這次 Run 的產出 stays an h2 — it is a sibling of the
           record, not part of it. axe does not catch this: it flags a skipped
           level, never a level that should have been nested and was not. */}
-      <h2>執行紀錄</h2>
+      {/*
+        設計 §3 第 9 條（標題層級反映真實結構）。這條連結比較的是**整次 Run 的判定**，
+        不是它的事件紀錄，而它以前緊接在 `<h2>執行紀錄</h2>` 之後，於是在文件結構上
+        被宣告成執行紀錄的一部分：用標題導覽的人，在「任務判定」那一節裡找不到任何
+        出路。而在 `未評估` 或 `評估未完成` 的 Run 上 `SuggestionsPanel` 完全不渲染，
+        這條連結就是整頁唯一的出路。
+      */}
       <p>
         <Link
           className="action"
@@ -73,7 +108,19 @@ export function RunTrace() {
           與另一個 Run 比較
         </Link>
       </p>
-      <div role="group" aria-label="檢視模式">
+
+      {/* The sections inside the two modes below are h3 (see above). */}
+      <h2>執行紀錄</h2>
+      {/* 設計 §1.3 把模式切換定義為「同一份事實的兩種保真度」，而這一頁從來沒有把
+          那句話說給讀者聽：兩顆按鈕裸放，唯一的標籤是螢幕閱讀器才聽得到的
+          `aria-label`，畫面上零個字說明按下去會換掉什麼、以及它只影響這一節。
+          順帶把那個 `aria-label` 從「檢視模式」換掉——容器詞正是 R5 拒絕的東西，
+          而這個檔案的 h1 才剛因為 R5 從「Run 詳情」改成「Run 結果」。 */}
+      <p className="note">
+        一般模式是摘要，進階模式是這次 Run 的原始事件（已遮罩）——同一份紀錄的兩種詳細度，
+        只影響下面這一節。
+      </p>
+      <div role="group" aria-label="執行紀錄的詳細度">
         <button type="button" aria-pressed={mode === "general"} onClick={() => setMode("general")}>
           一般模式
         </button>
@@ -251,7 +298,11 @@ function RunArtifactFacts({ artifact }: { artifact: RunArtifact }) {
             ｜到期時間 <Timestamp at={artifact.expires_at} />
           </>
         ) : (
-          "｜保存期限：尚未設定（平台還沒有為 Run 產出定下保存期限，這不表示它會永久保留）"
+          // 設計 §2.9 是一張**封閉的六詞表**，判法明寫「出現任何一個非表列的缺席
+          // 呈現即 FAIL」，而該節逐字點名了這一格：「Run 產出的保存期限因為 PDM-006
+          // 未追認而不能印數字，正解是 `尚未定值`」。同一個檔案在成本那兩處都用對了
+          // 「未測量」，只有這一處自創了詞。
+          "｜保存期限：尚未定值（平台還沒有為 Run 產出定下保存期限，這不表示它會永久保留）"
         )}
       </p>
       {artifact.purged && (
@@ -278,6 +329,34 @@ function IncompleteNotice({ complete }: { complete: boolean }) {
     <p role="status" className="notice">
       部分事件未送達，以下內容可能不完整。
     </p>
+  );
+}
+
+/**
+ * 為什麼失敗，用伺服器自己的話。
+ *
+ * `/workspace/runs` 的每一列都印了它，而使用者點進來想知道細節時得到的是**更少**。
+ * 原因是 `api/runs.ts` 的 `Run` 型別漏了這個欄位——contract 在 2026-09-01 才補上
+ * 宣告，而伺服器早就在送（那段 description 逐字寫著這件事，以及為什麼沒有機器發現：
+ * Go 側是 models-only、handler 手寫，所以 handler 可以送出 contract 沒宣告的東西）。
+ *
+ * 分開成一個元件，是因為它要在 `GeneralMode` 與 `AdvancedMode` 之外的地方讀 `useRun`
+ * 而不改變上面那些提早 return 的 hook 順序；同 key 去重，不是第二個請求。
+ */
+function FailureClass({ runId, status }: { runId: string; status: string }) {
+  const run = useRun(runId);
+  if (status !== "failed") return null;
+  return (
+    <>
+      <p>
+        失敗類別：
+        <strong>{run.data?.failure_class?.label ?? (run.isPending ? "讀取中…" : "未記錄")}</strong>
+      </p>
+      {/* 這句是這個類別停止被讀錯的地方，與 WorkspaceRuns 的同一段：
+          `workload_error` 是 Skill 自己做不到、會被讀成平台壞了，
+          `capability_mismatch` 是平台在跑之前就拒絕、會被讀成當機。 */}
+      {run.data?.failure_class && <p className="note">{run.data.failure_class.note}</p>}
+    </>
   );
 }
 
@@ -311,6 +390,7 @@ function GeneralMode({ runId }: { runId: string }) {
         執行狀態：<strong>{runStatusLabel(trace.status)}</strong>（<code>{trace.status}</code>）
         {trace.status_reason ? `（${trace.status_reason}）` : null}
       </p>
+      <FailureClass runId={runId} status={trace.status} />
 
       <h3>進度</h3>
       {/*

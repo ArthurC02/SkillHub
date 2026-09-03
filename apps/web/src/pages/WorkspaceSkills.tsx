@@ -3,6 +3,7 @@ import { ReadFailure } from "../components/LoginRequired";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { Timestamp } from "../components/Timestamp";
 import { deleteSkill } from "../api/skills";
 // GET /skills already has a consumer: the Test Case screen's skill picker. One
 // query for one endpoint, wherever it was first needed (WS-004).
@@ -188,9 +189,11 @@ export function WorkspaceSkills() {
                     }
                   >
                     掃描狀態：{s.verification.label}
-                    {s.verification.scanned_at
-                      ? `（${s.verification.scanned_at.slice(0, 10)}）`
-                      : ""}
+                    {s.verification.scanned_at && (
+                      <>
+                        （<Timestamp at={s.verification.scanned_at} />）
+                      </>
+                    )}
                   </span>
                 </p>
                 <p className="note">{s.verification.note}</p>
@@ -232,6 +235,17 @@ export function WorkspaceSkills() {
                     search={{ version: undefined }}
                   >
                     打包與下載
+                  </Link>
+                  {" ｜ "}
+                  {/*
+                    核心第 3 點的另一半。這一列以前只有「散布」，沒有「先試一次」：
+                    要試跑自己的 Skill，得先點進 /skills/$id，再從那裡的「試跑」區走。
+                    頁尾的「這個工作區的其他清單」確實有一條 /lab/test-cases，但那是
+                    **未篩選的全清單**，不帶這一列的 Skill。同一條連結 SkillDetail
+                    已經有了（`TrialEntry`），這裡複製它而不是發明第二種形狀。
+                  */}
+                  <Link to="/lab/test-cases" search={{ skill: s.skill_id }}>
+                    Test Case
                   </Link>
                 </p>
                 {/*

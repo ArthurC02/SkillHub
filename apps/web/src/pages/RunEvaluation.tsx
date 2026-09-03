@@ -310,9 +310,7 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
 
       {!notEvaluated && <ReadFailure error={evaluation.error} what="評估結果" />}
 
-      {evaluation.data && (
-        <EvaluationReport evaluation={evaluation.data} runId={runId} runStatus={runStatus} />
-      )}
+      {evaluation.data && <EvaluationReport evaluation={evaluation.data} runStatus={runStatus} />}
 
       {/* No verdict for it to sit under, so it stands on its own here. With a
           verdict on screen it belongs immediately below it (design §2.5), which
@@ -354,6 +352,23 @@ export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus
       {evaluation.data && evaluation.data.status === "completed" && (
         <SuggestionsPanel runId={runId} />
       )}
+
+      {/*
+        回饋表單排在**建議之後**，不是報告的結尾。它以前長在 `EvaluationReport` 裡，
+        於是判定出來之後往下捲，先遇到一個 textarea 加「有幫助／沒幫助」兩顆按鈕，
+        再往下才是「改善建議」與那顆真正的主要動作「以已接受的 N 項建議建立新版本」
+        ——**平台向使用者要回饋，排在使用者自己的下一步前面**，三顆按鈕在同一段捲動裡
+        互相競爭。§4.5 剛量到這一頁在行長規則之後是 3070px，把 CTA 再往下推的代價是
+        實測過的；§2.5 的歷史也記著同一個位置出過事（執行狀態一度落在「有幫助／
+        沒幫助」按鈕與版本選單之間）。`disabled` 沿用同一個 `superseded_at` 判斷。
+      */}
+      {evaluation.data && (
+        <FeedbackForm
+          runId={runId}
+          evaluation={evaluation.data}
+          disabled={Boolean(evaluation.data.superseded_at)}
+        />
+      )}
     </section>
   );
 }
@@ -375,15 +390,11 @@ function ExecutionState({ runStatus }: { runStatus: string }) {
 
 function EvaluationReport({
   evaluation,
-  runId,
   runStatus,
 }: {
   evaluation: Evaluation;
-  runId: string;
   runStatus?: string;
 }) {
-  const superseded = Boolean(evaluation.superseded_at);
-
   return (
     <div>
       {/* Narrowed on the field, not on the boolean above it: `strict` is on
@@ -476,8 +487,6 @@ function EvaluationReport({
           </li>
         </ul>
       </details>
-
-      <FeedbackForm runId={runId} evaluation={evaluation} disabled={superseded} />
     </div>
   );
 }

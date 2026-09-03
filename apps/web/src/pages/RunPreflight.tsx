@@ -1,5 +1,5 @@
 import { Loading } from "../components/Loading";
-import { Timestamp } from "../components/Timestamp";
+import { formatAt, Timestamp } from "../components/Timestamp";
 import { LoginRequired, ReadFailure, unauthenticated } from "../components/LoginRequired";
 import { useMe } from "../api/me";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -63,7 +63,7 @@ export function SkillVersionPicker({
         {list.map((v, i) => (
           <option key={v.version_id} value={v.version_id}>
             v{v.version_number}
-            {i === 0 ? "（最新）" : ""}・{v.created_at.slice(0, 10)}
+            {i === 0 ? "（最新）" : ""}・{formatAt(v.created_at)}
           </option>
         ))}
       </select>{" "}
