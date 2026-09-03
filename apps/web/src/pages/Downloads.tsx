@@ -165,8 +165,11 @@ function DownloadActions({
   return (
     <p>
       {artifact.servable ? (
+        // 設計 §4.6.3（ADR-064）：主要動作一頁至多一個，而這是清單裡的一列。
+        // 十列各有一顆填色按鈕，等於一頁十個主要動作，也就是零個——強調只有在
+        // 別的東西沒有被強調時才是強調。這一頁沒有「完成這一頁工作」的單一動作，
+        // 所以它零個，連結本身一字未改。
         <a
-          className="action"
           href={downloadHref(artifact.artifact_id)}
           // The server writes a `download_records` row when it serves the bytes,
           // and this list's `download_count` is computed from that table. A click

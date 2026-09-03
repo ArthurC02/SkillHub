@@ -39,7 +39,13 @@ import { expect, test } from "vitest";
  * 3. **Which pairs actually occur on screen.** PAIRS is a hand-written list,
  *    read off `index.css` and the pages that use those classes. A new rule that
  *    puts `--text` on some third background is a pairing this file has never
- *    heard of. Adding a token pairing means adding a line here.
+ *    heard of. Adding a token pairing means adding a line here — which is the
+ *    whole of ADR-064's 「沒有進 `PAIRS` 的配對等於沒有被守」, and why the §4.6
+ *    surfaces took the list from 9 pairs to 25. The direction of that ignorance
+ *    runs both ways: the interactive lines (`--surface-hover`,
+ *    `--surface-active`) are arithmetic on two hex values and say nothing about
+ *    whether any rule paints those states, or whether a pointer can reach them.
+ *    Neither can any static tier; that is the browser tier's job (ADR-036).
  * 4. **Rendered pixels** — anti-aliasing, font weight and size at the real
  *    breakpoints, browser colour management. That is QA-008's job (real browser
  *    plus manual walkthrough), and it stays QA-008's job; this is the cheap
@@ -99,12 +105,18 @@ function contrast(a: string, b: string): number {
  * would qualify, but they use `--text-h`, which clears 4.5:1 anyway, so the
  * stricter bar costs nothing and survives a font-size change.
  *
- * The single 3:1 line is `--accent`, which `index.css` uses only as the 3px
- * `border-left` of `.notice` — never as text. That is WCAG 2.1 **1.4.11
- * Non-text Contrast**. `--border` and `--accent-border` are deliberately absent:
- * they outline cards, table cells and badges whose state is always also stated
- * in words (NFR-007), so they are decoration under 1.4.11, not the sole carrier
- * of any information.
+ * The 3:1 lines are the ones that carry no text. `--accent` is the 3px
+ * `border-left` of `.notice`; `--border-strong` (ADR-064 / §4.6.1) is the
+ * **control boundary** — the edge of an input or a secondary button, which is
+ * the only thing telling a reader where the control is, and therefore a user
+ * interface component under WCAG 2.1 **1.4.11 Non-text Contrast**: 3:1 against
+ * whatever it sits on, and it sits on both 地 (`--bg`) and 面 (`--surface`), so
+ * both are listed. That rule is exactly what the old 1px `--border` on an input
+ * failed at 1.27:1, which is why `--border-strong` exists at all.
+ *
+ * `--border` and `--accent-border` stay deliberately absent: they outline cards,
+ * table cells and badges whose state is always also stated in words (NFR-007),
+ * so they are decoration under 1.4.11, not the sole carrier of any information.
  */
 const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
   ["text", "bg", 4.5, "body and .note/.rank/.file-size on the page"],
@@ -120,6 +132,39 @@ const PAIRS: [fg: string, bg: string, min: number, where: string][] = [
   // added is a sentence in a comment rather than a property of the palette.
   ["link", "bg", 4.5, "a, .app-nav links — link text on the page"],
   ["link", "code-bg", 4.5, "a inside .skill-md / .diff / a styled control"],
+
+  // ── ADR-064 §4.6.1: 面 (--surface). Everything that used to sit on 地 now
+  // sits on a card, a control or the header instead, so every text token that
+  // had a --bg line needs a --surface line or it moved onto an unguarded
+  // background. --accent joins them because .notice is a surface object too.
+  ["text", "surface", 4.5, "card body, .note inside a card, control labels"],
+  ["text-h", "surface", 4.5, "h1/h2, .app-title, .verdict on a card or the header"],
+  ["danger", "surface", 4.5, ".script-tag and ConfirmDelete's outlined button on a card"],
+  ["link", "surface", 4.5, "a inside a card, .app-nav links on the header"],
+  ["accent", "surface", 3, ".notice border-left where the notice is a surface"],
+  ["border-strong", "surface", 3, "1.4.11 — input/secondary-button edge on a card"],
+  ["border-strong", "bg", 3, "1.4.11 — the same edge where a control sits on 地"],
+
+  // ── §4.6.3 互動態. Pre-mixed flat colours, not overlays (the repo bans
+  // `opacity`), so they are ordinary backgrounds and get measured like any
+  // other. Only the tokens a hovered/pressed control actually paints are here:
+  // hover and active are reached on controls, whose text is --text or --link.
+  ["text", "surface-hover", 4.5, "a hovered secondary button or row"],
+  ["link", "surface-hover", 4.5, "a hovered link-shaped control"],
+  ["text", "surface-active", 4.5, "a pressed secondary button or row"],
+  ["link", "surface-active", 4.5, "a pressed link-shaped control — the tightest light pair"],
+  ["text-h", "surface-active", 4.5, "a pressed control whose label is a heading token"],
+
+  // ── §4.6.3 主要動作. The only filled control in the app; --on-cta exists for
+  // this one pairing and for nothing else, so this line is the whole guard.
+  ["on-cta", "cta", 4.5, ".action — the one filled primary action per page"],
+
+  // ── §4.6.1 / §5.3 缺口 ①: the blocking notice's own ground. This is the
+  // second signal for role="alert" — a background that only ever means 「這件事
+  // 擋住你」 — so all three text tokens that can land on it are listed.
+  ["danger", "danger-bg", 4.5, ".notice-danger heading and inline emphasis"],
+  ["text-h", "danger-bg", 4.5, ".notice-danger's own heading"],
+  ["text", "danger-bg", 4.5, ".notice-danger body text"],
 ];
 
 test("QA-009: every colour token is declared once per theme", () => {

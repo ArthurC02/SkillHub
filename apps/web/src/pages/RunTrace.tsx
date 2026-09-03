@@ -98,13 +98,14 @@ export function RunTrace() {
         出路。而在 `未評估` 或 `評估未完成` 的 Run 上 `SuggestionsPanel` 完全不渲染，
         這條連結就是整頁唯一的出路。
       */}
+      {/*
+        設計 §4.6.3（ADR-064）：`/runs/$id` 沒有「完成這一頁的工作」的動作——這一頁
+        的工作是**讀**，讀完就完了——所以它零個主要動作，而零個是合法的。上面那段
+        說的仍然成立：在未評估的 Run 上這是整頁唯一的出路，但「唯一的出路」不等於
+        「這一頁的終點動作」，填色頻道給的是後者。連結位置、文字與目的地一字未改。
+      */}
       <p>
-        <Link
-          className="action"
-          to="/runs/$runId/compare"
-          params={{ runId }}
-          search={{ against: "" }}
-        >
+        <Link to="/runs/$runId/compare" params={{ runId }} search={{ against: "" }}>
           與另一個 Run 比較
         </Link>
       </p>

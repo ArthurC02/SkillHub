@@ -1,6 +1,6 @@
 # ADR-064：視覺層是「層級」不是「裝飾」，由 token 承載，不引入框架
 
-- 狀態：**Proposed**（待 [`05` R-38](../plans/05-pending-rulings.md) 放行；本 ADR 不改任何程式）
+- 狀態：**Accepted**（2026-09-03 同日：[`05` R-38](../plans/05-pending-rulings.md) 選 (a) 由負責人本人放行，第一階段當日落地——`index.css` 232 行進 23 行出、10 個 `.tsx` 只改 class、`contrast.test.ts` 9 → 25 對、`rendered.spec.ts` 多一條「一頁一個填色動作」的三引擎棘輪；落地時的差異與沒做的事記在文末「落地紀錄」）
 - 日期：2026-09-03
 - 決策者：產品負責人、架構規劃
 - 相關：[ADR-039](./ADR-039-frontend-design-system-and-ui-evaluation-criteria.md)（設計系統的存在理由；**本 ADR 延續它對第三方設計系統的否決**）、[ADR-041](./ADR-041-trust-signal-vocabulary-typed-absence-and-rule-precedence.md)（§0 優先序、狀態語彙）、[ADR-042](./ADR-042-roadmap-product-rulings-evidence-aggregate-in-flight-axis-and-enforcer-attribution.md)（路線圖裁定：本 ADR 為它們**保留視覺頻道**）、[ADR-036](./ADR-036-real-browser-verification-tier.md)（合成像素對比的把關者）、[`01` §10 裁定 4](../plans/01-goals-and-plan.md)（新功能凍結）、[`02:NFR-007`](../plans/02-specifications-and-acceptance-criteria.md)
@@ -127,8 +127,19 @@
 - **成本**：`contrast.test.ts` 的配對從 9 對擴到約 25 對；`a.action` 的 7 個呼叫點要逐頁確認「一頁一個」（`SkillDetail` 今天有兩個）；`e2e/rendered.spec.ts` 那條「事實與但書不同色」的斷言在新 token 下要重跑三引擎確認仍然成立。
 - **限制**：本 ADR 不解決右側三分之一的空白，也不解決「一頁 25 個資訊區塊全部同一種灰」——後者是資訊版面問題，要的是一次量測後的版面裁定，不是 token。
 
+## 落地紀錄（2026-09-03）
+
+三個 Writer 平行、路徑互不重疊（`index.css`／markup／測試），主 Agent 序列化收尾。與決策不同或決策沒說的：
+
+- **`[role="alert"]` 的框不套在行內 `<span>` 上**（`AuthControls`、`SignIn`、`RunPreflight` 三處把 alert 放在一句話裡）：行內盒的 padding 不撐行高，會壓到上下行；改成 block 是版面變更，第一階段不做。那三處的第二訊號仍然只有字。
+- **`--dur` 宣告了但沒用到**：第一階段的轉場全部用 `--dur-fast`（120ms）。留著它是因為 §4.6.4 定義了兩個；第一個要 200ms 的轉場出現時再用。
+- **主要動作的判定多了一條**：`/skills/$id` 在版本清單讀取中或讀取失敗時是**零個**，不是先給一個再收回；`ForkAction` 因此讀同一個 query key（去重，不多一個請求）。`/lab/test-cases/$id` 保留「前往執行前權限確認」——它是那一頁的工作，與清單頁是兩條路由。
+- **七個舊 `a.action` 收成一頁一個**：`Downloads` 逐列的下載、`Packaging` 的下載檔（同畫面已有「建立下載套件」）、`RunPreflight` 的結果連結、`RunTrace` 的比較連結、`SkillDetail` 的 Test Case 連結降為一般連結，文字與 href 一字不改。
+- **突變證據**：`--border-strong` 改回舊灰 → `contrast.test.ts` 紅（1.31:1、1.22:1）；`--on-cta` 改淡 → 紅（3.91:1）；`SkillDetail` 放回第二個 `.action` → jsdom 342 支**全綠**（那一層結構上量不到 `var()`），`rendered.spec.ts` 的新棘輪**紅**（`skill-detail: 2 filled actions`）。§3 第 18 條因此是「部分自動」，機器在瀏覽器層。
+- **Playwright 本機只跑 chromium**（82 項）；firefox／webkit 由 CI 的 `web-browser` 兩條腿跑。
+
 ## 待決策
 
-1. **R-38：順位 5 那一批要不要放行、什麼時候放行。** 兩個選項在 `05` 逐條寫了代價：09-10 前落地（閘門受測者看到的是有層級的版本）或 09-20 後落地（閘門零風險，但推廣素材裡是線框）。
+1. ~~**R-38：順位 5 那一批要不要放行、什麼時候放行。**~~ **已裁定（2026-09-03）：(a)，放行者負責人本人，理由是 Demo 的評鑑分數；`01` §10 裁定 4 記為第三次放行。**
 2. **第二階段的版面**：桌面 1280 下把主要動作固定在右側欄，是不是 §1.2 的正解——要先量（第一筆結果與主要動作的 y 座標），且與 `04` 丙-132（桌面的 §1.2）同一次裁。
 3. **圖示**：等第一個「沒有圖示會誤讀」的實例；有了再以 inline SVG（不加資產目錄、不加字型）補，且永遠伴隨文字。

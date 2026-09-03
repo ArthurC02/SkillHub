@@ -1,9 +1,41 @@
 :root {
   --text: #6b6375;
   --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
+  /* ADR-064 §4.6.1/§4.6.2: depth is three flat surfaces, not shadow — ground
+     (--bg), surface (--surface), recess (--code-bg). The surface is lighter than
+     the ground in BOTH themes, which is the only direction that works in dark
+     mode, where a shadow has nothing to fall on. The three greys are tinted
+     toward --accent rather than neutral; that is the cheapest thing five
+     external systems all do, and it reverts by editing one line each.
+     Measured 2026-09-03, and every one of these is stated because a number in a
+     comment is the thing that rots: --text/--text-h/--danger/--link clear 4.5:1
+     on all five fills (ground, surface, recess, hover, active) in both themes —
+     the tightest light pair is --link on --surface-active at 4.62. */
+  --bg: #f7f6fa;
+  --surface: #ffffff;
+  --surface-hover: #f3f0f8;
+  --surface-active: #efebf5;
+  --border: #e3dfea;
+  /* WCAG 1.4.11 wants 3:1 for a control's boundary and --border never met it:
+     1.27:1 on the old white --bg. This is 3.42:1 light / 3.26:1 dark on
+     --surface, and it is for control edges only — a card keeps --border,
+     because a card's edge carries no information (NFR-007 keeps that in
+     words). */
+  --border-strong: #8f87a0;
+  /* §4.6.3: fill belongs to ACTIONS, outline to CLAIMS. One filled action per
+     page — the one that finishes the page's work — so a badge never gets this
+     and a second button never gets it. --on-cta on --cta is 5.43:1 light /
+     7.49:1 dark. --cta is --link's value in both themes on purpose: the app
+     already decided what its own purple is, and a second one would be a hue to
+     keep in sync. */
+  --cta: #9b2ae6;
+  --on-cta: #ffffff;
+  /* §5.3 缺口 ①: blocking messages and non-blocking degradation notices shared
+     one surface, so 「不能打包」 looked like an explanation. This is the second
+     channel; the words stay the first one (§2.3). Not for degradation — that is
+     --accent-bg and stays --accent-bg. */
+  --danger-bg: #fdecec;
+  --code-bg: #f1eef6;
   --accent: #aa3bff;
   --accent-bg: rgba(170, 59, 255, 0.1);
   --accent-border: rgba(170, 59, 255, 0.5);
@@ -17,6 +49,15 @@
      --code-bg. In dark mode --accent already clears it (6.77:1) and the two
      values coincide. */
   --link: #9b2ae6;
+
+  /* §4.6.4: two durations and one curve (Material 3 standard easing), and the
+     reduce block below zeroes both in one place rather than per rule. Only
+     background-color/border-color/color are ever transitioned — never opacity
+     (§2.7 forbids it outright), never `all`. No @keyframes, no spinner: §2.12 is
+     explicit that a wheel that never stops cannot tell running from wedged. */
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
 
   --sans: system-ui, "Segoe UI", Roboto, sans-serif;
   --heading: system-ui, "Segoe UI", Roboto, sans-serif;
@@ -41,9 +82,16 @@
   :root {
     --text: #9ca3af;
     --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
+    --bg: #121218;
+    --surface: #1b1c24;
+    --surface-hover: #23242e;
+    --surface-active: #2a2b36;
+    --border: #31303d;
+    --border-strong: #6e6a80;
+    --cta: #c084fc;
+    --on-cta: #0d0812;
+    --danger-bg: #3b1a1a;
+    --code-bg: #24252f;
     --accent: #c084fc;
     --accent-bg: rgba(192, 132, 252, 0.15);
     --accent-border: rgba(192, 132, 252, 0.5);
@@ -52,12 +100,25 @@
   }
 }
 
+/* One block turns all of it off, which is the point of putting the durations in
+   tokens: a rule that forgets to opt out cannot exist. The curve stays — a 0ms
+   transition never samples it. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+  }
+}
+
+/* The two 1px rules down either side are gone (ADR-064 決策 3): the page frame
+   is now the ground/surface difference — the header and every card sit on
+   --surface against --bg — and a hairline on top of that is a second frame
+   saying the same thing. */
 #root {
   width: 1126px;
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
-  border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -81,7 +142,11 @@ h4 {
    「資料保存政策」 — a document heading above a table of prose — was set at the
    same size as the search page's one-line invitation. Those are two different
    jobs; only the search page does the second one, and it opts in below. */
+/* §4.6.6: weight is the only lever available without a webfont, and it is the
+   one GOV.UK and USWDS actually use. h1/h2 go 500 → 600; h3/h4 stay 500, so the
+   step between a section and its subsection is still visible. */
 h1 {
+  font-weight: 600;
   font-size: 40px;
   letter-spacing: -1.2px;
   margin: 32px 0;
@@ -120,6 +185,7 @@ h1 {
   flex-shrink: 0;
 }
 h2 {
+  font-weight: 600;
   font-size: 24px;
   line-height: 118%;
   letter-spacing: -0.24px;
@@ -206,12 +272,19 @@ input:not([type="checkbox"], [type="radio"]) {
   font-size: 15px;
   line-height: 20px;
   color: var(--text-h);
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: var(--surface);
+  /* --border was 1.27:1 on the old white background. A control's edge is the
+     one border in this file that IS information — it says "you can type here" —
+     so it takes --border-strong and WCAG 1.4.11's 3:1 (see the token). */
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   padding: 5px 10px;
   min-height: 32px;
   box-sizing: border-box;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
   /* `cols` and `size` are intrinsic widths from a time before phones: a
      `<textarea cols={60}>` asks for 478px and gets it, and four of the app's
      eighteen screens pushed the whole document past a 375px viewport because of
@@ -220,8 +293,12 @@ input:not([type="checkbox"], [type="radio"]) {
   max-width: 100%;
 }
 
+/* A button used to be the only thing wearing --code-bg, which meant the recess
+   fill served code, badges, buttons and the disabled state at once — four jobs,
+   one colour, no hierarchy. It takes the surface from the layer above now
+   (§4.6.3: every secondary button is --surface on --border-strong), and
+   --code-bg goes back to being the recess. */
 button {
-  background: var(--code-bg);
   cursor: pointer;
 }
 
@@ -235,9 +312,22 @@ button {
    is nothing for the eye to land on, so every page reads as one continuous
    column of prose.
 
-   Not a new surface (§5 的入場規則): it is the base control layer's own box,
-   applied to an anchor. Every value here is already declared above for
-   `button`, so there is nothing new to keep true.
+   ADR-064 §4.6.3 took the second half of that argument: a box was enough to
+   make it pressable, and not enough to make it the ONE thing on the page —
+   「建立下載套件」 was the same grey box as the eight buttons beside it. **Fill
+   is the channel that separates an action from everything else**, and it is
+   spent here and nowhere else: never on a badge (a claim that is filled reads as
+   an endorsement, §2.3/§2.11(c)), never on a second button, never on a
+   destructive one — §2.8's two-step confirmation works precisely BECAUSE the
+   confirm button is inconspicuous (`.destructive` below).
+
+   **At most one per page**, the one that finishes the page's work; §4.6.3 lists
+   them route by route, and three routes legitimately have none.
+
+   No longer `a.action`: `<button class="action">` is the same role reached by a
+   different element (搜尋 submits a form, 建立下載套件 posts), and the box has to
+   look identical either way. Size and padding stay bit-for-bit the base control
+   layer's, so an action beside a plain button still sits on the same baseline.
 
    **Where it goes, and where it must not.** A link earns this when it is what
    this page is FOR — the next step in 找到 → 驗證 → 下載. It does not get it for
@@ -249,23 +339,32 @@ button {
    right-click behaviour. The box is what carries the affordance now, which is
    why the underline can go — a bare `.action` inside running text would be a
    different question, and there are none. */
-a.action {
+.action {
   display: inline-flex;
   align-items: center;
   font-size: 15px;
   line-height: 20px;
-  color: var(--link);
-  background: var(--code-bg);
-  border: 1px solid var(--border);
+  font-weight: 600;
+  color: var(--on-cta);
+  background: var(--cta);
+  border: 1px solid var(--cta);
   border-radius: 6px;
   padding: 5px 10px;
   min-height: 32px;
   box-sizing: border-box;
   text-decoration: none;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
 
-a.action:hover {
-  border-color: var(--accent-border);
+/* The fill cannot change on hover without either dropping --on-cta under 4.5:1
+   or inventing a second CTA tone, so the edge moves instead: --text-h against
+   the ground is 18.7:1 light / 17.0:1 dark, which is the loudest outline the
+   palette already owns. */
+.action:hover {
+  border-color: var(--text-h);
 }
 
 /* The two controls the layer above excludes still need their selected state to
@@ -277,22 +376,53 @@ input[type="radio"] {
   accent-color: var(--accent);
 }
 
-button:hover:not(:disabled) {
+/* Secondary buttons. `.action` and `.destructive` are excluded rather than
+   re-stated afterwards: `button:hover:not(:disabled)` outranks a bare
+   `.action:hover`, so without the exclusion the primary action would lose its
+   own hover to this rule. --link on --surface-hover is 4.82:1, still AA. */
+button:hover:not(:disabled, .action, .destructive) {
+  background: var(--surface-hover);
   border-color: var(--accent-border);
   color: var(--link);
+}
+
+/* The app had no pressed state at all, on any of its 44 buttons: a click gave
+   back nothing until the request answered. */
+button:active:not(:disabled, .action, .destructive) {
+  background: var(--surface-active);
+}
+
+/* §4.6.3 / §2.8: destructive is deliberately NOT the primary action. Outline in
+   --danger on the ordinary surface, and the danger tint only appears once the
+   pointer is on it — 5.66:1 for the label there. ConfirmDelete's two-step
+   disclosure depends on this button being quiet. */
+.destructive {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--surface);
+}
+
+.destructive:hover:not(:disabled) {
+  background: var(--danger-bg);
 }
 
 /* QA-009 again: the obvious way to say "disabled" is `opacity: .5`, and that is
    exactly the move this file removed twice already — a multiplier lands
    wherever it lands and no colour token can catch it. --text on --code-bg is
    5.15:1 and stays AA; the dashed edge is a second, non-colour channel so the
-   state does not depend on noticing a grey (NFR-007). */
+   state does not depend on noticing a grey (NFR-007).
+
+   The border colour is now stated rather than inherited: a disabled control sits
+   on a card that is itself --surface, and `.destructive` would otherwise keep
+   its red edge while being unpressable. --border-strong is the same 3:1 edge the
+   live control has, dashed. */
 button:disabled,
 select:disabled,
 textarea:disabled,
 input:disabled {
   color: var(--text);
   background: var(--code-bg);
+  border-color: var(--border-strong);
   border-style: dashed;
   cursor: not-allowed;
 }
@@ -321,12 +451,16 @@ a {
   outline-offset: 2px;
 }
 
+/* §4.6.2: the header is a surface, not a strip of the page. It is the only
+   thing that is on every route, so it is also where the ground/surface split is
+   readable at a glance — which is what replaced #root's two hairlines. */
 .app-header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
   padding: 16px 24px;
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
   text-align: left;
 }
@@ -369,7 +503,26 @@ a {
 .app-title {
   color: var(--text-h);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 700;
+}
+
+/* THE APP'S FIRST PSEUDO-ELEMENT, and §4.6.6 says it is the only one: a 10px
+   --accent square before the product name. It exists because the header had no
+   mark at all — the wordmark was a link in the same weight as the nav beside it
+   — and because an inline SVG mark costs no request, no font and no asset
+   directory (ADR-064 決策 7 rules out all three). It carries no meaning, so it
+   is `content: ""` and stays out of the accessibility tree; the name is still
+   the whole of the link's text. --accent is 4.08:1 on the ground, over the 3:1
+   §4.4 rule 2 asks of a non-text mark. */
+.app-title::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 2px;
+  margin-right: 8px;
+  vertical-align: baseline;
 }
 
 main {
@@ -447,6 +600,10 @@ main :is(p, li, dd, dt, summary) {
   margin-left: 8px;
 }
 
+/* §4.6.3: a badge is a CLAIM, so it is outlined and its fill stays the recess —
+   for good. A filled badge reads as an endorsement, and the first thing that
+   will ask for one is a paid or 「Verified」 marker. Fill now belongs to actions
+   (`.action`), and this rule is the boundary that keeps it there. */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -585,6 +742,7 @@ main :is(p, li, dd, dt, summary) {
   gap: 12px 20px;
   margin: 12px 0;
   padding: 12px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -715,11 +873,21 @@ main :is(p, li, dd, dt, summary) {
 /* The app's primary content had less visual structure than the panels around
    it: .criterion, .packaging-target and .download-item are all bordered cards
    and the search hit — the thing the product is for — was a bare stack of
-   paragraphs separated by a gap. Same border/radius/padding as those three. */
+   paragraphs separated by a gap. Same border/radius/padding as those three.
+
+   ADR-064 §4.6.2: and now the same surface. A card is 「這是一個東西」, and while
+   the ground was white the border was the only thing that said so. The recess
+   (--code-bg) is deliberately NOT a whole card's fill — that channel is reserved
+   for the ownership axis (「別人的」／唯讀), §4.6.5. */
 .search-result {
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
 
 .search-result p {
@@ -751,6 +919,37 @@ main :is(p, li, dd, dt, summary) {
   background: var(--accent-bg);
   padding: 8px 12px;
   margin: 8px 0;
+}
+
+/* §5.3 缺口 ①, closed. A notice is 「平台對這一頁講的話」 and until now every one
+   of them looked identical, so 「不能打包」 — a sentence that stops you — wore the
+   same tint as 「這段摘要由模型改寫」, which merely qualifies. The words were the
+   only difference, and §2.3 allows that but §3 第 2 條 asks whether the answer is
+   MARKED as the answer. This is the second channel. A modifier and not a
+   separate surface: the shape, the padding and the rail are the same object, and
+   only the hue says which kind. */
+.notice-danger {
+  border-left-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+/* The other half: `role="alert"` had no rule at all, in any of its ~30 places —
+   the app's loudest ARIA role was visually identical to a paragraph. Same
+   treatment as a danger notice, so the two are one vocabulary rather than two.
+
+   Scoped three ways, and each exclusion is a real case in this app:
+     - `.notice` — Packaging's blocking message is both, and would otherwise get
+       two rails and two paddings.
+     - `.notice *` — an alert nested inside a notice is already inside a marked
+       block; marking it again says the same thing twice (§3 第 14 條).
+     - `span` — AuthControls, SignIn and RunPreflight put an alert in an INLINE
+       span inside a sentence, and block padding on an inline box overlaps the
+       lines above and below it instead of growing the row. Those three keep the
+       words only; giving them the box is a layout change, and 第一階段不動版面. */
+[role="alert"]:not(.notice, .notice *, span) {
+  border-left: 3px solid var(--danger);
+  background: var(--danger-bg);
+  padding: 8px 12px;
 }
 
 .risk-code {
@@ -865,9 +1064,14 @@ summary {
 
 .criterion,
 .suggestion {
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
 
 .criterion-failed {
@@ -930,9 +1134,14 @@ summary {
 
 .packaging-target,
 .download-item {
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
 
 /* Both states carry their own word (已驗證/未驗證, 已過期), so the tint is the

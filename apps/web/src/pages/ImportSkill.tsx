@@ -189,7 +189,9 @@ export function ImportSkill() {
               />
             </p>
           )}
-          <button type="submit" disabled={mutation.isPending}>
+          {/* 設計 §4.6.3（ADR-064）的表，`/workspace/import` 那一列：這一頁只做
+              一件事，這顆按鈕就是那件事。 */}
+          <button type="submit" className="action" disabled={mutation.isPending}>
             {mutation.isPending ? "匯入中…" : "開始匯入"}
           </button>
           {/*

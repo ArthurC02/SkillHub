@@ -510,11 +510,15 @@ export function RunPreflight() {
 
       {runId ? (
         <p>
-          {/* 設計 §2.6「平面答案優先，識別符折疊」。這一頁此刻唯一的主要動作，字面
+          {/* 設計 §2.6「平面答案優先，識別符折疊」。這一頁此刻唯一的出路，字面
               以前是一串 36 字元的十六進位——長得像一個資料欄位而不像一個出口。
-              id 留著（它是這次 Run 的永久識別，鐵律 10），但排在答案後面。 */}
+              id 留著（它是這次 Run 的永久識別，鐵律 10），但排在答案後面。
+
+              設計 §4.6.3（ADR-064）：它是出路，不是 `.action`。填色留給「開始這次
+              Run」那一顆——這一頁的工作是「看完權限、決定要不要跑」，而這條連結是
+              那件事**做完之後**的交接。文字與目的地一字未改。 */}
           已開始 Run。{" "}
-          <Link className="action" to="/runs/$runId" params={{ runId }}>
+          <Link to="/runs/$runId" params={{ runId }}>
             查看這次 Run 的結果
           </Link>
           <span className="note">
@@ -522,8 +526,12 @@ export function RunPreflight() {
           </span>
         </p>
       ) : (
+        // 設計 §4.6.3（ADR-064）：授權確認**可以**是主要動作——§2.2 引用的 VS Code
+        // 實測正是「被動、不顯眼的授權提示會失敗」。這一頁的工作是「看完權限、決定
+        // 要不要跑」，完成它的就是這一顆。
         <button
           type="button"
+          className="action"
           disabled={confirmAndRun.isPending}
           onClick={() => confirmAndRun.mutate(hash)}
         >

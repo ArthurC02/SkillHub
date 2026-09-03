@@ -92,9 +92,16 @@ export function ConfirmDelete({
         against the 刪除 button it replaces, updated in place, and never mounted.
         A key it does not share forces the new DOM node the focus depends on.
       */}
+      {/*
+        設計 §4.6.3（ADR-064）：毀滅性動作**永遠不是**主要動作。`destructive` 是
+        `--danger` 描邊，不是填色——§2.8 的兩段式靠的就是這顆按鈕不顯眼；把它做成
+        整頁最搶眼的東西，等於把「先想一下」改成「按這裡」。全 app 七個刪除都經過
+        這個元件，所以這個 class 只寫在這裡一次。
+      */}
       <button
         key="confirm"
         type="button"
+        className="destructive"
         autoFocus
         aria-describedby={scopeId}
         disabled={pending}

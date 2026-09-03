@@ -84,8 +84,14 @@ export function SkillDetail() {
         tree, no run. role="status" rather than "alert" — it is a standing
         condition of this listing, not something that just went wrong.
       */}
+      {/*
+        設計 §4.6.3（ADR-064）：`notice-danger`。這一則說的是「這些事現在**做不
+        到**」——全文、檔案樹、試跑三個都被關掉了（見上面那段），也就是阻斷，不是
+        降級。`role="status"` 不變：它仍然是這份 listing 的持續狀態，不是剛剛出的
+        錯；底色是第二訊號（§2.3），不是把它改叫錯誤。
+      */}
       {skill.access_restriction && (
-        <section className="notice" role="status">
+        <section className="notice notice-danger" role="status">
           <h2>授權審查中,部分功能已關閉</h2>
           <p>{skill.access_restriction.note}</p>
         </section>
@@ -849,7 +855,13 @@ function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
       {inMyWorkspace ? (
         <>
           <p>
-            <Link className="action" to="/lab/test-cases" search={{ skill: skillId }}>
+            {/*
+              設計 §4.6.3（ADR-064）：這一頁在此之前有**兩個** `.action`——這一個和
+              `PackagingEntry` 的「打包並下載這個版本」——而它們同時渲染（兩者的條件
+              都是「這個 Skill 在你的工作區」）。兩個都強調等於都不強調。§4.6.3 的表
+              指名保留的是打包那一個，所以這一條降為普通連結：文字與目的地一字未改。
+            */}
+            <Link to="/lab/test-cases" search={{ skill: skillId }}>
               此 Skill 的 Test Case
             </Link>
           </p>
@@ -873,6 +885,21 @@ function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
 
 function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: boolean }) {
   const fork = useForkSkill();
+  /*
+    設計 §4.6.3（ADR-064）的表，`/skills/$id` 那一列：主要動作是「打包並下載這個
+    版本」，**不可打包時退為 Fork**。所以這顆按鈕要知道打包那個入口有沒有畫出來。
+
+    問的是同一個問題、同一把尺：`PackagingEntry` 也是用「你的工作區裡有沒有這個
+    Skill 的版本」決定要不要畫連結（`skill.version` 不是訊號——見那個元件的檔頭）。
+    React Query 同 key 去重，所以這**不是**第三個請求，是 `VersionHistory` 與
+    `PackagingEntry` 已經在發的那一個。
+
+    `isSuccess` 而不是 `!isPending`：只有在清單真的回來且是空的時候才確定「不可
+    打包」。載入中與讀取失敗時兩邊都不填色——一頁**零個**主要動作是合法的，而在
+    還不知道答案時把填色亂放一顆，比晚半秒才出現更糟。
+  */
+  const versions = useSkillVersions(skillId);
+  const cannotPackage = versions.isSuccess && versions.data.versions.length === 0;
 
   if (!isLoggedIn) {
     // `login-prompt` carried no CSS rule and no test selected it, so it was a
@@ -895,7 +922,12 @@ function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
 
   return (
     <div>
-      <button type="button" onClick={() => fork.mutate(skillId)} disabled={fork.isPending}>
+      <button
+        type="button"
+        className={cannotPackage ? "action" : undefined}
+        onClick={() => fork.mutate(skillId)}
+        disabled={fork.isPending}
+      >
         {fork.isPending ? "Fork 中…" : "Fork 這個 Skill"}
       </button>
       {/*

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { SKILL } from "../src/fixtures/platform";
-import { PHONE_ROUTES } from "./routes";
+import { PHONE_ROUTES, ROUTES } from "./routes";
 import { stubPlatform } from "./stub";
 
 /**
@@ -329,6 +329,110 @@ test.describe("QA-008 real layout", () => {
       return bad;
     });
     expect(same, `fact and qualifier share a colour: ${same.join(" / ")}`).toEqual([]);
+  });
+
+  /**
+   * 設計 §3 第 18 條 / §4.6.3（ADR-064 決策 4）— 一頁一個主要動作，數的是**畫出來的填色**。
+   *
+   * The rule has two halves and they are the same measurement: filling is the
+   * channel that belongs to actions, so (a) at most one thing per page may be
+   * filled with `--cta`, and (b) the thing that is filled must be the control
+   * that finishes the page's work — `<a class="action">` or
+   * `<button class="action">`, never a badge. A filled badge reads as an
+   * endorsement (§2.3、§2.11(c)), and the first thing that will want one is a
+   * paid-tier mark, which is precisely the reading the rule forbids.
+   *
+   * Only a real engine can count it. What is being compared is the *resolved
+   * cascade of a custom property* — the same reason the facet-colour test above
+   * lives here — and jsdom does not substitute `var()` in `getComputedStyle` at
+   * all, so under jsdom every element's background is the literal string and
+   * the count is undecidable rather than wrong. `design-system.test.ts` can
+   * prove `.action` has a rule; it cannot prove that exactly one element on a
+   * page ends up painted with it.
+   *
+   * `--cta` is resolved by painting it on a throwaway element and reading back
+   * whatever this engine serialises, then comparing that string to other
+   * strings from the same engine's serialiser. Nothing here depends on
+   * `rgb(…)` vs `rgba(…)` vs `color(…)` formatting, which differs between the
+   * three engines and would otherwise make this test a Chromium test.
+   *
+   * All 18 routes in one test rather than one test per route, because the
+   * sentinel is a statement about the set: a suite where every page has zero
+   * filled actions passes both assertions above while proving nothing.
+   */
+  test("at most one filled primary action per page, and only on a.action/button.action", async ({
+    page,
+  }) => {
+    test.slow(); // 18 navigations in one test; the assertion is about the set.
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    const bad: string[] = [];
+    let routesWithOne = 0;
+
+    for (const [name, url] of ROUTES) {
+      await page.goto(url);
+      await expect(page.locator(".app-nav a").first()).toBeVisible();
+
+      const found = await page.evaluate(() => {
+        const probe = document.createElement("div");
+        document.body.appendChild(probe);
+        // Read the engine's own serialisation of "no background" first, so the
+        // guard below is an equality against this engine rather than a guess at
+        // how it spells transparent.
+        const unpainted = getComputedStyle(probe).backgroundColor;
+        probe.style.backgroundColor = "var(--cta)";
+        const cta = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+
+        const filled: { tag: string; cls: string; text: string; action: boolean }[] = [];
+        for (const el of Array.from(document.body.querySelectorAll("*"))) {
+          if (getComputedStyle(el).backgroundColor !== cta) continue;
+          const tag = el.tagName.toLowerCase();
+          filled.push({
+            tag,
+            cls: el.getAttribute("class") ?? "",
+            text: (el.textContent ?? "").trim().slice(0, 16),
+            action: (tag === "a" || tag === "button") && el.classList.contains("action"),
+          });
+        }
+        return { cta, unpainted, filled };
+      });
+
+      // An unresolvable --cta computes to the initial transparent — the same
+      // value every unpainted element on the page has — so the count would be
+      // the whole document rather than the one control. Nothing below was
+      // measured in that case; say that instead of reporting a number.
+      if (!found.cta || found.cta === found.unpainted) {
+        bad.push(
+          `${name}: --cta resolved to 「${found.cta}」 — nothing was measured on this route`,
+        );
+        continue;
+      }
+
+      if (found.filled.length > 1) {
+        const which = found.filled.map((f) => `<${f.tag}.${f.cls}>「${f.text}」`).join(" + ");
+        bad.push(`${name}: ${found.filled.length} filled actions — ${which}`);
+      }
+      if (found.filled.length === 1) routesWithOne++;
+
+      for (const f of found.filled) {
+        if (f.cls.split(/\s+/).includes("badge")) {
+          bad.push(`${name}: a .badge is filled 「${f.text}」 — 填色屬於動作，不屬於主張`);
+        } else if (!f.action) {
+          bad.push(`${name}: <${f.tag} class="${f.cls}">「${f.text}」 carries the --cta fill`);
+        }
+      }
+    }
+
+    // The same hole the facet-colour test guards with `checked === 0`: zero
+    // filled actions everywhere satisfies 「至多一個」 and 「只能是 .action」
+    // vacuously, and would let the CSS rule be deleted under a green suite.
+    if (routesWithOne === 0) {
+      bad.push("no route had a filled primary action at all — this test proved nothing");
+    }
+
+    expect(bad, `§4.6.3 一頁一個主要動作: ${bad.join(" / ")}`).toEqual([]);
   });
 });
 

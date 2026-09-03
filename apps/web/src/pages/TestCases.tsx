@@ -272,8 +272,13 @@ export function TestCaseList() {
           />
         </p>
         <CreateValidation skillId={chosenSkill} name={name} prompt={prompt} />
+        {/* 設計 §4.6.3（ADR-064）的表，`/lab/test-cases` 那一列：這一頁的工作是
+            「建立一個 Test Case」。上面的清單是**很多列**，一列一顆填色按鈕等於
+            零顆，所以強調只給這一顆。停用態不變（§4.4 虛線優先，理由由
+            `CreateValidation` 說）。 */}
         <button
           type="submit"
+          className="action"
           disabled={create.isPending || chosenSkill === "" || name === "" || prompt.trim() === ""}
           aria-describedby={
             chosenSkill === "" || name === "" || prompt.trim() === "" ? "create-why" : undefined

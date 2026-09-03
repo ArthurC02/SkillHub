@@ -162,7 +162,11 @@ export function Home() {
           placeholder="例如：把這份 PDF 整理成摘要"
           aria-label="任務描述"
         />
-        <button type="submit">搜尋</button>
+        {/* 設計 §4.6.3：這一頁的工作就是「用一句話描述任務」然後搜尋，所以整頁
+            唯一的主要動作是這一顆。 */}
+        <button type="submit" className="action">
+          搜尋
+        </button>
       </form>
 
       {/*

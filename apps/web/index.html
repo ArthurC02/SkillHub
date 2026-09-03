@@ -7,6 +7,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Skill Hub</title>
+    <!-- ADR-064 §4.6.6: a favicon, inline, because the alternative is a `public/`
+         directory for one 200-byte file. Until now the tab showed the browser's
+         default globe, i.e. the product had no mark of any kind. It is the
+         accent square and nothing else — no glyph, no wordmark: §4.6.6 does not
+         open the icon channel, and a shape that tried to *mean* something would
+         be the first icon in an app whose rule is that text comes first.
+         Transparent ground so it reads on a light and a dark tab strip alike. -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect width='10' height='10' rx='2.5' fill='%23aa3bff'/%3E%3C/svg%3E"
+    />
     <!-- 02:PORT-003 anonymous disclosure (ADR-060 決策 6). cmd/api's
          cleanModeStaticHandler (apps/platform/cmd/api/main.go) rewrites the
          line below into a script tag only when it serves this file itself

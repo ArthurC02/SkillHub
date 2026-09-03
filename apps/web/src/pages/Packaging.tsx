@@ -372,8 +372,12 @@ export function Packaging() {
           {preview.data?.allowed && <RetentionNotice preview={preview.data} />}
 
           <p>
+            {/* 設計 §4.6.3（ADR-064）：這一頁的工作是「做出那份套件」，而在此之前
+                這顆終點按鈕與同頁另外 8 顆按鈕是同一個灰框——ADR-064 背景那張表逐
+                字點名的三個缺陷之一。停用態不受影響（§4.4 的虛線仍然優先）。 */}
             <button
               type="button"
+              className="action"
               disabled={!preview.data?.allowed || build.isPending}
               onClick={() => build.mutate()}
               aria-describedby={deadReason ? DEAD_REASON_ID : undefined}
@@ -405,8 +409,10 @@ export function Packaging() {
                 {/* Same reason as Downloads.tsx: the download record is written
                     when the server serves the bytes, so the list this page just
                     invalidated on build is stale again the moment this is clicked. */}
+                {/* 設計 §4.6.3：建立成功後這一段長在「建立下載套件」下面，兩者
+                    同時在畫面上，所以填色只能給其中一個。給的是建立——那是這一頁
+                    的工作；拿檔案是它的結果。文字與 href 一字未改。 */}
                 <a
-                  className="action"
                   href={downloadHref(built.artifact_id)}
                   onClick={() => void client.invalidateQueries({ queryKey: ["downloads"] })}
                 >
@@ -479,7 +485,11 @@ export function BlockedNotice({
   message?: string;
 }) {
   return (
-    <div className="notice" role="status">
+    // 設計 §4.6.3／§5.3 缺口 ①（ADR-064）：這是**阻斷**，不是降級——它說的是
+    // 「這件事不會發生」，而不是「這件事會發生，只是少了一點」。在此之前它與同頁
+    // 的保留期限、預覽說明共用同一個表面，靠文字分辨（§2.3 允許，但那是唯一訊號）。
+    // `notice-danger` 是第二訊號，不取代文字。
+    <div className="notice notice-danger" role="status">
       <p>
         <strong>不能打包</strong>：{PACKAGING_BLOCKED_LABEL[reason]}
       </p>

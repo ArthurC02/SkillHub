@@ -837,8 +837,11 @@ function SuggestionDiffView({ suggestionId }: { suggestionId: string }) {
 
   return (
     <div>
+      {/* 設計 §4.6.3（ADR-064）：這一則是阻斷——「無法套用」說的是採用建議這件事
+          不會發生，不是它會發生但少了一點。同頁另外五則（評估進行中、未評估、
+          歷史判定、評估未完成、材料不完整）都是降級或狀態，維持原樣。 */}
       {!diff.data.applicable && (
-        <p className="notice">
+        <p className="notice notice-danger">
           目前無法套用：
           {diff.data.blocked_reason
             ? BLOCKED_REASON_LABEL[diff.data.blocked_reason]
