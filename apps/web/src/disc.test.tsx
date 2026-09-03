@@ -1441,9 +1441,9 @@ test("DISC-002: a result row carries all seven columns, and infers none of them"
   // 印的是伺服器 UTC 字串的前十碼（`.slice(0, 10)`），對 UTC+8 的讀者少報一天，
   // 現在走 `<Timestamp>`，人看到的是自己的時鐘、機器看到的是原值。斷言那個原值
   // 比斷言任何一種在地化字串都穩，而且它就是 §1.1 說「證據要查得動」的那一半。
-  expect(
-    [...container.querySelectorAll("time")].map((t) => t.getAttribute("dateTime")),
-  ).toContain("2026-08-01T10:00:00Z");
+  expect([...container.querySelectorAll("time")].map((t) => t.getAttribute("dateTime"))).toContain(
+    "2026-08-01T10:00:00Z",
+  );
   // 沒有驗證證據的 Skill 必須明確標記「尚未試跑」.
   expect(scanned).toContain("尚未試跑");
 

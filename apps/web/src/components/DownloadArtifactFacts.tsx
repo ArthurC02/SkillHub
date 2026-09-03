@@ -120,13 +120,30 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
       <details>
         <summary>雜湊與打包器版本</summary>
         <ul className="note">
+          {/*
+            ADR-027 決策 1 把 `content_hash` 定義為「給使用者自己比對用的事實」，
+            並要求把「manifest_hash 不含自身」寫進 schema description，理由逐字是
+            「它是**使用者側重算時**的必要前提」——整個設計預設了有人會自己重算。
+            在此之前這兩列印的是兩串 64 個十六進位字元，**沒說是哪一種雜湊、對什麼
+            算的**，也就是給了一個做不到的動作。同時 ADR-027 決策 3 要求下載面
+            「不得暗示套件帶有平台背書或完整性保證」，而兩串看起來很像簽章的東西
+            旁邊一句話都沒有，讀者會把它讀得比它主張的大（設計 §2.11(c)）。
+            那句「不簽也不驗」是 components/Findings.tsx 已經寫好的同一句。
+          */}
           <li>
-            內容雜湊（這是不是同一個檔）：<code>{artifact.content_hash}</code>
+            內容雜湊（SHA-256，對整包 zip 的位元組算的；下載回去對檔案算一次 SHA-256
+            應該得到同一串）：<code>{artifact.content_hash}</code>
           </li>
           <li>
-            Manifest 雜湊（內容和上次一不一樣）：<code>{artifact.manifest_hash}</code>
+            Manifest 雜湊（SHA-256，對套件清單算的，不含 zip 本身的 metadata、也不含 manifest
+            自己；用來判斷內容和上次一不一樣）：<code>{artifact.manifest_hash}</code>
           </li>
           <li>打包器版本：{artifact.packager_version ?? "未測量"}</li>
+          <li>
+            這兩串是雜湊，不是簽章。<strong>MVP 的套件不帶數位簽章，平台也不驗簽</strong>
+            （ADR-027 決策 3 是明文的「不做」）——它們證明得了「位元組沒有被改過」，
+            證明不了「這份東西是誰做的」。
+          </li>
           <li>Profile 版本：{artifact.profile_version ?? "無（標準套件沒有 Profile）"}</li>
           <li>
             Skill Version ID：<code>{artifact.skill_version_id}</code>（v

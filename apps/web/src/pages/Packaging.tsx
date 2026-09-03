@@ -1,3 +1,4 @@
+import { ApiError } from "../api/client";
 import { Loading } from "../components/Loading";
 import { ReadFailure } from "../components/LoginRequired";
 import { useEffect, useState } from "react";
@@ -18,6 +19,9 @@ import {
 import { useEmbeddedSkillDetail } from "../api/skills";
 import { SkillVersionPicker } from "./RunPreflight";
 import { CompatibilityStatus } from "../components/CompatibilityStatus";
+import { LabelledBadge } from "../components/LabelledBadge";
+import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
+import { RiskIndicator } from "../components/RiskIndicator";
 import { DownloadArtifactFacts } from "../components/DownloadArtifactFacts";
 import type { Finding, Redistribution, SkillDetail } from "../api/types";
 
@@ -61,10 +65,15 @@ type PackagingSearch = { version?: string };
 export const PACKAGING_BLOCKED_LABEL: Record<PackagingBlockedReason, string> = {
   license_hold:
     "這個 Skill 正在授權審查中（人工暫時保留）。審查期間平台不產出任何套件，標準套件也不例外。",
+  // 這兩條各自加了最後一句，而那句話的內容是「目前沒有下一步」——設計 §2.2 第三向
+  // 逐字允許這個答案（「或誠實說目前沒有下一步」），但不允許沉默。ADR-057 決策 1
+  // 已經裁定放行是 operator-only、使用者沒有自助路徑；在此之前畫面只說「不行」，
+  // 讀者不知道該去申訴、改 LICENSE 重新匯入、還是放棄。而 04 N-2 早就記著
+  // `license_unknown` 是使用者自己匯入的東西的**預設值**，也就是常態不是例外。
   not_redistributable:
-    "這個 Skill 的授權不允許再散布，平台不會把它交出去。授權已人工確認，不等於可以再散布。",
+    "這個 Skill 的授權不允許再散布，平台不會把它交出去。授權已人工確認，不等於可以再散布。沒有讓你自己解除這道鎖的路徑——它擋的是授權本身說的話。",
   license_unknown:
-    "沒有人確認過這個 Skill 可不可以再散布。授權未知一律當成不可散布處理——這不是等待中的暫時狀態，是預設就擋。",
+    "沒有人確認過這個 Skill 可不可以再散布。授權未知一律當成不可散布處理——這不是等待中的暫時狀態，是預設就擋。目前沒有讓你自己解除它的路徑：放行需要具名的授權來源證據，只有平台管理者改得動（ADR-057）。",
   validation_blocked:
     "用這些設定打出來的套件，過不了平台自己匯入時要過的驗證，因此不能標示為有效套件。下面的錯誤清單就是要修的東西。",
   // The only entry on this table the reader can act on in a minute, and the only
@@ -211,7 +220,14 @@ export function Packaging() {
   });
 
   if (skill.isLoading) return <Loading what="這個 Skill" />;
-  if (skill.error || !skill.data) return <p role="alert">找不到這個 Skill，或載入失敗。</p>;
+  // 資訊架構 §5 IA-6 判掉的就是這一句：一句罐頭話回答每一種狀態。使用者是從詳情頁
+  // 的「打包並下載這個版本」按過來的，而**那一頁對 410 說的是別的話**——同一個
+  // Skill，兩頁各說各的（設計 §3 第 14 條）。410 是「存在過、被下架了」，與「從來
+  // 沒有過」是兩個事實，contract 為此特地寫了一段 description。
+  if (skill.error instanceof ApiError && skill.error.status === 410)
+    return <p role="alert">這個 Skill 已從目錄下架，內容不再提供。</p>;
+  if (skill.error) return <ReadFailure error={skill.error} what="這個 Skill" />;
+  if (!skill.data) return <p role="alert">找不到這個 Skill。</p>;
 
   const gate = packagingGate(skill.data);
   const deadReason = buildButtonReason({
@@ -232,6 +248,22 @@ export function Packaging() {
           ? `（v${skill.data.version.version_number}，最新版本）`
           : ""}
       </p>
+      {/*
+        設計 §2.10 第 3 項（License 與可散布性判定）與第 1 項（風險摘要的存在與最高
+        嚴重度）——那是一份**封閉清單**，不是「這一頁要不要放」的判斷題。
+        在此之前，這一頁只在**拒絕**的時候談授權：`redistribution` 是 allowed／
+        self_supplied／generated 時 `gate` 為 null，整頁不再提它一個字，而三者放行的
+        理由各不相同（ADR-027 決策 4、ADR-045、ADR-047 決策 4「誰擁有模型寫的東西」
+        今天仍然是開的問題），畫面上長得完全一樣。
+        這是全 app 唯一一個**內容會離開平台**的位址，卻是唯一不說授權的位址。三個
+        欄位都已經在這個元件手上，沒有多讀任何東西。
+      */}
+      <p className="badge-row">
+        <LabelledBadge kind="redistribution" value={skill.data.redistribution} />
+        <LicenseBadge license={skill.data.license} />
+      </p>
+      <LicenseNotes license={skill.data.license} />
+      <RiskIndicator risk={skill.data.risk} />
       {versionId === "" ? (
         /* 設計 §2.9 的「無權檢視」，與 SkillDetail 的同一句話同一個理由。 */
         <p role="alert">
@@ -356,8 +388,14 @@ export function Packaging() {
           )}
 
           {built && (
-            <div className="notice">
-              <p>
+            // 設計 §4.3 的 notice 那一列，「不要用在」欄逐字寫著兩件事，這一塊
+            // 以前兩件都犯：「使用者自己動作的當下結果（那是 role="status" 的一句
+            // 話）」與「內含按鈕的確認對話」。實務後果是這一頁最重要的一次狀態變化
+            // ——bytes 終於可以拿了——對螢幕閱讀器完全無聲（失敗那條有 role="alert"，
+            // 成功這條什麼都沒有），而視覺上它與整頁另外四個 .notice 同一個表面，
+            // 看起來像又一則平台的持續狀態，不像「你剛才做的事成功了」。
+            <div>
+              <p role="status">
                 {built.duplicate
                   ? "已有相同套件：同一個版本、同一個目標、同一個 Test Case 選項先前就打過，這就是那一份，不是第二份。"
                   : "套件已建立。"}
@@ -606,6 +644,31 @@ function PreviewReport({ preview }: { preview: PackagingPreview }) {
         </ul>
       )}
 
+      {/*
+        設計 §3 第 4 條逐字寫的失效——「型別裡有、伺服器送了、頁面丟掉」。
+        `excluded_files` 是 contract 的必填欄位，`api/packaging.ts` 的註解甚至寫好了
+        它為什麼該出現在**預覽**上：「the manifest is inside the thing the reader
+        has not decided to download yet, so answering only there is not answering
+        the decision」——答案只寫在還沒下載的那份 manifest 裡，就不是在回答這個決定。
+        在此之前全 apps/web 只有型別宣告與兩筆空陣列 fixture 用到它，零渲染、零測試。
+        唯一會浮出來的是 `file_removed_by_packager`（SKILL.md 指到被拿掉的檔），
+        其餘每一種排除都靜音：一個 vendored 依賴的 Skill 打包後少了 node_modules/，
+        作者把 zip 交給同事，同事裝不起來，而兩個人都以為那是完整的套件。
+      */}
+      <h3>打包器拿掉的檔案</h3>
+      {preview.excluded_files.length === 0 ? (
+        <p className="note">沒有檔案被排除，這一份帶走的就是版本裡的全部內容。</p>
+      ) : (
+        <ul className="risk-list">
+          {preview.excluded_files.map((f) => (
+            <li key={f.path}>
+              <code>{f.path}</code> {f.label}
+              <span className="note">：{f.note}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <h3>不會進包的 Test Case</h3>
       {preview.excluded_test_cases.length === 0 ? (
         <p className="note">沒有被排除的項目。</p>
@@ -700,7 +763,17 @@ function Findings({ validation }: { validation: PackageValidation }) {
         {validation.infos.length} 項
       </p>
       {total === 0 ? (
-        <p className="note">這次重驗沒有產生任何發現。</p>
+        // 共用的 components/Findings.tsx 在同樣的零值上說得多很多，而它的註解寫了
+        // 理由：「a clean report is exactly when a reader is most likely to read
+        // 沒有發現 as 有人看過並認可」。**在這一頁那個誤讀更貴**——匯入頁誤讀的
+        // 下一步是自己用，這一頁誤讀的下一步是把套件交給別人。措辭抄過來（兩者的
+        // Finding 型別來源不同，所以抄句子不合併元件）。§2.1 的強形式：空狀態要
+        // 說出這個空**不是**什麼；§2.11(c)：徽章要說出自己不涵蓋什麼。
+        <p className="note">
+          這次重驗沒有產生任何發現。這是「掃過了，沒掃到」，不是「沒掃」——它讀套件內容、
+          不執行其中的 Script，既不是人工審查，也不是簽章驗證。簽章這一項不是還沒驗，
+          是這裡永遠不會有人替你驗。
+        </p>
       ) : (
         groups
           .filter((g) => g.items.length > 0)

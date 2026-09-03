@@ -314,6 +314,24 @@ export const PREVIEW = {
   excluded_test_cases: [
     { test_case_id: "tc-2", name: "我上傳的資料", reason: "user-uploaded dataset" },
   ],
+  /**
+   * Contract-required, and this fixture did not have it — which is why the
+   * whole 打包器拿掉的檔案 block had zero renders and zero tests until the day
+   * the page started drawing it. Non-empty on purpose: 「almost every package」
+   * is empty (`api/packaging.ts`), and a fixture that only ever renders the
+   * empty branch is how the row that matters stays unseen. This is the case
+   * that matters — a Skill that vendored its dependencies, whose author hands
+   * the zip to a colleague who cannot install it.
+   */
+  excluded_files: [
+    {
+      path: "node_modules/",
+      reason: "excluded_dir",
+      label: "依目錄規則排除",
+      note: "打包器不收 node_modules/，安裝端自己重新取得依賴。",
+    },
+  ],
+  retention_days: 30,
 };
 
 export const ARTIFACT_ROW = {

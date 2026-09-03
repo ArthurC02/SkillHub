@@ -126,6 +126,12 @@ const skill = {
     counts: { errors: 0, warnings: 0, infos: 0 },
     highlights: [],
     info_counts: {},
+    // Contract-required and missing until the packaging page started rendering
+    // the risk summary §2.10 第 1 項 puts on the never-fold list. Second fixture
+    // this week to be short a required field（`excluded_files` was the first），
+    // so the object below is pinned to the type with `satisfies` — an untyped
+    // fixture is a replica that can disagree with the contract in silence.
+    disclosures: [],
     note: "",
   },
   compatibility: {
@@ -233,6 +239,13 @@ function stubPlatform(
     blocked?: boolean;
     duplicate?: boolean;
     retentionDays?: number | "absent";
+    /** 打包器拿掉的檔案。預設空，因為幾乎每個套件都是空的——重點是非空那一個。 */
+    excludedFiles?: {
+      path: string;
+      reason: string;
+      label: string;
+      note: string;
+    }[];
   } = {},
 ) {
   // 23 and never 30. 30 is what a deployment actually configures, so a mock
@@ -263,7 +276,7 @@ function stubPlatform(
               excluded_test_cases: [
                 { test_case_id: "tc1", name: "我上傳的資料", reason: "user-uploaded dataset" },
               ],
-              excluded_files: [],
+              excluded_files: options.excludedFiles ?? [],
               retention_days: retention,
             }
           : {
@@ -285,7 +298,7 @@ function stubPlatform(
               ],
               included_test_cases: [],
               excluded_test_cases: [],
-              excluded_files: [],
+              excluded_files: options.excludedFiles ?? [],
               retention_days: retention,
             },
       );
@@ -470,6 +483,62 @@ test("PACK-002 環境變數需求 is on the target, and 「不需要」 is state
   expect(text()).toContain("ANTHROPIC_API_KEY");
   expect(text()).toContain("（必要）");
   expect(text()).toContain("套件裡不會有任何金鑰");
+});
+
+/**
+ * 設計 §3 第 4 條逐字寫的失效——「型別裡有、伺服器送了、頁面丟掉」。
+ *
+ * `excluded_files` 是 contract 的必填欄位，而在此之前全 `apps/web/src` 只有型別宣告
+ * 與兩筆空陣列 fixture 碰過它：零渲染、零測試。`api/packaging.ts` 的註解甚至已經寫好
+ * 它為什麼必須出現在**預覽**上——「the manifest is inside the thing the reader has
+ * not decided to download yet」，答案只寫在還沒下載的那份 manifest 裡，就不是在回答
+ * 這個決定。
+ *
+ * 具體的代價：一個 vendored 依賴的 Skill 打包後少了 `node_modules/`，作者把 zip 交給
+ * 同事，同事裝不起來，而兩個人都以為那是完整的套件。唯一會浮出來的情況是 SKILL.md
+ * 剛好指到被拿掉的檔（那走 `file_removed_by_packager`）；其餘每一種排除都靜音。
+ *
+ * 兩個答案都押：非空要逐列印出伺服器的字，空要說出「什麼都沒被拿掉」而不是消失。
+ */
+test("PACK-002 打包器拿掉的檔案要說出來，空與非空是兩個答案", async () => {
+  stubPlatform({
+    excludedFiles: [
+      {
+        path: "node_modules/",
+        reason: "excluded_dir",
+        label: "依目錄規則排除",
+        note: "打包器不收 node_modules/。",
+      },
+    ],
+  });
+  await render(<Packaging />, () => text().includes("打包器拿掉的檔案"));
+
+  expect(text()).toContain("node_modules/");
+  expect(text()).toContain("依目錄規則排除");
+  expect(text()).toContain("打包器不收 node_modules/。");
+  expect(text()).not.toContain("沒有檔案被排除");
+
+  await act(async () => root?.unmount());
+  container.innerHTML = "";
+  queryClient.clear();
+
+  stubPlatform();
+  await render(<Packaging />, () => text().includes("打包器拿掉的檔案"));
+  expect(text()).toContain("沒有檔案被排除，這一份帶走的就是版本裡的全部內容");
+});
+
+/**
+ * 設計 §2.10 是一份**封閉清單**，第 3 項是 License 與可散布性判定、第 1 項是風險
+ * 摘要。在此之前這一頁只在**拒絕**的時候談授權：`redistribution` 放行時 `gate` 是
+ * null，整頁不再提它一個字——而 allowed／self_supplied／generated 三者放行的理由
+ * 各不相同，畫面上長得完全一樣。這是全 app 唯一一個**內容會離開平台**的位址。
+ */
+test("PACK-001 放行的時候也要說出授權判定，不是只在拒絕時才談", async () => {
+  stubPlatform();
+  await render(<Packaging />, () => text().includes("打包與下載"));
+
+  expect(text()).toContain("可再散布");
+  expect(text()).toContain("已宣告");
 });
 
 test("PACK-002 依賴需求 shows the same lines the package's INSTALL.md will carry", async () => {

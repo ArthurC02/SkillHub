@@ -55,7 +55,20 @@ export function Downloads() {
 
       {downloads.data &&
         (downloads.data.downloads.length === 0 ? (
-          <p>還沒有打包過任何套件。這裡是空的，代表沒有發生過下載，不是紀錄被清掉了。</p>
+          /*
+            主詞。這份清單列的是**打包過的 artifact**，不是下載事件——同一頁每一列
+            都可能是 `download_count: 0`，那時列裡自己寫著「還沒有人下載過這個檔案。
+            建立一個套件不等於取走它。」所以空狀態否認「沒有發生過下載」是在否認
+            一件這份清單本來就不在回答的事。設計 §2.1 的強形式要的是「這個空**不是**
+            什麼」，而說錯主詞不算說到。
+            出口那一半是 IA-9 的同型：WorkspaceSkills 的空狀態也曾經說完下一步就叫
+            人自己去導覽列找。打包的位址需要一個 skillId，這一頁手上沒有，所以下一步
+            是先去挑一個 Skill。
+          */
+          <p>
+            還沒有打包過任何套件。這裡是空的，代表你還沒有打包過東西，不是紀錄被清掉了。
+            要打包，先從 <Link to="/workspace/skills">我的 Skill</Link> 挑一個。
+          </p>
         ) : (
           <ul className="download-list">
             {downloads.data.downloads.map((artifact) => (

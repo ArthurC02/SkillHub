@@ -377,13 +377,7 @@ function VersionHistory({ skillId }: { skillId: string }) {
  * fourth state: the section says that plainly instead of rendering a verdict
  * nobody gave, and `packagingGate` closes the entry all the same.
  */
-function Redistribution({
-  skill,
-  isLoggedIn,
-}: {
-  skill: SkillDetailModel;
-  isLoggedIn: boolean;
-}) {
+function Redistribution({ skill, isLoggedIn }: { skill: SkillDetailModel; isLoggedIn: boolean }) {
   const blocked = packagingGate(skill);
 
   return (
@@ -453,20 +447,14 @@ function Redistribution({
  * 對別人的 Skill 回空清單（ADR-011）。React Query 同 key 去重，所以這**不是**
  * 第二個請求，是同一個。
  */
-function PackagingEntry({
-  skill,
-  isLoggedIn,
-}: {
-  skill: SkillDetailModel;
-  isLoggedIn: boolean;
-}) {
+function PackagingEntry({ skill, isLoggedIn }: { skill: SkillDetailModel; isLoggedIn: boolean }) {
   const versions = useSkillVersions(skill.skill_id);
 
   if (!isLoggedIn)
     return (
       <p className="note">
-        打包與下載需要登入，而且只打包得了你自己工作區裡的版本——別人的 Skill 要先 Fork
-        一份。 <SignInAction />
+        打包與下載需要登入，而且只打包得了你自己工作區裡的版本——別人的 Skill 要先 Fork 一份。{" "}
+        <SignInAction />
       </p>
     );
   if (versions.isPending) return <Loading what="這個 Skill 在你工作區的版本" />;
