@@ -100,7 +100,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 ## Harness：角色、技能、rules 與 deny 的放置規則（2026-09-03 建立，09-04 重整）
 
-`AGENTS.md`〈分區指標與攔阻〉只放入口；規則本體在這裡。**判準：換一個 repo 還成立嗎？** 成立才進 `.claude/skills/`；不成立留在 `docs/`、各層 `AGENTS.md`、`.claude/rules/` 或 deny／CI。每一層只放一種東西：
+`AGENTS.md`〈分區指標與攔阻〉只放入口；規則本體在這裡；**建立這套東西的歷程、洞見、工序與功法在 [harness/](./harness/README.md)**。**判準：換一個 repo 還成立嗎？** 成立才進 `.claude/skills/`；不成立留在 `docs/`、各層 `AGENTS.md`、`.claude/rules/` 或 deny／CI。每一層只放一種東西：
 
 - **`.claude/rules/`**：按路徑觸發的指標，內容只有「先讀哪一份、會被哪個檢查擋」。實測會送達子代理，首次命中注入一次。
 - **`.claude/agents/`**：按**風險**切的三個角色——`skillhub-writer`（寫，路徑範圍由簡報給）、`skillhub-verify`（唯讀驗證）、`skillhub-mutation`（證明測試會紅）。**角色不按目錄切、不新增**：某個區域該先讀什麼、哪些檔屬於 coordinator，寫在該區域的 `AGENTS.md`，由 rules 按路徑送達。禁令只有一份（`AGENTS.md` 開發自動化第 3 條），角色檔引用不複述。

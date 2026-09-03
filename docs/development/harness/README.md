@@ -1,0 +1,32 @@
+# Agent Harness：歷程、洞見、工序與功法
+
+這個目錄記的是 **2026-09-03～09-04 建立 coding-agent harness 的過程本身**——量到什麼、蓋了什麼、撞壞什麼、為什麼最後長成這樣。**規則本體不在這裡**：規則在 [`automation.md`〈Harness〉](../automation.md) 與根 [`AGENTS.md`](../../../AGENTS.md)，本目錄只解釋它們為什麼是那個形狀，讓下一個要改 harness 的人（或 agent）不用把同一條路再走一次。
+
+| 檔 | 回答的問題 |
+| --- | --- |
+| [01-journey.md](01-journey.md) | 發生了什麼、順序是什麼、哪些當時的判斷後來被推翻 |
+| [02-insights.md](02-insights.md) | 從中得到的十二條洞見，每條附證據與後果 |
+| [03-procedure.md](03-procedure.md) | 工序：在一個 repo 裡建立或擴充 harness 的可重複步驟與檢核表 |
+| [04-techniques.md](04-techniques.md) | 功法：過程中反覆用到、換一個 repo 也成立的具體手法 |
+
+## 一頁摘要
+
+**harness 是什麼**：讓 coding agent 在這個 repo 裡「該讀的會讀到、不該做的做不了、做完的能證明」的那一層東西。它有四層，每層只放一種東西：
+
+| 層 | 放什麼 | 住哪 | 誰吃得到 |
+| --- | --- | --- | --- |
+| 送達 | 「先讀哪一份、會被哪個檢查擋」的指標 | 根 `AGENTS.md` 的分區表、各目錄 `AGENTS.md`、`.claude/rules/` | 前兩者所有工具；rules 只有 Claude Code |
+| 角色 | 按風險切的三個子代理：writer／verify／mutation | `.claude/agents/` | Claude Code |
+| 程序 | 換一個 repo 還成立的做法 | `.claude/skills/` | Claude Code |
+| 攔阻 | 真的會拒絕的指令；守 harness 自己的機器 | `permissions.deny`、`automation-check` 的 `harness`、`skillpkg` 的 dogfood 測試 | deny 只有 Claude；機器所有人 |
+
+**兩條判準**貫穿全部：知識放哪一層，問「**換一個 repo 還成立嗎**」；任何一條規則落地，問「**旁邊那台機器在哪**」。
+
+**一個前提**：這個 repo 同時有多個 coding agent（Claude Code、Codex…）在同一棵工作樹上作業。Claude 專屬的那幾層**只是提早發現**；真正的保證永遠在 `automation-check`、測試與 CI。
+
+## 這段歷程的產出（可直接引用）
+
+- 規則：[`automation.md`〈共享工作樹與 SubAgent〉](../automation.md)（模型四級表）、[〈Harness〉](../automation.md)（放置規則、三步配方、deny 清單、送達實測）
+- 入口：根 [`AGENTS.md`](../../../AGENTS.md)〈分區指標與攔阻〉；分區卡 [`apps/web/AGENTS.md`](../../../apps/web/AGENTS.md)、[`apps/platform/internal/AGENTS.md`](../../../apps/platform/internal/AGENTS.md)
+- 機器：[`tools/devctl/harness.go`](../../../tools/devctl/harness.go)、[`repo_skills_test.go`](../../../apps/platform/internal/shared/skillpkg/repo_skills_test.go)
+- Claude 層：[`.claude/agents/`](../../../.claude/agents/)、[`.claude/skills/`](../../../.claude/skills/)、[`.claude/rules/`](../../../.claude/rules/)、[`.claude/settings.json`](../../../.claude/settings.json)
