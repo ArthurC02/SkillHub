@@ -99,9 +99,19 @@ export function TestCaseList() {
   // before it, `notMine` would be true for every skill including your own.
   const ownedSkill = skills.data?.skills.find((s) => s.skill_id === filter);
   const notMine = Boolean(filter) && Boolean(skills.data) && !ownedSkill;
+  /*
+    網址已經指名的 Skill，當作建立表單的預設值——**一個值，四個消費端**（選單、
+    停用理由、停用判斷、送出）。第一次修這個缺陷時只改了選單的 `value`，於是畫面上
+    選單顯示著那個 Skill、而它旁邊的停用理由還寫著「選一個 Skill」，按下去也還是
+    送空字串：一個看起來被修好、按下去照樣失敗的表單，比原本更糟。測試抓到了。
+    fallback 而不是覆寫：使用者一旦自己改過選擇，`skillId` 就有值，這一行不再插手；
+    `notMine`（`?skill=` 指到不是你的東西）時 `ownedSkill` 是 undefined，維持空白，
+    否則會預選一個選單裡不存在的值。
+  */
+  const chosenSkill = skillId || ownedSkill?.skill_id || "";
 
   const create = useMutation({
-    mutationFn: () => createTestCase(skillId, name, prompt),
+    mutationFn: () => createTestCase(chosenSkill, name, prompt),
     onSuccess: (tc) =>
       navigate({ to: "/lab/test-cases/$testCaseId", params: { testCaseId: tc.test_case_id } }),
     onError: (err) => setMessage(err instanceof Error ? err.message : "無法建立 Test Case。"),
@@ -230,7 +240,15 @@ export function TestCaseList() {
       >
         <p className="field">
           <label htmlFor="tc-skill">Skill</label>
-          <select id="tc-skill" value={skillId} onChange={(e) => setSkillId(e.target.value)}>
+          {/*
+            網址已經指名了 Skill，這個選單還是問你一次。上半部的篩選提示已經用
+            `ownedSkill.name` 把它叫出來了，下半部的停用理由卻寫著「選一個 Skill」
+            ——**在一個已經指名了 Skill 的畫面上**，而那個原因是頁面自己造出來的。
+            `ownedSkill` 只在「確認是你自己的 Skill」之後才有值（`notMine` 那一支
+            必須維持空白，否則會預選一個選單裡不存在的值），所以 fallback 而不是
+            覆寫：使用者一旦自己改過選擇，`skillId` 就有值，這一行不再插手。
+          */}
+          <select id="tc-skill" value={chosenSkill} onChange={(e) => setSkillId(e.target.value)}>
             <option value="">請選擇</option>
             {skills.data?.skills.map((s) => (
               <option key={s.skill_id} value={s.skill_id}>
@@ -253,12 +271,12 @@ export function TestCaseList() {
             onChange={(e) => setPrompt(e.target.value)}
           />
         </p>
-        <CreateValidation skillId={skillId} name={name} prompt={prompt} />
+        <CreateValidation skillId={chosenSkill} name={name} prompt={prompt} />
         <button
           type="submit"
-          disabled={create.isPending || skillId === "" || name === "" || prompt.trim() === ""}
+          disabled={create.isPending || chosenSkill === "" || name === "" || prompt.trim() === ""}
           aria-describedby={
-            skillId === "" || name === "" || prompt.trim() === "" ? "create-why" : undefined
+            chosenSkill === "" || name === "" || prompt.trim() === "" ? "create-why" : undefined
           }
         >
           {create.isPending ? "建立中…" : "建立"}
@@ -1015,7 +1033,15 @@ function DatasetSection({ testCaseId }: { testCaseId: string }) {
     <>
       <h2>測試資料</h2>
       <p>
-        <Link className="action" to="/lab/datasets" search={{ test_case: testCaseId }}>
+        {/*
+          `a.action` 是這個 app 用來標「這一頁存在的理由」的框，而 `index.css` 自己
+          寫著理由：「if everything is emphasised nothing is, and the app already ran
+          that experiment in the other direction」。全 app 七個呼叫點，其他每一頁都
+          只有一個；這一頁有兩個，而且**先出現的是選用的那個**——上傳資料集不是必要
+          條件（沒有 Dataset 一樣跑得起來），前往權限確認才是這一頁乃至整個試驗室存在
+          的理由。拿掉這裡的強調，不動任何區塊順序。
+        */}
+        <Link to="/lab/datasets" search={{ test_case: testCaseId }}>
           上傳檔案
         </Link>
       </p>

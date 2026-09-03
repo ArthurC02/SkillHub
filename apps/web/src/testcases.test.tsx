@@ -447,6 +447,29 @@ test("列表 ?skill= narrows the request and says so, with a way back to the ful
   expect(container.textContent).toContain("顯示全部");
 });
 
+/**
+ * 網址已經指名了 Skill，建立表單還是問你一次。
+ *
+ * 從 `SkillDetail` 的「此 Skill 的 Test Case」過來，網址是 `?skill=<uuid>`，頁面上半
+ * 部的篩選提示已經用 `ownedSkill.name` 把它叫出來了——下半部的 Skill 選單卻停在
+ * 「請選擇」，停用的建立鈕下面寫著「還不能建立，因為：選一個 Skill」，**在一個已經
+ * 指名了 Skill 的畫面上**。那個原因是頁面自己造出來的。
+ *
+ * 更難看的一半是它容許不一致：橫幅寫著「只顯示 X 的」，選單卻可以選 Y，按下建立就
+ * 直接跳到一個屬於 Y 的新 Test Case，中間沒有任何一句話。
+ *
+ * 押的是選單的 value。把 `|| ownedSkill?.skill_id` 拿掉就變紅。
+ */
+test("列表 ?skill= 指名的 Skill 要預先填進建立表單，不要再問一次", async () => {
+  listSearch = { skill: SKILL };
+  stubPlatform({ testCases: [LIST_ROW] });
+  await renderList();
+  await waitFor(() => container.querySelector<HTMLSelectElement>("#tc-skill")?.value === SKILL);
+
+  expect(container.querySelector<HTMLSelectElement>("#tc-skill")!.value).toBe(SKILL);
+  expect(container.textContent).not.toContain("還不能建立，因為：選一個 Skill");
+});
+
 test("設計 §2.4 the Rubric save button says why it cannot be pressed", async () => {
   // The fifth disabled control on this screen and the only one that stated no
   // reason: 「目前 1 條有內容」 reports a count, not a cause, so a dead button read

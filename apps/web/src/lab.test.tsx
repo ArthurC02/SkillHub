@@ -97,7 +97,13 @@ function summary(hash: string, files: string[]): PreflightResponse {
  * lists one file, and after `changePermissions()` it lists two and refuses the
  * old hash with 422 — which is exactly what the server does.
  */
-function stubPlatform(initial: PreflightResponse = summary("hash-one", ["rows.csv"])) {
+function stubPlatform(
+  initial: PreflightResponse = summary("hash-one", ["rows.csv"]),
+  /** 驗收條件。空陣列是一個真實而且會讓整次 Run 白跑的狀態，所以它是一個參數。 */
+  criteria: { id: string; text: string; source: "user"; confirmed_at: string | null }[] = [
+    { id: "c1", text: "沒有重複的列", source: "user", confirmed_at: "2026-08-01T00:00:00Z" },
+  ],
+) {
   const calls: { url: string; body?: string }[] = [];
   let current = initial;
   let refusal = "";
@@ -113,6 +119,20 @@ function stubPlatform(initial: PreflightResponse = summary("hash-one", ["rows.cs
     const url = String(input);
     calls.push({ url, body: init?.body as string | undefined });
     if (url.endsWith("/versions")) return json(VERSIONS);
+    // 主詞的兩個來源。這一頁鉅細靡遺地列出這次 Run 碰得到什麼，卻沒說它是**誰**的
+    // 什麼——所以這兩個端點以前在這個替身裡是 404，而沒有任何一支測試發現。
+    if (url.split("?")[0].endsWith("/skills"))
+      return json({ skills: [{ skill_id: SKILL, name: "CSV 清理", summary: "整理 CSV。" }] });
+    if (url.includes(`/test-cases/${TEST_CASE}`))
+      return json({
+        test_case_id: TEST_CASE,
+        skill_id: SKILL,
+        name: "去重複列",
+        user_prompt: "把重複的列去掉。",
+        acceptance_criteria: criteria,
+        created_at: "2026-08-01T00:00:00Z",
+        updated_at: "2026-08-01T00:00:00Z",
+      });
     if (url.includes("/runs/preflight/confirm")) {
       const sent = JSON.parse(String(init?.body)) as { summary_hash: string };
       return sent.summary_hash === current.summary_hash
@@ -143,6 +163,40 @@ function stubPlatform(initial: PreflightResponse = summary("hash-one", ["rows.cs
   };
 }
 
+/**
+ * 那顆按鈕上寫著「我確認以上權限」，而在此之前這一頁從頭到尾沒說**你正在確認什麼**。
+ *
+ * 畫面給的是：一個只寫著 `v2（最新）・2026-08-02` 的版本下拉、一整份權限摘要、
+ * 然後一顆按鈕。Skill 的名字沒有出現，Test Case 的名字沒有出現，會被逐條判定的
+ * 驗收條件有幾條也沒有出現——唯一能認出主詞的線索是網址列裡的兩個 UUID。
+ * `summary` 裡明明帶著 `test_case_id` 與 `skill_version_id`。
+ *
+ * 開兩個分頁、或從 RunCompare 按「以相同的 Test Case 與版本重新試跑」進來之後，
+ * 讀者沒有任何辦法確認自己確認的是哪一次試跑。設計 §3 第 1、2 條。
+ */
+test("TEST-009 執行前確認要說出你正要跑的是哪一個 Skill、哪一段題目", async () => {
+  stubPlatform();
+  await renderLab();
+  await waitFor(() => text().includes("去重複列"));
+
+  expect(text()).toContain("CSV 清理");
+  expect(text()).toContain("去重複列");
+  // 有驗收條件的時候不該出現那句警告。
+  expect(text()).not.toContain("不會產生逐條判定");
+});
+
+/**
+ * 一個沒有驗收條件的 Test Case 跑得起來、會花掉額度、而且**不會產生任何判定**。
+ * 在此之前沒有一個畫面提過這件事，包括最後一個可以反悔的這一個。
+ */
+test("TEST-009 沒有驗收條件的 Run 會白跑，而這件事要在按下去之前說", async () => {
+  stubPlatform(summary("hash-one", ["rows.csv"]), []);
+  await renderLab();
+  await waitFor(() => text().includes("去重複列"));
+
+  expect(text()).toContain("不會產生逐條判定");
+});
+
 async function renderLab(
   search: {
     skill: string | undefined;
@@ -170,6 +224,8 @@ async function renderLab(
     await router.navigate({ to: "/lab/run", search });
   });
 }
+
+const text = () => container.textContent ?? "";
 
 async function waitFor(done: () => boolean, timeoutMs = 2000) {
   const deadline = Date.now() + timeoutMs;

@@ -8,6 +8,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ApiError } from "../api/client";
 import { confirmPreflight, getPreflight, startRun, type PreflightSummary } from "../api/lab";
 import { useSkillVersions } from "../api/skills";
+import { useOwnSkills, useTestCase } from "../api/testcases";
 
 /**
  * 03:TEST-008/009 — the pre-run permission summary and its confirmation.
@@ -161,6 +162,14 @@ export function RunPreflight() {
   // Home's `!!useMe().data` — because 「還在問」 must not be rendered as 「沒登入」
   // on a page whose entire body is at stake.
   const me = useMe();
+  // 主詞。這一頁鉅細靡遺地說出這次 Run 會碰到哪些工具、能連哪些網路、吃掉多少記憶體，
+  // 卻從頭到尾沒說**你正要拿哪一份東西、去跑哪一段題目**——唯一能認出主詞的線索是
+  // 網址列裡的兩個 UUID，而按鈕上寫著「我確認以上權限」。設計 §3 第 1、2 條：這一頁
+  // 的頭條不是「有哪些權限」，是「你正要拿這一份去跑這一件事」，權限是它的細節。
+  // 兩個 hook 都是既有的、而且使用者剛剛走過的畫面已經讀過（TestCaseDetail 讀
+  // `useTestCase`，TestCaseList 的選單讀 `useOwnSkills`），React Query 同 key 去重。
+  const testCaseInfo = useTestCase(testCase);
+  const ownSkills = useOwnSkills();
   const [message, setMessage] = useState("");
   const [runId, setRunId] = useState("");
   useEffect(() => {
@@ -237,9 +246,20 @@ export function RunPreflight() {
       <section>
         <h1>執行前權限確認</h1>
         <p>
-          這個頁面需要 <code>?skill=&amp;test_case=</code> 兩個 ID。Test Case 與 Dataset 請在{" "}
-          <Link to="/lab/test-cases">Test Case 頁</Link> 建立,再從那裡連過來;要跑哪一個 Skill
-          Version 在這個頁面上選。
+          {/* 資訊架構 §5 IA-6 把「這個頁面需要兩個 ID」明文記成「一頁誤導」。當時的
+              修法只是把未登入分支排到它前面——**那句話本身沒有被改，而它今天還有
+              一條活的入邊**：GeneratedNotice 的「先跑一次試跑」連到 /lab/run?skill=
+              而刻意不帶 test_case。一個剛生成完一個 Skill 的人，被 app 內部的連結
+              送到一句教他讀網址的話上。連結也補上 `skill`，否則他手上唯一有的那個
+              id 在這一跳被丟掉。 */}
+          {skill !== ""
+            ? "還要先挑一個 Test Case，才知道這次要跑哪一段題目。"
+            : "要先挑一個 Skill 與一個 Test Case。"}
+          {" 到 "}
+          <Link to="/lab/test-cases" search={{ skill: skill || undefined }}>
+            Test Case 頁
+          </Link>
+          建立或選一個,再從那裡連過來;要跑哪一個 Skill Version 在這個頁面上選。
         </p>
       </section>
     );
@@ -248,9 +268,27 @@ export function RunPreflight() {
   // One shell for every state, so the picker never disappears while the summary
   // it selects is loading — a picker that vanishes mid-load is one the reader
   // cannot use to get out of a version that fails to load.
+  const skillName = ownSkills.data?.skills.find((sk) => sk.skill_id === skill)?.name;
+  const criteria = testCaseInfo.data?.acceptance_criteria.length;
+
   const shell = (children: ReactNode) => (
     <section>
       <h1>執行前權限確認</h1>
+      <p>
+        Skill：<strong>{skillName ?? (ownSkills.isPending ? "讀取中…" : "不在你的清單裡")}</strong>
+        {" ・ "}
+        Test Case：
+        <strong>
+          {testCaseInfo.data?.name ?? (testCaseInfo.isPending ? "讀取中…" : "讀不到名稱")}
+        </strong>
+      </p>
+      {criteria === 0 && (
+        // 這一句要在最後一個可以反悔的畫面上說。沒有驗收條件的 Run 跑得起來、會花掉
+        // 額度、而且不會產生任何逐條判定——在此之前沒有一個畫面提過。
+        <p className="note">
+          這個 Test Case 沒有驗收條件，所以這次 Run 不會產生逐條判定。試跑本身照常執行。
+        </p>
+      )}
       <SkillVersionPicker
         skillId={skill}
         value={version}
@@ -472,10 +510,16 @@ export function RunPreflight() {
 
       {runId ? (
         <p>
-          已開始 Run:{" "}
-          <Link to="/runs/$runId" params={{ runId }}>
-            {runId}
+          {/* 設計 §2.6「平面答案優先，識別符折疊」。這一頁此刻唯一的主要動作，字面
+              以前是一串 36 字元的十六進位——長得像一個資料欄位而不像一個出口。
+              id 留著（它是這次 Run 的永久識別，鐵律 10），但排在答案後面。 */}
+          已開始 Run。{" "}
+          <Link className="action" to="/runs/$runId" params={{ runId }}>
+            查看這次 Run 的結果
           </Link>
+          <span className="note">
+            Run ID：<code>{runId}</code>
+          </span>
         </p>
       ) : (
         <button
@@ -483,7 +527,11 @@ export function RunPreflight() {
           disabled={confirmAndRun.isPending}
           onClick={() => confirmAndRun.mutate(hash)}
         >
-          我確認以上權限,開始 Run
+          {/* 設計 §2.4：停用要說原因，而這裡的原因（正在送出）以前一個字都沒有——
+              按鈕只是變灰。這顆按鈕會依序發兩個請求（confirmPreflight 然後
+              startRun），是整個發動側唯二真的產生副作用的按鈕之一。同一個 app 裡
+              另外十一顆按鈕全部不是這樣：建立中…、儲存中…、Fork 中…。 */}
+          {confirmAndRun.isPending ? "開始中…" : "我確認以上權限,開始 Run"}
         </button>
       )}
       <p>不同意就不要按下按鈕:未確認的 Run 不會被建立。</p>

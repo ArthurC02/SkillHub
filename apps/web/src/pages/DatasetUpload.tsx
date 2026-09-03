@@ -153,7 +153,10 @@ export function DatasetUpload() {
                   upload.mutate(file);
                 }}
               >
-                上傳
+                {/* 設計 §2.4：停用要說原因。這顆與 RunPreflight 的「開始 Run」是
+                    整個發動側唯二真的產生副作用的按鈕，兩顆以前都只是變灰不說話
+                    ——那正是 §2.4 開宗明義說的「會被讀成 bug」。 */}
+                {upload.isPending ? "上傳中…" : "上傳"}
               </button>
             </>
           )}
