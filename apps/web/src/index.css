@@ -647,11 +647,26 @@ main :is(p, li, dd, dt, summary) {
 }
 
 /* The 02:DISC-002 columns on a result row. */
+/* 04 丙-135。實測 2026-09-03（chromium 1280x900，`e2e/rendered.spec.ts` 的同一台）：
+   一張結果卡 438px，其中這份 <dl> 佔 255px，而 <dl> 裡的「風險提示」一列自己就是
+   114px——因為兩個徽章與兩段但書是同一個 flex 的鄰居，包在同一串裡。兩張卡上有 43%
+   的字逐字相同，而它們與能區辨的字**混在同一個視覺通道裡**，所以掃不動。
+
+   **但書不能搬走，也不能折。** §2.11(c) 要求每一個徽章「在同一個區塊、以文字說出它
+   不涵蓋什麼」，而 §4.3 對卡片的整個論證是「每一則要能被單獨判斷」——那就定義了「區塊」
+   ＝這張卡；§4.3 另外明寫「一則卡片要放得下風險摘要、驗證狀態、可散布性與停用理由，
+   那些一項都不准折疊」。把但書提到清單層或收進 <details>，是拿 §0 順位 1 去換順位 4。
+
+   所以讓的是形式：**值與徽章留在第一行，但書落到自己的一行。** 一個字都沒有少，
+   相鄰關係一格都沒有變，而徽章那一行變成一條可以橫掃二十張卡的通道。
+   守門在 e2e（jsdom 沒有行盒，這件事在那一層結構上量不到）。 */
 .result-facets {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 4px 12px;
-  margin: 8px 0;
+  /* 12px 而不是 8px：這是頭條（名稱／摘要／符合原因）與證據之間的界線，
+     而 8px 與 <dl> 自己的行距相同，於是那條界線在視覺上不存在。 */
+  margin: 12px 0 8px;
   font-size: 14px;
 }
 
@@ -661,6 +676,25 @@ main :is(p, li, dd, dt, summary) {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+/* 事實與限定語分成兩個顏色通道，而**兩個 token 都是既有的**：`--text-h` 在這個
+   app 一路都是「讀者在找的那個東西」（`.verdict`、`.compare-table th[scope=row]`、
+   `.badge`、標題），`--text` 是敘述。卡片上的值以前與它的但書同色同級同字重，於是
+   讀者看到的是「已收錄收錄不等於精選。」——一句話裡分不出哪一半是事實。
+
+   **選擇的是「把事實提上來」而不是「把但書壓下去」**：`.note` 的既有註解記著
+   `opacity: 0.7` 那次把 --text 壓到 3.03:1（AA 底線之下），結論是「secondary text
+   is demoted by size only」。提升主要通道不碰那條結論，而且用的是已經被
+   `contrast.test.ts` 量過的 token 對。零像素成本——這一點是刻意的：先試過讓但書
+   換行，量到每張卡 438→510px，二十張卡多捲 1440px，而沒有任何規則要求那個代價
+   （§1.2 管的是「頭條」，頭條是卡片上方那 121px，兩種做法都沒動到它）。 */
+.result-facets dd {
+  color: var(--text-h);
+}
+
+.result-facets dd .note {
+  color: var(--text);
 }
 
 .badge-untested {

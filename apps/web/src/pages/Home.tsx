@@ -11,6 +11,7 @@ import { RiskSummary } from "../components/RiskIndicator";
 import { SignInAction } from "../components/SignIn";
 import { Timestamp } from "../components/Timestamp";
 import { MAX_COMPARE } from "./Compare";
+import type { HomeSearch } from "../router";
 import type { PublicSearchResult, SearchFilters } from "../api/types";
 
 /**
@@ -27,12 +28,26 @@ import type { PublicSearchResult, SearchFilters } from "../api/types";
  * Query and filters live in the URL (see router.tsx), so a filtered result page
  * can be shared and survives a reload.
  */
+/** 網址上的候選勾選，修剪到 DISC-009 的上限。空與缺席是同一個答案。 */
+function parseSelection(value: string | undefined): string[] {
+  return value ? value.split(",").filter(Boolean).slice(0, MAX_COMPARE) : [];
+}
+
 export function Home() {
   const search = useSearch({ from: "/" });
   const navigate = useNavigate({ from: "/" });
   const [draft, setDraft] = useState(search.q ?? "");
   useEffect(() => setDraft(search.q ?? ""), [search.q]);
-  const [selected, setSelected] = useState<string[]>([]);
+  /**
+   * DISC-009 的候選勾選，來源是網址而不是元件狀態。
+   *
+   * `compareRoute` 的註解自己寫著「the selection lives in the URL so a comparison
+   * is linkable and survives a reload」——那個裁定在 `/compare` 上成立，在產生它的
+   * 這一步上以前不成立：`useState` 撐不過一次導覽，所以「比較 → 上一頁 → 換掉一筆」
+   * 每走一次都要重新勾兩個。修剪在這裡而不是在 `validateSearch`，與 `/compare`
+   * 同一條規則（手改的網址落在一份合法的選擇上，不是錯誤頁）。
+   */
+  const selected = parseSelection(search.compare);
   const generateExposed = useGenerateEntryPoint();
   // DISC-001 serves this page to anyone; the exits below must not assume a session.
   const loggedIn = !!useMe().data;
@@ -69,18 +84,20 @@ export function Home() {
   const browsing = search.q === undefined;
   const catalog = useCatalog(filters, browsing);
 
-  useEffect(() => {
-    setSelected([]);
-  }, [search.q, search.script, search.validation, search.agent, search.tier]);
-
   /**
    * Any change to the question — new query or new filter — makes the old
    * selection meaningless: the ids may not be on the page any more, and a
    * hidden selection would compare skills the user can no longer see.
+   *
+   * `compare: undefined` 是**明寫**的，因為這個函式淺層合併：選擇現在住在網址上，
+   * 而合併會把它帶過新的查詢——那正是上面那段話說的、以前由一個 `useEffect` 負責
+   * 擋掉的東西。同一個理由，同一行程式碼裡，而不是在別處的一個副作用裡。
    */
   function submitSearch(next: Partial<typeof search>) {
-    setSelected([]);
-    void navigate({ search: (prev) => ({ ...prev, ...next }), replace: true });
+    void navigate({
+      search: (prev) => ({ ...prev, compare: undefined, ...next }),
+      replace: true,
+    });
   }
 
   /**
@@ -96,7 +113,6 @@ export function Home() {
    * 2026-08-24).
    */
   function clearFilters() {
-    setSelected([]);
     void navigate({ search: { q: search.q }, replace: true });
   }
 
@@ -109,14 +125,27 @@ export function Home() {
     submitSearch({ q: draft.trim() || undefined });
   }
 
+  /**
+   * `replace: true`：勾一個候選不是一段歷史。二十次勾選會讓上一頁變成一條回不去的
+   * 隧道，而 DISC-009 要的是「比完可以回去換一筆」，那條路要留給導覽本身。
+   * 讀的是 `prev` 而不是上面算好的 `selected`：連續兩次點擊之間 navigate 是非同步的。
+   */
   function toggleSelected(skillId: string) {
-    setSelected((current) =>
-      current.includes(skillId)
-        ? current.filter((id) => id !== skillId)
-        : current.length >= MAX_COMPARE
-          ? current
-          : [...current, skillId],
-    );
+    void navigate({
+      // 明寫型別：`navigate` 的 `prev` 是一個含 `{}` 的聯集（這一頁的 search 也可能
+      // 是空的），而下一行要讀它的一個欄位。`import type` 在編譯期被抹掉，所以這不會
+      // 讓 router 與這一頁形成執行期的循環相依。
+      search: (prev: HomeSearch) => {
+        const current = parseSelection(prev.compare);
+        const next = current.includes(skillId)
+          ? current.filter((id) => id !== skillId)
+          : current.length >= MAX_COMPARE
+            ? current
+            : [...current, skillId];
+        return { ...prev, compare: next.length ? next.join(",") : undefined };
+      },
+      replace: true,
+    });
   }
 
   return (

@@ -279,6 +279,57 @@ test.describe("QA-008 real layout", () => {
     });
     expect(fused, `fused to the badge: ${fused.join(" / ")}`).toEqual([]);
   });
+
+  /**
+   * 04 丙-135 — a fact and its qualifier are two colours on a result card.
+   *
+   * Measured 2026-09-03 at 1280×900: two cards on `/?q=pdf` shared 86 of 200
+   * characters verbatim, and the shared half sat in the same visual channel as
+   * the half that discriminates — same 14px, same `--text`, 8px apart. What a
+   * reader saw on one row was 「已收錄收錄不等於精選。」, one run of text with no
+   * signal of where the fact ends and the caveat begins.
+   *
+   * The qualifier cannot be lifted out of the card to fix that. §2.11(c)
+   * requires every badge to state what it does not cover 「在同一個區塊」, and
+   * §4.3's whole argument for cards is 「每一則要能被單獨判斷」 — which makes the
+   * card the block — and it states outright that a card has to hold the risk
+   * summary, the verification state and the refusal reasons with none of them
+   * folded. So the shape gives way instead: the value takes `--text-h`, the
+   * token this app already uses for 「the thing the reader is looking for」
+   * (`.verdict`, `.compare-table th[scope=row]`, `.badge`), and the note keeps
+   * `--text`.
+   *
+   * Asserted here rather than in jsdom because it is the resolved cascade of a
+   * custom property that is being compared, and because the two colours have to
+   * differ **as painted** — the composite-contrast scan above already runs on
+   * this same route, so a promotion that broke AA would be caught next to it.
+   */
+  test("a fact and its qualifier are not the same colour on a result card", async ({ page }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto("/?q=pdf+%E6%91%98%E8%A6%81");
+    await expect(page.locator(".search-result").first()).toBeVisible();
+
+    const same = await page.evaluate(() => {
+      const bad: string[] = [];
+      const dds = Array.from(document.querySelectorAll(".search-result .result-facets dd"));
+      let checked = 0;
+      for (const dd of dds) {
+        const note = dd.querySelector(".note");
+        if (!note) continue;
+        checked++;
+        const value = getComputedStyle(dd).color;
+        const qualifier = getComputedStyle(note).color;
+        if (value === qualifier)
+          bad.push(`「${(dd.textContent ?? "").trim().slice(0, 20)}」 both ${value}`);
+      }
+      // A run that found nothing to compare proves nothing — the same failure
+      // shape the composite-contrast test above guards against.
+      if (checked === 0) bad.push("no facet row on this page carried a qualifier");
+      return bad;
+    });
+    expect(same, `fact and qualifier share a colour: ${same.join(" / ")}`).toEqual([]);
+  });
 });
 
 test.describe("QA-008 the real Tab key", () => {

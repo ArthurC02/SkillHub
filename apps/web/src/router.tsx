@@ -123,6 +123,22 @@ export type HomeSearch = {
   validation?: "passed" | "unverified";
   agent?: AgentRuntime;
   tier?: "curated" | "indexed";
+  /**
+   * DISC-009 的候選勾選，逗號分隔，與 `/compare?ids=` 同一個形狀。
+   *
+   * **這不是一個新決定，是把既有的那個決定套完整。** `compareRoute` 的註解逐字寫著
+   * 「the selection lives in the URL so a comparison is linkable and survives a
+   * reload」——而在此之前，產生那份選擇的上一步把它放在 `useState` 裡，於是
+   * 「比較 → 上一頁 → 換掉一筆 → 再比較」這條 DISC-009 自己的工作流，每走一次都要
+   * 重新勾兩個。同一份東西，晚一步就撐得過重新整理，早一步就撐不過。
+   *
+   * **不是把 `q` 放到 `/compare` 上**（04 丙-136 原本提的修法）：R4 的判準是
+   * 「你在看哪一份東西」，而 `q` 對 `/compare` 既不是它在看的東西也不是偏好，
+   * 是「你從哪來」，§0.2 的偏離帳只收「R 的推導前提在這裡不成立」。而且查詢本來就
+   * 沒有遺失——`submitSearch` 是 `replace: true`，瀏覽器上一頁會回到 `/?q=…`；
+   * 遺失的一直都是勾選。
+   */
+  compare?: string;
 };
 
 const AGENT_RUNTIMES: AgentRuntime[] = ["native", "transpiled", "failed", "unverified"];
@@ -144,6 +160,8 @@ const indexRoute = createRoute({
     // `external` is deliberately not accepted: it means "never imported", so
     // the server refuses it too (curationTierValues in discovery/http.go).
     tier: search.tier === "curated" || search.tier === "indexed" ? search.tier : undefined,
+    // 與 `/compare` 同一條規則：字串收下，超過 MAX_COMPARE 的部分由頁面修剪。
+    compare: typeof search.compare === "string" && search.compare ? search.compare : undefined,
   }),
 });
 

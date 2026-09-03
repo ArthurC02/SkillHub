@@ -226,7 +226,7 @@ GeneratedNotice ► /lab/run                    （同上）
 
 | 位址 | search param | 進網址的理由（取自 `router.tsx`） |
 | --- | --- | --- |
-| `/` | `q`、`script`、`validation`、`agent`、`tier` | 搜尋條件即所看之物；不在列舉內的值直接丟掉，讓手改的網址落在未篩選清單而不是錯誤頁 |
+| `/` | `q`、`script`、`validation`、`agent`、`tier`、`compare` | 搜尋條件即所看之物；不在列舉內的值直接丟掉，讓手改的網址落在未篩選清單而不是錯誤頁。<br>**`compare` 於 2026-09-03 加入（`04` 丙-136）**，逗號分隔，與 `/compare?ids=` 同一個形狀。**它不是一條新規則，是既有那條規則的另一半**：`compareRoute` 的註解逐字寫著「the selection lives in the URL so a comparison is linkable and survives a reload」（DISC-009），而產生那份選擇的上一步把它放在 `useState` 裡——同一份東西，晚一步撐得過重新整理，早一步撐不過，於是 DISC-009 自己的工作流「比較 → 上一頁 → 換掉一筆 → 再比較」每走一次都要重新勾兩個。<br>**丙-136 原本提的是把 `q` 放到 `/compare` 上，那個修法被 R4 擋掉並且沒有做**：`q` 對 `/compare` 既不是「你在看哪一份東西」也不是偏好，是「你從哪來」，而 §0.2 只收「R 的推導前提在這裡不成立」。**而且它的前提本來就不成立**——`submitSearch` 是 `replace: true`，瀏覽器上一頁本來就回得到 `/?q=…`；遺失的一直是勾選 |
 | `/compare` | `ids` | DISC-009：比較要能被連結、能撐過重新整理 |
 | `/skills/$id/package` | `version` | PACK-001／002：版本是路徑之外的另一個「哪一份」 |
 | `/lab/run` | `skill`、`version`、`test_case` | TEST-008／009：三個 id 都可從網址帶入；只有 `version` 另有選單，另外兩個由擁有它們的畫面選 |

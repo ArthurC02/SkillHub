@@ -744,6 +744,57 @@ test("DISC-009: comparison needs two candidates and accepts at most three", asyn
   );
 });
 
+/**
+ * 04 丙-136。`compareRoute` 的註解逐字寫著「the selection lives in the URL so a
+ * comparison is linkable and survives a reload」——那個裁定在 `/compare` 上成立，
+ * 在**產生**那份選擇的這一步上以前不成立：`useState` 撐不過一次導覽，於是
+ * DISC-009 自己的工作流「比較 → 上一頁 → 換掉一筆 → 再比較」每走一次都要重新勾兩個。
+ *
+ * 押的是「網址說了算」：帶著 `compare=` 到站，兩個框就是勾的、比較連結就在。
+ */
+test("DISC-009: 勾選住在網址上，所以它撐得過一次導覽", async () => {
+  stubSearch(TWO_HITS);
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({
+      to: "/",
+      search: {
+        q: "pdf",
+        compare: "aaaaaaaa-0000-0000-0000-000000000001,aaaaaaaa-0000-0000-0000-000000000002",
+      },
+    });
+  });
+  await waitFor(() => compareLink() !== null);
+
+  const boxes = container.querySelectorAll<HTMLInputElement>(".compare-pick input");
+  expect(boxes[0].checked).toBe(true);
+  expect(boxes[1].checked).toBe(true);
+  expect(compareLink()?.getAttribute("href")).toContain(
+    "ids=aaaaaaaa-0000-0000-0000-000000000001%2Caaaaaaaa-0000-0000-0000-000000000002",
+  );
+});
+
+/**
+ * 選擇住到網址上之後，「換一個問題就把它丟掉」這件事換了負責人：以前是一個
+ * `useEffect`，現在是 `submitSearch` 裡明寫的 `compare: undefined`——**因為那個函式
+ * 淺層合併**，不明寫就會把舊的勾選帶過新的查詢，去比較兩個已經不在這一頁上的 Skill。
+ * 下面那一支測的是整份 search 被替換的路徑；這一支測的是合併的那一條。
+ */
+test("DISC-009: 用表單換一個問題，勾選要跟著走掉（合併路徑）", async () => {
+  stubSearch(TWO_HITS);
+  await render(<App />);
+  await submitSearch("pdf");
+  await pick(0);
+  await pick(1);
+  expect(compareLink()).not.toBeNull();
+
+  await submitSearch("another-task");
+  await waitFor(() => compareLink() === null);
+  expect(container.querySelectorAll<HTMLInputElement>(".compare-pick input")[0].checked).toBe(
+    false,
+  );
+});
+
 test("DISC-009: direct URL navigation clears selections from the previous result state", async () => {
   stubSearch(TWO_HITS);
   await render(<App />);
