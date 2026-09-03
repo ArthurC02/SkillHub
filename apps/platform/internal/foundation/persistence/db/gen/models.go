@@ -477,6 +477,8 @@ type Skill struct {
 	CurationTier string
 	// The skill_version the curation review examined. 精選 is shown only while this is still the newest version. See 0042.
 	CuratedVersionID pgtype.UUID
+	// PDM-001 category: documents | writing | data, or NULL when the platform has not assigned one (05 R-19). Copied onto forks. See 0053.
+	Category *string
 }
 
 type SkillRuntimeCompatibility struct {

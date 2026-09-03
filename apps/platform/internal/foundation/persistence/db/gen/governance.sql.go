@@ -1146,7 +1146,7 @@ const takedownSkill = `-- name: TakedownSkill :one
 UPDATE skills
 SET takedown_at = now(), takedown_reason = $3, updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL AND takedown_at IS NULL
-RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id
+RETURNING id, workspace_id, name, summary, forked_from_skill_id, forked_from_version_id, created_at, updated_at, deleted_at, takedown_at, takedown_reason, access_restriction, redistribution, curation_tier, curated_version_id, category
 `
 
 type TakedownSkillParams struct {
@@ -1176,6 +1176,7 @@ func (q *Queries) TakedownSkill(ctx context.Context, arg TakedownSkillParams) (S
 		&i.Redistribution,
 		&i.CurationTier,
 		&i.CuratedVersionID,
+		&i.Category,
 	)
 	return i, err
 }

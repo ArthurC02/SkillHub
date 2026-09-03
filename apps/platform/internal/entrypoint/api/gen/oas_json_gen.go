@@ -21376,6 +21376,10 @@ func (s *PublicSearchResult) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		e.FieldStart("category")
+		s.Category.Encode(e)
+	}
+	{
 		e.FieldStart("tier")
 		s.Tier.Encode(e)
 	}
@@ -21415,20 +21419,21 @@ func (s *PublicSearchResult) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfPublicSearchResult = [13]string{
+var jsonFieldsNameOfPublicSearchResult = [14]string{
 	0:  "skill_id",
 	1:  "name",
 	2:  "summary",
 	3:  "summary_source",
 	4:  "rank",
 	5:  "rank_note",
-	6:  "tier",
-	7:  "risk",
-	8:  "dependencies",
-	9:  "compatibility",
-	10: "verified_at",
-	11: "match_reason",
-	12: "match_reason_source",
+	6:  "category",
+	7:  "tier",
+	8:  "risk",
+	9:  "dependencies",
+	10: "compatibility",
+	11: "verified_at",
+	12: "match_reason",
+	13: "match_reason_source",
 }
 
 // Decode decodes PublicSearchResult from json.
@@ -21506,8 +21511,18 @@ func (s *PublicSearchResult) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"rank_note\"")
 			}
-		case "tier":
+		case "category":
 			requiredBitSet[0] |= 1 << 6
+			if err := func() error {
+				if err := s.Category.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"category\"")
+			}
+		case "tier":
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				if err := s.Tier.Decode(d); err != nil {
 					return err
@@ -21517,7 +21532,7 @@ func (s *PublicSearchResult) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"tier\"")
 			}
 		case "risk":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				if err := s.Risk.Decode(d); err != nil {
 					return err
@@ -21527,7 +21542,7 @@ func (s *PublicSearchResult) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"risk\"")
 			}
 		case "dependencies":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				s.Dependencies = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -21547,7 +21562,7 @@ func (s *PublicSearchResult) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"dependencies\"")
 			}
 		case "compatibility":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				if err := s.Compatibility.Decode(d); err != nil {
 					return err
@@ -21597,7 +21612,7 @@ func (s *PublicSearchResult) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b11011111,
-		0b00000011,
+		0b00000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -29449,6 +29464,10 @@ func (s *SkillDetail) encodeFields(e *jx.Encoder) {
 		s.Scope.Encode(e)
 	}
 	{
+		e.FieldStart("category")
+		s.Category.Encode(e)
+	}
+	{
 		e.FieldStart("tier")
 		s.Tier.Encode(e)
 	}
@@ -29514,23 +29533,24 @@ func (s *SkillDetail) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfSkillDetail = [16]string{
+var jsonFieldsNameOfSkillDetail = [17]string{
 	0:  "skill_id",
 	1:  "name",
 	2:  "summary",
 	3:  "scope",
-	4:  "tier",
-	5:  "enrichment",
-	6:  "version",
-	7:  "source",
-	8:  "license",
-	9:  "redistribution",
-	10: "derivation",
-	11: "limitations",
-	12: "allowed_tools",
-	13: "risk",
-	14: "compatibility",
-	15: "access_restriction",
+	4:  "category",
+	5:  "tier",
+	6:  "enrichment",
+	7:  "version",
+	8:  "source",
+	9:  "license",
+	10: "redistribution",
+	11: "derivation",
+	12: "limitations",
+	13: "allowed_tools",
+	14: "risk",
+	15: "compatibility",
+	16: "access_restriction",
 }
 
 // Decode decodes SkillDetail from json.
@@ -29538,7 +29558,7 @@ func (s *SkillDetail) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode SkillDetail to nil")
 	}
-	var requiredBitSet [2]uint8
+	var requiredBitSet [3]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -29588,8 +29608,18 @@ func (s *SkillDetail) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"scope\"")
 			}
-		case "tier":
+		case "category":
 			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				if err := s.Category.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"category\"")
+			}
+		case "tier":
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				if err := s.Tier.Decode(d); err != nil {
 					return err
@@ -29599,7 +29629,7 @@ func (s *SkillDetail) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"tier\"")
 			}
 		case "enrichment":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				if err := s.Enrichment.Decode(d); err != nil {
 					return err
@@ -29629,7 +29659,7 @@ func (s *SkillDetail) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"source\"")
 			}
 		case "license":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				if err := s.License.Decode(d); err != nil {
 					return err
@@ -29639,7 +29669,7 @@ func (s *SkillDetail) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"license\"")
 			}
 		case "redistribution":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				if err := s.Redistribution.Decode(d); err != nil {
 					return err
@@ -29649,7 +29679,7 @@ func (s *SkillDetail) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"redistribution\"")
 			}
 		case "derivation":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				if err := s.Derivation.Decode(d); err != nil {
 					return err
@@ -29659,7 +29689,7 @@ func (s *SkillDetail) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"derivation\"")
 			}
 		case "limitations":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				s.Limitations = make([]SkillLimitation, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -29696,7 +29726,7 @@ func (s *SkillDetail) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"allowed_tools\"")
 			}
 		case "risk":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				if err := s.Risk.Decode(d); err != nil {
 					return err
@@ -29706,7 +29736,7 @@ func (s *SkillDetail) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"risk\"")
 			}
 		case "compatibility":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				if err := s.Compatibility.Decode(d); err != nil {
 					return err
@@ -29734,9 +29764,10 @@ func (s *SkillDetail) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [2]uint8{
-		0b00111111,
-		0b01101111,
+	for i, mask := range [3]uint8{
+		0b01111111,
+		0b11011110,
+		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

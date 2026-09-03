@@ -181,6 +181,7 @@ SELECT s.skill_id, s.name,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
+       cur.category,
        -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
        -- 2026-08-25 this page said 「超過 N 個」 -- a LOWER BOUND, from which a
        -- reader cannot tell 21 from 2100 -- because there was no count to say.
@@ -226,7 +227,10 @@ LEFT JOIN LATERAL (
     SELECT CASE
         WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
         THEN 'curated' ELSE 'indexed'
-    END AS tier
+    END AS tier,
+    -- PDM-001 category (0053). NULL is a typed absence the handler words as
+    -- 尚未定值, never a guessed shelf (05 R-19).
+    sk.category
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
@@ -248,6 +252,10 @@ WHERE s.tsv @@ websearch_to_tsquery('english', sqlc.arg(query)::text)
   AND (
     sqlc.narg(curation_tier)::text IS NULL
     OR COALESCE(cur.tier, 'indexed') = sqlc.narg(curation_tier)::text
+  )
+  AND (
+    sqlc.narg(category)::text IS NULL
+    OR cur.category = sqlc.narg(category)::text
   )
 ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)) DESC
 LIMIT sqlc.arg(result_limit);
@@ -282,6 +290,7 @@ SELECT s.skill_id, s.name,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
+       cur.category,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
 JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
@@ -303,7 +312,10 @@ LEFT JOIN LATERAL (
     SELECT CASE
         WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
         THEN 'curated' ELSE 'indexed'
-    END AS tier
+    END AS tier,
+    -- PDM-001 category (0053). NULL is a typed absence the handler words as
+    -- 尚未定值, never a guessed shelf (05 R-19).
+    sk.category
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
@@ -324,6 +336,10 @@ WHERE (
   AND (
     sqlc.narg(curation_tier)::text IS NULL
     OR COALESCE(cur.tier, 'indexed') = sqlc.narg(curation_tier)::text
+  )
+  AND (
+    sqlc.narg(category)::text IS NULL
+    OR cur.category = sqlc.narg(category)::text
   )
 ORDER BY (COALESCE(cur.tier, 'indexed') = 'curated') DESC,
          ver.created_at DESC NULLS LAST,
@@ -411,6 +427,7 @@ SELECT c.skill_id, s.name,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
+       cur.category,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
        (c.distance IS NULL)::bool AS unranked,
        -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
@@ -463,7 +480,10 @@ LEFT JOIN LATERAL (
     SELECT CASE
         WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
         THEN 'curated' ELSE 'indexed'
-    END AS tier
+    END AS tier,
+    -- PDM-001 category (0053). NULL is a typed absence the handler words as
+    -- 尚未定值, never a guessed shelf (05 R-19).
+    sk.category
     FROM skills sk
     WHERE sk.id = c.skill_id
 ) cur ON true
@@ -491,6 +511,10 @@ WHERE (c.distance IS NULL OR c.distance <= sqlc.arg(max_distance)::float8)
   AND (
     sqlc.narg(curation_tier)::text IS NULL
     OR COALESCE(cur.tier, 'indexed') = sqlc.narg(curation_tier)::text
+  )
+  AND (
+    sqlc.narg(category)::text IS NULL
+    OR cur.category = sqlc.narg(category)::text
   )
 ORDER BY c.distance ASC NULLS LAST
 LIMIT sqlc.arg(result_limit);

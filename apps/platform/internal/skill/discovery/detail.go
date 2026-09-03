@@ -336,8 +336,13 @@ type skillDetail struct {
 	// reader can always tell which text the author wrote.
 	Summary string `json:"summary"`
 	// Scope is catalog | private: which of the two reads answered.
-	Scope      string         `json:"scope"`
-	Tier       labelled       `json:"tier"`
+	Scope string   `json:"scope"`
+	Tier  labelled `json:"tier"`
+	// Category is the PDM-001 shelf (0053), and it is answered off the skill row
+	// rather than off the version: a category says what the bytes are for, and
+	// unlike Tier it does not lapse when the content moves on. NULL renders as
+	// 尚未定值 — 05 R-19 is open — never as a guessed shelf.
+	Category   labelled       `json:"category"`
 	Enrichment enrichmentInfo `json:"enrichment"`
 	// Limitations is DISC-003 一般模式「限制」, from both sources, each labelled.
 	// Always present, empty when neither source stated one — which is not a
@@ -413,7 +418,10 @@ func (s *Service) SkillDetail(ctx context.Context, skill registry.Skill) (skillD
 		Name:    skill.Name,
 		// Indexed until the version is resolved: the verdict is about a specific
 		// version, so it cannot be answered before we know which one this is.
-		Tier:        tierLabel(TierIndexed),
+		Tier: tierLabel(TierIndexed),
+		// Not deferred like Tier: the shelf is about the skill, not about which
+		// version is newest, so there is nothing to resolve first.
+		Category:    categoryLabel(skill.Category),
 		Limitations: []limitation{},
 		Derivation:  derivation(skill),
 		License:     licenseInfo{Status: statusLabel(LicenseStatusUnknown)},

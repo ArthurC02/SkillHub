@@ -1,6 +1,6 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent } from "react";
-import { useCatalog, useSkillSearch } from "../api/skills";
+import { useCatalog, useCatalogTotal, useSkillSearch } from "../api/skills";
 import { ReadFailure } from "../components/LoginRequired";
 import { useGenerateEntryPoint } from "../api/generate";
 import { useMe } from "../api/me";
@@ -12,7 +12,7 @@ import { SignInAction } from "../components/SignIn";
 import { Timestamp } from "../components/Timestamp";
 import { MAX_COMPARE } from "./Compare";
 import type { HomeSearch } from "../router";
-import type { PublicSearchResult, SearchFilters } from "../api/types";
+import type { PublicSearchResult, SearchFilters, SkillCategory } from "../api/types";
 
 /**
  * DISC-001/002/003/004/005: public intent search. Anonymous — GET
@@ -57,6 +57,7 @@ export function Home() {
     validation: search.validation,
     agent: search.agent,
     tier: search.tier,
+    category: search.category,
   };
   // `undefined` = nothing submitted yet, so no request. `""` is a blank submit,
   // which the server answers with no_results plus the suggestion copy (DISC-005);
@@ -167,7 +168,41 @@ export function Home() {
         <button type="submit" className="action">
           搜尋
         </button>
+        {/*
+          設計 §4.6.3／§3 第 18 條: NOT an `.action`. This page has exactly one
+          filled primary action and it is 搜尋 above; an outlined link beside it
+          is the second thing a reader can do, not a second thing the page
+          claims is its job.
+
+          It is the 「什麼都沒找到就自己做一個」 exit, moved up from the empty
+          state where it was the only place it existed — 資訊架構 §2.2 第三向
+          wants the next step visible before the reader hits the wall, and a
+          reader who already knows the catalogue has nothing for them should not
+          have to type a query that fails first.
+
+          ⛔ **不是生成入口**（ADR-046 決策 7／GEN-004／`01` §10 邊界 1）: this
+          goes to the reader's own workspace, which is where importing and
+          creating live. The M5 generation entry stays behind its flag and stays
+          in the no_results branch only.
+        */}
+        <Link className="hero-create" to="/workspace/skills" hash="create">
+          自己做一個 Skill
+        </Link>
       </form>
+
+      {/*
+        02:DISC-006 / 設計 §1.2「快到第一個判斷」. Directly under the box and
+        above the filter disclosure, because it is the shortest path this page
+        has to a first judgement: four addresses, each with the exact number of
+        skills behind it, before any reader has typed anything.
+
+        Rendered in BOTH states of the page. In the search state it is how a
+        reader narrows a result set without opening the filter bar; in the
+        catalogue state it is the only 「這裡有哪些東西」 the product has ever
+        shown (the three PDM-001 shelves existed since 2026-08-14 and had never
+        appeared on a screen).
+      */}
+      <CategoryNav filters={filters} browsing={browsing} />
 
       {/*
         No `disabled` any more. The four live dimensions used to be dead until a
@@ -185,6 +220,7 @@ export function Home() {
           selected={selected}
           onToggle={toggleSelected}
           narrowing={Object.values(filters).some((value) => value !== undefined)}
+          tierFiltered={filters.tier !== undefined}
         />
       )}
 
@@ -203,10 +239,20 @@ export function Home() {
           </p>
 
           {/* Non-blocking notices: results (if any) are still shown below. */}
+          {/*
+            04 丙-117 ②. `degraded_reason` is the server's ENGLISH diagnostic
+            (「embedding unavailable; lexical search only」) and it was printed
+            here, on the product's first screen, to a Chinese-speaking reader.
+            The sentence above already states the consequence — which is the
+            part a reader can act on — so the diagnostic is dropped rather than
+            translated in the client: 設計 §4.4 says the wording is the
+            server's, and inventing a Chinese sentence for a value only the
+            server knows would be this page speaking for it. The field is still
+            in the response for whoever is debugging.
+          */}
           {data.degraded && (
             <p className="notice" role="status">
               目前只用關鍵字比對搜尋，跨語言與語意相近的結果會找不到，召回率明顯較低。
-              {data.degraded_reason && <span className="note">（{data.degraded_reason}）</span>}
             </p>
           )}
           {data.partial_index && (
@@ -261,8 +307,27 @@ export function Home() {
           {data.no_results && (
             <div>
               <p>沒有夠接近的 Skill。</p>
-              {/* DISC-005: the suggestion is the server's, not a hardcoded string. */}
-              {data.query_suggestion && <p>{data.query_suggestion}</p>}
+              {/*
+                04 丙-117 ①. 「換個說法」 and 「語意搜尋現在是壞的」 are opposite
+                advice, and this page already states that rule one branch up:
+                放寬篩選 and 換個說法 are opposite, so giving the wrong one sends
+                the reader looking where the answer is not. `degraded` and
+                `no_results` are the same opposition and had no such branch
+                between them — when the vector leg is down, no amount of
+                rewording can succeed, so the server's suggestion is advice that
+                cannot be followed.
+
+                DISC-005 is intact: the suggestion is still the server's and is
+                still the only wording shown when it can be acted on.
+              */}
+              {data.degraded ? (
+                <p>
+                  而且這次搜尋只用了關鍵字比對，語意相近與跨語言的結果找不出來——現在找不到不代表
+                  目錄裡沒有。換個說法幫不上忙；直接看目錄，或稍後再搜尋一次。
+                </p>
+              ) : (
+                data.query_suggestion && <p>{data.query_suggestion}</p>
+              )}
               {/*
                 設計 §2.2 第三向。DISC-006 的目錄補的是「搜尋找不到時，『這裡有什麼』
                 沒有位址」——位址現在有了，而**最需要它的那個狀態原本仍然到不了**：
@@ -385,17 +450,51 @@ function Catalog({
   selected,
   onToggle,
   narrowing,
+  tierFiltered,
 }: {
   query: ReturnType<typeof useCatalog>;
   selected: string[];
   onToggle: (skillId: string) => void;
   narrowing: boolean;
+  /** A 來源層級 filter is already on, so the list IS one of the two shelves. */
+  tierFiltered: boolean;
 }) {
   if (query.isPending) return <Loading what="目錄" />;
   if (query.error) return <ReadFailure error={query.error} what="目錄" />;
   if (!query.data) return null;
 
   const { results, total, truncated } = query.data;
+
+  /*
+    r3 提案 A. `BrowseCatalogSkills` has ordered curated rows first since
+    migration 0042 (02:DISC-006 ② makes that ORDER BY the enforcement point),
+    and nothing on the screen ever said so — the two tier badges are
+    byte-identical, so an ordered list read as an unordered one. This SPLITS
+    what the server already sorted; it does not sort anything, and the search
+    state is deliberately untouched (§2.11: search ranks by similarity, and
+    pushing curation into it would make `rank` lie).
+  */
+  const curated = results.filter((hit) => hit.tier.value === "curated");
+  const rest = results.filter((hit) => hit.tier.value !== "curated");
+  const shelved = !tierFiltered && curated.length > 0 && rest.length > 0;
+
+  const row = (hit: PublicSearchResult) => (
+    <SearchResultRow
+      key={hit.skill_id}
+      hit={hit}
+      checked={selected.includes(hit.skill_id)}
+      atLimit={selected.length >= MAX_COMPARE}
+      onToggle={onToggle}
+      /* 設計 §3 第 14 條. Every row on this page carries the SAME `rank_note` —
+         one sentence, N copies, directly under a sentence at the top of the
+         list that says the same thing. The server still sends it（a client
+         rendering one row alone needs it, and `rank: null` owes an
+         explanation）; this page states it once, which is the 標記說明
+         precedent above and §0's 「數量留在外面，段落收進去」. */
+      rankNoteInList={false}
+    />
+  );
+
   return (
     <section aria-labelledby="catalog-heading">
       <h2 id="catalog-heading">目錄裡有什麼</h2>
@@ -429,25 +528,52 @@ function Catalog({
               : `目錄共 ${total} 個 Skill，全部列在下面。`}
           </p>
           <MarkerLegend />
-          <ul className="search-results" aria-label="目錄">
-            {results.map((hit) => (
-              <SearchResultRow
-                key={hit.skill_id}
-                hit={hit}
-                checked={selected.includes(hit.skill_id)}
-                atLimit={selected.length >= MAX_COMPARE}
-                onToggle={onToggle}
-                /* 設計 §3 第 14 條. Every row on this page carries the SAME
-                   `rank_note` — one sentence, N copies, directly under a
-                   sentence at the top of the list that says the same thing.
-                   The server still sends it（a client rendering one row alone
-                   needs it, and `rank: null` owes an explanation）; this page
-                   states it once, which is the 標記說明 precedent above and
-                   §0's 「數量留在外面，段落收進去」. */
-                rankNoteInList={false}
-              />
-            ))}
-          </ul>
+          {shelved ? (
+            <>
+              {/*
+                r3 提案 A —— 「精選」書架。
+                設計 §2.11(c): a highlight has to say, IN THE SAME BLOCK and in
+                visible text (never only a `title`), what it does not cover. The
+                four sentences below are four rules, and none of them is
+                decoration: who read it and what nine checks were done
+                (02:CONTENT-001), that it is neither a safety guarantee nor a
+                recommendation (NFR-001 forbids the endorsement wording), that
+                the verdict is bound to THIS version's bytes and falls off on
+                its own (migration 0042's `curated_version_id` — the one thing
+                none of the seven marketplaces surveyed solved), and that the
+                rest are 已索引, which is not 「從沒被審過」 (02:DISC-002's
+                literal constraint on this filter's copy).
+                No new visual channel is spent: a heading, an order, and a
+                sentence. ADR-064 決策 6 keeps the tokens.
+              */}
+              <section className="curated-shelf" aria-labelledby="curated-heading">
+                <h3 id="curated-heading">精選（{curated.length}）</h3>
+                <p className="note">
+                  這 {curated.length} 個 Skill 由我們自己逐份讀過：這一版通過九項人工檢視——來源
+                  可追溯、License 實查、規格驗證、Script 逐行審閱、無疑似 Secret、白話摘要，以及至少
+                  一次平台基準試跑符合。這不是安全保證，也不是推薦：平台不曾執行它們的程式碼來判斷
+                  行為。審查綁在這一版的位元組上——出了新版本而審查還沒跟上，它會自動掉到下面那一段，
+                  不需要任何人操作。下面 {rest.length} 個是「已索引」：目前這一版沒有帶著人工審查
+                  結論，不是從沒被審過。
+                </p>
+                <ul className="search-results" aria-labelledby="curated-heading">
+                  {curated.map(row)}
+                </ul>
+              </section>
+              <h3 id="rest-heading">其餘目錄（{rest.length}）</h3>
+              <ul className="search-results" aria-labelledby="rest-heading">
+                {rest.map(row)}
+              </ul>
+            </>
+          ) : (
+            // One list, no split: either a 來源層級 filter is already narrowing
+            // to one of the two, in which case a shelf would be a heading over
+            // the whole page, or one of the two halves is empty and the split
+            // would be a section labelled 「精選（0）」.
+            <ul className="search-results" aria-label="目錄">
+              {results.map(row)}
+            </ul>
+          )}
         </>
       )}
     </section>
@@ -455,33 +581,131 @@ function Catalog({
 }
 
 /**
+ * The three PDM-001 shelves and their labels.
+ *
+ * The labels are the front end's, like the two `來源層級` option strings above
+ * them and for the same reason: a chip for an empty shelf has no row to take a
+ * server `Labelled` from, and a shelf that vanished when it emptied would be a
+ * navigation that changes shape depending on what is behind it. Every ROW still
+ * renders the server's own `category.label` (LabelledBadge in ResultFacets), so
+ * the two cannot say different things about a skill — what is duplicated here
+ * is the name of a shelf, not a judgement about a skill.
+ */
+const CATEGORY_CHIPS: Array<{ value: SkillCategory | undefined; label: string }> = [
+  { value: undefined, label: "全部" },
+  { value: "documents", label: "文件" },
+  { value: "writing", label: "寫作" },
+  { value: "data", label: "資料" },
+];
+
+/**
+ * 02:DISC-006 / 設計 §1.2 —— 分類列。
+ *
+ * **每一個數字都是數出來的，而且是伺服器數的。** Each chip asks the catalogue
+ * the question that chip answers, with `limit=1`, and prints its `total`
+ * (api/skills.ts `useCatalogTotal`; the total on that path is exact because a
+ * browse has no candidate window). A typed 「(15)」 beside a hand-written label
+ * is a number that goes wrong the first time the catalogue changes, silently —
+ * the same shape `LIVE_FILTERS` is pinned against below.
+ *
+ * The counts carry every OTHER live filter and drop `category`, so a chip says
+ * what clicking it would actually produce rather than what the unfiltered
+ * catalogue holds.
+ *
+ * 設計 §2.11(b): no popularity anywhere in here. The number is how many rows
+ * are on a shelf, which is a fact about the catalogue and not about anybody's
+ * behaviour.
+ */
+function CategoryNav({ filters, browsing }: { filters: SearchFilters; browsing: boolean }) {
+  // Four hooks at four fixed positions — the list above is a constant, so this
+  // is not a hook in a loop.
+  const base: SearchFilters = { ...filters, category: undefined };
+  const totals = [
+    useCatalogTotal(base),
+    useCatalogTotal({ ...base, category: "documents" }),
+    useCatalogTotal({ ...base, category: "writing" }),
+    useCatalogTotal({ ...base, category: "data" }),
+  ];
+
+  return (
+    <>
+      <nav className="category-nav" aria-label="分類">
+        {CATEGORY_CHIPS.map(({ value, label }, index) => {
+          const total = totals[index].data?.total;
+          return (
+            <Link
+              key={label}
+              className="chip"
+              to="/"
+              /*
+                Same URL state as the 類別 select in the filter bar below — one
+                param, two controls, and `replace: true` for the reason every
+                other filter on this page has it: narrowing is not a page of
+                history to walk back through. `compare: undefined` is explicit
+                because changing the question makes the old selection
+                meaningless (see submitSearch).
+              */
+              search={(prev: HomeSearch) => ({ ...prev, category: value, compare: undefined })}
+              replace
+              /*
+                The 「我在哪裡」 marker is the router's own — `data-status="active"`
+                plus `aria-current="page"`, the same mechanism `RootLayout`'s nav
+                relies on and for the reason its comment gives. A hand-set second
+                marker beside it would be a second source of truth for one fact.
+
+                `explicitUndefined` is what makes it tell the truth HERE. By
+                default an `undefined` in a link's search means 「don't care」,
+                so 全部 (whose search sets `category: undefined`) matched every
+                state and TWO chips claimed to be the current one — measured,
+                not guessed. With this, an explicit `undefined` only matches an
+                actually absent value, which is exactly what 全部 means.
+              */
+              activeOptions={{ explicitUndefined: true }}
+            >
+              {/* 設計 §2.9: a count that has not arrived says so with a word
+                  rather than with a 0 — 「（0）」 would be a measurement. */}
+              {label}（{total === undefined ? "…" : total}）
+            </Link>
+          );
+        })}
+      </nav>
+      {/*
+        設計 §2.2「畫面上說的每一件事要指得出強制它的那一行」. In the search
+        state the numbers still come from the CATALOGUE — four searches would be
+        four more model calls — so they are not the hit counts of the query on
+        screen, and saying so is cheaper than letting a reader work it out from
+        a mismatch.
+      */}
+      {!browsing && <p className="note">括號裡是目錄中各類別的數量，不是這次搜尋命中的筆數。</p>}
+    </>
+  );
+}
+
+/**
  * DISC-003 (spec 02:DISC-002「使用者可依類別、來源層級、Agent、是否包含 Script、
  * 是否需要 MCP 與驗證狀態篩選」).
  *
- * Four of the six dimensions have per-row data in this build and are live
- * controls. The other two are rendered as disabled controls carrying the
- * reason, rather than being hidden or — far worse — offered as controls that
- * accept a value and narrow nothing. The server rejects those two with 400 for
- * the same reason, so a hand-edited URL cannot get an unfiltered page that looks
+ * Five of the six dimensions have per-row data in this build and are live
+ * controls. The last one is rendered as a disabled control carrying the reason,
+ * rather than being hidden or — far worse — offered as a control that accepts a
+ * value and narrows nothing. The server rejects it with 400 for the same
+ * reason, so a hand-edited URL cannot get an unfiltered page that looks
  * filtered.
  *
- * The wording of each reason is the honest one, not a "coming soon": MCP has no
- * source of truth anywhere in the pipeline, and 類別 is curation data the
- * platform never stored.
+ * The wording of the reason is the honest one, not a "coming soon": MCP has no
+ * source of truth anywhere in the pipeline.
  *
  * Agent 相容 became live with the M2 baseline measurements (0022): 45 skills,
  * one sandbox Run each. Only its runtime axis is a filter — every measured skill
  * came back `activated`, so a capability filter would separate nothing.
  * 來源層級 became live with migration 0042, which is the first time a reviewed
  * skill was distinguishable from an unreviewed one in a column rather than in a
- * spreadsheet.
+ * spreadsheet. 類別 became live with migration 0053, the same shape one
+ * migration later: PDM-001 decided the three shelves on 2026-08-14 and for
+ * eleven months nothing persisted them, so the control here said 「無法篩選」
+ * and it was telling the truth.
  */
 const UNAVAILABLE_FILTERS: Array<{ key: string; label: string; reason: string }> = [
-  {
-    key: "category",
-    label: "類別",
-    reason: "類別目前只存在於策展清單，沒有存進平台，匯入流程也不收這個欄位，因此無法篩選。",
-  },
   {
     key: "mcp",
     label: "需要 MCP",
@@ -555,7 +779,14 @@ function FilterBar({
   const [open, setOpen] = useState(narrowing);
   useEffect(() => {
     if (narrowing) setOpen(true);
-  }, [narrowing, filters.script, filters.validation, filters.agent, filters.tier]);
+  }, [
+    narrowing,
+    filters.script,
+    filters.validation,
+    filters.agent,
+    filters.tier,
+    filters.category,
+  ]);
 
   return (
     <details
@@ -583,7 +814,7 @@ function FilterBar({
  * placeholders. Declared beside the controls it counts, and pinned to them by a
  * test, because it is read out in the summary above.
  */
-const LIVE_FILTERS = 4;
+const LIVE_FILTERS = 5;
 
 function FilterControls({
   filters,
@@ -682,6 +913,38 @@ function FilterControls({
         </span>
       </label>
 
+      {/*
+        DISC-002 類別, live since migration 0053 stored `skills.category`. The
+        same URL param the chip row above writes — one state, two controls, and
+        the chips are the shortcut while this is the one that sits with the
+        other dimensions.
+      */}
+      <label>
+        類別
+        <select
+          value={filters.category ?? ""}
+          aria-describedby="filter-why-category"
+          onChange={(event) =>
+            onChange({ category: (event.target.value || undefined) as SearchFilters["category"] })
+          }
+        >
+          <option value="">不限</option>
+          <option value="documents">文件</option>
+          <option value="writing">寫作</option>
+          <option value="data">資料</option>
+        </select>
+        {/*
+          02:DISC-004: a skill with no category is a real state, and it is not
+          one of the three. Saying so here is what stops a reader reading a
+          short filtered page as 「我匯入的那個不見了」. The WORD for that state
+          is the server's and is on the row itself (§2.9's typed absence), so it
+          is not repeated here — one fact, one place (§3 第 14 條).
+        */}
+        <span id="filter-why-category" className="note">
+          三個類別來自策展判定。使用者自己匯入的 Skill 目前還沒有類別，選這三個值都不會列出它們。
+        </span>
+      </label>
+
       {UNAVAILABLE_FILTERS.map(({ key, label, reason }) => (
         <label key={key} title={reason}>
           {label}
@@ -699,8 +962,10 @@ function FilterControls({
         page: a filter bar with dead controls has to say why on the spot,
         or it reads as a broken UI instead of an absent capability.
       */}
+      {/* 數字不打在這裡：上面那句 summary 已經數過一次，而同一個數字寫兩處，
+          第二處遲早會停在舊的值上（`LIVE_FILTERS` 就是為了這個被釘住的）。 */}
       <p className="note">
-        篩選條件只會用平台真的有的資料。上面標為「無法篩選」的兩項，是因為平台目前沒有這些資料，
+        篩選條件只會用平台真的有的資料。上面標為「無法篩選」的項目，是因為平台目前沒有這些資料，
         不是因為所有 Skill 都不符合。
       </p>
     </div>
@@ -838,6 +1103,19 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
       <dt>來源層級</dt>
       <dd>
         <LabelledBadge kind="tier" value={hit.tier} />
+      </dd>
+
+      {/*
+        DISC-002 類別, beside 來源層級 and never merged into it: one says what
+        the skill is for, the other says how much of it a person has read, and
+        02:CONTENT-002 does not let two axes become one mark. `LabelledBadge`
+        renders the server's `note` as visible text in this same card, which is
+        設計 §2.11(c) —— and for an unassigned row that note is the typed
+        absence (尚未定值) rather than a blank cell (§2.9).
+      */}
+      <dt>類別</dt>
+      <dd>
+        <LabelledBadge kind="category" value={hit.category} />
       </dd>
 
       {/*

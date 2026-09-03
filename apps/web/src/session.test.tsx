@@ -335,9 +335,12 @@ test("IA-6 precedent: ForkAction tells a visitor what logging in buys (SkillDeta
   // product having already answered 「由頁面自己說」, and nothing held it down.
   expect(text()).toContain("登入後即可 Fork 這個 Skill 到你的工作區。");
   // And the control it replaces is genuinely absent, not merely disabled.
+  // 按鈕上的字 2026-09-03 改成「以這個 Skill 為起點建立我自己的」（r4 B2）。這一行
+  // 跟著改**不是**因為它壞了——它會照樣通過，因為舊字串現在哪裡都不存在了，而那
+  // 正是問題：一個永遠找不到東西的 `some()` 對「按鈕真的不在」什麼都證明不了。
   expect(
     Array.from(container.querySelectorAll("button")).some((b) =>
-      (b.textContent ?? "").includes("Fork 這個 Skill"),
+      (b.textContent ?? "").includes("以這個 Skill 為起點"),
     ),
   ).toBe(false);
   expect(text()).not.toContain("not authenticated");

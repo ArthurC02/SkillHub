@@ -115,6 +115,16 @@ export interface SkillDetail {
      */
     scope: SkillDetailScopeEnum;
     /**
+     * As on `PublicSearchResult.category`: `documents` | `writing` |
+     * `data` | `unassigned` (尚未定值). Same value for the same skill on
+     * every read; the detail page shows it beside `tier` so a reader can
+     * see what the skill is for before what was reviewed.
+     * 
+     * @type {Labelled}
+     * @memberof SkillDetail
+     */
+    category: Labelled;
+    /**
      * `curated` | `indexed`. Recorded by migration 0042; before it, this
      * was always `indexed` because curation is a recorded human review and
      * nothing recorded one — the fifteen entries that had passed PDM-002's
@@ -264,6 +274,7 @@ export function instanceOfSkillDetail(value: object): value is SkillDetail {
     if (!('name' in value) || value['name'] === undefined) return false;
     if (!('summary' in value) || value['summary'] === undefined) return false;
     if (!('scope' in value) || value['scope'] === undefined) return false;
+    if (!('category' in value) || value['category'] === undefined) return false;
     if (!('tier' in value) || value['tier'] === undefined) return false;
     if (!('enrichment' in value) || value['enrichment'] === undefined) return false;
     if (!('license' in value) || value['license'] === undefined) return false;
@@ -289,6 +300,7 @@ export function SkillDetailFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'name': json['name'],
         'summary': json['summary'],
         'scope': json['scope'],
+        'category': LabelledFromJSON(json['category']),
         'tier': LabelledFromJSON(json['tier']),
         'enrichment': SkillEnrichmentFromJSON(json['enrichment']),
         'version': json['version'] == null ? undefined : SkillDetailVersionFromJSON(json['version']),
@@ -319,6 +331,7 @@ export function SkillDetailToJSONTyped(value?: SkillDetail | null, ignoreDiscrim
         'name': value['name'],
         'summary': value['summary'],
         'scope': value['scope'],
+        'category': LabelledToJSON(value['category']),
         'tier': LabelledToJSON(value['tier']),
         'enrichment': SkillEnrichmentToJSON(value['enrichment']),
         'version': SkillDetailVersionToJSON(value['version']),

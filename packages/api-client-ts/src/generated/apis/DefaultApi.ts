@@ -276,6 +276,7 @@ export interface BrowseCatalogRequest {
     validation?: BrowseCatalogValidationEnum;
     agent?: BrowseCatalogAgentEnum;
     tier?: BrowseCatalogTierEnum;
+    category?: BrowseCatalogCategoryEnum;
 }
 
 export interface CancelRunRequest {
@@ -480,6 +481,7 @@ export interface PublicSearchSkillsRequest {
     validation?: PublicSearchSkillsValidationEnum;
     agent?: PublicSearchSkillsAgentEnum;
     tier?: PublicSearchSkillsTierEnum;
+    category?: PublicSearchSkillsCategoryEnum;
 }
 
 export interface SaveSkillVersionRequest {
@@ -582,6 +584,7 @@ export interface DefaultApiInterface {
      * @param {'passed' | 'unverified'} [validation] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
      * @param {'native' | 'transpiled' | 'failed' | 'unverified'} [agent] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
      * @param {'curated' | 'indexed'} [tier] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
+     * @param {'documents' | 'writing' | 'data'} [category] As on &#x60;GET /api/skills/search&#x60;. Absent &#x3D; not filtered.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -1488,6 +1491,7 @@ export interface DefaultApiInterface {
      * @param {'passed' | 'unverified'} [validation] DISC-003 filter on the spec-validation axis of &#x60;compatibility&#x60;. &#x60;passed&#x60; is a skill with a saved version — static validation blocks the import on any error-level finding, so a stored version is the evidence. &#x60;unverified&#x60; is a skill with no saved content, which is never reported as failed. Absent &#x3D; not filtered. 
      * @param {'native' | 'transpiled' | 'failed' | 'unverified'} [agent] DISC-002\&#39;s Agent dimension, live since migration 0022. It filters the &#x60;runtime&#x60; axis of &#x60;compatibility&#x60; and only that axis, matching the measured verdict **exactly** rather than as a boolean: &#x60;unverified&#x60; is a value a caller can ask for, and a \&quot;not native\&quot; filter would silently mean transpiled-or-failed-or-never-measured, which are three different things to someone choosing a skill. Absent &#x3D; not filtered.  The &#x60;capability&#x60; axis is shown but not filterable. Every measured skill in the catalogue came back &#x60;activated&#x60; (45/45 in the M2 baseline), so a control on it separates nothing; it becomes a filter when a &#x60;not_activated&#x60; row exists and not before. 
      * @param {'curated' | 'indexed'} [tier] DISC-002\&#39;s 來源層級 dimension, live since migration 0042. Absent &#x3D; not filtered.  &#x60;curated&#x60; means the PDM-002 nine-item review passed **and** the version it examined is still the newest one; a curated skill whose content has moved on answers &#x60;indexed&#x60; here, because five of those nine checks are about specific bytes. So &#x60;indexed&#x60; is not \&quot;never reviewed\&quot; — it is \&quot;not currently carrying a review of what you are looking at\&quot;, which is the question a reader is actually asking.  &#x60;external&#x60; is not accepted. An external result was never imported and has no row, so it is a state of the search rather than a value this filter can select. 
+     * @param {'documents' | 'writing' | 'data'} [category] DISC-002\&#39;s 類別 dimension (PDM-001\&#39;s three shelves), live since migration 0053. Absent &#x3D; not filtered.  Matches the skill\&#39;s stored category exactly. A skill with no category — every user-imported skill today, because the platform has not decided how one gets a category (05 R-19) — matches none of the three values; it is not silently filed under any of them, and its row says 尚未定值 rather than a guess (02:DISC-004). 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -1846,6 +1850,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
 
         if (requestParameters['tier'] != null) {
             queryParameters['tier'] = requestParameters['tier'];
+        }
+
+        if (requestParameters['category'] != null) {
+            queryParameters['category'] = requestParameters['category'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -4139,6 +4147,10 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
             queryParameters['tier'] = requestParameters['tier'];
         }
 
+        if (requestParameters['category'] != null) {
+            queryParameters['category'] = requestParameters['category'];
+        }
+
         const headerParameters: runtime.HTTPHeaders = {};
 
 
@@ -4943,6 +4955,15 @@ export type BrowseCatalogTierEnum = typeof BrowseCatalogTierEnum[keyof typeof Br
 /**
  * @export
  */
+export const BrowseCatalogCategoryEnum = {
+    Documents: 'documents',
+    Writing: 'writing',
+    Data: 'data'
+} as const;
+export type BrowseCatalogCategoryEnum = typeof BrowseCatalogCategoryEnum[keyof typeof BrowseCatalogCategoryEnum];
+/**
+ * @export
+ */
 export const GetRunTraceModeEnum = {
     General: 'general',
     Advanced: 'advanced'
@@ -4989,3 +5010,12 @@ export const PublicSearchSkillsTierEnum = {
     Indexed: 'indexed'
 } as const;
 export type PublicSearchSkillsTierEnum = typeof PublicSearchSkillsTierEnum[keyof typeof PublicSearchSkillsTierEnum];
+/**
+ * @export
+ */
+export const PublicSearchSkillsCategoryEnum = {
+    Documents: 'documents',
+    Writing: 'writing',
+    Data: 'data'
+} as const;
+export type PublicSearchSkillsCategoryEnum = typeof PublicSearchSkillsCategoryEnum[keyof typeof PublicSearchSkillsCategoryEnum];

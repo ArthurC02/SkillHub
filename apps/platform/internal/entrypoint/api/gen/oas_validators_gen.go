@@ -228,6 +228,19 @@ func (s BrowseCatalogAgent) Validate() error {
 	}
 }
 
+func (s BrowseCatalogCategory) Validate() error {
+	switch s {
+	case "documents":
+		return nil
+	case "writing":
+		return nil
+	case "data":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s BrowseCatalogScript) Validate() error {
 	switch s {
 	case "yes":
@@ -3521,6 +3534,19 @@ func (s PublicSearchSkillsAgent) Validate() error {
 	case "failed":
 		return nil
 	case "unverified":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s PublicSearchSkillsCategory) Validate() error {
+	switch s {
+	case "documents":
+		return nil
+	case "writing":
+		return nil
+	case "data":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)

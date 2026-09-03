@@ -13,6 +13,7 @@ import { LabelledBadge } from "../components/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
 import { RiskIndicator } from "../components/RiskIndicator";
 import { SignInAction } from "../components/SignIn";
+import { VersionUpload } from "../components/VersionUpload";
 import { PACKAGING_BLOCKED_LABEL, packagingGate } from "./Packaging";
 import type {
   SkillDetail as SkillDetailModel,
@@ -29,6 +30,33 @@ import type {
  * Progressive disclosure: the plain-language answer is on the page, and the
  * identifiers that only matter when you are checking someone's work (hashes,
  * version ids, which model wrote the summary) sit behind <details>.
+ *
+ * --- 2026-09-03, r2「產品資訊展示太多細節」 --------------------------------
+ *
+ * 量到的不是「字太多」，是「東西太多」：整個 `<main>` 去掉空白只有 **1231 個字元**，
+ * 卻攤在 **2930px** 上（平均 2.4px 才一個字），而同一頁有 **15 個等寬全寬區塊、
+ * 12 個互為兄弟的 h2**。丙-133 已經動過的兩件（40em 行長上限、操作三區塊上移）讓頁
+ * 面**變高**而不是變矮，所以剩下的槓桿只有一個：**減少並列區塊的數量、把它們排成
+ * 兩欄**——§0 說的「讓步的是形式」。
+ *
+ * **一個字都沒有被刪。** §2.10 的十項一項都沒有進 `<details>`；搬進 `<details>` 的
+ * 是任務範例、逐版清單與識別碼，三者都在 §2.6／r2 §3.2 明列的「可折」那一欄。
+ *
+ * 這一版的形狀：
+ *  - `detail-layout` 兩欄（≥1024px）：主欄是**證據**，右側 `detail-rail` 是**操作**，
+ *    每個控制項連同它的理由一起搬（丙-133 的「搬 section 不搬 button」——§2.4 與
+ *    §2.10 第 5 項）。≤1024 沒有 grid，rail 直接跟在主欄後面，DOM 順序就是閱讀順序。
+ *  - `verdict-grid` 2×2：風險揭露／可散布性與打包（含 License）／相容性／套件宣告可用
+ *    的工具。**工具那一段從整頁 77% 的位置搬到第一屏**——§2.10 第 6 項（執行前的權限
+ *    與工具清單）。
+ *  - h2 由 **12 → 7**（§3 第 9 條，失效樣本逐字就是「一頁八個 h2 互為兄弟」），從屬段落
+ *    降 h3：License、限制、來源關係，以及右欄的三個操作。
+ *
+ * **License 為什麼從 h2 降成「可散布性與打包」底下的 h3**：§2.10 第 3 項把
+ * 「License status ＋ 可散布性 badge」寫成**同一項**，而這一頁上 License 的作用就是
+ * 可散布性判定的證據——`PACKAGING_BLOCKED_LABEL` 的 `license_unknown` 是打包被擋的
+ * 主要理由。兩個徽章、兩句但書一個字都沒動，變的只有它們現在在同一個區塊裡（§2.11(c)
+ * 要的正是「同一個區塊」）。丙-137 拿掉的是**重複的那一份**，這裡沒有再減少任何一份。
  */
 export function SkillDetail() {
   const { skillId } = useParams({ from: "/skills/$skillId" });
@@ -49,234 +77,282 @@ export function SkillDetail() {
 
   return (
     <article>
-      <header>
-        <h1>{skill.name}</h1>
-        {/* The package author's own frontmatter description, never the model's. */}
-        <p>{skill.summary}</p>
-        {/*
-          04 丙-137。License 判定以前在這一頁出現兩次——這裡與下方的 §License 區塊
-          渲染的是**同一個元件、同一組 props**，所以連伺服器那句限定語都印了兩遍
-          （實測 2026-09-03：「License 已宣告」「尚未經人工核對。」「來源：repo 根目錄
-          LICENSE」三個文字節點各 x2）。設計 §3 第 14 條，而 `LabelledBadge` 的檔頭
-          自己寫著「Callers that printed the same string themselves have stopped」。
+      <div className="detail-layout">
+        <div className="detail-main">
+          <header className="detail-answer">
+            <h1>{skill.name}</h1>
+            {/* The package author's own frontmatter description, never the model's. */}
+            <p>{skill.summary}</p>
+            {/*
+              04 丙-137。License 判定以前在這一頁出現兩次——這裡與下方的 §License 區塊
+              渲染的是**同一個元件、同一組 props**，所以連伺服器那句限定語都印了兩遍
+              （實測 2026-09-03：「License 已宣告」「尚未經人工核對。」「來源：repo 根目錄
+              LICENSE」三個文字節點各 x2）。設計 §3 第 14 條，而 `LabelledBadge` 的檔頭
+              自己寫著「Callers that printed the same string themselves have stopped」。
 
-          **為什麼只能是「拿掉一個徽章」而不是「拿掉一句但書」**：§2.11(c) 要求每一個
-          徽章在同一個區塊以文字說出它不涵蓋什麼，所以兩個徽章必然是兩份但書——留一個
-          沒有但書的徽章會把 §3 第 14 條的問題換成 §2.11(c) 的問題，而後者在 §0 的
-          順位表上高三階。
+              **為什麼只能是「拿掉一個徽章」而不是「拿掉一句但書」**：§2.11(c) 要求每一個
+              徽章在同一個區塊以文字說出它不涵蓋什麼，所以兩個徽章必然是兩份但書——留一個
+              沒有但書的徽章會把 §3 第 14 條的問題換成 §2.11(c) 的問題，而後者在 §0 的
+              順位表上高三階。
 
-          **為什麼留下面那一個**：它有標題（可被標題導覽到）、有 `LicenseNotes` 這半段
-          散文陪著，而 §2.10 第 3 項要的「不折疊」它照樣滿足。實測 y=657（桌面）／
-          y=855（手機），兩者都在第一屏之內，所以第一屏沒有失去這個判定。相對地標頭
-          這一列在手機上是 **147px 四行**，三個徽章各帶一句但書；少一個就少約兩行，
-          而桌面那一行本來就只有 36px、拿掉不省任何東西。**這不是版面優化，是
-          §3 第 14 條；版面只是決定了刪哪一個。**
-        */}
-        <div className="badge-row">
-          <LabelledBadge kind="tier" value={skill.tier} />
-          {skill.source && <LabelledBadge kind="trust" value={skill.source.trust} />}
-        </div>
-      </header>
+              **為什麼留下面那一個**：它有標題（可被標題導覽到）、有 `LicenseNotes` 這半段
+              散文陪著，而 §2.10 第 3 項要的「不折疊」它照樣滿足。實測 y=657（桌面）／
+              y=855（手機），兩者都在第一屏之內，所以第一屏沒有失去這個判定。相對地標頭
+              這一列在手機上是 **147px 四行**，三個徽章各帶一句但書；少一個就少約兩行，
+              而桌面那一行本來就只有 36px、拿掉不省任何東西。**這不是版面優化，是
+              §3 第 14 條；版面只是決定了刪哪一個。**
 
-      {/*
-        0023 licensing hold. Above everything else on the page, because it
-        changes what the rest of the page can be used for: no full text, no file
-        tree, no run. role="status" rather than "alert" — it is a standing
-        condition of this listing, not something that just went wrong.
-      */}
-      {/*
-        設計 §4.6.3（ADR-064）：`notice-danger`。這一則說的是「這些事現在**做不
-        到**」——全文、檔案樹、試跑三個都被關掉了（見上面那段），也就是阻斷，不是
-        降級。`role="status"` 不變：它仍然是這份 listing 的持續狀態，不是剛剛出的
-        錯；底色是第二訊號（§2.3），不是把它改叫錯誤。
-      */}
-      {skill.access_restriction && (
-        <section className="notice notice-danger" role="status">
-          <h2>授權審查中,部分功能已關閉</h2>
-          <p>{skill.access_restriction.note}</p>
-        </section>
-      )}
+              類別徽章排在來源層級之前：它回答的是「這是什麼東西」，另外兩個回答「可不可
+              信」，而讀者是先問前者才問後者。每一顆一樣帶著伺服器那句但書（§2.11(c)），
+              `LabelledBadge` 就是把 `note` 印成可見文字的那個元件。
+            */}
+            <div className="badge-row">
+              <LabelledBadge kind="category" value={skill.category} />
+              <LabelledBadge kind="tier" value={skill.tier} />
+              {skill.source && <LabelledBadge kind="trust" value={skill.source.trust} />}
+            </div>
+          </header>
 
-      {/*
-        The four human-checkable verdicts come first (system.md §1.1 + §3 item
-        1). They used to sit below ~400px of model-written 白話摘要: 可散布性 at
-        roughly y1174, 風險揭露 at y1297, 相容性 at y1507 in a 900px viewport, so
-        on the page where 「這個別人寫的東西可不可信」 is asked, the first screen was
-        half model output and the scan result was 1.4 viewports down.
+          {/*
+            0023 licensing hold. Above everything else on the page, because it
+            changes what the rest of the page can be used for: no full text, no file
+            tree, no run. role="status" rather than "alert" — it is a standing
+            condition of this listing, not something that just went wrong.
+          */}
+          {/*
+            設計 §4.6.3（ADR-064）：`notice-danger`。這一則說的是「這些事現在**做不
+            到**」——全文、檔案樹、試跑三個都被關掉了（見上面那段），也就是阻斷，不是
+            降級。`role="status"` 不變：它仍然是這份 listing 的持續狀態，不是剛剛出的
+            錯；底色是第二訊號（§2.3），不是把它改叫錯誤。
 
-        The AI summary losing its top slot is the intent, not a side effect
-        (§2.6): a model's restatement of the package is not the answer to that
-        question, and it is the one block here that nobody has checked.
-      */}
-      <section>
-        <h2>風險揭露</h2>
-        <RiskIndicator risk={skill.risk} />
-      </section>
+            這一段是唯一會讓這一頁出現第八個 h2 的分支，而它是對的：一則阻斷公告不該
+            降成 h3 去遷就一個計數。
+          */}
+          {skill.access_restriction && (
+            <section className="notice notice-danger" role="status">
+              <h2>授權審查中,部分功能已關閉</h2>
+              <p>{skill.access_restriction.note}</p>
+            </section>
+          )}
 
-      <Redistribution skill={skill} isLoggedIn={!!me} />
+          {/*
+            The four human-checkable verdicts come first (system.md §1.1 + §3 item
+            1). They used to sit below ~400px of model-written 白話摘要: 可散布性 at
+            roughly y1174, 風險揭露 at y1297, 相容性 at y1507 in a 900px viewport, so
+            on the page where 「這個別人寫的東西可不可信」 is asked, the first screen was
+            half model output and the scan result was 1.4 viewports down.
 
-      <section>
-        <h2>License</h2>
-        <LicenseBadge license={skill.license} />
-        <LicenseNotes license={skill.license} />
-      </section>
+            The AI summary losing its top slot is the intent, not a side effect
+            (§2.6): a model's restatement of the package is not the answer to that
+            question, and it is the one block here that nobody has checked.
 
-      <section>
-        <h2>相容性</h2>
-        <CompatibilityStatus compatibility={skill.compatibility} />
-      </section>
+            2026-09-03：四個判定改成 2×2（`verdict-grid`）。**兩欄讓行變短、不是變長**：
+            實測最長的一條排版行是 720px ＝ 40em × 18px，也就是 §4.5 的行長上限正好咬住，
+            每一段文字右邊有 358px 永遠空白；519px 的欄寬仍然在上限之下。省 −410px，而且
+            第四個判定不再落在 y926。
+          */}
+          <div className="verdict-grid">
+            <section>
+              <h2>風險揭露</h2>
+              <RiskIndicator risk={skill.risk} />
+            </section>
 
-      {/*
-        設計 §1.2. Measured 2026-09-03 in a 1280×900 window: the four things a
-        reader can DO on this page sat at y568（打包）, y2482（檔案樹）,
-        y2569（試跑）and y2680（Fork）on a 2845px page — Fork, the ONLY way a
-        visitor moves from 探索 to 試跑, at 94% of the scroll. They are one group
-        now, directly after the four verdicts.
+            <Redistribution skill={skill} isLoggedIn={!!me} />
 
-        Moved as whole SECTIONS and not as buttons, which is the whole design of
-        this change: every one of these controls carries the reason it is closed
-        right beside it（打包 the redistribution gate, 試跑 the 「不在你的工作區」
-        corridor, Fork the 「登入後」 line）, and hoisting the control alone would
-        leave the reason three screens behind it — §2.4 and §2.10 第 5 項.
+            <section>
+              <h2>相容性</h2>
+              <CompatibilityStatus compatibility={skill.compatibility} />
+            </section>
 
-        They stay BELOW 風險揭露／可散布性／License／相容性 and that is not a
-        compromise, it is §0: 安全與不誤導 is priority 1 and 速度與版面 is 4. The
-        comment above those four sections records what it cost the last time the
-        page was ordered the other way round. So the fix here is not 「操作進第一
-        屏」, it is 「操作在一個地方」.
-      */}
-      {/*
-        0023: with a licensing hold open, the advanced view is closed and the
-        link goes with it — a link that leads to a 403 is worse than no link.
-        The reason is stated where the link used to be, so the absence reads as
-        a decision rather than as a missing feature.
-      */}
-      {skill.version && !skill.access_restriction && (
-        <nav>
-          <Link to="/skills/$skillId/files" params={{ skillId }}>
-            查看 SKILL.md 與檔案樹（進階模式）
-          </Link>
-        </nav>
-      )}
+            {/*
+              設計 §2.9（缺席有型別）＋ §2.10 第 6 項（工具清單不得靠互動才看得到）。
+              This section used to render only when the list had entries, so a package
+              that declares no tools and a package that could not be scanned came out
+              as the same thing: no heading, no words, nothing. And of the three
+              readings that blank invites, the true one is the widest — in the Agent
+              Skills format an ABSENT `allowed-tools` means UNRESTRICTED, so the blank
+              rendered the most permissive fact in the shape the reader trusts most.
+              The server only fills this field when there is a scan report to read the
+              manifest from (discovery/detail.go), and `risk.scan_status` is that same
+              fact under a name, so the two absences are told apart without a new
+              field. Same call this file already made for `limitations` and
+              `enrichment.tags`; this was the one block that missed it.
 
-      <TrialEntry skillId={skillId} isLoggedIn={!!me} />
+              **搬上來的是整個 `<section>`，不是那張清單**（r2 A1）：實測 2026-09-03 它
+              在 y2244，也就是整頁的 77%，而 §2.10 第 6 項是「執行前」要看得到的東西。
+              「不適用＝不設限」那句是它的但書，跟著它一起搬——與丙-133 的「搬 section
+              不搬 button」同一條理由。
+            */}
+            <section>
+              <h2>套件宣告可用的工具</h2>
+              {skill.allowed_tools && skill.allowed_tools.length > 0 ? (
+                <>
+                  <ul>
+                    {skill.allowed_tools.map((tool) => (
+                      <li key={tool}>
+                        <code>{tool}</code>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="note">以上為套件自行宣告的 allowed-tools，未經驗證。</p>
+                </>
+              ) : skill.risk.scan_status === "unavailable" ? (
+                <p className="note">
+                  未測量——這個版本沒有靜態掃描結果可讀，所以平台不知道套件宣告了哪些工具。
+                </p>
+              ) : (
+                <p className="note">
+                  不適用——套件沒有宣告 allowed-tools。在 Agent Skills 的格式裡那代表
+                  <strong>不設限</strong>，不代表它不用工具。
+                </p>
+              )}
+            </section>
+          </div>
 
-      <section>
-        {/*
-          丙-116 的另一半：這個動作以前是整頁唯一沒有標題的區塊。它對非擁有者
-          是**唯一**能往前的東西，卻不在 12 個 h2 裡，所以按標題導覽的人找不到
-          它——而 axe 不會說話，沒有標題不是違規。
-        */}
-        <h2>Fork 到你的工作區</h2>
-        <ForkAction skillId={skillId} isLoggedIn={!!me} />
-      </section>
+          {/*
+            「它能做什麼」＝ 原本的〈白話摘要〉＋〈限制〉。兩者都是**同一個問題的兩半**
+            （這東西做得到什麼、做不到什麼），而它們以前是兩個互為兄弟的 h2，中間還隔著
+            一段 GeneratedNotice。§3 第 9 條。
+          */}
+          <section>
+            <h2>它能做什麼</h2>
+            <Enrichment enrichment={skill.enrichment} />
+            <Limitations limitations={skill.limitations} />
+          </section>
 
-      <Enrichment enrichment={skill.enrichment} />
+          {/*
+            GEN-004 wants this on the detail page and on the workspace list, and the
+            two have to answer it the same way. This used to read the VERSION's
+            source (`skill.source.type`), which is `upload` for any version the user
+            saved themselves — so the moment a generated skill got a second version,
+            the detail page silently dropped the two absences while the list, which
+            reads the skill row, went on showing them. The skill row is the right
+            source: `redistribution` is what GEN-007's search exclusion keys on, so
+            it is exactly the set of skills the disclosure is about. Same expression
+            as WorkspaceSkills.tsx, one level deeper because detail sends a Labelled.
+          */}
+          {skill.redistribution?.value === "generated" && (
+            <GeneratedNotice skillId={skill.skill_id} />
+          )}
 
-      <Limitations limitations={skill.limitations} />
+          {/*
+            「它從哪裡來」＝ 原本的〈來源〉＋〈來源關係〉。後者是一個 h2 ＋ 一個 section
+            服務 **10 個字元**（fixture 是「非 Fork。」），r2 A3 量到 −62px。它不在 §2.10
+            的十項裡，而它講的就是這一份東西的出處，所以它是〈來源〉的 h3，不是兄弟。
+          */}
+          <section>
+            <h2>它從哪裡來</h2>
+            {skill.source ? <SourceBlock source={skill.source} /> : <p>沒有保存任何來源紀錄。</p>}
 
-      {/*
-        GEN-004 wants this on the detail page and on the workspace list, and the
-        two have to answer it the same way. This used to read the VERSION's
-        source (`skill.source.type`), which is `upload` for any version the user
-        saved themselves — so the moment a generated skill got a second version,
-        the detail page silently dropped the two absences while the list, which
-        reads the skill row, went on showing them. The skill row is the right
-        source: `redistribution` is what GEN-007's search exclusion keys on, so
-        it is exactly the set of skills the disclosure is about. Same expression
-        as WorkspaceSkills.tsx, one level deeper because detail sends a Labelled.
-      */}
-      {skill.redistribution?.value === "generated" && <GeneratedNotice skillId={skill.skill_id} />}
+            <h3>{skill.derivation.label}</h3>
+            <p className="note">{skill.derivation.note}</p>
+            {skill.derivation.is_fork && skill.derivation.forked_from_skill_id && (
+              <p>
+                <Link
+                  to="/skills/$skillId"
+                  params={{ skillId: skill.derivation.forked_from_skill_id }}
+                >
+                  查看原始 Skill
+                </Link>
+              </p>
+            )}
+          </section>
 
-      <section>
-        <h2>來源</h2>
-        {skill.source ? <SourceBlock source={skill.source} /> : <p>沒有保存任何來源紀錄。</p>}
-      </section>
+          <VersionHistory skillId={skillId} />
 
-      {/*
-        設計 §2.9（缺席有型別）＋ §2.10 第 6 項（工具清單不得靠互動才看得到）。
-        This section used to render only when the list had entries, so a package
-        that declares no tools and a package that could not be scanned came out
-        as the same thing: no heading, no words, nothing. And of the three
-        readings that blank invites, the true one is the widest — in the Agent
-        Skills format an ABSENT `allowed-tools` means UNRESTRICTED, so the blank
-        rendered the most permissive fact in the shape the reader trusts most.
-        The server only fills this field when there is a scan report to read the
-        manifest from (discovery/detail.go), and `risk.scan_status` is that same
-        fact under a name, so the two absences are told apart without a new
-        field. Same call this file already made for `limitations` and
-        `enrichment.tags`; this was the one block that missed it.
-      */}
-      <section>
-        <h2>套件宣告可用的工具</h2>
-        {skill.allowed_tools && skill.allowed_tools.length > 0 ? (
-          <>
-            <ul>
-              {skill.allowed_tools.map((tool) => (
-                <li key={tool}>
-                  <code>{tool}</code>
+          <details>
+            <summary>進階資訊（版本與識別碼）</summary>
+            {skill.version ? (
+              <ul>
+                <li>版本編號：v{skill.version.version_number}</li>
+                <li>
+                  版本 ID：<code>{skill.version.version_id}</code>
                 </li>
-              ))}
-            </ul>
-            <p className="note">以上為套件自行宣告的 allowed-tools，未經驗證。</p>
-          </>
-        ) : skill.risk.scan_status === "unavailable" ? (
-          <p className="note">
-            未測量——這個版本沒有靜態掃描結果可讀，所以平台不知道套件宣告了哪些工具。
-          </p>
-        ) : (
-          <p className="note">
-            不適用——套件沒有宣告 allowed-tools。在 Agent Skills 的格式裡那代表
-            <strong>不設限</strong>，不代表它不用工具。
-          </p>
-        )}
-      </section>
+                <li>
+                  內容雜湊：<code>{skill.version.content_hash}</code>
+                </li>
+                <li>
+                  建立時間：
+                  <Timestamp at={skill.version.created_at} />
+                </li>
+              </ul>
+            ) : (
+              /* 設計 §2.9: 別人的 Skill 的版本清單回空陣列，而「沒有版本」與
+                 「你看不到」是兩件事——前者會被讀成這個 Skill 是空的。表列詞是
+                 「無權檢視」（ADR-011 的 Workspace scope）。 */
+              <p>
+                無權檢視——這個工作區看不到這個 Skill 的版本內容。別人的 Skill 要 Fork
+                之後才會有屬於你的版本；這不代表它沒有版本。
+              </p>
+            )}
+            {skill.derivation.forked_from_version_id && (
+              <p>
+                分岔自版本：<code>{skill.derivation.forked_from_version_id}</code>
+              </p>
+            )}
+          </details>
+        </div>
 
-      <section>
-        <h2>{skill.derivation.label}</h2>
-        <p className="note">{skill.derivation.note}</p>
-        {skill.derivation.is_fork && skill.derivation.forked_from_skill_id && (
-          <p>
-            <Link to="/skills/$skillId" params={{ skillId: skill.derivation.forked_from_skill_id }}>
-              查看原始 Skill
-            </Link>
-          </p>
-        )}
-      </section>
+        {/*
+          設計 §1.2. Measured 2026-09-03 in a 1280×900 window: the four things a
+          reader can DO on this page sat at y568（打包）, y2482（檔案樹）,
+          y2569（試跑）and y2680（Fork）on a 2845px page — Fork, the ONLY way a
+          visitor moves from 探索 to 試跑, at 94% of the scroll. They are one group
+          now, directly after the four verdicts.
 
-      <VersionHistory skillId={skillId} />
+          Moved as whole SECTIONS and not as buttons, which is the whole design of
+          this change: every one of these controls carries the reason it is closed
+          right beside it（打包 the redistribution gate, 試跑 the 「不在你的工作區」
+          corridor, Fork the 「登入後」 line）, and hoisting the control alone would
+          leave the reason three screens behind it — §2.4 and §2.10 第 5 項.
 
-      <details>
-        <summary>進階資訊（版本與識別碼）</summary>
-        {skill.version ? (
-          <ul>
-            <li>版本編號：v{skill.version.version_number}</li>
-            <li>
-              版本 ID：<code>{skill.version.version_id}</code>
-            </li>
-            <li>
-              內容雜湊：<code>{skill.version.content_hash}</code>
-            </li>
-            <li>
-              建立時間：
-              <Timestamp at={skill.version.created_at} />
-            </li>
-          </ul>
-        ) : (
-          /* 設計 §2.9: 別人的 Skill 的版本清單回空陣列，而「沒有版本」與
-             「你看不到」是兩件事——前者會被讀成這個 Skill 是空的。表列詞是
-             「無權檢視」（ADR-011 的 Workspace scope）。 */
-          <p>
-            無權檢視——這個工作區看不到這個 Skill 的版本內容。別人的 Skill 要 Fork
-            之後才會有屬於你的版本；這不代表它沒有版本。
-          </p>
-        )}
-        {skill.derivation.forked_from_version_id && (
-          <p>
-            分岔自版本：<code>{skill.derivation.forked_from_version_id}</code>
-          </p>
-        )}
-      </details>
+          They stay BELOW 風險揭露／可散布性／License／相容性 and that is not a
+          compromise, it is §0: 安全與不誤導 is priority 1 and 速度與版面 is 4. The
+          comment above those four sections records what it cost the last time the
+          page was ordered the other way round. So the fix here is not 「操作進第一
+          屏」, it is 「操作在一個地方」.
+
+          2026-09-03：那一組成了右側的 `detail-rail`（r2 §5.1／B2）。**DOM 順序沒有變**
+          ——rail 在主欄之後，所以閱讀順序與 Tab 順序仍然是「先證據、後操作」，≤1024px
+          它就落回主欄下方，沒有任何需要復原的東西。**打包那個 `.action` 沒有跟過來**：
+          §4.6.3 的表指名 `/skills/$id` 的主要動作是「打包並下載這個版本」，而它的理由
+          （可散布性判定）在主欄，把按鈕拉開會弄壞 §2.4。所以 rail 裡一個 `.action`
+          都沒有——一頁一個填色動作，而它在它的證據旁邊。
+
+          三個控制項的標題降成 h3：它們在一個具名的 `<aside>` 地標裡（「這個 Skill 的
+          操作」），仍然進得了標題導覽——丙-116 要的是「不是一顆沒有名字的裸按鈕」，
+          那一點沒有讓步。
+        */}
+        <aside className="detail-rail" aria-label="這個 Skill 的操作">
+          <TrialEntry skillId={skillId} isLoggedIn={!!me} />
+
+          <section>
+            {/*
+              丙-116 的另一半：這個動作以前是整頁唯一沒有標題的區塊。它對非擁有者
+              是**唯一**能往前的東西，卻不在 12 個 h2 裡，所以按標題導覽的人找不到
+              它——而 axe 不會說話，沒有標題不是違規。
+            */}
+            <h3>Fork 到你的工作區</h3>
+            <ForkAction skillId={skillId} isLoggedIn={!!me} />
+          </section>
+
+          {/*
+            0023: with a licensing hold open, the advanced view is closed and the
+            link goes with it — a link that leads to a 403 is worse than no link.
+            The reason is stated where the link used to be, so the absence reads as
+            a decision rather than as a missing feature.
+          */}
+          {skill.version && !skill.access_restriction && (
+            <nav>
+              <Link to="/skills/$skillId/files" params={{ skillId }}>
+                查看 SKILL.md 與檔案樹（進階模式）
+              </Link>
+            </nav>
+          )}
+
+          <VersionUpload skillId={skillId} />
+        </aside>
+      </div>
     </article>
   );
 }
@@ -309,6 +385,13 @@ export function SkillDetail() {
  * empty rather than forbidden — so the two absences are worded apart the way
  * §2.9 requires, and `ReadFailure` carries 401 to 「需要登入」 without swallowing
  * any other status.
+ *
+ * --- 2026-09-03（r2 B3）-------------------------------------------------------
+ * 逐版清單與「與上一版比較」收進 `<details>`，外面留一句**數量**：「共 N 版，最新
+ * vX（日期）」。這是 §0 自己的教科書解法逐字——「**數量留在外面，段落收進去**」——
+ * 而逐版列不在 §2.10 的十項裡。**「無權檢視」那一句留在折疊之外**（第 10 項：每一個
+ * 未測量／不適用／無權檢視都不得靠互動才看得到），載入中與讀取失敗同理。−230px。
+ * `what="版本歷史"` 一字未改：那是失敗訊息的主詞，不是標題。
  */
 function VersionHistory({ skillId }: { skillId: string }) {
   const versions = useSkillVersions(skillId);
@@ -321,7 +404,7 @@ function VersionHistory({ skillId }: { skillId: string }) {
 
   return (
     <section>
-      <h2>版本歷史</h2>
+      <h2>版本</h2>
       {versions.isPending && <Loading what="版本歷史" />}
       <ReadFailure error={versions.error} what="版本歷史" />
 
@@ -335,50 +418,57 @@ function VersionHistory({ skillId }: { skillId: string }) {
           </p>
         ) : (
           <>
-            <ul className="search-results">
-              {list.map((version, index) => {
-                // Newest first (the endpoint's order), so 「上一版」 is the NEXT
-                // element. The oldest row has none, and says why rather than
-                // rendering a control that would compare a version with itself
-                // (§2.4: a missing control owes a reason too).
-                const previous = list[index + 1];
-                const open = pair?.to === version.version_id;
-                return (
-                  <li key={version.version_id} className="search-result">
-                    <p>
-                      {/* 設計 §3 第 15 條：這兩個相鄰元素之間沒有任何東西，於是
-                          渲染成 「v2建立時間：2026/08/17」——量到 0.0px。 */}
-                      <strong>v{version.version_number}</strong>{" "}
-                      <span className="note">
-                        建立時間：
-                        <Timestamp at={version.created_at} />
-                      </span>
-                    </p>
-                    {previous ? (
-                      <p>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPair(
-                              open ? null : { from: previous.version_id, to: version.version_id },
-                            )
-                          }
-                        >
-                          {open ? "收起與上一版的比較" : "與上一版比較"}
-                        </button>
-                      </p>
-                    ) : (
-                      <p className="note">這是最早的版本，沒有上一版可以比較。</p>
-                    )}
-                    {open && <VersionDiff url={skillDiffUrl(skillId, pair.from, pair.to)} />}
-                  </li>
-                );
-              })}
-            </ul>
-            <p className="note">
-              版本不可變（ADR-003）：採用改善建議會建立新的一版，舊的一版原封不動留著。
-              差異比對的是兩版套件檔案的內容，不是它們的試跑結果。
+            <p>
+              共 {list.length} 版，最新 v{list[0].version_number}（
+              <Timestamp at={list[0].created_at} />）
             </p>
+            <details>
+              <summary>每一版與它跟上一版的差異</summary>
+              <ul className="search-results">
+                {list.map((version, index) => {
+                  // Newest first (the endpoint's order), so 「上一版」 is the NEXT
+                  // element. The oldest row has none, and says why rather than
+                  // rendering a control that would compare a version with itself
+                  // (§2.4: a missing control owes a reason too).
+                  const previous = list[index + 1];
+                  const open = pair?.to === version.version_id;
+                  return (
+                    <li key={version.version_id} className="search-result">
+                      <p>
+                        {/* 設計 §3 第 15 條：這兩個相鄰元素之間沒有任何東西，於是
+                            渲染成 「v2建立時間：2026/08/17」——量到 0.0px。 */}
+                        <strong>v{version.version_number}</strong>{" "}
+                        <span className="note">
+                          建立時間：
+                          <Timestamp at={version.created_at} />
+                        </span>
+                      </p>
+                      {previous ? (
+                        <p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPair(
+                                open ? null : { from: previous.version_id, to: version.version_id },
+                              )
+                            }
+                          >
+                            {open ? "收起與上一版的比較" : "與上一版比較"}
+                          </button>
+                        </p>
+                      ) : (
+                        <p className="note">這是最早的版本，沒有上一版可以比較。</p>
+                      )}
+                      {open && <VersionDiff url={skillDiffUrl(skillId, pair.from, pair.to)} />}
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="note">
+                版本不可變（ADR-003）：採用改善建議會建立新的一版，舊的一版原封不動留著。
+                差異比對的是兩版套件檔案的內容，不是它們的試跑結果。
+              </p>
+            </details>
           </>
         ))}
     </section>
@@ -400,6 +490,10 @@ function VersionHistory({ skillId }: { skillId: string }) {
  * normal case. A response without it is a platform that failed to answer, not a
  * fourth state: the section says that plainly instead of rendering a verdict
  * nobody gave, and `packagingGate` closes the entry all the same.
+ *
+ * License 是這個判定的**證據**，所以 2026-09-03 起它是這一段的 h3 而不是隔壁的 h2
+ * ——見檔頭。兩個徽章各自帶著伺服器的但書，一句都沒有少，而且都不在任何 `<details>`
+ * 裡（§2.10 第 3 項）。
  */
 function Redistribution({ skill, isLoggedIn }: { skill: SkillDetailModel; isLoggedIn: boolean }) {
   const blocked = packagingGate(skill);
@@ -448,6 +542,10 @@ function Redistribution({ skill, isLoggedIn }: { skill: SkillDetailModel; isLogg
           之後才會有屬於你的版本；這不代表它沒有版本。沒有版本內容就沒有東西可以打包。
         </p>
       )}
+
+      <h3>License</h3>
+      <LicenseBadge license={skill.license} />
+      <LicenseNotes license={skill.license} />
     </section>
   );
 }
@@ -487,7 +585,7 @@ function PackagingEntry({ skill, isLoggedIn }: { skill: SkillDetailModel; isLogg
     return (
       <p className="note">
         這個 Skill 不在你的工作區，所以沒有屬於你的版本可以打包。
-        <strong>要先 Fork 一份</strong>——下方的「Fork 到你的工作區」就是那一步。
+        <strong>要先 Fork 一份</strong>——旁邊的「Fork 到你的工作區」就是那一步。
       </p>
     );
 
@@ -521,14 +619,17 @@ function PackagingEntry({ skill, isLoggedIn }: { skill: SkillDetailModel; isLogg
  * over-trusting a badge, and on a touch device a tooltip is not there at all.
  * Stated per marker actually present, so the page never explains a label it did
  * not render.
+ *
+ * 2026-09-03：h2 → h3，因為它現在住在〈它能做什麼〉裡面（§3 第 9 條）。一個字都沒改，
+ * 也沒有進 `<details>`——空清單那一句是 §2.10 第 10 項。
  */
 function Limitations({ limitations }: { limitations: SkillLimitation[] }) {
   const fromModel = limitations.some((l) => l.source === "model");
   const fromScan = limitations.some((l) => l.source !== "model");
 
   return (
-    <section>
-      <h2>限制</h2>
+    <>
+      <h3>限制</h3>
       {limitations.length === 0 ? (
         <p className="note">
           沒有任何來源指出限制——這代表沒有人說明過，不代表這個 Skill 沒有限制。
@@ -555,7 +656,7 @@ function Limitations({ limitations }: { limitations: SkillLimitation[] }) {
       {fromScan && (
         <p className="note">「掃描推得」的項目由匯入時的靜態掃描結果推得，掃描不執行套件內容。</p>
       )}
-    </section>
+    </>
   );
 }
 
@@ -569,12 +670,17 @@ const TAG_BUCKETS: Array<{ key: keyof SkillTags; label: string }> = [
 /**
  * ADR-013: index-time model output, always labelled as model-written so a
  * reader can tell it from the author's own text above.
+ *
+ * 2026-09-03：這一段不再自己畫標題——它與〈限制〉一起住在〈它能做什麼〉底下（§3 第 9
+ * 條）。任務範例那一份 h3 ＋ `<ul>` 收進 `<details>`（r2 B4）：§2.6 的推論是「模型寫的
+ * 東西不是答案」，而 §1.3 的第三種機制正是「屬於本頁某個事實的細節」。**四列 tag 的
+ * 「未測量」留在折疊之外**（§2.10 第 10 項），`02:DISC-003` 要求的輸入／輸出／依賴
+ * 三列也一樣。−120px。
  */
 function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
   if (enrichment.status !== "enriched") {
     return (
-      <section>
-        <h2>白話摘要</h2>
+      <>
         <p className="note">{enrichment.note}</p>
         {/*
           The 輸入／輸出／依賴 rows stay on the page while enrichment is pending,
@@ -587,12 +693,12 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
             {label}：<span className="note">未知（尚未產生索引摘要）</span>
           </p>
         ))}
-      </section>
+      </>
     );
   }
 
   return (
-    <section>
+    <>
       {/*
         The marker is beside the heading, not inside it. Inside, it joined the
         accessible name — `__outlines__/skills-skillId.txt` recorded the result
@@ -601,7 +707,6 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
         surface this app already uses for a badge that qualifies the block
         below it (the header above does the same with three of them).
       */}
-      <h2>白話摘要</h2>
       <p className="badge-row">
         <span className="badge badge-source-model" title="由模型產生，未經人工核對">
           AI 產生
@@ -609,17 +714,6 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
         <span className="note">由模型產生，未經人工核對</span>
       </p>
       {enrichment.summary && <p>{enrichment.summary}</p>}
-
-      {enrichment.task_examples && enrichment.task_examples.length > 0 && (
-        <>
-          <h3>可以用來做什麼（AI 產生的任務範例）</h3>
-          <ul>
-            {enrichment.task_examples.map((example) => (
-              <li key={example}>{example}</li>
-            ))}
-          </ul>
-        </>
-      )}
 
       {/*
         DISC-003 asks for 輸入、輸出、依賴 as separate facts, and the contract
@@ -651,6 +745,17 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
           ),
         )}
 
+      {enrichment.task_examples && enrichment.task_examples.length > 0 && (
+        <details>
+          <summary>可以用來做什麼（AI 產生的任務範例）</summary>
+          <ul>
+            {enrichment.task_examples.map((example) => (
+              <li key={example}>{example}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       <p className="note">{enrichment.note}</p>
       {(enrichment.model || enrichment.prompt_version) && (
         <details>
@@ -669,11 +774,19 @@ function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
           </ul>
         </details>
       )}
-    </section>
+    </>
   );
 }
 
-/** DISC-003: URL, version/commit, fetch time and content hash of what arrived. */
+/**
+ * DISC-003: URL, version/commit, fetch time and content hash of what arrived.
+ *
+ * 2026-09-03（r2 A4）：來源版本／Commit 與內容雜湊收進同一個「識別碼」`<details>`。
+ * §2.6 逐字點名這一族（版本 id、內容雜湊、產生摘要的模型），而**擷取時間與可用性探測
+ * 留在外面**——「來源已失效，自 … 起」是 §2.10 第 9 項的平台降級自述，而 `fetched_at`
+ * 是「這份東西有多舊」那條軸的證據。以前是兩個地方（一行明文 ＋ 一個只裝雜湊的
+ * `<details>`），現在是一個。
+ */
 function SourceBlock({ source }: { source: SkillSource }) {
   if (source.type === "generated") {
     return <GeneratedSourceBlock source={source} />;
@@ -687,11 +800,6 @@ function SourceBlock({ source }: { source: SkillSource }) {
           <a href={source.url} rel="noreferrer noopener">
             {source.url}
           </a>
-        </p>
-      )}
-      {source.source_version && (
-        <p>
-          來源版本／Commit：<code>{source.source_version}</code>
         </p>
       )}
       {source.fetched_at && (
@@ -726,10 +834,21 @@ function SourceBlock({ source }: { source: SkillSource }) {
         <p className="note">尚未檢查過來源是否仍可取得。</p>
       )}
 
-      {source.content_hash && (
+      {(source.source_version || source.content_hash) && (
         <details>
-          <summary>內容雜湊</summary>
-          <code>{source.content_hash}</code>
+          <summary>識別碼</summary>
+          <ul>
+            {source.source_version && (
+              <li>
+                來源版本／Commit：<code>{source.source_version}</code>
+              </li>
+            )}
+            {source.content_hash && (
+              <li>
+                內容雜湊：<code>{source.content_hash}</code>
+              </li>
+            )}
+          </ul>
         </details>
       )}
     </>
@@ -825,7 +944,7 @@ function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
   if (!isLoggedIn)
     return (
       <section>
-        <h2>試跑</h2>
+        <h3>試跑</h3>
         <p>
           試跑屬於你的工作區。先登入並 Fork 一份，才會有屬於你的版本可以跑。 <SignInAction />
         </p>
@@ -835,14 +954,14 @@ function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
   if (versions.isPending)
     return (
       <section>
-        <h2>試跑</h2>
+        <h3>試跑</h3>
         <Loading what="這個 Skill 在你工作區的版本" />
       </section>
     );
   if (versions.error)
     return (
       <section>
-        <h2>試跑</h2>
+        <h3>試跑</h3>
         <ReadFailure error={versions.error} what="這個 Skill 的版本" />
       </section>
     );
@@ -851,7 +970,7 @@ function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
 
   return (
     <section>
-      <h2>試跑</h2>
+      <h3>試跑</h3>
       {inMyWorkspace ? (
         <>
           <p>
@@ -922,13 +1041,21 @@ function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
 
   return (
     <div>
+      {/*
+        r4 B2：按鈕上的字從「Fork 這個 Skill」改成「以這個 Skill 為起點建立我自己的」。
+        動詞沒有變、端點沒有變、繼承的東西沒有變（`redistribution` 與
+        `access_restriction` 仍然逐字繼承）——變的是這顆按鈕現在說得出它產生什麼。
+        「Fork」對一個沒有用過 GitHub 的個人創作者不是一個動作，是一個名詞；而這一顆
+        對非擁有者是整頁**唯一**能往前的東西。標題保留「Fork 到你的工作區」，因為同頁
+        另外兩段（試跑、打包）用那個名字指路。
+      */}
       <button
         type="button"
         className={cannotPackage ? "action" : undefined}
         onClick={() => fork.mutate(skillId)}
         disabled={fork.isPending}
       >
-        {fork.isPending ? "Fork 中…" : "Fork 這個 Skill"}
+        {fork.isPending ? "建立中…" : "以這個 Skill 為起點建立我自己的"}
       </button>
       {/*
         「Fork 失敗，請稍後再試。」 was one sentence for every refusal, and for

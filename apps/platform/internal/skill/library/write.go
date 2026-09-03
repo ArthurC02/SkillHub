@@ -99,6 +99,13 @@ func CreateSkillFromPackage(ctx context.Context, tx pgx.Tx, workspaceID pgtype.U
 	if redistribution != "" {
 		verdict = &redistribution
 	}
+	// `category` is deliberately not among these params: 0053 leaves the column
+	// NULL for an import, because 05 R-19 has not decided how a user-imported
+	// Skill gets a PDM-001 shelf. NULL is read back as 尚未定值 — the platform has
+	// not decided — and any default named here would be a guessed classification
+	// wearing the same clothes as a curator's judgement (02:DISC-004, 設計 §2.9).
+	// If R-19 lands on (b), model-classified at index time, the value arrives on
+	// the enrichment path and not from this function.
 	row, err := gen.New(tx).CreateSkill(ctx, gen.CreateSkillParams{
 		WorkspaceID:    workspaceID,
 		Name:           manifest.Name,

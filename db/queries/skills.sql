@@ -13,9 +13,14 @@
 -- only, so import can say "I have no verdict to pass on" and get the column's
 -- own conservative default instead of having to name it — 'unknown' blocks, and
 -- the caller that would have to spell it out is the one least placed to judge.
+--
+-- category travels too (0053): it says what the bytes are for, and a fork is
+-- the same bytes. Import passes NULL — the platform has not decided how a
+-- user-imported skill gets one (05 R-19) — and NULL renders as 尚未定值.
 INSERT INTO skills (workspace_id, name, summary, forked_from_skill_id, forked_from_version_id,
-                    access_restriction, redistribution)
-VALUES ($1, $2, $3, $4, $5, $6, coalesce(sqlc.narg('redistribution')::text, 'unknown'))
+                    access_restriction, redistribution, category)
+VALUES ($1, $2, $3, $4, $5, $6, coalesce(sqlc.narg('redistribution')::text, 'unknown'),
+        sqlc.narg('category')::text)
 RETURNING *;
 
 -- name: GetSkill :one

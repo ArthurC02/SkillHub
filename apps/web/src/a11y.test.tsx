@@ -176,7 +176,6 @@ async function scan(where: string) {
     "送出中…", // ConfirmDelete, both buttons, while the request is in flight
     "已送出，無法取消",
     "打包中…", // Packaging
-    "Fork 中…", // SkillDetail
     "載入中…", // 「載入更多」 while fetching
     "重新整理中…", // RunTrace, while the Trace page is being refetched
   ];

@@ -112,9 +112,16 @@ type searchResult struct {
 	// normalising it into 0..1 would manufacture a similarity that was never
 	// computed. Withholding the number costs nothing the caller needs — the
 	// array order still carries the ranking.
-	Rank              *float64      `json:"rank"`
-	RankNote          string        `json:"rank_note,omitempty"`
-	Tier              labelled      `json:"tier"`
+	Rank     *float64 `json:"rank"`
+	RankNote string   `json:"rank_note,omitempty"`
+	Tier     labelled `json:"tier"`
+	// Category is the PDM-001 shelf (0053). Required and always present, because
+	// the absence has a name of its own — `unassigned` / 尚未定值 — and an omitted
+	// field would put that decision back on whatever renders the row, which is
+	// how 設計 §2.9's failure mode gets in at the contract layer. It sits next to
+	// Tier and answers the opposite question: what this is for, not how much
+	// review it has had.
+	Category          labelled      `json:"category"`
 	Risk              searchRisk    `json:"risk"`
 	Dependencies      []string      `json:"dependencies"`
 	Compat            compatibility `json:"compatibility"`
@@ -190,8 +197,12 @@ const (
 // field reads as "fine". The runtime image travels with them: the verdict is
 // about a (version, image) pair, and the same package answers differently on an
 // image with a different set of interpreters.
-func resultFacets(r *searchResult, tier string, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz, compat compatibility) {
+// category arrives as the raw nullable column, not resolved: NULL is a state
+// with its own word (尚未定值) and the SQL deliberately does not COALESCE it into
+// a shelf nobody chose.
+func resultFacets(r *searchResult, tier string, category *string, tagsJSON, scanJSON []byte, verifiedAt pgtype.Timestamptz, compat compatibility) {
 	r.Tier = tierLabel(Tier(tier))
+	r.Category = categoryLabel(category)
 	r.Dependencies = dependencyTags(tagsJSON)
 	r.Risk = riskHint(scanJSON)
 	r.VerifiedAt = timeString(verifiedAt)
@@ -282,11 +293,16 @@ type searchFilters struct {
 	// curated version has been superseded. That is the honest reading: the
 	// question a filter answers is "what am I looking at now".
 	CurationTier *string
+	// Category is matched against the stored PDM-001 shelf (0053). There is no
+	// `unassigned` value to ask for: NULL is the platform not having decided,
+	// and a filter for it would offer 「show me the rows nobody classified」 as if
+	// that were a shelf. Absent means every row, classified or not.
+	Category *string
 }
 
 func (f searchFilters) active() bool {
 	return f.HasScript != nil || f.SpecValidated != nil || f.AgentRuntime != nil ||
-		f.CurationTier != nil
+		f.CurationTier != nil || f.Category != nil
 }
 
 // curationTierValues are the values ?tier= accepts. TierExternal is not one of
@@ -307,6 +323,14 @@ var agentRuntimeValues = map[string]bool{
 	"native": true, "transpiled": true, "failed": true, "unverified": true,
 }
 
+// categoryValues are the values ?category= accepts — the three PDM-001 shelves
+// and only those. `unassigned` is not among them for the reason
+// searchFilters.Category gives: it is the platform's own undecided state, not a
+// shelf, and 0053 stores it as NULL.
+var categoryValues = map[string]bool{
+	string(CategoryDocuments): true, string(CategoryWriting): true, string(CategoryData): true,
+}
+
 // unavailableFilters are the 02:DISC-002 dimensions the platform still has no
 // per-row data for. They are rejected rather than ignored: a shared URL carrying
 // ?category=data would otherwise come back as a full unfiltered page that looks
@@ -315,21 +339,26 @@ var agentRuntimeValues = map[string]bool{
 // The note is the honest reason, per dimension, and it is what the UI shows on
 // the disabled control:
 //
-//   - category — the three PDM-001 categories exist only as a curation judgement
-//     in tools/content/seed-skills.json. Nothing persists them: the import path
-//     takes a package, not a category, and a user-imported skill would have none
-//     at all. Storing them is CONTENT-003 curation work, not search work.
 //   - mcp — no MCP signal is captured anywhere in the scan or the manifest;
 //     remote MCP is out of the MVP first release (AGENTS.md 範圍注意).
 //
-// `agent` left this map when 0022 gave it per-row data (02:DISC-002 篩選維度的
-// 允收階段 lists it as M2, 依 Sandbox 實測). `tier` left it when 0042 gave the
-// catalogue a second value — until then the note here was true, and it is worth
-// remembering that it stayed true for twelve days after the review that would
-// have made it false had already been recorded somewhere else.
+// Three dimensions have left this map, each when a migration gave it per-row
+// data, and the history is worth keeping because the notes were all true when
+// they were written and every one of them outlived its truth by some days:
+//
+//   - `agent` left when 0022 measured it (02:DISC-002 篩選維度的允收階段 lists it
+//     as M2, 依 Sandbox 實測).
+//   - `tier` left when 0042 gave the catalogue a second value — the note here
+//     stayed true for twelve days after the review that would have made it false
+//     had already been recorded somewhere else.
+//   - `category` left on 2026-09-03, when 0053 persisted the three PDM-001
+//     shelves onto `skills.category`. Its note said 「類別尚未存入平台:目前只存在於
+//     策展清單,匯入流程不收此欄位(CONTENT-003)」, and every clause of that was a
+//     fact until the column existed. What 0053 did NOT settle is 05 R-19 — how a
+//     user-imported Skill gets a category — so those rows are NULL and read as
+//     尚未定值. That is a value the reader is told about, not a refused filter.
 var unavailableFilters = map[string]string{
-	"category": "類別尚未存入平台:目前只存在於策展清單,匯入流程不收此欄位(CONTENT-003)。",
-	"mcp":      "是否需要 MCP 沒有任何來源資料:靜態掃描與 manifest 都沒有這項訊號,遠端 MCP 也不在 MVP 首發。",
+	"mcp": "是否需要 MCP 沒有任何來源資料:靜態掃描與 manifest 都沒有這項訊號,遠端 MCP 也不在 MVP 首發。",
 }
 
 // parseLimit reads the `limit` both search endpoints declare identically in
@@ -372,7 +401,7 @@ func parseFilters(r *http.Request) (searchFilters, error) {
 	}
 	var out searchFilters
 	var err error
-	for _, name := range []string{"script", "validation", "agent", "tier"} {
+	for _, name := range []string{"script", "validation", "agent", "tier", "category"} {
 		if q.Has(name) && q.Get(name) == "" {
 			return searchFilters{}, errors.New(name + " must not be empty")
 		}
@@ -394,6 +423,12 @@ func parseFilters(r *http.Request) (searchFilters, error) {
 			return searchFilters{}, errors.New(`tier must be "curated" or "indexed"`)
 		}
 		out.CurationTier = &v
+	}
+	if v := q.Get("category"); v != "" {
+		if !categoryValues[v] {
+			return searchFilters{}, errors.New(`category must be "documents", "writing" or "data"`)
+		}
+		out.Category = &v
 	}
 	return out, nil
 }

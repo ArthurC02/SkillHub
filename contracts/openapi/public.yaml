@@ -787,6 +787,19 @@ paths:
             `external` is not accepted. An external result was never imported and
             has no row, so it is a state of the search rather than a value this
             filter can select.
+        - name: category
+          in: query
+          required: false
+          schema: { type: string, enum: [documents, writing, data] }
+          description: |
+            DISC-002's 類別 dimension (PDM-001's three shelves), live since
+            migration 0053. Absent = not filtered.
+
+            Matches the skill's stored category exactly. A skill with no
+            category — every user-imported skill today, because the platform
+            has not decided how one gets a category (05 R-19) — matches none of
+            the three values; it is not silently filed under any of them, and
+            its row says 尚未定值 rather than a guess (02:DISC-004).
       responses:
         "200":
           description: Ranked matches with match reasons, or empty list.
@@ -822,11 +835,12 @@ paths:
             enumerates the causes, and a cause missing from it is how a handler
             and its contract drift apart (this one answered 200 to a request
             with no `q` at all until 2026-08-24). Either a query over 2,000
-            characters, a `script`/`validation`/`agent`/`tier` value
-            outside its enum, or one of the two 02:DISC-002 dimensions this
-            build has no per-row data for — `category`, `mcp`. (`agent` left
+            characters, a `script`/`validation`/`agent`/`tier`/`category`
+            value outside its enum, or the one 02:DISC-002 dimension this
+            build has no per-row data for — `mcp`. (`agent` left
             that list when 0022 gave it per-row data; `tier` left it when 0042
-            gave the catalogue a second value.) Those are
+            gave the catalogue a second value; `category` left it when 0053
+            persisted PDM-001's three shelves.) Those are
             rejected rather than ignored: answering a filtered request with an
             unfiltered page would present the whole catalog as the filtered
             subset. Also a `limit` outside its schema: it is
@@ -903,6 +917,11 @@ paths:
           required: false
           schema: { type: string, enum: [curated, indexed] }
           description: As on `GET /api/skills/search`. Absent = not filtered.
+        - name: category
+          in: query
+          required: false
+          schema: { type: string, enum: [documents, writing, data] }
+          description: As on `GET /api/skills/search`. Absent = not filtered.
       responses:
         "200":
           description: A page of the catalogue, or an empty list when it is empty.
@@ -927,8 +946,8 @@ paths:
         "400":
           description: |
             A `limit` outside `1..100` inclusive, or a `script`/`validation`/
-            `agent`/`tier` value outside its enum, or one of the two DISC-002
-            dimensions this build has no per-row data for (`category`, `mcp`).
+            `agent`/`tier`/`category` value outside its enum, or the one
+            DISC-002 dimension this build has no per-row data for (`mcp`).
             Refused rather than ignored, for the reason the search route states:
             answering a filtered request with an unfiltered page presents the
             whole catalogue as the filtered subset.
@@ -4911,8 +4930,8 @@ components:
     PublicSearchResult:
       type: object
       required:
-        [skill_id, name, summary, summary_source, rank, tier, risk, dependencies,
-         compatibility]
+        [skill_id, name, summary, summary_source, rank, tier, category, risk,
+         dependencies, compatibility]
       properties:
         skill_id:
           type: string
@@ -4963,6 +4982,18 @@ components:
           description: |
             Why `rank` is null and what ordered the page instead. Present only
             when `rank` is null.
+        category:
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+          description: |
+            PDM-001 category (DISC-002 類別): `documents` | `writing` | `data`,
+            or `unassigned` when the platform has not given this skill one.
+            `unassigned` is a typed absence, worded 尚未定值: every
+            user-imported skill carries it until 05 R-19 decides how such a
+            skill gets a category, and a fork inherits its source's value
+            (migration 0053). The label is the shelf name a reader sees; the
+            note says where the value came from — a curation judgement, never
+            a guess.
         tier:
           allOf:
             - $ref: "#/components/schemas/Labelled"
@@ -5366,7 +5397,7 @@ components:
     SkillDetail:
       type: object
       required:
-        [skill_id, name, summary, scope, tier, enrichment, limitations, license,
+        [skill_id, name, summary, scope, tier, category, enrichment, limitations, license,
          redistribution, derivation, risk, compatibility]
       properties:
         skill_id: { type: string, format: uuid }
@@ -5378,6 +5409,14 @@ components:
           type: string
           enum: [catalog, private]
           description: Which read answered — the public catalog, or the caller's own workspace.
+        category:
+          allOf:
+            - $ref: "#/components/schemas/Labelled"
+          description: |
+            As on `PublicSearchResult.category`: `documents` | `writing` |
+            `data` | `unassigned` (尚未定值). Same value for the same skill on
+            every read; the detail page shows it beside `tier` so a reader can
+            see what the skill is for before what was reviewed.
         tier:
           allOf:
             - $ref: "#/components/schemas/Labelled"

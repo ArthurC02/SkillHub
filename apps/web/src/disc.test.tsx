@@ -143,6 +143,10 @@ async function waitFor(done: () => boolean, timeoutMs = 2000) {
 const HIT_FACETS = {
   summary_source: "package",
   tier: { value: "indexed", label: "已收錄", note: "收錄不等於精選。" },
+  // DISC-002 類別. `documents` here for the same reason `summary_source` is
+  // `package`: it is the value that says nothing special, so a test that is not
+  // about the category keeps asserting nothing about it.
+  category: { value: "documents", label: "文件", note: "由策展判定。" },
   risk: {
     scan_status: "scanned",
     level: "none",
@@ -159,7 +163,7 @@ const HIT_FACETS = {
   },
 } satisfies Pick<
   PublicSearchResult,
-  "summary_source" | "tier" | "risk" | "dependencies" | "compatibility"
+  "summary_source" | "tier" | "category" | "risk" | "dependencies" | "compatibility"
 >;
 
 const EMPTY: PublicSearchResponse = {
@@ -200,7 +204,11 @@ test("DISC-006: catalog serializes filters and explains one truncated result lis
   });
   await waitFor(() => container.textContent?.includes("Catalog One") ?? false);
 
-  expect(calls.some((url) => url.includes("/api/skills/catalog?limit=20&script=no"))).toBe(true);
+  // `limit=100`, the contract's maximum: at 20 against a 45-row catalogue the
+  // landing page told every visitor that more than half the product was out of
+  // reach and offered no page two. The number is asserted, not just the shape,
+  // because it is the whole change.
+  expect(calls.some((url) => url.includes("/api/skills/catalog?limit=100&script=no"))).toBe(true);
   expect(container.textContent).toContain("目錄共 3 個 Skill，這裡列出 1 個");
   expect(container.textContent?.split(rankNote).length - 1).toBe(1);
   expect(container.textContent).not.toContain("未計算語意相似度");
@@ -259,6 +267,249 @@ test("DISC-006: 目錄那一半也要有來源標記的但書，不只搜尋那�
 
   expect(container.textContent).toContain("標記說明");
   expect(container.textContent).toContain("「作者原文」是套件的 frontmatter description");
+});
+
+// ---- DISC-002 類別／r3 提案 A: the category shelf row and the curated shelf ----
+
+/**
+ * A catalogue that actually answers `?category=`, which is what makes the chip
+ * counts falsifiable.
+ *
+ * A stub that returned the whole catalogue to every request would let all four
+ * chips print the same number and a broken filter would still look right — the
+ * shape this suite keeps finding. Each count request is `limit=1` and only its
+ * `total` is read (api/skills.ts `useCatalogTotal`), so the rows come back
+ * whole here; what is under test is the number, and where it came from.
+ */
+function stubCategoryCatalog(rows: PublicSearchResult[]) {
+  const calls: string[] = [];
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.includes("/api/skills/catalog")) {
+      const category = new URLSearchParams(url.split("?")[1] ?? "").get("category");
+      const results = category ? rows.filter((r) => r.category.value === category) : rows;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ results, limit: 100, total: results.length, truncated: false }),
+          { status: 200 },
+        ),
+      );
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 }),
+    );
+  });
+  return calls;
+}
+
+const CURATED = { value: "curated", label: "精選", note: "已完成人工檢視，不代表安全保證。" };
+
+/** Four rows over three shelves and two tiers — one curated, three not. */
+const SHELF_ROWS: PublicSearchResult[] = [
+  {
+    ...CATALOG_ROW,
+    skill_id: "doc-curated",
+    name: "Doc Curated",
+    tier: CURATED,
+    category: { value: "documents", label: "文件", note: "由策展判定。" },
+  },
+  {
+    ...CATALOG_ROW,
+    skill_id: "doc-plain",
+    name: "Doc Plain",
+    category: { value: "documents", label: "文件", note: "由策展判定。" },
+  },
+  {
+    ...CATALOG_ROW,
+    skill_id: "write-plain",
+    name: "Write Plain",
+    category: { value: "writing", label: "寫作", note: "由策展判定。" },
+  },
+  {
+    ...CATALOG_ROW,
+    skill_id: "data-plain",
+    name: "Data Plain",
+    category: { value: "data", label: "資料", note: "由策展判定。" },
+  },
+];
+
+/** The chips, as `文件（2）` strings, in DOM order. */
+function chips(): string[] {
+  return [...container.querySelectorAll(".category-nav .chip")].map((a) =>
+    (a.textContent ?? "").replace(/\s+/g, ""),
+  );
+}
+
+/** The labels of the chips the router marks as the current one. */
+function currentChips(): string[] {
+  return [...container.querySelectorAll(".category-nav .chip[aria-current]")].map((a) =>
+    (a.textContent ?? "").replace(/（.*/s, "").trim(),
+  );
+}
+
+async function browseCatalogue() {
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/", search: {} });
+  });
+  await waitFor(() => container.textContent?.includes("Doc Curated") ?? false);
+  // The four chip counts are four separate reads; wait until none of them is
+  // still showing the 「…」 placeholder, or this asserts a loading state.
+  await waitFor(() => !chips().some((c) => c.includes("…")));
+}
+
+/**
+ * **The number beside a chip is the server's, not this page's.**
+ *
+ * The stub above filters by category and returns `total: results.length`, so
+ * each expected number below is derived from the fixture rather than typed
+ * twice. Hard-coding 「文件（2）」 in Home.tsx passes a test that only looks for
+ * digits; this one moves when the catalogue moves.
+ */
+test("DISC-002 類別: each chip carries the count the server gives for that category", async () => {
+  const counts = new Map<string, number>();
+  for (const row of SHELF_ROWS) {
+    counts.set(row.category.label, (counts.get(row.category.label) ?? 0) + 1);
+  }
+
+  stubCategoryCatalog(SHELF_ROWS);
+  await browseCatalogue();
+
+  expect(chips()).toEqual([
+    `全部（${SHELF_ROWS.length}）`,
+    `文件（${counts.get("文件")}）`,
+    `寫作（${counts.get("寫作")}）`,
+    `資料（${counts.get("資料")}）`,
+  ]);
+  // The landing state is 全部, and it is the ONLY chip claiming to be current.
+  expect(currentChips()).toEqual(["全部"]);
+  // 設計 §2.11(b): the number is how many rows are on a shelf. Nothing on this
+  // row is a popularity signal, and there is no place for one to appear.
+  const nav = container.querySelector(".category-nav")!.textContent ?? "";
+  expect(nav).not.toMatch(/下載|星|使用人數|熱門/);
+});
+
+test("DISC-002 類別: a chip narrows the catalogue through the URL, and 全部 clears it", async () => {
+  const calls = stubCategoryCatalog(SHELF_ROWS);
+  await browseCatalogue();
+
+  const writing = [...container.querySelectorAll<HTMLAnchorElement>(".category-nav .chip")].find(
+    (a) => a.textContent?.startsWith("寫作"),
+  )!;
+  await act(async () => writing.click());
+  await waitFor(() => !container.textContent?.includes("Doc Curated"));
+
+  expect(new URLSearchParams(window.location.search).get("category")).toBe("writing");
+  expect(calls.some((url) => /catalog\?limit=100[^"]*category=writing/.test(url))).toBe(true);
+  expect(container.textContent).toContain("Write Plain");
+  // 設計 §2.3 / NFR-007: the active chip says so in the accessibility tree and
+  // not only in a colour — and exactly one of them does, or 「我在哪裡」 has two
+  // answers. The marker is the router's own (`RootLayout`'s nav uses the same).
+  expect(writing.getAttribute("aria-current")).toBe("page");
+  expect(currentChips()).toEqual(["寫作"]);
+
+  const all = [...container.querySelectorAll<HTMLAnchorElement>(".category-nav .chip")].find((a) =>
+    a.textContent?.startsWith("全部"),
+  )!;
+  await act(async () => all.click());
+  await waitFor(() => container.textContent?.includes("Doc Curated") ?? false);
+  expect(new URLSearchParams(window.location.search).has("category")).toBe(false);
+});
+
+/**
+ * One URL state, two controls.
+ *
+ * The chip row is a shortcut for the 類別 select in the filter bar. Two controls
+ * that wrote two different params would be two filters wearing one name — and
+ * the reader would have no way to tell which one the list obeyed.
+ */
+test("DISC-002 類別: the chip row and the filter select write the same URL param", async () => {
+  stubCategoryCatalog(SHELF_ROWS);
+  await browseCatalogue();
+
+  await chooseFilter("類別", "data");
+  await waitFor(() => container.textContent?.includes("Data Plain") ?? false);
+  expect(new URLSearchParams(window.location.search).get("category")).toBe("data");
+
+  // …and the chip row reads that same state back.
+  expect(currentChips()).toEqual(["資料"]);
+
+  await chooseFilter("類別", "");
+  expect(new URLSearchParams(window.location.search).has("category")).toBe(false);
+});
+
+/**
+ * r3 提案 A —— the curated shelf.
+ *
+ * `BrowseCatalogSkills` has put curated rows first since migration 0042 and the
+ * screen never said so: the two tier badges are byte-identical, so an ordered
+ * list read as an unordered one. Both numbers are COUNTED from the rows that
+ * rendered — a shelf heading that stops matching its own list is the exact
+ * failure this splits the list to prevent.
+ */
+test("r3 提案 A: 精選 and 其餘目錄 count the cards under them, and together the whole catalogue", async () => {
+  stubCategoryCatalog(SHELF_ROWS);
+  await browseCatalogue();
+
+  const shelf = container.querySelector(".curated-shelf")!;
+  const curatedCards = shelf.querySelectorAll(".search-result").length;
+  const allCards = container.querySelectorAll(".search-result").length;
+
+  expect(curatedCards).toBe(SHELF_ROWS.filter((r) => r.tier.value === "curated").length);
+  expect(shelf.querySelector("h3")!.textContent).toBe(`精選（${curatedCards}）`);
+
+  const rest = [...container.querySelectorAll("h3")].find((h) =>
+    h.textContent?.startsWith("其餘目錄"),
+  )!;
+  expect(rest.textContent).toBe(`其餘目錄（${allCards - curatedCards}）`);
+  // 設計 §4.3: the two halves ARE the catalogue, not a sample of it.
+  expect(allCards).toBe(SHELF_ROWS.length);
+  expect(container.textContent).toContain(`目錄共 ${SHELF_ROWS.length} 個 Skill，全部列在下面`);
+});
+
+/**
+ * 設計 §2.11(c) ＋ §2.4 第 3 項: the four clauses are VISIBLE text in the same
+ * block as the highlight, not a `title`. A tooltip does not exist on a touch
+ * device, which is where the qualifier is needed most.
+ */
+test("r3 提案 A: 精選 書架 states what the review is not, in visible text", async () => {
+  stubCategoryCatalog(SHELF_ROWS);
+  await browseCatalogue();
+
+  const shelf = container.querySelector(".curated-shelf")!;
+  const note = shelf.querySelector(".note")!.textContent!.replace(/\s+/g, "");
+  // ① who read it and what was checked, ② not a safety claim and not a
+  // recommendation, ③ the verdict is bound to this version's bytes and falls
+  // off by itself, ④ the rest are 已索引, which is not 「never reviewed」.
+  expect(note).toContain("由我們自己逐份讀過");
+  expect(note).toContain("九項人工檢視");
+  expect(note).toContain("這不是安全保證，也不是推薦");
+  expect(note).toContain("審查綁在這一版的位元組上");
+  expect(note).toContain("不是從沒被審過");
+  // 02:CONTENT-001 / NFR-001: no endorsement wording anywhere in the shelf.
+  expect(shelf.textContent).not.toMatch(/官方推薦|已認證|Verified/);
+  // The clauses are not hiding in an attribute.
+  for (const el of shelf.querySelectorAll("[title]")) {
+    expect(el.getAttribute("title")).not.toContain("九項人工檢視");
+  }
+});
+
+/**
+ * 04 丙-132 / 義務 1.2, on the state a first visit actually lands on.
+ *
+ * The existing assertion for this is on the search state. The landing state is
+ * the one the measurement was taken on — six controls and their paragraphs put
+ * the first catalogue card 330px further down, on a screen whose whole job is
+ * to show what is in the catalogue.
+ */
+test("設計 §0: the catalogue lands with the filter bar shut, at every width", async () => {
+  stubCategoryCatalog(SHELF_ROWS);
+  await browseCatalogue();
+  expect(
+    container.querySelector<HTMLDetailsElement>(".filter-disclosure")!.open,
+    "no filter is set, yet the bar opens above the catalogue",
+  ).toBe(false);
 });
 
 test("DISC-006: an empty catalog is distinct from a failed catalog read", async () => {
@@ -523,7 +774,11 @@ test("DISC-005: degraded and partial_index are separate, non-blocking notices", 
 
   const text = container.textContent ?? "";
   expect(container.querySelectorAll(".notice")).toHaveLength(2);
-  expect(text).toContain("embedding unavailable; lexical search only");
+  // 04 丙-117 ②: `degraded_reason` is an English server diagnostic and this is
+  // the product's first screen. The Chinese sentence above it already says the
+  // consequence, which is the part a reader can act on.
+  expect(text).not.toContain("embedding unavailable; lexical search only");
+  expect(text).toContain("目前只用關鍵字比對搜尋");
   // Non-blocking: the result is still listed.
   expect(text).toContain("Lexical Hit");
   // The out-of-range lexical score is never shown, nor called a similarity.
@@ -817,6 +1072,7 @@ function detailFixture(overrides: Partial<SkillDetail>): SkillDetail {
     summary: "把 PDF 轉成摘要",
     scope: "catalog",
     tier: { value: "indexed", label: "已收錄", note: "收錄不等於精選。" },
+    category: { value: "documents", label: "文件", note: "由策展判定。" },
     enrichment: { status: "pending", note: "尚未產生白話摘要。" },
     limitations: [],
     license: { status: { value: "unknown", label: "License 未知", note: "未宣告 License。" } },
@@ -1227,16 +1483,19 @@ test("DISC-003: the filters the platform has no data for are disabled and say wh
   expect(filterSelect("驗證狀態").disabled).toBe(false);
   expect(filterSelect("Agent 相容").disabled).toBe(false);
   expect(filterSelect("來源層級").disabled).toBe(false);
+  // 類別 joined them with migration 0053, eleven months after PDM-001 decided
+  // the three shelves and nothing stored them.
+  expect(filterSelect("類別").disabled).toBe(false);
 
-  // The two without are present, disabled, and each states its own reason —
-  // not hidden, and never offered as a control that accepts a value and
-  // narrows nothing.
-  for (const label of ["類別", "需要 MCP"]) {
-    expect(filterSelect(label).disabled).toBe(true);
-  }
+  // The one without is present, disabled, and states its own reason — not
+  // hidden, and never offered as a control that accepts a value and narrows
+  // nothing.
+  expect(filterSelect("需要 MCP").disabled).toBe(true);
   const text = container.querySelector(".filter-bar")!.textContent ?? "";
-  expect(text).toContain("只存在於策展清單");
   expect(text).toContain("沒有記錄是否需要 MCP");
+  // 類別's old excuse must be gone from the bar, not merely outvoted by a live
+  // control sitting next to it — the same assertion 來源層級 got in 0042.
+  expect(text).not.toContain("只存在於策展清單");
   // 來源層級 is no longer one of them: its old excuse must be gone from the
   // bar, not merely outvoted by a live control sitting next to it.
   expect(text).not.toContain("人工精選審查尚未開始");
@@ -1265,8 +1524,12 @@ test("設計 §0: the filter summary counts the filters that are actually there"
   const live = selects.length - dead;
   expect(live, "no live filters found — the picker below is measuring nothing").toBeGreaterThan(0);
   expect(dead, "no dead filters found — 「N 項目前無法篩選」 would be a claim about nothing").toBe(
-    2,
+    1,
   );
+  // The other half of the same guard, and the one that would have caught 類別
+  // going live without the summary following: LIVE_FILTERS is read out in that
+  // summary, so it is pinned to the controls actually rendered.
+  expect(live, "the summary's 「N 項可用」 has stopped counting the live controls").toBe(5);
 
   const summary = container
     .querySelector(".filter-disclosure > summary")!

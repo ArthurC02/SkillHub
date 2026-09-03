@@ -215,6 +215,12 @@ export interface PublicSearchResult {
   rank_note?: string;
   /** 來源層級. Always `indexed` today (PDM-002). */
   tier: Labelled;
+  /**
+   * PDM-001 類別: documents | writing | data, or `unassigned` — a typed absence
+   * worded 尚未定值 (§2.9), which every user-imported skill carries until
+   * 05 R-19 decides how such a skill gets one. Never a guess.
+   */
+  category: Labelled;
   risk: SearchResultRisk;
   /** Dependency tags from enrichment; empty while it is pending. */
   dependencies: string[];
@@ -308,7 +314,21 @@ export interface SearchFilters {
    * and there is nothing to filter (server: curationTierValues in http.go).
    */
   tier?: "curated" | "indexed";
+  /**
+   * DISC-002 類別 (PDM-001's three shelves), live since migration 0053.
+   * `unassigned` is not a value here: it is what a row answers when nothing has
+   * given it a category, and a filter for 「沒有類別」 would be a shelf nobody
+   * asked for (server: categoryValues in discovery/http.go).
+   */
+  category?: SkillCategory;
 }
+
+/**
+ * PDM-001's three shelves, as a filter value. Named so `router.tsx` and the
+ * chips validate against one list — the second copy of an enum is where the
+ * front end and the URL start disagreeing.
+ */
+export type SkillCategory = "documents" | "writing" | "data";
 
 // ---- GET /api/skills/{id} (DISC-006, DISC-008) ----
 
@@ -546,6 +566,8 @@ export interface SkillDetail {
   scope: "catalog" | "private";
   /** curated | indexed | external. Always `indexed` today (PDM-002). */
   tier: Labelled;
+  /** Same value as `PublicSearchResult.category`, on every read (migration 0053). */
+  category: Labelled;
   enrichment: SkillEnrichment;
   /**
    * 限制 (DISC-003), from both the enrichment and the scan, each labelled.

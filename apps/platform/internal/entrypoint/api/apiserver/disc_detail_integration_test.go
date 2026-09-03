@@ -107,6 +107,11 @@ type detail struct {
 		Value string `json:"value"`
 		Label string `json:"label"`
 	} `json:"tier"`
+	Category struct {
+		Value string `json:"value"`
+		Label string `json:"label"`
+		Note  string `json:"note"`
+	} `json:"category"`
 	Version *struct {
 		VersionID   string `json:"version_id"`
 		ContentHash string `json:"content_hash"`

@@ -380,6 +380,10 @@ func (s *Server) handleBrowseCatalogRequest(args [0]string, argsEscaped bool, w 
 					Name: "tier",
 					In:   "query",
 				}: params.Tier,
+				{
+					Name: "category",
+					In:   "query",
+				}: params.Category,
 			},
 			Raw: r,
 		}
@@ -10846,6 +10850,10 @@ func (s *Server) handlePublicSearchSkillsRequest(args [0]string, argsEscaped boo
 					Name: "tier",
 					In:   "query",
 				}: params.Tier,
+				{
+					Name: "category",
+					In:   "query",
+				}: params.Category,
 			},
 			Raw: r,
 		}

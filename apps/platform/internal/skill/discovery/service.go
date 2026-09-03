@@ -276,6 +276,7 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		SpecValidated:  filters.SpecValidated,
 		AgentRuntime:   filters.AgentRuntime,
 		CurationTier:   filters.CurationTier,
+		Category:       filters.Category,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -306,7 +307,7 @@ func (s *Service) hybridSearch(ctx context.Context, queries *gen.Queries, query 
 		} else {
 			hit.RankNote = rankNotePendingItem
 		}
-		resultFacets(&hit, row.CurationTier, row.Tags, row.Scan, row.VerifiedAt,
+		resultFacets(&hit, row.CurationTier, row.Category, row.Tags, row.Scan, row.VerifiedAt,
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}
@@ -335,6 +336,7 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 		SpecValidated: filters.SpecValidated,
 		AgentRuntime:  filters.AgentRuntime,
 		CurationTier:  filters.CurationTier,
+		Category:      filters.Category,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -359,7 +361,7 @@ func (s *Service) Browse(ctx context.Context, limit int32, filters searchFilters
 			// question」 — not 「the similarity is low」.
 			RankNote: rankNoteCatalog,
 		}
-		resultFacets(&hit, row.CurationTier, row.Tags, row.Scan, row.VerifiedAt,
+		resultFacets(&hit, row.CurationTier, row.Category, row.Tags, row.Scan, row.VerifiedAt,
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}
@@ -381,6 +383,7 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 		SpecValidated: filters.SpecValidated,
 		AgentRuntime:  filters.AgentRuntime,
 		CurationTier:  filters.CurationTier,
+		Category:      filters.Category,
 	})
 	if err != nil {
 		return nil, 0, err
@@ -401,7 +404,7 @@ func (s *Service) ftsOnlySearch(ctx context.Context, queries *gen.Queries, query
 			SummarySource: row.SummarySource,
 			RankNote:      rankNoteDegraded,
 		}
-		resultFacets(&hit, row.CurationTier, row.Tags, row.Scan, row.VerifiedAt,
+		resultFacets(&hit, row.CurationTier, row.Category, row.Tags, row.Scan, row.VerifiedAt,
 			measuredCompat(row.AgentCapability, row.AgentRuntime, row.AgentRuntimeImage, row.AgentMeasuredAt))
 		hits = append(hits, hit)
 	}

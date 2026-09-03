@@ -107,6 +107,20 @@ export interface PublicSearchResult {
      */
     rankNote?: string;
     /**
+     * PDM-001 category (DISC-002 類別): `documents` | `writing` | `data`,
+     * or `unassigned` when the platform has not given this skill one.
+     * `unassigned` is a typed absence, worded 尚未定值: every
+     * user-imported skill carries it until 05 R-19 decides how such a
+     * skill gets a category, and a fork inherits its source's value
+     * (migration 0053). The label is the shelf name a reader sees; the
+     * note says where the value came from — a curation judgement, never
+     * a guess.
+     * 
+     * @type {Labelled}
+     * @memberof PublicSearchResult
+     */
+    category: Labelled;
+    /**
      * Collection tier (DISC-002 來源層級): `curated` | `indexed`, resolved
      * per row against the skill's newest version — see the `tier` query
      * parameter for what `indexed` does and does not mean. `external` never
@@ -206,6 +220,7 @@ export function instanceOfPublicSearchResult(value: object): value is PublicSear
     if (!('summary' in value) || value['summary'] === undefined) return false;
     if (!('summarySource' in value) || value['summarySource'] === undefined) return false;
     if (!('rank' in value) || value['rank'] === undefined) return false;
+    if (!('category' in value) || value['category'] === undefined) return false;
     if (!('tier' in value) || value['tier'] === undefined) return false;
     if (!('risk' in value) || value['risk'] === undefined) return false;
     if (!('dependencies' in value) || value['dependencies'] === undefined) return false;
@@ -229,6 +244,7 @@ export function PublicSearchResultFromJSONTyped(json: any, ignoreDiscriminator: 
         'summarySource': json['summary_source'],
         'rank': json['rank'],
         'rankNote': json['rank_note'] == null ? undefined : json['rank_note'],
+        'category': LabelledFromJSON(json['category']),
         'tier': LabelledFromJSON(json['tier']),
         'risk': SearchResultRiskFromJSON(json['risk']),
         'dependencies': json['dependencies'],
@@ -256,6 +272,7 @@ export function PublicSearchResultToJSONTyped(value?: PublicSearchResult | null,
         'summary_source': value['summarySource'],
         'rank': value['rank'],
         'rank_note': value['rankNote'],
+        'category': LabelledToJSON(value['category']),
         'tier': LabelledToJSON(value['tier']),
         'risk': SearchResultRiskToJSON(value['risk']),
         'dependencies': value['dependencies'],

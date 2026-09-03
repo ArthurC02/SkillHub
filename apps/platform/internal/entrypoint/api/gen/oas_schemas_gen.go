@@ -342,6 +342,54 @@ func (s *BrowseCatalogAgent) UnmarshalText(data []byte) error {
 	}
 }
 
+type BrowseCatalogCategory string
+
+const (
+	BrowseCatalogCategoryDocuments BrowseCatalogCategory = "documents"
+	BrowseCatalogCategoryWriting   BrowseCatalogCategory = "writing"
+	BrowseCatalogCategoryData      BrowseCatalogCategory = "data"
+)
+
+// AllValues returns all BrowseCatalogCategory values.
+func (BrowseCatalogCategory) AllValues() []BrowseCatalogCategory {
+	return []BrowseCatalogCategory{
+		BrowseCatalogCategoryDocuments,
+		BrowseCatalogCategoryWriting,
+		BrowseCatalogCategoryData,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BrowseCatalogCategory) MarshalText() ([]byte, error) {
+	switch s {
+	case BrowseCatalogCategoryDocuments:
+		return []byte(s), nil
+	case BrowseCatalogCategoryWriting:
+		return []byte(s), nil
+	case BrowseCatalogCategoryData:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BrowseCatalogCategory) UnmarshalText(data []byte) error {
+	switch BrowseCatalogCategory(data) {
+	case BrowseCatalogCategoryDocuments:
+		*s = BrowseCatalogCategoryDocuments
+		return nil
+	case BrowseCatalogCategoryWriting:
+		*s = BrowseCatalogCategoryWriting
+		return nil
+	case BrowseCatalogCategoryData:
+		*s = BrowseCatalogCategoryData
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type BrowseCatalogScript string
 
 const (
@@ -7209,6 +7257,52 @@ func (o OptBrowseCatalogAgent) Or(d BrowseCatalogAgent) BrowseCatalogAgent {
 	return d
 }
 
+// NewOptBrowseCatalogCategory returns new OptBrowseCatalogCategory with value set to v.
+func NewOptBrowseCatalogCategory(v BrowseCatalogCategory) OptBrowseCatalogCategory {
+	return OptBrowseCatalogCategory{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptBrowseCatalogCategory is optional BrowseCatalogCategory.
+type OptBrowseCatalogCategory struct {
+	Value BrowseCatalogCategory
+	Set   bool
+}
+
+// IsSet returns true if OptBrowseCatalogCategory was set.
+func (o OptBrowseCatalogCategory) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptBrowseCatalogCategory) Reset() {
+	var v BrowseCatalogCategory
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptBrowseCatalogCategory) SetTo(v BrowseCatalogCategory) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptBrowseCatalogCategory) Get() (v BrowseCatalogCategory, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptBrowseCatalogCategory) Or(d BrowseCatalogCategory) BrowseCatalogCategory {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptBrowseCatalogScript returns new OptBrowseCatalogScript with value set to v.
 func NewOptBrowseCatalogScript(v BrowseCatalogScript) OptBrowseCatalogScript {
 	return OptBrowseCatalogScript{
@@ -8463,6 +8557,52 @@ func (o OptPublicSearchSkillsAgent) Get() (v PublicSearchSkillsAgent, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptPublicSearchSkillsAgent) Or(d PublicSearchSkillsAgent) PublicSearchSkillsAgent {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptPublicSearchSkillsCategory returns new OptPublicSearchSkillsCategory with value set to v.
+func NewOptPublicSearchSkillsCategory(v PublicSearchSkillsCategory) OptPublicSearchSkillsCategory {
+	return OptPublicSearchSkillsCategory{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptPublicSearchSkillsCategory is optional PublicSearchSkillsCategory.
+type OptPublicSearchSkillsCategory struct {
+	Value PublicSearchSkillsCategory
+	Set   bool
+}
+
+// IsSet returns true if OptPublicSearchSkillsCategory was set.
+func (o OptPublicSearchSkillsCategory) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptPublicSearchSkillsCategory) Reset() {
+	var v PublicSearchSkillsCategory
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptPublicSearchSkillsCategory) SetTo(v PublicSearchSkillsCategory) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptPublicSearchSkillsCategory) Get() (v PublicSearchSkillsCategory, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptPublicSearchSkillsCategory) Or(d PublicSearchSkillsCategory) PublicSearchSkillsCategory {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -10716,6 +10856,12 @@ type PublicSearchResult struct {
 	Rank NilFloat64 `json:"rank"`
 	// Why `rank` is null and what ordered the page instead. Present only when `rank` is null.
 	RankNote OptString `json:"rank_note"`
+	// PDM-001 category (DISC-002 類別): `documents` | `writing` | `data`, or `unassigned` when the
+	// platform has not given this skill one. `unassigned` is a typed absence, worded 尚未定值: every
+	// user-imported skill carries it until 05 R-19 decides how such a skill gets a category, and a fork
+	// inherits its source's value (migration 0053). The label is the shelf name a reader sees; the note
+	// says where the value came from — a curation judgement, never a guess.
+	Category Labelled `json:"category"`
 	// Collection tier (DISC-002 來源層級): `curated` | `indexed`, resolved per row against the skill's
 	// newest version — see the `tier` query parameter for what `indexed` does and does not mean.
 	// `external` never appears here: a result in this list was imported by definition.
@@ -10773,6 +10919,11 @@ func (s *PublicSearchResult) GetRank() NilFloat64 {
 // GetRankNote returns the value of RankNote.
 func (s *PublicSearchResult) GetRankNote() OptString {
 	return s.RankNote
+}
+
+// GetCategory returns the value of Category.
+func (s *PublicSearchResult) GetCategory() Labelled {
+	return s.Category
 }
 
 // GetTier returns the value of Tier.
@@ -10838,6 +10989,11 @@ func (s *PublicSearchResult) SetRank(val NilFloat64) {
 // SetRankNote sets the value of RankNote.
 func (s *PublicSearchResult) SetRankNote(val OptString) {
 	s.RankNote = val
+}
+
+// SetCategory sets the value of Category.
+func (s *PublicSearchResult) SetCategory(val Labelled) {
+	s.Category = val
 }
 
 // SetTier sets the value of Tier.
@@ -11017,6 +11173,54 @@ func (s *PublicSearchSkillsAgent) UnmarshalText(data []byte) error {
 		return nil
 	case PublicSearchSkillsAgentUnverified:
 		*s = PublicSearchSkillsAgentUnverified
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type PublicSearchSkillsCategory string
+
+const (
+	PublicSearchSkillsCategoryDocuments PublicSearchSkillsCategory = "documents"
+	PublicSearchSkillsCategoryWriting   PublicSearchSkillsCategory = "writing"
+	PublicSearchSkillsCategoryData      PublicSearchSkillsCategory = "data"
+)
+
+// AllValues returns all PublicSearchSkillsCategory values.
+func (PublicSearchSkillsCategory) AllValues() []PublicSearchSkillsCategory {
+	return []PublicSearchSkillsCategory{
+		PublicSearchSkillsCategoryDocuments,
+		PublicSearchSkillsCategoryWriting,
+		PublicSearchSkillsCategoryData,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s PublicSearchSkillsCategory) MarshalText() ([]byte, error) {
+	switch s {
+	case PublicSearchSkillsCategoryDocuments:
+		return []byte(s), nil
+	case PublicSearchSkillsCategoryWriting:
+		return []byte(s), nil
+	case PublicSearchSkillsCategoryData:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *PublicSearchSkillsCategory) UnmarshalText(data []byte) error {
+	switch PublicSearchSkillsCategory(data) {
+	case PublicSearchSkillsCategoryDocuments:
+		*s = PublicSearchSkillsCategoryDocuments
+		return nil
+	case PublicSearchSkillsCategoryWriting:
+		*s = PublicSearchSkillsCategoryWriting
+		return nil
+	case PublicSearchSkillsCategoryData:
+		*s = PublicSearchSkillsCategoryData
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -15068,6 +15272,10 @@ type SkillDetail struct {
 	Summary string `json:"summary"`
 	// Which read answered — the public catalog, or the caller's own workspace.
 	Scope SkillDetailScope `json:"scope"`
+	// As on `PublicSearchResult.category`: `documents` | `writing` | `data` | `unassigned` (尚未定值).
+	// Same value for the same skill on every read; the detail page shows it beside `tier` so a reader can
+	// see what the skill is for before what was reviewed.
+	Category Labelled `json:"category"`
 	// `curated` | `indexed`. Recorded by migration 0042; before it, this was always `indexed` because
 	// curation is a recorded human review and nothing recorded one — the fifteen entries that had passed
 	// PDM-002's nine checks were indistinguishable from the thirty that had not.
@@ -15153,6 +15361,11 @@ func (s *SkillDetail) GetScope() SkillDetailScope {
 	return s.Scope
 }
 
+// GetCategory returns the value of Category.
+func (s *SkillDetail) GetCategory() Labelled {
+	return s.Category
+}
+
 // GetTier returns the value of Tier.
 func (s *SkillDetail) GetTier() Labelled {
 	return s.Tier
@@ -15231,6 +15444,11 @@ func (s *SkillDetail) SetSummary(val string) {
 // SetScope sets the value of Scope.
 func (s *SkillDetail) SetScope(val SkillDetailScope) {
 	s.Scope = val
+}
+
+// SetCategory sets the value of Category.
+func (s *SkillDetail) SetCategory(val Labelled) {
+	s.Category = val
 }
 
 // SetTier sets the value of Tier.

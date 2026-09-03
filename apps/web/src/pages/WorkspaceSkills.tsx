@@ -10,7 +10,7 @@ import { deleteSkill } from "../api/skills";
 import { useOwnSkills } from "../api/testcases";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { useGenerateEntryPoint } from "../api/generate";
-import { GenerateSkill } from "../components/GenerateSkill";
+import { CreateHub } from "../components/CreateHub";
 import { GeneratedNotice } from "../components/GeneratedNotice";
 import { RiskSummary } from "../components/RiskIndicator";
 import type { Redistribution } from "../api/types";
@@ -93,12 +93,18 @@ export function WorkspaceSkills() {
       </p>
 
       {/*
-        GEN-004's second entry point (the first is the search's no-results
-        state). Behind ADR-052's flag, read from /me: off by default, and off is
-        what every beta deployment is in until 01 §11.2's first funnel segment
-        has a reading.
+        建立一個 Skill — the three ways in, gathered above the list instead of
+        scattered across the nav, a 2845px detail page and a flag.
+
+        The flag is READ HERE and passed down. GEN-004's second entry point (the
+        first is the search's no-results state) is one of the cards, still behind
+        ADR-052's flag from /me: off by default, and off is what every beta
+        deployment is in until 01 §11.2's first funnel segment has a reading.
+        `ia.test.ts`'s FLAG_OFF_ASSERTED names THIS file as the mount, and that
+        roster may only get shorter — so the read stays where the roster and its
+        flag-off test can find it.
       */}
-      {generateExposed && <GenerateSkill />}
+      <CreateHub generateExposed={generateExposed} />
 
       {skills.isPending && <Loading what="你的 Skill 清單" />}
       <ReadFailure error={skills.error} what="你的 Skill 清單" />

@@ -380,6 +380,11 @@ type searchResult struct {
 		Value string `json:"value"`
 		Label string `json:"label"`
 	} `json:"tier"`
+	Category struct {
+		Value string `json:"value"`
+		Label string `json:"label"`
+		Note  string `json:"note"`
+	} `json:"category"`
 	Risk struct {
 		ScanStatus      string                               `json:"scan_status"`
 		Level           string                               `json:"level"`
@@ -1142,15 +1147,21 @@ func TestFilteredToEmptyIsNotTheNoResultsRefusal(t *testing.T) {
 }
 
 // 02:DISC-002 names six filter dimensions and this build has per-row data for
-// two. The other four are rejected rather than ignored: a shared or hand-edited
-// URL asking for one must not come back as the whole catalog looking like a
-// filtered subset. The UI shows the remaining ones as disabled controls with the
-// reason, so nothing about them is hidden — only refused.
+// five. The last one is rejected rather than ignored: a shared or hand-edited
+// URL asking for it must not come back as the whole catalog looking like a
+// filtered subset. The UI shows it as a disabled control with the reason, so
+// nothing about it is hidden — only refused.
 //
 // `tier` left this list on 2026-08-28: migration 0042 gave the catalogue a
 // second value, so the dimension can now separate something. What replaces it
 // here is `tier=external`, which is a different refusal — the dimension is live
 // but that value is not a row anything can hold, exactly like `agent=claude`.
+//
+// `category` left it on 2026-09-03 for the same shape of reason: 0053 persisted
+// the three PDM-001 shelves. Its replacement here is `category=unassigned` —
+// 尚未定值 is what the platform says about a row nobody classified, not a shelf
+// a caller may ask for. Only `mcp` is left, and its note is still true: no scan
+// and no manifest carries an MCP signal.
 func TestFilterDimensionsWithoutDataAreRejectedNotIgnored(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -1161,9 +1172,10 @@ func TestFilterDimensionsWithoutDataAreRejectedNotIgnored(t *testing.T) {
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 
 	for _, q := range []string{
-		"&category=documents", // curation-only, never persisted
-		"&agent=claude",       // the dimension is live (0022), this value is not
-		"&tier=external",      // the dimension is live (0042), this value is not
+		"&category=unassigned", // the dimension is live (0053), this value is not
+		//                         a shelf: NULL is the platform not having decided
+		"&agent=claude",  // the dimension is live (0022), this value is not
+		"&tier=external", // the dimension is live (0042), this value is not
 		//                        a row: an external result was never imported
 		"&mcp=no",            // no signal exists anywhere
 		"&script=maybe",      // outside the enum
@@ -1172,6 +1184,7 @@ func TestFilterDimensionsWithoutDataAreRejectedNotIgnored(t *testing.T) {
 		"&validation=",
 		"&agent=",
 		"&tier=",
+		"&category=",
 	} {
 		if got := anon.status(t, http.MethodGet, "/api/skills/search?q=beamish"+q); got != http.StatusBadRequest {
 			t.Errorf("%s: got %d, want 400 — an unusable filter must not be silently dropped", q, got)
@@ -1185,6 +1198,136 @@ func TestFilterDimensionsWithoutDataAreRejectedNotIgnored(t *testing.T) {
 	// is about the dimension and not about filtering in general.
 	if body := anon.search(t, "/api/skills/search?q=beamish&script=yes"); len(body.Results) != 1 {
 		t.Fatalf("a supported filter was rejected too: %+v", body)
+	}
+}
+
+// setCategory writes the PDM-001 shelf the way the seed backfill does (0053).
+// Direct SQL for the reason restrict() gives: there is no API that assigns a
+// category — that is exactly what 05 R-19 has not decided — so going through one
+// would be going through something that does not exist.
+func setCategory(t *testing.T, pool *pgxpool.Pool, skillID, category string) {
+	t.Helper()
+	var id pgtype.UUID
+	if err := id.Scan(skillID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE skills SET category = $2 WHERE id = $1", id, category,
+	); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// 02:DISC-002 類別維度, live since 0053. Two halves, and the second is the one
+// that is easy to get wrong: the filter has to narrow, and the rows it does not
+// narrow have to say what they are instead of saying nothing.
+//
+// A skill nobody classified is `unassigned` / 尚未定值 — 設計 §2.9's word for
+// 「平台自己還沒決定」 — and never a guessed shelf, because 05 R-19 has not
+// decided how a user-imported Skill gets one. Both routes are asserted: they are
+// hand-written handlers sharing one parseFilters, and that sharing is a thing
+// that can be broken by an edit to either.
+func TestCategoryFiltersTheCatalogAndNamesTheAbsence(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	curator := a.login(t, "curator-category")
+	markCatalog(t, pool, curator.workspaceID)
+
+	shelved := importPackage(t, pool, a.packages, curator, "borogove-deduper", false)
+	unclassified := importPackage(t, pool, a.packages, curator, "borogove-reporter", false)
+	setCategory(t, pool, shelved, "data")
+
+	anon := &client{Client: http.DefaultClient, base: a.URL}
+
+	for _, path := range []string{
+		"/api/skills/search?q=borogove&category=data",
+		"/api/skills/catalog?category=data",
+	} {
+		got := anon.search(t, path)
+		if ids := got.ids(); len(ids) != 1 || ids[0] != shelved {
+			t.Fatalf("%s returned %v, want just the data-shelved skill %s", path, ids, shelved)
+		}
+		if c := got.Results[0].Category; c.Value != "data" || c.Label != "資料" {
+			t.Fatalf("%s: the shelf did not survive the read: %+v", path, c)
+		}
+	}
+
+	// A different shelf must not return it. The row exists, the query matches it,
+	// and the filter is the only thing standing between — which is the case a
+	// filter that silently does nothing passes and this one must not.
+	for _, path := range []string{
+		"/api/skills/search?q=borogove&category=writing",
+		"/api/skills/catalog?category=writing",
+	} {
+		if ids := anon.search(t, path).ids(); len(ids) != 0 {
+			t.Fatalf("%s returned %v; nothing on this catalogue is shelved as writing", path, ids)
+		}
+	}
+
+	// Unfiltered: both rows come back, and the one nobody classified says so in
+	// words rather than arriving with an empty or absent field.
+	all := anon.search(t, "/api/skills/catalog")
+	var found bool
+	for _, r := range all.Results {
+		if r.SkillID != unclassified {
+			continue
+		}
+		found = true
+		if r.Category.Value != "unassigned" || r.Category.Label != "尚未定值" {
+			t.Errorf("an unclassified row rendered as %+v, want unassigned/尚未定值 (設計 §2.9)", r.Category)
+		}
+		if r.Category.Note == "" {
+			t.Error("the absence was rendered without saying why it is absent (05 R-19)")
+		}
+	}
+	if !found {
+		t.Fatalf("the unclassified skill fell out of the unfiltered catalogue: %v", all.ids())
+	}
+
+	// Same two answers on the detail page, which reads the skills row directly
+	// rather than the search projection — two code paths, one fact.
+	var shelvedDetail, plainDetail detail
+	if code := getJSON(t, http.DefaultClient, a.URL+"/api/skills/"+shelved, &shelvedDetail); code != http.StatusOK {
+		t.Fatalf("detail for the shelved skill: got %d", code)
+	}
+	if shelvedDetail.Category.Value != "data" || shelvedDetail.Category.Label != "資料" {
+		t.Errorf("detail lost the shelf: %+v", shelvedDetail.Category)
+	}
+	if code := getJSON(t, http.DefaultClient, a.URL+"/api/skills/"+unclassified, &plainDetail); code != http.StatusOK {
+		t.Fatalf("detail for the unclassified skill: got %d", code)
+	}
+	if plainDetail.Category.Value != "unassigned" || plainDetail.Category.Label != "尚未定值" {
+		t.Errorf("detail rendered an unclassified skill as %+v, want unassigned/尚未定值", plainDetail.Category)
+	}
+}
+
+// An import brings a package and nothing else, so the platform has no category
+// to record — 05 R-19 is the open question of where one would come from. The
+// row must therefore be NULL and read as 尚未定值, and above all must not pick up
+// a default: a shelf nobody chose is indistinguishable on screen from a
+// curator's judgement, which is exactly 02:DISC-004's prohibition.
+func TestAnImportedSkillArrivesWithoutACategory(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "owner-import-category")
+	imported := importPackage(t, pool, a.packages, owner, "slithy-importer", false)
+
+	var stored *string
+	if err := pool.QueryRow(context.Background(),
+		"SELECT category FROM skills WHERE id = $1", mustUUID(t, imported),
+	).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored != nil {
+		t.Fatalf("import assigned category %q; 05 R-19 has not decided where one comes from", *stored)
+	}
+
+	var got detail
+	if code := getJSON(t, owner.Client, a.URL+"/api/skills/"+imported, &got); code != http.StatusOK {
+		t.Fatalf("owner GET /api/skills/{id}: got %d", code)
+	}
+	if got.Category.Value != "unassigned" || got.Category.Label != "尚未定值" {
+		t.Errorf("an imported skill rendered as %+v, want unassigned/尚未定值", got.Category)
 	}
 }
 
@@ -1396,5 +1539,45 @@ func TestSearchLimitOutsideTheSchemaIsRefused(t *testing.T) {
 				t.Errorf("%s search%q: got %d, want 400", ep.name, bad, got)
 			}
 		}
+	}
+}
+
+// 0053's own comment: category is copied onto a fork, because it says what the
+// bytes are for and a fork is the same bytes in another workspace. The
+// curation verdict is the deliberate opposite (0042) and TestForkCatalogSkill…
+// covers that; this is the other column, and it was missing for one afternoon
+// because CreateSkill had no slot for it while the migration said it should.
+func TestAForkCarriesTheCategoryOfWhatItWasForkedFrom(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "curator")
+	makeCatalog(t, pool, owner.workspaceID)
+	skillID, _ := packagedSkill(t, a, pool, owner, "shelved-skill")
+	setCategory(t, pool, skillID, "data")
+
+	forker := a.login(t, "forker")
+	code, body := postJSON(t, forker, "/skills/"+skillID+"/fork", `{}`)
+	if code != http.StatusCreated {
+		t.Fatalf("POST fork: got %d, body %v", code, body)
+	}
+	forkID, _ := body["skill_id"].(string)
+
+	var got *string
+	if err := pool.QueryRow(context.Background(),
+		"SELECT category FROM skills WHERE id=$1", mustUUID(t, forkID)).Scan(&got); err != nil {
+		t.Fatal(err)
+	}
+	if got == nil || *got != "data" {
+		t.Fatalf("the fork's category is %v; the shelf was lost in the copy (0053)", got)
+	}
+
+	// And on the read the forker actually sees, worded, not just stored. The
+	// fork is private, so this goes through the forker's own session.
+	var forkDetail detail
+	if code := getJSON(t, forker.Client, a.URL+"/api/skills/"+forkID, &forkDetail); code != http.StatusOK {
+		t.Fatalf("GET fork detail: got %d", code)
+	}
+	if forkDetail.Category.Value != "data" || forkDetail.Category.Label != "資料" {
+		t.Errorf("fork detail category = %+v, want data/資料", forkDetail.Category)
 	}
 }

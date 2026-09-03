@@ -158,6 +158,10 @@ func (s *Service) Fork(ctx context.Context, ws identity.Workspace, skillID pgtyp
 		// established, and letting the default answer for a copy is how a hold
 		// becomes a formality.
 		Redistribution: &src.Redistribution,
+		// The PDM-001 category travels too (0053): it says what the bytes are
+		// for, and a fork is the same bytes in another workspace. Unlike the
+		// curation verdict, which is about who read them and stays behind.
+		Category: src.Category,
 	})
 	if isUniqueViolation(err) {
 		return gen.Skill{}, gen.SkillVersion{}, ErrNameTaken

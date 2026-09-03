@@ -159,7 +159,16 @@ WorkspaceAccount► /policy, /workspace/{skills,runs,downloads}
 DataPolicy ─────► /workspace/{skills,runs,downloads,account}
 GenerateSkill ──► /skills/$id                 （旗標後面的元件，§2.4）
 GeneratedNotice ► /lab/run                    （同上）
+CreateHub ──────► /, /workspace/import        （渲染在 /workspace/skills 之內）
 ```
+
+> **補記（2026-09-03）：`/workspace/skills` 的「建立中心」。**
+>
+> `components/CreateHub.tsx` 是 `/workspace/skills` 的 `<h1>` 之下、清單之上的一個區塊（`#create`，首頁的 hero 指著 `/workspace/skills#create`），把三條建立路徑收在同一處：**匯入現成的套件** → `/workspace/import`（該頁唯一的 `.action`，system.md §4.6.3）、**從目錄挑一個來改** → `/`（Fork 需要封測邀請，卡片上直接說，§2.2 第三向的強制者是**平台**）、**依任務描述生成一個** → 沒有新的邊，那是 `GenerateSkill` 原本就在這一頁的那個掛載點被搬進卡片裡，**旗標與 §2.4 一個字都沒有改**。
+>
+> **三條邊裡有兩條是既有的**：`WorkspaceSkills ► /` 與 `WorkspaceSkills ► /workspace/import` 上面那一列本來就有（空狀態那句「或匯入自己的套件」，IA-9）。新的是**來源檔**——`CreateHub.tsx` 讓這兩個位址的 §2.3 入邊各從 2 變 3（`ia.test.ts` 以不同來源檔計數），而 §2.3 只對 0 與 1 那兩列斷言，所以那裡是輸出不是失敗。
+>
+> 旗標讀在 `pages/WorkspaceSkills.tsx`、以 prop 傳進來，不在 `CreateHub` 裡讀：`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊是**以呼叫 `useGenerateEntryPoint` 的檔案為鍵**且只能變短，把讀移進元件會同時讓名冊上的那一列腐爛、又要在一張不能長的清單上加第四個名字。
 
 > **訂正（2026-08-25）：這張圖漏了三條邊，而三條都是同一個原因。**
 >
@@ -191,7 +200,8 @@ GeneratedNotice ► /lab/run                    （同上）
 | ---: | --- | --- |
 | **0** | （無） | ✅ 2026-08-24 起清空：workspace/import 從搜尋無結果那一格獲得第一條頁內入邊（IA-5 的旗標關閉半邊），移入下一列 |
 | **1** | `/compare`、`/lab/datasets`、`/runs/$runId/compare` | ✅ 三項都是 R3 的「具名」那一支（2026-08-24 裁定，IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7。<br>**2026-08-25：這一格此前還有第四個位址。** 匯入頁不適用「具名」那一支（它是導覽列項目、脈絡不唯一），所以它待在這裡是一條 R3 的**現行違規**而不是一項豁免——而它在 §5、§8 與 `04` 三處都沒有編號，於是機器讀得到這一列、算得出這個 1，**沒有任何東西出聲**。補編為 IA-9 之後同日結案，見下一列 |
-| 2 | `/`、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/lab/test-cases/$testCaseId`、`/workspace/account`、`/workspace/skills`、`/workspace/import` | ✅ 匯入頁於 2026-08-25 取得第二條入邊（IA-9）：`/workspace/skills` 空狀態裡那句「或匯入自己的套件」本來就在講它，只是沒有連結——**那一頁說出了下一步，然後叫你自己去導覽列找**。文案一字未改，詞組變成連結 |
+| 3 | `/`、`/workspace/skills`、`/workspace/import` | 2026-09-03 各多一條頁內入邊，來源都是「建立一個 Skill」那一批：首頁 hero 的「自己做一個 Skill」→ `/workspace/skills`；`components/CreateHub.tsx` → `/workspace/import` 與 `/`（目錄）。這三個位址從下一列搬上來；機器只比對 0 與 1 兩列，所以這一列與下一列是人手維護的 |
+| 2 | ~~`/`~~、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/lab/test-cases/$testCaseId`、`/workspace/account`、~~`/workspace/skills`~~、~~`/workspace/import`~~ | ✅ 匯入頁於 2026-08-25 取得第二條入邊（IA-9）：`/workspace/skills` 空狀態裡那句「或匯入自己的套件」本來就在講它，只是沒有連結——**那一頁說出了下一步，然後叫你自己去導覽列找**。文案一字未改，詞組變成連結 |
 | 3 | `/workspace/runs` | ✅ |
 | 4 | `/lab/run`、`/runs/$runId`、`/workspace/downloads` | ✅ |
 | 6 | `/lab/test-cases` | ✅ |
@@ -226,7 +236,7 @@ GeneratedNotice ► /lab/run                    （同上）
 
 | 位址 | search param | 進網址的理由（取自 `router.tsx`） |
 | --- | --- | --- |
-| `/` | `q`、`script`、`validation`、`agent`、`tier`、`compare` | 搜尋條件即所看之物；不在列舉內的值直接丟掉，讓手改的網址落在未篩選清單而不是錯誤頁。<br>**`compare` 於 2026-09-03 加入（`04` 丙-136）**，逗號分隔，與 `/compare?ids=` 同一個形狀。**它不是一條新規則，是既有那條規則的另一半**：`compareRoute` 的註解逐字寫著「the selection lives in the URL so a comparison is linkable and survives a reload」（DISC-009），而產生那份選擇的上一步把它放在 `useState` 裡——同一份東西，晚一步撐得過重新整理，早一步撐不過，於是 DISC-009 自己的工作流「比較 → 上一頁 → 換掉一筆 → 再比較」每走一次都要重新勾兩個。<br>**丙-136 原本提的是把 `q` 放到 `/compare` 上，那個修法被 R4 擋掉並且沒有做**：`q` 對 `/compare` 既不是「你在看哪一份東西」也不是偏好，是「你從哪來」，而 §0.2 只收「R 的推導前提在這裡不成立」。**而且它的前提本來就不成立**——`submitSearch` 是 `replace: true`，瀏覽器上一頁本來就回得到 `/?q=…`；遺失的一直是勾選 |
+| `/` | `q`、`script`、`validation`、`agent`、`tier`、`category`、`compare` | 搜尋條件即所看之物；不在列舉內的值直接丟掉，讓手改的網址落在未篩選清單而不是錯誤頁。<br>**`compare` 於 2026-09-03 加入（`04` 丙-136）**，逗號分隔，與 `/compare?ids=` 同一個形狀。**它不是一條新規則，是既有那條規則的另一半**：`compareRoute` 的註解逐字寫著「the selection lives in the URL so a comparison is linkable and survives a reload」（DISC-009），而產生那份選擇的上一步把它放在 `useState` 裡——同一份東西，晚一步撐得過重新整理，早一步撐不過，於是 DISC-009 自己的工作流「比較 → 上一頁 → 換掉一筆 → 再比較」每走一次都要重新勾兩個。<br>**丙-136 原本提的是把 `q` 放到 `/compare` 上，那個修法被 R4 擋掉並且沒有做**：`q` 對 `/compare` 既不是「你在看哪一份東西」也不是偏好，是「你從哪來」，而 §0.2 只收「R 的推導前提在這裡不成立」。**而且它的前提本來就不成立**——`submitSearch` 是 `replace: true`，瀏覽器上一頁本來就回得到 `/?q=…`；遺失的一直是勾選。<br>**`category` 於 2026-09-03 加入**（PDM-001 的三個架位，自 migration 0053 起是平台欄位）。**進網址的理由是 R4 的「你在看哪一份東西」那一邊**：一個類別是目錄的一段——「文件類的 Skill 有哪些」是一個回答得完的問題，把網址貼給別人，他看到的就是那一段——而不是一種看法；反面同時成立，換一個類別換掉的是清單的內容，不是它的呈現方式。<br>**同一個參數由兩個控制項寫**：搜尋框下方那一列分類 chip（快捷，帶伺服器數出來的筆數）與篩選列裡的「類別」select（與其他五個維度並列）。**它們不是兩個狀態**——`?category=` 只有一份；兩個控制項對同一件事講不同的話，是這一頁已經出過事的形狀（「清除所有篩選」曾經漏掉 `agent`）。<br>**不收 `unassigned`**：那是一列在沒有人給它類別時的回答（畫面上是型別化的缺席詞，`02:DISC-004`），不是一個架位。`05` R-19 決定使用者自行匯入的 Skill 如何取得類別之前，那個狀態會一直在 |
 | `/compare` | `ids` | DISC-009：比較要能被連結、能撐過重新整理 |
 | `/skills/$id/package` | `version` | PACK-001／002：版本是路徑之外的另一個「哪一份」 |
 | `/lab/run` | `skill`、`version`、`test_case` | TEST-008／009：三個 id 都可從網址帶入；只有 `version` 另有選單，另外兩個由擁有它們的畫面選 |

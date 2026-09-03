@@ -25,7 +25,7 @@ import { TestCaseDetail, TestCaseList } from "./pages/TestCases";
 import { WorkspaceAccount } from "./pages/WorkspaceAccount";
 import { WorkspaceRuns } from "./pages/WorkspaceRuns";
 import { WorkspaceSkills } from "./pages/WorkspaceSkills";
-import type { AgentRuntime } from "./api/types";
+import type { AgentRuntime, SkillCategory } from "./api/types";
 
 /**
  * The feedback entry lives here rather than on the pages that refuse something,
@@ -124,6 +124,16 @@ export type HomeSearch = {
   agent?: AgentRuntime;
   tier?: "curated" | "indexed";
   /**
+   * DISC-002 的類別維度（PDM-001 的三個架位），自 migration 0053 起是平台欄位。
+   *
+   * R4 的「你在看哪一份東西」那一邊：一個類別是目錄的一段，不是一種看法。網址上帶
+   * 著它，分類頁就貼得出去、撐得過重新整理，而首頁的分類列與篩選列裡那個 select
+   * **寫的是同一個參數**——兩個控制項對同一件事講不同的話，是這一頁已經出過事的形狀。
+   *
+   * 不收 `unassigned`：那是一列在沒有人給它類別時的回答（尚未定值），不是一個架位。
+   */
+  category?: SkillCategory;
+  /**
    * DISC-009 的候選勾選，逗號分隔，與 `/compare?ids=` 同一個形狀。
    *
    * **這不是一個新決定，是把既有的那個決定套完整。** `compareRoute` 的註解逐字寫著
@@ -143,6 +153,9 @@ export type HomeSearch = {
 
 const AGENT_RUNTIMES: AgentRuntime[] = ["native", "transpiled", "failed", "unverified"];
 
+/** The three PDM-001 shelves. `unassigned` is a row's answer, not a shelf. */
+const CATEGORIES: SkillCategory[] = ["documents", "writing", "data"];
+
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -160,6 +173,12 @@ const indexRoute = createRoute({
     // `external` is deliberately not accepted: it means "never imported", so
     // the server refuses it too (curationTierValues in discovery/http.go).
     tier: search.tier === "curated" || search.tier === "indexed" ? search.tier : undefined,
+    // Same rule as the four above: a value outside the enum is dropped, not
+    // passed on. The server answers 400 to one, and a hand-edited `?category=`
+    // should land on the whole catalogue rather than an error page.
+    category: CATEGORIES.includes(search.category as SkillCategory)
+      ? (search.category as SkillCategory)
+      : undefined,
     // 與 `/compare` 同一條規則：字串收下，超過 MAX_COMPARE 的部分由頁面修剪。
     compare: typeof search.compare === "string" && search.compare ? search.compare : undefined,
   }),

@@ -23,6 +23,7 @@ SELECT s.skill_id, s.name,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
+       cur.category,
        count(*) OVER ()::bigint AS total_matches
 FROM search_documents s
 JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
@@ -44,7 +45,10 @@ LEFT JOIN LATERAL (
     SELECT CASE
         WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
         THEN 'curated' ELSE 'indexed'
-    END AS tier
+    END AS tier,
+    -- PDM-001 category (0053). NULL is a typed absence the handler words as
+    -- 尚未定值, never a guessed shelf (05 R-19).
+    sk.category
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
@@ -66,10 +70,14 @@ WHERE (
     $4::text IS NULL
     OR COALESCE(cur.tier, 'indexed') = $4::text
   )
+  AND (
+    $5::text IS NULL
+    OR cur.category = $5::text
+  )
 ORDER BY (COALESCE(cur.tier, 'indexed') = 'curated') DESC,
          ver.created_at DESC NULLS LAST,
          s.skill_id
-LIMIT $5
+LIMIT $6
 `
 
 type BrowseCatalogSkillsParams struct {
@@ -77,6 +85,7 @@ type BrowseCatalogSkillsParams struct {
 	SpecValidated *bool
 	AgentRuntime  *string
 	CurationTier  *string
+	Category      *string
 	ResultLimit   int32
 }
 
@@ -93,6 +102,7 @@ type BrowseCatalogSkillsRow struct {
 	AgentRuntimeImage string
 	AgentMeasuredAt   pgtype.Timestamptz
 	CurationTier      string
+	Category          *string
 	TotalMatches      int64
 }
 
@@ -121,6 +131,7 @@ func (q *Queries) BrowseCatalogSkills(ctx context.Context, arg BrowseCatalogSkil
 		arg.SpecValidated,
 		arg.AgentRuntime,
 		arg.CurationTier,
+		arg.Category,
 		arg.ResultLimit,
 	)
 	if err != nil {
@@ -143,6 +154,7 @@ func (q *Queries) BrowseCatalogSkills(ctx context.Context, arg BrowseCatalogSkil
 			&i.AgentRuntimeImage,
 			&i.AgentMeasuredAt,
 			&i.CurationTier,
+			&i.Category,
 			&i.TotalMatches,
 		); err != nil {
 			return nil, err
@@ -357,19 +369,19 @@ func (q *Queries) PruneDeletedSearchDocuments(ctx context.Context) (int64, error
 
 const publicHybridSearchSkills = `-- name: PublicHybridSearchSkills :many
 WITH vec AS (
-    SELECT s.skill_id, s.embedding <=> $7::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $8::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
     WHERE s.embedding IS NOT NULL
-    ORDER BY s.embedding <=> $7::vector ASC
+    ORDER BY s.embedding <=> $8::vector ASC
     LIMIT 50
 ),
 fts AS (
-    SELECT s.skill_id, s.embedding <=> $7::vector AS distance
+    SELECT s.skill_id, s.embedding <=> $8::vector AS distance
     FROM search_documents s
     JOIN workspaces w ON w.id = s.workspace_id AND w.is_catalog
-    WHERE s.tsv @@ websearch_to_tsquery('english', $8::text)
-    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $8::text)) DESC
+    WHERE s.tsv @@ websearch_to_tsquery('english', $9::text)
+    ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $9::text)) DESC
     LIMIT 50
 ),
 candidates AS (
@@ -392,6 +404,7 @@ SELECT c.skill_id, s.name,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
+       cur.category,
        (1 - COALESCE(c.distance, 1))::float8 AS rank,
        (c.distance IS NULL)::bool AS unranked,
        -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
@@ -444,7 +457,10 @@ LEFT JOIN LATERAL (
     SELECT CASE
         WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
         THEN 'curated' ELSE 'indexed'
-    END AS tier
+    END AS tier,
+    -- PDM-001 category (0053). NULL is a typed absence the handler words as
+    -- 尚未定值, never a guessed shelf (05 R-19).
+    sk.category
     FROM skills sk
     WHERE sk.id = c.skill_id
 ) cur ON true
@@ -473,8 +489,12 @@ WHERE (c.distance IS NULL OR c.distance <= $1::float8)
     $5::text IS NULL
     OR COALESCE(cur.tier, 'indexed') = $5::text
   )
+  AND (
+    $6::text IS NULL
+    OR cur.category = $6::text
+  )
 ORDER BY c.distance ASC NULLS LAST
-LIMIT $6
+LIMIT $7
 `
 
 type PublicHybridSearchSkillsParams struct {
@@ -483,6 +503,7 @@ type PublicHybridSearchSkillsParams struct {
 	SpecValidated  *bool
 	AgentRuntime   *string
 	CurationTier   *string
+	Category       *string
 	ResultLimit    int32
 	QueryEmbedding *pgvector.Vector
 	Query          string
@@ -501,6 +522,7 @@ type PublicHybridSearchSkillsRow struct {
 	AgentRuntimeImage string
 	AgentMeasuredAt   pgtype.Timestamptz
 	CurationTier      string
+	Category          *string
 	Rank              float64
 	Unranked          bool
 	TotalMatches      int64
@@ -556,6 +578,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 		arg.SpecValidated,
 		arg.AgentRuntime,
 		arg.CurationTier,
+		arg.Category,
 		arg.ResultLimit,
 		arg.QueryEmbedding,
 		arg.Query,
@@ -580,6 +603,7 @@ func (q *Queries) PublicHybridSearchSkills(ctx context.Context, arg PublicHybrid
 			&i.AgentRuntimeImage,
 			&i.AgentMeasuredAt,
 			&i.CurationTier,
+			&i.Category,
 			&i.Rank,
 			&i.Unranked,
 			&i.TotalMatches,
@@ -617,6 +641,7 @@ SELECT s.skill_id, s.name,
        COALESCE(cmp.runtime_image, '') AS agent_runtime_image,
        cmp.measured_at AS agent_measured_at,
        COALESCE(cur.tier, 'indexed') AS curation_tier,
+       cur.category,
        -- 設計系統 §4.3: 「任何被截斷的清單都必須說出總數與截斷理由」. Until
        -- 2026-08-25 this page said 「超過 N 個」 -- a LOWER BOUND, from which a
        -- reader cannot tell 21 from 2100 -- because there was no count to say.
@@ -662,7 +687,10 @@ LEFT JOIN LATERAL (
     SELECT CASE
         WHEN sk.curation_tier = 'curated' AND sk.curated_version_id = ver.id
         THEN 'curated' ELSE 'indexed'
-    END AS tier
+    END AS tier,
+    -- PDM-001 category (0053). NULL is a typed absence the handler words as
+    -- 尚未定值, never a guessed shelf (05 R-19).
+    sk.category
     FROM skills sk
     WHERE sk.id = s.skill_id
 ) cur ON true
@@ -685,8 +713,12 @@ WHERE s.tsv @@ websearch_to_tsquery('english', $1::text)
     $5::text IS NULL
     OR COALESCE(cur.tier, 'indexed') = $5::text
   )
+  AND (
+    $6::text IS NULL
+    OR cur.category = $6::text
+  )
 ORDER BY ts_rank_cd(s.tsv, websearch_to_tsquery('english', $1::text)) DESC
-LIMIT $6
+LIMIT $7
 `
 
 type PublicSearchSkillsParams struct {
@@ -695,6 +727,7 @@ type PublicSearchSkillsParams struct {
 	SpecValidated *bool
 	AgentRuntime  *string
 	CurationTier  *string
+	Category      *string
 	ResultLimit   int32
 }
 
@@ -711,6 +744,7 @@ type PublicSearchSkillsRow struct {
 	AgentRuntimeImage string
 	AgentMeasuredAt   pgtype.Timestamptz
 	CurationTier      string
+	Category          *string
 	TotalMatches      int64
 }
 
@@ -780,6 +814,7 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 		arg.SpecValidated,
 		arg.AgentRuntime,
 		arg.CurationTier,
+		arg.Category,
 		arg.ResultLimit,
 	)
 	if err != nil {
@@ -802,6 +837,7 @@ func (q *Queries) PublicSearchSkills(ctx context.Context, arg PublicSearchSkills
 			&i.AgentRuntimeImage,
 			&i.AgentMeasuredAt,
 			&i.CurationTier,
+			&i.Category,
 			&i.TotalMatches,
 		); err != nil {
 			return nil, err

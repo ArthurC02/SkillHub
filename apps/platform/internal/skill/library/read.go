@@ -26,6 +26,11 @@ type Skill struct {
 	// say whether it is still about the bytes a reader is looking at.
 	CurationTier     string
 	CuratedVersionID pgtype.UUID
+	// Category is the PDM-001 shelf (0053), NULL until somebody classified the
+	// skill. The pointer is the point: 05 R-19 has not decided how a
+	// user-imported skill gets one, so "no category" is a state the read path has
+	// to be able to word (尚未定值) and must not be able to confuse with a shelf.
+	Category *string
 }
 
 // Version is Registry's immutable version fact.
@@ -233,6 +238,7 @@ func skillDTO(row gen.Skill) Skill {
 		TakedownAt: row.TakedownAt, AccessRestriction: row.AccessRestriction,
 		Redistribution: row.Redistribution,
 		CurationTier:   row.CurationTier, CuratedVersionID: row.CuratedVersionID,
+		Category: row.Category,
 	}
 }
 

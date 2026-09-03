@@ -91,6 +91,8 @@ type BrowseCatalogParams struct {
 	Agent OptBrowseCatalogAgent `json:",omitempty,omitzero"`
 	// As on `GET /api/skills/search`. Absent = not filtered.
 	Tier OptBrowseCatalogTier `json:",omitempty,omitzero"`
+	// As on `GET /api/skills/search`. Absent = not filtered.
+	Category OptBrowseCatalogCategory `json:",omitempty,omitzero"`
 }
 
 func unpackBrowseCatalogParams(packed middleware.Parameters) (params BrowseCatalogParams) {
@@ -137,6 +139,15 @@ func unpackBrowseCatalogParams(packed middleware.Parameters) (params BrowseCatal
 		}
 		if v, ok := packed[key]; ok {
 			params.Tier = v.(OptBrowseCatalogTier)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "category",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Category = v.(OptBrowseCatalogCategory)
 		}
 	}
 	return params
@@ -435,6 +446,62 @@ func decodeBrowseCatalogParams(args [0]string, argsEscaped bool, r *http.Request
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "tier",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: category.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "category",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotCategoryVal BrowseCatalogCategory
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotCategoryVal = BrowseCatalogCategory(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Category.SetTo(paramsDotCategoryVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Category.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "category",
 			In:   "query",
 			Err:  err,
 		}
@@ -4075,6 +4142,14 @@ type PublicSearchSkillsParams struct {
 	// `external` is not accepted. An external result was never imported and has no row, so it is a state
 	// of the search rather than a value this filter can select.
 	Tier OptPublicSearchSkillsTier `json:",omitempty,omitzero"`
+	// DISC-002's 類別 dimension (PDM-001's three shelves), live since migration 0053. Absent = not
+	// filtered.
+	//
+	// Matches the skill's stored category exactly. A skill with no category — every user-imported skill
+	// today, because the platform has not decided how one gets a category (05 R-19) — matches none of
+	// the three values; it is not silently filed under any of them, and its row says 尚未定值 rather
+	// than a guess (02:DISC-004).
+	Category OptPublicSearchSkillsCategory `json:",omitempty,omitzero"`
 }
 
 func unpackPublicSearchSkillsParams(packed middleware.Parameters) (params PublicSearchSkillsParams) {
@@ -4128,6 +4203,15 @@ func unpackPublicSearchSkillsParams(packed middleware.Parameters) (params Public
 		}
 		if v, ok := packed[key]; ok {
 			params.Tier = v.(OptPublicSearchSkillsTier)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "category",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Category = v.(OptPublicSearchSkillsCategory)
 		}
 	}
 	return params
@@ -4482,6 +4566,62 @@ func decodePublicSearchSkillsParams(args [0]string, argsEscaped bool, r *http.Re
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "tier",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: category.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "category",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotCategoryVal PublicSearchSkillsCategory
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotCategoryVal = PublicSearchSkillsCategory(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Category.SetTo(paramsDotCategoryVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Category.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "category",
 			In:   "query",
 			Err:  err,
 		}

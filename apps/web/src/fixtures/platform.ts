@@ -40,6 +40,8 @@ import type {
 
 export const SKILL = "11111111-1111-1111-1111-111111111111";
 export const SKILL_B = "aaaaaaaa-2222-2222-2222-222222222222";
+/** The catalogue's third row — the one that is neither 文件 nor 已索引. */
+export const SKILL_C = "bbbbbbbb-3333-3333-3333-333333333333";
 export const VERSION = "22222222-2222-2222-2222-222222222222";
 export const TEST_CASE = "33333333-3333-3333-3333-333333333333";
 export const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
@@ -52,8 +54,31 @@ export const ARTIFACT = "44444444-4444-4444-4444-444444444444";
 // badges, no disclosures, no tables and no form controls, so scanning it would
 // prove nothing about the markup a real reader meets.
 
+/**
+ * The three PDM-001 shelves, as the server sends them (`Labelled`), plus the
+ * typed absence a user-imported skill carries. Named so the rows below can pick
+ * one each: a fixture where every row sat on the same shelf would let a
+ * category filter, a chip count and a badge all be wrong together and still
+ * agree with each other.
+ */
+export const CATEGORIES = {
+  documents: {
+    value: "documents",
+    label: "文件",
+    note: "由策展判定，不是模型猜的。",
+  },
+  writing: { value: "writing", label: "寫作", note: "由策展判定，不是模型猜的。" },
+  data: { value: "data", label: "資料", note: "由策展判定，不是模型猜的。" },
+  unassigned: {
+    value: "unassigned",
+    label: "尚未定值",
+    note: "平台還沒有給這個 Skill 類別；這不是「不屬於任何類別」。",
+  },
+} satisfies Record<string, PublicSearchResult["category"]>;
+
 export const HIT_FACETS = {
   tier: { value: "indexed", label: "已收錄", note: "收錄不等於精選。" },
+  category: CATEGORIES.documents,
   risk: {
     scan_status: "scanned",
     level: "disclosed",
@@ -81,19 +106,27 @@ export const HIT_FACETS = {
   // bare object literal both fail to do here.
 } satisfies Pick<
   PublicSearchResult,
-  "tier" | "risk" | "dependencies" | "compatibility" | "verified_at"
+  "tier" | "category" | "risk" | "dependencies" | "compatibility" | "verified_at"
 >;
 
 /**
  * 02:DISC-006 —— 目錄的一頁，也就是首頁在還沒有人搜尋時渲染的東西。
  *
- * The same two rows the search fixture carries, and that is the point rather
+ * The first two rows are the search fixture's, and that is the point rather
  * than laziness: one card renders both states of that screen, so a fixture that
  * gave the catalogue its own rows would let the two drift in a suite whose whole
  * job is to notice drift. What differs is what the contract says differs —
  * `rank` is null on every row and `rank_note` says why, there is no
  * `match_reason` because nothing was matched, and the envelope carries the four
  * fields a browse has instead of search's ten.
+ *
+ * **A third row, and only here.** The catalogue is the only state that groups:
+ * curated first (the `ORDER BY` in `BrowseCatalogSkills`, rendered as the 精選
+ * shelf) and one shelf per PDM-001 category. A fixture whose rows all carried
+ * one tier and one category would let a shelf, a chip count and a badge be
+ * wrong together and still agree with each other. So the three rows span both
+ * tiers and all three categories, in the order the server sends them — curated
+ * first.
  */
 export const CATALOG = {
   results: [
@@ -103,6 +136,8 @@ export const CATALOG = {
       name: "PDF Summariser",
       summary: "把 PDF 整理成摘要",
       summary_source: "model",
+      tier: { value: "curated", label: "精選", note: "已完成人工檢視，不代表安全保證。" },
+      category: CATEGORIES.documents,
       rank: null,
       rank_note:
         "這是目錄本身,不是某一句話的搜尋結果,所以沒有相似度可以顯示;排序是精選在前、其餘依版本建立時間由新到舊。",
@@ -113,13 +148,25 @@ export const CATALOG = {
       name: "Doc Splitter",
       summary: "切分文件",
       summary_source: "package",
+      category: CATEGORIES.writing,
+      rank: null,
+      rank_note:
+        "這是目錄本身,不是某一句話的搜尋結果,所以沒有相似度可以顯示;排序是精選在前、其餘依版本建立時間由新到舊。",
+    },
+    {
+      ...HIT_FACETS,
+      skill_id: SKILL_C,
+      name: "CSV Cleaner",
+      summary: "清理 CSV 欄位",
+      summary_source: "package",
+      category: CATEGORIES.data,
       rank: null,
       rank_note:
         "這是目錄本身,不是某一句話的搜尋結果,所以沒有相似度可以顯示;排序是精選在前、其餘依版本建立時間由新到舊。",
     },
   ],
-  limit: 20,
-  total: 2,
+  limit: 100,
+  total: 3,
   truncated: false,
 };
 
@@ -142,6 +189,7 @@ export const SEARCH = {
       name: "Doc Splitter",
       summary: "切分文件",
       summary_source: "package",
+      category: CATEGORIES.writing,
       rank: null,
       rank_note: "尚未建立語意索引，未評分。",
       match_reason: "查詢與文件共同出現：pdf",
@@ -170,6 +218,7 @@ export function skillDetail(id: string, name: string): SkillDetail {
     summary: "把 PDF 整理成摘要",
     scope: "catalog",
     tier: { value: "indexed", label: "已收錄", note: "收錄不等於精選。" },
+    category: CATEGORIES.documents,
     enrichment: {
       status: "enriched",
       summary: "讀 PDF，輸出重點摘要。",
@@ -781,7 +830,18 @@ export function platformResponse(input: string): { body: unknown; status: number
   if (path.startsWith("/api/skills/search")) return ok(SEARCH);
   // 02:DISC-006. Matched before the `/api/skills/` prefix below, which would
   // otherwise read 「catalog」 as a skill id and answer with a detail body.
-  if (path.startsWith("/api/skills/catalog")) return ok(CATALOG);
+  //
+  // `category` is the one filter this stub actually applies, because the home
+  // page reads a **number** back out of it: each category chip asks for
+  // `?category=…&limit=1` and prints the `total`. A stub that answered the
+  // whole catalogue to every one of those would let all four chips show the
+  // same count and a broken filter would still look right.
+  if (path.startsWith("/api/skills/catalog")) {
+    const category = new URLSearchParams(url.split("?")[1] ?? "").get("category");
+    if (!category) return ok(CATALOG);
+    const results = CATALOG.results.filter((row) => row.category.value === category);
+    return ok({ ...CATALOG, results, total: results.length });
+  }
   if (path.endsWith("/files")) return ok(FILES);
   if (path.startsWith("/api/skills/"))
     return ok(skillDetail(path.slice("/api/skills/".length), "PDF Summariser"));

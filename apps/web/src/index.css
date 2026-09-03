@@ -170,8 +170,13 @@ h1 {
    too narrow to show its own placeholder, sitting under a 56px heading. The
    input takes the row and the button keeps its intrinsic width; the cap stops a
    1126px viewport from stretching one field across the whole page. */
+/* `flex-wrap` is for the third item on this row (`.hero-create`, below): three
+   controls do not fit a 351px viewport, and a non-wrapping flex row answers that
+   by overflowing the page — the one failure `e2e/rendered.spec.ts` checks on
+   every route. Wrapping puts the secondary link on its own line instead. */
 .home form {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -833,6 +838,10 @@ main :is(p, li, dd, dt, summary) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  /* Two-column facets (≥1024) put a one-line cell beside a tall one; the grid
+     stretches the short cell and, without this, flex centred its single line
+     halfway down the row — a date floating 60px under its own label. */
+  align-content: flex-start;
   gap: 8px;
 }
 
@@ -1178,6 +1187,253 @@ summary {
   border: 1px solid var(--danger);
   border-radius: 4px;
   padding: 0 4px;
+}
+
+/* --- Chips: navigation that is not a claim --------------------------------
+   §4.6.3 splits the vocabulary in two — fill belongs to ACTIONS, outline to
+   CLAIMS — and a category chip is neither: it navigates. So it borrows the
+   secondary button's box (`--surface` on `--border-strong`, the same 15/20px
+   text and 32px target the base control layer derives) and NOT `.badge`'s pill,
+   because a badge you can press reads as a claim inviting agreement. It never
+   takes `--cta`: `/` already spends its one filled action on 搜尋 (§4.6.3's
+   route table), and `rendered.spec.ts` fails a second one. */
+.category-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 5px 12px;
+  min-height: 32px;
+  box-sizing: border-box;
+  text-decoration: none;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.chip:hover {
+  background: var(--surface-hover);
+}
+
+.chip:active {
+  background: var(--surface-active);
+}
+
+/* Selected, in four channels and not one: the recess fill, the `--text-h` edge,
+   the weight, and `aria-current` itself — which is the half a screen reader
+   gets (NFR-007, and the same shape as `.app-nav a[data-status="active"]`).
+   The recess is what a chip presses INTO; §4.6.5 reserves `--code-bg` as a
+   whole CARD's fill, and a chip is not a card. */
+.chip[aria-current="true"] {
+  background: var(--code-bg);
+  border-color: var(--text-h);
+  font-weight: 600;
+}
+
+/* A shelf is a grouping, not a surface: no border, no fill, nothing filled
+   inside it (§4.6.3). Its `h3` keeps the §4.1 scale — a shelf title is a
+   subsection of the page, not a second page title. */
+.curated-shelf {
+  margin: 24px 0;
+}
+
+/* The second control on the search row. Bit-for-bit the secondary button of
+   §4.6.3 (`--surface`/`--border-strong`/6px/5px 10px/32px) because that is what
+   it is; the only additions are the ones an `<a>` needs and a `<button>` does
+   not. `white-space: nowrap` so it wraps as a whole rather than breaking its
+   own label in two. */
+.hero-create {
+  display: inline-flex;
+  align-items: center;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 5px 10px;
+  min-height: 32px;
+  box-sizing: border-box;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.hero-create:hover {
+  background: var(--surface-hover);
+}
+
+/* r3 提案 B: weight only. Still outlined, still `--code-bg` — 精選 is a claim,
+   and §4.6.3 keeps fill away from claims permanently (the first thing that will
+   ask for a filled badge is a paid marker). Weight is the one lever available
+   without a webfont (§4.6.6), and the word 精選 is still doing the talking; this
+   only makes it the word the eye reaches first. */
+.badge-tier-curated {
+  font-weight: 600;
+}
+
+/* A 14px label above an `h1`. `letter-spacing` rather than uppercase: the copy
+   is Chinese, and `text-transform` does nothing to it. */
+.page-eyebrow {
+  font-size: 14px;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+/* --- Two columns, and why they SHORTEN lines ------------------------------
+   The objection to a two-column layout is that it makes lines longer. Measured
+   2026-09-03 on `/skills/$id`, it does the opposite here: `#root` is 1126px and
+   the article 1078px, but the longest rendered line is 720px — 40em at 18px,
+   i.e. §4.5's measure cap is already biting — so 358px to the right of every
+   paragraph is permanently blank. Two ~519px columns are both UNDER 720px, so
+   the cap stops biting and nothing gets a longer line; the same arithmetic on a
+   result card's facets is 442px of card height down to ~330px, two ~490px
+   columns against the `.note` cap of 560px. That is why every grid below leaves
+   `main :is(p, li, dd, dt, summary) { max-width: 40em }` alone: the cap is what
+   made the space, and the grids are what spend it.
+
+   §0: 讓步的是形式 — not one sentence is removed, folded or reworded by any of
+   this. 1024px is the file's existing breakpoint (§4.5 has two, and this adds
+   no third); at exactly 1024 the type is already on its narrow step, which is
+   the same edge every other rule in this file sits on. */
+@media (min-width: 1024px) {
+  /* r2 §5.4-1. Two `max-content 1fr` pairs, so five rows become three. The
+     4px/12px gaps are unchanged — 12px was chosen as the line between the
+     headline and the evidence, and it is now also the line between the two
+     columns. */
+  .result-facets {
+    grid-template-columns: max-content 1fr max-content 1fr;
+  }
+
+  /* 風險提示 is the tall row (114px of a 442px card, measured), and a row that
+     needs the full width says so itself rather than depending on where the
+     flow happens to drop it. */
+  .facet-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+/* r2 §5.1/B2. The rail is after the main column in the DOM — reading order and
+   tab order are the page's order, and the grid only moves it sideways — so
+   below 1024px there is nothing to undo: no grid, and it falls back into the
+   flow underneath. */
+.detail-main {
+  min-width: 0;
+}
+
+/* A surface holding controls, and the recipe is `.filter-bar`'s exactly:
+   `--surface` on a 1px `--border`, 8px radius, 12px padding. §4.3 是
+   「不發明第五種卡片樣式」 and this invents none — `.filter-bar` is the app's
+   existing panel-that-holds-controls, and this is a second one. */
+.detail-rail {
+  display: grid;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+@media (min-width: 1024px) {
+  .detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* THE APP'S FIRST `position` DECLARATION — the 2026-09-03 inventory counted
+     zero — and it is here for §1.2 (快到第一個判斷): this page is 2845px of
+     evidence and the action that finishes it (打包並下載這個版本) used to scroll
+     away with the paragraph it sat in. Sticky and not fixed: it belongs to this
+     column, stops at the column's end, and takes no space out of the viewport.
+     `align-items: start` above is the half that makes it work — a stretched
+     grid item is as tall as its row and never has anywhere to stick to. */
+  .detail-rail {
+    position: sticky;
+    top: 16px;
+  }
+
+  /* r2 §5.2 B1: the four verdicts (風險／可散布性／相容性／License) as 2×2
+     instead of four full-width blocks stacked — −410px, and the fourth one
+     stops being 926px down the page. Column gap 24px, row gap 16px: the rows
+     are one subject continued, the columns are two. */
+  .verdict-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 24px;
+  }
+
+  .verdict-grid > section {
+    min-width: 0;
+  }
+
+  /* `h2` carries `24px 0 8px`, so the top margin of a cell's first heading is
+     air INSIDE the grid — the four cells would start on two different
+     baselines. Only the first one in each cell; the ones further down are still
+     separating siblings. */
+  .verdict-grid > section > h2:first-child {
+    margin-top: 0;
+  }
+}
+
+/* The header block: name, summary, tier and category. No box — §4.3's card
+   criterion is 「自己的控制項或連結，或自己的巢狀子清單」 and a page's own
+   headline has neither; it is the page. */
+.detail-answer {
+  margin-bottom: 16px;
+}
+
+/* Stacked like `.field`, and capped at the same 480px, so a file input and its
+   label do not become the one full-width control on the page. */
+.version-upload {
+  display: grid;
+  gap: 8px;
+  max-width: 480px;
+}
+
+/* --- Workspace: the create hub -------------------------------------------- */
+.create-hub {
+  margin: 16px 0 24px;
+}
+
+/* auto-fit rather than a fixed count: two entries and four entries are both
+   real, and `minmax(240px, 1fr)` gives one column on a phone without a second
+   breakpoint. The cards inside are `.download-item` — §4.3 名之為全 app 的通用
+   卡片, and the rule there is 「修法一律是套用既有的卡片族，不是發明第五種樣式」,
+   so nothing here paints a card. */
+.create-cards {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+/* `align-content: start` so a short card does not stretch its own contents to
+   match the tall one beside it — the grid track is equal height, the text
+   inside it should not be. */
+.create-cards > li {
+  display: grid;
+  gap: 8px;
+  align-content: start;
 }
 
 /* The file had three breakpoints before this and all three were 1024px, i.e.

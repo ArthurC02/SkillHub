@@ -45,6 +45,7 @@ export function searchSkills(query: string, filters: SearchFilters = {}, limit =
   if (filters.validation) params.set("validation", filters.validation);
   if (filters.agent) params.set("agent", filters.agent);
   if (filters.tier) params.set("tier", filters.tier);
+  if (filters.category) params.set("category", filters.category);
   return apiFetch<PublicSearchResponse>(`/api/skills/search?${params.toString()}`);
 }
 
@@ -68,6 +69,7 @@ export function useSkillSearch(query: string, filters: SearchFilters, enabled: b
       filters.validation ?? "",
       filters.agent ?? "",
       filters.tier ?? "",
+      filters.category ?? "",
     ],
     queryFn: () => searchSkills(query, filters),
     enabled,
@@ -84,12 +86,26 @@ export function useSkillSearch(query: string, filters: SearchFilters, enabled: b
  * states of the same page, and a filter that serialised differently on one of
  * them would narrow one list and not the other.
  */
-export function browseCatalog(filters: SearchFilters = {}, limit = 20) {
+/**
+ * `limit = 100`, which is the contract's maximum and not a round number picked
+ * here.
+ *
+ * It was 20 against a catalogue of 45, so the landing page told every first
+ * visitor that more than half of the product existed and that this page could
+ * not reach it — 「目前沒有翻頁」 — with the only way out being to go back and
+ * guess a sentence. That is the bottom half of the disease 02:DISC-006 was
+ * written to cure. At 100 the response comes back `truncated: false` and the
+ * page takes the other branch it already had: 「目錄共 45 個 Skill，全部列在
+ * 下面。」 設計 §4.3's truncation clause is satisfied by telling the truth in
+ * either branch; this makes the true one the ordinary one.
+ */
+export function browseCatalog(filters: SearchFilters = {}, limit = 100) {
   const params = new URLSearchParams({ limit: String(limit) });
   if (filters.script) params.set("script", filters.script);
   if (filters.validation) params.set("validation", filters.validation);
   if (filters.agent) params.set("agent", filters.agent);
   if (filters.tier) params.set("tier", filters.tier);
+  if (filters.category) params.set("category", filters.category);
   return apiFetch<CatalogResponse>(`/api/skills/catalog?${params.toString()}`);
 }
 
@@ -100,16 +116,42 @@ export function browseCatalog(filters: SearchFilters = {}, limit = 20) {
  */
 export function useCatalog(filters: SearchFilters, enabled: boolean) {
   return useQuery({
-    queryKey: [
-      "skills",
-      "catalog",
-      filters.script ?? "",
-      filters.validation ?? "",
-      filters.agent ?? "",
-      filters.tier ?? "",
-    ],
+    queryKey: ["skills", "catalog", ...filterKey(filters)],
     queryFn: () => browseCatalog(filters),
     enabled,
+    retry: false,
+  });
+}
+
+/** Every filter dimension, in one order, so two cache keys cannot disagree. */
+function filterKey(filters: SearchFilters) {
+  return [
+    filters.script ?? "",
+    filters.validation ?? "",
+    filters.agent ?? "",
+    filters.tier ?? "",
+    filters.category ?? "",
+  ];
+}
+
+/**
+ * How many rows the catalogue holds under these filters — the number beside a
+ * category chip.
+ *
+ * `limit: 1` and only `total` is read. The catalogue's `total` is already
+ * 「how many match, before the page was cut down」 (`count(*) OVER ()` in
+ * db/queries/search.sql, exact on this path because a browse has no candidate
+ * window), so one filtered read per chip IS the facet count — no new endpoint,
+ * no contract change, and no number typed into the front end (r1 §D).
+ *
+ * Its own cache key, not `useCatalog`'s: same URL shape, different limit, and
+ * two callers of one key with different queryFns is a race over which closure
+ * wins (the `getEmbeddedSkillDetail` precedent above).
+ */
+export function useCatalogTotal(filters: SearchFilters) {
+  return useQuery({
+    queryKey: ["skills", "catalog", "total", ...filterKey(filters)],
+    queryFn: () => browseCatalog(filters, 1),
     retry: false,
   });
 }

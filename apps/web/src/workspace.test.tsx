@@ -38,16 +38,24 @@ afterEach(async () => {
 });
 
 vi.mock("@tanstack/react-router", () => ({
+  // `className` is forwarded because `.action` is an assertion here now: 設計
+  // §4.6.3 「一頁至多一個主要動作」 is a rule about a class, and a mock that drops
+  // the class would let this suite claim the page has none while it has three.
   Link: ({
     to,
     params,
+    className,
     children,
   }: {
     to: string;
     params?: Record<string, string>;
+    className?: string;
     children?: unknown;
   }) => (
-    <a href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}>
+    <a
+      className={className}
+      href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}
+    >
       {children as never}
     </a>
   ),
@@ -538,7 +546,10 @@ function stubSkillDetailPage(versions: unknown = SKILL_VERSIONS, versionsStatus 
 
 test("WS-001 the detail page lists the versions, newest first, with the oldest saying why it has no comparison", async () => {
   stubSkillDetailPage();
-  await render(<SkillDetail />, () => text().includes("版本歷史"));
+  // 2026-09-03（r2 B3）：那個 h2 現在叫「版本」，而「版本歷史」只剩下失敗與載入
+  // 訊息的主詞（`what="版本歷史"`），所以等它等到的是**載入中**那一格。等這一支
+  // 真正要看的東西，等待條件與它下面那一行相同。
+  await render(<SkillDetail />, () => text().includes("v1"));
   await waitFor(() => text().includes("v1"));
 
   expect(text()).toContain("v2");
@@ -555,7 +566,10 @@ test("WS-001 the detail page lists the versions, newest first, with the oldest s
 
 test("WS-001 第 4 條 比較 asks the contract's endpoint for the right two versions", async () => {
   const calls = stubSkillDetailPage();
-  await render(<SkillDetail />, () => text().includes("版本歷史"));
+  // 2026-09-03（r2 B3）：那個 h2 現在叫「版本」，而「版本歷史」只剩下失敗與載入
+  // 訊息的主詞（`what="版本歷史"`），所以等它等到的是**載入中**那一格。等這一支
+  // 真正要看的東西，等待條件與它下面那一行相同。
+  await render(<SkillDetail />, () => button("與上一版比較") !== undefined);
   await waitFor(() => button("與上一版比較") !== undefined);
 
   expect(calls.some((u) => u.includes("/diff"))).toBe(false);
@@ -580,7 +594,10 @@ test("WS-001 第 4 條 比較 asks the contract's endpoint for the right two ver
 
 test("WS-001 a version list that fails to read says so, and 401 says to log in", async () => {
   stubSkillDetailPage({ error: "not authenticated" }, 401);
-  await render(<SkillDetail />, () => text().includes("版本歷史"));
+  // 2026-09-03（r2 B3）：那個 h2 現在叫「版本」，而「版本歷史」只剩下失敗與載入
+  // 訊息的主詞（`what="版本歷史"`），所以等它等到的是**載入中**那一格。等這一支
+  // 真正要看的東西，等待條件與它下面那一行相同。
+  await render(<SkillDetail />, () => text().includes("版本歷史需要登入"));
   // 主詞要在等待條件裡。裸的「需要登入」現在同一頁上有兩個來源（版本歷史，以及
   // 打包入口對未登入訪客說的那一句），於是這個等待會被錯的那一個滿足，然後在
   // 版本歷史還在載入時就去斷言它。等「版本歷史需要登入」整句。
@@ -651,6 +668,93 @@ test("GEN-008 with the flag on, /workspace/skills does show it", async () => {
 
   expect(container.querySelector("#generate-task")).not.toBeNull();
   expect(text()).toContain("CSV 清理");
+});
+
+// --- 建立中心: the three ways in, gathered above the list ---------------------
+
+/** The hub section, which is where every assertion below is scoped. */
+const hub = () => container.querySelector<HTMLElement>(".create-hub");
+const hubText = () => (hub()?.textContent ?? "").replace(/\s+/g, "");
+
+test("建立中心 carries the page's one primary action, and it is 匯入", async () => {
+  stubOwnSkillsWithFeatures();
+  await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
+
+  // The anchor Writer E's hero points at (`/workspace/skills#create`). A hub
+  // that renders and cannot be linked to is half the complaint unanswered.
+  expect(hub()).not.toBeNull();
+  expect(hub()!.id).toBe("create");
+
+  // 設計 §4.6.3: this page had zero filled actions, so the hub adds the first
+  // one — not a second competing with an existing primary action. Counted over
+  // the WHOLE page, because the rule is per page and not per section.
+  const actions = container.querySelectorAll("a.action, button.action");
+  expect(Array.from(actions).map((a) => a.getAttribute("href") ?? a.textContent)).toEqual([
+    "/workspace/import",
+  ]);
+
+  // §4.3: the universal card family, not a fifth style invented for this hub.
+  expect(hub()!.querySelectorAll("ul.create-cards > li.download-item").length).toBeGreaterThan(0);
+});
+
+test("建立中心 states the invite requirement on the from-catalogue card, in visible text", async () => {
+  stubOwnSkillsWithFeatures();
+  await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
+
+  // 設計 §2.2 第二向 and 第三向 together: the restriction is stated before the
+  // user walks into the 403, and it names who enforces it. A card that said 「從
+  // 目錄挑一個來改」 and let an uninvited user find out by pressing the button is
+  // the 「強制但不顯示」 shape that section calls the second worst.
+  const card = Array.from(hub()!.querySelectorAll("li")).find((li) =>
+    (li.textContent ?? "").includes("從目錄挑一個來改"),
+  );
+  expect(card, "the from-catalogue card is missing").toBeTruthy();
+  const copy = (card!.textContent ?? "").replace(/\s+/g, "");
+  expect(copy).toContain("Fork需要封測邀請");
+  expect(copy).toContain("由平台強制");
+  // ...and it is a way through, not a dead end: the card links to the catalogue.
+  expect(Array.from(card!.querySelectorAll("a")).map((a) => a.getAttribute("href"))).toContain("/");
+});
+
+/**
+ * ⛔ 01 §10 邊界 1 / ADR-052, restated against the hub rather than the page.
+ *
+ * The pair above proves `#generate-task` is absent with the flag off. This pair
+ * proves the CARD is absent — that the hub does not advertise a capability it
+ * then withholds. 設計 §2.4 covers a disabled control that exists and says why;
+ * for this one the rule is different in kind, because 「即將推出」 is itself the
+ * disclosure the boundary forbids: a beta participant who learns the platform
+ * can write a Skill for them has already had 01 §11.2's first funnel segment
+ * changed, whether or not the button worked.
+ */
+test("建立中心 ⛔ with the flag off, the hub has no generation card and does not mention 生成", async () => {
+  stubOwnSkillsWithFeatures();
+  await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
+
+  // The hub itself is drawn — otherwise this passes because the page failed.
+  expect(hubText()).toContain("匯入現成的套件");
+  expect(hubText()).toContain("從目錄挑一個來改");
+
+  expect(hub()!.querySelector("#generate-task")).toBeNull();
+  expect(hubText()).not.toContain("生成");
+  expect(hubText()).not.toContain("即將推出");
+});
+
+test("建立中心 with the flag on, the generation entry appears exactly once on the page", async () => {
+  stubOwnSkillsWithFeatures({ generate_skill: true });
+  await render(<WorkspaceSkills />, () => container.querySelector("#generate-task") !== null);
+
+  // Inside the hub, not beside it: the old standalone mount has to be gone, not
+  // merely joined by a second one. `#generate-task` is GenerateSkill's own
+  // textarea id — two mounts would also be two elements sharing one id, which is
+  // why counting the id is the check and not `querySelector`.
+  expect(container.querySelectorAll("#generate-task").length).toBe(1);
+  expect(hub()!.querySelectorAll("#generate-task").length).toBe(1);
+
+  const headings = Array.from(container.querySelectorAll("h2")).filter((h) =>
+    (h.textContent ?? "").includes("讓平台依你的描述做一個"),
+  );
+  expect(headings.length).toBe(1);
 });
 
 // --- deleting a skill (WS-005, 04 丙-22 ①) ----------------------------------
@@ -1177,8 +1281,12 @@ test("丙-116 the one action that does work is a named section, not a bare butto
   stubDetailAsSignedIn({ versions: [] });
   await render(<SkillDetail />, trialSectionAnswered);
 
-  const headings = Array.from(container.querySelectorAll("h2")).map((h) => h.textContent);
+  // `h2,h3`（2026-09-03，r2 的重排）：這一段搬進了右欄的 `detail-rail`，標題隨之
+  // 降成 h3——十二個兄弟 h2 收成七個是那次重排的目的之一（§3 第 9 條）。這一支要的
+  // 東西一點都沒有變：**它仍然有名字、仍然進得了標題導覽**，而不是一顆裸按鈕。
+  const headings = Array.from(container.querySelectorAll("h2,h3")).map((h) => h.textContent);
   expect(headings).toContain("Fork 到你的工作區");
-  // And it is still the real control, not a heading over nothing.
-  expect(button("Fork 這個 Skill")).not.toBeUndefined();
+  // And it is still the real control, not a heading over nothing.（按鈕上的字改成
+  // r4 B2 的「以這個 Skill 為起點建立我自己的」，端點與行為一字未改。）
+  expect(button("以這個 Skill 為起點建立我自己的")).not.toBeUndefined();
 });

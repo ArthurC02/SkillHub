@@ -139,7 +139,7 @@ func TestResultFacetsDeriveCompatibilityFromVersionPresence(t *testing.T) {
 	unmeasured := measuredCompat("unverified", "unverified", "", pgtype.Timestamptz{})
 
 	var withVersion searchResult
-	resultFacets(&withVersion, string(TierIndexed), nil, nil, pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true}, unmeasured)
+	resultFacets(&withVersion, string(TierIndexed), nil, nil, nil, pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true}, unmeasured)
 	if withVersion.Compat.SpecValidation.Value != "passed" {
 		t.Fatalf("spec_validation = %q for an indexed version", withVersion.Compat.SpecValidation)
 	}
@@ -148,7 +148,7 @@ func TestResultFacetsDeriveCompatibilityFromVersionPresence(t *testing.T) {
 	}
 
 	var noVersion searchResult
-	resultFacets(&noVersion, string(TierIndexed), nil, nil, pgtype.Timestamptz{}, unmeasured)
+	resultFacets(&noVersion, string(TierIndexed), nil, nil, nil, pgtype.Timestamptz{}, unmeasured)
 	if noVersion.Compat.SpecValidation.Value != "unverified" {
 		t.Fatalf("spec_validation = %q for a skill with no version", noVersion.Compat.SpecValidation)
 	}
@@ -227,7 +227,7 @@ func TestResultFacetsCarryTheMeasuredAgentAxis(t *testing.T) {
 	var r searchResult
 	measured := measuredCompat("activated", "transpiled", "skillhub/runtime-agent-sdk:2026.08-1",
 		pgtype.Timestamptz{Time: time.Unix(1_755_000_000, 0), Valid: true})
-	resultFacets(&r, string(TierIndexed), nil, nil, pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true}, measured)
+	resultFacets(&r, string(TierIndexed), nil, nil, nil, pgtype.Timestamptz{Time: time.Unix(0, 0), Valid: true}, measured)
 
 	if r.Compat.Capability.Value != "activated" || r.Compat.Runtime.Value != "transpiled" {
 		t.Fatalf("measured verdict lost on the way to the row: %+v", r.Compat)
