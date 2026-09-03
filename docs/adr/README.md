@@ -87,8 +87,8 @@ ADR 是決策歷史，不是只描述最終系統狀態。若未來推翻既有�
 | [ADR-060](./ADR-060-the-clean-test-mode-is-the-real-system-with-three-strategies-swapped.md) | **取代 ADR-058 的決策 2／3**：淨測試模式是**同一套產品程式以旗標切換三個實作**（資料庫、檔案、沙箱），不是瀏覽器裡的另一個系統——旗標未設時行為與今天逐位元相同。讓它成立的是**單行程 ＋ River `PollOnly`**（實測：一條連線上工作被領走、查詢同時服務；關掉 PollOnly 即紅）。隨之撤回 `PORT-002`／`PORT-006`、改寫 `PORT-005`。`pgmock` 記為備援（多 session 已實測，缺口是 32-bit pgvector） | Accepted |
 | [ADR-061](./ADR-061-the-clean-mode-release-lives-on-the-keyboard-not-in-the-product.md) | 淨測試模式下**放行一個未策展版本的開關，長在啟動 launcher 的鍵盤上而不在產品 UI 裡**：該模式跑在 `DEV_LOGIN=1` 上，**任何到得了頁面的人都能以任何身分登入（含 operator）**，所以一個「允許不經沙箱執行」的按鈕按得動它的人包含剛上傳那個 Skill 的人——`02:SEC-011` 對單人團隊的 operator 名冊已經給過同一個答案（授予＝改部署環境）。**逐 version 不逐 skill**（否則下一次推版自動放行沒人看過的位元組）；**沒有具名理由的那一行不算放行**（理由就是控制本身）；紀錄是檔案＋每次使用的 `slog.Warn`，**刻意不寫 DB audit**（該模式的載體是記憶體內 PGlite，關機即失）。隨之改寫 `02:PORT-010` 第 5 條——「只跑策展素材」自此不再逐字為真 | Accepted |
 | [ADR-062](./ADR-062-account-purge-waits-for-in-flight-private-writes.md) | 帳號清除與所有私人資料 producer 共用 Workspace 寫入 fence；先等 Run 終態且 sandbox cleanup 完成，再進入不可逆清除。Run 物件由 Attempt 推導補齊，Skill package 在 Put 前留下 durable collection intent | Accepted |
-
 | [ADR-063](./ADR-063-account-purge-fence-rollout-requires-a-drain.md) | 帳號清除 fence 上線採停止舊 Maintenance、排空舊 Worker、等待 grant TTL 後修復 legacy marker 的強制順序 | Accepted |
+| [ADR-064](./ADR-064-the-visual-layer-is-hierarchy-carried-by-tokens.md) | 線框感的來源是「**畫面上沒有任何東西比別的東西重要**」，不是缺顏色——所以視覺層的目的是**層級**，判準是 `system.md` §0 而不是品味。**延續 ADR-039 對第三方框架的否決**（再加兩條：框架預設外觀＝跟大家一樣；框架自帶的語意色會填滿 ADR-042 路線圖還在等的頻道）。做法是在 `index.css` 的 token 區塊加七個角色（面、互動態、強邊框、主要動作、阻斷底），深度用三層表面不用陰影（深色模式唯一成立的做法），**主張用描邊、動作用填色、一頁一個主要動作**，動效兩個時長一個曲線且 `prefers-reduced-motion` 在 token 層歸零；不引入 webfont、不做漸層、不做成功綠、不做主題切換。綁得到既有規則的三件（1.4.11 邊框、主要動作、阻斷 notice）是修缺陷；其餘是順位 5，**等 `05` R-38 放行**；09-11～09-20 閘門期間一律不動 | **Proposed** |
 
 ## 整體架構摘要
 
