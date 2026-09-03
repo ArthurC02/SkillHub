@@ -229,11 +229,11 @@
       "base": "humanizer",
       "breaks": "a symlink entry pointing outside the package",
       "archive_error": false,
-      "blocked": false,
-      "errors": [],
-      "warnings": ["symlink-entry"],
+      "blocked": true,
+      "errors": ["symlink-entry"],
+      "warnings": [],
       "info_includes": ["script-file"],
-      "note": "v1 recorded a gap: the zip fs.FS presents the entry as an ordinary 11-byte file whose content is the target path, so the scan never said the package contained a link at all. Closed 2026-08-18 (04 丙-15 D-3) — the tree scan reads the entry's mode and discloses the link and its target. Warning and not error on purpose: packaging.travels() already refuses anything that is not a regular file, so a link never reaches a download (PACK-001's exclusion list is satisfied by exclusion), while blocking would reject import and every Run of a package carrying a benign link. What was missing was the disclosure, not a block."
+      "note": "v1 recorded a gap: the zip fs.FS presents the entry as an ordinary 11-byte file whose content is the target path, so the scan never said the package contained a link at all. Closed 2026-08-18 (04 丙-15 D-3) — the tree scan reads the entry's mode and discloses the link and its target. Warning and not error until 2026-09-03, on the reasoning that packaging.travels() already excludes non-regular files from every download, so the disclosure was the whole gap. That reasoning covered the download path and not the execution path: the entry contract now refuses the link at import with a `symlink-entry` error, and anything else that is not a regular file with `unsupported-entry-type`, so a package carrying a link never reaches a Run either. This entry follows the contract, not the other way round — if it ever reads warning again, the block was lost."
     },
     "zip-bomb": {
       "base": "humanizer",

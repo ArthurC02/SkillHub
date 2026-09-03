@@ -307,6 +307,7 @@ type collectDriver struct {
 	releaseFailures  int
 	artifactFailures int
 	released         chan struct{}
+	releaseClosed    bool
 }
 
 func (d *collectDriver) WorkloadDone(context.Context, string) (bool, error) { return true, nil }
@@ -336,9 +337,14 @@ func (d *collectDriver) ReleaseWorkload(context.Context, string) error {
 	}
 	d.seq++
 	d.releasedAt = d.seq
-	if d.released != nil {
+	// The test goroutine is parked in a select on d.released while the
+	// collector goroutine runs this, so the field must never be written after
+	// construction -- `d.released = nil` here was a data race the -race leg
+	// caught. The once-only close is guarded by a flag only this goroutine
+	// touches instead.
+	if d.released != nil && !d.releaseClosed {
+		d.releaseClosed = true
 		close(d.released)
-		d.released = nil
 	}
 	return nil
 }

@@ -277,3 +277,28 @@ marker 那一半仍綠，然後改回來。
 **真正的洞是產出目錄從來沒有被告訴任何人**,而 Windows 只是讓它現形。
 
 **這兩次跑不算四項實測**:它們跑在**主機的 `run.mjs`** 上,不是新 digest 的容器裡。
+
+## `2026.08-6` → `2026.08-7`（2026-09-03）— **四項實測尚未跑；預設映像仍留在 `-5`**
+
+> **與上一節同一種狀態**：變更已合、ADR-023 §2 的四項實測**一項都沒跑**。ADR-023 §3 禁止
+> 以推理或既有證據代替新 digest 上的實測，所以本節**不主張任何一項通過**，[`04` 丙-125](../../../docs/plans/04-backlog-and-handoffs.md)
+> 那一列繼續開著，只是標的從 `-6` 變成 `-7`。
+>
+> **為什麼版本必須動**：`runtime-image.yml` 的 I-05 閘門在 `infra/images/runtime-agent-sdk/`
+> 有非 `.md` 變更時強制 `ARG IMAGE_VERSION` 一起動，而這次動的是 `run.mjs` 裡**解壓那一段**
+> ——它決定哪些位元組會落到沙箱的檔案系統上。這正是「版本不動就等於同一個東西」會說謊的地方。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `run.mjs`：`extractPackage` 改寫為 `provisionPackage`（失敗改走可注入的 `onFailure`，錯誤因此成為 Run 的結構化 error 而不是拋例外）；新增 `packageRoot`、`portableEntryKey`、`hasZip64Extra`；解壓時**驗 CRC32** 並辨識 zip64 extra；`isUnsafeFileType` 改讀 Unix mode，非普通檔案一律拒絕。四道上限改為與平台 admission 同號：entries `1000`→`2000`、總量 `256 MiB`→`100 MiB`，新增單一項目 `10 MiB` 與目錄深度 `10` |
+| 為什麼是升級而不是整理 | 它改變**哪些套件跑得起來**。舊版接受的兩種套件現在會被拒絕（非普通檔案項目、超過 100 MiB 的宣告總量），而 CRC32 不符的項目從「悄悄解出壞位元組」變成「這次 Run 失敗並說出原因」。同一批把平台端的入口契約收緊成 `symlink-entry`／`unsupported-entry-type` error（見 `ab3058d`），**兩端必須同號**，否則 admission 收下的套件會在執行時才炸 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| 映像 digest | **本節寫下時尚未發佈**——`runtime-image.yml` 由這次推送觸發，digest 由該次 workflow 產生。四項實測必須跑在**那個 digest** 上，不是本機建置（`-5` 那次的教訓逐字在上面兩節）；補上 digest 是跑實測的人的動作 |
+| 依賴集 | **未變**（0 增 0 減） |
+| 預設映像 | **仍是 `-5`**：`sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`、`p02_docker_test.go` 的常數三處都沒有動。移到 `-7` 是四項實測通過之後的動作，不是這一批的 |
+
+### 已經跑過的（不是四項清單，但先記著）
+
+`node --test infra/images/runtime-agent-sdk/run.test.mjs` 在**主機**上綠（該檔同批擴充）。
+這**不算四項實測**，理由與上一節逐字相同：它跑在主機的 `run.mjs` 上，不在新 digest 的容器裡。

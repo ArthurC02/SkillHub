@@ -753,7 +753,7 @@ func TestConcurrentArtifactManifestRedeliveryDoesNotDuplicateRows(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tx1.Rollback(ctx)
+	defer tx1.Rollback(ctx) //nolint:errcheck // no-op after commit
 	q1 := gen.New(tx1)
 	if err := q1.LockRunArtifactManifest(ctx, runID); err != nil {
 		t.Fatal(err)
@@ -770,7 +770,7 @@ func TestConcurrentArtifactManifestRedeliveryDoesNotDuplicateRows(t *testing.T) 
 			done <- err
 			return
 		}
-		defer tx2.Rollback(ctx)
+		defer tx2.Rollback(ctx) //nolint:errcheck // no-op after commit
 		q2 := gen.New(tx2)
 		close(started)
 		if err := q2.LockRunArtifactManifest(ctx, runID); err != nil {

@@ -39,7 +39,7 @@ ARG CLAUDE_AGENT_SDK_VERSION=0.3.233
 # running on a host process with no cgroup behind it. Both are behaviour
 # changes inside the image, so both are ADR-023 upgrades and both are written up
 # in UPGRADES.md.
-ARG IMAGE_VERSION=2026.08-6
+ARG IMAGE_VERSION=2026.08-7
 
 # Non-root from the image on up (C-02). The provider also passes --user, but an
 # image whose only account is root is one bad flag away from running as root.
