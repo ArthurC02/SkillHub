@@ -153,6 +153,8 @@ func documentCheckers() []namedChecker {
 		// 2026-09-03: a markdown link that points at nothing. Sixteen of them
 		// were live that morning and every one of them read correctly.
 		{"doc-links", docLinkProblems},
+		// 2026-09-04: the agent harness keeps its own placement rules.
+		{"harness", harnessProblems},
 	}
 }
 

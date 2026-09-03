@@ -46,6 +46,8 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"capability-table",
 		// 2026-09-03 巡視: every relative markdown link resolves to a file.
 		"doc-links",
+		// 2026-09-04: skills cite nothing local, roles name a model, root AGENTS.md under the Codex cap.
+		"harness",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {
@@ -153,6 +155,10 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 `)
+
+	// harness only speaks about files that exist: a skill bound to this repo
+	// is the smallest thing that gives it one.
+	write(".claude/skills/x/SKILL.md", "---\nname: x\ndescription: y\n---\n\n見 docs/plans/04。\n")
 
 	var out bytes.Buffer
 	if err := automationCheck(root, &out); err == nil {

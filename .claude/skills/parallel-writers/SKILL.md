@@ -1,4 +1,5 @@
 ---
+name: parallel-writers
 description: Use when more than one agent or person is editing the same working tree at the same time, or before staging/committing while someone else has uncommitted work in the tree.
 ---
 

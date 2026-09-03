@@ -119,9 +119,15 @@ Monorepo 的 CI/CD 基線見 **ADR-019**，頂層收納由 **ADR-031（Accepted�
 
 **這張表存在，是因為目錄層的 `AGENTS.md` 不保證送達**：Claude Code 會在讀到該目錄的檔案時載入它（2026-09-03 實測成立），但**剛建立的檔案不會立刻被發現**（同一 session 內兩次探測都沒出現，稍後才生效）；Codex 只有在工作目錄位於該目錄之內時才走得到；其他工具各家不一。所以這張表是唯一保證送達的入口，分區卡片是它的延伸而非替代。
 
-Claude Code 另有三個機制（其他工具吃不到，**不得用來取代上述文件**）：`.claude/rules/` 按路徑觸發指標、`.claude/agents/` 的角色定義、`.claude/skills/` 的通用程序。技能只放「換一個 repo 還成立」的做法；**判準與規則一律留在 `docs/`**。
+Claude Code 另有三個機制（其他工具吃不到，**不得用來取代上述文件**），每一層只放一種東西：
 
-`.claude/settings.json` 的 `permissions.deny` 把幾條慣例變成真的拒絕（`git stash`、`git add -A`、對未知修改的 `reset`／`clean`／`checkout`、`push --force`、`commit --amend`），**deny 對子代理同樣生效**。注意它只是**更早發現**：其他工具不受它管，真正的保證仍在 `automation-check`、測試與 CI。
+- `.claude/rules/`：**按路徑觸發的指標**，內容只有「先讀哪一份、會被哪個檢查擋」，判準永遠在被指的那一份。
+- `.claude/agents/`：**按風險切的三個角色**——`skillhub-writer`（寫，路徑範圍由簡報給）、`skillhub-verify`（唯讀驗證）、`skillhub-mutation`（證明測試會紅）。**角色不按目錄切、不新增**：某個區域該先讀什麼、哪些檔屬於 coordinator，寫在該區域的 `AGENTS.md`，由 rules 按路徑送達。禁令只有一份，在上方〈開發自動化〉第 3 條，角色檔引用不複述。
+- `.claude/skills/`：**換一個 repo 還成立的程序**。技能不得引用 `docs/`、ADR 編號或需求 ID；**判準與規則一律留在 `docs/`**。
+
+**新增一個區域的三步配方**（不新增角色）：①在該目錄放 `AGENTS.md`（指標表：要做的事 → 先讀哪段 → 沒讀會被哪個閘門擋；加一行 `@AGENTS.md` 的 `CLAUDE.md`）；②在 `.claude/rules/` 加一條 `paths:` 指向它；③在上表加一列。
+
+`.claude/settings.json` 的 `permissions.deny` 把幾條慣例變成真的拒絕（`stash`、`add -A`、`commit -a`、`restore`、`checkout .`、`reset --hard`、`clean`、`push --force`、`commit --amend`），**deny 對子代理同樣生效**；每條加完要親自撞一次，路徑型規則只認 `Edit`／`Read`。注意它只是**更早發現**：其他工具不受它管，真正的保證仍在 `automation-check`、測試與 CI——harness 自己也有機器守著：`automation-check` 的 `harness`（技能不引用本地文件、角色必須指定 `model`、本檔不超過 28 KiB）與 `skillpkg` 的 `repo_skills_test.go`（技能過產品自己的驗證器）。
 
 ## 快速判斷「我該看哪份文件」
 

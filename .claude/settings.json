@@ -5,10 +5,17 @@
       "Bash(*git reset --hard*)",
       "Bash(*git clean -*)",
       "Bash(*git checkout -- *)",
+      "Bash(*git checkout .)",
+      "Bash(*git checkout . *)",
+      "Bash(*git restore *)",
       "Bash(*git add -A*)",
+      "Bash(*git add --all*)",
       "Bash(*git add .)",
       "Bash(*git add . *)",
+      "Bash(*git commit -a*)",
+      "Bash(*git commit --all*)",
       "Bash(*git push --force*)",
+      "Bash(*git push -f*)",
       "Bash(*git commit --amend*)"
     ]
   }

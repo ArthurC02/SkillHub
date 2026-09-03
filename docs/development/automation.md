@@ -74,6 +74,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 - 唯讀 SubAgent 可以平行；寫入、generator、formatter、package manager、migration、contracts、CI/Taskfile 全部序列化。
 - 未知 delta 視為他人工作：不得 reset、clean或 checkout還原。
 - 只有負責整合的主 Agent執行明確 pathspec stage、commit、pull --rebase與 push。
+- **Claude Code 另有一層攔阻**（`.claude/settings.json` 的 `permissions.deny` 把 `stash`／`add -A`／`commit -a`／`restore`／`checkout .`／`reset --hard`／`clean`／`push --force`／`commit --amend` 變成真的拒絕，對子代理同樣生效），**但它只是提早發現**：其他 coding agent 不受它管，本節的規則本體與 `automation-check`、測試、CI 才是保證。角色與技能的放置規則見根 `AGENTS.md`〈分區指標與攔阻〉。
 
 ## 常見失敗
 
@@ -89,7 +90,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 ## `automation-check` 跑了哪些檢查（名冊）
 
-`go -C tools/devctl run . automation-check` 除了固定的文件字句、`Taskfile.yml` 的 `desc` 與 generated ownership marker 之外，還會跑一份**檢查名冊**：`tools/devctl/automation_check.go` 的 `documentCheckers()`。**那個函式就是名冊本身**（`TestAutomationCheckRunsEveryChecker` 逐項走過它），下表是 2026-09-03 逐項讀出來的 **24 條**（同日先讀到 23 條，`doc-links` 是當天稍晚加的第 24 條）。**這個數字本身會過期**——以 `documentCheckers()` 的實際回傳為準。
+`go -C tools/devctl run . automation-check` 除了固定的文件字句、`Taskfile.yml` 的 `desc` 與 generated ownership marker 之外，還會跑一份**檢查名冊**：`tools/devctl/automation_check.go` 的 `documentCheckers()`。**那個函式就是名冊本身**（`TestAutomationCheckRunsEveryChecker` 逐項走過它），下表是 2026-09-03 逐項讀出來的 **24 條**（同日先讀到 23 條，`doc-links` 是當天稍晚加的第 24 條），加上 2026-09-04 的第 25 條 `harness`。**這個數字本身會過期**——以 `documentCheckers()` 的實際回傳為準。
 
 **撞到紅燈時的用法**：`FAIL` 訊息開頭的名字對到下表，再去「規則寫在哪」那一欄讀該檔的檔頭——每一支的檔頭都寫著它為什麼存在、抓到過什麼，那是判斷「這次紅得有沒有道理」唯一夠用的材料。**本節只給名字與落點；下面的散文只保留有故事的那五條**（`one-number`、`milestone-tally`、`backlog-tally`、`baseline-tally`、`doc-identifier`），其餘不在此重述。
 
@@ -120,6 +121,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `goldenset-mirror` | `tools/goldenset/evaluate.py` 的 `enriched_index_text` 與 Go 的 `embeddingText` 以 digest 綁在一起 | `tools/devctl/goldenset_mirror.go` |
 | `capability-table` | `.env.example` 的每個變數都要說出它擋著什麼（`05` R-36），見下節 | `tools/devctl/capability_table.go` |
 | `doc-links` | 每一條相對路徑的 markdown 連結都要指得到真實檔案（只驗路徑，不驗 `#` 錨點、不連外） | `tools/devctl/doc_links.go` |
+| `harness` | `.claude/skills/` 不得引用 `docs/`、ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／inherit）；根 `AGENTS.md` 不得超過 28 KiB（Codex 讀到 32 KiB 就靜默截斷）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
 
 ### 新增一個 `.env.example` 變數，要同批說出它擋什麼
 

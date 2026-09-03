@@ -11,3 +11,5 @@ paths:
 - 任何 markdown 連結 → 目標檔案必須存在（`doc-links`）
 
 改完跑 `go -C tools/devctl run . automation-check`。
+
+有機器對帳的文件（`04` 的 tally、ADR-032 §1、設計兩把尺）改完要回報會被哪個檢查擋；已凍結的 `docs/plans/mvp/mX/` 是當時的證據，不回溯修正。

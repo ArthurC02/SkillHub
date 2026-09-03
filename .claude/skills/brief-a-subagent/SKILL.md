@@ -1,4 +1,5 @@
 ---
+name: brief-a-subagent
 description: Use when about to delegate work to a subagent or teammate, or when writing task instructions for another agent to execute.
 ---
 
