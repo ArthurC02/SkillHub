@@ -576,7 +576,10 @@ test("WS-001 第 4 條 比較 asks the contract's endpoint for the right two ver
 test("WS-001 a version list that fails to read says so, and 401 says to log in", async () => {
   stubSkillDetailPage({ error: "not authenticated" }, 401);
   await render(<SkillDetail />, () => text().includes("版本歷史"));
-  await waitFor(() => text().includes("需要登入"));
+  // 主詞要在等待條件裡。裸的「需要登入」現在同一頁上有兩個來源（版本歷史，以及
+  // 打包入口對未登入訪客說的那一句），於是這個等待會被錯的那一個滿足，然後在
+  // 版本歷史還在載入時就去斷言它。等「版本歷史需要登入」整句。
+  await waitFor(() => text().includes("版本歷史需要登入"));
 
   // ReadFailure's 401 branch, not a swallowed error and not an empty list:
   // 「沒有版本」 and 「你沒登入」 are different answers (設計 §2.9).

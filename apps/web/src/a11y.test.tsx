@@ -551,7 +551,11 @@ test("NFR-007: 搜尋 → 詳情 → 打包，全程鍵盤可達", async () => {
   expect(tabbables().some((el) => el.tagName === "INPUT")).toBe(true);
 
   await keyboardActivate("搜尋結果連結", byText("PDF Summariser"));
-  await waitFor(has("可散布性與打包"));
+  // 等的是那條連結本身，不是它上面的標題。打包入口現在跟 TrialEntry 一樣，要等
+  // workspace-scoped 的版本清單答完才知道這一份是不是你的（SkillDetail 的
+  // `PackagingEntry`），所以「標題到了」不再蘊含「連結到了」。等具體的那個東西，
+  // 而不是等它的鄰居——這比原本嚴格。
+  await waitFor(has("打包並下載這個版本"));
 
   await keyboardActivate("打包入口", byText("打包並下載這個版本"));
   await waitFor(has("標準 Agent Skill 套件")); // the heading renders before the targets do

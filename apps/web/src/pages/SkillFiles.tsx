@@ -63,10 +63,20 @@ export function SkillFiles() {
         <>
           <p className="note">
             版本 v{data.version_number}
-            {data.embedded_script_note && (
+            {data.embedded_script_note ? (
               // SKILL-003: repeated here because the file tree is exactly what
               // cannot show code living inside the document.
               <span className="badge badge-risk">{data.embedded_script_note}</span>
+            ) : (
+              /*
+                設計 §2.1／§2.9. 這一格以前是「有才印」，而底下那句「內嵌的程式碼
+                由上面的揭露負責」是**無條件**印的——沒有 finding 時，上面什麼都
+                沒有，那句話指向空氣，整頁讀起來就是「這個套件不含程式碼」。
+                而 SKILL-003 記著的事故正是這個形狀：5 個 seed 套件夾帶約 180 行
+                Python，卻回報沒有 script。掃描一定跑過（不然這一頁讀不到檔案樹），
+                所以「掃了、沒掃到」是一句有根據的肯定敘述，不是推定。
+              */
+              <span className="note">靜態掃描沒有在 SKILL.md 裡找到內嵌的程式碼。</span>
             )}
           </p>
 
@@ -141,7 +151,7 @@ function FileTree({ entries }: { entries: SkillFileEntry[] }) {
       <p className="note">
         {scripts > 0
           ? `標成 Script 的 ${scripts} 個檔案是可執行 Script：它們會在你自己的環境裡執行。Skill Hub 的匯入與掃描階段不執行套件內的任何程式碼。`
-          : "這個清單裡沒有可執行 Script 檔案。這只說明檔案樹，不包括 SKILL.md 內嵌的程式碼——那由上面的揭露負責。"}
+          : "這個清單裡沒有可執行 Script 檔案。這只說明檔案樹，不包括 SKILL.md 內嵌的程式碼——那由版本號旁邊的那一句負責，它兩種答案都會說出來。"}
       </p>
     </>
   );

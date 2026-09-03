@@ -12,6 +12,7 @@ import { GeneratedNotice } from "../components/GeneratedNotice";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../components/LicenseBadge";
 import { RiskIndicator } from "../components/RiskIndicator";
+import { SignInAction } from "../components/SignIn";
 import { PACKAGING_BLOCKED_LABEL, packagingGate } from "./Packaging";
 import type {
   SkillDetail as SkillDetailModel,
@@ -88,7 +89,7 @@ export function SkillDetail() {
         <RiskIndicator risk={skill.risk} />
       </section>
 
-      <Redistribution skill={skill} />
+      <Redistribution skill={skill} isLoggedIn={!!me} />
 
       <section>
         <h2>License</h2>
@@ -168,19 +169,44 @@ export function SkillDetail() {
         {skill.source ? <SourceBlock source={skill.source} /> : <p>沒有保存任何來源紀錄。</p>}
       </section>
 
-      {skill.allowed_tools && skill.allowed_tools.length > 0 && (
-        <section>
-          <h2>套件宣告可用的工具</h2>
-          <ul>
-            {skill.allowed_tools.map((tool) => (
-              <li key={tool}>
-                <code>{tool}</code>
-              </li>
-            ))}
-          </ul>
-          <p className="note">以上為套件自行宣告的 allowed-tools，未經驗證。</p>
-        </section>
-      )}
+      {/*
+        設計 §2.9（缺席有型別）＋ §2.10 第 6 項（工具清單不得靠互動才看得到）。
+        This section used to render only when the list had entries, so a package
+        that declares no tools and a package that could not be scanned came out
+        as the same thing: no heading, no words, nothing. And of the three
+        readings that blank invites, the true one is the widest — in the Agent
+        Skills format an ABSENT `allowed-tools` means UNRESTRICTED, so the blank
+        rendered the most permissive fact in the shape the reader trusts most.
+        The server only fills this field when there is a scan report to read the
+        manifest from (discovery/detail.go), and `risk.scan_status` is that same
+        fact under a name, so the two absences are told apart without a new
+        field. Same call this file already made for `limitations` and
+        `enrichment.tags`; this was the one block that missed it.
+      */}
+      <section>
+        <h2>套件宣告可用的工具</h2>
+        {skill.allowed_tools && skill.allowed_tools.length > 0 ? (
+          <>
+            <ul>
+              {skill.allowed_tools.map((tool) => (
+                <li key={tool}>
+                  <code>{tool}</code>
+                </li>
+              ))}
+            </ul>
+            <p className="note">以上為套件自行宣告的 allowed-tools，未經驗證。</p>
+          </>
+        ) : skill.risk.scan_status === "unavailable" ? (
+          <p className="note">
+            未測量——這個版本沒有靜態掃描結果可讀，所以平台不知道套件宣告了哪些工具。
+          </p>
+        ) : (
+          <p className="note">
+            不適用——套件沒有宣告 allowed-tools。在 Agent Skills 的格式裡那代表
+            <strong>不設限</strong>，不代表它不用工具。
+          </p>
+        )}
+      </section>
 
       <section>
         <h2>{skill.derivation.label}</h2>
@@ -351,7 +377,13 @@ function VersionHistory({ skillId }: { skillId: string }) {
  * fourth state: the section says that plainly instead of rendering a verdict
  * nobody gave, and `packagingGate` closes the entry all the same.
  */
-function Redistribution({ skill }: { skill: SkillDetailModel }) {
+function Redistribution({
+  skill,
+  isLoggedIn,
+}: {
+  skill: SkillDetailModel;
+  isLoggedIn: boolean;
+}) {
   const blocked = packagingGate(skill);
 
   return (
@@ -370,23 +402,27 @@ function Redistribution({ skill }: { skill: SkillDetailModel }) {
       {blocked ? (
         <>
           <p>
-            <button type="button" disabled>
+            {/*
+              設計 §3 第 6 條: the reason is visible text, which is the hard
+              half — but a keyboard reader tabbing onto this heard 「打包並下載,
+              按鈕, 已停用」 and then silence. `aria-describedby` is the same fix
+              a11y.test.tsx walked four other controls through on 2026-09-03;
+              this one was not walked because the scanned fixture is
+              `redistribution: allowed`, so the branch never renders under the
+              scanner. It is also the disabled button most readers meet first:
+              `license_unknown` is the default for anything they imported
+              themselves.
+            */}
+            <button type="button" disabled aria-describedby="packaging-blocked-reason">
               打包並下載
             </button>
           </p>
-          <p className="note">{PACKAGING_BLOCKED_LABEL[blocked]}</p>
+          <p className="note" id="packaging-blocked-reason">
+            {PACKAGING_BLOCKED_LABEL[blocked]}
+          </p>
         </>
       ) : skill.version ? (
-        <p>
-          <Link
-            className="action"
-            to="/skills/$skillId/package"
-            params={{ skillId: skill.skill_id }}
-            search={{ version: skill.version.version_id }}
-          >
-            打包並下載這個版本
-          </Link>
-        </p>
+        <PackagingEntry skill={skill} isLoggedIn={isLoggedIn} />
       ) : (
         /* 同上，§2.9 的「無權檢視」。 */
         <p className="note">
@@ -395,6 +431,65 @@ function Redistribution({ skill }: { skill: SkillDetailModel }) {
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * 打包入口，而它的整段歷史是**這個檔案裡兩段註解互相矛盾**。
+ *
+ * 上面的 `TrialEntry` 寫著、而且量過：「**`skill.version` is NOT the signal** …
+ * keying off it calls every visitor an owner」——`GET /api/skills/{id}` 的
+ * `version` 來自 `LatestVersion(ctx, skill.WorkspaceID, …)`（`discovery/detail.go`），
+ * 也就是**那個 Skill 自己的**工作區，不是呼叫者的。可是打包這一半就是用它決定
+ * 要不要畫出 CTA，而那個 `.action` 是全 app 唯一的強調樣式、2026-09-03 的重排
+ * 又把它移到整頁第二個區塊。結果：一個從目錄點進來的訪客，畫面上最顯眼的動作
+ * 是「打包並下載這個版本」，按下去落在 `/skills/:id/package`，那裡的 preview 是
+ * workspace-scoped，回 `404 {"error":"skill version not found"}`，畫面印出
+ * 「無法讀取打包預覽：skill version not found」——一句英文，給一個中文使用者，
+ * 說的還不是真正的原因（真正的原因是「這還不是你的」）。
+ *
+ * 這就是 丙-116 的那條走廊，只是當時修了「試跑」那一半、沒修「打包」這一半。
+ * 訊號用 `TrialEntry` 已經在用的那一個：`useSkillVersions` 是 session-scoped，
+ * 對別人的 Skill 回空清單（ADR-011）。React Query 同 key 去重，所以這**不是**
+ * 第二個請求，是同一個。
+ */
+function PackagingEntry({
+  skill,
+  isLoggedIn,
+}: {
+  skill: SkillDetailModel;
+  isLoggedIn: boolean;
+}) {
+  const versions = useSkillVersions(skill.skill_id);
+
+  if (!isLoggedIn)
+    return (
+      <p className="note">
+        打包與下載需要登入，而且只打包得了你自己工作區裡的版本——別人的 Skill 要先 Fork
+        一份。 <SignInAction />
+      </p>
+    );
+  if (versions.isPending) return <Loading what="這個 Skill 在你工作區的版本" />;
+  if (versions.error) return <ReadFailure error={versions.error} what="這個 Skill 的版本" />;
+  if ((versions.data?.versions.length ?? 0) === 0)
+    return (
+      <p className="note">
+        這個 Skill 不在你的工作區，所以沒有屬於你的版本可以打包。
+        <strong>要先 Fork 一份</strong>——下方的「Fork 到你的工作區」就是那一步。
+      </p>
+    );
+
+  return (
+    <p>
+      <Link
+        className="action"
+        to="/skills/$skillId/package"
+        params={{ skillId: skill.skill_id }}
+        search={{ version: skill.version!.version_id }}
+      >
+        打包並下載這個版本
+      </Link>
+    </p>
   );
 }
 
@@ -601,7 +696,13 @@ function SourceBlock({ source }: { source: SkillSource }) {
       */}
       {source.unavailable_since ? (
         <p className="badge badge-risk">
-          來源已失效，自 {source.unavailable_since} 起無法取得。目前顯示的是失效前保存的內容。
+          {/* 這一句與它下面的兄弟句講同一種事實，卻用兩種寫法：`unavailable_since`
+              是 `format: date-time`，所以這裡印的是「2026-08-01T18:00:00Z」，隔壁
+              的 `last_checked_at` 走 `<Timestamp>` 印的是讀者自己的時鐘。設計 §3
+              第 14 條。`design-system.test.ts` 的守門只比對 `_at` 結尾，所以這個
+              欄位是從門縫走過去的——那條 regex 一併放寬到 `_since`。 */}
+          來源已失效，自 <Timestamp at={source.unavailable_since} />{" "}
+          起無法取得。目前顯示的是失效前保存的內容。
         </p>
       ) : source.last_checked_at ? (
         <p className="note">
@@ -701,9 +802,23 @@ function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
   const versions = useSkillVersions(skillId);
 
   // Anonymous readers never reach the ownership question: the version list is
-  // session-scoped, so asking it would only produce a 401 to explain. The fork
-  // section below already tells a visitor what logging in buys (資訊架構 IA-6).
-  if (!isLoggedIn) return null;
+  // session-scoped, so asking it would only produce a 401 to explain. But
+  // 「不問」 is not 「不說」, and this used to `return null` — so one of the
+  // product's three core actions was simply absent from the page for every
+  // visitor, with nothing saying why. 設計 §2.4 calls that the second failure
+  // shape (the control is removed rather than disabled, and the replacement
+  // text does not even say 目前不提供), and §2.10 第 5 項 puts the reason for a
+  // removed control on the never-fold list. The answer is the same for every
+  // visitor and costs no request, so it is stated rather than asked.
+  if (!isLoggedIn)
+    return (
+      <section>
+        <h2>試跑</h2>
+        <p>
+          試跑屬於你的工作區。先登入並 Fork 一份，才會有屬於你的版本可以跑。 <SignInAction />
+        </p>
+      </section>
+    );
 
   if (versions.isPending)
     return (
@@ -757,7 +872,19 @@ function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
     // `login-prompt` carried no CSS rule and no test selected it, so it was a
     // class that only looked like a hook. Removed rather than left to be read
     // as one (same call as `badge-risk-none` in RiskIndicator).
-    return <p>登入後即可 Fork 這個 Skill 到你的工作區。</p>;
+    //
+    // 設計 §2.2 第三向: a sentence that blocks somebody has to carry the next
+    // step, and this one blocks the visitor's ONLY way forward (see TrialEntry
+    // above: Fork is what turns 探索 into 試跑). The login action was on this
+    // page already — but only inside the version-history read failure, i.e. the
+    // one box a reader has no reason to open. `SignInAction` is the single
+    // login entry in the app on purpose (components/SignIn.tsx): on the machine
+    // 02:PORT-005 describes, a hardcoded GitHub link leaves the product.
+    return (
+      <p>
+        登入後即可 Fork 這個 Skill 到你的工作區。 <SignInAction />
+      </p>
+    );
   }
 
   return (
@@ -765,7 +892,27 @@ function ForkAction({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: bool
       <button type="button" onClick={() => fork.mutate(skillId)} disabled={fork.isPending}>
         {fork.isPending ? "Fork 中…" : "Fork 這個 Skill"}
       </button>
-      {fork.isError && <p role="alert">Fork 失敗，請稍後再試。</p>}
+      {/*
+        「Fork 失敗，請稍後再試。」 was one sentence for every refusal, and for
+        two of them it was a *false* next step. `POST /skills/{id}/fork` refuses
+        four ways: 401, 403 (封測邀請名單 — ADR-028 決策 1 names fork, run and
+        download as the three actions the gate covers), 404, and 409 (a skill
+        with this name already exists in your workspace). Waiting does not fix
+        403 or 409; the server writes a usable sentence for each and `apiFetch`
+        already puts it in `ApiError.message`. This line threw it away.
+        The read path on this page settled the same question in the other
+        direction long ago — see the 檔頭 note about answering a 500 with
+        「找不到」, i.e. with the wrong fact. The write path had not followed.
+        `children` carries the wording because `ReadFailure`'s default says
+        「無法讀取」, and this is a write.
+      */}
+      {fork.isError && (
+        <ReadFailure error={fork.error} what="Fork 這個 Skill">
+          <p role="alert">
+            Fork 沒有成功：{fork.error instanceof Error ? fork.error.message : String(fork.error)}
+          </p>
+        </ReadFailure>
+      )}
       {fork.isSuccess && (
         <p>
           已建立 Fork：

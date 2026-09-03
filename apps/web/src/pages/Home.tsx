@@ -8,6 +8,8 @@ import { GenerateSkill } from "../components/GenerateSkill";
 import { Loading } from "../components/Loading";
 import { LabelledBadge } from "../components/LabelledBadge";
 import { RiskSummary } from "../components/RiskIndicator";
+import { SignInAction } from "../components/SignIn";
+import { Timestamp } from "../components/Timestamp";
 import { MAX_COMPARE } from "./Compare";
 import type { PublicSearchResult, SearchFilters } from "../api/types";
 
@@ -100,7 +102,11 @@ export function Home() {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    submitSearch({ q: draft.trim() });
+    // `|| undefined` 是「回到目錄」那條路。`browsing` 的判準是 `q === undefined`，
+    // 而空字串是字串，所以把搜尋框清空再按搜尋——也就是「那你就把有的都給我看」
+    // 這個最自然的手勢——以前送出的是 `q=""`，伺服器對空查詢走 no_results，畫面
+    // 回「沒有夠接近的 Skill」。目錄明明就在同一個位址上，而這個手勢到不了它。
+    submitSearch({ q: draft.trim() || undefined });
   }
 
   function toggleSelected(skillId: string) {
@@ -225,6 +231,19 @@ export function Home() {
               {/* DISC-005: the suggestion is the server's, not a hardcoded string. */}
               {data.query_suggestion && <p>{data.query_suggestion}</p>}
               {/*
+                設計 §2.2 第三向。DISC-006 的目錄補的是「搜尋找不到時，『這裡有什麼』
+                沒有位址」——位址現在有了，而**最需要它的那個狀態原本仍然到不了**：
+                這一頁的搜尋態總共只有三個連結，沒有一個回得去目錄，唯一的出口是
+                頁首的產品標題。刻意不放進 `filtered_out`：那裡東西是在的，正確的
+                建議是放寬篩選，把人送去目錄等於叫他重新開始。
+              */}
+              <p className="note">
+                <Link to="/" search={{}}>
+                  看看目錄裡有什麼
+                </Link>
+                ——不帶任何查詢，列出這個部署收錄的全部 Skill。
+              </p>
+              {/*
                 IA-5's flag-off half: with generation unexposed this state had
                 no exit at all — both empty states asked for another search,
                 and /workspace/import's only way in was the nav bar (an
@@ -245,7 +264,15 @@ export function Home() {
                   // needs a session — offering them that link would be an exit
                   // to a page they cannot open (the shape IA-6 is about). Say
                   // what login buys instead, the way ForkAction does.
-                  "手上已經有一個 Skill 套件的話，登入後可以把它匯入你自己的工作區。"
+                  //
+                  // 「the way ForkAction does」——而 ForkAction 當時**也**沒有帶
+                  // 動作，兩處一起補。設計 §2.2 第三向：擋住人的訊息要說下一步是
+                  // 什麼，而「登入後可以」在沒有登入入口的情況下不是下一步，是一句
+                  // 感想。全 app 只有 SignInAction 一份登入動作（components/SignIn）。
+                  <>
+                    手上已經有一個 Skill 套件的話，登入後可以把它匯入你自己的工作區。{" "}
+                    <SignInAction />
+                  </>
                 )}
               </p>
               {/*
@@ -276,23 +303,7 @@ export function Home() {
               <p role="status" className="note">
                 找到 {data.results.length} 個 Skill。
               </p>
-              {/*
-                設計 §2.4 第 3 項: the five provenance markers on each row below
-                (AI 改寫／作者原文／來源未標示／AI 產生／規則產生) carried their
-                qualification in `title=` only, and a tooltip does not exist on
-                a touch device. Once per list rather than once per row, for the
-                reason §0 gives: 「順位低的規則讓步時，讓的是形式」 — five extra
-                sentences on every card would push the first result past the
-                fold that 義務 §1.2 is about, and the content is not reduced by
-                being stated once. Same shape as `SkillFiles`'s file-tree
-                sentence and `SkillDetail`'s 「AI 產生」 explanation.
-              */}
-              <p className="note">
-                標記說明：「AI 改寫」與「AI 產生」由模型寫成，未經人工核對——你的 Agent
-                讀到的是套件自己的 description，不是這裡的改寫；「作者原文」是套件的 frontmatter
-                description；「規則產生」依查詢與文件的關鍵字重疊組出；
-                「來源未標示」代表伺服器沒有回報這段摘要的來源。
-              </p>
+              <MarkerLegend />
               <ul className="search-results" aria-label="搜尋結果">
                 {data.results.map((hit) => (
                   <SearchResultRow
@@ -374,6 +385,7 @@ function Catalog({
               ? `目錄共 ${total} 個 Skill，這裡列出 ${results.length} 個。目前沒有翻頁；用上面的搜尋或篩選縮小範圍。`
               : `目錄共 ${total} 個 Skill，全部列在下面。`}
           </p>
+          <MarkerLegend />
           <ul className="search-results" aria-label="目錄">
             {results.map((hit) => (
               <SearchResultRow
@@ -818,12 +830,46 @@ function ResultFacets({ hit }: { hit: PublicSearchResult }) {
       <dt>最近驗證時間</dt>
       <dd>
         {hit.verified_at ? (
-          hit.verified_at.slice(0, 10)
+          /* 設計 §3 第 14 條，而且這一處是曝光量最大的時間欄位——每一列搜尋結果
+             與每一列目錄都有它。`.slice(0, 10)` 切的是伺服器的 UTC 字串前十碼：
+             對 UTC+8 的讀者，任何 16:00Z 之後驗證的 Skill 都少報一天，而且 DOM 裡
+             沒有 `<time dateTime>`，輔助科技拿到的只是一段散文。
+             `design-system.test.ts` 的裸時間戳掃描要求 `{…_at}` 整個閉合，所以
+             「切一刀」剛好從守門的門縫走過去。 */
+          <Timestamp at={hit.verified_at} />
         ) : (
           <span className="note">未測量——這個 Skill 還沒有匯入內容可以驗證。</span>
         )}
       </dd>
     </dl>
+  );
+}
+
+/**
+ * 五個來源標記的但書，一份，兩張清單共用。
+ *
+ * 設計 §2.4 第 3 項: the five provenance markers on each row below
+ * (AI 改寫／作者原文／來源未標示／AI 產生／規則產生) carried their qualification in
+ * `title=` only, and a tooltip does not exist on a touch device. Once per list
+ * rather than once per row, for the reason §0 gives: 「順位低的規則讓步時，讓的是
+ * 形式」 — five extra sentences on every card would push the first result past the
+ * fold that 義務 §1.2 is about, and the content is not reduced by being stated
+ * once. Same shape as `SkillFiles`'s file-tree sentence and `SkillDetail`'s
+ * 「AI 產生」 explanation.
+ *
+ * **提出來成為一個元件，是因為 2026-09-03 的目錄批只改到了搜尋那一半。** 目錄用的
+ * 是同一個 `SearchResultRow`，卻沒有這一段，於是那三顆徽章的但書在**落地首頁的
+ * 預設狀態**上退回成只有 `title=`——也就是手機上不存在。§0 把這一族排在順位 1
+ * （安全與不誤導），所以它不能只在其中一種狀態下成立。
+ */
+function MarkerLegend() {
+  return (
+    <p className="note">
+      標記說明：「AI 改寫」與「AI 產生」由模型寫成，未經人工核對——你的 Agent
+      讀到的是套件自己的 description，不是這裡的改寫；「作者原文」是套件的 frontmatter
+      description；「規則產生」依查詢與文件的關鍵字重疊組出；
+      「來源未標示」代表伺服器沒有回報這段摘要的來源。
+    </p>
   );
 }
 
@@ -847,6 +893,16 @@ function SearchResultRow({
 }) {
   return (
     <li className="search-result">
+      {/*
+        名字在前，勾選框在後。設計 §3 第 1 條在卡片這一層的同型：「一整排控制項排在
+        答案前面」——二十張卡的第一段文字以前完全一樣（「加入比較」），而 DOM 順序
+        就是 Tab 順序，所以鍵盤讀者掃二十筆要先踩二十次次要功能的勾選框。這張卡的
+        主要動作是「點進這一筆」，區辨力在名字上。CSS 的 `margin-right` 跟著改成
+        `margin-left`。
+      */}
+      <Link to="/skills/$skillId" params={{ skillId: hit.skill_id }}>
+        {hit.name}
+      </Link>
       <label className="compare-pick">
         <input
           type="checkbox"
@@ -858,9 +914,6 @@ function SearchResultRow({
         />
         加入比較
       </label>
-      <Link to="/skills/$skillId" params={{ skillId: hit.skill_id }}>
-        {hit.name}
-      </Link>
       {/*
         ADR-013 again, and the important half of it. This row already badged
         `match_reason` as 「AI 產生」 three lines below while printing the model's

@@ -220,8 +220,15 @@ const ROWS: CompareRow[] = [
   },
   {
     label: "相容性（驗證證據）",
+    // `.value` on all three, and that is the whole of this row's history: the
+    // three axes are `Labelled` objects, so interpolating them produced
+    // "[object Object]/[object Object]/[object Object]" — the same string for
+    // every skill on the table. `differs` was therefore permanently false, and
+    // the one row that answers 「這個 Skill 在我的環境跑不跑得動」 was the only
+    // row that never said 有差異. The other fourteen rows all reach for `.value`;
+    // this one was the omission, not the convention.
     signature: (skill) =>
-      `${skill.compatibility.spec_validation}/${skill.compatibility.capability}/${skill.compatibility.runtime}`,
+      `${skill.compatibility.spec_validation.value}/${skill.compatibility.capability.value}/${skill.compatibility.runtime.value}`,
     render: (skill) => <CompatibilityStatus compatibility={skill.compatibility} />,
   },
   {

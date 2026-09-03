@@ -750,7 +750,8 @@ summary {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  margin-right: 12px;
+  /* 左邊，因為它現在排在 Skill 名字之後（Home.tsx 的 SearchResultRow）。 */
+  margin-left: 12px;
 }
 
 /* Five tables in the app, none of which had anywhere to overflow to. With

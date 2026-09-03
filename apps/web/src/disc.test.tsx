@@ -206,6 +206,61 @@ test("DISC-006: catalog serializes filters and explains one truncated result lis
   expect(container.textContent).not.toContain("未計算語意相似度");
 });
 
+const CATALOG_ROW = {
+  ...HIT_FACETS,
+  skill_id: "catalog-one",
+  name: "Catalog One",
+  summary: "A browsable skill.",
+  rank: null,
+  rank_note: "目錄依收錄時間排序。",
+  verified_at: "2026-09-03T00:00:00Z",
+  match_reason: "",
+  match_reason_source: "template" as const,
+};
+
+/**
+ * 「那你就把有的都給我看」這個手勢。
+ *
+ * `browsing` 的判準是 `q === undefined`，而**空字串是字串**：清空搜尋框再按搜尋，
+ * 送出的是 `q=""`，`validateSearch` 原樣收下，伺服器對空查詢走 `no_results`，畫面
+ * 回「沒有夠接近的 Skill。」——而目錄就在同一個位址上。這一頁的搜尋態全部只有三個
+ * 連結，沒有一個回得去目錄，唯一的出口是頁首的產品標題。
+ *
+ * 押的是「目錄那一列出現了」，也就是 `browsing` 真的翻回來了。把 `|| undefined`
+ * 拿掉就變紅。
+ */
+test("DISC-006: 把搜尋框清空再按搜尋，回到目錄而不是「沒有夠接近的 Skill」", async () => {
+  const calls = stubCatalog({ results: [CATALOG_ROW], limit: 20, total: 1, truncated: false });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/", search: { q: "沒有這種東西" } });
+  });
+  // 搜尋在這個替身上回 401；重點不是它回什麼，是接下來那個手勢去了哪裡。
+  await submitSearch("   ");
+  await waitFor(() => container.textContent?.includes("Catalog One") ?? false);
+
+  expect(calls.some((url) => url.includes("/api/skills/catalog"))).toBe(true);
+  expect(container.textContent).not.toContain("沒有夠接近的 Skill");
+});
+
+/**
+ * 設計 §2.4 第 3 項，而這一格是 2026-09-03 目錄批帶進來的迴歸：目錄與搜尋共用
+ * `SearchResultRow`，那五顆來源徽章的但書卻只寫在搜尋那一半。於是**落地首頁的
+ * 預設狀態**上，「作者原文」「AI 改寫」「來源未標示」的限定語退回成只有 `title=`
+ * ——手機上不存在。§0 把這一族排在順位 1，它不能只在其中一種狀態下成立。
+ */
+test("DISC-006: 目錄那一半也要有來源標記的但書，不只搜尋那一半", async () => {
+  stubCatalog({ results: [CATALOG_ROW], limit: 20, total: 1, truncated: false });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/", search: {} });
+  });
+  await waitFor(() => container.textContent?.includes("Catalog One") ?? false);
+
+  expect(container.textContent).toContain("標記說明");
+  expect(container.textContent).toContain("「作者原文」是套件的 frontmatter description");
+});
+
 test("DISC-006: an empty catalog is distinct from a failed catalog read", async () => {
   stubCatalog({ results: [], limit: 20, total: 0, truncated: false });
   await render(<App />);
@@ -739,13 +794,58 @@ function detailFixture(overrides: Partial<SkillDetail>): SkillDetail {
 }
 
 /** Answers the search call and GET /api/skills/{id} from fixtures. */
-function stubSearchAndDetails(search: PublicSearchResponse, details: Record<string, SkillDetail>) {
+/**
+ * `owner` 開著，代表「這個 Skill 在你的工作區裡」：`/me` 給一個 session，
+ * `GET /skills/{id}/versions` 給一份非空的清單。**兩者都是打包入口現在讀的訊號**
+ * ——`SkillDetail` 的 `PackagingEntry` 不再用 `skill.version` 判擁有權，因為那個
+ * 欄位來自 Skill 自己的工作區（`discovery/detail.go` 的 `LatestVersion(ctx,
+ * skill.WorkspaceID, …)`），對每一個訪客都有值。要單獨測授權那道閘門，就得先把
+ * 擁有權那道打開，否則測到的是兩道閘門的交集。
+ */
+function stubSearchAndDetails(
+  search: PublicSearchResponse,
+  details: Record<string, SkillDetail>,
+  owner = false,
+) {
   const calls: string[] = [];
   vi.stubGlobal("fetch", (input: string) => {
     const url = String(input);
     calls.push(url);
     if (url.includes("/api/skills/search")) {
       return Promise.resolve(new Response(JSON.stringify(search), { status: 200 }));
+    }
+    if (owner && url.replace(/^https?:[/][/][^/]+/, "").split("?")[0] === "/me") {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            user_id: "u-1",
+            email: "t@example.com",
+            display_name: "tester",
+            workspace_id: "ws-1",
+            deletion_requested_at: null,
+            purge_after: null,
+            deletion_scope: null,
+          }),
+          { status: 200 },
+        ),
+      );
+    }
+    if (owner && url.includes("/versions")) {
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            versions: [
+              {
+                version_id: "v1",
+                version_number: 1,
+                content_hash: "sha256:aa",
+                created_at: "2026-08-01T00:00:00Z",
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      );
     }
     // The id, whatever query string follows it: 並排比較 now reads with
     // `?view=embedded` so the server does not count it as a page view.
@@ -1337,7 +1437,13 @@ test("DISC-002: a result row carries all seven columns, and infers none of them"
   // and 可執行 is the word doing the work. One list now serves both.
   expect(scanned).toContain("含可執行 Script 檔案"); // 風險提示
   expect(scanned).toContain("pypdf"); // 依賴
-  expect(scanned).toContain("2026-08-01"); // 最近驗證時間
+  // 最近驗證時間。斷言移到 `<time dateTime>` 上而不是渲染出來的文字：這一格原本
+  // 印的是伺服器 UTC 字串的前十碼（`.slice(0, 10)`），對 UTC+8 的讀者少報一天，
+  // 現在走 `<Timestamp>`，人看到的是自己的時鐘、機器看到的是原值。斷言那個原值
+  // 比斷言任何一種在地化字串都穩，而且它就是 §1.1 說「證據要查得動」的那一半。
+  expect(
+    [...container.querySelectorAll("time")].map((t) => t.getAttribute("dateTime")),
+  ).toContain("2026-08-01T10:00:00Z");
   // 沒有驗證證據的 Skill 必須明確標記「尚未試跑」.
   expect(scanned).toContain("尚未試跑");
 
@@ -1450,12 +1556,28 @@ test("SEC-007: the redistribution verdict shows all three states and only `allow
         created_at: "2026-08-01T00:00:00Z",
       },
     });
-    stubSearchAndDetails(EMPTY, { [skill.skill_id]: skill });
+    stubSearchAndDetails(EMPTY, { [skill.skill_id]: skill }, true);
     await render(<App />);
     await act(async () => {
       await router.navigate({ to: "/skills/$skillId", params: { skillId: skill.skill_id } });
     });
     await waitFor(() => (container.textContent ?? "").includes(skill.name));
+    // 等打包入口自己安定下來，而不是等它上面的標題。`allowed` 這一格要等
+    // workspace-scoped 的版本清單答完（`PackagingEntry`），另外兩格的停用鈕由
+    // 授權閘門當場決定、不等任何請求。
+    await waitFor(() =>
+      c.opens
+        ? Boolean(
+            [...container.querySelectorAll("a")].find((a) =>
+              (a.getAttribute("href") ?? "").includes("/package"),
+            ),
+          )
+        : Boolean(
+            [...container.querySelectorAll("button")].find((b) =>
+              (b.textContent ?? "").includes("打包並下載"),
+            ),
+          ),
+    );
 
     const text = container.textContent ?? "";
     expect(text).toContain(c.label);
@@ -1479,6 +1601,56 @@ test("SEC-007: the redistribution verdict shows all three states and only `allow
     container.innerHTML = "";
     queryClient.clear();
   }
+});
+
+/**
+ * 丙-116 的另一半，而它躺了整整兩天。
+ *
+ * 那次修的是「試跑」：非擁有者按下去會走進一條三個畫面都各自正確、合起來卻沒有
+ * 一句話說「這還不是你的」的走廊。**打包那一半沒有一起修。** 打包入口當時判斷
+ * 擁有權用的是 `skill.version`，而同一個檔案在三十行外的註解逐字寫著
+ * 「**`skill.version` is NOT the signal** … keying off it calls every visitor an
+ * owner」——`GET /api/skills/{id}` 的 `version` 來自 `LatestVersion(ctx,
+ * skill.WorkspaceID, …)`，那是 **Skill 自己的**工作區。
+ *
+ * 後果不是少一個連結，是多一條死路：`.action` 是全 app 唯一的強調樣式，2026-09-03
+ * 的重排又把它移到整頁第二個區塊，所以**訪客在目錄頁上最顯眼的動作**是「打包並
+ * 下載這個版本」，按下去落在 workspace-scoped 的 preview，回
+ * `404 {"error":"skill version not found"}`，畫面印出一句英文，而且說的還不是
+ * 真正的原因。
+ *
+ * 這支測試押的是**沒有那條連結、而且有那句話**。把 `PackagingEntry` 的擁有權判斷
+ * 換回 `skill.version`，它就變紅。
+ */
+test("SEC-007: 目錄裡別人的 Skill 不給打包 CTA，而是說要先 Fork", async () => {
+  const skill = detailFixture({
+    skill_id: "dddddddd-0000-0000-0000-000000000009",
+    name: "別人的 Skill",
+    // 授權那道閘門是開的，所以擋下來的只可能是擁有權那道。
+    redistribution: { value: "allowed", label: "可再散布", note: "可再散布。" },
+    version: {
+      version_id: "v1",
+      version_number: 1,
+      content_hash: "sha256:aa",
+      created_at: "2026-08-01T00:00:00Z",
+    },
+  });
+  // `owner` 不開：`/me` 與 `/skills/{id}/versions` 都回 404，也就是一個沒登入的
+  // 訪客在目錄裡看別人的東西——首頁最常見的那條路。
+  stubSearchAndDetails(EMPTY, { [skill.skill_id]: skill });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/skills/$skillId", params: { skillId: skill.skill_id } });
+  });
+  await waitFor(() => (container.textContent ?? "").includes(skill.name));
+
+  const packageLink = [...container.querySelectorAll("a")].find((a) =>
+    (a.getAttribute("href") ?? "").includes("/package"),
+  );
+  expect(packageLink, "訪客不該拿到一條終點是 404 的打包連結").toBeUndefined();
+  // 而且不是靜靜地消失：§2.4 要求被拿掉的控制項說出原因，§2.2 第三向要求那個原因
+  // 帶著下一步。下一步是 Fork，而 Fork 就在同一頁上。
+  expect(container.textContent ?? "").toContain("打包與下載需要登入");
 });
 
 test("DISC-007: advanced mode shows SKILL.md in full and marks every script", async () => {

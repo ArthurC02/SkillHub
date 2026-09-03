@@ -165,6 +165,34 @@ test("DISC-009 comparison gives absent fields their actual state", async () => {
   expect(versionRow?.querySelector("td")?.textContent).toBe("未提供");
 });
 
+/**
+ * 慣例 9 的牙齒,而且這一列曾經沒有牙齒。
+ *
+ * 「相容性」的 `signature` 內插的是三個 `Labelled` **物件**,於是每一個 Skill 都算出
+ * 同一串 `[object Object]/[object Object]/[object Object]`,`differs` 恆為 false
+ * ——一個規格驗證通過、一個未通過的兩個 Skill,那一列不上底色也不出「有差異」。
+ * 整張表是拿來挑候選的,而唯一被靜音的那一列正是「這個 Skill 在我的環境跑不跑得動」。
+ *
+ * 這支測試押的是**那個徽章**,不是那三個字的呈現:把三個 `.value` 拿掉就變紅。
+ */
+test("DISC-009 相容性不同的兩個 Skill,那一列要說有差異", async () => {
+  const runs = skillDetail("a", "A");
+  const doesNot = skillDetail("b", "B");
+  doesNot.compatibility = {
+    ...doesNot.compatibility,
+    spec_validation: { value: "failed", label: "未通過", note: "" },
+    capability: { value: "unverified", label: "未驗證", note: "" },
+  };
+  await render(<CompareTable skills={[runs, doesNot]} />);
+
+  const row = Array.from(container.querySelectorAll("tbody tr")).find((candidate) =>
+    candidate.querySelector("th")?.textContent?.startsWith("相容性"),
+  );
+  expect(row, "相容性 row").toBeDefined();
+  expect(row!.querySelector("th")?.textContent).toContain("有差異");
+  expect(row!.className).toContain("compare-differs");
+});
+
 test("EVAL-003 到站時就有同一個 Test Case 的候選,而且認得出它的不是 uuid", async () => {
   stubPlatform();
   await render(<RunCompare />);
