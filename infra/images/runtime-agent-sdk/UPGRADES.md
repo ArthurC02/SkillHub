@@ -294,7 +294,7 @@ marker 那一半仍綠，然後改回來。
 | 為什麼是升級而不是整理 | 它改變**哪些套件跑得起來**。舊版接受的兩種套件現在會被拒絕（非普通檔案項目、超過 100 MiB 的宣告總量），而 CRC32 不符的項目從「悄悄解出壞位元組」變成「這次 Run 失敗並說出原因」。同一批把平台端的入口契約收緊成 `symlink-entry`／`unsupported-entry-type` error（見 `ab3058d`），**兩端必須同號**，否則 admission 收下的套件會在執行時才炸 |
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | **未變** |
-| 映像 digest | **本節寫下時尚未發佈**——`runtime-image.yml` 由這次推送觸發，digest 由該次 workflow 產生。四項實測必須跑在**那個 digest** 上，不是本機建置（`-5` 那次的教訓逐字在上面兩節）；補上 digest 是跑實測的人的動作 |
+| 映像 digest | `sha256:9b7ae7c2aec02d580134efaae25d9c52809a38225df2ea2b7e6edaa59e127a7b`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-7`，由 [runtime-image #33705585812](https://github.com/ArthurC02/SkillHub/actions/runs/33705585812) 於 2026-09-03 隨 `c7a3311` 發佈）。**四項實測必須跑在這個 digest 上，不是本機建置**（`-5` 那次的教訓逐字在上面兩節） |
 | 依賴集 | **未變**（0 增 0 減） |
 | 預設映像 | **仍是 `-5`**：`sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`、`p02_docker_test.go` 的常數三處都沒有動。移到 `-7` 是四項實測通過之後的動作，不是這一批的 |
 
