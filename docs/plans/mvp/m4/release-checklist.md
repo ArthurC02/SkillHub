@@ -117,7 +117,9 @@
 
 ### 2.2 Migration 套用（順序是硬的）
 
-**部署 schema 必須到目前 HEAD `0034`。** 下列十一份互相依賴；不要再以手抄的「缺幾份」判斷目前版本：
+**部署 schema 必須到目前 HEAD `0053`。** 下列十一份互相依賴；不要再以手抄的「缺幾份」判斷目前版本：
+
+> **2026-09-03 訂正，因為這一節安靜地過期了。** 本節寫成時 HEAD 是 `0034`，而**「目前 HEAD ＝ 一個手抄的數字」這種寫法每次 migration 都會過期一次，且過期時不會有任何東西變紅**。今天是 `0053`（`0035`～`0053` 共十九份，見下方迴圈）。判斷版本請跑 `ls db/migrations/ | tail -1`，不要讀這份文件裡的數字。<br>**同批訂正的是更容易漏的那一半**：`0042`（精選層）與 `0053`（分類）都**只加欄位、不帶值**，值由 `tools/content/` 的回填腳本寫入，而**回填要等 §2.4 種入之後才有列可以更新**。回填清單因此從本節移到 §2.4，只留 schema。
 
 > **0034 維護窗要求**：它會在 partitioned `trace_events` 上以 volatile sequence default 回填 `ingest_seq`，可能持有強鎖。正式資料庫不得直接照開發環境時間推估：先在 production-sized clone 量測鎖定與回填時間，設定 `lock_timeout`，安排停止 Trace ingestion 的維護窗並確認 rollback 空間；未留下這份演練證據即視為 deployment blocker。MVP 尚未上線，現階段不為尚不存在的線上零停機需求引入雙寫 migration。
 
@@ -134,17 +136,22 @@ psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0031_trace_event_i
 psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0032_run_state_and_trace_stream_guards.sql
 psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0033_evaluation_model_usage.sql
 psql -v ON_ERROR_STOP=1 --single-transaction -f db/migrations/0034_trace_incremental_reads.sql
-# 然後才是資料回填（不是 migration，可重跑）
-psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistribution.sql
+# 0035～0053：本節寫成時還不存在，一份一個交易、同樣是數字序
+for f in db/migrations/003[5-9]_*.sql db/migrations/00[45][0-9]_*.sql; do
+  psql -v ON_ERROR_STOP=1 --single-transaction -f "$f" || break
+done
+# 資料回填不在這裡：它要等 §2.4 種入之後才有列可以更新
 
 # schema HEAD smoke check：四項任一為空都不可啟動 HEAD binary
 psql -Atqc "SELECT to_regclass('public.evaluation_model_usage')"
 psql -Atqc "SELECT to_regprocedure('public.enforce_run_status_transition()')"
 psql -Atqc "SELECT to_regprocedure('public.enforce_trace_stream_seq()')"
 psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
+# 三個「只有欄位、值由 §2.4 的回填寫入」的欄位是否都在（應為 3；不是 3 就是上面的迴圈沒跑完）
+psql -Atqc "SELECT count(*) FROM information_schema.columns
+             WHERE table_name = 'skills'
+               AND column_name IN ('redistribution', 'curation_tier', 'category')"
 ```
-
-**驗什麼**：回填應回報 **`UPDATE 90`**，分佈為 **41 `allowed`／4 `blocked`／0 `unknown`**（4 筆 blocked ＝ `anthropics/skills` 的 `docx`／`pdf`／`pptx`／`xlsx`）。**數字對不上就不要往下做**——打包的授權閘門是照這個欄位擋的。該分佈已在一個乾淨的拋棄式部署上獨立複現過（[README.md §14.2](README.md)）。
 
 **套用之後必須做的三件事**：
 
@@ -182,6 +189,27 @@ psql -Atqc "SELECT to_regclass('public.trace_events_run_ingest_seq_idx')"
 - [ ] 再跑一次驗冪等 → **15 筆 `exists_skipped`，零寫入**
 
 **為什麼這一步不能跳過**：`selectTestCases` 以 `workspaces.is_catalog` 判定「這是不是平台策展的產物」，**沒有種入就沒有任何 Test Case 能入包**，`PACK-005` 在該部署上永遠只會產生 `not_curated` 排除。
+
+#### 2.4.1 種入之後的資料回填（2026-09-03 新增，因為它漏過一次）
+
+**migration 給的是欄位，值由這幾支腳本寫入。** 三支都以**名稱比對目錄 Workspace 的列**，所以**在上面的種入之前跑會更新 0 列、正常結束、零錯誤零告警**——畫面上只是少一整層資訊。這正是 `0042`（精選層）與 `0053`（分類）此前在整份檢查表裡零命中的原因：它們的欄位進了 schema，值沒有人負責。**都可重跑。**
+
+```bash
+psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-redistribution.sql
+psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-curation-tier.sql
+psql -v ON_ERROR_STOP=1 --single-transaction -f tools/content/backfill-category.sql
+```
+
+| 腳本 | 需先套用 | 驗什麼（數字對不上就停下） | 不跑會怎樣 |
+| --- | --- | --- | --- |
+| `backfill-redistribution.sql` | `0027` | **`UPDATE 90`**，分佈 **41 `allowed`／4 `blocked`／0 `unknown`**（4 筆 blocked ＝ `anthropics/skills` 的 `docx`／`pdf`／`pptx`／`xlsx`）。該分佈已在一個乾淨的拋棄式部署上獨立複現過（[README.md §14.2](README.md)） | 全部停留在 `unknown` ⇒ fail-closed，**每一筆都打不出包**（打包的授權閘門看的就是這個欄位） |
+| `backfill-curation-tier.sql` | `0042` | **15 筆目錄列、0 筆 Fork**；腳本末尾的驗證查詢同時印出「被審的那一版是不是仍是最新版」 | 目錄全是 `已索引`，**首頁的「精選（N）」書架與 `?tier=curated` 都是空的**，`01` §8 的三層策略在畫面上不成立 |
+| `backfill-category.sql` | `0053` | 目錄列 **文件 10／寫作 10／資料 25**（腳本末尾附驗證查詢；Fork 一併回填，總數因此 ≥ 45） | **首頁四個分類 chip 全是 `0`、`?category=` 篩不出任何東西**，而它們不會報錯——空目錄與沒回填長得一模一樣 |
+
+**兩支刻意不在這一批**：
+
+- `backfill-self-supplied.sql`（`0036`）：新部署**不需要跑**。它只改「使用者自行匯入、且仍是 `unknown`」的列，而新部署還沒有這種列；今天的上傳路徑在 `skill/admission` 就會寫下 `self_supplied`。它是給既有部署補歷史列的。
+- `backfill-agent-compatibility.sql`（`0022`）：**跑了會插 0 列**，因為它的 `source_run_id`／`measured_at`／`capability` 全部來自**該部署上真的存在的 Run 與 Trace**。**後果要先知道**：新部署的 `skill_runtime_compatibility` 是空的，「Agent 相容（實測）」在那台機器上每一筆都是 `unverified`——那是誠實的（沒有人在這台機器上測過），但與 dev 上看到的畫面不同，不要當成故障去查。
 
 ### 2.5 可觀測性與告警
 
