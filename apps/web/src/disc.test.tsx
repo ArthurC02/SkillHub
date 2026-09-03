@@ -965,7 +965,7 @@ test("DISC-009: a repeated URL id is still only one comparison candidate", async
   });
   await waitFor(() => calls.some((url) => url.includes("/api/skills/id-left?")));
 
-  expect(container.textContent).toContain("請從搜尋結果選擇 2 到 3 個 Skill");
+  expect(container.textContent).toContain("請從首頁的搜尋結果或目錄選擇 2 到 3 個 Skill");
   expect(container.querySelector("table.compare-table")).toBeNull();
 });
 

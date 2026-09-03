@@ -360,7 +360,12 @@ export function Compare() {
         以下全部來自靜態資料（匯入時記錄與掃描結果），沒有任何一項是試跑出來的。
       </p>
 
-      {skillIds.length < 2 && <p role="alert">請從搜尋結果選擇 2 到 3 個 Skill 再進行比較。</p>}
+      {/* 「搜尋結果」以前是唯一的來源，而 2026-09-03 起目錄也有同一組勾選框
+          （Home 的 `CompareBar` 在兩種狀態下都渲染），這句話沒有跟上。設計 §3
+          第 14 條：同一件事在兩處講得不一樣。 */}
+      {skillIds.length < 2 && (
+        <p role="alert">請從首頁的搜尋結果或目錄選擇 2 到 3 個 Skill 再進行比較。</p>
+      )}
       {/*
         The count, because it is already in hand and it changes: three parallel
         skill reads resolve one at a time, and a bare 「載入中…」 says the same
@@ -388,7 +393,12 @@ export function Compare() {
       {skills.length >= 2 && <CompareTable skills={skills} />}
 
       <p>
-        <Link to="/">回到搜尋</Link>
+        {/* 回到首頁，而不是「回到搜尋」：這一頁到得了的來源有兩個（搜尋結果與目錄），
+            而這條連結兩者都不帶參數，所以它送人回去的一律是不帶查詢的首頁——也就是
+            目錄。名字要說出它真的會做什麼。查詢字串的往返（比完三筆想換掉一筆）需要
+            /compare 的 validateSearch 收下 `q`、CompareBar 帶上它，那是一批獨立的
+            改動，記在 04。 */}
+        <Link to="/">回到首頁的目錄</Link>
       </p>
     </section>
   );

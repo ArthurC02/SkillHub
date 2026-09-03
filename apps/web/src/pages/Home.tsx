@@ -300,11 +300,21 @@ export function Home() {
                 cards under aria-live makes a screen reader re-read every card
                 in full on each search, which is louder than saying nothing.
               */}
+              {/*
+                設計 §3 第 2 條「答案有被標記成答案嗎？」與第 9 條。搜尋態的整份大綱
+                以前只有一行——`h1 用一句話描述你的任務`——也就是**這一頁最大的字，在
+                讀者已經描述完、正在看結果的時候，還在叫他描述你的任務**；結果清單只有
+                一個 `aria-label`，沒有標題。目錄那一半早就有 `h2 目錄裡有什麼`，而
+                `Compare.tsx` 也已經因為同一條理由補過 `h2 逐項比較`（它的註解逐字寫著
+                「the answer was on screen with no heading marking it as the answer」）。
+                首頁是同一形狀的未修版本。
+              */}
+              <h2 id="results-heading">符合「{data.query}」的 Skill</h2>
               <p role="status" className="note">
                 找到 {data.results.length} 個 Skill。
               </p>
               <MarkerLegend />
-              <ul className="search-results" aria-label="搜尋結果">
+              <ul className="search-results" aria-labelledby="results-heading">
                 {data.results.map((hit) => (
                   <SearchResultRow
                     key={hit.skill_id}
