@@ -74,6 +74,16 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 - 唯讀 SubAgent 可以平行；寫入、generator、formatter、package manager、migration、contracts、CI/Taskfile 全部序列化。
 - 未知 delta 視為他人工作：不得 reset、clean或 checkout還原。
 - 只有負責整合的主 Agent執行明確 pathspec stage、commit、pull --rebase與 push。
+- **子代理的模型依任務難度指定，從最低階起**（負責人 2026-09-04 明定：禁 Fable 之後反射性地全派最高階，不是正確做法）。每次派工明確指定，禁止的模型任何等級都不用；升級要在 brief 裡寫理由。這張表是跨工具的，因為本 repo 同時有多個 coding agent 在協作：
+
+  | 階 | 適用任務 | Claude Code | Codex |
+  | --- | --- | --- | --- |
+  | 低階 | 單檔、規格明確、有測試判對錯：改一行跑一條測試、抄表、查值、突變稽核 | haiku | Luna |
+  | 中階 | 多檔但邊界清楚、照分區卡與現成模式實作、驗證回報、文件整理 | sonnet | Terra |
+  | 高階 | 跨模組推理、規格含糊要判斷、安全或資料遺失路徑、對抗性審查 | opus | （負責人未指定） |
+  | **禁止** | — | **Fable** | **Sol** |
+
+  Claude Code 的三個角色檔（`.claude/agents/`）以低階／中階為 frontmatter 預設下限，派工時可指定更高；`automation-check` 的 `harness` 檢查擋角色檔出現 fable／sol／inherit。Codex 側沒有等價的機器，這張表與根 `AGENTS.md` 那一句是它唯一吃得到的規則。
 - **Claude Code 另有一層攔阻**（`.claude/settings.json` 的 `permissions.deny` 把 `stash`／`add -A`／`commit -a`／`restore`／`checkout .`／`reset --hard`／`clean`／`push --force`／`commit --amend` 變成真的拒絕，對子代理同樣生效），**但它只是提早發現**：其他 coding agent 不受它管，本節的規則本體與 `automation-check`、測試、CI 才是保證。角色與技能的放置規則見下方〈Harness〉。
 
 ## 修好一個東西之後，把修法弄壞一次：三次前例
