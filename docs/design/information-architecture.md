@@ -11,7 +11,7 @@
 | **§0 規則** | **本檔** | **改程式。** 一條新路由要先過 §0，過不了就先改 §0.2 的偏離帳並寫下理由——比照 `db/query-owners.yaml` 的 `allow:` 與 system.md §5 |
 | §1～§4 的表（清單、導覽、連結、網址狀態） | `router.tsx` 與各頁 | 改本檔。它們是**盤點**，不是政策 |
 
-**§1、§2.1、§2.3、§2.4 與 §0.1 R2／R3 由 [`ia.test.ts`](../../apps/web/src/ia.test.ts) 比對**——比照 `design-system.test.ts`：文件持有政策，程式持有事實，測試比對兩者。其餘章節沒有機器（見 §6），所以每一列都註明從哪裡讀來的，讓下一個人有辦法自己重數一次。
+**§1、§2.1、§2.3、§2.4、§4 與 §0.1 R2／R3 由 [`ia.test.ts`](../../apps/web/src/ia.test.ts) 比對**〔2026-09-03 補：§4 的網址狀態表也有機器且是**雙向**比對，§4 自己早就寫了，這一句與 §6 都沒跟上〕——比照 `design-system.test.ts`：文件持有政策，程式持有事實，測試比對兩者。其餘章節沒有機器（見 §6），所以每一列都註明從哪裡讀來的，讓下一個人有辦法自己重數一次。
 
 > **這條規矩是本檔自己交的學費。** 初版寫於 2026-08-23 21:02，**21:24 就過期了**——另一批把 M5 的生成入口掛上了兩個畫面，而 §7 還在說它不存在。當時沒有任何東西會 FAIL。§2.4 與那四項比對就是那 22 分鐘換來的。
 
@@ -46,7 +46,7 @@
 機器：**有**（0 入邊與 1 入邊兩份清單都雙向比對；具名與否是判斷題，機器只保證「有沒有出現在表上」）。
 
 **R4. 「你在看哪一份東西」進網址，「你偏好怎麼看」不進。**
-出處：現行 `router.tsx` 七條 `validateSearch` 實際遵守的判準，見 §4。
+出處：現行 `router.tsx` **八條** `validateSearch` 實際遵守的判準，見 §4。〔2026-09-03 重數：17 條路由、8 條帶 `validateSearch`；原寫七條〕
 機器：**沒有**。現行爭議：IA-4（閱讀模式該歸哪一邊，`05` 待裁定）。
 
 **R5. 標題要說出這一頁回答什麼，不用容器詞。**
@@ -84,7 +84,7 @@
 
 ## 1. 現況：路由清單
 
-`__outlines__/` 是 20 個檔，`rendered.spec.ts` 說「18 個位址」——差額不是矛盾：`/` 有帶查詢與不帶查詢兩種、`/runs/$runId` 的兩種閱讀模式各存一份快照、還有一個不是路由的回報問題面板。**快照認得的狀態比網址多**，這件事本身是 §5 IA-4。
+`__outlines__/` 是 **24** 個檔〔2026-09-03 重數，原寫 20〕，`rendered.spec.ts` 說「18 個位址」——差額不是矛盾：`/` 有帶查詢與不帶查詢兩種、`/runs/$runId` 的兩種閱讀模式各存一份快照、還有一個不是路由的回報問題面板，**以及非成功態與目錄態各自存一份**（例如 `workspace-skills-401`、`lab-run-loading`、`workspace-runs-empty`、`回報問題-驗證訊息`）。**快照認得的狀態比網址多**，這件事本身是 §5 IA-4。
 
 | 位址 | 頁面元件 | 需求 ID（取自 `router.tsx` 逐路由的註解，見表下訂正） | ADR-038 價值流／產品領域 |
 | --- | --- | --- | --- |
@@ -114,7 +114,7 @@
 >
 > **這一欄沒有機器**（§6：`ia.test.ts` 只比對位址那一欄），四個缺口就是那件事長出來的樣子。
 
-**沒有位址的頁面一個**：[`RunEvaluation.tsx`](../../apps/web/src/pages/RunEvaluation.tsx)（31 KB，全 app 第二大）。它以 `EvaluationPanel` 的形式長在 `/runs/$runId` 裡，並且把 `RUN_STATUS_LABEL` 供給另外四個檔。詳見 §5 IA-3。
+**沒有位址的頁面一個**：[`RunEvaluation.tsx`](../../apps/web/src/pages/RunEvaluation.tsx)（**全 app 最大的幾個檔案之一**——這裡原本寫「31 KB，全 app 第二大」，而檔案大小每次改動都會讓那句話再錯一次；今天約 38 KB、排第五）。它以 `EvaluationPanel` 的形式長在 `/runs/$runId` 裡，並且把 `RUN_STATUS_LABEL` 供給另外四個檔。詳見 §5 IA-3。
 
 **深度最多三層**（`/skills/$id/package`），沒有一條路由需要記住兩個以上的 id。
 
@@ -138,7 +138,7 @@
 從 `pages/` 與 `components/` 的 `to="…"` 讀出，自我連結不計：
 
 ```
-Home ───────────► /compare, /skills/$id, /workspace/import
+Home ───────────► /compare, /skills/$id, /workspace/import, /workspace/skills#create
 Compare ────────► /, /skills/$id
 SkillDetail ────► /skills/$id/files, /skills/$id/package, /lab/test-cases
 SkillFiles ─────► /skills/$id
@@ -200,12 +200,12 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 | ---: | --- | --- |
 | **0** | （無） | ✅ 2026-08-24 起清空：workspace/import 從搜尋無結果那一格獲得第一條頁內入邊（IA-5 的旗標關閉半邊），移入下一列 |
 | **1** | `/compare`、`/lab/datasets`、`/runs/$runId/compare` | ✅ 三項都是 R3 的「具名」那一支（2026-08-24 裁定，IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7。<br>**2026-08-25：這一格此前還有第四個位址。** 匯入頁不適用「具名」那一支（它是導覽列項目、脈絡不唯一），所以它待在這裡是一條 R3 的**現行違規**而不是一項豁免——而它在 §5、§8 與 `04` 三處都沒有編號，於是機器讀得到這一列、算得出這個 1，**沒有任何東西出聲**。補編為 IA-9 之後同日結案，見下一列 |
-| 3 | `/`、`/workspace/skills`、`/workspace/import` | 2026-09-03 各多一條頁內入邊，來源都是「建立一個 Skill」那一批：首頁 hero 的「自己做一個 Skill」→ `/workspace/skills`；`components/CreateHub.tsx` → `/workspace/import` 與 `/`（目錄）。這三個位址從下一列搬上來；機器只比對 0 與 1 兩列，所以這一列與下一列是人手維護的 |
+| 3 | ~~`/`~~、~~`/workspace/skills`~~、`/workspace/import` | 2026-09-03 各多一條頁內入邊，來源都是「建立一個 Skill」那一批：首頁 hero 的「自己做一個 Skill」→ `/workspace/skills`；`components/CreateHub.tsx` → `/workspace/import` 與 `/`（目錄）。這三個位址從下一列搬上來；機器只比對 0 與 1 兩列，所以這一列與下一列是人手維護的 |<br>**2026-09-03 稍晚重數訂正**：這一列寫成時把三個位址都放在 3，而依本節自己宣告的計數規則（`pages/`＋`components/` 的 `to="…"`，**以不同來源檔計數、不排除自我連結**，見 `ia.test.ts` 的 `inboundByRoute()`），`/` 是 **4**（`Compare.tsx`、`Home.tsx`、`WorkspaceSkills.tsx`、`CreateHub.tsx`）、`/workspace/skills` 也是 **4**（`DataPolicy.tsx`、`Downloads.tsx`、`Home.tsx`、`WorkspaceAccount.tsx`），兩者都已移到下面的 4 那一列；只有 `/workspace/import` 留在 3。**這一列不會變紅**：測試只雙向比對 0 與 1 兩列，其餘各列沒有機器。 |
 | 2 | ~~`/`~~、`/policy`、`/skills/$skillId/files`、`/skills/$skillId/package`、`/lab/test-cases/$testCaseId`、`/workspace/account`、~~`/workspace/skills`~~、~~`/workspace/import`~~ | ✅ 匯入頁於 2026-08-25 取得第二條入邊（IA-9）：`/workspace/skills` 空狀態裡那句「或匯入自己的套件」本來就在講它，只是沒有連結——**那一頁說出了下一步，然後叫你自己去導覽列找**。文案一字未改，詞組變成連結 |
 | 3 | `/workspace/runs` | ✅ |
-| 4 | `/lab/run`、`/runs/$runId`、`/workspace/downloads` | ✅ |
+| 4 | `/lab/run`、`/runs/$runId`、`/workspace/downloads`、**`/`**、**`/workspace/skills`**（後兩者 2026-09-03 自上面的 3 移入） | ✅ |
 | 6 | `/lab/test-cases` | ✅ |
-| 10 | `/skills/$skillId` | ✅ 全 app 的匯流點 |
+| 12 | `/skills/$skillId` | ✅ 全 app 的匯流點（2026-09-03 重數：~~10~~ **12**，`SkillFiles.tsx` 與 `GenerateSkill.tsx` 也指過來） |
 
 **0 與 1 這兩列由測試雙向比對**：多一個孤兒會 FAIL，把孤兒修好了而沒改這張表也會 FAIL。其餘各列是同一次計算的輸出，改了程式就會在這裡看到差異。
 
@@ -245,7 +245,7 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 | `/runs/$id/compare` | `against` | EVAL-003：對照的另一次 Run 在網址裡，比較才能被連結 |
 | `/runs/$id` | `evaluation`、`events` | ~~**無**~~ **（2026-08-29 訂正：這一格從來沒有更新過。）** 一般／進階模式確實不在網址上（IA-4 的裁定，R4），但那不代表這一條路由沒有 search param——它有兩個，而且兩個都是 R4 的另一半「你在看哪一份東西」：`evaluation` 指名這次 Run 的某一份不可變判定（ADR-003／026；沒有它，被取代的舊判定連不出去，而重新評估過的 Run 的「目前判定」是另一個判定），`events` 是進階 Trace 的游標堆疊，讓事件流的第 7 頁貼得出去也撐得過重新整理。<br>**這一格是本節在 2026-08-29 補上機器的直接原因**：文件說「無」，程式說「兩個」，而在那之前沒有任何東西會 FAIL |
 
-**其餘十條路由沒有 `validateSearch`**（`/skills/$id`、`/skills/$id/files`、四條 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
+**其餘九條路由沒有 `validateSearch`**〔2026-09-03 重數：17 − 8 = 9；原寫十條〕（`/skills/$id`、`/skills/$id/files`、四條 `/workspace/*`、`/policy`、`/lab/test-cases/$id` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 
 **永遠不進網址的一項**：Provider 的臨時 id。平台的 `run_id` 是唯一識別（鐵律 10）。
 
@@ -290,7 +290,7 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 - `router.tsx` 檔頭：**一項決定**——「閱讀偏好，不值得一個可分享的位址」。
 - system.md §7.1 第 1 項：**一項待辦**——「把它提到 URL 上是一個小改動」。
 
-**裁定依據是 §0.1 R4**：「你在看哪一份東西」進網址，「你偏好怎麼看」不進。而 R4 不是為了這件事發明的——它是從現行七條 `validateSearch` **實際遵守的判準**推出來的，`/runs/$id` 自己還因為同一個理由拿掉過一個 `skill` 參數。閱讀模式是偏好，所以**程式對、system.md 錯**。system.md §7.1 第 1 項已改為關閉並註明依據。
+**裁定依據是 §0.1 R4**：「你在看哪一份東西」進網址，「你偏好怎麼看」不進。而 R4 不是為了這件事發明的——它是從現行**八條** `validateSearch` **實際遵守的判準**推出來的〔2026-09-03 重數〕，`/runs/$id` 自己還因為同一個理由拿掉過一個 `skill` 參數。閱讀模式是偏好，所以**程式對、system.md 錯**。system.md §7.1 第 1 項已改為關閉並註明依據。
 
 > **順帶關掉一個誤會**：初版說這件事有「三個位置、兩種立場」，把 `03` 的 `TRACE-007` 算成第三方。**`TRACE-007` 的 `?mode=advanced` 是 API 參數**（`GET /runs/{id}` 取遮罩後的原始事件），該工作項自己就寫著「UI 為 `apps/web` 的 `/runs/$runId`，一般／進階切換」——**它從來沒有要求那個切換上網址**。是兩種立場，不是三種。
 
@@ -388,7 +388,7 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 
 **沒有升成 R8**，理由是 §0 自己定的入場規則：規則要能從已定案的東西推出來，而這一條今天只有一個實例。**記在這裡，等第二個實例**；真的出現第二個，它就該是一條規則而不是兩列缺陷。
 
-**修法與突變見 [`04` 丙-116](../plans/04-backlog-and-handoffs.md)**（本檔不複述——複述一份修法就是製造第二份會過期的定義）。落在本檔身上的只有兩處：§2.2 多一條邊 `TestCases ► /skills/$id`，以及 `__outlines__/skills-skillId.txt` 多一個 `h2`「Fork 到你的工作區」——**那個動作以前是 12 個 `h2` 的頁面上唯一沒有標題的區塊，而對非擁有者它是唯一能往前的東西**。
+**修法與突變見 [`04` 丙-116](../plans/04-backlog-and-handoffs.md)**（本檔不複述——複述一份修法就是製造第二份會過期的定義）。落在本檔身上的只有兩處：§2.2 多一條邊 `TestCases ► /skills/$id`，以及 `__outlines__/skills-skillId.txt` 多一個 `h2`「Fork 到你的工作區」——**那個動作以前是 12 個 `h2` 的頁面上唯一沒有標題的區塊，而對非擁有者它是唯一能往前的東西**。<br>**2026-09-03 註記（原句不改，它記的是當時為真的事）**：那一段的重排把「Fork 到你的工作區」降成右欄 `aside.detail-rail` 裡的 **h3**，整頁 h2 由 12 減為 7，所以「12 個 h2 的頁面上唯一沒有標題的區塊」這句話今天已經沒有對應的畫面。**它被修好的方式不是加標題，是把整頁的標題樹重排**。
 
 > **順帶記一件 §2.2 自己的事**：這條新邊是 2026-08-25 那次訂正之後**第一次**有人在改程式的同一批裡改這張圖。那次訂正的成因寫在 §6——**§2.1、§2.3、§2.4 都有機器，夾在中間的 §2.2 沒有**，所以它是這一節唯一會無聲過期的一格。這一次沒有過期，是因為有人記得，不是因為有東西會紅。
 
@@ -407,11 +407,12 @@ CreateHub ──────► /, /workspace/import        （渲染在 /worksp
 | 規則 | 把關者 | 覆蓋範圍 |
 | --- | --- | --- |
 | 每條路由的標題階層不跳級 | [`a11y.test.tsx`](../../apps/web/src/a11y.test.tsx)（axe `heading-order`） | 全部路由；新路由沒加案例會 FAIL |
-| 標題階層變了要被看到 | [`__outlines__/`](../../apps/web/src/__outlines__/) 快照 | 20 個檔。**不判斷對錯，只讓變更變成必須核可的 diff** |
+| 標題階層變了要被看到 | [`__outlines__/`](../../apps/web/src/__outlines__/) 快照 | **24** 個檔〔2026-09-03 重數〕。**不判斷對錯，只讓變更變成必須核可的 diff** |
 | 導覽 landmark 唯一且具名 | `a11y.test.tsx`（axe `landmark-unique`） | 全部路由。`SkillDetail` 與 `SkillFiles` 各自帶一個未命名的 `<nav>`，主導覽因此必須具名 |
 | 「你在哪裡」有語意 | TanStack Router 自動加的 `aria-current="page"` | 主要導覽五項 |
 | 375px 不橫向溢出 | [`e2e/rendered.spec.ts`](../../apps/web/e2e/rendered.spec.ts)＋[`ia.test.ts`](../../apps/web/src/ia.test.ts) 的棘輪 | **全部路由**，三引擎（今天 18 個位址）。~~清單是手寫的，沒有棘輪~~——**2026-08-25 同日補上**：`ia.test.ts` 把 `e2e/routes.ts` 當文字讀，與 `router.tsx` 的 `path` **雙向**比對，兩邊先收斂成 shape（去掉 query，`${SKILL}` 與 `$skillId` 都變 `*`），所以一條路由掃多個位址仍然合法，少一條或多一條都 FAIL。做法照抄同表的 `a11y.test.tsx` |
-| 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 7 條 |
+| 網址參數不在列舉內就丟掉（不落在錯誤頁） | `validateSearch`（逐路由手寫） | 有 `validateSearch` 的 **8** 條〔2026-09-03 重數〕 |
+| §4 的網址狀態表與程式一致 | [`ia.test.ts`](../../apps/web/src/ia.test.ts) | **雙向**：逐路由比對 `validateSearch` 的 key 與表格第二欄，兩邊都不得多也不得少〔2026-09-03 補列——這個把關者一直存在，只是 §6 沒有它的列，而本節自己說「沒有進表＝沒有被守」〕 |
 | **§1 的路由表與 `router.tsx` 一致** | [`ia.test.ts`](../../apps/web/src/ia.test.ts) | 全部路由，**雙向**：新路由沒補列會 FAIL，刪了路由沒刪列也會 |
 | **§2.1 的主要導覽與 `RootLayout` 一致** | 同上 | 導覽列全部項目 |
 | **§2.3 的「只有導覽列」清單** | 同上 | 全部路由，**雙向**：多一個孤兒會 FAIL，修好了沒改文件也會 |
