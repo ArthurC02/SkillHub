@@ -577,7 +577,10 @@ test("設計 §2.13: 逐位元相同的 note 提到清單層級，會分辨列�
   for (const tier of new Set(SHELF_ROWS.map((r) => r.tier.label))) {
     const note = SHELF_ROWS.find((r) => r.tier.label === tier)!.tier.note;
     const line = `來源層級「${tier}」：${note}`;
-    expect(noteTexts().filter((n) => n === line), `「${line}」 is not stated once`).toHaveLength(1);
+    expect(
+      noteTexts().filter((n) => n === line),
+      `「${line}」 is not stated once`,
+    ).toHaveLength(1);
   }
   expect(new Set(SHELF_ROWS.map((r) => r.tier.label)).size).toBe(2);
 
@@ -1671,9 +1674,9 @@ test("DISC-003: the filters the platform has no data for are disabled and say wh
   // deleted paragraph could never have done — so this is what replaces it, and
   // it is the assertion that would go red if a seventh dimension arrived dead
   // and silent.
-  const deadSelects = [...container.querySelectorAll<HTMLSelectElement>(".filter-bar select")].filter(
-    (s) => s.disabled,
-  );
+  const deadSelects = [
+    ...container.querySelectorAll<HTMLSelectElement>(".filter-bar select"),
+  ].filter((s) => s.disabled);
   expect(deadSelects.length, "no dead control to check a reason on").toBeGreaterThan(0);
   for (const select of deadSelects) {
     const id = select.getAttribute("aria-describedby");
