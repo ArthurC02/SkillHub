@@ -261,9 +261,11 @@ func (s *Server) handleAddAcceptanceCriterionRequest(args [1]string, argsEscaped
 // Scope is the public catalogue only, identical to search: catalogue workspaces, and no parameter can
 // widen it (CORE-006, ADR-011).
 //
-// The four DISC-003 filters apply here for the reason they exist: they are the controls on the same
-// screen, and a filter that only bites after a search would be a live control that narrows nothing
-// (設計系統 §2.2).
+// The five live DISC-002 filters apply here for the reason they exist: they are the controls on the
+// same screen, and a filter that only bites after a search would be a live control that narrows
+// nothing (設計系統 §2.2). They are script, validation, agent, tier and category — category
+// joined them on 2026-09-03 with migration 0053, and this sentence said "four" until then. DISC-003 is
+// the work item that built them; the acceptance criteria are DISC-002's.
 //
 // GET /api/skills/catalog
 func (s *Server) handleBrowseCatalogRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
