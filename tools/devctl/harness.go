@@ -40,8 +40,9 @@ const (
 	harnessSkillsDir = ".claude/skills"
 	harnessAgentsDir = ".claude/agents"
 	// Codex's project_doc_max_bytes default is 32 KiB and it truncates silently.
-	// 28 KiB leaves room for one more section before the cliff.
-	agentsDocMaxBytes = 28 * 1024
+	// 16 KiB: the file was 22 KiB before 2026-09-04 and 12.9 KiB after the rewrite;
+	// the cap is a ratchet, so it sits just above where the file is, not at the cliff.
+	agentsDocMaxBytes = 16 * 1024
 )
 
 // A skill that cites any of these is bound to this repository.

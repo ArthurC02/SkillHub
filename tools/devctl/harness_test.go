@@ -79,7 +79,7 @@ func TestHarnessRejectsARootAgentsDocOverTheCap(t *testing.T) {
 	t.Parallel()
 	root := writeHarnessFixture(t, cleanSkill, cleanAgent, strings.Repeat("x", agentsDocMaxBytes+1))
 	problems := harnessProblems(root)
-	if len(problems) != 1 || !strings.Contains(problems[0], "over the 28672-byte cap") {
+	if len(problems) != 1 || !strings.Contains(problems[0], "over the 16384-byte cap") {
 		t.Fatalf("an AGENTS.md over the Codex cap was accepted: %v", problems)
 	}
 }

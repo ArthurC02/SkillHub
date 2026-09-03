@@ -4,61 +4,56 @@
 
 Skill Hub 是 Agent Skill 的搜尋引擎與試驗室：個人創作者以自然語言描述任務 → 探索候選 Skill → 用自己的 Prompt 與測試資料在隔離 Sandbox 試跑 → 依 Trace 與評估報告改善 → 下載符合 Agent Skills 規格的可攜套件。
 
-## 目前狀態
+## 系統怎麼跑
 
-**M0～M4 的程式面已收斂，M5 的程式面亦已收斂**（**~~◐ 的只剩 `GEN-009`~~ 2026-08-28：`GEN-009` 的 ③④ 補完，M5 已無 ◐**（`GEN-008` 已於 2026-08-25 改判勾選，該句 2026-08-26 才跟上）；勾選數以 [`03` §19](docs/plans/03-work-items.md) 的 checkbox 為準，本檔不複述**——那個數字曾經同時存在於五份文件並三度彼此不符）。**「程式面收斂」不等於「MVP 完成」——剩下的是部署期與負責人動作，不是程式。** M4 與 M5 同時未完結（[ADR-052](docs/adr/ADR-052-m5-starts-in-parallel-with-an-unfinished-mvp.md) 明示接受）。<br>**M6（在不能安裝東西的機器上跑起來）已於 2026-08-30 收束，並因此觸發 2026-08-29 裁定 4 的新功能凍結**——凍結之後只接受修既有缺陷的變更，**逐次放行紀錄記在 [`01` §10](docs/plans/01-goals-and-plan.md) 的裁定表，本檔不複述**。M6 同樣不計入 MVP 完成度（同 M5 先例，`01` §7.3；是否計入仍有一項待裁定，見 `05` R-22）。
+一個請求的路徑，四個行程：
 
-**⛔ 硬邊界：開工不等於曝光**——M5 的生成入口不得對封測使用者出現，直到漏斗第一段有讀數為止。三條仍然生效的邊界逐條見 `01` §10。
+1. **`apps/web`**（React SPA）只對 `apps/platform` 的 API 說話；契約在 `contracts/openapi/public.yaml`（OpenAPI-first，Go 是下游）。
+2. **`apps/platform`**（Go）是唯一的控制平面：API 行程做 AuthZ 與領域規則；Run 狀態機、River 佇列、FTS＋pgvector、Trace 分割表全在同一個 PostgreSQL；物件儲存講 S3 協定（本機 SeaweedFS）。
+3. **Go Worker** 是唯一的佇列消費者，以內部 HTTP 呼叫兩個能力提供者：**`apps/llm`**（Python FastAPI，所有模型呼叫經 LiteLLM 閘道）與 **`apps/sandbox`**（gVisor 隔離的 VM 池，跑釘選 digest 的 runtime image；契約 `contracts/openapi/sandbox-provider.yaml`）。
+4. 結果以結構化回應回到 Go；領域狀態變更與對外事件同一交易（outbox）。**執行平面永遠碰不到核心資料庫。**
 
-| 你要問的 | 唯一來源 |
+`apps/platform/internal/` 依 DDD 切成 creator／product／skill／trial 四群 Bounded Context，逐套件對照表在 ADR-032 §1（有機器對帳）。架構總圖見 [docs/adr/README.md](docs/adr/README.md)。
+
+## 現在在哪
+
+M0～M6 的程式面皆已收斂；**「程式面收斂」不等於「完成」**——M1 驗證閘門、M4 封測、M5 曝光都在等真人數字。**新功能凍結生效中**，逐次放行紀錄、閘門期間條款與三條 ⛔ 邊界只在 [`01` §10](docs/plans/01-goals-and-plan.md)；其中最硬的一條：**M5 的生成入口不得對封測使用者出現**。狀態變動改 `01` §10 與 `04`，不改這裡——本檔不放日期、不放數字。
+
+## 目錄地圖
+
+| 目錄 | 內容 |
 | --- | --- |
-| 狀態全貌、里程碑表與三條 ⛔ 邊界 | [`01` §10 里程碑](docs/plans/01-goals-and-plan.md) |
-| 還缺什麼、誰在等誰（**殘項總數的唯一來源**） | [`04` 現況一覽](docs/plans/04-backlog-and-handoffs.md)（活文件） |
-| 我現在要簽什麼 | [`05` 待裁定清單](docs/plans/05-pending-rulings.md)（活文件） |
-
-狀態變動改 `01` §10 與 `04`，不改這裡。
-
-| 目錄 | 內容 | 入口 |
-| --- | --- | --- |
-| `docs/plans/` | [產品基準](docs/plans/README.md)：目標、規格允收準則（需求 ID）、工作清單、[殘項與移交](docs/plans/04-backlog-and-handoffs.md)（活文件）、[待裁定清單](docs/plans/05-pending-rulings.md)（活文件）；`mvp/m0/`～`mvp/m6/` 為各里程碑凍結產出；`mvp/content/`／`mvp/governance/`／`mvp/gate-test/` 為跨里程碑仍在被引用的主題目錄（ADR-031） | [docs/plans/README.md](docs/plans/README.md) |
-| `docs/adr/` | 架構決策紀錄。**份數、狀態與取代關係見索引** | [docs/adr/README.md](docs/adr/README.md)（含索引與架構總圖） |
-| `docs/spikes/` | M0 spike code 已刪，只留墓碑與結論落點對照 | [docs/spikes/README.md](docs/spikes/README.md) |
-| `docs/design/` | **前端的兩把尺**：[system.md](docs/design/system.md) 管**一頁之內**（義務、原則、字級／間距／表面／狀態語彙、強制對照表），[information-architecture.md](docs/design/information-architecture.md) 管**一頁與一頁之間**（規則層 R1～R7、路由、導覽、可達性、網址狀態、旗標入口）。兩份都是活文件且各有機器測試。**注意 IA 的方向**：§0 的規則走在程式前面（不一致改程式），§1～§4 的盤點跟在程式後面 | [docs/design/system.md](docs/design/system.md)、[information-architecture.md](docs/design/information-architecture.md) |
-| `docs/runbooks/` | 值班當下照著做的操作程序（`02:SEC-010` 要求的形式）。與 `docs/development/` 的分別：那裡是開工前讀的手冊，這裡是出事時讀的 | [p1-dispatch-halt.md](docs/runbooks/p1-dispatch-halt.md)（P1 停止派送與解除） |
-
-Monorepo 的 CI/CD 基線見 **ADR-019**，頂層收納由 **ADR-031（Accepted）** 按產物角色定義；結構性偏離需先更新 ADR。
-
-| 頂層目錄 | 收納語意 |
-| --- | --- |
-| `apps/` | 可獨立啟動、建置或部署的產品程式：`web`、`platform`、`llm`、`sandbox` |
+| `apps/` | 可獨立啟動／建置／部署的產品程式：`web`、`platform`、`llm`、`sandbox` |
 | `packages/` | 供其他程式 import 的 library；generated 子目錄禁止手改 |
 | `contracts/` | 跨程序／跨語言介面的唯一來源 |
-| `db/` | Migration、query、sqlc config 與 DB test 等持久化來源 |
-| `infra/` | 部署、runtime image、網路、節點與 observability 設定 |
-| `tools/` | 開發、CI、資料維護、維運命令及其緊密 fixture |
-| `docs/` | 不被產品程式 import 或執行的敘事與歷史文件 |
+| `db/` | Migration、query、sqlc 設定與 `query-owners.yaml` |
+| `infra/` | 部署、runtime image、網路、節點與 observability |
+| `tools/` | 開發、CI、資料維護、維運命令；`tools/devctl` 是所有機器檢查的家 |
+| `docs/plans/` | 產品基準：`01` 目標與里程碑、`02` 規格允收（需求 ID）、`03` 工作清單、`04` 殘項與移交、`05` 待裁定；`mvp/mX/` 為凍結產出 |
+| `docs/adr/` | 架構決策；份數、狀態與取代關係見 [索引](docs/adr/README.md) |
+| `docs/design/` | 前端兩把尺：[system.md](docs/design/system.md) 管一頁之內、[information-architecture.md](docs/design/information-architecture.md) 管頁與頁之間；**兩份都有機器測試直接解析** |
+| `docs/development/` | 開工前讀的手冊；[docs/runbooks/](docs/runbooks/) 是出事時讀的 |
 
-`.github/`、`.devcontainer/` 與 repo 根層工具入口保留在平台預期位置。不是所有含程式碼的內容都進 `apps/`，判準是能否作為產品程式獨立啟動／建置／部署。
+收納語意由 ADR-031 定義，CI/CD 基線見 ADR-019；結構性偏離先更新 ADR。
 
-## 已定案的技術棧速覽
+## 技術棧
 
 | 層 | 選擇 | 依據 |
 | --- | --- | --- |
-| 前端 | React + TS（Vite、TanStack Router/Query），SPA 起步 | ADR-016 |
-| 平台後端 | Go：chi/echo 薄層、pgx + sqlc、River（Postgres 佇列） | ADR-016、018（ADR-014 已 Superseded，核心結論由 018 延續） |
-| LLM 工作負載 | Python：FastAPI（uv 管理），內部服務（未採用 LangGraph） | ADR-016 |
-| 模型供應商 | OpenAI API（試跑預設 mini 級；Embedding `text-embedding-3-small`），一律經 LiteLLM 閘道 | PDM-003、ADR-017 |
-| 資料 | PostgreSQL 中心（交易、FTS + pgvector、佇列、Trace 分割表）＋受管 S3 相容物件儲存；核心元件容器化自架（E1） | ADR-018 |
-| 搜尋 | 混合檢索（向量腿承載跨語言召回，**FTS 腿為召回覆蓋：`UNION` 候選擴充，不做 RRF**——見 ADR-013 定案調整 4）＋索引時 LLM 增強（摘要與任務範例句為必要項） | ADR-013 |
-| Agent Runtime | Claude Agent SDK，版本以 digest ＋ lockfile 釘選，**最終事實來源是 image digest**（ADR-023 決策 1；版本字串釘在 `infra/images/runtime-agent-sdk/Dockerfile` 的 `ARG CLAUDE_AGENT_SDK_VERSION`，**不在 `tools/toolchain.yaml`**——那個檔沒有這一項）；升級必須重跑四項實測，靜默失效不得以推理帶過 | ADR-023 |
-| 身分與 Session | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | ADR-020 |
-| Sandbox 隔離 | gVisor 基線（`systrap` 平台，不需巢狀虛擬化），獨立 VM 池，沙箱層 nftables default-deny ＋固定 DNS（不部署 L7 Proxy） | ADR-015、005、022 |
-| Runtime Image | 自建映像發佈至 **GHCR**，SBOM 與漏洞掃描以 attestation 隨 digest 保存；過不了門檻的映像到不了 registry | ADR-022、`03` SBX-011 |
-| 模型出口 | LiteLLM Proxy（唯一模型閘道，每 Run 短效 Virtual Key） | ADR-017 |
-| LLM 觀測 | Langfuse Cloud（工程調優專用，非事實來源；**MVP 未實作——零依賴、零設定、零工作項，見 [`05` R-24](docs/plans/05-pending-rulings.md)**） | ADR-017 |
-| 契約 | OpenAPI-first，**`contracts/openapi/public.yaml` 為 spec 來源**（~~Go 為 spec 來源~~ 2026-08-29 訂正：Go 是下游），codegen 產 Go／TS／Python；**Go 側是 models-only，handler 手寫並逐條對齊**（見 `devctl` 的 route-table 檢查與 ADR-030 的 2026-08-29 補記） | ADR-016 |
+| 前端 | React + TS（Vite、TanStack Router/Query） | ADR-016 |
+| 平台後端 | Go：薄 HTTP 層、pgx + sqlc、River | ADR-016、018 |
+| LLM 工作負載 | Python FastAPI（uv），內部服務 | ADR-016 |
+| 模型供應商 | OpenAI（試跑預設 mini 級；Embedding `text-embedding-3-small`），一律經 LiteLLM，每 Run 短效 Virtual Key | ADR-017 |
+| 資料 | PostgreSQL 中心 ＋ S3 相容物件儲存；核心元件容器化自架 | ADR-018 |
+| 搜尋 | 混合檢索（向量腿 ＋ FTS 腿 `UNION` 擴充候選，不做 RRF）＋ 索引時 LLM 增強 | ADR-013 |
+| Agent Runtime | Claude Agent SDK，事實來源是 image digest；版本字串釘在 `infra/images/runtime-agent-sdk/Dockerfile` 的 `ARG`，**不在 `tools/toolchain.yaml`**；升級必重跑四項實測 | ADR-023 |
+| 身分 | GitHub OAuth ＋ Postgres Session（`DEV_LOGIN` 為離線 provider） | ADR-020 |
+| Sandbox | gVisor `systrap`，獨立 VM 池，nftables default-deny ＋固定 DNS，不部署 L7 Proxy | ADR-015、005、022 |
+| Runtime Image | 自建映像發佈至 GHCR，SBOM 與掃描以 attestation 隨 digest 保存 | ADR-022 |
+| LLM 觀測 | Langfuse Cloud（工程調優用，非事實來源；**MVP 未實作**，見 [`05` R-24](docs/plans/05-pending-rulings.md)） | ADR-017 |
+| 契約 | OpenAPI-first；Go 側 models-only，handler 手寫並逐條對齊 | ADR-016、030 |
 
-範圍注意：**Local Runner 與遠端 MCP 已移出 MVP 首發**（架構決策保留於 ADR-006 與相關規格，實作依需求訊號啟動）。
+**Local Runner 與遠端 MCP 已移出 MVP 首發**（決策保留於 ADR-006）。
 
 ## 實作鐵律（違反任何一條 = 架構回歸）
 
@@ -78,82 +73,57 @@ Monorepo 的 CI/CD 基線見 **ADR-019**，頂層收納由 **ADR-031（Accepted�
 ## 文件維護規則
 
 - 三份 MVP 文件（目標／規格／工作清單）改範圍時必須同步；規格新功能先補需求 ID 與允收準則。
-- **改 `04` 的殘項數字時，同一格末尾的 `<!-- open: … -->` 要一起改**——`devctl automation-check` 的 `backlog-tally` 比對數字、清單與實際的列，漏了 CI 會 FAIL。
-- 工作項目 `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
-- ADR 是決策歷史：推翻舊決策＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫決策內容；待決策被後續 ADR 回答時回填 `→ [ADR-xxx](...)` 引用。
-- **下一號 ADR ＝ [docs/adr/README.md](docs/adr/README.md) 索引的最大號 + 1**，新增後記得更新該索引。選型類決策採 ADR-016 格式（含「評估選項」比較），邊界類可用精簡格式。
-- **檔案放哪裡**：活文件放 `docs/plans/` 根層（編號 `01~`）；里程碑的歷史產出放 `docs/plans/mvp/mX/`，里程碑完結即凍結。跨里程碑主題材料放 `docs/plans/mvp/` 的相應主題目錄。一份文件如果會被下一個里程碑繼續改，它就不屬於 `mX/`。
-- **里程碑目錄固定骨架**：`README.md`（計畫＋狀態＋檔案地圖）、`audit.md`、報告用 `report-*` 前綴；目錄內檔名不重複 `mX` 前綴。**M3 起適用，既有檔名不回溯改。**
-- **`03` 的歷史完成紀錄保留當時的 flat path**——那是里程碑時點的證據，不要順手修正。
+- 改 `04` 的殘項數字時，同一格末尾的 `<!-- open: … -->` 要一起改（`backlog-tally` 會對帳）。
+- `- [ ]` → `- [x]` 只在完全符合允收準則時；部分完成保持未勾。
+- ADR 是決策歷史：推翻＝新增 ADR 並把舊的標 `Superseded`，不刪除、不原地改寫；下一號＝[索引](docs/adr/README.md)最大號 + 1，新增後更新索引。
+- 活文件放 `docs/plans/` 根層；里程碑產出放 `docs/plans/mvp/mX/`，完結即凍結，不回溯修正（含 `03` 的歷史 flat path）。
+- 里程碑目錄固定骨架：`README.md`（計畫＋狀態＋檔案地圖）、`audit.md`、報告用 `report-*` 前綴；目錄內檔名不重複 `mX` 前綴（M3 起適用，既有檔名不回溯改）。
 
 ## 慣例
 
-- 文件語言：繁體中文（保留 Run、Workspace、Provider 等英文術語不硬翻）。程式碼、識別字、commit message：英文。
-- **每次回覆的最後一段，是給沒有讀過這份程式碼的人看的白話摘要**：一段連貫的敘述，講「做了什麼、發現了什麼、還缺什麼」，可以用比喻，**不要條列破碎的技術片段、不要堆檔名與識別字**。技術細節寫在它前面或寫進文件裡；那一段本身要能單獨被讀懂。<br>**理由**：本專案的判斷全靠「這件事到底成立到什麼程度」，而一份讀不懂的摘要會讓負責人只能相信結論——**看不懂的綠燈與看不懂的紅燈一樣沒有用**。
-- 多人／多 agent 共用同一工作樹平行作業時：只以明確 pathspec stage 自己的檔案、push 前 `git pull --rebase`；**禁止 `git stash`**（stash 會連他人未提交與未追蹤的工作一起收走，本專案已三度因此出事）；暫存產物放 scratchpad，不放 repo 根目錄。
-- 里程碑：M0 基線 → M1 Explorer（結尾有驗證閘門，不通過不進 M2）→ M2 Lab → M3 評估 → M4 打包與封測 → M5 從任務描述生成 Skill（ADR-046／052／054）→ **M6 淨測試模式**（在不能安裝東西的機器上跑起來，ADR-059／060）。**M5 與 M6 都不在 MVP 完成度內**（`01` §7.3）；**M6 收束觸發的新功能凍結自 2026-08-30 生效**；各里程碑現況與放行紀錄見 `01` §10。
-- 需求 ID 前綴：DISC／SKILL／WS／TEST／RUN／SBX／TRACE／EVAL／PACK／GEN／NFR／PDM／SEC 等，見 `docs/plans/02`、`03`。（`02` 與 `03` 各自編號，同前綴不同號。）
+- 文件：繁體中文（Run、Workspace、Provider 等術語不硬翻）。程式碼、識別字、commit message：英文。
+- **每次回覆的最後一段，是給沒讀過程式碼的人看的白話摘要**：一段連貫敘述講「做了什麼、發現了什麼、還缺什麼」，不條列、不堆檔名。理由：看不懂的綠燈與看不懂的紅燈一樣沒有用。
+- 需求 ID 前綴：DISC／SKILL／WS／TEST／RUN／SBX／TRACE／EVAL／PACK／GEN／PORT／NFR／PDM／SEC，見 `02`、`03`（各自編號）。
 
 ## 開發自動化（Agent 開工先讀）
 
-決策見 [ADR-030](docs/adr/ADR-030-portable-developer-automation-and-contract-code-generation.md)；**完整操作、能力與成本分級、生成來源表與排錯以 [開發自動化手冊](docs/development/automation.md) 為準**（本節只放紅線）；Platform 的 Bounded Context 日常判斷見 [DDD 實務指南](docs/development/platform-ddd-practices.md)。不要把只在某一台電腦成立的 native command 當成 repo 的標準流程。
+完整操作、成本分級、生成來源表與每條紅線的來歷以 [docs/development/automation.md](docs/development/automation.md) 為準；本節只放紅線。不要把只在某一台電腦成立的 native command 當成 repo 的標準流程。
 
-1. **先診斷再修改**：進入 repo 後先看 `task --list`，再跑 `task doctor`（尚未安裝 Task 時用 `go -C tools/devctl run . doctor`）。版本來源是各語言原生檔與 `tools/toolchain.yaml`，不是 Agent 記憶；doctor 的版本不符是環境診斷，不得靠跳過檢查偽裝成通過。
-2. **預設不花錢**：`task dev`／`dev:core` 只起 Postgres 與 SeaweedFS。`task dev:model` 會 fail-closed 檢查模型秘密且後續會產生費用，**不得由唯讀 SubAgent 自行啟動**；完整能力與成本分級表見 automation.md。
-3. **共享工作樹、單一 Writer**：SubAgent 預設唯讀，同一時間只能有一個 Writer；寫入 SubAgent 必須有精確 path allowlist，不得自行執行 repo-wide formatter、package install、Compose down、Git 寫入或 lockfile 更新。除禁止 `git stash` 外，對未知修改同樣禁止 `git reset`、`git clean`、`git checkout -- <path>`——看到不屬於自己的 delta 就保留並回報。
-4. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/` 不交給多個寫入 Agent 平行處理。
-5. **generated files 禁止手改**：`task gen:sql`／`task gen:openapi` 由主 Agent 序列化執行，SubAgent 不自行執行；提交前一律跑 `task gen:check`。generated 目錄的衝突要在來源解決後重生，不得手動合併。人工來源與生成目標的對照表在 automation.md。
-6. **Go generated router 不擁有 AuthZ**：ogen server 只在 `router.go` 的精確 `GET /healthz` pattern 後；其他 route 逐條由 `router.go` 套 `RequireSession`／`RequireOperator`／`OptionalSession`，不得整批 mount generated server。每移一條 endpoint 都要保留原 middleware 語意並加 route 測試（順序見 automation.md）。
-7. **Platform 的 Bounded Context 治理（ADR-032）**：`apps/platform/internal/` 每個套件屬於且僅屬於一個 context；新增套件必須先在 ADR-032 §1 對照表登記。跨 context 的新 import 必須**同一個 commit** 改 ADR-032 附錄 A 與 `apps/platform/.golangci.yml` 的 depguard 規則（CI 以 depguard ＋ `devctl automation-check` 兩道強制）；領域 Service 一律由 `entrypoint/api/apiserver.NewApp` 注入，禁止方法內現場建構其他 context 的 Service。**逐套件對照表以 ADR-032 §1 為準，受 `devctl automation-check` 機械對帳**；日常判斷見 [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)。
-8. **Query ownership（ADR-033、035）**：每條 query 的 owner context 宣告在 `db/query-owners.yaml`，由 `devctl automation-check` 強制——**跨 context 的 write query 呼叫會 FAIL**（read 已一併強制）。新增或刪除 `db/queries/*.sql` 的 query，同一批要改 `db/query-owners.yaml`，漏了 CI 會 FAIL；該檔的 `allow:`／`read_allow:` 是**存量漂移清單，不是擴充點**——新的跨 context 存取要改程式，不准往下面加行。
-9. **修好一個東西之後，把修法弄壞一次**：改完跑一次測試是綠的，那只證明測試存在，不證明它會紅。**把修正那一行還原、跑對應的測試、確認它變紅、再改回來**（`git diff` 確認為空）。本專案已經三次「修好了但測試沒有牙齒」：invalidate 用錯 query key（改回錯的、171 支全綠）、placeholder 六條規則有三條零正面測試（同時刪掉、全綠）、兩條 import 路由的速率限制包裝（無聲刪掉、全套綠）。**三次都不是 code review 找到的**，是突變找到的。成本是一次 `sed` 加一次 `go test`。<br>**不適用於**：純文案、純註解、以及本來就沒有斷言可言的變更。**適用於**：任何你在 commit 訊息裡寫「修好了 X」的東西——那句話的證據就是那次紅。
+1. **先診斷再修改**：`task --list`，再 `task doctor`（未裝 Task 時 `go -C tools/devctl run . doctor`）。版本來源是各語言原生檔與 `tools/toolchain.yaml`；doctor 的版本不符是診斷結果，不得靠跳過檢查偽裝成通過。
+2. **預設不花錢**：`task dev` 只起 Postgres 與 SeaweedFS。`task dev:model` 會產生費用，**不得由唯讀 SubAgent 自行啟動**。
+3. **共享工作樹、單一 Writer**：SubAgent 預設唯讀，同一時間只能有一個 Writer；寫入 SubAgent 必須有精確 path allowlist，不得自行執行 repo-wide formatter、package install、Compose down、Git 寫入或 lockfile 更新。**禁止 `git stash`**（會連他人未提交與未追蹤的工作一起收走，本專案已三度因此出事）；對未知修改同樣禁止 `git reset`、`git clean`、`git checkout -- <path>`——看到不屬於自己的 delta 就保留並回報。只以明確 pathspec stage 自己的檔案、push 前 `git pull --rebase`；暫存產物放 scratchpad。
+4. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/`。
+5. **generated files 禁止手改**：`task gen:sql`／`task gen:openapi` 由主 Agent 序列化執行；提交前一律 `task gen:check`；generated 目錄的衝突在來源解決後重生。
+6. **Go generated router 不擁有 AuthZ**：ogen server 只在 `router.go` 的精確 `GET /healthz` pattern 後；其他 route 逐條套 `RequireSession`／`RequireOperator`／`OptionalSession`，不得整批 mount，每移一條要加 route 測試。
+7. **Bounded Context 治理（ADR-032）**：每個套件屬於且僅屬於一個 context，新套件先在 ADR-032 §1 登記再建目錄；跨 context 的新 import **同一個 commit** 改附錄 A 與 `apps/platform/.golangci.yml` 的 depguard；領域 Service 只由 `entrypoint/api/apiserver.NewApp` 注入，禁止方法內現場建構。日常判斷見 [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)。
+8. **Query ownership（ADR-033、035）**：owner 宣告在 `db/query-owners.yaml`，跨 context 呼叫會 FAIL；新增或刪除 query 同一批改該檔；`allow:`／`read_allow:` 是存量漂移清單，**不是擴充點**。
+9. **修好一個東西之後，把修法弄壞一次**：綠燈只證明測試存在。把修正那一行還原、跑對應測試、確認變紅、再改回來（`git diff` 為空）。不適用純文案與純註解；適用任何你在 commit 訊息裡寫「修好了 X」的東西——那句話的證據就是那次紅。三次前例在 automation.md。
 
-## 分區指標與攔阻（2026-09-03 新增）
+## 分區指標與攔阻
 
-**動某個區域之前，先讀那個區域的 `AGENTS.md`**——它列出「你要做的事 → 先讀哪一段 → 沒讀會被哪個測試擋」，本檔不複述：
+**動某個區域之前，先讀那個區域的 `AGENTS.md`**——它列出「你要做的事 → 先讀哪一段 → 沒讀會被哪個閘門擋」：
 
 | 你要動 | 先讀 |
 | --- | --- |
 | `apps/web/` | [`apps/web/AGENTS.md`](apps/web/AGENTS.md) |
 | `apps/platform/internal/` | [`apps/platform/internal/AGENTS.md`](apps/platform/internal/AGENTS.md) ＋ 目標套件的 `doc.go` |
 
-**這張表存在，是因為目錄層的 `AGENTS.md` 不保證送達**：Claude Code 會在讀到該目錄的檔案時載入它（2026-09-03 實測成立），但**剛建立的檔案不會立刻被發現**（同一 session 內兩次探測都沒出現，稍後才生效）；Codex 只有在工作目錄位於該目錄之內時才走得到；其他工具各家不一。所以這張表是唯一保證送達的入口，分區卡片是它的延伸而非替代。
+這張表是唯一保證送達的入口（目錄層 `AGENTS.md` 各工具送達方式不一）。Claude Code 另有 `.claude/rules/`（按路徑送指標）、`.claude/agents/`（按風險切的三個角色：writer／verify／mutation）、`.claude/skills/`（換一個 repo 還成立的程序）與 `permissions.deny`；**它們不取代文件，只是提早發現**，放置規則、新增區域配方與守它們的機器見 automation.md〈Harness〉。
 
-Claude Code 另有三個機制（其他工具吃不到，**不得用來取代上述文件**），每一層只放一種東西：
-
-- `.claude/rules/`：**按路徑觸發的指標**，內容只有「先讀哪一份、會被哪個檢查擋」，判準永遠在被指的那一份。
-- `.claude/agents/`：**按風險切的三個角色**——`skillhub-writer`（寫，路徑範圍由簡報給）、`skillhub-verify`（唯讀驗證）、`skillhub-mutation`（證明測試會紅）。**角色不按目錄切、不新增**：某個區域該先讀什麼、哪些檔屬於 coordinator，寫在該區域的 `AGENTS.md`，由 rules 按路徑送達。禁令只有一份，在上方〈開發自動化〉第 3 條，角色檔引用不複述。
-- `.claude/skills/`：**換一個 repo 還成立的程序**。技能不得引用 `docs/`、ADR 編號或需求 ID；**判準與規則一律留在 `docs/`**。
-
-**新增一個區域的三步配方**（不新增角色）：①在該目錄放 `AGENTS.md`（指標表：要做的事 → 先讀哪段 → 沒讀會被哪個閘門擋；加一行 `@AGENTS.md` 的 `CLAUDE.md`）；②在 `.claude/rules/` 加一條 `paths:` 指向它；③在上表加一列。
-
-`.claude/settings.json` 的 `permissions.deny` 把幾條慣例變成真的拒絕（`stash`、`add -A`、`commit -a`、`restore`、`checkout .`、`reset --hard`、`clean`、`push --force`、`commit --amend`），**deny 對子代理同樣生效**；每條加完要親自撞一次，路徑型規則只認 `Edit`／`Read`。注意它只是**更早發現**：其他工具不受它管，真正的保證仍在 `automation-check`、測試與 CI——harness 自己也有機器守著：`automation-check` 的 `harness`（技能不引用本地文件、角色必須指定 `model`、本檔不超過 28 KiB）與 `skillpkg` 的 `repo_skills_test.go`（技能過產品自己的驗證器）。
-
-## 快速判斷「我該看哪份文件」
+## 去哪看
 
 | 你要做的事 | 先看 |
 | --- | --- |
-| 理解產品範圍與里程碑 | `docs/plans/01-goals-and-plan.md` |
-| 查某功能的允收準則 | `docs/plans/02-specifications-and-acceptance-criteria.md`（按需求 ID） |
-| 找下一個工作項目 | `docs/plans/03-work-items.md`（章節已標里程碑） |
-| 理解系統邊界與平面 | ADR-001、002 |
-| 資料模型與儲存 | ADR-003、018 |
-| Monorepo 結構與 CI/CD | ADR-019、031 |
-| Run 生命週期與 Provider 契約 | ADR-004、008 |
-| 安全與信任 | ADR-005、007、015；部署拓撲與安全門檻定值見 ADR-022 |
-| 派送被停了、要怎麼判斷與解除 | [docs/runbooks/p1-dispatch-halt.md](docs/runbooks/p1-dispatch-halt.md)（P1 判準、誤觸分辨與解除前檢查） |
-| Query 屬於哪個 context、能不能直接讀寫 | ADR-033（write）＋ADR-035（read、context 對照表對帳）＋`db/query-owners.yaml` |
-| 跨 context 要拿別人的事實，注入該長什麼樣 | ADR-034（反轉，讀寫兩側同一手法）＋ [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)〈同步 owner 讀取的兩種形狀〉；**動手前先讀目標套件的 `doc.go`** |
-| 目前還缺什麼、誰在等誰 | `docs/plans/04-backlog-and-handoffs.md`（殘項三類清單＋跨里程碑待辦） |
-| 我現在要簽什麼 | [docs/plans/05-pending-rulings.md](docs/plans/05-pending-rulings.md)（逐項附事實、建議與**不決定的代價**） |
-| 封測上線前要做什麼、誰做 | `docs/plans/mvp/m4/release-checklist.md`（程式面尚缺／部署期／負責人動作三段） |
-| 受測者同意書與資料保存政策 | `docs/plans/mvp/gate-test/consent-and-data-policy.md`（**法務已確認 2026-08-23，§9 佔位與受測者簽署未完**；閘門與封測共用） |
-| 一個畫面該長什麼樣、狀態怎麼標、停用要不要說原因 | [docs/design/system.md](docs/design/system.md)（§3 的 checklist 逐頁可用） |
-| 新畫面該放哪個網址、導覽要不要加一項、入口能不能藏在旗標後面 | [docs/design/information-architecture.md](docs/design/information-architecture.md) §0（**先過這一關再寫**） |
-| 語言分工與跨語言守則 | ADR-016 |
-| 模型呼叫與成本 | ADR-017 |
-| 評估判定、重評與 Judge 邊界 | ADR-025、026 |
-| 打包下載的雜湊、簽章與可散布性 | ADR-027（＋ ADR-012、021） |
-| 封測准入、免費額度強制點 | ADR-028（值由 PDM-010／PDM-009 給） |
-| 漏斗量測、分析事件與 audit 的分野 | ADR-029（＋ ADR-009） |
-| 目前所有未決議題 | 各 ADR 的「待決策」章節＋ `docs/plans/03` 第 1 節 |
+| 狀態全貌、里程碑、凍結放行與 ⛔ 邊界 | [`01` §10](docs/plans/01-goals-and-plan.md) |
+| 還缺什麼、誰在等誰（殘項總數唯一來源） | [`04`](docs/plans/04-backlog-and-handoffs.md) |
+| 我現在要簽什麼 | [`05`](docs/plans/05-pending-rulings.md) |
+| 某功能的允收準則 | [`02`](docs/plans/02-specifications-and-acceptance-criteria.md)（按需求 ID） |
+| 下一個工作項目 | [`03`](docs/plans/03-work-items.md) |
+| 系統邊界與平面／資料模型／Run 生命週期／安全 | ADR-001、002／003、018／004、008／005、007、015、022 |
+| Query 屬於誰、跨 context 怎麼拿事實 | ADR-033、035、034 ＋ [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)；動手前讀目標套件的 `doc.go` |
+| 派送被停了怎麼判斷與解除 | [p1-dispatch-halt.md](docs/runbooks/p1-dispatch-halt.md) |
+| 畫面該長什麼樣、新畫面放哪個網址 | [system.md](docs/design/system.md) §3、[information-architecture.md](docs/design/information-architecture.md) §0（先過這關再寫） |
+| 封測上線前要做什麼 | [release-checklist](docs/plans/mvp/m4/release-checklist.md) |
+| 同意書與資料保存 | [consent-and-data-policy.md](docs/plans/mvp/gate-test/consent-and-data-policy.md) |
+| 評估判定與 Judge／打包簽章／封測准入／漏斗量測 | ADR-025、026／027／028／029 |
+| 所有未決議題 | 各 ADR 的「待決策」＋ `03` 第 1 節 |
