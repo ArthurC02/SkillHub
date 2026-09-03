@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import os
 import secrets
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -24,7 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from skillhub_llm.enrich import router as enrich_router
 from skillhub_llm.evaluate import router as evaluate_router
-from skillhub_llm.gateway import GatewayUsage, _embedding_usage, _metadata, _usage
+from skillhub_llm.gateway import GatewayUsage, _embedding_usage, _metadata, _usage, close_client
 from skillhub_llm.gateway import client as _client
 from skillhub_llm.generate import router as generate_router
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
@@ -50,9 +51,16 @@ def require_service_token(
         )
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    await close_client()
+
+
 app = FastAPI(
     title="Skill Hub LLM Service",
     version="0.1.0",
+    lifespan=lifespan,
 )
 protected = [Depends(require_service_token)]
 app.include_router(enrich_router, dependencies=protected)

@@ -21,8 +21,8 @@ import (
 // on the answer. Injected rather than imported for the same reason
 // [PurgeWorkspace] is (ADR-034) - and identity -> testlab is denied by ADR-032
 // appendix A besides, so an import was never available here.
-func (s *Service) WorkspaceObjectKeys(ctx context.Context, workspaceID pgtype.UUID) ([]string, error) {
-	return gen.New(s.Pool).ListWorkspaceDatasetObjectKeys(ctx, workspaceID)
+func (*Service) WorkspaceObjectKeys(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) ([]string, error) {
+	return gen.New(db).ListWorkspaceDatasetObjectKeys(ctx, workspaceID)
 }
 
 // PurgeWorkspace is the test lab's share of an account deletion (CORE-007,

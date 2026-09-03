@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -58,6 +59,44 @@ func TestIssueSendsBothBrakesAndScopesTheKey(t *testing.T) {
 	// The grant must expire on its own even if nothing ever revokes it.
 	if grant.ExpiresAt.IsZero() || grant.ExpiresAt.Before(time.Now()) {
 		t.Errorf("grant expiry = %v, want a future instant", grant.ExpiresAt)
+	}
+}
+
+func TestGatewayRefusesAResponsePastItsReadLimit(t *testing.T) {
+	const limit = int64(32)
+	body := `{"ok":true}` + strings.Repeat(" ", int(limit)-len(`{"ok":true}`)) + "x"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, body)
+	}))
+	defer srv.Close()
+
+	g := &Gateway{AdminBaseURL: srv.URL, HTTP: srv.Client()}
+	var out map[string]any
+	if err := g.do(context.Background(), http.MethodGet, "/", nil, &out, limit); err == nil {
+		t.Fatal("gateway accepted a response larger than its configured limit")
+	}
+}
+
+func TestBoundedResponseAcceptsItsExactLimit(t *testing.T) {
+	const limit = int64(32)
+	body := strings.Repeat("x", int(limit))
+	got, err := readBoundedResponse(strings.NewReader(body), limit)
+	if err != nil {
+		t.Fatalf("exact-limit response refused: %v", err)
+	}
+	if string(got) != body {
+		t.Fatal("exact-limit response changed")
+	}
+}
+
+func TestGatewayAcceptsOnlyFinalSuccessStatuses(t *testing.T) {
+	for _, tc := range []struct {
+		code int
+		want bool
+	}{{101, false}, {199, false}, {200, true}, {299, true}, {300, false}} {
+		if got := successfulGatewayStatus(tc.code); got != tc.want {
+			t.Errorf("status %d: successfulGatewayStatus = %v, want %v", tc.code, got, tc.want)
+		}
 	}
 }
 

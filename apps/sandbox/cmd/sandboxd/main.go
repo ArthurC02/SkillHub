@@ -215,13 +215,15 @@ func main() {
 	// in the RunRequest; all that is configured here is the ability to push.
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-	m = m.WithTrace(&sandbox.HTTPTraceSink{}, sandbox.NewMetrics(registry)).WithP02(probeCtx, probe)
+	m = m.WithTrace(&sandbox.HTTPTraceSink{}, sandbox.NewMetrics(registry))
 
 	// Sandboxes outlive this process. Rebuilding from labels before serving
 	// keeps a restarted provider from answering 404 for live attempts and from
 	// reporting an empty GET /runs, which an orphan scan reads as "nothing
 	// leaked" (RUN-007, RUN-008).
-	if err := m.Adopt(context.Background()); err != nil {
+	if err := adoptBeforeProtection(func() error { return m.Adopt(context.Background()) }, func() {
+		m = m.WithP02(probeCtx, probe)
+	}); err != nil {
 		log.Error("could not reconcile existing sandboxes", "err", err)
 		os.Exit(1)
 	}
@@ -249,6 +251,14 @@ func main() {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
 	}
+}
+
+func adoptBeforeProtection(adopt func() error, protect func()) error {
+	if err := adopt(); err != nil {
+		return err
+	}
+	protect()
+	return nil
 }
 
 // refuseDevSettings fails a production node closed when it carries a

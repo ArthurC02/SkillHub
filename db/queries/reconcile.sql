@@ -20,19 +20,28 @@
 -- rows and packaging's UPDATE write them, which is the cross-context write
 -- db/query-owners.yaml exists to refuse. ListRunOutputsPastRetention below is
 -- the same worklist for the other owner.
-SELECT id, workspace_id, object_key FROM artifacts
-WHERE kind = 'download_package'
-  AND expires_at <= now()
-  AND purged_at IS NULL
-  AND deleted_at IS NULL
-ORDER BY expires_at
-LIMIT $1;
+WITH candidates AS (
+    SELECT id FROM artifacts
+    WHERE kind = 'download_package'
+      AND purged_at IS NULL
+	  AND (deleted_at IS NOT NULL OR expires_at <= now())
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+    ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE artifacts a SET retention_attempted_at = now()
+FROM candidates c WHERE a.id = c.id
+RETURNING a.id, a.workspace_id, a.object_key;
 
 -- name: MarkArtifactPurged :exec
 -- The bytes are gone and the row stays readable. Idempotent by predicate, which
 -- is what lets the whole sweep be re-run safely (iron rule 9).
+WITH cleared_sighting AS (
+    DELETE FROM object_reconcile_sightings
+    WHERE resource_kind = 'artifact' AND resource_id = $1
+)
 UPDATE artifacts SET purged_at = now()
-WHERE id = $1 AND purged_at IS NULL;
+WHERE id = $1 AND kind = 'download_package' AND purged_at IS NULL;
 
 -- name: ListRunOutputsPastRetention :many
 -- The same worklist for run's half of `artifacts` (PDM-006 §6, consent §3: 30
@@ -54,19 +63,28 @@ WHERE id = $1 AND purged_at IS NULL;
 -- Rows CAN share an object_key — one attempt's manifest is many rows over one
 -- archive — but they were written by one settle and expire together, so the pass
 -- that removes the object is the pass that marks all of them.
-SELECT id, workspace_id, object_key FROM artifacts
-WHERE kind = 'run_output'
-  AND expires_at <= now()
-  AND purged_at IS NULL
-  AND deleted_at IS NULL
-ORDER BY expires_at
-LIMIT $1;
+WITH candidates AS (
+    SELECT id FROM artifacts
+    WHERE kind = 'run_output'
+      AND purged_at IS NULL
+	  AND (deleted_at IS NOT NULL OR expires_at <= now())
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+    ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE artifacts a SET retention_attempted_at = now()
+FROM candidates c WHERE a.id = c.id
+RETURNING a.id, a.workspace_id, a.object_key;
 
 -- name: MarkRunOutputPurged :exec
 -- run's own copy of MarkArtifactPurged, because that one is packaging's and a
 -- cross-context write is refused. `kind = 'run_output'` is in the predicate for
 -- the reason SoftDeleteRunArtifact has it: a statement that could reach any kind
 -- is a statement that could destroy the wrong one. Idempotent by predicate.
+WITH cleared_sighting AS (
+    DELETE FROM object_reconcile_sightings
+    WHERE resource_kind = 'artifact' AND resource_id = $1
+)
 UPDATE artifacts SET purged_at = now()
 WHERE id = $1 AND kind = 'run_output' AND purged_at IS NULL;
 
@@ -74,23 +92,36 @@ WHERE id = $1 AND kind = 'run_output' AND purged_at IS NULL;
 -- What the download surface currently promises is downloadable. Anything the
 -- endpoint would refuse anyway is left out — an expired or purged row makes no
 -- claim about storage, so a missing object under it is not a discrepancy.
-SELECT id, workspace_id, object_key FROM artifacts
-WHERE kind = 'download_package'
-  AND scan_status = 'available'
-  AND deleted_at IS NULL
-  AND purged_at IS NULL
-  AND expires_at > now()
-ORDER BY created_at
-LIMIT $1;
+WITH candidates AS (
+    SELECT id FROM artifacts
+    WHERE kind = 'download_package'
+      AND scan_status = 'available'
+      AND deleted_at IS NULL
+      AND purged_at IS NULL
+	  AND expires_at > now()
+	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - interval '15 minutes')
+	ORDER BY reconcile_checked_at NULLS FIRST, reconcile_checked_at, created_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE artifacts a SET reconcile_checked_at = now()
+FROM candidates c WHERE a.id = c.id
+RETURNING a.id, a.workspace_id, a.object_key;
 
 -- name: ListDatasetsClaimingObject :many
 -- The other half of 丙-9. RunInputsStillAvailable answers from deleted_at and
 -- expires_at alone, so exactly these rows are the ones it counts as available.
-SELECT id, workspace_id, object_key FROM datasets
-WHERE deleted_at IS NULL
-  AND expires_at > now()
-ORDER BY created_at
-LIMIT $1;
+WITH candidates AS (
+    SELECT id FROM datasets
+    WHERE deleted_at IS NULL
+      AND purged_at IS NULL
+      AND expires_at > now()
+	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - interval '15 minutes')
+    ORDER BY reconcile_checked_at NULLS FIRST, reconcile_checked_at, created_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE datasets d SET reconcile_checked_at = now()
+FROM candidates c WHERE d.id = c.id
+RETURNING d.id, d.workspace_id, d.object_key;
 
 -- name: ListDatasetsPastRetention :many
 -- The third worklist in this file, and the one that should have been the first:
@@ -108,27 +139,73 @@ LIMIT $1;
 -- they ever uploaded, forever, against a number the screen had already quoted
 -- them.
 --
--- Deliberately the mirror of ListDatasetsClaimingObject above: that one is the
--- rows still inside the window, this one is the rows past it, and the two
--- predicates are exact complements on `expires_at` so a row cannot be in both
--- or in neither. `deleted_at IS NULL` on both, because a row the user already
--- deleted has had its object removed by a path with guards this sweep does not
--- carry.
-SELECT id, workspace_id, object_key FROM datasets
-WHERE deleted_at IS NULL
-  AND expires_at <= now()
-ORDER BY expires_at
-LIMIT $1;
+-- Live rows enter when their retention window expires. Soft-deleted rows enter
+-- until purged_at confirms their object was removed; this is the durable retry
+-- path for an object-store failure after DeleteDataset commits.
+WITH candidates AS (
+    SELECT id FROM datasets
+    WHERE purged_at IS NULL
+      AND (deleted_at IS NOT NULL OR expires_at <= now())
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+    ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE datasets d SET retention_attempted_at = now()
+FROM candidates c WHERE d.id = c.id
+RETURNING d.id, d.workspace_id, d.object_key;
 
 -- name: MarkDatasetPurged :exec
--- Body-identical to MarkDatasetObjectLost below, and a separate statement on
--- purpose: that one means "the object was not there", this one means "we removed
--- it because it expired". Same column because every read path already filters on
--- deleted_at, and one shared statement would leave the two causes indistinguish-
--- able in a file whose whole job is telling them apart. Idempotent by predicate,
--- which is what lets the sweep be re-run safely (iron rule 9).
-UPDATE datasets SET deleted_at = now()
-WHERE id = $1 AND deleted_at IS NULL;
+-- deleted_at hides the row; purged_at records that object cleanup finished.
+-- Separate from MarkDatasetObjectLost because the two operations describe
+-- different evidence even though both end with no bytes. Idempotent by
+-- predicate, which is what lets the sweep be re-run safely (iron rule 9).
+WITH cleared_sighting AS (
+    DELETE FROM object_reconcile_sightings
+    WHERE resource_kind = 'dataset' AND resource_id = $1
+)
+UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
+WHERE id = $1 AND purged_at IS NULL;
+
+-- name: ListDatasetCleanupIntents :many
+-- Failed or interrupted uploads have no dataset row to carry cleanup state, so
+-- their pre-written intents form a small independent worklist. The one-hour
+-- floor keeps a slow but live upload from racing its own cleanup.
+WITH candidates AS (
+    SELECT id FROM dataset_object_cleanup_intents
+    WHERE not_before <= now()
+	  AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+    ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE dataset_object_cleanup_intents i SET attempted_at = now()
+FROM candidates c WHERE i.id = c.id
+RETURNING i.id, i.workspace_id, i.object_key;
+
+-- name: MarkDatasetCleanupIntentPurged :exec
+DELETE FROM dataset_object_cleanup_intents WHERE id = $1;
+
+-- name: ListDownloadCleanupIntents :many
+WITH candidates AS (
+    SELECT id FROM download_object_cleanup_intents
+    WHERE not_before <= now()
+      AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+    ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE download_object_cleanup_intents i SET attempted_at = now()
+FROM candidates c WHERE i.id = c.id
+RETURNING i.id, i.workspace_id, i.object_key;
+
+-- name: MarkDownloadCleanupIntentPurged :exec
+DELETE FROM download_object_cleanup_intents WHERE id = $1;
+
+-- name: LockDatasetObjectKey :exec
+SELECT pg_advisory_xact_lock(hashtextextended('dataset-object:' || @object_key::text, 0));
+
+-- name: CountLiveDatasetsSharingObject :one
+SELECT count(*) FROM datasets
+WHERE object_key = @object_key AND deleted_at IS NULL AND purged_at IS NULL
+  AND expires_at > now();
 
 -- name: RecordObjectSighting :one
 -- One round found the object missing. Returns the consecutive-round count, which
@@ -158,9 +235,7 @@ WHERE rounds >= $1
 GROUP BY resource_kind;
 
 -- name: MarkDatasetObjectLost :exec
--- The row stops claiming a file that is not there. deleted_at and not a new
--- column: every read path that cares — ListDatasets, the run input grants,
--- RunInputsStillAvailable — already filters on it, so correcting the optimistic
--- upper bound of 丙-9 needs no change on any read path at all.
-UPDATE datasets SET deleted_at = now()
-WHERE id = $1 AND deleted_at IS NULL;
+-- The row stops claiming a file that is not there. Mark it purged too: there are
+-- no bytes for the retention sweep to remove.
+UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
+WHERE id = $1 AND purged_at IS NULL;

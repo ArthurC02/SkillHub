@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -117,6 +118,10 @@ func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 		Login:          name,
 	})
 	if err != nil {
+		if errors.Is(err, ErrAccountPurging) {
+			httpx.WriteError(w, http.StatusConflict, "account deletion is in progress")
+			return
+		}
 		httpx.WriteError(w, http.StatusInternalServerError, "login failed")
 		return
 	}
@@ -165,6 +170,10 @@ func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := h.Service.LoginOrSignup(ctx, ghUser.External())
 	if err != nil {
+		if errors.Is(err, ErrAccountPurging) {
+			httpx.WriteError(w, http.StatusConflict, "account deletion is in progress")
+			return
+		}
 		slog.Error("login failed", "error", err)
 		httpx.WriteError(w, http.StatusInternalServerError, "login failed")
 		return
@@ -539,6 +548,10 @@ func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {
 	user, _ := SessionUser(r.Context())
 	updated, err := h.Service.RequestAccountDeletion(r.Context(), user)
 	if err != nil {
+		if errors.Is(err, ErrAccountPurging) {
+			httpx.WriteError(w, http.StatusConflict, "account deletion is already irreversible")
+			return
+		}
 		httpx.WriteError(w, http.StatusInternalServerError, "deletion request failed")
 		return
 	}
@@ -553,6 +566,10 @@ func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) cancelDeletion(w http.ResponseWriter, r *http.Request) {
 	user, _ := SessionUser(r.Context())
 	if _, err := h.Service.CancelAccountDeletion(r.Context(), user); err != nil {
+		if errors.Is(err, ErrAccountPurging) {
+			httpx.WriteError(w, http.StatusConflict, "account deletion is already irreversible")
+			return
+		}
 		httpx.WriteError(w, http.StatusInternalServerError, "deletion cancel failed")
 		return
 	}

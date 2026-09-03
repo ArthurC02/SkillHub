@@ -30,10 +30,10 @@ import (
 //   - allowed types by magic bytes — detectContentType, file name never consulted
 //   - 90 day retention             — expires_at written at creation
 //
-// The object lands in storage before the row commits. A rolled back transaction
-// therefore leaves an orphan object rather than a row pointing at nothing, and
-// the key is per-dataset (not content addressed) so deleting one dataset can
-// never remove bytes another dataset still references.
+// A workspace advisory lock spans the intent, object write and row commit so an
+// account purge cannot take a key snapshot in the middle. Definite failures
+// compensate that uniquely keyed object; an ambiguous Commit result retains it
+// so a row that actually committed can never point at missing bytes.
 func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, testCaseID pgtype.UUID, fileName string, data []byte) (gen.Dataset, error) {
 	name := sanitizeFileName(fileName)
 	if name == "" {
@@ -50,7 +50,94 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 		return gen.Dataset{}, err
 	}
 
-	tx, err := s.Pool.Begin(ctx)
+	// Reject a missing or cross-workspace parent before doing external I/O. This
+	// is advisory only: LockTestCase below is the authoritative recheck.
+	if _, err := s.GetTestCase(ctx, ws, testCaseID); err != nil {
+		return gen.Dataset{}, err
+	}
+
+	sum := sha256.Sum256(data)
+	hash := hex.EncodeToString(sum[:])
+	id := newUUID()
+	key := fmt.Sprintf("datasets/%s/%s", pgconv.UUIDString(ws.ID), pgconv.UUIDString(id))
+	conn, err := s.Pool.Acquire(ctx)
+	if err != nil {
+		return gen.Dataset{}, err
+	}
+	locked := false
+	objectLocked := false
+	defer func() {
+		if objectLocked {
+			unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if _, err := gen.New(conn).UnlockDatasetObjectKeySession(unlockCtx, key); err != nil {
+				slog.Error("dataset object lock could not be released; closing connection", "error", err)
+				_ = conn.Hijack().Close(context.Background())
+				return
+			}
+		}
+		if !locked {
+			conn.Release()
+			return
+		}
+		unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if _, err := gen.New(conn).UnlockDatasetWorkspaceObjects(unlockCtx, ws.ID); err != nil {
+			slog.Error("dataset workspace lock could not be released; closing connection", "error", err)
+			_ = conn.Hijack().Close(context.Background())
+			return
+		}
+		conn.Release()
+	}()
+	if err := gen.New(conn).LockDatasetWorkspaceObjects(ctx, ws.ID); err != nil {
+		return gen.Dataset{}, err
+	}
+	locked = true
+	if s.MayStoreObjects == nil {
+		return gen.Dataset{}, errors.New("testlab: identity lifecycle read is not configured")
+	}
+	allowed, err := s.MayStoreObjects(ctx, conn, ws.ID)
+	if err != nil {
+		return gen.Dataset{}, err
+	}
+	if !allowed {
+		return gen.Dataset{}, ErrNotFound
+	}
+	if err := gen.New(conn).LockDatasetObjectKeySession(ctx, key); err != nil {
+		return gen.Dataset{}, err
+	}
+	objectLocked = true
+	intent, err := gen.New(conn).CreateDatasetCleanupIntent(ctx, gen.CreateDatasetCleanupIntentParams{
+		WorkspaceID: ws.ID, ObjectKey: key,
+	})
+	if err != nil {
+		return gen.Dataset{}, err
+	}
+	// The cleanup intent exists before object I/O. The transaction that publishes
+	// the dataset removes it atomically; a process crash, definite rollback, or
+	// failed compensation therefore still leaves a durable key for maintenance.
+	commitAttempted := false
+	defer func() {
+		if commitAttempted {
+			return
+		}
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer cancel()
+		if err := s.Store.Remove(cleanupCtx, key); err != nil {
+			slog.Error("failed to compensate dataset object", "key", key, "error", err)
+			return
+		}
+		if err := gen.New(conn).DeleteDatasetCleanupIntent(cleanupCtx, gen.DeleteDatasetCleanupIntentParams{
+			ID: intent.ID, WorkspaceID: ws.ID,
+		}); err != nil {
+			slog.Error("failed to clear compensated dataset cleanup intent", "key", key, "error", err)
+		}
+	}()
+	if err := s.Store.Put(ctx, key, data); err != nil {
+		return gen.Dataset{}, err
+	}
+
+	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return gen.Dataset{}, err
 	}
@@ -81,18 +168,10 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 			ErrLimitExceeded, humanMB(MaxTestCaseBytes))
 	}
 
-	sum := sha256.Sum256(data)
-	hash := hex.EncodeToString(sum[:])
 	// Keyed by dataset id, not by content hash: two test cases uploading the same
 	// bytes must be able to delete their own copy independently (TEST-004 "檔案只
 	// 授權給指定 Run／Test Case"). The id is minted here so the object exists
 	// before the row does.
-	id := newUUID()
-	key := fmt.Sprintf("datasets/%s/%s", pgconv.UUIDString(ws.ID), pgconv.UUIDString(id))
-	if err := s.Store.Put(ctx, key, data); err != nil {
-		return gen.Dataset{}, err
-	}
-
 	ds, err := q.CreateDataset(ctx, gen.CreateDatasetParams{
 		WorkspaceID: ws.ID,
 		TestCaseID:  tc.ID,
@@ -106,7 +185,24 @@ func (s *Service) UploadDataset(ctx context.Context, ws identity.Workspace, test
 	if err != nil {
 		return gen.Dataset{}, err
 	}
-	return ds, tx.Commit(ctx)
+	if err := q.DeleteDatasetCleanupIntent(ctx, gen.DeleteDatasetCleanupIntentParams{
+		ID: intent.ID, WorkspaceID: ws.ID,
+	}); err != nil {
+		return gen.Dataset{}, err
+	}
+	commitAttempted = true
+	commitErr := tx.Commit(ctx)
+	if shouldCompensateCommit(commitErr) {
+		// PostgreSQL definitively rolled this transaction back, so there cannot be
+		// a row referring to the object and compensation is safe. Other Commit
+		// errors are ambiguous and deliberately retain it.
+		commitAttempted = false
+	}
+	return ds, commitErr
+}
+
+func shouldCompensateCommit(err error) bool {
+	return errors.Is(err, pgx.ErrTxCommitRollback)
 }
 
 // ReadDataset reads one live dataset row, workspace scoped.
@@ -242,16 +338,26 @@ func (s *Service) DeleteDataset(ctx context.Context, ws identity.Workspace, test
 		return gen.Dataset{}, err
 	}
 
-	s.removeObject(ctx, ds.ObjectKey)
+	s.removeDatasetObject(ctx, ds)
 	return ds, nil
 }
 
-// removeObject deletes the stored bytes after the row is already gone. A failure
-// is logged and swallowed: the file is unreachable either way, Remove is
-// idempotent, and the retention sweep passes over the same key later.
-func (s *Service) removeObject(ctx context.Context, key string) {
-	if err := s.Store.Remove(ctx, key); err != nil {
+// removeDatasetObject completes the second half of a soft delete. The request
+// may be cancelled immediately after its database commit, so cleanup gets a
+// short independent context. purged_at is written only after idempotent object
+// removal succeeds; otherwise the retention worklist sees the soft-deleted row
+// and retries it durably.
+func (s *Service) removeDatasetObject(ctx context.Context, ds gen.Dataset) {
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	if err := s.Store.Remove(cleanupCtx, ds.ObjectKey); err != nil {
 		slog.Warn("dataset object not removed; retention sweep will retry", "error", err)
+		return
+	}
+	if err := gen.New(s.Pool).MarkDatasetPurged(cleanupCtx, ds.ID); err != nil {
+		// Remove is idempotent, so a later sweep can safely repeat it before
+		// recording completion.
+		slog.Warn("dataset object removed but cleanup state was not recorded; retention sweep will retry", "error", err)
 	}
 }
 

@@ -36,11 +36,20 @@
 // posted anywhere from in here: the only address this container can reach is the
 // model gateway (SBX-007), so sandboxd reads the file out and pushes it. The
 // same asymmetry is why the run's inputs arrive as files rather than as URLs.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { inflateRawSync } from "node:zlib";
+import { crc32, inflateRawSync } from "node:zlib";
 // Loaded dynamically, only inside the isMain-guarded entrypoint block below,
 // rather than as a static top-level import: a static import is resolved
 // before any of this module's own code runs, which would make extractPackage
@@ -51,9 +60,11 @@ import { inflateRawSync } from "node:zlib";
 
 const workDir = process.env.SKILLHUB_WORKDIR ?? "/work";
 const outDir = process.env.SKILLHUB_OUTDIR ?? "/out";
-const skillDir = process.env.SKILLHUB_SKILL_DIR ?? join(workDir, ".claude", "skills");
+const skillDir =
+  process.env.SKILLHUB_SKILL_DIR ?? join(workDir, ".claude", "skills");
 const inputDir = process.env.SKILLHUB_INPUT_DIR ?? join(workDir, ".skillhub");
-const artifactDir = process.env.SKILLHUB_ARTIFACT_DIR ?? join(outDir, "artifacts");
+const artifactDir =
+  process.env.SKILLHUB_ARTIFACT_DIR ?? join(outDir, "artifacts");
 const prompt = process.env.SKILLHUB_USER_PROMPT;
 
 // --- trace emission ---------------------------------------------------------
@@ -74,7 +85,13 @@ let traceReady = false;
 // than rejected whole by the platform. Cutting sets the payload's `truncated`
 // flag where the type has one, so the UI never shows a clipped string as
 // complete.
-const LIMITS = { message: 16000, text: 64000, result: 8000, reason: 2000, error: 4000 };
+const LIMITS = {
+  message: 16000,
+  text: 64000,
+  result: 8000,
+  reason: 2000,
+  error: 4000,
+};
 
 function clip(value, limit) {
   const s = typeof value === "string" ? value : JSON.stringify(value ?? null);
@@ -128,7 +145,10 @@ const EXIT_TOKEN_BUDGET = 9;
 function finish(status, extra = {}, exitCode = status === "succeeded" ? 0 : 1) {
   // The provider reads state from the container, not from this file; the file
   // is for the artifact manifest and the agent's own output.
-  writeFileSync(join(outDir, "result.json"), JSON.stringify({ status, ...extra }, null, 2));
+  writeFileSync(
+    join(outDir, "result.json"),
+    JSON.stringify({ status, ...extra }, null, 2),
+  );
   waitToBeCollected();
   process.exit(exitCode);
 }
@@ -169,7 +189,11 @@ function waitToBeCollected() {
 // user can see in the timeline and the exit code always agree (TRACE-004).
 function fail(category, code, message) {
   const clipped = clip(message, LIMITS.error);
-  emit("error", { category, code, message: clipped.value, retryable: false }, "error");
+  emit(
+    "error",
+    { category, code, message: clipped.value, retryable: false },
+    "error",
+  );
   finish("failed", { error: clipped.value });
 }
 
@@ -199,12 +223,12 @@ function fail(category, code, message) {
 // whole job — a run with no trace, no artifacts and no stated reason. Taking
 // over a security boundary is the moment to bound it, not a later one.
 //
-// MAX_PACKAGE_ENTRIES mirrors artifactMaxEntries for the reason its comment
-// gives: an empty file costs no bytes and still costs a filesystem entry, so a
-// byte ceiling alone is not a bound. 1000 is the same number on both sides so
-// that a package a run could not have produced is also one it cannot consume.
+// MAX_PACKAGE_ENTRIES mirrors the platform admission ceiling: an empty file
+// costs no bytes and still costs a filesystem entry, so the byte ceiling alone
+// is not a bound. Keeping both readers equal prevents admission from accepting
+// a package that the pinned runtime later refuses.
 //
-// MAX_PACKAGE_TOTAL_BYTES is 256 MiB: comfortably above any real skill package
+// MAX_PACKAGE_TOTAL_BYTES is 100 MiB: comfortably above any real skill package
 // (the largest in the M2 catalog is under 2 MiB) and comfortably below the
 // smallest memory ceiling any deployment gives this process, so the refusal
 // arrives as a message rather than as an OOM kill.
@@ -216,8 +240,10 @@ function fail(category, code, message) {
 // deflated entry cannot exceed its own declared size (maxOutputLength in
 // readEntryData) and a stored entry's two sizes must be equal (checked there
 // too), so the declared total is an upper bound on what actually lands.
-const MAX_PACKAGE_ENTRIES = 1000;
-const MAX_PACKAGE_TOTAL_BYTES = 256 * 1024 * 1024;
+const MAX_PACKAGE_ENTRIES = 2000; // one-number: maxSkillPackageEntries
+const MAX_PACKAGE_TOTAL_BYTES = 100 * 1024 * 1024;
+const MAX_PACKAGE_ENTRY_BYTES = 10 * 1024 * 1024;
+const MAX_PACKAGE_DEPTH = 10;
 
 const EOCD_SIGNATURE = 0x06054b50;
 const CENTRAL_DIR_SIGNATURE = 0x02014b50;
@@ -230,7 +256,11 @@ const ZIP64_EOCD_LOCATOR_SIGNATURE = 0x07064b50;
 function findEndOfCentralDirectory(buf) {
   const minPos = Math.max(0, buf.length - 22 - 65535);
   for (let i = buf.length - 22; i >= minPos; i -= 1) {
-    if (buf.readUInt32LE(i) === EOCD_SIGNATURE) return i;
+    if (
+      buf.readUInt32LE(i) === EOCD_SIGNATURE &&
+      i + 22 + buf.readUInt16LE(i + 20) === buf.length
+    )
+      return i;
   }
   throw new Error("not a zip file: end of central directory record not found");
 }
@@ -244,9 +274,81 @@ function findEndOfCentralDirectory(buf) {
 // unzipping today.
 function isUnsafeEntryName(name) {
   if (name === "") return true;
+  if (name.includes("\\")) return true;
   if (name.startsWith("/") || name.startsWith("\\")) return true; // posix-absolute or UNC
   if (/^[a-zA-Z]:/.test(name)) return true; // Windows drive-absolute, e.g. "C:\..." or "C:foo"
   return name.split(/[/\\]+/).some((segment) => segment === "..");
+}
+
+function portableEntryKey(name) {
+  const trimmed = name.endsWith("/") ? name.slice(0, -1) : name;
+  const parts = trimmed.split("/");
+  if (
+    trimmed === "" ||
+    parts.some(
+      (part) =>
+        part === "" ||
+        part === "." ||
+        Buffer.byteLength(part, "utf8") > 255 ||
+        /[<>:"|?*\x00-\x1f]/u.test(part) ||
+        /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu.test(part) ||
+        part.replace(/[ .]+$/u, "") !== part,
+    )
+  ) {
+    throw new Error(`refusing non-canonical zip entry name: ${name}`);
+  }
+  return parts.map((part) => part.toLowerCase()).join("/");
+}
+
+export async function gatewaySpend({
+  base = process.env.ANTHROPIC_BASE_URL,
+  key = process.env.ANTHROPIC_AUTH_TOKEN,
+  initialDelayMs = 2500,
+  retryDelayMs = 1500,
+  requestTimeoutMs = 2000,
+  attempts = 6,
+} = {}) {
+  if (!base || !key) return null;
+  let last = null;
+  await new Promise((resolve) => setTimeout(resolve, initialDelayMs));
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    let spend = null;
+    try {
+      const res = await fetch(`${base.replace(/\/$/, "")}/key/info`, {
+        headers: { Authorization: `Bearer ${key}` },
+        signal: AbortSignal.timeout(requestTimeoutMs),
+      });
+      if (res.ok) {
+        const body = await res.json();
+        if (typeof body?.info?.spend === "number") spend = body.info.spend;
+      }
+    } catch {
+      // Unreachable or slow gateway: nothing to report, and nothing to fail over.
+    }
+    if (spend !== null && spend > 0 && spend === last) return spend;
+    if (spend !== null) last = spend;
+    if (attempt + 1 < attempts) {
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    }
+  }
+  return last !== null && last > 0 ? last : null;
+}
+
+function hasZip64Extra(extra) {
+  let pos = 0;
+  while (pos < extra.length) {
+    if (pos + 4 > extra.length) {
+      throw new Error("malformed zip: truncated extra field");
+    }
+    const id = extra.readUInt16LE(pos);
+    const size = extra.readUInt16LE(pos + 2);
+    if (pos + 4 + size > extra.length) {
+      throw new Error("malformed zip: truncated extra field");
+    }
+    if (id === 0x0001) return true;
+    pos += 4 + size;
+  }
+  return false;
 }
 
 // Unix file-type bits live in the top 16 bits of external_attr. A symlink
@@ -261,8 +363,8 @@ const S_IFMT = 0xf000;
 const S_IFREG = 0x8000;
 const S_IFDIR = 0x4000;
 
-function isUnsafeFileType(externalAttr) {
-  const fileType = (externalAttr >>> 16) & S_IFMT;
+function isUnsafeFileType(unixMode) {
+  const fileType = unixMode & S_IFMT;
   return fileType !== 0 && fileType !== S_IFREG && fileType !== S_IFDIR;
 }
 
@@ -274,39 +376,94 @@ function isUnsafeFileType(externalAttr) {
 // an entry's data actually starts.
 function readCentralDirectory(buf) {
   const eocdOffset = findEndOfCentralDirectory(buf);
+  const diskNumber = buf.readUInt16LE(eocdOffset + 4);
+  const centralDisk = buf.readUInt16LE(eocdOffset + 6);
+  const diskEntries = buf.readUInt16LE(eocdOffset + 8);
   const totalEntries = buf.readUInt16LE(eocdOffset + 10);
   const cdSize = buf.readUInt32LE(eocdOffset + 12);
   const cdOffset = buf.readUInt32LE(eocdOffset + 16);
 
-  if (totalEntries === 0xffff || cdSize === 0xffffffff || cdOffset === 0xffffffff) {
+  if (
+    diskNumber !== 0 ||
+    centralDisk !== 0 ||
+    diskEntries !== totalEntries ||
+    totalEntries === 0xffff ||
+    cdSize === 0xffffffff ||
+    cdOffset === 0xffffffff
+  ) {
     throw new Error("unsupported zip feature: zip64 archive");
   }
   if (totalEntries > MAX_PACKAGE_ENTRIES) {
-    throw new Error(`refusing oversized skill package: ${totalEntries} entries exceeds the ${MAX_PACKAGE_ENTRIES} entry limit`);
+    throw new Error(
+      `refusing oversized skill package: ${totalEntries} entries exceeds the ${MAX_PACKAGE_ENTRIES} entry limit`,
+    );
   }
-  if (eocdOffset >= 4 && buf.readUInt32LE(eocdOffset - 4) === ZIP64_EOCD_LOCATOR_SIGNATURE) {
+  if (totalEntries > 0 && buf.readUInt32LE(0) !== LOCAL_FILE_SIGNATURE) {
+    throw new Error("unsupported prefixed zip archive");
+  }
+  if (
+    eocdOffset >= 20 &&
+    buf.readUInt32LE(eocdOffset - 20) === ZIP64_EOCD_LOCATOR_SIGNATURE
+  ) {
     throw new Error("unsupported zip feature: zip64 archive");
   }
 
   const entries = [];
+  const seenNames = new Map(); // portable name -> directory
+  const requiredDirs = new Set();
   let declaredBytes = 0;
   let pos = cdOffset;
   for (let i = 0; i < totalEntries; i += 1) {
-    if (buf.readUInt32LE(pos) !== CENTRAL_DIR_SIGNATURE) {
-      throw new Error("malformed zip: central directory entry signature mismatch");
+    if (pos + 46 > eocdOffset) {
+      throw new Error("malformed zip: truncated central directory entry");
     }
+    if (buf.readUInt32LE(pos) !== CENTRAL_DIR_SIGNATURE) {
+      throw new Error(
+        "malformed zip: central directory entry signature mismatch",
+      );
+    }
+    const creatorSystem = buf.readUInt16LE(pos + 4) >>> 8;
     const generalFlag = buf.readUInt16LE(pos + 8);
     const method = buf.readUInt16LE(pos + 10);
+    const crc = buf.readUInt32LE(pos + 16);
     const compressedSize = buf.readUInt32LE(pos + 20);
     const uncompressedSize = buf.readUInt32LE(pos + 24);
     const nameLen = buf.readUInt16LE(pos + 28);
     const extraLen = buf.readUInt16LE(pos + 30);
     const commentLen = buf.readUInt16LE(pos + 32);
     const externalAttr = buf.readUInt32LE(pos + 38);
+    // The upper external-attribute word is a Unix mode only when the creator
+    // system says Unix (3) or macOS (19). DOS tools use those bits for other
+    // purposes, so interpreting them as a mode creates false special files.
+    const unixMode = creatorSystem === 3 || creatorSystem === 19
+      ? externalAttr >>> 16
+      : 0;
     const localHeaderOffset = buf.readUInt32LE(pos + 42);
-    const name = buf.toString("utf8", pos + 46, pos + 46 + nameLen);
+    const nameBytes = buf.subarray(pos + 46, pos + 46 + nameLen);
+    const extraStart = pos + 46 + nameLen;
+    const extraEnd = extraStart + extraLen;
+    if (extraEnd + commentLen > eocdOffset) {
+      throw new Error("malformed zip: central directory entry exceeds its bounds");
+    }
+    const extra = buf.subarray(extraStart, extraEnd);
+    let name;
+    try {
+      name = new TextDecoder("utf-8", { fatal: true }).decode(nameBytes);
+    } catch {
+      throw new Error("refusing zip entry with an invalid UTF-8 name");
+    }
+    if (name.length === 0 || name.includes("\0")) {
+      throw new Error("refusing zip entry with an invalid name");
+    }
+    if (hasZip64Extra(extra)) {
+      throw new Error(`unsupported zip feature: zip64 entry (${name})`);
+    }
 
-    if (compressedSize === 0xffffffff || uncompressedSize === 0xffffffff || localHeaderOffset === 0xffffffff) {
+    if (
+      compressedSize === 0xffffffff ||
+      uncompressedSize === 0xffffffff ||
+      localHeaderOffset === 0xffffffff
+    ) {
       throw new Error(`unsupported zip feature: zip64 entry (${name})`);
     }
     // Bit 0 of the general-purpose flag is the encryption bit (traditional or
@@ -316,16 +473,60 @@ function readCentralDirectory(buf) {
       throw new Error(`unsupported zip feature: encrypted entry (${name})`);
     }
     if (method !== 0 && method !== 8) {
-      throw new Error(`unsupported zip feature: compression method ${method} (${name})`);
+      throw new Error(
+        `unsupported zip feature: compression method ${method} (${name})`,
+      );
     }
     if (isUnsafeEntryName(name)) {
       throw new Error(`refusing unsafe zip entry path: ${name}`);
     }
-    if (isUnsafeFileType(externalAttr)) {
+    const nameKey = portableEntryKey(name);
+    if (seenNames.has(nameKey)) {
+      throw new Error(`refusing duplicate portable zip entry name: ${name}`);
+    }
+    const nameIsDir = name.endsWith("/");
+    const parts = nameKey.split("/");
+    for (let part = 1; part < parts.length; part += 1) {
+      const ancestor = parts.slice(0, part).join("/");
+      if (seenNames.has(ancestor) && !seenNames.get(ancestor)) {
+        throw new Error(`refusing zip file ancestor conflict: ${name}`);
+      }
+      requiredDirs.add(ancestor);
+    }
+    if (!nameIsDir && requiredDirs.has(nameKey)) {
+      throw new Error(`refusing zip file that conflicts with a descendant: ${name}`);
+    }
+    seenNames.set(nameKey, nameIsDir);
+    if (isUnsafeFileType(unixMode)) {
       throw new Error(`refusing non-regular zip entry: ${name}`);
     }
+    const fileType = unixMode & S_IFMT;
+    if ((fileType === S_IFDIR) !== nameIsDir && fileType !== 0) {
+      throw new Error(
+        `refusing zip entry whose type disagrees with its name: ${name}`,
+      );
+    }
+    if (uncompressedSize > MAX_PACKAGE_ENTRY_BYTES) {
+      throw new Error(
+        `refusing oversized zip entry: ${name} declares ${uncompressedSize} bytes`,
+      );
+    }
+    const depth = name.replace(/\/+$/, "").split("/").length - 1;
+    if (depth > MAX_PACKAGE_DEPTH) {
+      throw new Error(
+        `refusing zip entry nested ${depth} directories deep: ${name}`,
+      );
+    }
 
-    entries.push({ name, method, compressedSize, uncompressedSize, localHeaderOffset });
+    entries.push({
+      name,
+      method,
+      crc,
+      compressedSize,
+      uncompressedSize,
+      localHeaderOffset,
+      mode: unixMode & 0o777,
+    });
     declaredBytes += uncompressedSize;
     if (declaredBytes > MAX_PACKAGE_TOTAL_BYTES) {
       throw new Error(
@@ -334,7 +535,27 @@ function readCentralDirectory(buf) {
     }
     pos += 46 + nameLen + extraLen + commentLen;
   }
+  if (cdOffset + cdSize !== eocdOffset) {
+    throw new Error("unsupported prefixed or malformed zip archive");
+  }
+  if (pos !== cdOffset + cdSize) {
+    throw new Error("malformed zip: central directory entry count mismatch");
+  }
   return entries;
+}
+
+export function packageRoot(entries) {
+  if (entries.some((entry) => entry.name === "SKILL.md")) return "";
+  const roots = new Set(
+    entries
+      .filter((entry) => entry.name !== "")
+      .map((entry) => entry.name.split("/")[0]),
+  );
+  if (roots.size !== 1) return "";
+  const [root] = roots;
+  return entries.some((entry) => entry.name === `${root}/SKILL.md`)
+    ? `${root}/`
+    : "";
 }
 
 // The local file header repeats (and can disagree in length with) the name
@@ -344,12 +565,18 @@ function readCentralDirectory(buf) {
 function readEntryData(buf, entry) {
   const lh = entry.localHeaderOffset;
   if (buf.readUInt32LE(lh) !== LOCAL_FILE_SIGNATURE) {
-    throw new Error(`malformed zip: local file header signature mismatch (${entry.name})`);
+    throw new Error(
+      `malformed zip: local file header signature mismatch (${entry.name})`,
+    );
   }
   const nameLen = buf.readUInt16LE(lh + 26);
   const extraLen = buf.readUInt16LE(lh + 28);
   const dataStart = lh + 30 + nameLen + extraLen;
   const compressed = buf.subarray(dataStart, dataStart + entry.compressedSize);
+  if (compressed.length !== entry.compressedSize) {
+    throw new Error(`malformed zip: truncated compressed data (${entry.name})`);
+  }
+  let data;
   if (entry.method !== 8) {
     // "Stored" means the two sizes are the same number. Checking it is what
     // makes the declared total above an honest bound for this branch as well:
@@ -359,23 +586,31 @@ function readEntryData(buf, entry) {
         `malformed zip: stored entry declares ${entry.uncompressedSize} bytes but carries ${entry.compressedSize} (${entry.name})`,
       );
     }
-    return Buffer.from(compressed);
-  }
-  // The entry's own declared uncompressed size is the bound. An archive that
-  // says 100 bytes and inflates to 10 MB is lying about itself, and this is
-  // where the lie stops being free — the central directory's size field was
-  // read already and until now was only checked for the zip64 sentinel.
-  // maxOutputLength must be at least 1, so a legitimately empty entry gets 1.
-  try {
-    return inflateRawSync(compressed, { maxOutputLength: Math.max(1, entry.uncompressedSize) });
-  } catch (err) {
-    if (err?.code === "ERR_BUFFER_TOO_LARGE") {
-      throw new Error(
-        `refusing zip entry that inflates past its declared size of ${entry.uncompressedSize} bytes: ${entry.name}`,
-      );
+    data = Buffer.from(compressed);
+  } else {
+    // maxOutputLength must be at least 1, so a legitimately empty entry gets 1.
+    try {
+      data = inflateRawSync(compressed, {
+        maxOutputLength: Math.max(1, entry.uncompressedSize),
+      });
+    } catch (err) {
+      if (err?.code === "ERR_BUFFER_TOO_LARGE") {
+        throw new Error(
+          `refusing zip entry that inflates past its declared size of ${entry.uncompressedSize} bytes: ${entry.name}`,
+        );
+      }
+      throw err;
     }
-    throw err;
   }
+  if (data.length !== entry.uncompressedSize) {
+    throw new Error(
+      `malformed zip: uncompressed size mismatch (${entry.name})`,
+    );
+  }
+  if (crc32(data) >>> 0 !== entry.crc) {
+    throw new Error(`malformed zip: CRC32 mismatch (${entry.name})`);
+  }
+  return data;
 }
 
 // extractPackage is the whole of what `unzip -q -o <archivePath> -d <destDir>`
@@ -396,6 +631,17 @@ export function extractPackage(archivePath, destDir) {
     }
     mkdirSync(dirname(destPath), { recursive: true });
     writeFileSync(destPath, readEntryData(buf, entry));
+    if (entry.mode !== 0) chmodSync(destPath, entry.mode);
+  }
+  return packageRoot(entries);
+}
+
+export function provisionPackage(archivePath, destDir, onFailure = fail) {
+  try {
+    return extractPackage(archivePath, destDir);
+  } catch (error) {
+    onFailure("provision", "invalid_package", `skill package extraction failed: ${error}`);
+    return undefined;
   }
 }
 
@@ -468,405 +714,444 @@ export function agentOptions(dir) {
 // True only when this module is the process entrypoint (`node run.mjs`), not
 // when it is imported — which is what lets run.test.mjs import extractPackage
 // without also running the sandbox workload it decorates below.
-const isMain = process.argv[1] ? pathToFileURL(process.argv[1]).href === import.meta.url : false;
+const isMain = process.argv[1]
+  ? pathToFileURL(process.argv[1]).href === import.meta.url
+  : false;
 
 if (isMain) {
-if (!prompt) {
-  fail("execution", "missing_prompt", "SKILLHUB_USER_PROMPT is required");
-}
-
-// --- inputs -----------------------------------------------------------------
-//
-// This container cannot reach object storage: its only route out is the model
-// gateway (SBX-007). The execution node fetches the run's inputs with the
-// short-lived grants it was dispatched with and writes them in here, then drops
-// the ready marker last. Waiting for that marker is the whole handshake - the
-// container starts before its inputs are in place, and guessing would race.
-const readyPath = join(inputDir, "ready");
-const inputDeadline = Date.now() + 120_000;
-while (!existsSync(readyPath)) {
-  if (Date.now() > inputDeadline) {
-    fail("provision", "inputs_not_delivered", "the run's inputs were never delivered to the sandbox");
+  if (!prompt) {
+    fail("execution", "missing_prompt", "SKILLHUB_USER_PROMPT is required");
   }
-  // Busy-wait on a tmpfs path: there is no event to subscribe to across the
-  // exec boundary, and the wait is normally a few hundred milliseconds.
-  sleepSync(200);
-}
 
-// Unpack the skill package, which ingest stored as a zip. The hash is verified
-// by the control plane before the grant is minted; re-checking it here would
-// need the archive on disk twice, and a sandbox vouching for its own inputs
-// proves nothing anyway.
-//
-// This is the first thing in the whole system that opens the package, and it is
-// deliberately the least privileged place there is (iron rule 1). extractPackage
-// (defined above) is what bounds it now — see its own comment block for why it
-// exists instead of a shell-out to `unzip`.
-//
-// It unpacks into <skillDir>/<name>/, not into <skillDir>: the Agent SDK
-// discovers one directory per skill, so a package emptied straight into the
-// skills root would be discovered as no skill at all (PDM-003 spike §10). The
-// name comes from the package's own SKILL.md frontmatter, because the frozen
-// RunRequest does not carry one — and reading it here is exactly where reading
-// untrusted content belongs.
-const skillArchive = join(inputDir, "skill.zip");
-if (existsSync(skillArchive)) {
-  const staging = join(inputDir, "package");
-  mkdirSync(staging, { recursive: true });
-  extractPackage(skillArchive, staging);
-
-  let name = "skill";
-  try {
-    const frontmatter = readFileSync(join(staging, "SKILL.md"), "utf8").split(/^---\s*$/m)[1] ?? "";
-    const declared = /^name:\s*(.+)$/m.exec(frontmatter)?.[1]?.trim();
-    // Only a spec-shaped name is used as a path segment; anything else keeps the
-    // fallback rather than becoming a directory name of the package's choosing.
-    if (declared && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(declared)) name = declared;
-  } catch {
-    // No readable SKILL.md: the skill will simply not be discovered, and the
-    // trace will show no activation, which is the honest outcome.
+  // --- inputs -----------------------------------------------------------------
+  //
+  // This container cannot reach object storage: its only route out is the model
+  // gateway (SBX-007). The execution node fetches the run's inputs with the
+  // short-lived grants it was dispatched with and writes them in here, then drops
+  // the ready marker last. Waiting for that marker is the whole handshake - the
+  // container starts before its inputs are in place, and guessing would race.
+  const readyPath = join(inputDir, "ready");
+  const inputDeadline = Date.now() + 120_000;
+  while (!existsSync(readyPath)) {
+    if (Date.now() > inputDeadline) {
+      fail(
+        "provision",
+        "inputs_not_delivered",
+        "the run's inputs were never delivered to the sandbox",
+      );
+    }
+    // Busy-wait on a tmpfs path: there is no event to subscribe to across the
+    // exec boundary, and the wait is normally a few hundred milliseconds.
+    sleepSync(200);
   }
-  const target = join(skillDir, name);
-  mkdirSync(skillDir, { recursive: true });
-  renameSync(staging, target);
-}
-// The agent writes here and the node collects it after the turn (SBX-008).
-mkdirSync(artifactDir, { recursive: true });
 
-// --- agent turn -------------------------------------------------------------
+  // Unpack the skill package, which ingest stored as a zip. The hash is verified
+  // by the control plane before the grant is minted; re-checking it here would
+  // need the archive on disk twice, and a sandbox vouching for its own inputs
+  // proves nothing anyway.
+  //
+  // This is the first thing in the whole system that opens the package, and it is
+  // deliberately the least privileged place there is (iron rule 1). extractPackage
+  // (defined above) is what bounds it now — see its own comment block for why it
+  // exists instead of a shell-out to `unzip`.
+  //
+  // It unpacks into <skillDir>/<name>/, not into <skillDir>: the Agent SDK
+  // discovers one directory per skill, so a package emptied straight into the
+  // skills root would be discovered as no skill at all (PDM-003 spike §10). The
+  // name comes from the package's own SKILL.md frontmatter, because the frozen
+  // RunRequest does not carry one — and reading it here is exactly where reading
+  // untrusted content belongs.
+  const skillArchive = join(inputDir, "skill.zip");
+  if (existsSync(skillArchive)) {
+    const staging = join(inputDir, "package");
+    mkdirSync(staging, { recursive: true });
+    const root = provisionPackage(skillArchive, staging);
+    const packageDir = root ? join(staging, root.slice(0, -1)) : staging;
 
-// Tool calls are traced as one completed event each, carrying their own
-// duration (TRACE-003, contracts/events/README.md §3): the tool_use block opens
-// an entry here and the matching tool_result closes it.
-const pending = new Map();
+    let name = "skill";
+    try {
+      const frontmatter =
+        readFileSync(join(packageDir, "SKILL.md"), "utf8").split(
+          /^---\s*$/m,
+        )[1] ?? "";
+      const declared = /^name:\s*(.+)$/m.exec(frontmatter)?.[1]?.trim();
+      // Only a spec-shaped name is used as a path segment; anything else keeps the
+      // fallback rather than becoming a directory name of the package's choosing.
+      if (declared && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(declared))
+        name = declared;
+    } catch {
+      // No readable SKILL.md: the skill will simply not be discovered, and the
+      // trace will show no activation, which is the honest outcome.
+    }
+    const target = join(skillDir, name);
+    mkdirSync(skillDir, { recursive: true });
+    renameSync(packageDir, target);
+    if (root) rmSync(staging, { recursive: true, force: true });
+  }
+  // The agent writes here and the node collects it after the turn (SBX-008).
+  mkdirSync(artifactDir, { recursive: true });
 
-// A path the agent read that lives under the skill package is a resource read
-// (TRACE-002); anything else is an ordinary file tool call and stays one.
-function skillResourcePath(input) {
-  const path = input?.file_path ?? input?.path ?? input?.notebook_path;
-  if (typeof path !== "string" || !path.startsWith(skillDir)) return null;
-  // Relative to the package root: absolute sandbox paths are not exported.
-  return path.slice(skillDir.length).replace(/^[/\\]+/, "");
-}
+  // --- agent turn -------------------------------------------------------------
 
-function openToolUse(block) {
-  pending.set(block.id, { name: block.name, input: block.input, at: Date.now() });
+  // Tool calls are traced as one completed event each, carrying their own
+  // duration (TRACE-003, contracts/events/README.md §3): the tool_use block opens
+  // an entry here and the matching tool_result closes it.
+  const pending = new Map();
 
-  if (block.name === "Skill") {
-    // TRACE-002. The SDK surfaces a skill being used as a `Skill` tool call;
-    // a skill that was available and never invoked produces no block at all, so
-    // `skipped` is not something this producer can observe and is left to
-    // whoever can (the evaluator, EVAL-002). Recording a guess would be worse
-    // than recording nothing.
-    const name = block.input?.command ?? block.input?.skill ?? block.input?.name ?? "";
-    emit("skill_activation", {
-      skill_name: String(name).slice(0, 200),
-      // The platform knows which version it mounted; the sandbox only ever sees
-      // a directory name, so skill_version_id is filled in by nobody here and
-      // the field is left out rather than invented.
-      skill_version_id: process.env.SKILLHUB_SKILL_VERSION_ID ?? "",
-      decision: "activated",
-      reason: clip(block.input?.description ?? "", LIMITS.reason).value || null,
+  // A path the agent read that lives under the skill package is a resource read
+  // (TRACE-002); anything else is an ordinary file tool call and stays one.
+  function skillResourcePath(input) {
+    const path = input?.file_path ?? input?.path ?? input?.notebook_path;
+    if (typeof path !== "string" || !path.startsWith(skillDir)) return null;
+    // Relative to the package root: absolute sandbox paths are not exported.
+    return path.slice(skillDir.length).replace(/^[/\\]+/, "");
+  }
+
+  function openToolUse(block) {
+    pending.set(block.id, {
+      name: block.name,
+      input: block.input,
+      at: Date.now(),
+    });
+
+    if (block.name === "Skill") {
+      // TRACE-002. The SDK surfaces a skill being used as a `Skill` tool call;
+      // a skill that was available and never invoked produces no block at all, so
+      // `skipped` is not something this producer can observe and is left to
+      // whoever can (the evaluator, EVAL-002). Recording a guess would be worse
+      // than recording nothing.
+      const name =
+        block.input?.command ?? block.input?.skill ?? block.input?.name ?? "";
+      emit("skill_activation", {
+        skill_name: String(name).slice(0, 200),
+        // The platform knows which version it mounted; the sandbox only ever sees
+        // a directory name, so skill_version_id is filled in by nobody here and
+        // the field is left out rather than invented.
+        skill_version_id: process.env.SKILLHUB_SKILL_VERSION_ID ?? "",
+        decision: "activated",
+        reason:
+          clip(block.input?.description ?? "", LIMITS.reason).value || null,
+      });
+    }
+  }
+
+  function closeToolUse(block) {
+    const open = pending.get(block.tool_use_id);
+    if (!open) return;
+    pending.delete(block.tool_use_id);
+
+    const durationMs = Date.now() - open.at;
+    const failed = block.is_error === true;
+    const rendered = clip(block.content, LIMITS.result);
+
+    const resource = skillResourcePath(open.input);
+    if (resource) {
+      emit(
+        "resource_read",
+        {
+          resource_path: resource.slice(0, 1024),
+          outcome: failed ? "not_found" : "read",
+          bytes_read: failed ? null : rendered.value.length,
+          truncated: rendered.truncated,
+        },
+        failed ? "error" : "ok",
+      );
+    }
+
+    // TRACE-003: script output. Bash is the only tool in the allow list that runs
+    // a script, and its result is that script's combined output.
+    if (open.name === "Bash") {
+      const log = clip(block.content, LIMITS.message);
+      emit(
+        "script_log",
+        {
+          script_path: null,
+          stream: failed ? "stderr" : "stdout",
+          message: log.value,
+          truncated: log.truncated,
+          dropped_bytes: null, // unknown, and the UI must show unknown rather than 0
+        },
+        failed ? "error" : "ok",
+      );
+    }
+
+    emit(
+      "tool_call",
+      {
+        tool_name: String(open.name).slice(0, 200),
+        invocation_id: String(block.tool_use_id).slice(0, 200),
+        arguments: open.input ?? null,
+        result_summary: rendered.value,
+        outcome: failed ? "failed" : "succeeded",
+        duration_ms: durationMs,
+        truncated: rendered.truncated,
+      },
+      failed ? "error" : "ok",
+    );
+  }
+
+  // gatewaySpend asks the model gateway what this run's own Virtual Key has spent
+  // (TRACE-004, ADR-017). The key can read itself and nothing else, so this needs
+  // no admin credential and discloses no other run.
+  //
+  // The gateway flushes spend asynchronously, so the first non-zero reading is an
+  // undercount: the last calls of the turn are still in flight when it is taken.
+  // This reads until the figure stops moving, then reports that. Any failure
+  // answers null, which the schema and the UI both read as "unreported" - a run
+  // must not fail because its accounting was slow.
+  //
+  // It is still a reading, not a ledger: a flush that lands after the last poll is
+  // missed, and the gateway's own per-key spend remains the number to reconcile
+  // against (ADR-017 - the gateway is a metering source, not the fact).
+  // --- token accounting and the PDM-005 ceiling --------------------------------
+  //
+  // Two jobs, one accumulator.
+  //
+  // 1. TRACE-004. usage used to be emitted only on the SDK's `result` message, so
+  //    a turn that ended any other way reported no usage at all - not zero, no
+  //    event. Measured on the 45-skill baseline: `add-iso3166` succeeded, produced
+  //    its artifact, traced 13 events with no gap, and cost the platform nothing
+  //    it could see, because that turn produced no result message. Summed over the
+  //    batch the trace said $3.0879 against the gateway's $3.3932. So every model
+  //    response is counted here as it streams, and a run-total usage event is
+  //    emitted exactly once however the turn ends (§token_source in the contract).
+  //
+  // 2. PDM-005 5.2a. The 300K/60K ceiling is shown to the user in the pre-run
+  //    permission summary and they confirm it, so something has to enforce it.
+  //    The counting has to happen where the numbers are, and the only place that
+  //    sees a per-response token count is right here: RunUsage carries none back
+  //    to the platform, and the gateway's brakes are a spend brake and a rate
+  //    brake, which prompt caching decoupled from token count by 7-8x.
+  //
+  // Honest about what kind of brake this is: it is a cooperative stop inside the
+  // sandbox, the same class as the wall-clock soft limit, and the hard brakes
+  // remain the Virtual Key's max_budget and the wall-clock kill outside. It stops
+  // a runaway agent loop, which is what the limit is for; it is not a defence
+  // against a workload attacking its own harness, which already holds the key.
+  // Where the numbers come from, measured on the pinned SDK against the gateway
+  // rather than assumed, because the obvious place is empty:
+  //
+  //   assistant message  msg.message.usage  -> all four fields ZERO, every time,
+  //                      and the same message.id arrives more than once, so summing
+  //                      it would be summing zeros twice.
+  //   result message     msg.usage          -> the real end-of-turn total, but only
+  //                      if a result arrives at all, which is the whole problem.
+  //   stream_event       event.message.usage on message_start, event.usage on
+  //                      message_delta -> the real per-response figures. Here the
+  //                      gateway puts everything on message_delta and zeros on
+  //                      message_start; the Anthropic API splits input at start and
+  //                      output at delta. Taking the per-field maximum over one
+  //                      response is right for both and needs no knowledge of which.
+  //
+  // That is why `includePartialMessages: true` is on the query: without it there is
+  // no per-response token count anywhere in the stream. Like the other options in
+  // the header, this was measured on the pinned SDK and must be re-measured, not
+  // reasoned about, on an upgrade - it fails by reporting zeros, silently.
+  const tokenCeiling = {
+    input: Number(process.env.SKILLHUB_MAX_INPUT_TOKENS ?? "") || 0,
+    output: Number(process.env.SKILLHUB_MAX_OUTPUT_TOKENS ?? "") || 0,
+  };
+
+  const zeroUsage = () => ({
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+  });
+  // committed is every response that has finished streaming; current is the one in
+  // flight, replaced rather than added to, because its usage is restated in full at
+  // each step rather than sent as an increment.
+  let committed = zeroUsage();
+  let current = null;
+  let responses = 0;
+
+  function beginResponse() {
+    if (current) {
+      for (const k of Object.keys(committed)) committed[k] += current[k];
+      responses += 1;
+    }
+    current = zeroUsage();
+  }
+
+  function observeUsage(u) {
+    if (!u) return;
+    if (!current) current = zeroUsage();
+    current.input = Math.max(current.input, u.input_tokens ?? 0);
+    current.output = Math.max(current.output, u.output_tokens ?? 0);
+    current.cacheRead = Math.max(
+      current.cacheRead,
+      u.cache_read_input_tokens ?? 0,
+    );
+    current.cacheWrite = Math.max(
+      current.cacheWrite,
+      u.cache_creation_input_tokens ?? 0,
+    );
+  }
+
+  // totals is what has been counted so far, including the response still streaming:
+  // tokens already sent are already spent, so a ceiling check must see them.
+  function totals() {
+    const t = { ...committed, responses };
+    if (current) {
+      for (const k of Object.keys(committed)) t[k] += current[k];
+      t.responses += 1;
+    }
+    return t;
+  }
+
+  // Cache-hit tokens count against the ceiling: caching reduces cost, not context
+  // (PDM-005 5.2a-3). LiteLLM's /v1/messages route reports neither cache field, so
+  // today this is just input_tokens - which is also exactly the figure the run
+  // summaries already show, so the ceiling means what the summary said it meant.
+  function ceilingBreach() {
+    const t = totals();
+    const input = t.input + t.cacheRead + t.cacheWrite;
+    if (tokenCeiling.input && input > tokenCeiling.input) {
+      return { field: "input", used: input, limit: tokenCeiling.input };
+    }
+    if (tokenCeiling.output && t.output > tokenCeiling.output) {
+      return { field: "output", used: t.output, limit: tokenCeiling.output };
+    }
+    return null;
+  }
+
+  // emitUsage sends the one run-total usage event, at most once. Cost is asked of
+  // the gateway either way: the gateway knows what was charged whether or not the
+  // SDK produced an end-of-turn total (iron rule 8), so cost_source stays
+  // `gateway` and token_source carries the separate question of where the token
+  // counts came from.
+  //
+  // The SDK's total_cost_usd is still deliberately unused: it is computed from a
+  // local price table for a model name the gateway resolves, so it would be an
+  // estimate wearing the gateway's name. `cost_usd: null` means the gateway did
+  // not answer, and the UI must render that as unreported rather than as zero.
+  let usageEmitted = false;
+  async function emitUsage(counts, tokenSource) {
+    if (usageEmitted) return;
+    usageEmitted = true;
+    const cost = await gatewaySpend();
+    emit("usage", {
+      scope: "run_total",
+      model: process.env.SKILLHUB_MODEL ?? "",
+      input_tokens: counts.input,
+      output_tokens: counts.output,
+      cache_read_input_tokens: counts.cacheRead || null,
+      cache_write_input_tokens: counts.cacheWrite || null,
+      cost_usd: cost,
+      cost_source: cost === null ? null : "gateway",
+      token_source: tokenSource,
+      duration_ms: Date.now() - startedAt,
     });
   }
-}
 
-function closeToolUse(block) {
-  const open = pending.get(block.tool_use_id);
-  if (!open) return;
-  pending.delete(block.tool_use_id);
-
-  const durationMs = Date.now() - open.at;
-  const failed = block.is_error === true;
-  const rendered = clip(block.content, LIMITS.result);
-
-  const resource = skillResourcePath(open.input);
-  if (resource) {
-    emit("resource_read", {
-      resource_path: resource.slice(0, 1024),
-      outcome: failed ? "not_found" : "read",
-      bytes_read: failed ? null : rendered.value.length,
-      truncated: rendered.truncated,
-    }, failed ? "error" : "ok");
-  }
-
-  // TRACE-003: script output. Bash is the only tool in the allow list that runs
-  // a script, and its result is that script's combined output.
-  if (open.name === "Bash") {
-    const log = clip(block.content, LIMITS.message);
-    emit("script_log", {
-      script_path: null,
-      stream: failed ? "stderr" : "stdout",
-      message: log.value,
-      truncated: log.truncated,
-      dropped_bytes: null, // unknown, and the UI must show unknown rather than 0
-    }, failed ? "error" : "ok");
-  }
-
-  emit("tool_call", {
-    tool_name: String(open.name).slice(0, 200),
-    invocation_id: String(block.tool_use_id).slice(0, 200),
-    arguments: open.input ?? null,
-    result_summary: rendered.value,
-    outcome: failed ? "failed" : "succeeded",
-    duration_ms: durationMs,
-    truncated: rendered.truncated,
-  }, failed ? "error" : "ok");
-}
-
-// gatewaySpend asks the model gateway what this run's own Virtual Key has spent
-// (TRACE-004, ADR-017). The key can read itself and nothing else, so this needs
-// no admin credential and discloses no other run.
-//
-// The gateway flushes spend asynchronously, so the first non-zero reading is an
-// undercount: the last calls of the turn are still in flight when it is taken.
-// This reads until the figure stops moving, then reports that. Any failure
-// answers null, which the schema and the UI both read as "unreported" - a run
-// must not fail because its accounting was slow.
-//
-// It is still a reading, not a ledger: a flush that lands after the last poll is
-// missed, and the gateway's own per-key spend remains the number to reconcile
-// against (ADR-017 - the gateway is a metering source, not the fact).
-async function gatewaySpend() {
-  const base = process.env.ANTHROPIC_BASE_URL;
-  const key = process.env.ANTHROPIC_AUTH_TOKEN;
-  if (!base || !key) return null;
-  let last = null;
-  // The turn's last call is charged after the result message arrives, so a
-  // reading taken immediately is stable and wrong. Measured against the gateway's
-  // own spend log: without this pause the figure was short by exactly the final
-  // call, every time.
-  await new Promise((resolve) => setTimeout(resolve, 2500));
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    let spend = null;
-    try {
-      const res = await fetch(`${base.replace(/\/$/, "")}/key/info`, {
-        headers: { Authorization: `Bearer ${key}` },
-      });
-      if (res.ok) {
-        const body = await res.json();
-        if (typeof body?.info?.spend === "number") spend = body.info.spend;
+  const messages = [];
+  let output = "";
+  let breach = null;
+  const startedAt = Date.now();
+  try {
+    const { query } = await import("@anthropic-ai/claude-agent-sdk");
+    for await (const msg of query({
+      prompt,
+      options: agentOptions(artifactDir),
+    })) {
+      // Token counting first: a stream_event carries nothing else this loop wants,
+      // and it is the only message type that carries a usage figure that is not
+      // zero. It is also not recorded in message_types, which would otherwise be
+      // hundreds of identical entries in result.json.
+      if (msg.type === "stream_event") {
+        if (msg.event?.type === "message_start") {
+          beginResponse();
+          observeUsage(msg.event.message?.usage);
+        } else if (msg.event?.type === "message_delta") {
+          observeUsage(msg.event.usage);
+        }
+        // PDM-005 5.2a, checked here because this is the only point at which the
+        // count can move. Breaking rather than killing the process closes the
+        // SDK's iterator the ordinary way: no further model call is made, the
+        // events already emitted stay in the timeline, and the collection
+        // handshake below still runs, so artifacts and trace are not lost.
+        breach = ceilingBreach();
+        if (breach) break;
+        continue;
       }
-    } catch {
-      // Unreachable gateway: nothing to report, and nothing to fail over.
-    }
-    if (spend !== null && spend > 0 && spend === last) return spend;
-    if (spend !== null) last = spend;
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-  }
-  return last !== null && last > 0 ? last : null;
-}
 
-// --- token accounting and the PDM-005 ceiling --------------------------------
-//
-// Two jobs, one accumulator.
-//
-// 1. TRACE-004. usage used to be emitted only on the SDK's `result` message, so
-//    a turn that ended any other way reported no usage at all - not zero, no
-//    event. Measured on the 45-skill baseline: `add-iso3166` succeeded, produced
-//    its artifact, traced 13 events with no gap, and cost the platform nothing
-//    it could see, because that turn produced no result message. Summed over the
-//    batch the trace said $3.0879 against the gateway's $3.3932. So every model
-//    response is counted here as it streams, and a run-total usage event is
-//    emitted exactly once however the turn ends (§token_source in the contract).
-//
-// 2. PDM-005 5.2a. The 300K/60K ceiling is shown to the user in the pre-run
-//    permission summary and they confirm it, so something has to enforce it.
-//    The counting has to happen where the numbers are, and the only place that
-//    sees a per-response token count is right here: RunUsage carries none back
-//    to the platform, and the gateway's brakes are a spend brake and a rate
-//    brake, which prompt caching decoupled from token count by 7-8x.
-//
-// Honest about what kind of brake this is: it is a cooperative stop inside the
-// sandbox, the same class as the wall-clock soft limit, and the hard brakes
-// remain the Virtual Key's max_budget and the wall-clock kill outside. It stops
-// a runaway agent loop, which is what the limit is for; it is not a defence
-// against a workload attacking its own harness, which already holds the key.
-// Where the numbers come from, measured on the pinned SDK against the gateway
-// rather than assumed, because the obvious place is empty:
-//
-//   assistant message  msg.message.usage  -> all four fields ZERO, every time,
-//                      and the same message.id arrives more than once, so summing
-//                      it would be summing zeros twice.
-//   result message     msg.usage          -> the real end-of-turn total, but only
-//                      if a result arrives at all, which is the whole problem.
-//   stream_event       event.message.usage on message_start, event.usage on
-//                      message_delta -> the real per-response figures. Here the
-//                      gateway puts everything on message_delta and zeros on
-//                      message_start; the Anthropic API splits input at start and
-//                      output at delta. Taking the per-field maximum over one
-//                      response is right for both and needs no knowledge of which.
-//
-// That is why `includePartialMessages: true` is on the query: without it there is
-// no per-response token count anywhere in the stream. Like the other options in
-// the header, this was measured on the pinned SDK and must be re-measured, not
-// reasoned about, on an upgrade - it fails by reporting zeros, silently.
-const tokenCeiling = {
-  input: Number(process.env.SKILLHUB_MAX_INPUT_TOKENS ?? "") || 0,
-  output: Number(process.env.SKILLHUB_MAX_OUTPUT_TOKENS ?? "") || 0,
-};
-
-const zeroUsage = () => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
-// committed is every response that has finished streaming; current is the one in
-// flight, replaced rather than added to, because its usage is restated in full at
-// each step rather than sent as an increment.
-let committed = zeroUsage();
-let current = null;
-let responses = 0;
-
-function beginResponse() {
-  if (current) {
-    for (const k of Object.keys(committed)) committed[k] += current[k];
-    responses += 1;
-  }
-  current = zeroUsage();
-}
-
-function observeUsage(u) {
-  if (!u) return;
-  if (!current) current = zeroUsage();
-  current.input = Math.max(current.input, u.input_tokens ?? 0);
-  current.output = Math.max(current.output, u.output_tokens ?? 0);
-  current.cacheRead = Math.max(current.cacheRead, u.cache_read_input_tokens ?? 0);
-  current.cacheWrite = Math.max(current.cacheWrite, u.cache_creation_input_tokens ?? 0);
-}
-
-// totals is what has been counted so far, including the response still streaming:
-// tokens already sent are already spent, so a ceiling check must see them.
-function totals() {
-  const t = { ...committed, responses };
-  if (current) {
-    for (const k of Object.keys(committed)) t[k] += current[k];
-    t.responses += 1;
-  }
-  return t;
-}
-
-// Cache-hit tokens count against the ceiling: caching reduces cost, not context
-// (PDM-005 5.2a-3). LiteLLM's /v1/messages route reports neither cache field, so
-// today this is just input_tokens - which is also exactly the figure the run
-// summaries already show, so the ceiling means what the summary said it meant.
-function ceilingBreach() {
-  const t = totals();
-  const input = t.input + t.cacheRead + t.cacheWrite;
-  if (tokenCeiling.input && input > tokenCeiling.input) {
-    return { field: "input", used: input, limit: tokenCeiling.input };
-  }
-  if (tokenCeiling.output && t.output > tokenCeiling.output) {
-    return { field: "output", used: t.output, limit: tokenCeiling.output };
-  }
-  return null;
-}
-
-// emitUsage sends the one run-total usage event, at most once. Cost is asked of
-// the gateway either way: the gateway knows what was charged whether or not the
-// SDK produced an end-of-turn total (iron rule 8), so cost_source stays
-// `gateway` and token_source carries the separate question of where the token
-// counts came from.
-//
-// The SDK's total_cost_usd is still deliberately unused: it is computed from a
-// local price table for a model name the gateway resolves, so it would be an
-// estimate wearing the gateway's name. `cost_usd: null` means the gateway did
-// not answer, and the UI must render that as unreported rather than as zero.
-let usageEmitted = false;
-async function emitUsage(counts, tokenSource) {
-  if (usageEmitted) return;
-  usageEmitted = true;
-  const cost = await gatewaySpend();
-  emit("usage", {
-    scope: "run_total",
-    model: process.env.SKILLHUB_MODEL ?? "",
-    input_tokens: counts.input,
-    output_tokens: counts.output,
-    cache_read_input_tokens: counts.cacheRead || null,
-    cache_write_input_tokens: counts.cacheWrite || null,
-    cost_usd: cost,
-    cost_source: cost === null ? null : "gateway",
-    token_source: tokenSource,
-    duration_ms: Date.now() - startedAt,
-  });
-}
-
-const messages = [];
-let output = "";
-let breach = null;
-const startedAt = Date.now();
-try {
-  const { query } = await import("@anthropic-ai/claude-agent-sdk");
-  for await (const msg of query({ prompt, options: agentOptions(artifactDir) })) {
-    // Token counting first: a stream_event carries nothing else this loop wants,
-    // and it is the only message type that carries a usage figure that is not
-    // zero. It is also not recorded in message_types, which would otherwise be
-    // hundreds of identical entries in result.json.
-    if (msg.type === "stream_event") {
-      if (msg.event?.type === "message_start") {
-        beginResponse();
-        observeUsage(msg.event.message?.usage);
-      } else if (msg.event?.type === "message_delta") {
-        observeUsage(msg.event.usage);
-      }
-      // PDM-005 5.2a, checked here because this is the only point at which the
-      // count can move. Breaking rather than killing the process closes the
-      // SDK's iterator the ordinary way: no further model call is made, the
-      // events already emitted stay in the timeline, and the collection
-      // handshake below still runs, so artifacts and trace are not lost.
-      breach = ceilingBreach();
-      if (breach) break;
-      continue;
-    }
-
-    messages.push(msg.type);
-    const blocks = Array.isArray(msg.message?.content) ? msg.message.content : [];
-    for (const block of blocks) {
-      if (block.type === "tool_use") openToolUse(block);
-      else if (block.type === "tool_result") closeToolUse(block);
-      else if (block.type === "text" && msg.type === "assistant") {
-        const text = clip(block.text ?? "", LIMITS.text);
-        if (text.value.trim() !== "") {
-          emit("agent_output", { kind: "intermediate", text: text.value, truncated: text.truncated });
+      messages.push(msg.type);
+      const blocks = Array.isArray(msg.message?.content)
+        ? msg.message.content
+        : [];
+      for (const block of blocks) {
+        if (block.type === "tool_use") openToolUse(block);
+        else if (block.type === "tool_result") closeToolUse(block);
+        else if (block.type === "text" && msg.type === "assistant") {
+          const text = clip(block.text ?? "", LIMITS.text);
+          if (text.value.trim() !== "") {
+            emit("agent_output", {
+              kind: "intermediate",
+              text: text.value,
+              truncated: text.truncated,
+            });
+          }
         }
       }
-    }
 
-    if (msg.type === "result") {
-      output = msg.result ?? "";
-      const text = clip(output, LIMITS.text);
-      emit("agent_output", { kind: "final", text: text.value, truncated: text.truncated },
-        msg.is_error ? "error" : "ok");
+      if (msg.type === "result") {
+        output = msg.result ?? "";
+        const text = clip(output, LIMITS.text);
+        emit(
+          "agent_output",
+          { kind: "final", text: text.value, truncated: text.truncated },
+          msg.is_error ? "error" : "ok",
+        );
 
-      // TRACE-004. The SDK's end-of-turn total wins over the running sum when it
-      // exists: it is the same quantity from a vantage point that also sees any
-      // response still in flight when the stream closed.
-      const usage = msg.usage ?? {};
-      await emitUsage({
-        input: usage.input_tokens ?? 0,
-        output: usage.output_tokens ?? 0,
-        cacheRead: usage.cache_read_input_tokens ?? null,
-        cacheWrite: usage.cache_creation_input_tokens ?? null,
-      }, "result");
+        // TRACE-004. The SDK's end-of-turn total wins over the running sum when it
+        // exists: it is the same quantity from a vantage point that also sees any
+        // response still in flight when the stream closed.
+        const usage = msg.usage ?? {};
+        await emitUsage(
+          {
+            input: usage.input_tokens ?? 0,
+            output: usage.output_tokens ?? 0,
+            cacheRead: usage.cache_read_input_tokens ?? null,
+            cacheWrite: usage.cache_creation_input_tokens ?? null,
+          },
+          "result",
+        );
+      }
     }
+  } catch (err) {
+    // A crashed turn is still a turn that spent money. Report what was counted
+    // before the failure, then fail - in that order, because fail() exits.
+    await emitUsage(totals(), "accumulated");
+    fail("execution", "agent_turn_failed", String(err?.message ?? err));
   }
-} catch (err) {
-  // A crashed turn is still a turn that spent money. Report what was counted
-  // before the failure, then fail - in that order, because fail() exits.
+
+  if (breach) {
+    const message =
+      `run stopped at its ${breach.field} token ceiling: ${breach.used} of ${breach.limit} tokens ` +
+      `(PDM-005 5.2a; the limit shown in the pre-run permission summary)`;
+    emit(
+      "error",
+      {
+        category: "execution",
+        code: "token_budget_exceeded",
+        message,
+        retryable: false,
+      },
+      "error",
+    );
+    await emitUsage(totals(), "accumulated");
+    finish(
+      "failed",
+      { error: message, agent_output: output, message_types: messages },
+      EXIT_TOKEN_BUDGET,
+    );
+  }
+
+  // The turn ended without a result message: no crash, no ceiling, just an SDK
+  // that produced none (measured on add-iso3166, which succeeded and produced its
+  // artifact). Reporting the running sum is what keeps that run's cost from
+  // vanishing; emitUsage is a no-op if the result branch already reported.
   await emitUsage(totals(), "accumulated");
-  fail("execution", "agent_turn_failed", String(err?.message ?? err));
-}
 
-if (breach) {
-  const message =
-    `run stopped at its ${breach.field} token ceiling: ${breach.used} of ${breach.limit} tokens ` +
-    `(PDM-005 5.2a; the limit shown in the pre-run permission summary)`;
-  emit("error", { category: "execution", code: "token_budget_exceeded", message, retryable: false }, "error");
-  await emitUsage(totals(), "accumulated");
-  finish("failed", { error: message, agent_output: output, message_types: messages }, EXIT_TOKEN_BUDGET);
-}
-
-// The turn ended without a result message: no crash, no ceiling, just an SDK
-// that produced none (measured on add-iso3166, which succeeded and produced its
-// artifact). Reporting the running sum is what keeps that run's cost from
-// vanishing; emitUsage is a no-op if the result branch already reported.
-await emitUsage(totals(), "accumulated");
-
-finish("succeeded", { agent_output: output, message_types: messages });
+  finish("succeeded", { agent_output: output, message_types: messages });
 } // isMain

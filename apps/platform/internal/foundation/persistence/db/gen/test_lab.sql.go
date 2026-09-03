@@ -16,7 +16,7 @@ INSERT INTO datasets (
     workspace_id, test_case_id, file_name, content_type, size_bytes,
     content_hash, object_key, expires_at
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at
+RETURNING id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at, reconcile_checked_at, retention_attempted_at, purged_at
 `
 
 type CreateDatasetParams struct {
@@ -54,6 +54,36 @@ func (q *Queries) CreateDataset(ctx context.Context, arg CreateDatasetParams) (D
 		&i.CreatedAt,
 		&i.ExpiresAt,
 		&i.DeletedAt,
+		&i.ReconcileCheckedAt,
+		&i.RetentionAttemptedAt,
+		&i.PurgedAt,
+	)
+	return i, err
+}
+
+const createDatasetCleanupIntent = `-- name: CreateDatasetCleanupIntent :one
+INSERT INTO dataset_object_cleanup_intents (workspace_id, object_key)
+VALUES ($1, $2)
+RETURNING id, workspace_id, object_key, not_before, attempted_at, created_at
+`
+
+type CreateDatasetCleanupIntentParams struct {
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+}
+
+// Written before object storage is touched. A successful dataset transaction
+// deletes it; every other exit leaves a durable key for purge-datasets.
+func (q *Queries) CreateDatasetCleanupIntent(ctx context.Context, arg CreateDatasetCleanupIntentParams) (DatasetObjectCleanupIntent, error) {
+	row := q.db.QueryRow(ctx, createDatasetCleanupIntent, arg.WorkspaceID, arg.ObjectKey)
+	var i DatasetObjectCleanupIntent
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ObjectKey,
+		&i.NotBefore,
+		&i.AttemptedAt,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -143,8 +173,23 @@ func (q *Queries) CreateTestCaseSnapshot(ctx context.Context, arg CreateTestCase
 	return i, err
 }
 
+const deleteDatasetCleanupIntent = `-- name: DeleteDatasetCleanupIntent :exec
+DELETE FROM dataset_object_cleanup_intents
+WHERE id = $1 AND workspace_id = $2
+`
+
+type DeleteDatasetCleanupIntentParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) DeleteDatasetCleanupIntent(ctx context.Context, arg DeleteDatasetCleanupIntentParams) error {
+	_, err := q.db.Exec(ctx, deleteDatasetCleanupIntent, arg.ID, arg.WorkspaceID)
+	return err
+}
+
 const getDataset = `-- name: GetDataset :one
-SELECT id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at FROM datasets
+SELECT id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at, reconcile_checked_at, retention_attempted_at, purged_at FROM datasets
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 `
 
@@ -168,6 +213,9 @@ func (q *Queries) GetDataset(ctx context.Context, arg GetDatasetParams) (Dataset
 		&i.CreatedAt,
 		&i.ExpiresAt,
 		&i.DeletedAt,
+		&i.ReconcileCheckedAt,
+		&i.RetentionAttemptedAt,
+		&i.PurgedAt,
 	)
 	return i, err
 }
@@ -228,7 +276,7 @@ func (q *Queries) GetTestCaseSnapshot(ctx context.Context, arg GetTestCaseSnapsh
 }
 
 const listDatasets = `-- name: ListDatasets :many
-SELECT id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at FROM datasets
+SELECT id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at, reconcile_checked_at, retention_attempted_at, purged_at FROM datasets
 WHERE test_case_id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 ORDER BY created_at
 `
@@ -259,6 +307,9 @@ func (q *Queries) ListDatasets(ctx context.Context, arg ListDatasetsParams) ([]D
 			&i.CreatedAt,
 			&i.ExpiresAt,
 			&i.DeletedAt,
+			&i.ReconcileCheckedAt,
+			&i.RetentionAttemptedAt,
+			&i.PurgedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -314,6 +365,24 @@ func (q *Queries) ListTestCases(ctx context.Context, arg ListTestCasesParams) ([
 	return items, nil
 }
 
+const lockDatasetObjectKeySession = `-- name: LockDatasetObjectKeySession :exec
+SELECT pg_advisory_lock(hashtextextended('dataset-object:' || $1::text, 0))
+`
+
+func (q *Queries) LockDatasetObjectKeySession(ctx context.Context, objectKey string) error {
+	_, err := q.db.Exec(ctx, lockDatasetObjectKeySession, objectKey)
+	return err
+}
+
+const lockDatasetWorkspaceObjects = `-- name: LockDatasetWorkspaceObjects :exec
+SELECT pg_advisory_lock_shared(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
+`
+
+func (q *Queries) LockDatasetWorkspaceObjects(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, lockDatasetWorkspaceObjects, workspaceID)
+	return err
+}
+
 const lockTestCase = `-- name: LockTestCase :one
 SELECT id, workspace_id, skill_id, name, user_prompt, acceptance_criteria, created_at, updated_at, deleted_at, rubric FROM test_cases
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
@@ -359,7 +428,7 @@ func (q *Queries) LockTestCase(ctx context.Context, arg LockTestCaseParams) (Tes
 const softDeleteDataset = `-- name: SoftDeleteDataset :one
 UPDATE datasets SET deleted_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at
+RETURNING id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at, reconcile_checked_at, retention_attempted_at, purged_at
 `
 
 type SoftDeleteDatasetParams struct {
@@ -369,6 +438,8 @@ type SoftDeleteDatasetParams struct {
 
 // The row is marked deleted here; the object itself is removed by the caller
 // after the transaction commits (objstore.Remove is idempotent, iron rule 9).
+// purged_at stays null until that succeeds, making a failed removal durable
+// work for the retention sweep rather than an unreachable orphan.
 func (q *Queries) SoftDeleteDataset(ctx context.Context, arg SoftDeleteDatasetParams) (Dataset, error) {
 	row := q.db.QueryRow(ctx, softDeleteDataset, arg.ID, arg.WorkspaceID)
 	var i Dataset
@@ -384,6 +455,9 @@ func (q *Queries) SoftDeleteDataset(ctx context.Context, arg SoftDeleteDatasetPa
 		&i.CreatedAt,
 		&i.ExpiresAt,
 		&i.DeletedAt,
+		&i.ReconcileCheckedAt,
+		&i.RetentionAttemptedAt,
+		&i.PurgedAt,
 	)
 	return i, err
 }
@@ -391,7 +465,7 @@ func (q *Queries) SoftDeleteDataset(ctx context.Context, arg SoftDeleteDatasetPa
 const softDeleteDatasetsByTestCase = `-- name: SoftDeleteDatasetsByTestCase :many
 UPDATE datasets SET deleted_at = now()
 WHERE test_case_id = $1 AND workspace_id = $2 AND deleted_at IS NULL
-RETURNING id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at
+RETURNING id, workspace_id, test_case_id, file_name, content_type, size_bytes, content_hash, object_key, created_at, expires_at, deleted_at, reconcile_checked_at, retention_attempted_at, purged_at
 `
 
 type SoftDeleteDatasetsByTestCaseParams struct {
@@ -422,6 +496,9 @@ func (q *Queries) SoftDeleteDatasetsByTestCase(ctx context.Context, arg SoftDele
 			&i.CreatedAt,
 			&i.ExpiresAt,
 			&i.DeletedAt,
+			&i.ReconcileCheckedAt,
+			&i.RetentionAttemptedAt,
+			&i.PurgedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -486,6 +563,28 @@ func (q *Queries) SumDatasetUsage(ctx context.Context, arg SumDatasetUsageParams
 	var i SumDatasetUsageRow
 	err := row.Scan(&i.FileCount, &i.TotalBytes)
 	return i, err
+}
+
+const unlockDatasetObjectKeySession = `-- name: UnlockDatasetObjectKeySession :one
+SELECT pg_advisory_unlock(hashtextextended('dataset-object:' || $1::text, 0))
+`
+
+func (q *Queries) UnlockDatasetObjectKeySession(ctx context.Context, objectKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, unlockDatasetObjectKeySession, objectKey)
+	var pg_advisory_unlock bool
+	err := row.Scan(&pg_advisory_unlock)
+	return pg_advisory_unlock, err
+}
+
+const unlockDatasetWorkspaceObjects = `-- name: UnlockDatasetWorkspaceObjects :one
+SELECT pg_advisory_unlock_shared(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
+`
+
+func (q *Queries) UnlockDatasetWorkspaceObjects(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, unlockDatasetWorkspaceObjects, workspaceID)
+	var pg_advisory_unlock_shared bool
+	err := row.Scan(&pg_advisory_unlock_shared)
+	return pg_advisory_unlock_shared, err
 }
 
 const updateTestCase = `-- name: UpdateTestCase :one

@@ -30,6 +30,7 @@ import (
 	"path"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 const (
@@ -61,8 +62,8 @@ const (
 // A workload that never says so - a crash, a kill, the wall clock - is never
 // released and never waited for: this returns false, the loop keeps ticking, and
 // Wait ends it. What was already drained is what survives.
-func (m *Manager) collect(id, traceURL string) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), artifactCollectTimeout)
+func (m *Manager) collect(parent context.Context, id, traceURL string) bool {
+	ctx, cancel := context.WithTimeout(parent, artifactCollectTimeout)
 	defer cancel()
 
 	done, err := m.drv.WorkloadDone(ctx, id)
@@ -76,17 +77,27 @@ func (m *Manager) collect(id, traceURL string) bool {
 		return true // destroyed under us
 	}
 
-	artifacts := m.collectArtifacts(ctx, id, e)
+	artifacts, truncated := m.collectArtifacts(ctx, id, e)
 	m.mu.Lock()
-	e.artifacts = artifacts
+	// A later retry can fail after an earlier pass already uploaded and recorded
+	// a valid archive (for example, ReleaseWorkload failed). Do not turn that
+	// durable success into an empty manifest merely because the second read was
+	// transiently unavailable.
+	if len(artifacts) > 0 || len(e.artifacts) == 0 {
+		e.artifacts = artifacts
+	}
+	e.artifactsTruncated = e.artifactsTruncated || truncated
 	m.mu.Unlock()
 
 	// The last drain happens after the artifacts, so an artifact failure is in
 	// the trace before the workload is let go.
-	m.flushTrace(id, traceURL)
+	if !m.flushTrace(ctx, id, traceURL) {
+		return false
+	}
 	if err := m.drv.ReleaseWorkload(ctx, id); err != nil {
 		m.log.Error("could not release the workload after collecting its output",
 			"provider_run_id", id, "err", err)
+		return false
 	}
 	return true
 }
@@ -99,35 +110,35 @@ func (m *Manager) collect(id, traceURL string) bool {
 // otherwise succeeded is a smaller lie than reporting the run as failed - so the
 // error is logged and the manifest comes back empty (ADR-004 keeps the run
 // outcome and its side outcomes apart).
-func (m *Manager) collectArtifacts(ctx context.Context, id string, e *entry) []Artifact {
+func (m *Manager) collectArtifacts(ctx context.Context, id string, e *entry) ([]Artifact, bool) {
 	if e.artifactGrant == nil || e.artifactGrant.URL == "" {
-		return nil // no write grant: nothing was authorized, so nothing is collected
+		return nil, false // no write grant: nothing was authorized, so nothing is collected
 	}
 	raw, err := m.drv.ReadArtifacts(ctx, id)
 	if err != nil {
 		m.log.Warn("artifact collection failed", "provider_run_id", id, "err", err)
-		return nil
+		return nil, false
 	}
 	if len(raw) == 0 {
-		return nil
+		return nil, false
 	}
 
-	manifest, archive, err := filterArchive(raw, e.limits)
+	manifest, archive, truncated, err := filterArchive(raw, e.limits)
 	if err != nil {
 		m.log.Warn("artifact archive could not be read", "provider_run_id", id, "err", err)
-		return nil
+		return nil, true
 	}
 	if len(manifest) == 0 {
-		return nil
+		return nil, truncated
 	}
 	if err := upload(ctx, e.artifactGrant.URL, archive); err != nil {
 		// The grant is the authorization and never reaches a log (iron rule 11).
 		m.log.Error("artifact upload failed", "provider_run_id", id,
 			"object_key", e.artifactGrant.ObjectKey, "err", err)
-		return nil
+		return nil, truncated
 	}
 	m.log.Info("artifacts collected", "provider_run_id", id, "files", len(manifest))
-	return manifest
+	return manifest, truncated
 }
 
 // filterArchive turns the raw tar into a manifest plus the archive that is
@@ -142,7 +153,7 @@ func (m *Manager) collectArtifacts(ctx context.Context, id string, e *entry) []A
 //
 // `truncated` marks a run whose output was cut, so the UI never presents a
 // partial collection as complete.
-func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, error) {
+func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, bool, error) {
 	perFile := limits.ArtifactFileBytes
 	if perFile <= 0 {
 		perFile = DefaultLimits.ArtifactFileBytes
@@ -156,6 +167,7 @@ func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, error
 	var out bytes.Buffer
 	writer := tar.NewWriter(&out)
 	manifest := []Artifact{}
+	seen := map[string]struct{}{}
 	var used int64
 	dropped := false
 
@@ -183,11 +195,19 @@ func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, error
 			dropped = true
 			continue
 		}
+		key := strings.ToLower(name)
+		if _, duplicate := seen[key]; duplicate {
+			dropped = true
+			continue
+		}
 		if header.Size > perFile || used+header.Size > total {
 			dropped = true
 			// Skip the body without buffering it: the reader advances on Next().
 			continue
 		}
+		// A rejected file must not reserve the portable name and hide a later,
+		// valid file that differs only by case.
+		seen[key] = struct{}{}
 		body, err := io.ReadAll(io.LimitReader(reader, header.Size))
 		if err != nil {
 			dropped = true
@@ -198,10 +218,10 @@ func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, error
 			Name: name, Mode: 0o600, Size: int64(len(body)),
 			ModTime: header.ModTime, Typeflag: tar.TypeReg,
 		}); err != nil {
-			return nil, nil, err
+			return nil, nil, dropped, err
 		}
 		if _, err := writer.Write(body); err != nil {
-			return nil, nil, err
+			return nil, nil, dropped, err
 		}
 		used += int64(len(body))
 		manifest = append(manifest, Artifact{
@@ -211,14 +231,14 @@ func filterArchive(raw []byte, limits ResourceLimits) ([]Artifact, []byte, error
 		})
 	}
 	if err := writer.Close(); err != nil {
-		return nil, nil, err
+		return nil, nil, dropped, err
 	}
 	if dropped {
 		for i := range manifest {
 			manifest[i].Truncated = true
 		}
 	}
-	return manifest, out.Bytes(), nil
+	return manifest, out.Bytes(), dropped, nil
 }
 
 // artifactName reduces a tar entry to a name that cannot address anything
@@ -228,10 +248,25 @@ func artifactName(raw string) string {
 	name := strings.TrimPrefix(strings.ReplaceAll(raw, "\\", "/"), "artifacts/")
 	name = strings.TrimPrefix(name, "./")
 	switch {
-	case name == "" || strings.HasPrefix(name, "/") || strings.HasPrefix(name, "-"):
+	case name == "" || len(name) > 1024 || !utf8.ValidString(name) || strings.HasPrefix(name, "/") || strings.HasPrefix(name, "-"):
 		return ""
 	case name != path.Clean(name) || strings.HasPrefix(path.Clean(name), ".."):
 		return ""
+	}
+	for _, part := range strings.Split(name, "/") {
+		if strings.TrimRight(part, " .") != part || strings.ContainsAny(part, `<>:"|?*`) {
+			return ""
+		}
+		for _, r := range part {
+			if r < 0x20 {
+				return ""
+			}
+		}
+		base := strings.ToLower(strings.SplitN(part, ".", 2)[0])
+		if base == "con" || base == "prn" || base == "aux" || base == "nul" ||
+			(len(base) == 4 && (strings.HasPrefix(base, "com") || strings.HasPrefix(base, "lpt")) && base[3] >= '1' && base[3] <= '9') {
+			return ""
+		}
 	}
 	return name
 }
@@ -253,11 +288,13 @@ func upload(ctx context.Context, url string, body []byte) error {
 	}
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
-	if resp.StatusCode >= 300 {
+	if !successfulUploadStatus(resp.StatusCode) {
 		return fmt.Errorf("object storage answered %d", resp.StatusCode)
 	}
 	return nil
 }
+
+func successfulUploadStatus(code int) bool { return code >= 200 && code < 300 }
 
 // GrantHTTPClient is the one client every object-storage call on a node goes
 // through: the two drivers' grant downloads and the artifact upload below.

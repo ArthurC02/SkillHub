@@ -11,6 +11,57 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const accountPurgeReady = `-- name: AccountPurgeReady :one
+SELECT NOT EXISTS (
+    SELECT 1 FROM runs r
+    WHERE r.workspace_id = $1
+      AND (r.status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+           OR r.cleanup_status <> 'cleaned'
+           OR EXISTS (
+               SELECT 1 FROM run_attempts a
+               WHERE a.run_id = r.id
+                 -- S3 validation and Postgres need not share a clock. Wait one
+                 -- more minute rather than deleting while a signer still accepts.
+                 AND (a.object_grants_state = 'legacy_unknown'
+                      OR a.object_grants_expire_at > now() - interval '1 minute')
+           ))
+)
+`
+
+// No sandbox may still be able to upload after the account purge snapshots
+// object keys. Terminal and provider cleanup are insufficient: pre-signed
+// object grants cannot be revoked, so their persisted deadline must also pass.
+func (q *Queries) AccountPurgeReady(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, accountPurgeReady, workspaceID)
+	var not_exists bool
+	err := row.Scan(&not_exists)
+	return not_exists, err
+}
+
+const closeUnissuedRunAttemptGrants = `-- name: CloseUnissuedRunAttemptGrants :execrows
+UPDATE run_attempts
+SET object_grants_expire_at = now() - interval '2 minutes',
+    object_grants_state = 'closed'
+WHERE run_id = $1 AND workspace_id = $2
+  AND object_grants_state = 'unissued'
+`
+
+type CloseUnissuedRunAttemptGrantsParams struct {
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+// A worker may die after creating an attempt but before assembling its request.
+// Only current workers write unissued, so legacy rolling-deploy attempts remain
+// fail-closed until the documented drain-and-repair procedure has completed.
+func (q *Queries) CloseUnissuedRunAttemptGrants(ctx context.Context, arg CloseUnissuedRunAttemptGrantsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, closeUnissuedRunAttemptGrants, arg.RunID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countActiveRuns = `-- name: CountActiveRuns :one
 SELECT count(*) FROM runs
 WHERE workspace_id = $1
@@ -52,6 +103,19 @@ func (q *Queries) CountDeadLetteredOutboxEvents(ctx context.Context) (int64, err
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const countLiveRunArtifactsSharingObject = `-- name: CountLiveRunArtifactsSharingObject :one
+SELECT count(*) FROM artifacts
+WHERE kind = 'run_output' AND object_key = $1
+  AND deleted_at IS NULL AND purged_at IS NULL AND expires_at > now()
+`
+
+func (q *Queries) CountLiveRunArtifactsSharingObject(ctx context.Context, objectKey string) (int64, error) {
+	row := q.db.QueryRow(ctx, countLiveRunArtifactsSharingObject, objectKey)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const countPersistentOrphans = `-- name: CountPersistentOrphans :one
@@ -113,7 +177,7 @@ INSERT INTO runs (
     workspace_id, skill_version_id, test_case_snapshot_id, provider,
     runtime_snapshot, policy_snapshot
 ) VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
 `
 
 type CreateRunParams struct {
@@ -157,18 +221,21 @@ func (q *Queries) CreateRun(ctx context.Context, arg CreateRunParams) (Run, erro
 		&i.FinishedAt,
 		&i.CancelRequestedAt,
 		&i.FailureClass,
+		&i.SupervisionCheckedAt,
+		&i.CleanupAttemptedAt,
+		&i.ArtifactsTruncated,
 	)
 	return i, err
 }
 
 const createRunAttempt = `-- name: CreateRunAttempt :one
-INSERT INTO run_attempts (run_id, workspace_id, attempt_number, provider)
+INSERT INTO run_attempts (run_id, workspace_id, attempt_number, provider, object_grants_state)
 SELECT r.id, r.workspace_id,
        (SELECT coalesce(max(attempt_number), 0) + 1 FROM run_attempts WHERE run_id = r.id),
-       $3
+       $3, 'unissued'
 FROM runs r
 WHERE r.id = $1 AND r.workspace_id = $2
-RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at
+RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state
 `
 
 type CreateRunAttemptParams struct {
@@ -195,6 +262,8 @@ func (q *Queries) CreateRunAttempt(ctx context.Context, arg CreateRunAttemptPara
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.FinishedAt,
+		&i.ObjectGrantsExpireAt,
+		&i.ObjectGrantsState,
 	)
 	return i, err
 }
@@ -221,10 +290,34 @@ func (q *Queries) DeleteOutboxEventsPublishedBefore(ctx context.Context, publish
 	return result.RowsAffected(), nil
 }
 
+const deleteRunArtifactUploadIntentByObjectKey = `-- name: DeleteRunArtifactUploadIntentByObjectKey :exec
+DELETE FROM run_artifact_upload_intents WHERE object_key = $1
+`
+
+// A non-empty manifest is the durable owner of this archive. Removing the
+// fallback intent in the same transaction avoids retaining and rescanning one
+// redundant row per successful attempt for the full retention window.
+func (q *Queries) DeleteRunArtifactUploadIntentByObjectKey(ctx context.Context, objectKey string) error {
+	_, err := q.db.Exec(ctx, deleteRunArtifactUploadIntentByObjectKey, objectKey)
+	return err
+}
+
 const finishRunAttempt = `-- name: FinishRunAttempt :one
-UPDATE run_attempts SET finished_at = now(), error_class = $3, error_message = $4
+UPDATE run_attempts
+SET finished_at = now(), error_class = $3, error_message = $4,
+    -- Only a current worker's explicit unissued marker proves no URL escaped.
+    -- legacy_unknown is deliberately left fail-closed during a rolling deploy.
+    object_grants_expire_at = CASE
+        WHEN object_grants_state = 'unissued'
+            THEN now() - interval '2 minutes'
+        ELSE object_grants_expire_at
+    END,
+    object_grants_state = CASE
+        WHEN object_grants_state = 'unissued' THEN 'closed'
+        ELSE object_grants_state
+    END
 WHERE id = $1 AND workspace_id = $2
-RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at
+RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state
 `
 
 type FinishRunAttemptParams struct {
@@ -256,6 +349,8 @@ func (q *Queries) FinishRunAttempt(ctx context.Context, arg FinishRunAttemptPara
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.FinishedAt,
+		&i.ObjectGrantsExpireAt,
+		&i.ObjectGrantsState,
 	)
 	return i, err
 }
@@ -281,7 +376,7 @@ func (q *Queries) ForgetClearedOrphans(ctx context.Context, arg ForgetClearedOrp
 }
 
 const getRun = `-- name: GetRun :one
-SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class FROM runs WHERE id = $1 AND workspace_id = $2
+SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated FROM runs WHERE id = $1 AND workspace_id = $2
 `
 
 type GetRunParams struct {
@@ -309,7 +404,35 @@ func (q *Queries) GetRun(ctx context.Context, arg GetRunParams) (Run, error) {
 		&i.FinishedAt,
 		&i.CancelRequestedAt,
 		&i.FailureClass,
+		&i.SupervisionCheckedAt,
+		&i.CleanupAttemptedAt,
+		&i.ArtifactsTruncated,
 	)
+	return i, err
+}
+
+const getRunArtifactForDelete = `-- name: GetRunArtifactForDelete :one
+SELECT id, object_key, purged_at FROM artifacts
+WHERE id = $1 AND run_id = $2 AND workspace_id = $3
+  AND kind = 'run_output' AND deleted_at IS NULL
+`
+
+type GetRunArtifactForDeleteParams struct {
+	ArtifactID  pgtype.UUID
+	RunID       pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+type GetRunArtifactForDeleteRow struct {
+	ID        pgtype.UUID
+	ObjectKey string
+	PurgedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) GetRunArtifactForDelete(ctx context.Context, arg GetRunArtifactForDeleteParams) (GetRunArtifactForDeleteRow, error) {
+	row := q.db.QueryRow(ctx, getRunArtifactForDelete, arg.ArtifactID, arg.RunID, arg.WorkspaceID)
+	var i GetRunArtifactForDeleteRow
+	err := row.Scan(&i.ID, &i.ObjectKey, &i.PurgedAt)
 	return i, err
 }
 
@@ -456,7 +579,8 @@ SELECT $1, $2, 'run_output', $3, $4, $5,
        $6, $7, now() + interval '90 days'
 WHERE NOT EXISTS (
     SELECT 1 FROM artifacts
-    WHERE run_id = $2 AND kind = 'run_output' AND file_name = $3
+    WHERE run_id = $2 AND kind = 'run_output'
+      AND lower(file_name) = lower($3::text)
 )
 `
 
@@ -479,8 +603,10 @@ type InsertRunArtifactParams struct {
 // exists to catch (handoff 丙-5) - is indistinguishable from "the platform never
 // wrote the manifest down", and an evaluator cannot honestly report either.
 //
-// WHERE NOT EXISTS rather than ON CONFLICT: there is no unique key to conflict on,
-// and a redelivered settle must not double the manifest (iron rule 9).
+// recordArtifacts takes LockRunArtifactManifest in the preceding statement.
+// A separate statement is required so READ COMMITTED takes a fresh snapshot
+// after a concurrent holder commits; a lock CTE inside this INSERT would keep
+// the pre-wait snapshot and still admit a duplicate.
 // The 90 days are PDM-006 §6 and consent §3, materialised into the row here and
 // not read from the environment at sweep time: the deadline a participant was
 // promised is a property of the file, and three statements (ListReadableRun-
@@ -542,10 +668,18 @@ func (q *Queries) InsertRunStatusTransition(ctx context.Context, arg InsertRunSt
 }
 
 const listActiveRuns = `-- name: ListActiveRuns :many
-SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class FROM runs
-WHERE status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-ORDER BY created_at
-LIMIT $1
+WITH candidates AS (
+    SELECT id FROM runs
+    WHERE status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+	  -- One supervisor interval: long enough to avoid a same-round duplicate,
+	  -- short enough that a lost job cannot hide an overdue run for 15 minutes.
+	  AND (supervision_checked_at IS NULL OR supervision_checked_at < now() - interval '30 seconds')
+    ORDER BY supervision_checked_at NULLS FIRST, supervision_checked_at, created_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE runs r SET supervision_checked_at = now()
+FROM candidates c WHERE r.id = c.id
+RETURNING r.id, r.workspace_id, r.skill_version_id, r.test_case_snapshot_id, r.status, r.status_reason, r.provider, r.runtime_snapshot, r.policy_snapshot, r.cleanup_status, r.cleanup_at, r.created_at, r.started_at, r.finished_at, r.cancel_requested_at, r.failure_class, r.supervision_checked_at, r.cleanup_attempted_at, r.artifacts_truncated
 `
 
 // RUN-008: every run that is still supposed to be moving, oldest first. Read by the
@@ -581,6 +715,9 @@ func (q *Queries) ListActiveRuns(ctx context.Context, limit int32) ([]Run, error
 			&i.FinishedAt,
 			&i.CancelRequestedAt,
 			&i.FailureClass,
+			&i.SupervisionCheckedAt,
+			&i.CleanupAttemptedAt,
+			&i.ArtifactsTruncated,
 		); err != nil {
 			return nil, err
 		}
@@ -654,7 +791,7 @@ func (q *Queries) ListOutboxEventsByAggregate(ctx context.Context, arg ListOutbo
 }
 
 const listReadableRunArtifacts = `-- name: ListReadableRunArtifacts :many
-SELECT id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at, purged_at FROM artifacts
+SELECT id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at, purged_at, reconcile_checked_at, retention_attempted_at FROM artifacts
 WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output'
   AND deleted_at IS NULL AND purged_at IS NULL AND expires_at > now()
 ORDER BY file_name
@@ -694,6 +831,8 @@ func (q *Queries) ListReadableRunArtifacts(ctx context.Context, arg ListReadable
 			&i.CreatedAt,
 			&i.DeletedAt,
 			&i.PurgedAt,
+			&i.ReconcileCheckedAt,
+			&i.RetentionAttemptedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -705,8 +844,47 @@ func (q *Queries) ListReadableRunArtifacts(ctx context.Context, arg ListReadable
 	return items, nil
 }
 
+const listRunArtifactUploadIntents = `-- name: ListRunArtifactUploadIntents :many
+WITH candidates AS (
+    SELECT id FROM run_artifact_upload_intents
+    WHERE not_before <= now()
+      AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+    ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE run_artifact_upload_intents i SET attempted_at = now()
+FROM candidates c WHERE i.id = c.id
+RETURNING i.id, i.workspace_id, i.object_key
+`
+
+type ListRunArtifactUploadIntentsRow struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+}
+
+func (q *Queries) ListRunArtifactUploadIntents(ctx context.Context, limit int32) ([]ListRunArtifactUploadIntentsRow, error) {
+	rows, err := q.db.Query(ctx, listRunArtifactUploadIntents, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRunArtifactUploadIntentsRow
+	for rows.Next() {
+		var i ListRunArtifactUploadIntentsRow
+		if err := rows.Scan(&i.ID, &i.WorkspaceID, &i.ObjectKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRunArtifacts = `-- name: ListRunArtifacts :many
-SELECT id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at, purged_at FROM artifacts
+SELECT id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at, purged_at, reconcile_checked_at, retention_attempted_at FROM artifacts
 WHERE run_id = $1 AND workspace_id = $2 AND kind = 'run_output' AND deleted_at IS NULL
 ORDER BY file_name
 `
@@ -742,6 +920,8 @@ func (q *Queries) ListRunArtifacts(ctx context.Context, arg ListRunArtifactsPara
 			&i.CreatedAt,
 			&i.DeletedAt,
 			&i.PurgedAt,
+			&i.ReconcileCheckedAt,
+			&i.RetentionAttemptedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -754,7 +934,7 @@ func (q *Queries) ListRunArtifacts(ctx context.Context, arg ListRunArtifactsPara
 }
 
 const listRunAttempts = `-- name: ListRunAttempts :many
-SELECT id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at FROM run_attempts
+SELECT id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state FROM run_attempts
 WHERE run_id = $1 AND workspace_id = $2
 ORDER BY attempt_number
 `
@@ -785,6 +965,8 @@ func (q *Queries) ListRunAttempts(ctx context.Context, arg ListRunAttemptsParams
 			&i.CreatedAt,
 			&i.StartedAt,
 			&i.FinishedAt,
+			&i.ObjectGrantsExpireAt,
+			&i.ObjectGrantsState,
 		); err != nil {
 			return nil, err
 		}
@@ -838,12 +1020,18 @@ func (q *Queries) ListRunStatusTransitions(ctx context.Context, arg ListRunStatu
 }
 
 const listRunsNeedingCleanup = `-- name: ListRunsNeedingCleanup :many
-SELECT id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class FROM runs
-WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-  AND cleanup_status <> 'cleaned'
-  AND finished_at < now() - interval '1 minute'
-ORDER BY finished_at
-LIMIT $1
+WITH candidates AS (
+    SELECT id FROM runs
+    WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+      AND cleanup_status <> 'cleaned'
+      AND finished_at < now() - interval '1 minute'
+	  AND (cleanup_attempted_at IS NULL OR cleanup_attempted_at < now() - interval '30 seconds')
+    ORDER BY cleanup_attempted_at NULLS FIRST, cleanup_attempted_at, finished_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE runs r SET cleanup_attempted_at = now()
+FROM candidates c WHERE r.id = c.id
+RETURNING r.id, r.workspace_id, r.skill_version_id, r.test_case_snapshot_id, r.status, r.status_reason, r.provider, r.runtime_snapshot, r.policy_snapshot, r.cleanup_status, r.cleanup_at, r.created_at, r.started_at, r.finished_at, r.cancel_requested_at, r.failure_class, r.supervision_checked_at, r.cleanup_attempted_at, r.artifacts_truncated
 `
 
 // RUN-007: terminal runs whose sandbox has not been confirmed released. The one minute
@@ -875,6 +1063,9 @@ func (q *Queries) ListRunsNeedingCleanup(ctx context.Context, limit int32) ([]Ru
 			&i.FinishedAt,
 			&i.CancelRequestedAt,
 			&i.FailureClass,
+			&i.SupervisionCheckedAt,
+			&i.CleanupAttemptedAt,
+			&i.ArtifactsTruncated,
 		); err != nil {
 			return nil, err
 		}
@@ -943,12 +1134,14 @@ JOIN skill_versions v ON v.id = r.skill_version_id
 JOIN skills sk ON sk.id = v.skill_id
 JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
 WHERE r.workspace_id = $1
+  AND ($2::uuid IS NULL OR s.test_case_id = $2::uuid)
 ORDER BY r.created_at DESC, r.id
-LIMIT $3 OFFSET $2
+LIMIT $4 OFFSET $3
 `
 
 type ListWorkspaceRunsParams struct {
 	WorkspaceID pgtype.UUID
+	TestCaseID  pgtype.UUID
 	PageOffset  int32
 	PageSize    int32
 }
@@ -984,7 +1177,12 @@ type ListWorkspaceRunsRow struct {
 // ponytail: LIMIT/OFFSET. Swap for a keyset cursor if a workspace ever holds
 // enough runs for the offset scan to show up.
 func (q *Queries) ListWorkspaceRuns(ctx context.Context, arg ListWorkspaceRunsParams) ([]ListWorkspaceRunsRow, error) {
-	rows, err := q.db.Query(ctx, listWorkspaceRuns, arg.WorkspaceID, arg.PageOffset, arg.PageSize)
+	rows, err := q.db.Query(ctx, listWorkspaceRuns,
+		arg.WorkspaceID,
+		arg.TestCaseID,
+		arg.PageOffset,
+		arg.PageSize,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1019,6 +1217,34 @@ func (q *Queries) ListWorkspaceRuns(ctx context.Context, arg ListWorkspaceRunsPa
 	return items, nil
 }
 
+const lockRunArtifactManifest = `-- name: LockRunArtifactManifest :exec
+SELECT pg_advisory_xact_lock(hashtextextended(
+    'run-artifact-manifest:' || $1::uuid::text, 0))
+`
+
+func (q *Queries) LockRunArtifactManifest(ctx context.Context, runID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, lockRunArtifactManifest, runID)
+	return err
+}
+
+const lockRunArtifactObjectKey = `-- name: LockRunArtifactObjectKey :exec
+SELECT pg_advisory_xact_lock(hashtextextended('artifact-object:' || $1::text, 0))
+`
+
+func (q *Queries) LockRunArtifactObjectKey(ctx context.Context, objectKey string) error {
+	_, err := q.db.Exec(ctx, lockRunArtifactObjectKey, objectKey)
+	return err
+}
+
+const lockRunArtifactObjectSession = `-- name: LockRunArtifactObjectSession :exec
+SELECT pg_advisory_lock(hashtextextended($1::text, 0))
+`
+
+func (q *Queries) LockRunArtifactObjectSession(ctx context.Context, lockKey string) error {
+	_, err := q.db.Exec(ctx, lockRunArtifactObjectSession, lockKey)
+	return err
+}
+
 const lockWorkspaceRunSlots = `-- name: LockWorkspaceRunSlots :exec
 SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
 `
@@ -1047,6 +1273,34 @@ WHERE event_id = ANY($1::uuid[]) AND published_at IS NULL
 // of the delivery that actually happened first.
 func (q *Queries) MarkOutboxEventsPublished(ctx context.Context, eventIds []pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, markOutboxEventsPublished, eventIds)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const markRunArtifactUploadIntentPurged = `-- name: MarkRunArtifactUploadIntentPurged :exec
+DELETE FROM run_artifact_upload_intents WHERE id = $1
+`
+
+func (q *Queries) MarkRunArtifactUploadIntentPurged(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markRunArtifactUploadIntentPurged, id)
+	return err
+}
+
+const markRunArtifactsTruncated = `-- name: MarkRunArtifactsTruncated :execrows
+UPDATE runs
+SET artifacts_truncated = true
+WHERE id = $1 AND workspace_id = $2
+`
+
+type MarkRunArtifactsTruncatedParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) MarkRunArtifactsTruncated(ctx context.Context, arg MarkRunArtifactsTruncatedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markRunArtifactsTruncated, arg.ID, arg.WorkspaceID)
 	if err != nil {
 		return 0, err
 	}
@@ -1117,7 +1371,7 @@ UPDATE runs
 SET cancel_requested_at = coalesce(cancel_requested_at, now())
 WHERE id = $1 AND workspace_id = $2
   AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
 `
 
 type RequestRunCancelParams struct {
@@ -1149,6 +1403,9 @@ func (q *Queries) RequestRunCancel(ctx context.Context, arg RequestRunCancelPara
 		&i.FinishedAt,
 		&i.CancelRequestedAt,
 		&i.FailureClass,
+		&i.SupervisionCheckedAt,
+		&i.CleanupAttemptedAt,
+		&i.ArtifactsTruncated,
 	)
 	return i, err
 }
@@ -1156,7 +1413,7 @@ func (q *Queries) RequestRunCancel(ctx context.Context, arg RequestRunCancelPara
 const setAttemptProviderRunID = `-- name: SetAttemptProviderRunID :one
 UPDATE run_attempts SET provider_run_id = $3, started_at = coalesce(started_at, now())
 WHERE id = $1 AND workspace_id = $2
-RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at
+RETURNING id, run_id, workspace_id, attempt_number, provider, provider_run_id, error_class, error_message, created_at, started_at, finished_at, object_grants_expire_at, object_grants_state
 `
 
 type SetAttemptProviderRunIDParams struct {
@@ -1182,8 +1439,31 @@ func (q *Queries) SetAttemptProviderRunID(ctx context.Context, arg SetAttemptPro
 		&i.CreatedAt,
 		&i.StartedAt,
 		&i.FinishedAt,
+		&i.ObjectGrantsExpireAt,
+		&i.ObjectGrantsState,
 	)
 	return i, err
+}
+
+const setRunAttemptObjectGrantsExpiry = `-- name: SetRunAttemptObjectGrantsExpiry :execrows
+UPDATE run_attempts
+SET object_grants_expire_at = $1::timestamptz,
+    object_grants_state = 'recorded'
+WHERE id = $2 AND workspace_id = $3
+`
+
+type SetRunAttemptObjectGrantsExpiryParams struct {
+	ExpiresAt   pgtype.Timestamptz
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) SetRunAttemptObjectGrantsExpiry(ctx context.Context, arg SetRunAttemptObjectGrantsExpiryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setRunAttemptObjectGrantsExpiry, arg.ExpiresAt, arg.ID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setRunCleanupStatus = `-- name: SetRunCleanupStatus :one
@@ -1193,7 +1473,7 @@ UPDATE runs SET
         WHEN $1::run_cleanup_status IN ('cleaned', 'failed') THEN now()
         ELSE cleanup_at END
 WHERE id = $2 AND workspace_id = $3
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
 `
 
 type SetRunCleanupStatusParams struct {
@@ -1226,6 +1506,9 @@ func (q *Queries) SetRunCleanupStatus(ctx context.Context, arg SetRunCleanupStat
 		&i.FinishedAt,
 		&i.CancelRequestedAt,
 		&i.FailureClass,
+		&i.SupervisionCheckedAt,
+		&i.CleanupAttemptedAt,
+		&i.ArtifactsTruncated,
 	)
 	return i, err
 }
@@ -1234,7 +1517,7 @@ const setRunProvider = `-- name: SetRunProvider :one
 UPDATE runs SET provider = $3, runtime_snapshot = $4
 WHERE id = $1 AND workspace_id = $2
   AND status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
 `
 
 type SetRunProviderParams struct {
@@ -1274,6 +1557,9 @@ func (q *Queries) SetRunProvider(ctx context.Context, arg SetRunProviderParams) 
 		&i.FinishedAt,
 		&i.CancelRequestedAt,
 		&i.FailureClass,
+		&i.SupervisionCheckedAt,
+		&i.CleanupAttemptedAt,
+		&i.ArtifactsTruncated,
 	)
 	return i, err
 }
@@ -1325,7 +1611,7 @@ UPDATE runs SET
         WHEN $1::run_status IN ('succeeded', 'failed', 'cancelled', 'timed_out') THEN now()
         ELSE finished_at END
 WHERE id = $4 AND workspace_id = $5 AND status = $6
-RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class
+RETURNING id, workspace_id, skill_version_id, test_case_snapshot_id, status, status_reason, provider, runtime_snapshot, policy_snapshot, cleanup_status, cleanup_at, created_at, started_at, finished_at, cancel_requested_at, failure_class, supervision_checked_at, cleanup_attempted_at, artifacts_truncated
 `
 
 type TransitionRunParams struct {
@@ -1374,6 +1660,20 @@ func (q *Queries) TransitionRun(ctx context.Context, arg TransitionRunParams) (R
 		&i.FinishedAt,
 		&i.CancelRequestedAt,
 		&i.FailureClass,
+		&i.SupervisionCheckedAt,
+		&i.CleanupAttemptedAt,
+		&i.ArtifactsTruncated,
 	)
 	return i, err
+}
+
+const unlockRunArtifactObjectSession = `-- name: UnlockRunArtifactObjectSession :one
+SELECT pg_advisory_unlock(hashtextextended($1::text, 0))
+`
+
+func (q *Queries) UnlockRunArtifactObjectSession(ctx context.Context, lockKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, unlockRunArtifactObjectSession, lockKey)
+	var pg_advisory_unlock bool
+	err := row.Scan(&pg_advisory_unlock)
+	return pg_advisory_unlock, err
 }

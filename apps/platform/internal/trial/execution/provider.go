@@ -306,9 +306,10 @@ type RunResult struct {
 	// stored manifest, "the run reported success and produced no files" - handoff
 	// 丙-5's concrete case - cannot be told apart from "nobody wrote the manifest
 	// down", and an evaluator cannot honestly report either.
-	Artifacts []RunArtifact `json:"artifacts,omitempty"`
-	Usage     *RunUsage     `json:"usage,omitempty"`
-	Error     *RunError     `json:"error,omitempty"`
+	Artifacts          []RunArtifact `json:"artifacts,omitempty"`
+	ArtifactsTruncated bool          `json:"artifacts_truncated,omitempty"`
+	Usage              *RunUsage     `json:"usage,omitempty"`
+	Error              *RunError     `json:"error,omitempty"`
 }
 
 type ProviderRun struct {
@@ -424,9 +425,14 @@ func (p *Provider) call(ctx context.Context, method, path string, body, out any,
 
 	// Bounded read: a provider is not trusted to send a sane body (iron rule 1
 	// applies to what it says as much as to what it runs).
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	raw, err := readBoundedResponse(resp.Body, 4<<20)
 	if err != nil {
-		return resp.StatusCode, err
+		for _, code := range want {
+			if resp.StatusCode == code {
+				return resp.StatusCode, err
+			}
+		}
+		return resp.StatusCode, &providerError{Status: resp.StatusCode, Message: err.Error()}
 	}
 	for _, code := range want {
 		if resp.StatusCode == code {

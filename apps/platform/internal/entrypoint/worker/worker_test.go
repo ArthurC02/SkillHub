@@ -120,7 +120,7 @@ func TestBuildWorkersInjectsEveryDependencyThisProcessOwns(t *testing.T) {
 	// and rows keep claiming objects that are gone.
 	if set.Objects.ListExpiredArtifacts == nil || set.Objects.ListClaimedArtifacts == nil ||
 		set.Objects.ListClaimedDatasets == nil || set.Objects.RecordArtifactPurged == nil ||
-		set.Objects.RecordDatasetLost == nil {
+		set.Objects.RecordDatasetLost == nil || set.Objects.GuardArtifactRemoval == nil {
 		t.Error("object reconciler is missing an owner read/write function")
 	}
 

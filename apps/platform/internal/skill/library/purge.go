@@ -132,6 +132,19 @@ type Collection struct {
 	Depth     int64
 }
 
+func LockPackageObject(ctx context.Context, db gen.DBTX, key string) error {
+	return gen.New(db).LockPackageObjectSession(ctx, key)
+}
+
+func UnlockPackageObject(ctx context.Context, db gen.DBTX, key string) error {
+	_, err := gen.New(db).UnlockPackageObjectSession(ctx, key)
+	return err
+}
+
+func TrackPackageObject(ctx context.Context, db gen.DBTX, key string) error {
+	return gen.New(db).RememberPackageObject(ctx, key)
+}
+
 // CollectOrphanObjects removes the package objects whose last referencing
 // skill_versions row is gone (04 丙-73, 0039).
 //
@@ -191,17 +204,17 @@ func (s *Service) CollectOrphanObjects(ctx context.Context, store ObjectRemover,
 		return result, err
 	}
 	for _, key := range keys {
-		if err := store.Remove(ctx, key); err != nil {
+		collected, err := s.collectPackageObject(ctx, store, key)
+		if err != nil {
 			// Leave the row: the next pass tries the same key again. Dequeueing
 			// here would be recording a deletion that did not happen, and there
 			// is nothing left in the database to rediscover the key from.
 			slog.Warn("orphan package object not removed; will retry", "error", err)
 			continue
 		}
-		if err := q.DeleteObjectCollectionEntry(ctx, key); err != nil {
-			return result, err
+		if collected {
+			result.Collected++
 		}
-		result.Collected++
 	}
 
 	// Read after the pass, so the number describes what is left rather than what
@@ -209,4 +222,35 @@ func (s *Service) CollectOrphanObjects(ctx context.Context, store ObjectRemover,
 	// stopped working.
 	result.Depth, err = q.CountCollectableObjects(ctx)
 	return result, err
+}
+
+func (s *Service) collectPackageObject(ctx context.Context, store ObjectRemover, key string) (bool, error) {
+	conn, err := s.Pool.Acquire(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer conn.Release()
+	if err := LockPackageObject(ctx, conn, key); err != nil {
+		return false, err
+	}
+	defer func() {
+		unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := UnlockPackageObject(unlockCtx, conn, key); err != nil {
+			slog.Error("package object collection lock could not be released; closing connection", "error", err)
+			_ = conn.Hijack().Close(context.Background())
+		}
+	}()
+	q := gen.New(conn)
+	collectable, err := q.PackageObjectCollectable(ctx, key)
+	if err != nil {
+		return false, err
+	}
+	if !collectable {
+		return false, q.DeleteObjectCollectionEntry(ctx, key)
+	}
+	if err := store.Remove(ctx, key); err != nil {
+		return false, err
+	}
+	return true, q.DeleteObjectCollectionEntry(ctx, key)
 }

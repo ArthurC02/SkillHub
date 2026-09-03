@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -12,6 +13,24 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/localdrv"
 )
+
+func TestStartupAdoptsSandboxesBeforeTheResidentProbeCanTearThemDown(t *testing.T) {
+	var order []string
+	if err := adoptBeforeProtection(func() error {
+		order = append(order, "adopt")
+		return nil
+	}, func() { order = append(order, "protect") }); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(order, []string{"adopt", "protect"}) {
+		t.Fatalf("startup order = %v, want adopted sandboxes visible before the first probe", order)
+	}
+	want := errors.New("adoption failed")
+	protected := false
+	if err := adoptBeforeProtection(func() error { return want }, func() { protected = true }); !errors.Is(err, want) || protected {
+		t.Fatalf("failed adoption: err=%v protected=%v", err, protected)
+	}
+}
 
 // The two development settings that must never reach a gVisor node. Both are
 // checked in the same place because they fail the same way: the node still

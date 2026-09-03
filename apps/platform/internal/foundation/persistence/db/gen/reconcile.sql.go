@@ -29,6 +29,19 @@ func (q *Queries) ClearObjectSighting(ctx context.Context, arg ClearObjectSighti
 	return err
 }
 
+const countLiveDatasetsSharingObject = `-- name: CountLiveDatasetsSharingObject :one
+SELECT count(*) FROM datasets
+WHERE object_key = $1 AND deleted_at IS NULL AND purged_at IS NULL
+  AND expires_at > now()
+`
+
+func (q *Queries) CountLiveDatasetsSharingObject(ctx context.Context, objectKey string) (int64, error) {
+	row := q.db.QueryRow(ctx, countLiveDatasetsSharingObject, objectKey)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countPersistentObjectSightings = `-- name: CountPersistentObjectSightings :many
 SELECT resource_kind, count(*)::bigint AS sightings
 FROM object_reconcile_sightings
@@ -65,14 +78,20 @@ func (q *Queries) CountPersistentObjectSightings(ctx context.Context, rounds int
 }
 
 const listArtifactsClaimingObject = `-- name: ListArtifactsClaimingObject :many
-SELECT id, workspace_id, object_key FROM artifacts
-WHERE kind = 'download_package'
-  AND scan_status = 'available'
-  AND deleted_at IS NULL
-  AND purged_at IS NULL
-  AND expires_at > now()
-ORDER BY created_at
-LIMIT $1
+WITH candidates AS (
+    SELECT id FROM artifacts
+    WHERE kind = 'download_package'
+      AND scan_status = 'available'
+      AND deleted_at IS NULL
+      AND purged_at IS NULL
+	  AND expires_at > now()
+	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - interval '15 minutes')
+	ORDER BY reconcile_checked_at NULLS FIRST, reconcile_checked_at, created_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE artifacts a SET reconcile_checked_at = now()
+FROM candidates c WHERE a.id = c.id
+RETURNING a.id, a.workspace_id, a.object_key
 `
 
 type ListArtifactsClaimingObjectRow struct {
@@ -106,13 +125,18 @@ func (q *Queries) ListArtifactsClaimingObject(ctx context.Context, limit int32) 
 
 const listArtifactsPastRetention = `-- name: ListArtifactsPastRetention :many
 
-SELECT id, workspace_id, object_key FROM artifacts
-WHERE kind = 'download_package'
-  AND expires_at <= now()
-  AND purged_at IS NULL
-  AND deleted_at IS NULL
-ORDER BY expires_at
-LIMIT $1
+WITH candidates AS (
+    SELECT id FROM artifacts
+    WHERE kind = 'download_package'
+      AND purged_at IS NULL
+	  AND (deleted_at IS NOT NULL OR expires_at <= now())
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+    ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE artifacts a SET retention_attempted_at = now()
+FROM candidates c WHERE a.id = c.id
+RETURNING a.id, a.workspace_id, a.object_key
 `
 
 type ListArtifactsPastRetentionRow struct {
@@ -161,12 +185,61 @@ func (q *Queries) ListArtifactsPastRetention(ctx context.Context, limit int32) (
 	return items, nil
 }
 
+const listDatasetCleanupIntents = `-- name: ListDatasetCleanupIntents :many
+WITH candidates AS (
+    SELECT id FROM dataset_object_cleanup_intents
+    WHERE not_before <= now()
+	  AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+    ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE dataset_object_cleanup_intents i SET attempted_at = now()
+FROM candidates c WHERE i.id = c.id
+RETURNING i.id, i.workspace_id, i.object_key
+`
+
+type ListDatasetCleanupIntentsRow struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+}
+
+// Failed or interrupted uploads have no dataset row to carry cleanup state, so
+// their pre-written intents form a small independent worklist. The one-hour
+// floor keeps a slow but live upload from racing its own cleanup.
+func (q *Queries) ListDatasetCleanupIntents(ctx context.Context, limit int32) ([]ListDatasetCleanupIntentsRow, error) {
+	rows, err := q.db.Query(ctx, listDatasetCleanupIntents, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDatasetCleanupIntentsRow
+	for rows.Next() {
+		var i ListDatasetCleanupIntentsRow
+		if err := rows.Scan(&i.ID, &i.WorkspaceID, &i.ObjectKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDatasetsClaimingObject = `-- name: ListDatasetsClaimingObject :many
-SELECT id, workspace_id, object_key FROM datasets
-WHERE deleted_at IS NULL
-  AND expires_at > now()
-ORDER BY created_at
-LIMIT $1
+WITH candidates AS (
+    SELECT id FROM datasets
+    WHERE deleted_at IS NULL
+      AND purged_at IS NULL
+      AND expires_at > now()
+	  AND (reconcile_checked_at IS NULL OR reconcile_checked_at < now() - interval '15 minutes')
+    ORDER BY reconcile_checked_at NULLS FIRST, reconcile_checked_at, created_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE datasets d SET reconcile_checked_at = now()
+FROM candidates c WHERE d.id = c.id
+RETURNING d.id, d.workspace_id, d.object_key
 `
 
 type ListDatasetsClaimingObjectRow struct {
@@ -198,11 +271,17 @@ func (q *Queries) ListDatasetsClaimingObject(ctx context.Context, limit int32) (
 }
 
 const listDatasetsPastRetention = `-- name: ListDatasetsPastRetention :many
-SELECT id, workspace_id, object_key FROM datasets
-WHERE deleted_at IS NULL
-  AND expires_at <= now()
-ORDER BY expires_at
-LIMIT $1
+WITH candidates AS (
+    SELECT id FROM datasets
+    WHERE purged_at IS NULL
+      AND (deleted_at IS NOT NULL OR expires_at <= now())
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+    ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE datasets d SET retention_attempted_at = now()
+FROM candidates c WHERE d.id = c.id
+RETURNING d.id, d.workspace_id, d.object_key
 `
 
 type ListDatasetsPastRetentionRow struct {
@@ -226,12 +305,9 @@ type ListDatasetsPastRetentionRow struct {
 // they ever uploaded, forever, against a number the screen had already quoted
 // them.
 //
-// Deliberately the mirror of ListDatasetsClaimingObject above: that one is the
-// rows still inside the window, this one is the rows past it, and the two
-// predicates are exact complements on `expires_at` so a row cannot be in both
-// or in neither. `deleted_at IS NULL` on both, because a row the user already
-// deleted has had its object removed by a path with guards this sweep does not
-// carry.
+// Live rows enter when their retention window expires. Soft-deleted rows enter
+// until purged_at confirms their object was removed; this is the durable retry
+// path for an object-store failure after DeleteDataset commits.
 func (q *Queries) ListDatasetsPastRetention(ctx context.Context, limit int32) ([]ListDatasetsPastRetentionRow, error) {
 	rows, err := q.db.Query(ctx, listDatasetsPastRetention, limit)
 	if err != nil {
@@ -252,14 +328,58 @@ func (q *Queries) ListDatasetsPastRetention(ctx context.Context, limit int32) ([
 	return items, nil
 }
 
+const listDownloadCleanupIntents = `-- name: ListDownloadCleanupIntents :many
+WITH candidates AS (
+    SELECT id FROM download_object_cleanup_intents
+    WHERE not_before <= now()
+      AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+    ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE download_object_cleanup_intents i SET attempted_at = now()
+FROM candidates c WHERE i.id = c.id
+RETURNING i.id, i.workspace_id, i.object_key
+`
+
+type ListDownloadCleanupIntentsRow struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+}
+
+func (q *Queries) ListDownloadCleanupIntents(ctx context.Context, limit int32) ([]ListDownloadCleanupIntentsRow, error) {
+	rows, err := q.db.Query(ctx, listDownloadCleanupIntents, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDownloadCleanupIntentsRow
+	for rows.Next() {
+		var i ListDownloadCleanupIntentsRow
+		if err := rows.Scan(&i.ID, &i.WorkspaceID, &i.ObjectKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRunOutputsPastRetention = `-- name: ListRunOutputsPastRetention :many
-SELECT id, workspace_id, object_key FROM artifacts
-WHERE kind = 'run_output'
-  AND expires_at <= now()
-  AND purged_at IS NULL
-  AND deleted_at IS NULL
-ORDER BY expires_at
-LIMIT $1
+WITH candidates AS (
+    SELECT id FROM artifacts
+    WHERE kind = 'run_output'
+      AND purged_at IS NULL
+	  AND (deleted_at IS NOT NULL OR expires_at <= now())
+	  AND (retention_attempted_at IS NULL OR retention_attempted_at < now() - interval '15 minutes')
+    ORDER BY retention_attempted_at NULLS FIRST, retention_attempted_at, expires_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE artifacts a SET retention_attempted_at = now()
+FROM candidates c WHERE a.id = c.id
+RETURNING a.id, a.workspace_id, a.object_key
 `
 
 type ListRunOutputsPastRetentionRow struct {
@@ -307,9 +427,22 @@ func (q *Queries) ListRunOutputsPastRetention(ctx context.Context, limit int32) 
 	return items, nil
 }
 
+const lockDatasetObjectKey = `-- name: LockDatasetObjectKey :exec
+SELECT pg_advisory_xact_lock(hashtextextended('dataset-object:' || $1::text, 0))
+`
+
+func (q *Queries) LockDatasetObjectKey(ctx context.Context, objectKey string) error {
+	_, err := q.db.Exec(ctx, lockDatasetObjectKey, objectKey)
+	return err
+}
+
 const markArtifactPurged = `-- name: MarkArtifactPurged :exec
+WITH cleared_sighting AS (
+    DELETE FROM object_reconcile_sightings
+    WHERE resource_kind = 'artifact' AND resource_id = $1
+)
 UPDATE artifacts SET purged_at = now()
-WHERE id = $1 AND purged_at IS NULL
+WHERE id = $1 AND kind = 'download_package' AND purged_at IS NULL
 `
 
 // The bytes are gone and the row stays readable. Idempotent by predicate, which
@@ -319,37 +452,59 @@ func (q *Queries) MarkArtifactPurged(ctx context.Context, id pgtype.UUID) error 
 	return err
 }
 
-const markDatasetObjectLost = `-- name: MarkDatasetObjectLost :exec
-UPDATE datasets SET deleted_at = now()
-WHERE id = $1 AND deleted_at IS NULL
+const markDatasetCleanupIntentPurged = `-- name: MarkDatasetCleanupIntentPurged :exec
+DELETE FROM dataset_object_cleanup_intents WHERE id = $1
 `
 
-// The row stops claiming a file that is not there. deleted_at and not a new
-// column: every read path that cares — ListDatasets, the run input grants,
-// RunInputsStillAvailable — already filters on it, so correcting the optimistic
-// upper bound of 丙-9 needs no change on any read path at all.
+func (q *Queries) MarkDatasetCleanupIntentPurged(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markDatasetCleanupIntentPurged, id)
+	return err
+}
+
+const markDatasetObjectLost = `-- name: MarkDatasetObjectLost :exec
+UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
+WHERE id = $1 AND purged_at IS NULL
+`
+
+// The row stops claiming a file that is not there. Mark it purged too: there are
+// no bytes for the retention sweep to remove.
 func (q *Queries) MarkDatasetObjectLost(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, markDatasetObjectLost, id)
 	return err
 }
 
 const markDatasetPurged = `-- name: MarkDatasetPurged :exec
-UPDATE datasets SET deleted_at = now()
-WHERE id = $1 AND deleted_at IS NULL
+WITH cleared_sighting AS (
+    DELETE FROM object_reconcile_sightings
+    WHERE resource_kind = 'dataset' AND resource_id = $1
+)
+UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
+WHERE id = $1 AND purged_at IS NULL
 `
 
-// Body-identical to MarkDatasetObjectLost below, and a separate statement on
-// purpose: that one means "the object was not there", this one means "we removed
-// it because it expired". Same column because every read path already filters on
-// deleted_at, and one shared statement would leave the two causes indistinguish-
-// able in a file whose whole job is telling them apart. Idempotent by predicate,
-// which is what lets the sweep be re-run safely (iron rule 9).
+// deleted_at hides the row; purged_at records that object cleanup finished.
+// Separate from MarkDatasetObjectLost because the two operations describe
+// different evidence even though both end with no bytes. Idempotent by
+// predicate, which is what lets the sweep be re-run safely (iron rule 9).
 func (q *Queries) MarkDatasetPurged(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, markDatasetPurged, id)
 	return err
 }
 
+const markDownloadCleanupIntentPurged = `-- name: MarkDownloadCleanupIntentPurged :exec
+DELETE FROM download_object_cleanup_intents WHERE id = $1
+`
+
+func (q *Queries) MarkDownloadCleanupIntentPurged(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markDownloadCleanupIntentPurged, id)
+	return err
+}
+
 const markRunOutputPurged = `-- name: MarkRunOutputPurged :exec
+WITH cleared_sighting AS (
+    DELETE FROM object_reconcile_sightings
+    WHERE resource_kind = 'artifact' AND resource_id = $1
+)
 UPDATE artifacts SET purged_at = now()
 WHERE id = $1 AND kind = 'run_output' AND purged_at IS NULL
 `

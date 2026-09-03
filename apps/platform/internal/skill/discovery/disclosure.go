@@ -59,6 +59,11 @@ var disclosureCatalogue = []disclosure{
 		Note:  "套件內有指向其他路徑的連結項目,不是一般檔案。它指到哪裡由解壓的環境決定,平台沒有跟著它讀。",
 	},
 	{
+		Code:  skillpkg.CodeUnsupportedEntryType,
+		Label: "不支援的封裝項目型別",
+		Note:  "套件含有裝置、FIFO、socket 或其他非普通檔案；執行環境無法安全還原這類項目，因此匯入會被阻擋。",
+	},
+	{
 		Code:  skillpkg.CodeExternalURL,
 		Label: "含外部網址",
 		Note:  "套件內容指向外部位址。平台不會去取用它們,但 Skill 執行時可能會。",

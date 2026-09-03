@@ -38,6 +38,17 @@ func TestSharedNumberAcceptsCopiesThatAgree(t *testing.T) {
 	}
 }
 
+func TestSharedNumberScansInfrastructureSources(t *testing.T) {
+	t.Parallel()
+	root := writeSites(t, map[string]string{
+		"apps/platform/archive.go": "const maxEntries = 2000 // one-number: maxSkillPackageEntries\n",
+		"infra/runtime/run.mjs":    "const MAX_ENTRIES = 2000; // one-number: maxSkillPackageEntries\n",
+	})
+	if problems := sharedNumberProblemsFor(root, []string{"maxSkillPackageEntries"}); len(problems) != 0 {
+		t.Fatalf("an infrastructure copy was not compared: %v", problems)
+	}
+}
+
 func TestSharedNumberRejectsTheWaysACopyStopsBeingCompared(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

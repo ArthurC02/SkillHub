@@ -226,7 +226,41 @@ func (s *Service) Download(
 // 02:SEC-006 asks for is that deleted content stops appearing in ordinary access
 // surfaces, and deleted_at is exactly that.
 func (s *Service) DeleteDownload(ctx context.Context, ws identity.Workspace, id pgtype.UUID) error {
-	tx, err := s.Pool.Begin(ctx)
+	lookup, err := gen.New(s.Pool).GetDownloadArtifactForDelete(ctx, gen.GetDownloadArtifactForDeleteParams{
+		ID: id, WorkspaceID: ws.ID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	conn, err := s.Pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	locked := false
+	defer func() {
+		if !locked {
+			conn.Release()
+			return
+		}
+		unlockCtx, cancel := context.WithTimeout(context.Background(), objectCleanupTimeout)
+		defer cancel()
+		if _, err := gen.New(conn).UnlockDownloadObjectKeySession(unlockCtx, downloadObjectLockKey(lookup.ObjectKey)); err != nil {
+			slog.Error("download object lock could not be released; closing connection", "error", err)
+			_ = conn.Hijack().Close(context.Background())
+			return
+		}
+		conn.Release()
+	}()
+	if err := gen.New(conn).LockDownloadObjectKeySession(ctx, downloadObjectLockKey(lookup.ObjectKey)); err != nil {
+		return err
+	}
+	locked = true
+
+	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -256,25 +290,20 @@ func (s *Service) DeleteDownload(ctx context.Context, ws identity.Workspace, id 
 	if row.PurgedAt.Valid || s.Store == nil {
 		return nil // the bytes are already gone, or there is no store to ask
 	}
-	// After the commit, so the count cannot include the row just deleted and a
-	// rollback can never leave a live row pointing at removed bytes.
-	//
-	// Object keys are content addressed and a shared object is what governance.sql
-	// spares package objects for. A download package's manifest carries its own
-	// version ids so a collision is close to impossible — but this delete is not
-	// recoverable, and "close to impossible" is not the standard for that.
-	shared, err := gen.New(s.Pool).CountArtifactsSharingObject(ctx, row.ObjectKey)
-	if err != nil || shared > 0 {
-		if err != nil {
-			slog.Warn("could not check whether a download object is shared; leaving the bytes",
-				"object_key", row.ObjectKey, "error", err)
-		}
-		return nil
+	// The session lock spans both the committed soft delete and the store action.
+	// A concurrent persist for the same content cannot reuse the row and report
+	// success just before these bytes are removed.
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), objectCleanupTimeout)
+	defer cancel()
+	live, err := gen.New(conn).CountArtifactsSharingObject(cleanupCtx, row.ObjectKey)
+	if err == nil && live == 0 {
+		err = s.Store.Remove(cleanupCtx, row.ObjectKey)
 	}
-	// Best effort, as the dataset delete already does: the row is gone either
-	// way, Remove is idempotent, and the retention sweep reaches the same key.
-	if err := s.Store.Remove(ctx, row.ObjectKey); err != nil {
-		slog.Warn("download object not removed; the retention sweep will retry",
+	if err == nil {
+		err = gen.New(conn).MarkArtifactPurged(cleanupCtx, row.ID)
+	}
+	if err != nil {
+		slog.Warn("download object not removed; cleanup will retry",
 			"object_key", row.ObjectKey, "error", err)
 	}
 	return nil

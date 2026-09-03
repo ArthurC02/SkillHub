@@ -203,17 +203,18 @@ type ProviderRunList struct {
 }
 
 type RunResult struct {
-	RunID         string         `json:"run_id"`
-	RunAttemptID  string         `json:"run_attempt_id"`
-	ProviderRunID string         `json:"provider_run_id,omitempty"`
-	Status        ResultStatus   `json:"status"`
-	StartedAt     time.Time      `json:"started_at,omitzero"`
-	FinishedAt    time.Time      `json:"finished_at,omitzero"`
-	AgentOutput   string         `json:"agent_output,omitempty"`
-	Artifacts     []Artifact     `json:"artifacts,omitempty"`
-	Usage         *RunUsage      `json:"usage,omitempty"`
-	Error         *RunError      `json:"error,omitempty"`
-	Diagnostics   map[string]any `json:"provider_diagnostics,omitempty"`
+	RunID              string         `json:"run_id"`
+	RunAttemptID       string         `json:"run_attempt_id"`
+	ProviderRunID      string         `json:"provider_run_id,omitempty"`
+	Status             ResultStatus   `json:"status"`
+	StartedAt          time.Time      `json:"started_at,omitzero"`
+	FinishedAt         time.Time      `json:"finished_at,omitzero"`
+	AgentOutput        string         `json:"agent_output,omitempty"`
+	Artifacts          []Artifact     `json:"artifacts,omitempty"`
+	ArtifactsTruncated bool           `json:"artifacts_truncated,omitempty"`
+	Usage              *RunUsage      `json:"usage,omitempty"`
+	Error              *RunError      `json:"error,omitempty"`
+	Diagnostics        map[string]any `json:"provider_diagnostics,omitempty"`
 }
 
 type Artifact struct {

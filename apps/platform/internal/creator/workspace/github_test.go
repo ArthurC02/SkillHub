@@ -2,12 +2,36 @@ package identity
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+type eofTrackingBody struct {
+	reader *strings.Reader
+	eof    bool
+	closed bool
+}
+
+func (b *eofTrackingBody) Read(p []byte) (int, error) {
+	n, err := b.reader.Read(p)
+	if err == io.EOF {
+		b.eof = true
+	}
+	return n, err
+}
+
+func (b *eofTrackingBody) Close() error {
+	b.closed = true
+	return nil
+}
 
 func stubGitHub(t *testing.T, profileEmail string) *GitHubOAuth {
 	t.Helper()
@@ -80,6 +104,62 @@ func TestFetchUserEmailFallbackAndNameDefault(t *testing.T) {
 	}
 	if u.ID != 42 {
 		t.Fatalf("want id 42, got %d", u.ID)
+	}
+}
+
+func TestGitHubJSONRejectsOversizedAndTrailingResponses(t *testing.T) {
+	for _, body := range []string{
+		`{}` + strings.Repeat(" ", maxGitHubResponseBytes-1),
+		`{} {}`,
+	} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(body))
+		}))
+		req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out map[string]any
+		err = (&GitHubOAuth{Client: srv.Client()}).doJSON(req, &out)
+		srv.Close()
+		if err == nil {
+			t.Fatal("GitHub client accepted a response outside its bounded JSON contract")
+		}
+	}
+}
+
+func TestGitHubJSONAcceptsAValidResponseAtTheExactByteLimit(t *testing.T) {
+	prefix, suffix := `{"padding":"`, `"}`
+	body := prefix + strings.Repeat("x", maxGitHubResponseBytes-len(prefix)-len(suffix)) + suffix
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]any
+	if err := (&GitHubOAuth{Client: srv.Client()}).doJSON(req, &out); err != nil {
+		t.Fatalf("exactly %d valid bytes were rejected: %v", maxGitHubResponseBytes, err)
+	}
+}
+
+func TestGitHubJSONDrainsAndClosesOrdinaryErrorResponses(t *testing.T) {
+	body := &eofTrackingBody{reader: strings.NewReader(strings.Repeat("x", 4096))}
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusBadGateway, Body: body}, nil
+	})}
+	req, err := http.NewRequest(http.MethodGet, "https://api.github.test/user", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]any
+	if err := (&GitHubOAuth{Client: client}).doJSON(req, &out); err == nil {
+		t.Fatal("error response was accepted")
+	}
+	if !body.eof || !body.closed {
+		t.Fatalf("error body was not reusable: eof=%v closed=%v", body.eof, body.closed)
 	}
 }
 

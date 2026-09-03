@@ -521,7 +521,7 @@ func TestSupervisorRecoversARunThatHasNoJob(t *testing.T) {
 	waitForStatus(t, f.client, runID, string(gen.RunStatusSucceeded))
 }
 
-// RUN-008 safe termination: a run past dispatch with no attempt to resume cannot
+// RUN-008 safe termination: a run past dispatch with no resumable attempt cannot
 // be rewound — the state machine has no backward edge — so it is failed honestly
 // rather than silently re-run as if it were the original attempt.
 func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
@@ -545,9 +545,16 @@ func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	abandoned, err := gen.New(pool).CreateRunAttempt(ctx, gen.CreateRunAttemptParams{
+		ID: runID, WorkspaceID: ws, Provider: "sandbox",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// A restart lands here: the run is past dispatch and no attempt was ever
-	// recorded, so there is nothing to re-attach to.
+	// A restart lands here after attempt allocation but before request assembly.
+	// The handle-less attempt cannot be re-attached, and its fail-closed infinity
+	// grant sentinel must be closed when the run is terminalised.
 	if err := svc.Drive(ctx, ws, runID); err != nil {
 		t.Fatal(err)
 	}
@@ -561,6 +568,60 @@ func TestARunWithNoAttemptToResumeIsTerminatedSafely(t *testing.T) {
 	}
 	if !strings.Contains(view.StatusReason, "resume") {
 		t.Errorf("reason = %q, want it to say the attempt could not be resumed", view.StatusReason)
+	}
+	var finite bool
+	if err := pool.QueryRow(ctx, `SELECT object_grants_expire_at <> 'infinity'::timestamptz
+		FROM run_attempts WHERE id = $1`, abandoned.ID).Scan(&finite); err != nil {
+		t.Fatal(err)
+	}
+	if !finite {
+		t.Fatal("abandoned pre-dispatch attempt kept an infinite account-purge fence")
+	}
+}
+
+func TestLegacyAttemptGrantStateRemainsFailClosed(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-legacy-grants")
+	ctx := context.Background()
+	created := f.start(t)
+	svc := &run.Service{Pool: pool}
+	ws, runID := mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)
+	for _, step := range []struct{ from, to gen.RunStatus }{
+		{gen.RunStatusQueued, gen.RunStatusProvisioning},
+		{gen.RunStatusProvisioning, gen.RunStatusPreparing},
+	} {
+		if _, err := svc.Transition(ctx, run.TransitionParams{
+			WorkspaceID: ws, RunID: runID, From: step.from, To: step.to, Reason: "by hand",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	attempt, err := gen.New(pool).CreateRunAttempt(ctx, gen.CreateRunAttemptParams{
+		ID: runID, WorkspaceID: ws, Provider: "sandbox",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Simulate an attempt made by a pre-0050 worker. Infinity alone cannot prove
+	// whether that worker handed a URL to its provider.
+	if _, err := pool.Exec(ctx, `UPDATE run_attempts
+		SET object_grants_state = 'legacy_unknown', object_grants_expire_at = 'infinity'
+		WHERE id = $1`, attempt.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Drive(ctx, ws, runID); err != nil {
+		t.Fatal(err)
+	}
+	var state string
+	var stillInfinite bool
+	if err := pool.QueryRow(ctx, `SELECT object_grants_state,
+		object_grants_expire_at = 'infinity'::timestamptz
+		FROM run_attempts WHERE id = $1`, attempt.ID).Scan(&state, &stillInfinite); err != nil {
+		t.Fatal(err)
+	}
+	if state != "legacy_unknown" || !stillInfinite {
+		t.Fatalf("legacy grant marker became state=%q infinity=%v; it must remain fail-closed", state, stillInfinite)
 	}
 }
 
@@ -1140,7 +1201,7 @@ func (c *client) runPage(t *testing.T, query string) []runListView {
 func TestRunHistoryRefusesOutOfSchemaPaging(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
-	f := newFixture(t, a, pool, "alice-run-paging")
+	f := newFixture(t, a, pool, uniqueWorklistLabel("alice-run-paging"))
 	// Two runs, so a limit and an offset each have something to leave out. A
 	// handler that parsed the parameter and then ignored it passes a one-run test.
 	// Two is also the workspace ceiling (MaxConcurrentRunsPerWorkspace).

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	neturl "net/url"
@@ -27,6 +28,43 @@ type recordingSink struct {
 	mu       sync.Mutex
 	batches  [][]json.RawMessage
 	failNext int
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+type trackingBody struct {
+	data []byte
+	off  int
+	eof  bool
+}
+
+func (b *trackingBody) Read(p []byte) (int, error) {
+	if b.off == len(b.data) {
+		b.eof = true
+		return 0, io.EOF
+	}
+	n := min(2, len(b.data)-b.off)
+	copy(p, b.data[b.off:b.off+n])
+	b.off += n
+	return n, nil
+}
+
+func (*trackingBody) Close() error { return nil }
+
+func TestHTTPTraceSinkDrainsTheResponseBody(t *testing.T) {
+	body := &trackingBody{data: []byte("response body")}
+	sink := &sandbox.HTTPTraceSink{Client: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusNoContent, Status: "204 No Content", Body: body}, nil
+	})}}
+
+	if err := sink.Push(context.Background(), "http://platform/internal/trace/token", nil); err != nil {
+		t.Fatal(err)
+	}
+	if !body.eof {
+		t.Fatal("response body was not drained to EOF, so the transport cannot reuse the connection")
+	}
 }
 
 func (s *recordingSink) Push(_ context.Context, _ string, events []json.RawMessage) error {
@@ -109,6 +147,25 @@ func TestFailedPushIsRetriedRatherThanSkipped(t *testing.T) {
 		got := sink.received()
 		return len(got) == 1 && got[0] == event(1)
 	})
+}
+
+func TestFailedTraceReadIsRetriedBeforeTheWorkloadIsReleased(t *testing.T) {
+	sink := &recordingSink{}
+	drv, h := newTracingServer(t, sink)
+
+	_, run := do(t, h, "POST", "/runs", tracedRequest(), testToken)
+	drv.writeTrace(run.ProviderRunID, event(1))
+	drv.mu.Lock()
+	drv.readTraceFailures = 1
+	drv.done[run.ProviderRunID] = true
+	drv.mu.Unlock()
+
+	waitFor(t, func() bool {
+		drv.mu.Lock()
+		defer drv.mu.Unlock()
+		return len(sink.received()) == 1 && drv.released[run.ProviderRunID] == 1
+	})
+	drv.exit(run.ProviderRunID, sandbox.Outcome{ExitCode: 0})
 }
 
 // A half-written last line is normal: the workload appends while the collector

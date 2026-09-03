@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 
@@ -68,6 +69,10 @@ func (s *Server) createRun(w http.ResponseWriter, r *http.Request) {
 	var req RunRequest
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBytes))
 	if err := dec.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "body must be a RunRequest object")
+		return
+	}
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		writeError(w, http.StatusBadRequest, "body must be a RunRequest object")
 		return
 	}

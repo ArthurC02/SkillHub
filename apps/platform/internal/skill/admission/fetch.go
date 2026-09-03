@@ -321,6 +321,7 @@ func (f *URLFetcher) download(ctx context.Context, rawURL string) ([]byte, error
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
 		return nil, fmt.Errorf("%w: source returned status %d", ErrFetch, resp.StatusCode)
 	}
 

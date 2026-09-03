@@ -12,20 +12,70 @@ package apiserver_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
+
+type blockingRemoveStore struct {
+	packageStore
+	entered chan struct{}
+	release chan struct{}
+	once    sync.Once
+	fail    int
+}
+
+type intentObservingStore struct {
+	packageStore
+	pool      *pgxpool.Pool
+	sawIntent bool
+	key       string
+}
+
+func (s *intentObservingStore) Put(ctx context.Context, key string, _ []byte) error {
+	s.key = key
+	var count int
+	if err := s.pool.QueryRow(ctx,
+		`SELECT count(*) FROM download_object_cleanup_intents WHERE object_key = $1`, key).Scan(&count); err != nil {
+		return err
+	}
+	s.sawIntent = count == 1
+	return errors.New("simulated object write failure")
+}
+
+func (*intentObservingStore) Remove(context.Context, string) error {
+	return errors.New("simulated compensation failure")
+}
+
+func (s *blockingRemoveStore) Remove(ctx context.Context, key string) error {
+	if s.fail > 0 {
+		s.fail--
+		return errors.New("temporary object-store failure")
+	}
+	if s.entered != nil {
+		s.once.Do(func() { close(s.entered) })
+		select {
+		case <-s.release:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return s.packageStore.Remove(ctx, key)
+}
 
 // newSweep builds the reconciler the way cmd/worker does: the two row
 // corrections belong to packaging and testlab and reach the generic scanner by
@@ -50,6 +100,7 @@ func newSweep(pool *pgxpool.Pool, store objreconcile.ObjectStore) *objreconcile.
 	return &objreconcile.Service{
 		Pool: pool, Store: store,
 		ListExpiredArtifacts: packagingCandidates(packagingSvc.ExpiredReconcileCandidates),
+		ListDownloadIntents:  packagingCandidates(packagingSvc.DownloadCleanupIntentCandidates),
 		ListClaimedArtifacts: packagingCandidates(packagingSvc.ClaimedReconcileCandidates),
 		ListClaimedDatasets: func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
 			rows, err := testlabSvc.ClaimedReconcileCandidates(ctx, limit)
@@ -62,8 +113,10 @@ func newSweep(pool *pgxpool.Pool, store objreconcile.ObjectStore) *objreconcile.
 			}
 			return out, nil
 		},
-		RecordArtifactPurged: packagingSvc.MarkArtifactPurged,
-		RecordDatasetLost:    testlabSvc.MarkDatasetObjectLost,
+		RecordArtifactPurged:       packagingSvc.MarkArtifactPurged,
+		RecordDownloadIntentPurged: packagingSvc.MarkDownloadCleanupIntentPurged,
+		RecordDatasetLost:          testlabSvc.MarkDatasetObjectLost,
+		GuardArtifactRemoval:       packagingSvc.GuardArtifactRemoval,
 	}
 }
 
@@ -73,6 +126,38 @@ func newSweep(pool *pgxpool.Pool, store objreconcile.ObjectStore) *objreconcile.
 func (s packageStore) Exists(_ context.Context, key string) (bool, error) {
 	_, ok := s[key]
 	return ok, nil
+}
+
+func TestPackagingPurgeMarkerCannotTouchRunOutput(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "packaging-marker-kind")
+	skillID, versionID := packagedSkill(t, a, pool, c, "marker-kind")
+	runID := seedRunForVersion(t, pool, c.workspaceID, skillID, versionID)
+
+	var artifactID string
+	err := pool.QueryRow(context.Background(), `
+		INSERT INTO artifacts
+			(workspace_id, run_id, kind, file_name, content_type, size_bytes,
+			 content_hash, object_key, scan_status, expires_at)
+		VALUES ($1, $2, 'run_output', 'result.txt', 'text/plain', 1,
+			'hash', 'runs/kind-guard/result.txt', 'available', now() - interval '1 day')
+		RETURNING id`, c.workspaceID, runID).Scan(&artifactID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := gen.New(pool).MarkArtifactPurged(context.Background(), mustUUID(t, artifactID)); err != nil {
+		t.Fatal(err)
+	}
+	var purged bool
+	if err := pool.QueryRow(context.Background(),
+		"SELECT purged_at IS NOT NULL FROM artifacts WHERE id = $1", artifactID).Scan(&purged); err != nil {
+		t.Fatal(err)
+	}
+	if purged {
+		t.Fatal("packaging purge marker modified a run-owned artifact")
+	}
 }
 
 type downloadView struct {
@@ -110,6 +195,40 @@ func buildDownload(t *testing.T, a *api, pool *pgxpool.Pool, c *client, name str
 		t.Fatalf("packaging produced no artifact id: %v", body)
 	}
 	return out
+}
+
+func TestPackagingPersistsCleanupIntentBeforeObjectIO(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "download-intent-before-put")
+	skillID, versionID := packagedSkill(t, a, pool, c, "intent-before-put")
+	store := &intentObservingStore{packageStore: a.packages, pool: pool}
+	a.packaging.Store = store
+	code, _ := postJSON(t, c, packagingPath(skillID, versionID), `{"target":"standard"}`)
+	if code < 500 {
+		t.Fatalf("failed object write returned status %d, want server error", code)
+	}
+	if !store.sawIntent {
+		t.Fatal("object Put began before its durable cleanup intent was visible")
+	}
+	if got := countRows(t, pool,
+		`SELECT count(*) FROM download_object_cleanup_intents WHERE object_key = $1`, store.key); got != 1 {
+		t.Fatalf("cleanup intents after failed compensation = %d, want 1", got)
+	}
+}
+
+func TestPackagingDoesNotBorrowASecondDatabaseConnection(t *testing.T) {
+	shared := requireDB(t)
+	config := shared.Config()
+	config.MaxConns = 1
+	pool, err := pgxpool.NewWithConfig(t.Context(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	a := newAPI(t, pool)
+	c := a.login(t, "single-connection-packaging")
+	_ = buildDownload(t, a, pool, c, "single-connection")
 }
 
 func (c *client) fetchContent(t *testing.T, artifactID string) (*http.Response, []byte) {
@@ -357,6 +476,170 @@ func TestDownloadingServesTheBytesAndWritesBothARecordAndAnAuditEvent(t *testing
 	}
 }
 
+func TestPackagingWaitsForRetentionOfTheSameSharedObject(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, uniqueWorklistLabel("download-lock-race"))
+	art := buildDownload(t, a, pool, c, uniqueWorklistLabel("download-lock-skill"))
+	ctx := context.Background()
+	var objectKey, skillID, versionID string
+	if err := pool.QueryRow(ctx, `SELECT a.object_key, v.skill_id::text, d.skill_version_id::text
+		FROM artifacts a JOIN download_artifacts d ON d.artifact_id = a.id
+		JOIN skill_versions v ON v.id = d.skill_version_id WHERE a.id = $1`,
+		mustUUID(t, art.ArtifactID)).Scan(&objectKey, &skillID, &versionID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE artifacts SET expires_at = now() - interval '1 second'
+		WHERE id = $1`, mustUUID(t, art.ArtifactID)); err != nil {
+		t.Fatal(err)
+	}
+
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	guardDone := make(chan error, 1)
+	go func() {
+		guardDone <- (&packaging.Service{Pool: pool}).GuardArtifactRemoval(ctx, objectKey,
+			func(_ bool, _ pgx.Tx) error {
+				close(entered)
+				<-release
+				return nil
+			})
+	}()
+	select {
+	case <-entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("retention guard did not acquire the object lock")
+	}
+
+	type response struct {
+		status int
+		err    error
+	}
+	result := make(chan response, 1)
+	go func() {
+		req, err := http.NewRequest(http.MethodPost, c.base+packagingPath(skillID, versionID), strings.NewReader(`{"target":"standard"}`))
+		if err != nil {
+			result <- response{err: err}
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := c.Do(req)
+		if err != nil {
+			result <- response{err: err}
+			return
+		}
+		defer resp.Body.Close()
+		_, _ = io.Copy(io.Discard, resp.Body)
+		result <- response{status: resp.StatusCode}
+	}()
+	select {
+	case got := <-result:
+		close(release)
+		t.Fatalf("packaging crossed an in-flight retention lock: status=%d err=%v", got.status, got.err)
+	case <-time.After(250 * time.Millisecond):
+	}
+	close(release)
+	if err := <-guardDone; err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case got := <-result:
+		if got.err != nil || got.status != http.StatusCreated {
+			t.Fatalf("packaging after retention lock: status=%d err=%v", got.status, got.err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("packaging did not continue after retention released the object lock")
+	}
+}
+
+func TestPackagingWaitsForDeletionOfTheSameSharedObject(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, uniqueWorklistLabel("download-delete-lock"))
+	art := buildDownload(t, a, pool, c, uniqueWorklistLabel("download-delete-skill"))
+	ctx := context.Background()
+	var skillID, versionID string
+	if err := pool.QueryRow(ctx, `SELECT v.skill_id::text, d.skill_version_id::text
+		FROM download_artifacts d JOIN skill_versions v ON v.id = d.skill_version_id
+		WHERE d.artifact_id = $1`, mustUUID(t, art.ArtifactID)).Scan(&skillID, &versionID); err != nil {
+		t.Fatal(err)
+	}
+	store := &blockingRemoveStore{packageStore: a.packages, entered: make(chan struct{}), release: make(chan struct{})}
+	a.packaging.Store = store
+
+	type response struct {
+		status int
+		err    error
+	}
+	request := func(method, path, body string) response {
+		req, err := http.NewRequest(method, c.base+path, strings.NewReader(body))
+		if err != nil {
+			return response{err: err}
+		}
+		if body != "" {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		resp, err := c.Do(req)
+		if err != nil {
+			return response{err: err}
+		}
+		defer resp.Body.Close()
+		return response{status: resp.StatusCode}
+	}
+	deleteDone := make(chan response, 1)
+	go func() { deleteDone <- request(http.MethodDelete, "/downloads/"+art.ArtifactID, "") }()
+	select {
+	case <-store.entered:
+	case <-time.After(3 * time.Second):
+		t.Fatal("delete did not reach object removal")
+	}
+
+	packaged := make(chan response, 1)
+	go func() {
+		packaged <- request(http.MethodPost, packagingPath(skillID, versionID), `{"target":"standard"}`)
+	}()
+	select {
+	case got := <-packaged:
+		close(store.release)
+		t.Fatalf("packaging crossed the delete's object lock with status %d, err %v", got.status, got.err)
+	case <-time.After(250 * time.Millisecond):
+	}
+	close(store.release)
+	if got := <-deleteDone; got.err != nil || got.status != http.StatusNoContent {
+		t.Fatalf("DELETE status = %d, err %v", got.status, got.err)
+	}
+	select {
+	case got := <-packaged:
+		if got.err != nil || got.status != http.StatusCreated {
+			t.Fatalf("packaging after delete = %d, err %v, want 201", got.status, got.err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("packaging did not continue after delete released the object lock")
+	}
+}
+
+func TestFailedDownloadObjectDeletionIsRetriedDurably(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, uniqueWorklistLabel("download-delete-retry"))
+	art := buildDownload(t, a, pool, c, uniqueWorklistLabel("download-delete-retry-skill"))
+	store := &blockingRemoveStore{packageStore: a.packages, fail: 1}
+	a.packaging.Store = store
+
+	if code := c.status(t, http.MethodDelete, "/downloads/"+art.ArtifactID); code != http.StatusNoContent {
+		t.Fatalf("DELETE status = %d", code)
+	}
+	if n := countRows(t, pool, "SELECT count(*) FROM artifacts WHERE id = $1 AND deleted_at IS NOT NULL AND purged_at IS NULL", mustUUID(t, art.ArtifactID)); n != 1 {
+		t.Fatal("failed removal did not leave durable unpurged cleanup work")
+	}
+	if err := newSweep(pool, store).Sweep(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if n := countRows(t, pool, "SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NOT NULL", mustUUID(t, art.ArtifactID)); n != 1 {
+		t.Fatal("retention sweep did not finish the failed deletion")
+	}
+}
+
 // --- what must not be served -------------------------------------------------
 
 // Quarantine is the state ADR-003 releases an artifact out of, and this is the
@@ -567,6 +850,7 @@ func TestTheReconcilerNeedsTwoRoundsBeforeItMarksAMissingObject(t *testing.T) {
 		mustUUID(t, art.ArtifactID)); n != 1 {
 		t.Error("one round was enough to mark the row; it must not be")
 	}
+	ageArtifactReconcileLease(t, pool, art.ArtifactID)
 
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatal(err)
@@ -608,6 +892,7 @@ func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 		t.Fatal(err)
 	}
 	a.packages[key] = bytes
+	ageArtifactReconcileLease(t, pool, art.ArtifactID)
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -617,6 +902,7 @@ func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 	}
 
 	delete(a.packages, key)
+	ageArtifactReconcileLease(t, pool, art.ArtifactID)
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -648,6 +934,9 @@ func TestTheReconcilerCorrectsADatasetThatClaimsAMissingFile(t *testing.T) {
 		if err := sweep.Sweep(context.Background()); err != nil {
 			t.Fatal(err)
 		}
+		if _, err := pool.Exec(t.Context(), `UPDATE datasets SET reconcile_checked_at = now() - interval '16 minutes' WHERE id = $1`, mustUUID(t, datasetID)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if n := countRows(t, pool, "SELECT count(*) FROM datasets WHERE id = $1 AND deleted_at IS NOT NULL",
 		mustUUID(t, datasetID)); n != 1 {
@@ -655,6 +944,13 @@ func TestTheReconcilerCorrectsADatasetThatClaimsAMissingFile(t *testing.T) {
 	}
 	if n := auditCount(t, pool, "storage.object_missing", datasetID); n != 1 {
 		t.Errorf("audit_events for the lost dataset: got %d, want 1", n)
+	}
+}
+
+func ageArtifactReconcileLease(t *testing.T, pool *pgxpool.Pool, artifactID string) {
+	t.Helper()
+	if _, err := pool.Exec(t.Context(), `UPDATE artifacts SET reconcile_checked_at = now() - interval '16 minutes' WHERE id = $1`, mustUUID(t, artifactID)); err != nil {
+		t.Fatal(err)
 	}
 }
 

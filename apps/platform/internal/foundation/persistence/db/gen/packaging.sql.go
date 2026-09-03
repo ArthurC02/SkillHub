@@ -14,6 +14,7 @@ import (
 const countArtifactsSharingObject = `-- name: CountArtifactsSharingObject :one
 SELECT count(*)::bigint FROM artifacts
 WHERE object_key = $1 AND deleted_at IS NULL AND purged_at IS NULL
+  AND expires_at > now()
 `
 
 // Whether anybody else still needs these bytes, asked after the row above is
@@ -104,7 +105,7 @@ INSERT INTO artifacts (
     workspace_id, run_id, kind, file_name, content_type,
     size_bytes, content_hash, object_key, expires_at
 ) VALUES ($1, NULL, 'download_package', $2, $3, $4, $5, $6, $7)
-RETURNING id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at, purged_at
+RETURNING id, workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash, object_key, scan_status, expires_at, created_at, deleted_at, purged_at, reconcile_checked_at, retention_attempted_at
 `
 
 type CreateDownloadArtifactRowParams struct {
@@ -151,8 +152,53 @@ func (q *Queries) CreateDownloadArtifactRow(ctx context.Context, arg CreateDownl
 		&i.CreatedAt,
 		&i.DeletedAt,
 		&i.PurgedAt,
+		&i.ReconcileCheckedAt,
+		&i.RetentionAttemptedAt,
 	)
 	return i, err
+}
+
+const createDownloadCleanupIntent = `-- name: CreateDownloadCleanupIntent :one
+INSERT INTO download_object_cleanup_intents (workspace_id, object_key)
+VALUES ($1, $2)
+ON CONFLICT (object_key) DO UPDATE
+SET workspace_id = excluded.workspace_id,
+    not_before = now() + interval '1 hour', attempted_at = NULL
+RETURNING id, workspace_id, object_key, not_before, attempted_at, created_at
+`
+
+type CreateDownloadCleanupIntentParams struct {
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+}
+
+func (q *Queries) CreateDownloadCleanupIntent(ctx context.Context, arg CreateDownloadCleanupIntentParams) (DownloadObjectCleanupIntent, error) {
+	row := q.db.QueryRow(ctx, createDownloadCleanupIntent, arg.WorkspaceID, arg.ObjectKey)
+	var i DownloadObjectCleanupIntent
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ObjectKey,
+		&i.NotBefore,
+		&i.AttemptedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const deleteDownloadCleanupIntent = `-- name: DeleteDownloadCleanupIntent :exec
+DELETE FROM download_object_cleanup_intents
+WHERE object_key = $1 AND workspace_id = $2
+`
+
+type DeleteDownloadCleanupIntentParams struct {
+	ObjectKey   string
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) DeleteDownloadCleanupIntent(ctx context.Context, arg DeleteDownloadCleanupIntentParams) error {
+	_, err := q.db.Exec(ctx, deleteDownloadCleanupIntent, arg.ObjectKey, arg.WorkspaceID)
+	return err
 }
 
 const deleteWorkspaceDownloadArtifactDetails = `-- name: DeleteWorkspaceDownloadArtifactDetails :execrows
@@ -386,6 +432,32 @@ func (q *Queries) GetDownloadArtifact(ctx context.Context, arg GetDownloadArtifa
 		&i.Redistribution,
 		&i.DownloadCount,
 	)
+	return i, err
+}
+
+const getDownloadArtifactForDelete = `-- name: GetDownloadArtifactForDelete :one
+SELECT id, object_key, purged_at FROM artifacts
+WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package' AND deleted_at IS NULL
+`
+
+type GetDownloadArtifactForDeleteParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+type GetDownloadArtifactForDeleteRow struct {
+	ID        pgtype.UUID
+	ObjectKey string
+	PurgedAt  pgtype.Timestamptz
+}
+
+// Reads the immutable object key before the session advisory lock is acquired.
+// Delete rechecks ownership and liveness with SoftDeleteDownloadArtifact after
+// obtaining the lock; this first read reveals no more than the scoped delete.
+func (q *Queries) GetDownloadArtifactForDelete(ctx context.Context, arg GetDownloadArtifactForDeleteParams) (GetDownloadArtifactForDeleteRow, error) {
+	row := q.db.QueryRow(ctx, getDownloadArtifactForDelete, arg.ID, arg.WorkspaceID)
+	var i GetDownloadArtifactForDeleteRow
+	err := row.Scan(&i.ID, &i.ObjectKey, &i.PurgedAt)
 	return i, err
 }
 
@@ -778,6 +850,47 @@ func (q *Queries) ListTestCasesForSkill(ctx context.Context, arg ListTestCasesFo
 	return items, nil
 }
 
+const lockDownloadObjectKey = `-- name: LockDownloadObjectKey :exec
+SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
+`
+
+// Serialises creation and deletion of rows that share one content-addressed
+// download object. Transaction-scoped so every exit releases it.
+func (q *Queries) LockDownloadObjectKey(ctx context.Context, lockKey string) error {
+	_, err := q.db.Exec(ctx, lockDownloadObjectKey, lockKey)
+	return err
+}
+
+const lockDownloadObjectKeySession = `-- name: LockDownloadObjectKeySession :exec
+SELECT pg_advisory_lock(hashtextextended($1::text, 0))
+`
+
+// Delete must keep this lock across its transaction commit and the following
+// object-store removal. It is always paired with UnlockDownloadObjectKeySession
+// on the same acquired connection.
+func (q *Queries) LockDownloadObjectKeySession(ctx context.Context, lockKey string) error {
+	_, err := q.db.Exec(ctx, lockDownloadObjectKeySession, lockKey)
+	return err
+}
+
+const lockPackagingWorkspaceObjects = `-- name: LockPackagingWorkspaceObjects :exec
+SELECT pg_advisory_xact_lock_shared(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
+`
+
+func (q *Queries) LockPackagingWorkspaceObjects(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, lockPackagingWorkspaceObjects, workspaceID)
+	return err
+}
+
+const lockPackagingWorkspaceObjectsSession = `-- name: LockPackagingWorkspaceObjectsSession :exec
+SELECT pg_advisory_lock_shared(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
+`
+
+func (q *Queries) LockPackagingWorkspaceObjectsSession(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, lockPackagingWorkspaceObjectsSession, workspaceID)
+	return err
+}
+
 const markDownloadArtifactAvailable = `-- name: MarkDownloadArtifactAvailable :exec
 UPDATE artifacts SET scan_status = 'available'
 WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package'
@@ -826,4 +939,26 @@ func (q *Queries) SoftDeleteDownloadArtifact(ctx context.Context, arg SoftDelete
 	var i SoftDeleteDownloadArtifactRow
 	err := row.Scan(&i.ID, &i.ObjectKey, &i.PurgedAt)
 	return i, err
+}
+
+const unlockDownloadObjectKeySession = `-- name: UnlockDownloadObjectKeySession :one
+SELECT pg_advisory_unlock(hashtextextended($1::text, 0))
+`
+
+func (q *Queries) UnlockDownloadObjectKeySession(ctx context.Context, lockKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, unlockDownloadObjectKeySession, lockKey)
+	var pg_advisory_unlock bool
+	err := row.Scan(&pg_advisory_unlock)
+	return pg_advisory_unlock, err
+}
+
+const unlockPackagingWorkspaceObjectsSession = `-- name: UnlockPackagingWorkspaceObjectsSession :one
+SELECT pg_advisory_unlock_shared(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
+`
+
+func (q *Queries) UnlockPackagingWorkspaceObjectsSession(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, unlockPackagingWorkspaceObjectsSession, workspaceID)
+	var pg_advisory_unlock_shared bool
+	err := row.Scan(&pg_advisory_unlock_shared)
+	return pg_advisory_unlock_shared, err
 }

@@ -721,18 +721,17 @@ import { x } from "@scope/pkg/sub";
 
 // 04 丙-15 D-3: a link entry used to be scanned as an ordinary little text file,
 // so the report never said the package contained a link at all.
-func TestASymlinkEntryIsDisclosedInsteadOfBeingReadAsAFile(t *testing.T) {
+func TestASymlinkEntryIsBlockedInsteadOfBeingReadAsAFile(t *testing.T) {
 	m := pkg(goodMD, nil)
 	m["reference/host-passwd"] = &fstest.MapFile{Data: []byte("/etc/passwd"), Mode: fs.ModeSymlink}
 	m["scripts/run.sh"] = &fstest.MapFile{Data: []byte("SKILL.md"), Mode: fs.ModeSymlink}
 
 	r := Validate(m)
-	if sev := codes(r)["symlink-entry"]; sev != SeverityWarning {
-		t.Fatalf("want symlink-entry as a warning, got %+v", r.Findings)
+	if sev := codes(r)["symlink-entry"]; sev != SeverityError {
+		t.Fatalf("want symlink-entry as an error, got %+v", r.Findings)
 	}
-	if r.Blocked {
-		t.Error("a link does not block: it is excluded from every package the platform builds, and " +
-			"blocking would reject import for packages that carry a benign one")
+	if !r.Blocked {
+		t.Error("a link accepted by admission cannot be extracted by the runtime")
 	}
 	if codes(r)["script-file"] != "" {
 		t.Error("a link named .sh is not a script the package ships; its body is a path")
@@ -745,6 +744,20 @@ func TestASymlinkEntryIsDisclosedInsteadOfBeingReadAsAFile(t *testing.T) {
 	}
 	if !strings.Contains(msg, "/etc/passwd") {
 		t.Errorf("the message must name where the link points, got %q", msg)
+	}
+}
+
+func TestNonRegularEntriesAreBlockedBeforeRuntime(t *testing.T) {
+	m := pkg(goodMD, nil)
+	m["devices/console"] = &fstest.MapFile{Mode: fs.ModeDevice}
+	m["pipes/input.sh"] = &fstest.MapFile{Mode: fs.ModeNamedPipe}
+
+	r := Validate(m)
+	if sev := codes(r)[CodeUnsupportedEntryType]; sev != SeverityError || !r.Blocked {
+		t.Fatalf("non-regular entries must block admission: %+v", r.Findings)
+	}
+	if codes(r)[CodeScriptFile] != "" {
+		t.Fatal("a named pipe with a .sh suffix is not a script file")
 	}
 }
 

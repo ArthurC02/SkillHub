@@ -35,6 +35,8 @@ var (
 	errRegistryReadNotConfigured = errors.New("run: registry owner read is not configured")
 )
 
+const artifactCleanupTimeout = 5 * time.Second
+
 // SkillFacts and VersionFacts are the Registry facts consumed by Run.
 type SkillFacts struct {
 	AccessRestriction *string
@@ -107,7 +109,7 @@ type Service struct {
 	WorkspaceCreatedAt func(context.Context, pgtype.UUID) (time.Time, error)
 	// ActiveArtifactReferences is packaging's owner read, injected by each
 	// composition root before this service may delete shared object bytes.
-	ActiveArtifactReferences func(ctx context.Context, objectKey string) (int64, error)
+	ActiveArtifactReferences func(ctx context.Context, db gen.DBTX, objectKey string) (int64, error)
 	// Queue enqueues the execution job in the same transaction as the run row, so
 	// a committed run always has a job and a rolled-back one never does. Nil is
 	// allowed: the run is created and stays queued forever, which is what a
@@ -538,46 +540,14 @@ func (s *Service) List(
 	if offset < 0 {
 		offset = 0
 	}
-	if !testCaseID.Valid {
-		return s.queries().ListWorkspaceRuns(ctx, gen.ListWorkspaceRunsParams{
-			WorkspaceID: workspaceID, PageSize: limit, PageOffset: offset,
-		})
-	}
-
-	// ponytail: the predicate runs here over the newest runFilterScan runs rather
-	// than in ListWorkspaceRuns. Ceiling: a workspace with more runs than that
-	// will not see the older ones in a filtered list. Upgrade path is a nullable
-	// test_case_id argument on the statement itself, which is where it belongs the
-	// moment a real workspace approaches the cap.
-	rows, err := s.queries().ListWorkspaceRuns(ctx, gen.ListWorkspaceRunsParams{
-		WorkspaceID: workspaceID, PageSize: runFilterScan, PageOffset: 0,
+	return s.queries().ListWorkspaceRuns(ctx, gen.ListWorkspaceRunsParams{
+		WorkspaceID: workspaceID, TestCaseID: testCaseID, PageSize: limit, PageOffset: offset,
 	})
-	if err != nil {
-		return nil, err
-	}
-	matched := make([]gen.ListWorkspaceRunsRow, 0, limit)
-	skipped := int32(0)
-	for _, row := range rows {
-		if row.TestCaseID != testCaseID {
-			continue
-		}
-		if skipped < offset {
-			skipped++
-			continue
-		}
-		if matched = append(matched, row); int32(len(matched)) == limit {
-			break
-		}
-	}
-	return matched, nil
 }
 
 const (
 	defaultRunPageSize = 50
 	maxRunPageSize     = 200
-	// runFilterScan bounds the in-Go filter above. Well past maxRunPageSize so a
-	// filtered page is full whenever an unfiltered one would be.
-	runFilterScan = 500
 )
 
 // Artifacts returns one run's output manifest (WS-004's read side, and what makes
@@ -585,15 +555,20 @@ const (
 // nobody can press).
 func (s *Service) Artifacts(
 	ctx context.Context, workspaceID, runID pgtype.UUID,
-) ([]gen.Artifact, error) {
+) ([]gen.Artifact, bool, error) {
 	// The run itself is read first so a caller learns nothing about another
 	// workspace's run id: an unknown run and somebody else's run answer alike.
-	if _, err := s.Get(ctx, workspaceID, runID); err != nil {
-		return nil, err
+	run, err := s.Get(ctx, workspaceID, runID)
+	if err != nil {
+		return nil, false, err
 	}
-	return s.queries().ListRunArtifacts(ctx, gen.ListRunArtifactsParams{
+	rows, err := s.queries().ListRunArtifacts(ctx, gen.ListRunArtifactsParams{
 		RunID: runID, WorkspaceID: workspaceID,
 	})
+	if err != nil {
+		return nil, false, err
+	}
+	return rows, run.ArtifactsTruncated, nil
 }
 
 // DeleteArtifact removes one Run output the owner asked to be gone
@@ -621,7 +596,40 @@ func (s *Service) DeleteArtifact(
 	if s.ActiveArtifactReferences == nil {
 		return errors.New("run: artifact reference counter not injected; refusing delete")
 	}
-	tx, err := s.Pool.Begin(ctx)
+	lookup, err := gen.New(s.Pool).GetRunArtifactForDelete(ctx, gen.GetRunArtifactForDeleteParams{
+		ArtifactID: artifactID, RunID: runID, WorkspaceID: ws.ID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	conn, err := s.Pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	lockKey := "artifact-object:" + lookup.ObjectKey
+	locked := false
+	defer func() {
+		if !locked {
+			conn.Release()
+			return
+		}
+		unlockCtx, cancel := context.WithTimeout(context.Background(), artifactCleanupTimeout)
+		defer cancel()
+		if _, err := gen.New(conn).UnlockRunArtifactObjectSession(unlockCtx, lockKey); err != nil {
+			slog.Error("run artifact object lock could not be released; closing connection", "error", err)
+			_ = conn.Hijack().Close(context.Background())
+			return
+		}
+		conn.Release()
+	}()
+	if err := gen.New(conn).LockRunArtifactObjectSession(ctx, lockKey); err != nil {
+		return err
+	}
+	locked = true
+	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -655,19 +663,17 @@ func (s *Service) DeleteArtifact(
 	// object key. Removing it while another row still points at it would delete a
 	// file the owner did not ask about; the count is asked after the soft delete,
 	// so it cannot count the row just removed.
-	shared, err := s.ActiveArtifactReferences(ctx, row.ObjectKey)
-	if err != nil || shared > 0 {
-		if err != nil {
-			slog.Warn("could not check whether a run artifact object is shared; leaving the bytes",
-				"object_key", row.ObjectKey, "error", err)
-		}
-		return nil
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), artifactCleanupTimeout)
+	defer cancel()
+	shared, err := s.ActiveArtifactReferences(cleanupCtx, conn, row.ObjectKey)
+	if err == nil && shared == 0 {
+		err = s.Store.Remove(cleanupCtx, row.ObjectKey)
 	}
-	// Best effort: the row is gone either way and Remove is idempotent. Nothing
-	// retries it — the retention sweep does not read deleted rows — so the bytes
-	// wait for the account purge, which lists every key regardless of deleted_at.
-	if err := s.Store.Remove(ctx, row.ObjectKey); err != nil {
-		slog.Warn("run artifact object not removed; the row is deleted and the bytes remain until the account purge",
+	if err == nil {
+		err = gen.New(conn).MarkRunOutputPurged(cleanupCtx, row.ID)
+	}
+	if err != nil {
+		slog.Warn("run artifact object not removed; cleanup will retry",
 			"object_key", row.ObjectKey, "error", err)
 	}
 	return nil

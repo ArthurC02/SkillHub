@@ -47,7 +47,7 @@ func purgeDatasets(t *testing.T, pool *pgxpool.Pool, store objreconcile.ObjectSt
 			}
 			return out, nil
 		},
-		svc.MarkDatasetPurged, 100)
+		svc.MarkDatasetPurged, svc.GuardDatasetObjectRemoval, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,6 +80,11 @@ func TestTheDatasetRetentionSweepTakesTheExpiredFileAndOnlyThatOne(t *testing.T)
 	oldID, oldKey := seedDataset(t, pool, a, c, testCaseID)
 	freshID, freshKey := seedDataset(t, pool, a, c, testCaseID)
 	expireDataset(t, pool, oldID)
+	if _, err := pool.Exec(context.Background(), `INSERT INTO object_reconcile_sightings
+		(resource_kind, resource_id, object_key, rounds) VALUES ('dataset', $1, $2, 2)`,
+		mustUUID(t, oldID), oldKey); err != nil {
+		t.Fatal(err)
+	}
 
 	if n := purgeDatasets(t, pool, a.packages); n != 1 {
 		t.Fatalf("datasets purged: got %d, want 1", n)
@@ -97,6 +102,11 @@ func TestTheDatasetRetentionSweepTakesTheExpiredFileAndOnlyThatOne(t *testing.T)
 		"SELECT count(*) FROM datasets WHERE id = $1 AND deleted_at IS NOT NULL",
 		mustUUID(t, oldID)); n != 1 {
 		t.Error("the expired row still claims a file that has been removed")
+	}
+	if n := countRows(t, pool,
+		"SELECT count(*) FROM object_reconcile_sightings WHERE resource_kind = 'dataset' AND resource_id = $1",
+		mustUUID(t, oldID)); n != 0 {
+		t.Error("the expired dataset left a stale missing-object sighting")
 	}
 	if n := countRows(t, pool,
 		"SELECT count(*) FROM datasets WHERE id = $1 AND deleted_at IS NULL",

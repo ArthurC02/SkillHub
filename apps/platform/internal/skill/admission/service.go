@@ -243,8 +243,8 @@ func readPackage(data []byte) (preparedPackage, error) {
 	return p, nil
 }
 
-// prepare validates data and stores the archive. A blocked report comes back
-// with a nil error; the caller returns it to the client as findings.
+// prepare validates and names the archive. Storage happens only after the
+// account and package-object fences are held by beginPackageWrite.
 func (s *Service) prepare(ctx context.Context, data []byte) (preparedPackage, error) {
 	p, err := readPackage(data)
 	if err != nil || p.report.Blocked {
@@ -254,12 +254,63 @@ func (s *Service) prepare(ctx context.Context, data []byte) (preparedPackage, er
 	sum := sha256.Sum256(data)
 	p.contentHash = hex.EncodeToString(sum[:])
 	p.objectKey = "packages/" + p.contentHash + ".zip"
-	// Content-addressed put is idempotent, so storing before the DB commit
-	// means a failed transaction leaves only a harmless orphan object.
-	if err := s.Store.Put(ctx, p.objectKey, data); err != nil {
-		return preparedPackage{}, err
-	}
 	return p, nil
+}
+
+func (s *Service) beginPackageWrite(ctx context.Context, ws identity.Workspace, p preparedPackage, data []byte) (pgx.Tx, func(), error) {
+	conn, err := s.Pool.Acquire(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	workspaceLocked, objectLocked := false, false
+	release := func() {
+		unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if objectLocked {
+			if err := registry.UnlockPackageObject(unlockCtx, conn, p.objectKey); err != nil {
+				slog.Error("package object lock could not be released; closing connection", "error", err)
+				_ = conn.Hijack().Close(context.Background())
+				return
+			}
+		}
+		if workspaceLocked {
+			if err := identity.UnlockObjectWrite(unlockCtx, conn, ws.ID); err != nil {
+				slog.Error("workspace object write lock could not be released; closing connection", "error", err)
+				_ = conn.Hijack().Close(context.Background())
+				return
+			}
+		}
+		conn.Release()
+	}
+	fail := func(err error) (pgx.Tx, func(), error) {
+		release()
+		return nil, nil, err
+	}
+	workspaceLocked, err = identity.LockObjectWrite(ctx, conn, ws.ID)
+	if err != nil {
+		return fail(err)
+	}
+	if err := registry.LockPackageObject(ctx, conn, p.objectKey); err != nil {
+		return fail(err)
+	}
+	objectLocked = true
+	// Durable before Put: a crash at every later instruction leaves a key the
+	// collector can rediscover. A successful version makes the same queue entry
+	// harmless; the collector drops referenced candidates without deleting bytes.
+	if err := registry.TrackPackageObject(ctx, conn, p.objectKey); err != nil {
+		return fail(err)
+	}
+	if err := s.Store.Put(ctx, p.objectKey, data); err != nil {
+		return fail(err)
+	}
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return fail(err)
+	}
+	return tx, func() {
+		_ = tx.Rollback(context.Background())
+		release()
+	}, nil
 }
 
 func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []byte, src sourceMeta) (Result, error) {
@@ -287,11 +338,11 @@ func (s *Service) importZip(ctx context.Context, ws identity.Workspace, data []b
 		e = s.enrichPackage(ctx, p)
 	}
 
-	tx, err := s.Pool.Begin(ctx)
+	tx, release, err := s.beginPackageWrite(ctx, ws, p, data)
 	if err != nil {
 		return Result{}, err
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer release()
 	readSkill, found, err := registry.SkillByName(ctx, tx, ws.ID, p.report.Manifest.Name)
 	var skill registry.Skill
 	if !found && err == nil {
@@ -397,11 +448,11 @@ func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillI
 
 	e := s.enrichPackage(ctx, p) // outside the transaction; see importZip
 
-	tx, err := s.Pool.Begin(ctx)
+	tx, release, err := s.beginPackageWrite(ctx, ws, p, data)
 	if err != nil {
 		return Result{}, err
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	defer release()
 	readSkill, found, err := registry.SkillByID(ctx, tx, ws.ID, skillID)
 	if !found && err == nil {
 		return Result{}, ErrSkillNotFound

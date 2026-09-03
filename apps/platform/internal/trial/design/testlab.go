@@ -89,7 +89,8 @@ type Service struct {
 	Pool  *pgxpool.Pool
 	Store ObjectStore
 	// ReadSkill is Registry's workspace-scoped owner read, adapted by the API root.
-	ReadSkill func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
+	ReadSkill       func(context.Context, pgtype.UUID, pgtype.UUID) (SkillFacts, bool, error)
+	MayStoreObjects func(context.Context, gen.DBTX, pgtype.UUID) (bool, error)
 	// LLM proposes acceptance criteria (TEST-002). Nil is a supported deployment.
 	LLM CriteriaSuggester
 }
@@ -618,7 +619,7 @@ func (s *Service) DeleteTestCase(ctx context.Context, ws identity.Workspace, id 
 	}
 
 	for _, d := range removed {
-		s.removeObject(ctx, d.ObjectKey)
+		s.removeDatasetObject(ctx, d)
 	}
 	return DeleteResult{DatasetsDeleted: len(removed)}, nil
 }

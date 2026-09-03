@@ -8,6 +8,8 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -15,6 +17,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func tarOf(t *testing.T, files map[string][]byte) []byte {
@@ -49,7 +52,7 @@ func TestFilterArchiveEnforcesTheRunCeilings(t *testing.T) {
 			"artifacts/big.txt":   bytes.Repeat([]byte("x"), 32), // over the per-file ceiling, far under the run total
 		})
 
-		manifest, archive, err := filterArchive(raw, limits)
+		manifest, archive, _, err := filterArchive(raw, limits)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -91,7 +94,7 @@ func TestFilterArchiveEnforcesTheRunCeilings(t *testing.T) {
 			"artifacts/b.txt": bytes.Repeat([]byte("b"), 8),
 		})
 
-		manifest, _, err := filterArchive(raw, limits)
+		manifest, _, _, err := filterArchive(raw, limits)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -104,6 +107,17 @@ func TestFilterArchiveEnforcesTheRunCeilings(t *testing.T) {
 	})
 }
 
+func TestArtifactUploadAcceptsOnlyFinalSuccessStatuses(t *testing.T) {
+	for _, tc := range []struct {
+		code int
+		want bool
+	}{{101, false}, {199, false}, {200, true}, {299, true}, {300, false}} {
+		if got := successfulUploadStatus(tc.code); got != tc.want {
+			t.Errorf("status %d: successfulUploadStatus = %v, want %v", tc.code, got, tc.want)
+		}
+	}
+}
+
 // Bytes are not the only dimension a workload controls. Empty files cost
 // nothing against either byte ceiling and still take a manifest entry each, and
 // a manifest too large for the platform to read back loses the whole run
@@ -113,7 +127,7 @@ func TestFilterArchiveBoundsTheNumberOfManifestEntries(t *testing.T) {
 	for i := range artifactMaxEntries + 5 {
 		files[fmt.Sprintf("artifacts/f%04d.txt", i)] = nil
 	}
-	manifest, _, err := filterArchive(tarOf(t, files), DefaultLimits)
+	manifest, _, _, err := filterArchive(tarOf(t, files), DefaultLimits)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,14 +151,46 @@ func TestFilterArchiveRefusesNamesThatEscapeTheCollection(t *testing.T) {
 		// Backslashes are normalised to "/" before any of the checks run;
 		// without that, this escapes the collection as one long file name.
 		`artifacts\..\..\etc\passwd`: []byte("no"),
+		"artifacts/NUL":              []byte("no"),
+		"artifacts/bad?.txt":         []byte("no"),
+		"artifacts/trailing. ":       []byte("no"),
 		"artifacts/keep.txt":         []byte("yes"),
 	})
-	manifest, _, err := filterArchive(raw, DefaultLimits)
+	manifest, _, truncated, err := filterArchive(raw, DefaultLimits)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(manifest) != 1 || manifest[0].FileName != "keep.txt" {
 		t.Fatalf("manifest = %#v, want only keep.txt", manifest)
+	}
+	if !truncated {
+		t.Fatal("dropped unsafe output was not reported by the aggregate marker")
+	}
+}
+
+func TestFilterArchiveReportsWhenEveryArtifactWasDropped(t *testing.T) {
+	manifest, _, truncated, err := filterArchive(tarOf(t, map[string][]byte{
+		"artifacts/NUL": []byte("no"),
+	}), DefaultLimits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(manifest) != 0 || !truncated {
+		t.Fatalf("all-dropped collection = %#v, truncated %v; want empty and true", manifest, truncated)
+	}
+}
+
+func TestFilterArchiveDropsPortableNameCollisions(t *testing.T) {
+	raw := tarOf(t, map[string][]byte{
+		"artifacts/Report.txt": []byte("first"),
+		"artifacts/report.txt": []byte("second"),
+	})
+	manifest, _, _, err := filterArchive(raw, DefaultLimits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(manifest) != 1 || !manifest[0].Truncated {
+		t.Fatalf("portable collision manifest = %#v, want one truncated entry", manifest)
 	}
 }
 
@@ -171,7 +217,7 @@ func TestCollectionHappensBeforeTheWorkloadIsReleased(t *testing.T) {
 	}
 	m.runs["run-1"] = e
 
-	if !m.collect("run-1", "") {
+	if !m.collect(context.Background(), "run-1", "") {
 		t.Fatal("collect reported unfinished for a workload that had announced it was done")
 	}
 	if len(e.artifacts) != 1 || e.artifacts[0].FileName != "out.txt" {
@@ -185,14 +231,82 @@ func TestCollectionHappensBeforeTheWorkloadIsReleased(t *testing.T) {
 	}
 }
 
+func TestCollectionRetryKeepsAnAlreadyUploadedManifest(t *testing.T) {
+	store := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer store.Close()
+	drv := &collectDriver{
+		artifacts:       tarOf(t, map[string][]byte{"artifacts/out.txt": []byte("result")}),
+		releaseFailures: 1,
+	}
+	m := NewManager(drv, Config{Provider: "test", Slots: 1}, slog.New(slog.DiscardHandler))
+	e := &entry{
+		limits:        DefaultLimits,
+		artifactGrant: &ObjectGrant{Purpose: "artifact_upload", Access: "write", ObjectKey: "k", URL: store.URL + "/k"},
+	}
+	m.runs["run-retry"] = e
+	if m.collect(context.Background(), "run-retry", "") {
+		t.Fatal("first collection unexpectedly released the workload")
+	}
+	if len(e.artifacts) != 1 {
+		t.Fatalf("first collection manifest = %#v, want one entry", e.artifacts)
+	}
+	drv.artifactFailures = 1
+	if !m.collect(context.Background(), "run-retry", "") {
+		t.Fatal("second collection did not finish after transient release failure")
+	}
+	if len(e.artifacts) != 1 || e.artifacts[0].FileName != "out.txt" {
+		t.Fatalf("retry replaced the successful manifest with %#v", e.artifacts)
+	}
+}
+
+func TestArtifactsAreCollectedWithoutTraceIngestion(t *testing.T) {
+	store := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer store.Close()
+
+	drv := &collectDriver{
+		artifacts: tarOf(t, map[string][]byte{"artifacts/out.txt": []byte("result")}),
+		released:  make(chan struct{}),
+	}
+	m := NewManager(drv, Config{Provider: "test", Slots: 1}, slog.New(slog.DiscardHandler))
+	e := &entry{
+		limits:        DefaultLimits,
+		artifactGrant: &ObjectGrant{Purpose: "artifact_upload", Access: "write", ObjectKey: "k", URL: store.URL + "/k"},
+	}
+	m.runs["run-1"] = e
+
+	stop := m.startTraceCollector("run-1")
+	select {
+	case <-drv.released:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("artifact-only collector did not collect immediately")
+	}
+	stop()
+
+	if len(e.artifacts) != 1 || e.artifacts[0].FileName != "out.txt" {
+		t.Fatalf("manifest = %#v, want artifact collection even without trace ingestion", e.artifacts)
+	}
+	if drv.releasedAt <= drv.readAt {
+		t.Error("the artifact-only workload was not released after collection")
+	}
+}
+
 // collectDriver is the collection half of the Driver interface; the rest panics
 // because this test drives no lifecycle.
 type collectDriver struct {
 	Driver
-	artifacts  []byte
-	seq        int
-	readAt     int
-	releasedAt int
+	artifacts        []byte
+	trace            []byte
+	seq              int
+	readAt           int
+	releasedAt       int
+	releaseAttempts  int
+	releaseFailures  int
+	artifactFailures int
+	released         chan struct{}
 }
 
 func (d *collectDriver) WorkloadDone(context.Context, string) (bool, error) { return true, nil }
@@ -200,17 +314,113 @@ func (d *collectDriver) WorkloadDone(context.Context, string) (bool, error) { re
 func (d *collectDriver) ReadArtifacts(context.Context, string) ([]byte, error) {
 	d.seq++
 	d.readAt = d.seq
+	if d.artifactFailures > 0 {
+		d.artifactFailures--
+		return nil, errors.New("temporary artifact read failure")
+	}
 	return d.artifacts, nil
 }
 
-func (d *collectDriver) ReadTrace(context.Context, string, int64) ([]byte, bool, error) {
-	return nil, false, nil
+func (d *collectDriver) ReadTrace(_ context.Context, _ string, offset int64) ([]byte, bool, error) {
+	if offset > 0 {
+		return nil, false, nil
+	}
+	return d.trace, false, nil
 }
 
 func (d *collectDriver) ReleaseWorkload(context.Context, string) error {
+	d.releaseAttempts++
+	if d.releaseFailures > 0 {
+		d.releaseFailures--
+		return errors.New("release unavailable")
+	}
 	d.seq++
 	d.releasedAt = d.seq
+	if d.released != nil {
+		close(d.released)
+		d.released = nil
+	}
 	return nil
+}
+
+type failOnceSink struct{ calls int }
+
+func (s *failOnceSink) Push(context.Context, string, []json.RawMessage) error {
+	s.calls++
+	if s.calls == 1 {
+		return errors.New("ingestion unavailable")
+	}
+	return nil
+}
+
+func TestCollectionWaitsForTraceAndReleaseToSucceed(t *testing.T) {
+	t.Run("trace", func(t *testing.T) {
+		drv := &collectDriver{trace: []byte(`{"event_id":"tail"}` + "\n")}
+		sink := &failOnceSink{}
+		m := NewManager(drv, Config{Provider: "test", Slots: 1}, slog.New(slog.DiscardHandler)).WithTrace(sink, nil)
+		m.runs["run-1"] = &entry{traceURL: "http://platform/trace"}
+
+		if m.collect(context.Background(), "run-1", "http://platform/trace") {
+			t.Fatal("collection released the workload after a failed final trace push")
+		}
+		if drv.releaseAttempts != 0 {
+			t.Fatal("workload was released before its trace was accepted")
+		}
+		if !m.collect(context.Background(), "run-1", "http://platform/trace") {
+			t.Fatal("collection did not finish after the trace retry succeeded")
+		}
+	})
+
+	t.Run("release", func(t *testing.T) {
+		drv := &collectDriver{releaseFailures: 1}
+		m := NewManager(drv, Config{Provider: "test", Slots: 1}, slog.New(slog.DiscardHandler))
+		m.runs["run-1"] = &entry{}
+
+		if m.collect(context.Background(), "run-1", "") {
+			t.Fatal("collection stopped retrying after workload release failed")
+		}
+		if !m.collect(context.Background(), "run-1", "") || drv.releaseAttempts != 2 {
+			t.Fatalf("release attempts = %d, want a successful retry", drv.releaseAttempts)
+		}
+	})
+}
+
+type blockingCollectDriver struct {
+	Driver
+	entered  chan struct{}
+	canceled chan struct{}
+}
+
+func (d *blockingCollectDriver) WorkloadDone(ctx context.Context, _ string) (bool, error) {
+	close(d.entered)
+	<-ctx.Done()
+	close(d.canceled)
+	return false, ctx.Err()
+}
+
+func TestStoppingTheCollectorCancelsAnInFlightRead(t *testing.T) {
+	drv := &blockingCollectDriver{entered: make(chan struct{}), canceled: make(chan struct{})}
+	m := NewManager(drv, Config{Provider: "test", Slots: 1}, slog.New(slog.DiscardHandler))
+	m.runs["run-1"] = &entry{artifactGrant: &ObjectGrant{URL: "http://store/object"}}
+	stop := m.startTraceCollector("run-1")
+	select {
+	case <-drv.entered:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("collector did not start its initial read immediately")
+	}
+
+	done := make(chan struct{})
+	go func() { stop(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("collector stop did not cancel its in-flight collection")
+	}
+	select {
+	case <-drv.canceled:
+	default:
+		t.Fatal("driver did not observe collection cancellation")
+	}
 }
 
 // An empty allow list must not be servable by a node that has an egress route

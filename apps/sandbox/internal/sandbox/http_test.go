@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -22,13 +23,17 @@ const testToken = "test-provider-token"
 // idempotency key, the state machine, the wall clock and destroy semantics
 // under test are the real ones from Manager.
 type fakeDriver struct {
-	mu        sync.Mutex
-	starts    map[string]int
-	stops     map[string]time.Duration
-	removes   map[string]int
-	release   map[string]chan sandbox.Outcome
-	startErr  error
-	removeErr error
+	mu                sync.Mutex
+	starts            map[string]int
+	stops             map[string]time.Duration
+	removes           map[string]int
+	release           map[string]chan sandbox.Outcome
+	startErr          error
+	removeErr         error
+	startEntered      chan struct{}
+	startRelease      chan struct{}
+	removeDeadlines   []bool
+	readTraceFailures int
 	// trace is what the workload has written to its trace file so far, keyed by
 	// provider_run_id. Set by a test to drive the collector (TRACE-002).
 	trace map[string][]byte
@@ -62,12 +67,20 @@ func newFakeDriver() *fakeDriver {
 
 func (f *fakeDriver) Start(_ context.Context, id string, _ sandbox.RunRequest) error {
 	f.mu.Lock()
-	defer f.mu.Unlock()
 	f.starts[id]++
-	if f.startErr != nil {
-		return f.startErr
+	startErr := f.startErr
+	entered, release := f.startEntered, f.startRelease
+	f.mu.Unlock()
+	if entered != nil {
+		close(entered)
+		<-release
 	}
+	if startErr != nil {
+		return startErr
+	}
+	f.mu.Lock()
 	f.release[id] = make(chan sandbox.Outcome, 1)
+	f.mu.Unlock()
 	return nil
 }
 
@@ -97,16 +110,22 @@ func (f *fakeDriver) Stop(_ context.Context, id string, grace time.Duration) err
 	return nil
 }
 
-func (f *fakeDriver) Remove(_ context.Context, id string) error {
+func (f *fakeDriver) Remove(ctx context.Context, id string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.removes[id]++
+	_, hasDeadline := ctx.Deadline()
+	f.removeDeadlines = append(f.removeDeadlines, hasDeadline)
 	return f.removeErr
 }
 
 func (f *fakeDriver) ReadTrace(_ context.Context, id string, offset int64) ([]byte, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.readTraceFailures > 0 {
+		f.readTraceFailures--
+		return nil, false, errors.New("temporary trace read failure")
+	}
 	if offset >= int64(len(f.trace[id])) {
 		return nil, false, nil
 	}
@@ -592,6 +611,35 @@ func TestStartFailureIsAProvisionError(t *testing.T) {
 	}
 }
 
+func TestPostStartRollbackUsesABoundedCleanupContext(t *testing.T) {
+	drv := newFakeDriver()
+	drv.startEntered = make(chan struct{})
+	drv.startRelease = make(chan struct{})
+	m := newManager(drv)
+	created := make(chan error, 1)
+	go func() {
+		_, _, err := m.Create(context.Background(), runRequest())
+		created <- err
+	}()
+	<-drv.startEntered
+	runs := m.List().Runs
+	if len(runs) != 1 {
+		t.Fatalf("creating runs = %d, want 1", len(runs))
+	}
+	if err := m.Destroy(context.Background(), runs[0].ProviderRunID); err != nil {
+		t.Fatal(err)
+	}
+	close(drv.startRelease)
+	if err := <-created; err == nil {
+		t.Fatal("revoked creation unexpectedly succeeded")
+	}
+	drv.mu.Lock()
+	defer drv.mu.Unlock()
+	if len(drv.removeDeadlines) < 2 || !drv.removeDeadlines[len(drv.removeDeadlines)-1] {
+		t.Fatalf("rollback remove deadlines = %v, want final cleanup bounded", drv.removeDeadlines)
+	}
+}
+
 // Secrets this provider injected must not come back out through the workload's
 // own output (iron rule 11).
 func TestWorkloadOutputIsScrubbedOfInjectedSecrets(t *testing.T) {
@@ -636,6 +684,14 @@ func TestAdoptedRunWithholdsOutputItCannotMask(t *testing.T) {
 	if err := m.Adopt(context.Background()); err != nil {
 		t.Fatalf("adopt: %v", err)
 	}
+	drv.mu.Lock()
+	drv.done[id] = true
+	drv.mu.Unlock()
+	waitFor(t, func() bool {
+		drv.mu.Lock()
+		defer drv.mu.Unlock()
+		return drv.released[id] == 1
+	})
 
 	drv.exit(id, sandbox.Outcome{
 		ExitCode: 0,
@@ -658,6 +714,18 @@ func TestCreateRejectsMalformedBody(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("malformed body: got %d, want 400", rec.Code)
+	}
+
+	valid, err := json.Marshal(runRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	req = httptest.NewRequest("POST", "/runs", bytes.NewReader(append(valid, []byte(` {}`)...)))
+	req.Header.Set("Authorization", "Bearer "+testToken)
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("trailing JSON value: got %d, want 400", rec.Code)
 	}
 
 	incomplete := runRequest()

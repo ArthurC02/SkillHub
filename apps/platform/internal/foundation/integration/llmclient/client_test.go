@@ -4,11 +4,83 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
+
+type testRoundTripper func(*http.Request) (*http.Response, error)
+
+func (f testRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+type trackedReadCloser struct {
+	reader *strings.Reader
+	eof    bool
+	closed bool
+}
+
+func (b *trackedReadCloser) Read(p []byte) (int, error) {
+	n, err := b.reader.Read(p)
+	if err == io.EOF {
+		b.eof = true
+	}
+	return n, err
+}
+
+func (b *trackedReadCloser) Close() error {
+	b.closed = true
+	return nil
+}
+
+func TestClientRejectsOversizedAndTrailingResponses(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body string
+	}{
+		{"past byte limit", `{}` + strings.Repeat(" ", MaxResponseBytes-1)},
+		{"second JSON value", `{} {}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(tc.body))
+			}))
+			defer srv.Close()
+			c := &Client{BaseURL: srv.URL}
+			if _, err := c.Embed(context.Background(), []string{"x"}); err == nil {
+				t.Fatal("client accepted a response outside its bounded JSON contract")
+			}
+		})
+	}
+}
+
+func TestClientAcceptsAValidResponseAtTheExactByteLimit(t *testing.T) {
+	prefix, suffix := `{"embeddings":[],"dimensions":0,"padding":"`, `"}`
+	body := prefix + strings.Repeat("x", MaxResponseBytes-len(prefix)-len(suffix)) + suffix
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	if _, err := (&Client{BaseURL: srv.URL}).Embed(context.Background(), []string{"x"}); err != nil {
+		t.Fatalf("exactly %d valid bytes were rejected: %v", MaxResponseBytes, err)
+	}
+}
+
+func TestClientDrainsAndClosesOrdinaryErrorResponses(t *testing.T) {
+	body := &trackedReadCloser{reader: strings.NewReader(strings.Repeat("x", 4096))}
+	client := &http.Client{Transport: testRoundTripper(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusBadGateway, Body: body}, nil
+	})}
+	c := &Client{BaseURL: "https://llm.test", HTTPClient: client}
+	if _, err := c.Embed(context.Background(), []string{"x"}); err == nil {
+		t.Fatal("error response was accepted")
+	}
+	if !body.eof || !body.closed {
+		t.Fatalf("error body was not reusable: eof=%v closed=%v", body.eof, body.closed)
+	}
+}
 
 func TestClientAuthenticatesToTheInternalService(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

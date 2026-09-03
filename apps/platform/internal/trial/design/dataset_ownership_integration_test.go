@@ -24,11 +24,15 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/storage/objreconcile"
 )
 
 const testLabDBURLEnv = "SKILLHUB_TEST_DATABASE_URL"
@@ -167,8 +171,71 @@ func (s *removedStore) Get(context.Context, string) ([]byte, error) {
 	return nil, errors.New("not used")
 }
 
+type retryRemovalStore struct {
+	removed int
+	err     error
+	key     string
+}
+
+func (s *retryRemovalStore) Put(_ context.Context, key string, _ []byte) error {
+	s.key = key
+	return nil
+}
+func (*retryRemovalStore) Get(context.Context, string) ([]byte, error) {
+	return nil, errors.New("not used")
+}
+func (*retryRemovalStore) Exists(context.Context, string) (bool, error) { return true, nil }
+func (s *retryRemovalStore) Remove(context.Context, string) error {
+	s.removed++
+	return s.err
+}
+
 func (s *removedStore) Remove(_ context.Context, key string) error {
 	s.removed = append(s.removed, key)
+	return nil
+}
+
+type blockingPutStore struct {
+	started chan struct{}
+	release chan struct{}
+	key     string
+}
+
+func (s *blockingPutStore) Put(ctx context.Context, key string, _ []byte) error {
+	s.key = key
+	close(s.started)
+	select {
+	case <-s.release:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (*blockingPutStore) Get(context.Context, string) ([]byte, error) {
+	return nil, errors.New("not used")
+}
+
+func (*blockingPutStore) Remove(context.Context, string) error { return nil }
+
+type cancelingPutStore struct {
+	cancel       context.CancelFunc
+	removeCalled bool
+	removeCtxErr error
+}
+
+func (s *cancelingPutStore) Put(context.Context, string, []byte) error {
+	s.cancel()
+	return nil
+}
+
+func (*cancelingPutStore) Get(context.Context, string) ([]byte, error) {
+	return nil, errors.New("not used")
+}
+
+func (s *cancelingPutStore) Remove(ctx context.Context, _ string) error {
+	s.removeCalled = true
+	s.removeCtxErr = ctx.Err()
 	return nil
 }
 
@@ -179,7 +246,7 @@ func (s *removedStore) Remove(_ context.Context, key string) error {
 func seedTwoCases(t *testing.T, pool *pgxpool.Pool) (ws identity.Workspace, caseA, caseB, datasetB pgtype.UUID) {
 	t.Helper()
 	ctx := context.Background()
-	tag := strings.ReplaceAll(t.Name(), "/", "-")
+	tag := fmt.Sprintf("%s-%d", strings.ReplaceAll(t.Name(), "/", "-"), time.Now().UnixNano())
 
 	err := pool.QueryRow(ctx, `
 		WITH u AS (
@@ -226,10 +293,17 @@ func liveDatasets(t *testing.T, pool *pgxpool.Pool, datasetID pgtype.UUID) int {
 	return n
 }
 
+func datasetService(pool *pgxpool.Pool, store ObjectStore) *Service {
+	return &Service{
+		Pool: pool, Store: store,
+		MayStoreObjects: (&identity.Service{}).MayStoreObjects,
+	}
+}
+
 func TestDeleteDatasetRefusesAnUnrelatedParentInTheURL(t *testing.T) {
 	pool := requireTestLabDB(t)
 	store := &removedStore{}
-	svc := &Service{Pool: pool, Store: store}
+	svc := datasetService(pool, store)
 	ws, caseA, caseB, datasetB := seedTwoCases(t, pool)
 
 	// The bug: B's file, addressed through A's URL.
@@ -252,5 +326,272 @@ func TestDeleteDatasetRefusesAnUnrelatedParentInTheURL(t *testing.T) {
 	}
 	if len(store.removed) != 1 {
 		t.Errorf("the owner's delete removed %d objects, want 1", len(store.removed))
+	}
+}
+
+func TestFailedDatasetObjectDeletionRemainsDurableRetryWork(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, _, caseB, datasetID := seedTwoCases(t, pool)
+	store := &retryRemovalStore{err: errors.New("object store unavailable")}
+	svc := datasetService(pool, store)
+
+	ds, err := svc.DeleteDataset(t.Context(), ws, caseB, datasetID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var deleted, purged bool
+	if err := pool.QueryRow(t.Context(), `SELECT deleted_at IS NOT NULL, purged_at IS NOT NULL
+		FROM datasets WHERE id = $1`, datasetID).Scan(&deleted, &purged); err != nil {
+		t.Fatal(err)
+	}
+	if !deleted || purged {
+		t.Fatalf("after failed removal: deleted=%v purged=%v, want hidden but retryable", deleted, purged)
+	}
+	var retryable bool
+	if err := pool.QueryRow(t.Context(), `SELECT purged_at IS NULL AND
+		(deleted_at IS NOT NULL OR expires_at <= now()) FROM datasets WHERE id = $1`, datasetID).Scan(&retryable); err != nil {
+		t.Fatal(err)
+	}
+	if !retryable {
+		t.Fatal("soft-deleted dataset disappeared from the durable cleanup predicate")
+	}
+	work, err := gen.New(pool).ListDatasetsPastRetention(t.Context(), 10000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed := false
+	for _, item := range work {
+		if item.ID == datasetID {
+			listed = true
+			break
+		}
+	}
+	if !listed {
+		t.Fatal("soft-deleted dataset was not returned by the retention worklist")
+	}
+
+	store.err = nil
+	candidate := objreconcile.Candidate{ID: ds.ID, WorkspaceID: ds.WorkspaceID, ObjectKey: ds.ObjectKey}
+	n, err := objreconcile.PurgeExpired(t.Context(), pool, store,
+		func(context.Context, int32) ([]objreconcile.Candidate, error) {
+			return []objreconcile.Candidate{candidate}, nil
+		}, func(ctx context.Context, tx pgx.Tx, id pgtype.UUID) error {
+			return gen.New(tx).MarkDatasetPurged(ctx, id)
+		}, nil, 1)
+	if err != nil || n != 1 {
+		t.Fatalf("retry purge = %d, %v; want one completed row", n, err)
+	}
+	if err := pool.QueryRow(t.Context(), `SELECT purged_at IS NOT NULL FROM datasets WHERE id = $1`, datasetID).Scan(&purged); err != nil {
+		t.Fatal(err)
+	}
+	if !purged || store.removed != 2 {
+		t.Fatalf("retry completion: purged=%v removal attempts=%d, want true and 2", purged, store.removed)
+	}
+}
+
+func TestUploadDatasetDoesNotHoldTheTestCaseLockDuringObjectPut(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, caseA, _, _ := seedTwoCases(t, pool)
+	store := &blockingPutStore{started: make(chan struct{}), release: make(chan struct{})}
+	svc := datasetService(pool, store)
+	type result struct {
+		err error
+	}
+	done := make(chan result, 1)
+	go func() {
+		_, err := svc.UploadDataset(context.Background(), ws, caseA, "rows.csv", []byte("id,name\n1,a\n"))
+		done <- result{err: err}
+	}()
+
+	select {
+	case <-store.started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("object upload did not start")
+	}
+	var freshIntent int
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM dataset_object_cleanup_intents
+		WHERE workspace_id = $1 AND object_key = $2 AND not_before > now()`, ws.ID, store.key).Scan(&freshIntent); err != nil {
+		t.Fatal(err)
+	}
+	if freshIntent != 1 {
+		t.Fatal("upload did not publish a cleanup intent with a safety floor before object I/O")
+	}
+	due, err := gen.New(pool).ListDatasetCleanupIntents(t.Context(), 10000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range due {
+		if row.ObjectKey == store.key {
+			t.Fatal("maintenance claimed the cleanup intent of a still-running upload")
+		}
+	}
+	updateCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	_, updateErr := pool.Exec(updateCtx, "UPDATE test_cases SET name = name WHERE id = $1", caseA)
+	cancel()
+	close(store.release)
+	if updateErr != nil {
+		t.Fatalf("database row stayed locked while object storage was blocked: %v", updateErr)
+	}
+	if got := <-done; got.err != nil {
+		t.Fatalf("upload failed after storage was released: %v", got.err)
+	}
+	var datasets, intents int
+	if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM datasets WHERE workspace_id = $1 AND object_key = $2", ws.ID, store.key).Scan(&datasets); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM dataset_object_cleanup_intents WHERE workspace_id = $1 AND object_key = $2", ws.ID, store.key).Scan(&intents); err != nil {
+		t.Fatal(err)
+	}
+	if datasets != 1 || intents != 0 {
+		t.Fatalf("successful upload left datasets=%d cleanup_intents=%d, want 1 and 0", datasets, intents)
+	}
+}
+
+func TestUploadDatasetRemovesObjectAfterDefiniteQuotaFailure(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, caseA, _, _ := seedTwoCases(t, pool)
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO datasets
+			(workspace_id, test_case_id, file_name, content_type, size_bytes,
+			 content_hash, object_key, expires_at)
+		SELECT $1, $2, 'existing-' || n || '.csv', 'text/csv', 1,
+		       'hash-' || n, 'datasets/existing/' || n, now() + interval '90 days'
+		FROM generate_series(1, $3::int) AS n`, ws.ID, caseA, MaxFilesPerTestCase); err != nil {
+		t.Fatalf("seed quota: %v", err)
+	}
+	store := &removedStore{}
+	svc := datasetService(pool, store)
+	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "overflow.csv", []byte("id,name\n1,a\n")); !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("upload beyond file quota returned %v, want ErrLimitExceeded", err)
+	}
+	if len(store.removed) != 1 {
+		t.Fatalf("definite quota failure removed %d objects, want 1", len(store.removed))
+	}
+}
+
+func TestFailedUploadCompensationLeavesADurableCleanupIntent(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, caseA, _, _ := seedTwoCases(t, pool)
+	if _, err := pool.Exec(t.Context(), `INSERT INTO datasets
+		(workspace_id, test_case_id, file_name, content_type, size_bytes,
+		 content_hash, object_key, expires_at)
+		SELECT $1, $2, 'existing-' || n || '.csv', 'text/csv', 1,
+		       'intent-hash-' || n, 'datasets/intent-existing/' || n,
+		       now() + interval '90 days'
+		FROM generate_series(1, $3::int) AS n`, ws.ID, caseA, MaxFilesPerTestCase); err != nil {
+		t.Fatal(err)
+	}
+	store := &retryRemovalStore{err: errors.New("object store unavailable")}
+	svc := datasetService(pool, store)
+	if _, err := svc.UploadDataset(t.Context(), ws, caseA, "overflow.csv", []byte("id,name\n1,a\n")); !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("upload beyond quota returned %v, want ErrLimitExceeded", err)
+	}
+	var intentID pgtype.UUID
+	if err := pool.QueryRow(t.Context(), `UPDATE dataset_object_cleanup_intents
+		SET not_before = now() - interval '1 second'
+		WHERE object_key = $1 RETURNING id`, store.key).Scan(&intentID); err != nil {
+		t.Fatalf("failed compensation left no cleanup intent: %v", err)
+	}
+	rows, err := svc.DatasetCleanupIntentCandidates(t.Context(), 10000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var candidate ReconcileCandidate
+	for _, row := range rows {
+		if row.ID == intentID {
+			candidate = row
+			break
+		}
+	}
+	if !candidate.ID.Valid {
+		t.Fatal("due upload cleanup intent was absent from the maintenance worklist")
+	}
+	store.err = nil
+	n, err := objreconcile.PurgeExpired(t.Context(), pool, store,
+		func(context.Context, int32) ([]objreconcile.Candidate, error) {
+			return []objreconcile.Candidate{{ID: candidate.ID, WorkspaceID: candidate.WorkspaceID, ObjectKey: candidate.ObjectKey}}, nil
+		}, svc.MarkDatasetCleanupIntentPurged, svc.GuardDatasetObjectRemoval, 1)
+	if err != nil || n != 1 {
+		t.Fatalf("intent retry purge = %d, %v", n, err)
+	}
+	var remaining int
+	if err := pool.QueryRow(t.Context(), `SELECT count(*) FROM dataset_object_cleanup_intents WHERE id = $1`, intentID).Scan(&remaining); err != nil {
+		t.Fatal(err)
+	}
+	if remaining != 0 || store.removed != 2 {
+		t.Fatalf("cleanup intent remaining=%d removal attempts=%d, want 0 and 2", remaining, store.removed)
+	}
+}
+
+func TestCleanupIntentCannotOvertakeALiveDatasetUpload(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, caseA, _, _ := seedTwoCases(t, pool)
+	putStore := &blockingPutStore{started: make(chan struct{}), release: make(chan struct{})}
+	svc := datasetService(pool, putStore)
+	uploadDone := make(chan error, 1)
+	go func() {
+		_, err := svc.UploadDataset(t.Context(), ws, caseA, "slow.csv", []byte("id\n1\n"))
+		uploadDone <- err
+	}()
+	<-putStore.started
+
+	var candidate ReconcileCandidate
+	if err := pool.QueryRow(t.Context(), `UPDATE dataset_object_cleanup_intents
+		SET not_before = now() - interval '1 second'
+		WHERE object_key = $1 RETURNING id, workspace_id, object_key`, putStore.key).
+		Scan(&candidate.ID, &candidate.WorkspaceID, &candidate.ObjectKey); err != nil {
+		t.Fatal(err)
+	}
+	cleanupStore := &retryRemovalStore{}
+	cleanupDone := make(chan error, 1)
+	go func() {
+		_, err := objreconcile.PurgeExpired(t.Context(), pool, cleanupStore,
+			func(context.Context, int32) ([]objreconcile.Candidate, error) {
+				return []objreconcile.Candidate{{ID: candidate.ID, WorkspaceID: candidate.WorkspaceID, ObjectKey: candidate.ObjectKey}}, nil
+			}, svc.MarkDatasetCleanupIntentPurged, svc.GuardDatasetObjectRemoval, 1)
+		cleanupDone <- err
+	}()
+	select {
+	case err := <-cleanupDone:
+		t.Fatalf("cleanup overtook the live upload: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(putStore.release)
+	if err := <-uploadDone; err != nil {
+		t.Fatal(err)
+	}
+	if err := <-cleanupDone; err != nil {
+		t.Fatal(err)
+	}
+	if cleanupStore.removed != 0 {
+		t.Fatalf("cleanup removed %d live upload objects, want 0", cleanupStore.removed)
+	}
+}
+
+func TestUploadDatasetCompensatesAfterCallerCancellation(t *testing.T) {
+	pool := requireTestLabDB(t)
+	ws, caseA, _, _ := seedTwoCases(t, pool)
+	ctx, cancel := context.WithCancel(context.Background())
+	store := &cancelingPutStore{cancel: cancel}
+	_, err := datasetService(pool, store).UploadDataset(
+		ctx, ws, caseA, "rows.csv", []byte("id,name\n1,a\n"))
+	if err == nil {
+		t.Fatal("upload unexpectedly succeeded after its caller was cancelled")
+	}
+	if !store.removeCalled || store.removeCtxErr != nil {
+		t.Fatalf("compensation did not get an independent live context: called=%v ctxErr=%v",
+			store.removeCalled, store.removeCtxErr)
+	}
+}
+
+func TestCommitCompensationOnlyRunsAfterADefiniteRollback(t *testing.T) {
+	if !shouldCompensateCommit(pgx.ErrTxCommitRollback) {
+		t.Fatal("definite rollback would retain an orphan object")
+	}
+	if shouldCompensateCommit(errors.New("connection lost during commit")) {
+		t.Fatal("ambiguous commit error would delete bytes for a possibly committed row")
+	}
+	if shouldCompensateCommit(nil) {
+		t.Fatal("successful commit requested compensation")
 	}
 }

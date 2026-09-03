@@ -201,12 +201,25 @@ func purgeDatasets(ctx context.Context, pool *pgxpool.Pool) error {
 			}
 			return out, nil
 		},
-		svc.MarkDatasetPurged, batch())
+		svc.MarkDatasetPurged, nil, batch())
+	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store,
+		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+			rows, err := svc.DatasetCleanupIntentCandidates(ctx, limit)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]objreconcile.Candidate, len(rows))
+			for i, row := range rows {
+				out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
+			}
+			return out, nil
+		},
+		svc.MarkDatasetCleanupIntentPurged, svc.GuardDatasetObjectRemoval, batch())
 	// Logged before the error is dealt with, like every other sweep here: a pass
 	// that failed part way still purged the rest, and the count is what tells an
 	// operator which case this was.
-	slog.Info("dataset purge complete", "datasets_purged", n)
-	return err
+	slog.Info("dataset purge complete", "datasets_purged", n, "upload_intents_purged", intentN)
+	return errors.Join(err, intentErr)
 }
 
 // rotatePartitions is this subcommand's composition root. Both partitioned
@@ -305,13 +318,25 @@ func purgeRunArtifacts(ctx context.Context, pool *pgxpool.Pool) error {
 			}
 			return out, nil
 		},
-		svc.MarkRunOutputPurged, batch())
+		svc.MarkRunOutputPurged, svc.GuardArtifactUploadIntentRemoval, batch())
+	intentN, intentErr := objreconcile.PurgeExpired(ctx, pool, store,
+		func(ctx context.Context, limit int32) ([]objreconcile.Candidate, error) {
+			rows, err := svc.ArtifactUploadIntentCandidates(ctx, limit)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]objreconcile.Candidate, len(rows))
+			for i, row := range rows {
+				out[i] = objreconcile.Candidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
+			}
+			return out, nil
+		}, svc.MarkArtifactUploadIntentPurged, svc.GuardArtifactUploadIntentRemoval, batch())
 	// Logged before the error is dealt with, like purgeAccounts: a pass that
 	// failed part way still purged the rest, and the count is what tells an
 	// operator which case this was. Bounded by MAINTENANCE_BATCH, so a backlog
 	// drains over several runs — a sweep is not a migration.
-	slog.Info("run artifact purge complete", "artifacts_purged", n)
-	return err
+	slog.Info("run artifact purge complete", "artifacts_purged", n, "upload_intents_purged", intentN)
+	return errors.Join(err, intentErr)
 }
 
 // purgeDeletedSkills is the sweep behind WS-005's grace period. Until
@@ -462,6 +487,7 @@ func purgeService(pool *pgxpool.Pool) *identity.Service {
 		DatasetObjectKeys:          testlabSvc.WorkspaceObjectKeys,
 		RunArtifactObjectKeys:      runSvc.WorkspaceObjectKeys,
 		DownloadArtifactObjectKeys: packagingSvc.WorkspaceObjectKeys,
+		WorkspaceQuiescent:         runSvc.PurgeQuiescent,
 	}
 }
 

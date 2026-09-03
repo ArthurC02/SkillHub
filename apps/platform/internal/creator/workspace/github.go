@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+const maxGitHubResponseBytes = 1 << 20
+
 // GitHubOAuth drives the authorization-code flow with plain net/http.
 // ponytail: stdlib only; x/oauth2 buys nothing for a single fixed provider.
 type GitHubOAuth struct {
@@ -161,7 +163,15 @@ func (g *GitHubOAuth) doJSON(req *http.Request, out any) error {
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxGitHubResponseBytes))
 		return fmt.Errorf("github %s: status %d: %s", req.URL.Path, resp.StatusCode, b)
 	}
-	return json.NewDecoder(resp.Body).Decode(out)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxGitHubResponseBytes+1))
+	if err != nil {
+		return err
+	}
+	if len(raw) > maxGitHubResponseBytes {
+		return fmt.Errorf("github %s: response exceeds %d bytes", req.URL.Path, maxGitHubResponseBytes)
+	}
+	return json.Unmarshal(raw, out)
 }

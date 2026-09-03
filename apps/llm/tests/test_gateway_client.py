@@ -18,6 +18,7 @@ failed to find.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from collections.abc import Callable
@@ -113,3 +114,34 @@ def test_every_ceiling_is_a_real_number() -> None:
     passes the assertion above if the module constant is also None."""
     for name, _, timeout in BUILDERS:
         assert isinstance(timeout, float) and timeout > 0, name
+
+
+def test_clients_with_different_timeouts_reuse_the_gateway_transport() -> None:
+    short = gateway.client(10.0)
+    long = gateway.client(20.0)
+
+    assert short.timeout == 10.0
+    assert long.timeout == 20.0
+    assert short._client is long._client
+
+
+def test_rotated_gateway_credentials_reuse_the_transport(monkeypatch) -> None:
+    monkeypatch.setenv("LITELLM_BASE_URL", "http://first.example")
+    monkeypatch.setenv("LITELLM_API_KEY", "sk-first")
+    first = gateway.client(10.0)
+    monkeypatch.setenv("LITELLM_BASE_URL", "http://second.example")
+    monkeypatch.setenv("LITELLM_API_KEY", "sk-second")
+    second = gateway.client(10.0)
+
+    assert first._client is second._client
+    assert str(second.base_url).startswith("http://second.example")
+    assert second.api_key == "sk-second"
+
+
+def test_shutdown_closes_and_clears_the_shared_transport() -> None:
+    gateway._shared_client()
+    assert gateway._shared_client.cache_info().currsize == 1
+
+    asyncio.run(gateway.close_client())
+
+    assert gateway._shared_client.cache_info().currsize == 0

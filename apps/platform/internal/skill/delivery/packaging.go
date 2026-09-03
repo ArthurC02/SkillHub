@@ -108,7 +108,8 @@ type Service struct {
 	Pool  *pgxpool.Pool
 	Store ObjectStore
 	// TestLab is the owner face for portable Test Case inputs.
-	TestLab *testlab.Service
+	TestLab         *testlab.Service
+	MayStoreObjects func(context.Context, gen.DBTX, pgtype.UUID) (bool, error)
 	// Profiles is the deployment's packaging target configuration. Empty is a
 	// legitimate state and it means "no targets"; it never means "use defaults".
 	Profiles Profiles
@@ -943,16 +944,51 @@ func (s *Service) persist(
 	ctx context.Context, ws identity.Workspace, p *Plan, retention time.Duration,
 ) (Result, error) {
 	objectKey := "downloads/" + pgconv.UUIDString(ws.ID) + "/" + p.ContentHash + ".zip"
-	tx, err := s.Pool.Begin(ctx)
+	conn, err := s.Pool.Acquire(ctx)
 	if err != nil {
 		return Result{}, err
 	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	q := gen.New(tx)
-	lockKey := fmt.Sprintf("download-package:%s/%s", pgconv.UUIDString(ws.ID), p.ContentHash)
-	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", lockKey); err != nil {
+	workspaceLocked, objectLocked := false, false
+	defer func() {
+		unlockCtx, cancel := context.WithTimeout(context.Background(), objectCleanupTimeout)
+		defer cancel()
+		q := gen.New(conn)
+		if objectLocked {
+			if _, err := q.UnlockDownloadObjectKeySession(unlockCtx, downloadObjectLockKey(objectKey)); err != nil {
+				slog.Error("download object lock could not be released; closing connection", "error", err)
+				_ = conn.Hijack().Close(context.Background())
+				return
+			}
+		}
+		if workspaceLocked {
+			if _, err := q.UnlockPackagingWorkspaceObjectsSession(unlockCtx, ws.ID); err != nil {
+				slog.Error("packaging workspace lock could not be released; closing connection", "error", err)
+				_ = conn.Hijack().Close(context.Background())
+				return
+			}
+		}
+		conn.Release()
+	}()
+	q := gen.New(conn)
+	if err := q.LockPackagingWorkspaceObjectsSession(ctx, ws.ID); err != nil {
 		return Result{}, err
 	}
+	workspaceLocked = true
+	if s.MayStoreObjects == nil {
+		return Result{}, errors.New("packaging: identity lifecycle read is not configured")
+	}
+	allowed, err := s.MayStoreObjects(ctx, conn, ws.ID)
+	if err != nil {
+		return Result{}, err
+	}
+	if !allowed {
+		return Result{}, ErrNotFound
+	}
+	lockKey := downloadObjectLockKey(objectKey)
+	if err := q.LockDownloadObjectKeySession(ctx, lockKey); err != nil {
+		return Result{}, err
+	}
+	objectLocked = true
 	if existing, err := q.FindReusableDownloadArtifact(ctx, gen.FindReusableDownloadArtifactParams{
 		WorkspaceID: ws.ID, SkillVersionID: p.Version.ID, Target: p.Profile.ID,
 		PackagerVersion: PackagerVersion, IncludesTestCases: p.IncludeTestCases,
@@ -966,7 +1002,8 @@ func (s *Service) persist(
 	if err != nil {
 		return Result{}, err
 	}
-	ownsObject, commitAttempted := !exists, false
+	ownsObject, commitAttempted := false, false
+	intentCreated := false
 	// Workspace/content addressing plus the advisory lock make this compensation
 	// private to this writer. An ambiguous Commit result is deliberately retained:
 	// the row may actually have committed and deleting its object would be worse.
@@ -976,14 +1013,37 @@ func (s *Service) persist(
 			defer cancel()
 			if err := s.Store.Remove(cleanupCtx, objectKey); err != nil {
 				slog.Error("failed to compensate download package object", "key", objectKey, "error", err)
+				return
+			}
+			if intentCreated {
+				if err := gen.New(conn).DeleteDownloadCleanupIntent(cleanupCtx, gen.DeleteDownloadCleanupIntentParams{
+					ObjectKey: objectKey, WorkspaceID: ws.ID,
+				}); err != nil {
+					slog.Error("failed to clear compensated download cleanup intent", "key", objectKey, "error", err)
+				}
 			}
 		}
 	}()
-	if !exists {
-		if err := s.Store.Put(ctx, objectKey, p.Zip); err != nil {
-			return Result{}, err
-		}
+	if _, err := q.CreateDownloadCleanupIntent(ctx, gen.CreateDownloadCleanupIntentParams{
+		WorkspaceID: ws.ID, ObjectKey: objectKey,
+	}); err != nil {
+		return Result{}, err
 	}
+	intentCreated = true
+	ownsObject = !exists
+	// Existence alone does not prove a prior interrupted Put left complete bytes.
+	// This key is content-addressed and locked, so overwriting it with the exact
+	// planned ZIP is idempotent and repairs an ambiguous partial object.
+	if err := s.Store.Put(ctx, objectKey, p.Zip); err != nil {
+		return Result{}, err
+	}
+
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return Result{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q = gen.New(tx)
 
 	row, err := q.CreateDownloadArtifactRow(ctx, gen.CreateDownloadArtifactRowParams{
 		WorkspaceID: ws.ID,
@@ -1016,6 +1076,13 @@ func (s *Service) persist(
 		ID: row.ID, WorkspaceID: ws.ID,
 	}); err != nil {
 		return Result{}, err
+	}
+	if intentCreated {
+		if err := q.DeleteDownloadCleanupIntent(ctx, gen.DeleteDownloadCleanupIntentParams{
+			ObjectKey: objectKey, WorkspaceID: ws.ID,
+		}); err != nil {
+			return Result{}, err
+		}
 	}
 	commitAttempted = true
 	if err := tx.Commit(ctx); err != nil {

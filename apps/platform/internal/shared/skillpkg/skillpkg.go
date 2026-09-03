@@ -231,6 +231,9 @@ const (
 	CodeUndeclaredDependency = "undeclared-dependency"
 	// CodeSymlinkEntry: an entry that is a link rather than a file.
 	CodeSymlinkEntry = "symlink-entry"
+	// CodeUnsupportedEntryType: a device, FIFO, socket, or other entry the
+	// runtime cannot materialise as a regular file or directory.
+	CodeUnsupportedEntryType = "unsupported-entry-type"
 	// CodeFileNotScanned: a file over maxScanBytes, of which only the first
 	// megabyte was read. The secret scan therefore did not see the rest.
 	CodeFileNotScanned = "file-not-scanned"
@@ -243,7 +246,7 @@ const (
 var DisclosureCodes = []string{
 	CodeEntryPathEscape, CodePossibleSecret, CodeScriptFile, CodeEmbeddedScript,
 	CodeUnlabelledCodeBlock, CodeExternalURL, CodeBinaryFile, CodeDependencyFile,
-	CodePackageDependencies, CodeUndeclaredDependency, CodeSymlinkEntry,
+	CodePackageDependencies, CodeUndeclaredDependency, CodeSymlinkEntry, CodeUnsupportedEntryType,
 	CodeFileNotScanned,
 }
 
@@ -264,6 +267,10 @@ var DisclosureCodes = []string{
 // `..\..\evil.sh` has to be caught either way. packaging.travels() makes the same
 // two judgements on the way out; this is the way in.
 func ArchiveEntryFinding(name string) (Finding, bool) {
+	if strings.Contains(name, `\`) {
+		return Finding{Severity: SeverityError, Code: CodeEntryPathEscape, Path: name,
+			Message: "archive entry uses a backslash; ZIP paths must use forward slashes so admission and runtime see the same file name"}, true
+	}
 	clean := strings.ReplaceAll(name, `\`, "/")
 	switch {
 	case strings.HasPrefix(clean, "/"), hasDriveLetter(clean):
@@ -983,7 +990,12 @@ func (r *Report) scanTree(fsys fs.FS) {
 		// bit, and without this the scan never says the package contains a link at
 		// all (04 丙-15 D-3).
 		if info.Mode()&fs.ModeSymlink != 0 {
-			r.add(SeverityWarning, CodeSymlinkEntry, path, symlinkMessage(fsys, path, info.Size()))
+			r.add(SeverityError, CodeSymlinkEntry, path, symlinkMessage(fsys, path, info.Size()))
+			return nil
+		}
+		if info.Mode().Type() != 0 {
+			r.add(SeverityError, CodeUnsupportedEntryType, path,
+				fmt.Sprintf("package entry is not a regular file or directory (mode %s); the runtime cannot materialise it", info.Mode()))
 			return nil
 		}
 		deps.note(path)

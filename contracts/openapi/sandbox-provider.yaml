@@ -822,6 +822,11 @@ components:
               truncated:
                 type: boolean
                 description: Set when the artifact limits of PDM-005 5.2 cut the output short.
+        artifacts_truncated:
+          type: boolean
+          description: |
+            True when any output was dropped by the frozen artifact limits.
+            Aggregate so even an all-dropped collection remains representable.
         usage:
           $ref: "#/components/schemas/RunUsage"
         error:

@@ -68,6 +68,23 @@ INSERT INTO datasets (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
+-- name: CreateDatasetCleanupIntent :one
+-- Written before object storage is touched. A successful dataset transaction
+-- deletes it; every other exit leaves a durable key for purge-datasets.
+INSERT INTO dataset_object_cleanup_intents (workspace_id, object_key)
+VALUES ($1, $2)
+RETURNING *;
+
+-- name: LockDatasetObjectKeySession :exec
+SELECT pg_advisory_lock(hashtextextended('dataset-object:' || @object_key::text, 0));
+
+-- name: UnlockDatasetObjectKeySession :one
+SELECT pg_advisory_unlock(hashtextextended('dataset-object:' || @object_key::text, 0));
+
+-- name: DeleteDatasetCleanupIntent :exec
+DELETE FROM dataset_object_cleanup_intents
+WHERE id = $1 AND workspace_id = $2;
+
 -- name: GetDataset :one
 SELECT * FROM datasets
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL;
@@ -88,6 +105,8 @@ WHERE test_case_id = $1 AND workspace_id = $2 AND deleted_at IS NULL;
 -- name: SoftDeleteDataset :one
 -- The row is marked deleted here; the object itself is removed by the caller
 -- after the transaction commits (objstore.Remove is idempotent, iron rule 9).
+-- purged_at stays null until that succeeds, making a failed removal durable
+-- work for the retention sweep rather than an unreachable orphan.
 UPDATE datasets SET deleted_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 RETURNING *;
@@ -109,3 +128,8 @@ RETURNING *;
 -- name: GetTestCaseSnapshot :one
 SELECT * FROM test_case_snapshots
 WHERE id = $1 AND workspace_id = $2;
+-- name: LockDatasetWorkspaceObjects :exec
+SELECT pg_advisory_lock_shared(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));
+
+-- name: UnlockDatasetWorkspaceObjects :one
+SELECT pg_advisory_unlock_shared(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));

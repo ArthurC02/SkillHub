@@ -30,7 +30,8 @@ func TestPurgeServiceCarriesEveryContextsStep(t *testing.T) {
 	for i := range svc.NumField() {
 		field := svc.Field(i)
 		if (field.Type() == reflect.TypeFor[identity.WorkspacePurge]() ||
-			field.Type() == reflect.TypeFor[identity.WorkspaceObjectKeys]()) && field.IsNil() {
+			field.Type() == reflect.TypeFor[identity.WorkspaceObjectKeys]() ||
+			field.Type() == reflect.TypeFor[identity.WorkspaceQuiescence]()) && field.IsNil() {
 			t.Errorf("identity.Service.%s is nil: purge-accounts would refuse to run",
 				svc.Type().Field(i).Name)
 		}

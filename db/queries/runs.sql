@@ -37,6 +37,7 @@ JOIN skill_versions v ON v.id = r.skill_version_id
 JOIN skills sk ON sk.id = v.skill_id
 JOIN test_case_snapshots s ON s.id = r.test_case_snapshot_id
 WHERE r.workspace_id = @workspace_id
+  AND (sqlc.narg(test_case_id)::uuid IS NULL OR s.test_case_id = sqlc.narg(test_case_id)::uuid)
 ORDER BY r.created_at DESC, r.id
 LIMIT @page_size OFFSET @page_offset;
 
@@ -54,6 +55,17 @@ UPDATE artifacts SET deleted_at = now()
 WHERE id = @artifact_id AND run_id = @run_id AND workspace_id = @workspace_id
   AND kind = 'run_output' AND deleted_at IS NULL
 RETURNING id, object_key, purged_at;
+
+-- name: GetRunArtifactForDelete :one
+SELECT id, object_key, purged_at FROM artifacts
+WHERE id = @artifact_id AND run_id = @run_id AND workspace_id = @workspace_id
+  AND kind = 'run_output' AND deleted_at IS NULL;
+
+-- name: LockRunArtifactObjectSession :exec
+SELECT pg_advisory_lock(hashtextextended(@lock_key::text, 0));
+
+-- name: UnlockRunArtifactObjectSession :one
+SELECT pg_advisory_unlock(hashtextextended(@lock_key::text, 0));
 
 -- name: GetRunLinkage :one
 -- The two ids the runs row does not carry itself, for the read surface (RUN-002).
@@ -128,21 +140,35 @@ RETURNING *;
 -- Not workspace scoped, unlike everything above it, and that is not an iron-rule-3
 -- exception: no user input reaches this statement and no user data leaves it. The
 -- caller acts on runs it re-reads under their own workspace_id from the row itself.
-SELECT * FROM runs
-WHERE status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-ORDER BY created_at
-LIMIT $1;
+WITH candidates AS (
+    SELECT id FROM runs
+    WHERE status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+	  -- One supervisor interval: long enough to avoid a same-round duplicate,
+	  -- short enough that a lost job cannot hide an overdue run for 15 minutes.
+	  AND (supervision_checked_at IS NULL OR supervision_checked_at < now() - interval '30 seconds')
+    ORDER BY supervision_checked_at NULLS FIRST, supervision_checked_at, created_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE runs r SET supervision_checked_at = now()
+FROM candidates c WHERE r.id = c.id
+RETURNING r.*;
 
 -- name: ListRunsNeedingCleanup :many
 -- RUN-007: terminal runs whose sandbox has not been confirmed released. The one minute
 -- floor keeps this from racing the cleanup job that the terminal transition just
 -- enqueued; anything still here after that is a job that exhausted its retries.
-SELECT * FROM runs
-WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
-  AND cleanup_status <> 'cleaned'
-  AND finished_at < now() - interval '1 minute'
-ORDER BY finished_at
-LIMIT $1;
+WITH candidates AS (
+    SELECT id FROM runs
+    WHERE status IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+      AND cleanup_status <> 'cleaned'
+      AND finished_at < now() - interval '1 minute'
+	  AND (cleanup_attempted_at IS NULL OR cleanup_attempted_at < now() - interval '30 seconds')
+    ORDER BY cleanup_attempted_at NULLS FIRST, cleanup_attempted_at, finished_at, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE runs r SET cleanup_attempted_at = now()
+FROM candidates c WHERE r.id = c.id
+RETURNING r.*;
 
 -- name: SetRunCleanupStatus :one
 -- RUN-002 "Run 結束後必須進入清理流程": cleanup outcome is recorded apart from the
@@ -173,10 +199,10 @@ ORDER BY t.occurred_at, t.id;
 -- Allocates the next attempt number inline, the same way CreateSkillVersion allocates a
 -- version number: a concurrent dispatch loses on run_attempts_run_number_key instead of
 -- overwriting the attempt already there (RUN-003).
-INSERT INTO run_attempts (run_id, workspace_id, attempt_number, provider)
+INSERT INTO run_attempts (run_id, workspace_id, attempt_number, provider, object_grants_state)
 SELECT r.id, r.workspace_id,
        (SELECT coalesce(max(attempt_number), 0) + 1 FROM run_attempts WHERE run_id = r.id),
-       $3
+       $3, 'unissued'
 FROM runs r
 WHERE r.id = $1 AND r.workspace_id = $2
 RETURNING *;
@@ -191,7 +217,19 @@ RETURNING *;
 -- name: FinishRunAttempt :one
 -- error_class is RunError.class from contracts/openapi/sandbox-provider.yaml; NULL means
 -- the attempt succeeded.
-UPDATE run_attempts SET finished_at = now(), error_class = $3, error_message = $4
+UPDATE run_attempts
+SET finished_at = now(), error_class = $3, error_message = $4,
+    -- Only a current worker's explicit unissued marker proves no URL escaped.
+    -- legacy_unknown is deliberately left fail-closed during a rolling deploy.
+    object_grants_expire_at = CASE
+        WHEN object_grants_state = 'unissued'
+            THEN now() - interval '2 minutes'
+        ELSE object_grants_expire_at
+    END,
+    object_grants_state = CASE
+        WHEN object_grants_state = 'unissued' THEN 'closed'
+        ELSE object_grants_state
+    END
 WHERE id = $1 AND workspace_id = $2
 RETURNING *;
 
@@ -348,8 +386,10 @@ WHERE workspace_id = @workspace_id
 -- exists to catch (handoff 丙-5) - is indistinguishable from "the platform never
 -- wrote the manifest down", and an evaluator cannot honestly report either.
 --
--- WHERE NOT EXISTS rather than ON CONFLICT: there is no unique key to conflict on,
--- and a redelivered settle must not double the manifest (iron rule 9).
+-- recordArtifacts takes LockRunArtifactManifest in the preceding statement.
+-- A separate statement is required so READ COMMITTED takes a fresh snapshot
+-- after a concurrent holder commits; a lock CTE inside this INSERT would keep
+-- the pre-wait snapshot and still admit a duplicate.
 INSERT INTO artifacts (
     workspace_id, run_id, kind, file_name, content_type, size_bytes, content_hash,
     object_key, expires_at
@@ -374,8 +414,18 @@ SELECT @workspace_id, @run_id, 'run_output', @file_name, @content_type, @size_by
        @content_hash, @object_key, now() + interval '90 days'
 WHERE NOT EXISTS (
     SELECT 1 FROM artifacts
-    WHERE run_id = @run_id AND kind = 'run_output' AND file_name = @file_name
+    WHERE run_id = @run_id AND kind = 'run_output'
+      AND lower(file_name) = lower(sqlc.arg(file_name)::text)
 );
+
+-- name: LockRunArtifactManifest :exec
+SELECT pg_advisory_xact_lock(hashtextextended(
+    'run-artifact-manifest:' || sqlc.arg(run_id)::uuid::text, 0));
+
+-- name: MarkRunArtifactsTruncated :execrows
+UPDATE runs
+SET artifacts_truncated = true
+WHERE id = @id AND workspace_id = @workspace_id;
 
 -- name: ListRunArtifacts :many
 -- The run's output manifest, workspace scoped. Deleted rows are excluded: a purged
@@ -438,3 +488,66 @@ WHERE provider = @provider
 -- rounds (10 minutes at the X-02 scan interval).
 SELECT count(*) FROM reconciler_orphan_sightings
 WHERE provider = @provider AND rounds >= 2;
+-- name: AccountPurgeReady :one
+-- No sandbox may still be able to upload after the account purge snapshots
+-- object keys. Terminal and provider cleanup are insufficient: pre-signed
+-- object grants cannot be revoked, so their persisted deadline must also pass.
+SELECT NOT EXISTS (
+    SELECT 1 FROM runs r
+    WHERE r.workspace_id = $1
+      AND (r.status NOT IN ('succeeded', 'failed', 'cancelled', 'timed_out')
+           OR r.cleanup_status <> 'cleaned'
+           OR EXISTS (
+               SELECT 1 FROM run_attempts a
+               WHERE a.run_id = r.id
+                 -- S3 validation and Postgres need not share a clock. Wait one
+                 -- more minute rather than deleting while a signer still accepts.
+                 AND (a.object_grants_state = 'legacy_unknown'
+                      OR a.object_grants_expire_at > now() - interval '1 minute')
+           ))
+);
+
+-- name: SetRunAttemptObjectGrantsExpiry :execrows
+UPDATE run_attempts
+SET object_grants_expire_at = @expires_at::timestamptz,
+    object_grants_state = 'recorded'
+WHERE id = @id AND workspace_id = @workspace_id;
+
+-- name: CloseUnissuedRunAttemptGrants :execrows
+-- A worker may die after creating an attempt but before assembling its request.
+-- Only current workers write unissued, so legacy rolling-deploy attempts remain
+-- fail-closed until the documented drain-and-repair procedure has completed.
+UPDATE run_attempts
+SET object_grants_expire_at = now() - interval '2 minutes',
+    object_grants_state = 'closed'
+WHERE run_id = @run_id AND workspace_id = @workspace_id
+  AND object_grants_state = 'unissued';
+
+-- name: ListRunArtifactUploadIntents :many
+WITH candidates AS (
+    SELECT id FROM run_artifact_upload_intents
+    WHERE not_before <= now()
+      AND (attempted_at IS NULL OR attempted_at < now() - interval '15 minutes')
+    ORDER BY attempted_at NULLS FIRST, attempted_at, not_before, id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE run_artifact_upload_intents i SET attempted_at = now()
+FROM candidates c WHERE i.id = c.id
+RETURNING i.id, i.workspace_id, i.object_key;
+
+-- name: MarkRunArtifactUploadIntentPurged :exec
+DELETE FROM run_artifact_upload_intents WHERE id = $1;
+
+-- name: DeleteRunArtifactUploadIntentByObjectKey :exec
+-- A non-empty manifest is the durable owner of this archive. Removing the
+-- fallback intent in the same transaction avoids retaining and rescanning one
+-- redundant row per successful attempt for the full retention window.
+DELETE FROM run_artifact_upload_intents WHERE object_key = @object_key;
+
+-- name: CountLiveRunArtifactsSharingObject :one
+SELECT count(*) FROM artifacts
+WHERE kind = 'run_output' AND object_key = @object_key
+  AND deleted_at IS NULL AND purged_at IS NULL AND expires_at > now();
+
+-- name: LockRunArtifactObjectKey :exec
+SELECT pg_advisory_xact_lock(hashtextextended('artifact-object:' || @object_key::text, 0));

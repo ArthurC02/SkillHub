@@ -253,14 +253,14 @@ func TestTestLabReadFaceIsWorkspaceScoped(t *testing.T) {
 			{"packaging", packagingSvc.WorkspaceObjectKeys, artifactKey},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				keys, err := tc.list(ctx, ws)
+				keys, err := tc.list(ctx, pool, ws)
 				if err != nil {
 					t.Fatal(err)
 				}
 				if len(keys) != 1 || keys[0] != tc.want {
 					t.Fatalf("object keys = %v, want only %q", keys, tc.want)
 				}
-				strangerKeys, err := tc.list(ctx, foreign)
+				strangerKeys, err := tc.list(ctx, pool, foreign)
 				if err != nil {
 					t.Fatal(err)
 				}

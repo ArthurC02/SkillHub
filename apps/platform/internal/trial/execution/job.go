@@ -2,12 +2,16 @@ package run
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"mime"
+	"path"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/riverqueue/river"
@@ -305,10 +309,18 @@ func (d *driver) dispatch(ctx context.Context) error {
 
 		request, err := d.svc.buildRunRequest(ctx, d.cur, attempt, profile, policy)
 		if err != nil {
+			// No request reached a provider, so no external actor can hold an
+			// object grant. Replace the migration's fail-closed infinity sentinel;
+			// otherwise a pre-sign or validation failure could block account purge
+			// forever even though the attempt is already terminal.
+			if _, expiryErr := d.svc.queries().SetRunAttemptObjectGrantsExpiry(ctx, gen.SetRunAttemptObjectGrantsExpiryParams{
+				ExpiresAt: pgtype.Timestamptz{Time: time.Now().UTC().Add(-2 * time.Minute), Valid: true}, ID: attempt.ID, WorkspaceID: d.cur.WorkspaceID,
+			}); expiryErr != nil {
+				slog.Error("could not close undispatched attempt object grants", "run_id", pgconv.UUIDString(d.cur.ID), "error", expiryErr)
+			}
 			d.failAttempt(ctx, attempt, errClassProvision, err.Error())
 			return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failurePlatform, err.Error())
 		}
-
 		pr, err := provider.CreateRun(ctx, request)
 		if err != nil {
 			lastErr = err
@@ -471,7 +483,11 @@ func (d *driver) mapState(ctx context.Context, attempt gen.RunAttempt, pr Provid
 // settle records the attempt's outcome and takes the run to its terminal state.
 func (d *driver) settle(ctx context.Context, attempt gen.RunAttempt, pr ProviderRun) error {
 	status, failureClass, errClass, message := classifyResult(pr)
-	d.recordArtifacts(ctx, attempt, pr)
+	if err := d.recordArtifacts(ctx, attempt, pr); err != nil {
+		message = err.Error()
+		d.failAttempt(ctx, attempt, errClassProvision, message)
+		return d.finish(ctx, attempt.ID, gen.RunStatusFailed, failureProvider, message)
+	}
 	d.failAttempt(ctx, attempt, errClass, message)
 
 	if status != gen.RunStatusSucceeded {
@@ -586,6 +602,11 @@ func (d *driver) advance(ctx context.Context, attemptID pgtype.UUID, to gen.RunS
 
 // finish applies the terminal transition, with the classification that explains it.
 func (d *driver) finish(ctx context.Context, attemptID pgtype.UUID, to gen.RunStatus, failureClass, reason string) error {
+	if _, err := d.svc.queries().CloseUnissuedRunAttemptGrants(ctx, gen.CloseUnissuedRunAttemptGrantsParams{
+		RunID: d.cur.ID, WorkspaceID: d.cur.WorkspaceID,
+	}); err != nil {
+		return err
+	}
 	return d.transition(ctx, attemptID, to, failureClass, reason)
 }
 
@@ -614,38 +635,165 @@ func (d *driver) transition(ctx context.Context, attemptID pgtype.UUID, to gen.R
 // output, EVAL-001's evidence). Manifest only: names, sizes and hashes, with the
 // bytes left in the archive the attempt's write grant addressed.
 //
-// Best effort, like failAttempt: the run's terminal state is the fact that
-// matters, and a manifest that could not be written must not stop it. What it
-// costs is an evaluation that reports no output files for a run that had some -
-// which is why the failure is logged rather than swallowed.
-func (d *driver) recordArtifacts(ctx context.Context, attempt gen.RunAttempt, pr ProviderRun) {
-	if pr.Result == nil || len(pr.Result.Artifacts) == 0 {
-		return
+// The entire manifest is validated before the transaction starts, then stored
+// atomically. A successful Run with a partial manifest is not a useful fact:
+// evaluators would mistake a persistence failure for "the skill made no file".
+func (d *driver) recordArtifacts(ctx context.Context, attempt gen.RunAttempt, pr ProviderRun) error {
+	if pr.Result == nil || (len(pr.Result.Artifacts) == 0 && !artifactCollectionTruncated(pr.Result)) {
+		return nil
 	}
 	archiveKey := artifactObjectKey(pgconv.UUIDString(d.cur.ID), pgconv.UUIDString(attempt.ID))
-	for _, a := range pr.Result.Artifacts {
-		if a.FileName == "" {
-			continue
+	limits := runLimits(d.cur)
+	truncated := artifactCollectionTruncated(pr.Result)
+	if len(pr.Result.Artifacts) > 1000 {
+		return errors.New("provider returned too many artifact manifest entries")
+	}
+	seen := make(map[string]struct{}, len(pr.Result.Artifacts))
+	var total int64
+	for _, artifact := range pr.Result.Artifacts {
+		if artifact.ObjectKey != "" && artifact.ObjectKey != archiveKey {
+			return errors.New("provider returned an artifact object key outside its write grant")
 		}
-		key := a.ObjectKey
-		if key == "" {
-			key = archiveKey
+		if !validArtifactFileName(artifact.FileName) {
+			return fmt.Errorf("provider returned an invalid artifact file name %q", artifact.FileName)
 		}
+		nameKey := strings.ToLower(artifact.FileName)
+		if _, duplicate := seen[nameKey]; duplicate {
+			return fmt.Errorf("provider returned duplicate artifact file name %q", artifact.FileName)
+		}
+		seen[nameKey] = struct{}{}
+		if artifact.SizeBytes < 0 || artifact.SizeBytes > limits.ArtifactFileBytes ||
+			total > limits.ArtifactTotalBytes-artifact.SizeBytes {
+			return fmt.Errorf("provider returned an invalid artifact size for %q", artifact.FileName)
+		}
+		total += artifact.SizeBytes
+		decoded, err := hex.DecodeString(artifact.ContentHash)
+		if err != nil || len(decoded) != 32 {
+			return fmt.Errorf("provider returned an invalid artifact hash for %q", artifact.FileName)
+		}
+		if artifact.ContentType != "" {
+			if len(artifact.ContentType) > 255 {
+				return fmt.Errorf("provider returned an invalid artifact content type for %q", artifact.FileName)
+			}
+			if _, _, err := mime.ParseMediaType(artifact.ContentType); err != nil {
+				return fmt.Errorf("provider returned an invalid artifact content type for %q", artifact.FileName)
+			}
+		}
+	}
+	if d.svc == nil || d.svc.Pool == nil {
+		return errors.New("run artifact persistence is not configured")
+	}
+	tx, err := d.svc.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := gen.New(tx)
+	if err := persistArtifactManifest(ctx, artifactManifestStore{q}, d.cur, archiveKey, pr.Result, truncated); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+type artifactManifestQueries interface {
+	lock(context.Context, pgtype.UUID) error
+	markTruncated(context.Context, gen.MarkRunArtifactsTruncatedParams) (int64, error)
+	insert(context.Context, gen.InsertRunArtifactParams) (int64, error)
+	retireIntent(context.Context, string) error
+}
+
+type artifactManifestStore struct{ q *gen.Queries }
+
+func (s artifactManifestStore) lock(ctx context.Context, id pgtype.UUID) error {
+	return s.q.LockRunArtifactManifest(ctx, id)
+}
+func (s artifactManifestStore) markTruncated(ctx context.Context, p gen.MarkRunArtifactsTruncatedParams) (int64, error) {
+	return s.q.MarkRunArtifactsTruncated(ctx, p)
+}
+func (s artifactManifestStore) insert(ctx context.Context, p gen.InsertRunArtifactParams) (int64, error) {
+	return s.q.InsertRunArtifact(ctx, p)
+}
+func (s artifactManifestStore) retireIntent(ctx context.Context, key string) error {
+	return s.q.DeleteRunArtifactUploadIntentByObjectKey(ctx, key)
+}
+
+func persistArtifactManifest(
+	ctx context.Context, q artifactManifestQueries, current gen.Run, archiveKey string,
+	result *RunResult, truncated bool,
+) error {
+	if err := q.lock(ctx, current.ID); err != nil {
+		return fmt.Errorf("lock artifact manifest: %w", err)
+	}
+	if truncated {
+		if _, err := q.markTruncated(ctx, gen.MarkRunArtifactsTruncatedParams{
+			ID: current.ID, WorkspaceID: current.WorkspaceID,
+		}); err != nil {
+			return fmt.Errorf("record truncated artifact collection: %w", err)
+		}
+	}
+	for _, a := range result.Artifacts {
 		contentType := a.ContentType
 		if contentType == "" {
 			// From the manifest's own magic-byte sniff, not from the file name.
 			// Unknown is a real answer and is stored as one.
 			contentType = "application/octet-stream"
 		}
-		if _, err := d.svc.queries().InsertRunArtifact(ctx, gen.InsertRunArtifactParams{
-			WorkspaceID: d.cur.WorkspaceID, RunID: d.cur.ID,
+		if _, err := q.insert(ctx, gen.InsertRunArtifactParams{
+			WorkspaceID: current.WorkspaceID, RunID: current.ID,
 			FileName: a.FileName, ContentType: contentType, SizeBytes: a.SizeBytes,
-			ContentHash: a.ContentHash, ObjectKey: key,
+			ContentHash: a.ContentHash, ObjectKey: archiveKey,
 		}); err != nil {
-			slog.Warn("could not record an artifact manifest row",
-				"run_id", pgconv.UUIDString(d.cur.ID), "file_name", a.FileName, "error", err)
+			return fmt.Errorf("record artifact manifest row %q: %w", a.FileName, err)
 		}
 	}
+	if len(result.Artifacts) > 0 {
+		if err := q.retireIntent(ctx, archiveKey); err != nil {
+			return fmt.Errorf("retire artifact upload intent: %w", err)
+		}
+	}
+	return nil
+}
+
+// artifactCollectionTruncated accepts both sides of the rolling provider
+// contract: current sandboxes send the aggregate even when every entry was
+// dropped, while an older sandbox can only mark the entries it did return.
+func artifactCollectionTruncated(result *RunResult) bool {
+	if result == nil {
+		return false
+	}
+	if result.ArtifactsTruncated {
+		return true
+	}
+	for _, artifact := range result.Artifacts {
+		if artifact.Truncated {
+			return true
+		}
+	}
+	return false
+}
+
+func validArtifactFileName(name string) bool {
+	if name == "" || len(name) > 1024 || !utf8.ValidString(name) || strings.Contains(name, `\`) ||
+		strings.HasPrefix(name, "/") || strings.HasPrefix(name, "-") || path.Clean(name) != name {
+		return false
+	}
+	for _, part := range strings.Split(name, "/") {
+		if part == "" || part == "." || part == ".." || strings.TrimRight(part, " .") != part ||
+			strings.ContainsAny(part, `<>:"|?*`) {
+			return false
+		}
+		for _, r := range part {
+			if r < 0x20 {
+				return false
+			}
+		}
+		base := strings.ToLower(strings.SplitN(part, ".", 2)[0])
+		if base == "con" || base == "prn" || base == "aux" || base == "nul" ||
+			(len(base) == 4 && (strings.HasPrefix(base, "com") || strings.HasPrefix(base, "lpt")) && base[3] >= '1' && base[3] <= '9') {
+			return false
+		}
+	}
+	return true
 }
 
 // failAttempt records the attempt's own outcome. Best effort by design: the run's

@@ -74,9 +74,10 @@ func (q *Queries) DeleteSession(ctx context.Context, tokenHash []byte) error {
 }
 
 const getSessionUser = `-- name: GetSessionUser :one
-SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at FROM users u
+SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at, u.purge_attempted_at, u.purge_started_at FROM users u
 JOIN sessions s ON s.user_id = u.id
-WHERE s.token_hash = $1 AND s.expires_at > now() AND u.deleted_at IS NULL
+WHERE s.token_hash = $1 AND s.expires_at > now()
+  AND u.deleted_at IS NULL AND u.purge_started_at IS NULL
 `
 
 // Session resolution and expiry check in one query; the caller derives user_id
@@ -92,12 +93,14 @@ func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (User, e
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeletionRequestedAt,
+		&i.PurgeAttemptedAt,
+		&i.PurgeStartedAt,
 	)
 	return i, err
 }
 
 const getUserByIdentity = `-- name: GetUserByIdentity :one
-SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at FROM users u
+SELECT u.id, u.email, u.display_name, u.created_at, u.updated_at, u.deleted_at, u.deletion_requested_at, u.purge_attempted_at, u.purge_started_at FROM users u
 JOIN user_identities i ON i.user_id = u.id
 WHERE i.provider = $1 AND i.provider_user_id = $2 AND u.deleted_at IS NULL
 `
@@ -118,6 +121,46 @@ func (q *Queries) GetUserByIdentity(ctx context.Context, arg GetUserByIdentityPa
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeletionRequestedAt,
+		&i.PurgeAttemptedAt,
+		&i.PurgeStartedAt,
 	)
 	return i, err
+}
+
+const lockWorkspaceObjectWrite = `-- name: LockWorkspaceObjectWrite :exec
+SELECT pg_advisory_lock_shared(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
+`
+
+func (q *Queries) LockWorkspaceObjectWrite(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, lockWorkspaceObjectWrite, workspaceID)
+	return err
+}
+
+const unlockWorkspaceObjectWrite = `-- name: UnlockWorkspaceObjectWrite :one
+SELECT pg_advisory_unlock_shared(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
+`
+
+func (q *Queries) UnlockWorkspaceObjectWrite(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, unlockWorkspaceObjectWrite, workspaceID)
+	var pg_advisory_unlock_shared bool
+	err := row.Scan(&pg_advisory_unlock_shared)
+	return pg_advisory_unlock_shared, err
+}
+
+const workspaceAcceptsObjects = `-- name: WorkspaceAcceptsObjects :one
+SELECT EXISTS (
+    SELECT 1 FROM workspaces w JOIN users u ON u.id = w.owner_user_id
+    WHERE w.id = $1::uuid
+      AND u.deleted_at IS NULL AND u.purge_started_at IS NULL
+)
+`
+
+// Identity owns the account lifecycle gate. Object-producing contexts receive
+// this read through the composition root and evaluate it on their own locked
+// connection/transaction.
+func (q *Queries) WorkspaceAcceptsObjects(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, workspaceAcceptsObjects, workspaceID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }

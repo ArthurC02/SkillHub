@@ -49,42 +49,87 @@ DELETE FROM audit_events WHERE created_at < $1;
 -- Starts (or re-reads) the 30-day grace period. Idempotent: asking twice keeps
 -- the original start time rather than extending the wait.
 UPDATE users
-SET deletion_requested_at = coalesce(deletion_requested_at, now()), updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL
+SET deletion_requested_at = coalesce(deletion_requested_at, now()),
+    purge_attempted_at = CASE WHEN deletion_requested_at IS NULL THEN NULL ELSE purge_attempted_at END,
+    purge_started_at = CASE WHEN deletion_requested_at IS NULL THEN NULL ELSE purge_started_at END,
+    updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL AND purge_started_at IS NULL
 RETURNING *;
 
 -- name: CancelAccountDeletion :one
 -- Cancellable for the whole grace period (PDM-006 6.1 避免誤刪不可逆).
-UPDATE users SET deletion_requested_at = NULL, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL
+UPDATE users SET deletion_requested_at = NULL, purge_attempted_at = NULL,
+    purge_started_at = NULL, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL AND purge_started_at IS NULL
 RETURNING *;
 
 -- name: ListAccountsPastGrace :many
 -- Purge worklist. The cutoff is computed by the caller so a test can run the
 -- purge without waiting 30 days, and so shortening the policy applies to
 -- accounts that already requested deletion.
-SELECT id FROM users
-WHERE deleted_at IS NULL
-  AND deletion_requested_at IS NOT NULL
-  AND deletion_requested_at <= sqlc.arg(cutoff)
-ORDER BY deletion_requested_at
-LIMIT $1;
+WITH candidates AS (
+    SELECT pending.id FROM users pending
+    WHERE pending.deleted_at IS NULL
+      AND pending.deletion_requested_at IS NOT NULL
+      AND pending.deletion_requested_at <= sqlc.arg(cutoff)
+	  AND (pending.purge_attempted_at IS NULL OR pending.purge_attempted_at < now() - interval '15 minutes')
+    ORDER BY pending.purge_attempted_at NULLS FIRST, pending.purge_attempted_at,
+             pending.deletion_requested_at, pending.id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE users u SET purge_attempted_at = now()
+FROM candidates c WHERE u.id = c.id
+RETURNING u.id;
+
+-- name: MarkAccountPurgeStarted :execrows
+-- Called only while the purge owns every workspace's exclusive write fence.
+-- A cancellation that won before that point leaves no deletion request and
+-- therefore makes this a no-op.
+UPDATE users SET purge_started_at = coalesce(purge_started_at, now()), updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL AND deletion_requested_at IS NOT NULL;
 
 -- name: ListWorkspaceDatasetObjectKeys :many
 -- Private object keys are split by owner. Identity combines these scoped
 -- answers before deleting bytes; package objects remain deliberately absent.
-SELECT object_key FROM datasets WHERE workspace_id = $1;
+SELECT d.object_key FROM datasets d WHERE d.workspace_id = $1
+UNION
+SELECT i.object_key FROM dataset_object_cleanup_intents i WHERE i.workspace_id = $1;
+
+-- name: LockAccountWorkspaceObjects :exec
+-- Account purge holds this session lock from its object-key snapshot through
+-- the database purge. Dataset and download producers use the same key.
+SELECT pg_advisory_lock(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));
+
+-- name: UnlockAccountWorkspaceObjects :one
+SELECT pg_advisory_unlock(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));
 
 -- name: ListWorkspaceRunArtifactObjectKeys :many
 SELECT object_key FROM artifacts
-WHERE workspace_id = $1 AND kind = 'run_output';
+WHERE artifacts.workspace_id = sqlc.arg(workspace_id)::uuid AND kind = 'run_output'
+UNION
+SELECT 'run-artifacts/' || r.id::text || '/' || a.id::text || '/artifacts.tar'
+FROM runs r
+JOIN run_attempts a ON a.run_id = r.id AND a.workspace_id = r.workspace_id
+WHERE r.workspace_id = sqlc.arg(workspace_id)::uuid
+UNION
+SELECT object_key FROM run_artifact_upload_intents
+WHERE workspace_id = sqlc.arg(workspace_id)::uuid;
 
 -- name: ListWorkspaceDownloadArtifactObjectKeys :many
 SELECT object_key FROM artifacts
-WHERE workspace_id = $1 AND kind = 'download_package';
+WHERE workspace_id = sqlc.arg(workspace_id)::uuid AND kind = 'download_package'
+UNION
+SELECT object_key FROM download_object_cleanup_intents
+WHERE workspace_id = sqlc.arg(workspace_id)::uuid;
 
 -- name: DeleteWorkspaceDatasets :execrows
-DELETE FROM datasets WHERE workspace_id = $1;
+WITH cleanup_intents AS (
+    DELETE FROM dataset_object_cleanup_intents i WHERE i.workspace_id = $1
+), sightings AS (
+    DELETE FROM object_reconcile_sightings s USING datasets d
+    WHERE s.resource_kind = 'dataset' AND s.resource_id = d.id AND d.workspace_id = $1
+)
+DELETE FROM datasets d WHERE d.workspace_id = $1;
 
 -- name: DeleteWorkspaceTestCases :execrows
 -- Hard-deletes the workspace's test cases, except the ones a snapshot froze.
@@ -114,10 +159,28 @@ WHERE test_cases.workspace_id = $1
   );
 
 -- name: DeleteWorkspaceRunArtifacts :execrows
-DELETE FROM artifacts WHERE workspace_id = $1 AND kind = 'run_output';
+WITH cleanup_intents AS (
+    DELETE FROM run_artifact_upload_intents
+    WHERE workspace_id = sqlc.arg(workspace_id)::uuid
+), sightings AS (
+    DELETE FROM object_reconcile_sightings s USING artifacts a
+    WHERE s.resource_kind = 'artifact' AND s.resource_id = a.id
+      AND a.workspace_id = sqlc.arg(workspace_id)::uuid AND a.kind = 'run_output'
+)
+DELETE FROM artifacts
+WHERE workspace_id = sqlc.arg(workspace_id)::uuid AND kind = 'run_output';
 
 -- name: DeleteWorkspaceDownloadArtifacts :execrows
-DELETE FROM artifacts WHERE workspace_id = $1 AND kind = 'download_package';
+WITH cleanup_intents AS (
+    DELETE FROM download_object_cleanup_intents
+    WHERE workspace_id = sqlc.arg(workspace_id)::uuid
+), sightings AS (
+    DELETE FROM object_reconcile_sightings s USING artifacts a
+    WHERE s.resource_kind = 'artifact' AND s.resource_id = a.id
+      AND a.workspace_id = sqlc.arg(workspace_id)::uuid AND a.kind = 'download_package'
+)
+DELETE FROM artifacts
+WHERE workspace_id = sqlc.arg(workspace_id)::uuid AND kind = 'download_package';
 
 -- name: PurgeUnreferencedSkills :execrows
 -- Hard-deletes the workspace's skills that nothing outside it depends on, with

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -22,6 +23,8 @@ import (
 const SessionTTL = 30 * 24 * time.Hour
 
 const providerGitHub = "github"
+
+var ErrAccountPurging = errors.New("account deletion is already in progress")
 
 // Service wires OAuth identity to users, workspaces, and sessions.
 type Service struct {
@@ -45,6 +48,41 @@ type Service struct {
 	DatasetObjectKeys          WorkspaceObjectKeys
 	RunArtifactObjectKeys      WorkspaceObjectKeys
 	DownloadArtifactObjectKeys WorkspaceObjectKeys
+	WorkspaceQuiescent         WorkspaceQuiescence
+}
+
+// MayStoreObjects is Identity's owner read for the account-lifecycle gate.
+// Producers call it using the same connection or transaction that holds their
+// workspace object fence.
+func (s *Service) MayStoreObjects(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error) {
+	if db == nil {
+		return false, errors.New("identity: object eligibility database is not configured")
+	}
+	return gen.New(db).WorkspaceAcceptsObjects(ctx, workspaceID)
+}
+
+// LockObjectWrite takes the shared, session-scoped side of the account-purge
+// fence and rechecks eligibility after any exclusive purge has released it.
+// Callers that span object-store I/O must pair it with UnlockObjectWrite on the
+// same database connection.
+func LockObjectWrite(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error) {
+	q := gen.New(db)
+	if err := q.LockWorkspaceObjectWrite(ctx, workspaceID); err != nil {
+		return false, err
+	}
+	allowed, err := q.WorkspaceAcceptsObjects(ctx, workspaceID)
+	if err != nil {
+		return true, err
+	}
+	if !allowed {
+		return true, ErrAccountPurging
+	}
+	return true, nil
+}
+
+func UnlockObjectWrite(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) error {
+	_, err := gen.New(db).UnlockWorkspaceObjectWrite(ctx, workspaceID)
+	return err
 }
 
 // User and Workspace are Identity's published language. Persistence rows stay
@@ -110,6 +148,9 @@ func (s *Service) LoginOrSignup(ctx context.Context, id ExternalIdentity) (strin
 	}
 	if err != nil {
 		return "", err
+	}
+	if user.PurgeStartedAt.Valid {
+		return "", ErrAccountPurging
 	}
 	return s.mintSession(ctx, user)
 }
@@ -182,6 +223,10 @@ func (s *Service) mintSession(ctx context.Context, user gen.User) (string, error
 		ExpiresAt: pgconv.Timestamptz(time.Now().Add(SessionTTL)),
 	})
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "55000" && pgErr.Message == "session owner is being purged" {
+			return "", ErrAccountPurging
+		}
 		return "", err
 	}
 	// CORE-008: the session row and its audit event commit together, so a
@@ -273,7 +318,7 @@ func (s *Service) setDeletionRequest(ctx context.Context, user User, request boo
 		updated, err = q.CancelAccountDeletion(ctx, user.ID)
 	}
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, errors.New("account not found")
+		return User{}, ErrAccountPurging
 	}
 	if err != nil {
 		return User{}, err

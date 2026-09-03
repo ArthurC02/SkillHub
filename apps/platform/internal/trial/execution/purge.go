@@ -30,6 +30,13 @@ func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtyp
 // WorkspaceObjectKeys names only this context's run-output objects. Identity
 // calls it before opening the account-purge transaction because object storage
 // cannot participate in that transaction.
-func (s *Service) WorkspaceObjectKeys(ctx context.Context, workspaceID pgtype.UUID) ([]string, error) {
-	return gen.New(s.Pool).ListWorkspaceRunArtifactObjectKeys(ctx, workspaceID)
+func (*Service) WorkspaceObjectKeys(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) ([]string, error) {
+	return gen.New(db).ListWorkspaceRunArtifactObjectKeys(ctx, workspaceID)
+}
+
+// AccountPurgeReady reports whether every provider resource and write grant in
+// the workspace has been cleaned up. Identity calls it while holding the
+// workspace purge fence exclusively.
+func (*Service) PurgeQuiescent(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error) {
+	return gen.New(db).AccountPurgeReady(ctx, workspaceID)
 }

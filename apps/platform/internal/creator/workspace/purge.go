@@ -42,7 +42,11 @@ type WorkspacePurge func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID
 // it runs at a different moment: object storage has no rollback, so the objects go
 // first and the rows second (see purgeAccount), and a step running inside the
 // transaction cannot supply an answer the caller needed before it opened.
-type WorkspaceObjectKeys func(ctx context.Context, workspaceID pgtype.UUID) ([]string, error)
+type WorkspaceObjectKeys func(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) ([]string, error)
+
+type WorkspaceQuiescence func(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) (bool, error)
+
+var errAccountPurgeDeferred = errors.New("identity: account purge deferred while workspace work is active")
 
 type purgeStep struct {
 	context string
@@ -110,6 +114,9 @@ func (s *Service) requirePurgeSteps() error {
 			missing = append(missing, step.context+" (object keys)")
 		}
 	}
+	if s.WorkspaceQuiescent == nil {
+		missing = append(missing, "run (purge readiness)")
+	}
 	if len(missing) > 0 {
 		return fmt.Errorf("identity: account purge steps not injected for %s; refusing to purge",
 			strings.Join(missing, ", "))
@@ -152,6 +159,9 @@ func (s *Service) PurgeExpiredAccounts(ctx context.Context, store ObjectRemover,
 	var failures []error
 	for _, id := range ids {
 		if err := s.purgeAccount(ctx, store, id); err != nil {
+			if errors.Is(err, errAccountPurgeDeferred) {
+				continue
+			}
 			// One bad account must not strand the rest of the batch: its row stays
 			// on the worklist and the next run retries it. Reported as well as
 			// logged, though. Returning nil here meant a run in which every account
@@ -178,6 +188,45 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 	if err != nil {
 		return err
 	}
+	conn, err := s.Pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	locked := make([]pgtype.UUID, 0, len(workspaces))
+	defer func() {
+		unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		for i := len(locked) - 1; i >= 0; i-- {
+			if _, err := gen.New(conn).UnlockAccountWorkspaceObjects(unlockCtx, locked[i]); err != nil {
+				slog.Error("account purge workspace lock could not be released; closing connection", "error", err)
+				_ = conn.Hijack().Close(context.Background())
+				return
+			}
+		}
+		conn.Release()
+	}()
+	for _, ws := range workspaces {
+		if err := gen.New(conn).LockAccountWorkspaceObjects(ctx, ws.ID); err != nil {
+			return err
+		}
+		locked = append(locked, ws.ID)
+	}
+	for _, ws := range workspaces {
+		ready, err := s.WorkspaceQuiescent(ctx, conn, ws.ID)
+		if err != nil {
+			return fmt.Errorf("check run cleanup readiness: %w", err)
+		}
+		if !ready {
+			return errAccountPurgeDeferred
+		}
+	}
+	started, err := gen.New(conn).MarkAccountPurgeStarted(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if started == 0 {
+		return errAccountPurgeDeferred
+	}
 
 	// Objects go before the transaction on purpose. Object storage has no
 	// rollback, so the two failure modes are not symmetric: an object deleted
@@ -188,7 +237,7 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 	for _, ws := range workspaces {
 		keys := map[string]struct{}{}
 		for _, step := range s.objectKeySteps() {
-			owned, err := step.list(ctx, ws.ID)
+			owned, err := step.list(ctx, conn, ws.ID)
 			if err != nil {
 				return fmt.Errorf("list %s object keys: %w", step.context, err)
 			}
@@ -203,7 +252,7 @@ func (s *Service) purgeAccount(ctx context.Context, store ObjectRemover, userID 
 		}
 	}
 
-	tx, err := s.Pool.Begin(ctx)
+	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return err
 	}

@@ -48,9 +48,8 @@ func (s *Service) ClaimedReconcileCandidates(ctx context.Context, limit int32) (
 // (DatasetRetention, surfaced as `retention_days`) and the consent form repeats.
 //
 // Which rows qualify is testlab's decision and stays here; when to scan is the
-// sweep's. Soft-deleted rows are not in it, for the reason run's half gives:
-// DeleteDataset already removed those bytes, behind guards this path does not
-// have.
+// sweep's. It includes expired live rows and soft-deleted rows whose first
+// object removal did not complete.
 func (s *Service) ExpiredDatasetCandidates(ctx context.Context, limit int32) ([]ReconcileCandidate, error) {
 	if s == nil || s.Pool == nil {
 		return nil, errPersistenceNotConfigured
@@ -64,6 +63,57 @@ func (s *Service) ExpiredDatasetCandidates(ctx context.Context, limit int32) ([]
 		out[i] = ReconcileCandidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
 	}
 	return out, nil
+}
+
+// DatasetCleanupIntentCandidates lists object keys left by uploads that did not
+// atomically publish a live dataset row.
+func (s *Service) DatasetCleanupIntentCandidates(ctx context.Context, limit int32) ([]ReconcileCandidate, error) {
+	if s == nil || s.Pool == nil {
+		return nil, errPersistenceNotConfigured
+	}
+	rows, err := gen.New(s.Pool).ListDatasetCleanupIntents(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ReconcileCandidate, len(rows))
+	for i, row := range rows {
+		out[i] = ReconcileCandidate{ID: row.ID, WorkspaceID: row.WorkspaceID, ObjectKey: row.ObjectKey}
+	}
+	return out, nil
+}
+
+func (s *Service) MarkDatasetCleanupIntentPurged(ctx context.Context, tx pgx.Tx, intentID pgtype.UUID) error {
+	if s == nil || tx == nil {
+		return errPersistenceNotConfigured
+	}
+	return gen.New(tx).MarkDatasetCleanupIntentPurged(ctx, intentID)
+}
+
+// GuardDatasetObjectRemoval prevents a stale cleanup intent from deleting an
+// object between a slow upload and the transaction that publishes its row.
+func (s *Service) GuardDatasetObjectRemoval(
+	ctx context.Context, objectKey string, action func(retain bool, tx pgx.Tx) error,
+) error {
+	if s == nil || s.Pool == nil {
+		return errPersistenceNotConfigured
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := gen.New(tx)
+	if err := q.LockDatasetObjectKey(ctx, objectKey); err != nil {
+		return err
+	}
+	live, err := q.CountLiveDatasetsSharingObject(ctx, objectKey)
+	if err != nil {
+		return err
+	}
+	if err := action(live > 0, tx); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // MarkDatasetPurged records that an expired dataset's bytes are gone.

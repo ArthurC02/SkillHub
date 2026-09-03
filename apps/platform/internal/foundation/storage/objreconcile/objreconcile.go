@@ -96,16 +96,24 @@ type Candidate struct {
 
 type ListFunc func(ctx context.Context, limit int32) ([]Candidate, error)
 
+// RetentionGuard lets an owner serialise a destructive removal with creation
+// of another live row for the same key. The callback says whether live rows
+// still retain the bytes; either way the expired row is marked complete.
+type RetentionGuard func(ctx context.Context, key string, action func(retain bool, tx pgx.Tx) error) error
+
 type Service struct {
 	Pool  *pgxpool.Pool
 	Store ObjectStore
 	// Owner reads and writes are all required. The generic scanner decides when
 	// to scan, while each context decides which of its rows qualify.
-	ListExpiredArtifacts ListFunc
-	ListClaimedArtifacts ListFunc
-	ListClaimedDatasets  ListFunc
-	RecordArtifactPurged MarkFunc
-	RecordDatasetLost    MarkFunc
+	ListExpiredArtifacts       ListFunc
+	ListDownloadIntents        ListFunc
+	ListClaimedArtifacts       ListFunc
+	ListClaimedDatasets        ListFunc
+	RecordArtifactPurged       MarkFunc
+	RecordDownloadIntentPurged MarkFunc
+	RecordDatasetLost          MarkFunc
+	GuardArtifactRemoval       RetentionGuard
 }
 
 // Args carries nothing: the work is whatever the database currently claims, and
@@ -129,8 +137,9 @@ func (w *Worker) Work(ctx context.Context, _ *river.Job[Args]) error {
 func (s *Service) Sweep(ctx context.Context) error {
 	// Before the store check, not after: a deployment with no store legitimately
 	// has nothing to do, but missing owner functions are a composition bug.
-	if s.ListExpiredArtifacts == nil || s.ListClaimedArtifacts == nil ||
-		s.ListClaimedDatasets == nil || s.RecordArtifactPurged == nil || s.RecordDatasetLost == nil {
+	if s.ListExpiredArtifacts == nil || s.ListDownloadIntents == nil || s.ListClaimedArtifacts == nil ||
+		s.ListClaimedDatasets == nil || s.RecordArtifactPurged == nil || s.RecordDatasetLost == nil ||
+		s.RecordDownloadIntentPurged == nil || s.GuardArtifactRemoval == nil {
 		return errors.New("objreconcile: owner read/write functions not injected; refusing to sweep")
 	}
 	if s.Store == nil {
@@ -153,8 +162,11 @@ func (s *Service) Sweep(ctx context.Context) error {
 
 // purgeExpired is SEC-006's retention half for download packages.
 func (s *Service) purgeExpired(ctx context.Context) error {
-	_, err := PurgeExpired(ctx, s.Pool, s.Store, s.ListExpiredArtifacts, s.RecordArtifactPurged, batch)
-	return err
+	_, artifactErr := PurgeExpired(ctx, s.Pool, s.Store, s.ListExpiredArtifacts,
+		s.RecordArtifactPurged, s.GuardArtifactRemoval, batch)
+	_, intentErr := PurgeExpired(ctx, s.Pool, s.Store, s.ListDownloadIntents,
+		s.RecordDownloadIntentPurged, s.GuardArtifactRemoval, batch)
+	return errors.Join(artifactErr, intentErr)
 }
 
 // PurgeExpired is SEC-006's retention half for one owner's rows: the bytes go,
@@ -176,7 +188,7 @@ func (s *Service) purgeExpired(ctx context.Context) error {
 // two worklists — a second one written beside it is where the two would drift.
 func PurgeExpired(
 	ctx context.Context, pool *pgxpool.Pool, store ObjectStore,
-	list ListFunc, mark MarkFunc, limit int32,
+	list ListFunc, mark MarkFunc, guard RetentionGuard, limit int32,
 ) (int, error) {
 	if pool == nil || store == nil || list == nil || mark == nil {
 		return 0, errors.New("objreconcile: retention sweep is missing its pool, store or owner functions")
@@ -186,19 +198,58 @@ func PurgeExpired(
 		return 0, err
 	}
 	purged := 0
+	byKey := make(map[string][]Candidate, len(rows))
+	keys := make([]string, 0, len(rows))
 	for _, row := range rows {
-		if err := store.Remove(ctx, row.ObjectKey); err != nil {
-			// Leave the row unmarked: the next pass tries the same key again.
-			// Marking it here would be recording a deletion that did not happen.
-			slog.Warn("expired object not removed; will retry",
-				"artifact_id", pgconv.UUIDString(row.ID), "error", err)
-			continue
+		if _, ok := byKey[row.ObjectKey]; !ok {
+			keys = append(keys, row.ObjectKey)
 		}
-		if err := markPurged(ctx, pool, mark, row.ID); err != nil {
-			return purged, err
+		byKey[row.ObjectKey] = append(byKey[row.ObjectKey], row)
+	}
+	for _, key := range keys {
+		group := byKey[key]
+		var removeErr error
+		action := func(retain bool, tx pgx.Tx) error {
+			if !retain {
+				removeErr = store.Remove(ctx, key)
+				if removeErr != nil {
+					return nil // storage failures remain retryable, not a failed sweep
+				}
+			}
+			// Mark every expired row for this shared key while the owner guard is
+			// still held. Otherwise a concurrent delete can see an unmarked expired
+			// row as a reference, retain the bytes, and leave an orphan when this
+			// loop marks that last row moments later.
+			for _, row := range group {
+				var err error
+				if tx == nil {
+					err = markPurged(ctx, pool, mark, row.ID)
+				} else {
+					err = mark(ctx, tx, row.ID)
+				}
+				if err != nil {
+					return err
+				}
+				purged++
+				slog.Info("artifact purged at retention", "artifact_id", pgconv.UUIDString(row.ID))
+			}
+			return nil
 		}
-		purged++
-		slog.Info("artifact purged at retention", "artifact_id", pgconv.UUIDString(row.ID))
+		var guardErr error
+		if guard == nil {
+			guardErr = action(false, nil)
+		} else {
+			guardErr = guard(ctx, key, action)
+		}
+		if guardErr != nil {
+			return purged, guardErr
+		}
+		if removeErr != nil {
+			for _, row := range group {
+				slog.Warn("expired object not removed; will retry",
+					"artifact_id", pgconv.UUIDString(row.ID), "error", removeErr)
+			}
+		}
 	}
 	return purged, nil
 }
@@ -219,12 +270,13 @@ func markPurged(ctx context.Context, pool *pgxpool.Pool, mark MarkFunc, artifact
 // bytes are not there, and stops them being served.
 func (s *Service) checkArtifacts(ctx context.Context) error {
 	q := gen.New(s.Pool)
+	checked := map[string]objectCheck{}
 	rows, err := s.ListClaimedArtifacts(ctx, batch)
 	if err != nil {
 		return err
 	}
 	for _, row := range rows {
-		confirmed, err := s.sight(ctx, q, kindArtifact, row.ID, row.ObjectKey)
+		confirmed, err := s.sight(ctx, q, checked, kindArtifact, row.ID, row.ObjectKey)
 		if err != nil {
 			return err
 		}
@@ -245,12 +297,13 @@ func (s *Service) checkArtifacts(ctx context.Context) error {
 // deleted_at, so nothing on any read path changes.
 func (s *Service) checkDatasets(ctx context.Context) error {
 	q := gen.New(s.Pool)
+	checked := map[string]objectCheck{}
 	rows, err := s.ListClaimedDatasets(ctx, batch)
 	if err != nil {
 		return err
 	}
 	for _, row := range rows {
-		confirmed, err := s.sight(ctx, q, kindDataset, row.ID, row.ObjectKey)
+		confirmed, err := s.sight(ctx, q, checked, kindDataset, row.ID, row.ObjectKey)
 		if err != nil {
 			return err
 		}
@@ -274,10 +327,21 @@ func (s *Service) checkDatasets(ctx context.Context) error {
 // error rather than false for anything short of a definitive 404, and that
 // leaves the round count untouched. A whole sweep against a store that is down
 // therefore changes nothing.
+type objectCheck struct {
+	present bool
+	err     error
+}
+
 func (s *Service) sight(
-	ctx context.Context, q *gen.Queries, kind string, id pgtype.UUID, key string,
+	ctx context.Context, q *gen.Queries, checked map[string]objectCheck,
+	kind string, id pgtype.UUID, key string,
 ) (bool, error) {
-	present, err := s.Store.Exists(ctx, key)
+	check, ok := checked[key]
+	if !ok {
+		check.present, check.err = s.Store.Exists(ctx, key)
+		checked[key] = check
+	}
+	present, err := check.present, check.err
 	if err != nil {
 		slog.Warn("object existence check failed; not counting a sighting",
 			"kind", kind, "id", pgconv.UUIDString(id), "error", err)

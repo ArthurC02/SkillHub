@@ -72,7 +72,7 @@ var trailingIntPattern = regexp.MustCompile(`([0-9][0-9_]*)[^0-9]*$`)
 // Where to look. Deliberately a short list of source trees rather than the whole
 // repo: vendored Python under apps/llm/.venv is large, and generated output is
 // not a place anyone edits a number by hand.
-var sharedNumberRoots = []string{"apps", "contracts", "db", "tools"}
+var sharedNumberRoots = []string{"apps", "contracts", "db", "infra", "tools"}
 
 var sharedNumberSkip = []string{
 	".venv", "node_modules", ".devctl", "site-packages",
@@ -123,6 +123,7 @@ var sharedNumberRoster = []string{
 	"maxDigestCount",
 	"maxDigestEntry",
 	"maxFinalOutput",
+	"maxSkillPackageEntries",
 	// suggestCriteriaMaxItems, suggestMaxTargetFileChars and suggestMaxTargetFiles
 	// were marked in apps/llm on 2026-08-25 and have one site each so far; the
 	// existing "only one marked site" rule already says so.
@@ -200,7 +201,7 @@ func sharedNumberScan(root string) (map[string][]sharedNumberSite, []string) {
 				return nil
 			}
 			switch filepath.Ext(path) {
-			case ".go", ".py", ".yaml", ".yml", ".sql", ".ts", ".tsx":
+			case ".go", ".py", ".yaml", ".yml", ".sql", ".ts", ".tsx", ".mjs":
 			default:
 				return nil
 			}

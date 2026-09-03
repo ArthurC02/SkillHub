@@ -458,7 +458,7 @@ func (h *Handler) Artifacts(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := h.Svc.Artifacts(r.Context(), ws.ID, runID)
+	rows, truncated, err := h.Svc.Artifacts(r.Context(), ws.ID, runID)
 	if errors.Is(err, ErrNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, err.Error())
 		return
@@ -478,7 +478,8 @@ func (h *Handler) Artifacts(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusOK, struct {
 		Artifacts []artifactView `json:"artifacts"`
-	}{out})
+		Truncated bool           `json:"truncated"`
+	}{out, truncated})
 }
 
 // DeleteArtifact handles DELETE /runs/{id}/artifacts/{artifactId}

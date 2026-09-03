@@ -222,3 +222,46 @@ func (q *Queries) ListSkillVersions(ctx context.Context, arg ListSkillVersionsPa
 	}
 	return items, nil
 }
+
+const lockPackageObjectSession = `-- name: LockPackageObjectSession :exec
+SELECT pg_advisory_lock(hashtextextended('package-object:' || $1::text, 0))
+`
+
+func (q *Queries) LockPackageObjectSession(ctx context.Context, objectKey string) error {
+	_, err := q.db.Exec(ctx, lockPackageObjectSession, objectKey)
+	return err
+}
+
+const packageObjectCollectable = `-- name: PackageObjectCollectable :one
+SELECT NOT EXISTS (
+    SELECT 1 FROM skill_versions WHERE package_object_key = $1
+)
+`
+
+func (q *Queries) PackageObjectCollectable(ctx context.Context, objectKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, packageObjectCollectable, objectKey)
+	var not_exists bool
+	err := row.Scan(&not_exists)
+	return not_exists, err
+}
+
+const rememberPackageObject = `-- name: RememberPackageObject :exec
+INSERT INTO object_collection_queue (object_key) VALUES ($1)
+ON CONFLICT (object_key) DO NOTHING
+`
+
+func (q *Queries) RememberPackageObject(ctx context.Context, objectKey string) error {
+	_, err := q.db.Exec(ctx, rememberPackageObject, objectKey)
+	return err
+}
+
+const unlockPackageObjectSession = `-- name: UnlockPackageObjectSession :one
+SELECT pg_advisory_unlock(hashtextextended('package-object:' || $1::text, 0))
+`
+
+func (q *Queries) UnlockPackageObjectSession(ctx context.Context, objectKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, unlockPackageObjectSession, objectKey)
+	var pg_advisory_unlock bool
+	err := row.Scan(&pg_advisory_unlock)
+	return pg_advisory_unlock, err
+}

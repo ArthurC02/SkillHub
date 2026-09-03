@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -20,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
+	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/queue"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -707,6 +709,103 @@ func TestCancelRecordsIntentAndStopsAQueuedRun(t *testing.T) {
 	}
 }
 
+func TestArtifactListReportsACompletelyDroppedCollection(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "artifact-collection-truncated")
+	created := f.start(t)
+	if _, err := pool.Exec(context.Background(),
+		"UPDATE runs SET artifacts_truncated = true WHERE id = $1", mustUUID(t, created.RunID)); err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := f.Get(f.base + "/runs/" + created.RunID + "/artifacts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out struct {
+		Artifacts []json.RawMessage `json:"artifacts"`
+		Truncated bool              `json:"truncated"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != http.StatusOK || len(out.Artifacts) != 0 || !out.Truncated {
+		t.Fatalf("artifact list status=%d body=%+v; want empty artifacts with truncated=true", resp.StatusCode, out)
+	}
+}
+
+func TestConcurrentArtifactManifestRedeliveryDoesNotDuplicateRows(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "artifact-manifest-redelivery")
+	runID := mustUUID(t, f.start(t).RunID)
+	workspaceID := mustUUID(t, f.workspaceID)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	params := gen.InsertRunArtifactParams{
+		WorkspaceID: workspaceID, RunID: runID, FileName: "Report.txt",
+		ContentType: "text/plain", SizeBytes: 1, ContentHash: "hash", ObjectKey: "runs/redelivery/archive",
+	}
+
+	tx1, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx1.Rollback(ctx)
+	q1 := gen.New(tx1)
+	if err := q1.LockRunArtifactManifest(ctx, runID); err != nil {
+		t.Fatal(err)
+	}
+	if rows, err := q1.InsertRunArtifact(ctx, params); err != nil || rows != 1 {
+		t.Fatalf("first manifest insert rows=%d err=%v", rows, err)
+	}
+
+	started := make(chan struct{})
+	done := make(chan error, 1)
+	go func() {
+		tx2, err := pool.Begin(ctx)
+		if err != nil {
+			done <- err
+			return
+		}
+		defer tx2.Rollback(ctx)
+		q2 := gen.New(tx2)
+		close(started)
+		if err := q2.LockRunArtifactManifest(ctx, runID); err != nil {
+			done <- err
+			return
+		}
+		second := params
+		second.FileName = "report.txt"
+		rows, err := q2.InsertRunArtifact(ctx, second)
+		if err == nil && rows != 0 {
+			err = fmt.Errorf("redelivery inserted %d duplicate rows", rows)
+		}
+		if err == nil {
+			err = tx2.Commit(ctx)
+		}
+		done <- err
+	}()
+	<-started
+	select {
+	case err := <-done:
+		t.Fatalf("second insert completed before the first transaction released its manifest lock: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if err := tx1.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if n := countRows(t, pool, `SELECT count(*) FROM artifacts
+		WHERE run_id = $1 AND kind = 'run_output' AND lower(file_name) = 'report.txt'`, runID); n != 1 {
+		t.Fatalf("portable manifest rows = %d, want 1", n)
+	}
+}
+
 // CORE-006 / WS-006: a run id from another workspace is not a handle on it, and
 // existence stays private — 404 everywhere, never 403.
 func TestRunsAreInvisibleAcrossWorkspaces(t *testing.T) {
@@ -854,7 +953,7 @@ func purgeRunOutputs(t *testing.T, pool *pgxpool.Pool, store objreconcile.Object
 			}
 			return out, nil
 		},
-		svc.MarkRunOutputPurged, 100)
+		svc.MarkRunOutputPurged, svc.GuardArtifactUploadIntentRemoval, 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -900,9 +999,9 @@ func seedRunOutput(
 //
 // Three rows, because the two mistakes this sweep can make are opposite ones and
 // only the third row catches the second. Expired: bytes go, row stays, so WS-004
-// can still say "this expired" rather than "this never existed". Deleted: the
-// owner's own delete already dealt with the object, behind a shared-key count
-// this sweep does not have, so the sweep must not touch it. Live: inside its
+// can still say "this expired" rather than "this never existed". Deleted: a
+// failed user-triggered object removal leaves durable cleanup work for this
+// sweep. Live: inside its
 // window, and a sweep that took it would be deleting evidence a run is still
 // being judged on.
 func TestExpiredRunOutputsLoseTheirBytesAndNothingInsideItsWindowDoes(t *testing.T) {
@@ -914,9 +1013,14 @@ func TestExpiredRunOutputsLoseTheirBytesAndNothingInsideItsWindowDoes(t *testing
 	expired, expiredKey := seedRunOutput(t, pool, a, f.workspaceID, runID, "expired.txt", -24, false)
 	deletedID, deletedKey := seedRunOutput(t, pool, a, f.workspaceID, runID, "deleted.txt", -48, true)
 	liveID, liveKey := seedRunOutput(t, pool, a, f.workspaceID, runID, "live.txt", 24, false)
+	if _, err := pool.Exec(context.Background(), `INSERT INTO object_reconcile_sightings
+		(resource_kind, resource_id, object_key, rounds) VALUES ('artifact', $1, $2, 2)`,
+		expired, expiredKey); err != nil {
+		t.Fatal(err)
+	}
 
-	if n := purgeRunOutputs(t, pool, a.packages); n != 1 {
-		t.Fatalf("the sweep purged %d artifacts, want exactly the expired one", n)
+	if n := purgeRunOutputs(t, pool, a.packages); n < 2 {
+		t.Fatalf("the sweep purged %d artifacts, want at least this test's expired and previously deleted rows", n)
 	}
 
 	if _, ok := a.packages[expiredKey]; ok {
@@ -927,14 +1031,22 @@ func TestExpiredRunOutputsLoseTheirBytesAndNothingInsideItsWindowDoes(t *testing
 		expired); n != 1 {
 		t.Error("the expired row was not marked purged, or it left the history")
 	}
+	if n := countRows(t, pool,
+		"SELECT count(*) FROM object_reconcile_sightings WHERE resource_kind = 'artifact' AND resource_id = $1",
+		expired); n != 0 {
+		t.Error("the expired run output left a stale missing-object sighting")
+	}
 
-	if _, ok := a.packages[deletedKey]; !ok {
-		t.Error("the sweep removed the object of a row the user deleted; that object is DeleteArtifact's")
+	if _, ok := a.packages[deletedKey]; ok {
+		t.Error("the durable cleanup worklist did not finish a previously failed user deletion")
 	}
 	if _, ok := a.packages[liveKey]; !ok {
 		t.Error("the sweep removed an object still inside its retention window")
 	}
-	for name, id := range map[string]pgtype.UUID{"deleted": deletedID, "live": liveID} {
+	if n := countRows(t, pool, "SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NOT NULL", deletedID); n != 1 {
+		t.Error("the deleted row was not marked purged after its object was removed")
+	}
+	for name, id := range map[string]pgtype.UUID{"live": liveID} {
 		if n := countRows(t, pool,
 			"SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NULL", id); n != 1 {
 			t.Errorf("the %s row was marked purged; the sweep must not reach it", name)
@@ -948,5 +1060,30 @@ func TestExpiredRunOutputsLoseTheirBytesAndNothingInsideItsWindowDoes(t *testing
 	}
 	if _, ok := a.packages[liveKey]; !ok {
 		t.Error("the second sweep took the live object")
+	}
+}
+
+func TestRunArtifactDeleteUsesItsAlreadyLockedConnection(t *testing.T) {
+	shared := requireDB(t)
+	config := shared.Config()
+	config.MaxConns = 1
+	pool, err := pgxpool.NewWithConfig(t.Context(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "single-connection-run-artifact-delete")
+	runID := f.start(t).RunID
+	artifactID, key := seedRunOutput(t, pool, a, f.workspaceID, runID, "delete-me.txt", 24, false)
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	if err := a.runs.DeleteArtifact(ctx, identity.Workspace{
+		ID: mustUUID(t, f.workspaceID), OwnerUserID: mustUUID(t, f.userID),
+	}, mustUUID(t, runID), artifactID); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := a.packages[key]; ok {
+		t.Fatal("deleted run artifact bytes survived")
 	}
 }

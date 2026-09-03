@@ -42,6 +42,6 @@ func (*Service) PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtyp
 // WorkspaceObjectKeys names only this context's download-package objects.
 // Identity removes the bytes before opening the database transaction because
 // object storage cannot roll back.
-func (s *Service) WorkspaceObjectKeys(ctx context.Context, workspaceID pgtype.UUID) ([]string, error) {
-	return gen.New(s.Pool).ListWorkspaceDownloadArtifactObjectKeys(ctx, workspaceID)
+func (*Service) WorkspaceObjectKeys(ctx context.Context, db gen.DBTX, workspaceID pgtype.UUID) ([]string, error) {
+	return gen.New(db).ListWorkspaceDownloadArtifactObjectKeys(ctx, workspaceID)
 }

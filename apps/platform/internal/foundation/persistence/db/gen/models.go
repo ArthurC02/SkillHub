@@ -172,7 +172,9 @@ type Artifact struct {
 	CreatedAt   pgtype.Timestamptz
 	DeletedAt   pgtype.Timestamptz
 	// When the stored object was removed while the row was kept: retention expiry, or a reconciler finding the bytes gone. Distinct from deleted_at, which is the owner deleting it and hides the row (SEC-006). Serving the bytes requires this to be NULL. See 0028.
-	PurgedAt pgtype.Timestamptz
+	PurgedAt             pgtype.Timestamptz
+	ReconcileCheckedAt   pgtype.Timestamptz
+	RetentionAttemptedAt pgtype.Timestamptz
 }
 
 type AuditEvent struct {
@@ -187,17 +189,29 @@ type AuditEvent struct {
 }
 
 type Dataset struct {
+	ID                   pgtype.UUID
+	WorkspaceID          pgtype.UUID
+	TestCaseID           pgtype.UUID
+	FileName             string
+	ContentType          string
+	SizeBytes            int64
+	ContentHash          string
+	ObjectKey            string
+	CreatedAt            pgtype.Timestamptz
+	ExpiresAt            pgtype.Timestamptz
+	DeletedAt            pgtype.Timestamptz
+	ReconcileCheckedAt   pgtype.Timestamptz
+	RetentionAttemptedAt pgtype.Timestamptz
+	PurgedAt             pgtype.Timestamptz
+}
+
+type DatasetObjectCleanupIntent struct {
 	ID          pgtype.UUID
 	WorkspaceID pgtype.UUID
-	TestCaseID  pgtype.UUID
-	FileName    string
-	ContentType string
-	SizeBytes   int64
-	ContentHash string
 	ObjectKey   string
+	NotBefore   pgtype.Timestamptz
+	AttemptedAt pgtype.Timestamptz
 	CreatedAt   pgtype.Timestamptz
-	ExpiresAt   pgtype.Timestamptz
-	DeletedAt   pgtype.Timestamptz
 }
 
 // Active rows stop new Runs being dispatched (03:SEC-012 P1 first action, ADR-022 X-04 drain/suspend). provider = ” is the whole pool. Shared by both triggers on purpose: one state, one release path. See 0030.
@@ -224,6 +238,15 @@ type DownloadArtifact struct {
 	PackagerVersion   string
 	ManifestHash      string
 	IncludesTestCases bool
+}
+
+type DownloadObjectCleanupIntent struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+	ObjectKey   string
+	NotBefore   pgtype.Timestamptz
+	AttemptedAt pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
 }
 
 type DownloadRecord struct {
@@ -339,36 +362,51 @@ type ReconcilerOrphanSighting struct {
 }
 
 type Run struct {
-	ID                 pgtype.UUID
-	WorkspaceID        pgtype.UUID
-	SkillVersionID     pgtype.UUID
-	TestCaseSnapshotID pgtype.UUID
-	Status             RunStatus
-	StatusReason       *string
-	Provider           string
-	RuntimeSnapshot    []byte
-	PolicySnapshot     []byte
-	CleanupStatus      RunCleanupStatus
-	CleanupAt          pgtype.Timestamptz
-	CreatedAt          pgtype.Timestamptz
-	StartedAt          pgtype.Timestamptz
-	FinishedAt         pgtype.Timestamptz
-	CancelRequestedAt  pgtype.Timestamptz
-	FailureClass       *string
+	ID                   pgtype.UUID
+	WorkspaceID          pgtype.UUID
+	SkillVersionID       pgtype.UUID
+	TestCaseSnapshotID   pgtype.UUID
+	Status               RunStatus
+	StatusReason         *string
+	Provider             string
+	RuntimeSnapshot      []byte
+	PolicySnapshot       []byte
+	CleanupStatus        RunCleanupStatus
+	CleanupAt            pgtype.Timestamptz
+	CreatedAt            pgtype.Timestamptz
+	StartedAt            pgtype.Timestamptz
+	FinishedAt           pgtype.Timestamptz
+	CancelRequestedAt    pgtype.Timestamptz
+	FailureClass         *string
+	SupervisionCheckedAt pgtype.Timestamptz
+	CleanupAttemptedAt   pgtype.Timestamptz
+	ArtifactsTruncated   bool
+}
+
+type RunArtifactUploadIntent struct {
+	ID           pgtype.UUID
+	RunAttemptID pgtype.UUID
+	WorkspaceID  pgtype.UUID
+	ObjectKey    string
+	NotBefore    pgtype.Timestamptz
+	AttemptedAt  pgtype.Timestamptz
+	CreatedAt    pgtype.Timestamptz
 }
 
 type RunAttempt struct {
-	ID            pgtype.UUID
-	RunID         pgtype.UUID
-	WorkspaceID   pgtype.UUID
-	AttemptNumber int32
-	Provider      string
-	ProviderRunID *string
-	ErrorClass    *string
-	ErrorMessage  *string
-	CreatedAt     pgtype.Timestamptz
-	StartedAt     pgtype.Timestamptz
-	FinishedAt    pgtype.Timestamptz
+	ID                   pgtype.UUID
+	RunID                pgtype.UUID
+	WorkspaceID          pgtype.UUID
+	AttemptNumber        int32
+	Provider             string
+	ProviderRunID        *string
+	ErrorClass           *string
+	ErrorMessage         *string
+	CreatedAt            pgtype.Timestamptz
+	StartedAt            pgtype.Timestamptz
+	FinishedAt           pgtype.Timestamptz
+	ObjectGrantsExpireAt pgtype.Timestamptz
+	ObjectGrantsState    string
 }
 
 type RunPermissionConfirmation struct {
@@ -408,6 +446,7 @@ type SearchDocument struct {
 	Tags                    []byte
 	Limitations             string
 	Scan                    []byte
+	EnrichmentAttemptedAt   pgtype.Timestamptz
 }
 
 type Session struct {
@@ -570,6 +609,8 @@ type User struct {
 	UpdatedAt           pgtype.Timestamptz
 	DeletedAt           pgtype.Timestamptz
 	DeletionRequestedAt pgtype.Timestamptz
+	PurgeAttemptedAt    pgtype.Timestamptz
+	PurgeStartedAt      pgtype.Timestamptz
 }
 
 type UserIdentity struct {

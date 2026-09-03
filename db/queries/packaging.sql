@@ -180,6 +180,13 @@ UPDATE artifacts SET deleted_at = now()
 WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package' AND deleted_at IS NULL
 RETURNING id, object_key, purged_at;
 
+-- name: GetDownloadArtifactForDelete :one
+-- Reads the immutable object key before the session advisory lock is acquired.
+-- Delete rechecks ownership and liveness with SoftDeleteDownloadArtifact after
+-- obtaining the lock; this first read reveals no more than the scoped delete.
+SELECT id, object_key, purged_at FROM artifacts
+WHERE id = $1 AND workspace_id = $2 AND kind = 'download_package' AND deleted_at IS NULL;
+
 -- name: DeleteWorkspaceDownloadRecords :execrows
 -- CORE-007, first of the three statements the account purge needs from this
 -- context, and the order between them is the foreign keys' and not a preference.
@@ -220,7 +227,8 @@ DELETE FROM download_artifacts WHERE workspace_id = $1;
 -- for an unrecoverable delete of somebody else's file, and governance.sql already
 -- spares package objects for the same reason.
 SELECT count(*)::bigint FROM artifacts
-WHERE object_key = $1 AND deleted_at IS NULL AND purged_at IS NULL;
+WHERE object_key = $1 AND deleted_at IS NULL AND purged_at IS NULL
+  AND expires_at > now();
 
 -- name: ListTestCasesForSkill :many
 -- The PACK-005 candidates: this skill's test cases in the caller's workspace.
@@ -286,3 +294,37 @@ LIMIT 1;
 SELECT source_type, source_url, source_ref, content_hash, fetched_at
 FROM skill_sources
 WHERE id = $1;
+-- name: LockDownloadObjectKey :exec
+-- Serialises creation and deletion of rows that share one content-addressed
+-- download object. Transaction-scoped so every exit releases it.
+SELECT pg_advisory_xact_lock(hashtextextended(@lock_key::text, 0));
+
+-- name: CreateDownloadCleanupIntent :one
+INSERT INTO download_object_cleanup_intents (workspace_id, object_key)
+VALUES (@workspace_id, @object_key)
+ON CONFLICT (object_key) DO UPDATE
+SET workspace_id = excluded.workspace_id,
+    not_before = now() + interval '1 hour', attempted_at = NULL
+RETURNING *;
+
+-- name: DeleteDownloadCleanupIntent :exec
+DELETE FROM download_object_cleanup_intents
+WHERE object_key = @object_key AND workspace_id = @workspace_id;
+
+-- name: LockPackagingWorkspaceObjects :exec
+SELECT pg_advisory_xact_lock_shared(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));
+
+-- name: LockPackagingWorkspaceObjectsSession :exec
+SELECT pg_advisory_lock_shared(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));
+
+-- name: UnlockPackagingWorkspaceObjectsSession :one
+SELECT pg_advisory_unlock_shared(hashtextextended('workspace-objects:' || (sqlc.arg(workspace_id)::uuid)::text, 0));
+
+-- name: LockDownloadObjectKeySession :exec
+-- Delete must keep this lock across its transaction commit and the following
+-- object-store removal. It is always paired with UnlockDownloadObjectKeySession
+-- on the same acquired connection.
+SELECT pg_advisory_lock(hashtextextended(@lock_key::text, 0));
+
+-- name: UnlockDownloadObjectKeySession :one
+SELECT pg_advisory_unlock(hashtextextended(@lock_key::text, 0));

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 )
@@ -74,6 +75,7 @@ func (s *HTTPTraceSink) Push(ctx context.Context, url string, events []json.RawM
 		return err
 	}
 	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return &RunError{Class: ClassExecution, Message: "trace ingestion returned " + resp.Status}
 	}
@@ -134,40 +136,40 @@ func (m *Manager) startTraceCollector(id string) func() {
 		url = e.traceURL
 	}
 	m.mu.Unlock()
-	if url == "" || m.sink == nil {
-		return func() {}
-	}
-
-	stop, done := make(chan struct{}), make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
 	go func() {
 		defer close(done)
+		if m.collect(ctx, id, url) {
+			return
+		}
 		ticker := time.NewTicker(traceInterval)
 		defer ticker.Stop()
 		for {
 			select {
-			case <-stop:
+			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				m.flushTrace(id, url)
+				m.flushTrace(ctx, id, url)
 				// The workload announces it has finished and waits. Everything
 				// that has to come out of the tmpfs comes out now, in this
 				// window, because after the workload's process exits there is
 				// nothing left to read (see DonePath in the driver).
-				if m.collect(id, url) {
+				if m.collect(ctx, id, url) {
 					return
 				}
 			}
 		}
 	}()
 	return func() {
-		close(stop)
+		cancel()
 		<-done
 		// The final drain gets its own retries. Everything before it could rely
 		// on the next tick; this one cannot, and the events it carries are the
 		// tail of the run - the error, the final answer, the token usage - which
 		// is the part a user most needs when a run went wrong (RUN-004).
 		for i := 0; i < finalFlushAttempts; i++ {
-			if m.flushTrace(id, url) {
+			if m.flushTrace(context.Background(), id, url) {
 				return
 			}
 			time.Sleep(finalFlushBackoff)
@@ -187,8 +189,11 @@ const (
 // flushTrace reads the file and pushes whatever has not been pushed yet,
 // recording how far it got only after each batch is accepted. It reports
 // whether there is nothing left to send.
-func (m *Manager) flushTrace(id, url string) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+func (m *Manager) flushTrace(parent context.Context, id, url string) bool {
+	if url == "" || m.sink == nil {
+		return true
+	}
+	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()
 	for {
 
@@ -206,7 +211,10 @@ func (m *Manager) flushTrace(id, url string) bool {
 		m.mu.Unlock()
 
 		raw, more, err := m.drv.ReadTrace(ctx, id, offset)
-		if err != nil || len(raw) == 0 {
+		if err != nil {
+			return false
+		}
+		if len(raw) == 0 {
 			// No trace file yet, or the sandbox is already gone. Neither is
 			// retryable from here, so this counts as done rather than as a failure
 			// that would hold the caller in a loop it cannot win.

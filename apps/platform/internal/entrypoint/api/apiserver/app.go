@@ -146,34 +146,26 @@ type App struct {
 // because the API enqueues and never dispatches (iron rule 7).
 func NewApp(cfg Config) (*App, error) {
 	analyticsPurgeSvc := &analytics.Service{Pool: cfg.Pool}
-	testlabSvc := &testlab.Service{Pool: cfg.Pool}
+	identitySvc := &identity.Service{Pool: cfg.Pool, OAuth: cfg.OAuth}
+	testlabSvc := &testlab.Service{Pool: cfg.Pool, MayStoreObjects: identitySvc.MayStoreObjects}
 	runPurgeSvc := &run.Service{Pool: cfg.Pool}
 	packagingPurgeSvc := &packaging.Service{Pool: cfg.Pool}
 	registryPurgeSvc := &registry.Service{Pool: cfg.Pool}
 	ingestPurgeSvc := &ingest.Service{Pool: cfg.Pool}
+	// Identity coordinates the cross-context deletion, while every callback
+	// remains implemented by the context that owns the affected rows.
+	identitySvc.PurgeAnalytics = analyticsPurgeSvc.PurgeWorkspace
+	identitySvc.PurgeTestData = testlabSvc.PurgeWorkspace
+	identitySvc.PurgeRunArtifacts = runPurgeSvc.PurgeWorkspace
+	identitySvc.PurgeDownloads = packagingPurgeSvc.PurgeWorkspace
+	identitySvc.PurgeSkills = registryPurgeSvc.PurgeWorkspace
+	identitySvc.PurgeImportSources = ingestPurgeSvc.PurgeWorkspace
+	identitySvc.DatasetObjectKeys = testlabSvc.WorkspaceObjectKeys
+	identitySvc.RunArtifactObjectKeys = runPurgeSvc.WorkspaceObjectKeys
+	identitySvc.DownloadArtifactObjectKeys = packagingPurgeSvc.WorkspaceObjectKeys
+	identitySvc.WorkspaceQuiescent = runPurgeSvc.PurgeQuiescent
 	auth := &identity.Handler{
-		Service: &identity.Service{
-			Pool:  cfg.Pool,
-			OAuth: cfg.OAuth,
-			// CORE-007's account purge clears six other contexts' rows in one
-			// transaction. Each step is the owning context's own — every one of
-			// them imports identity for its workspace scope, so identity can
-			// import none of them and only a composition root sees all six
-			// (ADR-034). Unwired, the purge refuses the batch rather than
-			// silently leaving a context behind; the order is identity's, in
-			// purge.go.
-			PurgeAnalytics:     analyticsPurgeSvc.PurgeWorkspace,
-			PurgeTestData:      testlabSvc.PurgeWorkspace,
-			PurgeRunArtifacts:  runPurgeSvc.PurgeWorkspace,
-			PurgeDownloads:     packagingPurgeSvc.PurgeWorkspace,
-			PurgeSkills:        registryPurgeSvc.PurgeWorkspace,
-			PurgeImportSources: ingestPurgeSvc.PurgeWorkspace,
-			// Not purge steps: all three run before the transaction, because
-			// object bytes are deleted before their rows (DDD-033).
-			DatasetObjectKeys:          testlabSvc.WorkspaceObjectKeys,
-			RunArtifactObjectKeys:      runPurgeSvc.WorkspaceObjectKeys,
-			DownloadArtifactObjectKeys: packagingPurgeSvc.WorkspaceObjectKeys,
-		},
+		Service:     identitySvc,
 		Secure:      cfg.Secure,
 		AppURL:      cfg.AppURL,
 		DevLogin:    cfg.DevLogin,
@@ -273,7 +265,8 @@ func NewApp(cfg Config) (*App, error) {
 	// and 2).
 	packagingSvc := &packaging.Service{
 		Pool: cfg.Pool, TestLab: testlabSvc, Store: cfg.Store, Profiles: cfg.Profiles,
-		Retention: policy.DownloadRetention(cfg.DownloadRetention),
+		MayStoreObjects: identitySvc.MayStoreObjects,
+		Retention:       policy.DownloadRetention(cfg.DownloadRetention),
 		AppliedSuggestions: func(ctx context.Context, versionID, workspaceID pgtype.UUID) ([]packaging.AppliedSuggestion, error) {
 			return packagingSuggestions(ctx, evalSvc, versionID, workspaceID)
 		},

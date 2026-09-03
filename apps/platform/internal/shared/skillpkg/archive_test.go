@@ -3,6 +3,7 @@ package skillpkg
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"io/fs"
 	"strings"
@@ -38,6 +39,48 @@ func TestPackageFSNotAZip(t *testing.T) {
 	}
 }
 
+func TestPackageFSRejectsCorruptEntryBytes(t *testing.T) {
+	const payload = "unique-corruption-target"
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, content := range map[string]string{"SKILL.md": archiveSkillMD, "broken.txt": payload} {
+		w, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Store})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = w.Write([]byte(content))
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data := buf.Bytes()
+	pos := bytes.Index(data, []byte(payload))
+	if pos < 0 {
+		t.Fatal("fixture payload not stored verbatim")
+	}
+	data[pos] ^= 0xff
+	if _, err := PackageFS(data); !errors.Is(err, ErrBadArchive) {
+		t.Fatalf("corrupt entry passed archive admission: %v", err)
+	}
+}
+
+func TestPackageFSRejectsZip64ExtraEvenForASmallEntry(t *testing.T) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	h := &zip.FileHeader{Name: "SKILL.md", Method: zip.Store, Extra: []byte{0x01, 0x00, 0x00, 0x00}}
+	w, err := zw.CreateHeader(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = w.Write([]byte(archiveSkillMD))
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PackageFS(buf.Bytes()); !errors.Is(err, ErrBadArchive) {
+		t.Fatalf("small zip64 entry passed admission: %v", err)
+	}
+}
+
 func TestPackageFSRootSkillMD(t *testing.T) {
 	fsys, err := PackageFS(zipBytes(t, map[string]string{"SKILL.md": archiveSkillMD}))
 	if err != nil {
@@ -70,6 +113,72 @@ func TestPackageFSZipBomb(t *testing.T) {
 	data := zipBytes(t, map[string]string{"SKILL.md": archiveSkillMD, "big.txt": strings.Repeat("x", 4096)})
 	if _, err := PackageFS(data); !errors.Is(err, ErrBadArchive) {
 		t.Fatalf("want ErrBadArchive for bomb, got %v", err)
+	}
+}
+
+func TestPackageFSRejectsDuplicateEntryNames(t *testing.T) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for _, content := range []string{archiveSkillMD, "malicious replacement"} {
+		w, err := zw.Create("SKILL.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(content)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := PackageFS(buf.Bytes()); !errors.Is(err, ErrBadArchive) {
+		t.Fatalf("duplicate SKILL.md: err = %v, want ErrBadArchive", err)
+	}
+}
+
+func TestPackageFSRejectsCanonicallyDuplicateEntryNames(t *testing.T) {
+	for _, files := range []map[string]string{
+		{"SKILL.md": archiveSkillMD, "./SKILL.md": "replacement"},
+		{"SKILL.md": archiveSkillMD, "dir/x": "one", `dir\x`: "two"},
+		{"SKILL.md": archiveSkillMD, "skill.md": "replacement"},
+		{"SKILL.md": archiveSkillMD, "dir/x": "one", "dir/x. ": "two"},
+	} {
+		if _, err := PackageFS(zipBytes(t, files)); !errors.Is(err, ErrBadArchive) {
+			t.Fatalf("canonical duplicate: err = %v, want ErrBadArchive", err)
+		}
+	}
+}
+
+func TestPackageFSRejectsEntriesTheRuntimeCannotExtract(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		header zip.FileHeader
+	}{
+		{name: "encrypted", header: zip.FileHeader{Name: "secret.bin", Method: zip.Store, Flags: 1}},
+		{name: "unsupported compression", header: zip.FileHeader{Name: "odd.bin", Method: 99}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			zw := zip.NewWriter(&buf)
+			w, err := zw.Create("SKILL.md")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := w.Write([]byte(archiveSkillMD)); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := zw.CreateRaw(&tc.header); err != nil {
+				t.Fatal(err)
+			}
+			if err := zw.Close(); err != nil {
+				t.Fatal(err)
+			}
+
+			if _, err := PackageFS(buf.Bytes()); !errors.Is(err, ErrBadArchive) {
+				t.Fatalf("err = %v, want ErrBadArchive", err)
+			}
+		})
 	}
 }
 
@@ -113,6 +222,7 @@ func TestEntriesThatLeaveThePackageAreReportedUnderTheNameTheArchiveDeclares(t *
 	for _, tc := range []struct{ name, entry string }{
 		{"traversal", "../../evil.sh"},
 		{"absolute", "/etc/cron.d/evil"},
+		{"backslash", `scripts\run.sh`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fsys, err := PackageFS(zipWithEntries(t, map[string]string{
@@ -144,7 +254,7 @@ func TestEntriesThatLeaveThePackageAreReportedUnderTheNameTheArchiveDeclares(t *
 
 // 04 丙-15 D-3, end to end over a real zip: the mode bit has to survive the fs
 // view, which is the whole reason this test uses an archive and not a MapFS.
-func TestASymlinkEntryInAZipIsDisclosed(t *testing.T) {
+func TestASymlinkEntryInAZipIsBlockedBeforeRuntime(t *testing.T) {
 	fsys, err := PackageFS(zipWithEntries(t, map[string]string{
 		"SKILL.md":              archiveSkillMD,
 		"reference/host-passwd": "/etc/passwd",
@@ -153,8 +263,8 @@ func TestASymlinkEntryInAZipIsDisclosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := Validate(fsys)
-	if r.Blocked {
-		t.Fatalf("a link is disclosed, not blocked: %+v", r.Findings)
+	if !r.Blocked {
+		t.Fatalf("a link accepted here cannot be extracted by the runtime: %+v", r.Findings)
 	}
 	for _, f := range r.Findings {
 		if f.Code == "symlink-entry" && f.Path == "reference/host-passwd" {
@@ -187,6 +297,100 @@ func TestOrdinaryPackagesGainNoArchiveLevelFindings(t *testing.T) {
 	}
 	if r.Blocked {
 		t.Fatalf("legal package blocked: %+v", r.Findings)
+	}
+}
+
+func TestArchiveEnvelopeRejectsZip64AndExecutablePrefixes(t *testing.T) {
+	ordinary := zipBytes(t, map[string]string{"SKILL.md": archiveSkillMD})
+	locator := make([]byte, 20)
+	binary.LittleEndian.PutUint32(locator, 0x07064b50)
+	zip64 := append(append(append([]byte{}, ordinary[:len(ordinary)-22]...), locator...), ordinary[len(ordinary)-22:]...)
+	if _, err := PackageFS(zip64); !errors.Is(err, ErrBadArchive) {
+		t.Fatalf("archive-level zip64 locator: err=%v, want ErrBadArchive", err)
+	}
+	prefixed := append([]byte("MZ executable stub"), ordinary...)
+	if _, err := PackageFS(prefixed); !errors.Is(err, ErrBadArchive) {
+		t.Fatalf("self-extracting prefix: err=%v, want ErrBadArchive", err)
+	}
+	prefix := []byte("MZ adjusted stub")
+	adjusted := append(append([]byte{}, prefix...), ordinary...)
+	oldEOCD := len(ordinary) - 22
+	oldCentral := binary.LittleEndian.Uint32(ordinary[oldEOCD+16 : oldEOCD+20])
+	newCentral := len(prefix) + int(oldCentral)
+	oldLocal := binary.LittleEndian.Uint32(adjusted[newCentral+42 : newCentral+46])
+	binary.LittleEndian.PutUint32(adjusted[newCentral+42:newCentral+46], oldLocal+uint32(len(prefix)))
+	newEOCD := len(prefix) + oldEOCD
+	binary.LittleEndian.PutUint32(adjusted[newEOCD+16:newEOCD+20], oldCentral+uint32(len(prefix)))
+	if _, err := PackageFS(adjusted); !errors.Is(err, ErrBadArchive) {
+		t.Fatalf("self-extracting prefix with adjusted offsets: err=%v, want ErrBadArchive", err)
+	}
+}
+
+func TestArchiveRejectsATruncatedExtraField(t *testing.T) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	h := &zip.FileHeader{Name: "SKILL.md", Method: zip.Store, Extra: []byte{0x34, 0x12, 0x05, 0x00}}
+	w, err := zw.CreateHeader(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Write([]byte(archiveSkillMD)); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PackageFS(buf.Bytes()); !errors.Is(err, ErrBadArchive) {
+		t.Fatalf("truncated extra field: err=%v, want ErrBadArchive", err)
+	}
+}
+
+func TestArchiveEntryTypeMustAgreeWithItsRawName(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mode fs.FileMode
+	}{
+		{"link/", fs.ModeSymlink | 0o777},
+		{"directory-without-slash", fs.ModeDir | 0o755},
+	} {
+		var buf bytes.Buffer
+		zw := zip.NewWriter(&buf)
+		h := &zip.FileHeader{Name: tc.name, Method: zip.Store}
+		h.SetMode(tc.mode)
+		if _, err := zw.CreateHeader(h); err != nil {
+			t.Fatal(err)
+		}
+		if err := zw.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := PackageFS(buf.Bytes()); !errors.Is(err, ErrBadArchive) {
+			t.Errorf("%q mode %v: err=%v, want ErrBadArchive", tc.name, tc.mode, err)
+		}
+	}
+}
+
+func TestArchiveRejectsWindowsNonportableNames(t *testing.T) {
+	for _, name := range []string{"NUL", "con.txt", "dir/COM1.log", "file:stream", "bad?.txt", "control\x01.txt"} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := PackageFS(zipBytes(t, map[string]string{name: "x"})); !errors.Is(err, ErrBadArchive) {
+				t.Fatalf("name %q: err=%v, want ErrBadArchive", name, err)
+			}
+		})
+	}
+}
+
+func TestArchiveRejectsFileAncestorConflictsAndOversizedComponents(t *testing.T) {
+	for name, files := range map[string]map[string]string{
+		"ancestor first":      {"a": "file", "a/b": "child"},
+		"descendant first":    {"a/b": "child", "a": "file"},
+		"oversized component": {strings.Repeat("x", 256): "long"},
+		"case fold shrinks":   {strings.Repeat("K", 100) + ".txt": "long"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := PackageFS(zipBytes(t, files)); !errors.Is(err, ErrBadArchive) {
+				t.Fatalf("files %#v: err=%v, want ErrBadArchive", files, err)
+			}
+		})
 	}
 }
 

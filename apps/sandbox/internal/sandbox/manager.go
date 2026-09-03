@@ -159,8 +159,13 @@ type entry struct {
 	// limits are the run's own ceilings, kept for the artifact collection that
 	// happens after the workload is gone and the RunRequest is out of scope.
 	limits ResourceLimits
+	// startCancel lets a node-level P-02 breach interrupt a driver that is still
+	// creating the sandbox. Destroy remains the backstop for drivers that ignore
+	// cancellation and Create removes once more if such a Start later returns.
+	startCancel context.CancelFunc
 	// artifacts is the manifest collected before the terminal result is written.
-	artifacts []Artifact
+	artifacts          []Artifact
+	artifactsTruncated bool
 }
 
 // Manager owns the run bookkeeping for one provider process.
@@ -314,23 +319,44 @@ func (m *Manager) WithP02(ctx context.Context, probe *P02Probe) *Manager {
 func (m *Manager) terminateEveryRun(r P02Result) {
 	m.mu.Lock()
 	ids := make([]string, 0, len(m.runs))
-	for id := range m.runs {
+	for id, e := range m.runs {
 		ids = append(ids, id)
+		// Cancel every in-flight Start before waiting on any driver teardown. A
+		// single stuck Remove must not leave another compromised workload starting.
+		if e.startCancel != nil {
+			e.startCancel()
+		}
 	}
 	m.mu.Unlock()
+	var wg sync.WaitGroup
 	for _, id := range ids {
 		// Destroy, not Cancel: cancel is a cooperative stop with a grace period,
 		// and a workload that has a route to the database is not one to
 		// negotiate a shutdown window with.
-		if err := m.Destroy(context.Background(), id); err != nil && m.log != nil {
-			m.log.Error("could not destroy a run after a P-02 breach",
-				"provider_run_id", id, "error", err)
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(context.Background(), teardownTimeout)
+			defer cancel()
+			if err := m.Destroy(ctx, id); err != nil && m.log != nil {
+				m.log.Error("could not destroy a run after a P-02 breach",
+					"provider_run_id", id, "error", err)
+			}
+		}()
 	}
+	wg.Wait()
 	if m.log != nil {
 		m.log.Error("P-02 breach: terminated every live run on this node",
 			"runs", len(ids), "detail", r.Detail)
 	}
+}
+
+const teardownTimeout = 30 * time.Second
+
+func (m *Manager) destroyBounded(id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), teardownTimeout)
+	defer cancel()
+	return m.Destroy(ctx, id)
 }
 
 // Create dispatches one attempt. created reports whether a sandbox was made:
@@ -343,19 +369,13 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	if re := m.cfg.accept(req); re != nil {
 		return ProviderRun{}, false, re
 	}
-	// A node in P-02 breach refuses work, and this is a belt rather than the
+	// A node whose P-02 check has not passed refuses work, and this is a belt rather than the
 	// braces: the capability response already reports itself unhealthy and the
 	// scheduler stops sending. But `healthy` is polled and cached (Registry has
 	// a TTL), so a dispatch decided before the last reading can still arrive,
 	// and the whole point of this state is that the window matters.
-	if m.p02 != nil {
-		if r := m.p02.Result(); r.State == P02Fail {
-			return ProviderRun{}, false, &RunError{
-				Class:     ClassProvision,
-				Message:   "this node is refusing work: its P-02 probe reached an address a sandbox must not (" + r.Detail + ")",
-				Retryable: true,
-			}
-		}
+	if err := m.p02Refusal(); err != nil {
+		return ProviderRun{}, false, err
 	}
 	hash := HashRequest(req)
 	key := req.RunID + "|" + fmt.Sprint(req.Attempt)
@@ -378,12 +398,14 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	}
 	id := newHandle()
 	now := m.now()
+	startCtx, cancelStart := context.WithCancel(ctx)
 	e := &entry{
 		hash:          hash,
 		secrets:       secretsOf(req),
 		traceURL:      req.Trace.IngestionURL,
 		artifactGrant: artifactGrantOf(req),
 		limits:        req.ResourceLimits,
+		startCancel:   cancelStart,
 		run: ProviderRun{
 			RunID:         req.RunID,
 			RunAttemptID:  req.RunAttemptID,
@@ -397,6 +419,7 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	m.byKey[key] = id
 	live := len(m.runs)
 	m.mu.Unlock()
+	defer cancelStart()
 
 	// Log identifiers only: a RunRequest carries a Virtual Key and pre-signed
 	// URLs, and none of it belongs in a log line (iron rule 11).
@@ -404,26 +427,89 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	m.metrics.dispatched()
 	m.metrics.active(live)
 
-	if err := m.drv.Start(ctx, id, req); err != nil {
+	// Close the check/register race: a breach before registration could not have
+	// included this id in its teardown snapshot.
+	if err := m.p02Refusal(); err != nil {
+		_ = m.destroyBounded(id)
+		return ProviderRun{}, false, err
+	}
+
+	if err := m.drv.Start(startCtx, id, req); err != nil {
+		if refusal := m.p02Refusal(); refusal != nil {
+			_ = m.destroyBounded(id)
+			return ProviderRun{}, false, refusal
+		}
 		m.finish(id, Outcome{}, &RunError{
 			Class:     ClassProvision,
 			Message:   "sandbox could not be created",
 			Retryable: true,
 		})
 		m.log.Error("sandbox start failed", "provider_run_id", id, "err", err)
-		run, _, _ := m.snapshot(id)
+		run, _, snapshotErr := m.snapshot(id)
+		if snapshotErr != nil {
+			_ = m.destroyBounded(id)
+			return ProviderRun{}, false, &RunError{
+				Class: ClassProvision, Message: "sandbox creation was revoked", Retryable: true,
+			}
+		}
 		return run, true, nil
 	}
-
+	// A driver is expected to honour startCtx, but Remove is idempotent and this
+	// second teardown also covers one that returned after creating despite the
+	// breach cancellation.
+	if refusal := m.p02Refusal(); refusal != nil {
+		_ = m.destroyBounded(id)
+		return ProviderRun{}, false, refusal
+	}
 	m.mu.Lock()
-	e.run.State = StateRunning
-	e.run.StartedAt = m.now()
+	current := m.runs[id]
+	var running ProviderRun
+	cancelled := false
+	if current != nil {
+		current.startCancel = nil
+		current.run.State = StateRunning
+		current.run.StartedAt = m.now()
+		cancelled = current.cancelled
+		running = current.run
+		running.ObservedAt = m.now()
+	}
 	m.mu.Unlock()
+	if current == nil {
+		_ = m.destroyBounded(id)
+		return ProviderRun{}, false, &RunError{
+			Class: ClassProvision, Message: "sandbox creation was revoked", Retryable: true,
+		}
+	}
 
 	soft := time.Duration(req.ResourceLimits.WallClockSoftSeconds) * time.Second
 	hard := time.Duration(req.ResourceLimits.WallClockHardSeconds) * time.Second
 	m.watch(id, soft, hard)
-	return m.mustSnapshot(id), true, nil
+	if cancelled {
+		// Cancel may have raced a driver that ignored startCtx and created the
+		// workload after Cancel's first Stop. Stop again now that Start has
+		// returned; the watcher records the eventual cancelled terminal result.
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), m.cfg.CancelGrace+time.Second)
+		defer stopCancel()
+		if err := m.drv.Stop(stopCtx, id, m.cfg.CancelGrace); err != nil {
+			m.log.Error("post-start cancel stop failed", "provider_run_id", id, "err", err)
+		}
+	}
+	return running, true, nil
+}
+
+func (m *Manager) p02Refusal() error {
+	if m.p02 == nil {
+		return nil
+	}
+	r := m.p02.Result()
+	if r.State != P02Fail && r.State != P02Unknown {
+		return nil
+	}
+	return &RunError{
+		Class:     ClassProvision,
+		Message:   "this node is refusing work: its P-02 isolation check has not passed",
+		Retryable: true,
+	}
 }
 
 // watch follows one sandbox to its end and enforces the wall clock (SBX-006,
@@ -448,7 +534,9 @@ func (m *Manager) watch(id string, soft, hard time.Duration) {
 		e.timedOut = true
 		m.mu.Unlock()
 		m.log.Warn("wall clock reached, stopping sandbox", "provider_run_id", id)
-		if err := m.drv.Stop(context.Background(), id, hard-soft); err != nil {
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), hard-soft+time.Second)
+		defer stopCancel()
+		if err := m.drv.Stop(stopCtx, id, hard-soft); err != nil {
 			m.log.Error("timeout stop failed", "provider_run_id", id, "err", err)
 		}
 	})
@@ -497,7 +585,8 @@ func (m *Manager) finish(id string, out Outcome, re *RunError) {
 		// (SBX-008). Empty when the workload produced nothing, when no grant was
 		// issued, or when collection failed - all three are "no artifacts here",
 		// and none of them changes the run's own outcome.
-		Artifacts: e.artifacts,
+		Artifacts:          e.artifacts,
+		ArtifactsTruncated: e.artifactsTruncated,
 	}
 	switch {
 	case e.cancelled:
@@ -585,26 +674,38 @@ func (m *Manager) Cancel(ctx context.Context, id string) (ProviderRun, error) {
 		return ProviderRun{}, ErrNotFound
 	}
 	terminal := e.run.State.Terminal()
+	var cancelStart context.CancelFunc
 	if !terminal {
 		e.cancelled = true
+		cancelStart = e.startCancel
 		if e.run.CancelRequestedAt.IsZero() {
 			e.run.CancelRequestedAt = m.now()
 		}
 	}
+	run := e.run
+	run.ObservedAt = m.now()
 	m.mu.Unlock()
 
 	if !terminal {
+		if cancelStart != nil {
+			cancelStart()
+		}
 		m.log.Info("cancel requested", "provider_run_id", id)
 		if err := m.drv.Stop(ctx, id, m.cfg.CancelGrace); err != nil {
 			m.log.Error("cancel stop failed", "provider_run_id", id, "err", err)
 		}
 	}
-	return m.mustSnapshot(id), nil
+	return run, nil
 }
 
 // Destroy answers DELETE /runs/{provider_run_id}. Idempotent and without a 404:
 // a handle nothing is held for is already in the state the caller asked for.
 func (m *Manager) Destroy(ctx context.Context, id string) error {
+	m.mu.Lock()
+	if e := m.runs[id]; e != nil && e.startCancel != nil {
+		e.startCancel()
+	}
+	m.mu.Unlock()
 	if err := m.drv.Remove(ctx, id); err != nil {
 		// Keep the entry and its slot while the runtime still holds resources.
 		// The platform will retry this idempotent operation.
@@ -696,11 +797,6 @@ func (m *Manager) snapshot(id string) (ProviderRun, bool, error) {
 	r := e.run
 	r.ObservedAt = m.now()
 	return r, false, nil
-}
-
-func (m *Manager) mustSnapshot(id string) ProviderRun {
-	r, _, _ := m.snapshot(id)
-	return r
 }
 
 // validate rejects a body that cannot describe a run at all (400). Capability

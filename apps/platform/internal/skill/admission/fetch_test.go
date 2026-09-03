@@ -3,11 +3,13 @@ package ingest
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
@@ -103,6 +105,36 @@ func TestFetchDownloadsFromAllowedHost(t *testing.T) {
 	data, ref, err := f.Fetch(context.Background(), srv.URL+"/pkg.zip")
 	if err != nil || string(data) != string(payload) || ref != "" {
 		t.Fatalf("got %q ref=%q err=%v", data, ref, err)
+	}
+}
+
+func TestFetchDrainsOrdinaryHTTPErrorForConnectionReuse(t *testing.T) {
+	var requests, connections atomic.Int32
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if requests.Add(1) == 1 {
+			w.WriteHeader(http.StatusBadGateway)
+			_, _ = w.Write([]byte(strings.Repeat("x", 512<<10)))
+			return
+		}
+		_, _ = w.Write([]byte("zip-bytes"))
+	}))
+	srv.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			connections.Add(1)
+		}
+	}
+	srv.Start()
+	defer srv.Close()
+	host := strings.TrimPrefix(srv.URL, "http://")
+	f := &URLFetcher{Allowed: map[string]bool{host: true}, AllowInsecure: true}
+	if _, _, err := f.Fetch(context.Background(), srv.URL+"/pkg.zip"); !errors.Is(err, ErrFetch) {
+		t.Fatalf("first fetch returned %v, want ErrFetch", err)
+	}
+	if data, _, err := f.Fetch(context.Background(), srv.URL+"/pkg.zip"); err != nil || string(data) != "zip-bytes" {
+		t.Fatalf("second fetch = %q, %v", data, err)
+	}
+	if got := connections.Load(); got != 1 {
+		t.Fatalf("ordinary error body prevented connection reuse: opened %d connections", got)
 	}
 }
 

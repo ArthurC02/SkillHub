@@ -73,3 +73,17 @@ FROM skill_versions
 WHERE skill_id = $1
 ORDER BY version_number DESC
 LIMIT 1;
+-- name: RememberPackageObject :exec
+INSERT INTO object_collection_queue (object_key) VALUES ($1)
+ON CONFLICT (object_key) DO NOTHING;
+
+-- name: LockPackageObjectSession :exec
+SELECT pg_advisory_lock(hashtextextended('package-object:' || sqlc.arg(object_key)::text, 0));
+
+-- name: UnlockPackageObjectSession :one
+SELECT pg_advisory_unlock(hashtextextended('package-object:' || sqlc.arg(object_key)::text, 0));
+
+-- name: PackageObjectCollectable :one
+SELECT NOT EXISTS (
+    SELECT 1 FROM skill_versions WHERE package_object_key = sqlc.arg(object_key)
+);

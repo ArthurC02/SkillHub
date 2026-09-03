@@ -319,15 +319,28 @@ func (g *Gateway) do(ctx context.Context, method, path string, body []byte, out 
 		return err
 	}
 	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, limit))
+	raw, err := readBoundedResponse(resp.Body, limit)
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode >= 300 {
+	if !successfulGatewayStatus(resp.StatusCode) {
 		return &gatewayError{Status: resp.StatusCode, Message: truncate(string(raw))}
 	}
 	if out != nil && len(raw) > 0 {
 		return json.Unmarshal(raw, out)
 	}
 	return nil
+}
+
+func successfulGatewayStatus(code int) bool { return code >= 200 && code < 300 }
+
+func readBoundedResponse(body io.Reader, limit int64) ([]byte, error) {
+	raw, err := io.ReadAll(io.LimitReader(body, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(raw)) > limit {
+		return nil, fmt.Errorf("response exceeds %d bytes", limit)
+	}
+	return raw, nil
 }

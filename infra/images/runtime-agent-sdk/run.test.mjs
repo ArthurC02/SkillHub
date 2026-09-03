@@ -4,23 +4,80 @@
 // `../` entries used to be the only thing standing between a hostile skill
 // package and the filesystem outside the staging directory (iron rule 1);
 // every fixture below is one way that refusal must still hold now that it is
-// hand-written.
+// hand-written. Every fixture carries the real CRC-32 unless a test explicitly
+// lies about it, so the extractor verifies the same bytes admission approved.
 //
 // Every fixture is built in-process from raw zip bytes (central directory +
 // local file headers, by hand) rather than committed as a binary file, so a
 // reviewer can read exactly what bytes each "attack" consists of instead of
-// trusting an opaque .zip in the repo. CRC-32 is left as 0 throughout:
-// extractPackage() does not check it (neither did the shell-out to `unzip`
-// verify anything beyond what unzip itself checks), so it carries no
-// information for these tests.
+// trusting an opaque .zip in the repo.
 
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createServer } from "node:http";
 import { test } from "node:test";
-import { deflateRawSync } from "node:zlib";
-import { agentOptions, extractPackage, outputContract } from "./run.mjs";
+import { crc32, deflateRawSync } from "node:zlib";
+import {
+  agentOptions,
+  extractPackage,
+  gatewaySpend,
+  outputContract,
+  packageRoot,
+  provisionPackage,
+} from "./run.mjs";
+
+test("gateway spend lookup times out instead of blocking run completion", async () => {
+  const server = createServer(() => {});
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const { port } = server.address();
+    const started = Date.now();
+    const spend = await gatewaySpend({
+      base: `http://127.0.0.1:${port}`,
+      key: "test",
+      initialDelayMs: 0,
+      retryDelayMs: 0,
+      requestTimeoutMs: 25,
+      attempts: 1,
+    });
+    assert.equal(spend, null);
+    assert.ok(Date.now() - started < 1000, "hung gateway outlived the request timeout");
+  } finally {
+    server.closeAllConnections();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("package extraction failures become structured provision errors", () => {
+  const root = mkdtempSync(join(tmpdir(), "skillhub-provision-"));
+  const archivePath = join(root, "bad.zip");
+  const destination = join(root, "dest");
+  writeFileSync(archivePath, Buffer.from("not a zip"));
+  mkdirSync(destination);
+  try {
+    assert.throws(
+      () => provisionPackage(archivePath, destination, (phase, code, message) => {
+        assert.equal(phase, "provision");
+        assert.equal(code, "invalid_package");
+        assert.match(message, /skill package extraction failed/);
+        throw new Error("structured failure recorded");
+      }),
+      /structured failure recorded/,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 // --- fixture builder ---------------------------------------------------------
 //
@@ -37,7 +94,8 @@ function buildZip(entries) {
   let offset = 0;
 
   for (const e of entries) {
-    const nameBuf = Buffer.from(e.name, "utf8");
+    const nameBuf = Buffer.isBuffer(e.name) ? e.name : Buffer.from(e.name, "utf8");
+    const extra = e.extra ?? Buffer.alloc(0);
     const data = e.data ?? Buffer.alloc(0);
     const method = e.method ?? 0; // 0 = stored, 8 = deflate
     const compressed = method === 8 ? deflateRawSync(data) : data;
@@ -48,6 +106,7 @@ function buildZip(entries) {
     // central directory claims a small size while the deflate stream expands to
     // something far larger, which is the whole shape of the attack.
     const uncompressedSizeField = e.uncompressedSizeLie ?? data.length;
+    const checksum = e.crcLie ?? crc32(data) >>> 0;
 
     const localOffset = offset;
     const lh = Buffer.alloc(30);
@@ -57,33 +116,33 @@ function buildZip(entries) {
     lh.writeUInt16LE(method, 8);
     lh.writeUInt16LE(0, 10); // mod time
     lh.writeUInt16LE(0, 12); // mod date
-    lh.writeUInt32LE(0, 14); // crc32 — unchecked
+    lh.writeUInt32LE(checksum, 14);
     lh.writeUInt32LE(compressedSizeField, 18);
     lh.writeUInt32LE(uncompressedSizeField, 22);
     lh.writeUInt16LE(nameBuf.length, 26);
-    lh.writeUInt16LE(0, 28); // extra length
-    const localRecord = Buffer.concat([lh, nameBuf, compressed]);
+    lh.writeUInt16LE(extra.length, 28);
+    const localRecord = Buffer.concat([lh, nameBuf, extra, compressed]);
     localParts.push(localRecord);
 
     const ch = Buffer.alloc(46);
     ch.writeUInt32LE(0x02014b50, 0);
-    ch.writeUInt16LE(20, 4); // version made by
+    ch.writeUInt16LE(((e.creatorSystem ?? 0) << 8) | 20, 4); // version made by
     ch.writeUInt16LE(20, 6); // version needed
     ch.writeUInt16LE(generalFlag, 8);
     ch.writeUInt16LE(method, 10);
     ch.writeUInt16LE(0, 12);
     ch.writeUInt16LE(0, 14);
-    ch.writeUInt32LE(0, 16); // crc32
+    ch.writeUInt32LE(checksum, 16);
     ch.writeUInt32LE(compressedSizeField, 20);
     ch.writeUInt32LE(uncompressedSizeField, 24);
     ch.writeUInt16LE(nameBuf.length, 28);
-    ch.writeUInt16LE(0, 30); // extra length
+    ch.writeUInt16LE(extra.length, 30);
     ch.writeUInt16LE(0, 32); // comment length
     ch.writeUInt16LE(0, 34); // disk number
     ch.writeUInt16LE(0, 36); // internal attr
     ch.writeUInt32LE(externalAttr, 38);
     ch.writeUInt32LE(localOffset, 42);
-    centralParts.push(Buffer.concat([ch, nameBuf]));
+    centralParts.push(Buffer.concat([ch, nameBuf, extra]));
 
     offset += localRecord.length;
   }
@@ -101,6 +160,44 @@ function buildZip(entries) {
   eocd.writeUInt16LE(0, 20);
 
   return Buffer.concat([...localParts, centralDir, eocd]);
+}
+
+function addAdjustedPrefix(zip, prefix) {
+  const oldEocd = zip.length - 22;
+  const oldCentral = zip.readUInt32LE(oldEocd + 16);
+  const count = zip.readUInt16LE(oldEocd + 10);
+  const out = Buffer.concat([prefix, zip]);
+  let pos = prefix.length + oldCentral;
+  for (let i = 0; i < count; i += 1) {
+    out.writeUInt32LE(out.readUInt32LE(pos + 42) + prefix.length, pos + 42);
+    const nameLen = out.readUInt16LE(pos + 28);
+    const extraLen = out.readUInt16LE(pos + 30);
+    const commentLen = out.readUInt16LE(pos + 32);
+    pos += 46 + nameLen + extraLen + commentLen;
+  }
+  out.writeUInt32LE(oldCentral + prefix.length, prefix.length + oldEocd + 16);
+  return out;
+}
+
+const falseEntryCountZip = buildZip([
+  { name: "SKILL.md", data: Buffer.from("ok") },
+  { name: "hidden.txt", data: Buffer.from("ignored") },
+]);
+falseEntryCountZip.writeUInt16LE(1, falseEntryCountZip.length - 22 + 8);
+falseEntryCountZip.writeUInt16LE(1, falseEntryCountZip.length - 22 + 10);
+assertRejectedZip(
+  "a central directory whose declared entry count omits records",
+  falseEntryCountZip,
+  /entry count mismatch/,
+);
+
+for (const [name, offset, value] of [
+  ["a multi-disk EOCD", 4, 1],
+  ["a central directory on another disk", 6, 1],
+]) {
+  const zip = buildZip([{ name: "SKILL.md", data: Buffer.from("ok") }]);
+  zip.writeUInt16LE(value, zip.length - 22 + offset);
+  assertRejectedZip(name, zip, /unsupported zip feature/);
 }
 
 // Writes a fixture zip to its own temp dir and returns {archivePath, destDir},
@@ -125,9 +222,28 @@ function assertRejected(name, entries, messagePattern) {
   });
 }
 
+function assertRejectedZip(name, bytes, messagePattern) {
+  test(`refuses ${name}`, () => {
+    const root = mkdtempSync(join(tmpdir(), "run-test-"));
+    try {
+      const archivePath = join(root, "skill.zip");
+      const destDir = join(root, "dest");
+      writeFileSync(archivePath, bytes);
+      mkdirSync(destDir, { recursive: true });
+      assert.throws(() => extractPackage(archivePath, destDir), messagePattern);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+}
+
 // --- 1. absolute paths --------------------------------------------------------
 
-assertRejected("a posix-absolute path", [{ name: "/etc/passwd", data: Buffer.from("x") }], /unsafe zip entry path/);
+assertRejected(
+  "a posix-absolute path",
+  [{ name: "/etc/passwd", data: Buffer.from("x") }],
+  /unsafe zip entry path/,
+);
 assertRejected(
   "a Windows drive-absolute path",
   [{ name: "C:\\Windows\\evil.txt", data: Buffer.from("x") }],
@@ -156,6 +272,18 @@ assertRejected(
   [{ name: "..\\evil.txt", data: Buffer.from("x") }],
   /unsafe zip entry path/,
 );
+assertRejected(
+  "an ordinary backslash path that admission would normalize differently",
+  [{ name: "scripts\\run.sh", data: Buffer.from("x") }],
+  /unsafe zip entry path/,
+);
+for (const name of ["NUL", "con.txt", "dir/COM1.log", "file:stream", "bad?.txt", "control\u0001.txt"]) {
+  assertRejected(
+    `the Windows-nonportable name ${JSON.stringify(name)}`,
+    [{ name, data: Buffer.from("x") }],
+    /non-canonical zip entry name/,
+  );
+}
 
 // --- 3. non-regular file entries ----------------------------------------------
 
@@ -165,19 +293,76 @@ const S_IFIFO = 0x1000;
 
 assertRejected(
   "a symlink entry",
-  [{ name: "link", data: Buffer.from("/etc/passwd"), externalAttr: ((S_IFLNK | 0o777) << 16) >>> 0 }],
+  [
+    {
+      name: "link",
+      data: Buffer.from("/etc/passwd"),
+      externalAttr: ((S_IFLNK | 0o777) << 16) >>> 0,
+      creatorSystem: 3,
+    },
+  ],
   /non-regular zip entry/,
 );
 assertRejected(
   "a device entry",
-  [{ name: "dev", data: Buffer.alloc(0), externalAttr: ((S_IFCHR | 0o666) << 16) >>> 0 }],
+  [
+    {
+      name: "dev",
+      data: Buffer.alloc(0),
+      externalAttr: ((S_IFCHR | 0o666) << 16) >>> 0,
+      creatorSystem: 3,
+    },
+  ],
   /non-regular zip entry/,
 );
 assertRejected(
   "a fifo entry",
-  [{ name: "fifo", data: Buffer.alloc(0), externalAttr: ((S_IFIFO | 0o644) << 16) >>> 0 }],
+  [
+    {
+      name: "fifo",
+      data: Buffer.alloc(0),
+      externalAttr: ((S_IFIFO | 0o644) << 16) >>> 0,
+      creatorSystem: 3,
+    },
+  ],
   /non-regular zip entry/,
 );
+
+test("preserves executable mode bits from a Unix-created archive", {
+  skip: process.platform === "win32",
+}, () => {
+  const { archivePath, destDir, root } = stageZip([
+    {
+      name: "run.sh",
+      data: Buffer.from("#!/bin/sh\n"),
+      externalAttr: ((0x8000 | 0o755) << 16) >>> 0,
+      creatorSystem: 3,
+    },
+  ]);
+  try {
+    extractPackage(archivePath, destDir);
+    assert.equal(statSync(join(destDir, "run.sh")).mode & 0o777, 0o755);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("does not interpret DOS external attributes as Unix file modes", () => {
+  const { archivePath, destDir, root } = stageZip([
+    {
+      name: "ordinary.txt",
+      data: Buffer.from("ok"),
+      externalAttr: ((S_IFLNK | 0o777) << 16) >>> 0,
+      creatorSystem: 0,
+    },
+  ]);
+  try {
+    assert.doesNotThrow(() => extractPackage(archivePath, destDir));
+    assert.equal(readFileSync(join(destDir, "ordinary.txt"), "utf8"), "ok");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 // --- 4. unsupported zip features fail loudly, never silently -----------------
 
@@ -185,6 +370,11 @@ assertRejected(
   "a zip64 entry",
   [{ name: "big.bin", data: Buffer.from("x"), compressedSizeLie: 0xffffffff }],
   /unsupported zip feature: zip64/,
+);
+assertRejected(
+  "a truncated extra field",
+  [{ name: "file.txt", data: Buffer.from("x"), extra: Buffer.from([0x34, 0x12, 0x05, 0x00]) }],
+  /malformed zip: truncated extra field/,
 );
 assertRejected(
   "an encrypted entry",
@@ -196,27 +386,205 @@ assertRejected(
   [{ name: "file.bin", data: Buffer.from("x"), method: 12 }], // 12 = bzip2, not implemented here
   /unsupported zip feature: compression method/,
 );
+assertRejected(
+  "an entry whose CRC32 does not match its bytes",
+  [{ name: "file.bin", data: Buffer.from("content"), crcLie: 1 }],
+  /CRC32 mismatch/,
+);
+assertRejected(
+  "an entry whose declared uncompressed size is too large",
+  [
+    {
+      name: "file.bin",
+      data: Buffer.from("content"),
+      method: 8,
+      uncompressedSizeLie: 20,
+    },
+  ],
+  /uncompressed size mismatch/,
+);
+assertRejected(
+  "an entry larger than admission's 10 MiB ceiling",
+  [{ name: "large.bin", data: Buffer.alloc(10 * 1024 * 1024 + 1) }],
+  /oversized zip entry/,
+);
+assertRejected(
+  "a path deeper than admission's ten-segment ceiling",
+  [{ name: `${"d/".repeat(11)}file.txt`, data: Buffer.from("x") }],
+  /nested 11 directories deep/,
+);
+assertRejected("an empty entry name", [{ name: "", data: Buffer.alloc(0) }], /invalid name/);
+assertRejected(
+  "an entry name containing NUL",
+  [{ name: "safe\0hidden", data: Buffer.from("x") }],
+  /invalid name/,
+);
+assertRejected(
+  "an entry name containing invalid UTF-8",
+  [{ name: Buffer.from([0x62, 0x61, 0x64, 0xff]), data: Buffer.from("x") }],
+  /invalid UTF-8 name/,
+);
+assertRejected(
+  "a non-canonical dot-segment entry name",
+  [{ name: "dir/./file.txt", data: Buffer.from("x") }],
+  /non-canonical zip entry name/,
+);
+assertRejected(
+  "portable names that collide by case",
+  [
+    { name: "dir/file.txt", data: Buffer.from("one") },
+    { name: "DIR/FILE.TXT", data: Buffer.from("two") },
+  ],
+  /duplicate portable zip entry name/,
+);
+assertRejected(
+  "a file that is an ancestor of another entry",
+  [
+    { name: "a", data: Buffer.from("file") },
+    { name: "a/b", data: Buffer.from("child") },
+  ],
+  /ancestor|conflicts with a descendant/,
+);
+assertRejected(
+  "a file added after its descendant",
+  [
+    { name: "a/b", data: Buffer.from("child") },
+    { name: "a", data: Buffer.from("file") },
+  ],
+  /ancestor|conflicts with a descendant/,
+);
+assertRejected(
+  "a path component longer than 255 UTF-8 bytes",
+  [{ name: "x".repeat(256), data: Buffer.from("long") }],
+  /non-canonical zip entry name/,
+);
+assertRejected(
+  "a Unicode path component whose case fold shrinks below 255 bytes",
+  [{ name: "K".repeat(100) + ".txt", data: Buffer.from("long") }],
+  /non-canonical zip entry name/,
+);
+
+const zip64Extra = Buffer.alloc(4);
+zip64Extra.writeUInt16LE(0x0001, 0);
+assertRejected(
+  "a gratuitous Zip64 extra field on a small entry",
+  [{ name: "file.txt", data: Buffer.from("x"), extra: zip64Extra }],
+  /zip64 entry/,
+);
 
 // --- positive case: tree preserved, content byte-exact, both codecs used -----
 
 test("preserves the directory tree and extracts content byte-for-byte", () => {
-  const binaryContent = Buffer.from(Array.from({ length: 500 }, (_, i) => i % 256));
+  const binaryContent = Buffer.from(
+    Array.from({ length: 500 }, (_, i) => i % 256),
+  );
   const skillMd = "---\nname: demo\n---\nBody.\n";
   const entries = [
     { name: "pkg/", data: Buffer.alloc(0) },
     { name: "pkg/SKILL.md", data: Buffer.from(skillMd, "utf8"), method: 0 }, // stored
     { name: "pkg/scripts/", data: Buffer.alloc(0) },
-    { name: "pkg/scripts/run.sh", data: Buffer.from("#!/bin/sh\necho hi\n"), method: 8 }, // deflated
+    {
+      name: "pkg/scripts/run.sh",
+      data: Buffer.from("#!/bin/sh\necho hi\n"),
+      method: 8,
+    }, // deflated
     { name: "pkg/assets/data.bin", data: binaryContent, method: 8 }, // deflated binary
   ];
   const { archivePath, destDir, root } = stageZip(entries);
   try {
-    extractPackage(archivePath, destDir);
+    assert.equal(extractPackage(archivePath, destDir), "pkg/");
 
-    assert.deepEqual(readdirSync(join(destDir, "pkg")).sort(), ["SKILL.md", "assets", "scripts"]);
-    assert.equal(readFileSync(join(destDir, "pkg", "SKILL.md"), "utf8"), skillMd);
-    assert.equal(readFileSync(join(destDir, "pkg", "scripts", "run.sh"), "utf8"), "#!/bin/sh\necho hi\n");
-    assert.deepEqual(readFileSync(join(destDir, "pkg", "assets", "data.bin")), binaryContent);
+    assert.deepEqual(readdirSync(join(destDir, "pkg")).sort(), [
+      "SKILL.md",
+      "assets",
+      "scripts",
+    ]);
+    assert.equal(
+      readFileSync(join(destDir, "pkg", "SKILL.md"), "utf8"),
+      skillMd,
+    );
+    assert.equal(
+      readFileSync(join(destDir, "pkg", "scripts", "run.sh"), "utf8"),
+      "#!/bin/sh\necho hi\n",
+    );
+    assert.deepEqual(
+      readFileSync(join(destDir, "pkg", "assets", "data.bin")),
+      binaryContent,
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("selects the same single top-level package root that admission strips", () => {
+  assert.equal(
+    packageRoot([
+      { name: "repo-main/" },
+      { name: "repo-main/SKILL.md" },
+      { name: "repo-main/scripts/run.sh" },
+    ]),
+    "repo-main/",
+  );
+  assert.equal(packageRoot([{ name: "SKILL.md" }, { name: "notes.md" }]), "");
+  assert.equal(
+    packageRoot([{ name: "one/SKILL.md" }, { name: "two/notes.md" }]),
+    "",
+  );
+});
+
+assertRejected(
+  "a symlink disguised by a directory-shaped name",
+  [{ name: "link/", externalAttr: ((S_IFLNK | 0o777) << 16) >>> 0, creatorSystem: 3 }],
+  /non-regular zip entry|type disagrees/,
+);
+assertRejected(
+  "a directory mode disguised by a file-shaped name",
+  [{ name: "dir", externalAttr: ((0x4000 | 0o755) << 16) >>> 0, creatorSystem: 3 }],
+  /type disagrees/,
+);
+
+test("refuses an archive-level zip64 locator", () => {
+  const ordinary = buildZip([{ name: "SKILL.md", data: Buffer.from("x") }]);
+  const locator = Buffer.alloc(20);
+  locator.writeUInt32LE(0x07064b50, 0);
+  const malformed = Buffer.concat([
+    ordinary.subarray(0, -22),
+    locator,
+    ordinary.subarray(-22),
+  ]);
+  const root = mkdtempSync(join(tmpdir(), "run-test-"));
+  try {
+    const archivePath = join(root, "skill.zip");
+    const destDir = join(root, "dest");
+    writeFileSync(archivePath, malformed);
+    mkdirSync(destDir);
+    assert.throws(() => extractPackage(archivePath, destDir), /zip64 archive/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+assertRejectedZip(
+  "a self-extracting prefix whose ZIP offsets were adjusted",
+  addAdjustedPrefix(
+    buildZip([{ name: "SKILL.md", data: Buffer.from("x") }]),
+    Buffer.from("MZ executable stub"),
+  ),
+  /prefixed zip archive/,
+);
+
+test("an EOCD signature inside a valid ZIP comment is not mistaken for the record", () => {
+  const ordinary = buildZip([{ name: "SKILL.md", data: Buffer.from("x") }]);
+  const comment = Buffer.from("comment-PK\x05\x06-tail", "binary");
+  ordinary.writeUInt16LE(comment.length, ordinary.length - 2);
+  const bytes = Buffer.concat([ordinary, comment]);
+  const root = mkdtempSync(join(tmpdir(), "run-test-"));
+  try {
+    const archivePath = join(root, "skill.zip");
+    const destDir = join(root, "dest");
+    writeFileSync(archivePath, bytes);
+    mkdirSync(destDir);
+    assert.doesNotThrow(() => extractPackage(archivePath, destDir));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -255,7 +623,9 @@ test("accepts an entry that deflates honestly, so the bound is not just a wall",
   // rejected this would be a size limit, not a bomb check, and the previous
   // test would pass for the wrong reason.
   const honest = Buffer.alloc(10 * 1024 * 1024, 7);
-  const { archivePath, destDir, root } = stageZip([{ name: "big.bin", data: honest, method: 8 }]);
+  const { archivePath, destDir, root } = stageZip([
+    { name: "big.bin", data: honest, method: 8 },
+  ]);
   try {
     extractPackage(archivePath, destDir);
     assert.equal(readFileSync(join(destDir, "big.bin")).length, honest.length);
@@ -265,25 +635,31 @@ test("accepts an entry that deflates honestly, so the bound is not just a wall",
 });
 
 test("refuses a package with more entries than the limit", () => {
-  // 1001 empty files: no bytes at all, and still 1001 filesystem entries.
-  // artifactMaxEntries on the collection side carries the same number for the
-  // same reason (artifacts.go: "an empty file costs no bytes and still costs a
-  // manifest entry").
-  const entries = Array.from({ length: 1001 }, (_, i) => ({ name: `f${i}`, data: Buffer.alloc(0) }));
+  // 2001 empty files: no bytes at all, and still 2001 filesystem entries.
+  const entries = Array.from({ length: 2001 }, (_, i) => ({
+    name: `f${i}`,
+    data: Buffer.alloc(0),
+  }));
   const { archivePath, destDir, root } = stageZip(entries);
   try {
-    assert.throws(() => extractPackage(archivePath, destDir), /1001 entries exceeds the 1000 entry limit/);
+    assert.throws(
+      () => extractPackage(archivePath, destDir),
+      /2001 entries exceeds the 2000 entry limit/,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
 test("accepts a package at exactly the entry limit", () => {
-  const entries = Array.from({ length: 1000 }, (_, i) => ({ name: `f${i}`, data: Buffer.alloc(0) }));
+  const entries = Array.from({ length: 2000 }, (_, i) => ({
+    name: `f${i}`,
+    data: Buffer.alloc(0),
+  }));
   const { archivePath, destDir, root } = stageZip(entries);
   try {
     extractPackage(archivePath, destDir);
-    assert.equal(readdirSync(destDir).length, 1000);
+    assert.equal(readdirSync(destDir).length, 2000);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -294,16 +670,19 @@ test("refuses a package whose declared sizes add up past the total limit", () =>
   // declared, past the 256 MiB bound. Nothing is inflated and nothing is
   // written — the refusal comes off the central directory alone, which is the
   // point of bounding the declaration rather than the running output.
-  const hundredMiB = 100 * 1024 * 1024;
-  const entries = Array.from({ length: 3 }, (_, i) => ({
+  const tenMiB = 10 * 1024 * 1024;
+  const entries = Array.from({ length: 11 }, (_, i) => ({
     name: `part${i}.bin`,
     data: Buffer.alloc(0),
     method: 8,
-    uncompressedSizeLie: hundredMiB,
+    uncompressedSizeLie: tenMiB,
   }));
   const { archivePath, destDir, root } = stageZip(entries);
   try {
-    assert.throws(() => extractPackage(archivePath, destDir), /declared \d+ bytes exceeds the 268435456 byte limit/);
+    assert.throws(
+      () => extractPackage(archivePath, destDir),
+      /declared \d+ bytes exceeds the 104857600 byte limit/,
+    );
     assert.deepEqual(readdirSync(destDir), []);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -319,7 +698,10 @@ test("refuses a stored entry whose two sizes disagree", () => {
     { name: "stored.bin", data: payload, method: 0, uncompressedSizeLie: 1 },
   ]);
   try {
-    assert.throws(() => extractPackage(archivePath, destDir), /stored entry declares 1 bytes but carries 1048576/);
+    assert.throws(
+      () => extractPackage(archivePath, destDir),
+      /stored entry declares 1 bytes but carries 1048576/,
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -336,7 +718,10 @@ test("refuses a stored entry whose two sizes disagree", () => {
 test("the agent is told the directory that is actually collected", () => {
   const dir = join("C:", "runs", "abc", "out", "artifacts");
   const text = outputContract(dir);
-  assert.ok(text.includes(dir), "the absolute path the platform collects has to appear verbatim");
+  assert.ok(
+    text.includes(dir),
+    "the absolute path the platform collects has to appear verbatim",
+  );
   // Naming the directory is only half of it. Without this the agent has no
   // reason to think its usual habit — writing next to the working directory —
   // costs anything, and that is the habit that produced an empty artifact list.
@@ -370,6 +755,17 @@ test("the agent turn still carries every option that fails silently", () => {
   assert.equal(options.skills, "all");
   assert.equal(options.includePartialMessages, true);
   assert.equal(options.permissionMode, "bypassPermissions");
-  assert.ok(!("settingSources" in options), "settingSources must stay omitted; passing it loads no skills");
-  assert.deepEqual(options.allowedTools, ["Skill", "Read", "Write", "Edit", "Glob", "Grep", "Bash"]);
+  assert.ok(
+    !("settingSources" in options),
+    "settingSources must stay omitted; passing it loads no skills",
+  );
+  assert.deepEqual(options.allowedTools, [
+    "Skill",
+    "Read",
+    "Write",
+    "Edit",
+    "Glob",
+    "Grep",
+    "Bash",
+  ]);
 });

@@ -72,6 +72,7 @@ func post[Req, Resp any](ctx context.Context, c *Client, path string, reqBody Re
 
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
 		return nil, fmt.Errorf("llmclient: %s returned %d: %s", path, resp.StatusCode, string(b))
 	}
 
@@ -82,8 +83,15 @@ func post[Req, Resp any](ctx context.Context, c *Client, path string, reqBody Re
 	// MAX_OUTPUT_TOKENS, a constant in a different language: raise it, point
 	// GENERATE_SKILL_MODEL at a model with a bigger cap, or compromise apps/llm,
 	// and the API process buffers the JSON, the decoded structs and then a zip.
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("llmclient: read %s response: %w", path, err)
+	}
+	if len(raw) > MaxResponseBytes {
+		return nil, fmt.Errorf("llmclient: %s response exceeds %d bytes", path, MaxResponseBytes)
+	}
 	var result Resp
-	if err := json.NewDecoder(io.LimitReader(resp.Body, MaxResponseBytes)).Decode(&result); err != nil {
+	if err := json.Unmarshal(raw, &result); err != nil {
 		return nil, fmt.Errorf("llmclient: decode %s response: %w", path, err)
 	}
 	return &result, nil

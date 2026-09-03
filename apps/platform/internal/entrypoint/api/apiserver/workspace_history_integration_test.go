@@ -794,7 +794,8 @@ func (c *client) listRunsForTestCase(t *testing.T, testCaseID string) []runListV
 func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
-	f := newFixture(t, a, pool, "history-per-case")
+	tag := uniqueWorklistLabel("history-per-case")
+	f := newFixture(t, a, pool, tag)
 	mine := f.start(t)
 
 	// A second draft on the same skill, run once. It is the row the filter has to
@@ -824,11 +825,66 @@ func TestTheRunHistoryCanBeNarrowedToOneTestCase(t *testing.T) {
 
 	// WS-006 / iron rule 3: another workspace's test case is not a way in, and
 	// neither is a filter the server cannot parse.
-	stranger := newFixture(t, a, pool, "history-per-case-stranger")
+	stranger := newFixture(t, a, pool, tag+"-stranger")
 	if rows := stranger.listRunsForTestCase(t, f.testCaseID); len(rows) != 0 {
 		t.Errorf("another workspace's runs leaked through test_case_id: %+v", rows)
 	}
 	if rows := f.listRunsForTestCase(t, "not-a-uuid"); len(rows) != 0 {
 		t.Errorf("an unparseable test_case_id fell back to the whole history: %+v", rows)
+	}
+
+	var otherSnapshotID string
+	if err := pool.QueryRow(context.Background(),
+		"SELECT test_case_snapshot_id::text FROM runs WHERE id = $1", mustUUID(t, theirs.RunID),
+	).Scan(&otherSnapshotID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, created_at)
+		SELECT $1, $2, $3, 'test', clock_timestamp() + make_interval(secs => n)
+		FROM generate_series(1, 500) AS n`,
+		mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, otherSnapshotID),
+	); err != nil {
+		t.Fatal(err)
+	}
+	rows = f.listRunsForTestCase(t, f.testCaseID)
+	if len(rows) != 1 || rows[0].RunID != mine.RunID {
+		t.Fatalf("filtered history lost a matching run older than 500 unrelated rows: %+v", rows)
+	}
+
+	var mineSnapshotID string
+	if err := pool.QueryRow(context.Background(),
+		"SELECT test_case_snapshot_id::text FROM runs WHERE id = $1", mustUUID(t, mine.RunID),
+	).Scan(&mineSnapshotID); err != nil {
+		t.Fatal(err)
+	}
+	var newerMatchingID string
+	if err := pool.QueryRow(context.Background(), `
+		INSERT INTO runs (workspace_id, skill_version_id, test_case_snapshot_id, provider, created_at)
+		VALUES ($1, $2, $3, 'test', clock_timestamp() + interval '1 hour')
+		RETURNING id::text`, mustUUID(t, f.workspaceID), mustUUID(t, f.versionID), mustUUID(t, mineSnapshotID),
+	).Scan(&newerMatchingID); err != nil {
+		t.Fatal(err)
+	}
+	var page struct {
+		Runs []runListView `json:"runs"`
+	}
+	url := f.base + "/runs?test_case_id=" + f.testCaseID + "&limit=1&offset=1"
+	if code := getJSON(t, f.Client, url, &page); code != http.StatusOK {
+		t.Fatalf("GET filtered second page: got %d", code)
+	}
+	if len(page.Runs) != 1 || page.Runs[0].RunID != mine.RunID || page.Runs[0].RunID == newerMatchingID {
+		t.Fatalf("filter pagination was applied before filtering: %+v", page.Runs)
+	}
+
+	var indexDefinition string
+	if err := pool.QueryRow(context.Background(), `
+		SELECT indexdef FROM pg_indexes
+		WHERE schemaname = current_schema() AND indexname = 'runs_test_case_snapshot_id_idx'`,
+	).Scan(&indexDefinition); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(indexDefinition, "(test_case_snapshot_id, created_at DESC)") {
+		t.Fatalf("run history index has the wrong columns: %s", indexDefinition)
 	}
 }

@@ -209,11 +209,14 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	// either is left unset — see worker_test.go.
 	set.Objects = &objreconcile.Service{
 		Pool: pool, Store: deps.Store,
-		ListExpiredArtifacts: packagingCandidates(downloads.ExpiredReconcileCandidates),
-		ListClaimedArtifacts: packagingCandidates(downloads.ClaimedReconcileCandidates),
-		ListClaimedDatasets:  datasetCandidates(testlabSvc.ClaimedReconcileCandidates),
-		RecordArtifactPurged: downloads.MarkArtifactPurged,
-		RecordDatasetLost:    testlabSvc.MarkDatasetObjectLost,
+		ListExpiredArtifacts:       packagingCandidates(downloads.ExpiredReconcileCandidates),
+		ListDownloadIntents:        packagingCandidates(downloads.DownloadCleanupIntentCandidates),
+		ListClaimedArtifacts:       packagingCandidates(downloads.ClaimedReconcileCandidates),
+		ListClaimedDatasets:        datasetCandidates(testlabSvc.ClaimedReconcileCandidates),
+		RecordArtifactPurged:       downloads.MarkArtifactPurged,
+		RecordDownloadIntentPurged: downloads.MarkDownloadCleanupIntentPurged,
+		RecordDatasetLost:          testlabSvc.MarkDatasetObjectLost,
+		GuardArtifactRemoval:       downloads.GuardArtifactRemoval,
 	}
 	addWorker(set, workers, &objreconcile.Worker{Svc: set.Objects})
 	// The two platform-maintenance jobs (periodic.go): making next month’s

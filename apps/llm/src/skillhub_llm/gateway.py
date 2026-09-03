@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 import math
 import os
+from functools import lru_cache
 from typing import Literal
 
 from fastapi import HTTPException
@@ -114,7 +115,20 @@ def client(timeout: float) -> AsyncOpenAI:
     way (ADR-016 rule 6); this is the code saying so instead of a comment.
     """
     base_url, api_key = gateway()
-    return AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=timeout, max_retries=0)
+    return _shared_client().with_options(base_url=base_url, api_key=api_key, timeout=timeout)
+
+
+@lru_cache(maxsize=1)
+def _shared_client() -> AsyncOpenAI:
+    """Own one transport; each request view supplies the current URL and key."""
+    return AsyncOpenAI(base_url="http://localhost", api_key="unused", max_retries=0)
+
+
+async def close_client() -> None:
+    """Close the shared HTTP transport during FastAPI shutdown."""
+    if _shared_client.cache_info().currsize:
+        await _shared_client().close()
+        _shared_client.cache_clear()
 
 
 def _metadata(**pairs: str) -> dict:

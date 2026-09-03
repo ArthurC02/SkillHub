@@ -18,7 +18,7 @@ SET email = 'deleted-' || id::text || '@deleted.invalid',
     deleted_at = now(),
     updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at
+RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at, purge_attempted_at, purge_started_at
 `
 
 // The tombstone (PDM-006 6.1 去識別化保留). Retained content still points here,
@@ -36,6 +36,8 @@ func (q *Queries) AnonymizeUser(ctx context.Context, id pgtype.UUID) (User, erro
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeletionRequestedAt,
+		&i.PurgeAttemptedAt,
+		&i.PurgeStartedAt,
 	)
 	return i, err
 }
@@ -56,9 +58,10 @@ func (q *Queries) AnonymizeWorkspacesByOwner(ctx context.Context, ownerUserID pg
 }
 
 const cancelAccountDeletion = `-- name: CancelAccountDeletion :one
-UPDATE users SET deletion_requested_at = NULL, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at
+UPDATE users SET deletion_requested_at = NULL, purge_attempted_at = NULL,
+    purge_started_at = NULL, updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL AND purge_started_at IS NULL
+RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at, purge_attempted_at, purge_started_at
 `
 
 // Cancellable for the whole grace period (PDM-006 6.1 避免誤刪不可逆).
@@ -73,6 +76,8 @@ func (q *Queries) CancelAccountDeletion(ctx context.Context, id pgtype.UUID) (Us
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeletionRequestedAt,
+		&i.PurgeAttemptedAt,
+		&i.PurgeStartedAt,
 	)
 	return i, err
 }
@@ -198,7 +203,13 @@ func (q *Queries) DeleteUserSessions(ctx context.Context, userID pgtype.UUID) (i
 }
 
 const deleteWorkspaceDatasets = `-- name: DeleteWorkspaceDatasets :execrows
-DELETE FROM datasets WHERE workspace_id = $1
+WITH cleanup_intents AS (
+    DELETE FROM dataset_object_cleanup_intents i WHERE i.workspace_id = $1
+), sightings AS (
+    DELETE FROM object_reconcile_sightings s USING datasets d
+    WHERE s.resource_kind = 'dataset' AND s.resource_id = d.id AND d.workspace_id = $1
+)
+DELETE FROM datasets d WHERE d.workspace_id = $1
 `
 
 func (q *Queries) DeleteWorkspaceDatasets(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
@@ -210,7 +221,16 @@ func (q *Queries) DeleteWorkspaceDatasets(ctx context.Context, workspaceID pgtyp
 }
 
 const deleteWorkspaceDownloadArtifacts = `-- name: DeleteWorkspaceDownloadArtifacts :execrows
-DELETE FROM artifacts WHERE workspace_id = $1 AND kind = 'download_package'
+WITH cleanup_intents AS (
+    DELETE FROM download_object_cleanup_intents
+    WHERE workspace_id = $1::uuid
+), sightings AS (
+    DELETE FROM object_reconcile_sightings s USING artifacts a
+    WHERE s.resource_kind = 'artifact' AND s.resource_id = a.id
+      AND a.workspace_id = $1::uuid AND a.kind = 'download_package'
+)
+DELETE FROM artifacts
+WHERE workspace_id = $1::uuid AND kind = 'download_package'
 `
 
 func (q *Queries) DeleteWorkspaceDownloadArtifacts(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
@@ -222,7 +242,16 @@ func (q *Queries) DeleteWorkspaceDownloadArtifacts(ctx context.Context, workspac
 }
 
 const deleteWorkspaceRunArtifacts = `-- name: DeleteWorkspaceRunArtifacts :execrows
-DELETE FROM artifacts WHERE workspace_id = $1 AND kind = 'run_output'
+WITH cleanup_intents AS (
+    DELETE FROM run_artifact_upload_intents
+    WHERE workspace_id = $1::uuid
+), sightings AS (
+    DELETE FROM object_reconcile_sightings s USING artifacts a
+    WHERE s.resource_kind = 'artifact' AND s.resource_id = a.id
+      AND a.workspace_id = $1::uuid AND a.kind = 'run_output'
+)
+DELETE FROM artifacts
+WHERE workspace_id = $1::uuid AND kind = 'run_output'
 `
 
 func (q *Queries) DeleteWorkspaceRunArtifacts(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
@@ -320,12 +349,19 @@ func (q *Queries) InsertAuditEvent(ctx context.Context, arg InsertAuditEventPara
 }
 
 const listAccountsPastGrace = `-- name: ListAccountsPastGrace :many
-SELECT id FROM users
-WHERE deleted_at IS NULL
-  AND deletion_requested_at IS NOT NULL
-  AND deletion_requested_at <= $2
-ORDER BY deletion_requested_at
-LIMIT $1
+WITH candidates AS (
+    SELECT pending.id FROM users pending
+    WHERE pending.deleted_at IS NULL
+      AND pending.deletion_requested_at IS NOT NULL
+      AND pending.deletion_requested_at <= $2
+	  AND (pending.purge_attempted_at IS NULL OR pending.purge_attempted_at < now() - interval '15 minutes')
+    ORDER BY pending.purge_attempted_at NULLS FIRST, pending.purge_attempted_at,
+             pending.deletion_requested_at, pending.id
+    LIMIT $1 FOR UPDATE SKIP LOCKED
+)
+UPDATE users u SET purge_attempted_at = now()
+FROM candidates c WHERE u.id = c.id
+RETURNING u.id
 `
 
 type ListAccountsPastGraceParams struct {
@@ -508,7 +544,9 @@ func (q *Queries) ListWorkspaceAuditEvents(ctx context.Context, arg ListWorkspac
 }
 
 const listWorkspaceDatasetObjectKeys = `-- name: ListWorkspaceDatasetObjectKeys :many
-SELECT object_key FROM datasets WHERE workspace_id = $1
+SELECT d.object_key FROM datasets d WHERE d.workspace_id = $1
+UNION
+SELECT i.object_key FROM dataset_object_cleanup_intents i WHERE i.workspace_id = $1
 `
 
 // Private object keys are split by owner. Identity combines these scoped
@@ -535,7 +573,10 @@ func (q *Queries) ListWorkspaceDatasetObjectKeys(ctx context.Context, workspaceI
 
 const listWorkspaceDownloadArtifactObjectKeys = `-- name: ListWorkspaceDownloadArtifactObjectKeys :many
 SELECT object_key FROM artifacts
-WHERE workspace_id = $1 AND kind = 'download_package'
+WHERE workspace_id = $1::uuid AND kind = 'download_package'
+UNION
+SELECT object_key FROM download_object_cleanup_intents
+WHERE workspace_id = $1::uuid
 `
 
 func (q *Queries) ListWorkspaceDownloadArtifactObjectKeys(ctx context.Context, workspaceID pgtype.UUID) ([]string, error) {
@@ -560,7 +601,15 @@ func (q *Queries) ListWorkspaceDownloadArtifactObjectKeys(ctx context.Context, w
 
 const listWorkspaceRunArtifactObjectKeys = `-- name: ListWorkspaceRunArtifactObjectKeys :many
 SELECT object_key FROM artifacts
-WHERE workspace_id = $1 AND kind = 'run_output'
+WHERE artifacts.workspace_id = $1::uuid AND kind = 'run_output'
+UNION
+SELECT 'run-artifacts/' || r.id::text || '/' || a.id::text || '/artifacts.tar'
+FROM runs r
+JOIN run_attempts a ON a.run_id = r.id AND a.workspace_id = r.workspace_id
+WHERE r.workspace_id = $1::uuid
+UNION
+SELECT object_key FROM run_artifact_upload_intents
+WHERE workspace_id = $1::uuid
 `
 
 func (q *Queries) ListWorkspaceRunArtifactObjectKeys(ctx context.Context, workspaceID pgtype.UUID) ([]string, error) {
@@ -581,6 +630,17 @@ func (q *Queries) ListWorkspaceRunArtifactObjectKeys(ctx context.Context, worksp
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockAccountWorkspaceObjects = `-- name: LockAccountWorkspaceObjects :exec
+SELECT pg_advisory_lock(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
+`
+
+// Account purge holds this session lock from its object-key snapshot through
+// the database purge. Dataset and download producers use the same key.
+func (q *Queries) LockAccountWorkspaceObjects(ctx context.Context, workspaceID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, lockAccountWorkspaceObjects, workspaceID)
+	return err
 }
 
 const lockSkillForOperatorWrite = `-- name: LockSkillForOperatorWrite :one
@@ -641,6 +701,22 @@ func (q *Queries) LockSkillForOperatorWrite(ctx context.Context, id pgtype.UUID)
 		&i.TakedownAt,
 	)
 	return i, err
+}
+
+const markAccountPurgeStarted = `-- name: MarkAccountPurgeStarted :execrows
+UPDATE users SET purge_started_at = coalesce(purge_started_at, now()), updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL AND deletion_requested_at IS NOT NULL
+`
+
+// Called only while the purge owns every workspace's exclusive write fence.
+// A cancellation that won before that point leaves no deletion request and
+// therefore makes this a no-op.
+func (q *Queries) MarkAccountPurgeStarted(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markAccountPurgeStarted, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const markSourceChecked = `-- name: MarkSourceChecked :exec
@@ -946,9 +1022,12 @@ func (q *Queries) PurgeUnreferencedSkills(ctx context.Context, workspaceID pgtyp
 
 const requestAccountDeletion = `-- name: RequestAccountDeletion :one
 UPDATE users
-SET deletion_requested_at = coalesce(deletion_requested_at, now()), updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at
+SET deletion_requested_at = coalesce(deletion_requested_at, now()),
+    purge_attempted_at = CASE WHEN deletion_requested_at IS NULL THEN NULL ELSE purge_attempted_at END,
+    purge_started_at = CASE WHEN deletion_requested_at IS NULL THEN NULL ELSE purge_started_at END,
+    updated_at = now()
+WHERE id = $1 AND deleted_at IS NULL AND purge_started_at IS NULL
+RETURNING id, email, display_name, created_at, updated_at, deleted_at, deletion_requested_at, purge_attempted_at, purge_started_at
 `
 
 // Starts (or re-reads) the 30-day grace period. Idempotent: asking twice keeps
@@ -964,6 +1043,8 @@ func (q *Queries) RequestAccountDeletion(ctx context.Context, id pgtype.UUID) (U
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.DeletionRequestedAt,
+		&i.PurgeAttemptedAt,
+		&i.PurgeStartedAt,
 	)
 	return i, err
 }
@@ -1097,4 +1178,15 @@ func (q *Queries) TakedownSkill(ctx context.Context, arg TakedownSkillParams) (S
 		&i.CuratedVersionID,
 	)
 	return i, err
+}
+
+const unlockAccountWorkspaceObjects = `-- name: UnlockAccountWorkspaceObjects :one
+SELECT pg_advisory_unlock(hashtextextended('workspace-objects:' || ($1::uuid)::text, 0))
+`
+
+func (q *Queries) UnlockAccountWorkspaceObjects(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, unlockAccountWorkspaceObjects, workspaceID)
+	var pg_advisory_unlock bool
+	err := row.Scan(&pg_advisory_unlock)
+	return pg_advisory_unlock, err
 }
